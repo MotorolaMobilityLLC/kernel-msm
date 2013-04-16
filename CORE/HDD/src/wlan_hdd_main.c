@@ -5178,6 +5178,15 @@ int hdd_wlan_startup(struct device *dev )
 
 #endif //WLAN_BTAMP_FEATURE
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+   if(!(IS_ROAM_SCAN_OFFLOAD_FEATURE_ENABLE))
+   {
+      hddLog(VOS_TRACE_LEVEL_DEBUG,"%s: ROAM_SCAN_OFFLOAD Feature not supported",__func__);
+      pHddCtx->cfg_ini->isRoamOffloadScanEnabled = 0;
+      sme_UpdateRoamScanOffloadEnabled((tHalHandle)(pHddCtx->hHal),
+                       pHddCtx->cfg_ini->isRoamOffloadScanEnabled);
+   }
+#endif
 #ifdef FEATURE_WLAN_SCAN_PNO
    /*SME must send channel update configuration to RIVA*/
    sme_UpdateChannelConfig(pHddCtx->hHal); 

@@ -180,6 +180,12 @@ static VOS_STATUS WDA_ProcessSetPrefNetworkReq(tWDA_CbContext *pWDA, tSirPNOScan
 static VOS_STATUS WDA_ProcessSetRssiFilterReq(tWDA_CbContext *pWDA, tSirSetRSSIFilterReq* pRssiFilterParams);
 static VOS_STATUS WDA_ProcessUpdateScanParams(tWDA_CbContext *pWDA, tSirUpdateScanParams *pUpdateScanParams);
 #endif // FEATURE_WLAN_SCAN_PNO
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+VOS_STATUS WDA_ProcessStartRoamCandidatelookupReq(tWDA_CbContext *pWDA,tSirRoamOffloadScanReq *pRoamOffloadScanReqParams);
+void WDA_RoamOffloadScanReqCallback(WDI_Status status, void* pUserData);
+void WDA_ConvertSirAuthToWDIAuth(WDI_AuthType *AuthType, v_U8_t csrAuthType);
+void WDA_ConvertSirEncToWDIEnc(WDI_EdType *EncrType, v_U8_t csrEncrType);
+#endif
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 static VOS_STATUS WDA_Process8023MulticastListReq (
                                        tWDA_CbContext *pWDA,
@@ -10907,6 +10913,13 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          break;
       }
 #endif // FEATURE_WLAN_SCAN_PNO
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+      case WDA_START_ROAM_CANDIDATE_LOOKUP_REQ:
+      {
+         WDA_ProcessStartRoamCandidatelookupReq(pWDA, (tSirRoamOffloadScanReq *)pMsg->bodyptr);
+         break;
+      }
+#endif
       case WDA_SET_TX_PER_TRACKING_REQ:
       {
          WDA_ProcessSetTxPerTrackingReq(pWDA, (tSirTxPerTrackingParam *)pMsg->bodyptr);
@@ -12122,6 +12135,238 @@ VOS_STATUS WDA_ProcessSetPrefNetworkReq(tWDA_CbContext *pWDA,
    }
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+
+void WDA_ConvertSirAuthToWDIAuth(WDI_AuthType *AuthType, v_U8_t csrAuthType)
+{
+   /*Convert the CSR Auth types to WDI Auth types */
+   switch (csrAuthType)
+   {
+      case eCSR_AUTH_TYPE_OPEN_SYSTEM:
+           *AuthType = eWDA_AUTH_TYPE_OPEN_SYSTEM;
+           break;
+#ifdef FEATURE_WLAN_CCX
+      case eCSR_AUTH_TYPE_CCKM_WPA:
+           *AuthType = eWDA_AUTH_TYPE_CCKM_WPA;
+           break;
+#endif
+      case eCSR_AUTH_TYPE_WPA:
+           *AuthType = eWDA_AUTH_TYPE_WPA;
+           break;
+      case eCSR_AUTH_TYPE_WPA_PSK:
+           *AuthType = eWDA_AUTH_TYPE_WPA_PSK;
+           break;
+#ifdef FEATURE_WLAN_CCX
+      case eCSR_AUTH_TYPE_CCKM_RSN:
+           *AuthType = eWDA_AUTH_TYPE_CCKM_RSN;
+           break;
+#endif
+      case eCSR_AUTH_TYPE_RSN:
+           *AuthType = eWDA_AUTH_TYPE_RSN;
+           break;
+      case eCSR_AUTH_TYPE_RSN_PSK:
+           *AuthType = eWDA_AUTH_TYPE_RSN_PSK;
+           break;
+#if defined WLAN_FEATURE_VOWIFI_11R
+      case eCSR_AUTH_TYPE_FT_RSN:
+           *AuthType = eWDA_AUTH_TYPE_FT_RSN;
+           break;
+      case eCSR_AUTH_TYPE_FT_RSN_PSK:
+           *AuthType = eWDA_AUTH_TYPE_FT_RSN_PSK;
+           break;
+#endif
+#ifdef FEATURE_WLAN_WAPI
+      case eCSR_AUTH_TYPE_WAPI_WAI_CERTIFICATE:
+           *AuthType = eWDA_AUTH_TYPE_WAPI_WAI_CERTIFICATE;
+           break;
+      case eCSR_AUTH_TYPE_WAPI_WAI_PSK:
+           *AuthType = eWDA_AUTH_TYPE_WAPI_WAI_PSK;
+           break;
+#endif /* FEATURE_WLAN_WAPI */
+      case eCSR_AUTH_TYPE_SHARED_KEY:
+      case eCSR_AUTH_TYPE_AUTOSWITCH:
+           *AuthType = eWDA_AUTH_TYPE_OPEN_SYSTEM;
+           break;
+#if 0
+      case eCSR_AUTH_TYPE_SHARED_KEY:
+           *AuthType = eWDA_AUTH_TYPE_SHARED_KEY;
+           break;
+      case eCSR_AUTH_TYPE_AUTOSWITCH:
+           *AuthType = eWDA_AUTH_TYPE_AUTOSWITCH;
+#endif
+      default:
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: Unknown Auth Type", __func__);
+           break;
+   }
+}
+void WDA_ConvertSirEncToWDIEnc(WDI_EdType *EncrType, v_U8_t csrEncrType)
+{
+   switch (csrEncrType)
+   {
+      case eCSR_ENCRYPT_TYPE_NONE:
+           *EncrType = WDI_ED_NONE;
+           break;
+      case eCSR_ENCRYPT_TYPE_WEP40_STATICKEY:
+      case eCSR_ENCRYPT_TYPE_WEP40:
+           *EncrType = WDI_ED_WEP40;
+           break;
+      case eCSR_ENCRYPT_TYPE_WEP104:
+      case eCSR_ENCRYPT_TYPE_WEP104_STATICKEY:
+           *EncrType = WDI_ED_WEP104;
+           break;
+      case eCSR_ENCRYPT_TYPE_TKIP:
+           *EncrType = WDI_ED_TKIP;
+           break;
+      case eCSR_ENCRYPT_TYPE_AES:
+           *EncrType = WDI_ED_CCMP;
+           break;
+#ifdef WLAN_FEATURE_11W
+      case eCSR_ENCRYPT_TYPE_AES_CMAC:
+           *EncrType = WDI_ED_AES_128_CMAC;
+           break;
+#endif
+#ifdef FEATURE_WLAN_WAPI
+      case eCSR_ENCRYPT_TYPE_WPI:
+           *EncrType = WDI_ED_WPI;
+           break;
+#endif
+      case eCSR_ENCRYPT_TYPE_ANY:
+           *EncrType = WDI_ED_ANY;
+           break;
+
+      default:
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: Unknown Encryption Type", __func__);
+           break;
+   }
+}
+
+/*
+ * FUNCTION: WDA_ProcessStartRoamCandidatelookupReq
+ * Request to WDI to set Roam Offload Scan
+ */
+VOS_STATUS WDA_ProcessStartRoamCandidatelookupReq(tWDA_CbContext *pWDA,
+                                                  tSirRoamOffloadScanReq *pRoamOffloadScanReqParams)
+{
+   WDI_Status status;
+   WDI_RoamCandidateLookupReqParamsType *pwdiRoamCandidateLookupReqParams =
+   (WDI_RoamCandidateLookupReqParamsType *)vos_mem_malloc(sizeof(WDI_RoamCandidateLookupReqParamsType));
+   tWDA_ReqParams *pWdaParams ;
+   v_U8_t csrAuthType;
+   WDI_RoamNetworkType *pwdiRoamNetworkType;
+   WDI_RoamOffloadScanInfo *pwdiRoamOffloadScanInfo;
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+              "------> %s " ,__func__);
+   if (NULL == pwdiRoamCandidateLookupReqParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_NOMEM;
+   }
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(pwdiRoamCandidateLookupReqParams);
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   pwdiRoamNetworkType =
+   &pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork;
+   pwdiRoamOffloadScanInfo =
+   &pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo;
+   vos_mem_zero (pwdiRoamCandidateLookupReqParams,sizeof(WDI_RoamCandidateLookupReqParamsType));
+   csrAuthType = pRoamOffloadScanReqParams->ConnectedNetwork.authentication;
+   pwdiRoamOffloadScanInfo->RoamScanOffloadEnabled =
+          pRoamOffloadScanReqParams->RoamScanOffloadEnabled;
+   vos_mem_copy(pwdiRoamNetworkType->currAPbssid,
+                pRoamOffloadScanReqParams->ConnectedNetwork.currAPbssid,
+                sizeof(pwdiRoamNetworkType->currAPbssid));
+   WDA_ConvertSirAuthToWDIAuth(&pwdiRoamNetworkType->authentication,
+                                csrAuthType);
+   WDA_ConvertSirEncToWDIEnc(&pwdiRoamNetworkType->encryption,
+       pRoamOffloadScanReqParams->ConnectedNetwork.encryption);
+   WDA_ConvertSirEncToWDIEnc(&pwdiRoamNetworkType->mcencryption,
+       pRoamOffloadScanReqParams->ConnectedNetwork.mcencryption);
+   pwdiRoamOffloadScanInfo->LookupThreshold =
+           pRoamOffloadScanReqParams->LookupThreshold ;
+   pwdiRoamOffloadScanInfo->RoamRssiDiff =
+           pRoamOffloadScanReqParams->RoamRssiDiff ;
+   pwdiRoamOffloadScanInfo->Command =
+           pRoamOffloadScanReqParams->Command ;
+   pwdiRoamOffloadScanInfo->StartScanReason =
+           pRoamOffloadScanReqParams->StartScanReason ;
+   pwdiRoamOffloadScanInfo->NeighborScanTimerPeriod =
+           pRoamOffloadScanReqParams->NeighborScanTimerPeriod ;
+   pwdiRoamOffloadScanInfo->NeighborRoamScanRefreshPeriod =
+           pRoamOffloadScanReqParams->NeighborRoamScanRefreshPeriod ;
+   pwdiRoamOffloadScanInfo->NeighborScanChannelMinTime =
+           pRoamOffloadScanReqParams->NeighborScanChannelMinTime ;
+   pwdiRoamOffloadScanInfo->NeighborScanChannelMaxTime =
+           pRoamOffloadScanReqParams->NeighborScanChannelMaxTime ;
+   pwdiRoamOffloadScanInfo->EmptyRefreshScanPeriod =
+           pRoamOffloadScanReqParams->EmptyRefreshScanPeriod ;
+   pwdiRoamOffloadScanInfo->IsCCXEnabled =
+           pRoamOffloadScanReqParams->IsCCXEnabled ;
+   vos_mem_copy(&pwdiRoamNetworkType->ssId.sSSID,
+                &pRoamOffloadScanReqParams->ConnectedNetwork.ssId.ssId,
+                pRoamOffloadScanReqParams->ConnectedNetwork.ssId.length);
+   pwdiRoamNetworkType->ssId.ucLength =
+           pRoamOffloadScanReqParams->ConnectedNetwork.ssId.length;
+   vos_mem_copy(pwdiRoamNetworkType->ChannelCache,
+                pRoamOffloadScanReqParams->ConnectedNetwork.ChannelCache,
+                pRoamOffloadScanReqParams->ConnectedNetwork.ChannelCount);
+   pwdiRoamNetworkType->ChannelCount =
+           pRoamOffloadScanReqParams->ConnectedNetwork.ChannelCount;
+   pwdiRoamOffloadScanInfo->ChannelCacheType =
+           pRoamOffloadScanReqParams->ChannelCacheType;
+   vos_mem_copy(pwdiRoamOffloadScanInfo->ValidChannelList,
+                pRoamOffloadScanReqParams->ValidChannelList,
+                pRoamOffloadScanReqParams->ValidChannelCount);
+   pwdiRoamOffloadScanInfo->ValidChannelCount =
+           pRoamOffloadScanReqParams->ValidChannelCount;
+   pwdiRoamOffloadScanInfo->us24GProbeSize =
+    (pRoamOffloadScanReqParams->us24GProbeTemplateLen<WDI_PNO_MAX_PROBE_SIZE)?
+    pRoamOffloadScanReqParams->us24GProbeTemplateLen:WDI_PNO_MAX_PROBE_SIZE;
+   vos_mem_copy(&pwdiRoamOffloadScanInfo->a24GProbeTemplate,
+                pRoamOffloadScanReqParams->p24GProbeTemplate,
+                pwdiRoamOffloadScanInfo->us24GProbeSize);
+   pwdiRoamOffloadScanInfo->us5GProbeSize =
+    (pRoamOffloadScanReqParams->us5GProbeTemplateLen<WDI_PNO_MAX_PROBE_SIZE)?
+    pRoamOffloadScanReqParams->us5GProbeTemplateLen:WDI_PNO_MAX_PROBE_SIZE;
+   vos_mem_copy(&pwdiRoamOffloadScanInfo->a5GProbeTemplate,
+                pRoamOffloadScanReqParams->p5GProbeTemplate,
+                pwdiRoamOffloadScanInfo->us5GProbeSize);
+   pwdiRoamOffloadScanInfo->MDID.mdiePresent =
+           pRoamOffloadScanReqParams->MDID.mdiePresent;
+   pwdiRoamOffloadScanInfo->MDID.mobilityDomain =
+           pRoamOffloadScanReqParams->MDID.mobilityDomain;
+   pwdiRoamCandidateLookupReqParams->wdiReqStatusCB = NULL;
+   /* Store Params pass it to WDI */
+   pWdaParams->wdaWdiApiMsgParam = (void *)pwdiRoamCandidateLookupReqParams;
+   pWdaParams->pWdaContext = pWDA;
+   /* Store param pointer as passed in by caller */
+   pWdaParams->wdaMsgParam = pRoamOffloadScanReqParams;
+   status = WDI_StartRoamCandidateLookupReq(pwdiRoamCandidateLookupReqParams,
+                           (WDI_RoamOffloadScanCb)WDA_RoamOffloadScanReqCallback, pWdaParams);
+   if(IS_WDI_STATUS_FAILURE(status))
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "Failure in Start Roam Candidate Lookup Req WDI API, free all the memory " );
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
+      vos_mem_free(pWdaParams->wdaMsgParam);
+      pWdaParams->wdaWdiApiMsgParam = NULL;
+      pWdaParams->wdaMsgParam = NULL;
+   }
+   return CONVERT_WDI2VOS_STATUS(status) ;
+}
+#endif
+
 /*
  * FUNCTION: WDA_RssiFilterRespCallback
  * 
@@ -12334,6 +12579,41 @@ VOS_STATUS WDA_ProcessUpdateScanParams(tWDA_CbContext *pWDA,
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
 #endif // FEATURE_WLAN_SCAN_PNO
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/*
+ * FUNCTION: WDA_RoamOffloadScanReqCallback
+ *
+ */
+void WDA_RoamOffloadScanReqCallback(WDI_Status status, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "<------ %s " ,__func__);
+    if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+   if ( pWdaParams != NULL )
+   {
+      if ( pWdaParams->wdaWdiApiMsgParam != NULL )
+      {
+         vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      }
+      if ( pWdaParams->wdaMsgParam != NULL)
+      {
+         vos_mem_free(pWdaParams->wdaMsgParam);
+      }
+
+      vos_mem_free(pWdaParams) ;
+   }
+   return ;
+}
+#endif
+
 /*
  * FUNCTION: WDA_SetPowerParamsRespCallback
  *

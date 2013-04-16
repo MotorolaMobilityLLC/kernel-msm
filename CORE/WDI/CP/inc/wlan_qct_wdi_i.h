@@ -444,7 +444,7 @@ typedef enum
 
   /*WLAN DAL Set Tx Power Request*/
   WDI_SET_TX_POWER_REQ                          = 82,
-
+  WDI_START_ROAM_CANDIDATE_LOOKUP_REQ           = 83,
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -710,7 +710,7 @@ typedef enum
   WDI_GET_ROAM_RSSI_RESP                        = 80,
 
   WDI_SET_TX_POWER_RESP                         = 81,
-
+  WDI_START_ROAM_CANDIDATE_LOOKUP_RESP          = 82,
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
@@ -4869,6 +4869,40 @@ WDI_ProcessUpdateScanParamsRsp
 );
 #endif // FEATURE_WLAN_SCAN_PNO
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/**
+ @brief Process Start Roam Candidate Lookup Request function
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessStartRoamCandidatelookupReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+/**
+ @brief Process Start Roam Candidate Lookup Response function (called when a
+        response is being received over the bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessStartRoamCandidatelookupRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+#endif
+
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 /**
  @brief Process 8023 Multicast List Request function
@@ -5120,6 +5154,23 @@ WDI_ProcessUpdateVHTOpModeRsp
 ( 
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
+);
+#endif
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/**
+ *  @brief WDI_wdiEdTypeEncToEdTypeEnc -
+ *  The firmware expects the Encryption type to be in EdType.
+ *  This function converts the WdiEdType encryption to EdType.
+ *  @param tEdType    : EdType to which the encryption needs to be converted.
+ *  @param WDI_EdType : wdiEdType passed from the upper layer.
+ *  @see
+ *  @return none
+ *  */
+void
+WDI_wdiEdTypeEncToEdTypeEnc
+(
+ tEdType *EdType,
+ WDI_EdType wdiEdType
 );
 #endif
 

@@ -825,6 +825,13 @@ typedef enum
 #define CFG_OKC_FEATURE_ENABLED_DEFAULT                    (1)
 #endif
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define CFG_ROAM_SCAN_OFFLOAD_ENABLED                       "gRoamScanOffloadEnabled"
+#define CFG_ROAM_SCAN_OFFLOAD_ENABLED_MIN                   (0)
+#define CFG_ROAM_SCAN_OFFLOAD_ENABLED_MAX                   (1)
+#define CFG_ROAM_SCAN_OFFLOAD_ENABLED_DEFAULT               (1)
+#endif
+
 #define CFG_QOS_WMM_PKT_CLASSIFY_BASIS_NAME                "PktClassificationBasis" // DSCP or 802.1Q
 #define CFG_QOS_WMM_PKT_CLASSIFY_BASIS_MIN                  (0)
 #define CFG_QOS_WMM_PKT_CLASSIFY_BASIS_MAX                  (1)
@@ -1906,6 +1913,9 @@ typedef struct
 #endif
 #ifdef FEATURE_WLAN_OKC
    v_BOOL_t                     isOkcIniFeatureEnabled;
+#endif
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+   v_BOOL_t                     isRoamOffloadScanEnabled;
 #endif
    hdd_wmm_classification_t     PktClassificationBasis; // DSCP or 802.1Q
    v_BOOL_t                     bImplicitQosEnabled;
