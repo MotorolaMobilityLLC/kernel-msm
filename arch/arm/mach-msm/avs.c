@@ -73,10 +73,7 @@ static void avs_enable_local(void *data)
 
 static void avs_disable_local(void *data)
 {
-	int cpu = smp_processor_id();
-
 	avs_set_avscsr(0);
-	msm_spm_set_vdd(cpu, msm_spm_get_vdd(cpu));
 }
 
 void avs_enable(int cpu, u32 avsdscr)
@@ -95,6 +92,9 @@ void avs_disable(int cpu)
 
 	ret = smp_call_function_single(cpu, avs_disable_local,
 			(void *) 0, true);
+	if (!ret)
+		ret = msm_spm_set_vdd(cpu, msm_spm_get_vdd(cpu));
+
 	WARN_ON(ret);
 }
 EXPORT_SYMBOL(avs_disable);
