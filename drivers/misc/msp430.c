@@ -188,6 +188,9 @@ static unsigned char g_zmotion_dur;
 static unsigned char g_control_reg[MSP_CONTROL_REG_SIZE];
 static unsigned char g_mag_cal[MSP_MAG_CAL_SIZE];
 
+/* Store error message */
+unsigned char stat_string[ESR_SIZE+1];
+
 struct algo_requst_t {
 	char size;
 	char data[28];
@@ -1143,7 +1146,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 	int err;
 	unsigned short irq_status, irq2_status;
 	signed short x, y, z, q;
-	unsigned char stat_string[ESR_SIZE+1];
+
 	struct msp430_data *ps_msp430 = container_of(work,
 			struct msp430_data, irq_wake_work);
 
@@ -1188,6 +1191,17 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 
 	/* Second, check for a reset request */
 	if (irq_status & M_HUB_RESET) {
+		if (strstr(stat_string, "modality"))
+			x = 0x01;
+		else if (strstr(stat_string, "Algo"))
+			x = 0x02;
+		else if (strstr(stat_string, "Watchdog"))
+			x = 0x03;
+		else
+			x = 0x04;
+
+		msp430_as_data_buffer_write(ps_msp430, DT_RESET, x, 0, 0, 0);
+
 		msp430_reset_and_init();
 		dev_err(&ps_msp430->client->dev, "MSP430 requested a reset\n");
 		goto EXIT;
