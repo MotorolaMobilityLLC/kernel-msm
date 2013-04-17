@@ -18,7 +18,6 @@
 #include <linux/atomic.h>
 #include <linux/regulator/consumer.h>
 #include <linux/clk.h>
-#include <linux/ratelimit.h>
 #include <mach/irqs.h>
 #include <mach/camera.h>
 #include <media/v4l2-device.h>
@@ -5381,7 +5380,6 @@ static void axi32_do_tasklet(unsigned long data)
 	struct vfe32_ctrl_type *vfe32_ctrl = axi_ctrl->share_ctrl->vfe32_ctrl;
 	struct vfe32_isr_queue_cmd *qcmd = NULL;
 	int stat_interrupt;
-	static DEFINE_RATELIMIT_STATE(rl, (5*HZ), 20);
 
 	CDBG("=== axi32_do_tasklet start ===\n");
 
@@ -5460,9 +5458,8 @@ static void axi32_do_tasklet(unsigned long data)
 				(void *)VFE_IMASK_WHILE_STOPPING_1);
 
 		if (atomic_read(&axi_ctrl->share_ctrl->handle_common_irq)) {
-			if ((qcmd->vfeInterruptStatus1 &
-					VFE32_IMASK_COMMON_ERROR_ONLY_1) &&
-			    __ratelimit(&rl)) {
+			if (qcmd->vfeInterruptStatus1 &
+					VFE32_IMASK_COMMON_ERROR_ONLY_1) {
 				pr_err("irq	errorIrq\n");
 				vfe32_process_common_error_irq(
 					axi_ctrl,
@@ -5476,15 +5473,14 @@ static void axi32_do_tasklet(unsigned long data)
 		}
 
 		if (atomic_read(&axi_ctrl->share_ctrl->vstate)) {
-			if ((qcmd->vfeInterruptStatus1 &
-					VFE32_IMASK_VFE_ERROR_ONLY_1) &&
-				__ratelimit(&rl)) {
-					pr_err("irq	errorIrq\n");
-					vfe32_process_error_irq(
-						axi_ctrl,
-						qcmd->vfeInterruptStatus1 &
-						VFE32_IMASK_VFE_ERROR_ONLY_1,
-						qcmd->vfeCamifStatus);
+			if (qcmd->vfeInterruptStatus1 &
+					VFE32_IMASK_VFE_ERROR_ONLY_1) {
+				pr_err("irq	errorIrq\n");
+				vfe32_process_error_irq(
+					axi_ctrl,
+					qcmd->vfeInterruptStatus1 &
+					VFE32_IMASK_VFE_ERROR_ONLY_1,
+					qcmd->vfeCamifStatus);
 			}
 
 			/* then process stats irq. */
