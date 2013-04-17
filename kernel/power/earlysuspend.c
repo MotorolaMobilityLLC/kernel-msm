@@ -87,7 +87,7 @@ static void handler_wdset(void *function)
 {
 	current_handler = current;
 	handler_wd.data = (unsigned long)function;
-	mod_timer(&handler_wd, jiffies + (HZ * 10));
+	mod_timer(&handler_wd, jiffies + (HZ * 12));
 }
 
 static void handler_wdclr(void)
