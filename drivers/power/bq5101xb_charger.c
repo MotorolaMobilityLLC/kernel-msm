@@ -199,8 +199,15 @@ static void bq5101xb_worker(struct work_struct *work)
 		if (wired && (pdata->priority == BQ5101XB_WIRED)) {
 			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 			chip->state = BQ5101XB_WIRED_CONN;
-		} else if (powered)
+		} else if (powered) {
 			chip->state = BQ5101XB_RUNNING;
+		} else if (batt_temp >= pdata->hot_temp) {
+			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
+			chip->state = BQ5101XB_OUT_OF_TEMP_HOT;
+		} else if (batt_temp <= pdata->cold_temp) {
+			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
+			chip->state = BQ5101XB_OUT_OF_TEMP_COLD;
+		}
 		break;
 	case BQ5101XB_WIRED_CONN:
 		if (!wired) {
@@ -239,7 +246,7 @@ static void bq5101xb_worker(struct work_struct *work)
 				chip->state = BQ5101XB_CHRG_CMPLT;
 			} else {
 				bq5101xb_set_pins(pdata, 0, 0, 1, 0);
-				chip->state = BQ5101XB_RUNNING;
+				chip->state = BQ5101XB_WAIT;
 			}
 		}
 		break;
@@ -255,7 +262,7 @@ static void bq5101xb_worker(struct work_struct *work)
 				chip->state = BQ5101XB_CHRG_CMPLT;
 			} else {
 				bq5101xb_set_pins(pdata, 0, 0, 1, 0);
-				chip->state = BQ5101XB_RUNNING;
+				chip->state = BQ5101XB_WAIT;
 			}
 		}
 		break;
@@ -272,7 +279,7 @@ static void bq5101xb_worker(struct work_struct *work)
 		} else if ((batt_soc <= pdata->resume_soc) ||
 			   (batt_volt <= pdata->resume_vbatt)){
 			bq5101xb_set_pins(pdata, 0, 0, 1, 0);
-			chip->state = BQ5101XB_RUNNING;
+			chip->state = BQ5101XB_WAIT;
 		}
 		break;
 	}
