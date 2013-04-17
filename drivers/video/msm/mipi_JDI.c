@@ -100,7 +100,7 @@ static struct dsi_cmd_desc JDI_display_on_cmds[] = {
 		sizeof(set_page_addr), set_page_addr},
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
 		sizeof(exit_sleep), exit_sleep},
-	{DTYPE_DCS_WRITE, 1, 0, 0, 50,
+	{DTYPE_DCS_WRITE, 1, 0, 0, 0,
 		sizeof(display_on), display_on},
 };
 
@@ -138,7 +138,7 @@ static struct dsi_cmd_desc JDI_display_on_cmds_command_bl[] = {
 		sizeof(set_page_addr), set_page_addr},
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
 		sizeof(exit_sleep), exit_sleep},
-	{DTYPE_DCS_WRITE, 1, 0, 0, 50,
+	{DTYPE_DCS_WRITE, 1, 0, 0, 0,
 		sizeof(display_on), display_on},
 };
 
