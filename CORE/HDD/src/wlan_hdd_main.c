@@ -1069,6 +1069,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            {
                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s:STA is not associated to this AP!",__func__);
                ret = -EINVAL;
+               vos_mem_free(buf);
                goto exit;
            }
 
@@ -1080,6 +1081,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                          "%s: channel(%d) is different from operating channel(%d)",
                          __func__, channel, pHddStaCtx->conn_info.operationChannel);
                ret = -EINVAL;
+               vos_mem_free(buf);
                goto exit;
            }
            chan.center_freq = sme_ChnToFreq(channel);
@@ -1090,6 +1092,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            {
                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "%s:memory allocation failed",__func__);
                ret = -ENOMEM;
+               vos_mem_free(buf);
                goto exit;
            }
            vos_mem_zero(finalBuf, finalLen);
@@ -1113,6 +1116,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
            /* Fill received buffer from 24th address */
            vos_mem_copy(finalBuf + 24, buf, bufLen);
+
+           /* done with the parsed buffer */
+           vos_mem_free(buf);
 
            wlan_hdd_action( NULL, dev, &chan, 0, NL80211_CHAN_HT20,
                        1, dwellTime, finalBuf, finalLen,  1,
