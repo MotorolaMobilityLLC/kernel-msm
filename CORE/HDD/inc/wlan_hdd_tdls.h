@@ -151,6 +151,7 @@ typedef struct {
     tANI_U16    tx_pkt;
     tANI_U16    rx_pkt;
     vos_timer_t     peerIdleTimer;
+    vos_timer_t     initiatorWaitTimeoutTimer;
 } hddTdlsPeer_t;
 
 typedef struct {

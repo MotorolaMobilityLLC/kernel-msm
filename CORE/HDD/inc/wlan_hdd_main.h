@@ -130,6 +130,8 @@
 /** Maximum time(ms) to wait for tdls mgmt to complete **/
 #define WAIT_TIME_TDLS_MGMT         11000
 
+/** Maximum time(ms) to wait for tdls initiator to start direct communication **/
+#define WAIT_TIME_TDLS_INITIATOR    300
 /* Maximum time to get crda entry settings */
 #define CRDA_WAIT_TIME 300
 
