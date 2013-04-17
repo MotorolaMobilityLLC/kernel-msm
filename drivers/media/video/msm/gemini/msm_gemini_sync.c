@@ -640,7 +640,7 @@ int msm_gemini_ioctl_hw_cmds(struct msm_gemini_device *pgmn_dev,
 {
 	int is_copy_to_user;
 	int len;
-	uint32_t m;
+	uint32_t m,n;
 	struct msm_gemini_hw_cmds *hw_cmds_p;
 	struct msm_gemini_hw_cmd *hw_cmd_p;
 
@@ -651,6 +651,14 @@ int msm_gemini_ioctl_hw_cmds(struct msm_gemini_device *pgmn_dev,
 
 	len = sizeof(struct msm_gemini_hw_cmds) +
 		sizeof(struct msm_gemini_hw_cmd) * (m - 1);
+
+	n = ((len - sizeof(struct msm_gemini_hw_cmds)) / (sizeof(struct msm_gemini_hw_cmd))) + 1 ;
+
+	if ((m != n) || (len < 0)) {
+	    GMN_PR_ERR("%s:%d] m != n failed\n", __func__, __LINE__);
+	    return -EFAULT;
+	}
+
 	hw_cmds_p = kmalloc(len, GFP_KERNEL);
 	if (!hw_cmds_p) {
 		GMN_PR_ERR("%s:%d] no mem %d\n", __func__, __LINE__, len);
