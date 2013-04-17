@@ -269,7 +269,7 @@ void vos_trace_msg( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, char *strFormat
                    (char *) gVosTraceInfo[ module ].moduleNameStr );
 
       // print the formatted log message after the prefix string.
-      if (n < VOS_TRACE_BUFFER_SIZE)
+      if ((n >= 0) && (n < VOS_TRACE_BUFFER_SIZE))
       {
          vsnprintf(strBuffer + n, VOS_TRACE_BUFFER_SIZE - n, strFormat, val );
          pr_err("%s\n", strBuffer);
