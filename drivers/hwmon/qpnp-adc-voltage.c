@@ -54,6 +54,8 @@
 #define QPNP_VADC_STATUS2_CONV_SEQ_STATE_SHIFT			4
 #define QPNP_VADC_CONV_TIMEOUT_ERR				2
 
+#define QPNP_VADC_RBREG_LOCK					0xd0
+#define QPNP_VADC_RESET_CTL3					0xda
 #define QPNP_VADC_MODE_CTL					0x40
 #define QPNP_VADC_OP_MODE_SHIFT					4
 #define QPNP_VADC_VREF_XO_THM_FORCE				BIT(2)
@@ -1007,6 +1009,17 @@ static int __devexit qpnp_vadc_remove(struct spmi_device *spmi)
 	return 0;
 }
 
+static void qpnp_vadc_shutdown(struct spmi_device *spmi)
+{
+	/* Unlock to write rb_reg. */
+	if (qpnp_vadc_write_reg(QPNP_VADC_RBREG_LOCK,0xA5) < 0)
+		pr_err("fail to write 0x31D0 reg\n");
+
+	/* Write 0x0F to reg. VADC1_USR_PERPH_RESET_CTL3 */
+	if (qpnp_vadc_write_reg(QPNP_VADC_RESET_CTL3, 0x0F) < 0)
+		pr_err("fail to write 0x31DA reg\n");
+}
+
 static const struct of_device_id qpnp_vadc_match_table[] = {
 	{	.compatible = "qcom,qpnp-vadc",
 	},
@@ -1020,6 +1033,7 @@ static struct spmi_driver qpnp_vadc_driver = {
 	},
 	.probe		= qpnp_vadc_probe,
 	.remove		= qpnp_vadc_remove,
+	.shutdown	= qpnp_vadc_shutdown,
 };
 
 static int __init qpnp_vadc_init(void)
