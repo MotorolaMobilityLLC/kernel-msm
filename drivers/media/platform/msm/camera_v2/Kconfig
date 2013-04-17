@@ -116,6 +116,10 @@ config IMX119
 	---help---
 	  Bayer Sensor modules with Autofocus.
 
+config OV5693
+       bool "Sensor ov5693 (Bayer 5M)"
+       depends on MSMB_CAMERA
+
 config MSM_V4L2_VIDEO_OVERLAY_DEVICE
 	tristate "Qualcomm MSM V4l2 video overlay device"
 	---help---

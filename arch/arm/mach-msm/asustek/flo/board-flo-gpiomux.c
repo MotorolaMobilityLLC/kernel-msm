@@ -1588,43 +1588,6 @@ static struct msm_gpiomux_config asustek_gsbi4_configs[] __initdata = {
     },
 };
 
-static struct gpiomux_setting cam_settings[] = {
-	{
-		.func = GPIOMUX_FUNC_GPIO, /*suspend*/
-		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_DOWN,
-	},
-
-	{
-		.func = GPIOMUX_FUNC_1, /*active 1*/
-		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_NONE,
-	},
-
-	{
-		.func = GPIOMUX_FUNC_2, /*active 2*/
-		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_NONE,
-	},
-};
-
-static struct msm_gpiomux_config asustek_camera_configs[] __initdata = {
-	{
-		.gpio = 5,	//CAM_MCLK0
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[1],
-			[GPIOMUX_SUSPENDED] = &cam_settings[0],
-		},
-	},
-	{
-		.gpio = 4,	//CAM_MCLK1
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[2],
-			[GPIOMUX_SUSPENDED] = &cam_settings[0],
-		}
-	},
-};
-
 static struct gpiomux_setting gpio_bat_low_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.pull = GPIOMUX_PULL_NONE,
@@ -1823,9 +1786,6 @@ void __init apq8064_init_gpiomux(void)
 
 	msm_gpiomux_install(asustek_gsbi4_configs,
 		ARRAY_SIZE(asustek_gsbi4_configs));
-
-	msm_gpiomux_install(asustek_camera_configs,
-			ARRAY_SIZE(asustek_camera_configs));
 
 #ifdef CONFIG_INPUT_LID
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {

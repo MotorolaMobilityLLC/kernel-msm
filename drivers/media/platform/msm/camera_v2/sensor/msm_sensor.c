@@ -17,6 +17,13 @@
 #include "msm_camera_io_util.h"
 #include "msm_camera_i2c_mux.h"
 
+#include <linux/mfd/pm8xxx/pm8921.h>
+
+#define PM8921_GPIO_BASE		NR_GPIO_IRQS
+#define PM8921_GPIO_PM_TO_SYS(pm_gpio)	(pm_gpio - 1 + PM8921_GPIO_BASE)
+
+#define CONFIG_MSMB_CAMERA_DEBUG
+
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
@@ -809,6 +816,30 @@ static struct msm_cam_clk_info cam_8974_clk_info[] = {
 	[SENSOR_CAM_CLK] = {"cam_clk", 0},
 };
 
+static struct pm_gpio pm_isp_gpio_high = {
+	.direction = PM_GPIO_DIR_OUT,
+	.output_buffer = PM_GPIO_OUT_BUF_CMOS,
+	.output_value = 1,
+	.pull = PM_GPIO_PULL_NO,
+	.vin_sel = PM_GPIO_VIN_S4,
+	.out_strength = PM_GPIO_STRENGTH_HIGH,
+	.function = PM_GPIO_FUNC_PAIRED,
+	.inv_int_pol = 0,
+	.disable_pin = 0,
+};
+
+static struct pm_gpio pm_isp_gpio_low = {
+	.direction = PM_GPIO_DIR_OUT,
+	.output_buffer = PM_GPIO_OUT_BUF_CMOS,
+	.output_value = 0,
+	.pull = PM_GPIO_PULL_NO,
+	.vin_sel = PM_GPIO_VIN_S4,
+	.out_strength = PM_GPIO_STRENGTH_HIGH,
+	.function = PM_GPIO_FUNC_PAIRED,
+	.inv_int_pol = 0,
+	.disable_pin = 0,
+};
+
 int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0, index = 0;
@@ -890,6 +921,20 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 				1);
 			break;
 		case SENSOR_I2C_MUX:
+			rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(25), &pm_isp_gpio_high);
+			if (rc != 0)
+				pr_err("gpio 25 VCM_PD config high fail\n");
+			else
+				pr_err("gpio 25 VCM_PD(%d)\n",gpio_get_value(PM8921_GPIO_PM_TO_SYS(25)));
+
+			rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(31), &pm_isp_gpio_high);
+			if (rc != 0)
+				pr_err("gpio 31 XSHUTDN config high fail\n");
+			else
+				pr_err("gpio 31 XSHUTDN(%d)\n",gpio_get_value(PM8921_GPIO_PM_TO_SYS(31)));
+
+			msleep(20);
+
 			if (data->i2c_conf && data->i2c_conf->use_i2c_mux)
 				msm_sensor_enable_i2c_mux(data->i2c_conf);
 			break;
@@ -980,7 +1025,7 @@ power_up_failed:
 
 int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	int32_t index = 0;
+	int32_t rc = 0, index = 0;
 	struct msm_sensor_power_setting_array *power_setting_array = NULL;
 	struct msm_sensor_power_setting *power_setting = NULL;
 	struct msm_camera_sensor_board_info *data = s_ctrl->sensordata;
@@ -1032,6 +1077,12 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		case SENSOR_I2C_MUX:
 			if (data->i2c_conf && data->i2c_conf->use_i2c_mux)
 				msm_sensor_disable_i2c_mux(data->i2c_conf);
+			rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(31), &pm_isp_gpio_low);
+			if (rc != 0)
+				pr_err("%s: XSHUTDOWN config low fail\n", __func__);
+			rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(25), &pm_isp_gpio_low);
+			if (rc != 0)
+				pr_err("%s: VCM_PD config low fail\n", __func__);
 			break;
 		default:
 			pr_err("%s error power seq type %d\n", __func__,
