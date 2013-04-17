@@ -422,7 +422,8 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 			rc = v4l2_subdev_call(p_mctl->axi_sdev, core, ioctl,
 				VIDIOC_MSM_AXI_CFG, (void __user *)arg);
 		else
-			rc = p_mctl->isp_sdev->isp_config(p_mctl, cmd, arg);
+			if ((p_mctl) && (p_mctl->isp_sdev) && (p_mctl->isp_sdev->isp_config))
+				rc = p_mctl->isp_sdev->isp_config(p_mctl, cmd, arg);
 		break;
 	case MSM_CAM_IOCTL_ISPIF_IO_CFG:
 		rc = v4l2_subdev_call(p_mctl->ispif_sdev,
@@ -432,7 +433,8 @@ static int msm_mctl_cmd(struct msm_cam_media_controller *p_mctl,
 		/* ISP config*/
 		D("%s:%d: go to default. Calling msm_isp_config\n",
 			__func__, __LINE__);
-		rc = p_mctl->isp_sdev->isp_config(p_mctl, cmd, arg);
+		if ((p_mctl) && (p_mctl->isp_sdev) && (p_mctl->isp_sdev->isp_config))
+			rc = p_mctl->isp_sdev->isp_config(p_mctl, cmd, arg);
 		break;
 	}
 	D("%s: !!! cmd = %d, rc = %d\n",
