@@ -1773,7 +1773,7 @@ static void ddl_handle_enc_frame_done(struct ddl_client_context *ddl,
 	if (!IS_ERR_OR_NULL(output_frame->buff_ion_handle)) {
 		msm_ion_do_cache_op(ddl_context->video_ion_client,
 			output_frame->buff_ion_handle,
-			(unsigned long *) output_frame->virtual,
+			(unsigned long *)NULL,
 			(unsigned long) output_frame->alloc_len,
 			ION_IOC_INV_CACHES);
 	}
