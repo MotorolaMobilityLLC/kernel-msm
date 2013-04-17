@@ -443,10 +443,14 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 	/* double the timeout in vsync time stamp generation */
 	ret = wait_for_completion_interruptible_timeout(&vctrl->vsync_comp,
 		msecs_to_jiffies(VSYNC_PERIOD * 8));
-	if (ret <= 0) {
-		pr_err("%s timeout ret=%d", __func__, ret);
-		mdp4_hang_panic();
+	if (ret == -ERESTARTSYS)
+		pr_warning("%s is interrupted\n", __func__);
+	else if (ret <= 0) {
+		pr_err("%s timeout/error. ret = %d", __func__, ret);
+		if (ret == 0)
+			mdp4_hang_panic();
 	}
+
 	mdp4_video_vsync_irq_ctrl(cndx, 0);
 	mdp4_stat.wait4vsync0++;
 }
