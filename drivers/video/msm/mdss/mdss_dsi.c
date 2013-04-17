@@ -28,17 +28,28 @@
 #include "mdss_debug.h"
 
 static unsigned char *mdss_dsi_base;
+static int mdss_dsi_use_vdd_supply = 1;
 
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct dsi_drv_cm_data *dsi_drv = NULL;
+	struct device_node *node = NULL;
 
 	if (!pdev) {
 		pr_err("%s: invalid input\n", __func__);
 		return -EINVAL;
 	}
+
+	node = pdev->dev.of_node;
+	/*
+	 * if "qcom,mdss-dsi-use-vdd-supply" property is not exist, we
+	 * assume that it is used in board. if don't want vdd-supply,
+	 * please use "qcom,mdss-dsi-use-vdd-supply=<0>" in your dtsi.
+	 */
+	of_property_read_u32(node, "qcom,mdss-dsi-use-vdd-supply",
+			&mdss_dsi_use_vdd_supply);
 
 	ctrl_pdata = platform_get_drvdata(pdev);
 	if (!ctrl_pdata) {
@@ -52,19 +63,22 @@ static int mdss_dsi_regulator_init(struct platform_device *pdev)
 				ctrl_pdata->power_data.vreg_config,
 				ctrl_pdata->power_data.num_vreg, 1);
 	} else {
-		dsi_drv->vdd_vreg = devm_regulator_get(&pdev->dev, "vdd");
-		if (IS_ERR(dsi_drv->vdd_vreg)) {
-			pr_err("%s: could not get vdda vreg, rc=%ld\n",
-				__func__, PTR_ERR(dsi_drv->vdd_vreg));
-			return PTR_ERR(dsi_drv->vdd_vreg);
-		}
+		if (mdss_dsi_use_vdd_supply) {
+			dsi_drv->vdd_vreg = devm_regulator_get(&pdev->dev,
+					"vdd");
+			if (IS_ERR(dsi_drv->vdd_vreg)) {
+				pr_err("%s: could not get vdd vreg, rc=%ld\n",
+					__func__, PTR_ERR(dsi_drv->vdd_vreg));
+				return PTR_ERR(dsi_drv->vdd_vreg);
+			}
 
-		ret = regulator_set_voltage(dsi_drv->vdd_vreg, 3000000,
-				3000000);
-		if (ret) {
-			pr_err("%s: set voltage failed on vdda vreg, rc=%d\n",
-				__func__, ret);
-			return ret;
+			ret = regulator_set_voltage(dsi_drv->vdd_vreg,
+					3000000, 3000000);
+			if (ret) {
+				pr_err("%s: set voltage failed on vdd vreg, rc=%d\n",
+					__func__, ret);
+				return ret;
+			}
 		}
 
 		dsi_drv->vdd_io_vreg = devm_regulator_get(&pdev->dev, "vddio");
@@ -132,12 +146,15 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			 */
 			msleep(20);
 		} else {
-			ret = regulator_set_optimum_mode(
-				(ctrl_pdata->shared_pdata).vdd_vreg, 100000);
-			if (ret < 0) {
-				pr_err("%s: vdd_vreg set opt mode failed.\n",
-					 __func__);
-				return ret;
+			if (mdss_dsi_use_vdd_supply) {
+				ret = regulator_set_optimum_mode(
+					(ctrl_pdata->shared_pdata).vdd_vreg,
+					100000);
+				if (ret < 0) {
+					pr_err("%s: vdd_vreg set opt mode failed.\n",
+						 __func__);
+					return ret;
+				}
 			}
 
 			ret = regulator_set_optimum_mode(
@@ -165,14 +182,16 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			}
 			msleep(20);
 
-			ret = regulator_enable(
-				(ctrl_pdata->shared_pdata).vdd_vreg);
-			if (ret) {
-				pr_err("%s: Failed to enable regulator.\n",
-					__func__);
-				return ret;
+			if (mdss_dsi_use_vdd_supply) {
+				ret = regulator_enable(
+					(ctrl_pdata->shared_pdata).vdd_vreg);
+				if (ret) {
+					pr_err("%s: Failed to enable regulator.\n",
+						__func__);
+					return ret;
+				}
+				msleep(20);
 			}
-			msleep(20);
 
 			ret = regulator_enable(
 				(ctrl_pdata->shared_pdata).vdda_vreg);
@@ -200,12 +219,14 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 				return ret;
 			}
 		} else {
-			ret = regulator_disable(
-				(ctrl_pdata->shared_pdata).vdd_vreg);
-			if (ret) {
-				pr_err("%s: Failed to disable regulator.\n",
-					__func__);
-				return ret;
+			if (mdss_dsi_use_vdd_supply) {
+				ret = regulator_disable(
+					(ctrl_pdata->shared_pdata).vdd_vreg);
+				if (ret) {
+					pr_err("%s: Failed to disable regulator.\n",
+						__func__);
+					return ret;
+				}
 			}
 
 			ret = regulator_disable(
@@ -224,12 +245,14 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 				return ret;
 			}
 
-			ret = regulator_set_optimum_mode(
-				(ctrl_pdata->shared_pdata).vdd_vreg, 100);
-			if (ret < 0) {
-				pr_err("%s: vdd_vreg set opt mode failed.\n",
-					 __func__);
-				return ret;
+			if (mdss_dsi_use_vdd_supply) {
+				ret = regulator_set_optimum_mode(
+					(ctrl_pdata->shared_pdata).vdd_vreg, 100);
+				if (ret < 0) {
+					pr_err("%s: vdd_vreg set opt mode failed.\n",
+						 __func__);
+					return ret;
+				}
 			}
 
 			ret = regulator_set_optimum_mode(
@@ -239,6 +262,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 					__func__);
 				return ret;
 			}
+
 			ret = regulator_set_optimum_mode(
 				(ctrl_pdata->shared_pdata).vdda_vreg, 100);
 			if (ret < 0) {
