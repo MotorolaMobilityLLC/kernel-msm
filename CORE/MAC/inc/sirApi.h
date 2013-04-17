@@ -3761,7 +3761,9 @@ typedef struct sSirTdlsAddStaReq
     tANI_U8             extn_capability[SIR_MAC_MAX_EXTN_CAP];
     tANI_U8             supported_rates_length;
     tANI_U8             supported_rates[SIR_MAC_MAX_SUPP_RATES];
+    tANI_U8             htcap_present;
     tSirHTCap           htCap;
+    tANI_U8             vhtcap_present;
     tSirVHTCap          vhtCap;
     tANI_U8             uapsd_queues;
     tANI_U8             max_sp;

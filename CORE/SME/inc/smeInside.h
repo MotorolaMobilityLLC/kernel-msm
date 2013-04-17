@@ -140,7 +140,9 @@ typedef struct TdlsAddStaInfo
   tANI_U8   extnCapability[SIR_MAC_MAX_EXTN_CAP];
   tANI_U8   supportedRatesLen;
   tANI_U8   supportedRates[SIR_MAC_MAX_SUPP_RATES];
+  tANI_U8    htcap_present;
   tSirHTCap  HTCap;
+  tANI_U8    vhtcap_present;
   tSirVHTCap VHTCap;
   tANI_U8   uapsdQueues;
   tANI_U8   maxSp;
