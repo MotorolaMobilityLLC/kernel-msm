@@ -312,6 +312,12 @@ static void vid_dec_output_frame_done(struct video_client_ctx *client_ctx,
 		    vcd_frame_data->data_len;
 		vdec_msg->vdec_msg_info.msgdata.output_frame.flags =
 		    vcd_frame_data->flags;
+		/* metadata offset in output buffer for non-secure mode */
+		vdec_msg->vdec_msg_info.msgdata.output_frame.metadata_len =
+			(size_t)vcd_frame_data->metadata_len;
+		/* metadata offset in output buffer for non-secure mode */
+		vdec_msg->vdec_msg_info.msgdata.output_frame.metadata_offset =
+			(size_t)vcd_frame_data->metadata_offset;
 		/* Timestamp pass-through from input frame */
 		vdec_msg->vdec_msg_info.msgdata.output_frame.time_stamp =
 		    vcd_frame_data->time_stamp;
@@ -381,13 +387,11 @@ static void vid_dec_output_frame_done(struct video_client_ctx *client_ctx,
 				pmem_fd, kernel_vaddr, buffer_index,
 				&buff_handle);
 		if (ion_flag == ION_FLAG_CACHED && buff_handle) {
-			DBG("%s: Cache invalidate: vaddr (%p), "\
-				"size %u\n", __func__,
-				(void *)kernel_vaddr,
+			DBG("%s: Cache invalidate: size %u", __func__,
 				vcd_frame_data->alloc_len);
 			msm_ion_do_cache_op(client_ctx->user_ion_client,
 					buff_handle,
-					(unsigned long *) kernel_vaddr,
+					(unsigned long *) NULL,
 					(unsigned long)vcd_frame_data->\
 					alloc_len,
 					ION_IOC_INV_CACHES);
@@ -1665,7 +1669,7 @@ static u32 vid_dec_decode_frame(struct video_client_ctx *client_ctx,
 			if (ion_flag == ION_FLAG_CACHED && buff_handle) {
 				msm_ion_do_cache_op(client_ctx->user_ion_client,
 				buff_handle,
-				(unsigned long *)kernel_vaddr,
+				(unsigned long *) NULL,
 				(unsigned long) vcd_input_buffer.data_len,
 				ION_IOC_CLEAN_CACHES);
 			}
@@ -2023,6 +2027,7 @@ static long vid_dec_ioctl(struct file *file,
 	}
 	case VDEC_IOCTL_CMD_PAUSE:
 	{
+		DBG("VDEC_IOCTL_CMD_PAUSE\n");
 		result = vid_dec_pause_resume(client_ctx, true);
 		if (!result)
 			return -EIO;
@@ -2076,6 +2081,7 @@ static long vid_dec_ioctl(struct file *file,
 	}
 	case VDEC_IOCTL_SET_PERF_CLK:
 	{
+		DBG("VDEC_IOCTL_SET_PERF_CLK\n");
 		vid_dec_set_turbo_clk(client_ctx);
 		break;
 	}
@@ -2435,6 +2441,7 @@ static long vid_dec_ioctl(struct file *file,
 	}
 	case VDEC_IOCTL_SET_IDR_ONLY_DECODING:
 	{
+		DBG("VDEC_IOCTL_SET_IDR_ONLY_DECODING\n");
 		result = vid_dec_set_idr_only_decoding(client_ctx);
 		if (!result)
 			return -EIO;
@@ -2442,6 +2449,7 @@ static long vid_dec_ioctl(struct file *file,
 	}
 	case VDEC_IOCTL_SET_CONT_ON_RECONFIG:
 	{
+		DBG("VDEC_IOCTL_SET_CONT_ON_RECONFIG\n");
 		result = vid_dec_set_cont_on_reconfig(client_ctx);
 		if (!result)
 			return -EIO;
