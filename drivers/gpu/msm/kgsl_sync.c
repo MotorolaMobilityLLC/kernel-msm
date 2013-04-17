@@ -220,7 +220,7 @@ static void kgsl_sync_pt_value_str(struct sync_pt *sync_pt,
 }
 
 static const struct sync_timeline_ops kgsl_sync_timeline_ops = {
-	.driver_name = "kgsl_sync",
+	.driver_name = "kgsl-timeline",
 	.dup = kgsl_sync_pt_dup,
 	.has_signaled = kgsl_sync_pt_has_signaled,
 	.compare = kgsl_sync_pt_compare,
