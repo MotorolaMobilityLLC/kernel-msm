@@ -7223,6 +7223,14 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                     return -EINVAL;
                 }
 
+                if (!TDLS_STA_INDEX_VALID(pTdlsPeer->staId))
+                {
+                    hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid Staion Index %u "
+                           MAC_ADDRESS_STR " failed",
+                           __func__, pTdlsPeer->staId, MAC_ADDR_ARRAY(peer));
+                    return -EINVAL;
+                }
+
                 if (eTDLS_LINK_CONNECTING == pTdlsPeer->link_status)
                 {
                     wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
@@ -7253,7 +7261,7 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             {
                 hddTdlsPeer_t *curr_peer = wlan_hdd_tdls_find_peer(pAdapter, peer);
 
-                if(NULL != curr_peer)
+                if((NULL != curr_peer) && TDLS_STA_INDEX_VALID(curr_peer->staId))
                 {
                     long status;
 
