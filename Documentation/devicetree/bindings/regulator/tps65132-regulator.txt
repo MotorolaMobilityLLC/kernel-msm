@@ -1,0 +1,30 @@
+TPS65132 Regulator
+
+Required properties:
+- compatible:		Must be "ti,tps65132".
+- reg:			i2c slave address of the device
+- regulator:		Must include this node with the following properties
+	- regulator-name:	Specifies regulator name to use
+
+Optional properties:
+- active-dis:		Enables active discharge
+- app-tablet:		Enables tablet mode appliation for higher current needs
+- gpios:		Specifies the gpios for enable-p and enable-n
+
+All properties specified within the core regulator framework can also be used in
+the regulator node. These bindings can be found in regulator.txt.
+
+Example:
+
+/ {
+	tps65132@3e {
+		compatible = "ti,tps65132";
+		reg = <0x3e>;
+		gpios = <&msmgpio 31 0x0>, <&msmgpio 33 0x0>;
+		tps65132: regulator {
+			regulator-name = "tps65132";
+			regulator-min-microvolt = <5300000>;
+			regulator-max-microvolt = <5900000>;
+		};
+	};
+};
