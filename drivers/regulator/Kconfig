@@ -303,6 +303,14 @@ config REGULATOR_TPS6507X
 	  three step-down converters and two general-purpose LDO voltage regulators.
 	  It supports TI's software based Class-2 SmartReflex implementation.
 
+config REGULATOR_TPS65132
+	tristate "TI TPS65135 Power regulator"
+	depends on I2C && OF
+	help
+	  This driver supports TPS65135 voltage regulator chip. This
+	  regulator provides dual +/- 4-6V voltage primarily used for
+	  LCD biasing.
+
 config REGULATOR_TPS65217
 	tristate "TI TPS65217 Power regulators"
 	depends on MFD_TPS65217
