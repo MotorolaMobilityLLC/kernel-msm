@@ -225,8 +225,6 @@ void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx,
                             eTDLSSupportMode tdls_mode,
                             v_BOOL_t bUpdateLast);
 
-static void wlan_hdd_tdls_pre_setup(tdlsCtx_t *pHddTdlsCtx, hddTdlsPeer_t *curr_peer);
-
 tANI_U32 wlan_hdd_tdls_discovery_sent_cnt(hdd_context_t *pHddCtx);
 
 void wlan_hdd_tdls_check_power_save_prohibited(hdd_adapter_t *pAdapter);

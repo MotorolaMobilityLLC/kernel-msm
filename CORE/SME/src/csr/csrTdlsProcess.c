@@ -211,11 +211,19 @@ eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr 
                           pstaParams->extn_capability,
                           sizeof(pstaParams->extn_capability));
 
-            palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->HTCap,
-                          &pstaParams->HTCap, sizeof(pstaParams->HTCap));
+            tdlsAddStaCmdInfo->htcap_present = pstaParams->htcap_present;
+            if(pstaParams->htcap_present)
+                palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->HTCap,
+                              &pstaParams->HTCap, sizeof(pstaParams->HTCap));
+            else
+                palZeroMemory(pMac->hHdd, &tdlsAddStaCmdInfo->HTCap, sizeof(pstaParams->HTCap));
 
-            palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->VHTCap,
-                          &pstaParams->VHTCap, sizeof(pstaParams->VHTCap));
+            tdlsAddStaCmdInfo->vhtcap_present = pstaParams->vhtcap_present;
+            if(pstaParams->vhtcap_present)
+                palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->VHTCap,
+                              &pstaParams->VHTCap, sizeof(pstaParams->VHTCap));
+            else
+                palZeroMemory(pMac->hHdd, &tdlsAddStaCmdInfo->VHTCap, sizeof(pstaParams->VHTCap));
 
 			tdlsAddStaCmdInfo->supportedRatesLen = pstaParams->supported_rates_len;
 
@@ -533,8 +541,10 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
     palCopyMemory(pMac->hHdd, tdlsAddStaReq->extn_capability,
                               tdlsAddStaCmdInfo->extnCapability,
                               SIR_MAC_MAX_EXTN_CAP);
+    tdlsAddStaReq->htcap_present = tdlsAddStaCmdInfo->htcap_present;
     palCopyMemory(pMac->hHdd, &tdlsAddStaReq->htCap,
                   &tdlsAddStaCmdInfo->HTCap, sizeof(tdlsAddStaCmdInfo->HTCap));
+    tdlsAddStaReq->vhtcap_present = tdlsAddStaCmdInfo->vhtcap_present;
     palCopyMemory(pMac->hHdd, &tdlsAddStaReq->vhtCap,
                   &tdlsAddStaCmdInfo->VHTCap, sizeof(tdlsAddStaCmdInfo->VHTCap));
     tdlsAddStaReq->supported_rates_length = tdlsAddStaCmdInfo->supportedRatesLen;

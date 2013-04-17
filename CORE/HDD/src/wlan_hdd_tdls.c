@@ -45,6 +45,7 @@ static struct mutex tdls_lock;
 static tANI_S32 wlan_hdd_get_tdls_discovery_peer_cnt(tdlsCtx_t *pHddTdlsCtx);
 static tANI_S32 wlan_hdd_tdls_peer_reset_discovery_processed(tdlsCtx_t *pHddTdlsCtx);
 static void wlan_hdd_tdls_timers_destroy(tdlsCtx_t *pHddTdlsCtx);
+static void wlan_hdd_tdls_pre_setup(tdlsCtx_t *pHddTdlsCtx,hddTdlsPeer_t *curr_peer);
 
 #ifndef WLAN_FEATURE_TDLS_DEBUG
 #define TDLS_LOG_LEVEL VOS_TRACE_LEVEL_INFO
@@ -264,16 +265,20 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
             curr_peer = list_entry (pos, hddTdlsPeer_t, node);
 
             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                       "hdd update cb " MAC_ADDRESS_STR " link_status %d"
-                       " tdls_support %d", MAC_ADDR_ARRAY(curr_peer->peerMac),
+                       "%s: " MAC_ADDRESS_STR " link_status %d"
+                       " tdls_support %d", __func__, MAC_ADDR_ARRAY(curr_peer->peerMac),
                        curr_peer->link_status, curr_peer->tdls_support);
 
             if (eTDLS_CAP_SUPPORTED == curr_peer->tdls_support) {
                 VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                    "%s: (tx %d, rx %d, config %d) " MAC_ADDRESS_STR " (%d) ",
-                       __func__,  curr_peer->tx_pkt, curr_peer->rx_pkt,
+                    "tx %d, rx %d (thr.pkt %d/idle %d), rssi %d (thr.trig %d/hys %d/tear %d)",
+                       curr_peer->tx_pkt, curr_peer->rx_pkt,
                         pHddTdlsCtx->threshold_config.tx_packet_n,
-                        MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->link_status);
+                        pHddTdlsCtx->threshold_config.idle_packet_n,
+                        curr_peer->rssi,
+                        pHddTdlsCtx->threshold_config.rssi_trigger_threshold,
+                        pHddTdlsCtx->threshold_config.rssi_hysteresis,
+                        pHddTdlsCtx->threshold_config.rssi_teardown_threshold);
 
                 if ((eTDLS_LINK_IDLE == curr_peer->link_status) ||
                     (eTDLS_LINK_DISCOVERING == curr_peer->link_status)){

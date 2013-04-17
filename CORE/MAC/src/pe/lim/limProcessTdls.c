@@ -2330,7 +2330,7 @@ static tSirRetStatus limTdlsPopulateDot11fHTCaps(tpAniSirGlobal pMac, tpPESessio
     pDot11f->rxAS                     = pASCapabilityInfo->rxAS;
     pDot11f->txSoundingPPDUs          = pASCapabilityInfo->txSoundingPPDUs;
 
-    pDot11f->present = 1;
+    pDot11f->present = pTdlsAddStaReq->htcap_present;
 
     return eSIR_SUCCESS;
 
@@ -2352,7 +2352,7 @@ limTdlsPopulateDot11fVHTCaps(tpAniSirGlobal pMac,
         tSirMacVHTRxSupDataRateInfo    vhtRxsupDataRateInfo;
     } uVHTSupDataRateInfo;
 
-    pDot11f->present = 1;
+    pDot11f->present = pTdlsAddStaReq->vhtcap_present;
 
     nCfgValue = pTdlsAddStaReq->vhtCap.vhtCapInfo;
     uVHTCapabilityInfo.nCfgValue32 = nCfgValue;
@@ -2685,7 +2685,8 @@ static void limTdlsUpdateHashNodeInfo(tpAniSirGlobal pMac, tDphHashNode *pStaDs,
     if (pVhtCaps->present)
     {
         pStaDs->mlmStaContext.vhtCapability = 1 ;
-        pStaDs->vhtSupportedChannelWidthSet= pVhtCaps->supportedChannelWidthSet;
+        pStaDs->vhtSupportedChannelWidthSet =  WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
+        pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ ;
         pStaDs->vhtLdpcCapable = pVhtCaps->ldpcCodingCap;
         pStaDs->vhtBeamFormerCapable= pVhtCaps->suBeamFormerCap;
         // TODO , is it necessary , Sunil???
@@ -2694,6 +2695,7 @@ static void limTdlsUpdateHashNodeInfo(tpAniSirGlobal pMac, tDphHashNode *pStaDs,
     else
     {
         pStaDs->mlmStaContext.vhtCapability = 0 ;
+        pStaDs->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
     }
 #endif
     /*Calculate the Secondary Coannel Offset */
