@@ -561,9 +561,13 @@ static int __devinit qpnp_pon_config_init(struct qpnp_pon *pon)
 	int rc = 0, i = 0;
 	struct device_node *pp = NULL;
 	struct qpnp_pon_config *cfg;
+	int disable = 0;
 
 	/* iterate through the list of pon configs */
 	while ((pp = of_get_next_child(pon->spmi->dev.of_node, pp))) {
+		rc = of_property_read_u32(pp, "qcom,disable", &disable);
+		if (!rc && disable)
+			continue;
 
 		cfg = &pon->pon_cfg[i++];
 
