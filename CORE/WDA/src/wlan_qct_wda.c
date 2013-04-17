@@ -1991,7 +1991,6 @@ VOS_STATUS WDA_SuspendDataTx(tWDA_CbContext *pWDA)
 {
    VOS_STATUS status = VOS_STATUS_E_FAILURE;
    tANI_U8 eventIdx = 0;
-   tANI_U8 ucSTAId = 0;
 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                       "%s: Entered " ,__func__);
@@ -2011,8 +2010,7 @@ VOS_STATUS WDA_SuspendDataTx(tWDA_CbContext *pWDA)
       return VOS_STATUS_E_FAILURE;
    }
    /*Indicate TL to suspend transmission for all Sta Id */
-   ucSTAId = WLAN_ALL_STA;
-   status = WLANTL_SuspendDataTx(pWDA->pVosContext, &ucSTAId,
+   status = WLANTL_SuspendDataTx(pWDA->pVosContext, NULL,
                                                 WDA_SuspendDataTxCallback);
    if(status != VOS_STATUS_SUCCESS)
    {
@@ -2050,12 +2048,11 @@ VOS_STATUS WDA_SuspendDataTx(tWDA_CbContext *pWDA)
 VOS_STATUS WDA_ResumeDataTx(tWDA_CbContext *pWDA)
 {
    VOS_STATUS status = VOS_STATUS_SUCCESS;
-   tANI_U8 ucSTAId = 0;
 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                       "%s: Entered " ,__func__);
-   ucSTAId = WLAN_ALL_STA;
-   status = WLANTL_ResumeDataTx(pWDA->pVosContext, &ucSTAId);
+
+   status = WLANTL_ResumeDataTx(pWDA->pVosContext, NULL);
    return status;
 }
 /*

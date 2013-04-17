@@ -134,10 +134,6 @@ when        who    what, where, why
 /*Maximum number of ACs */
 #define WLANTL_MAX_AC                         4
 
-
-/* Bit Mask to represent All Stations */
-#define WLAN_ALL_STA                         0xFF
-
 /* Maximum number of station supported by TL, including BC. */
 #define WLAN_MAX_STA_COUNT  (HAL_NUM_STA)
 #define WLAN_NON32_STA_COUNT   14

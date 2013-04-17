@@ -448,6 +448,23 @@ static v_VOID_t wlan_hdd_tdls_discovery_timeout_peer_cb(v_PVOID_t userData)
     return;
 }
 
+static v_VOID_t wlan_hdd_tdls_initiator_wait_cb( v_PVOID_t userData )
+{
+    hddTdlsPeer_t *curr_peer = (hddTdlsPeer_t *)userData;
+    tdlsCtx_t   *pHddTdlsCtx;
+
+    if ( NULL == curr_peer )
+        return;
+
+    pHddTdlsCtx = curr_peer->pHddTdlsCtx;
+
+    if ( NULL == pHddTdlsCtx )
+        return;
+
+    WLANTL_ResumeDataTx( (WLAN_HDD_GET_CTX(pHddTdlsCtx->pAdapter))->pvosContext,
+                           (v_U8_t *)&curr_peer->staId);
+}
+
 static void wlan_hdd_tdls_free_list(tdlsCtx_t *pHddTdlsCtx)
 {
     int i;
@@ -626,6 +643,7 @@ static void wlan_hdd_tdls_timers_stop(tdlsCtx_t *pHddTdlsCtx)
                        __func__,
                        MAC_ADDR_ARRAY(curr_peer->peerMac));
             vos_timer_stop ( &curr_peer->peerIdleTimer );
+            vos_timer_stop( &curr_peer->initiatorWaitTimeoutTimer );
         }
     }
 }
@@ -658,6 +676,8 @@ static void wlan_hdd_tdls_timers_destroy(tdlsCtx_t *pHddTdlsCtx)
                        MAC_ADDR_ARRAY(curr_peer->peerMac));
             vos_timer_stop ( &curr_peer->peerIdleTimer );
             vos_timer_destroy ( &curr_peer->peerIdleTimer );
+            vos_timer_stop(&curr_peer->initiatorWaitTimeoutTimer);
+            vos_timer_destroy(&curr_peer->initiatorWaitTimeoutTimer);
         }
     }
 }
@@ -713,6 +733,11 @@ hddTdlsPeer_t *wlan_hdd_tdls_get_peer(hdd_adapter_t *pAdapter, u8 *mac)
     vos_timer_init(&peer->peerIdleTimer,
                     VOS_TIMER_TYPE_SW,
                     wlan_hdd_tdls_idle_cb,
+                    peer);
+
+    vos_timer_init(&peer->initiatorWaitTimeoutTimer,
+                    VOS_TIMER_TYPE_SW,
+                    wlan_hdd_tdls_initiator_wait_cb,
                     peer);
 
     list_add_tail(&peer->node, head);
@@ -1363,8 +1388,18 @@ void wlan_hdd_tdls_check_bmps(hdd_adapter_t *pAdapter)
 {
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     tdlsCtx_t *pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
+    hddTdlsPeer_t *curr_peer;
 
     if ((NULL == pHddCtx) || (NULL == pHddTdlsCtx)) return;
+
+    curr_peer = wlan_hdd_tdls_is_progress(pHddCtx, NULL, 0, TRUE);
+    if (NULL != curr_peer)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                "%s: tdls in progress. Dont check for BMPS " MAC_ADDRESS_STR,
+                __func__, MAC_ADDR_ARRAY (curr_peer->peerMac));
+        return;
+    }
 
     if ((TDLS_CTX_MAGIC != pHddCtx->tdls_scan_ctxt.magic) &&
         (0 == pHddCtx->connected_peer_count) &&
