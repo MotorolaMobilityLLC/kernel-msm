@@ -47,6 +47,8 @@ enum {
 	HW_PLATFORM_QRD	= 11,
 	HW_PLATFORM_HRD	= 13,
 	HW_PLATFORM_DTV	= 14,
+	/* LGE platform id */
+	HW_PLATFORM_HAMMERHEAD = 150,
 	HW_PLATFORM_INVALID
 };
 
@@ -63,6 +65,7 @@ const char *hw_platform[] = {
 	[HW_PLATFORM_QRD] = "QRD",
 	[HW_PLATFORM_HRD] = "HRD",
 	[HW_PLATFORM_DTV] = "DTV",
+	[HW_PLATFORM_HAMMERHEAD] = "HAMMERHEAD",
 };
 
 enum {
