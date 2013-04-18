@@ -33,7 +33,9 @@ ifeq ($(KERNEL_BUILD),0)
 	CONFIG_QCOM_TDLS := y
 
 	#Flag to enable Fast Transition (11r) feature
-	CONFIG_QCOM_VOWIFI_11R := n
+	ifeq ($(CONFIG_PRONTO_WLAN), m)
+	CONFIG_QCOM_VOWIFI_11R := y
+	endif
 
 	#Flag to enable Protected Managment Frames (11w) feature
 	ifneq ($(CONFIG_PRONTO_WLAN),)
@@ -543,6 +545,10 @@ endif
 ifeq ($(HAVE_CFG80211),1)
 CDEFINES += -DWLAN_FEATURE_P2P
 CDEFINES += -DWLAN_FEATURE_WFD
+ifeq ($(CONFIG_QCOM_VOWIFI_11R),y)
+CDEFINES += -DKERNEL_SUPPORT_11R_CFG80211
+CDEFINES += -DUSE_80211_WMMTSPEC_FOR_RIC
+endif
 endif
 
 ifeq ($(CONFIG_QCOM_CCX),y)
