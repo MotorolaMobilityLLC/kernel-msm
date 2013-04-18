@@ -433,6 +433,10 @@ static int __init ov10820_init_i2c_device(struct i2c_board_info *info,
 	of_property_read_u32(node, "is_asic_ver_r1b",
 			&ov10820_oem_data.sensor_asic_revision);
 
+	/* See if the PK DVDD supply location was changed */
+	of_property_read_u32(node, "is_new_pk_dvdd",
+			&ov10820_oem_data.sensor_using_new_pk_dvdd);
+
 	msm_camera_sensor_ov10820_data.oem_data = &ov10820_oem_data;
 	info->platform_data = &msm_camera_sensor_ov10820_data;
 
