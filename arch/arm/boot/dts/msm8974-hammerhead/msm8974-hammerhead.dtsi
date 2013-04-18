@@ -95,6 +95,10 @@
 		smb349@2d {
 			status = "ok";
 		};
+
+		bq24192@6b {
+			status = "disabled";
+		};
 	};
 
 	sound {

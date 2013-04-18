@@ -50,6 +50,17 @@
 			summit,term-current-ma = <100>;
 			summit,wlc-support;
 		};
+		bq24192@6b {
+			compatible = "ti,bq24192-charger";
+			status = "disabled";
+			reg = <0x6b>;
+			interrupt-parent = <&pm8941_gpios>;
+			interrupts = <30 0x2>;
+			ti,int-gpio = <&pm8941_gpios 30 0x02>;
+			ti,chg-current-ma = <1500>;
+			ti,term-current-ma = <128>;
+			ti,wlc-support;
+		};
 	};
 
 	bq51013b_wlc {
