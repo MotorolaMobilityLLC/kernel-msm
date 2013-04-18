@@ -196,13 +196,6 @@ struct msm_gpiomux_config vcap_configs[] = {
 		}
 	},
 	{
-		.gpio = 26,
-		.settings = {
-			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[1],
-			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[1],
-		}
-	},
-	{
 		.gpio = 8,
 		.settings = {
 			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[3],
@@ -1324,6 +1317,15 @@ static struct gpiomux_setting gpio_keys_suspended_cfg = {
 	.pull = GPIOMUX_PULL_UP,
 };
 
+static struct msm_gpiomux_config asustek_pwr_keys_configs[] __initdata = {
+	{	.gpio = 26,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_keys_active_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_keys_suspended_cfg,
+		},
+	},
+};
+
 static struct msm_gpiomux_config asustek_gpio_keys_configs[] __initdata = {
 	{	.gpio = 53,
 		.settings = {
@@ -1675,6 +1677,9 @@ void __init apq8064_init_gpiomux(void)
 			msm_gpiomux_install(asustek_gpio_keys_2_configs,
 				ARRAY_SIZE(asustek_gpio_keys_2_configs));
 		}
+
+		msm_gpiomux_install(asustek_pwr_keys_configs,
+			ARRAY_SIZE(asustek_pwr_keys_configs));
 	}
 #endif
 

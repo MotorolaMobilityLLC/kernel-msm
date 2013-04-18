@@ -28,6 +28,7 @@
 #include <mach/board_asustek.h>
 #include "board-8064.h"
 
+#define GPIO_KEY_POWER		26
 #define GPIO_KEY_VOLUMEUP	53
 #define GPIO_KEY_VOLUMEDOWN	54
 #define GPIO_KEY2_VOLUMEUP	15
@@ -49,8 +50,9 @@
 	}
 
 static struct gpio_keys_button asustek_keys[] = {
-	[0] = GPIO_KEY(KEY_VOLUMEUP, 0),
-	[1] = GPIO_KEY(KEY_VOLUMEDOWN, 0),
+	[0] = GPIO_KEY(KEY_POWER, 1),
+	[1] = GPIO_KEY(KEY_VOLUMEUP, 0),
+	[2] = GPIO_KEY(KEY_VOLUMEDOWN, 0),
 };
 
 static struct gpio_keys_platform_data asustek_keys_platform_data = {
@@ -82,8 +84,8 @@ static void gpio_keys_remap(void)
 		pr_info(
 		"Reconfigure VOL_UP with GPIO%d and VOL_DOWN with GPIO%d\n",
 				GPIO_KEY2_VOLUMEUP, GPIO_KEY2_VOLUMEDOWN);
-		asustek_keys[0].gpio = GPIO_KEY2_VOLUMEUP;
-		asustek_keys[1].gpio = GPIO_KEY2_VOLUMEDOWN;
+		asustek_keys[1].gpio = GPIO_KEY2_VOLUMEUP;
+		asustek_keys[2].gpio = GPIO_KEY2_VOLUMEDOWN;
 		break;
 
 	case HW_REV_C:
@@ -91,8 +93,8 @@ static void gpio_keys_remap(void)
 		"Reconfigure VOL_UP(GPIO%d) and VOL_DOWN(GPIO%d) with PMIC\n",
 					GPIO_PM8921_KEY_VOLUME_UP,
 					GPIO_PM8921_KEY_VOLUME_DOWN);
-		asustek_keys[0].gpio = GPIO_PM8921_KEY_VOLUME_UP;
-		asustek_keys[1].gpio = GPIO_PM8921_KEY_VOLUME_DOWN;
+		asustek_keys[1].gpio = GPIO_PM8921_KEY_VOLUME_UP;
+		asustek_keys[2].gpio = GPIO_PM8921_KEY_VOLUME_DOWN;
 		break;
 
 	case HW_REV_D:
@@ -100,8 +102,8 @@ static void gpio_keys_remap(void)
 		"Reconfigure VOL_UP(GPIO%d) and VOL_DOWN(GPIO%d) with PMIC\n",
 					GPIO_PM8921_KEY2_VOLUME_UP,
 					GPIO_PM8921_KEY2_VOLUME_DOWN);
-		asustek_keys[0].gpio = GPIO_PM8921_KEY2_VOLUME_UP;
-		asustek_keys[1].gpio = GPIO_PM8921_KEY2_VOLUME_DOWN;
+		asustek_keys[1].gpio = GPIO_PM8921_KEY2_VOLUME_UP;
+		asustek_keys[2].gpio = GPIO_PM8921_KEY2_VOLUME_DOWN;
 		break;
 
 	default:
