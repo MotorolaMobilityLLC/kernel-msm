@@ -582,6 +582,9 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		total_sizedwords += 4; /* global timestamp for fault tolerance*/
 	}
 
+	if (flags & KGSL_CMD_FLAGS_EOF)
+		total_sizedwords += 2;
+
 	ringcmds = adreno_ringbuffer_allocspace(rb, context, total_sizedwords);
 	if (!ringcmds) {
 		/*
