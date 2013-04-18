@@ -1055,9 +1055,9 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 #endif
 
 done:
-	kgsl_trace_issueibcmds(device, context->id, cmdbatch,
+	kgsl_trace_issueibcmds(device, context ? context->id : 0, cmdbatch,
 		cmdbatch->timestamp, cmdbatch->flags, ret,
-		drawctxt->type);
+		drawctxt ? drawctxt->type : 0);
 
 	kfree(link);
 	return ret;
