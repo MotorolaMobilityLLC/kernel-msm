@@ -100,14 +100,14 @@ static struct msm_mmc_slot_reg_data mmc_slot_vreg_data[MAX_SDCC_CONTROLLER] = {
 /* SDC1 pad data */
 static struct msm_mmc_pad_drv sdc1_pad_drv_on_cfg[] = {
 	{TLMM_HDRV_SDC1_CLK, GPIO_CFG_16MA},
-	{TLMM_HDRV_SDC1_CMD, GPIO_CFG_8MA},
-	{TLMM_HDRV_SDC1_DATA, GPIO_CFG_10MA}
+	{TLMM_HDRV_SDC1_CMD, GPIO_CFG_6MA},
+	{TLMM_HDRV_SDC1_DATA, GPIO_CFG_6MA}
 };
 
 static struct msm_mmc_pad_drv sdc1_pad_drv_off_cfg[] = {
 	{TLMM_HDRV_SDC1_CLK, GPIO_CFG_2MA},
-	{TLMM_HDRV_SDC1_CMD, GPIO_CFG_8MA},
-	{TLMM_HDRV_SDC1_DATA, GPIO_CFG_2MA}
+	{TLMM_HDRV_SDC1_CMD, GPIO_CFG_6MA},
+	{TLMM_HDRV_SDC1_DATA, GPIO_CFG_6MA}
 };
 
 static struct msm_mmc_pad_pull sdc1_pad_pull_on_cfg[] = {
