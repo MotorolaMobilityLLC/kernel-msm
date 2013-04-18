@@ -2361,6 +2361,38 @@ eHalStatus sme_RoamConnect(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamProfile *
 }
 
 /* ---------------------------------------------------------------------------
+
+    \fn sme_SetPhyMode
+
+    \brief Changes the PhyMode.
+
+    \param hHal - The handle returned by macOpen.
+
+    \param phyMode new phyMode which is to set
+
+    \return eHalStatus  SUCCESS.
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_SetPhyMode(tHalHandle hHal, eCsrPhyMode phyMode)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+    if (NULL == pMac)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                  "%s: invalid context", __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    pMac->roam.configParam.phyMode = phyMode;
+    pMac->roam.configParam.uCfgDot11Mode = csrGetCfgDot11ModeFromCsrPhyMode(NULL,
+                                                 pMac->roam.configParam.phyMode,
+                                    pMac->roam.configParam.ProprietaryRatesEnabled);
+
+    return eHAL_STATUS_SUCCESS;
+}
+
+/* ---------------------------------------------------------------------------
     \fn sme_RoamReassoc
     \brief a wrapper function to request CSR to inititiate a re-association
     \param pProfile - can be NULL to join the currently connected AP. In that
