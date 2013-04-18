@@ -90,7 +90,7 @@ static struct msm_camera_i2c_reg_conf ov10820_full_24fps_settings_rev_a1[] = {
 	{0x402a, 0x0c},
 	{0x402b, 0x08},
 	{0x402e, 0x1c},
-	{0x4837, 0x08},
+	{0x4837, 0x10},
 };
 
 static struct msm_camera_i2c_reg_conf ov10820_full_24fps_settings_rev_b1[] = {
@@ -144,7 +144,7 @@ static struct msm_camera_i2c_reg_conf ov10820_full_15fps_settings_rev_a1[] = {
 	{0x402a, 0x0c},
 	{0x402b, 0x08},
 	{0x402e, 0x1c},
-	{0x4837, 0x10},
+	{0x4837, 0x20},
 };
 
 
@@ -170,7 +170,7 @@ static struct msm_camera_i2c_reg_conf ov10820_full_15fps_settings_rev_b1[] = {
 	{0x402a, 0x0c},
 	{0x402b, 0x08},
 	{0x402e, 0x1c},
-	{0x4837, 0x10},
+	{0x4837, 0x20},
 };
 
 static struct msm_camera_i2c_reg_conf ov10820_qtr_30fps_settings_rev_a1[] = {
@@ -218,7 +218,7 @@ static struct msm_camera_i2c_reg_conf ov10820_qtr_60fps_settings_rev_a1[] = {
 	{0x402a, 0x0a},
 	{0x402b, 0x06},
 	{0x402e, 0x14},
-	{0x4837, 0x08},
+	{0x4837, 0x10},
 };
 
 static struct msm_camera_i2c_reg_conf ov10820_qtr_30fps_settings_rev_b1[] = {
@@ -248,7 +248,7 @@ static struct msm_camera_i2c_reg_conf ov10820_qtr_30fps_settings_rev_b1[] = {
 	{0x402b, 0x06},
 	{0x3505, 0x07},
 	{0x402e, 0x14},
-	{0x4837, 0x0a},
+	{0x4837, 0x14},
 	{0x5b04, 0xf3},
 };
 
@@ -279,7 +279,7 @@ static struct msm_camera_i2c_reg_conf ov10820_qtr_60fps_settings_rev_b1[] = {
 	{0x402b, 0x06},
 	{0x3505, 0x07},
 	{0x402e, 0x14},
-	{0x4837, 0x09},
+	{0x4837, 0x12},
 	{0x5b04, 0xf3},
 };
 
@@ -445,7 +445,6 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_a1[] = {
 	{0x4602, 0x02},
 	{0x481b, 0x35},
 	{0x4823, 0x35},
-	{0x4837, 0x08},
 	{0x4d00, 0x04},
 	{0x4d01, 0x71},
 	{0x4d02, 0xfd},
@@ -492,7 +491,6 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_a1[] = {
 	{0x3815, 0x11},
 	{0x3820, 0x00},
 	{0x3834, 0x00},
-	{0x4837, 0x08},
 	/* Exposure Gain */
 	{0x3500, 0x00},
 	{0x3501, 0xfd},
