@@ -34,10 +34,12 @@
 static uint8_t ov10820_otp[OV10820_OTP_SIZE];
 static struct otp_info_t ov10820_otp_info;
 static uint8_t is_ov10820_otp_read;
+static uint8_t is_vdd_pk_powered_up;
 
 static struct regulator *cam_vdig;
 static struct regulator *cam_afvdd;
 static struct regulator *cam_dvdd;
+static struct regulator *cam_pk_dvdd;
 
 DEFINE_MUTEX(ov10820_mut);
 static struct msm_sensor_ctrl_t ov10820_s_ctrl;
@@ -1033,13 +1035,14 @@ static int32_t ov10820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		goto power_up_done;
 	}
 
-	pr_debug("%s: R: %d, P: %d D: %d DVDD %d ASIC rev %d\n",
+	pr_debug("%s: R: %d, P: %d D: %d DVDD %d ASIC rev %d PK VDD %d\n",
 			__func__,
 			info->sensor_reset,
 			info->sensor_pwd,
 			info->oem_data->sensor_dig_en,
 			info->oem_data->sensor_using_separate_dvdd,
-			info->oem_data->sensor_asic_revision);
+			info->oem_data->sensor_asic_revision,
+			info->oem_data->sensor_using_new_pk_dvdd);
 
 	/* Request gpios */
 	rc = gpio_request(info->sensor_pwd, "ov10820");
@@ -1061,6 +1064,20 @@ static int32_t ov10820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		pr_err("%s: gpio request sensor_dig_en failed (%d)\n",
 				__func__, rc);
 		goto abort2;
+	}
+
+	if (info->oem_data->sensor_using_new_pk_dvdd &
+			(is_vdd_pk_powered_up == 0)) {
+		rc = ov10820_regulator_on(&cam_pk_dvdd, dev,
+				"cam_pk_dvdd", 1200000);
+		if (rc < 0) {
+			pr_err("%s: Unable to turn on cam_pk_dvdd (%d)\n",
+					__func__, rc);
+			goto abort2;
+		} else {
+			is_vdd_pk_powered_up = 1;
+			usleep_range(1000, 2000);
+		}
 	}
 
 	/* Set PWDN to low for power up */
