@@ -116,7 +116,7 @@ static const struct tpa6165_regs tpa6165_reg_defaults[] = {
 },
 {
 	.reg =  TPA6165_JACK_DETECT_TEST_HW1,
-	.value = 0xc0,
+	.value = 0x80,
 },
 {
 	.reg =  TPA6165_JACK_DETECT_TEST_HW2,
@@ -592,8 +592,22 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 		acc_type = SND_JACK_HEADSET;
 		break;
 	case TPA6165_STEREO_HEADPHONE1:
+		tpa6165->special_hs = 0;
+		acc_type = SND_JACK_HEADPHONE;
+		break;
 	case TPA6165_STEREO_HEADPHONE2:
 	case TPA6165_STEREO_HEADPHONE3:
+		/* force high impedence stereo heaphone to low impedence type
+		 * for proper detection.
+		 */
+		tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+			TPA6165_STEREO_HEADPHONE1, 0xff);
+		tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+			TPA6165_FORCE_TYPE | TPA6165_STEREO_HEADPHONE1,
+			0xff);
+		tpa6165->special_hs = 0;
+		acc_type = SND_JACK_HEADPHONE;
+		break;
 	case TPA6165_STEREO_LINEOUT1:
 		tpa6165->special_hs = 0;
 		acc_type = SND_JACK_HEADPHONE;
