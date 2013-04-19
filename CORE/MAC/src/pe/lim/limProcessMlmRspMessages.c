@@ -1907,6 +1907,10 @@ void limProcessStaMlmAddStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESess
 #ifdef WLAN_DEBUG
         pMac->lim.gLimNumLinkEsts++;
 #endif
+#ifdef FEATURE_WLAN_TDLS
+       /* initialize TDLS peer related data */
+       limInitTdlsData(pMac,psessionEntry);
+#endif
         // Return Assoc confirm to SME with success
         // FIXME_GEN4 - Need the correct ASSOC RSP code to
         // be passed in here....
@@ -3078,12 +3082,6 @@ limProcessStaMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession ps
                 PELOGE(limLog(pMac, LOGE, FL("could not Add Self Entry for the station"));)
                 mlmAssocCnf.resultCode = (tSirResultCodes) eSIR_SME_REFUSED;
             }
-#ifdef FEATURE_WLAN_TDLS
-            else {
-               /* initialize TDLS peer related data */
-               limInitTdlsData(pMac,psessionEntry);
-            }
-#endif            
         }
     }
     else
