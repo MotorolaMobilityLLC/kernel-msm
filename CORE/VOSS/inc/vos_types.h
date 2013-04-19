@@ -168,6 +168,7 @@ typedef enum
     VOS_P2P_GO_MODE,
     VOS_MONITOR_MODE,
     VOS_FTM_MODE = 5,
+    VOS_IBSS_MODE,
     VOS_MAX_NO_OF_MODE
 
 } tVOS_CON_MODE;

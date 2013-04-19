@@ -1695,6 +1695,19 @@ typedef enum
 #define CFG_LIST_OF_NON_DFS_COUNTRY_CODE                    "gListOfNonDfsCountryCode"
 #define CFG_LIST_OF_NON_DFS_COUNTRY_CODE_DEFAULT            "JO,MA"
 
+/*
+ * IBSS Operating Channels for 2.4G and 5GHz channels
+ */
+#define CFG_IBSS_ADHOC_CHANNEL_5GHZ_NAME          "gAdHocChannel5G"
+#define CFG_IBSS_ADHOC_CHANNEL_5GHZ_MIN           ( 36 )
+#define CFG_IBSS_ADHOC_CHANNEL_5GHZ_MAX           ( 165 )
+#define CFG_IBSS_ADHOC_CHANNEL_5GHZ_DEFAULT       ( 44 )
+
+#define CFG_IBSS_ADHOC_CHANNEL_24GHZ_NAME         "gAdHocChannel24G"
+#define CFG_IBSS_ADHOC_CHANNEL_24GHZ_MIN          ( 1 )
+#define CFG_IBSS_ADHOC_CHANNEL_24GHZ_MAX          ( 14 )
+#define CFG_IBSS_ADHOC_CHANNEL_24GHZ_DEFAULT      ( 6 )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1778,6 +1791,8 @@ typedef struct
    v_BOOL_t      fIsShortPreamble;
    v_BOOL_t      fIsAutoIbssBssid;
    v_MACADDR_t   IbssBssid;
+   v_U32_t       AdHocChannel5G;
+   v_U32_t       AdHocChannel24G;
    
    v_U8_t        intfAddrMask;
    v_MACADDR_t   intfMacAddr[VOS_MAX_CONCURRENCY_PERSONA];
