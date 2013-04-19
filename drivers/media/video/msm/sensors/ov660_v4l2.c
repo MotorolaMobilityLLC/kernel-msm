@@ -283,6 +283,37 @@ static struct ov660_reg_i2c_tbl ov660_revision_check[] = {
 	{0x7100, 0x80},
 };
 
+#define MAX_I2C_LEN (32)
+static int ov660_write_i2c_seq(uint16_t staddr, uint8_t *data, uint16_t len)
+{
+	int32_t rc = -EIO;
+
+	if (ov660_data && ov660_data->client) {
+		uint8_t buf[MAX_I2C_LEN+2];
+		struct i2c_msg msg = {
+			.addr = ov660_data->client->addr,
+			.flags = 0,
+			.buf = buf,
+			.len = len+2,
+		};
+
+		if (len > MAX_I2C_LEN) {
+			pr_err("%s length (%d) too long\n", __func__, len);
+			return -EIO;
+		}
+
+		buf[0] = staddr >> 8;
+		buf[1] = (staddr & 0x00FF);
+		memcpy(&buf[2], data, len);
+
+		rc = i2c_transfer(ov660_data->client->adapter, &msg, 1);
+		if (rc < 0)
+			pr_err("%s: i2c transfer error (%d)\n", __func__, rc);
+	}
+
+	return rc;
+}
+
 static int ov660_write_i2c(uint16_t addr, uint8_t data)
 {
 	int32_t rc = 0;
@@ -375,18 +406,25 @@ poll_done:
 static int ov660_write_i2c_tbl(struct ov660_reg_i2c_tbl *in_table,
 		uint16_t size)
 {
-	int i;
-	int32_t rc = -EFAULT;
+	int i, j;
+	int32_t rc = 0;
+	uint8_t buf[MAX_I2C_LEN];
 
-	for (i = 0; i < size; i++) {
-		rc = ov660_write_i2c(in_table->reg_addr, in_table->reg_data);
+	for (i = 0; i < size;) {
+		uint16_t staddr = in_table->reg_addr;
+		for (j = 0; j < MAX_I2C_LEN && i < size; j++, i++) {
+			if (in_table->reg_addr == (staddr + j)) {
+				buf[j] = (uint8_t)in_table->reg_data;
+				in_table++;
+			} else {
+				break;
+			}
+		}
+		rc = ov660_write_i2c_seq(staddr, buf, j);
 		if (rc < 0) {
-			pr_err("%s: unable to write: R[%x] = %x\n",
-					__func__, in_table->reg_addr,
-					in_table->reg_data);
+			pr_err("%s: unable to write data\n", __func__);
 			break;
 		}
-		in_table++;
 	}
 
 	return rc;
