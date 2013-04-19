@@ -514,4 +514,13 @@ config BQ51013B_CHARGER
 	  intergrating the digital control required to comply with Qi v1.1
 	  protocol.
 
+config BQ24192_CHARGER
+	tristate "TI BQ24192 charger driver"
+	depends on I2C
+	default n
+	help
+	  The BQ24192 is a highly-integrated switch-mode battery charge
+	  management and system power path management device for 1 cell
+	  Li-Ion and Li-Polymer battery.
+
 endif # POWER_SUPPLY
