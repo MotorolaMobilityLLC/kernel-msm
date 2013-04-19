@@ -41,6 +41,7 @@ static char lane[2] = {0xBA, 0x03}; /* MIPI 4 lane */
 static char command_mode[2] = {0xC2, 0x08}; /* Setting 0x08 for MIPI cmd mode */
 
 static char video_mode[2] = {0xC2, 0x03}; /* Setting 0x03 for MIPI video mode */
+static char video_timing[] = {0x3B, 0x03, 0x09, 0x3, 0x2, 0x2};
 
 static char disp_on6[2] = {0xFF, 0x01}; /* CMD page select */
 static char disp_on7[2] = {0xFB, 0x01}; /* RELOAD CMD1 */
@@ -993,6 +994,7 @@ static struct dsi_cmd_desc nt35590_video_display_on_cmds[] = {
 	/*{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(disp_on_rotate),
 		disp_on_rotate},*/
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(video_mode), video_mode},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(video_timing), video_timing},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(disp_on6), disp_on6},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(disp_on7), disp_on7},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(disp_on8), disp_on8},
