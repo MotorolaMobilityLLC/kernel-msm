@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  *
  */
+#include <linux/dropbox.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
@@ -1148,6 +1149,24 @@ adreno_ocmem_gmem_free(struct adreno_device *adreno_dev)
 }
 #endif
 
+void adreno_hang_dropbox_trigger_callback(void *data)
+{
+	struct kgsl_device *device = (struct kgsl_device *)data;
+
+	mutex_lock(&device->mutex);
+
+	kgsl_postmortem_dump(device, 1);
+	kgsl_device_snapshot(device, 0);
+
+	/* add dropbox events */
+	dropbox_queue_event_binary("graphics_hang_snapshot", device->snapshot,
+		device->snapshot_size);
+	dropbox_queue_event_text("graphics_hang_postmortem",
+		device->postmortem_dump, device->postmortem_size);
+
+	mutex_unlock(&device->mutex);
+}
+
 static int __devinit
 adreno_probe(struct platform_device *pdev)
 {
@@ -1184,6 +1203,9 @@ adreno_probe(struct platform_device *pdev)
 	kgsl_pwrscale_attach_policy(device, ADRENO_DEFAULT_PWRSCALE_POLICY);
 
 	INIT_DELAYED_WORK(&adreno_hang_panic_work, adreno_hang_panic_work_func);
+
+	dropbox_register_trigger_callback("graphics_hang",
+		&adreno_hang_dropbox_trigger_callback, device);
 
 	device->flags &= ~KGSL_FLAGS_SOFT_RESET;
 	return 0;
@@ -2118,6 +2140,13 @@ adreno_dump_and_exec_ft(struct kgsl_device *device)
 			* will work as it always has
 			*/
 			kgsl_device_snapshot(device, 1);
+
+			/* add dropbox events */
+			dropbox_queue_event_binary("graphics_hang_snapshot",
+				device->snapshot, device->snapshot_size);
+			dropbox_queue_event_text("graphics_hang_postmortem",
+				device->postmortem_dump,
+				device->postmortem_size);
 		}
 
 		result = adreno_ft(device, &ft_data);
