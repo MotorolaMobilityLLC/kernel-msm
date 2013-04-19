@@ -2107,7 +2107,7 @@ eHalStatus pmcIssueCommand( tpAniSirGlobal pMac, eSmeCommandType cmdType, void *
     {
         smePushCommand( pMac, pCommand, fPutToListHead );
     }
-    else
+    else if( pCommand )
     {
         pmcReleaseCommand( pMac, pCommand );
     }
