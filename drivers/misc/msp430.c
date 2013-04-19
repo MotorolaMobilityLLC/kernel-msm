@@ -595,51 +595,6 @@ static int msp430_reset_and_init(void)
 	if (err < 0)
 		ret_err = err;
 
-	msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
-	msp_cmdbuff[1] = g_nonwake_sensor_state & 0xFF;
-	msp_cmdbuff[2] = g_nonwake_sensor_state >> 8;
-	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 3);
-	if (err < 0)
-		ret_err = err;
-
-	msp_cmdbuff[0] = WAKESENSOR_CONFIG;
-	msp_cmdbuff[1] = g_wake_sensor_state & 0xFF;
-	msp_cmdbuff[2] = g_wake_sensor_state >> 8;
-	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 3);
-	if (err < 0)
-		ret_err = err;
-
-	msp_cmdbuff[0] = ALGO_CONFIG;
-	msp_cmdbuff[1] = g_algo_state & 0xFF;
-	msp_cmdbuff[2] = g_algo_state >> 8;
-	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 3);
-	if (err < 0)
-		ret_err = err;
-
-	msp_cmdbuff[0] = MOTION_DUR;
-	msp_cmdbuff[1] = g_motion_dur;
-	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
-	if (err < 0)
-		ret_err = err;
-
-	msp_cmdbuff[0] = ZRMOTION_DUR;
-	msp_cmdbuff[1] = g_zmotion_dur;
-	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
-	if (err < 0)
-		ret_err = err;
-
-	for (i = 0; i < MSP_NUM_ALGOS; i++) {
-		if (g_algo_requst[i].size > 0) {
-			msp_cmdbuff[0] = msp_algo_info[i].req_register;
-			memcpy(&msp_cmdbuff[1],
-				g_algo_requst[i].data,
-				g_algo_requst[i].size);
-			err = msp430_i2c_write_no_reset(msp430_misc_data,
-				msp_cmdbuff,
-				g_algo_requst[i].size + 1);
-		}
-	}
-
 	msp_cmdbuff[0] = PROX_SETTINGS;
 	msp_cmdbuff[1]
 		= (pdata->ct406_detect_threshold >> 8) & 0xff;
@@ -696,6 +651,56 @@ static int msp430_reset_and_init(void)
 	if (err < 0)
 		ret_err = err;
 
+	msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
+	msp_cmdbuff[1] = g_nonwake_sensor_state & 0xFF;
+	msp_cmdbuff[2] = g_nonwake_sensor_state >> 8;
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 3);
+	if (err < 0)
+		ret_err = err;
+
+	msp_cmdbuff[0] = WAKESENSOR_CONFIG;
+	msp_cmdbuff[1] = g_wake_sensor_state & 0xFF;
+	msp_cmdbuff[2] = g_wake_sensor_state >> 8;
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 3);
+	if (err < 0)
+		ret_err = err;
+
+	msp_cmdbuff[0] = ALGO_CONFIG;
+	msp_cmdbuff[1] = g_algo_state & 0xFF;
+	msp_cmdbuff[2] = g_algo_state >> 8;
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 3);
+	if (err < 0)
+		ret_err = err;
+
+	msp_cmdbuff[0] = MOTION_DUR;
+	msp_cmdbuff[1] = g_motion_dur;
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
+	if (err < 0)
+		ret_err = err;
+
+	msp_cmdbuff[0] = ZRMOTION_DUR;
+	msp_cmdbuff[1] = g_zmotion_dur;
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
+	if (err < 0)
+		ret_err = err;
+
+	for (i = 0; i < MSP_NUM_ALGOS; i++) {
+		if (g_algo_requst[i].size > 0) {
+			msp_cmdbuff[0] = msp_algo_info[i].req_register;
+			memcpy(&msp_cmdbuff[1],
+				g_algo_requst[i].data,
+				g_algo_requst[i].size);
+			err = msp430_i2c_write_no_reset(msp430_misc_data,
+				msp_cmdbuff,
+				g_algo_requst[i].size + 1);
+		}
+	}
+
+	msp_cmdbuff[0] = INTERRUPT_STATUS;
+	msp430_i2c_write_read_no_reset(msp430_misc_data, msp_cmdbuff, 1, 2);
+	msp_cmdbuff[0] = WAKESENSOR_STATUS;
+	msp430_i2c_write_read_no_reset(msp430_misc_data, msp_cmdbuff, 1, 2);
+
 	return ret_err;
 }
 
@@ -704,8 +709,9 @@ static int msp430_i2c_write_read(struct msp430_data *ps_msp430, u8 *buf,
 {
 	int tries, err = 0;
 
-	if (ps_msp430->mode == FACTORYMODE)
+	if ((ps_msp430->mode == FACTORYMODE) || (ps_msp430->mode == BOOTMODE))
 		return err;
+
 	if (buf == NULL || writelen == 0 || readlen == 0)
 		return -EFAULT;
 
@@ -731,8 +737,9 @@ static int msp430_i2c_read(struct msp430_data *ps_msp430, u8 *buf, int len)
 {
 	int tries, err = 0;
 
-	if (ps_msp430->mode == FACTORYMODE)
+	if ((ps_msp430->mode == FACTORYMODE) || (ps_msp430->mode == BOOTMODE))
 		return err;
+
 	if (buf == NULL || len == 0)
 		return -EFAULT;
 	tries = 0;
@@ -755,7 +762,7 @@ static int msp430_i2c_write(struct msp430_data *ps_msp430, u8 *buf, int len)
 	int err = 0;
 	int tries = 0;
 
-	if (ps_msp430->mode == FACTORYMODE)
+	if ((ps_msp430->mode == FACTORYMODE) || (ps_msp430->mode == BOOTMODE))
 		return err;
 
 	tries = 0;
@@ -1596,7 +1603,7 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 			"msp430_misc_write: boot mode\n");
 		/* build the msp430 command to program code */
 		msp430_build_command(PROGRAM_CODE, buff, &len);
-		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
+		err = msp430_i2c_write_read_no_reset(ps_msp430, msp_cmdbuff,
 				 len, I2C_RESPONSE_LENGTH);
 		/* increment the current MSP write addr by count */
 		if (err == 0) {
@@ -1613,7 +1620,8 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 			err = -EINVAL;
 		}
 		if (err == 0)
-			err = msp430_i2c_write(ps_msp430, msp_cmdbuff, count);
+			err = msp430_i2c_write_no_reset(ps_msp430,
+				msp_cmdbuff, count);
 		if (err == 0)
 			err = len;
 	}
@@ -1681,13 +1689,13 @@ static int msp430_bootloadermode(struct msp430_data *ps_msp430)
 	/* send password reset command to unlock MSP	 */
 	dev_dbg(&ps_msp430->client->dev, "Password reset for reset vector\n");
 	msp430_build_command(PASSWORD_RESET, NULL, &cmdlen);
-	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
+	err = msp430_i2c_write_read_no_reset(ps_msp430, msp_cmdbuff,
 				cmdlen, I2C_RESPONSE_LENGTH);
 	/* password reset for reset vector failed */
 	if (err < 0) {
 		/* password for blank reset vector */
 		msp430_build_command(PASSWORD_RESET_DEFAULT, NULL, &cmdlen);
-		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
+		err = msp430_i2c_write_read_no_reset(ps_msp430, msp_cmdbuff,
 			cmdlen, I2C_RESPONSE_LENGTH);
 	}
 	return err;
@@ -1749,7 +1757,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	case MSP430_IOCTL_MASSERASE:
 		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_MASSERASE");
 		msp430_build_command(MASS_ERASE, NULL, &cmdlen);
-		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
+		err = msp430_i2c_write_read_no_reset(ps_msp430, msp_cmdbuff,
 					cmdlen, I2C_RESPONSE_LENGTH);
 		break;
 	case MSP430_IOCTL_SETSTARTADDR:
