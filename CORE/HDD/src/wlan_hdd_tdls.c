@@ -387,10 +387,20 @@ static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
 #ifdef CONFIG_TDLS_IMPLICIT
     hddTdlsPeer_t *curr_peer = (hddTdlsPeer_t *)userData;
 
-    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-               "%s: Tx/Rx Idle " MAC_ADDRESS_STR " trigger teardown",
-               __func__,
-               MAC_ADDR_ARRAY(curr_peer->peerMac));
+    if (NULL == curr_peer)
+    {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: Invalid tdls idle timer expired", __func__);
+      return;
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+              "%s: Tx/Rx Idle " MAC_ADDRESS_STR " tx_pkt: %d, rx_pkt: %d, idle_packet_n: %d\n",
+              __func__, MAC_ADDR_ARRAY(curr_peer->peerMac),
+              curr_peer->tx_pkt,
+              curr_peer->rx_pkt,
+              curr_peer->pHddTdlsCtx->threshold_config.idle_packet_n);
+
     if (mutex_lock_interruptible(&tdls_lock))
     {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -398,9 +408,27 @@ static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
        return;
     }
 
-    wlan_hdd_tdls_indicate_teardown(curr_peer->pHddTdlsCtx->pAdapter,
-                                    curr_peer,
-                                    eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+    /* Check tx/rx statistics on this tdls link for recent activities and
+     * then decide whether to tear down the link or keep it.
+     */
+    if ((curr_peer->tx_pkt >= curr_peer->pHddTdlsCtx->threshold_config.idle_packet_n) || (curr_peer->rx_pkt >= curr_peer->pHddTdlsCtx->threshold_config.idle_packet_n))
+    {
+      /* this tdls link got back to normal, so keep it */
+      VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+               "%s: tdls link to " MAC_ADDRESS_STR " back to normal, will stay",
+               __func__, MAC_ADDR_ARRAY(curr_peer->peerMac));
+    }
+    else
+    {
+      /* this tdls link needs to get torn down */
+      VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                "%s: trigger tdls link to " MAC_ADDRESS_STR " down",
+                __func__, MAC_ADDR_ARRAY(curr_peer->peerMac));
+
+      wlan_hdd_tdls_indicate_teardown(curr_peer->pHddTdlsCtx->pAdapter,
+                                      curr_peer,
+                                      eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+    }
     mutex_unlock(&tdls_lock);
 #endif
 }
