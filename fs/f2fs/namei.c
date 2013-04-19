@@ -88,7 +88,7 @@ static int is_multimedia_file(const unsigned char *s, const char *sub)
 	int ret;
 
 	if (sublen > slen)
-		return 1;
+		return 0;
 
 	ret = memcmp(s + slen - sublen, sub, sublen);
 	if (ret) {	/* compare upper case */
@@ -96,10 +96,10 @@ static int is_multimedia_file(const unsigned char *s, const char *sub)
 		char upper_sub[8];
 		for (i = 0; i < sublen && i < sizeof(upper_sub); i++)
 			upper_sub[i] = toupper(sub[i]);
-		return memcmp(s + slen - sublen, upper_sub, sublen);
+		return !memcmp(s + slen - sublen, upper_sub, sublen);
 	}
 
-	return ret;
+	return !ret;
 }
 
 /*
@@ -113,7 +113,7 @@ static inline void set_cold_files(struct f2fs_sb_info *sbi, struct inode *inode,
 
 	int count = le32_to_cpu(sbi->raw_super->extension_count);
 	for (i = 0; i < count; i++) {
-		if (!is_multimedia_file(name, extlist[i])) {
+		if (is_multimedia_file(name, extlist[i])) {
 			set_cold_file(inode);
 			break;
 		}
