@@ -823,7 +823,7 @@ static int msm_vpe_process_vpe_cmd(struct msm_vpe_cfg_cmd *vpe_cmd,
 
 		zoom->user_cmd = vpe_cmd->cmd_type;
 		zoom->p_mctl = v4l2_get_subdev_hostdata(&vpe_ctrl->subdev);
-		D("%s: cookie=0x%x,action=0x%x,path=0x%x",
+	    D("%s: cookie=0x%x,action=0x%x,path=0x%x",
 			__func__, zoom->pp_frame_cmd.cookie,
 			zoom->pp_frame_cmd.vpe_output_action,
 			zoom->pp_frame_cmd.path);
@@ -853,7 +853,6 @@ static int msm_vpe_process_vpe_cmd(struct msm_vpe_cfg_cmd *vpe_cmd,
 		}
 
 		rc = msm_vpe_do_pp(zoom);
-		kfree(zoom);
 		break;
 		}
 
