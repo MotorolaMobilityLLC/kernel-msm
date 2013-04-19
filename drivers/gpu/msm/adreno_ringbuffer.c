@@ -14,6 +14,8 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/log2.h>
+#include <linux/time.h>
+#include <linux/delay.h>
 
 #include "kgsl.h"
 #include "kgsl_sharedmem.h"
@@ -209,8 +211,16 @@ err:
 	return ret;
 }
 
-
-int adreno_ringbuffer_load_pm4_ucode(struct kgsl_device *device)
+/**
+ * adreno_ringbuffer_load_pm4_ucode() - Load pm4 ucode
+ * @device: Pointer to a KGSL device
+ * @start: Starting index in pm4 ucode to load
+ * @addr: Address to load the pm4 ucode
+ *
+ * Load the pm4 ucode from @start at @addr.
+ */
+int adreno_ringbuffer_load_pm4_ucode(struct kgsl_device *device,
+					unsigned int start, unsigned int addr)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	int i;
@@ -225,7 +235,7 @@ int adreno_ringbuffer_load_pm4_ucode(struct kgsl_device *device)
 		adreno_dev->pm4_fw_version);
 
 	adreno_writereg(adreno_dev, ADRENO_REG_CP_DEBUG, CP_DEBUG_DEFAULT);
-	adreno_writereg(adreno_dev, ADRENO_REG_CP_ME_RAM_WADDR, 0);
+	adreno_writereg(adreno_dev, ADRENO_REG_CP_ME_RAM_WADDR, addr);
 	for (i = 1; i < adreno_dev->pm4_fw_size; i++)
 		adreno_writereg(adreno_dev, ADRENO_REG_CP_ME_RAM_DATA,
 					adreno_dev->pm4_fw[i]);
@@ -264,7 +274,16 @@ err:
 	return ret;
 }
 
-int adreno_ringbuffer_load_pfp_ucode(struct kgsl_device *device)
+/**
+ * adreno_ringbuffer_load_pfp_ucode() - Load pfp ucode
+ * @device: Pointer to a KGSL device
+ * @start: Starting index in pfp ucode to load
+ * @addr: Address to load the pfp ucode
+ *
+ * Load the pfp ucode from @start at @addr.
+ */
+int adreno_ringbuffer_load_pfp_ucode(struct kgsl_device *device,
+					unsigned int start, unsigned int addr)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	int i;
@@ -278,7 +297,7 @@ int adreno_ringbuffer_load_pfp_ucode(struct kgsl_device *device)
 	KGSL_DRV_INFO(device, "loading pfp ucode version: %d\n",
 			adreno_dev->pfp_fw_version);
 
-	adreno_writereg(adreno_dev, ADRENO_REG_CP_PFP_UCODE_ADDR, 0);
+	adreno_writereg(adreno_dev, ADRENO_REG_CP_PFP_UCODE_ADDR, addr);
 	for (i = 1; i < adreno_dev->pfp_fw_size; i++)
 		adreno_writereg(adreno_dev, ADRENO_REG_CP_PFP_UCODE_DATA,
 						adreno_dev->pfp_fw[i]);
@@ -286,7 +305,13 @@ int adreno_ringbuffer_load_pfp_ucode(struct kgsl_device *device)
 	return 0;
 }
 
-int adreno_ringbuffer_start(struct adreno_ringbuffer *rb)
+/**
+ * _ringbuffer_start_common() - Ringbuffer start
+ * @rb: Pointer to adreno ringbuffer
+ *
+ * Setup ringbuffer for GPU.
+ */
+int _ringbuffer_start_common(struct adreno_ringbuffer *rb)
 {
 	int status;
 	union reg_cp_rb_cntl cp_rb_cntl;
@@ -361,16 +386,6 @@ int adreno_ringbuffer_start(struct adreno_ringbuffer *rb)
 	adreno_writereg(adreno_dev, ADRENO_REG_SCRATCH_UMSK,
 			     GSL_RB_MEMPTRS_SCRATCH_MASK);
 
-	/* load the CP ucode */
-	status = adreno_ringbuffer_load_pm4_ucode(device);
-	if (status != 0)
-		return status;
-
-	/* load the prefetch parser ucode */
-	status = adreno_ringbuffer_load_pfp_ucode(device);
-	if (status != 0)
-		return status;
-
 	/* CP ROQ queue sizes (bytes) - RB:16, ST:16, IB1:32, IB2:64 */
 	if (adreno_is_a305(adreno_dev) || adreno_is_a305c(adreno_dev) ||
 		adreno_is_a320(adreno_dev))
@@ -395,6 +410,54 @@ int adreno_ringbuffer_start(struct adreno_ringbuffer *rb)
 		rb->flags |= KGSL_FLAGS_STARTED;
 
 	return status;
+}
+
+/**
+ * adreno_ringbuffer_warm_start() - Ringbuffer warm start
+ * @rb: Pointer to adreno ringbuffer
+ *
+ * Start the ringbuffer but load only jump tables part of the
+ * microcode.
+ */
+int adreno_ringbuffer_warm_start(struct adreno_ringbuffer *rb)
+{
+	int status;
+	struct kgsl_device *device = rb->device;
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+
+	/* load the CP ucode */
+	status = adreno_ringbuffer_load_pm4_ucode(device,
+			adreno_dev->pm4_jt_idx, adreno_dev->pm4_jt_addr);
+	if (status != 0)
+		return status;
+
+	/* load the prefetch parser ucode */
+	status = adreno_ringbuffer_load_pfp_ucode(device,
+			adreno_dev->pfp_jt_idx, adreno_dev->pfp_jt_addr);
+	if (status != 0)
+		return status;
+
+	return _ringbuffer_start_common(rb);
+}
+
+int adreno_ringbuffer_start(struct adreno_ringbuffer *rb)
+{
+	int status;
+
+	if (rb->flags & KGSL_FLAGS_STARTED)
+		return 0;
+
+	/* load the CP ucode */
+	status = adreno_ringbuffer_load_pm4_ucode(rb->device, 1, 0);
+	if (status != 0)
+		return status;
+
+	/* load the prefetch parser ucode */
+	status = adreno_ringbuffer_load_pfp_ucode(rb->device, 1, 0);
+	if (status != 0)
+		return status;
+
+	return _ringbuffer_start_common(rb);
 }
 
 void adreno_ringbuffer_stop(struct adreno_ringbuffer *rb)

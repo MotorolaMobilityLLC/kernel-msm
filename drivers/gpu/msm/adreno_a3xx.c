@@ -3549,6 +3549,30 @@ void a3xx_coresight_config_debug_reg(struct kgsl_device *device,
 
 }
 
+/*
+ * a3xx_soft_reset() - Soft reset GPU
+ * @adreno_dev: Pointer to adreno device
+ *
+ * Soft reset the GPU by doing a AHB write of value 1 to RBBM_SW_RESET
+ * register. This is used when we want to reset the GPU without
+ * turning off GFX power rail. The reset when asserted resets
+ * all the HW logic, restores GPU registers to default state and
+ * flushes out pending VBIF transactions.
+ */
+static void a3xx_soft_reset(struct adreno_device *adreno_dev)
+{
+	struct kgsl_device *device = &adreno_dev->dev;
+	unsigned int reg;
+
+	kgsl_regwrite(device, A3XX_RBBM_SW_RESET_CMD, 1);
+	/*
+	 * Do a dummy read to get a brief read cycle delay for the reset to take
+	 * effect
+	 */
+	kgsl_regread(device, A3XX_RBBM_SW_RESET_CMD, &reg);
+	kgsl_regwrite(device, A3XX_RBBM_SW_RESET_CMD, 0);
+}
+
 /* Defined in adreno_a3xx_snapshot.c */
 void *a3xx_snapshot(struct adreno_device *adreno_dev, void *snapshot,
 	int *remain, int hang);
@@ -3800,4 +3824,5 @@ struct adreno_gpudev adreno_a3xx_gpudev = {
 	.coresight_disable = a3xx_coresight_disable,
 	.coresight_config_debug_reg = a3xx_coresight_config_debug_reg,
 	.postmortem_dump = a3xx_postmortem_dump,
+	.soft_reset = a3xx_soft_reset,
 };
