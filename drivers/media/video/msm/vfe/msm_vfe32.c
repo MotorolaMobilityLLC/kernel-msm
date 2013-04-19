@@ -5732,7 +5732,7 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 		if (arg) {
 			vfe_params = (struct msm_camvfe_params *)arg;
 			cmd = vfe_params->vfe_cfg;
-			if (cmd->cmd_type != VFE_CMD_STATS_REQBUF &&
+			if (cmd && cmd->cmd_type != VFE_CMD_STATS_REQBUF &&
 				cmd->cmd_type != VFE_CMD_STATS_ENQUEUEBUF &&
 				cmd->cmd_type != VFE_CMD_STATS_FLUSH_BUFQ &&
 				cmd->cmd_type != VFE_CMD_STATS_UNREGBUF &&
@@ -5752,8 +5752,17 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 		return 0;
 	}
 	vfe_params = (struct msm_camvfe_params *)arg;
-	cmd = vfe_params->vfe_cfg;
-	data = vfe_params->data;
+	if (vfe_params) {
+		cmd = vfe_params->vfe_cfg;
+		data = vfe_params->data;
+		if (!cmd) {
+			pr_err("%s: vfe_params->vfe_cfg is NULL\n",__func__);
+			return -EFAULT;
+		}
+	} else {
+		pr_err("%s: vfe_params is NULL\n",__func__);
+		return -EFAULT;
+	}
 	switch (cmd->cmd_type) {
 	case CMD_VFE_PROCESS_IRQ:
 		vfe32_process_irq(vfe32_ctrl, (uint32_t) data);
