@@ -411,7 +411,8 @@ typedef enum device_mode
    WLAN_HDD_P2P_GO,
    WLAN_HDD_MONITOR,
    WLAN_HDD_FTM,
-   WLAN_HDD_P2P_DEVICE
+   WLAN_HDD_IBSS,
+   WLAN_HDD_P2P_DEVICE,
 }device_mode_t;
 
 typedef enum rem_on_channel_request_type

@@ -39,8 +39,9 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
+
 /*
- * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limLinkMonitoringAlgo.cc contains the code for
  * Link monitoring algorithm on AP and heart beat failure
  * handling on STA.
@@ -131,6 +132,9 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         case HAL_DEL_STA_REASON_CODE_KEEP_ALIVE:
         case HAL_DEL_STA_REASON_CODE_TIM_BASED:
              PELOGE(limLog(pMac, LOGE, FL(" Deleting station: staId = %d, reasonCode = %d"), pMsg->staId, pMsg->reasonCode);)
+             if (eLIM_STA_IN_IBSS_ROLE == psessionEntry->limSystemRole)
+                 return;
+
              pStaDs = dphLookupAssocId(pMac, pMsg->staId, &pMsg->assocId, &psessionEntry->dph.dphHashTable);
 
              if (!pStaDs)

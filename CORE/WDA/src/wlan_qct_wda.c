@@ -4725,7 +4725,9 @@ void WDA_SetLinkStateCallback(WDI_Status status, void* pUserData)
     * and in AP mode start BA activity check timer after BSS start */
    if( ((linkStateParams->state == eSIR_LINK_POSTASSOC_STATE) &&
          status == WDI_STATUS_SUCCESS) ||  ((status == WDI_STATUS_SUCCESS) &&
-       (linkStateParams->state == eSIR_LINK_AP_STATE)) )
+       (linkStateParams->state == eSIR_LINK_AP_STATE)) ||
+       ((status == WDI_STATUS_SUCCESS) &&
+       (linkStateParams->state == eSIR_LINK_IBSS_STATE)))
    {
       WDA_START_TIMER(&pWDA->wdaTimers.baActivityChkTmr);
    }

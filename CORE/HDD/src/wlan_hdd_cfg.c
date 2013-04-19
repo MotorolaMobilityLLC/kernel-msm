@@ -2140,6 +2140,21 @@ REG_VARIABLE( CFG_ANDRIOD_POWER_SAVE_NAME, WLAN_PARAM_Integer,
               CFG_ANDRIOD_POWER_SAVE_MIN,
               CFG_ANDRIOD_POWER_SAVE_MAX),
 
+REG_VARIABLE( CFG_IBSS_ADHOC_CHANNEL_5GHZ_NAME, WLAN_PARAM_Integer,
+              hdd_config_t, AdHocChannel5G,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_IBSS_ADHOC_CHANNEL_5GHZ_DEFAULT,
+              CFG_IBSS_ADHOC_CHANNEL_5GHZ_MIN,
+              CFG_IBSS_ADHOC_CHANNEL_5GHZ_MAX),
+
+REG_VARIABLE( CFG_IBSS_ADHOC_CHANNEL_24GHZ_NAME, WLAN_PARAM_Integer,
+              hdd_config_t, AdHocChannel24G,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_IBSS_ADHOC_CHANNEL_24GHZ_DEFAULT,
+              CFG_IBSS_ADHOC_CHANNEL_24GHZ_MIN,
+              CFG_IBSS_ADHOC_CHANNEL_24GHZ_MAX),
+
+
 #ifdef WLAN_FEATURE_11AC
 REG_VARIABLE( CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE, WLAN_PARAM_Integer,
              hdd_config_t, enableTxBF,
@@ -3760,7 +3775,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
     smeConfig.csrConfig.enableTxBF = pConfig->enableTxBF;
     smeConfig.csrConfig.txBFCsnValue = pConfig->txBFCsnValue;
 #endif
-   smeConfig.csrConfig.AdHocChannel5G            = 44;
+   smeConfig.csrConfig.AdHocChannel5G            = pConfig->AdHocChannel5G;
+   smeConfig.csrConfig.AdHocChannel24            = pConfig->AdHocChannel24G;
    smeConfig.csrConfig.ProprietaryRatesEnabled   = 0;
    smeConfig.csrConfig.HeartbeatThresh50         = 40;
    smeConfig.csrConfig.bandCapability            = pConfig->nBandCapability;

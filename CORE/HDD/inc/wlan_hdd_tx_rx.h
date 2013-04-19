@@ -254,4 +254,14 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter);
   ===========================================================================*/
 void hdd_mon_tx_work_queue(struct work_struct *work);
 
+/**============================================================================
+  @brief hdd_Ibss_GetStaId() - Get the StationID using the Peer Mac address
+  @param pHddStaCtx : [in] pointer to HDD Station Context
+  pMacAddress [in]  pointer to Peer Mac address
+  staID [out]  pointer to Station Index
+  @return    : VOS_STATUS_SUCCESS/VOS_STATUS_E_FAILURE
+  ===========================================================================*/
+VOS_STATUS hdd_Ibss_GetStaId(hdd_station_ctx_t *pHddStaCtx,
+                                  v_MACADDR_t *pMacAddress, v_U8_t *staId);
+
 #endif    // end #if !defined( WLAN_HDD_TX_RX_H )
