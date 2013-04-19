@@ -1769,6 +1769,8 @@ static int msm_fb_open(struct fb_info *info, int user)
 	}
 
 	if (mfd->op_enable == 0) {
+		if (info->node == 2)
+			return -EPERM;
 		/* if system is in suspend mode, do not unblank */
 		mfd->ref_cnt++;
 		return 0;
