@@ -106,6 +106,8 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 
 int adreno_ringbuffer_init(struct kgsl_device *device);
 
+int adreno_ringbuffer_warm_start(struct adreno_ringbuffer *rb);
+
 int adreno_ringbuffer_start(struct adreno_ringbuffer *rb);
 
 void adreno_ringbuffer_stop(struct adreno_ringbuffer *rb);
