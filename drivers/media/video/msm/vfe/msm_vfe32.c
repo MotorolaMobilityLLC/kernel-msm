@@ -4949,7 +4949,6 @@ fs_failed:
 	iounmap(axi_ctrl->share_ctrl->vfebase);
 	axi_ctrl->share_ctrl->vfebase = NULL;
 remap_failed:
-	disable_irq(axi_ctrl->vfeirq->start);
 mctl_failed:
 	return rc;
 }
@@ -4994,7 +4993,7 @@ void msm_axi_subdev_release(struct v4l2_subdev *sd)
 	disable_irq(axi_ctrl->vfeirq->start);
 	tasklet_kill(&axi_ctrl->vfe32_tasklet);
 
-#ifdef CONFIG_MSM_IOMMU 
+#ifdef CONFIG_MSM_IOMMU
         iommu_detach_device(pmctl->domain, axi_ctrl->iommu_ctx_misc);
         iommu_detach_device(pmctl->domain, axi_ctrl->iommu_ctx_imgwr);
 #endif

@@ -911,21 +911,21 @@ int msm_mctl_buf_return_buf(struct msm_cam_media_controller *pmctl,
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 /* Unmap using ION APIs */
 static void __msm_mctl_unmap_user_frame(struct msm_cam_meta_frame *meta_frame,
-	struct ion_client *client)
+	struct ion_client *client, int domain_num)
 {
 	int i = 0;
 	for (i = 0; i < meta_frame->frame.num_planes; i++) {
 		D("%s Plane %d handle %p", __func__, i,
 			meta_frame->map[i].handle);
 		ion_unmap_iommu(client, meta_frame->map[i].handle,
-					CAMERA_DOMAIN, GEN_POOL);
+					domain_num, 0);
 		ion_free(client, meta_frame->map[i].handle);
 	}
 }
 
 /* Map using ION APIs */
 static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
-	struct ion_client *client)
+	struct ion_client *client, int domain_num)
 {
 	unsigned long paddr = 0;
 	unsigned long len = 0;
@@ -941,7 +941,7 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 			for (j = i-1; j >= 0; j--) {
 				ion_unmap_iommu(client,
 					meta_frame->map[j].handle,
-					CAMERA_DOMAIN, GEN_POOL);
+					domain_num, 0);
 				ion_free(client, meta_frame->map[j].handle);
 			}
 			return -EACCES;
@@ -950,8 +950,8 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 			meta_frame->frame.mp[i].fd, i,
 			meta_frame->map[i].handle);
 		if (ion_map_iommu(client, meta_frame->map[i].handle,
-				CAMERA_DOMAIN, GEN_POOL, SZ_4K,
-				0, &paddr, &len, UNCACHED, 0) < 0) {
+				domain_num, 0, SZ_4K,
+				0, &paddr, &len, 0, 0) < 0) {
 			pr_err("%s: cannot map address plane %d", __func__, i);
 			ion_free(client, meta_frame->map[i].handle);
 			/* Roll back previous plane mappings, if any */
@@ -959,7 +959,7 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 				if (meta_frame->map[j].handle) {
 					ion_unmap_iommu(client,
 						meta_frame->map[j].handle,
-						CAMERA_DOMAIN, GEN_POOL);
+						domain_num, 0);
 					ion_free(client,
 						meta_frame->map[j].handle);
 				}
@@ -980,7 +980,7 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 				if (meta_frame->map[j].handle) {
 					ion_unmap_iommu(client,
 						meta_frame->map[j].handle,
-						CAMERA_DOMAIN, GEN_POOL);
+						domain_num, 0);
 					ion_free(client,
 						meta_frame->map[j].handle);
 				}
@@ -1007,7 +1007,7 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 #else
 /* Unmap using PMEM APIs */
 static int __msm_mctl_unmap_user_frame(struct msm_cam_meta_frame *meta_frame,
-	struct ion_client *client)
+	struct ion_client *client, int domain_num)
 {
 	int i = 0, rc = 0;
 
@@ -1020,7 +1020,7 @@ static int __msm_mctl_unmap_user_frame(struct msm_cam_meta_frame *meta_frame,
 
 /* Map using PMEM APIs */
 static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
-	struct ion_client *client)
+	struct ion_client *client, int domain_num)
 {
 	unsigned long kvstart = 0;
 	unsigned long paddr = 0;
@@ -1079,7 +1079,7 @@ static int __msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 #endif
 
 int msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
-	struct ion_client *client)
+	struct ion_client *client, int domain_num)
 {
 
 	if ((NULL == meta_frame) || (NULL == client)) {
@@ -1090,16 +1090,16 @@ int msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
 	memset(&meta_frame->map[0], 0,
 		sizeof(struct msm_cam_buf_map_info) * VIDEO_MAX_PLANES);
 
-	return __msm_mctl_map_user_frame(meta_frame, client);
+	return __msm_mctl_map_user_frame(meta_frame, client, domain_num);
 }
 
 int msm_mctl_unmap_user_frame(struct msm_cam_meta_frame *meta_frame,
-	struct ion_client *client)
+	struct ion_client *client, int domain_num)
 {
 	if ((NULL == meta_frame) || (NULL == client)) {
 		pr_err("%s Invalid input ", __func__);
 		return -EINVAL;
 	}
-	__msm_mctl_unmap_user_frame(meta_frame, client);
+	__msm_mctl_unmap_user_frame(meta_frame, client, domain_num);
 	return 0;
 }

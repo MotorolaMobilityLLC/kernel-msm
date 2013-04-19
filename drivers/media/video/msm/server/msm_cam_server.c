@@ -2645,6 +2645,7 @@ static int msm_open_config(struct inode *inode, struct file *fp)
 		pr_err("%s: cannot find mctl\n", __func__);
 		return -ENODEV;
 	}
+
 	INIT_HLIST_HEAD(&config_cam->p_mctl->stats_info.pmem_stats_list);
 	spin_lock_init(&config_cam->p_mctl->stats_info.pmem_stats_spinlock);
 

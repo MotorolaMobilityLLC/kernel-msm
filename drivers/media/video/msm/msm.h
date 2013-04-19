@@ -316,7 +316,6 @@ struct msm_cam_media_controller {
 	/*IOMMU domain for this session*/
 	int domain_num;
 	struct iommu_domain *domain;
-
 };
 
 /* abstract camera device represents a VFE and connected sensor */
@@ -665,7 +664,7 @@ int msm_isp_subdev_ioctl(struct v4l2_subdev *sd,
 	struct msm_vfe_cfg_cmd *cfgcmd, void *data);
 int msm_vpe_subdev_init(struct v4l2_subdev *sd);
 int msm_gemini_subdev_init(struct v4l2_subdev *gemini_sd);
-void msm_vpe_subdev_release(void);
+void msm_vpe_subdev_release(struct v4l2_subdev *sd);
 void msm_gemini_subdev_release(struct v4l2_subdev *gemini_sd);
 int msm_mctl_is_pp_msg_type(struct msm_cam_media_controller *p_mctl,
 	int msg_type);
@@ -711,9 +710,9 @@ struct msm_cam_v4l2_dev_inst *msm_mctl_get_pcam_inst(
 int msm_mctl_buf_return_buf(struct msm_cam_media_controller *pmctl,
 	int image_mode, struct msm_frame_buffer *buf);
 int msm_mctl_map_user_frame(struct msm_cam_meta_frame *meta_frame,
-	struct ion_client *client);
+	struct ion_client *client, int domain_num);
 int msm_mctl_unmap_user_frame(struct msm_cam_meta_frame *meta_frame,
-	struct ion_client *client);
+	struct ion_client *client, int domain_num);
 int msm_mctl_pp_mctl_divert_done(struct msm_cam_media_controller *p_mctl,
 	void __user *arg);
 void msm_release_ion_client(struct kref *ref);
