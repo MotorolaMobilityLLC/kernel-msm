@@ -928,6 +928,8 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 	/* disable dsi trigger */
 	MDP_OUTP(MDP_BASE + 0x000a4, 0x00);
 
+	mdp4_overlay_solidfill_init(pipe);
+
 	mdp4_overlay_setup_pipe_addr(mfd, pipe);
 
 	mdp4_overlay_rgb_setup(pipe);
