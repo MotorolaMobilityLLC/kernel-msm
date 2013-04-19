@@ -345,7 +345,6 @@ struct msm_mctl_pp_frame_cmd {
 	int path;
 	/* TBD: 3D related */
 };
-
 #define VFE_OUTPUTS_MAIN_AND_PREVIEW    BIT(0)
 #define VFE_OUTPUTS_MAIN_AND_VIDEO      BIT(1)
 #define VFE_OUTPUTS_MAIN_AND_THUMB      BIT(2)
