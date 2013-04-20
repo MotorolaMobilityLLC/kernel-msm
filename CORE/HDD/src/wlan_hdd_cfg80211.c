@@ -6960,6 +6960,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     VOS_STATUS status;
     int max_sta_failed = 0;
     int responder;
+    long rc;
 
     if (NULL == pHddCtx || NULL == pHddCtx->cfg_ini)
     {
@@ -7110,22 +7111,16 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
         goto error;
     }
 
-    /* not block discovery request, as it is called from timer callback */
-    if (SIR_MAC_TDLS_DIS_REQ !=  action_code)
+    rc = wait_for_completion_interruptible_timeout(&pAdapter->tdls_mgmt_comp,
+                                                        msecs_to_jiffies(WAIT_TIME_TDLS_MGMT));
+
+    if ((rc <= 0) || (TRUE != pAdapter->mgmtTxCompletionStatus))
     {
-        long rc;
-
-        rc = wait_for_completion_interruptible_timeout(&pAdapter->tdls_mgmt_comp,
-                                                            msecs_to_jiffies(WAIT_TIME_TDLS_MGMT));
-
-        if ((rc <= 0) || (TRUE != pAdapter->mgmtTxCompletionStatus))
-        {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "%s: Mgmt Tx Completion failed status %ld TxCompletion %lu",
-                      __func__, rc, pAdapter->mgmtTxCompletionStatus);
-            wlan_hdd_tdls_check_bmps(pAdapter);
-            goto error;
-        }
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Mgmt Tx Completion failed status %ld TxCompletion %lu",
+                  __func__, rc, pAdapter->mgmtTxCompletionStatus);
+        wlan_hdd_tdls_check_bmps(pAdapter);
+        goto error;
     }
 
     if (max_sta_failed)
