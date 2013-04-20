@@ -96,6 +96,7 @@
 #include "wlan_hdd_softap_tx_rx.h"
 #include "wlan_hdd_main.h"
 #include "wlan_hdd_assoc.h"
+#include "wlan_hdd_power.h"
 #ifdef WLAN_BTAMP_FEATURE
 #include "bap_hdd_misc.h"
 #endif
@@ -6559,6 +6560,7 @@ static int wlan_hdd_cfg80211_set_power_mgmt(struct wiphy *wiphy,
                      struct net_device *dev, bool mode, v_SINT_t timeout)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_context_t *pHddCtx;
     VOS_STATUS vos_status;
 
     ENTER();
@@ -6573,6 +6575,28 @@ static int wlan_hdd_cfg80211_set_power_mgmt(struct wiphy *wiphy,
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s:LOGP in Progress. Ignore!!!", __func__);
         return -EAGAIN;
+    }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    if (NULL == pHddCtx)
+    {
+        hddLog(VOS_TRACE_LEVEL_FATAL, "%s: HDD context is NULL\n", __func__);
+        return -ENODEV;
+    }
+
+    if ((DRIVER_POWER_MODE_AUTO == !mode) &&
+        (TRUE == pHddCtx->hdd_wlan_suspended) &&
+        (pHddCtx->cfg_ini->fhostArpOffload) &&
+        (eConnectionState_Associated ==
+             (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState))
+    {
+        vos_status = hdd_conf_hostarpoffload(pAdapter, TRUE);
+        if (!VOS_IS_STATUS_SUCCESS(vos_status))
+        {
+            hddLog(VOS_TRACE_LEVEL_INFO,
+                   "%s:Failed to enable ARPOFFLOAD Feature %d\n",
+                   __func__, vos_status);
+        }
     }
 
     /**The get power cmd from the supplicant gets updated by the nl only
