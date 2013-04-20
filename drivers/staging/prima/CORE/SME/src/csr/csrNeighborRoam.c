@@ -2098,6 +2098,17 @@ eHalStatus csrNeighborRoamPerformBgScan(tpAniSirGlobal pMac)
         csrNeighborRoamHandleEmptyScanResult(pMac);
         return status;
     }
+
+    /* Validate the currentChanIndex value before using it to index the ChannelList array */
+    if ( pNeighborRoamInfo->roamChannelInfo.currentChanIndex
+            > pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels)
+    {
+        NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Invalid channel index: %d"), pNeighborRoamInfo->roamChannelInfo.currentChanIndex);
+        // Go back and restart.
+        csrNeighborRoamHandleEmptyScanResult(pMac);
+        return status;
+    }
+
     /* Need to perform scan here before getting the list */
 
     palZeroMemory(pMac->hHdd, &bgScanParams, sizeof(tCsrBGScanRequest));

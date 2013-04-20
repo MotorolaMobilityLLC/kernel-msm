@@ -144,7 +144,11 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 
 /* the Android framework expects this param even though we don't use it */
 #define BUF_LEN 20
-static char fwpath[BUF_LEN];
+static char fwpath_buffer[BUF_LEN];
+static struct kparam_string fwpath = {
+   .string = fwpath_buffer,
+   .maxlen = BUF_LEN,
+};
 #ifndef MODULE
 static int wlan_hdd_inited;
 #endif
@@ -5178,8 +5182,7 @@ static void __exit hdd_module_exit(void)
 static int fwpath_changed_handler(const char *kmessage,
                                  struct kernel_param *kp)
 {
-   /* nothing to do when driver is DLKM */
-   return 0;
+   return param_set_copystring(kmessage, kp);
 }
 
 static int con_mode_handler(const char *kmessage,
@@ -5190,18 +5193,18 @@ static int con_mode_handler(const char *kmessage,
 #else /* #ifdef MODULE */
 /**---------------------------------------------------------------------------
 
-  \brief fwpath_changed_handler() - Handler Function
+  \brief kickstart_driver
 
-   This is the driver entry point 
+   This is the driver entry point
    - delayed driver initialization when driver is statically linked
-   - invoked when module parameter fwpath is modified from userpspace to signal 
-    initializing the WLAN driver
+   - invoked when module parameter fwpath is modified from userspace to signal
+     initializing the WLAN driver or when con_mode is modified from userspace
+     to signal a switch in operating mode
 
   \return - 0 for success, non zero for failure
 
   --------------------------------------------------------------------------*/
-static int fwpath_changed_handler(const char *kmessage,
-                                 struct kernel_param *kp)
+static int kickstart_driver(void)
 {
    int ret_status;
 
@@ -5212,12 +5215,32 @@ static int fwpath_changed_handler(const char *kmessage,
    }
 
    hdd_driver_exit();
-   
+
    msleep(200);
-   
+
    ret_status = hdd_driver_init();
    wlan_hdd_inited = ret_status ? 0 : 1;
    return ret_status;
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief fwpath_changed_handler() - Handler Function
+
+   Handle changes to the fwpath parameter
+
+  \return - 0 for success, non zero for failure
+
+  --------------------------------------------------------------------------*/
+static int fwpath_changed_handler(const char *kmessage,
+                                  struct kernel_param *kp)
+{
+   int ret;
+
+   ret = param_set_copystring(kmessage, kp);
+   if (0 == ret)
+      ret = kickstart_driver();
+   return ret;
 }
 
 /**---------------------------------------------------------------------------
@@ -5228,20 +5251,19 @@ static int fwpath_changed_handler(const char *kmessage,
   Dynamically linked - do nothing
   Statically linked - exit and init driver, as in rmmod and insmod
 
-  \param  - 
+  \param  -
 
-  \return - 
+  \return -
 
   --------------------------------------------------------------------------*/
-static int con_mode_handler(const char *kmessage,
-                                 struct kernel_param *kp)
+static int con_mode_handler(const char *kmessage, struct kernel_param *kp)
 {
-   int ret = param_set_int(kmessage, kp);
+   int ret;
 
-   if (ret)
-       return ret;
-
-   return fwpath_changed_handler(kmessage, kp);
+   ret = param_set_int(kmessage, kp);
+   if (0 == ret)
+      ret = kickstart_driver();
+   return ret;
 }
 #endif /* #ifdef MODULE */
 
@@ -5673,5 +5695,5 @@ MODULE_DESCRIPTION("WLAN HOST DEVICE DRIVER");
 module_param_call(con_mode, con_mode_handler, param_get_int, &con_mode,
                     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-module_param_call(fwpath, fwpath_changed_handler, param_get_string, fwpath,
+module_param_call(fwpath, fwpath_changed_handler, param_get_string, &fwpath,
                     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
