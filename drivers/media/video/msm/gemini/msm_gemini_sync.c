@@ -754,14 +754,6 @@ int msm_gemini_ioctl_reset(struct msm_gemini_device *pgmn_dev,
 	return rc;
 }
 
-int msm_gemini_ioctl_test_dump_region(struct msm_gemini_device *pgmn_dev,
-	unsigned long arg)
-{
-	GMN_DBG("%s:%d] Enter\n", __func__, __LINE__);
-	msm_gemini_hw_region_dump(arg);
-	return 0;
-}
-
 long __msm_gemini_ioctl(struct msm_gemini_device *pgmn_dev,
 	unsigned int cmd, unsigned long arg)
 {
@@ -824,10 +816,6 @@ long __msm_gemini_ioctl(struct msm_gemini_device *pgmn_dev,
 
 	case MSM_GMN_IOCTL_HW_CMDS:
 		rc = msm_gemini_ioctl_hw_cmds(pgmn_dev, (void __user *) arg);
-		break;
-
-	case MSM_GMN_IOCTL_TEST_DUMP_REGION:
-		rc = msm_gemini_ioctl_test_dump_region(pgmn_dev, arg);
 		break;
 
 	default:
