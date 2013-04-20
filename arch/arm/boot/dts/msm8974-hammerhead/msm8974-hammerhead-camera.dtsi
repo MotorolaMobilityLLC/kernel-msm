@@ -52,31 +52,32 @@
 			qcom,sensor-mode = <0>;
 			qcom,cci-master = <0>;
 		};
-	qcom,camera@6c {
+
+	qcom,camera@90 {
 			status = "ok";
-			compatible = "qcom,imx132";
-			reg = <0x6c 0x0>;
-			qcom,slave-id = <0x6c 0x0 0x132>;
+			compatible = "qcom,mt9m114";
+			reg = <0x90 0x0>;
+			qcom,slave-id = <0x90 0x0 0x2481>;
 			qcom,csiphy-sd-index = <2>;
 			qcom,csid-sd-index = <0>;
 			qcom,flash-type = <0>;
-			qcom,mount-angle = <0>;
-			qcom,sensor-name = "imx132";
-			cam_vana-supply = <&pm8941_l17>;
+			qcom,mount-angle = <270>;
+			qcom,sensor-name = "mt9m114";
+			cam_vana-supply = <&pm8941_l18>;
 			cam_vio-supply = <&pm8941_lvs2>;
 			qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
 			qcom,cam-vreg-type = <0 1 0>;
-			qcom,cam-vreg-min-voltage = <1225000 0 2850000>;
-			qcom,cam-vreg-max-voltage = <1225000 0 2850000>;
-			qcom,cam-vreg-op-mode = <105000 0 80000>;
+			qcom,cam-vreg-min-voltage = <0 0 2850000>;
+			qcom,cam-vreg-max-voltage = <0 0 2850000>;
+			qcom,cam-vreg-op-mode = <0 0 2850000>;
 			qcom,gpio-no-mux = <0>;
 			gpios = <&msmgpio 17 0>, //VT_CAM_MCLK
 				<&msmgpio 18 0>, //VT_CAM_RESET
-				<&pm8941_gpios 10 0>; //VT_LDO_EN
+				<&msmgpio 30 0>; //VT_LDO_EN
 			qcom,gpio-reset = <1>;
 			qcom,gpio-vdig = <2>;
 			qcom,gpio-req-tbl-num = <0 1 2>;
-			qcom,gpio-req-tbl-flags = <0 1 0>;
+			qcom,gpio-req-tbl-flags = <0 0 0>;
 			qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
 						     "CAM_RESET2",
 						     "VT_LDO_EN";
