@@ -2729,5 +2729,6 @@ VOS_STATUS sme_StartTdlsLinkSetupReq(tHalHandle hHal, tANI_U8 sessionId, tSirMac
 VOS_STATUS sme_StartTdlsLinkTeardownReq(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
 
 #endif /* FEATURE_WLAN_TDLS */
+eHalStatus sme_UpdateDfsSetting(tHalHandle hHal, tANI_U8 fUpdateEnableDFSChnlScan);
 
 #endif //#if !defined( __SME_API_H )

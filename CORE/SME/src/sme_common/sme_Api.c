@@ -8071,3 +8071,20 @@ VOS_STATUS sme_StartTdlsLinkTeardownReq(tHalHandle hHal, tANI_U8 sessionId, tSir
 
 #endif /* FEATURE_WLAN_TDLS */
 
+eHalStatus sme_UpdateDfsSetting(tHalHandle hHal, tANI_U8 fUpdateEnableDFSChnlScan)
+{
+    eHalStatus status = eHAL_STATUS_FAILURE;
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+    smsLog(pMac, LOG2, FL("enter"));
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        pMac->scan.fEnableDFSChnlScan = fUpdateEnableDFSChnlScan;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+    smsLog(pMac, LOG2, FL("exit status %d"), status);
+
+    return (status);
+}
+
