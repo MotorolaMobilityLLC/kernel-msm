@@ -93,11 +93,11 @@
 		};
 
 		smb349@2d {
-			status = "ok";
+			status = "disabled";
 		};
 
 		bq24192@6b {
-			status = "disabled";
+			status = "ok";
 		};
 	};
 
