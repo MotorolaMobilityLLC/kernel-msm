@@ -23,6 +23,12 @@
                 };
         };
 
+	i2c@f9924000 {
+		synaptics_s7020@20 {
+			status = "ok";
+		};
+	};
+
 	qcom,cci@fda0C000 {
 		qcom,camera@20 {
 			gpios = <&msmgpio 15 0>,  // MCLK

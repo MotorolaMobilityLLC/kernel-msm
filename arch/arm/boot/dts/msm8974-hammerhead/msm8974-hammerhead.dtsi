@@ -51,17 +51,6 @@
 		status = "ok";
 	};
 
-	i2c@f9924000 {
-
-		synaptics_s7020@20 {
-			status = "ok";
-		};
-
-		melfas_mms136@48 {
-			status = "disable";
-		};
-	};
-
 	i2c@f9967000 {
 		analogix_anx7808@72 {
 			status = "ok";

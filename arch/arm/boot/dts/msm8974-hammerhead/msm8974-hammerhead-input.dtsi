@@ -30,6 +30,24 @@
 			synaptics,i2c-pull-up = <1>;
 		};
 
+		synaptics_s3350@70 {
+			compatible = "synaptics,s3350";
+			status = "disable";
+			reg = <0x70>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <5 0x2>;
+			vdd_ana-supply = <&pm8941_l22>;
+			vcc_i2c-supply = <&pm8941_lvs3>;
+			synaptics,reset-gpio = <&msmgpio 8 0x00>;
+			synaptics,irq-gpio = <&msmgpio 5 0x00>;
+			synaptics,max_id = <10>;
+			synaptics,max_major = <15>;
+			synaptics,max_pres = <255>;
+			synaptics,panel-coords = <0  0 1080 1920>;
+			synaptics,display-coords = <0 0 1080 1920>;
+			synaptics,i2c-pull-up = <1>;
+		};
+
 		melfas_mms136@48 {
 			compatible = "melfas,mms136";
 			status = "disable";
