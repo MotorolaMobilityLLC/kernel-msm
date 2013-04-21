@@ -35,7 +35,7 @@
 #include <linux/of_gpio.h>
 #include <linux/input/touch_synaptics.h>
 
-#include "SynaImage.h"
+#include "SynaImage_ds5.h"
 
 static struct workqueue_struct *synaptics_wq;
 
@@ -56,7 +56,7 @@ static struct workqueue_struct *synaptics_wq;
  * $54      Test Reporting                          176
  */
 #define RMI_DEVICE_CONTROL                          0x01
-#define TOUCHPAD_SENSORS                            0x11
+#define TOUCHPAD_SENSORS                            0x12
 #define CAPACITIVE_BUTTON_SENSORS                   0x1A
 #define GPIO_LEDS                                   0x30
 #define LEDS                                        0x31
@@ -98,15 +98,14 @@ static struct workqueue_struct *synaptics_wq;
 /* TOUCHPAD_SENSORS */
 #define FINGER_COMMAND_REG              (ts->finger_fc.dsc.command_base)
 
-#define FINGER_STATE_REG                (ts->finger_fc.dsc.data_base)            /* Finger State */
-#define FINGER_DATA_REG_START           (ts->finger_fc.dsc.data_base+3)        /* Finger Data Register */
-#define FINGER_STATE_MASK                0x03
-#define REG_X_POSITION                   0
-#define REG_Y_POSITION                   1
-#define REG_YX_POSITION                  2
-#define REG_WY_WX                        3
-#define REG_Z                            4
-#define TWO_D_EXTEND_STATUS              (ts->finger_fc.dsc.data_base+53)
+#define FINGER_DATA_REG_START           (ts->finger_fc.dsc.data_base)        /* Object Type and Status 0 */
+#define REG_X_LSB_POSITION               1
+#define REG_X_MSB_POSITION               2
+#define REG_Y_LSB_POSITION               3
+#define REG_Y_MSB_POSITION               4
+#define REG_Z                            5
+#define REG_Wx                           6
+#define REG_Wy                           7
 
 #define TWO_D_REPORTING_MODE             (ts->finger_fc.dsc.control_base+0)        /* 2D Reporting Mode */
 #define REPORT_MODE_CONTINUOUS           0x00
@@ -133,9 +132,10 @@ static struct workqueue_struct *synaptics_wq;
 #define FAST_RELAXATION_RATE             (ts->analog_fc.dsc.control_base+16)
 
 /* FLASH_MEMORY_MANAGEMENT */
-#define FLASH_CONFIG_ID_REG              (ts->flash_fc.dsc.control_base) /* Flash Control */
-#define FLASH_CONTROL_REG                (ts->flash_fc.dsc.data_base+18)
-#define FLASH_STATUS_MASK                0xF0
+#define FLASH_CONFIG_ID_REG              (ts->flash_fc.dsc.control_base)
+#define FLASH_CONTROL_REG                (ts->flash_fc.dsc.data_base+18) /* Flash Control */
+
+#define FLASH_STATUS_MASK                0x87
 
 /* Page number */
 #define COMMON_PAGE                      (ts->common_fc.function_page)
@@ -147,19 +147,13 @@ static struct workqueue_struct *synaptics_wq;
 
 /* Get user-finger-data from register.
  */
-#define TS_SNTS_GET_X_POSITION(_high_reg, _low_reg) \
-	(((u16)(((_high_reg) << 4) & 0x0FF0) | (u16)((_low_reg) & 0x0F)))
-#define TS_SNTS_GET_Y_POSITION(_high_reg, _low_reg) \
-	(((u16)(((_high_reg) << 4) & 0x0FF0) | (u16)(((_low_reg) >> 4) & 0x0F)))
-#define TS_SNTS_GET_WIDTH_MAJOR(_width) \
-	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) > 0) ? \
-		((_width) & 0xF0) >> 4 : (_width) & 0x0F)
-#define TS_SNTS_GET_WIDTH_MINOR(_width) \
-	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) > 0) ? \
-		(_width) & 0x0F : ((_width) & 0xF0) >> 4)
-#define TS_SNTS_GET_ORIENTATION(_width) \
-	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) >= 0) ? 0 : 1)
+#define TS_SNTS_GET_XY_POSITION(_high_reg, _low_reg) \
+	(((u16)(((_high_reg) << 8) & 0xFF00) | (u16)((_low_reg) & 0xFF)))
 #define TS_SNTS_GET_PRESSURE(_pressure) (_pressure)
+#define TS_SNTS_GET_WIDTH_MAJOR(one, two) \
+			((one - two) > 0) ? one : two
+#define TS_SNTS_GET_WIDTH_MINOR(one, two) \
+			((one - two) > 0) ? two : one
 
 #define BOOTING_DELAY                   400
 #define RESET_DELAY                     20
@@ -169,12 +163,11 @@ static struct workqueue_struct *synaptics_wq;
 #define SYNAPTICS_COORDS_ARR_SIZE       4
 
 #define FW_OFFSET_PRODUCT_ID            0x40
-#define FW_OFFSET_IMAGE_VERSION         0xB100
+#define FW_OFFSET_IMAGE_VERSION         0xEF00
 
-#define BYTES_PER_FINGER                5
+#define BYTES_PER_FINGER                8
 
 static struct {
-	u8	finger_status_reg[3];
 	u8	finger_reg[MAX_FINGER][BYTES_PER_FINGER];
 } fdata;
 
@@ -183,9 +176,7 @@ static void touch_early_suspend(struct early_suspend *h);
 static void touch_late_resume(struct early_suspend *h);
 #endif
 
-static void *get_touch_handle(struct i2c_client *client);
-static void set_touch_handle(struct i2c_client *client, void* h_touch);
-extern int FirmwareUpgrade(struct synaptics_ts_data *ts, const char* fw_path);
+extern int FirmwareUpgrade_ds5(struct synaptics_ts_data *ts, const char* fw_path);
 
 static int synaptics_t1320_power_on(struct i2c_client *client, int on)
 {
@@ -239,7 +230,7 @@ static int synaptics_t1320_power_on(struct i2c_client *client, int on)
 /* Debug mask value
  * usage: echo [debug_mask] > /sys/module/touch_synaptics/parameters/debug_mask
  */
-static u32 touch_debug_mask = DEBUG_BASE_INFO;
+static u32 touch_debug_mask = DEBUG_BASE_INFO | DEBUG_FW_UPGRADE | DEBUG_GET_DATA;
 module_param_named(debug_mask, touch_debug_mask, int, S_IRUGO|S_IWUSR|S_IWGRP);
 
 static int touch_power_cntl(struct synaptics_ts_data *ts, int onoff);
@@ -247,13 +238,11 @@ static int touch_ic_init(struct synaptics_ts_data *ts);
 static void touch_init_func(struct work_struct *work_init);
 static void safety_reset(struct synaptics_ts_data *ts);
 static void release_all_ts_event(struct synaptics_ts_data *ts);
-static int synaptics_ts_get_data(struct i2c_client *client,
-						struct t_data* data);
+static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data);
 static int synaptics_ts_power(struct i2c_client *client, int power_ctrl);
-static int synaptics_init_panel(struct i2c_client *client,
-					struct synaptics_ts_fw_info *fw_info);
-static int get_ic_info(struct synaptics_ts_data *ts,
-					struct synaptics_ts_fw_info *fw_info);
+static int synaptics_init_panel(struct i2c_client *client, struct synaptics_ts_fw_info *fw_info);
+static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info *fw_info);
+static void *get_touch_handle(struct i2c_client *client);
 
 /* touch_asb_input_report
  *
@@ -275,7 +264,7 @@ static void touch_abs_input_report(struct synaptics_ts_data *ts)
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
 					ts->ts_data.curr_data[id].x_position);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
-					ts->ts_data.curr_data[id].y_position);
+				1920 - ts->ts_data.curr_data[id].y_position);
 			input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
 					ts->ts_data.curr_data[id].pressure);
 
@@ -445,7 +434,7 @@ static int synaptics_ts_fw_upgrade(struct i2c_client *client,
 
 	ts->is_probed = 0;
 
-	ret = FirmwareUpgrade(ts, fw_info->fw_upgrade.fw_path);
+	ret = FirmwareUpgrade_ds5(ts, fw_info->fw_upgrade.fw_path);
 
 	/* update IC info */
 	if (ret >= 0)
@@ -470,7 +459,12 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
-	if (!ts->fw_info.fw_upgrade.fw_force_upgrade && 
+#ifndef andrew_test
+	TOUCH_INFO_MSG("FW-upgrade is not executed\n");
+	goto out;
+#endif
+
+	if (!ts->fw_info.fw_upgrade.fw_force_upgrade &&
 		(!ts->fw_info.fw_start ||
 			kstrtoint(&ts->fw_info.config_id[1], 10, &ver) != 0 ||
 			kstrtoint(&ts->fw_info.image_config_id[1], 10,
@@ -790,26 +784,11 @@ static int synaptics_ts_page_data_write_byte(struct i2c_client *client, u8 page,
 	return 0;
 }
 
-static inline int get_highest_id(u32 fs)
-{
-	int id = 10;
-	int tmp = 0x000C0000;
-
-	while (!(fs & tmp)) {
-		id--;
-		tmp >>= 2;
-	}
-
-	return id;
-}
-
 static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 {
 	struct synaptics_ts_data *ts =
 			(struct synaptics_ts_data *)get_touch_handle(client);
 	int id;
-	u8 buf;
-	u32 finger_status = 0;
 
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
@@ -857,50 +836,47 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 
 	/* Finger */
 	if (likely(ts->ts_data.interrupt_status_reg & INTERRUPT_MASK_ABS0)) {
-		if (unlikely(touch_i2c_read(client, FINGER_STATE_REG,
-				sizeof(fdata.finger_status_reg),
-				fdata.finger_status_reg) < 0)) {
-			TOUCH_ERR_MSG("FINGER_STATE_REG read fail\n");
+
+		if (unlikely(touch_i2c_read(client, FINGER_DATA_REG_START,
+				ts->pdata->max_id * BYTES_PER_FINGER,
+				&fdata.finger_reg[0][0]) < 0)) {
+			TOUCH_ERR_MSG("FINGER_DATA_REG read fail\n");
 			goto err_synaptics_getdata;
 		}
 
-		finger_status = fdata.finger_status_reg[0] |
-			fdata.finger_status_reg[1] << 8 |
-			(fdata.finger_status_reg[2] & 0xF) << 16;
-
 		if (unlikely(touch_debug_mask & DEBUG_GET_DATA)) {
-			TOUCH_DEBUG_MSG("Finger_status : 0x%x, 0x%x, 0x%x\n",
-				fdata.finger_status_reg[0],
-				fdata.finger_status_reg[1],
-				fdata.finger_status_reg[2]);
-			TOUCH_DEBUG_MSG("Touch_bit_mask: 0x%x\n", touch_finger_bit_mask);
-		}
-
-		if (finger_status) {
-			int max_id = get_highest_id(finger_status);
-			if (unlikely(touch_i2c_read(ts->client,
-					FINGER_DATA_REG_START,
-					BYTES_PER_FINGER * max_id,
-					fdata.finger_reg[0]) < 0)) {
-				TOUCH_ERR_MSG("FINGER_STATE_REG read fail\n");
-				goto err_synaptics_getdata;
-			}
+			TOUCH_DEBUG_MSG("Finger_status : 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x\n",
+				fdata.finger_reg[0][0],
+				fdata.finger_reg[1][0],
+				fdata.finger_reg[2][0],
+				fdata.finger_reg[3][0],
+				fdata.finger_reg[4][0],
+				fdata.finger_reg[5][0],
+				fdata.finger_reg[6][0],
+				fdata.finger_reg[7][0],
+				fdata.finger_reg[8][0],
+				fdata.finger_reg[9][0]);
 		}
 
 		for (id = 0; id < ts->pdata->max_id; id++) {
-			switch (((finger_status >> (id*2)) & 0x3)) {
+			switch ((fdata.finger_reg[id][0])) {
 			case FINGER_STATE_PRESENT_VALID:
 				data[id].state = ABS_PRESS;
-				data[id].x_position = TS_SNTS_GET_X_POSITION(
-					fdata.finger_reg[id][REG_X_POSITION],
-					fdata.finger_reg[id][REG_YX_POSITION]);
-				data[id].y_position = TS_SNTS_GET_Y_POSITION(fdata.finger_reg[id][REG_Y_POSITION], fdata.finger_reg[id][REG_YX_POSITION]);
-				data[id].width_major = TS_SNTS_GET_WIDTH_MAJOR(fdata.finger_reg[id][REG_WY_WX]);
-				data[id].width_minor = TS_SNTS_GET_WIDTH_MINOR(fdata.finger_reg[id][REG_WY_WX]);
-				data[id].pressure = TS_SNTS_GET_PRESSURE(fdata.finger_reg[id][REG_Z]);
+
+				data[id].x_position = TS_SNTS_GET_XY_POSITION(
+					fdata.finger_reg[id][REG_X_MSB_POSITION],
+					fdata.finger_reg[id][REG_X_LSB_POSITION]);
+
+				data[id].y_position = TS_SNTS_GET_XY_POSITION(
+					fdata.finger_reg[id][REG_Y_MSB_POSITION],
+					fdata.finger_reg[id][REG_Y_LSB_POSITION]);
+
+				data[id].pressure = fdata.finger_reg[id][REG_Z];
+				data[id].width_major = TS_SNTS_GET_WIDTH_MAJOR(fdata.finger_reg[id][REG_Wx],fdata.finger_reg[id][REG_Wy]);
+				data[id].width_minor = TS_SNTS_GET_WIDTH_MINOR(fdata.finger_reg[id][REG_Wx],fdata.finger_reg[id][REG_Wy]);
 
 				if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
-					TOUCH_INFO_MSG("[%d] pos(%4d,%4d) w_m[%2d] w_n[%2d] p[%2d]\n",
+					TOUCH_DEBUG_MSG("[%d] pos(%4d,%4d) w_m[%2d] w_n[%2d] p[%2d]\n",
 						id,
 						data[id].x_position,
 						data[id].y_position,
@@ -921,13 +897,6 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 
 		}
 	}
-
-	/* Palm check */
-	if (unlikely(touch_i2c_read(client, TWO_D_EXTEND_STATUS, 1, &buf) < 0)) {
-	       TOUCH_ERR_MSG("TWO_D_EXTEND_STATUS read fail\n");
-	       goto err_synaptics_getdata;
-	}
-	ts->ts_data.palm = buf & 0x2;
 
 	return 0;
 
@@ -1033,8 +1002,7 @@ static int read_page_description_table(struct i2c_client *client)
 static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info *fw_info)
 {
 	u8 device_status = 0;
-	u8 flash_control = 0;
-	int i;
+	u8 flash_control[2] ;
 
 	read_page_description_table(ts->client);
 
@@ -1070,15 +1038,24 @@ static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info
 	snprintf(fw_info->ic_fw_identifier, sizeof(fw_info->ic_fw_identifier),
 		"%s - %d", ts->fw_info.product_id, ts->fw_info.manufacturer_id);
 
-	for (i = 0; i < sizeof(SynaFirmware)/sizeof(SynaFirmware[0]); i++) {
+
+	TOUCH_INFO_MSG("product id[%s] : syna product id[%s]\n",
+		ts->fw_info.product_id,
+		&SynaFirmware_ds5[0][FW_OFFSET_PRODUCT_ID]);
+
+	/* check the product id with the official firmware
+	for (i = 0; i < sizeof(SynaFirmware_ds5)/sizeof(SynaFirmware_ds5[0]); i++) {
 		if (!strncmp(ts->fw_info.product_id,
-				&SynaFirmware[i][FW_OFFSET_PRODUCT_ID],
+				&SynaFirmware_ds5[i][FW_OFFSET_PRODUCT_ID],
 				sizeof(ts->fw_info.product_id) - 1)) {
-			ts->fw_info.fw_start = (unsigned char*)SynaFirmware[i];
-			ts->fw_info.fw_size = sizeof(SynaFirmware[i]);
+			ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5[i];
+			ts->fw_info.fw_size = sizeof(SynaFirmware_ds5[i]);
 			break;
 		}
-	}
+	}*/
+
+	ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5[0];
+	ts->fw_info.fw_size = sizeof(SynaFirmware_ds5[0]);
 
 	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
 		TOUCH_INFO_MSG("IC identifier[%s] fw_version[%s]\n",
@@ -1086,11 +1063,11 @@ static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info
 
 
 	if (ts->fw_info.fw_start) {
-		strncpy(ts->fw_info.fw_image_product_id,
-			&ts->fw_info.fw_start[FW_OFFSET_PRODUCT_ID], 10);
-		strncpy(ts->fw_info.image_config_id,
+/* check the product id with the official firmware
+strncpy(ts->fw_info.fw_image_product_id,
+	&ts->fw_info.fw_start[FW_OFFSET_PRODUCT_ID], 10);*/
+	strncpy(ts->fw_info.image_config_id,
 			&ts->fw_info.fw_start[FW_OFFSET_IMAGE_VERSION], 4);
-		ts->fw_info.fw_image_rev = ts->fw_info.fw_start[31];
 
 		if (likely(touch_debug_mask &
 					(DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
@@ -1102,7 +1079,7 @@ static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info
 	}
 
 	if (unlikely(touch_i2c_read(ts->client, FLASH_CONTROL_REG,
-				sizeof(flash_control), &flash_control) < 0)) {
+				sizeof(flash_control), flash_control) < 0)) {
 		TOUCH_ERR_MSG("FLASH_CONTROL_REG read fail\n");
 		return -EIO;
 	}
@@ -1116,9 +1093,9 @@ static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info
 	/* Firmware has a problem, so we should firmware-upgrade */
 	if (device_status & DEVICE_STATUS_FLASH_PROG
 			|| (device_status & DEVICE_CRC_ERROR_MASK) != 0
-			|| (flash_control & FLASH_STATUS_MASK) != 0) {
+			|| (flash_control[1] & FLASH_STATUS_MASK) != 0) {
 		TOUCH_ERR_MSG("Firmware has a unknown-problem, so it needs firmware-upgrade.\n");
-		TOUCH_ERR_MSG("FLASH_CONTROL[%x] DEVICE_STATUS_REG[%x]\n", (u32)flash_control, (u32)device_status);
+		TOUCH_ERR_MSG("FLASH_CONTROL[%x] DEVICE_STATUS_REG[%x]\n", (u32)flash_control[1], (u32)device_status);
 		TOUCH_ERR_MSG("FW-upgrade Force Rework.\n");
 
 		/* firmware version info change by force for rework */
@@ -1159,17 +1136,6 @@ static int synaptics_init_panel(struct i2c_client *client, struct synaptics_ts_f
 		return -EIO;
 	}
 
-	if (unlikely(touch_i2c_read(client, TWO_D_REPORTING_MODE, 1, &buf) < 0)) {
-		TOUCH_ERR_MSG("TWO_D_REEPORTING_MODE read fail\n");
-		return -EIO;
-	}
-
-	if (unlikely(touch_i2c_write_byte(client, TWO_D_REPORTING_MODE,
-			(buf & ~7) | REPORT_MODE_REDUCED) < 0)) {
-		TOUCH_ERR_MSG("TWO_D_REPORTING_MODE write fail\n");
-		return -EIO;
-	}
-
 	if (unlikely(touch_i2c_write_byte(client, DELTA_X_THRESH_REG, 1) < 0)) {
 		TOUCH_ERR_MSG("DELTA_X_THRESH_REG write fail\n");
 		return -EIO;
@@ -1182,13 +1148,6 @@ static int synaptics_init_panel(struct i2c_client *client, struct synaptics_ts_f
 
 	if (unlikely(touch_i2c_read(client, INTERRUPT_STATUS_REG, 1, &buf) < 0)) {
 		TOUCH_ERR_MSG("INTERRUPT_STATUS_REG read fail\n");
-		return -EIO;
-	}
-
-	if (unlikely(touch_i2c_read(client, FINGER_STATE_REG,
-			sizeof(fdata.finger_status_reg),
-			fdata.finger_status_reg) < 0)) {
-		TOUCH_ERR_MSG("FINGER_STATE_REG read fail\n");
 		return -EIO;
 	}
 
@@ -1327,8 +1286,8 @@ static int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 	return buf;
 }
 
-static ssize_t show_fw_ver(struct device *dev,
-				struct device_attribute *attr, char *buf)
+static ssize_t
+show_fw_ver(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct synaptics_ts_data *ts = dev_get_drvdata(dev);
 
@@ -1564,7 +1523,11 @@ static int synaptics_parse_dt(struct device *dev, struct touch_platform_data *pd
 		dev_err(dev, "Unable to read max_id\n");
 		return rc;
 	} else {
+#ifndef andrew_test
+		pdata->max_id = 1;
+#else
 		pdata->max_id = temp_val;
+#endif
 	}
 
 	rc = of_property_read_u32(np, "synaptics,max_major", &temp_val);
@@ -1656,12 +1619,6 @@ static int synaptics_ts_probe(
 
 	atomic_set(&ts->device_init, 0);
 	ts->curr_resume_state = 1;
-
-	/* Power on */
-	if (touch_power_cntl(ts, POWER_ON) < 0)
-		goto err_power_failed;
-
-	msleep(BOOTING_DELAY);
 
 	/* init work_queue */
 	INIT_DELAYED_WORK(&ts->work_init, touch_init_func);
@@ -1761,7 +1718,6 @@ err_input_register_device_failed:
 	input_free_device(ts->input_dev);
 err_input_dev_alloc_failed:
 	touch_power_cntl(ts, POWER_OFF);
-err_power_failed:
 err_assign_platform_data:
 	kfree(ts);
 	return ret;
@@ -1843,12 +1799,12 @@ static int touch_resume(struct device *device)
 #endif
 
 static struct of_device_id synaptics_match_table[] = {
-	{ .compatible = "synaptics,s7020",},
+	{ .compatible = "synaptics,s3350",},
 	{ },
 };
 
 static struct i2c_device_id synaptics_ts_id[] = {
-	{ "s7020", 0 },
+	{ "s3350", 0 },
 };
 
 #if defined(CONFIG_PM)
@@ -1861,9 +1817,13 @@ static struct dev_pm_ops touch_pm_ops = {
 static struct i2c_driver synaptics_ts_driver = {
 	.probe          = synaptics_ts_probe,
 	.remove         = synaptics_ts_remove,
+#ifndef CONFIG_HAS_EARLYSUSPEND
+	.suspend        = synaptics_ts_suspend,
+	.resume         = synaptics_ts_resume,
+#endif
 	.id_table       = synaptics_ts_id,
 	.driver = {
-		.name   = "s7020",
+		.name   = "s3350",
 		.owner  = THIS_MODULE,
 		.of_match_table = synaptics_match_table,
 #if defined(CONFIG_PM)

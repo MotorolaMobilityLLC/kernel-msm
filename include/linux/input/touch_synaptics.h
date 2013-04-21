@@ -20,10 +20,6 @@
 #include <linux/earlysuspend.h>
 
 #define MAX_FINGER                      10
-#define NUM_OF_EACH_FINGER_DATA_REG     5
-#define MAX_NUM_OF_FINGERS              10
-
-#define LGE_TOUCH_NAME                  "lge_touch"
 
 /* Debug Mask setting */
 #define TOUCH_DEBUG_PRINT (0)
@@ -100,15 +96,10 @@ struct t_data {
 	u16             pressure;
 };
 
-struct finger_data {
-	u8              finger_status_reg[3];
-	u8              finger_reg[MAX_NUM_OF_FINGERS][NUM_OF_EACH_FINGER_DATA_REG];
-};
-
 struct touch_data {
 	u8              device_status_reg;	/* DEVICE_STATUS_REG */
 	u8              interrupt_status_reg;
-	struct finger_data finger;
+
 	u8              total_num;
 	u8              prev_total_num;
 	u8              state;
@@ -240,23 +231,5 @@ enum{
 	WORK_POST_ERR_CIRTICAL,
 	WORK_POST_MAX,
 };
-
-void set_touch_handle(struct i2c_client *client, void* h_touch);
-void *get_touch_handle(struct i2c_client *client);
-int touch_i2c_read(struct i2c_client *client, u8 reg, int len, u8 *buf);
-int touch_i2c_write(struct i2c_client *client, u8 reg, int len, u8 *buf);
-int touch_i2c_write_byte(struct i2c_client *client, u8 reg, u8 data);
-
-extern u32 touch_debug_mask;
-
-/* extern function */
-extern int FirmwareUpgrade(struct synaptics_ts_data *ts, const char* fw_path);
-extern void CompleteReflash(struct synaptics_ts_data *ts);
-int synaptics_ts_page_data_read(struct i2c_client *client, u8 page, u8 reg,
-					int size, u8 *data);
-int synaptics_ts_page_data_write(struct i2c_client *client, u8 page, u8 reg,
-					int size, u8 *data);
-int synaptics_ts_page_data_write_byte(struct i2c_client *client, u8 page,
-					u8 reg, u8 data);
 
 #endif

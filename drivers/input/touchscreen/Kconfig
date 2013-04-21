@@ -496,11 +496,6 @@ config TOUCHSCREEN_SYNAPTICS_I2C_RMI4
 	help
 	  This enables support for Synaptics RMI4 protocol I2C interface Touchscreens.
 
-config TOUCHSCREEN_SYNAPTICS_7020S
-	tristate "Synaptics 7020S chip"
-	help
-	  This enables support for Synaptics 7020S chip for Touch Dirver.
-
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
 	select SERIO
@@ -1018,5 +1013,11 @@ config SECURE_TOUCH
 	  driver.
 
 	  If unsure, say N.
+
+config TOUCHSCREEN_LGE_SYNAPTICS
+	bool "Synaptics RMI4 driver for LG Touch Driver"
+	depends on I2C
+	help
+	  Enables Synaptics RMI4 protocol I2C Touch Screens
 
 endif
