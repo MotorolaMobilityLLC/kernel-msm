@@ -827,6 +827,8 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			down_write(&pcpu->enable_sem);
 			pcpu->cpu_timer.expires =
 				jiffies + usecs_to_jiffies(timer_rate);
+			pcpu->time_in_idle = get_cpu_idle_time_us(j,
+						&pcpu->idle_exit_time);
 			add_timer_on(&pcpu->cpu_timer, j);
 			pcpu->governor_enabled = 1;
 			up_write(&pcpu->enable_sem);
@@ -890,6 +892,36 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		else if (policy->min > policy->cur)
 			__cpufreq_driver_target(policy,
 					policy->min, CPUFREQ_RELATION_L);
+		for_each_cpu(j, policy->cpus) {
+			pcpu = &per_cpu(cpuinfo, j);
+			/* hold write semaphore to avoid race */
+			down_write(&pcpu->enable_sem);
+			if (pcpu->governor_enabled == 0) {
+				up_write(&pcpu->enable_sem);
+				continue;
+			}
+
+			/* update target_freq firstly */
+			if (policy->max < pcpu->target_freq)
+				pcpu->target_freq = policy->max;
+			else if (policy->min > pcpu->target_freq)
+				pcpu->target_freq = policy->min;
+
+			/* Reschedule timer.
+			 * Delete the timer, else the timer callback may
+			 * return without re-arm the timer when failed
+			 * acquire the semaphore. This race may cause timer
+			 * stopped unexpectedly.
+			 */
+			del_timer_sync(&pcpu->cpu_timer);
+			pcpu->time_in_idle = get_cpu_idle_time_us(j,
+							&pcpu->idle_exit_time);
+			pcpu->cpu_timer.expires = jiffies +
+						usecs_to_jiffies(timer_rate);
+			add_timer_on(&pcpu->cpu_timer, j);
+
+			up_write(&pcpu->enable_sem);
+		}
 		break;
 	}
 	return 0;
