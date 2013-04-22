@@ -130,7 +130,6 @@ static struct mipi_mot_cmd_seq smd_hd_497_cfg_seq[] = {
 	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_WRITE, 0, normal_mode_on),
 	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_LWRITE, 0,
 		undo_partial_rows),
-	MIPI_MOT_EXEC_SEQ(AOD_SUPPORTED, correct_shift_seq),
 	MIPI_MOT_TX_DEF(is_bl_supported, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, disp_ctrl),
 	MIPI_MOT_EXEC_SEQ(is_bl_supported, set_brightness_seq),
@@ -161,6 +160,7 @@ static struct dsi_cmd_desc mtp_read_cmd = {
 
 static struct mipi_mot_cmd_seq smd_hd_497_en_from_partial_seq[] = {
 	MIPI_MOT_EXEC_SEQ(NULL, smd_hd_497_cfg_seq),
+	MIPI_MOT_EXEC_SEQ(AOD_SUPPORTED, correct_shift_seq),
 };
 
 static void enable_acl(struct msm_fb_data_type *mfd)
