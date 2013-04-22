@@ -1065,8 +1065,9 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
+static struct work_struct compactnodes_w;
 static int compact_nodes(void);
-static void compact_nodes_suspend(struct early_suspend *s)
+static void compactnodes_work(struct work_struct *w)
 {
 	/* No point in being gun shy here since compact_zone()
 	 * will check suitability of compaction run per zone.
@@ -1076,6 +1077,13 @@ static void compact_nodes_suspend(struct early_suspend *s)
 	 * screen is off so there's no perceived user impact.
          */
 	compact_nodes();
+
+}
+
+
+static void compact_nodes_suspend(struct early_suspend *s)
+{
+	schedule_work(&compactnodes_w);
 }
 
 static struct early_suspend early_suspend_compaction_desc = {
@@ -1208,6 +1216,7 @@ void compaction_unregister_node(struct node *node)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static int  __init mem_compaction_init(void)
 {
+	INIT_WORK(&compactnodes_w, compactnodes_work);
 	register_early_suspend(&early_suspend_compaction_desc);
 	return 0;
 }
