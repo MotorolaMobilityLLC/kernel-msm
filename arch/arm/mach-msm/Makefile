@@ -327,6 +327,7 @@ obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 CFLAGS_board-9615.o += -Idrivers/usb/gadget
+CFLAGS_clock-mdss-8974.o += -Idrivers/video/msm
 
 obj-$(CONFIG_ARCH_FSM9XXX) += board-fsm9xxx.o
 

@@ -22,6 +22,9 @@
 #include <mach/msm_iomap.h>
 #include <mach/clk-provider.h>
 
+#include <mdss/mdss_mdp.h>
+#include <mdss/mdss_dsi.h>
+
 #include "clock-mdss-8974.h"
 
 #define REG_R(addr)		readl_relaxed(addr)
@@ -112,6 +115,7 @@ static unsigned long dsi_pll_rate;
 static void __iomem *hdmi_phy_base;
 static void __iomem *hdmi_phy_pll_base;
 static unsigned hdmi_pll_on;
+static int pll_initialized_in_boot = 0;
 
 void __init mdss_clk_ctrl_pre_init(struct clk *ahb_clk)
 {
@@ -204,16 +208,61 @@ static int mdss_dsi_pll_pixel_set_rate(struct clk *c, unsigned long rate)
 
 static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 {
-	int pll_divcfg1, pll_divcfg2;
+	int pll_divcfg1, pll_divcfg2, pll_divcfg3;
 	int half_bitclk_rate;
+	int cal_cfg8, cal_cfg10, cal_cfg11;
+	int sdm_cfg1, sdm_cfg2, sdm_cfg3;
+	int panel_id = mdss_dsi_panel_id();
 
 	pr_debug("%s:\n", __func__);
-	if (pll_initialized)
+	if (pll_initialized && pll_initialized_in_boot)
 		return 0;
 
 	half_bitclk_rate = rate * 4;
+	pll_divcfg1 = (VCO_CLK / half_bitclk_rate) - 2;
 
-	pll_divcfg1 = 0;
+	switch (panel_id) {
+		case PANEL_LGE_JDI_NOVATEK_VIDEO:
+			sdm_cfg1  = 0x09;
+			sdm_cfg2  = 0x00;
+			sdm_cfg3  = 0x28;
+			cal_cfg8  = 0x60;
+			cal_cfg10 = 0x86;
+			cal_cfg11 = 0x01;
+			pll_divcfg1 = 0;
+			pll_divcfg3 = 0x2;
+
+			dsi_pll_rate = 97586170;
+			pll_byte_clk_rate = 97586170;
+			pll_pclk_rate = 130114894;
+			break;
+		case PANEL_LGE_GK_LGD_VIDEO:
+			sdm_cfg1  = 0x0a;
+			sdm_cfg2  = 0xab;
+			sdm_cfg3  = 0xb4;
+			cal_cfg8  = 0x60;
+			cal_cfg10 = 0xc2;
+			cal_cfg11 = 0x01;
+			pll_divcfg1 = 0;
+			pll_divcfg3 = 0x2;
+
+			dsi_pll_rate = 112375000;
+			pll_byte_clk_rate = 112375000;
+			pll_pclk_rate = 150000000;
+			break;
+		default:
+			sdm_cfg1  = 0x0a;
+			sdm_cfg2  = 0xab;
+			sdm_cfg3  = 0x0a;
+			cal_cfg8  = 0x5f;
+			cal_cfg10 = 0xa8;
+			cal_cfg11 = 0x01;
+			pll_divcfg3 = 0x5;
+
+			dsi_pll_rate = rate;
+			pll_byte_clk_rate = rate;
+			break;
+	}
 
 	/* Configuring the VCO to 424 Mhz */
 	/* Configuring the half rate Bit clk to 212 Mhz */
@@ -230,15 +279,15 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 	REG_W(0x02, mdss_dsi_base + 0x0208); /* ChgPump */
 	REG_W(pll_divcfg1, mdss_dsi_base + 0x0204); /* postDiv1 */
 	REG_W(pll_divcfg2, mdss_dsi_base + 0x0224); /* postDiv2 */
-	REG_W(0x02, mdss_dsi_base + 0x0228); /* postDiv3 */
+	REG_W(pll_divcfg3, mdss_dsi_base + 0x0228); /* postDiv3 */
 
 	REG_W(0x2b, mdss_dsi_base + 0x0278); /* Cal CFG3 */
 	REG_W(0x06, mdss_dsi_base + 0x027c); /* Cal CFG4 */
 	REG_W(0x05, mdss_dsi_base + 0x0264); /* LKDET CFG2 */
 
-	REG_W(0x0a, mdss_dsi_base + 0x023c); /* SDM CFG1 */
-	REG_W(0xab, mdss_dsi_base + 0x0240); /* SDM CFG2 */
-	REG_W(0xb4, mdss_dsi_base + 0x0244); /* SDM CFG3 */
+	REG_W(sdm_cfg1, mdss_dsi_base + 0x023c); /* SDM CFG1 */
+	REG_W(sdm_cfg2, mdss_dsi_base + 0x0240); /* SDM CFG2 */
+	REG_W(sdm_cfg3, mdss_dsi_base + 0x0244); /* SDM CFG3 */
 	REG_W(0x00, mdss_dsi_base + 0x0248); /* SDM CFG4 */
 
 	udelay(10);
@@ -249,20 +298,18 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 	REG_W(0x0, mdss_dsi_base + 0x0210); /* VREG CFG */
 	REG_W(0x00, mdss_dsi_base + 0x0238); /* SDM CFG0 */
 
-	REG_W(0x60, mdss_dsi_base + 0x028c); /* CAL CFG8 */
-	REG_W(0xc2, mdss_dsi_base + 0x0294); /* CAL CFG10 */
-	REG_W(0x01, mdss_dsi_base + 0x0298); /* CAL CFG11 */
+	REG_W(cal_cfg8, mdss_dsi_base + 0x028c); /* CAL CFG8 */
+	REG_W(cal_cfg10, mdss_dsi_base + 0x0294); /* CAL CFG10 */
+	REG_W(cal_cfg11, mdss_dsi_base + 0x0298); /* CAL CFG11 */
 	REG_W(0x0a, mdss_dsi_base + 0x026c); /* CAL CFG0 */
 	REG_W(0x30, mdss_dsi_base + 0x0284); /* CAL CFG6 */
 	REG_W(0x00, mdss_dsi_base + 0x0288); /* CAL CFG7 */
 	REG_W(0x00, mdss_dsi_base + 0x0290); /* CAL CFG9 */
 	REG_W(0x20, mdss_dsi_base + 0x029c); /* EFUSE CFG */
 
-	dsi_pll_rate = rate;
-	pll_byte_clk_rate = rate;
-
 	pr_debug("%s: PLL initialized. bcl=%d\n", __func__, pll_byte_clk_rate);
 	pll_initialized = 1;
+	pll_initialized_in_boot = 1;
 
 	return 0;
 }
@@ -371,10 +418,10 @@ out:
 static enum handoff mdss_dsi_pll_byte_handoff(struct clk *c)
 {
 	if (mdss_gdsc_enabled() && mdss_dsi_check_pll_lock()) {
-		c->rate = 112375000;
-		dsi_pll_rate = 112375000;
-		pll_byte_clk_rate = 112375000;
-		pll_pclk_rate = 150000000;
+		c->rate = 53000000;
+		dsi_pll_rate = 53000000;
+		pll_byte_clk_rate = 53000000;
+		pll_pclk_rate = 105000000;
 		dsipll_refcount++;
 		return HANDOFF_ENABLED_CLK;
 	}
@@ -385,7 +432,7 @@ static enum handoff mdss_dsi_pll_byte_handoff(struct clk *c)
 static enum handoff mdss_dsi_pll_pixel_handoff(struct clk *c)
 {
 	if (mdss_gdsc_enabled() && mdss_dsi_check_pll_lock()) {
-		c->rate = 150000000;
+		c->rate = 105000000;
 		dsipll_refcount++;
 		return HANDOFF_ENABLED_CLK;
 	}
