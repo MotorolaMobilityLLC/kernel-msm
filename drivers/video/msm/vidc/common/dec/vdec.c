@@ -1940,6 +1940,19 @@ static long vid_dec_ioctl(struct file *file,
 		buffer_req.max_count = vdec_buf_req.maxcount;
 		buffer_req.min_count = vdec_buf_req.mincount;
 		buffer_req.sz = vdec_buf_req.buffer_size;
+		buffer_req.buf_pool_id = vdec_buf_req.buf_poolid;
+		buffer_req.meta_buffer_size = vdec_buf_req.meta_buffer_size;
+		DBG("SET_BUF_REQ: port = %u, min = %u, max = %u, "\
+			"act = %u, size = %u, align = %u, pool = %u, "\
+			"meta_buf_size = %u",
+			(u32)vdec_buf_req.buffer_type,
+			(u32)buffer_req.min_count,
+			(u32)buffer_req.max_count,
+			(u32)buffer_req.actual_count,
+			(u32)buffer_req.sz,
+			(u32)buffer_req.align,
+			(u32)buffer_req.buf_pool_id,
+			(u32)buffer_req.meta_buffer_size);
 
 		switch (vdec_buf_req.buffer_type) {
 		case VDEC_BUFFER_TYPE_INPUT:
@@ -1972,8 +1985,19 @@ static long vid_dec_ioctl(struct file *file,
 			return -EFAULT;
 
 		result = vid_dec_get_buffer_req(client_ctx, &vdec_buf_req);
-
 		if (result) {
+			DBG("GET_BUF_REQ: port = %u, min = %u, "\
+				"max = %u, act = %u, size = %u, "\
+				"align = %u, pool = %u, "\
+				"meta_buf_size = %u",
+				(u32)vdec_buf_req.buffer_type,
+				(u32)vdec_buf_req.mincount,
+				(u32)vdec_buf_req.maxcount,
+				(u32)vdec_buf_req.actualcount,
+				(u32)vdec_buf_req.buffer_size,
+				(u32)vdec_buf_req.alignment,
+				(u32)vdec_buf_req.buf_poolid,
+				(u32)vdec_buf_req.meta_buffer_size);
 			if (copy_to_user(vdec_msg.out, &vdec_buf_req,
 					sizeof(vdec_buf_req)))
 				return -EFAULT;
