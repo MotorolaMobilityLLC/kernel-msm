@@ -178,8 +178,6 @@ static struct mipi_mot_cmd_seq smd_hd_465_cfg_seq[] = {
 	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_WRITE, 0, normal_mode_on),
 	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_LWRITE, 0,
 		undo_partial_rows),
-	MIPI_MOT_EXEC_SEQ(is_correct_shift_for_aod_needed,
-		correct_shift_seq),
 	/* C8, C9, C7 sequence only for non-mtped panels */
 	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, brightness_wa_seq),
 	MIPI_MOT_TX_DEF(is_evt0_sample, DTYPE_DCS_LWRITE,
@@ -203,6 +201,8 @@ static struct mipi_mot_cmd_seq smd_hd_465_disp_off_seq[] = {
 
 static struct mipi_mot_cmd_seq smd_hd_465_en_from_partial_seq[] = {
 	MIPI_MOT_EXEC_SEQ(NULL, smd_hd_465_cfg_seq),
+	MIPI_MOT_EXEC_SEQ(is_correct_shift_for_aod_needed,
+		correct_shift_seq),
 };
 
 static int is_evt0_sample(struct msm_fb_data_type *mfd)
