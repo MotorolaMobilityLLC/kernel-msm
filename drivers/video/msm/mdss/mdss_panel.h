@@ -69,6 +69,15 @@ enum mdss_intf_events {
 	MDSS_EVENT_FB_REGISTERED,
 };
 
+enum {
+	PANEL_QCOM = 0,
+	PANEL_LGE_GK_LGD_VIDEO = 1,
+	PANEL_LGE_JDI_NOVATEK_VIDEO,
+	PANEL_LGE_JDI_NOVATEK_CMD,
+	PANEL_LGE_JDI_ORISE_VIDEO,
+	PANEL_LGE_JDI_ORISE_CMD,
+};
+
 struct lcd_panel_info {
 	u32 h_back_porch;
 	u32 h_front_porch;

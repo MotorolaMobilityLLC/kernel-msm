@@ -355,5 +355,6 @@ void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base);
 void mdss_dsi_cmd_test_pattern(struct mdss_panel_data *pdata);
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl);
 bool mdss_dsi_panel_flip_ud(void);
+int mdss_dsi_panel_id(void);
 
 #endif /* MDSS_DSI_H */

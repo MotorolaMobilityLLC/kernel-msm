@@ -33,6 +33,7 @@
 static struct dsi_buf dsi_panel_tx_buf;
 static struct dsi_buf dsi_panel_rx_buf;
 static bool mdss_panel_flip_ud = false;
+static int mdss_panel_id = PANEL_QCOM;
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
@@ -243,6 +244,11 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	return 0;
 }
 
+int mdss_dsi_panel_id(void)
+{
+	return mdss_panel_id;
+}
+
 bool mdss_dsi_panel_flip_ud(void)
 {
 	return mdss_panel_flip_ud;
@@ -271,6 +277,11 @@ static int mdss_panel_parse_dt(struct platform_device *pdev,
 	}
 	panel_data->panel_info.xres = (!rc ? res[0] : 640);
 	panel_data->panel_info.yres = (!rc ? res[1] : 480);
+
+	rc = of_property_read_u32(np, "qcom,mdss-pan-id", &tmp);
+	if (!rc)
+		mdss_panel_id = tmp;
+	pr_info("%s: Panel ID = %d\n", __func__, mdss_panel_id);
 
 	mdss_panel_flip_ud = of_property_read_bool(np, "qcom,mdss-pan-flip-ud");
 	if (mdss_panel_flip_ud)
