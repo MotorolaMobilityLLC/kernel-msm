@@ -278,6 +278,9 @@ static ssize_t msm_fb_fps_level_change(struct device *dev,
 	unsigned long val;
 	int ret;
 
+	if (mfd->panel.type != MIPI_VIDEO_PANEL)
+		return -EINVAL;
+
 	ret = kstrtoul(buf, 10, &val);
 	if (ret)
 		return ret;
@@ -344,7 +347,7 @@ static ssize_t msm_fb_msm_fb_type(struct device *dev,
 }
 
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, msm_fb_msm_fb_type, NULL);
-static DEVICE_ATTR(msm_fb_fps_level, S_IRUGO | S_IWUGO, NULL, \
+static DEVICE_ATTR(msm_fb_fps_level, S_IRUGO | S_IWUSR | S_IWGRP, NULL, \
 				msm_fb_fps_level_change);
 static struct attribute *msm_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
