@@ -76,7 +76,8 @@
 #define NO_SLEEP_OFF (0 << 2)
 #define NO_SLEEP_ON (1 << 2)
 
-#define ONE_TOUCH_SUPPRESSION 0x32
+#define ONE_TOUCH_RECALIBRATION 49
+#define ONE_TOUCH_SUPPRESSION 5
 #define MULTI_TOUCH_SUPPRESSION 1
 
 #define X_1T_SUPPRESSION ONE_TOUCH_SUPPRESSION
@@ -315,9 +316,14 @@ static struct synaptics_rmi4_func_packet_regs f12_ctrl_regs = {
 	.regs = f12_ctrl_reg_array
 };
 
-static struct f12_c20_0_type f12_c20_0_store;
-static struct f12_c23_0_type f12_c23_0_store;
-static struct f12_c23_1_type f12_c23_1_store;
+struct synaptics_dsx_hob {
+	struct f12_c20_0_type f12_c20_0;
+	struct f12_c23_0_type f12_c23_0;
+	struct f12_c23_1_type f12_c23_1;
+	unsigned char f01_c9;
+};
+
+static struct synaptics_dsx_hob hob_data;
 static unsigned char tsb_buff_clean_flag = 1;
 
 #define LAST_SUBPACKET_ROW_IND_MASK 0x80
@@ -671,7 +677,8 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
 static void synaptics_rmi4_sensor_one_touch(
 		struct synaptics_rmi4_data *rmi4_data, bool enable);
 
-static void synaptics_rmi4_sensor_multi_touch(void);
+static void synaptics_rmi4_sensor_multi_touch(
+		struct synaptics_rmi4_data *rmi4_data, unsigned char function);
 
 static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 		bool enable);
@@ -2257,8 +2264,6 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	if (retval < 0)
 		return retval;
 
-	synaptics_rmi4_sensor_multi_touch();
-
 	/* Maximum number of fingers supported */
 	if (f12_c23[1].present) {
 		fhandler->num_of_data_points =
@@ -2548,6 +2553,9 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 				if (retval < 0)
 					return retval;
 
+				synaptics_rmi4_sensor_multi_touch(
+						rmi4_data, SYNAPTICS_RMI4_F01);
+
 				rmi4_data->in_bootloader =
 						status.flash_prog == 1;
 				break;
@@ -2590,6 +2598,9 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 						fhandler, &rmi_fd, intr_count);
 				if (retval < 0)
 					return retval;
+
+				synaptics_rmi4_sensor_multi_touch(
+						rmi4_data, SYNAPTICS_RMI4_F12);
 				break;
 
 			case SYNAPTICS_RMI4_F1A:
@@ -2741,11 +2752,8 @@ static void synaptics_rmi4_cleanup(struct synaptics_rmi4_data *rmi4_data)
 	}
 }
 
-static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
+static void synaptics_dsx_on_resume(struct synaptics_rmi4_data *rmi4_data)
 {
-	int current_state, retval;
-	bool need_to_query = false;
-	unsigned char command = 0x01;
 	/*
 	 * Enforce touch release event report to work-around such event
 	 * missing while touch IC is off.
@@ -2760,26 +2768,34 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 		tsb_buff_clean_flag = 1;
 		rmi4_data->fingers_on_2d = false;
 	}
+}
+
+static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
+{
+	int current_state, retval;
+	bool need_to_query = false;
+	unsigned char command = 0x01;
+
+	synaptics_dsx_on_resume(rmi4_data);
+
 	current_state = synaptics_dsx_get_state_safe(rmi4_data);
+	if (current_state == STATE_UNKNOWN) {
+		synaptics_rmi4_cleanup(rmi4_data);
 
-	if (rmi4_data->reset_on_resume) {
-		if (current_state == STATE_UNKNOWN) {
-			synaptics_rmi4_cleanup(rmi4_data);
+		if (rmi4_data->input_registered) {
+			input_unregister_device(rmi4_data->input_dev);
+			rmi4_data->input_dev = NULL;
+			rmi4_data->input_registered = false;
 
-			if (rmi4_data->input_registered) {
-				input_unregister_device(rmi4_data->input_dev);
-				rmi4_data->input_dev = NULL;
-				rmi4_data->input_registered = false;
-
-				pr_debug("de-allocated input device\n");
-			}
-			need_to_query = true;
+			pr_debug("de-allocated input device\n");
 		}
+		need_to_query = true;
+	}
 
+	if (rmi4_data->reset_on_resume)
 		/* do hard reset instead of soft */
 		synaptics_dsx_ic_reset(rmi4_data);
-
-	} else {
+	else {
 		retval = synaptics_rmi4_i2c_write(rmi4_data,
 			rmi4_data->f01_cmd_base_addr,
 			&command,
@@ -3185,18 +3201,33 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 	return 0;
 }
 
-static void synaptics_rmi4_sensor_multi_touch(void)
+static void synaptics_rmi4_sensor_multi_touch(
+		struct synaptics_rmi4_data *rmi4_data, unsigned char function)
 {
-	/* Store multitouch config registers */
-	f12_c20_0_store = f12_c20_0;
-	f12_c23_0_store = f12_c23_0;
-	f12_c23_1_store = f12_c23_1;
+	int retval;
 
-	if (!f12_c20_0_store.x_suppression)
-		f12_c20_0_store.x_suppression = X_MT_SUPPRESSION;
+	switch (function) {
+	case SYNAPTICS_RMI4_F12:
+		/* Store multitouch config registers */
+		hob_data.f12_c20_0 = f12_c20_0;
+		hob_data.f12_c23_0 = f12_c23_0;
+		hob_data.f12_c23_1 = f12_c23_1;
 
-	if (!f12_c20_0_store.y_suppression)
-		f12_c20_0_store.y_suppression = Y_MT_SUPPRESSION;
+		if (!hob_data.f12_c20_0.x_suppression)
+			hob_data.f12_c20_0.x_suppression = X_MT_SUPPRESSION;
+
+		if (!hob_data.f12_c20_0.y_suppression)
+			hob_data.f12_c20_0.y_suppression = Y_MT_SUPPRESSION;
+		break;
+	case SYNAPTICS_RMI4_F01:
+		retval = synaptics_rmi4_i2c_read(rmi4_data,
+			rmi4_data->f01_ctrl_base_addr + 5,
+			&hob_data.f01_c9,
+			sizeof(hob_data.f01_c9));
+		if (retval < 0)
+			pr_err("error storing recalibration interval\n");
+		break;
+	}
 }
 
  /**
@@ -3209,19 +3240,29 @@ static void synaptics_rmi4_sensor_multi_touch(void)
 static void synaptics_rmi4_sensor_one_touch(
 		struct synaptics_rmi4_data *rmi4_data, bool enable)
 {
+	int retval;
+	unsigned char recalibration;
 	if (enable) {
 		f12_c20_0.x_suppression = X_1T_SUPPRESSION;
 		f12_c20_0.y_suppression = Y_1T_SUPPRESSION;
 		f12_c23_0.data[0] = TYPE_FINGER | TYPE_STYLUS;
 		f12_c23_1.max_num_reported_objects = 1;
+		recalibration = ONE_TOUCH_RECALIBRATION;
 	} else {
-		f12_c20_0 = f12_c20_0_store;
-		f12_c23_0 = f12_c23_0_store;
-		f12_c23_1 = f12_c23_1_store;
+		f12_c20_0 = hob_data.f12_c20_0;
+		f12_c23_0 = hob_data.f12_c23_0;
+		f12_c23_1 = hob_data.f12_c23_1;
+		recalibration = hob_data.f01_c9;
 	}
 
 	synaptics_rmi4_write_packet_reg(rmi4_data, &f12_ctrl_regs, 20);
 	synaptics_rmi4_write_packet_reg(rmi4_data, &f12_ctrl_regs, 23);
+	retval = synaptics_rmi4_i2c_write(rmi4_data,
+			rmi4_data->f01_ctrl_base_addr + 5,
+			&recalibration,
+			sizeof(recalibration));
+	if (retval < 0)
+		pr_err("error setting recalibration interval\n");
 }
 
  /**
