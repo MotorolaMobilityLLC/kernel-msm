@@ -24,8 +24,10 @@
 
 static struct mipi_mot_panel *mot_panel;
 static int is_bl_supported(struct msm_fb_data_type *);
-static int is_pre_es2(struct msm_fb_data_type *);
+static int is_pre_es2_evt0(struct msm_fb_data_type *);
+static int is_evt0_sample(struct msm_fb_data_type *);
 static int is_aid_workaround_needed(struct msm_fb_data_type *);
+static int is_correct_shift_for_aod_needed(struct msm_fb_data_type *mfd);
 
 /* TODO: Need to confirm */
 static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
@@ -46,10 +48,10 @@ static char enter_sleep[2] = {DCS_CMD_ENTER_SLEEP_MODE, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
 static char normal_mode_on[2] = {DCS_CMD_SET_NORMAL_MODE_ON, 0x00};
-static char set_column[5] = {DCS_CMD_SET_COLUMN_ADDRESS,
-			     0x00, 0x00, 0x02, 0xcf};
-static char set_addr[5] = {DCS_CMD_SET_PAGE_ADDRESS,
-			   0x00, 0x00, 0x04, 0xff};
+static char normal_col[5] = {DCS_CMD_SET_COLUMN_ADDRESS,
+				0x00, 0x00, 0x02, 0xcf};
+static char normal_row[5] = {DCS_CMD_SET_PAGE_ADDRESS,
+				0x00, 0x00, 0x04, 0xff};
 static char unlock_lvl_2[3] = {0xf0, 0x5a, 0x5a};
 static char unlock_lvl_mtp[3] = {0xf1, 0x5a, 0x5a};
 static char unlock_lvl_3[3] = {0xfc, 0x5a, 0x5a};
@@ -77,6 +79,23 @@ static struct mipi_mot_cmd_seq refresh_rate_seq[] = {
 };
 
 #define DEFAULT_DELAY 1
+static struct mipi_mot_cmd_seq unlock_mtp_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_2),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_mtp),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_3),
+};
+
+static struct mipi_mot_cmd_seq image_retention_wa_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, switch_pwr_to_mem_1),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, switch_pwr_to_mem_2),
+};
+
+static struct mipi_mot_cmd_seq set_window_size[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, normal_col),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, normal_row),
+};
 
 static struct mipi_mot_cmd_seq acl_enable_disable_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY,
@@ -109,22 +128,16 @@ static struct mipi_mot_cmd_seq correct_shift_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_col),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_row),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, frame),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, set_column),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, set_addr),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, normal_col),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, normal_row),
 };
 
 static struct mipi_mot_cmd_seq smd_hd_497_cfg_seq[] = {
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_2),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_mtp),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_3),
+	MIPI_MOT_EXEC_SEQ(NULL, unlock_mtp_seq),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, enable_te),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, set_column),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, set_addr),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
-			DEFAULT_DELAY, switch_pwr_to_mem_1),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
-			DEFAULT_DELAY, switch_pwr_to_mem_2),
-	MIPI_MOT_TX_DEF(is_pre_es2, DTYPE_DCS_LWRITE,
+	MIPI_MOT_EXEC_SEQ(NULL, set_window_size),
+	MIPI_MOT_EXEC_SEQ(is_evt0_sample, image_retention_wa_seq),
+	MIPI_MOT_TX_DEF(is_pre_es2_evt0, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, acl_default_setting),
 	/* exit partial mode */
 	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_WRITE, 0, normal_mode_on),
@@ -134,8 +147,6 @@ static struct mipi_mot_cmd_seq smd_hd_497_cfg_seq[] = {
 			DEFAULT_DELAY, disp_ctrl),
 	MIPI_MOT_EXEC_SEQ(is_bl_supported, set_brightness_seq),
 	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
-			DEFAULT_DELAY, acl_enable_disable_settings),
 	MIPI_MOT_EXEC_SEQ(is_aid_workaround_needed, aid_workaround_seq),
 	MIPI_MOT_EXEC_SEQ(AOD_SUPPORTED, refresh_rate_seq),
 };
@@ -160,7 +171,7 @@ static struct dsi_cmd_desc mtp_read_cmd = {
 
 static struct mipi_mot_cmd_seq smd_hd_497_en_from_partial_seq[] = {
 	MIPI_MOT_EXEC_SEQ(NULL, smd_hd_497_cfg_seq),
-	MIPI_MOT_EXEC_SEQ(AOD_SUPPORTED, correct_shift_seq),
+	MIPI_MOT_EXEC_SEQ(is_correct_shift_for_aod_needed, correct_shift_seq),
 };
 
 static void enable_acl(struct msm_fb_data_type *mfd)
@@ -211,6 +222,15 @@ static int panel_disable(struct msm_fb_data_type *mfd)
 	return 0;
 }
 
+/* Work around for the EVT0 display sample issue */
+static int panel_enable_wa(struct msm_fb_data_type *mfd)
+{
+	if (is_evt0_sample(mfd))
+		mipi_set_mem_start_mem_cont(0x3c, 0x3c);
+
+	return 0;
+}
+
 static void panel_set_backlight(struct msm_fb_data_type *mfd)
 {
 	static int bl_level_old = -1;
@@ -252,35 +272,55 @@ static int is_bl_supported(struct msm_fb_data_type *mfd)
 	u8 rdata;
 
 	if (is_bl_supported == -1) {
-		/* To determine if BL is supported, need to read MTP to see
-		   if it is programmed.  Per spec, must be done in LP mode */
-		mipi_set_tx_power_mode(1);
-		mipi_mot_tx_cmds(&set_mtp_read_off[0],
-				ARRAY_SIZE(set_mtp_read_off));
-		ret = mipi_mot_rx_cmd(&mtp_read_cmd, &rdata, 1);
-		mipi_set_tx_power_mode(0);
-		if (ret < 0)
-			pr_err("%s: failed to determine if MTP is programmed, ret = %d",
-				__func__, ret);
+		if (!is_evt0_sample(mfd))
+			is_bl_supported = 1;
 		else {
-			pr_info("%s: Panel MTP data = 0x%02x\n",
-				__func__, rdata);
-			is_bl_supported = (!rdata) ? 0 : 1;
+			/* To determine if BL is supported, need to read MTP
+			   to see if it is programmed.  Per spec, must be done
+			   in LP mode */
+			mipi_set_tx_power_mode(1);
+			mipi_mot_tx_cmds(&set_mtp_read_off[0],
+					ARRAY_SIZE(set_mtp_read_off));
+			ret = mipi_mot_rx_cmd(&mtp_read_cmd, &rdata, 1);
+			mipi_set_tx_power_mode(0);
+			if (ret < 0)
+				pr_err("%s: failed to determine if MTP is programmed, ret = %d",
+					__func__, ret);
+			else {
+				pr_info("%s: Panel MTP data = 0x%02x\n",
+					__func__, rdata);
+				is_bl_supported = (!rdata) ? 0 : 1;
+			}
 		}
 	}
 
 	return ((is_bl_supported == 1) ? 1 : 0);
 }
 
-static int is_pre_es2(struct msm_fb_data_type *mfd)
+static int is_pre_es2_evt0(struct msm_fb_data_type *mfd)
 {
 	return (mipi_mot_get_controller_ver(mfd) < 2) ? 1 : 0;
 }
 
 static int is_aid_workaround_needed(struct msm_fb_data_type *mfd)
 {
-	return is_pre_es2(mfd) && is_bl_supported(mfd);
+	return is_pre_es2_evt0(mfd) && is_bl_supported(mfd);
 }
+
+static int is_evt0_sample(struct msm_fb_data_type *mfd)
+{
+	if ((mipi_mot_get_controller_ver(mfd) < 5) &&
+		(mipi_mot_get_controller_drv_ver(mfd) == 1))
+		return 1;
+
+	return 0;
+}
+
+static int is_correct_shift_for_aod_needed(struct msm_fb_data_type *mfd)
+{
+	return is_aod_supported(mfd) && is_evt0_sample(mfd);
+}
+
 
 static void panel_en_from_partial(struct msm_fb_data_type *mfd)
 {
@@ -331,9 +371,9 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 
 	pinfo->lcd.vsync_enable = TRUE;
 	pinfo->lcd.hw_vsync_mode = TRUE;
-	pinfo->lcd.v_back_porch = 2; /* TODO: Need to check */
-	pinfo->lcd.v_front_porch = 2; /* TODO: Need to check */
-	pinfo->lcd.v_pulse_width = 2; /* TODO: Need to check */
+	pinfo->lcd.v_back_porch = 2;
+	pinfo->lcd.v_front_porch = 2;
+	pinfo->lcd.v_pulse_width = 2;
 	pinfo->lcd.refx100 = 6000;
 
 	pinfo->mipi.mode = DSI_CMD_MODE;
@@ -344,9 +384,7 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 	pinfo->mipi.data_lane1 = TRUE;
 	pinfo->mipi.data_lane2 = TRUE;
 	pinfo->mipi.data_lane3 = TRUE;
-	/* TODO: Need to check */
 	pinfo->mipi.t_clk_post = 0x19;  /* DSI_CLKOUT_TIMING_CTRL >>8 */
-	/* TODO: Need to check */
 	pinfo->mipi.t_clk_pre = 0x2f;   /* DSI_CLKOUT_TIMING_CTRL && 0XFF */
 	pinfo->mipi.stream = 0; /* dma_p */
 	pinfo->mipi.mdp_trigger = DSI_CMD_TRIGGER_NONE;
@@ -355,7 +393,7 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 	pinfo->mipi.interleave_max = 1;
 	pinfo->mipi.insert_dcs_cmd = TRUE;
 	pinfo->mipi.wr_mem_continue = 0x3c;
-	pinfo->mipi.wr_mem_start = 0x3c; /* TODO: This needed on 4.97? */
+	pinfo->mipi.wr_mem_start = 0x2c;
 	pinfo->mipi.dsi_phy_db = &dsi_cmd_mode_phy_db;
 	pinfo->mipi.esc_byte_ratio = 2;
 	pinfo->mipi.tx_eot_append = 0x01;
@@ -366,6 +404,7 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 
 	mot_panel->panel_enable = panel_enable;
 	mot_panel->panel_disable = panel_disable;
+	mot_panel->panel_enable_wa = panel_enable_wa;
 	mot_panel->set_backlight = panel_set_backlight;
 	mot_panel->enable_acl = enable_acl;
 	mot_panel->enable_te = mipi_mot_set_tear;
