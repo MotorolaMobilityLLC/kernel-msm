@@ -94,7 +94,7 @@
 			<&msmgpio 63 0>; /* RESET */
 		touch_vdd-supply = <&rpm_8921_l11>;
 
-		synaptics,normal-mode = <0>;
+		synaptics,normal-mode = <1>;
 		synaptics,purge-enabled;
 		synaptics,reset-on-resume;
 		synaptics,one-touch-enabled;
