@@ -34,17 +34,6 @@
 
 	qcom,mdss_dsi@fd922800 {
 		qcom,mdss-dsi-use-vdd-supply = <0>;
-		qcom,mdss-dsi-byte-clk-rate = <112375000>;
-		qcom,mdss-dsi-pixel-clk-rate = <150000000>;
-	};
-
-	qcom,mdss_dsi_lgit_video{
-		status = "ok";
-		qcom,cont-splash-enabled;
-	};
-
-	qcom,mdss_dsi_lgit_cmd{
-		status = "disable";
 	};
 
 	qcom,hdmi_tx@fd922100 {

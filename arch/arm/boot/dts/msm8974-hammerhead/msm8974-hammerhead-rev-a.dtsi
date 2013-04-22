@@ -24,4 +24,9 @@
 		motor-amp = <115>;
 		use_vdd_supply;
 	};
+
+	qcom,mdss_dsi_jdi_video {
+		status = "ok";
+		qcom,cont-splash-enabled;
+	};
 };
