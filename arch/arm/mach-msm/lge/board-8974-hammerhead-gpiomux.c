@@ -224,7 +224,7 @@ static struct msm_gpiomux_config msm_fuel_gauge_configs[] __initdata = {
 };
 #endif
 
-static struct msm_gpiomux_config msm_display_configs[] __initdata = {
+static struct msm_gpiomux_config msm_display_configs_rev_f[] __initdata = {
 	{
 		.gpio = 23, 		/* DSV_LOAD_EN */
 		.settings = {
@@ -242,6 +242,32 @@ static struct msm_gpiomux_config msm_display_configs[] __initdata = {
 #if defined(CONFIG_BACKLIGHT_LM3630)
 	{
 		.gpio = 91, /* LCD_BL_EN */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_bl_en_active_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_bl_en_suspend_cfg,
+		},
+	},
+#endif
+};
+
+static struct msm_gpiomux_config msm_display_configs[] __initdata = {
+	{
+		.gpio = 23, 		/* DSV_LOAD_EN */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
+		},
+	},
+	{
+		.gpio = 58, /* LCD_RESET_N */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
+		},
+	},
+#if defined(CONFIG_BACKLIGHT_LM3630)
+	{
+		.gpio = 90, /* LCD_BL_EN */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &lcd_bl_en_active_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_bl_en_suspend_cfg,
@@ -1159,8 +1185,14 @@ void __init msm_8974_init_gpiomux(void)
 	msm_gpiomux_install(slimport_configs,
 					ARRAY_SIZE(slimport_configs));
 
-	msm_gpiomux_install_nowrite(msm_display_configs,
+	if (HW_REV_F == lge_get_board_revno()) {
+		msm_gpiomux_install_nowrite(msm_display_configs_rev_f,
+			ARRAY_SIZE(msm_display_configs_rev_f));
+	} else {
+		msm_gpiomux_install_nowrite(msm_display_configs,
 			ARRAY_SIZE(msm_display_configs));
+	}
+
 #if defined(CONFIG_MSM8974_PWM_VIBRATOR)
 	msm_gpiomux_install(vibrator_configs, ARRAY_SIZE(vibrator_configs));
 #endif
