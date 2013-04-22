@@ -21,6 +21,10 @@
 #include <linux/leds.h>
 #include <linux/pwm.h>
 #include <linux/err.h>
+#ifdef CONFIG_DEBUG_FS
+#include <linux/debugfs.h>
+#include <linux/ctype.h>
+#endif
 
 #include "mdss_dsi.h"
 
@@ -664,6 +668,244 @@ error:
 	return -EINVAL;
 }
 
+#ifdef CONFIG_DEBUG_FS
+ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
+	loff_t *ppos)
+{
+	int ret;
+	int i, j;
+	char *buf;
+	int buf_size;
+	struct mdss_panel_common_pdata *panel_data = filp->private_data;
+
+	if (!panel_data)
+		return -ENODEV;
+
+	buf = kzalloc(PAGE_SIZE * 2, GFP_KERNEL);
+
+	strncpy(buf, "qcom,panel-on-cmds = [", 22);
+	buf_size = 22;
+
+	for (i = 0; i < (panel_data->dsi_panel_on_cmds)->size; ++i) {
+		if (buf_size + 17 +
+			(panel_data->dsi_panel_on_cmds->buf[i].dlen * 3) >
+			PAGE_SIZE  * 2 - 4) {
+			pr_warn("Too many on_commands!\n");
+			break;
+		}
+
+		strncpy(&buf[buf_size], "\r\n", 2);
+		buf_size += 2;
+
+		ret = snprintf(&buf[buf_size], 18, "%02x %02x %02x %02x %02x %02x",
+			panel_data->dsi_panel_on_cmds->buf[i].dtype,
+			panel_data->dsi_panel_on_cmds->buf[i].last,
+			panel_data->dsi_panel_on_cmds->buf[i].vc,
+			panel_data->dsi_panel_on_cmds->buf[i].ack,
+			panel_data->dsi_panel_on_cmds->buf[i].wait,
+			panel_data->dsi_panel_on_cmds->buf[i].dlen);
+
+		if (ret < 0)
+			return ret;
+
+		buf_size += ret;
+
+		if (0 < panel_data->dsi_panel_on_cmds->buf[i].dlen &&
+			panel_data->dsi_panel_on_cmds->buf[i].dlen < 3) {
+			ret = snprintf(&buf[buf_size], 4, " %02x",
+				panel_data->dsi_panel_on_cmds->buf[i].payload[0]);
+			if (ret < 0)
+				return ret;
+
+			buf_size += ret;
+
+			if (panel_data->dsi_panel_on_cmds->buf[i].dlen == 2) {
+				ret = snprintf(&buf[buf_size], 4, " %02x",
+					panel_data->dsi_panel_on_cmds->buf[i].payload[1]);
+				if (ret < 0)
+					return ret;
+
+				buf_size += ret;
+			}
+		} else if (panel_data->dsi_panel_on_cmds->buf[i].dlen > 2) {
+			for (j = 0; j < panel_data->dsi_panel_on_cmds->buf[i].dlen; ++j) {
+				if ((j % 6) == 0) {
+					ret = snprintf(&buf[buf_size], 5, "\r\n%02x",
+						panel_data->dsi_panel_on_cmds->buf[i].payload[j]);
+					if (ret < 0)
+						return ret;
+
+					buf_size += ret;
+				} else {
+					ret = snprintf(&buf[buf_size], 4, " %02x",
+						panel_data->dsi_panel_on_cmds->buf[i].payload[j]);
+					if (ret < 0)
+						return ret;
+
+					buf_size += ret;
+				}
+			}
+		} else {
+			pr_err("Invalid data length!\n");
+			return -1;
+		}
+	}
+
+	strncpy(&buf[buf_size], "]", 2);
+	buf_size += 2;
+
+	ret = simple_read_from_buffer(user_buf, count, ppos, buf, buf_size);
+	kfree(buf);
+
+	return ret;
+}
+
+static int parse_on_cmds(char **on_cmds, const char *buf, size_t count)
+{
+	int i, j;
+	int on_cmds_len;
+	char *endptr;
+
+	i = 0;
+	do {
+		if (!strncmp(&buf[i], "qcom,panel-on-cmds", 18)) {
+			i += 18;
+			while (i < count && buf[i] != '=')
+				++i;
+			while (i < count && buf[i] != '[')
+				++i;
+			++i;
+			break;
+		}
+	} while (++i < count);
+
+	if (i >= count) {
+		pr_err("Invalid on_cmds start format!\n");
+		return -EINVAL;
+	}
+
+	on_cmds_len = 0;
+
+	for (j = i; j < count; ++j) {
+		if (isxdigit(buf[j]) && isxdigit(buf[j + 1])) {
+			++on_cmds_len;
+			++j;
+		} else if (buf[j] == ']')
+			break;
+	}
+
+	if (buf[j] != ']') {
+		pr_err("Invalid on_cmds end format!\n");
+		return -EINVAL;
+	}
+
+	if (*on_cmds)
+		kfree(*on_cmds);
+
+	*on_cmds = kzalloc(on_cmds_len, GFP_KERNEL);
+
+	j = 0;
+	for (i = 0; i < count; ++i) {
+		if (isxdigit(buf[i]) && isxdigit(buf[i + 1])) {
+			endptr = (char *)&buf[i + 1];
+			(*on_cmds)[j] = (char)simple_strtoul(&buf[i], &endptr, 16);
+			++i;
+			++j;
+		}
+	}
+
+	return on_cmds_len;
+}
+
+ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
+	size_t count, loff_t *ppos)
+{
+	char *on_cmds = NULL;
+	int len;
+	int data_offset;
+	int cmd_plen;
+	int num_of_on_cmds;
+	int i;
+
+	struct mdss_panel_common_pdata *panel_data = filp->private_data;
+
+	if (!panel_data)
+		return -ENODEV;
+
+	len = parse_on_cmds(&on_cmds, user_buf, count);
+
+	if (len <= 0) {
+		pr_err("Invalid on_cmd format or length!\n");
+		return -EINVAL;
+	}
+
+	data_offset = 0;
+	cmd_plen = 0;
+	num_of_on_cmds = 0;
+	while ((len - data_offset) >= DT_CMD_HDR) {
+		data_offset += (DT_CMD_HDR - 1);
+		cmd_plen = on_cmds[data_offset++];
+		data_offset += cmd_plen;
+		num_of_on_cmds++;
+	}
+	if (!num_of_on_cmds) {
+		pr_err("%s:%d, No ON cmds specified", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	kfree((panel_data->dsi_panel_on_cmds)->buf);
+
+	(panel_data->dsi_panel_on_cmds)->buf =
+		kzalloc((num_of_on_cmds * sizeof(struct dsi_cmd_desc)),
+						GFP_KERNEL);
+	if (!(panel_data->dsi_panel_on_cmds)->buf)
+		return -ENOMEM;
+
+	data_offset = 0;
+	for (i = 0; i < num_of_on_cmds; i++) {
+		panel_data->dsi_panel_on_cmds->buf[i].dtype =
+						on_cmds[data_offset++];
+		panel_data->dsi_panel_on_cmds->buf[i].last =
+						on_cmds[data_offset++];
+		panel_data->dsi_panel_on_cmds->buf[i].vc =
+						on_cmds[data_offset++];
+		panel_data->dsi_panel_on_cmds->buf[i].ack =
+						on_cmds[data_offset++];
+		panel_data->dsi_panel_on_cmds->buf[i].wait =
+						on_cmds[data_offset++];
+		panel_data->dsi_panel_on_cmds->buf[i].dlen =
+						on_cmds[data_offset++];
+		panel_data->dsi_panel_on_cmds->buf[i].payload =
+						&on_cmds[data_offset];
+		data_offset += panel_data->dsi_panel_on_cmds->buf[i].dlen;
+	}
+
+	(panel_data->dsi_panel_on_cmds)->size = num_of_on_cmds;
+
+	return count;
+}
+
+static const struct file_operations on_cmd_fops = {
+	.open = simple_open,
+	.read = on_cmd_read,
+	.write = on_cmd_write,
+};
+
+static int debug_fs_init(struct mdss_panel_common_pdata *panel_data)
+{
+	struct dentry *dsi_base;
+
+	dsi_base = debugfs_create_dir("mdss_dsi", NULL);
+	if (!dsi_base)
+		return -ENOMEM;
+
+	debugfs_create_file("on_cmd", S_IRUSR | S_IRGRP | S_IWUSR, dsi_base,
+		panel_data, &on_cmd_fops);
+
+	return 0;
+}
+#endif
+
 static int __devinit mdss_dsi_panel_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -692,6 +934,10 @@ static int __devinit mdss_dsi_panel_probe(struct platform_device *pdev)
 	rc = dsi_panel_device_register(pdev, &vendor_pdata);
 	if (rc)
 		return rc;
+
+#ifdef CONFIG_DEBUG_FS
+	debug_fs_init(&vendor_pdata);
+#endif
 
 	return 0;
 }
