@@ -383,7 +383,7 @@ static struct msm_gpiomux_config sd_card_det __initdata = {
 	},
 };
 
-static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
+static struct msm_gpiomux_config msm_sensor_configs_rev_f[] __initdata = {
 	{
 		.gpio = 15, /* MAIN_CAM_MCLK */
 		.settings = {
@@ -456,6 +456,93 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	},
 	{
 		.gpio = 90, /* MAIN_CAM_RESET_N */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
+		},
+	},
+	{
+		.gpio = 96, /* 13M_VIO_EN */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
+		},
+	},
+};
+
+static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
+	{
+		.gpio = 15, /* MAIN_CAM_MCLK */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[0],
+			[GPIOMUX_SUSPENDED] = &cam_settings[1],
+		},
+	},
+	{
+		.gpio = 16, /* 13M_VANA */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
+		},
+	},
+	{
+		.gpio = 17, /* VT_CAM_MCLK */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[0],
+			[GPIOMUX_SUSPENDED] = &cam_settings[1],
+		},
+	},
+	{
+		.gpio = 18, /* VT_CAM_RESET_N */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
+		},
+	},
+	{
+		.gpio = 19, /* CAM0_I2C_SDA */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[0],
+			[GPIOMUX_SUSPENDED] = &cam_settings[2],
+		},
+	},
+	{
+		.gpio = 20, /* CAM0_I2C_SCL */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[0],
+			[GPIOMUX_SUSPENDED] = &cam_settings[2],
+		},
+	},
+	{
+		.gpio = 21, /* CAM1_I2C_SDA */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[0],
+			[GPIOMUX_SUSPENDED] = &cam_settings[2],
+		},
+	},
+	{
+		.gpio = 22, /* CAM1_I2C_SCL */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[0],
+			[GPIOMUX_SUSPENDED] = &cam_settings[2],
+		},
+	},
+	{
+		.gpio = 30, /* VT_LDO_EN */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
+		},
+	},
+	{
+		.gpio = 57, /* 13M_VCM_EN */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
+		},
+	},
+	{
+		.gpio = 4, /* MAIN_CAM_RESET_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &cam_settings[4],
@@ -1049,7 +1136,13 @@ void __init msm_8974_init_gpiomux(void)
 
 	msm_gpiomux_install(msm_touch_configs, ARRAY_SIZE(msm_touch_configs));
 
-	msm_gpiomux_install(msm_sensor_configs, ARRAY_SIZE(msm_sensor_configs));
+	if (HW_REV_F == lge_get_board_revno()) {
+		msm_gpiomux_install(msm_sensor_configs_rev_f,
+				ARRAY_SIZE(msm_sensor_configs_rev_f));
+	} else {
+		msm_gpiomux_install(msm_sensor_configs,
+				ARRAY_SIZE(msm_sensor_configs));
+	}
 
 	msm_gpiomux_install(&sd_card_det, 1);
 	msm_gpiomux_sdc3_install();
