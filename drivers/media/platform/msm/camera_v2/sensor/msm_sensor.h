@@ -43,6 +43,12 @@ struct msm_sensor_fn_t {
 		(struct msm_sensor_ctrl_t *);
 	int (*sensor_power_up) (struct msm_sensor_ctrl_t *);
 	int32_t (*sensor_match_id)(struct msm_sensor_ctrl_t *s_ctrl);
+	int32_t (*sensor_set_effect)
+			(struct msm_sensor_ctrl_t *, int);
+	int32_t (*sensor_set_wb)
+			(struct msm_sensor_ctrl_t *, int);
+	int32_t (*sensor_set_ev)
+			(struct msm_sensor_ctrl_t *, int);
 };
 
 struct msm_sensor_ctrl_t {

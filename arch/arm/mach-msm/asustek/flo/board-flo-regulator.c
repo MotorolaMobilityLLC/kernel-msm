@@ -82,7 +82,7 @@ VREG_CONSUMERS(L11) = {
 };
 VREG_CONSUMERS(L12) = {
 	REGULATOR_SUPPLY("cam_vdig",		"4-001a"),
-	REGULATOR_SUPPLY("cam_vdig",		"4-0048"),
+/*	REGULATOR_SUPPLY("cam_vdig",		"4-0048"),*/
 	REGULATOR_SUPPLY("cam_vdig",		"4-006c"),
 	REGULATOR_SUPPLY("cam_vdig",		"4-0034"),
 	REGULATOR_SUPPLY("cam_vdig",		"4-0020"),
@@ -127,6 +127,7 @@ VREG_CONSUMERS(L23) = {
 	REGULATOR_SUPPLY("HSUSB_1p8",		"msm_ehci_host.0"),
 	REGULATOR_SUPPLY("HSUSB_1p8",		"msm_ehci_host.1"),
 	REGULATOR_SUPPLY("cam_vdig",		"4-0040"),
+	REGULATOR_SUPPLY("cam_vdig",            "4-0048"),
 };
 VREG_CONSUMERS(L24) = {
 	REGULATOR_SUPPLY("8921_l24",		NULL),

@@ -921,20 +921,39 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 				1);
 			break;
 		case SENSOR_I2C_MUX:
-			rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(25), &pm_isp_gpio_high);
-			if (rc != 0)
-				pr_err("gpio 25 VCM_PD config high fail\n");
-			else
-				pr_err("gpio 25 VCM_PD(%d)\n",gpio_get_value(PM8921_GPIO_PM_TO_SYS(25)));
+			if (!strcmp(data->sensor_name, "ov5693")) {
+				rc = pm8xxx_gpio_config(
+						PM8921_GPIO_PM_TO_SYS(25),
+						&pm_isp_gpio_high);
+				if (rc != 0)
+					pr_err("gpio 25 VCM_PD config high fail\n");
+				else
+					pr_err("gpio 25 VCM_PD(%d)\n",
+					gpio_get_value(
+					PM8921_GPIO_PM_TO_SYS(25)));
 
-			rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(31), &pm_isp_gpio_high);
-			if (rc != 0)
-				pr_err("gpio 31 XSHUTDN config high fail\n");
-			else
-				pr_err("gpio 31 XSHUTDN(%d)\n",gpio_get_value(PM8921_GPIO_PM_TO_SYS(31)));
+				rc = pm8xxx_gpio_config(
+						PM8921_GPIO_PM_TO_SYS(31),
+						&pm_isp_gpio_high);
+				if (rc != 0)
+					pr_err("gpio 31 XSHUTDN config high fail\n");
+				else
+					pr_err("gpio 31 XSHUTDN(%d)\n",
+					gpio_get_value(
+					PM8921_GPIO_PM_TO_SYS(31)));
 
-			msleep(20);
-
+				msleep(20);
+			} else {
+				rc = pm8xxx_gpio_config(
+						PM8921_GPIO_PM_TO_SYS(43),
+						&pm_isp_gpio_high);
+				if (rc != 0)
+					pr_err("gpio 43 CAM_RST config high fail\n");
+				else
+					pr_err("gpio 43 CAM_RST(%d)\n",
+					gpio_get_value(
+					PM8921_GPIO_PM_TO_SYS(43)));
+			}
 			if (data->i2c_conf && data->i2c_conf->use_i2c_mux)
 				msm_sensor_enable_i2c_mux(data->i2c_conf);
 			break;
@@ -1077,12 +1096,27 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		case SENSOR_I2C_MUX:
 			if (data->i2c_conf && data->i2c_conf->use_i2c_mux)
 				msm_sensor_disable_i2c_mux(data->i2c_conf);
-			rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(31), &pm_isp_gpio_low);
-			if (rc != 0)
-				pr_err("%s: XSHUTDOWN config low fail\n", __func__);
-			rc = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(25), &pm_isp_gpio_low);
-			if (rc != 0)
-				pr_err("%s: VCM_PD config low fail\n", __func__);
+			if (!strcmp(data->sensor_name, "ov5693")) {
+				rc = pm8xxx_gpio_config(
+						PM8921_GPIO_PM_TO_SYS(31),
+						&pm_isp_gpio_low);
+				if (rc != 0)
+					pr_err("%s: XSHUTDOWN config low fail\n",
+						__func__);
+				rc = pm8xxx_gpio_config(
+						PM8921_GPIO_PM_TO_SYS(25),
+						&pm_isp_gpio_low);
+				if (rc != 0)
+					pr_err("%s: VCM_PD config low fail\n",
+						__func__);
+			} else {
+				rc = pm8xxx_gpio_config(
+					PM8921_GPIO_PM_TO_SYS(43),
+					&pm_isp_gpio_low);
+				if (rc != 0)
+					pr_err("%s: CAM_RST config low fail\n",
+						__func__);
+			}
 			break;
 		default:
 			pr_err("%s error power seq type %d\n", __func__,
@@ -1460,6 +1494,7 @@ static struct msm_camera_i2c_fn_t msm_sensor_qup_func_tbl = {
 	.i2c_write_seq_table = msm_camera_qup_i2c_write_seq_table,
 	.i2c_write_table_w_microdelay =
 		msm_camera_qup_i2c_write_table_w_microdelay,
+	.i2c_write_conf_tbl = msm_camera_qup_i2c_write_conf_tbl,
 };
 
 int32_t msm_sensor_platform_probe(struct platform_device *pdev,

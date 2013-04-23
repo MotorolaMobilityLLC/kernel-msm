@@ -120,6 +120,12 @@ config OV5693
        bool "Sensor ov5693 (Bayer 5M)"
        depends on MSMB_CAMERA
 
+config MI1040
+       bool "Sensor mi1040 (VGA YUV)"
+       depends on MSMB_CAMERA
+       ---help---
+          Aptina 1.2M YUV Sensor
+
 config MSM_V4L2_VIDEO_OVERLAY_DEVICE
 	tristate "Qualcomm MSM V4l2 video overlay device"
 	---help---

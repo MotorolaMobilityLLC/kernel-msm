@@ -78,11 +78,13 @@ struct msm_camera_sensor_board_info {
 	struct msm_camera_i2c_conf *i2c_conf;
 	struct msm_sensor_info_t *sensor_info;
 	struct msm_sensor_init_params *sensor_init_params;
+	char vendor_name[32];
 };
 
 enum msm_camera_i2c_cmd_type {
 	MSM_CAMERA_I2C_CMD_WRITE,
 	MSM_CAMERA_I2C_CMD_POLL,
+	MSM_CAMERA_I2C_CMD_SEQ_WRITE,
 };
 
 struct msm_camera_i2c_reg_conf {
@@ -91,6 +93,8 @@ struct msm_camera_i2c_reg_conf {
 	enum msm_camera_i2c_data_type dt;
 	enum msm_camera_i2c_cmd_type cmd_type;
 	int16_t mask;
+	uint16_t *data;
+	uint16_t num_byte;
 };
 
 struct msm_camera_i2c_conf_array {

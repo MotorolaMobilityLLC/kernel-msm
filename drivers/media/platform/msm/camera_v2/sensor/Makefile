@@ -9,3 +9,4 @@ obj-$(CONFIG_S5K3L1YX) += s5k3l1yx.o
 obj-$(CONFIG_IMX111) += imx111.o
 obj-$(CONFIG_IMX119) += imx119.o
 obj-$(CONFIG_OV5693) += ov5693.o
+obj-$(CONFIG_MI1040) += mi1040.o
