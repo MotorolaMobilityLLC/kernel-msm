@@ -34,15 +34,15 @@
 			qcom,cam-vreg-max-voltage = <1225000 0 0 0>;
 			qcom,cam-vreg-op-mode = <1225000 0 0 0>;
 			qcom,gpio-no-mux = <0>;
-			gpios = <&msmgpio 15 0>, 		// MCLK
-				<&msmgpio 90 0>,		// MAIN_CAM_RESET
-				<&msmgpio 16 0>,		// 13M_VANA_EN
-				<&msmgpio 96 0>,		// 13M_VIO_EN
-				<&msmgpio 57 0>;		// 13M_VCM_EN
-			qcom,gpio-reset = <1>; 			// Set gpio_90 as reset
-			qcom,gpio-vana = <2>;			// Set gpio_16 as VANA
-			qcom,gpio-vio = <3>;			// Set gpio_96 as VIO
-			qcom,gpio-vcm = <4>;			// Set gpio_57 as VCM
+			gpios = <&msmgpio 15 0>,  // MCLK
+				<&msmgpio 4 0>,   // MAIN_CAM_RESET
+				<&msmgpio 16 0>,  // 13M_VANA_EN
+				<&msmgpio 96 0>,  // 13M_VIO_EN
+				<&msmgpio 57 0>;  // 13M_VCM_EN
+			qcom,gpio-reset = <1>;
+			qcom,gpio-vana = <2>;
+			qcom,gpio-vio = <3>;
+			qcom,gpio-vcm = <4>;
 			qcom,gpio-req-tbl-num = <0 1 2 3 4>;
 			qcom,gpio-req-tbl-flags = <0 0 0 0 0>;
 			qcom,gpio-req-tbl-label =  "CAMIF_MCLK", "CAM_RESET1", "MAIN_VANA_EN", "MAIN_VIO_EN", "MAIN_VCM_EN";
