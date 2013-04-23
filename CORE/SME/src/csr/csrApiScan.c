@@ -114,10 +114,29 @@ RSSI *cannot* be more than 0xFF or less than 0 for meaningful WLAN operation
 #define CSR_SCAN_IS_OVER_BSS_LIMIT(pMac)  \
    ( (pMac)->scan.nBssLimit <= (csrLLCount(&(pMac)->scan.scanResultList)) )
 
+/* Maximum number of channels per country can be ignored */
+#define MAX_CHANNELS_IGNORE 10
+
+#define MAX_COUNTRY_IGNORE 3
+
+/*struct to hold the ignored channel list based on country */
+typedef struct sCsrIgnoreChannels
+{
+    tANI_U8 countryCode[NV_FIELD_COUNTRY_CODE_SIZE];
+    tANI_U16 channelList[MAX_CHANNELS_IGNORE];
+    tANI_U16 channelCount;
+}tCsrIgnoreChannels;
+
+static tCsrIgnoreChannels countryIgnoreList[MAX_COUNTRY_IGNORE] = {
+    { {'U','A'}, { 136, 140}, 2},
+    { {'T','W'}, { 36, 40, 44, 48, 52}, 5},
+    { {'I','D'}, { 165}, 1 }
+    };
+
 //*** This is temporary work around. It need to call CCM api to get to CFG later
 /// Get string parameter value
 extern tSirRetStatus wlan_cfgGetStr(tpAniSirGlobal, tANI_U16, tANI_U8*, tANI_U32*);
-                                                                     
+
 void csrScanGetResultTimerHandler(void *);
 void csrScanResultAgingTimerHandler(void *pv);
 static void csrScanResultCfgAgingTimerHandler(void *pv);
@@ -3063,48 +3082,65 @@ void csrApplyPower2Current( tpAniSirGlobal pMac )
 
 void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannelList, tANI_U8 *countryCode, tANI_BOOLEAN updateRiva)
 {
-    int i;
+    int i, j, count, countryIndex = -1;
     eNVChannelEnabledType channelEnabledType;
     tANI_U8 numChannels = 0;
     tANI_U8 tempNumChannels = 0;
+    tANI_U8 channelIgnore = FALSE;
     tCsrChannel ChannelList;
+
     if( pChannelList->numChannels )
     {
+        for(count=0; count < MAX_COUNTRY_IGNORE; count++)
+        {
+            if(vos_mem_compare(countryCode, countryIgnoreList[count].countryCode,
+                                                          VOS_COUNTRY_CODE_LEN))
+            {
+                countryIndex = count;
+                break;
+            }
+        }
         tempNumChannels = CSR_MIN(pChannelList->numChannels, WNI_CFG_VALID_CHANNEL_LIST_LEN);
         /* If user doesn't want to scan the DFS channels lets trim them from 
         the valid channel list*/
-        for(i = 0; i< tempNumChannels; i++)
+        for(i=0; i < tempNumChannels; i++)
         {
-             if(FALSE == pMac->scan.fEnableDFSChnlScan)
-             {
-                 channelEnabledType = 
-                     vos_nv_getChannelEnabledState(pChannelList->channelList[i]);
-             }
-             else
-             {
+            channelIgnore = FALSE;
+            if( FALSE == pMac->scan.fEnableDFSChnlScan )
+            {
+                channelEnabledType =
+                    vos_nv_getChannelEnabledState(pChannelList->channelList[i]);
+            }
+            else
+            {
                 channelEnabledType = NV_CHANNEL_ENABLE;
-             }
-             if( NV_CHANNEL_ENABLE ==  channelEnabledType)
-             {
-                // Ignore the channel 165 for the country INDONESIA 
-                if (( pChannelList->channelList[i] == 165 )
-                      && ( pMac->scan.fIgnore_chan165 == VOS_TRUE )
-                      && vos_mem_compare(countryCode, "ID", VOS_COUNTRY_CODE_LEN ))
-                 {
-                     continue;
-                 }
-                 else
-                 {
-                     ChannelList.channelList[numChannels] = pChannelList->channelList[i];
-                     numChannels++;
-                 }
-             }
+            }
+            if( NV_CHANNEL_ENABLE == channelEnabledType )
+            {
+                if( countryIndex != -1 )
+                {
+                    for(j=0; j < countryIgnoreList[countryIndex].channelCount; j++)
+                    {
+                        if( pChannelList->channelList[i] ==
+                                countryIgnoreList[countryIndex].channelList[j] )
+                        {
+                            channelIgnore = TRUE;
+                            break;
+                        }
+                    }
+                }
+                if( FALSE == channelIgnore )
+                {
+                   ChannelList.channelList[numChannels] = pChannelList->channelList[i];
+                   numChannels++;
+                }
+            }
         }
-        ChannelList.numChannels = numChannels;   
-   
+        ChannelList.numChannels = numChannels;
         csrSetCfgValidChannelList(pMac, ChannelList.channelList, ChannelList.numChannels);
         // extend scan capability
-        csrSetCfgScanControlList(pMac, countryCode, &ChannelList);     //  build a scan list based on the channel list : channel# + active/passive scan
+        //  build a scan list based on the channel list : channel# + active/passive scan
+        csrSetCfgScanControlList(pMac, countryCode, &ChannelList);
 #ifdef FEATURE_WLAN_SCAN_PNO
         if (updateRiva)
         {
