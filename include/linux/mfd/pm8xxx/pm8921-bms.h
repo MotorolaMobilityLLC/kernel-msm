@@ -192,6 +192,18 @@ static inline void pm8921_bms_charging_full(void)
 void pm8921_bms_voltage_based_capacity(int batt_mvolt,
 					int batt_mcurr,
 					int batt_temp);
+/**
+ * pm8921_bms_calculate_chrg_fcc - function to calculate charge fcc
+ */
+void pm8921_bms_calculate_chrg_fcc(int ocv_mv,
+				   int ocv_cc_uah,
+				   int full_cc_uah,
+				   int full_temp_c);
+/**
+ * pm8921_bms_get_chrg_ocv_time - function to get time of Charge OCV
+ */
+int pm8921_bms_get_chrg_ocv_time(void);
+
 #endif
 #ifdef CONFIG_PM8921_TEST_OVERRIDE
 int pm8921_override_get_charge_status(int *status);
