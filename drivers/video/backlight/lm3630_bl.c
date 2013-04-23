@@ -433,7 +433,7 @@ static int lm3630_parse_dt(struct device *dev,
 		pdata->blmap = kzalloc(sizeof(char) * pdata->blmap_size, GFP_KERNEL);
 		if (!pdata->blmap)
 			return -ENOMEM;
-		for (i = 0; i <= pdata->blmap_size; i++)
+		for (i = 0; i < pdata->blmap_size; i++)
 			pdata->blmap[i] = (char)array[i];
 		if (array)
 			kfree(array);
