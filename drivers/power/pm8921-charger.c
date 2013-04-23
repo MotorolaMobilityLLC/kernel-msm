@@ -206,6 +206,12 @@ enum pcb_temp_states {
 	PCB_TEMP_HOT,
 };
 
+enum chrg_ocv_states {
+	CHRG_OCV_NO_CHRG,
+	CHRG_OCV_OCV_WAIT,
+	CHRG_OCV_FULL_WAIT,
+};
+
 /**
  * struct pm8921_chg_chip -device information
  * @dev:			device pointer to access the parent
@@ -324,6 +330,17 @@ struct pm8921_chg_chip {
 	signed char			hot_temp_pcb_offset_dc;
 	int				pcb_temp_dc;
 	int				pcb_temp_state;
+	int				chrg_ocv_state;
+	int				chrg_ocv_ocv_time;
+	int				chrg_ocv_low_soc_thr;
+	int				chrg_ocv_high_soc_thr;
+	int				chrg_ocv_dchrg_thr_ma;
+	int				chrg_ocv_cc_thr_uah;
+	int				chrg_ocv_time;
+	int				chrg_ocv_cc_bf_uah;
+	int				chrg_ocv_cc_af_uah;
+	int				chrg_ocv_cc_ef_uah;
+	int				chrg_ocv_bv_mv;
 #endif
 };
 
@@ -445,6 +462,13 @@ static int pm_chg_get_fsm_state(struct pm8921_chg_chip *chip)
 {
 	u8 temp;
 	int err = 0, ret = 0;
+
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	if (chip->chrg_ocv_state != CHRG_OCV_NO_CHRG) {
+		ret = FSM_STATE_FAST_CHG_7;
+		goto err_out;
+	}
+#endif
 
 	temp = CAPTURE_FSM_STATE_CMD;
 	err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
@@ -2748,11 +2772,19 @@ int pm8921_batt_temperature(void)
 	return temp;
 }
 
+#define SECS_PER_WEEK 604800
 static void handle_chg_insertion_removal(struct pm8921_chg_chip *chip)
 {
 	struct pm8921_charger_platform_data *pdata;
 	char plugged;
 	static char prev_plugged;
+	struct timeval tv;
+	int chrg_ocv_time = pm8921_bms_get_chrg_ocv_time();
+	int curr_cc = 0;
+
+	do_gettimeofday(&tv);
+	pm8921_bms_get_cc_uah(&curr_cc);
+	chrg_ocv_time += SECS_PER_WEEK;
 
 	plugged = (is_usb_chg_plugged_in(chip) ||
 		   is_dc_chg_plugged_in(chip)) ? 1 : 0;
@@ -2764,12 +2796,22 @@ static void handle_chg_insertion_removal(struct pm8921_chg_chip *chip)
 				is_usb_chg_plugged_in(chip),
 				is_dc_chg_plugged_in(chip));
 			wake_lock(&chip->chg_wake_lock);
+			if ((!chip->factory_mode)  &&
+				(tv.tv_sec >= chrg_ocv_time)) {
+				chip->chrg_ocv_cc_bf_uah = curr_cc;
+				chip->chrg_ocv_time = 0;
+				pm_chg_auto_enable(chip, 0);
+				chip->chrg_ocv_state = CHRG_OCV_OCV_WAIT;
+				pr_info("Start Chrg OCV calculation\n");
+			}
 			if (pdata->force_therm_bias)
 				pdata->force_therm_bias(chip->dev, 1);
 		} else {
 			pr_info("Not Plugged\n");
 			chip->bms_notify.is_battery_full = 0;
 			pm8921_bms_no_external_accy();
+			pm_chg_auto_enable(chip, 1);
+			chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
 			if (pdata->force_therm_bias)
 				pdata->force_therm_bias(chip->dev, 0);
 			wake_unlock(&chip->chg_wake_lock);
@@ -3738,6 +3780,8 @@ static void update_heartbeat(struct work_struct *work)
 	int percent_soc;
 	int fcc;
 	int seconds = 0;
+	int curr_time =
+		ktime_to_timespec(alarm_get_elapsed_realtime()).tv_sec;
 #endif
 
 	get_wl_psy();
@@ -3768,6 +3812,54 @@ static void update_heartbeat(struct work_struct *work)
 						  batt_mcurr,
 						  batt_temp);
 		percent_soc = pm8921_bms_get_percent_charge();
+	}
+
+	if (chip->chrg_ocv_state == CHRG_OCV_OCV_WAIT) {
+		if (chip->chrg_ocv_time == 0) {
+			chip->chrg_ocv_time = curr_time;
+			if ((percent_soc > chip->chrg_ocv_high_soc_thr) ||
+			    (percent_soc < chip->chrg_ocv_low_soc_thr)) {
+				pm_chg_auto_enable(chip, 1);
+				chip->chrg_ocv_time = 0;
+				chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
+				pr_info("High SOC or Low SOC - NO CHRG\n");
+				goto reschedule;
+			}
+		}
+		if (curr_time < (chip->chrg_ocv_ocv_time +
+				 chip->chrg_ocv_time)) {
+			pr_debug("OCV = %d\n", batt_mvolt);
+			goto reschedule;
+		} else {
+			chip->chrg_ocv_time = 0;
+			pm8921_bms_get_cc_uah(&chip->chrg_ocv_cc_af_uah);
+			chip->chrg_ocv_bv_mv = batt_mvolt;
+			pr_info("chrg_ocv_bv_mv = %d\n", chip->chrg_ocv_bv_mv);
+			pr_debug("batt_mcurr = %d\n", batt_mcurr);
+			pr_debug("af_uah = %d\n", chip->chrg_ocv_cc_af_uah);
+			pr_debug("bf_uah = %d\n", chip->chrg_ocv_cc_bf_uah);
+			pm_chg_auto_enable(chip, 1);
+			if ((abs(batt_mcurr) >= chip->chrg_ocv_dchrg_thr_ma) ||
+			    (abs(chip->chrg_ocv_cc_af_uah -
+				 chip->chrg_ocv_cc_bf_uah) >=
+			     chip->chrg_ocv_cc_thr_uah)){
+				chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
+				pr_info("CHRG_OCV_OCV_WAIT - NO CHRG\n");
+			} else {
+				pr_debug("CHRG_OCV_OCV_WAIT - Done\n");
+				chip->chrg_ocv_state = CHRG_OCV_FULL_WAIT;
+			}
+		}
+	}
+
+	if (chip->chrg_ocv_state == CHRG_OCV_FULL_WAIT) {
+		if (chip->bms_notify.is_battery_full) {
+			pm8921_bms_calculate_chrg_fcc(chip->chrg_ocv_bv_mv,
+						      chip->chrg_ocv_cc_af_uah,
+						      chip->chrg_ocv_cc_ef_uah,
+						      batt_temp);
+			chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
+		}
 	}
 
 	if ((percent_soc <= 5) &&
@@ -4403,6 +4495,7 @@ static void eoc_worker(struct work_struct *work)
 #ifdef CONFIG_PM8921_FLOAT_CHARGE
 		pr_info("Taper Reached Float Charging\n");
 		chip->bms_notify.is_battery_full = 1;
+		pm8921_bms_get_cc_uah(&chip->chrg_ocv_cc_ef_uah);
 		bms_notify_check(chip);
 #endif
 	} else {
@@ -6225,6 +6318,17 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	chip->hot_temp_pcb_dc = pdata->hot_temp_pcb * 10;
 	chip->hot_temp_pcb_offset_dc = pdata->hot_temp_pcb_offset * 10;
 	chip->pcb_temp_state = PCB_TEMP_NORM;
+	chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
+	chip->chrg_ocv_ocv_time = 240;
+	chip->chrg_ocv_low_soc_thr = 20;
+	chip->chrg_ocv_high_soc_thr = 60;
+	chip->chrg_ocv_dchrg_thr_ma = 10;
+	chip->chrg_ocv_cc_thr_uah = 660;
+	chip->chrg_ocv_time = 0;
+	chip->chrg_ocv_cc_bf_uah = 0;
+	chip->chrg_ocv_cc_af_uah = 0;
+	chip->chrg_ocv_cc_ef_uah = 0;
+	chip->chrg_ocv_bv_mv = 0;
 #endif
 
 	chip->cold_thr = pdata->cold_thr;
