@@ -332,7 +332,6 @@ static int vibrator_gpio_init(struct timed_vibrator_data *vib_data)
 	return 0;
 }
 
-#ifdef CONFIG_OF
 static void vibrator_parse_dt(struct device *dev,
 		struct timed_vibrator_data *vib_data)
 {
@@ -356,7 +355,6 @@ static void vibrator_parse_dt(struct device *dev,
 			vib_data->amp, vib_data->vibe_n_value,
 			vib_data->use_vdd_supply);
 }
-#endif
 
 static ssize_t vibrator_amp_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -525,12 +523,10 @@ static void msm8974_pwm_vibrator_shutdown(struct platform_device *pdev)
 	msm8974_pwm_vibrator_force_set(vib, 0, vib->vibe_n_value);
 }
 
-#ifdef CONFIG_OF
 static struct of_device_id vibrator_match_table[] = {
     { .compatible = "msm,pwm_vibrator",},
     { },
 };
-#endif
 
 static struct platform_driver msm8974_pwm_vibrator_driver = {
 	.probe = msm8974_pwm_vibrator_probe,
@@ -540,9 +536,7 @@ static struct platform_driver msm8974_pwm_vibrator_driver = {
 	.resume = msm8974_pwm_vibrator_resume,
 	.driver = {
 		.name = DEVICE_NAME,
-#ifdef CONFIG_OF
 		.of_match_table = vibrator_match_table,
-#endif
 	},
 };
 
