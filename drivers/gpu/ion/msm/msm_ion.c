@@ -607,7 +607,7 @@ static long msm_ion_custom_ioctl(struct ion_client *client,
 		start = (unsigned long) data.vaddr;
 		end = (unsigned long) data.vaddr + data.length;
 
-		if (check_vaddr_bounds(start, end)) {
+		if (start && check_vaddr_bounds(start, end)) {
 			pr_err("%s: virtual address %p is out of bounds\n",
 				__func__, data.vaddr);
 			return -EINVAL;
