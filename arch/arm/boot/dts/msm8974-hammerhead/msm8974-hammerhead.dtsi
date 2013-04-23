@@ -708,4 +708,12 @@
 			qcom,init-voltage = <3300000>;
 		};
 	};
+
+	rpm-regulator-ldoa19 {
+		pm8941_l19: regulator-l19 {
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			qcom,init-voltage = <3000000>;
+		};
+	};
 };
