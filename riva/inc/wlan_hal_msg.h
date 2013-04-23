@@ -4909,7 +4909,7 @@ typedef PACKED_PRE struct PACKED_POST
  *PNO Messages
  *-------------------------------------------------------------------------*/
 /*Max number of channels that a network can be found on*/
-#define WLAN_HAL_PNO_MAX_NETW_CHANNELS  26
+#define WLAN_HAL_PNO_MAX_NETW_CHANNELS  60
 
 /*Max number of channels that a network can be found on*/
 #define WLAN_HAL_PNO_MAX_NETW_CHANNELS_EX  60
