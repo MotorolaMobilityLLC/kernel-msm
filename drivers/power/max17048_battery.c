@@ -467,7 +467,6 @@ int max17048_get_capacity(void)
 }
 EXPORT_SYMBOL(max17048_get_capacity);
 
-#ifdef CONFIG_OF
 static int max17048_parse_dt(struct device *dev,
 		struct max17048_chip *chip)
 {
@@ -532,7 +531,6 @@ static int max17048_parse_dt(struct device *dev,
 out:
 	return ret;
 }
-#endif
 
 static int max17048_get_prop_status(struct max17048_chip *chip)
 {
@@ -631,7 +629,6 @@ static int max17048_get_property(struct power_supply *psy,
 
 static void max17048_external_power_changed(struct power_supply *psy)
 {
-
 	struct max17048_chip *chip = container_of(psy, struct max17048_chip,
 						batt_psy);
 	int chg_state;
@@ -679,7 +676,6 @@ static int max17048_probe(struct i2c_client *client,
 		goto error;
 	}
 
-#ifdef CONFIG_OF
 	if (&client->dev.of_node) {
 		ret = max17048_parse_dt(&client->dev, chip);
 		if (ret) {
@@ -689,9 +685,6 @@ static int max17048_probe(struct i2c_client *client,
 	} else {
 		chip->pdata = client->dev.platform_data;
 	}
-#else
-	chip->pdata = client->dev.platform_data;
-#endif
 
 	i2c_set_clientdata(client, chip);
 
@@ -859,12 +852,10 @@ static int max17048_resume(struct i2c_client *client)
 
 #endif /* CONFIG_PM */
 
-#ifdef CONFIG_OF
 static struct of_device_id max17048_match_table[] = {
 	{ .compatible = "maxim,max17048", },
 	{ },
 };
-#endif
 
 static const struct i2c_device_id max17048_id[] = {
 	{ "max17048", 0 },
@@ -876,9 +867,7 @@ static struct i2c_driver max17048_i2c_driver = {
 	.driver	= {
 		.name	= "max17048",
 		.owner	= THIS_MODULE,
-#ifdef CONFIG_OF
 		.of_match_table = max17048_match_table,
-#endif
 	},
 	.probe = max17048_probe,
 	.remove = max17048_remove,
