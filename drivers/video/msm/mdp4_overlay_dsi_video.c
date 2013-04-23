@@ -217,18 +217,6 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 	}
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	if (vctrl->blt_change) {
-		pipe = vctrl->base_pipe;
-		spin_lock_irqsave(&vctrl->spin_lock, flags);
-		INIT_COMPLETION(vctrl->dmap_comp);
-		INIT_COMPLETION(vctrl->ov_comp);
-		vsync_irq_enable(INTR_DMA_P_DONE, MDP_DMAP_TERM);
-		spin_unlock_irqrestore(&vctrl->spin_lock, flags);
-		mdp4_dsi_video_wait4dmap(0);
-		if (pipe->ov_blt_addr)
-			mdp4_dsi_video_wait4ov(0);
-	}
-
 	pipe = vp->plist;
 
 	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
@@ -1096,17 +1084,6 @@ void mdp4_dmap_done_dsi_video(int cndx)
 	if (vctrl->blt_change) {
 		mdp4_overlayproc_cfg(pipe);
 		mdp4_overlay_dmap_xy(pipe);
-		if (pipe->ov_blt_addr) {
-			mdp4_dsi_video_blt_ov_update(pipe);
-			pipe->ov_cnt++;
-			/* Prefill one frame */
-			vsync_irq_enable(INTR_OVERLAY0_DONE,
-						MDP_OVERLAY0_TERM);
-			/* kickoff overlay0 engine */
-			mdp4_stat.kickoff_ov0++;
-			vctrl->ov_koff++;	/* make up for prefill */
-			outpdw(MDP_BASE + 0x0004, 0);
-		}
 		vctrl->blt_change = 0;
 	}
 
@@ -1207,6 +1184,17 @@ static void mdp4_dsi_video_do_blt(struct msm_fb_data_type *mfd, int enable)
 		}
 		mdp4_overlayproc_cfg(pipe);
 		mdp4_overlay_dmap_xy(pipe);
+		if (pipe->ov_blt_addr) {
+			mdp4_dsi_video_blt_ov_update(pipe);
+			pipe->ov_cnt++;
+			/* Prefill one frame */
+			vsync_irq_enable(INTR_OVERLAY0_DONE,
+						MDP_OVERLAY0_TERM);
+			/* kickoff overlay0 engine */
+			mdp4_stat.kickoff_ov0++;
+			vctrl->ov_koff++;	/* make up for prefill */
+			outpdw(MDP_BASE + 0x0004, 0);
+		}
 		if (tg_enabled) {
 			/*
 			 * need wait for more than 1 ms to
