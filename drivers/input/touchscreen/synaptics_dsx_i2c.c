@@ -1063,7 +1063,8 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 static const char * const panel_event_names[] = {
 	"PANEL PWR-OFF",
 	"PANEL PWR-ON",
-	"DISPLAY ON"
+	"DISPLAY ON",
+	"DISPLAY PRE-OFF"
 };
 
 static const char *synaptics_dsx_get_panel_event(int event)
@@ -1079,10 +1080,13 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 		container_of(nb, struct synaptics_rmi4_data, panel_nb);
 
 	switch (event) {
+	case MMI_PANEL_EVENT_PRE_DEINIT:
+		synaptics_rmi4_irq_enable(rmi4_data, false);
+		value = 1; /* set flag */
+			break;
 	case MMI_PANEL_EVENT_PWR_OFF:
 		if (rmi4_data->shared_regulator)
 			synaptics_rmi4_early_suspend(&rmi4_data->early_suspend);
-		value = 1; /* set flag */
 			break;
 	case MMI_PANEL_EVENT_POST_INIT:
 		value = 0; /* clear flag */
