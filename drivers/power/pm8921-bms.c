@@ -276,6 +276,15 @@ module_param(bms_aged_capacity, int, 0644);
 static int bms_aged_capacity_temp;
 module_param(bms_aged_capacity_temp, int, 0644);
 
+static int bms_chrg_capacity;
+module_param(bms_chrg_capacity, int, 0644);
+static int bms_chrg_capacity_temp;
+module_param(bms_chrg_capacity_temp, int, 0644);
+static int chrg_timestamp;
+module_param(chrg_timestamp, int, 0644);
+MODULE_PARM_DESC(chrg_timestamp, "Epoch format timestamp value which indicates last"
+		 "time when chg_capacity var was updated");
+
 static int timestamp;
 module_param(timestamp, int, 0644);
 MODULE_PARM_DESC(timestamp, "Epoch format timestamp value which indicates last"
@@ -2257,6 +2266,51 @@ void pm8921_bms_voltage_based_capacity(int batt_mvolt,
 	}
 
 	pr_debug("meter_offset = %d\n", the_chip->meter_offset);
+}
+
+void pm8921_bms_calculate_chrg_fcc(int ocv_mv,
+				   int ocv_cc_uah,
+				   int full_cc_uah,
+				   int full_temp_c)
+{
+	struct timeval tv;
+	int ocv_soc = calculate_pc(the_chip, (ocv_mv * 1000), full_temp_c,
+				   last_chargecycles);
+	unsigned int chrg_ocv_fcc = 100 * abs(full_cc_uah - ocv_cc_uah);
+	pr_info("ocv_mv = %d, ocv_soc = %d, ocv_cc = %d, full_cc = %d\n",
+		ocv_mv, ocv_soc, ocv_cc_uah, full_cc_uah);
+
+	/* Calculate Percentage of Initial FCC */
+	chrg_ocv_fcc /= (100 - ocv_soc);
+	chrg_ocv_fcc /= 10;
+	chrg_ocv_fcc /= the_chip->fcc;
+	pr_info("Actual chrg_ocv_fcc = %d\n", chrg_ocv_fcc);
+
+	/* Round up */
+	if (chrg_ocv_fcc % 10) {
+		chrg_ocv_fcc /= 10;
+		chrg_ocv_fcc *= 10;
+		chrg_ocv_fcc += 10;
+	}
+
+	/* Max of 100 */
+	if (chrg_ocv_fcc > 100)
+		chrg_ocv_fcc = 100;
+
+	/* Mark Time Stamp */
+	do_gettimeofday(&tv);
+	chrg_timestamp = tv.tv_sec;
+
+	bms_chrg_capacity = (int)chrg_ocv_fcc;
+	bms_chrg_capacity_temp = full_temp_c;
+
+	pr_info("bms_chrg_capacity = %d, bms_chrg_capacity_temp = %d\n",
+		bms_chrg_capacity, bms_chrg_capacity_temp);
+}
+
+int pm8921_bms_get_chrg_ocv_time(void)
+{
+	return chrg_timestamp;
 }
 #endif
 
