@@ -51,7 +51,8 @@
 #define MAX17048_POLLING_PERIOD	50000
 #define MAX17048_BATTERY_FULL	100
 #define MAX17048_BATTERY_LOW	15
-#define MAX17048_VERSION_NO	0x11
+#define MAX17048_VERSION_11	0x11
+#define MAX17048_VERSION_12	0x12
 
 struct max17048_chip {
 	struct i2c_client		*client;
@@ -691,17 +692,20 @@ static int max17048_probe(struct i2c_client *client,
 #else
 	chip->pdata = client->dev.platform_data;
 #endif
-	ref = chip;
 
 	i2c_set_clientdata(client, chip);
 
 	version = max17048_get_version(client);
-	if (version != MAX17048_VERSION_NO) {
+	dev_info(&client->dev, "MAX17048 Fuel-Gauge Ver 0x%x\n", version);
+	if (version != MAX17048_VERSION_11 &&
+	    version != MAX17048_VERSION_12) {
+		pr_err("%s: Not supported version: 0x%x\n", __func__,
+				version);
 		ret = -ENODEV;
 		goto error;
 	}
 
-	dev_info(&client->dev, "MAX17048 Fuel-Gauge Ver 0x%x\n", version);
+	ref = chip;
 
 	chip->batt_psy.name		= "battery";
 	chip->batt_psy.type		= POWER_SUPPLY_TYPE_BATTERY;
