@@ -33,6 +33,8 @@
 #include <linux/io.h>
 #include <linux/slab.h>
 #include <linux/of.h>
+#include <linux/regulator/consumer.h>
+#include <linux/mutex.h>
 
 #include <mach/msm_iomap.h>
 
@@ -49,6 +51,8 @@ static void __iomem *virt_bases_v;
 #define DEVICE_NAME		"msm8974_pwm_vibrator"
 
 #define MMSS_CC_N_DEFAULT	41
+
+static DEFINE_MUTEX(vib_lock);
 
 struct timed_vibrator_data {
 	struct timed_output_dev dev;
@@ -67,9 +71,69 @@ struct timed_vibrator_data {
 	int vibe_warmup_delay; /* in ms */
 	struct work_struct work_vibrator_off;
 	struct work_struct work_vibrator_on;
+	bool use_vdd_supply;
+	struct regulator *vdd_reg;
 };
 
 static struct clk *cam_gp1_clk;
+
+static int vibrator_regulator_init(
+		struct platform_device *pdev,
+		struct timed_vibrator_data *vib)
+{
+	int ret;
+
+	if (!vib->use_vdd_supply)
+		return 0;
+
+	vib->vdd_reg = devm_regulator_get(&pdev->dev, "vdd");
+	if (IS_ERR(vib->vdd_reg)) {
+		pr_err("%s: could not get vdd-supply\n", __func__);
+		return -ENODEV;
+	}
+
+	ret = regulator_set_voltage(vib->vdd_reg,
+			3000000, 3000000);
+	if (ret) {
+		pr_err("%s: vdd_reg->set_voltage failed\n", __func__);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int vibrator_set_power(int enable,
+		struct timed_vibrator_data *vib)
+{
+	int ret;
+	static int vibrator_enabled = 0;
+
+	if (!vib->use_vdd_supply)
+		return 0;
+
+	if (enable == vibrator_enabled)
+		return 0;
+
+	mutex_lock(&vib_lock);
+
+	vibrator_enabled = enable;
+	if (enable) {
+		ret = regulator_enable(vib->vdd_reg);
+		if (ret < 0)
+			pr_err("%s: vdd_reg->enable failed\n", __func__);
+	} else {
+		if (regulator_is_enabled(vib->vdd_reg) > 0) {
+			ret = regulator_disable(vib->vdd_reg);
+			if (ret < 0)
+				pr_err("%s: vdd_reg->disable failed\n",
+						__func__);
+		}
+	}
+
+	mutex_unlock(&vib_lock);
+
+	return ret;
+}
 
 static int vibrator_ic_enable_set(int enable,
 		struct timed_vibrator_data *vib_data)
@@ -147,6 +211,7 @@ static int msm8974_pwm_vibrator_force_set(struct timed_vibrator_data *vib,
 
 	/* TODO: control the gain of vibrator */
 	if (nForce == 0) {
+		vibrator_set_power(0, vib);
 		vibrator_ic_enable_set(0, vib);
 		vibrator_pwm_set(0, 0, n_value);
 		/* should be checked for vibrator response time */
@@ -160,6 +225,7 @@ static int msm8974_pwm_vibrator_force_set(struct timed_vibrator_data *vib,
 		/* should be checked for vibrator response time */
 		vibrator_pwm_set(1, nForce, n_value);
 		vibrator_ic_enable_set(1, vib);
+		vibrator_set_power(1, vib);
 
 		atomic_set(&vib->vib_status, true);
 
@@ -280,12 +346,15 @@ static void vibrator_parse_dt(struct device *dev,
 	of_property_read_u32(np, "motor-amp", &vib_data->amp);
 	of_property_read_u32(np, "n-value", &vib_data->vibe_n_value);
 
+	vib_data->use_vdd_supply = of_property_read_bool(np,
+			"use-vdd-supply");
 
-	pr_debug("%s: motor_en %d, motor_pwm %d, amp %d, n_value %d\n",
+	pr_debug("%s: motor_en %d, motor_pwm %d, amp %d, n_value %d vdd %d\n",
 			__func__,
 			vib_data->haptic_en_gpio,
 			vib_data->motor_pwm_gpio,
-			vib_data->amp, vib_data->vibe_n_value);
+			vib_data->amp, vib_data->vibe_n_value,
+			vib_data->use_vdd_supply);
 }
 #endif
 
@@ -342,7 +411,7 @@ static struct device_attribute vibrator_device_attrs[] = {
 	__ATTR(n_val, S_IRUGO | S_IWUSR, vibrator_pwm_show, vibrator_pwm_store),
 };
 
-struct timed_vibrator_data msm8974_pwm_vibrator_data = {
+static struct timed_vibrator_data msm8974_pwm_vibrator_data = {
 	.dev.name = "vibrator",
 	.dev.enable = vibrator_enable,
 	.dev.get_time = vibrator_get_time,
@@ -360,6 +429,10 @@ static int msm8974_pwm_vibrator_probe(struct platform_device *pdev)
 	if (pdev->dev.of_node) {
 		pr_debug("%s: device has of_node\n", __func__);
 		vibrator_parse_dt(&pdev->dev, vib);
+	}
+
+	if (vibrator_regulator_init(pdev, vib) < 0) {
+		return -ENODEV;
 	}
 
 	pdev->dev.init_name = vib->dev.name;
