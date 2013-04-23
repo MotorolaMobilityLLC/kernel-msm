@@ -931,8 +931,6 @@ static ssize_t camera_dev_read_stats(struct file *file, char __user *buf,
 {
 	int rc = 0;
 	uint8_t data[AF_STATISTICS_DATA];
-	uint8_t *data_ptr = data;
-	int i;
 
 	memset(data, 0, sizeof(data));
 
@@ -942,14 +940,11 @@ static ssize_t camera_dev_read_stats(struct file *file, char __user *buf,
 		size = AF_STATISTICS_DATA;
 	}
 
-	/* TODO: New function is needed to read all bytes at once. */
-	for (i = AF_USEFUL_STATISTICS_ADDR;
-			i < AF_USEFUL_STATISTICS_ADDR + 10;
-			i++) {
-		rc = ov660_read_i2c((AF_STATISTICS_ADDR + i),
-				(data_ptr + i), 1);
-		GOTO_EXIT_IF((rc < 0), 1);
-	}
+	rc = ov660_read_i2c(AF_STATISTICS_ADDR + AF_USEFUL_STATISTICS_ADDR_OFFSET,
+			&data[AF_USEFUL_STATISTICS_ADDR_OFFSET],
+			AF_USEFUL_STATISTICS_DATA);
+
+	GOTO_EXIT_IF((rc < 0), 1);
 
 	if (copy_to_user(buf, &data, size)) {
 		pr_err("%s: Unable to copy statistics to user space!\n",
