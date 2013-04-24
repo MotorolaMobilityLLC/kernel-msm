@@ -1014,6 +1014,7 @@ static int msm_vpe_subdev_close(struct v4l2_subdev *sd,
 			frame_info->p_mctl->client, mctl->domain_num);
 		msm_mctl_unmap_user_frame(&frame_info->dest_frame,
 			frame_info->p_mctl->client, mctl->domain_num);
+		vpe_ctrl->pp_frame_info = NULL;
 	}
 	/* Drain the payload queue. */
 	msm_queue_drain(&vpe_ctrl->eventData_q, list_eventdata);
