@@ -229,8 +229,8 @@ void tty_diag_channel_close(struct usb_diag_ch *diag_ch)
 	int i;
 
 	if (diag_ch->priv_usb) {
-		tty_insert_flip_char(priv_usb->tty, 0x00, TTY_BREAK);
-		tty_flip_buffer_push(priv_usb->tty);
+		tty_insert_flip_char(priv_usb->tty->port, 0x00, TTY_BREAK);
+		tty_flip_buffer_push(priv_usb->tty->port);
 	}
 	spin_lock_irqsave(&diag_tty_lock, flags);
 	diag_ch->priv = NULL;
@@ -292,7 +292,7 @@ int tty_diag_channel_write(struct usb_diag_ch *diag_ch,
 		return -EIO;
 	}
 
-	tty_allocated = tty_prepare_flip_string(tty_data->tty,
+	tty_allocated = tty_prepare_flip_string(tty_data->tty->port,
 						&tty_buf, d_req->length);
 
 	if (tty_allocated < d_req->length) {
@@ -304,7 +304,7 @@ int tty_diag_channel_write(struct usb_diag_ch *diag_ch,
 	diag_ch->priv_usb = NULL;
 
 	memcpy(tty_buf, d_req->buf, d_req->length);
-	tty_flip_buffer_push(tty_data->tty);
+	tty_flip_buffer_push(tty_data->tty->port);
 
 	spin_unlock_irqrestore(&diag_tty_lock, flags);
 

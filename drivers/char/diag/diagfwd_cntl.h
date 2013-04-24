@@ -55,9 +55,8 @@
 #define ENABLE_SEPARATE_CMDRSP	1
 #define DISABLE_SEPARATE_CMDRSP	0
 
-#define DISABLE_STM	0
 #define ENABLE_STM	1
-#define STATUS_STM	2
+#define DISABLE_STM	0
 
 #define UPDATE_PERIPHERAL_STM_STATE	1
 #define CLEAR_PERIPHERAL_STM_STATE	2
@@ -66,6 +65,15 @@
 #define DISABLE_APPS_HDLC_ENCODING	0
 
 #define DIAG_MODE_PKT_LEN	36
+
+/* custom diag mode command to send optimized logging parameters to BP */
+#define DIAG_CTRL_MSG_DIAGMODE_MDLOG 100
+
+/* custom diag mode command to flush BP buffer */
+#define DIAG_CTRL_MSG_DIAG_FLUSH     101
+
+/* user selection, indicating whether to use optimized logging */
+extern unsigned int optimized_logging;
 
 struct cmd_code_range {
 	uint16_t cmd_code_lo;
@@ -114,6 +122,25 @@ struct diag_ctrl_msg_mask {
 	/* Copy msg mask here */
 } __packed;
 
+
+struct diag_ctrl_msg_diagmode_mdlog {
+	uint32_t ctrl_pkt_id;
+	uint32_t ctrl_pkt_data_len;
+	uint32_t version;
+	uint32_t optimized;
+	uint32_t commit_threshold;
+	uint32_t drain_timer_val;
+	uint32_t event_stale_timer_val;
+	uint32_t drain_low_threshold;
+	uint32_t drain_high_threshold;
+	uint32_t drain_interval_in_secs;
+} __packed;
+
+struct diag_ctrl_msg_diag_flush {
+	uint32_t ctrl_pkt_id;
+	uint32_t ctrl_pkt_data_len;
+} __packed;
+
 struct diag_ctrl_feature_mask {
 	uint32_t ctrl_pkt_id;
 	uint32_t ctrl_pkt_data_len;
@@ -149,7 +176,7 @@ struct diag_ctrl_dci_status {
 	uint8_t count;
 } __packed;
 
-int diagfwd_cntl_init(void);
+void diagfwd_cntl_init(void);
 void diagfwd_cntl_exit(void);
 void diag_read_smd_cntl_work_fn(struct work_struct *);
 void diag_notify_ctrl_update_fn(struct work_struct *work);
@@ -157,6 +184,7 @@ void diag_clean_reg_fn(struct work_struct *work);
 void diag_cntl_smd_work_fn(struct work_struct *work);
 int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
 								int total_recd);
+void diag_send_diag_mode_update(int real_time);
 void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 							int real_time);
 void diag_update_proc_vote(uint16_t proc, uint8_t vote, int index);
@@ -166,4 +194,5 @@ int diag_send_stm_state(struct diag_smd_info *smd_info,
 				uint8_t stm_control_data);
 void diag_cntl_stm_notify(struct diag_smd_info *smd_info, int action);
 
+void diag_send_diag_flush(struct diag_smd_info *smd_info);
 #endif

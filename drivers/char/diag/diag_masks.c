@@ -26,6 +26,9 @@ int diag_event_num_bytes;
 #define DIAG_CTRL_MASK_ALL_ENABLED	2
 #define DIAG_CTRL_MASK_VALID		3
 
+static uint8_t optimized_cmd_cached;
+static uint8_t smd_opened;
+
 #define ALL_EQUIP_ID		100
 #define ALL_SSID		-1
 
@@ -107,6 +110,18 @@ static void diag_set_msg_mask(int rt_mask)
 {
 	int first_ssid, last_ssid, i;
 	uint8_t *parse_ptr, *ptr = driver->msg_masks;
+
+	pr_debug("diag: mode:%d,smd_opened:%d, optimized:%d\n",
+		driver->logging_mode, smd_opened, optimized_logging);
+	if ((driver->logging_mode == MEMORY_DEVICE_MODE)
+	    && smd_opened) {
+		pr_debug("diag: diag_set_msg_mask, send optimized cmd\n");
+		diag_send_diag_mode_update((optimized_logging == 1) ?
+					MODE_NONREALTIME : MODE_REALTIME);
+	} else if (!smd_opened && optimized_logging) {
+		pr_debug("diag: diag_set_msg_mask, cache optimized cmd\n");
+		optimized_cmd_cached = 1;
+	}
 
 	mutex_lock(&driver->diagchar_mutex);
 	driver->msg_status = rt_mask ? DIAG_CTRL_MASK_ALL_ENABLED :
@@ -317,6 +332,8 @@ static void diag_update_log_mask(int equip_id, uint8_t *buf, int num_items)
 
 void diag_mask_update_fn(struct work_struct *work)
 {
+	static int smd_channel_count = 0;
+
 	struct diag_smd_info *smd_info = container_of(work,
 						struct diag_smd_info,
 						diag_notify_update_smd_work);
@@ -327,19 +344,32 @@ void diag_mask_update_fn(struct work_struct *work)
 	}
 
 	diag_send_feature_mask_update(smd_info);
-	diag_send_msg_mask_update(smd_info, ALL_SSID, ALL_SSID,
+	diag_send_msg_mask_update(smd_info->ch, ALL_SSID, ALL_SSID,
 						smd_info->peripheral);
-	diag_send_log_mask_update(smd_info, ALL_EQUIP_ID);
-	diag_send_event_mask_update(smd_info, diag_event_num_bytes);
+	diag_send_log_mask_update(smd_info->ch, ALL_EQUIP_ID);
+	diag_send_event_mask_update(smd_info->ch, diag_event_num_bytes);
 
-	if (smd_info->notify_context == SMD_EVENT_OPEN)
+	if (smd_info->notify_context == SMD_EVENT_OPEN) {
+		/* we have to set non-optimized before setting optimized,
+		 * otherwise optimized won't work as expected.
+		 */
+		pr_debug("diag: %s, optimized = %d, cmd_cached = %d\n",
+			__func__, optimized_logging, optimized_cmd_cached);
 		diag_send_diag_mode_update_by_smd(smd_info,
 				driver->real_time_mode[DIAG_LOCAL_PROC]);
+
+		/* optimized */
+		smd_channel_count++;
+		if (smd_channel_count == 3)
+			smd_opened = 1;
+		if (optimized_logging && optimized_cmd_cached && smd_opened)
+			diag_send_diag_mode_update(MODE_NONREALTIME);
+	}
 
 	smd_info->notify_context = 0;
 }
 
-void diag_send_log_mask_update(struct diag_smd_info *smd_info, int equip_id)
+void diag_send_log_mask_update(smd_channel_t *ch, int equip_id)
 {
 	void *buf = driver->buf_log_mask_update;
 	struct diag_log_mask_t *log_item = NULL;
@@ -347,12 +377,6 @@ void diag_send_log_mask_update(struct diag_smd_info *smd_info, int equip_id)
 	uint32_t log_mask_size = 0;
 	int wr_size = -ENOMEM, retry_count = 0;
 	int i, header_size, send_once = 0;
-
-	if (!smd_info) {
-		pr_err("diag: In %s, null smd info pointer\n",
-			__func__);
-		return;
-	}
 
 	header_size = sizeof(struct diag_ctrl_log_mask);
 	log_item = (struct diag_log_mask_t *)driver->log_masks;
@@ -396,12 +420,10 @@ void diag_send_log_mask_update(struct diag_smd_info *smd_info, int equip_id)
 			       log_mask_size);
 		}
 
-		if (smd_info->ch) {
+		if (ch) {
 			while (retry_count < 3) {
-				mutex_lock(&smd_info->smd_ch_mutex);
-				wr_size = smd_write(smd_info->ch, buf,
+				wr_size = smd_write(ch, buf,
 						header_size + log_mask_size);
-				mutex_unlock(&smd_info->smd_ch_mutex);
 				if (wr_size == -ENOMEM) {
 					retry_count++;
 					usleep_range(10000, 10100);
@@ -423,17 +445,11 @@ void diag_send_log_mask_update(struct diag_smd_info *smd_info, int equip_id)
 	mutex_unlock(&driver->diag_cntl_mutex);
 }
 
-void diag_send_event_mask_update(struct diag_smd_info *smd_info, int num_bytes)
+void diag_send_event_mask_update(smd_channel_t *ch, int num_bytes)
 {
 	void *buf = driver->buf_event_mask_update;
 	int header_size = sizeof(struct diag_ctrl_event_mask);
 	int wr_size = -ENOMEM, retry_count = 0;
-
-	if (!smd_info) {
-		pr_err("diag: In %s, null smd info pointer\n",
-			__func__);
-		return;
-	}
 
 	mutex_lock(&driver->diag_cntl_mutex);
 	if (num_bytes == 0) {
@@ -473,12 +489,9 @@ void diag_send_event_mask_update(struct diag_smd_info *smd_info, int num_bytes)
 		return;
 	}
 	memcpy(buf, driver->event_mask, header_size);
-	if (smd_info->ch) {
+	if (ch) {
 		while (retry_count < 3) {
-			mutex_lock(&smd_info->smd_ch_mutex);
-			wr_size = smd_write(smd_info->ch, buf,
-						header_size + num_bytes);
-			mutex_unlock(&smd_info->smd_ch_mutex);
+			wr_size = smd_write(ch, buf, header_size + num_bytes);
 			if (wr_size == -ENOMEM) {
 				retry_count++;
 				usleep_range(10000, 10100);
@@ -493,20 +506,14 @@ void diag_send_event_mask_update(struct diag_smd_info *smd_info, int num_bytes)
 	mutex_unlock(&driver->diag_cntl_mutex);
 }
 
-void diag_send_msg_mask_update(struct diag_smd_info *smd_info,
-				int updated_ssid_first, int updated_ssid_last,
-				int proc)
+void diag_send_msg_mask_update(smd_channel_t *ch, int updated_ssid_first,
+						int updated_ssid_last, int proc)
 {
 	void *buf = driver->buf_msg_mask_update;
 	int first, last, actual_last, size = -ENOMEM, retry_count = 0;
 	int header_size = sizeof(struct diag_ctrl_msg_mask);
 	uint8_t *ptr = driver->msg_masks;
 
-	if (!smd_info) {
-		pr_err("diag: In %s, null smd info pointer\n",
-				__func__);
-		return;
-	}
 	mutex_lock(&driver->diag_cntl_mutex);
 	while (*(uint32_t *)(ptr + 4)) {
 		first = *(uint32_t *)ptr;
@@ -566,12 +573,10 @@ void diag_send_msg_mask_update(struct diag_smd_info *smd_info,
 		driver->msg_mask->ssid_first = first;
 		driver->msg_mask->ssid_last = actual_last;
 		memcpy(buf, driver->msg_mask, header_size);
-		if (smd_info->ch) {
+		if (ch) {
 			while (retry_count < 3) {
-				mutex_lock(&smd_info->smd_ch_mutex);
-				size = smd_write(smd_info->ch, buf, header_size
-					+ 4*(driver->msg_mask->msg_mask_size));
-				mutex_unlock(&smd_info->smd_ch_mutex);
+				size = smd_write(ch, buf, header_size +
+				 4*(driver->msg_mask->msg_mask_size));
 				if (size == -ENOMEM) {
 					retry_count++;
 					usleep_range(10000, 10100);
@@ -631,9 +636,7 @@ void diag_send_feature_mask_update(struct diag_smd_info *smd_info)
 	total_len = header_size + FEATURE_MASK_LEN_BYTES;
 
 	while (retry_count < 3) {
-		mutex_lock(&smd_info->smd_ch_mutex);
 		wr_size = smd_write(smd_info->ch, buf, total_len);
-		mutex_unlock(&smd_info->smd_ch_mutex);
 		if (wr_size == -ENOMEM) {
 			retry_count++;
 			/*
@@ -688,7 +691,7 @@ int diag_process_apps_masks(unsigned char *buf, int len)
 			for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
 				if (driver->smd_cntl[i].ch)
 					diag_send_log_mask_update(
-						&driver->smd_cntl[i],
+						driver->smd_cntl[i].ch,
 						*(int *)buf);
 			}
 			encode_rsp_and_send(12 + payload_length - 1);
@@ -730,7 +733,7 @@ int diag_process_apps_masks(unsigned char *buf, int len)
 			for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
 				if (driver->smd_cntl[i].ch)
 					diag_send_log_mask_update(
-						&driver->smd_cntl[i],
+						driver->smd_cntl[i].ch,
 						ALL_EQUIP_ID);
 
 			}
@@ -801,7 +804,7 @@ int diag_process_apps_masks(unsigned char *buf, int len)
 			for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
 				if (driver->smd_cntl[i].ch)
 					diag_send_msg_mask_update(
-						&driver->smd_cntl[i],
+						driver->smd_cntl[i].ch,
 						ssid_first, ssid_last,
 						driver->smd_cntl[i].peripheral);
 
@@ -826,7 +829,7 @@ int diag_process_apps_masks(unsigned char *buf, int len)
 			for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
 				if (driver->smd_cntl[i].ch)
 					diag_send_msg_mask_update(
-						&driver->smd_cntl[i],
+						driver->smd_cntl[i].ch,
 						ALL_SSID, ALL_SSID,
 						driver->smd_cntl[i].peripheral);
 
@@ -852,7 +855,7 @@ int diag_process_apps_masks(unsigned char *buf, int len)
 			for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
 				if (driver->smd_cntl[i].ch)
 					diag_send_event_mask_update(
-						&driver->smd_cntl[i],
+						driver->smd_cntl[i].ch,
 						diag_event_num_bytes);
 			}
 			encode_rsp_and_send(6 + EVENT_LAST_ID/8);
@@ -870,7 +873,7 @@ int diag_process_apps_masks(unsigned char *buf, int len)
 			for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
 				if (driver->smd_cntl[i].ch)
 					diag_send_event_mask_update(
-						&driver->smd_cntl[i],
+						driver->smd_cntl[i].ch,
 						diag_event_num_bytes);
 			}
 			encode_rsp_and_send(2);
@@ -905,7 +908,7 @@ static void diag_log_mask_init(void)
 	}
 }
 
-int diag_masks_init(void)
+void diag_masks_init(void)
 {
 	driver->event_status = DIAG_CTRL_MASK_INVALID;
 	driver->msg_status = DIAG_CTRL_MASK_INVALID;
@@ -990,7 +993,7 @@ int diag_masks_init(void)
 			goto err;
 		kmemleak_not_leak(driver->event_masks);
 	}
-	return 0;
+	return;
 err:
 	pr_err("diag: Could not initialize diag mask buffers");
 	kfree(driver->event_mask);
@@ -1001,7 +1004,6 @@ err:
 	kfree(driver->event_masks);
 	kfree(driver->feature_mask);
 	kfree(driver->buf_feature_mask_update);
-	return -ENOMEM;
 }
 
 void diag_masks_exit(void)
