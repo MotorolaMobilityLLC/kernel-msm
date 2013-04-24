@@ -258,7 +258,8 @@ static void diagfwd_bridge_notifier(void *priv, unsigned event,
 		index = (int)(d_req->context);
 		if (index == SMUX && driver->diag_smux_enabled)
 			diagfwd_write_complete_smux();
-		else if (diag_hsic[index].hsic_device_enabled)
+		else if (index < MAX_HSIC_CH &&
+					diag_hsic[index].hsic_device_enabled)
 			diagfwd_write_complete_hsic(d_req, index);
 		break;
 	default:
@@ -268,7 +269,7 @@ static void diagfwd_bridge_notifier(void *priv, unsigned event,
 	}
 }
 
-int diagfwd_bridge_init(int index)
+void diagfwd_bridge_init(int index)
 {
 	int ret;
 	unsigned char name[20];
@@ -278,8 +279,8 @@ int diagfwd_bridge_init(int index)
 	} else if (index == SMUX) {
 		strlcpy(name, "smux", sizeof(name));
 	} else {
-		pr_debug("diag: incorrect bridge instance: %d\n", index);
-		return 0;
+		pr_err("diag: incorrect bridge init, instance: %d\n", index);
+		return;
 	}
 
 	strlcpy(diag_bridge[index].name, name,
@@ -287,8 +288,6 @@ int diagfwd_bridge_init(int index)
 	strlcat(name, "_diag_wq", sizeof(diag_bridge[index].name));
 	diag_bridge[index].id = index;
 	diag_bridge[index].wq = create_singlethread_workqueue(name);
-	if (!diag_bridge[index].wq)
-		goto err;
 	diag_bridge[index].read_len = 0;
 	diag_bridge[index].write_len = 0;
 	if (diag_bridge[index].usb_buf_out == NULL)
@@ -342,7 +341,7 @@ int diagfwd_bridge_init(int index)
 			pr_err("diag: could not register SMUX device, ret: %d\n",
 									 ret);
 	}
-	 return 0;
+	 return;
 err:
 	pr_err("diag: Could not initialize for bridge forwarding\n");
 	kfree(diag_bridge[index].usb_buf_out);
@@ -351,7 +350,7 @@ err:
 	kfree(diag_bridge[index].usb_read_ptr);
 	if (diag_bridge[index].wq)
 		destroy_workqueue(diag_bridge[index].wq);
-	return -ENOMEM;
+	return;
 }
 
 void diagfwd_bridge_exit(void)
@@ -405,12 +404,10 @@ int diagfwd_bridge_dci_init(int index)
 	 * diag_bridge_dci[index].enabled is used to check if a particular
 	 * bridge instance is initialized.
 	 */
-	if (index == HSIC_DCI_CH) {
+	if (index == HSIC_DCI_CH)
 		strlcpy(name, "hsic_dci", sizeof(name));
-	} else {
-		pr_debug("diag: incorrect dci bridge instance: %d\n", index);
+	else
 		return 0;
-	}
 
 	strlcpy(diag_bridge_dci[index].name, name,
 		sizeof(diag_bridge_dci[index].name));

@@ -109,8 +109,7 @@ static ssize_t diag_dbgfs_read_status(struct file *file, char __user *ubuf,
 		"Received Feature mask from Modem: %d\n"
 		"Received Feature mask from LPASS: %d\n"
 		"Received Feature mask from WCNSS: %d\n"
-		"logging_mode: %d\n"
-		"rsp_in_busy: %d\n",
+		"logging_mode: %d\n",
 		driver->smd_data[MODEM_DATA].ch,
 		driver->smd_data[LPASS_DATA].ch,
 		driver->smd_data[WCNSS_DATA].ch,
@@ -179,8 +178,7 @@ static ssize_t diag_dbgfs_read_status(struct file *file, char __user *ubuf,
 		driver->rcvd_feature_mask[MODEM_DATA],
 		driver->rcvd_feature_mask[LPASS_DATA],
 		driver->rcvd_feature_mask[WCNSS_DATA],
-		driver->logging_mode,
-		driver->rsp_buf_busy);
+		driver->logging_mode);
 
 #ifdef CONFIG_DIAG_OVER_USB
 	ret += scnprintf(buf+ret, buf_size-ret,
@@ -828,54 +826,35 @@ const struct file_operations diag_dbgfs_power_ops = {
 	.read = diag_dbgfs_read_power,
 };
 
-int diag_debugfs_init(void)
+void diag_debugfs_init(void)
 {
-	struct dentry *entry = NULL;
-
 	diag_dbgfs_dent = debugfs_create_dir("diag", 0);
 	if (IS_ERR(diag_dbgfs_dent))
-		return -ENOMEM;
+		return;
 
-	entry = debugfs_create_file("status", 0444, diag_dbgfs_dent, 0,
-				    &diag_dbgfs_status_ops);
-	if (!entry)
-		goto err;
+	debugfs_create_file("status", 0444, diag_dbgfs_dent, 0,
+		&diag_dbgfs_status_ops);
 
-	entry = debugfs_create_file("table", 0444, diag_dbgfs_dent, 0,
-				    &diag_dbgfs_table_ops);
-	if (!entry)
-		goto err;
+	debugfs_create_file("table", 0444, diag_dbgfs_dent, 0,
+		&diag_dbgfs_table_ops);
 
-	entry = debugfs_create_file("work_pending", 0444, diag_dbgfs_dent, 0,
-				    &diag_dbgfs_workpending_ops);
-	if (!entry)
-		goto err;
+	debugfs_create_file("work_pending", 0444, diag_dbgfs_dent, 0,
+		&diag_dbgfs_workpending_ops);
 
-	entry = debugfs_create_file("mempool", 0444, diag_dbgfs_dent, 0,
-				    &diag_dbgfs_mempool_ops);
-	if (!entry)
-		goto err;
+	debugfs_create_file("mempool", 0444, diag_dbgfs_dent, 0,
+		&diag_dbgfs_mempool_ops);
 
-	entry = debugfs_create_file("dci_stats", 0444, diag_dbgfs_dent, 0,
-				    &diag_dbgfs_dcistats_ops);
-	if (!entry)
-		goto err;
+	debugfs_create_file("dci_stats", 0444, diag_dbgfs_dent, 0,
+		&diag_dbgfs_dcistats_ops);
 
-	entry = debugfs_create_file("power", 0444, diag_dbgfs_dent, 0,
+	debugfs_create_file("power", 0444, diag_dbgfs_dent, 0,
 				    &diag_dbgfs_power_ops);
-	if (!entry)
-		goto err;
-
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
-	entry = debugfs_create_file("bridge", 0444, diag_dbgfs_dent, 0,
-				    &diag_dbgfs_bridge_ops);
-	if (!entry)
-		goto err;
+	debugfs_create_file("bridge", 0444, diag_dbgfs_dent, 0,
+		&diag_dbgfs_bridge_ops);
 
-	entry = debugfs_create_file("bridge_dci", 0444, diag_dbgfs_dent, 0,
-				    &diag_dbgfs_bridge_dci_ops);
-	if (!entry)
-		goto err;
+	debugfs_create_file("bridge_dci", 0444, diag_dbgfs_dent, 0,
+		&diag_dbgfs_bridge_dci_ops);
 #endif
 
 	diag_dbgfs_table_index = 0;
@@ -890,11 +869,6 @@ int diag_debugfs_init(void)
 		pr_warn("diag: could not allocate memory for dci debug info\n");
 
 	mutex_init(&dci_stat_mutex);
-	return 0;
-err:
-	kfree(dci_traffic);
-	debugfs_remove_recursive(diag_dbgfs_dent);
-	return -ENOMEM;
 }
 
 void diag_debugfs_cleanup(void)
@@ -908,6 +882,6 @@ void diag_debugfs_cleanup(void)
 	mutex_destroy(&dci_stat_mutex);
 }
 #else
-int diag_debugfs_init(void) { return 0; }
+void diag_debugfs_init(void) { }
 void diag_debugfs_cleanup(void) { }
 #endif

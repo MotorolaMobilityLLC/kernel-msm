@@ -22,7 +22,7 @@
 #define CHK_OVERFLOW(bufStart, start, end, length) \
 	((((bufStart) <= (start)) && ((end) - (start) >= (length))) ? 1 : 0)
 
-int diagfwd_init(void);
+void diagfwd_init(void);
 void diagfwd_exit(void);
 void diag_process_hdlc(void *data, unsigned len);
 void diag_smd_send_req(struct diag_smd_info *smd_info);
@@ -41,8 +41,10 @@ void encode_rsp_and_send(int buf_length);
 void diag_smd_notify(void *ctxt, unsigned event);
 int diag_smd_constructor(struct diag_smd_info *smd_info, int peripheral,
 			 int type);
-void diag_smd_buffer_init(struct diag_smd_info *smd_info);
 void diag_smd_destructor(struct diag_smd_info *smd_info);
+int diag_switch_logging(int);
+int diag_command_reg(unsigned long);
+void diag_cmp_logging_modes_sdio_pipe(int old_mode, int new_mode);
 void diag_cmp_logging_modes_diagfwd_bridge(int old_mode, int new_mode);
 int diag_process_apps_pkt(unsigned char *buf, int len);
 void diag_reset_smd_data(int queue);
