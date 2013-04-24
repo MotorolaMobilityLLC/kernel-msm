@@ -31,6 +31,10 @@
 	goto EXIT_##N; \
 	}
 
+/* Factory Check */
+static int ov660_detected;
+module_param(ov660_detected, int, 0444);
+
 static int camera_dev_open(struct inode *inode, struct file *file);
 static int camera_dev_release(struct inode *inode, struct file *file);
 static long camera_dev_ioctl(struct file *file, unsigned int cmd,
@@ -692,10 +696,12 @@ int32_t ov660_check_probe(void)
 	/* Now checking to see if we match the correct chip id */
 	if ((data[0] << 8 | data[1]) == OV660_CHIP_ID_DATA) {
 		pr_info("%s: successful\n", __func__);
+		ov660_detected = 1;
 	} else {
 		pr_err("%s: does not exist! with return value %x\n", __func__,
 				(data[0] << 8 | data[1]));
 		rc = -ENODEV;
+		ov660_detected = 0;
 	}
 
 	return rc;
