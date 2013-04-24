@@ -1,4 +1,4 @@
-/* Copyright (c)2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,10 +10,18 @@
  * GNU General Public License for more details.
  */
 
-#ifndef DIAG_DEBUGFS_H
-#define DIAG_DEBUGFS_H
+#ifndef DIAGFWD_SDIO_H
+#define DIAGFWD_SDIO_H
 
-void diag_debugfs_init(void);
-void diag_debugfs_cleanup(void);
+#include <mach/sdio_al.h>
+#define N_MDM_SDIO_WRITE	1 /* Upgrade to 2 with ping pong buffer */
+#define N_MDM_SDIO_READ	1
+
+void diagfwd_sdio_init(void);
+void diagfwd_sdio_exit(void);
+int diagfwd_connect_sdio(void);
+int diagfwd_disconnect_sdio(void);
+int diagfwd_read_complete_sdio(void);
+int diagfwd_write_complete_sdio(void);
 
 #endif
