@@ -257,7 +257,8 @@ static void diagfwd_bridge_notifier(void *priv, unsigned event,
 		index = (int)(d_req->context);
 		if (index == SMUX && driver->diag_smux_enabled)
 			diagfwd_write_complete_smux();
-		else if (diag_hsic[index].hsic_device_enabled)
+		else if (index < MAX_HSIC_CH &&
+					diag_hsic[index].hsic_device_enabled)
 			diagfwd_write_complete_hsic(d_req, index);
 		break;
 	default:
