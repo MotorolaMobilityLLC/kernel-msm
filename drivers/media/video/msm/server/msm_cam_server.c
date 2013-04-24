@@ -448,8 +448,11 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 	} while (wait_count > 0);
 	D("Waiting is over for config status\n");
 	if (list_empty_careful(&queue->list)) {
-		if (!rc)
+		if (!rc) {
 			rc = -ETIMEDOUT;
+			msm_drain_eventq(
+			&server_dev->server_queue[out->queue_idx].eventData_q);
+		}
 		if (rc < 0) {
 			if (++server_dev->server_evt_id == 0)
 				server_dev->server_evt_id++;
