@@ -10490,7 +10490,7 @@ WDI_ProcessHostSuspendInd
        pSuspendIndParams->wdiSuspendParams.ucConfiguredMcstBcstFilterSetting;
 
   halWlanSuspendIndparams.activeSessionCount =
-       WDI_GetActiveSessionsCount(pWDICtx);
+       WDI_GetActiveSessionsCount(pWDICtx, NULL, eWLAN_PAL_TRUE);
 
   wpalMemoryCopy( pSendBuffer+usDataOffset, &halWlanSuspendIndparams,
                                          sizeof(tHalWlanHostSuspendIndParam));
@@ -21302,14 +21302,19 @@ WDI_FindEmptySession
 
 
  @param  pWDICtx:       pointer to the WLAN DAL context
-
+         macBSSID:      pointer to BSSID. If NULL, get all the session.
+                        If not NULL, count ActiveSession by excluding (TRUE) or including (FALSE) skipBSSID.
+         skipBSSID:     if TRUE, get all the sessions except matching to macBSSID. If FALSE, get all session.
+                        This argument is ignored if macBSSID is NULL.
  @see
  @return Number of sessions in use
 */
 wpt_uint8
 WDI_GetActiveSessionsCount
 (
-  WDI_ControlBlockType*   pWDICtx
+  WDI_ControlBlockType*   pWDICtx,
+  wpt_macAddr             macBSSID,
+  wpt_boolean             skipBSSID
 )
 {
   wpt_uint8 i, ucCount = 0;
@@ -21320,10 +21325,17 @@ WDI_GetActiveSessionsCount
     ------------------------------------------------------------------------*/
   for ( i = 0; i < WDI_MAX_BSS_SESSIONS; i++ )
   {
-     if ( pWDICtx->aBSSSessions[i].bInUse )
-     {
+    if ( macBSSID && skipBSSID &&
+        (eWLAN_PAL_TRUE ==
+                wpalMemoryCompare(pWDICtx->aBSSSessions[i].macBSSID, macBSSID,
+                WDI_MAC_ADDR_LEN)))
+    {
+      continue;
+    }
+    else if ( pWDICtx->aBSSSessions[i].bInUse )
+    {
        ucCount++;
-     }
+    }
   }
 
   return ucCount;
