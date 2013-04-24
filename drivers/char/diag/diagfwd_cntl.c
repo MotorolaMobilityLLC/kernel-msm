@@ -12,6 +12,7 @@
 
 #include <linux/slab.h>
 #include <linux/diagchar.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/kmemleak.h>
 #include <linux/delay.h>
@@ -21,6 +22,11 @@
 /* tracks which peripheral is undergoing SSR */
 static uint16_t reg_dirty;
 #define HDR_SIZ 8
+
+/* send control message to modem */
+static void diag_send_ctrl_msg(struct diag_smd_info *smd_info,
+		const void *msg,
+		int len);
 
 void diag_clean_reg_fn(struct work_struct *work)
 {
@@ -340,76 +346,54 @@ void diag_real_time_work_fn(struct work_struct *work)
 }
 #endif
 
-void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
-							int real_time)
+void diag_send_diag_flush(struct diag_smd_info *smd_info)
 {
-	struct diag_ctrl_msg_diagmode diagmode;
-	char buf[sizeof(struct diag_ctrl_msg_diagmode)];
-	int msg_size = sizeof(struct diag_ctrl_msg_diagmode);
-	int wr_size = -ENOMEM, retry_count = 0, timer;
-	struct diag_smd_info *data = NULL;
+	struct diag_ctrl_msg_diag_flush diag_flush;
 
 	/* For now only allow the modem to receive the message */
-	if (!smd_info || smd_info->type != SMD_CNTL_TYPE ||
-		(smd_info->peripheral != MODEM_DATA))
+	if (!smd_info || smd_info->peripheral != MODEM_DATA ||
+		smd_info->type != SMD_CNTL_TYPE) {
+		pr_err("diag: returning early smd_info->peripheral: %d,"
+			" smd_info->type: %d\n",
+			smd_info->peripheral, smd_info->type);
 		return;
+	}
 
-	data = &driver->smd_data[smd_info->peripheral];
-	if (!data)
-		return;
+	pr_debug("diag: In %s,  sending diag_flush msg\n", __func__);
 
 	mutex_lock(&driver->diag_cntl_mutex);
-	diagmode.ctrl_pkt_id = DIAG_CTRL_MSG_DIAGMODE;
-	diagmode.ctrl_pkt_data_len = 36;
-	diagmode.version = 1;
-	diagmode.sleep_vote = real_time ? 1 : 0;
-	/*
-	 * 0 - Disables real-time logging (to prevent
-	 *     frequent APPS wake-ups, etc.).
-	 * 1 - Enable real-time logging
-	 */
-	diagmode.real_time = real_time;
-	diagmode.use_nrt_values = 0;
-	diagmode.commit_threshold = 0;
-	diagmode.sleep_threshold = 0;
-	diagmode.sleep_time = 0;
-	diagmode.drain_timer_val = 0;
-	diagmode.event_stale_timer_val = 0;
+	diag_flush.ctrl_pkt_id = DIAG_CTRL_MSG_DIAG_FLUSH;
+	diag_flush.ctrl_pkt_data_len = 0;
 
-	memcpy(buf, &diagmode, msg_size);
+	diag_send_ctrl_msg(smd_info, &diag_flush, sizeof(diag_flush));
+
+	mutex_unlock(&driver->diag_cntl_mutex);
+	pr_debug("diag: Exiting %s\n", __func__);
+}
+
+static void diag_send_ctrl_msg(struct diag_smd_info *smd_info,
+		const void *msg,
+		int len)
+{
+	int wr_size = -ENOMEM, retry_count = 0, timer;
 
 	if (smd_info->ch) {
 		while (retry_count < 3) {
-			wr_size = smd_write(smd_info->ch, buf, msg_size);
+			wr_size = smd_write(smd_info->ch, msg, len);
 			if (wr_size == -ENOMEM) {
-				/*
-				 * The smd channel is full. Delay while
-				 * smd processes existing data and smd
-				 * has memory become available. The delay
-				 * of 2000 was determined empirically as
-				 * best value to use.
-				 */
 				retry_count++;
 				for (timer = 0; timer < 5; timer++)
-					udelay(2000);
-			} else {
-				data =
-				&driver->smd_data[smd_info->peripheral];
-				driver->real_time_mode = real_time;
+					usleep_range(2000, 3000);
+			} else
 				break;
-			}
 		}
-		if (wr_size != msg_size)
-			pr_err("diag: proc %d fail feature update %d, tried %d",
+		if (wr_size != len)
+			pr_err("diag: proc %d failed sending msg %d, tried %d",
 				smd_info->peripheral,
-				wr_size, msg_size);
+				wr_size, len);
 	} else {
-		pr_err("diag: ch invalid, feature update on proc %d\n",
-				smd_info->peripheral);
+		pr_err("diag: ch invalid on proc %d\n", smd_info->peripheral);
 	}
-	process_lock_enabling(&data->nrt_lock, real_time);
-
-	mutex_unlock(&driver->diag_cntl_mutex);
 }
 
 int diag_send_stm_state(struct diag_smd_info *smd_info,
@@ -581,4 +565,73 @@ void diagfwd_cntl_exit(void)
 
 	platform_driver_unregister(&msm_smd_ch1_cntl_driver);
 	platform_driver_unregister(&diag_smd_lite_cntl_driver);
+}
+
+void diag_send_diag_mode_update(int real_time)
+{
+	int i;
+	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
+		diag_send_diag_mode_update_by_smd(&driver->smd_cntl[i],
+							real_time);
+	}
+}
+
+void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
+							int real_time)
+{
+	struct diag_ctrl_msg_diagmode diagmode;
+	char buf[sizeof(struct diag_ctrl_msg_diagmode)];
+	int msg_size = sizeof(struct diag_ctrl_msg_diagmode);
+	int wr_size = -ENOMEM, retry_count = 0, timer;
+
+	/* For now only allow the modem to receive the message */
+	if (!smd_info || smd_info->type != SMD_CNTL_TYPE)
+		return;
+
+	mutex_lock(&driver->diag_cntl_mutex);
+	diagmode.ctrl_pkt_id = DIAG_CTRL_MSG_DIAGMODE;
+	diagmode.ctrl_pkt_data_len = 36;
+	diagmode.version = 1;
+	diagmode.sleep_vote = real_time ? 1 : 0;
+	/*
+	 * 0 - Disables real-time logging (to prevent
+	 *     frequent APPS wake-ups, etc.).
+	 * 1 - Enable real-time logging
+	 */
+	diagmode.real_time = real_time;
+	diagmode.use_nrt_values = 0;
+	diagmode.commit_threshold = 0;
+	diagmode.sleep_threshold = 0;
+	diagmode.sleep_time = 0;
+	diagmode.drain_timer_val = 0;
+	diagmode.event_stale_timer_val = 0;
+
+	memcpy(buf, &diagmode, msg_size);
+
+	if (smd_info->ch) {
+		while (retry_count < 3) {
+			wr_size = smd_write(smd_info->ch, buf, msg_size);
+			if (wr_size == -ENOMEM) {
+				retry_count++;
+				for (timer = 0; timer < 5; timer++)
+					udelay(2000);
+			} else {
+				struct diag_smd_info *data =
+				&driver->smd_data[smd_info->peripheral];
+				driver->real_time_mode = real_time;
+				process_lock_enabling(&data->nrt_lock,
+								real_time);
+				break;
+			}
+		}
+		if (wr_size != msg_size)
+			pr_err("diag: proc %d fail feature update %d, tried %d",
+				smd_info->peripheral,
+				wr_size, msg_size);
+	} else {
+		pr_err("diag: ch invalid, feature update on proc %d\n",
+				smd_info->peripheral);
+	}
+
+	mutex_unlock(&driver->diag_cntl_mutex);
 }

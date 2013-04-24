@@ -26,6 +26,9 @@ int diag_event_num_bytes;
 #define DIAG_CTRL_MASK_ALL_ENABLED	2
 #define DIAG_CTRL_MASK_VALID		3
 
+static uint8_t optimized_cmd_cached;
+static uint8_t smd_opened;
+
 #define ALL_EQUIP_ID		100
 #define ALL_SSID		-1
 
@@ -107,6 +110,18 @@ static void diag_set_msg_mask(int rt_mask)
 {
 	int first_ssid, last_ssid, i;
 	uint8_t *parse_ptr, *ptr = driver->msg_masks;
+
+	pr_debug("diag: mode:%d,smd_opened:%d, optimized:%d\n",
+		driver->logging_mode, smd_opened, optimized_logging);
+	if ((driver->logging_mode == MEMORY_DEVICE_MODE)
+	    && smd_opened) {
+		pr_debug("diag: diag_set_msg_mask, send optimized cmd\n");
+		diag_send_diag_mode_update((optimized_logging == 1) ?
+					MODE_NONREALTIME : MODE_REALTIME);
+	} else if (!smd_opened && optimized_logging) {
+		pr_debug("diag: diag_set_msg_mask, cache optimized cmd\n");
+		optimized_cmd_cached = 1;
+	}
 
 	mutex_lock(&driver->diagchar_mutex);
 	driver->msg_status = rt_mask ? DIAG_CTRL_MASK_ALL_ENABLED :
@@ -310,6 +325,8 @@ static void diag_update_log_mask(int equip_id, uint8_t *buf, int num_items)
 
 void diag_mask_update_fn(struct work_struct *work)
 {
+	static int smd_channel_count = 0;
+
 	struct diag_smd_info *smd_info = container_of(work,
 						struct diag_smd_info,
 						diag_notify_update_smd_work);
@@ -325,9 +342,22 @@ void diag_mask_update_fn(struct work_struct *work)
 	diag_send_log_mask_update(smd_info->ch, ALL_EQUIP_ID);
 	diag_send_event_mask_update(smd_info->ch, diag_event_num_bytes);
 
-	if (smd_info->notify_context == SMD_EVENT_OPEN)
+	if (smd_info->notify_context == SMD_EVENT_OPEN) {
+		/* we have to set non-optimized before setting optimized,
+		 * otherwise optimized won't work as expected.
+		 */
+		pr_debug("diag: %s, optimized = %d, cmd_cached = %d\n",
+			__func__, optimized_logging, optimized_cmd_cached);
 		diag_send_diag_mode_update_by_smd(smd_info,
 						driver->real_time_mode);
+
+		/* optimized */
+		smd_channel_count++;
+		if (smd_channel_count == 3)
+			smd_opened = 1;
+		if (optimized_logging && optimized_cmd_cached && smd_opened)
+			diag_send_diag_mode_update(MODE_NONREALTIME);
+	}
 
 	smd_info->notify_context = 0;
 }
