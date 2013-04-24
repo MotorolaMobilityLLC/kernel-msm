@@ -24,6 +24,7 @@
 #define MMI_PANEL_EVENT_PWR_OFF 0
 #define MMI_PANEL_EVENT_PWR_ON  1
 #define MMI_PANEL_EVENT_POST_INIT  2
+#define MMI_PANEL_EVENT_PRE_DEINIT  3
 
 int mmi_panel_register_notifier(struct notifier_block *nb);
 int mmi_panel_unregister_notifier(struct notifier_block *nb);
