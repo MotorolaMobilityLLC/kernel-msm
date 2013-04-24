@@ -145,11 +145,16 @@ static int __init lid_driver_probe(struct platform_device *pdev)
 	}
 
 	ret = lid_input_device_create();
-
 	if (ret) {
 		LID_ERR(
 		"Unable to register input device, error: %d\n",
 			ret);
+		goto fail_create;
+	}
+
+	lid_wq = create_singlethread_workqueue("lid_wq");
+	if(!lid_wq){
+		LID_ERR("Unable to create workqueue\n");
 		goto fail_create;
 	}
 
@@ -193,7 +198,6 @@ static int __init lid_driver_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, 1);
 	enable_irq_wake(irq);
 
-	lid_wq = create_singlethread_workqueue("lid_wq");
 	INIT_DELAYED_WORK_DEFERRABLE(&lid_hall_sensor_work,
 					lid_report_function);
 
