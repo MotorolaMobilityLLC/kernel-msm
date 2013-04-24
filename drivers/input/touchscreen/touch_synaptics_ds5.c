@@ -1817,10 +1817,6 @@ static struct dev_pm_ops touch_pm_ops = {
 static struct i2c_driver synaptics_ts_driver = {
 	.probe          = synaptics_ts_probe,
 	.remove         = synaptics_ts_remove,
-#ifndef CONFIG_HAS_EARLYSUSPEND
-	.suspend        = synaptics_ts_suspend,
-	.resume         = synaptics_ts_resume,
-#endif
 	.id_table       = synaptics_ts_id,
 	.driver = {
 		.name   = "s3350",
