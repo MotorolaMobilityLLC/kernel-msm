@@ -3023,7 +3023,8 @@ static int __init rmi4_f54_module_init(void)
 	synaptics_rmi4_new_function(RMI_F54, true,
 			synaptics_rmi4_f54_init,
 			synaptics_rmi4_f54_remove,
-			synaptics_rmi4_f54_attn);
+			synaptics_rmi4_f54_attn,
+			IC_MODE_UI);
 
 	return 0;
 }
@@ -3034,7 +3035,8 @@ static void __exit rmi4_f54_module_exit(void)
 	synaptics_rmi4_new_function(RMI_F54, false,
 			synaptics_rmi4_f54_init,
 			synaptics_rmi4_f54_remove,
-			synaptics_rmi4_f54_attn);
+			synaptics_rmi4_f54_attn,
+			IC_MODE_UI);
 
 	wait_for_completion(&remove_complete);
 	return;
