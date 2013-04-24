@@ -75,7 +75,8 @@
 #endif
 
 
-#if defined(__KERNEL__) && defined(CONFIG_BOOTINFO)
+#if defined(__KERNEL__)
+#if defined(CONFIG_BOOTINFO)
 
 extern struct proc_dir_entry proc_root;
 
@@ -102,6 +103,11 @@ void __init bi_add_bl_build_sig(char *bld_sig);
 int __init bootinfo_bck_size(void);
 void __init bootinfo_bck_buf_set_reserved(void);
 
-#endif /* defined(__KERNEL__) && defined(CONFIG_BOOTINFO) */
+#else /* defined(CONFIG_BOOTINFO) */
+
+static inline u32 bi_powerup_reason(void) { return 0xFFFFFFFF; }
+
+#endif /* !defined(CONFIG_BOOTINFO) */
+#endif /* defined(__KERNEL__) */
 
 #endif
