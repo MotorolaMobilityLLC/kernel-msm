@@ -1036,6 +1036,7 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
         PELOGE(limLog(pMac, LOGE, FL("pe lock init failed!"));)
         return eSIR_FAILURE;
     }
+    pMac->lim.deauthMsgCnt = 0;
     return eSIR_SUCCESS;
 }
 
