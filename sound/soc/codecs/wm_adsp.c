@@ -853,7 +853,7 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 				return -ENOMEM;
 			}
 
-			ret = regmap_raw_write(regmap, reg, blk->data,
+			ret = regmap_raw_write(regmap, reg, buf,
 					       le32_to_cpu(blk->len));
 			if (ret != 0) {
 				adsp_err(dsp,
