@@ -230,8 +230,6 @@ struct synaptics_rmi4_data {
 	struct regulator *regulator;
 	struct mutex rmi4_io_ctrl_mutex;
 	struct mutex state_mutex;
-	struct delayed_work det_work;
-	struct workqueue_struct *det_workqueue;
 	struct early_suspend early_suspend;
 	struct notifier_block panel_nb;
 	atomic_t panel_off_flag;
@@ -246,6 +244,7 @@ struct synaptics_rmi4_data {
 	unsigned short f01_cmd_base_addr;
 	unsigned short f01_ctrl_base_addr;
 	unsigned short f01_data_base_addr;
+	unsigned int active_fn_intr_mask;
 	int state;
 	int irq;
 	int sensor_max_x;
@@ -305,6 +304,12 @@ struct f34_properties {
 enum SYNAPTICS_DSX_STATES;
 #undef DSX
 
+enum ic_modes {
+	IC_MODE_ANY = 0,
+	IC_MODE_BL,
+	IC_MODE_UI
+};
+
 enum exp_fn {
 	RMI_DEV = 0,
 	RMI_F34,
@@ -325,7 +330,8 @@ void synaptics_rmi4_new_function(enum exp_fn fn_type, bool insert,
 		int (*func_init)(struct synaptics_rmi4_data *rmi4_data),
 		void (*func_remove)(struct synaptics_rmi4_data *rmi4_data),
 		void (*func_attn)(struct synaptics_rmi4_data *rmi4_data,
-				unsigned char intr_mask));
+				unsigned char intr_mask),
+		enum ic_modes mode);
 
 static inline ssize_t synaptics_rmi4_show_error(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -356,9 +362,10 @@ static inline void hstoba(unsigned char *dest, unsigned short src)
 
 static inline void batohui(unsigned int *dest, unsigned char *src, size_t size)
 {
-	*dest = src[0] + src[1] * 0x100 + src[2] * 0x10000;
-	if (size == 4)
-		*dest += src[3] * 0x1000000;
+	int si = size;
+	*dest = 0;
+	for (; --si >= 0;)
+		*dest += src[si] << (si << 3);
 }
 
 struct synaptics_rmi4_subpkt {
