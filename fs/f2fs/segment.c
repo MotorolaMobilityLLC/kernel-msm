@@ -420,7 +420,10 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 			BUG();
 	} else {
 		if (!f2fs_clear_bit(offset, se->cur_valid_map))
-			BUG();
+			/* The count should be correct because it passed
+			 * check_block_count() during journal replay. */
+			f2fs_msg(sbi->sb, KERN_ERR, "attmepted to invalidate "
+				"invalid block %u", offset);
 	}
 	if (!f2fs_test_bit(offset, se->ckpt_valid_map))
 		se->ckpt_valid_blocks += del;
