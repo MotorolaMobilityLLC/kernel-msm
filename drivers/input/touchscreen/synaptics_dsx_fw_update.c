@@ -1887,7 +1887,8 @@ static int __init rmi4_fw_update_module_init(void)
 	synaptics_rmi4_new_function(RMI_FW_UPDATER, true,
 			synaptics_rmi4_fwu_init,
 			synaptics_rmi4_fwu_remove,
-			synaptics_rmi4_fwu_attn);
+			synaptics_rmi4_fwu_attn,
+			IC_MODE_ANY);
 	return 0;
 }
 
@@ -1897,7 +1898,8 @@ static void __exit rmi4_fw_update_module_exit(void)
 	synaptics_rmi4_new_function(RMI_FW_UPDATER, false,
 			synaptics_rmi4_fwu_init,
 			synaptics_rmi4_fwu_remove,
-			synaptics_rmi4_fwu_attn);
+			synaptics_rmi4_fwu_attn,
+			IC_MODE_ANY);
 	wait_for_completion(&remove_complete);
 	return;
 }

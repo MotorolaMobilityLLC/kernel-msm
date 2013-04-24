@@ -798,6 +798,7 @@ struct synaptics_rmi4_f1a_handle {
 
 struct synaptics_rmi4_exp_fn {
 	enum exp_fn fn_type;
+	enum ic_modes mode;
 	bool inserted;
 	int (*func_init)(struct synaptics_rmi4_data *rmi4_data);
 	void (*func_remove)(struct synaptics_rmi4_data *rmi4_data);
@@ -836,9 +837,17 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_store_error),
 };
 
-static bool exp_fn_inited;
-static struct mutex exp_fn_list_mutex;
-static struct list_head exp_fn_list;
+struct synaptics_exp_fn_ctrl {
+	bool inited;
+	struct mutex list_mutex;
+	struct list_head fn_list;
+	struct delayed_work det_work;
+	struct workqueue_struct *det_workqueue;
+	struct synaptics_rmi4_data *rmi4_data_ptr;
+};
+
+DEFINE_MUTEX(exp_fn_ctrl_mutex);
+static struct synaptics_exp_fn_ctrl exp_fn_ctrl;
 static struct semaphore reset_semaphore;
 
 static irqreturn_t synaptics_dsx_reset_irq(int irq, void *data)
@@ -1033,6 +1042,8 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 			break;
 
 	case STATE_BL:
+		if (!rmi4_data->in_bootloader)
+			rmi4_data->in_bootloader = true;
 	case STATE_INIT:
 		synaptics_rmi4_irq_enable(rmi4_data, false);
 		if (rmi4_data->sensor_sleep) {
@@ -1949,6 +1960,7 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	int retval;
 	unsigned char touch_count = 0;
 	unsigned char intr[MAX_INTR_REGISTERS];
+	unsigned int intr_status_mask;
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_exp_fn *exp_fhandler;
 	struct synaptics_rmi4_device_info *rmi;
@@ -1980,15 +1992,24 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 		}
 	}
 
-	mutex_lock(&exp_fn_list_mutex);
-	if (!list_empty(&exp_fn_list)) {
-		list_for_each_entry(exp_fhandler, &exp_fn_list, link) {
-			if (exp_fhandler->inserted &&
+	batohui(&intr_status_mask, intr, rmi4_data->num_of_intr_regs);
+	/*
+	 * Go through external handlers list only when interrupt
+	 * is not handled by currently active internal functions.
+	 */
+	if (intr_status_mask & (~rmi4_data->active_fn_intr_mask)) {
+		mutex_lock(&exp_fn_ctrl.list_mutex);
+		if (!list_empty(&exp_fn_ctrl.fn_list)) {
+			list_for_each_entry(exp_fhandler,
+					&exp_fn_ctrl.fn_list, link) {
+				if (exp_fhandler->inserted &&
 					(exp_fhandler->func_attn != NULL))
-				exp_fhandler->func_attn(rmi4_data, intr[0]);
+					exp_fhandler->func_attn(
+							rmi4_data, intr[0]);
+			}
 		}
+		mutex_unlock(&exp_fn_ctrl.list_mutex);
 	}
-	mutex_unlock(&exp_fn_list_mutex);
 
 	return touch_count;
 }
@@ -2471,13 +2492,11 @@ static int synaptics_rmi4_alloc_fh(struct synaptics_rmi4_fn **fhandler,
 static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
-	unsigned char ii;
 	unsigned char page_number;
 	unsigned char intr_count = 0;
 	unsigned char data_sources = 0;
 	unsigned char f01_query[F01_STD_QUERY_LEN];
 	unsigned short pdt_entry_addr;
-	unsigned short intr_addr;
 	struct synaptics_rmi4_fn_desc rmi_fd;
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_device_info *rmi;
@@ -2715,20 +2734,22 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 		}
 	}
 
-	/* Enable the interrupt sources */
-	for (ii = 0; ii < rmi4_data->num_of_intr_regs; ii++) {
-		if (rmi4_data->intr_mask[ii] != 0x00) {
-			dev_dbg(&rmi4_data->i2c_client->dev,
-					"%s: Interrupt enable mask %d = 0x%02x\n",
-					__func__, ii, rmi4_data->intr_mask[ii]);
-			intr_addr = rmi4_data->f01_ctrl_base_addr + 1 + ii;
-			retval = synaptics_rmi4_i2c_write(rmi4_data,
-					intr_addr,
-					&(rmi4_data->intr_mask[ii]),
-					sizeof(rmi4_data->intr_mask[ii]));
-			if (retval < 0)
-				return retval;
-		}
+	/* interrupt mask for currently active functions */
+	batohui(&rmi4_data->active_fn_intr_mask,
+			rmi4_data->intr_mask, rmi4_data->num_of_intr_regs);
+	pr_debug("active func intr_mask 0x%x\n",
+			rmi4_data->active_fn_intr_mask);
+
+	if (rmi4_data->in_bootloader)
+		pr_info("Product: %s is in bootloader mode\n",
+			rmi->product_id_string);
+	else {
+		unsigned int config_id, firmware_id;
+
+		batohui(&firmware_id, rmi->build_id, sizeof(rmi->build_id));
+		batohui(&config_id, rmi->config_id, sizeof(config_id));
+		pr_info("Product: %s, firmware id: %x, config id: %08x\n",
+			rmi->product_id_string, firmware_id, config_id);
 	}
 
 	return 0;
@@ -2827,6 +2848,10 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 				__func__);
 			return retval;
 		}
+		/* kick off detection work after touch ic changes its mode */
+		if (exp_fn_ctrl.det_workqueue)
+			queue_delayed_work(exp_fn_ctrl.det_workqueue,
+					&exp_fn_ctrl.det_work, 0);
 	}
 
 	return 0;
@@ -2837,45 +2862,55 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 *
 * Called by the kernel at the scheduled time.
 *
-* This function is a self-rearming work thread that checks for the
-* insertion and removal of other expansion Function modules such as
+* This function is armed by synaptics_new_function call. It checks for
+* the insertion and removal of other expansion Function modules such as
 * rmi_dev and calls their initialization and removal callback functions
 * accordingly.
 */
 static void synaptics_rmi4_detection_work(struct work_struct *work)
 {
 	struct synaptics_rmi4_exp_fn *exp_fhandler, *next_list_entry;
-	struct synaptics_rmi4_data *rmi4_data =
-			container_of(work, struct synaptics_rmi4_data,
-			det_work.work);
+	struct synaptics_rmi4_data *rmi4_data;
 
-	queue_delayed_work(rmi4_data->det_workqueue,
-			&rmi4_data->det_work,
-			msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+	mutex_lock(&exp_fn_ctrl_mutex);
+	rmi4_data = exp_fn_ctrl.rmi4_data_ptr;
+	mutex_unlock(&exp_fn_ctrl_mutex);
 
-	mutex_lock(&exp_fn_list_mutex);
-	if (!list_empty(&exp_fn_list)) {
-		list_for_each_entry_safe(exp_fhandler,
+	if (rmi4_data == NULL) {
+		if (exp_fn_ctrl.det_workqueue)
+			queue_delayed_work(exp_fn_ctrl.det_workqueue,
+				&exp_fn_ctrl.det_work,
+				msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+		return;
+	}
+
+	mutex_lock(&exp_fn_ctrl.list_mutex);
+	if (list_empty(&exp_fn_ctrl.fn_list))
+		goto release_mutex;
+
+	list_for_each_entry_safe(exp_fhandler,
 				next_list_entry,
-				&exp_fn_list,
+				&exp_fn_ctrl.fn_list,
 				link) {
-			if ((exp_fhandler->func_init != NULL) &&
-					(exp_fhandler->inserted == false)) {
-				synaptics_dsx_sensor_ready_state(
-							rmi4_data, false);
-				exp_fhandler->func_init(rmi4_data);
-				synaptics_dsx_sensor_ready_state(
-							rmi4_data, true);
-				exp_fhandler->inserted = true;
-			} else if ((exp_fhandler->func_init == NULL) &&
-					(exp_fhandler->inserted == true)) {
-				exp_fhandler->func_remove(rmi4_data);
-				list_del(&exp_fhandler->link);
-				kfree(exp_fhandler);
-			}
+		if ((exp_fhandler->func_init != NULL) &&
+				(exp_fhandler->inserted == false)) {
+			if (rmi4_data->in_bootloader &&
+			   (exp_fhandler->mode == IC_MODE_UI))
+				continue;
+			synaptics_dsx_sensor_ready_state(rmi4_data, false);
+			exp_fhandler->func_init(rmi4_data);
+			synaptics_dsx_sensor_ready_state(rmi4_data, true);
+			exp_fhandler->inserted = true;
+		} else if ((exp_fhandler->func_init == NULL) &&
+			   (exp_fhandler->inserted == true)) {
+			exp_fhandler->func_remove(rmi4_data);
+			list_del(&exp_fhandler->link);
+			kfree(exp_fhandler);
 		}
 	}
-	mutex_unlock(&exp_fn_list_mutex);
+
+release_mutex:
+	mutex_unlock(&exp_fn_ctrl.list_mutex);
 
 	return;
 }
@@ -2896,17 +2931,25 @@ void synaptics_rmi4_new_function(enum exp_fn fn_type, bool insert,
 		int (*func_init)(struct synaptics_rmi4_data *rmi4_data),
 		void (*func_remove)(struct synaptics_rmi4_data *rmi4_data),
 		void (*func_attn)(struct synaptics_rmi4_data *rmi4_data,
-		unsigned char intr_mask))
+		unsigned char intr_mask), enum ic_modes mode)
 {
 	struct synaptics_rmi4_exp_fn *exp_fhandler;
 
-	if (!exp_fn_inited) {
-		mutex_init(&exp_fn_list_mutex);
-		INIT_LIST_HEAD(&exp_fn_list);
-		exp_fn_inited = 1;
+	mutex_lock(&exp_fn_ctrl_mutex);
+	if (!exp_fn_ctrl.inited) {
+		mutex_init(&exp_fn_ctrl.list_mutex);
+		INIT_LIST_HEAD(&exp_fn_ctrl.fn_list);
+		exp_fn_ctrl.det_workqueue =
+			create_singlethread_workqueue("rmi_det_workqueue");
+		if (IS_ERR_OR_NULL(exp_fn_ctrl.det_workqueue))
+			pr_err("unable to create a workqueue\n");
+		INIT_DELAYED_WORK(&exp_fn_ctrl.det_work,
+			synaptics_rmi4_detection_work);
+		exp_fn_ctrl.inited = true;
 	}
+	mutex_unlock(&exp_fn_ctrl_mutex);
 
-	mutex_lock(&exp_fn_list_mutex);
+	mutex_lock(&exp_fn_ctrl.list_mutex);
 	if (insert) {
 		exp_fhandler = kzalloc(sizeof(*exp_fhandler), GFP_KERNEL);
 		if (!exp_fhandler) {
@@ -2918,9 +2961,10 @@ void synaptics_rmi4_new_function(enum exp_fn fn_type, bool insert,
 		exp_fhandler->func_attn = func_attn;
 		exp_fhandler->func_remove = func_remove;
 		exp_fhandler->inserted = false;
-		list_add_tail(&exp_fhandler->link, &exp_fn_list);
+		exp_fhandler->mode = mode;
+		list_add_tail(&exp_fhandler->link, &exp_fn_ctrl.fn_list);
 	} else {
-		list_for_each_entry(exp_fhandler, &exp_fn_list, link) {
+		list_for_each_entry(exp_fhandler, &exp_fn_ctrl.fn_list, link) {
 			if (exp_fhandler->func_init == func_init) {
 				exp_fhandler->inserted = false;
 				exp_fhandler->func_init = NULL;
@@ -2931,8 +2975,10 @@ void synaptics_rmi4_new_function(enum exp_fn fn_type, bool insert,
 	}
 
 exit:
-	mutex_unlock(&exp_fn_list_mutex);
-
+	mutex_unlock(&exp_fn_ctrl.list_mutex);
+	if (exp_fn_ctrl.det_workqueue)
+		queue_delayed_work(exp_fn_ctrl.det_workqueue,
+					&exp_fn_ctrl.det_work, 0);
 	return;
 }
 EXPORT_SYMBOL(synaptics_rmi4_new_function);
@@ -3075,19 +3121,19 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		register_early_suspend(&rmi4_data->early_suspend);
 #endif
 
-	if (!exp_fn_inited) {
-		mutex_init(&exp_fn_list_mutex);
-		INIT_LIST_HEAD(&exp_fn_list);
-		exp_fn_inited = 1;
-	}
-
-	rmi4_data->det_workqueue =
+	mutex_lock(&exp_fn_ctrl_mutex);
+	if (!exp_fn_ctrl.inited) {
+		mutex_init(&exp_fn_ctrl.list_mutex);
+		INIT_LIST_HEAD(&exp_fn_ctrl.fn_list);
+		exp_fn_ctrl.det_workqueue =
 			create_singlethread_workqueue("rmi_det_workqueue");
-	INIT_DELAYED_WORK(&rmi4_data->det_work,
+		if (IS_ERR_OR_NULL(exp_fn_ctrl.det_workqueue))
+			pr_err("unable to create a workqueue\n");
+		INIT_DELAYED_WORK(&exp_fn_ctrl.det_work,
 			synaptics_rmi4_detection_work);
-	queue_delayed_work(rmi4_data->det_workqueue,
-			&rmi4_data->det_work,
-			msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+		exp_fn_ctrl.inited = true;
+	}
+	mutex_unlock(&exp_fn_ctrl_mutex);
 
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		retval = sysfs_create_file(&rmi4_data->i2c_client->dev.kobj,
@@ -3104,19 +3150,11 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	mmi_panel_register_notifier(&rmi4_data->panel_nb);
 	pr_debug("register panel notifier\n");
 
-	if (rmi4_data->in_bootloader)
-		pr_info("Product: %s is in bootloader mode\n",
-			rmi->product_id_string);
-	else {
-		unsigned int config_id, firmware_id;
-
-		batohui(&firmware_id, rmi->build_id, sizeof(rmi->build_id));
-		batohui(&config_id, rmi->config_id, sizeof(config_id));
-		pr_info("Product: %s, firmware id: %x, config id: %08x\n",
-			rmi->product_id_string, firmware_id, config_id);
-	}
-
 	synaptics_dsx_sensor_ready_state(rmi4_data, true);
+
+	mutex_lock(&exp_fn_ctrl_mutex);
+	exp_fn_ctrl.rmi4_data_ptr = rmi4_data;
+	mutex_unlock(&exp_fn_ctrl_mutex);
 
 	return retval;
 
@@ -3171,9 +3209,11 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
-	cancel_delayed_work_sync(&rmi4_data->det_work);
-	flush_workqueue(rmi4_data->det_workqueue);
-	destroy_workqueue(rmi4_data->det_workqueue);
+	if (exp_fn_ctrl.inited) {
+		cancel_delayed_work_sync(&exp_fn_ctrl.det_work);
+		flush_workqueue(exp_fn_ctrl.det_workqueue);
+		destroy_workqueue(exp_fn_ctrl.det_workqueue);
+	}
 
 	rmi4_data->touch_stopped = true;
 	wake_up(&rmi4_data->wait);
