@@ -75,7 +75,8 @@
 #endif
 
 
-#if defined(__KERNEL__) && defined(CONFIG_BOOTINFO)
+#if defined(__KERNEL__)
+#if defined(CONFIG_BOOTINFO)
 
 extern struct proc_dir_entry proc_root;
 
@@ -99,6 +100,11 @@ void bi_set_cid_recover_boot(u32 cid_recover_boot);
 
 void bi_add_bl_build_sig(char *bld_sig);
 
-#endif /* defined(__KERNEL__) && defined(CONFIG_BOOTINFO) */
+#else /* defined(CONFIG_BOOTINFO) */
+
+static inline u32 bi_powerup_reason(void) { return 0xFFFFFFFF; }
+
+#endif /* !defined(CONFIG_BOOTINFO) */
+#endif /* defined(__KERNEL__) */
 
 #endif
