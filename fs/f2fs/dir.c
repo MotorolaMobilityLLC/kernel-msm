@@ -159,7 +159,7 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 		bool nocase = false;
 
 		/* no need to allocate new dentry pages to all the indices */
-		dentry_page = find_data_page(dir, bidx);
+		dentry_page = find_data_page(dir, bidx, true);
 		if (IS_ERR(dentry_page)) {
 			room = true;
 			continue;
