@@ -12,6 +12,7 @@
 
 #include <linux/slab.h>
 #include <linux/diagchar.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/kmemleak.h>
 #include <linux/delay.h>
@@ -24,6 +25,11 @@
 /* tracks which peripheral is undergoing SSR */
 static uint16_t reg_dirty;
 #define HDR_SIZ 8
+
+/* send control message to modem */
+static void diag_send_ctrl_msg(struct diag_smd_info *smd_info,
+		const void *msg,
+		int len);
 
 void diag_clean_reg_fn(struct work_struct *work)
 {
@@ -75,16 +81,9 @@ void diag_cntl_stm_notify(struct diag_smd_info *smd_info, int action)
 	if (!smd_info || smd_info->type != SMD_CNTL_TYPE)
 		return;
 
-	if (action == CLEAR_PERIPHERAL_STM_STATE) {
+	if (action == CLEAR_PERIPHERAL_STM_STATE)
 		driver->peripheral_supports_stm[smd_info->peripheral] =
 								DISABLE_STM;
-		/*
-		 * Turn off STM for now until such time as the
-		 * tools can support SSR
-		 */
-		driver->stm_state[smd_info->peripheral] = DISABLE_STM;
-		driver->stm_state_requested[smd_info->peripheral] = DISABLE_STM;
-	}
 }
 
 static void process_stm_feature(struct diag_smd_info *smd_info,
@@ -494,24 +493,9 @@ void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 	char buf[sizeof(struct diag_ctrl_msg_diagmode)];
 	int msg_size = sizeof(struct diag_ctrl_msg_diagmode);
 	int wr_size = -ENOMEM, retry_count = 0, timer;
-	struct diag_smd_info *data = NULL;
 
-	if (!smd_info || smd_info->type != SMD_CNTL_TYPE) {
-		pr_err("diag: In %s, invalid channel info, smd_info: %p type: %d\n",
-					__func__, smd_info,
-					((smd_info) ? smd_info->type : -1));
-		return;
-	}
-
-	if (smd_info->peripheral < MODEM_DATA ||
-					smd_info->peripheral > WCNSS_DATA) {
-		pr_err("diag: In %s, invalid peripheral %d\n", __func__,
-							smd_info->peripheral);
-		return;
-	}
-
-	data = &driver->smd_data[smd_info->peripheral];
-	if (!data)
+	/* For now only allow the modem to receive the message */
+	if (!smd_info || smd_info->type != SMD_CNTL_TYPE)
 		return;
 
 	diag_create_diag_mode_ctrl_pkt(buf, real_time);
@@ -519,23 +503,12 @@ void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 	mutex_lock(&driver->diag_cntl_mutex);
 	if (smd_info->ch) {
 		while (retry_count < 3) {
-			mutex_lock(&smd_info->smd_ch_mutex);
 			wr_size = smd_write(smd_info->ch, buf, msg_size);
-			mutex_unlock(&smd_info->smd_ch_mutex);
 			if (wr_size == -ENOMEM) {
-				/*
-				 * The smd channel is full. Delay while
-				 * smd processes existing data and smd
-				 * has memory become available. The delay
-				 * of 2000 was determined empirically as
-				 * best value to use.
-				 */
 				retry_count++;
 				for (timer = 0; timer < 5; timer++)
 					udelay(2000);
 			} else {
-				data =
-				&driver->smd_data[smd_info->peripheral];
 				driver->real_time_mode[DIAG_LOCAL_PROC] =
 								real_time;
 				break;
@@ -551,6 +524,61 @@ void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 	}
 
 	mutex_unlock(&driver->diag_cntl_mutex);
+}
+
+void diag_send_diag_flush(struct diag_smd_info *smd_info)
+{
+	struct diag_ctrl_msg_diag_flush diag_flush;
+
+	if (!smd_info || smd_info->type != SMD_CNTL_TYPE) {
+		pr_err("diag: In %s, invalid channel info, smd_info: %p type: %d\n",
+					__func__, smd_info,
+					((smd_info) ? smd_info->type : -1));
+		return;
+	}
+
+	if (smd_info->peripheral < MODEM_DATA ||
+					smd_info->peripheral > WCNSS_DATA) {
+		pr_err("diag: In %s, invalid peripheral %d\n", __func__,
+							smd_info->peripheral);
+		return;
+	}
+
+	pr_debug("diag: In %s,  sending diag_flush msg\n", __func__);
+
+	mutex_lock(&driver->diag_cntl_mutex);
+	diag_flush.ctrl_pkt_id = DIAG_CTRL_MSG_DIAG_FLUSH;
+	diag_flush.ctrl_pkt_data_len = 0;
+
+	diag_send_ctrl_msg(smd_info, &diag_flush, sizeof(diag_flush));
+
+	mutex_unlock(&driver->diag_cntl_mutex);
+	pr_debug("diag: Exiting %s\n", __func__);
+}
+
+static void diag_send_ctrl_msg(struct diag_smd_info *smd_info,
+		const void *msg,
+		int len)
+{
+	int wr_size = -ENOMEM, retry_count = 0, timer;
+
+	if (smd_info->ch) {
+		while (retry_count < 3) {
+			wr_size = smd_write(smd_info->ch, msg, len);
+			if (wr_size == -ENOMEM) {
+				retry_count++;
+				for (timer = 0; timer < 5; timer++)
+					usleep_range(2000, 3000);
+			} else
+				break;
+		}
+		if (wr_size != len)
+			pr_err("diag: proc %d failed sending msg %d, tried %d",
+				smd_info->peripheral,
+				wr_size, len);
+	} else {
+		pr_err("diag: ch invalid on proc %d\n", smd_info->peripheral);
+	}
 }
 
 int diag_send_stm_state(struct diag_smd_info *smd_info,
@@ -574,9 +602,7 @@ int diag_send_stm_state(struct diag_smd_info *smd_info,
 		stm_msg.version = 1;
 		stm_msg.control_data = stm_control_data;
 		while (retry_count < 3) {
-			mutex_lock(&smd_info->smd_ch_mutex);
 			wr_size = smd_write(smd_info->ch, &stm_msg, msg_size);
-			mutex_unlock(&smd_info->smd_ch_mutex);
 			if (wr_size == -ENOMEM) {
 				/*
 				 * The smd channel is full. Delay while
@@ -634,7 +660,6 @@ static int diag_smd_cntl_probe(struct platform_device *pdev)
 				diag_smd_notify);
 			driver->smd_cntl[index].ch_save =
 				driver->smd_cntl[index].ch;
-			diag_smd_buffer_init(&driver->smd_cntl[index]);
 		}
 		pr_debug("diag: In %s, open SMD CNTL port, Id = %d, r = %d\n",
 			__func__, pdev->id, r);
@@ -680,29 +705,27 @@ static struct platform_driver diag_smd_lite_cntl_driver = {
 	},
 };
 
-int diagfwd_cntl_init(void)
+void diagfwd_cntl_init(void)
 {
-	int ret;
+	int success;
 	int i;
 
 	reg_dirty = 0;
 	driver->polling_reg_flag = 0;
 	driver->log_on_demand_support = 1;
 	driver->diag_cntl_wq = create_singlethread_workqueue("diag_cntl_wq");
-	if (!driver->diag_cntl_wq)
-		goto err;
 
 	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
-		ret = diag_smd_constructor(&driver->smd_cntl[i], i,
+		success = diag_smd_constructor(&driver->smd_cntl[i], i,
 							SMD_CNTL_TYPE);
-		if (ret)
+		if (!success)
 			goto err;
 	}
 
 	platform_driver_register(&msm_smd_ch1_cntl_driver);
 	platform_driver_register(&diag_smd_lite_cntl_driver);
 
-	return 0;
+	return;
 err:
 	pr_err("diag: Could not initialize diag buffers");
 
@@ -711,7 +734,6 @@ err:
 
 	if (driver->diag_cntl_wq)
 		destroy_workqueue(driver->diag_cntl_wq);
-	return -ENOMEM;
 }
 
 void diagfwd_cntl_exit(void)
@@ -726,4 +748,13 @@ void diagfwd_cntl_exit(void)
 
 	platform_driver_unregister(&msm_smd_ch1_cntl_driver);
 	platform_driver_unregister(&diag_smd_lite_cntl_driver);
+}
+
+void diag_send_diag_mode_update(int real_time)
+{
+	int i;
+	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
+		diag_send_diag_mode_update_by_smd(&driver->smd_cntl[i],
+							real_time);
+	}
 }
