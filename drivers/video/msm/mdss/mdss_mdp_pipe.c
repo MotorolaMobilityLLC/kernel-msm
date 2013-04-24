@@ -19,6 +19,7 @@
 
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
+#include "mdss_dsi.h"
 
 #define SMP_MB_SIZE		(mdss_res->smp_mb_size)
 #define SMP_MB_CNT		(mdss_res->smp_mb_cnt)
@@ -434,16 +435,19 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe)
 	src_size = (pipe->src.h << 16) | pipe->src.w;
 	src_xy = (pipe->src.y << 16) | pipe->src.x;
 	dst_size = (pipe->dst.h << 16) | pipe->dst.w;
-#ifdef CONFIG_FB_MSM_MDSS_UD_FLIP
-	if (pipe->mfd && pipe->mfd->panel_info &&
-		pipe->mfd->panel_info->pdest == DISPLAY_1)
-		dst_xy = ((pipe->mixer->height - (pipe->dst.y + pipe->dst.h)) << 16) |
-			pipe->dst.x;
-	else
+
+	if (mdss_dsi_panel_flip_ud()) {
+		if (pipe->mfd && pipe->mfd->panel_info &&
+			pipe->mfd->panel_info->pdest == DISPLAY_1)
+			dst_xy = ((pipe->mixer->height -
+				   (pipe->dst.y + pipe->dst.h)) << 16) |
+				pipe->dst.x;
+		else
+			dst_xy = (pipe->dst.y << 16) | pipe->dst.x;
+	} else {
 		dst_xy = (pipe->dst.y << 16) | pipe->dst.x;
-#else
-	dst_xy = (pipe->dst.y << 16) | pipe->dst.x;
-#endif
+	}
+
 	ystride0 =  (pipe->src_planes.ystride[0]) |
 		    (pipe->src_planes.ystride[1] << 16);
 	ystride1 =  (pipe->src_planes.ystride[2]) |
@@ -517,11 +521,12 @@ static int mdss_mdp_format_setup(struct mdss_mdp_pipe *pipe)
 			(fmt->unpack_align_msb << 18) |
 			((fmt->bpp - 1) << 9);
 
-#ifdef CONFIG_FB_MSM_MDSS_UD_FLIP
-	if (pipe->mfd && pipe->mfd->panel_info &&
-		pipe->mfd->panel_info->pdest == DISPLAY_1)
-		opmode ^= MDSS_MDP_OP_FLIP_UD;
-#endif
+	if (mdss_dsi_panel_flip_ud()) {
+		if (pipe->mfd && pipe->mfd->panel_info &&
+			pipe->mfd->panel_info->pdest == DISPLAY_1)
+			opmode ^= MDSS_MDP_OP_FLIP_UD;
+	}
+
 	mdss_mdp_pipe_sspp_setup(pipe, &opmode);
 
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_FORMAT, src_format);
