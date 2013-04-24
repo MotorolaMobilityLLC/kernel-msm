@@ -1785,6 +1785,24 @@ eHalStatus pmcRequestBmps (
          status = eHAL_STATUS_FAILURE;
       }
    }
+   /* Retry to enter the BMPS if the
+      status = eHAL_STATUS_PMC_NOT_NOW */
+   else if (status == eHAL_STATUS_PMC_NOT_NOW)
+   {
+      pmcStopTrafficTimer(hHal);
+      smsLog(pMac, LOG1, FL("Can't enter BMPS+++"));
+      if (pmcShouldBmpsTimerRun(pMac))
+      {
+         if (pmcStartTrafficTimer(pMac,
+                                  pMac->pmc.bmpsConfig.trafficMeasurePeriod)
+                                  != eHAL_STATUS_SUCCESS)
+         {
+            smsLog(pMac, LOG1, FL("Cannot start BMPS Retry timer"));
+         }
+         smsLog(pMac, LOG1,
+                FL("BMPS Retry Timer already running or started"));
+      }
+   }
 
    return status;
 }
