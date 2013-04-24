@@ -549,6 +549,7 @@ static int panel_disable(struct platform_device *pdev)
 
 	if (need_deinit) {
 		if (mot_panel.panel_disable) {
+			mmi_panel_notify(MMI_PANEL_EVENT_PRE_DEINIT, NULL);
 			if (mfd->suspend_cfg.partial) {
 				pr_info("%s: skipping full panel_disable\n",
 					__func__);
