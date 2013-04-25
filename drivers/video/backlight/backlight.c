@@ -19,6 +19,8 @@
 #include <asm/backlight.h>
 #endif
 
+static int brightness_set;
+
 static const char *const backlight_types[] = {
 	[BACKLIGHT_RAW] = "raw",
 	[BACKLIGHT_PLATFORM] = "platform",
@@ -51,7 +53,8 @@ static int fb_notifier_callback(struct notifier_block *self,
 				bd->props.state &= ~BL_CORE_FBBLANK;
 			else
 				bd->props.state |= BL_CORE_FBBLANK;
-			backlight_update_status(bd);
+			if (likely(brightness_set))
+				backlight_update_status(bd);
 		}
 	mutex_unlock(&bd->ops_lock);
 	return 0;
@@ -166,6 +169,8 @@ static ssize_t backlight_store_brightness(struct device *dev,
 			bd->props.brightness = brightness;
 			backlight_update_status(bd);
 			rc = count;
+			if (unlikely(!brightness_set))
+				brightness_set = 1;
 		}
 	}
 	mutex_unlock(&bd->ops_lock);
