@@ -111,6 +111,7 @@ static const char *rdev_get_name(struct regulator_dev *rdev)
 }
 
 /* gets the regulator for a given consumer device */
+/*
 static struct regulator *get_device_regulator(struct device *dev)
 {
 	struct regulator *regulator = NULL;
@@ -131,7 +132,7 @@ static struct regulator *get_device_regulator(struct device *dev)
 	mutex_unlock(&regulator_list_mutex);
 	return NULL;
 }
-
+*/
 /**
  * of_get_regulator - get a regulator device node based on supply name
  * @dev: Device pointer for the consumer (of regulator) device
