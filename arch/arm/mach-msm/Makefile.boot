@@ -65,6 +65,7 @@ dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-sasquatch-p2.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ghost-p0.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ghost-p1.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ghost-p2.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ghost-p2b.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ghost-pc.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ghost-pd.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ghost-pe.dtb
