@@ -815,12 +815,6 @@ tSirRetStatus pmmSendPowerSaveCfg(tpAniSirGlobal pMac, tpSirPowerSaveCfg pUpdate
         pmmLog(pMac, LOGP, FL("pmmCfg: cfgGet failed for ignoreDtim"));
     pUpdatedPwrSaveCfg->ignoreDtim = (tANI_U8) ignoreDtim;
 
-    /* The numBeaconPerRssiAverage should be <= rssiFilter Period,
-     * and less than the max allowed (default set to 20 in CFG)
-     */
-    if (numBeaconPerRssiAverage > rssiFilterPeriod)
-        pUpdatedPwrSaveCfg->numBeaconPerRssiAverage = (tANI_U8)GET_MIN_VALUE(rssiFilterPeriod, WNI_CFG_NUM_BEACON_PER_RSSI_AVERAGE_STAMAX);
-
     //Save a copy of the CFG in global pmm context.
     palCopyMemory( pMac->hHdd, (tANI_U8 *) &pMac->pmm.gPmmCfg,  pUpdatedPwrSaveCfg, sizeof(tSirPowerSaveCfg));
 
