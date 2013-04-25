@@ -4261,6 +4261,39 @@ void msmsdcc_hw_reset(struct mmc_host *mmc)
 	usleep_range(10000, 12000);
 }
 
+static int msmsdcc_notify_load(struct mmc_host *mmc, enum mmc_load state)
+{
+	int err = 0;
+	unsigned long rate;
+	struct msmsdcc_host *host = mmc_priv(mmc);
+
+	if (IS_ERR_OR_NULL(host->bus_clk))
+		goto out;
+
+	switch (state) {
+	case MMC_LOAD_HIGH:
+		rate = MSMSDCC_BUS_VOTE_MAX_RATE;
+		break;
+	case MMC_LOAD_LOW:
+		rate = MSMSDCC_BUS_VOTE_MIN_RATE;
+		break;
+	default:
+		err = -EINVAL;
+		goto out;
+	}
+
+	if (rate != host->bus_clk_rate) {
+		err = clk_set_rate(host->bus_clk, rate);
+		if (err)
+			pr_err("%s: %s: bus clk set rate %lu Hz err %d\n",
+					mmc_hostname(mmc), __func__, rate, err);
+		else
+			host->bus_clk_rate = rate;
+	}
+out:
+	return err;
+}
+
 static const struct mmc_host_ops msmsdcc_ops = {
 	.enable		= msmsdcc_enable,
 	.disable	= msmsdcc_disable,
@@ -4273,6 +4306,7 @@ static const struct mmc_host_ops msmsdcc_ops = {
 	.start_signal_voltage_switch = msmsdcc_switch_io_voltage,
 	.execute_tuning = msmsdcc_execute_tuning,
 	.hw_reset = msmsdcc_hw_reset,
+	.notify_load = msmsdcc_notify_load,
 };
 
 static unsigned int
@@ -5765,12 +5799,13 @@ msmsdcc_probe(struct platform_device *pdev)
 	host->bus_clk = clk_get(&pdev->dev, "bus_clk");
 	if (!IS_ERR_OR_NULL(host->bus_clk)) {
 		/* Vote for max. clk rate for max. performance */
-		ret = clk_set_rate(host->bus_clk, INT_MAX);
+		ret = clk_set_rate(host->bus_clk, MSMSDCC_BUS_VOTE_MAX_RATE);
 		if (ret)
 			goto bus_clk_put;
 		ret = clk_prepare_enable(host->bus_clk);
 		if (ret)
 			goto bus_clk_put;
+		host->bus_clk_rate = MSMSDCC_BUS_VOTE_MAX_RATE;
 	}
 
 	/*
