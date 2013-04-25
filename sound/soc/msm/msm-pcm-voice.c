@@ -587,7 +587,7 @@ static struct snd_kcontrol_new msm_voice_controls[] = {
 				msm_voice_rx_device_mute_put),
 	SOC_SINGLE_EXT("Voice Tx Mute", SND_SOC_NOPM, 0, 1, 0,
 				msm_voice_mute_get, msm_voice_mute_put),
-	SOC_SINGLE_EXT("Voice Rx Volume", SND_SOC_NOPM, 0, 5, 0,
+	SOC_SINGLE_EXT("Voice Rx Volume", SND_SOC_NOPM, 0, 7, 0,
 				msm_voice_volume_get, msm_voice_volume_put),
 	SOC_SINGLE_EXT("Voice Topology Disable", SND_SOC_NOPM, 0, 1, 0,
 		       msm_voice_topology_disable_get,
@@ -605,7 +605,7 @@ static struct snd_kcontrol_new msm_voice_controls[] = {
 			msm_volte_rx_device_mute_put),
 	SOC_SINGLE_EXT("VoLTE Tx Mute", SND_SOC_NOPM, 0, 1, 0,
 				msm_volte_mute_get, msm_volte_mute_put),
-	SOC_SINGLE_EXT("VoLTE Rx Volume", SND_SOC_NOPM, 0, 5, 0,
+	SOC_SINGLE_EXT("VoLTE Rx Volume", SND_SOC_NOPM, 0, 7, 0,
 				msm_volte_volume_get, msm_volte_volume_put),
 	SOC_SINGLE_EXT("VoLTE Topology Disable", SND_SOC_NOPM, 0, 1, 0,
 		       msm_volte_topology_disable_get,
@@ -615,7 +615,7 @@ static struct snd_kcontrol_new msm_voice_controls[] = {
 		       msm_voice2_rx_device_mute_put),
 	SOC_SINGLE_EXT("Voice2 Tx Mute", SND_SOC_NOPM, 0, 1, 0,
 		       msm_voice2_mute_get, msm_voice2_mute_put),
-	SOC_SINGLE_EXT("Voice2 Rx Volume", SND_SOC_NOPM, 0, 5, 0,
+	SOC_SINGLE_EXT("Voice2 Rx Volume", SND_SOC_NOPM, 0, 7, 0,
 		       msm_voice2_volume_get, msm_voice2_volume_put),
 };
 
