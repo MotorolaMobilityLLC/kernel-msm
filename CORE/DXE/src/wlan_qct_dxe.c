@@ -4699,6 +4699,11 @@ wpt_status WLANDXE_Stop
    dxeCtxt = (WLANDXE_CtrlBlkType *)pDXEContext;
    for(idx = 0; idx < WDTS_CHANNEL_MAX; idx++)
    {
+      if(VOS_TIMER_STATE_RUNNING == wpalTimerGetCurStatus(&dxeCtxt->dxeChannel[idx].healthMonitorTimer))
+      {
+         wpalTimerStop(&dxeCtxt->dxeChannel[idx].healthMonitorTimer);
+      }
+
       status = dxeChannelStop(dxeCtxt, &dxeCtxt->dxeChannel[idx]);
       if(eWLAN_PAL_STATUS_SUCCESS != status)
       {
