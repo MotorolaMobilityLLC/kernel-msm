@@ -218,6 +218,8 @@ static void check_index_in_prev_nodes(struct f2fs_sb_info *sbi,
 
 	/* Get the node page */
 	node_page = get_node_page(sbi, le32_to_cpu(sum.nid));
+	if (IS_ERR(node_page))
+		return;
 	bidx = start_bidx_of_node(ofs_of_node(node_page)) +
 				le16_to_cpu(sum.ofs_in_node);
 	ino = ino_of_node(node_page);
