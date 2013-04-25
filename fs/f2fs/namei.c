@@ -68,7 +68,7 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode)
 		nid_free = true;
 		goto out;
 	}
-
+	trace_f2fs_new_inode(inode, 0);
 	mark_inode_dirty(inode);
 	return inode;
 
@@ -76,6 +76,7 @@ out:
 	clear_nlink(inode);
 	unlock_new_inode(inode);
 fail:
+	trace_f2fs_new_inode(inode, err);
 	iput(inode);
 	if (nid_free)
 		alloc_nid_failed(sbi, ino);
