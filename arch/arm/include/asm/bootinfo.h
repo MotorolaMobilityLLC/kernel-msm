@@ -91,7 +91,7 @@ void __init bootinfo_bck_buf_set_reserved(void);
 
 #else /* defined(CONFIG_BOOTINFO) */
 
-static inline u32 bi_powerup_reason(void) { return PU_REASON_INVALID; }
+static inline u32 bi_powerup_reason(void) { return 0xFFFFFFFF; }
 static inline u32 bi_mbm_version(void) { return 0xFFFFFFFF; }
 
 #endif /* !defined(CONFIG_BOOTINFO) */
