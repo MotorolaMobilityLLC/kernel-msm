@@ -949,8 +949,24 @@ static ssize_t acm_transports_store(
 }
 
 static DEVICE_ATTR(acm_transports, S_IWUSR, NULL, acm_transports_store);
+
+/*enabled ACM transport names - "serial_hsic[,serial_hsusb]"*/
+static char acm_xport_names[32];
+static ssize_t acm_xport_names_store(
+		struct device *device, struct device_attribute *attr,
+		const char *buff, size_t size)
+{
+	strlcpy(acm_xport_names, buff, sizeof(acm_xport_names));
+
+	return size;
+}
+
+static DEVICE_ATTR(acm_transport_names, S_IWUSR, NULL, acm_xport_names_store);
+
 static struct device_attribute *acm_function_attributes[] = {
-		&dev_attr_acm_transports, NULL };
+		&dev_attr_acm_transports,
+		&dev_attr_acm_transport_names,
+		NULL };
 
 static void acm_function_cleanup(struct android_usb_function *f)
 {
@@ -960,8 +976,8 @@ static void acm_function_cleanup(struct android_usb_function *f)
 static int acm_function_bind_config(struct android_usb_function *f,
 					struct usb_configuration *c)
 {
-	char *name;
-	char buf[32], *b;
+	char *name, *xport_name = NULL;
+	char buf[32], *b, xport_name_buf[32], *tb;
 	int err = -1, i;
 	static int acm_initialized, ports;
 
@@ -972,11 +988,16 @@ static int acm_function_bind_config(struct android_usb_function *f,
 	strlcpy(buf, acm_transports, sizeof(buf));
 	b = strim(buf);
 
+	strlcpy(xport_name_buf, acm_xport_names, sizeof(xport_name_buf));
+	tb = strim(xport_name_buf);
+
 	while (b) {
 		name = strsep(&b, ",");
 
 		if (name) {
-			err = acm_init_port(ports, name);
+			if (tb)
+				xport_name = strsep(&tb, ",");
+			err = acm_init_port(ports, name, xport_name);
 			if (err) {
 				pr_err("acm: Cannot open port '%s'", name);
 				goto out;

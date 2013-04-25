@@ -986,7 +986,7 @@ int acm_bind_config(struct usb_configuration *c, u8 port_num)
 /**
  * acm_init_port - bind a acm_port to its transport
  */
-static int acm_init_port(int port_num, const char *name)
+static int acm_init_port(int port_num, const char *name, const char *port_name)
 {
 	enum transport_type transport;
 
@@ -1014,6 +1014,9 @@ static int acm_init_port(int port_num, const char *name)
 		no_acm_smd_ports++;
 		break;
 	case USB_GADGET_XPORT_HSIC:
+		ghsic_ctrl_set_port_name(port_name, name);
+		ghsic_data_set_port_name(port_name, name);
+
 		/*client port number will be updated in acm_port_setup*/
 		no_acm_hsic_sports++;
 		break;
