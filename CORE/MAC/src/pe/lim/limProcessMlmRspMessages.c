@@ -2269,7 +2269,7 @@ void limProcessStaMlmDelStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESessi
     }
     else
     {
-        limLog( pMac, LOGE, FL( "DEL_STA failed for sta Id %d" ), pStaDs->staIndex);
+        limLog( pMac, LOGE, FL( "DEL_STA failed for sta Id %d" ), pDelStaParams->staIdx);
         statusCode = eSIR_SME_REFUSED;
     }
 end:

@@ -143,35 +143,38 @@ limIsRSNieValidInSmeReqMessage(tpAniSirGlobal pMac, tpSirRSNie pRSNie)
             {
                 if((pRSNie->rsnIEdata[startPos+1] > DOT11F_IE_RSN_MAX_LEN) ||
                     (pRSNie->rsnIEdata[startPos+1] < DOT11F_IE_RSN_MIN_LEN))
-        {
-            limLog(pMac, LOGE, FL("RSN IE len %d not [%d,%d]"),
-                           pRSNie->rsnIEdata[startPos+1], DOT11F_IE_RSN_MIN_LEN, 
-                        DOT11F_IE_RSN_MAX_LEN);
-            return false;
-        }
+                {
+                   limLog(pMac, LOGE, FL("RSN IE len %d not [%d,%d]"),
+                          pRSNie->rsnIEdata[startPos+1], DOT11F_IE_RSN_MIN_LEN,
+                          DOT11F_IE_RSN_MAX_LEN);
+                   return false;
+                }
             }
             else if(pRSNie->rsnIEdata[startPos] == DOT11F_EID_WPA)
-        {
-                // Check validity of WPA IE
-                val = sirReadU32((tANI_U8 *) &pRSNie->rsnIEdata[startPos + 2]);
-                if((pRSNie->rsnIEdata[startPos + 1] < DOT11F_IE_WPA_MIN_LEN) ||
-                    (pRSNie->rsnIEdata[startPos + 1] > DOT11F_IE_WPA_MAX_LEN) ||
-                    (SIR_MAC_WPA_OUI != val))
             {
-                    limLog(pMac, LOGE,
-                           FL("WPA IE len %d not [%d,%d] OR data 0x%x not 0x%x"),
-                           pRSNie->rsnIEdata[startPos+1], DOT11F_IE_WPA_MIN_LEN, 
-                           DOT11F_IE_WPA_MAX_LEN, val, SIR_MAC_WPA_OUI);
+                // Check validity of WPA IE
+                if (SIR_MAC_MAX_IE_LENGTH > startPos)
+                {
+                    val = sirReadU32((tANI_U8 *) &pRSNie->rsnIEdata[startPos + 2]);
+                    if((pRSNie->rsnIEdata[startPos + 1] < DOT11F_IE_WPA_MIN_LEN) ||
+                        (pRSNie->rsnIEdata[startPos + 1] > DOT11F_IE_WPA_MAX_LEN) ||
+                        (SIR_MAC_WPA_OUI != val))
+                    {
+                       limLog(pMac, LOGE,
+                              FL("WPA IE len %d not [%d,%d] OR data 0x%x not 0x%x"),
+                              pRSNie->rsnIEdata[startPos+1], DOT11F_IE_WPA_MIN_LEN,
+                              DOT11F_IE_WPA_MAX_LEN, val, SIR_MAC_WPA_OUI);
 
-                return false;
+                       return false;
+                    }
+                }
             }
-        }
 #ifdef FEATURE_WLAN_WAPI
             else if(pRSNie->rsnIEdata[startPos] == DOT11F_EID_WAPI)
             {
                 if((pRSNie->rsnIEdata[startPos+1] > DOT11F_IE_WAPI_MAX_LEN) ||
                  (pRSNie->rsnIEdata[startPos+1] < DOT11F_IE_WAPI_MIN_LEN))
-        {
+                {
                     limLog(pMac, LOGE,
                            FL("WAPI IE len %d not [%d,%d]"),
                            pRSNie->rsnIEdata[startPos+1], DOT11F_IE_WAPI_MIN_LEN, 
@@ -179,13 +182,13 @@ limIsRSNieValidInSmeReqMessage(tpAniSirGlobal pMac, tpSirRSNie pRSNie)
 
                     return false;
                 }
-        }
+            }
 #endif
             else
-        {
+            {
                 //we will never be here, simply for completeness
-            return false;
-        }
+                return false;
+            }
             startPos += 2 + pRSNie->rsnIEdata[startPos+1];  //EID + length field + length
             len -= startPos;
         }//while
@@ -603,7 +606,7 @@ limIsSmeStartBssReqValid(tpAniSirGlobal pMac,
             // Invalid Operational rates
             // Reject START_BSS_REQ
             limLog(pMac, LOGW,
-               FL("Invalid operational rates in eWNI_SME_START_BSS_REQ"));
+                   FL("Invalid operational rates in eWNI_SME_START_BSS_REQ"));
             sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2,
                        pStartBssReq->operationalRateSet.rate,
                        pStartBssReq->operationalRateSet.numRates);
@@ -621,7 +624,7 @@ limIsSmeStartBssReqValid(tpAniSirGlobal pMac,
             // Invalid Operational rates
             // Reject START_BSS_REQ
             limLog(pMac, LOGW,
-               FL("Invalid operational rates in eWNI_SME_START_BSS_REQ"));
+                   FL("Invalid operational rates in eWNI_SME_START_BSS_REQ"));
             sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2,
                        pStartBssReq->operationalRateSet.rate,
                        pStartBssReq->operationalRateSet.numRates);
@@ -638,7 +641,7 @@ limIsSmeStartBssReqValid(tpAniSirGlobal pMac,
             // Invalid Operational rates
             // Reject START_BSS_REQ
             limLog(pMac, LOGW,
-               FL("Invalid operational rates in eWNI_SME_START_BSS_REQ"));
+                   FL("Invalid operational rates in eWNI_SME_START_BSS_REQ"));
             sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2,
                        pStartBssReq->operationalRateSet.rate,
                        pStartBssReq->operationalRateSet.numRates);

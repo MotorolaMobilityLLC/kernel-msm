@@ -542,8 +542,8 @@ void ccmCfgCnfMsgHandler(tHalHandle hHal, void *m)
                         {
                             freeCfgReq(hHdd, old) ;
                         }
+                        pMac->ccm.comp[cfgId] = req ;
                     }
-                    pMac->ccm.comp[cfgId] = req ;
                 }
                 else
                 {
