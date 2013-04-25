@@ -71,7 +71,6 @@
  *
  * Exported symbols:
  * bi_powerup_reason()             -- returns the powerup reason
- * bi_set_powerup_reason()         -- sets the powerup reason
  */
 
 #ifdef CONFIG_OF
@@ -86,21 +85,14 @@ static void of_powerup(u32 *pwr)
 static inline void of_powerup(u32 *pwr) { }
 #endif
 
-static u32 powerup_reason;
 u32 bi_powerup_reason(void)
 {
-	u32 reason = powerup_reason;
+	u32 reason = PU_REASON_INVALID;
 
 	of_powerup(&reason);
 	return reason;
 }
 EXPORT_SYMBOL(bi_powerup_reason);
-
-void bi_set_powerup_reason(u32 __powerup_reason)
-{
-	powerup_reason = __powerup_reason;
-}
-EXPORT_SYMBOL(bi_set_powerup_reason);
 
 #define EMIT_POWERUPREASON() \
 	    EMIT_BOOTINFO("POWERUPREASON", "0x%08x", powerup_reason)
@@ -114,9 +106,6 @@ EXPORT_SYMBOL(bi_set_powerup_reason);
  *
  * Exported symbols:
  * bi_mbm_version()                -- returns the MBM version
- * bi_set_mbm_version()            -- sets the MBM version
- * bi_mbm_loader_version()         -- returns the MBM loader version
- * bi_set_mbm_loader_version()     -- sets the MBM loader version
  */
 #ifdef CONFIG_OF
 static void of_mbmver(u32 *ver)
@@ -130,119 +119,17 @@ static void of_mbmver(u32 *ver)
 static inline void of_mbmver(u32 *ver) { }
 #endif
 
-static u32 mbm_version;
 u32 bi_mbm_version(void)
 {
-	u32 ver = mbm_version;
+	u32 version = 0xFFFFFFFF;
 
-	of_mbmver(&ver);
-	return ver;
+	of_mbmver(&version);
+	return version;
 }
 EXPORT_SYMBOL(bi_mbm_version);
 
-void bi_set_mbm_version(u32 __mbm_version)
-{
-	mbm_version = __mbm_version;
-}
-EXPORT_SYMBOL(bi_set_mbm_version);
-
-static u32 mbm_loader_version;
-u32 bi_mbm_loader_version(void)
-{
-	return mbm_loader_version;
-}
-EXPORT_SYMBOL(bi_mbm_loader_version);
-
-void bi_set_mbm_loader_version(u32 __mbm_loader_version)
-{
-	mbm_loader_version = __mbm_loader_version;
-}
-EXPORT_SYMBOL(bi_set_mbm_loader_version);
-
 #define EMIT_MBM_VERSION() \
 	    EMIT_BOOTINFO("MBM_VERSION", "0x%08x", mbm_version)
-#define EMIT_MBM_LOADER_VERSION() \
-	    EMIT_BOOTINFO("MBM_LOADER_VERSION", "0x%08x", mbm_loader_version)
-
-
-/*
- * flat_dev_tree_address contains the Motorola flat dev tree address.
- * flat_dev_tree_address defaults to -1 (0xffffffff) if it is not set.
- *
- * Exported symbols:
- * bi_flat_dev_tree_address()      -- returns the flat dev tree address
- * bi_set_flat_dev_tree_address()  -- sets the flat dev tree address
- */
-static u32 flat_dev_tree_address = -1;
-u32 bi_flat_dev_tree_address(void)
-{
-	return flat_dev_tree_address;
-}
-EXPORT_SYMBOL(bi_flat_dev_tree_address);
-
-void bi_set_flat_dev_tree_address(u32 __flat_dev_tree_address)
-{
-	flat_dev_tree_address = __flat_dev_tree_address;
-}
-EXPORT_SYMBOL(bi_set_flat_dev_tree_address);
-
-#define EMIT_FLAT_DEV_TREE_ADDRESS() \
-		EMIT_BOOTINFO("FLAT_DEV_TREE_ADDRESS", "0x%08x", \
-					flat_dev_tree_address)
-
-
-/*
- * battery_status_at_boot indicates the battery status
- * when the machine started to boot.
- * battery_status_at_boot defaults to -1 (0xffff) if the battery
- * status can't be determined.
- *
- * Exported symbols:
- * bi_battery_status_at_boot()         -- returns the battery boot status
- * bi_set_battery_status_at_boot()     -- sets the battery boot status
- */
-static u16 battery_status_at_boot = -1;
-u16 bi_battery_status_at_boot(void)
-{
-	return battery_status_at_boot;
-}
-EXPORT_SYMBOL(bi_battery_status_at_boot);
-
-void bi_set_battery_status_at_boot(u16 __battery_status_at_boot)
-{
-	battery_status_at_boot = __battery_status_at_boot;
-}
-EXPORT_SYMBOL(bi_set_battery_status_at_boot);
-
-#define EMIT_BATTERY_STATUS_AT_BOOT() \
-		EMIT_BOOTINFO("BATTERY_STATUS_AT_BOOT", "0x%04x", \
-					battery_status_at_boot)
-
-/*
- * cid_recover_boot contains the flag to indicate whether phone should
- * boot into recover mode or not.
- * cid_recover_boot defaults to 0 if it is not set.
- *
- * Exported symbols:
- * bi_cid_recover_boot()        -- returns the value of recover boot
- * bi_set_cid_recover_boot()    -- sets the value of recover boot
- */
-static u32 cid_recover_boot;
-u32 bi_cid_recover_boot(void)
-{
-	return cid_recover_boot;
-}
-EXPORT_SYMBOL(bi_cid_recover_boot);
-
-void bi_set_cid_recover_boot(u32 __cid_recover_boot)
-{
-	cid_recover_boot = __cid_recover_boot;
-}
-EXPORT_SYMBOL(bi_set_cid_recover_boot);
-
-
-#define EMIT_CID_RECOVER_BOOT() \
-		EMIT_BOOTINFO("CID_RECOVER_BOOT", "0x%04x", cid_recover_boot)
 
 /*
  * BL build signature a succession of lines of text each denoting
@@ -386,8 +273,6 @@ static int get_bootinfo(struct seq_file *m, void *v)
 	EMIT_HWREV();
 	EMIT_POWERUPREASON();
 	EMIT_MBM_VERSION();
-	EMIT_BATTERY_STATUS_AT_BOOT();
-	EMIT_CID_RECOVER_BOOT();
 	EMIT_BL_BUILD_SIG();
 
 	return len;
@@ -396,7 +281,7 @@ static int get_bootinfo(struct seq_file *m, void *v)
 static int bootinfo_panic(struct notifier_block *this,
 						unsigned long event, void *ptr)
 {
-	printk(KERN_ERR "mbm_version=0x%08x", mbm_version);
+	printk(KERN_ERR "mbm_version=0x%08x", bi_mbm_version());
 	return NOTIFY_DONE;
 }
 
