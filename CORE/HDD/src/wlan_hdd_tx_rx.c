@@ -1240,7 +1240,8 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    ++pAdapter->hdd_stats.hddTxRxStats.txFetchDequeued;
    ++pAdapter->hdd_stats.hddTxRxStats.txFetchDequeuedAC[ac];
 
-   if(pHddCtx->cfg_ini->thermalMitigationEnable)
+   if((pHddCtx->cfg_ini->thermalMitigationEnable) &&
+      (WLAN_HDD_INFRA_STATION == pAdapter->device_mode))
    {
       if(mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
       {
@@ -1256,14 +1257,14 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
             pHddCtx->tmInfo.lastOpenTs = timestamp;
          }
 
-         if(((timestamp - pHddCtx->tmInfo.lastOpenTs) > (pHddCtx->tmInfo.tmAction.txOperationDuration / 10)) &&
+         if((VOS_FALSE == pHddCtx->tmInfo.qBlocked) &&
+            ((timestamp - pHddCtx->tmInfo.lastOpenTs) > (pHddCtx->tmInfo.tmAction.txOperationDuration / 10)) &&
             (pHddCtx->tmInfo.txFrameCount >= pHddCtx->tmInfo.tmAction.txBlockFrameCountThreshold))
          {
-            spin_lock(&pAdapter->wmm_tx_queue[ac].lock);
             /* During TX open duration, TX frame count is larger than threshold
              * Block TX during Sleep time */
             netif_tx_stop_all_queues(pAdapter->dev);
-            spin_unlock(&pAdapter->wmm_tx_queue[ac].lock);
+            pHddCtx->tmInfo.qBlocked = VOS_TRUE;
             pHddCtx->tmInfo.lastblockTs = timestamp;
             if(VOS_TIMER_STATE_STOPPED == vos_timer_getCurrentState(&pHddCtx->tmInfo.txSleepTimer))
             {

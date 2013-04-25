@@ -462,8 +462,8 @@ void hddDevTmTxBlockTimeoutHandler(void *usrData)
 
    /* Resume TX flow */
     
-   netif_tx_start_all_queues(staAdapater->dev);
-
+   netif_tx_wake_all_queues(staAdapater->dev);
+   pHddCtx->tmInfo.qBlocked = VOS_FALSE;
    mutex_unlock(&pHddCtx->tmInfo.tmOperationLock);
 
    return;
@@ -575,7 +575,7 @@ VOS_STATUS hddDevTmRegisterNotifyCallback(hdd_context_t *pHddCtx)
    mutex_init(&pHddCtx->tmInfo.tmOperationLock);
    pHddCtx->tmInfo.txFrameCount = 0;
    pHddCtx->tmInfo.blockedQueue = NULL;
-
+   pHddCtx->tmInfo.qBlocked     = VOS_FALSE;
    return VOS_STATUS_SUCCESS;
 }
 
