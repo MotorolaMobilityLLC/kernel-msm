@@ -741,6 +741,8 @@ error:
 }
 
 #ifdef CONFIG_DEBUG_FS
+#define MAX_ON_CMD_SIZE (PAGE_SIZE * 8)
+
 ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 	loff_t *ppos)
 {
@@ -753,7 +755,7 @@ ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 	if (!panel_data)
 		return -ENODEV;
 
-	buf = kzalloc(PAGE_SIZE * 2, GFP_KERNEL);
+	buf = kzalloc(MAX_ON_CMD_SIZE, GFP_KERNEL);
 
 	strncpy(buf, "qcom,panel-on-cmds = [", 22);
 	buf_size = 22;
@@ -761,9 +763,10 @@ ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 	for (i = 0; i < (panel_data->dsi_panel_on_cmds)->size; ++i) {
 		if (buf_size + 17 +
 			(panel_data->dsi_panel_on_cmds->buf[i].dlen * 3) >
-			PAGE_SIZE  * 2 - 4) {
-			pr_warn("Too many on_commands!\n");
-			break;
+			MAX_ON_CMD_SIZE - 4) {
+			pr_warn("Too many on_commands!(< 32KB)\n");
+			ret = -EINVAL;
+			goto read_error;
 		}
 
 		strncpy(&buf[buf_size], "\r\n", 2);
@@ -778,7 +781,7 @@ ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 			panel_data->dsi_panel_on_cmds->buf[i].dlen);
 
 		if (ret < 0)
-			return ret;
+			goto read_error;
 
 		buf_size += ret;
 
@@ -787,7 +790,7 @@ ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 			ret = snprintf(&buf[buf_size], 4, " %02x",
 				panel_data->dsi_panel_on_cmds->buf[i].payload[0]);
 			if (ret < 0)
-				return ret;
+				goto read_error;
 
 			buf_size += ret;
 
@@ -795,7 +798,7 @@ ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 				ret = snprintf(&buf[buf_size], 4, " %02x",
 					panel_data->dsi_panel_on_cmds->buf[i].payload[1]);
 				if (ret < 0)
-					return ret;
+					goto read_error;
 
 				buf_size += ret;
 			}
@@ -805,21 +808,22 @@ ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 					ret = snprintf(&buf[buf_size], 5, "\r\n%02x",
 						panel_data->dsi_panel_on_cmds->buf[i].payload[j]);
 					if (ret < 0)
-						return ret;
+						goto read_error;
 
 					buf_size += ret;
 				} else {
 					ret = snprintf(&buf[buf_size], 4, " %02x",
 						panel_data->dsi_panel_on_cmds->buf[i].payload[j]);
 					if (ret < 0)
-						return ret;
+						goto read_error;
 
 					buf_size += ret;
 				}
 			}
 		} else {
 			pr_err("Invalid data length!\n");
-			return -1;
+			ret = -EINVAL;
+			goto read_error;
 		}
 	}
 
@@ -827,6 +831,7 @@ ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 	buf_size += 2;
 
 	ret = simple_read_from_buffer(user_buf, count, ppos, buf, buf_size);
+read_error:
 	kfree(buf);
 
 	return ret;
@@ -866,15 +871,18 @@ static int parse_on_cmds(char **on_cmds, const char *buf, size_t count)
 			break;
 	}
 
+	if (j == count)
+		return 0;
+
 	if (buf[j] != ']') {
 		pr_err("Invalid on_cmds end format!\n");
 		return -EINVAL;
 	}
 
-	if (*on_cmds)
-		kfree(*on_cmds);
-
 	*on_cmds = kzalloc(on_cmds_len, GFP_KERNEL);
+
+	if (!(*on_cmds))
+		return -ENOMEM;
 
 	j = 0;
 	for (i = 0; i < count; ++i) {
@@ -889,10 +897,15 @@ static int parse_on_cmds(char **on_cmds, const char *buf, size_t count)
 	return on_cmds_len;
 }
 
+static char *user_buf_total = NULL;
+static int user_buf_total_pos = 0;
+
 ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 	size_t count, loff_t *ppos)
 {
-	char *on_cmds = NULL;
+	static char *on_cmds = NULL;
+	char *prev_on_cmds = NULL;
+	int ret;
 	int len;
 	int data_offset;
 	int cmd_plen;
@@ -904,11 +917,38 @@ ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 	if (!panel_data)
 		return -ENODEV;
 
-	len = parse_on_cmds(&on_cmds, user_buf, count);
+	prev_on_cmds = on_cmds;
 
-	if (len <= 0) {
+	if (user_buf_total) {
+		if (user_buf_total_pos + count < MAX_ON_CMD_SIZE) {
+			memcpy(&user_buf_total[user_buf_total_pos], user_buf, count);
+			user_buf_total_pos += count;
+			len = parse_on_cmds(&on_cmds, user_buf_total,
+				user_buf_total_pos);
+		} else {
+			pr_warn("Too large file size(< 32KB)!\n");
+			ret = -EINVAL;
+			goto write_error;
+		}
+	} else {
+		len = parse_on_cmds(&on_cmds, user_buf, count);
+	}
+
+	if (len == 0) {
+		if (!user_buf_total) {
+			user_buf_total = kzalloc(MAX_ON_CMD_SIZE, GFP_KERNEL);
+			if (!user_buf_total) {
+				ret = -ENOMEM;
+				goto write_error;
+			}
+			memcpy(user_buf_total, user_buf, count);
+			user_buf_total_pos += count;
+		}
+		return count;
+	} else if (len < 0) {
 		pr_err("Invalid on_cmd format or length!\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto write_error;
 	}
 
 	data_offset = 0;
@@ -922,7 +962,10 @@ ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 	}
 	if (!num_of_on_cmds) {
 		pr_err("%s:%d, No ON cmds specified", __func__, __LINE__);
-		return -EINVAL;
+		if (on_cmds)
+			kfree(on_cmds);
+		ret = -EINVAL;
+		goto write_error;
 	}
 
 	kfree((panel_data->dsi_panel_on_cmds)->buf);
@@ -930,8 +973,12 @@ ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 	(panel_data->dsi_panel_on_cmds)->buf =
 		kzalloc((num_of_on_cmds * sizeof(struct dsi_cmd_desc)),
 						GFP_KERNEL);
-	if (!(panel_data->dsi_panel_on_cmds)->buf)
-		return -ENOMEM;
+	if (!(panel_data->dsi_panel_on_cmds)->buf) {
+		if (on_cmds)
+			kfree(on_cmds);
+		ret = -ENOMEM;
+		goto write_error;
+	}
 
 	data_offset = 0;
 	for (i = 0; i < num_of_on_cmds; i++) {
@@ -954,7 +1001,18 @@ ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 
 	(panel_data->dsi_panel_on_cmds)->size = num_of_on_cmds;
 
-	return count;
+	if (prev_on_cmds)
+		kfree(prev_on_cmds);
+
+	ret = count;
+write_error:
+	if (user_buf_total) {
+		kfree(user_buf_total);
+		user_buf_total = NULL;
+		user_buf_total_pos = 0;
+	}
+
+	return ret;
 }
 
 static const struct file_operations on_cmd_fops = {
