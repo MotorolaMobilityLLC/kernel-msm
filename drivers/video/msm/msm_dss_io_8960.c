@@ -561,15 +561,25 @@ static void mipi_dsi_configure_serdes(void)
 void mipi_dsi_phy_init(int panel_ndx, struct msm_panel_info const *panel_info,
 	int target_type)
 {
+	static int first_boot = 1;
+	struct msm_fb_data_type *mfd;
 	struct mipi_dsi_phy_ctrl *pd;
 	int i, off;
 
-	MIPI_OUTP(MIPI_DSI_BASE + 0x128, 0x0001);/* start phy sw reset */
-	wmb();
-	mdelay(1);
-	MIPI_OUTP(MIPI_DSI_BASE + 0x128, 0x0000);/* end phy w reset */
-	wmb();
-	usleep(1);
+	mfd = container_of(panel_info, struct msm_fb_data_type, panel_info);
+	if (mfd->panel_info.type == MIPI_CMD_PANEL &&
+		mipi_dsi_cont_splash_enabled() && first_boot) {
+		pr_info("%s - skipping DSI phy reset\n", __func__);
+		first_boot = 0;
+	} else {
+		/* start phy sw reset */
+		MIPI_OUTP(MIPI_DSI_BASE + 0x128, 0x0001);
+		wmb();
+		mdelay(1);
+		MIPI_OUTP(MIPI_DSI_BASE + 0x128, 0x0000);/* end phy w reset */
+		wmb();
+		usleep(1);
+	}
 	MIPI_OUTP(MIPI_DSI_BASE + 0x500, 0x0003);/* regulator_ctrl_0 */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x504, 0x0001);/* regulator_ctrl_1 */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x508, 0x0001);/* regulator_ctrl_2 */
