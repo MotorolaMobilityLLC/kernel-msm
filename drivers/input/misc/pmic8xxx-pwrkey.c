@@ -104,15 +104,13 @@ static irqreturn_t pwrkey_release_irq(int irq, void *_pwrkey)
 		input_report_key(pwrkey->pwr, KEY_POWER, 1);
 		input_sync(pwrkey->pwr);
 		pwrkey->press = true;
-	} else {
-		pwrkey->press = false;
 	}
-
 #ifdef CONFIG_PM_DEEPSLEEP
 	if (get_deepsleep_mode()) {
 		hrtimer_cancel(&pwrkey->longPress_timer);
 		if (pwrkey->expired == 1) {
 			pwrkey->expired = 0;
+			pwrkey->press = false;
 			pr_info("Report delayed pwrkey release event\n");
 			input_report_key(pwrkey->pwr, KEY_POWER, 0);
 			input_sync(pwrkey->pwr);
@@ -121,6 +119,7 @@ static irqreturn_t pwrkey_release_irq(int irq, void *_pwrkey)
 	} else
 #endif
 	{
+	pwrkey->press = false;
 	pr_info("Report pwrkey release event\n");
 	input_report_key(pwrkey->pwr, KEY_POWER, 0);
 	input_sync(pwrkey->pwr);
