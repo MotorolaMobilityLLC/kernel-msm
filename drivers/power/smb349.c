@@ -126,6 +126,7 @@ struct smb349_struct {
 	int en_n_gpio;
 	int chg_susp_gpio;
 	int stat_gpio;
+	int otg_en_gpio;
 	int irq;
 	int ext_pwr;
 	int usb_present;
@@ -144,6 +145,7 @@ struct smb349_struct {
 	struct power_supply *wlc_psy;
 	struct wake_lock uevent_wake_lock;
 	int wlc_support;
+	int ext_ovp_otg_ctrl;
 };
 
 static struct smb349_struct *the_smb349_chg;
@@ -745,9 +747,6 @@ static int smb349_switch_usb_to_charge_mode(struct smb349_struct *smb349_chg)
 
 	pr_info("switch to charge mode\n");
 
-	if (!smb349_chg_is_otg_active(smb349_chg))
-		return 0;
-
 	/* enable usb otg */
 	ret = smb349_masked_write(smb349_chg->client, CMD_A_REG,
 						USB_OTG_EN_BIT, 0);
@@ -755,7 +754,11 @@ static int smb349_switch_usb_to_charge_mode(struct smb349_struct *smb349_chg)
 		pr_err("failed to turn on usb otg = %d\n", ret);
 		return ret;
 	}
+
 	smb349_enable_charging(smb349_chg, true);
+
+	if (smb349_chg->otg_en_gpio)
+		gpio_set_value(smb349_chg->otg_en_gpio, 0);
 
 	return 0;
 }
@@ -766,9 +769,6 @@ static int smb349_switch_usb_to_host_mode(struct smb349_struct *smb349_chg)
 
 	pr_info("switch to host mode\n");
 
-	if (smb349_chg_is_otg_active(smb349_chg))
-		return 0;
-
 	smb349_enable_charging(smb349_chg, false);
 
 	/* force usb otg */
@@ -778,6 +778,9 @@ static int smb349_switch_usb_to_host_mode(struct smb349_struct *smb349_chg)
 		pr_err("failed to turn off usb otg = %d\n", ret);
 		return ret;
 	}
+
+	if (smb349_chg->otg_en_gpio)
+		gpio_set_value(smb349_chg->otg_en_gpio, 1);
 
 	return 0;
 }
@@ -1207,12 +1210,24 @@ static int smb349_parse_dt(struct device_node *dev_node,
 	}
 
 	smb349_chg->wlc_support =
-			of_property_read_bool(dev_node, "summit,wlc-support");
+			of_property_read_bool(dev_node,
+					"summit,wlc-support");
 
-	pr_info("chg_i_ma = %d term_i_ma = %d wlc_support = %d\n",
+	smb349_chg->ext_ovp_otg_ctrl =
+			of_property_read_bool(dev_node,
+					"summit,ext-ovp-otg-ctrl");
+	if (smb349_chg->ext_ovp_otg_ctrl) {
+		smb349_chg->otg_en_gpio =
+			of_get_named_gpio(dev_node, "summit,otg-en-gpio", 0);
+		if (smb349_chg->otg_en_gpio < 0) {
+			pr_err("Unable to get named gpio for otg_en_gpio.\n");
+			return smb349_chg->otg_en_gpio;
+		}
+	}
+
+	pr_info("chg_i_ma = %d term_i_ma = %d\n",
 			smb349_chg->chg_current_ma,
-			smb349_chg->term_current_ma,
-			smb349_chg->wlc_support);
+			smb349_chg->term_current_ma);
 out:
 	return ret;
 }
@@ -1265,6 +1280,10 @@ static int smb349_probe(struct i2c_client *client,
 		smb349_chg->chg_current_ma = pdata->chg_current_ma;
 		smb349_chg->term_current_ma = pdata->term_current_ma;
 		smb349_chg->wlc_support = pdata->wlc_support;
+		smb349_chg->ext_ovp_otg_ctrl = pdata->ext_ovp_otg_ctrl;
+		if (smb349_chg->ext_ovp_otg_ctrl)
+			smb349_chg->otg_en_gpio = pdata->otg_en_gpio;
+
 	}
 
 	if (smb349_chg->wlc_support) {
@@ -1284,6 +1303,16 @@ static int smb349_probe(struct i2c_client *client,
 			goto err_stat_gpio;
 		}
 		smb349_chg->irq = gpio_to_irq(smb349_chg->stat_gpio);
+	}
+
+	if (smb349_chg->otg_en_gpio) {
+		ret = gpio_request_one(smb349_chg->otg_en_gpio,
+				GPIOF_OUT_INIT_LOW, "otg_en");
+		if (ret) {
+			pr_err("otg_en_gpio request failed for %d ret=%d\n",
+					smb349_chg->otg_en_gpio, ret);
+			goto err_otg_en_gpio;
+		}
 	}
 
 	i2c_set_clientdata(client, smb349_chg);
@@ -1338,6 +1367,9 @@ err_debugfs:
 	remove_debugfs_entries(smb349_chg);
 err_reg_psy:
 err_hw_init:
+	if (smb349_chg->otg_en_gpio)
+		   gpio_free(smb349_chg->otg_en_gpio);
+err_otg_en_gpio:
 	if (smb349_chg->stat_gpio)
 		gpio_free(smb349_chg->stat_gpio);
 err_stat_gpio:
@@ -1353,6 +1385,8 @@ static int smb349_remove(struct i2c_client *client)
 	power_supply_unregister(&smb349_chg->ac_psy);
 	if (smb349_chg->stat_gpio)
 		gpio_free(smb349_chg->stat_gpio);
+	if (smb349_chg->otg_en_gpio)
+		gpio_free(smb349_chg->otg_en_gpio);
 	if (smb349_chg->irq)
 		free_irq(smb349_chg->irq, smb349_chg);
 	remove_debugfs_entries(smb349_chg);

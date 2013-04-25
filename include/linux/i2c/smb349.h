@@ -32,8 +32,10 @@ struct smb349_platform_data {
 	int chg_susp_gpio;
 	int chg_current_ma;
 	int stat_gpio;
+	int otg_en_gpio;
 	int term_current_ma;
 	int wlc_support;
+	int ext_ovp_otg_ctrl;
 };
 
 #endif
