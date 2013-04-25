@@ -383,7 +383,8 @@ static u32 res_trk_sel_clk_rate(unsigned long hclk_rate)
 	mutex_lock(&resource_context.lock);
 	if (clk_set_rate(resource_context.vcodec_clk,
 		hclk_rate)) {
-		VCDRES_MSG_ERROR("vidc hclk set rate failed\n");
+		VCDRES_MSG_INFO("clk_rate = %u not supported\n",
+			(u32)hclk_rate);
 		status = false;
 	} else
 		resource_context.vcodec_clk_rate = hclk_rate;
