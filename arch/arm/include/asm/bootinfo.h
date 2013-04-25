@@ -31,14 +31,15 @@
 /*
  * These #defines are used for the bits in powerup_reason.
  */
-#define PU_REASON_USB_CABLE             0x00000010 /* Bit 4  */
-#define PU_REASON_FACTORY_CABLE         0x00000020 /* Bit 5  */
-#define PU_REASON_PWR_KEY_PRESS         0x00000080 /* Bit 7  */
-#define PU_REASON_CHARGER               0x00000100 /* Bit 8  */
-#define PU_REASON_POWER_CUT             0x00000200 /* bit 9  */
-#define PU_REASON_SW_AP_RESET           0x00004000 /* Bit 14 */
-#define PU_REASON_WDOG_AP_RESET         0x00008000 /* Bit 15 */
-#define PU_REASON_AP_KERNEL_PANIC       0x00020000 /* Bit 17 */
+#define PU_REASON_USB_CABLE		0x00000010 /* Bit 4  */
+#define PU_REASON_FACTORY_CABLE		0x00000020 /* Bit 5  */
+#define PU_REASON_PWR_KEY_PRESS		0x00000080 /* Bit 7  */
+#define PU_REASON_CHARGER		0x00000100 /* Bit 8  */
+#define PU_REASON_POWER_CUT		0x00000200 /* bit 9  */
+#define PU_REASON_SW_AP_RESET		0x00004000 /* Bit 14 */
+#define PU_REASON_WDOG_AP_RESET		0x00008000 /* Bit 15 */
+#define PU_REASON_AP_KERNEL_PANIC	0x00020000 /* Bit 17 */
+#define PU_REASON_INVALID		0xFFFFFFFF
 
 
 /*
@@ -81,28 +82,14 @@
 extern struct proc_dir_entry proc_root;
 
 u32  bi_powerup_reason(void);
-void bi_set_powerup_reason(u32 powerup_reason);
-
 u32  bi_mbm_version(void);
-void bi_set_mbm_version(u32 mbm_version);
-
-u32  bi_mbm_loader_version(void);
-void bi_set_mbm_loader_version(u32 mbm_loader_version);
-
-u32  bi_flat_dev_tree_address(void);
-void bi_set_flat_dev_tree_address(u32 flat_dev_tree_address);
-
-u16  bi_battery_status_at_boot(void);
-void bi_set_battery_status_at_boot(u16 battery_status_at_boot);
-
-u32  bi_cid_recover_boot(void);
-void bi_set_cid_recover_boot(u32 cid_recover_boot);
 
 void bi_add_bl_build_sig(char *bld_sig);
 
 #else /* defined(CONFIG_BOOTINFO) */
 
-static inline u32 bi_powerup_reason(void) { return 0xFFFFFFFF; }
+static inline u32 bi_powerup_reason(void) { return PU_REASON_INVALID; }
+static inline u32 bi_mbm_version(void) { return 0xFFFFFFFF; }
 
 #endif /* !defined(CONFIG_BOOTINFO) */
 #endif /* defined(__KERNEL__) */
