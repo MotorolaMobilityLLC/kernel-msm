@@ -210,9 +210,6 @@ int mdp4_lcdc_pipe_commit(int cndx, int wait)
 	}
 	mutex_unlock(&vctrl->update_lock);
 
-	/* free previous committed iommu back to pool */
-	mdp4_overlay_iommu_unmap_freelist(mixer);
-
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	if (vctrl->ov_koff != vctrl->ov_done) {
 		spin_unlock_irqrestore(&vctrl->spin_lock, flags);
