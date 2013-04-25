@@ -268,7 +268,10 @@ static int32_t msm_actuator_i2c_write(
 			pr_err("%s: msm_camera_i2c_write failed.\n", __func__);
 			break;
 		}
-		usleep_range(wait_time, wait_time + 1000);
+
+		if(wait_time) {
+			usleep_range(wait_time, wait_time + 1000);
+		}
 	}
 
 	return rc;
