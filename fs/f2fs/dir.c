@@ -104,7 +104,8 @@ static struct f2fs_dir_entry *find_in_block(struct page *dentry_page,
 		slots = GET_DENTRY_SLOTS(le16_to_cpu(de->name_len));
 
 		if (nocase) {
-			if (!strncasecmp(dentry_blk->filename[bit_pos],
+			if ((le16_to_cpu(de->name_len) == namelen) &&
+			    !strncasecmp(dentry_blk->filename[bit_pos],
 				name, namelen)) {
 				*res_page = dentry_page;
 				goto found;
