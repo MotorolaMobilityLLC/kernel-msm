@@ -4413,15 +4413,19 @@ eHalStatus sme_QosProcessReassocSuccessEv(tpAniSirGlobal pMac, v_U8_t sessionId,
 #ifdef WLAN_FEATURE_VOWIFI_11R
    if (pSession->ftHandoffInProgress)
    {
-       if (csrRoamIs11rAssoc(pMac)) {
-           if (pCsrRoamSession->connectedInfo.nRICRspLength) {
+       if (csrRoamIs11rAssoc(pMac))
+       {
+           if (pCsrRoamSession && pCsrRoamSession->connectedInfo.nRICRspLength)
+           {
                status = sme_QosProcessFTReassocRspEv(pMac, sessionId, pEvent_info);
            }
        }
 #ifdef FEATURE_WLAN_CCX
        // If CCX association check for TSPEC IEs in the reassoc rsp frame
-       if (csrRoamIsCCXAssoc(pMac)) {
-           if (pCsrRoamSession->connectedInfo.nTspecIeLength) {
+       if (csrRoamIsCCXAssoc(pMac))
+       {
+           if (pCsrRoamSession && pCsrRoamSession->connectedInfo.nTspecIeLength)
+           {
                status = sme_QosCCXProcessReassocTspecRsp(pMac, sessionId, pEvent_info);
            }
        }
