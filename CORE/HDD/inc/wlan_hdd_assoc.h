@@ -45,6 +45,8 @@
 #define HDD_MAX_NUM_IBSS_STA ( 9 )
 #ifdef FEATURE_WLAN_TDLS
 #define HDD_MAX_NUM_TDLS_STA ( HDD_MAX_NUM_IBSS_STA - 1 ) // up to 3 as 1 is assigned to AP
+#define TDLS_STA_INDEX_VALID(staId) \
+                          (((staId) >= 4) && ((staId) < 0xFF))
 #endif
 #define TKIP_COUNTER_MEASURE_STARTED 1
 #define TKIP_COUNTER_MEASURE_STOPED  0 
