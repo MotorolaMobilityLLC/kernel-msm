@@ -716,4 +716,10 @@ static int __init mipi_dsi_driver_init(void)
 	return ret;
 }
 
+int mipi_dsi_cont_splash_enabled(void)
+{
+	return mipi_dsi_pdata && mipi_dsi_pdata->splash_is_enabled &&
+		mipi_dsi_pdata->splash_is_enabled();
+}
+
 module_init(mipi_dsi_driver_init);
