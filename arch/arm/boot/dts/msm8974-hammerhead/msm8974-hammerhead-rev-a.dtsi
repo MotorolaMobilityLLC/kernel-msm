@@ -18,4 +18,10 @@
 			status = "ok";
 		};
 	};
+
+	vibrator {
+		vdd-supply = <&pm8941_l19>;
+		motor-amp = <115>;
+		use_vdd_supply;
+	};
 };
