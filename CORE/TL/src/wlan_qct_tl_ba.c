@@ -749,7 +749,7 @@ WLANTL_BaSessionDel
     vosStatus = vos_timer_stop(&reOrderInfo->agingTimer);
     if(!VOS_IS_STATUS_SUCCESS(vosStatus))
     { 
-       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Timer stop fail", vosStatus));
+       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Timer stop fail: %d", vosStatus));
        return vosStatus;
     }
   }
@@ -1487,7 +1487,7 @@ VOS_STATUS WLANTL_MSDUReorder
    vos_pkt_get_available_buffer_pool(VOS_PKT_TYPE_RX_RAW, &rxFree);
    if(WLANTL_BA_MIN_FREE_RX_VOS_BUFFER >= rxFree)
    {
-      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"RX Free", rxFree));
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"RX Free: %d", rxFree));
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"RX free buffer count is too low, Pending frame count is %d",
                   currentReorderInfo->pendingFramesCount));
       vosPktIdx = NULL;
@@ -1554,7 +1554,7 @@ VOS_STATUS WLANTL_MSDUReorder
                                        WLANTL_BA_REORDERING_AGING_TIMER);
          if(!VOS_IS_STATUS_SUCCESS(timerStatus))
          {
-            TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Timer start fail", timerStatus));
+            TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Timer start fail: %d", timerStatus));
             lockStatus = vos_lock_release(&currentReorderInfo->reorderLock);
             if(!VOS_IS_STATUS_SUCCESS(lockStatus))
             {

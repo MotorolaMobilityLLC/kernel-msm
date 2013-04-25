@@ -3485,7 +3485,7 @@ void WDA_DelSTASelfReqCallback(WDI_Status   wdiStatus,
    tDelStaSelfParams     *delStaSelfParams;
    
    VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
-             "<------ %s, wdiStatus: %d pWdaParams: 0x%x",
+             "<------ %s, wdiStatus: %d pWdaParams: %p",
               __func__, wdiStatus, pWdaParams); 
 
    if (NULL == pWdaParams)
@@ -9405,7 +9405,7 @@ void WDA_FTMCommandReqCallback(void *ftmCmdRspData,
    if((NULL == pWDA) || (NULL == ftmCmdRspData))
    {
       VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                "%s, invalid input 0x%x, 0x%x",__func__,  pWDA, ftmCmdRspData);
+                "%s, invalid input %p, %p",__func__,  pWDA, ftmCmdRspData);
       return;
    }
    /* Release Current FTM Command Request */
@@ -10108,7 +10108,7 @@ VOS_STATUS WDA_TxComplete( v_PVOID_t pVosContext, vos_pkt_t *pData,
       else
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_WARN,
-                           "%s:packet (0x%X) is already freed", 
+                           "%s:packet (%p) is already freed",
                            __func__, pData);
          //Return from here since we reaching here because the packet already timeout
          return status;
@@ -10154,14 +10154,14 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
    if((NULL == pWDA)||(NULL == pFrmBuf)) 
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                           "%s:pWDA %x or pFrmBuf %x is NULL", 
+                           "%s:pWDA %p or pFrmBuf %p is NULL",
                            __func__,pWDA,pFrmBuf); 
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAILURE;
    }
    
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO_HIGH, 
-               "Tx Mgmt Frame Subtype: %d alloc(%x)\n", pFc->subType, pFrmBuf);
+               "Tx Mgmt Frame Subtype: %d alloc(%p)\n", pFc->subType, pFrmBuf);
    pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
    if(NULL == pMac)
    {

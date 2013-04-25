@@ -4532,7 +4532,7 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
                 }
                 else
                 {
-                     hddLog(LOGE, "%s : Enter valid MccCredential value between MIN :40 and MAX:160\n");
+                     hddLog(LOGE, "%s : Enter valid MccCredential value between MIN :40 and MAX:160\n", __func__);
                      return 0;
                 }
             }
@@ -4927,7 +4927,7 @@ static int iw_qcom_set_wapi_key(struct net_device *dev, struct iw_request_info *
     hddLog(LOG1, "%s: Received data %s", __func__, (char*)wrqu->data.pointer);
     hddLog(LOG1, "%s: Received data %s", __func__, (char*)extra);
 
-    hddLog(LOG1,":s: INPUT DATA:\nKey Type:0x%02x Key Direction:0x%02x KEY ID:0x%02x\n", __func__,pWapiKey->keyType,pWapiKey->keyDirection,pWapiKey->keyId);
+    hddLog(LOG1,":%s: INPUT DATA:\nKey Type:0x%02x Key Direction:0x%02x KEY ID:0x%02x\n", __func__, pWapiKey->keyType, pWapiKey->keyDirection, pWapiKey->keyId);
     hddLog(LOG1,"Add Index:0x");
     for(i =0 ; i < 12 ; i++)
         hddLog(LOG1,"%02x",pWapiKey->addrIndex[i]);
@@ -5085,12 +5085,12 @@ static int iw_set_fties(struct net_device *dev, struct iw_request_info *info,
     }
     if (!wrqu->data.length)
     {
-        hddLog(LOGE, FL("%s called with 0 length IEs\n"));
+        hddLog(LOGE, FL("called with 0 length IEs\n"));
         return -EINVAL;
     }
     if (wrqu->data.pointer == NULL)
     {
-        hddLog(LOGE, FL("%s called with NULL IE\n"));
+        hddLog(LOGE, FL("called with NULL IE\n"));
         return -EINVAL;
     }
 
@@ -5448,7 +5448,7 @@ int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest,
                 packetFilterSetReq.paramsData[i].dataLength = pRequest->paramsData[i].dataLength;
                 packetFilterSetReq.paramsData[i].reserved = 0;
 
-                hddLog(VOS_TRACE_LEVEL_INFO, "Proto %d Comp Flag %d Filter Type\n",
+                hddLog(VOS_TRACE_LEVEL_INFO, "Proto %d Comp Flag %d Filter Type %d\n",
                         pRequest->paramsData[i].protocolLayer, pRequest->paramsData[i].cmpFlag,
                         packetFilterSetReq.filterType);
 
@@ -5774,7 +5774,7 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
             "PNO data len %d data %s",
             wrqu->data.length,
-            wrqu->data.pointer);
+            (char *)wrqu->data.pointer);
 
   if (wrqu->data.length <= nOffset )
   {
@@ -6231,7 +6231,7 @@ VOS_STATUS iw_set_power_params(struct net_device *dev, struct iw_request_info *i
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
             "Power Params data len %d data %s",
             wrqu->data.length,
-            wrqu->data.pointer);
+            (char *)wrqu->data.pointer);
 
   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
   {

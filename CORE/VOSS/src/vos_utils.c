@@ -300,7 +300,7 @@ int hmac_sha1(v_U8_t *key, v_U8_t ksize, char *plaintext, v_U8_t psize,
     ahash_request_set_crypt(req, &sg, hash_result, psize);
     ret = wcnss_wlan_crypto_ahash_digest(req);
 
-    VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR, "ret 0x%x");
+    VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR, "ret 0x%x", ret);
 
     switch (ret) {
     case 0:
@@ -455,7 +455,7 @@ int hmac_md5(v_U8_t *key, v_U8_t ksize, char *plaintext, v_U8_t psize,
     ahash_request_set_crypt(req, &sg, hash_result, psize);
     ret = wcnss_wlan_crypto_ahash_digest(req);
 
-    VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR, "ret 0x%x");
+    VOS_TRACE(VOS_MODULE_ID_VOSS,VOS_TRACE_LEVEL_ERROR, "ret 0x%x", ret);
 
     switch (ret) {
         case 0:

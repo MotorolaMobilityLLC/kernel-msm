@@ -1993,7 +1993,7 @@ int hdd_open (struct net_device *dev)
       if (test_bit(DEVICE_IFACE_OPENED, &pAdapterNode->pAdapter->event_flags))
       {
          hddLog(VOS_TRACE_LEVEL_INFO, "%s: chip already out of standby",
-                __func__, pAdapter->device_mode);
+                __func__);
          in_standby = FALSE;
          break;
       }
@@ -2103,7 +2103,7 @@ int hdd_stop (struct net_device *dev)
       if (test_bit(DEVICE_IFACE_OPENED, &pAdapterNode->pAdapter->event_flags))
       {
          hddLog(VOS_TRACE_LEVEL_INFO, "%s: Still other ifaces are up cannot "
-                "put device to sleep", __func__, pAdapter->device_mode);
+                "put device to sleep", __func__);
          enter_standby = FALSE;
          break;
       }
@@ -4187,7 +4187,7 @@ static void hdd_full_power_callback(void *callbackContext, eHalStatus status)
    struct fullPowerContext *pContext = callbackContext;
 
    hddLog(VOS_TRACE_LEVEL_INFO,
-          "%s: context = %p, status = %d", pContext, status);
+          "%s: context = %p, status = %d", __func__, pContext, status);
 
    if (NULL == callbackContext)
    {
@@ -4561,7 +4561,7 @@ VOS_STATUS hdd_post_voss_start_config(hdd_context_t* pHddCtx)
    halStatus = sme_HDDReadyInd( pHddCtx->hHal );
    if ( !HAL_STATUS_SUCCESS( halStatus ) )
    {
-      hddLog(VOS_TRACE_LEVEL_ERROR,"%S: sme_HDDReadyInd() failed with status "
+      hddLog(VOS_TRACE_LEVEL_ERROR,"%s: sme_HDDReadyInd() failed with status "
           "code %08d [x%08x]",__func__, halStatus, halStatus );
       return VOS_STATUS_E_FAILURE;
    }
@@ -5184,7 +5184,7 @@ int hdd_wlan_startup(struct device *dev )
    //Initialize the nlink service
    if(nl_srv_init() != 0)
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%S: nl_srv_init failed",__func__);
+      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: nl_srv_init failed", __func__);
       goto err_reg_netdev;
    }
 
@@ -5694,7 +5694,7 @@ VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddres
 
     ENTER();
 
-    hddLog( LOGE, "hdd_softap_sta_deauth:(0x%x, false)", (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
+    hddLog( LOGE, "hdd_softap_sta_deauth:(%p, false)", (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
 
     //Ignore request to deauth bcmc station
     if( pDestMacAddress[0] & 0x1 )
@@ -5726,7 +5726,7 @@ void hdd_softap_sta_disassoc(hdd_adapter_t *pAdapter,v_U8_t *pDestMacAddress)
 
     ENTER();
 
-    hddLog( LOGE, "hdd_softap_sta_disassoc:(0x%x, false)", (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
+    hddLog( LOGE, "hdd_softap_sta_disassoc:(%p, false)", (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
 
     //Ignore request to disassoc bcmc station
     if( pDestMacAddress[0] & 0x1 )
@@ -5741,7 +5741,7 @@ void hdd_softap_tkip_mic_fail_counter_measure(hdd_adapter_t *pAdapter,v_BOOL_t e
 
     ENTER();
 
-    hddLog( LOGE, "hdd_softap_tkip_mic_fail_counter_measure:(0x%x, false)", (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
+    hddLog( LOGE, "hdd_softap_tkip_mic_fail_counter_measure:(%p, false)", (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
 
     WLANSAP_SetCounterMeasure(pVosContext, (v_BOOL_t)enable);
 }

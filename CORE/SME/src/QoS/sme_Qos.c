@@ -2766,7 +2766,7 @@ sme_QosStatusType sme_QosSetup(tpAniSirGlobal pMac,
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
                 "%s: %d: Session %d has an Invalid BSS Descriptor",
                 __func__, __LINE__,
-                sessionId, ac);
+                sessionId);
       return status;
    }
    hstatus = csrGetParsedBssDescriptionIEs(pMac,
@@ -2777,7 +2777,7 @@ sme_QosStatusType sme_QosSetup(tpAniSirGlobal pMac,
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                 "%s: %d: On session %d unable to parse BSS IEs",
                 __func__, __LINE__,
-                sessionId, ac);
+                sessionId);
       return status;
    }
 
@@ -3598,7 +3598,7 @@ eHalStatus sme_QosProcessAggrQosRsp(tpAniSirGlobal pMac, void *pMsgBuf)
                 addtsRsp.rsp.tspec = pAggrRsp->aggrInfo.aggrRsp[i].tspec;
 
                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                        FL("%s: Processing Addts rsp from LIM AC=%d, flow=%d"), i, j);
+                        FL("Processing Addts rsp from LIM AC=%d, flow=%d"), i, j);
                 /* post ADD TS response for each */
                 if (sme_QosProcessAddTsRsp(pMac, &addtsRsp) != eHAL_STATUS_SUCCESS)
                 {
