@@ -180,7 +180,7 @@ static struct mipi_mot_cmd_seq smd_hd_465_cfg_seq[] = {
 		undo_partial_rows),
 	/* C8, C9, C7 sequence only for non-mtped panels */
 	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, brightness_wa_seq),
-	MIPI_MOT_TX_DEF(is_evt0_sample, DTYPE_DCS_LWRITE,
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, disp_ctrl),
 	MIPI_MOT_EXEC_SEQ(NULL, set_brightness_seq),
 	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
