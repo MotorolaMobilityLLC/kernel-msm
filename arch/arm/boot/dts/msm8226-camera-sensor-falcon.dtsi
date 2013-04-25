@@ -102,7 +102,7 @@
 		qcom,slave-id = <0x90 0x0 0x2481>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <0>;
-		qcom,mount-angle = <0>;
+		qcom,mount-angle = <270>;
 		qcom,sensor-name = "mt9m114";
 		cam_vdig-supply = <&pm8226_l6>;
 		qcom,cam-vreg-name = "cam_vdig";
