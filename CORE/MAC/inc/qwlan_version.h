@@ -59,10 +59,10 @@ BRIEF DESCRIPTION:
 #define QWLAN_VERSION_MAJOR            3
 #define QWLAN_VERSION_MINOR            2
 #define QWLAN_VERSION_PATCH            3
-#define QWLAN_VERSION_EXTRA            ""
+#define QWLAN_VERSION_EXTRA            "a"
 #define QWLAN_VERSION_BUILD            107
 
-#define QWLAN_VERSIONSTR               "3.2.3.107"
+#define QWLAN_VERSIONSTR               "3.2.3.107a"
 
 #endif /* QWLAN_VERSION_H */
 
