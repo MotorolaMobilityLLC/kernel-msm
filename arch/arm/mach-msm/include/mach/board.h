@@ -486,6 +486,7 @@ struct mipi_dsi_panel_platform_data {
 	void (*dsi_pwm_cfg)(void);
 	char enable_wled_bl_ctrl;
 	void (*gpio_set_backlight)(int bl_level);
+	int (*get_dsi_clk_rate)(void);
 };
 
 struct lvds_panel_platform_data {
