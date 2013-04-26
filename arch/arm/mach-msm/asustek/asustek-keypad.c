@@ -46,7 +46,7 @@
 		.desc = #_id,			\
 		.type = EV_KEY,			\
 		.wakeup = _iswake,		\
-		.debounce_interval = 15,	\
+		.debounce_interval = 5,	\
 	}
 
 static struct gpio_keys_button asustek_keys[] = {
