@@ -105,7 +105,7 @@ static int vibrator_regulator_init(
 static int vibrator_set_power(int enable,
 		struct timed_vibrator_data *vib)
 {
-	int ret;
+	int ret = 0;
 	static int vibrator_enabled = 0;
 
 	if (!vib->use_vdd_supply)
