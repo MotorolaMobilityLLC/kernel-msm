@@ -23,6 +23,7 @@ struct mmi_oem_data {
 	int (*is_meter_locked)(void);
 	int (*is_no_eprom)(void);
 	int (*is_bareboard)(void);
+	uint32_t (*get_radio)(void);
 	bool mmi_camera;
 };
 
@@ -93,4 +94,3 @@ extern struct lm3556_platform_data cam_flash_3556;
 extern struct msm_camera_sensor_flash_data camera_flash_lm3556;
 
 #endif
-
