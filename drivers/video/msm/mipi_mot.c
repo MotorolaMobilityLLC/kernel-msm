@@ -30,8 +30,6 @@
  */
 /* #define MIPI_MOT_PANEL_PLATF_BRINGUP 1 */
 
-static struct mipi_dsi_panel_platform_data *mipi_mot_pdata;
-
 static struct mipi_mot_panel mot_panel;
 
 static struct dsi_buf mot_tx_buf;
@@ -670,8 +668,15 @@ static int __devinit mipi_mot_lcd_probe(struct platform_device *pdev)
 	struct platform_device *lcd_dev;
 	int ret;
 
-	if (pdev->id == 0)
-		mipi_mot_pdata = pdev->dev.platform_data;
+	if (pdev->id == 0) {
+		mot_panel.pdata = pdev->dev.platform_data;
+		return 0;
+	}
+
+	if (mot_panel.pdata == NULL) {
+		pr_err("%s.invalid platform data.\n", __func__);
+		return -ENODEV;
+	}
 
 	lcd_dev = msm_fb_add_device(pdev);
 	if (!lcd_dev)
