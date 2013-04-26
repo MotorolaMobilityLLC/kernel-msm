@@ -45,7 +45,7 @@ static struct kgsl_iommu_register_list kgsl_iommuv1_reg[KGSL_IOMMU_REG_MAX] = {
 	{ 0x03C, 0, 0 },			/* TLBLKCR */
 	{ 0x818, 0, 0 },			/* V2PUR */
 	{ 0x2C, 0, 0 },                         /* FSYNR0 */
-	{ 0x2C, 0, 0 },                         /* FSYNR0 */
+	{ 0x30, 0, 0 },                         /* FSYNR1 */
 };
 
 static struct kgsl_iommu_register_list kgsl_iommuv2_reg[KGSL_IOMMU_REG_MAX] = {
