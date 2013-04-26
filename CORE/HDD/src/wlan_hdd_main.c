@@ -406,6 +406,40 @@ static void hdd_wdi_trace_enable(wpt_moduleid moduleId, v_U32_t bitmask)
    }
 }
 
+void hdd_checkandupdate_dfssetting( hdd_adapter_t *pAdapter, char *country_code)
+{
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_config_t *cfg_param;
+
+    if (NULL == pHddCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                "HDD Context is null !!");
+        return ;
+    }
+
+    cfg_param = pHddCtx->cfg_ini;
+
+    if (NULL == cfg_param)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                "cfg_params not available !!");
+        return ;
+    }
+
+    if (NULL != strstr(cfg_param->listOfNonDfsCountryCode, country_code))
+    {
+       /*New country doesn't support DFS */
+       sme_UpdateDfsSetting(WLAN_HDD_GET_HAL_CTX(pAdapter), 0);
+    }
+    else
+    {
+       /*New country Supports DFS as well resetting value back from .ini*/
+       sme_UpdateDfsSetting(WLAN_HDD_GET_HAL_CTX(pAdapter), cfg_param->enableDFSChnlScan);
+    }
+
+}
+
 int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
@@ -492,6 +526,8 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            char *country_code;
 
            country_code = command + 8;
+
+           hdd_checkandupdate_dfssetting(pAdapter, country_code);
            ret = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL, country_code,
                     pAdapter, pHddCtx->pvosContext);
            if( 0 != ret )
@@ -538,6 +574,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                goto exit;
            }
 
+           hdd_checkandupdate_dfssetting(pAdapter, countryCode);
            ret = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL, countryCode,
                     pAdapter, pHddCtx->pvosContext);
            if (0 != ret)
