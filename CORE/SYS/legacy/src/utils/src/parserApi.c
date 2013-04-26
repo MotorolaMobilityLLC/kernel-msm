@@ -2859,11 +2859,13 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
     tANI_U8        *pPayload;
     tpSirMacMgmtHdr pHdr;
     tANI_U8         mappedRXCh;
+    tANI_U8         rfBand;
 
     pPayload = WDA_GET_RX_MPDU_DATA( pFrame );
     nPayload = WDA_GET_RX_PAYLOAD_LEN( pFrame );
     pHdr     = WDA_GET_RX_MAC_HEADER( pFrame );
     mappedRXCh = WDA_GET_RX_CH( pFrame );
+    rfBand = WDA_GET_RX_RFBAND( pFrame );
     
     // Zero-init our [out] parameter,
     palZeroMemory( pMac->hHdd, ( tANI_U8* )pBeaconStruct, sizeof(tSirProbeRespBeacon) );
@@ -3036,7 +3038,21 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
     }
     else
     {
-        pBeaconStruct->channelNumber = limUnmapChannel(mappedRXCh);
+       if ((!rfBand) || IS_5G_BAND(rfBand))
+           pBeaconStruct->channelNumber = limUnmapChannel(mappedRXCh);
+       else if (IS_24G_BAND(rfBand))
+           pBeaconStruct->channelNumber = mappedRXCh;
+       else
+       {
+           /*Only 0, 1, 2 are expected values for RF band from FW
+            * if FW fixes are not present then rf band value will
+            * be 0, else either 1 or 2 are expected from FW, 3 is
+            * not expected from FW */
+           PELOGE(limLog(pMac, LOGE,
+           FL("Channel info is not present in Beacon and"
+                   " mapping is not done correctly"));)
+           pBeaconStruct->channelNumber = mappedRXCh;
+       }
     }
 
     if ( pBeacon->RSN.present )

@@ -598,6 +598,7 @@ wpt_status WDTS_RxPacket (void *pContext, wpt_packet *pFrame, WDTS_ChannelType c
       pRxMetadata->staId = WDI_RX_BD_GET_STA_ID(pBDHeader);
       pRxMetadata->addr3Idx = WDI_RX_BD_GET_ADDR3_IDX(pBDHeader);
       pRxMetadata->rxChannel = WDI_RX_BD_GET_RX_CHANNEL(pBDHeader);
+      pRxMetadata->rfBand = WDI_RX_BD_GET_RFBAND(pBDHeader);
       pRxMetadata->rtsf = WDI_RX_BD_GET_RTSF(pBDHeader);
       pRxMetadata->bsf = WDI_RX_BD_GET_BSF(pBDHeader);
       pRxMetadata->scan = WDI_RX_BD_GET_SCAN(pBDHeader);
