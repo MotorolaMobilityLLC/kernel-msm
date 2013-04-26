@@ -146,6 +146,7 @@ struct extent_info {
  */
 #define FADVISE_COLD_BIT	0x01
 #define FADVISE_ANDROID_EMU	0x10
+#define FADVISE_ANDROID_EMU_ROOT 0x20
 
 struct f2fs_inode_info {
 	struct inode vfs_inode;		/* serve a vfs inode */
@@ -865,6 +866,14 @@ static inline int cond_clear_inode_flag(struct f2fs_inode_info *fi, int flag)
 	}
 	return 0;
 }
+
+int f2fs_android_emu(struct f2fs_sb_info *, struct inode *, u32 *, u32 *,
+		umode_t *);
+
+#define IS_ANDROID_EMU(sbi, fi, pfi)					\
+	(test_opt((sbi), ANDROID_EMU) &&				\
+	 (((fi)->i_advise & FADVISE_ANDROID_EMU) ||			\
+	  ((pfi)->i_advise & FADVISE_ANDROID_EMU)))
 
 /*
  * file.c
