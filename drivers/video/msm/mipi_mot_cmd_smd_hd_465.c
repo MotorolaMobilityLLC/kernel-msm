@@ -37,6 +37,46 @@ static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
 	0x00, 0x14, 0x03, 0x0, 0x02, 0x0e, 0x01, 0x00, 0x01},
 };
 
+struct mipi_dsi_clk_config dsi_clk_config_tbl[MIPI_DSI_CLK_MAX_NR]
+	__initconst = {
+	/* MIPI_DSI_CLK_209M */
+	{
+		418000000,
+		/* timing[0] - timing[10] */
+		{0xb0, 0x8c, 0x1a, 0x00, 0x94, 0x93, 0x1e,
+		0x8e, 0x1d, 0x03, 0x04,},
+		/* pll[1] - pll[3]  */
+		{0xa1, 0x31, 0xda,},
+	},
+	/* MIPI_DSI_CLK_210M */
+	{
+		420000000,
+		/* timing[0] - timing[10] */
+		{0xb0, 0x8c, 0x1a, 0x00, 0x94, 0x92, 0x1e,
+		0x8e, 0x1e, 0x03, 0x04,},
+		/* pll[1] - pll[3]  */
+		{0xa3, 0x31, 0xda,},
+	},
+	/* MIPI_DSI_CLK_212M */
+	{
+		424000000,
+		/* timing[0] - timing[10] */
+		{0xb0, 0x8c, 0x1b, 0x00, 0x94, 0x92, 0x1e,
+		0x8e, 0x1e, 0x03, 0x04,},
+		/* pll[1] - pll[3]  */
+		{0xa7, 0x31, 0xda,},
+	},
+	/* MIPI_DSI_CLK_230M */
+	{
+		460000000,
+		/* timing[0] - timing[10] */
+		{0xb4, 0x8d, 0x1d, 0x00, 0x96, 0x94, 0x21,
+		0x8f, 0x21, 0x03, 0x04,},
+		/* pll[1] - pll[3]  */
+		{0xcb, 0x31, 0xda,},
+	},
+};
+
 static char enter_sleep[2] = {DCS_CMD_ENTER_SLEEP_MODE, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char unlock_lvl_2[3] = {0xf0, 0x5a, 0x5a};
@@ -416,6 +456,14 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 
 	/* For ESD detection information */
 	mot_panel->esd_enabled = true;
+
+	/* Config dsi according to carrier to avoid RF desense */
+	ret = mipi_mot_reconfig_dsiphy_db(pinfo, &dsi_cmd_mode_phy_db,
+				 dsi_clk_config_tbl);
+	if (ret < 0)
+		pr_warning("%s: failed to reconfigure dsi phy(%d), "
+			   "use default configurations.\n",
+			   __func__, ret);
 
 	ret = mipi_mot_device_register(pinfo, MIPI_DSI_PRIM, MIPI_DSI_PANEL_HD);
 	if (ret)
