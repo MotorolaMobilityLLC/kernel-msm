@@ -646,6 +646,7 @@ typedef struct tagRoamJoinStatus
     tSirResultCodes statusCode;
     //this is set to unspecified if statusCode indicates timeout. Or it is the failed reason from the other BSS(per 802.11 spec)
     tANI_U32 reasonCode;
+    tSirMacAddr bssId;
 }tCsrRoamJoinStatus;
 
 typedef struct tagCsrOsChannelMask

@@ -3965,6 +3965,8 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
         // Check for Cardbus eject condition, before trying to Roam to any BSS
         //***if( !balIsCardPresent(pAdapter) ) break;
         
+        palZeroMemory(pMac->hHdd, &roamInfo, sizeof(roamInfo));
+        memcpy (&roamInfo.bssid, &pSession->joinFailStatusCode.bssId, sizeof(tSirMacAddr));
         if(NULL != pBSSList)
         {
             // When handling AP's capability change, continue to associate to
@@ -3989,7 +3991,7 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
                     else
                     {
                         //We need to indicate to HDD that we are done with this one.
-                        palZeroMemory(pMac->hHdd, &roamInfo, sizeof(tCsrRoamInfo));
+                        //palZeroMemory(pMac->hHdd, &roamInfo, sizeof(tCsrRoamInfo));
                         roamInfo.pBssDesc = pCommand->u.roamCmd.pLastRoamBss;     //this shall not be NULL
                         roamInfo.statusCode = pSession->joinFailStatusCode.statusCode;
                         roamInfo.reasonCode = pSession->joinFailStatusCode.reasonCode;
@@ -4207,6 +4209,7 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
         {
             pSession->bRefAssocStartCnt--;
             //Complete the last association attemp because a new one is about to be tried
+            pRoamInfo = &roamInfo;
             csrRoamCallCallback(pMac, sessionId, pRoamInfo, pCommand->u.roamCmd.roamId, 
                                         eCSR_ROAM_ASSOCIATION_COMPLETION, 
                                         eCSR_ROAM_RESULT_NOT_ASSOCIATED);
@@ -5503,6 +5506,8 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                     roamInfo.pBssDesc = pCommand->u.roamCmd.pLastRoamBss;
                     roamInfo.statusCode = pSession->joinFailStatusCode.statusCode;
                     roamInfo.reasonCode = pSession->joinFailStatusCode.reasonCode;
+                    palCopyMemory(pMac->hHdd, &roamInfo.bssid, &pSession->joinFailStatusCode.bssId, sizeof(tCsrBssid));
+
                     /* Defeaturize this later if needed */
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
                     /* If Join fails while Handoff is in progress, indicate disassociated event to supplicant to reconnect */
@@ -5535,7 +5540,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                              * in csrRoamJoinNextBss API. so handle this in
                              * else case by sending assoc failure
                              */
-                            csrRoamCallCallback(pMac, sessionId, NULL,
+                            csrRoamCallCallback(pMac, sessionId, &roamInfo,
                                     pCommand->u.scanCmd.roamId,
                                     eCSR_ROAM_ASSOCIATION_FAILURE,
                                     eCSR_ROAM_RESULT_FAILURE);
@@ -11745,6 +11750,7 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
     do {
         pSession->joinFailStatusCode.statusCode = eSIR_SME_SUCCESS;
         pSession->joinFailStatusCode.reasonCode = 0;
+        memcpy (&pSession->joinFailStatusCode.bssId, &pBssDescription->bssId, sizeof(tSirMacAddr));
         // There are a number of variable length fields to consider.  First, the tSirSmeJoinReq
         // includes a single bssDescription.   bssDescription includes a single tANI_U32 for the 
         // IE fields, but the length field in the bssDescription needs to be interpreted to 

@@ -1360,7 +1360,14 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
 
         hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-        pr_info("wlan: connection failed with %02x:%02x:%02x:%02x:%02x:%02x"
+        if (pRoamInfo)
+            pr_info("wlan: connection failed with %02x:%02x:%02x:%02x:%02x:%02x"
+                " reason:%d and Status:%d\n", pRoamInfo->bssid[0],
+                pRoamInfo->bssid[1], pRoamInfo->bssid[2],
+                pRoamInfo->bssid[3], pRoamInfo->bssid[4],
+                pRoamInfo->bssid[5], roamResult, roamStatus);
+        else
+            pr_info("wlan: connection failed with %02x:%02x:%02x:%02x:%02x:%02x"
                 " reason:%d and Status:%d\n", pWextState->req_bssId[0],
                 pWextState->req_bssId[1], pWextState->req_bssId[2],
                 pWextState->req_bssId[3], pWextState->req_bssId[4],
@@ -1422,17 +1429,29 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
             /* inform association failure event to nl80211 */
             if ( eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL == roamResult )
             {
-               cfg80211_connect_result ( dev, pWextState->req_bssId,
-                    NULL, 0, NULL, 0,
-                    WLAN_STATUS_ASSOC_DENIED_UNSPEC,
-                    GFP_KERNEL );
+               if (pRoamInfo)
+                   cfg80211_connect_result ( dev, pRoamInfo->bssid,
+                        NULL, 0, NULL, 0,
+                        WLAN_STATUS_ASSOC_DENIED_UNSPEC,
+                        GFP_KERNEL );
+               else
+                   cfg80211_connect_result ( dev, pWextState->req_bssId,
+                        NULL, 0, NULL, 0,
+                        WLAN_STATUS_ASSOC_DENIED_UNSPEC,
+                        GFP_KERNEL );
             }
             else
             {
-               cfg80211_connect_result ( dev, pWextState->req_bssId,
-                    NULL, 0, NULL, 0,
-                    WLAN_STATUS_UNSPECIFIED_FAILURE,
-                    GFP_KERNEL );
+                if (pRoamInfo)
+                    cfg80211_connect_result ( dev, pRoamInfo->bssid,
+                        NULL, 0, NULL, 0,
+                        WLAN_STATUS_UNSPECIFIED_FAILURE,
+                        GFP_KERNEL );
+                else
+                    cfg80211_connect_result ( dev, pWextState->req_bssId,
+                        NULL, 0, NULL, 0,
+                        WLAN_STATUS_UNSPECIFIED_FAILURE,
+                        GFP_KERNEL );
             }
         }
 
