@@ -93,7 +93,7 @@
 	sound {
 		compatible = "qcom,msm8974-audio-taiko";
 		qcom,model = "msm8974-taiko-mtp-snd-card";
-		lge,debounce-time-ms = <500>;
+		qcom,mbhc-gpio-level-insert = <0>;
 
 		qcom,hdmi-audio-rx;
 
