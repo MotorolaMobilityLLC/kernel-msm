@@ -216,7 +216,11 @@ typedef struct sPmcInfo
 
 /* If TRUE driver will go to BMPS only if host operatiing system asks to enter BMPS.
 * For android wlan_hdd_cfg80211_set_power_mgmt API will be used to set host powersave*/
-   v_BOOL_t    isHostPsEn;
+    v_BOOL_t    isHostPsEn;
+    v_BOOL_t    ImpsReqFailed;
+    v_BOOL_t    ImpsReqTimerFailed;
+    tANI_U8     ImpsReqFailCnt;
+    tANI_U8     ImpsReqTimerfailCnt;
 } tPmcInfo, *tpPmcInfo;
 
 

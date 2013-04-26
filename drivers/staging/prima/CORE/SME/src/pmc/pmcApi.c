@@ -247,6 +247,10 @@ eHalStatus pmcStart (tHalHandle hHal)
     /* Initialize BMPS traffic counts. */
     pMac->pmc.cLastTxUnicastFrames = 0;
     pMac->pmc.cLastRxUnicastFrames = 0;
+    pMac->pmc.ImpsReqFailed = VOS_FALSE;
+    pMac->pmc.ImpsReqFailCnt = 0;
+    pMac->pmc.ImpsReqTimerFailed = 0;
+    pMac->pmc.ImpsReqTimerfailCnt = 0;
 
     /* Configure SMPS. */
     if (pMac->pmc.smpsEnabled && (pMac->pmc.powerSource != AC_POWER || pMac->pmc.smpsConfig.enterOnAc))
@@ -1294,14 +1298,30 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             /* Enter IMPS State if response indicates success. */
             if (pMsg->statusCode == eSIR_SME_SUCCESS)
             {
-                    pmcEnterImpsState(pMac);
+                pMac->pmc.ImpsReqFailed = VOS_FALSE;
+                pmcEnterImpsState(pMac);
+                if (!(pMac->pmc.ImpsReqFailed || pMac->pmc.ImpsReqTimerFailed) && pMac->pmc.ImpsReqFailCnt)
+                {
+                    smsLog(pMac, LOGE, FL("Response message to request to enter IMPS was failed %d times before success"),
+                       pMac->pmc.ImpsReqFailCnt);
+                       pMac->pmc.ImpsReqFailCnt = 0;
+                }
             }
 
             /* If response is failure, then we stay in Full Power State and tell everyone that we aren't going into IMPS. */
-            else {
-                smsLog(pMac, LOGE, FL("Response message to request to enter IMPS indicates failure, status %x"),
-                       pMsg->statusCode);
-                    pmcEnterFullPowerState(pMac);
+            else
+            {
+                pMac->pmc.ImpsReqFailed = VOS_TRUE;
+                if (!(pMac->pmc.ImpsReqFailCnt & 0xF))
+                {
+                    smsLog(pMac, LOGE, FL("Response message to request to enter IMPS indicates failure, status %x, FailCnt - %d"),
+                       pMsg->statusCode, ++pMac->pmc.ImpsReqFailCnt);
+                }
+                else
+                {
+                    pMac->pmc.ImpsReqFailCnt++;
+                }
+                pmcEnterFullPowerState(pMac);
             }
         }
         else if (pMac->pmc.pmcState == REQUEST_STANDBY)
@@ -1309,8 +1329,8 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             /* Enter STANDBY State if response indicates success. */
             if (pMsg->statusCode == eSIR_SME_SUCCESS)
             {
-                    pmcEnterStandbyState(pMac);
-                    pmcDoStandbyCallbacks(pMac, eHAL_STATUS_SUCCESS);
+                pmcEnterStandbyState(pMac);
+                pmcDoStandbyCallbacks(pMac, eHAL_STATUS_SUCCESS);
             }
 
             /* If response is failure, then we stay in Full Power State
@@ -1319,8 +1339,8 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             {
                 smsLog(pMac, LOGE, "PMC: response message to request to enter "
                        "standby indicates failure, status %x", pMsg->statusCode);
-                    pmcEnterFullPowerState(pMac);
-                    pmcDoStandbyCallbacks(pMac, eHAL_STATUS_FAILURE);
+                pmcEnterFullPowerState(pMac);
+                pmcDoStandbyCallbacks(pMac, eHAL_STATUS_FAILURE);
             }
         }
         else
@@ -3263,3 +3283,21 @@ eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackR
     return eHAL_STATUS_SUCCESS;
 }
 #endif // WLAN_FEATURE_GTK_OFFLOAD
+
+v_BOOL_t IsPmcImpsReqFailed (tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    v_BOOL_t impsReqFailStatus;
+
+    impsReqFailStatus = (pMac->pmc.ImpsReqFailed || pMac->pmc.ImpsReqTimerFailed);
+
+    return impsReqFailStatus;
+
+}
+
+void pmcResetImpsFailStatus (tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    pMac->pmc.ImpsReqFailed = VOS_FALSE;
+    pMac->pmc.ImpsReqTimerFailed = VOS_FALSE;
+}

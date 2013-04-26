@@ -6116,7 +6116,17 @@ eHalStatus csrScanTriggerIdleScan(tpAniSirGlobal pMac, tANI_U32 *pTimeInterval)
 
         return (status);
     }
+    if (IsPmcImpsReqFailed (pMac))
+    {
+        if(pTimeInterval)
+        {
+            *pTimeInterval = 1000000; //usec
+        }
+        //restart when ready
+        pMac->scan.fRestartIdleScan = eANI_BOOLEAN_TRUE;
 
+        return status;
+    }
     if((pMac->scan.fScanEnable) && (eANI_BOOLEAN_FALSE == pMac->scan.fCancelIdleScan) 
     /*&& pMac->roam.configParam.impsSleepTime*/)
     {
@@ -6223,6 +6233,7 @@ void csrScanIdleScanTimerHandler(void *pv)
     tANI_U32 nTime = 0;
 
     smsLog(pMac, LOGW, "  csrScanIdleScanTimerHandler called  ");
+    pmcResetImpsFailStatus (pMac);
     status = csrScanTriggerIdleScan(pMac, &nTime);
     if(!HAL_STATUS_SUCCESS(status) && (eANI_BOOLEAN_FALSE == pMac->scan.fCancelIdleScan))
     {

@@ -1619,6 +1619,7 @@ sme_QosStatusType sme_QosInternalSetupReq(tpAniSirGlobal pMac,
          else
          {
             tmask = new_tmask;
+            pACInfo->requested_QoSInfo[tmask-1] = Tspec_Info;
          }
       }
       else

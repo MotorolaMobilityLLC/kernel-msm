@@ -311,6 +311,12 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                     PELOGE(limLog(pMac, LOGE, FL("Self Entry missing in Hash Table\n"));)
 
             }
+
+           if (psessionEntry->fWaitForProbeRsp == true)
+           {
+               limLog(pMac, LOGW, FL("Checking probe response for capability change\n") );
+               limDetectChangeInApCapabilities(pMac, pProbeRsp, psessionEntry);
+           }
         }
         else if ((psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) &&
                  (psessionEntry->limMlmState == eLIM_MLM_BSS_STARTED_STATE))
