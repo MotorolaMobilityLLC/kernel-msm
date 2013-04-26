@@ -304,6 +304,9 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	unsigned int fsynr0, fsynr1;
 	int write;
 	struct _mem_entry prev, next;
+	unsigned int curr_context_id = 0;
+	unsigned int curr_global_ts = 0;
+	struct kgsl_context *context;
 
 	ret = get_iommu_unit(dev, &mmu, &iommu_unit);
 	if (ret)
@@ -369,7 +372,26 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	mmu->fault = 1;
 	iommu_dev->fault = 1;
 
-	trace_kgsl_mmu_pagefault(iommu_dev->kgsldev, addr, pid,
+	kgsl_sharedmem_readl(&device->memstore, &curr_context_id,
+		KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL, current_context));
+
+	context = kgsl_context_get(device, curr_context_id);
+
+	if (context != NULL) {
+		kgsl_sharedmem_readl(&device->memstore, &curr_global_ts,
+			KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
+			eoptimestamp));
+
+		/* save pagefault timestamp for GFT */
+		set_bit(KGSL_CONTEXT_PAGEFAULT, &context->priv);
+		context->pagefault_ts = curr_global_ts;
+
+		kgsl_context_put(context);
+		context = NULL;
+	}
+
+	trace_kgsl_mmu_pagefault(iommu_dev->kgsldev, addr,
+			kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase),
 			write ? "write" : "read");
 
 	/*
