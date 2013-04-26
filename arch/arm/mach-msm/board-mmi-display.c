@@ -99,6 +99,8 @@ struct mmi_disp_reg_lst {
 	struct mmi_disp_reg disp_reg[DISP_MAX_REGS];
 };
 
+#define RADIO_ID_MAX	6
+
 struct mmi_disp_data {
 	enum mmi_disp_intf_type disp_intf;
 	int num_disp_reset;
@@ -107,6 +109,7 @@ struct mmi_disp_data {
 	struct mmi_disp_reg_lst reg_lst;
 	bool partial_mode_supported;
 	bool prevent_pwr_off;
+	uint32_t dsi_freq[RADIO_ID_MAX];
 };
 
 static struct mmi_disp_data mmi_disp_info;
@@ -247,6 +250,13 @@ static void __init print_mmi_disp_data(void)
 	pr_debug("-------------------------------------------\n");
 	for (i = 0; i < reg_lst->num_disp_regs; i++)
 		print_mmi_reg_info(&reg_lst->disp_reg[i]);
+
+	pr_debug("-------------------------------------------\n");
+	pr_debug("  dsi_freq info:.\n");
+	pr_debug("-------------------------------------------\n");
+	for (i = 0; i < RADIO_ID_MAX; i++)
+		pr_debug("radio %d, dsi_freq %d.\n",
+			 i+1, mmi_disp_info.dsi_freq[i]);
 }
 
 static void __init load_disp_pin_info_from_dt(struct device_node *node,
@@ -392,6 +402,12 @@ static void __init load_disp_regs_info_from_dt(struct device_node *node)
 	}
 }
 
+static void __init load_disp_dsi_freq_from_dt(struct device_node *node)
+{
+	of_property_read_u32_array(node, "dsi_freq",
+				   mmi_disp_info.dsi_freq, RADIO_ID_MAX);
+}
+
 static __init struct device_node *search_panel_from_dt(void)
 {
 	int i, max_disp_dt = 10;
@@ -531,6 +547,8 @@ static void __init mmi_load_panel_from_dt(void)
 		ZERO_IF_NEG(load_disp_value(node, "prevent_pwr_off"));
 	pr_debug("%s: prevent_pwr_off %d\n", __func__,
 		mmi_disp_info.prevent_pwr_off);
+
+	load_disp_dsi_freq_from_dt(node);
 
 	print_mmi_disp_data();
 
@@ -1028,12 +1046,42 @@ static int __init is_factory_mode(void)
 		return 0;
 }
 
+static int get_dsi_clk_rate(void)
+{
+	int value = -1;
+	struct mmi_oem_data *mmi_data = msm8960_oem_funcs.oem_data;
+	uint32_t radio = 0xFF;
+
+	if (!mmi_data) {
+		pr_err("%s: invalid mmi_data.\n", __func__);
+		goto out;
+	}
+
+	if (!mmi_data->get_radio) {
+		pr_err("%s: not able to get HW ID radio info.\n", __func__);
+		goto out;
+	}
+
+	if (mmi_disp_info.dsi_freq[0]) {
+		radio = mmi_data->get_radio();
+		if (radio <= 0 || radio > RADIO_ID_MAX)
+			pr_err("%s: invalid radio id %d\n", __func__, radio);
+		else
+			value = mmi_disp_info.dsi_freq[radio-1];
+	} else
+		pr_info("%s: dsi_freq configuration not found.\n", __func__);
+out:
+	pr_info("%s: radio=%d, dsi_clk = %d\n", __func__, radio, value);
+
+	return value;
+}
 
 static struct mipi_dsi_panel_platform_data mipi_dsi_mot_pdata = {
+	.get_dsi_clk_rate = get_dsi_clk_rate,
 };
 
 static struct platform_device mipi_dsi_mot_panel_device = {
-	.name = "mipi_dsi_mot_panel",
+	.name = "mipi_mot",
 	.id = 0,
 	.dev = {
 		.platform_data = &mipi_dsi_mot_pdata,
