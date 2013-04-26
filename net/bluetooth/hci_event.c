@@ -1891,7 +1891,8 @@ static inline void hci_auth_complete_evt(struct hci_dev *hdev, struct sk_buff *s
 			} else {
 				conn->state = BT_CONNECTED;
 				hci_proto_connect_cfm(conn, ev->status);
-				conn->disc_timeout = HCI_DISCONN_AUTH_FAILED_TIMEOUT;
+				if (ev->status)
+					conn->disc_timeout = HCI_DISCONN_AUTH_FAILED_TIMEOUT;
 				hci_conn_put(conn);
 			}
 		} else {
