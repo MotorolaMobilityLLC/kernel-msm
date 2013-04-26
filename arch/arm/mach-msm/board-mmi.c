@@ -288,6 +288,11 @@ static int mmi_unit_is_bareboard(void)
 	return bare_board;
 }
 
+static uint32_t mmi_unit_get_radio(void)
+{
+	return androidboot_radio;
+}
+
 static void __init mmi_unit_info_init(void){
 	struct mmi_unit_info *mui;
 
@@ -649,6 +654,7 @@ static void __init mmi_msm8960_init_early(void)
 	mmi_data.is_no_eprom = mmi_battery_data_is_no_eprom;
 	mmi_data.mmi_camera = true;
 	mmi_data.is_bareboard = mmi_unit_is_bareboard;
+	mmi_data.get_radio = mmi_unit_get_radio;
 	msm8960_oem_funcs.oem_data = &mmi_data;
 }
 
@@ -762,4 +768,3 @@ MACHINE_START(MSM8960DT, "msm8960dt")
 	.restart = msm_restart,
 	.dt_compat = mmi_dt_match,
 MACHINE_END
-
