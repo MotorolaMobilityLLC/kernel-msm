@@ -77,6 +77,12 @@
 			mipi_d0_sel_dis_post_delay_1 = <0>;
 
 			partial_mode_supported = <1>;
+
+                        /* MIPI dsi freq table mapping with radio/carrier 1~6 based on ghost
+			 * HW, need to make sure freq exists in panel file dsi_clk_config_tbl[]
+			 * for matching dsi pll and dsi phi configure.
+			 */
+			dsi_freq = <418000000 424000000 420000000 424000000 418000000 418000000>;
 		};
 	};
 };
