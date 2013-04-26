@@ -303,6 +303,32 @@ int f2fs_acl_chmod(struct inode *inode)
 	return error;
 }
 
+int f2fs_android_emu(struct f2fs_sb_info *sbi, struct inode *inode,
+		u32 *uid, u32 *gid, umode_t *mode)
+{
+	F2FS_I(inode)->i_advise |= FADVISE_ANDROID_EMU;
+
+	if (uid)
+		*uid = sbi->android_emu_uid;
+	if (gid)
+		*gid = sbi->android_emu_gid;
+	if (mode) {
+		*mode = (*mode & ~S_IRWXUGO) | sbi->android_emu_mode;
+		if (F2FS_I(inode)->i_advise & FADVISE_ANDROID_EMU_ROOT)
+			*mode &= ~S_IRWXO;
+		if (S_ISDIR(*mode)) {
+			if (*mode & S_IRUSR)
+				*mode |= S_IXUSR;
+			if (*mode & S_IRGRP)
+				*mode |= S_IXGRP;
+			if (*mode & S_IROTH)
+				*mode |= S_IXOTH;
+		}
+	}
+
+	return 0;
+}
+
 static size_t f2fs_xattr_list_acl(struct dentry *dentry, char *list,
 		size_t list_size, const char *name, size_t name_len, int type)
 {
