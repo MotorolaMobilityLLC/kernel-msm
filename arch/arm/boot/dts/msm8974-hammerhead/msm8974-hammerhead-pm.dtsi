@@ -48,8 +48,11 @@
 			summit,stat-gpio = <&pm8941_gpios 30 0x02>;
 			summit,chg-current-ma = <1200>;
 			summit,term-current-ma = <100>;
+			summit,otg-en-gpio = <&pm8941_gpios 35 0x2>;
 			summit,wlc-support;
+			summit,ext-ovp-otg-ctrl;
 		};
+
 		bq24192@6b {
 			compatible = "ti,bq24192-charger";
 			status = "disabled";
@@ -60,6 +63,8 @@
 			ti,chg-current-ma = <1500>;
 			ti,term-current-ma = <128>;
 			ti,wlc-support;
+			ti,otg-en-gpio = <&pm8941_gpios 35 0x02>;
+			ti,ext-ovp-otg-ctrl;
 		};
 	};
 
@@ -70,7 +75,6 @@
 		interrupts = <34 0x3>;
 		ti,chg-ctrl-gpio = <&pm8941_gpios 23 0x0>;
 		ti,wlc-int-gpio = <&pm8941_gpios 34 0x2>;
-		ti,otg-en = <&pm8941_gpios 35 0x0>;
 		ti,chg-current-ma = <800>;
 	};
 };
