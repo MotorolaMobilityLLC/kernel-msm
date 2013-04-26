@@ -142,7 +142,7 @@ static int f2fs_xattr_advise_set(struct dentry *dentry, const char *name,
 	if (value == NULL)
 		return -EINVAL;
 
-	F2FS_I(inode)->i_advise |= *(char *)value;
+	F2FS_I(inode)->i_advise = *(char *)value;
 	return 0;
 }
 
