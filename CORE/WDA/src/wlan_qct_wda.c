@@ -13385,3 +13385,21 @@ void WDA_TransportChannelDebug
    WDI_TransportChannelDebug(displaySnapshot, toggleStallDetect);
    return;
 }
+
+/*==========================================================================
+  FUNCTION   WDA_SetEnableSSR
+
+  DESCRIPTION
+    API to enable/disable SSR on WDI timeout
+
+  PARAMETERS
+    enableSSR : enable/disable SSR
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+void WDA_SetEnableSSR(v_BOOL_t enableSSR)
+{
+   WDI_SetEnableSSR(enableSSR);
+}

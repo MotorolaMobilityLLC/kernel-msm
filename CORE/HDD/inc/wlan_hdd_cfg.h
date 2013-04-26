@@ -1317,6 +1317,11 @@ typedef enum
 #define CFG_MC_ADDR_LIST_FILTER_DEFAULT            ( 0 )
 #endif
 
+#define CFG_ENABLE_SSR                      "gEnableSSR"
+#define CFG_ENABLE_SSR_MIN                  ( 0 )
+#define CFG_ENABLE_SSR_MAX                  ( 1 )
+#define CFG_ENABLE_SSR_DEFAULT              ( 1 )
+
 /*
  * VOS Trace Enable Control
  * Notes:
@@ -2051,6 +2056,7 @@ typedef struct
    v_U8_t                      retryLimitOne;
    v_U8_t                      retryLimitTwo;
    char                        listOfNonDfsCountryCode[128];
+   v_BOOL_t                    enableSSR;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
