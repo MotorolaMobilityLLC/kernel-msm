@@ -5378,6 +5378,9 @@ static int hdd_driver_init( void)
    v_CONTEXT_t pVosContext = NULL;
    struct device *dev = NULL;
    int ret_status = 0;
+#ifdef HAVE_WCNSS_CAL_DOWNLOAD
+   int max_retries = 0;
+#endif
 
    ENTER();
 
@@ -5404,6 +5407,18 @@ static int hdd_driver_init( void)
 #endif // ANI_BUS_TYPE_PCI
 
 #ifdef ANI_BUS_TYPE_PLATFORM
+
+#ifdef HAVE_WCNSS_CAL_DOWNLOAD
+   /* wait until WCNSS driver downloads NV */
+   while (!wcnss_device_ready() && 5 >= ++max_retries) {
+       msleep(1000);
+   }
+   if (max_retries >= 5) {
+      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: WCNSS driver not ready", __func__);
+      return -ENODEV;
+   }
+#endif
+
    dev = wcnss_wlan_get_device();
 #endif // ANI_BUS_TYPE_PLATFORM
 
