@@ -42,6 +42,7 @@
 		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
 		qcom,mdss-pan-dsi-dma-tr = <0x04>;
 		qcom,mdss-pan-dsi-frame-rate = <60>;
+		qcom,mdss-pan-clk-rate = <899000000>;
 		qcom,panel-phy-regulatorSettings = [
 			03 01 01 00  /* Regualotor settings */
 			20 00 01];
@@ -163,6 +164,7 @@
 		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
 		qcom,mdss-pan-dsi-dma-tr = <0x04>;
 		qcom,mdss-pan-dsi-frame-rate = <53>;
+		qcom,mdss-pan-clk-rate = <780689360>;
 		qcom,panel-phy-regulatorSettings = [
 			03 01 01 00  /* Regualotor settings */
 			20 00 01];
