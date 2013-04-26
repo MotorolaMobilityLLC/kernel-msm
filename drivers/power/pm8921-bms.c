@@ -1039,6 +1039,10 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 			raw->last_good_ocv_raw, &raw->last_good_ocv_uv);
 		validate_ocv(chip, raw);
 		chip->last_ocv_uv = raw->last_good_ocv_uv;
+		if (raw->cc > CC_RAW_5MAH) {
+			reset_cc(chip);
+			raw->cc = 0;
+		}
 		chip->last_ocv_temp_decidegc = batt_temp_decidegc;
 		/* forget the old cc value upon ocv */
 		chip->last_cc_uah = 0;
