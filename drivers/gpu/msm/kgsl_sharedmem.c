@@ -602,8 +602,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 	while (len > 0) {
 		struct page *page;
-		unsigned int gfp_mask = GFP_KERNEL | __GFP_HIGHMEM |
-			__GFP_NORETRY;
+		unsigned int gfp_mask = GFP_KERNEL | __GFP_HIGHMEM;
 		int j;
 
 		/* don't waste space at the end of the allocation*/
