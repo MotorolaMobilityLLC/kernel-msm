@@ -508,13 +508,13 @@ static int tfa9890_put_mode(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 
-	if (vol_value == 0) {
-		/* nothing to change the internal state and return */
-		tfa9890->curr_vol_idx = 0;
-		tfa9890->curr_mode = mode_value;
-		mutex_unlock(&tfa9890->dsp_init_lock);
-		return 1;
-	}
+	if (vol_value == 0)
+		/* increment vol value to 1 for index 0, vol index 0 is not
+		 * treated as mute for all streams in android, use
+		 * nxp preset 1 for vol index 0.
+		 */
+		vol_value++;
+
 	if (tfa9890->curr_mode != mode_value ||
 			tfa9890->curr_vol_idx != vol_value) {
 		tfa9890->mode_switched = 1;
