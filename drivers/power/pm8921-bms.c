@@ -2663,8 +2663,10 @@ int pm8921_bms_get_cc_uah(int *result)
 	}
 
 	get_batt_temp(the_chip, &batt_temp);
+	mutex_lock(&the_chip->last_ocv_uv_mutex);
 	read_soc_params_raw(the_chip, &raw, batt_temp);
 	calculate_cc_uah(the_chip, raw.cc, result);
+	mutex_unlock(&the_chip->last_ocv_uv_mutex);
 
 	return 0;
 }
@@ -2695,6 +2697,9 @@ void pm8921_bms_charging_began(void)
 {
 	struct pm8921_soc_params raw;
 	int batt_temp;
+
+	if (the_chip == NULL)
+		return;
 
 	get_batt_temp(the_chip, &batt_temp);
 
@@ -3187,8 +3192,12 @@ static int get_calc(void *data, u64 * val)
 	int ibat_ua, vbat_uv;
 	struct pm8921_soc_params raw;
 
-	read_soc_params_raw(the_chip, &raw, 300);
+	if (the_chip == NULL)
+		return -EINVAL;
 
+	mutex_lock(&the_chip->last_ocv_uv_mutex);
+	read_soc_params_raw(the_chip, &raw, 300);
+	mutex_unlock(&the_chip->last_ocv_uv_mutex);
 	*val = 0;
 
 	/* global irq number passed in via data */
@@ -3252,9 +3261,12 @@ static int get_reading(void *data, u64 * val)
 	int ret = 0;
 	struct pm8921_soc_params raw;
 
+	if (the_chip == NULL)
+		return -EINVAL;
+
 	mutex_lock(&the_chip->last_ocv_uv_mutex);
 	read_soc_params_raw(the_chip, &raw, 300);
-	mutex_lock(&the_chip->last_ocv_uv_mutex);
+	mutex_unlock(&the_chip->last_ocv_uv_mutex);
 
 	*val = 0;
 
