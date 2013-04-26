@@ -78,6 +78,7 @@
 #define MSP_STATUS_REG			0x0B
 #define MSP_TOUCH_REG			0x0C
 #define MSP_CONTROL_REG			0x0D
+#define MSP_AOD_INSTRUMENTATION_REG	0x0E
 #define AP_POSIX_TIME			0x10
 
 #define ACCEL_UPDATE_RATE		0x16
@@ -2129,6 +2130,21 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		else
 			ps_msp430->ap_msp_handoff_enable = true;
 
+		break;
+	case MSP430_IOCTL_GET_AOD_INSTRUMENTATION_REG:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_GET_AOD_INTRUMENTATION_REG");
+		msp_cmdbuff[0] = MSP_AOD_INSTRUMENTATION_REG;
+		err = msp430_i2c_write_read(ps_msp430,
+			 msp_cmdbuff, 1, MSP_AOD_INSTRUMENTATION_REG_SIZE);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Get AOD instrumentation reg failed\n");
+			break;
+		}
+		if (copy_to_user(argp, msp_cmdbuff,
+			 MSP_AOD_INSTRUMENTATION_REG_SIZE))
+			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_GET_STATUS_REG:
 		dev_dbg(&ps_msp430->client->dev,
