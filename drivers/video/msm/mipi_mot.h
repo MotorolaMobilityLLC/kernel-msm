@@ -123,8 +123,33 @@ struct mipi_mot_cmd_seq {
 			.sub.count = ARRAY_SIZE(data)}
 #define MIPI_MOT_TX_EXIT_SLEEP(cond) {MIPI_MOT_SEQ_EXIT_SLEEP, (cond)}
 
+/*
+ * Used to overwrite clk config part of panel mipi_dsi_phy_ctrl data
+ * based on desired clk_rate to get a more suitable MIPI DSI clk freq.
+ *
+ * A map table between radio id and desired dsi clk freq should be
+ * provided in device tree of a certain device.
+ * The desired clk_rate would be get in board display file through the
+ * passed in radio id and the map table read from device tree.
+ *
+ */
+struct mipi_dsi_clk_config {
+	/* a "key" to match the desired dsi clk freq get from
+	 * board display file
+	 */
+	__u32 clk_rate;
+	/* to overwrite the default value timing[0] - timing [10]
+	 * in panel mipi_dsi_phy_ctrl data
+	 */
+	__u32 timing[11];
+	/* to overwrite the default value pll[1] - pll[3]
+	 * in panel mipi_dsi_phy_ctrl data
+	 */
+	__u32 pll[3];
+};
+#define MIPI_DSI_CLK_MAX_NR	4
 struct mipi_mot_panel {
-
+	struct mipi_dsi_panel_platform_data *pdata;
 	struct msm_panel_info pinfo;
 	struct msm_fb_data_type *mfd;
 	struct dsi_buf *mot_tx_buf;
@@ -210,4 +235,8 @@ int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
 			struct mipi_mot_cmd_seq *seq, int cnt);
 int is_aod_supported(struct msm_fb_data_type *mfd);
 #define AOD_SUPPORTED is_aod_supported
+
+int __init mipi_mot_reconfig_dsiphy_db(struct msm_panel_info *pinfo,
+			     struct mipi_dsi_phy_ctrl *phy_db,
+			     struct mipi_dsi_clk_config *clk_config_tbl);
 #endif /* MIPI_MOT_PANEL_H */

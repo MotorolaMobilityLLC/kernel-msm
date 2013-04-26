@@ -613,6 +613,79 @@ void mipi_mot_set_tear(struct msm_fb_data_type *mfd, int on)
 	mutex_unlock(&mfd->dma->ov_mutex);
 }
 
+static void __init dump_mipi_dsi_phy_ctrl(struct mipi_dsi_phy_ctrl *phy_db)
+{
+	int i;
+
+	pr_debug("mipi_dsi_phy_ctrl data dump:\n");
+
+	for (i = 0; i < 5; i++)
+		pr_debug("regulator[%d]: 0x%08x ", i, phy_db->regulator[i]);
+
+	for (i = 0; i < 12; i++)
+		pr_debug("timing[%d]: 0x%08x ", i, phy_db->timing[i]);
+
+	for (i = 0; i < 4; i++)
+		pr_debug("ctrl[%d]: 0x%08x ", i, phy_db->ctrl[i]);
+
+	for (i = 0; i < 4; i++)
+		pr_debug("strength[%d]: 0x%08x ", i, phy_db->strength[i]);
+
+	for (i = 0; i < 20; i++)
+		pr_debug("pll[%d]: 0x%08x ", i, phy_db->pll[i]);
+}
+
+int __init mipi_mot_reconfig_dsiphy_db(struct msm_panel_info *pinfo,
+				struct mipi_dsi_phy_ctrl *phy_db,
+				struct mipi_dsi_clk_config *clk_config_tbl)
+{
+	int ret = -1;
+	int idx;
+	int dsi_clk = -1;
+	struct mipi_dsi_clk_config *clk_db = NULL;
+
+	if (!mot_panel->pdata || !mot_panel->pdata->get_dsi_clk_rate) {
+		pr_err("%s: not able to get desired dsi_freq.\n", __func__);
+		goto out;
+	}
+
+	dsi_clk = mot_panel->pdata->get_dsi_clk_rate();
+	if (dsi_clk <= 0) {
+		pr_err("%s: invalid desired dsi_clk %d.\n",
+			   __func__, dsi_clk);
+		ret = dsi_clk;
+		goto out;
+	}
+
+	for (idx = 0; idx < MIPI_DSI_CLK_MAX_NR; idx++) {
+		clk_db = clk_config_tbl + idx;
+		if (clk_db->clk_rate == dsi_clk) {
+			int i;
+			/* timing registers overwritting */
+			for (i = 0; i < 11; i++)
+				phy_db->timing[i] = clk_db->timing[i];
+
+			/* PLL registers overwritting */
+			for (i = 0; i < 3; i++)
+				phy_db->pll[i+1] = clk_db->pll[i];
+
+			pinfo->clk_rate = dsi_clk;
+			dump_mipi_dsi_phy_ctrl(phy_db);
+			ret = dsi_clk;
+			goto out;
+		}
+	}
+
+	if (idx >= MIPI_DSI_CLK_MAX_NR) {
+		ret = -2;
+		pr_err("%s: no matching config for dsi clk %d\n",
+		       __func__, dsi_clk);
+	}
+
+out:
+	return ret;
+}
+
 int __init moto_panel_debug_init(void)
 {
 #ifdef CONFIG_DEBUG_FS
