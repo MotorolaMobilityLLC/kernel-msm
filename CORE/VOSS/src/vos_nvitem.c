@@ -160,7 +160,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_WORLD,   {'C', 'K'}},  //COOK ISLANDS
         { REGDOMAIN_APAC,    {'C', 'L'}},  //CHILE
         { REGDOMAIN_NO_5GHZ, {'C', 'M'}},  //CAMEROON
-        { REGDOMAIN_HI_5GHZ, {'C', 'N'}},  //CHINA
+        { REGDOMAIN_APAC,    {'C', 'N'}},  //CHINA
         { REGDOMAIN_APAC,    {'C', 'O'}},  //COLOMBIA
         { REGDOMAIN_APAC,    {'C', 'R'}},  //COSTA RICA
         { REGDOMAIN_NO_5GHZ, {'C', 'U'}},  //CUBA
