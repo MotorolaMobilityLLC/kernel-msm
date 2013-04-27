@@ -6398,6 +6398,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 
 	INIT_WORK(&chip->bms_notify.work, bms_notify);
 	INIT_WORK(&chip->battery_id_valid_work, battery_id_valid);
+	INIT_WORK(&chip->chg_src_work, chg_src_setup);
 
 	INIT_DELAYED_WORK(&chip->update_heartbeat_work, update_heartbeat);
 	INIT_DELAYED_WORK(&chip->btc_override_work, btc_override_worker);
@@ -6418,8 +6419,6 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 		pr_err("%s can't register reboot notifier\n", __func__);
 
 	create_debugfs_entries(chip);
-
-	INIT_WORK(&chip->chg_src_work, chg_src_setup);
 
 	/* Clear Any Charge Failures */
 	pm_chg_failed_clear(chip, 1);
