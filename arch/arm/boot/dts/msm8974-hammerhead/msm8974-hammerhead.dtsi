@@ -391,58 +391,50 @@
 
 &pm8941_gpios {
 	gpio@c000 { /* GPIO 1 */
-		status = "ok";
-		qcom,mode = <0>;
-		qcom,pull = <5>;
-		qcom,vin-sel = <2>;
-		qcom,src-select = <0>;
+		status = "ok";			/* HPH_AUD_SW_INT */
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN1 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
 
 	gpio@c100 { /* GPIO 2 */
+		status = "ok";			/* KEY_UP */
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <0>;		/* QPNP_PIN_PULL_UP_30 */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 	};
 
 	gpio@c200 { /* GPIO 3 */
-		qcom,mode = <0>;
-		qcom,pull = <0>;
-		qcom,vin-sel = <2>;
-		qcom,src-sel = <0>;
+		status = "ok";			/* KEY_DOWN */
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <0>;		/* QPNP_PIN_PULL_UP_30 */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 	};
 
 	gpio@c300 { /* GPIO 4 */
-		qcom,mode = <0>;
-		qcom,pull = <0>;
-		qcom,vin-sel = <2>;
-		qcom,src-sel = <0>;
 	};
 
 	gpio@c400 { /* GPIO 5 */
-		qcom,mode = <0>;
-		qcom,pull = <0>;
-		qcom,vin-sel = <2>;
-		qcom,src-sel = <0>;
 	};
 
 	gpio@c500 { /* GPIO 6 */
 	};
 
 	gpio@c600 { /* GPIO 7 */
-		status = "ok";
-		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <4>;		/* QPNP_PIN_PULL_DN */
-		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
-		qcom,src-select = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
-		qcom,master-en = <1>;
 	};
 
 	gpio@c700 { /* GPIO 8 */
-		status = "ok";
+		status = "ok";			/* SLIMPORT_IOVCC_EN */
 		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
 		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
 		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
-		qcom,src-select = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
 
@@ -450,14 +442,6 @@
 	};
 
 	gpio@c900 { /* GPIO 10 */
-		status = "ok";
-		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
-		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
-		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
-		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
-		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
-		qcom,src-select = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
-		qcom,master-en = <1>;
 	};
 
 	gpio@ca00 { /* GPIO 11 */
@@ -466,8 +450,8 @@
 	gpio@cb00 { /* GPIO 12 */
 	};
 
-	gpio@cc00 { /* GPIO 13 */ /* LGE_CHANGE, SlimPort Cable Det IRQ */
-		status = "ok";
+	gpio@cc00 { /* GPIO 13 */
+		status = "ok";			/* SLIMPORT_CBL_DET */
 		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
 		qcom,pull = <4>;		/* QPNP_PIN_PULL_DN */
 		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
@@ -475,8 +459,8 @@
 		qcom,master-en = <1>;
 	};
 
-	gpio@cd00 { /* GPIO 14 */ /* LGE_CHANGE, SlimPort PWR Ctl Pin Setting */
-		status = "ok";
+	gpio@cd00 { /* GPIO 14 */
+		status = "ok";			/* ANX_P_DWN_CTL */
 		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
@@ -487,22 +471,24 @@
 	};
 
 	gpio@ce00 { /* GPIO 15 */
-		qcom,mode = <1>;
-		qcom,output-type = <0>;
-		qcom,pull = <5>;
-		qcom,vin-sel = <2>;
-		qcom,out-strength = <3>;
-		qcom,src-sel = <2>;
+		status = "ok";			/* WCD_MCLK */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <3>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
 		qcom,master-en = <1>;
 	};
 
 	gpio@cf00 { /* GPIO 16 */
-		qcom,mode = <1>;
-		qcom,output-type = <0>;
-		qcom,pull = <5>;
-		qcom,vin-sel = <2>;
-		qcom,out-strength = <3>;
-		qcom,src-sel = <3>;
+		status = "ok";			/* SLEEP_CLK_BCM */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <3>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-sel = <3>;		/* QPNP_PIN_SEL_FUNC_2 */
 		qcom,master-en = <1>;
 	};
 
@@ -510,16 +496,10 @@
 	};
 
 	gpio@d100 { /* GPIO 18 */
-		qcom,mode = <1>;
-		qcom,output-type = <0>;
-		qcom,pull = <5>;
-		qcom,vin-sel = <2>;
-		qcom,out-strength = <3>;
-		qcom,src-sel = <3>;
-		qcom,master-en = <1>;
 	};
 
 	gpio@d200 { /* GPIO 19 */
+		status = "ok";			/* LCD_RESET_N */
 		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
@@ -536,25 +516,37 @@
 	};
 
 	gpio@d500 { /* GPIO 22 */
+		status = "ok";			/* CHG_INT */
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 
 	gpio@d600 { /* GPIO 23 */
 	};
 
 	gpio@d700 { /* GPIO 24 */
+		status = "ok";			/* CHARGER_PG */
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 
 	gpio@d800 { /* GPIO 25 */
 	};
 
 	gpio@d900 { /* GPIO 26 */
-		status = "ok";
+		status = "ok";			/* SLIMPORT_AVDD33_EN */
 		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
 		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
 		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
-		qcom,src-select = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
 
@@ -565,50 +557,66 @@
 	};
 
 	gpio@dc00 { /* GPIO 29 */
-		qcom,pull = <0>; /* set to default pull */
+		status = "ok";			/* EAR_MIC_EN */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <0>;		/* QPNP_PIN_PULL_UP_30 */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
-		qcom,vin-sel = <2>; /* select 1.8 V source */
 	};
 
 	gpio@dd00 { /* GPIO 30 */
+		status = "ok";			/* EXT_CHG_STAT */
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 
 	gpio@de00 { /* GPIO 31 */
-		status = "ok";
-		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
-		qcom,master-en = <1>;		/* Enable Module */
-		qcom,vin-sel = <2>;		/* Select 1.8V Source */
 	};
 
 	gpio@df00 { /* GPIO 32 */
 	};
 
 	gpio@e000 { /* GPIO 33 */
+		status = "ok";			/* CHG_EN */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 
 	gpio@e100 { /* GPIO 34 */
-		status = "ok";			 /* wlc_int_gpio for WLC */
-		qcom,mode = <0>;		 /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <3>;		 /* QPNP_PIN_GPIO_PULL_UP_1P5_30 */
+		status = "ok";			/* WLC_INT */
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
 
 	gpio@e200 { /* GPIO 35 */
-		status = "ok";			/* otg_en gpio */
+		status = "ok";			/* OTG_EN */
 		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
 		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 
 	gpio@e300 { /* GPIO 36 */
-		status = "ok";
-		qcom,mode = <1>;
-		qcom,output-type = <0>;
-		qcom,pull = <5>;
-		qcom,vin-sel = <0>;
-		qcom,out-strength = <1>;
-		qcom,src-select = <0>;
+		status = "ok";			/* WLC_FULL_CHG */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <4>;		/* QPNP_PIN_PULL_DN */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
 };
