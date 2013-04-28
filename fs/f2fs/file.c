@@ -67,9 +67,10 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
 	f2fs_put_dnode(&dn);
 	mutex_unlock_op(sbi, ilock);
 
+	file_update_time(vma->vm_file);
 	lock_page(page);
 	if (page->mapping != inode->i_mapping ||
-			page_offset(page) >= i_size_read(inode) ||
+			page_offset(page) > i_size_read(inode) ||
 			!PageUptodate(page)) {
 		unlock_page(page);
 		err = -EFAULT;
@@ -80,10 +81,7 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
 	 * check to see if the page is mapped already (no holes)
 	 */
 	if (PageMappedToDisk(page))
-		goto out;
-
-	/* fill the page */
-	wait_on_page_writeback(page);
+		goto mapped;
 
 	/* page is wholly or partially inside EOF */
 	if (((page->index + 1) << PAGE_CACHE_SHIFT) > i_size_read(inode)) {
@@ -94,7 +92,9 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
 	set_page_dirty(page);
 	SetPageUptodate(page);
 
-	file_update_time(vma->vm_file);
+mapped:
+	/* fill the page */
+	wait_on_page_writeback(page);
 out:
 	return block_page_mkwrite_return(err);
 }
