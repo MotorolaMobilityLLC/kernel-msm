@@ -322,6 +322,16 @@ wlan_hdd_txrx_stypes[NUM_NL80211_IFTYPES] = {
             BIT(SIR_MAC_MGMT_DEAUTH) |
             BIT(SIR_MAC_MGMT_ACTION),
     },
+    [NL80211_IFTYPE_ADHOC] = {
+        .tx = 0xffff,
+        .rx = BIT(SIR_MAC_MGMT_ASSOC_REQ) |
+            BIT(SIR_MAC_MGMT_REASSOC_REQ) |
+            BIT(SIR_MAC_MGMT_PROBE_REQ) |
+            BIT(SIR_MAC_MGMT_DISASSOC) |
+            BIT(SIR_MAC_MGMT_AUTH) |
+            BIT(SIR_MAC_MGMT_DEAUTH) |
+            BIT(SIR_MAC_MGMT_ACTION),
+    },
     [NL80211_IFTYPE_P2P_CLIENT] = {
         .tx = 0xffff,
         .rx = BIT(SIR_MAC_MGMT_ACTION) |
@@ -367,7 +377,7 @@ wlan_hdd_iface_limit[] = {
     },
     {
         .max = 1,
-        .types = BIT(NL80211_IFTYPE_AP),
+        .types = BIT(NL80211_IFTYPE_ADHOC) | BIT(NL80211_IFTYPE_AP),
     },
     {
         .max = 1,
