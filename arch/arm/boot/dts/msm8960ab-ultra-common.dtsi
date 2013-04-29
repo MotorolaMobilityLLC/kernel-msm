@@ -97,6 +97,8 @@
 		synaptics,normal-mode = <1>;
 		synaptics,purge-enabled;
 		synaptics,reset-on-resume;
+		synaptics,display-synced-suspend;
+		synaptics,hw-reset;
 		synaptics,one-touch-enabled;
 		synaptics,key-buttons = <59 60 61 0>; /* F1, F2, F3 */
 	};
