@@ -175,8 +175,6 @@ static int mipi_JDI_lcd_on(struct platform_device *pdev)
 		return 0;
 	}
 
-	msleep(20);
-
 	if (hw_revision != 0x3) {
 		pr_info("%s, JDI display on command+, pwm bl\n", __func__);
 		cmdreq_JDI.cmds = JDI_display_on_cmds;
@@ -193,8 +191,6 @@ static int mipi_JDI_lcd_on(struct platform_device *pdev)
 	mipi_dsi_cmdlist_put(&cmdreq_JDI);
 
 	pr_info("%s, JDI display on command-\n", __func__);
-
-	msleep(20);
 
 	pr_info("%s-\n", __func__);
 	return 0;
@@ -213,8 +209,6 @@ static int mipi_JDI_lcd_off(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
-	msleep(20);
-
 	pr_info("%s, JDI display off command+\n", __func__);
 	cmdreq_JDI.cmds = JDI_display_off_cmds;
 	cmdreq_JDI.cmds_cnt = ARRAY_SIZE(JDI_display_off_cmds);
@@ -223,8 +217,6 @@ static int mipi_JDI_lcd_off(struct platform_device *pdev)
 	cmdreq_JDI.cb = NULL;
 	mipi_dsi_cmdlist_put(&cmdreq_JDI);
 	pr_info("%s, JDI display off command-\n", __func__);
-
-	msleep(20);
 
 	pr_info("%s-\n", __func__);
 	return 0;
@@ -270,7 +262,7 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 				JDI_command_backlight(mfd->bl_level);
 
 			if (!bl_enable_sleep_control) {
-				msleep(20);
+				msleep_interruptible(10);
 				bl_enable_sleep_control = 1;
 				pr_info("%s: pwm enable\n", __func__);
 			}
@@ -278,7 +270,7 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 		} else {
 			gpio_set_value_cansleep(gpio_LCD_BL_EN, 0);
 			if (bl_enable_sleep_control) {
-				msleep(20);
+				msleep_interruptible(10);
 				bl_enable_sleep_control = 0;
 				pr_info("%s: pwm disable\n", __func__);
 			}
@@ -321,7 +313,7 @@ static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
 		} else
 			JDI_command_backlight(recovery_backlight);
 
-		msleep(20);
+		msleep_interruptible(10);
 		gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
 	}
 }
@@ -332,7 +324,7 @@ static void mipi_JDI_lcd_shutdown(void)
 	pr_info("%s+\n", __func__);
 
 	gpio_set_value_cansleep(gpio_LCD_BL_EN, 0);
-	msleep(20);
+	msleep_interruptible(10);
 
 	pr_info("%s: backlight off\n", __func__);
 	if (hw_revision != 0x3) {
@@ -359,7 +351,7 @@ static void mipi_JDI_lcd_shutdown(void)
 	gpio_set_value_cansleep(gpio_EN_VDD_BL, 0);
 	msleep(20);
 	gpio_set_value_cansleep(gpio_LCM_XRES, 0);
-	msleep(20);
+	msleep_interruptible(8);
 
 	pr_info("%s-\n", __func__);
 }

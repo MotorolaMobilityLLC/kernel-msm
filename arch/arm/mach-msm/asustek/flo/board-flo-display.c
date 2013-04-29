@@ -545,7 +545,7 @@ static int mipi_dsi_panel_power(int on)
 				pr_err("enable lvs5 failed, rc=%d\n", rc);
 				return -ENODEV;
 			}
-			msleep(20);
+			msleep_interruptible(8);
 			gpio_set_value_cansleep(gpio_EN_VDD_BL, 1);
 			msleep(20);
 			gpio_set_value_cansleep(gpio_LCM_XRES, 1);
@@ -562,7 +562,7 @@ static int mipi_dsi_panel_power(int on)
 			gpio_set_value_cansleep(gpio_EN_VDD_BL, 0);
 			msleep(20);
 			gpio_set_value_cansleep(gpio_LCM_XRES, 0);
-			msleep(20);
+			msleep_interruptible(8);
 			rc = regulator_disable(reg_lvs5);
 			if (rc) {
 				pr_err("disable reg_lvs5 failed, rc=%d\n", rc);
