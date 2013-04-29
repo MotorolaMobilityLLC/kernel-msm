@@ -338,36 +338,37 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 		write = ((fsynr0 & (KGSL_IOMMU_V1_FSYNR0_WNR_MASK <<
 			KGSL_IOMMU_V1_FSYNR0_WNR_SHIFT)) ? 1 : 0);
 
+	pid = kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase);
+
 	if (adreno_dev->ft_pf_policy & KGSL_FT_PAGEFAULT_LOG_ONE_PER_PAGE)
 		no_page_fault_log = kgsl_mmu_log_fault_addr(mmu, ptbase, addr);
 
-	pid = kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase);
 	if (!no_page_fault_log) {
 		KGSL_MEM_CRIT(iommu_dev->kgsldev,
 			"GPU PAGE FAULT: addr = %lX pid = %d\n", addr, pid);
 		KGSL_MEM_CRIT(iommu_dev->kgsldev,
-		"context = %d FSR = %X FSYNR0 = %X FSYNR1 = %X(%s fault)\n",
+		 "context = %d FSR = %X FSYNR0 = %X FSYNR1 = %X(%s fault)\n",
 			iommu_dev->ctx_id, fsr, fsynr0, fsynr1,
 			write ? "write" : "read");
+
+		_check_if_freed(iommu_dev, addr, pid);
+
+		KGSL_LOG_DUMP(iommu_dev->kgsldev, "---- nearby memory ----\n");
+
+		_find_mem_entries(mmu, addr, ptbase, &prev, &next);
+
+		if (prev.gpuaddr)
+			_print_entry(iommu_dev->kgsldev, &prev);
+		else
+			KGSL_LOG_DUMP(iommu_dev->kgsldev, "*EMPTY*\n");
+
+		KGSL_LOG_DUMP(iommu_dev->kgsldev, " <- fault @ %8.8lX\n", addr);
+
+		if (next.gpuaddr != 0xFFFFFFFF)
+			_print_entry(iommu_dev->kgsldev, &next);
+		else
+			KGSL_LOG_DUMP(iommu_dev->kgsldev, "*EMPTY*\n");
 	}
-
-	_check_if_freed(iommu_dev, addr, pid);
-
-	KGSL_LOG_DUMP(iommu_dev->kgsldev, "---- nearby memory ----\n");
-
-	_find_mem_entries(mmu, addr, ptbase, &prev, &next);
-
-	if (prev.gpuaddr)
-		_print_entry(iommu_dev->kgsldev, &prev);
-	else
-		KGSL_LOG_DUMP(iommu_dev->kgsldev, "*EMPTY*\n");
-
-	KGSL_LOG_DUMP(iommu_dev->kgsldev, " <- fault @ %8.8lX\n", addr);
-
-	if (next.gpuaddr != 0xFFFFFFFF)
-		_print_entry(iommu_dev->kgsldev, &next);
-	else
-		KGSL_LOG_DUMP(iommu_dev->kgsldev, "*EMPTY*\n");
 
 	mmu->fault = 1;
 	iommu_dev->fault = 1;
