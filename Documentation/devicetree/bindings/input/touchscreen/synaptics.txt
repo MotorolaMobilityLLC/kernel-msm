@@ -31,6 +31,18 @@ Required properties:
         touch events received before display is on.
  - synaptics,key-buttons:
         key codes for the supported buttons
+ - synaptics,reset-on-resume:
+        flag to enable ic reset when driver resumes
+ - synaptics,display-synced-suspend:
+        flag to use display notifications to control entering into suspend
+ - synaptics,one-touch-enabled:
+        flag to enable configuring one touch on entering to suspend
+ - synaptics,normal-mode:
+	<0>         - enforce no sleep mode
+	<1>         - use normal mode and clear no sleep bit if it's set
+	not defined - use mode settings programmed in firmware
+ - synaptics,hw-reset:
+        flag to perform hard reset in oppose to soft reset
 
 Example:
 	i2c@16200000 {
@@ -63,6 +75,12 @@ Example:
 				<&msmgpio 63 0>; /* RESET */
 
 			synaptics,panel-sync-enabled = <1>;
+			synaptics,normal-mode = <1>;
+			synaptics,purge-enabled;
+			synaptics,reset-on-resume;
+			synaptics,hw-reset;
+			synaptics,one-touch-enabled;
+			synaptics,display-synced-suspend;
 			synaptics,key-buttons = <139 102 158 0>; /* KEY_MENU, KEY_HOME, KEY_BACK */
 		};
 	};
