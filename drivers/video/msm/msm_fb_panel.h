@@ -137,6 +137,8 @@ struct mipi_panel_info {
 	char no_max_pkt_size;
 	/* Clock required during LP commands */
 	char force_clk_lane_hs;
+	/* Keep all MIPI lanes to stay at LP11 during suspend */
+	char keep_mipi_lanes_lp11;
 	struct mutex panel_mutex;
 };
 

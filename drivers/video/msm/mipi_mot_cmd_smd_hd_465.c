@@ -401,6 +401,7 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 	pinfo->mipi.esc_byte_ratio = 2;
 	pinfo->mipi.tx_eot_append = 0x01;
 	pinfo->mipi.rx_eot_ignore = 0;
+	pinfo->mipi.keep_mipi_lanes_lp11 = TRUE;
 
 	mot_panel->acl_support_present = TRUE;
 	mot_panel->acl_enabled = FALSE; /* By default the ACL is disbled. */
