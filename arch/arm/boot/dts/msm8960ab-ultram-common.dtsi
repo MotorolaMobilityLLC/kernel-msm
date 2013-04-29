@@ -121,8 +121,8 @@
 
 		synaptics,normal-mode = <0>;
 		synaptics,purge-enabled;
-		synaptics,reset-on-resume;
-		synaptics,shared-regulator;
+		synaptics,display-synced-suspend;
+		synaptics,hw-reset;
 		synaptics,key-buttons = <59 60 61 0>; /* F1, F2, F3 */
 	};
 };
