@@ -625,13 +625,21 @@ static struct synaptics_dsx_platform_data *
 		rmi4_data->purge_enabled = true;
 	}
 
-	if (of_property_read_bool(np, "synaptics,shared-regulator")) {
-		pr_notice("using shared regulator\n");
-		rmi4_data->shared_regulator = true;
+	if (of_property_read_bool(np, "synaptics,display-synced-suspend")) {
+		pr_notice("using suspend synced with display\n");
+		rmi4_data->display_synced_suspend = true;
 	}
 
+#ifndef CONFIG_MIPI_MOT_NOTIFICATIONS
+	pr_notice("display notifications not available\n");
+	/* Check if devtree and config option conflicts */
+	if (rmi4_data->display_synced_suspend) {
+		pr_notice("default to configured suspend/resume option\n");
+		rmi4_data->display_synced_suspend = false;
+	}
+#endif
 	if (of_property_read_bool(np, "synaptics,reset-on-resume")) {
-		pr_notice("using hard reset on resume\n");
+		pr_notice("using reset ic on resume\n");
 		rmi4_data->reset_on_resume = true;
 	}
 
@@ -648,6 +656,11 @@ static struct synaptics_dsx_platform_data *
 					&rmi4_data->normal_mode);
 		pr_notice("%s mode\n", rmi4_data->normal_mode ?
 				"using normal" : "enforce no sleep");
+	}
+
+	if (of_property_read_bool(np, "synaptics,hw-reset")) {
+		pr_notice("using hard ic reset\n");
+		rmi4_data->hw_reset = true;
 	}
 
 	return pdata;
@@ -1015,17 +1028,13 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 		if (rmi4_data->one_touch_enabled)
 			synaptics_rmi4_sensor_one_touch(rmi4_data, true);
 
-		if (!rmi4_data->sensor_sleep) {
+		if (!rmi4_data->sensor_sleep)
 			synaptics_rmi4_sensor_sleep(rmi4_data);
-			rmi4_data->touch_stopped = true;
-		}
 			break;
 
 	case STATE_ACTIVE:
-		if (rmi4_data->sensor_sleep) {
+		if (rmi4_data->sensor_sleep)
 			synaptics_rmi4_sensor_wake(rmi4_data);
-			rmi4_data->touch_stopped = false;
-		}
 
 		if (rmi4_data->one_touch_enabled)
 			synaptics_rmi4_sensor_one_touch(rmi4_data, false);
@@ -1035,10 +1044,6 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 
 	case STATE_STANDBY:
 		synaptics_rmi4_irq_enable(rmi4_data, false);
-		if (!rmi4_data->sensor_sleep) {
-			synaptics_rmi4_sensor_sleep(rmi4_data);
-			rmi4_data->touch_stopped = true;
-		}
 			break;
 
 	case STATE_BL:
@@ -1046,10 +1051,8 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 			rmi4_data->in_bootloader = true;
 	case STATE_INIT:
 		synaptics_rmi4_irq_enable(rmi4_data, false);
-		if (rmi4_data->sensor_sleep) {
+		if (rmi4_data->sensor_sleep)
 			synaptics_rmi4_sensor_wake(rmi4_data);
-			rmi4_data->touch_stopped = false;
-		}
 			break;
 	}
 
@@ -1081,20 +1084,18 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 
 	switch (event) {
 	case MMI_PANEL_EVENT_PRE_DEINIT:
-		synaptics_rmi4_irq_enable(rmi4_data, false);
+		if (rmi4_data->display_synced_suspend)
+			synaptics_rmi4_early_suspend(&rmi4_data->early_suspend);
 		value = 1; /* set flag */
 			break;
 	case MMI_PANEL_EVENT_PWR_OFF:
-		if (rmi4_data->shared_regulator)
-			synaptics_rmi4_early_suspend(&rmi4_data->early_suspend);
 			break;
 	case MMI_PANEL_EVENT_POST_INIT:
+		if (rmi4_data->display_synced_suspend)
+			synaptics_rmi4_late_resume(&rmi4_data->early_suspend);
 		value = 0; /* clear flag */
-		synaptics_dsx_sensor_ready_state(rmi4_data, false);
 			break;
 	case MMI_PANEL_EVENT_PWR_ON:
-		if (rmi4_data->shared_regulator)
-			synaptics_rmi4_late_resume(&rmi4_data->early_suspend);
 			break;
 	default:
 			return -EINVAL;
@@ -2499,7 +2500,7 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	unsigned char page_number;
 	unsigned char intr_count = 0;
 	unsigned char data_sources = 0;
-	unsigned char f01_query[F01_STD_QUERY_LEN];
+	unsigned char f01_query[F01_STD_QUERY_LEN] = {0};
 	unsigned short pdt_entry_addr;
 	struct synaptics_rmi4_fn_desc rmi_fd;
 	struct synaptics_rmi4_fn *fhandler;
@@ -2817,7 +2818,7 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 		need_to_query = true;
 	}
 
-	if (rmi4_data->reset_on_resume)
+	if (rmi4_data->hw_reset)
 		/* do hard reset instead of soft */
 		synaptics_dsx_ic_reset(rmi4_data);
 	else {
@@ -2901,9 +2902,9 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 			if (rmi4_data->in_bootloader &&
 			   (exp_fhandler->mode == IC_MODE_UI))
 				continue;
-			synaptics_dsx_sensor_ready_state(rmi4_data, false);
+			if (rmi4_data->sensor_sleep)
+				synaptics_rmi4_sensor_wake(rmi4_data);
 			exp_fhandler->func_init(rmi4_data);
-			synaptics_dsx_sensor_ready_state(rmi4_data, true);
 			exp_fhandler->inserted = true;
 		} else if ((exp_fhandler->func_init == NULL) &&
 			   (exp_fhandler->inserted == true)) {
@@ -3121,7 +3122,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	rmi4_data->early_suspend.suspend = synaptics_rmi4_early_suspend;
 	rmi4_data->early_suspend.resume = synaptics_rmi4_late_resume;
-	if (!rmi4_data->shared_regulator)
+	if (!rmi4_data->display_synced_suspend)
 		register_early_suspend(&rmi4_data->early_suspend);
 #endif
 
@@ -3150,9 +3151,11 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		}
 	}
 
-	rmi4_data->panel_nb.notifier_call = synaptics_dsx_panel_cb;
-	mmi_panel_register_notifier(&rmi4_data->panel_nb);
-	pr_debug("register panel notifier\n");
+	if (rmi4_data->display_synced_suspend) {
+		rmi4_data->panel_nb.notifier_call = synaptics_dsx_panel_cb;
+		if (!mmi_panel_register_notifier(&rmi4_data->panel_nb))
+			pr_debug("registered panel notifier\n");
+	}
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, true);
 
@@ -3169,7 +3172,7 @@ err_sysfs:
 	}
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
-	if (!rmi4_data->shared_regulator)
+	if (!rmi4_data->display_synced_suspend)
 		unregister_early_suspend(&rmi4_data->early_suspend);
 #endif
 
@@ -3238,6 +3241,9 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 		regulator_disable(rmi4_data->regulator);
 		regulator_put(rmi4_data->regulator);
 	}
+
+	if (rmi4_data->display_synced_suspend)
+		mmi_panel_unregister_notifier(&rmi4_data->panel_nb);
 
 	synaptics_rmi4_cleanup(rmi4_data);
 	kfree(rmi4_data);
@@ -3491,11 +3497,14 @@ static int synaptics_rmi4_suspend(struct device *dev)
 			rmi4_data->board;
 
 	synaptics_dsx_sensor_state(rmi4_data, STATE_SUSPEND);
+	if (!rmi4_data->touch_stopped) {
+		if (platform_data->regulator_en)
+			regulator_disable(rmi4_data->regulator);
 
-	if (platform_data->regulator_en)
-		regulator_disable(rmi4_data->regulator);
+		gpio_free(platform_data->reset_gpio);
 
-	gpio_free(platform_data->reset_gpio);
+		rmi4_data->touch_stopped = true;
+	}
 
 	return 0;
 }
@@ -3513,16 +3522,22 @@ static int synaptics_rmi4_suspend(struct device *dev)
 static int synaptics_rmi4_resume(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-	const struct synaptics_dsx_platform_data *platform_data =
-			rmi4_data->board;
 
-	if (platform_data->regulator_en)
-		regulator_enable(rmi4_data->regulator);
+	if (rmi4_data->touch_stopped) {
+		const struct synaptics_dsx_platform_data *platform_data =
+						rmi4_data->board;
+		if (platform_data->regulator_en)
+			regulator_enable(rmi4_data->regulator);
 
-	if (gpio_request(platform_data->reset_gpio, RESET_GPIO_NAME) < 0)
-		pr_err("failed to request reset gpio\n");
+		if (gpio_request(platform_data->reset_gpio,
+						RESET_GPIO_NAME) < 0)
+			pr_err("failed to request reset gpio\n");
 
-	synaptics_rmi4_reset_device(rmi4_data);
+		rmi4_data->touch_stopped = false;
+
+		if (rmi4_data->reset_on_resume)
+			synaptics_rmi4_reset_device(rmi4_data);
+	}
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, false);
 
