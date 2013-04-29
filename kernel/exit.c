@@ -935,13 +935,6 @@ void do_exit(long code)
 
 	profile_task_exit(tsk);
 
-	/*
-	 * If do_exit() doesn't finish within 30 seconds, then we assume
-	 * that one of the task cleanup routines below is hopelessly stuck and
-	 * we should crash to recover.
-	 */
-	start_exit_wdog(&wdog, jiffies + (HZ * 30));
-
 	WARN_ON(blk_needs_flush_plug(tsk));
 
 	if (unlikely(in_interrupt()))
@@ -1023,12 +1016,21 @@ void do_exit(long code)
 		acct_process();
 	trace_sched_process_exit(tsk);
 
+	/*
+	 * If we cannot finish cleaning up the held resources below within 30
+	 * seconds, then we assume that something is hopelessly stuck and we
+	 * should crash to recover.  The exit_files() call in particular may
+	 * call into device drivers that are unproven, so this helps flush out
+	 * deadlocks in those drivers.
+	 */
+	start_exit_wdog(&wdog, jiffies + (HZ * 30));
 	exit_sem(tsk);
 	exit_shm(tsk);
 	exit_files(tsk);
 	exit_fs(tsk);
 	check_stack_usage();
 	exit_thread();
+	stop_exit_wdog(&wdog);
 
 	/*
 	 * Flush inherited counters to the parent - before the parent
@@ -1105,7 +1107,6 @@ void do_exit(long code)
 	/* causes final put_task_struct in finish_task_switch(). */
 	tsk->state = TASK_DEAD;
 	tsk->flags |= PF_NOFREEZE;	/* tell freezer to ignore us */
-	stop_exit_wdog(&wdog);
 	schedule();
 	BUG();
 	/* Avoid "noreturn function does return".  */
