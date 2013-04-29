@@ -292,29 +292,33 @@ static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
 {
 	int ret;
 	int recovery_backlight = 100;
+	static int set_recovery_bl_done;
 
-	if (mipi_JDI_pdata->recovery_backlight)
-		recovery_backlight = mipi_JDI_pdata->recovery_backlight;
+	if (!set_recovery_bl_done) {
+		if (mipi_JDI_pdata->recovery_backlight)
+			recovery_backlight = mipi_JDI_pdata->recovery_backlight;
 
-	pr_info("%s: backlight level %d\n", __func__, recovery_backlight);
+		pr_info("%s: %d/255\n", __func__, recovery_backlight);
 
-	if (bl_lpm) {
-		if (hw_revision != 0x3) {
-			ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
-				recovery_backlight, PWM_PERIOD_USEC);
-			if (ret) {
-				pr_err("pwm_config failed %d\n", ret);
-				return;
-			}
-			ret = pwm_enable(bl_lpm);
-			if (ret)
-				pr_err("pwm enable on lpm failed, bl=%d\n",
-					recovery_backlight);
-		} else
-			JDI_command_backlight(recovery_backlight);
+		if (bl_lpm) {
+			if (hw_revision != 0x3) {
+				ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
+					recovery_backlight, PWM_PERIOD_USEC);
+				if (ret) {
+					pr_err("pwm_config failed %d\n", ret);
+					return;
+				}
+				ret = pwm_enable(bl_lpm);
+				if (ret)
+					pr_err("pwm enable on lpm failed, bl=%d\n",
+						recovery_backlight);
+			} else
+				JDI_command_backlight(recovery_backlight);
 
-		msleep_interruptible(10);
-		gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
+			msleep_interruptible(10);
+			gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
+		}
+		set_recovery_bl_done = 1;
 	}
 }
 static void mipi_JDI_lcd_shutdown(void)
