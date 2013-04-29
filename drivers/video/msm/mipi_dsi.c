@@ -147,7 +147,8 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	/* disbale dsi engine */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x0000, 0);
 
-	mipi_dsi_phy_ctrl(0);
+	if (!(mfd->panel_info.mipi.keep_mipi_lanes_lp11))
+		mipi_dsi_phy_ctrl(0);
 
 	mipi_dsi_ahb_ctrl(0);
 	spin_unlock_bh(&dsi_clk_lock);
@@ -162,7 +163,8 @@ static int mipi_dsi_off(struct platform_device *pdev)
 			mipi_dsi_pdata->panel_power_save(MSM_DISP_POWER_OFF);
 	}
 
-	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
+	if (!(mfd->panel_info.mipi.keep_mipi_lanes_lp11) &&
+			mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(0);
 
 	if (mdp_rev >= MDP_REV_41)
