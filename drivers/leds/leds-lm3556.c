@@ -31,6 +31,7 @@
 #define LM3556_TORCH_STEP	32
 #define LM3556_STROBE_STEP	16
 #define LM3556_STANDBY_VAL     0x40
+#define LM3556_ENABLE_STROBE_PIN_VAL 0x63
 
 
 #define LM3556_SI_REV_AND_FILTER_TIME_REG	0x00
@@ -285,7 +286,6 @@ int lm3556_enable_strobe_mode(void)
 EXPORT_SYMBOL(lm3556_enable_strobe_mode);
 
 int lm3556_enable_torch_mode(void)
-
 {
 	int err;
 
@@ -305,6 +305,26 @@ int lm3556_enable_torch_mode(void)
 }
 EXPORT_SYMBOL(lm3556_enable_torch_mode);
 
+
+int lm3556_init_default_mode(void)
+{
+	int err;
+
+	if (!lm3556_probe_success)
+		return -ENODEV;
+
+	err = lm3556_write_reg(LM3556_ENABLE_REG,
+				LM3556_ENABLE_STROBE_PIN_VAL);
+	if (err) {
+		pr_err("%s: Writing to 0x%X failed %i\n",
+				__func__, LM3556_ENABLE_REG,
+				err);
+		err = -EIO;
+	}
+
+	return err;
+}
+EXPORT_SYMBOL(lm3556_init_default_mode);
 
 int lm3556_disable_mode(void)
 {
