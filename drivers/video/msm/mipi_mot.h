@@ -224,6 +224,7 @@ u8 *mipi_mot_get_gamma_setting(struct msm_fb_data_type *mfd, int level);
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd);
 int mipi_mot_panel_off(struct msm_fb_data_type *mfd);
 void mipi_mot_panel_exit_sleep(void);
+void mipi_mot_exit_sleep_wait(void);
 int mipi_mot_get_pwr_mode(struct msm_fb_data_type *mfd, u8 *pwr_mode);
 void mipi_mot_esd_work(void);
 int mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt);
