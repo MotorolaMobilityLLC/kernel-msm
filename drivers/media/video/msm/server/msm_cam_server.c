@@ -2583,8 +2583,10 @@ int msm_cam_server_close_mctl_session(struct msm_cam_v4l2_device *pcam)
 		return -ENODEV;
 	}
 
-	if (pmctl->mctl_release)
+	if (pmctl->mctl_release) {
 		pmctl->mctl_release(pmctl);
+		pmctl->mctl_release = NULL;
+	}
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
 	kref_put(&pmctl->refcount, msm_release_ion_client);
