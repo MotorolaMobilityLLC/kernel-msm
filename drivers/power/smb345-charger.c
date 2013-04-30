@@ -114,6 +114,8 @@ static int charge_en_flag = 1;
 struct wake_lock wireless_wakelock;
 bool wireless_on;
 bool otg_on;
+extern int ac_on;
+static bool wpc_en;
 
 /* Sysfs interface */
 static DEVICE_ATTR(reg_status, S_IWUSR | S_IRUGO, smb345_reg_show, NULL);
@@ -525,6 +527,8 @@ static void wireless_reset(void)
 	wireless_on = false;
 	if (delayed_work_pending(&charger->wireless_reAICL_work))
 		cancel_delayed_work(&charger->wireless_reAICL_work);
+	if (ac_on)
+		smb345_set_InputCurrentlimit(charger->client, 1200);
 	bq27541_wireless_callback(wireless_on);
 	if (wake_lock_active(&wireless_wakelock))
 		wake_unlock(&wireless_wakelock);
@@ -752,6 +756,11 @@ int usb_cable_type_detect(unsigned int chgr_type)
 		SMB_NOTICE("INOK=H\n");
 		success =  bq27541_battery_callback(non_cable);
 		touch_callback(non_cable);
+		if (wpc_en) {
+			SMB_NOTICE("enable DCIN");
+			gpio_set_value(charger->wpc_en1, 0);
+			gpio_set_value(charger->wpc_en2, 0);
+		}
 	} else {
 		SMB_NOTICE("INOK=L\n");
 
@@ -775,6 +784,13 @@ int usb_cable_type_detect(unsigned int chgr_type)
 			smb345_set_InputCurrentlimit(client, 1200);
 			success =  bq27541_battery_callback(ac_cable);
 			touch_callback(ac_cable);
+			if (wpc_en) {
+				if (delayed_work_pending(&charger->wireless_reAICL_work))
+					cancel_delayed_work(&charger->wireless_reAICL_work);
+				SMB_NOTICE("AC cable detect, disable DCIN");
+				gpio_set_value(charger->wpc_en1, 1);
+				gpio_set_value(charger->wpc_en2, 1);
+			}
 		}
 	}
 done:
@@ -868,6 +884,30 @@ error:
 	return ret;
 }
 
+static int smb345_wireless_en_config(struct smb345_charger *smb)
+{
+	int err = 0 ;
+
+	err = gpio_request(charger->wpc_en1, "WPC_EN1");
+	if (err)
+		return -ENODEV;
+	err = gpio_request(charger->wpc_en2, "WPC_EN2");
+	if (err)
+		goto fault;
+
+	gpio_set_value(charger->wpc_en1, 0);
+	gpio_set_value(charger->wpc_en2, 0);
+
+	SMB_NOTICE("GPIO pin %d, %d requested ok, wpc_en1 = %s, wpc_en2 = %s\n",
+		charger->wpc_en1, charger->wpc_en2, gpio_get_value(charger->wpc_en1) ? "H" : "L",
+		gpio_get_value(charger->wpc_en2) ? "H" : "L");
+
+	return 0;
+fault:
+	gpio_free(charger->wpc_en1);
+	return err;
+}
+
 static int __devinit smb345_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -916,8 +956,11 @@ static int __devinit smb345_probe(struct i2c_client *client,
 	charger->cur_cable_type = non_cable;
 	charger->old_cable_type = non_cable;
 	charger->wpc_pok_gpio = -1;
+	charger->wpc_en1 = -1;
+	charger->wpc_en2 = -1;
 	wireless_on = false;
 	otg_on = false;
+	wpc_en = false;
 
 	ret = smb345_inok_irq(charger);
 	if (ret) {
@@ -935,8 +978,18 @@ static int __devinit smb345_probe(struct i2c_client *client,
 				goto error;
 			}
 
-			queue_delayed_work(smb345_wq, &charger->wireless_det_work, WPC_INIT_DET_INTERVAL);
 		}
+		if (platform_data->wpc_en1 != -1 && platform_data->wpc_en2 != -1) {
+			charger->wpc_en1 = platform_data->wpc_en1;
+			charger->wpc_en2 = platform_data->wpc_en2;
+			wpc_en = true;
+			ret = smb345_wireless_en_config(charger);
+			if (ret) {
+				SMB_ERR("Failed in config WPC en gpio\n");
+				goto error;
+			}
+		}
+		queue_delayed_work(smb345_wq, &charger->wireless_det_work, WPC_INIT_DET_INTERVAL);
 	}
 
 	printk("smb345_probe-\n");

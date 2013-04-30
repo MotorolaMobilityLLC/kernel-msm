@@ -65,7 +65,7 @@
 /* Global variable */
 unsigned bq27541_battery_cable_status = 0;
 unsigned bq27541_battery_driver_ready = 0;
-static int ac_on ;
+int ac_on ;
 static int usb_on ;
 extern bool wireless_on;
 extern bool otg_on;

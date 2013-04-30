@@ -1085,12 +1085,22 @@ static void __init apq8064_ehci_host_init(void)
 	}
 }
 
+static struct smb345_platform_data smb345_pdata_ER = {
+	.wpc_pok_gpio = GPIO_WPC_POK,
+	.wpc_en1 = PM8921_GPIO_PM_TO_SYS(28),
+	.wpc_en2 = PM8921_GPIO_PM_TO_SYS(32),
+};
+
 static struct smb345_platform_data smb345_pdata_SR2 = {
 	.wpc_pok_gpio = GPIO_WPC_POK,
+	.wpc_en1 = -1,
+	.wpc_en2 = -1,
 };
 
 static struct smb345_platform_data smb345_pdata_SR1 = {
 	.wpc_pok_gpio = -1,
+	.wpc_en1 = -1,
+	.wpc_en2 = -1,
 };
 
 static struct i2c_board_info smb345_charger_i2c_info_SR1[] __initdata = {
@@ -1107,6 +1117,13 @@ static struct i2c_board_info smb345_charger_i2c_info_SR2[] __initdata = {
 	},
 };
 
+static struct i2c_board_info smb345_charger_i2c_info_ER[] __initdata = {
+	{
+		I2C_BOARD_INFO("smb345", 0x6a),
+		.platform_data = &smb345_pdata_ER,
+	},
+};
+
 static void smb345_init(void)
 {
 	hw_rev revision = HW_REV_INVALID;
@@ -1115,11 +1132,15 @@ static void smb345_init(void)
 
 	switch (revision) {
 	case HW_REV_B:
-	case HW_REV_C:
-	case HW_REV_D:
 		i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 			smb345_charger_i2c_info_SR2,
 			ARRAY_SIZE(smb345_charger_i2c_info_SR2));
+		break;
+	case HW_REV_C:
+	case HW_REV_D:
+		i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+			smb345_charger_i2c_info_ER,
+			ARRAY_SIZE(smb345_charger_i2c_info_ER));
 		break;
 	default:
 		i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,

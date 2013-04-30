@@ -171,6 +171,11 @@ static struct pm8xxx_gpio_init pm8921_cdp_kp_gpios[] __initdata = {
 	PM8921_GPIO_INPUT(17, PM_GPIO_PULL_UP_1P5),	/* SD_WP */
 };
 
+static struct pm8xxx_gpio_init pm8921_gpios_WPC[] __initdata = {
+	PM8921_GPIO_OUTPUT(28, 0, LOW),
+	PM8921_GPIO_OUTPUT(32, 0, LOW),
+};
+
 /* Initial PM8917 GPIO configurations */
 static struct pm8xxx_gpio_init pm8917_gpios[] __initdata = {
 	PM8921_GPIO_OUTPUT(14, 1, HIGH),	/* HDMI Mux Selector */
@@ -250,6 +255,10 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 			apq8064_configure_gpios(pm8917_cdp_kp_gpios,
 					ARRAY_SIZE(pm8917_cdp_kp_gpios));
 	}
+
+	if (hw_revision == HW_REV_C || hw_revision == HW_REV_D)
+		apq8064_configure_gpios(pm8921_gpios_WPC,
+				ARRAY_SIZE(pm8921_gpios_WPC));
 
 #ifdef CONFIG_ASUSTEK_KEYPAD
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {

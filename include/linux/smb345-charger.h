@@ -94,10 +94,14 @@ struct smb345_charger {
 	unsigned long time_of_1800mA_limit;
 	unsigned int curr_limit;
 	unsigned int wpc_pok_gpio;
+	unsigned int wpc_en1;
+	unsigned int wpc_en2;
 };
 
 struct smb345_platform_data {
 	unsigned int wpc_pok_gpio;
+	unsigned int wpc_en1;
+	unsigned int wpc_en2;
 };
 
 #endif /*__LINUX_smb345_CHARGER_H */
