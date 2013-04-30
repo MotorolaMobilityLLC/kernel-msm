@@ -1023,7 +1023,8 @@ struct msm_snapshot_pp_status {
 #define CFG_DIRECT_I2C_WRITE          60
 #define CFG_DIRECT_I2C_READ           61
 #define CFG_HDR_UPDATE                62
-#define CFG_MAX                       63
+#define CFG_SET_STROBE                63
+#define CFG_MAX                       64
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
@@ -1690,6 +1691,7 @@ struct sensor_cfg_data {
 		int32_t vision_mode_enable;
 		int32_t vision_ae;
 		struct otp_info_t module_info;
+		uint8_t enable_strobe;
 	} cfg;
 };
 
