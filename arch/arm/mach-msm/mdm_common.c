@@ -367,6 +367,7 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 	int status, ret = 0;
 	struct mdm_device *mdev = filp->private_data;
 	struct mdm_modem_drv *mdm_drv;
+	struct mdm_device *l_mdev;
 
 	if (_IOC_TYPE(cmd) != CHARM_CODE) {
 		pr_err("%s: invalid ioctl code to mdm id %d\n",
@@ -452,6 +453,14 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 		pr_debug("%s Image upgrade ioctl recieved\n", __func__);
 		if (mdm_drv->pdata->image_upgrade_supported &&
 				mdm_ops->image_upgrade_cb) {
+			list_for_each_entry(l_mdev, &mdm_devices, link) {
+				if (l_mdev != mdev) {
+					pr_debug("%s:setting mdm_rdy to false",
+							__func__);
+					atomic_set(&l_mdev->mdm_data.mdm_ready,
+							0);
+				}
+			}
 			get_user(status, (unsigned long __user *) arg);
 			mdm_ops->image_upgrade_cb(mdm_drv, status);
 		} else
