@@ -76,6 +76,7 @@ struct res_trk_context {
 #define VCDRES_MSG_HIGH(xx_fmt...)	printk(KERN_WARNING "\n" xx_fmt)
 #define VCDRES_MSG_ERROR(xx_fmt...)	printk(KERN_ERR "\n err: " xx_fmt)
 #define VCDRES_MSG_FATAL(xx_fmt...)	printk(KERN_ERR "\n<FATAL> " xx_fmt)
+#define VCDRES_MSG_INFO(xx_fmt...)	printk(KERN_INFO "\n  * " xx_fmt)
 
 #ifdef CONFIG_MSM_BUS_SCALING
 int res_trk_update_bus_perf_level(struct vcd_dev_ctxt *dev_ctxt,
