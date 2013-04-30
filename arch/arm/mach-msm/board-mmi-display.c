@@ -152,24 +152,6 @@ static int mipi_dsi_power(int on)
 
 	pr_debug("%s (%d) is called\n", __func__, on);
 
-	if (!dsi_regs_lst.disp_reg[0].handle ||
-					!dsi_regs_lst.disp_reg[1].handle) {
-		/*
-		 * This is a HACK for SOL smooth transtion: Because QCOM can
-		 * not keep the MIPI lines at LP11 start when the kernel start
-		 * so, when the first update, we need to reset the panel to
-		 * raise the err detection from panel due to the MIPI lines
-		 * drop.
-		 * - With Video mode, this will be call mdp4_dsi_video_on()
-		 *   before it disable the timing generator. This will prevent
-		 *   the image to fade away.
-		 * - Command mode, then we have to reset in the first call
-		 *   to trun on the power
-		 */
-		if (mmi_disp_info.disp_intf == MMI_DISP_MIPI_DSI_CM)
-			panel_power_ctrl_en(0);
-	}
-
 	if (on) {
 		rc = power_rail_on(&dsi_regs_lst);
 		mdelay(10);
