@@ -125,23 +125,29 @@ void mipi_mot_panel_exit_sleep(void)
 	}
 }
 
+void mipi_mot_exit_sleep_wait()
+{
+	if (mot_panel->exit_sleep_panel_on_wait > 0) {
+		pr_debug("%s: wait for exit_sleep timer\n", __func__);
+		wait_for_completion_timeout(&panel_on_delay_completion,
+			msecs_to_jiffies(
+			mot_panel->exit_sleep_panel_on_wait) + 1);
+		pr_debug("%s: wait for exit_sleep timer - done\n", __func__);
+	}
+}
+
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 {
 	u8 pwr_mode;
 	int ret = 0;
 	int keep_hidden = mfd->resume_cfg.keep_hidden;
 	mfd->resume_cfg.keep_hidden = 0;
+
 	if (keep_hidden) {
 		pr_info("%s: skipping display on\n", __func__);
 		mot_panel->esd_expected_pwr_mode = 0x90;
 	} else {
-		if (mot_panel->exit_sleep_panel_on_wait > 0) {
-			pr_debug("%s: wait for exit_sleep deferred timer\n",
-								__func__);
-			wait_for_completion_timeout(&panel_on_delay_completion,
-				msecs_to_jiffies(
-				mot_panel->exit_sleep_panel_on_wait) + 1);
-		}
+		mipi_mot_exit_sleep_wait();
 
 		ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
 		if (ret > 0)
