@@ -1009,10 +1009,14 @@ int dpm_suspend_end(pm_message_t state)
 	int error = dpm_suspend_late(state);
 	if (error)
 		return error;
+
 	error = dpm_suspend_noirq(state);
-	if (error)
+	if (error) {
 		dpm_resume_early(resume_event(state));
-	return error;
+		return error;
+	}
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(dpm_suspend_end);
 
