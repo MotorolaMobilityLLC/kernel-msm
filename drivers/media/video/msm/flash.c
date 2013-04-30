@@ -172,10 +172,6 @@ static int msm_camera_flash_led_lm3556(
 
 	switch (led_state) {
 
-	case MSM_CAMERA_LED_INIT:
-		rc = 0;
-		break;
-
 	case MSM_CAMERA_LED_HIGH:
 		rc = lm3556_enable_strobe_mode();
 		break;
@@ -185,8 +181,12 @@ static int msm_camera_flash_led_lm3556(
 		break;
 
 	case MSM_CAMERA_LED_RELEASE:
-	case MSM_CAMERA_LED_OFF:
 		rc = lm3556_disable_mode();
+		break;
+
+	case MSM_CAMERA_LED_INIT:
+	case MSM_CAMERA_LED_OFF:
+		rc = lm3556_init_default_mode();
 		break;
 
 	default:
