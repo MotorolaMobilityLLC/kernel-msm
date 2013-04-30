@@ -727,6 +727,7 @@ static void exit_timeout(unsigned long data)
 	struct task_struct *tsk = (struct task_struct *)data;
 	pr_emerg("**** do_exit() timeout for task %s (%d)\n",
 			tsk->comm, task_pid_nr(tsk));
+	sched_show_task(tsk);
 	BUG();
 }
 
