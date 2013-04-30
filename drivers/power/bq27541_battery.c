@@ -535,8 +535,6 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 			} else {
 				val->intval = POWER_SUPPLY_STATUS_CHARGING;
 			}
-		} else if (ret & BATT_STS_FC) {		/* Fully charged detected */
-			val->intval = POWER_SUPPLY_STATUS_FULL;
 		} else if (ret & BATT_STS_SOCF) {		/* Fully Discharged detected */
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 		} else {
