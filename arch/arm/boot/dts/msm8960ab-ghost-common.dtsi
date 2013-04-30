@@ -101,6 +101,8 @@
 		synaptics,purge-enabled;
 		synaptics,reset-on-resume;
 		synaptics,one-touch-enabled;
+		synaptics,display-synced-suspend;
+		synaptics,hw-reset;
 	};
 };
 
