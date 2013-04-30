@@ -5532,6 +5532,56 @@ WLANTL_RxFrames
           continue;
       }
 
+#ifdef FEATURE_WLAN_TDLS
+      if (( pClientSTA->ucExists ) &&
+           (WLAN_STA_TDLS == pClientSTA->wSTADesc.wSTAType) &&
+           (pClientSTA->ucTxSuspended))
+          vos_atomic_set_U8( &pClientSTA->ucTxSuspended, 0 );
+      else if ( !broadcast && (pClientSTA->ucExists == 0 ) )
+      {
+          tpSirMacMgmtHdr pMacHeader = WDA_GET_RX_MAC_HEADER( pvBDHeader );
+
+          /* from the direct peer while it is not registered to TL yet */
+          if ( (pMacHeader->fc.fromDS == 0) &&
+               (pMacHeader->fc.toDS == 0) )
+          {
+              v_U8_t ucAddr3STAId;
+
+              ucAddr3STAId = WDA_GET_RX_ADDR3_IDX(pvBDHeader);
+
+              if ( WLANTL_STA_ID_INVALID(ucAddr3STAId) )
+              {
+                TLLOGW(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
+                           "WLAN TL:STA ID %d invalid - dropping pkt", ucAddr3STAId));
+                /* Drop packet */
+                vos_pkt_return_packet(vosTempBuff);
+                vosTempBuff = vosDataBuff;
+                continue;
+              }
+
+              if (!(pTLCb->atlSTAClients[ucAddr3STAId] && pTLCb->atlSTAClients[ucAddr3STAId]->ucExists &&
+                  (WLAN_STA_INFRA == pTLCb->atlSTAClients[ucAddr3STAId]->wSTADesc.wSTAType) &&
+                  (WLANTL_STA_AUTHENTICATED == pTLCb->atlSTAClients[ucAddr3STAId]->tlState)))
+              {
+                  TLLOGW(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
+                           "%s: staId %d addr3Id %d tlState %d. Unkown Receiver/Transmitter Dropping packet\n", __func__,
+                           ucSTAId, ucAddr3STAId, pTLCb->atlSTAClients[ucAddr3STAId]->tlState));
+                  vos_pkt_return_packet(vosTempBuff);
+                  vosTempBuff = vosDataBuff;
+                  continue;
+              }
+              else
+              {
+                  TLLOGW(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
+                           "%s: staId %d doesn't exist, but mapped to AP staId %d \n", __func__,
+                           ucSTAId, ucAddr3STAId));
+                  ucSTAId = ucAddr3STAId;
+                  pClientSTA = pTLCb->atlSTAClients[ucAddr3STAId];
+              }
+          }
+      }
+#endif
+
       if ((( 0 == pClientSTA->ucExists ) ||
           ( (0 != pClientSTA->ucRxBlocked)
             ///@@@: xg: no checking in SOFTAP for now, will revisit later
@@ -5545,18 +5595,13 @@ WLANTL_RxFrames
       {
         uDPUSig = WDA_GET_RX_DPUSIG( pvBDHeader );
           //Station has not yet been registered with TL - cache the frame
+        TLLOGW(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
+                 "%s: staId %d exist %d tlState %d cache rx frame \n", __func__, ucSTAId,
+                 pClientSTA->ucExists, pClientSTA->tlState));
         WLANTL_CacheSTAFrame( pTLCb, ucSTAId, vosTempBuff, uDPUSig, broadcast, ucFrmType);
         vosTempBuff = vosDataBuff;
         continue;
       }
-
-
-#ifdef FEATURE_WLAN_TDLS
-      if (( pClientSTA->ucExists ) &&
-           (WLAN_STA_TDLS == pClientSTA->wSTADesc.wSTAType) &&
-           (pClientSTA->ucTxSuspended))
-          vos_atomic_set_U8( &pClientSTA->ucTxSuspended, 0 );
-#endif
 
 #ifdef FEATURE_WLAN_CCX
       if ((pClientSTA->wSTADesc.ucIsCcxSta)|| broadcast)
