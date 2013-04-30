@@ -39,15 +39,15 @@ static int camera_dev_open(struct inode *inode, struct file *file);
 static int camera_dev_release(struct inode *inode, struct file *file);
 static long camera_dev_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg);
-static int camera_dev_read(struct file *file, char __user *buf, size_t size,
-		loff_t *ppos);
+static int camera_dev_read_stats(struct file *file, char __user *buf,
+		size_t size, loff_t *ppos);
 
 const struct file_operations camera_dev_fops = {
 	.owner = THIS_MODULE,
 	.open = camera_dev_open,
 	.release = camera_dev_release,
 	.unlocked_ioctl = camera_dev_ioctl,
-	.read = camera_dev_read
+	.read = camera_dev_read_stats
 };
 
 static struct miscdevice cam_misc_device0 = {
@@ -926,13 +926,22 @@ static long camera_dev_ioctl(struct file *file, unsigned int cmd,
 	return rc;
 }
 
-static ssize_t camera_dev_read(struct file *file, char __user *buf, size_t size,
-		loff_t *ppos)
+static ssize_t camera_dev_read_stats(struct file *file, char __user *buf,
+		size_t size, loff_t *ppos)
 {
 	int rc = 0;
 	uint8_t data[AF_STATISTICS_DATA];
 	uint8_t *data_ptr = data;
 	int i;
+
+	memset(data, 0, sizeof(data));
+
+	if (size > AF_STATISTICS_DATA) {
+		pr_info("%s: Size asked for is greater than what is expected.\n"
+				, __func__);
+		size = AF_STATISTICS_DATA;
+	}
+
 	/* TODO: New function is needed to read all bytes at once. */
 	for (i = AF_USEFUL_STATISTICS_ADDR;
 			i < AF_USEFUL_STATISTICS_ADDR + 10;
