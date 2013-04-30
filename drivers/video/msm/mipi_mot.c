@@ -552,6 +552,7 @@ static int panel_disable(struct platform_device *pdev)
 				pr_info("%s: skipping full panel_disable\n",
 					__func__);
 				mipi_mot_panel_off(mfd);
+				mipi_mot_exit_sleep_wait();
 			} else
 				mot_panel.panel_disable(mfd);
 		} else {
