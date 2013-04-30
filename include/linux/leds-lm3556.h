@@ -58,6 +58,7 @@ struct lm3556_platform_data {
 
 int lm3556_enable_strobe_mode(void);
 int lm3556_enable_torch_mode(void);
+int lm3556_init_default_mode(void);
 int lm3556_disable_mode(void);
 
 #endif	/* __KERNEL__ */
