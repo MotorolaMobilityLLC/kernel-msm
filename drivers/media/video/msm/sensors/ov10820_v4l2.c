@@ -437,6 +437,11 @@ static struct msm_camera_i2c_reg_conf ov10820_BLC_work_around_settings[] = {
 	{0x3509, 0x0a},
 };
 
+static struct msm_camera_i2c_reg_conf ov10820_init_strobe_ctrl_settings[] = {
+	{0x3b02, 0x00},
+	{0x3b03, 0x40},
+};
+
 static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_a1[] = {
 	{0x3080, 0x04},
 	{0x3082, 0x7e},
@@ -849,6 +854,9 @@ static struct msm_camera_i2c_conf_array ov10820_init_conf_rev_a1[] = {
 		MSM_CAMERA_I2C_BYTE_DATA},
 	{&ov10820_recommend_settings_rev_a1[0],
 		ARRAY_SIZE(ov10820_recommend_settings_rev_a1), 0,
+		MSM_CAMERA_I2C_BYTE_DATA},
+	{&ov10820_init_strobe_ctrl_settings[0],
+		ARRAY_SIZE(ov10820_init_strobe_ctrl_settings), 0,
 		MSM_CAMERA_I2C_BYTE_DATA}
 };
 
@@ -858,6 +866,9 @@ static struct msm_camera_i2c_conf_array ov10820_init_conf_rev_b1[] = {
 		MSM_CAMERA_I2C_BYTE_DATA},
 	{&ov10820_recommend_settings_rev_b1[0],
 		ARRAY_SIZE(ov10820_recommend_settings_rev_b1), 0,
+		MSM_CAMERA_I2C_BYTE_DATA},
+	{&ov10820_init_strobe_ctrl_settings[0],
+		ARRAY_SIZE(ov10820_init_strobe_ctrl_settings), 0,
 		MSM_CAMERA_I2C_BYTE_DATA}
 };
 
@@ -1374,6 +1385,23 @@ static int32_t ov10820_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 }
 
+static int32_t ov10820_ctrl_strobe(struct msm_sensor_ctrl_t *s_ctrl,
+			uint8_t enable_strobe)
+{
+	int32_t rc = 0;
+	pr_debug("%s : 0x%x", __func__, enable_strobe);
+	if (enable_strobe) {
+		rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client, 0x3b00,
+				0x83, MSM_CAMERA_I2C_BYTE_DATA);
+	} else {
+		rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client, 0x3b00,
+				0x00, MSM_CAMERA_I2C_BYTE_DATA);
+	}
+	if (rc < 0)
+		pr_err("%s: Unable to toggle the strobe line\n", __func__);
+	return rc;
+}
+
 static int32_t ov10820_check_hw_rev(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -1592,6 +1620,7 @@ static struct msm_sensor_fn_t ov10820_func_tbl = {
 	.sensor_match_id                = ov10820_match_id,
 	.sensor_get_csi_params          = msm_sensor_get_csi_params,
 	.sensor_get_module_info         = ov10820_get_module_info,
+	.sensor_ctrl_strobe             = ov10820_ctrl_strobe,
 };
 
 static struct msm_sensor_reg_t ov10820_regs = {
