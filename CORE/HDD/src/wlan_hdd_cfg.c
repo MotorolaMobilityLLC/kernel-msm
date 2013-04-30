@@ -176,6 +176,11 @@ static void cbNotifySetNeighborScanMaxChanTime(hdd_context_t *pHddCtx, unsigned 
 }
 #endif
 
+static void cbNotifySetEnableSSR(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    sme_UpdateEnableSSR((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->enableSSR);
+}
+
 REG_TABLE_ENTRY g_registry_table[] =
 {
    REG_VARIABLE( CFG_RTS_THRESHOLD_NAME, WLAN_PARAM_Integer,
@@ -2172,6 +2177,13 @@ REG_VARIABLE_STRING( CFG_LIST_OF_NON_DFS_COUNTRY_CODE, WLAN_PARAM_String,
              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
              (void *)CFG_LIST_OF_NON_DFS_COUNTRY_CODE_DEFAULT),
 
+   REG_DYNAMIC_VARIABLE( CFG_ENABLE_SSR, WLAN_PARAM_Integer,
+                hdd_config_t, enableSSR,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_ENABLE_SSR_DEFAULT,
+                CFG_ENABLE_SSR_MIN,
+                CFG_ENABLE_SSR_MAX,
+                cbNotifySetEnableSSR, 0 ),
 };
 
 /*
@@ -2551,7 +2563,10 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gIgnore_Chan165] Value = [%u] ",pHddCtx->cfg_ini->ignore_chan165);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [enableRxSTBC] Value = [%u] ",pHddCtx->cfg_ini->enableRxSTBC);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gEnableLpwrImgTransition] Value = [%u] ",pHddCtx->cfg_ini->enableLpwrImgTransition);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gEnableSSR] Value = [%u] ",pHddCtx->cfg_ini->enableSSR);
+
 }
+
 
 
 #define CFG_VALUE_MAX_LEN 256
@@ -3840,6 +3855,9 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.scanCfgAgingTime = pConfig->scanAgingTimeout;
 
    smeConfig.csrConfig.enableTxLdpc = pConfig->enableTxLdpc;
+
+   /* update SSR config */
+   sme_UpdateEnableSSR((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->enableSSR);
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, &smeConfig);
    if ( !HAL_STATUS_SUCCESS( halStatus ) )

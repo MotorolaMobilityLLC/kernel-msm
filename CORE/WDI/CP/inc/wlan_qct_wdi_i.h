@@ -1088,6 +1088,9 @@ typedef struct
 
   /*timestamp when we get response timer event*/
   wpt_uint32                  uTimeStampRspTmrExp;
+
+  /* enable/disable SSR on WDI timeout */
+  wpt_boolean                 bEnableSSR;
 }WDI_ControlBlockType; 
 
 

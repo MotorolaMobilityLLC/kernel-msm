@@ -20363,9 +20363,9 @@ WDI_ResponseTimerCB
   WDI_ControlBlockType*  pWDICtx = (WDI_ControlBlockType*)pUserData;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-  if (NULL == pWDICtx )
+  if (NULL == pWDICtx)
   {
-    WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                 "%s: Invalid parameters", __func__);
     WDI_ASSERT(0);
     return;
@@ -20388,33 +20388,41 @@ WDI_ResponseTimerCB
     return;
   }
 
-  if ( WDI_MAX_RESP != pWDICtx->wdiExpectedResponse )
+  if (WDI_MAX_RESP != pWDICtx->wdiExpectedResponse)
   {
 
-  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
             "Timeout occurred while waiting for %s (%d) message from device "
             " - catastrophic failure, timeStampTmrStart: %ld, timeStampTmrExp: %ld",
             WDI_getRespMsgString(pWDICtx->wdiExpectedResponse),
             pWDICtx->wdiExpectedResponse, pWDICtx->uTimeStampRspTmrStart,
             pWDICtx->uTimeStampRspTmrExp);
-  /* WDI timeout means Riva is not responding or SMD communication to Riva
-   * is not happening. The only possible way to recover from this error
-   * is to initiate SSR from APPS 
-   * There is also an option to re-enable wifi, which will eventually
-   * trigger SSR
-   */
+
+    /* WDI timeout means Riva is not responding or SMD communication to Riva
+     * is not happening. The only possible way to recover from this error
+     * is to initiate SSR from APPS.
+     * There is also an option to re-enable wifi, which will eventually
+     * trigger SSR
+     */
+    if (gWDICb.bEnableSSR == false)
+    {
+       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+            "SSR is not enabled on WDI timeout");
+       WDI_DetectedDeviceError(pWDICtx, WDI_ERR_BASIC_OP_FAILURE);
+       return;
+    }
 #ifndef WDI_RE_ENABLE_WIFI_ON_WDI_TIMEOUT
-  wpalWcnssResetIntr();
-  /* if this timer fires, it means Riva did not receive the FIQ */
-  wpalTimerStart(&pWDICtx->ssrTimer, WDI_SSR_TIMEOUT);
+    wpalWcnssResetIntr();
+    /* if this timer fires, it means Riva did not receive the FIQ */
+    wpalTimerStart(&pWDICtx->ssrTimer, WDI_SSR_TIMEOUT);
 #else
-  WDI_DetectedDeviceError( pWDICtx, WDI_ERR_BASIC_OP_FAILURE);
-  wpalWlanReload();
+    WDI_DetectedDeviceError(pWDICtx, WDI_ERR_BASIC_OP_FAILURE);
+    wpalWlanReload();
 #endif
   }
   else
   {
-     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+     WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  "Timeout occurred but not waiting for any response %d "
                  "timeStampTmrStart: %ld, timeStampTmrExp: %ld",
                  pWDICtx->wdiExpectedResponse, pWDICtx->uTimeStampRspTmrStart,
@@ -26525,3 +26533,17 @@ WDI_SsrTimerCB
   return;
 
 }/*WDI_SsrTimerCB*/
+
+/**
+ @brief WDI_SetEnableSSR -
+    This API is called to enable/disable SSR on WDI timeout.
+
+ @param  enableSSR : enable/disable SSR
+
+ @see
+ @return none
+*/
+void WDI_SetEnableSSR(wpt_boolean  enableSSR)
+{
+   gWDICb.bEnableSSR = enableSSR;
+}
