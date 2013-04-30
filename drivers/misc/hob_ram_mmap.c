@@ -14,24 +14,12 @@
  *
  */
 
-#include <linux/miscdevice.h>
-#include <linux/wait.h>
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/string.h>
-#include <linux/errno.h>
-#include <linux/init.h>
-#include <linux/types.h>
-#include <linux/mm.h>
 #include <linux/fs.h>
-#include <linux/err.h>
-#include <linux/sched.h>
+#include <linux/kernel.h>
+#include <linux/miscdevice.h>
+#include <linux/mm.h>
+#include <linux/module.h>
 #include <linux/spinlock.h>
-#include <linux/debugfs.h>
-#include <linux/slab.h>
-#include <asm/uaccess.h>
-#include <asm/pgtable.h>
-#include <mach/msm_rpcrouter.h>
 
 #define SHOB_RAM_ADDR 0x8FA80000
 #define DHOB_RAM_ADDR 0x8FAC0000
