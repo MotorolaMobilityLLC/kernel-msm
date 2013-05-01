@@ -1,0 +1,18 @@
+HOB RAM MMAP Device
+
+HOB RAM MMAP Device provides ability for userspace to access the hand over block
+memory to read out modem related parameters.
+
+Required properties:
+- compatible : should be "mmi,hob_ram"
+- reg :
+	(0) offset and length of the DHOB partition
+	(1) offset and length of the SHOB partition
+
+Example:
+	hob_ram@c2c0000 {
+		compatible = "mmi,hob_ram";
+		reg = <0xc2c0000 0x40000>,
+		      <0xc300000 0x1000>;
+	};
+
