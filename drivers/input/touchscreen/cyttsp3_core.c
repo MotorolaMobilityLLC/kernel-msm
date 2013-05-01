@@ -420,11 +420,11 @@ struct cyttsp_firmware fw = {
 	.vsize = sizeof(ver)
 };
 
+static struct regulator *lvs1;
+static struct regulator *l19;
 static void init_platform_settings(struct device *dev, struct cyttsp_platform_data *pdata)
 {
 	int i;
-	struct regulator *lvs1;
-	struct regulator *l19;
 
 	// These are hard-coded for now, as this driver is temporary and
 	// only intended for bring-up
@@ -457,6 +457,14 @@ static void init_platform_settings(struct device *dev, struct cyttsp_platform_da
 
 	pdata->fw = &fw;
 
+}
+
+static void exit_platform_settings(struct device *dev)
+{
+	regulator_disable(l19);
+	regulator_put(l19);
+	regulator_disable(lvs1);
+	regulator_put(lvs1);
 }
 #endif
 
@@ -2560,6 +2568,25 @@ static int _cyttsp_resume_sleep(struct cyttsp *ts) {
 	return retval;
 }
 
+static int _cyttsp_detect_hw(struct cyttsp *ts)
+{
+	int ret;
+
+	ret = _cyttsp_hard_reset(ts);
+	if (ret) {
+		pr_err("%s: HW reset failed: %d\n", __func__, ret);
+		return -ENODEV;
+	}
+
+	ret = _cyttsp_load_bl_regs(ts);
+	if (ret) {
+		pr_err("%s: BL regs read failed: %d\n", __func__, ret);
+		return -ENODEV;
+	}
+
+	return ret;
+}
+
 static int _cyttsp_startup(struct cyttsp *ts) {
 	int retval = 0;
 
@@ -3044,7 +3071,7 @@ void *cyttsp_core_init(struct cyttsp_bus_ops *bus_ops, struct device *dev,
 
 	if (ts == NULL) {
 		pr_err("%s: Error, kzalloc\n", __func__);
-		goto error_alloc_data;
+		return ts;
 	}
 
 	ts->cyttsp_wq = create_singlethread_workqueue("cyttsp_resume_startup_w");
@@ -3083,7 +3110,7 @@ void *cyttsp_core_init(struct cyttsp_bus_ops *bus_ops, struct device *dev,
 		sizeof(struct cyttsp_platform_data), GFP_KERNEL);
 	if (!ts->platform_data) {
 		dev_err(dev, "Failed to allocate memory\n");
-		goto err_alloc_wq_failed;
+		goto error_alloc_data;
 	}
 	init_platform_settings(dev, ts->platform_data);
 #else
@@ -3166,23 +3193,33 @@ void *cyttsp_core_init(struct cyttsp_bus_ops *bus_ops, struct device *dev,
 		pr_err("%s: Error, failed to allocate irq\n", __func__);
 		goto error_init;
 	}
-	/* Initalize all GPIOs */
-	gpio_request(ts->platform_data->reset_gpio,"touch_rst");
-	if ( (retval = gpio_direction_output(
-			ts->platform_data->reset_gpio, 1))) {
-			pr_err("%s: Failed to setup %d(RST) for output.\n",
-			__func__, ts->platform_data->reset_gpio);
-		goto error_gpio;
-	}
-	gpio_set_value(ts->platform_data->reset_gpio, 1);
 
-	gpio_request(ts->platform_data->irq_gpio,"touch_intr");
-	if ( (retval = gpio_direction_input(
-				ts->platform_data->irq_gpio))) {
+	/* Initalize all GPIOs */
+	retval = gpio_request(ts->platform_data->reset_gpio, "touch_rst");
+	if (retval) {
+		pr_err("%s: failed to get reset: %d\n", __func__, retval);
+		goto error_init;
+	}
+
+	retval = gpio_direction_output(ts->platform_data->reset_gpio, 1);
+	if (retval) {
+		pr_err("%s: Failed to setup %d(RST) for output.\n",
+			__func__, ts->platform_data->reset_gpio);
+		goto error_gpio_reset;
+	}
+	gpio_set_value(ts->platform_data->reset_gpio, 0);
+
+	retval = gpio_request(ts->platform_data->irq_gpio, "touch_intr");
+	if (retval) {
+		pr_err("%s: failed to get irq: %d\n", __func__, retval);
+		goto error_gpio_reset;
+	}
+
+	retval = gpio_direction_input(ts->platform_data->irq_gpio);
+	if (retval) {
 		pr_err("%s: Failed to setup %d(INT) irq for input.\n",
-				__func__,
-				ts->platform_data->irq_gpio);
-		goto error_gpio;
+			__func__, ts->platform_data->irq_gpio);
+		goto error_gpio_irq;
 	}
 
 	INIT_WORK(&ts->cyttsp_resume_startup_work, cyttsp_ts_work_func);
@@ -3194,11 +3231,20 @@ void *cyttsp_core_init(struct cyttsp_bus_ops *bus_ops, struct device *dev,
 	if (retval < 0) {
 		pr_err("%s: IRQ request failed r=%d\n", __func__, retval);
 		ts->irq_enabled = false;
-		goto error_input_register_device;
+		goto error_request_irq;
 	} else {
 		cyttsp_dbg(ts, CY_DBG_LVL_3, "%s: IRQ is intialized",
 					__func__);
 		ts->irq_enabled = true;
+	}
+
+	/* I heard mutexes solved a problem once, lets add them.... */
+	mutex_lock(&ts->data_lock);
+	retval = _cyttsp_detect_hw(ts);
+	mutex_unlock(&ts->data_lock);
+	if (retval) {
+		pr_err("%s: couldn't detect hardware\n", __func__);
+		goto error_hw_detect;
 	}
 
 	/*
@@ -3209,7 +3255,7 @@ void *cyttsp_core_init(struct cyttsp_bus_ops *bus_ops, struct device *dev,
 	if (retval < 0) {
 		pr_err("%s: Error, failed to register input device r=%d\n",
 				__func__, retval);
-		goto error_input_register_device;
+		goto error_hw_detect;
 	}
 
 	/* Add /sys files */
@@ -3223,22 +3269,28 @@ void *cyttsp_core_init(struct cyttsp_bus_ops *bus_ops, struct device *dev,
 #endif
 	goto no_error;
 
-error_input_register_device:
-	input_free_device(input_device);
-
-error_gpio:
-error_input_allocate_device:
+error_hw_detect:
+	disable_irq(ts->irq);
+	free_irq(ts->irq, ts);
+error_request_irq:
+error_gpio_irq:
+	gpio_free(ts->platform_data->irq_gpio);
+error_gpio_reset:
+	gpio_free(ts->platform_data->reset_gpio);
 error_init:
+	input_free_device(input_device);
+error_input_allocate_device:
+#ifdef CYT_BRINGUP
+	exit_platform_settings(dev);
+#endif
 	mutex_destroy(&ts->data_lock);
 	mutex_destroy(&ts->startup_mutex);
-	if (ts->fwname != NULL) {
-		kfree(ts->fwname);
-		ts->fwname = NULL;
-	}
-	err_alloc_wq_failed: kfree(ts);
+	kfree(ts->fwname);
+error_alloc_data:
+	destroy_workqueue(ts->cyttsp_wq);
+err_alloc_wq_failed:
+	kfree(ts);
 	ts = NULL;
-	error_alloc_data:
-	pr_err("%s: Failed Initialization\n", __func__);
 no_error:
 	return ts;
 }
