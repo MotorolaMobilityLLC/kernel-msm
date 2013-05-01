@@ -1507,7 +1507,7 @@ typedef enum
 #define CFG_ALLOW_MCC_GO_DIFF_BI_NAME           "gAllowMCCGODiffBI"
 #define CFG_ALLOW_MCC_GO_DIFF_BI_MIN            ( 0 )
 #define CFG_ALLOW_MCC_GO_DIFF_BI_MAX            ( 4 )
-#define CFG_ALLOW_MCC_GO_DIFF_BI_DEFAULT        ( 2 ) 
+#define CFG_ALLOW_MCC_GO_DIFF_BI_DEFAULT        ( 4 )
 
 /*
  * Enable/Disable Thermal Mitigation feature
