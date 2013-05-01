@@ -16,7 +16,6 @@
 #include "mipi_dsi.h"
 #include "mipi_mot.h"
 #include "mdp4.h"
-#include <mach/mmi_panel_notifier.h>
 
 static struct mipi_mot_panel *mot_panel;
 
