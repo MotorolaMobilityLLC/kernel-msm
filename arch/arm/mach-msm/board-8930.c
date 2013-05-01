@@ -2946,6 +2946,9 @@ static void __init msm8930_cdp_init(void)
 		BUG_ON(msm_rpmrs_levels_init(&msm_rpmrs_data_pm8917));
 	}
 
+	if (machine_is_msm8930_evt())
+		configure_8930_sglte_regulator();
+
 	regulator_suppress_info_printing();
 	if (msm_xo_init())
 		pr_err("Failed to initialize XO votes\n");
