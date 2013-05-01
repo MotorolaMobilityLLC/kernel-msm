@@ -22,7 +22,7 @@
 	vibrator {
 		vdd-supply = <&pm8941_l19>;
 		motor-amp = <115>;
-		use_vdd_supply;
+		use-vdd-supply;
 	};
 
 	qcom,mdss_dsi_jdi_video {
