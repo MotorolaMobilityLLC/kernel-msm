@@ -615,3 +615,19 @@ msm8930_pm8038_rpm_regulator_pdata __devinitdata = {
 	.consumer_map		= msm_rpm_regulator_consumer_mapping,
 	.consumer_map_len = ARRAY_SIZE(msm_rpm_regulator_consumer_mapping),
 };
+
+void __init configure_8930_sglte_regulator(void)
+{
+	int i;
+	struct rpm_regulator_init_data *rpm_data;
+
+	for (i = 0; i < ARRAY_SIZE(msm8930_rpm_regulator_init_data); i++) {
+		rpm_data = &msm8930_rpm_regulator_init_data[i];
+		if (rpm_data->id == RPM_VREG_ID_PM8038_L17) {
+			rpm_data->init_data.constraints.always_on = 1;
+			rpm_data->system_uA = 10000;
+			rpm_data->peak_uA = 10000;
+			break;
+		}
+	}
+}
