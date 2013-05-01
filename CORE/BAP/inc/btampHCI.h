@@ -39,6 +39,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
 #ifndef BTAMPHCI_H
 #define BTAMPHCI_H
 
@@ -197,7 +198,7 @@ typedef struct sBtampTLVAMP_Assoc_Connected_Channel {
     v_U8_t       present;
     v_U8_t       country[3];
     v_U8_t       num_triplets;
-    v_U8_t       triplets[2][3];
+    v_U8_t       triplets[5][3];
 } tBtampTLVAMP_Assoc_Connected_Channel;
 
 #define BTAMP_TLV_AMP_ASSOC_CONNECTED_CHANNEL ( 3 )
