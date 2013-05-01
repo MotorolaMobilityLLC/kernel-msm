@@ -26,9 +26,21 @@
 #define MMI_PANEL_EVENT_POST_INIT  2
 #define MMI_PANEL_EVENT_PRE_DEINIT  3
 
+#ifdef CONFIG_MIPI_MOT_NOTIFICATIONS
 int mmi_panel_register_notifier(struct notifier_block *nb);
 int mmi_panel_unregister_notifier(struct notifier_block *nb);
 void mmi_panel_notify(unsigned int state, void *data);
-
+#else
+#include <linux/errno.h>
+static inline int mmi_panel_register_notifier(struct notifier_block *nb)
+{
+	return -ENOSYS;
+}
+static inline int mmi_panel_unregister_notifier(struct notifier_block *nb)
+{
+	return -ENOSYS;
+}
+static inline void mmi_panel_notify(unsigned int state, void *data) {}
+#endif
 #endif
 
