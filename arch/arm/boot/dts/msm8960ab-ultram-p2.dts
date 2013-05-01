@@ -19,6 +19,36 @@
 / {
 	mmi,revision = "p2";
 
+	System@0 {
+		I2C@4 {
+			I2C,Board@3 {
+				class = [4f56313038323000];
+				gpio_dig_en = <0x000000a0>;
+				gpio_pwd = <0x0000005f>;
+				gpio_reset = <0x00000061>;
+				is_seperate_dvdd = <0x00000001>;
+				is_new_pk_dvdd = <0x00000001>;
+				i2c,address = <0x00000036>;
+				i2c,type = [6f76313038323000];
+				type = <0x00290003>;
+			};
+		};
+
+		Regulators@0 {
+			RegulatorChip@0 {
+				RegulatorChip@1 {
+					class = [47656e65726963526567756c61746f7200];
+					id = <0x0000000b>;
+					type = <0x00000020>;
+
+					ConsumerSupply@0 {
+						dev_name = [342d3030333600];
+						supply = [63616d5f706b5f6476646400];
+					};
+				};
+			};
+		};
+	};
 };
 
 /* GSBI12 - I2C */
