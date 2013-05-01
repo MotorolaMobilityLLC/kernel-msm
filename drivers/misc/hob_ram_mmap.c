@@ -13,39 +13,58 @@
  * GNU General Public License for more details.
  *
  */
+#define pr_fmt(fmt)     "%s: " fmt, __func__
 
+#include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
 #include <linux/module.h>
-#include <linux/spinlock.h>
+#include <linux/mutex.h>
+#include <linux/of.h>
+#include <linux/platform_device.h>
 
-#define SHOB_RAM_ADDR 0x8FA80000
-#define DHOB_RAM_ADDR 0x8FAC0000
-#define SHOB_RAM_SIZE 0x40000
-#define DHOB_RAM_SIZE 0x1000
+#define HOB_RAM_MISC_DEV_NAME "mmi,hob_ram"
 
-#define VALID_HOB_ADDRESS_RANGE(off, size) \
-	((((off) == (SHOB_RAM_ADDR >> PAGE_SHIFT)) && \
-	  ((size) <= SHOB_RAM_SIZE)) || \
-	 (((off) == (DHOB_RAM_ADDR >> PAGE_SHIFT)) && \
-	  ((size) <= DHOB_RAM_SIZE)))
+struct hob_ram_misc_dev {
+	struct miscdevice mdev;
+	struct device *dev;
+	struct mutex lock;
+	int open_excl;
+	struct resource *shob;
+	struct resource *dhob;
+};
 
-static int open_excl;
-static spinlock_t hob_lock;
+struct hob_ram_misc_dev *hob_dev;
 
-static int hob_shared_ram_mmap(struct file *file, struct vm_area_struct *vma)
+static int hob_valid_range(struct hob_ram_misc_dev *dev,
+			unsigned long pgoff, unsigned long vsize)
+{
+	unsigned long dhob_size;
+	unsigned long shob_size;
+
+	dhob_size = dev->dhob->end - dev->dhob->start + 1;
+	if ((dev->dhob->start >> PAGE_SHIFT) == pgoff && dhob_size == vsize)
+		return 0;
+
+	shob_size = dev->shob->end - dev->shob->start + 1;
+	if ((dev->shob->start >> PAGE_SHIFT) == pgoff && shob_size == vsize)
+		return 0;
+
+	return -EINVAL;
+}
+
+static int hob_shared_ram_mmap(struct file *fp, struct vm_area_struct *vma)
 {
 	unsigned long vsize = vma->vm_end - vma->vm_start;
-	int ret = -EINVAL;
+	int ret;
 
 	/* Check if we are mapping the right HOB addresses */
-	if (!VALID_HOB_ADDRESS_RANGE(vma->vm_pgoff, vsize)) {
-		/* Invalid Physical address or size return -EINVAL */
-		pr_err("%s: failed on invalid physical address %lx and size %lx \n",
-				__func__, (vma->vm_pgoff << PAGE_SHIFT), vsize);
-		return ret;
+	if (hob_valid_range(hob_dev, vma->vm_pgoff, vsize)) {
+		dev_err(hob_dev->dev, "invalid address %lx and size %lx\n",
+			vma->vm_pgoff << PAGE_SHIFT, vsize);
+		return -EINVAL;
 	}
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
@@ -53,7 +72,8 @@ static int hob_shared_ram_mmap(struct file *file, struct vm_area_struct *vma)
 	ret = io_remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff,
 				 vsize, vma->vm_page_prot);
 	if (ret < 0)
-		pr_err("%s: failed with return val %d\n", __func__, ret);
+		dev_err(hob_dev->dev, "io_remap failed: %d\n", ret);
+
 	return ret;
 }
 
@@ -61,21 +81,21 @@ static int hob_shared_ram_open(struct inode *ip, struct file *fp)
 {
 	int ret = 0;
 
-	spin_lock(&hob_lock);
-	if (!open_excl)
-		open_excl = 1;
+	mutex_lock(&hob_dev->lock);
+	if (!hob_dev->open_excl)
+		hob_dev->open_excl = 1;
 	else
 		ret = -EBUSY;
-	spin_unlock(&hob_lock);
+	mutex_unlock(&hob_dev->lock);
 
 	return ret;
 }
 
 static int hob_shared_ram_release(struct inode *ip, struct file *fp)
 {
-	spin_lock(&hob_lock);
-	open_excl = 0;
-	spin_unlock(&hob_lock);
+	mutex_lock(&hob_dev->lock);
+	hob_dev->open_excl = 0;
+	mutex_unlock(&hob_dev->lock);
 
 	return 0;
 }
@@ -87,29 +107,87 @@ const struct file_operations hob_shared_ram_fops = {
 	.release = hob_shared_ram_release,
 };
 
-static struct miscdevice hob_shared_ram_device = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "mot_hob_ram",
-	.fops = &hob_shared_ram_fops,
+static int __devinit hob_ram_probe(struct platform_device *pdev)
+{
+	int ret;
+
+	if (!pdev->dev.of_node) {
+		dev_err(&pdev->dev, "no OF node supplied\n");
+		return -EINVAL;
+	}
+
+	hob_dev = devm_kzalloc(&pdev->dev, sizeof(*hob_dev), GFP_KERNEL);
+	if (!hob_dev) {
+		dev_err(&pdev->dev, "hob device allocation failed\n");
+		return -ENOMEM;
+	}
+
+	hob_dev->dhob = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!hob_dev->dhob) {
+		dev_err(&pdev->dev, "couldn't get DHOB memory range\n");
+		return -EINVAL;
+	}
+
+	hob_dev->shob = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!hob_dev->shob) {
+		dev_err(&pdev->dev, "couldn't get SHOB memory range\n");
+		return -EINVAL;
+	}
+
+	hob_dev->mdev.name = "mot_hob_ram";
+	hob_dev->mdev.minor = MISC_DYNAMIC_MINOR;
+	hob_dev->mdev.fops = &hob_shared_ram_fops;
+
+	hob_dev->dev = &pdev->dev;
+
+	ret = misc_register(&hob_dev->mdev);
+	if (ret) {
+		dev_err(&pdev->dev, "couldn't register misc: %d\n", ret);
+		return ret;
+	}
+
+	mutex_init(&hob_dev->lock);
+
+	return 0;
+}
+
+static int __devexit hob_ram_remove(struct platform_device *dev)
+{
+	misc_deregister(&hob_dev->mdev);
+	mutex_destroy(&hob_dev->lock);
+
+	return 0;
+}
+
+static struct of_device_id hob_ram_match_table[] = {
+	{ .compatible = HOB_RAM_MISC_DEV_NAME },
+	{ /* NULL */ },
 };
 
 
+static struct platform_driver hob_driver = {
+	.probe = hob_ram_probe,
+	.remove = __devexit_p(hob_ram_remove),
+	.driver = {
+		.name = HOB_RAM_MISC_DEV_NAME,
+		.owner = THIS_MODULE,
+		.of_match_table = hob_ram_match_table,
+	}
+};
+
 static int __init hob_shared_ram_init(void)
 {
-	int ret = 0;
+	return platform_driver_register(&hob_driver);
+}
 
-	open_excl = 0;
-	spin_lock_init(&hob_lock);
-
-	ret = misc_register(&hob_shared_ram_device);
-	if (ret) {
-		pr_err("%s: Unable to register misc device %d\n", __func__,
-				MISC_DYNAMIC_MINOR);
-	}
-
-	return ret;
+static void __exit hob_shared_ram_exit(void)
+{
+	platform_driver_unregister(&hob_driver);
 }
 
 module_init(hob_shared_ram_init);
-MODULE_DESCRIPTION("Motorola Mobility Inc. HOB RAM MMAP Client");
+module_exit(hob_shared_ram_exit);
+
+MODULE_DESCRIPTION(HOB_RAM_MISC_DEV_NAME);
 MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("platform:" HOB_RAM_MISC_DEV_NAME);
