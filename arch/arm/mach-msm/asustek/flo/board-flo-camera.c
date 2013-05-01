@@ -596,7 +596,7 @@ static struct i2c_board_info msm_act_main_cam_i2c_info = {
 
 static struct msm_actuator_info msm_act_main_cam_0_info = {
 	.board_info     = &msm_act_main_cam_i2c_info,
-	.cam_name   = MSM_ACTUATOR_MAIN_CAM_0,
+	.cam_name       = MSM_ACTUATOR_MAIN_CAM_0,
 	.bus_id         = APQ_8064_GSBI4_QUP_I2C_BUS_ID,
 	.vcm_pwd        = 0,
 	.vcm_enable     = 0,
@@ -613,7 +613,6 @@ static struct msm_actuator_info msm_act_main_cam_1_info = {
 	.vcm_pwd        = 0,
 	.vcm_enable     = 0,
 };
-
 
 static struct msm_camera_i2c_conf apq8064_front_cam_i2c_conf = {
 	.use_i2c_mux = 1,
@@ -811,13 +810,13 @@ static struct msm_camera_csi_lane_params ov5693_csi_lane_params = {
 	.csi_lane_mask = 0x3,
 };
 
-static struct i2c_board_info msm_act_main_cam1_i2c_info = {
+static struct i2c_board_info msm_act_main_cam5_i2c_info = {
 	I2C_BOARD_INFO("msm_actuator", 0x11),
 };
 
-static struct msm_actuator_info msm_act_main_cam_1_info = {
-	.board_info     = &msm_act_main_cam1_i2c_info,
-	.cam_name       = MSM_ACTUATOR_MAIN_CAM_1,
+static struct msm_actuator_info msm_act_main_cam_5_info = {
+	.board_info     = &msm_act_main_cam5_i2c_info,
+	.cam_name       = MSM_ACTUATOR_MAIN_CAM_5,
 	.bus_id         = APQ_8064_GSBI4_QUP_I2C_BUS_ID,
 	.vcm_pwd        = 0,
 	.vcm_enable     = 0,
@@ -833,7 +832,7 @@ static struct msm_sensor_info_t ov5693_sensor_info = {
 	.subdev_id = {
 		[SUB_MODULE_SENSOR] = -1,
 		[SUB_MODULE_CHROMATIX] = -1,
-		[SUB_MODULE_ACTUATOR] = -1,
+		[SUB_MODULE_ACTUATOR] = 5,
 		[SUB_MODULE_EEPROM] = -1,
 		[SUB_MODULE_LED_FLASH] = -1,
 		[SUB_MODULE_STROBE_FLASH] = -1,
@@ -859,7 +858,7 @@ static struct msm_camera_sensor_board_info msm_camera_sensor_ov5693_data = {
 	.gpio_conf = &apq8064_back_cam_gpio_conf,
 	.sensor_info = &ov5693_sensor_info,
 	.sensor_init_params = &ov5693_init_params,
-	.actuator_info = &msm_act_main_cam_1_info,
+	.actuator_info = &msm_act_main_cam_5_info,
 	.i2c_conf = &apq8064_back_cam_i2c_conf,
 };
 
@@ -979,7 +978,7 @@ static struct i2c_board_info apq8064_camera_i2c_boardinfo[] = {
 	},
 	{
 	I2C_BOARD_INFO("msm_actuator", 0x11),
-	.platform_data = &msm_act_main_cam_1_info,
+	.platform_data = &msm_act_main_cam_5_info,
 	},
 	{
 	I2C_BOARD_INFO("mi1040", 0x48),
