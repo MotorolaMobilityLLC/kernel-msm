@@ -49,8 +49,8 @@ static struct dsi_cmd_desc mot_cmd_on_cmds[] = {
 };
 
 static struct dsi_cmd_desc mot_display_off_cmds[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 120, sizeof(enter_sleep), enter_sleep},
 	{DTYPE_DCS_WRITE, 1, 0, 0, 1, sizeof(display_off), display_off},
+	{DTYPE_DCS_WRITE, 1, 0, 0, 70, sizeof(enter_sleep), enter_sleep},
 };
 
 static int panel_enable(struct msm_fb_data_type *mfd)
