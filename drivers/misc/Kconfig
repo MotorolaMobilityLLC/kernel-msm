@@ -689,7 +689,7 @@ config DROPBOX
 
 config HOB_SHARED_RAM
 	tristate "HOB RAM MMAP Client"
-	depends on ARCH_MSM
+	depends on OF
 	help
 	  Provide mechanism to access hob storage shared memory on apps
 	  processor. HOB - or the Hand Over Block - is the staging area for
