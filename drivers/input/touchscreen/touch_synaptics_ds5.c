@@ -264,7 +264,7 @@ static void touch_abs_input_report(struct synaptics_ts_data *ts)
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
 					ts->ts_data.curr_data[id].x_position);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
-				1920 - ts->ts_data.curr_data[id].y_position);
+					ts->ts_data.curr_data[id].y_position);
 			input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
 					ts->ts_data.curr_data[id].pressure);
 
@@ -1523,11 +1523,7 @@ static int synaptics_parse_dt(struct device *dev, struct touch_platform_data *pd
 		dev_err(dev, "Unable to read max_id\n");
 		return rc;
 	} else {
-#ifndef andrew_test
-		pdata->max_id = 1;
-#else
 		pdata->max_id = temp_val;
-#endif
 	}
 
 	rc = of_property_read_u32(np, "synaptics,max_major", &temp_val);
