@@ -325,6 +325,7 @@ struct synaptics_dsx_hob {
 
 static struct synaptics_dsx_hob hob_data;
 static unsigned char tsb_buff_clean_flag = 1;
+static unsigned char collect_resume_info_toggle;
 
 #define LAST_SUBPACKET_ROW_IND_MASK 0x80
 #define NR_SUBPKT_PRESENCE_BITS 7
@@ -729,6 +730,9 @@ static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
 static ssize_t synaptics_rmi4_ic_ver_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
+static ssize_t synaptics_rmi4_resumeinfo_toggle(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
 struct synaptics_rmi4_f01_device_status {
 	union {
 		struct {
@@ -834,6 +838,9 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_store_error),
 	__ATTR(ic_ver, S_IRUGO,
 			synaptics_rmi4_ic_ver_show,
+			synaptics_rmi4_store_error),
+	__ATTR(resumeinfo_toggle, S_IRUGO,
+			synaptics_rmi4_resumeinfo_toggle,
 			synaptics_rmi4_store_error),
 };
 
@@ -1157,6 +1164,24 @@ static ssize_t synaptics_rmi4_f01_buildid_show(struct device *dev,
 	batohui(&config_id, rmi->config_id, sizeof(rmi->config_id));
 
 	return scnprintf(buf, PAGE_SIZE, "%x-%08x\n", firmware_id, config_id);
+}
+
+static ssize_t synaptics_rmi4_resumeinfo_toggle(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	ssize_t	rc = 0;
+	if (collect_resume_info_toggle == false) {
+		/* Enable collection of the information */
+		collect_resume_info_toggle = true;
+		rc = scnprintf(buf, PAGE_SIZE,
+			"Collection of resume information started.\n");
+	} else if (collect_resume_info_toggle == true) {
+		/* Disable collection of the information */
+		collect_resume_info_toggle = false;
+		rc =  scnprintf(buf, PAGE_SIZE,
+			"Collection of resume information stopped.\n");
+	}
+	return rc;
 }
 
 static ssize_t synaptics_rmi4_resume_show(struct device *dev,
@@ -1555,7 +1580,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	if (retval < 0)
 		return 0;
 
-	if (rmi4_data->number_resumes > 0) {
+	if (collect_resume_info_toggle == true &&
+		rmi4_data->number_resumes > 0) {
 		tmp_resume_i =
 			&(rmi4_data->resume_info[rmi4_data->last_resume]);
 
@@ -1609,7 +1635,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		input_mt_sync(rmi4_data->input_dev);
 		touch_count++;
 
-		if (rmi4_data->number_resumes > 0 &&
+		if (collect_resume_info_toggle == true &&
+			rmi4_data->number_resumes > 0 &&
 			tmp_resume_i->send_touch.tv_sec == 0)
 			getnstimeofday(&(tmp_resume_i->send_touch));
 	}
@@ -2033,7 +2060,8 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 	struct synaptics_rmi4_data *rmi4_data = data;
 	struct synaptics_rmi4_resume_info *tmp_resume_i;
 
-	if (rmi4_data->number_resumes > 0) {
+	if (collect_resume_info_toggle == true &&
+		rmi4_data->number_resumes > 0) {
 		tmp_resume_i =
 			&(rmi4_data->resume_info[rmi4_data->last_resume]);
 		if (tmp_resume_i->isr.tv_sec == 0)
@@ -3055,7 +3083,14 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->irq_enable = synaptics_rmi4_irq_enable;
 	rmi4_data->reset_device = synaptics_rmi4_reset_device;
 
-	/* Initialize some resume debug information */
+	/*
+	* Initialize some resume debug information.
+	* The collection of the resume information is controlled by
+	* the collect_resume_info_toggle. This flag gets set when the
+	* user tries to display the information for the first time.
+	* NOTE: this flag gets reset only by reboot.
+	*/
+	collect_resume_info_toggle = false;
 	rmi4_data->resume_info = kzalloc(
 		sizeof(struct synaptics_rmi4_resume_info) *
 			 MAX_NUMBER_TRACKED_RESUMES,
@@ -3453,7 +3488,8 @@ static void synaptics_rmi4_late_resume(struct early_suspend *h)
 
 	struct synaptics_rmi4_resume_info *tmp_resume_i;
 
-	if (rmi4_data->number_resumes > 0) {
+	if (collect_resume_info_toggle == true &&
+		rmi4_data->number_resumes > 0) {
 		rmi4_data->last_resume++;
 		if (rmi4_data->last_resume >= rmi4_data->number_resumes)
 			rmi4_data->last_resume = 0;
