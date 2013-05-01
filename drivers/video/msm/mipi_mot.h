@@ -31,7 +31,10 @@
 #ifndef MIPI_MOT_PANEL_H
 #define MIPI_MOT_PANEL_H
 
+#include <mach/mmi_panel_notifier.h>
 #include "smd_dynamic_gamma.h"
+#include "msm_fb.h"
+#include "mipi_dsi.h"
 
 #define DCS_CMD_SOFT_RESET           0x01
 #define DCS_CMD_GET_POWER_MODE       0x0A
