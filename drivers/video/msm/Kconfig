@@ -1,6 +1,12 @@
 
 source "drivers/video/msm/vidc/Kconfig"
 
+config MIPI_MOT_NOTIFICATIONS
+	bool "Enable display suspend/resume notifier"
+	default n
+	---help---
+	  Support for synchronized display and touch option.
+
 config FB_MSM
 	tristate "MSM Framebuffer support"
 	depends on FB && ARCH_MSM
@@ -719,6 +725,7 @@ config FB_MSM_MIPI_ORISE_CMD_720P_PT_PANEL
 config FB_MSM_MIPI_MOT_PT_PANEL
 	bool "MIPI MOT Panel"
 	select FB_MSM_MIPI_DSI_MOT_PT
+	select MIPI_MOT_NOTIFICATIONS
 	---help---
 	  Support for MOT generic panel
 
