@@ -40,6 +40,29 @@ static struct msm_gpiomux_config msm8930_gsbi10_uart_configs[] __initdata = {
 	},
 };
 
+/* GSBI11 UART configurations */
+static struct gpiomux_setting gsbi11_uart_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_10MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config msm8930_gsbi11_uart_configs[] __initdata = {
+	{
+		.gpio	= 38,   /* GSBI11 UART TX */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi11_uart_cfg,
+		},
+	},
+	{
+		.gpio	= 39, /* GSBI11 UART RX */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi11_uart_cfg,
+		},
+	},
+};
+
+
 /* The SPI configurations apply to GSBI 1*/
 static struct gpiomux_setting spi_active = {
 	.func = GPIOMUX_FUNC_1,
@@ -1038,6 +1061,9 @@ int __init sglte8930_init_gpiomux(void)
 		if (minor_ver == 0)
 			msm_gpiomux_install(msm8930_gsbi10_uart_configs,
 				ARRAY_SIZE(msm8930_gsbi10_uart_configs));
+		else if (minor_ver == 1)
+			msm_gpiomux_install(msm8930_gsbi11_uart_configs,
+				ARRAY_SIZE(msm8930_gsbi11_uart_configs));
 	}
 
 	/* For SGLTE 8960 Fusion External VFR */

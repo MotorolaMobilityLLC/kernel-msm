@@ -3012,6 +3012,10 @@ static void __init msm8930_cdp_init(void)
 				/* Add UART Serial for EVT1 device */
 				platform_device_register(
 					&msm8930_device_uart_gsbi10);
+			else if (minor_ver == 1)
+				/* Add UART Serial for EVT2 device */
+				platform_device_register(
+					&msm8930_device_uart_gsbi11);
 		}
 	} else {
 		/* For 8930 Standalone serial console */
