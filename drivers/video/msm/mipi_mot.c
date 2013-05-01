@@ -18,7 +18,6 @@
 #include "mdp4.h"
 #include <linux/atomic.h>
 #include <linux/reboot.h>
-#include <mach/mmi_panel_notifier.h>
 
 /*
  * This is a flag that only be used when bringup a new platform.
@@ -374,23 +373,6 @@ static int valid_mfd_info(struct msm_fb_data_type *mfd)
 	}
 err:
 	return ret;
-}
-
-int mmi_panel_register_notifier(struct notifier_block *nb)
-{
-	return srcu_notifier_chain_register(&mot_panel.panel_notifier_list, nb);
-}
-
-int mmi_panel_unregister_notifier(struct notifier_block *nb)
-{
-	return srcu_notifier_chain_unregister(&mot_panel.panel_notifier_list,
-					nb);
-}
-
-void mmi_panel_notify(unsigned int state, void *data)
-{
-	pr_debug("%s (%d) is called\n", __func__, state);
-	srcu_notifier_call_chain(&mot_panel.panel_notifier_list, state, data);
 }
 
 static void panel_full_reinit(struct msm_fb_data_type *mfd)
