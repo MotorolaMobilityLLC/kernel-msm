@@ -56,6 +56,7 @@ static const char *pil_states[] = {
 struct pil_device {
 	struct pil_desc *desc;
 	int count;
+	int loaded;
 	enum pil_state state;
 	struct mutex lock;
 	struct device dev;
@@ -66,6 +67,9 @@ struct pil_device {
 	struct delayed_work proxy;
 	struct wake_lock wlock;
 	char wake_name[32];
+
+	/* not locked by mutex lock*/
+	atomic_t blocked_count;
 };
 
 #define to_pil_device(d) container_of(d, struct pil_device, dev)
@@ -387,20 +391,26 @@ void *pil_get(const char *name)
 		goto err_depends;
 	}
 
+	atomic_inc(&pil->blocked_count);
+
 	mutex_lock(&pil->lock);
-	if (!pil->count) {
+	if (!pil->count && !pil->loaded) {
 		ret = load_image(pil);
 		if (ret) {
 			retval = ERR_PTR(ret);
 			goto err_load;
 		}
+		pil->loaded = 1;
 	}
 	pil->count++;
+
 	pil_set_state(pil, PIL_ONLINE);
+	atomic_dec(&pil->blocked_count);
 	mutex_unlock(&pil->lock);
 out:
 	return retval;
 err_load:
+	atomic_dec(&pil->blocked_count);
 	mutex_unlock(&pil->lock);
 	pil_put(pil_d);
 err_depends:
@@ -439,8 +449,10 @@ void pil_put(void *peripheral_handle)
 	if (WARN(!pil->count, "%s: %s: Reference count mismatch\n",
 			pil->desc->name, __func__))
 		goto err_out;
-	if (!--pil->count)
+	if (!--pil->count && !atomic_read(&pil->blocked_count)) {
 		pil_shutdown(pil);
+		pil->loaded = 0;
+	}
 	mutex_unlock(&pil->lock);
 
 	pil_d = find_peripheral(pil->desc->depends_on);
@@ -594,6 +606,7 @@ static void pil_device_release(struct device *dev)
 	struct pil_device *pil = to_pil_device(dev);
 	wake_lock_destroy(&pil->wlock);
 	mutex_destroy(&pil->lock);
+	atomic_set(&pil->blocked_count, 0);
 	kfree(pil);
 }
 
@@ -617,6 +630,7 @@ struct pil_device *msm_pil_register(struct pil_desc *desc)
 		return ERR_PTR(-ENOMEM);
 
 	mutex_init(&pil->lock);
+	atomic_set(&pil->blocked_count, 0);
 	pil->desc = desc;
 	pil->owner = desc->owner;
 	pil->dev.parent = desc->dev;
