@@ -1617,6 +1617,10 @@ static int synaptics_ts_probe(
 	atomic_set(&ts->device_init, 0);
 	ts->curr_resume_state = 1;
 
+	/* Power on */
+	if (touch_power_cntl(ts, POWER_ON) < 0)
+		goto err_power_failed;
+
 	/* init work_queue */
 	INIT_DELAYED_WORK(&ts->work_init, touch_init_func);
 	INIT_WORK(&ts->work_fw_upgrade, touch_fw_upgrade_func);
@@ -1715,6 +1719,7 @@ err_input_register_device_failed:
 	input_free_device(ts->input_dev);
 err_input_dev_alloc_failed:
 	touch_power_cntl(ts, POWER_OFF);
+err_power_failed:
 err_assign_platform_data:
 	kfree(ts);
 	return ret;
