@@ -2507,6 +2507,7 @@ static struct platform_device *cdp_devices[] __initdata = {
 	&msm_pcm_hostless,
 	&msm_multi_ch_pcm,
 	&msm_lowlatency_pcm,
+	&msm_fm_loopback,
 };
 
 #define GSBI_DUAL_MODE_CODE	0x60
