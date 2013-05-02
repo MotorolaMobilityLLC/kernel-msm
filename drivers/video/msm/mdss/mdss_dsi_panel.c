@@ -210,6 +210,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mdss_dsi_cmds_tx(pdata, &dsi_panel_tx_buf,
 			&dsi_tear_on_cmd, 1);
 
+	pr_info("%s\n", __func__);
 	return 0;
 }
 
@@ -241,6 +242,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 				 ctrl->off_cmds->buf,
 				 ctrl->off_cmds->size);
 
+	pr_info("%s\n", __func__);
 	return 0;
 }
 
