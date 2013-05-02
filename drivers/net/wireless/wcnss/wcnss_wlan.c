@@ -28,6 +28,7 @@
 #include <mach/peripheral-loader.h>
 #include <mach/msm_smd.h>
 #include <mach/msm_iomap.h>
+#include <asm/uaccess.h>
 
 #define DEVICE "wcnss_wlan"
 #define VERSION "1.01"
@@ -934,17 +935,41 @@ fail_gpio_res:
 #ifndef MODULE
 static int wcnss_node_open(struct inode *inode, struct file *file)
 {
-	struct platform_device *pdev;
+	return 0;
+}
 
-	pr_info(DEVICE " triggered by userspace\n");
+static ssize_t wcnss_node_write(struct file *file,
+			const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct platform_device *pdev;
+	char *buf;
+
+	pr_info(DEVICE " %s: triggered by userspace\n", __func__);
 
 	pdev = penv->pdev;
-	return wcnss_trigger_config(pdev);
+	if(count < 1 || count > SZ_4K)
+		return -EINVAL;
+
+	buf = kmalloc(count, GFP_KERNEL);
+	if(!buf)
+		return -ENOMEM;
+
+	if(copy_from_user(buf, ubuf, sizeof(buf))){
+		kfree(buf);
+		return -EFAULT;
+	}
+
+	if(buf[0] == '1')
+		wcnss_trigger_config(pdev);
+
+	kfree(buf);
+	return count;
 }
 
 static const struct file_operations wcnss_node_fops = {
 	.owner = THIS_MODULE,
 	.open = wcnss_node_open,
+	.write = wcnss_node_write,
 };
 
 static struct miscdevice wcnss_misc = {
