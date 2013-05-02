@@ -31,7 +31,6 @@
 #ifndef MIPI_MOT_PANEL_H
 #define MIPI_MOT_PANEL_H
 
-#include <mach/mmi_panel_notifier.h>
 #include "smd_dynamic_gamma.h"
 
 #define DCS_CMD_SOFT_RESET           0x01
