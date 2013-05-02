@@ -1546,101 +1546,6 @@ static int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device
     return 0;
 }
 
-/*
- * FUNCTION: wlan_hdd_select_cbmode
- * called by wlan_hdd_cfg80211_start_bss() and
- * This function  selects the cbmode based on primary channel
- */
-VOS_STATUS wlan_sap_select_cbmode(void *pAdapter,eSapPhyMode SapHw_mode, v_U8_t channel)
-{
-    tSmeConfigParams smeConfig;
-    hdd_context_t  *pHddCtx  = ( hdd_context_t *) pAdapter;
-    hdd_config_t  *pConfigIni = ((hdd_context_t *)(pAdapter))->cfg_ini;
-
-    if(
-#ifdef WLAN_FEATURE_11AC
-      SapHw_mode != eSAP_DOT11_MODE_11ac &&
-      SapHw_mode != eSAP_DOT11_MODE_11ac_ONLY &&
-#endif
-      SapHw_mode != eSAP_DOT11_MODE_11n &&
-      SapHw_mode != eSAP_DOT11_MODE_11n_ONLY
-      )
-    {
-        return VOS_STATUS_SUCCESS;
-    }
-
-    if (!pConfigIni->nChannelBondingMode5GHz) {
-        return VOS_STATUS_SUCCESS;
-    }
-
-    //channel = pSapConfig->channel;
-    vos_mem_zero(&smeConfig, sizeof (tSmeConfigParams));
-
-    sme_GetConfigParam(pHddCtx->hHal, &smeConfig);
-
-#ifdef WLAN_FEATURE_11AC
-
-    if ( SapHw_mode == eSAP_DOT11_MODE_11ac ||
-         SapHw_mode == eSAP_DOT11_MODE_11ac_ONLY )
-    {
-        if ( channel== 36 || channel == 52 || channel == 100 ||
-             channel == 116 || channel == 149 )
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz =
-                     PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW - 1;
-        }
-        else if ( channel == 40 || channel == 56 || channel == 104 ||
-             channel == 120 || channel == 153 )
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz =
-                           PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW - 1;
-        }
-        else if ( channel == 44 || channel == 60 || channel == 108 ||
-                  channel == 124 || channel == 157 )
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz =
-                           PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH -1;
-        }
-        else if ( channel == 48 || channel == 64 || channel == 112 ||
-             channel == 128 || channel == 161 )
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz =
-                          PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH - 1;
-        }
-        else if ( channel == 165 )
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz = 0;
-        }
-    }
-#endif
-    if ( SapHw_mode == eSAP_DOT11_MODE_11n ||
-          SapHw_mode == eSAP_DOT11_MODE_11n_ONLY )
-    {
-        if ( channel== 40 || channel == 48 || channel == 56 ||
-             channel == 64 || channel == 104 || channel == 112 ||
-             channel == 120 || channel == 128 || channel == 136 ||
-             channel == 144 || channel == 153 || channel == 161 )
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz = 1;
-        }
-        else if ( channel== 36 || channel == 44 || channel == 52 ||
-             channel == 60 || channel == 100 || channel == 108 ||
-             channel == 116 || channel == 124 || channel == 132 ||
-             channel == 140 || channel == 149 || channel == 157 )
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz = 2;
-        }
-        else if ( channel == 165 )
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz = 0;
-        }
-    }
-    pr_info ("cbmode selected=%ld\n",smeConfig.csrConfig.channelBondingMode5GHz);
-
-    sme_UpdateConfig (pHddCtx->hHal,&smeConfig);
-    return VOS_STATUS_SUCCESS;
-}
-
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0))
 static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
                             struct beacon_parameters *params)
@@ -1955,8 +1860,12 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     }
 #endif
 
-    if( AUTO_CHANNEL_SELECT != pConfig->channel)
-        wlan_sap_select_cbmode((WLAN_HDD_GET_CTX(pHostapdAdapter)),pConfig->SapHw_mode,pConfig->channel);
+    if ( AUTO_CHANNEL_SELECT != pConfig->channel )
+    {
+        sme_SelectCBMode(hHal,
+            sapConvertSapPhyModeToCsrPhyMode(pConfig->SapHw_mode),
+            pConfig->channel);
+    }
     // ht_capab is not what the name conveys,this is used for protection bitmap
     pConfig->ht_capab =
                  (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->apProtection;

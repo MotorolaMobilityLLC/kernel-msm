@@ -167,5 +167,4 @@ extern void wlan_hdd_cfg80211_update_replayCounterCallback(void *callbackContext
                             tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp);
 #endif
 
-
 #endif
