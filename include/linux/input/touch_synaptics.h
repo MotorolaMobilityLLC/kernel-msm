@@ -156,6 +156,7 @@ struct synaptics_ts_data {
 	struct delayed_work     work_init;
 	struct work_struct      work_fw_upgrade;
 	struct early_suspend    early_suspend;
+	struct work_struct      work_recover;
 	struct kobject          lge_touch_kobj;
 };
 

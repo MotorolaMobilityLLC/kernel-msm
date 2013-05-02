@@ -332,8 +332,7 @@ static void touch_work_post_proc(struct synaptics_ts_data *ts, int post_proc)
 
 	case WORK_POST_ERR_CIRTICAL:
 		ts->work_sync_err_cnt = 0;
-		safety_reset(ts);
-		touch_ic_init(ts);
+		queue_work(synaptics_wq, &ts->work_recover);
 		post_proc = WORK_POST_COMPLETE;
 		break;
 
@@ -532,6 +531,23 @@ static void touch_init_func(struct work_struct *work_init)
 
 	/* Specific device initialization */
 	touch_ic_init(ts);
+}
+
+/* touch_recover_func
+ *
+ * In order to reduce the booting-time,
+ * we used delayed_work_queue instead of msleep or mdelay.
+ */
+static void touch_recover_func(struct work_struct *work_recover)
+{
+	struct synaptics_ts_data *ts =
+			container_of(work_recover,
+				struct synaptics_ts_data, work_recover);
+
+	disable_irq(ts->client->irq);
+	safety_reset(ts);
+	touch_ic_init(ts);
+	enable_irq(ts->client->irq);
 }
 
 /* touch_ic_init
@@ -1624,6 +1640,7 @@ static int synaptics_ts_probe(
 	/* init work_queue */
 	INIT_DELAYED_WORK(&ts->work_init, touch_init_func);
 	INIT_WORK(&ts->work_fw_upgrade, touch_fw_upgrade_func);
+	INIT_WORK(&ts->work_recover, touch_recover_func);
 
 	/* input dev setting */
 	ts->input_dev = input_allocate_device();
