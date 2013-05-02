@@ -80,6 +80,7 @@ typedef struct  sTraceRecord
 }tTraceRecord, *tpTraceRecord;
 
 #define eLOG_NODROP_MISSED_BEACON_SCENARIO 0
+#define eLOG_PROC_DEAUTH_FRAME_SCENARIO 1
 
 #define MAX_TRACE_RECORDS 2000
 #define INVALID_TRACE_ADDR 0xffffffff

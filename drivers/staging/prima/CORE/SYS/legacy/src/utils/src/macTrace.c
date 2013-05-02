@@ -620,6 +620,7 @@ tANI_U8* macTraceGetInfoLogString( tANI_U16 infoLog )
     switch( infoLog )
     {
         CASE_RETURN_STRING(eLOG_NODROP_MISSED_BEACON_SCENARIO);
+        CASE_RETURN_STRING(eLOG_PROC_DEAUTH_FRAME_SCENARIO);
         default:
             return( (tANI_U8*)"UNKNOWN" );
             break;

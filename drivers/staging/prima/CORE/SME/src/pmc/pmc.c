@@ -458,11 +458,21 @@ eHalStatus pmcEnterImpsState (tHalHandle hHal)
     {
         if (palTimerStart(pMac->hHdd, pMac->pmc.hImpsTimer, pMac->pmc.impsPeriod * 1000, FALSE) != eHAL_STATUS_SUCCESS)
         {
-            smsLog(pMac, LOGE, FL("Cannot start IMPS timer"));
             PMC_ABORT;
+            pMac->pmc.ImpsReqTimerFailed = VOS_TRUE;
+            if (!(pMac->pmc.ImpsReqTimerfailCnt & 0xF))
+            {
+                pMac->pmc.ImpsReqTimerfailCnt++;
+                smsLog(pMac, LOGE, FL("Cannot start IMPS timer, FailCnt - %d"), pMac->pmc.ImpsReqTimerfailCnt);
+            }
             pmcEnterRequestFullPowerState(hHal, eSME_REASON_OTHER);
             return eHAL_STATUS_FAILURE;
         }
+        if (pMac->pmc.ImpsReqTimerfailCnt)
+        {
+           smsLog(pMac, LOGE, FL("Start IMPS timer was failed %d times before success"), pMac->pmc.ImpsReqTimerfailCnt);
+        }
+        pMac->pmc.ImpsReqTimerfailCnt = 0;
     }
 
     //Vote off RF supplies. Note RF supllies are not voted off if there is a
@@ -1106,6 +1116,7 @@ void pmcDoBmpsCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
    smsLog(pMac, LOG2, "PMC: entering pmcDoBmpsCallbacks");
 
    /* Call the routines in the request BMPS callback routine list. */
+   csrLLLock(&pMac->pmc.requestBmpsList);
    pEntry = csrLLRemoveHead(&pMac->pmc.requestBmpsList, FALSE);
    while (pEntry != NULL)
    {
@@ -1116,6 +1127,7 @@ void pmcDoBmpsCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
       palFreeMemory(pMac->hHdd, pRequestBmpsEntry);
       pEntry = csrLLRemoveHead(&pMac->pmc.requestBmpsList, FALSE);
    }
+   csrLLUnlock(&pMac->pmc.requestBmpsList);
 }
 
 
@@ -1144,7 +1156,7 @@ void pmcDoStartUapsdCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
    tpStartUapsdEntry pStartUapsdEntry;
 
    smsLog(pMac, LOG2, "PMC: entering pmcDoStartUapsdCallbacks");
-
+   csrLLLock(&pMac->pmc.requestStartUapsdList);
    /* Call the routines in the request start UAPSD callback routine list. */
    pEntry = csrLLRemoveHead(&pMac->pmc.requestStartUapsdList, FALSE);
    while (pEntry != NULL)
@@ -1155,6 +1167,7 @@ void pmcDoStartUapsdCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
       palFreeMemory(pMac->hHdd, pStartUapsdEntry);
       pEntry = csrLLRemoveHead(&pMac->pmc.requestStartUapsdList, FALSE);
    }
+   csrLLUnlock(&pMac->pmc.requestStartUapsdList);
 }
 
 /******************************************************************************

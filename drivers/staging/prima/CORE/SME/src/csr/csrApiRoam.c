@@ -6692,6 +6692,10 @@ eHalStatus csrRoamSaveConnectedInfomation(tpAniSirGlobal pMac, tANI_U32 sessionI
         pConnectProfile->MDID.mobilityDomain = (pSirBssDesc->mdie[1] << 8) | (pSirBssDesc->mdie[0]);
     }
 #endif
+    if( NULL == pIesTemp )
+    {
+        status = csrGetParsedBssDescriptionIEs(pMac, pSirBssDesc, &pIesTemp);
+    }
 #ifdef FEATURE_WLAN_CCX
     if ((csrIsProfileCCX(pProfile) || 
          ((pIesTemp->CCXVersion.present) 
@@ -6709,10 +6713,6 @@ eHalStatus csrRoamSaveConnectedInfomation(tpAniSirGlobal pMac, tANI_U32 sessionI
     }
 #endif
     //save ssid
-    if( NULL == pIesTemp )
-    {
-        status = csrGetParsedBssDescriptionIEs(pMac, pSirBssDesc, &pIesTemp);
-    }
     if(HAL_STATUS_SUCCESS(status))
     {
         if(pIesTemp->SSID.present)

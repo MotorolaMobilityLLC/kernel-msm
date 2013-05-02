@@ -164,6 +164,7 @@ typedef tANI_U8 tCsrBssid[WNI_CFG_BSSID_LEN];
 
 typedef enum
 {
+    eCSR_BSS_TYPE_NONE,
     eCSR_BSS_TYPE_INFRASTRUCTURE,
     eCSR_BSS_TYPE_INFRA_AP,       // SoftAP AP
     eCSR_BSS_TYPE_IBSS,           // an IBSS network we will NOT start
