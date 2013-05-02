@@ -115,7 +115,6 @@ static unsigned long dsi_pll_rate;
 static void __iomem *hdmi_phy_base;
 static void __iomem *hdmi_phy_pll_base;
 static unsigned hdmi_pll_on;
-static int pll_initialized_in_boot = 0;
 
 void __init mdss_clk_ctrl_pre_init(struct clk *ahb_clk)
 {
@@ -215,7 +214,7 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 	int panel_id = mdss_dsi_panel_id();
 
 	pr_debug("%s:\n", __func__);
-	if (pll_initialized && pll_initialized_in_boot)
+	if (pll_initialized)
 		return 0;
 
 	half_bitclk_rate = rate * 4;
@@ -309,7 +308,6 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 
 	pr_debug("%s: PLL initialized. bcl=%d\n", __func__, pll_byte_clk_rate);
 	pll_initialized = 1;
-	pll_initialized_in_boot = 1;
 
 	return 0;
 }
