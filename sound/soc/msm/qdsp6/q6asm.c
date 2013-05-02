@@ -220,7 +220,7 @@ int q6asm_audio_client_buf_free(unsigned int dir,
 	int rc = 0;
 	pr_debug("%s: Session id %d\n", __func__, ac->session);
 	mutex_lock(&ac->cmd_lock);
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
 		port = &ac->port[dir];
 		if (!port->buf) {
 			mutex_unlock(&ac->cmd_lock);
@@ -351,7 +351,7 @@ void q6asm_audio_client_free(struct audio_client *ac)
 	if (!ac || !ac->session)
 		return;
 	pr_debug("%s: Session id %d\n", __func__, ac->session);
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
 		for (loopcnt = 0; loopcnt <= OUT; loopcnt++) {
 			port = &ac->port[loopcnt];
 			if (!port->buf)
@@ -386,14 +386,20 @@ int q6asm_set_io_mode(struct audio_client *ac, uint32_t mode)
 		pr_err("%s APR handle NULL\n", __func__);
 		return -EINVAL;
 	}
-	if ((mode == ASYNC_IO_MODE) || (mode == SYNC_IO_MODE)) {
-		ac->io_mode = mode;
-		pr_debug("%s:Set Mode to %d\n", __func__, ac->io_mode);
-		return 0;
+
+	if (mode == ASYNC_IO_MODE) {
+		ac->io_mode &= ~SYNC_IO_MODE;
+		ac->io_mode |= ASYNC_IO_MODE;
+	} else if (mode == SYNC_IO_MODE) {
+		ac->io_mode &= ~ASYNC_IO_MODE;
+		ac->io_mode |= SYNC_IO_MODE;
 	} else {
 		pr_err("%s:Not an valid IO Mode:%d\n", __func__, ac->io_mode);
 		return -EINVAL;
 	}
+
+	pr_debug("%s:Set Mode to %d\n", __func__, ac->io_mode);
+	return 0;
 }
 
 struct audio_client *q6asm_audio_client_alloc(app_cb cb, void *priv)
@@ -497,7 +503,7 @@ int q6asm_audio_client_buf_alloc(unsigned int dir,
 	if (ac->session <= 0 || ac->session > 8)
 		goto fail;
 
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
 		if (ac->port[dir].buf) {
 			pr_debug("%s: buffer already allocated\n", __func__);
 			return 0;
@@ -927,7 +933,7 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 		pr_debug("%s: Rxed opcode[0x%x] status[0x%x] token[%d]",
 				__func__, payload[0], payload[1],
 				data->token);
-		if (ac->io_mode == SYNC_IO_MODE) {
+		if (ac->io_mode & SYNC_IO_MODE) {
 			if (port->buf == NULL) {
 				pr_err("%s: Unexpected Write Done\n",
 								__func__);
@@ -1009,7 +1015,7 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 		if (in_enable_flag)
 			in_cont_index++;
 #endif
-		if (ac->io_mode == SYNC_IO_MODE) {
+		if (ac->io_mode & SYNC_IO_MODE) {
 			if (port->buf == NULL) {
 				pr_err("%s: Unexpected Write Done\n", __func__);
 				return -EINVAL;
@@ -1078,7 +1084,7 @@ void *q6asm_is_cpu_buf_avail(int dir, struct audio_client *ac, uint32_t *size,
 	if (!ac || ((dir != IN) && (dir != OUT)))
 		return NULL;
 
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
 		port = &ac->port[dir];
 
 		mutex_lock(&port->lock);
@@ -1172,7 +1178,7 @@ int q6asm_is_dsp_buf_avail(int dir, struct audio_client *ac)
 	if (!ac || (dir != OUT))
 		return ret;
 
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
 		port = &ac->port[dir];
 
 		mutex_lock(&port->lock);
@@ -1303,6 +1309,9 @@ int q6asm_open_read(struct audio_client *ac,
 			rc);
 		goto fail_cmd;
 	}
+
+	ac->io_mode |= TUN_READ_IO_MODE;
+
 	return 0;
 fail_cmd:
 	return -EINVAL;
@@ -1579,6 +1588,9 @@ int q6asm_open_write(struct audio_client *ac, uint32_t format)
 		pr_err("%s: format = %x not supported\n", __func__, format);
 		goto fail_cmd;
 	}
+
+	ac->io_mode |= TUN_WRITE_IO_MODE;
+
 	return 0;
 fail_cmd:
 	return -EINVAL;
@@ -3366,7 +3378,7 @@ int q6asm_read(struct audio_client *ac)
 		pr_err("APR handle NULL\n");
 		return -EINVAL;
 	}
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
 		port = &ac->port[OUT];
 
 		q6asm_add_hdr(ac, &read.hdr, sizeof(read), FALSE);
@@ -3418,7 +3430,7 @@ int q6asm_read_nolock(struct audio_client *ac)
 		pr_err("APR handle NULL\n");
 		return -EINVAL;
 	}
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
 		port = &ac->port[OUT];
 
 		q6asm_add_hdr_async(ac, &read.hdr, sizeof(read), FALSE);
@@ -3442,7 +3454,7 @@ int q6asm_read_nolock(struct audio_client *ac)
 		read.hdr.token = port->dsp_buf;
 
 		port->dsp_buf = (port->dsp_buf + 1) & (port->max_buf_cnt - 1);
-		pr_debug("%s:buf add[0x%x] token[%d] uid[%d]\n", __func__,
+		pr_info("%s:buf add[0x%x] token[%d] uid[%d]\n", __func__,
 					read.buf_add,
 					read.hdr.token,
 					read.uid);
@@ -3603,7 +3615,7 @@ int q6asm_write(struct audio_client *ac, uint32_t len, uint32_t msw_ts,
 		return -EINVAL;
 	}
 	pr_debug("%s: session[%d] len=%d", __func__, ac->session, len);
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
 		port = &ac->port[IN];
 
 		q6asm_add_hdr(ac, &write.hdr, sizeof(write),
@@ -3685,7 +3697,7 @@ int q6asm_write_nolock(struct audio_client *ac, uint32_t len, uint32_t msw_ts,
 		return -EINVAL;
 	}
 	pr_debug("%s: session[%d] len=%d", __func__, ac->session, len);
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
 		port = &ac->port[IN];
 
 		q6asm_add_hdr_async(ac, &write.hdr, sizeof(write),
@@ -3890,9 +3902,11 @@ static void q6asm_reset_buf_state(struct audio_client *ac)
 {
 	int cnt = 0;
 	int loopcnt = 0;
+	int used;
 	struct audio_port_data *port = NULL;
 
-	if (ac->io_mode == SYNC_IO_MODE) {
+	if (ac->io_mode & SYNC_IO_MODE) {
+		used = (ac->io_mode & TUN_WRITE_IO_MODE ? 1 : 0);
 		mutex_lock(&ac->cmd_lock);
 		for (loopcnt = 0; loopcnt <= OUT; loopcnt++) {
 			port = &ac->port[loopcnt];
@@ -3902,7 +3916,7 @@ static void q6asm_reset_buf_state(struct audio_client *ac)
 			while (cnt >= 0) {
 				if (!port->buf)
 					continue;
-				port->buf[cnt].used = 1;
+				port->buf[cnt].used = used;
 				cnt--;
 			}
 		}
