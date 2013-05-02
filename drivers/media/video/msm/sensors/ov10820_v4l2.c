@@ -1331,6 +1331,19 @@ static struct msm_camera_i2c_client ov10820_sensor_i2c_client = {
 	.addr_type = MSM_CAMERA_I2C_WORD_ADDR,
 };
 
+static struct msm_camera_i2c_reg_conf ov10820_read_otp_settings[] = {
+	{0x0380, 0x04},
+	{0x3082, 0x6c},
+	{0x3083, 0x00},
+	{0x308b, 0x05},
+	{0x308d, 0xae},
+	{0x308e, 0x00},
+	{0x308f, 0x09},
+	{0x3092, 0x03},
+	{0x5002, 0x00},
+	{0x0100, 0x01},
+};
+
 static int32_t ov10820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -1338,18 +1351,19 @@ static int32_t ov10820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 	if (is_ov10820_otp_read == 1)
 		return rc;
 
-
-	/* Start Stream to read OTP Data */
-	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
-			0x0100, 0x01, MSM_CAMERA_I2C_BYTE_DATA);
-
+	/* Send PLL settings and stream on commmand */
+	rc = msm_camera_i2c_write_tbl(s_ctrl->sensor_i2c_client,
+			ov10820_read_otp_settings,
+			ARRAY_SIZE(ov10820_read_otp_settings),
+			MSM_CAMERA_I2C_BYTE_DATA);
 	if (rc < 0) {
-		pr_err("%s: Unable to read otp\n", __func__);
+		pr_err("%s: Unable to setup for otp read.\n", __func__);
 		return rc;
 	}
 
-	usleep_range(1000, 2000);
+	usleep_range(5000, 5500);
 
+	/* Read the otp */
 	rc = msm_camera_i2c_read_seq(s_ctrl->sensor_i2c_client,
 			OV10820_OTP_ADDR, (uint8_t *)ov10820_otp,
 			OV10820_OTP_SIZE);
