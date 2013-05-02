@@ -2585,6 +2585,14 @@ static int report_state_of_charge(struct pm8921_bms_chip *chip)
 				&& chip->catch_up_time_us != 0)
 		soc = scale_soc_while_chg(chip, delta_time_us, soc, last_soc);
 
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	if ((the_chip->start_percent == -EINVAL) && (last_soc != -EINVAL)
+	    && (the_chip->last_ocv_uv != the_chip->max_voltage_uv)
+	    && (soc > last_soc)) {
+		pr_info("Calculated SOC = %d ,Last SOC = %d\n", soc, last_soc);
+		soc = last_soc;
+	}
+#endif
 	last_soc = soc;
 	backup_soc_and_iavg(chip, batt_temp, last_soc);
 	pr_debug("Reported SOC = %d\n", last_soc);
