@@ -598,8 +598,9 @@ static void safety_reset(struct synaptics_ts_data *ts)
 
 	release_all_ts_event(ts);
 
-	touch_power_cntl(ts, POWER_OFF);
-	touch_power_cntl(ts, POWER_ON);
+	gpio_set_value(ts->pdata->reset_gpio, 0);
+	msleep(RESET_DELAY);
+	gpio_set_value(ts->pdata->reset_gpio, 1);
 	msleep(BOOTING_DELAY);
 
 	TOUCH_INFO_MSG("<<safety_reset\n");
