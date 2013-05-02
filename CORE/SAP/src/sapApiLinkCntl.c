@@ -87,7 +87,7 @@
 #include "csrApi.h"
 #include "sme_Api.h"
 // SAP Internal API header file
-#include "sapInternal.h" 
+#include "sapInternal.h"
 
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
@@ -112,7 +112,7 @@
 
 /*----------------------------------------------------------------------------
  * Externalized Function Definitions
-* -------------------------------------------------------------------------*/
+ * -------------------------------------------------------------------------*/
 
 /*----------------------------------------------------------------------------
  * Function Declarations and Documentation
@@ -228,12 +228,13 @@ WLANSAP_ScanCallback
       psapContext->channel = operChannel;
     }
 
-    wlan_sap_select_cbmode(pTempHddCtx, psapContext->csrRoamProfile.phyMode,
-                           psapContext->channel);
+    sme_SelectCBMode(halHandle,
+          sapConvertSapPhyModeToCsrPhyMode(psapContext->csrRoamProfile.phyMode),
+          psapContext->channel);
 #ifdef SOFTAP_CHANNEL_RANGE
     if(psapContext->channelList != NULL)
     {
-        /* Always free up the memory for channel selection whatever 
+        /* Always free up the memory for channel selection whatever
          * the result */
         vos_mem_free(psapContext->channelList);
         psapContext->channelList = NULL;

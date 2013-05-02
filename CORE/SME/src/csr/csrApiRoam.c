@@ -3625,7 +3625,7 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
     ccmCfgSetInt(pMac, WNI_CFG_LOCAL_POWER_CONSTRAINT, pBssConfig->uPowerLimit, NULL, eANI_BOOLEAN_FALSE);
     //CB
 
-    if(CSR_IS_INFRA_AP(pProfile) || CSR_IS_WDS_AP(pProfile))
+    if(CSR_IS_INFRA_AP(pProfile) || CSR_IS_WDS_AP(pProfile) || CSR_IS_IBSS(pProfile))
     {
         channel = pProfile->operationChannel;
     }
@@ -10872,55 +10872,6 @@ static void csrRoamDetermineMaxRateForAdHoc( tpAniSirGlobal pMac, tSirMacRateSet
     return;
 }
 
-//this function finds a valid secondary channel for channel bonding with "channel".
-//Param: channel -- primary channel, caller must validate it
-//       cbChoice -- CB directory
-//Return: if 0, no secondary channel is found. Otherwise a valid secondary channel.
-static tANI_U8 csrRoamGetSecondaryChannel(tpAniSirGlobal pMac, tANI_U8 channel, eCsrCBChoice cbChoice)
-{
-    tANI_U8 chnUp = 0, chnDown = 0, chnRet = 0;
-    switch (cbChoice)
-    {
-    case eCSR_CB_OFF:
-        chnUp = 0;
-        chnDown = 0;
-        break;
-    case eCSR_CB_DOWN:
-        chnUp = 0;
-        chnDown = channel - CSR_CB_CHANNEL_GAP;
-        break;
-    case eCSR_CB_UP:
-        chnUp = channel + CSR_CB_CHANNEL_GAP;
-        chnDown = 0;
-        break;
-    case eCSR_CB_AUTO:
-    //consider every other value means auto
-    default:
-        chnUp = channel + CSR_CB_CHANNEL_GAP;
-        chnDown = channel - CSR_CB_CHANNEL_GAP;
-        break;
-    }
-    //if CB_UP or auto, try channel up first
-    if(chnUp && CSR_IS_SAME_BAND_CHANNELS(chnUp, channel) && csrRoamIsChannelValid(pMac, chnUp))
-    {
-        //found a valid up channel for channel bonding
-        //check whether the center channel is valid
-        if(csrRoamIsValid40MhzChannel(pMac, channel + CSR_CB_CENTER_CHANNEL_OFFSET))
-        {
-            chnRet = chnUp;
-        }
-    }
-    if(chnRet == 0 && chnDown && CSR_IS_SAME_BAND_CHANNELS(chnDown, channel) && csrRoamIsChannelValid(pMac, chnDown))
-    {
-        //found a valid down channel for channel bonding
-        if(csrRoamIsValid40MhzChannel(pMac, channel - CSR_CB_CENTER_CHANNEL_OFFSET))
-        {
-            chnRet = chnDown;
-        }
-    }
-    return chnRet;
-}
-
 eHalStatus csrRoamIssueStartBss( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamStartBssParams *pParam, 
                                  tCsrRoamProfile *pProfile, tSirBssDescription *pBssDesc, tANI_U32 roamId )
 {
@@ -10994,9 +10945,8 @@ eHalStatus csrRoamIssueStartBss( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRo
 static void csrRoamPrepareBssParams(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfile *pProfile, 
                                      tSirBssDescription *pBssDesc, tBssConfigParam *pBssConfig, tDot11fBeaconIEs *pIes)
 {
-    tANI_U8 Channel, SecondChn;
+    tANI_U8 Channel;
     ePhyChanBondState cbMode = PHY_SINGLE_CHANNEL_CENTERED;
-    eCsrCBChoice cbChoice;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
     if(!pSession)
@@ -11053,9 +11003,9 @@ static void csrRoamPrepareBssParams(tpAniSirGlobal pMac, tANI_U32 sessionId, tCs
     {
   
         csrRoamDetermineMaxRateForAdHoc( pMac, &pSession->bssParams.operationalRateSet );
-        if (CSR_IS_INFRA_AP(pProfile))
+        if (CSR_IS_INFRA_AP(pProfile) || CSR_IS_START_IBSS( pProfile ) )
         {
-            if(CSR_IS_CHANNEL_24GHZ(Channel))
+            if(CSR_IS_CHANNEL_24GHZ(Channel) )
             {
                 cbMode = pMac->roam.configParam.channelBondingMode24GHz;
             }
@@ -11063,66 +11013,9 @@ static void csrRoamPrepareBssParams(tpAniSirGlobal pMac, tANI_U32 sessionId, tCs
             {
                 cbMode = pMac->roam.configParam.channelBondingMode5GHz;
             }
-            smsLog(pMac, LOG1, "##softap cbMode %d", cbMode);
+            smsLog(pMac, LOG1, "## cbMode %d", cbMode);
             pBssConfig->cbMode = cbMode;
             pSession->bssParams.cbMode = cbMode;
-        }
-
-        if( CSR_IS_START_IBSS( pProfile ) )
-        {
-           //TBH: channel bonding is not supported for Libra
-            if( pProfile->ChannelInfo.ChannelList && eCSR_OPERATING_CHANNEL_AUTO != pProfile->ChannelInfo.ChannelList[0] )
-            {
-                Channel = pProfile->ChannelInfo.ChannelList[0];
-                cbChoice = pProfile->CBMode;
-            }
-            else {
-                cbChoice = pMac->roam.configParam.cbChoice;
-            }
-            pSession->bssParams.operationChn = Channel;
-            //make sure channel is valid
-            if(!csrRoamIsChannelValid(pMac, Channel))
-            {
-                //set Channel to 0 to let lim know this is invalid
-                //We still send this request down to lim even though we know the channel is wrong because
-                //lim will response with error and hdd's eWNI_SME_START_BSS_RSP handler will roam other profile (if any)
-                Channel = 0;
-                pSession->bssParams.operationChn = 0;
-            }
-            else {
-                tANI_U32 ChannelBondingMode;
-                if(CSR_IS_CHANNEL_24GHZ(Channel))
-                {
-                    ChannelBondingMode = pMac->roam.configParam.channelBondingMode24GHz;
-                }
-                else
-                {
-                    ChannelBondingMode = pMac->roam.configParam.channelBondingMode5GHz;
-                }
-                //now we have a valid channel
-                if(WNI_CFG_CHANNEL_BONDING_MODE_DISABLE != ChannelBondingMode)
-                {
-                    //let's pick a secondard channel
-                    SecondChn = csrRoamGetSecondaryChannel(pMac, Channel, cbChoice);
-                    if(SecondChn > Channel)
-                    {
-                        cbMode = PHY_DOUBLE_CHANNEL_LOW_PRIMARY;
-                    }
-                    else if(SecondChn && SecondChn < Channel)
-                    {
-                        cbMode = PHY_DOUBLE_CHANNEL_HIGH_PRIMARY;
-                    }
-                    else
-                    {
-                        cbMode = PHY_SINGLE_CHANNEL_CENTERED;
-                    }
-                    pSession->bssParams.cbMode = cbMode;
-                }
-                else
-                {
-                    pSession->bssParams.cbMode = PHY_SINGLE_CHANNEL_CENTERED;
-                }
-            }
         }
     }
 }

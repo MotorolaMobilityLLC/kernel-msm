@@ -2989,13 +2989,45 @@ int iw_set_essid(struct net_device *dev,
 
     pWextState->roamProfile.csrPersona = pAdapter->device_mode;
     (WLAN_HDD_GET_CTX(pAdapter))->isAmpAllowed = VOS_FALSE;
-    status = sme_RoamConnect( hHal,pAdapter->sessionId, &(pWextState->roamProfile),&roamId);
-    pRoamProfile->ChannelInfo.ChannelList = NULL;
-    pRoamProfile->ChannelInfo.numOfChannels = 0;
 
-    EXIT();
-    return status;
+    if ( eCSR_BSS_TYPE_START_IBSS == pRoamProfile->BSSType )
+    {
+        v_U8_t          iniDot11Mode = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->dot11Mode;
+        eHddDot11Mode   hddDot11Mode = iniDot11Mode;
+
+        switch ( iniDot11Mode )
+        {
+            case eHDD_DOT11_MODE_AUTO:
+            case eHDD_DOT11_MODE_11ac:
+            case eHDD_DOT11_MODE_11ac_ONLY:
+#ifdef WLAN_FEATURE_11AC
+                hddDot11Mode = eHDD_DOT11_MODE_11ac;
+#else
+                hddDot11Mode = eHDD_DOT11_MODE_11n;
+#endif
+                break;
+             case eHDD_DOT11_MODE_11n:
+             case eHDD_DOT11_MODE_11n_ONLY:
+                hddDot11Mode = eHDD_DOT11_MODE_11n;
+                break;
+             default:
+                hddDot11Mode = iniDot11Mode;
+                break;
+        }
+
+        /* This call decides required channel bonding mode */
+        sme_SelectCBMode((WLAN_HDD_GET_CTX(pAdapter)->hHal),
+                            hdd_cfg_xlate_to_csr_phy_mode(hddDot11Mode),
+                            (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->AdHocChannel5G);
+   }
+   status = sme_RoamConnect( hHal,pAdapter->sessionId, &(pWextState->roamProfile),&roamId);
+   pRoamProfile->ChannelInfo.ChannelList = NULL;
+   pRoamProfile->ChannelInfo.numOfChannels = 0;
+
+   EXIT();
+   return status;
 }
+
 /**---------------------------------------------------------------------------
 
   \brief iw_get_essid() -
