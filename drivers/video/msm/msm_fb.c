@@ -943,9 +943,8 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 	struct msm_fb_panel_data *pdata;
 	__u32 temp = bkl_lvl;
 
-	unset_bl_level = bkl_lvl;
-
-	if (!mfd->panel_power_on || !bl_updated)
+	if (!mfd->panel_power_on || !bl_updated) {
+		unset_bl_level = bkl_lvl;
 		return;
 	} else {
 		unset_bl_level = -1;
