@@ -719,7 +719,6 @@ config FB_MSM_MIPI_ORISE_CMD_720P_PT_PANEL
 config FB_MSM_MIPI_MOT_PT_PANEL
 	bool "MIPI MOT Panel"
 	select FB_MSM_MIPI_DSI_MOT_PT
-	select MIPI_MOT_NOTIFICATIONS
 	---help---
 	  Support for MOT generic panel
 
