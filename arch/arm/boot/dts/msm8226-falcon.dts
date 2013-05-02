@@ -297,8 +297,9 @@
 		active-dis;
 		tps65132: regulator {
 			regulator-name = "tps65132";
-			regulator-min-microvolt = <5300000>;
-			regulator-max-microvolt = <5900000>;
+			regulator-boot-on = <1>;
+			regulator-min-microvolt = <5400000>;
+			regulator-max-microvolt = <5400000>;
 		};
 	};
 };
