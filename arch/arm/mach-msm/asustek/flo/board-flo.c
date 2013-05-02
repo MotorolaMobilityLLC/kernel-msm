@@ -102,7 +102,6 @@
 #define NFC_GPIO_VEN PM8921_GPIO_PM_TO_SYS(9)
 #define NFC_GPIO_WAKE PM8921_GPIO_PM_TO_SYS(8)
 #define NFC_GPIO_IRQ 32
-#define CAP1106_GPIO_IRQ 52
 
 static int config_nfc_gpio(void)
 {
@@ -150,17 +149,50 @@ static void nfc_init(void) {
 			ARRAY_SIZE(i2c_bcm2079x));
 }
 
+#ifdef CONFIG_SENSORS_CAP1106
+#include <linux/i2c/cap1106.h>
+
+static struct cap1106_i2c_platform_data cap1106_pdata = {
+	.app2mdm_enable = 0,
+	.sar_gpio = CAP1106_SAR_GPIO,
+	.sar_gpio_name = CAP1106_SAR_GPIO_NAME,
+	.det_gpio = CAP1106_DET_GPIO,
+	.det_gpio_name = CAP1106_DET_GPIO_NAME,
+	.init_table = {
+			0x1F, 0x1F, // Data sensitivity
+			0x20, 0x20, // MAX duration disable
+			0x21, 0x22, // Enable CS2+CS6.
+			0x22, 0xFF, // MAX duration time to max , repeat period time to max
+			0x24, 0x39, // Digital count update time to 140*64ms
+			0x27, 0x22, // Enable INT. for CS2+CS6.
+			0x28, 0x22, // Disable repeat irq
+			0x2A, 0x00, // All channel run in the same time
+			0x31, 0x0A, // Threshold of CS 2
+			0x35, 0x0A, // Threshold of CS 6
+			0x26, 0x22, // Force re-cal CS2+CS6
+			0x00, 0xC0, // Reset INT. bit.
+    },
+};
+
 static struct i2c_board_info i2c_cap1106[] __initdata = {
 	{
-		I2C_BOARD_INFO("cap1106", 0x28),
-		.irq = MSM_GPIO_TO_INT(CAP1106_GPIO_IRQ),
+		I2C_BOARD_INFO(CAP1106_I2C_NAME, 0x28),
+		.irq = MSM_GPIO_TO_INT(CAP1106_DET_GPIO),
+		.platform_data = &cap1106_pdata,
 	},
 };
 
 static void cap1106_init(void) {
-	i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
-		i2c_cap1106,
-		ARRAY_SIZE(i2c_cap1106));
+	struct cap1106_i2c_platform_data *pdata;
+
+	pdata = (struct cap1106_i2c_platform_data *) i2c_cap1106[0].platform_data;
+	if ((asustek_get_hw_rev() == HW_REV_C)
+	        || (asustek_get_hw_rev() == HW_REV_D)) {
+		pdata->app2mdm_enable = 1;
+	}
+
+	i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID, i2c_cap1106,
+	        ARRAY_SIZE(i2c_cap1106));
 }
 
 static void enable_cap1106_regulator(void) {
@@ -191,13 +223,13 @@ static void enable_cap1106_regulator(void) {
 	if (rc) {
 		pr_err("%s: regulator_enable of %s failed(%d)\n",
 			__func__, vdd_name, rc);
-		//goto reg_put_LDO_CAP1106;
 		regulator_put(pm8921_cap1106);
 		return;
 	}
 
 	pr_info("enable_cap1106_regulator() >>\n");
 }
+#endif /* CONFIG_SENSORS_CAP1106 */
 
 #define MSM_PMEM_ADSP_SIZE         0x7800000
 #define MSM_PMEM_AUDIO_SIZE        0x4CF000
@@ -3385,10 +3417,12 @@ static void __init apq8064_common_init(void)
 	
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		nfc_init();
+#ifdef CONFIG_SENSORS_CAP1106
 	if (machine_is_apq8064_deb()) {
 		enable_cap1106_regulator();
 		cap1106_init();
 	}
+#endif /* CONFIG_SENSORS_CAP1106 */
 #ifdef CONFIG_SLIMPORT_ANX7808
 	add_i2c_anx7808_device();
 #endif
