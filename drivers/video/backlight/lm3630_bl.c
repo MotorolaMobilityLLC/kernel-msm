@@ -206,6 +206,7 @@ void lm3630_backlight_on(int level)
 		lm3630_write_reg(main_lm3630_dev->client, 0x05, 0x17);
 		/* Enable LED A to Exponential, LED2 is connected to BANK_A */
 		lm3630_write_reg(main_lm3630_dev->client, 0x00, 0x15);
+		pr_info("%s\n", __func__);
 	}
 	mdelay(1);
 	lm3630_set_main_current_level(main_lm3630_dev->client, level);
@@ -223,6 +224,7 @@ void lm3630_backlight_off(void)
 	backlight_status = BL_OFF;
 	gpio_direction_output(main_lm3630_dev->gpio, 0);
 	msleep(6);
+	pr_info("%s\n", __func__);
 	return;
 }
 
