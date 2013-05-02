@@ -1699,7 +1699,7 @@ u32 vid_enc_encode_frame(struct video_client_ctx *client_ctx,
 				msm_ion_do_cache_op(
 				client_ctx->user_ion_client,
 				buff_handle,
-				(unsigned long *) vcd_input_buffer.virtual,
+				(unsigned long *) NULL,
 				(unsigned long) vcd_input_buffer.data_len,
 				ION_IOC_CLEAN_CACHES);
 			}
