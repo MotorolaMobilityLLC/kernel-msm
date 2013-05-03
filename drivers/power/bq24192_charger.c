@@ -228,7 +228,6 @@ static int bq24192_set_input_i_limit(struct bq24192_chip *chip, int ma)
 		return -EINVAL;
 	}
 
-
 	for (i = ARRAY_SIZE(icl_ma_table) - 1; i >= 0; i--) {
 		if (icl_ma_table[i].icl_ma == ma)
 			break;
@@ -443,15 +442,25 @@ static void bq24192_irq_worker(struct work_struct *work)
 {
 	struct bq24192_chip *chip =
 		container_of(work, struct bq24192_chip, irq_work.work);
+	union power_supply_propval ret = {0,};
 	bool ext_pwr;
+	int wlc_pwr = 0;
 
 	ext_pwr = bq24192_is_charger_present(chip);
 
-	if (chip->ext_pwr ^ ext_pwr) {
+	if (chip->wlc_psy) {
+		chip->wlc_psy->get_property(chip->wlc_psy,
+					POWER_SUPPLY_PROP_ONLINE, &ret);
+		wlc_pwr = ret.intval;
+		pr_info("wireless charger is = %d\n", wlc_pwr);
+	}
+
+	if (chip->ext_pwr ^ ext_pwr && !wlc_pwr) {
 		chip->ext_pwr = ext_pwr;
 		pr_info("notify vbus to usb otg ext_pwr = %d\n", ext_pwr);
 		power_supply_set_present(chip->usb_psy, chip->ext_pwr);
 	}
+
 	power_supply_changed(&chip->ac_psy);
 }
 
