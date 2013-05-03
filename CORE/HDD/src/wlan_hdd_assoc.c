@@ -1479,15 +1479,19 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
 /**============================================================================
  *
-  @brief roamRoamIbssIndicationHandler() - Here we update the status of the
+  @brief hdd_RoamIbssIndicationHandler() - Here we update the status of the
   Ibss when we receive information that we have started/joined an ibss session
-  We always return SUCCESS.
 
   ===========================================================================*/
-static eHalStatus roamRoamIbssIndicationHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo,
-   tANI_U32 roamId, eRoamCmdStatus roamStatus,
-   eCsrRoamResult roamResult )
+static void hdd_RoamIbssIndicationHandler( hdd_adapter_t *pAdapter,
+                                           tCsrRoamInfo *pRoamInfo,
+                                           tANI_U32 roamId,
+                                           eRoamCmdStatus roamStatus,
+                                           eCsrRoamResult roamResult )
 {
+   hddLog(VOS_TRACE_LEVEL_INFO, "%s: %s: id %d, status %d, result %d",
+          __func__, pAdapter->dev->name, roamId, roamStatus, roamResult);
+
    switch( roamResult )
    {
       // both IBSS Started and IBSS Join should come in here.
@@ -1496,16 +1500,47 @@ static eHalStatus roamRoamIbssIndicationHandler( hdd_adapter_t *pAdapter, tCsrRo
       {
          hdd_context_t *pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
          v_MACADDR_t broadcastMacAddr = VOS_MAC_ADDR_BROADCAST_INITIALIZER;
-         // we should have a pRoamInfo on this callback...
-         VOS_ASSERT( pRoamInfo );
 
-         // When IBSS Started comes from CSR, we need to move connection state to
-         // IBSS Disconnected (meaning no peers are in the IBSS).
-         hdd_connSetConnectionState( WLAN_HDD_GET_STATION_CTX_PTR(pAdapter), eConnectionState_IbssDisconnected );
+         if (NULL == pRoamInfo)
+         {
+            VOS_ASSERT(0);
+            return;
+         }
+
+         /* When IBSS Started comes from CSR, we need to move
+          * connection state to IBSS Disconnected (meaning no peers
+          * are in the IBSS).
+          */
+         hdd_connSetConnectionState( WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
+                                     eConnectionState_IbssDisconnected );
          pHddCtx->sta_to_adapter[IBSS_BROADCAST_STAID] = pAdapter;
          hdd_roamRegisterSTA (pAdapter, pRoamInfo,
                       IBSS_BROADCAST_STAID,
                       &broadcastMacAddr, pRoamInfo->pBssDesc);
+
+         if (pRoamInfo->pBssDesc)
+         {
+            struct cfg80211_bss *bss;
+
+            /* we created the IBSS, notify supplicant */
+            hddLog(VOS_TRACE_LEVEL_INFO, "%s: %s: created ibss "
+                   MAC_ADDRESS_STR,
+                   __func__, pAdapter->dev->name,
+                   MAC_ADDR_ARRAY(pRoamInfo->pBssDesc->bssId));
+
+            /* we must first give cfg80211 the BSS information */
+            bss = wlan_hdd_cfg80211_update_bss_db(pAdapter, pRoamInfo);
+            if (NULL == bss)
+            {
+               hddLog(VOS_TRACE_LEVEL_ERROR,
+                      "%s: %s: unable to create IBSS entry",
+                      __func__, pAdapter->dev->name);
+               return;
+            }
+
+            cfg80211_ibss_joined(pAdapter->dev, bss->bssid, GFP_KERNEL);
+            cfg80211_put_bss(bss);
+         }
 
          netif_carrier_on(pAdapter->dev);
          netif_tx_start_all_queues(pAdapter->dev);
@@ -1514,16 +1549,18 @@ static eHalStatus roamRoamIbssIndicationHandler( hdd_adapter_t *pAdapter, tCsrRo
 
       case eCSR_ROAM_RESULT_IBSS_START_FAILED:
       {
-         VOS_ASSERT( pRoamInfo );
-
+         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: %s: unable to create IBSS",
+                __func__, pAdapter->dev->name);
          break;
       }
 
       default:
+         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: %s: unexpected result %d",
+                __func__, pAdapter->dev->name, (int)roamResult);
          break;
    }
 
-    return( eHAL_STATUS_SUCCESS );
+   return;
 }
 
 /**============================================================================
@@ -2340,7 +2377,8 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                     pRoamInfo, roamId, roamStatus, roamResult );
             break;
         case eCSR_ROAM_IBSS_IND:
-            halStatus = roamRoamIbssIndicationHandler( pAdapter, pRoamInfo, roamId, roamStatus, roamResult );
+            hdd_RoamIbssIndicationHandler( pAdapter, pRoamInfo, roamId,
+                                           roamStatus, roamResult );
             break;
 
         case eCSR_ROAM_CONNECT_STATUS_UPDATE:
