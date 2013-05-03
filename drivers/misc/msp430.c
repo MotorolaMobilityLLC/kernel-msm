@@ -54,6 +54,7 @@
 #define I2C_RESPONSE_LENGTH		8
 #define MSP430_MAXDATA_LENGTH		250
 #define MSP430_DELAY_USEC		10
+#define MSP430_CRC_RESPONSE_MSG	0x3a
 #define MSP430_RESPONSE_MSG		0x3b
 #define MSP430_RESPONSE_MSG_SUCCESS	0x00
 #define MSP430_CRC_SEED			0xffff
@@ -69,6 +70,8 @@
 #define G_MAX				0x7FFF
 #define MSP430_CLIENT_MASK		0xF0
 #define MSP430_RESET_DELAY	400
+#define CRC_RESPONSE_LENGTH	9
+#define CRC_PACKET_LENGTH	11
 
 /* MSP430 memory map */
 #define ID				0x00
@@ -194,6 +197,9 @@ static unsigned char g_mag_cal[MSP_MAG_CAL_SIZE];
 /* Store error message */
 unsigned char stat_string[ESR_SIZE+1];
 
+/* Store crc value */
+unsigned short datacrc;
+
 struct algo_requst_t {
 	char size;
 	char data[28];
@@ -262,13 +268,15 @@ enum msp_commands {
 	MASS_ERASE,
 	PROGRAM_CODE,
 	END_FIRMWARE,
-	PASSWORD_RESET_DEFAULT
+	PASSWORD_RESET_DEFAULT,
+	CRC_CHECK
 };
 
 enum msp_opcode {
 	PASSWORD_OPCODE = 0x11,
 	MASSERASE_OPCODE = 0x15,
 	RXDATA_OPCODE = 0x10,
+	CRC_OPCODE = 0x16,
 };
 
 struct msp_response {
@@ -408,9 +416,16 @@ static int msp430_i2c_write_read_no_reset(struct msp430_data *ps_msp430,
 			response = (struct msp_response *) buf;
 			if ((response->cmd == MSP430_RESPONSE_MSG &&
 				response->data != MSP430_RESPONSE_MSG_SUCCESS)
-				|| (response->cmd != MSP430_RESPONSE_MSG)) {
+				 ) {
 					dev_err(&ps_msp430->client->dev,
-						"i2c cmd returned failure\n");
+						"i2c cmd returned failure - %x, %x\n",
+						response->cmd, response->data);
+					err = -EIO;
+			} else if (response->cmd != MSP430_RESPONSE_MSG
+				&& response->cmd != MSP430_CRC_RESPONSE_MSG) {
+					dev_err(&ps_msp430->client->dev,
+						"i2c cmd returned failure - %x\n",
+						response->cmd);
 					err = -EIO;
 			}
 		}
@@ -1511,6 +1526,7 @@ void msp430_build_command(enum msp_commands cmd,
 	unsigned int index = 0, i, len = *length;
 	unsigned short corecmdlen;
 	unsigned short crc;
+
 	struct msp430_data *ps_msp = msp430_misc_data;
 
 	/*allocate for the msp command */
@@ -1531,6 +1547,35 @@ void msp430_build_command(enum msp_commands cmd,
 		msp_cmdbuff[index++] = MASSERASE_OPCODE; /* opcode */
 		msp_cmdbuff[index++] = 0x64; /* crc LSB */
 		msp_cmdbuff[index++] = 0xa3; /* crc MSB */
+		break;
+	case CRC_CHECK:
+		corecmdlen = MSP430_CRC_LENGTH +
+			MSP430_OPCODE_LENGTH + MSP430_ADDRESS_LENGTH;
+		msp_cmdbuff[index++] =
+			(unsigned char)(corecmdlen & 0xff); /* LSB len */
+		msp_cmdbuff[index++] =
+			(unsigned char)((corecmdlen >> 8) & 0xff);/*MSB len*/
+		msp_cmdbuff[index++] = CRC_OPCODE; /* opcode */
+		/* LSB of write addr on MSP */
+		msp_cmdbuff[index++] =
+			(unsigned char)(ps_msp->current_addr & 0xff);
+		/* middle byte of write addr */
+		msp_cmdbuff[index++] =
+			(unsigned char)((ps_msp->current_addr >> 8) & 0xff);
+		/* MSB of write addr on MSP */
+		msp_cmdbuff[index++] =
+			(unsigned char)((ps_msp->current_addr >> 16) & 0xff);
+		/* LSB of length of data to perform CRC */
+		msp_cmdbuff[index++] =
+			(unsigned char)(len & 0xff);
+		/* MSB of length of data to perform CRC */
+		msp_cmdbuff[index++] =
+			(unsigned char)((len >> 8) & 0xff);
+		crc = msp430_calculate_crc(msp_cmdbuff+3, corecmdlen);
+		/* crc LSB */
+		msp_cmdbuff[index++] = (unsigned char)(crc & 0xff);
+		/* crc MSB */
+		msp_cmdbuff[index++] = (unsigned char)((crc >> 8)&0xff);
 		break;
 	case PROGRAM_CODE:
 		/*code length */
@@ -1559,6 +1604,9 @@ void msp430_build_command(enum msp_commands cmd,
 		} else {
 			index += len; /*increment index with data len*/
 			crc = msp430_calculate_crc(msp_cmdbuff+3, len+1+3);
+			datacrc = msp430_calculate_crc(msp_cmdbuff+7, len);
+			dev_dbg(&msp430_misc_data->client->dev,
+				"data CRC - %02x\n", datacrc);
 			/* crc LSB */
 			msp_cmdbuff[index++] = (unsigned char)(crc & 0xff);
 			/* crc MSB */
@@ -1602,6 +1650,7 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 	int err = 0;
 	struct msp430_data *ps_msp430;
 	unsigned int len = (unsigned int)count;
+	unsigned int crclen = (unsigned int)count;
 
 	ps_msp430 = msp430_misc_data;
 	dev_dbg(&ps_msp430->client->dev, "msp430_misc_write\n");
@@ -1622,11 +1671,31 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 		msp430_build_command(PROGRAM_CODE, buff, &len);
 		err = msp430_i2c_write_read_no_reset(ps_msp430, msp_cmdbuff,
 				 len, I2C_RESPONSE_LENGTH);
-		/* increment the current MSP write addr by count */
+
 		if (err == 0) {
-			msp430_misc_data->current_addr += count;
-			/* return the number of bytes successfully written */
-			err = len;
+			msp430_build_command(CRC_CHECK, NULL, &crclen);
+			err = msp430_i2c_write_read_no_reset(ps_msp430,
+				msp_cmdbuff, CRC_PACKET_LENGTH,
+				CRC_RESPONSE_LENGTH);
+
+			if (err == 0) {
+				if (datacrc !=
+					((msp_cmdbuff[6] << 8)
+					+ msp_cmdbuff[5])) {
+					dev_err(&ps_msp430->client->dev,
+						"CRC validation failed\n");
+					err = -EIO;
+				}
+
+				/* increment the current
+				MSP write addr by count */
+				if (err == 0) {
+					msp430_misc_data->current_addr += count;
+					/* return the number of
+					bytes successfully written */
+					err = len;
+				}
+			}
 		}
 	} else {
 		dev_dbg(&ps_msp430->client->dev,
@@ -1654,6 +1723,7 @@ int switch_msp430_mode(enum msp_mode mode)
 		msp430_misc_data->pdata->bslen_pin_active_value;
 
 	pdata = msp430_misc_data->pdata;
+	msp430_misc_data->mode = mode;
 
 	/* bootloader mode */
 	if (mode == BOOTMODE) {
@@ -1670,8 +1740,6 @@ int switch_msp430_mode(enum msp_mode mode)
 			"Toggling to normal or factory mode\n");
 		msp430_reset_and_init();
 	}
-
-	msp430_misc_data->mode = mode;
 
 	return 0;
 }
