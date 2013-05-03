@@ -886,7 +886,7 @@ static ssize_t hdmi_common_rda_spkr_alloc_data_block(struct device *dev,
 	return ret;
 }
 
-static DEVICE_ATTR(video_mode, S_IRUGO | S_IWUGO,
+static DEVICE_ATTR(video_mode, S_IRUGO | S_IWUSR | S_IWGRP,
 	external_common_rda_video_mode, external_common_wta_video_mode);
 static DEVICE_ATTR(video_mode_str, S_IRUGO, external_common_rda_video_mode_str,
 	NULL);
@@ -894,7 +894,7 @@ static DEVICE_ATTR(connected, S_IRUGO, external_common_rda_connected, NULL);
 static DEVICE_ATTR(hdmi_mode, S_IRUGO, external_common_rda_hdmi_mode, NULL);
 #ifdef CONFIG_FB_MSM_HDMI_COMMON
 static DEVICE_ATTR(edid_modes, S_IRUGO, hdmi_common_rda_edid_modes, NULL);
-static DEVICE_ATTR(hpd, S_IRUGO | S_IWUGO, hdmi_common_rda_hpd,
+static DEVICE_ATTR(hpd, S_IRUGO | S_IWUSR | S_IWGRP, hdmi_common_rda_hpd,
 	hdmi_common_wta_hpd);
 static DEVICE_ATTR(hdcp, S_IRUGO, hdmi_common_rda_hdcp, NULL);
 static DEVICE_ATTR(pa, S_IRUGO,
@@ -912,8 +912,8 @@ static DEVICE_ATTR(3d_present, S_IRUGO, hdmi_common_rda_3d_present, NULL);
 static DEVICE_ATTR(hdcp_present, S_IRUGO, hdmi_common_rda_hdcp_present, NULL);
 #endif
 #ifdef CONFIG_FB_MSM_HDMI_3D
-static DEVICE_ATTR(format_3d, S_IRUGO | S_IWUGO, hdmi_3d_rda_format_3d,
-	hdmi_3d_wta_format_3d);
+static DEVICE_ATTR(format_3d, S_IRUGO | S_IWUSR | S_IWGRP,
+	hdmi_3d_rda_format_3d, hdmi_3d_wta_format_3d);
 #endif
 static DEVICE_ATTR(hdmi_primary, S_IRUGO, hdmi_common_rda_hdmi_primary, NULL);
 static DEVICE_ATTR(audio_data_block, S_IRUGO, hdmi_common_rda_audio_data_block,
