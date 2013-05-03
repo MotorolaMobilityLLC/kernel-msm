@@ -18,6 +18,7 @@
 
 #define MAX_BRIGHTNESS_LEVEL 255
 #define MIN_BRIGHTNESS_LEVEL 10
+static int bl_set;
 /* 150 nits. Default brightness should be same with it in bootloader */
 #define DEFAULT_BRIGHTNESS  0x7f
 
@@ -292,15 +293,10 @@ static void enable_acl(struct msm_fb_data_type *mfd)
 static int panel_enable(struct msm_fb_data_type *mfd)
 {
 	int idx;
-	static bool first_boot = true;
 
-	if (first_boot) {
-		/*
-		 * Kernel bootup. Set it to default nit which should
-		 * be same with it in bootloader.
-		 */
+	if (!bl_set) {
+		/* Use default brightness until user space updates level */
 		idx = DEFAULT_BRIGHTNESS;
-		first_boot = false;
 	} else
 		idx = mfd->bl_level;
 
@@ -340,6 +336,7 @@ static void panel_set_backlight(struct msm_fb_data_type *mfd)
 	int idx = 0;
 
 	pr_debug("%s +(%d)\n", __func__, (s32)mfd->bl_level);
+	bl_set = 1;
 	if (!mfd->panel_power_on)
 		return;
 
