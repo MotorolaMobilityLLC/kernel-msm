@@ -1626,12 +1626,26 @@ rpm_vreg_of_init(struct rpm_regulator_init_data *pdata, struct vreg *vreg)
 
 	for_each_child_of_node(np, reg)
 		if (of_node_cmp(reg->name, name) == 0) {
-			int a_on = -1;
-			if (of_property_read_u32(reg, "always_on", &a_on) == 0) {
+			int val = -1;
+			if (of_property_read_u32(reg, "always_on", &val) == 0) {
 				pr_debug("Set %s always_on = %d\n",
-					reg->name, a_on);
-				pdata->init_data.constraints.always_on = a_on;
+					reg->name, val);
+				pdata->init_data.constraints.always_on = val;
 			}
+
+			if (of_property_read_u32(reg, "min_uV", &val) == 0) {
+				pr_debug("Set %s min_uV = %d\n",
+					reg->name, val);
+				pdata->init_data.constraints.min_uV = val;
+			}
+
+			if (of_property_read_u32(reg, "max_uV", &val) == 0) {
+				pr_debug("Set %s max_uV = %d\n",
+					reg->name, val);
+				pdata->init_data.constraints.max_uV = val;
+				pdata->default_uV = val;
+			}
+
 			break;
 		}
 
