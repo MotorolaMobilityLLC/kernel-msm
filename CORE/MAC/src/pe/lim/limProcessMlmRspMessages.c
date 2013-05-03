@@ -4038,11 +4038,9 @@ void limProcessMlmHalAddBARsp( tpAniSirGlobal pMac,
 {
     // Send LIM_MLM_ADDBA_CNF to LIM
     tpLimMlmAddBACnf pMlmAddBACnf;
-    tpPESession     psessionEntry;
+    tpPESession     psessionEntry = NULL;
     tpAddBAParams pAddBAParams = (tpAddBAParams) limMsgQ->bodyptr;
-#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
-    limDiagEventReport(pMac, WLAN_PE_DIAG_HAL_ADDBA_RSP_EVENT, psessionEntry, 0, 0);
-#endif //FEATURE_WLAN_DIAG_SUPPORT
+
     //now LIM can process any defer message.
     SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
     if (pAddBAParams == NULL) {
