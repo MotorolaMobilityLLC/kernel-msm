@@ -25,8 +25,9 @@
 #include <linux/netdevice.h>
 #include <linux/skbuff.h>
 #include <linux/wlan_plat.h>
-#include <asm/io.h>
 #include <linux/fs.h>
+#include <asm/io.h>
+#include <mach/board_lge.h>
 
 #define WLAN_STATIC_SCAN_BUF0           5
 #define WLAN_STATIC_SCAN_BUF1           6
@@ -45,6 +46,13 @@
 #define DHD_SKB_4PAGE_BUFSIZE   ((PAGE_SIZE*4)-DHD_SKB_HDRSIZE)
 
 #define WLAN_SKB_BUF_NUM        17
+
+#define WLAN_POWER          26
+#define WLAN_HOSTWAKE_REV_F 74 /* for Lunchbox */
+#define WLAN_HOSTWAKE       44
+
+static int gpio_power = WLAN_POWER;
+static int gpio_hostwake = WLAN_HOSTWAKE;
 
 static struct sk_buff *wlan_static_skb[WLAN_SKB_BUF_NUM];
 
@@ -146,20 +154,6 @@ err_skb_alloc:
 	return -ENOMEM;
 }
 
-#define WLAN_POWER    26
-#define WLAN_HOSTWAKE 74
-
-static unsigned wlan_wakes_msm[] = {
-	GPIO_CFG(WLAN_HOSTWAKE, 0, GPIO_CFG_INPUT,
-		GPIO_CFG_NO_PULL, GPIO_CFG_2MA)
-};
-
-/* for wifi power supply */
-static unsigned wifi_config_power_on[] = {
-	GPIO_CFG(WLAN_POWER, 0, GPIO_CFG_OUTPUT,
-		 GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA)
-};
-
 static unsigned int g_wifi_detect;
 static void *sdc_dev;
 void (*sdc_status_cb)(int card_present, void *dev);
@@ -202,7 +196,7 @@ int bcm_wifi_set_power(int enable)
 			printk("** WiFi: timeout in acquiring bt lock**\n");
 		pr_err("%s: btlock acquired\n",__FUNCTION__);
 #endif /* CONFIG_BCM4335BT */
-		ret = gpio_direction_output(WLAN_POWER, 1); 
+		ret = gpio_direction_output(gpio_power, 1);
 
 #ifdef CONFIG_BCM4335BT
 		bcm_bt_unlock(lock_cookie_wifi);
@@ -225,7 +219,7 @@ int bcm_wifi_set_power(int enable)
 			printk("** WiFi: timeout in acquiring bt lock**\n");
 		pr_err("%s: btlock acquired\n",__FUNCTION__);
 #endif /* CONFIG_BCM4335BT */
-		ret = gpio_direction_output(WLAN_POWER, 0);
+		ret = gpio_direction_output(gpio_power, 0);
 #ifdef CONFIG_BCM4335BT
 		bcm_bt_unlock(lock_cookie_wifi);
 #endif /* CONFIG_BCM4335BT */
@@ -243,43 +237,51 @@ int bcm_wifi_set_power(int enable)
 	return ret;
 }
 
-int __init bcm_wifi_init_gpio_mem(struct platform_device *pdev)
+static int __init bcm_wifi_init_gpio_mem(struct platform_device *pdev)
 {
 	int rc = 0;
+	unsigned gpio_config_power;
+	unsigned gpio_config_hostwake;
+
+	gpio_config_power = GPIO_CFG(gpio_power, 0, GPIO_CFG_OUTPUT,
+			GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA);
+	gpio_config_hostwake = GPIO_CFG(gpio_hostwake, 0, GPIO_CFG_INPUT,
+			GPIO_CFG_NO_PULL, GPIO_CFG_2MA);
+
 
 	/* WLAN_POWER */
-	rc = gpio_tlmm_config(wifi_config_power_on[0], GPIO_CFG_ENABLE);
+	rc = gpio_tlmm_config(gpio_config_power, GPIO_CFG_ENABLE);
 	if (rc < 0) {
 		pr_err("%s: Failed to configure WLAN_POWER\n", __func__);
 		return rc;
 	}
 
-	rc = gpio_request_one(WLAN_POWER, GPIOF_OUT_INIT_LOW, "WL_REG_ON");
+	rc = gpio_request_one(gpio_power, GPIOF_OUT_INIT_LOW, "WL_REG_ON");
 	if (rc < 0) {
 		pr_err("%s: Failed to request gpio %d for WL_REG_ON\n",
-				__func__, WLAN_POWER);
+				__func__, gpio_power);
 		return rc;
 	}
 
 	/* HOST_WAKEUP */
-	rc = gpio_tlmm_config(wlan_wakes_msm[0], GPIO_CFG_ENABLE);
+	rc = gpio_tlmm_config(gpio_config_hostwake, GPIO_CFG_ENABLE);
 	if (rc < 0) {
 		pr_err("%s: Failed to configure wlan_wakes_msm\n", __func__);
 		goto err_gpio_tlmm_wakes_msm;
 	}
 
-	rc = gpio_request_one(WLAN_HOSTWAKE, GPIOF_IN, "wlan_wakes_msm");
+	rc = gpio_request_one(gpio_hostwake, GPIOF_IN, "wlan_wakes_msm");
 	if (rc < 0) {
 		pr_err("%s: Failed to request gpio %d for wlan_wakes_msm\n",
-				__func__, WLAN_HOSTWAKE);
+				__func__, gpio_hostwake);
 		goto err_gpio_tlmm_wakes_msm;
 	}
 
 	if (pdev) {
 		struct resource *resource = pdev->resource;
 		if (resource) {
-			resource->start = gpio_to_irq(WLAN_HOSTWAKE);
-			resource->end = gpio_to_irq(WLAN_HOSTWAKE);
+			resource->start = gpio_to_irq(gpio_hostwake);
+			resource->end = gpio_to_irq(gpio_hostwake);
 		}
 	}
 
@@ -290,9 +292,9 @@ int __init bcm_wifi_init_gpio_mem(struct platform_device *pdev)
 	return 0;
 
 err_alloc_wifi_mem_array:
-	gpio_free(WLAN_HOSTWAKE);
+	gpio_free(gpio_hostwake);
 err_gpio_tlmm_wakes_msm:
-	gpio_free(WLAN_POWER);
+	gpio_free(gpio_power);
 	return rc;
 }
 
@@ -485,7 +487,6 @@ static struct resource wifi_resource[] = {
 		.start = 0,  //assigned later
 		.end   = 0,  //assigned later
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE, // for HW_OOB
-		//.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHEDGE | IORESOURCE_IRQ_LOWEDGE | IORESOURCE_IRQ_SHAREABLE, // for SW_OOB
 	},
 };
 
@@ -501,6 +502,9 @@ static struct platform_device bcm_wifi_device = {
 
 void __init init_bcm_wifi(void)
 {
+	if (HW_REV_F == lge_get_board_revno())
+		gpio_hostwake = WLAN_HOSTWAKE_REV_F;
+
 	bcm_wifi_init_gpio_mem(&bcm_wifi_device);
 	platform_device_register(&bcm_wifi_device);
 }
