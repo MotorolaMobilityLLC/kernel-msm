@@ -89,6 +89,8 @@ static struct power_supply *psy;
 static bool aca_id_turned_on;
 static struct workqueue_struct *msm_otg_acok_wq;
 static struct workqueue_struct *msm_otg_id_pin_wq;
+static int global_vbus_suspend_status;
+static int global_id_pin_suspend_status;
 
 /* APQ8064 GPIO pin definition */
 #define APQ_AP_ACOK	23
@@ -4246,6 +4248,9 @@ static int msm_otg_pm_suspend(struct device *dev)
 		disable_irq(irq_num_id);
 	enable_irq_wake(irq_num_id);
 
+	global_vbus_suspend_status = gpio_get_value(vbus_det_gpio);
+	global_id_pin_suspend_status = gpio_get_value(id_gpio);
+
 	return ret;
 }
 
@@ -4281,6 +4286,16 @@ static int msm_otg_pm_resume(struct device *dev)
 	disable_irq_wake(irq_num_id);
 	if (!slimport_is_connected())
 		enable_irq(irq_num_id);
+
+	if (gpio_get_value(vbus_det_gpio) != global_vbus_suspend_status) {
+		dev_info(dev, "%s: usb vbus change in suspend\n", __func__);
+		wake_lock_timeout(&motg->wlock, 1*HZ);
+	}
+
+	if (gpio_get_value(id_gpio) != global_id_pin_suspend_status) {
+		dev_info(dev, "%s: usb id pin change in suspend\n", __func__);
+		wake_lock_timeout(&motg->wlock, 1*HZ);
+	}
 
 	return ret;
 }
