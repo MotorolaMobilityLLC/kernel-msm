@@ -155,7 +155,8 @@ limIsRSNieValidInSmeReqMessage(tpAniSirGlobal pMac, tpSirRSNie pRSNie)
                 // Check validity of WPA IE
                 if (SIR_MAC_MAX_IE_LENGTH > startPos)
                 {
-                    val = sirReadU32((tANI_U8 *) &pRSNie->rsnIEdata[startPos + 2]);
+                    if (startPos <= (SIR_MAC_MAX_IE_LENGTH - sizeof(tANI_U32)))
+                        val = sirReadU32((tANI_U8 *) &pRSNie->rsnIEdata[startPos + 2]);
                     if((pRSNie->rsnIEdata[startPos + 1] < DOT11F_IE_WPA_MIN_LEN) ||
                         (pRSNie->rsnIEdata[startPos + 1] > DOT11F_IE_WPA_MAX_LEN) ||
                         (SIR_MAC_WPA_OUI != val))
