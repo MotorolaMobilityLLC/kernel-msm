@@ -4701,7 +4701,7 @@ void hdd_allow_suspend(void)
 void hdd_allow_suspend_timeout(v_U32_t timeout)
 {
 #ifdef WLAN_OPEN_SOURCE
-    wake_lock_timeout(&wlan_wake_lock, timeout);
+    wake_lock_timeout(&wlan_wake_lock, msecs_to_jiffies(timeout));
 #else
     /* Do nothing as there is no API in wcnss for timeout*/
 #endif
