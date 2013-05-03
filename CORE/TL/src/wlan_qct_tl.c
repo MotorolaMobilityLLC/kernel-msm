@@ -1815,6 +1815,93 @@ WLANTL_GetSTAState
   return VOS_STATUS_SUCCESS;
 }/* WLANTL_GetSTAState */
 
+/*==========================================================================
+  FUNCTION   WLANTL_UpdateSTABssIdforIBSS
+
+  DESCRIPTION
+    HDD will call this API to update the BSSID for this Station.
+
+  DEPENDENCIES
+    The HDD Should registered the staID with TL before calling this function.
+
+  PARAMETERS
+
+    IN
+    pvosGCtx:    Pointer to the global vos context; a handle to TL's
+                    or WDA's control block can be extracted from its context
+    IN
+    ucSTAId       The Station ID for Bssid to be updated
+    IN
+    pBssid          BSSID to be updated
+
+  RETURN VALUE
+      The result code associated with performing the operation
+
+      VOS_STATUS_E_INVAL:  Input parameters are invalid
+      VOS_STATUS_E_FAULT:  Station ID is outside array boundaries or pointer to
+                           TL cb is NULL ; access would cause a page fault
+      VOS_STATUS_E_EXISTS: Station was not registered
+      VOS_STATUS_SUCCESS:  Everything is good :)
+
+    SIDE EFFECTS
+============================================================================*/
+
+
+VOS_STATUS
+WLANTL_UpdateSTABssIdforIBSS
+(
+  v_PVOID_t             pvosGCtx,
+  v_U8_t                ucSTAId,
+  v_U8_t               *pBssid
+)
+{
+  WLANTL_CbType*  pTLCb = NULL;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+  /*------------------------------------------------------------------------
+    Sanity check
+   ------------------------------------------------------------------------*/
+  if ( WLANTL_STA_ID_INVALID( ucSTAId ) )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+             "WLAN TL:Invalid station id requested %s", __func__));
+    return VOS_STATUS_E_FAULT;
+  }
+
+  /*------------------------------------------------------------------------
+    Extract TL control block and check existance
+   ------------------------------------------------------------------------*/
+  pTLCb = VOS_GET_TL_CB(pvosGCtx);
+  if ( NULL == pTLCb )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+         "WLAN TL:Invalid TL pointer from pvosGCtx %s", __func__));
+    return VOS_STATUS_E_FAULT;
+  }
+
+  if ( NULL == pTLCb->atlSTAClients[ucSTAId] )
+  {
+        TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+            "WLAN TL:Client Memory was not allocated on %s", __func__));
+        return VOS_STATUS_E_FAILURE;
+  }
+
+  if ( 0 == pTLCb->atlSTAClients[ucSTAId]->ucExists )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
+     "WLAN TL:Station was not previously registered %s", __func__));
+    return VOS_STATUS_E_EXISTS;
+  }
+
+  /*------------------------------------------------------------------------
+    Update the IBSS BSSID
+   ------------------------------------------------------------------------*/
+  vos_mem_copy( &pTLCb->atlSTAClients[ucSTAId]->wSTADesc.vBSSIDforIBSS,
+                                     pBssid, sizeof(v_MACADDR_t));
+
+  return VOS_STATUS_SUCCESS;
+}
+
 /*===========================================================================
 
   FUNCTION    WLANTL_STAPktPending

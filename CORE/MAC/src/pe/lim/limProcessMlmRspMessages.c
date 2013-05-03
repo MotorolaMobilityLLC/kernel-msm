@@ -2540,7 +2540,8 @@ limProcessIbssMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESession 
         schEdcaProfileUpdate(pMac, psessionEntry);
         //TBD-RAJESH limInitPreauthList should re removed for IBSS also ?????
        //limInitPreAuthList(pMac);
-        limInitPeerIdxpool(pMac,psessionEntry);
+        if (0 == psessionEntry->freePeerIdxHead)
+            limInitPeerIdxpool(pMac,psessionEntry);
         // Create timers used by LIM
 #ifdef FIXME_GEN6  //following code may not be required, as limCreateTimers is now invoked from limInitialize (peStart)
         if (!pMac->lim.gLimTimersCreated)

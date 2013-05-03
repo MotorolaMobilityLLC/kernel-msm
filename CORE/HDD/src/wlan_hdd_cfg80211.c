@@ -2550,6 +2550,7 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 pRoamProfile->BSSType = eCSR_BSS_TYPE_START_IBSS;
                 pRoamProfile->phyMode =
                     hdd_cfg_xlate_to_csr_phy_mode(pConfig->dot11Mode);
+                pAdapter->device_mode = WLAN_HDD_IBSS;
                 wdev->iftype = type;
                 break;
 
