@@ -172,10 +172,10 @@
 #define WLAN_HDD_PUBLIC_ACTION_TDLS_DISC_RESP 14
 #define WLAN_HDD_TDLS_ACTION_FRAME 12
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
-#define HDD_WAKE_LOCK_DURATION 50
+#define HDD_WAKE_LOCK_DURATION 500 //in msecs
 #endif
 
-#define HDD_SAP_WAKE_LOCK_DURATION 10000 //10 sec
+#define HDD_SAP_WAKE_LOCK_DURATION 10000 //in msecs
 
 /* Maximum number of interfaces allowed(STA, P2P Device, P2P Interface) */
 #define WLAN_MAX_INTERFACES 3
