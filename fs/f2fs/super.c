@@ -182,6 +182,33 @@ static int f2fs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	return 0;
 }
 
+static int f2fs_remount(struct super_block *sb, int *flags, char *data)
+{
+	struct f2fs_sb_info *sbi = F2FS_SB(sb);
+	int err = 0;
+
+	lock_super(sb);
+
+	if ((*flags & MS_RDONLY) != (sb->s_flags & MS_RDONLY)) {
+		if (*flags & MS_RDONLY) {
+			sb->s_flags |= MS_RDONLY;
+
+			mutex_lock(&sbi->gc_mutex);
+			stop_gc_thread(sbi);
+			write_checkpoint(sbi, true);
+			mutex_unlock(&sbi->gc_mutex);
+
+			f2fs_msg(sb, KERN_INFO, "re-mounted read-only.");
+		} else {
+			err = -EINVAL;
+			f2fs_msg(sb, KERN_ERR, "re-mount not supported.");
+		}
+	}
+
+	unlock_super(sb);
+	return err;
+}
+
 static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(root->d_sb);
@@ -234,6 +261,7 @@ static struct super_operations f2fs_sops = {
 	.put_super	= f2fs_put_super,
 	.sync_fs	= f2fs_sync_fs,
 	.statfs		= f2fs_statfs,
+	.remount_fs	= f2fs_remount,
 };
 
 static struct inode *f2fs_nfs_get_inode(struct super_block *sb,
