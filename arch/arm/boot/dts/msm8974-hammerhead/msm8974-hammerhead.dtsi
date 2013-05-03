@@ -352,7 +352,7 @@
 	/* Broadcom WiFi solution - Start */
 	interrupt-map = <0 &intc 0 125 0
 		1 &intc 0 220 0
-		2 &msmgpio 74 0x3>;
+		2 &msmgpio 44 0x3>;
 	interrupt-names = "core_irq", "bam_irq", "wlan_oob_irq";
 	qcom,bus-width = <4>;
 
