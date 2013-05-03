@@ -643,7 +643,7 @@ struct cvs_start_record_cmd {
 
 #define VSS_IVOCPROC_CMD_SET_DEVICE			0x000100C4
 
-#define VSS_IVOCPROC_CMD_SET_DEVICE_V2 0x000112C6
+#define VSS_IVOCPROC_CMD_SET_DEVICE_V2			0x000112C6
 
 #define VSS_IVOCPROC_CMD_SET_VP3_DATA			0x000110EB
 
@@ -982,7 +982,7 @@ struct common_data {
 	uint32_t default_vol_val;
 	uint32_t default_sample_val;
 	bool ec_ref_ext;
-	int ec_port_id;
+	uint16_t ec_port_id;
 
 	/* APR to MVM in the Q6 */
 	void *apr_q6_mvm;
@@ -1058,6 +1058,6 @@ uint16_t voc_get_session_id(char *name);
 
 int voc_start_playback(uint32_t set);
 int voc_start_record(uint32_t port_id, uint32_t set);
-int voc_set_ext_ec_ref(int port_id, bool state);
+int voc_set_ext_ec_ref(uint16_t port_id, bool state);
 
 #endif
