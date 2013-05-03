@@ -1202,7 +1202,7 @@ static int voice_send_set_device_cmd(struct voice_data *v)
 						APR_PKT_VER);
 	cvp_setdev_cmd.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
 				sizeof(cvp_setdev_cmd) - APR_HDR_SIZE);
-	pr_debug(" send create cvp setdev, pkt size = %d\n",
+	pr_debug("send create cvp setdev, pkt size = %d\n",
 			cvp_setdev_cmd.hdr.pkt_size);
 	cvp_setdev_cmd.hdr.src_port = v->session_id;
 	cvp_setdev_cmd.hdr.dest_port = cvp_handle;
@@ -1257,12 +1257,14 @@ static int voice_send_set_device_cmd_v2(struct voice_data *v)
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
+
 		return -EINVAL;
 	}
 	apr_cvp = common.apr_q6_cvp;
 
 	if (!apr_cvp) {
 		pr_err("%s: apr_cvp is NULL.\n", __func__);
+
 		return -EINVAL;
 	}
 	cvp_handle = voice_get_cvp_handle(v);
@@ -1273,8 +1275,6 @@ static int voice_send_set_device_cmd_v2(struct voice_data *v)
 						APR_PKT_VER);
 	cvp_setdev_cmd_v2.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
 				sizeof(cvp_setdev_cmd_v2) - APR_HDR_SIZE);
-	pr_debug("send create cvp_setdev_cmd_v2, pkt size = %d\n",
-			cvp_setdev_cmd_v2.hdr.pkt_size);
 	cvp_setdev_cmd_v2.hdr.src_port = v->session_id;
 	cvp_setdev_cmd_v2.hdr.dest_port = cvp_handle;
 	cvp_setdev_cmd_v2.hdr.token = 0;
@@ -1294,10 +1294,7 @@ static int voice_send_set_device_cmd_v2(struct voice_data *v)
 				VSS_IVOCPROC_TOPOLOGY_ID_RX_DEFAULT;
 	cvp_setdev_cmd_v2.cvp_set_device_v2.tx_port_id = v->dev_tx.port_id;
 	cvp_setdev_cmd_v2.cvp_set_device_v2.rx_port_id = v->dev_rx.port_id;
-	pr_debug("topology=%d , tx_port_id=%d, rx_port_id=%d\n",
-		cvp_setdev_cmd_v2.cvp_set_device_v2.tx_topology_id,
-		cvp_setdev_cmd_v2.cvp_set_device_v2.tx_port_id,
-		cvp_setdev_cmd_v2.cvp_set_device_v2.rx_port_id);
+
 	if (common.ec_ref_ext == true) {
 		cvp_setdev_cmd_v2.cvp_set_device_v2.vocproc_mode =
 				VSS_IVOCPROC_VOCPROC_MODE_EC_EXT_MIXING;
@@ -1315,6 +1312,7 @@ static int voice_send_set_device_cmd_v2(struct voice_data *v)
 		 cvp_setdev_cmd_v2.cvp_set_device_v2.tx_port_id,
 		 cvp_setdev_cmd_v2.cvp_set_device_v2.rx_port_id,
 		 cvp_setdev_cmd_v2.cvp_set_device_v2.ec_ref_port_id);
+
 	v->cvp_state = CMD_STATUS_FAIL;
 	ret = apr_send_pkt(apr_cvp, (uint32_t *) &cvp_setdev_cmd_v2);
 	if (ret < 0) {
@@ -1334,7 +1332,6 @@ static int voice_send_set_device_cmd_v2(struct voice_data *v)
 fail:
 	return -EINVAL;
 }
-
 
 static int voice_send_stop_voice_cmd(struct voice_data *v)
 {
@@ -2246,8 +2243,9 @@ static int voice_setup_vocproc(struct voice_data *v)
 	if (common.ec_ref_ext == true) {
 		ret = voice_send_set_device_cmd_v2(v);
 		if (ret < 0)
-			pr_err("%s:  set device V2 failed\n",
-			       __func__);
+			pr_err("%s:  set device V2 failed rc =%x\n",
+			       __func__, ret);
+			goto fail;
 	}
 	/* send cvs cal */
 	ret = voice_send_cvs_map_memory_cmd(v);
@@ -3228,12 +3226,14 @@ int voc_enable_cvp(uint16_t session_id)
 		if (common.ec_ref_ext == true) {
 			ret = voice_send_set_device_cmd_v2(v);
 			if (ret < 0)
-				pr_err("%s:  set device V2 failed\n",
-				       __func__);
+				pr_err("%s: set device V2 failed\n"
+				       "rc =%x\n", __func__, ret);
+				goto fail;
 		} else {
 			ret = voice_send_set_device_cmd(v);
 			if (ret < 0) {
-				pr_err("%s:  set device failed\n", __func__);
+				pr_err("%s: set device failed rc=%x\n",
+				       __func__, ret);
 				goto fail;
 			}
 		}
@@ -3790,9 +3790,10 @@ fail:
 	return ret;
 }
 
-int voc_set_ext_ec_ref(int port_id, bool state)
+int voc_set_ext_ec_ref(uint16_t port_id, bool state)
 {
 	int ret = 0;
+
 	mutex_lock(&common.common_lock);
 	if (state == true) {
 		if (port_id == AFE_PORT_INVALID) {
