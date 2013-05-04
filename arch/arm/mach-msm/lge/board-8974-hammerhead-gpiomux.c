@@ -1153,10 +1153,8 @@ void __init msm_8974_init_gpiomux(void)
 
 	msm_gpiomux_install(msm_blsp_configs, ARRAY_SIZE(msm_blsp_configs));
 #ifdef CONFIG_MAX17048_FUELGAUGE
-	if (HW_REV_A <= lge_get_board_revno()) {
-		msm_gpiomux_install(msm_fuel_gauge_configs,
-				ARRAY_SIZE(msm_fuel_gauge_configs));
-	}
+	msm_gpiomux_install(msm_fuel_gauge_configs,
+			ARRAY_SIZE(msm_fuel_gauge_configs));
 #endif
 	msm_gpiomux_install(msm8974_slimbus_config,
 			ARRAY_SIZE(msm8974_slimbus_config));
