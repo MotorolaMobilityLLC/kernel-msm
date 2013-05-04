@@ -808,3 +808,17 @@ wpt_status wpalIsPacketLocked( wpt_packet *pPacket)
                     eWLAN_PAL_STATUS_SUCCESS;
 }/*wpalIsPacketLocked*/
 
+/*---------------------------------------------------------------------------
+   wpalGetNumRxRawPacket   Query available RX RAW total buffer count
+   param:
+       numRxResource  pointer of queried value
+
+   return:
+       eWLAN_PAL_STATUS_SUCCESS
+---------------------------------------------------------------------------*/
+wpt_status wpalGetNumRxRawPacket(wpt_uint32 *numRxResource)
+{
+   *numRxResource = (wpt_uint32)vos_pkt_get_num_of_rx_raw_pkts();
+
+   return eWLAN_PAL_STATUS_SUCCESS;
+}
