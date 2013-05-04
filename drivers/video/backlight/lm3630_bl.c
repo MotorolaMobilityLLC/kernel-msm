@@ -91,7 +91,6 @@ static void lm3630_hw_reset(void)
 
 	/* Fix GPIO Setting Warning */
 	if (gpio_is_valid(gpio)) {
-		gpio_direction_output(gpio, 1);
 		gpio_set_value_cansleep(gpio, 1);
 		mdelay(10);
 	} else {
@@ -222,7 +221,7 @@ void lm3630_backlight_off(void)
 	saved_main_lcd_level = cur_main_lcd_level;
 	lm3630_set_main_current_level(main_lm3630_dev->client, 0);
 	backlight_status = BL_OFF;
-	gpio_direction_output(main_lm3630_dev->gpio, 0);
+	gpio_set_value_cansleep(main_lm3630_dev->gpio, 0);
 	msleep(6);
 	pr_info("%s\n", __func__);
 	return;
@@ -524,7 +523,7 @@ static int lm3630_probe(struct i2c_client *i2c_dev, const struct i2c_device_id *
 
 	/* reference the reset procedure from lm3530 */
 	if (gpio_is_valid(dev->gpio)) {
-		err = gpio_request(dev->gpio, "lm3630 reset");
+		err = gpio_request_one(dev->gpio, GPIOF_OUT_INIT_HIGH, "lm3630 reset");
 		if (err < 0) {
 			pr_err("%s: failed to request gpio\n", __func__);
 			goto err_gpio_request;
