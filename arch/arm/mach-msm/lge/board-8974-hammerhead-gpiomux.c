@@ -86,21 +86,21 @@ static struct gpiomux_setting lcd_bl_en_suspend_cfg = {
 };
 #endif
 
-#ifdef CONFIG_MAX17048_FUELGAUGE
-static struct gpiomux_setting max17048_i2c_sda_config = {
+static struct gpiomux_setting charger_i2c_sda_config = {
 	/* GPIO_2 */
 	.func = GPIOMUX_FUNC_3,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting max17048_i2c_scl_config = {
+static struct gpiomux_setting charger_i2c_scl_config = {
 	/* GPIO_3 */
 	.func = GPIOMUX_FUNC_3,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+#ifdef CONFIG_MAX17048_FUELGAUGE
 static struct gpiomux_setting max17048_int_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_6MA,
@@ -200,20 +200,6 @@ static struct gpiomux_setting hdmi_active_2_cfg = {
 
 #ifdef CONFIG_MAX17048_FUELGAUGE
 static struct msm_gpiomux_config msm_fuel_gauge_configs[] __initdata = {
-		{
-		.gpio      = 2,		/* BLSP1 QUP1 I2C_DAT */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &max17048_i2c_sda_config,
-			[GPIOMUX_SUSPENDED] = &max17048_i2c_sda_config,
-		},
-	},
-	{
-		.gpio      = 3,		/* BLSP1 QUP1 I2C_CLK */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &max17048_i2c_scl_config,
-			[GPIOMUX_SUSPENDED] = &max17048_i2c_scl_config,
-		},
-	},
 	{
 		.gpio      = 9,		/* FUEL_GAUGE_INT_N */
 		.settings = {
@@ -308,6 +294,20 @@ static struct msm_gpiomux_config msm_hdmi_configs[] __initdata = {
 };
 
 static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
+	{
+		.gpio      = 2,		/* BLSP1 QUP1 I2C_DAT */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &charger_i2c_sda_config,
+			[GPIOMUX_SUSPENDED] = &charger_i2c_sda_config,
+		},
+	},
+	{
+		.gpio      = 3,		/* BLSP1 QUP1 I2C_CLK */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &charger_i2c_scl_config,
+			[GPIOMUX_SUSPENDED] = &charger_i2c_scl_config,
+		},
+	},
 	{
 		.gpio      = 6,		/* BLSP1 QUP2 I2C_DAT */
 		.settings = {
