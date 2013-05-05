@@ -330,7 +330,7 @@ static int tps65132_probe(struct i2c_client *client,
 	}
 
 	tps65132->rdev = regulator_register(&tps65132_regulator_desc, &client->dev,
-		init_data, tps65132, client->dev.of_node);
+		init_data, tps65132, regulator_node);
 
 	if (IS_ERR(tps65132->rdev)) {
 		dev_err(&client->dev, "failed to register regulator %s\n",
