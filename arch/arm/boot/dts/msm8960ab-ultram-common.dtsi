@@ -123,6 +123,7 @@
 		synaptics,purge-enabled;
 		synaptics,display-synced-suspend;
 		synaptics,hw-reset;
+		synaptics,reset-on-resume;
 		synaptics,key-buttons = <59 60 61 0>; /* F1, F2, F3 */
 	};
 };
