@@ -106,6 +106,12 @@ typedef tANI_U8 tHalIpv4Addr[4];
 /*Version string max length (including NUL) */
 #define WLAN_HAL_VERSION_LENGTH  64
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE     450
+#define WLAN_HAL_ROAM_SCAN_MAX_CHANNELS       NUM_RF_CHANNELS
+#define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     64
+#endif
+
 /* Message types for messages exchanged between WDI and HAL */
 typedef enum 
 {
@@ -364,7 +370,8 @@ typedef enum
    WLAN_HAL_DHCP_STOP_IND                   = 190,
    WLAN_START_ROAM_CANDIDATE_LOOKUP_REQ     = 191,
    WLAN_START_ROAM_CANDIDATE_LOOKUP_RSP     = 192,
-
+   WLAN_HAL_WIFI_PROXIMITY_REQ              = 193,
+   WLAN_HAL_WIFI_PROXIMITY_RSP              = 194,
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -4945,6 +4952,8 @@ typedef enum
    ePNO_MODE_IMMEDIATE,
    ePNO_MODE_ON_SUSPEND,
    ePNO_MODE_ON_RESUME,
+   ePNO_MODE_DELAY,
+   ePNO_MODE_PROXIMITY,  // FEATURE_WIFI_PROXIMITY
    ePNO_MODE_MAX = WLAN_HAL_MAX_ENUM_SIZE
 } ePNOMode;
 
@@ -5949,6 +5958,40 @@ typedef PACKED_PRE struct PACKED_POST {
    tStatsClassBIndParams statsClassBIndParams;
 } tStatsClassBInd, *tpStatsClassBInd;
 
+/*Wifi Proximity paramters in AP mode*/
+#ifdef FEATURE_WIFI_PROXIMITY
+
+typedef PACKED_PRE struct PACKED_POST{
+
+   tANI_U8  wifiProximityChannel;
+   tANI_U32 wifiProximityDuration;
+   tANI_U32 wifiProximityInterval;
+   tANI_U32 wifiProximityMode;
+   tANI_U32 wifiProximityStatus;
+   tSirMacAddr bssId;
+   tSirMacSSid ssId;
+
+} tSetWifiProximityReqParam, *tpSetWifiProximityReqParam;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+  tHalMsgHeader header;
+
+  tSetWifiProximityReqParam wifiProximityReqParams;
+
+}tSetWifiProximityReqMsg, *tpSetWifiProximityReqMsg;
+
+/*WLAN_HAL_WIFI_PROXIMITY_RSP*/
+typedef PACKED_PRE struct PACKED_POST{
+
+   tHalMsgHeader header;
+
+   /*status of the request */
+   tANI_U32   status;
+
+}  tSetWifiProximityRspMsg, *tpSetWifiProxmityRspMsg;
+
+#endif
 #if defined(__ANI_COMPILER_PRAGMA_PACK_STACK)
 #pragma pack(pop)
 #elif defined(__ANI_COMPILER_PRAGMA_PACK)
