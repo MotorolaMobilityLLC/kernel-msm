@@ -53,6 +53,14 @@
 			qcom,cci-master = <0>;
 		};
 
+		qcom,camera@6e {
+			status = "disabled";
+		};
+
+		qcom,camera@6c {
+			status = "disabled";
+		};
+
 		qcom,camera@90 {
 			status = "ok";
 			compatible = "qcom,mt9m114";
