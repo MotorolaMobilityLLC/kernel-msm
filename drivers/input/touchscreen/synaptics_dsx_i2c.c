@@ -3088,22 +3088,12 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, rmi4_data);
 
-	synaptics_dsx_ic_reset(rmi4_data);
-
 	retval = synaptics_dsx_alloc_input(rmi4_data);
 	if (retval < 0) {
 		dev_err(&client->dev,
 				"%s: Failed to allocate input device\n",
 				__func__);
 		goto err_input_device;
-	}
-
-	retval = synaptics_rmi4_query_device(rmi4_data);
-	if (retval < 0) {
-		dev_err(&client->dev,
-				"%s: Failed to query device\n",
-				__func__);
-		goto err_query_device;
 	}
 
 	rmi4_data->regulator = regulator_get(&client->dev, "touch_vdd");
@@ -3114,6 +3104,16 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	} else {
 		platform_data->regulator_en = true;
 		regulator_enable(rmi4_data->regulator);
+	}
+
+	synaptics_dsx_ic_reset(rmi4_data);
+
+	retval = synaptics_rmi4_query_device(rmi4_data);
+	if (retval < 0) {
+		dev_err(&client->dev,
+				"%s: Failed to query device\n",
+				__func__);
+		goto err_query_device;
 	}
 
 	init_waitqueue_head(&rmi4_data->wait);
