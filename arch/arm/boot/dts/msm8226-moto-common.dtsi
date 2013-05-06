@@ -19,28 +19,23 @@
 		status = "ok";
 	};
 
-	i2c_5: i2c@f9927000 { /* BLSP1 QUP5 */
-		synaptics@20 {
-			compatible = "synaptics,rmi4";
-			status = "disabled";
-
+	i2c_5: i2c@f9927000 {
+		synaptics_dsx_i2c@20 {
+			compatible = "synaptics,synaptics_dsx_i2c";
 			reg = <0x20>;
 			interrupt-parent = <&msmgpio>;
-			interrupts = <17 0x2>;
-			vdd-supply = <&pm8226_l28>;
-			vcc_i2c-supply = <&pm8226_lvs1>;
-			synaptics,reset-gpio = <&msmgpio 16 0x00>;
-			synaptics,irq-gpio = <&msmgpio 17 0x2008>;
-			synaptics,button-map = <139 102 158>;
-			synaptics,i2c-pull-up;
-			synaptics,reg-en;
+			interrupts = <17 0>;
+			gpios = <&msmgpio 17 0>, /* IRQ */
+				<&msmgpio 16 0>; /* RESET */
+			touch_vdd-supply = <&pm8226_l28>;
+			synaptics,normal-mode = <1>;
 			synaptics,y-flip;
+			synaptics,reset-on-resume;
+			synaptics,hw-reset;
 		};
 
 		cyttsp3_i2c@3b {
 			compatible = "cyttsp3,i2c";
-			status = "disabled";
-
 			reg = <0x3b>;
 			interrupt-parent = <&msmgpio>;
 			interrupts = <17 0x0>;
@@ -282,6 +277,10 @@
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
+};
+
+&pm8226_lvs1 {
+	regulator-always-on;
 };
 
 &i2c_3 {
