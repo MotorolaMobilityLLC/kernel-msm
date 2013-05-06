@@ -3534,10 +3534,10 @@ static int synaptics_rmi4_resume(struct device *dev)
 			pr_err("failed to request reset gpio\n");
 
 		rmi4_data->touch_stopped = false;
-
-		if (rmi4_data->reset_on_resume)
-			synaptics_rmi4_reset_device(rmi4_data);
 	}
+
+	if (rmi4_data->reset_on_resume)
+		synaptics_rmi4_reset_device(rmi4_data);
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, false);
 
