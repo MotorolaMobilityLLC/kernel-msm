@@ -318,6 +318,7 @@
 			"Lineout_3 amp", "LINEOUT3",
 			"Lineout_2 amp", "LINEOUT2",
 			"Lineout_4 amp", "LINEOUT4",
+			"SPK_ultrasound amp", "SPK_OUT",
 			"AMIC1", "MIC BIAS4 External",
 			"MIC BIAS4 External", "Analog Mic4",
 			"AMIC2", "MIC BIAS2 External",
@@ -346,7 +347,14 @@
 		qcom,ext-spk-amp-supply = <&ext_5v>;
 		qcom,ext-spk-amp-gpio = <&pm8841_mpps 1 0>;
 		qcom,dock-plug-det-irq = <&pm8841_mpps 2 0>;
+		qcom,ext-ult-spk-amp-gpio = <&pm8941_gpios 6 0>;
 		qcom,hdmi-audio-rx;
+
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 74 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 75 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 76 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 77 0>;
+		qcom,prim-auxpcm-gpio-set = "prim-gpio-tert";
 	};
 
 	hsic_hub {
@@ -382,7 +390,6 @@
 
 			qcom,msm-bus,name = "hsic";
 			qcom,msm-bus,num-cases = <2>;
-			qcom,msm-bus,active-only = <0>;
 			qcom,msm-bus,num-paths = <1>;
 			qcom,msm-bus,vectors-KBps =
 					<85 512 0 0>,
@@ -444,6 +451,14 @@
 	};
 
 	gpio@c500 { /* GPIO 6 */
+		/* ULTRASOUND_EN_1 PA AB enable */
+		qcom,mode = <1>; /* DIG_OUT */
+		qcom,output-type = <0>; /* CMOS */
+		qcom,pull = <4>; /* PULL_DOWN */
+		qcom,vin-sel = <0>; /* VPH */
+		qcom,out-strength = <2>; /* STRENGTH_MED */
+		qcom,src-sel = <0>; /* CONSTANT */
+		qcom,master-en = <1>;
 	};
 
 	gpio@c600 { /* GPIO 7 */
@@ -696,10 +711,24 @@
 	};
 };
 
+&vph_pwr_vreg {
+	status = "ok";
+};
+
 &slim_msm {
 	taiko_codec {
 		qcom,cdc-micbias2-ext-cap;
 		qcom,cdc-micbias3-ext-cap;
+
+		/*
+		 * Liquid has external spkrdrv supply. Give a dummy supply to
+		 * make codec driver's happy.
+		 */
+		cdc-vdd-spkdrv-supply = <&vph_pwr_vreg>;
+		qcom,cdc-vdd-spkdrv-voltage = <0 0>;
+		qcom,cdc-vdd-spkdrv-current = <0>;
+
+		qcom,cdc-on-demand-supplies = "cdc-vdd-spkdrv";
 	};
 };
 
@@ -737,25 +766,25 @@
 &pm8941_chg {
 	status = "ok";
 
-	qcom,chg-charging-disabled;
+	qcom,charging-disabled;
 
-	qcom,chg-chgr@1000 {
+	qcom,chgr@1000 {
 		status = "ok";
 	};
 
-	qcom,chg-buck@1100 {
+	qcom,buck@1100 {
 		status = "ok";
 	};
 
-	qcom,chg-usb-chgpth@1300 {
+	qcom,usb-chgpth@1300 {
 		status = "ok";
 	};
 
-	qcom,chg-dc-chgpth@1400 {
+	qcom,dc-chgpth@1400 {
 		status = "ok";
 	};
 
-	qcom,chg-boost@1500 {
+	qcom,boost@1500 {
 		status = "ok";
 	};
 
@@ -787,7 +816,7 @@
 
 	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
 	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
 
 	qcom,nonremovable;
@@ -806,7 +835,27 @@
 
 	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
 	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
 	status = "ok";
+};
+
+/* Drive strength recommendations for clock line from hardware team is 10 mA.
+ * But since the driver has been been using the below values from the start
+ * without any problems, continue to use those.
+ */
+&sdcc1 {
+	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+};
+
+&sdcc2 {
+	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+};
+
+&sdhc_1 {
+	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+};
+
+&sdhc_2 {
+	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
 };

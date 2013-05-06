@@ -16,6 +16,7 @@
 /* common registers */
 #define ISPIF_RST_CMD_ADDR                       0x0000
 #define ISPIF_IRQ_GLOBAL_CLEAR_CMD_ADDR          0x0124
+#define PIX0_LINE_BUF_EN_BIT                     0
 
 #define ISPIF_VFE(m)                             (0x0)
 
@@ -49,6 +50,8 @@
 
 
 
+/* CSID CLK MUX SEL REGISTERS */
+#define ISPIF_RDI_CLK_MUX_SEL_ADDR              0x8
 
 /*ISPIF RESET BITS*/
 #define VFE_CLK_DOMAIN_RST                 BIT(31)

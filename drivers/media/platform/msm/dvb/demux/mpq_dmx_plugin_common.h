@@ -31,8 +31,6 @@
  */
 #define TSIF_NAME_LENGTH				20
 
-#define MPQ_MAX_FOUND_PATTERNS				5
-
 /**
  * struct ts_packet_header - Transport packet header
  * as defined in MPEG2 transport stream standard.
@@ -200,17 +198,6 @@ struct pes_packet_header {
 #endif
 } __packed;
 
-/*
- * mpq_framing_prefix_size_masks - possible prefix sizes.
- *
- * @size_mask: a bit mask (per pattern) of possible prefix sizes to use
- * when searching for a pattern that started in the last buffer.
- * Updated in mpq_dmx_framing_pattern_search for use in the next lookup
- */
-struct mpq_framing_prefix_size_masks {
-	u32 size_mask[MPQ_MAX_FOUND_PATTERNS];
-};
-
 /**
  * mpq_decoder_buffers_desc - decoder buffer(s) management information.
  *
@@ -242,7 +229,7 @@ struct mpq_decoder_buffers_desc {
  * @pes_header: Used for feeds that output data to decoder,
  * holds PES header of current processed PES.
  * @pes_header_left_bytes: Used for feeds that output data to decoder,
- * holds remainning PES header bytes of current processed PES.
+ * holds remaining PES header bytes of current processed PES.
  * @pes_header_offset: Holds the offset within the current processed
  * pes header.
  * @fullness_wait_cancel: Flag used to signal to abort waiting for
@@ -257,6 +244,8 @@ struct mpq_decoder_buffers_desc {
  * reported for this frame.
  * @last_framing_match_type: Used for saving the type of
  * the previous pattern match found in this video feed.
+ * @last_framing_match_stc: Used for saving the STC attached to TS packet
+ * of the previous pattern match found in this video feed.
  * @found_sequence_header_pattern: Flag used to note that an MPEG-2
  * Sequence Header, H.264 SPS or VC-1 Sequence Header pattern
  * (whichever is relevant according to the video standard) had already
@@ -285,6 +274,7 @@ struct mpq_decoder_buffers_desc {
  * buffer space.
  * @last_pkt_index: used to save the last streambuffer packet index reported in
  * a new elementary stream data event.
+ * @prev_stc: STC attached to the previous video TS packet
  */
 struct mpq_video_feed_info {
 	struct mpq_streambuffer *video_buffer;
@@ -295,14 +285,16 @@ struct mpq_video_feed_info {
 	u32 pes_header_offset;
 	int fullness_wait_cancel;
 	enum mpq_adapter_stream_if stream_interface;
-	const struct mpq_framing_pattern_lookup_params *patterns;
+	const struct dvb_dmx_video_patterns
+		*patterns[DVB_DMX_MAX_SEARCH_PATTERN_NUM];
 	int patterns_num;
 	u32 frame_offset;
 	u32 last_pattern_offset;
 	u32 pending_pattern_len;
-	enum dmx_framing_pattern_type last_framing_match_type;
+	u64 last_framing_match_type;
+	u64 last_framing_match_stc;
 	int found_sequence_header_pattern;
-	struct mpq_framing_prefix_size_masks prefix_size;
+	struct dvb_dmx_video_prefix_size_masks prefix_size;
 	u32 first_prefix_size;
 	struct dmx_pts_dts_info saved_pts_dts_info;
 	struct dmx_pts_dts_info new_pts_dts_info;
@@ -315,6 +307,7 @@ struct mpq_video_feed_info {
 	u32 ts_packets_num;
 	u32 ts_dropped_bytes;
 	int last_pkt_index;
+	u64 prev_stc;
 };
 
 /**
@@ -369,6 +362,7 @@ struct mpq_feed {
  * Used before each call to sdmx_process() to build up to date state.
  * @sdmx_session_handle: Secure demux open session handle
  * @sdmx_filter_count: Number of active secure demux filters
+ * @sdmx_eos: End-of-stream indication flag for current sdmx session
  * @plugin_priv: Underlying plugin's own private data
  * @hw_notification_interval: Notification interval in msec,
  *                            exposed in debugfs.
@@ -415,6 +409,7 @@ struct mpq_demux {
 	int sdmx_session_handle;
 	int sdmx_session_ref_count;
 	int sdmx_filter_count;
+	int sdmx_eos;
 	void *plugin_priv;
 
 	/* debug-fs */
@@ -436,6 +431,7 @@ struct mpq_demux {
 	u32 sdmx_process_packets_sum;
 	u32 sdmx_process_packets_average;
 	u32 sdmx_process_packets_min;
+	enum sdmx_log_level sdmx_log_level;
 
 	struct timespec decoder_out_last_time;
 	struct timespec last_notification_time;
@@ -620,12 +616,13 @@ int mpq_dmx_process_video_packet(struct dvb_demux_feed *feed, const u8 *buf);
 int mpq_dmx_process_pcr_packet(struct dvb_demux_feed *feed, const u8 *buf);
 
 /**
- * mpq_dmx_init_hw_statistics -
- * Extend dvb-demux debugfs with HW statistics.
+ * mpq_dmx_init_debugfs_entries -
+ * Extend dvb-demux debugfs with mpq related entries (HW statistics and secure
+ * demux log level).
  *
  * @mpq_demux: The mpq_demux device to initialize.
  */
-void mpq_dmx_init_hw_statistics(struct mpq_demux *mpq_demux);
+void mpq_dmx_init_debugfs_entries(struct mpq_demux *mpq_demux);
 
 /**
  * mpq_dmx_update_hw_statistics -
@@ -645,6 +642,20 @@ void mpq_dmx_update_hw_statistics(struct mpq_demux *mpq_demux);
 */
 int mpq_dmx_set_secure_mode(struct dvb_demux_feed *feed,
 		struct dmx_secure_mode *secure_mode);
+
+/**
+ * mpq_dmx_convert_tts - Convert timestamp attached by HW to each TS
+ * packet to 27MHz.
+ *
+ * @feed: The feed with TTS attached
+ * @timestamp: Buffer holding the timestamp attached by the HW
+ * @timestampIn27Mhz: Timestamp result in 27MHz
+ *
+ * Return error code
+*/
+void mpq_dmx_convert_tts(struct dvb_demux_feed *feed,
+		const u8 timestamp[TIMESTAMP_LEN],
+		u64 *timestampIn27Mhz);
 
 /**
  * mpq_sdmx_open_session - Handle the details of opening a new secure demux
@@ -710,13 +721,15 @@ int mpq_dmx_write(struct dmx_demux *demux, const char *buf, size_t count);
  * @input: input buffer descriptor
  * @fill_count: number of data bytes in input buffer that can be read
  * @read_offset: offset in buffer for reading
+ * @tsp_size: size of single TS packet
  *
  * Return number of bytes read or error code
  */
 int mpq_sdmx_process(struct mpq_demux *mpq_demux,
 	struct sdmx_buff_descr *input,
 	u32 fill_count,
-	u32 read_offset);
+	u32 read_offset,
+	size_t tsp_size);
 
 /**
  * mpq_sdmx_loaded - Returns 1 if secure demux application is loaded,
@@ -725,6 +738,22 @@ int mpq_sdmx_process(struct mpq_demux *mpq_demux,
  */
 int mpq_sdmx_is_loaded(void);
 
+/**
+ * mpq_dmx_oob_command - Handles OOB command from dvb-demux.
+ *
+ * OOB marker commands trigger callback to the dmxdev.
+ * Handling of EOS command may trigger current (last on stream) PES/Frame to
+ * be reported, in addition to callback to the dmxdev.
+ * In case secure demux is active for the feed, EOS command is passed to the
+ * secure demux for handling.
+ *
+ * @feed: dvb demux feed object
+ * @cmd: oob command data
+ *
+ * returns 0 on success or error
+ */
+int mpq_dmx_oob_command(struct dvb_demux_feed *feed,
+	struct dmx_oob_command *cmd);
 
 #endif /* _MPQ_DMX_PLUGIN_COMMON_H */
 

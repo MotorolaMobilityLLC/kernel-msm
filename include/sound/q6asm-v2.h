@@ -13,7 +13,6 @@
 #define __Q6_ASM_V2_H__
 
 #include <mach/qdsp6v2/apr.h>
-#include <mach/msm_subsystem_map.h>
 #include <sound/apr_audio-v2.h>
 #include <linux/list.h>
 #include <linux/msm_ion.h>
@@ -42,6 +41,8 @@
 #define FORMAT_AMR_WB_PLUS  0x0010
 #define FORMAT_MPEG4_MULTI_AAC 0x0011
 #define FORMAT_MULTI_CHANNEL_LINEAR_PCM 0x0012
+#define FORMAT_AC3          0x0013
+#define FORMAT_EAC3         0x0014
 
 #define ENCDEC_SBCBITRATE   0x0001
 #define ENCDEC_IMMEDIATE_DECODE 0x0002
@@ -296,6 +297,10 @@ int q6asm_media_format_block_wmapro(struct audio_client *ac,
 
 int q6asm_media_format_block_amrwbplus(struct audio_client *ac,
 			struct asm_amrwbplus_cfg *cfg);
+
+int q6asm_ds1_set_endp_params(struct audio_client *ac,
+				int param_id, int param_value);
+
 /* PP specific */
 int q6asm_equalizer(struct audio_client *ac, void *eq);
 

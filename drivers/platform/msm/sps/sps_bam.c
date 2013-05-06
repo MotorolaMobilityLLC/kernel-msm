@@ -24,7 +24,8 @@
 #include "spsi.h"
 
 /* All BAM global IRQ sources */
-#define BAM_IRQ_ALL (BAM_DEV_IRQ_HRESP_ERROR | BAM_DEV_IRQ_ERROR)
+#define BAM_IRQ_ALL (BAM_DEV_IRQ_HRESP_ERROR | BAM_DEV_IRQ_ERROR |   \
+	BAM_DEV_IRQ_TIMER)
 
 /* BAM device state flags */
 #define BAM_STATE_INIT     (1UL << 1)
@@ -105,7 +106,7 @@ int sps_bam_driver_init(u32 options)
 	for (n = 0; n < ARRAY_SIZE(opt_event_table); n++) {
 		if ((u32)opt_event_table[n].option !=
 			(u32)opt_event_table[n].pipe_irq) {
-			SPS_ERR("sps:SPS_O 0x%x != HAL IRQ 0x%x",
+			SPS_ERR("sps:SPS_O 0x%x != HAL IRQ 0x%x\n",
 				opt_event_table[n].option,
 				opt_event_table[n].pipe_irq);
 			return SPS_ERROR;
@@ -141,11 +142,11 @@ static irqreturn_t bam_isr(int irq, void *ctxt)
 		source = bam_check_irq_source(dev->base, dev->props.ee,
 						mask, &cb_case);
 
-		SPS_DBG1("sps:bam_isr:bam=0x%x;source=0x%x;mask=0x%x.",
+		SPS_DBG1("sps:bam_isr:bam=0x%x;source=0x%x;mask=0x%x.\n",
 				BAM_ID(dev), source, mask);
 
 		if ((source & (1UL << 31)) && (dev->props.callback)) {
-			SPS_INFO("sps:bam_isr:bam=0x%x;callback for case %d.",
+			SPS_DBG1("sps:bam_isr:bam=0x%x;callback for case %d.\n",
 				BAM_ID(dev), cb_case);
 			dev->props.callback(cb_case, dev->props.user);
 		}
@@ -156,7 +157,7 @@ static irqreturn_t bam_isr(int irq, void *ctxt)
 		/* If MTIs are used, must poll each active pipe */
 		source = dev->pipe_active_mask;
 
-		SPS_DBG1("sps:bam_isr for MTI:bam=0x%x;source=0x%x.",
+		SPS_DBG1("sps:bam_isr for MTI:bam=0x%x;source=0x%x.\n",
 				BAM_ID(dev), source);
 	}
 
@@ -177,7 +178,7 @@ static irqreturn_t bam_isr(int irq, void *ctxt)
 
 	/* Process any inactive pipe sources */
 	if (source) {
-		SPS_ERR("sps:IRQ from BAM 0x%x inactive pipe(s) 0x%x",
+		SPS_ERR("sps:IRQ from BAM 0x%x inactive pipe(s) 0x%x\n",
 			BAM_ID(dev), source);
 		dev->irq_from_disabled_pipe++;
 	}
@@ -204,7 +205,7 @@ int sps_bam_enable(struct sps_bam *dev)
 
 	/* Is there any access to this BAM? */
 	if ((dev->props.manage & SPS_BAM_MGR_ACCESS_MASK) == SPS_BAM_MGR_NONE) {
-		SPS_ERR("sps:No local access to BAM 0x%x", BAM_ID(dev));
+		SPS_ERR("sps:No local access to BAM 0x%x\n", BAM_ID(dev));
 		return SPS_ERROR;
 	}
 
@@ -222,7 +223,7 @@ int sps_bam_enable(struct sps_bam *dev)
 				    IRQF_TRIGGER_HIGH, "sps", dev);
 
 		if (result) {
-			SPS_ERR("sps:Failed to enable BAM 0x%x IRQ %d",
+			SPS_ERR("sps:Failed to enable BAM 0x%x IRQ %d\n",
 				BAM_ID(dev), dev->props.irq);
 			return SPS_ERROR;
 		}
@@ -236,13 +237,13 @@ int sps_bam_enable(struct sps_bam *dev)
 			result = enable_irq_wake(dev->props.irq);
 
 			if (result) {
-				SPS_ERR("sps:Fail to enable wakeup irq "
-					"BAM 0x%x IRQ %d",
+				SPS_ERR(
+					"sps:Fail to enable wakeup irq for BAM 0x%x IRQ %d\n",
 					BAM_ID(dev), dev->props.irq);
 				return SPS_ERROR;
 			} else
-				SPS_DBG2("sps:Enable wakeup irq for "
-					"BAM 0x%x IRQ %d",
+				SPS_DBG2(
+					"sps:Enable wakeup irq for BAM 0x%x IRQ %d\n",
 					BAM_ID(dev), dev->props.irq);
 		}
 	}
@@ -262,7 +263,7 @@ int sps_bam_enable(struct sps_bam *dev)
 		rc = bam_check(dev->base, &dev->version, &num_pipes);
 
 	if (rc) {
-		SPS_ERR("sps:Fail to init BAM 0x%x IRQ %d",
+		SPS_ERR("sps:Fail to init BAM 0x%x IRQ %d\n",
 			BAM_ID(dev), dev->props.irq);
 		return SPS_ERROR;
 	}
@@ -281,7 +282,7 @@ int sps_bam_enable(struct sps_bam *dev)
 		 * must use MTI. Thus, force EE index to a non-zero value to
 		 * insure that EE zero globals can't be modified.
 		 */
-		SPS_ERR("sps:EE for satellite BAM must be set to non-zero.");
+		SPS_ERR("sps:EE for satellite BAM must be set to non-zero.\n");
 		return SPS_ERROR;
 	}
 
@@ -295,8 +296,9 @@ int sps_bam_enable(struct sps_bam *dev)
 		MTIenabled) {
 		if (dev->props.irq_gen_addr == 0 ||
 		    dev->props.irq_gen_addr == SPS_ADDR_INVALID) {
-			SPS_ERR("sps:MTI destination address not specified "
-				"for BAM 0x%x",	BAM_ID(dev));
+			SPS_ERR(
+				"sps:MTI destination address not specified for BAM 0x%x\n",
+				BAM_ID(dev));
 			return SPS_ERROR;
 		}
 		dev->state |= BAM_STATE_MTI;
@@ -304,13 +306,13 @@ int sps_bam_enable(struct sps_bam *dev)
 
 	if (num_pipes) {
 		dev->props.num_pipes = num_pipes;
-		SPS_DBG1("sps:BAM 0x%x number of pipes reported by hw: %d",
+		SPS_DBG1("sps:BAM 0x%x number of pipes reported by hw: %d\n",
 				 BAM_ID(dev), dev->props.num_pipes);
 	}
 
 	/* Check EE index */
 	if (!MTIenabled && dev->props.ee >= SPS_BAM_NUM_EES) {
-		SPS_ERR("sps:Invalid EE BAM 0x%x: %d", BAM_ID(dev),
+		SPS_ERR("sps:Invalid EE BAM 0x%x: %d\n", BAM_ID(dev),
 				dev->props.ee);
 		return SPS_ERROR;
 	}
@@ -323,8 +325,9 @@ int sps_bam_enable(struct sps_bam *dev)
 		struct sps_bam_sec_config_props *p_sec =
 						dev->props.p_sec_config_props;
 		if (p_sec == NULL) {
-			SPS_ERR("sps:EE config table is not specified for "
-				"BAM 0x%x", BAM_ID(dev));
+			SPS_ERR(
+				"sps:EE config table is not specified for BAM 0x%x\n",
+				BAM_ID(dev));
 			return SPS_ERROR;
 		}
 
@@ -351,9 +354,8 @@ int sps_bam_enable(struct sps_bam *dev)
 				for (i = n + 1; i < SPS_BAM_NUM_EES; i++) {
 					if ((p_sec->ees[n].pipe_mask &
 						p_sec->ees[i].pipe_mask) != 0) {
-						SPS_ERR("sps:Overlapping pipe "
-							"assignments for BAM "
-							"0x%x: EEs %d and %d",
+						SPS_ERR(
+							"sps:Overlapping pipe assignments for BAM 0x%x: EEs %d and %d\n",
 							BAM_ID(dev), n, i);
 						return SPS_ERROR;
 					}
@@ -403,9 +405,21 @@ int sps_bam_enable(struct sps_bam *dev)
 	}
 
 	dev->state |= BAM_STATE_ENABLED;
-	SPS_INFO("sps:BAM 0x%x (va:0x%x) enabled: ver:0x%x, number of pipes:%d",
-		BAM_ID(dev), (u32) dev->base, dev->version,
-		dev->props.num_pipes);
+
+	if (!dev->props.constrained_logging ||
+		(dev->props.constrained_logging && dev->props.logging_number)) {
+		if (dev->props.logging_number > 0)
+			dev->props.logging_number--;
+		SPS_INFO(
+			"sps:BAM 0x%x (va:0x%x) enabled: ver:0x%x, number of pipes:%d\n",
+			BAM_ID(dev), (u32) dev->base, dev->version,
+			dev->props.num_pipes);
+	} else
+		SPS_DBG2(
+			"sps:BAM 0x%x (va:0x%x) enabled: ver:0x%x, number of pipes:%d\n",
+			BAM_ID(dev), (u32) dev->base, dev->version,
+			dev->props.num_pipes);
+
 	return 0;
 }
 
@@ -420,7 +434,7 @@ int sps_bam_disable(struct sps_bam *dev)
 
 	/* Is there any access to this BAM? */
 	if ((dev->props.manage & SPS_BAM_MGR_ACCESS_MASK) == SPS_BAM_MGR_NONE) {
-		SPS_ERR("sps:No local access to BAM 0x%x", BAM_ID(dev));
+		SPS_ERR("sps:No local access to BAM 0x%x\n", BAM_ID(dev));
 		return SPS_ERROR;
 	}
 
@@ -444,7 +458,7 @@ int sps_bam_disable(struct sps_bam *dev)
 
 	dev->state &= ~BAM_STATE_ENABLED;
 
-	SPS_DBG2("sps:BAM 0x%x disabled", BAM_ID(dev));
+	SPS_DBG2("sps:BAM 0x%x disabled\n", BAM_ID(dev));
 
 	return 0;
 }
@@ -455,7 +469,7 @@ int sps_bam_disable(struct sps_bam *dev)
 int sps_bam_device_init(struct sps_bam *dev)
 {
 	if (dev->props.virt_addr == NULL) {
-		SPS_ERR("sps:NULL BAM virtual address");
+		SPS_ERR("sps:NULL BAM virtual address\n");
 		return SPS_ERROR;
 	}
 	dev->base = (void *) dev->props.virt_addr;
@@ -463,7 +477,7 @@ int sps_bam_device_init(struct sps_bam *dev)
 	if (dev->props.num_pipes == 0) {
 		/* Assume max number of pipes until BAM registers can be read */
 		dev->props.num_pipes = BAM_MAX_PIPES;
-		SPS_DBG2("sps:BAM 0x%x: assuming max number of pipes: %d",
+		SPS_DBG2("sps:BAM 0x%x: assuming max number of pipes: %d\n",
 			BAM_ID(dev), dev->props.num_pipes);
 	}
 
@@ -479,11 +493,11 @@ int sps_bam_device_init(struct sps_bam *dev)
 
 	if ((dev->props.options & SPS_BAM_OPT_ENABLE_AT_BOOT))
 		if (sps_bam_enable(dev)) {
-			SPS_ERR("sps:Fail to enable bam device");
+			SPS_ERR("sps:Fail to enable bam device\n");
 			return SPS_ERROR;
 		}
 
-	SPS_DBG2("sps:BAM device: phys 0x%x IRQ %d",
+	SPS_DBG2("sps:BAM device: phys 0x%x IRQ %d\n",
 			BAM_ID(dev), dev->props.irq);
 
 	return 0;
@@ -497,7 +511,7 @@ int sps_bam_device_de_init(struct sps_bam *dev)
 {
 	int result;
 
-	SPS_DBG2("sps:BAM device DEINIT: phys 0x%x IRQ %d",
+	SPS_DBG2("sps:BAM device DEINIT: phys 0x%x IRQ %d\n",
 		BAM_ID(dev), dev->props.irq);
 
 	result = sps_bam_disable(dev);
@@ -515,7 +529,7 @@ int sps_bam_reset(struct sps_bam *dev)
 	u32 pipe_index;
 	int result;
 
-	SPS_DBG2("sps:BAM device RESET: phys 0x%x IRQ %d",
+	SPS_DBG2("sps:BAM device RESET: phys 0x%x IRQ %d\n",
 		BAM_ID(dev), dev->props.irq);
 
 	/* If BAM is enabled, then disable */
@@ -526,8 +540,8 @@ int sps_bam_reset(struct sps_bam *dev)
 		      pipe_index++) {
 			pipe = dev->pipes[pipe_index];
 			if (BAM_PIPE_IS_ASSIGNED(pipe)) {
-				SPS_ERR("sps:BAM device 0x%x RESET failed: "
-					"pipe %d in use",
+				SPS_ERR(
+					"sps:BAM device 0x%x RESET failed: pipe %d in use\n",
 					BAM_ID(dev), pipe_index);
 				result = SPS_ERROR;
 				break;
@@ -579,8 +593,9 @@ u32 sps_bam_pipe_alloc(struct sps_bam *dev, u32 pipe_index)
 	if (pipe_index == SPS_BAM_PIPE_INVALID) {
 		/* Allocate a pipe from the BAM */
 		if ((dev->props.manage & SPS_BAM_MGR_PIPE_NO_ALLOC)) {
-			SPS_ERR("sps:Restricted from allocating pipes "
-				"on BAM 0x%x", BAM_ID(dev));
+			SPS_ERR(
+				"sps:Restricted from allocating pipes on BAM 0x%x\n",
+				BAM_ID(dev));
 			return SPS_BAM_PIPE_INVALID;
 		}
 		for (pipe_index = 0, pipe_mask = 1;
@@ -593,24 +608,25 @@ u32 sps_bam_pipe_alloc(struct sps_bam *dev, u32 pipe_index)
 				break;	/* Found an available pipe */
 		}
 		if (pipe_index >= dev->props.num_pipes) {
-			SPS_ERR("sps:Fail to allocate pipe on BAM 0x%x",
+			SPS_ERR("sps:Fail to allocate pipe on BAM 0x%x\n",
 				BAM_ID(dev));
 			return SPS_BAM_PIPE_INVALID;
 		}
 	} else {
 		/* Check that client-specified pipe is available */
 		if (pipe_index >= dev->props.num_pipes) {
-			SPS_ERR("sps:Invalid pipe %d for allocate on BAM 0x%x",
+			SPS_ERR(
+				"sps:Invalid pipe %d for allocate on BAM 0x%x\n",
 				pipe_index, BAM_ID(dev));
 			return SPS_BAM_PIPE_INVALID;
 		}
 		if ((dev->props.restricted_pipes & (1UL << pipe_index))) {
-			SPS_ERR("sps:BAM 0x%x pipe %d is not local",
+			SPS_ERR("sps:BAM 0x%x pipe %d is not local\n",
 				BAM_ID(dev), pipe_index);
 			return SPS_BAM_PIPE_INVALID;
 		}
 		if (dev->pipes[pipe_index] != NULL) {
-			SPS_ERR("sps:Pipe %d already allocated on BAM 0x%x",
+			SPS_ERR("sps:Pipe %d already allocated on BAM 0x%x\n",
 				pipe_index, BAM_ID(dev));
 			return SPS_BAM_PIPE_INVALID;
 		}
@@ -631,7 +647,7 @@ void sps_bam_pipe_free(struct sps_bam *dev, u32 pipe_index)
 	struct sps_pipe *pipe;
 
 	if (pipe_index >= dev->props.num_pipes) {
-		SPS_ERR("sps:Invalid BAM 0x%x pipe: %d", BAM_ID(dev),
+		SPS_ERR("sps:Invalid BAM 0x%x pipe: %d\n", BAM_ID(dev),
 				pipe_index);
 		return;
 	}
@@ -642,8 +658,8 @@ void sps_bam_pipe_free(struct sps_bam *dev, u32 pipe_index)
 
 	/* Is the pipe currently allocated? */
 	if (pipe == NULL) {
-		SPS_ERR("sps:Attempt to free unallocated pipe %d on "
-			"BAM 0x%x", pipe_index, BAM_ID(dev));
+		SPS_ERR("sps:Attempt to free unallocated pipe %d on BAM 0x%x\n",
+			pipe_index, BAM_ID(dev));
 		return;
 	}
 
@@ -654,7 +670,7 @@ void sps_bam_pipe_free(struct sps_bam *dev, u32 pipe_index)
 	if (!list_empty(&pipe->sys.events_q)) {
 		struct sps_q_event *sps_event;
 
-		SPS_ERR("sps:Disconnect BAM 0x%x pipe %d with events pending",
+		SPS_ERR("sps:Disconnect BAM 0x%x pipe %d with events pending\n",
 			BAM_ID(dev), pipe_index);
 
 		sps_event = list_entry((&pipe->sys.events_q)->next,
@@ -718,7 +734,7 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 	dev = map_pipe->bam;
 	pipe_index = map_pipe->pipe_index;
 	if (pipe_index >= dev->props.num_pipes) {
-		SPS_ERR("sps:Invalid BAM 0x%x pipe: %d", BAM_ID(dev),
+		SPS_ERR("sps:Invalid BAM 0x%x pipe: %d\n", BAM_ID(dev),
 				pipe_index);
 		return SPS_ERROR;
 	}
@@ -729,14 +745,14 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 	/* Verify that control of this pipe is allowed */
 	if ((dev->props.manage & SPS_BAM_MGR_PIPE_NO_CTRL) ||
 	    (dev->props.restricted_pipes & (1UL << pipe_index))) {
-		SPS_ERR("sps:BAM 0x%x pipe %d is not local",
+		SPS_ERR("sps:BAM 0x%x pipe %d is not local\n",
 			BAM_ID(dev), pipe_index);
 		return SPS_ERROR;
 	}
 
 	/* Control without configuration permission is not supported yet */
 	if ((dev->props.manage & SPS_BAM_MGR_PIPE_NO_CONFIG)) {
-		SPS_ERR("sps:BAM 0x%x pipe %d remote config is not supported",
+		SPS_ERR("sps:BAM 0x%x pipe %d remote config is not supported\n",
 			BAM_ID(dev), pipe_index);
 		return SPS_ERROR;
 	}
@@ -754,8 +770,9 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 		if (map->desc.phys_base == SPS_ADDR_INVALID ||
 		    map->data.phys_base == SPS_ADDR_INVALID ||
 		    map->desc.size == 0 || map->data.size == 0) {
-			SPS_ERR("sps:FIFO buffers are not allocated for BAM "
-				"0x%x pipe %d.", BAM_ID(dev), pipe_index);
+			SPS_ERR(
+				"sps:FIFO buffers are not allocated for BAM 0x%x pipe %d.\n",
+				BAM_ID(dev), pipe_index);
 			return SPS_ERROR;
 		}
 		hw_params.data_base = map->data.phys_base;
@@ -787,8 +804,8 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 	/* Get virtual address for descriptor FIFO */
 	if (map->desc.phys_base != SPS_ADDR_INVALID) {
 		if (map->desc.size < (2 * sizeof(struct sps_iovec))) {
-			SPS_ERR("sps:Invalid descriptor FIFO size "
-				"for BAM 0x%x pipe %d: %d",
+			SPS_ERR(
+				"sps:Invalid descriptor FIFO size for BAM 0x%x pipe %d: %d\n",
 				BAM_ID(dev), pipe_index, map->desc.size);
 			return SPS_ERROR;
 		}
@@ -821,19 +838,24 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 
 	/* Check pipe allocation */
 	if (dev->pipes[pipe_index] != BAM_PIPE_UNASSIGNED) {
-		SPS_ERR("sps:Invalid pipe %d on BAM 0x%x for connect",
+		SPS_ERR("sps:Invalid pipe %d on BAM 0x%x for connect\n",
 			pipe_index, BAM_ID(dev));
 		return SPS_ERROR;
 	}
 
 	if (bam_pipe_is_enabled(dev->base, pipe_index)) {
-		SPS_ERR("sps:BAM 0x%x pipe %d sharing violation",
-			BAM_ID(dev), pipe_index);
-		return SPS_ERROR;
+		if (params->options & SPS_O_NO_DISABLE)
+			SPS_DBG("sps:BAM 0x%x pipe %d is already enabled\n",
+				BAM_ID(dev), pipe_index);
+		else {
+			SPS_ERR("sps:BAM 0x%x pipe %d sharing violation\n",
+				BAM_ID(dev), pipe_index);
+			return SPS_ERROR;
+		}
 	}
 
 	if (bam_pipe_init(dev->base, pipe_index, &hw_params, dev->props.ee)) {
-		SPS_ERR("sps:BAM 0x%x pipe %d init error",
+		SPS_ERR("sps:BAM 0x%x pipe %d init error\n",
 			BAM_ID(dev), pipe_index);
 		goto exit_err;
 	}
@@ -882,8 +904,13 @@ int sps_bam_pipe_connect(struct sps_pipe *bam_pipe,
 	bam_pipe->state |= BAM_STATE_INIT;
 	result = 0;
 exit_err:
-	if (result)
-		bam_pipe_exit(dev->base, pipe_index, dev->props.ee);
+	if (result) {
+		if (params->options & SPS_O_NO_DISABLE)
+			SPS_DBG("sps:BAM 0x%x pipe %d connection exits\n",
+				BAM_ID(dev), pipe_index);
+		else
+			bam_pipe_exit(dev->base, pipe_index, dev->props.ee);
+	}
 exit_init_err:
 	if (result) {
 		/* Clear the client pipe state */
@@ -903,7 +930,7 @@ int sps_bam_pipe_disconnect(struct sps_bam *dev, u32 pipe_index)
 	int result;
 
 	if (pipe_index >= dev->props.num_pipes) {
-		SPS_ERR("sps:Invalid BAM 0x%x pipe: %d", BAM_ID(dev),
+		SPS_ERR("sps:Invalid BAM 0x%x pipe: %d\n", BAM_ID(dev),
 				pipe_index);
 		return SPS_ERROR;
 	}
@@ -916,7 +943,11 @@ int sps_bam_pipe_disconnect(struct sps_bam *dev, u32 pipe_index)
 			dev->pipe_active_mask &= ~(1UL << pipe_index);
 		}
 		dev->pipe_remote_mask &= ~(1UL << pipe_index);
-		bam_pipe_exit(dev->base, pipe_index, dev->props.ee);
+		if (pipe->connect.options & SPS_O_NO_DISABLE)
+			SPS_DBG("sps:BAM 0x%x pipe %d exits\n", BAM_ID(dev),
+				pipe_index);
+		else
+			bam_pipe_exit(dev->base, pipe_index, dev->props.ee);
 		if (pipe->sys.desc_cache != NULL) {
 			u32 size = pipe->num_descs * sizeof(void *);
 			if (pipe->desc_size + size <= PAGE_SIZE)
@@ -933,7 +964,7 @@ int sps_bam_pipe_disconnect(struct sps_bam *dev, u32 pipe_index)
 	}
 
 	if (result)
-		SPS_ERR("sps:BAM 0x%x pipe %d already disconnected",
+		SPS_ERR("sps:BAM 0x%x pipe %d already disconnected\n",
 			BAM_ID(dev), pipe_index);
 
 	return result;
@@ -976,7 +1007,7 @@ static void pipe_set_irq(struct sps_bam *dev, u32 pipe_index,
 		irq_enable = BAM_DISABLE;
 		pipe->polled = true;
 		if (poll == 0 && pipe->irq_mask)
-			SPS_DBG2("sps:BAM 0x%x pipe %d forced to use polling",
+			SPS_DBG2("sps:BAM 0x%x pipe %d forced to use polling\n",
 				 BAM_ID(dev), pipe_index);
 	}
 	if ((pipe->state & BAM_STATE_MTI) == 0)
@@ -1024,8 +1055,8 @@ int sps_bam_pipe_set_params(struct sps_bam *dev, u32 pipe_index, u32 options)
 	if (pipe->sys.desc_wr_count > 0 &&
 	    (no_queue != pipe->sys.no_queue
 	     || ack_xfers != pipe->sys.ack_xfers)) {
-		SPS_ERR("sps:Queue/ack mode change after transfer: "
-			"BAM 0x%x pipe %d opt 0x%x",
+		SPS_ERR(
+			"sps:Queue/ack mode change after transfer: BAM 0x%x pipe %d opt 0x%x\n",
 			BAM_ID(dev), pipe_index, options);
 		return SPS_ERROR;
 	}
@@ -1034,8 +1065,9 @@ int sps_bam_pipe_set_params(struct sps_bam *dev, u32 pipe_index, u32 options)
 	/* Is client setting invalid options for a BAM-to-BAM connection? */
 	if ((pipe->state & BAM_STATE_BAM2BAM) &&
 	    (options & BAM2BAM_O_INVALID)) {
-		SPS_ERR("sps:Invalid option for BAM-to-BAM: BAM 0x%x pipe %d "
-			"opt 0x%x", BAM_ID(dev), pipe_index, options);
+		SPS_ERR(
+			"sps:Invalid option for BAM-to-BAM: BAM 0x%x pipe %d opt 0x%x\n",
+			BAM_ID(dev), pipe_index, options);
 		return SPS_ERROR;
 	}
 
@@ -1053,7 +1085,8 @@ int sps_bam_pipe_set_params(struct sps_bam *dev, u32 pipe_index, u32 options)
 				vmalloc(pipe->desc_size + size);
 
 			if (pipe->sys.desc_cache == NULL) {
-				SPS_ERR("sps:No memory for pipe %d of BAM 0x%x",
+				SPS_ERR(
+					"sps:No memory for pipe %d of BAM 0x%x\n",
 					pipe_index, BAM_ID(dev));
 				return -ENOMEM;
 			}
@@ -1063,7 +1096,7 @@ int sps_bam_pipe_set_params(struct sps_bam *dev, u32 pipe_index, u32 options)
 
 		if (pipe->sys.desc_cache == NULL) {
 			/*** MUST BE LAST POINT OF FAILURE (see below) *****/
-			SPS_ERR("sps:Desc cache error: BAM 0x%x pipe %d: %d",
+			SPS_ERR("sps:Desc cache error: BAM 0x%x pipe %d: %d\n",
 				BAM_ID(dev), pipe_index,
 				pipe->desc_size + size);
 			return SPS_ERROR;
@@ -1114,7 +1147,12 @@ int sps_bam_pipe_disable(struct sps_bam *dev, u32 pipe_index)
 	struct sps_pipe *pipe = dev->pipes[pipe_index];
 
 	/* Disable the BAM pipe */
-	bam_pipe_disable(dev->base, pipe_index);
+	if (pipe->connect.options & SPS_O_NO_DISABLE)
+		SPS_DBG("sps:BAM 0x%x pipe %d enters disable state\n",
+			BAM_ID(dev), pipe_index);
+	else
+		bam_pipe_disable(dev->base, pipe_index);
+
 	pipe->state &= ~BAM_STATE_ENABLED;
 
 	return 0;
@@ -1134,8 +1172,8 @@ int sps_bam_pipe_reg_event(struct sps_bam *dev,
 
 	if (pipe->sys.no_queue && reg->xfer_done != NULL &&
 	    reg->mode != SPS_TRIGGER_CALLBACK) {
-		SPS_ERR("sps:Only callback events support for NO_Q: "
-			"BAM 0x%x pipe %d mode %d",
+		SPS_ERR(
+			"sps:Only callback events support for NO_Q: BAM 0x%x pipe %d mode %d\n",
 			BAM_ID(dev), pipe_index, reg->mode);
 		return SPS_ERROR;
 	}
@@ -1149,9 +1187,9 @@ int sps_bam_pipe_reg_event(struct sps_bam *dev,
 
 		index = SPS_EVENT_INDEX(opt_event_table[n].event_id);
 		if (index < 0)
-			SPS_ERR("sps:Negative event index: "
-			"BAM 0x%x pipe %d mode %d",
-			BAM_ID(dev), pipe_index, reg->mode);
+			SPS_ERR(
+				"sps:Negative event index: BAM 0x%x pipe %d mode %d\n",
+				BAM_ID(dev), pipe_index, reg->mode);
 		else {
 			event_reg = &pipe->sys.event_regs[index];
 			event_reg->xfer_done = reg->xfer_done;
@@ -1180,7 +1218,7 @@ int sps_bam_pipe_transfer_one(struct sps_bam *dev,
 
 	/* Is this a BAM-to-BAM or satellite connection? */
 	if ((pipe->state & (BAM_STATE_BAM2BAM | BAM_STATE_REMOTE))) {
-		SPS_ERR("sps:Transfer on BAM-to-BAM: BAM 0x%x pipe %d",
+		SPS_ERR("sps:Transfer on BAM-to-BAM: BAM 0x%x pipe %d\n",
 			BAM_ID(dev), pipe_index);
 		return SPS_ERROR;
 	}
@@ -1190,7 +1228,7 @@ int sps_bam_pipe_transfer_one(struct sps_bam *dev,
 	 * SPS_O_NO_Q option.
 	 */
 	if (pipe->sys.no_queue && user != NULL) {
-		SPS_ERR("sps:User pointer arg non-NULL: BAM 0x%x pipe %d",
+		SPS_ERR("sps:User pointer arg non-NULL: BAM 0x%x pipe %d\n",
 			BAM_ID(dev), pipe_index);
 		return SPS_ERROR;
 	}
@@ -1211,24 +1249,27 @@ int sps_bam_pipe_transfer_one(struct sps_bam *dev,
 			if (next_write == pipe->sys.acked_offset) {
 				if (!show_recom) {
 					show_recom = true;
-					SPS_ERR("sps:Client of BAM 0x%x pipe %d is recommended to have flow control",
+					SPS_ERR(
+						"sps:Client of BAM 0x%x pipe %d is recommended to have flow control\n",
 						BAM_ID(dev), pipe_index);
 				}
 
-				SPS_DBG2("sps:Descriptor FIFO is full for BAM "
-					"0x%x pipe %d after pipe_handler_eot",
+				SPS_DBG2(
+					"sps:Descriptor FIFO is full for BAM 0x%x pipe %d after pipe_handler_eot\n",
 					BAM_ID(dev), pipe_index);
 				return SPS_ERROR;
 			}
 		} else {
 			if (!show_recom) {
 				show_recom = true;
-				SPS_ERR("sps:Client of BAM 0x%x pipe %d is recommended to have flow control.",
+				SPS_ERR(
+					"sps:Client of BAM 0x%x pipe %d is recommended to have flow control.\n",
 					BAM_ID(dev), pipe_index);
 			}
 
-			SPS_DBG2("sps:Descriptor FIFO is full for "
-				"BAM 0x%x pipe %d", BAM_ID(dev), pipe_index);
+			SPS_DBG2(
+				"sps:Descriptor FIFO is full for BAM 0x%x pipe %d\n",
+				BAM_ID(dev), pipe_index);
 			return SPS_ERROR;
 		}
 	}
@@ -1304,14 +1345,14 @@ int sps_bam_pipe_transfer(struct sps_bam *dev,
 	int result;
 
 	if (transfer->iovec_count == 0) {
-		SPS_ERR("sps:iovec count zero: BAM 0x%x pipe %d",
+		SPS_ERR("sps:iovec count zero: BAM 0x%x pipe %d\n",
 			BAM_ID(dev), pipe_index);
 		return SPS_ERROR;
 	}
 
 	sps_bam_get_free_count(dev, pipe_index, &count);
 	if (count < transfer->iovec_count) {
-		SPS_ERR("sps:Insufficient free desc: BAM 0x%x pipe %d: %d",
+		SPS_ERR("sps:Insufficient free desc: BAM 0x%x pipe %d: %d\n",
 			BAM_ID(dev), pipe_index, count);
 		return SPS_ERROR;
 	}
@@ -1382,18 +1423,18 @@ static void trigger_event(struct sps_bam *dev,
 			  struct sps_q_event *sps_event)
 {
 	if (sps_event == NULL) {
-		SPS_DBG("sps:trigger_event.sps_event is NULL.");
+		SPS_DBG("sps:trigger_event.sps_event is NULL.\n");
 		return;
 	}
 
 	if (event_reg->xfer_done) {
 		complete(event_reg->xfer_done);
-		SPS_DBG("sps:trigger_event.done=%d.",
+		SPS_DBG("sps:trigger_event.done=%d.\n",
 			event_reg->xfer_done->done);
 	}
 
 	if (event_reg->callback) {
-		SPS_DBG("sps:trigger_event.using callback.");
+		SPS_DBG("sps:trigger_event.using callback.\n");
 		event_reg->callback(&sps_event->notify);
 	}
 
@@ -1665,7 +1706,7 @@ static void pipe_handler(struct sps_bam *dev, struct sps_pipe *pipe)
 	pipe_index = pipe->pipe_index;
 	status = bam_pipe_get_and_clear_irq_status(dev->base, pipe_index);
 
-	SPS_DBG("sps:pipe_handler.bam 0x%x.pipe %d.status=0x%x.",
+	SPS_DBG("sps:pipe_handler.bam 0x%x.pipe %d.status=0x%x.\n",
 			BAM_ID(dev), pipe_index, status);
 
 	/* Check for enabled interrupt sources */
@@ -1737,8 +1778,8 @@ int sps_bam_pipe_get_event(struct sps_bam *dev,
 	struct sps_q_event *event_queue;
 
 	if (pipe->sys.no_queue) {
-		SPS_ERR("sps:Invalid connection for event: "
-			"BAM 0x%x pipe %d context 0x%x",
+		SPS_ERR(
+			"sps:Invalid connection for event: BAM 0x%x pipe %d context 0x%x\n",
 			BAM_ID(dev), pipe_index, (u32) pipe);
 		notify->event_id = SPS_EVENT_INVALID;
 		return SPS_ERROR;
@@ -1751,9 +1792,10 @@ int sps_bam_pipe_get_event(struct sps_bam *dev,
 	/* Pull an event off the synchronous event queue */
 	if (list_empty(&pipe->sys.events_q)) {
 		event_queue = NULL;
-		SPS_DBG("sps:events_q of bam 0x%x is empty.", BAM_ID(dev));
+		SPS_DBG("sps:events_q of bam 0x%x is empty.\n", BAM_ID(dev));
 	} else {
-		SPS_DBG("sps:events_q of bam 0x%x is not empty.", BAM_ID(dev));
+		SPS_DBG("sps:events_q of bam 0x%x is not empty.\n",
+			BAM_ID(dev));
 		event_queue =
 		list_first_entry(&pipe->sys.events_q, struct sps_q_event,
 				 list);
@@ -1842,7 +1884,7 @@ int sps_bam_pipe_is_empty(struct sps_bam *dev, u32 pipe_index,
 
 	/* Is this a satellite connection? */
 	if ((pipe->state & BAM_STATE_REMOTE)) {
-		SPS_ERR("sps:Is empty on remote: BAM 0x%x pipe %d",
+		SPS_ERR("sps:Is empty on remote: BAM 0x%x pipe %d\n",
 			BAM_ID(dev), pipe_index);
 		return SPS_ERROR;
 	}
@@ -1881,8 +1923,9 @@ int sps_bam_get_free_count(struct sps_bam *dev, u32 pipe_index,
 
 	/* Is this a BAM-to-BAM or satellite connection? */
 	if ((pipe->state & (BAM_STATE_BAM2BAM | BAM_STATE_REMOTE))) {
-		SPS_ERR("sps:Free count on BAM-to-BAM or remote: BAM "
-			"0x%x pipe %d",	BAM_ID(dev), pipe_index);
+		SPS_ERR(
+			"sps:Free count on BAM-to-BAM or remote: BAM 0x%x pipe %d\n",
+			BAM_ID(dev), pipe_index);
 		*count = 0;
 		return SPS_ERROR;
 	}
@@ -1917,14 +1960,15 @@ int sps_bam_set_satellite(struct sps_bam *dev, u32 pipe_index)
 	 */
 	if ((dev->props.manage & SPS_BAM_MGR_MULTI_EE) == 0 ||
 	    (dev->props.manage & SPS_BAM_MGR_DEVICE_REMOTE)) {
-		SPS_ERR("sps:Cannot grant satellite control to BAM 0x%x "
-			"pipe %d", BAM_ID(dev), pipe_index);
+		SPS_ERR(
+			"sps:Cannot grant satellite control to BAM 0x%x pipe %d\n",
+			BAM_ID(dev), pipe_index);
 		return SPS_ERROR;
 	}
 
 	/* Is this pipe locally controlled? */
 	if ((dev->pipe_active_mask & (1UL << pipe_index)) == 0) {
-		SPS_ERR("sps:BAM 0x%x pipe %d not local and active",
+		SPS_ERR("sps:BAM 0x%x pipe %d not local and active\n",
 			BAM_ID(dev), pipe_index);
 		return SPS_ERROR;
 	}
@@ -1972,7 +2016,7 @@ int sps_bam_pipe_timer_ctrl(struct sps_bam *dev,
 
 	/* Is this pipe locally controlled? */
 	if ((dev->pipe_active_mask & (1UL << pipe_index)) == 0) {
-		SPS_ERR("sps:BAM 0x%x pipe %d not local and active",
+		SPS_ERR("sps:BAM 0x%x pipe %d not local and active\n",
 			BAM_ID(dev), pipe_index);
 		return SPS_ERROR;
 	}
@@ -1984,7 +2028,7 @@ int sps_bam_pipe_timer_ctrl(struct sps_bam *dev,
 			BAM_PIPE_TIMER_ONESHOT :
 			BAM_PIPE_TIMER_PERIODIC;
 		bam_pipe_timer_config(dev->base, pipe_index, mode,
-				    timer_ctrl->timeout_msec * 10);
+				    timer_ctrl->timeout_msec * 8);
 		break;
 	case SPS_TIMER_OP_RESET:
 		bam_pipe_timer_reset(dev->base, pipe_index);

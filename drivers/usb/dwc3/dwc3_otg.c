@@ -199,8 +199,6 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 	} else {
 		dev_dbg(otg->phy->dev, "%s: turn off host\n", __func__);
 
-		platform_device_del(dwc->xhci);
-
 		ret = regulator_disable(dotg->vbus_otg);
 		if (ret) {
 			dev_err(otg->phy->dev, "unable to disable vbus_otg\n");
@@ -208,6 +206,7 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 		}
 		dwc3_otg_notify_host_mode(otg, on);
 
+		platform_device_del(dwc->xhci);
 		/*
 		 * Perform USB hardware RESET (both core reset and DBM reset)
 		 * when moving from host to peripheral. This is required for
@@ -216,6 +215,8 @@ static int dwc3_otg_start_host(struct usb_otg *otg, int on)
 		if (ext_xceiv && ext_xceiv->otg_capability &&
 						ext_xceiv->ext_block_reset)
 			ext_xceiv->ext_block_reset(true);
+
+		dwc3_otg_set_peripheral_regs(dotg);
 
 		/* re-init core and OTG registers as block reset clears these */
 		dwc3_post_host_reset_core_init(dwc);

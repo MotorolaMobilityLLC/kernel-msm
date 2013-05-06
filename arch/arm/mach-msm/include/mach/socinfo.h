@@ -32,77 +32,39 @@
 #define SOCINFO_VERSION_MINOR(ver) (ver & 0x0000ffff)
 
 #ifdef CONFIG_OF
-#define early_machine_is_msm8974()	\
-	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8974")
-#define machine_is_msm8974()		\
-	of_machine_is_compatible("qcom,msm8974")
-#define machine_is_msm8974_sim()		\
-	of_machine_is_compatible("qcom,msm8974-sim")
-#define machine_is_msm8974_rumi()	\
-	of_machine_is_compatible("qcom,msm8974-rumi")
-#define machine_is_msm8974_fluid()	\
-	of_machine_is_compatible("qcom,msm8974-fluid")
-#define early_machine_is_msm9625()	\
-	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm9625")
-#define machine_is_msm9625()		\
-	of_machine_is_compatible("qcom,msm9625")
-#define early_machine_is_mpq8092()	\
-	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,mpq8092")
-#define machine_is_mpq8092_sim()           \
-	of_machine_is_compatible("qcom,mpq8092-sim")
-#define early_machine_is_msm8226()	\
-	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8226")
-#define machine_is_msm8226()		\
-	of_machine_is_compatible("qcom,msm8226")
-#define machine_is_msm8226_sim()		\
-	of_machine_is_compatible("qcom,msm8226-sim")
-#define machine_is_msm8226_rumi()		\
-	of_machine_is_compatible("qcom,msm8226-rumi")
-#define machine_is_msm8226_cdp()		\
-	of_machine_is_compatible("qcom,msm8226-cdp")
-#define machine_is_msm8226_fluid()		\
-	of_machine_is_compatible("qcom,msm8226-fluid")
-#define machine_is_msm8226_mtp()		\
-	of_machine_is_compatible("qcom,msm8226-mtp")
-#define machine_is_msm8226_qrd()		\
-	of_machine_is_compatible("qcom,msm8226-qrd")
+#define of_board_is_sim()	of_machine_is_compatible("qcom,sim")
+#define of_board_is_rumi()	of_machine_is_compatible("qcom,rumi")
+#define of_board_is_fluid()	of_machine_is_compatible("qcom,fluid")
+#define of_board_is_liquid()	of_machine_is_compatible("qcom,liquid")
+
+#define machine_is_msm8974()	of_machine_is_compatible("qcom,msm8974")
+#define machine_is_msm9625()	of_machine_is_compatible("qcom,msm9625")
+#define machine_is_msm8610()	of_machine_is_compatible("qcom,msm8610")
+#define machine_is_msm8226()	of_machine_is_compatible("qcom,msm8226")
+
 #define early_machine_is_msm8610()	\
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8610")
-#define machine_is_msm8610()		\
-	of_machine_is_compatible("qcom,msm8610")
-#define machine_is_msm8610_sim()		\
-	of_machine_is_compatible("qcom,msm8610-sim")
-#define machine_is_msm8610_rumi()		\
-	of_machine_is_compatible("qcom,msm8610-rumi")
-#define machine_is_msm8610_mtp()		\
-	of_machine_is_compatible("qcom,msm8610-mtp")
-#define machine_is_msm8610_cdp()		\
-	of_machine_is_compatible("qcom,msm8610-cdp")
-#define early_machine_is_msmzinc()	\
-	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msmzinc")
-#define machine_is_msmzinc_sim()		\
-	of_machine_is_compatible("qcom,msmzinc-sim")
+#define early_machine_is_mpq8092()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,mpq8092")
+#define early_machine_is_apq8084()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,apq8084")
+#define early_machine_is_msmkrypton()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msmkrypton")
 #else
-#define early_machine_is_msm8974()	0
-#define machine_is_msm8974()		0
-#define machine_is_msm8974_sim()	0
-#define machine_is_msm8974_rumi()	0
-#define machine_is_msm8974_fluid()	0
-#define early_machine_is_msm9625()	0
-#define machine_is_msm9625()		0
-#define early_machine_is_mpq8092()	0
-#define machine_is_mpq8092_sim()	0
-#define early_machine_is_msm8226()	0
-#define machine_is_msm8226()		0
-#define machine_is_msm8226_sim()	0
-#define machine_is_msm8226_rumi()	0
-#define early_machine_is_msm8610()	0
-#define machine_is_msm8610()		0
-#define machine_is_msm8610_sim()	0
-#define machine_is_msm8610_rumi()	0
-#define early_machine_is_msmzinc()	0
-#define machine_is_msmzinc_sim()	0
+#define of_board_is_sim()		0
+#define of_board_is_rumi()		0
+#define of_board_is_fluid()		0
+#define of_board_is_liquid()		0
 
+#define machine_is_msm8974()		0
+#define machine_is_msm9625()		0
+#define machine_is_msm8610()		0
+#define machine_is_msm8226()		0
+
+#define early_machine_is_msm8610()	0
+#define early_machine_is_mpq8092()	0
+#define early_machine_is_apq8084()	0
+#define early_machine_is_msmkrypton()	0
 #endif
 
 #define PLATFORM_SUBTYPE_SGLTE	6
@@ -140,7 +102,8 @@ enum msm_cpu {
 	MSM_CPU_8226,
 	MSM_CPU_8610,
 	MSM_CPU_8625Q,
-	MSM_CPU_ZINC,
+	MSM_CPU_8084,
+	MSM_CPU_KRYPTON,
 };
 
 enum pmic_model {

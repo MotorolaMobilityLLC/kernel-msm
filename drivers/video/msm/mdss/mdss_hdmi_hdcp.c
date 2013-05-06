@@ -618,7 +618,7 @@ static int hdmi_hdcp_authentication_part2(struct hdmi_hdcp_ctrl *hdcp_ctrl)
 
 	/* Wait until READY bit is set in BCAPS */
 	timeout_count = 50;
-	while (!(bcaps && BIT(5)) && timeout_count) {
+	while (!(bcaps & BIT(5)) && timeout_count) {
 		msleep(100);
 		timeout_count--;
 		/* Read BCAPS at offset 0x40 */
@@ -1057,11 +1057,16 @@ int hdmi_hdcp_isr(void *input)
 
 	io = hdcp_ctrl->init_data.core_io;
 
-	/* Ignore HDCP interrupts if HDCP is disabled */
-	if (HDCP_STATE_INACTIVE == hdcp_ctrl->hdcp_state)
-		return 0;
-
 	hdcp_int_val = DSS_REG_R(io, HDMI_HDCP_INT_CTRL);
+
+	/* Ignore HDCP interrupts if HDCP is disabled */
+	if (HDCP_STATE_INACTIVE == hdcp_ctrl->hdcp_state) {
+		DEV_ERR("%s: HDCP inactive. Just clear int and return.\n",
+			__func__);
+		DSS_REG_W(io, HDMI_HDCP_INT_CTRL, hdcp_int_val);
+		return 0;
+	}
+
 	if (hdcp_int_val & BIT(0)) {
 		/* AUTH_SUCCESS_INT */
 		DSS_REG_W(io, HDMI_HDCP_INT_CTRL, (hdcp_int_val | BIT(1)));

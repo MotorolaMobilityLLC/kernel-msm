@@ -90,6 +90,19 @@ static unsigned int iommu_pm_create_sup_cls_str(char **buf,
 	return pos;
 }
 
+static int iommu_pm_event_class_supported(struct iommu_pmon *pmon,
+					  int event_class)
+{
+	unsigned int nevent_cls = pmon->nevent_cls_supported;
+	unsigned int i;
+
+	for (i = 0; i < nevent_cls; ++i) {
+		if (event_class == pmon->event_cls_supported[i])
+			return event_class;
+	}
+	return MSM_IOMMU_PMU_NO_EVENT_CLASS;
+}
+
 static const char *iommu_pm_find_event_class_name(int event_class)
 {
 	size_t array_len;
@@ -113,7 +126,8 @@ out:
 	return event_class_name;
 }
 
-static int iommu_pm_find_event_class(const char *event_class_name)
+static int iommu_pm_find_event_class(struct iommu_pmon *pmon,
+				     const char *event_class_name)
 {
 	size_t array_len;
 	struct event_class *ptr;
@@ -134,6 +148,7 @@ static int iommu_pm_find_event_class(const char *event_class_name)
 	}
 
 out:
+	event_class = iommu_pm_event_class_supported(pmon, event_class);
 	return event_class;
 }
 
@@ -242,6 +257,7 @@ static void iommu_pm_on(struct iommu_pmon *pmon)
 					dev_get_drvdata(iommu->iommu_dev);
 
 	iommu->ops->iommu_power_on(iommu_drvdata);
+	iommu->ops->iommu_clk_on(iommu_drvdata);
 
 	/* Reset counters in HW */
 	iommu->ops->iommu_lock_acquire();
@@ -294,6 +310,7 @@ static void iommu_pm_off(struct iommu_pmon *pmon)
 	iommu_pm_read_all_counters(pmon);
 
 	iommu->ops->iommu_lock_release();
+	iommu->ops->iommu_clk_off(iommu_drvdata);
 	iommu->ops->iommu_power_off(iommu_drvdata);
 
 	pr_info("%s: TLB performance monitoring turned OFF\n",
@@ -387,11 +404,11 @@ static ssize_t iommu_pm_event_class_write(struct file *fp,
 		rv = kstrtol(buf, 10, &value);
 		if (!rv) {
 			counter->current_event_class =
-				iommu_pm_find_event_class(
+				iommu_pm_find_event_class(pmon,
 					iommu_pm_find_event_class_name(value));
 		} else {
 			counter->current_event_class =
-						iommu_pm_find_event_class(buf);
+					iommu_pm_find_event_class(pmon, buf);
 	}	}
 
 	if (current_event_class != counter->current_event_class)
@@ -486,14 +503,17 @@ static ssize_t iommu_pm_enable_counters_write(struct file *fp,
 		rv = kstrtoul(buf, 10, &cmd);
 		if (!rv && (cmd < 2)) {
 			if (pmon->enabled == 1 && cmd == 0) {
-				if (pmon->iommu_attach_count > 0)
+				if (pmon->iommu.always_on ||
+				    pmon->iommu_attach_count > 0)
 					iommu_pm_off(pmon);
 			} else if (pmon->enabled == 0 && cmd == 1) {
 				/* We can only turn on perf. monitoring if
-				 * iommu is attached. Delay turning on perf.
-				 * monitoring until we are attached.
+				 * iommu is attached (if not always on).
+				 * Delay turning on perf. monitoring until
+				 * we are attached.
 				 */
-				if (pmon->iommu_attach_count > 0)
+				if (pmon->iommu.always_on ||
+				    pmon->iommu_attach_count > 0)
 					iommu_pm_on(pmon);
 				else
 					pmon->enabled = 1;
@@ -786,9 +806,9 @@ void msm_iommu_attached(struct device *dev)
 		++pmon->iommu_attach_count;
 		if (pmon->iommu_attach_count == 1) {
 			/* If perf. mon was enabled before we attached we do
-			 * the actual after we attach.
+			 * the actual enabling after we attach.
 			 */
-			if (pmon->enabled)
+			if (pmon->enabled && !pmon->iommu.always_on)
 				iommu_pm_on(pmon);
 		}
 		mutex_unlock(&pmon->lock);
@@ -803,9 +823,9 @@ void msm_iommu_detached(struct device *dev)
 		mutex_lock(&pmon->lock);
 		if (pmon->iommu_attach_count == 1) {
 			/* If perf. mon is still enabled we have to disable
-			 * before we do the detach.
+			 * before we do the detach if iommu is not always on.
 			 */
-			if (pmon->enabled)
+			if (pmon->enabled && !pmon->iommu.always_on)
 				iommu_pm_off(pmon);
 		}
 		BUG_ON(pmon->iommu_attach_count == 0);

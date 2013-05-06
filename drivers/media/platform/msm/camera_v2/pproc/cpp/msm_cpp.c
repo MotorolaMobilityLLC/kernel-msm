@@ -34,6 +34,7 @@
 #include <media/msmb_pproc.h>
 #include <media/msmb_generic_buf_mgr.h>
 #include "msm_cpp.h"
+#include "msm_isp_util.h"
 #include "msm_camera_io_util.h"
 
 #define MSM_CPP_DRV_NAME "msm_cpp"
@@ -582,6 +583,12 @@ static void msm_cpp_boot_hw(struct cpp_device *cpp_dev)
 static int cpp_init_hardware(struct cpp_device *cpp_dev)
 {
 	int rc = 0;
+	rc = msm_isp_init_bandwidth_mgr(ISP_CPP);
+	if (rc < 0) {
+		pr_err("%s: Bandwidth registration Failed!\n", __func__);
+		goto bus_scale_register_failed;
+	}
+	msm_isp_update_bandwidth(ISP_CPP, 981345600, 1066680000);
 
 	if (cpp_dev->fs_cpp == NULL) {
 		cpp_dev->fs_cpp =
@@ -667,6 +674,9 @@ clk_failed:
 	regulator_disable(cpp_dev->fs_cpp);
 	regulator_put(cpp_dev->fs_cpp);
 fs_failed:
+	msm_isp_update_bandwidth(ISP_CPP, 0, 0);
+	msm_isp_deinit_bandwidth_mgr(ISP_CPP);
+bus_scale_register_failed:
 	return rc;
 }
 
@@ -688,6 +698,8 @@ static void cpp_release_hardware(struct cpp_device *cpp_dev)
 		regulator_put(cpp_dev->fs_cpp);
 		cpp_dev->fs_cpp = NULL;
 	}
+	msm_isp_update_bandwidth(ISP_CPP, 0, 0);
+	msm_isp_deinit_bandwidth_mgr(ISP_CPP);
 }
 
 static void cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin)
@@ -907,7 +919,7 @@ static int msm_cpp_send_frame_to_hardware(struct cpp_device *cpp_dev,
 	struct msm_queue_cmd *frame_qcmd)
 {
 	uint32_t i;
-	int32_t rc = -EINVAL;
+	int32_t rc = -EAGAIN;
 	struct msm_cpp_frame_info_t *process_frame;
 
 	if (cpp_dev->processing_q.len < MAX_CPP_PROCESSING_FRAME) {
@@ -921,6 +933,8 @@ static int msm_cpp_send_frame_to_hardware(struct cpp_device *cpp_dev,
 		do_gettimeofday(&(process_frame->in_time));
 		rc = 0;
 	}
+	if (rc < 0)
+		pr_err("process queue full. drop frame\n");
 	return rc;
 }
 
@@ -940,6 +954,9 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 	unsigned long in_phyaddr, out_phyaddr;
 	uint16_t num_stripes = 0;
 	struct msm_buf_mngr_info buff_mgr_info;
+	struct msm_cpp_frame_info_t *u_frame_info =
+		(struct msm_cpp_frame_info_t *)ioctl_ptr->ioctl_ptr;
+	int32_t status = 0;
 
 	int i = 0;
 	if (!new_frame) {
@@ -992,8 +1009,8 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 	rc = msm_cpp_buffer_ops(cpp_dev, VIDIOC_MSM_BUF_MNGR_GET_BUF,
 		&buff_mgr_info);
 	if (rc < 0) {
-		pr_err("error getting buffer\n");
-		rc = -EINVAL;
+		rc = -EAGAIN;
+		pr_err("error getting buffer rc:%d\n", rc);
 		goto ERROR2;
 	}
 
@@ -1036,6 +1053,15 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 		goto ERROR4;
 	}
 
+	ioctl_ptr->trans_code = rc;
+	status = rc;
+	rc = (copy_to_user((void __user *)u_frame_info->status, &status,
+		sizeof(int32_t)) ? -EFAULT : 0);
+	if (rc) {
+		ERR_COPY_FROM_USER();
+		rc = -EINVAL;
+		goto ERROR4;
+	}
 	return rc;
 ERROR4:
 	kfree(frame_qcmd);
@@ -1046,6 +1072,11 @@ ERROR2:
 	kfree(cpp_frame_msg);
 ERROR1:
 	kfree(new_frame);
+	ioctl_ptr->trans_code = rc;
+	status = rc;
+	if (copy_to_user((void __user *)u_frame_info->status, &status,
+		sizeof(int32_t)))
+		pr_err("error cannot copy error\n");
 	return rc;
 }
 

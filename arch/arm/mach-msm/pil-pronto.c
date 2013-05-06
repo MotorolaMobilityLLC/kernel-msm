@@ -29,10 +29,10 @@
 
 #include <mach/subsystem_restart.h>
 #include <mach/msm_smsm.h>
+#include <mach/ramdump.h>
 
 #include "peripheral-loader.h"
 #include "scm-pas.h"
-#include "ramdump.h"
 
 #define PRONTO_PMU_COMMON_GDSCR				0x24
 #define PRONTO_PMU_COMMON_GDSCR_SW_COLLAPSE		BIT(0)
@@ -123,7 +123,7 @@ static int pil_pronto_reset(struct pil_desc *pil)
 	int rc;
 	struct pronto_data *drv = dev_get_drvdata(pil->dev);
 	void __iomem *base = drv->base;
-	unsigned long start_addr = pil_get_entry_addr(pil);
+	phys_addr_t start_addr = pil_get_entry_addr(pil);
 
 	/* Deassert reset to subsystem and wait for propagation */
 	reg = readl_relaxed(drv->reset_base);
@@ -410,6 +410,15 @@ static int __devinit pil_pronto_probe(struct platform_device *pdev)
 	int ret, err_fatal_gpio, irq;
 	uint32_t regval;
 
+	int clk_ready = of_get_named_gpio(pdev->dev.of_node,
+			"qcom,gpio-proxy-unvote", 0);
+	if (clk_ready < 0)
+		return clk_ready;
+
+	clk_ready = gpio_to_irq(clk_ready);
+	if (clk_ready < 0)
+		return clk_ready;
+
 	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_KERNEL);
 	if (!drv)
 		return -ENOMEM;
@@ -460,6 +469,7 @@ static int __devinit pil_pronto_probe(struct platform_device *pdev)
 	desc->dev = &pdev->dev;
 	desc->owner = THIS_MODULE;
 	desc->proxy_timeout = 10000;
+	desc->proxy_unvote_irq = clk_ready;
 
 	if (pas_supported(PAS_WCNSS) > 0) {
 		desc->ops = &pil_pronto_ops_trusted;

@@ -168,7 +168,7 @@ static int wfd_allocate_ion_buffer(struct ion_client *client,
 
 	if (secure) {
 		alloc_regions = ION_HEAP(ION_CP_MM_HEAP_ID);
-		ion_flags = ION_SECURE;
+		ion_flags = ION_FLAG_SECURE;
 		align = SZ_1M;
 	} else {
 		alloc_regions = ION_HEAP(ION_IOMMU_HEAP_ID);
@@ -1006,6 +1006,7 @@ static int wfdioc_streamoff(struct file *filp, void *fh,
 	spin_unlock_irqrestore(&inst->inst_lock, flags);
 	WFD_MSG_DBG("Calling videobuf_streamoff\n");
 	vb2_streamoff(&inst->vid_bufq, i);
+	wake_up(&inst->event_handler.wait);
 	return 0;
 }
 static int wfdioc_dqbuf(struct file *filp, void *fh,
@@ -1040,30 +1041,9 @@ static int wfdioc_s_ctrl(struct file *filp, void *fh,
 {
 	int rc = 0;
 	struct wfd_device *wfd_dev = video_drvdata(filp);
-	struct wfd_inst *inst = file_to_inst(filp);
 
-	switch (a->id) {
-	case V4L2_CID_MPEG_VIDC_VIDEO_SECURE:
-		rc = v4l2_subdev_call(&wfd_dev->enc_sdev, core,
-				ioctl, ENC_SECURE, NULL);
-		if (rc) {
-			WFD_MSG_ERR("Couldn't secure encoder");
-			break;
-		}
-
-		rc = v4l2_subdev_call(&wfd_dev->mdp_sdev, core,
-				ioctl, MDP_SECURE, (void *)inst->mdp_inst);
-		if (rc) {
-			WFD_MSG_ERR("Couldn't secure MDP");
-			break;
-		}
-
-		wfd_dev->secure = true;
-		break;
-	default:
-		rc = v4l2_subdev_call(&wfd_dev->enc_sdev, core,
-				ioctl, SET_PROP, a);
-	}
+	rc = v4l2_subdev_call(&wfd_dev->enc_sdev, core,
+			ioctl, SET_PROP, a);
 
 	if (rc)
 		WFD_MSG_ERR("Failed to set encoder property\n");
@@ -1550,10 +1530,10 @@ static int wfd_close(struct file *filp)
 			WFD_MSG_ERR("Failed to CLOSE vsg subdev: %d\n", rc);
 
 		wfd_stats_deinit(&inst->stats);
+		v4l2_fh_del(&inst->event_handler);
 		kfree(inst);
 	}
 
-	v4l2_fh_del(&inst->event_handler);
 
 	mutex_lock(&wfd_dev->dev_lock);
 	wfd_dev->in_use = false;
@@ -1566,14 +1546,22 @@ static int wfd_close(struct file *filp)
 unsigned int wfd_poll(struct file *filp, struct poll_table_struct *pt)
 {
 	struct wfd_inst *inst = file_to_inst(filp);
-	unsigned int flags = 0;
+	unsigned int poll_flags = 0;
+	unsigned long flags;
+	bool streamoff = false;
 
 	poll_wait(filp, &inst->event_handler.wait, pt);
 
-	if (v4l2_event_pending(&inst->event_handler))
-		flags |= POLLPRI;
+	spin_lock_irqsave(&inst->inst_lock, flags);
+	streamoff = inst->streamoff;
+	spin_unlock_irqrestore(&inst->inst_lock, flags);
 
-	return flags;
+	if (v4l2_event_pending(&inst->event_handler))
+		poll_flags |= POLLPRI;
+	if (streamoff)
+		poll_flags |= POLLERR;
+
+	return poll_flags;
 }
 
 static const struct v4l2_file_operations g_wfd_fops = {

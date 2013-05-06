@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,7 +31,7 @@
 
 #include <linux/clk.h>
 #include <linux/timer.h>
-#include <mach/msm_subsystem_map.h>
+#include <mach/iommu_domains.h>
 #include <media/msm/vidc_type.h>
 #include <media/msm/vcd_api.h>
 #include <media/msm/vidc_init.h>
@@ -131,24 +131,24 @@ static void mpq_get_frame_and_write(struct mpq_dvb_video_inst *dev_inst,
 		switch (meta_data.packet_type) {
 		case DMX_FRAMING_INFO_PACKET:
 			switch (meta_data.info.framing.pattern_type) {
-			case DMX_FRM_H264_SPS:
-			case DMX_FRM_MPEG2_SEQUENCE_HEADER:
-			case DMX_FRM_VC1_SEQUENCE_HEADER:
+			case DMX_IDX_H264_SPS:
+			case DMX_IDX_MPEG_SEQ_HEADER:
+			case DMX_IDX_VC1_SEQ_HEADER:
 				DBG("SPS FOUND\n");
 				frame_found = false;
 				break;
-			case DMX_FRM_H264_PPS:
-			case DMX_FRM_MPEG2_GOP_HEADER:
-			case DMX_FRM_VC1_ENTRY_POINT_HEADER:
+			case DMX_IDX_H264_PPS:
+			case DMX_IDX_MPEG_GOP:
+			case DMX_IDX_VC1_ENTRY_POINT:
 				DBG("PPS FOUND\n");
 				frame_found = false;
 				break;
-			case DMX_FRM_H264_IDR_PIC:
-			case DMX_FRM_H264_NON_IDR_PIC:
-			case DMX_FRM_MPEG2_I_PIC:
-			case DMX_FRM_MPEG2_P_PIC:
-			case DMX_FRM_MPEG2_B_PIC:
-			case DMX_FRM_VC1_FRAME_START_CODE:
+			case DMX_IDX_H264_IDR_START:
+			case DMX_IDX_H264_NON_IDR_START:
+			case DMX_IDX_MPEG_I_FRAME_START:
+			case DMX_IDX_MPEG_P_FRAME_START:
+			case DMX_IDX_MPEG_B_FRAME_START:
+			case DMX_IDX_VC1_FRAME_START:
 				DBG("FRAME FOUND\n");
 				frame_found = true;
 				break;
@@ -186,7 +186,9 @@ static void mpq_get_frame_and_write(struct mpq_dvb_video_inst *dev_inst,
 		case DMX_EOS_PACKET:
 			break;
 		case DMX_PES_PACKET:
-		case DMX_PADDING_PACKET:
+		case DMX_MARKER_PACKET:
+			break;
+		default:
 			break;
 		}
 	} while (!frame_found);
@@ -1188,9 +1190,6 @@ static int mpq_int_vid_dec_free_h264_mv_buffers(
 
 	if (!client_ctx)
 		return -EINVAL;
-	if (client_ctx->vcd_h264_mv_buffer.client_data)
-		msm_subsystem_unmap_buffer((struct msm_mapped_buffer *)
-		client_ctx->vcd_h264_mv_buffer.client_data);
 
 	vcd_property_hdr.prop_id = VCD_I_FREE_H264_MV_BUFFER;
 	vcd_property_hdr.sz = sizeof(struct vcd_property_buffer_size);

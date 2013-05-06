@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,6 +25,7 @@
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/slab.h>
+#include <linux/ratelimit.h>
 #include <mach/cpuidle.h>
 
 #define BYTE_BIT_MASK(nr)		(1UL << ((nr) % BITS_PER_BYTE))
@@ -218,16 +219,19 @@ static void wcd9xxx_irq_dispatch(struct wcd9xxx *wcd9xxx, int irqbit)
 
 static int wcd9xxx_num_irq_regs(const struct wcd9xxx *wcd9xxx)
 {
-	return (wcd9xxx->num_irqs / 8) + ((wcd9xxx->num_irqs % 8) ? 1 : 0);
+	return (wcd9xxx->codec_type->num_irqs / 8) +
+		((wcd9xxx->codec_type->num_irqs % 8) ? 1 : 0);
 }
 
 static irqreturn_t wcd9xxx_irq_thread(int irq, void *data)
 {
 	int ret;
 	int i;
+	char linebuf[128];
 	struct wcd9xxx *wcd9xxx = data;
 	int num_irq_regs = wcd9xxx_num_irq_regs(wcd9xxx);
-	u8 status[num_irq_regs];
+	u8 status[num_irq_regs], status1[num_irq_regs];
+	static DEFINE_RATELIMIT_STATE(ratelimit, 5 * HZ, 1);
 
 	if (unlikely(wcd9xxx_lock_sleep(wcd9xxx) == false)) {
 		dev_err(wcd9xxx->dev, "Failed to hold suspend\n");
@@ -249,12 +253,17 @@ static irqreturn_t wcd9xxx_irq_thread(int irq, void *data)
 	for (i = 0; i < num_irq_regs; i++)
 		status[i] &= ~wcd9xxx->irq_masks_cur[i];
 
+	memcpy(status1, status, sizeof(status1));
+
 	/* Find out which interrupt was triggered and call that interrupt's
 	 * handler function
 	 */
 	if (status[BIT_BYTE(WCD9XXX_IRQ_SLIMBUS)] &
-	    BYTE_BIT_MASK(WCD9XXX_IRQ_SLIMBUS))
+	    BYTE_BIT_MASK(WCD9XXX_IRQ_SLIMBUS)) {
 		wcd9xxx_irq_dispatch(wcd9xxx, WCD9XXX_IRQ_SLIMBUS);
+		status1[BIT_BYTE(WCD9XXX_IRQ_SLIMBUS)] &=
+		    ~BYTE_BIT_MASK(WCD9XXX_IRQ_SLIMBUS);
+	}
 
 	/* Since codec has only one hardware irq line which is shared by
 	 * codec's different internal interrupts, so it's possible master irq
@@ -263,12 +272,43 @@ static irqreturn_t wcd9xxx_irq_thread(int irq, void *data)
 	 * machine's order */
 	for (i = WCD9XXX_IRQ_MBHC_INSERTION;
 	     i >= WCD9XXX_IRQ_MBHC_REMOVAL; i--) {
-		if (status[BIT_BYTE(i)] & BYTE_BIT_MASK(i))
+		if (status[BIT_BYTE(i)] & BYTE_BIT_MASK(i)) {
 			wcd9xxx_irq_dispatch(wcd9xxx, i);
+			status1[BIT_BYTE(i)] &= ~BYTE_BIT_MASK(i);
+		}
 	}
-	for (i = WCD9XXX_IRQ_BG_PRECHARGE; i < wcd9xxx->num_irqs; i++) {
-		if (status[BIT_BYTE(i)] & BYTE_BIT_MASK(i))
+	for (i = WCD9XXX_IRQ_BG_PRECHARGE; i < wcd9xxx->codec_type->num_irqs;
+	     i++) {
+		if (status[BIT_BYTE(i)] & BYTE_BIT_MASK(i)) {
 			wcd9xxx_irq_dispatch(wcd9xxx, i);
+			status1[BIT_BYTE(i)] &= ~BYTE_BIT_MASK(i);
+		}
+	}
+
+	/*
+	 * As a failsafe if unhandled irq is found, clear it to prevent
+	 * interrupt storm.
+	 * Note that we can say there was an unhandled irq only when no irq
+	 * handled by nested irq handler since Taiko supports qdsp as irqs'
+	 * destination for few irqs.  Therefore driver shouldn't clear pending
+	 * irqs when few handled while few others not.
+	 */
+	if (unlikely(!memcmp(status, status1, sizeof(status)))) {
+		if (__ratelimit(&ratelimit)) {
+			pr_warn("%s: Unhandled irq found\n", __func__);
+			hex_dump_to_buffer(status, sizeof(status), 16, 1,
+					   linebuf, sizeof(linebuf), false);
+			pr_warn("%s: status0 : %s\n", __func__, linebuf);
+			hex_dump_to_buffer(status1, sizeof(status1), 16, 1,
+					   linebuf, sizeof(linebuf), false);
+			pr_warn("%s: status1 : %s\n", __func__, linebuf);
+		}
+
+		memset(status, 0xff, num_irq_regs);
+		wcd9xxx_bulk_write(wcd9xxx, WCD9XXX_A_INTR_CLEAR0,
+				   num_irq_regs, status);
+		if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_I2C)
+			wcd9xxx_reg_write(wcd9xxx, WCD9XXX_A_INTR_MODE, 0x02);
 	}
 	wcd9xxx_unlock_sleep(wcd9xxx);
 
@@ -301,7 +341,7 @@ static int wcd9xxx_irq_setup_downstream_irq(struct wcd9xxx *wcd9xxx)
 
 	pr_debug("%s: enter\n", __func__);
 
-	for (irq = 0; irq < wcd9xxx->num_irqs; irq++) {
+	for (irq = 0; irq < wcd9xxx->codec_type->num_irqs; irq++) {
 		/* Map OF irq */
 		virq = wcd9xxx_map_irq(wcd9xxx, irq);
 		pr_debug("%s: irq %d -> %d\n", __func__, irq, virq);
@@ -365,7 +405,7 @@ int wcd9xxx_irq_init(struct wcd9xxx *wcd9xxx)
 
 	/* mask all the interrupts */
 	memset(irq_level, 0, wcd9xxx_num_irq_regs(wcd9xxx));
-	for (i = 0; i < wcd9xxx->num_irqs; i++) {
+	for (i = 0; i < wcd9xxx->codec_type->num_irqs; i++) {
 		wcd9xxx->irq_masks_cur[BIT_BYTE(i)] |= BYTE_BIT_MASK(i);
 		wcd9xxx->irq_masks_cache[BIT_BYTE(i)] |= BYTE_BIT_MASK(i);
 		irq_level[BIT_BYTE(i)] |=

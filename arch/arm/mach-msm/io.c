@@ -45,7 +45,7 @@
 /* msm_shared_ram_phys default value of 0x00100000 is the most common value
  * and should work as-is for any target without stacked memory.
  */
-unsigned int msm_shared_ram_phys = 0x00100000;
+phys_addr_t msm_shared_ram_phys = 0x00100000;
 
 static void __init msm_map_io(struct map_desc *io_desc, int size)
 {
@@ -321,27 +321,27 @@ void __init msm_map_8974_io(void)
 }
 #endif /* CONFIG_ARCH_MSM8974 */
 
-#ifdef CONFIG_ARCH_MSMZINC
-static struct map_desc msm_zinc_io_desc[] __initdata = {
-	MSM_CHIP_DEVICE(QGIC_DIST, MSMZINC),
-	MSM_CHIP_DEVICE(TLMM, MSMZINC),
+#ifdef CONFIG_ARCH_APQ8084
+static struct map_desc msm_8084_io_desc[] __initdata = {
+	MSM_CHIP_DEVICE(QGIC_DIST, APQ8084),
+	MSM_CHIP_DEVICE(TLMM, APQ8084),
 	{
 		.virtual =  (unsigned long) MSM_SHARED_RAM_BASE,
 		.length =   MSM_SHARED_RAM_SIZE,
 		.type =     MT_DEVICE,
 	},
-#ifdef CONFIG_DEBUG_MSMZINC_UART
+#ifdef CONFIG_DEBUG_APQ8084_UART
 	MSM_DEVICE(DEBUG_UART),
 #endif
 };
 
-void __init msm_map_zinc_io(void)
+void __init msm_map_8084_io(void)
 {
-	msm_shared_ram_phys = MSMZINC_SHARED_RAM_PHYS;
-	msm_map_io(msm_zinc_io_desc, ARRAY_SIZE(msm_zinc_io_desc));
+	msm_shared_ram_phys = APQ8084_SHARED_RAM_PHYS;
+	msm_map_io(msm_8084_io_desc, ARRAY_SIZE(msm_8084_io_desc));
 	of_scan_flat_dt(msm_scan_dt_map_imem, NULL);
 }
-#endif /* CONFIG_ARCH_MSMZINC */
+#endif /* CONFIG_ARCH_APQ8084 */
 
 #ifdef CONFIG_ARCH_MSM7X30
 static struct map_desc msm7x30_io_desc[] __initdata = {
@@ -506,6 +506,25 @@ void __init msm_map_msm9625_io(void)
 	of_scan_flat_dt(msm_scan_dt_map_imem, NULL);
 }
 #endif /* CONFIG_ARCH_MSM9625 */
+
+#ifdef CONFIG_ARCH_MSMKRYPTON
+static struct map_desc msmkrypton_io_desc[] __initdata = {
+	MSM_CHIP_DEVICE(TLMM, MSMKRYPTON),
+	MSM_CHIP_DEVICE(MPM2_PSHOLD, MSMKRYPTON),
+	{
+		.virtual =  (unsigned long) MSM_SHARED_RAM_BASE,
+		.length =   MSM_SHARED_RAM_SIZE,
+		.type =     MT_DEVICE,
+	},
+};
+
+void __init msm_map_msmkrypton_io(void)
+{
+	msm_shared_ram_phys = MSMKRYPTON_SHARED_RAM_PHYS;
+	msm_map_io(msmkrypton_io_desc, ARRAY_SIZE(msmkrypton_io_desc));
+	of_scan_flat_dt(msm_scan_dt_map_imem, NULL);
+}
+#endif /* CONFIG_ARCH_MSMKRYPTON */
 
 #ifdef CONFIG_ARCH_MPQ8092
 static struct map_desc mpq8092_io_desc[] __initdata = {

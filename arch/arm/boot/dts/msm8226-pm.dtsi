@@ -25,9 +25,9 @@
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,saw2-spm-cmd-wfi = [60 03 60 0b 0f];
 		qcom,saw2-spm-cmd-spc = [00 20 10 80 30 90 5b 60 03 60 3b 76 76
-				0b 94 5b 80 10 2b 06 26 30 0f];
+				0b 94 5b 80 10 06 26 30 0f];
 		qcom,saw2-spm-cmd-pc = [00 20 10 80 30 90 5b 60 07 60 3b 76 76
-				0b 94 5b 80 10 2b 06 26 30 0f];
+				0b 94 5b 80 10 06 26 30 0f];
 	};
 
 	qcom,spm@f9099000 {
@@ -42,9 +42,9 @@
 		qcom,saw2-spm-ctl = <0x0>;
 		qcom,saw2-spm-cmd-wfi = [60 03 60 0b 0f];
 		qcom,saw2-spm-cmd-spc = [00 20 10 80 30 90 5b 60 03 60 3b 76 76
-				0b 94 5b 80 10 2b 06 26 30 0f];
+				0b 94 5b 80 10 06 26 30 0f];
 		qcom,saw2-spm-cmd-pc = [00 20 10 80 30 90 5b 60 07 60 3b 76 76
-				0b 94 5b 80 10 2b 06 26 30 0f];
+				0b 94 5b 80 10 06 26 30 0f];
 	};
 
 	qcom,spm@f90a9000 {
@@ -57,11 +57,11 @@
 		qcom,saw2-cfg = <0x01>;
 		qcom,saw2-spm-dly= <0x3c102800>;
 		qcom,saw2-spm-ctl = <0x0>;
-		qcom,saw2-spm-cmd-wfi = [60 03 60 76 76 0b 0f];
+		qcom,saw2-spm-cmd-wfi = [60 03 60 0b 0f];
 		qcom,saw2-spm-cmd-spc = [00 20 10 80 30 90 5b 60 03 60 3b 76 76
-				0b 94 5b 80 10 2b 06 26 30 0f];
+				0b 94 5b 80 10 06 26 30 0f];
 		qcom,saw2-spm-cmd-pc = [00 20 10 80 30 90 5b 60 07 60 3b 76 76
-				0b 94 5b 80 10 2b 06 26 30 0f];
+				0b 94 5b 80 10 06 26 30 0f];
 	};
 
 	qcom,spm@f90b9000 {
@@ -74,11 +74,11 @@
 		qcom,saw2-cfg = <0x01>;
 		qcom,saw2-spm-dly= <0x3c102800>;
 		qcom,saw2-spm-ctl = <0x0>;
-		qcom,saw2-spm-cmd-wfi = [60 03 60 76 76 0b 0f];
+		qcom,saw2-spm-cmd-wfi = [60 03 60 0b 0f];
 		qcom,saw2-spm-cmd-spc = [00 20 10 80 30 90 5b 60 03 60 3b 76 76
-				0b 94 5b 80 10 2b 06 26 30 0f];
+				0b 94 5b 80 10 06 26 30 0f];
 		qcom,saw2-spm-cmd-pc = [00 20 10 80 30 90 5b 60 07 60 3b 76 76
-				0b 94 5b 80 10 2b 06 26 30 0f];
+				0b 94 5b 80 10 06 26 30 0f];
 	};
 
 	qcom,spm@f9012000 {
@@ -91,19 +91,16 @@
 		qcom,saw2-cfg = <0x14>;
 		qcom,saw2-spm-dly= <0x3c102800>;
 		qcom,saw2-spm-ctl = <0x0>;
-		qcom,saw2-pmic-data0 = <0x0400009c>;
-		qcom,saw2-pmic-data1 = <0x0000001c>;
+		qcom,saw2-pmic-data0 = <0x02030080>;
+		qcom,saw2-pmic-data1 = <0x00030000>;
 		qcom,vctl-timeout-us = <50>;
 		qcom,vctl-port = <0x0>;
 		qcom,phase-port = <0x1>;
 		qcom,pfm-port = <0x2>;
 		qcom,saw2-spm-cmd-ret = [00 03 00 7b 0f];
-		qcom,saw2-spm-cmd-gdhs = [00 20 32 60 70 80 6b c0 e0 d0 42 07
-				78 1f 80 4e d0 e0 c0 22 6b 50 4b 60 02 32 50 7b
-				0f];
-		qcom,saw2-spm-cmd-pc = [00 32 60 70 80 b0 10 e0 d0 6b c0
-				42 f0 11 07 01 b0 78 1f 80 4e c0 d0 12 e0 6b 50 4b
-				60 02 32 50 f0 7b 0f]; /*APCS_PMIC_OFF_L2RAM_OFF*/
+		qcom,saw2-spm-cmd-pc = [00 32 b0 10 e0 d0 6b c0 42 f0
+				11 07 01 b0 4e c0 d0 12 e0 6b 50 02 32
+				50 f0 7b 0f]; /*APCS_PMIC_OFF_L2RAM_OFF*/
 	};
 
 	qcom,lpm-resources {
@@ -160,6 +157,8 @@
 			qcom,vdd-mem-lower-bound = <3>; /* NORMAL */
 			qcom,vdd-dig-upper-bound = <5>; /* SUPER TURBO */
 			qcom,vdd-dig-lower-bound = <3>;  /* NORMAL */
+			qcom,irqs-detectable;
+			qcom,gpio-detectable;
 			qcom,latency-us = <1>;
 			qcom,ss-power = <784>;
 			qcom,energy-overhead = <190000>;
@@ -168,22 +167,6 @@
 
 		qcom,lpm-level@1 {
 			reg = <0x1>;
-			qcom,mode = "retention";
-			qcom,xo = "xo_on";
-			qcom,l2 = "l2_cache_active";
-			qcom,vdd-mem-upper-bound = <5>; /* SUPER TURBO */
-			qcom,vdd-mem-lower-bound = <3>; /* NORMAL */
-			qcom,vdd-dig-upper-bound = <5>; /* SUPER TURBO */
-			qcom,vdd-dig-lower-bound = <3>;  /* NORMAL */
-			qcom,latency-us = <75>;
-			qcom,ss-power = <735>;
-			qcom,energy-overhead = <77341>;
-			qcom,time-overhead = <105>;
-		};
-
-
-		qcom,lpm-level@2 {
-			reg = <0x2>;
 			qcom,mode = "standalone_pc";
 			qcom,xo = "xo_on";
 			qcom,l2 = "l2_cache_active";
@@ -191,29 +174,33 @@
 			qcom,vdd-mem-lower-bound = <3>; /* NORMAL */
 			qcom,vdd-dig-upper-bound = <5>; /* SUPER TURBO */
 			qcom,vdd-dig-lower-bound = <3>;  /* NORMAL */
-			qcom,latency-us = <95>;
+			qcom,irqs-detectable;
+			qcom,gpio-detectable;
+			qcom,latency-us = <3000>;
 			qcom,ss-power = <725>;
 			qcom,energy-overhead = <99500>;
-			qcom,time-overhead = <130>;
+			qcom,time-overhead = <3130>;
 		};
 
-		qcom,lpm-level@3 {
-			reg = <0x3>;
+		qcom,lpm-level@2 {
+			reg = <0x2>;
 			qcom,mode = "pc";
 			qcom,xo = "xo_on";
-			qcom,l2 = "l2_cache_gdhs";
+			qcom,l2 = "l2_cache_retention";
 			qcom,vdd-mem-upper-bound = <5>; /* SUPER TURBO */
 			qcom,vdd-mem-lower-bound = <3>; /* NORMAL */
 			qcom,vdd-dig-upper-bound = <5>; /* SUPER TURBO */
 			qcom,vdd-dig-lower-bound = <3>;  /* NORMAL */
-			qcom,latency-us = <2000>;
+			qcom,irqs-detectable;
+			qcom,gpio-detectable;
+			qcom,latency-us = <8000>;
 			qcom,ss-power = <138>;
 			qcom,energy-overhead = <1208400>;
-			qcom,time-overhead = <3200>;
+			qcom,time-overhead = <9200>;
 		};
 
-		qcom,lpm-level@4 {
-			reg = <0x4>;
+		qcom,lpm-level@3 {
+			reg = <0x3>;
 			qcom,mode = "pc";
 			qcom,xo = "xo_on";
 			qcom,l2 = "l2_cache_pc";
@@ -221,25 +208,42 @@
 			qcom,vdd-mem-lower-bound = <2>;  /* SVS SOC */
 			qcom,vdd-dig-upper-bound = <3>;  /* NORMAL */
 			qcom,vdd-dig-lower-bound = <2>;  /* SVS SOC */
-			qcom,latency-us = <3000>;
+			qcom,irqs-detectable;
+			qcom,gpio-detectable;
+			qcom,latency-us = <9000>;
 			qcom,ss-power = <110>;
 			qcom,energy-overhead = <1250300>;
-			qcom,time-overhead = <3500>;
+			qcom,time-overhead = <9500>;
+		};
+
+		qcom,lpm-level@4 {
+			reg = <0x4>;
+			qcom,mode = "pc";
+			qcom,xo = "xo_off";
+			qcom,l2 = "l2_cache_pc";
+			qcom,vdd-mem-upper-bound = <5>; /* SUPER TURBO */
+			qcom,vdd-mem-lower-bound = <3>; /* NORMAL */
+			qcom,vdd-dig-upper-bound = <5>; /* SUPER TURBO */
+			qcom,vdd-dig-lower-bound = <3>;  /* NORMAL */
+			qcom,latency-us = <16300>;
+			qcom,ss-power = <63>;
+			qcom,energy-overhead = <2128000>;
+			qcom,time-overhead = <24200>;
 		};
 
 		qcom,lpm-level@5 {
 			reg = <0x5>;
 			qcom,mode = "pc";
 			qcom,xo = "xo_off";
-			qcom,l2 = "l2_cache_gdhs";
-			qcom,vdd-mem-upper-bound = <5>; /* SUPER TURBO */
-			qcom,vdd-mem-lower-bound = <3>; /* NORMAL */
-			qcom,vdd-dig-upper-bound = <5>; /* SUPER TURBO */
-			qcom,vdd-dig-lower-bound = <3>;  /* NORMAL */
-			qcom,latency-us = <3000>;
-			qcom,ss-power = <68>;
-			qcom,energy-overhead = <1350200>;
-			qcom,time-overhead = <4000>;
+			qcom,l2 = "l2_cache_pc";
+			qcom,vdd-mem-upper-bound = <3>; /* NORMAL */
+			qcom,vdd-mem-lower-bound = <2>;  /* SVS SOC */
+			qcom,vdd-dig-upper-bound = <3>;  /* NORMAL */
+			qcom,vdd-dig-lower-bound = <2>;  /* SVS SOC */
+			qcom,latency-us = <24000>;
+			qcom,ss-power = <10>;
+			qcom,energy-overhead = <3202600>;
+			qcom,time-overhead = <33000>;
 		};
 
 		qcom,lpm-level@6 {
@@ -247,44 +251,14 @@
 			qcom,mode = "pc";
 			qcom,xo = "xo_off";
 			qcom,l2 = "l2_cache_pc";
-			qcom,vdd-mem-upper-bound = <5>; /* SUPER TURBO */
-			qcom,vdd-mem-lower-bound = <3>; /* NORMAL */
-			qcom,vdd-dig-upper-bound = <5>; /* SUPER TURBO */
-			qcom,vdd-dig-lower-bound = <3>;  /* NORMAL */
-			qcom,latency-us = <10300>;
-			qcom,ss-power = <63>;
-			qcom,energy-overhead = <2128000>;
-			qcom,time-overhead = <18200>;
-		};
-
-		qcom,lpm-level@7 {
-			reg = <0x7>;
-			qcom,mode = "pc";
-			qcom,xo = "xo_off";
-			qcom,l2 = "l2_cache_pc";
-			qcom,vdd-mem-upper-bound = <3>; /* NORMAL */
-			qcom,vdd-mem-lower-bound = <2>;  /* SVS SOC */
-			qcom,vdd-dig-upper-bound = <3>;  /* NORMAL */
-			qcom,vdd-dig-lower-bound = <2>;  /* SVS SOC */
-			qcom,latency-us = <18000>;
-			qcom,ss-power = <10>;
-			qcom,energy-overhead = <3202600>;
-			qcom,time-overhead = <27000>;
-		};
-
-		qcom,lpm-level@8 {
-			reg = <0x8>;
-			qcom,mode = "pc";
-			qcom,xo = "xo_off";
-			qcom,l2 = "l2_cache_pc";
 			qcom,vdd-mem-upper-bound = <2>; /* SVS SOC */
 			qcom,vdd-mem-lower-bound = <0>; /* RETENTION */
 			qcom,vdd-dig-upper-bound = <2>; /* SVS SOC */
 			qcom,vdd-dig-lower-bound = <0>; /* RETENTION */
-			qcom,latency-us = <20000>;
+			qcom,latency-us = <26000>;
 			qcom,ss-power = <2>;
 			qcom,energy-overhead = <4252000>;
-			qcom,time-overhead = <32000>;
+			qcom,time-overhead = <38000>;
 		};
 	};
 
@@ -306,6 +280,7 @@
 		qcom,gic-map = <47 172>, /* usb2_hsic_async_wakeup_irq */
 			<53 104>, /* mdss_irq */
 			<62 222>, /* ee0_krait_hlos_spmi_periph_irq */
+			<2 216>, /* tsens_upper_lower_int */
 			<0xff 56>,  /* q6_wdog_expired_irq */
 			<0xff 57>,  /* mss_to_apps_irq(0) */
 			<0xff 58>,  /* mss_to_apps_irq(1) */
@@ -391,11 +366,23 @@
 		reg = <0xfe805664 0x40>;
 		qcom,pc-mode = "tz_l2_int";
 		qcom,use-sync-timer;
+		qcom,pc-resets-timer;
 	};
 
-	qcom,rpm-stats@0xfc19dbd0{
+	qcom,rpm-log@fc19dc00 {
+		compatible = "qcom,rpm-log";
+		reg = <0xfc19dc00 0x4000>;
+		qcom,rpm-addr-phys = <0xfc000000>;
+		qcom,offset-version = <4>;
+		qcom,offset-page-buffer-addr = <36>;
+		qcom,offset-log-len = <40>;
+		qcom,offset-log-len-mask = <44>;
+		qcom,offset-page-indices = <56>;
+	};
+
+	qcom,rpm-stats@fc19dba0 {
 		compatible = "qcom,rpm-stats";
-		reg = <0xfc19dbd0 0x1000>;
+		reg = <0xfc19dba0 0x1000>;
 		reg-names = "phys_addr_base";
 		qcom,sleep-stats-version = <2>;
 	};

@@ -49,8 +49,14 @@
 				     <0x017C 0x0FFF0FFF>,
 				     <0x0160 0x22222222>,
 				     <0x0164 0x00002222>;
-		qcom,mdp-settings = <0x02E0 0x000000AA>,
-				    <0x02E4 0x00000055>;
+		qcom,mdp-settings = <0x02E0 0x000000E9>,
+				    <0x02E4 0x00000055>,
+				    <0x03AC 0xC0000CCC>,
+				    <0x03B4 0xC0000CCC>,
+				    <0x03BC 0x00CCCCCC>,
+				    <0x04A8 0x0CCCC0C0>,
+				    <0x04B0 0xCCCCC0C0>,
+				    <0x04B8 0xCCCCC000>;
 
 		mdss_fb0: qcom,mdss_fb_primary {
 			cell-index = <0>;
@@ -105,10 +111,9 @@
 		core-vdda-supply = <&pm8941_l12>;
 		core-vcc-supply = <&pm8941_s3>;
 		qcom,hdmi-tx-supply-names = "hpd-gdsc", "hpd-5v", "core-vdda", "core-vcc";
-		qcom,hdmi-tx-supply-type = <1 1 0 0>;
 		qcom,hdmi-tx-min-voltage-level = <0 0 1800000 1800000>;
 		qcom,hdmi-tx-max-voltage-level = <0 0 1800000 1800000>;
-		qcom,hdmi-tx-op-mode = <0 0 1800000 0>;
+		qcom,hdmi-tx-peak-current = <0 0 1800000 0>;
 
 		qcom,hdmi-tx-cec = <&msmgpio 31 0>;
 		qcom,hdmi-tx-ddc-clk = <&msmgpio 32 0>;

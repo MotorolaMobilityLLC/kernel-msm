@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -69,6 +69,21 @@
 #define TABLA_DCYCLE_3839 0xE
 #define TABLA_DCYCLE_4095 0xF
 
+#define TAIKO_MCLK_CLK_12P288MHZ 12288000
+#define TAIKO_MCLK_CLK_9P6HZ 9600000
+
+/* Only valid for 9.6 MHz mclk */
+#define TAIKO_DMIC_SAMPLE_RATE_2P4MHZ 2400000
+#define TAIKO_DMIC_SAMPLE_RATE_3P2MHZ 3200000
+#define TAIKO_DMIC_SAMPLE_RATE_4P8MHZ 4800000
+
+/* Only valid for 12.288 MHz mclk */
+#define TAIKO_DMIC_SAMPLE_RATE_3P072MHZ 3072000
+#define TAIKO_DMIC_SAMPLE_RATE_4P096MHZ 4096000
+#define TAIKO_DMIC_SAMPLE_RATE_6P144MHZ 6144000
+
+#define TAIKO_DMIC_SAMPLE_RATE_UNDEFINED 0
+
 struct wcd9xxx_amic {
 	/*legacy mode, txfe_enable and txfe_buff take 7 input
 	 * each bit represent the channel / TXFE number
@@ -121,7 +136,7 @@ struct wcd9xxx_ocp_setting {
 	unsigned int	hph_ocp_limit:3; /* Headphone OCP current limit */
 };
 
-#define MAX_REGULATOR	7
+#define WCD9XXX_MAX_REGULATOR	8
 /*
  *      format : TABLA_<POWER_SUPPLY_PIN_NAME>_CUR_MAX
  *
@@ -136,11 +151,14 @@ struct wcd9xxx_ocp_setting {
 #define  WCD9XXX_VDDD_CDC_D_CUR_MAX       5000
 #define  WCD9XXX_VDDD_CDC_A_CUR_MAX       5000
 
+#define WCD9XXX_VDD_SPKDRV_NAME "cdc-vdd-spkdrv"
+
 struct wcd9xxx_regulator {
 	const char *name;
 	int min_uV;
 	int max_uV;
 	int optimum_uA;
+	bool ondemand;
 	struct regulator *regulator;
 };
 
@@ -153,8 +171,9 @@ struct wcd9xxx_pdata {
 	struct slim_device slimbus_slave_device;
 	struct wcd9xxx_micbias_setting micbias;
 	struct wcd9xxx_ocp_setting ocp;
-	struct wcd9xxx_regulator regulator[MAX_REGULATOR];
+	struct wcd9xxx_regulator regulator[WCD9XXX_MAX_REGULATOR];
 	u32 mclk_rate;
+	u32 dmic_sample_rate;
 };
 
 #endif

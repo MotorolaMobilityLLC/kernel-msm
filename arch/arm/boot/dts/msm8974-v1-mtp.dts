@@ -17,10 +17,10 @@
 
 / {
 	model = "Qualcomm MSM 8974 MTP";
-	compatible = "qcom,msm8974-mtp", "qcom,msm8974";
+	compatible = "qcom,msm8974-mtp", "qcom,msm8974", "qcom,mtp";
 	qcom,msm-id = <126 8 0>;
 };
 
 &pm8941_chg {
-	qcom,chg-charging-disabled;
+	qcom,charging-disabled;
 };

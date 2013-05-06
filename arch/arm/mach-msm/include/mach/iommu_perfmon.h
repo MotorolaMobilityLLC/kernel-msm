@@ -18,20 +18,6 @@
 #define MSM_IOMMU_PERFMON_H
 
 /**
- * struct iommu_access_ops - Callbacks for accessing IOMMU
- * @iommu_power_on:     Turn on clocks/power to unit
- * @iommu_power_off:    Turn off clocks/power to unit
- * @iommu_lock_acquire: Acquire any locks needed
- * @iommu_lock_release: Release locks needed
- */
-struct iommu_access_ops {
-	int (*iommu_power_on)(void *);
-	int (*iommu_power_off)(void *);
-	void (*iommu_lock_acquire)(void);
-	void (*iommu_lock_release)(void);
-};
-
-/**
  * struct iommu_pmon_counter - container for a performance counter.
  * @counter_no:          counter number within the group
  * @absolute_counter_no: counter number within IOMMU PMU
@@ -77,6 +63,7 @@ struct iommu_pmon_cnt_group {
  * @iommu_dev:  pointer to iommu device
  * @ops:        iommu access operations pointer.
  * @hw_ops:     iommu pm hw access operations pointer.
+ * @always_on:  1 if iommu is always on, 0 otherwise.
  */
 struct iommu_info {
 	const char *iommu_name;
@@ -85,6 +72,7 @@ struct iommu_info {
 	struct device *iommu_dev;
 	struct iommu_access_ops *ops;
 	struct iommu_pm_hw_ops *hw_ops;
+	unsigned int always_on;
 };
 
 /**

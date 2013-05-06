@@ -24,7 +24,7 @@
 #define MAX_NUM_OUTPUT_BUFFERS 6
 
 enum msm_vdec_ctrl_cluster {
-	MSM_VDEC_CTRL_CLUSTER_MAX = 1,
+	MSM_VDEC_CTRL_CLUSTER_MAX = 1 << 0,
 };
 
 static const char *const mpeg_video_vidc_divx_format[] = {
@@ -241,7 +241,7 @@ static u32 get_frame_size_nv12(int plane,
 static u32 get_frame_size_compressed(int plane,
 					u32 height, u32 width)
 {
-	return (width * height * 3/2)/2;
+	return (width * height * 3/2)/4;
 }
 
 struct msm_vidc_format vdec_formats[] = {
@@ -621,13 +621,6 @@ int msm_vdec_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 		frame_sz.height = inst->prop.height;
 		dprintk(VIDC_DBG, "width = %d, height = %d\n",
 				frame_sz.width, frame_sz.height);
-		rc = msm_comm_try_set_prop(inst,
-			HAL_PARAM_FRAME_SIZE, &frame_sz);
-		if (rc) {
-			dprintk(VIDC_ERR,
-				"%s: Failed : Frame size setting\n", __func__);
-			goto exit;
-		}
 		rc = msm_comm_try_get_bufreqs(inst);
 		if (rc) {
 			dprintk(VIDC_ERR,
@@ -1150,6 +1143,11 @@ int msm_vdec_cmd(struct msm_vidc_inst *inst, struct v4l2_decoder_cmd *dec)
 			goto exit;
 		}
 		rc = msm_comm_try_state(inst, MSM_VIDC_CLOSE_DONE);
+		/* Clients rely on this event for joining poll thread.
+		 * This event should be returned even if firmware has
+		 * failed to respond */
+		dqevent.type = V4L2_EVENT_MSM_VIDC_CLOSE_DONE;
+		v4l2_event_queue_fh(&inst->event_handler, &dqevent);
 		break;
 	default:
 		dprintk(VIDC_ERR, "Unknown Decoder Command\n");
@@ -1287,7 +1285,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		break;
 	}
 
-	if (property_id) {
+	if (!rc && property_id) {
 		dprintk(VIDC_DBG,
 			"Control: HAL property=%d,ctrl_id=%d,ctrl_value=%d\n",
 			property_id,
@@ -1364,7 +1362,7 @@ static struct v4l2_ctrl **get_cluster(int type, int *size)
 		return NULL;
 
 	for (c = 0; c < NUM_CTRLS; c++) {
-		if (msm_vdec_ctrls[c].cluster == type) {
+		if (msm_vdec_ctrls[c].cluster & type) {
 			cluster[sz] = msm_vdec_ctrls[c].priv;
 			++sz;
 		}

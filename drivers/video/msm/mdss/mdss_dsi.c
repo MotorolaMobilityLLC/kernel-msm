@@ -350,19 +350,6 @@ static int mdss_dsi_get_dt_vreg_data(struct device *dev,
 		snprintf(mp->vreg_config[i].vreg_name,
 			ARRAY_SIZE((mp->vreg_config[i].vreg_name)), "%s", st);
 
-		/* vreg-type */
-		rc = of_property_read_string_index(of_node, "qcom,supply-type",
-			i, &st);
-		if (rc) {
-			pr_err("%s: error reading vreg type. rc=%d\n",
-				__func__, rc);
-			goto error;
-		}
-		if (!strncmp(st, "regulator", 9))
-			mp->vreg_config[i].type = 0;
-		else if (!strncmp(st, "switch", 6))
-			mp->vreg_config[i].type = 1;
-
 		/* vreg-min-voltage */
 		memset(val_array, 0, sizeof(u32) * dt_vreg_total);
 		rc = of_property_read_u32_array(of_node,
@@ -397,14 +384,13 @@ static int mdss_dsi_get_dt_vreg_data(struct device *dev,
 				__func__, rc);
 			goto error;
 		}
-		mp->vreg_config[i].optimum_voltage = val_array[i];
+		mp->vreg_config[i].peak_current = val_array[i];
 
-		pr_debug("%s: %s type=%d, min=%d, max=%d, op=%d\n",
-			__func__, mp->vreg_config[i].vreg_name,
-			mp->vreg_config[i].type,
+		pr_debug("%s: %s min=%d, max=%d, pc=%d\n", __func__,
+			mp->vreg_config[i].vreg_name,
 			mp->vreg_config[i].min_voltage,
 			mp->vreg_config[i].max_voltage,
-			mp->vreg_config[i].optimum_voltage);
+			mp->vreg_config[i].peak_current);
 	}
 
 	devm_kfree(dev, val_array);
@@ -452,6 +438,8 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	/* disable DSI controller */
 	mdss_dsi_controller_cfg(0, pdata);
 
+	/* disable DSI phy */
+	mdss_dsi_phy_enable(ctrl_pdata->ctrl_base, 0);
 	ret = mdss_dsi_panel_power_on(pdata, 0);
 	if (ret) {
 		pr_err("%s: Panel power off failed\n", __func__);
@@ -501,7 +489,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	struct mdss_panel_info *pinfo;
 	struct mipi_panel_info *mipi;
 	u32 hbp, hfp, vbp, vfp, hspw, vspw, width, height;
-	u32 ystride, bpp, data;
+	u32 ystride, bpp, data, dst_bpp;
 	u32 dummy_xres, dummy_yres;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
@@ -540,13 +528,22 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	clk_rate = pdata->panel_info.clk_rate;
 	clk_rate = min(clk_rate, pdata->panel_info.clk_max);
 
-	hbp = pdata->panel_info.lcdc.h_back_porch;
-	hfp = pdata->panel_info.lcdc.h_front_porch;
-	vbp = pdata->panel_info.lcdc.v_back_porch;
-	vfp = pdata->panel_info.lcdc.v_front_porch;
-	hspw = pdata->panel_info.lcdc.h_pulse_width;
+	dst_bpp = pdata->panel_info.fbc.enabled ?
+		(pdata->panel_info.fbc.target_bpp) : (pinfo->bpp);
+
+	hbp = mult_frac(pdata->panel_info.lcdc.h_back_porch, dst_bpp,
+			pdata->panel_info.bpp);
+	hfp = mult_frac(pdata->panel_info.lcdc.h_front_porch, dst_bpp,
+			pdata->panel_info.bpp);
+	vbp = mult_frac(pdata->panel_info.lcdc.v_back_porch, dst_bpp,
+			pdata->panel_info.bpp);
+	vfp = mult_frac(pdata->panel_info.lcdc.v_front_porch, dst_bpp,
+			pdata->panel_info.bpp);
+	hspw = mult_frac(pdata->panel_info.lcdc.h_pulse_width, dst_bpp,
+			pdata->panel_info.bpp);
 	vspw = pdata->panel_info.lcdc.v_pulse_width;
-	width = pdata->panel_info.xres;
+	width = mult_frac(pdata->panel_info.xres, dst_bpp,
+			pdata->panel_info.bpp);
 	height = pdata->panel_info.yres;
 
 	mipi  = &pdata->panel_info.mipi;
@@ -1107,12 +1104,12 @@ int dsi_panel_device_register(struct platform_device *pdev,
 	cont_splash_enabled = of_property_read_bool(pdev->dev.of_node,
 			"qcom,cont-splash-enabled");
 	if (!cont_splash_enabled) {
-		pr_info("%s:%d Continous splash flag not found.\n",
+		pr_info("%s:%d Continuous splash flag not found.\n",
 				__func__, __LINE__);
 		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 0;
 		ctrl_pdata->panel_data.panel_info.panel_power_on = 0;
 	} else {
-		pr_info("%s:%d Continous splash flag enabled.\n",
+		pr_info("%s:%d Continuous splash flag enabled.\n",
 				__func__, __LINE__);
 
 		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 1;

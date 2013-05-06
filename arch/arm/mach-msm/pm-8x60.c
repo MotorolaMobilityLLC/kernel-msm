@@ -29,6 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
 #include <linux/regulator/krait-regulator.h>
+#include <linux/cpu.h>
 #include <mach/msm_iomap.h>
 #include <mach/socinfo.h>
 #include <mach/system.h>
@@ -56,7 +57,6 @@
 #include <mach/event_timer.h>
 #define CREATE_TRACE_POINTS
 #include "trace_msm_low_power.h"
-
 #define SCM_L2_RETENTION	(0x2)
 #define SCM_CMD_TERMINATE_PC	(0x2)
 
@@ -64,7 +64,6 @@
 	(container_of(attr, struct msm_pm_kobj_attribute, ka)->cpu)
 
 #define SCLK_HZ (32768)
-#define MSM_PM_SLEEP_TICK_LIMIT (0x6DDD000)
 
 #define NUM_OF_COUNTERS 3
 #define MAX_BUF_SIZE  512
@@ -127,9 +126,9 @@ static bool msm_pm_ldo_retention_enabled = true;
 static bool msm_pm_use_sync_timer;
 static struct msm_pm_cp15_save_data cp15_data;
 static bool msm_pm_retention_calls_tz;
-static uint32_t msm_pm_max_sleep_time;
 static bool msm_no_ramp_down_pc;
 static struct msm_pm_sleep_status_data *msm_pm_slp_sts;
+static bool msm_pm_pc_reset_timer;
 
 static int msm_pm_get_pc_mode(struct device_node *node,
 		const char *key, uint32_t *pc_mode_val)
@@ -404,39 +403,6 @@ static void msm_pm_config_hw_before_retention(void)
 	return;
 }
 
-/*
- * Convert time from nanoseconds to slow clock ticks, then cap it to the
- * specified limit
- */
-static int64_t msm_pm_convert_and_cap_time(int64_t time_ns, int64_t limit)
-{
-	do_div(time_ns, NSEC_PER_SEC / SCLK_HZ);
-	return (time_ns > limit) ? limit : time_ns;
-}
-
-/*
- * Set the sleep time for suspend.  0 means infinite sleep time.
- */
-void msm_pm_set_max_sleep_time(int64_t max_sleep_time_ns)
-{
-	if (max_sleep_time_ns == 0) {
-		msm_pm_max_sleep_time = 0;
-	} else {
-		msm_pm_max_sleep_time =
-			(uint32_t)msm_pm_convert_and_cap_time(
-			max_sleep_time_ns, MSM_PM_SLEEP_TICK_LIMIT);
-
-		if (msm_pm_max_sleep_time == 0)
-			msm_pm_max_sleep_time = 1;
-	}
-
-	if (MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask)
-		pr_info("%s: Requested %lld ns Giving %u sclk ticks\n",
-			__func__, max_sleep_time_ns,
-			msm_pm_max_sleep_time);
-}
-EXPORT_SYMBOL(msm_pm_set_max_sleep_time);
-
 static void msm_pm_save_cpu_reg(void)
 {
 	int i;
@@ -525,8 +491,13 @@ static bool __ref msm_pm_spm_power_collapse(
 	if (MSM_PM_DEBUG_RESET_VECTOR & msm_pm_debug_mask)
 		pr_info("CPU%u: %s: program vector to %p\n",
 			cpu, __func__, entry);
+	if (from_idle && msm_pm_pc_reset_timer)
+		clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ENTER, &cpu);
 
 	collapsed = msm_pm_collapse();
+
+	if (from_idle && msm_pm_pc_reset_timer)
+		clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_EXIT, &cpu);
 
 	msm_pm_boot_config_after_pc(cpu);
 
@@ -863,9 +834,8 @@ enum msm_pm_sleep_mode msm_pm_idle_enter(struct cpuidle_device *dev,
 	int exit_stat = -1;
 	enum msm_pm_sleep_mode sleep_mode;
 	void *msm_pm_idle_rs_limits = NULL;
-	int sleep_delay = 1;
+	uint32_t sleep_delay = 1;
 	int ret = -ENODEV;
-	int64_t timer_expiration = 0;
 	int notify_rpm = false;
 	bool timer_halted = false;
 
@@ -885,10 +855,8 @@ enum msm_pm_sleep_mode msm_pm_idle_enter(struct cpuidle_device *dev,
 
 	if (sleep_mode == MSM_PM_SLEEP_MODE_POWER_COLLAPSE) {
 		notify_rpm = true;
-		timer_expiration = msm_pm_timer_enter_idle();
+		sleep_delay = (uint32_t)msm_pm_timer_enter_idle();
 
-		sleep_delay = (uint32_t) msm_pm_convert_and_cap_time(
-			timer_expiration, MSM_PM_SLEEP_TICK_LIMIT);
 		if (sleep_delay == 0) /* 0 would mean infinite time */
 			sleep_delay = 1;
 	}
@@ -1075,6 +1043,7 @@ static int msm_pm_enter(suspend_state_t state)
 		void *rs_limits = NULL;
 		int ret = -ENODEV;
 		uint32_t power;
+		uint32_t msm_pm_max_sleep_time = 0;
 
 		if (MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask)
 			pr_info("%s: power collapse\n", __func__);
@@ -1084,8 +1053,8 @@ static int msm_pm_enter(suspend_state_t state)
 		if (msm_pm_sleep_time_override > 0) {
 			int64_t ns = NSEC_PER_SEC *
 				(int64_t) msm_pm_sleep_time_override;
-			msm_pm_set_max_sleep_time(ns);
-			msm_pm_sleep_time_override = 0;
+			do_div(ns, NSEC_PER_SEC / SCLK_HZ);
+			msm_pm_max_sleep_time = (uint32_t) ns;
 		}
 
 		if (pm_sleep_ops.lowest_limits)
@@ -1229,18 +1198,11 @@ static struct platform_driver msm_cpu_status_driver = {
 	},
 };
 
-static int __devinit msm_pm_init(void)
+static int __init msm_pm_setup_saved_state(void)
 {
 	pgd_t *pc_pgd;
 	pmd_t *pmd;
 	unsigned long pmdval;
-	enum msm_pm_time_stats_id enable_stats[] = {
-		MSM_PM_STAT_IDLE_WFI,
-		MSM_PM_STAT_RETENTION,
-		MSM_PM_STAT_IDLE_STANDALONE_POWER_COLLAPSE,
-		MSM_PM_STAT_IDLE_POWER_COLLAPSE,
-		MSM_PM_STAT_SUSPEND,
-	};
 	unsigned long exit_phys;
 
 	/* Page table for cores to come back up safely. */
@@ -1280,11 +1242,62 @@ static int __devinit msm_pm_init(void)
 	clean_caches((unsigned long)&msm_pm_pc_pgd, sizeof(msm_pm_pc_pgd),
 		     virt_to_phys(&msm_pm_pc_pgd));
 
+	return 0;
+}
+core_initcall(msm_pm_setup_saved_state);
+
+static void setup_broadcast_timer(void *arg)
+{
+	unsigned long reason = (unsigned long)arg;
+	int cpu = smp_processor_id();
+
+	reason = reason ?
+		CLOCK_EVT_NOTIFY_BROADCAST_ON : CLOCK_EVT_NOTIFY_BROADCAST_OFF;
+
+	clockevents_notify(reason, &cpu);
+}
+
+static int setup_broadcast_cpuhp_notify(struct notifier_block *n,
+		unsigned long action, void *hcpu)
+{
+	int hotcpu = (unsigned long)hcpu;
+
+	switch (action & ~CPU_TASKS_FROZEN) {
+	case CPU_ONLINE:
+		smp_call_function_single(hotcpu, setup_broadcast_timer,
+				(void *)true, 1);
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block setup_broadcast_notifier = {
+	.notifier_call = setup_broadcast_cpuhp_notify,
+};
+
+static int __init msm_pm_init(void)
+{
+	enum msm_pm_time_stats_id enable_stats[] = {
+		MSM_PM_STAT_IDLE_WFI,
+		MSM_PM_STAT_RETENTION,
+		MSM_PM_STAT_IDLE_STANDALONE_POWER_COLLAPSE,
+		MSM_PM_STAT_IDLE_POWER_COLLAPSE,
+		MSM_PM_STAT_SUSPEND,
+	};
 	msm_pm_mode_sysfs_add();
 	msm_pm_add_stats(enable_stats, ARRAY_SIZE(enable_stats));
 	suspend_set_ops(&msm_pm_ops);
 	hrtimer_init(&pm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
 	msm_cpuidle_init();
+
+	if (msm_pm_pc_reset_timer) {
+		get_cpu();
+		smp_call_function_many(cpu_online_mask, setup_broadcast_timer,
+				(void *)true, 1);
+		put_cpu();
+		register_cpu_notifier(&setup_broadcast_notifier);
+	}
 
 	return 0;
 }
@@ -1355,7 +1368,7 @@ static int msm_pc_debug_counters_file_read(struct file *file,
 	if (!data)
 		return -EINVAL;
 
-	if (!bufu || count < 0)
+	if (!bufu)
 		return -EINVAL;
 
 	if (!access_ok(VERIFY_WRITE, bufu, count))
@@ -1470,6 +1483,10 @@ static int __devinit msm_pm_8x60_probe(struct platform_device *pdev)
 		key = "qcom,saw-turns-off-pll";
 		msm_no_ramp_down_pc = of_property_read_bool(pdev->dev.of_node,
 					key);
+
+		key = "qcom,pc-resets-timer";
+		msm_pm_pc_reset_timer = of_property_read_bool(
+				pdev->dev.of_node, key);
 	}
 
 	if (pdata_local.cp15_data.reg_data &&

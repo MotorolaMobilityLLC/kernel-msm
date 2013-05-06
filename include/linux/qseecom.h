@@ -6,7 +6,7 @@
 
 #define MAX_ION_FD  4
 #define MAX_APP_NAME_SIZE  32
-
+#define QSEECOM_HASH_SIZE  32
 /*
  * struct qseecom_register_listener_req -
  *      for register listener ioctl request
@@ -117,6 +117,46 @@ struct qseecom_qseos_app_load_query {
 	int app_id; /* out */
 };
 
+struct qseecom_send_svc_cmd_req {
+	uint32_t cmd_id;
+	void *cmd_req_buf; /* in */
+	unsigned int cmd_req_len; /* in */
+	void *resp_buf; /* in/out */
+	unsigned int resp_len; /* in/out */
+};
+
+enum qseecom_key_management_usage_type {
+	QSEOS_KM_USAGE_DISK_ENCRYPTION = 0x01,
+};
+
+struct qseecom_create_key_req {
+	unsigned char hash32[QSEECOM_HASH_SIZE];
+	enum qseecom_key_management_usage_type usage;
+};
+
+struct qseecom_wipe_key_req {
+	enum qseecom_key_management_usage_type usage;
+};
+
+#define SHA256_DIGEST_LENGTH	(256/8)
+/*
+ * struct qseecom_save_partition_hash_req
+ * @partition_id - partition id.
+ * @hash[SHA256_DIGEST_LENGTH] -  sha256 digest.
+ */
+struct qseecom_save_partition_hash_req {
+	int partition_id; /* in */
+	char digest[SHA256_DIGEST_LENGTH]; /* in */
+};
+
+/*
+ * struct qseecom_is_es_activated_req
+ * @is_activated - 1=true , 0=false
+ */
+struct qseecom_is_es_activated_req {
+	int is_activated; /* out */
+};
+
 #define QSEECOM_IOC_MAGIC    0x97
 
 
@@ -165,5 +205,19 @@ struct qseecom_qseos_app_load_query {
 #define QSEECOM_IOCTL_APP_LOADED_QUERY_REQ \
 	_IOWR(QSEECOM_IOC_MAGIC, 15, struct qseecom_qseos_app_load_query)
 
+#define QSEECOM_IOCTL_SEND_CMD_SERVICE_REQ \
+	_IOWR(QSEECOM_IOC_MAGIC, 16, struct qseecom_send_svc_cmd_req)
+
+#define QSEECOM_IOCTL_CREATE_KEY_REQ \
+	_IOWR(QSEECOM_IOC_MAGIC, 17, struct qseecom_create_key_req)
+
+#define QSEECOM_IOCTL_WIPE_KEY_REQ \
+	_IOWR(QSEECOM_IOC_MAGIC, 18, struct qseecom_wipe_key_req)
+
+#define QSEECOM_IOCTL_SAVE_PARTITION_HASH_REQ \
+	_IOWR(QSEECOM_IOC_MAGIC, 19, struct qseecom_save_partition_hash_req)
+
+#define QSEECOM_IOCTL_IS_ES_ACTIVATED_REQ \
+	_IOWR(QSEECOM_IOC_MAGIC, 20, struct qseecom_is_es_activated_req)
 
 #endif /* __QSEECOM_H_ */

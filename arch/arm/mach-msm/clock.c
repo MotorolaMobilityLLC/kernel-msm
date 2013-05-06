@@ -33,6 +33,12 @@ struct handoff_clk {
 };
 static LIST_HEAD(handoff_list);
 
+struct handoff_vdd {
+	struct list_head list;
+	struct clk_vdd_class *vdd_class;
+};
+static LIST_HEAD(handoff_vdd_list);
+
 /* Find the voltage level required for a given rate. */
 int find_vdd_level(struct clk *clk, unsigned long rate)
 {
@@ -159,7 +165,7 @@ static void unvote_rate_vdd(struct clk *clk, unsigned long rate)
 	unvote_vdd_level(clk->vdd_class, level);
 }
 
-/* Returns true if the rate is valid without voting for it */
+/* Check if the rate is within the voltage limits of the clock. */
 static bool is_rate_valid(struct clk *clk, unsigned long rate)
 {
 	int level;
@@ -169,6 +175,92 @@ static bool is_rate_valid(struct clk *clk, unsigned long rate)
 
 	level = find_vdd_level(clk, rate);
 	return level >= 0;
+}
+
+/**
+ * __clk_pre_reparent() - Set up the new parent before switching to it and
+ * prevent the enable state of the child clock from changing.
+ * @c: The child clock that's going to switch parents
+ * @new: The new parent that the child clock is going to switch to
+ * @flags: Pointer to scratch space to save spinlock flags
+ *
+ * Cannot be called from atomic context.
+ *
+ * Use this API to set up the @new parent clock to be able to support the
+ * current prepare and enable state of the child clock @c. Once the parent is
+ * set up, the child clock can safely switch to it.
+ *
+ * The caller shall grab the prepare_lock of clock @c before calling this API
+ * and only release it after calling __clk_post_reparent() for clock @c (or
+ * if this API fails). This is necessary to prevent the prepare state of the
+ * child clock @c from changing while the reparenting is in progress. Since
+ * this API takes care of grabbing the enable lock of @c, only atomic
+ * operation are allowed between calls to __clk_pre_reparent and
+ * __clk_post_reparent()
+ *
+ * The scratch space pointed to by @flags should not be altered before
+ * calling __clk_post_reparent() for clock @c.
+ *
+ * See also: __clk_post_reparent()
+ */
+int __clk_pre_reparent(struct clk *c, struct clk *new, unsigned long *flags)
+{
+	int rc;
+
+	if (c->prepare_count) {
+		rc = clk_prepare(new);
+		if (rc)
+			return rc;
+	}
+
+	spin_lock_irqsave(&c->lock, *flags);
+	if (c->count) {
+		rc = clk_enable(new);
+		if (rc) {
+			spin_unlock_irqrestore(&c->lock, *flags);
+			clk_unprepare(new);
+			return rc;
+		}
+	}
+	return 0;
+}
+
+/**
+ * __clk_post_reparent() - Release requirements on old parent after switching
+ * away from it and allow changes to the child clock's enable state.
+ * @c:   The child clock that switched parents
+ * @old: The old parent that the child clock switched away from or the new
+ *	 parent of a failed reparent attempt.
+ * @flags: Pointer to scratch space where spinlock flags were saved
+ *
+ * Cannot be called from atomic context.
+ *
+ * This API works in tandem with __clk_pre_reparent. Use this API to
+ * - Remove prepare and enable requirements from the @old parent after
+ *   switching away from it
+ * - Or, undo the effects of __clk_pre_reparent() after a failed attempt to
+ *   change parents
+ *
+ * The caller shall release the prepare_lock of @c that was grabbed before
+ * calling __clk_pre_reparent() only after this API is called (or if
+ * __clk_pre_reparent() fails). This is necessary to prevent the prepare
+ * state of the child clock @c from changing while the reparenting is in
+ * progress. Since this API releases the enable lock of @c, the limit to
+ * atomic operations set by __clk_pre_reparent() is no longer present.
+ *
+ * The scratch space pointed to by @flags shall not be altered since the call
+ * to  __clk_pre_reparent() for clock @c.
+ *
+ * See also: __clk_pre_reparent()
+ */
+void __clk_post_reparent(struct clk *c, struct clk *old, unsigned long *flags)
+{
+	if (c->count)
+		clk_disable(old);
+	spin_unlock_irqrestore(&c->lock, *flags);
+
+	if (c->prepare_count)
+		clk_unprepare(old);
 }
 
 int clk_prepare(struct clk *clk)
@@ -357,6 +449,9 @@ int clk_set_rate(struct clk *clk, unsigned long rate)
 	if (!clk->ops->set_rate)
 		return -ENOSYS;
 
+	if (!is_rate_valid(clk, rate))
+		return -EINVAL;
+
 	mutex_lock(&clk->prepare_lock);
 
 	/* Return early if the rate isn't going to change */
@@ -364,31 +459,32 @@ int clk_set_rate(struct clk *clk, unsigned long rate)
 		goto out;
 
 	trace_clock_set_rate(name, rate, raw_smp_processor_id());
+
+	start_rate = clk->rate;
+
+	/* Enforce vdd requirements for target frequency. */
 	if (clk->prepare_count) {
-		start_rate = clk->rate;
-		/* Enforce vdd requirements for target frequency. */
 		rc = vote_rate_vdd(clk, rate);
 		if (rc)
 			goto out;
-		rc = clk->ops->set_rate(clk, rate);
-		if (rc)
-			goto err_set_rate;
-		/* Release vdd requirements for starting frequency. */
-		unvote_rate_vdd(clk, start_rate);
-	} else if (is_rate_valid(clk, rate)) {
-		rc = clk->ops->set_rate(clk, rate);
-	} else {
-		rc = -EINVAL;
 	}
 
-	if (!rc)
-		clk->rate = rate;
+	rc = clk->ops->set_rate(clk, rate);
+	if (rc)
+		goto err_set_rate;
+	clk->rate = rate;
+
+	/* Release vdd requirements for starting frequency. */
+	if (clk->prepare_count)
+		unvote_rate_vdd(clk, start_rate);
+
 out:
 	mutex_unlock(&clk->prepare_lock);
 	return rc;
 
 err_set_rate:
-	unvote_rate_vdd(clk, rate);
+	if (clk->prepare_count)
+		unvote_rate_vdd(clk, rate);
 	goto out;
 }
 EXPORT_SYMBOL(clk_set_rate);
@@ -419,10 +515,21 @@ EXPORT_SYMBOL(clk_set_max_rate);
 
 int clk_set_parent(struct clk *clk, struct clk *parent)
 {
-	if (!clk->ops->set_parent)
-		return 0;
+	int rc = 0;
 
-	return clk->ops->set_parent(clk, parent);
+	if (!clk->ops->set_parent)
+		return -ENOSYS;
+
+	mutex_lock(&clk->prepare_lock);
+	if (clk->parent == parent)
+		goto out;
+	rc = clk->ops->set_parent(clk, parent);
+	if (!rc)
+		clk->parent = parent;
+out:
+	mutex_unlock(&clk->prepare_lock);
+
+	return rc;
 }
 EXPORT_SYMBOL(clk_set_parent);
 
@@ -486,6 +593,38 @@ int msm_clock_register(struct clk_lookup *table, size_t size)
 	return 0;
 }
 EXPORT_SYMBOL(msm_clock_register);
+
+
+static void vdd_class_init(struct clk_vdd_class *vdd)
+{
+	struct handoff_vdd *v;
+	int i;
+
+	if (!vdd)
+		return;
+
+	list_for_each_entry(v, &handoff_vdd_list, list) {
+		if (v->vdd_class == vdd)
+			return;
+	}
+
+	pr_debug("voting for vdd_class %s\n", vdd->class_name);
+	if (vote_vdd_level(vdd, vdd->num_levels - 1))
+		pr_err("failed to vote for %s\n", vdd->class_name);
+
+	for (i = 0; i < vdd->num_regulators; i++)
+		regulator_enable(vdd->regulator[i]);
+
+	v = kmalloc(sizeof(*v), GFP_KERNEL);
+	if (!v) {
+		pr_err("Unable to kmalloc. %s will be stuck at max.\n",
+			vdd->class_name);
+		return;
+	}
+
+	v->vdd_class = vdd;
+	list_add_tail(&v->list, &handoff_vdd_list);
+}
 
 static int __init __handoff_clk(struct clk *clk)
 {
@@ -592,6 +731,16 @@ int __init msm_clock_init(struct clock_init_data *data)
 	init_sibling_lists(clock_tbl, num_clocks);
 
 	/*
+	 * Enable regulators and temporarily set them up at maximum voltage.
+	 * Once all the clocks have made their respective vote, remove this
+	 * temporary vote. The removing of the temporary vote is done at
+	 * late_init, by which time we assume all the clocks would have been
+	 * handed off.
+	 */
+	for (n = 0; n < num_clocks; n++)
+		vdd_class_init(clock_tbl[n].clk->vdd_class);
+
+	/*
 	 * Detect and preserve initial clock state until clock_late_init() or
 	 * a driver explicitly changes it, whichever is first.
 	 */
@@ -612,7 +761,11 @@ int __init msm_clock_init(struct clock_init_data *data)
 static int __init clock_late_init(void)
 {
 	struct handoff_clk *h, *h_temp;
+	struct handoff_vdd *v, *v_temp;
 	int ret = 0;
+
+	if (clk_init_data->late_init)
+		ret = clk_init_data->late_init();
 
 	pr_info("%s: Removing enables held for handed-off clocks\n", __func__);
 	list_for_each_entry_safe(h, h_temp, &handoff_list, list) {
@@ -621,8 +774,12 @@ static int __init clock_late_init(void)
 		kfree(h);
 	}
 
-	if (clk_init_data->late_init)
-		ret = clk_init_data->late_init();
+	list_for_each_entry_safe(v, v_temp, &handoff_vdd_list, list) {
+		unvote_vdd_level(v->vdd_class, v->vdd_class->num_levels - 1);
+		list_del(&v->list);
+		kfree(v);
+	}
+
 	return ret;
 }
 late_initcall(clock_late_init);

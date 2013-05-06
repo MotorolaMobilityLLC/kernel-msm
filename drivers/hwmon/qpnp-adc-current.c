@@ -115,7 +115,7 @@
 #define QPNP_ADC_GAIN_NV				17857
 #define QPNP_OFFSET_CALIBRATION_SHORT_CADC_LEADS_IDEAL	0
 #define QPNP_IADC_INTERNAL_RSENSE_N_OHMS_FACTOR		10000000
-#define QPNP_IADC_NANO_VOLTS_FACTOR			1000000000
+#define QPNP_IADC_NANO_VOLTS_FACTOR			1000000
 #define QPNP_IADC_CALIB_SECONDS				300000
 #define QPNP_IADC_RSENSE_LSB_N_OHMS_PER_BIT		15625
 #define QPNP_IADC_DIE_TEMP_CALIB_OFFSET			5000
@@ -125,18 +125,17 @@
 #define QPNP_BIT_SHIFT_8				8
 #define QPNP_RSENSE_MSB_SIGN_CHECK			0x80
 #define QPNP_ADC_COMPLETION_TIMEOUT			HZ
-#define QPNP_IADC_ERR_CHK_RATELIMIT			3
 
 struct qpnp_iadc_drv {
 	struct qpnp_adc_drv			*adc;
 	int32_t					rsense;
+	bool					external_rsense;
 	struct device				*iadc_hwmon;
 	bool					iadc_initialized;
 	int64_t					die_temp_calib_offset;
 	struct delayed_work			iadc_work;
 	struct mutex				iadc_vadc_lock;
 	bool					iadc_mode_sel;
-	uint32_t				iadc_err_cnt;
 	struct sensor_device_attribute		sens_attr[0];
 };
 
@@ -254,7 +253,7 @@ static int32_t qpnp_iadc_status_debug(void)
 		return rc;
 	}
 
-	pr_err("EOC not set with status:%x, dig:%x, ch:%x, mode:%x, en:%x\n",
+	pr_debug("EOC not set with status:%x, dig:%x, ch:%x, mode:%x, en:%x\n",
 			status1, dig, chan, mode, en);
 
 	rc = qpnp_iadc_enable(false);
@@ -346,6 +345,8 @@ static int32_t qpnp_iadc_configure(enum qpnp_iadc_channels channel,
 		pr_err("qpnp adc fast averaging configure error\n");
 		return rc;
 	}
+
+	INIT_COMPLETION(iadc->adc->adc_rslt_completion);
 
 	rc = qpnp_iadc_enable(true);
 	if (rc)
@@ -495,16 +496,12 @@ static void qpnp_iadc_work(struct work_struct *work)
 	int rc = 0;
 
 	rc = qpnp_iadc_calibrate_for_trim();
-	if (rc) {
-		pr_err("periodic IADC calibration failed\n");
-		iadc->iadc_err_cnt++;
-	}
-
-	if (iadc->iadc_err_cnt < QPNP_IADC_ERR_CHK_RATELIMIT)
+	if (rc)
+		pr_debug("periodic IADC calibration failed\n");
+	else
 		schedule_delayed_work(&iadc->iadc_work,
 			round_jiffies_relative(msecs_to_jiffies
 					(QPNP_IADC_CALIB_SECONDS)));
-
 	return;
 }
 
@@ -547,6 +544,9 @@ int32_t qpnp_iadc_get_rsense(int32_t *rsense)
 	if (!iadc || !iadc->iadc_initialized)
 		return -EPROBE_DEFER;
 
+	if (iadc->external_rsense)
+		*rsense = iadc->rsense;
+
 	rc = qpnp_iadc_read_reg(QPNP_IADC_NOMINAL_RSENSE, &rslt_rsense);
 	if (rc < 0) {
 		pr_err("qpnp adc rsense read failed with %d\n", rc);
@@ -575,15 +575,21 @@ static int32_t qpnp_check_pmic_temp(void)
 {
 	struct qpnp_iadc_drv *iadc = qpnp_iadc;
 	struct qpnp_vadc_result result_pmic_therm;
+	int64_t die_temp_offset;
 	int rc = 0;
 
 	rc = qpnp_vadc_read(DIE_TEMP, &result_pmic_therm);
 	if (rc < 0)
 		return rc;
 
-	if (((uint64_t) (result_pmic_therm.physical -
-				iadc->die_temp_calib_offset))
-			> QPNP_IADC_DIE_TEMP_CALIB_OFFSET) {
+	die_temp_offset = result_pmic_therm.physical -
+			iadc->die_temp_calib_offset;
+	if (die_temp_offset < 0)
+		die_temp_offset = -die_temp_offset;
+
+	if (die_temp_offset > QPNP_IADC_DIE_TEMP_CALIB_OFFSET) {
+		iadc->die_temp_calib_offset =
+			result_pmic_therm.physical;
 		rc = qpnp_iadc_calibrate_for_trim();
 		if (rc)
 			pr_err("periodic IADC calibration failed\n");
@@ -597,6 +603,7 @@ int32_t qpnp_iadc_read(enum qpnp_iadc_channels channel,
 {
 	struct qpnp_iadc_drv *iadc = qpnp_iadc;
 	int32_t rc, rsense_n_ohms, sign = 0, num, mode_sel = 0;
+	int32_t rsense_u_ohms = 0;
 	int64_t result_current;
 	uint16_t raw_data;
 
@@ -622,7 +629,7 @@ int32_t qpnp_iadc_read(enum qpnp_iadc_channels channel,
 	rc = qpnp_iadc_get_rsense(&rsense_n_ohms);
 	pr_debug("current raw:0%x and rsense:%d\n",
 			raw_data, rsense_n_ohms);
-
+	rsense_u_ohms = rsense_n_ohms/1000;
 	num = raw_data - iadc->adc->calib.offset_raw;
 	if (num < 0) {
 		sign = 1;
@@ -633,7 +640,7 @@ int32_t qpnp_iadc_read(enum qpnp_iadc_channels channel,
 		(iadc->adc->calib.gain_raw - iadc->adc->calib.offset_raw);
 	result_current = result->result_uv;
 	result_current *= QPNP_IADC_NANO_VOLTS_FACTOR;
-	do_div(result_current, rsense_n_ohms);
+	do_div(result_current, rsense_u_ohms);
 
 	if (sign) {
 		result->result_uv = -result->result_uv;
@@ -823,11 +830,15 @@ static int __devinit qpnp_iadc_probe(struct spmi_device *spmi)
 		goto fail;
 	}
 
+	mutex_init(&iadc->adc->adc_lock);
+
 	rc = of_property_read_u32(node, "qcom,rsense",
 			&iadc->rsense);
-	if (rc) {
-		pr_err("Invalid rsens reference property\n");
-		goto fail;
+	if (rc)
+		pr_debug("Defaulting to internal rsense\n");
+	else {
+		pr_debug("Use external rsense\n");
+		iadc->external_rsense = true;
 	}
 
 	rc = devm_request_irq(&spmi->dev, iadc->adc->adc_irq_eoc,
@@ -857,7 +868,6 @@ static int __devinit qpnp_iadc_probe(struct spmi_device *spmi)
 
 	mutex_init(&iadc->iadc_vadc_lock);
 	INIT_DELAYED_WORK(&iadc->iadc_work, qpnp_iadc_work);
-	iadc->iadc_err_cnt = 0;
 	iadc->iadc_initialized = true;
 
 	rc = qpnp_iadc_calibrate_for_trim();

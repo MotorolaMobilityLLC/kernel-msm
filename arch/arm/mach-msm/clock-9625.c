@@ -411,6 +411,7 @@ static struct pll_clk apcspll_clk_src = {
 	},
 	.base = &virt_bases[APCS_PLL_BASE],
 	.c = {
+		.parent = &cxo_a_clk_src.c,
 		.dbg_name = "apcspll_clk_src",
 		.ops = &clk_ops_local_pll,
 		CLK_INIT(apcspll_clk_src.c),
@@ -1619,11 +1620,6 @@ struct measure_mux_entry measure_mux_common[] __initdata = {
 	{&gcc_sdcc2_ahb_clk.c,			GCC_BASE, 0x0071},
 	{&gcc_ce1_clk.c,			GCC_BASE, 0x0138},
 	{&gcc_sys_noc_ipa_axi_clk.c,		GCC_BASE, 0x0007},
-	{&gcc_ipa_clk.c,			GCC_BASE, 0x01E0},
-	{&gcc_ipa_cnoc_clk.c,			GCC_BASE, 0x01E1},
-	{&gcc_ipa_sleep_clk.c,			GCC_BASE, 0x01E2},
-	{&gcc_qpic_clk.c,			GCC_BASE, 0x01D8},
-	{&gcc_qpic_ahb_clk.c,			GCC_BASE, 0x01D9},
 
 	{&a5_m_clk,				APCS_BASE, 0x3},
 
@@ -2017,12 +2013,6 @@ static void __init msm9625_clock_post_init(void)
 	 */
 	clk_prepare_enable(&cxo_a_clk_src.c);
 
-	/*
-	 * TODO: This call is to prevent sending 0Hz to rpm to turn off pnoc.
-	 * Needs to remove this after vote of pnoc from sdcc driver is ready.
-	 */
-	clk_prepare_enable(&pnoc_msmbus_a_clk.c);
-
 	/* Set rates for single-rate clocks. */
 	clk_set_rate(&usb_hs_system_clk_src.c,
 			usb_hs_system_clk_src.freq_tbl[0].freq_hz);
@@ -2089,9 +2079,6 @@ static void __init msm9625_clock_pre_init(void)
 	if (IS_ERR(vdd_dig.regulator[0]))
 		panic("clock-9625: Unable to get the vdd_dig regulator!");
 
-	vote_vdd_level(&vdd_dig, VDD_DIG_HIGH);
-	regulator_enable(vdd_dig.regulator[0]);
-
 	enable_rpm_scaling();
 
 	reg_init();
@@ -2107,15 +2094,9 @@ static void __init msm9625_clock_pre_init(void)
 			measure_mux_common, sizeof(measure_mux_common));
 }
 
-static int __init msm9625_clock_late_init(void)
-{
-	return unvote_vdd_level(&vdd_dig, VDD_DIG_HIGH);
-}
-
 struct clock_init_data msm9625_clock_init_data __initdata = {
 	.table = msm_clocks_9625,
 	.size = ARRAY_SIZE(msm_clocks_9625),
 	.pre_init = msm9625_clock_pre_init,
 	.post_init = msm9625_clock_post_init,
-	.late_init = msm9625_clock_late_init,
 };

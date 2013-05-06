@@ -78,6 +78,8 @@ struct dwc3_charger {
 	unsigned		max_power;
 	bool			charging_disabled;
 
+	bool			skip_chg_detect;
+
 	/* start/stop charger detection, provided by external charger module */
 	void	(*start_detection)(struct dwc3_charger *charger, bool start);
 

@@ -41,7 +41,7 @@
 #ifdef CONFIG_ARCH_FSM9XXX
 #define NUM_SMD_PKT_PORTS 4
 #else
-#define NUM_SMD_PKT_PORTS 27
+#define NUM_SMD_PKT_PORTS 28
 #endif
 
 #define PDRIVER_NAME_MAX_SIZE 32
@@ -509,7 +509,7 @@ ssize_t smd_pkt_write(struct file *file,
 	do {
 		prepare_to_wait(&smd_pkt_devp->ch_write_wait_queue,
 				&write_wait, TASK_UNINTERRUPTIBLE);
-		if (!smd_write_avail(smd_pkt_devp->ch) &&
+		if (!smd_write_segment_avail(smd_pkt_devp->ch) &&
 		    !smd_pkt_devp->has_reset) {
 			smd_enable_read_intr(smd_pkt_devp->ch);
 			schedule();
@@ -631,7 +631,7 @@ static void check_and_wakeup_writer(struct smd_pkt_dev *smd_pkt_devp)
 		return;
 	}
 
-	sz = smd_write_avail(smd_pkt_devp->ch);
+	sz = smd_write_segment_avail(smd_pkt_devp->ch);
 	if (sz) {
 		D_WRITE("%s: %d bytes write space in smd_pkt_dev id:%d\n",
 			__func__, sz, smd_pkt_devp->i);
@@ -729,6 +729,7 @@ static char *smd_pkt_dev_name[] = {
 	"smd_test_framework",
 	"smd_logging_0",
 	"smd_data_0",
+	"apr",
 	"smd_pkt_loopback",
 };
 
@@ -759,6 +760,7 @@ static char *smd_ch_name[] = {
 	"TESTFRAMEWORK",
 	"LOGGING",
 	"DATA",
+	"apr",
 	"LOOPBACK",
 };
 
@@ -786,6 +788,7 @@ static uint32_t smd_ch_edge[] = {
 	SMD_APPS_MODEM,
 	SMD_APPS_QDSP,
 	SMD_APPS_WCNSS,
+	SMD_APPS_QDSP,
 	SMD_APPS_QDSP,
 	SMD_APPS_QDSP,
 	SMD_APPS_QDSP,

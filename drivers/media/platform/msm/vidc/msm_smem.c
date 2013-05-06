@@ -80,12 +80,18 @@ static int get_device_address(struct smem_client *smem_client,
 			goto mem_domain_get_failed;
 		}
 	}
-	rc = ion_map_iommu(clnt, hndl, domain, partition, align,
-			0, iova, buffer_size, 0, 0);
+	if (is_iommu_present(smem_client->res)) {
+		dprintk(VIDC_DBG,
+				"Calling ion_map_iommu - domain: %d, partition: %d",
+				domain, partition);
+		rc = ion_map_iommu(clnt, hndl, domain, partition, align,
+				0, iova, buffer_size, 0, 0);
+	} else {
+		dprintk(VIDC_DBG, "Using physical memory address");
+		rc = ion_phys(clnt, hndl, iova, (size_t *)buffer_size);
+	}
 	if (rc) {
-		dprintk(VIDC_ERR,
-		"ion_map_iommu failed(%d).domain: %d,partition: %d\n",
-		rc, domain, partition);
+		dprintk(VIDC_ERR, "ion memory map failed - %d", rc);
 		goto mem_map_failed;
 	}
 
@@ -97,10 +103,28 @@ mem_domain_get_failed:
 	return rc;
 }
 
-static void put_device_address(struct ion_client *clnt,
+static void put_device_address(struct smem_client *smem_client,
 	struct ion_handle *hndl, int domain_num, int partition_num, u32 flags)
 {
-	ion_unmap_iommu(clnt, hndl, domain_num, partition_num);
+	struct ion_client *clnt = NULL;
+
+	if (!hndl || !smem_client) {
+		dprintk(VIDC_WARN, "Invalid params: %p, %p\n",
+				smem_client, hndl);
+		return;
+	}
+
+	clnt = smem_client->clnt;
+	if (!clnt) {
+		dprintk(VIDC_WARN, "Invalid client");
+		return;
+	}
+	if (is_iommu_present(smem_client->res)) {
+		dprintk(VIDC_DBG,
+				"Calling ion_unmap_iommu - domain: %d, parition: %d",
+				domain_num, partition_num);
+		ion_unmap_iommu(clnt, hndl, domain_num, partition_num);
+	}
 	if (flags & SMEM_SECURE) {
 		if (msm_ion_unsecure_buffer(clnt, hndl))
 			dprintk(VIDC_ERR, "Failed to unsecure memory\n");
@@ -128,16 +152,7 @@ static int ion_user_to_kernel(struct smem_client *client, int fd, u32 offset,
 	rc = ion_handle_get_flags(client->clnt, hndl, &ionflags);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to get ion flags: %d\n", rc);
-		goto fail_map;
-	}
-	if (ION_IS_CACHED(ionflags)) {
-		mem->kvaddr = ion_map_kernel(client->clnt, hndl);
-		if (!mem->kvaddr) {
-			dprintk(VIDC_ERR,
-					"Failed to map shared mem in kernel\n");
-			rc = -EIO;
-			goto fail_map;
-		}
+		goto fail_device_address;
 	}
 
 	mem->flags = ionflags;
@@ -160,9 +175,6 @@ static int ion_user_to_kernel(struct smem_client *client, int fd, u32 offset,
 		mem->device_addr, mem->size);
 	return rc;
 fail_device_address:
-	if (mem->kvaddr)
-		ion_unmap_kernel(client->clnt, hndl);
-fail_map:
 	ion_free(client->clnt, hndl);
 fail_import_fd:
 	return rc;
@@ -186,7 +198,15 @@ static int alloc_ion_mem(struct smem_client *client, size_t size, u32 align,
 		align = ALIGN(align, SZ_1M);
 	}
 
-	heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
+	if (is_iommu_present(client->res)) {
+		heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
+	} else {
+		dprintk(VIDC_DBG,
+			"allocate shared memory from adsp heap size %d align %d\n",
+			size, align);
+		heap_mask = ION_HEAP(ION_ADSP_HEAP_ID);
+	}
+
 	if (flags & SMEM_SECURE)
 		heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID);
 
@@ -246,7 +266,7 @@ static void free_ion_mem(struct smem_client *client, struct msm_smem *mem)
 	}
 
 	if (mem->device_addr)
-		put_device_address(client->clnt,
+		put_device_address(client,
 			mem->smem_priv, domain, partition, mem->flags);
 	if (mem->kvaddr)
 		ion_unmap_kernel(client->clnt, mem->smem_priv);
@@ -334,20 +354,14 @@ static int ion_cache_operations(struct smem_client *client,
 			rc = -EINVAL;
 			goto cache_op_failed;
 		}
-		if (mem->kvaddr) {
-			rc = msm_ion_do_cache_op(client->clnt,
-					(struct ion_handle *)mem->smem_priv,
-					(unsigned long *) mem->kvaddr,
-					(unsigned long)mem->size,
-					msm_cache_ops);
-			if (rc) {
-				dprintk(VIDC_ERR,
+		rc = msm_ion_do_cache_op(client->clnt,
+				(struct ion_handle *)mem->smem_priv,
+				0, (unsigned long)mem->size,
+				msm_cache_ops);
+		if (rc) {
+			dprintk(VIDC_ERR,
 					"cache operation failed %d\n", rc);
-				goto cache_op_failed;
-			}
-		} else {
-			dprintk(VIDC_WARN,
-				"cache operation failed as no kernel mapping\n");
+			goto cache_op_failed;
 		}
 	}
 cache_op_failed:

@@ -155,6 +155,8 @@ static void msm_dai_q6_auxpcm_shutdown(struct snd_pcm_substream *substream,
 	struct afe_clk_cfg *lpass_pcm_src_clk = NULL;
 	struct afe_clk_cfg lpass_pcm_oe_clk;
 	struct msm_dai_auxpcm_pdata *auxpcm_pdata = NULL;
+	unsigned int rx_port = 0;
+	unsigned int tx_port = 0;
 
 	mutex_lock(&aux_pcm_mutex);
 
@@ -186,22 +188,32 @@ static void msm_dai_q6_auxpcm_shutdown(struct snd_pcm_substream *substream,
 	auxpcm_pdata = (struct msm_dai_auxpcm_pdata *)dai->dev->platform_data;
 	lpass_pcm_src_clk = (struct afe_clk_cfg *)auxpcm_pdata->clk_cfg;
 
-	rc = afe_close(PCM_RX); /* can block */
+	if (dai->id == AFE_PORT_ID_PRIMARY_PCM_RX
+			|| dai->id == AFE_PORT_ID_PRIMARY_PCM_TX) {
+		rx_port = AFE_PORT_ID_PRIMARY_PCM_RX;
+		tx_port = AFE_PORT_ID_PRIMARY_PCM_TX;
+	} else if (dai->id == AFE_PORT_ID_SECONDARY_PCM_RX
+			|| dai->id == AFE_PORT_ID_SECONDARY_PCM_TX) {
+		rx_port = AFE_PORT_ID_SECONDARY_PCM_RX;
+		tx_port = AFE_PORT_ID_SECONDARY_PCM_TX;
+	}
+
+	rc = afe_close(rx_port); /* can block */
 	if (IS_ERR_VALUE(rc))
 		dev_err(dai->dev, "fail to close PCM_RX  AFE port\n");
 
-	rc = afe_close(PCM_TX);
+	rc = afe_close(tx_port);
 	if (IS_ERR_VALUE(rc))
 		dev_err(dai->dev, "fail to close AUX PCM TX port\n");
 
 	lpass_pcm_src_clk->clk_val1 = 0;
-	afe_set_lpass_clock(PCM_TX, lpass_pcm_src_clk);
-	afe_set_lpass_clock(PCM_RX, lpass_pcm_src_clk);
+	afe_set_lpass_clock(tx_port, lpass_pcm_src_clk);
+	afe_set_lpass_clock(rx_port, lpass_pcm_src_clk);
 
 	memcpy(&lpass_pcm_oe_clk, &lpass_clk_cfg_default,
 			 sizeof(struct afe_clk_cfg));
 	lpass_pcm_oe_clk.clk_val1 = 0;
-	afe_set_lpass_clock(PCM_RX, &lpass_pcm_oe_clk);
+	afe_set_lpass_clock(rx_port, &lpass_pcm_oe_clk);
 
 	mutex_unlock(&aux_pcm_mutex);
 }
@@ -215,6 +227,8 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	unsigned long pcm_clk_rate;
 	struct afe_clk_cfg lpass_pcm_oe_clk;
 	struct afe_clk_cfg *lpass_pcm_src_clk = NULL;
+	unsigned int rx_port = 0;
+	unsigned int tx_port = 0;
 
 	auxpcm_pdata = dai->dev->platform_data;
 	lpass_pcm_src_clk = (struct afe_clk_cfg *)auxpcm_pdata->clk_cfg;
@@ -279,30 +293,39 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 			sizeof(struct afe_clk_cfg));
 	lpass_pcm_oe_clk.clk_val1 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
 
-	rc = afe_set_lpass_clock(PCM_RX, lpass_pcm_src_clk);
+	if (dai->id == AFE_PORT_ID_PRIMARY_PCM_RX ||
+			dai->id == AFE_PORT_ID_PRIMARY_PCM_TX) {
+		rx_port = AFE_PORT_ID_PRIMARY_PCM_RX;
+		tx_port = AFE_PORT_ID_PRIMARY_PCM_TX;
+	} else if (dai->id == AFE_PORT_ID_SECONDARY_PCM_RX ||
+			dai->id == AFE_PORT_ID_SECONDARY_PCM_TX) {
+		rx_port = AFE_PORT_ID_SECONDARY_PCM_RX;
+		tx_port = AFE_PORT_ID_SECONDARY_PCM_TX;
+	}
+
+	rc = afe_set_lpass_clock(rx_port, lpass_pcm_src_clk);
 	if (rc < 0) {
 		pr_err("%s:afe_set_lpass_clock on RX pcm_src_clk failed\n",
 							__func__);
 		goto fail;
 	}
 
-	rc = afe_set_lpass_clock(PCM_TX, lpass_pcm_src_clk);
+	rc = afe_set_lpass_clock(tx_port, lpass_pcm_src_clk);
 	if (rc < 0) {
 		pr_err("%s:afe_set_lpass_clock on TX pcm_src_clk failed\n",
 							__func__);
 		goto fail;
 	}
 
-	rc = afe_set_lpass_clock(PCM_RX, &lpass_pcm_oe_clk);
+	rc = afe_set_lpass_clock(rx_port, &lpass_pcm_oe_clk);
 	if (rc < 0) {
 		pr_err("%s:afe_set_lpass_clock on pcm_oe_clk failed\n",
 							__func__);
 		goto fail;
 	}
 
-	afe_open(PCM_RX, &dai_data->port_config, dai_data->rate);
-
-	afe_open(PCM_TX, &dai_data->port_config, dai_data->rate);
+	afe_open(rx_port, &dai_data->port_config, dai_data->rate);
+	afe_open(tx_port, &dai_data->port_config, dai_data->rate);
 
 fail:
 	mutex_unlock(&aux_pcm_mutex);
@@ -314,7 +337,7 @@ static int msm_dai_q6_auxpcm_trigger(struct snd_pcm_substream *substream,
 {
 	int rc = 0;
 
-	pr_debug("%s:port:%d  cmd:%d  aux_pcm_count= %d",
+	pr_debug("%s:port:%d  cmd:%d  aux_pcm_count= %d\n",
 		__func__, dai->id, cmd, aux_pcm_count);
 
 	switch (cmd) {
@@ -359,7 +382,7 @@ static int msm_dai_q6_dai_auxpcm_probe(struct snd_soc_dai *dai)
 	} else
 		dev_set_drvdata(dai->dev, dai_data);
 
-	pr_err("%s : probe done for dai->id %d\n", __func__, dai->id);
+	pr_debug("%s : probe done for dai->id %d\n", __func__, dai->id);
 	return rc;
 }
 
@@ -367,6 +390,8 @@ static int msm_dai_q6_dai_auxpcm_remove(struct snd_soc_dai *dai)
 {
 	struct msm_dai_q6_dai_data *dai_data;
 	int rc;
+	unsigned int rx_port = 0;
+	unsigned int tx_port = 0;
 
 	dai_data = dev_get_drvdata(dai->dev);
 
@@ -393,14 +418,22 @@ static int msm_dai_q6_dai_auxpcm_remove(struct snd_soc_dai *dai)
 	dev_dbg(dai->dev, "%s(): dai->id %d aux_pcm_count = %d.closing afe\n",
 		__func__, dai->id, aux_pcm_count);
 
-	rc = afe_close(PCM_RX); /* can block */
+	if (dai->id == AFE_PORT_ID_PRIMARY_PCM_RX ||
+			dai->id == AFE_PORT_ID_PRIMARY_PCM_TX) {
+		rx_port = AFE_PORT_ID_PRIMARY_PCM_RX;
+		tx_port = AFE_PORT_ID_PRIMARY_PCM_TX;
+	} else if (dai->id == AFE_PORT_ID_SECONDARY_PCM_RX ||
+			dai->id == AFE_PORT_ID_SECONDARY_PCM_TX) {
+		rx_port = AFE_PORT_ID_SECONDARY_PCM_RX;
+		tx_port = AFE_PORT_ID_SECONDARY_PCM_TX;
+	}
+	rc = afe_close(rx_port); /* can block */
 	if (IS_ERR_VALUE(rc))
 		dev_err(dai->dev, "fail to close AUX PCM RX AFE port\n");
 
-	rc = afe_close(PCM_TX);
+	rc = afe_close(tx_port);
 	if (IS_ERR_VALUE(rc))
 		dev_err(dai->dev, "fail to close AUX PCM TX AFE port\n");
-
 done:
 	kfree(dai_data);
 	snd_soc_unregister_dai(dai->dev);
@@ -941,12 +974,13 @@ static struct snd_soc_dai_driver msm_dai_q6_afe_tx_dai = {
 static struct snd_soc_dai_driver msm_dai_q6_slimbus_1_rx_dai = {
 	.playback = {
 		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
-		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000,
+		SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |
+		SNDRV_PCM_RATE_192000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 		.channels_min = 1,
 		.channels_max = 2,
 		.rate_min = 8000,
-		.rate_max = 96000,
+		.rate_max = 192000,
 	},
 	.ops = &msm_dai_q6_ops,
 	.probe = msm_dai_q6_dai_probe,
@@ -1084,10 +1118,12 @@ static int __devinit msm_auxpcm_dev_probe(struct platform_device *pdev)
 
 	switch (id) {
 	case AFE_PORT_ID_PRIMARY_PCM_RX:
+	case AFE_PORT_ID_SECONDARY_PCM_RX:
 		rc = snd_soc_register_dai(&pdev->dev,
 					&msm_dai_q6_aux_pcm_rx_dai);
 		break;
 	case AFE_PORT_ID_PRIMARY_PCM_TX:
+	case AFE_PORT_ID_SECONDARY_PCM_TX:
 		rc = snd_soc_register_dai(&pdev->dev,
 					&msm_dai_q6_aux_pcm_tx_dai);
 		break;
@@ -1828,8 +1864,8 @@ static int msm_dai_q6_mi2s_platform_data_validation(
 
 	if (ch_cnt) {
 		dai_data->rx_dai.mi2s_dai_data.port_config.i2s.channel_mode =
-				mi2s_pdata->rx_sd_lines;
-		dai_data->rx_dai.pdata_mi2s_lines = mi2s_pdata->rx_sd_lines;
+		sd_line;
+		dai_data->rx_dai.pdata_mi2s_lines = sd_line;
 		dai_driver->playback.channels_min = 1;
 		dai_driver->playback.channels_max = ch_cnt << 1;
 	} else {
@@ -1846,8 +1882,8 @@ static int msm_dai_q6_mi2s_platform_data_validation(
 
 	if (ch_cnt) {
 		dai_data->tx_dai.mi2s_dai_data.port_config.i2s.channel_mode =
-			mi2s_pdata->tx_sd_lines;
-		dai_data->tx_dai.pdata_mi2s_lines = mi2s_pdata->tx_sd_lines;
+		sd_line;
+		dai_data->tx_dai.pdata_mi2s_lines = sd_line;
 		dai_driver->capture.channels_min = 1;
 		dai_driver->capture.channels_max = ch_cnt << 1;
 	} else {
@@ -1873,25 +1909,26 @@ static __devinit int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 	u32  rx_line = 0;
 	u32 mi2s_intf = 0;
 	struct msm_mi2s_pdata *mi2s_pdata;
-	int rc = 0;
-
+	int rc;
+	struct snd_soc_dai_driver *mi2s_dai;
 
 	rc = of_property_read_u32(pdev->dev.of_node, q6_mi2s_dev_id,
 				  &mi2s_intf);
 	if (rc) {
 		dev_err(&pdev->dev,
 			"%s: missing %x in dt node\n", __func__, mi2s_intf);
-		return rc;
+		goto rtn;
 	}
 
 	dev_dbg(&pdev->dev, "dev name %s dev id %x\n", dev_name(&pdev->dev),
-			     mi2s_intf);
+		mi2s_intf);
 
 	if (mi2s_intf < MSM_PRIM_MI2S || mi2s_intf > MSM_QUAT_MI2S) {
 		dev_err(&pdev->dev,
 			"%s: Invalid MI2S ID %u from Device Tree\n",
 			__func__, mi2s_intf);
-		return -ENXIO;
+		rc = -ENXIO;
+		goto rtn;
 	}
 
 	dev_set_name(&pdev->dev, "%s.%d", "msm-dai-q6-mi2s", mi2s_intf);
@@ -1909,7 +1946,7 @@ static __devinit int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 	if (rc) {
 		dev_err(&pdev->dev, "%s: Rx line from DT file %s\n", __func__,
 			"qcom,msm-mi2s-rx-lines");
-		goto rtn;
+		goto free_pdata;
 	}
 
 	rc = of_property_read_u32(pdev->dev.of_node, "qcom,msm-mi2s-tx-lines",
@@ -1917,36 +1954,53 @@ static __devinit int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 	if (rc) {
 		dev_err(&pdev->dev, "%s: Tx line from DT file %s\n", __func__,
 			"qcom,msm-mi2s-tx-lines");
-		goto rtn;
+		goto free_pdata;
 	}
 	dev_dbg(&pdev->dev, "dev name %s Rx line %x , Tx ine %x\n",
 		dev_name(&pdev->dev), rx_line, tx_line);
 	mi2s_pdata->rx_sd_lines = rx_line;
 	mi2s_pdata->tx_sd_lines = tx_line;
+
 	dai_data = kzalloc(sizeof(struct msm_dai_q6_mi2s_dai_data),
-				GFP_KERNEL);
+			   GFP_KERNEL);
 	if (!dai_data) {
 		dev_err(&pdev->dev, "fail to allocate dai data\n");
 		rc = -ENOMEM;
-		goto rtn;
+		goto free_pdata;
 	} else
 		dev_set_drvdata(&pdev->dev, dai_data);
+
 	pdev->dev.platform_data = mi2s_pdata;
-	rc = msm_dai_q6_mi2s_platform_data_validation(pdev,
-					&msm_dai_q6_mi2s_dai);
+
+	mi2s_dai = kzalloc(sizeof(struct snd_soc_dai_driver), GFP_KERNEL);
+	if (!mi2s_dai) {
+		dev_err(&pdev->dev, "fail to allocate for mi2s_dai\n");
+		rc = -ENOMEM;
+		goto free_dai_data;
+	}
+
+	memcpy(mi2s_dai, &msm_dai_q6_mi2s_dai,
+	       sizeof(struct snd_soc_dai_driver));
+	rc = msm_dai_q6_mi2s_platform_data_validation(pdev, mi2s_dai);
 	if (IS_ERR_VALUE(rc))
-		goto err_pdata;
+		goto free_dai;
+
 	dai_data->rate_constraint.count = 1;
 	dai_data->bitwidth_constraint.count = 1;
-	rc = snd_soc_register_dai(&pdev->dev, &msm_dai_q6_mi2s_dai);
+	rc = snd_soc_register_dai(&pdev->dev, mi2s_dai);
 	if (IS_ERR_VALUE(rc))
-		goto err_pdata;
+		goto err_register;
 	return 0;
-err_pdata:
+
+err_register:
 	dev_err(&pdev->dev, "fail to msm_dai_q6_mi2s_dev_probe\n");
+free_dai:
+	kfree(mi2s_dai);
+free_dai_data:
 	kfree(dai_data);
-rtn:
+free_pdata:
 	kfree(mi2s_pdata);
+rtn:
 	return rc;
 }
 

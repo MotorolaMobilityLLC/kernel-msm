@@ -38,6 +38,7 @@
 struct camera_v4l2_private {
 	struct v4l2_fh fh;
 	unsigned int stream_id;
+	unsigned int is_vb2_valid; /*0 if no vb2 buffers on stream, else 1*/
 	struct vb2_queue vb2_q;
 };
 
@@ -194,9 +195,18 @@ static int camera_v4l2_s_ctrl(struct file *filep, void *fh,
 static int camera_v4l2_reqbufs(struct file *filep, void *fh,
 	struct v4l2_requestbuffers *req)
 {
+	int ret;
+	struct msm_session *session;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
-
-	return vb2_reqbufs(&sp->vb2_q, req);
+	struct msm_video_device *pvdev = video_drvdata(filep);
+	unsigned int session_id = pvdev->vdev->num;
+	session = msm_session_find(session_id);
+	if (WARN_ON(!session))
+		return -EIO;
+	mutex_lock(&session->lock);
+	ret = vb2_reqbufs(&sp->vb2_q, req);
+	mutex_unlock(&session->lock);
+	return ret;
 }
 
 static int camera_v4l2_querybuf(struct file *filep, void *fh,
@@ -208,17 +218,35 @@ static int camera_v4l2_querybuf(struct file *filep, void *fh,
 static int camera_v4l2_qbuf(struct file *filep, void *fh,
 	struct v4l2_buffer *pb)
 {
+	int ret;
+	struct msm_session *session;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
-
-	return vb2_qbuf(&sp->vb2_q, pb);
+		struct msm_video_device *pvdev = video_drvdata(filep);
+	unsigned int session_id = pvdev->vdev->num;
+	session = msm_session_find(session_id);
+	if (WARN_ON(!session))
+		return -EIO;
+	mutex_lock(&session->lock);
+	ret = vb2_qbuf(&sp->vb2_q, pb);
+	mutex_unlock(&session->lock);
+	return ret;
 }
 
 static int camera_v4l2_dqbuf(struct file *filep, void *fh,
 	struct v4l2_buffer *pb)
 {
+	int ret;
+	struct msm_session *session;
 	struct camera_v4l2_private *sp = fh_to_private(fh);
-
-	return vb2_dqbuf(&sp->vb2_q, pb, filep->f_flags & O_NONBLOCK);
+		struct msm_video_device *pvdev = video_drvdata(filep);
+	unsigned int session_id = pvdev->vdev->num;
+	session = msm_session_find(session_id);
+	if (WARN_ON(!session))
+		return -EIO;
+	mutex_lock(&session->lock);
+	ret = vb2_dqbuf(&sp->vb2_q, pb, filep->f_flags & O_NONBLOCK);
+	mutex_unlock(&session->lock);
+	return ret;
 }
 
 static int camera_v4l2_streamon(struct file *filep, void *fh,
@@ -314,6 +342,7 @@ static int camera_v4l2_s_fmt_vid_cap_mplane(struct file *filep, void *fh,
 		rc = camera_check_event_status(&event);
 		if (rc < 0)
 			goto set_fmt_fail;
+		sp->is_vb2_valid = 1;
 	}
 
 	return rc;
@@ -550,8 +579,8 @@ static unsigned int camera_v4l2_poll(struct file *filep,
 {
 	int rc = 0;
 	struct camera_v4l2_private *sp = fh_to_private(filep->private_data);
-
-	rc = vb2_poll(&sp->vb2_q, filep, wait);
+	if (sp->is_vb2_valid == 1)
+		rc = vb2_poll(&sp->vb2_q, filep, wait);
 
 	poll_wait(filep, &sp->fh.wait, wait);
 	if (v4l2_event_pending(&sp->fh))
@@ -566,12 +595,17 @@ static int camera_v4l2_close(struct file *filep)
 	struct v4l2_event event;
 	struct msm_video_device *pvdev = video_drvdata(filep);
 	struct camera_v4l2_private *sp = fh_to_private(filep->private_data);
-
 	BUG_ON(!pvdev);
 
 	atomic_sub_return(1, &pvdev->opened);
 
 	if (atomic_read(&pvdev->opened) == 0) {
+
+		camera_pack_event(filep, MSM_CAMERA_SET_PARM,
+			MSM_CAMERA_PRIV_DEL_STREAM, -1, &event);
+
+		/* Donot wait, imaging server may have crashed */
+		msm_post_event(&event, MSM_POST_EVT_TIMEOUT);
 
 		camera_pack_event(filep, MSM_CAMERA_DEL_SESSION, 0, -1, &event);
 

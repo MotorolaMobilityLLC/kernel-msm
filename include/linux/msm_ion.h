@@ -1,18 +1,3 @@
-/*
- *
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- */
-
 #ifndef _LINUX_MSM_ION_H
 #define _LINUX_MSM_ION_H
 
@@ -21,8 +6,10 @@
 enum msm_ion_heap_types {
 	ION_HEAP_TYPE_MSM_START = ION_HEAP_TYPE_CUSTOM + 1,
 	ION_HEAP_TYPE_IOMMU = ION_HEAP_TYPE_MSM_START,
+	ION_HEAP_TYPE_DMA,
 	ION_HEAP_TYPE_CP,
 	ION_HEAP_TYPE_SECURE_DMA,
+	ION_HEAP_TYPE_REMOVED,
 };
 
 /**
@@ -52,7 +39,7 @@ enum ion_heap_ids {
 	ION_MM_FIRMWARE_HEAP_ID = 29,
 	ION_SYSTEM_HEAP_ID = 30,
 
-	ION_HEAP_ID_RESERVED = 31 /** Bit reserved for ION_SECURE flag */
+	ION_HEAP_ID_RESERVED = 31 /** Bit reserved for ION_FLAG_SECURE flag */
 };
 
 enum ion_fixed_position {
@@ -71,18 +58,25 @@ enum cp_mem_usage {
 };
 
 #define ION_HEAP_CP_MASK		(1 << ION_HEAP_TYPE_CP)
+#define ION_HEAP_TYPE_DMA_MASK         (1 << ION_HEAP_TYPE_DMA)
 
 /**
  * Flag to use when allocating to indicate that a heap is secure.
  */
-#define ION_SECURE (1 << ION_HEAP_ID_RESERVED)
+#define ION_FLAG_SECURE (1 << ION_HEAP_ID_RESERVED)
 
 /**
  * Flag for clients to force contiguous memort allocation
  *
  * Use of this flag is carefully monitored!
  */
-#define ION_FORCE_CONTIGUOUS (1 << 30)
+#define ION_FLAG_FORCE_CONTIGUOUS (1 << 30)
+
+/**
+* Deprecated! Please use the corresponding ION_FLAG_*
+*/
+#define ION_SECURE ION_FLAG_SECURE
+#define ION_FORCE_CONTIGUOUS ION_FLAG_FORCE_CONTIGUOUS
 
 /**
  * Macro should be used with ion_heap_ids defined above.
@@ -201,9 +195,138 @@ struct ion_co_heap_pdata {
 
 #ifdef CONFIG_ION
 /**
+ *  msm_ion_client_create - allocate a client using the ion_device specified in
+ *				drivers/gpu/ion/msm/msm_ion.c
+ *
+ * heap_mask and name are the same as ion_client_create, return values
+ * are the same as ion_client_create.
+ */
+
+struct ion_client *msm_ion_client_create(unsigned int heap_mask,
+					const char *name);
+
+/**
+ * ion_handle_get_flags - get the flags for a given handle
+ *
+ * @client - client who allocated the handle
+ * @handle - handle to get the flags
+ * @flags - pointer to store the flags
+ *
+ * Gets the current flags for a handle. These flags indicate various options
+ * of the buffer (caching, security, etc.)
+ */
+int ion_handle_get_flags(struct ion_client *client, struct ion_handle *handle,
+				unsigned long *flags);
+
+
+/**
+ * ion_map_iommu - map the given handle into an iommu
+ *
+ * @client - client who allocated the handle
+ * @handle - handle to map
+ * @domain_num - domain number to map to
+ * @partition_num - partition number to allocate iova from
+ * @align - alignment for the iova
+ * @iova_length - length of iova to map. If the iova length is
+ *		greater than the handle length, the remaining
+ *		address space will be mapped to a dummy buffer.
+ * @iova - pointer to store the iova address
+ * @buffer_size - pointer to store the size of the buffer
+ * @flags - flags for options to map
+ * @iommu_flags - flags specific to the iommu.
+ *
+ * Maps the handle into the iova space specified via domain number. Iova
+ * will be allocated from the partition specified via partition_num.
+ * Returns 0 on success, negative value on error.
+ */
+int ion_map_iommu(struct ion_client *client, struct ion_handle *handle,
+			int domain_num, int partition_num, unsigned long align,
+			unsigned long iova_length, unsigned long *iova,
+			unsigned long *buffer_size,
+			unsigned long flags, unsigned long iommu_flags);
+
+
+/**
+ * ion_handle_get_size - get the allocated size of a given handle
+ *
+ * @client - client who allocated the handle
+ * @handle - handle to get the size
+ * @size - pointer to store the size
+ *
+ * gives the allocated size of a handle. returns 0 on success, negative
+ * value on error
+ *
+ * NOTE: This is intended to be used only to get a size to pass to map_iommu.
+ * You should *NOT* rely on this for any other usage.
+ */
+
+int ion_handle_get_size(struct ion_client *client, struct ion_handle *handle,
+			unsigned long *size);
+
+/**
+ * ion_unmap_iommu - unmap the handle from an iommu
+ *
+ * @client - client who allocated the handle
+ * @handle - handle to unmap
+ * @domain_num - domain to unmap from
+ * @partition_num - partition to unmap from
+ *
+ * Decrement the reference count on the iommu mapping. If the count is
+ * 0, the mapping will be removed from the iommu.
+ */
+void ion_unmap_iommu(struct ion_client *client, struct ion_handle *handle,
+			int domain_num, int partition_num);
+
+
+/**
+ * ion_secure_heap - secure a heap
+ *
+ * @client - a client that has allocated from the heap heap_id
+ * @heap_id - heap id to secure.
+ * @version - version of content protection
+ * @data - extra data needed for protection
+ *
+ * Secure a heap
+ * Returns 0 on success
+ */
+int ion_secure_heap(struct ion_device *dev, int heap_id, int version,
+			void *data);
+
+/**
+ * ion_unsecure_heap - un-secure a heap
+ *
+ * @client - a client that has allocated from the heap heap_id
+ * @heap_id - heap id to un-secure.
+ * @version - version of content protection
+ * @data - extra data needed for protection
+ *
+ * Un-secure a heap
+ * Returns 0 on success
+ */
+int ion_unsecure_heap(struct ion_device *dev, int heap_id, int version,
+			void *data);
+
+/**
+ * msm_ion_do_cache_op - do cache operations.
+ *
+ * @client - pointer to ION client.
+ * @handle - pointer to buffer handle.
+ * @vaddr -  virtual address to operate on.
+ * @len - Length of data to do cache operation on.
+ * @cmd - Cache operation to perform:
+ *		ION_IOC_CLEAN_CACHES
+ *		ION_IOC_INV_CACHES
+ *		ION_IOC_CLEAN_INV_CACHES
+ *
+ * Returns 0 on success
+ */
+int msm_ion_do_cache_op(struct ion_client *client, struct ion_handle *handle,
+			void *vaddr, unsigned long len, unsigned int cmd);
+
+/**
  * msm_ion_secure_heap - secure a heap. Wrapper around ion_secure_heap.
  *
-  * @heap_id - heap id to secure.
+ * @heap_id - heap id to secure.
  *
  * Secure a heap
  * Returns 0 on success
@@ -264,6 +387,60 @@ int msm_ion_secure_buffer(struct ion_client *client, struct ion_handle *handle,
 int msm_ion_unsecure_buffer(struct ion_client *client,
 				struct ion_handle *handle);
 #else
+static inline struct ion_client *msm_ion_client_create(unsigned int heap_mask,
+					const char *name)
+{
+	return ERR_PTR(-ENODEV);
+}
+
+static inline int ion_map_iommu(struct ion_client *client,
+			struct ion_handle *handle, int domain_num,
+			int partition_num, unsigned long align,
+			unsigned long iova_length, unsigned long *iova,
+			unsigned long *buffer_size,
+			unsigned long flags,
+			unsigned long iommu_flags)
+{
+	return -ENODEV;
+}
+
+static inline int ion_handle_get_size(struct ion_client *client,
+				struct ion_handle *handle, unsigned long *size)
+{
+	return -ENODEV;
+}
+
+static inline void ion_unmap_iommu(struct ion_client *client,
+			struct ion_handle *handle, int domain_num,
+			int partition_num)
+{
+	return;
+}
+
+static inline int ion_secure_heap(struct ion_device *dev, int heap_id,
+					int version, void *data)
+{
+	return -ENODEV;
+
+}
+
+static inline int ion_unsecure_heap(struct ion_device *dev, int heap_id,
+					int version, void *data)
+{
+	return -ENODEV;
+}
+
+static inline void ion_mark_dangling_buffers_locked(struct ion_device *dev)
+{
+}
+
+static inline int msm_ion_do_cache_op(struct ion_client *client,
+			struct ion_handle *handle, void *vaddr,
+			unsigned long len, unsigned int cmd)
+{
+	return -ENODEV;
+}
+
 static inline int msm_ion_secure_heap(int heap_id)
 {
 	return -ENODEV;

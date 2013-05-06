@@ -42,7 +42,7 @@ static DECLARE_WORK(rx_work, ipa_wq_handle_rx);
  *   the order for sent packet is the same as expected
  * - delete all the tx packet descriptors from the system
  *   pipe context (not needed anymore)
- * - return the tx buffer back to one_kb_no_straddle_pool
+ * - return the tx buffer back to dma_pool
  */
 void ipa_wq_write_done(struct work_struct *work)
 {
@@ -80,7 +80,7 @@ void ipa_wq_write_done(struct work_struct *work)
 		list_del(&tx_pkt->link);
 		spin_unlock_irqrestore(&tx_pkt->sys->spinlock, irq_flags);
 		if (unlikely(ipa_ctx->ipa_hw_type == IPA_HW_v1_0)) {
-			dma_pool_free(ipa_ctx->one_kb_no_straddle_pool,
+			dma_pool_free(ipa_ctx->dma_pool,
 					tx_pkt->bounce,
 					tx_pkt->mem.phys_base);
 		} else {
@@ -97,7 +97,7 @@ void ipa_wq_write_done(struct work_struct *work)
 	}
 
 	if (mult.phys_base)
-		dma_free_coherent(NULL, mult.size, mult.base, mult.phys_base);
+		dma_pool_free(ipa_ctx->dma_pool, mult.base, mult.phys_base);
 }
 
 /**
@@ -144,7 +144,7 @@ int ipa_send_one(struct ipa_sys_context *sys, struct ipa_desc *desc,
 		 * does not cross a 1KB boundary
 		 */
 		tx_pkt->bounce = dma_pool_alloc(
-					ipa_ctx->one_kb_no_straddle_pool,
+					ipa_ctx->dma_pool,
 					mem_flag, &dma_address);
 		if (!tx_pkt->bounce) {
 			dma_address = 0;
@@ -208,7 +208,7 @@ fail_sps_send:
 	list_del(&tx_pkt->link);
 	spin_unlock_irqrestore(&sys->spinlock, irq_flags);
 	if (unlikely(ipa_ctx->ipa_hw_type == IPA_HW_v1_0))
-		dma_pool_free(ipa_ctx->one_kb_no_straddle_pool, tx_pkt->bounce,
+		dma_pool_free(ipa_ctx->dma_pool, tx_pkt->bounce,
 				dma_address);
 	else
 		dma_unmap_single(NULL, dma_address, desc->len, DMA_TO_DEVICE);
@@ -259,7 +259,7 @@ int ipa_send(struct ipa_sys_context *sys, u32 num_desc, struct ipa_desc *desc,
 	if (unlikely(!in_atomic))
 		mem_flag = GFP_KERNEL;
 
-	transfer.iovec = dma_alloc_coherent(NULL, size, &dma_addr, 0);
+	transfer.iovec = dma_pool_alloc(ipa_ctx->dma_pool, mem_flag, &dma_addr);
 	transfer.iovec_phys = dma_addr;
 	transfer.iovec_count = num_desc;
 	spin_lock_irqsave(&sys->spinlock, irq_flags);
@@ -306,7 +306,7 @@ int ipa_send(struct ipa_sys_context *sys, u32 num_desc, struct ipa_desc *desc,
 			 * packet does not cross a 1KB boundary
 			 */
 			tx_pkt->bounce =
-			   dma_pool_alloc(ipa_ctx->one_kb_no_straddle_pool,
+			   dma_pool_alloc(ipa_ctx->dma_pool,
 					   mem_flag,
 					   &tx_pkt->mem.phys_base);
 			if (!tx_pkt->bounce) {
@@ -377,7 +377,7 @@ failure:
 		next_pkt = list_next_entry(tx_pkt, link);
 		list_del(&tx_pkt->link);
 		if (unlikely(ipa_ctx->ipa_hw_type == IPA_HW_v1_0))
-			dma_pool_free(ipa_ctx->one_kb_no_straddle_pool,
+			dma_pool_free(ipa_ctx->dma_pool,
 					tx_pkt->bounce,
 					tx_pkt->mem.phys_base);
 		else
@@ -392,7 +392,7 @@ failure:
 		if (fail_dma_wrap)
 			kmem_cache_free(ipa_ctx->tx_pkt_wrapper_cache, tx_pkt);
 	if (transfer.iovec_phys)
-		dma_free_coherent(NULL, size, transfer.iovec,
+		dma_pool_free(ipa_ctx->dma_pool, transfer.iovec,
 				  transfer.iovec_phys);
 failure_coherent:
 	spin_unlock_irqrestore(&sys->spinlock, irq_flags);
@@ -433,9 +433,7 @@ int ipa_send_cmd(u16 num_desc, struct ipa_desc *descr)
 	struct ipa_desc *desc;
 	int result = 0;
 
-	if (atomic_inc_return(&ipa_ctx->ipa_active_clients) == 1)
-		if (ipa_ctx->ipa_hw_mode == IPA_HW_MODE_NORMAL)
-			ipa_enable_clks();
+	ipa_inc_client_enable_clks();
 
 	if (num_desc == 1) {
 		init_completion(&descr->xfer_done);
@@ -471,9 +469,7 @@ int ipa_send_cmd(u16 num_desc, struct ipa_desc *descr)
 
 	IPA_STATS_INC_IC_CNT(num_desc, descr, ipa_ctx->stats.imm_cmds);
 bail:
-	if (atomic_dec_return(&ipa_ctx->ipa_active_clients) == 0)
-		if (ipa_ctx->ipa_hw_mode == IPA_HW_MODE_NORMAL)
-			ipa_disable_clks();
+	ipa_dec_client_disable_clks();
 	return result;
 }
 
@@ -528,6 +524,8 @@ int ipa_handle_rx_core(bool process_all, bool in_poll_state)
 	struct ipa_sys_context *sys = &ipa_ctx->sys[IPA_A5_LAN_WAN_IN];
 	struct ipa_ep_context *ep;
 	int cnt = 0;
+	struct completion *compl;
+	struct ipa_tree_node *node;
 	unsigned int src_pipe;
 
 	while ((in_poll_state ? atomic_read(&ipa_ctx->curr_polling_state) :
@@ -581,6 +579,35 @@ int ipa_handle_rx_core(bool process_all, bool in_poll_state)
 
 		IPA_STATS_INC_CNT(ipa_ctx->stats.rx_pkts);
 		IPA_STATS_EXCP_CNT(mux_hdr->flags, ipa_ctx->stats.rx_excp_pkts);
+
+		if (unlikely(mux_hdr->flags & IPA_A5_MUX_HDR_EXCP_FLAG_TAG)) {
+			if (ipa_ctx->ipa_hw_mode != IPA_HW_MODE_VIRTUAL) {
+				/* retrieve the compl object from tag value */
+				mux_hdr++;
+				compl = (struct completion *)
+					ntohl(*((u32 *)mux_hdr));
+				IPADBG("%x %x %p\n", *(u32 *)mux_hdr,
+						*((u32 *)mux_hdr + 1), compl);
+
+				mutex_lock(&ipa_ctx->lock);
+				node = ipa_search(&ipa_ctx->tag_tree,
+						(u32)compl);
+				if (node) {
+					complete_all(compl);
+					rb_erase(&node->node,
+							&ipa_ctx->tag_tree);
+					kmem_cache_free(
+						ipa_ctx->tree_node_cache, node);
+				} else {
+					WARN_ON(1);
+				}
+				mutex_unlock(&ipa_ctx->lock);
+			}
+			dev_kfree_skb(rx_skb);
+			ipa_replenish_rx_cache();
+			++cnt;
+			continue;
+		}
 
 		/*
 		 * Any packets arriving over AMPDU_TX should be dispatched
@@ -791,7 +818,8 @@ int ipa_setup_sys_pipe(struct ipa_sys_connect_params *sys_in, u32 *clnt_hdl)
 			ipa_ctx->a5_pipe_index++;
 		ipa_ctx->ep[ipa_ep_idx].connect.src_pipe_index = ipa_ep_idx;
 		ipa_ctx->ep[ipa_ep_idx].connect.options =
-			SPS_O_AUTO_ENABLE | SPS_O_EOT | SPS_O_ACK_TRANSFERS;
+			SPS_O_AUTO_ENABLE | SPS_O_EOT | SPS_O_ACK_TRANSFERS |
+			SPS_O_NO_DISABLE;
 		if (ipa_ctx->polling_mode)
 			ipa_ctx->ep[ipa_ep_idx].connect.options |= SPS_O_POLL;
 	} else {
@@ -943,7 +971,6 @@ static void ipa_tx_comp_usr_notify_release(void *user1, void *user2)
 
 static void ipa_tx_cmd_comp(void *user1, void *user2)
 {
-	IPA_STATS_INC_CNT(ipa_ctx->stats.imm_cmds[IPA_IP_PACKET_INIT]);
 	kfree(user1);
 }
 
@@ -1022,6 +1049,7 @@ int ipa_tx_dp(enum ipa_client_type dst, struct sk_buff *skb,
 			IPAERR("fail to send immediate command\n");
 			goto fail_send;
 		}
+		IPA_STATS_INC_CNT(ipa_ctx->stats.imm_cmds[IPA_IP_PACKET_INIT]);
 	} else if (dst == IPA_CLIENT_A5_WLAN_AMPDU_PROD) {
 		desc[0].pyld = skb->data;
 		desc[0].len = skb->len;
@@ -1055,6 +1083,7 @@ static void ipa_handle_rx(void)
 	int inactive_cycles = 0;
 	int cnt;
 
+	ipa_inc_client_enable_clks();
 	do {
 		cnt = ipa_handle_rx_core(true, true);
 		if (cnt == 0) {
@@ -1066,6 +1095,7 @@ static void ipa_handle_rx(void)
 	} while (inactive_cycles <= POLLING_INACTIVITY);
 
 	ipa_rx_switch_to_intr_mode();
+	ipa_dec_client_disable_clks();
 }
 
 /**

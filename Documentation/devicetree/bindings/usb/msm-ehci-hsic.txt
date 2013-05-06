@@ -38,6 +38,9 @@ Optional properties :
   STROBE GPIO PAD.
 - hsic,data-pad-offset : Offset of TLMM register for configuring HSIC
   DATA GPIO PAD.
+- qcom,phy-sof-workaround : If present then HSIC PHY has h/w BUGs related to
+  SOFs. Software workarounds are required for the same.
+
 - Refer to "Documentation/devicetree/bindings/arm/msm/msm_bus.txt" for
   below optional properties:
     - qcom,msm_bus,name
@@ -71,7 +74,6 @@ Example MSM HSIC EHCI controller device node :
 
 		qcom,msm-bus,name = "hsic";
 		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
 				<85 512 0 0>,

@@ -5419,11 +5419,6 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("csi_phy_clk",	csi0_phy_clk.c,		"msm_csid.0"),
 	CLK_LOOKUP("csi_phy_clk",	csi1_phy_clk.c,		"msm_csid.1"),
 	CLK_LOOKUP("csi_phy_clk",	csi2_phy_clk.c,		"msm_csid.2"),
-	CLK_LOOKUP("csi_pix_clk",	csi_pix_clk.c,		"msm_ispif.0"),
-	CLK_LOOKUP("csi_pix1_clk",	csi_pix1_clk.c,		"msm_ispif.0"),
-	CLK_LOOKUP("csi_rdi_clk",	csi_rdi_clk.c,		"msm_ispif.0"),
-	CLK_LOOKUP("csi_rdi1_clk",	csi_rdi1_clk.c,		"msm_ispif.0"),
-	CLK_LOOKUP("csi_rdi2_clk",	csi_rdi2_clk.c,		"msm_ispif.0"),
 	CLK_LOOKUP("csiphy_timer_src_clk",
 			   csiphy_timer_src_clk.c, "msm_csiphy.0"),
 	CLK_LOOKUP("csiphy_timer_src_clk",
@@ -6740,8 +6735,6 @@ static void __init msm8960_clock_pre_init(void)
 	if ((readl_relaxed(PRNG_CLK_NS_REG) & 0x7F) == 0x2B)
 		prng_clk.freq_tbl = clk_tbl_prng_64;
 
-	vote_vdd_level(&vdd_dig, VDD_DIG_HIGH);
-
 	clk_ops_local_pll.enable = sr_pll_clk_enable;
 }
 
@@ -6852,7 +6845,7 @@ static int __init msm8960_clock_late_init(void)
 	if (WARN(rc, "cfpb_a_clk not enabled (%d)\n", rc))
 		return rc;
 
-	return unvote_vdd_level(&vdd_dig, VDD_DIG_HIGH);
+	return 0;
 }
 
 struct clock_init_data msm8960_clock_init_data __initdata = {

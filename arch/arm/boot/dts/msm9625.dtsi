@@ -58,12 +58,70 @@
 		clock-frequency = <32768>;
 	};
 
-	timer: msm-qtimer@f9021000 {
-		compatible = "arm,armv7-timer";
-		reg = <0xF9021000 0x1000>;
-		interrupts = <0 7 0>;
-		irq-is-not-percpu;
+	timer@f9020000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		compatible = "arm,armv7-timer-mem";
+		reg = <0xf9020000 0x1000>;
 		clock-frequency = <19200000>;
+
+		frame@f9021000 {
+			frame-number = <0>;
+			interrupts = <0 7 0x4>,
+				     <0 6 0x4>;
+			reg = <0xf9021000 0x1000>,
+			      <0xf9022000 0x1000>;
+		};
+
+		frame@f9023000 {
+			frame-number = <1>;
+			interrupts = <0 8 0x4>;
+			reg = <0xf9023000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9024000 {
+			frame-number = <2>;
+			interrupts = <0 9 0x4>;
+			reg = <0xf9024000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9025000 {
+			frame-number = <3>;
+			interrupts = <0 10 0x4>;
+			reg = <0xf9025000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9026000 {
+			frame-number = <4>;
+			interrupts = <0 11 0x4>;
+			reg = <0xf9026000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9027000 {
+			frame-number = <5>;
+			interrupts = <0 12 0x4>;
+			reg = <0xf9027000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9028000 {
+			frame-number = <6>;
+			interrupts = <0 13 0x4>;
+			reg = <0xf9028000 0x1000>;
+			status = "disabled";
+		};
+
+		frame@f9029000 {
+			frame-number = <7>;
+			interrupts = <0 14 0x4>;
+			reg = <0xf9029000 0x1000>;
+			status = "disabled";
+		};
 	};
 
 	qcom,sps@f9980000 {
@@ -97,18 +155,17 @@
 		qcom,hsusb-otg-disable-reset;
 		qcom,hsusb-otg-lpm-on-dev-suspend;
 		qcom,hsusb-otg-clk-always-on-workaround;
-		qcom,hsusb-otg-delay-lpm;
+		qcom,hsusb-otg-delay-lpm-hndshk-on-disconnect;
 
 		qcom,msm-bus,name = "usb2";
 		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
 				<87 512 0 0>,
 				<87 512 40000 640000>;
 	};
 
-	hsic@f9a15000 {
+	hsic_host: hsic@f9a15000 {
 		compatible = "qcom,hsic-host";
 		reg = <0xf9a15000 0x400>;
 		interrupts = <0 136 0>, <0 148 0>;
@@ -118,7 +175,6 @@
 
 		qcom,msm-bus,name = "hsic";
 		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
 				<85 512 0 0>,
@@ -149,6 +205,7 @@
 			qcom,src-bam-pipe-index = <1>;
 			qcom,data-fifo-size = <0x8000>;
 			qcom,descriptor-fifo-size = <0x2000>;
+			qcom,reset-bam-on-connect;
 		};
 		qcom,pipe1 {
 			label = "hsusb-ipa-in-0";
@@ -161,6 +218,7 @@
 			qcom,dst-bam-pipe-index = <0>;
 			qcom,data-fifo-size = <0x8000>;
 			qcom,descriptor-fifo-size = <0x2000>;
+			qcom,reset-bam-on-connect;
 		};
 		qcom,pipe2 {
 			label = "hsusb-qdss-in-0";
@@ -336,7 +394,7 @@
 
 		qcom,pad-pull-on = <0x0 0x3 0x3>;
 		qcom,pad-pull-off = <0x0 0x3 0x3>;
-		qcom,pad-drv-on = <0x7 0x4 0x4>;
+		qcom,pad-drv-on = <0x4 0x4 0x4>;
 		qcom,pad-drv-off = <0x0 0x0 0x0>;
 
 		qcom,clk-rates = <400000 25000000 50000000 100000000 200000000>;
@@ -506,6 +564,14 @@
 			cdc-vddcx-2-supply = <&pm8019_l9>;
 			qcom,cdc-vddcx-2-voltage = <1200000 1200000>;
 			qcom,cdc-vddcx-2-current = <10000>;
+
+			qcom,cdc-static-supplies = "cdc-vdd-buck",
+						   "cdc-vdd-tx-h",
+						   "cdc-vdd-rx-h",
+						   "cdc-vddpx-1",
+						   "cdc-vdd-a-1p2v",
+						   "cdc-vddcx-1",
+						   "cdc-vddcx-2";
 
 			qcom,cdc-micbias-ldoh-v = <0x3>;
 			qcom,cdc-micbias-cfilt1-mv = <1800>;
@@ -689,16 +755,17 @@
 		compatible = "qcom,pil-q6v5-mss";
 		interrupts = <0 24 1>;
 
-		/* GPIO input from mss */
+		/* GPIO inputs from mss */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_1_in 0 0>;
+		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_1_in 2 0>;
 
 		/* GPIO output to mss */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_1_out 0 0>;
 	};
 
-	qcom,smem@fa00000 {
+	qcom,smem@0 {
 		compatible = "qcom,smem";
-		reg = <0xfa00000 0x200000>,
+		reg = <0x0 0x100000>,
 			<0xf9011000 0x1000>,
 			<0xfc428000 0x4000>;
 		reg-names = "smem", "irq-reg-base", "aux-mem1";
@@ -825,7 +892,7 @@
 	};
 
 	chan@33 {
-		label = "pa_therm1";
+		label = "pa_therm0";
 		reg = <0x33>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
@@ -836,7 +903,7 @@
 	};
 
 	chan@34 {
-		label = "pa_therm2";
+		label = "pa_therm1";
 		reg = <0x34>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
@@ -864,6 +931,28 @@
 		qcom,pre-div-channel-scaling = <0>;
 		qcom,calibration-type = "ratiometric";
 		qcom,scale-function = <4>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@13 {
+		label = "case_therm";
+		reg = <0x13>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@15 {
+		label = "ambient_therm";
+		reg = <0x15>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};

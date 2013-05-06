@@ -26,8 +26,10 @@
 #include <linux/rwsem.h>
 #include <linux/uaccess.h>
 #include <linux/memblock.h>
+#include <linux/dma-mapping.h>
 #include <mach/ion.h>
 #include <mach/msm_memtypes.h>
+#include <asm/cacheflush.h>
 #include "../ion_priv.h"
 #include "ion_cp_common.h"
 
@@ -87,7 +89,7 @@ static struct ion_heap_desc ion_heap_meta[] = {
 	},
 	{
 		.id	= ION_QSECOM_HEAP_ID,
-		.type	= ION_HEAP_TYPE_CARVEOUT,
+		.type	= ION_HEAP_TYPE_DMA,
 		.name	= ION_QSECOM_HEAP_NAME,
 	},
 	{
@@ -126,7 +128,7 @@ static struct ion_heap_desc ion_heap_meta[] = {
 struct ion_client *msm_ion_client_create(unsigned int heap_mask,
 					const char *name)
 {
-	return ion_client_create(idev, heap_mask, name);
+	return ion_client_create(idev, name);
 }
 EXPORT_SYMBOL(msm_ion_client_create);
 
@@ -176,6 +178,210 @@ int msm_ion_do_cache_op(struct ion_client *client, struct ion_handle *handle,
 	return ion_do_cache_op(client, handle, vaddr, 0, len, cmd);
 }
 EXPORT_SYMBOL(msm_ion_do_cache_op);
+
+static int ion_no_pages_cache_ops(struct ion_client *client,
+			struct ion_handle *handle,
+			void *vaddr,
+			unsigned int offset, unsigned int length,
+			unsigned int cmd)
+{
+	void (*outer_cache_op)(phys_addr_t, phys_addr_t) = NULL;
+	unsigned int size_to_vmap, total_size;
+	int i, j, ret;
+	void *ptr = NULL;
+	ion_phys_addr_t buff_phys = 0;
+	ion_phys_addr_t buff_phys_start = 0;
+	size_t buf_length = 0;
+
+	ret = ion_phys(client, handle, &buff_phys_start, &buf_length);
+	if (ret)
+		return -EINVAL;
+
+	buff_phys = buff_phys_start;
+
+	if (!vaddr) {
+		/*
+		 * Split the vmalloc space into smaller regions in
+		 * order to clean and/or invalidate the cache.
+		 */
+		size_to_vmap = ((VMALLOC_END - VMALLOC_START)/8);
+		total_size = buf_length;
+
+		for (i = 0; i < total_size; i += size_to_vmap) {
+			size_to_vmap = min(size_to_vmap, total_size - i);
+			for (j = 0; j < 10 && size_to_vmap; ++j) {
+				ptr = ioremap(buff_phys, size_to_vmap);
+				if (ptr) {
+					switch (cmd) {
+					case ION_IOC_CLEAN_CACHES:
+						dmac_clean_range(ptr,
+							ptr + size_to_vmap);
+						outer_cache_op =
+							outer_clean_range;
+						break;
+					case ION_IOC_INV_CACHES:
+						dmac_inv_range(ptr,
+							ptr + size_to_vmap);
+						outer_cache_op =
+							outer_inv_range;
+						break;
+					case ION_IOC_CLEAN_INV_CACHES:
+						dmac_flush_range(ptr,
+							ptr + size_to_vmap);
+						outer_cache_op =
+							outer_flush_range;
+						break;
+					default:
+						return -EINVAL;
+					}
+					buff_phys += size_to_vmap;
+					break;
+				} else {
+					size_to_vmap >>= 1;
+				}
+			}
+			if (!ptr) {
+				pr_err("Couldn't io-remap the memory\n");
+				return -EINVAL;
+			}
+			iounmap(ptr);
+		}
+	} else {
+		switch (cmd) {
+		case ION_IOC_CLEAN_CACHES:
+			dmac_clean_range(vaddr, vaddr + length);
+			outer_cache_op = outer_clean_range;
+			break;
+		case ION_IOC_INV_CACHES:
+			dmac_inv_range(vaddr, vaddr + length);
+			outer_cache_op = outer_inv_range;
+			break;
+		case ION_IOC_CLEAN_INV_CACHES:
+			dmac_flush_range(vaddr, vaddr + length);
+			outer_cache_op = outer_flush_range;
+			break;
+		default:
+			return -EINVAL;
+		}
+	}
+
+	outer_cache_op(buff_phys_start + offset,
+		       buff_phys_start + offset + length);
+
+	return 0;
+}
+
+#ifdef CONFIG_OUTER_CACHE
+static void ion_pages_outer_cache_op(void (*op)(phys_addr_t, phys_addr_t),
+				struct sg_table *table)
+{
+	unsigned long pstart;
+	struct scatterlist *sg;
+	int i;
+	for_each_sg(table->sgl, sg, table->nents, i) {
+		struct page *page = sg_page(sg);
+		pstart = page_to_phys(page);
+		/*
+		 * If page -> phys is returning NULL, something
+		 * has really gone wrong...
+		 */
+		if (!pstart) {
+			WARN(1, "Could not translate virtual address to physical address\n");
+			return;
+		}
+		op(pstart, pstart + PAGE_SIZE);
+	}
+}
+#else
+static void ion_pages_outer_cache_op(void (*op)(phys_addr_t, phys_addr_t),
+					struct sg_table *table)
+{
+
+}
+#endif
+
+static int ion_pages_cache_ops(struct ion_client *client,
+			struct ion_handle *handle,
+			void *vaddr, unsigned int offset, unsigned int length,
+			unsigned int cmd)
+{
+	void (*outer_cache_op)(phys_addr_t, phys_addr_t);
+	struct sg_table *table = NULL;
+
+	table = ion_sg_table(client, handle);
+	if (IS_ERR_OR_NULL(table))
+		return PTR_ERR(table);
+
+	switch (cmd) {
+	case ION_IOC_CLEAN_CACHES:
+		if (!vaddr)
+			dma_sync_sg_for_device(NULL, table->sgl,
+				table->nents, DMA_TO_DEVICE);
+		else
+			dmac_clean_range(vaddr, vaddr + length);
+		outer_cache_op = outer_clean_range;
+		break;
+	case ION_IOC_INV_CACHES:
+		if (!vaddr)
+			dma_sync_sg_for_cpu(NULL, table->sgl,
+				table->nents, DMA_FROM_DEVICE);
+		else
+			dmac_inv_range(vaddr, vaddr + length);
+		outer_cache_op = outer_inv_range;
+		break;
+	case ION_IOC_CLEAN_INV_CACHES:
+		if (!vaddr) {
+			dma_sync_sg_for_device(NULL, table->sgl,
+				table->nents, DMA_TO_DEVICE);
+			dma_sync_sg_for_cpu(NULL, table->sgl,
+				table->nents, DMA_FROM_DEVICE);
+		} else {
+			dmac_flush_range(vaddr, vaddr + length);
+		}
+		outer_cache_op = outer_flush_range;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ion_pages_outer_cache_op(outer_cache_op, table);
+
+	return 0;
+}
+
+int ion_do_cache_op(struct ion_client *client, struct ion_handle *handle,
+			void *uaddr, unsigned long offset, unsigned long len,
+			unsigned int cmd)
+{
+	int ret = -EINVAL;
+	unsigned long flags;
+	struct sg_table *table;
+	struct page *page;
+
+	ret = ion_handle_get_flags(client, handle, &flags);
+	if (ret)
+		return -EINVAL;
+
+	if (!ION_IS_CACHED(flags))
+		return 0;
+
+	table = ion_sg_table(client, handle);
+
+	if (IS_ERR_OR_NULL(table))
+		return PTR_ERR(table);
+
+	page = sg_page(table->sgl);
+
+	if (page)
+		ret = ion_pages_cache_ops(client, handle, uaddr,
+					offset, len, cmd);
+	else
+		ret = ion_no_pages_cache_ops(client, handle, uaddr,
+					offset, len, cmd);
+
+	return ret;
+
+}
 
 static ion_phys_addr_t msm_ion_get_base(unsigned long size, int memory_type,
 				    unsigned int align)
@@ -750,6 +956,75 @@ static long msm_ion_custom_ioctl(struct ion_client *client,
 	return 0;
 }
 
+static struct ion_heap *msm_ion_heap_create(struct ion_platform_heap *heap_data)
+{
+	struct ion_heap *heap = NULL;
+
+	switch ((int)heap_data->type) {
+	case ION_HEAP_TYPE_IOMMU:
+		heap = ion_iommu_heap_create(heap_data);
+		break;
+	case ION_HEAP_TYPE_CP:
+		heap = ion_cp_heap_create(heap_data);
+		break;
+#ifdef CONFIG_CMA
+	case ION_HEAP_TYPE_DMA:
+		heap = ion_cma_heap_create(heap_data);
+		break;
+
+	case ION_HEAP_TYPE_SECURE_DMA:
+		heap = ion_secure_cma_heap_create(heap_data);
+		break;
+#endif
+	case ION_HEAP_TYPE_REMOVED:
+		heap = ion_removed_heap_create(heap_data);
+		break;
+
+	default:
+		heap = ion_heap_create(heap_data);
+	}
+
+	if (IS_ERR_OR_NULL(heap)) {
+		pr_err("%s: error creating heap %s type %d base %pa size %u\n",
+		       __func__, heap_data->name, heap_data->type,
+		       &heap_data->base, heap_data->size);
+		return ERR_PTR(-EINVAL);
+	}
+
+	heap->name = heap_data->name;
+	heap->id = heap_data->id;
+	heap->priv = heap_data->priv;
+	return heap;
+}
+
+static void msm_ion_heap_destroy(struct ion_heap *heap)
+{
+	if (!heap)
+		return;
+
+	switch ((int)heap->type) {
+	case ION_HEAP_TYPE_IOMMU:
+		ion_iommu_heap_destroy(heap);
+		break;
+	case ION_HEAP_TYPE_CP:
+		ion_cp_heap_destroy(heap);
+		break;
+#ifdef CONFIG_CMA
+	case ION_HEAP_TYPE_DMA:
+		ion_cma_heap_destroy(heap);
+		break;
+	case ION_HEAP_TYPE_SECURE_DMA:
+		ion_secure_cma_heap_destroy(heap);
+		break;
+#endif
+	case ION_HEAP_TYPE_REMOVED:
+		ion_removed_heap_destroy(heap);
+		break;
+	default:
+		ion_heap_destroy(heap);
+	}
+}
+
 static int msm_ion_probe(struct platform_device *pdev)
 {
 	struct ion_platform_data *pdata;
@@ -791,7 +1066,7 @@ static int msm_ion_probe(struct platform_device *pdev)
 		msm_ion_allocate(heap_data);
 
 		heap_data->has_outer_cache = pdata->has_outer_cache;
-		heaps[i] = ion_heap_create(heap_data);
+		heaps[i] = msm_ion_heap_create(heap_data);
 		if (IS_ERR_OR_NULL(heaps[i])) {
 			heaps[i] = 0;
 			continue;
@@ -829,7 +1104,7 @@ static int msm_ion_remove(struct platform_device *pdev)
 	int i;
 
 	for (i = 0; i < num_heaps; i++)
-		ion_heap_destroy(heaps[i]);
+		msm_ion_heap_destroy(heaps[i]);
 
 	ion_device_destroy(idev);
 	kfree(heaps);

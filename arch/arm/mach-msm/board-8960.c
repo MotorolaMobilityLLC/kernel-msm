@@ -236,7 +236,7 @@ static void __init reserve_rtb_memory(void)
 #endif
 }
 
-static int msm8960_paddr_to_memtype(unsigned int paddr)
+static int msm8960_paddr_to_memtype(phys_addr_t paddr)
 {
 	return MEMTYPE_EBI1;
 }
@@ -532,7 +532,7 @@ static void __init reserve_ion_memory(void)
 
 			if (fixed_position != NOT_FIXED)
 				fixed_size += heap->size;
-			else
+			else if (!use_cma)
 				reserve_mem_for_ion(MEMTYPE_EBI1, heap->size);
 
 			if (fixed_position == FIXED_LOW) {
@@ -1459,8 +1459,9 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 #define HSIC_HUB_RESET_GPIO	91
 static struct msm_hsic_host_platform_data msm_hsic_pdata = {
-	.strobe		= 150,
-	.data		= 151,
+	.strobe			= 150,
+	.data			= 151,
+	.phy_sof_workaround	= true,
 };
 
 static struct smsc_hub_platform_data hsic_hub_pdata = {

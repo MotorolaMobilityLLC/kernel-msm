@@ -305,6 +305,7 @@ rt_table_mem_alloc_failed:
 			  rt_tbl_mem.base, rt_tbl_mem.phys_base);
 proc_err:
 	dma_free_coherent(NULL, mem->size, mem->base, mem->phys_base);
+	mem->base = NULL;
 error:
 	return -EPERM;
 }
@@ -378,7 +379,7 @@ static int __ipa_commit_rt(enum ipa_ip_type ip)
 
 	if (mem->size > avail) {
 		IPAERR("tbl too big, needed %d avail %d\n", mem->size, avail);
-		goto fail_hw_tbl_gen;
+		goto fail_send_cmd;
 	}
 
 	if (ip == IPA_IP_v4) {
@@ -413,7 +414,7 @@ static int __ipa_commit_rt(enum ipa_ip_type ip)
 	return 0;
 
 fail_send_cmd:
-	if (mem->phys_base)
+	if (mem->base)
 		dma_free_coherent(NULL, mem->size, mem->base, mem->phys_base);
 fail_hw_tbl_gen:
 	kfree(cmd);
@@ -505,6 +506,8 @@ static struct ipa_rt_tbl *__ipa_add_rt_tbl(enum ipa_ip_type ip,
 			IPAERR("failed to add to tree\n");
 			WARN_ON(1);
 		}
+	} else {
+		kmem_cache_free(ipa_ctx->tree_node_cache, node);
 	}
 
 	return entry;

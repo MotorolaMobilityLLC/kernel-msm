@@ -77,7 +77,8 @@ enum {
 	WCD9XXX_IRQ_HPH_L_PA_STARTUP,
 	WCD9XXX_IRQ_HPH_R_PA_STARTUP,
 	WCD9XXX_IRQ_EAR_PA_STARTUP,
-	WCD9XXX_IRQ_RESERVED_0,
+	WCD9310_NUM_IRQS,
+	WCD9XXX_IRQ_RESERVED_0 = WCD9310_NUM_IRQS,
 	WCD9XXX_IRQ_RESERVED_1,
 	/* INTR_REG 3 */
 	WCD9XXX_IRQ_MAD_AUDIO,
@@ -85,12 +86,14 @@ enum {
 	WCD9XXX_IRQ_MAD_ULTRASOUND,
 	WCD9XXX_IRQ_SPEAKER_CLIPPING,
 	WCD9XXX_IRQ_MBHC_JACK_SWITCH,
+	WCD9XXX_IRQ_VBAT_MONITOR_ATTACK,
+	WCD9XXX_IRQ_VBAT_MONITOR_RELEASE,
 	WCD9XXX_NUM_IRQS,
 };
 
 enum {
-	TABLA_NUM_IRQS = WCD9XXX_NUM_IRQS,
-	SITAR_NUM_IRQS = WCD9XXX_NUM_IRQS,
+	TABLA_NUM_IRQS = WCD9310_NUM_IRQS,
+	SITAR_NUM_IRQS = WCD9310_NUM_IRQS,
 	TAIKO_NUM_IRQS = WCD9XXX_NUM_IRQS,
 	TAPAN_NUM_IRQS = WCD9XXX_NUM_IRQS,
 };
@@ -150,6 +153,17 @@ enum wcd9xxx_intf_status {
 #define WCD9XXX_CH(xport, xshift) \
 	{.port = xport, .shift = xshift}
 
+struct wcd9xxx_codec_type {
+	u16 id_major;
+	u16 id_minor;
+	struct mfd_cell *dev;
+	int size;
+	int num_irqs;
+	int version; /* -1 to retrive version from chip version register */
+	enum wcd9xxx_slim_slave_addr_type slim_slave_type;
+	u16 i2c_chip_status;
+};
+
 struct wcd9xxx {
 	struct device *dev;
 	struct slim_device *slim;
@@ -181,14 +195,14 @@ struct wcd9xxx {
 	struct pm_qos_request pm_qos_req;
 	int wlock_holders;
 
-	u8 idbyte[4];
+	u16 id_minor;
+	u16 id_major;
 
 	unsigned int irq_base;
 	unsigned int irq;
 	u8 irq_masks_cur[WCD9XXX_NUM_IRQ_REGS];
 	u8 irq_masks_cache[WCD9XXX_NUM_IRQ_REGS];
 	bool irq_level_high[WCD9XXX_MAX_NUM_IRQS];
-	int num_irqs;
 	/* Slimbus or I2S port */
 	u32 num_rx_port;
 	u32 num_tx_port;
@@ -196,7 +210,7 @@ struct wcd9xxx {
 	struct wcd9xxx_ch *tx_chs;
 	u32 mclk_rate;
 
-	enum wcd9xxx_slim_slave_addr_type slim_slave_type;
+	const struct wcd9xxx_codec_type *codec_type;
 };
 
 int wcd9xxx_reg_read(struct wcd9xxx *wcd9xxx, unsigned short reg);

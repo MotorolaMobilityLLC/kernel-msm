@@ -22,7 +22,7 @@
 #include "msm_smem.h"
 #include "msm_vidc_debug.h"
 
-#define HW_RESPONSE_TIMEOUT 200
+#define HW_RESPONSE_TIMEOUT 1000
 
 #define IS_ALREADY_IN_STATE(__p, __d) ({\
 	int __rc = (__p >= __d);\
@@ -373,24 +373,15 @@ static void handle_event_change(enum command_response cmd, void *data)
 {
 	struct msm_vidc_cb_cmd_done *response = data;
 	struct msm_vidc_inst *inst;
-	struct v4l2_control control = {0};
 	struct msm_vidc_cb_event *event_notify;
-	int event = 0;
+	int event = V4L2_EVENT_SEQ_CHANGED_INSUFFICIENT;
 	int rc = 0;
 	if (response) {
 		inst = (struct msm_vidc_inst *)response->session_id;
 		event_notify = (struct msm_vidc_cb_event *) response->data;
 		switch (event_notify->hal_event_type) {
 		case HAL_EVENT_SEQ_CHANGED_SUFFICIENT_RESOURCES:
-			event = V4L2_EVENT_SEQ_CHANGED_INSUFFICIENT;
-			control.id =
-				V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
-			rc = v4l2_g_ctrl(&inst->ctrl_handler, &control);
-			if (rc)
-				dprintk(VIDC_WARN,
-					"Failed to get Smooth streamng flag\n");
-			if (!rc && control.value == true)
-				event = V4L2_EVENT_SEQ_CHANGED_SUFFICIENT;
+			event = V4L2_EVENT_SEQ_CHANGED_SUFFICIENT;
 			break;
 		case HAL_EVENT_SEQ_CHANGED_INSUFFICIENT_RESOURCES:
 			event = V4L2_EVENT_SEQ_CHANGED_INSUFFICIENT;
@@ -398,11 +389,14 @@ static void handle_event_change(enum command_response cmd, void *data)
 		default:
 			break;
 		}
-
-		inst->reconfig_height = event_notify->height;
-		inst->reconfig_width = event_notify->width;
-		inst->in_reconfig = true;
-
+		if (event == V4L2_EVENT_SEQ_CHANGED_INSUFFICIENT) {
+			inst->reconfig_height = event_notify->height;
+			inst->reconfig_width = event_notify->width;
+			inst->in_reconfig = true;
+		} else {
+			inst->prop.height = event_notify->height;
+			inst->prop.width = event_notify->width;
+		}
 		rc = msm_vidc_check_session_supported(inst);
 		if (!rc) {
 			queue_v4l2_event(inst, event);
@@ -588,7 +582,6 @@ static void handle_session_close(enum command_response cmd, void *data)
 	if (response) {
 		inst = (struct msm_vidc_inst *)response->session_id;
 		signal_session_msg_receipt(cmd, inst);
-		queue_v4l2_event(inst, V4L2_EVENT_MSM_VIDC_CLOSE_DONE);
 		inst->session = NULL;
 		show_stats(inst);
 	} else {
@@ -821,6 +814,7 @@ static void  handle_seq_hdr_done(enum command_response cmd, void *data)
 	vb->v4l2_planes[0].bytesused = fill_buf_done->filled_len1;
 
 	vb->v4l2_buf.flags = V4L2_QCOM_BUF_FLAG_CODECCONFIG;
+	vb->v4l2_buf.timestamp = ns_to_timeval(0);
 
 	dprintk(VIDC_DBG, "Filled length = %d; flags %x\n",
 				vb->v4l2_planes[0].bytesused,
@@ -1287,7 +1281,6 @@ static int msm_vidc_load_resources(int flipped_state,
 	}
 
 	hdev = inst->core->device;
-
 	if (IS_ALREADY_IN_STATE(flipped_state, MSM_VIDC_LOAD_RESOURCES)) {
 		dprintk(VIDC_INFO, "inst: %p is already in state: %d\n",
 						inst, inst->state);
@@ -1445,7 +1438,7 @@ static int msm_comm_session_close(int flipped_state,
 			"Failed to send close\n");
 		goto exit;
 	}
-	change_inst_state(inst, MSM_VIDC_OPEN);
+	change_inst_state(inst, MSM_VIDC_CLOSE);
 exit:
 	return rc;
 }
@@ -1673,6 +1666,7 @@ int msm_comm_try_state(struct msm_vidc_inst *inst, int state)
 			core->state == VIDC_CORE_INVALID) {
 		dprintk(VIDC_ERR,
 				"Core is in bad state can't change the state");
+		rc = -EINVAL;
 		goto exit;
 	}
 	flipped_state = get_flipped_state(inst->state, state);
@@ -1906,8 +1900,14 @@ int msm_comm_try_get_bufreqs(struct msm_vidc_inst *inst)
 		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
 		return -EINVAL;
 	}
-	hdev = inst->core->device;
 
+	if (inst->state == MSM_VIDC_CORE_INVALID ||
+			inst->core->state == VIDC_CORE_INVALID) {
+		dprintk(VIDC_ERR,
+				"Core is in bad state can't query get_bufreqs()");
+		return -EINVAL;
+	}
+	hdev = inst->core->device;
 	mutex_lock(&inst->sync_lock);
 	if (inst->state < MSM_VIDC_OPEN_DONE || inst->state >= MSM_VIDC_CLOSE) {
 		dprintk(VIDC_ERR,
@@ -2393,6 +2393,7 @@ int msm_vidc_check_session_supported(struct msm_vidc_inst *inst)
 
 	if (inst->capability.capability_set) {
 		if (msm_vp8_low_tier &&
+			inst->core->hfi_type == VIDC_HFI_VENUS &&
 			inst->fmts[OUTPUT_PORT]->fourcc == V4L2_PIX_FMT_VP8) {
 			capability->width.max = DEFAULT_WIDTH;
 			capability->height.max = DEFAULT_HEIGHT;

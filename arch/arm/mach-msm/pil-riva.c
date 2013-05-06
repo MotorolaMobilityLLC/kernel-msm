@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,10 +23,10 @@
 #include <linux/wcnss_wlan.h>
 
 #include <mach/subsystem_restart.h>
+#include <mach/ramdump.h>
 
 #include "peripheral-loader.h"
 #include "scm-pas.h"
-#include "ramdump.h"
 #include "smd_private.h"
 
 #define RIVA_PMU_A2XB_CFG		0xB8
@@ -134,7 +134,7 @@ static int pil_riva_reset(struct pil_desc *pil)
 	u32 reg, sel;
 	struct riva_data *drv = dev_get_drvdata(pil->dev);
 	void __iomem *base = drv->base;
-	unsigned long start_addr = pil_get_entry_addr(pil);
+	phys_addr_t start_addr = pil_get_entry_addr(pil);
 	void __iomem *cbase = drv->cbase;
 	bool use_cxo = cxo_is_needed(drv);
 

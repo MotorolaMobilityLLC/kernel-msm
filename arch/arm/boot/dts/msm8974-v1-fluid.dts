@@ -17,11 +17,15 @@
 
 / {
 	model = "Qualcomm MSM 8974 FLUID";
-	compatible = "qcom,msm8974-fluid", "qcom,msm8974";
+	compatible = "qcom,msm8974-fluid", "qcom,msm8974", "qcom,fluid";
 	qcom,msm-id = <126 3 0>;
 
 };
 
 &pm8941_chg {
-	qcom,chg-charging-disabled;
+	qcom,charging-disabled;
+};
+
+&sdcc1 {
+	qcom,bus-width = <4>;
 };

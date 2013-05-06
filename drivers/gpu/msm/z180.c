@@ -483,6 +483,10 @@ z180_cmdstream_issueibcmds(struct kgsl_device_private *dev_priv,
 	z180_cmdwindow_write(device, ADDR_VGV3_CONTROL, cmd);
 	z180_cmdwindow_write(device, ADDR_VGV3_CONTROL, 0);
 error:
+
+	kgsl_trace_issueibcmds(device, context->id, ibdesc, numibs,
+		*timestamp, ctrl, result, 0);
+
 	return (int)result;
 }
 

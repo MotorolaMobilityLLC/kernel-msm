@@ -13,6 +13,7 @@
 #ifndef _ARCH_IOMMU_DOMAINS_H
 #define _ARCH_IOMMU_DOMAINS_H
 
+#include <linux/errno.h>
 #include <linux/memory_alloc.h>
 
 #define MSM_IOMMU_DOMAIN_SECURE	0x1
@@ -121,6 +122,7 @@ extern void msm_iommu_unmap_contig_buffer(unsigned long iova,
 					unsigned long size);
 
 extern int msm_register_domain(struct msm_iova_layout *layout);
+extern int msm_unregister_domain(struct iommu_domain *domain);
 
 #else
 static inline void msm_iommu_set_client_name(struct iommu_domain *domain,
@@ -191,6 +193,11 @@ static inline void msm_iommu_unmap_contig_buffer(unsigned long iova,
 }
 
 static inline int msm_register_domain(struct msm_iova_layout *layout)
+{
+	return -ENODEV;
+}
+
+static inline int msm_unregister_domain(struct iommu_domain *domain)
 {
 	return -ENODEV;
 }

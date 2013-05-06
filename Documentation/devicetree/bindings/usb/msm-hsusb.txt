@@ -7,7 +7,8 @@ Required properties :
 - regs : offset and length of the register set in the memory map
 - interrupts: IRQ line
 - interrupt-names: OTG interrupt name(s) referenced in interrupts above
-            HSUSB OTG expects "core_irq" and optionally "async_irq".
+            HSUSB OTG expects "core_irq" which is IRQ line from CORE and
+            optional ones are described in next section.
 - qcom,hsusb-otg-phy-type: PHY type can be one of
             1 - Chipidea 45nm PHY
 	    2 - Synopsis 28nm PHY
@@ -22,8 +23,15 @@ Required properties :
             1 - PHY control
 	    2 - PMIC control
 	    3 - User control (via debugfs)
+- <supply-name>-supply: handle to the regulator device tree node
+         Required "supply-name" is "HSUSB_VDDCX" (when voting for VDDCX) or
+         "hsusb_vdd_dig" (when voting for VDDCX Corner voltage),
+         "HSUSB_1p8-supply" and "HSUSB_3p3-supply".
 
 Optional properties :
+- interrupt-names : Optional interrupt resource entries are:
+    "async_irq" : Interrupt from HSPHY for asynchronous wakeup events in LPM.
+    "pmic_id_irq" : Interrupt from PMIC for external ID pin notification.
 - qcom,hsusb-otg-disable-reset: If present then core is RESET only during
 	    init, otherwise core is RESET for every cable disconnect as well
 - qcom,hsusb-otg-pnoc-errata-fix: If present then workaround for PNOC
@@ -39,7 +47,6 @@ Optional properties :
 - qcom,hsusb-otg-power-budget: VBUS power budget in mA
   0 will be treated as 500mA
 - qcom,hsusb-otg-pclk-src-name: The source of pclk
-- qcom,hsusb-otg-pmic-id-irq: ID, routed to PMIC IRQ number
 - Refer to "Documentation/devicetree/bindings/arm/msm/msm_bus.txt" for
   below optional properties:
     - qcom,msm_bus,name
@@ -54,16 +61,19 @@ Optional properties :
 	    Used for allowing USB to respond for remote wakup.
 - qcom,hsusb-otg-delay-lpm: If present then USB core will wait one second
 	after disconnect before entering low power mode.
-- <supply-name>-supply: handle to the regulator device tree node
-         Required "supply-name" is "HSUSB_VDDCX" (when voting for VDDCX) or
-         "hsusb_vdd_dig" (when voting for VDDCX Corner voltage),
-         "HSUSB_1p8-supply" and "HSUSB_3p3-supply".
+- qcom,hsusb-otg-delay-lpm-hndshk-on-disconnect: If present then USB core will
+	wait for the handshake with the IPA to complete before entering low
+	power mode.
+- <supply-name>-supply: handle to the regulator device tree node.
+         Optional "supply-name" is "vbus_otg" to supply vbus in host mode.
 - qcom,vdd-voltage-level: This property must be a list of three integer
 	values (no, min, max) where each value represents either a voltage
 	in microvolts or a value corresponding to voltage corner.
 - qcom,dp-manual-pullup: If present, vbus is not routed to USB controller/phy
 	and controller driver therefore enables pull-up explicitly before
 	starting controller using usbcmd run/stop bit.
+- qcom,usb2-enable-hsphy2: If present then USB2 controller is connected to 2nd
+	HSPHY.
 
 Example HSUSB OTG controller device node :
 	usb@f9690000 {
@@ -81,7 +91,6 @@ Example HSUSB OTG controller device node :
 		qcom,hsusb-otg-phy-init-seq = <0x01 0x90 0xffffffff>;
 		qcom,hsusb-otg-power-budget = <500>;
 		qcom,hsusb-otg-pclk-src-name = "dfab_usb_clk";
-		qcom,hsusb-otg-pmic-id-irq = <47>
 		qcom,hsusb-otg-lpm-on-dev-suspend;
 		qcom,hsusb-otg-clk-always-on-workaround;
 		hsusb_vdd_dig-supply = <&pm8226_s1_corner>;
@@ -115,6 +124,8 @@ Optional properties :
 - qcom,pool-64-bit-align: If present then the pool's memory will be aligned
   to 64 bits
 - qcom,enable_hbm: if present host bus manager is enabled.
+- qcom,disable-park-mode: if present park mode is enabled. Park mode enables executing
+  up to 3 usb packets from each QH.
 
 Example MSM HSUSB EHCI controller device node :
 	ehci: qcom,ehci-host@f9a55000 {
@@ -139,6 +150,8 @@ Optional properties :
   update USB PID and serial numbers used by bootloader in DLOAD mode.
 - qcom,android-usb-swfi-latency : value to be used by device to vote
   for DMA latency in microsecs.
+- qcom,android-usb-cdrom : if this property is present then device creates
+  a new LUN as CD-ROM
 
 Example Android USB device node :
 	android_usb@fc42b0c8 {
@@ -173,7 +186,11 @@ Required properties:
             If HSUSB_BAM is used, "hsusb" should be present.
             If HSIC_BAM is used, "hsic" should be present.
 - qcom,usb-bam-num-pipes: max number of pipes that can be used
-- qcom,usb-base-address: physical base address of the BAM
+
+Optional properties:
+- qcom,usb-bam-fifo-baseaddr: base address for bam pipe's data and descriptor
+  fifos. This can be on chip memory (ocimem) or usb private memory. This
+  property is required if sub-node's mem-type is ocimem or usb private mem.
 
 A number of USB BAM pipe parameters are represented as sub-nodes:
 
@@ -186,8 +203,9 @@ Subnode Required:
 	pipe num options: 0..127
 - qcom,usb-bam-mem-type: Type of memory used by this PIPE. Can be one of
             0 - Uses SPS's dedicated pipe memory
-            1 - USB's private memory residing @ 'qcom,usb-base-address'
+            1 - USB's private memory residing @ 'qcom,usb-bam-fifo-baseaddr'
             2 - System RAM allocated by driver
+	    3 - OCI memory residing @ 'qcom,usb-bam-fifo-baseaddr'
 - qcom,bam-type: BAM type can be one of
 	0 - SSUSB_BAM
 	1 - HSUSB_BAM

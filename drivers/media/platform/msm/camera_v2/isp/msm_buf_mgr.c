@@ -256,6 +256,13 @@ static int msm_isp_buf_unprepare(struct msm_isp_buf_mgr *buf_mgr,
 				buf_info->state ==
 					MSM_ISP_BUFFER_STATE_INITIALIZED)
 			continue;
+
+		if (!BUF_SRC(bufq->stream_id)) {
+			if (buf_info->state == MSM_ISP_BUFFER_STATE_DEQUEUED ||
+			buf_info->state == MSM_ISP_BUFFER_STATE_DIVERTED)
+				buf_mgr->vb2_ops->put_buf(buf_info->vb2_buf,
+					bufq->session_id, bufq->stream_id);
+		}
 		msm_isp_unprepare_v4l2_buf(buf_mgr, buf_info);
 	}
 	return 0;
@@ -281,16 +288,21 @@ static int msm_isp_get_buf(struct msm_isp_buf_mgr *buf_mgr, uint32_t id,
 		list_for_each_entry(temp_buf_info,
 			&bufq->share_head, share_list) {
 			if (!temp_buf_info->buf_used[id]) {
-				*buf_info = temp_buf_info;
 				temp_buf_info->buf_used[id] = 1;
 				temp_buf_info->buf_get_count++;
 				if (temp_buf_info->buf_get_count ==
 					bufq->buf_client_count)
 					list_del_init(
 					&temp_buf_info->share_list);
+				if (temp_buf_info->buf_reuse_flag) {
+					kfree(temp_buf_info);
+				} else {
+					*buf_info = temp_buf_info;
+					rc = 0;
+				}
 				spin_unlock_irqrestore(
 					&bufq->bufq_lock, flags);
-				return 0;
+				return rc;
 			}
 		}
 	}
@@ -322,21 +334,31 @@ static int msm_isp_get_buf(struct msm_isp_buf_mgr *buf_mgr, uint32_t id,
 	}
 
 	if (!(*buf_info)) {
-		spin_unlock_irqrestore(&bufq->bufq_lock, flags);
-		return rc;
-	}
-
-	(*buf_info)->state = MSM_ISP_BUFFER_STATE_DEQUEUED;
-	if (bufq->buf_type == ISP_SHARE_BUF) {
-		memset((*buf_info)->buf_used, 0,
-			   sizeof(uint8_t) * bufq->buf_client_count);
-		(*buf_info)->buf_used[id] = 1;
-		(*buf_info)->buf_get_count = 1;
-		(*buf_info)->buf_put_count = 0;
-		list_add_tail(&(*buf_info)->share_list, &bufq->share_head);
+		if (bufq->buf_type == ISP_SHARE_BUF) {
+			temp_buf_info = kzalloc(
+			   sizeof(struct msm_isp_buffer), GFP_ATOMIC);
+			temp_buf_info->buf_reuse_flag = 1;
+			temp_buf_info->buf_used[id] = 1;
+			temp_buf_info->buf_get_count = 1;
+			list_add_tail(&temp_buf_info->share_list,
+						  &bufq->share_head);
+		}
+	} else {
+		(*buf_info)->state = MSM_ISP_BUFFER_STATE_DEQUEUED;
+		if (bufq->buf_type == ISP_SHARE_BUF) {
+			memset((*buf_info)->buf_used, 0,
+				   sizeof(uint8_t) * bufq->buf_client_count);
+			(*buf_info)->buf_used[id] = 1;
+			(*buf_info)->buf_get_count = 1;
+			(*buf_info)->buf_put_count = 0;
+			(*buf_info)->buf_reuse_flag = 0;
+			list_add_tail(&(*buf_info)->share_list,
+						  &bufq->share_head);
+		}
+		rc = 0;
 	}
 	spin_unlock_irqrestore(&bufq->bufq_lock, flags);
-	return 0;
+	return rc;
 }
 
 static int msm_isp_put_buf(struct msm_isp_buf_mgr *buf_mgr,
@@ -363,7 +385,6 @@ static int msm_isp_put_buf(struct msm_isp_buf_mgr *buf_mgr,
 	switch (buf_info->state) {
 	case MSM_ISP_BUFFER_STATE_PREPARED:
 	case MSM_ISP_BUFFER_STATE_DEQUEUED:
-	case MSM_ISP_BUFFER_STATE_DISPATCHED:
 	case MSM_ISP_BUFFER_STATE_DIVERTED:
 		if (BUF_SRC(bufq->stream_id))
 			list_add_tail(&buf_info->list, &bufq->head);
@@ -371,6 +392,13 @@ static int msm_isp_put_buf(struct msm_isp_buf_mgr *buf_mgr,
 			buf_mgr->vb2_ops->put_buf(buf_info->vb2_buf,
 				bufq->session_id, bufq->stream_id);
 		buf_info->state = MSM_ISP_BUFFER_STATE_QUEUED;
+		rc = 0;
+		break;
+	case MSM_ISP_BUFFER_STATE_DISPATCHED:
+		buf_info->state = MSM_ISP_BUFFER_STATE_QUEUED;
+		rc = 0;
+		break;
+	case MSM_ISP_BUFFER_STATE_QUEUED:
 		rc = 0;
 		break;
 	default:
@@ -648,22 +676,35 @@ static void msm_isp_release_all_bufq(
 	}
 }
 
-static int msm_isp_attach_ctx(struct msm_isp_buf_mgr *buf_mgr,
-	struct device *iommu_ctx)
+static void msm_isp_register_ctx(struct msm_isp_buf_mgr *buf_mgr,
+	struct device **iommu_ctx, int num_iommu_ctx)
 {
-	int rc;
-	rc = iommu_attach_device(buf_mgr->iommu_domain, iommu_ctx);
-	if (rc) {
-		pr_err("%s: Iommu attach error\n", __func__);
-		return -EINVAL;
+	int i;
+	buf_mgr->num_iommu_ctx = num_iommu_ctx;
+	for (i = 0; i < num_iommu_ctx; i++)
+		buf_mgr->iommu_ctx[i] = iommu_ctx[i];
+}
+
+static int msm_isp_attach_ctx(struct msm_isp_buf_mgr *buf_mgr)
+{
+	int rc, i;
+	for (i = 0; i < buf_mgr->num_iommu_ctx; i++) {
+		rc = iommu_attach_device(buf_mgr->iommu_domain,
+			buf_mgr->iommu_ctx[i]);
+		if (rc) {
+			pr_err("%s: Iommu attach error\n", __func__);
+			return -EINVAL;
+		}
 	}
 	return 0;
 }
 
-static void msm_isp_detach_ctx(struct msm_isp_buf_mgr *buf_mgr,
-	struct device *iommu_ctx)
+static void msm_isp_detach_ctx(struct msm_isp_buf_mgr *buf_mgr)
 {
-	iommu_detach_device(buf_mgr->iommu_domain, iommu_ctx);
+	int i;
+	for (i = 0; i < buf_mgr->num_iommu_ctx; i++)
+		iommu_detach_device(buf_mgr->iommu_domain,
+			buf_mgr->iommu_ctx[i]);
 }
 
 static int msm_isp_init_isp_buf_mgr(
@@ -680,6 +721,7 @@ static int msm_isp_init_isp_buf_mgr(
 	}
 
 	CDBG("%s: E\n", __func__);
+	msm_isp_attach_ctx(buf_mgr);
 	buf_mgr->num_buf_q = num_buf_q;
 	buf_mgr->bufq =
 		kzalloc(sizeof(struct msm_isp_bufq) * num_buf_q,
@@ -704,6 +746,7 @@ static int msm_isp_deinit_isp_buf_mgr(
 	ion_client_destroy(buf_mgr->client);
 	kfree(buf_mgr->bufq);
 	buf_mgr->num_buf_q = 0;
+	msm_isp_detach_ctx(buf_mgr);
 	return 0;
 }
 
@@ -740,8 +783,7 @@ static struct msm_isp_buf_ops isp_buf_ops = {
 	.flush_buf = msm_isp_flush_buf,
 	.buf_done = msm_isp_buf_done,
 	.buf_divert = msm_isp_buf_divert,
-	.attach_ctx = msm_isp_attach_ctx,
-	.detach_ctx = msm_isp_detach_ctx,
+	.register_ctx = msm_isp_register_ctx,
 	.buf_mgr_init = msm_isp_init_isp_buf_mgr,
 	.buf_mgr_deinit = msm_isp_deinit_isp_buf_mgr,
 };

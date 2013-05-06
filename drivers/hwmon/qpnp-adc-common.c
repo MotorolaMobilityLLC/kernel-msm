@@ -373,7 +373,7 @@ int32_t qpnp_adc_scale_millidegc_pmic_voltage_thr(
 {
 	struct qpnp_vadc_linear_graph btm_param;
 	int64_t low_output = 0, high_output = 0;
-	int rc = 0;
+	int rc = 0, sign = 0;
 
 	rc = qpnp_get_vadc_gain_and_offset(&btm_param, CALIB_ABSOLUTE);
 	if (rc < 0) {
@@ -384,19 +384,36 @@ int32_t qpnp_adc_scale_millidegc_pmic_voltage_thr(
 	/* Convert to Kelvin and account for voltage to be written as 2mV/K */
 	low_output = (param->low_temp + KELVINMIL_DEGMIL) * 2;
 	/* Convert to voltage threshold */
-	low_output *= btm_param.dy;
-	do_div(low_output, btm_param.adc_vref);
+	low_output = (low_output - QPNP_ADC_625_UV) * btm_param.dy;
+	if (low_output < 0) {
+		sign = 1;
+		low_output = -low_output;
+	}
+	do_div(low_output, QPNP_ADC_625_UV);
+	if (sign)
+		low_output = -low_output;
 	low_output += btm_param.adc_gnd;
 
+	sign = 0;
 	/* Convert to Kelvin and account for voltage to be written as 2mV/K */
 	high_output = (param->high_temp + KELVINMIL_DEGMIL) * 2;
 	/* Convert to voltage threshold */
-	high_output *= btm_param.dy;
-	do_div(high_output, btm_param.adc_vref);
+	high_output = (high_output - QPNP_ADC_625_UV) * btm_param.dy;
+	if (high_output < 0) {
+		sign = 1;
+		high_output = -high_output;
+	}
+	do_div(high_output, QPNP_ADC_625_UV);
+	if (sign)
+		high_output = -high_output;
 	high_output += btm_param.adc_gnd;
 
-	*low_threshold = low_output;
-	*high_threshold = high_output;
+	*low_threshold = (uint32_t) low_output;
+	*high_threshold = (uint32_t) high_output;
+	pr_debug("high_temp:%d, low_temp:%d\n", param->high_temp,
+				param->low_temp);
+	pr_debug("adc_code_high:%x, adc_code_low:%x\n", *high_threshold,
+				*low_threshold);
 
 	return 0;
 }
@@ -637,21 +654,35 @@ int32_t qpnp_adc_vbatt_rscaler(struct qpnp_adc_tm_btm_param *param,
 		uint32_t *low_threshold, uint32_t *high_threshold)
 {
 	struct qpnp_vadc_linear_graph vbatt_param;
-	int rc = 0;
+	int rc = 0, sign = 0;
+	int64_t low_thr = 0, high_thr = 0;
 
 	rc = qpnp_get_vadc_gain_and_offset(&vbatt_param, CALIB_ABSOLUTE);
 	if (rc < 0)
 		return rc;
 
-	*low_threshold = (((param->low_thr/3) - QPNP_ADC_625_UV) *
+	low_thr = (((param->low_thr/3) - QPNP_ADC_625_UV) *
 				vbatt_param.dy);
-	do_div(*low_threshold, QPNP_ADC_625_UV);
-	*low_threshold += vbatt_param.adc_gnd;
+	if (low_thr < 0) {
+		sign = 1;
+		low_thr = -low_thr;
+	}
+	do_div(low_thr, QPNP_ADC_625_UV);
+	if (sign)
+		low_thr = -low_thr;
+	*low_threshold = low_thr + vbatt_param.adc_gnd;
 
-	*high_threshold = (((param->high_thr/3) - QPNP_ADC_625_UV) *
+	sign = 0;
+	high_thr = (((param->high_thr/3) - QPNP_ADC_625_UV) *
 				vbatt_param.dy);
-	do_div(*high_threshold, QPNP_ADC_625_UV);
-	*high_threshold += vbatt_param.adc_gnd;
+	if (high_thr < 0) {
+		sign = 1;
+		high_thr = -high_thr;
+	}
+	do_div(high_thr, QPNP_ADC_625_UV);
+	if (sign)
+		high_thr = -high_thr;
+	*high_threshold = high_thr + vbatt_param.adc_gnd;
 
 	pr_debug("high_volt:%d, low_volt:%d\n", param->high_thr,
 				param->low_thr);
@@ -875,8 +906,6 @@ int32_t qpnp_adc_get_devicetree_data(struct spmi_device *spmi,
 	}
 
 	init_completion(&adc_qpnp->adc_rslt_completion);
-
-	mutex_init(&adc_qpnp->adc_lock);
 
 	return 0;
 }

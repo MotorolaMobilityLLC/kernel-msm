@@ -55,6 +55,9 @@ struct bus_type msm_iommu_sec_bus_type = {
 	.name = "msm_iommu_sec_bus",
 };
 
+static int msm_iommu_unmap_range(struct iommu_domain *domain, unsigned int va,
+				 unsigned int len);
+
 static inline void clean_pte(unsigned long *start, unsigned long *end,
 			     int redirect)
 {
@@ -156,21 +159,20 @@ static void __disable_clocks(struct msm_iommu_drvdata *drvdata)
 	clk_disable_unprepare(drvdata->pclk);
 }
 
-static int _iommu_power_on(void *data)
+static int __enable_regulators(struct msm_iommu_drvdata *drvdata)
 {
-	struct msm_iommu_drvdata *drvdata;
-
-	drvdata = (struct msm_iommu_drvdata *)data;
-	return __enable_clocks(drvdata);
+	/* No need to do anything. IOMMUv0 is always on. */
+	return 0;
 }
 
-static int _iommu_power_off(void *data)
+static void __disable_regulators(struct msm_iommu_drvdata *drvdata)
 {
-	struct msm_iommu_drvdata *drvdata;
+	/* No need to do anything. IOMMUv0 is always on. */
+}
 
-	drvdata = (struct msm_iommu_drvdata *)data;
-	__disable_clocks(drvdata);
-	return 0;
+static void *_iommu_lock_initialize(void)
+{
+	return msm_iommu_lock_initialize();
 }
 
 static void _iommu_lock_acquire(void)
@@ -184,8 +186,11 @@ static void _iommu_lock_release(void)
 }
 
 struct iommu_access_ops iommu_access_ops_v0 = {
-	.iommu_power_on = _iommu_power_on,
-	.iommu_power_off = _iommu_power_off,
+	.iommu_power_on = __enable_regulators,
+	.iommu_power_off = __disable_regulators,
+	.iommu_clk_on = __enable_clocks,
+	.iommu_clk_off = __disable_clocks,
+	.iommu_lock_initialize = _iommu_lock_initialize,
 	.iommu_lock_acquire = _iommu_lock_acquire,
 	.iommu_lock_release = _iommu_lock_release,
 };
@@ -957,6 +962,7 @@ static int msm_iommu_map_range(struct iommu_domain *domain, unsigned int va,
 			       int prot)
 {
 	unsigned int pa;
+	unsigned int start_va = va;
 	unsigned int offset = 0;
 	unsigned long *fl_table;
 	unsigned long *fl_pte;
@@ -1030,12 +1036,6 @@ static int msm_iommu_map_range(struct iommu_domain *domain, unsigned int va,
 				chunk_offset = 0;
 				sg = sg_next(sg);
 				pa = get_phys_addr(sg);
-				if (pa == 0) {
-					pr_debug("No dma address for sg %p\n",
-							sg);
-					ret = -EINVAL;
-					goto fail;
-				}
 			}
 			continue;
 		}
@@ -1089,12 +1089,6 @@ static int msm_iommu_map_range(struct iommu_domain *domain, unsigned int va,
 				chunk_offset = 0;
 				sg = sg_next(sg);
 				pa = get_phys_addr(sg);
-				if (pa == 0) {
-					pr_debug("No dma address for sg %p\n",
-							sg);
-					ret = -EINVAL;
-					goto fail;
-				}
 			}
 		}
 
@@ -1107,6 +1101,8 @@ static int msm_iommu_map_range(struct iommu_domain *domain, unsigned int va,
 	__flush_iotlb(domain);
 fail:
 	mutex_unlock(&msm_iommu_lock);
+	if (ret && offset > 0)
+		msm_iommu_unmap_range(domain, start_va, offset);
 	return ret;
 }
 

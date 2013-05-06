@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,11 +24,11 @@
 
 #include <mach/subsystem_restart.h>
 #include <mach/msm_smsm.h>
+#include <mach/ramdump.h>
 
 #include "modem_notifier.h"
 #include "peripheral-loader.h"
 #include "scm-pas.h"
-#include "ramdump.h"
 
 #define MARM_BOOT_CONTROL		0x0010
 #define MARM_RESET			0x2BD4
@@ -93,7 +93,7 @@ static int modem_reset(struct pil_desc *pil)
 {
 	u32 reg;
 	const struct modem_data *drv = dev_get_drvdata(pil->dev);
-	unsigned long start_addr = pil_get_entry_addr(pil);
+	phys_addr_t start_addr = pil_get_entry_addr(pil);
 
 	/* Put modem AHB0,1,2 clocks into reset */
 	writel_relaxed(BIT(0) | BIT(1), drv->cbase + MAHB0_SFAB_PORT_RESET);

@@ -27,10 +27,10 @@
 #include <asm/page.h>
 #include <asm/cacheflush.h>
 #include <mach/iommu_domains.h>
+#include <trace/events/kmem.h>
 
 struct ion_iommu_heap {
 	struct ion_heap heap;
-	unsigned int has_outer_cache;
 };
 
 /*
@@ -76,13 +76,21 @@ static struct page_info *alloc_largest_available(unsigned long size,
 		if (max_order < orders[i])
 			continue;
 
-		gfp = GFP_KERNEL | __GFP_HIGHMEM | __GFP_COMP;
-		if (orders[i])
-			gfp |= __GFP_NOWARN;
+		gfp = __GFP_HIGHMEM;
 
+		if (orders[i]) {
+			gfp |= __GFP_COMP | __GFP_NORETRY |
+			       __GFP_NO_KSWAPD | __GFP_NOWARN;
+		} else {
+			gfp |= GFP_KERNEL;
+		}
+		trace_alloc_pages_iommu_start(gfp, orders[i]);
 		page = alloc_pages(gfp, orders[i]);
-		if (!page)
+		trace_alloc_pages_iommu_end(gfp, orders[i]);
+		if (!page) {
+			trace_alloc_pages_iommu_fail(gfp, orders[i]);
 			continue;
+		}
 
 		info = kmalloc(sizeof(struct page_info), GFP_KERNEL);
 		info->page = page;
@@ -108,7 +116,7 @@ static int ion_iommu_heap_allocate(struct ion_heap *heap,
 		int j;
 		void *ptr = NULL;
 		unsigned int npages_to_vmap, total_pages, num_large_pages = 0;
-		long size_remaining = PAGE_ALIGN(size);
+		unsigned long size_remaining = PAGE_ALIGN(size);
 		unsigned int max_order = ION_IS_CACHED(flags) ? 0 : orders[0];
 
 		data = kmalloc(sizeof(*data), GFP_KERNEL);
@@ -311,157 +319,6 @@ int ion_iommu_heap_map_user(struct ion_heap *heap, struct ion_buffer *buffer,
 	return 0;
 }
 
-int ion_iommu_heap_map_iommu(struct ion_buffer *buffer,
-					struct ion_iommu_map *data,
-					unsigned int domain_num,
-					unsigned int partition_num,
-					unsigned long align,
-					unsigned long iova_length,
-					unsigned long flags)
-{
-	struct iommu_domain *domain;
-	int ret = 0;
-	unsigned long extra;
-	int prot = IOMMU_WRITE | IOMMU_READ;
-	prot |= ION_IS_CACHED(flags) ? IOMMU_CACHE : 0;
-
-	BUG_ON(!msm_use_iommu());
-
-	data->mapped_size = iova_length;
-	extra = iova_length - buffer->size;
-
-	/* Use the biggest alignment to allow bigger IOMMU mappings.
-	 * Use the first entry since the first entry will always be the
-	 * biggest entry. To take advantage of bigger mapping sizes both the
-	 * VA and PA addresses have to be aligned to the biggest size.
-	 */
-	if (buffer->sg_table->sgl->length > align)
-		align = buffer->sg_table->sgl->length;
-
-	ret = msm_allocate_iova_address(domain_num, partition_num,
-						data->mapped_size, align,
-						&data->iova_addr);
-
-	if (ret)
-		goto out;
-
-	domain = msm_get_iommu_domain(domain_num);
-
-	if (!domain) {
-		ret = -ENOMEM;
-		goto out1;
-	}
-
-	ret = iommu_map_range(domain, data->iova_addr,
-			      buffer->sg_table->sgl,
-			      buffer->size, prot);
-	if (ret) {
-		pr_err("%s: could not map %lx in domain %p\n",
-			__func__, data->iova_addr, domain);
-		goto out1;
-	}
-
-	if (extra) {
-		unsigned long extra_iova_addr = data->iova_addr + buffer->size;
-		unsigned long phys_addr = sg_phys(buffer->sg_table->sgl);
-		ret = msm_iommu_map_extra(domain, extra_iova_addr, phys_addr,
-					extra, SZ_4K, prot);
-		if (ret)
-			goto out2;
-	}
-	return ret;
-
-out2:
-	iommu_unmap_range(domain, data->iova_addr, buffer->size);
-out1:
-	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
-				buffer->size);
-
-out:
-
-	return ret;
-}
-
-void ion_iommu_heap_unmap_iommu(struct ion_iommu_map *data)
-{
-	unsigned int domain_num;
-	unsigned int partition_num;
-	struct iommu_domain *domain;
-
-	BUG_ON(!msm_use_iommu());
-
-	domain_num = iommu_map_domain(data);
-	partition_num = iommu_map_partition(data);
-
-	domain = msm_get_iommu_domain(domain_num);
-
-	if (!domain) {
-		WARN(1, "Could not get domain %d. Corruption?\n", domain_num);
-		return;
-	}
-
-	iommu_unmap_range(domain, data->iova_addr, data->mapped_size);
-	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
-				data->mapped_size);
-
-	return;
-}
-
-static int ion_iommu_cache_ops(struct ion_heap *heap, struct ion_buffer *buffer,
-			void *vaddr, unsigned int offset, unsigned int length,
-			unsigned int cmd)
-{
-	void (*outer_cache_op)(phys_addr_t, phys_addr_t);
-	struct ion_iommu_heap *iommu_heap =
-	     container_of(heap, struct  ion_iommu_heap, heap);
-
-	switch (cmd) {
-	case ION_IOC_CLEAN_CACHES:
-		if (!vaddr)
-			dma_sync_sg_for_device(NULL, buffer->sg_table->sgl,
-				buffer->sg_table->nents, DMA_TO_DEVICE);
-		else
-			dmac_clean_range(vaddr, vaddr + length);
-		outer_cache_op = outer_clean_range;
-		break;
-	case ION_IOC_INV_CACHES:
-		if (!vaddr)
-			dma_sync_sg_for_cpu(NULL, buffer->sg_table->sgl,
-				buffer->sg_table->nents, DMA_FROM_DEVICE);
-		else
-			dmac_inv_range(vaddr, vaddr + length);
-		outer_cache_op = outer_inv_range;
-		break;
-	case ION_IOC_CLEAN_INV_CACHES:
-		if (!vaddr) {
-			dma_sync_sg_for_device(NULL, buffer->sg_table->sgl,
-				buffer->sg_table->nents, DMA_TO_DEVICE);
-			dma_sync_sg_for_cpu(NULL, buffer->sg_table->sgl,
-				buffer->sg_table->nents, DMA_FROM_DEVICE);
-		} else {
-			dmac_flush_range(vaddr, vaddr + length);
-		}
-		outer_cache_op = outer_flush_range;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (iommu_heap->has_outer_cache) {
-		unsigned long pstart;
-		unsigned int i;
-		struct ion_iommu_priv_data *data = buffer->priv_virt;
-		if (!data)
-			return -ENOMEM;
-
-		for (i = 0; i < data->nrpages; ++i) {
-			pstart = page_to_phys(data->pages[i]);
-			outer_cache_op(pstart, pstart + PAGE_SIZE);
-		}
-	}
-	return 0;
-}
-
 static struct sg_table *ion_iommu_heap_map_dma(struct ion_heap *heap,
 					      struct ion_buffer *buffer)
 {
@@ -479,9 +336,6 @@ static struct ion_heap_ops iommu_heap_ops = {
 	.map_user = ion_iommu_heap_map_user,
 	.map_kernel = ion_iommu_heap_map_kernel,
 	.unmap_kernel = ion_iommu_heap_unmap_kernel,
-	.map_iommu = ion_iommu_heap_map_iommu,
-	.unmap_iommu = ion_iommu_heap_unmap_iommu,
-	.cache_op = ion_iommu_cache_ops,
 	.map_dma = ion_iommu_heap_map_dma,
 	.unmap_dma = ion_iommu_heap_unmap_dma,
 };
@@ -496,7 +350,6 @@ struct ion_heap *ion_iommu_heap_create(struct ion_platform_heap *heap_data)
 
 	iommu_heap->heap.ops = &iommu_heap_ops;
 	iommu_heap->heap.type = ION_HEAP_TYPE_IOMMU;
-	iommu_heap->has_outer_cache = heap_data->has_outer_cache;
 
 	return &iommu_heap->heap;
 }

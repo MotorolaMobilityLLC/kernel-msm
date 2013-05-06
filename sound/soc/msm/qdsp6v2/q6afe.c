@@ -17,7 +17,7 @@
 #include <linux/wait.h>
 #include <linux/jiffies.h>
 #include <linux/sched.h>
-#include <linux/msm_ion.h>
+#include <linux/msm_audio_ion.h>
 #include <sound/apr_audio-v2.h>
 #include <sound/q6afe-v2.h>
 #include <sound/q6audio-v2.h>
@@ -56,6 +56,10 @@ static struct afe_ctl this_afe;
 #define TIMEOUT_MS 1000
 #define Q6AFE_MAX_VOLUME 0x3FFF
 
+static int pcm_afe_instance[2];
+static int proxy_afe_instance[2];
+bool afe_close_done[2] = {true, true};
+
 #define SIZEOF_CFG_CMD(y) \
 		(sizeof(struct apr_hdr) + sizeof(u16) + (sizeof(struct y)))
 
@@ -76,6 +80,8 @@ void afe_set_aanc_info(struct aanc_data *q6_aanc_info)
 
 static int32_t afe_callback(struct apr_client_data *data, void *priv)
 {
+	int i;
+
 	if (!data) {
 		pr_err("%s: Invalid param data\n", __func__);
 		return -EINVAL;
@@ -83,6 +89,12 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 	if (data->opcode == RESET_EVENTS) {
 		pr_debug("q6afe: reset event = %d %d apr[%p]\n",
 			data->reset_event, data->reset_proc, this_afe.apr);
+
+		for (i = 0; i < MAX_AUDPROC_TYPES; i++) {
+			this_afe.afe_cal_addr[i].cal_paddr = 0;
+			this_afe.afe_cal_addr[i].cal_size = 0;
+		}
+
 		if (this_afe.apr) {
 			apr_reset(this_afe.apr);
 			atomic_set(&this_afe.state, 0);
@@ -205,7 +217,7 @@ int afe_get_port_type(u16 port_id)
 
 	switch (port_id) {
 	case PRIMARY_I2S_RX:
-	case PCM_RX:
+	case AFE_PORT_ID_PRIMARY_PCM_RX:
 	case SECONDARY_I2S_RX:
 	case MI2S_RX:
 	case HDMI_RX:
@@ -224,11 +236,12 @@ int afe_get_port_type(u16 port_id)
 	case AFE_PORT_ID_SECONDARY_MI2S_RX:
 	case AFE_PORT_ID_TERTIARY_MI2S_RX:
 	case AFE_PORT_ID_QUATERNARY_MI2S_RX:
+	case AFE_PORT_ID_SECONDARY_PCM_RX:
 		ret = MSM_AFE_PORT_TYPE_RX;
 		break;
 
 	case PRIMARY_I2S_TX:
-	case PCM_TX:
+	case AFE_PORT_ID_PRIMARY_PCM_TX:
 	case SECONDARY_I2S_TX:
 	case MI2S_TX:
 	case DIGI_MIC_TX:
@@ -247,6 +260,7 @@ int afe_get_port_type(u16 port_id)
 	case AFE_PORT_ID_SECONDARY_MI2S_TX:
 	case AFE_PORT_ID_TERTIARY_MI2S_TX:
 	case AFE_PORT_ID_QUATERNARY_MI2S_TX:
+	case AFE_PORT_ID_SECONDARY_PCM_TX:
 		ret = MSM_AFE_PORT_TYPE_TX;
 		break;
 
@@ -293,8 +307,10 @@ int afe_sizeof_cfg_cmd(u16 port_id)
 	case RT_PROXY_PORT_001_TX:
 		ret_size = SIZEOF_CFG_CMD(afe_param_id_rt_proxy_port_cfg);
 		break;
-	case PCM_RX:
-	case PCM_TX:
+	case AFE_PORT_ID_PRIMARY_PCM_RX:
+	case AFE_PORT_ID_PRIMARY_PCM_TX:
+	case AFE_PORT_ID_SECONDARY_PCM_RX:
+	case AFE_PORT_ID_SECONDARY_PCM_TX:
 	default:
 		ret_size = SIZEOF_CFG_CMD(afe_param_id_pcm_cfg);
 		break;
@@ -939,8 +955,8 @@ enum afe_mad_type afe_port_get_mad_type(u16 port_id)
 	int i;
 
 	i = port_id - SLIMBUS_0_RX;
-	if (i < 0 || i > ARRAY_SIZE(afe_ports_mad_type)) {
-		pr_err("%s: Invalid port_id 0x%x\n", __func__, port_id);
+	if (i < 0 || i >= ARRAY_SIZE(afe_ports_mad_type)) {
+		pr_debug("%s: Non Slimbus port_id 0x%x\n", __func__, port_id);
 		return MAD_HW_NONE;
 	}
 	return (enum afe_mad_type) atomic_read(&afe_ports_mad_type[i]);
@@ -1057,11 +1073,30 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	}
 
 	if ((port_id == RT_PROXY_DAI_001_RX) ||
-		(port_id == RT_PROXY_DAI_002_TX))
-		return 0;
-	if ((port_id == RT_PROXY_DAI_002_RX) ||
-		(port_id == RT_PROXY_DAI_001_TX))
+		(port_id == RT_PROXY_DAI_002_TX)) {
+		pr_debug("%s: before incrementing pcm_afe_instance %d"\
+			" port_id %d\n", __func__,
+			pcm_afe_instance[port_id & 0x1], port_id);
 		port_id = VIRTUAL_ID_TO_PORTID(port_id);
+		pcm_afe_instance[port_id & 0x1]++;
+		return 0;
+	}
+	if ((port_id == RT_PROXY_DAI_002_RX) ||
+			(port_id == RT_PROXY_DAI_001_TX)) {
+		pr_debug("%s: before incrementing proxy_afe_instance %d"\
+			" port_id %d\n", __func__,
+			proxy_afe_instance[port_id & 0x1], port_id);
+
+		if (!afe_close_done[port_id & 0x1]) {
+			/*close pcm dai corresponding to the proxy dai*/
+			afe_close(port_id - 0x10);
+			pcm_afe_instance[port_id & 0x1]++;
+			pr_debug("%s: reconfigure afe port again\n", __func__);
+		}
+		proxy_afe_instance[port_id & 0x1]++;
+		afe_close_done[port_id & 0x1] = false;
+		port_id = VIRTUAL_ID_TO_PORTID(port_id);
+	}
 
 	pr_debug("%s: port id: %#x\n", __func__, port_id);
 
@@ -1118,9 +1153,11 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	case PRIMARY_I2S_TX:
 		cfg_type = AFE_PARAM_ID_PCM_CONFIG;
 		break;
-	case PCM_RX:
-	case PCM_TX:
-		cfg_type = AFE_PARAM_ID_HDMI_CONFIG;
+	case AFE_PORT_ID_PRIMARY_PCM_RX:
+	case AFE_PORT_ID_PRIMARY_PCM_TX:
+	case AFE_PORT_ID_SECONDARY_PCM_RX:
+	case AFE_PORT_ID_SECONDARY_PCM_TX:
+		cfg_type = AFE_PARAM_ID_PCM_CONFIG;
 		break;
 	case SECONDARY_I2S_RX:
 	case SECONDARY_I2S_TX:
@@ -1213,8 +1250,14 @@ int afe_get_port_index(u16 port_id)
 	switch (port_id) {
 	case PRIMARY_I2S_RX: return IDX_PRIMARY_I2S_RX;
 	case PRIMARY_I2S_TX: return IDX_PRIMARY_I2S_TX;
-	case PCM_RX: return IDX_PCM_RX;
-	case PCM_TX: return IDX_PCM_TX;
+	case AFE_PORT_ID_PRIMARY_PCM_RX:
+		return IDX_AFE_PORT_ID_PRIMARY_PCM_RX;
+	case AFE_PORT_ID_PRIMARY_PCM_TX:
+		return IDX_AFE_PORT_ID_PRIMARY_PCM_TX;
+	case AFE_PORT_ID_SECONDARY_PCM_RX:
+		return IDX_AFE_PORT_ID_SECONDARY_PCM_RX;
+	case AFE_PORT_ID_SECONDARY_PCM_TX:
+		return IDX_AFE_PORT_ID_SECONDARY_PCM_TX;
 	case SECONDARY_I2S_RX: return IDX_SECONDARY_I2S_RX;
 	case SECONDARY_I2S_TX: return IDX_SECONDARY_I2S_TX;
 	case MI2S_RX: return IDX_MI2S_RX;
@@ -1308,8 +1351,10 @@ int afe_open(u16 port_id,
 	case PRIMARY_I2S_TX:
 		cfg_type = AFE_PARAM_ID_I2S_CONFIG;
 		break;
-	case PCM_RX:
-	case PCM_TX:
+	case AFE_PORT_ID_PRIMARY_PCM_RX:
+	case AFE_PORT_ID_PRIMARY_PCM_TX:
+	case AFE_PORT_ID_SECONDARY_PCM_RX:
+	case AFE_PORT_ID_SECONDARY_PCM_TX:
 		cfg_type = AFE_PARAM_ID_PCM_CONFIG;
 		break;
 	case SECONDARY_I2S_RX:
@@ -1707,35 +1752,13 @@ int q6afe_audio_client_buf_alloc_contiguous(unsigned int dir,
 
 	ac->port[dir].buf = buf;
 
-	buf[0].client = msm_ion_client_create(UINT_MAX, "audio_client");
-	if (IS_ERR_OR_NULL((void *)buf[0].client)) {
-		pr_err("%s: ION create client for AUDIO failed\n", __func__);
-		goto fail;
-	}
-	buf[0].handle = ion_alloc(buf[0].client, bufsz * bufcnt, SZ_4K,
-				  (0x1 << ION_AUDIO_HEAP_ID), 0);
-	if (IS_ERR_OR_NULL((void *) buf[0].handle)) {
-		pr_err("%s: ION memory allocation for AUDIO failed\n",
-			__func__);
-		goto fail;
-	}
-
-	rc = ion_phys(buf[0].client, buf[0].handle,
-		  (ion_phys_addr_t *)&buf[0].phys, (size_t *)&len);
+	rc = msm_audio_ion_alloc("audio_client", &buf[0].client,
+				&buf[0].handle, bufsz*bufcnt,
+				(ion_phys_addr_t *)&buf[0].phys, (size_t *)&len,
+				&buf[0].data);
 	if (rc) {
-		pr_err("%s: ION Get Physical for AUDIO failed, rc = %d\n",
+		pr_err("%s: audio ION alloc failed, rc = %d\n",
 			__func__, rc);
-		goto fail;
-	}
-
-	buf[0].data = ion_map_kernel(buf[0].client, buf[0].handle);
-	if (IS_ERR_OR_NULL((void *) buf[0].data)) {
-		pr_err("%s: ION memory mapping for AUDIO failed\n", __func__);
-		goto fail;
-	}
-	memset((void *)buf[0].data, 0, (bufsz * bufcnt));
-	if (!buf[0].data) {
-		pr_err("%s:invalid vaddr, iomap failed\n", __func__);
 		mutex_unlock(&ac->cmd_lock);
 		goto fail;
 	}
@@ -1944,9 +1967,7 @@ int q6afe_audio_client_buf_free_contiguous(unsigned int dir,
 	cnt = port->max_buf_cnt - 1;
 
 	if (port->buf[0].data) {
-		ion_unmap_kernel(port->buf[0].client, port->buf[0].handle);
-		ion_free(port->buf[0].client, port->buf[0].handle);
-		ion_client_destroy(port->buf[0].client);
+		msm_audio_ion_free(port->buf[0].client, port->buf[0].handle);
 		pr_debug("%s:data[%p]phys[%p][%p] , client[%p] handle[%p]\n",
 			__func__,
 			(void *)port->buf[0].data,
@@ -2519,8 +2540,10 @@ int afe_validate_port(u16 port_id)
 	switch (port_id) {
 	case PRIMARY_I2S_RX:
 	case PRIMARY_I2S_TX:
-	case PCM_RX:
-	case PCM_TX:
+	case AFE_PORT_ID_PRIMARY_PCM_RX:
+	case AFE_PORT_ID_PRIMARY_PCM_TX:
+	case AFE_PORT_ID_SECONDARY_PCM_RX:
+	case AFE_PORT_ID_SECONDARY_PCM_TX:
 	case SECONDARY_I2S_RX:
 	case SECONDARY_I2S_TX:
 	case MI2S_RX:
@@ -2628,6 +2651,31 @@ int afe_close(int port_id)
 		goto fail_cmd;
 	}
 	pr_debug("%s: port_id=%d\n", __func__, port_id);
+	if ((port_id == RT_PROXY_DAI_001_RX) ||
+			(port_id == RT_PROXY_DAI_002_TX)) {
+		pr_debug("%s: before decrementing pcm_afe_instance %d\n",
+			__func__, pcm_afe_instance[port_id & 0x1]);
+		port_id = VIRTUAL_ID_TO_PORTID(port_id);
+		pcm_afe_instance[port_id & 0x1]--;
+		if (!(pcm_afe_instance[port_id & 0x1] == 0 &&
+			proxy_afe_instance[port_id & 0x1] == 0))
+			return 0;
+		else
+			afe_close_done[port_id & 0x1] = true;
+	}
+
+	if ((port_id == RT_PROXY_DAI_002_RX) ||
+		(port_id == RT_PROXY_DAI_001_TX)) {
+		pr_debug("%s: before decrementing proxy_afe_instance %d\n",
+			__func__, proxy_afe_instance[port_id & 0x1]);
+		port_id = VIRTUAL_ID_TO_PORTID(port_id);
+		proxy_afe_instance[port_id & 0x1]--;
+		if (!(pcm_afe_instance[port_id & 0x1] == 0 &&
+			proxy_afe_instance[port_id & 0x1] == 0))
+			return 0;
+		else
+			afe_close_done[port_id & 0x1] = true;
+	}
 
 	port_id = q6audio_convert_virtual_to_portid(port_id);
 	index = q6audio_get_port_index(port_id);
@@ -2919,11 +2967,17 @@ fail_cmd:
 }
 
 int afe_spk_prot_feed_back_cfg(int src_port, int dst_port,
-	int l_ch, int r_ch)
+	int l_ch, int r_ch, u32 enable)
 {
 	int ret = -EINVAL;
 	union afe_spkr_prot_config prot_config;
 	int index = 0;
+
+	if (!enable) {
+		pr_debug("%s Disable Feedback tx path", __func__);
+		this_afe.vi_tx_port = -1;
+		return 0;
+	}
 
 	if ((q6audio_validate_port(src_port) < 0) ||
 		(q6audio_validate_port(dst_port) < 0)) {
@@ -2965,6 +3019,7 @@ static int __init afe_init(void)
 	this_afe.apr = NULL;
 	this_afe.dtmf_gen_rx_portid = -1;
 	this_afe.mmap_handle = 0;
+	this_afe.vi_tx_port = -1;
 	for (i = 0; i < AFE_MAX_PORTS; i++)
 		init_waitqueue_head(&this_afe.wait[i]);
 

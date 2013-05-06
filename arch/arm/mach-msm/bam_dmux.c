@@ -434,8 +434,7 @@ static void queue_rx(void)
 		list_add_tail(&info->list_node, &bam_rx_pool);
 		rx_len_cached = ++bam_rx_pool_len;
 		ret = sps_transfer_one(bam_rx_pipe, info->dma_address,
-			BUFFER_SIZE, info,
-			SPS_IOVEC_FLAG_INT | SPS_IOVEC_FLAG_EOT);
+			BUFFER_SIZE, info, 0);
 		if (ret) {
 			list_del(&info->list_node);
 			rx_len_cached = --bam_rx_pool_len;
@@ -657,7 +656,7 @@ static int bam_mux_write_cmd(void *data, uint32_t len)
 	spin_lock_irqsave(&bam_tx_pool_spinlock, flags);
 	list_add_tail(&pkt->list_node, &bam_tx_pool);
 	rc = sps_transfer_one(bam_tx_pipe, dma_address, len,
-				pkt, SPS_IOVEC_FLAG_INT | SPS_IOVEC_FLAG_EOT);
+				pkt, SPS_IOVEC_FLAG_EOT);
 	if (rc) {
 		DMUX_LOG_KERR("%s sps_transfer_one failed rc=%d\n",
 			__func__, rc);
@@ -830,7 +829,7 @@ int msm_bam_dmux_write(uint32_t id, struct sk_buff *skb)
 	spin_lock_irqsave(&bam_tx_pool_spinlock, flags);
 	list_add_tail(&pkt->list_node, &bam_tx_pool);
 	rc = sps_transfer_one(bam_tx_pipe, dma_address, skb->len,
-				pkt, SPS_IOVEC_FLAG_INT | SPS_IOVEC_FLAG_EOT);
+				pkt, SPS_IOVEC_FLAG_EOT);
 	if (rc) {
 		DMUX_LOG_KERR("%s sps_transfer_one failed rc=%d\n",
 			__func__, rc);
@@ -914,8 +913,10 @@ int msm_bam_dmux_open(uint32_t id, void *priv,
 	if (!bam_is_connected) {
 		read_unlock(&ul_wakeup_lock);
 		ul_wakeup();
-		if (unlikely(in_global_reset == 1))
+		if (unlikely(in_global_reset == 1)) {
+			kfree(hdr);
 			return -EFAULT;
+		}
 		read_lock(&ul_wakeup_lock);
 		notify_all(BAM_DMUX_UL_CONNECTED, (unsigned long)(NULL));
 	}
@@ -1385,12 +1386,11 @@ static void notify_all(int event, unsigned long data)
 	struct list_head *temp;
 	struct outside_notify_func *func;
 
+	BAM_DMUX_LOG("%s: event=%d, data=%lu\n", __func__, event, data);
+
 	for (i = 0; i < BAM_DMUX_NUM_CHANNELS; ++i) {
-		if (bam_ch_is_open(i)) {
+		if (bam_ch_is_open(i))
 			bam_ch[i].notify(bam_ch[i].priv, event, data);
-			BAM_DMUX_LOG("%s: cid=%d, event=%d, data=%lu\n",
-					__func__, i, event, data);
-		}
 	}
 
 	__list_for_each(temp, &bam_other_notify_funcs) {
@@ -1757,10 +1757,13 @@ static void disconnect_to_bam(void)
 	/* in_ssr documentation/assumptions found in restart_notifier_cb */
 	if (!power_management_only_mode) {
 		if (likely(!in_ssr)) {
+			BAM_DMUX_LOG("%s: disconnect tx\n", __func__);
 			sps_disconnect(bam_tx_pipe);
+			BAM_DMUX_LOG("%s: disconnect rx\n", __func__);
 			sps_disconnect(bam_rx_pipe);
 			__memzero(rx_desc_mem_buf.base, rx_desc_mem_buf.size);
 			__memzero(tx_desc_mem_buf.base, tx_desc_mem_buf.size);
+			BAM_DMUX_LOG("%s: device reset\n", __func__);
 			sps_device_reset(a2_device_handle);
 		} else {
 			ssr_skipped_disconnect = 1;
@@ -1980,6 +1983,8 @@ static int bam_init(void)
 	a2_props.options = SPS_BAM_OPT_IRQ_WAKEUP;
 	a2_props.num_pipes = A2_NUM_PIPES;
 	a2_props.summing_threshold = A2_SUMMING_THRESHOLD;
+	a2_props.constrained_logging = true;
+	a2_props.logging_number = 1;
 	if (cpu_is_msm9615() || satellite_mode)
 		a2_props.manage = SPS_BAM_MGR_DEVICE_REMOTE;
 	/* need to free on tear down */

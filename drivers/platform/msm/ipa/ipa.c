@@ -41,6 +41,7 @@
 #define IPA_DMA_POOL_SIZE (512)
 #define IPA_DMA_POOL_ALIGNMENT (4)
 #define IPA_DMA_POOL_BOUNDARY (1024)
+#define IPA_NUM_DESC_PER_SW_TX (2)
 #define IPA_ROUTING_RULE_BYTE_SIZE (4)
 #define IPA_BAM_CNFG_BITS_VAL (0x7FFFE004)
 
@@ -48,6 +49,13 @@
 
 #define IPA_AGGR_STR_IN_BYTES(str) \
 	(strnlen((str), IPA_AGGR_MAX_STR_LENGTH - 1) + 1)
+
+/*
+ * This equals a timer value of 162.56us. This value was
+ * determined empirically and shows good bi-directional
+ * WLAN throughputs
+ */
+#define IPA_HOLB_TMR_DEFAULT_VAL 0x7f
 
 static struct ipa_plat_drv_res ipa_res = {0, };
 static struct of_device_id ipa_plat_drv_match[] = {
@@ -72,12 +80,36 @@ static struct msm_bus_vectors ipa_init_vectors[]  = {
 		.ab = 0,
 		.ib = 0,
 	},
+	{
+		.src = MSM_BUS_MASTER_BAM_DMA,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 0,
+		.ib = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_BAM_DMA,
+		.dst = MSM_BUS_SLAVE_OCIMEM,
+		.ab = 0,
+		.ib = 0,
+	},
 };
 
 static struct msm_bus_vectors ipa_max_perf_vectors[]  = {
 	{
 		.src = MSM_BUS_MASTER_IPA,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 50000000,
+		.ib = 960000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_BAM_DMA,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 50000000,
+		.ib = 960000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_BAM_DMA,
+		.dst = MSM_BUS_SLAVE_OCIMEM,
 		.ab = 50000000,
 		.ib = 960000000,
 	},
@@ -900,7 +932,7 @@ static int ipa_setup_a5_pipes(void)
 	/* LAN-WAN OUT (A5->IPA) */
 	memset(&sys_in, 0, sizeof(struct ipa_sys_connect_params));
 	sys_in.client = IPA_CLIENT_A5_LAN_WAN_PROD;
-	sys_in.desc_fifo_sz = IPA_SYS_DESC_FIFO_SZ;
+	sys_in.desc_fifo_sz = IPA_SYS_TX_DATA_DESC_FIFO_SZ;
 	sys_in.ipa_ep_cfg.mode.mode = IPA_BASIC;
 	sys_in.ipa_ep_cfg.mode.dst = IPA_CLIENT_A5_LAN_WAN_CONS;
 	if (ipa_setup_sys_pipe(&sys_in, &ipa_ctx->clnt_hdl_data_out)) {
@@ -1122,7 +1154,7 @@ static void ipa_set_aggregation_params(void)
 	u32 producer_hdl = 0;
 	u32 consumer_hdl = 0;
 
-	rmnet_bridge_get_client_handles(&producer_hdl, &consumer_hdl);
+	teth_bridge_get_client_handles(&producer_hdl, &consumer_hdl);
 
 	/* configure aggregation on producer */
 	memset(&agg_params, 0, sizeof(struct ipa_ep_cfg_aggr));
@@ -1459,6 +1491,41 @@ void ipa_disable_clks(void)
 		WARN_ON(1);
 }
 
+/**
+* ipa_inc_client_enable_clks() - Increase active clients counter, and
+* enable ipa clocks if necessary
+*
+* Return codes:
+* None
+*/
+void ipa_inc_client_enable_clks(void)
+{
+	mutex_lock(&ipa_ctx->ipa_active_clients_lock);
+	ipa_ctx->ipa_active_clients++;
+	if (ipa_ctx->ipa_active_clients == 1)
+		if (ipa_ctx->ipa_hw_mode == IPA_HW_MODE_NORMAL)
+			ipa_enable_clks();
+	mutex_unlock(&ipa_ctx->ipa_active_clients_lock);
+}
+
+/**
+* ipa_dec_client_disable_clks() - Decrease active clients counter, and
+* disable ipa clocks if necessary
+*
+* Return codes:
+* None
+*/
+void ipa_dec_client_disable_clks(void)
+{
+	mutex_lock(&ipa_ctx->ipa_active_clients_lock);
+	ipa_ctx->ipa_active_clients--;
+	if (ipa_ctx->ipa_active_clients == 0)
+		if (ipa_ctx->ipa_hw_mode == IPA_HW_MODE_NORMAL)
+			ipa_disable_clks();
+	mutex_unlock(&ipa_ctx->ipa_active_clients_lock);
+}
+
+
 static int ipa_setup_bam_cfg(const struct ipa_plat_drv_res *res)
 {
 	void *bam_cnfg_bits;
@@ -1594,6 +1661,8 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p)
 		result = -ENOMEM;
 		goto fail_mem;
 	}
+	ipa_ctx->hol_en = 0x1;
+	ipa_ctx->hol_timer = IPA_HOLB_TMR_DEFAULT_VAL;
 
 	IPADBG("polling_mode=%u delay_ms=%u\n", polling_mode, polling_delay_ms);
 	ipa_ctx->polling_mode = polling_mode;
@@ -1676,6 +1745,7 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p)
 	bam_props.num_pipes = IPA_NUM_PIPES;
 	bam_props.summing_threshold = IPA_SUMMING_THRESHOLD;
 	bam_props.event_threshold = IPA_EVENT_THRESHOLD;
+	bam_props.options |= SPS_BAM_NO_LOCAL_CLK_GATING;
 
 	result = sps_register_bam_device(&bam_props, &ipa_ctx->bam_handle);
 	if (result) {
@@ -1761,15 +1831,20 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p)
 	 * This is an issue with IPA HW v1.0 only.
 	 */
 	if (ipa_ctx->ipa_hw_type == IPA_HW_v1_0) {
-		ipa_ctx->one_kb_no_straddle_pool = dma_pool_create("ipa_1k",
+		ipa_ctx->dma_pool = dma_pool_create("ipa_1k",
 				NULL,
 				IPA_DMA_POOL_SIZE, IPA_DMA_POOL_ALIGNMENT,
 				IPA_DMA_POOL_BOUNDARY);
-		if (!ipa_ctx->one_kb_no_straddle_pool) {
-			IPAERR("cannot setup 1kb alloc DMA pool.\n");
-			result = -ENOMEM;
-			goto fail_dma_pool;
-		}
+	} else {
+		ipa_ctx->dma_pool = dma_pool_create("ipa_tx", NULL,
+			IPA_NUM_DESC_PER_SW_TX * sizeof(struct sps_iovec),
+			0, 0);
+	}
+
+	if (!ipa_ctx->dma_pool) {
+		IPAERR("cannot alloc DMA pool.\n");
+		result = -ENOMEM;
+		goto fail_dma_pool;
 	}
 
 	ipa_ctx->glob_flt_tbl[IPA_IP_v4].in_sys = !ipa_ctx->ip4_flt_tbl_lcl;
@@ -1839,13 +1914,14 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p)
 	ipa_ctx->flt_rule_hdl_tree = RB_ROOT;
 	ipa_ctx->tag_tree = RB_ROOT;
 
-	atomic_set(&ipa_ctx->ipa_active_clients, 0);
+	mutex_init(&ipa_ctx->ipa_active_clients_lock);
+	ipa_ctx->ipa_active_clients = 0;
 
 	result = ipa_bridge_init();
 	if (result) {
 		IPAERR("ipa bridge init err.\n");
 		result = -ENODEV;
-		goto fail_bridge_init;
+		goto fail_a5_pipes;
 	}
 
 	/* setup the A5-IPA pipes */
@@ -1966,8 +2042,6 @@ fail_empty_rt_tbl:
 	ipa_cleanup_rx();
 	ipa_teardown_a5_pipes();
 fail_a5_pipes:
-	ipa_bridge_cleanup();
-fail_bridge_init:
 	destroy_workqueue(ipa_ctx->tx_wq);
 fail_tx_wq:
 	destroy_workqueue(ipa_ctx->rx_wq);
@@ -1976,7 +2050,7 @@ fail_rx_wq:
 	 * DMA pool need to be released only for IPA HW v1.0 only.
 	 */
 	if (ipa_ctx->ipa_hw_type == IPA_HW_v1_0)
-		dma_pool_destroy(ipa_ctx->one_kb_no_straddle_pool);
+		dma_pool_destroy(ipa_ctx->dma_pool);
 fail_dma_pool:
 	kmem_cache_destroy(ipa_ctx->tree_node_cache);
 fail_tree_node_cache:

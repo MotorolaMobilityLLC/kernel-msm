@@ -335,6 +335,7 @@ struct adm_cmd_rsp_device_open_v5 {
 /*  Payload an #ADM_CMD_GET_PP_PARAMS_V5 command.
 */
 struct adm_cmd_get_pp_params_v5 {
+	struct apr_hdr hdr;
 	u32                  data_payload_addr_lsw;
 	/* LSW of parameter data payload address.*/
 
@@ -633,8 +634,6 @@ struct adm_cmd_connect_afe_port_v5 {
  *	when a new port is added here. */
 #define PRIMARY_I2S_RX 0		/* index = 0 */
 #define PRIMARY_I2S_TX 1		/* index = 1 */
-#define PCM_RX 2			/* index = 2 */
-#define PCM_TX 3			/* index = 3 */
 #define SECONDARY_I2S_RX 4		/* index = 4 */
 #define SECONDARY_I2S_TX 5		/* index = 5 */
 #define MI2S_RX 6			/* index = 6 */
@@ -763,26 +762,6 @@ struct adm_cmd_connect_afe_port_v5 {
 #define AFE_PORT_ID_INTERNAL_BT_A2DP_RX     0x3002
 #define AFE_PORT_ID_INTERNAL_FM_RX          0x3004
 #define AFE_PORT_ID_INTERNAL_FM_TX          0x3005
-/* SLIMbus Rx port on channel 0. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_RX      0x4000
-/* SLIMbus Tx port on channel 0. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_TX      0x4001
-/* SLIMbus Rx port on channel 1. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_1_RX      0x4002
-/* SLIMbus Tx port on channel 1. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_1_TX      0x4003
-/* SLIMbus Rx port on channel 2. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_2_RX      0x4004
-/* SLIMbus Tx port on channel 2. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_2_TX      0x4005
-/* SLIMbus Rx port on channel 3. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_3_RX      0x4006
-/* SLIMbus Tx port on channel 3. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_3_TX      0x4007
-/* SLIMbus Rx port on channel 4. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_4_RX      0x4008
-/* SLIMbus Tx port on channel 4. */
-#define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_4_TX      0x4009
 /* SLIMbus Rx port on channel 0. */
 #define AFE_PORT_ID_SLIMBUS_MULTI_CHAN_0_RX      0x4000
 /* SLIMbus Tx port on channel 0. */
@@ -2591,6 +2570,14 @@ struct asm_enc_cfg_blk_param_v2 {
  * this member.
  */
 
+} __packed;
+
+/* @brief Dolby Digital Plus end point configuration structure
+ */
+struct asm_dec_ddp_endp_param_v2 {
+	struct apr_hdr hdr;
+	struct asm_stream_cmd_set_encdec_param  encdec;
+	int endp_param_value;
 } __packed;
 
 /* @brief Multichannel PCM encoder configuration structure used
@@ -6912,5 +6899,8 @@ struct afe_port_cmd_set_aanc_acdb_table {
 	struct apr_hdr hdr;
 	struct afe_port_cmd_set_param_v2 param;
 } __packed;
+
+/* Dolby DAP topology */
+#define DOLBY_ADM_COPP_TOPOLOGY_ID	0x0001033B
 
 #endif /*_APR_AUDIO_V2_H_ */

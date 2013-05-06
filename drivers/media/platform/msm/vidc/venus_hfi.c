@@ -219,6 +219,9 @@ static int venus_hfi_write_queue(void *info, u8 *packet, u32 *rx_req_is_set)
 	}
 	queue->qhdr_write_idx = new_write_idx;
 	*rx_req_is_set = (1 == queue->qhdr_rx_req) ? 1 : 0;
+	/*Memory barrier to make sure data is written before an
+	 * interupt is raised on venus.*/
+	mb();
 	dprintk(VIDC_DBG, "Out : ");
 	return 0;
 }
@@ -282,6 +285,7 @@ static int venus_hfi_read_queue(void *info, u8 *packet, u32 *pb_tx_req_is_set)
 	u32 packet_size_in_words, new_read_idx;
 	u32 *read_ptr;
 	struct vidc_iface_q_info *qinfo;
+	int rc = 0;
 
 	if (!info || !packet || !pb_tx_req_is_set) {
 		dprintk(VIDC_ERR, "Invalid Params");
@@ -293,6 +297,9 @@ static int venus_hfi_read_queue(void *info, u8 *packet, u32 *pb_tx_req_is_set)
 		dprintk(VIDC_WARN, "Queues have already been freed\n");
 		return -EINVAL;
 	}
+	/*Memory barrier to make sure data is valid before
+	 *reading it*/
+	mb();
 	queue = (struct hfi_queue_header *) qinfo->q_hdr;
 
 	if (!queue) {
@@ -317,17 +324,27 @@ static int venus_hfi_read_queue(void *info, u8 *packet, u32 *pb_tx_req_is_set)
 
 	new_read_idx = queue->qhdr_read_idx + packet_size_in_words;
 	dprintk(VIDC_DBG, "Read Ptr: %d", (u32) new_read_idx);
-	if (new_read_idx < queue->qhdr_q_size) {
-		memcpy(packet, read_ptr,
-			packet_size_in_words << 2);
-	} else {
-		new_read_idx -= queue->qhdr_q_size;
-		memcpy(packet, read_ptr,
+	if (((packet_size_in_words << 2) <= VIDC_IFACEQ_MED_PKT_SIZE)
+			&& queue->qhdr_read_idx <= queue->qhdr_q_size) {
+		if (new_read_idx < queue->qhdr_q_size) {
+			memcpy(packet, read_ptr,
+					packet_size_in_words << 2);
+		} else {
+			new_read_idx -= queue->qhdr_q_size;
+			memcpy(packet, read_ptr,
 			(packet_size_in_words - new_read_idx) << 2);
-		memcpy(packet + ((packet_size_in_words -
-			new_read_idx) << 2),
-			(u8 *)qinfo->q_array.align_virtual_addr,
-			new_read_idx << 2);
+			memcpy(packet + ((packet_size_in_words -
+					new_read_idx) << 2),
+					(u8 *)qinfo->q_array.align_virtual_addr,
+					new_read_idx << 2);
+		}
+	} else {
+		dprintk(VIDC_WARN,
+			"BAD packet received, read_idx: 0x%x, pkt_size: %d\n",
+			queue->qhdr_read_idx, packet_size_in_words << 2);
+		dprintk(VIDC_WARN, "Dropping this packet\n");
+		new_read_idx = queue->qhdr_write_idx;
+		rc = -ENODATA;
 	}
 
 	queue->qhdr_read_idx = new_read_idx;
@@ -340,7 +357,7 @@ static int venus_hfi_read_queue(void *info, u8 *packet, u32 *pb_tx_req_is_set)
 	*pb_tx_req_is_set = (1 == queue->qhdr_tx_req) ? 1 : 0;
 	venus_hfi_hal_sim_modify_msg_packet(packet);
 	dprintk(VIDC_DBG, "Out : ");
-	return 0;
+	return rc;
 }
 
 static int venus_hfi_alloc(void *mem, void *clnt, u32 size, u32 align,
@@ -547,7 +564,7 @@ static int venus_hfi_iface_cmdq_write(struct venus_hfi_device *device,
 	q_info = &device->iface_queues[VIDC_IFACEQ_CMDQ_IDX];
 	if (!q_info) {
 		dprintk(VIDC_ERR, "cannot write to shared Q's");
-		goto err_q_write;
+		goto err_q_null;
 	}
 	mutex_lock(&device->clock_lock);
 	result = venus_hfi_clk_gating_off(device);
@@ -572,8 +589,9 @@ static int venus_hfi_iface_cmdq_write(struct venus_hfi_device *device,
 		dprintk(VIDC_ERR, "venus_hfi_iface_cmdq_write:queue_full");
 	}
 err_q_write:
-	mutex_unlock(&device->write_lock);
 	mutex_unlock(&device->clock_lock);
+err_q_null:
+	mutex_unlock(&device->write_lock);
 	return result;
 }
 
@@ -592,7 +610,7 @@ static int venus_hfi_iface_msgq_read(struct venus_hfi_device *device, void *pkt)
 		q_array.align_virtual_addr == 0) {
 		dprintk(VIDC_ERR, "cannot read from shared MSG Q's");
 		rc = -ENODATA;
-		goto read_error;
+		goto read_error_null;
 	}
 	q_info = &device->iface_queues[VIDC_IFACEQ_MSGQ_IDX];
 	mutex_lock(&device->clock_lock);
@@ -614,8 +632,9 @@ static int venus_hfi_iface_msgq_read(struct venus_hfi_device *device, void *pkt)
 		rc = -ENODATA;
 	}
 read_error:
-	mutex_unlock(&device->read_lock);
 	mutex_unlock(&device->clock_lock);
+read_error_null:
+	mutex_unlock(&device->read_lock);
 	return rc;
 }
 
@@ -634,7 +653,7 @@ static int venus_hfi_iface_dbgq_read(struct venus_hfi_device *device, void *pkt)
 		q_array.align_virtual_addr == 0) {
 		dprintk(VIDC_ERR, "cannot read from shared DBG Q's");
 		rc = -ENODATA;
-		goto dbg_error;
+		goto dbg_error_null;
 	}
 	mutex_lock(&device->clock_lock);
 	rc = venus_hfi_clk_gating_off(device);
@@ -656,8 +675,9 @@ static int venus_hfi_iface_dbgq_read(struct venus_hfi_device *device, void *pkt)
 		rc = -ENODATA;
 	}
 dbg_error:
-	mutex_unlock(&device->read_lock);
 	mutex_unlock(&device->clock_lock);
+dbg_error_null:
+	mutex_unlock(&device->read_lock);
 	return rc;
 }
 
@@ -1069,9 +1089,8 @@ static int venus_hfi_core_release(void *device)
 		if (!(dev->intr_status & VIDC_WRAPPER_INTR_STATUS_A2HWD_BMSK))
 			disable_irq_nosync(dev->hal_data->irq);
 		dev->intr_status = 0;
-		venus_hfi_interface_queues_release(dev);
+		mutex_unlock(&dev->clock_lock);
 	}
-	mutex_unlock(&dev->clock_lock);
 	dprintk(VIDC_INFO, "HAL exited\n");
 	return 0;
 }
@@ -1867,21 +1886,46 @@ static int venus_hfi_try_clk_gating(struct venus_hfi_device *device)
 	if (((ctrl_status & VIDC_CPU_CS_SCIACMDARG0_HFI_CTRL_INIT_IDLE_MSG_BMSK)
 		!= 0) && !rc)
 		venus_hfi_clk_gating_on(device);
-	mutex_unlock(&device->write_lock);
 	mutex_unlock(&device->clock_lock);
+	mutex_unlock(&device->write_lock);
 	return rc;
 }
+static void venus_hfi_process_msg_event_notify(
+	struct venus_hfi_device *device, void *packet)
+{
+	struct hfi_sfr_struct *vsfr = NULL;
+	struct hfi_msg_event_notify_packet *event_pkt;
+	struct vidc_hal_msg_pkt_hdr *msg_hdr;
 
+	msg_hdr = (struct vidc_hal_msg_pkt_hdr *)packet;
+	event_pkt =
+		(struct hfi_msg_event_notify_packet *)msg_hdr;
+	if (event_pkt && event_pkt->event_id ==
+		HFI_EVENT_SYS_ERROR) {
+		vsfr = (struct hfi_sfr_struct *)
+				device->sfr.align_virtual_addr;
+		if (vsfr)
+			dprintk(VIDC_ERR, "SFR Message from FW : %s",
+				vsfr->rg_data);
+	}
+}
 static void venus_hfi_response_handler(struct venus_hfi_device *device)
 {
 	u8 packet[VIDC_IFACEQ_MED_PKT_SIZE];
 	u32 rc = 0;
+	struct hfi_sfr_struct *vsfr = NULL;
 	dprintk(VIDC_INFO, "#####venus_hfi_response_handler#####\n");
 	if (device) {
 		if ((device->intr_status &
 			VIDC_WRAPPER_INTR_CLEAR_A2HWD_BMSK)) {
 			dprintk(VIDC_ERR, "Received: Watchdog timeout %s",
 				__func__);
+			vsfr = (struct hfi_sfr_struct *)
+					device->sfr.align_virtual_addr;
+			if (vsfr)
+				dprintk(VIDC_ERR,
+					"SFR Message from FW : %s",
+						vsfr->rg_data);
 			venus_hfi_process_sys_watchdog_timeout(device);
 		}
 
@@ -1889,6 +1933,9 @@ static void venus_hfi_response_handler(struct venus_hfi_device *device)
 			rc = hfi_process_msg_packet(device->callback,
 				device->device_id,
 				(struct vidc_hal_msg_pkt_hdr *) packet);
+			if (rc == HFI_MSG_EVENT_NOTIFY)
+				venus_hfi_process_msg_event_notify(
+					device, (void *)packet);
 		}
 		while (!venus_hfi_iface_dbgq_read(device, packet)) {
 			struct hfi_msg_sys_debug_packet *pkt =
@@ -2749,9 +2796,11 @@ static void venus_hfi_unload_fw(void *dev)
 		return;
 	}
 	if (device->resources.fw.cookie) {
+		flush_workqueue(device->vidc_workq);
 		venus_hfi_disable_clks(device);
-		venus_hfi_iommu_detach(device);
 		subsystem_put(device->resources.fw.cookie);
+		venus_hfi_interface_queues_release(dev);
+		venus_hfi_iommu_detach(device);
 		device->resources.fw.cookie = NULL;
 	}
 }

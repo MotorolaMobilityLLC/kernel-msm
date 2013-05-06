@@ -122,6 +122,25 @@ struct sdhci_host {
  * secure discard kind of operations to complete.
  */
 #define SDHCI_QUIRK2_USE_MAX_DISCARD_SIZE		(1<<5)
+/*
+ * Ignore data timeout error for R1B commands as there will be no
+ * data associated and the busy timeout value for these commands
+ * could be lager than the maximum timeout value that controller
+ * can handle.
+ */
+#define SDHCI_QUIRK2_IGNORE_DATATOUT_FOR_R1BCMD		(1<<6)
+/*
+ * The preset value registers are not properly initialized by
+ * some hardware and hence preset value must not be enabled for
+ * such controllers.
+ */
+#define SDHCI_QUIRK2_BROKEN_PRESET_VALUE		(1<<7)
+/*
+ * Some controllers define the usage of 0xF in data timeout counter
+ * register (0x2E) which is actually a reserved bit as per
+ * specification.
+ */
+#define SDHCI_QUIRK2_USE_RESERVED_MAX_TIMEOUT		(1<<8)
 
 	int irq;		/* Device IRQ */
 	void __iomem *ioaddr;	/* Mapped address */
@@ -208,6 +227,7 @@ struct sdhci_host {
 	struct pm_qos_request pm_qos_req_dma;
 
 	struct sdhci_next next_data;
+	ktime_t data_start_time;
 
 	unsigned long private[0] ____cacheline_aligned;
 };

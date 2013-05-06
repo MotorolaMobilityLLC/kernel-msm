@@ -34,6 +34,7 @@
 #define KGSL_CMD_FLAGS_NONE             0x00000000
 #define KGSL_CMD_FLAGS_PMODE		0x00000001
 #define KGSL_CMD_FLAGS_INTERNAL_ISSUE	0x00000002
+#define KGSL_CMD_FLAGS_GET_INT		0x00000004
 #define KGSL_CMD_FLAGS_EOF	        0x00000100
 
 /* Command identifiers */
@@ -503,6 +504,27 @@ static inline int adreno_add_idle_cmds(struct adreno_device *adreno_dev,
 		*cmds++ = 0;
 	}
 
+	return cmds - start;
+}
+
+/*
+ * adreno_wait_reg_eq() - Add a CP_WAIT_REG_EQ command
+ * @cmds:	Pointer to memory where commands are to be added
+ * @addr:	Regiater address to poll for
+ * @val:	Value to poll for
+ * @mask:	The value against which register value is masked
+ * @interval:	wait interval
+ */
+static inline int adreno_wait_reg_eq(unsigned int *cmds, unsigned int addr,
+					unsigned int val, unsigned int mask,
+					unsigned int interval)
+{
+	unsigned int *start = cmds;
+	*cmds++ = cp_type3_packet(CP_WAIT_REG_EQ, 4);
+	*cmds++ = addr;
+	*cmds++ = val;
+	*cmds++ = mask;
+	*cmds++ = interval;
 	return cmds - start;
 }
 

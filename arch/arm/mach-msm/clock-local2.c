@@ -476,10 +476,7 @@ static unsigned long branch_clk_get_rate(struct clk *c)
 	if (branch->max_div)
 		return branch->c.rate;
 
-	if (!branch->has_sibling)
-		return clk_get_rate(c->parent);
-
-	return 0;
+	return clk_get_rate(c->parent);
 }
 
 static int branch_clk_list_rate(struct clk *c, unsigned n)
@@ -570,6 +567,47 @@ static int branch_clk_reset(struct clk *c, enum clk_reset_action action)
 	return __branch_clk_reset(BCR_REG(branch), action);
 }
 
+static int branch_clk_set_flags(struct clk *c, unsigned flags)
+{
+	u32 cbcr_val;
+	unsigned long irq_flags;
+	struct branch_clk *branch = to_branch_clk(c);
+	int ret = 0;
+
+	spin_lock_irqsave(&local_clock_reg_lock, irq_flags);
+	cbcr_val = readl_relaxed(CBCR_REG(branch));
+	switch (flags) {
+	case CLKFLAG_RETAIN_PERIPH:
+		cbcr_val |= BIT(13);
+		break;
+	case CLKFLAG_NORETAIN_PERIPH:
+		cbcr_val &= ~BIT(13);
+		break;
+	case CLKFLAG_RETAIN_MEM:
+		cbcr_val |= BIT(14);
+		break;
+	case CLKFLAG_NORETAIN_MEM:
+		cbcr_val &= ~BIT(14);
+		break;
+	default:
+		ret = -EINVAL;
+	}
+	writel_relaxed(cbcr_val, CBCR_REG(branch));
+	/*
+	 * 8974v2.2 has a requirement that writes to set bits 13 and 14 are
+	 * separated by at least 2 bus cycles. Cover one of these cycles by
+	 * performing an extra write here. The other cycle is covered by the
+	 * read-modify-write design of this function.
+	 */
+	writel_relaxed(cbcr_val, CBCR_REG(branch));
+	spin_unlock_irqrestore(&local_clock_reg_lock, irq_flags);
+
+	/* Make sure write is issued before returning. */
+	mb();
+
+	return ret;
+}
+
 /*
  * Voteable clock functions
  */
@@ -629,7 +667,7 @@ static enum handoff local_vote_clk_handoff(struct clk *c)
 	return HANDOFF_ENABLED_CLK;
 }
 
-static enum handoff byte_rcg_handoff(struct clk *clk)
+enum handoff byte_rcg_handoff(struct clk *clk)
 {
 	struct rcg_clk *rcg = to_rcg_clk(clk);
 	u32 div_val;
@@ -680,7 +718,7 @@ static int set_rate_byte(struct clk *clk, unsigned long rate)
 	return 0;
 }
 
-static enum handoff pixel_rcg_handoff(struct clk *clk)
+enum handoff pixel_rcg_handoff(struct clk *clk)
 {
 	struct rcg_clk *rcg = to_rcg_clk(clk);
 	u32 div_val, mval, nval, cfg_regval;
@@ -771,6 +809,155 @@ out:
 }
 
 
+#define ENABLE_REG(x)	(*(x)->base + (x)->enable_reg)
+#define SELECT_REG(x)	(*(x)->base + (x)->select_reg)
+
+/*
+ * mux clock functions
+ */
+static void mux_clk_halt_check(void)
+{
+	/* Ensure that the delay starts after the mux disable/enable. */
+	mb();
+	udelay(HALT_CHECK_DELAY_US);
+}
+
+static int mux_clk_enable(struct clk *c)
+{
+	unsigned long flags;
+	u32 regval;
+	struct mux_clk *mux = to_mux_clk(c);
+
+	spin_lock_irqsave(&local_clock_reg_lock, flags);
+	regval = readl_relaxed(ENABLE_REG(mux));
+	regval |= mux->enable_mask;
+	writel_relaxed(regval, ENABLE_REG(mux));
+	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+
+	/* Wait for clock to enable before continuing. */
+	mux_clk_halt_check();
+
+	return 0;
+}
+
+static void mux_clk_disable(struct clk *c)
+{
+	unsigned long flags;
+	struct mux_clk *mux = to_mux_clk(c);
+	u32 regval;
+
+	spin_lock_irqsave(&local_clock_reg_lock, flags);
+	regval = readl_relaxed(ENABLE_REG(mux));
+	regval &= ~mux->enable_mask;
+	writel_relaxed(regval, ENABLE_REG(mux));
+	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+
+	/* Wait for clock to disable before continuing. */
+	mux_clk_halt_check();
+}
+
+static int mux_source_switch(struct mux_clk *mux, struct mux_source *dest)
+{
+	unsigned long flags;
+	u32 regval;
+	int ret = 0;
+
+	ret = __clk_pre_reparent(&mux->c, dest->clk, &flags);
+	if (ret)
+		goto out;
+
+	regval = readl_relaxed(SELECT_REG(mux));
+	regval &= ~mux->select_mask;
+	regval |= dest->select_val;
+	writel_relaxed(regval, SELECT_REG(mux));
+
+	/* Make sure switch request goes through before proceeding. */
+	mb();
+
+	__clk_post_reparent(&mux->c, mux->c.parent, &flags);
+out:
+	return ret;
+}
+
+static int mux_clk_set_parent(struct clk *c, struct clk *parent)
+{
+	struct mux_clk *mux = to_mux_clk(c);
+	struct mux_source *dest = NULL;
+	int ret;
+
+	if (!mux->sources || !parent)
+		return -EPERM;
+
+	dest = mux->sources;
+
+	while (dest->clk) {
+		if (dest->clk == parent)
+			break;
+		dest++;
+	}
+
+	if (!dest->clk)
+		return -EPERM;
+
+	ret = mux_source_switch(mux, dest);
+	if (ret)
+		return ret;
+
+	mux->c.rate = clk_get_rate(dest->clk);
+
+	return 0;
+}
+
+static enum handoff mux_clk_handoff(struct clk *c)
+{
+	struct mux_clk *mux = to_mux_clk(c);
+	u32 mask = mux->enable_mask;
+	u32 regval = readl_relaxed(ENABLE_REG(mux));
+
+	c->rate = clk_get_rate(c->parent);
+
+	if (mask == (regval & mask))
+		return HANDOFF_ENABLED_CLK;
+
+	return HANDOFF_DISABLED_CLK;
+}
+
+static struct clk *mux_clk_get_parent(struct clk *c)
+{
+	struct mux_clk *mux = to_mux_clk(c);
+	struct mux_source *parent = NULL;
+	u32 regval = readl_relaxed(SELECT_REG(mux));
+
+	if (!mux->sources)
+		return ERR_PTR(-EPERM);
+
+	parent = mux->sources;
+
+	while (parent->clk) {
+		if ((regval & mux->select_mask) == parent->select_val)
+			return parent->clk;
+
+		parent++;
+	}
+
+	return ERR_PTR(-EPERM);
+}
+
+static int mux_clk_list_rate(struct clk *c, unsigned n)
+{
+	struct mux_clk *mux = to_mux_clk(c);
+	int i;
+
+	for (i = 0; i < n; i++)
+		if (!mux->sources[i].clk)
+			break;
+
+	if (!mux->sources[i].clk)
+		return -ENXIO;
+
+	return clk_get_rate(mux->sources[i].clk);
+}
+
 struct clk_ops clk_ops_empty;
 
 struct clk_ops clk_ops_rcg = {
@@ -824,6 +1011,7 @@ struct clk_ops clk_ops_branch = {
 	.list_rate = branch_clk_list_rate,
 	.round_rate = branch_clk_round_rate,
 	.reset = branch_clk_reset,
+	.set_flags = branch_clk_set_flags,
 	.handoff = branch_clk_handoff,
 };
 
@@ -833,3 +1021,14 @@ struct clk_ops clk_ops_vote = {
 	.reset = local_vote_clk_reset,
 	.handoff = local_vote_clk_handoff,
 };
+
+struct clk_ops clk_ops_mux = {
+	.enable = mux_clk_enable,
+	.disable = mux_clk_disable,
+	.set_parent = mux_clk_set_parent,
+	.get_parent = mux_clk_get_parent,
+	.handoff = mux_clk_handoff,
+	.list_rate = mux_clk_list_rate,
+};
+
+

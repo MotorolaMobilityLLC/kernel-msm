@@ -92,6 +92,7 @@
 #define QPNP_VADC_CONV_TIME_MIN					2000
 #define QPNP_VADC_CONV_TIME_MAX					2100
 #define QPNP_ADC_COMPLETION_TIMEOUT				HZ
+#define QPNP_VADC_ERR_COUNT					5
 
 struct qpnp_vadc_drv {
 	struct qpnp_adc_drv		*adc;
@@ -436,7 +437,7 @@ static uint32_t qpnp_vadc_calib_device(void)
 {
 	struct qpnp_vadc_drv *vadc = qpnp_vadc;
 	struct qpnp_adc_amux_properties conv;
-	int rc, calib_read_1, calib_read_2;
+	int rc, calib_read_1, calib_read_2, count = 0;
 	u8 status1 = 0;
 
 	conv.amux_channel = REF_125V;
@@ -458,6 +459,11 @@ static uint32_t qpnp_vadc_calib_device(void)
 		status1 &= QPNP_VADC_STATUS1_REQ_STS_EOC_MASK;
 		usleep_range(QPNP_VADC_CONV_TIME_MIN,
 					QPNP_VADC_CONV_TIME_MAX);
+		count++;
+		if (count > QPNP_VADC_ERR_COUNT) {
+			rc = -ENODEV;
+			goto calib_fail;
+		}
 	}
 
 	rc = qpnp_vadc_read_conversion_result(&calib_read_1);
@@ -478,6 +484,7 @@ static uint32_t qpnp_vadc_calib_device(void)
 	}
 
 	status1 = 0;
+	count = 0;
 	while (status1 != QPNP_VADC_STATUS1_EOC) {
 		rc = qpnp_vadc_read_reg(QPNP_VADC_STATUS1, &status1);
 		if (rc < 0)
@@ -485,6 +492,11 @@ static uint32_t qpnp_vadc_calib_device(void)
 		status1 &= QPNP_VADC_STATUS1_REQ_STS_EOC_MASK;
 		usleep_range(QPNP_VADC_CONV_TIME_MIN,
 					QPNP_VADC_CONV_TIME_MAX);
+		count++;
+		if (count > QPNP_VADC_ERR_COUNT) {
+			rc = -ENODEV;
+			goto calib_fail;
+		}
 	}
 
 	rc = qpnp_vadc_read_conversion_result(&calib_read_2);
@@ -518,6 +530,7 @@ static uint32_t qpnp_vadc_calib_device(void)
 	}
 
 	status1 = 0;
+	count = 0;
 	while (status1 != QPNP_VADC_STATUS1_EOC) {
 		rc = qpnp_vadc_read_reg(QPNP_VADC_STATUS1, &status1);
 		if (rc < 0)
@@ -525,6 +538,11 @@ static uint32_t qpnp_vadc_calib_device(void)
 		status1 &= QPNP_VADC_STATUS1_REQ_STS_EOC_MASK;
 		usleep_range(QPNP_VADC_CONV_TIME_MIN,
 					QPNP_VADC_CONV_TIME_MAX);
+		count++;
+		if (count > QPNP_VADC_ERR_COUNT) {
+			rc = -ENODEV;
+			goto calib_fail;
+		}
 	}
 
 	rc = qpnp_vadc_read_conversion_result(&calib_read_1);
@@ -545,6 +563,7 @@ static uint32_t qpnp_vadc_calib_device(void)
 	}
 
 	status1 = 0;
+	count = 0;
 	while (status1 != QPNP_VADC_STATUS1_EOC) {
 		rc = qpnp_vadc_read_reg(QPNP_VADC_STATUS1, &status1);
 		if (rc < 0)
@@ -552,6 +571,11 @@ static uint32_t qpnp_vadc_calib_device(void)
 		status1 &= QPNP_VADC_STATUS1_REQ_STS_EOC_MASK;
 		usleep_range(QPNP_VADC_CONV_TIME_MIN,
 					QPNP_VADC_CONV_TIME_MAX);
+		count++;
+		if (count > QPNP_VADC_ERR_COUNT) {
+			rc = -ENODEV;
+			goto calib_fail;
+		}
 	}
 
 	rc = qpnp_vadc_read_conversion_result(&calib_read_2);
@@ -960,6 +984,7 @@ static int __devinit qpnp_vadc_probe(struct spmi_device *spmi)
 		dev_err(&spmi->dev, "failed to read device tree\n");
 		goto fail;
 	}
+	mutex_init(&vadc->adc->adc_lock);
 
 	rc = devm_request_irq(&spmi->dev, vadc->adc->adc_irq_eoc,
 				qpnp_vadc_isr, IRQF_TRIGGER_RISING,

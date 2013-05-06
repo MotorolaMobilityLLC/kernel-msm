@@ -33,7 +33,7 @@
 #define MAX_NUM_COMPOSITE_MASK 4
 #define MAX_NUM_STATS_COMP_MASK 2
 #define MAX_INIT_FRAME_DROP 31
-#define ISP_SUB(a) ((a > 0) ? a-1 : 0)
+#define ISP_Q2 (1 << 2)
 
 #define VFE_PING_FLAG 0xFFFFFFFF
 #define VFE_PONG_FLAG 0x0
@@ -148,7 +148,8 @@ struct msm_vfe_stats_ops {
 		struct msm_vfe_stats_stream *stream_info);
 	void (*clear_framedrop) (struct vfe_device *vfe_dev,
 		struct msm_vfe_stats_stream *stream_info);
-	void (*cfg_comp_mask) (struct vfe_device *vfe_dev);
+	void (*cfg_comp_mask) (struct vfe_device *vfe_dev,
+		uint32_t stats_mask, uint8_t enable);
 	void (*cfg_wm_irq_mask) (struct vfe_device *vfe_dev,
 		struct msm_vfe_stats_stream *stream_info);
 	void (*clear_wm_irq_mask) (struct vfe_device *vfe_dev,
@@ -183,6 +184,7 @@ struct msm_vfe_ops {
 
 struct msm_vfe_hardware_info {
 	int num_iommu_ctx;
+	int vfe_clk_idx;
 	struct msm_vfe_ops vfe_ops;
 	struct msm_vfe_axi_hardware_info *axi_hw_info;
 	struct msm_vfe_stats_hardware_info *stats_hw_info;
@@ -206,6 +208,7 @@ enum msm_vfe_axi_state {
 	PAUSE,
 	START_PENDING,
 	STOP_PENDING,
+	STARTING,
 	STOPPING,
 	PAUSE_PENDING,
 };
@@ -246,9 +249,16 @@ struct msm_vfe_axi_stream {
 	uint32_t burst_frame_count;/*number of sof before burst stop*/
 	uint8_t framedrop_update;
 
+	/*Bandwidth calculation info*/
+	uint32_t max_width;
+	/*Based on format plane size in Q2. e.g NV12 = 1.5*/
+	uint32_t format_factor;
+	uint32_t bandwidth;
+
 	/*Run time update variables*/
 	uint32_t runtime_init_frame_drop;
 	uint32_t runtime_burst_frame_count;/*number of sof before burst stop*/
+	uint32_t runtime_num_burst_capture;
 	uint8_t runtime_framedrop_update;
 };
 
@@ -263,6 +273,8 @@ struct msm_vfe_src_info {
 	uint8_t pix_stream_count;
 	uint8_t raw_stream_count;
 	enum msm_vfe_inputmux input_mux;
+	uint32_t width;
+	long pixel_clock;
 };
 
 enum msm_wm_ub_cfg_type {
@@ -283,6 +295,7 @@ struct msm_vfe_axi_shared_data {
 		composite_info[MAX_NUM_COMPOSITE_MASK];
 	uint8_t num_used_composite_mask;
 	uint32_t stream_update;
+	enum msm_isp_camif_update_state pipeline_update;
 	struct msm_vfe_src_info src_info[VFE_SRC_MAX];
 	uint16_t stream_handle_cnt;
 	unsigned long event_mask;
@@ -301,6 +314,7 @@ enum msm_vfe_stats_state {
 	STATS_ACTIVE,
 	STATS_START_PENDING,
 	STATS_STOP_PENDING,
+	STATS_STARTING,
 	STATS_STOPPING,
 };
 
@@ -308,9 +322,11 @@ struct msm_vfe_stats_stream {
 	uint32_t session_id;
 	uint32_t stream_id;
 	uint32_t stream_handle;
+	uint32_t composite_flag;
 	enum msm_isp_stats_type stats_type;
 	enum msm_vfe_stats_state state;
 	uint32_t framedrop_pattern;
+	uint32_t framedrop_period;
 	uint32_t irq_subsample_pattern;
 
 	uint32_t buffer_offset;
@@ -320,11 +336,10 @@ struct msm_vfe_stats_stream {
 
 struct msm_vfe_stats_shared_data {
 	struct msm_vfe_stats_stream stream_info[MSM_ISP_STATS_MAX];
-	enum msm_vfe_stats_pipeline_policy stats_pipeline_policy;
-	uint32_t comp_framedrop_pattern;
-	uint32_t comp_irq_subsample_pattern;
 	uint8_t num_active_stream;
+	atomic_t stats_comp_mask;
 	uint16_t stream_handle_cnt;
+	atomic_t stats_update;
 };
 
 struct msm_vfe_tasklet_queue_cmd {
@@ -369,7 +384,9 @@ struct vfe_device {
 	struct completion reset_complete;
 	struct completion halt_complete;
 	struct completion stream_config_complete;
-	struct mutex mutex;
+	struct completion stats_config_complete;
+	struct mutex realtime_mutex;
+	struct mutex core_mutex;
 
 	atomic_t irq_cnt;
 	uint8_t taskletq_idx;

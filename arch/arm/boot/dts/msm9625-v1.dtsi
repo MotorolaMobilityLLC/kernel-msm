@@ -37,6 +37,10 @@
 	};
 };
 
+&hsic_host {
+	qcom,disable-park-mode;
+};
+
 &ipa_hw {
 	qcom,ipa-hw-ver = <1>; /* IPA h-w revision */
 };
@@ -56,4 +60,8 @@
 
 &ldrex_spinlock {
 	status = "ok";
+};
+
+&hsic_host {
+	qcom,phy-sof-workaround;
 };

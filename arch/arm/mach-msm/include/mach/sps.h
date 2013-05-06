@@ -146,6 +146,8 @@ enum sps_option {
 	SPS_O_WRITE_NWD   = 0x00040000,
 
 	/* Options to enable software features */
+	/* Do not disable a pipe during disconnection */
+	SPS_O_NO_DISABLE      = 0x00800000,
 	/* Transfer operation should be polled */
 	SPS_O_POLL      = 0x01000000,
 	/* Disable queuing of transfer events for the connection end point */
@@ -256,6 +258,7 @@ enum sps_timer_mode {
 enum sps_callback_case {
 	SPS_CALLBACK_BAM_ERROR_IRQ = 1,     /* BAM ERROR IRQ */
 	SPS_CALLBACK_BAM_HRESP_ERR_IRQ,	    /* Erroneous HResponse */
+	SPS_CALLBACK_BAM_TIMER_IRQ,	    /* Inactivity timer */
 };
 
 /*
@@ -408,6 +411,11 @@ struct sps_bam_props {
 
 	u32 sec_config;
 	struct sps_bam_sec_config_props *p_sec_config_props;
+
+	/* Logging control */
+
+	bool constrained_logging;
+	u32 logging_number;
 };
 
 /**

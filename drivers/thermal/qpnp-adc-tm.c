@@ -36,6 +36,8 @@
 
 /* QPNP VADC TM register definition */
 #define QPNP_REVISION3					0x2
+#define QPNP_PERPH_SUBTYPE				0x5
+#define QPNP_PERPH_TYPE2				0x2
 #define QPNP_REVISION_EIGHT_CHANNEL_SUPPORT		2
 #define QPNP_STATUS1					0x8
 #define QPNP_STATUS1_OP_MODE				4
@@ -366,7 +368,7 @@ static int32_t qpnp_adc_tm_req_sts_check(void)
 
 static int32_t qpnp_adc_tm_check_revision(uint32_t btm_chan_num)
 {
-	u8 rev;
+	u8 rev, perph_subtype;
 	int rc = 0;
 
 	rc = qpnp_adc_tm_read_reg(QPNP_REVISION3, &rev);
@@ -375,10 +377,18 @@ static int32_t qpnp_adc_tm_check_revision(uint32_t btm_chan_num)
 		return rc;
 	}
 
-	if ((rev < QPNP_REVISION_EIGHT_CHANNEL_SUPPORT) &&
-		(btm_chan_num > QPNP_ADC_TM_M4_ADC_CH_SEL_CTL)) {
-		pr_debug("Version does not support more than 5 channels\n");
-		return -EINVAL;
+	rc = qpnp_adc_tm_read_reg(QPNP_PERPH_SUBTYPE, &perph_subtype);
+	if (rc) {
+		pr_err("adc-tm perph_subtype read failed\n");
+		return rc;
+	}
+
+	if (perph_subtype == QPNP_PERPH_TYPE2) {
+		if ((rev < QPNP_REVISION_EIGHT_CHANNEL_SUPPORT) &&
+			(btm_chan_num > QPNP_ADC_TM_M4_ADC_CH_SEL_CTL)) {
+			pr_debug("Version does not support more than 5 channels\n");
+			return -EINVAL;
+		}
 	}
 
 	return rc;
@@ -1190,22 +1200,28 @@ static int qpnp_adc_tm_read_status(void)
 		}
 	}
 
-	rc = qpnp_adc_tm_reg_update(QPNP_ADC_TM_MULTI_MEAS_EN,
-		sensor_mask, false);
-	if (rc < 0) {
-		pr_err("multi meas disable for channel failed\n");
-		goto fail;
-	}
+	if (adc_tm_high_enable || adc_tm_low_enable) {
+		rc = qpnp_adc_tm_reg_update(QPNP_ADC_TM_MULTI_MEAS_EN,
+			sensor_mask, false);
+		if (rc < 0) {
+			pr_err("multi meas disable for channel failed\n");
+			goto fail;
+		}
 
-	rc = qpnp_adc_tm_enable_if_channel_meas();
-	if (rc < 0) {
-		pr_err("re-enabling measurement failed\n");
-		return rc;
-	}
+		rc = qpnp_adc_tm_enable_if_channel_meas();
+		if (rc < 0) {
+			pr_err("re-enabling measurement failed\n");
+			return rc;
+		}
+	} else
+		pr_debug("No threshold status enable %d for high/low??\n",
+								sensor_mask);
+
 fail:
 	mutex_unlock(&adc_tm->adc->adc_lock);
 
-	schedule_work(&adc_tm->sensor[sensor_num].work);
+	if (adc_tm_high_enable || adc_tm_low_enable)
+		schedule_work(&adc_tm->sensor[sensor_num].work);
 
 	return rc;
 }
@@ -1518,6 +1534,7 @@ static int __devinit qpnp_adc_tm_probe(struct spmi_device *spmi)
 		dev_err(&spmi->dev, "failed to read device tree\n");
 		goto fail;
 	}
+	mutex_init(&adc_tm->adc->adc_lock);
 
 	/* Register the ADC peripheral interrupt */
 	adc_tm->adc->adc_high_thr_irq = spmi_get_irq_byname(spmi,
@@ -1584,6 +1601,8 @@ static int __devinit qpnp_adc_tm_probe(struct spmi_device *spmi)
 		adc_tm->sensor[sen_idx].sensor_num = sen_idx;
 		pr_debug("btm_chan:%x, vadc_chan:%x\n", btm_channel_num,
 			adc_tm->adc->adc_channels[sen_idx].channel_num);
+		thermal_node = of_property_read_bool(child,
+					"qcom,thermal-node");
 		if (thermal_node) {
 			/* Register with the thermal zone */
 			pr_debug("thermal node%x\n", btm_channel_num);

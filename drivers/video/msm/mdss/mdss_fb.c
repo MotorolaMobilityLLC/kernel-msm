@@ -143,9 +143,9 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	if (!bl_lvl && value)
 		bl_lvl = 1;
 
-	mutex_lock(&mfd->lock);
+	mutex_lock(&mfd->bl_lock);
 	mdss_fb_set_backlight(mfd, bl_lvl);
-	mutex_unlock(&mfd->lock);
+	mutex_unlock(&mfd->bl_lock);
 }
 
 static struct led_classdev backlight_led = {
@@ -263,6 +263,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mfd->mdp = *mdp_instance;
 
 	mutex_init(&mfd->lock);
+	mutex_init(&mfd->bl_lock);
 
 	fbi_list[fbi_list_index++] = fbi;
 
@@ -524,7 +525,7 @@ static void mdss_fb_scale_bl(struct msm_fb_data_type *mfd, u32 *bl_lvl)
 	(*bl_lvl) = temp;
 }
 
-/* must call this function from within mfd->lock */
+/* must call this function from within mfd->bl_lock */
 void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 {
 	struct mdss_panel_data *pdata;
@@ -566,11 +567,11 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 	if (unset_bl_level && !bl_updated) {
 		pdata = dev_get_platdata(&mfd->pdev->dev);
 		if ((pdata) && (pdata->set_backlight)) {
-			mutex_lock(&mfd->lock);
+			mutex_lock(&mfd->bl_lock);
 			mfd->bl_level = unset_bl_level;
 			pdata->set_backlight(pdata, mfd->bl_level);
 			bl_level_old = unset_bl_level;
-			mutex_unlock(&mfd->lock);
+			mutex_unlock(&mfd->bl_lock);
 			bl_updated = 1;
 		}
 	}
@@ -1144,6 +1145,7 @@ static int mdss_fb_pan_display(struct fb_var_screeninfo *var,
 	memset(&disp_commit, 0, sizeof(disp_commit));
 	disp_commit.var = *var;
 	disp_commit.wait_for_finish = true;
+	memcpy(&disp_commit.var, var, sizeof(struct fb_var_screeninfo));
 	return mdss_fb_pan_display_ex(info, &disp_commit);
 }
 
@@ -1210,6 +1212,7 @@ static void mdss_fb_commit_wq_handler(struct work_struct *work)
 		mdss_fb_wait_for_fence(mfd);
 		if (mfd->mdp.kickoff_fnc)
 			mfd->mdp.kickoff_fnc(mfd);
+		mdss_fb_update_backlight(mfd);
 		mdss_fb_signal_timeline(mfd);
 	} else {
 		var = &fb_backup->disp_commit.var;
@@ -1432,6 +1435,7 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_fb_data_type *mfd,
 	int i, fence_cnt = 0, ret = 0;
 	int acq_fen_fd[MDP_MAX_FENCE_FD];
 	struct sync_fence *fence;
+	u32 threshold;
 
 	if ((buf_sync->acq_fen_fd_cnt > MDP_MAX_FENCE_FD) ||
 		(mfd->timeline == NULL))
@@ -1465,8 +1469,13 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_fb_data_type *mfd,
 	if (buf_sync->flags & MDP_BUF_SYNC_FLAG_WAIT)
 		mdss_fb_wait_for_fence(mfd);
 
+	if (mfd->panel.type == WRITEBACK_PANEL)
+		threshold = 1;
+	else
+		threshold = 2;
+
 	mfd->cur_rel_sync_pt = sw_sync_pt_create(mfd->timeline,
-			mfd->timeline_value + 2);
+			mfd->timeline_value + threshold);
 	if (mfd->cur_rel_sync_pt == NULL) {
 		pr_err("%s: cannot create sync point", __func__);
 		ret = -ENOMEM;
@@ -1730,4 +1739,4 @@ int __init mdss_fb_init(void)
 	return 0;
 }
 
-device_initcall_sync(mdss_fb_init);
+module_init(mdss_fb_init);

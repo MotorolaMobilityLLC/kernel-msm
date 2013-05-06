@@ -45,6 +45,9 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
+#define CREATE_TRACE_POINTS
+#include <trace/events/mmc.h>
+
 static void mmc_clk_scaling(struct mmc_host *host, bool from_wq);
 
 /* If the device is not responding */
@@ -164,10 +167,12 @@ static inline void mmc_should_fail_request(struct mmc_host *host,
 
 static inline void mmc_update_clk_scaling(struct mmc_host *host)
 {
-	if (host->clk_scaling.enable)
+	if (host->clk_scaling.enable) {
 		host->clk_scaling.busy_time_us +=
 			ktime_to_us(ktime_sub(ktime_get(),
 					host->clk_scaling.start_busy));
+		host->clk_scaling.start_busy = ktime_get();
+	}
 }
 /**
  *	mmc_request_done - finish processing an MMC request
@@ -808,6 +813,12 @@ static int mmc_wait_for_data_req_done(struct mmc_host *host,
 			context_info->is_urgent = false;
 			context_info->is_new_req = false;
 			if (mmc_should_stop_curr_req(host)) {
+				/*
+				 * We are going to stop the ongoing request.
+				 * Update stuff that we ought to do when the
+				 * request actually completes.
+				 */
+				mmc_update_clk_scaling(host);
 				err = mmc_stop_request(host);
 				if (err && !context_info->is_done_rcv) {
 					err = MMC_BLK_ABORT;
@@ -820,14 +831,6 @@ static int mmc_wait_for_data_req_done(struct mmc_host *host,
 					context_info->is_done_rcv = false;
 					break; /* return err */
 				} else {
-					/*
-					 * We have stopped the ongoing request
-					 * and are sure that mmc_request_done()
-					 * is not going to get called. Update
-					 * stuff that we ought to do when the
-					 * request actually completes.
-					 */
-					mmc_update_clk_scaling(host);
 					mmc_host_clk_release(host);
 				}
 				err = host->areq->update_interrupted_req(
@@ -1486,6 +1489,19 @@ void mmc_set_ios(struct mmc_host *host)
 	if (ios->clock > 0)
 		mmc_set_ungated(host);
 	host->ops->set_ios(host, ios);
+	if (ios->old_rate != ios->clock) {
+		if (likely(ios->clk_ts)) {
+			char trace_info[80];
+			snprintf(trace_info, 80,
+				"%s: freq_KHz %d --> %d | t = %d",
+				mmc_hostname(host), ios->old_rate / 1000,
+				ios->clock / 1000, jiffies_to_msecs(
+					(long)jiffies - (long)ios->clk_ts));
+			trace_mmc_clk(trace_info);
+		}
+		ios->old_rate = ios->clock;
+		ios->clk_ts = jiffies;
+	}
 }
 EXPORT_SYMBOL(mmc_set_ios);
 
@@ -2823,7 +2839,13 @@ static bool mmc_is_vaild_state_for_clk_scaling(struct mmc_host *host)
 	u32 status;
 	bool ret = false;
 
-	if (!card)
+	/*
+	 * If the current partition type is RPMB, clock switching may not
+	 * work properly as sending tuning command (CMD21) is illegal in
+	 * this mode.
+	 */
+	if (!card || (mmc_card_mmc(card) &&
+			card->part_curr == EXT_CSD_PART_CONFIG_ACC_RPMB))
 		goto out;
 
 	if (mmc_send_status(card, &status)) {
@@ -3594,6 +3616,20 @@ void mmc_set_embedded_sdio_data(struct mmc_host *host,
 EXPORT_SYMBOL(mmc_set_embedded_sdio_data);
 #endif
 
+#ifdef CONFIG_PM_RUNTIME
+void mmc_dump_dev_pm_state(struct mmc_host *host, struct device *dev)
+{
+	pr_err("%s: %s: err: runtime_error: %d\n", dev_name(dev),
+	       mmc_hostname(host), dev->power.runtime_error);
+	pr_err("%s: %s: disable_depth: %d runtime_status: %d idle_notification: %d\n",
+	       dev_name(dev), mmc_hostname(host), dev->power.disable_depth,
+	       dev->power.runtime_status,
+	       dev->power.idle_notification);
+	pr_err("%s: %s: request_pending: %d, request: %d\n",
+	       dev_name(dev), mmc_hostname(host),
+	       dev->power.request_pending, dev->power.request);
+}
+
 void mmc_rpm_hold(struct mmc_host *host, struct device *dev)
 {
 	int ret = 0;
@@ -3602,13 +3638,16 @@ void mmc_rpm_hold(struct mmc_host *host, struct device *dev)
 		return;
 
 	ret = pm_runtime_get_sync(dev);
-	if (ret < 0) {
-		pr_err("%s: %s: %s: error resuming device: %d\n",
+	if ((ret < 0) &&
+	    (dev->power.runtime_error || (dev->power.disable_depth > 0))) {
+		pr_err("%s: %s: %s: pm_runtime_get_sync: err: %d\n",
 		       dev_name(dev), mmc_hostname(host), __func__, ret);
+		mmc_dump_dev_pm_state(host, dev);
 		if (pm_runtime_suspended(dev))
 			BUG_ON(1);
 	}
 }
+
 EXPORT_SYMBOL(mmc_rpm_hold);
 
 void mmc_rpm_release(struct mmc_host *host, struct device *dev)
@@ -3619,11 +3658,22 @@ void mmc_rpm_release(struct mmc_host *host, struct device *dev)
 		return;
 
 	ret = pm_runtime_put_sync(dev);
-	if (ret < 0 && ret != -EBUSY)
-		pr_err("%s: %s: %s: put sync ret: %d\n",
+	if ((ret < 0) &&
+	    (dev->power.runtime_error || (dev->power.disable_depth > 0))) {
+		pr_err("%s: %s: %s: pm_runtime_put_sync: err: %d\n",
 		       dev_name(dev), mmc_hostname(host), __func__, ret);
+		mmc_dump_dev_pm_state(host, dev);
+	}
 }
+
 EXPORT_SYMBOL(mmc_rpm_release);
+#else
+void mmc_rpm_hold(struct mmc_host *host, struct device *dev) {}
+EXPORT_SYMBOL(mmc_rpm_hold);
+
+void mmc_rpm_release(struct mmc_host *host, struct device *dev) {}
+EXPORT_SYMBOL(mmc_rpm_release);
+#endif
 
 /**
  * mmc_init_context_info() - init synchronization context

@@ -103,36 +103,6 @@ static void __disable_clocks(struct msm_iommu_drvdata *drvdata)
 	clk_disable_unprepare(drvdata->pclk);
 }
 
-static int _iommu_power_off(void *data)
-{
-	struct msm_iommu_drvdata *drvdata;
-
-	drvdata = (struct msm_iommu_drvdata *)data;
-	__disable_clocks(drvdata);
-	__disable_regulators(drvdata);
-	return 0;
-}
-
-static int _iommu_power_on(void *data)
-{
-	int ret;
-	struct msm_iommu_drvdata *drvdata;
-
-	drvdata = (struct msm_iommu_drvdata *)data;
-	ret = __enable_regulators(drvdata);
-	if (ret)
-		goto fail;
-
-	ret = __enable_clocks(drvdata);
-	if (ret) {
-		__disable_regulators(drvdata);
-		goto fail;
-	}
-	return 0;
-fail:
-	return -EIO;
-}
-
 static void _iommu_lock_acquire(void)
 {
 	mutex_lock(&msm_iommu_lock);
@@ -144,8 +114,10 @@ static void _iommu_lock_release(void)
 }
 
 struct iommu_access_ops iommu_access_ops_v1 = {
-	.iommu_power_on = _iommu_power_on,
-	.iommu_power_off = _iommu_power_off,
+	.iommu_power_on = __enable_regulators,
+	.iommu_power_off = __disable_regulators,
+	.iommu_clk_on = __enable_clocks,
+	.iommu_clk_off = __disable_clocks,
 	.iommu_lock_acquire = _iommu_lock_acquire,
 	.iommu_lock_release = _iommu_lock_release,
 };
@@ -260,8 +232,6 @@ static void __reset_iommu(void __iomem *base)
 	SET_GFAR(base, 0);
 	SET_GFSRRESTORE(base, 0);
 	SET_TLBIALLNSNH(base, 0);
-	SET_SCR1(base, 0);
-	SET_SSDR_N(base, 0, 0);
 	smt_size = GET_IDR0_NUMSMRG(base);
 
 	for (i = 0; i < smt_size; i++)
@@ -833,6 +803,19 @@ irqreturn_t msm_iommu_fault_handler_v2(int irq, void *dev_id)
 
 	ctx_drvdata = dev_get_drvdata(&pdev->dev);
 	BUG_ON(!ctx_drvdata);
+
+	if (!drvdata->ctx_attach_count) {
+		pr_err("Unexpected IOMMU page fault!\n");
+		pr_err("name = %s\n", drvdata->name);
+		pr_err("Power is OFF. Unable to read page fault information\n");
+		/*
+		 * We cannot determine which context bank caused the issue so
+		 * we just return handled here to ensure IRQ handler code is
+		 * happy
+		 */
+		ret = IRQ_HANDLED;
+		goto fail;
+	}
 
 	ret = __enable_clocks(drvdata);
 	if (ret) {

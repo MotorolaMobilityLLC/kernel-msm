@@ -14,6 +14,7 @@
 #define _MPQ_ADAPTER_H
 
 #include "dvbdev.h"
+#include "dvb_demux.h"
 #include "mpq_stream_buffer.h"
 
 
@@ -36,36 +37,11 @@ enum mpq_adapter_stream_if {
 	MPQ_ADAPTER_MAX_NUM_OF_INTERFACES,
 };
 
-
-enum dmx_framing_pattern_type {
-	/* MPEG-2 */
-	DMX_FRM_MPEG2_SEQUENCE_HEADER,
-	DMX_FRM_MPEG2_GOP_HEADER,
-	DMX_FRM_MPEG2_I_PIC,
-	DMX_FRM_MPEG2_P_PIC,
-	DMX_FRM_MPEG2_B_PIC,
-	/* H.264 */
-	DMX_FRM_H264_SPS,
-	DMX_FRM_H264_PPS,
-	/* H.264 First Coded slice of an IDR Picture */
-	DMX_FRM_H264_IDR_PIC,
-	/* H.264 First Coded slice of a non-IDR Picture */
-	DMX_FRM_H264_NON_IDR_PIC,
-	/* VC-1 Sequence Header*/
-	DMX_FRM_VC1_SEQUENCE_HEADER,
-	/* VC-1 Entry Point Header (Advanced Profile only) */
-	DMX_FRM_VC1_ENTRY_POINT_HEADER,
-	/* VC-1 Frame Start Code */
-	DMX_FRM_VC1_FRAME_START_CODE,
-	/* Unknown or invalid framing information */
-	DMX_FRM_UNKNOWN
-};
-
 enum dmx_packet_type {
-	DMX_PADDING_PACKET,
 	DMX_PES_PACKET,
 	DMX_FRAMING_INFO_PACKET,
-	DMX_EOS_PACKET
+	DMX_EOS_PACKET,
+	DMX_MARKER_PACKET
 };
 
 struct dmx_pts_dts_info {
@@ -83,15 +59,27 @@ struct dmx_pts_dts_info {
 };
 
 struct dmx_framing_packet_info {
-	/** framing pattern type */
-	enum dmx_framing_pattern_type pattern_type;
+	/** framing pattern type, one of DMX_IDX_* definitions */
+	u64 pattern_type;
+
 	/** PTS/DTS information */
 	struct dmx_pts_dts_info pts_dts_info;
+
+	/** STC value attached to first TS packet holding the pattern */
+	u64 stc;
 };
 
 struct dmx_pes_packet_info {
 	/** PTS/DTS information */
 	struct dmx_pts_dts_info pts_dts_info;
+
+	/** STC value attached to first TS packet holding the PES */
+	u64 stc;
+};
+
+struct dmx_marker_info {
+	/* marker id */
+	u64 id;
 };
 
 /** The meta-data used for video interface */
@@ -103,6 +91,7 @@ struct mpq_adapter_video_meta_data {
 	union {
 		struct dmx_framing_packet_info framing;
 		struct dmx_pes_packet_info pes;
+		struct dmx_marker_info marker;
 	} info;
 } __packed;
 

@@ -69,12 +69,12 @@ static int32_t aprv2_core_fn_q(struct apr_client_data *data, void *priv)
 		switch (payload1[0]) {
 
 		case ADSP_CMD_SET_POWER_COLLAPSE_STATE:
-			pr_info("Cmd = ADSP_CMD_SET_POWER_COLLAPSE_STATE"
-				" status[0x%x]\n", payload1[1]);
+			pr_info("Cmd = ADSP_CMD_SET_POWER_COLLAPSE_STATE status[0x%x]\n",
+								payload1[1]);
 			break;
 		case ADSP_CMD_REMOTE_BUS_BW_REQUEST:
-			pr_info("%s: cmd = ADSP_CMD_REMOTE_BUS_BW_REQUEST"
-				"  status = 0x%x\n", __func__, payload1[1]);
+			pr_info("%s: cmd = ADSP_CMD_REMOTE_BUS_BW_REQUEST status = 0x%x\n",
+							__func__, payload1[1]);
 
 			bus_bw_resp_received = 1;
 			wake_up(&bus_bw_req_wait);
@@ -160,10 +160,9 @@ void core_open(void)
 		core_handle_q = apr_register("ADSP", "CORE",
 					aprv2_core_fn_q, 0xFFFFFFFF, NULL);
 	}
-	pr_info("Open_q %p\n", core_handle_q);
-	if (core_handle_q == NULL) {
+	pr_debug("Open_q %p\n", core_handle_q);
+	if (core_handle_q == NULL)
 		pr_err("%s: Unable to register CORE\n", __func__);
-	}
 }
 
 int core_req_bus_bandwith(u16 bus_id, u32 ab_bps, u32 ib_bps)
@@ -352,7 +351,7 @@ static ssize_t apr_debug_write(struct file *file, const char __user *buf,
 			pc.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_EVENT,
 					APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
 			pc.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
-						sizeof(uint32_t));;
+						sizeof(uint32_t));
 			pc.hdr.src_port = 0;
 			pc.hdr.dest_port = 0;
 			pc.hdr.token = 0;

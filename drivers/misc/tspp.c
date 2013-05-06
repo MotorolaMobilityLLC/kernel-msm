@@ -1571,6 +1571,7 @@ int tspp_close_channel(u32 dev, u32 channel_id)
 	int id;
 	int table_idx;
 	u32 val;
+	unsigned long flags;
 
 	struct sps_connect *config;
 	struct tspp_device *pdev;
@@ -1590,6 +1591,15 @@ int tspp_close_channel(u32 dev, u32 channel_id)
 	/* if the channel is not used, we are done */
 	if (!channel->used)
 		return 0;
+
+	/*
+	 * Need to protect access to used and waiting fields, as they are
+	 * used by the tasklet which is invoked from interrupt context
+	 */
+	spin_lock_irqsave(&pdev->spinlock, flags);
+	channel->used = 0;
+	channel->waiting = NULL;
+	spin_unlock_irqrestore(&pdev->spinlock, flags);
 
 	if (channel->expiration_period_ms)
 		del_timer(&channel->expiration_timer);
@@ -1644,9 +1654,7 @@ int tspp_close_channel(u32 dev, u32 channel_id)
 	channel->buffer_count = 0;
 	channel->data = NULL;
 	channel->read = NULL;
-	channel->waiting = NULL;
 	channel->locked = NULL;
-	channel->used = 0;
 
 	if (tspp_channels_in_use(pdev) == 0) {
 		wake_unlock(&pdev->wake_lock);
@@ -2839,8 +2847,6 @@ static int __devinit msm_tspp_probe(struct platform_device *pdev)
 	if (data->tsif_pclk) {
 		device->tsif_pclk = clk_get(&pdev->dev, data->tsif_pclk);
 		if (IS_ERR(device->tsif_pclk)) {
-			pr_err("tspp: failed to get %s",
-				data->tsif_pclk);
 			rc = PTR_ERR(device->tsif_pclk);
 			device->tsif_pclk = NULL;
 			goto err_pclock;
@@ -2849,8 +2855,6 @@ static int __devinit msm_tspp_probe(struct platform_device *pdev)
 	if (data->tsif_ref_clk) {
 		device->tsif_ref_clk = clk_get(&pdev->dev, data->tsif_ref_clk);
 		if (IS_ERR(device->tsif_ref_clk)) {
-			pr_err("tspp: failed to get %s",
-				data->tsif_ref_clk);
 			rc = PTR_ERR(device->tsif_ref_clk);
 			device->tsif_ref_clk = NULL;
 			goto err_refclock;

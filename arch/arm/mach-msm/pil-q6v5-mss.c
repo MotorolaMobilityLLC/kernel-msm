@@ -30,10 +30,10 @@
 #include <mach/subsystem_restart.h>
 #include <mach/clk.h>
 #include <mach/msm_smsm.h>
+#include <mach/ramdump.h>
 
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
-#include "ramdump.h"
 #include "sysmon.h"
 
 /* Q6 Register Offsets */
@@ -243,7 +243,7 @@ static int pil_mss_reset(struct pil_desc *pil)
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
 	struct platform_device *pdev = to_platform_device(pil->dev);
 	struct mba_data *mba = platform_get_drvdata(pdev);
-	unsigned long start_addr = pil_get_entry_addr(pil);
+	phys_addr_t start_addr = pil_get_entry_addr(pil);
 	int ret;
 
 	/*
@@ -402,7 +402,7 @@ static int pil_mba_init_image(struct pil_desc *pil,
 	return ret;
 }
 
-static int pil_mba_verify_blob(struct pil_desc *pil, u32 phy_addr,
+static int pil_mba_verify_blob(struct pil_desc *pil, phys_addr_t phy_addr,
 			       size_t size)
 {
 	struct mba_data *drv = dev_get_drvdata(pil->dev);
@@ -608,8 +608,15 @@ static int mss_start(const struct subsys_desc *desc)
 	if (ret)
 		return ret;
 	ret = pil_boot(&drv->desc);
-	if (ret)
+	if (ret) {
 		pil_shutdown(&drv->q6->desc);
+		/*
+		 * We know now that the unvote interrupt is not coming.
+		 * Remove the proxy votes immediately.
+		 */
+		if (drv->q6->desc.proxy_unvote_irq)
+			pil_q6v5_mss_remove_proxy_votes(&drv->q6->desc);
+	}
 	return ret;
 }
 
@@ -709,6 +716,15 @@ static int __devinit pil_mss_loadable_init(struct mba_data *drv,
 	struct resource *res;
 	int ret;
 
+	int clk_ready = of_get_named_gpio(pdev->dev.of_node,
+			"qcom,gpio-proxy-unvote", 0);
+	if (clk_ready < 0)
+		return clk_ready;
+
+	clk_ready = gpio_to_irq(clk_ready);
+	if (clk_ready < 0)
+		return clk_ready;
+
 	q6 = pil_q6v5_init(pdev);
 	if (IS_ERR(q6))
 		return PTR_ERR(q6);
@@ -718,6 +734,7 @@ static int __devinit pil_mss_loadable_init(struct mba_data *drv,
 	q6_desc->ops = &pil_mss_ops;
 	q6_desc->owner = THIS_MODULE;
 	q6_desc->proxy_timeout = PROXY_TIMEOUT_MS;
+	q6_desc->proxy_unvote_irq = clk_ready;
 
 	drv->self_auth = of_property_read_bool(pdev->dev.of_node,
 							"qcom,pil-self-auth");
@@ -781,6 +798,7 @@ static int __devinit pil_mss_loadable_init(struct mba_data *drv,
 	mba_desc->ops = &pil_mba_ops;
 	mba_desc->owner = THIS_MODULE;
 	mba_desc->proxy_timeout = PROXY_TIMEOUT_MS;
+	mba_desc->proxy_unvote_irq = clk_ready;
 
 	ret = pil_desc_init(mba_desc);
 	if (ret)

@@ -44,6 +44,8 @@
 #define MOVE_NEAR 0
 #define MOVE_FAR  1
 
+#define MAX_EEPROM_NAME 32
+
 enum msm_camera_i2c_reg_addr_type {
 	MSM_CAMERA_I2C_BYTE_ADDR = 1,
 	MSM_CAMERA_I2C_WORD_ADDR,
@@ -110,10 +112,10 @@ enum sensor_sub_module_t {
 	SUB_MODULE_EEPROM,
 	SUB_MODULE_LED_FLASH,
 	SUB_MODULE_STROBE_FLASH,
-	SUB_MODULE_CSIPHY,
-	SUB_MODULE_CSIPHY_3D,
 	SUB_MODULE_CSID,
 	SUB_MODULE_CSID_3D,
+	SUB_MODULE_CSIPHY,
+	SUB_MODULE_CSIPHY_3D,
 	SUB_MODULE_MAX,
 };
 
@@ -209,6 +211,7 @@ struct msm_camera_csiphy_params {
 	uint8_t settle_cnt;
 	uint16_t lane_mask;
 	uint8_t combo_mode;
+	uint8_t csid_core;
 };
 
 struct msm_camera_csi2_params {
@@ -285,6 +288,37 @@ struct csiphy_cfg_data {
 	union {
 		struct msm_camera_csiphy_params *csiphy_params;
 		struct msm_camera_csi_lane_params *csi_lane_params;
+	} cfg;
+};
+
+enum eeprom_cfg_type_t {
+	CFG_EEPROM_GET_INFO,
+	CFG_EEPROM_GET_DATA,
+	CFG_EEPROM_READ_DATA,
+	CFG_EEPROM_WRITE_DATA,
+};
+struct eeprom_get_t {
+	uint16_t num_bytes;
+};
+
+struct eeprom_read_t {
+	uint8_t *dbuffer;
+	uint16_t num_bytes;
+};
+
+struct eeprom_write_t {
+	uint8_t *dbuffer;
+	uint16_t num_bytes;
+};
+
+struct msm_eeprom_cfg_data {
+	enum eeprom_cfg_type_t cfgtype;
+	uint8_t is_supported;
+	union {
+		char eeprom_name[MAX_SENSOR_NAME];
+		struct eeprom_get_t get_data;
+		struct eeprom_read_t read_data;
+		struct eeprom_write_t write_data;
 	} cfg;
 };
 
@@ -460,6 +494,9 @@ struct msm_camera_led_cfg_t {
 
 #define VIDIOC_MSM_FLASH_LED_DATA_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 7, struct msm_camera_led_cfg_t)
+
+#define VIDIOC_MSM_EEPROM_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 8, struct msm_eeprom_cfg_data)
 
 #define MSM_V4L2_PIX_FMT_META v4l2_fourcc('M', 'E', 'T', 'A') /* META */
 

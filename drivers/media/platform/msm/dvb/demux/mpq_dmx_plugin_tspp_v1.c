@@ -382,7 +382,8 @@ static void mpq_dmx_tspp_aggregated_process(int tsif, int channel_id)
 			buff_current_addr_phys - buff_start_addr_phys);
 
 		mpq_sdmx_process(mpq_demux, &input, aggregate_len,
-			buff_current_addr_phys - buff_start_addr_phys);
+			buff_current_addr_phys - buff_start_addr_phys,
+			TSPP_RAW_TTS_SIZE);
 	}
 
 	for (i = 0; i < aggregate_count; i++)
@@ -1742,6 +1743,8 @@ static int mpq_tspp_dmx_init(
 	mpq_demux->demux.decoder_buffer_status = mpq_dmx_decoder_buffer_status;
 	mpq_demux->demux.reuse_decoder_buffer = mpq_dmx_reuse_decoder_buffer;
 	mpq_demux->demux.set_secure_mode = mpq_dmx_set_secure_mode;
+	mpq_demux->demux.oob_command = mpq_dmx_oob_command;
+	mpq_demux->demux.convert_ts = mpq_dmx_convert_tts;
 
 	/* Initialize dvb_demux object */
 	result = dvb_dmx_init(&mpq_demux->demux);
@@ -1773,7 +1776,7 @@ static int mpq_tspp_dmx_init(
 	}
 
 	/* Extend dvb-demux debugfs with TSPP statistics. */
-	mpq_dmx_init_hw_statistics(mpq_demux);
+	mpq_dmx_init_debugfs_entries(mpq_demux);
 
 	return 0;
 

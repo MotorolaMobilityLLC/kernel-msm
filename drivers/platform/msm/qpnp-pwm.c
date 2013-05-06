@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
 
  *
  * This program is free software; you can redistribute it and/or modify
@@ -319,6 +319,7 @@ static int qpnp_set_control(bool pwm_hi, bool pwm_lo, bool pwm_out,
 #define QPNP_ENABLE_LUT_CONTROL		qpnp_set_control(0, 0, 0, 0, 1)
 #define QPNP_ENABLE_PWM_CONTROL		qpnp_set_control(0, 0, 0, 1, 0)
 #define QPNP_ENABLE_PWM_MODE		qpnp_set_control(1, 1, 1, 1, 0)
+#define QPNP_ENABLE_PWM_MODE_GPLED_CHANNEL	qpnp_set_control(1, 1, 1, 1, 1)
 #define QPNP_ENABLE_LPG_MODE		qpnp_set_control(1, 1, 1, 0, 1)
 #define QPNP_DISABLE_PWM_MODE		qpnp_set_control(0, 0, 0, 1, 0)
 #define QPNP_DISABLE_LPG_MODE		qpnp_set_control(0, 0, 0, 0, 1)
@@ -463,7 +464,7 @@ static int qpnp_lpg_change_table(struct pwm_device *pwm,
 	int			i, pwm_size, rc = 0;
 	int			burst_size = SPMI_MAX_BUF_LEN;
 	int			list_len = lut->list_len << 1;
-	int			offset = lut->lo_index << 1;
+	int			offset = (lut->lo_index << 1) - 2;
 
 	pwm_size = QPNP_GET_PWM_SIZE(
 			chip->qpnp_lpg_registers[QPNP_LPG_PWM_SIZE_CLK]) &
@@ -908,6 +909,17 @@ static int qpnp_lpg_configure_lut_state(struct pwm_device *pwm,
 
 }
 
+#define QPNP_GPLED_LPG_CHANNEL_RANGE_START 8
+#define QPNP_GPLED_LPG_CHANNEL_RANGE_END 11
+
+static inline int qpnp_enable_pwm_mode(struct qpnp_pwm_config *pwm_conf)
+{
+	if (pwm_conf->channel_id >= QPNP_GPLED_LPG_CHANNEL_RANGE_START ||
+		pwm_conf->channel_id <= QPNP_GPLED_LPG_CHANNEL_RANGE_END)
+		return QPNP_ENABLE_PWM_MODE_GPLED_CHANNEL;
+	return QPNP_ENABLE_PWM_MODE;
+}
+
 static int qpnp_lpg_configure_pwm_state(struct pwm_device *pwm,
 					enum qpnp_pwm_state state)
 {
@@ -917,7 +929,7 @@ static int qpnp_lpg_configure_pwm_state(struct pwm_device *pwm,
 	int			rc;
 
 	if (state == QPNP_PWM_ENABLE)
-		value = QPNP_ENABLE_PWM_MODE;
+		value = qpnp_enable_pwm_mode(&pwm->pwm_config);
 	else
 		value = QPNP_DISABLE_PWM_MODE;
 
@@ -1024,8 +1036,8 @@ static int _pwm_lut_config(struct pwm_device *pwm, int period_us,
 		raw_lut = 1;
 
 	lut_config->list_len = len;
-	lut_config->lo_index = start_idx;
-	lut_config->hi_index = start_idx + len - 1;
+	lut_config->lo_index = start_idx + 1;
+	lut_config->hi_index = start_idx + len;
 
 	rc = qpnp_lpg_change_table(pwm, duty_pct, raw_lut);
 	if (rc) {
@@ -1041,13 +1053,13 @@ after_table_write:
 
 	QPNP_SET_PAUSE_CNT(lut_config->lut_pause_lo_cnt,
 			lut_params.lut_pause_lo, ramp_step_ms);
-	if (lut_config->lut_pause_lo_cnt > PM_PWM_LUT_PAUSE_MAX)
-		lut_config->lut_pause_lo_cnt = PM_PWM_LUT_PAUSE_MAX;
+	if (lut_config->lut_pause_lo_cnt > PM_PWM_MAX_PAUSE_CNT)
+		lut_config->lut_pause_lo_cnt = PM_PWM_MAX_PAUSE_CNT;
 
 	QPNP_SET_PAUSE_CNT(lut_config->lut_pause_hi_cnt,
 			lut_params.lut_pause_hi, ramp_step_ms);
-	if (lut_config->lut_pause_hi_cnt > PM_PWM_LUT_PAUSE_MAX)
-			lut_config->lut_pause_hi_cnt = PM_PWM_LUT_PAUSE_MAX;
+	if (lut_config->lut_pause_hi_cnt > PM_PWM_MAX_PAUSE_CNT)
+			lut_config->lut_pause_hi_cnt = PM_PWM_MAX_PAUSE_CNT;
 
 	lut_config->ramp_step_ms = ramp_step_ms;
 

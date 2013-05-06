@@ -186,7 +186,7 @@ static void __init reserve_rtb_memory(void)
 #endif
 }
 
-static int apq8064_paddr_to_memtype(unsigned int paddr)
+static int apq8064_paddr_to_memtype(phys_addr_t paddr)
 {
 	return MEMTYPE_EBI1;
 }
@@ -437,7 +437,7 @@ static void __init reserve_ion_memory(void)
 
 			if (fixed_position != NOT_FIXED)
 				fixed_size += heap->size;
-			else
+			else if (!use_cma)
 				reserve_mem_for_ion(MEMTYPE_EBI1, heap->size);
 
 			if (fixed_position == FIXED_LOW) {
@@ -675,6 +675,7 @@ static struct msm_bus_scale_pdata hsic_bus_scale_pdata = {
 static struct msm_hsic_host_platform_data msm_hsic_pdata = {
 	.strobe			= 88,
 	.data			= 89,
+	.phy_sof_workaround	= true,
 	.bus_scale_table	= &hsic_bus_scale_pdata,
 };
 #else
@@ -2343,6 +2344,8 @@ static struct msm_pcie_gpio_info_t msm_pcie_gpio_info[MSM_PCIE_MAX_GPIO] = {
 static struct msm_pcie_platform msm_pcie_platform_data = {
 	.axi_addr = PCIE_AXI_BAR_PHYS,
 	.axi_size = PCIE_AXI_BAR_SIZE,
+	.parf_deemph = 0x282828,
+	.parf_swing = 0x7F7F,
 };
 
 /* FSM8064_EP PCIe gpios */
@@ -2356,7 +2359,9 @@ static struct msm_pcie_platform ep_pcie_platform_data = {
 	.axi_addr = PCIE_AXI_BAR_PHYS,
 	.axi_size = PCIE_AXI_BAR_SIZE,
 	.wake_n = PM8921_GPIO_IRQ(PM8921_IRQ_BASE, PCIE_EP_WAKE_N_PMIC_GPIO),
-	.vreg_n = 4
+	.vreg_n = 4,
+	.parf_deemph = 0x101010,
+	.parf_swing = 0x6B6B,
 };
 
 static int __init mpq8064_pcie_enabled(void)
@@ -3580,6 +3585,18 @@ static void __init apq8064_common_init(void)
 	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
 		apq8064_pm8917_pdata_fixup();
 	platform_device_register(&msm_gpio_device);
+	if (cpu_is_apq8064ab())
+		apq8064ab_update_krait_spm();
+	if (cpu_is_krait_v3()) {
+		struct msm_pm_init_data_type *pdata =
+		msm8064_pm_8x60.dev.platform_data;
+		pdata->retention_calls_tz = false;
+		apq8064ab_update_retention_spm();
+	}
+	platform_device_register(&msm8064_pm_8x60);
+
+	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
+	msm_spm_l2_init(msm_spm_l2_data);
 	msm_tsens_early_init(&apq_tsens_pdata);
 	msm_thermal_init(&msm_thermal_pdata);
 	if (socinfo_init() < 0)
@@ -3694,18 +3711,6 @@ static void __init apq8064_common_init(void)
 		apq8064_init_dsps();
 		platform_device_register(&msm_8960_riva);
 	}
-	if (cpu_is_apq8064ab())
-		apq8064ab_update_krait_spm();
-	if (cpu_is_krait_v3()) {
-		struct msm_pm_init_data_type *pdata =
-			msm8064_pm_8x60.dev.platform_data;
-		pdata->retention_calls_tz = false;
-		apq8064ab_update_retention_spm();
-	}
-	platform_device_register(&msm8064_pm_8x60);
-
-	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
-	msm_spm_l2_init(msm_spm_l2_data);
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 	apq8064_epm_adc_init();
 }
@@ -3803,6 +3808,8 @@ static void __init fsm8064_ep_init(void)
 {
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
+
+	msm_thermal_pdata.limit_temp_degC = 80;
 
 	apq8064_common_init();
 	ethernet_init();

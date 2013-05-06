@@ -23,7 +23,7 @@
 		qcom,mdss-pan-porch-values = <164 8 140 1 1 6>;
 		qcom,mdss-pan-underflow-clr = <0xff>;
 		qcom,mdss-pan-bl-ctrl = "bl_ctrl_wled";
-		qcom,mdss-pan-bl-levels = <1 255>;
+		qcom,mdss-pan-bl-levels = <1 4095>;
 		qcom,mdss-pan-dsi-mode = <0>;
 		qcom,mdss-pan-dsi-h-pulse-mode = <1>;
 		qcom,mdss-pan-dsi-h-power-stop = <0 0 0>;
@@ -38,7 +38,7 @@
 		qcom,mdss-pan-dsi-stream = <0>;
 		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
 		qcom,mdss-pan-dsi-dma-tr = <0x04>;
-		qcom,mdss-pan-frame-rate = <60>;
+		qcom,mdss-pan-dsi-frame-rate = <60>;
 		qcom,panel-phy-regulatorSettings = [07 09 03 00  /* Regualotor settings */
 						    20 00 01];
 		qcom,panel-phy-timingSettings = [7d 25 1d 00 37 33

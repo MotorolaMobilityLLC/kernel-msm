@@ -25,6 +25,7 @@
 #include <linux/of_irq.h>
 #include <linux/memory.h>
 #include <linux/regulator/qpnp-regulator.h>
+#include <linux/msm_tsens.h>
 #include <asm/mach/map.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/arch.h>
@@ -72,6 +73,10 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 			"msm_sdcc.1", NULL),
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, \
 			"msm_sdcc.2", NULL),
+	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, \
+			"msm_sdcc.1", NULL),
+	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, \
+			"msm_sdcc.2", NULL),
 	{}
 };
 
@@ -108,11 +113,11 @@ void __init msm8226_add_drivers(void)
 	msm_spm_device_init();
 	rpm_regulator_smd_driver_init();
 	qpnp_regulator_init();
-	if (machine_is_msm8226_rumi())
+	if (of_board_is_rumi())
 		msm_clock_init(&msm8226_rumi_clock_init_data);
 	else
 		msm_clock_init(&msm8226_clock_init_data);
-
+	tsens_tm_init_driver();
 	msm_thermal_device_init();
 }
 

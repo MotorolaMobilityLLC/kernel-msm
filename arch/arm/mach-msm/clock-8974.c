@@ -1405,7 +1405,14 @@ static struct rcg_clk ce2_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_gp_clk[] = {
-	F(19200000,  cxo,  1,   0,   0),
+	F( 4800000,   cxo,  4,  0,   0),
+	F( 6000000, gpll0, 10,  1,  10),
+	F( 6750000, gpll0,  1,  1,  89),
+	F( 8000000, gpll0, 15,  1,   5),
+	F( 9600000,   cxo,  2,  0,   0),
+	F(16000000, gpll0,  1,  2,  75),
+	F(19200000,   cxo,  1,  0,   0),
+	F(24000000, gpll0,  5,  1,   5),
 	F_END
 };
 
@@ -4756,12 +4763,8 @@ static struct clk_lookup msm_clocks_8974[] = {
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9924000.i2c"),
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f991d000.serial"),
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f991e000.serial"),
-#ifdef CONFIG_MAX17048_FUELGAUGE
-	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9923000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup1_i2c_apps_clk.c, "f9923000.i2c"),
-#else
-	CLK_LOOKUP("core_clk", gcc_blsp1_qup1_i2c_apps_clk.c, ""),
-#endif
+	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9923000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup2_i2c_apps_clk.c, "f9924000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup2_spi_apps_clk.c, ""),
 #ifndef CONFIG_MAX17048_FUELGAUGE
@@ -4835,6 +4838,11 @@ static struct clk_lookup msm_clocks_8974[] = {
 	CLK_LOOKUP("iface_clk",    gcc_ce1_ahb_clk.c,     "qseecom"),
 	CLK_LOOKUP("bus_clk",      gcc_ce1_axi_clk.c,     "qseecom"),
 	CLK_LOOKUP("core_clk_src", ce1_clk_src.c,         "qseecom"),
+
+	CLK_LOOKUP("ce_drv_core_clk",     gcc_ce2_clk.c,         "qseecom"),
+	CLK_LOOKUP("ce_drv_iface_clk",    gcc_ce2_ahb_clk.c,     "qseecom"),
+	CLK_LOOKUP("ce_drv_bus_clk",      gcc_ce2_axi_clk.c,     "qseecom"),
+	CLK_LOOKUP("ce_drv_core_clk_src", ce2_clk_src.c,         "qseecom"),
 
 	CLK_LOOKUP("core_clk",     gcc_ce1_clk.c,         "scm"),
 	CLK_LOOKUP("iface_clk",    gcc_ce1_ahb_clk.c,     "scm"),
@@ -4961,77 +4969,78 @@ static struct clk_lookup msm_clocks_8974[] = {
 		"fda0b400.qcom,csiphy"),
 	CLK_LOOKUP("csiphy_timer_clk", camss_phy2_csi2phytimer_clk.c,
 		"fda0b400.qcom,csiphy"),
+
 	/* CSID clocks */
-	CLK_LOOKUP("camss_top_ahb_clk", camss_top_ahb_clk.c,
-		"fda08000.qcom,csid"),
 	CLK_LOOKUP("ispif_ahb_clk", camss_ispif_ahb_clk.c,
-		"fda08000.qcom,csid"),
-	CLK_LOOKUP("csi0_ahb_clk", camss_csi0_ahb_clk.c, "fda08000.qcom,csid"),
-	CLK_LOOKUP("csi0_src_clk", csi0_clk_src.c, "fda08000.qcom,csid"),
-	CLK_LOOKUP("csi0_phy_clk", camss_csi0phy_clk.c, "fda08000.qcom,csid"),
-	CLK_LOOKUP("csi0_clk", camss_csi0_clk.c, "fda08000.qcom,csid"),
-	CLK_LOOKUP("csi0_pix_clk", camss_csi0pix_clk.c, "fda08000.qcom,csid"),
-	CLK_LOOKUP("csi0_rdi_clk", camss_csi0rdi_clk.c, "fda08000.qcom,csid"),
+					"fda08000.qcom,csid"),
+	CLK_LOOKUP("camss_top_ahb_clk", camss_top_ahb_clk.c,
+					"fda08000.qcom,csid"),
+	CLK_LOOKUP("csi_ahb_clk", camss_csi0_ahb_clk.c,
+					"fda08000.qcom,csid"),
+	CLK_LOOKUP("csi_src_clk", csi0_clk_src.c,
+					"fda08000.qcom,csid"),
+	CLK_LOOKUP("csi_phy_clk", camss_csi0phy_clk.c,
+					"fda08000.qcom,csid"),
+	CLK_LOOKUP("csi_clk", camss_csi0_clk.c,
+					"fda08000.qcom,csid"),
+	CLK_LOOKUP("csi_pix_clk", camss_csi0pix_clk.c,
+					"fda08000.qcom,csid"),
+	CLK_LOOKUP("csi_rdi_clk", camss_csi0rdi_clk.c,
+					"fda08000.qcom,csid"),
 
-	CLK_LOOKUP("camss_top_ahb_clk", camss_top_ahb_clk.c,
-		"fda08400.qcom,csid"),
 	CLK_LOOKUP("ispif_ahb_clk", camss_ispif_ahb_clk.c,
-		"fda08400.qcom,csid"),
-	CLK_LOOKUP("csi0_ahb_clk", camss_csi0_ahb_clk.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi1_ahb_clk", camss_csi1_ahb_clk.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi0_src_clk", csi0_clk_src.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi1_src_clk", csi1_clk_src.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi0_phy_clk", camss_csi0phy_clk.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi1_phy_clk", camss_csi1phy_clk.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi0_clk", camss_csi0_clk.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi1_clk", camss_csi1_clk.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi0_pix_clk", camss_csi0pix_clk.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi1_pix_clk", camss_csi1pix_clk.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi0_rdi_clk", camss_csi0rdi_clk.c, "fda08400.qcom,csid"),
-	CLK_LOOKUP("csi1_rdi_clk", camss_csi1rdi_clk.c, "fda08400.qcom,csid"),
+					"fda08400.qcom,csid"),
+	CLK_LOOKUP("camss_top_ahb_clk", camss_top_ahb_clk.c,
+					"fda08400.qcom,csid"),
+	CLK_LOOKUP("csi_ahb_clk", camss_csi1_ahb_clk.c,
+					"fda08400.qcom,csid"),
+	CLK_LOOKUP("csi_src_clk", csi1_clk_src.c,
+					"fda08400.qcom,csid"),
+	CLK_LOOKUP("csi_phy_clk", camss_csi1phy_clk.c,
+					"fda08400.qcom,csid"),
+	CLK_LOOKUP("csi_clk", camss_csi1_clk.c,
+					"fda08400.qcom,csid"),
+	CLK_LOOKUP("csi_pix_clk", camss_csi1pix_clk.c,
+					"fda08400.qcom,csid"),
+	CLK_LOOKUP("csi_rdi_clk", camss_csi1rdi_clk.c,
+					"fda08400.qcom,csid"),
 
-	CLK_LOOKUP("camss_top_ahb_clk", camss_top_ahb_clk.c,
-		"fda08800.qcom,csid"),
 	CLK_LOOKUP("ispif_ahb_clk", camss_ispif_ahb_clk.c,
-		"fda08800.qcom,csid"),
-	CLK_LOOKUP("csi0_ahb_clk", camss_csi0_ahb_clk.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi2_ahb_clk", camss_csi2_ahb_clk.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi0_src_clk", csi0_clk_src.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi2_src_clk", csi2_clk_src.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi0_phy_clk", camss_csi0phy_clk.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi2_phy_clk", camss_csi2phy_clk.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi0_clk", camss_csi0_clk.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi2_clk", camss_csi2_clk.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi0_pix_clk", camss_csi0pix_clk.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi2_pix_clk", camss_csi2pix_clk.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi0_rdi_clk", camss_csi0rdi_clk.c, "fda08800.qcom,csid"),
-	CLK_LOOKUP("csi2_rdi_clk", camss_csi2rdi_clk.c, "fda08800.qcom,csid"),
+					"fda08800.qcom,csid"),
+	CLK_LOOKUP("camss_top_ahb_clk", camss_top_ahb_clk.c,
+					"fda08800.qcom,csid"),
+	CLK_LOOKUP("csi_ahb_clk", camss_csi2_ahb_clk.c,
+					"fda08800.qcom,csid"),
+	CLK_LOOKUP("csi_src_clk", csi2_clk_src.c,
+					"fda08800.qcom,csid"),
+	CLK_LOOKUP("csi_phy_clk", camss_csi2phy_clk.c,
+					"fda08800.qcom,csid"),
+	CLK_LOOKUP("csi_clk", camss_csi2_clk.c,
+					"fda08800.qcom,csid"),
+	CLK_LOOKUP("csi_pix_clk", camss_csi2pix_clk.c,
+					"fda08800.qcom,csid"),
+	CLK_LOOKUP("csi_rdi_clk", camss_csi2rdi_clk.c,
+					"fda08800.qcom,csid"),
 
-	CLK_LOOKUP("camss_top_ahb_clk", camss_top_ahb_clk.c,
-		"fda08c00.qcom,csid"),
 	CLK_LOOKUP("ispif_ahb_clk", camss_ispif_ahb_clk.c,
-		"fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi0_ahb_clk", camss_csi0_ahb_clk.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi3_ahb_clk", camss_csi3_ahb_clk.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi0_src_clk", csi0_clk_src.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi3_src_clk", csi3_clk_src.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi0_phy_clk", camss_csi0phy_clk.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi3_phy_clk", camss_csi3phy_clk.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi0_clk", camss_csi0_clk.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi3_clk", camss_csi3_clk.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi0_pix_clk", camss_csi0pix_clk.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi3_pix_clk", camss_csi3pix_clk.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi0_rdi_clk", camss_csi0rdi_clk.c, "fda08c00.qcom,csid"),
-	CLK_LOOKUP("csi3_rdi_clk", camss_csi3rdi_clk.c, "fda08c00.qcom,csid"),
+					"fda08c00.qcom,csid"),
+	CLK_LOOKUP("camss_top_ahb_clk", camss_top_ahb_clk.c,
+					"fda08c00.qcom,csid"),
+	CLK_LOOKUP("csi_ahb_clk", camss_csi3_ahb_clk.c,
+					"fda08c00.qcom,csid"),
+	CLK_LOOKUP("csi_src_clk", csi3_clk_src.c,
+					"fda08c00.qcom,csid"),
+	CLK_LOOKUP("csi_phy_clk", camss_csi3phy_clk.c,
+					"fda08c00.qcom,csid"),
+	CLK_LOOKUP("csi_clk", camss_csi3_clk.c,
+					"fda08c00.qcom,csid"),
+	CLK_LOOKUP("csi_pix_clk", camss_csi3pix_clk.c,
+					"fda08c00.qcom,csid"),
+	CLK_LOOKUP("csi_rdi_clk", camss_csi3rdi_clk.c,
+					"fda08c00.qcom,csid"),
 
 	/* ISPIF clocks */
-	CLK_LOOKUP("camss_vfe_vfe_clk", camss_vfe_vfe0_clk.c,
-		"fda0a000.qcom,ispif"),
-	CLK_LOOKUP("camss_csi_vfe_clk", camss_csi_vfe0_clk.c,
-		"fda0a000.qcom,ispif"),
-	CLK_LOOKUP("camss_vfe_vfe_clk1", camss_vfe_vfe1_clk.c,
-		"fda0a000.qcom,ispif"),
-	CLK_LOOKUP("camss_csi_vfe_clk1", camss_csi_vfe1_clk.c,
+	CLK_LOOKUP("ispif_ahb_clk", camss_ispif_ahb_clk.c,
 		"fda0a000.qcom,ispif"),
 
 	/*VFE clocks*/
@@ -5134,6 +5143,7 @@ static struct clk_lookup msm_clocks_8974[] = {
 	CLK_LOOKUP("bus_clk",  venus0_axi_clk.c, "fdc00000.qcom,vidc"),
 	CLK_LOOKUP("mem_clk",  venus0_ocmemnoc_clk.c, "fdc00000.qcom,vidc"),
 
+	CLK_LOOKUP("core_clk", oxili_gfx3d_clk.c, "fd8c4024.qcom,gdsc"),
 
 	/* LPASS clocks */
 	CLK_LOOKUP("bus_clk", gcc_mss_q6_bimc_axi_clk.c, "fc880000.qcom,mss"),
@@ -5516,15 +5526,6 @@ static void __init msm8974_clock_pre_init(void)
 	if (IS_ERR(vdd_dig.regulator[0]))
 		panic("clock-8974: Unable to get the vdd_dig regulator!");
 
-	/*
-	 * TODO: Set a voltage and enable vdd_dig, leaving the voltage high
-	 * until late_init. This may not be necessary with clock handoff;
-	 * Investigate this code on a real non-simulator target to determine
-	 * its necessity.
-	 */
-	vote_vdd_level(&vdd_dig, VDD_DIG_HIGH);
-	regulator_enable(vdd_dig.regulator[0]);
-
 	enable_rpm_scaling();
 
 	reg_init();
@@ -5561,11 +5562,6 @@ static void __init msm8974_clock_pre_init(void)
 	mdss_clk_ctrl_pre_init(&mdss_ahb_clk.c);
 }
 
-static int __init msm8974_clock_late_init(void)
-{
-	return unvote_vdd_level(&vdd_dig, VDD_DIG_HIGH);
-}
-
 static void __init msm8974_rumi_clock_pre_init(void)
 {
 	virt_bases[GCC_BASE] = ioremap(GCC_CC_PHYS, GCC_CC_SIZE);
@@ -5581,15 +5577,6 @@ static void __init msm8974_rumi_clock_pre_init(void)
 	vdd_dig.regulator[0] = regulator_get(NULL, "vdd_dig");
 	if (IS_ERR(vdd_dig.regulator[0]))
 		panic("clock-8974: Unable to get the vdd_dig regulator!");
-
-	/*
-	 * TODO: Set a voltage and enable vdd_dig, leaving the voltage high
-	 * until late_init. This may not be necessary with clock handoff;
-	 * Investigate this code on a real non-simulator target to determine
-	 * its necessity.
-	 */
-	vote_vdd_level(&vdd_dig, VDD_DIG_HIGH);
-	regulator_enable(vdd_dig.regulator[0]);
 }
 
 struct clock_init_data msm8974_clock_init_data __initdata = {
@@ -5597,7 +5584,6 @@ struct clock_init_data msm8974_clock_init_data __initdata = {
 	.size = ARRAY_SIZE(msm_clocks_8974),
 	.pre_init = msm8974_clock_pre_init,
 	.post_init = msm8974_clock_post_init,
-	.late_init = msm8974_clock_late_init,
 };
 
 struct clock_init_data msm8974_rumi_clock_init_data __initdata = {

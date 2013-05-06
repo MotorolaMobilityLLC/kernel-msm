@@ -130,6 +130,7 @@ enum hal_property {
 	HAL_PARAM_VENC_H264_DEBLOCK_CONTROL,
 	HAL_PARAM_VENC_TEMPORAL_SPATIAL_TRADEOFF,
 	HAL_PARAM_VENC_SESSION_QP,
+	HAL_PARAM_VENC_SESSION_QP_RANGE,
 	HAL_CONFIG_VENC_INTRA_PERIOD,
 	HAL_CONFIG_VENC_IDR_PERIOD,
 	HAL_CONFIG_VPE_OPERATIONS,
@@ -166,6 +167,10 @@ enum hal_property {
 	HAL_PARAM_VENC_SYNC_FRAME_SEQUENCE_HEADER,
 	HAL_PARAM_VDEC_SYNC_FRAME_DECODE,
 	HAL_PARAM_VENC_H264_ENTROPY_CABAC_MODEL,
+	HAL_CONFIG_VENC_MAX_BITRATE,
+	HAL_PARAM_VENC_H264_VUI_TIMING_INFO,
+	HAL_PARAM_VENC_H264_GENERATE_AUDNAL,
+	HAL_PARAM_VENC_MAX_NUM_B_FRAMES,
 };
 
 enum hal_domain {
@@ -593,6 +598,12 @@ struct hal_quantization {
 	u32 layer_id;
 };
 
+struct hal_quantization_range {
+	u32 min_qp;
+	u32 max_qp;
+	u32 layer_id;
+};
+
 struct hal_intra_period {
 	u32 pframes;
 	u32 bframes;
@@ -762,6 +773,13 @@ struct hal_multi_view_select {
 
 struct hal_timestamp_scale {
 	u32 time_stamp_scale;
+};
+
+
+struct hal_h264_vui_timing_info {
+	u32 enable;
+	u32 fixed_frame_rate;
+	u32 time_scale;
 };
 
 enum vidc_resource_id {

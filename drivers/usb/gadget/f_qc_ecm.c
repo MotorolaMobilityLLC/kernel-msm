@@ -430,8 +430,6 @@ static int ecm_qc_bam_disconnect(struct f_ecm_qc *dev)
 
 	bam_data_disconnect(&ecm_qc_bam_port, 0);
 
-	ecm_ipa_cleanup(ipa_params.ipa_priv);
-
 	return 0;
 }
 
@@ -849,6 +847,10 @@ ecm_qc_unbind(struct usb_configuration *c, struct usb_function *f)
 	usb_ep_free_request(ecm->notify, ecm->notify_req);
 
 	ecm_qc_string_defs[1].s = NULL;
+
+	if (ecm->xport == USB_GADGET_XPORT_BAM2BAM_IPA)
+		ecm_ipa_cleanup(ipa_params.ipa_priv);
+
 	kfree(ecm);
 }
 

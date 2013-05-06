@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -93,12 +93,24 @@ enum qpnp_boost_current_limit {
  * @system_load:            Load in uA present on regulator that is not captured
  *				by any consumer request
  * @enable_time:            Time in us to delay after enabling the regulator
- * @ocp_enable:             1 = Enable over current protection (OCP) for voltage
- *				switch type regulators so that they latch off
- *				automatically when over current is detected
+ * @ocp_enable:             1 = Allow over current protection (OCP) to be
+ *				enabled for voltage switch type regulators so
+ *				that they latch off automatically when over
+ *				current is detected.  OCP is enabled when in HPM
+ *				or auto mode.
  *			    0 = Disable OCP
  *			    QPNP_REGULATOR_USE_HW_DEFAULT = do not modify
  *			        OCP state
+ * @ocp_irq:                IRQ number of the voltage switch OCP IRQ.  If
+ *				specified the voltage switch will be toggled off
+ *				and back on when OCP triggers in order to handle
+ *				high in-rush current.
+ * @ocp_max_retries:        Maximum number of times to try toggling a voltage
+ *				switch off and back on as a result of
+ *				consecutive over current events.
+ * @ocp_retry_delay_ms:     Time to delay in milliseconds between each
+ *				voltage switch toggle after an over current
+ *				event takes place.
  * @boost_current_limit:    This parameter sets the current limit of boost type
  *				regulators.  Its value should be one of
  *				QPNP_BOOST_CURRENT_LIMIT_*.  If its value is
@@ -117,9 +129,6 @@ enum qpnp_boost_current_limit {
  *				its value is QPNP_VS_SOFT_START_STR_HW_DEFAULT,
  *				then the soft start strength will be left at its
  *				default hardware value.
- * @ocp_enable_time:        Time to delay in us between enabling a switch and
- *				subsequently enabling over current protection
- *				(OCP) for the switch
  * @auto_mode_enable:       1 = Enable automatic hardware selection of regulator
  *				mode (HPM vs LPM).  Auto mode is not available
  *				on boost type regulators
@@ -132,6 +141,18 @@ enum qpnp_boost_current_limit {
  *			    0 = Do not enable bypass mode
  *			    QPNP_REGULATOR_USE_HW_DEFAULT = do not modify
  *			        bypass mode state
+ * @hpm_enable:             1 = Enable high power mode (HPM), also referred to
+ *				as NPM.  HPM consumes more ground current than
+ *				LPM, but it can source significantly higher load
+ *				current.  HPM is not available on boost type
+ *				regulators.  For voltage switch type regulators,
+ *				HPM implies that over current protection and
+ *				soft start are active all the time.  This
+ *				configuration can be overwritten by changing the
+ *				regulator's mode dynamically.
+ *			    0 = Do not enable HPM
+ *			    QPNP_REGULATOR_USE_HW_DEFAULT = do not modify
+ *			        HPM state
  * @base_addr:              SMPI base address for the regulator peripheral
  */
 struct qpnp_regulator_platform_data {
@@ -142,12 +163,15 @@ struct qpnp_regulator_platform_data {
 	int					system_load;
 	int					enable_time;
 	int					ocp_enable;
+	int					ocp_irq;
+	int					ocp_max_retries;
+	int					ocp_retry_delay_ms;
 	enum qpnp_boost_current_limit		boost_current_limit;
 	int					soft_start_enable;
 	enum qpnp_vs_soft_start_str		vs_soft_start_strength;
-	int					ocp_enable_time;
 	int					auto_mode_enable;
 	int					bypass_mode_enable;
+	int					hpm_enable;
 	u16					base_addr;
 };
 

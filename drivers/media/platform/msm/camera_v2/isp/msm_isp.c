@@ -113,7 +113,8 @@ static int __devinit vfe_probe(struct platform_device *pdev)
 	vfe_dev->subdev.sd.flags |= V4L2_SUBDEV_FL_HAS_EVENTS;
 	v4l2_set_subdevdata(&vfe_dev->subdev.sd, vfe_dev);
 	platform_set_drvdata(pdev, &vfe_dev->subdev.sd);
-	mutex_init(&vfe_dev->mutex);
+	mutex_init(&vfe_dev->realtime_mutex);
+	mutex_init(&vfe_dev->core_mutex);
 	spin_lock_init(&vfe_dev->tasklet_lock);
 	spin_lock_init(&vfe_dev->shared_data_lock);
 	media_entity_init(&vfe_dev->subdev.sd.entity, 0, NULL, 0);
@@ -137,6 +138,8 @@ static int __devinit vfe_probe(struct platform_device *pdev)
 		kfree(vfe_dev);
 		return -EINVAL;
 	}
+	vfe_dev->buf_mgr->ops->register_ctx(vfe_dev->buf_mgr,
+		&vfe_dev->iommu_ctx[0], vfe_dev->hw_info->num_iommu_ctx);
 	vfe_dev->vfe_open_cnt = 0;
 end:
 	return rc;

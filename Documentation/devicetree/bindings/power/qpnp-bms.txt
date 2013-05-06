@@ -26,12 +26,9 @@ Parent node required properties:
 			That is to say,
 				if (abs(shutdown-soc - current-soc) < limit)
 				then use old SoC.
-- qcom,adjust-soc-low-threshold : The low threshold for the "flat portion"
-			of the charging curve. The BMS will not adjust SoC
-			based on voltage during this time.
-- qcom,adjust-soc-high-threshold : The high threshold for the "flat
-			portion" of the charging curve. The BMS will not
-			adjust SoC based on voltage during this time.
+- qcom,adjust-soc-low-threshold : The low threshold for when the BMS algorithm
+			starts adjusting. If the estimated SoC is not below
+			this percentage, do not adjust.
 - qcom,ocv-voltage-low-threshold-uv : The low voltage threshold for the
 			"flat portion" of the discharge curve. The bms will not
 			accept new ocvs between these thresholds.
@@ -59,6 +56,14 @@ Parent node required properties:
 - qcom,batt-type: Type of battery used. This is an integer that corresponds
 			to the enum defined in
 			include/linux/mfd/pm8xxx/batterydata-lib.h
+- qcom,high-ocv-correction-limit-uv: how much the bms will correct OCV when
+			voltage is above the flat portion of the discharge
+			curve.
+- qcom,low-ocv-correction-limit-uv: how much the bms will correct OCV when
+			voltage is below the flat portion of the discharge
+			curve.
+- qcom,hold-soc-est: if the voltage-based estimated SoC is above this percent,
+			the BMS will clamp SoC to be at least 1.
 
 Parent node optional properties:
 - qcom,ignore-shutdown-soc: A boolean that controls whether BMS will
@@ -107,14 +112,16 @@ pm8941_bms: qcom,bms {
 	qcom,shutdown-soc-valid-limit = <20>;
 	qcom,ocv-voltage-low-threshold-uv = <3650000>;
 	qcom,ocv-voltage-high-threshold-uv = <3750000>;
-	qcom,adjust-soc-low-threshold = <25>;
-	qcom,adjust-soc-high-threshold = <45>;
+	qcom,adjust-soc-low-threshold = <15>;
 	qcom,low-soc-calculate-soc-threshold = <15>;
 	qcom,low-voltage-threshold = <3420000>;
 	qcom,low-soc-calculate-soc-ms = <5000>;
 	qcom,calculate-soc-ms = <20000>;
 	qcom,chg-term-ua = <100000>;
 	qcom,batt-type = <0>;
+	qcom,low-ocv-correction-limit-uv = <100>;
+	qcom,high-ocv-correction-limit-uv = <50>;
+	qcom,hold-soc-est = <3>;
 
 	qcom,bms-iadc@3800 {
 		reg = <0x3800 0x100>;

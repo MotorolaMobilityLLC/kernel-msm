@@ -56,16 +56,17 @@
 			#size-cells = <1>;
 			status = "disabled";
 
-			qcom,chg-vddmax-mv = <4200>;
-			qcom,chg-vddsafe-mv = <4200>;
-			qcom,chg-vinmin-mv = <4200>;
-			qcom,chg-vbatdet-mv = <4100>;
-			qcom,chg-ibatmax-ma = <1500>;
-			qcom,chg-ibatterm-ma = <200>;
-			qcom,chg-ibatsafe-ma = <1500>;
-			qcom,chg-thermal-mitigation = <1500 700 600 325>;
+			qcom,vddmax-mv = <4200>;
+			qcom,vddsafe-mv = <4200>;
+			qcom,vinmin-mv = <4200>;
+			qcom,vbatdet-delta-mv = <150>;
+			qcom,ibatmax-ma = <1500>;
+			qcom,ibatterm-ma = <200>;
+			qcom,ibatsafe-ma = <1500>;
+			qcom,thermal-mitigation = <1500 700 600 325>;
+			qcom,tchg-mins = <150>;
 
-			qcom,chg-chgr@1000 {
+			qcom,chgr@1000 {
 				status = "disabled";
 				reg = <0x1000 0x100>;
 				interrupts =	<0x0 0x10 0x0>,
@@ -87,7 +88,7 @@
 							"chg-done";
 			};
 
-			qcom,chg-buck@1100 {
+			qcom,buck@1100 {
 				status = "disabled";
 				reg = <0x1100 0x100>;
 				interrupts =	<0x0 0x11 0x0>,
@@ -107,7 +108,7 @@
 							"vdd-loop";
 			};
 
-			qcom,chg-bat-if@1200 {
+			qcom,bat-if@1200 {
 				status = "disabled";
 				reg = <0x1200 0x100>;
 				interrupts =	<0x0 0x12 0x0>,
@@ -124,7 +125,7 @@
 
 			};
 
-			qcom,chg-usb-chgpth@1300 {
+			qcom,usb-chgpth@1300 {
 				status = "disabled";
 				reg = <0x1300 0x100>;
 				interrupts =	<0 0x13 0x0>,
@@ -136,7 +137,7 @@
 							"chg-gone";
 			};
 
-			qcom,chg-boost@1500 {
+			qcom,boost@1500 {
 				status = "disabled";
 				reg = <0x1500 0x100>;
 				interrupts =	<0x0 0x15 0x0>,
@@ -162,10 +163,9 @@
 			qcom,r-sense-uohm = <10000>;
 			qcom,v-cutoff-uv = <3400000>;
 			qcom,max-voltage-uv = <4200000>;
-			qcom,r-conn-mohm = <18>;
+			qcom,r-conn-mohm = <0>;
 			qcom,shutdown-soc-valid-limit = <20>;
-			qcom,adjust-soc-low-threshold = <25>;
-			qcom,adjust-soc-high-threshold = <45>;
+			qcom,adjust-soc-low-threshold = <15>;
 			qcom,ocv-voltage-high-threshold-uv = <3750000>;
 			qcom,ocv-voltage-low-threshold-uv = <3650000>;
 			qcom,low-soc-calculate-soc-threshold = <15>;
@@ -173,6 +173,10 @@
 			qcom,calculate-soc-ms = <20000>;
 			qcom,chg-term-ua = <100000>;
 			qcom,batt-type = <0>;
+			qcom,low-ocv-correction-limit-uv = <100>;
+			qcom,high-ocv-correction-limit-uv = <50>;
+			qcom,hold-soc-est = <3>;
+			qcom,low-voltage-threshold = <3420000>;
 
 			qcom,bms-iadc@3800 {
 				reg = <0x3800 0x100>;
@@ -364,7 +368,6 @@
 			interrupt-names = "eoc-int-en-set";
 			qcom,adc-bit-resolution = <16>;
 			qcom,adc-vdd-reference = <1800>;
-			qcom,rsense = <1500>;
 
 			chan@0 {
 				label = "internal_rsense";
@@ -683,10 +686,65 @@
 			label = "wled";
 		};
 
+		pwm@b100 {
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb100 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
+			qcom,channel-id = <0>;
+		};
+
+		pwm@b200 {
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb200 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
+			qcom,channel-id = <1>;
+		};
+
+		pwm@b300 {
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb300 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
+			qcom,channel-id = <2>;
+		};
+
+		pwm@b400 {
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb400 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
+			qcom,channel-id = <3>;
+		};
+
+		pwm@b500 {
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb500 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
+			qcom,channel-id = <4>;
+		};
+
+		pwm@b600 {
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb600 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
+			qcom,channel-id = <5>;
+		};
+
 		regulator@8000 {
 			regulator-name = "8226_lvs1";
 			reg = <0x8000 0x100>;
 			compatible = "qcom,qpnp-regulator";
+			status = "disabled";
+		};
+
+		qcom,vibrator@c000 {
+			compatible = "qcom,qpnp-vibrator";
+			reg = <0xc000 0x100>;
+			label = "vibrator";
 			status = "disabled";
 		};
 

@@ -23,8 +23,9 @@
 	qcom,csiphy@fda0ac00 {
 		cell-index = <0>;
 		compatible = "qcom,csiphy";
-		reg = <0xfda0ac00 0x200>;
-		reg-names = "csiphy";
+		reg = <0xfda0ac00 0x200>,
+                      <0xfda00030 0x4>;
+		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 78 0>;
 		interrupt-names = "csiphy";
 	};
@@ -32,8 +33,9 @@
 	qcom,csiphy@fda0b000 {
 		cell-index = <1>;
 		compatible = "qcom,csiphy";
-		reg = <0xfda0b000 0x200>;
-		reg-names = "csiphy";
+		reg = <0xfda0b000 0x200>,
+                      <0xfda00038 0x4>;
+		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 79 0>;
 		interrupt-names = "csiphy";
 	};
@@ -41,8 +43,9 @@
 	qcom,csiphy@fda0b400 {
 		cell-index = <2>;
 		compatible = "qcom,csiphy";
-		reg = <0xfda0b400 0x200>;
-		reg-names = "csiphy";
+		reg = <0xfda0b400 0x200>,
+                      <0xfda00040 0x4>;
+		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 80 0>;
 		interrupt-names = "csiphy";
 	};
@@ -94,8 +97,9 @@
 	qcom,ispif@fda0A000 {
 		cell-index = <0>;
 		compatible = "qcom,ispif";
-		reg = <0xfda0A000 0x500>;
-		reg-names = "ispif";
+		reg = <0xfda0A000 0x500>,
+                      <0xfda00020 0x10>;
+		reg-names = "ispif", "csi_clk_mux";
 		interrupts = <0 55 0>;
 		interrupt-names = "ispif";
 	};
@@ -104,7 +108,7 @@
 		cell-index = <0>;
 		compatible = "qcom,vfe40";
 		reg = <0xfda10000 0x1000>,
-                      <0xfda40000 0x200>;
+			<0xfda40000 0x200>;
 		reg-names = "vfe", "vfe_vbif";
 		interrupts = <0 57 0>;
 		interrupt-names = "vfe";
@@ -115,7 +119,7 @@
 		cell-index = <1>;
 		compatible = "qcom,vfe40";
 		reg = <0xfda14000 0x1000>,
-                      <0xfda40000 0x200>;
+			<0xfda40000 0x200>;
 		reg-names = "vfe", "vfe_vbif";
 		interrupts = <0 58 0>;
 		interrupt-names = "vfe";
@@ -129,7 +133,7 @@
 		reg-names = "jpeg";
 		interrupts = <0 59 0>;
 		interrupt-names = "jpeg";
-                vdd-supply = <&gdsc_jpeg>;
+		vdd-supply = <&gdsc_jpeg>;
 	};
 
 	qcom,jpeg@fda20000 {
@@ -163,8 +167,8 @@
 		cell-index = <0>;
 		compatible = "qcom,cpp";
 		reg = <0xfda04000 0x100>,
-		      <0xfda40000 0x200>,
-		      <0xfda18000 0x008>;
+			<0xfda40000 0x200>,
+			<0xfda18000 0x008>;
 		reg-names = "cpp", "cpp_vbif", "cpp_hw";
 		interrupts = <0 49 0>;
 		interrupt-names = "cpp";
@@ -182,7 +186,7 @@
 		cell-index = <0>;
 		compatible = "qcom,cci";
 		reg = <0xfda0C000 0x1000>;
-                #address-cells = <1>;
+		#address-cells = <1>;
 		#size-cells = <0>;
 		reg-names = "cci";
 		interrupts = <0 50 0>;
@@ -194,9 +198,9 @@
 		qcom,gpio-tbl-num = <0 1 2 3>;
 		qcom,gpio-tbl-flags = <1 1 1 1>;
 		qcom,gpio-tbl-label = "CCI_I2C_DATA0",
-				      "CCI_I2C_CLK0",
-				      "CCI_I2C_DATA1",
-				      "CCI_I2C_CLK1";
+					"CCI_I2C_CLK0",
+					"CCI_I2C_DATA1",
+					"CCI_I2C_CLK1";
 		qcom,hw-thigh = <78>;
 		qcom,hw-tlow = <114>;
 		qcom,hw-tsu-sto = <28>;

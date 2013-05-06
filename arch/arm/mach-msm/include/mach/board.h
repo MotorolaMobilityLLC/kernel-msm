@@ -600,7 +600,8 @@ void msm_map_apq8064_io(void);
 void msm_map_msm7x30_io(void);
 void msm_map_fsm9xxx_io(void);
 void msm_map_8974_io(void);
-void msm_map_zinc_io(void);
+void msm_map_8084_io(void);
+void msm_map_msmkrypton_io(void);
 void msm_map_msm8625_io(void);
 void msm_map_msm9625_io(void);
 void msm_init_irq(void);
@@ -609,8 +610,9 @@ void vic_handle_irq(struct pt_regs *regs);
 void msm_8974_reserve(void);
 void msm_8974_very_early(void);
 void msm_8974_init_gpiomux(void);
-void msmzinc_init_gpiomux(void);
+void apq8084_init_gpiomux(void);
 void msm9625_init_gpiomux(void);
+void msmkrypton_init_gpiomux(void);
 void msm_map_mpq8092_io(void);
 void mpq8092_init_gpiomux(void);
 void msm_map_msm8226_io(void);
@@ -651,7 +653,7 @@ void msm_snddev_hsed_voltage_off(void);
 void msm_snddev_tx_route_config(void);
 void msm_snddev_tx_route_deconfig(void);
 
-extern unsigned int msm_shared_ram_phys; /* defined in arch/arm/mach-msm/io.c */
+extern phys_addr_t msm_shared_ram_phys; /* defined in arch/arm/mach-msm/io.c */
 
 
 #endif

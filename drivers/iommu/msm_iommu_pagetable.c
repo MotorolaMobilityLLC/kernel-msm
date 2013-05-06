@@ -21,6 +21,7 @@
 
 #include <mach/iommu.h>
 #include <mach/msm_iommu_priv.h>
+#include <trace/events/kmem.h>
 #include "msm_iommu_pagetable.h"
 
 /* Sharability attributes of MSM IOMMU mappings */
@@ -431,6 +432,7 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 		       struct scatterlist *sg, unsigned int len, int prot)
 {
 	phys_addr_t pa;
+	unsigned int start_va = va;
 	unsigned int offset = 0;
 	unsigned long *fl_pte;
 	unsigned long fl_offset;
@@ -470,6 +472,8 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 			chunk_size = SZ_1M;
 		/* 64k or 4k determined later */
 
+		trace_iommu_map_range(va, pa, sg->length, chunk_size);
+
 		/* for 1M and 16M, only first level entries are required */
 		if (chunk_size >= SZ_1M) {
 			if (chunk_size == SZ_16M) {
@@ -495,12 +499,6 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 				chunk_offset = 0;
 				sg = sg_next(sg);
 				pa = get_phys_addr(sg);
-				if (pa == 0) {
-					pr_debug("No dma address for sg %p\n",
-							sg);
-					ret = -EINVAL;
-					goto fail;
-				}
 			}
 			continue;
 		}
@@ -534,6 +532,9 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 			else
 				chunk_size = SZ_4K;
 
+			trace_iommu_map_range(va, pa, sg->length,
+							chunk_size);
+
 			if (chunk_size == SZ_4K) {
 				sl_4k(&sl_table[sl_offset], pa, pgprot4k);
 				sl_offset++;
@@ -553,12 +554,6 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 				chunk_offset = 0;
 				sg = sg_next(sg);
 				pa = get_phys_addr(sg);
-				if (pa == 0) {
-					pr_debug("No dma address for sg %p\n",
-							sg);
-					ret = -EINVAL;
-					goto fail;
-				}
 			}
 		}
 
@@ -569,6 +564,9 @@ int msm_iommu_pagetable_map_range(struct msm_iommu_pt *pt, unsigned int va,
 	}
 
 fail:
+	if (ret && offset > 0)
+		msm_iommu_pagetable_unmap_range(pt, start_va, offset);
+
 	return ret;
 }
 

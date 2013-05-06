@@ -17,6 +17,7 @@
 #define ISPIF_RST_CMD_ADDR                       0x008
 #define ISPIF_RST_CMD_1_ADDR                     0x00C
 #define ISPIF_IRQ_GLOBAL_CLEAR_CMD_ADDR          0x01C
+#define PIX0_LINE_BUF_EN_BIT                     6
 
 #define ISPIF_VFE(m)                             ((m) * 0x200)
 
@@ -44,6 +45,9 @@
 #define ISPIF_VFE_m_PIX_INTF_n_STATUS(m, n)      (0x2C0 + ISPIF_VFE(m) + 4*(n))
 #define ISPIF_VFE_m_RDI_INTF_n_STATUS(m, n)      (0x2D0 + ISPIF_VFE(m) + 4*(n))
 #define ISPIF_VFE_m_3D_DESKEW_SIZE(m)            (0x2E4 + ISPIF_VFE(m))
+
+/* CSID CLK MUX SEL REGISTERS */
+#define ISPIF_RDI_CLK_MUX_SEL_ADDR               0x8
 
 /*ISPIF RESET BITS*/
 #define VFE_CLK_DOMAIN_RST                       BIT(31)

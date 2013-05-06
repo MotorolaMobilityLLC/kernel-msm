@@ -557,17 +557,6 @@ int ipa_set_qcncm_ndp_sig(char sig[3]);
 int ipa_set_single_ndp_per_mbim(bool enable);
 
 /*
- * rmnet bridge
- */
-int rmnet_bridge_init(void);
-
-int rmnet_bridge_disconnect(void);
-
-int rmnet_bridge_connect(u32 producer_hdl,
-			 u32 consumer_hdl,
-			 int wwan_logical_channel_id);
-
-/*
  * SW bridge (between IPA and A2)
  */
 int ipa_bridge_setup(enum ipa_bridge_dir dir, enum ipa_bridge_type type,
@@ -593,6 +582,8 @@ int ipa_teardown_sys_pipe(u32 clnt_hdl);
  * Resource manager
  */
 int ipa_rm_create_resource(struct ipa_rm_create_params *create_params);
+
+int ipa_rm_delete_resource(enum ipa_rm_resource_name resource_name);
 
 int ipa_rm_register(enum ipa_rm_resource_name resource_name,
 			struct ipa_rm_register_params *reg_params);
@@ -917,26 +908,6 @@ static inline int ipa_set_single_ndp_per_mbim(bool enable)
 }
 
 /*
- * rmnet bridge
- */
-static inline int rmnet_bridge_init(void)
-{
-	return -EPERM;
-}
-
-static inline int rmnet_bridge_disconnect(void)
-{
-	return -EPERM;
-}
-
-static inline int rmnet_bridge_connect(u32 producer_hdl,
-			 u32 consumer_hdl,
-			 int wwan_logical_channel_id)
-{
-	return -EPERM;
-}
-
-/*
  * SW bridge (between IPA and A2)
  */
 static inline int ipa_bridge_setup(enum ipa_bridge_dir dir,
@@ -982,6 +953,12 @@ static inline int ipa_teardown_sys_pipe(u32 clnt_hdl)
  */
 static inline int ipa_rm_create_resource(
 		struct ipa_rm_create_params *create_params)
+{
+	return -EPERM;
+}
+
+static inline int ipa_rm_delete_resource(
+		enum ipa_rm_resource_name resource_name)
 {
 	return -EPERM;
 }
