@@ -184,13 +184,16 @@ wpt_packet * wpalPacketAlloc(wpt_packet_type pktType, wpt_uint32 nPktSize,
         wpalPacketAvailableCB = rxLowCB;
       }
 #endif /* FEATURE_R33D */
-      vos_pkt_get_packet_length(pVosPkt, &allocLen);
-      if (nPktSize != allocLen)
+      if((NULL != pVosPkt) && (VOS_STATUS_E_RESOURCES != vosStatus))
       {
-         WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                    "RX packet alloc has problem, discard this frame, Len %d", allocLen);
-         vos_pkt_return_packet(pVosPkt);
-         return NULL;
+         vos_pkt_get_packet_length(pVosPkt, &allocLen);
+         if (nPktSize != allocLen)
+         {
+            WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                       "RX packet alloc has problem, discard this frame, Len %d", allocLen);
+            vos_pkt_return_packet(pVosPkt);
+            return NULL;
+         }
       }
       break;
 
