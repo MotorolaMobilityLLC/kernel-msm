@@ -351,7 +351,7 @@ static void SynaBootloaderLock_ds5(struct synaptics_ts_data *ts)/*no ds4 */
 		 */
 		SynaEnableFlashing(ts);
 	} else {
-		TOUCH_ERR_MSG("Device already locked.\n");
+		TOUCH_INFO_MSG("Device already locked.\n");
 	}
 }
 
@@ -705,7 +705,7 @@ static void eraseAllBlock(struct synaptics_ts_data *ts)
 */
 static void SynaProgramFirmware(struct synaptics_ts_data *ts)
 {
-	TOUCH_ERR_MSG("\nProgram Firmware Section...\n");
+	TOUCH_INFO_MSG("\nProgram Firmware Section...\n");
 
 	eraseAllBlock(ts);
 
@@ -718,7 +718,7 @@ static void SynaProgramFirmware(struct synaptics_ts_data *ts)
 */
 static void SynaUpdateConfig(struct synaptics_ts_data *ts)
 {
-	TOUCH_ERR_MSG("\nUpdate Config Section...\n");
+	TOUCH_INFO_MSG("\nUpdate Config Section...\n");
 
 	EraseConfigBlock(ts);
 

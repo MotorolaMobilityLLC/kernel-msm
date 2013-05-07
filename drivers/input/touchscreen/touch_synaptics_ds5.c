@@ -134,7 +134,7 @@ static struct workqueue_struct *synaptics_wq;
 
 /* FLASH_MEMORY_MANAGEMENT */
 #define FLASH_CONFIG_ID_REG              (ts->flash_fc.dsc.control_base)
-#define FLASH_CONTROL_REG                (ts->flash_fc.dsc.data_base+18) /* Flash Control */
+#define FLASH_STATUS_REG                (ts->flash_fc.dsc.data_base+3) /* Flash Status */
 
 #define FLASH_STATUS_MASK                0x87
 
@@ -440,7 +440,6 @@ static int synaptics_ts_fw_upgrade(struct i2c_client *client,
 	return ret;
 }
 
-
 /* touch_fw_upgrade_func
  *
  * it used to upgrade the firmware of touch IC.
@@ -450,30 +449,31 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 	struct synaptics_ts_data *ts =
 			container_of(work_fw_upgrade,
 				struct synaptics_ts_data, work_fw_upgrade);
-	u8	saved_state = ts->curr_pwr_state;
-	int	ver, img_ver;
+	u8	saved_state;
+	int	ver, img_ver, rv;
 
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
-#ifndef andrew_test
-	TOUCH_INFO_MSG("FW-upgrade is not executed\n");
-	goto out;
-#endif
+	rv = kstrtoint(&ts->fw_info.config_id[1], 10, &ver);
+	if (rv != 0)
+		ver = 0;
 
-	if (!ts->fw_info.fw_upgrade.fw_force_upgrade &&
-		(!ts->fw_info.fw_start ||
-			kstrtoint(&ts->fw_info.config_id[1], 10, &ver) != 0 ||
-			kstrtoint(&ts->fw_info.image_config_id[1], 10,
-								&img_ver) != 0||
-			ver >= img_ver)) {
+	rv = kstrtoint(&ts->fw_info.image_config_id[1], 10, &img_ver);
+	if (rv != 0)
+		img_ver = 0;
+
+	if (!ts->fw_info.fw_upgrade.fw_force_upgrade && ver >= img_ver) {
 		/* No Upgrade */
 		TOUCH_INFO_MSG("FW-upgrade is not executed\n");
 		goto out;
 	}
 
+	mutex_lock(&ts->input_dev->mutex);
+
 	ts->fw_info.fw_upgrade.is_downloading = UNDER_DOWNLOADING;
 
+	saved_state = ts->curr_pwr_state;
 	if (ts->curr_pwr_state == POWER_ON) {
 		disable_irq(ts->client->irq);
 	}
@@ -490,21 +490,19 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 		safety_reset(ts);
 	}
 
-	if (!ts->curr_resume_state) {
-		touch_power_cntl(ts, POWER_OFF);
-	}
-	else {
+	if (saved_state == POWER_ON) {
 		enable_irq(ts->client->irq);
 
 		touch_ic_init(ts);
-
-		if (saved_state == POWER_WAKE || saved_state == POWER_SLEEP)
-			touch_power_cntl(ts, saved_state);
+	}
+	else {
+		touch_power_cntl(ts, POWER_OFF);
 	}
 
 	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
 		TOUCH_INFO_MSG("F/W upgrade - Finish\n");
 
+	mutex_unlock(&ts->input_dev->mutex);
 out:
 	memset(&ts->fw_info.fw_upgrade, 0, sizeof(ts->fw_info.fw_upgrade));
 
@@ -544,8 +542,8 @@ static void touch_recover_func(struct work_struct *work_recover)
 
 	disable_irq(ts->client->irq);
 	safety_reset(ts);
-	touch_ic_init(ts);
 	enable_irq(ts->client->irq);
+	touch_ic_init(ts);
 }
 
 /* touch_ic_init
@@ -1017,7 +1015,7 @@ static int read_page_description_table(struct i2c_client *client)
 static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info *fw_info)
 {
 	u8 device_status = 0;
-	u8 flash_control[2] ;
+	u8 flash_status ;
 
 	read_page_description_table(ts->client);
 
@@ -1053,48 +1051,30 @@ static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info
 	snprintf(fw_info->ic_fw_identifier, sizeof(fw_info->ic_fw_identifier),
 		"%s - %d", ts->fw_info.product_id, ts->fw_info.manufacturer_id);
 
-
 	TOUCH_INFO_MSG("product id[%s] : syna product id[%s]\n",
 		ts->fw_info.product_id,
-		&SynaFirmware_ds5[0][FW_OFFSET_PRODUCT_ID]);
+		&SynaFirmware_ds5[FW_OFFSET_PRODUCT_ID]);
 
-	/* check the product id with the official firmware
-	for (i = 0; i < sizeof(SynaFirmware_ds5)/sizeof(SynaFirmware_ds5[0]); i++) {
-		if (!strncmp(ts->fw_info.product_id,
-				&SynaFirmware_ds5[i][FW_OFFSET_PRODUCT_ID],
-				sizeof(ts->fw_info.product_id) - 1)) {
-			ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5[i];
-			ts->fw_info.fw_size = sizeof(SynaFirmware_ds5[i]);
-			break;
-		}
-	}*/
-
-	ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5[0];
-	ts->fw_info.fw_size = sizeof(SynaFirmware_ds5[0]);
+	ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5;
+	ts->fw_info.fw_size = sizeof(SynaFirmware_ds5);
 
 	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
 		TOUCH_INFO_MSG("IC identifier[%s] fw_version[%s]\n",
 			ts->fw_info.ic_fw_identifier, ts->fw_info.config_id);
 
-
-	if (ts->fw_info.fw_start) {
-/* check the product id with the official firmware
-strncpy(ts->fw_info.fw_image_product_id,
-	&ts->fw_info.fw_start[FW_OFFSET_PRODUCT_ID], 10);*/
+	strncpy(ts->fw_info.fw_image_product_id,
+		&ts->fw_info.fw_start[FW_OFFSET_PRODUCT_ID], 10);
 	strncpy(ts->fw_info.image_config_id,
-			&ts->fw_info.fw_start[FW_OFFSET_IMAGE_VERSION], 4);
+		&ts->fw_info.fw_start[FW_OFFSET_IMAGE_VERSION], 4);
 
-		if (likely(touch_debug_mask &
-					(DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
-			TOUCH_INFO_MSG("image_version[%s] : force[%d]\n",
-				ts->fw_info.image_config_id,
-				ts->fw_info.fw_upgrade.fw_force_upgrade);
-	} else {
-		TOUCH_ERR_MSG("No matched firmware found! SKIP firmware upgrade\n");
-	}
+	if (likely(touch_debug_mask &
+				(DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
+		TOUCH_INFO_MSG("image_version[%s] : force[%d]\n",
+			ts->fw_info.image_config_id,
+			ts->fw_info.fw_upgrade.fw_force_upgrade);
 
-	if (unlikely(touch_i2c_read(ts->client, FLASH_CONTROL_REG,
-				sizeof(flash_control), flash_control) < 0)) {
+	if (unlikely(touch_i2c_read(ts->client, FLASH_STATUS_REG,
+				sizeof(flash_status), &flash_status) < 0)) {
 		TOUCH_ERR_MSG("FLASH_CONTROL_REG read fail\n");
 		return -EIO;
 	}
@@ -1108,9 +1088,9 @@ strncpy(ts->fw_info.fw_image_product_id,
 	/* Firmware has a problem, so we should firmware-upgrade */
 	if (device_status & DEVICE_STATUS_FLASH_PROG
 			|| (device_status & DEVICE_CRC_ERROR_MASK) != 0
-			|| (flash_control[1] & FLASH_STATUS_MASK) != 0) {
+			|| (flash_status & FLASH_STATUS_MASK) != 0) {
 		TOUCH_ERR_MSG("Firmware has a unknown-problem, so it needs firmware-upgrade.\n");
-		TOUCH_ERR_MSG("FLASH_CONTROL[%x] DEVICE_STATUS_REG[%x]\n", (u32)flash_control[1], (u32)device_status);
+		TOUCH_ERR_MSG("FLASH_STATUS[%x] DEVICE_STATUS_REG[%x]\n", (u32)flash_status, (u32)device_status);
 		TOUCH_ERR_MSG("FW-upgrade Force Rework.\n");
 
 		/* firmware version info change by force for rework */
@@ -1574,8 +1554,6 @@ static int synaptics_ts_start(struct synaptics_ts_data *ts)
 	if (ts->curr_resume_state)
 		return 0;
 
-	ts->curr_resume_state = 1;
-
 	if (ts->fw_info.fw_upgrade.is_downloading == UNDER_DOWNLOADING) {
 		TOUCH_INFO_MSG("start is not executed\n");
 		return 0;
@@ -1630,24 +1608,27 @@ static int fb_notifier_callback(struct notifier_block *this,
 		if (first) {
 			mutex_lock(&ts->input_dev->mutex);
 			synaptics_ts_start(ts);
-			mutex_unlock(&ts->input_dev->mutex);
 			first = 0;
 		} else {
-			queue_delayed_work(synaptics_wq,
-				&ts->work_init,
-				msecs_to_jiffies(70));
+			if (!ts->curr_resume_state) {
+				ts->curr_resume_state = 1;
+				queue_delayed_work(synaptics_wq,
+					&ts->work_init,
+					msecs_to_jiffies(70));
+			}
 			first = 1;
+			mutex_unlock(&ts->input_dev->mutex);
 		}
 		break;
 	case FB_BLANK_POWERDOWN:
 		if (first) {
 			mutex_lock(&ts->input_dev->mutex);
 			disable_irq(ts->client->irq);
-			mutex_unlock(&ts->input_dev->mutex);
 			first = 0;
 		} else {
 			synaptics_ts_stop(ts);
 			first = 1;
+			mutex_unlock(&ts->input_dev->mutex);
 		}
 		break;
 	default:
@@ -1806,8 +1787,7 @@ static int synaptics_ts_probe(
 	touch_ic_init(ts);
 
 	/* Firmware Upgrade Check - use thread for booting time reduction */
-	if (ts->fw_info.fw_start != NULL)
-		queue_work(synaptics_wq, &ts->work_fw_upgrade);
+	queue_work(synaptics_wq, &ts->work_fw_upgrade);
 
 	for (i = 0; i < ARRAY_SIZE(synaptics_device_attrs); i++) {
 		ret = device_create_file(&client->dev,
