@@ -5400,6 +5400,42 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
 }
 
 /*
+ * FUNCTION: hdd_isWPAIEPresent
+ * Parse the received IE to find the WPA IE
+ *
+ */
+static bool hdd_isWPAIEPresent(u8 *ie, u8 ie_len)
+{
+    v_U8_t eLen = 0;
+    v_U16_t remLen = ie_len;
+    v_U8_t elementId = 0;
+
+    while (remLen >= 2)
+    {
+        elementId = *ie++;
+        eLen  = *ie++;
+        remLen -= 2;
+        if (eLen > remLen)
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: IE length is wrong %d", __func__, eLen);
+            return FALSE;
+        }
+        if ((elementId == DOT11F_EID_WPA) && (remLen > 5))
+        {
+          /* OUI - 0x00 0X50 0XF2
+             WPA Information Element - 0x01
+             WPA version - 0x01*/
+            if (0 == memcmp(&ie[0], "\x00\x50\xf2\x01\x01", 5))
+               return TRUE;
+        }
+        ie += eLen;
+        remLen -= eLen;
+    }
+    return FALSE;
+}
+
+/*
  * FUNCTION: wlan_hdd_cfg80211_set_privacy
  * This function is used to initialize the security
  * parameters during connect operation.
@@ -5419,7 +5455,7 @@ int wlan_hdd_cfg80211_set_privacy( hdd_adapter_t *pAdapter,
     {
         if ( (NL80211_WPA_VERSION_1 == req->crypto.wpa_versions)
             && ( (req->ie_len)
-           && (0 == memcmp( &req->ie[2], "\x00\x50\xf2",3) ) ) )
+           && (hdd_isWPAIEPresent(req->ie, req->ie_len) ) ) )
            // Make sure that it is including a WPA IE.
            /* Currently NL is putting WPA version 1 even for open,
             * since p2p ie is also put in same buffer.
