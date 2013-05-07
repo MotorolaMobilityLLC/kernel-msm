@@ -239,6 +239,14 @@ typedef enum tdlsLinkSetupStatus
 #define WNI_CFG_TDLS_LINK_SETUP_CNF_TIMEOUT         (200)
 #endif
 
+#define IS_QOS_ENABLED(psessionEntry) ((((psessionEntry)->limQosEnabled) && \
+                                                  SIR_MAC_GET_QOS((psessionEntry)->limCurrentBssCaps)) || \
+                                       (((psessionEntry)->limWmeEnabled ) && \
+                                                  LIM_BSS_CAPS_GET(WME, (psessionEntry)->limCurrentBssQosCaps)))
+
+#define TID_AC_VI                  4
+#define TID_AC_BK                  1
+
 const tANI_U8* limTraceTdlsActionString( tANI_U8 tdlsActionCode )
 {
    switch( tdlsActionCode )
@@ -375,9 +383,10 @@ static void limPreparesActionFrameHdr(tpAniSirGlobal pMac, tANI_U8 *pFrame,
  * |             |              |                |
  */
 static tANI_U32 limPrepareTdlsFrameHeader(tpAniSirGlobal pMac, tANI_U8* pFrame, 
-           tDot11fIELinkIdentifier *link_iden, tANI_U8 tdlsLinkType, tANI_U8 reqType, tpPESession psessionEntry )
+           tDot11fIELinkIdentifier *link_iden, tANI_U8 tdlsLinkType, tANI_U8 reqType,
+           tANI_U8 tid, tpPESession psessionEntry)
 {
-    tpSirMacMgmtHdr pMacHdr ;
+    tpSirMacDataHdr3a pMacHdr ;
     tANI_U32 header_offset = 0 ;
     tANI_U8 *addr1 = NULL ;
     tANI_U8 *addr3 = NULL ;
@@ -388,7 +397,7 @@ static tANI_U32 limPrepareTdlsFrameHeader(tpAniSirGlobal pMac, tANI_U8* pFrame,
     tANI_U8 *staMac = (reqType == TDLS_INITIATOR) 
                                        ? link_iden->InitStaAddr : link_iden->RespStaAddr; 
    
-    pMacHdr = (tpSirMacMgmtHdr) (pFrame);
+    pMacHdr = (tpSirMacDataHdr3a) (pFrame);
 
     /* 
      * if TDLS frame goes through the AP link, it follows normal address
@@ -404,7 +413,8 @@ static tANI_U32 limPrepareTdlsFrameHeader(tpAniSirGlobal pMac, tANI_U8* pFrame,
      */ 
     pMacHdr->fc.protVer = SIR_MAC_PROTOCOL_VERSION;
     pMacHdr->fc.type    = SIR_MAC_DATA_FRAME ;
-    pMacHdr->fc.subType = SIR_MAC_DATA_DATA ;
+    pMacHdr->fc.subType = IS_QOS_ENABLED(psessionEntry) ? SIR_MAC_DATA_QOS_DATA : SIR_MAC_DATA_DATA;
+
     /*
      * TL is not setting up below fields, so we are doing it here
      */
@@ -413,28 +423,34 @@ static tANI_U32 limPrepareTdlsFrameHeader(tpAniSirGlobal pMac, tANI_U8* pFrame,
     pMacHdr->fc.wep = (psessionEntry->encryptType == eSIR_ED_NONE)? 0 : 1;
 
      
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) pMacHdr->da, (tANI_U8 *)addr1,
+    palCopyMemory( pMac->hHdd, (tANI_U8 *) pMacHdr->addr1, (tANI_U8 *)addr1,
                                                     sizeof( tSirMacAddr ));
     palCopyMemory( pMac->hHdd,
-                   (tANI_U8 *) pMacHdr->sa,
+                   (tANI_U8 *) pMacHdr->addr2,
                    (tANI_U8 *) staMac,
                    sizeof( tSirMacAddr ));
 
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) pMacHdr->bssId,
+    palCopyMemory( pMac->hHdd, (tANI_U8 *) pMacHdr->addr3,
                                 (tANI_U8 *) (addr3), sizeof( tSirMacAddr ));
-   
+
     LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN, ("Preparing TDLS frame header to %s\n%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x"), \
        (tdlsLinkType == TDLS_LINK_AP) ? "AP" : "TD", \
-        pMacHdr->da[0], pMacHdr->da[1], pMacHdr->da[2], pMacHdr->da[3], pMacHdr->da[4], pMacHdr->da[5], \
-        pMacHdr->sa[0], pMacHdr->sa[1], pMacHdr->sa[2], pMacHdr->sa[3], pMacHdr->sa[4], pMacHdr->sa[5], \
-        pMacHdr->bssId[0], pMacHdr->bssId[1], pMacHdr->bssId[2], \
-        pMacHdr->bssId[3], pMacHdr->bssId[4], pMacHdr->bssId[5]));
+        pMacHdr->addr1[0], pMacHdr->addr1[1], pMacHdr->addr1[2], pMacHdr->addr1[3], pMacHdr->addr1[4], pMacHdr->addr1[5], \
+        pMacHdr->addr2[0], pMacHdr->addr2[1], pMacHdr->addr2[2], pMacHdr->addr2[3], pMacHdr->addr2[4], pMacHdr->addr2[5], \
+        pMacHdr->addr3[0], pMacHdr->addr3[1], pMacHdr->addr3[2], pMacHdr->addr3[3], pMacHdr->addr3[4], pMacHdr->addr3[5]));
 
     //printMacAddr(pMacHdr->bssId) ;
     //printMacAddr(pMacHdr->sa) ;
     //printMacAddr(pMacHdr->da) ;
- 
-    header_offset += sizeof(tSirMacMgmtHdr) ;
+
+    if (IS_QOS_ENABLED(psessionEntry))
+    {
+        pMacHdr->qosControl.tid = tid;
+        header_offset += sizeof(tSirMacDataHdr3a);
+    }
+    else
+        header_offset += sizeof(tSirMacMgmtHdr);
+
     /* 
      * Now form RFC1042 header
      */
@@ -538,9 +554,10 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
      */ 
 
 
-    nBytes = nPayload + sizeof( tSirMacMgmtHdr ) 
-                     + sizeof( eth_890d_header ) 
-                        + PAYLOAD_TYPE_TDLS_SIZE ;
+    nBytes = nPayload + ((IS_QOS_ENABLED(psessionEntry))
+                              ? sizeof(tSirMacDataHdr3a) : sizeof(tSirMacMgmtHdr))
+                      + sizeof( eth_890d_header )
+                      + PAYLOAD_TYPE_TDLS_SIZE ;
 
 #ifndef NO_PAD_TDLS_MIN_8023_SIZE
     /* IOT issue with some AP : some AP doesn't like the data packet size < minimum 802.3 frame length (64)
@@ -582,7 +599,7 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
     /* fill out the buffer descriptor */
 
     header_offset = limPrepareTdlsFrameHeader(pMac, pFrame, 
-           LINK_IDEN_ADDR_OFFSET(tdlsDisReq), TDLS_LINK_AP, TDLS_INITIATOR, psessionEntry) ;
+           LINK_IDEN_ADDR_OFFSET(tdlsDisReq), TDLS_LINK_AP, TDLS_INITIATOR, TID_AC_VI, psessionEntry) ;
 
 #ifdef FEATURE_WLAN_TDLS_NEGATIVE
     if(pMac->lim.gLimTdlsNegativeBehavior & LIM_TDLS_NEGATIVE_WRONG_BSSID_IN_DSCV_REQ)
@@ -643,7 +660,7 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
     halstatus = halTxFrameWithTxComplete( pMac, pPacket, ( tANI_U16 ) nBytes,
                             HAL_TXRX_FRM_802_11_DATA,
                             ANI_TXDIR_TODS,
-                            7,
+                            TID_AC_VI,
                             limTxComplete, pFrame,
                             limMgmtTXComplete,
                             HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME);
@@ -1348,10 +1365,11 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
      */ 
 
 
-    nBytes = nPayload + sizeof( tSirMacMgmtHdr ) 
-                     + sizeof( eth_890d_header ) 
-                        + PAYLOAD_TYPE_TDLS_SIZE
-                        + addIeLen;
+    nBytes = nPayload + ((IS_QOS_ENABLED(psessionEntry))
+                              ? sizeof(tSirMacDataHdr3a) : sizeof(tSirMacMgmtHdr))
+                      + sizeof( eth_890d_header )
+                      + PAYLOAD_TYPE_TDLS_SIZE
+                      + addIeLen;
 
     /* Ok-- try to allocate memory from MGMT PKT pool */
 
@@ -1376,7 +1394,7 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
     /* fill out the buffer descriptor */
 
     header_offset = limPrepareTdlsFrameHeader(pMac, pFrame, 
-                     LINK_IDEN_ADDR_OFFSET(tdlsSetupReq), TDLS_LINK_AP, TDLS_INITIATOR, psessionEntry) ;
+                     LINK_IDEN_ADDR_OFFSET(tdlsSetupReq), TDLS_LINK_AP, TDLS_INITIATOR, TID_AC_BK, psessionEntry) ;
 
 #ifdef FEATURE_WLAN_TDLS_NEGATIVE
     if(pMac->lim.gLimTdlsNegativeBehavior & LIM_TDLS_NEGATIVE_WRONG_BSSID_IN_SETUP_REQ)
@@ -1431,7 +1449,7 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
     halstatus = halTxFrameWithTxComplete( pMac, pPacket, ( tANI_U16 ) nBytes,
                             HAL_TXRX_FRM_802_11_DATA,
                             ANI_TXDIR_TODS,
-                            7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                            TID_AC_BK,
                             limTxComplete, pFrame,
                             limMgmtTXComplete,
                             HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME );
@@ -1507,10 +1525,11 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
      */ 
 
 
-    nBytes = nPayload + sizeof( tSirMacMgmtHdr ) 
-                     + sizeof( eth_890d_header ) 
-                        + PAYLOAD_TYPE_TDLS_SIZE
-                        + addIeLen;
+    nBytes = nPayload + ((IS_QOS_ENABLED(psessionEntry))
+                              ? sizeof(tSirMacDataHdr3a) : sizeof(tSirMacMgmtHdr))
+                      + sizeof( eth_890d_header )
+                      + PAYLOAD_TYPE_TDLS_SIZE
+                      + addIeLen;
 
 #ifndef NO_PAD_TDLS_MIN_8023_SIZE
     /* IOT issue with some AP : some AP doesn't like the data packet size < minimum 802.3 frame length (64)
@@ -1556,7 +1575,7 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
                           (reason == eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE) 
                               ? TDLS_LINK_AP : TDLS_LINK_DIRECT,
                               (responder == TRUE) ? TDLS_RESPONDER : TDLS_INITIATOR,
-                              psessionEntry) ;
+                              TID_AC_VI, psessionEntry) ;
 
     status = dot11fPackTDLSTeardown( pMac, &teardown, pFrame 
                                + header_offset, nPayload, &nPayload );
@@ -1626,7 +1645,7 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
     halstatus = halTxFrameWithTxComplete( pMac, pPacket, ( tANI_U16 ) nBytes,
                             HAL_TXRX_FRM_802_11_DATA,
                             ANI_TXDIR_TODS,
-                            7,
+                            TID_AC_VI,
                             limTxComplete, pFrame, 
                             limMgmtTXComplete,
                             HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME );
@@ -1811,10 +1830,11 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
      */ 
 
 
-    nBytes = nPayload + sizeof( tSirMacMgmtHdr ) 
-                     + sizeof( eth_890d_header ) 
-                        + PAYLOAD_TYPE_TDLS_SIZE
-                        + addIeLen;
+    nBytes = nPayload + ((IS_QOS_ENABLED(psessionEntry))
+                              ? sizeof(tSirMacDataHdr3a) : sizeof(tSirMacMgmtHdr))
+                      + sizeof( eth_890d_header )
+                      + PAYLOAD_TYPE_TDLS_SIZE
+                      + addIeLen;
 
     /* Ok-- try to allocate memory from MGMT PKT pool */
 
@@ -1841,7 +1861,7 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
     header_offset = limPrepareTdlsFrameHeader(pMac, pFrame, 
                                  LINK_IDEN_ADDR_OFFSET(tdlsSetupRsp), 
                                        TDLS_LINK_AP, TDLS_RESPONDER,
-                                       psessionEntry) ;
+                                       TID_AC_BK, psessionEntry) ;
 
 #ifdef FEATURE_WLAN_TDLS_NEGATIVE
     if(pMac->lim.gLimTdlsNegativeBehavior & LIM_TDLS_NEGATIVE_WRONG_BSSID_IN_SETUP_RSP)
@@ -1894,7 +1914,7 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
                             HAL_TXRX_FRM_802_11_DATA,
                             ANI_TXDIR_TODS,
                             //ANI_TXDIR_IBSS,
-                            7,
+                            TID_AC_BK,
                             limTxComplete, pFrame,
                             limMgmtTXComplete,
                             HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME );
@@ -1996,10 +2016,11 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
      */ 
 
 
-    nBytes = nPayload + sizeof( tSirMacMgmtHdr ) 
-                     + sizeof( eth_890d_header ) 
-                        + PAYLOAD_TYPE_TDLS_SIZE
-                        + addIeLen;
+    nBytes = nPayload + ((IS_QOS_ENABLED(psessionEntry))
+                              ? sizeof(tSirMacDataHdr3a) : sizeof(tSirMacMgmtHdr))
+                      + sizeof( eth_890d_header )
+                      + PAYLOAD_TYPE_TDLS_SIZE
+                      + addIeLen;
 
 #ifndef NO_PAD_TDLS_MIN_8023_SIZE
     /* IOT issue with some AP : some AP doesn't like the data packet size < minimum 802.3 frame length (64)
@@ -2043,7 +2064,7 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
 
     header_offset = limPrepareTdlsFrameHeader(pMac, pFrame, 
                      LINK_IDEN_ADDR_OFFSET(tdlsSetupCnf), TDLS_LINK_AP, TDLS_INITIATOR,
-                     psessionEntry) ;
+                     TID_AC_VI, psessionEntry) ;
 
 #ifdef FEATURE_WLAN_TDLS_NEGATIVE
     if(pMac->lim.gLimTdlsNegativeBehavior & LIM_TDLS_NEGATIVE_STATUS_37_IN_SETUP_CNF) {
@@ -2122,7 +2143,7 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
     halstatus = halTxFrameWithTxComplete( pMac, pPacket, ( tANI_U16 ) nBytes,
                             HAL_TXRX_FRM_802_11_DATA,
                             ANI_TXDIR_TODS,
-                            7,
+                            TID_AC_VI,
                             limTxComplete, pFrame, 
                             limMgmtTXComplete,
                             HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME );
