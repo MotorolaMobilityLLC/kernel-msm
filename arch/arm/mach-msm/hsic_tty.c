@@ -53,6 +53,9 @@ module_param_named(ds_modem_wait, lge_ds_modem_wait,
 #define HSIC_TTY_DATA_RX_REQ_SIZE		2048
 #define HSIC_TTY_DATA_TX_INTR_THRESHOLD		20
 
+#define CTRL_DTR (1 << 0)
+#define CTRL_RTS (1 << 1)
+
 static unsigned int hsic_tty_data_rmnet_tx_q_size =
 	HSIC_TTY_DATA_RMNET_TX_Q_SIZE;
 module_param(hsic_tty_data_rmnet_tx_q_size, uint, S_IRUGO | S_IWUSR);
@@ -100,6 +103,8 @@ module_param(hsic_tty_data_pend_limit_with_bridge, uint, S_IRUGO | S_IWUSR);
 #define CH_OPENED 0
 #define CH_READY 1
 
+static int hsic_tty_enabled;
+
 struct hsic_tty_info {
 	struct tty_struct *tty;
 	struct wake_lock wake_lock;
@@ -136,7 +141,8 @@ struct hsic_tty_info {
 	struct work_struct write_tomdm_w;
 	struct work_struct write_tohost_w;
 
-	struct bridge brdg;
+	struct bridge data_brdg;
+	struct bridge ctrl_brdg;
 
 	/*bridge status */
 	unsigned long bridge_sts;
@@ -167,7 +173,7 @@ struct hsic_config {
 };
 
 static struct hsic_config hsic_configs[] = {
-	{0, "dun_data_hsic0", NULL},
+	{0, "serial_hsic_data", NULL},
 	//{1, "rmnet_data_hsic0", NULL},
 };
 
@@ -271,7 +277,7 @@ static int hsic_tty_data_receive(void *p, void *data, size_t len)
 
 	if (hsic_tty_data_fctrl_support &&
 	    info->tx_skb_q.qlen >= hsic_tty_data_fctrl_en_thld) {
-		set_bit(RX_THROTTLED, &info->brdg.flags);
+		set_bit(RX_THROTTLED, &info->data_brdg.flags);
 		info->rx_throttled_cnt++;
 		pr_debug("%s: flow ctrl enabled: tx skbq len: %u\n",
 			 __func__, info->tx_skb_q.qlen);
@@ -301,7 +307,7 @@ static void hsic_tty_data_write_tomdm(struct work_struct *w)
 		return;
 
 	spin_lock_irqsave(&info->rx_lock, flags);
-	if (test_bit(TX_THROTTLED, &info->brdg.flags)) {
+	if (test_bit(TX_THROTTLED, &info->data_brdg.flags)) {
 		spin_unlock_irqrestore(&info->rx_lock, flags);
 		return;
 	}
@@ -311,7 +317,7 @@ static void hsic_tty_data_write_tomdm(struct work_struct *w)
 			 info, info->to_modem, info->tty->index);
 
 		spin_unlock_irqrestore(&info->rx_lock, flags);
-		ret = data_bridge_write(info->brdg.ch_id, skb);
+		ret = data_bridge_write(info->data_brdg.ch_id, skb);
 		spin_lock_irqsave(&info->rx_lock, flags);
 		if (ret < 0) {
 			if (ret == -EBUSY) {
@@ -344,14 +350,22 @@ static void hsic_tty_data_connect_w(struct work_struct *w)
 
 	pr_debug("%s: info:%p\n", __func__, info);
 
-	ret = data_bridge_open(&info->brdg);
+	ret = ctrl_bridge_open(&info->ctrl_brdg);
 	if (ret) {
-		pr_err("%s: unable open bridge ch:%d err:%d\n",
-		       __func__, info->brdg.ch_id, ret);
+		pr_err("%s: unable open ctrl bridge ch:%d err:%d\n",
+				__func__, info->ctrl_brdg.ch_id, ret);
+		return;
+	}
+
+	ret = data_bridge_open(&info->data_brdg);
+	if (ret) {
+		pr_err("%s: unable open data bridge ch:%d err:%d\n",
+				__func__, info->data_brdg.ch_id, ret);
 		return;
 	}
 
 	set_bit(CH_OPENED, &info->bridge_sts);
+	ctrl_bridge_set_cbits(info->ctrl_brdg.ch_id, CTRL_RTS | CTRL_DTR);
 
 	spin_lock_irqsave(&info->reset_lock, flags);
 	info->in_reset = 0;
@@ -372,7 +386,8 @@ static void hsic_tty_data_disconnect_w(struct work_struct *w)
 	if (!test_bit(CH_OPENED, &info->bridge_sts))
 		return;
 
-	data_bridge_close(info->brdg.ch_id);
+	ctrl_bridge_close(info->ctrl_brdg.ch_id);
+	data_bridge_close(info->data_brdg.ch_id);
 	clear_bit(CH_OPENED, &info->bridge_sts);
 
 	spin_lock_irqsave(&info->reset_lock, flags);
@@ -503,11 +518,11 @@ static void hsic_tty_close(struct tty_struct *tty, struct file *f)
 			atomic_set(&info->connected, 0);
 
 			spin_lock_irqsave(&info->tx_lock, flags);
-			clear_bit(RX_THROTTLED, &info->brdg.flags);
+			clear_bit(RX_THROTTLED, &info->data_brdg.flags);
 			spin_unlock_irqrestore(&info->tx_lock, flags);
 
 			spin_lock_irqsave(&info->rx_lock, flags);
-			clear_bit(TX_THROTTLED, &info->brdg.flags);
+			clear_bit(TX_THROTTLED, &info->data_brdg.flags);
 			spin_unlock_irqrestore(&info->rx_lock, flags);
 
 			queue_work(info->wq, &info->disconnect_w);
@@ -532,7 +547,7 @@ static void hsic_tty_close(struct tty_struct *tty, struct file *f)
                         next hsic_open may fail....%d\n", __func__, hsic_tty[n].hsic->port_name, res);
 			}
 
-			data_bridge_close(info->brdg.ch_id);
+			data_bridge_close(info->data_brdg.ch_id);
 
 			clear_bit(CH_READY, &info->bridge_sts);
 			clear_bit(CH_OPENED, &info->bridge_sts);
@@ -575,8 +590,7 @@ static int hsic_tty_write(struct tty_struct *tty, const unsigned char *buf,
 		return 0;
 
 	skb = alloc_skb(len, GFP_ATOMIC);
-	skb->data = (unsigned char *)buf;
-	skb->len = len;
+	memcpy(skb_put(skb, len), buf, len);
 
 	spin_lock(&info->rx_lock);
 	__skb_queue_tail(&info->rx_skb_q, skb);
@@ -610,13 +624,13 @@ static void hsic_tty_unthrottle(struct tty_struct *tty)
 		spin_unlock_irqrestore(&info->reset_lock, flags);
 		if (hsic_tty_data_fctrl_support &&
 		    info->tx_skb_q.qlen <= hsic_tty_data_fctrl_dis_thld &&
-		    test_and_clear_bit(RX_THROTTLED, &info->brdg.flags)) {
+		    test_and_clear_bit(RX_THROTTLED, &info->data_brdg.flags)) {
 			info->rx_unthrottled_cnt++;
 			info->unthrottled_pnd_skbs = info->tx_skb_q.qlen;
 			pr_debug("%s: disable flow ctrl:"
 				 " tx skbq len: %u\n",
 				 __func__, info->tx_skb_q.qlen);
-			data_bridge_unthrottle_rx(info->brdg.ch_id);
+			data_bridge_unthrottle_rx(info->data_brdg.ch_id);
 			queue_work(info->wq, &info->write_tohost_w);
 		}
 		return;
@@ -660,13 +674,13 @@ static int hsic_tty_dummy_probe(struct platform_device *pdev)
 
 static struct tty_driver *hsic_tty_driver;
 
-static int __init hsic_tty_init(void)
+static int hsic_tty_init(void)
 {
 	int ret;
 	int n;
 	int idx;
 
-	pr_debug("%s\n", __func__);
+	pr_info("%s\n", __func__);
 
 	hsic_tty_driver = alloc_tty_driver(MAX_HSIC_TTYS);
 	if (hsic_tty_driver == 0)
@@ -730,9 +744,14 @@ static int __init hsic_tty_init(void)
 		skb_queue_head_init(&hsic_tty[idx].tx_skb_q);
 		skb_queue_head_init(&hsic_tty[idx].rx_skb_q);
 
-		hsic_tty[idx].brdg.ch_id = idx;
-		hsic_tty[idx].brdg.ctx = &hsic_tty[idx];
-		hsic_tty[idx].brdg.ops.send_pkt = hsic_tty_data_receive;
+		hsic_tty[idx].data_brdg.ch_id = idx;
+		hsic_tty[idx].data_brdg.ctx = &hsic_tty[idx];
+		hsic_tty[idx].data_brdg.name = "serial_hsic_data";
+		hsic_tty[idx].data_brdg.ops.send_pkt = hsic_tty_data_receive;
+
+		hsic_tty[idx].ctrl_brdg.ch_id = idx;
+		hsic_tty[idx].ctrl_brdg.ctx = &hsic_tty[idx];
+		hsic_tty[idx].ctrl_brdg.name = "serial_hsic_ctrl";
 
 		hsic_tty[idx].driver.probe = hsic_tty_dummy_probe;
 		hsic_tty[idx].driver.driver.name = hsic_configs[n].dev_name;
@@ -757,14 +776,77 @@ out:
 		idx = hsic_configs[n].tty_dev_index;
 
 		if (hsic_tty[idx].driver.probe) {
+			pr_info("unregister hsic_tty driver %d\n", idx);
 			platform_driver_unregister(&hsic_tty[idx].driver);
-			tty_unregister_device(hsic_tty_driver, idx);
 		}
+		tty_unregister_device(hsic_tty_driver, idx);
 	}
 
 	tty_unregister_driver(hsic_tty_driver);
 	put_tty_driver(hsic_tty_driver);
+	hsic_tty_driver = NULL;
 	return ret;
 }
 
-module_init(hsic_tty_init);
+static void hsic_tty_release(void)
+{
+	int n, idx;
+
+	pr_info("%s\n", __func__);
+
+	if (hsic_tty_driver == NULL)
+		return;
+
+	for (n = 0; n < ARRAY_SIZE(hsic_configs); ++n) {
+		idx = hsic_configs[n].tty_dev_index;
+		if (hsic_tty[idx].driver.probe) {
+			pr_info("unregister hsic_tty driver %d\n", idx);
+			platform_driver_unregister(&hsic_tty[idx].driver);
+		}
+		tty_unregister_device(hsic_tty_driver, idx);
+	}
+	tty_unregister_driver(hsic_tty_driver);
+	put_tty_driver(hsic_tty_driver);
+	hsic_tty_driver = NULL;
+}
+
+static int hsic_tty_set(const char *val, struct kernel_param *kp)
+{
+	int ret;
+	int old_val = hsic_tty_enabled;
+
+	ret = param_set_int(val, kp);
+
+	if (ret)
+		return ret;
+
+	if (hsic_tty_enabled >> 1) {
+		pr_err("value is not zero or one\n");
+		hsic_tty_enabled = old_val;
+		return -EINVAL;
+	}
+
+	if (old_val == hsic_tty_enabled) {
+		pr_err("value is the same as old one\n");
+		return -EINVAL;
+	}
+
+	if (hsic_tty_enabled) {
+		ret = hsic_tty_init();
+		if (ret)
+			hsic_tty_enabled = 0;
+	} else {
+		hsic_tty_release();
+	}
+
+	return ret;
+}
+module_param_call(enable, hsic_tty_set, param_get_int, &hsic_tty_enabled, 0644);
+
+static int __init hsic_tty_module_init(void)
+{
+	hsic_tty_enabled = 0;
+	return 0;
+}
+
+module_init(hsic_tty_module_init);
