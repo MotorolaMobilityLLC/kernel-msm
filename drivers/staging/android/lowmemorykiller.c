@@ -373,13 +373,19 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     selected->pid, selected->comm,
 			     selected_oom_score_adj, selected_tasksize);
 		lowmem_deathpending_timeout = jiffies + HZ;
+
+		/* Due to MotoCare parser can't handle unfixed column,
+		 * show all zones info even its free & file are zero.
+		 * it will show as the following examples:
+		 *   0:0:756:1127 0:1:0:0 0:2:0:0
+		 *   0:0:767:322 0:1:152:2364 0:2:0:0
+		 */
 		for (i = 0; i < MAX_NUMNODES; i++)
 			for (j = 0; j < MAX_NR_ZONES; j++)
-				if (zall[i][j].free || zall[i][j].file)
-					p += snprintf(p, ZINFO_DIGITS,
-						"%d:%d:%lu:%lu ", i, j,
-						zall[i][j].free,
-						zall[i][j].file);
+				p += snprintf(p, ZINFO_DIGITS,
+					"%d:%d:%lu:%lu ", i, j,
+					zall[i][j].free,
+					zall[i][j].file);
 
 		trace_lmk_kill(selected->pid, selected->comm,
 				selected_oom_score_adj, selected_tasksize,
