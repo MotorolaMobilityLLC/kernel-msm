@@ -209,6 +209,9 @@ static struct algo_requst_t g_algo_requst[MSP_NUM_ALGOS];
 static unsigned char msp_cmdbuff[MSP430_HEADER_LENGTH + MSP430_CMDLENGTH_BYTES +
 			MSP430_CORECOMMAND_LENGTH + MSP430_CRC_LENGTH];
 
+static unsigned char read_cmdbuff[512];
+
+
 enum msp_mode {
 	UNINITIALIZED,
 	BOOTMODE,
@@ -383,7 +386,7 @@ static int msp430_i2c_write_read_no_reset(struct msp430_data *ps_msp430,
 			.addr = ps_msp430->client->addr,
 			.flags = ps_msp430->client->flags | I2C_M_RD,
 			.len = readlen,
-			.buf = buf,
+			.buf = read_cmdbuff,
 		},
 	};
 	if (ps_msp430->mode == FACTORYMODE)
@@ -409,11 +412,13 @@ static int msp430_i2c_write_read_no_reset(struct msp430_data *ps_msp430,
 	} else {
 		err = 0;
 		dev_dbg(&ps_msp430->client->dev, "Read from MSP: ");
-		for (tries = 0; tries < readlen; tries++)
-			dev_dbg(&ps_msp430->client->dev, "%02x", buf[tries]);
+		for (tries = 0; tries < readlen; tries++) {
+			dev_dbg(&ps_msp430->client->dev, "%02x",
+				read_cmdbuff[tries]);
+		}
 
 		if (ps_msp430->mode == BOOTMODE) {
-			response = (struct msp_response *) buf;
+			response = (struct msp_response *) read_cmdbuff;
 			if ((response->cmd == MSP430_RESPONSE_MSG &&
 				response->data != MSP430_RESPONSE_MSG_SUCCESS)
 				 ) {
@@ -983,7 +988,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 			"Reading from msp failed\n");
 		goto EXIT;
 	}
-	irq_status = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
+	irq_status = (read_cmdbuff[1] << 8) | read_cmdbuff[0];
 
 	if (irq_status & M_ACCEL) {
 		/* read accelerometer values from MSP */
@@ -995,9 +1000,9 @@ static void msp430_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
-		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
+		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_ACCEL, x, y, z, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
@@ -1014,9 +1019,9 @@ static void msp430_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
-		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
+		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_LIN_ACCEL,
 			x, y, z, 0);
 
@@ -1033,9 +1038,9 @@ static void msp430_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
-		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
+		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_MAG, x, y, z,
 			msp_cmdbuff[12]);
 
@@ -1043,9 +1048,9 @@ static void msp430_irq_work_func(struct work_struct *work)
 			"Sending mag(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, z);
 
-		x = (msp_cmdbuff[6] << 8) | msp_cmdbuff[7];
-		y = (msp_cmdbuff[8] << 8) | msp_cmdbuff[9];
-		z = (msp_cmdbuff[10] << 8) | msp_cmdbuff[11];
+		x = (read_cmdbuff[6] << 8) | read_cmdbuff[7];
+		y = (read_cmdbuff[8] << 8) | read_cmdbuff[9];
+		z = (read_cmdbuff[10] << 8) | read_cmdbuff[11];
 		msp430_as_data_buffer_write(ps_msp430, DT_ORIENT, x, y, z,
 			msp_cmdbuff[12]);
 
@@ -1061,9 +1066,9 @@ static void msp430_irq_work_func(struct work_struct *work)
 				"Reading Gyroscope failed\n");
 			goto EXIT;
 		}
-		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
-		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
+		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_GYRO, x, y, z, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
@@ -1078,7 +1083,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 				"Reading ALS from msp failed\n");
 			goto EXIT;
 		}
-		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
 		msp430_as_data_buffer_write(ps_msp430, DT_ALS, x, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev, "Sending ALS %d\n", x);
@@ -1092,7 +1097,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 				"Reading Temperature failed\n");
 			goto EXIT;
 		}
-		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
 		msp430_as_data_buffer_write(ps_msp430, DT_TEMP, x, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
@@ -1107,8 +1112,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 				"Reading Pressure failed\n");
 			goto EXIT;
 		}
-		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
 		msp430_as_data_buffer_write(ps_msp430, DT_PRESSURE, x, y, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev, "Sending pressure %d\n",
@@ -1124,9 +1129,9 @@ static void msp430_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
-		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
+		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_GRAVITY,
 			x, y, z, 0);
 
@@ -1143,7 +1148,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 				"Reading disp_rotate failed\n");
 			goto EXIT;
 		}
-		x = msp_cmdbuff[0];
+		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430,
 			DT_DISP_ROTATE, x, 0, 0, 0);
 
@@ -1158,7 +1163,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 				"Reading Display Brightness failed\n");
 			goto EXIT;
 		}
-		x = msp_cmdbuff[0];
+		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_DISP_BRIGHT,
 			x, 0, 0, 0);
 
@@ -1193,7 +1198,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		dev_err(&ps_msp430->client->dev, "Reading from msp failed\n");
 		goto EXIT;
 	}
-	irq_status = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
+	irq_status = (read_cmdbuff[1] << 8) | read_cmdbuff[0];
 
 	/* read algorithm interrupt status register */
 	msp_cmdbuff[0] = ALGO_INT_STATUS;
@@ -1202,7 +1207,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		dev_err(&ps_msp430->client->dev, "Reading from msp failed\n");
 		goto EXIT;
 	}
-	irq2_status = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
+	irq2_status = (read_cmdbuff[1] << 8) | read_cmdbuff[0];
 
 	/* First, check for error messages */
 	if (irq_status & M_LOG_MSG) {
@@ -1210,7 +1215,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
 			1, ESR_SIZE);
 		if (err >= 0) {
-			memcpy(stat_string, msp_cmdbuff, ESR_SIZE);
+			memcpy(stat_string, read_cmdbuff, ESR_SIZE);
 			stat_string[ESR_SIZE] = 0;
 			dev_err(&ps_msp430->client->dev,
 				"MSP430 Error: %s\n", stat_string);
@@ -1246,7 +1251,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 				"Reading Dock state failed\n");
 			goto EXIT;
 		}
-		x = msp_cmdbuff[0];
+		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_DOCK, x, 0, 0, 0);
 		if (ps_msp430->dsdev.dev != NULL)
 			switch_set_state(&ps_msp430->dsdev, x);
@@ -1263,7 +1268,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 				"Reading prox from msp failed\n");
 			goto EXIT;
 		}
-		x = msp_cmdbuff[0];
+		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_PROX, x, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
@@ -1277,7 +1282,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 				"Get status reg failed\n");
 			goto EXIT;
 		}
-		aod_wake_up_reason = (msp_cmdbuff[1] >> 4) & 0xf;
+		aod_wake_up_reason = (read_cmdbuff[1] >> 4) & 0xf;
 		if (aod_wake_up_reason == AOD_WAKEUP_REASON_ESD) {
 			char *envp[2];
 			envp[0] = "MSP430WAKE=ESD";
@@ -1308,7 +1313,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 				"Reading flat data from msp failed\n");
 			goto EXIT;
 		}
-		x = msp_cmdbuff[0];
+		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_FLAT_UP, x, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev, "Sending Flat up %d\n", x);
@@ -1321,7 +1326,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 				"Reading flat data from msp failed\n");
 			goto EXIT;
 		}
-		x = msp_cmdbuff[0];
+		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430,
 			DT_FLAT_DOWN, x, 0, 0, 0);
 
@@ -1335,7 +1340,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 				"Reading stowed from msp failed\n");
 			goto EXIT;
 		}
-		x = msp_cmdbuff[0];
+		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_STOWED, x, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
@@ -1350,7 +1355,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		x = CAMERA_DATA;
-		y = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		y = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
 		msp430_as_data_buffer_write(ps_msp430, DT_CAMERA_ACT,
 			x, y, 0, 0);
 
@@ -1384,13 +1389,13 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		/* x (data1) msb: algo index, lsb: past, confidence */
-		x = (MSP_IDX_MODALITY << 8) | msp_cmdbuff[0];
+		x = (MSP_IDX_MODALITY << 8) | read_cmdbuff[0];
 		/* y (data2) old state */
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | read_cmdbuff[1];
 		/* z (data3) new state */
-		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[3];
+		z = (msp_cmdbuff[4] << 8) | read_cmdbuff[3];
 		/* q (data4) time in state, in seconds */
-		q = (msp_cmdbuff[6] << 8) | msp_cmdbuff[5];
+		q = (msp_cmdbuff[6] << 8) | read_cmdbuff[5];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_msp430->client->dev, "Sending modality event\n");
 	}
@@ -1405,13 +1410,13 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		/* x (data1) msb: algo index, lsb: past, confidence */
-		x = (MSP_IDX_ORIENTATION << 8) | msp_cmdbuff[0];
+		x = (MSP_IDX_ORIENTATION << 8) | read_cmdbuff[0];
 		/* y (data2) old state */
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | read_cmdbuff[1];
 		/* z (data3) new state */
-		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[3];
+		z = (msp_cmdbuff[4] << 8) | read_cmdbuff[3];
 		/* q (data4) time in state, in seconds */
-		q = (msp_cmdbuff[6] << 8) | msp_cmdbuff[5];
+		q = (msp_cmdbuff[6] << 8) | read_cmdbuff[5];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_msp430->client->dev, "Sending orientation event\n");
 	}
@@ -1425,13 +1430,13 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		/* x (data1) msb: algo index, lsb: past, confidence */
-		x = (MSP_IDX_STOWED << 8) | msp_cmdbuff[0];
+		x = (MSP_IDX_STOWED << 8) | read_cmdbuff[0];
 		/* y (data2) old state */
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | read_cmdbuff[1];
 		/* z (data3) new state */
-		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[3];
+		z = (msp_cmdbuff[4] << 8) | read_cmdbuff[3];
 		/* q (data4) time in state, in seconds */
-		q = (msp_cmdbuff[6] << 8) | msp_cmdbuff[5];
+		q = (msp_cmdbuff[6] << 8) | read_cmdbuff[5];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_msp430->client->dev, "Sending stowed event\n");
 	}
@@ -1448,7 +1453,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		/* x (data1) msb: algo index */
 		x = MSP_IDX_ACCUM_MODALITY << 8;
 		/* y (data2) id */
-		y = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
+		y = (read_cmdbuff[1] << 8) | read_cmdbuff[0];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, 0, 0);
 		dev_dbg(&ps_msp430->client->dev, "Sending accum modality event\n");
 	}
@@ -1464,9 +1469,9 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		/* x (data1) msb: algo index */
 		x = MSP_IDX_ACCUM_MVMT << 8;
 		/* y (data2) time_s */
-		y = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
+		y = (read_cmdbuff[1] << 8) | read_cmdbuff[0];
 		/* z (data3) distance */
-		z = (msp_cmdbuff[3] << 8) | msp_cmdbuff[2];
+		z = (read_cmdbuff[3] << 8) | read_cmdbuff[2];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, 0);
 		dev_dbg(&ps_msp430->client->dev, "Sending accum mvmt event\n");
 	}
@@ -1680,8 +1685,8 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 
 			if (err == 0) {
 				if (datacrc !=
-					((msp_cmdbuff[6] << 8)
-					+ msp_cmdbuff[5])) {
+					((read_cmdbuff[6] << 8)
+					+ read_cmdbuff[5])) {
 					dev_err(&ps_msp430->client->dev,
 						"CRC validation failed\n");
 					err = -EIO;
@@ -1757,9 +1762,9 @@ static int msp430_get_version(struct msp430_data *ps_msp430)
 	msp_cmdbuff[0] = REV_ID;
 	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 	if (err >= 0) {
-		err = (int)msp_cmdbuff[0];
+		err = (int)read_cmdbuff[0];
 		dev_err(&ps_msp430->client->dev, "MSP430 version %02x",
-			msp_cmdbuff[0]);
+			read_cmdbuff[0]);
 	}
 	return err;
 }
@@ -1808,7 +1813,7 @@ static int msp430_test_write_read(struct msp430_data *ps_msp430,
 	if (copy_to_user(argp, &bytecount, sizeof(unsigned short)))
 		return -EFAULT;
 	for (i = 0; i < bytecount; i++)
-		dev_dbg(&ps_msp430->client->dev, "%02x ", msp_cmdbuff[i]);
+		dev_dbg(&ps_msp430->client->dev, "%02x ", read_cmdbuff[i]);
 	return err;
 }
 
@@ -1992,8 +1997,8 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 				"Reading get sensors failed\n");
 			break;
 		}
-		bytes[0] = msp_cmdbuff[0];
-		bytes[1] = msp_cmdbuff[1];
+		bytes[0] = read_cmdbuff[0];
+		bytes[1] = read_cmdbuff[1];
 		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
@@ -2024,8 +2029,8 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 				"Reading get sensors failed\n");
 			break;
 		}
-		bytes[0] = msp_cmdbuff[0];
-		bytes[1] = msp_cmdbuff[1];
+		bytes[0] = read_cmdbuff[0];
+		bytes[1] = read_cmdbuff[1];
 		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
@@ -2054,8 +2059,8 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 				"Reading get algos failed\n");
 			break;
 		}
-		bytes[0] = msp_cmdbuff[0];
-		bytes[1] = msp_cmdbuff[1];
+		bytes[0] = read_cmdbuff[0];
+		bytes[1] = read_cmdbuff[1];
 		dev_info(&ps_msp430->client->dev,
 			"Get algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
 		if (copy_to_user(argp, bytes, sizeof(bytes)))
@@ -2071,7 +2076,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 				"Reading get mag cal failed\n");
 			break;
 		}
-		if (copy_to_user(argp, &msp_cmdbuff[0], MSP_MAG_CAL_SIZE))
+		if (copy_to_user(argp, &read_cmdbuff[0], MSP_MAG_CAL_SIZE))
 			err = -EFAULT;
 
 		break;
@@ -2120,7 +2125,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		dev_dbg(&ps_msp430->client->dev,
 			"MSP430_IOCTL_GET_DOCK_STATUS");
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
-		byte = msp_cmdbuff[0];
+		byte = read_cmdbuff[0];
 		if (copy_to_user(argp, &byte, sizeof(byte)))
 			err = -EFAULT;
 		break;
@@ -2210,7 +2215,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 				"Get AOD instrumentation reg failed\n");
 			break;
 		}
-		if (copy_to_user(argp, msp_cmdbuff,
+		if (copy_to_user(argp, read_cmdbuff,
 			 MSP_AOD_INSTRUMENTATION_REG_SIZE))
 			err = -EFAULT;
 		break;
@@ -2226,7 +2231,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 
-		if (copy_to_user(argp, msp_cmdbuff, MSP_STATUS_REG_SIZE))
+		if (copy_to_user(argp, read_cmdbuff, MSP_STATUS_REG_SIZE))
 			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_GET_TOUCH_REG:
@@ -2240,7 +2245,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 
-		if (copy_to_user(argp, msp_cmdbuff, MSP_TOUCH_REG_SIZE))
+		if (copy_to_user(argp, read_cmdbuff, MSP_TOUCH_REG_SIZE))
 			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_ALGO_REQ:
@@ -2314,7 +2319,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 				"Get algo evt failed\n");
 			break;
 		}
-		if (copy_to_user(argp + sizeof(bytes), msp_cmdbuff,
+		if (copy_to_user(argp + sizeof(bytes), read_cmdbuff,
 			msp_algo_info[addr].evt_size))
 			err = -EFAULT;
 		break;
