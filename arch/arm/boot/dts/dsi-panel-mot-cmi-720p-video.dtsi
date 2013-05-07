@@ -1,0 +1,66 @@
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013 Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	qcom,mdss_dsi_mot_cmi_720p_video {
+		compatible = "qcom,mdss-dsi-panel";
+		label = "mot cmi 720p video mode dsi panel";
+		status = "disable";
+		qcom,dsi-ctrl-phandle = <&mdss_dsi0>;
+		qcom,rst-gpio = <&msmgpio 25 0>;
+		qcom,mdss-pan-res = <720 1280>;
+		qcom,mdss-pan-bpp = <24>;
+		qcom,mdss-pan-dest = "display_1";
+		qcom,mdss-pan-porch-values = <164 8 140 2 1 6>;
+		qcom,mdss-pan-underflow-clr = <0xff>;
+		qcom,mdss-pan-bl-ctrl = "bl_ctrl_wled";
+		qcom,mdss-pan-bl-levels = <1 4095>;
+		qcom,mdss-pan-dsi-mode = <0>;
+		qcom,mdss-pan-dsi-h-pulse-mode = <1>;
+		qcom,mdss-pan-dsi-h-power-stop = <0 0 0>;
+		qcom,mdss-pan-dsi-bllp-power-stop = <1 1>;
+		qcom,mdss-pan-dsi-traffic-mode = <1>;
+		qcom,mdss-pan-dsi-dst-format = <3>;
+		qcom,mdss-pan-dsi-vc = <0>;
+		qcom,mdss-pan-dsi-rgb-swap = <0>;
+		qcom,mdss-pan-dsi-data-lanes = <1 1 1 1>;	/* 4 lanes */
+		qcom,mdss-pan-dsi-dlane-swap = <0>;
+		qcom,mdss-pan-dsi-t-clk = <0x2c 0x20>;
+		qcom,mdss-pan-dsi-stream = <0>;
+		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
+		qcom,mdss-pan-dsi-dma-tr = <0x04>;
+		qcom,mdss-pan-frame-rate = <60>;
+		qcom,panel-phy-regulatorSettings = [07 09 03 00
+						    20 00 01];
+		qcom,panel-phy-timingSettings = [6e 21 1a 00 31 2d
+						 1e 23 28 03 04 00];
+		qcom,panel-phy-strengthCtrl = [ff 06];
+		qcom,panel-phy-bistCtrl = [00 00 b1 ff	/* BIST Ctrl settings */
+					   00 00];
+		qcom,panel-phy-laneConfig = [00 00 00 00 00 00 00 01 97		/* lane0 config */
+					     00 00 00 00 05 00 00 01 97		/* lane1 config */
+					     00 00 00 00 0a 00 00 01 97 	/* lane2 config */
+					     00 00 00 00 0f 00 00 01 97 	/* lane3 config */
+					     00 c0 00 00 00 00 00 01 bb];	/* Clk ln config */
+		qcom,panel-on-cmds = [29 01 00 00 78 02 11 00		/* exit sleep */
+				      29 01 00 00 00 02 51 ff		/* led_pwm1 */
+				      29 01 00 00 00 02 53 2c		/* led_pwm2 */
+				      29 01 00 00 00 02 35 00		/* turn on tearing sig */
+				      29 01 00 00 00 02 55 03		/* led_pwm3 */
+				      29 01 00 00 00 02 29 00];		/* display on */
+		qcom,on-cmds-dsi-state = "DSI_LP_MODE";
+		qcom,panel-off-cmds = [05 01 00 00 32 02 10 00		/* enter sleep */
+				       05 01 00 00 78 02 28 00];	/* display off */
+		qcom,off-cmds-dsi-state = "DSI_HS_MODE";
+	};
+};
