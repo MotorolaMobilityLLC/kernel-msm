@@ -80,6 +80,11 @@ static tAniBool glimTriggerBackgroundScanDuringQuietBss_Status = eSIR_TRUE;
 static const tANI_U8 abChannel[]= {36,40,44,48,52,56,60,64,100,104,108,112,116,
             120,124,128,132,136,140,149,153,157,161,165};
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+static const tANI_U8 aUnsortedChannelList[]= {52,56,60,64,100,104,108,112,116,
+            120,124,128,132,136,140,36,40,44,48,149,153,157,161,165};
+#endif
+
 //#define LIM_MAX_ACTIVE_SESSIONS 3  //defined temporarily for BT-AMP SUPPORT 
 #define SUCCESS 1                   //defined temporarily for BT-AMP
 
@@ -898,6 +903,13 @@ limInitMlm(tpAniSirGlobal pMac)
     /// Initialize scan result hash table
     limReInitScanResults(pMac); //sep26th review
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    /// Initialize lfr scan result hash table
+    // Could there be a problem in multisession with SAP/P2P GO, when in the
+    // middle of FW bg scan, SAP started; Again that could be a problem even on
+    // infra + SAP/P2P GO too - TBD
+    limReInitLfrScanResults(pMac);
+#endif
   
     /// Initialize number of pre-auth contexts
     pMac->lim.gLimNumPreAuthContexts = 0;
@@ -1088,6 +1100,10 @@ limCleanupMlm(tpAniSirGlobal pMac)
 
     /// Cleanup cached scan list
     limReInitScanResults(pMac);
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    /// Cleanup cached scan list
+    limReInitLfrScanResults(pMac);
+#endif
 
 } /*** end limCleanupMlm() ***/
 
@@ -7309,6 +7325,11 @@ void limProcessDelStaSelfRsp(tpAniSirGlobal pMac,tpSirMsgQ limMsgQ)
 tANI_U8 limUnmapChannel(tANI_U8 mapChannel)
 {
    if( mapChannel > 0 && mapChannel < 25 )
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+       if (IS_ROAM_SCAN_OFFLOAD_FEATURE_ENABLE)
+           return aUnsortedChannelList[mapChannel -1];
+       else
+#endif
      return abChannel[mapChannel -1];
    else
      return 0;

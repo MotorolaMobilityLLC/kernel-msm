@@ -362,6 +362,8 @@ typedef enum
    WLAN_HAL_DEL_BA_IND                      = 188,
    WLAN_HAL_DHCP_START_IND                  = 189,
    WLAN_HAL_DHCP_STOP_IND                   = 190,
+   WLAN_START_ROAM_CANDIDATE_LOOKUP_REQ     = 191,
+   WLAN_START_ROAM_CANDIDATE_LOOKUP_RSP     = 192,
 
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
@@ -4923,6 +4925,16 @@ typedef PACKED_PRE struct PACKED_POST
 /*Maximum size of the probe template*/
 #define WLAN_HAL_PNO_MAX_PROBE_SIZE     450
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define CHANNEL_LIST_STATIC                   1 /* Occupied channel list remains static */
+#define CHANNEL_LIST_DYNAMIC_INIT             2 /* Occupied channel list can be learnt after init */
+#define CHANNEL_LIST_DYNAMIC_FLUSH            3 /* Occupied channel list can be learnt after flush */
+#define CHANNEL_LIST_DYNAMIC_UPDATE           4 /* Occupied channel list can be learnt after update */
+#define WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE     450
+#define WLAN_HAL_ROAM_SCAN_MAX_CHANNELS       NUM_RF_CHANNELS
+#define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     64
+#endif
+
 /*Type of PNO enabling 
   Immediate - scanning will start immediately and PNO procedure will
   be repeated based on timer
@@ -4952,6 +4964,8 @@ typedef enum
     eAUTH_TYPE_FT_RSN_PSK            = 7,
     eAUTH_TYPE_WAPI_WAI_CERTIFICATE  = 8,
     eAUTH_TYPE_WAPI_WAI_PSK          = 9,
+    eAUTH_TYPE_CCKM_WPA              = 10,
+    eAUTH_TYPE_CCKM_RSN              = 11,
     
     eAUTH_TYPE_MAX = WLAN_HAL_MAX_ENUM_SIZE
 
@@ -5177,7 +5191,65 @@ typedef PACKED_PRE struct PACKED_POST {
   tANI_U8          ucRssiThreshold;
 
 } tRssiFilterParams, * tpRssiFilterParams;
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+typedef PACKED_PRE struct PACKED_POST
+{
+   tSirMacSSid ssId;
+   tANI_U8     currAPbssid[HAL_MAC_ADDR_LEN];
+   tANI_U32    authentication;
+   tEdType     encryption;
+   tEdType     mcencryption;
+   tANI_U8     ChannelCount;
+   tANI_U8     ChannelCache[WLAN_HAL_ROAM_SCAN_MAX_CHANNELS];
+}tRoamNetworkType;
 
+typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U8 mdiePresent;
+   tANI_U16 mobilityDomain;
+}tMobilityDomainInfo;
+
+typedef PACKED_PRE struct PACKED_POST {
+   eAniBoolean       RoamScanOffloadEnabled;
+   tANI_S8           LookupThreshold;
+   tANI_U8           RoamRssiDiff;
+   tANI_U8           ChannelCacheType;
+   tANI_U8           Command;
+   tANI_U8           StartScanReason;
+   tANI_U16          NeighborScanTimerPeriod;
+   tANI_U16          NeighborRoamScanRefreshPeriod;
+   tANI_U16          NeighborScanChannelMinTime;
+   tANI_U16          NeighborScanChannelMaxTime;
+   tANI_U16          EmptyRefreshScanPeriod;
+   tANI_U8           ValidChannelCount;
+   tANI_U8           ValidChannelList[WLAN_HAL_ROAM_SCAN_MAX_CHANNELS];
+   eAniBoolean       IsCCXEnabled;
+
+   tANI_U16          us24GProbeSize;
+   tANI_U8           a24GProbeTemplate[WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE];
+   tANI_U16          us5GProbeSize;
+   tANI_U8           a5GProbeTemplate[WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE];
+   /* Add Reserved bytes */
+   tANI_U8           ReservedBytes[WLAN_HAL_ROAM_SCAN_RESERVED_BYTES];
+   tRoamNetworkType  ConnectedNetwork;
+   tMobilityDomainInfo MDID;
+} tRoamCandidateListParams, * tpRoamCandidateListParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+           tHalMsgHeader header;
+              tRoamCandidateListParams RoamScanOffloadNetwListParams;
+}  tSetRoamScanOffloadReq, *tpRoamScanOffloadReq;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+           tHalMsgHeader header;
+
+              /*status of the request - just to indicate that PNO has acknowledged
+               *      the request and will start scanning*/
+              tANI_U32   status;
+}  tSetRoamOffloadScanResp, *tpSetRoamOffloadScanResp;
+#endif
 /*
   RSSI Filter request 
 */
@@ -5564,7 +5636,8 @@ typedef enum {
     BCN_FILTER         = 19,
     RTT                = 20,
     RATECTRL           = 21,
-    WOW                = 22
+    WOW                = 22,
+    WLAN_ROAM_SCAN_OFFLOAD = 23,
     //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 
@@ -5584,6 +5657,9 @@ typedef PACKED_PRE struct PACKED_POST{
 #define IS_SLM_SESSIONIZATION_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(SLM_SESSIONIZATION)))
 #define IS_FEATURE_SUPPORTED_BY_HOST(featEnumValue) (!!halMsg_GetHostWlanFeatCaps(featEnumValue))
 #define IS_WLANACTIVE_OFFLOAD_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(WLANACTIVE_OFFLOAD)))
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define IS_ROAM_SCAN_OFFLOAD_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(WLAN_ROAM_SCAN_OFFLOAD)))
+#endif
 
 tANI_U8 halMsg_GetHostWlanFeatCaps(tANI_U8 feat_enum_value);
 

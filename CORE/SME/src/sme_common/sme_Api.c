@@ -7013,7 +7013,12 @@ eHalStatus sme_UpdateRoamRssiDiff(tHalHandle hHal, v_U8_t RoamRssiDiff)
         pMac->roam.configParam.RoamRssiDiff = RoamRssiDiff;
         sme_ReleaseGlobalLock( &pMac->sme );
     }
-
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_RSSI_DIFF_CHANGED);
+    }
+#endif
     return status ;
 }
 
@@ -7225,6 +7230,12 @@ eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
           sme_UpdateConfigFwRssiMonitoring(hHal, FALSE);
       }
   }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_CCX_INI_CFG_CHANGED);
+    }
+#endif
   return eHAL_STATUS_SUCCESS;
 }
 #endif /* FEATURE_WLAN_CCX */
@@ -7288,6 +7299,12 @@ eHalStatus sme_setNeighborLookupRssiThreshold(tHalHandle hHal,
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_LOOKUP_THRESH_CHANGED);
+    }
+#endif
     return status;
 }
 
@@ -7368,8 +7385,48 @@ eHalStatus sme_setNeighborScanRefreshPeriod(tHalHandle hHal,
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG,
+                          REASON_NEIGHBOR_SCAN_REFRESH_PERIOD_CHANGED);
+    }
+#endif
     return status ;
 }
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/*--------------------------------------------------------------------------
+  \brief sme_UpdateRoamScanOffloadEnabled() - enable/disable roam scan offload feaure
+  It is used at in the REG_DYNAMIC_VARIABLE macro definition of
+  gRoamScanOffloadEnabled.
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successfully.
+          Other status means SME is failed to update.
+  \sa
+  --------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateRoamScanOffloadEnabled(tHalHandle hHal,
+        v_BOOL_t nRoamScanOffloadEnabled)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: gRoamScanOffloadEnabled is changed from %d to %d", __func__,
+                      pMac->roam.configParam.isRoamOffloadScanEnabled,
+                      nRoamScanOffloadEnabled);
+        pMac->roam.configParam.isRoamOffloadScanEnabled = nRoamScanOffloadEnabled;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+#endif
 
 /*--------------------------------------------------------------------------
   \brief sme_getNeighborScanRefreshPeriod() - get neighbor scan results refresh period
@@ -7629,6 +7686,12 @@ eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
         }
         sme_ReleaseGlobalLock( &pMac->sme );
     }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_CHANNEL_LIST_CHANGED);
+    }
+#endif
 
     return status ;
 }
@@ -7660,6 +7723,12 @@ eHalStatus sme_ChangeCountryValidChannelListByRevision(tHalHandle hHal,
         csrInitCountryValidChannelList(pMac, Revision);
         sme_ReleaseGlobalLock( &pMac->sme );
     }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_VALID_CHANNEL_LIST_CHANGED);
+    }
+#endif
 
     return status ;
 }

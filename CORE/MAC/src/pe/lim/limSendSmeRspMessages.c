@@ -772,6 +772,169 @@ limSendSmeScanRsp(tpAniSirGlobal pMac, tANI_U16 length,
 
 } /*** end limSendSmeScanRsp() ***/
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/**
+ * limSendSmeLfrScanRsp()
+ *
+ *FUNCTION:
+ * This function is called by limProcessSmeReqMessages() to send
+ * eWNI_SME_SCAN_RSP message to applications above MAC Software
+ * only for sending up the roam candidates.
+ *
+ *PARAMS:
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ * NA
+ *
+ *NOTE:
+ * NA
+ *
+ * @param pMac         Pointer to Global MAC structure
+ * @param length       Indicates length of message
+ * @param resultCode   Indicates the result of previously issued
+ *                     eWNI_SME_SCAN_REQ message
+ *
+ * @return None
+ */
+
+void
+limSendSmeLfrScanRsp(tpAniSirGlobal pMac, tANI_U16 length,
+                     tSirResultCodes resultCode,tANI_U8  smesessionId,tANI_U16 smetranscationId)
+{
+    tSirMsgQ              mmhMsg;
+    tpSirSmeScanRsp       pSirSmeScanRsp=NULL;
+    tLimScanResultNode    *ptemp = NULL;
+    tANI_U16              msgLen, allocLength, curMsgLen = 0;
+    tANI_U16              i, bssCount;
+    tANI_U8               *pbBuf;
+    tSirBssDescription    *pDesc;
+
+    PELOG1(limLog(pMac, LOG1,
+       FL("Sending message SME_SCAN_RSP with length=%d reasonCode %s\n"),
+       length, limResultCodeStr(resultCode));)
+
+    if (resultCode != eSIR_SME_SUCCESS)
+    {
+        limPostSmeScanRspMessage(pMac, length, resultCode,smesessionId,smetranscationId);
+        return;
+    }
+
+    mmhMsg.type = eWNI_SME_SCAN_RSP;
+    i = 0;
+    bssCount = 0;
+    msgLen = 0;
+    allocLength = LIM_MAX_NUM_OF_SCAN_RESULTS_REPORTED * LIM_SIZE_OF_EACH_BSS;
+    if ( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
+                                (void **)&pSirSmeScanRsp, allocLength))
+    {
+        // Log error
+        limLog(pMac, LOGP,
+                   FL("call to palAllocateMemory failed for eWNI_SME_SCAN_RSP\n"));
+
+        return;
+    }
+    for (i = 0; i < LIM_MAX_NUM_OF_SCAN_RESULTS; i++)
+    {
+        //when ptemp is not NULL it is a left over
+        ptemp = pMac->lim.gLimCachedLfrScanHashTable[i];
+        while(ptemp)
+        {
+            pbBuf = ((tANI_U8 *)pSirSmeScanRsp) + msgLen;
+            if(0 == bssCount)
+            {
+                msgLen = sizeof(tSirSmeScanRsp) -
+                           sizeof(tSirBssDescription) +
+                           ptemp->bssDescription.length +
+                           sizeof(ptemp->bssDescription.length);
+                pDesc = pSirSmeScanRsp->bssDescription;
+            }
+            else
+            {
+                msgLen += ptemp->bssDescription.length +
+                          sizeof(ptemp->bssDescription.length);
+                pDesc = (tSirBssDescription *)pbBuf;
+            }
+            if ( (allocLength < msgLen) ||
+                 (LIM_MAX_NUM_OF_SCAN_RESULTS_REPORTED <= bssCount++) )
+            {
+                pSirSmeScanRsp->statusCode  =
+                    eSIR_SME_MORE_SCAN_RESULTS_FOLLOW;
+                pSirSmeScanRsp->messageType = eWNI_SME_SCAN_RSP;
+                pSirSmeScanRsp->length      = curMsgLen;
+                mmhMsg.bodyptr = pSirSmeScanRsp;
+                mmhMsg.bodyval = 0;
+                MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+                limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+                if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
+                                                   (void **)&pSirSmeScanRsp,
+                                                   allocLength))
+                {
+                    // Log error
+                    limLog(pMac, LOGP,
+                                 FL("call to palAllocateMemory failed for eWNI_SME_SCAN_RSP\n"));
+                    return;
+                }
+                msgLen = sizeof(tSirSmeScanRsp) -
+                           sizeof(tSirBssDescription) +
+                           ptemp->bssDescription.length +
+                           sizeof(ptemp->bssDescription.length);
+                pDesc = pSirSmeScanRsp->bssDescription;
+                bssCount = 1;
+            }
+            curMsgLen = msgLen;
+
+            PELOG2(limLog(pMac, LOG2, FL("ScanRsp : msgLen %d, bssDescr Len=%d\n"),
+                          msgLen, ptemp->bssDescription.length);)
+            pDesc->length
+                    = ptemp->bssDescription.length;
+            palCopyMemory( pMac->hHdd, (tANI_U8 *) &pDesc->bssId,
+                              (tANI_U8 *) &ptemp->bssDescription.bssId,
+                              ptemp->bssDescription.length);
+
+            PELOG2(limLog(pMac, LOG2, FL("BssId "));
+            limPrintMacAddr(pMac, ptemp->bssDescription.bssId, LOG2);)
+
+            pSirSmeScanRsp->sessionId   = smesessionId;
+            pSirSmeScanRsp->transcationId = smetranscationId;
+
+            ptemp = ptemp->next;
+        } //while(ptemp)
+    } //for (i = 0; i < LIM_MAX_NUM_OF_SCAN_RESULTS; i++)
+
+    if (0 == bssCount)
+    {
+       limPostSmeScanRspMessage(pMac, length, resultCode, smesessionId, smetranscationId);
+       if (NULL != pSirSmeScanRsp)
+       {
+           palFreeMemory( pMac->hHdd, pSirSmeScanRsp);
+           pSirSmeScanRsp = NULL;
+       }
+    }
+    else
+    {
+        // send last message
+        pSirSmeScanRsp->statusCode  = eSIR_SME_SUCCESS;
+        pSirSmeScanRsp->messageType = eWNI_SME_SCAN_RSP;
+        pSirSmeScanRsp->length = curMsgLen;
+
+        /* Update SME session Id and SME transcation Id */
+        pSirSmeScanRsp->sessionId   = smesessionId;
+        pSirSmeScanRsp->transcationId = smetranscationId;
+
+        mmhMsg.type = eWNI_SME_SCAN_RSP;
+        mmhMsg.bodyptr = pSirSmeScanRsp;
+        mmhMsg.bodyval = 0;
+        MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+        limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+        PELOG2(limLog(pMac, LOG2, FL("statusCode : eSIR_SME_SUCCESS\n"));)
+    }
+
+    return;
+
+} /*** end limSendSmeLfrScanRsp() ***/
+#endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 
 /**
  * limPostSmeScanRspMessage()
@@ -2525,3 +2688,46 @@ void limSendSmeMaxAssocExceededNtf(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr,
 
     return;
 }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/** -----------------------------------------------------------------
+  \brief limSendSmeCandidateFoundInd() - sends
+         eWNI_SME_CANDIDATE_FOUND_IND
+
+  After receiving candidate found indication frame from FW, this
+  function sends a eWNI_SME_CANDIDATE_FOUND_IND to SME to notify
+  roam candidate(s) are available.
+
+  \param pMac - global mac structure
+  \param psessionEntry - session info
+  \return none
+  \sa
+  ----------------------------------------------------------------- */
+void
+limSendSmeCandidateFoundInd(tpAniSirGlobal pMac, tANI_U8  sessionId)
+{
+    tSirMsgQ  mmhMsg;
+    tSirSmeCandidateFoundInd *pSirSmeCandidateFoundInd;
+
+    if ( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
+                                             (void **)&pSirSmeCandidateFoundInd,
+                                             sizeof(tSirSmeCandidateFoundInd)))
+    {
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_CANDIDATE_FOUND_IND\n"));
+        return;
+    }
+
+    pSirSmeCandidateFoundInd->messageType = eWNI_SME_CANDIDATE_FOUND_IND;
+    pSirSmeCandidateFoundInd->length = sizeof(tSirSmeDisassocInd);
+
+    pSirSmeCandidateFoundInd->sessionId     =  sessionId;
+
+
+    limLog( pMac, LOGE, FL("posting candidate ind to SME"));
+    mmhMsg.type = eWNI_SME_CANDIDATE_FOUND_IND;
+    mmhMsg.bodyptr = pSirSmeCandidateFoundInd;
+    mmhMsg.bodyval = 0;
+
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+
+} /*** end limSendSmeCandidateFoundInd() ***/
+#endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
