@@ -25,6 +25,7 @@
 #endif
 #include <linux/regulator/machine.h>
 #include <linux/regulator/krait-regulator.h>
+#include <linux/msm_tsens.h>
 #include <linux/msm_thermal.h>
 #include <asm/mach/map.h>
 #include <asm/hardware/gic.h>
@@ -108,6 +109,7 @@ void __init msm8974_add_drivers(void)
 	msm_spm_device_init();
 	krait_power_init();
 	msm_clock_init(&msm8974_clock_init_data);
+	tsens_tm_init_driver();
 	msm_thermal_device_init();
 	lge_add_persistent_device();
 #if defined (CONFIG_BCMDHD) || defined (CONFIG_BCMDHD_MODULE)
