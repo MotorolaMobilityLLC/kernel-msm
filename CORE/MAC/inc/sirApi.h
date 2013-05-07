@@ -3540,12 +3540,18 @@ typedef struct {
 // Preferred Network Found Indication
 typedef struct
 {  
-  tANI_U16        mesgType;
-  tANI_U16        mesgLen;
+  tANI_U16      mesgType;
+  tANI_U16      mesgLen;
   /* Network that was found with the highest RSSI*/
-  tSirMacSSid ssId;
+  tSirMacSSid   ssId;
   /* Indicates the RSSI */
-  tANI_U8        rssi;
+  tANI_U8       rssi;
+  /* Length of the beacon or probe response
+   * corresponding to the candidate found by PNO */
+  tANI_U32      frameLength;
+  /* Index to memory location where the contents of
+   * beacon or probe response frame will be copied */
+  tANI_U8       data[1];
 } tSirPrefNetworkFoundInd, *tpSirPrefNetworkFoundInd;
 #endif // FEATURE_WLAN_SCAN_PNO
 

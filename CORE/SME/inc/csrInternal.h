@@ -1311,7 +1311,8 @@ tANI_BOOLEAN csrIsSetKeyAllowed(tpAniSirGlobal pMac, tANI_U32 sessionId);
 void csrSetOppositeBandChannelInfo( tpAniSirGlobal pMac );
 void csrConstructCurrentValidChannelList( tpAniSirGlobal pMac, tDblLinkList *pChannelSetList,
                                             tANI_U8 *pChannelList, tANI_U8 bSize, tANI_U8 *pNumChannels );
-
+eHalStatus csrScanSavePreferredNetworkFound(tpAniSirGlobal pMac,
+            tSirPrefNetworkFoundInd *pPrefNetworkFoundInd);
 #endif
 
 #ifdef WLAN_FEATURE_VOWIFI_11R

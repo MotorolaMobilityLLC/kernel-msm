@@ -510,9 +510,11 @@ typedef struct
 typedef struct
 {  
   /* Network that was found with the highest RSSI*/
-  WDI_MacSSid ssId;
+  WDI_MacSSid   ssId;
   /* Indicates the RSSI */
-  wpt_uint8  rssi;
+  wpt_uint8     rssi;
+  wpt_uint16    frameLength;
+  wpt_uint8     *pData;
 } WDI_PrefNetworkFoundInd;
 #endif // FEATURE_WLAN_SCAN_PNO
 
