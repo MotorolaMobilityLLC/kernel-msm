@@ -38,6 +38,7 @@
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
 #include <linux/nfc/pn544-mot.h>
+#include <linux/reboot.h>
 
 /*
  * Virtual device /sys/devices/virtual/misc/pn544/pn544_control_dev
@@ -55,6 +56,7 @@ struct pn544_dev	{
 	unsigned int		discharge_delay;
 	bool			irq_enabled;
 	spinlock_t		irq_enabled_lock; /* irq lock for reading */
+	struct notifier_block reboot_notify;
 };
 
 static void pn544_disable_irq(struct pn544_dev *pn544_dev)
@@ -260,6 +262,22 @@ static int pn544_dev_ioctl(struct pn544_dev *pn544_dev,
 	return 0;
 }
 
+static int nfc_blk_reboot_notify(struct notifier_block *notify_block,
+					unsigned long mode, void *unused)
+{
+	int ret = 0;
+	struct pn544_dev *pn544_dev = container_of(
+		notify_block, struct pn544_dev, reboot_notify);
+
+	pr_info("pn544 reboot notification received\n");
+	if (pn544_dev != NULL) {
+		pn544_dev->discharge_delay = 0;
+		ret = pn544_dev_ioctl(pn544_dev, PN544_SET_PWR, 0);
+		pr_info("pn544 calling ioctl power off returned = %d\n", ret);
+	}
+
+	return NOTIFY_DONE;
+}
 
 static const struct file_operations pn544_dev_fops = {
 	.owner	= THIS_MODULE,
@@ -479,6 +497,8 @@ static int pn544_probe(struct i2c_client *client,
 		pr_err("%s : unable to make irq %d wakeup\n", __func__,
 					client->irq);
 	pn544_disable_irq(pn544_dev);
+	pn544_dev->reboot_notify.notifier_call = nfc_blk_reboot_notify;
+	register_reboot_notifier(&pn544_dev->reboot_notify);
 	i2c_set_clientdata(client, pn544_dev);
 
 	return 0;
@@ -502,6 +522,7 @@ static int pn544_remove(struct i2c_client *client)
 	struct pn544_dev *pn544_dev;
 
 	pn544_dev = i2c_get_clientdata(client);
+	unregister_reboot_notifier(&pn544_dev->reboot_notify);
 	free_irq(client->irq, pn544_dev);
 	pn544_gpio_free(pn544_dev);
 	device_remove_file(pn544_dev->pn544_control_device,
