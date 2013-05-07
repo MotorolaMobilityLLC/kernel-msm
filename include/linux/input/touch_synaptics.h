@@ -17,8 +17,6 @@
 #ifndef LGE_TOUCH_SYNAPTICS_H
 #define LGE_TOUCH_SYNAPTICS_H
 
-#include <linux/earlysuspend.h>
-
 #define MAX_FINGER                      10
 
 /* Debug Mask setting */
@@ -155,9 +153,9 @@ struct synaptics_ts_data {
 	struct input_dev        *input_dev;
 	struct delayed_work     work_init;
 	struct work_struct      work_fw_upgrade;
-	struct early_suspend    early_suspend;
 	struct work_struct      work_recover;
 	struct kobject          lge_touch_kobj;
+	struct notifier_block   fb_notif;
 };
 
 enum{

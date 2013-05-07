@@ -34,6 +34,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/of_gpio.h>
 #include <linux/input/touch_synaptics.h>
+#include <linux/fb.h>
 
 #include "SynaImage_ds5.h"
 
@@ -171,11 +172,6 @@ static struct {
 	u8	finger_reg[MAX_FINGER][BYTES_PER_FINGER];
 } fdata;
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-static void touch_early_suspend(struct early_suspend *h);
-static void touch_late_resume(struct early_suspend *h);
-#endif
-
 extern int FirmwareUpgrade_ds5(struct synaptics_ts_data *ts, const char* fw_path);
 
 static int synaptics_t1320_power_on(struct i2c_client *client, int on)
@@ -217,11 +213,13 @@ static int synaptics_t1320_power_on(struct i2c_client *client, int on)
 	if (on) {
 		TOUCH_INFO_MSG("touch enable\n");
 		regulator_enable(vreg_l22);
+		udelay(6); /* min 5.5 us */
 		regulator_enable(vreg_lvs3);
 	} else {
 		TOUCH_INFO_MSG("touch disable\n");
-		regulator_disable(vreg_l22);
 		regulator_disable(vreg_lvs3);
+		udelay(6); /* min 5.5 us */
+		regulator_disable(vreg_l22);
 	}
 
 	return rc;
@@ -1303,8 +1301,8 @@ static int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 	return buf;
 }
 
-static ssize_t
-show_fw_ver(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_fw_ver(struct device *dev,
+				struct device_attribute *attr, char *buf)
 {
 	struct synaptics_ts_data *ts = dev_get_drvdata(dev);
 
@@ -1568,6 +1566,97 @@ static int synaptics_parse_dt(struct device *dev, struct touch_platform_data *pd
 	return 0;
 }
 
+static int synaptics_ts_start(struct synaptics_ts_data *ts)
+{
+	if (unlikely(touch_debug_mask & DEBUG_TRACE))
+		TOUCH_DEBUG_MSG("\n");
+
+	if (ts->curr_resume_state)
+		return 0;
+
+	ts->curr_resume_state = 1;
+
+	if (ts->fw_info.fw_upgrade.is_downloading == UNDER_DOWNLOADING) {
+		TOUCH_INFO_MSG("start is not executed\n");
+		return 0;
+	}
+
+	touch_power_cntl(ts, POWER_ON);
+
+	return 0;
+}
+
+static int synaptics_ts_stop(struct synaptics_ts_data *ts)
+{
+	if (unlikely(touch_debug_mask & DEBUG_TRACE))
+		TOUCH_DEBUG_MSG("\n");
+
+	if (!ts->curr_resume_state) {
+		return 0;
+	}
+
+	ts->curr_resume_state = 0;
+
+	if (ts->fw_info.fw_upgrade.is_downloading == UNDER_DOWNLOADING) {
+		TOUCH_INFO_MSG("stop is not executed\n");
+		return 0;
+	}
+
+	cancel_delayed_work_sync(&ts->work_init);
+	release_all_ts_event(ts);
+	touch_power_cntl(ts, POWER_OFF);
+
+	return 0;
+}
+
+static int fb_notifier_callback(struct notifier_block *this,
+				unsigned long event, void *data)
+{
+	struct synaptics_ts_data *ts =
+		container_of(this, struct synaptics_ts_data, fb_notif);
+	int blank_mode;
+	static int first = 1;
+
+	if (event != FB_EVENT_BLANK || data == NULL)
+		return 0;
+
+	blank_mode = *(int*)(((struct fb_event*)data)->data);
+
+	TOUCH_DEBUG_MSG("FB_CB: event = %lu, blank mode = %d\n",
+							event, blank_mode);
+
+	switch (blank_mode) {
+	case FB_BLANK_UNBLANK:
+		if (first) {
+			mutex_lock(&ts->input_dev->mutex);
+			synaptics_ts_start(ts);
+			mutex_unlock(&ts->input_dev->mutex);
+			first = 0;
+		} else {
+			queue_delayed_work(synaptics_wq,
+				&ts->work_init,
+				msecs_to_jiffies(70));
+			first = 1;
+		}
+		break;
+	case FB_BLANK_POWERDOWN:
+		if (first) {
+			mutex_lock(&ts->input_dev->mutex);
+			disable_irq(ts->client->irq);
+			mutex_unlock(&ts->input_dev->mutex);
+			first = 0;
+		} else {
+			synaptics_ts_stop(ts);
+			first = 1;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static int synaptics_ts_probe(
 	struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -1632,6 +1721,13 @@ static int synaptics_ts_probe(
 
 	atomic_set(&ts->device_init, 0);
 	ts->curr_resume_state = 1;
+
+	ts->fb_notif.notifier_call = fb_notifier_callback;
+	if (fb_register_client(&ts->fb_notif) != 0) {
+		TOUCH_ERR_MSG("Failed to register fb callback\n");
+		ret = -EINVAL;
+		goto err_fb_register;
+	}
 
 	/* Power on */
 	if (touch_power_cntl(ts, POWER_ON) < 0)
@@ -1713,13 +1809,6 @@ static int synaptics_ts_probe(
 	if (ts->fw_info.fw_start != NULL)
 		queue_work(synaptics_wq, &ts->work_fw_upgrade);
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	ts->early_suspend.suspend = touch_early_suspend;
-	ts->early_suspend.resume = touch_late_resume;
-	register_early_suspend(&ts->early_suspend);
-#endif
-
 	for (i = 0; i < ARRAY_SIZE(synaptics_device_attrs); i++) {
 		ret = device_create_file(&client->dev,
 						&synaptics_device_attrs[i]);
@@ -1738,6 +1827,7 @@ err_input_dev_alloc_failed:
 	touch_power_cntl(ts, POWER_OFF);
 err_power_failed:
 err_assign_platform_data:
+err_fb_register:
 	kfree(ts);
 	return ret;
 err_alloc_platformdata_failed:
@@ -1754,56 +1844,12 @@ static int synaptics_ts_remove(struct i2c_client *client)
 
 	/* Power off */
 	touch_power_cntl(ts, POWER_OFF);
-	unregister_early_suspend(&ts->early_suspend);
 	free_irq(client->irq, ts);
 	input_unregister_device(ts->input_dev);
 	kfree(ts);
 
 	return 0;
 }
-
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-static void touch_early_suspend(struct early_suspend *h)
-{
-	struct synaptics_ts_data *ts =
-		container_of(h, struct synaptics_ts_data, early_suspend);
-
-	if (unlikely(touch_debug_mask & DEBUG_TRACE))
-		TOUCH_DEBUG_MSG("\n");
-
-	ts->curr_resume_state = 0;
-
-	if (ts->fw_info.fw_upgrade.is_downloading == UNDER_DOWNLOADING) {
-		TOUCH_INFO_MSG("early_suspend is not executed\n");
-		return;
-	}
-
-	disable_irq(ts->client->irq);
-	cancel_delayed_work_sync(&ts->work_init);
-	release_all_ts_event(ts);
-	touch_power_cntl(ts, POWER_OFF);
-}
-
-static void touch_late_resume(struct early_suspend *h)
-{
-	struct synaptics_ts_data *ts =
-		container_of(h, struct synaptics_ts_data, early_suspend);
-
-	if (unlikely(touch_debug_mask & DEBUG_TRACE))
-		TOUCH_DEBUG_MSG("\n");
-
-	ts->curr_resume_state = 1;
-
-	if (ts->fw_info.fw_upgrade.is_downloading == UNDER_DOWNLOADING) {
-		TOUCH_INFO_MSG("late_resume is not executed\n");
-		return;
-	}
-
-	touch_power_cntl(ts, POWER_ON);
-
-	queue_delayed_work(synaptics_wq, &ts->work_init, msecs_to_jiffies(BOOTING_DELAY));
-}
-#endif
 
 #if defined(CONFIG_PM)
 static int touch_suspend(struct device *device)
