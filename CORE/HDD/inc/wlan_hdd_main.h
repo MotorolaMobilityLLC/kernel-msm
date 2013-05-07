@@ -519,14 +519,6 @@ typedef enum{
     HDD_SSR_DISABLED,
 }e_hdd_ssr_required;
 
-#ifdef WLAN_FEATURE_GTK_OFFLOAD
-typedef struct
-{
-   v_BOOL_t requested;
-   tSirGtkOffloadParams gtkOffloadReqParams;
-}hddGtkOffloadParams;
-#endif
-
 struct hdd_station_ctx
 {
   /** Handle to the Wireless Extension State */
@@ -549,7 +541,7 @@ struct hdd_station_ctx
 #endif
 
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
-   hddGtkOffloadParams gtkOffloadRequestParams;
+   tSirGtkOffloadParams gtkOffloadReqParams;
 #endif
    /*Increment whenever ibss New peer joins and departs the network */
    int ibss_sta_generation;
