@@ -1051,6 +1051,10 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 
 	case STATE_STANDBY:
 		synaptics_rmi4_irq_enable(rmi4_data, false);
+		/* put sensor to sleep to ensure the same */
+		/* power state mode apply after probe */
+		if (!rmi4_data->sensor_sleep)
+			synaptics_rmi4_sensor_sleep(rmi4_data);
 			break;
 
 	case STATE_BL:
@@ -2904,6 +2908,7 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 {
 	struct synaptics_rmi4_exp_fn *exp_fhandler, *next_list_entry;
 	struct synaptics_rmi4_data *rmi4_data;
+	int state;
 
 	mutex_lock(&exp_fn_ctrl_mutex);
 	rmi4_data = exp_fn_ctrl.rmi4_data_ptr;
@@ -2930,9 +2935,14 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 			if (rmi4_data->in_bootloader &&
 			   (exp_fhandler->mode == IC_MODE_UI))
 				continue;
+			/* ensure ic is woken up */
 			if (rmi4_data->sensor_sleep)
 				synaptics_rmi4_sensor_wake(rmi4_data);
 			exp_fhandler->func_init(rmi4_data);
+			state = synaptics_dsx_get_state_safe(rmi4_data);
+			/* if state allows, put it back to sleep */
+			if (state == STATE_STANDBY)
+				synaptics_rmi4_sensor_sleep(rmi4_data);
 			exp_fhandler->inserted = true;
 		} else if ((exp_fhandler->func_init == NULL) &&
 			   (exp_fhandler->inserted == true)) {
