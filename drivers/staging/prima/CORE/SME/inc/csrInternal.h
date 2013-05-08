@@ -18,37 +18,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
- *
- * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
- *
- *
- * Permission to use, copy, modify, and/or distribute this software for
- * any purpose with or without fee is hereby granted, provided that the
- * above copyright notice and this permission notice appear in all
- * copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
- * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
- * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */
-
-/** ------------------------------------------------------------------------- *
-    ------------------------------------------------------------------------- *
-
-
-    \file csrInternal.h
-
-    Define internal data structure for MAC.
-
-    Copyright (C) 2006 Airgo Networks, Incorporated
-   ========================================================================== */
 #ifndef CSRINTERNAL_H__
 #define CSRINTERNAL_H__
 
@@ -192,6 +161,9 @@ typedef enum
     eCsrForcedDisassocSta,
     eCsrForcedDeauthSta,
     eCsrPerformPreauth,
+    eCsrLostLink1Abort,
+    eCsrLostLink2Abort,
+    eCsrLostLink3Abort,
 
 }eCsrRoamReason;
 
@@ -596,11 +568,13 @@ typedef struct tagCsrConfig
 #endif
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-    tANI_U8   isFastTransitionEnabled;
-    tANI_U8   RoamRssiDiff;
-    tANI_U8   nImmediateRoamRssiDiff;
-    tANI_BOOLEAN nRoamPrefer5GHz;
-    tANI_BOOLEAN nRoamIntraBand;
+    tANI_U8       isFastTransitionEnabled;
+    tANI_U8       RoamRssiDiff;
+    tANI_U8       nImmediateRoamRssiDiff;
+    tANI_BOOLEAN  nRoamPrefer5GHz;
+    tANI_BOOLEAN  nRoamIntraBand;
+    tANI_BOOLEAN  isWESModeEnabled;
+    tANI_BOOLEAN  nRoamScanControl;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
@@ -641,6 +615,7 @@ typedef struct tagRoamJoinStatus
     tSirResultCodes statusCode;
     //this is set to unspecified if statusCode indicates timeout. Or it is the failed reason from the other BSS(per 802.11 spec)
     tANI_U32 reasonCode;
+    tSirMacAddr bssId;
 }tCsrRoamJoinStatus;
 
 typedef struct tagCsrOsChannelMask
@@ -956,7 +931,8 @@ typedef struct tagCsrRoamStruct
     tANI_U8   isCcxIniFeatureEnabled;
 #endif
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-    tANI_U8   RoamRssiDiff;
+    tANI_U8        RoamRssiDiff;
+    tANI_BOOLEAN   isWESModeEnabled;
 #endif
 }tCsrRoamStruct;
 
@@ -1073,6 +1049,11 @@ typedef struct tagCsrRoamStruct
 #define CSR_IS_ADDTS_WHEN_ACMOFF_SUPPORTED(pMac) (pMac->roam.configParam.addTSWhenACMIsOff)
 // DEAUTHIND
 #define CSR_IS_LOSTLINK_ROAMING(reason)  ((eCsrLostlinkRoamingDisassoc == (reason)) || (eCsrLostlinkRoamingDeauth == (reason)))
+
+#define CSR_IS_ROAMING_COMMAND(pCommand) ((eCsrLostLink1 == (pCommand)->u.roamCmd.roamReason) ||\
+                                          (eCsrLostLink2 == (pCommand)->u.roamCmd.roamReason) ||\
+                                          (eCsrLostLink3 == (pCommand)->u.roamCmd.roamReason) )
+
 
 //Stop CSR from asking for IMPS, This function doesn't disable IMPS from CSR
 void csrScanSuspendIMPS( tpAniSirGlobal pMac );
