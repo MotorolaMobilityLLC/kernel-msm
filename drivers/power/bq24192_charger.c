@@ -68,6 +68,7 @@ struct bq24192_chip {
 	int  chg_current_ma;
 	int  term_current_ma;
 	int  int_gpio;
+	int  otg_en_gpio;
 	int  irq;
 	struct i2c_client  *client;
 	struct delayed_work  irq_work;
@@ -81,6 +82,7 @@ struct bq24192_chip {
 	int  ac_online;
 	int  ext_pwr;
 	int  wlc_support;
+	int ext_ovp_otg_ctrl;
 };
 
 static struct bq24192_chip *the_chip;
@@ -501,6 +503,41 @@ static int get_reg(void *data, u64 *val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(reg_fops, get_reg, set_reg, "0x%02llx\n");
 
+#define OTG_ENABLE_SHIFT  5
+static int bq24192_enable_otg(struct bq24192_chip *chip, bool enable)
+{
+	int ret;
+	u8 val = (u8)(!!enable << OTG_ENABLE_SHIFT);
+
+	pr_info("otg enable = %d\n", enable);
+
+	ret = bq24192_masked_write(chip->client, PWR_ON_CONF_REG,
+					CHG_CONFIG_MASK, val);
+	if (ret) {
+		pr_err("failed to set CHG_CONFIG rc=%d\n", ret);
+		return ret;
+	}
+
+	if (chip->otg_en_gpio)
+		gpio_set_value(chip->otg_en_gpio, enable);
+
+	return 0;
+}
+
+static bool bq24192_is_otg_mode(struct bq24192_chip *chip)
+{
+	u8 temp;
+	int ret;
+
+	ret = bq24192_read_reg(chip->client, SYSTEM_STATUS_REG, &temp);
+	if (ret) {
+		pr_err("failed to read SYSTEM_STATUS_REG rc=%d\n", ret);
+		return false;
+	}
+
+	return ((temp & VBUS_STAT_MASK) == VBUS_STAT_MASK) ? true : false;
+}
+
 static void bq24192_external_power_changed(struct power_supply *psy)
 {
 	struct bq24192_chip *chip = container_of(psy,
@@ -549,8 +586,16 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 
 	chip->usb_psy->get_property(chip->usb_psy,
 			  POWER_SUPPLY_PROP_SCOPE, &ret);
-	if (ret.intval)
+
+	if (ret.intval) {
 		pr_info("usb host mode = %d\n", ret.intval);
+		if ((ret.intval == POWER_SUPPLY_SCOPE_SYSTEM)
+					&& !bq24192_is_otg_mode(chip))
+			bq24192_enable_otg(chip, true);
+		else if ((ret.intval == POWER_SUPPLY_SCOPE_DEVICE)
+					&& bq24192_is_otg_mode(chip))
+			bq24192_enable_otg(chip, false);
+	}
 
 	power_supply_changed(&chip->ac_psy);
 }
@@ -853,6 +898,18 @@ static int bq24192_parse_dt(struct device_node *dev_node,
 	chip->wlc_support =
 			of_property_read_bool(dev_node, "ti,wlc-support");
 
+	chip->ext_ovp_otg_ctrl =
+			of_property_read_bool(dev_node,
+					"ti,ext-ovp-otg-ctrl");
+	if (chip->ext_ovp_otg_ctrl) {
+		chip->otg_en_gpio =
+			of_get_named_gpio(dev_node, "ti,otg-en-gpio", 0);
+		if (chip->otg_en_gpio < 0) {
+			pr_err("Unable to get named gpio for otg_en_gpio.\n");
+			return chip->otg_en_gpio;
+		}
+	}
+
 	pr_info("chg_i_ma = %d term_i_ma = %d\n",
 			chip->chg_current_ma,
 			chip->term_current_ma);
@@ -906,6 +963,9 @@ static int bq24192_probe(struct i2c_client *client,
 		chip->chg_current_ma = pdata->chg_current_ma;
 		chip->term_current_ma = pdata->term_current_ma;
 		chip->wlc_support = pdata->wlc_support;
+		chip->ext_ovp_otg_ctrl = pdata->ext_ovp_otg_ctrl;
+		if (chip->ext_ovp_otg_ctrl)
+			chip->otg_en_gpio = pdata->otg_en_gpio;
 	}
 
 	if (chip->wlc_support) {
@@ -925,6 +985,16 @@ static int bq24192_probe(struct i2c_client *client,
 	}
 
 	chip->irq = gpio_to_irq(chip->int_gpio);
+
+	if (chip->otg_en_gpio) {
+		ret = gpio_request_one(chip->otg_en_gpio,
+				GPIOF_OUT_INIT_LOW, "otg_en");
+		if (ret) {
+			pr_err("otg_en_gpio request failed for %d ret=%d\n",
+					chip->otg_en_gpio, ret);
+			goto err_otg_en_gpio;
+		}
+	}
 
 	i2c_set_clientdata(client, chip);
 
@@ -972,6 +1042,9 @@ err_req_irq:
 err_debugfs:
 	power_supply_unregister(&chip->ac_psy);
 err_hw_init:
+	if (chip->otg_en_gpio)
+		   gpio_free(chip->otg_en_gpio);
+err_otg_en_gpio:
 	if (chip->int_gpio)
 		gpio_free(chip->int_gpio);
 error:
@@ -990,6 +1063,8 @@ static int bq24192_remove(struct i2c_client *client)
 	if (chip->dent)
 		debugfs_remove_recursive(chip->dent);
 	power_supply_unregister(&chip->ac_psy);
+	if (chip->otg_en_gpio)
+		   gpio_free(chip->otg_en_gpio);
 	if (chip->int_gpio)
 		gpio_free(chip->int_gpio);
 	kfree(chip);

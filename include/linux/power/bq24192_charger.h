@@ -24,6 +24,8 @@ struct bq24192_platform_data {
 	int chg_current_ma;
 	int term_current_ma;
 	int wlc_support;
+	int otg_en_gpio;
+	int ext_ovp_otg_ctrl;
 
 };
 
