@@ -3400,6 +3400,7 @@ int __init asustek_add_lid(void)
 	switch (revision) {
 	case HW_REV_C:
 	case HW_REV_D:
+	case HW_REV_E:
 		if(machine_is_apq8064_flo())
 			lid_reg = regulator_get(NULL, "8921_l17");
 		else if(machine_is_apq8064_deb())
@@ -3428,7 +3429,6 @@ int __init asustek_add_lid(void)
 
 		platform_device_register(&asustek_lid_device);
 		break;
-	case HW_REV_A:
 	case HW_REV_B:
 	default:
 		/* not support yet */

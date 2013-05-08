@@ -1796,7 +1796,7 @@ void __init apq8064_init_gpiomux(void)
 
 #ifdef CONFIG_INPUT_LID
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
-		if ((revision == HW_REV_C) || (revision == HW_REV_D)) {
+		if ((revision == HW_REV_C) || (revision == HW_REV_D) || (revision == HW_REV_E)) {
 			msm_gpiomux_install(asustek_hall_sensor_configs,
 			ARRAY_SIZE(asustek_hall_sensor_configs));
 		}
