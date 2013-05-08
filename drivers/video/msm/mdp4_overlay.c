@@ -1950,7 +1950,7 @@ void mdp4_overlay_borderfill_stage_down(struct mdp4_overlay_pipe *pipe)
 	/* free borderfill pipe */
 	mdp4_overlay_reg_flush(pipe, 1);
 	mdp4_mixer_stage_down(pipe, 0); /* commit will happen for bspipe up */
-	mdp4_overlay_pipe_free(pipe);
+	mdp4_overlay_pipe_free(pipe, 0);
 
 	/* stage up base layer */
 	mdp4_overlay_reg_flush(bspipe, 1);
@@ -2307,7 +2307,7 @@ struct mdp4_overlay_pipe *mdp4_overlay_pipe_alloc(int ptype, int mixer)
 }
 
 
-void mdp4_overlay_pipe_free(struct mdp4_overlay_pipe *pipe)
+void mdp4_overlay_pipe_free(struct mdp4_overlay_pipe *pipe, int all)
 {
 	uint32 ptype, num, ndx, mixer;
 	struct mdp4_iommu_pipe_info iom;
@@ -2322,7 +2322,7 @@ void mdp4_overlay_pipe_free(struct mdp4_overlay_pipe *pipe)
 
 	/* No need for borderfill pipe */
 	if (pipe->pipe_type != OVERLAY_TYPE_BF)
-		mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 0);
+		mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, all);
 
 	iom = pipe->iommu;
 
@@ -2875,6 +2875,8 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 	u32 cnt = 0;
 	int ret = -EINVAL;
 	u64 ab_quota_total = 0, ib_quota_total = 0;
+	u64 ib_quota_min = 0;
+
 
 	if (!mfd) {
 		pr_err("%s: mfd is null!\n", __func__);
@@ -2906,6 +2908,12 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 		if (pipe->pipe_type != OVERLAY_TYPE_BF) {
 			ab_quota_total += pipe->bw_ab_quota;
 			ib_quota_total += pipe->bw_ib_quota;
+		} else {
+			if (ib_quota_min == 0)
+				ib_quota_min = pipe->bw_ib_quota;
+			else
+				ib_quota_min = min(ib_quota_min,
+						   pipe->bw_ib_quota);
 		}
 
 		if (mfd->mdp_rev == MDP_REV_41) {
@@ -2933,6 +2941,8 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 			ib_quota_total += perf_req->mdp_ov_ib_bw[i];
 		}
 	}
+
+	ib_quota_total = max(ib_quota_total, ib_quota_min);
 
 	perf_req->mdp_ab_bw = roundup(ab_quota_total, MDP_BUS_SCALE_AB_STEP);
 	perf_req->mdp_ib_bw = roundup(ib_quota_total, MDP_BUS_SCALE_AB_STEP);
@@ -3280,7 +3290,7 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 	ret = mdp4_overlay_mdp_perf_req(mfd);
 
 	if (ret) {
-		mdp4_overlay_pipe_free(pipe);
+		mdp4_overlay_pipe_free(pipe, 0);
 		pr_err("%s: blt mode should not be enabled\n", __func__);
 	}
 	mutex_unlock(&mfd->dma->ov_mutex);
@@ -3302,7 +3312,7 @@ int mdp4_overlay_unset_mixer(int mixer)
 		pipe->flags &= ~MDP_OV_PLAY_NOWAIT;
 		mdp4_overlay_reg_flush(pipe, 1);
 		mdp4_mixer_stage_down(pipe, 1);
-		mdp4_overlay_pipe_free(pipe);
+		mdp4_overlay_pipe_free(pipe, 1);
 		cnt++;
 	}
 
@@ -3367,7 +3377,7 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 
 	if (pipe->flags & MDP_SECURE_OVERLAY_SESSION)
 		mfd->sec_active = FALSE;
-	mdp4_overlay_pipe_free(pipe);
+	mdp4_overlay_pipe_free(pipe, 0);
 
 	mutex_unlock(&mfd->dma->ov_mutex);
 
@@ -3830,7 +3840,7 @@ void mdp4_v4l2_overlay_clear(struct mdp4_overlay_pipe *pipe)
 {
 	mdp4_overlay_reg_flush(pipe, 1);
 	mdp4_mixer_stage_down(pipe, 1);
-	mdp4_overlay_pipe_free(pipe);
+	mdp4_overlay_pipe_free(pipe, 1);
 }
 
 int mdp4_v4l2_overlay_play(struct fb_info *info, struct mdp4_overlay_pipe *pipe,

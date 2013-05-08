@@ -492,9 +492,11 @@ void msm_gemini_hw_region_dump(int size)
 	uint32_t *p;
 	uint8_t *p8;
 
-	if (size > gemini_region_size)
+	if (size > gemini_region_size) {
 		GMN_PR_ERR("%s:%d] wrong region dump size\n",
 			__func__, __LINE__);
+		return;
+	}
 
 	p = (uint32_t *) gemini_region_base;
 	while (size >= 16) {
