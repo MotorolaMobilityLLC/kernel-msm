@@ -97,8 +97,9 @@
 #define STAT_OUTPUT_EN		0x20
 #define GPIO_AC_OK		APQ_AP_ACOK
 #define WPC_DEBOUNCE_INTERVAL	(1 * HZ)
-#define WPC_STABLE_INTERVAL	(4 * HZ)
+#define WPC_SET_CURT_INTERVAL	(2 * HZ)
 #define WPC_INIT_DET_INTERVAL	(22 * HZ)
+#define WPC_SET_CURT_LIMIT_CNT	6
 
 /* Functions declaration */
 extern int  bq27541_battery_callback(unsigned usb_cable_state);
@@ -446,6 +447,8 @@ smb345_set_WCInputCurrentlimit(struct i2c_client *client, u32 current_setting)
 	int ret = 0, retval;
 	u8 setting;
 
+	charger->wpc_curr_limit_count++;
+
 	ret = smb345_volatile_writes(client, smb345_ENABLE_WRITE);
 	if (ret < 0) {
 		dev_err(&client->dev, "%s() error in configuring charger..\n",
@@ -474,6 +477,10 @@ smb345_set_WCInputCurrentlimit(struct i2c_client *client, u32 current_setting)
 			setting |= 0x20;
 		else if (current_setting == 500)
 			setting |= 0x10;
+		else if (current_setting == 300)
+			setting |= 0x00;
+		else
+			setting |= 0x20;
 
 		SMB_NOTICE("Set ICL=%u retval =%x setting=%x\n",
 			current_setting, retval, setting);
@@ -484,22 +491,26 @@ smb345_set_WCInputCurrentlimit(struct i2c_client *client, u32 current_setting)
 				"0x%02x\n", __func__, setting, smb345_CHRG_CRNTS);
 			goto error;
 		}
+
+		charger->wpc_curr_limit = current_setting;
 	}
 
-	retval = smb345_read(client, smb345_VRS_FUNC);
-	if (retval < 0) {
-		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
-				__func__, smb345_VRS_FUNC);
-		goto error;
-	}
+	if (current_setting == 300) {
+		retval = smb345_read(client, smb345_VRS_FUNC);
+		if (retval < 0) {
+			dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+					__func__, smb345_VRS_FUNC);
+			goto error;
+		}
 
-	setting = retval & (~(BIT(4)));
-	SMB_NOTICE("Disable AICL, retval=%x setting=%x\n", retval, setting);
-	ret = smb345_write(client, smb345_VRS_FUNC, setting);
-	if (ret < 0) {
-		dev_err(&client->dev, "%s(): Failed in writing 0x%02x to register"
-			"0x%02x\n", __func__, setting, smb345_VRS_FUNC);
-		goto error;
+		setting = retval & (~(BIT(4)));
+		SMB_NOTICE("Disable AICL, retval=%x setting=%x\n", retval, setting);
+		ret = smb345_write(client, smb345_VRS_FUNC, setting);
+		if (ret < 0) {
+			dev_err(&client->dev, "%s(): Failed in writing 0x%02x to register"
+				"0x%02x\n", __func__, setting, smb345_VRS_FUNC);
+			goto error;
+		}
 	}
 
 	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
@@ -516,17 +527,23 @@ error:
 static void wireless_set(void)
 {
 	wireless_on = true;
+	if (delayed_work_pending(&charger->wireless_set_current_work))
+		cancel_delayed_work(&charger->wireless_set_current_work);
 	wake_lock(&wireless_wakelock);
-	smb345_set_WCInputCurrentlimit(charger->client, 900);
+	charger->wpc_curr_limit = 300;
+	charger->wpc_curr_limit_count = 0;
+	smb345_set_WCInputCurrentlimit(charger->client, 300);
 	bq27541_wireless_callback(wireless_on);
-	queue_delayed_work(smb345_wq, &charger->wireless_reAICL_work, WPC_STABLE_INTERVAL);
+	queue_delayed_work(smb345_wq, &charger->wireless_set_current_work, WPC_SET_CURT_INTERVAL);
 }
 
 static void wireless_reset(void)
 {
 	wireless_on = false;
-	if (delayed_work_pending(&charger->wireless_reAICL_work))
-		cancel_delayed_work(&charger->wireless_reAICL_work);
+	if (delayed_work_pending(&charger->wireless_set_current_work))
+		cancel_delayed_work(&charger->wireless_set_current_work);
+	charger->wpc_curr_limit = 300;
+	charger->wpc_curr_limit_count = 0;
 	if (ac_on)
 		smb345_set_InputCurrentlimit(charger->client, 1200);
 	bq27541_wireless_callback(wireless_on);
@@ -553,41 +570,20 @@ static void wireless_det_work_function(struct work_struct *dat)
 		wireless_set();
 }
 
-static void wireless_reAICL_work_function(struct work_struct *dat)
+static void wireless_set_current_function(struct work_struct *dat)
 {
-	int ret = 0, retval;
-	u8 setting;
-	struct i2c_client *client = charger->client;
+	if (delayed_work_pending(&charger->wireless_set_current_work))
+		cancel_delayed_work(&charger->wireless_set_current_work);
 
-	if (delayed_work_pending(&charger->wireless_reAICL_work))
-		cancel_delayed_work(&charger->wireless_reAICL_work);
+	if (charger->wpc_curr_limit == 700 || charger->wpc_curr_limit_count >= WPC_SET_CURT_LIMIT_CNT) {
+		wake_unlock(&wireless_wakelock);
+		return;
+	} else if (charger->wpc_curr_limit == 300)
+		smb345_set_WCInputCurrentlimit(charger->client, 500);
+	else if (charger->wpc_curr_limit == 500)
+		smb345_set_WCInputCurrentlimit(charger->client, 700);
 
-	ret = smb345_volatile_writes(client, smb345_ENABLE_WRITE);
-	if (ret < 0) {
-		dev_err(&client->dev, "%s() error in configuring charger..\n",
-								__func__);
-	}
-
-	retval = smb345_read(client, smb345_VRS_FUNC);
-	if (retval < 0) {
-		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
-				__func__, smb345_VRS_FUNC);
-	}
-
-	setting = retval | BIT(4);
-	SMB_NOTICE("enable AICL, retval=%x setting=%x\n", retval, setting);
-	ret = smb345_write(client, smb345_VRS_FUNC, setting);
-	if (ret < 0) {
-		dev_err(&client->dev, "%s(): Failed in writing 0x%02x to register"
-			"0x%02x\n", __func__, setting, smb345_VRS_FUNC);
-	}
-
-	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
-	if (ret < 0) {
-		dev_err(&client->dev, "%s() error in configuring charger..\n",
-								__func__);
-	}
-	wake_unlock(&wireless_wakelock);
+	queue_delayed_work(smb345_wq, &charger->wireless_set_current_work, WPC_SET_CURT_INTERVAL);
 }
 
 static int smb345_inok_irq(struct smb345_charger *smb)
@@ -785,8 +781,8 @@ int usb_cable_type_detect(unsigned int chgr_type)
 			success =  bq27541_battery_callback(ac_cable);
 			touch_callback(ac_cable);
 			if (wpc_en) {
-				if (delayed_work_pending(&charger->wireless_reAICL_work))
-					cancel_delayed_work(&charger->wireless_reAICL_work);
+				if (delayed_work_pending(&charger->wireless_set_current_work))
+					cancel_delayed_work(&charger->wireless_set_current_work);
 				SMB_NOTICE("AC cable detect, disable DCIN");
 				gpio_set_value(charger->wpc_en1, 1);
 				gpio_set_value(charger->wpc_en2, 1);
@@ -945,14 +941,16 @@ static int __devinit smb345_probe(struct i2c_client *client,
 		wireless_isr_work_function);
 	INIT_DELAYED_WORK_DEFERRABLE(&charger->wireless_det_work,
 		wireless_det_work_function);
-	INIT_DELAYED_WORK_DEFERRABLE(&charger->wireless_reAICL_work,
-		wireless_reAICL_work_function);
+	INIT_DELAYED_WORK_DEFERRABLE(&charger->wireless_set_current_work,
+		wireless_set_current_function);
 
 	wake_lock_init(&charger_wakelock, WAKE_LOCK_SUSPEND,
 			"charger_configuration");
 	wake_lock_init(&wireless_wakelock, WAKE_LOCK_SUSPEND,
 			"wireless_charger");
 	charger->curr_limit = UINT_MAX;
+	charger->wpc_curr_limit = 300;
+	charger->wpc_curr_limit_count = 0;
 	charger->cur_cable_type = non_cable;
 	charger->old_cable_type = non_cable;
 	charger->wpc_pok_gpio = -1;

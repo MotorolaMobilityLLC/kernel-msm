@@ -83,7 +83,7 @@ struct smb345_charger {
 	struct delayed_work	cable_det_work;
 	struct delayed_work	wireless_isr_work;
 	struct delayed_work	wireless_det_work;
-	struct delayed_work	wireless_reAICL_work;
+	struct delayed_work	wireless_set_current_work;
 	struct mutex		apsd_lock;
 	struct mutex		usb_lock;
 	struct mutex		pinctrl_lock;
@@ -96,6 +96,8 @@ struct smb345_charger {
 	unsigned int wpc_pok_gpio;
 	unsigned int wpc_en1;
 	unsigned int wpc_en2;
+	unsigned int wpc_curr_limit;
+	int wpc_curr_limit_count;
 };
 
 struct smb345_platform_data {
