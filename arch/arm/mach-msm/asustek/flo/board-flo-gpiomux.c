@@ -1349,22 +1349,6 @@ static struct msm_gpiomux_config asustek_pwr_keys_configs[] __initdata = {
 };
 
 static struct msm_gpiomux_config asustek_gpio_keys_configs[] __initdata = {
-	{	.gpio = 53,
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_keys_active_cfg,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspended_cfg,
-		},
-	},
-	{
-		.gpio = 54,
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_keys_active_cfg,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspended_cfg,
-		},
-	},
-};
-
-static struct msm_gpiomux_config asustek_gpio_keys_2_configs[] __initdata = {
 	{	.gpio = 15,
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_keys_active_cfg,
@@ -1690,12 +1674,9 @@ void __init apq8064_init_gpiomux(void)
 		msm_gpiomux_install(asustek_pcbid_pins_configs,
 			ARRAY_SIZE(asustek_pcbid_pins_configs));
 
-		if (revision == HW_REV_A) {
+		if (revision == HW_REV_B) {
 			msm_gpiomux_install(asustek_gpio_keys_configs,
 				ARRAY_SIZE(asustek_gpio_keys_configs));
-		} else if (revision == HW_REV_B) {
-			msm_gpiomux_install(asustek_gpio_keys_2_configs,
-				ARRAY_SIZE(asustek_gpio_keys_2_configs));
 		}
 
 		msm_gpiomux_install(asustek_pwr_keys_configs,

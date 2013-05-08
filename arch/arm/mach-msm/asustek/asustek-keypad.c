@@ -29,10 +29,8 @@
 #include "board-8064.h"
 
 #define GPIO_KEY_POWER		26
-#define GPIO_KEY_VOLUMEUP	53
-#define GPIO_KEY_VOLUMEDOWN	54
-#define GPIO_KEY2_VOLUMEUP	15
-#define GPIO_KEY2_VOLUMEDOWN	36
+#define GPIO_KEY_VOLUMEUP	15
+#define GPIO_KEY_VOLUMEDOWN	36
 #define GPIO_PM8921_KEY_VOLUME_UP	PM8921_GPIO_PM_TO_SYS(35)
 #define GPIO_PM8921_KEY_VOLUME_DOWN	PM8921_GPIO_PM_TO_SYS(38)
 #define GPIO_PM8921_KEY2_VOLUME_UP	PM8921_GPIO_PM_TO_SYS(4)
@@ -74,18 +72,10 @@ static void gpio_keys_remap(void)
 
 	ret = asustek_get_hw_rev();
 	switch (ret) {
-	case HW_REV_A:
-		pr_info(
-		"Reconfigure VOL_UP with GPIO%d and VOL_DOWN with GPIO%d\n",
-				GPIO_KEY_VOLUMEUP, GPIO_KEY_VOLUMEDOWN);
-		break;
-
 	case HW_REV_B:
 		pr_info(
 		"Reconfigure VOL_UP with GPIO%d and VOL_DOWN with GPIO%d\n",
-				GPIO_KEY2_VOLUMEUP, GPIO_KEY2_VOLUMEDOWN);
-		asustek_keys[1].gpio = GPIO_KEY2_VOLUMEUP;
-		asustek_keys[2].gpio = GPIO_KEY2_VOLUMEDOWN;
+				GPIO_KEY_VOLUMEUP, GPIO_KEY_VOLUMEDOWN);
 		break;
 
 	case HW_REV_C:
@@ -98,6 +88,7 @@ static void gpio_keys_remap(void)
 		break;
 
 	case HW_REV_D:
+	case HW_REV_E:
 		pr_info(
 		"Reconfigure VOL_UP(GPIO%d) and VOL_DOWN(GPIO%d) with PMIC\n",
 					GPIO_PM8921_KEY2_VOLUME_UP,

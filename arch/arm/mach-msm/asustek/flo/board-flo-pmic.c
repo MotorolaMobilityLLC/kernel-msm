@@ -265,7 +265,8 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 		if (hw_revision == HW_REV_C) {
 			apq8064_configure_gpios(pm8921_flo_kp_gpios,
 					ARRAY_SIZE(pm8921_flo_kp_gpios));
-		} else if (hw_revision == HW_REV_D) {
+		} else if ((hw_revision == HW_REV_D) ||
+			(hw_revision == HW_REV_E)) {
 			apq8064_configure_gpios(pm8921_flo_kp2_gpios,
 					ARRAY_SIZE(pm8921_flo_kp2_gpios));
 		}
