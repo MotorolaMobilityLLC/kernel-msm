@@ -756,6 +756,23 @@ void do_exit(long code)
 	DEFINE_TIMER(wdog, exit_timeout, 0, (unsigned long)tsk);
 	int group_dead;
 
+	/*
+	 * If we cannot finish exiting within 15 minutes, then we assume that
+	 * one or more threads in our group is hopelessly stuck and we should
+	 * crash to recover.  The timeout should be set high enough such that
+	 * the likelihood of a scheduling problem causing the timeout to occur
+	 * is extremely small.
+	 *
+	 * Wrapping exit_mm() creates a dependency on userspace since it won't
+	 * return as long as one of the threads in our group is dumping core.
+	 * This is a calculated risk.  The coredump program is controlled by
+	 * root, so it's as tamper-proof as root is.
+	 *
+	 * exit_files() may call into device drivers that are unproven, so this
+	 * helps flush out deadlocks in those drivers.
+	 */
+	start_exit_wdog(&wdog, jiffies + (HZ * 900));
+
 	profile_task_exit(tsk);
 
 	WARN_ON(blk_needs_flush_plug(tsk));
@@ -844,14 +861,6 @@ void do_exit(long code)
 		acct_process();
 	trace_sched_process_exit(tsk);
 
-	/*
-	 * If we cannot finish cleaning up the held resources below within 30
-	 * seconds, then we assume that something is hopelessly stuck and we
-	 * should crash to recover.  The exit_files() call in particular may
-	 * call into device drivers that are unproven, so this helps flush out
-	 * deadlocks in those drivers.
-	 */
-	start_exit_wdog(&wdog, jiffies + (HZ * 30));
 	exit_sem(tsk);
 	exit_shm(tsk);
 	exit_files(tsk);
@@ -862,7 +871,6 @@ void do_exit(long code)
 	exit_task_work(tsk);
 	check_stack_usage();
 	exit_thread();
-	stop_exit_wdog(&wdog);
 
 	/*
 	 * Flush inherited counters to the parent - before the parent
@@ -938,6 +946,7 @@ void do_exit(long code)
 	/* causes final put_task_struct in finish_task_switch(). */
 	tsk->state = TASK_DEAD;
 	tsk->flags |= PF_NOFREEZE;	/* tell freezer to ignore us */
+	stop_exit_wdog(&wdog);
 	schedule();
 	BUG();
 	/* Avoid "noreturn function does return".  */
