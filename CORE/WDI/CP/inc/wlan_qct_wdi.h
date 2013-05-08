@@ -2612,6 +2612,7 @@ typedef enum
     WDI_LINK_INIT_CAL_STATE          = 12,
     WDI_LINK_FINISH_CAL_STATE        = 13,
     WDI_LINK_LISTEN_STATE            = 14,
+    WDI_LINK_SEND_ACTION_STATE       = 15,
     WDI_LINK_MAX                     = 0x7FFFFFFF
 } WDI_LinkStateType;
 

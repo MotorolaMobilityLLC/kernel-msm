@@ -194,9 +194,10 @@ int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg)
                 }
 #endif
 
-                if ((limSetLinkState(pMac, eSIR_LINK_LISTEN_STATE,
-                    nullBssid, pMac->lim.gSelfMacAddr, 
-                    limSetLinkStateP2PCallback, NULL)) != eSIR_SUCCESS)
+                if ((limSetLinkState(pMac, MsgBuff->isProbeRequestAllowed?
+                                     eSIR_LINK_LISTEN_STATE:eSIR_LINK_SEND_ACTION_STATE,
+                                     nullBssid, pMac->lim.gSelfMacAddr,
+                                     limSetLinkStateP2PCallback, NULL)) != eSIR_SUCCESS)
                 {
                     limLog( pMac, LOGE, "Unable to change link state");
                     goto error;
@@ -377,7 +378,8 @@ void limRemainOnChnlSetLinkStat(tpAniSirGlobal pMac, eHalStatus status,
         goto error;
     }
 
-    if ((limSetLinkState(pMac, eSIR_LINK_LISTEN_STATE,nullBssid,
+    if ((limSetLinkState(pMac, MsgRemainonChannel->isProbeRequestAllowed?
+                         eSIR_LINK_LISTEN_STATE:eSIR_LINK_SEND_ACTION_STATE,nullBssid,
                          pMac->lim.gSelfMacAddr, limSetLinkStateP2PCallback, 
                          NULL)) != eSIR_SUCCESS)
     {

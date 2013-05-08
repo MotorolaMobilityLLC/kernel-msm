@@ -118,7 +118,8 @@ typedef enum eSriLinkState {
     eSIR_LINK_FINISH_SCAN_STATE = 11,
     eSIR_LINK_INIT_CAL_STATE    = 12,
     eSIR_LINK_FINISH_CAL_STATE  = 13,
-    eSIR_LINK_LISTEN_STATE = 14
+    eSIR_LINK_LISTEN_STATE      = 14,
+    eSIR_LINK_SEND_ACTION_STATE = 15,
 } tSirLinkState;
 
 
