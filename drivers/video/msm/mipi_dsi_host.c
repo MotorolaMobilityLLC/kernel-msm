@@ -1743,6 +1743,11 @@ void mipi_dsi_ack_err_status(void)
 
 	if (status) {
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0064, status);
+		/*
+		 * base on hw enginner, write an extra 0 needed
+		 * to clear error bits
+		 */
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0064, ~status);
 		pr_debug("%s: status=%x\n", __func__, status);
 	}
 }
