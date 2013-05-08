@@ -2917,8 +2917,6 @@ static int __devinit android_probe(struct platform_device *pdev)
 		of_property_read_u32(pdev->dev.of_node,
 				"qcom,android-usb-swfi-latency",
 				&pdata->swfi_latency);
-		pdata->cdrom = of_property_read_bool(pdev->dev.of_node,
-				"qcom,android-usb-cdrom");
 		len = of_property_count_strings(pdev->dev.of_node,
 				"qcom,streaming-func");
 		if (len > MAX_STREAMING_FUNCS) {
