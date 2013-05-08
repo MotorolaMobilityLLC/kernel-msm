@@ -1430,7 +1430,7 @@ static struct msm_gpiomux_config asustek_pcbid_pins_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 15,	/* Changed to GPIO#53 since HW_REV_B */
+		.gpio = 53,
 		.settings = {
 			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
 			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
@@ -1687,11 +1687,6 @@ void __init apq8064_init_gpiomux(void)
 
 #ifdef CONFIG_MACH_ASUSTEK
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
-		if ((revision == HW_REV_B) || (revision == HW_REV_C) ||
-			(revision == HW_REV_D)) {
-			pr_info("Reconfigure asustek_pcbid of gpiomux\n");
-			asustek_pcbid_pins_configs[5].gpio = 53;
-		}
 		msm_gpiomux_install(asustek_pcbid_pins_configs,
 			ARRAY_SIZE(asustek_pcbid_pins_configs));
 

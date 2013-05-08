@@ -122,8 +122,12 @@ static hw_rev asustek_hw_rev = HW_REV_INVALID;
 
 static int __init hw_rev_setup(char *hw_rev_info)
 {
-	/* CAUTION: These strings comes from bootloader. */
-	char *hw_rev_str[] = {"rev_a", "rev_b", "rev_c", "rev_d"};
+	/* CAUTION:
+	 * 	These strings come from bootloader through kernel cmdline.
+	 *	rev_a is deprecated, and rev_e is supported starting from
+	 *	bootloader with version FLO-2.08
+	 */
+	char *hw_rev_str[] = {"rev_e", "rev_b", "rev_c", "rev_d"};
 	unsigned int i;
 
 	if (debug_mask & DEBUG_STATE)
@@ -251,7 +255,8 @@ static int __init pcbid_driver_probe(struct platform_device *pdev)
 
 		if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
 			if ((asustek_hw_rev == HW_REV_C) ||
-				(asustek_hw_rev == HW_REV_D)) {
+				(asustek_hw_rev == HW_REV_D) ||
+				(asustek_hw_rev == HW_REV_E)) {
 				if (i == 3) {
 					pr_info("ASUSTek: Bypassing PCB_ID3\n");
 					continue;

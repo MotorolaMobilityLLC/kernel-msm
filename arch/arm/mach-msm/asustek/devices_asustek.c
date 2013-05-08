@@ -144,8 +144,8 @@ static struct resource resources_asustek_pcbid[] = {
 		.flags	= IORESOURCE_IO,
 	},
 	{
-		.start	= 15,
-		.end	= 15,
+		.start	= 53,
+		.end	= 53,
 		.name	= "PCB_ID5",
 		.flags	= IORESOURCE_IO,
 	},
@@ -179,30 +179,8 @@ static struct platform_device asustek_pcbid_device = {
 	}
 };
 
-static void pcbid_resources_remap(void)
-{
-	hw_rev revision = HW_REV_INVALID;
-	revision = asustek_get_hw_rev();
-
-	switch (revision) {
-	case HW_REV_B:
-	case HW_REV_C:
-	case HW_REV_D:
-		pr_info("ASUSTek: Reconfigure PCB_ID5 with GPIO#53\n");
-			resources_asustek_pcbid[5].start = 53;
-			resources_asustek_pcbid[5].end = 53;
-		break;
-	case HW_REV_A:
-	default:
-		break;
-	}
-}
-
-
 void __init asustek_add_pcbid_devices(void)
 {
-	pcbid_resources_remap();
-
 	platform_device_register(&asustek_pcbid_device);
 }
 

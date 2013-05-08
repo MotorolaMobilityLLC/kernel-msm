@@ -48,7 +48,10 @@ typedef enum {
 
 typedef enum {
 	HW_REV_INVALID = -1,
+	/* HW_REV_A is deprecated */
 	HW_REV_A = 0,
+	/* rewind hardware revision with 00b for rev_e */
+	HW_REV_E = HW_REV_A,
 	HW_REV_B = 1,
 	HW_REV_C = 2,
 	HW_REV_D = 3,
