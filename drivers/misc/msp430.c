@@ -578,6 +578,7 @@ static int msp430_reset_and_init(void)
 	unsigned int i;
 	int err, ret_err = 0;
 	unsigned char *rst_cmdbuff = kmalloc(512, GFP_KERNEL);
+
 	if (rst_cmdbuff == NULL)
 		return -1;
 
@@ -643,23 +644,23 @@ static int msp430_reset_and_init(void)
 	if (err < 0)
 		ret_err = err;
 
+	getnstimeofday(&current_time);
+	current_time.tv_sec += time_delta;
+
+	rst_cmdbuff[0] = AP_POSIX_TIME;
+	rst_cmdbuff[1] = (unsigned char)(current_time.tv_sec >> 24);
+	rst_cmdbuff[2] = (unsigned char)((current_time.tv_sec >> 16)
+		& 0xff);
+	rst_cmdbuff[3] = (unsigned char)((current_time.tv_sec >> 8)
+		& 0xff);
+	rst_cmdbuff[4] = (unsigned char)((current_time.tv_sec) & 0xff);
+	err = msp430_i2c_write_no_reset(msp430_misc_data,
+				rst_cmdbuff, 5);
+	if (err < 0)
+		ret_err = err;
+
 	if (msp_req_value)
 	{
-		getnstimeofday(&current_time);
-		current_time.tv_sec += time_delta;
-
-		rst_cmdbuff[0] = AP_POSIX_TIME;
-		rst_cmdbuff[1] = (unsigned char)(current_time.tv_sec >> 24);
-		rst_cmdbuff[2] = (unsigned char)((current_time.tv_sec >> 16)
-			& 0xff);
-		rst_cmdbuff[3] = (unsigned char)((current_time.tv_sec >> 8)
-			& 0xff);
-		rst_cmdbuff[4] = (unsigned char)((current_time.tv_sec) & 0xff);
-		err = msp430_i2c_write_no_reset(msp430_misc_data,
-						rst_cmdbuff, 5);
-		if (err < 0)
-			ret_err = err;
-
 		rst_cmdbuff[0] = MSP_CONTROL_REG;
 		memcpy(&rst_cmdbuff[1], g_control_reg, MSP_CONTROL_REG_SIZE);
 		err = msp430_i2c_write_no_reset(msp430_misc_data, rst_cmdbuff,
