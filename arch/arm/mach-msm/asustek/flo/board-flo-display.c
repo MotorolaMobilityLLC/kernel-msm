@@ -367,12 +367,6 @@ static struct platform_device wfd_device = {
 #define HDMI_DDC_DATA_GPIO	71
 #define HDMI_HPD_GPIO		72
 
-static uint32_t gpio_SR1[] = {
-	/* LCM_XRES */
-	GPIO_CFG(gpio_LCM_XRES_SR1, 0, GPIO_CFG_OUTPUT,
-		GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
-};
-
 static uint32_t gpio_SR2[] = {
 	/* LCM_XRES */
 	GPIO_CFG(gpio_LCM_XRES_SR2, 0, GPIO_CFG_OUTPUT,
@@ -386,10 +380,8 @@ static int mipi_dsi_panel_power(int on)
 		*reg_lvs5;
 	int rc, n;
 	lcd_type type = asustek_get_lcd_type();
-	hw_rev hw_revision = asustek_get_hw_rev();
 
 	printk("%s+, on=%d\n", __func__, on);
-	pr_info("%s: HW version=%d\n", __func__, hw_revision);
 
 	if (!dsi_power_on) {
 		reg_lvs7 = regulator_get(&msm_mipi_dsi1_device.dev,
@@ -435,10 +427,7 @@ static int mipi_dsi_panel_power(int on)
 		}
 
 		if (type == 0) {	/* only for JDI panel */
-			if (hw_revision == 0)
-				gpio_LCM_XRES = gpio_LCM_XRES_SR1;
-			else
-				gpio_LCM_XRES = gpio_LCM_XRES_SR2;
+			gpio_LCM_XRES = gpio_LCM_XRES_SR2;
 
 			reg_lvs5 = regulator_get(NULL, "JDI_IOVCC");
 			if (IS_ERR_OR_NULL(reg_lvs5)) {
@@ -454,29 +443,15 @@ static int mipi_dsi_panel_power(int on)
 				return -ENODEV;
 			}
 			/* config LCM_XRES and LCM_TE for JDI panel */
-			if (hw_revision == 0) {
-				for (n = 0; n < ARRAY_SIZE(gpio_SR1); n++) {
-					rc = gpio_tlmm_config(gpio_SR1[n],
-						GPIO_CFG_ENABLE);
-					if (rc) {
-						pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
-							__func__, gpio_SR1[n],
-							rc);
-						break;
-					}
+			for (n = 0; n < ARRAY_SIZE(gpio_SR2); n++) {
+				rc = gpio_tlmm_config(gpio_SR2[n],
+					GPIO_CFG_ENABLE);
+				if (rc) {
+					pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
+						__func__, gpio_SR2[n],
+						rc);
+					break;
 				}
-			} else {
-				for (n = 0; n < ARRAY_SIZE(gpio_SR2); n++) {
-					rc = gpio_tlmm_config(gpio_SR2[n],
-						GPIO_CFG_ENABLE);
-					if (rc) {
-						pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
-							__func__, gpio_SR2[n],
-							rc);
-						break;
-					}
-				}
-
 			}
 		}
 
@@ -493,10 +468,7 @@ static int mipi_dsi_panel_power(int on)
 			return -ENODEV;
 		}
 		//LCD_BL_EN
-		if (hw_revision == 0)
-			gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR1;
-		else
-			gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
+		gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
 
 		rc = gpio_request(gpio_LCD_BL_EN, "LCD_BL_EN");
 		if (rc) {

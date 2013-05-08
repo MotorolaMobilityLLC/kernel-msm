@@ -186,15 +186,15 @@ static int mipi_JDI_lcd_on(struct platform_device *pdev)
 		return 0;
 	}
 
-	if (hw_revision != 0x3) {
-		pr_info("%s, JDI display on command+, pwm bl\n", __func__);
-		cmdreq_JDI.cmds = JDI_display_on_cmds;
-		cmdreq_JDI.cmds_cnt = ARRAY_SIZE(JDI_display_on_cmds);
-	} else {
+	if (hw_revision == HW_REV_D || hw_revision == HW_REV_E) {
 		pr_info("%s, JDI display on command+, command bl\n", __func__);
 		cmdreq_JDI.cmds = JDI_display_on_cmds_command_bl;
 		cmdreq_JDI.cmds_cnt =
 				ARRAY_SIZE(JDI_display_on_cmds_command_bl);
+	} else {
+		pr_info("%s, JDI display on command+, pwm bl\n", __func__);
+		cmdreq_JDI.cmds = JDI_display_on_cmds;
+		cmdreq_JDI.cmds_cnt = ARRAY_SIZE(JDI_display_on_cmds);
 	}
 	cmdreq_JDI.flags = CMD_REQ_COMMIT;
 	cmdreq_JDI.rlen = 0;
@@ -258,7 +258,9 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 
 	if (bl_lpm) {
 		if (mfd->bl_level) {
-			if (hw_revision != 0x3) {
+			if (hw_revision == HW_REV_D || hw_revision == HW_REV_E)
+				JDI_command_backlight(mfd->bl_level);
+			else {
 				ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
 					mfd->bl_level, PWM_PERIOD_USEC);
 				if (ret) {
@@ -269,8 +271,7 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 				if (ret)
 					pr_err("pwm enable failed for bl %d\n",
 						mfd->bl_level);
-			} else
-				JDI_command_backlight(mfd->bl_level);
+			}
 
 			if (!bl_enable_sleep_control) {
 				msleep_interruptible(10);
@@ -285,7 +286,9 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 				bl_enable_sleep_control = 0;
 				pr_info("%s: pwm disable\n", __func__);
 			}
-			if (hw_revision != 0x3) {
+			if (hw_revision == HW_REV_D || hw_revision == HW_REV_E)
+				JDI_command_backlight(mfd->bl_level);
+			else {
 				ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
 					mfd->bl_level, PWM_PERIOD_USEC);
 				if (ret) {
@@ -293,8 +296,7 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 					return;
 				}
 				pwm_disable(bl_lpm);
-			} else
-				JDI_command_backlight(mfd->bl_level);
+			}
 		}
 	}
 }
@@ -312,7 +314,9 @@ static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
 		pr_info("%s: %d/255\n", __func__, recovery_backlight);
 
 		if (bl_lpm) {
-			if (hw_revision != 0x3) {
+			if (hw_revision == HW_REV_D || hw_revision == HW_REV_E)
+				JDI_command_backlight(recovery_backlight);
+			else {
 				ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
 					recovery_backlight, PWM_PERIOD_USEC);
 				if (ret) {
@@ -323,8 +327,7 @@ static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
 				if (ret)
 					pr_err("pwm enable on lpm failed, bl=%d\n",
 						recovery_backlight);
-			} else
-				JDI_command_backlight(recovery_backlight);
+			}
 
 			msleep_interruptible(10);
 			gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
@@ -342,15 +345,16 @@ static void mipi_JDI_lcd_shutdown(void)
 	msleep_interruptible(10);
 
 	pr_info("%s: backlight off\n", __func__);
-	if (hw_revision != 0x3) {
+	if (hw_revision == HW_REV_D || hw_revision == HW_REV_E)
+		JDI_command_backlight(0);
+	else {
 		if (bl_lpm) {
 			ret = pwm_config(bl_lpm, 0, PWM_PERIOD_USEC);
 			if (ret)
 				pr_err("pwm_config failed %d\n", ret);
 			pwm_disable(bl_lpm);
 		}
-	} else
-		JDI_command_backlight(0);
+	}
 
 	pr_info("%s, JDI display off command+\n", __func__);
 	cmdreq_JDI.cmds = JDI_display_off_cmds;

@@ -137,6 +137,7 @@ static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
 	//PM8921_GPIO_OUTPUT_VIN(30, 1, PM_GPIO_VIN_VPH), /* SMB349 susp line */
 	/* Bl: On, PWM mode */
 	/* remove pwm function config because bootloader have done this*/
+	PM8921_GPIO_OUTPUT_L17(36, 1, LOW),	/* BL_EN */
 	PM8921_GPIO_OUTPUT(2, 1, HIGH), /* SLIMPORT_PWR_DWN */
 	PM8921_GPIO_OUTPUT(1, 0, HIGH), /* SLIMPORT_RESET_N */
 	PM8921_GPIO_OUTPUT_FUNC(44, 0, PM_GPIO_FUNC_2),
@@ -146,13 +147,6 @@ static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
 	PM8921_GPIO_OUTPUT(34, 0, MED),
 	PM8921_GPIO_OUTPUT(13, 0, HIGH),               /* PCIE_CLK_PWR_EN */
 	PM8921_GPIO_INPUT(12, PM_GPIO_PULL_UP_30),     /* PCIE_WAKE_N */
-};
-
-static struct pm8xxx_gpio_init pm8921_gpios_display_SR1[] __initdata = {
-	PM8921_GPIO_OUTPUT_L17(30, 1, LOW),	/* BL_EN */
-};
-static struct pm8xxx_gpio_init pm8921_gpios_display_SR2[] __initdata = {
-	PM8921_GPIO_OUTPUT_L17(36, 1, LOW),	/* BL_EN */
 };
 
 static struct pm8xxx_gpio_init pm8921_flo_kp_gpios[] __initdata = {
@@ -239,13 +233,6 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 		apq8064_configure_gpios(pm8921_gpios, ARRAY_SIZE(pm8921_gpios));
 	else
 		apq8064_configure_gpios(pm8917_gpios, ARRAY_SIZE(pm8917_gpios));
-
-	if (hw_revision == 0)
-		apq8064_configure_gpios(pm8921_gpios_display_SR1,
-					ARRAY_SIZE(pm8921_gpios_display_SR1));
-	else
-		apq8064_configure_gpios(pm8921_gpios_display_SR2,
-					ARRAY_SIZE(pm8921_gpios_display_SR2));
 
 	if (machine_is_apq8064_cdp() || machine_is_apq8064_liquid()) {
 		if (socinfo_get_pmic_model() != PMIC_MODEL_PM8917)
