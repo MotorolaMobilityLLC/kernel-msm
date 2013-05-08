@@ -1823,8 +1823,9 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
                                pDestMacAddress, pSTAId))
        {
           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                "%s: Failed to find right station pDestMacAddress: "
-                MAC_ADDRESS_STR , MAC_ADDR_ARRAY(pDestMacAddress),__func__);
+                     "%s: Failed to find right station pDestMacAddress: "
+                     MAC_ADDRESS_STR , __func__,
+                     MAC_ADDR_ARRAY(pDestMacAddress->bytes));
           *pSTAId = HDD_WLAN_INVALID_STA_ID;
           goto done;
        }
