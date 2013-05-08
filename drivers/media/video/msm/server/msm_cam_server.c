@@ -2797,6 +2797,11 @@ static int msm_open_config(struct inode *inode, struct file *fp)
 	config_cam->use_count++;
 
 	/* assume there is only one active camera possible*/
+	if (!g_server_dev.pcam_active[config_cam->dev_num]) {
+		pr_err("%s: camera %d is not active\n", __func__, config_cam->dev_num);
+		config_cam->use_count--;
+		return -ENODEV;
+	}
 	config_cam->p_mctl = msm_cam_server_get_mctl(
 		g_server_dev.pcam_active[config_cam->dev_num]->mctl_handle);
 	if (!config_cam->p_mctl) {
