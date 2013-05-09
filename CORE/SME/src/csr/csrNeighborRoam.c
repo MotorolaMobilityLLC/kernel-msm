@@ -1585,17 +1585,20 @@ static VOS_STATUS csrNeighborRoamHandleEmptyScanResult(tpAniSirGlobal pMac)
     {
         pNeighborRoamInfo->uEmptyScanCount = eFifthEmptyScan;
     }
-    if ((abs(pNeighborRoamInfo->lookupDOWNRssi) >
-         abs(pNeighborRoamInfo->cfgParams.neighborReassocThreshold)) &&
+    if (((0 != pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels) ||
+         (abs(pNeighborRoamInfo->lookupDOWNRssi) >
+         abs(pNeighborRoamInfo->cfgParams.neighborReassocThreshold))) &&
         ((pNeighborRoamInfo->uEmptyScanCount == eSecondEmptyScan) ||
          (pNeighborRoamInfo->uEmptyScanCount == eFourthEmptyScan)))
     {
         /*
          * If the scan was triggered due to lookupDOWNRssi > reassoc threshold,
          * then it would be a contiguous scan on all valid non-DFS channels.
-         * In this mode, there is no need to trigger an immediate scan upon
-         * empty scan results for the second and fourth time (which would
-         * be equivalent to scanning on channels in non-occupied list).
+         * If channels are configured in INI, then only those channels need
+         * to be scanned.
+         * In either of these modes, there is no need to trigger an immediate
+         * scan upon empty scan results for the second and fourth time (which
+         * would be equivalent to scanning on channels in non-occupied list).
          * Incrementing uEmptyScanCount will correspond to skipping this step.
          * NOTE: double increment of uEmptyScanCount corresponds to completion
          * of scans on all valid channels.
@@ -1695,7 +1698,7 @@ static VOS_STATUS csrNeighborRoamHandleEmptyScanResult(tpAniSirGlobal pMac)
                         (pNeighborRoamInfo->cfgParams.emptyScanRefreshPeriod));
             }
         }
-        else
+        else if (eThirdEmptyScan == pNeighborRoamInfo->uEmptyScanCount)
         {
             /* Start neighbor scan results refresh timer */
             if (eHAL_STATUS_SUCCESS !=
