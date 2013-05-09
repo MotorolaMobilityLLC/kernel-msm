@@ -55,7 +55,7 @@ static int recover_dentry(struct page *ipage, struct inode *inode)
 	if (IS_ERR(dir)) {
 		f2fs_msg(inode->i_sb, KERN_INFO, "%s: f2fs_iget failed: %ld\n",
 						__func__, PTR_ERR(dir));
-		err = PTR_ERR(dir);
+		err = -EINVAL;
 		goto out;
 	}
 
@@ -173,12 +173,7 @@ static int find_fsync_dnodes(struct f2fs_sb_info *sbi, struct list_head *head)
 				f2fs_msg(sbi->sb, KERN_INFO,
 					"%s: recover_inode failed: %d\n",
 					__func__, err);
-				if (err == -ENOENT)
-					goto next;
-				else {
-					err = -EINVAL;
-					goto unlock_out;
-				}
+				goto unlock_out;
 			}
 		}
 next:
