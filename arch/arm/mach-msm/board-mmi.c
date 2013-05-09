@@ -358,6 +358,37 @@ static void __init mmi_disp_init(struct msm8960_oem_init_ptrs *oem_ptr,
 	mmi_display_init(msm_fb_pdata, mipi_dsi_pdata);
 }
 
+static int mmi_factory_kill_gpio;
+
+static void __init mmi_get_factory_kill_gpio(void)
+{
+	struct device_node *n = NULL;
+	int i, gpio_count;
+	struct gpio gpio;
+
+	n = of_find_compatible_node(n, NULL, "mmi,factory-support-msm8960");
+	if (!n)
+		return;
+	gpio_count = of_gpio_count(n);
+	for (i = 0; i < gpio_count; i++) {
+		gpio.gpio = of_get_gpio(n, i);
+		of_property_read_string_index(n, "gpio-names", i, &gpio.label);
+		if (!strcmp(gpio.label, "factory_kill_disable")) {
+			mmi_factory_kill_gpio = gpio.gpio;
+			break;
+		}
+	}
+	of_node_put(n);
+}
+
+bool check_factory_kill_gpio(void)
+{
+	int state;
+	state = mmi_factory_kill_gpio ?
+		!gpio_get_value(mmi_factory_kill_gpio) : 0;
+	return cpu_is_msm8960() || state;
+}
+
 /* Motorola ULPI default register settings
  * TXPREEMPAMPTUNE[5:4] = 11 (3x preemphasis current)
  * TXVREFTUNE[3:0] = 1111 increasing the DC level
@@ -438,8 +469,8 @@ static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
 
 put_node:
 	of_node_put(chosen);
-	otg_pdata->factory_kill_handler_disable = cpu_is_msm8960() ||
-					mmi_boot_mode_is_factory();
+	mmi_get_factory_kill_gpio();
+	otg_pdata->check_factory_kill = check_factory_kill_gpio;
 	return;
 }
 
