@@ -3051,6 +3051,7 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 	unsigned long flags;
 	int id_gnd = 0;
 	int id_flt = 0;
+	int factory_kill = 0;
 
 	local_irq_save(flags);
 	id_gnd = irq_read_line(motg->pdata->pmic_id_irq);
@@ -3066,12 +3067,18 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 		factory_cable = 1;
 	} else
 		if (factory_cable) {
-			pr_info_once("Factory Cable Detached!\n");
-			if (!motg->pdata->factory_kill_handler_disable) {
+			pr_info("Factory Cable Detached!\n");
+			factory_kill = motg->pdata->check_factory_kill ?
+					!motg->pdata->check_factory_kill() : 1;
+
+			if (factory_kill) {
 				pr_info_once("2 sec to power off.\n");
 				local_irq_restore(flags);
 				kernel_halt();
 				return;
+			} else {
+				factory_cable = 0;
+				pr_info("Factory Kill Disabled!\n");
 			}
 		}
 
