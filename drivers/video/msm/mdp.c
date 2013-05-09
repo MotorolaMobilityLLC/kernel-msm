@@ -65,7 +65,7 @@ static struct res_mmu_clk mdp_sec_mmu_clks[] = {
 int mdp_rev;
 int mdp_iommu_split_domain;
 u32 mdp_max_clk = 266667000;
-u64 mdp_max_bw = 2000000000;
+u64 mdp_max_bw = 3080000000UL;
 
 static struct platform_device *mdp_init_pdev;
 static struct regulator *footswitch;
