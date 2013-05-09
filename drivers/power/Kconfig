@@ -439,6 +439,17 @@ config QPNP_CHARGER
 	  also offers relevant information to userspace via the power supply
 	  framework.
 
+config QPNP_CHARGER_FACTORY
+	tristate "QPNP Charger driver - Factory version"
+	depends on SPMI
+	depends on OF_SPMI
+	depends on THERMAL_QPNP_ADC_TM
+	help
+	  Say Y here to enable the switch mode battery charger for factory
+	  support. This is based on the QPNP_CHARGER driver version modified
+	  to add and remove functionality needed when powered up in a factory
+	  environment.
+
 config PM8XXX_CCADC
 	tristate "PM8XXX battery current adc driver"
 	depends on MFD_PM8921_CORE
