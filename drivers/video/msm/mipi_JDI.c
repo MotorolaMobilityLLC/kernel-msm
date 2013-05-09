@@ -80,6 +80,9 @@ static char backlight_control3[] = {0xBA, 0x07, 0x70, 0x81, 0x20, 0x45, 0xB4};
 static char backlight_control4[] = {0xCE, 0x7D, 0x40, 0x48, 0x56, 0x67, 0x78,
 		0x88, 0x98, 0xA7, 0xB5, 0xC3, 0xD1, 0xDE, 0xE9, 0xF2, 0xFA,
 		0xFF, 0x04, 0x00, 0x0F, 0x0F, 0x42, 0x00};
+/* for fps control, set fps to 60.32Hz */
+static char LTPS_timing_setting[2] = {0xC6, 0x78};
+static char sequencer_timing_control[2] = {0xD6, 0x01};
 
 static struct dsi_cmd_desc JDI_display_on_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 5,
@@ -92,6 +95,10 @@ static struct dsi_cmd_desc JDI_display_on_cmds[] = {
 		sizeof(interface_ID_setting), interface_ID_setting},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
 		sizeof(DSI_control), DSI_control},
+	{DTYPE_GEN_WRITE2, 1, 0, 0, 0,
+		sizeof(LTPS_timing_setting), LTPS_timing_setting},
+	{DTYPE_GEN_WRITE2, 1, 0, 0, 0,
+		sizeof(sequencer_timing_control), sequencer_timing_control},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
 		sizeof(set_pixel_format), set_pixel_format},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
@@ -116,6 +123,10 @@ static struct dsi_cmd_desc JDI_display_on_cmds_command_bl[] = {
 		sizeof(interface_ID_setting), interface_ID_setting},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
 		sizeof(DSI_control), DSI_control},
+	{DTYPE_GEN_WRITE2, 1, 0, 0, 0,
+		sizeof(LTPS_timing_setting), LTPS_timing_setting},
+	{DTYPE_GEN_WRITE2, 1, 0, 0, 0,
+		sizeof(sequencer_timing_control), sequencer_timing_control},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
 		sizeof(write_display_brightness), write_display_brightness},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,

@@ -75,8 +75,8 @@ static int __init mipi_JDI_1080P_pt_init(void)
 	pinfo.type = MIPI_CMD_PANEL;
 	pinfo.lcd.vsync_enable = TRUE;
 	pinfo.lcd.hw_vsync_mode = TRUE;
-	pinfo.lcd.refx100 = 5830; /* adjust refx100 to prevent tearing */
-	pinfo.clk_rate = 932961600;
+	pinfo.lcd.refx100 = 6032; /* adjust refx100 to prevent tearing */
+	pinfo.clk_rate = 1000000000;
 
 	pinfo.mipi.mode = DSI_CMD_MODE;
 	pinfo.mipi.mdp_trigger = DSI_CMD_TRIGGER_NONE;
@@ -101,6 +101,7 @@ static int __init mipi_JDI_1080P_pt_init(void)
 	pinfo.mipi.mdp_trigger = 0;
 	pinfo.mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
 	pinfo.mipi.dsi_phy_db = &dsi_mode_phy_db;
+	pinfo.mipi.frame_rate = 60;
 
 	ret = mipi_JDI_device_register(&pinfo, MIPI_DSI_PRIM,
 						MIPI_DSI_PANEL_WUXGA);
