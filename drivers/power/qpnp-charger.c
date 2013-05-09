@@ -4150,6 +4150,19 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	return rc;
 }
 
+static bool __devinit qpnp_charger_mmi_factory(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
 static int __devinit
 qpnp_charger_probe(struct spmi_device *spmi)
 {
@@ -4158,6 +4171,11 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	struct resource *resource;
 	struct spmi_resource *spmi_resource;
 	int rc = 0;
+
+	if (qpnp_charger_mmi_factory()) {
+		pr_info("Factory Mode Disabling!\n");
+		return 0;
+	}
 
 	chip = kzalloc(sizeof *chip, GFP_KERNEL);
 	if (chip == NULL) {
