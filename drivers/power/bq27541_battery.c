@@ -254,7 +254,7 @@ static struct bq27541_device_info {
 	unsigned int old_capacity;
 	unsigned int cap_err;
 	unsigned int old_temperature;
-	unsigned int temp_err;
+	bool temp_err;
 	unsigned int prj_id;
 	spinlock_t lock;
 } *bq27541_device;
@@ -551,35 +551,25 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 				ret = (int)(u16)(((rt_value/10) - 273)*10);
 				if (ret>=0 && ret<=1000) {
 					if(bq27541_device->temp_err)
-						bq27541_device->temp_err--;
-				} else {
-					bq27541_device->temp_err++;
-				}
-			} else {
-				bq27541_device->temp_err++;
-			}
-		} else {
-			bq27541_device->temp_err++;
-		}
+						bq27541_device->temp_err = false;
+				} else
+					bq27541_device->temp_err = true;
+			} else
+				bq27541_device->temp_err = true;
+		} else
+			bq27541_device->temp_err = true;
 
 		if (bq27541_device->temp_err) {
 			BAT_NOTICE("error: temperature ret=%d, old_temp=%d \n",
 				rt_value, bq27541_device->old_temperature);
 			if (bq27541_device->old_temperature != 0xFF) {
 				ret = bq27541_device->old_temperature;
-			} else {
-				bq27541_device->temp_err--;
+			} else
 				return -EINVAL;
-			}
-
-			if (bq27541_device->temp_err > 2) {
-				BAT_NOTICE("error: temp_err > 2, shut down system \n");
-				WARN_ON(1);
-				ret = MAXIMAL_VALID_BATTERY_TEMP;
-			}
 		}
+
 		bq27541_device->old_temperature = val->intval = ret;
-		BAT_NOTICE("temperature= %u (0.1¢XC)\n", val->intval);
+		BAT_NOTICE("temperature= %d (0.1¢XC)\n", val->intval);
 	}
 	if (psp == POWER_SUPPLY_PROP_CURRENT_NOW) {
 		val->intval = bq27541_device->bat_current
@@ -712,7 +702,7 @@ static int bq27541_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, bq27541_device);
 	bq27541_device->smbus_status = 0;
 	bq27541_device->cap_err = 0;
-	bq27541_device->temp_err = 0;
+	bq27541_device->temp_err = false;
 	bq27541_device->old_capacity = 0xFF;
 	bq27541_device->old_temperature = 0xFF;
 	bq27541_device->gpio_low_battery_detect = GPIOPIN_LOW_BATTERY_DETECT;
