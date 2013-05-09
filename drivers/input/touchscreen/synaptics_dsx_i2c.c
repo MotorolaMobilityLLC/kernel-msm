@@ -95,99 +95,38 @@
 
 /* F12 packet register description */
 
-struct {
+static struct {
 	unsigned char max_x_lsb;
 	unsigned char max_x_msb;
 	unsigned char max_y_lsb;
 	unsigned char max_y_msb;
 } f12_c08_0;
 
-struct {
+static struct {
 	unsigned char recv_pitch_lsb;
 	unsigned char recv_pitch_msb;
 	unsigned char trans_pitch_lsb;
 	unsigned char trans_pitch_msb;
 } f12_c08_1;
 
-struct {
+static struct {
 	unsigned char low_recv_clip;
 	unsigned char high_recv_clip;
 	unsigned char low_trans_clip;
 	unsigned char high_trans_clip;
 } f12_c08_2;
 
-struct {
+static struct {
 	unsigned char num_2d_recv;
 	unsigned char num_2d_trans;
 } f12_c08_3;
 
-struct {
-	unsigned char touch_threshold;
-	unsigned char lift_hysteresis;
-	unsigned char sm_z_scale_factor_lsb;
-	unsigned char sm_z_scale_factor_msb;
-	unsigned char lg_z_scale_factor_lsb;
-	unsigned char lg_z_scale_factor_msb;
-	unsigned char sm_lg_boundary;
-} f12_c09_0;
-
-struct {
-	unsigned char wx_scale;
-	unsigned char wx_offset;
-	unsigned char wy_scale;
-	unsigned char wy_offset;
-} f12_c09_1;
-
-struct {
-	unsigned char x_size_lsb;
-	unsigned char x_size_msb;
-	unsigned char y_size_lsb;
-	unsigned char y_size_msb;
-} f12_c09_2;
-
-struct {
-	unsigned char noise_floor;
-	unsigned char min_peak_amplitude;
-	unsigned char peak_merge_threshold;
-} f12_c10_0;
-
-struct {
-	unsigned char drumming_accel_threshold;
-	unsigned char drumming_min_distance;
-} f12_c10_1;
-
-struct {
-	unsigned char sm_corner;
-	unsigned char lg_corner;
-} f12_c11_0;
-
-struct {
-	unsigned char x_min_z;
-	unsigned char y_min_z;
-	unsigned char x_max_z;
-	unsigned char y_max_z;
-	unsigned char x_correction_amplitude;
-	unsigned char y_correction_amplitude;
-} f12_c12_0;
-
-struct {
-	unsigned char finger_amplitude_threshold;
-	unsigned char sm_finger_amplitude_threshold;
-	unsigned char sm_finger_border_size;
-	unsigned char negative_finger_amplitude_threshold;
-} f12_c15_0;
-
-struct {
-	unsigned char palm_amplitude_threshold;
-	unsigned char palm_area;
-} f12_c15_1;
-
-struct f12_c20_0_type {
+static struct f12_c20_0_type {
 	unsigned char x_suppression;
 	unsigned char y_suppression;
 } f12_c20_0;
 
-struct {
+static struct {
 	union {
 		struct {
 			unsigned char report_always:1;
@@ -197,18 +136,7 @@ struct {
 	};
 } f12_c20_1;
 
-struct {
-	union {
-		struct {
-			unsigned char palm_filter_mode:2;
-			unsigned char accept_stylus:1;
-			unsigned char reserved:5;
-		} __packed;
-		unsigned char data[1];
-	};
-} f12_c22_0;
-
-struct f12_c23_0_type {
+static struct f12_c23_0_type {
 	union {
 		struct {
 			unsigned char finger:1;
@@ -221,64 +149,36 @@ struct f12_c23_0_type {
 	};
 } f12_c23_0;
 
-struct f12_c23_1_type {
+static struct f12_c23_1_type {
 	unsigned char max_num_reported_objects;
 } f12_c23_1;
 
-struct {
+static struct {
 	unsigned char reported_bytes_per_object;
 } f12_c28_0;
 
-struct synaptics_rmi4_subpkt f12_c08[] = {
+static struct synaptics_rmi4_subpkt f12_c08[] = {
 	RMI4_SUBPKT(f12_c08_0),
 	RMI4_SUBPKT(f12_c08_1),
 	RMI4_SUBPKT(f12_c08_2),
 	RMI4_SUBPKT(f12_c08_3),
 };
 
-struct synaptics_rmi4_subpkt f12_c09[] = {
-	RMI4_SUBPKT(f12_c09_0),
-	RMI4_SUBPKT(f12_c09_1),
-	RMI4_SUBPKT(f12_c09_2),
-};
-
-struct synaptics_rmi4_subpkt f12_c10[] = {
-	RMI4_SUBPKT(f12_c10_0),
-	RMI4_SUBPKT(f12_c10_1),
-};
-
-struct synaptics_rmi4_subpkt f12_c11[] = {
-	RMI4_SUBPKT(f12_c11_0),
-};
-
-struct synaptics_rmi4_subpkt f12_c12[] = {
-	RMI4_SUBPKT(f12_c12_0),
-};
-
-struct synaptics_rmi4_subpkt f12_c15[] = {
-	RMI4_SUBPKT(f12_c15_0),
-	RMI4_SUBPKT(f12_c15_1),
-};
-
-struct synaptics_rmi4_subpkt f12_c20[] = {
+static struct synaptics_rmi4_subpkt f12_c20[] = {
 	RMI4_SUBPKT(f12_c20_0),
 	RMI4_SUBPKT(f12_c20_1),
 };
 
-struct synaptics_rmi4_subpkt f12_c22[] = {
-	RMI4_SUBPKT(f12_c22_0),
-};
-
-struct synaptics_rmi4_subpkt f12_c23[] = {
+static struct synaptics_rmi4_subpkt f12_c23[] = {
 	RMI4_SUBPKT(f12_c23_0),
 	RMI4_SUBPKT(f12_c23_1),
 };
 
-struct synaptics_rmi4_subpkt f12_c28[] = {
+static struct synaptics_rmi4_subpkt f12_c28[] = {
 	RMI4_SUBPKT(f12_c28_0),
 };
 
-struct synaptics_rmi4_packet_reg f12_ctrl_reg_array[] = {
+static struct synaptics_rmi4_packet_reg f12_ctrl_reg_array[] = {
 	RMI4_NO_REG(),		/*00*/
 	RMI4_NO_REG(),		/*01*/
 	RMI4_NO_REG(),		/*02*/
@@ -616,28 +516,24 @@ static struct synaptics_dsx_platform_data *
 		button_map->map = button_codes;
 	}
 
-	pdata->x_flip = pdata->y_flip = false;
 	pdata->irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
 	pdata->cap_button_map = button_map;
+
+	if (of_property_read_bool(np, "synaptics,x-flip")) {
+		pr_notice("using flipped X axis\n");
+		pdata->x_flip = true;
+	}
+
+	if (of_property_read_bool(np, "synaptics,y-flip")) {
+		pr_notice("using flipped Y axis\n");
+		pdata->y_flip = true;
+	}
 
 	if (of_property_read_bool(np, "synaptics,purge-enabled")) {
 		pr_notice("using purge\n");
 		rmi4_data->purge_enabled = true;
 	}
 
-	if (of_property_read_bool(np, "synaptics,display-synced-suspend")) {
-		pr_notice("using suspend synced with display\n");
-		rmi4_data->display_synced_suspend = true;
-	}
-
-#ifndef CONFIG_MIPI_MOT_NOTIFICATIONS
-	pr_notice("display notifications not available\n");
-	/* Check if devtree and config option conflicts */
-	if (rmi4_data->display_synced_suspend) {
-		pr_notice("default to configured suspend/resume option\n");
-		rmi4_data->display_synced_suspend = false;
-	}
-#endif
 	if (of_property_read_bool(np, "synaptics,reset-on-resume")) {
 		pr_notice("using reset ic on resume\n");
 		rmi4_data->reset_on_resume = true;
@@ -699,15 +595,14 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 		int state);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void synaptics_rmi4_early_suspend(struct early_suspend *h);
-
-static void synaptics_rmi4_late_resume(struct early_suspend *h);
+#ifdef CONFIG_FB
+static int synaptics_dsx_panel_cb(struct notifier_block *nb,
+		unsigned long event, void *data);
+#endif
 
 static int synaptics_rmi4_suspend(struct device *dev);
 
 static int synaptics_rmi4_resume(struct device *dev);
-#endif
 
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
@@ -1044,6 +939,10 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 
 	case STATE_STANDBY:
 		synaptics_rmi4_irq_enable(rmi4_data, false);
+		/* put sensor to sleep to ensure the same */
+		/* initial conditions apply to all */
+		if (!rmi4_data->sensor_sleep)
+			synaptics_rmi4_sensor_sleep(rmi4_data);
 			break;
 
 	case STATE_BL:
@@ -1061,54 +960,6 @@ static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 			synaptics_dsx_state_name(state));
 
 	synaptics_dsx_set_state_safe(rmi4_data, state);
-}
-
-static const char * const panel_event_names[] = {
-	"PANEL PWR-OFF",
-	"PANEL PWR-ON",
-	"DISPLAY ON",
-	"DISPLAY PRE-OFF"
-};
-
-static const char *synaptics_dsx_get_panel_event(int event)
-{
-	return panel_event_names[event];
-}
-
-static int synaptics_dsx_panel_cb(struct notifier_block *nb,
-		unsigned long event, void *ignore)
-{
-	int value = -1;
-	struct synaptics_rmi4_data *rmi4_data =
-		container_of(nb, struct synaptics_rmi4_data, panel_nb);
-
-	switch (event) {
-	case MMI_PANEL_EVENT_PRE_DEINIT:
-		if (rmi4_data->display_synced_suspend)
-			synaptics_rmi4_early_suspend(&rmi4_data->early_suspend);
-		value = 1; /* set flag */
-			break;
-	case MMI_PANEL_EVENT_PWR_OFF:
-			break;
-	case MMI_PANEL_EVENT_POST_INIT:
-		if (rmi4_data->display_synced_suspend)
-			synaptics_rmi4_late_resume(&rmi4_data->early_suspend);
-		value = 0; /* clear flag */
-			break;
-	case MMI_PANEL_EVENT_PWR_ON:
-			break;
-	default:
-			return -EINVAL;
-	}
-
-	pr_info("%s\n", synaptics_dsx_get_panel_event(event));
-
-	if (rmi4_data->purge_enabled && value != -1) {
-		atomic_set(&rmi4_data->panel_off_flag, value);
-		pr_debug("touches purge is %s\n", value ? "ON" : "OFF");
-	}
-
-	return 0;
 }
 
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
@@ -1654,6 +1505,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int y;
 	int wx;
 	int wy;
+	int z;
 
 	/*
 	 * The number of finger status registers is determined by the
@@ -1704,6 +1556,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			y = (data[1] << 4) | ((data[2] >> 4) & MASK_4BIT);
 			wx = (data[3] & MASK_4BIT);
 			wy = (data[3] >> 4) & MASK_4BIT;
+			z = data[4];
 
 			if (rmi4_data->board->x_flip)
 				x = rmi4_data->sensor_max_x - x;
@@ -1716,15 +1569,19 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					"x = %d\n"
 					"y = %d\n"
 					"wx = %d\n"
-					"wy = %d\n",
+					"wy = %d\n"
+					"z = %d\n",
 					__func__, finger,
 					finger_status,
-					x, y, wx, wy);
+					x, y, wx, wy, z);
 
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_X, x);
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_Y, y);
+			input_report_abs(rmi4_data->input_dev,
+					ABS_MT_PRESSURE, z);
+
 #ifdef REPORT_2D_W
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_TOUCH_MAJOR, max(wx, wy));
@@ -2192,11 +2049,17 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_POSITION_Y, 0,
 			rmi4_data->sensor_max_y, 0, 0);
+	input_set_abs_params(rmi4_data->input_dev,
+			ABS_MT_PRESSURE, 0,
+			255, 0, 0);
 #ifdef REPORT_2D_W
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_TOUCH_MAJOR, 0,
-			MAX_ABS_MT_TOUCH_MAJOR, 0, 0);
+			15, 0, 0);
 #endif
+	input_set_abs_params(rmi4_data->input_dev,
+			ABS_MT_TRACKING_ID, 0,
+			rmi4_data->num_of_fingers - 1, 0, 0);
 
 	input_set_events_per_packet(rmi4_data->input_dev, 64);
 
@@ -2338,12 +2201,10 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_POSITION_Y, 0,
 			rmi4_data->sensor_max_y, 0, 0);
-	/* FIXME replace hard coded value with querying */
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_PRESSURE, 0,
 			255, 0, 0);
 #ifdef REPORT_2D_W
-	/* FIXME replace hard coded value with querying */
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_TOUCH_MAJOR, 0,
 			255, 0, 0);
@@ -2352,7 +2213,6 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 			ABS_MT_TRACKING_ID, 0,
 			rmi4_data->num_of_fingers - 1, 0, 0);
 
-	/* FIXME replace hard coded value with querying */
 	input_set_events_per_packet(rmi4_data->input_dev, 64);
 
 	return retval;
@@ -2876,6 +2736,7 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 {
 	struct synaptics_rmi4_exp_fn *exp_fhandler, *next_list_entry;
 	struct synaptics_rmi4_data *rmi4_data;
+	int state;
 
 	mutex_lock(&exp_fn_ctrl_mutex);
 	rmi4_data = exp_fn_ctrl.rmi4_data_ptr;
@@ -2905,6 +2766,9 @@ static void synaptics_rmi4_detection_work(struct work_struct *work)
 			if (rmi4_data->sensor_sleep)
 				synaptics_rmi4_sensor_wake(rmi4_data);
 			exp_fhandler->func_init(rmi4_data);
+			state = synaptics_dsx_get_state_safe(rmi4_data);
+			if (state == STATE_STANDBY)
+				synaptics_rmi4_sensor_sleep(rmi4_data);
 			exp_fhandler->inserted = true;
 		} else if ((exp_fhandler->func_init == NULL) &&
 			   (exp_fhandler->inserted == true)) {
@@ -2997,10 +2861,8 @@ EXPORT_SYMBOL(synaptics_rmi4_new_function);
  * This funtion allocates and initializes the resources for the driver
  * as an input driver, turns on the power to the sensor, queries the
  * sensor for its supported Functions and characteristics, registers
- * the driver to the input subsystem, sets up the interrupt, handles
- * the registration of the early_suspend and late_resume functions,
- * and creates a work queue for detection of other expansion Function
- * modules.
+ * the driver to the input subsystem, sets up the interrupt, and creates
+ * a work queue for detection of other expansion Function modules.
  */
 static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		const struct i2c_device_id *dev_id)
@@ -3118,14 +2980,11 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 
 	init_waitqueue_head(&rmi4_data->wait);
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	rmi4_data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	rmi4_data->early_suspend.suspend = synaptics_rmi4_early_suspend;
-	rmi4_data->early_suspend.resume = synaptics_rmi4_late_resume;
-	if (!rmi4_data->display_synced_suspend)
-		register_early_suspend(&rmi4_data->early_suspend);
+#ifdef CONFIG_FB
+	rmi4_data->panel_nb.notifier_call = synaptics_dsx_panel_cb;
+	if (!fb_register_client(&rmi4_data->panel_nb))
+		pr_debug("registered panel notifier\n");
 #endif
-
 	mutex_lock(&exp_fn_ctrl_mutex);
 	if (!exp_fn_ctrl.inited) {
 		mutex_init(&exp_fn_ctrl.list_mutex);
@@ -3151,12 +3010,6 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		}
 	}
 
-	if (rmi4_data->display_synced_suspend) {
-		rmi4_data->panel_nb.notifier_call = synaptics_dsx_panel_cb;
-		if (!mmi_panel_register_notifier(&rmi4_data->panel_nb))
-			pr_debug("registered panel notifier\n");
-	}
-
 	synaptics_dsx_sensor_ready_state(rmi4_data, true);
 
 	mutex_lock(&exp_fn_ctrl_mutex);
@@ -3171,9 +3024,8 @@ err_sysfs:
 				&attrs[attr_count].attr);
 	}
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	if (!rmi4_data->display_synced_suspend)
-		unregister_early_suspend(&rmi4_data->early_suspend);
+#ifdef CONFIG_FB
+	fb_unregister_client(&rmi4_data->panel_nb);
 #endif
 
 err_query_device:
@@ -3242,9 +3094,9 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 		regulator_put(rmi4_data->regulator);
 	}
 
-	if (rmi4_data->display_synced_suspend)
-		mmi_panel_unregister_notifier(&rmi4_data->panel_nb);
-
+#ifdef CONFIG_FB
+	fb_unregister_client(&rmi4_data->panel_nb);
+#endif
 	synaptics_rmi4_cleanup(rmi4_data);
 	kfree(rmi4_data);
 
@@ -3318,7 +3170,7 @@ static void synaptics_rmi4_sensor_one_touch(
  /**
  * synaptics_rmi4_sensor_sleep()
  *
- * Called by synaptics_rmi4_early_suspend() and synaptics_rmi4_suspend().
+ * Called by synaptics_dsx_sensor_state().
  *
  * This function stops finger data acquisition and puts the sensor to sleep.
  */
@@ -3372,7 +3224,7 @@ static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data)
  /**
  * synaptics_rmi4_sensor_wake()
  *
- * Called by synaptics_rmi4_resume() and synaptics_rmi4_late_resume().
+ * Called by synaptics_dsx_sensor_state().
  *
  * This function wakes the sensor from sleep.
  */
@@ -3423,60 +3275,33 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 	return;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
- /**
- * synaptics_rmi4_early_suspend()
- *
- * Called by the kernel during the early suspend phase when the system
- * enters suspend.
- *
- * This function calls synaptics_rmi4_sensor_sleep() to stop finger
- * data acquisition and put the sensor to sleep.
- */
-static void synaptics_rmi4_early_suspend(struct early_suspend *h)
+#ifdef CONFIG_FB
+static int synaptics_dsx_panel_cb(struct notifier_block *nb,
+		unsigned long event, void *data)
 {
+	struct fb_event *evdata = data;
+	int *blank;
+	int value = -1;
 	struct synaptics_rmi4_data *rmi4_data =
-			container_of(h, struct synaptics_rmi4_data,
-			early_suspend);
-	synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
-	return;
-}
+		container_of(nb, struct synaptics_rmi4_data, panel_nb);
 
- /**
- * synaptics_rmi4_late_resume()
- *
- * Called by the kernel during the late resume phase when the system
- * wakes up from suspend.
- *
- * This function goes through the sensor wake process if the system wakes
- * up from early suspend (without going into suspend).
- */
-static void synaptics_rmi4_late_resume(struct early_suspend *h)
-{
-	struct synaptics_rmi4_data *rmi4_data =
-			container_of(h, struct synaptics_rmi4_data,
-			early_suspend);
+	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
+		blank = evdata->data;
+		if (*blank == FB_BLANK_UNBLANK) {
+			synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
+			value = 0; /* clear flag */
+		} else if (*blank == FB_BLANK_POWERDOWN) {
+			synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
+			value = 1; /* set flag */
+		}
+	}
 
-	struct synaptics_rmi4_resume_info *tmp_resume_i;
+	if (rmi4_data->purge_enabled && value != -1) {
+		atomic_set(&rmi4_data->panel_off_flag, value);
+		pr_debug("touches purge is %s\n", value ? "ON" : "OFF");
+	}
 
-	if (rmi4_data->number_resumes > 0) {
-		rmi4_data->last_resume++;
-		if (rmi4_data->last_resume >= rmi4_data->number_resumes)
-			rmi4_data->last_resume = 0;
-		tmp_resume_i =
-			&(rmi4_data->resume_info[rmi4_data->last_resume]);
-		getnstimeofday(&(tmp_resume_i->start));
-		tmp_resume_i->ignored_events = 0;
-		tmp_resume_i->isr.tv_sec = 0;
-		tmp_resume_i->send_touch.tv_sec = 0;
-		tmp_resume_i->purge_off.tv_sec = 0;
-
-		synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
-
-		getnstimeofday(&(tmp_resume_i->finish));
-	} else
-		synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
-	return;
+	return 0;
 }
 #endif
 
@@ -3487,8 +3312,7 @@ static void synaptics_rmi4_late_resume(struct early_suspend *h)
  * enters suspend.
  *
  * This function stops finger data acquisition and puts the sensor to
- * sleep (if not already done so during the early suspend phase),
- * disables the interrupt, and turns off the power to the sensor.
+ * sleep, disables the interrupt, and turns off the power to the sensor.
  */
 static int synaptics_rmi4_suspend(struct device *dev)
 {
@@ -3567,7 +3391,7 @@ static struct i2c_driver synaptics_rmi4_driver = {
 	.driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
-#if !defined(CONFIG_HAS_EARLYSUSPEND) && defined(CONFIG_PM)
+#if !defined(CONFIG_FB) && defined(CONFIG_PM)
 		.pm = &synaptics_rmi4_dev_pm_ops,
 #endif
 	},
