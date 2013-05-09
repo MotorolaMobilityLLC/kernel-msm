@@ -1565,7 +1565,7 @@ static int elan_ktf3k_ts_probe(struct i2c_client *client,
 	__set_bit(EV_ABS, ts->input_dev->evbit);
 	__set_bit(EV_SYN, ts->input_dev->evbit);
 	__set_bit(EV_KEY, ts->input_dev->evbit);
-	
+	__set_bit(INPUT_PROP_DIRECT, ts->input_dev->propbit);
 
 	err = input_register_device(ts->input_dev);
 	if (err) {
