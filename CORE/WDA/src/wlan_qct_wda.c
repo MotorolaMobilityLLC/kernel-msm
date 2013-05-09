@@ -13659,13 +13659,6 @@ void WDA_TransportChannelDebug
   v_BOOL_t       toggleStallDetect
 )
 {
-   if (NULL != pMac)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_WARN,
-                 "HAL BMU DUMP Request" );
-      /* 17 is BMU dump opcode */
-      WDA_HALDumpCmdReq(pMac, 17, 0, 0, 0, 0, NULL);
-   }
    WDI_TransportChannelDebug(displaySnapshot, toggleStallDetect);
    return;
 }
