@@ -23,11 +23,10 @@
 #define SYNAPTICS_DSX_DRIVER_VERSION "DSX 1.1"
 
 #include <linux/version.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
+#ifdef CONFIG_FB
+#include <linux/notifier.h>
+#include <linux/fb.h>
 #endif
-
-#include <mach/mmi_panel_notifier.h>
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 38))
 #define KERNEL_ABOVE_2_6_38
@@ -230,8 +229,9 @@ struct synaptics_rmi4_data {
 	struct regulator *regulator;
 	struct mutex rmi4_io_ctrl_mutex;
 	struct mutex state_mutex;
-	struct early_suspend early_suspend;
+#ifdef CONFIG_FB
 	struct notifier_block panel_nb;
+#endif
 	atomic_t panel_off_flag;
 	unsigned char current_page;
 	unsigned char button_0d_enabled;
@@ -259,7 +259,6 @@ struct synaptics_rmi4_data {
 	bool purge_enabled;
 	bool reset_on_resume;
 	bool hw_reset;
-	bool display_synced_suspend;
 	bool one_touch_enabled;
 	wait_queue_head_t wait;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
