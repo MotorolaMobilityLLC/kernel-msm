@@ -140,6 +140,7 @@ static void __limInitScanVars(tpAniSirGlobal pMac)
     // abort scan is used to abort an on-going scan
     pMac->lim.abortScan = 0;
     palZeroMemory(pMac->hHdd, &pMac->lim.scanChnInfo, sizeof(tLimScanChnInfo));
+    palZeroMemory(pMac->hHdd, &pMac->lim.dfschannelList, sizeof(tSirDFSChannelList));
 
 //WLAN_SUSPEND_LINK Related
     pMac->lim.gpLimSuspendCallback = NULL;

@@ -169,6 +169,8 @@ limProcessMlmReqMessages(tpAniSirGlobal pMac, tpSirMsgQ Msg)
         case SIR_LIM_REMAIN_CHN_TIMEOUT:    limProcessRemainOnChnTimeout(pMac); break;
         case SIR_LIM_INSERT_SINGLESHOT_NOA_TIMEOUT:   
                                             limProcessInsertSingleShotNOATimeout(pMac); break;
+        case SIR_LIM_CONVERT_ACTIVE_CHANNEL_TO_PASSIVE:
+                                            limConvertActiveChannelToPassiveChannel(pMac); break;
         case SIR_LIM_DISASSOC_ACK_TIMEOUT:  limProcessDisassocAckTimeout(pMac); break;
         case SIR_LIM_DEAUTH_ACK_TIMEOUT:    limProcessDeauthAckTimeout(pMac); break;
         case LIM_MLM_ADDBA_REQ:             limProcessMlmAddBAReq( pMac, Msg->bodyptr ); break;
@@ -598,6 +600,133 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
     else
     {
         limAddScanChannelInfo(pMac, channelNum);
+    }
+
+    return;
+}
+
+
+
+
+
+/* limCovertChannelScanType()
+ *
+ *FUNCTION:
+ * This function is called to get the list, change the channel type and set again.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ * NA
+ *
+ *NOTE: If a channel is ACTIVE, this function will make it as PASSIVE
+ *      If a channel is PASSIVE, this fucntion will make it as ACTIVE
+ * NA
+ *
+ * @param  pMac    - Pointer to Global MAC structure
+ *         channelNum - Channel which need to be convert
+           PassiveToActive - Boolean flag to convert channel
+ *
+ * @return None
+ */
+
+
+void limCovertChannelScanType(tpAniSirGlobal pMac,tANI_U8 channelNum, tANI_BOOLEAN passiveToActive)
+{
+
+    tANI_U32 i;
+    tANI_U8  channelPair[WNI_CFG_SCAN_CONTROL_LIST_LEN];
+    tANI_U32 len = WNI_CFG_SCAN_CONTROL_LIST_LEN;
+    if (wlan_cfgGetStr(pMac, WNI_CFG_SCAN_CONTROL_LIST, channelPair, &len)
+                    != eSIR_SUCCESS)
+    {
+        PELOGE(limLog(pMac, LOGE, FL("Unable to get scan control list"));)
+        return ;
+    }
+    if (len > WNI_CFG_SCAN_CONTROL_LIST_LEN)
+    {
+        limLog(pMac, LOGE, FL("Invalid scan control list length:%d"), len);
+        return ;
+    }
+    for (i=0; (i+1) < len; i+=2)
+    {
+        if (channelPair[i] == channelNum)
+        {
+             if ((eSIR_PASSIVE_SCAN == channelPair[i+1]) && TRUE == passiveToActive)
+             {
+                 PELOG1(limLog(pMac, LOG1, FL("Channel %d changed from Passive to Active"),
+                                 channelNum);)
+                 channelPair[i+1] = eSIR_ACTIVE_SCAN;
+                 break ;
+             }
+             if ((eSIR_ACTIVE_SCAN == channelPair[i+1]) && FALSE == passiveToActive)
+             {
+                 PELOG1(limLog(pMac, LOG1, FL("Channel %d changed from Active to Passive"),
+                                 channelNum);)
+                 channelPair[i+1] = eSIR_PASSIVE_SCAN;
+                 break ;
+             }
+       }
+    }
+
+    cfgSetStrNotify(pMac, WNI_CFG_SCAN_CONTROL_LIST, (tANI_U8 *)channelPair, len, FALSE);
+    return ;
+}
+
+
+
+
+/* limSetDFSChannelList()
+ *
+ *FUNCTION:
+ * This function is called to convert DFS channel list to active channel list when any
+ * beacon is present on that channel. This function store time for passive channels
+ * which help to know that for how much time channel has been passive.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ * NA
+ *
+ *NOTE: If a channel is ACTIVE, it won't store any time
+ *      If a channel is PAssive, it will store time as timestamp
+ * NA
+ *
+ * @param  pMac    - Pointer to Global MAC structure
+ *         dfsChannelList - DFS channel list.
+ * @return None
+ */
+
+void limSetDFSChannelList(tpAniSirGlobal pMac,tANI_U8 channelNum, tSirDFSChannelList *dfsChannelList)
+{
+
+    tANI_BOOLEAN passiveToActive = TRUE;
+    if ((1 <= channelNum) && (165 >= channelNum))
+    {
+       if (eANI_BOOLEAN_TRUE == limIsconnectedOnDFSChannel(channelNum))
+       {
+          if (dfsChannelList->timeStamp[channelNum] == 0)
+          {
+             //Received first beacon; Convert DFS channel to Active channel.
+             PELOG1(limLog(pMac, LOG1, FL("Received first beacon on DFS channel: %d"), channelNum);)
+             limCovertChannelScanType(pMac,channelNum, passiveToActive);
+          }
+          dfsChannelList->timeStamp[channelNum] = vos_timer_get_system_time();
+       }
+       else
+       {
+          PELOG1(limLog(pMac, LOG1, FL("Channel %d is Active"), channelNum);)
+          return;
+       }
+       if (!tx_timer_running(&pMac->lim.limTimers.gLimActiveToPassiveChannelTimer))
+       {
+          tx_timer_activate(&pMac->lim.limTimers.gLimActiveToPassiveChannelTimer);
+       }
+    }
+    else
+    {
+       PELOGE(limLog(pMac, LOGE, FL("Invalid Channel: %d"), channelNum);)
+       return;
     }
 
     return;
