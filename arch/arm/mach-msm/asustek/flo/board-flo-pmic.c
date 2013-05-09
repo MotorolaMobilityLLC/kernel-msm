@@ -256,7 +256,7 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 					ARRAY_SIZE(pm8917_cdp_kp_gpios));
 	}
 
-	if (hw_revision == HW_REV_C || hw_revision == HW_REV_D)
+	if (hw_revision == HW_REV_C || hw_revision == HW_REV_D || hw_revision == HW_REV_E)
 		apq8064_configure_gpios(pm8921_gpios_WPC,
 				ARRAY_SIZE(pm8921_gpios_WPC));
 

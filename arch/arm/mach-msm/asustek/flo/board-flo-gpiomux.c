@@ -1773,6 +1773,7 @@ void __init apq8064_init_gpiomux(void)
 	case HW_REV_B:
 	case HW_REV_C:
 	case HW_REV_D:
+	case HW_REV_E:
 		msm_gpiomux_install(wpc_pok_configs,
 			ARRAY_SIZE(wpc_pok_configs));
 		break;

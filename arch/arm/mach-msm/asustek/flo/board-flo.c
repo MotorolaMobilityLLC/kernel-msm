@@ -1165,6 +1165,7 @@ static void smb345_init(void)
 		break;
 	case HW_REV_C:
 	case HW_REV_D:
+	case HW_REV_E:
 		i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 			smb345_charger_i2c_info_ER,
 			ARRAY_SIZE(smb345_charger_i2c_info_ER));
