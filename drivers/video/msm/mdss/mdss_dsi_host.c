@@ -1318,7 +1318,10 @@ int mdss_dsi_cmd_dma_tx(struct dsi_buf *tp,
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x090, 0x01);	/* trigger */
 	wmb();
 
-	wait_for_completion(&dsi_dma_comp);
+	if (!wait_for_completion_timeout(&dsi_dma_comp,
+					msecs_to_jiffies(200))) {
+		pr_err("%s: dma timeout error\n", __func__);
+	}
 
 	if (is_mdss_iommu_attached())
 		msm_iommu_unmap_contig_buffer(addr,
