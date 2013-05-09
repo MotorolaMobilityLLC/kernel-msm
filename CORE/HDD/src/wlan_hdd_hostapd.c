@@ -629,8 +629,8 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                                        0,
                                        (v_MACADDR_t *)wrqu.addr.sa_data,
                                        pSapEvent->sapevt.sapStationAssocReassocCompleteEvent.wmmEnabled);
-            } 
-            
+            }
+
             // Stop AP inactivity timer
             if (pHddApCtx->hdd_ap_inactivity_timer.state == VOS_TIMER_STATE_RUNNING)
             {
@@ -643,7 +643,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             {
                wake_unlock(&pHddCtx->sap_wake_lock);
             }
-            wake_lock_timeout(&pHddCtx->sap_wake_lock, HDD_SAP_WAKE_LOCK_DURATION);
+            wake_lock_timeout(&pHddCtx->sap_wake_lock, msecs_to_jiffies(HDD_SAP_WAKE_LOCK_DURATION));
 #endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
             {
