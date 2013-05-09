@@ -112,6 +112,10 @@
 		qcom,cdc-mclk-gpios = <&pm8226_gpios 1 0>;
 		qcom,cdc-vdd-spkr-gpios = <&pm8226_gpios 2 0>;
 	};
+
+	usb@f9a55000 {
+		qcom,hsusb-otg-phy-init-seq = <0x34 0x82 0x2f 0x81 0xffffffff>;
+	};
 };
 
 &sdcc1 {
