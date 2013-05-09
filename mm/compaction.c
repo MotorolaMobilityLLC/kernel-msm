@@ -699,8 +699,11 @@ static int compact_zone(struct zone *zone, struct compact_control *cc)
 		if (err) {
 			putback_lru_pages(&cc->migratepages);
 			cc->nr_migratepages = 0;
+			if (err == -ENOMEM) {
+				ret = COMPACT_PARTIAL;
+				goto out;
+			}
 		}
-
 	}
 
 out:
@@ -784,35 +787,6 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 	return rc;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static struct work_struct compactnodes_w;
-static int compact_nodes(void);
-static void compactnodes_work(struct work_struct *w)
-{
-	/* No point in being gun shy here since compact_zone()
-	 * will check suitability of compaction run per zone.
-	 * This takes about 150ms for 2GB memory configuration,
-	 * but the benefit is a better memory situation on wakeup.
-	 * The user isn't doing anything useful anyway, and the
-	 * screen is off so there's no perceived user impact.
-         */
-	compact_nodes();
-
-}
-
-
-static void compact_nodes_suspend(struct early_suspend *s)
-{
-	schedule_work(&compactnodes_w);
-}
-
-static struct early_suspend early_suspend_compaction_desc = {
-	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
-	.suspend = compact_nodes_suspend,
-	.resume = NULL,
-};
-#endif
-
 /* Compact all zones within a node */
 static int __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
 {
@@ -872,7 +846,7 @@ static int compact_node(int nid)
 }
 
 /* Compact all nodes in the system */
-static int compact_nodes(void)
+static void compact_nodes(void)
 {
 	int nid;
 
@@ -881,9 +855,35 @@ static int compact_nodes(void)
 
 	for_each_online_node(nid)
 		compact_node(nid);
-
-	return COMPACT_COMPLETE;
 }
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static struct work_struct compactnodes_w;
+static void compactnodes_work(struct work_struct *w)
+{
+	/* No point in being gun shy here since compact_zone()
+	 * will check suitability of compaction run per zone.
+	 * This takes about 150ms for 2GB memory configuration,
+	 * but the benefit is a better memory situation on wakeup.
+	 * The user isn't doing anything useful anyway, and the
+	 * screen is off so there's no perceived user impact.
+         */
+	compact_nodes();
+
+}
+
+
+static void compact_nodes_suspend(struct early_suspend *s)
+{
+	schedule_work(&compactnodes_w);
+}
+
+static struct early_suspend early_suspend_compaction_desc = {
+	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
+	.suspend = compact_nodes_suspend,
+	.resume = NULL,
+};
+#endif
 
 /* The written value is actually unused, all memory is compacted */
 int sysctl_compact_memory;
@@ -893,7 +893,7 @@ int sysctl_compaction_handler(struct ctl_table *table, int write,
 			void __user *buffer, size_t *length, loff_t *ppos)
 {
 	if (write)
-		return compact_nodes();
+		compact_nodes();
 
 	return 0;
 }
