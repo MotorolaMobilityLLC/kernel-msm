@@ -721,43 +721,57 @@ static void check_stack_usage(void)
 static inline void check_stack_usage(void) {}
 #endif
 
+struct exit_timer_data {
+	struct task_struct *tsk;
+	struct hrtimer timer;
+};
+
 #ifdef CONFIG_DO_EXIT_WDOG
-static void exit_timeout(unsigned long data)
+static enum hrtimer_restart exit_timeout(struct hrtimer *timer)
 {
-	struct task_struct *tsk = (struct task_struct *)data;
+	struct exit_timer_data *tdata = container_of(timer,
+			struct exit_timer_data, timer);
+
 	pr_emerg("**** do_exit() timeout for task %s (%d)\n",
-			tsk->comm, task_pid_nr(tsk));
-	sched_show_task(tsk);
+			tdata->tsk->comm, task_pid_nr(tdata->tsk));
+	sched_show_task(tdata->tsk);
 	BUG();
+	return HRTIMER_NORESTART;
 }
 
-static inline void start_exit_wdog(struct timer_list *timer,
-		unsigned long expires)
+static inline void start_exit_timer(struct exit_timer_data *tdata,
+		unsigned long expiry_secs)
 {
-	mod_timer(timer, expires);
+	struct timespec expiry_ts;
+
+	tdata->tsk = current;
+	hrtimer_init(&tdata->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	tdata->timer.function = exit_timeout;
+	expiry_ts.tv_sec = expiry_secs;
+	expiry_ts.tv_nsec = 0;
+	hrtimer_start(&tdata->timer, timespec_to_ktime(expiry_ts),
+			HRTIMER_MODE_REL);
 }
 
-static inline void stop_exit_wdog(struct timer_list *timer)
+static inline void stop_exit_timer(struct exit_timer_data *tdata)
 {
-	del_timer_sync(timer);
+	hrtimer_cancel(&tdata->timer);
 }
 #else
-static void exit_timeout(unsigned long data) {}
+static inline void start_exit_timer(struct exit_timer_data *tdata,
+		unsigned long expiry_secs) {}
 
-static inline void start_exit_wdog(struct timer_list *timer,
-		unsigned long expires) {}
-
-static inline void stop_exit_wdog(struct timer_list *timer) {}
+static inline void stop_exit_timer(struct exit_timer_data *tdata) {}
 #endif
 
 void do_exit(long code)
 {
 	struct task_struct *tsk = current;
-	DEFINE_TIMER(wdog, exit_timeout, 0, (unsigned long)tsk);
+	struct exit_timer_data tdata;
 	int group_dead;
 
 	/*
-	 * If we cannot finish exiting within 15 minutes, then we assume that
+	 * If we cannot finish exiting before the timeout, then we assume that
 	 * one or more threads in our group is hopelessly stuck and we should
 	 * crash to recover.  The timeout should be set high enough such that
 	 * the likelihood of a scheduling problem causing the timeout to occur
@@ -771,7 +785,7 @@ void do_exit(long code)
 	 * exit_files() may call into device drivers that are unproven, so this
 	 * helps flush out deadlocks in those drivers.
 	 */
-	start_exit_wdog(&wdog, jiffies + (HZ * 900));
+	start_exit_timer(&tdata, 900);
 
 	profile_task_exit(tsk);
 
@@ -946,7 +960,7 @@ void do_exit(long code)
 	/* causes final put_task_struct in finish_task_switch(). */
 	tsk->state = TASK_DEAD;
 	tsk->flags |= PF_NOFREEZE;	/* tell freezer to ignore us */
-	stop_exit_wdog(&wdog);
+	stop_exit_timer(&tdata);
 	schedule();
 	BUG();
 	/* Avoid "noreturn function does return".  */
