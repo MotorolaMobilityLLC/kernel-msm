@@ -113,9 +113,6 @@ typedef struct connection_info_s
    
     /** Remembers authenticated state */
    v_U8_t uIsAuthenticated;
-
-   /** Dot11Mode */
-   tANI_U32 dot11Mode;
    
 }connection_info_t;
 /*Forward declaration of Adapter*/
