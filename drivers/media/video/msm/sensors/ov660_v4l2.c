@@ -1115,6 +1115,24 @@ EXIT_1:
 	return 0;
 }
 
+int ov660_set_exposure_gain2(uint16_t gain, uint32_t line)
+{
+	int32_t rc;
+	uint8_t setting[1];
+
+	pr_debug("%s: gain=%04x line=%08x\n", __func__, gain, line);
+
+	setting[0] = gain & 0xff;
+
+	rc = ov660_write_i2c(0x7011, setting[0]);
+	if (rc < 0) {
+		pr_err("%s: failed exposure\n", __func__);
+		return rc;
+	}
+
+	return 0;
+}
+
 static int ov660_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
