@@ -1025,8 +1025,6 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 				mfd->panel_power_on = curr_pwr_state;
 
 			msm_fb_release_timeline(mfd);
-			/* These flags are using for MDP hang debug purpose */
-			mdp4_clear_dump_flags();
 			mfd->op_enable = TRUE;
 			mfd->suspend_cfg.partial = 0;
 			mfd->resume_cfg.partial = 0;
