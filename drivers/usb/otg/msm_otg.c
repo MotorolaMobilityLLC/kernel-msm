@@ -21,6 +21,7 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/ioport.h>
+#include <linux/irq.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
@@ -4242,6 +4243,10 @@ static int msm_otg_pm_suspend(struct device *dev)
 		atomic_set(&motg->pm_suspended, 0);
 
 	disable_irq(irq_num_vbus);
+	if (gpio_get_value(vbus_det_gpio) == 0)
+		irq_set_irq_type(irq_num_vbus, IRQ_TYPE_EDGE_RISING);
+	else
+		irq_set_irq_type(irq_num_vbus, IRQ_TYPE_EDGE_FALLING);
 	enable_irq_wake(irq_num_vbus);
 
 	if (!slimport_is_connected())
@@ -4281,6 +4286,7 @@ static int msm_otg_pm_resume(struct device *dev)
 	}
 
 	disable_irq_wake(irq_num_vbus);
+	irq_set_irq_type(irq_num_vbus, IRQ_TYPE_EDGE_BOTH);
 	enable_irq(irq_num_vbus);
 
 	disable_irq_wake(irq_num_id);
