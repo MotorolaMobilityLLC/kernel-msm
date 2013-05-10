@@ -156,16 +156,13 @@
 				qcom,hw-settle-time = <0>;
 				qcom,fast-avg-setup = <0>;
 			};
+		};
 
-			chan@39 {
-				label = "usb_id_lv";
+		qcom,vadc@3400 {
+			usb-id-ext-pull-up;
+			chan@b9 {
+				label = "usb_id_nopull";
 				reg = <0x39>;
-				qcom,decimation = <0>;
-				qcom,pre-div-channel-scaling = <0>;
-				qcom,calibration-type = "absolute";
-				qcom,scale-function = <0>;
-				qcom,hw-settle-time = <0>;
-				qcom,fast-avg-setup = <0>;
 			};
 		};
 	};
