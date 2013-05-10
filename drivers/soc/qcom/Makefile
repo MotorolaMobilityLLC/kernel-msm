@@ -102,3 +102,4 @@ obj-$(CONFIG_MSM_RTB) += msm_rtb-hotplug.o
 obj-$(CONFIG_MSM_REMOTEQDSS) += remoteqdss.o
 obj-$(CONFIG_QCOM_SMCINVOKE) += smcinvoke.o
 obj-$(CONFIG_BOOTINFO) += bootinfo.o
+obj-$(CONFIG_MMI_UNIT_INFO) += mmi-unit-info.o
