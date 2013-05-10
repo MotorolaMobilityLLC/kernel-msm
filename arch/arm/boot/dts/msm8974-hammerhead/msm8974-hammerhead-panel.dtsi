@@ -189,6 +189,9 @@
 			39 01 00 00 00 06
 			3b 03 04 02 64 5A
 			15 01 00 00 00 02 50 00
+			15 01 00 00 00 02 FF 28 // For adjust TP
+			15 01 00 00 00 02 58 40 // For adjust TP
+			15 01 00 00 00 02 FB 01 // For adjust TP
 			15 01 00 00 00 02 ff f0//added in revA
 			15 01 00 00 00 02 15 01//added in revA
 			15 01 00 00 00 02 fb 01//added in revA
