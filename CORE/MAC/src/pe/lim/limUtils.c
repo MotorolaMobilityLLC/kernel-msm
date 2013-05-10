@@ -7198,6 +7198,9 @@ void limHandleHeartBeatFailureTimeout(tpAniSirGlobal pMac)
             {
                 limLog(pMac, LOGE, FL("Probe_hb_failure: SME %d, MLME %d, HB-Count %d"),psessionEntry->limSmeState,
                         psessionEntry->limMlmState, psessionEntry->LimRxedBeaconCntDuringHB);
+#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
+                limDiagEventReport(pMac, WLAN_PE_DIAG_HB_FAILURE_TIMEOUT, psessionEntry, 0, 0);
+#endif
                 if (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE)
                 {
                     if ((!LIM_IS_CONNECTION_ACTIVE(psessionEntry))&&
