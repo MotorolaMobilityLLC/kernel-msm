@@ -595,6 +595,11 @@ int wlan_hdd_cfg80211_register(struct device *dev,
     wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS
                  |  WIPHY_FLAG_TDLS_EXTERNAL_SETUP;
 #endif
+#ifdef FEATURE_WLAN_SCAN_PNO
+    wiphy->flags |= WIPHY_FLAG_SUPPORTS_SCHED_SCAN;
+    wiphy->max_sched_scan_ssids = MAX_SCAN_SSID;
+    wiphy->max_match_sets       = SIR_PNO_MAX_SUPP_NETWORKS;
+#endif/*FEATURE_WLAN_SCAN_PNO*/
 
     /* even with WIPHY_FLAG_CUSTOM_REGULATORY,
        driver can still register regulatory callback and
@@ -6912,6 +6917,260 @@ static int wlan_hdd_cfg80211_update_ft_ies(struct wiphy *wiphy,
 }
 #endif
 
+#ifdef FEATURE_WLAN_SCAN_PNO
+
+void hdd_cfg80211_sched_scan_done_callback(void *callbackContext,
+                              tSirPrefNetworkFoundInd *pPrefNetworkFoundInd)
+{
+    int ret;
+    hdd_adapter_t* pAdapter = (hdd_adapter_t*)callbackContext;
+    hdd_context_t *pHddCtx;
+
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s: HDD adapter is Null", __func__);
+        return ;
+    }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    if (NULL == pHddCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: HDD context is Null!!!", __func__);
+        return ;
+    }
+
+    ret = wlan_hdd_cfg80211_update_bss(pHddCtx->wiphy, pAdapter);
+
+    if (0 > ret)
+        hddLog(VOS_TRACE_LEVEL_INFO, "%s: NO SCAN result", __func__);
+
+    cfg80211_sched_scan_results(pHddCtx->wiphy);
+}
+
+/*
+ * FUNCTION: wlan_hdd_cfg80211_sched_scan_start
+ * NL interface to enable PNO
+ */
+static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
+          struct net_device *dev, struct cfg80211_sched_scan_request *request)
+{
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    tpSirPNOScanReq pPnoRequest = NULL;
+    hdd_context_t *pHddCtx;
+    tHalHandle hHal;
+    v_U32_t i, indx, num_ch;
+    u8 valid_ch[WNI_CFG_VALID_CHANNEL_LIST_LEN];
+    u8 channels_allowed[WNI_CFG_VALID_CHANNEL_LIST_LEN];
+    v_U32_t num_channels_allowed = WNI_CFG_VALID_CHANNEL_LIST_LEN;
+    eHalStatus status = eHAL_STATUS_FAILURE;
+
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: HDD adapter is Null", __func__);
+        return -ENODEV;
+    }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    if (NULL == pHddCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is Null!!!", __func__);
+        return -ENODEV;
+    }
+
+    if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: LOGP in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
+
+    hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    if (NULL == hHal)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HAL context  is Null!!!", __func__);
+        return -EAGAIN;
+    }
+
+    pPnoRequest = (tpSirPNOScanReq) vos_mem_malloc(sizeof (tSirPNOScanReq));
+    if (NULL == pPnoRequest)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: vos_mem_malloc failed", __func__);
+        return -ENODEV;
+    }
+
+    pPnoRequest->enable = 1; /*Enable PNO */
+    pPnoRequest->ucNetworksCount = request->n_match_sets;
+
+    if (( !pPnoRequest->ucNetworksCount ) ||
+        ( pPnoRequest->ucNetworksCount > SIR_PNO_MAX_SUPP_NETWORKS ))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "Network input is not correct");
+        goto error;
+    }
+
+    if ( SIR_PNO_MAX_NETW_CHANNELS_EX < request->n_channels )
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "Incorrect number of channels");
+        goto error;
+    }
+
+    /* Framework provides one set of channels(all)
+     * common for all saved profile */
+    if (0 != ccmCfgGetStr(hHal, WNI_CFG_VALID_CHANNEL_LIST,
+            channels_allowed, &num_channels_allowed))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: failed to get valid channel list", __func__);
+        goto error;
+    }
+    /* Checking each channel against allowed channel list */
+    num_ch = 0;
+    for (i = 0; i < request->n_channels; i++)
+    {
+        for (indx = 0; indx < num_channels_allowed; indx++)
+        {
+            if (request->channels[i]->hw_value == channels_allowed[indx])
+            {
+                valid_ch[num_ch++] = request->channels[i]->hw_value;
+                break ;
+            }
+        }
+    }
+
+    /* Filling per profile  params */
+    for (i = 0; i < pPnoRequest->ucNetworksCount; i++)
+    {
+        pPnoRequest->aNetworks[i].ssId.length =
+               request->match_sets[i].ssid.ssid_len;
+
+        if (( 0 == pPnoRequest->aNetworks[i].ssId.length ) ||
+            ( pPnoRequest->aNetworks[i].ssId.length > 32 ) )
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "SSID Len %d is not correct for network %d",
+                      pPnoRequest->aNetworks[i].ssId.length, i);
+            goto error;
+        }
+
+        memcpy(pPnoRequest->aNetworks[i].ssId.ssId,
+               request->match_sets[i].ssid.ssid,
+               request->match_sets[i].ssid.ssid_len);
+        pPnoRequest->aNetworks[i].authentication = 0; /*eAUTH_TYPE_ANY*/
+        pPnoRequest->aNetworks[i].encryption     = 0; /*eED_ANY*/
+        pPnoRequest->aNetworks[i].bcastNetwType  = 0; /*eBCAST_UNKNOWN*/
+
+        /*Copying list of valid channel into request */
+        memcpy(pPnoRequest->aNetworks[i].aChannels, valid_ch, num_ch);
+        pPnoRequest->aNetworks[i].ucChannelCount = num_ch;
+
+        pPnoRequest->aNetworks[i].rssiThreshold = 0; //Default value
+    }
+
+    /* framework provides interval in ms */
+    pPnoRequest->scanTimers.ucScanTimersCount = 1;
+    pPnoRequest->scanTimers.aTimerValues[0].uTimerValue =
+          (request->interval)/1000;
+    pPnoRequest->scanTimers.aTimerValues[0].uTimerRepeat = 0;
+    pPnoRequest->modePNO = SIR_PNO_MODE_ON_SUSPEND;
+
+    status = sme_SetPreferredNetworkList(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                              pPnoRequest, pAdapter->sessionId,
+                              hdd_cfg80211_sched_scan_done_callback, pAdapter);
+    if (eHAL_STATUS_SUCCESS != status)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "Failed to enable PNO");
+        goto error;
+    }
+
+error:
+    vos_mem_free(pPnoRequest);
+    return status;
+}
+
+/*
+ * FUNCTION: wlan_hdd_cfg80211_sched_scan_stop
+ * NL interface to disable PNO
+ */
+static int wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
+          struct net_device *dev)
+{
+    eHalStatus status = eHAL_STATUS_FAILURE;
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_context_t *pHddCtx;
+    tHalHandle hHal;
+    tpSirPNOScanReq pPnoRequest = NULL;
+
+    ENTER();
+
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: HDD adapter is Null", __func__);
+        return -ENODEV;
+    }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    if (NULL == pHddCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is Null!!!", __func__);
+        return -ENODEV;
+    }
+
+    if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                "%s: LOGP in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
+
+    hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    if (NULL == hHal)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: HAL context  is Null!!!", __func__);
+        return -EAGAIN;
+    }
+
+    pPnoRequest = (tpSirPNOScanReq) vos_mem_malloc(sizeof (tSirPNOScanReq));
+    if (NULL == pPnoRequest)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s: vos_mem_malloc failed", __func__);
+        return -ENODEV;
+    }
+
+    memset(pPnoRequest, 0, sizeof (tSirPNOScanReq));
+    pPnoRequest->enable = 0; /* Disable PNO */
+    pPnoRequest->ucNetworksCount = 0;
+
+    status = sme_SetPreferredNetworkList(hHal, pPnoRequest,
+                                pAdapter->sessionId,
+                                NULL, pAdapter);
+    if (eHAL_STATUS_SUCCESS != status)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "Failed to disabled PNO");
+    }
+
+    vos_mem_free(pPnoRequest);
+
+    EXIT();
+    return status;
+}
+
+#endif /*FEATURE_WLAN_SCAN_PNO*/
+
+
 #ifdef FEATURE_WLAN_TDLS
 static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *dev,
                      u8 *peer, u8 action_code,  u8 dialog_token,
@@ -7490,5 +7749,9 @@ static struct cfg80211_ops wlan_hdd_cfg80211_ops =
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
      .set_rekey_data = wlan_hdd_cfg80211_set_rekey_data,
 #endif /* WLAN_FEATURE_GTK_OFFLOAD */
+#ifdef FEATURE_WLAN_SCAN_PNO
+     .sched_scan_start = wlan_hdd_cfg80211_sched_scan_start,
+     .sched_scan_stop = wlan_hdd_cfg80211_sched_scan_stop,
+#endif /*FEATURE_WLAN_SCAN_PNO */
 };
 
