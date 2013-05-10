@@ -593,4 +593,10 @@ config MMI_RAM_INFO
 	help
 	Provide mechanism to access RAM size and MR registers values via sysfs.
 
+config MMI_UNIT_INFO
+	default n
+	bool "Motorola Mobility Unit Info"
+	help
+	Provide mechanism to expose unit information to other cpu via smem.
+
 endif # ARCH_MSM
