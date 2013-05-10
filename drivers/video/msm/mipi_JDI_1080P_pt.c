@@ -50,6 +50,8 @@ static int __init mipi_JDI_1080P_pt_init(void)
 
 	pinfo.xres = 1200;
 	pinfo.yres = 1920;
+	pinfo.width = 95;
+	pinfo.height = 151;
 
 	pinfo.pdest = DISPLAY_1;
 	pinfo.wait_cycle = 0;

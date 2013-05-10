@@ -1420,6 +1420,8 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 
 	var->xres = panel_info->xres;
 	var->yres = panel_info->yres;
+	var->width = panel_info->width;
+	var->height = panel_info->height;
 	var->xres_virtual = panel_info->xres;
 	var->yres_virtual = panel_info->yres * mfd->fb_page +
 		((PAGE_SIZE - remainder)/fix->line_length) * mfd->fb_page;
