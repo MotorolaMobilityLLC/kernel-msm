@@ -1420,7 +1420,7 @@ static long venc_set_vui_timing_info(struct video_client_ctx *client_ctx,
 	if (!client_ctx)
 		return -EINVAL;
 	if (inst->framerate_mode == VENC_MODE_VFR) {
-		WFD_MSG_ERR("VUI timing info not suported in VFR mode ");
+		WFD_MSG_INFO("VUI timing info not suported in VFR mode ");
 		return -EINVAL;
 	}
 	vcd_property_hdr.prop_id = VCD_I_ENABLE_VUI_TIMING_INFO;
