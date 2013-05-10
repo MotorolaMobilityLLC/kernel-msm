@@ -253,7 +253,7 @@ static struct bq27541_device_info {
 	int bat_capacity;
 	unsigned int old_capacity;
 	unsigned int cap_err;
-	unsigned int old_temperature;
+	int old_temperature;
 	bool temp_err;
 	unsigned int prj_id;
 	spinlock_t lock;
@@ -548,8 +548,8 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 		if (bq27541_device->smbus_status >=0) {
 			if (rt_value >= bq27541_data[REG_TEMPERATURE].min_value &&
 				rt_value <= bq27541_data[REG_TEMPERATURE].max_value) {
-				ret = (int)(u16)(((rt_value/10) - 273)*10);
-				if (ret>=0 && ret<=1000) {
+				if (rt_value >=2530  && rt_value <=3530) {
+					ret = rt_value -2730;
 					if(bq27541_device->temp_err)
 						bq27541_device->temp_err = false;
 				} else
