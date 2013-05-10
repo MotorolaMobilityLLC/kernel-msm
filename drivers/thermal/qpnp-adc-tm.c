@@ -192,6 +192,7 @@ struct qpnp_adc_tm_drv {
 	bool				adc_tm_initialized;
 	int				max_channels_available;
 	struct qpnp_adc_tm_sensor	sensor[0];
+	bool				usb_id_ext_pull_up;
 };
 
 struct qpnp_adc_tm_drv	*qpnp_adc_tm;
@@ -1461,7 +1462,16 @@ EXPORT_SYMBOL(qpnp_adc_tm_disable_chan_meas);
 
 int32_t qpnp_adc_tm_usbid_configure(struct qpnp_adc_tm_btm_param *param)
 {
-	param->channel = LR_MUX10_PU2_AMUX_USB_ID_LV;
+	struct qpnp_adc_tm_drv *adc_tm = qpnp_adc_tm;
+
+	if (!adc_tm || !adc_tm->adc_tm_initialized)
+		return -ENODEV;
+
+	if (adc_tm->usb_id_ext_pull_up)
+		param->channel = LR_MUX10_USB_ID_LV;
+	else
+		param->channel = LR_MUX10_PU2_AMUX_USB_ID_LV;
+
 	return qpnp_adc_tm_channel_measure(param);
 }
 EXPORT_SYMBOL(qpnp_adc_tm_usbid_configure);
@@ -1646,6 +1656,9 @@ static int __devinit qpnp_adc_tm_probe(struct spmi_device *spmi)
 		pr_err("multi meas en failed\n");
 		goto fail;
 	}
+
+	adc_tm->usb_id_ext_pull_up = of_property_read_bool(node,
+						"usb-id-ext-pull-up");
 
 	adc_tm->adc_tm_initialized = true;
 
