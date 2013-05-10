@@ -50,6 +50,9 @@ static uint16_t revision;
 static int ov10820_ov660_rev_check;
 module_param(ov10820_ov660_rev_check, int, 0644);
 
+static int update_ov660_gain = 1;
+module_param(update_ov660_gain, int, 0644);
+
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
 };
@@ -939,6 +942,8 @@ static int32_t ov10820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 				global_gain_addr, gain,
 				MSM_CAMERA_I2C_BYTE_DATA);
 		s_ctrl->func_tbl->sensor_group_hold_off(s_ctrl);
+		if (update_ov660_gain)
+			ov660_set_exposure_gain2(gain, line);
 	}
 
 	return 0;
