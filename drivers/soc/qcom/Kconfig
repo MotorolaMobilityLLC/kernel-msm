@@ -919,4 +919,10 @@ config BOOTINFO
 	  from both kernel context (via function call) and user
 	  context (via /proc/bootinfo).
 
+config MMI_UNIT_INFO
+	default n
+	bool "Motorola Mobility Unit Info"
+	help
+	Provide mechanism to expose unit information to other cpu via smem.
+
 endif # ARCH_MSM
