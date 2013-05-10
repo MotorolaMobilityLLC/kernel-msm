@@ -1622,31 +1622,51 @@ u32 vid_enc_free_buffer(struct video_client_ctx *client_ctx,
 {
 	enum vcd_buffer_type buffer_vcd = VCD_BUFFER_INPUT;
 	enum buffer_dir dir_buffer = BUFFER_TYPE_INPUT;
-	u32 vcd_status = VCD_ERR_FAIL;
-	unsigned long kernel_vaddr;
+	unsigned long kernel_vaddr = 0;
+	unsigned long user_vaddr = 0;
+	unsigned long phy_addr = 0;
+	int pmem_fd = 0;
+	struct file *file;
+	s32 buffer_index = -1;
 
-	if (!client_ctx || !buffer_info)
+	if (!client_ctx || !buffer_info) {
+		ERR("%s(): wrong buffer, 0x%x, 0x%x", __func__,
+			(u32)client_ctx, (u32)buffer_info);
 		return false;
+	}
 
 	if (buffer == VEN_BUFFER_TYPE_OUTPUT) {
 		dir_buffer = BUFFER_TYPE_OUTPUT;
 		buffer_vcd = VCD_BUFFER_OUTPUT;
 	}
+
+	user_vaddr = (unsigned long)buffer_info->pbuffer;
+	if (!vidc_lookup_addr_table(client_ctx, dir_buffer,
+				true, &user_vaddr, &kernel_vaddr,
+				&phy_addr, &pmem_fd, &file,
+				&buffer_index)) {
+		ERR("%s(): WNG: user_virt_addr = %p has not been set",
+		    __func__, buffer_info->pbuffer);
+		return true;
+	}
+
+	if (vcd_free_buffer(client_ctx->vcd_handle, buffer_vcd,
+				(u8 *)kernel_vaddr)) {
+		ERR("%s(): WNG: vcd_free_buffer(0x%x, %u, 0x%x) failed.",
+		    __func__, (u32)client_ctx->vcd_handle,
+		    (u32)buffer_vcd, (u32)kernel_vaddr);
+	}
+
 	/*If buffer NOT set, ignore */
 	if (!vidc_delete_addr_table(client_ctx, dir_buffer,
 				(unsigned long)buffer_info->pbuffer,
 				&kernel_vaddr)) {
-		DBG("%s() : user_virt_addr = %p has not been set.",
+		ERR("%s(): WNG: user_virt_addr = %p has not been set.",
 		    __func__, buffer_info->pbuffer);
 		return true;
 	}
-	vcd_status = vcd_free_buffer(client_ctx->vcd_handle, buffer_vcd,
-					 (u8 *)kernel_vaddr);
 
-	if (!vcd_status)
-		return true;
-	else
-		return false;
+	return true;
 }
 
 u32 vid_enc_encode_frame(struct video_client_ctx *client_ctx,
