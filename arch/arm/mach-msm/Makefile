@@ -439,3 +439,4 @@ obj-$(CONFIG_WALL_CLK_SYSFS) += wallclk_sysfs.o
 obj-$(CONFIG_HAS_MACH_MEMUTILS) += memutils/
 obj-$(CONFIG_ARCH_RANDOM) += early_random.o
 obj-$(CONFIG_MMI_RAM_INFO) += mmi-ram-info.o
+obj-$(CONFIG_MMI_UNIT_INFO) += mmi-unit-info.o
