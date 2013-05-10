@@ -962,8 +962,10 @@ ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 	}
 	if (!num_of_on_cmds) {
 		pr_err("%s:%d, No ON cmds specified", __func__, __LINE__);
-		if (on_cmds)
+		if (on_cmds) {
 			kfree(on_cmds);
+			on_cmds = prev_on_cmds;
+		}
 		ret = -EINVAL;
 		goto write_error;
 	}
@@ -974,8 +976,10 @@ ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 		kzalloc((num_of_on_cmds * sizeof(struct dsi_cmd_desc)),
 						GFP_KERNEL);
 	if (!(panel_data->dsi_panel_on_cmds)->buf) {
-		if (on_cmds)
+		if (on_cmds) {
 			kfree(on_cmds);
+			on_cmds = prev_on_cmds;
+		}
 		ret = -ENOMEM;
 		goto write_error;
 	}
