@@ -687,6 +687,36 @@ static struct msm_gpiomux_config slimport_configs[] __initdata = {
 
 };
 
+static struct gpiomux_setting headset_active_cfg_gpio65 ={
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir  = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting headset_active_cfg_gpio64 ={
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir  = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config headset_configs[] ={
+	{
+		.gpio = 64,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &headset_active_cfg_gpio64,
+		},
+	},
+	{
+		.gpio = 65,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &headset_active_cfg_gpio65,
+		},
+	},
+};
+
+
 #if defined(CONFIG_MSM8974_PWM_VIBRATOR)
 static struct gpiomux_setting vibrator_suspend_cfg = {
        .func = GPIOMUX_FUNC_GPIO,
@@ -1190,6 +1220,10 @@ void __init msm_8974_init_gpiomux(void)
 		msm_gpiomux_install_nowrite(msm_display_configs,
 			ARRAY_SIZE(msm_display_configs));
 	}
+
+	if (HW_REV_F != lge_get_board_revno())
+		msm_gpiomux_install(headset_configs,
+				ARRAY_SIZE(headset_configs));
 
 #if defined(CONFIG_MSM8974_PWM_VIBRATOR)
 	msm_gpiomux_install(vibrator_configs, ARRAY_SIZE(vibrator_configs));
