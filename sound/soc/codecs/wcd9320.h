@@ -148,4 +148,6 @@ extern int taiko_hs_detect(struct snd_soc_codec *codec,
 extern void *taiko_get_afe_config(struct snd_soc_codec *codec,
 				  enum afe_config_type config_type);
 
+extern int is_mbhc_disabled(void);
+
 #endif

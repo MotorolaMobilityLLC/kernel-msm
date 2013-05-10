@@ -3452,6 +3452,10 @@ int wcd9xxx_mbhc_init(struct wcd9xxx_mbhc *mbhc, struct wcd9xxx_resmgr *resmgr,
 	wcd9xxx_init_debugfs(mbhc);
 
 	core = mbhc->resmgr->core;
+
+	if (is_mbhc_disabled())
+		goto skip;
+
 	ret = wcd9xxx_request_irq(core, WCD9XXX_IRQ_MBHC_INSERTION,
 				  wcd9xxx_hs_insert_irq,
 				  "Headset insert detect", mbhc);
@@ -3489,6 +3493,7 @@ int wcd9xxx_mbhc_init(struct wcd9xxx_mbhc *mbhc, struct wcd9xxx_resmgr *resmgr,
 		goto err_release_irq;
 	}
 
+skip :
 	ret = wcd9xxx_request_irq(core, WCD9XXX_IRQ_HPH_PA_OCPL_FAULT,
 				  wcd9xxx_hphl_ocp_irq, "HPH_L OCP detect",
 				  mbhc);
