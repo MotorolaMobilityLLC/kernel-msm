@@ -130,6 +130,10 @@
 			status = "ok";
 		};
 	};
+
+	qcom,msm-thermal {
+		qcom,limit-temp = <90>;
+	};
 };
 
 &spmi_bus {
