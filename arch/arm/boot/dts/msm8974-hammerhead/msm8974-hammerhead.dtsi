@@ -84,6 +84,8 @@
 		qcom,model = "msm8974-taiko-mtp-snd-card";
 		qcom,mbhc-gpio-level-insert = <0>;
 
+		qcom,mbhc-disabled = <1>;
+
 		qcom,hdmi-audio-rx;
 
 		qcom,audio-routing =
@@ -111,6 +113,16 @@
 		qcom,cdc-mclk-gpios = <&pm8941_gpios 15 0>;
 		taiko-mclk-clk = <&pm8941_clkdiv1>;
 		qcom,taiko-mclk-clk-freq = <9600000>;
+	};
+
+	maxim_detic:maxim_max1462x {
+		compatible = "maxim,max1462x";
+		status = "ok";
+		interrupt-parent = <&msmgpio>;
+		interrupts = <65 0x3 64 0x3>;
+		max1462x,gpio_detect = <&msmgpio 65 0x00>;
+		max1462x,gpio_mic_en = <&pm8941_gpios 29 0x00>;
+		max1462x,gpio_key = <&msmgpio 64 0x00>;
 	};
 
 	i2c@f9967000 {
@@ -639,6 +651,14 @@
 	};
 
 	mpp@a500 { /* MPP 6 */
+		/* Maxim Headset Detection */
+		qcom,mode = <4>; /* QPNP_PIN_MODE_AIN */
+		qcom,invert = <0>; /*no invert*/
+		qcom,output-type = <0>; /* CMOS */
+		qcom,vin-sel = <2>; /* PM8941_S3 1.8V > 1.6V */
+		qcom,src-sel = <0>; /* CONSTANT */
+		qcom,ain-route = <1>;
+		qcom,master-en = <1>;
 	};
 
 	mpp@a600 { /* MPP 7 */

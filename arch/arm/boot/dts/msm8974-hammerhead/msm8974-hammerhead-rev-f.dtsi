@@ -43,6 +43,14 @@
 		status = "ok";
 		qcom,cont-splash-enabled;
 	};
+
+	maxim_detic:maxim_max1462x {
+		status = "disabled";
+	};
+
+	sound {
+		qcom,mbhc-disabled = <0>;
+	};
 };
 
 &sdcc2 {
