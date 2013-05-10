@@ -772,14 +772,14 @@ new_utag(struct file *file, const char __user *buffer,
 		if (NULL != cur) {
 			pr_err("%s error can not create [%s]. Already in use\n",
 			       __func__, payload);
-			return count;
+			goto out;
 		} else {
 		/* Add new utag after head, store changed partition */
 			cur = kcalloc(1, sizeof(struct utag), GFP_KERNEL);
 			if (!cur)
-				return count;
+				goto out;
+			strlcpy(cur->name, payload, MAX_UTAG_NAME);
 			split_name(payload, uname, utype);
-			strlcpy(cur->name, uname, MAX_UTAG_NAME);
 			cur->next = tags->next;
 			tags->next = cur;
 
@@ -788,13 +788,13 @@ new_utag(struct file *file, const char __user *buffer,
 				pr_err
 				    ("%s error on store tags [%s] status %d\n",
 				     __func__, proc->name, status);
-				return count;
+				goto out;
 			}
 		/* Add procfs elements for utag access */
 			dir = proc_mkdir(uname, dir_root);
 			if (!dir) {
 				pr_err("%s Failed to create dir\n", __func__);
-				return count;
+				goto out;
 			}
 			dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
 			if (dnode) {
@@ -809,7 +809,7 @@ new_utag(struct file *file, const char __user *buffer,
 		}
 	}
 
-	free_tags(tags);
+out:	free_tags(tags);
 	return count;
 }
 
@@ -898,7 +898,8 @@ static int __init config_init(void)
 	dir_root = proc_mkdir("config", NULL);
 	if (!dir_root) {
 		pr_err("%s Failed to create dir entry\n", __func__);
-		return -EFAULT;
+		free_tags(tags);
+		return -EIO;
 	}
 	/* skip utags head */
 	cur = tags->next;
@@ -910,7 +911,7 @@ static int __init config_init(void)
 		dir = proc_mkdir(utag_name, dir_root);
 		if (!dir) {
 			pr_err("%s Failed to create dir\n", __func__);
-			return -EFAULT;
+			goto out;
 		}
 		dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
 		if (dnode) {
@@ -937,6 +938,9 @@ static int __init config_init(void)
 
 	utag_file("all", "raw", OUT_RAW, dir, &dump_fops);
 	utag_file("all", "new", OUT_NEW, dir, &new_fops);
+
+out:	free_tags(tags);
+
 	return 0;
 }
 
