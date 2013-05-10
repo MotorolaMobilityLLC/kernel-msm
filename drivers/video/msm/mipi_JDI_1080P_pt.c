@@ -75,6 +75,9 @@ static int __init mipi_JDI_1080P_pt_init(void)
 	pinfo.type = MIPI_CMD_PANEL;
 	pinfo.lcd.vsync_enable = TRUE;
 	pinfo.lcd.hw_vsync_mode = TRUE;
+	pinfo.lcd.v_back_porch = 6;
+	pinfo.lcd.v_front_porch = 3;
+	pinfo.lcd.v_pulse_width = 5;
 	pinfo.lcd.refx100 = 6032; /* adjust refx100 to prevent tearing */
 	pinfo.clk_rate = 1000000000;
 

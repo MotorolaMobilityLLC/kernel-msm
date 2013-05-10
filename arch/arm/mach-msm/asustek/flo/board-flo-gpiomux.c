@@ -423,6 +423,18 @@ static struct gpiomux_setting gsbi3_active_cfg = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting mdp_vsync_suspend_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting mdp_vsync_active_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 static struct gpiomux_setting hdmi_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -519,6 +531,16 @@ static struct msm_gpiomux_config cyts_gpio_alt_config[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cyts_sleep_act_cfg,
 			[GPIOMUX_SUSPENDED] = &cyts_sleep_sus_cfg,
+		},
+	},
+};
+
+static struct msm_gpiomux_config msm8960_mdp_vsync_configs[] __initdata = {
+	{
+		.gpio = 0,
+		.settings = {
+			 [GPIOMUX_ACTIVE]    = &mdp_vsync_active_cfg,
+			[GPIOMUX_SUSPENDED] = &mdp_vsync_suspend_cfg,
 		},
 	},
 };
@@ -1636,6 +1658,9 @@ void __init apq8064_init_gpiomux(void)
 		pr_err(KERN_ERR "msm_gpiomux_init failed %d\n", rc);
 		return;
 	}
+
+	msm_gpiomux_install(msm8960_mdp_vsync_configs,
+			ARRAY_SIZE(msm8960_mdp_vsync_configs));
 
 	msm_gpiomux_install(wcnss_5wire_interface,
 			ARRAY_SIZE(wcnss_5wire_interface));
