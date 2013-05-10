@@ -510,6 +510,14 @@ struct msm_mhl_platform_data {
 	bool mhl_enabled;
 };
 
+/**
+ * msm_i2c_platform_data: i2c-qup driver configuration data
+ *
+ * @active_only when set, vote only when system active, unvote when system idle.
+ *       When unset, voting using runtime pm. When set optimises for
+ *       performance. When unset optimises for power.
+ * @master_id master id number of the i2c core or its wrapper (BLSP/GSBI).
+ */
 struct msm_i2c_platform_data {
 	int clk_freq;
 	uint32_t rmutex;
@@ -523,6 +531,8 @@ struct msm_i2c_platform_data {
 	int use_gsbi_shared_mode;
 	int keep_ahb_clk_on;
 	void (*msm_i2c_config_gpio)(int iface, int config_type);
+	bool active_only;
+	uint32_t master_id;
 };
 
 struct msm_i2c_ssbi_platform_data {
