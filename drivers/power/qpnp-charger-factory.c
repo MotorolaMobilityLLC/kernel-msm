@@ -616,90 +616,13 @@ qpnp_chg_is_dc_chg_plugged_in(struct qpnp_chg_chip *chip)
 static int
 qpnp_chg_idcmax_set(struct qpnp_chg_chip *chip, int mA)
 {
-	int rc = 0;
-	u8 dc = 0;
-
-	if (mA < QPNP_CHG_I_MAX_MIN_100
-			|| mA > QPNP_CHG_I_MAX_MAX_MA) {
-		pr_err("bad mA=%d asked to set\n", mA);
-		return -EINVAL;
-	}
-
-	if (mA == QPNP_CHG_I_MAX_MIN_100) {
-		dc = 0x00;
-		pr_debug("current=%d setting %02x\n", mA, dc);
-		return qpnp_chg_write(chip, &dc,
-			chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
-	} else if (mA == QPNP_CHG_I_MAX_MIN_150) {
-		dc = 0x01;
-		pr_debug("current=%d setting %02x\n", mA, dc);
-		return qpnp_chg_write(chip, &dc,
-			chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
-	}
-
-	dc = mA / QPNP_CHG_I_MAXSTEP_MA;
-
-	pr_debug("current=%d setting 0x%x\n", mA, dc);
-	rc = qpnp_chg_write(chip, &dc,
-		chip->dc_chgpth_base + CHGR_I_MAX_REG, 1);
-
-	return rc;
+	return 0;
 }
 
 static int
 qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 {
-	int rc = 0;
-	u8 usb_reg = 0, temp = 8;
-
-	if (mA < QPNP_CHG_I_MAX_MIN_100
-			|| mA > QPNP_CHG_I_MAX_MAX_MA) {
-		pr_err("bad mA=%d asked to set\n", mA);
-		return -EINVAL;
-	}
-
-	if (mA == QPNP_CHG_I_MAX_MIN_100) {
-		usb_reg = 0x00;
-		pr_debug("current=%d setting %02x\n", mA, usb_reg);
-		return qpnp_chg_write(chip, &usb_reg,
-		chip->usb_chgpth_base + CHGR_I_MAX_REG, 1);
-	} else if (mA == QPNP_CHG_I_MAX_MIN_150) {
-		usb_reg = 0x01;
-		pr_debug("current=%d setting %02x\n", mA, usb_reg);
-		return qpnp_chg_write(chip, &usb_reg,
-		chip->usb_chgpth_base + CHGR_I_MAX_REG, 1);
-	}
-
-	/* Impose input current limit */
-	if (chip->maxinput_usb_ma)
-		mA = (chip->maxinput_usb_ma) <= mA ? chip->maxinput_usb_ma : mA;
-
-	usb_reg = mA / QPNP_CHG_I_MAXSTEP_MA;
-
-	if (chip->flags & CHG_FLAGS_VCP_WA) {
-		temp = 0xA5;
-		rc =  qpnp_chg_write(chip, &temp,
-			chip->buck_base + SEC_ACCESS, 1);
-		rc =  qpnp_chg_masked_write(chip,
-			chip->buck_base + CHGR_BUCK_COMPARATOR_OVRIDE_3,
-			0x0C, 0x0C, 1);
-	}
-
-	pr_debug("current=%d setting 0x%x\n", mA, usb_reg);
-	rc = qpnp_chg_write(chip, &usb_reg,
-		chip->usb_chgpth_base + CHGR_I_MAX_REG, 1);
-
-	if (chip->flags & CHG_FLAGS_VCP_WA) {
-		temp = 0xA5;
-		udelay(200);
-		rc =  qpnp_chg_write(chip, &temp,
-			chip->buck_base + SEC_ACCESS, 1);
-		rc =  qpnp_chg_masked_write(chip,
-			chip->buck_base + CHGR_BUCK_COMPARATOR_OVRIDE_3,
-			0x0C, 0x00, 1);
-	}
-
-	return rc;
+	return 0;
 }
 
 #define QPNP_CHG_VINMIN_MIN_MV		4200
@@ -710,30 +633,11 @@ qpnp_chg_iusbmax_set(struct qpnp_chg_chip *chip, int mA)
 #define QPNP_CHG_VINMIN_STEP_HIGH_MV	200
 #define QPNP_CHG_VINMIN_MASK		0x1F
 #define QPNP_CHG_VINMIN_MIN_VAL	0x10
+
 static int
 qpnp_chg_vinmin_set(struct qpnp_chg_chip *chip, int voltage)
 {
-	u8 temp;
-
-	if (voltage < QPNP_CHG_VINMIN_MIN_MV
-			|| voltage > QPNP_CHG_VINMIN_MAX_MV) {
-		pr_err("bad mV=%d asked to set\n", voltage);
-		return -EINVAL;
-	}
-	if (voltage >= QPNP_CHG_VINMIN_HIGH_MIN_MV) {
-		temp = QPNP_CHG_VINMIN_HIGH_MIN_VAL;
-		temp += (voltage - QPNP_CHG_VINMIN_MIN_MV)
-			/ QPNP_CHG_VINMIN_STEP_HIGH_MV;
-	} else {
-		temp = QPNP_CHG_VINMIN_MIN_VAL;
-		temp += (voltage - QPNP_CHG_VINMIN_MIN_MV)
-			/ QPNP_CHG_VINMIN_STEP_MV;
-	}
-
-	pr_debug("voltage=%d setting %02x\n", voltage, temp);
-	return qpnp_chg_masked_write(chip,
-			chip->chgr_base + CHGR_VIN_MIN,
-			QPNP_CHG_VINMIN_MASK, temp, 1);
+	return 0;
 }
 
 static int
@@ -792,18 +696,13 @@ qpnp_chg_usb_iusbmax_get(struct qpnp_chg_chip *chip)
 static int
 qpnp_chg_usb_suspend_enable(struct qpnp_chg_chip *chip, int enable)
 {
-	return qpnp_chg_masked_write(chip,
-			chip->usb_chgpth_base + CHGR_USB_USB_SUSP,
-			USB_SUSPEND_BIT,
-			enable ? USB_SUSPEND_BIT : 0, 1);
+	return 0;
 }
 
 static int
 qpnp_chg_charge_en(struct qpnp_chg_chip *chip, int enable)
 {
-	return qpnp_chg_masked_write(chip, chip->chgr_base + CHGR_CHG_CTRL,
-			CHGR_CHG_EN,
-			enable ? CHGR_CHG_EN : 0, 1);
+	return 0;
 }
 
 static int
