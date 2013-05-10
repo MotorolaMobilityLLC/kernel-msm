@@ -2957,6 +2957,8 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
 {
     VOS_STATUS status = VOS_STATUS_SUCCESS;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
+    hdd_context_t *pHddCtx;
+    hdd_station_ctx_t *pHddStaCtx;
     v_MACADDR_t STAMacAddress;
 #ifdef FEATURE_WLAN_TDLS
     tCsrStaParams StaParams = {0};
@@ -2964,7 +2966,24 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
 #endif
     ENTER();
 
-    if ( (WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress )
+    if ((NULL == pAdapter))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "invalid adapter ");
+        return -EINVAL;
+    }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+    if ((NULL == pHddCtx) || (NULL == pHddStaCtx))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "invalid HDD state or HDD station context");
+        return -EINVAL;
+    }
+
+    if (pHddCtx->isLogpInProgress)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s:LOGP in Progress. Ignore!!!", __func__);
@@ -2981,14 +3000,17 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
             status = hdd_softap_change_STA_state( pAdapter, &STAMacAddress,
                                                   WLANTL_STA_AUTHENTICATED);
 
-            VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Station MAC address does not matching", __func__);
-            return -EINVAL;
+            if (status != VOS_STATUS_SUCCESS)
+            {
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                         "%s: Not able to change TL state to AUTHENTICATED", __func__);
+                return -EINVAL;
+            }
         }
     }
-#ifdef FEATURE_WLAN_TDLS
     else if ((pAdapter->device_mode == WLAN_HDD_INFRA_STATION)
           || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)) {
+#ifdef FEATURE_WLAN_TDLS
         if (params->sta_flags_set & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
             StaParams.capability = params->capability;
             StaParams.uapsd_queues = params->uapsd_queues;
@@ -3055,37 +3077,26 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
                 return -EINVAL;
             }
         }
-    }
 #endif
+        if(params->sta_flags_set & BIT(NL80211_STA_FLAG_AUTHORIZED))
+        {
+            status = WLANTL_ChangeSTAState(pHddCtx->pvosContext, pHddStaCtx->conn_info.staId[ 0 ],
+                                           WLANTL_STA_AUTHENTICATED);
+            if (status != VOS_STATUS_SUCCESS)
+            {
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                          "%s: Not able to change TL state to AUTHENTICATED", __func__);
+                return -EINVAL;
+            }
+            pHddStaCtx->conn_info.uIsAuthenticated = VOS_TRUE;
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                    "%s: TL Moving to Authenticated state", __func__);
+         }
+     }
 
     EXIT();
     return status;
 }
-
-/*
- * FUNCTION: wlan_hdd_cfg80211_get_ibss_peer_staidx
- * This function is used to get peer station index in IBSS mode
- */
-static u8 wlan_hdd_cfg80211_get_ibss_peer_staidx(hdd_adapter_t* pAdapter)
-{
-    u8 idx = 0;
-    u8 temp[VOS_MAC_ADDR_SIZE] = {0};
-    ENTER();
-    memset(temp, 0, VOS_MAC_ADDR_SIZE);
-    for ( idx = 0; idx < HDD_MAX_NUM_IBSS_STA; idx++ )
-    {
-        if ( (0 !=
-            (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.staId[idx])
-          && memcmp((u8*)&(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.peerMacAddress[idx],
-                                                     temp, VOS_MAC_ADDR_SIZE)
-           )
-        {
-            return idx;
-        }
-    }
-    return idx;
-}
-
 
 /*
  * FUNCTION: wlan_hdd_cfg80211_add_key
@@ -3234,14 +3245,6 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
     hddLog(VOS_TRACE_LEVEL_INFO_MED, "%s: encryption type %d",
             __func__, setKey.encType);
 
-
-
-    if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
-            || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
-       )
-    {
-
-
         if (
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
                 (!pairwise)
@@ -3267,6 +3270,9 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
             vos_mem_copy(setKey.peerMac, mac_addr,WNI_CFG_BSSID_LEN);
         }
 
+    if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) ||
+           (pAdapter->device_mode == WLAN_HDD_P2P_GO))
+    {
         pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter);
         if( pHostapdState->bssState == BSS_START )
         {
@@ -3310,112 +3316,6 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
                 params->key, params->key_len);
 
         pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_SETTING_KEY;
-
-    if (!(  ( IW_AUTH_KEY_MGMT_802_1X
-                    == (pWextState->authKeyMgmt & IW_AUTH_KEY_MGMT_802_1X))
-                    && (eCSR_AUTH_TYPE_OPEN_SYSTEM == pHddStaCtx->conn_info.authType)
-             )
-                &&
-                (  (WLAN_CIPHER_SUITE_WEP40 == params->cipher)
-                   || (WLAN_CIPHER_SUITE_WEP104 == params->cipher)
-                )
-           )
-        {
-            /* in case of static WEP, macaddr/bssid is not coming from nl80211
-             * interface, copy bssid for pairwise key and group macaddr for
-             * group key initialization*/
-
-            tCsrRoamProfile          *pRoamProfile = &pWextState->roamProfile;
-
-            pWextState->roamProfile.negotiatedUCEncryptionType =
-                pHddStaCtx->conn_info.ucEncryptionType =
-                ((WLAN_CIPHER_SUITE_WEP40 == params->cipher) ?
-                 eCSR_ENCRYPT_TYPE_WEP40_STATICKEY :
-                 eCSR_ENCRYPT_TYPE_WEP104_STATICKEY);
-
-
-            hddLog(VOS_TRACE_LEVEL_INFO_MED,
-                    "%s: Negotiated encryption type %d", __func__,
-                    pWextState->roamProfile.negotiatedUCEncryptionType);
-
-            sme_SetCfgPrivacy((tpAniSirGlobal)WLAN_HDD_GET_HAL_CTX(pAdapter),
-                    &pWextState->roamProfile, true);
-            setKey.keyLength = 0;
-            setKey.keyDirection =  eSIR_TX_RX;
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
-            if (pairwise)
-            {
-#endif
-                if (mac_addr)
-                {
-                    vos_mem_copy(setKey.peerMac, mac_addr,WNI_CFG_BSSID_LEN);
-                }
-                else
-                {
-                    /* macaddr is NULL, set the peerMac to bssId in case of BSS,
-                     * and peerMacAddress in case of IBSS*/
-                    if (eCSR_BSS_TYPE_START_IBSS == pRoamProfile->BSSType)
-                    {
-                        u8 staidx = wlan_hdd_cfg80211_get_ibss_peer_staidx(pAdapter);
-                        if (HDD_MAX_NUM_IBSS_STA != staidx)
-                        {
-                            vos_mem_copy(setKey.peerMac,
-                                    &pHddStaCtx->conn_info.peerMacAddress[staidx],
-                                    WNI_CFG_BSSID_LEN);
-
-                        }
-                        else
-                        {
-                            hddLog(VOS_TRACE_LEVEL_ERROR, "%s: No peerMac found",
-                                    __func__);
-                            return -EOPNOTSUPP;
-                        }
-                    }
-                    else
-                    {
-                        vos_mem_copy(setKey.peerMac,
-                                &pHddStaCtx->conn_info.bssId[0],
-                                WNI_CFG_BSSID_LEN);
-                    }
-                }
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
-            }
-            else
-            {
-                /* set group key*/
-                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                        "%s- %d: setting Group key",
-                        __func__, __LINE__);
-                setKey.keyDirection = eSIR_RX_ONLY;
-                vos_mem_copy(setKey.peerMac, groupmacaddr, WNI_CFG_BSSID_LEN);
-            }
-#endif
-        }
-        else if (
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
-                (!pairwise)
-#else
-                (!mac_addr || is_broadcast_ether_addr(mac_addr))
-#endif
-                )
-        {
-            /* set group key*/
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                    "%s- %d: setting Group key",
-                    __func__, __LINE__);
-            setKey.keyDirection = eSIR_RX_ONLY;
-            vos_mem_copy(setKey.peerMac,groupmacaddr,WNI_CFG_BSSID_LEN);
-        }
-        else
-        {
-            /* set pairwise key*/
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                    "%s- %d: setting pairwise key",
-                    __func__, __LINE__);
-            setKey.keyDirection = eSIR_TX_RX;
-            vos_mem_copy(setKey.peerMac, mac_addr,WNI_CFG_BSSID_LEN);
-        }
 
         hddLog(VOS_TRACE_LEVEL_INFO_MED,
                 "%s: set key for peerMac %2x:%2x:%2x:%2x:%2x:%2x, direction %d",
@@ -3702,11 +3602,28 @@ static int wlan_hdd_cfg80211_set_default_key( struct wiphy *wiphy,
 #endif
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev );
-    hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     int status = 0;
-    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    hdd_wext_state_t *pWextState;
+    hdd_station_ctx_t *pHddStaCtx;
 
     ENTER();
+
+    if ((NULL == pAdapter))
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+          "invalid adapter");
+       return -EINVAL;
+    }
+
+    pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+    if ((NULL == pWextState) || (NULL == pHddStaCtx))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "invalid Wext state or HDD context");
+        return -EINVAL;
+    }
 
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d key_index = %d \n",
                                          __func__,pAdapter->device_mode, key_index);
@@ -3730,8 +3647,7 @@ static int wlan_hdd_cfg80211_set_default_key( struct wiphy *wiphy,
      || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
        )
     {
-        if ( (key_index != pWextState->roamProfile.Keys.defaultIndex) &&
-             (eCSR_ENCRYPT_TYPE_TKIP !=
+        if ( (eCSR_ENCRYPT_TYPE_TKIP !=
                 pWextState->roamProfile.EncryptionType.encryptionType[0]) &&
              (eCSR_ENCRYPT_TYPE_AES !=
                 pWextState->roamProfile.EncryptionType.encryptionType[0])
@@ -3756,11 +3672,25 @@ static int wlan_hdd_cfg80211_set_default_key( struct wiphy *wiphy,
                     &Keys->KeyMaterial[key_index][0],
                     Keys->KeyLength[key_index]);
 
-            setKey.keyDirection = eSIR_TX_ONLY;
+            setKey.keyDirection = eSIR_TX_RX;
 
             vos_mem_copy(setKey.peerMac,
                     &pHddStaCtx->conn_info.bssId[0],
                     WNI_CFG_BSSID_LEN);
+
+            if (Keys->KeyLength[key_index] == CSR_WEP40_KEY_LEN &&
+               pWextState->roamProfile.EncryptionType.encryptionType[0] ==
+               eCSR_ENCRYPT_TYPE_WEP104)
+            {
+                /*In the case of dynamic wep supplicant hardcodes DWEP type to eCSR_ENCRYPT_TYPE_WEP104
+                 even though ap is configured for WEP-40 encryption. In this canse the key length
+                 is 5 but the encryption type is 104 hence checking the key langht(5) and encryption
+                 type(104) and switching encryption type to 40*/
+                pWextState->roamProfile.EncryptionType.encryptionType[0] =
+                   eCSR_ENCRYPT_TYPE_WEP40;
+                pWextState->roamProfile.mcEncryptionType.encryptionType[0] =
+                   eCSR_ENCRYPT_TYPE_WEP40;
+            }
 
             setKey.encType =
                 pWextState->roamProfile.EncryptionType.encryptionType[0];
@@ -4868,22 +4798,6 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
             /*set auth*/
             hdd_set_csr_auth_type(pAdapter, RSNAuthType);
         }
-        else if ( (pWextState->roamProfile.AuthType.authType[0] ==
-                    eCSR_AUTH_TYPE_OPEN_SYSTEM)
-                && ((pWextState->roamProfile.EncryptionType.encryptionType[0] ==
-                        eCSR_ENCRYPT_TYPE_WEP40_STATICKEY)
-                    || (pWextState->roamProfile.EncryptionType.encryptionType[0] ==
-                        eCSR_ENCRYPT_TYPE_WEP104_STATICKEY))
-                )
-        {
-            /*Android UI not having any option to configure the Authentication type to OPEN/SHARED;
-             * The authentication type will be always eCSR_AUTH_TYPE_OPEN_SYSTEM when WEP is used
-             * Use eCSR_AUTH_TYPE_AUTOSWITCH when WEP encryption used*/
-            (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.authType =
-                                                     eCSR_AUTH_TYPE_AUTOSWITCH;
-            pWextState->roamProfile.AuthType.authType[0] =
-                  (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.authType;
-        }
 #ifdef FEATURE_WLAN_WAPI
         if (pAdapter->wapi_info.nWapiMode)
         {
@@ -4993,8 +4907,13 @@ static int wlan_hdd_cfg80211_set_auth_type(hdd_adapter_t *pAdapter,
     /*set authentication type*/
     switch (auth_type)
     {
-        case NL80211_AUTHTYPE_OPEN_SYSTEM:
         case NL80211_AUTHTYPE_AUTOMATIC:
+            hddLog(VOS_TRACE_LEVEL_INFO,
+                    "%s: set authentication type to AUTOSWITCH", __func__);
+            pHddStaCtx->conn_info.authType = eCSR_AUTH_TYPE_AUTOSWITCH;
+            break;
+
+        case NL80211_AUTHTYPE_OPEN_SYSTEM:
 #ifdef WLAN_FEATURE_VOWIFI_11R
         case NL80211_AUTHTYPE_FT:
 #endif /* WLAN_FEATURE_VOWIFI_11R */
@@ -5114,19 +5033,11 @@ static int wlan_hdd_cfg80211_set_cipher( hdd_adapter_t *pAdapter,
                 break;
 
             case WLAN_CIPHER_SUITE_WEP40:
-                if ((IW_AUTH_KEY_MGMT_802_1X == pWextState->authKeyMgmt) &&
-                    (eCSR_AUTH_TYPE_OPEN_SYSTEM == pHddStaCtx->conn_info.authType))
-                    encryptionType = eCSR_ENCRYPT_TYPE_WEP40;
-                else
-                    encryptionType = eCSR_ENCRYPT_TYPE_WEP40_STATICKEY;
+                encryptionType = eCSR_ENCRYPT_TYPE_WEP40;
                 break;
 
             case WLAN_CIPHER_SUITE_WEP104:
-                if ((IW_AUTH_KEY_MGMT_802_1X == pWextState->authKeyMgmt) &&
-                    (eCSR_AUTH_TYPE_OPEN_SYSTEM == pHddStaCtx->conn_info.authType))
-                    encryptionType = eCSR_ENCRYPT_TYPE_WEP104;
-                else
-                    encryptionType = eCSR_ENCRYPT_TYPE_WEP104_STATICKEY;
+                encryptionType = eCSR_ENCRYPT_TYPE_WEP104;
                 break;
 
             case WLAN_CIPHER_SUITE_TKIP:
