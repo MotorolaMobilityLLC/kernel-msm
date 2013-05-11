@@ -154,7 +154,8 @@ struct tpa6165_regs {
 	u8 value;
 };
 
-extern int tpa6165_hs_detect(struct snd_soc_jack *hs_jack,
+extern int tpa6165_hs_detect(struct snd_soc_codec *codec,
+				struct snd_soc_jack *hs_jack,
 				struct snd_soc_jack *button_jack);
 
 extern void tpa6165_hp_event(int event);
