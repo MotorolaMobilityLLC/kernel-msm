@@ -76,6 +76,7 @@ struct tpa6165_data {
 	int special_hs;
 	int alwayson_micb;
 	int button_detect_state;
+	int mode;
 	struct mutex lock;
 	struct wake_lock wake_lock;
 	struct work_struct work;
@@ -391,6 +392,60 @@ static inline void tpa6165_remove_debugfs(void)
 {
 }
 #endif
+
+static char const *tpa6165_mode[] = {
+	"Default",
+	"TTY",
+};
+
+static int tpa6165_get_mode(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct tpa6165_data *tpa6165 =
+					i2c_get_clientdata(tpa6165_client);
+	ucontrol->value.integer.value[0] = tpa6165->mode;
+
+	return 0;
+}
+
+static int tpa6165_set_mode(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct tpa6165_data *tpa6165 =
+					i2c_get_clientdata(tpa6165_client);
+	uint8_t value = ucontrol->value.integer.value[0];
+
+	/* check for bounds */
+	if (value < 0 || (value > (ARRAY_SIZE(tpa6165_mode) - 1))) {
+		pr_err("%s: invalid mode value received\n", __func__);
+		return -EINVAL;
+	}
+
+	if (value)
+		/* enable tty mode */
+		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
+				0xc0, 0xff);
+	else
+		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
+				0x80, 0xff);
+
+	pr_debug("%s: mode set: %s\n", __func__, tpa6165_mode[value]);
+
+	tpa6165->mode = value;
+
+	return 1;
+}
+
+static const struct soc_enum tpa6165_mode_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tpa6165_mode), tpa6165_mode)
+};
+
+/* Mixer Controls */
+static const struct snd_kcontrol_new tpa6165_controls[] = {
+	SOC_ENUM_EXT("TPA6165 MODE", tpa6165_mode_enum,
+		       tpa6165_get_mode, tpa6165_set_mode
+		       ),
+};
 
 static void tpa6165_sleep(struct tpa6165_data *tpa6165, int sleep_state)
 {
@@ -869,6 +924,10 @@ int tpa6165_hs_detect(struct snd_soc_codec *codec)
 			}
 		}
 		tpa6165->button_jack = &button_jack;
+
+		/* add controls */
+		snd_soc_add_codec_controls(codec, tpa6165_controls,
+						ARRAY_SIZE(tpa6165_controls));
 
 		/* check device status registers for boot time detection */
 		tpa6165_update_device_status(tpa6165);
