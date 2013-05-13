@@ -24,14 +24,3 @@
 		status = "ok";
 	};
 };
-
-/* Touch Controllers */
-&i2c_5 {
-	synaptics@20 {
-		status = "ok";
-	};
-
-	cyttsp3_i2c@3b {
-		status = "ok";
-	};
-};
