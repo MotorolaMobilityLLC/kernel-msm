@@ -469,7 +469,8 @@ int audio_aio_release(struct inode *inode, struct file *file)
 	audio->drv_ops.out_flush(audio);
 	audio->drv_ops.in_flush(audio);
 	audio_aio_disable(audio);
-	audio_aio_unmap_ion_region(audio);
+	if (audio->stopped == 1)
+		audio_aio_unmap_ion_region(audio);
 	audio_aio_reset_ion_region(audio);
 	ion_client_destroy(audio->client);
 	audio->event_abort = 1;
