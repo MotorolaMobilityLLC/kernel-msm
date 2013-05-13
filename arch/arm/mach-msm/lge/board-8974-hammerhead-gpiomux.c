@@ -108,18 +108,6 @@ static struct gpiomux_setting max17048_int_config = {
 };
 #endif
 
-static struct gpiomux_setting touch_id_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.dir = GPIOMUX_IN,
-};
-
-static struct gpiomux_setting touch_id_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.dir = GPIOMUX_IN,
-};
-
 static struct gpiomux_setting touch_int_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
@@ -169,13 +157,6 @@ static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE] = &touch_int_act_cfg,
 			[GPIOMUX_SUSPENDED] = &touch_int_sus_cfg,
-		},
-	},
-	{
-		.gpio      = 4,			/* TOUCH ID */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &touch_id_act_cfg,
-			[GPIOMUX_SUSPENDED] = &touch_id_sus_cfg,
 		},
 	},
 };
