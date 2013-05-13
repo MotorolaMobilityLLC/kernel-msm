@@ -442,9 +442,9 @@
 		active-dis;
 		tps65132: regulator {
 			regulator-name = "tps65132";
-			regulator-boot-on = <1>;
-			regulator-min-microvolt = <5400000>;
-			regulator-max-microvolt = <5400000>;
+			regulator-min-microvolt = <4000000>;
+			regulator-max-microvolt = <6000000>;
+			startup-delay-us = <10000>;
 		};
 	};
 };
@@ -453,4 +453,8 @@
 	tapan_codec {
 		qcom,cdc-micbias1-ext-cap;
 	};
+};
+
+&mdss_dsi0 {
+	lcdbias-supply = <&tps65132>;
 };

@@ -30,3 +30,12 @@
 		status = "disabled";
 	};
 };
+
+/* Supplies necessary to support mot-cmi-720p */
+&mdss_dsi0 {
+	qcom,supply-names = "vddio", "vdda", "lcdbias";
+	qcom,supply-type = "regulator", "regulator", "regulator";
+	qcom,supply-min-voltage-level = <1800000 1200000 5400000>;
+	qcom,supply-max-voltage-level = <1800000 1200000 5400000>;
+	qcom,supply-peak-current = <100000 100000 100000>;
+};
