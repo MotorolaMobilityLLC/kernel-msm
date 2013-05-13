@@ -238,7 +238,7 @@ static int mdss_dsi_generic_lwrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	struct dsi_ctrl_hdr *dchdr;
 	char *bp;
 	u32 *hp;
-	int i, len;
+	int i, len = 0;
 
 	dchdr = &cm->dchdr;
 	bp = mdss_dsi_buf_reserve_hdr(dp, DSI_HOST_HDR_SIZE);
@@ -269,8 +269,9 @@ static int mdss_dsi_generic_lwrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 		*hp |= DSI_HDR_LAST;
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
+	len += DSI_HOST_HDR_SIZE;
 
-	return dp->len;
+	return len;
 }
 
 /*
@@ -313,8 +314,7 @@ static int mdss_dsi_generic_swrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	}
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 /*
@@ -357,7 +357,7 @@ static int mdss_dsi_generic_read(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	}
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 /*
@@ -368,7 +368,7 @@ static int mdss_dsi_dcs_lwrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	struct dsi_ctrl_hdr *dchdr;
 	char *bp;
 	u32 *hp;
-	int i, len;
+	int i, len = 0;
 
 	dchdr = &cm->dchdr;
 	bp = mdss_dsi_buf_reserve_hdr(dp, DSI_HOST_HDR_SIZE);
@@ -403,7 +403,8 @@ static int mdss_dsi_dcs_lwrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
 
-	return dp->len;
+	len += DSI_HOST_HDR_SIZE;
+	return len;
 }
 
 /*
@@ -437,7 +438,7 @@ static int mdss_dsi_dcs_swrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	*hp |= DSI_HDR_DATA2(0);
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-	return dp->len;
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 /*
@@ -468,8 +469,7 @@ static int mdss_dsi_dcs_swrite1(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	*hp |= DSI_HDR_DATA2(cm->payload[1]);	/* parameter */
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 /*
  * mipi dsi dcs read with 0 parameters
@@ -499,8 +499,7 @@ static int mdss_dsi_dcs_read(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	*hp |= DSI_HDR_DATA2(0);
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 static int mdss_dsi_cm_on(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
@@ -518,8 +517,7 @@ static int mdss_dsi_cm_on(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 		*hp |= DSI_HDR_LAST;
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 static int mdss_dsi_cm_off(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
@@ -537,8 +535,7 @@ static int mdss_dsi_cm_off(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 		*hp |= DSI_HDR_LAST;
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 static int mdss_dsi_peripheral_on(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
@@ -556,8 +553,7 @@ static int mdss_dsi_peripheral_on(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 		*hp |= DSI_HDR_LAST;
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 static int mdss_dsi_peripheral_off(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
@@ -575,8 +571,7 @@ static int mdss_dsi_peripheral_off(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 		*hp |= DSI_HDR_LAST;
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 static int mdss_dsi_set_max_pktsize(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
@@ -602,8 +597,7 @@ static int mdss_dsi_set_max_pktsize(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	*hp |= DSI_HDR_DATA2(cm->payload[1]);
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 static int mdss_dsi_null_pkt(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
@@ -623,8 +617,7 @@ static int mdss_dsi_null_pkt(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 		*hp |= DSI_HDR_LAST;
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 static int mdss_dsi_blank_pkt(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
@@ -644,8 +637,7 @@ static int mdss_dsi_blank_pkt(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 		*hp |= DSI_HDR_LAST;
 
 	mdss_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
-	return dp->len;	/* 4 bytes */
+	return DSI_HOST_HDR_SIZE; /* 4 bytes */
 }
 
 /*
@@ -1169,12 +1161,44 @@ int mdss_dsi_cmd_reg_tx(u32 data,
 	return 4;
 }
 
-
 static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 					struct dsi_buf *tp);
 
 static int mdss_dsi_cmd_dma_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_buf *rp, int rlen);
+
+static int mdss_dsi_cmds2buf_tx(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_cmd_desc *cmds, int cnt)
+{
+	struct dsi_buf *tp;
+	struct dsi_cmd_desc *cm;
+	struct dsi_ctrl_hdr *dchdr;
+	int len, tot = 0;
+
+	tp = &ctrl->tx_buf;
+	mdss_dsi_buf_init(tp);
+	cm = cmds;
+	len = 0;
+	while (cnt--) {
+		dchdr = &cm->dchdr;
+		mdss_dsi_buf_reserve(tp, len);
+		len = mdss_dsi_cmd_dma_add(tp, cm);
+		tot += len;
+		if (dchdr->last) {
+			tp->data = tp->start; /* begin of buf */
+			mdss_dsi_enable_irq(ctrl, DSI_CMD_TERM);
+			mdss_dsi_cmd_dma_tx(ctrl, tp);
+			if (dchdr->wait)
+				usleep(dchdr->wait * 1000);
+
+			mdss_dsi_buf_init(tp);
+			len = 0;
+		}
+		cm++;
+	}
+	return tot;
+}
+
 /*
  * mdss_dsi_cmds_tx:
  * thread context only
@@ -1182,11 +1206,8 @@ static int mdss_dsi_cmd_dma_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 		struct dsi_cmd_desc *cmds, int cnt)
 {
-	struct dsi_buf *tp;
-	struct dsi_cmd_desc *cm;
-	struct dsi_ctrl_hdr *dchdr;
 	u32 dsi_ctrl, data;
-	int i, video_mode;
+	int video_mode;
 
 	if (ctrl->shared_pdata.broadcast_enable) {
 		if (ctrl->ndx == DSI_CTRL_0) {
@@ -1222,18 +1243,7 @@ int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 		MIPI_OUTP((ctrl->ctrl_base) + 0x0004, data);
 	}
 
-	tp = &ctrl->tx_buf;
-	cm = cmds;
-	for (i = 0; i < cnt; i++) {
-		mdss_dsi_enable_irq(ctrl, DSI_CMD_TERM);
-		mdss_dsi_buf_init(tp);
-		mdss_dsi_cmd_dma_add(tp, cm);
-		mdss_dsi_cmd_dma_tx(ctrl, tp);
-		dchdr = &cm->dchdr;
-		if (dchdr->wait)
-			usleep(dchdr->wait * 1000);
-		cm++;
-	}
+	mdss_dsi_cmds2buf_tx(ctrl, cmds, cnt);
 
 	if (video_mode)
 		MIPI_OUTP((ctrl->ctrl_base) + 0x0004,
