@@ -41,7 +41,6 @@
 
 /*
  *
- * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limProcessDeauthFrame.cc contains the code
  * for processing Deauthentication Frame.
  * Author:        Chandra Modumudi
@@ -376,7 +375,15 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
                         }
                         else
                         {
-                           limDeleteTDLSPeers(pMac, psessionEntry);
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+                            if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
+                                (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
+                                    limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
+                                    return;
+                            }
+#endif
+
+                            limDeleteTDLSPeers(pMac, psessionEntry);
 #endif
                            /**
                             * This could be Deauthentication frame from

@@ -5527,6 +5527,38 @@ static int wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
 
 
 /*
+ * FUNCTION: wlan_hdd_disconnect
+ * This function is used to issue a disconnect request to SME
+ */
+int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
+{
+    int status = 0;
+    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
+    (WLAN_HDD_GET_CTX(pAdapter))->isAmpAllowed = VOS_TRUE;
+    INIT_COMPLETION(pAdapter->disconnect_comp_var);
+    /*issue disconnect*/
+    status = sme_RoamDisconnect( WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                 pAdapter->sessionId, reason);
+
+    if ( 0 != status )
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               "%s csrRoamDisconnect failure, returned %d \n",
+               __func__, (int)status );
+        return -EINVAL;
+    }
+    wait_for_completion_interruptible_timeout(
+                &pAdapter->disconnect_comp_var,
+                msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
+    /*stop tx queues*/
+    netif_tx_disable(pAdapter->dev);
+    netif_carrier_off(pAdapter->dev);
+    return status;
+}
+
+
+/*
  * FUNCTION: wlan_hdd_cfg80211_disconnect
  * This function is used to issue a disconnect request to SME
  */
@@ -5588,9 +5620,6 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                     reasonCode = eCSR_DISCONNECT_REASON_UNSPECIFIED;
                     break;
             }
-            pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
-            (WLAN_HDD_GET_CTX(pAdapter))->isAmpAllowed = VOS_TRUE;
-            INIT_COMPLETION(pAdapter->disconnect_comp_var);
 
 #ifdef FEATURE_WLAN_TDLS
             /* First clean up the tdls peers if any */
@@ -5611,26 +5640,14 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                 }
             }
 #endif
-            /*issue disconnect*/
-            status = sme_RoamDisconnect( WLAN_HDD_GET_HAL_CTX(pAdapter),
-                                         pAdapter->sessionId, reasonCode);
-
-            if ( 0 != status)
+            status = wlan_hdd_disconnect(pAdapter, reasonCode);
+            if ( 0 != status )
             {
                 hddLog(VOS_TRACE_LEVEL_ERROR,
-                        "%s csrRoamDisconnect failure, returned %d \n",
+                        "%s wlan_hdd_disconnect failure, returned %d \n",
                         __func__, (int)status );
                 return -EINVAL;
             }
-
-            wait_for_completion_interruptible_timeout(
-                   &pAdapter->disconnect_comp_var,
-                   msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
-
-
-            /*stop tx queues*/
-            netif_tx_disable(dev);
-            netif_carrier_off(dev);
         }
     }
     else
@@ -5640,6 +5657,7 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
 
     return status;
 }
+
 
 /*
  * FUNCTION: wlan_hdd_cfg80211_set_privacy_ibss
@@ -7095,6 +7113,11 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    int status = 0;
+    tANI_U8 staIdx;
+#endif
 #ifdef WLAN_FEATURE_TDLS_DEBUG
     const char *tdls_oper_str[]= {
         "NL80211_TDLS_DISCOVERY_REQ",
@@ -7214,6 +7237,23 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                               "%s: TDLS Peer Station doesn't exist.", __func__);
                 }
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+                if (pHddTdlsCtx->defer_link_lost_indication)
+                {
+                    if (( TRUE == pHddCtx->cfg_ini->fEnableTDLSOxygenSupport ) &&
+                        (wlan_hdd_tdlsConnectedPeers(pAdapter) == 0))
+                    {
+                        status = wlan_hdd_disconnect(pAdapter, eCSR_DISCONNECT_REASON_UNSPECIFIED);
+                        if ( 0 != status)
+                        {
+                            hddLog(VOS_TRACE_LEVEL_ERROR,
+                                   "%s wlan_hdd_disconnect failure, returned %d \n",
+                                   __func__, (int)status );
+                            return -EINVAL;
+                        }
+                    }
+                }
+#endif
             }
             break;
         case NL80211_TDLS_TEARDOWN:

@@ -191,6 +191,14 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                     mlmDeauthInd.deauthTrigger =  pStaDs->mlmStaContext.cleanupTrigger;
 
 #ifdef FEATURE_WLAN_TDLS
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+                    if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
+                        (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
+                            limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
+                            palFreeMemory(pMac->hHdd, pMsg);
+                            return ;
+                    }
+#endif
                     /* Delete all TDLS peers connected before leaving BSS*/
                     limDeleteTDLSPeers(pMac, psessionEntry);
 #endif
@@ -371,6 +379,13 @@ limTearDownLinkWithAp(tpAniSirGlobal pMac, tANI_U8 sessionId, tSirMacReasonCodes
         tLimMlmDeauthInd  mlmDeauthInd;
 
 #ifdef FEATURE_WLAN_TDLS
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+        if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
+            (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
+                limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
+                return;
+        }
+#endif
         /* Delete all TDLS peers connected before leaving BSS*/
         limDeleteTDLSPeers(pMac, psessionEntry);
 #endif

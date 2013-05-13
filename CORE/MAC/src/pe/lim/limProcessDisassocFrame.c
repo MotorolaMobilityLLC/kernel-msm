@@ -39,8 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-
-
 /*
  * This file limProcessDisassocFrame.cc contains the code
  * for processing Disassocation Frame.
@@ -242,7 +240,6 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
                 // Valid reasonCode in received Disassociation frame
                 break;
 
-            case eSIR_MAC_DEAUTH_LEAVING_BSS_REASON:
             case eSIR_MAC_DISASSOC_LEAVING_BSS_REASON:
                 // Valid reasonCode in received Disassociation frame
                 // as long as we're not about to channel switch
@@ -343,6 +340,13 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
         limRestorePreReassocState(pMac,eSIR_SME_REASSOC_REFUSED, reasonCode,psessionEntry);
         return;
     }
+#if defined(FEATURE_WLAN_TDLS) && defined(FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP)
+    if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
+        (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
+            limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
+            return;
+    }
+#endif
 
     limPostSmeMessage(pMac, LIM_MLM_DISASSOC_IND,
                       (tANI_U32 *) &mlmDisassocInd);
