@@ -58,8 +58,8 @@
 			status = "disabled";
 			reg = <0x6b>;
 			interrupt-parent = <&pm8941_gpios>;
-			interrupts = <30 0x2>;
-			ti,int-gpio = <&pm8941_gpios 30 0x02>;
+			interrupts = <22 0x2>;
+			ti,int-gpio = <&pm8941_gpios 22 0x02>;
 			ti,chg-current-ma = <1500>;
 			ti,term-current-ma = <128>;
 			ti,wlc-support;
