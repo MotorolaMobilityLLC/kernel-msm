@@ -5531,5 +5531,52 @@ tSirRetStatus limDeleteTDLSPeers(tpAniSirGlobal pMac, tpPESession psessionEntry)
 
     return eSIR_SUCCESS;
 }
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+/* Get the number of TDLS peer connected in the BSS */
+int limGetTDLSPeerCount(tpAniSirGlobal pMac, tpPESession psessionEntry)
+{
+    int i,tdlsPeerCount = 0;
+    /* Check all the set bit in peerAIDBitmap and return the number of TDLS peer counts */
+    for (i = 0; i < sizeof(psessionEntry->peerAIDBitmap)/sizeof(tANI_U32); i++)
+    {
+        tANI_U32 bitmap;
+        bitmap = psessionEntry->peerAIDBitmap[i];
+        while (bitmap)
+        {
+            tdlsPeerCount++;
+            bitmap >>= 1;
+        }
+    }
+    return tdlsPeerCount;
+}
 
+void limTDLSDisappearAPTrickInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psessionEntry)
+{
+    tSirMsgQ  mmhMsg;
+    tSirTdlsDisappearAPInd  *pSirTdlsDisappearAPInd;
+
+    if ( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSirTdlsDisappearAPInd, sizeof(tSirTdlsDisappearAPInd)))
+    {
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_TDLS_DEL_ALL_PEER_IND"));
+        return;
+    }
+
+    //messageType
+    pSirTdlsDisappearAPInd->messageType = eWNI_SME_TDLS_AP_DISAPPEAR_IND;
+    pSirTdlsDisappearAPInd->length = sizeof(tSirTdlsDisappearAPInd);
+
+    //sessionId
+    pSirTdlsDisappearAPInd->sessionId = psessionEntry->smeSessionId;
+    pSirTdlsDisappearAPInd->staId = pStaDs->staIndex ;
+    palCopyMemory( pMac->hHdd, pSirTdlsDisappearAPInd->staAddr,
+                           (tANI_U8 *) pStaDs->staAddr, sizeof(tSirMacAddr));
+
+    mmhMsg.type = eWNI_SME_TDLS_AP_DISAPPEAR_IND;
+    mmhMsg.bodyptr = pSirTdlsDisappearAPInd;
+    mmhMsg.bodyval = 0;
+
+
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+}
+#endif
 #endif

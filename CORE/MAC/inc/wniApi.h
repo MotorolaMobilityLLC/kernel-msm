@@ -343,6 +343,9 @@ enum eWniMsgTypes
     eWNI_SME_TDLS_DEL_STA_IND,
     eWNI_SME_TDLS_DEL_ALL_PEER_IND,
     eWNI_SME_MGMT_FRM_TX_COMPLETION_IND,
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+    eWNI_SME_TDLS_AP_DISAPPEAR_IND,
+#endif
 #endif
     //NOTE: If you are planning to add more mesages, please make sure that 
     //SIR_LIM_ITC_MSG_TYPES_BEGIN is moved appropriately. It is set as

@@ -1364,6 +1364,9 @@ void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
         pHddTdlsCtx->threshold_config.tx_period_t,
         pHddTdlsCtx->threshold_config.discovery_period_t);
 
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+    pHddTdlsCtx->defer_link_lost_indication = FALSE;
+#endif
     if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode)
     {
        wlan_hdd_tdls_peer_reset_discovery_processed(pHddTdlsCtx);
@@ -1400,6 +1403,9 @@ void wlan_hdd_tdls_disconnection_callback(hdd_adapter_t *pAdapter)
         mutex_unlock(&tdls_lock);
         return;
     }
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+    pHddTdlsCtx->defer_link_lost_indication = FALSE;
+#endif
     pHddTdlsCtx->discovery_sent_cnt = 0;
     wlan_hdd_tdls_check_power_save_prohibited(pHddTdlsCtx->pAdapter);
 

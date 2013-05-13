@@ -1312,7 +1312,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             tpPESession psessionEntry = &pMac->lim.gpSession[0];
             tANI_U8  i;
             tANI_U8 p2pGOExists = 0;
-            
+
             limLog(pMac, LOG1, "LIM received NOA start %x", limMsg->type);
 
             /* Since insert NOA is done and NOA start msg received, we should deactivate the Insert NOA timer */
@@ -1540,6 +1540,26 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             }
             else
             {
+#if defined(FEATURE_WLAN_TDLS) && defined(FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP)
+                 tpPESession psessionEntry = &pMac->lim.gpSession[0];
+                 for (i=0; i < pMac->lim.maxBssId; i++)
+                 {
+                     psessionEntry = &pMac->lim.gpSession[i];
+                     if ((psessionEntry != NULL) && (psessionEntry->valid) &&
+                         ((psessionEntry->pePersona == VOS_P2P_CLIENT_MODE) ||
+                         (psessionEntry->pePersona == VOS_STA_MODE)))
+                     {
+                         if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
+                             (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
+                             if (limMsg->bodyptr) {
+                                 palFreeMemory(pMac->hHdd, (tANI_U8 *)limMsg->bodyptr);
+                                 limMsg->bodyptr = NULL;
+                             }
+                             return;
+                         }
+                     }
+                 }
+#endif
                  if (NULL == limMsg->bodyptr)
                  {
                      limHandleHeartBeatTimeout(pMac);
@@ -1548,7 +1568,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                  {
                      limHandleHeartBeatTimeoutForSession(pMac, (tpPESession)limMsg->bodyptr);
                  }
-            }            
+            }
             break;
 
         case SIR_LIM_PROBE_HB_FAILURE_TIMEOUT:

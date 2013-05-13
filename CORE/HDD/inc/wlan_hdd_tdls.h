@@ -140,6 +140,9 @@ typedef struct {
     struct _hddTdlsPeer_t  *curr_candidate;
     struct work_struct implicit_setup;
     v_U32_t            magic;
+#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
+    v_BOOL_t        defer_link_lost_indication;
+#endif
 } tdlsCtx_t;
 
 typedef struct _hddTdlsPeer_t {
