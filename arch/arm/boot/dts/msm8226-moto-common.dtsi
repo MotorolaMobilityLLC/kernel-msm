@@ -133,6 +133,10 @@
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
 	};
+
+	qcom,mdss_wb_panel {
+		status = "disabled";
+	};
 };
 
 &sdcc1 {
