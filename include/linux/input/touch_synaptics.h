@@ -17,6 +17,8 @@
 #ifndef LGE_TOUCH_SYNAPTICS_H
 #define LGE_TOUCH_SYNAPTICS_H
 
+#include <linux/power_supply.h>
+
 #define MAX_FINGER                      10
 
 #define DESCRIPTION_TABLE_START 0xe9
@@ -105,7 +107,6 @@ struct ts_ic_function {
 };
 
 struct synaptics_ts_data {
-	u8                      is_probed;
 	struct i2c_client       *client;
 	struct touch_platform_data *pdata;
 	struct ts_ic_function   common_fc;
@@ -118,8 +119,10 @@ struct synaptics_ts_data {
 
 	void *h_touch;
 	atomic_t                device_init;
+	u8                      is_probed;
 	u8                      work_sync_err_cnt;
 	u8                      ic_init_err_cnt;
+	u8                      charger_type;
 	volatile int            curr_pwr_state;
 	int                     curr_resume_state;
 	int                     int_pin_state;
@@ -129,6 +132,10 @@ struct synaptics_ts_data {
 	struct work_struct      work_recover;
 	struct kobject          lge_touch_kobj;
 	struct notifier_block   notif;
+#ifdef CONFIG_TOUCHSCREEN_CHARGER_NOTIFY
+	struct power_supply     touch_psy;
+	struct work_struct      work_charger;
+#endif
 };
 
 enum{
@@ -179,6 +186,7 @@ enum{
 	IC_CTRL_READ,
 	IC_CTRL_WRITE,
 	IC_CTRL_RESET_CMD,
+	IC_CTRL_CHARGER,
 };
 
 enum{

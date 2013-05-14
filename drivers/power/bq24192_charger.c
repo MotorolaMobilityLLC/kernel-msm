@@ -1184,6 +1184,9 @@ static char *bq24192_power_supplied_to[] = {
 #ifdef CONFIG_BATTERY_TEMP_CONTROL
 	"batt_therm",
 #endif
+#ifdef CONFIG_TOUCHSCREEN_CHARGER_NOTIFY
+	"touch",
+#endif
 };
 
 static enum power_supply_property bq24192_power_props[] = {

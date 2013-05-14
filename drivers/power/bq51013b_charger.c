@@ -56,6 +56,9 @@ static enum power_supply_property pm_power_props_wireless[] = {
 
 static char *pm_power_supplied_to[] = {
 	"ac",
+#ifdef CONFIG_TOUCHSCREEN_CHARGER_NOTIFY
+	"touch",
+#endif
 };
 
 static int bq51013b_charger_is_present(struct bq51013b_chip *chip)

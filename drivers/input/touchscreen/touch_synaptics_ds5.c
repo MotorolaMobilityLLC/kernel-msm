@@ -168,6 +168,8 @@ static struct workqueue_struct *synaptics_wq;
 
 #define BYTES_PER_FINGER                8
 
+#define CHARGER_CONNECTED               0x20
+
 static struct {
 	u8	finger_reg[MAX_FINGER][BYTES_PER_FINGER];
 } fdata;
@@ -1063,7 +1065,8 @@ static int synaptics_init_panel(struct i2c_client *client, struct synaptics_ts_f
 			return -EIO;
 
 	if (unlikely(touch_i2c_write_byte(client, DEVICE_CONTROL_REG,
-		DEVICE_CONTROL_NOSLEEP | DEVICE_CONTROL_CONFIGURED) < 0)) {
+		DEVICE_CONTROL_NOSLEEP | DEVICE_CONTROL_CONFIGURED |
+		(ts->charger_type ? CHARGER_CONNECTED : 0)) < 0)) {
 		TOUCH_ERR_MSG("DEVICE_CONTROL_REG write fail\n");
 		return -EIO;
 	}
@@ -1107,14 +1110,16 @@ static int synaptics_ts_power(struct i2c_client *client, int power_ctrl)
 		break;
 	case POWER_SLEEP:
 		if (unlikely(touch_i2c_write_byte(client, DEVICE_CONTROL_REG,
-				DEVICE_CONTROL_SLEEP | DEVICE_CONTROL_CONFIGURED) < 0)) {
+			DEVICE_CONTROL_SLEEP | DEVICE_CONTROL_CONFIGURED |
+			(ts->charger_type ? CHARGER_CONNECTED : 0)) < 0)) {
 			TOUCH_ERR_MSG("DEVICE_CONTROL_REG write fail\n");
 			return -EIO;
 		}
 		break;
 	case POWER_WAKE:
 		if (unlikely(touch_i2c_write_byte(client, DEVICE_CONTROL_REG,
-				DEVICE_CONTROL_NORMAL_OP | DEVICE_CONTROL_CONFIGURED) < 0)) {
+			DEVICE_CONTROL_NORMAL_OP | DEVICE_CONTROL_CONFIGURED |
+			(ts->charger_type ? CHARGER_CONNECTED : 0)) < 0)) {
 			TOUCH_ERR_MSG("DEVICE_CONTROL_REG write fail\n");
 			return -EIO;
 		}
@@ -1132,6 +1137,7 @@ static int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 	struct synaptics_ts_data *ts =
 			(struct synaptics_ts_data *)get_touch_handle(client);
 	u8 buf = 0;
+	u8 new;
 
 	switch (code) {
 	case IC_CTRL_BASELINE:
@@ -1209,6 +1215,24 @@ static int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 			return -EIO;
 		}
 		break;
+	case IC_CTRL_CHARGER:
+		if (touch_i2c_read(client, DEVICE_CONTROL_REG, 1, &buf) < 0) {
+			TOUCH_ERR_MSG("IC register read fail\n");
+			return -EIO;
+		}
+
+		new = buf & ~CHARGER_CONNECTED;
+		new |= value ? CHARGER_CONNECTED : 0;
+
+		if (new != buf) {
+			if (unlikely(touch_i2c_write_byte(client,
+					DEVICE_CONTROL_REG, new) < 0)) {
+				TOUCH_ERR_MSG("IC Reset command write fail\n");
+				return -EIO;
+			}
+		}
+		break;
+
 	default:
 		break;
 	}
@@ -1392,12 +1416,102 @@ static ssize_t store_ts_reset(struct device *dev,
 	return count;
 }
 
+/*
+ * show_charger
+ * Show the current charger status
+ */
+static ssize_t show_charger(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct synaptics_ts_data *ts = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%s\n",
+		(ts->charger_type ? "CONNECTED" : "NOT CONNECTED"));
+}
+
 static struct device_attribute synaptics_device_attrs[] = {
 	__ATTR(firmware, S_IRUGO | S_IWUSR, show_fw_info, store_fw_upgrade),
 	__ATTR(reg_control, S_IRUGO | S_IWUSR, NULL, ic_register_ctrl),
 	__ATTR(power_control, S_IRUGO | S_IWUSR, NULL, store_ts_reset),
 	__ATTR(version, S_IRUGO | S_IWUSR, show_fw_ver, NULL),
+	__ATTR(charger, S_IRUGO, show_charger, NULL),
 };
+
+#ifdef CONFIG_TOUCHSCREEN_CHARGER_NOTIFY
+static void touch_external_power_changed(struct power_supply *psy)
+{
+	int status;
+	struct synaptics_ts_data *ts = container_of(psy, struct synaptics_ts_data, touch_psy);
+
+	status = power_supply_am_i_supplied(psy);
+
+	pr_debug("psy name = %s ... status = %d\n", psy->name, status);
+
+	if (ts->charger_type != status) {
+		ts->charger_type = status;
+		queue_work(synaptics_wq, &ts->work_charger);
+	}
+}
+
+static enum power_supply_property touch_power_props_mains[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE
+};
+
+static int touch_power_get_property_mains(struct power_supply *psy,
+			enum power_supply_property psp,
+			union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = 0;
+		return 0;
+	default:
+		return -EINVAL;
+	}
+	return -EINVAL;
+}
+
+/*
+ * Touch work for charger
+ */
+static void touch_work_charger(struct work_struct *work)
+{
+	struct synaptics_ts_data *ts =
+			container_of(work, struct synaptics_ts_data, work_charger);
+
+	TOUCH_INFO_MSG("CHARGER = %d\n", ts->charger_type);
+
+	if (ts->curr_resume_state)
+		synaptics_ts_ic_ctrl(ts->client,
+					IC_CTRL_CHARGER, ts->charger_type);
+}
+
+static void touch_psy_init(struct synaptics_ts_data *ts)
+{
+	int rc;
+
+	INIT_WORK(&ts->work_charger, touch_work_charger);
+
+	ts->touch_psy.name = "touch";
+	ts->touch_psy.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	ts->touch_psy.properties = touch_power_props_mains,
+	ts->touch_psy.num_properties = ARRAY_SIZE(touch_power_props_mains);
+	ts->touch_psy.get_property = touch_power_get_property_mains;
+	ts->touch_psy.external_power_changed = touch_external_power_changed;
+
+	rc = power_supply_register(NULL, &ts->touch_psy);
+	if (rc < 0) {
+		pr_err("power_supply_register FAILED*** rc = %d\n", rc);
+	}
+	else {
+		pr_debug("power_supply_register SUCCESS\n");
+	}
+}
+#else
+static inline void touch_psy_init(struct synaptics_ts_data *ts) {}
+#endif /* #ifdef CONFIG_TOUCHSCREEN_CHARGER_NOTIFY */
 
 static int synaptics_get_dt_coords(struct device *dev, char *name,
 				u32 *x, u32 *y)
@@ -1734,6 +1848,8 @@ static int synaptics_ts_probe(
 		if (ret)
 			goto err_dev_create_file;
 	}
+
+	touch_psy_init(ts);
 
 	return ret;
 
