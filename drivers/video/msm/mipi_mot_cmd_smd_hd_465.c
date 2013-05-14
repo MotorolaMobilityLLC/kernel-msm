@@ -87,6 +87,7 @@ static char switch_pwr_to_mem_1[3] = {0xfd, 0x10, 0xfc};
 static char switch_pwr_to_mem_2[3] = {0xc4, 0x07, 0x01};
 static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
 static char normal_mode_on[2] = {DCS_CMD_SET_NORMAL_MODE_ON, 0x00};
+static char set_24_bpp[2] = {0x3a, 0x07};
 
 #define DEFAULT_DELAY 1
 
@@ -218,7 +219,7 @@ static struct mipi_mot_cmd_seq smd_hd_465_cfg_seq[] = {
 	/* exit partial mode */
 	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_WRITE, 0, normal_mode_on),
 	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_LWRITE, 0,
-		undo_partial_rows),
+			undo_partial_rows),
 	/* C8, C9, C7 sequence only for non-mtped panels */
 	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, brightness_wa_seq),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
@@ -228,6 +229,8 @@ static struct mipi_mot_cmd_seq smd_hd_465_cfg_seq[] = {
 	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, aid_wa_seq),
 	MIPI_MOT_EXEC_SEQ(NULL, set_window_size),
 	MIPI_MOT_EXEC_SEQ(AOD_SUPPORTED, refresh_rate_seq),
+	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_WRITE1, DEFAULT_DELAY,
+			set_24_bpp),
 };
 
 static struct mipi_mot_cmd_seq smd_hd_465_init_seq[] = {
