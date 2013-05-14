@@ -49,6 +49,7 @@ static char enter_sleep[2] = {DCS_CMD_ENTER_SLEEP_MODE, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
 static char normal_mode_on[2] = {DCS_CMD_SET_NORMAL_MODE_ON, 0x00};
+static char set_24_bpp[2] = {0x3a, 0x07};
 static char normal_col[5] = {DCS_CMD_SET_COLUMN_ADDRESS,
 				0x00, 0x00, 0x02, 0xcf};
 static char normal_row[5] = {DCS_CMD_SET_PAGE_ADDRESS,
@@ -143,13 +144,15 @@ static struct mipi_mot_cmd_seq smd_hd_497_cfg_seq[] = {
 	/* exit partial mode */
 	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_WRITE, 0, normal_mode_on),
 	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_LWRITE, 0,
-		undo_partial_rows),
+			undo_partial_rows),
 	MIPI_MOT_TX_DEF(is_bl_supported, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, disp_ctrl),
 	MIPI_MOT_EXEC_SEQ(is_bl_supported, set_brightness_seq),
 	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
 	MIPI_MOT_EXEC_SEQ(is_aid_workaround_needed, aid_workaround_seq),
 	MIPI_MOT_EXEC_SEQ(AOD_SUPPORTED, refresh_rate_seq),
+	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_WRITE1, DEFAULT_DELAY,
+			set_24_bpp),
 };
 
 static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
