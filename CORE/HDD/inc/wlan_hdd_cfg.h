@@ -655,6 +655,11 @@ typedef enum
 #define CFG_IGNORE_DTIM_MAX                    WNI_CFG_IGNORE_DTIM_STAMAX
 #define CFG_IGNORE_DTIM_DEFAULT                WNI_CFG_IGNORE_DTIM_STADEF
 
+#define CFG_MAX_LI_MODULATED_DTIM_NAME         "gMaxLIModulatedDTIM"
+#define CFG_MAX_LI_MODULATED_DTIM_MIN          ( 1 )
+#define CFG_MAX_LI_MODULATED_DTIM_MAX          ( 10 )
+#define CFG_MAX_LI_MODULATED_DTIM_DEFAULT      ( 10 )
+
 #define CFG_RX_ANT_CONFIGURATION_NAME          "gNumRxAnt"
 #define CFG_RX_ANT_CONFIGURATION_NAME_MIN      ( 1 )
 #define CFG_RX_ANT_CONFIGURATION_NAME_MAX      ( 2 )
@@ -1880,6 +1885,7 @@ typedef struct
 
    v_U8_t         nRssiFilterPeriod;
    v_BOOL_t       fIgnoreDtim;
+   v_U8_t         fMaxLIModulatedDTIM;
 
    v_U8_t         nRxAnt;
    v_U8_t         fEnableFwHeartBeatMonitoring;
