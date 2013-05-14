@@ -373,6 +373,12 @@ static int vibrator_parse_dt(struct device *dev,
 			vib_data->amp, vib_data->vibe_n_value,
 			vib_data->use_vdd_supply);
 
+	ret = of_property_read_u32(np, "vibe-warmup-delay",
+			&vib_data->vibe_warmup_delay);
+	if (!ret)
+		pr_debug("%s: vibe_warmup_delay %d ms\n", __func__,
+				vib_data->vibe_warmup_delay);
+
 	return 0;
 }
 
