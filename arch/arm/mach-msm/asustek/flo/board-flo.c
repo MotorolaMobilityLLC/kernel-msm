@@ -34,7 +34,9 @@
 #include <linux/msm_thermal.h>
 #include <linux/i2c/atmel_mxt_ts.h>
 #include <linux/cyttsp-qc.h>
+#ifdef CONFIG_HAPTIC_ISA1200
 #include <linux/i2c/isa1200.h>
+#endif
 #include <linux/gpio_keys.h>
 #include <linux/epm_adc.h>
 #include <linux/i2c/sx150x.h>
@@ -1425,6 +1427,7 @@ static struct i2c_board_info cs8427_device_info[] __initdata = {
 };
 
 #define HAP_SHIFT_LVL_OE_GPIO		PM8921_MPP_PM_TO_SYS(8)
+#ifdef CONFIG_HAPTIC_ISA1200
 #define ISA1200_HAP_EN_GPIO		PM8921_GPIO_PM_TO_SYS(33)
 #define ISA1200_HAP_LEN_GPIO		PM8921_GPIO_PM_TO_SYS(20)
 #define ISA1200_HAP_CLK_PM8921		PM8921_GPIO_PM_TO_SYS(44)
@@ -1527,6 +1530,8 @@ static struct i2c_board_info isa1200_board_info[] __initdata = {
 		.platform_data = &isa1200_1_pdata,
 	},
 };
+#endif  /* CONFIG_HAPTIC_ISA1200 */
+
 /* configuration data for mxt1386e using V2.1 firmware */
 static const u8 mxt1386e_config_data_v2_1[] = {
 	/* T6 Object */
@@ -2983,12 +2988,14 @@ static struct i2c_registry apq8064_i2c_devices[] __initdata = {
 		ARRAY_SIZE(cyttsp_info),
 	},
 	*/
+#ifdef CONFIG_HAPTIC_ISA1200
 	{
 		I2C_FFA | I2C_LIQUID,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 		isa1200_board_info,
 		ARRAY_SIZE(isa1200_board_info),
 	},
+#endif
 	{
 		I2C_MPQ_CDP,
 		APQ_8064_GSBI5_QUP_I2C_BUS_ID,
