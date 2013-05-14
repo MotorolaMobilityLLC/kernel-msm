@@ -39,9 +39,9 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
+
 /*
- *
- * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limProcessDisassocFrame.cc contains the code
  * for processing Disassocation Frame.
  * Author:        Chandra Modumudi
@@ -242,6 +242,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
                 // Valid reasonCode in received Disassociation frame
                 break;
 
+            case eSIR_MAC_DEAUTH_LEAVING_BSS_REASON:
             case eSIR_MAC_DISASSOC_LEAVING_BSS_REASON:
                 // Valid reasonCode in received Disassociation frame
                 // as long as we're not about to channel switch
