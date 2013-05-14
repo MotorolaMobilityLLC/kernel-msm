@@ -109,10 +109,9 @@ when           who                what, where, why
 /*--------------------------------------------------------------------------
   defines and enum
   ------------------------------------------------------------------------*/
-  
+
 #define       MAX_SSID_LEN                 32
-#define       MAX_MAC_ADDRESS_ACCEPTED     16
-#define       MAX_MAC_ADDRESS_DENIED       MAX_MAC_ADDRESS_ACCEPTED
+#define       MAX_ACL_MAC_ADDRESS          16
 #define       AUTO_CHANNEL_SELECT          0
 #define       MAX_ASSOC_IND_IE_LEN         255
 
@@ -419,11 +418,11 @@ typedef struct sap_Config {
     tSap_SSIDInfo_t SSIDinfo;
     eSapPhyMode     SapHw_mode; /* Wireless Mode */
     eSapMacAddrACL  SapMacaddr_acl;
-    v_MACADDR_t     accept_mac[MAX_MAC_ADDRESS_ACCEPTED]; /* MAC filtering */
+    v_MACADDR_t     accept_mac[MAX_ACL_MAC_ADDRESS]; /* MAC filtering */
     v_BOOL_t        ieee80211d;      /*Specify if 11D is enabled or disabled*/
     v_BOOL_t        protEnabled;     /*Specify if protection is enabled or disabled*/
     v_BOOL_t        obssProtEnabled; /*Specify if OBSS protection is enabled or disabled*/
-    v_MACADDR_t     deny_mac[MAX_MAC_ADDRESS_DENIED]; /* MAC filtering */
+    v_MACADDR_t     deny_mac[MAX_ACL_MAC_ADDRESS]; /* MAC filtering */
     v_MACADDR_t     self_macaddr; //self macaddress or BSSID
    
     v_U8_t          channel;         /* Operation channel */
@@ -904,6 +903,38 @@ WLANSAP_StartBss
     v_PVOID_t  pvosGCtx, 
     tpWLAN_SAPEventCB pSapEventCallback, 
     tsap_Config_t *pConfig, v_PVOID_t  pUsrContext
+);
+
+/*==========================================================================
+  FUNCTION    WLANSAP_SetMacACL
+
+  DESCRIPTION
+  This api function provides SAP to set mac list entry in accept list as well
+  as deny list
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+pvosGCtx: Pointer to vos global context structure
+pConfig:  Pointer to configuration structure passed down from
+          HDD(HostApd for Android)
+
+
+  RETURN VALUE
+    The VOS_STATUS code associated with performing the operation
+
+    VOS_STATUS_SUCCESS:  Success
+
+  SIDE EFFECTS
+============================================================================*/
+VOS_STATUS
+WLANSAP_SetMacACL
+(
+    v_PVOID_t  pvosGCtx,
+    tsap_Config_t *pConfig
 );
 
 /*==========================================================================
