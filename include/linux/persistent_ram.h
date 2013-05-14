@@ -68,6 +68,8 @@ struct persistent_ram_zone {
 
 int persistent_ram_early_init(struct persistent_ram *ram);
 
+void persistent_ram_add(struct persistent_ram *ram);
+
 struct persistent_ram_zone *persistent_ram_init_ringbuffer(struct device *dev,
 		bool ecc);
 
