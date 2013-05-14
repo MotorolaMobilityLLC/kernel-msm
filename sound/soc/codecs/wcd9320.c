@@ -2763,8 +2763,6 @@ static int taiko_codec_enable_vdd_spkr(struct snd_soc_dapm_widget *w,
 
 	pr_debug("%s: %d %s\n", __func__, event, w->name);
 
-	WARN_ONCE(!priv->spkdrv_reg, "SPKDRV supply %s isn't defined\n",
-		  WCD9XXX_VDD_SPKDRV_NAME);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (priv->spkdrv_reg) {
