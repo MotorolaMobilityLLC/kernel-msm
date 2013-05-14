@@ -217,11 +217,20 @@ static int __devexit alsa_to_h2w_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id alsa_to_h2w_match_table[] = {
+	{	.compatible = "mmi,alsa-to-h2w",
+	},
+	{}
+};
+#endif
+
 static struct platform_driver alsa_to_h2w_driver = {
 	.probe		= alsa_to_h2w_probe,
 	.remove		= __devexit_p(alsa_to_h2w_remove),
 	.driver		= {
 		.name	= "alsa-to-h2w",
+		.of_match_table = of_match_ptr(alsa_to_h2w_match_table),
 		.owner	= THIS_MODULE,
 	},
 };
