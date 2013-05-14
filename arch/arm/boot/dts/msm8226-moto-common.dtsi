@@ -11,12 +11,23 @@
  * GNU General Public License for more details.
  */
 
+/* Reserve for persistent memory - ram console */
+/memreserve/ 0x3eae0000 0x20000;
+
 /include/ "msm8226.dtsi"
 /include/ "msm8226-camera-sensor-falcon.dtsi"
 
 / {
 	serial@f991f000 {
 		status = "ok";
+	};
+
+	ram_console {
+		compatible = "android,ram-console";
+		status = "ok";
+
+		android,ram-buffer-start = <0x3eae0000>;
+		android,ram-buffer-size = <0x20000>;
 	};
 
 	i2c_5: i2c@f9927000 {
