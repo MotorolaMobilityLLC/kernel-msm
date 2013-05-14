@@ -1392,11 +1392,11 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		/* x (data1) msb: algo index, lsb: past, confidence */
 		x = (MSP_IDX_MODALITY << 8) | read_cmdbuff[0];
 		/* y (data2) old state */
-		y = (msp_cmdbuff[2] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[1];
 		/* z (data3) new state */
-		z = (msp_cmdbuff[4] << 8) | read_cmdbuff[3];
+		z = (read_cmdbuff[4] << 8) | read_cmdbuff[3];
 		/* q (data4) time in state, in seconds */
-		q = (msp_cmdbuff[6] << 8) | read_cmdbuff[5];
+		q = (read_cmdbuff[6] << 8) | read_cmdbuff[5];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_msp430->client->dev, "Sending modality event\n");
 	}
@@ -1413,11 +1413,11 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		/* x (data1) msb: algo index, lsb: past, confidence */
 		x = (MSP_IDX_ORIENTATION << 8) | read_cmdbuff[0];
 		/* y (data2) old state */
-		y = (msp_cmdbuff[2] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[1];
 		/* z (data3) new state */
-		z = (msp_cmdbuff[4] << 8) | read_cmdbuff[3];
+		z = (read_cmdbuff[4] << 8) | read_cmdbuff[3];
 		/* q (data4) time in state, in seconds */
-		q = (msp_cmdbuff[6] << 8) | read_cmdbuff[5];
+		q = (read_cmdbuff[6] << 8) | read_cmdbuff[5];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_msp430->client->dev, "Sending orientation event\n");
 	}
@@ -1433,11 +1433,11 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		/* x (data1) msb: algo index, lsb: past, confidence */
 		x = (MSP_IDX_STOWED << 8) | read_cmdbuff[0];
 		/* y (data2) old state */
-		y = (msp_cmdbuff[2] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[1];
 		/* z (data3) new state */
-		z = (msp_cmdbuff[4] << 8) | read_cmdbuff[3];
+		z = (read_cmdbuff[4] << 8) | read_cmdbuff[3];
 		/* q (data4) time in state, in seconds */
-		q = (msp_cmdbuff[6] << 8) | read_cmdbuff[5];
+		q = (read_cmdbuff[6] << 8) | read_cmdbuff[5];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_msp430->client->dev, "Sending stowed event\n");
 	}
