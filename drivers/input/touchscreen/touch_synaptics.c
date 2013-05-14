@@ -34,7 +34,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/of_gpio.h>
 #include <linux/input/touch_synaptics.h>
-#include <linux/fb.h>
+#include <linux/lcd_notify.h>
 
 #include "SynaImage.h"
 
@@ -1651,38 +1651,20 @@ static int synaptics_ts_stop(struct synaptics_ts_data *ts)
 	return 0;
 }
 
-static int fb_notifier_callback(struct notifier_block *this,
+static int lcd_notifier_callback(struct notifier_block *this,
 				unsigned long event, void *data)
 {
 	struct synaptics_ts_data *ts =
-		container_of(this, struct synaptics_ts_data, fb_notif);
-	int blank_mode;
-	static int first = 1;
+		container_of(this, struct synaptics_ts_data, notif);
 
-	if (event != FB_EVENT_BLANK || data == NULL)
-		return 0;
+	TOUCH_DEBUG_MSG("%s: event = %lu\n", __func__, event);
 
-	blank_mode = *(int*)(((struct fb_event*)data)->data);
-
-	TOUCH_DEBUG_MSG("FB_CB: event = %lu, blank mode = %d\n",
-							event, blank_mode);
-
-	switch (blank_mode) {
-	case FB_BLANK_UNBLANK:
-		if (first) {
-			synaptics_ts_start(ts);
-			first = 0;
-		} else {
-			first = 1;
-		}
+	switch (event) {
+	case LCD_EVENT_ON_START:
+		synaptics_ts_start(ts);
 		break;
-	case FB_BLANK_POWERDOWN:
-		if (first) {
-			synaptics_ts_stop(ts);
-			first = 0;
-		} else {
-			first = 1;
-		}
+	case LCD_EVENT_OFF_START:
+		synaptics_ts_stop(ts);
 		break;
 	default:
 		break;
@@ -1756,8 +1738,8 @@ static int synaptics_ts_probe(
 	atomic_set(&ts->device_init, 0);
 	ts->curr_resume_state = 1;
 
-	ts->fb_notif.notifier_call = fb_notifier_callback;
-	if (fb_register_client(&ts->fb_notif) != 0) {
+	ts->notif.notifier_call = lcd_notifier_callback;
+	if (lcd_register_client(&ts->notif) != 0) {
 		TOUCH_ERR_MSG("Failed to register fb callback\n");
 		ret = -EINVAL;
 		goto err_fb_register;

@@ -34,7 +34,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/of_gpio.h>
 #include <linux/input/touch_synaptics.h>
-#include <linux/fb.h>
+#include <linux/lcd_notify.h>
 
 #include "SynaImage_ds5.h"
 
@@ -1587,49 +1587,35 @@ static int synaptics_ts_stop(struct synaptics_ts_data *ts)
 	return 0;
 }
 
-static int fb_notifier_callback(struct notifier_block *this,
+static int lcd_notifier_callback(struct notifier_block *this,
 				unsigned long event, void *data)
 {
 	struct synaptics_ts_data *ts =
-		container_of(this, struct synaptics_ts_data, fb_notif);
-	int blank_mode;
-	static int first = 1;
+		container_of(this, struct synaptics_ts_data, notif);
 
-	if (event != FB_EVENT_BLANK || data == NULL)
-		return 0;
+	TOUCH_DEBUG_MSG("%s: event = %lu\n", __func__, event);
 
-	blank_mode = *(int*)(((struct fb_event*)data)->data);
-
-	TOUCH_DEBUG_MSG("FB_CB: event = %lu, blank mode = %d\n",
-							event, blank_mode);
-
-	switch (blank_mode) {
-	case FB_BLANK_UNBLANK:
-		if (first) {
-			mutex_lock(&ts->input_dev->mutex);
-			synaptics_ts_start(ts);
-			first = 0;
-		} else {
-			if (!ts->curr_resume_state) {
-				ts->curr_resume_state = 1;
-				queue_delayed_work(synaptics_wq,
-					&ts->work_init,
-					msecs_to_jiffies(70));
-			}
-			first = 1;
-			mutex_unlock(&ts->input_dev->mutex);
-		}
+	switch (event) {
+	case LCD_EVENT_ON_START:
+		mutex_lock(&ts->input_dev->mutex);
+		synaptics_ts_start(ts);
 		break;
-	case FB_BLANK_POWERDOWN:
-		if (first) {
-			mutex_lock(&ts->input_dev->mutex);
-			disable_irq(ts->client->irq);
-			first = 0;
-		} else {
-			synaptics_ts_stop(ts);
-			first = 1;
-			mutex_unlock(&ts->input_dev->mutex);
+	case LCD_EVENT_ON_END:
+		if (!ts->curr_resume_state) {
+			ts->curr_resume_state = 1;
+			queue_delayed_work(synaptics_wq,
+				&ts->work_init,
+				msecs_to_jiffies(70));
 		}
+		mutex_unlock(&ts->input_dev->mutex);
+		break;
+	case LCD_EVENT_OFF_START:
+		mutex_lock(&ts->input_dev->mutex);
+		disable_irq(ts->client->irq);
+		break;
+	case LCD_EVENT_OFF_END:
+		synaptics_ts_stop(ts);
+		mutex_unlock(&ts->input_dev->mutex);
 		break;
 	default:
 		break;
@@ -1703,8 +1689,8 @@ static int synaptics_ts_probe(
 	atomic_set(&ts->device_init, 0);
 	ts->curr_resume_state = 1;
 
-	ts->fb_notif.notifier_call = fb_notifier_callback;
-	if (fb_register_client(&ts->fb_notif) != 0) {
+	ts->notif.notifier_call = lcd_notifier_callback;
+	if (lcd_register_client(&ts->notif) != 0) {
 		TOUCH_ERR_MSG("Failed to register fb callback\n");
 		ret = -EINVAL;
 		goto err_fb_register;

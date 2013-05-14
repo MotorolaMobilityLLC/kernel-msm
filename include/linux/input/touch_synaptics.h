@@ -155,7 +155,7 @@ struct synaptics_ts_data {
 	struct work_struct      work_fw_upgrade;
 	struct work_struct      work_recover;
 	struct kobject          lge_touch_kobj;
-	struct notifier_block   fb_notif;
+	struct notifier_block   notif;
 };
 
 enum{
