@@ -21,8 +21,9 @@
 
 	vibrator {
 		vdd-supply = <&pm8941_l19>;
-		motor-amp = <115>;
+		motor-amp = <70>;
 		use-vdd-supply;
+		vibe-warmup-delay = <15>;
 	};
 
 	qcom,mdss_dsi_jdi_video {

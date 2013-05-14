@@ -51,6 +51,10 @@
 	sound {
 		qcom,mbhc-disabled = <0>;
 	};
+
+	vibrator {
+		motor-amp = <50>;
+	};
 };
 
 &sdcc2 {

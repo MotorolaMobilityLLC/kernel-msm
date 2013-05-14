@@ -15,8 +15,8 @@
 		compatible = "msm,pwm_vibrator";
 		haptic-pwr-gpio = <&msmgpio 60 0x00>;
 		motor-pwm-gpio = <&msmgpio 27 0x00>;
-		motor-amp = <117>;
-		n-value = <166>;
+		motor-amp = <70>;
+		n-value = <127>;
 	};
 
 	pmic_gpio_led {
