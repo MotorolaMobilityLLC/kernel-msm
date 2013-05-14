@@ -16,6 +16,7 @@
 #include <linux/console.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/persistent_ram.h>
 #include <linux/platform_device.h>
 #include <linux/proc_fs.h>
@@ -54,10 +55,54 @@ void ram_console_enable_console(int enabled)
 		ram_console.flags &= ~CON_ENABLED;
 }
 
+#ifdef CONFIG_OF
+static struct ram_console_platform_data *
+ram_console_of_init(struct platform_device *pdev)
+{
+	struct ram_console_platform_data *pdata = NULL;
+	struct device_node *np = pdev->dev.of_node;
+	struct persistent_ram *ram;
+	struct persistent_ram_descriptor *desc;
+
+	ram = devm_kzalloc(&pdev->dev, sizeof(*ram), GFP_KERNEL);
+	if (!ram) {
+		dev_err(&pdev->dev, "%s: couldn't allocate ram\n", __func__);
+		return NULL;
+	}
+
+	desc = devm_kzalloc(&pdev->dev, sizeof(*desc), GFP_KERNEL);
+	if (!desc) {
+		dev_err(&pdev->dev, "%s: couldn't allocate desc\n", __func__);
+		return NULL;
+	}
+
+	of_property_read_u32(np, "android,ram-buffer-start", &ram->start);
+	of_property_read_u32(np, "android,ram-buffer-size", &ram->size);
+
+	desc->name = dev_name(&pdev->dev);
+	desc->size = ram->size;
+	ram->descs = desc;
+	ram->num_descs = 1;
+
+	persistent_ram_add(ram);
+
+	return pdata;
+}
+#else
+static inline struct ram_console_platform_data *
+ram_console_of_init(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
 static int __devinit ram_console_probe(struct platform_device *pdev)
 {
 	struct ram_console_platform_data *pdata = pdev->dev.platform_data;
 	struct persistent_ram_zone *prz;
+
+	if (pdev->dev.of_node)
+		pdata = ram_console_of_init(pdev);
 
 	prz = persistent_ram_init_ringbuffer(&pdev->dev, true);
 	if (IS_ERR(prz))
@@ -81,9 +126,19 @@ static int __devinit ram_console_probe(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id ram_console_of_match[] = {
+	{ .compatible = "android,ram-console", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, ram_console_of_match);
+#endif
+
 static struct platform_driver ram_console_driver = {
 	.driver		= {
 		.name	= "ram_console",
+		.of_match_table = of_match_ptr(ram_console_of_match),
 	},
 	.probe = ram_console_probe,
 };
