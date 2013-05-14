@@ -137,6 +137,15 @@
 	qcom,mdss_wb_panel {
 		status = "disabled";
 	};
+
+	vddio_disp_vreg: vddio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vddio_disp";
+		gpio = <&msmgpio 34 0x0>;
+		parent-supply = <&pm8226_l8>;
+		startup-delay-us = <1000>;
+		enable-active-high;
+	};
 };
 
 &sdcc1 {
@@ -456,5 +465,6 @@
 };
 
 &mdss_dsi0 {
+	vddio-supply = <&vddio_disp_vreg>;
 	lcdbias-supply = <&tps65132>;
 };
