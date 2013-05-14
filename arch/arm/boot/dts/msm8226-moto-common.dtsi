@@ -116,6 +116,10 @@
 	usb@f9a55000 {
 		qcom,hsusb-otg-phy-init-seq = <0x34 0x82 0x2f 0x81 0xffffffff>;
 	};
+
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
 };
 
 &sdcc1 {
