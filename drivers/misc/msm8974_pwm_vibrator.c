@@ -332,21 +332,39 @@ static int vibrator_gpio_init(struct timed_vibrator_data *vib_data)
 	return 0;
 }
 
-static void vibrator_parse_dt(struct device *dev,
+static int vibrator_parse_dt(struct device *dev,
 		struct timed_vibrator_data *vib_data)
 {
+	int ret;
 	struct device_node *np = dev->of_node;
 
-	vib_data->haptic_en_gpio =
-		of_get_named_gpio_flags(np, "haptic-pwr-gpio", 0, NULL);
-	vib_data->motor_pwm_gpio =
-		of_get_named_gpio_flags(np, "motor-pwm-gpio", 0, NULL);
+	ret = of_get_named_gpio_flags(np, "haptic-pwr-gpio", 0, NULL);
+	if (ret < 0) {
+		pr_err("%s: haptic-pwr-gpio failed\n", __func__);
+		return ret;
+	}
+	vib_data->haptic_en_gpio = ret;
 
-	of_property_read_u32(np, "motor-amp", &vib_data->amp);
-	of_property_read_u32(np, "n-value", &vib_data->vibe_n_value);
+	ret = of_get_named_gpio_flags(np, "motor-pwm-gpio", 0, NULL);
+	if (ret < 0) {
+		pr_err("%s: motor-pwm-gpio failed\n", __func__);
+		return ret;
+	}
+	vib_data->motor_pwm_gpio = ret;
 
-	vib_data->use_vdd_supply = of_property_read_bool(np,
-			"use-vdd-supply");
+	ret = of_property_read_u32(np, "motor-amp", &vib_data->amp);
+	if (ret < 0) {
+		pr_err("%s: motor-amp failed\n", __func__);
+		return ret;
+	}
+
+	ret = of_property_read_u32(np, "n-value", &vib_data->vibe_n_value);
+	if (ret < 0) {
+		pr_err("%s: n-value failed\n", __func__);
+		return ret;
+	}
+
+	vib_data->use_vdd_supply = of_property_read_bool(np, "use-vdd-supply");
 
 	pr_debug("%s: motor_en %d, motor_pwm %d, amp %d, n_value %d vdd %d\n",
 			__func__,
@@ -354,6 +372,8 @@ static void vibrator_parse_dt(struct device *dev,
 			vib_data->motor_pwm_gpio,
 			vib_data->amp, vib_data->vibe_n_value,
 			vib_data->use_vdd_supply);
+
+	return 0;
 }
 
 static ssize_t vibrator_amp_show(struct device *dev,
@@ -426,7 +446,9 @@ static int msm8974_pwm_vibrator_probe(struct platform_device *pdev)
 
 	if (pdev->dev.of_node) {
 		pr_debug("%s: device has of_node\n", __func__);
-		vibrator_parse_dt(&pdev->dev, vib);
+		ret = vibrator_parse_dt(&pdev->dev, vib);
+		if (ret < 0)
+			return ret;
 	}
 
 	if (vibrator_regulator_init(pdev, vib) < 0) {
