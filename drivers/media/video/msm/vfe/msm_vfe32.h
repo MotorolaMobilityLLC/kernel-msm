@@ -1029,6 +1029,7 @@ struct axi_ctrl_t {
 	struct vfe_share_ctrl_t *share_ctrl;
 	struct device *iommu_ctx_imgwr;
 	struct device *iommu_ctx_misc;
+	uint32_t simultaneous_sof_frame;
 };
 
 struct vfe32_ctrl_type {
