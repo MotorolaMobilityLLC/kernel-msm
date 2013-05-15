@@ -24,6 +24,7 @@
 				gpio_dig_en = <0x000000a0>;
 				gpio_pwd = <0x0000005f>;
 				gpio_reset = <0x00000061>;
+				is_asic_ver_r1b = <0x00000001>;
 				is_new_pk_dvdd = <0x00000001>;
 				i2c,address = <0x00000036>;
 				i2c,type = [6f76313038323000];
