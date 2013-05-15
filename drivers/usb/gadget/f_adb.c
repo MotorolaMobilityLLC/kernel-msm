@@ -366,7 +366,12 @@ static ssize_t adb_read(struct file *fp, char __user *buf,
 requeue_req:
 	/* queue a request */
 	req = dev->rx_req;
-	req->length = ADB_BULK_BUFFER_SIZE;
+
+	if (gadget_is_dwc3(dev->cdev->gadget))
+		req->length = ADB_BULK_BUFFER_SIZE;
+	else
+		req->length = count;
+
 	dev->rx_done = 0;
 	ret = usb_ep_queue(dev->ep_out, req, GFP_ATOMIC);
 	if (ret < 0) {
