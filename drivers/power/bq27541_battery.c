@@ -55,6 +55,9 @@
 #define BATT_STS_SOCF		0x0002
 #define BATT_STS_FC			0x0200
 
+#define THERMAL_RULE1 1
+#define THERMAL_RULE2 2
+
 /* Debug Message */
 #define BAT_NOTICE(format, arg...)	\
 	printk(KERN_NOTICE "%s " format , __FUNCTION__ , ## arg)
@@ -66,7 +69,7 @@
 unsigned bq27541_battery_cable_status = 0;
 unsigned bq27541_battery_driver_ready = 0;
 int ac_on ;
-static int usb_on ;
+int usb_on ;
 extern bool wireless_on;
 extern bool otg_on;
 static unsigned int 	battery_current;
@@ -79,6 +82,7 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,union 
 static int bq27541_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val);
 extern unsigned  get_usb_cable_status(void);
+extern int smb345_config_thermal_charging(int temp, int rule);
 
 module_param(battery_current, uint, 0644);
 module_param(battery_remaining_capacity, uint, 0644);
@@ -369,6 +373,15 @@ static void battery_status_poll(struct work_struct *work)
 		BAT_NOTICE("battery driver not ready\n");
 
 	power_supply_changed(&bq27541_supply[Charger_Type_Battery]);
+
+	if (!bq27541_device->temp_err) {
+		if (ac_on)
+			smb345_config_thermal_charging(bq27541_device->old_temperature/10, THERMAL_RULE1);
+		else if (wireless_on)
+			smb345_config_thermal_charging(bq27541_device->old_temperature/10, THERMAL_RULE2);
+		else if (usb_on)
+			smb345_config_thermal_charging(bq27541_device->old_temperature/10, THERMAL_RULE1);
+	}
 
 	/* Schedule next polling */
 	queue_delayed_work(bq27541_battery_work_queue, &batt_dev->status_poll_work, BATTERY_POLLING_RATE*HZ);
