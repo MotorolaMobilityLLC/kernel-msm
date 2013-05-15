@@ -53,7 +53,7 @@ static int recover_dentry(struct page *ipage, struct inode *inode)
 
 	dir = f2fs_iget(inode->i_sb, le32_to_cpu(raw_inode->i_pino));
 	if (IS_ERR(dir)) {
-		f2fs_msg(inode->i_sb, KERN_INFO, "%s: f2fs_iget failed: %ld\n",
+		f2fs_msg(inode->i_sb, KERN_INFO, "%s: f2fs_iget failed: %ld",
 						__func__, PTR_ERR(dir));
 		err = PTR_ERR(dir);
 		goto out;
@@ -70,7 +70,7 @@ static int recover_dentry(struct page *ipage, struct inode *inode)
 		err = __f2fs_add_link(dir, &name, inode);
 		if (err)
 			f2fs_msg(inode->i_sb, KERN_INFO,
-				"%s: __f2fs_add_link failed: %d\n",
+				"%s: __f2fs_add_link failed: %d",
 							__func__, err);
 	}
 	iput(dir);
@@ -141,7 +141,7 @@ static int find_fsync_dnodes(struct f2fs_sb_info *sbi, struct list_head *head)
 				err = recover_inode_page(sbi, page);
 				if (err) {
 					f2fs_msg(sbi->sb, KERN_INFO,
-					 "%s: recover_inode_page failed: %d\n",
+					 "%s: recover_inode_page failed: %d",
 								__func__, err);
 					goto unlock_out;
 				}
@@ -158,7 +158,7 @@ static int find_fsync_dnodes(struct f2fs_sb_info *sbi, struct list_head *head)
 			if (IS_ERR(entry->inode)) {
 				err = PTR_ERR(entry->inode);
 				f2fs_msg(sbi->sb, KERN_INFO,
-					"%s: f2fs_iget failed: %d\n",
+					"%s: f2fs_iget failed: %d",
 					__func__, err);
 				kmem_cache_free(fsync_entry_slab, entry);
 				goto unlock_out;
@@ -173,7 +173,7 @@ static int find_fsync_dnodes(struct f2fs_sb_info *sbi, struct list_head *head)
 				goto next;
 			} else if (err) {
 				f2fs_msg(sbi->sb, KERN_INFO,
-					"%s: recover_inode failed: %d\n",
+					"%s: recover_inode failed: %d",
 					__func__, err);
 
 				goto unlock_out;
@@ -279,7 +279,7 @@ static int do_recover_data(struct f2fs_sb_info *sbi, struct inode *inode,
 	if (err) {
 		mutex_unlock_op(sbi, ilock);
 		f2fs_msg(sbi->sb, KERN_INFO,
-			"%s: get_dnode_of_data failed: %d\n", __func__, err);
+			"%s: get_dnode_of_data failed: %d", __func__, err);
 		return err;
 	}
 
@@ -301,7 +301,7 @@ static int do_recover_data(struct f2fs_sb_info *sbi, struct inode *inode,
 				/* We should not get -ENOSPC */
 				if (err)
 					f2fs_msg(sbi->sb, KERN_INFO,
-						"%s: reserve_new_block failed: %d\n",
+						"%s: reserve_new_block failed: %d",
 						__func__, err);
 				BUG_ON(err);
 			}
@@ -360,7 +360,7 @@ static int recover_data(struct f2fs_sb_info *sbi,
 		err = f2fs_readpage(sbi, page, blkaddr, READ_SYNC);
 		if (err) {
 			f2fs_msg(sbi->sb, KERN_INFO,
-				"%s: f2fs_readpage failed: %d\n",
+				"%s: f2fs_readpage failed: %d",
 				__func__, err);
 			goto out;
 		}
@@ -377,7 +377,7 @@ static int recover_data(struct f2fs_sb_info *sbi,
 		err = do_recover_data(sbi, entry->inode, page, blkaddr);
 		if (err) {
 			f2fs_msg(sbi->sb, KERN_INFO,
-				"%s: f2fs_readpage failed: %d\n",
+				"%s: f2fs_readpage failed: %d",
 				__func__, err);
 			goto out;
 		}
@@ -417,7 +417,7 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 	err = find_fsync_dnodes(sbi, &inode_list);
 	if (err) {
 		f2fs_msg(sbi->sb, KERN_INFO,
-			"%s: find_fsync_dnodes failed: %d\n", __func__, err);
+			"%s: find_fsync_dnodes failed: %d", __func__, err);
 		goto out;
 	}
 
