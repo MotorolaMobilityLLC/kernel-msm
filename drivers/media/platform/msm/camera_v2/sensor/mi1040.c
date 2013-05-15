@@ -50,25 +50,25 @@ static struct msm_sensor_power_setting mi1040_power_setting[] = {
 		.seq_type = SENSOR_VREG,
 		.seq_val = CAM_VDIG,
 		.config_val = 0,
-		.delay = 0,
+		.delay = 50,
 	},
 	{
 		.seq_type = SENSOR_VREG,
 		.seq_val = CAM_VANA,
 		.config_val = 0,
-		.delay = 0,
+		.delay = 50,
 	},
 	{
 		.seq_type = SENSOR_CLK,
 		.seq_val = SENSOR_CAM_MCLK,
 		.config_val = 0,
-		.delay = 100,
+		.delay = 50,
 	},
 	{
 		.seq_type = SENSOR_I2C_MUX,
 		.seq_val = 0,
 		.config_val = 0,
-		.delay = 0,
+		.delay = 50,
 	},
 };
 
