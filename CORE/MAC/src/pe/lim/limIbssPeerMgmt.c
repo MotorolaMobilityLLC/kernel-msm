@@ -212,8 +212,22 @@ ibss_peer_collect(
         pPeer->htShortGI20Mhz = (tANI_U8)pBeacon->HTCaps.shortGI20MHz;
         pPeer->htShortGI40Mhz = (tANI_U8)pBeacon->HTCaps.shortGI40MHz;
         pPeer->htMaxRxAMpduFactor = pBeacon->HTCaps.maxRxAMPDUFactor;
+        pPeer->htSecondaryChannelOffset = pBeacon->HTInfo.secondaryChannelOffset;
     }
 
+    /* Collect peer VHT capabilities based on the received beacon from the peer */
+#ifdef WLAN_FEATURE_11AC
+    if ( pBeacon->VHTCaps.present )
+    {
+        pPeer->vhtSupportedChannelWidthSet =
+             (tANI_U8)((pBeacon->VHTOperation.chanWidth == WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ) ?
+             eHT_CHANNEL_WIDTH_80MHZ : WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ);
+        pPeer->vhtCapable = pBeacon->VHTCaps.present;
+
+        // Collect VHT capabilities from beacon
+        palCopyMemory(pMac->hHdd, (tANI_U8 *) &pPeer->VHTCaps, (tANI_U8 *) &pBeacon->VHTCaps, sizeof(tDot11fIEVHTCaps) );
+    }
+#endif
     pPeer->erpIePresent = pBeacon->erpPresent;
 
     palCopyMemory( pMac->hHdd, (tANI_U8 *) &pPeer->supportedRates,
@@ -269,6 +283,16 @@ ibss_sta_caps_update(
             pStaDs->baPolicyFlag = 0xFF;
         }
     }
+#ifdef WLAN_FEATURE_11AC
+    if ( IS_DOT11_MODE_VHT(psessionEntry->dot11mode) )
+    {
+        pStaDs->mlmStaContext.vhtCapability = pPeerNode->vhtCapable;
+        if ( pPeerNode->vhtCapable )
+        {
+           pStaDs->vhtSupportedChannelWidthSet = pPeerNode->vhtSupportedChannelWidthSet;
+        }
+    }
+#endif
 
     if(IS_DOT11_MODE_PROPRIETARY(psessionEntry->dot11mode) &&
       pPeerNode->aniIndicator)
@@ -344,7 +368,7 @@ ibss_sta_rates_update(
 #ifdef WLAN_FEATURE_11AC
     limPopulateMatchingRateSet(pMac, pStaDs, &pPeer->supportedRates,
                                &pPeer->extendedRates, pPeer->supportedMCSSet,
-                               &pStaDs->mlmStaContext.propRateSet,psessionEntry,NULL);
+                               &pStaDs->mlmStaContext.propRateSet,psessionEntry, &pPeer->VHTCaps);
 #else
     // Populate supported rateset
     limPopulateMatchingRateSet(pMac, pStaDs, &pPeer->supportedRates,
@@ -1455,6 +1479,7 @@ limIbssCoalesce(
             PELOGW(limLog(pMac, LOGW, FL("DPH Node present for just learned peer"));)
             PELOG1(limPrintMacAddr(pMac, pPeerNode->peerMacAddr, LOG1);)
             ibss_sta_info_update(pMac, pStaDs, pPeerNode,psessionEntry);
+            return eSIR_SUCCESS;
         }
         retCode = limIbssStaAdd(pMac, pPeerNode->peerMacAddr,psessionEntry);
         if (retCode != eSIR_SUCCESS)
