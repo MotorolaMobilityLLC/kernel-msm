@@ -57,8 +57,11 @@
 /* jack sense mask */
 #define TPA6165_JACK_SENSE  0x04
 
-/* button press mask */
+/* single button press mask */
 #define TPA6165_JACK_BUTTON  0x02
+
+/* multi button press mask */
+#define TPA6165_MULTI_BUTTON  0x04
 
 /* mic in mask */
 #define TPA6165_MIC_IN_MASK  0x08
@@ -92,6 +95,9 @@
 
 /* auto mode mask */
 #define TPA6165_AUTO_MODE (0x3)
+
+/* button press release mask */
+#define TPA6165_PRESS (0x1 << 1)
 
 /* Accesory Types Masks */
 
