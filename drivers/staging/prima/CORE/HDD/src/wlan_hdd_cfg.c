@@ -773,6 +773,27 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ACTIVE_MIN_CHANNEL_TIME_BTC_MIN,
                  CFG_ACTIVE_MIN_CHANNEL_TIME_BTC_MAX ),
 
+   REG_VARIABLE( CFG_RETRY_LIMIT_ZERO_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, retryLimitZero,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_RETRY_LIMIT_ZERO_DEFAULT,
+                 CFG_RETRY_LIMIT_ZERO_MIN,
+                 CFG_RETRY_LIMIT_ZERO_MAX ),
+
+   REG_VARIABLE( CFG_RETRY_LIMIT_ONE_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, retryLimitOne,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_RETRY_LIMIT_ONE_DEFAULT,
+                 CFG_RETRY_LIMIT_ONE_MIN,
+                 CFG_RETRY_LIMIT_ONE_MAX ),
+
+   REG_VARIABLE( CFG_RETRY_LIMIT_TWO_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, retryLimitTwo,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_RETRY_LIMIT_TWO_DEFAULT,
+                 CFG_RETRY_LIMIT_TWO_MIN,
+                 CFG_RETRY_LIMIT_TWO_MAX ),
+
 #ifdef WLAN_AP_STA_CONCURRENCY
    REG_VARIABLE( CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, nPassiveMaxChnTimeConc,
@@ -3592,8 +3613,30 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
    {
       fStatus = FALSE;
-      hddLog(LOGE, "Could not pass on WNI_CFG_DISABLE_LDPC_WITH_TXBF_AP to CCM\n");
+      hddLog(LOGE, "Could not pass on WNI_CFG_DISABLE_LDPC_WITH_TXBF_AP to CCM");
    }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_DYNAMIC_THRESHOLD_ZERO, pConfig->retryLimitZero,
+      NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_DYNAMIC_THRESHOLD_ZERO to CCM");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_DYNAMIC_THRESHOLD_ONE, pConfig->retryLimitOne,
+      NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_DYNAMIC_THRESHOLD_ONE to CCM");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_DYNAMIC_THRESHOLD_TWO, pConfig->retryLimitTwo,
+      NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_DYNAMIC_THRESHOLD_TWO to CCM");
+   }
+
    return fStatus;
 }
 

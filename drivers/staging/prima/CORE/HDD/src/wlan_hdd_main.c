@@ -4915,7 +4915,7 @@ err_wdclose:
       vos_watchdog_close(pVosContext);
 
 err_wiphy_reg:
-   wiphy_unregister(wiphy) ; 
+   wiphy_unregister(wiphy) ;
 
 err_config:
    kfree(pHddCtx->cfg_ini);

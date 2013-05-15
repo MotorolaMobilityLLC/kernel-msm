@@ -3466,7 +3466,7 @@ void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter)
         sme_GetDefaultCountryCodeFrmNv(pHddCtx->hHal, &defaultCountryCode[0]);
         sme_GetCurrentCountryCode(pHddCtx->hHal, &currentCountryCode[0]);
 
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                 "%s: Default country code: %c%c%c, Current Country code: %c%c%c \n",
                 __func__,
                 defaultCountryCode[0], defaultCountryCode[1], defaultCountryCode[2],
@@ -3475,10 +3475,9 @@ void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter)
          * between current country code and default country code
          */
         if ((defaultCountryCode[0] != currentCountryCode[0]) ||
-                (defaultCountryCode[1] != currentCountryCode[1]) ||
-                (defaultCountryCode[2] != currentCountryCode[2]))
+                (defaultCountryCode[1] != currentCountryCode[1]))
         {
-            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                     "%s: Disconnected from the AP/Assoc failed and "
                     "resetting the country code to default\n",__func__);
             /*reset the country code of previous connection*/
@@ -3488,7 +3487,7 @@ void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter)
                     );
             if( 0 != status )
             {
-                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                         "%s: failed to Reset the Country Code\n",__func__);
             }
         }
