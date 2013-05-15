@@ -4332,6 +4332,11 @@ static void vfe_send_outmsg(
 		break;
 	}
 
+	if (axi_ctrl->simultaneous_sof_frame) {
+		msg.frameCounter--;
+		CDBG("SOF and Frame IRQs together, adjusting frame counter");
+	}
+
 	v4l2_subdev_notify(&axi_ctrl->subdev,
 			NOTIFY_VFE_MSG_OUT,
 			&msg);
@@ -5396,6 +5401,16 @@ static void axi32_do_tasklet(unsigned long data)
 		spin_unlock_irqrestore(&axi_ctrl->tasklet_lock,
 			flags);
 
+		/* Detect simultaneous SOF and output irqs to avoid
+		 * unexpected frame id sequences.*/
+		axi_ctrl->simultaneous_sof_frame =
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_CAMIF_SOF_MASK)	&&
+			((qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE0_MASK) ||
+			(qcmd->vfeInterruptStatus0 &
+				VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE1_MASK));
+
 		if (axi_ctrl->share_ctrl->stats_comp) {
 			stat_interrupt = (qcmd->vfeInterruptStatus0 &
 					VFE_IRQ_STATUS0_STATS_COMPOSIT_MASK);
@@ -5552,6 +5567,7 @@ static void axi32_do_tasklet(unsigned long data)
 			}
 		}
 		vfe32_ctrl->simultaneous_sof_stat = 0;
+		axi_ctrl->simultaneous_sof_frame = 0;
 		kfree(qcmd);
 	}
 	CDBG("=== axi32_do_tasklet end ===\n");
@@ -6079,7 +6095,12 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd)
 	vfe32_ctrl->update_rolloff = false;
 	vfe32_ctrl->update_la = false;
 	vfe32_ctrl->update_gamma = false;
-	vfe32_ctrl->vfe_sof_count_enable = false;
+
+	if (vfe32_ctrl->share_ctrl->dual_enabled)
+		vfe32_ctrl->vfe_sof_count_enable = false;
+	else
+		vfe32_ctrl->vfe_sof_count_enable = true;
+
 	vfe32_ctrl->hfr_mode = HFR_MODE_OFF;
 	vfe32_ctrl->share_ctrl->rdi_comp = VFE_RDI_COMPOSITE;
 
