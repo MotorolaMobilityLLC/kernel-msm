@@ -382,7 +382,7 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 	struct kstat stat;
 	struct file* fp;
 	int readlen = 0;
-	char macasc[128] = {0,};
+	char macread[128] = {0,};
 	uint rand_mac;
 	static unsigned char mymac[ETHER_ADDR_LEN] = {0,};
 	const unsigned char nullmac[ETHER_ADDR_LEN] = {0,};
@@ -412,19 +412,26 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 		goto random_mac;
 	}
 
-	readlen = kernel_read(fp, fp->f_pos, macasc, 17); // 17 = 12 + 5
+#ifdef WIFI_MAC_FORMAT_ASCII
+	readlen = kernel_read(fp, fp->f_pos, macread, 17); // 17 = 12 + 5
+#else
+	readlen = kernel_read(fp, fp->f_pos, macread, 6);
+#endif
 	if (readlen > 0) {
 		unsigned char* macbin;
-		struct ether_addr* convmac = ether_aton( macasc );
+#ifdef WIFI_MAC_FORMAT_ASCII
+		struct ether_addr* convmac = ether_aton( macread );
 
 		if (convmac == NULL) {
 			pr_err("%s: Invalid Mac Address Format %s\n",
-					__FUNCTION__, macasc );
+					__FUNCTION__, macread );
 			goto random_mac;
 		}
 
 		macbin = convmac->ether_addr_octet;
-
+#else
+		macbin = (unsigned char*)macread;
+#endif
 		pr_info("%s: READ MAC ADDRESS %02X:%02X:%02X:%02X:%02X:%02X\n",
 				__FUNCTION__,
 				macbin[0], macbin[1], macbin[2],
