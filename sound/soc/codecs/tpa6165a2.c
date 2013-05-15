@@ -75,6 +75,7 @@ struct tpa6165_data {
 	int sleep_state;
 	int special_hs;
 	int alwayson_micb;
+	int button_detect_state;
 	struct mutex lock;
 	struct wake_lock wake_lock;
 	struct work_struct work;
@@ -119,7 +120,7 @@ static const struct tpa6165_regs tpa6165_reg_defaults[] = {
 },
 {
 	.reg =  TPA6165_KEYSCAN_DELAY_REG,
-	.value = 0xc7,
+	.value = 0x00,
 },
 {
 	.reg =  TPA6165_JACK_DETECT_TEST_HW1,
@@ -391,7 +392,6 @@ static inline void tpa6165_remove_debugfs(void)
 }
 #endif
 
-
 static void tpa6165_sleep(struct tpa6165_data *tpa6165, int sleep_state)
 {
 	switch (sleep_state) {
@@ -531,6 +531,31 @@ void tpa6165_mic_event(int event)
 }
 EXPORT_SYMBOL_GPL(tpa6165_mic_event);
 
+static void tpa6165_button_detect_state(struct tpa6165_data *tpa6165,
+								int state)
+{
+	if (state) {
+		tpa6165_reg_write(tpa6165, TPA6165_CLK_CTL,
+				0x80, 0x80);
+		tpa6165_reg_write(tpa6165, 0x66,
+				0xf1, 0xff);
+		tpa6165_reg_write(tpa6165, 0x6f,
+				0x01, 0xff);
+		tpa6165_reg_write(tpa6165, 0x66,
+				0x00, 0xff);
+	} else {
+		tpa6165_reg_write(tpa6165, TPA6165_CLK_CTL,
+				0x00, 0x80);
+		tpa6165_reg_write(tpa6165, 0x66,
+				0xf1, 0xff);
+		tpa6165_reg_write(tpa6165, 0x6f,
+				0x00, 0xff);
+		tpa6165_reg_write(tpa6165, 0x66,
+				0x00, 0xff);
+	}
+	tpa6165->button_detect_state = state;
+}
+
 static int tpa6165_update_device_status(struct tpa6165_data *tpa6165)
 {
 	tpa6165_reg_read(tpa6165, TPA6165_DEVICE_STATUS_REG1,
@@ -661,6 +686,82 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 	return acc_type;
 }
 
+static void tpa6165_report_button(struct tpa6165_data *tpa6165)
+{
+	if ((tpa6165->dev_status_reg1 & TPA6165_JACK_BUTTON)) {
+		/* if already in button detect state, check for
+		 * button press/release.
+		 */
+		if (tpa6165->button_detect_state) {
+			if (!(tpa6165->dev_status_reg2 & TPA6165_PRESS) &&
+						tpa6165->button_pressed) {
+				pr_debug("%s:report button release", __func__);
+				snd_soc_jack_report_no_dapm(
+					tpa6165->button_jack,
+					0, tpa6165->button_jack->jack->type);
+
+				tpa6165->button_pressed = 0;
+
+				if ((tpa6165->amp_state ==
+						TPA6165_AMP_DISABLED) &&
+						(tpa6165->mic_state ==
+						TPA6165_MIC_DISABLED)) {
+					/* safe to trigger sleep state now */
+					pr_debug("%s:turn off button det state",
+							__func__);
+					if (tpa6165->alwayson_micb ||
+							tpa6165->special_hs)
+						tpa6165_sleep(tpa6165,
+							TPA6165_SPECIAL_SLEEP);
+					else
+						tpa6165_sleep(tpa6165,
+							TPA6165_SLEEP);
+					tpa6165_button_detect_state(tpa6165, 0);
+				}
+			} else if ((tpa6165->dev_status_reg2 & TPA6165_PRESS)
+					&& (!tpa6165->button_pressed)) {
+				pr_debug("%s:report button pressed",
+						__func__);
+				snd_soc_jack_report_no_dapm(
+					tpa6165->button_jack,
+					SND_JACK_BTN_0,
+					tpa6165->button_jack->jack->type);
+				tpa6165->button_pressed = 1;
+			}
+
+		} else {
+			/* at this point not sure if it is single or
+			 * or multi, button event wake up the IC and
+			 * trigger button type detection register
+			 * sequence.this should trigger an interrupt
+			 * which should tell us if it is multibutton
+			 * or single button press.
+			 */
+			pr_debug("%s:trigger button press detect state",
+						__func__);
+			tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
+			tpa6165_button_detect_state(tpa6165, 1);
+		}
+	} else if (tpa6165->dev_status_reg2 & TPA6165_MULTI_BUTTON) {
+		/* it is passive multibutton press not supported now
+		 * in android, so nothing report here. Just put the.
+		 * IC back in sleep.
+		 */
+		pr_debug("%s:multi button press detected", __func__);
+		if (tpa6165->button_detect_state &&
+				tpa6165->amp_state == TPA6165_AMP_DISABLED &&
+				tpa6165->mic_state == TPA6165_MIC_DISABLED) {
+			pr_debug("%s:turn off button det", __func__);
+			if (tpa6165->alwayson_micb || tpa6165->special_hs)
+					tpa6165_sleep(tpa6165,
+						TPA6165_SPECIAL_SLEEP);
+				else
+					tpa6165_sleep(tpa6165, TPA6165_SLEEP);
+				tpa6165_button_detect_state(tpa6165, 0);
+		}
+	}
+}
+
 static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 {
 	mutex_lock(&tpa6165->lock);
@@ -699,25 +800,9 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 		tpa6165_sleep(tpa6165, TPA6165_SLEEP);
 	} else if ((tpa6165->dev_status_reg1 & TPA6165_JACK_DETECT) &&
 			tpa6165->inserted) {
-		/* no change in jack detect state, check for Button press */
-		if ((tpa6165->dev_status_reg1 & TPA6165_JACK_BUTTON)) {
-			if (!tpa6165->button_pressed) {
-				/* report button press */
-				tpa6165->button_pressed = 1;
-				pr_debug("%s:report button press", __func__);
-				snd_soc_jack_report_no_dapm(
-					tpa6165->button_jack,
-					SND_JACK_BTN_0,
-					tpa6165->button_jack->jack->type);
-			} else {
-				/* report button release */
-				tpa6165->button_pressed = 0;
-				pr_debug("%s:report button release", __func__);
-				snd_soc_jack_report_no_dapm(
-					tpa6165->button_jack,
-					0, tpa6165->button_jack->jack->type);
-			}
-		} /* else nothing to report here */
+		/* no change in jack detect state, check for Button press*/
+		tpa6165_report_button(tpa6165);
+
 	} else if (!(tpa6165->dev_status_reg1 & TPA6165_JACK_DETECT) &&
 			!tpa6165->inserted) {
 			/* no valid accessory detected on receiving interrupt,
