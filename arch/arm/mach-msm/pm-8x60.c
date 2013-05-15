@@ -738,7 +738,7 @@ static void msm_pm_set_timer(uint32_t modified_time_us)
 	u64 modified_time_ns = modified_time_us * NSEC_PER_USEC;
 	ktime_t modified_ktime = ns_to_ktime(modified_time_ns);
 	pm_hrtimer.function = pm_hrtimer_cb;
-	hrtimer_start(&pm_hrtimer, modified_ktime, HRTIMER_MODE_ABS);
+	hrtimer_start(&pm_hrtimer, modified_ktime, HRTIMER_MODE_REL);
 }
 
 /******************************************************************************
@@ -1178,7 +1178,7 @@ static int __init msm_pm_init(void)
 
 	suspend_set_ops(&msm_pm_ops);
 	msm_pm_target_init();
-	hrtimer_init(&pm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
+	hrtimer_init(&pm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	msm_cpuidle_init();
 	platform_driver_register(&msm_pc_counter_driver);
 
