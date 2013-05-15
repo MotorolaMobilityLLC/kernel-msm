@@ -81,7 +81,7 @@ static int lm3630_read_reg(struct i2c_client *client, u8 reg, u8 *buf);
 static int lm3630_write_reg(struct i2c_client *client, unsigned char reg, unsigned char val);
 static int cur_main_lcd_level = DEFAULT_BRIGHTNESS;
 static int saved_main_lcd_level = DEFAULT_BRIGHTNESS;
-static int backlight_status = BL_OFF;
+static int backlight_status = BL_ON;
 static int lm3630_pwm_enable;
 static struct lm3630_device *main_lm3630_dev;
 
@@ -249,14 +249,21 @@ EXPORT_SYMBOL(lm3630_lcd_backlight_set_level);
 static int bl_set_intensity(struct backlight_device *bd)
 {
 	struct i2c_client *client = to_i2c_client(bd->dev.parent);
+	struct lm3630_device *dev = i2c_get_clientdata(client);
+	int brightness = bd->props.brightness;
 
-	/* If it's trying to set same backlight value, skip it. */
-	if (bd->props.brightness == cur_main_lcd_level) {
-		pr_debug("%s: level set already. Skip it.\n", __func__);
+	if ((bd->props.state & BL_CORE_FBBLANK) ||
+			(bd->props.state & BL_CORE_SUSPENDED))
+		brightness = 0;
+	else if (brightness == 0)
+		brightness = dev->default_brightness;
+
+	if (brightness == cur_main_lcd_level) {
+		pr_debug("%s: requsted level is already set!\n", __func__);
 		return 0;
 	}
-	lm3630_set_main_current_level(client, bd->props.brightness);
-	cur_main_lcd_level = bd->props.brightness;
+
+	lm3630_lcd_backlight_set_level(brightness);
 	return 0;
 }
 
