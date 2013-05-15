@@ -566,7 +566,7 @@ int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand)
  * during initialization. 
  * This function is used to initialize and register wiphy structure.
  */
-int wlan_hdd_cfg80211_register(struct device *dev, 
+int wlan_hdd_cfg80211_register(struct device *dev,
                                struct wiphy *wiphy,
                                hdd_config_t *pCfg
                                )
