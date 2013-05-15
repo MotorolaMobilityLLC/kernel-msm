@@ -36,7 +36,7 @@ struct snd_msm {
 	struct msm_audio *prtd;
 	unsigned volume;
 };
-static struct snd_msm compressed_audio = {NULL, 0x2000} ;
+static struct snd_msm compressed_audio = {NULL, 0x20002000} ;
 
 static struct audio_locks the_locks;
 
@@ -359,8 +359,9 @@ int compressed_set_volume(unsigned volume)
 {
 	int rc = 0;
 	if (compressed_audio.prtd && compressed_audio.prtd->audio_client) {
-		rc = q6asm_set_volume(compressed_audio.prtd->audio_client,
-								 volume);
+		rc = q6asm_set_lrgain(compressed_audio.prtd->audio_client,
+						(volume >> 16) & 0xFFFF,
+						volume & 0xFFFF);
 		if (rc < 0) {
 			pr_err("%s: Send Volume command failed rc=%d\n",
 						__func__, rc);
