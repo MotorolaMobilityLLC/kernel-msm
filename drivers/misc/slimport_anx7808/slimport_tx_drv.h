@@ -21,7 +21,7 @@
 
 /*#define D(fmt, arg...) printk("<1>```%s:%d: " fmt, __func__, __LINE__, ##arg)*/
 
-#define MAX_BUF_CNT 10
+#define MAX_BUF_CNT 16
 
 #define VID_DVI_MODE 0x00
 #define VID_HDMI_MODE 0x01
@@ -34,7 +34,7 @@
 extern unchar bedid_extblock[128];
 extern unchar bedid_firstblock[128];
 extern unchar slimport_link_bw;
-
+extern int hdcp_en;
 
 
 enum SP_TX_System_State {
@@ -72,7 +72,6 @@ enum SP_TX_POWER_BLOCK {
 };
 
 enum SP_TX_SEND_MSG {
-	MSG_OCM_EN,
 	MSG_INPUT_HDMI,
 	MSG_INPUT_DVI,
 	MSG_CLEAR_IRQ,
@@ -121,10 +120,11 @@ enum SP_LINK_BW {
 };
 
 enum RX_CBL_TYPE {
+	RX_NULL = 0x00,
 	RX_HDMI = 0x01,
 	RX_DP = 0x02,
-	RX_VGA = 0x03,
-	RX_NULL = 0x00
+	RX_VGA_GEN = 0x03,
+	RX_VGA_9832 = 0x04,
 };
 void sp_tx_variable_init(void);
 void sp_tx_initialization(void);
@@ -155,6 +155,7 @@ uint sp_tx_link_err_check(void);
 void sp_tx_eye_diagram_test(void);
 void sp_tx_phy_auto_test(void);
 void sp_tx_enable_video_input(unchar enable);
+void sp_tx_disable_slimport_hdcp(void);
 void sp_tx_pull_down_id(bool enable);
 
 /* ***************************************************************** */

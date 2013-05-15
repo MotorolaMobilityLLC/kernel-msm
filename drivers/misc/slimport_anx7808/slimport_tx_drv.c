@@ -32,9 +32,9 @@ unchar bedid_firstblock[128] = {0};
 static ulong pclk;
 static ulong m_val, n_val;
 enum SP_LINK_BW sp_tx_bw;
-bool sp_tx_link_config_done;//link config done flag
-bool sp_tx_hw_lt_done;//hardware linktraining done indicator
-bool sp_tx_hw_lt_enable;//hardware linktraining enable
+bool sp_tx_link_config_done;	/*link config done flag*/
+bool sp_tx_hw_lt_done;	/*hardware linktraining done indicator*/
+bool sp_tx_hw_lt_enable;	/*hardware linktraining enable*/
 bool sp_tx_test_lt;
 static unchar sp_tx_test_bw;
 static bool sp_tx_test_edid;
@@ -45,11 +45,11 @@ unchar slimport_link_bw;
 static unchar sp_tx_hdcp_auth_pass;
 static unchar sp_tx_hdcp_auth_fail_counter;
 static unchar sp_tx_hdcp_capable_chk;
-static unchar sp_tx_hw_hdcp_en;
+unchar sp_tx_hw_hdcp_en;
 static unchar sp_tx_hdcp_auth_done;
 
 enum RX_CBL_TYPE sp_tx_rx_type;
-enum RX_CBL_TYPE  sp_tx_rx_type_backup;
+enum RX_CBL_TYPE sp_tx_rx_type_backup;
 unchar sp_tx_pd_mode;
 
 
@@ -109,7 +109,7 @@ void sp_tx_variable_init(void)
 	sp_tx_test_lt = 0;
 	sp_tx_bw = BW_54G;
 	slimport_link_bw = 0;
-
+	hdcp_en = 1;
 }
 
 static void sp_tx_api_m_gen_clk_select(unchar bspreading)
@@ -131,24 +131,27 @@ static void sp_tx_link_phy_initialization(void)
 	/* PHY parameter for cts */
 
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG0, 0x19);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG4, 0x1b);//3
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG10, 0x00);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG4, 0x1b);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG7, 0x22);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG9, 0x23);
 
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG14, 0x09);//3
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG14, 0x09);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG17, 0x16);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG19, 0x1F);
 
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG1, 0x26);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG5, 0x28);//3
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG11, 0x00);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG5, 0x28);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG8, 0x2F);
 
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG15, 0x10);//3
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG15, 0x10);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG18, 0x1F);
 
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG2, 0x36);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG6, 0x3c);//3
-		sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG16, 0x18);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG12, 0x08);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG6, 0x3c);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG16, 0x18);
 
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG3, 0x3F);
 }
@@ -158,7 +161,7 @@ void sp_tx_initialization(void)
 	unchar c;
 
 	sp_read_reg(TX_P0, SP_TX_EXTRA_ADDR_REG, &c);
-	c |= I2C_EXTRA_ADDR | I2C_STRETCH_DISABLE;
+	c |= I2C_EXTRA_ADDR & (~I2C_STRETCH_DISABLE);
 	sp_write_reg(TX_P0, SP_TX_EXTRA_ADDR_REG, c);
 
 	sp_read_reg(TX_P0, SP_TX_HDCP_CTRL , &c);
@@ -270,14 +273,14 @@ void sp_tx_power_on(enum SP_TX_POWER_BLOCK sp_tx_pd_block)
 void sp_tx_pull_down_id(bool enable)
 {
 	unchar c;
-	if(enable) {
+	if (enable) {
 		sp_read_reg(TX_P2, SP_TX_ANAOG_DBG_REG1, &c);
-		c |= SP_TX_ANAOG_DBG_REG1;
+		c |= PULL_DOWN_ID;
 		sp_write_reg(TX_P2, SP_TX_ANAOG_DBG_REG1, c);
 
 	} else {
 		sp_read_reg(TX_P2, SP_TX_ANAOG_DBG_REG1, &c);
-		c &= ~SP_TX_ANAOG_DBG_REG1;
+		c &= ~PULL_DOWN_ID;
 		sp_write_reg(TX_P2, SP_TX_ANAOG_DBG_REG1, c);
 	}
 
@@ -300,7 +303,7 @@ void sp_tx_rst_aux(void)
 	c1 &= ~AUX_RST;
 	sp_write_reg(TX_P2, SP_TX_RST_CTRL2_REG, c1);
 
-	/* enable  polling  after reset AUX-ANX.Fei-2011.9.19 */
+	/* enable polling after reset AUX-ANX.Fei-2011.9.19 */
 	sp_write_reg(TX_P0, SP_TX_DEBUG_REG1, c);
 }
 
@@ -332,7 +335,7 @@ static unchar sp_tx_wait_aux_finished(void)
 static unchar sp_tx_aux_dpcdread_bytes(unchar addrh, unchar addrm,
 	unchar addrl, unchar cCount, unchar *pBuf)
 {
-	unchar c, i;
+	unchar c, i, c1;
 	unchar bOK;
 
 	sp_write_reg(TX_P0, SP_TX_BUF_DATA_COUNT_REG, 0x80);
@@ -356,7 +359,15 @@ static unchar sp_tx_aux_dpcdread_bytes(unchar addrh, unchar addrm,
 
 	if (!bOK) {
 		SP_DEV_ERR("aux read failed\n");
-		sp_tx_rst_aux();
+		/*add by span 20130217.*/
+		sp_read_reg(TX_P2, SP_TX_INT_STATUS1, &c);
+		sp_read_reg(TX_P0, SP_TX_DEBUG_REG1, &c1);
+		/*if polling is enabled, wait polling error interrupt*/
+		if (c1 & POLLING_EN) {
+			if (c & POLLING_ERR)
+				sp_tx_rst_aux();
+		} else
+			sp_tx_rst_aux();
 		return AUX_ERR;
 	}
 
@@ -380,7 +391,7 @@ static unchar sp_tx_aux_dpcdwrite_bytes(unchar addrh, unchar addrm,
 
 	sp_write_reg(TX_P0, SP_TX_BUF_DATA_COUNT_REG, 0x80);
 
-	c =  ((cCount - 1) << 4) | 0x08;
+	c = ((cCount - 1) << 4) | 0x08;
 	sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG, c);
 
 	sp_write_reg(TX_P0, SP_TX_AUX_ADDR_7_0_REG, addrl);
@@ -448,8 +459,10 @@ void sp_tx_set_colorspace(void)
 	sp_read_reg(TX_P2, SP_TX_VID_CTRL2_REG, &c);
 	c = (c & 0xfc) | color_space >> 5;
 	sp_write_reg(TX_P2, SP_TX_VID_CTRL2_REG, c);
-	switch(sp_tx_rx_type){
-	case RX_VGA:
+	switch (sp_tx_rx_type) {
+	case RX_VGA_9832:
+	case RX_VGA_GEN:
+	case RX_DP:
 		sp_read_reg(TX_P2, SP_TX_VID_CTRL2_REG, &color_space);
 		if((color_space & 0x03)== 0x01)  {
 			sp_read_reg(TX_P2, SP_TX_VID_CTRL5_REG, &c);
@@ -458,9 +471,13 @@ void sp_tx_set_colorspace(void)
 			sp_write_reg(TX_P2, SP_TX_VID_CTRL5_REG, c);
 
 			sp_read_reg(RX_P1, (HDMI_RX_AVI_DATA00_REG + 3), &c);
-			if((c ==0x04)||(c ==0x05)||(c ==0x10)||
-				(c ==0x13)||(c ==0x14)||(c ==0x1F)||
-				(c ==0x20)||(c ==0x21)||(c ==0x22)){
+			if ((c == 0x04) || (c == 0x05) || (c == 0x10) ||
+				(c == 0x13) || (c == 0x14) || (c == 0x1F) ||
+				(c == 0x20) || (c == 0x21) || (c == 0x22) ||
+				(c == 0x27) || (c == 0x28) || (c == 0x29) ||
+				(c == 0x2E) || (c == 0x2F) || (c == 0x3C) ||
+				(c == 0x3D) || (c == 0x3E) || (c == 0x3F) ||
+				(c == 0x40)) {
 				sp_read_reg(TX_P2, SP_TX_VID_CTRL5_REG, &c);
 				c |= CSC_STD_SEL;
 				sp_write_reg(TX_P2, SP_TX_VID_CTRL5_REG, c);
@@ -510,7 +527,6 @@ void sp_tx_set_colorspace(void)
 			sp_write_reg(TX_P2, SP_TX_VID_CTRL6_REG, c);
 		}
 		break;
-	case RX_DP:
 	case RX_HDMI:
 		break;
 	default:
@@ -693,9 +709,11 @@ static void sp_tx_enhancemode_set(void)
 		c |= ENHANCED_MODE;
 		sp_write_reg(TX_P0, SP_TX_SYS_CTRL4_REG, c);
 
-		sp_tx_aux_dpcdread_bytes(0x00, 0x01, DPCD_LANE_COUNT_SET, 1, &c);
+		sp_tx_aux_dpcdread_bytes(0x00, 0x01,
+			DPCD_LANE_COUNT_SET, 1, &c);
 		c |= ENHANCED_FRAME_EN;
-		sp_tx_aux_dpcdwrite_byte(0x00, 0x01, DPCD_LANE_COUNT_SET, c);
+		sp_tx_aux_dpcdwrite_byte(0x00, 0x01,
+			DPCD_LANE_COUNT_SET, c);
 
 		SP_DEV_DBG("Enhance mode enabled\n");
 	} else {
@@ -704,9 +722,11 @@ static void sp_tx_enhancemode_set(void)
 		c &= ~ENHANCED_MODE;
 		sp_write_reg(TX_P0, SP_TX_SYS_CTRL4_REG, c);
 
-		sp_tx_aux_dpcdread_bytes(0x00, 0x01, DPCD_LANE_COUNT_SET, 1, &c);
+		sp_tx_aux_dpcdread_bytes(0x00, 0x01,
+			DPCD_LANE_COUNT_SET, 1, &c);
 		c &= ~ENHANCED_FRAME_EN;
-		sp_tx_aux_dpcdwrite_byte(0x00, 0x01, DPCD_LANE_COUNT_SET, c);
+		sp_tx_aux_dpcdwrite_byte(0x00, 0x01,
+			DPCD_LANE_COUNT_SET, c);
 
 		SP_DEV_DBG("Enhance mode disabled\n");
 	}
@@ -994,14 +1014,14 @@ unchar sp_tx_chip_located(void)
 {
 	unchar c1, c2;
 
-	sp_tx_hardware_poweron(anx7808_client);
+	sp_tx_hardware_poweron();
 	sp_read_reg(TX_P2, SP_TX_DEV_IDL_REG, &c1);
 	sp_read_reg(TX_P2, SP_TX_DEV_IDH_REG, &c2);
 	if ((c1 == 0x08) && (c2 == 0x78)) {
 		SP_DEV_DBG("ANX7808 is found.\n");
 		return 1;
 	} else {
-		sp_tx_hardware_powerdown(anx7808_client);
+		sp_tx_hardware_powerdown();
 		SP_DEV_DBG("ANX7808 is not found.\n");
 		return 0;
 	}
@@ -1067,14 +1087,16 @@ static void sp_tx_spread_enable(unchar benable)
 		c &= ~SSC_RST;
 		sp_write_reg(TX_P2, SP_TX_RST_CTRL2_REG, c);
 
-		sp_tx_aux_dpcdread_bytes(0x00, 0x01, DPCD_DOWNSPREAD_CTRL, 1, &c);
+		sp_tx_aux_dpcdread_bytes(0x00, 0x01,
+			DPCD_DOWNSPREAD_CTRL, 1, &c);
 		c |= SPREAD_AMPLITUDE;
 		sp_tx_aux_dpcdwrite_byte(0x00, 0x01, DPCD_DOWNSPREAD_CTRL, c);
 	} else {
 		c &= ~SPREAD_AMP;
 		sp_write_reg(TX_P0, SSC_CTRL_REG1, c);
 
-		sp_tx_aux_dpcdread_bytes(0x00, 0x01, DPCD_DOWNSPREAD_CTRL, 1, &c);
+		sp_tx_aux_dpcdread_bytes(0x00, 0x01,
+			DPCD_DOWNSPREAD_CTRL, 1, &c);
 		c &= ~SPREAD_AMPLITUDE;
 		sp_tx_aux_dpcdwrite_byte(0x00, 0x01, DPCD_DOWNSPREAD_CTRL, c);
 	}
@@ -1145,6 +1167,11 @@ static void sp_tx_enable_audio_output(unchar benable)
 	sp_read_reg(TX_P0, SP_TX_AUD_CTRL, &c);
 
 	if (benable) {
+		sp_read_reg(TX_P0, SP_TX_AUD_CTRL, &c);
+		if (c&AUD_EN) {
+			c &= ~AUD_EN;
+			sp_write_reg(TX_P0, SP_TX_AUD_CTRL, c);
+		}
 		c |= AUD_EN;
 		sp_write_reg(TX_P0, SP_TX_AUD_CTRL, c);
 
@@ -1266,9 +1293,11 @@ static void sp_tx_config_audio(void)
 static void sp_tx_get_rx_bw(unchar bMax, unchar *cBw)
 {
 	if (bMax)
-		sp_tx_aux_dpcdread_bytes(0x00, 0x00, DPCD_MAX_LINK_RATE, 1, cBw);
+		sp_tx_aux_dpcdread_bytes(0x00, 0x00,
+		DPCD_MAX_LINK_RATE, 1, cBw);
 	else
-		sp_tx_aux_dpcdread_bytes(0x00, 0x01, DPCD_LINK_BW_SET, 1, cBw);
+		sp_tx_aux_dpcdread_bytes(0x00, 0x01,
+		DPCD_LINK_BW_SET, 1, cBw);
 }
 
 static void sp_tx_edid_read_initial(void)
@@ -1324,8 +1353,7 @@ static unchar sp_tx_aux_edidread_byte(unchar offset)
 					bReturn = 0x01;
 				}
 
-				sp_read_reg(TX_P0,
-					       SP_TX_AUX_CTRL_REG2, &c);
+				sp_read_reg(TX_P0, SP_TX_AUX_CTRL_REG2, &c);
 			}
 
 			bReturn = 0x02;
@@ -1659,12 +1687,13 @@ void sp_tx_avi_setup(void)
 		sp_read_reg(RX_P1, (HDMI_RX_AVI_DATA00_REG + i), &c);
 		sp_tx_packet_avi.AVI_data[i] = c;
 	}
-	switch(sp_tx_rx_type){
-	case RX_VGA:
-		sp_tx_packet_avi.AVI_data[0] &=~0x60;
+	switch (sp_tx_rx_type) {
+	case RX_VGA_9832:
+	case RX_VGA_GEN:
+	case RX_DP:
+		sp_tx_packet_avi.AVI_data[0] &= ~0x60;
 		break;
 	case RX_HDMI:
-	case RX_DP:
 		break;
 	default:
 		break;
@@ -1876,6 +1905,20 @@ unchar sp_tx_lt_pre_config(void)
 		if (sp_tx_test_lt) {
 			sp_tx_bw = sp_tx_test_bw;
 			sp_tx_test_lt = 0;
+			switch (sp_tx_test_bw) {
+			case 0x06:
+				sp_tx_bw = BW_162G;
+				break;
+			case 0x0a:
+				sp_tx_bw = BW_27G;
+				break;
+			case 0x14:
+				sp_tx_bw = BW_54G;
+				break;
+			default:
+				sp_tx_bw = BW_NULL;
+				break;
+			}
 			/*Link CTS 4.3.3.1, need to send the video timing
 			640x480p@60Hz, 18-bit*/
 			sp_read_reg(TX_P2, SP_TX_VID_CTRL2_REG, &c);
@@ -1907,7 +1950,7 @@ unchar sp_tx_lt_pre_config(void)
 		c |= PLL_RST;
 		sp_write_reg(TX_P0, SP_TX_PLL_CTRL_REG, c);
 		msleep(1);
-		c &=~PLL_RST;
+		c &= ~PLL_RST;
 		sp_write_reg(TX_P0, SP_TX_PLL_CTRL_REG, c);
 
 		sp_tx_link_config_done = 1;
@@ -1936,10 +1979,6 @@ void sp_tx_send_message(enum SP_TX_SEND_MSG message)
 	unchar c;
 
 	switch (message) {
-	case MSG_OCM_EN:
-		sp_tx_aux_dpcdwrite_byte(0x00, 0x05, 0x25, 0x5a);
-		break;
-
 	case MSG_INPUT_HDMI:
 		sp_tx_aux_dpcdwrite_byte(0x00, 0x05, 0x26, 0x01);
 		break;
@@ -1956,12 +1995,21 @@ void sp_tx_send_message(enum SP_TX_SEND_MSG message)
 	}
 }
 
+void sp_tx_disable_slimport_hdcp(void)
+{
+	sp_tx_hdcp_encryption_disable();
+	msleep(100);
+	sp_tx_clean_hdcp();
+	sp_tx_video_mute(0);
+	SP_DEV_DBG("*****slimport HDCP is disabled********\n");
+}
+
 unchar sp_tx_get_cable_type(void)
 {
 	unchar SINK_OUI[8] = { 0 };
 	unchar ds_port_preset = 0;
 	unchar ds_port_recoginze = 0;
-	int i,j;
+	int i;
 
 	for (i = 0; i < 5; i++) {
 		if (AUX_ERR == sp_tx_aux_dpcdread_bytes(0x00, 0x00,
@@ -1972,44 +2020,44 @@ unchar sp_tx_get_cable_type(void)
 			continue;
 		}
 
-		for (j = 0; j < 0x0c; j++)
-			sp_tx_aux_dpcdread_bytes(0x00, 0x00, j, 1, bytebuf);
-
-		switch (ds_port_preset & 0x07) {
+		sp_tx_aux_dpcdread_bytes(0x00, 0x00, 0x00, 0x0c, bytebuf);
+		ds_port_preset = ds_port_preset >> 1;
+		switch (ds_port_preset & 0x03) {
 		case 0x00:
 			sp_tx_rx_type = RX_DP;
 			ds_port_recoginze = 1;
 			SP_DEV_NOTICE("Downstream is DP dongle.");
 			break;
-		case 0x03:
-			sp_tx_aux_dpcdread_bytes(0x00, 0x04, 0x00, 8, SINK_OUI);
+		case 0x01:
+			sp_tx_aux_dpcdread_bytes(0x00, 0x04, 0x00, 8,
+				SINK_OUI);
 
-			if (((SINK_OUI[0] == 0x00) && (SINK_OUI[1] == 0x22)
-			    && (SINK_OUI[2] == 0xb9) && (SINK_OUI[3] == 0x61)
-			    && (SINK_OUI[4] == 0x39) && (SINK_OUI[5] == 0x38)
-			    && (SINK_OUI[6] == 0x33))||
-			    ((SINK_OUI[0] == 0x00) && (SINK_OUI[1] == 0x22)
-			    && (SINK_OUI[2] == 0xb9) && (SINK_OUI[3] == 0x73)
-			    && (SINK_OUI[4] == 0x69) && (SINK_OUI[5] == 0x76)
-			    && (SINK_OUI[6] == 0x61))) {
-				SP_DEV_NOTICE("Downstream is VGA dongle.");
-				sp_tx_rx_type = RX_VGA;
+			if (((SINK_OUI[0] == 0x00) &&
+					(SINK_OUI[1] == 0x22) &&
+					(SINK_OUI[2] == 0xb9) &&
+					(SINK_OUI[3] == 0x61) &&
+					(SINK_OUI[4] == 0x39) &&
+					(SINK_OUI[5] == 0x38) &&
+					(SINK_OUI[6] == 0x33))) {
+				SP_DEV_NOTICE("DS is 9832 VGA dongle.");
+				sp_tx_rx_type = RX_VGA_9832;
 			} else {
-				sp_tx_rx_type = RX_DP;
+				sp_tx_rx_type = RX_VGA_GEN;
 				SP_DEV_NOTICE("Downstream is general DP2VGA converter.");
 			}
 			ds_port_recoginze = 1;
 			break;
-		case 0x05:
-			sp_tx_aux_dpcdread_bytes(0x00, 0x04, 0x00, 8, SINK_OUI);
+		case 0x02:
+			sp_tx_aux_dpcdread_bytes(0x00, 0x04, 0x00, 8,
+				SINK_OUI);
 
 			if ((SINK_OUI[0] == 0xb9) && (SINK_OUI[1] == 0x22)
-			    && (SINK_OUI[2] == 0x00)
-			    && (SINK_OUI[3] == 0x00) && (SINK_OUI[4] == 0x00)
-			    && (SINK_OUI[5] == 0x00)
-			    && (SINK_OUI[6] == 0x00)) {
+					&& (SINK_OUI[2] == 0x00)
+					&& (SINK_OUI[3] == 0x00)
+					&& (SINK_OUI[4] == 0x00)
+					&& (SINK_OUI[5] == 0x00)
+					&& (SINK_OUI[6] == 0x00)) {
 				SP_DEV_NOTICE("Downstream is HDMI dongle.");
-				sp_tx_send_message(MSG_OCM_EN);
 				sp_tx_rx_type = RX_HDMI;
 			} else {
 				sp_tx_rx_type = RX_DP;
@@ -2034,7 +2082,11 @@ bool sp_tx_get_hdmi_connection(void)
 	unchar c;
 	msleep(200);
 
-	sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x18, 1, &c);
+	if (AUX_OK != sp_tx_aux_dpcdread_bytes(0x00,
+		0x05, 0x18, 1, &c)) {
+		SP_DEV_ERR("aux error.\n");
+		return FALSE;
+	}
 	if ((c & 0x41) == 0x41)
 		return TRUE;
 	else
@@ -2044,7 +2096,11 @@ bool sp_tx_get_hdmi_connection(void)
 bool sp_tx_get_vga_connection(void)
 {
 	unchar c;
-	sp_tx_aux_dpcdread_bytes(0x00, 0x02, DPCD_SINK_COUNT, 1, &c);
+	if (AUX_OK != sp_tx_aux_dpcdread_bytes(0x00,
+		0x02, DPCD_SINK_COUNT, 1, &c)) {
+		SP_DEV_ERR("aux error.\n");
+		return FALSE;
+	}
 	if (c & 0x01)
 		return TRUE;
 	else
@@ -2065,7 +2121,11 @@ bool sp_tx_get_dp_connection(void)
 {
 	unchar c;
 
-	sp_tx_aux_dpcdread_bytes(0x00, 0x02, DPCD_SINK_COUNT, 1, &c);
+	if (AUX_OK != sp_tx_aux_dpcdread_bytes(0x00,
+		0x02, DPCD_SINK_COUNT, 1, &c)) {
+		SP_DEV_ERR("aux error.\n");
+		return FALSE;
+	}
 	if (c & 0x1f) {
 		sp_tx_aux_dpcdread_bytes(0x00, 0x00, 0x04, 1, &c);
 		if (c & 0x20)
@@ -2288,7 +2348,7 @@ static void sp_tx_link_change_int_handler(void)
 			sp_tx_pull_down_id(FALSE);
 			sp_tx_power_down(SP_TX_PWR_REG);
 			sp_tx_power_down(SP_TX_PWR_TOTAL);
-			sp_tx_hardware_powerdown(anx7808_client);
+			sp_tx_hardware_powerdown();
 			sp_tx_pd_mode = 1;
 			sp_tx_link_config_done = 0;
 			sp_tx_hw_lt_enable = 0;
@@ -2311,14 +2371,14 @@ static void sp_tx_polling_err_int_handler(void)
 {
 	unchar c;
 	int i;
+	unchar aux_stauts;
 
 	if ((sp_tx_system_state < STATE_CABLE_PLUG) || sp_tx_pd_mode)
 		return;
 
 	for (i = 0; i < 5; i++) {
-		sp_tx_aux_dpcdread_bytes(0x00, 0x00, 0x00, 1, &c);
-
-		if (c == 0x11)
+		aux_stauts = sp_tx_aux_dpcdread_bytes(0x00, 0x00, 0x00, 1, &c);
+		if (aux_stauts == AUX_OK)
 			return;
 
 		msleep(2);
@@ -2331,7 +2391,7 @@ static void sp_tx_polling_err_int_handler(void)
 		sp_tx_pull_down_id(FALSE);
 		sp_tx_power_down(SP_TX_PWR_TOTAL);
 		sp_tx_power_down(SP_TX_PWR_REG);
-		sp_tx_hardware_powerdown(anx7808_client);
+		sp_tx_hardware_powerdown();
 		sp_tx_set_sys_state(STATE_CABLE_PLUG);
 		sp_tx_pd_mode = 1;
 		sp_tx_link_config_done = 0;
@@ -2384,8 +2444,11 @@ static void sp_tx_irq_isr(void)
 
 		if ((Int_vector1 & 0x01) == 0x01) {
 			sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x18, 1, &c);
-			if (c & 0x01)
+			if (c & 0x01) {
+				if (sp_tx_system_state < STATE_PARSE_EDID)
+					sp_tx_set_sys_state(STATE_PARSE_EDID);
 				SP_DEV_NOTICE("Downstream HDMI is pluged!\n");
+			}
 		}
 
 		if ((Int_vector1 & 0x02) == 0x02) {
@@ -2400,7 +2463,7 @@ static void sp_tx_irq_isr(void)
 					sp_tx_pull_down_id(FALSE);
 					sp_tx_power_down(SP_TX_PWR_REG);
 					sp_tx_power_down(SP_TX_PWR_TOTAL);
-					sp_tx_hardware_powerdown(anx7808_client);
+					sp_tx_hardware_powerdown();
 					sp_tx_set_sys_state(STATE_CABLE_PLUG);
 					sp_tx_pd_mode = 1;
 					sp_tx_link_config_done = 0;
@@ -2410,8 +2473,8 @@ static void sp_tx_irq_isr(void)
 			}
 		}
 
-		if (((Int_vector1 & 0x04) == 0x04)
-		    && (sp_tx_system_state > STATE_CONFIG_OUTPUT)) {
+		if (((Int_vector1 & 0x04) == 0x04) &&
+				(sp_tx_system_state > STATE_CONFIG_OUTPUT)) {
 
 			SP_DEV_ERR("Rx specific  IRQ: Link is down!\n");
 
@@ -2436,7 +2499,7 @@ static void sp_tx_irq_isr(void)
 					SP_DEV_ERR("Lane align not done\n");
 
 				if (sl_cr == 0)
-					SP_DEV_ERR("Lane clock recovery not done\n");
+					SP_DEV_ERR("Lane CR not done\n");
 
 				sp_tx_get_cable_type();
 				if(sp_tx_rx_type_backup !=  sp_tx_rx_type) {
@@ -2444,7 +2507,7 @@ static void sp_tx_irq_isr(void)
 					sp_tx_pull_down_id(FALSE);
 					sp_tx_power_down(SP_TX_PWR_REG);
 					sp_tx_power_down(SP_TX_PWR_TOTAL);
-					sp_tx_hardware_powerdown(anx7808_client);
+					sp_tx_hardware_powerdown();
 					sp_tx_pd_mode = 1;
 					sp_tx_link_config_done = 0;
 					sp_tx_hw_lt_enable = 0;
@@ -2472,12 +2535,13 @@ static void sp_tx_irq_isr(void)
 					sp_tx_pull_down_id(FALSE);
 					sp_tx_power_down(SP_TX_PWR_REG);
 					sp_tx_power_down(SP_TX_PWR_TOTAL);
-					sp_tx_hardware_powerdown(anx7808_client);
+					sp_tx_hardware_powerdown();
 					sp_tx_set_sys_state(STATE_CABLE_PLUG);
 					sp_tx_pd_mode = 1;
 					sp_tx_link_config_done = 0;
 					sp_tx_hw_lt_done = 0;
 					sp_tx_hw_lt_enable = 0;
+					return;
 				}
 			}
 
@@ -2535,14 +2599,38 @@ static void sp_tx_irq_isr(void)
 				sp_tx_pull_down_id(FALSE);
 				sp_tx_power_down(SP_TX_PWR_TOTAL);
 				sp_tx_power_down(SP_TX_PWR_REG);
-				sp_tx_hardware_powerdown(anx7808_client);
+				sp_tx_hardware_powerdown();
 				sp_tx_clean_hdcp();
 				sp_tx_pd_mode = 1;
 				sp_tx_link_config_done = 0;
 				sp_tx_hw_lt_enable = 0;
 				sp_tx_hw_lt_done = 0;
 				sp_tx_set_sys_state(STATE_CABLE_PLUG);
+				return;
 			}
+		} else {
+
+			sp_tx_get_cable_type();
+			if (sp_tx_rx_type_backup != sp_tx_rx_type)
+				sp_tx_rx_type_backup = sp_tx_rx_type;
+
+			if (sp_tx_rx_type == RX_VGA_9832) {
+				sp_tx_send_message(MSG_CLEAR_IRQ);
+				if (sp_tx_system_state < STATE_PARSE_EDID)
+					sp_tx_set_sys_state(STATE_PARSE_EDID);
+			} else if (sp_tx_rx_type == RX_HDMI) {
+				if (sp_tx_get_hdmi_connection()) {
+					if (sp_tx_system_state
+						< STATE_PARSE_EDID)
+						sp_tx_set_sys_state
+						(STATE_PARSE_EDID);
+				} else
+					return;
+			} else {
+				if (sp_tx_system_state < STATE_PARSE_EDID)
+					sp_tx_set_sys_state(STATE_PARSE_EDID);
+			}
+
 		}
 
 		sp_tx_aux_dpcdread_bytes(0x00, 0x02,
@@ -2570,7 +2658,7 @@ static void sp_tx_irq_isr(void)
 				sp_tx_pull_down_id(FALSE);
 				sp_tx_power_down(SP_TX_PWR_REG);
 				sp_tx_power_down(SP_TX_PWR_TOTAL);
-				sp_tx_hardware_powerdown(anx7808_client);
+				sp_tx_hardware_powerdown();
 				sp_tx_pd_mode = 1;
 				sp_tx_link_config_done = 0;
 				sp_tx_hw_lt_enable = 0;
@@ -2640,8 +2728,9 @@ void sp_tx_hdcp_process(void)
 	unchar c;
 	int i;
 
-	sp_read_reg(RX_P1,HDMI_RX_HDCP_STATUS_REG, &c);
-	if(!(c & AUTH_EN)) {
+	if ((hdcp_en == 0) &&
+		((sp_tx_rx_type == RX_VGA_9832)
+		|| (sp_tx_rx_type == RX_VGA_GEN))) {
 		sp_tx_power_down(SP_TX_PWR_HDCP);
 		sp_tx_video_mute(0);
 		sp_tx_set_sys_state(STATE_PLAY_BACK);
@@ -2668,7 +2757,7 @@ void sp_tx_hdcp_process(void)
 				sp_tx_pull_down_id(FALSE);
 				sp_tx_power_down(SP_TX_PWR_REG);
 				sp_tx_power_down(SP_TX_PWR_TOTAL);
-				sp_tx_hardware_powerdown(anx7808_client);
+				sp_tx_hardware_powerdown();
 				sp_tx_pd_mode = 1;
 				sp_tx_link_config_done = 0;
 				sp_tx_hw_lt_enable = 0;
@@ -2701,6 +2790,7 @@ void sp_tx_hdcp_process(void)
 			}
 		}
 		sp_tx_power_on(SP_TX_PWR_HDCP);
+		sp_write_reg(TX_P2, SP_COMMON_INT_MASK2, 0X01);
 		msleep(50);
 		sp_tx_hw_hdcp_enable();
 		sp_tx_hw_hdcp_en = 1;
@@ -2928,15 +3018,15 @@ void hdmi_rx_set_termination(unchar enable)
 	}
 }
 
+static void hdmi_rx_set_sys_state(enum HDMI_RX_System_State ss);
 static void hdmi_rx_restart_audio_chk(void)
 {
-	if (hdmi_system_state == HDMI_AUDIO_CONFIG) {
-		SP_DEV_DBG("WAIT_AUDIO: hdmi_rx_restart_audio_chk.\n");
-		g_cts_got = 0;
-		g_audio_got = 0;
-	}
+	SP_DEV_DBG("WAIT_AUDIO: hdmi_rx_restart_audio_chk.\n");
+	g_cts_got = 0;
+	g_audio_got = 0;
+	if (hdmi_system_state == HDMI_AUDIO_CONFIG)
+		hdmi_rx_set_sys_state(HDMI_AUDIO_CONFIG);
 }
-
 
 static void hdmi_rx_set_sys_state(enum HDMI_RX_System_State ss)
 {
@@ -3017,8 +3107,8 @@ static unchar hdmi_rx_is_video_change(void)
 	ulong n;
 	sp_read_reg(RX_P0, HDMI_RX_HTOTAL_LOW, &cl);
 	sp_read_reg(RX_P0, HDMI_RX_HTOTAL_HIGH, &ch);
-	n = ch;
-	n = (n << 8) + cl;
+	n = (ulong)ch;
+	n = (n << 8) + (ulong)cl;
 
 	if ((g_cur_h_res < (n - 10)) || (g_cur_h_res > (n + 10))) {
 		SP_DEV_ERR("H_Res changed.");
@@ -3028,8 +3118,8 @@ static unchar hdmi_rx_is_video_change(void)
 
 	sp_read_reg(RX_P0, HDMI_RX_VTOTAL_LOW, &cl);
 	sp_read_reg(RX_P0, HDMI_RX_VTOTAL_HIGH, &ch);
-	n = ch;
-	n = (n << 8) + cl;
+	n = (ulong)ch;
+	n = (n << 8) + (ulong)cl;
 
 	if ((g_cur_v_res < (n - 10)) || (g_cur_v_res > (n + 10))) {
 		SP_DEV_ERR("V_Res changed.\n");
@@ -3763,8 +3853,8 @@ void sp_tx_phy_auto_test(void)
 {
 
 	unchar bSwing, bEmp;
-	unchar c1, c;
-	/*DPCD 0x219 TEST_LINK_RATE*/
+	unchar c1;
+	enum SP_LINK_BW link_bw;
 	sp_tx_aux_dpcdread_bytes(0x0, 0x02, 0x19, 1, bytebuf);
 	SP_DEV_DBG("DPCD:0x00219 = %.2x\n", (uint)bytebuf[0]);
 	switch (bytebuf[0]) {
@@ -3831,8 +3921,21 @@ void sp_tx_phy_auto_test(void)
 		break;
 	case 1:
 		sp_read_reg(TX_P0, SP_TX_LINK_BW_SET_REG, &c1);
-		sp_tx_bw = c1;
-		sp_tx_config_ssc(sp_tx_bw);
+		switch (c1) {
+		case 0x06:
+			link_bw = BW_162G;
+			break;
+		case 0x0a:
+			link_bw = BW_27G;
+			break;
+		case 0x14:
+			link_bw = BW_54G;
+			break;
+		default:
+			link_bw = BW_NULL;
+			break;
+		}
+		sp_tx_config_ssc(link_bw);
 		SP_DEV_DBG("SSC ON\n");
 		break;
 	}
@@ -3840,64 +3943,52 @@ void sp_tx_phy_auto_test(void)
 	sp_tx_aux_dpcdread_bytes(0x00, 0x02, 0x06, 1, bytebuf);
 	SP_DEV_DBG("DPCD:0x00206 = %.2x\n", (uint)bytebuf[0]);
 	c1 = bytebuf[0] & 0x03;
-	sp_read_reg(TX_P0, 0xA2, &c);
-	if ((c == 0x0c) &&
-		((bytebuf[0]&0x0f) == 0x02)) {
-		/*PRBS7 pattern, eye diagram, swing2/emp 0*/
-		sp_write_reg(TX_P0, 0xA3, 0x0a);
-		SP_DEV_DBG("eye request,lane0,400/6db\n");
-	} else if (c == 0x14) {
-		/*CEP pattern*/
-		sp_write_reg(TX_P0, 0xA3, 0x0a);
-		SP_DEV_DBG("cep pattern,lane0,600/3.5db\n");
-	} else {
-		switch (c1) {
-		case 0x00:
-			sp_read_reg(TX_P0, 0xA3, &bSwing);
-			sp_write_reg(TX_P0, 0xA3, (bSwing&~0x03)|0x00);
-			SP_DEV_DBG("lane0,Swing200mv\n");
-			break;
-		case 0x01:
-			sp_read_reg(TX_P0, 0xA3, &bSwing);
-			sp_write_reg(TX_P0, 0xA3, (bSwing&~0x03)|0x01);
-			SP_DEV_DBG("lane0,Swing400mv\n");
-			break;
-		case 0x02:
-			sp_read_reg(TX_P0, 0xA3, &bSwing);
-			sp_write_reg(TX_P0, 0xA3, (bSwing&~0x03)|0x02);
-			SP_DEV_DBG("lane0,Swing600mv\n");
-			break;
-		case 0x03:
-			sp_read_reg(TX_P0, 0xA3, &bSwing);
-			sp_write_reg(TX_P0, 0xA3, (bSwing&~0x03)|0x03);
-			SP_DEV_DBG("lane0,Swing800mv\n");
-			break;
-		default:
-			break;
-		}
-		/*get emphasis adjust request*/
-		c1 = (bytebuf[0] & 0x0c);
-		c1 = c1 >> 2;
-		switch (c1) {
-		case 0x00:
-			sp_read_reg(TX_P0, 0xA3, &bEmp);
-			sp_write_reg(TX_P0, 0xA3, (bEmp&~0x18)|0x00);
-			SP_DEV_DBG("lane0,emp 0db\n");
-			break;
-		case 0x01:
-			sp_read_reg(TX_P0, 0xA3, &bEmp);
-			sp_write_reg(TX_P0, 0xA3, (bEmp&~0x18)|0x08);
-			SP_DEV_DBG("lane0,emp 3.5db\n");
-			break;
-		case 0x02:
-			sp_read_reg(TX_P0, 0xA3, &bEmp);
-			sp_write_reg(TX_P0, 0xA3, (bEmp&~0x18)|0x10);
-			SP_DEV_DBG("lane0,emp 6db\n");
-			break;
+	switch (c1) {
+	case 0x00:
+		sp_read_reg(TX_P0, 0xA3, &bSwing);
+		sp_write_reg(TX_P0, 0xA3, (bSwing&~0x03)|0x00);
+		SP_DEV_DBG("lane0,Swing200mv\n");
+		break;
+	case 0x01:
+		sp_read_reg(TX_P0, 0xA3, &bSwing);
+		sp_write_reg(TX_P0, 0xA3, (bSwing&~0x03)|0x01);
+		SP_DEV_DBG("lane0,Swing400mv\n");
+		break;
+	case 0x02:
+		sp_read_reg(TX_P0, 0xA3, &bSwing);
+		sp_write_reg(TX_P0, 0xA3, (bSwing&~0x03)|0x02);
+		SP_DEV_DBG("lane0,Swing600mv\n");
+		break;
+	case 0x03:
+		sp_read_reg(TX_P0, 0xA3, &bSwing);
+		sp_write_reg(TX_P0, 0xA3, (bSwing&~0x03)|0x03);
+		SP_DEV_DBG("lane0,Swing800mv\n");
+		break;
+	default:
+		break;
+	}
+	/*get emphasis adjust request*/
+	c1 = (bytebuf[0] & 0x0c);
+	c1 = c1 >> 2;
+	switch (c1) {
+	case 0x00:
+		sp_read_reg(TX_P0, 0xA3, &bEmp);
+		sp_write_reg(TX_P0, 0xA3, (bEmp&~0x18)|0x00);
+		SP_DEV_DBG("lane0,emp 0db\n");
+		break;
+	case 0x01:
+		sp_read_reg(TX_P0, 0xA3, &bEmp);
+		sp_write_reg(TX_P0, 0xA3, (bEmp&~0x18)|0x08);
+		SP_DEV_DBG("lane0,emp 3.5db\n");
+		break;
+	case 0x02:
+		sp_read_reg(TX_P0, 0xA3, &bEmp);
+		sp_write_reg(TX_P0, 0xA3, (bEmp&~0x18)|0x10);
+		SP_DEV_DBG("lane0,emp 6db\n");
+		break;
 
-		default:
-			break;
-		}
+	default:
+		break;
 	}
 
 }

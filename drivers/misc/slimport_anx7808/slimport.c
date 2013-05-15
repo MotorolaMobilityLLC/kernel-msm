@@ -36,12 +36,14 @@
 
 struct i2c_client *anx7808_client;
 
+int hdcp_en = 1;
 struct anx7808_data {
 	struct anx7808_platform_data    *pdata;
 	struct delayed_work    work;
 	struct workqueue_struct    *workqueue;
 	struct mutex    lock;
 	struct wake_lock slimport_lock;
+	int cab_irq;
 };
 
 #ifdef HDCP_EN
@@ -53,6 +55,32 @@ static bool hdcp_enable = 0;
 extern void msm_otg_id_pin_irq_enabled(bool enabled);
 
 //extern void msm_otg_id_pin_irq_enabled(bool enabled);
+/*sysfs read interface*/
+static ssize_t hdcp_ctrl_show(
+	struct device *dev, struct device_attribute *attr,
+	 char *buf)
+{
+	return snprintf(buf, 4, "%d\n", hdcp_en);
+}
+
+/*sysfs write interface*/
+static ssize_t hdcp_ctrl_store(
+	struct device *dev, struct device_attribute *attr,
+	 const char *buf, size_t count)
+{
+	int ret;
+	long val;
+	ret = kstrtol(buf, 10, &val);
+	if (ret)
+		return ret;
+	hdcp_en = val;
+	return count;
+}
+
+/* for hdcp control from user space */
+static struct device_attribute slimport_device_attrs[] = {
+	__ATTR(hdcp_switch, S_IRUGO | S_IWUSR, hdcp_ctrl_show, hdcp_ctrl_store),
+};
 
 int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf)
 {
@@ -83,9 +111,10 @@ int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value)
 	return ret;
 }
 
-void sp_tx_hardware_poweron(struct i2c_client *client)
+void sp_tx_hardware_poweron(void)
 {
-	struct anx7808_platform_data *pdata = client->dev.platform_data;
+	struct anx7808_platform_data *pdata =
+		anx7808_client->dev.platform_data;
 	struct clk *gp_clk_b1 = clk_get_sys("slimport", "core_clk");
 	int ret = 0;
 
@@ -107,9 +136,10 @@ void sp_tx_hardware_poweron(struct i2c_client *client)
 	SP_DEV_DBG("%s: anx7808 power on\n", __func__);
 }
 
-void sp_tx_hardware_powerdown(struct i2c_client *client)
+void sp_tx_hardware_powerdown(void)
 {
-	struct anx7808_platform_data *pdata = client->dev.platform_data;
+	struct anx7808_platform_data *pdata =
+		anx7808_client->dev.platform_data;
 	struct clk *gp_clk_b1 = clk_get_sys("slimport", "core_clk");
 
 	gpio_set_value(pdata->gpio_reset, 0);
@@ -148,7 +178,7 @@ static void sp_tx_power_down_and_init(void)
 	sp_tx_pull_down_id(FALSE);
 	sp_tx_power_down(SP_TX_PWR_REG);
 	sp_tx_power_down(SP_TX_PWR_TOTAL);
-	sp_tx_hardware_powerdown(anx7808_client);
+	sp_tx_hardware_powerdown();
 	sp_tx_pd_mode = 1;
 	sp_tx_link_config_done = 0;
 	sp_tx_hw_lt_enable = 0;
@@ -172,7 +202,7 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 		if (gpio_get_value_cansleep(anx7808->pdata->gpio_cbl_det)) {
 			if (sp_tx_pd_mode) {
 				sp_tx_pd_mode = 0;
-				sp_tx_hardware_poweron(anx7808_client);
+				sp_tx_hardware_poweron();
 				sp_tx_power_on(SP_TX_PWR_REG);
 				sp_tx_power_on(SP_TX_PWR_TOTAL);
 				sp_tx_pull_down_id(TRUE);
@@ -187,17 +217,21 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 				}
 				sp_tx_rx_type_backup = sp_tx_rx_type;
 			}
-			switch(sp_tx_rx_type) {
-			case RX_HDMI:
-				if(sp_tx_get_hdmi_connection())
+			switch (sp_tx_rx_type) {
+			/*case RX_HDMI:
+				if (sp_tx_get_hdmi_connection())
 					sp_tx_set_sys_state(STATE_PARSE_EDID);
-				break;
+				break;*/
 			case RX_DP:
-				if(sp_tx_get_dp_connection())
+				if (sp_tx_get_dp_connection())
 					sp_tx_set_sys_state(STATE_PARSE_EDID);
 				break;
-			case RX_VGA:
-				if(sp_tx_get_vga_connection()){
+			/*case RX_VGA_GEN:
+				if (sp_tx_get_vga_connection())
+					sp_tx_set_sys_state(STATE_PARSE_EDID);
+				break;*/
+			case RX_VGA_9832:
+				if (sp_tx_get_vga_connection()) {
 					sp_tx_send_message(MSG_CLEAR_IRQ);
 					sp_tx_set_sys_state(STATE_PARSE_EDID);
 				}
@@ -236,6 +270,14 @@ static void slimport_config_output(void)
 
 static void slimport_playback_proc(void)
 {
+	if ((sp_tx_rx_type == RX_VGA_9832)
+		|| (sp_tx_rx_type == RX_VGA_GEN)) {
+		if ((sp_tx_hw_hdcp_en == 0) && (hdcp_en == 1)) {
+			sp_tx_video_mute(1);
+			sp_tx_set_sys_state(STATE_HDCP_AUTH);
+		} else if ((sp_tx_hw_hdcp_en == 1) && (hdcp_en == 0))
+			sp_tx_disable_slimport_hdcp();
+	}
 }
 
 static void slimport_main_proc(struct anx7808_data *anx7808)
@@ -265,10 +307,7 @@ static void slimport_main_proc(struct anx7808_data *anx7808)
 		slimport_config_output();
 
 	if (sp_tx_system_state == STATE_HDCP_AUTH) {
-		if (hdcp_enable &&
-			((sp_tx_rx_type == RX_HDMI) ||
-			(sp_tx_rx_type == RX_DP) ||
-			(sp_tx_rx_type == RX_VGA))) {
+		if (hdcp_enable) {
 			sp_tx_hdcp_process();
 		} else {
 			sp_tx_power_down(SP_TX_PWR_HDCP);
@@ -296,7 +335,7 @@ static void anx7808_chip_initial(void)
 #else
 	sp_tx_variable_init();
 	sp_tx_vbus_powerdown();
-	sp_tx_hardware_powerdown(anx7808_client);
+	sp_tx_hardware_powerdown();
 	sp_tx_set_sys_state(STATE_CABLE_PLUG);
 #endif
 }
@@ -416,8 +455,10 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 
 	struct anx7808_data *anx7808;
 	int ret = 0;
+	int i;
 
-	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_I2C_BLOCK)) {
+	if (!i2c_check_functionality(client->adapter,
+		I2C_FUNC_SMBUS_I2C_BLOCK)) {
 		SP_DEV_ERR("%s: i2c bus does not support the anx7808\n", __func__);
 		ret = -ENODEV;
 		goto exit;
@@ -431,6 +472,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	}
 
 	anx7808->pdata = client->dev.platform_data;
+	i2c_set_clientdata(client, anx7808);
 	memcpy(&anx7808_client, &client, sizeof(client));
 
 	mutex_init(&anx7808->lock);
@@ -485,28 +527,37 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	wake_lock_init(&anx7808->slimport_lock, WAKE_LOCK_SUSPEND,
 			"slimport_wake_lock");
 
-	client->irq = gpio_to_irq(anx7808->pdata->gpio_cbl_det);
+	anx7808->cab_irq = gpio_to_irq(anx7808->pdata->gpio_cbl_det);
 	if (client->irq < 0) {
 		SP_DEV_ERR("%s : failed to get gpio irq\n", __func__);
 		goto err3;
 	}
 
 	//detect pin would not work if we don't configure and request USB_ID pin (gpio 77)
-	ret = request_threaded_irq(client->irq, NULL, anx7808_cbl_det_isr,
-					IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+	ret = request_threaded_irq(anx7808->cab_irq, NULL, anx7808_cbl_det_isr,
+					IRQF_TRIGGER_RISING
+					| IRQF_TRIGGER_FALLING,
 					"anx7808_cabel_det", anx7808);
 	if (ret  < 0) {
 		SP_DEV_ERR("%s : failed to request irq\n", __func__);
 		goto err3;
 	}
 
-	ret = enable_irq_wake(client->irq);
+	ret = enable_irq_wake(anx7808->cab_irq);
 	if (ret  < 0) {
 		SP_DEV_ERR("%s : Enable irq for cable detect", __func__);
 		SP_DEV_ERR("interrupt wake enable fail\n");
 		goto err4;
 	}
-
+	for (i = 0; i < ARRAY_SIZE(slimport_device_attrs); i++) {
+		ret = device_create_file(
+			&client->dev, &slimport_device_attrs[i]);
+		if (ret) {
+			SP_DEV_ERR("%s :anx7808 sysfs register failed\n",
+				__func__);
+			goto err5;
+		}
+	}
 	/* to detect if slimport is connected when booting */
 	if (gpio_get_value(anx7808->pdata->gpio_cbl_det)) {
 		wake_lock(&anx7808->slimport_lock);
@@ -517,8 +568,11 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 
 	goto exit;
 
+err5:
+	for (i = 0; i < ARRAY_SIZE(slimport_device_attrs); i++)
+		device_remove_file(&client->dev, &slimport_device_attrs[i]);
 err4:
-	free_irq(client->irq, anx7808);
+	free_irq(anx7808->cab_irq, anx7808);
 err3:
 	wake_lock_destroy(&anx7808->slimport_lock);
 err2:
@@ -568,8 +622,10 @@ EXPORT_SYMBOL(slimport_get_link_bw);
 static int anx7808_i2c_remove(struct i2c_client *client)
 {
 	struct anx7808_data *anx7808 = i2c_get_clientdata(client);
-
-	free_irq(client->irq, anx7808);
+	int i = 0;
+	for (i = 0; i < ARRAY_SIZE(slimport_device_attrs); i++)
+		device_remove_file(&client->dev, &slimport_device_attrs[i]);
+	free_irq(anx7808->cab_irq, anx7808);
 	wake_lock_destroy(&anx7808->slimport_lock);
 	destroy_workqueue(anx7808->workqueue);
 	anx7808_free_gpio(anx7808);
@@ -586,13 +642,13 @@ static const struct i2c_device_id anx7808_id[] = {
 MODULE_DEVICE_TABLE(i2c, anx7808_id);
 
 static struct i2c_driver anx7808_driver = {
-	.driver  = {
-		.name  = "anx7808",
-		.owner  = THIS_MODULE,
+	.driver = {
+		.name = "anx7808",
+		.owner = THIS_MODULE,
 	},
-	.probe  = anx7808_i2c_probe,
-	.remove  = anx7808_i2c_remove,
-	.id_table  = anx7808_id,
+	.probe = anx7808_i2c_probe,
+	.remove = anx7808_i2c_remove,
+	.id_table = anx7808_id,
 };
 
 static int __init anx7808_init(void)
@@ -615,4 +671,4 @@ module_exit(anx7808_exit);
 MODULE_DESCRIPTION("Slimport  transmitter ANX7808 driver");
 MODULE_AUTHOR("FeiWang <fwang@analogixsemi.com>");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("V0.3");
+MODULE_VERSION("V0.4");
