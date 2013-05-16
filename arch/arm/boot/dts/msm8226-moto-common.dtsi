@@ -449,6 +449,7 @@
 		reg = <0x3e>;
 		gpios = <&msmgpio 31 0x0>, <&msmgpio 33 0x0>;
 		active-dis;
+		bias-delay-us = <2000>;
 		tps65132: regulator {
 			regulator-name = "tps65132";
 			regulator-min-microvolt = <4000000>;
