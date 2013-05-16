@@ -1512,7 +1512,6 @@ int recover_inode_page(struct f2fs_sb_info *sbi, struct page *page)
 			err = -ENOSPC;
 	if (!err)
 		inc_valid_inode_count(sbi);
-
 	f2fs_put_page(ipage, 1);
 	return err;
 }
