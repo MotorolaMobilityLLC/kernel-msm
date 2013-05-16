@@ -118,7 +118,7 @@ static void set_hs_micbias(int status)
 		snd_soc_update_bits(wcd9310_codec, TABLA_A_MICB_2_CTL,
                                 0xC0, 0x00);
 		snd_soc_update_bits(wcd9310_codec, TABLA_A_LDO_H_MODE_1,
-				0xff, 0x65);
+				0xff, 0x6d);
 		if (tabla_check_bandgap_status(wcd9310_codec) == 0) {
 			/* Disable Bandgap Reference power */
 			printk("%s badgap status: OFF power down bandgap\n",
