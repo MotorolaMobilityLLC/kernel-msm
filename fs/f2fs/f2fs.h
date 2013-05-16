@@ -722,21 +722,9 @@ static inline void dec_valid_node_count(struct f2fs_sb_info *sbi,
 {
 	spin_lock(&sbi->stat_lock);
 
-	if (sbi->total_valid_block_count < count) {
-		WARN(1, "F2FS: total_valid_block_count too small- %d vs %d\n",
-			(unsigned int)sbi->total_valid_block_count, count);
-		count = sbi->total_valid_block_count;
-	}
-	if (sbi->total_valid_node_count < count) {
-		WARN(1, "F2FS: total_valid_node_count too small- %d vs %d\n",
-			sbi->total_valid_node_count, count);
-		count = sbi->total_valid_node_count;
-	}
-	if (inode->i_blocks < count) {
-		WARN(1, "F2FS: inode->i_blocks too small - %d vs %d\n",
-			(unsigned int)inode->i_blocks, count);
-		count = sbi->total_valid_node_count;
-	}
+	BUG_ON(sbi->total_valid_block_count < count);
+	BUG_ON(sbi->total_valid_node_count < count);
+	BUG_ON(inode->i_blocks < count);
 
 	inode->i_blocks -= count;
 	sbi->total_valid_node_count -= count;
