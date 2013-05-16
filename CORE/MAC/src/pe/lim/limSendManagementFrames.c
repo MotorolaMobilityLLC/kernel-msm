@@ -864,11 +864,20 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     }
     if (noaLen != 0)
     {
-        if (palCopyMemory ( pMac->hHdd, &pFrame[nBytes - (total_noaLen)],
-                            &noaIe[0], total_noaLen) != eHAL_STATUS_SUCCESS)
+        if (total_noaLen > (SIR_MAX_NOA_ATTR_LEN + SIR_P2P_IE_HEADER_LEN))
         {
             limLog(pMac, LOGE,
                   FL("Not able to insert NoA because of length constraint"));
+            palFreeMemory(pMac->hHdd, addIE);
+            palFreeMemory(pMac->hHdd, pFrm);
+            palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
+                       ( void* ) pFrame, ( void* ) pPacket );
+            return;
+        }
+        else
+        {
+            palCopyMemory(pMac->hHdd, &pFrame[nBytes - (total_noaLen)],
+                            &noaIe[0], total_noaLen);
         }
     }
 

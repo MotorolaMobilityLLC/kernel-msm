@@ -3277,12 +3277,12 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
             /* We are about to start a fresh scan cycle, 
              * purge non-P2P results from the past */
             csrScanFlushSelectiveResult(pMac, VOS_FALSE);
-    
+
             csrNeighborRoamPerformContiguousBgScan(pMac, sessionId);
 
             /* Transition to CFG_CHAN_LIST_SCAN */
             CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN);
-            
+
             return VOS_STATUS_SUCCESS;
         }
 #endif
@@ -3335,6 +3335,10 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
                 {
                     smsLog(pMac, LOGE, FL("Memory allocation for Channel list failed"));
                     return VOS_STATUS_E_RESOURCES;
+                }
+                if (numOfChannels > WNI_CFG_VALID_CHANNEL_LIST_LEN)
+                {
+                    numOfChannels = WNI_CFG_VALID_CHANNEL_LIST_LEN;
                 }
                 vos_mem_copy(currChannelListInfo->ChannelList,
                         channelList,
