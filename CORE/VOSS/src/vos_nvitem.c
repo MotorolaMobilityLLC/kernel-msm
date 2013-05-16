@@ -2565,7 +2565,8 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
        // sme_ChangeCountryCode(pHddCtx->hHal, NULL,
        //    &country_code[0], pAdapter, pHddCtx->pvosContext);
     }
-    else if (request->initiator == NL80211_REGDOM_SET_BY_DRIVER)
+    else if (request->initiator == NL80211_REGDOM_SET_BY_DRIVER ||
+             (request->initiator == NL80211_REGDOM_SET_BY_CORE))
     {
          if ( eHAL_STATUS_SUCCESS !=  sme_GetCountryCode(pHddCtx->hHal, ccode, &uBufLen))
          {
@@ -2591,125 +2592,130 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
           regulatory settings and wiphy->regd should be populated with crda
           settings. iwiphy->bands doesn't seem to set ht40 flags in kernel
           correctly, this may be fixed by later kernel */
-         if (memcmp(pHddCtx->cfg_ini->crdaDefaultCountryCode,
-                          CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT , 2) != 0)
-         {
-            if (create_crda_regulatory_entry_from_regd(wiphy, request, pHddCtx->cfg_ini->nBandCapability) == 0)
-            {
-               pr_info("crda entry created.\n");
-               if (crda_alpha2[0] == request->alpha2[0] && crda_alpha2[1] == request->alpha2[1])
-               {  /* first CRDA request should be from init time */
-                  /* Change default country code to CRDA country code, assume indoor */
-                  pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0] = request->alpha2[0];
-                  pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[1] = request->alpha2[1];
-                  pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[2] = 'I';
-                  pnvEFSTable->halnv.tables.defaultCountryTable.regDomain = NUM_REG_DOMAINS-1;
-                  wiphy_dbg(wiphy, "info: init time default country code is %c%c%c\n",
-                  pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0],
-                      pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[1],
-                         pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[2]);
-               }
-               else /* second or later CRDA request after init time */
-               {
-                  wiphy_dbg(wiphy, "info: crda none-default country code is %c%c\n",
-                      request->alpha2[0], request->alpha2[1]);
-               }
-               // hdd will read regd for this country after complete
-            }
-            complete(&pHddCtx->driver_crda_req);
-         }
-         else
-         {
-            nBandCapability = pHddCtx->cfg_ini->nBandCapability;
-            for (i=0, m=0; i<IEEE80211_NUM_BANDS; i++)
-            {
-
-               if (NULL == wiphy->bands[i])
-               {
-                  VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                       "error: wiphy->bands[i] is NULL, i = %d", i);
-                  continue;
-               }
-
-               // internal channels[] is one continous array for both 2G and 5G bands
-               // m is internal starting channel index for each band
-               if (0 == i)
-                  m = 0;
-               else
-                  m = wiphy->bands[i-1]?wiphy->bands[i-1]->n_channels + m:m;
-
-               for (j=0; j<wiphy->bands[i]->n_channels; j++)
-               {
-                  // k = (m + j) is internal current channel index for 20MHz channel
-                  // n is internal channel index for corresponding 40MHz channel
-                  k = m + j;
-                  if (IEEE80211_BAND_2GHZ == i && eCSR_BAND_5G == nBandCapability) // 5G only
-                  {
-                     // Enable social channels for P2P
-                     if ((2412 == wiphy->bands[i]->channels[j].center_freq ||
-                         2437 == wiphy->bands[i]->channels[j].center_freq ||
-                         2462 == wiphy->bands[i]->channels[j].center_freq ) &&
-                         NV_CHANNEL_ENABLE == regChannels[k].enabled)
-                         wiphy->bands[i]->channels[j].flags &= ~IEEE80211_CHAN_DISABLED;
-                     else
-                         wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
-                     continue;
-                  }
-                  else if (IEEE80211_BAND_5GHZ == i && eCSR_BAND_24 == nBandCapability) // 2G only
-                  {
-                     wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
-                     continue;
-                  }
-
-                  if (NV_CHANNEL_DISABLE == regChannels[k].enabled ||
-                     NV_CHANNEL_INVALID == regChannels[k].enabled)
-                  {
-                     wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
-                  }
-                  else if (NV_CHANNEL_DFS == regChannels[k].enabled)
-                  {
-                     wiphy->bands[i]->channels[j].flags &= ~(IEEE80211_CHAN_DISABLED
-                                                            |IEEE80211_CHAN_RADAR);
-                     wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_PASSIVE_SCAN;
-                  }
-                  else
-                  {
-                     wiphy->bands[i]->channels[j].flags &= ~(IEEE80211_CHAN_DISABLED
-                                                             |IEEE80211_CHAN_PASSIVE_SCAN
-                                                            |IEEE80211_CHAN_RADAR);
-                  }
-               }
-            }
-            /* Haven't seen any condition that will set by driver after init.
-             If we do, then we should also call sme_ChangeCountryCode */
-            for (j=0; j<wiphy->bands[IEEE80211_BAND_5GHZ ]->n_channels; j++)
-            {
-                // p2p UNII-1 band channels are passive when domain is FCC.
-                if ((wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].center_freq == 5180 ||
-                               wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5200 ||
-                               wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5220 ||
-                               wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5240) &&
-                               (ccode[0]== 'U'&& ccode[1]=='S'))
-                {
-                   wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].flags |= IEEE80211_CHAN_PASSIVE_SCAN;
-                }
-                else if ((wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].center_freq == 5180 ||
-                                    wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5200 ||
-                                    wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5220 ||
-                                    wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5240) &&
-                                    (ccode[0]!= 'U'&& ccode[1]!='S'))
-                {
-                   wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].flags &= ~IEEE80211_CHAN_PASSIVE_SCAN;
-                }
-            }
-         }
-    }
-    else if (request->initiator == NL80211_REGDOM_SET_BY_CORE)
-    {
        if (memcmp(pHddCtx->cfg_ini->crdaDefaultCountryCode,
-                        CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT , 2) == 0)
+                         CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT , 2) != 0)
        {
-          request->processed = 1;
+          if (create_crda_regulatory_entry_from_regd(wiphy, request, pHddCtx->cfg_ini->nBandCapability) == 0)
+          {
+             pr_info("crda entry created.\n");
+             if (crda_alpha2[0] == request->alpha2[0] && crda_alpha2[1] == request->alpha2[1])
+             {
+                /* first CRDA request should be from init time */
+                /* Change default country code to CRDA country code, assume indoor */
+                pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0] = request->alpha2[0];
+                pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[1] = request->alpha2[1];
+                pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[2] = 'I';
+                pnvEFSTable->halnv.tables.defaultCountryTable.regDomain = NUM_REG_DOMAINS-1;
+                wiphy_dbg(wiphy, "info: init time default country code is %c%c%c\n",
+                pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0],
+                    pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[1],
+                       pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[2]);
+             }
+             else /* second or later CRDA request after init time */
+             {
+                wiphy_dbg(wiphy, "info: crda none-default country code is %c%c\n",
+                    request->alpha2[0], request->alpha2[1]);
+             }
+             // hdd will read regd for this country after complete
+          }
+          complete(&pHddCtx->driver_crda_req);
+       }
+       else
+       {
+          nBandCapability = pHddCtx->cfg_ini->nBandCapability;
+          for (i=0, m=0; i<IEEE80211_NUM_BANDS; i++)
+          {
+             if (NULL == wiphy->bands[i])
+             {
+                VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                     "error: wiphy->bands[i] is NULL, i = %d", i);
+                continue;
+             }
+
+             // internal channels[] is one continous array for both 2G and 5G bands
+             // m is internal starting channel index for each band
+             if (0 == i)
+             {
+                m = 0;
+             }
+             else
+             {
+                m = wiphy->bands[i-1]?wiphy->bands[i-1]->n_channels + m:m;
+             }
+
+             for (j=0; j<wiphy->bands[i]->n_channels; j++)
+             {
+                // k = (m + j) is internal current channel index for 20MHz channel
+                // n is internal channel index for corresponding 40MHz channel
+                k = m + j;
+                if (IEEE80211_BAND_2GHZ == i && eCSR_BAND_5G == nBandCapability) // 5G only
+                {
+                   // Enable social channels for P2P
+                   if ((2412 == wiphy->bands[i]->channels[j].center_freq ||
+                       2437 == wiphy->bands[i]->channels[j].center_freq ||
+                       2462 == wiphy->bands[i]->channels[j].center_freq ) &&
+                       NV_CHANNEL_ENABLE == regChannels[k].enabled)
+                   {
+                       wiphy->bands[i]->channels[j].flags &= ~IEEE80211_CHAN_DISABLED;
+                   }
+                   else
+                   {
+                      wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+                   }
+                   continue;
+                }
+                else if (IEEE80211_BAND_5GHZ == i && eCSR_BAND_24 == nBandCapability) // 2G only
+                {
+                   wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+                   continue;
+                }
+
+                if (NV_CHANNEL_DISABLE == regChannels[k].enabled ||
+                    NV_CHANNEL_INVALID == regChannels[k].enabled)
+                {
+                   wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+                }
+                else if (NV_CHANNEL_DFS == regChannels[k].enabled)
+                {
+                   wiphy->bands[i]->channels[j].flags &= ~(IEEE80211_CHAN_DISABLED
+                                                          |IEEE80211_CHAN_RADAR);
+                   wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_PASSIVE_SCAN;
+                }
+                else
+                {
+                   wiphy->bands[i]->channels[j].flags &= ~(IEEE80211_CHAN_DISABLED
+                                                          |IEEE80211_CHAN_PASSIVE_SCAN
+                                                          |IEEE80211_CHAN_NO_IBSS
+                                                          |IEEE80211_CHAN_RADAR);
+                }
+             }
+          }
+          /* Haven't seen any condition that will set by driver after init.
+           If we do, then we should also call sme_ChangeCountryCode */
+          for (j=0; j<wiphy->bands[IEEE80211_BAND_5GHZ ]->n_channels; j++)
+          {
+              // p2p UNII-1 band channels are passive when domain is FCC.
+              if ((wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].center_freq == 5180 ||
+                             wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5200 ||
+                             wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5220 ||
+                             wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5240) &&
+                             (ccode[0]== 'U'&& ccode[1]=='S'))
+              {
+                 wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].flags |= IEEE80211_CHAN_PASSIVE_SCAN;
+              }
+              else if ((wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].center_freq == 5180 ||
+                                  wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5200 ||
+                                  wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5220 ||
+                                  wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5240) &&
+                                  (ccode[0]!= 'U'&& ccode[1]!='S'))
+              {
+                 wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].flags &= ~IEEE80211_CHAN_PASSIVE_SCAN;
+              }
+          }
+          if (request->initiator == NL80211_REGDOM_SET_BY_CORE)
+          {
+              request->processed = 1;
+          }
        }
     }
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
