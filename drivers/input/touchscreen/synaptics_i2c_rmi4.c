@@ -2567,7 +2567,7 @@ regulator_hpm:
 
 	if (rmi4_data->board->i2c_pull_up) {
 		retval = reg_set_optimum_mode_check(rmi4_data->vcc_i2c,
-			RMI4_I2C_LOAD_UA);
+			RMI4_I2C_LPM_LOAD_UA);
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev,
 				"Regulator vcc_i2c set_opt failed rc=%d\n",
