@@ -1024,13 +1024,24 @@ static VOS_STATUS hdd_roamRegisterSTA( hdd_adapter_t *pAdapter,
    if (staDesc.wSTAType != WLAN_STA_IBSS)
       VOS_ASSERT( fConnected );
 
-   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
+   if ( !pRoamInfo->fAuthRequired && (WLAN_STA_IBSS == staDesc.wSTAType) )
+   {
+      // Connections that do not need Upper layer auth, transition TL directly
+      // to 'Authenticated' state.
+      vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, staDesc.ucSTAId,
+                                         WLANTL_STA_AUTHENTICATED );
+
+      pHddStaCtx->conn_info.uIsAuthenticated = VOS_TRUE;
+   }
+   else
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
               "ULA auth StaId= %d.  Changing TL state to CONNECTED at Join time",
               pHddStaCtx->conn_info.staId[0] );
-   vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, staDesc.ucSTAId,
+      vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, staDesc.ucSTAId,
                                       WLANTL_STA_CONNECTED );
-   pHddStaCtx->conn_info.uIsAuthenticated = VOS_FALSE;
-
+      pHddStaCtx->conn_info.uIsAuthenticated = VOS_FALSE;
+   }
    return( vosStatus );
 }
 
@@ -1515,6 +1526,7 @@ static void hdd_RoamIbssIndicationHandler( hdd_adapter_t *pAdapter,
       // both IBSS Started and IBSS Join should come in here.
       case eCSR_ROAM_RESULT_IBSS_STARTED:
       case eCSR_ROAM_RESULT_IBSS_JOIN_SUCCESS:
+      case eCSR_ROAM_RESULT_IBSS_COALESCED:
       {
          hdd_context_t *pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
          v_MACADDR_t broadcastMacAddr = VOS_MAC_ADDR_BROADCAST_INITIALIZER;
@@ -1786,9 +1798,9 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
       case eCSR_ROAM_RESULT_IBSS_NEW_PEER:
       {
          hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+         struct station_info staInfo;
 
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
-                    "IBSS New Peer indication from SME "
+         pr_info ( "IBSS New Peer indication from SME "
                     "with peerMac " MAC_ADDRESS_STR " BSSID: " MAC_ADDRESS_STR " and stationID= %d",
                     MAC_ADDR_ARRAY(pRoamInfo->peerMac),
                     MAC_ADDR_ARRAY(pHddStaCtx->conn_info.bssId),
@@ -1819,6 +1831,14 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
                "Cannot register STA with TL for IBSS.  Failed with vosStatus = %d [%08lX]",
                vosStatus, vosStatus );
          }
+         pHddStaCtx->ibss_sta_generation++;
+         memset(&staInfo, 0, sizeof(staInfo));
+         staInfo.filled = 0;
+         staInfo.generation = pHddStaCtx->ibss_sta_generation;
+
+         cfg80211_new_sta(pAdapter->dev,
+                      (const u8 *)pRoamInfo->peerMac,
+                      &staInfo, GFP_KERNEL);
 
          netif_carrier_on(pAdapter->dev);
          netif_tx_start_all_queues(pAdapter->dev);
@@ -1842,8 +1862,7 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
                     "IBSS peer departed by cannot find peer in our registration table with TL" );
          }
 
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
-                    "IBSS Peer Departed from SME "
+         pr_info ( "IBSS Peer Departed from SME "
                     "with peerMac " MAC_ADDRESS_STR " BSSID: " MAC_ADDRESS_STR " and stationID= %d",
                     MAC_ADDR_ARRAY(pRoamInfo->peerMac),
                     MAC_ADDR_ARRAY(pHddStaCtx->conn_info.bssId),
@@ -1852,6 +1871,10 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
          hdd_roamDeregisterSTA( pAdapter, pRoamInfo->staId );
 
          pHddCtx->sta_to_adapter[pRoamInfo->staId] = NULL;
+         pHddStaCtx->ibss_sta_generation++;
+         cfg80211_del_sta(pAdapter->dev,
+                         (const u8 *)&pRoamInfo->peerMac,
+                         GFP_KERNEL);
 
          break;
       }
@@ -3055,40 +3078,16 @@ int iw_set_essid(struct net_device *dev,
 
     if ( eCSR_BSS_TYPE_START_IBSS == pRoamProfile->BSSType )
     {
-        v_U8_t          iniDot11Mode = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->dot11Mode;
-        eHddDot11Mode   hddDot11Mode = iniDot11Mode;
+        hdd_select_cbmode(pAdapter,
+            (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->AdHocChannel5G);
+    }
+    status = sme_RoamConnect( hHal,pAdapter->sessionId,
+                         &(pWextState->roamProfile), &roamId);
+    pRoamProfile->ChannelInfo.ChannelList = NULL;
+    pRoamProfile->ChannelInfo.numOfChannels = 0;
 
-        switch ( iniDot11Mode )
-        {
-            case eHDD_DOT11_MODE_AUTO:
-            case eHDD_DOT11_MODE_11ac:
-            case eHDD_DOT11_MODE_11ac_ONLY:
-#ifdef WLAN_FEATURE_11AC
-                hddDot11Mode = eHDD_DOT11_MODE_11ac;
-#else
-                hddDot11Mode = eHDD_DOT11_MODE_11n;
-#endif
-                break;
-             case eHDD_DOT11_MODE_11n:
-             case eHDD_DOT11_MODE_11n_ONLY:
-                hddDot11Mode = eHDD_DOT11_MODE_11n;
-                break;
-             default:
-                hddDot11Mode = iniDot11Mode;
-                break;
-        }
-
-        /* This call decides required channel bonding mode */
-        sme_SelectCBMode((WLAN_HDD_GET_CTX(pAdapter)->hHal),
-                            hdd_cfg_xlate_to_csr_phy_mode(hddDot11Mode),
-                            (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->AdHocChannel5G);
-   }
-   status = sme_RoamConnect( hHal,pAdapter->sessionId, &(pWextState->roamProfile),&roamId);
-   pRoamProfile->ChannelInfo.ChannelList = NULL;
-   pRoamProfile->ChannelInfo.numOfChannels = 0;
-
-   EXIT();
-   return status;
+    EXIT();
+    return status;
 }
 
 /**---------------------------------------------------------------------------
