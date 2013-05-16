@@ -3878,9 +3878,16 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
 #endif
 
     memcpy(mgmt->u.probe_resp.variable, ie, ie_length);
-
-    mgmt->frame_control |=
-        (u16)(IEEE80211_FTYPE_MGMT | IEEE80211_STYPE_PROBE_RESP);
+    if (bss_desc->fProbeRsp)
+    {
+         mgmt->frame_control |=
+                   (u16)(IEEE80211_FTYPE_MGMT | IEEE80211_STYPE_PROBE_RESP);
+    }
+    else
+    {
+         mgmt->frame_control |=
+                   (u16)(IEEE80211_FTYPE_MGMT | IEEE80211_STYPE_BEACON);
+    }
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,38))
     if (chan_no <= ARRAY_SIZE(hdd_channels_2_4_GHZ) &&
