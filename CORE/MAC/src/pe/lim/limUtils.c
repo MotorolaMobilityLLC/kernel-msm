@@ -7427,12 +7427,21 @@ v_U8_t limBuildP2pIe(tpAniSirGlobal pMac, tANI_U8 *ie, tANI_U8 *data, tANI_U8 ie
 v_U8_t limGetNoaAttrStreamInMultP2pIes(tpAniSirGlobal pMac,v_U8_t* noaStream,v_U8_t noaLen,v_U8_t overFlowLen)
 {
    v_U8_t overFlowP2pStream[SIR_MAX_NOA_ATTR_LEN];
-   palCopyMemory( pMac->hHdd, overFlowP2pStream, noaStream + noaLen - overFlowLen, overFlowLen); 
-   noaStream[noaLen - overFlowLen] = SIR_MAC_EID_VENDOR;
-   noaStream[noaLen - overFlowLen+1] = overFlowLen + SIR_MAC_P2P_OUI_SIZE;
-   palCopyMemory( pMac->hHdd, noaStream+ noaLen - overFlowLen+2,SIR_MAC_P2P_OUI,SIR_MAC_P2P_OUI_SIZE);
-   
-   palCopyMemory( pMac->hHdd, noaStream+ noaLen - overFlowLen+2+SIR_MAC_P2P_OUI_SIZE,overFlowP2pStream,overFlowLen);
+
+   if ((noaLen <= (SIR_MAX_NOA_ATTR_LEN+SIR_P2P_IE_HEADER_LEN)) &&
+       (noaLen >= overFlowLen) && (overFlowLen <= SIR_MAX_NOA_ATTR_LEN))
+   {
+       palCopyMemory( pMac->hHdd, overFlowP2pStream,
+                     noaStream + noaLen - overFlowLen, overFlowLen);
+       noaStream[noaLen - overFlowLen] = SIR_MAC_EID_VENDOR;
+       noaStream[noaLen - overFlowLen + 1] = overFlowLen + SIR_MAC_P2P_OUI_SIZE;
+       palCopyMemory( pMac->hHdd, noaStream+noaLen-overFlowLen + 2,
+                     SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE);
+       palCopyMemory( pMac->hHdd,
+                     noaStream+noaLen + 2 + SIR_MAC_P2P_OUI_SIZE - overFlowLen,
+                     overFlowP2pStream, overFlowLen);
+   }
+
    return (noaLen + SIR_P2P_IE_HEADER_LEN);
 
 }
