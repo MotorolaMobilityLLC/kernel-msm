@@ -473,7 +473,6 @@ void mdp4_dsi_cmd_wait4vsync(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
-	ktime_t timestamp;
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -486,10 +485,7 @@ void mdp4_dsi_cmd_wait4vsync(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	timestamp = vctrl->vsync_time;
-	wait_event_interruptible_timeout(vctrl->wait_queue,
-			!ktime_equal(timestamp, vctrl->vsync_time) &&
-			vctrl->vsync_enabled,
+	wait_event_interruptible_timeout(vctrl->wait_queue, 1,
 			msecs_to_jiffies(VSYNC_PERIOD * 8));
 
 	mdp4_stat.wait4vsync0++;
@@ -1094,6 +1090,7 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 
 	need_wait = 0;
 	mutex_lock(&vctrl->update_lock);
+	wake_up_interruptible_all(&vctrl->wait_queue);
 
 	pr_debug("%s: clk=%d pan=%d\n", __func__,
 			vctrl->clk_enabled, vctrl->pan_display);
