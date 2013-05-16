@@ -773,6 +773,7 @@ int diag_switch_logging(unsigned long ioarg)
 
 	switch (requested_mode) {
 	case USB_MODE:
+	case TTY_MODE:
 	case MEMORY_DEVICE_MODE:
 	case NO_LOGGING_MODE:
 	case UART_MODE:
