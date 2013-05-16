@@ -230,10 +230,6 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 			cal_cfg11 = 0x01;
 			pll_divcfg1 = 0;
 			pll_divcfg3 = 0x2;
-
-			dsi_pll_rate = 97586170;
-			pll_byte_clk_rate = 97586170;
-			pll_pclk_rate = 130114894;
 			break;
 		case PANEL_LGE_GK_LGD_VIDEO:
 			sdm_cfg1  = 0x0a;
@@ -244,10 +240,6 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 			cal_cfg11 = 0x01;
 			pll_divcfg1 = 0;
 			pll_divcfg3 = 0x2;
-
-			dsi_pll_rate = 112375000;
-			pll_byte_clk_rate = 112375000;
-			pll_pclk_rate = 150000000;
 			break;
 		default:
 			sdm_cfg1  = 0x0a;
@@ -257,9 +249,6 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 			cal_cfg10 = 0xa8;
 			cal_cfg11 = 0x01;
 			pll_divcfg3 = 0x5;
-
-			dsi_pll_rate = rate;
-			pll_byte_clk_rate = rate;
 			break;
 	}
 
@@ -306,6 +295,9 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 	REG_W(0x00, mdss_dsi_base + 0x0290); /* CAL CFG9 */
 	REG_W(0x20, mdss_dsi_base + 0x029c); /* EFUSE CFG */
 
+	dsi_pll_rate = rate;
+	pll_byte_clk_rate = rate;
+
 	pr_debug("%s: PLL initialized. bcl=%d\n", __func__, pll_byte_clk_rate);
 	pll_initialized = 1;
 
@@ -315,6 +307,9 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 static int mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 {
 	int ret;
+
+	dsi_pll_rate = rate;
+	pll_byte_clk_rate = rate;
 
 	clk_prepare_enable(mdss_dsi_ahb_clk);
 	ret = __mdss_dsi_pll_byte_set_rate(c, rate);
