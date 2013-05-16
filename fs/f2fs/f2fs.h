@@ -40,6 +40,8 @@
 #define F2FS_MOUNT_DISABLE_EXT_IDENTIFY	0x00000040
 #define F2FS_MOUNT_INLINE_XATTR		0x00000080
 #define F2FS_MOUNT_INLINE_DATA		0x00000100
+#define F2FS_MOUNT_ERRORS_PANIC		0x00002000
+#define F2FS_MOUNT_ERRORS_RECOVER	0x00004000
 
 #define clear_opt(sbi, option)	(sbi->mount_opt.opt &= ~F2FS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->mount_opt.opt |= F2FS_MOUNT_##option)
@@ -632,6 +634,15 @@ static inline int F2FS_HAS_BLOCKS(struct inode *inode)
 		return inode->i_blocks > F2FS_DEFAULT_ALLOCATED_BLOCKS;
 }
 
+static inline int f2fs_handle_error(struct f2fs_sb_info *sbi)
+{
+	if (test_opt(sbi, ERRORS_PANIC))
+		BUG();
+	if (test_opt(sbi, ERRORS_RECOVER))
+		return 1;
+	return 0;
+}
+
 static inline bool inc_valid_block_count(struct f2fs_sb_info *sbi,
 				 struct inode *inode, blkcnt_t count)
 {
@@ -787,9 +798,24 @@ static inline void dec_valid_node_count(struct f2fs_sb_info *sbi,
 {
 	spin_lock(&sbi->stat_lock);
 
-	f2fs_bug_on(!sbi->total_valid_block_count);
-	f2fs_bug_on(!sbi->total_valid_node_count);
-	f2fs_bug_on(!inode->i_blocks);
+	if (sbi->total_valid_block_count < 1) {
+		pr_crit("F2FS-fs (%s): block accounting error: %u < %u\n",
+			sbi->sb->s_id, sbi->total_valid_block_count, 1);
+		f2fs_handle_error(sbi);
+		sbi->total_valid_block_count = 1;
+	}
+	if (sbi->total_valid_node_count < 1) {
+		pr_crit("F2FS-fs (%s): node accounting error: %u < %u\n",
+			sbi->sb->s_id, sbi->total_valid_node_count, 1);
+		f2fs_handle_error(sbi);
+		sbi->total_valid_node_count = 1;
+	}
+	if (inode->i_blocks < 1) {
+		pr_crit("F2FS-fs (%s): inode accounting error: %llu < %u\n",
+			sbi->sb->s_id, inode->i_blocks, 1);
+		f2fs_handle_error(sbi);
+		inode->i_blocks = 1;
+	}
 
 	inode->i_blocks--;
 	sbi->total_valid_node_count--;
