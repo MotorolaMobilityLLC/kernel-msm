@@ -67,7 +67,7 @@ static void fault_detect_read(struct kgsl_device *device)
 	for (i = 0; i < FT_DETECT_REGS_COUNT; i++) {
 		if (ft_detect_regs[i] == 0)
 			continue;
-		adreno_regread(device, ft_detect_regs[i],
+		kgsl_regread(device, ft_detect_regs[i],
 			&fault_detect_regs[i]);
 	}
 }
@@ -89,7 +89,7 @@ static int fault_detect_read_compare(struct kgsl_device *device)
 
 		if (ft_detect_regs[i] == 0)
 			continue;
-		adreno_regread(device, ft_detect_regs[i], &val);
+		kgsl_regread(device, ft_detect_regs[i], &val);
 		if (val != fault_detect_regs[i])
 			ret = 1;
 		fault_detect_regs[i] = val;
