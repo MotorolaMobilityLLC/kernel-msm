@@ -39,6 +39,7 @@ struct tps65132_data {
 	struct regulator_dev *rdev;
 	int enable_p_gpio;
 	int enable_n_gpio;
+	u32 bias_delay_us;
 	bool enabled;
 };
 
@@ -174,13 +175,15 @@ static int tps65132_regulator_enable(struct regulator_dev *rdev)
 {
 	struct tps65132_data *tps65132 = rdev_get_drvdata(rdev);
 
-	if (gpio_is_valid(tps65132->enable_p_gpio)) {
+	if (gpio_is_valid(tps65132->enable_p_gpio))
 		gpio_set_value(tps65132->enable_p_gpio, 1);
-	}
 
-	if (gpio_is_valid(tps65132->enable_n_gpio)) {
+	if (tps65132->bias_delay_us)
+		usleep_range(tps65132->bias_delay_us,
+			tps65132->bias_delay_us + 100);
+
+	if (gpio_is_valid(tps65132->enable_n_gpio))
 		gpio_set_value(tps65132->enable_n_gpio, 1);
-	}
 
 	tps65132->enabled = true;
 
@@ -191,11 +194,15 @@ static int tps65132_regulator_disable(struct regulator_dev *rdev)
 {
 	struct tps65132_data *tps65132 = rdev_get_drvdata(rdev);
 
-	if (gpio_is_valid(tps65132->enable_p_gpio))
-		gpio_set_value(tps65132->enable_p_gpio, 0);
-
 	if (gpio_is_valid(tps65132->enable_n_gpio))
 		gpio_set_value(tps65132->enable_n_gpio, 0);
+
+	if (tps65132->bias_delay_us)
+		usleep_range(tps65132->bias_delay_us,
+			tps65132->bias_delay_us + 100);
+
+	if (gpio_is_valid(tps65132->enable_p_gpio))
+		gpio_set_value(tps65132->enable_p_gpio, 0);
 
 	tps65132->enabled = false;
 
@@ -299,6 +306,9 @@ static int tps65132_probe(struct i2c_client *client,
 	}
 
 	/* Use OF devtree. */
+	of_property_read_u32(client->dev.of_node, "bias-delay-us",
+			&tps65132->bias_delay_us);
+
 	tps65132->enable_p_gpio = of_get_gpio(client->dev.of_node, 0);
 	if (!gpio_is_valid(tps65132->enable_p_gpio))
 		dev_warn(&client->dev, "%s: enable_p_gpio not found in of devtree\n",
