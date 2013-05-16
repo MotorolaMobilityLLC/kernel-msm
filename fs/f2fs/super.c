@@ -43,6 +43,9 @@ enum {
 	Opt_active_logs,
 	Opt_disable_ext_identify,
 	Opt_android_emu,
+	Opt_err_continue,
+	Opt_err_panic,
+	Opt_err_recover,
 	Opt_err,
 };
 
@@ -56,6 +59,9 @@ static match_table_t f2fs_tokens = {
 	{Opt_active_logs, "active_logs=%u"},
 	{Opt_disable_ext_identify, "disable_ext_identify"},
 	{Opt_android_emu, "android_emu=%s"},
+	{Opt_err_continue, "errors=continue"},
+	{Opt_err_panic, "errors=panic"},
+	{Opt_err_recover, "errors=recover"},
 	{Opt_err, NULL},
 };
 
@@ -249,6 +255,12 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 	else
 		seq_puts(seq, ",noacl");
 #endif
+	if (test_opt(sbi, ERRORS_PANIC))
+		seq_puts(seq, ",errors=panic");
+	else if (test_opt(sbi, ERRORS_RECOVER))
+		seq_puts(seq, ",errors=recover");
+	else
+		seq_puts(seq, ",errors=continue");
 	if (test_opt(sbi, DISABLE_EXT_IDENTIFY))
 		seq_puts(seq, ",disable_ext_identify");
 
@@ -420,6 +432,18 @@ static int parse_options(struct super_block *sb, struct f2fs_sb_info *sbi,
 			break;
 		case Opt_disable_ext_identify:
 			set_opt(sbi, DISABLE_EXT_IDENTIFY);
+			break;
+		case Opt_err_continue:
+			clear_opt(sbi, ERRORS_RECOVER);
+			clear_opt(sbi, ERRORS_PANIC);
+			break;
+		case Opt_err_panic:
+			set_opt(sbi, ERRORS_PANIC);
+			clear_opt(sbi, ERRORS_RECOVER);
+			break;
+		case Opt_err_recover:
+			set_opt(sbi, ERRORS_RECOVER);
+			clear_opt(sbi, ERRORS_PANIC);
 			break;
 		case Opt_android_emu:
 			if (args->from) {

@@ -188,7 +188,7 @@ retry:
 	write_unlock(&nm_i->nat_tree_lock);
 }
 
-static void set_node_addr(struct f2fs_sb_info *sbi, struct node_info *ni,
+static int set_node_addr(struct f2fs_sb_info *sbi, struct node_info *ni,
 			block_t new_blkaddr)
 {
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
@@ -212,7 +212,14 @@ retry:
 		 * So, reinitialize it with new information.
 		 */
 		e->ni = *ni;
-		BUG_ON(ni->blk_addr != NULL_ADDR);
+		if (ni->blk_addr != NULL_ADDR) {
+			f2fs_msg(sbi->sb, KERN_ERR, "node block address is "
+				"already set: %llu", ni->blk_addr);
+			f2fs_handle_error(sbi);
+			/* just give up on this node */
+			write_unlock(&nm_i->nat_tree_lock);
+			return -EIO;
+		}
 	}
 
 	if (new_blkaddr == NEW_ADDR)
@@ -238,6 +245,7 @@ retry:
 	nat_set_blkaddr(e, new_blkaddr);
 	__set_nat_cache_dirty(nm_i, e);
 	write_unlock(&nm_i->nat_tree_lock);
+	return 0;
 }
 
 static int try_to_free_nats(struct f2fs_sb_info *sbi, int nr_shrink)
@@ -942,7 +950,13 @@ repeat:
 		goto repeat;
 	}
 got_it:
-	BUG_ON(nid != nid_of_node(page));
+	if (nid != nid_of_node(page)) {
+		f2fs_msg(sbi->sb, KERN_ERR, "page node id does not match "
+			"request: %lu", nid);
+		f2fs_handle_error(sbi);
+		f2fs_put_page(page, 1);
+		return ERR_PTR(-EIO);
+	}
 	mark_page_accessed(page);
 	return page;
 }
@@ -1468,6 +1482,7 @@ int recover_inode_page(struct f2fs_sb_info *sbi, struct page *page)
 	nid_t ino = ino_of_node(page);
 	struct node_info old_ni, new_ni;
 	struct page *ipage;
+	int err;
 
 	ipage = grab_cache_page(mapping, ino);
 	if (!ipage)
@@ -1492,13 +1507,15 @@ int recover_inode_page(struct f2fs_sb_info *sbi, struct page *page)
 	new_ni = old_ni;
 	new_ni.ino = ino;
 
-	if (!inc_valid_node_count(sbi, NULL, 1))
-		WARN_ON(1);
-	set_node_addr(sbi, &new_ni, NEW_ADDR);
-	inc_valid_inode_count(sbi);
+	err = set_node_addr(sbi, &new_ni, NEW_ADDR);
+	if (!err)
+		if (!inc_valid_node_count(sbi, NULL, 1))
+			err = -ENOSPC;
+	if (!err)
+		inc_valid_inode_count(sbi);
 
 	f2fs_put_page(ipage, 1);
-	return 0;
+	return err;
 }
 
 int restore_node_summary(struct f2fs_sb_info *sbi,
