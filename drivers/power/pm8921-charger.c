@@ -6563,7 +6563,13 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	INIT_WORK(&chip->bms_notify.work, bms_notify);
 	INIT_WORK(&chip->battery_id_valid_work, battery_id_valid);
 	INIT_WORK(&chip->chg_src_work, chg_src_setup);
-
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	INIT_WORK(&chip->wakeup_alarm_work, wakeup_alarm_work);
+	wake_lock_init(&chip->heartbeat_wake_lock, WAKE_LOCK_SUSPEND,
+		       "pm8921-charger-heartbeat");
+	alarm_init(&chip->alarm, ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP,
+			pm8921_chg_battery_alarm);
+#endif
 	INIT_DELAYED_WORK(&chip->update_heartbeat_work, update_heartbeat);
 	INIT_DELAYED_WORK(&chip->btc_override_work, btc_override_worker);
 
@@ -6593,11 +6599,6 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	determine_initial_state(chip);
 
 #ifdef CONFIG_PM8921_EXTENDED_INFO
-	INIT_WORK(&chip->wakeup_alarm_work, wakeup_alarm_work);
-	wake_lock_init(&chip->heartbeat_wake_lock, WAKE_LOCK_SUSPEND,
-			"pm8921-charger-heartbeat");
-	alarm_init(&chip->alarm, ANDROID_ALARM_ELAPSED_REALTIME_WAKEUP,
-			pm8921_chg_battery_alarm);
 	wake_lock(&chip->heartbeat_wake_lock);
 #endif
 
@@ -6610,6 +6611,9 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 destroy_wakelock:
 	wake_lock_destroy(&chip->chg_wake_lock);
 	wake_lock_destroy(&chip->eoc_wake_lock);
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	wake_lock_destroy(&chip->heartbeat_wake_lock);
+#endif
 unregister_batt:
 	power_supply_unregister(&chip->batt_psy);
 unregister_dc:
