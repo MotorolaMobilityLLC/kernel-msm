@@ -419,13 +419,15 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 		if (f2fs_set_bit(offset, se->cur_valid_map)) {
 			f2fs_msg(sbi->sb, KERN_ERR, "attempted to validate "
 				"already-valid block %u", offset);
-			check_map = true;
+			if (f2fs_handle_error(sbi))
+				check_map = true;
 		}
 	} else {
 		if (!f2fs_clear_bit(offset, se->cur_valid_map)) {
 			f2fs_msg(sbi->sb, KERN_ERR, "attempted to invalidate "
 				"already-invalid block %u", offset);
-			check_map = true;
+			if (f2fs_handle_error(sbi))
+				check_map = true;
 		}
 	}
 	if (unlikely(check_map)) {
