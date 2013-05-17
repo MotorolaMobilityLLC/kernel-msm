@@ -127,7 +127,7 @@ static ssize_t msm_fb_read(struct fb_info *info, char __user *buf,
 #define MSM_FB_MAX_DBGFS 1024
 #define MAX_BACKLIGHT_BRIGHTNESS 255
 
-#define WAIT_FENCE_FIRST_TIMEOUT MSEC_PER_SEC
+#define WAIT_FENCE_FIRST_TIMEOUT 3 * MSEC_PER_SEC
 #define WAIT_FENCE_FINAL_TIMEOUT 10 * MSEC_PER_SEC
 /* Display op timeout should be greater than total timeout */
 #define WAIT_DISP_OP_TIMEOUT (WAIT_FENCE_FIRST_TIMEOUT +\
