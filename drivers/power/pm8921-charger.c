@@ -5924,6 +5924,7 @@ static ssize_t force_chg_iusb_store(struct device *dev,
 	unsigned long usb_curr;
 	u8 temp;
 	int i;
+	int rc;
 
 	r = kstrtoul(buf, 0, &usb_curr);
 	if (r) {
@@ -5950,6 +5951,10 @@ static ssize_t force_chg_iusb_store(struct device *dev,
 	temp = temp << 2;
 	r = pm_chg_masked_write(the_chip, PBL_ACCESS2, PM8921_CHG_IUSB_MASK,
 				temp);
+
+	rc = pm_chg_usb_trim(the_chip, i);
+	if (rc)
+		pr_err("unable to set usb trim rc = %d\n", rc);
 
 	return r ? r : count;
 }
