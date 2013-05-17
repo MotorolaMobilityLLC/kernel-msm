@@ -1131,16 +1131,6 @@ static int synaptics_init_panel(struct i2c_client *client, struct synaptics_ts_f
 		return -EIO;
 	}
 
-	if (unlikely(touch_i2c_write_byte(client, DELTA_X_THRESH_REG, 1) < 0)) {
-		TOUCH_ERR_MSG("DELTA_X_THRESH_REG write fail\n");
-		return -EIO;
-	}
-
-	if (unlikely(touch_i2c_write_byte(client, DELTA_Y_THRESH_REG, 1) < 0)) {
-		TOUCH_ERR_MSG("DELTA_Y_THRESH_REG write fail\n");
-		return -EIO;
-	}
-
 	if (unlikely(touch_i2c_read(client, INTERRUPT_STATUS_REG, 1, &buf) < 0)) {
 		TOUCH_ERR_MSG("INTERRUPT_STATUS_REG read fail\n");
 		return -EIO;
