@@ -438,6 +438,10 @@ typedef struct
   v_U16_t   ucDesSTAId;
  /*Rssi based on the received packet */
   v_S7_t    rssiAvg;
+ #ifdef FEATURE_WLAN_TDLS
+ /* Packet received on direct link/AP link */
+  v_U8_t    isStaTdls;
+ #endif
 }WLANTL_RxMetaInfoType;
 
 
