@@ -43,6 +43,8 @@ Required properties:
 	not defined - use mode settings programmed in firmware
  - synaptics,hw-reset:
         flag to perform hard reset in oppose to soft reset
+ - synaptics,gpio-config:
+        flag to explicitly configure touch irq and reset gpios
 
 Example:
 	i2c@16200000 {
@@ -79,6 +81,7 @@ Example:
 			synaptics,purge-enabled;
 			synaptics,reset-on-resume;
 			synaptics,hw-reset;
+			synaptics,gpio-config;
 			synaptics,one-touch-enabled;
 			synaptics,display-synced-suspend;
 			synaptics,key-buttons = <139 102 158 0>; /* KEY_MENU, KEY_HOME, KEY_BACK */
