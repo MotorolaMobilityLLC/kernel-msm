@@ -69,7 +69,7 @@ static char write_display_brightness[] = {0x51, 0x00};
 static char write_control_display[] = {0x53, 0x24};
 /* choose cabc mode, 0x00(-0%), 0x01(-15%), 0x02(-40%), 0x03(-54%),
     disable SRE(sunlight readability enhancement) */
-static char write_cabc[] = {0x55, 0x03};
+static char write_cabc[] = {0x55, 0x00};
 /* for cabc mode 0x1(-15%) */
 static char backlight_control1[] = {0xB8, 0x07, 0x87, 0x26, 0x18, 0x00, 0x32};
 /* for cabc mode 0x2(-40%) */
