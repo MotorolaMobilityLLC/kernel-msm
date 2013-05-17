@@ -168,7 +168,7 @@ static void event_handler(uint32_t opcode,
 
 		/* assume data size = 0 during flushing */
 		if (in_frame_info[token][0]) {
-			prtd->pcm_irq_pos += in_frame_info[token][0];
+			prtd->pcm_irq_pos += prtd->pcm_count;
 			pr_debug("pcm_irq_pos=%d\n", prtd->pcm_irq_pos);
 			if (atomic_read(&prtd->start))
 				snd_pcm_period_elapsed(substream);
