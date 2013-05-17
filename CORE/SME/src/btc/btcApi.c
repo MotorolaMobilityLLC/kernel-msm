@@ -820,7 +820,13 @@ static VOS_STATUS btcDeferAclCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
         else
         {
             //There is history on this BD address
-            VOS_ASSERT(pAclEventHist->bNextEventIdx > 0);
+            if ((pAclEventHist->bNextEventIdx <= 0) ||
+                (pAclEventHist->bNextEventIdx > BT_MAX_NUM_EVENT_ACL_DEFERRED))
+            {
+                VOS_ASSERT(0);
+                status = VOS_STATUS_E_FAILURE;
+                break;
+            }
             pAclEvent = &pAclEventHist->btAclConnection[pAclEventHist->bNextEventIdx - 1];
             if(BT_EVENT_CREATE_ACL_CONNECTION == pAclEventHist->btEventType[pAclEventHist->bNextEventIdx - 1])
             {
@@ -981,7 +987,13 @@ static VOS_STATUS btcDeferSyncCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
         else
         {
             //There is history on this BD address
-            VOS_ASSERT(pSyncEventHist->bNextEventIdx > 0);
+            if ((pSyncEventHist->bNextEventIdx <= 0) ||
+                (pSyncEventHist->bNextEventIdx > BT_MAX_NUM_EVENT_SCO_DEFERRED))
+            {
+                VOS_ASSERT(0);
+                status = VOS_STATUS_E_FAILURE;
+                return status;
+            }
             pSyncEvent = &pSyncEventHist->btSyncConnection[pSyncEventHist->bNextEventIdx - 1];
             if(BT_EVENT_CREATE_SYNC_CONNECTION == 
                 pSyncEventHist->btEventType[pSyncEventHist->bNextEventIdx - 1])
