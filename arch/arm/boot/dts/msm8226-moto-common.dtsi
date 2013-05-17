@@ -18,6 +18,13 @@
 /include/ "msm8226-camera-sensor-falcon.dtsi"
 
 / {
+	factory_support {
+		compatible = "mmi,factory-support-msm8960";
+
+		gpios = <&msmgpio 5 0x2>; /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
+		gpio-names = "factory_kill_disable";
+	};
+
 	serial@f991f000 {
 		status = "ok";
 	};
