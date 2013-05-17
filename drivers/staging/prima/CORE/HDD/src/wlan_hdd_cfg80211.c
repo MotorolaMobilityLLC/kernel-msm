@@ -236,6 +236,41 @@ static struct ieee80211_channel hdd_channels_5_GHZ[] =
     HDD5GHZCHAN(5825,165, 0) ,
 };
 
+static struct ieee80211_channel hdd_channels_5_GHZ_FCC[] =
+{
+    HDD5GHZCHAN(4920, 240, 0) ,
+    HDD5GHZCHAN(4940, 244, 0) ,
+    HDD5GHZCHAN(4960, 248, 0) ,
+    HDD5GHZCHAN(4980, 252, 0) ,
+    HDD5GHZCHAN(5040, 208, 0) ,
+    HDD5GHZCHAN(5060, 212, 0) ,
+    HDD5GHZCHAN(5080, 216, 0) ,
+    HDD5GHZCHAN(5180, 36, IEEE80211_CHAN_PASSIVE_SCAN) ,
+    HDD5GHZCHAN(5200, 40, IEEE80211_CHAN_PASSIVE_SCAN) ,
+    HDD5GHZCHAN(5220, 44, IEEE80211_CHAN_PASSIVE_SCAN) ,
+    HDD5GHZCHAN(5240, 48, IEEE80211_CHAN_PASSIVE_SCAN) ,
+    HDD5GHZCHAN(5260, 52, 0) ,
+    HDD5GHZCHAN(5280, 56, 0) ,
+    HDD5GHZCHAN(5300, 60, 0) ,
+    HDD5GHZCHAN(5320, 64, 0) ,
+    HDD5GHZCHAN(5500,100, 0) ,
+    HDD5GHZCHAN(5520,104, 0) ,
+    HDD5GHZCHAN(5540,108, 0) ,
+    HDD5GHZCHAN(5560,112, 0) ,
+    HDD5GHZCHAN(5580,116, 0) ,
+    HDD5GHZCHAN(5600,120, 0) ,
+    HDD5GHZCHAN(5620,124, 0) ,
+    HDD5GHZCHAN(5640,128, 0) ,
+    HDD5GHZCHAN(5660,132, 0) ,
+    HDD5GHZCHAN(5680,136, 0) ,
+    HDD5GHZCHAN(5700,140, 0) ,
+    HDD5GHZCHAN(5745,149, 0) ,
+    HDD5GHZCHAN(5765,153, 0) ,
+    HDD5GHZCHAN(5785,157, 0) ,
+    HDD5GHZCHAN(5805,161, 0) ,
+    HDD5GHZCHAN(5825,165, 0) ,
+};
+
 static struct ieee80211_rate g_mode_rates[] =
 {
     HDD_G_MODE_RATETAB(10, 0x1, 0),    
@@ -510,12 +545,12 @@ static struct index_vht_data_rate_type supported_vht_mcs_rate[] =
 extern struct net_device_ops net_ops_struct;
 
 /*
- * FUNCTION: wlan_hdd_cfg80211_init
+ * FUNCTION: wlan_hdd_cfg80211_wiphy_alloc
  * This function is called by hdd_wlan_startup() 
  * during initialization. 
- * This function is used to initialize and register wiphy structure.
+ * This function is used to allocate wiphy structure.
  */
-struct wiphy *wlan_hdd_cfg80211_init(int priv_size)
+struct wiphy *wlan_hdd_cfg80211_wiphy_alloc(int priv_size)
 {
     struct wiphy *wiphy;
     ENTER();
@@ -566,11 +601,12 @@ int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand)
  * during initialization. 
  * This function is used to initialize and register wiphy structure.
  */
-int wlan_hdd_cfg80211_register(struct device *dev,
+int wlan_hdd_cfg80211_init(struct device *dev,
                                struct wiphy *wiphy,
                                hdd_config_t *pCfg
                                )
 {
+    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     ENTER();
 
     /* Now bind the underlying wlan device with wiphy */
@@ -578,7 +614,19 @@ int wlan_hdd_cfg80211_register(struct device *dev,
 
     wiphy->mgmt_stypes = wlan_hdd_txrx_stypes;
 
-    wiphy->flags |=   WIPHY_FLAG_CUSTOM_REGULATORY;
+    if (memcmp(pHddCtx->cfg_ini->crdaDefaultCountryCode,
+                      CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT , 2) != 0)
+    {
+       wiphy->flags |=   WIPHY_FLAG_CUSTOM_REGULATORY;
+    }
+    else
+    {
+        /* This will disable updating of NL channels from passive to
+         *  active if a beacon is received on passive channel.
+         */
+       wiphy->flags |=   WIPHY_FLAG_DISABLE_BEACON_HINTS;
+       wiphy->flags |=   WIPHY_FLAG_STRICT_REGULATORY;
+    }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
     wiphy->flags |= WIPHY_FLAG_HAVE_AP_SME
@@ -681,10 +729,18 @@ int wlan_hdd_cfg80211_register(struct device *dev,
     wiphy->max_remain_on_channel_duration = 1000;
 #endif
 
-    /* Register our wiphy dev with cfg80211 */
+    EXIT();
+    return 0;
+}
+
+/* In this function we are registering wiphy. */
+int wlan_hdd_cfg80211_register(struct wiphy *wiphy)
+{
+    ENTER();
+ /* Register our wiphy dev with cfg80211 */
     if (0 > wiphy_register(wiphy))
     {
-        /* print eror */
+        /* print error */
         hddLog(VOS_TRACE_LEVEL_ERROR,"%s: wiphy register failed", __func__);
         return -EIO;
     }
@@ -697,7 +753,7 @@ int wlan_hdd_cfg80211_register(struct device *dev,
    If the gCrdaDefaultCountryCode is configured in ini file,
    we will try to call user space crda to get the regulatory settings for
    that country. We will timeout if we can't get it from crda.
-   It's called by hdd_wlan_startup() after wlan_hdd_cfg80211_register.
+   It's called by hdd_wlan_startup() after wlan_hdd_cfg80211_init.
 */
 int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg)
 {
@@ -711,6 +767,29 @@ int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg)
         CRDA_WAIT_TIME);
    }
    return 0;
+}
+
+/* In this function we are updating channel list when,
+   regulatory domain is FCC and country code is US.
+   Here In FCC standard 5GHz UNII-1 Bands are indoor only.
+   As per FCC smart phone is not a indoor device.
+   GO should not opeate on indoor channels */
+void wlan_hdd_cfg80211_update_reg_info(struct wiphy *wiphy)
+{
+    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+    tANI_U8 defaultCountryCode[3] = SME_INVALID_COUNTRY_CODE;
+    //Default counrtycode from NV at the time of wiphy initialization.
+    if (eHAL_STATUS_SUCCESS != sme_GetDefaultCountryCodeFrmNv(pHddCtx->hHal,
+                                  &defaultCountryCode[0]))
+    {
+        hddLog(LOGE, FL("%s Failed to get default country code from NV"));
+    }
+    if ((defaultCountryCode[0]== 'U') && (defaultCountryCode[1]=='S'))
+    {
+        wlan_hdd_band_5_GHZ.channels = hdd_channels_5_GHZ_FCC;
+        wlan_hdd_band_5_GHZ.n_channels = ARRAY_SIZE(hdd_channels_5_GHZ_FCC);
+
+    }
 }
 
 /* In this function we will do all post VOS start initialization.
@@ -3907,9 +3986,17 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
 #endif
 
     memcpy(mgmt->u.probe_resp.variable, ie, ie_length);
+    if (bss_desc->fProbeRsp)
+    {
+         mgmt->frame_control |=
+                   (u16)(IEEE80211_FTYPE_MGMT | IEEE80211_STYPE_PROBE_RESP);
+    }
+    else
+    {
+         mgmt->frame_control |=
+                   (u16)(IEEE80211_FTYPE_MGMT | IEEE80211_STYPE_BEACON);
+    }
 
-    mgmt->frame_control |=
-        (u16)(IEEE80211_FTYPE_MGMT | IEEE80211_STYPE_PROBE_RESP);
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,38))
     if (chan_no <= ARRAY_SIZE(hdd_channels_2_4_GHZ) && 
