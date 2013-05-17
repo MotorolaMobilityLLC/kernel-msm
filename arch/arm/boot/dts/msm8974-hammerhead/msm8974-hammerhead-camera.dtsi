@@ -63,21 +63,21 @@
 
 		qcom,camera@90 {
 			status = "ok";
-			compatible = "qcom,mt9m114";
+			compatible = "qcom,mt9m114b";
 			reg = <0x90 0x0>;
 			qcom,slave-id = <0x90 0x0 0x2481>;
 			qcom,csiphy-sd-index = <2>;
 			qcom,csid-sd-index = <0>;
 			qcom,flash-type = <0>;
 			qcom,mount-angle = <270>;
-			qcom,sensor-name = "mt9m114";
+			qcom,sensor-name = "mt9m114b";
 			cam_vana-supply = <&pm8941_l18>;
 			cam_vio-supply = <&pm8941_lvs2>;
-			qcom,cam-vreg-name = "cam_vio", "cam_vana";
-			qcom,cam-vreg-type = <1 0>;
-			qcom,cam-vreg-min-voltage = <0 2850000>;
-			qcom,cam-vreg-max-voltage = <0 2850000>;
-			qcom,cam-vreg-op-mode = <0 2850000>;
+			qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
+			qcom,cam-vreg-type = <2 1 0>;
+			qcom,cam-vreg-min-voltage = <0 1800000 2850000>;
+			qcom,cam-vreg-max-voltage = <0 1800000 2850000>;
+			qcom,cam-vreg-op-mode = <0 1800000 2850000>;
 			qcom,gpio-no-mux = <0>;
 			gpios = <&msmgpio 17 0>, //VT_CAM_MCLK
 				<&msmgpio 18 0>, //VT_CAM_RESET
