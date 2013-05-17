@@ -60,7 +60,7 @@
 			interrupt-parent = <&pm8941_gpios>;
 			interrupts = <22 0x2>;
 			ti,int-gpio = <&pm8941_gpios 22 0x02>;
-			ti,chg-current-ma = <1500>;
+			ti,chg-current-ma = <1600>;
 			ti,term-current-ma = <128>;
 			ti,wlc-support;
 			ti,otg-en-gpio = <&pm8941_gpios 35 0x02>;
