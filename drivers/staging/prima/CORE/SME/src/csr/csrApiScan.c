@@ -3373,8 +3373,8 @@ void csrApplyCountryInformation( tpAniSirGlobal pMac, tANI_BOOLEAN fForce )
                    smsLog(pMac, LOGW, FL("Domain Changed Old %d, new %d"),
                                       pMac->scan.domainIdCurrent, domainId);
                    csrScanFilter11dResult(pMac);
+                   status = WDA_SetRegDomain(pMac, domainId);
                 }
-                status = WDA_SetRegDomain(pMac, domainId);
                 if (status != eHAL_STATUS_SUCCESS)
                 {
                     smsLog( pMac, LOGE, FL("  fail to set regId %d"), domainId );
@@ -3741,8 +3741,7 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
         if ( domainId != pMac->scan.domainIdCurrent )
         {
             tSirMacChanInfo* pMacChnSet = (tSirMacChanInfo *)(&pIesLocal->Country.triplets[0]);
-            WDA_SetRegDomain(pMac, domainId);
-            // Check weather AP provided the 2.4GHZ list or 5GHZ list
+            // Check whether AP provided the 2.4GHZ list or 5GHZ list
             if(CSR_IS_CHANNEL_24GHZ(pMacChnSet[0].firstChanNum))
             {
                 // AP Provided the 2.4 Channels, Update the 5GHz channels from nv.bin
@@ -3753,6 +3752,9 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
                 // AP Provided the 5G Channels, Update the 2.4GHZ channel list from nv.bin
                 csrGet24GChannels(pMac );
             }
+            csrSetCfgCountryCode(pMac, pIesLocal->Country.country);
+            WDA_SetRegDomain(pMac, domainId);
+            pMac->scan.domainIdCurrent = domainId;
         }
         // Populate both band channel lists based on what we found in the country information...
         csrSetOppositeBandChannelInfo( pMac );

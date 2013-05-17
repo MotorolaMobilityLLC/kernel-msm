@@ -1123,6 +1123,7 @@ eHalStatus csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac, tCsrScan
         smsLog(pMac, LOGE, FL("Scan Filter SSID mem alloc failed"));
         return eHAL_STATUS_FAILED_ALLOC;
     }
+    vos_mem_zero(pScanFilter->SSIDs.SSIDList, sizeof(tCsrSSIDInfo));
     pScanFilter->SSIDs.SSIDList->handoffPermitted = 1;
     pScanFilter->SSIDs.SSIDList->ssidHidden = 0;
     pScanFilter->SSIDs.SSIDList->SSID.length =  pCurProfile->SSID.length;

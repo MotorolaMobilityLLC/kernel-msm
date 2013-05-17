@@ -836,6 +836,8 @@ void limSendHalEndScanReq( tpAniSirGlobal, tANI_U8, tLimLimHalScanState);
 void limSendHalFinishScanReq( tpAniSirGlobal, tLimLimHalScanState);
 
 void limContinuePostChannelScan(tpAniSirGlobal pMac);
+void limCovertChannelScanType(tpAniSirGlobal pMac,tANI_U8 channelNum, tANI_BOOLEAN passiveToActive);
+void limSetDFSChannelList(tpAniSirGlobal pMac,tANI_U8 channelNum, tSirDFSChannelList *dfsChannelList);
 void limContinueChannelLearn( tpAniSirGlobal );
 //WLAN_SUSPEND_LINK Related
 tANI_U8 limIsLinkSuspended(tpAniSirGlobal pMac);
@@ -1066,6 +1068,7 @@ void limSendSmeMgmtFrameInd(
                     tANI_S8 rxRssi);
 void limProcessRemainOnChnTimeout(tpAniSirGlobal pMac);
 void limProcessInsertSingleShotNOATimeout(tpAniSirGlobal pMac);
+void limConvertActiveChannelToPassiveChannel(tpAniSirGlobal pMac);
 void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 void limAbortRemainOnChan(tpAniSirGlobal pMac);
 tSirRetStatus __limProcessSmeNoAUpdate(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf);
