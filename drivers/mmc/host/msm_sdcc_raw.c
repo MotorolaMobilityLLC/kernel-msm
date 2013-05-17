@@ -22,6 +22,7 @@
 #include <linux/init.h>
 
 #include "../../../arch/arm/mach-msm/devices.h"
+#include "../../../arch/arm/mach-msm/include/mach/clk.h"
 
 static void __iomem *raw_mmc_mci_base;
 
@@ -551,11 +552,7 @@ struct raw_mmc_host {
 #define MMC_CLK_DISABLE     0
 
 /* TODO: handle multiple versions of MSM */
-#define MSM_SDC1_BASE	0x12400000
-#define MSM_SDC2_BASE	0x12140000
-#define MSM_SDC3_BASE	0x12180000
-#define MSM_SDC4_BASE	0x121C0000
-#define MSM_SDC5_BASE	0x12200000
+#define MSM_SDC1_BASE	0xf9824000
 
 /* data access time unit in ns */
 static const unsigned int taac_unit[] = {
@@ -587,7 +584,7 @@ static int mmc_clock_enable_disable(unsigned id, unsigned enable)
 	struct clk *sdc_clk = NULL;
 
 	if (id == SDC1_CLK) {
-		sdc_clk = clk_get(&(msm_device_sdc1.dev), "core_clk");
+		sdc_clk = clk_get_sys("msm_sdcc.1", "core_clk");
 
 		if (sdc_clk) {
 			if (enable)
@@ -597,7 +594,7 @@ static int mmc_clock_enable_disable(unsigned id, unsigned enable)
 		}
 		clk_put(sdc_clk);
 	} else if (id == SDC1_PCLK) {
-		sdc_clk = clk_get(&(msm_device_sdc1.dev), "iface_clk");
+		sdc_clk = clk_get_sys("msm_sdcc.1", "iface_clk");
 
 		if (sdc_clk) {
 			if (enable)
@@ -619,14 +616,14 @@ static int mmc_clock_get_rate(unsigned id)
 	int clk_rate = -1;
 
 	if (id == SDC1_CLK) {
-		sdc_clk = clk_get(&(msm_device_sdc1.dev), "core_clk");
+		sdc_clk = clk_get_sys("msm_sdcc.1", "core_clk");
 
 		if (sdc_clk)
 			clk_rate = clk_get_rate(sdc_clk);
 
 		clk_put(sdc_clk);
 	} else if (id == SDC1_PCLK) {
-		sdc_clk = clk_get(&(msm_device_sdc1.dev), "iface_clk");
+		sdc_clk = clk_get_sys("msm_sdcc.1", "iface_clk");
 
 		if (sdc_clk)
 			clk_rate = clk_get_rate(sdc_clk);
@@ -645,14 +642,14 @@ static int mmc_clock_set_rate(unsigned id, unsigned rate)
 	struct clk *sdc_clk = NULL;
 
 	if (id == SDC1_CLK) {
-		sdc_clk = clk_get(&(msm_device_sdc1.dev), "core_clk");
+		sdc_clk = clk_get_sys("msm_sdcc.1", "core_clk");
 
 		if (sdc_clk)
 			clk_set_rate(sdc_clk, rate);
 
 		clk_put(sdc_clk);
 	} else if (id == SDC1_PCLK) {
-		sdc_clk = clk_get(&(msm_device_sdc1.dev), "iface_clk");
+		sdc_clk = clk_get_sys("msm_sdcc.1", "iface_clk");
 
 		if (sdc_clk)
 			clk_set_rate(sdc_clk, rate);
@@ -2266,10 +2263,16 @@ static void mmc_controller_reset(void)
 {
 	struct clk *sdc_clk;
 
-	sdc_clk = clk_get(&(msm_device_sdc1.dev), "core_clk");
+	sdc_clk = clk_get_sys("msm_sdcc.1", "core_clk");
 	if (sdc_clk) {
+		/*
+		 * FIXME: the clk reset will trigger WARNING and writing
+		 * to mmc will fail. This issue is tracked by CR#IKDVX-313
+		 */
+		/*
 		clk_reset(sdc_clk, 1);
 		clk_reset(sdc_clk, 0);
+		*/
 	}
 }
 
