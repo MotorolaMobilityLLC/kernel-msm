@@ -3133,15 +3133,14 @@ WLANTL_TxMgmtFrm
                 "WLAN TL:Failed while attempting to get addr2 %d", vosStatus));
        return vosStatus;
      }
-#ifdef FEATURE_WLAN_CCX
-    /* CCX IAPP Frame which are data frames but technically used
+
+    /* CCX IAPP/TDLS Frame which are data frames but technically used
      * for management functionality comes through route.
      */
     if (WLANTL_IS_QOS_DATA_FRAME(wFrmType))                                      \
     {
         uQosHdr = VOS_TRUE;
     }
-#endif
     /*----------------------------------------------------------------------
       Call WDA to build TX header
      ----------------------------------------------------------------------*/
