@@ -324,15 +324,15 @@ static struct msm_bus_vectors cam_stereo_snapshot_vectors[] = {
 static struct msm_bus_paths cam_bus_client_config[] = {
 	{
 		ARRAY_SIZE(cam_init_vectors),
-		cam_zsl_vectors,
+		cam_init_vectors,
 	},
 	{
 		ARRAY_SIZE(cam_preview_vectors),
-		cam_zsl_vectors,
+		cam_preview_vectors,
 	},
 	{
 		ARRAY_SIZE(cam_video_vectors),
-		cam_zsl_vectors,
+		cam_video_vectors,
 	},
 	{
 		ARRAY_SIZE(cam_snapshot_vectors),
