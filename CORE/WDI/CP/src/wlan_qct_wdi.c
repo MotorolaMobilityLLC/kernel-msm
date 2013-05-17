@@ -24275,8 +24275,9 @@ WDI_ProcessPrefNetworkFoundInd
   WDI_EventInfoType*     pEventData
 )
 {
-  WDI_LowLevelIndType  wdiInd;
-  tPrefNetwFoundInd    prefNetwFoundInd = {{0}};
+  WDI_LowLevelIndType   wdiInd;
+  tpPrefNetwFoundParams pNetwFoundParams;
+  wpt_uint32 msgsize;
 
 
   /*-------------------------------------------------------------------------
@@ -24294,25 +24295,34 @@ WDI_ProcessPrefNetworkFoundInd
   /*-------------------------------------------------------------------------
     Extract indication and send it to UMAC
   -------------------------------------------------------------------------*/
-  wpalMemoryCopy( (void *)&prefNetwFoundInd.prefNetwFoundParams,
-                  pEventData->pEventData,
-                  sizeof(tPrefNetwFoundParams));
+  pNetwFoundParams = (tpPrefNetwFoundParams)(pEventData->pEventData);
+
+  msgsize = sizeof(tPrefNetwFoundParams) + pNetwFoundParams->frameLength;
+  wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.pData =
+      (wpt_uint8 *)wpalMemoryAllocate(msgsize);
+
+  if (NULL == wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.pData)
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                 "%s: fail to allocate memory", __func__);
+     return WDI_STATUS_MEM_FAILURE;
+  }
+
+  wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.ssId.ucLength =
+     (pNetwFoundParams->ssId.length < 32 )?
+      pNetwFoundParams->ssId.length : 32;
+  wpalMemoryCopy( wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.ssId.sSSID,
+      pNetwFoundParams->ssId.ssId,
+      wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.ssId.ucLength);
+  wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.rssi = pNetwFoundParams->rssi;
+  wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.frameLength =
+      pNetwFoundParams->frameLength;
+  wpalMemoryCopy( wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.pData,
+      (wpt_uint8 *)pEventData->pEventData + sizeof(tPrefNetwFoundParams),
+      pNetwFoundParams->frameLength);
 
   /*Fill in the indication parameters*/
   wdiInd.wdiIndicationType = WDI_PREF_NETWORK_FOUND_IND;
-
-  wpalMemoryZero(wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.ssId.sSSID,32);
-
-  wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.ssId.ucLength =
-     (prefNetwFoundInd.prefNetwFoundParams.ssId.length < 31 )?
-      prefNetwFoundInd.prefNetwFoundParams.ssId.length : 31;
-
-  wpalMemoryCopy( wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.ssId.sSSID,
-                  prefNetwFoundInd.prefNetwFoundParams.ssId.ssId,
-                  wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.ssId.ucLength);
-
-  wdiInd.wdiIndicationData.wdiPrefNetworkFoundInd.rssi =
-     prefNetwFoundInd.prefNetwFoundParams.rssi;
 
   // DEBUG
   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
