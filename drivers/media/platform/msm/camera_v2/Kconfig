@@ -134,6 +134,15 @@ config MT9M114
 		1280 * 270. It does not support auto focus. It supports
 		few special effects like saturation.
 
+config MT9M114B
+	bool "Sensor MT9M114 (BAYER 1.26MP)"
+	depends on MSMB_CAMERA
+	---help---
+		MT9M114B is Aptina Bayer sensor. It supports 1.26 MP preview
+		and snapshot. The preview and snapshot resolution shall be
+		1280 * 720. It does not support auto focus. It supports
+		few special effects like saturation.
+
 config OV8825
 	bool "OmniVision OV8825 (BAYER 8MP)"
 	depends on MSMB_CAMERA
