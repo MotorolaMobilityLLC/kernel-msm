@@ -47,9 +47,7 @@
 				<&msmgpio 16 0>; /* RESET */
 			touch_vdd-supply = <&pm8226_l28>;
 			synaptics,normal-mode = <1>;
-			synaptics,y-flip;
-			synaptics,reset-on-resume;
-			synaptics,hw-reset;
+			synaptics,gpio-config;
 		};
 
 		cyttsp3_i2c@3b {
