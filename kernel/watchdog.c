@@ -30,7 +30,7 @@
 #include <linux/perf_event.h>
 
 int watchdog_enabled = 1;
-int __read_mostly watchdog_thresh = 10;
+int __read_mostly watchdog_thresh = 5;
 static int __read_mostly watchdog_disabled;
 static u64 __read_mostly sample_period;
 
