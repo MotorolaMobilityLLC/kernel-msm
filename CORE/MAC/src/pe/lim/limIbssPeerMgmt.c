@@ -783,6 +783,7 @@ void limIbssDeleteAllPeers( tpAniSirGlobal pMac ,tpPESession psessionEntry)
             ibss_status_chg_notify( pMac, pCurrNode->peerMacAddr, pStaDs->staIndex, 
                                     pStaDs->ucUcastSig, pStaDs->ucBcastSig,
                                     eWNI_SME_IBSS_PEER_DEPARTED_IND, psessionEntry->smeSessionId );
+            limReleasePeerIdx(pMac, peerIdx, psessionEntry);
             dphDeleteHashEntry(pMac, pStaDs->staAddr, peerIdx, &psessionEntry->dph.dphHashTable);
         }
 
