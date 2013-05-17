@@ -89,6 +89,7 @@
 #define TYPE_STYLUS (1 << 1)
 
 #define RESET_GPIO_NAME "touch_reset"
+#define IRQ_GPIO_NAME "touch_irq"
 
 #define SYDBG(fmt, args...)	printk(KERN_ERR "%s: " fmt, __func__, ##args)
 #define SYDBG_REG(subpkt, fld) SYDBG(#subpkt "." #fld " = 0x%02X\n", subpkt.fld)
@@ -464,6 +465,54 @@ out:
 }
 
 #ifdef CONFIG_OF
+static int synaptics_dsx_gpio_config(
+		struct synaptics_dsx_platform_data *pdata, bool enable)
+{
+	int retval = 0;
+
+	if (enable) {
+		if (!gpio_is_valid(pdata->irq_gpio)) {
+			pr_err("invalid %s\n", IRQ_GPIO_NAME);
+			retval = -EINVAL;
+		}
+		retval = gpio_request(pdata->irq_gpio, IRQ_GPIO_NAME);
+		if (retval) {
+			pr_err("unable to request %s [%d]: rc=%d\n",
+				IRQ_GPIO_NAME, pdata->irq_gpio, retval);
+			goto err_gpio;
+		}
+		retval = gpio_direction_input(pdata->irq_gpio);
+		if (retval) {
+			pr_err("unable to set %s [%d] dir: rc=%d\n",
+				IRQ_GPIO_NAME, pdata->irq_gpio, retval);
+			goto err_gpio;
+		}
+
+		if (!gpio_is_valid(pdata->reset_gpio)) {
+			pr_err("invalid %s\n", RESET_GPIO_NAME);
+			retval = -EINVAL;
+		}
+		retval = gpio_request(pdata->reset_gpio, RESET_GPIO_NAME);
+		if (retval) {
+			pr_err("unable to request %s [%d]: rc=%d\n",
+				RESET_GPIO_NAME, pdata->reset_gpio, retval);
+			goto err_gpio;
+		}
+		retval = gpio_direction_output(pdata->reset_gpio, 1);
+		if (retval) {
+			pr_err("unable to set %s [%d] dir: rc=%d\n",
+				RESET_GPIO_NAME, pdata->reset_gpio, retval);
+			goto err_gpio;
+		}
+	} else {
+		gpio_free(pdata->irq_gpio);
+		gpio_free(pdata->reset_gpio);
+	}
+
+err_gpio:
+	return retval;
+}
+
 static struct synaptics_dsx_platform_data *
 		synaptics_dsx_of_init(struct i2c_client *client,
 				struct synaptics_rmi4_data *rmi4_data)
@@ -482,9 +531,6 @@ static struct synaptics_dsx_platform_data *
 
 	pdata->irq_gpio = of_get_gpio(np, 0);
 	pdata->reset_gpio = of_get_gpio(np, 1);
-
-	if (gpio_request(pdata->reset_gpio, RESET_GPIO_NAME) < 0)
-		pr_err("failed to request reset gpio\n");
 
 	memset(key_codes, 0, sizeof(key_codes));
 	retval = of_property_read_u32_array(np, "synaptics,key-buttons",
@@ -518,6 +564,11 @@ static struct synaptics_dsx_platform_data *
 
 	pdata->irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
 	pdata->cap_button_map = button_map;
+
+	if (of_property_read_bool(np, "synaptics,gpio-config")) {
+		pr_notice("using gpio config\n");
+		pdata->gpio_config = synaptics_dsx_gpio_config;
+	}
 
 	if (of_property_read_bool(np, "synaptics,x-flip")) {
 		pr_notice("using flipped X axis\n");
@@ -787,7 +838,7 @@ static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
 	udelay(1500);
 	gpio_set_value(platform_data->reset_gpio, 1);
 
-	retval = down_timeout(&reset_semaphore, msecs_to_jiffies(50));
+	retval = down_timeout(&reset_semaphore, msecs_to_jiffies(100));
 	free_irq(rmi4_data->irq, &reset_semaphore);
 
 	if (retval) {
@@ -2662,8 +2713,6 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 	bool need_to_query = false;
 	unsigned char command = 0x01;
 
-	synaptics_dsx_on_resume(rmi4_data);
-
 	current_state = synaptics_dsx_get_state_safe(rmi4_data);
 	if (current_state == STATE_UNKNOWN) {
 		synaptics_rmi4_cleanup(rmi4_data);
@@ -2934,15 +2983,20 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	mutex_init(&(rmi4_data->rmi4_io_ctrl_mutex));
 	mutex_init(&(rmi4_data->state_mutex));
 
-	if (platform_data->gpio_config) {
-		retval = platform_data->gpio_config(
-				platform_data->irq_gpio, true);
-		if (retval < 0) {
-			dev_err(&client->dev,
-					"%s: Failed to configure GPIO\n",
-					__func__);
-			goto err_input_device;
-		}
+	if (platform_data->gpio_config)
+		retval = platform_data->gpio_config(platform_data, true);
+	else {
+		retval = gpio_request(platform_data->reset_gpio,
+						RESET_GPIO_NAME);
+		if (!retval)
+			retval = gpio_direction_output(
+						platform_data->reset_gpio, 1);
+	}
+	if (retval < 0) {
+		dev_err(&client->dev,
+				"%s: Failed to configure GPIO\n",
+				__func__);
+		goto err_input_device;
 	}
 
 	/* get irq number initialized before calling reset */
@@ -2966,6 +3020,9 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	} else {
 		platform_data->regulator_en = true;
 		regulator_enable(rmi4_data->regulator);
+		pr_debug("touch-vdd regulator is %s\n",
+			regulator_is_enabled(rmi4_data->regulator) ?
+			"on" : "off");
 	}
 
 	synaptics_dsx_ic_reset(rmi4_data);
@@ -3322,8 +3379,12 @@ static int synaptics_rmi4_suspend(struct device *dev)
 
 	synaptics_dsx_sensor_state(rmi4_data, STATE_SUSPEND);
 	if (!rmi4_data->touch_stopped) {
-		if (platform_data->regulator_en)
+		if (platform_data->regulator_en) {
 			regulator_disable(rmi4_data->regulator);
+			pr_debug("touch-vdd regulator is %s\n",
+				regulator_is_enabled(rmi4_data->regulator) ?
+				"on" : "off");
+		}
 
 		gpio_free(platform_data->reset_gpio);
 
@@ -3350,14 +3411,24 @@ static int synaptics_rmi4_resume(struct device *dev)
 	if (rmi4_data->touch_stopped) {
 		const struct synaptics_dsx_platform_data *platform_data =
 						rmi4_data->board;
-		if (platform_data->regulator_en)
+		if (platform_data->regulator_en) {
 			regulator_enable(rmi4_data->regulator);
+			pr_debug("touch-vdd regulator is %s\n",
+				regulator_is_enabled(rmi4_data->regulator) ?
+				"on" : "off");
+		}
 
 		if (gpio_request(platform_data->reset_gpio,
 						RESET_GPIO_NAME) < 0)
 			pr_err("failed to request reset gpio\n");
 
 		rmi4_data->touch_stopped = false;
+		/*
+		 * Decouple device reset and sending touch release, since
+		 * on resume resetting ic can be optional, while sending
+		 * release event is not
+		 */
+		synaptics_dsx_on_resume(rmi4_data);
 
 		if (rmi4_data->reset_on_resume)
 			synaptics_rmi4_reset_device(rmi4_data);
