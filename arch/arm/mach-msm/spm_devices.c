@@ -67,6 +67,8 @@ int msm_spm_set_vdd(unsigned int cpu, unsigned int vlevel)
 	info.cpu = cpu;
 	info.vlevel = vlevel;
 
+	preempt_disable();
+
 	if (cpu_online(cpu)) {
 		/**
 		 * We do not want to set the voltage of another core from
@@ -88,6 +90,8 @@ int msm_spm_set_vdd(unsigned int cpu, unsigned int vlevel)
 		msm_spm_smp_set_vdd(&info);
 		ret = info.err;
 	}
+
+	preempt_enable();
 
 	return ret;
 }
