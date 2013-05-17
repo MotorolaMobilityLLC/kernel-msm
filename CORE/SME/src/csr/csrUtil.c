@@ -38,9 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
-
-
 /** ------------------------------------------------------------------------- *
     ------------------------------------------------------------------------- *
 
@@ -87,8 +84,13 @@ tANI_U8 csrRSNOui[][ CSR_RSN_OUI_SIZE ] = {
     { 0x00, 0x0F, 0xAC, 0x03 }, // Reserved
     { 0x00, 0x0F, 0xAC, 0x04 }, // AES-CCMP
     { 0x00, 0x0F, 0xAC, 0x05 }, // WEP-104
-    { 0x00, 0x40, 0x96, 0x00 }, // CCKM
-    { 0x00, 0x0F, 0xAC, 0x06 }  // BIP (encryption type) or RSN-PSK-SHA256 (authentication type)
+#ifdef WLAN_FEATURE_11W
+    { 0x00, 0x0F, 0xAC, 0x06 },  // BIP(encryption type) or (RSN-PSK-SHA256(authentication type)
+#endif
+#ifdef FEATURE_WLAN_CCX
+    { 0x00, 0x40, 0x96, 0x00 } // CCKM
+#endif /* FEATURE_WLAN_CCX */
+    
 };
 
 #ifdef FEATURE_WLAN_WAPI
@@ -3062,7 +3064,7 @@ eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                              */
                             //Calculate beacon Interval for P2P-GO incase of MCC
                             new_beaconInterval = csrCalculateMCCBeaconInterval(pMac, 
-                                                pMac->roam.roamSession[sessionId].bssParams.beaconInterval,
+                                                pMac->roam.roamSession[sessionId].connectedProfile.beaconInterval,
                                                 *beaconInterval );
                             if(*beaconInterval != new_beaconInterval)
                                 *beaconInterval = new_beaconInterval;
@@ -3381,13 +3383,23 @@ static tANI_BOOLEAN csrIsAuthRSN( tpAniSirGlobal pMac, tANI_U8 AllSuites[][CSR_R
                                   tANI_U8 cAllSuites,
                                   tANI_U8 Oui[] )
 {
+#ifdef WLAN_FEATURE_11W
+    return( csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[01], Oui ) ||
+            csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[06], Oui ));
+#else
     return( csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[01], Oui ) );
+#endif
 }
 static tANI_BOOLEAN csrIsAuthRSNPsk( tpAniSirGlobal pMac, tANI_U8 AllSuites[][CSR_RSN_OUI_SIZE],
                                       tANI_U8 cAllSuites,
                                       tANI_U8 Oui[] )
 {
+#ifdef WLAN_FEATURE_11W
+    return( csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[02], Oui ) ||
+            csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[06], Oui ) );
+#else
     return( csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[02], Oui ) );
+#endif
 }
 
 #ifdef WLAN_FEATURE_11W
@@ -3395,7 +3407,7 @@ static tANI_BOOLEAN csrIsAuthRSNPskSha256( tpAniSirGlobal pMac, tANI_U8 AllSuite
                                       tANI_U8 cAllSuites,
                                       tANI_U8 Oui[] )
 {
-    return csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[07], Oui );
+    return csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[06], Oui );
 }
 #endif
 
