@@ -39,17 +39,6 @@
 #define PRODUCT_ID_OFFSET 0x10
 #define PRODUCT_INFO_OFFSET 0x1E
 #define FW_IMAGE_OFFSET 0x100
-#define BOOTLOADER_VERSION 0x06
-
-#define BOOTLOADER_ID_OFFSET 0
-#define BLOCK_SIZE_OFFSET 3
-#define FW_BLOCK_COUNT_OFFSET 5
-#define INT_STATUS_OFFSET 1
-
-#define BLOCK_NUMBER_OFFSET 0
-#define BLOCK_DATA_OFFSET 1
-#define FLASH_COMMAND_OFFSET 2
-#define FLASH_STATUS_OFFSET 3
 
 #define UI_CONFIG_AREA 0x00
 #define PERM_CONFIG_AREA 0x01
@@ -132,85 +121,131 @@ static int fwu_scan_pdt(void);
 static struct {
 	unsigned char id_letter;
 	unsigned char id_digit;
-} f34_q0_0;
+} f34_bootloader_id;
 
 static struct {
 	unsigned char bl_minor;
 	unsigned char bl_major;
-} f34_q0_1;
+} f34_bootloader_mm;
 
 static struct {
 	unsigned char fw_id_0_7;
 	unsigned char fw_id_8_15;
 	unsigned char fw_id_16_23;
 	unsigned char fw_id_24_31;
-} f34_q0_2;
+} f34_firmware_id;
 
 static struct f34_properties flash_properties;
 
 static struct {
 	unsigned char blk_size_lsb;
 	unsigned char blk_size_msb;
-} f34_q2_0;
+} f34_blk_size;
 
 static struct f34_query3_0 {
 	unsigned char fw_blk_count_lsb;
 	unsigned char fw_blk_count_msb;
-} f34_q3_0;
+} f34_fw_blk_count;
 
 static struct {
 	unsigned char ui_cfg_blk_count_lsb;
 	unsigned char ui_cfg_blk_count_msb;
-} f34_q3_1;
+} f34_ui_cfg_blk_count;
 
 static struct {
 	unsigned char perm_cfg_blk_count_lsb;
 	unsigned char perm_cfg_blk_count_msb;
-} f34_q3_2;
+} f34_perm_cfg_blk_count;
 
 static struct {
 	unsigned char bl_cfg_blk_count_lsb;
 	unsigned char bl_cfg_blk_count_msb;
-} f34_q3_3;
+} f34_bl_cfg_blk_count;
 
 static struct {
 	unsigned char disp_cfg_blk_count_lsb;
 	unsigned char disp_cfg_blk_count_msb;
-} f34_q3_4;
+} f34_disp_cfg_blk_count;
 
-static struct synaptics_rmi4_subpkt f34_query_0[] = {
-	RMI4_SUBPKT_STATIC(f34_q0_0),
-	RMI4_SUBPKT_STATIC(f34_q0_1),
-	RMI4_SUBPKT_STATIC(f34_q0_2),
+static struct {
+	unsigned char ui_cfg_blk_count_msb2;
+} f34_query_8;
+
+static struct synaptics_rmi4_subpkt f34_query_0_v1[] = {
+	RMI4_SUBPKT_STATIC(f34_bootloader_id),
+	RMI4_SUBPKT_STATIC(f34_bootloader_mm),
+	RMI4_SUBPKT_STATIC(f34_firmware_id),
 };
 
-static struct synaptics_rmi4_subpkt f34_query_1[] = {
+static struct synaptics_rmi4_subpkt f34_query_1_v1[] = {
 	RMI4_SUBPKT_STATIC(flash_properties),
 };
 
-static struct synaptics_rmi4_subpkt f34_query_2[] = {
-	RMI4_SUBPKT_STATIC(f34_q2_0),
+static struct synaptics_rmi4_subpkt f34_query_2_v1[] = {
+	RMI4_SUBPKT_STATIC(f34_blk_size),
 };
 
-static struct synaptics_rmi4_subpkt f34_query_3[] = {
-	RMI4_SUBPKT_STATIC(f34_q3_0),
-	RMI4_SUBPKT_STATIC(f34_q3_1),
-	RMI4_SUBPKT_STATIC(f34_q3_2),
-	RMI4_SUBPKT_STATIC(f34_q3_3),
-	RMI4_SUBPKT_STATIC(f34_q3_4),
+static struct synaptics_rmi4_subpkt f34_query_3_v1[] = {
+	RMI4_SUBPKT_STATIC(f34_fw_blk_count),
+	RMI4_SUBPKT_STATIC(f34_ui_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(f34_perm_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(f34_bl_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(f34_disp_cfg_blk_count),
 };
 
-static struct synaptics_rmi4_packet_reg f34_query_reg_array[] = {
-	RMI4_REG_STATIC(f34_query_0, 0, 8),
-	RMI4_REG_STATIC(f34_query_1, 1, 1),
-	RMI4_REG_STATIC(f34_query_2, 2, 2),
-	RMI4_REG_STATIC(f34_query_3, 3, 10),
+static struct synaptics_rmi4_packet_reg f34_query_reg_array_v1[] = {
+	RMI4_REG_STATIC(f34_query_0_v1, 0, 8),
+	RMI4_REG_STATIC(f34_query_1_v1, 1, 1),
+	RMI4_REG_STATIC(f34_query_2_v1, 2, 2),
+	RMI4_REG_STATIC(f34_query_3_v1, 3, 10),
 };
 
-static struct synaptics_rmi4_func_packet_regs f34_query_regs = {
+static struct synaptics_rmi4_func_packet_regs f34_query_regs_v1 = {
 	.base_addr = 0,
-	.nr_regs = ARRAY_SIZE(f34_query_reg_array),
-	.regs = f34_query_reg_array,
+	.nr_regs = ARRAY_SIZE(f34_query_reg_array_v1),
+	.regs = f34_query_reg_array_v1,
+};
+
+static struct synaptics_rmi4_subpkt f34_query_0_v0[] = {
+	RMI4_SUBPKT_STATIC(f34_bootloader_id),
+};
+
+static struct synaptics_rmi4_subpkt f34_query_2_v0[] = {
+	RMI4_SUBPKT_STATIC(flash_properties),
+};
+
+static struct synaptics_rmi4_subpkt f34_query_3_v0[] = {
+	RMI4_SUBPKT_STATIC(f34_blk_size),
+};
+
+static struct synaptics_rmi4_subpkt f34_query_5_v0[] = {
+	RMI4_SUBPKT_STATIC(f34_fw_blk_count),
+};
+
+static struct synaptics_rmi4_subpkt f34_query_7_v0[] = {
+	RMI4_SUBPKT_STATIC(f34_ui_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(f34_perm_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(f34_bl_cfg_blk_count),
+	RMI4_SUBPKT_STATIC(f34_disp_cfg_blk_count),
+};
+
+static struct synaptics_rmi4_subpkt f34_query_8_v0[] = {
+	RMI4_SUBPKT_STATIC(f34_query_8),
+};
+
+static struct synaptics_rmi4_packet_reg f34_query_reg_array_v0[] = {
+	RMI4_REG_STATIC(f34_query_0_v0, 0, 2), /* bootloader id */
+	RMI4_REG_STATIC(f34_query_2_v0, 2, 1), /* flash properties */
+	RMI4_REG_STATIC(f34_query_3_v0, 3, 2), /* block size */
+	RMI4_REG_STATIC(f34_query_5_v0, 5, 2), /* firmware block count */
+	RMI4_REG_STATIC(f34_query_7_v0, 7, 8),
+	RMI4_REG_STATIC(f34_query_8_v0, 8, 1),
+};
+
+static struct synaptics_rmi4_func_packet_regs f34_query_regs_v0 = {
+	.base_addr = 0,
+	.nr_regs = ARRAY_SIZE(f34_query_reg_array_v0),
+	.regs = f34_query_reg_array_v0,
 };
 
 struct image_header {
@@ -260,17 +295,6 @@ struct f01_device_control {
 	};
 };
 
-struct f34_flash_status {
-	union {
-		struct {
-			unsigned char status:6;
-			unsigned char reserved:1;
-			unsigned char program_enabled:1;
-		} __packed;
-		unsigned char data[1];
-	};
-};
-
 struct synaptics_rmi4_fwu_handle {
 	bool initialized;
 	bool irq_enabled;
@@ -293,6 +317,9 @@ struct synaptics_rmi4_fwu_handle {
 	unsigned short disp_config_block_count;
 	unsigned short config_size;
 	unsigned short config_area;
+	unsigned short f34_blkdata_addr;
+	unsigned short f34_flash_cmd_addr;
+	unsigned short f34_flash_status_addr;
 	struct synaptics_rmi4_fn_desc f01_fd;
 	struct synaptics_rmi4_fn_desc f34_fd;
 	struct synaptics_rmi4_exp_fn_ptr *fn_ptr;
@@ -400,23 +427,39 @@ static int fwu_read_f01_device_status(struct f01_device_status *status)
 			sizeof(status->data));
 }
 
+static struct synaptics_rmi4_func_packet_regs
+			*fwu_f34_packet_regs_addr(void)
+{
+	return fwu->bootloader_id[1] == '5' ?
+		&f34_query_regs_v0 : &f34_query_regs_v1;
+}
+
+static int fwu_f34_read_query_regs(void)
+{
+	int retval = -ENODATA;
+	struct synaptics_rmi4_func_packet_regs *f34_regs;
+
+	f34_regs = fwu_f34_packet_regs_addr();
+	f34_regs->base_addr = fwu->f34_fd.query_base_addr;
+	retval = synaptics_rmi4_read_packet_regs(fwu->rmi4_data, f34_regs);
+	if (retval < 0) {
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+				"%s: Failed to query F34 registers: rc=%d\n",
+				__func__, retval);
+		return retval;
+	}
+
+	return retval;
+}
+
 static int fwu_read_f34_queries(void)
 {
 	int retval;
 	struct i2c_client *i2c_client = fwu->rmi4_data->i2c_client;
 
-	f34_query_regs.base_addr = fwu->f34_fd.query_base_addr;
-	retval = synaptics_rmi4_read_packet_regs(fwu->rmi4_data,
-						&f34_query_regs);
-	if (retval < 0) {
-		dev_err(&i2c_client->dev,
-				"%s: Failed to read bootloader ID\n",
-				__func__);
-		return retval;
-	}
-
+	/* read BL id to determine F34 version */
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-			fwu->f34_fd.query_base_addr + BOOTLOADER_ID_OFFSET,
+			fwu->f34_fd.query_base_addr,
 			fwu->bootloader_id,
 			sizeof(fwu->bootloader_id));
 	if (retval < 0) {
@@ -426,13 +469,10 @@ static int fwu_read_f34_queries(void)
 		return retval;
 	}
 
-	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-			fwu->f34_fd.query_base_addr + F34_PROPERTIES_OFFSET,
-			flash_properties.data,
-			sizeof(flash_properties.data));
+	retval = fwu_f34_read_query_regs();
 	if (retval < 0) {
 		dev_err(&i2c_client->dev,
-				"%s: Failed to read flash properties\n",
+				"%s: Failed to read query regs\n",
 				__func__);
 		return retval;
 	}
@@ -444,12 +484,16 @@ static int fwu_read_f34_queries(void)
 		flash_properties.has_bl_config,
 		flash_properties.has_display_config);
 
-	batohs(&fwu->block_size, (unsigned char *)&f34_q2_0);
-	batohs(&fwu->fw_block_count, (unsigned char *)&f34_q3_0);
-	batohs(&fwu->config_block_count, (unsigned char *)&f34_q3_1);
-	batohs(&fwu->perm_config_block_count, (unsigned char *)&f34_q3_2);
-	batohs(&fwu->bl_config_block_count, (unsigned char *)&f34_q3_3);
-	batohs(&fwu->disp_config_block_count, (unsigned char *)&f34_q3_4);
+	batohs(&fwu->block_size, (unsigned char *)&f34_blk_size);
+	batohs(&fwu->fw_block_count, (unsigned char *)&f34_fw_blk_count);
+	batohs(&fwu->config_block_count,
+				(unsigned char *)&f34_ui_cfg_blk_count);
+	batohs(&fwu->perm_config_block_count,
+				(unsigned char *)&f34_perm_cfg_blk_count);
+	batohs(&fwu->bl_config_block_count,
+				(unsigned char *)&f34_bl_cfg_blk_count);
+	batohs(&fwu->disp_config_block_count,
+				(unsigned char *)&f34_disp_cfg_blk_count);
 
 	if (flash_properties.has_config_id) {
 		struct synaptics_rmi4_device_info *rmi;
@@ -466,6 +510,18 @@ static int fwu_read_f34_queries(void)
 		}
 	}
 
+	/* fill in version dependent F34 data registers addresses */
+	if (fwu->bootloader_id[1] == '5') {
+		fwu->f34_blkdata_addr = fwu->f34_fd.data_base_addr + 2;
+		fwu->f34_flash_cmd_addr = fwu->f34_fd.data_base_addr +
+							fwu->block_size + 2;
+		fwu->f34_flash_status_addr = fwu->f34_flash_cmd_addr;
+	} else {
+		fwu->f34_blkdata_addr = fwu->f34_fd.data_base_addr + 1;
+		fwu->f34_flash_cmd_addr = fwu->f34_fd.data_base_addr + 2;
+		fwu->f34_flash_status_addr = fwu->f34_fd.data_base_addr + 3;
+	}
+
 	return 0;
 }
 
@@ -474,31 +530,36 @@ static int fwu_read_interrupt_status(void)
 	int retval;
 	unsigned char interrupt_status;
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-			fwu->f01_fd.data_base_addr + INT_STATUS_OFFSET,
+			fwu->f01_fd.data_base_addr + 1,
 			&interrupt_status,
 			sizeof(interrupt_status));
 	if (retval < 0) {
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Failed to read flash status\n",
+				"%s: Failed to read intr status\n",
 				__func__);
 		return retval;
 	}
 	return interrupt_status;
 }
 
-static int fwu_read_f34_flash_status(struct f34_flash_status *status)
+static int fwu_read_f34_flash_status(unsigned char *status,
+					bool program_enabled)
 {
 	int retval;
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-			fwu->f34_fd.data_base_addr + FLASH_STATUS_OFFSET,
-			status->data,
-			sizeof(status->data));
+			fwu->f34_flash_status_addr,
+			status,
+			sizeof(*status));
 	if (retval < 0) {
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Failed to read flash status\n",
 				__func__);
 		return retval;
 	}
+	if (program_enabled)
+		*status &= 0x80;
+	else
+		*status &= 0x3F;
 	return 0;
 }
 
@@ -540,7 +601,7 @@ static int fwu_write_f34_command(unsigned char cmd)
 	int retval;
 
 	retval = fwu->fn_ptr->write(fwu->rmi4_data,
-			fwu->f34_fd.data_base_addr + FLASH_COMMAND_OFFSET,
+			fwu->f34_flash_cmd_addr,
 			&cmd,
 			sizeof(cmd));
 	if (retval < 0) {
@@ -646,12 +707,11 @@ static int fwu_write_blocks(unsigned char *block_ptr, unsigned short block_cnt,
 	int retval;
 	unsigned char block_offset[] = {0, 0};
 	unsigned short block_num;
-	struct f34_flash_status f34_flash_status;
 	unsigned int progress = (command == CMD_WRITE_CONFIG_BLOCK) ?
 				10 : 100;
-
+	block_offset[1] |= (UI_CONFIG_AREA << 5);
 	retval = fwu->fn_ptr->write(fwu->rmi4_data,
-			fwu->f34_fd.data_base_addr + BLOCK_NUMBER_OFFSET,
+			fwu->f34_fd.data_base_addr,
 			block_offset,
 			sizeof(block_offset));
 	if (retval < 0) {
@@ -662,6 +722,7 @@ static int fwu_write_blocks(unsigned char *block_ptr, unsigned short block_cnt,
 	}
 
 	for (block_num = 0; block_num < block_cnt; block_num++) {
+		unsigned char flash_status = 0;
 		if (block_num % progress == 0)
 			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 				"%s: update %s %3d / %3d\n",
@@ -672,7 +733,7 @@ static int fwu_write_blocks(unsigned char *block_ptr, unsigned short block_cnt,
 				block_cnt);
 
 		retval = fwu->fn_ptr->write(fwu->rmi4_data,
-			fwu->f34_fd.data_base_addr + BLOCK_DATA_OFFSET,
+			fwu->f34_blkdata_addr,
 			block_ptr,
 			fwu->block_size);
 		if (retval < 0) {
@@ -699,13 +760,13 @@ static int fwu_write_blocks(unsigned char *block_ptr, unsigned short block_cnt,
 			return retval;
 		}
 
-		retval = fwu_read_f34_flash_status(&f34_flash_status);
-		if (f34_flash_status.status) {
+		fwu_read_f34_flash_status(&flash_status, false);
+		if (flash_status) {
 			dev_err(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Flash block %d status %x\n",
 				__func__,
 				block_num,
-				f34_flash_status.data[0]);
+				flash_status);
 			return -EAGAIN;
 		}
 		block_ptr += fwu->block_size;
@@ -753,7 +814,7 @@ static int fwu_write_bootloader_id(void)
 			fwu->bootloader_id[0], fwu->bootloader_id[1]);
 
 	retval = fwu->fn_ptr->write(fwu->rmi4_data,
-			fwu->f34_fd.data_base_addr + BLOCK_DATA_OFFSET,
+			fwu->f34_blkdata_addr,
 			fwu->bootloader_id,
 			sizeof(fwu->bootloader_id));
 	if (retval < 0) {
@@ -804,7 +865,7 @@ static int fwu_enter_flash_prog(void)
 {
 	int retval;
 	struct f01_device_status f01_device_status;
-	struct f34_flash_status f34_flash_status;
+	unsigned char program_enabled = 0;
 
 	retval = fwu_read_f01_device_status(&f01_device_status);
 	if (retval < 0)
@@ -860,8 +921,8 @@ static int fwu_enter_flash_prog(void)
 	if (retval < 0)
 		return retval;
 
-	retval = fwu_read_f34_flash_status(&f34_flash_status);
-	if (!f34_flash_status.program_enabled) {
+	fwu_read_f34_flash_status(&program_enabled, true);
+	if (!program_enabled) {
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 			"%s: Program enabled bit not set\n",
 			__func__);
@@ -943,7 +1004,7 @@ static int fwu_handle_reflash_error(void)
 static int fwu_do_reflash(void)
 {
 	int retval;
-	struct f34_flash_status f34_flash_status;
+	unsigned char program_enabled = 0;
 
 	fwu_enable_irq(true);
 
@@ -982,8 +1043,8 @@ retry:
 			"%s: Idle status detected\n",
 			__func__);
 
-	retval = fwu_read_f34_flash_status(&f34_flash_status);
-	if (!f34_flash_status.program_enabled) {
+	fwu_read_f34_flash_status(&program_enabled, true);
+	if (!program_enabled) {
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 			"%s: Program enabled bit not set\n",
 			__func__);
@@ -1198,16 +1259,8 @@ static int fwu_start_reflash(void)
 	else {
 		parse_header(&header, fw_image);
 
-		if (header.bootloader_version != BOOTLOADER_VERSION) {
-			dev_err(&i2c_client->dev,
-				"%s: Image has invalid bootloader version %d\n",
-				__func__,
-				header.bootloader_version);
-			release_firmware(fw_entry);
-			retval = -EINVAL;
-			goto exit;
-		}
-
+		pr_notice("Firmware file has BL version %d\n",
+					header.bootloader_version);
 		if (header.image_size)
 			fwu->firmware_data = fw_image + FW_IMAGE_OFFSET;
 		if (header.config_size)
@@ -1446,7 +1499,7 @@ static int fwu_do_read_config(void)
 	block_offset[1] |= (fwu->config_area << 5);
 
 	retval = fwu->fn_ptr->write(fwu->rmi4_data,
-			fwu->f34_fd.data_base_addr + BLOCK_NUMBER_OFFSET,
+			fwu->f34_fd.data_base_addr,
 			block_offset,
 			sizeof(block_offset));
 	if (retval < 0) {
@@ -1474,7 +1527,7 @@ static int fwu_do_read_config(void)
 		}
 
 		retval = fwu->fn_ptr->read(fwu->rmi4_data,
-				fwu->f34_fd.data_base_addr + BLOCK_DATA_OFFSET,
+				fwu->f34_blkdata_addr,
 				&fwu->read_config_buf[index],
 				fwu->block_size);
 		if (retval < 0) {
@@ -1750,9 +1803,9 @@ static ssize_t fwu_sysfs_disp_config_block_count_show(struct device *dev,
 static void synaptics_rmi4_fwu_attn(struct synaptics_rmi4_data *rmi4_data,
 		unsigned char intr_mask)
 {
-	struct f34_flash_status f34_flash_status;
+	unsigned char flash_status;
 	if (fwu->intr_mask & intr_mask)
-		fwu_read_f34_flash_status(&f34_flash_status);
+		fwu_read_f34_flash_status(&flash_status, false);
 
 	return;
 }
@@ -1817,6 +1870,8 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 	retval = fwu_read_f34_queries();
 	if (retval < 0)
 		goto exit_free_mem;
+
+	pr_notice("F34 version %d\n", fwu->bootloader_id[1] - '5');
 
 	wake_lock_init(&fwu->flash_wake_lock,
 				WAKE_LOCK_SUSPEND, "synaptics_fw_flash");
