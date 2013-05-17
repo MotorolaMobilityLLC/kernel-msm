@@ -4604,6 +4604,9 @@ typedef struct
   /* Beacon Early Termination Interval */
   wpt_uint32 uBETInterval; 
 
+  /* MAX LI for modulated DTIM */
+  wpt_uint32 uMaxLIModulatedDTIM;
+
 } WDI_SetPowerParamsInfo;
 
 /*---------------------------------------------------------------------------

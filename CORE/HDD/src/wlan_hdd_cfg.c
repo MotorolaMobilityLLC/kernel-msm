@@ -891,6 +891,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_IGNORE_DTIM_MIN,
                  CFG_IGNORE_DTIM_MAX ),
 
+   REG_VARIABLE( CFG_MAX_LI_MODULATED_DTIM_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, fMaxLIModulatedDTIM,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_MAX_LI_MODULATED_DTIM_DEFAULT,
+                 CFG_MAX_LI_MODULATED_DTIM_MIN,
+                 CFG_MAX_LI_MODULATED_DTIM_MAX ),
+
    REG_VARIABLE( CFG_RX_ANT_CONFIGURATION_NAME, WLAN_PARAM_Integer,
                 hdd_config_t, nRxAnt,
                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
