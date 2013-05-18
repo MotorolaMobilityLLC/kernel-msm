@@ -808,10 +808,10 @@ void hdmi_msm_init_phy(int video_format)
 	HDMI_OUTP(HDMI_PHY_REG_0, 0x1B);
 	HDMI_OUTP(HDMI_PHY_REG_1, 0xF2);
 
-	/* Set HDMI_PHY_REG1 based on foundary id[30:28] and PTE_HDMI[31] bit
+	/* Set HDMI_PHY_REG1 based on chip source id[30:28] and PTE_HDMI[31] bit
 	 * of QFPROM_RAW_PTE_ROW1_LSB */
-	 if (hdmi_msm_state->pd->foundry) {
-		if ((hdmi_msm_state->pd->foundry()) &&
+	 if (hdmi_msm_state->pd->source) {
+		if ((hdmi_msm_state->pd->source()) &&
 			(((inpdw(QFPROM_BASE + 0x00c0) & 0xF0000000) >> 28) ==
 									0x1))
 			HDMI_OUTP(HDMI_PHY_REG_1, 0xF1);
