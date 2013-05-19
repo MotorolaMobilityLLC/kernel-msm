@@ -67,3 +67,11 @@ config PROC_PAGE_MONITOR
 	  /proc/pid/smaps, /proc/pid/clear_refs, /proc/pid/pagemap,
 	  /proc/kpagecount, and /proc/kpageflags. Disabling these
           interfaces will reduce the size of the kernel by approximately 4kb.
+
+config PROC_NRUN
+	default n
+	depends on PROC_FS && SMP
+	bool "Enable /proc/nrun for multi-core performance analysis" if EXPERT
+	help
+	  A proc dir "/proc/nrun" is created, which can show the number of runnable
+	  tasks in different sampling rate.
