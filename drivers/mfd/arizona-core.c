@@ -817,7 +817,7 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 		if (arizona->pdata.micbias[i].discharge)
 			val |= ARIZONA_MICB1_DISCH;
 
-		if (arizona->pdata.micbias[i].fast_start)
+		if (arizona->pdata.micbias[i].soft_start)
 			val |= ARIZONA_MICB1_RATE;
 
 		if (arizona->pdata.micbias[i].bypass)
