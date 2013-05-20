@@ -1312,7 +1312,6 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                                             pFTAssocRsp, assocRsplen,
                                             WLAN_STATUS_SUCCESS,
                                             GFP_KERNEL);
-                    cfg80211_put_bss(bss);
                 }
             }
             else
@@ -1342,9 +1341,9 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                             WLAN_STATUS_SUCCESS,
                             GFP_KERNEL);
 
-                    cfg80211_put_bss(bss);
                 }
             }
+            cfg80211_put_bss(bss);
             // Register the Station with TL after associated...
             vosStatus = hdd_roamRegisterSTA( pAdapter,
                     pRoamInfo,
