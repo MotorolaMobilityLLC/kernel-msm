@@ -210,6 +210,11 @@ typedef struct sCsrNeighborRoamControlInfo
                                                     we re-initialize occupied channel list */
     tANI_S8                     lookupDOWNRssi;
     tANI_U8                     uScanMode;
+    tANI_U8                     uOsRequestedHandoff; /* upper layer requested
+                                                        a reassoc */
+    tCsrHandoffRequest          handoffReqInfo; /* handoff related info came
+                                                   with upper layer's req for
+                                                   reassoc */
 #endif
 } tCsrNeighborRoamControlInfo, *tpCsrNeighborRoamControlInfo;
 
@@ -265,8 +270,13 @@ VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
 #define REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW     12
 #define REASON_NPROBES_CHANGED                      13
 #define REASON_HOME_AWAY_TIME_CHANGED               14
+#define REASON_OS_REQUESTED_ROAMING_NOW             15
 eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reason);
 eHalStatus csrNeighborRoamCandidateFoundIndHdlr(tpAniSirGlobal pMac, void* pMsg);
+eHalStatus csrNeighborRoamHandoffReqHdlr(tpAniSirGlobal pMac, void* pMsg);
+eHalStatus csrNeighborRoamProceedWithHandoffReq(tpAniSirGlobal pMac);
+eHalStatus csrNeighborRoamSssidScanDone(tpAniSirGlobal pMac, eHalStatus status);
+eHalStatus csrNeighborRoamRestartLfrScan(tpAniSirGlobal pMac);
 #endif
 
 
