@@ -1819,6 +1819,10 @@ static int qcedev_check_cipher_params(struct qcedev_cipher_op_req *req,
 			if (req->use_pmem)
 				goto error;
 		}
+		if (req->byteoffset >= AES_CE_BLOCK_SIZE) {
+			pr_err("%s: Invalid byte offset\n", __func__);
+			goto error;
+		}
 	}
 	/* if using PMEM with non-zero byteoffset, ensure it is in_place_op */
 	if (req->use_pmem) {
