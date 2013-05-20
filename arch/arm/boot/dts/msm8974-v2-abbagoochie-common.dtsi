@@ -11,10 +11,15 @@
  */
 
 /include/ "msm8974-v2-moto-common.dtsi"
+/include/ "dsi-panel-mot-smd-720p-video.dtsi"
 
 / {
 	model = "Motorola QC-MSM8974 Abbagoochie";
 	compatible = "qcom,msm8974-abbagoochie",
 		     "qcom,msm8974-moto",
 		     "qcom,msm8974";
+
+	qcom,mdss_dsi_mot_smd_720p_video {
+		status = "ok";
+	};
 };
