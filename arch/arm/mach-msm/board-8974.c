@@ -170,7 +170,10 @@ void __init msm8974_init(void)
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
-	msm_8974_init_gpiomux();
+	if (platform_is_msm8974_moto())
+		msm_8974_moto_init_gpiomux();
+	else
+		msm_8974_init_gpiomux();
 	regulator_has_full_constraints();
 	board_dt_populate(adata);
 	msm8974_add_drivers();
