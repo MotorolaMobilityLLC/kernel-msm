@@ -471,7 +471,7 @@ static void ghsic_data_start_rx(struct gdata_port *port)
 static void ghsic_data_start_io(struct gdata_port *port)
 {
 	unsigned long	flags;
-	struct usb_ep	*ep;
+	struct usb_ep	*ep_out, *ep_in;
 	int		ret;
 
 	pr_debug("%s: port:%p\n", __func__, port);
@@ -480,12 +480,12 @@ static void ghsic_data_start_io(struct gdata_port *port)
 		return;
 
 	spin_lock_irqsave(&port->rx_lock, flags);
-	ep = port->out;
+	ep_out = port->out;
 	spin_unlock_irqrestore(&port->rx_lock, flags);
-	if (!ep)
+	if (!ep_out)
 		return;
 
-	ret = ghsic_data_alloc_requests(ep, &port->rx_idle,
+	ret = ghsic_data_alloc_requests(ep_out, &port->rx_idle,
 		port->rx_q_size, ghsic_data_epout_complete, &port->rx_lock);
 	if (ret) {
 		pr_err("%s: rx req allocation failed\n", __func__);
@@ -493,21 +493,21 @@ static void ghsic_data_start_io(struct gdata_port *port)
 	}
 
 	spin_lock_irqsave(&port->tx_lock, flags);
-	ep = port->in;
+	ep_in = port->in;
 	spin_unlock_irqrestore(&port->tx_lock, flags);
-	if (!ep) {
+	if (!ep_in) {
 		spin_lock_irqsave(&port->rx_lock, flags);
-		ghsic_data_free_requests(ep, &port->rx_idle);
+		ghsic_data_free_requests(ep_out, &port->rx_idle);
 		spin_unlock_irqrestore(&port->rx_lock, flags);
 		return;
 	}
 
-	ret = ghsic_data_alloc_requests(ep, &port->tx_idle,
+	ret = ghsic_data_alloc_requests(ep_in, &port->tx_idle,
 		port->tx_q_size, ghsic_data_epin_complete, &port->tx_lock);
 	if (ret) {
 		pr_err("%s: tx req allocation failed\n", __func__);
 		spin_lock_irqsave(&port->rx_lock, flags);
-		ghsic_data_free_requests(ep, &port->rx_idle);
+		ghsic_data_free_requests(ep_out, &port->rx_idle);
 		spin_unlock_irqrestore(&port->rx_lock, flags);
 		return;
 	}
