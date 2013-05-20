@@ -183,6 +183,29 @@ static struct gpiomux_setting hap_lvl_shft_active_config = {
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_UP,
 };
+
+static struct gpiomux_setting blsp1_qup4_i2c_config_sda = {
+	.func = GPIOMUX_FUNC_4,
+	/*
+	 * Please keep I2C GPIOs drive-strength at minimum (2ma). It is a
+	 * workaround for HW issue of glitches caused by rapid GPIO current-
+	 * change.
+	 */
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting blsp1_qup4_i2c_config_scl = {
+	.func = GPIOMUX_FUNC_5,
+	/*
+	 * Please keep I2C GPIOs drive-strength at minimum (2ma). It is a
+	 * workaround for HW issue of glitches caused by rapid GPIO current-
+	 * change.
+	 */
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
 static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
 	{
 		.gpio = 86,
@@ -473,6 +496,18 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		},
 	},
 	{
+		.gpio = 25,		/* BLSP1 QUP4 I2C_DAT */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &blsp1_qup4_i2c_config_sda,
+		},
+	},
+	{
+		.gpio = 26,		/* BLSP1 QUP4 I2C_CLK */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &blsp1_qup4_i2c_config_scl,
+		},
+	},
+	{
 		.gpio      = 83,		/* BLSP11 QUP I2C_DAT */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
@@ -670,20 +705,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
-		.gpio = 25, /* WEBCAM2_RESET_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
-		.gpio = 26, /* CAM_IRQ */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[0],
-			[GPIOMUX_SUSPENDED] = &cam_settings[1],
 		},
 	},
 	{
