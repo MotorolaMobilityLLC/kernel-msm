@@ -919,21 +919,25 @@ static int32_t ov10820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		fl_lines = line + offset;
 
 	fl_lines += (fl_lines & 0x1);
-	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
-				s_ctrl->sensor_output_reg_addr->
-				frame_length_lines, fl_lines,
-				MSM_CAMERA_I2C_WORD_DATA);
 
 	int_time[0] = line >> 12;
 	int_time[1] = line >> 4;
 	int_time[2] = line << 4;
 
 	if (allow_asic_control) {
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				s_ctrl->sensor_output_reg_addr->
+				frame_length_lines, fl_lines,
+				MSM_CAMERA_I2C_WORD_DATA);
 		ov660_set_i2c_bypass(0);
 		ov660_set_exposure_gain(gain, line);
 		ov660_set_i2c_bypass(1);
 	} else {
 		s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				s_ctrl->sensor_output_reg_addr->
+				frame_length_lines, fl_lines,
+				MSM_CAMERA_I2C_WORD_DATA);
 		msm_camera_i2c_write_seq(s_ctrl->sensor_i2c_client,
 				s_ctrl->sensor_exp_gain_info->
 				coarse_int_time_addr, &int_time[0], 3);
