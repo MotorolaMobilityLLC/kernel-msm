@@ -443,11 +443,11 @@ out:
 	destroy_fsync_dnodes(sbi, &inode_list);
 	kmem_cache_destroy(fsync_entry_slab);
 	sbi->por_doing = 0;
-	if (err)
-		f2fs_msg(sbi->sb, KERN_ERR, "recovery did not fully complete");
-	else {
+	if (!err) {
 		f2fs_msg(sbi->sb, KERN_INFO, "recovery complete");
 		write_checkpoint(sbi, false);
-	}
+	} else
+		f2fs_msg(sbi->sb, KERN_ERR, "recovery did not fully complete");
+
 	return err;
 }
