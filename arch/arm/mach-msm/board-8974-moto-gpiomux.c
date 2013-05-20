@@ -218,14 +218,14 @@ static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
 
 static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 	{
-		.gpio      = 60,		/* TOUCH RESET */
+		.gpio      = 80,		/* TOUCH RESET */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &atmel_resout_act_cfg,
 			[GPIOMUX_SUSPENDED] = &atmel_resout_sus_cfg,
 		},
 	},
 	{
-		.gpio      = 61,		/* TOUCH IRQ */
+		.gpio      = 81,		/* TOUCH IRQ */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &atmel_int_act_cfg,
 			[GPIOMUX_SUSPENDED] = &atmel_int_sus_cfg,
