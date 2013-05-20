@@ -26,7 +26,8 @@ struct bq24192_platform_data {
 	int wlc_support;
 	int otg_en_gpio;
 	int ext_ovp_otg_ctrl;
-
+	int step_dwn_thr_mv;
+	int step_dwn_currnet_ma;
 };
 
 #endif

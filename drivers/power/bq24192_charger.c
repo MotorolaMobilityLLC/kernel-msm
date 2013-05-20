@@ -28,6 +28,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/qpnp/qpnp-adc.h>
 
 /* Register definitions */
 #define INPUT_SRC_CONT_REG              0X00
@@ -72,17 +73,22 @@ struct bq24192_chip {
 	int  irq;
 	struct i2c_client  *client;
 	struct delayed_work  irq_work;
+	struct delayed_work  vbat_work;
 	struct dentry  *dent;
 	struct wake_lock  chg_wake_lock;
 	struct power_supply  *usb_psy;
 	struct power_supply  ac_psy;
 	struct power_supply  *wlc_psy;
 	struct power_supply  *batt_psy;
+	struct qpnp_adc_tm_btm_param  adc_param;
 	int  usb_online;
 	int  ac_online;
 	int  ext_pwr;
 	int  wlc_support;
 	int ext_ovp_otg_ctrl;
+	int  vbat_noti_stat;
+	int  step_dwn_thr_mv;
+	int  step_dwn_currnet_ma;
 };
 
 static struct bq24192_chip *the_chip;
@@ -466,6 +472,80 @@ static void bq24192_irq_worker(struct work_struct *work)
 	power_supply_changed(&chip->ac_psy);
 }
 
+#ifdef CONFIG_THERMAL_QPNP_ADC_TM
+static void bq24192_vbat_work(struct work_struct *work)
+{
+	struct bq24192_chip *chip =
+		container_of(work, struct bq24192_chip, vbat_work.work);
+	int step_current_ma;
+
+	if (chip->vbat_noti_stat == ADC_TM_HIGH_STATE) {
+		step_current_ma = chip->step_dwn_currnet_ma;
+		chip->adc_param.state_request = ADC_TM_LOW_THR_ENABLE;
+	} else {
+		step_current_ma = chip->chg_current_ma;
+		chip->adc_param.state_request = ADC_TM_HIGH_THR_ENABLE;
+	}
+
+	if (bq24192_is_charger_present(chip)) {
+		pr_info("change chg current step to %d\n", step_current_ma);
+		bq24192_set_ibat_max(chip, step_current_ma);
+		qpnp_adc_tm_channel_measure(&chip->adc_param);
+	}
+	wake_unlock(&chip->chg_wake_lock);
+}
+
+static void bq24192_vbat_notification(enum qpnp_tm_state state, void *ctx)
+{
+	struct bq24192_chip *chip = ctx;
+
+	wake_lock(&chip->chg_wake_lock);
+	chip->vbat_noti_stat = state;
+	schedule_delayed_work(&chip->vbat_work, msecs_to_jiffies(100));
+}
+
+static int bq24192_step_down_detect_init(struct bq24192_chip *chip)
+{
+	int ret;
+
+	ret = qpnp_adc_tm_is_ready();
+	if (ret) {
+		pr_err("qpnp_adc is not ready");
+		return ret;
+	}
+
+	chip->adc_param.high_thr = chip->step_dwn_thr_mv * 1000;
+	chip->adc_param.low_thr = (chip->step_dwn_thr_mv - 100) * 1000;
+	chip->adc_param.timer_interval = ADC_MEAS1_INTERVAL_2S;
+	chip->adc_param.state_request = ADC_TM_HIGH_THR_ENABLE;
+	chip->adc_param.btm_ctx = chip;
+	chip->adc_param.threshold_notification = bq24192_vbat_notification;
+	chip->adc_param.channel = VBAT_SNS;
+
+	ret = qpnp_adc_tm_channel_measure(&chip->adc_param);
+	if (ret)
+		pr_err("request ADC error %d\n", ret);
+
+	return ret;
+}
+#else
+static void bq24192_vbat_work(struct work_struct *work)
+{
+	pr_warn("vbat notification is not suppored!\n");
+}
+
+static void bq24192_vbat_notification(enum qpnp_tm_state state, void *ctx)
+{
+	pr_warn("vbat notification is not suppored!\n");
+}
+
+static int bq24192_step_down_detect_init(struct bq24192_chip *chip)
+{
+	pr_warn("vbat notification is not suppored!\n");
+	return 0;
+}
+#endif
+
 static irqreturn_t bq24192_irq(int irq, void *dev_id)
 {
 	struct bq24192_chip *chip = dev_id;
@@ -576,6 +656,7 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 		bq24192_set_input_i_limit(chip,
 			INPUT_CURRENT_LIMIT_MAX_MA);
 		bq24192_set_ibat_max(chip, chip->chg_current_ma);
+		bq24192_step_down_detect_init(chip);
 		pr_info("ac is online! i_limit = %d\n",
 				chip->chg_current_ma);
 	} else if (wlc_online && bq24192_is_charger_present(chip)) {
@@ -895,6 +976,20 @@ static int bq24192_parse_dt(struct device_node *dev_node,
 		return ret;
 	}
 
+	ret = of_property_read_u32(dev_node, "ti,step-dwn-current-ma",
+				   &chip->step_dwn_currnet_ma);
+	if (ret) {
+		pr_err("Unable to read step-dwn-current-ma.\n");
+		return ret;
+	}
+
+	ret = of_property_read_u32(dev_node, "ti,step-dwn-thr-mv",
+				   &chip->step_dwn_thr_mv);
+	if (ret) {
+		pr_err("Unable to read step down threshod voltage.\n");
+		return ret;
+	}
+
 	chip->wlc_support =
 			of_property_read_bool(dev_node, "ti,wlc-support");
 
@@ -966,6 +1061,8 @@ static int bq24192_probe(struct i2c_client *client,
 		chip->ext_ovp_otg_ctrl = pdata->ext_ovp_otg_ctrl;
 		if (chip->ext_ovp_otg_ctrl)
 			chip->otg_en_gpio = pdata->otg_en_gpio;
+		chip->step_dwn_thr_mv = pdata->step_dwn_thr_mv;
+		chip->step_dwn_currnet_ma = pdata->step_dwn_currnet_ma;
 	}
 
 	if (chip->wlc_support) {
@@ -1018,6 +1115,9 @@ static int bq24192_probe(struct i2c_client *client,
 		goto err_debugfs;
 	}
 
+	wake_lock_init(&chip->chg_wake_lock,
+		       WAKE_LOCK_SUSPEND, BQ24192_NAME);
+	INIT_DELAYED_WORK(&chip->vbat_work, bq24192_vbat_work);
 	INIT_DELAYED_WORK(&chip->irq_work, bq24192_irq_worker);
 	if (chip->irq) {
 		ret = request_irq(chip->irq, bq24192_irq,
@@ -1037,6 +1137,7 @@ static int bq24192_probe(struct i2c_client *client,
 	return 0;
 
 err_req_irq:
+	wake_lock_destroy(&chip->chg_wake_lock);
 	if (chip->dent)
 		debugfs_remove_recursive(chip->dent);
 err_debugfs:
@@ -1060,6 +1161,7 @@ static int bq24192_remove(struct i2c_client *client)
 
 	if (chip->irq)
 		free_irq(chip->irq, chip);
+	wake_lock_destroy(&chip->chg_wake_lock);
 	if (chip->dent)
 		debugfs_remove_recursive(chip->dent);
 	power_supply_unregister(&chip->ac_psy);
