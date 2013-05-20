@@ -377,7 +377,7 @@ static int recover_data(struct f2fs_sb_info *sbi,
 		lock_page(page);
 
 		if (cp_ver != cpver_of_node(page))
-			goto unlock_out;
+			break;
 
 		entry = get_fsync_inode(head, ino_of_node(page));
 		if (!entry)
@@ -386,9 +386,9 @@ static int recover_data(struct f2fs_sb_info *sbi,
 		err = do_recover_data(sbi, entry->inode, page, blkaddr);
 		if (err) {
 			f2fs_msg(sbi->sb, KERN_INFO,
-				"%s: f2fs_readpage failed: %d",
+				"%s: do_recover_data failed: %d",
 				__func__, err);
-			goto out;
+			break;
 		}
 
 		if (entry->blkaddr == blkaddr) {
@@ -400,7 +400,6 @@ next:
 		/* check next segment */
 		blkaddr = next_blkaddr_of_node(page);
 	}
-unlock_out:
 	unlock_page(page);
 out:
 	__free_pages(page, 0);
