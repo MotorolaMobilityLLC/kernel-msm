@@ -87,6 +87,7 @@ struct max17048_chip {
 };
 
 static struct max17048_chip *ref;
+static int max17048_get_prop_status(struct max17048_chip *chip);
 
 static int max17048_write_word(struct i2c_client *client, int reg, u16 value)
 {
@@ -174,10 +175,16 @@ static int max17048_get_capacity_from_soc(void)
 	pr_debug("%s: SOC raw = 0x%x%x\n", __func__, buf[0], buf[1]);
 
 	batt_soc = (((int)buf[0]*256)+buf[1])*19531; /* 0.001953125 */
-	batt_soc /= 10000000;
+
+	if (max17048_get_prop_status(ref) == 1)
+		batt_soc = (batt_soc - (13 * 1000000)) / ((950 - 13) * 10000);
+	else
+		batt_soc = (batt_soc - (130 * 1000000)) / ((950 - 130) * 10000);
 
 	if (batt_soc > 100)
 		batt_soc = 100;
+	if (batt_soc < 0)
+		batt_soc = 0;
 
 	return batt_soc;
 }
