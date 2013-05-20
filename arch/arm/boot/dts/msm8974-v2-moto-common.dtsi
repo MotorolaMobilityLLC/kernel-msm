@@ -16,9 +16,6 @@
 /include/ "msm8974-leds.dtsi"
 
 / {
-	model = "Motorola QC-MSM8974 Abbagoochie";
-	compatible = "qcom,msm8974-abbagoochie", "qcom,msm8974", "qcom,abbagoochie";
-
 	serial@f991e000 {
 		status = "ok";
 	};
