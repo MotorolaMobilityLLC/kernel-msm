@@ -1,0 +1,72 @@
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013 Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	qcom,mdss_dsi_mot_smd_720p_video {
+		compatible = "qcom,mdss-dsi-panel";
+		label = "mot smd 720p video mode dsi panel";
+		status = "disable";
+		qcom,dsi-ctrl-phandle = <&mdss_dsi0>;
+		qcom,rst-gpio = <&pm8941_gpios 19 0>;
+		qcom,mdss-pan-res = <720 1280>;
+		qcom,mdss-pan-bpp = <24>;
+		qcom,mdss-pan-dest = "display_1";
+		qcom,mdss-pan-porch-values = <32 12 144 3 4 9>;
+		qcom,mdss-pan-underflow-clr = <0xff>;
+		qcom,mdss-pan-bl-ctrl = "bl_ctrl_wled";
+		qcom,mdss-pan-bl-levels = <1 4095>;
+		qcom,mdss-pan-dsi-mode = <0>;
+		qcom,mdss-pan-dsi-h-pulse-mode = <0>;
+		qcom,mdss-pan-dsi-h-power-stop = <0 0 0>;
+		qcom,mdss-pan-dsi-bllp-power-stop = <1 1>;
+		qcom,mdss-pan-dsi-traffic-mode = <1>;
+		qcom,mdss-pan-dsi-dst-format = <3>;
+		qcom,mdss-pan-dsi-vc = <0>;
+		qcom,mdss-pan-dsi-rgb-swap = <0>;
+		qcom,mdss-pan-dsi-data-lanes = <1 1 1 1>;
+		qcom,mdss-pan-dsi-dlane-swap = <0>;
+		qcom,mdss-pan-dsi-t-clk = <0x1b 0x04>;
+		qcom,mdss-pan-dsi-stream = <0>;
+		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
+		qcom,mdss-pan-dsi-dma-tr = <0x04>;
+		qcom,mdss-pan-dsi-frame-rate = <60>;
+		qcom,panel-phy-regulatorSettings = [07 09 03 00	/* Regualotor settings */
+						    20 00 01];
+		qcom,panel-phy-timingSettings = [b0 23 1b 00 94 93
+						 1e 25 15 03 04 00];
+		qcom,panel-phy-strengthCtrl = [ff 06];
+		qcom,panel-phy-bistCtrl = [00 00 b1 ff	/* BIST Ctrl settings */
+					   00 00];
+		qcom,panel-phy-laneConfig = [00 00 00 00 00 00 00 01 97	/* lane0 config */
+					     00 00 00 00 05 00 00 01 97	/* lane1 config */
+					     00 00 00 00 0a 00 00 01 97	/* lane2 config */
+					     00 00 00 00 0f 00 00 01 97	/* lane3 config */
+					     00 c0 00 00 00 00 00 01 bb]; /* Clk ln config */
+		qcom,panel-on-cmds = [ 05 01 00 00 78 02 11 00		/* exit sleep mode */
+				       39 01 00 00 01 03 f0 5a 5a	/* unlock_lvl_2 */
+				       39 01 00 00 01 03 f1 5a 5a	/* unlock_lvl_mtp */
+				       39 01 00 00 01 03 fc 5a 5a	/* unlock_lvl_3 */
+				       15 01 00 00 01 02 35 00		/* enable_te */
+				       39 01 00 00 01 02 53 20		/* disp_ctrl */ 
+				       15 01 00 00 01 02 51 7f		/* brightness_ctrl */
+				       39 01 00 00 01 02 55 00		/* acl_enable_disable_settings */
+				       39 01 00 00 01 05		/* set window size normal_col */
+						2a 00 00 02 cf
+				       39 01 00 00 01 05		/* set window size normal_row */
+						2b 00 00 04 ff
+			               29 01 00 00 00 02 29 00];	/* display on */
+		qcom,on-cmds-dsi-state = "DSI_LP_MODE";
+		qcom,panel-off-cmds = [05 01 00 00 0a 02 28 00];	/* display_off */
+		qcom,off-cmds-dsi-state = "DSI_HS_MODE";
+	};
+};
