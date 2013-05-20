@@ -130,12 +130,6 @@ static struct gpiomux_setting lcd_en_act_cfg = {
 	.dir = GPIOMUX_OUT_HIGH,
 };
 
-static struct gpiomux_setting lcd_en_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
 static struct gpiomux_setting atmel_resout_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_6MA,
@@ -442,10 +436,9 @@ static struct msm_gpiomux_config msm_rumi_blsp_configs[] __initdata = {
 
 static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	{
-		.gpio = 58,
+		.gpio = 7,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &lcd_en_act_cfg,
-			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_en_act_cfg,
 		},
 	},
 };
@@ -483,18 +476,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		},
 	},
 #endif
-	{
-		.gpio      = 6,		/* BLSP1 QUP2 I2C_DAT */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 7,		/* BLSP1 QUP2 I2C_CLK */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
 	{
 		.gpio = 25,		/* BLSP1 QUP4 I2C_DAT */
 		.settings = {
@@ -1155,7 +1136,7 @@ void __init msm_8974_moto_init_gpiomux(void)
 	msm_gpiomux_install(msm8974_sec_auxpcm_configs,
 				 ARRAY_SIZE(msm8974_sec_auxpcm_configs));
 
-	msm_gpiomux_install_nowrite(msm_lcd_configs,
+	msm_gpiomux_install(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
 
 	if (of_board_is_rumi())
