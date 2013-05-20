@@ -933,6 +933,11 @@ int f2fs_android_emu(struct f2fs_sb_info *, struct inode *, u32 *, u32 *,
 	 (((fi)->i_advise & FADVISE_ANDROID_EMU) ||			\
 	  ((pfi)->i_advise & FADVISE_ANDROID_EMU)))
 
+static inline int f2fs_readonly(struct super_block *sb)
+{
+	return sb->s_flags & MS_RDONLY;
+}
+
 /*
  * file.c
  */
