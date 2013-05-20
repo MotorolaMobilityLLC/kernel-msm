@@ -287,7 +287,7 @@ static void cap1106_enable_sensor(struct i2c_client *client, int enable)
 			        msecs_to_jiffies(200));
 			enable_irq(client->irq);
 			queue_delayed_work(data->cap_wq, &data->checking_work,
-			        msecs_to_jiffies(500));
+			        msecs_to_jiffies(1000));
 		} else {
 			disable_irq(client->irq);
 			cancel_delayed_work_sync(&data->work);
@@ -479,7 +479,7 @@ static void cap1106_checking_work_function(struct work_struct *work)
 			        || (data->overflow_status == 0x22 && (((dc2 > 0x5F) && (dc2 <= 0x7F)) || ((dc6 > 0x5F) && (dc6 <= 0x7F))))) {
 				CAP_DEBUG("is_wood_sensitivity = 0\n");
 				//set sensitivity and threshold for 2cm body distance
-				cap1106_write_reg(data->client, 0x1F, 0x1F);
+				cap1106_write_reg(data->client, 0x1F, 0x2F);
 				cap1106_write_reg(data->client, 0x31, 0x0A);
 				cap1106_write_reg(data->client, 0x35, 0x0A);
 				is_wood_sensitivity = 0;
@@ -489,7 +489,7 @@ static void cap1106_checking_work_function(struct work_struct *work)
 		mutex_unlock(&cap_mtx);
 	}
 	queue_delayed_work(data->cap_wq, &data->checking_work,
-	        msecs_to_jiffies(500));
+	        msecs_to_jiffies(1000));
 }
 
 static int __devinit cap1106_probe(struct i2c_client *client,
@@ -577,7 +577,7 @@ static int __devinit cap1106_probe(struct i2c_client *client,
 	data->overflow_status = 0x0;
 	queue_delayed_work(data->cap_wq, &data->work, msecs_to_jiffies(200));
 	queue_delayed_work(data->cap_wq, &data->checking_work,
-	        msecs_to_jiffies(500));
+	        msecs_to_jiffies(1000));
 
 	pivate_data = data;
 

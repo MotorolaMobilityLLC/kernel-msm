@@ -159,7 +159,7 @@ static struct cap1106_i2c_platform_data cap1106_pdata = {
 	.det_gpio = CAP1106_DET_GPIO,
 	.det_gpio_name = CAP1106_DET_GPIO_NAME,
 	.init_table = {
-			0x1F, 0x1F, // Data sensitivity
+			0x1F, 0x2F, // Data sensitivity
 			0x20, 0x20, // MAX duration disable
 			0x21, 0x22, // Enable CS2+CS6.
 			0x22, 0xFF, // MAX duration time to max , repeat period time to max
@@ -170,7 +170,7 @@ static struct cap1106_i2c_platform_data cap1106_pdata = {
 			0x31, 0x0A, // Threshold of CS 2
 			0x35, 0x0A, // Threshold of CS 6
 			0x26, 0x22, // Force re-cal CS2+CS6
-			0x00, 0xC0, // Reset INT. bit.
+			0x00, 0x80, // Reset INT. bit.
     },
 };
 
@@ -187,7 +187,8 @@ static void cap1106_init(void) {
 
 	pdata = (struct cap1106_i2c_platform_data *) i2c_cap1106[0].platform_data;
 	if ((asustek_get_hw_rev() == HW_REV_C)
-	        || (asustek_get_hw_rev() == HW_REV_D)) {
+	        || (asustek_get_hw_rev() == HW_REV_D)
+			|| (asustek_get_hw_rev() == HW_REV_E)) {
 		pdata->app2mdm_enable = 1;
 	}
 
