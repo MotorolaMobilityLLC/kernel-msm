@@ -621,3 +621,13 @@
 
 	qcom,misc-ref = <&pm8941_misc>;
 };
+
+&pm8941_l22 {
+	regulator-always-on;
+};
+
+&pm8941_gpios {
+	gpio@c900 { /* GPIO 10 */
+		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
+	};
+};
