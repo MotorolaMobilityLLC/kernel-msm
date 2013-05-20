@@ -56,6 +56,7 @@
 				       39 01 00 00 01 03 f0 5a 5a	/* unlock_lvl_2 */
 				       39 01 00 00 01 03 f1 5a 5a	/* unlock_lvl_mtp */
 				       39 01 00 00 01 03 fc 5a 5a	/* unlock_lvl_3 */
+				       15 01 00 00 01 02 f2 05		/* set video mode */
 				       15 01 00 00 01 02 35 00		/* enable_te */
 				       39 01 00 00 01 02 53 20		/* disp_ctrl */ 
 				       15 01 00 00 01 02 51 7f		/* brightness_ctrl */
