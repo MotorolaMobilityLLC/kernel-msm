@@ -1610,6 +1610,19 @@ eHalStatus csrScanHandleSearchForSSID(tpAniSirGlobal pMac, tSmeCmd *pCommand)
 #endif
     do
     {
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        //if this scan is for LFR
+        if(pMac->roam.neighborRoamInfo.uOsRequestedHandoff)
+        {
+            //notify LFR state m/c
+            if(eHAL_STATUS_SUCCESS != csrNeighborRoamSssidScanDone(pMac, eHAL_STATUS_SUCCESS))
+            {
+                csrNeighborRoamRestartLfrScan(pMac);
+            }
+            status = eHAL_STATUS_SUCCESS;
+            break;
+        }
+#endif
         //If there is roam command waiting, ignore this roam because the newer roam command is the one to execute
         if(csrIsRoamCommandWaitingForSession(pMac, sessionId))
         {
@@ -1682,7 +1695,18 @@ eHalStatus csrScanHandleSearchForSSIDFailure(tpAniSirGlobal pMac, tSmeCmd *pComm
     tANI_U32 sessionId = pCommand->sessionId;
     tCsrRoamProfile *pProfile = pCommand->u.scanCmd.pToRoamProfile;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
-
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    //if this scan is for LFR
+    if(pMac->roam.neighborRoamInfo.uOsRequestedHandoff)
+    {
+        //notify LFR state m/c
+        if(eHAL_STATUS_SUCCESS != csrNeighborRoamSssidScanDone(pMac, eHAL_STATUS_FAILURE))
+        {
+            csrNeighborRoamRestartLfrScan(pMac);
+        }
+        return eHAL_STATUS_SUCCESS;
+    }
+#endif
     if(!pSession)
     {
         smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
@@ -6665,7 +6689,7 @@ eHalStatus csrScanGetBKIDCandidateList(tpAniSirGlobal pMac, tANI_U32 sessionId,
 
 //This function is usually used for BSSs that suppresses SSID so the profile 
 //shall have one and only one SSID
-eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfile *pProfile, tANI_U32 roamId)
+eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfile *pProfile, tANI_U32 roamId, tANI_BOOLEAN notify)
 {
     eHalStatus status = eHAL_STATUS_INVALID_PARAMETER;
     tSmeCmd *pScanCmd = NULL;
@@ -6701,7 +6725,7 @@ eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
             pScanCmd->sessionId = (tANI_U8)sessionId;
             pScanCmd->u.scanCmd.callback = NULL;
             pScanCmd->u.scanCmd.pContext = NULL;
-            pScanCmd->u.scanCmd.reason = eCsrScanForSsid;
+            pScanCmd->u.scanCmd.reason = eCsrScanForSsid;//Need to check: might need a new reason for SSID scan for LFR during multisession with p2p
             pScanCmd->u.scanCmd.scanID = pMac->scan.nextScanID++; //let it wrap around
             palZeroMemory(pMac->hHdd, &pScanCmd->u.scanCmd.u.scanRequest, sizeof(tCsrScanRequest));
             pScanCmd->u.scanCmd.u.scanRequest.scanType = eSIR_ACTIVE_SCAN;
@@ -6811,7 +6835,10 @@ eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
                 csrReleaseCommandScan(pMac, pScanCmd);
                 //TODO:free the memory that is allocated in this function
             }
+            if(notify)
+            {
             csrRoamCallCallback(pMac, sessionId, NULL, roamId, eCSR_ROAM_FAILED, eCSR_ROAM_RESULT_FAILURE);
+        }
         }
     }//valid
     else
@@ -7615,3 +7642,90 @@ void csrInitOccupiedChannelsList(tpAniSirGlobal pMac)
 }
 #endif
 
+eHalStatus csrScanCreateEntryInScanCache(tpAniSirGlobal pMac, tANI_U32 sessionId,
+                                         tCsrBssid bssid, tANI_U8 channel)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tDot11fBeaconIEs *pNewIes = NULL;
+    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
+    tSirBssDescription *pNewBssDescriptor;
+    tANI_U32 size = 0;
+
+    if(NULL == pSession)
+    {
+       status = eHAL_STATUS_FAILURE;
+       return status;
+    }
+    smsLog(pMac, LOG2, FL("csrScanCreateEntryInScanCache: Current bssid::"
+                          "0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x"),
+                           pSession->pConnectBssDesc->bssId[0],
+                           pSession->pConnectBssDesc->bssId[1],
+                           pSession->pConnectBssDesc->bssId[2],
+                           pSession->pConnectBssDesc->bssId[3],
+                           pSession->pConnectBssDesc->bssId[4],
+                           pSession->pConnectBssDesc->bssId[5]);
+    smsLog(pMac, LOG2, FL("csrScanCreateEntryInScanCache: My bssid::"
+                          "0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x channel %d"),
+                           bssid[0],bssid[1],bssid[2],
+                           bssid[3],bssid[4],bssid[5],channel);
+
+    do
+    {
+        if(!HAL_STATUS_SUCCESS(csrGetParsedBssDescriptionIEs(pMac,
+                                                             pSession->pConnectBssDesc, &pNewIes)))
+        {
+            smsLog(pMac, LOGE, FL("%s: Failed to parse IEs"),
+                                  __func__);
+            status = eHAL_STATUS_FAILURE;
+            break;
+        }
+
+        size = pSession->pConnectBssDesc->length + sizeof(pSession->pConnectBssDesc->length);
+        if(size)
+        {
+            status = palAllocateMemory(pMac->hHdd, (void **)&pNewBssDescriptor, size);
+            if(HAL_STATUS_SUCCESS(status))
+            {
+                palCopyMemory(pMac->hHdd, pNewBssDescriptor, pSession->pConnectBssDesc, size);
+            }
+            else
+            {
+                smsLog(pMac, LOGE, FL("%s: memory allocation failed"),
+                                      __func__);
+                status = eHAL_STATUS_FAILURE;
+                break;
+            }
+
+            //change the BSSID & channel as passed
+            palCopyMemory( pMac->hHdd, pNewBssDescriptor->bssId, bssid,
+                           sizeof(tSirMacAddr) );
+            pNewBssDescriptor->channelId = channel;
+            if(NULL == csrScanSaveBssDescription( pMac, pNewBssDescriptor, pNewIes ))
+            {
+                smsLog(pMac, LOGE, FL("%s: csrScanSaveBssDescription failed"),
+                                      __func__);
+                status = eHAL_STATUS_FAILURE;
+                break;
+            }
+        }
+        else
+        {
+            smsLog(pMac, LOGE, FL("%s: length of bss descriptor is 0"),
+                                  __func__);
+            status = eHAL_STATUS_FAILURE;
+            break;
+        }
+        smsLog(pMac, LOGE, FL("%s: entry successfully added in scan cache"),
+                              __func__);
+    }while(0);
+
+    if(pNewIes)
+    {
+        palFreeMemory(pMac->hHdd, pNewIes);
+    }
+    if(pNewBssDescriptor)
+    {
+        palFreeMemory(pMac->hHdd, pNewBssDescriptor);
+    }
+    return status;
+}

@@ -1366,6 +1366,13 @@ typedef void * tScanResultHandle;
 
 #define CSR_INVALID_SCANRESULT_HANDLE       (NULL)
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+typedef struct tagCsrHandoffRequest
+{
+    tCsrBssid bssid;
+    tANI_U8 channel;
+}tCsrHandoffRequest;
+#endif
 
 
 ////////////////////////////////////////////Common SCAN starts
