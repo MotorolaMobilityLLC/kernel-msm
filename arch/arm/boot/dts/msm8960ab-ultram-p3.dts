@@ -10,20 +10,23 @@
  * GNU General Public License for more details.
  */
 
-/include/ "msm8960ab-ultra-common.dtsi"
+/dts-v1/;
 
-/include/ "msm8960ab-ultra-p1-legacy.dtsi"
+/include/ "msm8960ab-ultram-common.dtsi"
+
+/include/ "msm8960ab-ultram-p1-legacy.dtsi"
 
 / {
-	mmi,revision = "p2";
+	mmi,revision = "p3";
 
-    System@0 {
+	System@0 {
 		I2C@4 {
 			I2C,Board@3 {
 				class = [4f56313038323000];
 				gpio_dig_en = <0x000000a0>;
 				gpio_pwd = <0x0000005f>;
 				gpio_reset = <0x00000061>;
+				is_seperate_dvdd = <0x00000001>;
 				is_new_pk_dvdd = <0x00000001>;
 				i2c,address = <0x00000036>;
 				i2c,type = [6f76313038323000];
@@ -50,8 +53,13 @@
 
 /* GSBI12 - I2C */
 &i2c12 {
-        msp430@48 {
-                msp430_fw_version = "_obake_p2";
-        };
+	msp430@48 {
+		msp430_fw_version = "_obakem";
+	};
 };
 
+&i2c10 {
+	lp8556@2c {
+		ti,lp8556-dev-ctrl-config = <0x84>;
+	};
+};
