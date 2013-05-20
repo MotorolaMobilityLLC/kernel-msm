@@ -615,11 +615,17 @@ kgsl_put_process_private(struct kgsl_device *device,
 
 	list_del(&private->list);
 
-	for (node = rb_first(&private->mem_rb); node; ) {
+	while (1) {
+		spin_lock(&private->mem_lock);
+		node = rb_first(&private->mem_rb);
+		if (!node) {
+			spin_unlock(&private->mem_lock);
+			break;
+		}
 		entry = rb_entry(node, struct kgsl_mem_entry, node);
-		node = rb_next(&entry->node);
 
 		rb_erase(&entry->node, &private->mem_rb);
+		spin_unlock(&private->mem_lock);
 		kgsl_mem_entry_detach_process(entry);
 	}
 	kgsl_mmu_putpagetable(private->pagetable);
