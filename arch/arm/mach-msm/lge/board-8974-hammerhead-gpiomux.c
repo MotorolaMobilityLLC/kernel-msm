@@ -135,23 +135,28 @@ static struct gpiomux_setting touch_i2c_sus_cfg = {
 static struct gpiomux_setting touch_reset_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_6MA,
-	.dir = GPIOMUX_IN,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
 };
 
 static struct gpiomux_setting touch_reset_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_6MA,
-	.dir = GPIOMUX_IN,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
 };
 
-static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
+static struct msm_gpiomux_config msm_touch_configs_reset[] __initdata = {
 	{
 		.gpio      = 8,		/* TOUCH RESET */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &touch_reset_act_cfg,
 			[GPIOMUX_SUSPENDED] = &touch_reset_sus_cfg,
 		},
-	},
+	}
+};
+
+static struct msm_gpiomux_config msm_touch_configs_int[] __initdata = {
 	{
 		.gpio      = 5,		/* TOUCH IRQ */
 		.settings = {
@@ -1201,7 +1206,8 @@ void __init msm_8974_init_gpiomux(void)
 	msm_gpiomux_install(msm8974_slimbus_config,
 			ARRAY_SIZE(msm8974_slimbus_config));
 
-	msm_gpiomux_install(msm_touch_configs, ARRAY_SIZE(msm_touch_configs));
+	msm_gpiomux_install_nowrite(msm_touch_configs_reset, ARRAY_SIZE(msm_touch_configs_reset));
+	msm_gpiomux_install(msm_touch_configs_int, ARRAY_SIZE(msm_touch_configs_int));
 
 	if (HW_REV_F == lge_get_board_revno()) {
 		msm_gpiomux_install(msm_sensor_configs_rev_f,
