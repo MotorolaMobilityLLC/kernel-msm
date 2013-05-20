@@ -146,6 +146,12 @@
 		startup-delay-us = <1000>;
 		enable-active-high;
 	};
+
+	hob_ram@8300000 {
+		compatible = "mmi,hob_ram";
+		reg = <0x8300000 0x40000>,
+		      <0x8340000 0x1000>;
+	};
 };
 
 &sdcc1 {
