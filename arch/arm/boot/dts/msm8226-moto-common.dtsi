@@ -320,6 +320,54 @@
 				reg = <0x1600 0x100>;
 			};
 		};
+
+		qcom,leds@a300 {
+			status = "okay";
+			qcom,led_mpp_4 {
+				label = "mpp";
+				linux,name = "green";
+				linux,default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,mode = <1>;
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,pwm-channel = <0>;
+				qcom,start-idx = <1>;
+				qcom,duty-pcts = [01 04 08 0C 10
+				14 18 1C 20 24 28 2C 2E 34 38
+				3C 40 44 48 4C 50 54 58 5C 60
+				64 64 64 62 5F 5C 58 54 52 4E
+				4A 46 42 3E 3A 3A 36 32 30 2A
+				26 22 1E 1A 16 0E 0A 06 04 01];
+			};
+		};
+
+		qcom,leds@a500 {
+			status = "okay";
+			qcom,led_mpp_6 {
+				label = "mpp";
+				linux,name = "red";
+				linux,default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,mode = <1>;
+				qcom,source-sel = <10>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,pwm-channel = <5>;
+				qcom,start-idx = <1>;
+				qcom,duty-pcts = [01 04 08 0C 10
+				14 18 1C 20 24 28 2C 2E 34 38
+				3C 40 44 48 4C 50 54 58 5C 60
+				64 64 64 62 5F 5C 58 54 52 4E
+				4A 46 42 3E 3A 3A 36 32 30 2A
+				26 22 1E 1A 16 0E 0A 06 04 01];
+			};
+		};
 	};
 };
 
