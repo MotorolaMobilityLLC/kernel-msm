@@ -1759,6 +1759,24 @@ static long vid_enc_ioctl(struct file *file,
 		}
 		break;
 	}
+	case VEN_IOCTL_GET_PERF_LEVEL:
+	{
+		u32 curr_perf_level;
+		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
+			return -EFAULT;
+		result = vid_enc_get_curr_perf_level(client_ctx,
+			&curr_perf_level);
+		if (!result) {
+			ERR("get_curr_perf_level failed!!");
+			return -EIO;
+		}
+		DBG("VEN_IOCTL_GET_PERF_LEVEL %u\n",
+			curr_perf_level);
+		if (copy_to_user(venc_msg.out,
+			&curr_perf_level, sizeof(u32)))
+			return -EFAULT;
+		break;
+	}
 	case VEN_IOCTL_SET_AC_PREDICTION:
 	case VEN_IOCTL_GET_AC_PREDICTION:
 	case VEN_IOCTL_SET_RVLC:

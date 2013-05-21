@@ -678,6 +678,30 @@ static u32 vid_dec_set_frame_resolution(struct video_client_ctx *client_ctx,
 		return true;
 }
 
+static u32 vid_dec_get_curr_perf_level(struct video_client_ctx *client_ctx,
+	u32 *perf_level)
+{
+	struct vcd_property_hdr vcd_property_hdr;
+	u32 vcd_status = VCD_ERR_FAIL;
+	u32 perf_lvl = 0;
+
+	if (!client_ctx)
+		return false;
+
+	vcd_property_hdr.prop_id = VCD_I_GET_CURR_PERF_LEVEL;
+	vcd_property_hdr.sz = sizeof(u32);
+	vcd_status = vcd_get_property(client_ctx->vcd_handle,
+				      &vcd_property_hdr, &perf_lvl);
+	if (vcd_status) {
+		ERR("VCD_I_GET_PERF_LEVEL failed!!");
+		*perf_level = 0;
+		return false;
+	} else {
+		*perf_level = perf_lvl;
+		return true;
+	}
+}
+
 static u32 vid_dec_set_turbo_clk(struct video_client_ctx *client_ctx)
 {
 	struct vcd_property_hdr vcd_property_hdr;
@@ -2104,6 +2128,24 @@ static long vid_dec_ioctl(struct file *file,
 			desc_buf = NULL;
 			return -EIO;
 		}
+		break;
+	}
+	case VDEC_IOCTL_GET_PERF_LEVEL:
+	{
+		u32 curr_perf_level;
+		if (copy_from_user(&vdec_msg, arg, sizeof(vdec_msg)))
+			return -EFAULT;
+		result = vid_dec_get_curr_perf_level(client_ctx,
+			&curr_perf_level);
+		if (!result) {
+			ERR("get_curr_perf_level failed!!");
+			return -EIO;
+		}
+		DBG("VDEC_IOCTL_GET_PERF_LEVEL %u\n",
+			curr_perf_level);
+		if (copy_to_user(vdec_msg.out,
+			&curr_perf_level, sizeof(u32)))
+			return -EFAULT;
 		break;
 	}
 	case VDEC_IOCTL_SET_PERF_CLK:
