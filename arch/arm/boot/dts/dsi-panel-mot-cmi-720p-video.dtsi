@@ -12,12 +12,20 @@
  */
 
 / {
-	qcom,mdss_dsi_mot_cmi_720p_video {
+	mot_cmi_720p_vid: qcom,mdss_dsi_mot_cmi_720p_video {
 		compatible = "qcom,mdss-dsi-panel";
 		label = "mot cmi 720p video mode dsi panel";
 		status = "disable";
 		qcom,dsi-ctrl-phandle = <&mdss_dsi0>;
+
+		qcom,supply-names = "vddio_disp", "lcdbias";
+		qcom,supply-min-voltage-level = <1800000 5400000>;
+		qcom,supply-max-voltage-level = <1800000 5400000>;
+		qcom,supply-peak-current = <100000 100000>;
+		qcom,supply-post-en-delay-ms = <1 10>;
+
 		qcom,rst-gpio = <&msmgpio 25 0>;
+		qcom,rst-post-en-delay-ms = <10>;
 		qcom,mdss-pan-res = <720 1280>;
 		qcom,mdss-pan-bpp = <24>;
 		qcom,mdss-pan-dest = "display_1";
