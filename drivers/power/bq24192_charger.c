@@ -86,6 +86,7 @@ struct bq24192_chip {
 	int  ext_pwr;
 	int  wlc_support;
 	int  ext_ovp_otg_ctrl;
+	int  set_chg_current_ma;
 	int  vbat_noti_stat;
 	int  step_dwn_thr_mv;
 	int  step_dwn_currnet_ma;
@@ -269,7 +270,7 @@ static int bq24192_set_ibat_max(struct bq24192_chip *chip, int ma)
 	reg_val = (ma - IBAT_MIN_MA)/IBAT_STEP_MA;
 	set_ibat = reg_val * IBAT_STEP_MA + IBAT_MIN_MA;
 	reg_val = reg_val << 2;
-
+	chip->set_chg_current_ma = set_ibat;
 	pr_info("req_ibat = %d set_ibat = %d reg_val = 0x%02x\n",
 				ma, set_ibat, reg_val);
 
@@ -646,11 +647,8 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 			bq24192_is_charger_present(chip)) {
 		chip->usb_psy->get_property(chip->usb_psy,
 				  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
-		chip->chg_current_ma = ret.intval / 1000;
-		bq24192_set_input_i_limit(chip,
-					chip->chg_current_ma);
-		pr_info("usb is online! i_limit = %d\n",
-				chip->chg_current_ma);
+		bq24192_set_input_i_limit(chip, ret.intval / 1000);
+		pr_info("usb is online! i_limit = %d\n", ret.intval / 1000);
 	} else if (chip->ac_online &&
 			bq24192_is_charger_present(chip)) {
 		bq24192_set_input_i_limit(chip,
@@ -785,7 +783,7 @@ static int bq24192_power_get_property(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_HEALTH_UNKNOWN;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		val->intval = chip->chg_current_ma * 1000;
+		val->intval = chip->set_chg_current_ma * 1000;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -814,7 +812,7 @@ static int bq24192_power_set_property(struct power_supply *psy,
 		chip->ac_online = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		chip->chg_current_ma = val->intval / 1000;
+		bq24192_set_ibat_max(chip, val->intval / 1000);
 		break;
 	default:
 		return -EINVAL;
@@ -1064,6 +1062,7 @@ static int bq24192_probe(struct i2c_client *client,
 		chip->step_dwn_thr_mv = pdata->step_dwn_thr_mv;
 		chip->step_dwn_currnet_ma = pdata->step_dwn_currnet_ma;
 	}
+	chip->set_chg_current_ma = chip->chg_current_ma;
 
 	if (chip->wlc_support) {
 		chip->wlc_psy = power_supply_get_by_name("wireless");
