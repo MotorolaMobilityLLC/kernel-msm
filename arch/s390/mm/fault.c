@@ -443,6 +443,7 @@ int __handle_fault(unsigned long uaddr, unsigned long pgm_int_code, int write)
 	struct pt_regs regs;
 	int access, fault;
 
+	/* Emulate a uaccess fault from kernel mode. */
 	regs.psw.mask = psw_kernel_bits | PSW_MASK_DAT | PSW_MASK_MCHECK;
 	if (!irqs_disabled())
 		regs.psw.mask |= PSW_MASK_IO | PSW_MASK_EXT;
@@ -452,12 +453,12 @@ int __handle_fault(unsigned long uaddr, unsigned long pgm_int_code, int write)
 	regs.int_parm_long = (uaddr & PAGE_MASK) | 2;
 	access = write ? VM_WRITE : VM_READ;
 	fault = do_exception(&regs, access);
-	if (unlikely(fault)) {
-		if (fault & VM_FAULT_OOM)
-			return -EFAULT;
-		else if (fault & VM_FAULT_SIGBUS)
-			do_sigbus(&regs);
-	}
+	/*
+	 * Since the fault happened in kernel mode while performing a uaccess
+	 * all we need to do now is emulating a fixup in case "fault" is not
+	 * zero.
+	 * For the calling uaccess functions this results always in -EFAULT.
+	 */
 	return fault ? -EFAULT : 0;
 }
 
@@ -574,6 +575,7 @@ static void pfault_interrupt(struct ext_code ext_code,
 			tsk->thread.pfault_wait = 0;
 			list_del(&tsk->thread.list);
 			wake_up_process(tsk);
+			put_task_struct(tsk);
 		} else {
 			/* Completion interrupt was faster than initial
 			 * interrupt. Set pfault_wait to -1 so the initial
@@ -588,14 +590,22 @@ static void pfault_interrupt(struct ext_code ext_code,
 		put_task_struct(tsk);
 	} else {
 		/* signal bit not set -> a real page is missing. */
-		if (tsk->thread.pfault_wait == -1) {
+		if (tsk->thread.pfault_wait == 1) {
+			/* Already on the list with a reference: put to sleep */
+			set_task_state(tsk, TASK_UNINTERRUPTIBLE);
+			set_tsk_need_resched(tsk);
+		} else if (tsk->thread.pfault_wait == -1) {
 			/* Completion interrupt was faster than the initial
 			 * interrupt (pfault_wait == -1). Set pfault_wait
 			 * back to zero and exit. */
 			tsk->thread.pfault_wait = 0;
 		} else {
 			/* Initial interrupt arrived before completion
-			 * interrupt. Let the task sleep. */
+			 * interrupt. Let the task sleep.
+			 * An extra task reference is needed since a different
+			 * cpu may set the task state to TASK_RUNNING again
+			 * before the scheduler is reached. */
+			get_task_struct(tsk);
 			tsk->thread.pfault_wait = 1;
 			list_add(&tsk->thread.list, &pfault_list);
 			set_task_state(tsk, TASK_UNINTERRUPTIBLE);
@@ -620,6 +630,7 @@ static int __cpuinit pfault_cpu_notify(struct notifier_block *self,
 			list_del(&thread->list);
 			tsk = container_of(thread, struct task_struct, thread);
 			wake_up_process(tsk);
+			put_task_struct(tsk);
 		}
 		spin_unlock_irq(&pfault_lock);
 		break;
