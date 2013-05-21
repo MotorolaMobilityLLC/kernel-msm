@@ -152,4 +152,7 @@ u32 vid_enc_free_recon_buffers(struct video_client_ctx *client_ctx,
 u32 vid_enc_get_recon_buffer_size(struct video_client_ctx *client_ctx,
 		struct venc_recon_buff_size *venc_recon_size);
 
+u32 vid_enc_get_curr_perf_level(struct video_client_ctx *client_ctx,
+		u32 *curr_perf_level);
+
 #endif
