@@ -185,6 +185,10 @@
 			qcom,vib-vtg-level-mV = <3100>;
 		};
 
+		qcom,leds@d300 {
+			status = "okay";
+		};
+
 		qcom,leds@d800 {
 			status = "okay";
 			qcom,wled_0 {
