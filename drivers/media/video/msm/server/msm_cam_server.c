@@ -806,6 +806,13 @@ int msm_server_proc_ctrl_cmd(struct msm_cam_v4l2_device *pcam,
 		rc = -EINVAL;
 		goto end;
 	}
+
+	if(tmp_cmd.length > 0xffff) {
+		 pr_err("%s Integer Overflow occurred \n",__func__);
+		 rc = -EINVAL;
+		 goto end;
+	}
+
 	value_len = tmp_cmd.length;
 	ctrl_data = kzalloc(value_len+cmd_len, GFP_KERNEL);
 	if (!ctrl_data) {
