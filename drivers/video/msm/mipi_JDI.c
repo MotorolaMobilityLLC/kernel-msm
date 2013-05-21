@@ -180,6 +180,11 @@ static int mipi_JDI_lcd_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
+	if (mipi_JDI_pdata->set_recovery_bl_done) {
+		pr_info("%s-, set_recovery_bl_done, do nothing\n", __func__);
+		return 0;
+	}
+
 	if (first_cmd)	{/* change first in setbacklight */
 		first_cmd = false;
 		pr_info("%s-, booting\n", __func__);
@@ -219,6 +224,11 @@ static int mipi_JDI_lcd_off(struct platform_device *pdev)
 		return -ENODEV;
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
+
+	if (mipi_JDI_pdata->set_recovery_bl_done) {
+		pr_info("%s-, set_recovery_bl_done, do nothing\n", __func__);
+		return 0;
+	}
 
 	pr_info("%s, JDI display off command+\n", __func__);
 	cmdreq_JDI.cmds = JDI_display_off_cmds;
@@ -305,9 +315,8 @@ static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
 {
 	int ret;
 	int recovery_backlight = 100;
-	static int set_recovery_bl_done;
 
-	if (!set_recovery_bl_done) {
+	if (!mipi_JDI_pdata->set_recovery_bl_done) {
 		if (mipi_JDI_pdata->recovery_backlight)
 			recovery_backlight = mipi_JDI_pdata->recovery_backlight;
 
@@ -332,7 +341,7 @@ static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
 			msleep_interruptible(10);
 			gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
 		}
-		set_recovery_bl_done = 1;
+		mipi_JDI_pdata->set_recovery_bl_done = 1;
 	}
 }
 static void mipi_JDI_lcd_shutdown(void)

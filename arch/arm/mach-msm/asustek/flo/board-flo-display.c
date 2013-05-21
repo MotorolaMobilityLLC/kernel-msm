@@ -367,6 +367,24 @@ static struct platform_device wfd_device = {
 #define HDMI_DDC_DATA_GPIO	71
 #define HDMI_HPD_GPIO		72
 
+#define LPM_CHANNEL 2
+
+static int mipi_JDI_gpio[] = {LPM_CHANNEL};
+
+static struct mipi_dsi_panel_platform_data mipi_JDI_pdata = {
+	.gpio = mipi_JDI_gpio,
+	.recovery_backlight = 100, /* 1~255 */
+	.set_recovery_bl_done = 0,
+};
+
+static struct platform_device mipi_JDI_panel_device = {
+	.name = "mipi_JDI",
+	.id = 0,
+	.dev = {
+		.platform_data = &mipi_JDI_pdata,
+	}
+};
+
 static uint32_t gpio_SR2[] = {
 	/* LCM_XRES */
 	GPIO_CFG(gpio_LCM_XRES_SR2, 0, GPIO_CFG_OUTPUT,
@@ -382,6 +400,11 @@ static int mipi_dsi_panel_power(int on)
 	lcd_type type = asustek_get_lcd_type();
 
 	printk("%s+, on=%d\n", __func__, on);
+
+	if (mipi_JDI_pdata.set_recovery_bl_done) {
+		pr_info("%s-, set_recovery_bl_done, do nothing\n", __func__);
+		return 0;
+	}
 
 	if (!dsi_power_on) {
 		reg_lvs7 = regulator_get(&msm_mipi_dsi1_device.dev,
@@ -741,8 +764,6 @@ static struct platform_device lvds_chimei_panel_device = {
 };
 #endif
 
-#define LPM_CHANNEL 2
-
 static int mipi_novatek_gpio[] = {LPM_CHANNEL};
 
 static struct mipi_dsi_panel_platform_data mipi_novatek_pdata = {
@@ -771,20 +792,6 @@ static struct platform_device mipi_lg_panel_device = {
 	}
 };
 
-static int mipi_JDI_gpio[] = {LPM_CHANNEL};
-
-static struct mipi_dsi_panel_platform_data mipi_JDI_pdata = {
-	.gpio = mipi_JDI_gpio,
-	.recovery_backlight = 40, /* 1~255 */
-};
-
-static struct platform_device mipi_JDI_panel_device = {
-	.name = "mipi_JDI",
-	.id = 0,
-	.dev = {
-		.platform_data = &mipi_JDI_pdata,
-	}
-};
 #if 0
 #define FRC_GPIO_UPDATE	(SX150X_EXP4_GPIO_BASE + 8)
 #define FRC_GPIO_RESET	(SX150X_EXP4_GPIO_BASE + 9)
