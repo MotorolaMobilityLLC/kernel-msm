@@ -195,12 +195,15 @@ static int __devinit lp8556_init_registers(struct lp8556_data *led_data)
 	/* clear to get status */
 	error = i2c_smbus_read_i2c_block_data(led_data->client,
 					      LP8556_STATUS_REG, 1, &value);
-	if ((error < 0) ||  (value != 0x30)) {
-		pr_err("%s: LP8556 status error - 0x%X, 0x%X\n",
-		       __func__, value, error);
+	if (error < 0) {
+		pr_err("%s: LP8556 status error - 0x%X\n",
+		       __func__, error);
 		return -EINVAL;
+	} else {
+		if (value != 0x30)
+			pr_info("%s: Status error detected - 0x%X\n",
+				__func__, value);
 	}
-
 	return 0;
 }
 
@@ -281,7 +284,7 @@ static void lp8556_brightness_write(struct lp8556_data *led_data)
 					__func__);
 			if (!IS_ERR(led_data->regulator)) {
 				regulator_disable(led_data->regulator);
-			        pr_info("%s regulator disabled\n", __func__);
+				pr_info("%s regulator disabled\n", __func__);
 			}
 			lp8556_enable(led_data, false);
 		}
