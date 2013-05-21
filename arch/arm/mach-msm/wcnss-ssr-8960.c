@@ -28,6 +28,8 @@
 #include "smd_private.h"
 #include "ramdump.h"
 
+#include "msm_watchdog.h"
+
 #define MODULE_NAME			"wcnss_8960"
 #define MAX_BUF_SIZE			0x51
 
@@ -182,6 +184,7 @@ static int riva_ramdump(int enable, const struct subsys_desc *subsys)
 /* Riva crash handler */
 static void riva_crash_shutdown(const struct subsys_desc *subsys)
 {
+	pet_watchdog();
 	pr_err("%s: crash shutdown : %d\n", MODULE_NAME, riva_crash);
 	if (riva_crash != true) {
 		smsm_riva_reset();
@@ -189,7 +192,6 @@ static void riva_crash_shutdown(const struct subsys_desc *subsys)
 		 * fatal routine */
 		mdelay(3000);
 	}
-
 }
 
 static struct subsys_desc riva_8960 = {
