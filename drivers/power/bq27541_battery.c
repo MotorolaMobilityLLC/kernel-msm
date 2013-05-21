@@ -243,6 +243,7 @@ static struct bq27541_device_info {
 	struct delayed_work low_low_bat_work;
 	struct miscdevice battery_misc;
 	struct wake_lock low_battery_wake_lock;
+	struct wake_lock cable_wake_lock;
 	int smbus_status;
 	int battery_present;
 	int low_battery_present;
@@ -457,6 +458,11 @@ int bq27541_battery_callback(unsigned usb_cable_state)
        printk("========================================================\n");
 	printk("bq27541_battery_callback  usb_cable_state = %x\n", usb_cable_state) ;
        printk("========================================================\n");
+
+	if (old_cable_status != bq27541_battery_cable_status) {
+		printk(KERN_INFO"battery_callback cable_wake_lock 5 sec...\n ");
+		wake_lock_timeout(&bq27541_device->cable_wake_lock, 5*HZ);
+	}
 
 	bq27541_check_cabe_type();
 
@@ -738,6 +744,8 @@ static int bq27541_probe(struct i2c_client *client,
 
 	spin_lock_init(&bq27541_device->lock);
 	wake_lock_init(&bq27541_device->low_battery_wake_lock, WAKE_LOCK_SUSPEND, "low_battery_detection");
+	wake_lock_init(&bq27541_device->cable_wake_lock,
+		WAKE_LOCK_SUSPEND, "cable_state_changed");
 
 	/* Register sysfs */
 	ret = sysfs_create_group(&client->dev.kobj, &battery_smbus_group);
@@ -766,6 +774,7 @@ static int bq27541_remove(struct i2c_client *client)
 	}
 	if (bq27541_device) {
 		wake_lock_destroy(&bq27541_device->low_battery_wake_lock);
+		wake_lock_destroy(&bq27541_device->cable_wake_lock);
 		kfree(bq27541_device);
 		bq27541_device = NULL;
 	}
