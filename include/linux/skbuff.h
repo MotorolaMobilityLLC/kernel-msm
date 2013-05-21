@@ -225,14 +225,11 @@ enum {
 	/* device driver is going to provide hardware time stamp */
 	SKBTX_IN_PROGRESS = 1 << 2,
 
-	/* ensure the originating sk reference is available on driver level */
-	SKBTX_DRV_NEEDS_SK_REF = 1 << 3,
-
 	/* device driver supports TX zero-copy buffers */
-	SKBTX_DEV_ZEROCOPY = 1 << 4,
+	SKBTX_DEV_ZEROCOPY = 1 << 3,
 
 	/* generate wifi status information (where possible) */
-	SKBTX_WIFI_STATUS = 1 << 5,
+	SKBTX_WIFI_STATUS = 1 << 4,
 };
 
 /*
@@ -482,7 +479,7 @@ struct sk_buff {
 	union {
 		__u32		mark;
 		__u32		dropcount;
-		__u32		avail_size;
+		__u32		reserved_tailroom;
 	};
 
 	sk_buff_data_t		transport_header;
@@ -1376,7 +1373,10 @@ static inline int skb_tailroom(const struct sk_buff *skb)
  */
 static inline int skb_availroom(const struct sk_buff *skb)
 {
-	return skb_is_nonlinear(skb) ? 0 : skb->avail_size - skb->len;
+	if (skb_is_nonlinear(skb))
+		return 0;
+
+	return skb->end - skb->tail - skb->reserved_tailroom;
 }
 
 /**
@@ -1881,8 +1881,6 @@ static inline int __skb_cow(struct sk_buff *skb, unsigned int headroom,
 {
 	int delta = 0;
 
-	if (headroom < NET_SKB_PAD)
-		headroom = NET_SKB_PAD;
 	if (headroom > skb_headroom(skb))
 		delta = headroom - skb_headroom(skb);
 
