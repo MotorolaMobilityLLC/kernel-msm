@@ -29,9 +29,9 @@
 #define RESTART_REASON_ADDR       0x65C
 #define DLOAD_MODE_ADDR           0x0
 #define UEFI_RAM_DUMP_MAGIC_ADDR  0xC
-#define RAM_CONSOLE_ADDR_ADDR     0x20
-#define RAM_CONSOLE_SIZE_ADDR     0x24
-#define FB1_ADDR_ADDR             0x28
+#define RAM_CONSOLE_ADDR_ADDR     0x24
+#define RAM_CONSOLE_SIZE_ADDR     0x28
+#define FB1_ADDR_ADDR             0x2C
 
 #define RESTART_REASON      (MSM_IMEM_BASE + RESTART_REASON_ADDR)
 #define UEFI_RAM_DUMP_MAGIC \
