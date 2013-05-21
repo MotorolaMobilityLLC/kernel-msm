@@ -453,7 +453,7 @@ static ssize_t samsung_wta_cmd(struct device *dev,
 	return ret;
 }
 
-static DEVICE_ATTR(cmd, S_IRUGO | S_IWUGO, samsung_rda_cmd, samsung_wta_cmd);
+static DEVICE_ATTR(cmd, S_IRUGO | S_IWUSR, samsung_rda_cmd, samsung_wta_cmd);
 static struct attribute *fs_attrs[] = {
 	&dev_attr_cmd.attr,
 	NULL,
