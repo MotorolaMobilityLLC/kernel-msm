@@ -48,7 +48,6 @@ endif
 # MSM8974
    zreladdr-$(CONFIG_ARCH_MSM8974)	:= 0x00008000
 ifeq ($(CONFIG_MACH_LGE),y)
-        DTC_FLAGS                               += -p 1024
         dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-a.dtb
         dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-f.dtb
 else
