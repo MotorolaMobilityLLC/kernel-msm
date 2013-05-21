@@ -292,7 +292,7 @@ static int touch_work_pre_proc(struct synaptics_ts_data *ts)
 	}
 
 	if (gpio_get_value(ts->pdata->irq_gpio) != 0) {
-		TOUCH_ERR_MSG("INT STATE HIGH\n");
+		TOUCH_DEBUG_MSG("INT STATE HIGH\n");
 		return -EINTR;
 	}
 
@@ -491,9 +491,8 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 	}
 
 	if (saved_state == POWER_ON) {
-		enable_irq(ts->client->irq);
-
 		touch_ic_init(ts);
+		enable_irq(ts->client->irq);
 	}
 	else {
 		touch_power_cntl(ts, POWER_OFF);
@@ -523,10 +522,9 @@ static void touch_init_func(struct work_struct *work_init)
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
-	enable_irq(ts->client->irq);
-
 	/* Specific device initialization */
 	touch_ic_init(ts);
+	enable_irq(ts->client->irq);
 }
 
 /* touch_recover_func
@@ -542,8 +540,8 @@ static void touch_recover_func(struct work_struct *work_recover)
 
 	disable_irq(ts->client->irq);
 	safety_reset(ts);
-	enable_irq(ts->client->irq);
 	touch_ic_init(ts);
+	enable_irq(ts->client->irq);
 }
 
 /* touch_ic_init
@@ -552,8 +550,6 @@ static void touch_recover_func(struct work_struct *work_recover)
  */
 static int touch_ic_init(struct synaptics_ts_data *ts)
 {
-	ts->int_pin_state = 0;
-
 	memset(&ts->ts_data, 0, sizeof(ts->ts_data));
 
 	if (unlikely(ts->ic_init_err_cnt >= MAX_RETRY_COUNT)) {
@@ -561,25 +557,14 @@ static int touch_ic_init(struct synaptics_ts_data *ts)
 		goto err_out_critical;
 	}
 
-	atomic_set(&ts->device_init, 1);
 	if (synaptics_init_panel(ts->client, &ts->fw_info) < 0) {
 		TOUCH_ERR_MSG("specific device initialization fail\n");
 		goto err_out_retry;
 	}
 
-	/* Interrupt pin check after IC init - avoid Touch lockup */
-	msleep(100);
-	ts->int_pin_state = gpio_get_value(ts->pdata->irq_gpio);
-
-	TOUCH_DEBUG_MSG("[Touch] touch_ic_init int_pin %d", ts->int_pin_state);
-
-	if (unlikely(ts->int_pin_state != 1)) {
-		TOUCH_ERR_MSG("WARN: Interrupt pin is low - try_count: %d]\n",
-						ts->ic_init_err_cnt);
-		goto err_out_retry;
-	}
-
+	atomic_set(&ts->device_init, 1);
 	ts->ic_init_err_cnt = 0;
+
 	return 0;
 
 err_out_retry:
@@ -1439,10 +1424,10 @@ static ssize_t store_ts_reset(struct device *dev,
 		TOUCH_INFO_MSG("Touch is suspend state. Don't need reset\n");
 	}
 
-	enable_irq(ts->client->irq);
-
 	if (saved_state == POWER_ON || saved_state == POWER_WAKE)
 		touch_ic_init(ts);
+
+	enable_irq(ts->client->irq);
 
 	return count;
 }
