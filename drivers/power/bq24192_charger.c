@@ -85,7 +85,7 @@ struct bq24192_chip {
 	int  ac_online;
 	int  ext_pwr;
 	int  wlc_support;
-	int ext_ovp_otg_ctrl;
+	int  ext_ovp_otg_ctrl;
 	int  vbat_noti_stat;
 	int  step_dwn_thr_mv;
 	int  step_dwn_currnet_ma;
@@ -259,7 +259,7 @@ static int bq24192_set_input_i_limit(struct bq24192_chip *chip, int ma)
 static int bq24192_set_ibat_max(struct bq24192_chip *chip, int ma)
 {
 	u8 reg_val = 0;
-	u8 set_ibat = 0;
+	int set_ibat = 0;
 
 	if (ma < IBAT_MIN_MA || ma > IBAT_MAX_MA) {
 		pr_err("bad mA=%d asked to set\n", ma);
@@ -283,7 +283,7 @@ static int bq24192_set_ibat_max(struct bq24192_chip *chip, int ma)
 static int bq24192_set_input_vin_limit(struct bq24192_chip *chip, int mv)
 {
 	u8 reg_val = 0;
-	u8 set_vin = 0;
+	int set_vin = 0;
 
 	if (mv < VIN_LIMIT_MIN_MV || mv > VIN_LIMIT_MAX_MV) {
 		pr_err("bad mV=%d asked to set\n", mv);
@@ -307,7 +307,7 @@ static int bq24192_set_input_vin_limit(struct bq24192_chip *chip, int mv)
 static int bq24192_set_vbat_max(struct bq24192_chip *chip, int mv)
 {
 	u8 reg_val = 0;
-	u8 set_vbat = 0;
+	int set_vbat = 0;
 
 	if (mv < VBAT_MIN_MV || mv > VBAT_MAX_MV) {
 		pr_err("bad mv=%d asked to set\n", mv);
@@ -331,7 +331,7 @@ static int bq24192_set_vbat_max(struct bq24192_chip *chip, int mv)
 static int bq24192_set_system_vmin(struct bq24192_chip *chip, int mv)
 {
 	u8 reg_val = 0;
-	u8 set_vmin = 0;
+	int set_vmin = 0;
 
 	if (mv < SYSTEM_VMIN_LOW_MV || mv > SYSTEM_VMIN_HIGH_MV) {
 		pr_err("bad mv=%d asked to set\n", mv);
@@ -355,7 +355,7 @@ static int bq24192_set_system_vmin(struct bq24192_chip *chip, int mv)
 static int bq24192_set_prechg_i_limit(struct bq24192_chip *chip, int ma)
 {
 	u8 reg_val = 0;
-	u8 set_ma = 0;
+	int set_ma = 0;
 
 	if (ma < IPRECHG_MIN_MA || ma > IPRECHG_MAX_MA) {
 		pr_err("bad ma=%d asked to set\n", ma);
@@ -379,7 +379,7 @@ static int bq24192_set_prechg_i_limit(struct bq24192_chip *chip, int ma)
 static int bq24192_set_term_current(struct bq24192_chip *chip, int ma)
 {
 	u8 reg_val = 0;
-	u8 set_ma = 0;
+	int set_ma = 0;
 
 	if (ma < ITERM_MIN_MA || ma > ITERM_MAX_MA) {
 		pr_err("bad mv=%d asked to set\n", ma);
@@ -402,7 +402,7 @@ static int bq24192_set_term_current(struct bq24192_chip *chip, int ma)
 static int bq24192_set_ir_comp_resister(struct bq24192_chip *chip, int mohm)
 {
 	u8 reg_val = 0;
-	u8 set_ma = 0;
+	int set_ma = 0;
 
 	if (mohm < IRCOMP_R_MIN_MOHM
 			|| mohm > IRCOMP_R_MAX_MOHM) {
@@ -427,7 +427,7 @@ static int bq24192_set_ir_comp_resister(struct bq24192_chip *chip, int mohm)
 static int bq24192_set_vclamp_mv(struct bq24192_chip *chip, int mv)
 {
 	u8 reg_val = 0;
-	u8 set_ma = 0;
+	int set_ma = 0;
 
 	if (mv < IRCOMP_VCLAMP_MIN_MV
 			|| mv > IRCOMP_VCLAMP_MAX_MV) {
