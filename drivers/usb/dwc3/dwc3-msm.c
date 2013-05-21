@@ -2053,7 +2053,12 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		mdwc->current_max = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
-		break;
+		/*
+		 * Since setting POWER_SUPPLY_PROP_TYPE doesn't
+		 * do anything bail out here, it's not necessary
+		 * to generate a power supply event.
+		 */
+		return 0;
 	default:
 		return -EINVAL;
 	}
