@@ -93,7 +93,7 @@
 			reg_gpio_en_type_2 = <0>; /* MSM_GPIO */
 			reg_gpio_en_init_state_2 = <1>;
 			reg_gpio_en_state_2 = <1>;
-			reg_gpio_en_delay_2 = <0>;
+			reg_gpio_en_delay_2 = <17>;
 			reg_gpio_dis_delay_2 =<6>; /* min 5ms */
 
 			reg_id_3 = "";
