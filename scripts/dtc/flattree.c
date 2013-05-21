@@ -376,6 +376,7 @@ void dt_to_blob(FILE *f, struct boot_info *bi, int version)
 	struct data strbuf     = empty_data;
 	struct fdt_header fdt;
 	int padlen = 0;
+	int tsize;
 
 	for (i = 0; i < ARRAY_SIZE(version_table); i++) {
 		if (version_table[i].version == version)
@@ -407,11 +408,23 @@ void dt_to_blob(FILE *f, struct boot_info *bi, int version)
 	if (padsize > 0)
 		padlen = padsize;
 
-	if (padlen > 0) {
-		int tsize = fdt32_to_cpu(fdt.totalsize);
+	tsize = fdt32_to_cpu(fdt.totalsize);
+	if (padlen > 0)
 		tsize += padlen;
-		fdt.totalsize = cpu_to_fdt32(tsize);
+
+	/*
+	 * align to 4 bytes
+	 */
+	if (tsize & 3) {
+		/*
+		 * padlen will be used in writing blob.
+		 * we need to update padlen for aligment tsize and dtb size
+		 */
+		padlen += (4 - (tsize & 3));
+		tsize = ALIGN(tsize, 4);
 	}
+
+	fdt.totalsize = cpu_to_fdt32(tsize);
 
 	/*
 	 * Assemble the blob: start with the header, add with alignment
