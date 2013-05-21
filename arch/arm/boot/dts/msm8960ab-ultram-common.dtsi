@@ -29,6 +29,16 @@
 	};
 
 	qcom,msm8960-pinmux@0x801000 {
+		pin@801340 {                      /* BACKLIGHT_EN           */
+			reg = <0x801340 0x10>;
+			qcom,pin-num = <52>;
+			qcom,suspended@1 {
+				qcom,func = <0>;  /* gpio_in_out(52)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* out_high               */
+			};
+		};
 		pin@8013f0 {
 			reg = <0x8013f0 0x10>;
 			qcom,pin-num = <63>;      /* TOUCH_RESET */
@@ -138,7 +148,7 @@
 		reg = <0x2c>;
 		gpios = <&msmgpio 52 0>;  /* enable GPIO */
 
-		ti,lp8556-initial-brightness = <0x3a>;
+		ti,lp8556-initial-brightness = <0x3F>;
 		ti,lp8556-dev-ctrl-config = <0x84>;
 	};
 
