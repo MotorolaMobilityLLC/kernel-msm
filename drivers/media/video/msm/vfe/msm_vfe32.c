@@ -4140,6 +4140,14 @@ static void vfe32_process_reset_irq(
 			vfe32_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_0);
 		msm_camera_io_w(recover_irq_mask1,
 			vfe32_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_1);
+		if (vfe32_ctrl->share_ctrl->liveshot_state != VFE_STATE_IDLE) {
+			pr_info("Liveshot recovery\n");
+			vfe32_ctrl->share_ctrl->outpath.out0.capture_cnt = 1;
+			vfe32_ctrl->share_ctrl->vfe_capture_count =
+			vfe32_ctrl->share_ctrl->outpath.out0.capture_cnt;
+			vfe32_ctrl->share_ctrl->liveshot_state =
+				VFE_STATE_START_REQUESTED;
+		}
 		msm_camera_io_w_mb(1,
 			vfe32_ctrl->share_ctrl->vfebase + VFE_REG_UPDATE_CMD);
 		pr_info("camif cfg: 0x%x\n",
@@ -5681,7 +5689,7 @@ static irqreturn_t vfe32_parse_irq(int irq_num, void *data)
 	}
 
 	spin_lock_irqsave(&axi_ctrl->share_ctrl->stop_flag_lock, flags);
-	if (axi_ctrl->share_ctrl->stop_ack_pending) {
+	if (axi_ctrl->share_ctrl->stop_ack_pending || recovery_active) {
 		irq.vfeIrqStatus0 &= VFE_IMASK_WHILE_STOPPING_0;
 		irq.vfeIrqStatus1 &= VFE_IMASK_WHILE_STOPPING_1;
 	}
