@@ -115,7 +115,6 @@ static DEFINE_MUTEX(local_ports_lock);
 #define SRV_HASH_SIZE 32
 static struct list_head server_list[SRV_HASH_SIZE];
 static DEFINE_MUTEX(server_list_lock);
-static wait_queue_head_t newserver_wait;
 
 struct msm_ipc_server {
 	struct list_head list;
@@ -181,9 +180,6 @@ struct msm_ipc_routing_table_entry {
 static struct list_head routing_table[RT_HASH_SIZE];
 static DEFINE_MUTEX(routing_table_lock);
 static int routing_table_inited;
-
-static LIST_HEAD(msm_ipc_board_dev_list);
-static DEFINE_MUTEX(msm_ipc_board_dev_list_lock);
 
 static void do_read_data(struct work_struct *work);
 
@@ -584,8 +580,6 @@ struct msm_ipc_port *msm_ipc_router_create_raw_port(void *endpoint,
 	}
 
 	spin_lock_init(&port_ptr->port_lock);
-	INIT_LIST_HEAD(&port_ptr->incomplete);
-	mutex_init(&port_ptr->incomplete_lock);
 	INIT_LIST_HEAD(&port_ptr->port_rx_q);
 	mutex_init(&port_ptr->port_rx_q_lock);
 	init_waitqueue_head(&port_ptr->port_rx_wait_q);
@@ -3075,7 +3069,6 @@ static int __init msm_ipc_router_init(void)
 	}
 	mutex_unlock(&routing_table_lock);
 
-	init_waitqueue_head(&newserver_wait);
 	ret = msm_ipc_router_init_sockets();
 	if (ret < 0)
 		pr_err("%s: Init sockets failed\n", __func__);
