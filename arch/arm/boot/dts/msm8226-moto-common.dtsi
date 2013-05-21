@@ -427,6 +427,13 @@
 &i2c_3 {
 	status = "ok";
 
+	tmp108: tmp108@48 {
+		compatible = "ti,tmp108";
+		reg = <0x48>;
+		gpios = <&msmgpio 13 0>;
+	};
+
+
 	tpa6165xx@40 {
 		compatible = "ti,tpa6165";
 		reg = <0x40>;
