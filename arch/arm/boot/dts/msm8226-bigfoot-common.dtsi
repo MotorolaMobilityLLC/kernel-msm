@@ -28,3 +28,8 @@
 &sdcc1 {
 	qcom,bus-speed-mode = "DDR_1p8v";
 };
+
+&mot_auo_720p_vid {
+	vddio_disp-supply = <&vddio_disp_vreg>;
+	lcdbias-supply = <&tps65132>;
+};
