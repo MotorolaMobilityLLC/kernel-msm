@@ -24,3 +24,7 @@
 		status = "ok";
 	};
 };
+
+&sdcc1 {
+	qcom,bus-speed-mode = "DDR_1p8v";
+};
