@@ -793,7 +793,7 @@ static int bq27541_suspend(struct i2c_client *client, pm_message_t state)
 static int bq27541_resume(struct i2c_client *client)
 {
 	cancel_delayed_work(&bq27541_device->status_poll_work);
-	queue_delayed_work(bq27541_battery_work_queue,&bq27541_device->status_poll_work, 5*HZ);
+	queue_delayed_work(bq27541_battery_work_queue,&bq27541_device->status_poll_work, 0.1*HZ);
 	return 0;
 }
 #endif
