@@ -355,7 +355,7 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
 #endif
   WDI_ProcessSetTxPowerReq,             /* WDI_SET_TX_POWER_REQ*/
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-  WDI_ProcessStartRoamCandidatelookupReq,  /* WDI_START_ROAM_CANDIDATE_LOOKUP_REQ */
+  WDI_ProcessRoamScanOffloadReq,  /* WDI_ROAM_SCAN_OFFLOAD_REQ */
 #else
   NULL,
 #endif /* WLAN_FEATURE_ROAM_SCAN_OFFLOAD */
@@ -538,7 +538,7 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 #endif
   WDI_ProcessSetTxPowerRsp,             /* WDI_SET_TX_POWER_RESP */
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-    WDI_ProcessStartRoamCandidatelookupRsp, /* WDI_START_ROAM_CANDIDATE_LOOKUP_RESP */
+    WDI_ProcessRoamScanOffloadRsp, /* WDI_ROAM_SCAN_OFFLOAD_RESP */
 #else
     NULL,
 #endif
@@ -863,7 +863,7 @@ static char *WDI_getReqMsgString(wpt_uint16 wdiReqMsgId)
     CASE_RETURN_STRING( WDI_UPDATE_SCAN_PARAMS_REQ );
   #endif
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-    CASE_RETURN_STRING( WDI_START_ROAM_CANDIDATE_LOOKUP_REQ );
+    CASE_RETURN_STRING( WDI_ROAM_SCAN_OFFLOAD_REQ );
 #endif
     CASE_RETURN_STRING( WDI_SET_TX_PER_TRACKING_REQ );
     CASE_RETURN_STRING( WDI_8023_MULTICAST_LIST_REQ );
@@ -967,7 +967,7 @@ static char *WDI_getRespMsgString(wpt_uint16 wdiRespMsgId)
     CASE_RETURN_STRING( WDI_UPDATE_SCAN_PARAMS_RESP );
   #endif
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-    CASE_RETURN_STRING( WDI_START_ROAM_CANDIDATE_LOOKUP_RESP );
+    CASE_RETURN_STRING( WDI_ROAM_SCAN_OFFLOAD_RESP );
 #endif
     CASE_RETURN_STRING( WDI_SET_TX_PER_TRACKING_RESP );
     CASE_RETURN_STRING( WDI_8023_MULTICAST_LIST_RESP );
@@ -21791,8 +21791,8 @@ WDI_2_HAL_REQ_TYPE
   case WDI_KEEP_ALIVE_REQ:
     return WLAN_HAL_KEEP_ALIVE_REQ;
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-  case WDI_START_ROAM_CANDIDATE_LOOKUP_REQ:
-    return WLAN_START_ROAM_CANDIDATE_LOOKUP_REQ;
+  case WDI_ROAM_SCAN_OFFLOAD_REQ:
+    return WLAN_ROAM_SCAN_OFFLOAD_REQ;
 #endif
 #ifdef FEATURE_WLAN_SCAN_PNO
   case WDI_SET_PREF_NETWORK_REQ:
@@ -22018,8 +22018,8 @@ case WLAN_HAL_DEL_STA_SELF_RSP:
     return WDI_HAL_PREF_NETWORK_FOUND_IND;
 #endif // FEATURE_WLAN_SCAN_PNO
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-  case WLAN_START_ROAM_CANDIDATE_LOOKUP_RSP:
-    return WDI_START_ROAM_CANDIDATE_LOOKUP_RESP;
+  case WLAN_ROAM_SCAN_OFFLOAD_RSP:
+    return WDI_ROAM_SCAN_OFFLOAD_RESP;
 #endif
   case WLAN_HAL_SET_TX_PER_TRACKING_RSP:
     return WDI_SET_TX_PER_TRACKING_RESP;
@@ -23719,9 +23719,9 @@ WDI_ProcessSetRssiFilterReq
 }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 /**
- @brief WDI_StartRoamCandidateLookupReq
+ @brief WDI_RoamScanOffloadReq
 
- @param pwdiRoamCandidateLookupReqParams: the  LookupReq as specified
+ @param pwdiRoamScanOffloadReqParams: the  LookupReq as specified
                       by the Device Interface
 
         wdiRoamOffloadScancb: callback for passing back the response
@@ -23733,9 +23733,9 @@ WDI_ProcessSetRssiFilterReq
  @return Result of the function call
 */
 WDI_Status
-WDI_StartRoamCandidateLookupReq
+WDI_RoamScanOffloadReq
 (
-  WDI_RoamCandidateLookupReqParamsType* pwdiRoamCandidateLookupReqParams,
+  WDI_RoamScanOffloadReqParamsType* pwdiRoamScanOffloadReqParams,
   WDI_RoamOffloadScanCb                 wdiRoamOffloadScancb,
   void*                                 pUserData
 )
@@ -23757,9 +23757,9 @@ WDI_StartRoamCandidateLookupReq
    /*------------------------------------------------------------------------
      Fill in Event data and post to the Main FSM
    ------------------------------------------------------------------------*/
-   wdiEventData.wdiRequest      = WDI_START_ROAM_CANDIDATE_LOOKUP_REQ;
-   wdiEventData.pEventData      = pwdiRoamCandidateLookupReqParams;
-   wdiEventData.uEventDataSize  = sizeof(*pwdiRoamCandidateLookupReqParams);
+   wdiEventData.wdiRequest      = WDI_ROAM_SCAN_OFFLOAD_REQ;
+   wdiEventData.pEventData      = pwdiRoamScanOffloadReqParams;
+   wdiEventData.uEventDataSize  = sizeof(*pwdiRoamScanOffloadReqParams);
    wdiEventData.pCBfnc          = wdiRoamOffloadScancb;
    wdiEventData.pUserData       = pUserData;
 
@@ -23808,7 +23808,7 @@ WDI_wdiEdTypeEncToEdTypeEnc(tEdType *EdType, WDI_EdType wdiEdType)
         Request parameters
 
  @param  pWDICtx:                               pointer to the WLAN DAL context
-         pwdiRoamCandidateLookupReqParams:      pointer to the info received
+         pwdiRoamScanOffloadReqParams:      pointer to the info received
          from upper layers
          ppSendBuffer, pSize - out pointers of the packed buffer
          and its size
@@ -23817,10 +23817,10 @@ WDI_wdiEdTypeEncToEdTypeEnc(tEdType *EdType, WDI_EdType wdiEdType)
 */
 
 WDI_Status
-WDI_PackStartRoamCandidateLookup
+WDI_PackRoamScanOffloadParams
 (
   WDI_ControlBlockType*                 pWDICtx,
-  WDI_RoamCandidateLookupReqParamsType* pwdiRoamCandidateLookupReqParams,
+  WDI_RoamScanOffloadReqParamsType*     pwdiRoamScanOffloadReqParams,
   wpt_uint8**                           ppSendBuffer,
   wpt_uint16*                           pSize
 )
@@ -23833,87 +23833,103 @@ WDI_PackStartRoamCandidateLookup
    /*-----------------------------------------------------------------------
      Get message buffer
    -----------------------------------------------------------------------*/
-   if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_START_ROAM_CANDIDATE_LOOKUP_REQ,
+   if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_ROAM_SCAN_OFFLOAD_REQ,
                          sizeof(tRoamCandidateListParams),
                          &pSendBuffer, &usDataOffset, &usSendSize))||
        ( usSendSize < (usDataOffset + sizeof(tpRoamCandidateListParams) )))
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
                   "Unable to get send buffer in Start Roam Candidate Lookup Req %x ",
-                   pwdiRoamCandidateLookupReqParams);
+                   pwdiRoamScanOffloadReqParams);
       WDI_ASSERT(0);
       return WDI_STATUS_E_FAILURE;
    }
    pRoamCandidateListParams = (tpRoamCandidateListParams)(pSendBuffer + usDataOffset);
    wpalMemoryZero(pRoamCandidateListParams, sizeof(tpRoamCandidateListParams));
-   pRoamCandidateListParams->RoamScanOffloadEnabled = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.RoamScanOffloadEnabled;
+   pRoamCandidateListParams->RoamScanOffloadEnabled = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.RoamScanOffloadEnabled;
    wpalMemoryCopy(pRoamCandidateListParams->ConnectedNetwork.currAPbssid,
-                  pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.currAPbssid,
+                  pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.currAPbssid,
                   HAL_MAC_ADDR_LEN);
-   pRoamCandidateListParams->ConnectedNetwork.authentication = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.authentication;
+   pRoamCandidateListParams->ConnectedNetwork.authentication = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.authentication;
    WDI_wdiEdTypeEncToEdTypeEnc(&pRoamCandidateListParams->ConnectedNetwork.encryption,
-                               pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.encryption);
+                               pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.encryption);
    WDI_wdiEdTypeEncToEdTypeEnc(&pRoamCandidateListParams->ConnectedNetwork.mcencryption,
-                               pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.mcencryption);
+                               pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.mcencryption);
 
    pRoamCandidateListParams->ConnectedNetwork.ssId.length
-                = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ssId.ucLength;
+                = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ssId.ucLength;
    wpalMemoryCopy( pRoamCandidateListParams->ConnectedNetwork.ssId.ssId,
-                   pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ssId.sSSID,
+                   pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ssId.sSSID,
                    pRoamCandidateListParams->ConnectedNetwork.ssId.length);
    wpalMemoryCopy(pRoamCandidateListParams->ConnectedNetwork.ChannelCache,
-                  pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ChannelCache,
-                  pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ChannelCount );
-   pRoamCandidateListParams->ConnectedNetwork.ChannelCount = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ChannelCount;
-   pRoamCandidateListParams->ChannelCacheType = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ChannelCacheType ;
-   pRoamCandidateListParams->LookupThreshold = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.LookupThreshold;
-   pRoamCandidateListParams->RoamRssiDiff = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.RoamRssiDiff ;
-   pRoamCandidateListParams->Command = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.Command ;
-   pRoamCandidateListParams->StartScanReason = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.StartScanReason ;
-   pRoamCandidateListParams->NeighborScanTimerPeriod = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.NeighborScanTimerPeriod ;
-   pRoamCandidateListParams->NeighborRoamScanRefreshPeriod = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.NeighborRoamScanRefreshPeriod ;
-   pRoamCandidateListParams->NeighborScanChannelMinTime = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.NeighborScanChannelMinTime ;
-   pRoamCandidateListParams->NeighborScanChannelMaxTime = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.NeighborScanChannelMaxTime ;
-   pRoamCandidateListParams->EmptyRefreshScanPeriod = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.EmptyRefreshScanPeriod ;
-   pRoamCandidateListParams->IsCCXEnabled = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.IsCCXEnabled ;
+                  pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ChannelCache,
+                  pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ChannelCount );
+   pRoamCandidateListParams->ConnectedNetwork.ChannelCount = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ChannelCount;
+   pRoamCandidateListParams->ChannelCacheType = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ChannelCacheType ;
+   pRoamCandidateListParams->LookupThreshold = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.LookupThreshold;
+   pRoamCandidateListParams->RoamRssiDiff = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.RoamRssiDiff ;
+   pRoamCandidateListParams->Command = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.Command ;
+   pRoamCandidateListParams->StartScanReason = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.StartScanReason ;
+   pRoamCandidateListParams->NeighborScanTimerPeriod = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.NeighborScanTimerPeriod ;
+   pRoamCandidateListParams->NeighborRoamScanRefreshPeriod = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.NeighborRoamScanRefreshPeriod ;
+   pRoamCandidateListParams->NeighborScanChannelMinTime = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.NeighborScanChannelMinTime ;
+   pRoamCandidateListParams->NeighborScanChannelMaxTime = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.NeighborScanChannelMaxTime ;
+   pRoamCandidateListParams->EmptyRefreshScanPeriod = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.EmptyRefreshScanPeriod ;
+   pRoamCandidateListParams->IsCCXEnabled = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.IsCCXEnabled ;
    wpalMemoryCopy(pRoamCandidateListParams->ValidChannelList,
-                  pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ValidChannelList,
-                  pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ValidChannelCount);
-   pRoamCandidateListParams->ValidChannelCount = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.ValidChannelCount;
+                  pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ValidChannelList,
+                  pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ValidChannelCount);
+   pRoamCandidateListParams->ValidChannelCount = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ValidChannelCount;
 
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
-              "Values are ssid = %s, RoamOffloadScan=%d,Command=%d,StartScanReason=%d, NeighborScanTimerPeriod=%d, NeighborRoamScanRefreshPeriod=%d,NeighborScanChannelMinTime=%d,NeighborScanChannelMaxTime = %d,EmptyRefreshScanPeriod=%d, mdiePresent=%d,MDID=%d, auth=%d, uce=%d, mce=%d\n",
-                   pRoamCandidateListParams->ConnectedNetwork.ssId.ssId, pRoamCandidateListParams->RoamScanOffloadEnabled,
-                   pRoamCandidateListParams->Command,pRoamCandidateListParams->StartScanReason,
-                   pRoamCandidateListParams->NeighborScanTimerPeriod,pRoamCandidateListParams->NeighborRoamScanRefreshPeriod,
-                   pRoamCandidateListParams->NeighborScanChannelMinTime,pRoamCandidateListParams->NeighborScanChannelMaxTime,
-                   pRoamCandidateListParams->EmptyRefreshScanPeriod,pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.MDID.mdiePresent,
-                   pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.MDID.mobilityDomain,
-                   pRoamCandidateListParams->ConnectedNetwork.authentication, pRoamCandidateListParams->ConnectedNetwork.encryption,
-                   pRoamCandidateListParams->ConnectedNetwork.mcencryption);
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO_HIGH,
+              "Values are ssid = %s, RoamOffloadScan=%d,Command=%d,"
+              "StartScanReason=%d,NeighborScanTimerPeriod=%d,"
+              "NeighborRoamScanRefreshPeriod=%d,NeighborScanChannelMinTime=%d,"
+              "NeighborScanChannelMaxTime = %d,EmptyRefreshScanPeriod=%d,"
+              "mdiePresent=%d,MDID=%d, auth=%d, uce=%d, mce=%d, nProbes=%d,"
+              "HomeAwayTime=%d\n",
+              pRoamCandidateListParams->ConnectedNetwork.ssId.ssId,
+              pRoamCandidateListParams->RoamScanOffloadEnabled,
+              pRoamCandidateListParams->Command,
+              pRoamCandidateListParams->StartScanReason,
+              pRoamCandidateListParams->NeighborScanTimerPeriod,
+              pRoamCandidateListParams->NeighborRoamScanRefreshPeriod,
+              pRoamCandidateListParams->NeighborScanChannelMinTime,
+              pRoamCandidateListParams->NeighborScanChannelMaxTime,
+              pRoamCandidateListParams->EmptyRefreshScanPeriod,
+              pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.MDID.mdiePresent,
+                   pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.MDID.mobilityDomain,
+              pRoamCandidateListParams->ConnectedNetwork.authentication,
+              pRoamCandidateListParams->ConnectedNetwork.encryption,
+                   pRoamCandidateListParams->ConnectedNetwork.mcencryption,
+                   pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.nProbes,
+                   pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.HomeAwayTime);
    pRoamCandidateListParams->us24GProbeSize =
-           (pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.us24GProbeSize<
+           (pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.us24GProbeSize<
             WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE)?
-           pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.us24GProbeSize:
+            pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.us24GProbeSize:
            WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE;
    wpalMemoryCopy(pRoamCandidateListParams->a24GProbeTemplate,
-                  pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.a24GProbeTemplate,
+                  pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.a24GProbeTemplate,
                   pRoamCandidateListParams->us24GProbeSize);
    pRoamCandidateListParams->us5GProbeSize =
-           (pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.us5GProbeSize<
+           (pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.us5GProbeSize<
             WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE)?
-           pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.us5GProbeSize:
+           pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.us5GProbeSize:
            WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE;
    wpalMemoryCopy(pRoamCandidateListParams->a5GProbeTemplate,
-                  pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.a5GProbeTemplate,
+                  pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.a5GProbeTemplate,
                   pRoamCandidateListParams->us5GProbeSize);
-   pRoamCandidateListParams->MDID.mdiePresent = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.MDID.mdiePresent;
-   pRoamCandidateListParams->MDID.mobilityDomain = pwdiRoamCandidateLookupReqParams->wdiRoamOffloadScanInfo.MDID.mobilityDomain;
-
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,"Valid Channel List");
+   pRoamCandidateListParams->MDID.mdiePresent = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.MDID.mdiePresent;
+   pRoamCandidateListParams->MDID.mobilityDomain = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.MDID.mobilityDomain;
+   pRoamCandidateListParams->nProbes =
+           pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.nProbes;
+   pRoamCandidateListParams->HomeAwayTime =
+           pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.HomeAwayTime;
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO_HIGH,"Valid Channel List");
    for (i=0; i<pRoamCandidateListParams->ValidChannelCount ; i++)
    {
-      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,"%d", pRoamCandidateListParams->ValidChannelList[i]);
+      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO_HIGH,"%d", pRoamCandidateListParams->ValidChannelList[i]);
    }
 
 
@@ -23921,7 +23937,7 @@ WDI_PackStartRoamCandidateLookup
    *ppSendBuffer = pSendBuffer;
    *pSize        = usSendSize;
    return WDI_STATUS_SUCCESS;
-}/*WDI_PackStartRoamCandidateLookup*/
+}/*WDI_PackRoamScanOffloadParams*/
 
 /**
  @brief Process Start Roam Candidate Lookup Request function
@@ -23932,13 +23948,13 @@ WDI_PackStartRoamCandidateLookup
  @return Result of the function call
 */
 WDI_Status
-WDI_ProcessStartRoamCandidatelookupReq
+WDI_ProcessRoamScanOffloadReq
 (
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 )
 {
-   WDI_RoamCandidateLookupReqParamsType* pwdiRoamCandidateLookupReqParams = NULL;
+   WDI_RoamScanOffloadReqParamsType* pwdiRoamScanOffloadReqParams = NULL;
    WDI_RoamOffloadScanCb                 wdiRoamOffloadScancb  = NULL;
    wpt_uint8*                            pSendBuffer           = NULL;
    wpt_uint16                            usSendSize            = 0;
@@ -23947,7 +23963,7 @@ WDI_ProcessStartRoamCandidatelookupReq
      Sanity check
    -------------------------------------------------------------------------*/
    if (( NULL == pEventData ) ||
-       ( NULL == (pwdiRoamCandidateLookupReqParams = (WDI_RoamCandidateLookupReqParamsType*)pEventData->pEventData)) ||
+       ( NULL == (pwdiRoamScanOffloadReqParams = (WDI_RoamScanOffloadReqParamsType*)pEventData->pEventData)) ||
        ( NULL == (wdiRoamOffloadScancb   = (WDI_RoamOffloadScanCb)pEventData->pCBfnc)))
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
@@ -23962,7 +23978,7 @@ WDI_ProcessStartRoamCandidatelookupReq
      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
                   "%s: Packing Roam Candidate Lookup request ", __func__);
 
-     wdiStatus = WDI_PackStartRoamCandidateLookup( pWDICtx, pwdiRoamCandidateLookupReqParams,
+     wdiStatus = WDI_PackRoamScanOffloadParams( pWDICtx, pwdiRoamScanOffloadReqParams,
                                       &pSendBuffer, &usSendSize);
 
    if (( WDI_STATUS_SUCCESS != wdiStatus )||
@@ -23974,14 +23990,14 @@ WDI_ProcessStartRoamCandidatelookupReq
       return wdiStatus;
    }
 
-   pWDICtx->wdiReqStatusCB     = pwdiRoamCandidateLookupReqParams->wdiReqStatusCB;
-   pWDICtx->pReqStatusUserData = pwdiRoamCandidateLookupReqParams->pUserData;
+   pWDICtx->wdiReqStatusCB     = pwdiRoamScanOffloadReqParams->wdiReqStatusCB;
+   pWDICtx->pReqStatusUserData = pwdiRoamScanOffloadReqParams->pUserData;
 
    /*-------------------------------------------------------------------------
-     Send WDI_START_ROAM_CANDIDATE_LOOKUP_REQ to HAL
+     Send WDI_ROAM_SCAN_OFFLOAD_REQ to HAL
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
-               wdiRoamOffloadScancb, pEventData->pUserData, WDI_START_ROAM_CANDIDATE_LOOKUP_RESP);
+               wdiRoamOffloadScancb, pEventData->pUserData, WDI_ROAM_SCAN_OFFLOAD_RESP);
 }
 
 /**
@@ -23995,7 +24011,7 @@ WDI_ProcessStartRoamCandidatelookupReq
  @return Result of the function call
 */
 WDI_Status
-WDI_ProcessStartRoamCandidatelookupRsp
+WDI_ProcessRoamScanOffloadRsp
 (
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
@@ -24031,7 +24047,7 @@ WDI_ProcessStartRoamCandidatelookupRsp
    wdiRoamOffloadScancb(wdiStatus, pWDICtx->pRspCBUserData);
 
    return WDI_STATUS_SUCCESS;
-}/*WDI_ProcessStartRoamCandidatelookupRsp*/
+}/* WDI_ProcessRoamScanOffloadRsp  */
 #endif
 
 /**
