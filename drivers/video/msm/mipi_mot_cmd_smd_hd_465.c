@@ -40,6 +40,15 @@ static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
 
 struct mipi_dsi_clk_config dsi_clk_config_tbl[MIPI_DSI_CLK_MAX_NR]
 	__initconst = {
+	/* MIPI_DSI_CLK_208M */
+	{
+		416000000,
+		/* timing[0] - timing[10] */
+		{0xaf, 0x8b, 0x1a, 0x00, 0x94, 0x93, 0x1e,
+		0x8d, 0x1d, 0x03, 0x04,},
+		/* pll[1] - pll[3]  */
+		{0x9f, 0x31, 0xda,},
+	},
 	/* MIPI_DSI_CLK_209M */
 	{
 		418000000,
