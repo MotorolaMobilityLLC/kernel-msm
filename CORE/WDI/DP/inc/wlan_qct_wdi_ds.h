@@ -80,7 +80,7 @@ typedef struct
    wpt_uint8 addr2MACAddress[6];
    wpt_uint8 frmType;
    wpt_uint8 fStaType;
-   wpt_uint8 fProtectedFrame;
+   wpt_uint8 fProtMgmtFrame;
    wpt_uint16 fPktlen;
    wpt_status txCompleteStatus;
    wpt_uint8  staIdx;

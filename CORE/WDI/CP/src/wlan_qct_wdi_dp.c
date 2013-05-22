@@ -376,6 +376,9 @@ WDI_TxBdFastFwd
 
     ucTxFlag:    different option setting for TX.
 
+    ucProtMgmtFrame: for management frames, whether the frame is
+                     protected (protect bit is set in FC)
+
     uTimeStamp:      Timestamp when the frame was received from HDD. (usec)
    
    @return
@@ -394,6 +397,7 @@ WDI_FillTxBd
     wpt_uint8              ucDisableFrmXtl, 
     void*                  pTxBd, 
     wpt_uint8              ucTxFlag, 
+    wpt_uint8              ucProtMgmtFrame,
     wpt_uint32             uTimeStamp,
     wpt_uint8*             staIndex
 )
@@ -840,6 +844,7 @@ WDI_FillTxBd
 
             if(ucIsRMF && pSta->rmfEnabled)
             {
+                pBd->dpuNE = !ucProtMgmtFrame;
                 pBd->rmf = 1;
                 if(!ucUnicastDst)
                     pBd->dpuDescIdx = pSta->bcastMgmtDpuIndex; /* IGTK */
