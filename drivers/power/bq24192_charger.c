@@ -69,6 +69,10 @@
 struct bq24192_chip {
 	int  chg_current_ma;
 	int  term_current_ma;
+	int  vbat_max_mv;
+	int  pre_chg_current_ma;
+	int  sys_vmin_mv;
+	int  vin_limit_mv;
 	int  int_gpio;
 	int  otg_en_gpio;
 	int  irq;
@@ -884,7 +888,7 @@ static int bq24192_hw_init(struct bq24192_chip *chip)
 		return ret;
 	}
 
-	ret = bq24192_set_input_vin_limit(chip, 4360);
+	ret = bq24192_set_input_vin_limit(chip, chip->vin_limit_mv);
 	if (ret) {
 		pr_err("failed to set input voltage limit\n");
 		return ret;
@@ -897,7 +901,7 @@ static int bq24192_hw_init(struct bq24192_chip *chip)
 		return ret;
 	}
 
-	ret = bq24192_set_system_vmin(chip, 3500);
+	ret = bq24192_set_system_vmin(chip, chip->sys_vmin_mv);
 	if (ret) {
 		pr_err("failed to set system min voltage\n");
 		return ret;
@@ -909,7 +913,7 @@ static int bq24192_hw_init(struct bq24192_chip *chip)
 		return ret;
 	}
 
-	ret = bq24192_set_prechg_i_limit(chip, 256);
+	ret = bq24192_set_prechg_i_limit(chip, chip->pre_chg_current_ma);
 	if (ret) {
 		pr_err("failed to set pre-charge current\n");
 		return ret;
@@ -921,7 +925,7 @@ static int bq24192_hw_init(struct bq24192_chip *chip)
 		return ret;
 	}
 
-	ret = bq24192_set_vbat_max(chip, 4352);
+	ret = bq24192_set_vbat_max(chip, chip->vbat_max_mv);
 	if (ret) {
 		pr_err("failed to set vbat max\n");
 		return ret;
@@ -975,6 +979,34 @@ static int bq24192_parse_dt(struct device_node *dev_node,
 		return ret;
 	}
 
+	ret = of_property_read_u32(dev_node, "ti,vbat-max-mv",
+				   &chip->vbat_max_mv);
+	if (ret) {
+		pr_err("Unable to read vbat-max-mv.\n");
+		return ret;
+	}
+
+	ret = of_property_read_u32(dev_node, "ti,pre-chg-current-ma",
+				   &chip->pre_chg_current_ma);
+	if (ret) {
+		pr_err("Unable to read pre-chg-current-ma.\n");
+		return ret;
+	}
+
+	ret = of_property_read_u32(dev_node, "ti,sys-vimin-mv",
+				   &chip->sys_vmin_mv);
+	if (ret) {
+		pr_err("Unable to read sys-vimin-mv.\n");
+		return ret;
+	}
+
+	ret = of_property_read_u32(dev_node, "ti,vin-limit-mv",
+				   &chip->vin_limit_mv);
+	if (ret) {
+		pr_err("Unable to read vin-limit-mv.\n");
+		return ret;
+	}
+
 	ret = of_property_read_u32(dev_node, "ti,step-dwn-current-ma",
 				   &chip->step_dwn_currnet_ma);
 	if (ret) {
@@ -1004,9 +1036,6 @@ static int bq24192_parse_dt(struct device_node *dev_node,
 		}
 	}
 
-	pr_info("chg_i_ma = %d term_i_ma = %d\n",
-			chip->chg_current_ma,
-			chip->term_current_ma);
 out:
 	return ret;
 }
@@ -1062,6 +1091,10 @@ static int bq24192_probe(struct i2c_client *client,
 			chip->otg_en_gpio = pdata->otg_en_gpio;
 		chip->step_dwn_thr_mv = pdata->step_dwn_thr_mv;
 		chip->step_dwn_currnet_ma = pdata->step_dwn_currnet_ma;
+		chip->vbat_max_mv = pdata->vbat_max_mv;
+		chip->pre_chg_current_ma = pdata->pre_chg_current_ma;
+		chip->sys_vmin_mv = pdata->sys_vmin_mv;
+		chip->vin_limit_mv = pdata->vin_limit_mv;
 	}
 	chip->set_chg_current_ma = chip->chg_current_ma;
 

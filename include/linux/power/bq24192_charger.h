@@ -23,6 +23,10 @@ struct bq24192_platform_data {
 	int int_gpio;
 	int chg_current_ma;
 	int term_current_ma;
+	int vbat_max_mv;
+	int pre_chg_current_ma;
+	int sys_vmin_mv;
+	int vin_limit_mv;
 	int wlc_support;
 	int otg_en_gpio;
 	int ext_ovp_otg_ctrl;
