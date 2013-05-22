@@ -77,9 +77,13 @@ struct tpa6165_data {
 	int alwayson_micb;
 	int button_detect_state;
 	int mode;
+	int mono_hs_detect_state;
+	int force_hstype;
 	struct mutex lock;
 	struct wake_lock wake_lock;
 	struct work_struct work;
+	struct workqueue_struct *wq;
+	struct delayed_work delay_work;
 };
 
 static const struct tpa6165_regs tpa6165_reg_defaults[] = {
@@ -627,6 +631,58 @@ static int tpa6165_update_device_status(struct tpa6165_data *tpa6165)
 	return 0;
 }
 
+static void tpa6165_delayed_mono_work(struct work_struct *work)
+{
+	struct tpa6165_data *tpa6165 = i2c_get_clientdata(tpa6165_client);
+
+	/* check for button press state to determine hs type */
+	tpa6165_update_device_status(tpa6165);
+	if (tpa6165->dev_status_reg1 & TPA6165_JACK_BUTTON) {
+		if (tpa6165->force_hstype == TPA6165_MONO_MIC_0N_SLEEVE1) {
+			pr_debug("%s: hs is not non omtp, trying omtp type\n",
+						__func__);
+			tpa6165->force_hstype = TPA6165_MONO_MIC_0N_RING1;
+			tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+				tpa6165->force_hstype, 0xff);
+			/* trigger delayed detection again with double delay
+			 * time, Capacitor take longer duration to charge up
+			 * from -ve to +ve in this case. OMTP mono headsets
+			 * with capacitance are very rare/non existent in feild
+			 * so rarely expect to hit this case.
+			 */
+			queue_delayed_work(tpa6165->wq, &tpa6165->delay_work,
+					HZ);
+		} else if (tpa6165->force_hstype == TPA6165_MONO_MIC_0N_RING1) {
+			pr_debug("%s: high cap headphone detected\n", __func__);
+			tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+				TPA6165_STEREO_HEADPHONE1, 0xff);
+			tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+				TPA6165_FORCE_TYPE | TPA6165_STEREO_HEADPHONE1,
+				0xff);
+			tpa6165->hs_acc_type = SND_JACK_HEADPHONE;
+			tpa6165->inserted = 1;
+			snd_soc_jack_report_no_dapm(tpa6165->hs_jack,
+				tpa6165->hs_acc_type,
+				tpa6165->hs_jack->jack->type);
+			tpa6165->mono_hs_detect_state = 0;
+		}
+	} else {
+		pr_debug("%s: high cap mono hs is detected\n", __func__);
+		tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+			tpa6165->force_hstype, 0xff);
+		tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+			TPA6165_FORCE_TYPE | tpa6165->force_hstype,
+			0xff);
+		tpa6165->hs_acc_type = SND_JACK_HEADSET;
+		tpa6165->inserted = 1;
+		snd_soc_jack_report_no_dapm(tpa6165->hs_jack,
+				tpa6165->hs_acc_type,
+				tpa6165->hs_jack->jack->type);
+		tpa6165->mono_hs_detect_state = 0;
+	}
+	return;
+}
+
 static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 {
 	int acc_type;
@@ -713,6 +769,26 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 		tpa6165->special_hs = 0;
 		acc_type = SND_JACK_HEADPHONE;
 		break;
+	case TPA6165_NO_ACC_DET2:
+		/* because of IC limitation High Capacitance Mono headset
+		 * incorrectly detected. Impementing work around to get
+		 * it detected correctly. The IC will trigger when the 0x1D
+		 * is detected, at this point the processor should force 0x0A
+		 * and then wait  to see if you get a button press trigger
+		 * i.e. the mic line stays pulled low long term). If the line
+		 * does rise, the line is a mic and therefore non omtp (0x0A)
+		 * is valid. A secondary case which is rare is to check for
+		 * omtp type,to check and see if the mic is actually on RING2,
+		 * which would be a 0x0B.*/
+		tpa6165->special_hs = 0;
+		tpa6165->mono_hs_detect_state = 1;
+		acc_type = SND_JACK_UNSUPPORTED;
+		tpa6165->force_hstype = TPA6165_MONO_MIC_0N_SLEEVE1;
+		/* force to non omtp type & trigger delayed detection */
+		tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+			tpa6165->force_hstype, 0xff);
+		queue_delayed_work(tpa6165->wq, &tpa6165->delay_work, HZ/2);
+		break;
 	default:
 		/* no valid acc detected */
 		tpa6165->special_hs = 0;
@@ -743,6 +819,10 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 
 static void tpa6165_report_button(struct tpa6165_data *tpa6165)
 {
+	if (tpa6165->mono_hs_detect_state)
+		/* ignore button presses in this state */
+		return;
+
 	if ((tpa6165->dev_status_reg1 & TPA6165_JACK_BUTTON)) {
 		/* if already in button detect state, check for
 		 * button press/release.
@@ -1062,8 +1142,15 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 	wake_lock_init(&tpa6165->wake_lock, WAKE_LOCK_SUSPEND, "hs_det");
 
 	/* Initialize device registers */
-	INIT_WORK(&tpa6165->work,  tpa6165_initialize_work);
+	INIT_WORK(&tpa6165->work, tpa6165_initialize_work);
 	schedule_work(&tpa6165->work);
+
+	tpa6165->wq = create_singlethread_workqueue("tpa6165");
+	if (tpa6165->wq == NULL) {
+		err = -ENOMEM;
+		goto wq_fail;
+	}
+	INIT_DELAYED_WORK(&tpa6165->delay_work, tpa6165_delayed_mono_work);
 
 	tpa6165->gpio_irq = gpio_to_irq(tpa6165->gpio);
 	/* active low interrupt */
@@ -1084,6 +1171,8 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 
 irq_fail:
 	wake_lock_destroy(&tpa6165->wake_lock);
+	destroy_workqueue(tpa6165->wq);
+wq_fail:
 reg_enable_micvdd_fail:
 	regulator_put(tpa6165->micvdd);
 reg_get_micvdd:
@@ -1107,6 +1196,7 @@ static int __devexit tpa6165_remove(struct i2c_client *client)
 	regulator_put(tpa6165->micvdd);
 	gpio_free(tpa6165->gpio);
 	wake_lock_destroy(&tpa6165->wake_lock);
+	destroy_workqueue(tpa6165->wq);
 	tpa6165_remove_debugfs();
 	kfree(tpa6165);
 	tpa6165_client = NULL;
