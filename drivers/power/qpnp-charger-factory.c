@@ -3158,7 +3158,11 @@ static ssize_t force_chg_usb_suspend_store(struct device *dev,
 		return -ENODEV;
 	}
 
-	r = qpnp_chg_usb_suspend_enable(the_chip, mode ? USB_SUSPEND_BIT : 0);
+	r = qpnp_chg_masked_write(the_chip,
+				  the_chip->usb_chgpth_base +
+				  CHGR_USB_USB_SUSP,
+				  USB_SUSPEND_BIT,
+				  mode ? USB_SUSPEND_BIT : 0, 1);
 
 	return r ? r : count;
 }
