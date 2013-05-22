@@ -717,9 +717,11 @@ static int bq24192_get_prop_charge_type(struct bq24192_chip *chip)
 		return POWER_SUPPLY_CHARGE_TYPE_UNKNOWN;
 	}
 
-	if (temp && FAST_CHARGE_MASK)
+	temp = temp & CHARGING_MASK;
+
+	if (temp == FAST_CHARGE_MASK)
 		chg_type = POWER_SUPPLY_CHARGE_TYPE_FAST;
-	else if (temp && PRE_CHARGE_MASK)
+	else if (temp == PRE_CHARGE_MASK)
 		chg_type = POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
 	else
 		chg_type = POWER_SUPPLY_CHARGE_TYPE_NONE;
