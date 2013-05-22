@@ -33,6 +33,10 @@
 #include <linux/apanic_mmc.h>
 #include <linux/io.h>
 #include <linux/rslib.h>
+#include <linux/memblock.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <linux/platform_device.h>
 
 /*
  * EMIT_BOOTINFO and EMIT_BOOTINFO_STR are used to emit the bootinfo
@@ -187,20 +191,15 @@ struct bootinfo_bck_buf {
 	u8 ecc[(sizeof(struct bootinfo_bck) / ECC_BLOCK_SIZE) * ECC_SIZE];
 } __aligned(BOOTINFO_BCK_BUF_ALIGN);
 
-static int bootinfo_bck_buf_reserved;
+static struct bootinfo_bck_buf *bootinfo_bck_buf_zone;
 
-int __init bootinfo_bck_size(void)
+int __devinit bootinfo_bck_size(void)
 {
 	pr_debug("%s size %d\n", __func__, sizeof(struct bootinfo_bck_buf));
 	return sizeof(struct bootinfo_bck_buf);
 }
 
-void __init bootinfo_bck_buf_set_reserved(void)
-{
-	bootinfo_bck_buf_reserved = 1;
-}
-
-static void __init bootinfo_lkmsg_bl(struct bl_build_sig *bl)
+static void bootinfo_lkmsg_bl(struct bl_build_sig *bl)
 {
 	int i;
 	for (i = 0; i < bl_build_sig_count; i++) {
@@ -210,7 +209,7 @@ static void __init bootinfo_lkmsg_bl(struct bl_build_sig *bl)
 	}
 }
 
-static void __init bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
+static void bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
 {
 	int i;
 	for (i = 0; i < bl_build_sig_count; i++) {
@@ -223,7 +222,7 @@ static void __init bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
 	}
 }
 
-static void __init bootinfo_bck_update_ecc(struct rs_control *rs,
+static void bootinfo_bck_update_ecc(struct rs_control *rs,
 				struct bootinfo_bck_buf *buf)
 {
 	u8 *payload, *ecc;
@@ -240,7 +239,7 @@ static void __init bootinfo_bck_update_ecc(struct rs_control *rs,
 	}
 }
 
-static int __init bootinfo_bck_ecc(struct rs_control *rs,
+static int bootinfo_bck_ecc(struct rs_control *rs,
 				struct bootinfo_bck_buf *buf)
 {
 	u8 *payload, *ecc;
@@ -268,7 +267,7 @@ static int __init bootinfo_bck_ecc(struct rs_control *rs,
 	return bad_blocks;
 }
 
-static int __init bootinfo_bck_buf_check(struct rs_control *rs,
+static int bootinfo_bck_buf_check(struct rs_control *rs,
 				struct bootinfo_bck_buf *buf)
 {
 	struct bootinfo_bck *bck = &buf->bck;
@@ -280,7 +279,7 @@ static int __init bootinfo_bck_buf_check(struct rs_control *rs,
 	return 0;
 }
 
-static int __init bootinfo_blsig_comp(struct bl_build_sig *prev,
+static int bootinfo_blsig_comp(struct bl_build_sig *prev,
 					struct bl_build_sig *this)
 {
 	int i, j;
@@ -302,13 +301,48 @@ static int __init bootinfo_blsig_comp(struct bl_build_sig *prev,
 	}
 	return 0;
 }
-
-static void __init bootinfo_emit_to_last_kmsg(void)
+static void *phys_buffer_map(phys_addr_t start, phys_addr_t size)
 {
-	struct bootinfo_bck_buf *buf;
+	struct page **pages;
+	phys_addr_t page_start;
+	unsigned int page_count;
+	pgprot_t prot;
+	unsigned int i;
+	void *ptr;
+
+	page_start = start - offset_in_page(start);
+	page_count = DIV_ROUND_UP(size + offset_in_page(start), PAGE_SIZE);
+
+	prot = pgprot_noncached(PAGE_KERNEL);
+
+	pages = kmalloc(sizeof(struct page *) * page_count, GFP_KERNEL);
+	if (!pages) {
+		pr_err("%s: Failed to allocate array for %u pages\n", __func__,
+			page_count);
+		return NULL;
+	}
+
+	for (i = 0; i < page_count; i++) {
+		phys_addr_t addr = page_start + i * PAGE_SIZE;
+		pages[i] = pfn_to_page(addr >> PAGE_SHIFT);
+	}
+	ptr = vmap(pages, page_count, VM_MAP, prot);
+	kfree(pages);
+	if (!ptr) {
+		pr_err("%s: Failed to map %u pages\n", __func__, page_count);
+		return NULL;
+	}
+
+	ptr = ptr + offset_in_page(start);
+	return ptr;
+}
+
+static void bootinfo_emit_to_last_kmsg(void)
+{
+	struct bootinfo_bck_buf *buf = bootinfo_bck_buf_zone;
 	struct rs_control *rs;
 
-	if (!bootinfo_bck_buf_reserved) {
+	if (!buf) {
 		pr_err("%s bck buf is not reserved\n", __func__);
 		BOOTINFO_LKMSG("\nTHIS\n");
 		goto print_this;
@@ -317,16 +351,6 @@ static void __init bootinfo_emit_to_last_kmsg(void)
 	rs = init_rs(ECC_SYMSIZE, ECC_POLY, ECC_FCR, ECC_ELEM, ECC_SIZE);
 	if (!rs) {
 		pr_err("%s init_rs failed\n", __func__);
-		BOOTINFO_LKMSG("\nTHIS\n");
-		goto print_this;
-	}
-
-	buf = (struct bootinfo_bck_buf *)allocate_contiguous_ebi(
-			bootinfo_bck_size(), BOOTINFO_BCK_BUF_ALIGN, 1);
-	if (!buf) {
-		free_rs(rs);
-		pr_err("%s can't get bck buf (size %d)\n", __func__,
-				bootinfo_bck_size());
 		BOOTINFO_LKMSG("\nTHIS\n");
 		goto print_this;
 	}
@@ -359,14 +383,13 @@ static void __init bootinfo_emit_to_last_kmsg(void)
 	strlcpy(buf->bck.linux_banner, linux_banner,
 			sizeof(buf->bck.linux_banner));
 	bootinfo_bck_update_ecc(rs, buf);
-	iounmap(buf);
 	free_rs(rs);
 print_this:
 	bootinfo_lkmsg_bl(bl_build_sigs);
 	BOOTINFO_LKMSG(linux_banner);
 }
 
-void __init bi_add_bl_build_sig(char *bld_sig)
+void bi_add_bl_build_sig(char *bld_sig)
 {
 	int pos;
 	char *value;
@@ -476,14 +499,67 @@ static int get_bootinfo(char *buf, char **start,
 
 static struct proc_dir_entry *proc_bootinfo;
 
-int __init bootinfo_init_module(void)
+#ifdef CONFIG_OF
+static void __devinit bootinfo_of_init(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	phys_addr_t start, size;
+
+	of_property_read_u32(np, "android,bootinfo-buffer-start", &start);
+	of_property_read_u32(np, "android,bootinfo-buffer-size", &size);
+
+	if (!start && size < bootinfo_bck_size()) {
+		pr_err("bootinfo: failed to load data from OF: "
+			"start = %x size = %x\n", start, size);
+		return;
+	}
+
+	bootinfo_bck_buf_zone = phys_buffer_map(start, bootinfo_bck_size());
+	if (!bootinfo_bck_buf_zone)
+		pr_err("bootinfo: failed to alloc persistent buffer\n");
+
+	pr_err("bootinfo: start = 0x%x size = 0x%x ptr = 0x%p\n", start, size,
+		bootinfo_bck_buf_zone);
+}
+#else
+static inline void bootinfo_of_init(struct platform_device *pdev)
+{
+}
+#endif
+
+static int __devinit bootinfo_probe(struct platform_device *pdev)
+{
+	if (pdev->dev.of_node)
+		bootinfo_of_init(pdev);
+
+	bootinfo_emit_to_last_kmsg();
+	return 0;
+}
+
+#ifdef CONFIG_OF
+static struct of_device_id bootinfo_of_match[] = {
+	{ .compatible = "android,bootinfo", },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(of, bootinfo_of_match);
+#endif
+
+static struct platform_driver bootinfo_driver = {
+	.driver		= {
+		.name	= "bootinfo",
+		.of_match_table = of_match_ptr(bootinfo_of_match),
+	},
+	.probe = bootinfo_probe,
+};
+
+static int __init bootinfo_init_module(void)
 {
 	of_blsig();
 	proc_bootinfo = &proc_root;
 	create_proc_read_entry("bootinfo", 0, NULL, get_bootinfo, NULL);
-	bootinfo_emit_to_last_kmsg();
 	bootinfo_apanic_annotate_bl(bl_build_sigs);
-	return 0;
+	return platform_driver_register(&bootinfo_driver);
 }
 
 void __exit bootinfo_cleanup_module(void)
