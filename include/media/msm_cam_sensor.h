@@ -453,14 +453,14 @@ enum af_camera_name {
 #define CAMERA_EFFECT_NEON		11
 #define CAMERA_EFFECT_MAX		12
 
-#define  CAMERA_WB_AUTO               1	/* This list must match aeecamera.h */
-#define  CAMERA_WB_CUSTOM             2
-#define  CAMERA_WB_INCANDESCENT       3
-#define  CAMERA_WB_FLUORESCENT        4
-#define  CAMERA_WB_DAYLIGHT           5
-#define  CAMERA_WB_CLOUDY_DAYLIGHT    6
-#define  CAMERA_WB_TWILIGHT           7
-#define  CAMERA_WB_SHADE              8
+#define  YUV_CAMERA_WB_AUTO               0	/* This list must match aeecamera.h */
+#define  YUV_CAMERA_WB_CUSTOM             1
+#define  YUV_CAMERA_WB_INCANDESCENT       2
+#define  YUV_CAMERA_WB_FLUORESCENT        3
+#define  YUV_CAMERA_WB_DAYLIGHT           4
+#define  YUV_CAMERA_WB_CLOUDY_DAYLIGHT    5
+#define  YUV_CAMERA_WB_TWILIGHT           6
+#define  YUV_CAMERA_WB_SHADE              7
 
 #define CAMERA_EXPOSURE_COMPENSATION_LV0			12
 #define CAMERA_EXPOSURE_COMPENSATION_LV1			6

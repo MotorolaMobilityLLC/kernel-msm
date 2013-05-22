@@ -642,25 +642,25 @@ int32_t mi1040_sensor_set_wb(struct msm_sensor_ctrl_t *s_ctrl, int wb)
 	if (wb_value != wb) {
 		wb_value = wb;
 		switch (wb) {
-		case CAMERA_WB_AUTO:
-			CDBG("--CAMERA--CAMERA_WB_AUTO\n");
+		case YUV_CAMERA_WB_AUTO:
+			CDBG("--CAMERA--YUV_CAMERA_WB_AUTO\n");
 			rc = sensor_write_table(s_ctrl, Whitebalance_Auto,
 				ARRAY_SIZE(Whitebalance_Auto));
 			break;
-		case CAMERA_WB_INCANDESCENT:
-			CDBG("--CAMERA--CAMERA_WB_INCANDESCENT\n");
+		case YUV_CAMERA_WB_INCANDESCENT:
+			CDBG("--CAMERA--YUV_CAMERA_WB_INCANDESCENT\n");
 			rc = sensor_write_table(s_ctrl,
 				Whitebalance_Incandescent,
 				ARRAY_SIZE(Whitebalance_Incandescent));
 			break;
-		case CAMERA_WB_DAYLIGHT:
-			CDBG("--CAMERA--CAMERA_WB_DAYLIGHT\n");
+		case YUV_CAMERA_WB_DAYLIGHT:
+			CDBG("--CAMERA--YUV_CAMERA_WB_DAYLIGHT\n");
 			rc = sensor_write_table(s_ctrl,
 				Whitebalance_Daylight,
 				ARRAY_SIZE(Whitebalance_Daylight));
 			break;
-		case CAMERA_WB_FLUORESCENT:
-			CDBG("--CAMERA--CAMERA_WB_DAYLIGHT\n");
+		case YUV_CAMERA_WB_FLUORESCENT:
+			CDBG("--CAMERA--YUV_CAMERA_WB_DAYLIGHT\n");
 			rc = sensor_write_table(s_ctrl,
 				Whitebalance_Fluorescent,
 				ARRAY_SIZE(Whitebalance_Fluorescent));
