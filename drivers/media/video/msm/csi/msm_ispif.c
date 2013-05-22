@@ -27,7 +27,6 @@
 
 #define MAX_CID 15
 
-static atomic_t ispif_irq_cnt;
 static spinlock_t ispif_tasklet_lock;
 static struct list_head ispif_tasklet_q;
 
@@ -548,23 +547,14 @@ static void ispif_do_tasklet(unsigned long data)
 	struct ispif_device *ispif;
 
 	ispif = (struct ispif_device *)data;
-	while (atomic_read(&ispif_irq_cnt)) {
-		spin_lock_irqsave(&ispif_tasklet_lock, flags);
+	spin_lock_irqsave(&ispif_tasklet_lock, flags);
+	while (!list_empty(&ispif_tasklet_q)) {
 		qcmd = list_first_entry(&ispif_tasklet_q,
 			struct ispif_isr_queue_cmd, list);
-		atomic_sub(1, &ispif_irq_cnt);
-
-		if (!qcmd) {
-			spin_unlock_irqrestore(&ispif_tasklet_lock,
-				flags);
-			return;
-		}
 		list_del(&qcmd->list);
-		spin_unlock_irqrestore(&ispif_tasklet_lock,
-			flags);
-
 		kfree(qcmd);
 	}
+	spin_unlock_irqrestore(&ispif_tasklet_lock, flags);
 }
 
 static void ispif_process_irq(struct ispif_device *ispif,
@@ -616,8 +606,6 @@ static void ispif_process_irq(struct ispif_device *ispif,
 
 	spin_lock_irqsave(&ispif_tasklet_lock, flags);
 	list_add_tail(&qcmd->list, &ispif_tasklet_q);
-
-	atomic_add(1, &ispif_irq_cnt);
 	spin_unlock_irqrestore(&ispif_tasklet_lock, flags);
 	tasklet_schedule(&ispif->ispif_tasklet);
 	return;
