@@ -528,6 +528,7 @@ EXPORT_SYMBOL_GPL(arizona_of_match);
 #else
 static int arizona_of_get_core_pdata(struct arizona *arizona)
 {
+	return 0;
 }
 #endif
 
