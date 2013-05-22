@@ -18,6 +18,7 @@
 #include <sound/pcm_params.h>
 #include <sound/tlv.h>
 
+#include <linux/slimbus/slimbus.h>
 #include <linux/mfd/arizona/core.h>
 #include <linux/mfd/arizona/registers.h>
 
@@ -65,6 +66,126 @@
 	dev_warn(_dai->dev, "AIF%d: " fmt, _dai->id, ##__VA_ARGS__)
 #define arizona_aif_dbg(_dai, fmt, ...) \
 	dev_dbg(_dai->dev, "AIF%d: " fmt, _dai->id, ##__VA_ARGS__)
+
+static struct slim_device *slim_audio_dev;
+
+static int arizona_slim_get_la(struct device *dev, u8 *la)
+{
+	static const u8 e_addr[] =  {0x00, 0x00, 0x10, 0x51, 0x2f, 0x01 };
+	int ret;
+
+	do {
+		if (!slim_audio_dev) {
+			dev_err(dev, "Waiting for probe...\n");
+			msleep(10);
+			continue;
+		}
+
+		ret = slim_get_logical_addr(slim_audio_dev, e_addr,
+					    sizeof(e_addr), la);
+		if (ret != 0) {
+			dev_err(dev, "Waiting for enum...\n");
+			msleep(10);
+		}
+	} while (!la);
+
+	dev_info(dev, "LA %d\n", *la);
+
+	return 0;
+}
+
+static u32 rx_sph[2];
+static u16 rx_ch[2];
+
+static int arizona_slim_set_channel_map(struct snd_soc_dai *dai,
+					unsigned int tx_num, unsigned int *tx_slot,
+					unsigned int rx_num, unsigned int *rx_slot)
+{
+	return 0;
+}
+
+static int arizona_slim_get_channel_map(struct snd_soc_dai *dai,
+					unsigned int *tx_num, unsigned int *tx_slot,
+					unsigned int *rx_num, unsigned int *rx_slot)
+{
+	u8 la;
+	int i, ret;
+
+	arizona_slim_get_la(dai->dev, &la);
+
+	*rx_num = 2;
+
+	for (i = 0; i < *rx_num; i++)
+		rx_slot[i] = 128 + i;
+
+	for (i = 0; i < *rx_num; i++) {
+		ret = slim_get_slaveport(la, 0 + i, &rx_sph[i], SLIM_SINK);
+		if (ret != 0) {
+			dev_err(dai->dev, "Failed to get SPH %d: %d\n", i, ret);
+			return ret;
+		}
+
+		ret = slim_query_ch(slim_audio_dev, rx_slot[i], &rx_ch[i]);
+		if (ret != 0) {
+			dev_err(dai->dev, "Failed to get RX chan %d: %d\n", i, ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+int arizona_slim_ev(struct snd_soc_dapm_widget *w,
+		    struct snd_kcontrol *kcontrol,
+		    int event)
+{
+	//u16 chan[2] = { 128, 129 };
+	u16 group;
+	struct slim_ch prop;
+	u8 la;
+	int ret, i;
+
+	arizona_slim_get_la(w->dapm->dev, &la);
+
+	memset(&prop, 0, sizeof(prop));
+        prop.prot = SLIM_AUTO_ISO;
+        prop.baser = SLIM_RATE_4000HZ;
+        prop.dataf = SLIM_CH_DATAF_NOT_DEFINED;
+        prop.auxf = SLIM_CH_AUXF_NOT_APPLICABLE;
+        prop.ratem = (48000/4000);
+        prop.sampleszbits = 16;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		ret = slim_define_ch(slim_audio_dev, &prop, rx_ch, 2, true, &group);
+		if (ret != 0) {
+			dev_err(w->dapm->dev, "slim_define_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+
+		for (i = 0; i < 2; i++) {
+			ret = slim_connect_sink(slim_audio_dev, &rx_sph[i], 1, rx_ch[i]);
+			if (ret != 0) {
+				dev_err(w->dapm->dev, "slim_connect_sink() %d failed: %d\n",
+					i, ret);
+				return ret;
+			}
+		}
+
+		ret = slim_control_ch(slim_audio_dev, group, SLIM_CH_ACTIVATE, true);
+		if (ret != 0) {
+			dev_err(w->dapm->dev, "channel activate failed: %d\n",
+			ret);
+			return ret;
+		}
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		break;
+	}
+
+	return 0;
+}
 
 static int arizona_spk_ev(struct snd_soc_dapm_widget *w,
 			  struct snd_kcontrol *kcontrol,
@@ -1233,6 +1354,14 @@ static int arizona_set_tristate(struct snd_soc_dai *dai, int tristate)
 				   ARIZONA_AIF1_TRI, reg);
 }
 
+#if 0
+static int arizona_set_channel_map(struct snd_soc_dai *dai,
+				unsigned int tx_num, unsigned int *tx_slot,
+				unsigned int rx_num, unsigned int *rx_slot)
+{
+}
+#endif
+
 const struct snd_soc_dai_ops arizona_dai_ops = {
 	.startup = arizona_startup,
 	.set_fmt = arizona_set_fmt,
@@ -1246,6 +1375,8 @@ const struct snd_soc_dai_ops arizona_simple_dai_ops = {
 	.startup = arizona_startup,
 	.hw_params = arizona_hw_params_rate,
 	.set_sysclk = arizona_dai_set_sysclk,
+	.set_channel_map = arizona_slim_set_channel_map,
+	.get_channel_map = arizona_slim_get_channel_map,
 };
 EXPORT_SYMBOL_GPL(arizona_simple_dai_ops);
 
@@ -1684,6 +1815,36 @@ int arizona_set_output_mode(struct snd_soc_codec *codec, int output, bool diff)
 	return snd_soc_update_bits(codec, reg, ARIZONA_OUT1_MONO, val);
 }
 EXPORT_SYMBOL_GPL(arizona_set_output_mode);
+
+static int arizona_slim_audio_probe(struct slim_device *slim)
+{
+	dev_crit(&slim->dev, "Probed\n");
+
+	slim_audio_dev = slim;
+
+	return 0;
+}
+
+static const struct slim_device_id arizona_slim_id[] = {
+	{ "wm5110-slim-audio", 0 },
+	{ },
+};
+
+static struct slim_driver arizona_slim_audio = {
+	.driver = {
+		.name = "arizona-slim-audio",
+		.owner = THIS_MODULE,
+	},
+
+	.probe = arizona_slim_audio_probe,
+	.id_table = arizona_slim_id,
+};
+
+int __init arizona_asoc_init(void)
+{
+	return slim_driver_register(&arizona_slim_audio);
+}
+module_init(arizona_asoc_init);
 
 MODULE_DESCRIPTION("ASoC Wolfson Arizona class device support");
 MODULE_AUTHOR("Mark Brown <broonie@opensource.wolfsonmicro.com>");
