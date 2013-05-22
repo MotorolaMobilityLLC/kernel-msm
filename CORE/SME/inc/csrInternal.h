@@ -619,6 +619,8 @@ typedef struct tagCsrConfig
     tANI_BOOLEAN  nRoamIntraBand;
     tANI_BOOLEAN  isWESModeEnabled;
     tANI_BOOLEAN  nRoamScanControl;
+    tANI_U8       nProbes;
+    tANI_U16      nRoamScanHomeAwayTime;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING

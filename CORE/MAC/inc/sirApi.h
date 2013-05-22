@@ -3433,7 +3433,8 @@ typedef struct sSirWlanSetRxpFilters
 #define CHANNEL_LIST_DYNAMIC_UPDATE           4 /* Occupied channel list can be learnt after update */
 #define SIR_ROAM_SCAN_24G_DEFAULT_CH     1
 #define SIR_ROAM_SCAN_5G_DEFAULT_CH      36
-#define SIR_ROAM_SCAN_RESERVED_BYTES     64
+#define SIR_ROAM_SCAN_CHANNEL_SWITCH_TIME 3
+#define SIR_ROAM_SCAN_RESERVED_BYTES     61
 #endif
 
 typedef enum
@@ -3521,9 +3522,18 @@ typedef struct sSirRoamOffloadScanReq
   tANI_U8   p24GProbeTemplate[SIR_ROAM_SCAN_MAX_PB_REQ_SIZE];
   tANI_U16  us5GProbeTemplateLen;
   tANI_U8   p5GProbeTemplate[SIR_ROAM_SCAN_MAX_PB_REQ_SIZE];
-  tANI_U8   ReservedBytes[SIR_ROAM_SCAN_RESERVED_BYTES]; /*This is to add any additional data in future
-                                                           without changing the interface params on Host
-                                                           and firmware.*/
+  tANI_U8     ReservedBytes[SIR_ROAM_SCAN_RESERVED_BYTES];
+  /*ReservedBytes is to add any further params in future
+    without changing the interface params on Host
+    and firmware.The firmware right now checks
+    if the size of this structure matches and then
+    proceeds with the processing of the command.
+    So, in future, if there is any need to add
+    more params, pick the memory from reserved
+    bytes and keep deducting the reserved bytes
+    by the amount of bytes picked.*/
+  tANI_U8   nProbes;
+  tANI_U16  HomeAwayTime;
   tSirRoamNetworkType ConnectedNetwork;
   tSirMobilityDomainInfo MDID;
 } tSirRoamOffloadScanReq, *tpSirRoamOffloadScanReq;
