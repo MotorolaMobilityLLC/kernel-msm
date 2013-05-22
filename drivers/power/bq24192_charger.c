@@ -662,7 +662,7 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 		bq24192_step_down_detect_init(chip);
 		pr_info("ac is online! i_limit = %d\n",
 				chip->chg_current_ma);
-	} else if (wlc_online && bq24192_is_charger_present(chip)) {
+	} else if (wlc_online) {
 		bq24192_set_input_i_limit(chip, wlc_chg_current_ma);
 		pr_info("wlc is online! i_limit = %d\n",
 				wlc_chg_current_ma);
