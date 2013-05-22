@@ -150,7 +150,7 @@ struct mipi_dsi_clk_config {
 	 */
 	__u32 pll[3];
 };
-#define MIPI_DSI_CLK_MAX_NR	4
+#define MIPI_DSI_CLK_MAX_NR	5
 struct mipi_mot_panel {
 	struct mipi_dsi_panel_platform_data *pdata;
 	struct msm_panel_info pinfo;
