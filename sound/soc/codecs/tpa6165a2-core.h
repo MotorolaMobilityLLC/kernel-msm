@@ -81,6 +81,12 @@
 /* vol slew interrupt mask */
 #define TPA6165_VOL_SLEW_INT (1<<5)
 
+/* key interrupt mask */
+#define TPA6165_KEY_INT (1<<2)
+
+/* mic switch interrupt mask */
+#define TPA6165_MICSW_INT (1<<1)
+
 /* vol slew done */
 #define TPA6165_VOL_SLEW_DONE (1<<5)
 
