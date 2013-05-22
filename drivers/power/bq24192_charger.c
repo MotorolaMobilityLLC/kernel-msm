@@ -46,6 +46,7 @@
 #define RESET_REGISTER_MASK        0x80
 #define CHG_CONFIG_MASK            0x30
 #define PG_STAT_MASK               0x04
+#define OTG_EN_MASK                0x20
 #define VBUS_STAT_MASK             0xC0
 #define PRE_CHARGE_MASK            0x10
 #define FAST_CHARGE_MASK           0x20
@@ -593,9 +594,9 @@ static int bq24192_enable_otg(struct bq24192_chip *chip, bool enable)
 	pr_info("otg enable = %d\n", enable);
 
 	ret = bq24192_masked_write(chip->client, PWR_ON_CONF_REG,
-					CHG_CONFIG_MASK, val);
+					OTG_EN_MASK, val);
 	if (ret) {
-		pr_err("failed to set CHG_CONFIG rc=%d\n", ret);
+		pr_err("failed to set OTG_EN rc=%d\n", ret);
 		return ret;
 	}
 
@@ -610,13 +611,13 @@ static bool bq24192_is_otg_mode(struct bq24192_chip *chip)
 	u8 temp;
 	int ret;
 
-	ret = bq24192_read_reg(chip->client, SYSTEM_STATUS_REG, &temp);
+	ret = bq24192_read_reg(chip->client, PWR_ON_CONF_REG, &temp);
 	if (ret) {
-		pr_err("failed to read SYSTEM_STATUS_REG rc=%d\n", ret);
+		pr_err("failed to read OTG enable bits =%d\n", ret);
 		return false;
 	}
 
-	return ((temp & VBUS_STAT_MASK) == VBUS_STAT_MASK) ? true : false;
+	return !!(temp & OTG_EN_MASK);
 }
 
 static void bq24192_external_power_changed(struct power_supply *psy)
