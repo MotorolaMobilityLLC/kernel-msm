@@ -82,7 +82,7 @@
 			 * HW, need to make sure freq exists in panel file dsi_clk_config_tbl[]
 			 * for matching dsi pll and dsi phi configure.
 			 */
-			dsi_freq = <418000000 424000000 420000000 424000000 418000000 418000000>;
+			dsi_freq = <418000000 424000000 420000000 424000000 416000000 418000000>;
 		};
 	};
 };
