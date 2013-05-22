@@ -96,6 +96,7 @@ static int arizona_slim_get_la(struct device *dev, u8 *la)
 
 static u32 rx_sph[2];
 static u16 rx_ch[2];
+static u16 rx_group;
 
 static int arizona_slim_set_channel_map(struct snd_soc_dai *dai,
 					unsigned int tx_num, unsigned int *tx_slot,
@@ -140,7 +141,6 @@ int arizona_slim_ev(struct snd_soc_dapm_widget *w,
 		    int event)
 {
 	//u16 chan[2] = { 128, 129 };
-	u16 group;
 	struct slim_ch prop;
 	u8 la;
 	int ret, i;
@@ -157,7 +157,7 @@ int arizona_slim_ev(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		ret = slim_define_ch(slim_audio_dev, &prop, rx_ch, 2, true, &group);
+		ret = slim_define_ch(slim_audio_dev, &prop, rx_ch, 2, true, &rx_group);
 		if (ret != 0) {
 			dev_err(w->dapm->dev, "slim_define_ch() failed: %d\n",
 				ret);
@@ -173,7 +173,7 @@ int arizona_slim_ev(struct snd_soc_dapm_widget *w,
 			}
 		}
 
-		ret = slim_control_ch(slim_audio_dev, group, SLIM_CH_ACTIVATE, true);
+		ret = slim_control_ch(slim_audio_dev, rx_group, SLIM_CH_ACTIVATE, true);
 		if (ret != 0) {
 			dev_err(w->dapm->dev, "channel activate failed: %d\n",
 			ret);
@@ -181,6 +181,16 @@ int arizona_slim_ev(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		ret = slim_control_ch(slim_audio_dev, rx_group, SLIM_CH_REMOVE, true);
+		if (ret != 0) {
+			dev_err(w->dapm->dev, "channel remove failed: %d\n", ret);
+		}
+		
+		ret = slim_disconnect_ports(slim_audio_dev, rx_sph, 2);
+		if (ret != 0) {
+			dev_err(w->dapm->dev, "disconnect port failed: %d\n", ret);
+		}
+		
 		break;
 	}
 
@@ -977,6 +987,7 @@ static int arizona_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	}
 
 	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
+	case 0:
 	case SND_SOC_DAIFMT_NB_NF:
 		break;
 	case SND_SOC_DAIFMT_IB_IF:
@@ -990,6 +1001,9 @@ static int arizona_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 		lrclk |= ARIZONA_AIF1TX_LRCLK_INV;
 		break;
 	default:
+		arizona_aif_err(dai, "Unsupported INV mode %d\n",
+				fmt & SND_SOC_DAIFMT_INV_MASK);
+
 		return -EINVAL;
 	}
 
