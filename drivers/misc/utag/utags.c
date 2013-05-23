@@ -477,7 +477,6 @@ static struct utag *load_utags(const char *partition_name)
 	int file_errno;
 	struct file *filp = NULL;
 	struct inode *inode = NULL;
-	enum utag_error *status;
 
 	if (0 == partition_name[0]) {
 		pr_err("%s utag partition not set\n", __func__);
@@ -523,7 +522,7 @@ static struct utag *load_utags(const char *partition_name)
 		goto free_data;
 	}
 
-	head = thaw_tags(block_size, data, status);
+	head = thaw_tags(block_size, data, NULL);
 
  free_data:
 	kfree(data);
