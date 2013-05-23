@@ -29,6 +29,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/qpnp/qpnp-adc.h>
 
 #define MAX17048_MODE		0x06
 
@@ -84,10 +85,13 @@ struct max17048_chip {
 	int chg_state;
 	int batt_temp;
 	int batt_health;
+	int batt_current;
 };
 
 static struct max17048_chip *ref;
 static int max17048_get_prop_status(struct max17048_chip *chip);
+static int max17048_get_prop_current(struct max17048_chip *chip);
+static int max17048_get_prop_temp(struct max17048_chip *chip);
 
 static int max17048_write_word(struct i2c_client *client, int reg, u16 value)
 {
@@ -245,6 +249,8 @@ static void max17048_work(struct work_struct *work)
 	/* Update recently VCELL, SOC and CAPACITY */
 	max17048_get_vcell(chip->client);
 	max17048_get_soc(chip->client);
+	max17048_get_prop_current(chip);
+	max17048_get_prop_temp(chip);
 
 	if (chip->voltage != chip->lasttime_voltage ||
 		chip->capacity_level != chip->lasttime_capacity_level) {
@@ -259,6 +265,8 @@ static void max17048_work(struct work_struct *work)
 			__func__, chip->soc, chip->vcell);
 	pr_info("%s: MAX17048 Capacity : %d / voltage : %d\n",
 			__func__, chip->capacity_level, chip->voltage);
+	pr_info("%s: ibatt_ua = %d batt_temp = %d\n", __func__,
+			chip->batt_current, chip->batt_temp);
 
 	enable_irq(gpio_to_irq(chip->alert_gpio));
 	return;
@@ -569,12 +577,88 @@ static int max17048_get_prop_present(struct max17048_chip *chip)
 	return true;
 }
 
+#define DEFAULT_TEMP    250
+#ifdef CONFIG_SENSORS_QPNP_ADC_VOLTAGE
+static int qpnp_get_battery_temp(int *temp)
+{
+	int ret = 0;
+	struct qpnp_vadc_result results;
+
+	if (qpnp_vadc_is_ready()) {
+		*temp = DEFAULT_TEMP;
+		return 0;
+	}
+
+	ret = qpnp_vadc_read(LR_MUX1_BATT_THERM, &results);
+	if (ret) {
+		pr_err("%s: Unable to read batt temp\n", __func__);
+		*temp = DEFAULT_TEMP;
+		return ret;
+	}
+
+	*temp = (int)results.physical;
+
+	return 0;
+}
+#endif
+
 static int max17048_get_prop_temp(struct max17048_chip *chip)
 {
-	/* FIXME - need to implement */
-	chip->batt_temp = 250;
+#ifdef CONFIG_SENSORS_QPNP_ADC_VOLTAGE
+	int ret;
+
+	ret = qpnp_get_battery_temp(&chip->batt_temp);
+	if (ret)
+		pr_err("%s: failed to get batt temp.\n", __func__);
+#else
+	pr_warn("%s: batt temp is not supported!\n", __func__);
+	chip->batt_temp = DEFAULT_TEMP;
+#endif
+	pr_debug("%s: batt_temp = %d\n", __func__, chip->batt_temp);
 
 	return chip->batt_temp;
+}
+
+#ifdef CONFIG_SENSORS_QPNP_ADC_CURRENT
+static int qpnp_get_battery_current(int *current_ua)
+{
+	struct qpnp_iadc_result i_result;
+	int ret;
+
+	if (qpnp_iadc_is_ready()) {
+		pr_err("%s: qpnp iadc is not ready!\n", __func__);
+		*current_ua = 0;
+		return 0;
+	}
+
+	ret = qpnp_iadc_read(EXTERNAL_RSENSE, &i_result);
+	if (ret) {
+		pr_err("%s: failed to read iadc\n", __func__);
+		*current_ua = 0;
+		return ret;
+	}
+
+	*current_ua = -i_result.result_ua;
+
+	return 0;
+}
+#endif
+
+static int max17048_get_prop_current(struct max17048_chip *chip)
+{
+#ifdef CONFIG_SENSORS_QPNP_ADC_CURRENT
+	int ret;
+
+	ret = qpnp_get_battery_current(&chip->batt_current);
+	if (ret)
+		pr_err("%s: failed to get batt current.\n", __func__);
+#else
+	pr_warn("%s: batt current is not supported!\n", __func__);
+	chip->batt_current = 0;
+#endif
+	pr_debug("%s: ibatt_ua = %d\n", __func__, chip->batt_current);
+
+	return chip->batt_current;
 }
 
 static enum power_supply_property max17048_battery_props[] = {
@@ -587,6 +671,7 @@ static enum power_supply_property max17048_battery_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 };
 
@@ -624,6 +709,9 @@ static int max17048_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = chip->capacity_level;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		val->intval = max17048_get_prop_current(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		val->intval = chip->fcc_mah;
