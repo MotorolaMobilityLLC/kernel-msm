@@ -20,14 +20,54 @@
 		status = "ok";
 	};
 
-	i2c_5: i2c@f9927000 {
-		cell-index = <5>;
+
+	i2c_3: i2c@f9927000 {	/* BLSP5 (BLSP1 QUP4) */
+		cell-index = <3>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9927000 0x1000>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg-names = "qup_phys_addr";
 		interrupts = <0 99 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <50000000>;
+	};
+
+	i2c_4: i2c@f9964000 {	/* BLSP8 (BLSP2 QUP1) */
+		cell-index = <4>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9964000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 102 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <50000000>;
+	};
+
+	i2c_5: i2c@f9926000 {	/* BLSP4 (BLSP1 QUP3) */
+		cell-index = <5>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9926000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 98 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <50000000>;
+	};
+
+	i2c_6: i2c@f9966000 {	/* BLSP10 (BLSP2 QUP3) */
+		cell-index = <6>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9966000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 104 0>;
 		interrupt-names = "qup_err_intr";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <50000000>;
@@ -576,25 +616,10 @@
 };
 
 &spi_epm {
-	epm-adc@0 {
-		compatible = "cy,epm-adc-cy8c5568lti-114";
-		reg = <0>;
-		interrupt-parent = <&msmgpio>;
-		spi-max-frequency = <960000>;
-		qcom,channels = <31>;
-		qcom,gain = <100 100 100 50 100 100 1 100 1 50
-				1 100 1 100 50 50 50 50 50 50
-				100 50 100 50 50 50 50 50 50 50
-				50>;
-		qcom,rsense = <2 2 2 200 20 2 1 2 1 30
-				1 10 1 30 50 30 500 30 100 30
-				100 500 20 200 1000 20 1000 1000 70 200
-				50>;
-		qcom,channel-type = <0x1540>;
-	};
+	status = "disabled";
 };
 
-&i2c_5 {
+&i2c_3 {
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
@@ -630,4 +655,8 @@
 	gpio@c900 { /* GPIO 10 */
 		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
 	};
+};
+
+&i2c_2 {
+	status = "disabled";
 };
