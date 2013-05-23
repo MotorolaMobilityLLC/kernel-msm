@@ -780,6 +780,14 @@ config USR_RESET_WARNING
 	  drivers registered for the reboot notification about incoming HW reset.
 	default n
 
+config SENSORS_LIS3DH_MOT
+	tristate "LIS3DH_MOT Accelerometer"
+	default n
+	depends on I2C
+	help
+	 Say yes here if you wish to include the ST Micro
+	 LIS3DH Mot accelerometer driver.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
