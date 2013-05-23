@@ -930,6 +930,11 @@ static int synaptics_dsx_sensor_ready_state(
 	int retval, state;
 	struct synaptics_rmi4_f01_device_status status;
 
+	/* ensure ic is woken up, since older beta firmware cannot */
+	/* access device status register when ic is in sleep mode */
+	if (rmi4_data->sensor_sleep)
+		synaptics_rmi4_sensor_wake(rmi4_data);
+
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 				rmi4_data->f01_data_base_addr,
 				status.data,
@@ -3255,6 +3260,10 @@ static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data)
 		set_mask |= NO_SLEEP_OFF;
 	}
 
+	/* store ctrl register value to avoid being */
+	/* have to read its value when waking ic up */
+	rmi4_data->f01_ctrl_register_0 = device_ctrl;
+
 	device_ctrl = (device_ctrl & ~clear_mask);
 	device_ctrl = (device_ctrl | set_mask);
 
@@ -3292,17 +3301,8 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 	unsigned char clear_mask = MASK_3BIT;
 	unsigned char set_mask = NORMAL_OPERATION;
 
-	retval = synaptics_rmi4_i2c_read(rmi4_data,
-			rmi4_data->f01_ctrl_base_addr,
-			&device_ctrl,
-			sizeof(device_ctrl));
-	if (retval < 0) {
-		dev_err(&(rmi4_data->input_dev->dev),
-				"%s: Failed to wake from sleep mode\n",
-				__func__);
-		rmi4_data->sensor_sleep = true;
-		return;
-	}
+	/* use ctrl register value stored when ic is put in sleep */
+	device_ctrl = rmi4_data->f01_ctrl_register_0;
 
 	if (rmi4_data->normal_mode < 0)
 		clear_mask = MASK_2BIT;
