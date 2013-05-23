@@ -280,12 +280,12 @@ struct persistent_ram_ext_buffer {
 	struct persistent_ram_ext_buf *buf;
 	int total_size;
 	int stop;
-} rs_ext_buf __initdata = {
+} rs_ext_buf = {
 	.lock	= __SPIN_LOCK_UNLOCKED(rs_ext_buf.lock),
 	.list	= LIST_HEAD_INIT(rs_ext_buf.list),
 };
 
-int __init persistent_ram_ext_oldbuf_print(const char *fmt, ...)
+int persistent_ram_ext_oldbuf_print(const char *fmt, ...)
 {
 	va_list args;
 	unsigned long flags;
@@ -338,7 +338,7 @@ int __init persistent_ram_ext_oldbuf_print(const char *fmt, ...)
 	return len;
 }
 
-static int __init persistent_ram_ext_oldbuf_print_stop(void)
+static int persistent_ram_ext_oldbuf_print_stop(void)
 {
 	int ret;
 	unsigned long flags;
@@ -357,7 +357,7 @@ static int __init persistent_ram_ext_oldbuf_print_stop(void)
 	return ret;
 }
 
-static void __init persistent_ram_ext_oldbuf_push(char *ptr)
+static void persistent_ram_ext_oldbuf_push(char *ptr)
 {
 	unsigned long flags;
 	struct persistent_ram_ext_buf *buf, *n;
@@ -374,7 +374,7 @@ static void __init persistent_ram_ext_oldbuf_push(char *ptr)
 	spin_unlock_irqrestore(&rs_ext_buf.lock, flags);
 }
 
-void __init persistent_ram_ext_oldbuf_merge(struct persistent_ram_zone *prz)
+void persistent_ram_ext_oldbuf_merge(struct persistent_ram_zone *prz)
 {
 	size_t ext_size;
 	char *old_log2;
