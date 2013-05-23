@@ -691,6 +691,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 		goto free_sb_buf;
 	}
 
+get_cp:
 	err = get_valid_checkpoint(sbi);
 	if (err) {
 		f2fs_msg(sb, KERN_ERR, "Failed to get valid F2FS checkpoint");
@@ -766,9 +767,19 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	/* recover fsynced data */
 	if (!test_opt(sbi, DISABLE_ROLL_FORWARD)) {
 		err = recover_fsync_data(sbi);
-		if (err)
+		if (err) {
+			if (f2fs_handle_error(sbi)) {
+				set_opt(sbi, DISABLE_ROLL_FORWARD);
+				kfree(sbi->ckpt);
+				f2fs_msg(sb, KERN_ERR,
+					"reloading last checkpoint");
+				goto get_cp;
+			}
 			f2fs_msg(sb, KERN_ERR,
-				"Cannot recover all fsync data errno=%ld", err);
+				"cannot recover all fsync data errno=%ld", err);
+			/* checkpoint what we have */
+			write_checkpoint(sbi, false);
+		}
 	}
 
 	/* After POR, we can run background GC thread */
