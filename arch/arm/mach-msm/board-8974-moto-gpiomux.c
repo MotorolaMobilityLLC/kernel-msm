@@ -82,12 +82,6 @@ static struct gpiomux_setting gpio_suspend_config[] = {
 	},
 };
 
-static struct gpiomux_setting gpio_epm_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv  = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
 static struct gpiomux_setting wcnss_5wire_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv  = GPIOMUX_DRV_2MA,
@@ -112,8 +106,30 @@ static struct gpiomux_setting ath_gpio_suspend_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-static struct gpiomux_setting gpio_i2c_config = {
+static struct gpiomux_setting gpio_i2c_func3_cfg = {
 	.func = GPIOMUX_FUNC_3,
+	/*
+	 * Please keep I2C GPIOs drive-strength at minimum (2ma). It is a
+	 * workaround for HW issue of glitches caused by rapid GPIO current-
+	 * change.
+	 */
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_i2c_func4_cfg = {
+	.func = GPIOMUX_FUNC_4,
+	/*
+	 * Please keep I2C GPIOs drive-strength at minimum (2ma). It is a
+	 * workaround for HW issue of glitches caused by rapid GPIO current-
+	 * change.
+	 */
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_i2c_func5_cfg = {
+	.func = GPIOMUX_FUNC_5,
 	/*
 	 * Please keep I2C GPIOs drive-strength at minimum (2ma). It is a
 	 * workaround for HW issue of glitches caused by rapid GPIO current-
@@ -176,28 +192,6 @@ static struct gpiomux_setting hap_lvl_shft_active_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting blsp1_qup4_i2c_config_sda = {
-	.func = GPIOMUX_FUNC_4,
-	/*
-	 * Please keep I2C GPIOs drive-strength at minimum (2ma). It is a
-	 * workaround for HW issue of glitches caused by rapid GPIO current-
-	 * change.
-	 */
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct gpiomux_setting blsp1_qup4_i2c_config_scl = {
-	.func = GPIOMUX_FUNC_5,
-	/*
-	 * Please keep I2C GPIOs drive-strength at minimum (2ma). It is a
-	 * workaround for HW issue of glitches caused by rapid GPIO current-
-	 * change.
-	 */
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
 };
 
 static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
@@ -479,25 +473,61 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	{
 		.gpio = 25,		/* BLSP1 QUP4 I2C_DAT */
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &blsp1_qup4_i2c_config_sda,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func4_cfg,
 		},
 	},
 	{
 		.gpio = 26,		/* BLSP1 QUP4 I2C_CLK */
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &blsp1_qup4_i2c_config_scl,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func5_cfg,
 		},
 	},
 	{
-		.gpio      = 83,		/* BLSP11 QUP I2C_DAT */
+		.gpio = 47,		/* BLSP2 QUP1 I2C_DAT */
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func3_cfg,
 		},
 	},
 	{
-		.gpio      = 84,		/* BLSP11 QUP I2C_CLK */
+		.gpio = 48,		/* BLSP2 QUP1 I2C_CLK */
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func3_cfg,
+		},
+	},
+	{
+		.gpio = 21,		/* BLSP1 QUP3 I2C_DAT */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func4_cfg,
+		},
+	},
+	{
+		.gpio = 22,		/* BLSP1 QUP3 I2C_CLK */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func4_cfg,
+		},
+	},
+	{
+		.gpio = 55,		/* BLSP2 QUP3 I2C_DAT */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func3_cfg,
+		},
+	},
+	{
+		.gpio = 56,		/* BLSP2 QUP3 I2C_CLK */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func3_cfg,
+		},
+	},
+	{
+		.gpio = 83,		/* BLSP2 QUP4 I2C_DAT */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func3_cfg,
+		},
+	},
+	{
+		.gpio = 84,		/* BLSP2 QUP4 I2C_CLK */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_func3_cfg,
 		},
 	},
 	{
@@ -510,40 +540,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		.gpio      = 5,			/* BLSP2 UART RX */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
-		},
-	},
-	{
-		.gpio      = 53,		/* BLSP2 QUP4 SPI_DATA_MOSI */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_spi_config,
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
-		.gpio      = 54,		/* BLSP2 QUP4 SPI_DATA_MISO */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_spi_config,
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
-		.gpio      = 56,		/* BLSP2 QUP4 SPI_CLK */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_spi_config,
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
-		},
-	},
-	{
-		.gpio      = 55,		/* BLSP2 QUP4 SPI_CS0_N */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_spi_config,
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
-		},
-	},
-	{
-		.gpio      = 81,		/* EPM enable */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_epm_config,
 		},
 	},
 };
@@ -655,20 +651,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	},
 	{
 		.gpio = 20, /* CCI_I2C_SCL0 */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[0],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
-		},
-	},
-	{
-		.gpio = 21, /* CCI_I2C_SDA1 */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[0],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
-		},
-	},
-	{
-		.gpio = 22, /* CCI_I2C_SCL1 */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
