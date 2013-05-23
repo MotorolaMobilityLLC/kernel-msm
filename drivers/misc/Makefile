@@ -83,3 +83,4 @@ obj-$(CONFIG_HOB_SHARED_RAM) += hob_ram_mmap.o
 obj-$(CONFIG_DROPBOX) += dropbox.o
 obj-$(CONFIG_SENSORS_AK8963)	+= akm8963.o
 obj-$(CONFIG_USR_RESET_WARNING) += usr-reset-warning.o
+obj-$(CONFIG_SENSORS_LIS3DH_MOT)    += lis3dh_mot.o
