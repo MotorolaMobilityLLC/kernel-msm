@@ -404,7 +404,7 @@ static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 	kgsl_pwrctrl_request_state(device, KGSL_STATE_SUSPEND);
 	/* Make sure no user process is waiting for a timestamp *
 	 * before supending */
-	if (device->active_cnt != 0) {
+	if (device->state == KGSL_STATE_ACTIVE && device->active_cnt != 0) {
 		mutex_unlock(&device->mutex);
 		wait_for_completion(&device->suspend_gate);
 		mutex_lock(&device->mutex);
