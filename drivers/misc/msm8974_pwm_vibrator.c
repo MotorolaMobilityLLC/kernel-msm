@@ -2,8 +2,6 @@
  *
  * Copyright (C) 2009-2013 LGE, Inc.
  *
- * Author: Jinkyu Choi <jinkyu@lge.com>
- *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -41,16 +39,23 @@
 #include "../staging/android/timed_output.h"
 
 /* gpio and clock control for vibrator */
-#define REG_WRITEL(value, reg)		writel(value, reg)
-static void __iomem *virt_bases_v;
+static void __iomem *virt_base;
 
-#define MMSS_CC_GP1_CMD_RCGR(x) (void __iomem *)(virt_bases_v + (x))
+#define MMSS_CC_GP1_BASE(x) (void __iomem *)(virt_base + (x))
+#define REG_CMD_RCGR	0x00
+#define REG_CFG_RCGR	0x04
+#define REG_M		0x08
+#define REG_N		0x0C
+#define REG_D		0x10
 
 #define MMSS_CC_PWM_SET		0xFD8C3450
 #define MMSS_CC_PWM_SIZE	SZ_1K
 #define DEVICE_NAME		"msm8974_pwm_vibrator"
 
-#define MMSS_CC_N_DEFAULT	41
+#define MMSS_CC_M_DEFAULT	1
+#define MMSS_CC_N_DEFAULT	128
+#define MMSS_CC_D_MAX		MMSS_CC_N_DEFAULT
+#define MMSS_CC_D_HALF		(MMSS_CC_N_DEFAULT >> 1)
 
 static DEFINE_MUTEX(vib_lock);
 
@@ -136,39 +141,63 @@ static int vibrator_set_power(int enable,
 }
 
 static int vibrator_ic_enable_set(int enable,
-		struct timed_vibrator_data *vib_data)
+		struct timed_vibrator_data *vib)
 {
 	pr_debug("%s: enable %d\n", __func__, enable);
 
 	if (enable)
-		gpio_direction_output(vib_data->haptic_en_gpio, 1);
+		gpio_direction_output(vib->haptic_en_gpio, 1);
 	else
-		gpio_direction_output(vib_data->haptic_en_gpio, 0);
+		gpio_direction_output(vib->haptic_en_gpio, 0);
 
 	return 0;
 }
 
+static int vibrator_adjust_amp(int amp)
+{
+	int level = 0;
+	bool minus = false;
+
+	if (amp < 0) {
+		minus = true;
+		amp = -amp;
+	}
+
+	level = (2 * amp * (MMSS_CC_D_HALF - 2) + 100) / (2 * 100);
+	if (!level && amp)
+		level = 1;
+
+	if (minus && level)
+		level = -level;
+
+	return level;
+}
+
 static int vibrator_pwm_set(int enable, int amp, int n_value)
 {
-	uint d_val;
+	int d_val;
+	int m_val = MMSS_CC_M_DEFAULT;
 
 	pr_debug("%s: amp %d, value %d\n", __func__, amp, n_value);
 
-	d_val = ((MMSS_CC_N_DEFAULT * amp) >> 7);
-	virt_bases_v = ioremap(MMSS_CC_PWM_SET, MMSS_CC_PWM_SIZE);
 	if (enable) {
-		REG_WRITEL(
-			((~(d_val << 1)) & 0xffU),	/* D[7:0] */
-			MMSS_CC_GP1_CMD_RCGR(0x10));
-		REG_WRITEL(
-			(1 << 1U) +	/* ROOT_EN[1] */
-			(1),		/* UPDATE[0] */
-			MMSS_CC_GP1_CMD_RCGR(0));
+		if (amp)
+			d_val = vibrator_adjust_amp(amp) + MMSS_CC_D_HALF;
+
+		writel((2 << 12) | /* dual edge mode */
+		       (0 << 8) |  /* cxo */
+		       (7 << 0),
+		       MMSS_CC_GP1_BASE(REG_CFG_RCGR));
+		writel(((m_val) & 0xff), MMSS_CC_GP1_BASE(REG_M));
+		writel(((~(n_value - m_val)) & 0xff), MMSS_CC_GP1_BASE(REG_N));
+		writel(((~(d_val << 1)) & 0xff), MMSS_CC_GP1_BASE(REG_D));
+		writel((1 << 1) | /* ROOT_EN[1] */
+		        1,        /* UPDATE[0] */
+			MMSS_CC_GP1_BASE(REG_CMD_RCGR));
 	} else {
-		REG_WRITEL(
-			(0 << 1U) +	/* ROOT_EN[1] */
-			(0),		/* UPDATE[0] */
-			MMSS_CC_GP1_CMD_RCGR(0));
+		writel((0 << 1) | /* ROOT_EN[1] */
+		        0,        /* UPDATE[0] */
+			MMSS_CC_GP1_BASE(REG_CMD_RCGR));
 	}
 
 	return 0;
@@ -310,30 +339,36 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 	spin_unlock_irqrestore(&vib->lock, flags);
 }
 
-static int vibrator_gpio_init(struct timed_vibrator_data *vib_data)
+static int vibrator_gpio_init(struct timed_vibrator_data *vib)
 {
 	int rc;
 
-	rc = gpio_request(vib_data->haptic_en_gpio, "motor_en");
+	rc = gpio_request(vib->haptic_en_gpio, "motor_en");
 	if (rc < 0) {
 		pr_err("%s: gpio %d request failed\n", __func__,
-				vib_data->haptic_en_gpio);
+				vib->haptic_en_gpio);
 		return rc;
 	}
 
-	rc = gpio_request(vib_data->motor_pwm_gpio, "motor_pwm");
+	rc = gpio_request(vib->motor_pwm_gpio, "motor_pwm");
 	if (rc < 0) {
 		pr_err("%s: gpio %d request failed\n", __func__,
-				vib_data->motor_pwm_gpio);
-		gpio_free(vib_data->haptic_en_gpio);
+				vib->motor_pwm_gpio);
+		gpio_free(vib->haptic_en_gpio);
 		return rc;
 	}
 
 	return 0;
 }
 
+static void vibrator_gpio_deinit(struct timed_vibrator_data *vib)
+{
+	gpio_free(vib->motor_pwm_gpio);
+	gpio_free(vib->haptic_en_gpio);
+}
+
 static int vibrator_parse_dt(struct device *dev,
-		struct timed_vibrator_data *vib_data)
+		struct timed_vibrator_data *vib)
 {
 	int ret;
 	struct device_node *np = dev->of_node;
@@ -343,41 +378,41 @@ static int vibrator_parse_dt(struct device *dev,
 		pr_err("%s: haptic-pwr-gpio failed\n", __func__);
 		return ret;
 	}
-	vib_data->haptic_en_gpio = ret;
+	vib->haptic_en_gpio = ret;
 
 	ret = of_get_named_gpio_flags(np, "motor-pwm-gpio", 0, NULL);
 	if (ret < 0) {
 		pr_err("%s: motor-pwm-gpio failed\n", __func__);
 		return ret;
 	}
-	vib_data->motor_pwm_gpio = ret;
+	vib->motor_pwm_gpio = ret;
 
-	ret = of_property_read_u32(np, "motor-amp", &vib_data->amp);
+	ret = of_property_read_u32(np, "motor-amp", &vib->amp);
 	if (ret < 0) {
 		pr_err("%s: motor-amp failed\n", __func__);
 		return ret;
 	}
 
-	ret = of_property_read_u32(np, "n-value", &vib_data->vibe_n_value);
+	ret = of_property_read_u32(np, "n-value", &vib->vibe_n_value);
 	if (ret < 0) {
 		pr_err("%s: n-value failed\n", __func__);
 		return ret;
 	}
 
-	vib_data->use_vdd_supply = of_property_read_bool(np, "use-vdd-supply");
+	vib->use_vdd_supply = of_property_read_bool(np, "use-vdd-supply");
 
 	pr_debug("%s: motor_en %d, motor_pwm %d, amp %d, n_value %d vdd %d\n",
 			__func__,
-			vib_data->haptic_en_gpio,
-			vib_data->motor_pwm_gpio,
-			vib_data->amp, vib_data->vibe_n_value,
-			vib_data->use_vdd_supply);
+			vib->haptic_en_gpio,
+			vib->motor_pwm_gpio,
+			vib->amp, vib->vibe_n_value,
+			vib->use_vdd_supply);
 
 	ret = of_property_read_u32(np, "vibe-warmup-delay",
-			&vib_data->vibe_warmup_delay);
+			&vib->vibe_warmup_delay);
 	if (!ret)
 		pr_debug("%s: vibe_warmup_delay %d ms\n", __func__,
-				vib_data->vibe_warmup_delay);
+				vib->vibe_warmup_delay);
 
 	return 0;
 }
@@ -468,10 +503,21 @@ static int msm8974_pwm_vibrator_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	virt_base = ioremap(MMSS_CC_PWM_SET, MMSS_CC_PWM_SIZE);
+	if (virt_base == NULL) {
+		pr_err("%s: ioremap failed\n", __func__);
+		ret = -ENODEV;
+		goto err_ioremap;
+	}
+
 	cam_gp1_clk = clk_get(&pdev->dev, "cam_gp1_clk");
+	if (cam_gp1_clk == NULL) {
+		ret = -ENODEV;
+		goto err_clk_get;
+	}
 	clk_set_rate(cam_gp1_clk, 29268);
 
-	atomic_set(&vib->vibe_gain, vib->amp); /* max value is 128 */
+	atomic_set(&vib->vibe_gain, vib->amp);
 	atomic_set(&vib->vibe_pwm, vib->vibe_n_value);
 	atomic_set(&vib->vib_status, false);
 	atomic_set(&vib->gp1_clk_flag, 0);
@@ -484,33 +530,51 @@ static int msm8974_pwm_vibrator_probe(struct platform_device *pdev)
 
 	ret = timed_output_dev_register(&vib->dev);
 	if (ret < 0) {
-		timed_output_dev_unregister(&vib->dev);
-		pr_err("%s: timed_output_dev_register failed\n", __func__);
-		return ret;
+		pr_err("%s: failed to register timed_output_dev\n", __func__);
+		goto err_timed_output_dev_register;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(vibrator_device_attrs); i++) {
 		ret = device_create_file(vib->dev.dev,
 				&vibrator_device_attrs[i]);
 		if (ret < 0) {
-			timed_output_dev_unregister(&vib->dev);
-			device_remove_file(vib->dev.dev,
-					&vibrator_device_attrs[i]);
-			return ret;
+			pr_err("%s: failed to create sysfs\n", __func__);
+			goto err_sysfs;
 		}
 	}
 
 	pr_info("%s: probed\n", __func__);
-
 	return 0;
+
+err_sysfs:
+	for (; i >= 0; i--) {
+		device_remove_file(vib->dev.dev,
+				&vibrator_device_attrs[i]);
+	}
+	timed_output_dev_unregister(&vib->dev);
+err_timed_output_dev_register:
+	clk_put(cam_gp1_clk);
+err_clk_get:
+	iounmap(virt_base);
+err_ioremap:
+	vibrator_gpio_deinit(vib);
+	return ret;
 }
 
 static int msm8974_pwm_vibrator_remove(struct platform_device *pdev)
 {
 	struct timed_vibrator_data *vib = platform_get_drvdata(pdev);
+	int i;
 
 	msm8974_pwm_vibrator_force_set(vib, 0, vib->vibe_n_value);
+	for (i = ARRAY_SIZE(vibrator_device_attrs); i >= 0; i--) {
+		device_remove_file(vib->dev.dev,
+				&vibrator_device_attrs[i]);
+	}
 	timed_output_dev_unregister(&vib->dev);
+	clk_put(cam_gp1_clk);
+	iounmap(virt_base);
+	vibrator_gpio_deinit(vib);
 
 	return 0;
 }
