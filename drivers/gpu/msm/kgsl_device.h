@@ -176,6 +176,7 @@ struct kgsl_event {
  * context should be invalidated
  * @refcount: kref structure to maintain the reference count
  * @synclist: List of context/timestamp tuples to wait for before issuing
+ * @priority: Priority of the cmdbatch (inherited from the context)
  *
  * This struture defines an atomic batch of command buffers issued from
  * userspace.
@@ -195,6 +196,7 @@ struct kgsl_cmdbatch {
 	int invalid;
 	struct kref refcount;
 	struct list_head synclist;
+	int priority;
 };
 
 /**
@@ -679,5 +681,35 @@ static inline int kgsl_cmdbatch_sync_pending(struct kgsl_cmdbatch *cmdbatch)
 
 	return ret;
 }
+
+#if defined(CONFIG_GPU_TRACEPOINTS)
+
+#include <trace/events/gpu.h>
+
+static inline void kgsl_trace_gpu_job_enqueue(unsigned int ctxt_id,
+		unsigned int timestamp, const char *type)
+{
+	trace_gpu_job_enqueue(ctxt_id, timestamp, type);
+}
+
+static inline void kgsl_trace_gpu_sched_switch(const char *name,
+	u64 time, u32 ctxt_id, s32 prio, u32 timestamp)
+{
+	trace_gpu_sched_switch(name, time, ctxt_id, prio, timestamp);
+}
+
+#else
+
+static inline void kgsl_trace_gpu_job_enqueue(unsigned int ctxt_id,
+		unsigned int timestamp, const char *type)
+{
+}
+
+static inline void kgsl_trace_gpu_sched_switch(const char *name,
+	u64 time, u32 ctxt_id, s32 prio, u32 timestamp)
+{
+}
+
+#endif
 
 #endif  /* __KGSL_DEVICE_H */
