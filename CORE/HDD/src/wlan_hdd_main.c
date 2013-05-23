@@ -5365,6 +5365,12 @@ int hdd_wlan_startup(struct device *dev )
       goto err_config;
    }
 
+   /* INI has been read, initialise the configuredMcastBcastFilter with
+    * INI value as this will serve as the default value
+    */
+   pHddCtx->configuredMcastBcastFilter = pHddCtx->cfg_ini->mcastBcastFilterSetting;
+   hddLog(VOS_TRACE_LEVEL_INFO, "Setting configuredMcastBcastFilter: %d",
+                   pHddCtx->cfg_ini->mcastBcastFilterSetting);
    /*
     * cfg80211: Initialization and registration ...
     */

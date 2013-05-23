@@ -461,7 +461,7 @@ VOS_STATUS hdd_conf_hostarpoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
    {
        if ((in_dev = __in_dev_get_rtnl(pAdapter->dev)) != NULL)
        {
-           for (ifap = &in_dev->ifa_list; (ifa = *ifap) != NULL; 
+           for (ifap = &in_dev->ifa_list; (ifa = *ifap) != NULL;
                    ifap = &ifa->ifa_next)
            {
                if (!strcmp(pAdapter->dev->name, ifa->ifa_label))
@@ -476,43 +476,32 @@ VOS_STATUS hdd_conf_hostarpoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
            offLoadRequest.offloadType =  SIR_IPV4_ARP_REPLY_OFFLOAD;
            offLoadRequest.enableOrDisable = SIR_OFFLOAD_ENABLE;
 
-           hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Enabled \n", __func__);
+           hddLog(VOS_TRACE_LEVEL_INFO, "%s: Enabled \n", __func__);
 
-           if(pHddCtx->dynamic_mcbc_filter.enableCfg)
-           {
-               if((HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST == 
-              pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting) ||
-              (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST == 
-              pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting))
-               {
-                   offLoadRequest.enableOrDisable = 
-                           SIR_OFFLOAD_ARP_AND_BCAST_FILTER_ENABLE;
-               }
-           }
-           else if((HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
-              pHddCtx->cfg_ini->mcastBcastFilterSetting ) || 
+           if((HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
+              pHddCtx->configuredMcastBcastFilter) ||
               (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
-              pHddCtx->cfg_ini->mcastBcastFilterSetting))
+              pHddCtx->configuredMcastBcastFilter))
            {
-               offLoadRequest.enableOrDisable = 
-                       SIR_OFFLOAD_ARP_AND_BCAST_FILTER_ENABLE;
+               offLoadRequest.enableOrDisable =
+               SIR_OFFLOAD_ARP_AND_BCAST_FILTER_ENABLE;
            }
            
            //converting u32 to IPV4 address
            for(i = 0 ; i < 4; i++)
            {
-              offLoadRequest.params.hostIpv4Addr[i] = 
+              offLoadRequest.params.hostIpv4Addr[i] =
                       (ifa->ifa_local >> (i*8) ) & 0xFF ;
            }
-           hddLog(VOS_TRACE_LEVEL_WARN, " Enable SME HostOffload: %d.%d.%d.%d",
+           hddLog(VOS_TRACE_LEVEL_INFO, " Enable SME HostOffload: %d.%d.%d.%d",
                   offLoadRequest.params.hostIpv4Addr[0],
                   offLoadRequest.params.hostIpv4Addr[1],
                   offLoadRequest.params.hostIpv4Addr[2],
                   offLoadRequest.params.hostIpv4Addr[3]);
 
-          if (eHAL_STATUS_SUCCESS != 
-                    sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter), 
-                                       pAdapter->sessionId, &offLoadRequest))
+          if (eHAL_STATUS_SUCCESS !=
+                    sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                    pAdapter->sessionId, &offLoadRequest))
           {
               hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Failed to enable HostOffload "
                       "feature\n", __func__);
@@ -532,8 +521,9 @@ VOS_STATUS hdd_conf_hostarpoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
        offLoadRequest.enableOrDisable = SIR_OFFLOAD_DISABLE;
        offLoadRequest.offloadType =  SIR_IPV4_ARP_REPLY_OFFLOAD;
 
-       if (eHAL_STATUS_SUCCESS != sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId, 
-                                                     &offLoadRequest))
+       if (eHAL_STATUS_SUCCESS !=
+                 sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                 pAdapter->sessionId, &offLoadRequest))
        {
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Failure to disable host "
                              "offload feature\n", __func__);
@@ -552,59 +542,18 @@ void hdd_mcbc_filter_modification(hdd_context_t* pHddCtx, v_BOOL_t arpFlag,
 {
     if (TRUE == arpFlag)
     {
-        /*ARP offload is enabled, do not block bcast packets at RXP*/
-        if (pHddCtx->dynamic_mcbc_filter.enableCfg)
-        {
-            if ((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
-                  pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting))
-            {
-                *pMcBcFilter = HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST;
-            }
-            else if ((HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
-                  pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting))
-            {
-                *pMcBcFilter = HDD_MCASTBCASTFILTER_FILTER_NONE;
-            }
-            else
-            {
-                *pMcBcFilter = pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting;
-            }
-
-            pHddCtx->dynamic_mcbc_filter.enableSuspend = TRUE;
-            pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend = *pMcBcFilter;
-        }
-        else
-        {
-            if (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
-                  pHddCtx->cfg_ini->mcastBcastFilterSetting)
-            {
-                *pMcBcFilter = HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST;
-            }
-            else if (HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
-                  pHddCtx->cfg_ini->mcastBcastFilterSetting)
-            {
-                *pMcBcFilter = HDD_MCASTBCASTFILTER_FILTER_NONE;
-            }
-            else
-            {
-                *pMcBcFilter = pHddCtx->cfg_ini->mcastBcastFilterSetting;
-            }
-
-            pHddCtx->dynamic_mcbc_filter.enableSuspend = FALSE;
-        }
+        /* ARP offload is enabled, do not block bcast packets at RXP
+         * Will be using Bitmasking to reset the filter. As we have
+         * disable Broadcast filtering, Anding with the negation
+         * of Broadcast BIT
+         */
+            *pMcBcFilter = pHddCtx->configuredMcastBcastFilter &
+                           ~(HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST);
+            pHddCtx->configuredMcastBcastFilter = *pMcBcFilter;
     }
     else
     {
-        if (pHddCtx->dynamic_mcbc_filter.enableCfg)
-        {
-            *pMcBcFilter = pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting;
-            pHddCtx->dynamic_mcbc_filter.enableSuspend = TRUE;
-        }
-        else
-        {
-            pHddCtx->dynamic_mcbc_filter.enableSuspend = FALSE;
-            *pMcBcFilter = pHddCtx->cfg_ini->mcastBcastFilterSetting;
-        }
+            *pMcBcFilter = pHddCtx->configuredMcastBcastFilter;
     }
 }
 
@@ -635,8 +584,11 @@ void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
         }
     }
     else
+    {
+        /*Use the current configured value to clear*/
         wlanRxpFilterParam->configuredMcstBcstFilterSetting =
-                              pHddCtx->cfg_ini->mcastBcastFilterSetting;
+                              pHddCtx->configuredMcastBcastFilter;
+    }
 
     wlanRxpFilterParam->setMcstBcstFilter = setfilter;
     halStatus = sme_ConfigureRxpFilter(pHddCtx->hHal, wlanRxpFilterParam);
@@ -689,11 +641,6 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
         {
             hdd_mcbc_filter_modification(pHddCtx, FALSE,
                       &wlanSuspendParam->configuredMcstBcstFilterSetting);
-            if(pHddCtx->dynamic_mcbc_filter.enableCfg)
-            {
-                pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend = 
-                        wlanSuspendParam->configuredMcstBcstFilterSetting;
-            }
         }
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
@@ -755,16 +702,9 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
                       "Feature %d\n", __func__, vstatus);
             }
         }
-        if (pHddCtx->dynamic_mcbc_filter.enableSuspend)
-        {
-            wlanResumeParam->configuredMcstBcstFilterSetting =
-                                   pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend;
-        }
-        else
-        {
-            wlanResumeParam->configuredMcstBcstFilterSetting =
-                                        pHddCtx->cfg_ini->mcastBcastFilterSetting;
-        }
+
+        wlanResumeParam->configuredMcstBcstFilterSetting =
+                                   pHddCtx->configuredMcastBcastFilter;
         halStatus = sme_ConfigureResumeReq(pHddCtx->hHal, wlanResumeParam);
         if (eHAL_STATUS_SUCCESS != halStatus)
             vos_mem_free(wlanResumeParam);
