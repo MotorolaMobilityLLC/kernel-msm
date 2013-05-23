@@ -12,6 +12,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/seq_file.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/setup.h>
@@ -71,6 +72,16 @@ int __init setup_androidboot_radio_init(char *s)
 	return 1;
 }
 __setup("androidboot.radio=", setup_androidboot_radio_init);
+
+void mach_cpuinfo_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "Device\t\t: %s\n", androidboot_device);
+	/* Zero is not a valid "Radio" value.      */
+	/* Lack of "Radio" entry in cpuinfo means: */
+	/*	look for radio in "Revision"       */
+	if (androidboot_radio)
+		seq_printf(m, "Radio\t\t: %x\n", androidboot_radio);
+}
 
 static char extended_baseband[BASEBAND_MAX_LEN+1] = "\0";
 
