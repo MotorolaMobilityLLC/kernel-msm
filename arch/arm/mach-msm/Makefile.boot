@@ -77,6 +77,7 @@ dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultra-p3.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultram-p0.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultram-p1.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultram-p2.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultram-p2c.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultram-p3.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultra-maxx-p0.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultra-maxx-p1.dtb
