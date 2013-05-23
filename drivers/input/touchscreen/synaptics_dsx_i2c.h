@@ -238,6 +238,7 @@ struct synaptics_rmi4_data {
 	unsigned char num_of_rx;
 	unsigned char num_of_tx;
 	unsigned char num_of_fingers;
+	unsigned char f01_ctrl_register_0;
 	unsigned char intr_mask[MAX_INTR_REGISTERS];
 	unsigned short num_of_intr_regs;
 	unsigned short f01_query_base_addr;
