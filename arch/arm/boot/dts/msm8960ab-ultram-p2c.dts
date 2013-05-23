@@ -17,7 +17,7 @@
 /include/ "msm8960ab-ultram-p1-legacy.dtsi"
 
 / {
-	mmi,revision = "p3";
+	mmi,revision = "p2c";
 
 	System@0 {
 		I2C@4 {
@@ -54,9 +54,9 @@
 
 /* GSBI12 - I2C */
 &i2c12 {
-	msp430@48 {
-		msp430_fw_version = "_obakem";
-	};
+        msp430@48 {
+                msp430_fw_version = "_obakem_p2";
+        };
 };
 
 &i2c10 {
