@@ -52,22 +52,22 @@
 					     00 00 00 00 0a 00 00 01 97	/* lane2 config */
 					     00 00 00 00 0f 00 00 01 97	/* lane3 config */
 					     00 c0 00 00 00 00 00 01 bb]; /* Clk ln config */
-		qcom,panel-on-cmds = [ 05 01 00 00 78 02 11 00		/* exit sleep mode */
-				       39 01 00 00 01 03 f0 5a 5a	/* unlock_lvl_2 */
-				       39 01 00 00 01 03 f1 5a 5a	/* unlock_lvl_mtp */
-				       39 01 00 00 01 03 fc 5a 5a	/* unlock_lvl_3 */
-				       15 01 00 00 01 02 f2 05		/* set video mode */
-				       15 01 00 00 01 02 35 00		/* enable_te */
-				       39 01 00 00 01 02 53 20		/* disp_ctrl */ 
-				       15 01 00 00 01 02 51 7f		/* brightness_ctrl */
-				       39 01 00 00 01 02 55 00		/* acl_enable_disable_settings */
-				       39 01 00 00 01 05		/* set window size normal_col */
+		qcom,panel-on-cmds = [ 05 01 00 00 78 00 02 11 00		/* exit sleep mode */
+				       39 01 00 00 01 00 03 f0 5a 5a	/* unlock_lvl_2 */
+				       39 01 00 00 01 00 03 f1 5a 5a	/* unlock_lvl_mtp */
+				       39 01 00 00 01 00 03 fc 5a 5a	/* unlock_lvl_3 */
+				       15 01 00 00 01 00 02 f2 05		/* set video mode */
+				       15 01 00 00 01 00 02 35 00		/* enable_te */
+				       39 01 00 00 01 00 02 53 20		/* disp_ctrl */ 
+				       15 01 00 00 01 00 02 51 7f		/* brightness_ctrl */
+				       39 01 00 00 01 00 02 55 00		/* acl_enable_disable_settings */
+				       39 01 00 00 01 00 05		/* set window size normal_col */
 						2a 00 00 02 cf
-				       39 01 00 00 01 05		/* set window size normal_row */
+				       39 01 00 00 01 00 05		/* set window size normal_row */
 						2b 00 00 04 ff
-			               29 01 00 00 00 02 29 00];	/* display on */
+			               29 01 00 00 00 00 02 29 00];	/* display on */
 		qcom,on-cmds-dsi-state = "DSI_LP_MODE";
-		qcom,panel-off-cmds = [05 01 00 00 0a 02 28 00];	/* display_off */
+		qcom,panel-off-cmds = [05 01 00 00 0a 00 02 28 00];	/* display_off */
 		qcom,off-cmds-dsi-state = "DSI_HS_MODE";
 	};
 };
