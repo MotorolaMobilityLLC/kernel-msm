@@ -974,6 +974,9 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 			return -EINVAL;
 	}
 
+	/* For now everybody has the same priority */
+	cmdbatch->priority = ADRENO_CONTEXT_DEFAULT_PRIORITY;
+
 	/* Queue the command in the ringbuffer */
 	ret = adreno_context_queue_cmd(adreno_dev, drawctxt, cmdbatch,
 		timestamp);
@@ -981,6 +984,22 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	if (ret)
 		KGSL_DRV_ERR(device, "adreno_context_queue_cmd returned %d\n",
 				ret);
+	else {
+		/*
+		 * only call trace_gpu_job_enqueue for actual commands - dummy
+		 * sync command batches won't get scheduled on the GPU
+		 */
+
+		if (!(cmdbatch->flags & KGSL_CONTEXT_SYNC)) {
+			const char *str = "3D";
+			if (drawctxt->type == KGSL_CONTEXT_TYPE_CL ||
+				drawctxt->type == KGSL_CONTEXT_TYPE_RS)
+				str = "compute";
+
+			kgsl_trace_gpu_job_enqueue(drawctxt->base.id,
+				cmdbatch->timestamp, str);
+		}
+	}
 
 	return ret;
 }
