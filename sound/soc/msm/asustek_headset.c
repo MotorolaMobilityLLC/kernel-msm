@@ -192,8 +192,13 @@ static void detection_work(struct work_struct *work)
 
 	set_hs_micbias(ON);
 
-	/* Delay 1000ms for pin stable. */
-	msleep(1000);
+	if (switch_get_state(&hs_data->sdev) != NO_DEVICE) {
+		/* Delay for pin stable when being removed. */
+		msleep(110);
+	} else {
+		/* Delay for pin stable when plugged. */
+		msleep(1000);
+	}
 
 	/* Restore IRQs */
 	local_irq_save(irq_flags);
