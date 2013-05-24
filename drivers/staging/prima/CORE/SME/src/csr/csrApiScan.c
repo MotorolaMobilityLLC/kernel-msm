@@ -6929,6 +6929,7 @@ void csrSetCfgCountryCode( tpAniSirGlobal pMac, tANI_U8 *countryCode )
         // replace the alternate Korea country codes, 'K1', 'K2', .. with 'KR' for Korea
         cc[ 1 ] = 'R';
     }
+
     ccmCfgSetStr(pMac, WNI_CFG_COUNTRY_CODE, cc, WNI_CFG_COUNTRY_CODE_LEN, NULL, eANI_BOOLEAN_FALSE);
 
     //Need to let HALPHY know about the current domain so it can apply some 

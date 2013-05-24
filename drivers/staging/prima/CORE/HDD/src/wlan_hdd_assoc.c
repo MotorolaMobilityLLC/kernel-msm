@@ -3483,7 +3483,7 @@ void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter)
             /*reset the country code of previous connection*/
             status = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL,
                     &defaultCountryCode[0], pAdapter,
-                    pHddCtx->pvosContext
+                    pHddCtx->pvosContext, eSIR_FALSE
                     );
             if( 0 != status )
             {
