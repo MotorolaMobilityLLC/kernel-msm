@@ -21,7 +21,7 @@
 /include/ "msm8974-hammerhead-nfc.dtsi"
 /include/ "msm8974-hammerhead-regulator.dtsi"
 
-/ {
+&soc {
 	serial@f991d000 {
 		status = "ok";
 	};

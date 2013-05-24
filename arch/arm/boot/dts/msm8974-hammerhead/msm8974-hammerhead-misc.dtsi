@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 	vibrator {
 		compatible = "msm,pwm_vibrator";
 		haptic-pwr-gpio = <&msmgpio 60 0x00>;

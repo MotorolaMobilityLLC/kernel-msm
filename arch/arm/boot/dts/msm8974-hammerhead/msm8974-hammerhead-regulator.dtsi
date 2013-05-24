@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 	anx7808_avdd33_vreg: avdd33 {
 		compatible = "regulator-fixed";
 		regulator-name = "avdd-3p3";

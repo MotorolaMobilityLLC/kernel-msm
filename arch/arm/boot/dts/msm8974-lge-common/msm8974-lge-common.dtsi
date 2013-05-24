@@ -19,7 +19,7 @@
 /include/ "msm8974-lge-misc.dtsi"
 /include/ "msm8974-lge-pm.dtsi"
 
-/ {
+&soc {
 	serial@f991d000 {
 		compatible = "qcom,msm-lsuart-v14";
 		reg = <0xf991d000 0x1000>;

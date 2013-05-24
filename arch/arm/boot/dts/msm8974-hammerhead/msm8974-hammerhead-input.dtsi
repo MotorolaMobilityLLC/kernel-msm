@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 	i2c@f9924000 {
 		synaptics_s7020@20 {
 			compatible = "synaptics,s7020";

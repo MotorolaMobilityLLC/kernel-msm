@@ -12,7 +12,7 @@
 
 /include/ "msm8974-hammerhead.dtsi"
 
-/ {
+&soc {
 	i2c@f9924000 {
 		synaptics_s3350@70 {
 			status = "ok";

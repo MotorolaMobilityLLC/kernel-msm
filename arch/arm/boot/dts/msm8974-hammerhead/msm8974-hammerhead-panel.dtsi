@@ -10,8 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
-
+&soc {
 	qcom,mdss_dsi_lgit_video {
 		compatible = "qcom,mdss-dsi-panel";
 		label = "LGIT 1080p video mode dsi panel";

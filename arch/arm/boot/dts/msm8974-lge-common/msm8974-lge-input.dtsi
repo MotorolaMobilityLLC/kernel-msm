@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 	i2c@f9924000 {
 		qcom,i2c-bus-freq = <400000>;
 	};

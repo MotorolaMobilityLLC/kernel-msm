@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 	i2c@f9967000 {
 		bcm2079x@77 {
 			compatible = "bcm,bcm2079x";

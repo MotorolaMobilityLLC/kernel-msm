@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 	i2c@f9967000 {
 		analogix_anx7808@72 {
 			compatible = "analogix,anx7808";
@@ -29,5 +29,4 @@
 			analogix,avdd33-name = "avdd-3p3";
 		};
 	};
-
 };

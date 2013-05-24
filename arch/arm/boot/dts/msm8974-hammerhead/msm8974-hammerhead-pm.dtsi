@@ -11,7 +11,7 @@
 */
 
 
-/ {
+&soc {
 	i2c@f9923000 {
 		cell-index = <84>;
 		compatible = "qcom,i2c-qup";
