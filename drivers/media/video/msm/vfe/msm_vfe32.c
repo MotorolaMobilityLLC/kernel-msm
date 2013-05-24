@@ -1066,6 +1066,12 @@ static void vfe32_set_default_reg_values(
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_HIST_UB_CFG);
 	} else {
+		msm_camera_io_w(0x32F0007,
+			vfe32_ctrl->share_ctrl->vfebase +
+				VFE_BUS_STATS_RS_UB_CFG);
+		msm_camera_io_w(0x337001F,
+			vfe32_ctrl->share_ctrl->vfebase +
+				VFE_BUS_STATS_CS_UB_CFG);
 		msm_camera_io_w(0x357001F,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_HIST_UB_CFG);
