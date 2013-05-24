@@ -5564,6 +5564,10 @@ static int hdd_driver_init( void)
    int max_retries = 0;
 #endif
 
+#ifdef WCONN_TRACE_KMSG_LOG_BUFF
+   vos_wconn_trace_init();
+#endif
+
    ENTER();
 
 #ifdef WLAN_OPEN_SOURCE
@@ -5776,6 +5780,10 @@ static void hdd_driver_exit(void)
 #endif
 #ifdef MEMORY_DEBUG
    vos_mem_exit();
+#endif
+
+#ifdef WCONN_TRACE_KMSG_LOG_BUFF
+   vos_wconn_trace_exit();
 #endif
 
 done:
