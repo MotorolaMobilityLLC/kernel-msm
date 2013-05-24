@@ -39,13 +39,34 @@ struct dropbox_event {
 
 static LIST_HEAD(dropbox_event_list);
 
-static bool dropbox_event_queue_full_locked(void)
+static int dropbox_event_queue_depth_locked(void)
 {
 	struct dropbox_event *event = NULL;
 	int queue_depth = 0;
 	list_for_each_entry(event, &dropbox_event_list, list)
 		queue_depth++;
-	return queue_depth >= EVENT_QUEUE_SIZE;
+	return queue_depth;
+}
+
+static bool dropbox_event_queue_full_locked(void)
+{
+	return dropbox_event_queue_depth_locked() >= EVENT_QUEUE_SIZE;
+}
+
+static bool dropbox_event_queue_empty_locked(void)
+{
+	return dropbox_event_queue_depth_locked() == 0;
+}
+
+static void dropbox_notify_if_events(void)
+{
+	if (mutex_lock_interruptible(&dropbox_queue_lock))
+		sysfs_notify(&dropbox_kobj, NULL, "event");
+	else {
+		if (!dropbox_event_queue_empty_locked())
+			sysfs_notify(&dropbox_kobj, NULL, "event");
+		mutex_unlock(&dropbox_queue_lock);
+	}
 }
 
 static void dropbox_free_event(struct dropbox_event *event)
@@ -248,6 +269,7 @@ static ssize_t dropbox_data_show(struct file *filep, struct kobject *kobj,
 	if (!size) {
 		dropbox_free_event(dropbox_current_event);
 		dropbox_current_event = NULL;
+		dropbox_notify_if_events();
 	}
 
 end:
