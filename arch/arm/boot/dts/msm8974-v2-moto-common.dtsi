@@ -655,6 +655,11 @@
 	gpio@c900 { /* GPIO 10 */
 		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
 	};
+	gpio@d000 { /* GPIO 17 "SLEEP_CLK3" */
+		qcom,mode = <1>;          /* OUT */
+		qcom,vin-sel = <2>;       /* S3 */
+		qcom,src-sel = <3>;       /* SLEEP_CLK3*/
+	};
 };
 
 &i2c_2 {
