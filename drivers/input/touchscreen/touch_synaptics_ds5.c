@@ -173,6 +173,7 @@ static struct {
 } fdata;
 
 extern int FirmwareUpgrade_ds5(struct synaptics_ts_data *ts, const char* fw_path);
+static int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value);
 
 static int synaptics_t1320_power_on(struct i2c_client *client, int on)
 {
@@ -595,13 +596,15 @@ static void safety_reset(struct synaptics_ts_data *ts)
 
 	release_all_ts_event(ts);
 
-	gpio_set_value(ts->pdata->reset_gpio, 0);
-	msleep(RESET_DELAY);
-	gpio_set_value(ts->pdata->reset_gpio, 1);
+	if (synaptics_ts_ic_ctrl(ts->client, IC_CTRL_RESET_CMD, 0) != 0) {
+		gpio_set_value(ts->pdata->reset_gpio, 0);
+		msleep(RESET_DELAY);
+		gpio_set_value(ts->pdata->reset_gpio, 1);
+	}
+
 	msleep(BOOTING_DELAY);
 
 	TOUCH_INFO_MSG("<<safety_reset\n");
-	return;
 }
 
 /* release_all_ts_event
