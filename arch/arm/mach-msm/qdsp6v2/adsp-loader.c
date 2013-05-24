@@ -36,7 +36,7 @@ struct adsp_loader_private {
 };
 
 static struct kobj_attribute adsp_boot_attribute =
-	__ATTR(boot, 0222, NULL, adsp_boot_store);
+	__ATTR(boot, 0220, NULL, adsp_boot_store);
 static struct attribute *attrs[] = {
 	&adsp_boot_attribute.attr,
 	NULL,
