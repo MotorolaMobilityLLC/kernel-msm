@@ -97,19 +97,6 @@ void ipi_call_unlock_irq(void);
 static inline void call_function_init(void) { }
 #endif
 
-#ifdef CONFIG_LOCKUP_IPI_CALL_WDT
-DECLARE_PER_CPU(int, csd_lock_waiting_flag);
-static inline int is_csd_lock_waiting(void)
-{
-	return __get_cpu_var(csd_lock_waiting_flag);
-}
-#else
-static inline int is_csd_lock_waiting(void)
-{
-	return 0;
-}
-#endif
-
 /*
  * Call a function on all processors
  */
@@ -232,6 +219,19 @@ smp_call_function_any(const struct cpumask *mask, smp_call_func_t func,
 
 #define get_cpu()		({ preempt_disable(); smp_processor_id(); })
 #define put_cpu()		preempt_enable()
+
+#ifdef CONFIG_LOCKUP_IPI_CALL_WDT
+DECLARE_PER_CPU(int, csd_lock_waiting_flag);
+static inline int is_csd_lock_waiting(void)
+{
+	return __get_cpu_var(csd_lock_waiting_flag);
+}
+#else
+static inline int is_csd_lock_waiting(void)
+{
+	return 0;
+}
+#endif
 
 /*
  * Callback to arch code if there's nosmp or maxcpus=0 on the
