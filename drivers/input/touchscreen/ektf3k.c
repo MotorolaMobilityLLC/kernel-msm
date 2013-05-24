@@ -38,7 +38,7 @@
 #include <linux/wakelock.h>
 
 #define PACKET_SIZE		40
-#define NEW_PACKET_SIZE 115
+#define NEW_PACKET_SIZE 55
 #define FINGER_NUM		10
 		
 #define PWR_STATE_DEEP_SLEEP	0
@@ -725,30 +725,6 @@ static inline int elan_ktf3k_ts_parse_xy(uint8_t *data,
 	*y = (data[0] & 0x0f);
 	*y <<= 8;
 	*y |= data[2];
-	return 0;
-}
-
-static inline int elan_ktf3k_ts_parse_boundary_xy(uint8_t *data,
-			uint16_t *t_x, uint16_t *l_y,
-			uint16_t *b_x, uint16_t *r_y)
-{
-	*t_x = *l_y = *b_x = *r_y = 0;
-
-	*t_x = (data[0] & 0xf0);
-	*t_x <<= 4;
-	*t_x |= data[1];
-
-	*l_y = (data[0] & 0x0f);
-	*l_y <<= 8;
-	*l_y |= data[2];
-
-	*b_x = (data[3] & 0xf0);
-	*b_x <<= 4;
-	*b_x |= data[4];
-
-	*r_y = (data[3] & 0x0f);
-	*r_y <<= 8;
-	*r_y |= data[5];
 
 	return 0;
 }
@@ -1001,12 +977,8 @@ static void elan_ktf3k_ts_report_data2(struct i2c_client *client, uint8_t *buf)
 	uint8_t i, num;
 	uint16_t active = 0; 
 	uint8_t idx=IDX_FINGER;
-	/*for cluster coordinate*/
-	uint8_t boundary_idx = 55;
-	uint16_t t_x, l_y, b_x, r_y;
-	uint32_t cluster_x, cluster_y;
 
-	num = buf[2] & 0xf;
+      num = buf[2] & 0xf;
 	for (i=0; i<34;i++)
 		checksum +=buf[i];
 	
@@ -1021,36 +993,20 @@ static void elan_ktf3k_ts_report_data2(struct i2c_client *client, uint8_t *buf)
                   input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER, active);
                   if(active){
 		         elan_ktf3k_ts_parse_xy(&buf[idx], &x, &y);
-				elan_ktf3k_ts_parse_boundary_xy(&buf[boundary_idx], &t_x, &l_y, &b_x, &r_y);
                       x = x > ts->abs_x_max ? 0 : ts->abs_x_max - x;
 			   y = y > ts->abs_y_max ? ts->abs_y_max : y;
 			   touch_size = buf[35 + i];
-			   pressure_size = buf[45 + i];
-				t_x = t_x > ts->abs_x_max ? 0 : ts->abs_x_max - t_x;
-				l_y = l_y > ts->abs_y_max ? ts->abs_y_max : l_y;
-				b_x = b_x > ts->abs_x_max ? 0 : ts->abs_x_max - b_x;
-				r_y = r_y > ts->abs_y_max ? ts->abs_y_max : r_y;
-				/*for cluster report*/
-				cluster_x = (t_x << 16) | b_x;
-				cluster_y = (l_y << 16) | r_y;
-
-				input_report_abs(idev, ABS_MT_WIDTH_MAJOR, cluster_x);
-				input_report_abs(idev, ABS_MT_WIDTH_MINOR, cluster_y);
+			   pressure_size = buf[45 + i];	 
 			   input_report_abs(idev, ABS_MT_TOUCH_MAJOR, touch_size);
 			   input_report_abs(idev, ABS_MT_PRESSURE, pressure_size);
 			   input_report_abs(idev, ABS_MT_POSITION_X, y);
 			   input_report_abs(idev, ABS_MT_POSITION_Y, x);
-			   if (unlikely(gPrint_point)) {
-					touch_debug(DEBUG_INFO, "[elan] finger id=%d X=%d y=%d "
-					"size=%d pressure=%d cluster_x=%x cluster_y=%x\n",
-					i, x, y, touch_size, pressure_size, cluster_x, cluster_y);
-				}
+			   if(unlikely(gPrint_point)) touch_debug(DEBUG_INFO, "[elan] finger id=%d X=%d y=%d size=%d pressure=%d\n", i, x, y, touch_size, pressure_size);
 		     }
 		 }
 		 mTouchStatus[i] = active;
               fbits = fbits >> 1;
               idx += 3;
-			boundary_idx += 6;
 	    }
           input_sync(idev);
 	} // checksum
@@ -1605,9 +1561,7 @@ static int elan_ktf3k_ts_probe(struct i2c_client *client,
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, pdata->abs_x_min,  pdata->abs_x_max, 0, 0);// for 800 * 1280 
 	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, MAX_FINGER_SIZE, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE, 0, MAX_FINGER_PRESSURE, 0, 0);
-	/*for cluster*/
-	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 0xffffffff, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MINOR, 0, 0xffffffff, 0, 0);
+
 	__set_bit(EV_ABS, ts->input_dev->evbit);
 	__set_bit(EV_SYN, ts->input_dev->evbit);
 	__set_bit(EV_KEY, ts->input_dev->evbit);
