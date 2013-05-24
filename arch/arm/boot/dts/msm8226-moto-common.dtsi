@@ -164,6 +164,12 @@
 		compatible = "mmi,usr-reset-warning";
 		gpios = <&msmgpio 69 0x0>;
 	};
+
+	qcom,ion {
+		qcom,ion-heap@23 { /* OTHER PIL HEAP */
+			qcom,memory-fixed = <0x06400000 0x1F00000>;
+		};
+	};
 };
 
 &sdcc1 {
