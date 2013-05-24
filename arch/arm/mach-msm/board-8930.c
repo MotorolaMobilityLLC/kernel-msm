@@ -2079,6 +2079,7 @@ static struct synaptics_rmi4_platform_data rmi4_platformdata = {
 	.regulator_en = true,
 	.i2c_pull_up = true,
 	.capacitance_button_map = &synaptic_rmi4_button_map,
+	.fw_image_name = "PR1237913.img",
 };
 
 static struct i2c_board_info rmi4_i2c_devices[] = {
