@@ -610,6 +610,9 @@ u32 vidc_insert_addr_table(struct video_client_ctx *client_ctx,
 	int ret = 0;
 	unsigned long buffer_size  = 0;
 	size_t ion_len;
+	struct vcd_property_hdr vcd_property_hdr;
+	struct vcd_property_codec codec;
+	u32 vcd_status = VCD_ERR_FAIL;
 
 	if (!client_ctx || !length)
 		return false;
@@ -625,7 +628,21 @@ u32 vidc_insert_addr_table(struct video_client_ctx *client_ctx,
 		num_of_buffers = &client_ctx->num_of_output_buffers;
 		DBG("%s(): buffer = OUTPUT #Buf = %d\n",
 			__func__, *num_of_buffers);
-		length = length * 2; /* workaround for iommu video h/w bug */
+		vcd_property_hdr.prop_id = VCD_I_CODEC;
+		vcd_property_hdr.sz = sizeof(struct vcd_property_codec);
+		vcd_status = vcd_get_property(client_ctx->vcd_handle,
+						&vcd_property_hdr, &codec);
+		if (vcd_status) {
+			ERR("%s(): get codec failed", __func__);
+		} else {
+			if (codec.codec != VCD_CODEC_H264) {
+				/* workaround for iommu video h/w bug */
+				DBG("%s(): Double iommu map size from %u "\
+				"to %u for non-H264", __func__,
+				(u32)length, (u32)(length * 2));
+				length = length * 2;
+			}
+		}
 	}
 
 	if (*num_of_buffers == max_num_buffers) {
