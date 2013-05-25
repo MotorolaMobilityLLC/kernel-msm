@@ -62,7 +62,7 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 
 	controller_ver = mipi_mot_get_controller_ver(mfd);
 	if (controller_ver >= 5)
-		led_pwm2[1] = 0x92;	/* enable CE & CABC for ES5+ */
+		led_pwm2[1] = 0x93;	/* enable CE & CABC for ES5+ */
 	else if (controller_ver == 4)
 		led_pwm2[1] = 0x90;	/* enable CE for ES4 */
 
