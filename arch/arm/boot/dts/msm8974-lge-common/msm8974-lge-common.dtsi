@@ -50,7 +50,7 @@
 		qcom,msm-bus,vectors-KBps =
 				<84 512 0 0>,
 				<84 512 500 800>;
-	    };
+	};
         aliases{
                uart99 = &uart10;
         };
@@ -73,8 +73,9 @@
 		qcom,master-id = <84>;
 	};
 
-	i2c_1: i2c@f9923000 {
-		cell-index = <54>;
+	/* label: i2c_1 (label defined in msm8974.dtsi) */
+	i2c@f9923000 {
+		cell-index = <1>;
 		compatible = "qcom,i2c-qup";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -88,6 +89,7 @@
 		qcom,sda-gpio = <&msmgpio 2 0>;
 		qcom,active-only;
 		qcom,master-id = <86>;
+		status = "ok";
 	};
 
 	/* label: i2c_2 (label defined in msm8974.dtsi) */
