@@ -555,7 +555,7 @@ static int panel_gpio_enable(struct mmi_disp_gpio_config *en, int enable)
 
 	if (en->handle == -1) {
 		pr_err("%s: attempt to enable unconfigured gpio\n", __func__);
-		return rc;
+		return -EINVAL;
 	}
 
 	if (enable) {
@@ -578,6 +578,26 @@ static int panel_gpio_enable(struct mmi_disp_gpio_config *en, int enable)
 	if (post_delay > 0)
 		panel_delay_time(post_delay);
 
+	return rc;
+}
+
+static int panel_rst_gpio_ctrl(struct mmi_disp_gpio_config *en,
+				 int value, int delay)
+{
+	int rc = 0;
+
+	if (en->handle == -1) {
+		pr_err("%s: attempt to enable unconfigured gpio\n", __func__);
+		return -EINVAL;
+	}
+
+	gpio_set_value_cansleep(en->handle, value);
+
+	if (delay > 0)
+		panel_delay_time(delay);
+
+	pr_debug("%s: set GPIO(%d) = %d, delay = %d\n", __func__,
+			 en->num, value, delay);
 	return rc;
 }
 
@@ -640,6 +660,7 @@ static int panel_reset_enable(int enable)
 	int i, rc = 0;
 	struct mmi_disp_gpio_config *en;
 	static bool reset_init;
+	static bool first_boot = true;
 
 	pr_debug("%s(%d) is called\n", __func__, enable);
 	if (!reset_init) {
@@ -661,8 +682,20 @@ static int panel_reset_enable(int enable)
 			rc = panel_gpio_enable(en, enable);
 			if (rc)
 				goto end;
+			/* For JDI display power up reset pin special sequence
+			 * resume case only
+			 */
+			if (!strncmp(panel_name, "mipi_mot_cmd_jdi_hd_430",
+			    strlen(panel_name)) && enable && (!first_boot)) {
+				panel_rst_gpio_ctrl(en, 0, 12);
+				panel_rst_gpio_ctrl(en, 1, 12);
+				panel_rst_gpio_ctrl(en, 0, 12);
+				panel_rst_gpio_ctrl(en, 1, 12);
+			}
 		}
 	}
+
+	first_boot = false;
 end:
 	return rc;
 }
@@ -710,6 +743,7 @@ static int panel_power_output(int on, struct mmi_disp_reg_lst *reg_lst)
 	int rc = 0, start, end;
 	struct mmi_disp_reg *reg;
 	struct mmi_disp_gpio_config *en;
+	static bool first_boot = true;
 
 	pr_debug("%s(%d) is called\n", __func__, on);
 
@@ -743,6 +777,17 @@ static int panel_power_output(int on, struct mmi_disp_reg_lst *reg_lst)
 			rc = panel_gpio_enable(en, on);
 			if (rc)
 				goto end;
+
+			/* For JDI display power up sequence only, need to
+			 * toggle reset pin high after 2nd power supply
+			 * VDDIO is up
+			 */
+			if (!strncmp(panel_name, "mipi_mot_cmd_jdi_hd_430",
+				strlen(panel_name)) && on && (start == 1) &&
+				!first_boot)
+				/* Rst High for 17ms */
+				panel_rst_gpio_ctrl(&mmi_disp_info.disp_gpio[0],
+							1, 17);
 
 		} else if (!IS_ERR_OR_NULL(reg->handle) && (en->num == -1) &&
 						(reg->shared_gpio_en == 0)) {
@@ -778,6 +823,7 @@ static int panel_power_output(int on, struct mmi_disp_reg_lst *reg_lst)
 
 	}
 
+	first_boot = false;
 end:
 	return rc;
 }
