@@ -744,23 +744,27 @@ TRACE_EVENT(kgsl_register_event,
 
 TRACE_EVENT(kgsl_fire_event,
 		TP_PROTO(unsigned int id, unsigned int ts,
-			unsigned int type, unsigned int age),
-		TP_ARGS(id, ts, type, age),
+			unsigned int type, unsigned int age,
+			unsigned long func),
+		TP_ARGS(id, ts, type, age, func),
 		TP_STRUCT__entry(
 			__field(unsigned int, id)
 			__field(unsigned int, ts)
 			__field(unsigned int, type)
 			__field(unsigned int, age)
+			__field(unsigned long, func)
 		),
 		TP_fast_assign(
 			__entry->id = id;
 			__entry->ts = ts;
 			__entry->type = type;
 			__entry->age = age;
+			__entry->func = func;
 		),
 		TP_printk(
-			"ctx=%d ts=%d type=%d age=%u",
-			__entry->id, __entry->ts, __entry->type, __entry->age)
+			"ctx=%d ts=%d type=%d age=%u func=%pF",
+			__entry->id, __entry->ts, __entry->type, __entry->age,
+			(void *) __entry->func)
 );
 
 TRACE_EVENT(kgsl_active_count,
