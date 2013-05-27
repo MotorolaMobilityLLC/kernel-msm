@@ -339,8 +339,9 @@ void mipi_dsi_clk_deinit(struct device *dev);
 #ifdef CONFIG_FB_MSM_MIPI_DSI
 void mipi_dsi_clk_enable(void);
 void mipi_dsi_clk_disable(void);
-void mipi_dsi_prepare_clocks(void);
 void mipi_dsi_unprepare_clocks(void);
+void mipi_dsi_prepare_ahb_clocks(void);
+void mipi_dsi_unprepare_ahb_clocks(void);
 void mipi_dsi_ahb_ctrl(u32 enable);
 void mipi_dsi_phy_ctrl(int on);
 #else
