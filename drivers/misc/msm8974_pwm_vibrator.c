@@ -47,6 +47,7 @@ static void __iomem *virt_base;
 #define REG_M		0x08
 #define REG_N		0x0C
 #define REG_D		0x10
+#define REG_CBCR	0x24
 
 #define MMSS_CC_PWM_SET		0xFD8C3450
 #define MMSS_CC_PWM_SIZE	SZ_1K
@@ -175,11 +176,12 @@ static int vibrator_adjust_amp(int amp)
 
 static int vibrator_pwm_set(int enable, int amp, int n_value)
 {
-	int d_val;
+	int d_val = 0;
 	int m_val = MMSS_CC_M_DEFAULT;
 
 	pr_debug("%s: amp %d, value %d\n", __func__, amp, n_value);
 
+	enable = !!enable;
 	if (enable) {
 		if (amp)
 			d_val = vibrator_adjust_amp(amp) + MMSS_CC_D_HALF;
@@ -191,14 +193,11 @@ static int vibrator_pwm_set(int enable, int amp, int n_value)
 		writel(((m_val) & 0xff), MMSS_CC_GP1_BASE(REG_M));
 		writel(((~(n_value - m_val)) & 0xff), MMSS_CC_GP1_BASE(REG_N));
 		writel(((~(d_val << 1)) & 0xff), MMSS_CC_GP1_BASE(REG_D));
-		writel((1 << 1) | /* ROOT_EN[1] */
-		        1,        /* UPDATE[0] */
-			MMSS_CC_GP1_BASE(REG_CMD_RCGR));
-	} else {
-		writel((0 << 1) | /* ROOT_EN[1] */
-		        0,        /* UPDATE[0] */
-			MMSS_CC_GP1_BASE(REG_CMD_RCGR));
 	}
+	writel(enable, MMSS_CC_GP1_BASE(REG_CBCR));
+	writel((enable << 1) | /* ROOT_EN[1] */
+	        enable,             /* UPDATE[0] */
+		MMSS_CC_GP1_BASE(REG_CMD_RCGR));
 
 	return 0;
 }
