@@ -147,6 +147,11 @@ static enum power_supply_property bq27541_properties[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 };
 
+unsigned get_cable_status(void)
+{
+	return wireless_on || bq27541_battery_cable_status;
+}
+
 void bq27541_check_cabe_type(void)
 {
       if(bq27541_battery_cable_status == USB_AC_Adapter) {

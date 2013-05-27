@@ -35,6 +35,8 @@
 #include "msm_watchdog.h"
 #include "timer.h"
 
+extern unsigned get_cable_status(void);
+
 #define WDT0_RST	0x38
 #define WDT0_EN		0x40
 #define WDT0_BARK_TIME	0x4C
@@ -134,11 +136,20 @@ EXPORT_SYMBOL(msm_set_restart_mode);
 
 static void __msm_power_off(int lower_pshold)
 {
+	int reset = 0;
+
 	printk(KERN_CRIT "Powering off the SoC\n");
 #ifdef CONFIG_MSM_DLOAD_MODE
 	set_dload_mode(0);
 #endif
-	pm8xxx_reset_pwr_off(0);
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
+		if (get_cable_status()) {
+			printk(KERN_CRIT "Go to charger mode!");
+			reset = 1;
+			 __raw_writel(0x776655FE, restart_reason);
+		}
+	}
+	 pm8xxx_reset_pwr_off(reset);
 
 	if (lower_pshold) {
 		__raw_writel(0, PSHOLD_CTL_SU);
@@ -234,7 +245,6 @@ void set_kernel_crash_magic_number(void)
 
 void msm_restart(char mode, const char *cmd)
 {
-
 #ifdef CONFIG_MSM_DLOAD_MODE
 	/* This looks like a normal reboot at this point. */
 	set_dload_mode(0);
