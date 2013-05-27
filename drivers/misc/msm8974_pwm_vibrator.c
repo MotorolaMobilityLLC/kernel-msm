@@ -87,8 +87,6 @@ static int vibrator_regulator_init(
 		struct platform_device *pdev,
 		struct timed_vibrator_data *vib)
 {
-	int ret;
-
 	if (!vib->use_vdd_supply)
 		return 0;
 
@@ -96,13 +94,6 @@ static int vibrator_regulator_init(
 	if (IS_ERR(vib->vdd_reg)) {
 		pr_err("%s: could not get vdd-supply\n", __func__);
 		return -ENODEV;
-	}
-
-	ret = regulator_set_voltage(vib->vdd_reg,
-			3000000, 3000000);
-	if (ret) {
-		pr_err("%s: vdd_reg->set_voltage failed\n", __func__);
-		return -EINVAL;
 	}
 
 	return 0;
