@@ -874,6 +874,12 @@ static void hdmi_tx_hpd_int_work(struct work_struct *work)
 			return;
 		}
 
+		/* wait if iommu isn't attached */
+		if (!is_mdss_iommu_attached()) {
+			DEV_INFO("%s: mdp iommu is not attached yet.\n", __func__);
+			wait_for_completion_interruptible(&mdss_res->iommu_attach_done);
+		}
+
 		hdmi_tx_read_sink_info(hdmi_ctrl);
 		hdmi_tx_send_cable_notification(hdmi_ctrl, 1);
 		DEV_INFO("%s: sense cable CONNECTED: state switch to %d\n",
