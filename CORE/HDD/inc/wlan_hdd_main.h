@@ -127,6 +127,9 @@
 /** Maximum time(ms) to wait for tdls del sta to complete **/
 #define WAIT_TIME_TDLS_DEL_STA      1500
 
+/** Maximum time(ms) to wait for Link Establish Req to complete **/
+#define WAIT_TIME_TDLS_LINK_ESTABLISH_REQ      1500
+
 /** Maximum time(ms) to wait for tdls mgmt to complete **/
 #define WAIT_TIME_TDLS_MGMT         11000
 
@@ -760,6 +763,7 @@ struct hdd_adapter_s
    struct completion tdls_add_station_comp;
    struct completion tdls_del_station_comp;
    struct completion tdls_mgmt_comp;
+   struct completion tdls_link_establish_req_comp;
    eHalStatus tdlsAddStaStatus;
 #endif
    /* Track whether the linkup handling is needed  */

@@ -5406,6 +5406,9 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         case eWNI_SME_TDLS_DEL_STA_REQ:
             limProcessSmeTdlsDelStaReq(pMac, pMsgBuf);
             break;
+        case eWNI_SME_TDLS_LINK_ESTABLISH_REQ:
+            limProcesSmeTdlsLinkEstablishReq(pMac, pMsgBuf);
+            break;
 #endif
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eWNI_SME_TDLS_DISCOVERY_START_REQ:
