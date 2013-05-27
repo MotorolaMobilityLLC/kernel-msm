@@ -83,6 +83,7 @@
 #include <qc_sap_ioctl.h>
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
+#include "wlan_hdd_wmm.h"
 #endif
 #include "wlan_nv.h"
 
@@ -3043,13 +3044,13 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
                     isBufSta = 1;
                 }
             }
-            //status = wlan_hdd_tdls_set_peer_caps( mac, params->uapsd_queues,
-            //                                      params->max_sp, isBufSta);
-            //if (VOS_STATUS_SUCCESS != status) {
-            //    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-            //              "%s: wlan_hdd_tdls_set_peer_caps failed!", __func__);
-            //    return -EINVAL;
-            //}
+            status = wlan_hdd_tdls_set_peer_caps( pAdapter, mac, params->uapsd_queues,
+                                                  params->max_sp, isBufSta);
+            if (VOS_STATUS_SUCCESS != status) {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                          "%s: wlan_hdd_tdls_set_peer_caps failed!", __func__);
+                return -EINVAL;
+            }
             status = wlan_hdd_tdls_add_station(wiphy, dev, mac, 1, &StaParams);
 
             if (VOS_STATUS_SUCCESS != status) {
@@ -7586,6 +7587,7 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         case NL80211_TDLS_ENABLE_LINK:
             {
                 VOS_STATUS status;
+                tCsrTdlsLinkEstablishParams tdlsLinkEstablishParams;
 
                 if (!TDLS_STA_INDEX_VALID(pTdlsPeer->staId))
                 {
@@ -7597,6 +7599,26 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
 
                 if (eTDLS_LINK_CONNECTED != pTdlsPeer->link_status)
                 {
+                    if (0 != wlan_hdd_tdls_get_link_establish_params(pAdapter, peer,&tdlsLinkEstablishParams)) {
+                         return -EINVAL;
+                    }
+                    INIT_COMPLETION(pAdapter->tdls_link_establish_req_comp);
+
+                    sme_SendTdlsLinkEstablishParams(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                                    pAdapter->sessionId, peer, &tdlsLinkEstablishParams);
+                    /* Send TDLS peer UAPSD capabilities to the firmware and
+                     * register with the TL on after the response for this operation
+                     * is received .
+                     */
+                    status = wait_for_completion_interruptible_timeout(&pAdapter->tdls_link_establish_req_comp,
+                              msecs_to_jiffies(WAIT_TIME_TDLS_LINK_ESTABLISH_REQ));
+                    if (status <= 0)
+                    {
+                        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                                  "%s: Link Establish Request Faled Status %ld",
+                                  __func__, status);
+                        return -EINVAL;
+                    }
                     wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
                     /* Mark TDLS client Authenticated .*/
                     status = WLANTL_ChangeSTAState( pHddCtx->pvosContext,
@@ -7619,6 +7641,68 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                         wlan_hdd_tdls_increment_peer_count(pAdapter);
                     }
                     wlan_hdd_tdls_check_bmps(pAdapter);
+
+                    /* Update TL about the UAPSD masks , to route the packets to firmware */
+                    if ( TRUE == pHddCtx->cfg_ini->fEnableTDLSBufferSta &&
+                        pHddCtx->cfg_ini->fTDLSUapsdMask & HDD_AC_VO )
+                    {
+                        status = WLANTL_EnableUAPSDForAC( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
+                                                          pTdlsPeer->staId,
+                                                          WLANTL_AC_VO,
+                                                          7,
+                                                          7,
+                                                          0,
+                                                          0,
+                                                          WLANTL_BI_DIR );
+
+                        VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status ));
+                    }
+
+                    if ( TRUE == pHddCtx->cfg_ini->fEnableTDLSBufferSta &&
+                        pHddCtx->cfg_ini->fTDLSUapsdMask & HDD_AC_VI )
+                    {
+                       status = WLANTL_EnableUAPSDForAC( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
+                                                         pTdlsPeer->staId,
+                                                         WLANTL_AC_VI,
+                                                         5,
+                                                         5,
+                                                         0,
+                                                         0,
+                                                         WLANTL_BI_DIR );
+
+                       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status ));
+                    }
+
+                    if ( TRUE == pHddCtx->cfg_ini->fEnableTDLSBufferSta &&
+                        pHddCtx->cfg_ini->fTDLSUapsdMask & HDD_AC_BK )
+                    {
+                       status = WLANTL_EnableUAPSDForAC( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
+                                                         pTdlsPeer->staId,
+                                                         WLANTL_AC_BK,
+                                                         2,
+                                                         2,
+                                                         0,
+                                                         0,
+                                                         WLANTL_BI_DIR );
+
+                       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status ));
+                    }
+
+                    if ( TRUE == pHddCtx->cfg_ini->fEnableTDLSBufferSta &&
+                        pHddCtx->cfg_ini->fTDLSUapsdMask & HDD_AC_BE )
+                    {
+                       status = WLANTL_EnableUAPSDForAC( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
+                                                         pTdlsPeer->staId,
+                                                         WLANTL_AC_BE,
+                                                         3,
+                                                         3,
+                                                         0,
+                                                         0,
+                                                         WLANTL_BI_DIR );
+
+                       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status ));
+                    }
+
                 }
 
             }

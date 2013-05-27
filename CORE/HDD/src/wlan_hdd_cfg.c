@@ -2134,6 +2134,34 @@ REG_VARIABLE( CFG_TDLS_RSSI_TEARDOWN_THRESHOLD, WLAN_PARAM_SignedInteger,
               CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_DEFAULT,
               CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_MIN,
               CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_MAX ),
+
+REG_VARIABLE( CFG_TDLS_QOS_WMM_UAPSD_MASK_NAME , WLAN_PARAM_HexInteger,
+                 hdd_config_t, fTDLSUapsdMask,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_TDLS_QOS_WMM_UAPSD_MASK_DEFAULT,
+                 CFG_TDLS_QOS_WMM_UAPSD_MASK_MIN,
+                 CFG_TDLS_QOS_WMM_UAPSD_MASK_MAX ),
+
+REG_VARIABLE( CFG_TDLS_BUFFER_STA_SUPPORT_ENABLE, WLAN_PARAM_Integer,
+              hdd_config_t, fEnableTDLSBufferSta,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_TDLS_BUFFER_STA_SUPPORT_ENABLE_DEFAULT,
+              CFG_TDLS_BUFFER_STA_SUPPORT_ENABLE_MIN,
+              CFG_TDLS_BUFFER_STA_SUPPORT_ENABLE_MAX ),
+
+REG_VARIABLE( CFG_TDLS_PUAPSD_INACTIVITY_TIME, WLAN_PARAM_Integer,
+              hdd_config_t, fTDLSPuapsdInactivityTimer,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_TDLS_PUAPSD_INACTIVITY_TIME_DEFAULT,
+              CFG_TDLS_PUAPSD_INACTIVITY_TIME_MIN,
+              CFG_TDLS_PUAPSD_INACTIVITY_TIME_MAX ),
+
+REG_VARIABLE( CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD, WLAN_PARAM_Integer,
+              hdd_config_t, fTDLSRxFrameThreshold,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_DEFAULT,
+              CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_MIN,
+              CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_MAX ),
 #endif
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
@@ -3776,6 +3804,34 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       fStatus = FALSE;
       hddLog(LOGE, "Could not pass on WNI_CFG_MAX_MEDIUM_TIME to CCM");
    }
+
+#ifdef FEATURE_WLAN_TDLS
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_TDLS_QOS_WMM_UAPSD_MASK, pConfig->fTDLSUapsdMask,
+      NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_TDLS_QOS_WMM_UAPSD_MASK to CCM\n");
+   }
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_TDLS_BUF_STA_ENABLED, pConfig->fEnableTDLSBufferSta,
+      NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_TDLS_BUF_STA_ENABLED to CCM\n");
+   }
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_TDLS_PUAPSD_INACT_TIME, pConfig->fTDLSPuapsdInactivityTimer,
+      NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_TDLS_PUAPSD_INACT_TIME to CCM\n");
+   }
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_TDLS_RX_FRAME_THRESHOLD, pConfig->fTDLSRxFrameThreshold,
+      NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_TDLS_RX_FRAME_THRESHOLD to CCM\n");
+   }
+#endif
 
    return fStatus;
 }

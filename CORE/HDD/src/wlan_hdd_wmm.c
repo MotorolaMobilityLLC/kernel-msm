@@ -100,13 +100,6 @@
 #endif
 
 
-// UAPSD Mask bits
-// (Bit0:VO; Bit1:VI; Bit2:BK; Bit3:BE all other bits are ignored)
-#define HDD_AC_VO 0x1
-#define HDD_AC_VI 0x2
-#define HDD_AC_BK 0x4
-#define HDD_AC_BE 0x8
-
 #define WLAN_HDD_MAX_DSCP 0x3f
 
 static sme_QosWmmUpType hddWmmDscpToUpMap[WLAN_HDD_MAX_DSCP+1];

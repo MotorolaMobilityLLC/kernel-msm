@@ -1478,6 +1478,61 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
 
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
                             + sizeof(tHalCfg) + tlvStruct->length) ;
+#ifdef FEATURE_WLAN_TDLS
+   /* QWLAN_HAL_CFG_TDLS_PUAPSD_MASK  */
+   tlvStruct->type = QWLAN_HAL_CFG_TDLS_PUAPSD_MASK;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_TDLS_QOS_WMM_UAPSD_MASK,
+                                            configDataValue ) != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "Failed to get value for WNI_CFG_TDLS_QOS_WMM_UAPSD_MASK");
+      goto handle_failure;
+   }
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
+                            + sizeof(tHalCfg) + tlvStruct->length) ;
+
+   /* QWLAN_HAL_CFG_TDLS_PUAPSD_BUFFER_STA_CAPABLE  */
+   tlvStruct->type = QWLAN_HAL_CFG_TDLS_PUAPSD_BUFFER_STA_CAPABLE;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_TDLS_BUF_STA_ENABLED,
+                                            configDataValue ) != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "Failed to get value for WNI_CFG_TDLS_BUF_STA_ENABLED");
+      goto handle_failure;
+   }
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
+                            + sizeof(tHalCfg) + tlvStruct->length) ;
+   /* QWLAN_HAL_CFG_TDLS_PUAPSD_INACTIVITY_TIME */
+   tlvStruct->type = QWLAN_HAL_CFG_TDLS_PUAPSD_INACTIVITY_TIME;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_TDLS_PUAPSD_INACT_TIME,
+                                            configDataValue ) != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "Failed to get value for WNI_CFG_TDLS_PUAPSD_INACT_TIME");
+      goto handle_failure;
+   }
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
+                            + sizeof(tHalCfg) + tlvStruct->length) ;
+   /* QWLAN_HAL_CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_IN_SP */
+   tlvStruct->type = QWLAN_HAL_CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_IN_SP;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_TDLS_RX_FRAME_THRESHOLD,
+                                            configDataValue ) != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "Failed to get value for WNI_CFG_TDLS_RX_FRAME_THRESHOLD");
+      goto handle_failure;
+   }
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
+                            + sizeof(tHalCfg) + tlvStruct->length) ;
+#endif
 
    wdiStartParams->usConfigBufferLen = (tANI_U8 *)tlvStruct - tlvStructStart ;
 #ifdef WLAN_DEBUG
@@ -6365,6 +6420,107 @@ VOS_STATUS WDA_ProcessSetP2PGONOAReq(tWDA_CbContext *pWDA,
    return CONVERT_WDI2VOS_STATUS(status);
 
 }
+
+#ifdef FEATURE_WLAN_TDLS
+/*
+ * FUNCTION: WDA_SetP2PGONOAReqParamsCallback
+ *  Free the memory. No need to send any response to PE in this case
+ */
+void WDA_SetTDLSLinkEstablishReqParamsCallback(WDI_Status status, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_CbContext *pWDA = NULL;
+
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "<------ %s " ,__func__);
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+   pWDA = (tWDA_CbContext *) pWdaParams->pWdaContext;
+
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+   /* send response to UMAC*/
+   WDA_SendMsg(pWDA, WDA_SET_TDLS_LINK_ESTABLISH_REQ_RSP, NULL , 0) ;
+
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
+   vos_mem_free(pWdaParams->wdaMsgParam) ;
+   vos_mem_free(pWdaParams);
+   return ;
+}
+
+VOS_STATUS WDA_ProcessSetTdlsLinkEstablishReq(tWDA_CbContext *pWDA,
+                                              tTdlsLinkEstablishParams *pTdlsLinkEstablishParams)
+{
+    WDI_Status status = WDI_STATUS_SUCCESS ;
+    WDI_SetTDLSLinkEstablishReqParamsType *wdiSetTDLSLinkEstablishReqParam =
+                                      (WDI_SetTDLSLinkEstablishReqParamsType *)vos_mem_malloc(
+                                           sizeof(WDI_SetTDLSLinkEstablishReqParamsType)) ;
+    tWDA_ReqParams *pWdaParams = NULL;
+    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+               "------> %s " ,__func__);
+    if(NULL == wdiSetTDLSLinkEstablishReqParam)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "%s: VOS MEM Alloc Failure", __func__);
+        VOS_ASSERT(0);
+        return VOS_STATUS_E_NOMEM;
+    }
+    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
+    if(NULL == pWdaParams)
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "%s: VOS MEM Alloc Failure", __func__);
+        vos_mem_free(pTdlsLinkEstablishParams);
+        vos_mem_free(wdiSetTDLSLinkEstablishReqParam);
+        VOS_ASSERT(0);
+        return VOS_STATUS_E_NOMEM;
+    }
+    wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uStaIdx =
+                                                  pTdlsLinkEstablishParams->sta_idx;
+    wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uIsResponder =
+                                                  pTdlsLinkEstablishParams->is_responder;
+    wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uUapsdQueues =
+                                                  pTdlsLinkEstablishParams->uapsd_queues;
+    wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uMaxSp =
+                                                  pTdlsLinkEstablishParams->max_sp;
+    wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uIsBufSta =
+                                                  pTdlsLinkEstablishParams->is_bufsta;
+
+    wdiSetTDLSLinkEstablishReqParam->wdiReqStatusCB = NULL ;
+    /* Store msg pointer from PE, as this will be used for response */
+    pWdaParams->wdaMsgParam = (void *)pTdlsLinkEstablishParams ;
+    /* store Params pass it to WDI */
+    pWdaParams->wdaWdiApiMsgParam = (void *)wdiSetTDLSLinkEstablishReqParam ;
+    pWdaParams->pWdaContext = pWDA;
+
+    status = WDI_SetTDLSLinkEstablishReq(wdiSetTDLSLinkEstablishReqParam,
+                                         (WDI_SetTDLSLinkEstablishReqParamsRspCb)
+                                         WDA_SetTDLSLinkEstablishReqParamsCallback,
+                                         pWdaParams);
+    if(IS_WDI_STATUS_FAILURE(status))
+    {
+        VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "Failure in Set P2P GO NOA Req WDI API, free all the memory " );
+        vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
+        vos_mem_free(pWdaParams->wdaMsgParam);
+        vos_mem_free(pWdaParams);
+    }
+    return CONVERT_WDI2VOS_STATUS(status);
+}
+#endif
+
+
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /*
  * FUNCTION: WDA_AggrAddTSReqCallback
@@ -11005,6 +11161,13 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          break;
       }
 #endif
+#ifdef FEATURE_WLAN_TDLS
+      case WDA_SET_TDLS_LINK_ESTABLISH_REQ:
+      {
+          WDA_ProcessSetTdlsLinkEstablishReq(pWDA, (tTdlsLinkEstablishParams *)pMsg->bodyptr);
+          break;
+      }
+#endif
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -11266,6 +11429,32 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
           break;
       }
 
+#ifdef FEATURE_WLAN_TDLS
+      case WDI_TDLS_IND :
+      {
+          tSirTdlsInd  *pTdlsInd =
+             (tSirTdlsInd *)vos_mem_malloc(sizeof(tSirTdlsInd));
+
+          if (NULL == pTdlsInd)
+          {
+             VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                        "Memory allocation failure, "
+                        "WDI_TDLS_IND not forwarded");
+             break;
+          }
+          pTdlsInd->status            =
+                     wdiLowLevelInd->wdiIndicationData.wdiTdlsIndInfo.status;
+          pTdlsInd->assocId        =
+                     wdiLowLevelInd->wdiIndicationData.wdiTdlsIndInfo.assocId;
+          pTdlsInd->staIdx =
+                     wdiLowLevelInd->wdiIndicationData.wdiTdlsIndInfo.staIdx;
+          pTdlsInd->reasonCode    =
+                     wdiLowLevelInd->wdiIndicationData.wdiTdlsIndInfo.reasonCode;
+          WDA_SendMsg(pWDA, SIR_HAL_TDLS_IND,
+                                        (void *)pTdlsInd , 0) ;
+          break;
+      }
+#endif
       case WDI_P2P_NOA_ATTR_IND :
       {
          tSirP2PNoaAttr   *pP2pNoaAttr = 

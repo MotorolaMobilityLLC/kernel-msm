@@ -904,6 +904,40 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
     return 0;
 }
 
+int wlan_hdd_tdls_set_peer_caps(hdd_adapter_t *pAdapter,
+                                u8 *mac,
+                                tANI_U8 uapsdQueues,
+                                tANI_U8 maxSp,
+                                tANI_BOOLEAN isBufSta)
+{
+    hddTdlsPeer_t *curr_peer;
+
+    curr_peer = wlan_hdd_tdls_get_peer(pAdapter, mac);
+    if (curr_peer == NULL)
+        return -1;
+
+    curr_peer->uapsdQueues = uapsdQueues;
+    curr_peer->maxSp = maxSp;
+    curr_peer->isBufSta = isBufSta;
+    return 0;
+}
+
+int wlan_hdd_tdls_get_link_establish_params(hdd_adapter_t *pAdapter, u8 *mac,
+                                            tCsrTdlsLinkEstablishParams* tdlsLinkEstablishParams)
+{
+    hddTdlsPeer_t *curr_peer;
+
+    curr_peer = wlan_hdd_tdls_get_peer(pAdapter, mac);
+    if (curr_peer == NULL)
+        return -1;
+
+    tdlsLinkEstablishParams->isResponder = curr_peer->is_responder;
+    tdlsLinkEstablishParams->uapsdQueues = curr_peer->uapsdQueues;
+    tdlsLinkEstablishParams->maxSp = curr_peer->maxSp;
+    tdlsLinkEstablishParams->isBufSta = curr_peer->isBufSta;
+    return 0;
+}
+
 int wlan_hdd_tdls_set_rssi(hdd_adapter_t *pAdapter, u8 *mac, tANI_S8 rxRssi)
 {
     hddTdlsPeer_t *curr_peer;

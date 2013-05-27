@@ -132,6 +132,15 @@ typedef struct TdlsSendMgmtInfo
   tANI_U8 len;
 } tTdlsSendMgmtCmdInfo;
 
+typedef struct TdlsLinkEstablishInfo
+{
+  tSirMacAddr peerMac;
+  tANI_U8 uapsdQueues;
+  tANI_U8 maxSp;
+  tANI_U8 isBufSta;
+  tANI_U8 isResponder;
+} tTdlsLinkEstablishCmdInfo;
+
 typedef struct TdlsAddStaInfo
 {
   eTdlsAddOper tdlsAddOper;
@@ -184,6 +193,7 @@ typedef struct s_tdls_cmd
     //tEnterPeerUAPSDInfo enterUapsdInfo ;
     //tExitPeerUAPSDinfo  exitUapsdInfo ;
 #endif
+    tTdlsLinkEstablishCmdInfo tdlsLinkEstablishCmdInfo;
     tTdlsSendMgmtCmdInfo tdlsSendMgmtCmdInfo;
     tTdlsAddStaCmdInfo   tdlsAddStaCmdInfo;
     tTdlsDelStaCmdInfo   tdlsDelStaCmdInfo;
@@ -293,10 +303,15 @@ eHalStatus pmcSetPowerParams(tHalHandle hHal,   tSirSetPowerParamsReq*  pwParams
 tANI_BOOLEAN csrRoamGetConcurrencyConnectStatusForBmps(tpAniSirGlobal pMac);
 #ifdef FEATURE_WLAN_TDLS
 eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMgmt *tdlsSendMgmt);
+VOS_STATUS csrTdlsSendLinkEstablishParams(tHalHandle hHal,
+                                          tANI_U8 sessionId,
+                                          tSirMacAddr peerMac,
+                                          tCsrTdlsLinkEstablishParams *tdlsLinkEstablishParams);
 eHalStatus csrTdlsAddPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
 eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac, tCsrStaParams *pstaParams);
 eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
 eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac,tSmeCmd *pCommand );
+eHalStatus csrTdlsProcessLinkEstablish( tpAniSirGlobal pMac, tSmeCmd *cmd );
 eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,v_U16_t msg_type,
                                                            void *pMsgBuf);
 #ifdef FEATURE_WLAN_TDLS_INTERNAL

@@ -10520,24 +10520,36 @@ WLANTL_EnableUAPSDForAC
 
   /*Set this flag in order to remember that this is a trigger enabled AC*/
   pTLCb->atlSTAClients[ucSTAId]->wUAPSDInfo[ucAC].ucSet = 1;
-  
-  TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-             "WLAN TL:Enabling U-APSD in FW for STA: %d AC: %d SI: %d SPI: %d "
-             "DI: %d",
-             ucSTAId, ucAC, uServiceInt, uSuspendInt,
-             pTLCb->tlConfigInfo.uDelayedTriggerFrmInt));
 
-  /*Save all info for HAL*/
-  halUAPSDInfo.staidx         = ucSTAId; 
-  halUAPSDInfo.ac             = ucAC;   
-  halUAPSDInfo.up             = ucUP;   
-  halUAPSDInfo.srvInterval    = uServiceInt;  
-  halUAPSDInfo.susInterval    = uSuspendInt;
-  halUAPSDInfo.delayInterval  = pTLCb->tlConfigInfo.uDelayedTriggerFrmInt; 
+#ifdef FEATURE_WLAN_TDLS
+  if(pTLCb->atlSTAClients[ucSTAId]->wSTADesc.wSTAType != WLAN_STA_TDLS)
+#endif
+  {
+    if( 0 == uServiceInt )
+    {
+      TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+               "WLAN TL:Invalid input params on WLANTL_EnableUAPSDForAC"
+               " SI: %d", uServiceInt ));
+      return VOS_STATUS_E_FAULT;
+    }
 
-  /*Notify HAL*/
-  vosStatus = WDA_EnableUapsdAcParams(pvosGCtx, ucSTAId, &halUAPSDInfo);
+    TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+               "WLAN TL:Enabling U-APSD in FW for STA: %d AC: %d SI: %d SPI: %d "
+               "DI: %d",
+               ucSTAId, ucAC, uServiceInt, uSuspendInt,
+               pTLCb->tlConfigInfo.uDelayedTriggerFrmInt));
 
+    /*Save all info for HAL*/
+    halUAPSDInfo.staidx         = ucSTAId;
+    halUAPSDInfo.ac             = ucAC;
+    halUAPSDInfo.up             = ucUP;
+    halUAPSDInfo.srvInterval    = uServiceInt;
+    halUAPSDInfo.susInterval    = uSuspendInt;
+    halUAPSDInfo.delayInterval  = pTLCb->tlConfigInfo.uDelayedTriggerFrmInt;
+
+    /*Notify HAL*/
+    vosStatus = WDA_EnableUapsdAcParams(pvosGCtx, ucSTAId, &halUAPSDInfo);
+  }
   return vosStatus;
 
 }/*WLANTL_EnableUAPSDForAC*/
