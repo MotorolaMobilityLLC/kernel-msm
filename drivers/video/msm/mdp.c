@@ -3337,7 +3337,7 @@ void mdp_footswitch_ctrl(boolean on)
 	if (dsi_pll_vdda)
 		regulator_enable(dsi_pll_vdda);
 
-	mipi_dsi_prepare_clocks();
+	mipi_dsi_prepare_ahb_clocks();
 	mipi_dsi_ahb_ctrl(1);
 	mipi_dsi_phy_ctrl(1);
 	mipi_dsi_clk_enable();
@@ -3353,9 +3353,10 @@ void mdp_footswitch_ctrl(boolean on)
 	}
 
 	mipi_dsi_clk_disable();
+	mipi_dsi_unprepare_clocks();
 	mipi_dsi_phy_ctrl(0);
 	mipi_dsi_ahb_ctrl(0);
-	mipi_dsi_unprepare_clocks();
+	mipi_dsi_unprepare_ahb_clocks();
 
 	if (dsi_pll_vdda)
 		regulator_disable(dsi_pll_vdda);
