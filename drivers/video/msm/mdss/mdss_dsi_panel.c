@@ -722,19 +722,24 @@ ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 	int i, j;
 	char *buf;
 	int buf_size;
-	struct mdss_panel_common_pdata *panel_data = filp->private_data;
+	struct dsi_panel_cmds *pcmds;
 
+	struct mdss_panel_common_pdata *panel_data = filp->private_data;
 	if (!panel_data)
 		return -ENODEV;
+
+	pcmds = &panel_data->on_cmds;
+	if (!pcmds)
+		return -EINVAL;
 
 	buf = kzalloc(MAX_ON_CMD_SIZE, GFP_KERNEL);
 
 	strncpy(buf, "qcom,panel-on-cmds = [", 22);
 	buf_size = 22;
 
-	for (i = 0; i < (panel_data->dsi_panel_on_cmds)->size; ++i) {
-		if (buf_size + 17 +
-			(panel_data->dsi_panel_on_cmds->buf[i].dlen * 3) >
+	for (i = 0; i < pcmds->cmd_cnt; ++i) {
+		if (buf_size + 20 +
+			(pcmds->cmds[i].dchdr.dlen * 3) >
 			MAX_ON_CMD_SIZE - 4) {
 			pr_warn("Too many on_commands!(< 32KB)\n");
 			ret = -EINVAL;
@@ -744,48 +749,49 @@ ssize_t on_cmd_read(struct file *filp, char __user *user_buf, size_t count,
 		strncpy(&buf[buf_size], "\r\n", 2);
 		buf_size += 2;
 
-		ret = snprintf(&buf[buf_size], 18, "%02x %02x %02x %02x %02x %02x",
-			panel_data->dsi_panel_on_cmds->buf[i].dtype,
-			panel_data->dsi_panel_on_cmds->buf[i].last,
-			panel_data->dsi_panel_on_cmds->buf[i].vc,
-			panel_data->dsi_panel_on_cmds->buf[i].ack,
-			panel_data->dsi_panel_on_cmds->buf[i].wait,
-			panel_data->dsi_panel_on_cmds->buf[i].dlen);
+		ret = snprintf(&buf[buf_size], 21,
+			"%02x %02x %02x %02x %02x %02x %02x",
+			pcmds->cmds[i].dchdr.dtype,
+			pcmds->cmds[i].dchdr.last,
+			pcmds->cmds[i].dchdr.vc,
+			pcmds->cmds[i].dchdr.ack,
+			pcmds->cmds[i].dchdr.wait,
+			(char)(pcmds->cmds[i].dchdr.dlen & 0xff00) >> 8,
+			(char)(pcmds->cmds[i].dchdr.dlen & 0x00ff));
 
 		if (ret < 0)
 			goto read_error;
 
 		buf_size += ret;
 
-		if (0 < panel_data->dsi_panel_on_cmds->buf[i].dlen &&
-			panel_data->dsi_panel_on_cmds->buf[i].dlen < 3) {
+		if (0 < pcmds->cmds[i].dchdr.dlen && pcmds->cmds[i].dchdr.dlen < 3) {
 			ret = snprintf(&buf[buf_size], 4, " %02x",
-				panel_data->dsi_panel_on_cmds->buf[i].payload[0]);
+				pcmds->cmds[i].payload[0]);
 			if (ret < 0)
 				goto read_error;
 
 			buf_size += ret;
 
-			if (panel_data->dsi_panel_on_cmds->buf[i].dlen == 2) {
+			if (pcmds->cmds[i].dchdr.dlen == 2) {
 				ret = snprintf(&buf[buf_size], 4, " %02x",
-					panel_data->dsi_panel_on_cmds->buf[i].payload[1]);
+					pcmds->cmds[i].payload[1]);
 				if (ret < 0)
 					goto read_error;
 
 				buf_size += ret;
 			}
-		} else if (panel_data->dsi_panel_on_cmds->buf[i].dlen > 2) {
-			for (j = 0; j < panel_data->dsi_panel_on_cmds->buf[i].dlen; ++j) {
+		} else if (pcmds->cmds[i].dchdr.dlen > 2) {
+			for (j = 0; j < pcmds->cmds[i].dchdr.dlen; ++j) {
 				if ((j % 6) == 0) {
 					ret = snprintf(&buf[buf_size], 5, "\r\n%02x",
-						panel_data->dsi_panel_on_cmds->buf[i].payload[j]);
+						pcmds->cmds[i].payload[j]);
 					if (ret < 0)
 						goto read_error;
 
 					buf_size += ret;
 				} else {
 					ret = snprintf(&buf[buf_size], 4, " %02x",
-						panel_data->dsi_panel_on_cmds->buf[i].payload[j]);
+						pcmds->cmds[i].payload[j]);
 					if (ret < 0)
 						goto read_error;
 
@@ -875,27 +881,30 @@ static int user_buf_total_pos = 0;
 ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 	size_t count, loff_t *ppos)
 {
-	static char *on_cmds = NULL;
+	static char *buf = NULL;
 	char *prev_on_cmds = NULL;
+	int blen = 0, len;
+	char *bp;
+	struct dsi_ctrl_hdr *dchdr;
+	int i, cnt;
 	int ret;
-	int len;
-	int data_offset;
-	int cmd_plen;
-	int num_of_on_cmds;
-	int i;
+	struct dsi_panel_cmds *pcmds;
 
 	struct mdss_panel_common_pdata *panel_data = filp->private_data;
-
 	if (!panel_data)
 		return -ENODEV;
 
-	prev_on_cmds = on_cmds;
+	pcmds = &panel_data->on_cmds;
+	if (!pcmds)
+		return -EINVAL;
+
+	prev_on_cmds = buf;
 
 	if (user_buf_total) {
 		if (user_buf_total_pos + count < MAX_ON_CMD_SIZE) {
 			memcpy(&user_buf_total[user_buf_total_pos], user_buf, count);
 			user_buf_total_pos += count;
-			len = parse_on_cmds(&on_cmds, user_buf_total,
+			blen = parse_on_cmds(&buf, user_buf_total,
 				user_buf_total_pos);
 		} else {
 			pr_warn("Too large file size(< 32KB)!\n");
@@ -903,10 +912,10 @@ ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 			goto write_error;
 		}
 	} else {
-		len = parse_on_cmds(&on_cmds, user_buf, count);
+		blen = parse_on_cmds(&buf, user_buf, count);
 	}
 
-	if (len == 0) {
+	if (blen == 0) {
 		if (!user_buf_total) {
 			user_buf_total = kzalloc(MAX_ON_CMD_SIZE, GFP_KERNEL);
 			if (!user_buf_total) {
@@ -917,65 +926,67 @@ ssize_t on_cmd_write(struct file *filp, const char __user *user_buf,
 			user_buf_total_pos += count;
 		}
 		return count;
-	} else if (len < 0) {
+	} else if (blen < 0) {
 		pr_err("Invalid on_cmd format or length!\n");
 		ret = -EINVAL;
 		goto write_error;
 	}
 
-	data_offset = 0;
-	cmd_plen = 0;
-	num_of_on_cmds = 0;
-	while ((len - data_offset) >= DT_CMD_HDR) {
-		data_offset += (DT_CMD_HDR - 1);
-		cmd_plen = on_cmds[data_offset++];
-		data_offset += cmd_plen;
-		num_of_on_cmds++;
-	}
-	if (!num_of_on_cmds) {
-		pr_err("%s:%d, No ON cmds specified", __func__, __LINE__);
-		if (on_cmds) {
-			kfree(on_cmds);
-			on_cmds = prev_on_cmds;
+	/* scan dcs commands */
+	bp = buf;
+	len = blen;
+	cnt = 0;
+	while (len > sizeof(*dchdr)) {
+		dchdr = (struct dsi_ctrl_hdr *)bp;
+		dchdr->dlen = ntohs(dchdr->dlen);
+		if (dchdr->dlen > len) {
+			pr_err("%s: dtsi cmd=%x error, len=%d",
+				__func__, dchdr->dtype, dchdr->dlen);
+			return -ENOMEM;
 		}
-		ret = -EINVAL;
+		bp += sizeof(*dchdr);
+		len -= sizeof(*dchdr);
+		bp += dchdr->dlen;
+		len -= dchdr->dlen;
+		cnt++;
+	}
+
+	if (len != 0) {
+		pr_err("%s: dcs_cmd=%x len=%d error!",
+				__func__, buf[0], blen);
+		kfree(buf);
+		ret = -ENOMEM;
 		goto write_error;
 	}
 
-	kfree((panel_data->dsi_panel_on_cmds)->buf);
+	kfree(pcmds->cmds);
 
-	(panel_data->dsi_panel_on_cmds)->buf =
-		kzalloc((num_of_on_cmds * sizeof(struct dsi_cmd_desc)),
+	pcmds->cmds = kzalloc(cnt * sizeof(struct dsi_cmd_desc),
 						GFP_KERNEL);
-	if (!(panel_data->dsi_panel_on_cmds)->buf) {
-		if (on_cmds) {
-			kfree(on_cmds);
-			on_cmds = prev_on_cmds;
+	if (!pcmds->cmds) {
+		if (buf) {
+			kfree(buf);
+			buf = prev_on_cmds;
 		}
 		ret = -ENOMEM;
 		goto write_error;
 	}
 
-	data_offset = 0;
-	for (i = 0; i < num_of_on_cmds; i++) {
-		panel_data->dsi_panel_on_cmds->buf[i].dtype =
-						on_cmds[data_offset++];
-		panel_data->dsi_panel_on_cmds->buf[i].last =
-						on_cmds[data_offset++];
-		panel_data->dsi_panel_on_cmds->buf[i].vc =
-						on_cmds[data_offset++];
-		panel_data->dsi_panel_on_cmds->buf[i].ack =
-						on_cmds[data_offset++];
-		panel_data->dsi_panel_on_cmds->buf[i].wait =
-						on_cmds[data_offset++];
-		panel_data->dsi_panel_on_cmds->buf[i].dlen =
-						on_cmds[data_offset++];
-		panel_data->dsi_panel_on_cmds->buf[i].payload =
-						&on_cmds[data_offset];
-		data_offset += panel_data->dsi_panel_on_cmds->buf[i].dlen;
-	}
+	pcmds->cmd_cnt = cnt;
+	pcmds->buf = buf;
+	pcmds->blen = blen;
 
-	(panel_data->dsi_panel_on_cmds)->size = num_of_on_cmds;
+	bp = buf;
+	len = blen;
+	for (i = 0; i < cnt; i++) {
+		dchdr = (struct dsi_ctrl_hdr *)bp;
+		len -= sizeof(*dchdr);
+		bp += sizeof(*dchdr);
+		pcmds->cmds[i].dchdr = *dchdr;
+		pcmds->cmds[i].payload = bp;
+		bp += dchdr->dlen;
+		len -= dchdr->dlen;
+	}
 
 	if (prev_on_cmds)
 		kfree(prev_on_cmds);
