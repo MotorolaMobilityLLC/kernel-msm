@@ -323,7 +323,7 @@ ipt_do_table(struct sk_buff *skb,
 	acpar.hooknum = hook;
 
 	IP_NF_ASSERT(table->valid_hooks & (1 << hook));
-	local_bh_disable();
+	spin_lock_bh(&x_ipt_lock);
 	addend = xt_write_recseq_begin();
 	private = table->private;
 	cpu        = smp_processor_id();
@@ -424,7 +424,7 @@ ipt_do_table(struct sk_buff *skb,
 		 __func__, *stackptr, origptr);
 	*stackptr = origptr;
  	xt_write_recseq_end(addend);
- 	local_bh_enable();
+	spin_unlock_bh(&x_ipt_lock);
 
 #ifdef DEBUG_ALLOW_ALL
 	return NF_ACCEPT;
@@ -1353,7 +1353,7 @@ do_add_counters(struct net *net, const void __user *user,
 		goto free;
 	}
 
-	local_bh_disable();
+	spin_lock_bh(&x_ipt_lock);
 	private = t->private;
 	if (private->number != num_counters) {
 		ret = -EINVAL;
@@ -1371,7 +1371,7 @@ do_add_counters(struct net *net, const void __user *user,
 	}
 	xt_write_recseq_end(addend);
  unlock_up_free:
-	local_bh_enable();
+	spin_unlock_bh(&x_ipt_lock);
 	xt_table_unlock(t);
 	module_put(t->me);
  free:
