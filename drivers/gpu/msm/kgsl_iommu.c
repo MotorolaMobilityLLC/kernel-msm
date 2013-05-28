@@ -153,7 +153,7 @@ static void _prev_entry(struct kgsl_process_private *priv,
 		if (entry->memdesc.gpuaddr > ret->gpuaddr) {
 			ret->gpuaddr = entry->memdesc.gpuaddr;
 			ret->size = entry->memdesc.size;
-			ret->flags = entry->flags;
+			ret->flags = entry->memdesc.flags;
 			ret->pid = priv->pid;
 		}
 
@@ -186,7 +186,7 @@ static void _next_entry(struct kgsl_process_private *priv,
 		if (entry->memdesc.gpuaddr < ret->gpuaddr) {
 			ret->gpuaddr = entry->memdesc.gpuaddr;
 			ret->size = entry->memdesc.size;
-			ret->flags = entry->flags;
+			ret->flags = entry->memdesc.flags;
 			ret->pid = priv->pid;
 		}
 
