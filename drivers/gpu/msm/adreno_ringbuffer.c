@@ -1075,10 +1075,6 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 					(flags & KGSL_CMD_FLAGS_EOF),
 					&link[0], (cmds - link), *timestamp);
 
-	KGSL_CMD_INFO(device, "ctxt %d g %08x numibs %d ts %d\n",
-		context->id, (unsigned int)ibdesc, numibs, *timestamp);
-
-
 #ifdef CONFIG_MSM_KGSL_CFF_DUMP
 	/*
 	 * insert wait for idle after every IB1
