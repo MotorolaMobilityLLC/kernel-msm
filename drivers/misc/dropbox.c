@@ -166,6 +166,11 @@ void dropbox_queue_event_text(char *name, void *data, size_t size)
 	dropbox_queue_event(name, data, size, 2);
 }
 
+void dropbox_queue_event_empty(char *name)
+{
+	dropbox_queue_event(name, name, strlen(name), 2);
+}
+
 struct dropbox_trigger_callback {
 	char name[EVENT_NAME_LENGTH];
 	void (*callback)(void *);
