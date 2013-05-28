@@ -284,7 +284,7 @@ static ssize_t dropbox_event_show(struct kobject *kobj, char *buf)
 		return scnprintf(buf, PAGE_SIZE, "%s:%d\n", event->name,
 			event->flags);
 	} else
-		return scnprintf(buf, PAGE_SIZE, "none\n");
+		return 0;
 }
 
 static ssize_t dropbox_trigger_store(struct kobject *kobj, const char *buf,
