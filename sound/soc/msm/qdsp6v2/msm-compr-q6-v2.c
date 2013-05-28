@@ -29,6 +29,7 @@
 #include <sound/pcm_params.h>
 #include <asm/dma.h>
 #include <linux/dma-mapping.h>
+#include <linux/msm_audio_ion.h>
 
 #include <sound/timer.h>
 
@@ -39,7 +40,10 @@
 #define COMPRE_CAPTURE_NUM_PERIODS	16
 /* Allocate the worst case frame size for compressed audio */
 #define COMPRE_CAPTURE_HEADER_SIZE	(sizeof(struct snd_compr_audio_info))
-#define COMPRE_CAPTURE_MAX_FRAME_SIZE	(6144)
+/* Changing period size to 4032. 4032 will make sure COMPRE_CAPTURE_PERIOD_SIZE
+ * is 4096 with meta data size of 64 and MAX_NUM_FRAMES_PER_BUFFER 1
+ */
+#define COMPRE_CAPTURE_MAX_FRAME_SIZE	(4032)
 #define COMPRE_CAPTURE_PERIOD_SIZE	((COMPRE_CAPTURE_MAX_FRAME_SIZE + \
 					  COMPRE_CAPTURE_HEADER_SIZE) * \
 					  MAX_NUM_FRAMES_PER_BUFFER)
@@ -226,7 +230,7 @@ static void compr_event_handler(uint32_t opcode,
 				prtd->pcm_irq_pos);
 
 		memcpy(prtd->audio_client->port[OUT].buf->data +
-			   prtd->pcm_irq_pos, (ptrmem + 2),
+			   prtd->pcm_irq_pos, (ptrmem + READDONE_IDX_SIZE),
 			   COMPRE_CAPTURE_HEADER_SIZE);
 		pr_debug("buf = %p, updated data = 0x%X, *data = %p\n",
 				prtd->audio_client->port[OUT].buf,
@@ -235,9 +239,10 @@ static void compr_event_handler(uint32_t opcode,
 				prtd->audio_client->port[OUT].buf->data);
 		if (!atomic_read(&prtd->start))
 			break;
-		pr_debug("frame size=%d, buffer = 0x%X\n", ptrmem[2],
-				ptrmem[1]);
-		if (ptrmem[2] > COMPRE_CAPTURE_MAX_FRAME_SIZE) {
+		pr_debug("frame size=%d, buffer = 0x%X\n",
+				ptrmem[READDONE_IDX_SIZE],
+				ptrmem[READDONE_IDX_BUFADD_LSW]);
+		if (ptrmem[READDONE_IDX_SIZE] > COMPRE_CAPTURE_MAX_FRAME_SIZE) {
 			pr_err("Frame length exceeded the max length");
 			break;
 		}
@@ -492,6 +497,10 @@ static int msm_compr_trigger(struct snd_pcm_substream *substream, int cmd)
 			if (!atomic_cmpxchg(&compressed_audio.audio_ocmem_req,
 									0, 1))
 				audio_ocmem_process_req(AUDIO, true);
+			else
+				atomic_inc(&compressed_audio.audio_ocmem_req);
+			pr_debug("%s: req: %d\n", __func__,
+			atomic_read(&compressed_audio.audio_ocmem_req));
 		}
 
 		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
@@ -546,7 +555,7 @@ static void populate_codec_list(struct compr_audio *compr,
 {
 	pr_debug("%s\n", __func__);
 	/* MP3 Block */
-	compr->info.compr_cap.num_codecs = 4;
+	compr->info.compr_cap.num_codecs = 5;
 	compr->info.compr_cap.min_fragment_size = runtime->hw.period_bytes_min;
 	compr->info.compr_cap.max_fragment_size = runtime->hw.period_bytes_max;
 	compr->info.compr_cap.min_fragments = runtime->hw.periods_min;
@@ -555,6 +564,7 @@ static void populate_codec_list(struct compr_audio *compr,
 	compr->info.compr_cap.codecs[1] = SND_AUDIOCODEC_AAC;
 	compr->info.compr_cap.codecs[2] = SND_AUDIOCODEC_AC3;
 	compr->info.compr_cap.codecs[3] = SND_AUDIOCODEC_EAC3;
+	compr->info.compr_cap.codecs[4] = SND_AUDIOCODEC_AMRWB;
 	/* Add new codecs here */
 }
 
@@ -613,7 +623,6 @@ static int msm_compr_open(struct snd_pcm_substream *substream)
 	populate_codec_list(compr, runtime);
 	runtime->private_data = compr;
 	atomic_set(&prtd->eos, 0);
-	atomic_set(&compressed_audio.audio_ocmem_req, 0);
 	compressed_audio.prtd =  &compr->prtd;
 
 	return 0;
@@ -647,8 +656,14 @@ static int msm_compr_playback_close(struct snd_pcm_substream *substream)
 
 	dir = IN;
 	atomic_set(&prtd->pending_buffer, 0);
-	if (atomic_cmpxchg(&compressed_audio.audio_ocmem_req, 1, 0))
+
+	if (atomic_read(&compressed_audio.audio_ocmem_req) > 1)
+		atomic_dec(&compressed_audio.audio_ocmem_req);
+	else if (atomic_cmpxchg(&compressed_audio.audio_ocmem_req, 1, 0))
 		audio_ocmem_process_req(AUDIO, false);
+
+	pr_debug("%s: req: %d\n", __func__,
+		atomic_read(&compressed_audio.audio_ocmem_req));
 	prtd->pcm_irq_pos = 0;
 	q6asm_cmd(prtd->audio_client, CMD_CLOSE);
 	compressed_audio.prtd = NULL;
@@ -723,25 +738,14 @@ static snd_pcm_uframes_t msm_compr_pointer(struct snd_pcm_substream *substream)
 static int msm_compr_mmap(struct snd_pcm_substream *substream,
 				struct vm_area_struct *vma)
 {
-	int result = 0;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct compr_audio *compr = runtime->private_data;
-	struct msm_audio *prtd = &compr->prtd;
-
-	pr_debug("%s\n", __func__);
+	struct msm_audio *prtd = runtime->private_data;
+	struct audio_client *ac = prtd->audio_client;
+	struct audio_port_data *apd = ac->port;
+	struct audio_buffer *ab = &(apd[IN].buf[0]);
 	prtd->mmap_flag = 1;
-	runtime->render_flag = SNDRV_NON_DMA_MODE;
-	if (runtime->dma_addr && runtime->dma_bytes) {
-		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-		result = remap_pfn_range(vma, vma->vm_start,
-				runtime->dma_addr >> PAGE_SHIFT,
-				runtime->dma_bytes,
-				vma->vm_page_prot);
-	} else {
-		pr_err("Physical address or size of buf is NULL");
-		return -EINVAL;
-	}
-	return result;
+
+	return msm_audio_ion_mmap(ab, vma);
 }
 
 static int msm_compr_hw_params(struct snd_pcm_substream *substream,
@@ -1176,6 +1180,8 @@ static __devinit int msm_compr_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%s: dev name %s\n",
 			 __func__, dev_name(&pdev->dev));
+
+	atomic_set(&compressed_audio.audio_ocmem_req, 0);
 	return snd_soc_register_platform(&pdev->dev,
 				   &msm_soc_platform);
 }

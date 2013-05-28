@@ -433,11 +433,13 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 	pr_debug("%s+: ctrl=%p ndx=%d\n", __func__,
 				ctrl_pdata, ctrl_pdata->ndx);
 
-	mdss_dsi_clk_disable(pdata);
-	mdss_dsi_unprepare_clocks(ctrl_pdata);
+	if (pdata->panel_info.type == MIPI_CMD_PANEL)
+		mdss_dsi_clk_ctrl(ctrl_pdata, 1);
 
 	/* disable DSI controller */
 	mdss_dsi_controller_cfg(0, pdata);
+
+	mdss_dsi_clk_ctrl(ctrl_pdata, 0);
 
 	/* disable DSI phy */
 	mdss_dsi_phy_enable(ctrl_pdata->ctrl_base, 0);
@@ -456,6 +458,7 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
 	struct mipi_panel_info *mipi;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
 	pr_info("%s:%d DSI on for continuous splash.\n", __func__, __LINE__);
 
@@ -464,19 +467,23 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
-	mipi  = &pdata->panel_info.mipi;
+	mipi = &pdata->panel_info.mipi;
 
-	ret = mdss_dsi_panel_power_on(pdata, 1);
-	if (ret) {
-		pr_err("%s: Panel power on failed\n", __func__);
-		return ret;
-	}
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	pr_debug("%s+: ctrl=%p ndx=%d\n", __func__,
+				ctrl_pdata, ctrl_pdata->ndx);
+
+	WARN(ctrl_pdata->panel_state != UNKNOWN_STATE,
+			"incorrect panel state=%d\n", ctrl_pdata->panel_state);
+
 	mdss_dsi_sw_reset(pdata);
 	mdss_dsi_host_init(mipi, pdata);
 
-	pdata->panel_info.panel_power_on = 1;
-
 	mdss_dsi_op_mode_config(mipi->mode, pdata);
+
+	ctrl_pdata->panel_state = PANEL_ON;
 
 	pr_debug("%s-:End\n", __func__);
 	return ret;
@@ -523,8 +530,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	mdss_dsi_phy_sw_reset((ctrl_pdata->ctrl_base));
 	mdss_dsi_phy_init(pdata);
 
-	mdss_dsi_prepare_clocks(ctrl_pdata);
-	mdss_dsi_clk_enable(pdata);
+	mdss_dsi_clk_ctrl(ctrl_pdata, 1);
 
 	clk_rate = pdata->panel_info.clk_rate;
 	clk_rate = min(clk_rate, pdata->panel_info.clk_max);
@@ -602,6 +608,9 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 		wmb();
 	}
 
+	if (pdata->panel_info.type == MIPI_CMD_PANEL)
+		mdss_dsi_clk_ctrl(ctrl_pdata, 0);
+
 	pr_debug("%s-:\n", __func__);
 	return 0;
 }
@@ -623,12 +632,15 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
-	ret = ctrl_pdata->on(pdata);
-	if (ret) {
-		pr_err("%s: unable to initialize the panel\n", __func__);
-		return ret;
+	if (ctrl_pdata->panel_state != PANEL_ON) {
+		ret = ctrl_pdata->on(pdata);
+		if (ret) {
+			pr_err("%s: unable to initialize the panel\n",
+							__func__);
+			return ret;
+		}
+		ctrl_pdata->panel_state = PANEL_ON;
 	}
-
 	mdss_dsi_op_mode_config(mipi->mode, pdata);
 
 	pr_debug("%s-:\n", __func__);
@@ -653,12 +665,14 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 
 	mdss_dsi_op_mode_config(DSI_CMD_MODE, pdata);
 
-	ret = ctrl_pdata->off(pdata);
-	if (ret) {
-		pr_err("%s: Panel OFF failed\n", __func__);
-		return ret;
+	if (ctrl_pdata->panel_state == PANEL_ON) {
+		ret = ctrl_pdata->off(pdata);
+		if (ret) {
+			pr_err("%s: Panel OFF failed\n", __func__);
+			return ret;
+		}
+		ctrl_pdata->panel_state = PANEL_OFF;
 	}
-
 	pr_debug("%s-:End\n", __func__);
 	return ret;
 }
@@ -681,37 +695,40 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_UNBLANK:
 		lcd_notifier_call_chain(LCD_EVENT_ON_START, NULL);
 		rc = mdss_dsi_on(pdata);
-		if (ctrl_pdata->on_cmds->ctrl_state == DSI_LP_MODE) {
+		if (ctrl_pdata->on_cmds.link_state == DSI_LP_MODE)
 			rc = mdss_dsi_unblank(pdata);
-		}
 		break;
 	case MDSS_EVENT_PANEL_ON:
-		if (ctrl_pdata->on_cmds->ctrl_state == DSI_HS_MODE)
+		if (ctrl_pdata->on_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_unblank(pdata);
 		lcd_notifier_call_chain(LCD_EVENT_ON_END, NULL);
 		break;
 	case MDSS_EVENT_BLANK:
 		lcd_notifier_call_chain(LCD_EVENT_OFF_START, NULL);
-		if (ctrl_pdata->off_cmds->ctrl_state == DSI_HS_MODE) {
+		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE)
 			rc = mdss_dsi_blank(pdata);
-		}
 		break;
 	case MDSS_EVENT_PANEL_OFF:
-		if (ctrl_pdata->off_cmds->ctrl_state == DSI_LP_MODE) {
+		if (ctrl_pdata->off_cmds.link_state == DSI_LP_MODE)
 			rc = mdss_dsi_blank(pdata);
-		}
 		rc = mdss_dsi_off(pdata);
 		lcd_notifier_call_chain(LCD_EVENT_OFF_END, NULL);
 		break;
 	case MDSS_EVENT_CONT_SPLASH_FINISH:
-		if (ctrl_pdata->on_cmds->ctrl_state == DSI_LP_MODE) {
+		if (ctrl_pdata->on_cmds.link_state == DSI_LP_MODE) {
 			rc = mdss_dsi_cont_splash_on(pdata);
 		} else {
 			pr_debug("%s:event=%d, Dsi On not called: ctrl_state: %d\n",
 				 __func__, event,
-				 ctrl_pdata->on_cmds->ctrl_state);
+				 ctrl_pdata->on_cmds.link_state);
 			rc = -EINVAL;
 		}
+		break;
+	case MDSS_EVENT_PANEL_CLK_CTRL:
+		mdss_dsi_clk_req(ctrl_pdata, (int)arg);
+		break;
+	case MDSS_EVENT_DSI_CMDLIST_KOFF:
+		mdss_dsi_cmdlist_commit(ctrl_pdata, 1);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
@@ -1084,17 +1101,16 @@ int dsi_panel_device_register(struct platform_device *pdev,
 
 	ctrl_pdata->panel_data.event_handler = mdss_dsi_event_handler;
 
-	ctrl_pdata->on_cmds = panel_data->dsi_panel_on_cmds;
-	ctrl_pdata->off_cmds = panel_data->dsi_panel_off_cmds;
+	ctrl_pdata->on_cmds = panel_data->on_cmds;
+	ctrl_pdata->off_cmds = panel_data->off_cmds;
 
 	memcpy(&((ctrl_pdata->panel_data).panel_info),
 				&(panel_data->panel_info),
 				       sizeof(struct mdss_panel_info));
 
-	mdss_dsi_irq_handler_config(ctrl_pdata);
 	ctrl_pdata->panel_data.set_backlight = panel_data->bl_fnc;
 	ctrl_pdata->bklt_ctrl = panel_data->panel_info.bklt_ctrl;
-	ctrl_pdata->pwm_gpio = panel_data->panel_info.pwm_gpio;
+	ctrl_pdata->pwm_pmic_gpio = panel_data->panel_info.pwm_pmic_gpio;
 	ctrl_pdata->pwm_period = panel_data->panel_info.pwm_period;
 	ctrl_pdata->pwm_lpg_chan = panel_data->panel_info.pwm_lpg_chan;
 	ctrl_pdata->bklt_max = panel_data->panel_info.bl_max;
@@ -1102,6 +1118,7 @@ int dsi_panel_device_register(struct platform_device *pdev,
 	if (ctrl_pdata->bklt_ctrl == BL_PWM)
 		mdss_dsi_panel_pwm_cfg(ctrl_pdata);
 
+	mdss_dsi_ctrl_init(ctrl_pdata);
 	/*
 	 * register in mdp driver
 	 */
@@ -1119,6 +1136,11 @@ int dsi_panel_device_register(struct platform_device *pdev,
 
 		ctrl_pdata->panel_data.panel_info.cont_splash_enabled = 1;
 		ctrl_pdata->panel_data.panel_info.panel_power_on = 1;
+		rc = mdss_dsi_panel_power_on(&(ctrl_pdata->panel_data), 1);
+		if (rc) {
+			pr_err("%s: Panel power on failed\n", __func__);
+			return rc;
+		}
 	}
 
 	ctrl_pdata->pclk_rate = dsi_pclk_rate;
@@ -1126,10 +1148,8 @@ int dsi_panel_device_register(struct platform_device *pdev,
 	pr_debug("%s: pclk=%d, bclk=%d\n", __func__,
 			ctrl_pdata->pclk_rate, ctrl_pdata->byte_clk_rate);
 
-	if (ctrl_pdata->panel_data.panel_info.cont_splash_enabled) {
-		mdss_dsi_prepare_clocks(ctrl_pdata);
-		mdss_dsi_clk_enable(&(ctrl_pdata->panel_data));
-	}
+	if (ctrl_pdata->panel_data.panel_info.cont_splash_enabled)
+		mdss_dsi_clk_ctrl(ctrl_pdata, 1);
 
 	rc = mdss_register_panel(ctrl_pdev, &(ctrl_pdata->panel_data));
 	if (rc) {
@@ -1154,6 +1174,7 @@ int dsi_panel_device_register(struct platform_device *pdev,
 		ctrl_pdata->ndx = 1;
 	}
 
+	ctrl_pdata->panel_state = UNKNOWN_STATE;
 	pr_debug("%s: Panal data initialized\n", __func__);
 	return 0;
 }
@@ -1182,8 +1203,6 @@ static int mdss_dsi_register_driver(void)
 static int __init mdss_dsi_driver_init(void)
 {
 	int ret;
-
-	mdss_dsi_init();
 
 	ret = mdss_dsi_register_driver();
 	if (ret) {

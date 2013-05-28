@@ -345,6 +345,10 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	struct kgsl_mem_entry *entry;
 	struct kgsl_snapshot_object *obj;
 	int offset;
+	int ret = -EINVAL;
+
+	if (!gpuaddr)
+		return 0;
 
 	entry = kgsl_get_mem_entry(device, ptbase, gpuaddr, size);
 
@@ -358,7 +362,7 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	if (entry->memtype != KGSL_MEM_ENTRY_KERNEL) {
 		KGSL_DRV_ERR(device,
 			"Only internal GPU buffers can be frozen\n");
-		return -EINVAL;
+		goto err_put;
 	}
 
 	/*
@@ -381,7 +385,7 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	if (size + offset > entry->memdesc.size) {
 		KGSL_DRV_ERR(device, "Invalid size for GPU buffer %8.8X\n",
 				gpuaddr);
-		return -EINVAL;
+		goto err_put;
 	}
 
 	/* If the buffer is already on the list, skip it */
@@ -390,26 +394,23 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 			/* If the size is different, use the bigger size */
 			if (obj->size < size)
 				obj->size = size;
-
-			return 0;
+			ret = 0;
+			goto err_put;
 		}
 	}
 
 	if (kgsl_memdesc_map(&entry->memdesc) == NULL) {
 		KGSL_DRV_ERR(device, "Unable to map GPU buffer %X\n",
 				gpuaddr);
-		return -EINVAL;
+		goto err_put;
 	}
 
 	obj = kzalloc(sizeof(*obj), GFP_KERNEL);
 
 	if (obj == NULL) {
 		KGSL_DRV_ERR(device, "Unable to allocate memory\n");
-		return -EINVAL;
+		goto err_put;
 	}
-
-	/* Ref count the mem entry */
-	kgsl_mem_entry_get(entry);
 
 	obj->type = type;
 	obj->entry = entry;
@@ -428,12 +429,15 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	 * 0 so it doesn't get counted twice
 	 */
 
-	if (entry->memdesc.priv & KGSL_MEMDESC_FROZEN)
-		return 0;
+	ret = (entry->memdesc.priv & KGSL_MEMDESC_FROZEN) ? 0
+		: entry->memdesc.size;
 
 	entry->memdesc.priv |= KGSL_MEMDESC_FROZEN;
 
-	return entry->memdesc.size;
+	return ret;
+err_put:
+	kgsl_mem_entry_put(entry);
+	return ret;
 }
 EXPORT_SYMBOL(kgsl_snapshot_get_object);
 
@@ -531,6 +535,10 @@ int kgsl_device_snapshot(struct kgsl_device *device, int hang)
 	int remain = device->snapshot_maxsize - sizeof(*header);
 	void *snapshot;
 	struct timespec boot;
+
+	/* increment the hang count (on hang) for good book keeping */
+	if (hang)
+		device->snapshot_faultcount++;
 
 	/*
 	 * The first hang is always the one we are interested in. To
@@ -670,6 +678,22 @@ done:
 	return itr.write;
 }
 
+/* Show the total number of hangs since device boot */
+static ssize_t faultcount_show(struct kgsl_device *device, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", device->snapshot_faultcount);
+}
+
+/* Reset the total number of hangs since device boot */
+static ssize_t faultcount_store(struct kgsl_device *device, const char *buf,
+	size_t count)
+{
+	if (device && count > 0)
+		device->snapshot_faultcount = 0;
+
+	return count;
+}
+
 /* Show the timestamp of the last collected snapshot */
 static ssize_t timestamp_show(struct kgsl_device *device, char *buf)
 {
@@ -705,6 +729,7 @@ struct kgsl_snapshot_attribute attr_##_name = { \
 
 SNAPSHOT_ATTR(trigger, 0600, NULL, trigger_store);
 SNAPSHOT_ATTR(timestamp, 0444, timestamp_show, NULL);
+SNAPSHOT_ATTR(faultcount, 0644, faultcount_show, faultcount_store);
 
 static void snapshot_sysfs_release(struct kobject *kobj)
 {
@@ -770,6 +795,7 @@ int kgsl_device_snapshot_init(struct kgsl_device *device)
 
 	device->snapshot_maxsize = KGSL_SNAPSHOT_MEMSIZE;
 	device->snapshot_timestamp = 0;
+	device->snapshot_faultcount = 0;
 
 	INIT_LIST_HEAD(&device->snapshot_obj_list);
 
@@ -787,6 +813,10 @@ int kgsl_device_snapshot_init(struct kgsl_device *device)
 		goto done;
 
 	ret  = sysfs_create_file(&device->snapshot_kobj, &attr_timestamp.attr);
+	if (ret)
+		goto done;
+
+	ret  = sysfs_create_file(&device->snapshot_kobj, &attr_faultcount.attr);
 
 done:
 	return ret;
@@ -813,5 +843,6 @@ void kgsl_device_snapshot_close(struct kgsl_device *device)
 	device->snapshot = NULL;
 	device->snapshot_maxsize = 0;
 	device->snapshot_timestamp = 0;
+	device->snapshot_faultcount = 0;
 }
 EXPORT_SYMBOL(kgsl_device_snapshot_close);

@@ -11,6 +11,35 @@
  */
 
 /include/ "skeleton.dtsi"
+
+/ {
+	model = "Qualcomm MSM 8226";
+	compatible = "qcom,msm8226";
+	interrupt-parent = <&intc>;
+
+	aliases {
+		spi0 = &spi_0;
+		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
+		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
+	};
+
+	memory {
+		secure_mem: secure_region {
+			linux,contiguous-region;
+			reg = <0 0x3800000>;
+			label = "secure_mem";
+		};
+
+		qsecom_mem: qsecom_region {
+			linux,contiguous-region;
+			reg = <0 0x780000>;
+			label = "qsecom_mem";
+		};
+	};
+
+	soc: soc { };
+};
+
 /include/ "msm8226-ion.dtsi"
 /include/ "msm8226-camera.dtsi"
 /include/ "msm-gdsc.dtsi"
@@ -22,10 +51,11 @@
 /include/ "msm8226-mdss.dtsi"
 /include/ "msm8226-coresight.dtsi"
 /include/ "msm8226-iommu-domains.dtsi"
-/ {
-	model = "Qualcomm MSM 8226";
-	compatible = "qcom,msm8226";
-	interrupt-parent = <&intc>;
+
+&soc {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	ranges;
 
 	intc: interrupt-controller@f9000000 {
 		compatible = "qcom,msm-qgic2";
@@ -47,25 +77,10 @@
 		qcom,direct-connect-irqs = <8>;
 	};
 
-	aliases {
-		spi0 = &spi_0;
-		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
-		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
-	};
-
-	memory {
-		secure_mem: secure_region {
-			linux,contiguous-region;
-			reg = <0 0x3800000>;
-			label = "secure_mem";
-		};
-
-		qsecom_mem: qsecom_region {
-			linux,contiguous-region;
-			reg = <0 0x780000>;
-			label = "qsecom_mem";
-		};
-
+	qcom,mpm2-sleep-counter@fc4a3000 {
+		compatible = "qcom,mpm2-sleep-counter";
+		reg = <0xfc4a3000 0x1000>;
+		clock-frequency = <32768>;
 	};
 
 	timer {
@@ -267,7 +282,7 @@
 		interrupt-names = "cdc-int";
 	};
 
-	slim@fe12f000 {
+	slim_msm: slim@fe12f000 {
 		cell-index = <1>;
 		compatible = "qcom,slim-ngd";
 		reg = <0xfe12f000 0x35000>,
@@ -335,6 +350,11 @@
 		compatible = "qcom,msm8226-audio-tapan";
 		qcom,model = "msm8226-tapan-snd-card";
 		qcom,tapan-mclk-clk-freq = <9600000>;
+		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 63 0>;
+		qcom,prim-auxpcm-gpio-sync = <&msmgpio 64 0>;
+		qcom,prim-auxpcm-gpio-din  = <&msmgpio 65 0>;
+		qcom,prim-auxpcm-gpio-dout = <&msmgpio 66 0>;
+		qcom,prim-auxpcm-gpio-set = "prim-gpio-prim";
 	};
 
 	qcom,msm-pcm {
@@ -485,6 +505,28 @@
 
 	qcom,msm-pcm-hostless {
 		compatible = "qcom,msm-pcm-hostless";
+	};
+
+	qcom,msm-auxpcm {
+		compatible = "qcom,msm-auxpcm-resource";
+		qcom,msm-cpudai-auxpcm-clk = "pcm_clk";
+		qcom,msm-cpudai-auxpcm-mode = <0>, <0>;
+		qcom,msm-cpudai-auxpcm-sync = <1>, <1>;
+		qcom,msm-cpudai-auxpcm-frame = <5>, <4>;
+		qcom,msm-cpudai-auxpcm-quant = <2>, <2>;
+		qcom,msm-cpudai-auxpcm-slot = <1>, <1>;
+		qcom,msm-cpudai-auxpcm-data = <0>, <0>;
+		qcom,msm-cpudai-auxpcm-pcm-clk-rate = <2048000>, <2048000>;
+
+		qcom,msm-prim-auxpcm-rx {
+			qcom,msm-auxpcm-dev-id = <4106>;
+			compatible = "qcom,msm-auxpcm-dev";
+		};
+
+		qcom,msm-prim-auxpcm-tx {
+			qcom,msm-auxpcm-dev-id = <4107>;
+			compatible = "qcom,msm-auxpcm-dev";
+		};
 	};
 
 	qcom,wcnss-wlan@fb000000 {
@@ -687,7 +729,7 @@
 		reg = <0xf9927000 0x1000>;
 		interrupt-names = "qup_err_intr";
 		interrupts = <0 99 0>;
-		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-bus-freq = <384000>;
 		qcom,i2c-src-freq = <19200000>;
 	};
 
@@ -744,6 +786,7 @@
 
 		/* GPIO inputs from wcnss */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_4_in 0 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_4_in 1 0>;
 		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_4_in 2 0>;
 
 		/* GPIO output to wcnss */
@@ -768,6 +811,7 @@
 		/* GPIO inputs from lpass */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_2_in 0 0>;
 		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_2_in 2 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_2_in 1 0>;
 
 		/* GPIO output to lpass */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_2_out 0 0>;
@@ -784,7 +828,6 @@
 			    "restart_reg", "cxrail_bhs_reg";
 
 		interrupts = <0 24 1>;
-		vdd_mss-supply = <&pm8226_s1>;
 		vdd_cx-supply = <&pm8226_s1_corner>;
 		vdd_mx-supply = <&pm8226_l3>;
 		vdd_pll-supply = <&pm8226_l8>;
@@ -796,6 +839,7 @@
 
 		/* GPIO inputs from mss */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_1_in 0 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_1_in 1 0>;
 		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_1_in 2 0>;
 
 		/* GPIO output to mss */
@@ -825,6 +869,7 @@
 		qcom,limit-temp = <60>;
 		qcom,temp-hysteresis = <10>;
 		qcom,freq-step = <2>;
+		qcom,freq-control-mask = <0xf>;
 	};
 
 	spi_0: spi@f9923000 { /* BLSP1 QUP1 */
@@ -963,22 +1008,27 @@
 };
 
 &gdsc_venus {
+	qcom,clock-names = "core_clk";
 	status = "ok";
 };
 
 &gdsc_mdss {
+	qcom,clock-names = "core_clk", "lut_clk";
 	status = "ok";
 };
 
 &gdsc_jpeg {
+	qcom,clock-names = "core_clk";
 	status = "ok";
 };
 
 &gdsc_vfe {
+	qcom,clock-names = "core_clk", "csi_clk", "cpp_clk";
 	status = "ok";
 };
 
 &gdsc_oxili_cx {
+	qcom,clock-names = "core_clk";
 	status = "ok";
 };
 
@@ -1088,6 +1138,71 @@
 		qcom,scale-function = <0>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
+	};
+};
+
+&pm8226_adc_tm {
+	/* Channel Node */
+	chan@30 {
+		label = "batt_therm";
+		reg = <0x30>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <1>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x48>;
+	};
+
+	chan@8 {
+		label = "die_temp";
+		reg = <8>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <3>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x68>;
+	};
+
+	chan@6 {
+		label = "vbat_sns";
+		reg = <6>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x70>;
+	};
+
+	chan@14 {
+		label = "pa_therm0";
+		reg = <0x14>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x78>;
+		qcom,thermal-node;
+	};
+
+	chan@17 {
+		label = "pa_therm1";
+		reg = <0x17>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x80>;
+		qcom,thermal-node;
 	};
 };
 

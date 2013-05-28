@@ -36,6 +36,7 @@
 #include <mach/scm.h>
 #include <mach/socinfo.h>
 #include <mach/msm-krait-l2-accessors.h>
+#include <mach/msm_bus.h>
 #include <asm/cacheflush.h>
 #include <asm/hardware/gic.h>
 #include <asm/pgtable.h>
@@ -671,7 +672,7 @@ static void msm_pm_set_timer(uint32_t modified_time_us)
 	u64 modified_time_ns = modified_time_us * NSEC_PER_USEC;
 	ktime_t modified_ktime = ns_to_ktime(modified_time_ns);
 	pm_hrtimer.function = pm_hrtimer_cb;
-	hrtimer_start(&pm_hrtimer, modified_ktime, HRTIMER_MODE_ABS);
+	hrtimer_start(&pm_hrtimer, modified_ktime, HRTIMER_MODE_REL);
 }
 
 /******************************************************************************
@@ -854,8 +855,10 @@ enum msm_pm_sleep_mode msm_pm_idle_enter(struct cpuidle_device *dev,
 	time = ktime_to_ns(ktime_get());
 
 	if (sleep_mode == MSM_PM_SLEEP_MODE_POWER_COLLAPSE) {
+		int64_t ns = msm_pm_timer_enter_idle();
 		notify_rpm = true;
-		sleep_delay = (uint32_t)msm_pm_timer_enter_idle();
+		do_div(ns, NSEC_PER_SEC / SCLK_HZ);
+		sleep_delay = (uint32_t)ns;
 
 		if (sleep_delay == 0) /* 0 would mean infinite time */
 			sleep_delay = 1;
@@ -1110,6 +1113,36 @@ static const struct platform_suspend_ops msm_pm_ops = {
 	.enter = msm_pm_enter,
 	.valid = suspend_valid_only_mem,
 };
+
+static int __devinit msm_pm_snoc_client_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+	static struct msm_bus_scale_pdata *msm_pm_bus_pdata;
+	static uint32_t msm_pm_bus_client;
+
+	msm_pm_bus_pdata = msm_bus_cl_get_pdata(pdev);
+
+	if (msm_pm_bus_pdata) {
+		msm_pm_bus_client =
+			msm_bus_scale_register_client(msm_pm_bus_pdata);
+
+		if (!msm_pm_bus_client) {
+			pr_err("%s: Failed to register SNOC client",
+							__func__);
+			rc = -ENXIO;
+			goto snoc_cl_probe_done;
+		}
+
+		rc = msm_bus_scale_client_update_request(msm_pm_bus_client, 1);
+
+		if (rc)
+			pr_err("%s: Error setting bus rate", __func__);
+	}
+
+snoc_cl_probe_done:
+	return rc;
+}
+
 static int __devinit msm_cpu_status_probe(struct platform_device *pdev)
 {
 	struct msm_pm_sleep_status_data *pdata;
@@ -1198,6 +1231,21 @@ static struct platform_driver msm_cpu_status_driver = {
 	},
 };
 
+static struct of_device_id msm_snoc_clnt_match_tbl[] = {
+	{.compatible = "qcom,pm-snoc-client"},
+	{},
+};
+
+static struct platform_driver msm_cpu_pm_snoc_client_driver = {
+	.probe = msm_pm_snoc_client_probe,
+	.driver = {
+		.name = "pm_snoc_client",
+		.owner = THIS_MODULE,
+		.of_match_table = msm_snoc_clnt_match_tbl,
+	},
+};
+
+
 static int __init msm_pm_setup_saved_state(void)
 {
 	pgd_t *pc_pgd;
@@ -1248,24 +1296,19 @@ core_initcall(msm_pm_setup_saved_state);
 
 static void setup_broadcast_timer(void *arg)
 {
-	unsigned long reason = (unsigned long)arg;
 	int cpu = smp_processor_id();
 
-	reason = reason ?
-		CLOCK_EVT_NOTIFY_BROADCAST_ON : CLOCK_EVT_NOTIFY_BROADCAST_OFF;
-
-	clockevents_notify(reason, &cpu);
+	clockevents_notify(CLOCK_EVT_NOTIFY_BROADCAST_ON, &cpu);
 }
 
 static int setup_broadcast_cpuhp_notify(struct notifier_block *n,
 		unsigned long action, void *hcpu)
 {
-	int hotcpu = (unsigned long)hcpu;
+	int cpu = (unsigned long)hcpu;
 
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPU_ONLINE:
-		smp_call_function_single(hotcpu, setup_broadcast_timer,
-				(void *)true, 1);
+		smp_call_function_single(cpu, setup_broadcast_timer, NULL, 1);
 		break;
 	}
 
@@ -1288,14 +1331,11 @@ static int __init msm_pm_init(void)
 	msm_pm_mode_sysfs_add();
 	msm_pm_add_stats(enable_stats, ARRAY_SIZE(enable_stats));
 	suspend_set_ops(&msm_pm_ops);
-	hrtimer_init(&pm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
+	hrtimer_init(&pm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	msm_cpuidle_init();
 
 	if (msm_pm_pc_reset_timer) {
-		get_cpu();
-		smp_call_function_many(cpu_online_mask, setup_broadcast_timer,
-				(void *)true, 1);
-		put_cpu();
+		on_each_cpu(setup_broadcast_timer, NULL, 1);
 		register_cpu_notifier(&setup_broadcast_notifier);
 	}
 
@@ -1543,6 +1583,14 @@ static int __init msm_pm_8x60_init(void)
 	if (rc) {
 		pr_err("%s(): failed to register driver %s\n", __func__,
 				msm_cpu_status_driver.driver.name);
+		return rc;
+	}
+
+	rc = platform_driver_register(&msm_cpu_pm_snoc_client_driver);
+
+	if (rc) {
+		pr_err("%s(): failed to register driver %s\n", __func__,
+				msm_cpu_pm_snoc_client_driver.driver.name);
 		return rc;
 	}
 

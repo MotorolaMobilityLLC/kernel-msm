@@ -66,6 +66,7 @@ static const char *const mpeg_video_vidc_extradata[] = {
 	"Extradata input crop",
 	"Extradata digital zoom",
 	"Extradata aspect ratio",
+	"Extradata mpeg2 seqdisp",
 };
 
 static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
@@ -203,7 +204,7 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.name = "Extradata Type",
 		.type = V4L2_CTRL_TYPE_MENU,
 		.minimum = V4L2_MPEG_VIDC_EXTRADATA_NONE,
-		.maximum = V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO,
+		.maximum = V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP,
 		.default_value = V4L2_MPEG_VIDC_EXTRADATA_NONE,
 		.menu_skip_mask = ~(
 			(1 << V4L2_MPEG_VIDC_EXTRADATA_NONE) |
@@ -223,7 +224,8 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 			(1 << V4L2_MPEG_VIDC_EXTRADATA_METADATA_FILLER) |
 			(1 << V4L2_MPEG_VIDC_INDEX_EXTRADATA_INPUT_CROP) |
 			(1 << V4L2_MPEG_VIDC_INDEX_EXTRADATA_DIGITAL_ZOOM) |
-			(1 << V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO)
+			(1 << V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO) |
+			(1 << V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP)
 			),
 		.qmenu = mpeg_video_vidc_extradata,
 		.step = 0,
@@ -697,32 +699,43 @@ exit:
 }
 int msm_vdec_s_parm(struct msm_vidc_inst *inst, struct v4l2_streamparm *a)
 {
-	u32 us_per_frame = 0;
-	int rc = 0;
+	u64 us_per_frame = 0;
+	int rc = 0, fps = 0, rem = 0;
 	if (a->parm.output.timeperframe.denominator) {
 		switch (a->type) {
-		case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
-			us_per_frame = a->parm.output.timeperframe.numerator/
-				a->parm.output.timeperframe.denominator;
-			break;
 		case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
-			us_per_frame = a->parm.capture.timeperframe.numerator/
-				a->parm.capture.timeperframe.denominator;
+		case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
+			us_per_frame = a->parm.output.timeperframe.numerator *
+				(u64)USEC_PER_SEC;
+			do_div(us_per_frame, a->parm.output.\
+					timeperframe.denominator);
 			break;
 		default:
 			dprintk(VIDC_ERR,
-				"Scale clocks : Unknown buffer type\n");
+					"Scale clocks : Unknown buffer type %d\n",
+					a->type);
 			break;
 		}
 	}
+
 	if (!us_per_frame) {
 		dprintk(VIDC_ERR,
-				"Failed to scale clocks : time between frames is 0\n");
+			"Failed to scale clocks : time between frames is 0\n");
 		rc = -EINVAL;
 		goto exit;
 	}
-	inst->prop.fps = (u8) (USEC_PER_SEC / us_per_frame);
-	if (inst->prop.fps) {
+
+	fps = USEC_PER_SEC;
+	rem = do_div(fps, us_per_frame);
+	if (rem) {
+		/* Effectively fps = ceil((float)USEC_PER_SEC/us_per_frame) */
+		fps++;
+	}
+
+	if (inst->prop.fps != fps) {
+		dprintk(VIDC_PROF, "reported fps changed for %p: %d->%d\n",
+				inst, inst->prop.fps, fps);
+		inst->prop.fps = fps;
 		msm_comm_scale_clocks_and_bus(inst);
 	}
 exit:
@@ -1121,11 +1134,24 @@ int msm_vdec_cmd(struct msm_vidc_inst *inst, struct v4l2_decoder_cmd *dec)
 	int rc = 0;
 	struct v4l2_event dqevent = {0};
 	struct msm_vidc_core *core = inst->core;
+
+	if (!dec || !inst || !inst->core) {
+		dprintk(VIDC_ERR, "%s invalid params", __func__);
+		return -EINVAL;
+	}
 	switch (dec->cmd) {
 	case V4L2_DEC_QCOM_CMD_FLUSH:
 		rc = msm_comm_flush(inst, dec->flags);
 		break;
 	case V4L2_DEC_CMD_STOP:
+		if (core->state != VIDC_CORE_INVALID &&
+			inst->state ==  MSM_VIDC_CORE_INVALID) {
+			rc = msm_comm_recover_from_session_error(inst);
+			if (rc)
+				dprintk(VIDC_ERR,
+					"Failed to recover from session_error: %d\n",
+					rc);
+		}
 		rc = msm_comm_release_scratch_buffers(inst);
 		if (rc)
 			dprintk(VIDC_ERR,
@@ -1191,7 +1217,6 @@ int msm_vdec_inst_init(struct msm_vidc_inst *inst)
 	inst->capability.width.min = MIN_SUPPORTED_WIDTH;
 	inst->capability.width.max = DEFAULT_WIDTH;
 	inst->prop.fps = 30;
-	inst->prop.prev_time_stamp = 0;
 	return rc;
 }
 
@@ -1473,6 +1498,6 @@ int msm_vdec_ctrl_deinit(struct msm_vidc_inst *inst)
 		kfree(curr->cluster);
 		kfree(curr);
 	}
-
+	v4l2_ctrl_handler_free(&inst->ctrl_handler);
 	return 0;
 }

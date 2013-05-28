@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 
 	led_flash0: qcom,camera-led-flash {
 		cell-index = <0>;
@@ -73,8 +73,8 @@
 		reg = <0x6d>;
 		qcom,slave-id = <0x20 0x0 0x9724>;
 		qcom,csiphy-sd-index = <1>;
-		qcom,csid-sd-index = <0>;
-		qcom,mount-angle = <90>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <270>;
 		qcom,sensor-name = "ov9724";
 		cam_vdig-supply = <&pm8226_l5>;
 		cam_vana-supply = <&pm8226_l19>;

@@ -86,15 +86,19 @@ struct a2_mux_context_type {
 	struct list_head bam_tx_pool;
 	spinlock_t bam_tx_pool_spinlock;
 	struct workqueue_struct *a2_mux_tx_workqueue;
+	struct workqueue_struct *a2_mux_rx_workqueue;
 	int a2_mux_initialized;
 	bool bam_is_connected;
+	bool bam_connect_in_progress;
 	int a2_mux_send_power_vote_on_init_once;
 	int a2_mux_sw_bridge_is_connected;
+	bool a2_mux_dl_wakeup;
 	u32 a2_device_handle;
 	struct mutex wakeup_lock;
 	struct completion ul_wakeup_ack_completion;
 	struct completion bam_connection_completion;
 	struct completion request_resource_completion;
+	struct completion dl_wakeup_completion;
 	rwlock_t ul_wakeup_lock;
 	int wait_for_ack;
 	struct wake_lock bam_wakelock;
@@ -237,7 +241,6 @@ static inline void ul_powerdown(void)
 		INIT_COMPLETION(a2_mux_ctx->ul_wakeup_ack_completion);
 		power_vote(0);
 	}
-	a2_mux_ctx->bam_is_connected = false;
 }
 
 static void ul_wakeup(void)
@@ -245,7 +248,8 @@ static void ul_wakeup(void)
 	int ret;
 
 	mutex_lock(&a2_mux_ctx->wakeup_lock);
-	if (a2_mux_ctx->bam_is_connected) {
+	if (a2_mux_ctx->bam_is_connected &&
+				!a2_mux_ctx->bam_connect_in_progress) {
 		IPADBG("%s Already awake\n", __func__);
 		mutex_unlock(&a2_mux_ctx->wakeup_lock);
 		return;
@@ -259,7 +263,6 @@ static void ul_wakeup(void)
 			grab_wakelock();
 		else
 			a2_mux_ctx->a2_pc_disabled_wakelock_skipped = 1;
-		a2_mux_ctx->bam_is_connected = true;
 		mutex_unlock(&a2_mux_ctx->wakeup_lock);
 		return;
 	}
@@ -298,7 +301,6 @@ static void ul_wakeup(void)
 			goto bail;
 		}
 	}
-	a2_mux_ctx->bam_is_connected = true;
 	IPADBG("%s complete\n", __func__);
 	mutex_unlock(&a2_mux_ctx->wakeup_lock);
 	return;
@@ -367,26 +369,94 @@ static void bam_mux_write_done(bool is_tethered, struct sk_buff *skb)
 		dev_kfree_skb_any(skb);
 }
 
+static bool msm_bam_dmux_kickoff_ul_power_down(void)
+
+{
+	bool is_connected;
+
+	write_lock(&a2_mux_ctx->ul_wakeup_lock);
+	if (a2_mux_ctx->bam_connect_in_progress) {
+		a2_mux_ctx->bam_is_connected = false;
+		is_connected = true;
+	} else {
+		is_connected = a2_mux_ctx->bam_is_connected;
+		a2_mux_ctx->bam_is_connected = false;
+		if (is_connected) {
+			a2_mux_ctx->bam_connect_in_progress = true;
+			queue_work(a2_mux_ctx->a2_mux_tx_workqueue,
+				&a2_mux_ctx->kickoff_ul_power_down);
+		}
+	}
+	write_unlock(&a2_mux_ctx->ul_wakeup_lock);
+	return is_connected;
+}
+
+static bool msm_bam_dmux_kickoff_ul_wakeup(void)
+{
+	bool is_connected;
+
+	write_lock(&a2_mux_ctx->ul_wakeup_lock);
+	if (a2_mux_ctx->bam_connect_in_progress) {
+		a2_mux_ctx->bam_is_connected = true;
+		is_connected = false;
+	} else {
+		is_connected = a2_mux_ctx->bam_is_connected;
+		a2_mux_ctx->bam_is_connected = true;
+		if (!is_connected) {
+			a2_mux_ctx->bam_connect_in_progress = true;
+			queue_work(a2_mux_ctx->a2_mux_tx_workqueue,
+				&a2_mux_ctx->kickoff_ul_wakeup);
+		}
+	}
+	write_unlock(&a2_mux_ctx->ul_wakeup_lock);
+	return is_connected;
+}
+
 static void kickoff_ul_power_down_func(struct work_struct *work)
 {
-	unsigned long flags;
+	bool is_connected;
 
-	write_lock_irqsave(&a2_mux_ctx->ul_wakeup_lock, flags);
-	if (a2_mux_ctx->bam_is_connected) {
-		IPADBG("%s: UL active - forcing powerdown\n", __func__);
-		ul_powerdown();
-	}
-	write_unlock_irqrestore(&a2_mux_ctx->ul_wakeup_lock, flags);
-	ipa_rm_notify_completion(IPA_RM_RESOURCE_RELEASED,
-			IPA_RM_RESOURCE_A2_CONS);
+	IPADBG("%s: UL active - forcing powerdown\n", __func__);
+	ul_powerdown();
+	write_lock(&a2_mux_ctx->ul_wakeup_lock);
+	is_connected = a2_mux_ctx->bam_is_connected;
+	a2_mux_ctx->bam_is_connected = false;
+	a2_mux_ctx->bam_connect_in_progress = false;
+	write_unlock(&a2_mux_ctx->ul_wakeup_lock);
+	if (is_connected)
+		msm_bam_dmux_kickoff_ul_wakeup();
+	else
+		ipa_rm_notify_completion(IPA_RM_RESOURCE_RELEASED,
+						IPA_RM_RESOURCE_A2_CONS);
 }
 
 static void kickoff_ul_wakeup_func(struct work_struct *work)
 {
-	if (!a2_mux_ctx->bam_is_connected)
-		ul_wakeup();
-	ipa_rm_notify_completion(IPA_RM_RESOURCE_GRANTED,
-			IPA_RM_RESOURCE_A2_CONS);
+	bool is_connected;
+	int ret;
+
+	ul_wakeup();
+	write_lock(&a2_mux_ctx->ul_wakeup_lock);
+	is_connected = a2_mux_ctx->bam_is_connected;
+	a2_mux_ctx->bam_is_connected = true;
+	a2_mux_ctx->bam_connect_in_progress = false;
+	write_unlock(&a2_mux_ctx->ul_wakeup_lock);
+	if (is_connected)
+		ipa_rm_notify_completion(IPA_RM_RESOURCE_GRANTED,
+				IPA_RM_RESOURCE_A2_CONS);
+	INIT_COMPLETION(a2_mux_ctx->dl_wakeup_completion);
+	if (!a2_mux_ctx->a2_mux_dl_wakeup) {
+		ret = wait_for_completion_timeout(
+			&a2_mux_ctx->dl_wakeup_completion,
+			A2_MUX_COMPLETION_TIMEOUT);
+		if (unlikely(ret == 0)) {
+			IPAERR("%s timeout A2 PROD\n", __func__);
+			BUG();
+			return;
+		}
+	}
+	if (!is_connected)
+		msm_bam_dmux_kickoff_ul_power_down();
 }
 
 static void kickoff_ul_request_resource_func(struct work_struct *work)
@@ -412,33 +482,8 @@ static void kickoff_ul_request_resource_func(struct work_struct *work)
 		}
 	}
 	toggle_apps_ack();
-}
-
-static bool msm_bam_dmux_kickoff_ul_wakeup(void)
-{
-	bool is_connected;
-
-	read_lock(&a2_mux_ctx->ul_wakeup_lock);
-	is_connected = a2_mux_ctx->bam_is_connected;
-	read_unlock(&a2_mux_ctx->ul_wakeup_lock);
-	if (!is_connected)
-		queue_work(a2_mux_ctx->a2_mux_tx_workqueue,
-			   &a2_mux_ctx->kickoff_ul_wakeup);
-	return is_connected;
-}
-
-static bool msm_bam_dmux_kickoff_ul_power_down(void)
-
-{
-	bool is_connected;
-
-	read_lock(&a2_mux_ctx->ul_wakeup_lock);
-	is_connected = a2_mux_ctx->bam_is_connected;
-	read_unlock(&a2_mux_ctx->ul_wakeup_lock);
-	if (is_connected)
-		queue_work(a2_mux_ctx->a2_mux_tx_workqueue,
-			   &a2_mux_ctx->kickoff_ul_power_down);
-	return is_connected;
+	a2_mux_ctx->a2_mux_dl_wakeup = true;
+	complete_all(&a2_mux_ctx->dl_wakeup_completion);
 }
 
 static void ipa_embedded_notify(void *priv,
@@ -606,6 +651,7 @@ static int disconnect_to_bam(void)
 	(void) ipa_rm_release_resource(IPA_RM_RESOURCE_A2_PROD);
 	if (a2_mux_ctx->disconnect_ack)
 		toggle_apps_ack();
+	a2_mux_ctx->a2_mux_dl_wakeup = false;
 	a2_mux_ctx->a2_mux_sw_bridge_is_connected = 0;
 	complete_all(&a2_mux_ctx->bam_connection_completion);
 	return 0;
@@ -631,7 +677,7 @@ static void bam_dmux_smsm_cb(void *priv,
 		IPA_STATS_INC_CNT(ipa_ctx->stats.a2_power_on_reqs_in);
 		grab_wakelock();
 		(void) connect_to_bam();
-		queue_work(a2_mux_ctx->a2_mux_tx_workqueue,
+		queue_work(a2_mux_ctx->a2_mux_rx_workqueue,
 			   &a2_mux_ctx->kickoff_ul_request_resource);
 	} else if (!(new_state & SMSM_A2_POWER_CONTROL)) {
 		IPADBG("%s: MODEM PWR CTRL 0\n", __func__);
@@ -926,7 +972,8 @@ int a2_mux_write(enum a2_mux_logical_channel_id id, struct sk_buff *skb)
 	}
 	spin_unlock_irqrestore(&a2_mux_ctx->bam_ch[id].lock, flags);
 	read_lock(&a2_mux_ctx->ul_wakeup_lock);
-	is_connected = a2_mux_ctx->bam_is_connected;
+	is_connected = a2_mux_ctx->bam_is_connected &&
+					!a2_mux_ctx->bam_connect_in_progress;
 	read_unlock(&a2_mux_ctx->ul_wakeup_lock);
 	if (!is_connected)
 		return -ENODEV;
@@ -1230,7 +1277,8 @@ int a2_mux_open_channel(enum a2_mux_logical_channel_id lcid,
 	a2_mux_ctx->bam_ch[lcid].use_wm = 0;
 	spin_unlock_irqrestore(&a2_mux_ctx->bam_ch[lcid].lock, flags);
 	read_lock(&a2_mux_ctx->ul_wakeup_lock);
-	is_connected = a2_mux_ctx->bam_is_connected;
+	is_connected = a2_mux_ctx->bam_is_connected &&
+					!a2_mux_ctx->bam_connect_in_progress;
 	read_unlock(&a2_mux_ctx->ul_wakeup_lock);
 	if (!is_connected)
 		return -ENODEV;
@@ -1299,7 +1347,8 @@ int a2_mux_close_channel(enum a2_mux_logical_channel_id lcid)
 	if (!a2_mux_ctx->a2_mux_initialized)
 		return -ENODEV;
 	read_lock(&a2_mux_ctx->ul_wakeup_lock);
-	is_connected = a2_mux_ctx->bam_is_connected;
+	is_connected = a2_mux_ctx->bam_is_connected &&
+					!a2_mux_ctx->bam_connect_in_progress;
 	read_unlock(&a2_mux_ctx->ul_wakeup_lock);
 	if (!is_connected && !bam_ch_is_in_reset(lcid))
 		return -ENODEV;
@@ -1435,6 +1484,7 @@ static int a2_mux_initialize_context(int handle)
 	init_completion(&a2_mux_ctx->ul_wakeup_ack_completion);
 	init_completion(&a2_mux_ctx->bam_connection_completion);
 	init_completion(&a2_mux_ctx->request_resource_completion);
+	init_completion(&a2_mux_ctx->dl_wakeup_completion);
 	wake_lock_init(&a2_mux_ctx->bam_wakelock,
 		       WAKE_LOCK_SUSPEND, "a2_mux_wakelock");
 	a2_mux_ctx->a2_mux_initialized = 1;
@@ -1444,6 +1494,13 @@ static int a2_mux_initialize_context(int handle)
 	if (!a2_mux_ctx->a2_mux_tx_workqueue) {
 		IPAERR("%s: a2_mux_tx_workqueue alloc failed\n",
 		       __func__);
+		return -ENOMEM;
+	}
+	a2_mux_ctx->a2_mux_rx_workqueue =
+		create_singlethread_workqueue("a2_mux_rx");
+	if (!a2_mux_ctx->a2_mux_rx_workqueue) {
+		IPAERR("%s: a2_mux_rx_workqueue alloc failed\n",
+			__func__);
 		return -ENOMEM;
 	}
 	return 0;
@@ -1571,5 +1628,7 @@ int a2_mux_exit(void)
 				NULL);
 	if (a2_mux_ctx->a2_mux_tx_workqueue)
 		destroy_workqueue(a2_mux_ctx->a2_mux_tx_workqueue);
+	if (a2_mux_ctx->a2_mux_rx_workqueue)
+		destroy_workqueue(a2_mux_ctx->a2_mux_rx_workqueue);
 	return 0;
 }

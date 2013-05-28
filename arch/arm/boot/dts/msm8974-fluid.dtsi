@@ -14,7 +14,7 @@
 /include/ "msm8974-camera-sensor-fluid.dtsi"
 /include/ "msm8974-leds.dtsi"
 
-/ {
+&soc {
 	serial@f991e000 {
 		status = "ok";
 	};
@@ -230,6 +230,7 @@
 
 		qcom,hdmi-audio-rx;
 		qcom,ext-ult-lo-amp-gpio = <&pm8941_gpios 6 0>;
+		qcom,cdc-micbias2-headset-only;
 	};
 };
 
@@ -505,7 +506,7 @@
 		qcom,output-type = <0>;
 		qcom,pull = <5>;
 		qcom,vin-sel = <2>;
-		qcom,out-strength = <3>;
+		qcom,out-strength = <1>;
 		qcom,src-sel = <2>;
 		qcom,master-en = <1>;
 	};

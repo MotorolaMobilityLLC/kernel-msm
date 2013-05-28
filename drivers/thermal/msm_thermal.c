@@ -63,6 +63,7 @@ static bool vdd_rstr_probed;
 static bool psm_enabled;
 static bool psm_nodes_called;
 static bool psm_probed;
+static int *tsens_id_map;
 static DEFINE_MUTEX(vdd_rstr_mutex);
 static DEFINE_MUTEX(psm_mutex);
 
@@ -71,7 +72,7 @@ struct rail {
 	uint32_t freq_req;
 	uint32_t min_level;
 	uint32_t num_levels;
-	uint32_t curr_level;
+	int32_t curr_level;
 	uint32_t levels[3];
 	struct kobj_attribute value_attr;
 	struct kobj_attribute level_attr;
@@ -158,6 +159,7 @@ static int update_cpu_min_freq_all(uint32_t min)
 {
 	int cpu = 0;
 	int ret = 0;
+	struct cpufreq_policy *policy = NULL;
 
 	if (!freq_table_get) {
 		ret = check_freq_table();
@@ -173,16 +175,20 @@ static int update_cpu_min_freq_all(uint32_t min)
 
 	for_each_possible_cpu(cpu) {
 		ret = msm_cpufreq_set_freq_limits(cpu, min, limited_max_freq);
-
 		if (ret) {
 			pr_err("%s:Fail to set limits for cpu%d\n",
 					__func__, cpu);
 			return ret;
 		}
 
-		if (cpufreq_update_policy(cpu))
-			pr_debug("%s: Cannot update policy for cpu%d\n",
-					__func__, cpu);
+		if (cpu_online(cpu)) {
+			policy = cpufreq_cpu_get(cpu);
+			if (!policy)
+				continue;
+			cpufreq_driver_target(policy, policy->cur,
+					CPUFREQ_RELATION_L);
+			cpufreq_cpu_put(policy);
+		}
 	}
 
 	return ret;
@@ -191,6 +197,9 @@ static int update_cpu_min_freq_all(uint32_t min)
 static int vdd_restriction_apply_freq(struct rail *r, int level)
 {
 	int ret = 0;
+
+	if (level == r->curr_level)
+		return ret;
 
 	/* level = -1: disable, level = 0,1,2..n: enable */
 	if (level == -1) {
@@ -222,6 +231,9 @@ static int vdd_restriction_apply_voltage(struct rail *r, int level)
 				r->name);
 		return -EFAULT;
 	}
+	if (level == r->curr_level)
+		return ret;
+
 	/* level = -1: disable, level = 0,1,2..n: enable */
 	if (level == -1) {
 		ret = regulator_set_voltage(r->reg, r->min_level,
@@ -237,32 +249,6 @@ static int vdd_restriction_apply_voltage(struct rail *r, int level)
 		pr_err("level input:%d is not within range\n", level);
 		return -EINVAL;
 	}
-
-	return ret;
-}
-/* 1:enable, 0:disable */
-static int vdd_restriction_apply_all(int en)
-{
-	int i = 0;
-	int fail_cnt = 0;
-	int ret = 0;
-
-	for (i = 0; i < rails_cnt; i++) {
-		if (rails[i].freq_req == 1 && freq_table_get)
-			ret = vdd_restriction_apply_freq(&rails[i],
-					en ? 0 : -1);
-		else
-			ret = vdd_restriction_apply_voltage(&rails[i],
-					en ? 0 : -1);
-		if (ret) {
-			pr_err("Cannot set voltage for %s", rails[i].name);
-			fail_cnt++;
-		}
-	}
-	/* Check fail_cnt again to make sure all of the rails are applied
-	 * restriction successfully or not */
-	if (fail_cnt)
-		return -EFAULT;
 
 	return ret;
 }
@@ -327,8 +313,10 @@ static ssize_t vdd_rstr_en_store(struct kobject *kobj,
 			ret = vdd_restriction_apply_voltage(&rails[i],
 			(val) ? 0 : -1);
 
-		/* Even if fail to set one rail, still try to set the
-		 * others. Continue the loop */
+		/*
+		 * Even if fail to set one rail, still try to set the
+		 * others. Continue the loop
+		 */
 		if (ret)
 			pr_err("Set vdd restriction for %s failed\n",
 					rails[i].name);
@@ -378,7 +366,7 @@ static int vdd_rstr_reg_value_show(
 	else
 		val = reg->levels[reg->curr_level];
 
-	return snprintf(buf, PAGE_SIZE, "%d\n", reg->levels[reg->curr_level]);
+	return snprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 
 static int vdd_rstr_reg_level_show(
@@ -473,6 +461,103 @@ done_psm_store:
 	return count;
 }
 
+static int check_sensor_id(int sensor_id)
+{
+	int i = 0;
+	bool hw_id_found;
+	int ret = 0;
+
+	for (i = 0; i < max_tsens_num; i++) {
+		if (sensor_id == tsens_id_map[i]) {
+			hw_id_found = true;
+			break;
+		}
+	}
+	if (!hw_id_found) {
+		pr_err("%s: Invalid sensor hw id :%d\n", __func__, sensor_id);
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+static int create_sensor_id_map(void)
+{
+	int i = 0;
+	int ret = 0;
+
+	tsens_id_map = kzalloc(sizeof(int) * max_tsens_num,
+			GFP_KERNEL);
+	if (!tsens_id_map) {
+		pr_err("%s: Cannot allocate memory for tsens_id_map\n",
+				__func__);
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < max_tsens_num; i++) {
+		ret = tsens_get_hw_id_mapping(i, &tsens_id_map[i]);
+		/* If return -ENXIO, hw_id is default in sequence */
+		if (ret) {
+			if (ret == -ENXIO) {
+				tsens_id_map[i] = i;
+				ret = 0;
+			} else {
+				pr_err( \
+				"%s: Failed to get hw id for sw id %d\n",
+				__func__, i);
+				goto fail;
+			}
+		}
+	}
+
+	return ret;
+fail:
+	kfree(tsens_id_map);
+	return ret;
+}
+
+/* 1:enable, 0:disable */
+static int vdd_restriction_apply_all(int en)
+{
+	int i = 0;
+	int en_cnt = 0;
+	int dis_cnt = 0;
+	int fail_cnt = 0;
+	int ret = 0;
+
+	for (i = 0; i < rails_cnt; i++) {
+		if (rails[i].freq_req == 1 && freq_table_get)
+			ret = vdd_restriction_apply_freq(&rails[i],
+					en ? 0 : -1);
+		else
+			ret = vdd_restriction_apply_voltage(&rails[i],
+					en ? 0 : -1);
+		if (ret) {
+			pr_err("Cannot set voltage for %s", rails[i].name);
+			fail_cnt++;
+		} else {
+			if (en)
+				en_cnt++;
+			else
+				dis_cnt++;
+		}
+	}
+
+	/* As long as one rail is enabled, vdd rstr is enabled */
+	if (en && en_cnt)
+		vdd_rstr_en.enabled = 1;
+	else if (!en && (dis_cnt == rails_cnt))
+		vdd_rstr_en.enabled = 0;
+
+	/*
+	 * Check fail_cnt again to make sure all of the rails are applied
+	 * restriction successfully or not
+	 */
+	if (fail_cnt)
+		return -EFAULT;
+	return ret;
+}
+
 static int msm_thermal_get_freq_table(void)
 {
 	int ret = 0;
@@ -511,7 +596,14 @@ static int update_cpu_max_freq(int cpu, uint32_t max_freq)
 		pr_info("%s: Max frequency reset for cpu%d\n",
 				KBUILD_MODNAME, cpu);
 
-	ret = cpufreq_update_policy(cpu);
+	if (cpu_online(cpu)) {
+		struct cpufreq_policy *policy = cpufreq_cpu_get(cpu);
+		if (!policy)
+			return ret;
+		ret = cpufreq_driver_target(policy, policy->cur,
+				CPUFREQ_RELATION_H);
+		cpufreq_cpu_put(policy);
+	}
 
 	return ret;
 }
@@ -550,7 +642,8 @@ static void __cpuinit do_core_control(long temp)
 			cpus_offlined &= ~BIT(i);
 			pr_info("%s: Allow Online CPU%d Temp: %ld\n",
 					KBUILD_MODNAME, i, temp);
-			/* If this core is already online, then bring up the
+			/*
+			 * If this core is already online, then bring up the
 			 * next offlined core.
 			 */
 			if (cpu_online(i))
@@ -583,7 +676,7 @@ static int do_vdd_restriction(void)
 
 	mutex_lock(&vdd_rstr_mutex);
 	for (i = 0; i < max_tsens_num; i++) {
-		tsens_dev.sensor_num = i;
+		tsens_dev.sensor_num = tsens_id_map[i];
 		ret = tsens_get_temp(&tsens_dev, &temp);
 		if (ret) {
 			pr_debug("%s: Unable to read TSENS sensor %d\n",
@@ -591,18 +684,15 @@ static int do_vdd_restriction(void)
 			dis_cnt++;
 			continue;
 		}
-		if (temp <=  msm_thermal_info.vdd_rstr_temp_hyst_degC &&
-				vdd_rstr_en.enabled == 0) {
+		if (temp <=  msm_thermal_info.vdd_rstr_temp_degC) {
 			ret = vdd_restriction_apply_all(1);
 			if (ret) {
 				pr_err( \
 				"Enable vdd rstr votlage for all failed\n");
 				goto exit;
 			}
-			vdd_rstr_en.enabled = 1;
 			goto exit;
-		} else if (temp > msm_thermal_info.vdd_rstr_temp_degC &&
-				vdd_rstr_en.enabled == 1)
+		} else if (temp > msm_thermal_info.vdd_rstr_temp_hyst_degC)
 			dis_cnt++;
 	}
 	if (dis_cnt == max_tsens_num) {
@@ -611,7 +701,6 @@ static int do_vdd_restriction(void)
 			pr_err("Disable vdd rstr votlage for all failed\n");
 			goto exit;
 		}
-		vdd_rstr_en.enabled = 0;
 	}
 exit:
 	mutex_unlock(&vdd_rstr_mutex);
@@ -628,7 +717,7 @@ static int do_psm(void)
 
 	mutex_lock(&psm_mutex);
 	for (i = 0; i < max_tsens_num; i++) {
-		tsens_dev.sensor_num = i;
+		tsens_dev.sensor_num = tsens_id_map[i];
 		ret = tsens_get_temp(&tsens_dev, &temp);
 		if (ret) {
 			pr_debug("%s: Unable to read TSENS sensor %d\n",
@@ -637,9 +726,11 @@ static int do_psm(void)
 			continue;
 		}
 
-		/* As long as one sensor is above the threshold, set PWM mode
+		/*
+		 * As long as one sensor is above the threshold, set PWM mode
 		 * on all rails, and loop stops. Set auto mode when all rails
-		 * are below thershold */
+		 * are below thershold
+		 */
 		if (temp >  msm_thermal_info.psm_temp_degC) {
 			ret = psm_set_mode_all(PMIC_PWM_MODE);
 			if (ret) {
@@ -664,14 +755,56 @@ exit:
 	return ret;
 }
 
+static void __cpuinit do_freq_control(long temp)
+{
+	int ret = 0;
+	int cpu = 0;
+	uint32_t max_freq = limited_max_freq;
+
+	if (temp >= msm_thermal_info.limit_temp_degC) {
+		if (limit_idx == limit_idx_low)
+			return;
+
+		limit_idx -= msm_thermal_info.freq_step;
+		if (limit_idx < limit_idx_low)
+			limit_idx = limit_idx_low;
+		max_freq = table[limit_idx].frequency;
+	} else if (temp < msm_thermal_info.limit_temp_degC -
+		 msm_thermal_info.temp_hysteresis_degC) {
+		if (limit_idx == limit_idx_high)
+			return;
+
+		limit_idx += msm_thermal_info.freq_step;
+		if (limit_idx >= limit_idx_high) {
+			limit_idx = limit_idx_high;
+			max_freq = MSM_CPUFREQ_NO_LIMIT;
+		} else
+			max_freq = table[limit_idx].frequency;
+	}
+
+	if (max_freq == limited_max_freq)
+		return;
+
+	/* Update new limits */
+	for_each_possible_cpu(cpu) {
+		if (!(msm_thermal_info.freq_control_mask & BIT(cpu)))
+			continue;
+		ret = update_cpu_max_freq(cpu, max_freq);
+		if (ret)
+			pr_debug(
+			"%s: Unable to limit cpu%d max freq to %d\n",
+					KBUILD_MODNAME, cpu, max_freq);
+	}
+
+}
+
 static void __cpuinit check_temp(struct work_struct *work)
 {
 	static int limit_init;
 	struct tsens_device tsens_dev;
 	long temp = 0;
-	uint32_t max_freq = limited_max_freq;
-	int cpu = 0;
 	int ret = 0;
+
 	tsens_dev.sensor_num = msm_thermal_info.sensor_id;
 	ret = tsens_get_temp(&tsens_dev, &temp);
 	if (ret) {
@@ -691,38 +824,7 @@ static void __cpuinit check_temp(struct work_struct *work)
 	do_core_control(temp);
 	do_vdd_restriction();
 	do_psm();
-
-	if (temp >= msm_thermal_info.limit_temp_degC) {
-		if (limit_idx == limit_idx_low)
-			goto reschedule;
-
-		limit_idx -= msm_thermal_info.freq_step;
-		if (limit_idx < limit_idx_low)
-			limit_idx = limit_idx_low;
-		max_freq = table[limit_idx].frequency;
-	} else if (temp < msm_thermal_info.limit_temp_degC -
-		 msm_thermal_info.temp_hysteresis_degC) {
-		if (limit_idx == limit_idx_high)
-			goto reschedule;
-
-		limit_idx += msm_thermal_info.freq_step;
-		if (limit_idx >= limit_idx_high) {
-			limit_idx = limit_idx_high;
-			max_freq = MSM_CPUFREQ_NO_LIMIT;
-		} else
-			max_freq = table[limit_idx].frequency;
-	}
-	if (max_freq == limited_max_freq)
-		goto reschedule;
-
-	/* Update new limits */
-	for_each_possible_cpu(cpu) {
-		ret = update_cpu_max_freq(cpu, max_freq);
-		if (ret)
-			pr_debug(
-			"%s: Unable to limit cpu%d max freq to %d\n",
-					KBUILD_MODNAME, cpu, max_freq);
-	}
+	do_freq_control(temp);
 
 reschedule:
 	if (enabled)
@@ -787,7 +889,7 @@ static void thermal_rtc_callback(struct alarm *al)
 			ts.tv_sec, ts.tv_usec);
 }
 
-/**
+/*
  * We will reset the cpu frequencies limits here. The core online/offline
  * status will be carried over to the process stopping the msm_thermal, as
  * we dont want to online a core and bring in the thermal issues.
@@ -1066,8 +1168,12 @@ int __devinit msm_thermal_init(struct msm_thermal_data *pdata)
 
 	BUG_ON(!pdata);
 	tsens_get_max_sensor_num(&max_tsens_num);
-	BUG_ON(msm_thermal_info.sensor_id >= max_tsens_num);
 	memcpy(&msm_thermal_info, pdata, sizeof(struct msm_thermal_data));
+
+	if (create_sensor_id_map())
+		return -EINVAL;
+	if (check_sensor_id(msm_thermal_info.sensor_id))
+		return -EINVAL;
 
 	enabled = 1;
 	core_control_enabled = 1;
@@ -1088,8 +1194,10 @@ static int vdd_restriction_reg_init(struct platform_device *pdev)
 		if (rails[i].freq_req == 1) {
 			usefreq |= BIT(i);
 			check_freq_table();
-			/* Restrict frequency by default until we have made
-			 * our first temp reading */
+			/*
+			 * Restrict frequency by default until we have made
+			 * our first temp reading
+			 */
 			if (freq_table_get)
 				ret = vdd_restriction_apply_freq(&rails[i], 0);
 			else
@@ -1110,8 +1218,10 @@ static int vdd_restriction_reg_init(struct platform_device *pdev)
 				}
 				return ret;
 			}
-			/* Restrict votlage by default until we have made
-			 * our first temp reading */
+			/*
+			 * Restrict votlage by default until we have made
+			 * our first temp reading
+			 */
 			ret = vdd_restriction_apply_voltage(&rails[i], 0);
 		}
 	}
@@ -1374,17 +1484,18 @@ static int probe_vdd_rstr(struct device_node *node,
 		if (ret)
 			goto read_node_fail;
 
-		key = "qcom,min-level";
-		ret = of_property_read_u32(child_node, key,
-				&rails[i].min_level);
-		if (ret)
-			goto read_node_fail;
-
 		key = "qcom,freq-req";
 		rails[i].freq_req = of_property_read_bool(child_node, key);
+		if (rails[i].freq_req)
+			rails[i].min_level = MSM_CPUFREQ_NO_LIMIT;
+		else {
+			key = "qcom,min-level";
+			ret = of_property_read_u32(child_node, key,
+				&rails[i].min_level);
+			if (ret)
+				goto read_node_fail;
+		}
 
-		if (ret)
-			goto read_node_fail;
 		rails[i].curr_level = 0;
 		rails[i].reg = NULL;
 		i++;
@@ -1506,6 +1617,9 @@ static int __devinit msm_thermal_dev_probe(struct platform_device *pdev)
 	if (ret)
 		goto fail;
 
+	key = "qcom,freq-control-mask";
+	ret = of_property_read_u32(node, key, &data.freq_control_mask);
+
 	key = "qcom,core-limit-temp";
 	ret = of_property_read_u32(node, key, &data.core_limit_temp_degC);
 
@@ -1515,9 +1629,11 @@ static int __devinit msm_thermal_dev_probe(struct platform_device *pdev)
 	key = "qcom,core-control-mask";
 	ret = of_property_read_u32(node, key, &data.core_control_mask);
 
-	/* Probe optional properties below. Call probe_psm before
+	/*
+	 * Probe optional properties below. Call probe_psm before
 	 * probe_vdd_rstr because rpm_regulator_get has to be called
-	 * before devm_regulator_get*/
+	 * before devm_regulator_get
+	 */
 	ret = probe_psm(node, &data, pdev);
 	if (ret == -EPROBE_DEFER)
 		goto fail;
@@ -1525,8 +1641,10 @@ static int __devinit msm_thermal_dev_probe(struct platform_device *pdev)
 	if (ret == -EPROBE_DEFER)
 		goto fail;
 
-	/* In case sysfs add nodes get called before probe function.
-	 * Need to make sure sysfs node is created again */
+	/*
+	 * In case sysfs add nodes get called before probe function.
+	 * Need to make sure sysfs node is created again
+	 */
 	if (psm_nodes_called) {
 		msm_thermal_add_psm_nodes();
 		psm_nodes_called = false;

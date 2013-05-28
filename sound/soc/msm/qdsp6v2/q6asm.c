@@ -45,17 +45,6 @@
 
 #define TRUE        0x01
 #define FALSE       0x00
-#define READDONE_IDX_STATUS 0
-#define READDONE_IDX_BUFADD_LSW 1
-#define READDONE_IDX_BUFADD_MSW 2
-#define READDONE_IDX_MEMMAP_HDL 3
-#define READDONE_IDX_SIZE 4
-#define READDONE_IDX_OFFSET 5
-#define READDONE_IDX_LSW_TS 6
-#define READDONE_IDX_MSW_TS 7
-#define READDONE_IDX_FLAGS 8
-#define READDONE_IDX_NUMFRAMES 9
-#define READDONE_IDX_SEQ_ID 10
 
 /* TODO, combine them together */
 static DEFINE_MUTEX(session_lock);
@@ -342,6 +331,7 @@ static void q6asm_session_free(struct audio_client *ac)
 	mutex_unlock(&session_lock);
 	ac->session = 0;
 	ac->perf_mode = 0;
+	ac->fptr_cache_ops = NULL;
 	return;
 }
 
@@ -621,6 +611,7 @@ struct audio_client *q6asm_audio_client_alloc(app_cb cb, void *priv)
 	ac->priv = priv;
 	ac->io_mode = SYNC_IO_MODE;
 	ac->perf_mode = false;
+	ac->fptr_cache_ops = NULL;
 	ac->apr = apr_register("ADSP", "ASM", \
 				(apr_fn)q6asm_callback,\
 				((ac->session) << 8 | 0x0001),\
@@ -3371,6 +3362,8 @@ int q6asm_async_read(struct audio_client *ac,
 	struct list_head *ptr, *next;
 	u32 lbuf_addr_lsw;
 	u32 liomode;
+	u32 io_compressed;
+	int dir = 0;
 
 	if (!ac || ac->apr == NULL) {
 		pr_err("%s: APR handle NULL\n", __func__);
@@ -3387,13 +3380,22 @@ int q6asm_async_read(struct audio_client *ac,
 	read.buf_size = param->len;
 	read.seq_id = param->uid;
 	liomode = (NT_MODE | ASYNC_IO_MODE);
-	if (ac->io_mode == liomode)
+	io_compressed = (ASYNC_IO_MODE | COMPRESSED_IO);
+	if (ac->io_mode == liomode) {
 		lbuf_addr_lsw = (read.buf_addr_lsw - 32);
-	else
+		/*legacy wma driver case*/
+		dir = IN;
+	} else if (ac->io_mode == io_compressed) {
+		lbuf_addr_lsw = (read.buf_addr_lsw - 64);
+		dir = OUT;
+	} else {
 		lbuf_addr_lsw = read.buf_addr_lsw;
+		dir = OUT;
+	}
 
-	list_for_each_safe(ptr, next, &ac->port[IN].mem_map_handle) {
-		buf_node = list_entry(ptr, struct asm_buffer_node, list);
+	list_for_each_safe(ptr, next, &ac->port[dir].mem_map_handle) {
+		buf_node = list_entry(ptr, struct asm_buffer_node,
+			list);
 			if (buf_node->buf_addr_lsw == lbuf_addr_lsw) {
 				read.mem_map_handle = buf_node->mmap_hdl;
 				break;

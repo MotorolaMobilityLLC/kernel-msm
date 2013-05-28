@@ -15,7 +15,6 @@
 
 #include <linux/idr.h>
 #include <linux/pm_qos.h>
-#include <linux/earlysuspend.h>
 
 #include "kgsl.h"
 #include "kgsl_mmu.h"
@@ -190,12 +189,12 @@ struct kgsl_device {
 	struct completion ft_gate;
 	struct dentry *d_debugfs;
 	struct idr context_idr;
-	struct early_suspend display_off;
 
 	void *snapshot;		/* Pointer to the snapshot memory region */
 	int snapshot_maxsize;   /* Max size of the snapshot region */
 	int snapshot_size;      /* Current size of the snapshot region */
 	u32 snapshot_timestamp;	/* Timestamp of the last valid snapshot */
+	u32 snapshot_faultcount;	/* Total number of faults since boot */
 	int snapshot_frozen;	/* 1 if the snapshot output is frozen until
 				   it gets read by the user.  This avoids
 				   losing the output on multiple hangs  */
@@ -280,6 +279,12 @@ struct kgsl_process_private {
 	unsigned int refcnt;
 	pid_t pid;
 	spinlock_t mem_lock;
+
+	/* General refcount for process private struct obj */
+	struct kref refcount;
+	/* Mutex to synchronize access to each process_private struct obj */
+	struct mutex process_private_mutex;
+
 	struct rb_root mem_rb;
 	struct idr mem_idr;
 	struct kgsl_pagetable *pagetable;

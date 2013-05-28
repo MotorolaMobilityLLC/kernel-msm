@@ -687,7 +687,7 @@ static u32 get_frame_size_nv12(int plane, u32 height, u32 width)
 
 static u32 get_frame_size_nv21(int plane, u32 height, u32 width)
 {
-	return height * width * 2;
+	return VENUS_BUFFER_SIZE(COLOR_FMT_NV21, width, height);
 }
 
 static u32 get_frame_size_compressed(int plane, u32 height, u32 width)
@@ -1970,7 +1970,7 @@ int msm_venc_s_parm(struct msm_vidc_inst *inst, struct v4l2_streamparm *a)
 {
 	u32 property_id = 0, us_per_frame = 0;
 	void *pdata;
-	int rc = 0;
+	int rc = 0, fps = 0, rem = 0;
 	struct hal_frame_rate frame_rate;
 	struct hfi_device *hdev;
 
@@ -1978,32 +1978,45 @@ int msm_venc_s_parm(struct msm_vidc_inst *inst, struct v4l2_streamparm *a)
 		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
 		return -EINVAL;
 	}
-	hdev = inst->core->device;
 
+	hdev = inst->core->device;
 	property_id = HAL_CONFIG_FRAME_RATE;
+
 	if (a->parm.output.timeperframe.denominator) {
 		switch (a->type) {
-		case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
+		case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 			us_per_frame = a->parm.output.timeperframe.numerator *
-				USEC_PER_SEC / a->parm.output.\
-				timeperframe.denominator;
+				(u64)USEC_PER_SEC;
+			do_div(us_per_frame, a->parm.output.\
+					timeperframe.denominator);
 			break;
 		default:
 			dprintk(VIDC_ERR,
-				"Scale clocks : Unknown buffer type\n");
+					"Scale clocks : Unknown buffer type %d\n",
+					a->type);
 			break;
 		}
 	}
 
 	if (!us_per_frame) {
 		dprintk(VIDC_ERR,
-			"Failed to scale clocks : time between frames is 0\n");
+				"Failed to scale clocks : time between frames is 0\n");
 		rc = -EINVAL;
 		goto exit;
 	}
-	inst->prop.fps = (u8) (USEC_PER_SEC / us_per_frame);
-	if (inst->prop.fps) {
+
+	fps = USEC_PER_SEC;
+	rem = do_div(fps, us_per_frame);
+	if (rem) {
+		/* Effectively fps = ceil((float)USEC_PER_SEC/us_per_frame) */
+		fps++;
+	}
+
+	if (inst->prop.fps != fps) {
+		dprintk(VIDC_PROF, "reported fps changed for %p: %d->%d\n",
+				inst, inst->prop.fps, fps);
+		inst->prop.fps = fps;
 		frame_rate.frame_rate = inst->prop.fps * (0x1<<16);
 		frame_rate.buffer_type = HAL_BUFFER_OUTPUT;
 		pdata = &frame_rate;
@@ -2022,7 +2035,6 @@ exit:
 int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 {
 	struct msm_vidc_format *fmt = NULL;
-	struct hal_frame_size frame_sz;
 	int rc = 0;
 	int i;
 	struct hfi_device *hdev;
@@ -2050,6 +2062,9 @@ int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 			goto exit;
 		}
 	} else if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+		struct hal_uncompressed_format_select hal_fmt = {0};
+		struct hal_frame_size frame_sz;
+
 		inst->prop.width = f->fmt.pix_mp.width;
 		inst->prop.height = f->fmt.pix_mp.height;
 		rc = msm_vidc_check_session_supported(inst);
@@ -2086,6 +2101,29 @@ int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 				"Format: %d not supported on OUTPUT port\n",
 				f->fmt.pix_mp.pixelformat);
 			rc = -EINVAL;
+			goto exit;
+		}
+
+		switch (fmt->fourcc) {
+		case V4L2_PIX_FMT_NV12:
+			hal_fmt.format = HAL_COLOR_FORMAT_NV12;
+			break;
+		case V4L2_PIX_FMT_NV21:
+			hal_fmt.format = HAL_COLOR_FORMAT_NV21;
+			break;
+		default:
+			/* we really shouldn't be here */
+			rc = -ENOTSUPP;
+			goto exit;
+		}
+
+		hal_fmt.buffer_type = HAL_BUFFER_INPUT;
+		rc = call_hfi_op(hdev, session_set_property, (void *)
+			inst->session, HAL_PARAM_UNCOMPRESSED_FORMAT_SELECT,
+			&hal_fmt);
+		if (rc) {
+			dprintk(VIDC_ERR,
+				"Failed to set input color format\n");
 			goto exit;
 		}
 	}
@@ -2503,6 +2541,6 @@ int msm_venc_ctrl_deinit(struct msm_vidc_inst *inst)
 		kfree(curr->cluster);
 		kfree(curr);
 	}
-
+	v4l2_ctrl_handler_free(&inst->ctrl_handler);
 	return 0;
 }

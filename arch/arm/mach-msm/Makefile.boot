@@ -62,6 +62,7 @@ else
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2-liquid.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2-mtp.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= apq8074-v2-liquid.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= apq8074-v2-dragonboard.dtb
 endif
 
 # APQ8084
@@ -97,6 +98,11 @@ endif
 params_phys-$(CONFIG_ARCH_FSM9XXX)	:= 0x10000100
 initrd_phys-$(CONFIG_ARCH_FSM9XXX)	:= 0x12000000
 
+# FSM9900
+   zreladdr-$(CONFIG_ARCH_FSM9900)	:= 0x00008000
+        dtb-$(CONFIG_ARCH_FSM9900)	:= fsm9900-rumi.dtb
+        dtb-$(CONFIG_ARCH_FSM9900)	:= fsm9900-sim.dtb
+
 # MPQ8092
    zreladdr-$(CONFIG_ARCH_MPQ8092)	:= 0x00008000
 
@@ -104,3 +110,7 @@ initrd_phys-$(CONFIG_ARCH_FSM9XXX)	:= 0x12000000
    zreladdr-$(CONFIG_ARCH_MSM8610)	:= 0x00008000
         dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-rumi.dtb
         dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-sim.dtb
+
+# MSMSAMARIUM
+   zreladdr-$(CONFIG_ARCH_MSMSAMARIUM)	:= 0x00008000
+	dtb-$(CONFIG_ARCH_MSMSAMARIUM)	+= msmsamarium-sim.dtb

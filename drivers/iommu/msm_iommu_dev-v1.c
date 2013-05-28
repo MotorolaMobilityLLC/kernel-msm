@@ -28,6 +28,9 @@
 #include <mach/iommu_hw-v1.h>
 #include <mach/iommu.h>
 #include <mach/iommu_perfmon.h>
+#include <mach/msm_bus.h>
+
+static struct of_device_id msm_iommu_v1_ctx_match_table[];
 
 static int msm_iommu_parse_bfb_settings(struct platform_device *pdev,
 				    struct msm_iommu_drvdata *drvdata)
@@ -84,6 +87,36 @@ static int msm_iommu_parse_bfb_settings(struct platform_device *pdev,
 	return 0;
 }
 
+static int __get_bus_vote_client(struct platform_device *pdev,
+				  struct msm_iommu_drvdata *drvdata)
+{
+	int ret = 0;
+	struct msm_bus_scale_pdata *bs_table;
+	const char *dummy;
+
+	/* Check whether bus scaling has been specified for this node */
+	ret = of_property_read_string(pdev->dev.of_node, "qcom,msm-bus,name",
+				      &dummy);
+	if (ret)
+		return 0;
+
+	bs_table = msm_bus_cl_get_pdata(pdev);
+
+	if (bs_table) {
+		drvdata->bus_client = msm_bus_scale_register_client(bs_table);
+		if (IS_ERR(&drvdata->bus_client)) {
+			pr_err("%s(): Bus client register failed.\n", __func__);
+			ret = -EINVAL;
+		}
+	}
+	return ret;
+}
+
+static void __put_bus_vote_client(struct msm_iommu_drvdata *drvdata)
+{
+	msm_bus_scale_unregister_client(drvdata->bus_client);
+}
+
 static int msm_iommu_parse_dt(struct platform_device *pdev,
 				struct msm_iommu_drvdata *drvdata)
 {
@@ -92,17 +125,18 @@ static int msm_iommu_parse_dt(struct platform_device *pdev,
 	struct resource *r;
 
 	drvdata->dev = &pdev->dev;
-	msm_iommu_add_drv(drvdata);
+
+	ret = __get_bus_vote_client(pdev, drvdata);
+
+	if (ret)
+		goto fail;
 
 	ret = msm_iommu_parse_bfb_settings(pdev, drvdata);
 	if (ret)
 		goto fail;
 
-	for_each_child_of_node(pdev->dev.of_node, child) {
+	for_each_child_of_node(pdev->dev.of_node, child)
 		drvdata->ncb++;
-		if (!of_platform_device_create(child, NULL, &pdev->dev))
-			pr_err("Failed to create %s device\n", child->name);
-	}
 
 	drvdata->asid = devm_kzalloc(&pdev->dev, drvdata->ncb * sizeof(int),
 				     GFP_KERNEL);
@@ -137,8 +171,15 @@ static int msm_iommu_parse_dt(struct platform_device *pdev,
 	drvdata->halt_enabled = of_property_read_bool(pdev->dev.of_node,
 						      "qcom,iommu-enable-halt");
 
-	return 0;
+	ret = of_platform_populate(pdev->dev.of_node,
+				   msm_iommu_v1_ctx_match_table,
+				   NULL, &pdev->dev);
+	if (ret)
+		pr_err("Failed to create iommu context device\n");
+
+	msm_iommu_add_drv(drvdata);
 fail:
+	__put_bus_vote_client(drvdata);
 	return ret;
 }
 
@@ -224,7 +265,7 @@ static int __devinit msm_iommu_probe(struct platform_device *pdev)
 
 	drvdata->gdsc = devm_regulator_get(&pdev->dev, "vdd");
 	if (IS_ERR(drvdata->gdsc))
-		return -EINVAL;
+		return PTR_ERR(drvdata->gdsc);
 
 	drvdata->alt_gdsc = devm_regulator_get(&pdev->dev, "qcom,alt-vdd");
 	if (IS_ERR(drvdata->alt_gdsc))
@@ -301,10 +342,8 @@ static int __devexit msm_iommu_remove(struct platform_device *pdev)
 
 	drv = platform_get_drvdata(pdev);
 	if (drv) {
+		__put_bus_vote_client(drv);
 		msm_iommu_remove_drv(drv);
-		if (drv->clk)
-			clk_put(drv->clk);
-		clk_put(drv->pclk);
 		platform_set_drvdata(pdev, NULL);
 	}
 	return 0;
@@ -314,7 +353,7 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 				struct msm_iommu_ctx_drvdata *ctx_drvdata)
 {
 	struct resource *r, rp;
-	int irq, ret;
+	int irq = 0, ret = 0;
 	u32 nsid;
 
 	ctx_drvdata->secure_context = of_property_read_bool(pdev->dev.of_node,
@@ -323,25 +362,27 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 	if (!ctx_drvdata->secure_context) {
 		irq = platform_get_irq(pdev, 0);
 		if (irq > 0) {
-			ret = request_threaded_irq(irq, NULL,
+			ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
 					msm_iommu_fault_handler_v2,
 					IRQF_ONESHOT | IRQF_SHARED,
 					"msm_iommu_nonsecure_irq", pdev);
 			if (ret) {
 				pr_err("Request IRQ %d failed with ret=%d\n",
 					irq, ret);
-				return ret;
+				goto out;
 			}
 		}
 	}
 
 	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!r)
-		return -EINVAL;
+	if (!r) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	ret = of_address_to_resource(pdev->dev.parent->of_node, 0, &rp);
 	if (ret)
-		return -EINVAL;
+		goto out;
 
 	/* Calculate the context bank number using the base addresses. The
 	 * first 8 pages belong to the global address space which is followed
@@ -354,21 +395,26 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 					&ctx_drvdata->name))
 		ctx_drvdata->name = dev_name(&pdev->dev);
 
-	if (!of_get_property(pdev->dev.of_node, "qcom,iommu-ctx-sids", &nsid))
-		return -EINVAL;
-
-	if (nsid >= sizeof(ctx_drvdata->sids))
-		return -EINVAL;
+	if (!of_get_property(pdev->dev.of_node, "qcom,iommu-ctx-sids", &nsid)) {
+		ret = -EINVAL;
+		goto out;
+	}
+	if (nsid >= sizeof(ctx_drvdata->sids)) {
+		ret = -EINVAL;
+		goto out;
+	}
 
 	if (of_property_read_u32_array(pdev->dev.of_node, "qcom,iommu-ctx-sids",
 				       ctx_drvdata->sids,
 				       nsid / sizeof(*ctx_drvdata->sids))) {
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 	ctx_drvdata->nsid = nsid;
 
 	ctx_drvdata->asid = -1;
-	return 0;
+out:
+	return ret;
 }
 
 static int __devinit msm_iommu_ctx_probe(struct platform_device *pdev)
@@ -386,12 +432,14 @@ static int __devinit msm_iommu_ctx_probe(struct platform_device *pdev)
 
 	ctx_drvdata->pdev = pdev;
 	INIT_LIST_HEAD(&ctx_drvdata->attached_elm);
-	platform_set_drvdata(pdev, ctx_drvdata);
 
 	ret = msm_iommu_ctx_parse_dt(pdev, ctx_drvdata);
-	if (!ret)
+	if (!ret) {
+		platform_set_drvdata(pdev, ctx_drvdata);
+
 		dev_info(&pdev->dev, "context %s using bank %d\n",
 			 ctx_drvdata->name, ctx_drvdata->num);
+	}
 
 	return ret;
 }
@@ -416,15 +464,15 @@ static struct platform_driver msm_iommu_driver = {
 	.remove		= __devexit_p(msm_iommu_remove),
 };
 
-static struct of_device_id msm_iommu_ctx_match_table[] = {
-	{ .name = "qcom,iommu-ctx", },
+static struct of_device_id msm_iommu_v1_ctx_match_table[] = {
+	{ .compatible = "qcom,msm-smmu-v1-ctx", },
 	{}
 };
 
 static struct platform_driver msm_iommu_ctx_driver = {
 	.driver = {
 		.name	= "msm_iommu_ctx_v1",
-		.of_match_table = msm_iommu_ctx_match_table,
+		.of_match_table = msm_iommu_v1_ctx_match_table,
 	},
 	.probe		= msm_iommu_ctx_probe,
 	.remove		= __devexit_p(msm_iommu_ctx_remove),

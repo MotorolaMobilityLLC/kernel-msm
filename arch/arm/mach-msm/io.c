@@ -406,6 +406,28 @@ void __init msm_map_fsm9xxx_io(void)
 }
 #endif /* CONFIG_ARCH_FSM9XXX */
 
+#ifdef CONFIG_ARCH_FSM9900
+static struct map_desc fsm9900_io_desc[] __initdata = {
+	MSM_CHIP_DEVICE(QGIC_DIST, FSM9900),
+	MSM_CHIP_DEVICE(TLMM, FSM9900),
+	{
+		.virtual =  (unsigned long) MSM_SHARED_RAM_BASE,
+		.length =   MSM_SHARED_RAM_SIZE,
+		.type =     MT_DEVICE,
+	},
+#ifdef CONFIG_DEBUG_FSM9900_UART
+	MSM_DEVICE(DEBUG_UART),
+#endif
+};
+
+void __init msm_map_fsm9900_io(void)
+{
+	msm_shared_ram_phys = FSM9900_SHARED_RAM_PHYS;
+	msm_map_io(fsm9900_io_desc, ARRAY_SIZE(fsm9900_io_desc));
+	of_scan_flat_dt(msm_scan_dt_map_imem, NULL);
+}
+#endif /* CONFIG_ARCH_FSM9900 */
+
 #ifdef CONFIG_ARCH_MSM9615
 static struct map_desc msm9615_io_desc[] __initdata = {
 	MSM_CHIP_DEVICE(QGIC_DIST, MSM9615),
@@ -574,6 +596,7 @@ void __init msm_map_msm8226_io(void)
 
 #ifdef CONFIG_ARCH_MSM8610
 static struct map_desc msm8610_io_desc[] __initdata = {
+	MSM_CHIP_DEVICE(QGIC_DIST, MSM8610),
 	MSM_CHIP_DEVICE(APCS_GCC, MSM8610),
 	MSM_CHIP_DEVICE(TLMM, MSM8610),
 	MSM_CHIP_DEVICE(MPM2_PSHOLD, MSM8610),
@@ -591,3 +614,26 @@ void __init msm_map_msm8610_io(void)
 	of_scan_flat_dt(msm_scan_dt_map_imem, NULL);
 }
 #endif /* CONFIG_ARCH_MSM8610 */
+
+#ifdef CONFIG_ARCH_MSMSAMARIUM
+static struct map_desc msmsamarium_io_desc[] __initdata = {
+	MSM_CHIP_DEVICE(QGIC_DIST, MSMSAMARIUM),
+	MSM_CHIP_DEVICE(TLMM, MSMSAMARIUM),
+	MSM_CHIP_DEVICE(MPM2_PSHOLD, MSMSAMARIUM),
+	{
+		.virtual =  (unsigned long) MSM_SHARED_RAM_BASE,
+		.length =   MSM_SHARED_RAM_SIZE,
+		.type =     MT_DEVICE,
+	},
+#if defined(CONFIG_DEBUG_MSMSAMARIUM_UART) || defined(CONFIG_DEBUG_MSM8974_UART)
+	MSM_DEVICE(DEBUG_UART),
+#endif
+};
+
+void __init msm_map_msmsamarium_io(void)
+{
+	msm_shared_ram_phys = MSMSAMARIUM_SHARED_RAM_PHYS;
+	msm_map_io(msmsamarium_io_desc, ARRAY_SIZE(msmsamarium_io_desc));
+	of_scan_flat_dt(msm_scan_dt_map_imem, NULL);
+}
+#endif /* CONFIG_ARCH_MSMSAMARIUM */

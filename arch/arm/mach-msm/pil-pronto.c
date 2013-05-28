@@ -30,6 +30,7 @@
 #include <mach/subsystem_restart.h>
 #include <mach/msm_smsm.h>
 #include <mach/ramdump.h>
+#include <mach/msm_smem.h>
 
 #include "peripheral-loader.h"
 #include "scm-pas.h"
@@ -329,12 +330,13 @@ static irqreturn_t wcnss_wdog_bite_irq_hdlr(int irq, void *dev_id)
 
 	drv->crash = true;
 
+	disable_irq_nosync(drv->irq);
+
 	if (drv->restart_inprogress) {
 		pr_err("Ignoring wcnss bite irq, restart in progress\n");
 		return IRQ_HANDLED;
 	}
 
-	disable_irq_nosync(drv->irq);
 	drv->restart_inprogress = true;
 	restart_wcnss(drv);
 
@@ -514,6 +516,17 @@ static int __devinit pil_pronto_probe(struct platform_device *pdev)
 	drv->subsys_desc.crash_shutdown = crash_shutdown;
 	drv->subsys_desc.start = pronto_start;
 	drv->subsys_desc.stop = pronto_stop;
+
+	ret = of_get_named_gpio(pdev->dev.of_node,
+			"qcom,gpio-err-ready", 0);
+	if (ret < 0)
+		return ret;
+
+	ret = gpio_to_irq(ret);
+	if (ret < 0)
+		return ret;
+
+	drv->subsys_desc.err_ready_irq = ret;
 
 	INIT_DELAYED_WORK(&drv->cancel_vote_work, wcnss_post_bootup);
 

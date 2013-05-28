@@ -24,6 +24,8 @@
 #define HEIGHT_SCALE_NUM 8
 #define HEIGHT_SCALE_DENOM 10
 
+#define VKEY_Y_OFFSET_DEFAULT 0
+
 /* numerator and denomenator for border equations */
 #define BORDER_ADJUST_NUM 3
 #define BORDER_ADJUST_DENOM 4
@@ -59,7 +61,7 @@ static int __devinit vkey_parse_dt(struct device *dev,
 {
 	struct device_node *np = dev->of_node;
 	struct property *prop;
-	int rc;
+	int rc, val;
 
 	rc = of_property_read_string(np, "label", &pdata->name);
 	if (rc) {
@@ -105,6 +107,15 @@ static int __devinit vkey_parse_dt(struct device *dev,
 			return -EINVAL;
 		}
 	}
+
+	pdata->y_offset = VKEY_Y_OFFSET_DEFAULT;
+	rc = of_property_read_u32(np, "qcom,y-offset", &val);
+	if (!rc)
+		pdata->y_offset = val;
+	else if (rc != -EINVAL) {
+		dev_err(dev, "Failed to read y position offset\n");
+		return rc;
+	}
 	return 0;
 }
 
@@ -147,7 +158,7 @@ static int __devinit vkeys_probe(struct platform_device *pdev)
 	width = ((pdata->disp_maxx - (border * (pdata->num_keys - 1)))
 			/ pdata->num_keys);
 	height = (pdata->panel_maxy - pdata->disp_maxy);
-	center_y = pdata->disp_maxy + (height / 2);
+	center_y = pdata->disp_maxy + (height / 2) + pdata->y_offset;
 	height = height * HEIGHT_SCALE_NUM / HEIGHT_SCALE_DENOM;
 
 	x2 -= border * BORDER_ADJUST_NUM / BORDER_ADJUST_DENOM;

@@ -280,14 +280,14 @@ enum vdd_dig_levels {
 	VDD_DIG_NUM
 };
 
-static const int *vdd_corner[] = {
-	[VDD_DIG_NONE]	  = VDD_UV(RPM_REGULATOR_CORNER_NONE),
-	[VDD_DIG_LOW]	  = VDD_UV(RPM_REGULATOR_CORNER_SVS_SOC),
-	[VDD_DIG_NOMINAL] = VDD_UV(RPM_REGULATOR_CORNER_NORMAL),
-	[VDD_DIG_HIGH]	  = VDD_UV(RPM_REGULATOR_CORNER_SUPER_TURBO),
+static int vdd_corner[] = {
+	RPM_REGULATOR_CORNER_NONE,		/* VDD_DIG_NONE */
+	RPM_REGULATOR_CORNER_SVS_SOC,		/* VDD_DIG_LOW */
+	RPM_REGULATOR_CORNER_NORMAL,		/* VDD_DIG_NOMINAL */
+	RPM_REGULATOR_CORNER_SUPER_TURBO,	/* VDD_DIG_HIGH */
 };
 
-static DEFINE_VDD_REGULATORS(vdd_dig, VDD_DIG_NUM, 1, vdd_corner);
+static DEFINE_VDD_REGULATORS(vdd_dig, VDD_DIG_NUM, 1, vdd_corner, NULL);
 
 /* TODO: Needs to confirm the below values */
 #define RPM_MISC_CLK_TYPE	0x306b6c63
@@ -1924,6 +1924,7 @@ static struct clk_lookup msm_clocks_9625[] = {
 	CLK_LOOKUP("core_clk", qdss_clk.c, "fc30f000.cti"),
 	CLK_LOOKUP("core_clk", qdss_clk.c, "fc310000.cti"),
 	CLK_LOOKUP("core_clk", qdss_clk.c, "fc333000.cti"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "f9011038.hwevent"),
 
 	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "fc322000.tmc"),
 	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "fc318000.tpiu"),
@@ -1945,7 +1946,7 @@ static struct clk_lookup msm_clocks_9625[] = {
 	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "fc30f000.cti"),
 	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "fc310000.cti"),
 	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "fc333000.cti"),
-
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "f9011038.hwevent"),
 };
 
 #define PLL_AUX_OUTPUT_BIT 1

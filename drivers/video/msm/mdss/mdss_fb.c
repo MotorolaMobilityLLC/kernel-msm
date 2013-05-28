@@ -42,9 +42,13 @@
 #include <linux/sync.h>
 #include <linux/sw_sync.h>
 #include <linux/file.h>
+#include <linux/memory_alloc.h>
 
 #include <mach/board.h>
 #include <mach/memory.h>
+#include <mach/iommu.h>
+#include <mach/iommu_domains.h>
+#include <mach/msm_memtypes.h>
 
 #include "mdss_fb.h"
 
@@ -557,6 +561,13 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 		pdata->set_backlight(pdata, temp);
 		mfd->bl_level = bkl_lvl;
 		bl_level_old = temp;
+
+		if (mfd->mdp.update_ad_input) {
+			mutex_unlock(&mfd->bl_lock);
+			/* Will trigger ad_setup which will grab bl_lock */
+			mfd->mdp.update_ad_input(mfd);
+			mutex_lock(&mfd->bl_lock);
+		}
 	}
 }
 
@@ -627,12 +638,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-	if (blank_mode == FB_BLANK_POWERDOWN) {
-		struct fb_event event;
-		event.info = info;
-		event.data = &blank_mode;
-		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
-	}
+
 	mdss_fb_pan_idle(mfd);
 	if (mfd->op_enable == 0) {
 		if (blank_mode == FB_BLANK_UNBLANK)
@@ -656,6 +662,11 @@ static int mdss_fb_mmap(struct fb_info *info, struct vm_area_struct *vma)
 	u32 len = PAGE_ALIGN((start & ~PAGE_MASK) + info->fix.smem_len);
 	unsigned long off = vma->vm_pgoff << PAGE_SHIFT;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+
+	if (!start) {
+		pr_warn("No framebuffer memory is allocated.\n");
+		return -ENOMEM;
+	}
 
 	mdss_fb_pan_idle(mfd);
 	if (off >= len) {
@@ -714,13 +725,68 @@ static struct fb_ops mdss_fb_ops = {
 	.fb_mmap = mdss_fb_mmap,
 };
 
+static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
+{
+	void *virt = NULL;
+	unsigned long phys = 0;
+	size_t size = 0;
+	struct platform_device *pdev = mfd->pdev;
+
+	if (!pdev || !pdev->dev.of_node) {
+		pr_err("Invalid device node\n");
+		return -ENODEV;
+	}
+
+	if (of_property_read_u32(pdev->dev.of_node,
+				 "qcom,memory-reservation-size",
+				 &size) || !size) {
+		mfd->fbi->screen_base = NULL;
+		mfd->fbi->fix.smem_start = 0;
+		mfd->fbi->fix.smem_len = 0;
+		return 0;
+	}
+
+	pr_info("%s frame buffer reserve_size=0x%x\n", __func__, size);
+
+	if (size < PAGE_ALIGN(mfd->fbi->fix.line_length *
+			      mfd->fbi->var.yres_virtual))
+		pr_warn("reserve size is smaller than framebuffer size\n");
+
+	virt = allocate_contiguous_memory(size, MEMTYPE_EBI1, SZ_1M, 0);
+	if (!virt) {
+		pr_err("unable to alloc fbmem size=%u\n", size);
+		return -ENOMEM;
+	}
+
+	phys = memory_pool_node_paddr(virt);
+
+	msm_iommu_map_contig_buffer(phys, dom, 0, size, SZ_4K, 0,
+					    &mfd->iova);
+	pr_info("allocating %u bytes at %p (%lx phys) for fb %d\n",
+		 size, virt, phys, mfd->index);
+
+	mfd->fbi->screen_base = virt;
+	mfd->fbi->fix.smem_start = phys;
+	mfd->fbi->fix.smem_len = size;
+
+	return 0;
+}
+
 static int mdss_fb_alloc_fbmem(struct msm_fb_data_type *mfd)
 {
-	if (!mfd->mdp.fb_mem_alloc_fnc) {
+
+	if (mfd->mdp.fb_mem_alloc_fnc)
+		return mfd->mdp.fb_mem_alloc_fnc(mfd);
+	else if (mfd->mdp.fb_mem_get_iommu_domain) {
+		int dom = mfd->mdp.fb_mem_get_iommu_domain();
+		if (dom >= 0)
+			return mdss_fb_alloc_fbmem_iommu(mfd, dom);
+		else
+			return -ENOMEM;
+	} else {
 		pr_err("no fb memory allocator function defined\n");
 		return -ENOMEM;
 	}
-	return mfd->mdp.fb_mem_alloc_fnc(mfd);
 }
 
 static int mdss_fb_register(struct msm_fb_data_type *mfd)
@@ -957,6 +1023,7 @@ static int mdss_fb_open(struct fb_info *info, int user)
 		result = mdss_fb_blank_sub(FB_BLANK_UNBLANK, info,
 					   mfd->op_enable);
 		if (result) {
+			pm_runtime_put(info->dev);
 			pr_err("mdss_fb_open: can't turn on display!\n");
 			return result;
 		}
@@ -1539,12 +1606,15 @@ static int mdss_fb_display_commit(struct fb_info *info,
 static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			 unsigned long arg)
 {
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+	struct msm_fb_data_type *mfd;
 	void __user *argp = (void __user *)arg;
 	struct mdp_page_protection fb_page_protection;
 	int ret = -ENOSYS;
 	struct mdp_buf_sync buf_sync;
 
+	if (!info || !info->par)
+		return -EINVAL;
+	mfd = (struct msm_fb_data_type *)info->par;
 	mdss_fb_power_setting_idle(mfd);
 
 	mdss_fb_pan_idle(mfd);

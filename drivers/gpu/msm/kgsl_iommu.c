@@ -84,6 +84,13 @@ static void _iommu_unlock(void)
 
 struct remote_iommu_petersons_spinlock kgsl_iommu_sync_lock_vars;
 
+/*
+ * One page allocation for a guard region to protect against over-zealous
+ * GPU pre-fetch
+ */
+
+static struct page *kgsl_guard_page;
+
 static int get_iommu_unit(struct device *dev, struct kgsl_mmu **mmu_out,
 			struct kgsl_iommu_unit **iommu_unit_out)
 {
@@ -268,6 +275,8 @@ static void _check_if_freed(struct kgsl_iommu_device *iommu_dev,
 	void *base = kgsl_driver.memfree_hist.base_hist_rb;
 	struct kgsl_memfree_hist_elem *wptr;
 	struct kgsl_memfree_hist_elem *p;
+	char name[32];
+	memset(name, 0, sizeof(name));
 
 	mutex_lock(&kgsl_driver.memfree_hist_mutex);
 	wptr = kgsl_driver.memfree_hist.wptr;
@@ -277,12 +286,15 @@ static void _check_if_freed(struct kgsl_iommu_device *iommu_dev,
 			if (addr >= p->gpuaddr &&
 				addr < (p->gpuaddr + p->size)) {
 
+				kgsl_get_memory_usage(name, sizeof(name) - 1,
+					p->flags),
 				KGSL_LOG_DUMP(iommu_dev->kgsldev,
 					"---- premature free ----\n");
 				KGSL_LOG_DUMP(iommu_dev->kgsldev,
-					"[%8.8X-%8.8X] was already freed by pid %d\n",
+					"[%8.8X-%8.8X] (%s) was already freed by pid %d\n",
 					p->gpuaddr,
 					p->gpuaddr + p->size,
+					name,
 					p->pid);
 			}
 		p++;
@@ -347,22 +359,17 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 			KGSL_IOMMU_V1_FSYNR0_WNR_SHIFT)) ? 1 : 0);
 
 	pid = kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase);
-	KGSL_MEM_CRIT(iommu_dev->kgsldev,
-		"GPU PAGE FAULT: addr = %lX pid = %d\n", addr, pid);
-	KGSL_MEM_CRIT(iommu_dev->kgsldev,
-		"context = %d FSR = %X FSYNR0 = %X FSYNR1 = %X(%s fault)\n",
-		iommu_dev->ctx_id, fsr, fsynr0, fsynr1,
-		write ? "write" : "read");
 
 	if (adreno_dev->ft_pf_policy & KGSL_FT_PAGEFAULT_LOG_ONE_PER_PAGE)
 		no_page_fault_log = kgsl_mmu_log_fault_addr(mmu, ptbase, addr);
 
 	if (!no_page_fault_log) {
 		KGSL_MEM_CRIT(iommu_dev->kgsldev,
-			"GPU PAGE FAULT: addr = %lX pid = %d\n",
-			addr, kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase));
-		KGSL_MEM_CRIT(iommu_dev->kgsldev, "context = %d FSR = %X\n",
-			iommu_dev->ctx_id, fsr);
+			"GPU PAGE FAULT: addr = %lX pid = %d\n", addr, pid);
+		KGSL_MEM_CRIT(iommu_dev->kgsldev,
+		 "context = %d FSR = %X FSYNR0 = %X FSYNR1 = %X(%s fault)\n",
+			iommu_dev->ctx_id, fsr, fsynr0, fsynr1,
+			write ? "write" : "read");
 
 		_check_if_freed(iommu_dev, addr, pid);
 
@@ -1338,13 +1345,27 @@ static int kgsl_iommu_init(struct kgsl_mmu *mmu)
 	 * we're better off with extra room.
 	 */
 	if (mmu->pt_per_process) {
+#ifndef CONFIG_MSM_KGSL_CFF_DUMP
 		mmu->pt_base = PAGE_OFFSET;
 		mmu->pt_size = KGSL_IOMMU_GLOBAL_MEM_BASE
 				- kgsl_mmu_get_base_addr(mmu) - SZ_1M;
 		mmu->use_cpu_map = true;
+#else
+		mmu->pt_base = KGSL_PAGETABLE_BASE;
+		mmu->pt_size = KGSL_IOMMU_GLOBAL_MEM_BASE +
+				KGSL_IOMMU_GLOBAL_MEM_SIZE -
+				KGSL_PAGETABLE_BASE;
+		mmu->use_cpu_map = false;
+#endif
 	} else {
 		mmu->pt_base = KGSL_PAGETABLE_BASE;
+#ifndef CONFIG_MSM_KGSL_CFF_DUMP
 		mmu->pt_size = SZ_2G;
+#else
+		mmu->pt_size = KGSL_IOMMU_GLOBAL_MEM_BASE +
+				KGSL_IOMMU_GLOBAL_MEM_SIZE -
+				KGSL_PAGETABLE_BASE;
+#endif
 		mmu->use_cpu_map = false;
 	}
 
@@ -1376,6 +1397,15 @@ static int kgsl_iommu_init(struct kgsl_mmu *mmu)
 		 */
 		iommu_ops.mmu_setup_pt = kgsl_iommu_setup_regs;
 		iommu_ops.mmu_cleanup_pt = kgsl_iommu_cleanup_regs;
+	}
+
+	if (kgsl_guard_page == NULL) {
+		kgsl_guard_page = alloc_page(GFP_KERNEL | __GFP_ZERO |
+				__GFP_HIGHMEM);
+		if (kgsl_guard_page == NULL) {
+			status = -ENOMEM;
+			goto done;
+		}
 	}
 
 	dev_info(mmu->device->dev, "|%s| MMU type set for device is IOMMU\n",
@@ -1628,7 +1658,7 @@ kgsl_iommu_unmap(struct kgsl_pagetable *pt,
 		unsigned int *tlb_flags)
 {
 	int ret;
-	unsigned int range = kgsl_sg_size(memdesc->sg, memdesc->sglen);
+	unsigned int range = memdesc->size;
 	struct kgsl_iommu_pt *iommu_pt = pt->priv;
 
 	/* All GPU addresses as assigned are page aligned, but some
@@ -1639,6 +1669,9 @@ kgsl_iommu_unmap(struct kgsl_pagetable *pt,
 
 	if (range == 0 || gpuaddr == 0)
 		return 0;
+
+	if (kgsl_memdesc_has_guard_page(memdesc))
+		range += PAGE_SIZE;
 
 	ret = iommu_unmap_range(iommu_pt->domain, gpuaddr, range);
 	if (ret)
@@ -1664,13 +1697,9 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 	int ret;
 	unsigned int iommu_virt_addr;
 	struct kgsl_iommu_pt *iommu_pt = pt->priv;
-	int size = kgsl_sg_size(memdesc->sg, memdesc->sglen);
+	int size = memdesc->size;
 
 	BUG_ON(NULL == iommu_pt);
-
-	/* if there's a guard page, we'll map it read only below */
-	if ((protflags & IOMMU_WRITE) && kgsl_memdesc_has_guard_page(memdesc))
-			size -= PAGE_SIZE;
 
 	iommu_virt_addr = memdesc->gpuaddr;
 
@@ -1682,16 +1711,14 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 			protflags, ret);
 		return ret;
 	}
-	if ((protflags & IOMMU_WRITE) && kgsl_memdesc_has_guard_page(memdesc)) {
-		struct scatterlist *sg = &memdesc->sg[memdesc->sglen - 1];
-
+	if (kgsl_memdesc_has_guard_page(memdesc)) {
 		ret = iommu_map(iommu_pt->domain, iommu_virt_addr + size,
-				kgsl_get_sg_pa(sg), PAGE_SIZE,
+				page_to_phys(kgsl_guard_page), PAGE_SIZE,
 				protflags & ~IOMMU_WRITE);
 		if (ret) {
-			KGSL_CORE_ERR("iommu_map(%p, %x, %x, %x) err: %d\n",
+			KGSL_CORE_ERR("iommu_map(%p, %x, guard, %x) err: %d\n",
 				iommu_pt->domain, iommu_virt_addr + size,
-				kgsl_get_sg_pa(sg), protflags & ~IOMMU_WRITE,
+				protflags & ~IOMMU_WRITE,
 				ret);
 			/* cleanup the partial mapping */
 			iommu_unmap_range(iommu_pt->domain, iommu_virt_addr,
@@ -1770,6 +1797,11 @@ static int kgsl_iommu_close(struct kgsl_mmu *mmu)
 	iommu->sync_lock_vars = NULL;
 
 	kfree(iommu);
+
+	if (kgsl_guard_page != NULL) {
+		__free_page(kgsl_guard_page);
+		kgsl_guard_page = NULL;
+	}
 
 	return 0;
 }

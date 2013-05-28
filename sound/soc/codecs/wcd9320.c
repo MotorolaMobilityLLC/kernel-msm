@@ -41,6 +41,8 @@
 
 #define TAIKO_MAD_SLIMBUS_TX_PORT 12
 #define TAIKO_MAD_AUDIO_FIRMWARE_PATH "wcd9320/wcd9320_mad_audio.bin"
+#define TAIKO_VALIDATE_RX_SBPORT_RANGE(port) ((port >= 16) && (port <= 22))
+#define TAIKO_CONVERT_RX_SBPORT_ID(port) (port - 16) /* RX1 port ID = 0 */
 
 #define TAIKO_HPH_PA_SETTLE_COMP_ON 3000
 #define TAIKO_HPH_PA_SETTLE_COMP_OFF 13000
@@ -110,6 +112,15 @@ enum {
 	AANC_FF_GAIN_ADAPTIVE,
 	AANC_FFGAIN_ADAPTIVE_EN,
 	AANC_GAIN_CONTROL,
+	SPKR_CLIP_PIPE_BANK_SEL,
+	SPKR_CLIPDET_VAL0,
+	SPKR_CLIPDET_VAL1,
+	SPKR_CLIPDET_VAL2,
+	SPKR_CLIPDET_VAL3,
+	SPKR_CLIPDET_VAL4,
+	SPKR_CLIPDET_VAL5,
+	SPKR_CLIPDET_VAL6,
+	SPKR_CLIPDET_VAL7,
 	MAX_CFG_REGISTERS,
 };
 
@@ -182,6 +193,74 @@ static struct afe_param_cdc_reg_cfg audio_reg_cfg[] = {
 		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_ANC1_GAIN_CTL),
 		AANC_GAIN_CONTROL, 0xFF, 8, 0
 	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_INTR_DESTN3),
+		MAD_CLIP_INT_DEST_SELECT_REG, 0x8, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_INTR_MASK3),
+		MAD_CLIP_INT_MASK_REG, 0x8, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_INTR_STATUS3),
+		MAD_CLIP_INT_STATUS_REG, 0x8, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_INTR_CLEAR3),
+		MAD_CLIP_INT_CLEAR_REG, 0x8, 8, 0
+	},
+};
+
+static struct afe_param_cdc_reg_cfg clip_reg_cfg[] = {
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_SPKR_CLIPDET_B1_CTL),
+		SPKR_CLIP_PIPE_BANK_SEL, 0x3, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_SPKR_CLIPDET_VAL0),
+		SPKR_CLIPDET_VAL0, 0xff, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_SPKR_CLIPDET_VAL1),
+		SPKR_CLIPDET_VAL1, 0xff, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_SPKR_CLIPDET_VAL2),
+		SPKR_CLIPDET_VAL2, 0xff, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_SPKR_CLIPDET_VAL3),
+		SPKR_CLIPDET_VAL3, 0xff, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_SPKR_CLIPDET_VAL4),
+		SPKR_CLIPDET_VAL4, 0xff, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_SPKR_CLIPDET_VAL5),
+		SPKR_CLIPDET_VAL5, 0xff, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_SPKR_CLIPDET_VAL6),
+		SPKR_CLIPDET_VAL6, 0xff, 8, 0
+	},
+	{
+		1,
+		(TAIKO_REGISTER_START_OFFSET + TAIKO_A_CDC_SPKR_CLIPDET_VAL7),
+		SPKR_CLIPDET_VAL7, 0xff, 8, 0
+	},
 };
 
 static struct afe_param_cdc_reg_cfg_data taiko_audio_reg_cfg = {
@@ -189,9 +268,20 @@ static struct afe_param_cdc_reg_cfg_data taiko_audio_reg_cfg = {
 	.reg_data = audio_reg_cfg,
 };
 
+static struct afe_param_cdc_reg_cfg_data taiko_clip_reg_cfg = {
+	.num_registers = ARRAY_SIZE(clip_reg_cfg),
+	.reg_data = clip_reg_cfg,
+};
+
 static struct afe_param_id_cdc_aanc_version taiko_cdc_aanc_version = {
 	.cdc_aanc_minor_version = AFE_API_VERSION_CDC_AANC_VERSION,
 	.aanc_hw_version        = AANC_HW_BLOCK_VERSION_2,
+};
+
+static struct afe_param_id_clip_bank_sel clip_bank_sel = {
+	.minor_version = AFE_API_VERSION_CLIP_BANK_SEL_CFG,
+	.num_banks = AFE_CLIP_MAX_BANKS,
+	.bank_map = {0, 1, 2, 3},
 };
 
 module_param_cb(spkr_drv_wrnd, &spkr_drv_wrnd_param_ops, &spkr_drv_wrnd, 0644);
@@ -206,6 +296,7 @@ MODULE_PARM_DESC(spkr_drv_wrnd,
 #define NUM_INTERPOLATORS 7
 #define BITS_PER_REG 8
 #define TAIKO_TX_PORT_NUMBER	16
+#define TAIKO_RX_PORT_START_NUMBER	16
 
 #define TAIKO_I2S_MASTER_MODE_MASK 0x08
 
@@ -321,19 +412,19 @@ struct hpf_work {
 static struct hpf_work tx_hpf_work[NUM_DECIMATORS];
 
 static const struct wcd9xxx_ch taiko_rx_chs[TAIKO_RX_MAX] = {
-	WCD9XXX_CH(16, 0),
-	WCD9XXX_CH(17, 1),
-	WCD9XXX_CH(18, 2),
-	WCD9XXX_CH(19, 3),
-	WCD9XXX_CH(20, 4),
-	WCD9XXX_CH(21, 5),
-	WCD9XXX_CH(22, 6),
-	WCD9XXX_CH(23, 7),
-	WCD9XXX_CH(24, 8),
-	WCD9XXX_CH(25, 9),
-	WCD9XXX_CH(26, 10),
-	WCD9XXX_CH(27, 11),
-	WCD9XXX_CH(28, 12),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER, 0),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 1, 1),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 2, 2),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 3, 3),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 4, 4),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 5, 5),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 6, 6),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 7, 7),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 8, 8),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 9, 9),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 10, 10),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 11, 11),
+	WCD9XXX_CH(TAIKO_RX_PORT_START_NUMBER + 12, 12),
 };
 
 static const struct wcd9xxx_ch taiko_tx_chs[TAIKO_TX_MAX] = {
@@ -399,6 +490,8 @@ struct taiko_priv {
 
 	bool spkr_pa_widget_on;
 	struct regulator *spkdrv_reg;
+
+	bool mbhc_started;
 
 	struct afe_param_cdc_slimbus_slave_cfg slimbus_slave_cfg;
 
@@ -1952,11 +2045,10 @@ static int slim_tx_mixer_put(struct snd_kcontrol *kcontrol,
 						vtable,
 						port_id,
 						taiko_p->dai)) {
-					pr_debug("%s: TX%u is used by other\n"
-						"virtual port\n",
+					dev_dbg(codec->dev, "%s: TX%u is used by other virtual port\n",
 						__func__, port_id + 1);
 					mutex_unlock(&codec->mutex);
-					return -EINVAL;
+					return 0;
 				}
 				widget->value |= 1 << port_id;
 				list_add_tail(&core->tx_chs[port_id].list,
@@ -1967,11 +2059,11 @@ static int slim_tx_mixer_put(struct snd_kcontrol *kcontrol,
 				list_del_init(&core->tx_chs[port_id].list);
 			} else {
 				if (enable)
-					pr_debug("%s: TX%u port is used by\n"
+					dev_dbg(codec->dev, "%s: TX%u port is used by\n"
 						"this virtual port\n",
 						__func__, port_id + 1);
 				else
-					pr_debug("%s: TX%u port is not used by\n"
+					dev_dbg(codec->dev, "%s: TX%u port is not used by\n"
 						"this virtual port\n",
 						__func__, port_id + 1);
 				/* avoid update power function */
@@ -2040,23 +2132,35 @@ static int slim_rx_mux_put(struct snd_kcontrol *kcontrol,
 		list_del_init(&core->rx_chs[port_id].list);
 	break;
 	case 1:
-		if (wcd9xxx_rx_vport_validation(port_id + core->num_tx_port,
-			&taiko_p->dai[AIF1_PB].wcd9xxx_ch_list))
-			goto pr_err;
+		if (wcd9xxx_rx_vport_validation(port_id +
+			TAIKO_RX_PORT_START_NUMBER,
+			&taiko_p->dai[AIF1_PB].wcd9xxx_ch_list)) {
+			dev_dbg(codec->dev, "%s: RX%u is used by current requesting AIF_PB itself\n",
+				__func__, port_id + 1);
+			goto rtn;
+		}
 		list_add_tail(&core->rx_chs[port_id].list,
 			      &taiko_p->dai[AIF1_PB].wcd9xxx_ch_list);
 	break;
 	case 2:
-		if (wcd9xxx_rx_vport_validation(port_id + core->num_tx_port,
-			&taiko_p->dai[AIF2_PB].wcd9xxx_ch_list))
-			goto pr_err;
+		if (wcd9xxx_rx_vport_validation(port_id +
+			TAIKO_RX_PORT_START_NUMBER,
+			&taiko_p->dai[AIF2_PB].wcd9xxx_ch_list)) {
+			dev_dbg(codec->dev, "%s: RX%u is used by current requesting AIF_PB itself\n",
+				__func__, port_id + 1);
+			goto rtn;
+		}
 		list_add_tail(&core->rx_chs[port_id].list,
 			      &taiko_p->dai[AIF2_PB].wcd9xxx_ch_list);
 	break;
 	case 3:
-		if (wcd9xxx_rx_vport_validation(port_id + core->num_tx_port,
-			&taiko_p->dai[AIF3_PB].wcd9xxx_ch_list))
-			goto pr_err;
+		if (wcd9xxx_rx_vport_validation(port_id +
+			TAIKO_RX_PORT_START_NUMBER,
+			&taiko_p->dai[AIF3_PB].wcd9xxx_ch_list)) {
+			dev_dbg(codec->dev, "%s: RX%u is used by current requesting AIF_PB itself\n",
+				__func__, port_id + 1);
+			goto rtn;
+		}
 		list_add_tail(&core->rx_chs[port_id].list,
 			      &taiko_p->dai[AIF3_PB].wcd9xxx_ch_list);
 	break;
@@ -2064,14 +2168,11 @@ static int slim_rx_mux_put(struct snd_kcontrol *kcontrol,
 		pr_err("Unknown AIF %d\n", widget->value);
 		goto err;
 	}
-
+rtn:
 	snd_soc_dapm_mux_update_power(widget, kcontrol, 1, widget->value, e);
 
 	mutex_unlock(&codec->mutex);
 	return 0;
-pr_err:
-	pr_err("%s: RX%u is used by current requesting AIF_PB itself\n",
-		__func__, port_id + 1);
 err:
 	mutex_unlock(&codec->mutex);
 	return -EINVAL;
@@ -2560,7 +2661,9 @@ static int taiko_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 		else if (strnstr(w->name, internal3_text, 30))
 			snd_soc_update_bits(codec, micb_int_reg, 0x3, 0x3);
 
-		if (micb_ctl_reg == TAIKO_A_MICB_2_CTL)
+		if (taiko->mbhc_started &&
+		    taiko->resmgr.pdata->micbias.bias2_is_headset_only &&
+		    micb_ctl_reg == TAIKO_A_MICB_2_CTL)
 			wcd9xxx_resmgr_add_cond_update_bits(&taiko->resmgr,
 						  WCD9XXX_COND_HPH_MIC,
 						  micb_ctl_reg, w->shift,
@@ -2575,7 +2678,9 @@ static int taiko_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 		wcd9xxx_resmgr_notifier_call(&taiko->resmgr, e_post_on);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if (micb_ctl_reg == TAIKO_A_MICB_2_CTL)
+		if (taiko->mbhc_started &&
+		    taiko->resmgr.pdata->micbias.bias2_is_headset_only &&
+		    micb_ctl_reg == TAIKO_A_MICB_2_CTL)
 			wcd9xxx_resmgr_rm_cond_update_bits(&taiko->resmgr,
 						  WCD9XXX_COND_HPH_MIC,
 						  micb_ctl_reg, 7, false);
@@ -4170,6 +4275,65 @@ static int taiko_set_decimator_rate(struct snd_soc_dai *dai,
 	return 0;
 }
 
+static void taiko_set_rxsb_port_format(struct snd_pcm_hw_params *params,
+				       struct snd_soc_dai *dai)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct taiko_priv *taiko_p = snd_soc_codec_get_drvdata(codec);
+	struct wcd9xxx_codec_dai_data *cdc_dai;
+	struct wcd9xxx_ch *ch;
+	int port;
+	u8 bit_sel;
+	u16 sb_ctl_reg, field_shift;
+
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		bit_sel = 0x2;
+		taiko_p->dai[dai->id].bit_width = 16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		bit_sel = 0x0;
+		taiko_p->dai[dai->id].bit_width = 24;
+		break;
+	default:
+		dev_err(codec->dev, "Invalid format\n");
+		return;
+	}
+
+	cdc_dai = &taiko_p->dai[dai->id];
+
+	list_for_each_entry(ch, &cdc_dai->wcd9xxx_ch_list, list) {
+		port = wcd9xxx_get_slave_port(ch->ch_num);
+
+		if (IS_ERR_VALUE(port) ||
+		    !TAIKO_VALIDATE_RX_SBPORT_RANGE(port)) {
+			dev_warn(codec->dev,
+				 "%s: invalid port ID %d returned for RX DAI\n",
+				 __func__, port);
+			return;
+		}
+
+		port = TAIKO_CONVERT_RX_SBPORT_ID(port);
+
+		if (port <= 3) {
+			sb_ctl_reg = TAIKO_A_CDC_CONN_RX_SB_B1_CTL;
+			field_shift = port << 1;
+		} else if (port <= 6) {
+			sb_ctl_reg = TAIKO_A_CDC_CONN_RX_SB_B2_CTL;
+			field_shift = (port - 4) << 1;
+		} else { /* should not happen */
+			dev_warn(codec->dev,
+				 "%s: bad port ID %d\n", __func__, port);
+			return;
+		}
+
+		dev_dbg(codec->dev, "%s: sb_ctl_reg %x field_shift %x\n",
+			__func__, sb_ctl_reg, field_shift);
+		snd_soc_update_bits(codec, sb_ctl_reg, 0x3 << field_shift,
+				    bit_sel << field_shift);
+	}
+}
+
 static int taiko_hw_params(struct snd_pcm_substream *substream,
 			    struct snd_pcm_hw_params *params,
 			    struct snd_soc_dai *dai)
@@ -4284,29 +4448,7 @@ static int taiko_hw_params(struct snd_pcm_substream *substream,
 			snd_soc_update_bits(codec, TAIKO_A_CDC_CLK_RX_I2S_CTL,
 					    0x03, (rx_fs_rate >> 0x05));
 		} else {
-			switch (params_format(params)) {
-			case SNDRV_PCM_FORMAT_S16_LE:
-				snd_soc_update_bits(codec,
-					TAIKO_A_CDC_CONN_RX_SB_B1_CTL,
-					0xFF, 0xAA);
-				snd_soc_update_bits(codec,
-					TAIKO_A_CDC_CONN_RX_SB_B2_CTL,
-					0xFF, 0x2A);
-				taiko->dai[dai->id].bit_width = 16;
-				break;
-			case SNDRV_PCM_FORMAT_S24_LE:
-				snd_soc_update_bits(codec,
-					TAIKO_A_CDC_CONN_RX_SB_B1_CTL,
-					0xFF, 0x00);
-				snd_soc_update_bits(codec,
-					TAIKO_A_CDC_CONN_RX_SB_B2_CTL,
-					0xFF, 0x00);
-				taiko->dai[dai->id].bit_width = 24;
-				break;
-			default:
-				dev_err(codec->dev, "Invalid format\n");
-				break;
-			}
+			taiko_set_rxsb_port_format(params, dai);
 			taiko->dai[dai->id].rate   = params_rate(params);
 		}
 		break;
@@ -4618,9 +4760,6 @@ static int taiko_codec_enable_slimvi_feedback(struct snd_soc_dapm_widget *w,
 	dai = &taiko_p->dai[w->shift];
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		/*Enable Clip Detection*/
-		snd_soc_update_bits(codec, TAIKO_A_SPKR_DRV_CLIP_DET,
-				0x8, 0x8);
 		/*Enable V&I sensing*/
 		snd_soc_update_bits(codec, TAIKO_A_SPKR_PROT_EN,
 				0x88, 0x88);
@@ -4633,6 +4772,7 @@ static int taiko_codec_enable_slimvi_feedback(struct snd_soc_dapm_widget *w,
 		/*Enable Current Decimator*/
 		snd_soc_update_bits(codec,
 		TAIKO_A_CDC_CONN_TX_SB_B10_CTL, 0x1F, 0x13);
+		(void) taiko_codec_enable_slim_chmask(dai, true);
 		ret = wcd9xxx_cfg_slim_sch_tx(core, &dai->wcd9xxx_ch_list,
 					dai->rate, dai->bit_width,
 					&dai->grph);
@@ -4655,9 +4795,6 @@ static int taiko_codec_enable_slimvi_feedback(struct snd_soc_dapm_widget *w,
 		/*Disable V&I sensing*/
 		snd_soc_update_bits(codec, TAIKO_A_SPKR_PROT_EN,
 				0x88, 0x00);
-		/*Disable clip detection*/
-		snd_soc_update_bits(codec, TAIKO_A_SPKR_DRV_CLIP_DET,
-				0x8, 0x0);
 		break;
 	}
 out_vi:
@@ -5873,8 +6010,12 @@ static void taiko_cleanup_irqs(struct taiko_priv *taiko)
 int taiko_hs_detect(struct snd_soc_codec *codec,
 		    struct wcd9xxx_mbhc_config *mbhc_cfg)
 {
+	int rc;
 	struct taiko_priv *taiko = snd_soc_codec_get_drvdata(codec);
-	return wcd9xxx_mbhc_start(&taiko->mbhc, mbhc_cfg);
+	rc = wcd9xxx_mbhc_start(&taiko->mbhc, mbhc_cfg);
+	if (!rc)
+		taiko->mbhc_started = true;
+	return rc;
 }
 EXPORT_SYMBOL_GPL(taiko_hs_detect);
 
@@ -5930,13 +6071,20 @@ static int taiko_post_reset_cb(struct wcd9xxx *wcd9xxx)
 	taiko_init_slim_slave_cfg(codec);
 	taiko_slim_interface_init_reg(codec);
 
-	wcd9xxx_mbhc_deinit(&taiko->mbhc);
-	ret = wcd9xxx_mbhc_init(&taiko->mbhc, &taiko->resmgr, codec,
-				WCD9XXX_MBHC_VERSION_TAIKO);
-	if (ret)
-		pr_err("%s: mbhc init failed %d\n", __func__, ret);
-	else
-		wcd9xxx_mbhc_start(&taiko->mbhc, taiko->mbhc.mbhc_cfg);
+	if (taiko->mbhc_started) {
+		wcd9xxx_mbhc_deinit(&taiko->mbhc);
+		taiko->mbhc_started = false;
+		ret = wcd9xxx_mbhc_init(&taiko->mbhc, &taiko->resmgr, codec,
+					WCD9XXX_MBHC_VERSION_TAIKO);
+		if (ret) {
+			pr_err("%s: mbhc init failed %d\n", __func__, ret);
+		} else {
+			ret = wcd9xxx_mbhc_start(&taiko->mbhc,
+						 taiko->mbhc.mbhc_cfg);
+			if (!ret)
+				taiko->mbhc_started = true;
+		}
+	}
 	mutex_unlock(&codec->mutex);
 	return ret;
 }
@@ -5945,6 +6093,7 @@ void *taiko_get_afe_config(struct snd_soc_codec *codec,
 			   enum afe_config_type config_type)
 {
 	struct taiko_priv *priv = snd_soc_codec_get_drvdata(codec);
+	struct wcd9xxx *taiko_core = dev_get_drvdata(codec->dev->parent);
 
 	switch (config_type) {
 	case AFE_SLIMBUS_SLAVE_CONFIG:
@@ -5955,6 +6104,16 @@ void *taiko_get_afe_config(struct snd_soc_codec *codec,
 		return &taiko_slimbus_slave_port_cfg;
 	case AFE_AANC_VERSION:
 		return &taiko_cdc_aanc_version;
+	case AFE_CLIP_BANK_SEL:
+		if (!TAIKO_IS_1_0(taiko_core->version))
+			return &clip_bank_sel;
+		else
+			return NULL;
+	case AFE_CDC_CLIP_REGISTERS_CONFIG:
+		if (!TAIKO_IS_1_0(taiko_core->version))
+			return &taiko_clip_reg_cfg;
+		else
+			return NULL;
 	default:
 		pr_err("%s: Unknown config_type 0x%x\n", __func__, config_type);
 		return NULL;

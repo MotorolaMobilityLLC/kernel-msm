@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 	tmc_etr: tmc@fc322000 {
 		compatible = "arm,coresight-tmc";
 		reg = <0xfc322000 0x1000>,
@@ -241,6 +241,17 @@
 
 		coresight-id = <19>;
 		coresight-name = "coresight-cti-cpu";
+		coresight-nr-inports = <0>;
+	};
+
+	hwevent: hwevent@f9011038 {
+		compatible = "qcom,coresight-hwevent";
+		reg = <0xf9011038 0x8>,
+		      <0xfd4ab160 0x80>;
+		reg-names = "apcs-mux", "ppss-mux";
+
+		coresight-id = <20>;
+		coresight-name = "coresight-hwevent";
 		coresight-nr-inports = <0>;
 	};
 };

@@ -34,6 +34,8 @@
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/timer.h>
+#include <linux/jiffies.h>
 #include "dmxdev.h"
 
 static int debug;
@@ -416,7 +418,33 @@ static int dvb_dmxdev_update_events(struct dmxdev_events_queue *events,
 	return 0;
 }
 
-static ssize_t dvb_dmxdev_buffer_read(struct dvb_ringbuffer *src,
+static inline int dvb_dmxdev_check_data(struct dmxdev_filter *filter,
+			struct dvb_ringbuffer *src)
+{
+	int data_status_change;
+
+	if (filter)
+		if (mutex_lock_interruptible(&filter->mutex))
+			return -ERESTARTSYS;
+
+	if (!src->data ||
+		!dvb_ringbuffer_empty(src) ||
+		src->error ||
+		(filter &&
+		 (filter->state != DMXDEV_STATE_GO) &&
+		 (filter->state != DMXDEV_STATE_DONE)))
+		data_status_change = 1;
+	else
+		data_status_change = 0;
+
+	if (filter)
+		mutex_unlock(&filter->mutex);
+
+	return data_status_change;
+}
+
+static ssize_t dvb_dmxdev_buffer_read(struct dmxdev_filter *filter,
+					struct dvb_ringbuffer *src,
 					int non_blocking, char __user *buf,
 					size_t count, loff_t *ppos)
 {
@@ -439,9 +467,26 @@ static ssize_t dvb_dmxdev_buffer_read(struct dvb_ringbuffer *src,
 			break;
 		}
 
-		ret = wait_event_interruptible(src->queue, (!src->data) ||
-						!dvb_ringbuffer_empty(src) ||
-						(src->error != 0));
+		if (filter) {
+			if ((filter->state == DMXDEV_STATE_DONE) &&
+				dvb_ringbuffer_empty(src))
+				break;
+
+			mutex_unlock(&filter->mutex);
+		}
+
+		ret = wait_event_interruptible(src->queue,
+				dvb_dmxdev_check_data(filter, src));
+
+		if (filter) {
+			if (mutex_lock_interruptible(&filter->mutex))
+				return -ERESTARTSYS;
+
+			if ((filter->state != DMXDEV_STATE_GO) &&
+				(filter->state != DMXDEV_STATE_DONE))
+				return -ENODEV;
+		}
+
 		if (ret < 0)
 			break;
 
@@ -1108,9 +1153,9 @@ static ssize_t dvb_dvr_read(struct file *file, char __user *buf, size_t count,
 	if (dmxdev->exit)
 		return -ENODEV;
 
-	res = dvb_dmxdev_buffer_read(&dmxdev->dvr_buffer,
-				      file->f_flags & O_NONBLOCK,
-				      buf, count, ppos);
+	res = dvb_dmxdev_buffer_read(NULL, &dmxdev->dvr_buffer,
+				file->f_flags & O_NONBLOCK,
+				buf, count, ppos);
 
 	if (res > 0) {
 		dvb_dmxdev_notify_data_read(dmxdev->dvr_feed, res);
@@ -1751,6 +1796,223 @@ static int dvb_dmxdev_set_indexing_params(struct dmxdev_filter *dmxdevfilter,
 	return 0;
 }
 
+static int dvb_dmxdev_get_scrambling_bits(struct dmxdev_filter *filter,
+	struct dmx_scrambling_bits *scrambling_bits)
+{
+	struct dmxdev_feed *feed;
+
+	if (!scrambling_bits ||
+		(filter->state != DMXDEV_STATE_GO))
+		return -EINVAL;
+
+	if (filter->type == DMXDEV_TYPE_SEC) {
+		if (filter->feed.sec.feed->get_scrambling_bits)
+			return filter->feed.sec.feed->get_scrambling_bits(
+						filter->feed.sec.feed,
+						&scrambling_bits->value);
+		return -EINVAL;
+	}
+
+	list_for_each_entry(feed, &filter->feed.ts, next) {
+		if (feed->pid == scrambling_bits->pid) {
+			if (feed->ts->get_scrambling_bits)
+				return feed->ts->get_scrambling_bits(feed->ts,
+						&scrambling_bits->value);
+			return -EINVAL;
+		}
+	}
+
+	return -EINVAL;
+}
+
+static void dvb_dmxdev_ts_insertion_work(struct work_struct *worker)
+{
+	struct ts_insertion_buffer *ts_buffer =
+		container_of(worker, struct ts_insertion_buffer, dwork.work);
+	struct dmxdev_feed *feed;
+	size_t free_bytes;
+	struct dmx_ts_feed *ts;
+
+	mutex_lock(&ts_buffer->dmxdevfilter->mutex);
+
+	if (ts_buffer->abort ||
+		(ts_buffer->dmxdevfilter->state != DMXDEV_STATE_GO)) {
+		mutex_unlock(&ts_buffer->dmxdevfilter->mutex);
+		return;
+	}
+
+	feed = list_first_entry(&ts_buffer->dmxdevfilter->feed.ts,
+				struct dmxdev_feed, next);
+	ts = feed->ts;
+	free_bytes = dvb_ringbuffer_free(&ts_buffer->dmxdevfilter->buffer);
+
+	mutex_unlock(&ts_buffer->dmxdevfilter->mutex);
+
+	if (ts_buffer->size < free_bytes)
+		ts->ts_insertion_insert_buffer(ts,
+			ts_buffer->buffer, ts_buffer->size);
+
+	if (ts_buffer->repetition_time && !ts_buffer->abort)
+		schedule_delayed_work(&ts_buffer->dwork,
+				msecs_to_jiffies(ts_buffer->repetition_time));
+}
+
+static void dvb_dmxdev_queue_ts_insertion(
+		struct ts_insertion_buffer *ts_buffer)
+{
+	size_t tsp_size;
+
+	if (ts_buffer->dmxdevfilter->dmx_tsp_format == DMX_TSP_FORMAT_188)
+		tsp_size = 188;
+	else
+		tsp_size = 192;
+
+	if (ts_buffer->size % tsp_size) {
+		printk(KERN_ERR "%s: Wrong buffer alignment, size=%d, tsp_size=%d\n",
+			__func__, ts_buffer->size, tsp_size);
+		return;
+	}
+
+	ts_buffer->abort = 0;
+	schedule_delayed_work(&ts_buffer->dwork, 0);
+}
+
+static void dvb_dmxdev_cancel_ts_insertion(
+		struct ts_insertion_buffer *ts_buffer)
+{
+	/*
+	 * This function assumes it is called while mutex
+	 * of demux filter is taken. Since work in workqueue
+	 * captures the filter's mutex to protect against the DB,
+	 * mutex needs to be released before waiting for the work
+	 * to get finished otherwise work in workqueue will
+	 * never be finished.
+	 */
+	if (!mutex_is_locked(&ts_buffer->dmxdevfilter->mutex)) {
+		printk(KERN_ERR "%s: mutex is not locked!\n", __func__);
+		return;
+	}
+
+	ts_buffer->abort = 1;
+
+	mutex_unlock(&ts_buffer->dmxdevfilter->mutex);
+	cancel_delayed_work_sync(&ts_buffer->dwork);
+	mutex_lock(&ts_buffer->dmxdevfilter->mutex);
+}
+
+static int dvb_dmxdev_set_ts_insertion(struct dmxdev_filter *dmxdevfilter,
+		struct dmx_set_ts_insertion *params)
+{
+	int ret = 0;
+	int first_buffer;
+	struct dmxdev_feed *feed;
+	struct ts_insertion_buffer *ts_buffer;
+
+	if (!params ||
+		!params->size ||
+		!(dmxdevfilter->dev->capabilities & DMXDEV_CAP_TS_INSERTION) ||
+		(dmxdevfilter->state < DMXDEV_STATE_SET) ||
+		(dmxdevfilter->type != DMXDEV_TYPE_PES) ||
+		((dmxdevfilter->params.pes.output != DMX_OUT_TS_TAP) &&
+		 (dmxdevfilter->params.pes.output != DMX_OUT_TSDEMUX_TAP)))
+		return -EINVAL;
+
+	ts_buffer = vmalloc(sizeof(struct ts_insertion_buffer));
+	if (!ts_buffer)
+		return -ENOMEM;
+
+	ts_buffer->buffer = vmalloc(params->size);
+	if (!ts_buffer->buffer) {
+		vfree(ts_buffer);
+		return -ENOMEM;
+	}
+
+	if (copy_from_user(ts_buffer->buffer,
+			params->ts_packets, params->size)) {
+		vfree(ts_buffer->buffer);
+		vfree(ts_buffer);
+		return -EFAULT;
+	}
+
+	if (params->repetition_time &&
+		params->repetition_time < DMX_MIN_INSERTION_REPETITION_TIME)
+		params->repetition_time = DMX_MIN_INSERTION_REPETITION_TIME;
+
+	ts_buffer->size = params->size;
+	ts_buffer->identifier = params->identifier;
+	ts_buffer->repetition_time = params->repetition_time;
+	ts_buffer->dmxdevfilter = dmxdevfilter;
+	INIT_DELAYED_WORK(&ts_buffer->dwork, dvb_dmxdev_ts_insertion_work);
+
+	first_buffer = list_empty(&dmxdevfilter->insertion_buffers);
+	list_add_tail(&ts_buffer->next, &dmxdevfilter->insertion_buffers);
+
+	if (dmxdevfilter->state != DMXDEV_STATE_GO)
+		return 0;
+
+	feed = list_first_entry(&dmxdevfilter->feed.ts,
+				struct dmxdev_feed, next);
+
+	if (first_buffer && feed->ts->ts_insertion_init)
+		ret = feed->ts->ts_insertion_init(feed->ts);
+
+	if (!ret) {
+		dvb_dmxdev_queue_ts_insertion(ts_buffer);
+	} else {
+		list_del(&ts_buffer->next);
+		vfree(ts_buffer->buffer);
+		vfree(ts_buffer);
+	}
+
+	return ret;
+}
+
+static int dvb_dmxdev_abort_ts_insertion(struct dmxdev_filter *dmxdevfilter,
+		struct dmx_abort_ts_insertion *params)
+{
+	int ret = 0;
+	int found_buffer;
+	struct dmxdev_feed *feed;
+	struct ts_insertion_buffer *ts_buffer, *tmp;
+
+	if (!params ||
+		!(dmxdevfilter->dev->capabilities & DMXDEV_CAP_TS_INSERTION) ||
+		(dmxdevfilter->state < DMXDEV_STATE_SET) ||
+		(dmxdevfilter->type != DMXDEV_TYPE_PES) ||
+		((dmxdevfilter->params.pes.output != DMX_OUT_TS_TAP) &&
+		 (dmxdevfilter->params.pes.output != DMX_OUT_TSDEMUX_TAP)))
+		return -EINVAL;
+
+	found_buffer = 0;
+	list_for_each_entry_safe(ts_buffer, tmp,
+			&dmxdevfilter->insertion_buffers, next) {
+		if (ts_buffer->identifier == params->identifier) {
+			list_del(&ts_buffer->next);
+			found_buffer = 1;
+			break;
+		}
+	}
+
+	if (!found_buffer)
+		return -EINVAL;
+
+	if (dmxdevfilter->state == DMXDEV_STATE_GO) {
+		dvb_dmxdev_cancel_ts_insertion(ts_buffer);
+		if (list_empty(&dmxdevfilter->insertion_buffers)) {
+			feed = list_first_entry(&dmxdevfilter->feed.ts,
+						struct dmxdev_feed, next);
+			if (feed->ts->ts_insertion_terminate)
+				ret = feed->ts->ts_insertion_terminate(
+							feed->ts);
+		}
+	}
+
+	vfree(ts_buffer->buffer);
+	vfree(ts_buffer);
+
+	return ret;
+}
+
 static int dvb_dmxdev_ts_fullness_callback(struct dmx_ts_feed *filter,
 				int required_space)
 {
@@ -2006,6 +2268,9 @@ static int dvb_dmxdev_get_event(struct dmxdev_filter *dmxdevfilter,
 		dvb_ringbuffer_flush(&dmxdevfilter->buffer);
 		dvb_dmxdev_notify_data_read(dmxdevfilter, flush_len);
 		dmxdevfilter->buffer.error = 0;
+	} else if (event->type == DMX_EVENT_SECTION_TIMEOUT) {
+		/* clear buffer error now that user was notified */
+		dmxdevfilter->buffer.error = 0;
 	}
 
 	/*
@@ -2036,10 +2301,13 @@ static int dvb_dmxdev_get_event(struct dmxdev_filter *dmxdevfilter,
 static void dvb_dmxdev_filter_timeout(unsigned long data)
 {
 	struct dmxdev_filter *dmxdevfilter = (struct dmxdev_filter *)data;
+	struct dmx_filter_event event;
 
 	dmxdevfilter->buffer.error = -ETIMEDOUT;
 	spin_lock_irq(&dmxdevfilter->dev->lock);
 	dmxdevfilter->state = DMXDEV_STATE_TIMEDOUT;
+	event.type = DMX_EVENT_SECTION_TIMEOUT;
+	dvb_dmxdev_add_event(&dmxdevfilter->events, &event);
 	spin_unlock_irq(&dmxdevfilter->dev->lock);
 	wake_up_all(&dmxdevfilter->buffer.queue);
 }
@@ -2280,6 +2548,13 @@ static int dvb_dmxdev_section_event_cb(struct dmx_section_filter *filter,
 			dvb_dmxdev_add_event(&dmxdevfilter->events, &event);
 			spin_unlock(&dmxdevfilter->dev->lock);
 			wake_up_all(&dmxdevfilter->buffer.queue);
+		} else if (dmx_data_ready->status == DMX_OK_SCRAMBLING_STATUS) {
+			event.type = DMX_EVENT_SCRAMBLING_STATUS_CHANGE;
+			event.params.scrambling_status =
+				dmx_data_ready->scrambling_bits;
+			dvb_dmxdev_add_event(&dmxdevfilter->events, &event);
+			spin_unlock(&dmxdevfilter->dev->lock);
+			wake_up_all(&dmxdevfilter->buffer.queue);
 		} else {
 			spin_unlock(&dmxdevfilter->dev->lock);
 		}
@@ -2390,6 +2665,16 @@ static int dvb_dmxdev_ts_event_cb(struct dmx_ts_feed *feed,
 		event.type = DMX_EVENT_NEW_INDEX_ENTRY;
 		event.params.index = dmx_data_ready->idx_event;
 
+		dvb_dmxdev_add_event(events, &event);
+		spin_unlock(&dmxdevfilter->dev->lock);
+		wake_up_all(&buffer->queue);
+		return 0;
+	}
+
+	if (dmx_data_ready->status == DMX_OK_SCRAMBLING_STATUS) {
+		event.type = DMX_EVENT_SCRAMBLING_STATUS_CHANGE;
+		event.params.scrambling_status =
+			dmx_data_ready->scrambling_bits;
 		dvb_dmxdev_add_event(events, &event);
 		spin_unlock(&dmxdevfilter->dev->lock);
 		wake_up_all(&buffer->queue);
@@ -2612,6 +2897,7 @@ static int dvb_dmxdev_filter_stop(struct dmxdev_filter *dmxdevfilter)
 {
 	struct dmxdev_feed *feed;
 	struct dmx_demux *demux;
+	struct ts_insertion_buffer *ts_buffer;
 
 	if (dmxdevfilter->state < DMXDEV_STATE_GO)
 		return 0;
@@ -2631,6 +2917,18 @@ static int dvb_dmxdev_filter_stop(struct dmxdev_filter *dmxdevfilter)
 	case DMXDEV_TYPE_PES:
 		dvb_dmxdev_feed_stop(dmxdevfilter);
 		demux = dmxdevfilter->dev->demux;
+
+		if (!list_empty(&dmxdevfilter->insertion_buffers)) {
+			feed = list_first_entry(&dmxdevfilter->feed.ts,
+				struct dmxdev_feed, next);
+
+			list_for_each_entry(ts_buffer,
+					&dmxdevfilter->insertion_buffers, next)
+				dvb_dmxdev_cancel_ts_insertion(ts_buffer);
+			if (feed->ts->ts_insertion_terminate)
+				feed->ts->ts_insertion_terminate(feed->ts);
+		}
+
 		list_for_each_entry(feed, &dmxdevfilter->feed.ts, next) {
 			demux->release_ts_feed(demux, feed->ts);
 			feed->ts = NULL;
@@ -2971,6 +3269,29 @@ static int dvb_dmxdev_filter_start(struct dmxdev_filter *filter)
 	}
 
 	dvb_dmxdev_filter_state_set(filter, DMXDEV_STATE_GO);
+
+	if ((filter->type == DMXDEV_TYPE_PES) &&
+		!list_empty(&filter->insertion_buffers)) {
+		struct ts_insertion_buffer *ts_buffer;
+
+		feed = list_first_entry(&filter->feed.ts,
+			struct dmxdev_feed, next);
+
+		ret = 0;
+		if (feed->ts->ts_insertion_init)
+			ret = feed->ts->ts_insertion_init(feed->ts);
+		if (!ret) {
+			list_for_each_entry(ts_buffer,
+				&filter->insertion_buffers, next)
+				dvb_dmxdev_queue_ts_insertion(
+					ts_buffer);
+		} else {
+			printk(KERN_ERR
+				"%s: ts_insertion_init failed, err %d\n",
+				__func__, ret);
+		}
+	}
+
 	return 0;
 }
 
@@ -3017,6 +3338,8 @@ static int dvb_demux_open(struct inode *inode, struct file *file)
 	dvb_dmxdev_filter_state_set(dmxdevfilter, DMXDEV_STATE_ALLOCATED);
 	init_timer(&dmxdevfilter->timer);
 
+	INIT_LIST_HEAD(&dmxdevfilter->insertion_buffers);
+
 	dmxdevfilter->dmx_tsp_format = DMX_TSP_FORMAT_188;
 	dvbdev->users++;
 
@@ -3027,12 +3350,21 @@ static int dvb_demux_open(struct inode *inode, struct file *file)
 static int dvb_dmxdev_filter_free(struct dmxdev *dmxdev,
 				  struct dmxdev_filter *dmxdevfilter)
 {
+	struct ts_insertion_buffer *ts_buffer, *tmp;
+
 	mutex_lock(&dmxdev->mutex);
 	mutex_lock(&dmxdevfilter->mutex);
 
 	dvb_dmxdev_filter_stop(dmxdevfilter);
 
 	dvb_dmxdev_filter_reset(dmxdevfilter);
+
+	list_for_each_entry_safe(ts_buffer, tmp,
+			&dmxdevfilter->insertion_buffers, next) {
+		list_del(&ts_buffer->next);
+		vfree(ts_buffer->buffer);
+		vfree(ts_buffer);
+	}
 
 	if (dmxdevfilter->buffer.data) {
 		void *mem = dmxdevfilter->buffer.data;
@@ -3098,10 +3430,18 @@ static int dvb_dmxdev_add_pid(struct dmxdev *dmxdev,
 static int dvb_dmxdev_remove_pid(struct dmxdev *dmxdev,
 				  struct dmxdev_filter *filter, u16 pid)
 {
+	int feed_count;
 	struct dmxdev_feed *feed, *tmp;
 
 	if ((filter->type != DMXDEV_TYPE_PES) ||
 	    (filter->state < DMXDEV_STATE_SET))
+		return -EINVAL;
+
+	feed_count = 0;
+	list_for_each_entry(tmp, &filter->feed.ts, next)
+		feed_count++;
+
+	if (feed_count <= 1)
 		return -EINVAL;
 
 	list_for_each_entry_safe(feed, tmp, &filter->feed.ts, next) {
@@ -3283,7 +3623,7 @@ static ssize_t dvb_dmxdev_read_sec(struct dmxdev_filter *dfil,
 		hcount = 3 + dfil->todo;
 		if (hcount > count)
 			hcount = count;
-		result = dvb_dmxdev_buffer_read(&dfil->buffer,
+		result = dvb_dmxdev_buffer_read(dfil, &dfil->buffer,
 						file->f_flags & O_NONBLOCK,
 						buf, hcount, ppos);
 		if (result < 0) {
@@ -3304,7 +3644,7 @@ static ssize_t dvb_dmxdev_read_sec(struct dmxdev_filter *dfil,
 	}
 	if (count > dfil->todo)
 		count = dfil->todo;
-	result = dvb_dmxdev_buffer_read(&dfil->buffer,
+	result = dvb_dmxdev_buffer_read(dfil, &dfil->buffer,
 					file->f_flags & O_NONBLOCK,
 					buf, count, ppos);
 	if (result < 0)
@@ -3333,9 +3673,10 @@ dvb_demux_read(struct file *file, char __user *buf, size_t count,
 	if (dmxdevfilter->type == DMXDEV_TYPE_SEC)
 		ret = dvb_dmxdev_read_sec(dmxdevfilter, file, buf, count, ppos);
 	else
-		ret = dvb_dmxdev_buffer_read(&dmxdevfilter->buffer,
-					    file->f_flags & O_NONBLOCK,
-					    buf, count, ppos);
+		ret = dvb_dmxdev_buffer_read(dmxdevfilter,
+					&dmxdevfilter->buffer,
+					file->f_flags & O_NONBLOCK,
+					buf, count, ppos);
 
 	if (ret > 0) {
 		dvb_dmxdev_notify_data_read(dmxdevfilter, ret);
@@ -3625,6 +3966,33 @@ static int dvb_demux_do_ioctl(struct file *file,
 		mutex_unlock(&dmxdevfilter->mutex);
 		break;
 
+	case DMX_SET_TS_INSERTION:
+		if (mutex_lock_interruptible(&dmxdevfilter->mutex)) {
+			mutex_unlock(&dmxdev->mutex);
+			return -ERESTARTSYS;
+		}
+		ret = dvb_dmxdev_set_ts_insertion(dmxdevfilter, parg);
+		mutex_unlock(&dmxdevfilter->mutex);
+		break;
+
+	case DMX_ABORT_TS_INSERTION:
+		if (mutex_lock_interruptible(&dmxdevfilter->mutex)) {
+			mutex_unlock(&dmxdev->mutex);
+			return -ERESTARTSYS;
+		}
+		ret = dvb_dmxdev_abort_ts_insertion(dmxdevfilter, parg);
+		mutex_unlock(&dmxdevfilter->mutex);
+		break;
+
+	case DMX_GET_SCRAMBLING_BITS:
+		if (mutex_lock_interruptible(&dmxdevfilter->mutex)) {
+			mutex_unlock(&dmxdev->mutex);
+			return -ERESTARTSYS;
+		}
+		ret = dvb_dmxdev_get_scrambling_bits(dmxdevfilter, parg);
+		mutex_unlock(&dmxdevfilter->mutex);
+		break;
+
 	default:
 		ret = -EINVAL;
 		break;
@@ -3880,6 +4248,7 @@ static int dvb_dmxdev_dbgfs_print(struct seq_file *s, void *p)
 	struct dmxdev_filter *filter;
 	int active_count = 0;
 	struct dmx_buffer_status buffer_status;
+	struct dmx_scrambling_bits scrambling_bits;
 	const char *pes_feeds[] = {"DEC", "PES", "DVR", "REC"};
 
 	if (!dmxdev)
@@ -3896,12 +4265,17 @@ static int dvb_dmxdev_dbgfs_print(struct seq_file *s, void *p)
 				seq_printf(s, "type: SEC, ");
 				seq_printf(s, "PID %04d ",
 						filter->params.sec.pid);
+				scrambling_bits.pid = filter->params.sec.pid;
 			} else {
 				seq_printf(s, "type: %s, ",
 					pes_feeds[filter->params.pes.output]);
 				seq_printf(s, "PID: %04d ",
 						filter->params.pes.pid);
+				scrambling_bits.pid = filter->params.pes.pid;
 			}
+
+			dvb_dmxdev_get_scrambling_bits(filter,
+				&scrambling_bits);
 
 			if (0 == dvb_dmxdev_get_buffer_status(
 						filter, &buffer_status)) {
@@ -3909,10 +4283,14 @@ static int dvb_dmxdev_dbgfs_print(struct seq_file *s, void *p)
 					buffer_status.size);
 				seq_printf(s, "fullness: %08d, ",
 					buffer_status.fullness);
-				seq_printf(s, "error: %d\n",
+				seq_printf(s, "error: %d, ",
 					buffer_status.error);
+				seq_printf(s, "scramble: %d\n",
+					scrambling_bits.value);
+
 			} else {
-				seq_printf(s, "\n");
+				seq_printf(s, "scramble: %d\n",
+					scrambling_bits.value);
 			}
 		}
 	}

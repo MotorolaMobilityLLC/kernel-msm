@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 	tmc_etr: tmc@fc322000 {
 		compatible = "arm,coresight-tmc";
 		reg = <0xfc322000 0x1000>,
@@ -34,6 +34,11 @@
 		coresight-id = <1>;
 		coresight-name = "coresight-tpiu";
 		coresight-nr-inports = <1>;
+
+		vdd-supply = <&pm8226_l18>;
+
+		qcom,vdd-voltage-level = <2950000 2950000>;
+		qcom,vdd-current-level = <9000 800000>;
 	};
 
 	replicator: replicator@fc31c000 {
@@ -354,5 +359,19 @@
 		coresight-id = <28>;
 		coresight-name = "coresight-cti-cpu3";
 		coresight-nr-inports = <0>;
+	};
+
+	hwevent: hwevent@fd828018 {
+		compatible = "qcom,coresight-hwevent";
+		reg = <0xfd828018 0x80>,
+		      <0xf9011080 0x80>,
+		      <0xfd4ab160 0x80>;
+		reg-names = "mmss-mux", "apcs-mux", "ppss-mux";
+
+		coresight-id = <29>;
+		coresight-name = "coresight-hwevent";
+		coresight-nr-inports = <0>;
+
+		qcom,hwevent-clks = "core_mmss_clk";
 	};
 };

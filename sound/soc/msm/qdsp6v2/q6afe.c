@@ -56,6 +56,9 @@ static struct afe_ctl this_afe;
 #define TIMEOUT_MS 1000
 #define Q6AFE_MAX_VOLUME 0x3FFF
 
+#define Q6AFE_MSM_SPKR_PROCESSING 0
+#define Q6AFE_MSM_SPKR_CALIBRATION 1
+
 static int pcm_afe_instance[2];
 static int proxy_afe_instance[2];
 bool afe_close_done[2] = {true, true};
@@ -515,25 +518,31 @@ static void afe_send_cal_spkr_prot_tx(int port_id)
 	/*Get spkr protection cfg data*/
 	get_spk_protection_cfg(&prot_cfg);
 
-	if ((!prot_cfg.mode || prot_cfg.mode == 1) &&
+	if ((prot_cfg.mode != MSM_SPKR_PROT_DISABLED) &&
 		(this_afe.vi_tx_port == port_id)) {
 		afe_spk_config.mode_rx_cfg.minor_version = 1;
-		afe_spk_config.mode_rx_cfg.mode =
-		(uint32_t)prot_cfg.mode;
+		if (prot_cfg.mode == MSM_SPKR_PROT_CALIBRATION_IN_PROGRESS)
+			afe_spk_config.mode_rx_cfg.mode =
+			Q6AFE_MSM_SPKR_CALIBRATION;
+		else
+			afe_spk_config.mode_rx_cfg.mode =
+			Q6AFE_MSM_SPKR_PROCESSING;
 		if (afe_spk_prot_prepare(port_id,
 			AFE_PARAM_ID_MODE_VI_PROC_CFG,
 			&afe_spk_config))
 			pr_err("%s TX VI_PROC_CFG failed\n", __func__);
-		afe_spk_config.vi_proc_cfg.minor_version = 1;
-		afe_spk_config.vi_proc_cfg.r0_cali_q24 =
-		(uint32_t) prot_cfg.r0;
-		afe_spk_config.vi_proc_cfg.t0_cali_q6 =
-		(uint32_t) prot_cfg.t0;
-		if (afe_spk_prot_prepare(port_id,
-			AFE_PARAM_ID_SPKR_CALIB_VI_PROC_CFG,
-			&afe_spk_config))
-			pr_err("%s SPKR_CALIB_VI_PROC_CFG failed\n",
-				__func__);
+		if (prot_cfg.mode != MSM_SPKR_PROT_NOT_CALIBRATED) {
+			afe_spk_config.vi_proc_cfg.minor_version = 1;
+			afe_spk_config.vi_proc_cfg.r0_cali_q24 =
+			(uint32_t) prot_cfg.r0;
+			afe_spk_config.vi_proc_cfg.t0_cali_q6 =
+			(uint32_t) prot_cfg.t0;
+			if (afe_spk_prot_prepare(port_id,
+				AFE_PARAM_ID_SPKR_CALIB_VI_PROC_CFG,
+				&afe_spk_config))
+				pr_err("%s SPKR_CALIB_VI_PROC_CFG failed\n",
+					__func__);
+		}
 	}
 }
 
@@ -545,9 +554,13 @@ static void afe_send_cal_spkr_prot_rx(int port_id)
 	/*Get spkr protection cfg data*/
 	get_spk_protection_cfg(&prot_cfg);
 
-	if (!prot_cfg.mode || prot_cfg.mode == 1) {
-		afe_spk_config.mode_rx_cfg.mode =
-		(uint32_t)prot_cfg.mode;
+	if (prot_cfg.mode != MSM_SPKR_PROT_DISABLED) {
+		if (prot_cfg.mode == MSM_SPKR_PROT_CALIBRATION_IN_PROGRESS)
+			afe_spk_config.mode_rx_cfg.mode =
+			Q6AFE_MSM_SPKR_CALIBRATION;
+		else
+			afe_spk_config.mode_rx_cfg.mode =
+			Q6AFE_MSM_SPKR_PROCESSING;
 		afe_spk_config.mode_rx_cfg.minor_version = 1;
 		if (afe_spk_prot_prepare(port_id,
 			AFE_PARAM_ID_FBSP_MODE_RX_CFG,
@@ -899,6 +912,44 @@ static int afe_aanc_mod_enable(void *apr, uint16_t tx_port, uint16_t enable)
 	return ret;
 }
 
+static int afe_send_bank_selection_clip(
+		struct afe_param_id_clip_bank_sel *param)
+{
+	int ret;
+	struct afe_svc_cmd_set_clip_bank_selection config;
+	if (!param) {
+		pr_err("%s: Invalid params", __func__);
+		return -EINVAL;
+	}
+	config.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+			APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+	config.hdr.pkt_size = sizeof(config);
+	config.hdr.src_port = 0;
+	config.hdr.dest_port = 0;
+	config.hdr.token = IDX_GLOBAL_CFG;
+	config.hdr.opcode = AFE_SVC_CMD_SET_PARAM;
+
+	config.param.payload_size = sizeof(struct afe_port_param_data_v2) +
+				sizeof(struct afe_param_id_clip_bank_sel);
+	config.param.payload_address_lsw = 0x00;
+	config.param.payload_address_msw = 0x00;
+	config.param.mem_map_handle = 0x00;
+
+	config.pdata.module_id = AFE_MODULE_CDC_DEV_CFG;
+	config.pdata.param_id = AFE_PARAM_ID_CLIP_BANK_SEL_CFG;
+	config.pdata.param_size =
+		sizeof(struct afe_param_id_clip_bank_sel);
+	config.bank_sel = *param;
+	ret = afe_apr_send_pkt(&config, &this_afe.wait[IDX_GLOBAL_CFG]);
+	if (ret) {
+		pr_err("%s: AFE_PARAM_ID_CLIP_BANK_SEL_CFG failed %d\n",
+		__func__, ret);
+	} else if (atomic_read(&this_afe.status) != 0) {
+		pr_err("%s: config cmd failed\n", __func__);
+		ret = -EAGAIN;
+	}
+	return ret;
+}
 int afe_send_aanc_version(
 	struct afe_param_id_cdc_aanc_version *version_cfg)
 {
@@ -990,6 +1041,12 @@ int afe_set_config(enum afe_config_type config_type, void *config_data, int arg)
 		break;
 	case AFE_AANC_VERSION:
 		ret = afe_send_aanc_version(config_data);
+		break;
+	case AFE_CLIP_BANK_SEL:
+		ret = afe_send_bank_selection_clip(config_data);
+		break;
+	case AFE_CDC_CLIP_REGISTERS_CONFIG:
+		ret = afe_send_codec_reg_config(config_data);
 		break;
 	default:
 		pr_err("%s: unknown configuration type", __func__);
@@ -1149,21 +1206,20 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	config.hdr.token = index;
 
 	switch (port_id) {
-	case PRIMARY_I2S_RX:
-	case PRIMARY_I2S_TX:
-		cfg_type = AFE_PARAM_ID_PCM_CONFIG;
-		break;
 	case AFE_PORT_ID_PRIMARY_PCM_RX:
 	case AFE_PORT_ID_PRIMARY_PCM_TX:
 	case AFE_PORT_ID_SECONDARY_PCM_RX:
 	case AFE_PORT_ID_SECONDARY_PCM_TX:
 		cfg_type = AFE_PARAM_ID_PCM_CONFIG;
 		break;
+	case PRIMARY_I2S_RX:
+	case PRIMARY_I2S_TX:
 	case SECONDARY_I2S_RX:
 	case SECONDARY_I2S_TX:
 	case MI2S_RX:
 	case MI2S_TX:
 	case AFE_PORT_ID_PRIMARY_MI2S_RX:
+	case AFE_PORT_ID_PRIMARY_MI2S_TX:
 	case AFE_PORT_ID_SECONDARY_MI2S_RX:
 	case AFE_PORT_ID_SECONDARY_MI2S_TX:
 	case AFE_PORT_ID_TERTIARY_MI2S_RX:
@@ -1288,6 +1344,8 @@ int afe_get_port_index(u16 port_id)
 	case SLIMBUS_5_TX: return IDX_SLIMBUS_5_TX;
 	case AFE_PORT_ID_PRIMARY_MI2S_RX:
 		return IDX_AFE_PORT_ID_PRIMARY_MI2S_RX;
+	case AFE_PORT_ID_PRIMARY_MI2S_TX:
+		return IDX_AFE_PORT_ID_PRIMARY_MI2S_TX;
 	case AFE_PORT_ID_QUATERNARY_MI2S_RX:
 		return IDX_AFE_PORT_ID_QUATERNARY_MI2S_RX;
 	case AFE_PORT_ID_QUATERNARY_MI2S_TX:
@@ -1296,6 +1354,10 @@ int afe_get_port_index(u16 port_id)
 		return IDX_AFE_PORT_ID_SECONDARY_MI2S_RX;
 	case AFE_PORT_ID_SECONDARY_MI2S_TX:
 		return IDX_AFE_PORT_ID_SECONDARY_MI2S_TX;
+	case AFE_PORT_ID_TERTIARY_MI2S_RX:
+		 return IDX_AFE_PORT_ID_TERTIARY_MI2S_RX;
+	case AFE_PORT_ID_TERTIARY_MI2S_TX:
+		 return IDX_AFE_PORT_ID_TERTIARY_MI2S_TX;
 
 	default: return -EINVAL;
 	}

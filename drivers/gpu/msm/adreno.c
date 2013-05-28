@@ -101,13 +101,6 @@ static struct adreno_device device_3d0 = {
 		.iomemname = KGSL_3D0_REG_MEMORY,
 		.shadermemname = KGSL_3D0_SHADER_MEMORY,
 		.ftbl = &adreno_functable,
-#ifdef CONFIG_HAS_EARLYSUSPEND
-		.display_off = {
-			.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING,
-			.suspend = kgsl_early_suspend_driver,
-			.resume = kgsl_late_resume_driver,
-		},
-#endif
 	},
 	.gmem_base = 0,
 	.gmem_size = SZ_256K,
@@ -813,7 +806,8 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 
 	if (!adreno_dev->drawctxt_active ||
-		KGSL_STATE_ACTIVE != device->state) {
+		KGSL_STATE_ACTIVE != device->state ||
+		!device->active_cnt) {
 		kgsl_mmu_device_setstate(&device->mmu, flags);
 		return;
 	}
@@ -1719,6 +1713,7 @@ static int adreno_start(struct kgsl_device *device)
 {
 	int status = -EINVAL;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+	unsigned int state = device->state;
 
 	kgsl_cffdump_open(device);
 
@@ -1780,8 +1775,11 @@ error_mmu_off:
 	kgsl_mmu_stop(&device->mmu);
 
 error_clk_off:
-	if (KGSL_STATE_DUMP_AND_FT != device->state)
+	if (KGSL_STATE_DUMP_AND_FT != device->state) {
 		kgsl_pwrctrl_disable(device);
+		/* set the state back to original state */
+		kgsl_pwrctrl_set_state(device, state);
+	}
 
 	return status;
 }
@@ -2323,7 +2321,7 @@ _adreno_ft(struct kgsl_device *device,
 	}
 
 	/* Check if we detected a long running IB, if false return */
-	if (adreno_dev->long_ib) {
+	if ((adreno_context) && (adreno_dev->long_ib)) {
 		long_ib = _adreno_check_long_ib(device);
 		if (!long_ib) {
 			adreno_context->flags &= ~CTXT_FLAGS_GPU_HANG;
@@ -2772,9 +2770,6 @@ static int adreno_ringbuffer_drain(struct kgsl_device *device,
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 	unsigned long wait;
 	unsigned long timeout = jiffies + msecs_to_jiffies(ADRENO_IDLE_TIMEOUT);
-
-	if (!(rb->flags & KGSL_FLAGS_STARTED))
-		return 0;
 
 	/*
 	 * The first time into the loop, wait for 100 msecs and kick wptr again

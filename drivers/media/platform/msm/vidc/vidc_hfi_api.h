@@ -95,6 +95,7 @@ enum hal_extradata_id {
 	HAL_EXTRADATA_NUM_CONCEALED_MB,
 	HAL_EXTRADATA_METADATA_FILLER,
 	HAL_EXTRADATA_ASPECT_RATIO,
+	HAL_EXTRADATA_MPEG2_SEQDISP
 };
 
 enum hal_property {
@@ -390,20 +391,20 @@ struct hal_frame_rate {
 };
 
 enum hal_uncompressed_format {
-	HAL_COLOR_FORMAT_MONOCHROME,
-	HAL_COLOR_FORMAT_NV12,
-	HAL_COLOR_FORMAT_NV21,
-	HAL_COLOR_FORMAT_NV12_4x4TILE,
-	HAL_COLOR_FORMAT_NV21_4x4TILE,
-	HAL_COLOR_FORMAT_YUYV,
-	HAL_COLOR_FORMAT_YVYU,
-	HAL_COLOR_FORMAT_UYVY,
-	HAL_COLOR_FORMAT_VYUY,
-	HAL_COLOR_FORMAT_RGB565,
-	HAL_COLOR_FORMAT_BGR565,
-	HAL_COLOR_FORMAT_RGB888,
-	HAL_COLOR_FORMAT_BGR888,
-	HAL_UNUSED_COLOR = 0x10000000,
+	HAL_COLOR_FORMAT_MONOCHROME   = 0x00000001,
+	HAL_COLOR_FORMAT_NV12         = 0x00000002,
+	HAL_COLOR_FORMAT_NV21         = 0x00000004,
+	HAL_COLOR_FORMAT_NV12_4x4TILE = 0x00000008,
+	HAL_COLOR_FORMAT_NV21_4x4TILE = 0x00000010,
+	HAL_COLOR_FORMAT_YUYV         = 0x00000020,
+	HAL_COLOR_FORMAT_YVYU         = 0x00000040,
+	HAL_COLOR_FORMAT_UYVY         = 0x00000080,
+	HAL_COLOR_FORMAT_VYUY         = 0x00000100,
+	HAL_COLOR_FORMAT_RGB565       = 0x00000200,
+	HAL_COLOR_FORMAT_BGR565       = 0x00000400,
+	HAL_COLOR_FORMAT_RGB888       = 0x00000800,
+	HAL_COLOR_FORMAT_BGR888       = 0x00001000,
+	HAL_UNUSED_COLOR              = 0x10000000,
 };
 
 enum hal_ssr_trigger_type {
@@ -482,7 +483,7 @@ enum hal_picture {
 	HAL_PICTURE_I = 0x01,
 	HAL_PICTURE_P = 0x02,
 	HAL_PICTURE_B = 0x04,
-	HAL_PICTURE_IDR = 0x7F001000,
+	HAL_PICTURE_IDR = 0x08,
 	HAL_FRAME_NOTCODED = 0x7F002000,
 	HAL_FRAME_YUV = 0x7F004000,
 	HAL_UNUSED_PICT = 0x10000000,
@@ -1020,7 +1021,7 @@ enum fw_info {
 };
 
 #define call_hfi_op(q, op, args...)			\
-	(((q)->op) ? ((q)->op(args)) : 0)
+	(((q) && (q)->op) ? ((q)->op(args)) : 0)
 
 struct hfi_device {
 	void *hfi_device_data;
@@ -1074,6 +1075,8 @@ struct hfi_device {
 	int (*get_fw_info)(void *dev, enum fw_info info);
 	int (*get_stride_scanline)(int color_fmt, int width,
 		int height,	int *stride, int *scanlines);
+	int (*capability_check)(u32 fourcc, u32 width,
+		u32 *max_width, u32 *max_height);
 };
 
 typedef void (*hfi_cmd_response_callback) (enum command_response cmd,

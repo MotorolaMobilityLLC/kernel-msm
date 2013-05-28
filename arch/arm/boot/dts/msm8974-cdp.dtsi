@@ -15,7 +15,7 @@
 /include/ "msm8974-leds.dtsi"
 /include/ "msm8974-camera-sensor-cdp.dtsi"
 
-/ {
+&soc {
 	serial@f991e000 {
 		status = "ok";
 	};
@@ -195,6 +195,7 @@
 		qcom,model = "msm8974-taiko-cdp-snd-card";
 		qcom,hdmi-audio-rx;
 		qcom,us-euro-gpios = <&pm8941_gpios 20 0>;
+		qcom,cdc-micbias2-headset-only;
 	};
 
 	usb2_otg_sw: regulator-tpd4s214 {
@@ -246,7 +247,7 @@
 				<85 512 40000 160000>,
 				<85 512 40000 320000>,
 				<85 512 40000 480000>,
-				<85 512 40000 640000>;
+				<85 512 40000 800000>;
 	};
 };
 
@@ -499,7 +500,7 @@
 		qcom,output-type = <0>;
 		qcom,pull = <5>;
 		qcom,vin-sel = <2>;
-		qcom,out-strength = <3>;
+		qcom,out-strength = <1>;
 		qcom,src-sel = <2>;
 		qcom,master-en = <1>;
 	};

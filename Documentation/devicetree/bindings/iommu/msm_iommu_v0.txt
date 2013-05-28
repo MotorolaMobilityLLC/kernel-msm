@@ -11,17 +11,22 @@ Optional properties:
 - qcom,iommu-pmu-ngroups: Number of Performance Monitor Unit (PMU) groups.
 - qcom,iommu-pmu-ncounters: Number of PMU counters per group.
 - qcom,iommu-pmu-event-classes: List of event classes supported.
+- qcom,needs-alt-core-clk : boolean to enable the secondary core clock for
+  access to the IOMMU configuration registers
+- Bus scaling properties: See msm_bus.txt
+
 - List of sub nodes, one for each of the translation context banks supported.
-  Each sub node has the following required properties:
+    Required properties for each sub-node:
 
-  - reg : offset and length of the register set for the context bank.
-  - interrupts : should contain the context bank interrupt.
-  - qcom,iommu-ctx-mids : List of machine identifiers associated with this
-    translation context.
-  - label : Name of the context bank
+    - compatible : "qcom,msm-smmu-v0-ctx"
+    - reg : offset and length of the register set for the context bank.
+    - interrupts : should contain the context bank interrupt.
+    - qcom,iommu-ctx-mids : List of machine identifiers associated with this
+      translation context.
+    - label : Name of the context bank
 
-Optional properties:
-  - none
+    Optional properties for each sub-node:
+    - none
 
 Example:
 
@@ -39,6 +44,7 @@ Example:
 						0x11>;
 
 		qcom,iommu-ctx@fd000000 {
+			compatible = "qcom,msm-smmu-v0-ctx";
 			reg = <0xfd000000 0x1000>;
 			interrupts = <0 250 0>;
 			qcom,iommu-ctx-mids = <0 3>;

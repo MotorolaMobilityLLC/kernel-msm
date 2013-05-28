@@ -13,7 +13,7 @@
 /include/ "msm8974-leds.dtsi"
 /include/ "msm8974-camera-sensor-liquid.dtsi"
 
-/ {
+&soc {
 	serial@f991e000 {
 		status = "ok";
 	};
@@ -294,9 +294,19 @@
 		enable-active-high;
 	};
 
+	ath_chip_pwd_l: ath_chip_reset {
+		compatible = "regulator-fixed";
+		regulator-name = "ath_chip_pwd_l";
+		gpio = <&pm8941_gpios 33 0>;
+		enable-active-high;
+	};
+
 	bt_ar3002 {
 		compatible = "qca,ar3002";
 		qca,bt-reset-gpio = <&pm8941_gpios 34 0>;
+		qca,bt-chip-pwd-supply = <&ath_chip_pwd_l>;
+		qca,bt-vdd-io-supply = <&pm8941_s3>;
+		qca,bt-vdd-pa-supply = <&pm8941_l19>;
 	};
 
 	bt_ar3002_sleep {
@@ -511,7 +521,7 @@
 		qcom,output-type = <0>;
 		qcom,pull = <5>;
 		qcom,vin-sel = <2>;
-		qcom,out-strength = <3>;
+		qcom,out-strength = <1>;
 		qcom,src-sel = <2>;
 		qcom,master-en = <1>;
 	};
@@ -717,8 +727,10 @@
 
 &slim_msm {
 	taiko_codec {
+		qcom,cdc-micbias1-ext-cap;
 		qcom,cdc-micbias2-ext-cap;
 		qcom,cdc-micbias3-ext-cap;
+		qcom,cdc-micbias4-ext-cap;
 
 		/*
 		 * Liquid has external spkrdrv supply. Give a dummy supply to

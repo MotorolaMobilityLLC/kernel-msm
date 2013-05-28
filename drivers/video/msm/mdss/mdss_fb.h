@@ -56,6 +56,7 @@ struct msm_fb_data_type;
 
 struct msm_mdp_interface {
 	int (*fb_mem_alloc_fnc)(struct msm_fb_data_type *mfd);
+	int (*fb_mem_get_iommu_domain)(void);
 	int (*init_fnc)(struct msm_fb_data_type *mfd);
 	int (*on_fnc)(struct msm_fb_data_type *mfd);
 	int (*off_fnc)(struct msm_fb_data_type *mfd);
@@ -67,6 +68,7 @@ struct msm_mdp_interface {
 	int (*lut_update)(struct msm_fb_data_type *mfd, struct fb_cmap *cmap);
 	int (*do_histogram)(struct msm_fb_data_type *mfd,
 				struct mdp_histogram *hist);
+	int (*update_ad_input)(struct msm_fb_data_type *mfd);
 	int (*panel_register_done)(struct mdss_panel_data *pdata);
 	u32 (*fb_stride)(u32 fb_index, u32 xres, int bpp);
 	void *private1;

@@ -46,7 +46,11 @@
 #define KGSL_PAGETABLE_ENTRY_SIZE  4
 
 /* Pagetable Virtual Address base */
+#ifndef CONFIG_MSM_KGSL_CFF_DUMP
 #define KGSL_PAGETABLE_BASE	0x10000000
+#else
+#define KGSL_PAGETABLE_BASE	0xE0000000
+#endif
 
 /* Extra accounting entries needed in the pagetable */
 #define KGSL_PT_EXTRA_ENTRIES      16
@@ -151,6 +155,8 @@ struct kgsl_memdesc_ops {
 #define KGSL_MEMDESC_GLOBAL BIT(1)
 /* The memdesc is frozen during a snapshot */
 #define KGSL_MEMDESC_FROZEN BIT(2)
+/* The memdesc is scheduled to be freed on a timestamp */
+#define KGSL_MEMDESC_FREE_PENDING BIT(3)
 
 /* shared memory allocation */
 struct kgsl_memdesc {
@@ -220,11 +226,8 @@ void kgsl_cancel_events_ctxt(struct kgsl_device *device,
 
 extern const struct dev_pm_ops kgsl_pm_ops;
 
-struct early_suspend;
 int kgsl_suspend_driver(struct platform_device *pdev, pm_message_t state);
 int kgsl_resume_driver(struct platform_device *pdev);
-void kgsl_early_suspend_driver(struct early_suspend *h);
-void kgsl_late_resume_driver(struct early_suspend *h);
 
 void kgsl_trace_regwrite(struct kgsl_device *device, unsigned int offset,
 		unsigned int value);
@@ -251,6 +254,10 @@ static inline void kgsl_drm_exit(void)
 static inline int kgsl_gpuaddr_in_memdesc(const struct kgsl_memdesc *memdesc,
 				unsigned int gpuaddr, unsigned int size)
 {
+	/* set a minimum size to search for */
+	if (!size)
+		size = 1;
+
 	/* don't overflow */
 	if ((gpuaddr + size) < gpuaddr)
 		return 0;

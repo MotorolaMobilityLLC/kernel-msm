@@ -247,6 +247,11 @@ static int getpath(int src, int dest)
 				struct msm_bus_fabric_device *gwfab =
 					msm_bus_get_fabric_device(fabnodeinfo->
 						info->node_info->priv_id);
+				if (!gwfab) {
+					MSM_BUS_ERR("Err: No gateway found\n");
+					return -ENXIO;
+				}
+
 				if (!gwfab->visited) {
 					MSM_BUS_DBG("VISITED ID: %d\n",
 						gwfab->id);
@@ -319,6 +324,12 @@ static int update_path(int curr, int pnode, uint64_t req_clk, uint64_t req_bw,
 	int *master_tiers;
 	struct msm_bus_fabric_device *fabdev = msm_bus_get_fabric_device
 		(GET_FABID(curr));
+
+	if (!fabdev) {
+		MSM_BUS_ERR("Bus device for bus ID: %d not found!\n",
+			GET_FABID(curr));
+		return -ENXIO;
+	}
 
 	MSM_BUS_DBG("args: %d %d %d %llu %llu %llu %llu %u\n",
 		curr, GET_NODE(pnode), GET_INDEX(pnode), req_clk, req_bw,
@@ -525,6 +536,11 @@ uint32_t msm_bus_scale_register_client(struct msm_bus_scale_pdata *pdata)
 			goto err;
 		}
 		srcfab = msm_bus_get_fabric_device(GET_FABID(src));
+		if (!srcfab) {
+			MSM_BUS_ERR("Fabric not found\n");
+			goto err;
+		}
+
 		srcfab->visited = true;
 		pnode[i] = getpath(src, dest);
 		bus_for_each_dev(&msm_bus_type, NULL, NULL, clearvisitedflag);
@@ -574,6 +590,10 @@ int msm_bus_scale_client_update_request(uint32_t cl, unsigned index)
 
 	curr = client->curr;
 	pdata = client->pdata;
+	if (!pdata) {
+		MSM_BUS_ERR("Null pdata passed to update-request\n");
+		return -ENXIO;
+	}
 
 	if (index >= pdata->num_usecases) {
 		MSM_BUS_ERR("Client %u passed invalid index: %d\n",
@@ -657,6 +677,12 @@ int reset_pnodes(int curr, int pnode)
 	struct msm_bus_fabric_device *fabdev;
 	int index, next_pnode;
 	fabdev = msm_bus_get_fabric_device(GET_FABID(curr));
+	if (!fabdev) {
+		MSM_BUS_ERR("Fabric not found for: %d\n",
+			(GET_FABID(curr)));
+			return -ENXIO;
+	}
+
 	index = GET_INDEX(pnode);
 	info = fabdev->algo->find_node(fabdev, curr);
 	if (!info) {
@@ -718,7 +744,7 @@ void msm_bus_scale_client_reset_pnodes(uint32_t cl)
 {
 	int i, src, pnode, index;
 	struct msm_bus_client *client = (struct msm_bus_client *)(cl);
-	if (IS_ERR(client)) {
+	if (IS_ERR_OR_NULL(client)) {
 		MSM_BUS_ERR("msm_bus_scale_reset_pnodes error\n");
 		return;
 	}
@@ -739,7 +765,7 @@ void msm_bus_scale_client_reset_pnodes(uint32_t cl)
 void msm_bus_scale_unregister_client(uint32_t cl)
 {
 	struct msm_bus_client *client = (struct msm_bus_client *)(cl);
-	if (IS_ERR(client) || (!client))
+	if (IS_ERR_OR_NULL(client))
 		return;
 	if (client->curr != 0)
 		msm_bus_scale_client_update_request(cl, 0);

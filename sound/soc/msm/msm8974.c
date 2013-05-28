@@ -1269,6 +1269,22 @@ static int msm_slim_0_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static int msm_slim_4_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+					    struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+	SNDRV_PCM_HW_PARAM_RATE);
+
+	struct snd_interval *channels = hw_param_interval(params,
+			SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	pr_debug("%s()\n", __func__);
+	rate->min = rate->max = 48000;
+	channels->min = channels->max = 2;
+
+	return 0;
+}
+
 static int msm_slim_5_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					    struct snd_pcm_hw_params *params)
 {
@@ -1433,7 +1449,26 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			__func__, err);
 		goto out;
 	}
-
+	config_data = taiko_get_afe_config(codec,
+				AFE_CDC_CLIP_REGISTERS_CONFIG);
+	if (config_data) {
+		err = afe_set_config(AFE_CDC_CLIP_REGISTERS_CONFIG,
+					config_data, 0);
+		if (err) {
+			pr_err("%s: Failed to set clip registers %d\n",
+				__func__, err);
+			return err;
+		}
+	}
+	config_data = taiko_get_afe_config(codec, AFE_CLIP_BANK_SEL);
+	if (config_data) {
+		err = afe_set_config(AFE_CLIP_BANK_SEL, config_data, 0);
+		if (err) {
+			pr_err("%s: Failed to set AFE bank selection %d\n",
+				__func__, err);
+			return err;
+		}
+	}
 	/* start mbhc */
 	mbhc_cfg.calibration = def_taiko_mbhc_cal();
 	if (mbhc_cfg.calibration) {
@@ -1923,6 +1958,52 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.codec_name = "snd-soc-dummy",
 		.be_id = MSM_FRONTEND_DAI_LSM1,
 	},
+	/* Multiple Tunnel instances */
+	{
+		.name = "MSM8974 Compr2",
+		.stream_name = "COMPR2",
+		.cpu_dai_name	= "MultiMedia6",
+		.platform_name  = "msm-compr-dsp",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			 SND_SOC_DPCM_TRIGGER_POST},
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		 /* this dainlink has playback support */
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA6,
+	},
+	{
+		.name = "MSM8974 Compr3",
+		.stream_name = "COMPR3",
+		.cpu_dai_name	= "MultiMedia7",
+		.platform_name  = "msm-compr-dsp",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			 SND_SOC_DPCM_TRIGGER_POST},
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		 /* this dainlink has playback support */
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA7,
+	},
+	{
+		.name = "MSM8974 Compr4",
+		.stream_name = "COMPR4",
+		.cpu_dai_name	= "MultiMedia8",
+		.platform_name  = "msm-compr-dsp",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			 SND_SOC_DPCM_TRIGGER_POST},
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		 /* this dainlink has playback support */
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA8,
+	},
 	/* Backend BT/FM DAI Links */
 	{
 		.name = LPASS_BE_INT_BT_SCO_RX,
@@ -2185,7 +2266,7 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.codec_name = "taiko_codec",
 		.codec_dai_name	= "taiko_vifeedback",
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_TX,
-		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
+		.be_hw_params_fixup = msm_slim_4_tx_be_hw_params_fixup,
 		.ops = &msm8974_be_ops,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ignore_suspend = 1,
@@ -2378,7 +2459,7 @@ static int msm8974_prepare_us_euro(struct snd_soc_card *card)
 {
 	struct msm8974_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	int ret;
-	if (pdata->us_euro_gpio) {
+	if (pdata->us_euro_gpio >= 0) {
 		dev_dbg(card->dev, "%s : us_euro gpio request %d", __func__,
 			pdata->us_euro_gpio);
 		ret = gpio_request(pdata->us_euro_gpio, "TAIKO_CODEC_US_EURO");
@@ -2515,7 +2596,7 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 	pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,us-euro-gpios", 0);
 	if (pdata->us_euro_gpio < 0) {
-		dev_err(&pdev->dev, "Looking up %s property in node %s failed",
+		dev_info(&pdev->dev, "property %s not detected in node %s",
 			"qcom,us-euro-gpios",
 			pdev->dev.of_node->full_name);
 	} else {

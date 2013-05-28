@@ -22,7 +22,9 @@
 	aliases {
 		serial0 = &uart0;
 	};
+};
 
+&soc {
 	uart0: serial@f991f000 {
 		status = "ok";
 	};
@@ -164,4 +166,8 @@
 
 	mpp@a700 { /* MPP 8 */
 	};
+};
+
+&usb3 {
+	qcom,skip-charger-detection;
 };

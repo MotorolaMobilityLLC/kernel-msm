@@ -372,7 +372,6 @@ struct ipa_ep_context {
  * @spinlock: protects the list and its size
  * @event: used to request CALLBACK mode from SPS driver
  * @ep: IPA EP context
- * @wait_desc_list: used to hold completed Tx packets
  *
  * IPA context specific to the system-bam pipes a.k.a LAN IN/OUT and WAN
  */
@@ -382,7 +381,8 @@ struct ipa_sys_context {
 	spinlock_t spinlock;
 	struct sps_register_event event;
 	struct ipa_ep_context *ep;
-	struct list_head wait_desc_list;
+	atomic_t curr_polling_state;
+	struct delayed_work switch_to_intr_work;
 };
 
 /**
@@ -479,6 +479,14 @@ struct ipa_rx_pkt_wrapper {
  * @is_sys_mem: flag indicating if NAT memory is sys memory
  * @is_dev_init: flag indicating if NAT device is initialized
  * @lock: NAT memory mutex
+ * @nat_base_address: nat table virutal address
+ * @ipv4_rules_addr: base nat table address
+ * @ipv4_expansion_rules_addr: expansion table address
+ * @index_table_addr: index table address
+ * @index_table_expansion_addr: index expansion table address
+ * @size_base_tables: base table size
+ * @size_expansion_tables: expansion table size
+ * @public_ip_addr: ip address of nat table
  */
 struct ipa_nat_mem {
 	struct class *class;
@@ -492,6 +500,14 @@ struct ipa_nat_mem {
 	bool is_sys_mem;
 	bool is_dev_init;
 	struct mutex lock;
+	void *nat_base_address;
+	char *ipv4_rules_addr;
+	char *ipv4_expansion_rules_addr;
+	char *index_table_addr;
+	char *index_table_expansion_addr;
+	u32 size_base_tables;
+	u32 size_expansion_tables;
+	u32 public_ip_addr;
 };
 
 /**
@@ -530,6 +546,7 @@ struct ipa_stats {
 	u32 bridged_pkts[IPA_BRIDGE_TYPE_MAX][IPA_BRIDGE_DIR_MAX];
 	u32 rx_repl_repost;
 	u32 x_intr_repost;
+	u32 x_intr_repost_tx;
 	u32 rx_q_len;
 	u32 msg_w[IPA_EVENT_MAX];
 	u32 msg_r[IPA_EVENT_MAX];
@@ -641,7 +658,6 @@ struct ipa_context {
 	uint aggregation_type;
 	uint aggregation_byte_limit;
 	uint aggregation_time_limit;
-	atomic_t curr_polling_state;
 	struct delayed_work poll_work;
 	bool hdr_tbl_lcl;
 	struct ipa_mem_buffer hdr_mem;
@@ -800,7 +816,10 @@ void ipa_replenish_rx_cache(void);
 void ipa_cleanup_rx(void);
 int ipa_cfg_filter(u32 disable);
 void ipa_wq_write_done(struct work_struct *work);
-int ipa_handle_rx_core(bool process_all, bool in_poll_state);
+int ipa_handle_rx_core(struct ipa_sys_context *sys, bool process_all,
+		bool in_poll_state);
+int ipa_handle_tx_core(struct ipa_sys_context *sys, bool process_all,
+		bool in_poll_state);
 int ipa_pipe_mem_init(u32 start_ofst, u32 size);
 int ipa_pipe_mem_alloc(u32 *ofst, u32 size);
 int ipa_pipe_mem_free(u32 ofst, u32 size);

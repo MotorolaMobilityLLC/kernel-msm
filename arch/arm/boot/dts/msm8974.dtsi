@@ -11,14 +11,6 @@
  */
 
 /include/ "skeleton.dtsi"
-/include/ "msm8974-camera.dtsi"
-/include/ "msm8974-coresight.dtsi"
-/include/ "msm-gdsc.dtsi"
-/include/ "msm8974-ion.dtsi"
-/include/ "msm8974-gpu.dtsi"
-/include/ "msm8974-mdss.dtsi"
-/include/ "msm8974-smp2p.dtsi"
-/include/ "msm8974-bus.dtsi"
 
 / {
 	model = "Qualcomm MSM 8974";
@@ -35,7 +27,6 @@
 	};
 
 	memory {
-
 		secure_mem: secure_region {
 			linux,contiguous-region;
 			reg = <0 0xFC00000>;
@@ -55,6 +46,23 @@
 		};
 
 	};
+
+	soc: soc { };
+};
+
+/include/ "msm8974-camera.dtsi"
+/include/ "msm8974-coresight.dtsi"
+/include/ "msm-gdsc.dtsi"
+/include/ "msm8974-ion.dtsi"
+/include/ "msm8974-gpu.dtsi"
+/include/ "msm8974-mdss.dtsi"
+/include/ "msm8974-smp2p.dtsi"
+/include/ "msm8974-bus.dtsi"
+
+&soc {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	ranges;
 
 	intc: interrupt-controller@F9000000 {
 		compatible = "qcom,msm-qgic2";
@@ -732,6 +740,22 @@
 		qcom,i2c-src-freq = <50000000>;
 	};
 
+	i2c_1: i2c@f9923000 {
+		cell-index = <1>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9923000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 95 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,scl-gpio = <&msmgpio 3 0>;
+		qcom,sda-gpio = <&msmgpio 2 0>;
+		status = "disabled";
+	};
+
 	i2c_2: i2c@f9924000 {
 		cell-index = <2>;
 		compatible = "qcom,i2c-qup";
@@ -845,6 +869,7 @@
 		/* GPIO inputs from lpass */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_2_in 0 0>;
 		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_2_in 2 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_2_in 1 0>;
 
 		/* GPIO output to lpass */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_2_out 0 0>;
@@ -1103,12 +1128,12 @@
 		vdd_mx-supply = <&pm8841_s1>;
 		vdd_pll-supply = <&pm8941_l12>;
 		qcom,vdd_pll = <1800000>;
-		qcom,is-loadable;
 		qcom,firmware-name = "mba";
 		qcom,pil-self-auth;
 
 		/* GPIO inputs from mss */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_1_in 0 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_1_in 1 0>;
 		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_1_in 2 0>;
 
 		/* GPIO output to mss */
@@ -1128,6 +1153,7 @@
 
 		/* GPIO inputs from wcnss */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_4_in 0 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_4_in 1 0>;
 		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_4_in 2 0>;
 
 		/* GPIO output to wcnss */
@@ -1169,7 +1195,7 @@
 		interrupts = <0 76 0 0 77 0>;
 		interrupt-names = "ocmem_irq", "dm_irq";
 		qcom,ocmem-num-regions = <0x3>;
-		qcom,ocmem-num-macros = <0x8>;
+		qcom,ocmem-num-macros = <0x18>;
 		qcom,resource-type = <0x706d636f>;
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -1393,6 +1419,7 @@
 		qcom,limit-temp = <60>;
 		qcom,temp-hysteresis = <10>;
 		qcom,freq-step = <2>;
+		qcom,freq-control-mask = <0xf>;
 		qcom,core-limit-temp = <80>;
 		qcom,core-temp-hysteresis = <10>;
 		qcom,core-control-mask = <0xe>;
@@ -1416,6 +1443,11 @@
 			qcom,min-level = <1>; /* No Request */
 		};
 
+		qcom,vdd-apps-rstr{
+			qcom,vdd-rstr-reg = "vdd_apps";
+			qcom,levels = <1881600 1958400 2265600>;
+			qcom,freq-req;
+		};
 	};
 
 	qcom,bam_dmux@fc834000 {
@@ -1570,22 +1602,28 @@
 };
 
 &gdsc_venus {
+	qcom,clock-names = "core_clk";
 	status = "ok";
 };
 
 &gdsc_mdss {
+	qcom,clock-names = "core_clk", "lut_clk";
 	status = "ok";
 };
 
 &gdsc_jpeg {
+	qcom,clock-names = "core0_clk", "core1_clk", "core2_clk";
 	status = "ok";
 };
 
 &gdsc_vfe {
+	qcom,clock-names = "core0_clk", "core1_clk", "csi0_clk", "csi1_clk",
+			   "cpp_clk";
 	status = "ok";
 };
 
 &gdsc_oxili_gx {
+	qcom,clock-names = "core_clk";
 	qcom,retain-mems;
 	status = "ok";
 };

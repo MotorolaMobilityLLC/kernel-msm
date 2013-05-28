@@ -14,11 +14,12 @@
 #include <linux/kernel.h>
 #include "mdss_panel.h"
 #include "mdss_mdp.h"
+#include "mdss_dsi.h"
 
 #define VSYNC_EXPIRE_TICK 4
 
 #define START_THRESHOLD 4
-#define CONTINUE_TRESHOLD 4
+#define CONTINUE_THRESHOLD 4
 
 #define MAX_SESSIONS 2
 
@@ -26,11 +27,12 @@
 #define KOFF_TIMEOUT msecs_to_jiffies(84)
 
 struct mdss_mdp_cmd_ctx {
+	struct mdss_mdp_ctl *ctl;
 	u32 pp_num;
 	u8 ref_cnt;
+	struct completion vsync_comp;
 	struct completion pp_comp;
 	struct completion stop_comp;
-	atomic_t vsync_ref;
 	mdp_vsync_handler_t send_vsync;
 	int panel_on;
 	int koff_cnt;
@@ -46,6 +48,7 @@ struct mdss_mdp_cmd_ctx {
 	u8 tear_check;
 	u16 height;	/* panel height */
 	u16 vporch;	/* vertical porches */
+	u16 start_threshold;
 	u32 vclk_line;	/* vsync clock per line */
 };
 
@@ -83,7 +86,7 @@ static int mdss_mdp_cmd_tearcheck_cfg(struct mdss_mdp_mixer *mixer,
 						ctx->height);
 
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_SYNC_THRESH,
-			   (CONTINUE_TRESHOLD << 16) | (START_THRESHOLD));
+		   (CONTINUE_THRESHOLD << 16) | (ctx->start_threshold));
 
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_TEAR_CHECK_EN, enable);
 	return 0;
@@ -118,13 +121,16 @@ static int mdss_mdp_cmd_tearcheck_setup(struct mdss_mdp_ctl *ctl, int enable)
 				    pinfo->lcdc.v_front_porch +
 				    pinfo->lcdc.v_pulse_width;
 
+		ctx->start_threshold = START_THRESHOLD;
+
 		total_lines = ctx->height + ctx->vporch;
 		total_lines *= pinfo->mipi.frame_rate;
 		ctx->vclk_line = mdp_vsync_clk_speed_hz / total_lines;
 
-		pr_debug("%s: fr=%d tline=%d vcnt=%d vrate=%d\n",
+		pr_debug("%s: fr=%d tline=%d vcnt=%d thold=%d vrate=%d\n",
 			__func__, pinfo->mipi.frame_rate, total_lines,
-				ctx->vclk_line, mdp_vsync_clk_speed_hz);
+				ctx->vclk_line, ctx->start_threshold,
+				mdp_vsync_clk_speed_hz);
 	} else {
 		enable = 0;
 	}
@@ -150,6 +156,8 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 		pr_err("invalid ctx\n");
 		return;
 	}
+
+	complete_all(&ctx->vsync_comp);
 
 	pr_debug("%s: num=%d ctx=%d expire=%d koff=%d\n", __func__, ctl->num,
 			ctx->pp_num, ctx->expire, ctx->koff_cnt);
@@ -226,6 +234,9 @@ static void clk_ctrl_work(struct work_struct *work)
 		mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 						ctx->pp_num);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+		/* disable dsi clock */
+		mdss_mdp_ctl_intf_event(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL,
+							(void *)0);
 		complete(&ctx->stop_comp);
 		pr_debug("%s: SET_CLK_OFF, pid=%d\n", __func__, current->pid);
 	} else {
@@ -249,11 +260,12 @@ static int mdss_mdp_cmd_vsync_ctrl(struct mdss_mdp_ctl *ctl,
 
 	enable = (handler->vsync_handler != NULL);
 
+	mutex_lock(&ctx->clk_mtx);
+
 	pr_debug("%s: ctx=%p ctx=%d enabled=%d %d clk_enabled=%d clk_ctrl=%d\n",
 			__func__, ctx, ctx->pp_num, ctx->vsync_enabled, enable,
 					ctx->clk_enabled, ctx->clk_control);
 
-	mutex_lock(&ctx->clk_mtx);
 	if (ctx->vsync_enabled == enable) {
 		mutex_unlock(&ctx->clk_mtx);
 		return 0;
@@ -266,6 +278,8 @@ static int mdss_mdp_cmd_vsync_ctrl(struct mdss_mdp_ctl *ctl,
 		ctx->send_vsync = handler->vsync_handler;
 		spin_unlock_irqrestore(&ctx->clk_lock, flags);
 		if (ctx->clk_enabled == 0) {
+			mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_PANEL_CLK_CTRL,
+							(void *)1);
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 			mdss_mdp_irq_enable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 							ctx->pp_num);
@@ -294,10 +308,11 @@ static void mdss_mdp_cmd_chk_clock(struct mdss_mdp_cmd_ctx *ctx)
 		return;
 	}
 
+	mutex_lock(&ctx->clk_mtx);
+
 	pr_debug("%s: ctx=%p num=%d clk_enabled=%d\n", __func__,
 				ctx, ctx->pp_num, ctx->clk_enabled);
 
-	mutex_lock(&ctx->clk_mtx);
 	spin_lock_irqsave(&ctx->clk_lock, flags);
 	ctx->koff_cnt++;
 	ctx->clk_control = 0;
@@ -309,6 +324,8 @@ static void mdss_mdp_cmd_chk_clock(struct mdss_mdp_cmd_ctx *ctx)
 	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
 	if (set_clk_on) {
+		mdss_mdp_ctl_intf_event(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL,
+							(void *)1);
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
 		ctx->vsync_enabled = 1;
 		mdss_mdp_irq_enable(MDSS_MDP_IRQ_PING_PONG_RD_PTR, ctx->pp_num);
@@ -331,16 +348,18 @@ static int mdss_mdp_cmd_wait4comp(struct mdss_mdp_ctl *ctl, void *arg)
 
 	pr_debug("%s: intf_num=%d ctx=%p\n", __func__, ctl->intf_num, ctx);
 
-	rc = wait_for_completion_interruptible_timeout(&ctx->pp_comp,
+	rc = wait_for_completion_interruptible_timeout(&ctx->vsync_comp,
 			KOFF_TIMEOUT);
 	WARN(rc <= 0, "cmd kickoff timed out (%d) ctl=%d\n", rc, ctl->num);
 
-	return rc;
+	return 0;
 }
 
 int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
+	unsigned long flags;
+	int need_wait = 0;
 	int rc;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
@@ -349,10 +368,21 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		return -ENODEV;
 	}
 
-	pr_debug("%s: kickoff intf_num=%d ctx=%p\n", __func__,
-					ctl->intf_num, ctx);
+	spin_lock_irqsave(&ctx->clk_lock, flags);
+	if (ctx->koff_cnt > 0)
+		need_wait = 1;
+	spin_unlock_irqrestore(&ctx->clk_lock, flags);
 
-	mdss_mdp_cmd_chk_clock(ctx);
+	pr_debug("%s: need_wait=%d  intf_num=%d ctx=%p\n",
+			__func__, need_wait, ctl->intf_num, ctx);
+
+	if (need_wait) {
+		rc = wait_for_completion_interruptible_timeout(
+				&ctx->pp_comp, KOFF_TIMEOUT);
+
+		WARN(rc <= 0, "cmd kickoff timed out (%d) ctl=%d\n",
+						rc, ctl->num);
+	}
 
 	if (ctx->panel_on == 0) {
 		rc = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNBLANK, NULL);
@@ -364,10 +394,19 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 		WARN(rc, "intf %d panel on error (%d)\n", ctl->intf_num, rc);
 	}
 
+	mdss_mdp_cmd_chk_clock(ctx);
+
+	/*
+	 * tx dcs command if had any
+	 */
+	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_DSI_CMDLIST_KOFF, NULL);
+
+	INIT_COMPLETION(ctx->vsync_comp);
 	INIT_COMPLETION(ctx->pp_comp);
 	mdss_mdp_irq_enable(MDSS_MDP_IRQ_PING_PONG_COMP, ctx->pp_num);
 
 	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_START, 1);
+	mb();
 
 	return 0;
 }
@@ -454,10 +493,11 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 		return -ENODEV;
 	}
 
+	ctx->ctl = ctl;
 	ctx->pp_num = mixer->num;
+	init_completion(&ctx->vsync_comp);
 	init_completion(&ctx->pp_comp);
 	init_completion(&ctx->stop_comp);
-	atomic_set(&ctx->vsync_ref, 0);
 	spin_lock_init(&ctx->clk_lock);
 	mutex_init(&ctx->clk_mtx);
 	INIT_WORK(&ctx->clk_work, clk_ctrl_work);

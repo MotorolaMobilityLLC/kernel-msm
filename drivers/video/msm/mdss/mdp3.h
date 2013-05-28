@@ -23,6 +23,7 @@
 #include <mach/iommu_domains.h>
 
 #include "mdp3_dma.h"
+#include "mdss_fb.h"
 
 enum  {
 	MDP3_CLK_AHB,
@@ -31,6 +32,12 @@ enum  {
 	MDP3_CLK_LCDC,
 	MDP3_CLK_DSI,
 	MDP3_MAX_CLK
+};
+
+enum {
+	MDP3_BUS_HANDLE_DMA,
+	MDP3_BUS_HANDLE_PPP,
+	MDP3_BUS_HANDLE_MAX,
 };
 
 enum {
@@ -47,10 +54,16 @@ enum {
 };
 
 enum {
-	MDP3_BW_CLIENT_DMA_P,
-	MDP3_BW_CLIENT_DMA_S,
-	MDP3_BW_CLIENT_DMA_E,
-	MDP3_BW_CLIENT_PPP,
+	MDP3_CLIENT_DMA_P,
+	MDP3_CLIENT_PPP,
+};
+
+struct mdp3_bus_handle_map {
+	struct msm_bus_vectors *bus_vector;
+	struct msm_bus_paths *usecases;
+	struct msm_bus_scale_pdata *scale_pdata;
+	int current_bus_idx;
+	u32 handle;
 };
 
 struct mdp3_iommu_domain_map {
@@ -85,12 +98,14 @@ struct mdp3_hw_resource {
 
 	struct clk *clocks[MDP3_MAX_CLK];
 	int clock_ref_count[MDP3_MAX_CLK];
+	unsigned long dma_core_clk_request;
+	unsigned long ppp_core_clk_request;
 
 	char __iomem *mdp_base;
 	size_t mdp_reg_size;
 
 	u32 irq;
-	u32 bus_handle;
+	struct mdp3_bus_handle_map *bus_handle;
 
 	struct ion_client *ion_client;
 	struct mdp3_iommu_domain_map *domains;
@@ -100,10 +115,20 @@ struct mdp3_hw_resource {
 	struct mdp3_intf intf[MDP3_DMA_OUTPUT_SEL_MAX];
 
 	spinlock_t irq_lock;
-	u32 irqMask;
+	u32 irq_ref_count[MDP3_MAX_INTR];
+	u32 irq_mask;
 	struct mdp3_intr_cb callbacks[MDP3_MAX_INTR];
 
 	struct early_suspend suspend_handler;
+};
+
+struct mdp3_img_data {
+	u32 addr;
+	u32 len;
+	u32 flags;
+	int p_need;
+	struct file *srcp_file;
+	struct ion_handle *srcp_ihdl;
 };
 
 extern struct mdp3_hw_resource *mdp3_res;
@@ -117,6 +142,10 @@ int mdp3_set_intr_callback(u32 type, struct mdp3_intr_cb *cb);
 int mdp3_clk_set_rate(int clk_type, unsigned long clk_rate);
 int mdp3_clk_enable(int enable);
 int mdp3_bus_scale_set_quota(int client, u64 ab_quota, u64 ib_quota);
+int mdp3_put_img(struct mdp3_img_data *data);
+int mdp3_get_img(struct msmfb_data *img, struct mdp3_img_data *data);
+int mdp3_ppp_iommu_attach(void);
+int mdp3_ppp_iommu_dettach(void);
 
 #define MDP3_REG_WRITE(addr, val) writel_relaxed(val, mdp3_res->mdp_base + addr)
 #define MDP3_REG_READ(addr) readl_relaxed(mdp3_res->mdp_base + addr)

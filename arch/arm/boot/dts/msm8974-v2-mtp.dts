@@ -18,7 +18,9 @@
 / {
 	model = "Qualcomm MSM 8974v2 MTP";
 	compatible = "qcom,msm8974-mtp", "qcom,msm8974", "qcom,mtp";
-	qcom,msm-id = <126 8 0x20000>;
+	qcom,msm-id = <126 8 0x20000>,
+		      <185 8 0x20000>,
+		      <186 8 0x20000>;
 };
 
 &usb3 {
@@ -31,4 +33,8 @@
 	interrupt-names = "hs_phy_irq", "pmic_id_irq";
 
 	qcom,misc-ref = <&pm8941_misc>;
+};
+
+&pm8941_chg {
+	qcom,bpd-detection = "bpd_id";
 };

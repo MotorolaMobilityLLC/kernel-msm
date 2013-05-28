@@ -116,6 +116,7 @@
 			qcom,chg-term-ua = <100000>;
 			qcom,batt-type = <0>;
 			qcom,low-voltage-threshold = <3420000>;
+			qcom,tm-temp-margin = <5000>;
 			qcom,low-ocv-correction-limit-uv = <100>;
 			qcom,high-ocv-correction-limit-uv = <50>;
 			qcom,hold-soc-est = <3>;
@@ -173,8 +174,9 @@
 
 			qcom,vddmax-mv = <4200>;
 			qcom,vddsafe-mv = <4200>;
-			qcom,vinmin-mv = <4200>;
+			qcom,vinmin-mv = <4300>;
 			qcom,ibatmax-ma = <1500>;
+			qcom,ibatterm-ma = <100>;
 			qcom,ibatsafe-ma = <1500>;
 			qcom,thermal-mitigation = <1500 700 600 325>;
 			qcom,cool-bat-decidegc = <100>;
@@ -183,7 +185,7 @@
 			qcom,warm-bat-decidegc = <450>;
 			qcom,warm-bat-mv = <4100>;
 			qcom,ibatmax-cool-ma = <350>;
-			qcom,vbatdet-delta-mv = <350>;
+			qcom,vbatdet-delta-mv = <100>;
 			qcom,tchg-mins = <150>;
 
 			qcom,chgr@1000 {
@@ -584,10 +586,10 @@
 			};
 
 			chan@3 {
-				label = "spare1";
+				label = "spare1_div3";
 				reg = <3>;
 				qcom,decimation = <0>;
-				qcom,pre-div-channel-scaling = <6>;
+				qcom,pre-div-channel-scaling = <1>;
 				qcom,calibration-type = "absolute";
 				qcom,scale-function = <0>;
 				qcom,hw-settle-time = <0>;
@@ -595,10 +597,10 @@
 			};
 
 			chan@4 {
-				label = "spare2";
+				label = "usb_id_mv";
 				reg = <4>;
 				qcom,decimation = <0>;
-				qcom,pre-div-channel-scaling = <6>;
+				qcom,pre-div-channel-scaling = <1>;
 				qcom,calibration-type = "absolute";
 				qcom,scale-function = <0>;
 				qcom,hw-settle-time = <0>;
@@ -872,7 +874,7 @@
 				reg = <0xb5>;
 				qcom,decimation = <0>;
 				qcom,pre-div-channel-scaling = <0>;
-				qcom,calibration-type = "absolute";
+				qcom,calibration-type = "ratiometric";
 				qcom,scale-function = <2>;
 				qcom,hw-settle-time = <2>;
 				qcom,fast-avg-setup = <3>;

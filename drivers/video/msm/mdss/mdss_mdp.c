@@ -55,9 +55,15 @@
 #include "mdss_debug.h"
 
 struct mdss_data_type *mdss_res;
+
+static int mdss_fb_mem_get_iommu_domain(void)
+{
+	return mdss_get_iommu_domain(MDSS_IOMMU_DOMAIN_UNSECURE);
+}
+
 struct msm_mdp_interface mdp5 = {
 	.init_fnc = mdss_mdp_overlay_init,
-	.fb_mem_alloc_fnc = mdss_mdp_alloc_fb_mem,
+	.fb_mem_get_iommu_domain = mdss_fb_mem_get_iommu_domain,
 	.panel_register_done = mdss_panel_register_done,
 	.fb_stride = mdss_mdp_fb_stride,
 };
@@ -135,39 +141,6 @@ static int mdss_mdp_parse_dt_prop_len(struct platform_device *pdev,
 static int mdss_mdp_parse_dt_smp(struct platform_device *pdev);
 static int mdss_mdp_parse_dt_misc(struct platform_device *pdev);
 static int mdss_mdp_parse_dt_ad_cfg(struct platform_device *pdev);
-
-int mdss_mdp_alloc_fb_mem(struct msm_fb_data_type *mfd)
-{
-	int dom;
-	void *virt = NULL;
-	unsigned long phys = 0;
-	size_t size;
-	u32 yres = mfd->fbi->var.yres_virtual;
-
-	size = PAGE_ALIGN(mfd->fbi->fix.line_length * yres);
-
-	if (mfd->index == 0) {
-		virt = allocate_contiguous_memory(size, MEMTYPE_EBI1, SZ_1M, 0);
-		if (!virt) {
-			pr_err("unable to alloc fbmem size=%u\n", size);
-			return -ENOMEM;
-		}
-		phys = memory_pool_node_paddr(virt);
-		dom = mdss_get_iommu_domain(MDSS_IOMMU_DOMAIN_UNSECURE);
-		msm_iommu_map_contig_buffer(phys, dom, 0, size, SZ_4K, 0,
-					&mfd->iova);
-
-		pr_debug("allocating %u bytes at %p (%lx phys) for fb %d\n",
-			size, virt, phys, mfd->index);
-	} else
-		size = 0;
-
-	mfd->fbi->screen_base = virt;
-	mfd->fbi->fix.smem_start = phys;
-	mfd->fbi->fix.smem_len = size;
-
-	return 0;
-}
 
 u32 mdss_mdp_fb_stride(u32 fb_index, u32 xres, int bpp)
 {
@@ -388,12 +361,11 @@ int mdss_mdp_bus_scale_set_quota(u64 ab_quota, u64 ib_quota)
 
 		bus_idx = (current_bus_idx % (num_cases - 1)) + 1;
 
-		/* aligning to avoid performing updates for small changes */
-		ab_quota = ALIGN(ab_quota, SZ_64M);
-		ib_quota = ALIGN(ib_quota, SZ_64M);
-
 		vect = mdp_bus_scale_table.usecase[current_bus_idx].vectors;
-		if ((ab_quota == vect->ab) && (ib_quota == vect->ib)) {
+
+		/* avoid performing updates for small changes */
+		if ((ALIGN(ab_quota, SZ_64M) == ALIGN(vect->ab, SZ_64M)) &&
+			(ALIGN(ib_quota, SZ_64M) == ALIGN(vect->ib, SZ_64M))) {
 			pr_debug("skip bus scaling, no change in vectors\n");
 			return 0;
 		}

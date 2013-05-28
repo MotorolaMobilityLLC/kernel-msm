@@ -9,7 +9,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-/ {
+&soc {
 	msm_gpu: qcom,kgsl-3d0@fdb00000 {
 		label = "kgsl-3d0";
 		compatible = "qcom,kgsl-3d0", "qcom,kgsl-3d";
@@ -22,8 +22,7 @@
 
 		qcom,chipid = <0x03000510>;
 
-		qcom,initial-pwrlevel = <2>;
-		qcom,step-pwrlevel = <2>;
+		qcom,initial-pwrlevel = <1>;
 
 		qcom,idle-timeout = <8>; //<HZ/12>
 		qcom,nap-allowed = <1>;

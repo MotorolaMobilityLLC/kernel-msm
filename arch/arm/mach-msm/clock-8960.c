@@ -6406,79 +6406,14 @@ static struct pll_config pll14_config __initdata = {
 	.main_output_mask = BIT(23),
 };
 
-static void __init reg_init(void)
+
+static void __init init_mm_cc(void)
 {
-	void __iomem *imem_reg;
-
-	/* Deassert MM SW_RESET_ALL signal. */
-	writel_relaxed(0, SW_RESET_ALL_REG);
-
 	/*
-	 * Some bits are only used on 8960 or 8064 or 8930 and are marked as
-	 * reserved bits on the other SoCs. Writing to these reserved bits
-	 * should have no effect.
-	 */
-	/*
-	 * Initialize MM AHB registers: Enable the FPB clock and disable HW
-	 * gating on 8627 and 8930ab for all clocks. Also set VFE_AHB's
-	 * FORCE_CORE_ON bit to prevent its memory from being collapsed when
-	 * the clock is halted. The sleep and wake-up delays are set to safe
-	 * values.
-	 */
-	if (cpu_is_msm8627() || cpu_is_msm8930ab()) {
-		rmwreg(0x00000003, AHB_EN_REG,  0x6C000103);
-		writel_relaxed(0x000007F9, AHB_EN2_REG);
-	} else {
-		rmwreg(0x40000000, AHB_EN_REG,  0x6C000103);
-		writel_relaxed(0x3C7097F9, AHB_EN2_REG);
-	}
-
-	if (soc_class_is_apq8064())
-		rmwreg(0x00000000, AHB_EN3_REG, 0x00000001);
-
-	/* Deassert all locally-owned MM AHB resets. */
-	rmwreg(0, SW_RESET_AHB_REG, 0xFFF7DFFF);
-	rmwreg(0, SW_RESET_AHB2_REG, 0x0000000F);
-
-	/* Initialize MM AXI registers: Enable HW gating for all clocks that
-	 * support it. Also set FORCE_CORE_ON bits, and any sleep and wake-up
-	 * delays to safe values. */
-	if ((cpu_is_msm8960() &&
-			SOCINFO_VERSION_MAJOR(socinfo_get_version()) < 3) ||
-			cpu_is_msm8627() || cpu_is_msm8930ab()) {
-		rmwreg(0x000007F9, MAXI_EN_REG,  0x0803FFFF);
-		rmwreg(0x3027FCFF, MAXI_EN2_REG, 0x3A3FFFFF);
-	} else {
-		rmwreg(0x0003AFF9, MAXI_EN_REG,  0x0803FFFF);
-		rmwreg(0x3A27FCFF, MAXI_EN2_REG, 0x3A3FFFFF);
-	}
-
-	rmwreg(0x0027FCFF, MAXI_EN3_REG, 0x003FFFFF);
-	rmwreg(0x0027FCFF, MAXI_EN4_REG, 0x017FFFFF);
-
-	if (soc_class_is_apq8064())
-		rmwreg(0x019FECFF, MAXI_EN5_REG, 0x01FFEFFF);
-	if (cpu_is_msm8930() || cpu_is_msm8930aa() || cpu_is_msm8627() ||
-	    cpu_is_msm8930ab())
-		rmwreg(0x000004FF, MAXI_EN5_REG, 0x00000FFF);
-	if (cpu_is_msm8960ab())
-		rmwreg(0x009FE000, MAXI_EN5_REG, 0x01FFE000);
-
-	if (cpu_is_msm8627() || cpu_is_msm8930ab())
-		rmwreg(0x000003C7, SAXI_EN_REG,  0x00003FFF);
-	else
-		rmwreg(0x00003C38, SAXI_EN_REG,  0x00003FFF);
-
-	/* Enable IMEM's clk_on signal */
-	imem_reg = ioremap(0x04b00040, 4);
-	if (imem_reg) {
-		writel_relaxed(0x3, imem_reg);
-		iounmap(imem_reg);
-	}
-
-	/* Initialize MM CC registers: Set MM FORCE_CORE_ON bits so that core
+	 * Initialize MM CC registers: Set MM FORCE_CORE_ON bits so that core
 	 * memories retain state even when not clocked. Also, set sleep and
-	 * wake-up delays to safe values. */
+	 * wake-up delays to safe values.
+	 */
 	rmwreg(0x00000000, CSI0_CC_REG,       0x00000410);
 	rmwreg(0x00000000, CSI1_CC_REG,       0x00000410);
 	rmwreg(0x80FF0000, DSI1_BYTE_CC_REG,  0xE0FF0010);
@@ -6493,28 +6428,72 @@ static void __init reg_init(void)
 	rmwreg(0x80FF0000, VFE_CC_REG,        0xE0FF4010);
 	rmwreg(0x800000FF, VFE_CC2_REG,       0xE00000FF);
 	rmwreg(0x80FF0000, VPE_CC_REG,        0xE0FF0010);
-	if (cpu_is_msm8960ab() || cpu_is_msm8960() || soc_class_is_apq8064()) {
-		rmwreg(0x80FF0000, DSI2_BYTE_CC_REG,  0xE0FF0010);
-		rmwreg(0x80FF0000, DSI2_PIXEL_CC_REG, 0xE0FF0010);
-		rmwreg(0x80FF0000, JPEGD_CC_REG,      0xE0FF0010);
-	}
-	if (cpu_is_msm8960ab())
-		rmwreg(0x00000001, DSI2_PIXEL_CC2_REG, 0x00000001);
+}
 
-	if (cpu_is_msm8960() || cpu_is_msm8930() || cpu_is_msm8930aa() ||
-	    cpu_is_msm8627() || cpu_is_msm8930ab())
-		rmwreg(0x80FF0000, TV_CC_REG,        0xE1FFC010);
-	if (cpu_is_msm8960ab())
-		rmwreg(0x00000000, TV_CC_REG,        0x00004010);
+static void __init enable_imem_clk(unsigned long phys)
+{
+	void __iomem *imem_reg;
 
-	if (cpu_is_msm8960()) {
-		rmwreg(0x80FF0000, GFX2D0_CC_REG,     0xE0FF0010);
-		rmwreg(0x80FF0000, GFX2D1_CC_REG,     0xE0FF0010);
+	/* Enable IMEM's clk_on signal */
+	imem_reg = ioremap(phys, SZ_4);
+	if (imem_reg) {
+		writel_relaxed(0x3, imem_reg);
+		iounmap(imem_reg);
 	}
-	if (soc_class_is_apq8064()) {
-		rmwreg(0x00000000, TV_CC_REG,         0x00004010);
-		rmwreg(0x80FF0000, VCAP_CC_REG,       0xE0FF1010);
+}
+
+static void __init reg_init_8930(void)
+{
+	/* MM-AHB default values */
+	u32 en_reg = 0x40000000, en2_reg = 0x3C7097F9;
+	/* MM-AXI default values */
+	u32 aen_reg = 0x0003AFF9, aen2_reg = 0x3A27FCFF,
+		 saen_reg = 0x00003C38;
+
+
+	/* Deassert MM SW_RESET_ALL signal. */
+	writel_relaxed(0, SW_RESET_ALL_REG);
+
+	/*
+	 * Initialize MM AHB registers: Enable the FPB clock and disable HW
+	 * gating on 8627 and 8930ab for all clocks. Also set VFE_AHB's
+	 * FORCE_CORE_ON bit to prevent its memory from being collapsed when
+	 * the clock is halted. The sleep and wake-up delays are set to safe
+	 * values.
+	 */
+	if (cpu_is_msm8627() || cpu_is_msm8930ab()) {
+		en_reg  = 0x00000003;
+		en2_reg = 0x000007F9;
 	}
+	rmwreg(en_reg, AHB_EN_REG, 0x6C000103);
+	writel_relaxed(en2_reg, AHB_EN2_REG);
+
+	/* Deassert all locally-owned MM AHB resets. */
+	rmwreg(0, SW_RESET_AHB_REG, 0xFFF7DFFF);
+	rmwreg(0, SW_RESET_AHB2_REG, 0x0000000F);
+
+	/*
+	 * Initialize MM AXI registers: Enable HW gating for all clocks that
+	 * support it. Also set FORCE_CORE_ON bits, and any sleep and wake-up
+	 * delays to safe values.
+	 */
+	if (cpu_is_msm8627() || cpu_is_msm8930ab()) {
+		aen_reg = 0x000007F9;
+		aen2_reg = 0x3027FCFF;
+	}
+	rmwreg(aen_reg, MAXI_EN_REG,  0x0803FFFF);
+	rmwreg(aen2_reg, MAXI_EN2_REG, 0x3A3FFFFF);
+	rmwreg(0x0027FCFF, MAXI_EN3_REG, 0x003FFFFF);
+	rmwreg(0x0027FCFF, MAXI_EN4_REG, 0x017FFFFF);
+	rmwreg(0x000004FF, MAXI_EN5_REG, 0x00000FFF);
+	if (cpu_is_msm8627() || cpu_is_msm8930ab())
+		saen_reg = 0x000003C7;
+	rmwreg(saen_reg, SAXI_EN_REG,  0x00003FFF);
+
+	enable_imem_clk(0x04b00040);
+
+	init_mm_cc();
+	rmwreg(0x80FF0000, TV_CC_REG,        0xE1FFC010);
 
 	/*
 	 * Initialize USB_HS_HCLK_FS registers: Set FORCE_C_ON bits so that
@@ -6522,10 +6501,6 @@ static void __init reg_init(void)
 	 * and wake-up value to max.
 	 */
 	rmwreg(0x0000004F, USB_HS1_HCLK_FS_REG, 0x0000007F);
-	if (soc_class_is_apq8064()) {
-		rmwreg(0x0000004F, USB_HS3_HCLK_FS_REG, 0x0000007F);
-		rmwreg(0x0000004F, USB_HS4_HCLK_FS_REG, 0x0000007F);
-	}
 
 	/* De-assert MM AXI resets to all hardware blocks. */
 	writel_relaxed(0, SW_RESET_AXI_REG);
@@ -6538,88 +6513,231 @@ static void __init reg_init(void)
 	writel_relaxed(BIT(11), TSSC_CLK_CTL_REG);
 	writel_relaxed(BIT(15), PDM_CLK_NS_REG);
 
-	/* Source SLIMBus xo src from slimbus reference clock */
-	if (cpu_is_msm8960ab() || cpu_is_msm8960())
-		writel_relaxed(0x3, SLIMBUS_XO_SRC_CLK_CTL_REG);
-
-	/* Source the dsi_byte_clks from the DSI PHY PLLs */
+	/* Source the dsi1_byte_clks/dsi1_esc_clk from the DSI PHY PLLs */
 	rmwreg(0x1, DSI1_BYTE_NS_REG, 0x7);
-	if (cpu_is_msm8960ab() || cpu_is_msm8960() || soc_class_is_apq8064())
-		rmwreg(0x2, DSI2_BYTE_NS_REG, 0x7);
-
-	/* Source the dsi1_esc_clk from the DSI1 PHY PLLs */
 	rmwreg(0x1, DSI1_ESC_NS_REG, 0x7);
+
+	/*
+	 * Change PLL15 configuration based on the SoC we're running on.
+	 *
+	 * Default pll15 l, m, n values for 8930/8930aa/8627()
+	 */
+	pll15_config.l = 0x21 | BVAL(31, 7, 0x600);
+	pll15_config.m = 0x1;
+	pll15_config.n = 0x3;
+
+	if (cpu_is_msm8930ab()) {
+		pll15_config.l = 0x25 | BVAL(31, 7, 0x600);
+		pll15_config.m = 0x25;
+		pll15_config.n = 0x3E7;
+	}
+	configure_sr_pll(&pll15_config, &pll15_regs, 0);
+
+	/* Disable AUX and BIST outputs */
+	writel_relaxed(0, MM_PLL3_TEST_CTL_REG);
+}
+
+static void __init reg_init_8064(void)
+{
+	u32 is_pll_enabled;
+
+	/* Deassert MM SW_RESET_ALL signal. */
+	writel_relaxed(0, SW_RESET_ALL_REG);
+
+	/*
+	 * Initialize MM AHB registers:
+	 * Also set VFE_AHB's FORCE_CORE_ON bit to prevent its memory
+	 * from being collapsed when the clock is halted. The sleep and
+	 * wake-up delays are set to safe values.
+	 */
+	rmwreg(0x40000000, AHB_EN_REG, 0x6C000103);
+	writel_relaxed(0x3C7097F9, AHB_EN2_REG);
+	rmwreg(0x00000000, AHB_EN3_REG, 0x00000001);
+
+	/* Deassert all locally-owned MM AHB resets. */
+	rmwreg(0, SW_RESET_AHB_REG, 0xFFF7DFFF);
+	rmwreg(0, SW_RESET_AHB2_REG, 0x0000000F);
+
+	/*
+	 * Initialize MM AXI registers: Enable HW gating for all clocks that
+	 * support it. Also set FORCE_CORE_ON bits, and any sleep and wake-up
+	 * delays to safe values.
+	 */
+	rmwreg(0x0003AFF9, MAXI_EN_REG,  0x0803FFFF);
+	rmwreg(0x3A27FCFF, MAXI_EN2_REG, 0x3A3FFFFF);
+	rmwreg(0x0027FCFF, MAXI_EN3_REG, 0x003FFFFF);
+	rmwreg(0x0027FCFF, MAXI_EN4_REG, 0x017FFFFF);
+	rmwreg(0x019FECFF, MAXI_EN5_REG, 0x01FFEFFF);
+	rmwreg(0x00003C38, SAXI_EN_REG,  0x00003FFF);
+
+	enable_imem_clk(0x04b00040);
+
+	init_mm_cc();
+	rmwreg(0x80FF0000, DSI2_BYTE_CC_REG,  0xE0FF0010);
+	rmwreg(0x80FF0000, DSI2_PIXEL_CC_REG, 0xE0FF0010);
+	rmwreg(0x80FF0000, JPEGD_CC_REG,      0xE0FF0010);
+	rmwreg(0x00000000, TV_CC_REG,         0x00004010);
+	rmwreg(0x80FF0000, VCAP_CC_REG,       0xE0FF1010);
+
+	/*
+	 * Initialize USB_HS_HCLK_FS registers: Set FORCE_C_ON bits so that
+	 * core remain active during halt state of the clk. Also, set sleep
+	 * and wake-up value to max.
+	 */
+	rmwreg(0x0000004F, USB_HS1_HCLK_FS_REG, 0x0000007F);
+	rmwreg(0x0000004F, USB_HS3_HCLK_FS_REG, 0x0000007F);
+	rmwreg(0x0000004F, USB_HS4_HCLK_FS_REG, 0x0000007F);
+
+	/* De-assert MM AXI resets to all hardware blocks. */
+	writel_relaxed(0, SW_RESET_AXI_REG);
+
+	/* Deassert all MM core resets. */
+	writel_relaxed(0, SW_RESET_CORE_REG);
+	writel_relaxed(0, SW_RESET_CORE2_REG);
+
+	/* Enable TSSC and PDM PXO sources. */
+	writel_relaxed(BIT(11), TSSC_CLK_CTL_REG);
+	writel_relaxed(BIT(15), PDM_CLK_NS_REG);
+
+	/* Source the dsi1_byte_clks/dsi1_esc_clk from the DSI PHY PLLs */
+	rmwreg(0x1, DSI1_BYTE_NS_REG, 0x7);
+	rmwreg(0x1, DSI1_ESC_NS_REG, 0x7);
+
+	/* Source the dsi2_byte_clks from the DSI PHY PLLs */
+	rmwreg(0x2, DSI2_BYTE_NS_REG, 0x7);
 
 	/*
 	 * Source the sata_phy_ref_clk from PXO and set predivider of
 	 * sata_pmalive_clk to 1.
 	 */
-	if (soc_class_is_apq8064()) {
-		rmwreg(0, SATA_PHY_REF_CLK_CTL_REG, 0x1);
-		rmwreg(0, SATA_PMALIVE_CLK_CTL_REG, 0x3);
-	}
+	rmwreg(0, SATA_PHY_REF_CLK_CTL_REG, 0x1);
+	rmwreg(0, SATA_PMALIVE_CLK_CTL_REG, 0x3);
 
 	/*
 	 * TODO: Programming below PLLs and prng_clk is temporary and
 	 *	 needs to be removed after bootloaders program them.
 	 */
-	if (soc_class_is_apq8064()) {
-		u32 is_pll_enabled;
 
-		/* Program pxo_src_clk to source from PXO */
-		rmwreg(0x1, PXO_SRC_CLK_CTL_REG, 0x7);
+	/* Program pxo_src_clk to source from PXO */
+	rmwreg(0x1, PXO_SRC_CLK_CTL_REG, 0x7);
 
-		/* Check if PLL14 is active */
-		is_pll_enabled = readl_relaxed(BB_PLL14_STATUS_REG) & BIT(16);
-		if (!is_pll_enabled)
-			/* Ref clk = 27MHz and program pll14 to 480MHz */
-			configure_sr_pll(&pll14_config, &pll14_regs, 1);
+	/* Check if PLL14 is active */
+	is_pll_enabled = readl_relaxed(BB_PLL14_STATUS_REG) & BIT(16);
+	if (!is_pll_enabled)
+		/* Ref clk = 27MHz and program pll14 to 480MHz */
+		configure_sr_pll(&pll14_config, &pll14_regs, 1);
 
-		/* Check if PLL4 is active */
-		is_pll_enabled = readl_relaxed(LCC_PLL0_STATUS_REG) & BIT(16);
-		if (!is_pll_enabled)
-			/* Ref clk = 27MHz and program pll4 to 393.2160MHz */
-			configure_sr_pll(&pll4_config_393, &pll4_regs, 1);
+	/* Check if PLL4 is active */
+	is_pll_enabled = readl_relaxed(LCC_PLL0_STATUS_REG) & BIT(16);
+	if (!is_pll_enabled)
+		/* Ref clk = 27MHz and program pll4 to 393.2160MHz */
+		configure_sr_pll(&pll4_config_393, &pll4_regs, 1);
 
-		/* Enable PLL4 source on the LPASS Primary PLL Mux */
-		writel_relaxed(0x1, LCC_PRI_PLL_CLK_CTL_REG);
+	/* Enable PLL4 source on the LPASS Primary PLL Mux */
+	writel_relaxed(0x1, LCC_PRI_PLL_CLK_CTL_REG);
 
-		/* Program prng_clk to 64MHz if it isn't configured */
-		if (!readl_relaxed(PRNG_CLK_NS_REG))
-			writel_relaxed(0x2B, PRNG_CLK_NS_REG);
-	}
+	/* Program prng_clk to 64MHz if it isn't configured */
+	if (!readl_relaxed(PRNG_CLK_NS_REG))
+		writel_relaxed(0x2B, PRNG_CLK_NS_REG);
 
-	if (cpu_is_apq8064() || cpu_is_apq8064aa()) {
-		/* Program PLL15 to 975MHz with ref clk = 27MHz */
-		configure_sr_pll(&pll15_config, &pll15_regs, 0);
-	} else if (cpu_is_apq8064ab()) {
+	if (cpu_is_apq8064ab()) {
 		/* Program PLL15 to 900MHZ */
 		pll15_config.l = 0x21 | BVAL(31, 7, 0x620);
 		pll15_config.m = 0x1;
 		pll15_config.n = 0x3;
-		configure_sr_pll(&pll15_config, &pll15_regs, 0);
-	} else if (cpu_is_msm8960ab()) {
-		pll3_clk.c.rate = 880000000;
-		configure_sr_pll(&pll3_config, &pll3_regs, 0);
+	}
+	/*
+	 * Default Program PLL15 to 975MHz with ref clk = 27MHz
+	 * In case of apq8064ab PLL15 is set to 900MHZ
+	 */
+	configure_sr_pll(&pll15_config, &pll15_regs, 0);
+}
+
+static void __init reg_init_8960(void)
+{
+	u32 aen_reg = 0x0003AFF9, aen2_reg = 0x3A27FCFF;
+
+	/* Deassert MM SW_RESET_ALL signal. */
+	writel_relaxed(0, SW_RESET_ALL_REG);
+
+	/*
+	 * Initialize MM AHB registers:
+	 * Also set VFE_AHB's FORCE_CORE_ON bit to prevent its memory
+	 * from being collapsed when the clock is halted. The sleep and
+	 * wake-up delays are set to safe values.
+	 */
+	rmwreg(0x40000000, AHB_EN_REG, 0x6C000103);
+	writel_relaxed(0x3C7097F9, AHB_EN2_REG);
+
+	/* Deassert all locally-owned MM AHB resets. */
+	rmwreg(0, SW_RESET_AHB_REG, 0xFFF7DFFF);
+	rmwreg(0, SW_RESET_AHB2_REG, 0x0000000F);
+
+	/*
+	 * Initialize MM AXI registers: Enable HW gating for all clocks that
+	 * support it. Also set FORCE_CORE_ON bits, and any sleep and wake-up
+	 * delays to safe values.
+	 */
+	if (cpu_is_msm8960() &&
+		SOCINFO_VERSION_MAJOR(socinfo_get_version()) < 3) {
+		aen_reg = 0x000007F9;
+		aen2_reg = 0x3027FCFF;
+	}
+	rmwreg(aen_reg, MAXI_EN_REG,  0x0803FFFF);
+	rmwreg(aen2_reg, MAXI_EN2_REG, 0x3A3FFFFF);
+	rmwreg(0x0027FCFF, MAXI_EN3_REG, 0x003FFFFF);
+	rmwreg(0x0027FCFF, MAXI_EN4_REG, 0x017FFFFF);
+	if (cpu_is_msm8960ab())
+		rmwreg(0x009FE000, MAXI_EN5_REG, 0x01FFE000);
+	rmwreg(0x00003C38, SAXI_EN_REG,  0x00003FFF);
+
+	enable_imem_clk(0x04b00040);
+
+	init_mm_cc();
+	rmwreg(0x80FF0000, DSI2_BYTE_CC_REG,  0xE0FF0010);
+	rmwreg(0x80FF0000, DSI2_PIXEL_CC_REG, 0xE0FF0010);
+	rmwreg(0x80FF0000, JPEGD_CC_REG,      0xE0FF0010);
+	if (cpu_is_msm8960ab()) {
+		rmwreg(0x00000001, DSI2_PIXEL_CC2_REG, 0x00000001);
+		rmwreg(0x00000000, TV_CC_REG,        0x00004010);
+	}
+	if (cpu_is_msm8960()) {
+		rmwreg(0x80FF0000, TV_CC_REG,        0xE1FFC010);
+		rmwreg(0x80FF0000, GFX2D0_CC_REG,     0xE0FF0010);
+		rmwreg(0x80FF0000, GFX2D1_CC_REG,     0xE0FF0010);
 	}
 
 	/*
-	 * Change PLL15 configuration based on the SoC we're running on.
+	 * Initialize USB_HS_HCLK_FS registers: Set FORCE_C_ON bits so that
+	 * core remain active during halt state of the clk. Also, set sleep
+	 * and wake-up value to max.
 	 */
-	if (cpu_is_msm8930() || cpu_is_msm8930aa() || cpu_is_msm8627()) {
-		pll15_config.l = 0x21 | BVAL(31, 7, 0x600);
-		pll15_config.m = 0x1;
-		pll15_config.n = 0x3;
-		configure_sr_pll(&pll15_config, &pll15_regs, 0);
-		/* Disable AUX and BIST outputs */
-		writel_relaxed(0, MM_PLL3_TEST_CTL_REG);
-	} else if (cpu_is_msm8930ab()) {
-		pll15_config.l = 0x25 | BVAL(31, 7, 0x600);
-		pll15_config.m = 0x25;
-		pll15_config.n = 0x3E7;
-		configure_sr_pll(&pll15_config, &pll15_regs, 0);
-		/* Disable AUX and BIST outputs */
-		writel_relaxed(0, MM_PLL3_TEST_CTL_REG);
+	rmwreg(0x0000004F, USB_HS1_HCLK_FS_REG, 0x0000007F);
+
+	/* De-assert MM AXI resets to all hardware blocks. */
+	writel_relaxed(0, SW_RESET_AXI_REG);
+
+	/* Deassert all MM core resets. */
+	writel_relaxed(0, SW_RESET_CORE_REG);
+	writel_relaxed(0, SW_RESET_CORE2_REG);
+
+	/* Enable TSSC and PDM PXO sources. */
+	writel_relaxed(BIT(11), TSSC_CLK_CTL_REG);
+	writel_relaxed(BIT(15), PDM_CLK_NS_REG);
+
+	/* Source the dsi1_byte_clks/dsi1_esc_clk from the DSI PHY PLLs */
+	rmwreg(0x1, DSI1_BYTE_NS_REG, 0x7);
+	rmwreg(0x1, DSI1_ESC_NS_REG, 0x7);
+
+	/* Source SLIMBus xo src from slimbus reference clock */
+	writel_relaxed(0x3, SLIMBUS_XO_SRC_CLK_CTL_REG);
+
+	/* Source the dsi2_byte_clks from the DSI PHY PLLs */
+	rmwreg(0x2, DSI2_BYTE_NS_REG, 0x7);
+
+	 if (cpu_is_msm8960ab()) {
+		pll3_clk.c.rate = 880000000;
+		configure_sr_pll(&pll3_config, &pll3_regs, 0);
 	}
 }
 
@@ -6645,13 +6763,15 @@ static unsigned long *select_gfx_fmax_plan(unsigned long **gfx_fmax, int size)
 }
 
 struct clock_init_data msm8960_clock_init_data __initdata;
+
 static void __init msm8960_clock_pre_init(void)
 {
-	/* Initialize clock registers. */
-	reg_init();
+	struct clk_lookup *clk_lkup;
+	size_t clk_size;
+	struct clk_freq_tbl *tbl;
 
-	if (soc_class_is_apq8064())
-		vdd_sr2_hdmi_pll.set_vdd = set_vdd_sr2_hdmi_pll_8064;
+	/* Initialize clock registers. */
+	reg_init_8960();
 
 	/* Detect PLL4 programmed for alternate 491.52MHz clock plan. */
 	if (readl_relaxed(LCC_PLL0_L_VAL_REG) == 0x12) {
@@ -6665,73 +6785,120 @@ static void __init msm8960_clock_pre_init(void)
 		pcm_clk.freq_tbl = clk_tbl_pcm_492;
 	}
 
-	if (cpu_is_msm8960() || cpu_is_msm8960ab())
-		memcpy(msm_clocks_8960, msm_clocks_8960_common,
-			sizeof(msm_clocks_8960_common));
-	if (cpu_is_msm8960ab()) {
-		gfx3d_clk.freq_tbl = clk_tbl_gfx3d_8960ab;
-		mdp_clk.c.fmax = fmax_mdp_8960ab;
-
-		gfx3d_clk.c.fmax = select_gfx_fmax_plan(fmax_gfx3d_8960ab,
-						ARRAY_SIZE(fmax_gfx3d_8960ab));
-
-		memcpy(msm_clocks_8960 + ARRAY_SIZE(msm_clocks_8960_common),
-			msm_clocks_8960ab_only, sizeof(msm_clocks_8960ab_only));
-		msm8960_clock_init_data.size -=
-			ARRAY_SIZE(msm_clocks_8960_only);
-
-		gmem_axi_clk.c.depends = &gfx3d_axi_clk.c;
-	} else if (cpu_is_msm8960()) {
-		gfx3d_clk.freq_tbl = clk_tbl_gfx3d_8960;
-		memcpy(msm_clocks_8960 + ARRAY_SIZE(msm_clocks_8960_common),
-			 msm_clocks_8960_only, sizeof(msm_clocks_8960_only));
+	if (cpu_is_msm8960()) {
+		tbl = clk_tbl_gfx3d_8960;
+		clk_lkup = msm_clocks_8960_only;
+		clk_size = sizeof(msm_clocks_8960_only);
 		msm8960_clock_init_data.size -=
 			ARRAY_SIZE(msm_clocks_8960ab_only);
 	}
-	/*
-	 * Change the freq tables for and voltage requirements for
-	 * clocks which differ between chips.
-	 */
-	if (cpu_is_apq8064() || cpu_is_apq8064aa())
-		gfx3d_clk.c.fmax = fmax_gfx3d_8064;
+
+	if (cpu_is_msm8960ab()) {
+		mdp_clk.c.fmax = fmax_mdp_8960ab;
+		gmem_axi_clk.c.depends = &gfx3d_axi_clk.c;
+		tbl = clk_tbl_gfx3d_8960ab;
+		gfx3d_clk.c.fmax = select_gfx_fmax_plan(fmax_gfx3d_8960ab,
+				ARRAY_SIZE(fmax_gfx3d_8960ab));
+
+		clk_lkup = msm_clocks_8960ab_only;
+		clk_size = sizeof(msm_clocks_8960ab_only);
+		msm8960_clock_init_data.size -=
+			 ARRAY_SIZE(msm_clocks_8960_only);
+	}
+
+	gfx3d_clk.freq_tbl = tbl;
+
+	memcpy(msm_clocks_8960, msm_clocks_8960_common,
+			sizeof(msm_clocks_8960_common));
+	memcpy(msm_clocks_8960 + ARRAY_SIZE(msm_clocks_8960_common),
+			clk_lkup, clk_size);
+
+	if ((readl_relaxed(PRNG_CLK_NS_REG) & 0x7F) == 0x2B)
+		prng_clk.freq_tbl = clk_tbl_prng_64;
+
+	clk_ops_local_pll.enable = sr_pll_clk_enable;
+}
+
+static void __init msm8064_clock_pre_init(void)
+{
+	unsigned long *fmax = fmax_gfx3d_8064;
+
+	/* Initialize clock registers. */
+	reg_init_8064();
+
+	vdd_sr2_hdmi_pll.set_vdd = set_vdd_sr2_hdmi_pll_8064;
+
+	/* Detect PLL4 programmed for alternate 491.52MHz clock plan. */
+	if (readl_relaxed(LCC_PLL0_L_VAL_REG) == 0x12) {
+		pll4_clk.c.rate = 491520000;
+		audio_slimbus_clk.freq_tbl = clk_tbl_aif_osr_492;
+		mi2s_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		codec_i2s_mic_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		spare_i2s_mic_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		codec_i2s_spkr_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		spare_i2s_spkr_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		pcm_clk.freq_tbl = clk_tbl_pcm_492;
+	}
 
 	if (cpu_is_apq8064ab())
-		gfx3d_clk.c.fmax = fmax_gfx3d_8064ab;
+		fmax = fmax_gfx3d_8064ab;
 
 	if ((cpu_is_apq8064() &&
 		SOCINFO_VERSION_MAJOR(socinfo_get_version()) == 2) ||
 		cpu_is_apq8064ab() || cpu_is_apq8064aa()) {
-
 		vcodec_clk.c.fmax = fmax_vcodec_8064v2;
 		ce3_src_clk.c.fmax = fmax_ce3_8064v2;
 		sdc1_clk.c.fmax = fmax_sdc1_8064v2;
 	}
-	if (soc_class_is_apq8064()) {
-		ijpeg_clk.c.fmax = fmax_ijpeg_8064;
-		mdp_clk.c.fmax = fmax_mdp_8064;
-		tv_src_clk.c.fmax = fmax_tv_src_8064;
-		vfe_clk.c.fmax = fmax_vfe_8064;
-		gmem_axi_clk.c.depends = &gfx3d_axi_clk.c;
+
+	gfx3d_clk.c.fmax = fmax;
+	ijpeg_clk.c.fmax = fmax_ijpeg_8064;
+	mdp_clk.c.fmax = fmax_mdp_8064;
+	tv_src_clk.c.fmax = fmax_tv_src_8064;
+	vfe_clk.c.fmax = fmax_vfe_8064;
+
+	gmem_axi_clk.c.depends = &gfx3d_axi_clk.c;
+
+	if ((readl_relaxed(PRNG_CLK_NS_REG) & 0x7F) == 0x2B)
+		prng_clk.freq_tbl = clk_tbl_prng_64;
+
+	clk_ops_local_pll.enable = sr_pll_clk_enable;
+}
+
+static void __init __msm8930_clock_pre_init(void)
+{
+	unsigned long rate = 900000000;
+	unsigned long *fmax = fmax_gfx3d_8930;
+
+	/* Initialize clock registers. */
+	reg_init_8930();
+
+	/* Detect PLL4 programmed for alternate 491.52MHz clock plan. */
+	if (readl_relaxed(LCC_PLL0_L_VAL_REG) == 0x12) {
+		pll4_clk.c.rate = 491520000;
+		audio_slimbus_clk.freq_tbl = clk_tbl_aif_osr_492;
+		mi2s_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		codec_i2s_mic_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		spare_i2s_mic_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		codec_i2s_spkr_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		spare_i2s_spkr_osr_clk.freq_tbl = clk_tbl_aif_osr_492;
+		pcm_clk.freq_tbl = clk_tbl_pcm_492;
 	}
 
-	/*
-	 * Change the freq tables and voltage requirements for
-	 * clocks which differ between 8960 and 8930.
-	 */
-	if (cpu_is_msm8930() || cpu_is_msm8627())
-		gfx3d_clk.c.fmax = fmax_gfx3d_8930;
-	else if (cpu_is_msm8930aa())
-		gfx3d_clk.c.fmax = fmax_gfx3d_8930aa;
-	if (cpu_is_msm8930() || cpu_is_msm8930aa() || cpu_is_msm8627()) {
-		pll15_clk.c.rate = 900000000;
-		gmem_axi_clk.c.depends = &gfx3d_axi_clk_8930.c;
-	} else if (cpu_is_msm8930ab()) {
+	if (cpu_is_msm8930aa())
+		fmax = fmax_gfx3d_8930aa;
+
+	if (cpu_is_msm8930ab()) {
+		rate = 1000000000;
+		fmax = fmax_gfx3d_8930ab;
 		gfx3d_clk.freq_tbl = clk_tbl_gfx3d_8930ab;
-		pll15_clk.c.rate = 1000000000;
-		gfx3d_clk.c.fmax = fmax_gfx3d_8930ab;
-		gmem_axi_clk.c.depends = &gfx3d_axi_clk_8930.c;
 		vcodec_clk.c.fmax = fmax_vcodec_8930ab;
 	}
+
+	pll15_clk.c.rate = rate;
+	gfx3d_clk.c.fmax = fmax;
+	gmem_axi_clk.c.depends = &gfx3d_axi_clk_8930.c;
+
 	if ((readl_relaxed(PRNG_CLK_NS_REG) & 0x7F) == 0x2B)
 		prng_clk.freq_tbl = clk_tbl_prng_64;
 
@@ -6746,7 +6913,7 @@ static void __init msm8930_pm8917_clock_pre_init(void)
 	rpm_vreg_dig_8930 = RPM_VREG_ID_PM8917_VDD_DIG_CORNER;
 	vdd_sr2_hdmi_pll.set_vdd = set_vdd_sr2_hdmi_pll_8930_pm8917;
 
-	msm8960_clock_pre_init();
+	__msm8930_clock_pre_init();
 }
 
 static void __init msm8930_clock_pre_init(void)
@@ -6754,10 +6921,10 @@ static void __init msm8930_clock_pre_init(void)
 	vdd_dig.set_vdd = set_vdd_dig_8930;
 	vdd_sr2_hdmi_pll.set_vdd = set_vdd_sr2_hdmi_pll_8930;
 
-	msm8960_clock_pre_init();
+	__msm8930_clock_pre_init();
 }
 
-static void __init msm8960_clock_post_init(void)
+static void __init common_clock_post_init(void)
 {
 	/* Keep PXO on whenever APPS cpu is active */
 	clk_prepare_enable(&pxo_a_clk.c);
@@ -6777,18 +6944,12 @@ static void __init msm8960_clock_post_init(void)
 	clk_set_rate(&tsif_ref_clk.c, 105000);
 	clk_set_rate(&tssc_clk.c, 27000000);
 	clk_set_rate(&usb_hs1_xcvr_clk.c, 60000000);
-	if (soc_class_is_apq8064()) {
-		clk_set_rate(&usb_hs3_xcvr_clk.c, 60000000);
-		clk_set_rate(&usb_hs4_xcvr_clk.c, 60000000);
-	}
 	clk_set_rate(&usb_fs1_src_clk.c, 60000000);
-	if (cpu_is_msm8960ab() || cpu_is_msm8960() || cpu_is_msm8930() ||
-		cpu_is_msm8930aa() || cpu_is_msm8627() || cpu_is_msm8930ab())
-		clk_set_rate(&usb_fs2_src_clk.c, 60000000);
 	clk_set_rate(&usb_hsic_xcvr_fs_clk.c, 60000000);
 	clk_set_rate(&usb_hsic_hsic_src_clk.c, 480000000);
 	clk_set_rate(&usb_hsic_hsio_cal_clk.c, 9000000);
 	clk_set_rate(&usb_hsic_system_clk.c, 60000000);
+
 	/*
 	 * Set the CSI rates to a safe default to avoid warnings when
 	 * switching csi pix and rdi clocks.
@@ -6815,6 +6976,19 @@ static void __init msm8960_clock_post_init(void)
 	 */
 	clk_set_rate(&sfab_tmr_a_clk.c, 54000000);
 	clk_prepare_enable(&sfab_tmr_a_clk.c);
+}
+
+static void __init msm8960_clock_post_init(void)
+{
+	common_clock_post_init();
+	clk_set_rate(&usb_fs2_src_clk.c, 60000000);
+}
+
+static void __init msm8064_clock_post_init(void)
+{
+	common_clock_post_init();
+	clk_set_rate(&usb_hs3_xcvr_clk.c, 60000000);
+	clk_set_rate(&usb_hs4_xcvr_clk.c, 60000000);
 }
 
 static int __init msm8960_clock_late_init(void)
@@ -6859,8 +7033,8 @@ struct clock_init_data msm8960_clock_init_data __initdata = {
 struct clock_init_data apq8064_clock_init_data __initdata = {
 	.table = msm_clocks_8064,
 	.size = ARRAY_SIZE(msm_clocks_8064),
-	.pre_init = msm8960_clock_pre_init,
-	.post_init = msm8960_clock_post_init,
+	.pre_init = msm8064_clock_pre_init,
+	.post_init = msm8064_clock_post_init,
 	.late_init = msm8960_clock_late_init,
 };
 

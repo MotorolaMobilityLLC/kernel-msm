@@ -177,6 +177,9 @@ struct pm8921_bms_chip {
 	int			vbatt_cutoff_count;
 	int			low_voltage_detect;
 	int			vbatt_cutoff_retries;
+	bool			first_report_after_suspend;
+	bool			soc_updated_on_resume;
+	int			last_soc_at_suspend;
 };
 
 /*
@@ -2387,10 +2390,11 @@ static int calculate_state_of_charge(struct pm8921_bms_chip *chip,
 			rbatt, fcc_uah, unusable_charge_uah, cc_uah);
 
 	pr_debug("calculated SOC = %d\n", new_calculated_soc);
-	if (new_calculated_soc != calculated_soc)
+	if (new_calculated_soc != calculated_soc) {
+		calculated_soc = new_calculated_soc;
 		update_power_supply(chip);
+	}
 
-	calculated_soc = new_calculated_soc;
 	firsttime = 0;
 	get_current_time(&chip->last_recalc_time);
 
@@ -2495,15 +2499,31 @@ static int report_state_of_charge(struct pm8921_bms_chip *chip)
 
 	/* last_soc < soc  ... scale and catch up */
 	if (last_soc != -EINVAL && last_soc < soc && soc != 100)
-			soc = scale_soc_while_chg(chip, delta_time_us,
-							soc, last_soc);
+		soc = scale_soc_while_chg(chip, delta_time_us, soc, last_soc);
 
-	/* restrict soc to 1% change */
 	if (last_soc != -EINVAL) {
-		if (soc < last_soc && soc != 0)
+		if (chip->first_report_after_suspend) {
+			chip->first_report_after_suspend = false;
+			if (chip->soc_updated_on_resume) {
+				/*  coming here after a long suspend */
+				chip->soc_updated_on_resume = false;
+				if (last_soc < soc)
+					/* if soc has falsely increased during
+					 * suspend, set the soc_at_suspend
+					 */
+					soc = chip->last_soc_at_suspend;
+			} else {
+				/*
+				 * suspended for a short time
+				 * report the last_soc before suspend
+				 */
+				soc = chip->last_soc_at_suspend;
+			}
+		} else if (soc < last_soc && soc != 0) {
 			soc = last_soc - 1;
-		if (soc > last_soc && soc != 100)
+		} else if (soc > last_soc && soc != 100) {
 			soc = last_soc + 1;
+		}
 	}
 
 	last_soc = bound_soc(soc);
@@ -3560,12 +3580,11 @@ static int __devexit pm8921_bms_remove(struct platform_device *pdev)
 
 static int pm8921_bms_suspend(struct device *dev)
 {
-	/*
-	 * set the last reported soc to invalid, so that
-	 * next time we resume we don't want to restrict
-	 * the decrease of soc by only 1%
-	 */
-	last_soc = -EINVAL;
+	struct pm8921_bms_chip *chip = dev_get_drvdata(dev);
+
+	cancel_delayed_work_sync(&chip->calculate_soc_delayed_work);
+
+	chip->last_soc_at_suspend = last_soc;
 
 	return 0;
 }
@@ -3575,22 +3594,30 @@ static int pm8921_bms_resume(struct device *dev)
 	int rc;
 	unsigned long time_since_last_recalc;
 	unsigned long tm_now_sec;
+	struct pm8921_bms_chip *chip = dev_get_drvdata(dev);
 
 	rc = get_current_time(&tm_now_sec);
 	if (rc) {
 		pr_err("Could not read current time: %d\n", rc);
 		return 0;
 	}
-	if (tm_now_sec > the_chip->last_recalc_time) {
+
+	if (tm_now_sec > chip->last_recalc_time) {
 		time_since_last_recalc = tm_now_sec -
-				the_chip->last_recalc_time;
+				chip->last_recalc_time;
 		pr_debug("Time since last recalc: %lu\n",
 				time_since_last_recalc);
-		if (time_since_last_recalc >= the_chip->soc_calc_period) {
-			the_chip->last_recalc_time = tm_now_sec;
-			recalculate_soc(the_chip);
+		if ((time_since_last_recalc * 1000) >=
+					chip->soc_calc_period) {
+			chip->last_recalc_time = tm_now_sec;
+			recalculate_soc(chip);
+			chip->soc_updated_on_resume = true;
 		}
 	}
+	chip->first_report_after_suspend = true;
+	update_power_supply(chip);
+	schedule_delayed_work(&chip->calculate_soc_delayed_work,
+				msecs_to_jiffies(chip->soc_calc_period));
 
 	return 0;
 }

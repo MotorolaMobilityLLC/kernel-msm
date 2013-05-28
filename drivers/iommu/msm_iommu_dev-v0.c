@@ -30,9 +30,12 @@
 #include <mach/iommu_perfmon.h>
 #include <mach/iommu_hw-v0.h>
 #include <mach/iommu.h>
+#include <mach/msm_bus.h>
 
 static DEFINE_MUTEX(iommu_list_lock);
 static LIST_HEAD(iommu_list);
+
+static struct of_device_id msm_iommu_v0_ctx_match_table[];
 
 void msm_iommu_add_drv(struct msm_iommu_drvdata *drv)
 {
@@ -77,9 +80,12 @@ struct device *msm_iommu_get_ctx(const char *ctx_name)
 	}
 	mutex_unlock(&iommu_list_lock);
 
-	if (!dev || !dev_get_drvdata(dev))
-		pr_err("Could not find context <%s>\n", ctx_name);
 	put_device(dev);
+
+	if (!dev || !dev_get_drvdata(dev)) {
+		pr_debug("Could not find context <%s>\n", ctx_name);
+		dev = ERR_PTR(-EPROBE_DEFER);
+	}
 
 	return dev;
 }
@@ -128,68 +134,24 @@ static void msm_iommu_reset(void __iomem *base, void __iomem *glb_base, int ncb)
 	mb();
 }
 
-static int msm_iommu_parse_dt(struct platform_device *pdev,
-				struct msm_iommu_drvdata *drvdata)
-{
-#ifdef CONFIG_OF_DEVICE
-	struct device_node *child;
-	struct resource *r;
-	u32 glb_offset = 0;
-	int ret;
-
-	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!r) {
-		pr_err("%s: Missing property reg\n", __func__);
-		return -EINVAL;
-	}
-	drvdata->base = devm_ioremap(&pdev->dev, r->start, resource_size(r));
-	if (!drvdata->base) {
-		pr_err("%s: Unable to ioremap %pr\n", __func__, r);
-		return -ENOMEM;
-	}
-	drvdata->glb_base = drvdata->base;
-
-	if (!of_property_read_u32(pdev->dev.of_node, "qcom,glb-offset",
-			&glb_offset)) {
-		drvdata->glb_base += glb_offset;
-	} else {
-		pr_err("%s: Missing property qcom,glb-offset\n", __func__);
-		return -EINVAL;
-	}
-
-	for_each_child_of_node(pdev->dev.of_node, child) {
-		drvdata->ncb++;
-		if (!of_platform_device_create(child, NULL, &pdev->dev))
-			pr_err("Failed to create %s device\n", child->name);
-	}
-
-	ret = of_property_read_string(pdev->dev.of_node, "label",
-			&drvdata->name);
-	if (ret) {
-		pr_err("%s: Missing property label\n", __func__);
-		return -EINVAL;
-	}
-	drvdata->sec_id = -1;
-	drvdata->ttbr_split = 0;
-#endif
-	return 0;
-}
-
 static int __get_clocks(struct platform_device *pdev,
-				 struct msm_iommu_drvdata *drvdata)
+			struct msm_iommu_drvdata *drvdata,
+			int needs_alt_core_clk)
 {
 	int ret = 0;
 
-	drvdata->pclk = clk_get(&pdev->dev, "iface_clk");
+	drvdata->pclk = devm_clk_get(&pdev->dev, "iface_clk");
 	if (IS_ERR(drvdata->pclk)) {
 		ret = PTR_ERR(drvdata->pclk);
 		drvdata->pclk = NULL;
-		pr_err("Unable to get %s clock for %s IOMMU device\n",
-			dev_name(&pdev->dev), drvdata->name);
+		if (ret != -EPROBE_DEFER) {
+			pr_err("Unable to get %s clock for %s IOMMU device\n",
+				dev_name(&pdev->dev), drvdata->name);
+		}
 		goto fail;
 	}
 
-	drvdata->clk = clk_get(&pdev->dev, "core_clk");
+	drvdata->clk = devm_clk_get(&pdev->dev, "core_clk");
 
 	if (!IS_ERR(drvdata->clk)) {
 		if (clk_get_rate(drvdata->clk) == 0) {
@@ -199,41 +161,145 @@ static int __get_clocks(struct platform_device *pdev,
 	} else {
 		drvdata->clk = NULL;
 	}
+
+	if (needs_alt_core_clk) {
+		drvdata->aclk = devm_clk_get(&pdev->dev, "alt_core_clk");
+		if (IS_ERR(drvdata->aclk)) {
+			ret = PTR_ERR(drvdata->aclk);
+			goto fail;
+		}
+	}
+
+	if (drvdata->aclk && clk_get_rate(drvdata->aclk) == 0) {
+		ret = clk_round_rate(drvdata->aclk, 1000);
+		clk_set_rate(drvdata->aclk, ret);
+	}
+
 	return 0;
 fail:
 	return ret;
 }
 
-static void __put_clocks(struct msm_iommu_drvdata *drvdata)
-{
-	if (drvdata->clk)
-		clk_put(drvdata->clk);
-	clk_put(drvdata->pclk);
-}
+#ifdef CONFIG_OF_DEVICE
 
-static int __enable_clocks(struct msm_iommu_drvdata *drvdata)
+static int __get_bus_vote_client(struct platform_device *pdev,
+				  struct msm_iommu_drvdata *drvdata)
 {
-	int ret;
+	int ret = 0;
+	struct msm_bus_scale_pdata *bs_table;
+	const char *dummy;
 
-	ret = clk_prepare_enable(drvdata->pclk);
+	/* Check whether bus scaling has been specified for this node */
+	ret = of_property_read_string(pdev->dev.of_node, "qcom,msm-bus,name",
+				      &dummy);
 	if (ret)
-		goto fail;
+		return 0;
 
-	if (drvdata->clk) {
-		ret = clk_prepare_enable(drvdata->clk);
-		if (ret)
-			clk_disable_unprepare(drvdata->pclk);
+	bs_table = msm_bus_cl_get_pdata(pdev);
+
+	if (bs_table) {
+		drvdata->bus_client = msm_bus_scale_register_client(bs_table);
+		if (IS_ERR(&drvdata->bus_client)) {
+			pr_err("%s(): Bus client register failed.\n", __func__);
+			ret = -EINVAL;
+		}
 	}
-fail:
 	return ret;
 }
 
-static void __disable_clocks(struct msm_iommu_drvdata *drvdata)
+static void __put_bus_vote_client(struct msm_iommu_drvdata *drvdata)
 {
-	if (drvdata->clk)
-		clk_disable_unprepare(drvdata->clk);
-	clk_disable_unprepare(drvdata->pclk);
+	msm_bus_scale_unregister_client(drvdata->bus_client);
+	drvdata->bus_client = 0;
 }
+
+static int msm_iommu_parse_dt(struct platform_device *pdev,
+				struct msm_iommu_drvdata *drvdata)
+{
+	struct device_node *child;
+	struct resource *r;
+	u32 glb_offset = 0;
+	int ret = 0;
+	int needs_alt_core_clk;
+
+	ret = __get_bus_vote_client(pdev, drvdata);
+
+	if (ret)
+		goto fail;
+
+	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!r) {
+		pr_err("%s: Missing property reg\n", __func__);
+		ret = -EINVAL;
+		goto fail;
+	}
+	drvdata->base = devm_ioremap(&pdev->dev, r->start, resource_size(r));
+	if (!drvdata->base) {
+		pr_err("%s: Unable to ioremap %pr\n", __func__, r);
+		ret = -ENOMEM;
+		goto fail;
+	}
+	drvdata->glb_base = drvdata->base;
+
+	if (!of_property_read_u32(pdev->dev.of_node, "qcom,glb-offset",
+			&glb_offset)) {
+		drvdata->glb_base += glb_offset;
+	} else {
+		pr_err("%s: Missing property qcom,glb-offset\n", __func__);
+		ret = -EINVAL;
+		goto fail;
+	}
+
+	for_each_child_of_node(pdev->dev.of_node, child)
+		drvdata->ncb++;
+
+	ret = of_property_read_string(pdev->dev.of_node, "label",
+			&drvdata->name);
+	if (ret) {
+		pr_err("%s: Missing property label\n", __func__);
+		ret = -EINVAL;
+		goto fail;
+	}
+
+	needs_alt_core_clk = of_property_read_bool(pdev->dev.of_node,
+						   "qcom,needs-alt-core-clk");
+
+	ret = __get_clocks(pdev, drvdata, needs_alt_core_clk);
+
+	if (ret)
+		goto fail;
+
+	drvdata->sec_id = -1;
+	drvdata->ttbr_split = 0;
+
+	ret = of_platform_populate(pdev->dev.of_node,
+				   msm_iommu_v0_ctx_match_table,
+				   NULL, &pdev->dev);
+	if (ret) {
+		pr_err("Failed to create iommu context device\n");
+		goto fail;
+	}
+
+	return ret;
+
+fail:
+	__put_bus_vote_client(drvdata);
+	return ret;
+}
+
+#else
+static int msm_iommu_parse_dt(struct platform_device *pdev,
+				struct msm_iommu_drvdata *drvdata)
+{
+	return 0;
+}
+
+static void __put_bus_vote_client(struct msm_iommu_drvdata *drvdata)
+{
+
+}
+
+#endif
 
 /*
  * Do a basic check of the IOMMU by performing an ATS operation
@@ -331,7 +397,7 @@ static int msm_iommu_probe(struct platform_device *pdev)
 
 	if (!drvdata) {
 		ret = -ENOMEM;
-		goto fail;
+		goto fail_mem;
 	}
 
 	if (pdev->dev.of_node) {
@@ -341,6 +407,11 @@ static int msm_iommu_probe(struct platform_device *pdev)
 	} else if (pdev->dev.platform_data) {
 		struct resource *r, *r2;
 		resource_size_t	len;
+
+		ret = __get_clocks(pdev, drvdata, 0);
+
+		if (ret)
+			goto fail;
 
 		r = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						"physbase");
@@ -352,7 +423,8 @@ static int msm_iommu_probe(struct platform_device *pdev)
 
 		len = resource_size(r);
 
-		r2 = request_mem_region(r->start, len, r->name);
+		r2 = devm_request_mem_region(&pdev->dev, r->start,
+					     len, r->name);
 		if (!r2) {
 			pr_err("Could not request memory region: %pr\n", r);
 			ret = -EBUSY;
@@ -382,12 +454,7 @@ static int msm_iommu_probe(struct platform_device *pdev)
 
 	drvdata->dev = &pdev->dev;
 
-	ret = __get_clocks(pdev, drvdata);
-
-	if (ret)
-		goto fail;
-
-	__enable_clocks(drvdata);
+	iommu_access_ops_v0.iommu_clk_on(drvdata);
 
 	msm_iommu_reset(drvdata->base, drvdata->glb_base, drvdata->ncb);
 
@@ -395,13 +462,13 @@ static int msm_iommu_probe(struct platform_device *pdev)
 	if (ret)
 		goto fail_clk;
 
+	iommu_access_ops_v0.iommu_clk_off(drvdata);
+
 	pr_info("device %s mapped at %p, with %d ctx banks\n",
 		drvdata->name, drvdata->base, drvdata->ncb);
 
 	msm_iommu_add_drv(drvdata);
 	platform_set_drvdata(pdev, drvdata);
-
-	__disable_clocks(drvdata);
 
 	pmon_info = msm_iommu_pm_alloc(&pdev->dev);
 	if (pmon_info != NULL) {
@@ -430,9 +497,10 @@ static int msm_iommu_probe(struct platform_device *pdev)
 	return 0;
 
 fail_clk:
-	__disable_clocks(drvdata);
-	__put_clocks(drvdata);
+	iommu_access_ops_v0.iommu_clk_off(drvdata);
 fail:
+	__put_bus_vote_client(drvdata);
+fail_mem:
 	return ret;
 }
 
@@ -440,12 +508,13 @@ static int msm_iommu_remove(struct platform_device *pdev)
 {
 	struct msm_iommu_drvdata *drv = NULL;
 
+	msm_iommu_pm_iommu_unregister(&pdev->dev);
+	msm_iommu_pm_free(&pdev->dev);
+
 	drv = platform_get_drvdata(pdev);
 	if (drv) {
+		__put_bus_vote_client(drv);
 		msm_iommu_remove_drv(drv);
-		if (drv->clk)
-			clk_put(drv->clk);
-		clk_put(drv->pclk);
 		platform_set_drvdata(pdev, NULL);
 	}
 	return 0;
@@ -461,26 +530,28 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq > 0) {
-		ret = request_threaded_irq(irq, NULL,
+		ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
 				msm_iommu_fault_handler,
 				IRQF_ONESHOT | IRQF_SHARED,
 				"msm_iommu_nonsecure_irq", ctx_drvdata);
 		if (ret) {
 			pr_err("Request IRQ %d failed with ret=%d\n", irq, ret);
-			return ret;
+			goto out;
 		}
 	}
 
 	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!r) {
 		pr_err("Could not find reg property for context bank\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	ret = of_address_to_resource(pdev->dev.parent->of_node, 0, &rp);
 	if (ret) {
 		pr_err("of_address_to_resource failed\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* Calculate the context bank number using the base addresses. CB0
@@ -491,29 +562,34 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 	if (of_property_read_string(pdev->dev.of_node, "label",
 					&ctx_drvdata->name)) {
 		pr_err("Could not find label property\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (!of_get_property(pdev->dev.of_node, "qcom,iommu-ctx-mids",
 			     &nmid_array_size)) {
 		pr_err("Could not find iommu-ctx-mids property\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 	if (nmid_array_size >= sizeof(ctx_drvdata->sids)) {
 		pr_err("Too many mids defined - array size: %u, mids size: %u\n",
 			nmid_array_size, sizeof(ctx_drvdata->sids));
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 	nmid = nmid_array_size / sizeof(*ctx_drvdata->sids);
 
 	if (of_property_read_u32_array(pdev->dev.of_node, "qcom,iommu-ctx-mids",
 				       ctx_drvdata->sids, nmid)) {
 		pr_err("Could not find iommu-ctx-mids property\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 	ctx_drvdata->nsid = nmid;
 
-	return 0;
+out:
+	return ret;
 }
 
 static void __program_m2v_tables(struct msm_iommu_drvdata *drvdata,
@@ -563,7 +639,7 @@ static int msm_iommu_ctx_probe(struct platform_device *pdev)
 	drvdata = dev_get_drvdata(pdev->dev.parent);
 
 	if (!drvdata) {
-		ret = -ENODEV;
+		ret = -EPROBE_DEFER;
 		goto fail;
 	}
 
@@ -581,8 +657,10 @@ static int msm_iommu_ctx_probe(struct platform_device *pdev)
 
 	if (pdev->dev.of_node) {
 		ret = msm_iommu_ctx_parse_dt(pdev, ctx_drvdata);
-		if (ret)
+		if (ret) {
+			platform_set_drvdata(pdev, NULL);
 			goto fail;
+		}
 	} else if (pdev->dev.platform_data) {
 		struct msm_iommu_ctx_dev *c = pdev->dev.platform_data;
 
@@ -604,7 +682,8 @@ static int msm_iommu_ctx_probe(struct platform_device *pdev)
 			goto fail;
 		}
 
-		ret = request_threaded_irq(irq, NULL, msm_iommu_fault_handler,
+		ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
+					msm_iommu_fault_handler,
 					IRQF_ONESHOT | IRQF_SHARED,
 					"msm_iommu_nonsecure_irq", ctx_drvdata);
 
@@ -618,9 +697,9 @@ static int msm_iommu_ctx_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
-	__enable_clocks(drvdata);
+	iommu_access_ops_v0.iommu_clk_on(drvdata);
 	__program_m2v_tables(drvdata, ctx_drvdata);
-	__disable_clocks(drvdata);
+	iommu_access_ops_v0.iommu_clk_off(drvdata);
 
 	dev_info(&pdev->dev, "context %s using bank %d\n", ctx_drvdata->name,
 							   ctx_drvdata->num);
@@ -650,15 +729,15 @@ static struct platform_driver msm_iommu_driver = {
 	.remove		= __devexit_p(msm_iommu_remove),
 };
 
-static struct of_device_id msm_iommu_ctx_match_table[] = {
-	{ .name = "qcom,iommu-ctx", },
+static struct of_device_id msm_iommu_v0_ctx_match_table[] = {
+	{ .compatible = "qcom,msm-smmu-v0-ctx", },
 	{}
 };
 
 static struct platform_driver msm_iommu_ctx_driver = {
 	.driver = {
 		.name	= "msm_iommu_ctx",
-		.of_match_table = msm_iommu_ctx_match_table,
+		.of_match_table = msm_iommu_v0_ctx_match_table,
 	},
 	.probe		= msm_iommu_ctx_probe,
 	.remove		= __devexit_p(msm_iommu_ctx_remove),

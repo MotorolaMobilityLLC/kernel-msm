@@ -248,13 +248,14 @@ static int mdss_mdp_ctl_perf_update(struct mdss_mdp_ctl *ctl)
 	return ret;
 }
 
-static struct mdss_mdp_ctl *mdss_mdp_ctl_alloc(struct mdss_data_type *mdata)
+static struct mdss_mdp_ctl *mdss_mdp_ctl_alloc(struct mdss_data_type *mdata,
+					       u32 off)
 {
 	struct mdss_mdp_ctl *ctl = NULL;
-	int cnum;
+	u32 cnum;
 
 	mutex_lock(&mdss_mdp_ctl_lock);
-	for (cnum = 0; cnum < mdata->nctl; cnum++) {
+	for (cnum = off; cnum < mdata->nctl; cnum++) {
 		ctl = mdata->ctl_off + cnum;
 		if (ctl->ref_cnt == 0) {
 			ctl->ref_cnt++;
@@ -391,7 +392,7 @@ struct mdss_mdp_mixer *mdss_mdp_wb_mixer_alloc(int rotator)
 	struct mdss_mdp_ctl *ctl = NULL;
 	struct mdss_mdp_mixer *mixer = NULL;
 
-	ctl = mdss_mdp_ctl_alloc(mdss_res);
+	ctl = mdss_mdp_ctl_alloc(mdss_res, mdss_res->nmixers_intf);
 	if (!ctl)
 		return NULL;
 
@@ -449,6 +450,29 @@ int mdss_mdp_wb_mixer_destroy(struct mdss_mdp_mixer *mixer)
 	mdss_mdp_ctl_perf_commit(ctl->mdata, MDSS_MDP_PERF_UPDATE_ALL);
 
 	return 0;
+}
+
+void mdss_mdp_ctl_splash_start(struct mdss_panel_data *pdata)
+{
+	switch (pdata->panel_info.type) {
+	case MIPI_VIDEO_PANEL:
+		mdss_mdp_video_copy_splash_screen(pdata);
+		break;
+	case MIPI_CMD_PANEL:
+	default:
+		break;
+	}
+}
+
+int mdss_mdp_ctl_splash_finish(struct mdss_mdp_ctl *ctl)
+{
+	switch (ctl->panel_data->panel_info.type) {
+	case MIPI_VIDEO_PANEL:
+		return mdss_mdp_video_reconfigure_splash_done(ctl);
+	case MIPI_CMD_PANEL:
+	default:
+		return 0;
+	}
 }
 
 static inline int mdss_mdp_set_split_ctl(struct mdss_mdp_ctl *ctl,
@@ -646,7 +670,7 @@ struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 	int ret = 0;
 
 	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
-	ctl = mdss_mdp_ctl_alloc(mdata);
+	ctl = mdss_mdp_ctl_alloc(mdata, MDSS_MDP_CTL0);
 	if (!ctl) {
 		pr_err("unable to allocate ctl\n");
 		return ERR_PTR(-ENOMEM);
@@ -688,6 +712,9 @@ struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 		ctl->intf_type = MDSS_INTF_HDMI;
 		ctl->opmode = MDSS_MDP_CTL_OP_VIDEO_MODE;
 		ctl->start_fnc = mdss_mdp_video_start;
+		ret = mdss_mdp_limited_lut_igc_config(ctl);
+		if (ret)
+			pr_err("Unable to config IGC LUT data");
 		break;
 	case WRITEBACK_PANEL:
 		ctl->intf_num = MDSS_MDP_NO_INTF;
@@ -1478,7 +1505,6 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg)
 	mdss_mdp_pp_setup_locked(ctl);
 	mdss_mdp_ctl_write(ctl, MDSS_MDP_REG_CTL_FLUSH, ctl->flush_bits);
 	if (sctl) {
-		mdss_mdp_pp_setup_locked(sctl);
 		mdss_mdp_ctl_write(sctl, MDSS_MDP_REG_CTL_FLUSH,
 			sctl->flush_bits);
 	}

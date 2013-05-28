@@ -10,13 +10,21 @@
  * GNU General Public License for more details.
  */
 
-/include/ "skeleton.dtsi"
-/include/ "apq8084-ion.dtsi"
+/include/ "skeleton64.dtsi"
 
 / {
 	model = "Qualcomm APQ 8084";
 	compatible = "qcom,apq8084";
 	interrupt-parent = <&intc>;
+	soc: soc { };
+};
+
+/include/ "apq8084-ion.dtsi"
+
+&soc {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	ranges = <0 0 0 0xffffffff>;
 
 	intc: interrupt-controller@f9000000 {
 		compatible = "qcom,msm-qgic2";
@@ -125,6 +133,78 @@
 		#size-cells = <0>;
 		interrupt-controller;
 		#interrupt-cells = <3>;
+	};
+
+	usb3: qcom,ssusb@f9200000 {
+		compatible = "qcom,dwc-usb3-msm";
+		reg = <0xf9200000 0xfc000>,
+			 <0xfd4ab000 0x4>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		interrupts = <0 133 0>;
+		interrupt-names = "hs_phy_irq";
+		ssusb_vdd_dig-supply = <&pma8084_s1>;
+		SSUSB_1p8-supply = <&pma8084_l6>;
+		hsusb_vdd_dig-supply = <&pma8084_s1>;
+		HSUSB_1p8-supply = <&pma8084_l6>;
+		HSUSB_3p3-supply = <&pma8084_l24>;
+		qcom,dwc-usb3-msm-dbm-eps = <4>;
+		qcom,vdd-voltage-level = <0 900000 1050000>;
+
+		dwc3@f9200000 {
+			compatible = "synopsys,dwc3";
+			reg = <0xf9200000 0xfc000>;
+			interrupt-parent = <&intc>;
+			interrupts = <0 131 0>, <0 179 0>;
+			interrupt-names = "irq", "otg_irq";
+			tx-fifo-resize;
+		};
+	};
+
+	android_usb {
+		compatible = "qcom,android-usb";
+	};
+
+	qcom,ocmem@fdd00000 {
+		compatible = "qcom,msm-ocmem";
+		reg = <0xfdd00000 0x2000>,
+		      <0xfdd02000 0x2000>,
+		      <0xfe039000 0x400>,
+		      <0xfec00000 0x200000>;
+		reg-names = "ocmem_ctrl_physical", "dm_ctrl_physical", "br_ctrl_physical", "ocmem_physical";
+		interrupts = <0 76 0 0 77 0>;
+		interrupt-names = "ocmem_irq", "dm_irq";
+		qcom,ocmem-num-regions = <0x4>;
+		qcom,ocmem-num-macros = <0x20>;
+		qcom,resource-type = <0x706d636f>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0x0 0xfec00000 0x200000>;
+
+		partition@0 {
+			reg = <0x0 0x180000>;
+			qcom,ocmem-part-name = "graphics";
+			qcom,ocmem-part-min = <0x80000>;
+		};
+
+		partition@80000 {
+			reg = <0x180000 0x80000>;
+			qcom,ocmem-part-name = "lp_audio";
+			qcom,ocmem-part-min = <0x80000>;
+		};
+
+		partition@100000 {
+			reg = <0x180000 0x80000>;
+			qcom,ocmem-part-name = "video";
+			qcom,ocmem-part-min = <0x55000>;
+		};
+
+	};
+
+	memory_hole: qcom,msm-mem-hole {
+		compatible = "qcom,msm-mem-hole";
+		qcom,memblock-remove = <0x0dc00000 0x2000000>; /* Address and Size of Hole */
 	};
 };
 

@@ -1021,7 +1021,6 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	pwr->pm_qos_latency = 501;
 
 	pm_runtime_enable(device->parentdev);
-	register_early_suspend(&device->display_off);
 	return result;
 
 clk_err:
@@ -1041,7 +1040,6 @@ void kgsl_pwrctrl_close(struct kgsl_device *device)
 	KGSL_PWR_INFO(device, "close device %d\n", device->id);
 
 	pm_runtime_disable(device->parentdev);
-	unregister_early_suspend(&device->display_off);
 
 	clk_put(pwr->ebi1_clk);
 
@@ -1151,8 +1149,7 @@ void kgsl_timer(unsigned long data)
 
 	KGSL_PWR_INFO(device, "idle timer expired device %d\n", device->id);
 	if (device->requested_state != KGSL_STATE_SUSPEND) {
-		if (device->pwrctrl.restore_slumber ||
-					device->pwrctrl.strtstp_sleepwake)
+		if (device->pwrctrl.strtstp_sleepwake)
 			kgsl_pwrctrl_request_state(device, KGSL_STATE_SLUMBER);
 		else
 			kgsl_pwrctrl_request_state(device, KGSL_STATE_SLEEP);
@@ -1448,20 +1445,17 @@ int kgsl_active_count_get(struct kgsl_device *device)
 	BUG_ON(!mutex_is_locked(&device->mutex));
 
 	if (device->active_cnt == 0) {
-		if (device->requested_state == KGSL_STATE_SUSPEND ||
-				device->state == KGSL_STATE_SUSPEND) {
-			mutex_unlock(&device->mutex);
-			wait_for_completion(&device->hwaccess_gate);
-			mutex_lock(&device->mutex);
-		} else if (device->state == KGSL_STATE_DUMP_AND_FT) {
-			mutex_unlock(&device->mutex);
-			wait_for_completion(&device->ft_gate);
-			mutex_lock(&device->mutex);
-		}
+		mutex_unlock(&device->mutex);
+		wait_for_completion(&device->hwaccess_gate);
+		wait_for_completion(&device->ft_gate);
+		mutex_lock(&device->mutex);
+
 		ret = kgsl_pwrctrl_wake(device);
 	}
 	if (ret == 0)
 		device->active_cnt++;
+	trace_kgsl_active_count(device,
+		(unsigned long) __builtin_return_address(0));
 	return ret;
 }
 EXPORT_SYMBOL(kgsl_active_count_get);
@@ -1490,6 +1484,8 @@ int kgsl_active_count_get_light(struct kgsl_device *device)
 	}
 
 	device->active_cnt++;
+	trace_kgsl_active_count(device,
+		(unsigned long) __builtin_return_address(0));
 	return 0;
 }
 EXPORT_SYMBOL(kgsl_active_count_get_light);
@@ -1512,6 +1508,8 @@ void kgsl_active_count_put(struct kgsl_device *device)
 	kgsl_pwrscale_idle(device);
 	if (device->active_cnt > 1) {
 		device->active_cnt--;
+		trace_kgsl_active_count(device,
+			(unsigned long) __builtin_return_address(0));
 		return;
 	}
 
@@ -1528,6 +1526,8 @@ void kgsl_active_count_put(struct kgsl_device *device)
 	}
 	device->active_cnt--;
 
+	trace_kgsl_active_count(device,
+		(unsigned long) __builtin_return_address(0));
 	if (device->active_cnt == 0)
 		complete(&device->suspend_gate);
 }

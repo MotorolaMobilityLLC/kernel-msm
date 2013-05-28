@@ -31,6 +31,7 @@
 #include <mach/clk.h>
 #include <mach/msm_smsm.h>
 #include <mach/ramdump.h>
+#include <mach/msm_smem.h>
 
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
@@ -92,7 +93,6 @@ struct mba_data {
 	void *smem_ramdump_dev;
 	bool crash_shutdown;
 	bool ignore_errors;
-	int is_loadable;
 	int err_fatal_irq;
 	int force_stop_gpio;
 };
@@ -105,13 +105,15 @@ module_param(modem_auth_timeout_ms, int, S_IRUGO | S_IWUSR);
 
 static int pil_mss_power_up(struct q6v5_data *drv)
 {
-	int ret;
+	int ret = 0;
 	struct device *dev = drv->desc.dev;
 	u32 regval;
 
-	ret = regulator_enable(drv->vreg);
-	if (ret)
-		dev_err(dev, "Failed to enable modem regulator.\n");
+	if (drv->vreg) {
+		ret = regulator_enable(drv->vreg);
+		if (ret)
+			dev_err(dev, "Failed to enable modem regulator.\n");
+	}
 
 	if (drv->cxrail_bhs) {
 		regval = readl_relaxed(drv->cxrail_bhs);
@@ -135,7 +137,10 @@ static int pil_mss_power_down(struct q6v5_data *drv)
 		writel_relaxed(regval, drv->cxrail_bhs);
 	}
 
-	return regulator_disable(drv->vreg);
+	if (drv->vreg)
+		return regulator_disable(drv->vreg);
+
+	return 0;
 }
 
 static int pil_mss_enable_clks(struct q6v5_data *drv)
@@ -502,7 +507,7 @@ static int modem_shutdown(const struct subsys_desc *subsys)
 {
 	struct mba_data *drv = subsys_to_drv(subsys);
 
-	if (!drv->is_loadable)
+	if (subsys->is_not_loadable)
 		return 0;
 	pil_shutdown(&drv->desc);
 	pil_shutdown(&drv->q6->desc);
@@ -514,7 +519,7 @@ static int modem_powerup(const struct subsys_desc *subsys)
 	struct mba_data *drv = subsys_to_drv(subsys);
 	int ret;
 
-	if (!drv->is_loadable)
+	if (subsys->is_not_loadable)
 		return 0;
 	/*
 	 * At this time, the modem is shutdown. Therefore this function cannot
@@ -601,7 +606,7 @@ static int mss_start(const struct subsys_desc *desc)
 	int ret;
 	struct mba_data *drv = subsys_to_drv(desc);
 
-	if (!drv->is_loadable)
+	if (desc->is_not_loadable)
 		return 0;
 
 	ret = pil_boot(&drv->q6->desc);
@@ -624,7 +629,7 @@ static void mss_stop(const struct subsys_desc *desc)
 {
 	struct mba_data *drv = subsys_to_drv(desc);
 
-	if (!drv->is_loadable)
+	if (desc->is_not_loadable)
 		return;
 
 	pil_shutdown(&drv->desc);
@@ -649,6 +654,17 @@ static int __devinit pil_subsys_init(struct mba_data *drv,
 	drv->subsys_desc.crash_shutdown = modem_crash_shutdown;
 	drv->subsys_desc.start = mss_start;
 	drv->subsys_desc.stop = mss_stop;
+
+	ret = of_get_named_gpio(pdev->dev.of_node,
+			"qcom,gpio-err-ready", 0);
+	if (ret < 0)
+		return ret;
+
+	ret = gpio_to_irq(ret);
+	if (ret < 0)
+		return ret;
+
+	drv->subsys_desc.err_ready_irq = ret;
 
 	drv->subsys = subsys_register(&drv->subsys_desc);
 	if (IS_ERR(drv->subsys)) {
@@ -714,6 +730,7 @@ static int __devinit pil_mss_loadable_init(struct mba_data *drv,
 	struct q6v5_data *q6;
 	struct pil_desc *q6_desc, *mba_desc;
 	struct resource *res;
+	struct property *prop;
 	int ret;
 
 	int clk_ready = of_get_named_gpio(pdev->dev.of_node,
@@ -751,30 +768,35 @@ static int __devinit pil_mss_loadable_init(struct mba_data *drv,
 	if (!q6->restart_reg)
 		return -ENOMEM;
 
-	q6->vreg = devm_regulator_get(&pdev->dev, "vdd_mss");
-	if (IS_ERR(q6->vreg))
-		return PTR_ERR(q6->vreg);
+	q6->vreg = NULL;
+
+	prop = of_find_property(pdev->dev.of_node, "vdd_mss-supply", NULL);
+	if (prop) {
+		q6->vreg = devm_regulator_get(&pdev->dev, "vdd_mss");
+		if (IS_ERR(q6->vreg))
+			return PTR_ERR(q6->vreg);
+
+		ret = regulator_set_voltage(q6->vreg, VDD_MSS_UV,
+						MAX_VDD_MSS_UV);
+		if (ret)
+			dev_err(&pdev->dev, "Failed to set vreg voltage.\n");
+
+		ret = regulator_set_optimum_mode(q6->vreg, 100000);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "Failed to set vreg mode.\n");
+			return ret;
+		}
+	}
 
 	q6->vreg_mx = devm_regulator_get(&pdev->dev, "vdd_mx");
 	if (IS_ERR(q6->vreg_mx))
 		return PTR_ERR(q6->vreg_mx);
-
-	ret = regulator_set_voltage(q6->vreg, VDD_MSS_UV, MAX_VDD_MSS_UV);
-	if (ret)
-		dev_err(&pdev->dev, "Failed to set regulator's voltage.\n");
-
-	ret = regulator_set_optimum_mode(q6->vreg, 100000);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "Failed to set regulator's mode.\n");
-		return ret;
-	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 		"cxrail_bhs_reg");
 	if (res)
 		q6->cxrail_bhs = devm_ioremap(&pdev->dev, res->start,
 					  resource_size(res));
-
 
 	q6->ahb_clk = devm_clk_get(&pdev->dev, "iface_clk");
 	if (IS_ERR(q6->ahb_clk))
@@ -815,16 +837,18 @@ err_mba_desc:
 static int __devinit pil_mss_driver_probe(struct platform_device *pdev)
 {
 	struct mba_data *drv;
-	int ret, err_fatal_gpio;
+	int ret, err_fatal_gpio, is_not_loadable;
 
 	drv = devm_kzalloc(&pdev->dev, sizeof(*drv), GFP_KERNEL);
 	if (!drv)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, drv);
 
-	drv->is_loadable = of_property_read_bool(pdev->dev.of_node,
-							"qcom,is-loadable");
-	if (drv->is_loadable) {
+	is_not_loadable = of_property_read_bool(pdev->dev.of_node,
+							"qcom,is-not-loadable");
+	if (is_not_loadable) {
+		drv->subsys_desc.is_not_loadable = 1;
+	} else {
 		ret = pil_mss_loadable_init(drv, pdev);
 		if (ret)
 			return ret;

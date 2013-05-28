@@ -206,7 +206,11 @@ int msm_isp_request_stats_stream(struct vfe_device *vfe_dev, void *arg)
 
 	framedrop_period = msm_isp_get_framedrop_period(
 	   stream_req_cmd->framedrop_pattern);
-	stream_info->framedrop_pattern = 0x1;
+
+	if (stream_req_cmd->framedrop_pattern == SKIP_ALL)
+		stream_info->framedrop_pattern = 0x0;
+	else
+		stream_info->framedrop_pattern = 0x1;
 	stream_info->framedrop_period = framedrop_period - 1;
 
 	if (!stream_info->composite_flag)
@@ -339,7 +343,7 @@ static int msm_isp_stats_wait_for_cfg_done(struct vfe_device *vfe_dev)
 	atomic_set(&vfe_dev->stats_data.stats_update, 2);
 	rc = wait_for_completion_interruptible_timeout(
 		&vfe_dev->stats_config_complete,
-		msecs_to_jiffies(500));
+		msecs_to_jiffies(VFE_MAX_CFG_TIMEOUT));
 	if (rc == 0) {
 		pr_err("%s: wait timeout\n", __func__);
 		rc = -1;

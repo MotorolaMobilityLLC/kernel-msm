@@ -20,17 +20,6 @@
 #define DMA_STOP_POLL_SLEEP_US 1000
 #define DMA_STOP_POLL_TIMEOUT_US 16000
 
-static ktime_t mdp3_get_vsync_time(struct mdp3_dma *dma)
-{
-	unsigned long flag;
-	ktime_t time;
-
-	spin_lock_irqsave(&dma->dma_lock, flag);
-	time = dma->vsync_time;
-	spin_unlock_irqrestore(&dma->dma_lock, flag);
-	return time;
-}
-
 static void mdp3_vsync_intr_handler(int type, void *arg)
 {
 	struct mdp3_dma *dma = (struct mdp3_dma *)arg;
@@ -41,13 +30,11 @@ static void mdp3_vsync_intr_handler(int type, void *arg)
 	vsync_client = dma->vsync_client;
 	if (!vsync_client.handler)
 		dma->cb_type &= ~MDP3_DMA_CALLBACK_TYPE_VSYNC;
-	dma->vsync_time = ktime_get();
 	complete(&dma->vsync_comp);
+	spin_unlock(&dma->dma_lock);
 	if (vsync_client.handler)
 		vsync_client.handler(vsync_client.arg);
-	spin_unlock(&dma->dma_lock);
-
-	if (!vsync_client.handler)
+	else
 		mdp3_irq_disable_nosync(type);
 }
 
@@ -186,7 +173,7 @@ static void mdp3_dma_vsync_enable(struct mdp3_dma *dma,
 			updated = 1;
 		}
 	} else {
-		if (!dma->vsync_client.handler) {
+		if (dma->vsync_client.handler) {
 			dma->vsync_client.handler = NULL;
 			dma->vsync_client.arg = NULL;
 			updated = 1;
@@ -231,7 +218,7 @@ static int mdp3_dmap_config(struct mdp3_dma *dma,
 	 * NOTE: MDP_DMA_P_FETCH_CFG: max_burst_size need to use value 4, not
 	 * the default 16 for MDP hang issue workaround
 	 */
-	MDP3_REG_WRITE(MDP3_REG_DMA_P_FETCH_CFG, 0x10);
+	MDP3_REG_WRITE(MDP3_REG_DMA_P_FETCH_CFG, 0x20);
 	MDP3_REG_WRITE(MDP3_REG_PRIMARY_RD_PTR_IRQ, 0x10);
 
 	dma->source_config = *source_config;
@@ -696,7 +683,6 @@ int mdp3_dma_init(struct mdp3_dma *dma,
 		dma->histo_intr_enable = mdp3_dmap_histo_intr_enable;
 		dma->histo_intr_clear = mdp3_dmap_histo_intr_clear;
 		dma->vsync_enable = mdp3_dma_vsync_enable;
-		dma->get_vsync_time = mdp3_get_vsync_time;
 		dma->start = mdp3_dma_start;
 		dma->stop = mdp3_dma_stop;
 		break;
@@ -717,7 +703,6 @@ int mdp3_dma_init(struct mdp3_dma *dma,
 		dma->histo_intr_enable = NULL;
 		dma->histo_intr_clear = NULL;
 		dma->vsync_enable = mdp3_dma_vsync_enable;
-		dma->get_vsync_time = mdp3_get_vsync_time;
 		dma->start = mdp3_dma_start;
 		dma->stop = mdp3_dma_stop;
 		break;
@@ -824,6 +809,7 @@ int dsi_video_config(struct mdp3_intf *intf, struct mdp3_intf_cfg *cfg)
 		temp |= BIT(2);
 	MDP3_REG_WRITE(MDP3_REG_DSI_VIDEO_CTL_POLARITY, temp);
 
+	MDP3_REG_WRITE(MDP3_REG_DSI_VIDEO_UNDERFLOW_CTL, 0x800000ff);
 	return 0;
 }
 

@@ -11,6 +11,28 @@
  */
 
 /include/ "skeleton.dtsi"
+
+/ {
+	model = "Qualcomm MSM 8610";
+	compatible = "qcom,msm8610";
+	interrupt-parent = <&intc>;
+
+	memory {
+		qsecom_mem: qsecom_region {
+			linux,contiguous-region;
+			reg = <0 0x100000>;
+			label = "qsecom_mem";
+		};
+	};
+
+	aliases {
+		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
+		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
+	};
+
+	soc: soc { };
+};
+
 /include/ "msm-iommu-v0.dtsi"
 /include/ "msm8610-ion.dtsi"
 /include/ "msm8610-gpu.dtsi"
@@ -19,11 +41,12 @@
 /include/ "msm8610-pm.dtsi"
 /include/ "msm8610-smp2p.dtsi"
 /include/ "msm8610-bus.dtsi"
+/include/ "msm8610-mdss.dtsi"
 
-/ {
-	model = "Qualcomm MSM 8610";
-	compatible = "qcom,msm8610";
-	interrupt-parent = <&intc>;
+&soc {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	ranges;
 
 	intc: interrupt-controller@f9000000 {
 		compatible = "qcom,msm-qgic2";
@@ -45,20 +68,10 @@
 		qcom,direct-connect-irqs = <8>;
 	};
 
-	memory {
-
-		qsecom_mem: qsecom_region {
-			linux,contiguous-region;
-			reg = <0 0x100000>;
-			label = "qsecom_mem";
-		};
-
-	};
-
-	aliases {
-		spi0 = &spi_0;
-		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
-		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
+	qcom,mpm2-sleep-counter@fc4a3000 {
+		compatible = "qcom,mpm2-sleep-counter";
+		reg = <0xfc4a3000 0x1000>;
+		clock-frequency = <32768>;
 	};
 
 	timer {
@@ -131,6 +144,11 @@
 		qcom,adsp-state = <0>;
 	};
 
+	qcom,msm-audio-ion {
+		compatible = "qcom,msm-audio-ion";
+		qcom,smmu-enabled;
+	};
+
 	qcom,msm-imem@fe805000 {
 		compatible = "qcom,msm-imem";
 		reg = <0xfe805000 0x1000>; /* Address and size of IMEM */
@@ -158,7 +176,7 @@
 		qcom,buffer-type-tz-usage-map = <0x1 0x1>,
 						<0x1fe 0x2>;
 		qcom,hfi = "q6";
-		qcom,max-hw-load = <97200>; /* FWVGA @ 30 * 2 */
+		qcom,max-hw-load = <108000>; /* 720p @ 30 * 1 */
 	};
 
 	qcom,usbbam@f9a44000 {
@@ -427,17 +445,32 @@
 		qcom,pmic-arb-channel = <0>;
 	};
 
-	i2c@f9925000 { /* BLSP-1 QUP-3 */
-		cell-index = <0>;
+	i2c@f9923000 { /* BLSP-1 QUP-1 */
+		cell-index = <1>;
 		compatible = "qcom,i2c-qup";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg-names = "qup_phys_addr";
-		reg = <0xf9925000 0x1000>;
+		reg = <0xf9923000 0x1000>;
 		interrupt-names = "qup_err_intr";
-		interrupts = <0 97 0>;
+		interrupts = <0 95 0>;
 		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 2 0>;
+		qcom,scl-gpio = <&msmgpio 3 0>;
 	};
+
+	i2c_cdc: i2c@f9927000 { /* BLSP1 QUP5 */
+                cell-index = <5>;
+                compatible = "qcom,i2c-qup";
+                #address-cells = <1>;
+                #size-cells = <0>;
+                reg-names = "qup_phys_addr";
+                reg = <0xf9927000 0x1000>;
+                interrupt-names = "qup_err_intr";
+                interrupts = <0 99 0>;
+                qcom,i2c-bus-freq = <100000>;
+        };
 
 	i2c@f9928000 { /* BLSP1 QUP6 */
 		cell-index = <6>;
@@ -454,27 +487,16 @@
 		qcom,scl-gpio = <&msmgpio 17 0>;
 	};
 
-	spi_0: spi@f9923000 { /* BLSP1 QUP1 */
-		compatible = "qcom,spi-qup-v2";
+	i2c@f9925000 { /* BLSP-1 QUP-3 */
+		cell-index = <0>;
+		compatible = "qcom,i2c-qup";
 		#address-cells = <1>;
 		#size-cells = <0>;
-		reg-names = "spi_physical", "spi_bam_physical";
-		reg = <0xf9923000 0x1000>,
-		      <0xf9904000 0xF000>;
-		interrupt-names = "spi_irq", "spi_bam_irq";
-		interrupts = <0 95 0>, <0 238 0>;
-		spi-max-frequency = <19200000>;
-
-		gpios = <&msmgpio 3 0>, /* CLK  */
-			<&msmgpio 1 0>, /* MISO */
-			<&msmgpio 0 0>; /* MOSI */
-		cs-gpios = <&msmgpio 2 0>;
-
-		qcom,infinite-mode = <0>;
-		qcom,use-bam;
-		qcom,ver-reg-exists;
-		qcom,bam-consumer-pipe-index = <12>;
-		qcom,bam-producer-pipe-index = <13>;
+		reg-names = "qup_phys_addr";
+		reg = <0xf9925000 0x1000>;
+		interrupt-names = "qup_err_intr";
+		interrupts = <0 97 0>;
+		qcom,i2c-bus-freq = <100000>;
 	};
 
 	qcom,pronto@fb21b000 {
@@ -490,6 +512,7 @@
 
 		/* GPIO inputs from wcnss */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_4_in 0 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_4_in 1 0>;
 		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_4_in 2 0>;
 
 		/* GPIO output to wcnss */
@@ -507,6 +530,13 @@
 
 	qcom,msm-pcm {
 		compatible = "qcom,msm-pcm-dsp";
+		qcom,msm-pcm-dsp-id = <0>;
+	};
+
+	qcom,msm-pcm-low-latency {
+		compatible = "qcom,msm-pcm-dsp";
+		qcom,msm-pcm-dsp-id = <1>;
+		qcom,msm-pcm-low-latency;
 	};
 
 	qcom,msm-pcm-routing {
@@ -546,15 +576,15 @@
 		qcom,msm-dai-q6-mi2s-prim {
 			compatible = "qcom,msm-dai-q6-mi2s";
 			qcom,msm-dai-q6-mi2s-dev-id = <0>;
-			qcom,msm-mi2s-rx-lines = <1>;
-			qcom,msm-mi2s-tx-lines = <0>;
+			qcom,msm-mi2s-rx-lines = <0>;
+			qcom,msm-mi2s-tx-lines = <3>;
 		};
 
 		qcom,msm-dai-q6-mi2s-sec {
 			compatible = "qcom,msm-dai-q6-mi2s";
 			qcom,msm-dai-q6-mi2s-dev-id = <1>;
-			qcom,msm-mi2s-rx-lines = <0>;
-			qcom,msm-mi2s-tx-lines = <3>;
+			qcom,msm-mi2s-rx-lines = <3>;
+			qcom,msm-mi2s-tx-lines = <0>;
 		};
 	};
 
@@ -599,6 +629,21 @@
 			compatible = "qcom,msm-dai-q6-dev";
 			qcom,msm-dai-q6-dev-id = <240>;
 		};
+
+		qcom,msm-dai-q6-incall-record-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <32771>;
+		};
+
+		qcom,msm-dai-q6-incall-record-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <32772>;
+		};
+
+		qcom,msm-dai-q6-incall-music-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <32773>;
+		};
 	};
 
 	qcom,msm-pcm-hostless {
@@ -636,7 +681,6 @@
 			    "restart_reg", "cxrail_bhs_reg";
 
 		interrupts = <0 24 1>;
-		vdd_mss-supply = <&pm8110_s1>;
 		vdd_cx-supply = <&pm8110_s1_corner>;
 		vdd_mx-supply = <&pm8110_l3>;
 		vdd_pll-supply = <&pm8110_l10>;
@@ -647,6 +691,7 @@
 
 		/* GPIO inputs from mss */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_1_in 0 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_1_in 1 0>;
 		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_1_in 2 0>;
 
 		/* GPIO output to mss */
@@ -666,6 +711,7 @@
 		/* GPIO inputs from lpass */
 		qcom,gpio-err-fatal = <&smp2pgpio_ssr_smp2p_2_in 0 0>;
 		qcom,gpio-proxy-unvote = <&smp2pgpio_ssr_smp2p_2_in 2 0>;
+		qcom,gpio-err-ready = <&smp2pgpio_ssr_smp2p_2_in 1 0>;
 
 		/* GPIO output to lpass */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_2_out 0 0>;
@@ -680,18 +726,17 @@
 		qcom,sensors = <2>;
 		qcom,slope = <2901 2846>;
 		qcom,calib-mode = "fuse_map3";
-		qcom,calibration-less-mode;
-		qcom,tsens-local-init;
 		qcom,sensor-id = <0 5>;
 	};
 
 	qcom,msm-thermal {
 		compatible = "qcom,msm-thermal";
-		qcom,sensor-id = <0>;
+		qcom,sensor-id = <5>;
 		qcom,poll-ms = <250>;
 		qcom,limit-temp = <60>;
 		qcom,temp-hysteresis = <10>;
 		qcom,freq-step = <2>;
+		qcom,freq-control-mask = <0xf>;
 	};
 
 	qcom,ipc-spinlock@fd484000 {
@@ -729,6 +774,12 @@
                 reg = <0xf9bff000 0x200>;
                 qcom,msm-rng-iface-clk;
         };
+
+	qcom,msm-rtb {
+		compatible = "qcom,msm-rtb";
+		qcom,memory-reservation-type = "EBI1";
+		qcom,memory-reservation-size = <0x100000>; /* 1M EBI1 buffer */
+	};
 
 	jtag_mm0: jtagmm@fc34c000 {
 		compatible = "qcom,jtag-mm";
@@ -818,7 +869,7 @@
 		label = "vchg_sns";
 		reg = <2>;
 		qcom,decimation = <0>;
-		qcom,pre-div-channel-scaling = <3>;
+		qcom,pre-div-channel-scaling = <2>;
 		qcom,calibration-type = "absolute";
 		qcom,scale-function = <0>;
 		qcom,hw-settle-time = <0>;
