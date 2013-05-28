@@ -32,6 +32,7 @@
 #include "adreno.h"
 #include "kgsl_trace.h"
 #include "z180.h"
+#include "kgsl_cffdump.h"
 
 
 static struct kgsl_iommu_register_list kgsl_iommuv1_reg[KGSL_IOMMU_REG_MAX] = {
@@ -1303,6 +1304,10 @@ static int kgsl_iommu_start(struct kgsl_mmu *mmu)
 	kgsl_iommu_lock_rb_in_tlb(mmu);
 	msm_iommu_unlock();
 
+	/* For complete CFF */
+	kgsl_cffdump_setmem(mmu->setstate_memory.gpuaddr +
+				KGSL_IOMMU_SETSTATE_NOP_OFFSET,
+				cp_nop_packet(1), sizeof(unsigned int));
 
 	kgsl_iommu_disable_clk_on_ts(mmu, 0, false);
 	mmu->flags |= KGSL_FLAGS_STARTED;
