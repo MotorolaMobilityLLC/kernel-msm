@@ -2839,8 +2839,6 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 	bool need_to_query = false;
 	unsigned char command = 0x01;
 
-	synaptics_dsx_on_resume(rmi4_data);
-
 	current_state = synaptics_dsx_get_state_safe(rmi4_data);
 	if (current_state == STATE_UNKNOWN) {
 		synaptics_rmi4_cleanup(rmi4_data);
@@ -3581,6 +3579,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 		rmi4_data->touch_stopped = false;
 
+		synaptics_dsx_on_resume(rmi4_data);
 		if (rmi4_data->reset_on_resume)
 			synaptics_rmi4_reset_device(rmi4_data);
 	}
