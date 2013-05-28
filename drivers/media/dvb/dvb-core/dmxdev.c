@@ -2725,10 +2725,18 @@ static int dvb_dmxdev_add_pid(struct dmxdev *dmxdev,
 static int dvb_dmxdev_remove_pid(struct dmxdev *dmxdev,
 				  struct dmxdev_filter *filter, u16 pid)
 {
+	int feed_count;
 	struct dmxdev_feed *feed, *tmp;
 
 	if ((filter->type != DMXDEV_TYPE_PES) ||
 	    (filter->state < DMXDEV_STATE_SET))
+		return -EINVAL;
+
+	feed_count = 0;
+	list_for_each_entry(tmp, &filter->feed.ts, next)
+		feed_count++;
+
+	if (feed_count <= 1)
 		return -EINVAL;
 
 	list_for_each_entry_safe(feed, tmp, &filter->feed.ts, next) {
