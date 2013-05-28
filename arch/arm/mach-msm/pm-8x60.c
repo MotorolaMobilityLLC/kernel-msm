@@ -1474,7 +1474,7 @@ static struct notifier_block setup_broadcast_notifier = {
 	.notifier_call = setup_broadcast_cpuhp_notify,
 };
 
-static int __init msm_pm_init(void)
+static int __devinit msm_pm_init(void)
 {
 	enum msm_pm_time_stats_id enable_stats[] = {
 		MSM_PM_STAT_IDLE_WFI,
