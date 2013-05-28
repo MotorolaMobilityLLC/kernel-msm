@@ -377,17 +377,7 @@ static inline int kgsl_create_device_workqueue(struct kgsl_device *device)
 	return 0;
 }
 
-static inline struct kgsl_context *
-kgsl_find_context(struct kgsl_device_private *dev_priv, uint32_t id)
-{
-	struct kgsl_context *ctxt =
-		idr_find(&dev_priv->device->context_idr, id);
 
-	/* Make sure that the context belongs to the current instance so
-	   that other processes can't guess context IDs and mess things up */
-
-	return  (ctxt && ctxt->dev_priv == dev_priv) ? ctxt : NULL;
-}
 
 int kgsl_check_timestamp(struct kgsl_device *device,
 		struct kgsl_context *context, unsigned int timestamp);
@@ -411,21 +401,6 @@ kgsl_device_get_drvdata(struct kgsl_device *dev)
 	return pdev->dev.platform_data;
 }
 
-/**
- * kgsl_context_get - Get context reference count
- * @context
- *
- * Asynchronous code that holds a pointer to a context
- * must hold a reference count on it. The kgsl device
- * mutex must be held while the context reference count
- * is changed.
- */
-static inline void
-kgsl_context_get(struct kgsl_context *context)
-{
-	kref_get(&context->refcount);
-}
-
 void kgsl_context_destroy(struct kref *kref);
 
 /**
@@ -436,7 +411,74 @@ void kgsl_context_destroy(struct kref *kref);
 static inline void
 kgsl_context_put(struct kgsl_context *context)
 {
-	kref_put(&context->refcount, kgsl_context_destroy);
+	if (context)
+		kref_put(&context->refcount, kgsl_context_destroy);
+}
+
+/**
+ * _kgsl_context_get() - lightweight function to just increment the ref count
+ * @context: Pointer to the KGSL context
+ *
+ * Get a reference to the specified KGSL context structure. This is a
+ * lightweight way to just increase the refcount on a known context rather then
+ * walking through kgsl_context_get and searching the iterator
+ */
+static inline void _kgsl_context_get(struct kgsl_context *context)
+{
+	if (context)
+		kref_get(&context->refcount);
+}
+
+/**
+ * kgsl_context_get - get a pointer to a KGSL context
+ * @devicex - Pointer to the KGSL device that owns the context
+ * @id - Context ID to return
+ *
+ * Find the context associated with the given ID number, increase the reference
+ * count on it and return it.  The caller must make sure that this call is
+ * paired with a kgsl_context_put.  This function is for internal use because it
+ * doesn't validate the ownership of the context with the calling process - use
+ * kgsl_context_get_owner for that
+ */
+static inline struct kgsl_context *kgsl_context_get(struct kgsl_device *device,
+		uint32_t id)
+{
+	struct kgsl_context *context = NULL;
+
+	rcu_read_lock();
+	context = idr_find(&device->context_idr, id);
+
+	_kgsl_context_get(context);
+
+	rcu_read_unlock();
+	return context;
+}
+
+/**
+ * kgsl_context_get_owner - get a pointer to a KGSL context
+ * @dev_priv - Pointer to the owner of the requesting process
+ * @id - Context ID to return
+ *
+ * Find the context associated with the given ID number, increase the reference
+ * count on it and return it.  The caller must make sure that this call is
+ * paired with a kgsl_context_put. This function validates that the context id
+ * given is owned by the dev_priv instancet that is passed in.  see
+ * kgsl_context_get for the internal version that doesn't do the check
+ */
+static inline struct kgsl_context *kgsl_context_get_owner(
+		struct kgsl_device_private *dev_priv, uint32_t id)
+{
+	struct kgsl_context *context;
+
+	context = kgsl_context_get(dev_priv->device, id);
+
+	/* Verify that the context belongs to the dev_priv instance */
+	if (context && context->dev_priv != dev_priv) {
+		kgsl_context_put(context);
+		return NULL;
+	}
+
+	return context;
 }
 
 /**
