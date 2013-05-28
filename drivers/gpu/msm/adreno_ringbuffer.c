@@ -990,6 +990,7 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	unsigned int i;
 	struct adreno_context *drawctxt;
 	unsigned int start_index = 0;
+	int ret = 0;
 
 	if (device->state & KGSL_STATE_HUNG)
 		return -EBUSY;
@@ -1046,9 +1047,15 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 		if (unlikely(adreno_dev->ib_check_level >= 1 &&
 		    !_parse_ibs(dev_priv, ibdesc[i].gpuaddr,
 				ibdesc[i].sizedwords))) {
-			kfree(link);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto done;
 		}
+
+		if (ibdesc[i].sizedwords == 0) {
+			ret = -EINVAL;
+			goto done;
+		}
+
 		*cmds++ = CP_HDR_INDIRECT_BUFFER_PFD;
 		*cmds++ = ibdesc[i].gpuaddr;
 		*cmds++ = ibdesc[i].sizedwords;
@@ -1071,7 +1078,6 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	KGSL_CMD_INFO(device, "ctxt %d g %08x numibs %d ts %d\n",
 		context->id, (unsigned int)ibdesc, numibs, *timestamp);
 
-	kfree(link);
 
 #ifdef CONFIG_MSM_KGSL_CFF_DUMP
 	/*
@@ -1088,9 +1094,12 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	 */
 	if (drawctxt->flags & CTXT_FLAGS_GPU_HANG_FT) {
 		drawctxt->flags &= ~CTXT_FLAGS_GPU_HANG_FT;
-		return -EPROTO;
-	} else
-		return 0;
+		ret = -EPROTO;
+	}
+
+done:
+	kfree(link);
+	return ret;
 }
 
 static void _turn_preamble_on_for_ib_seq(struct adreno_ringbuffer *rb,
