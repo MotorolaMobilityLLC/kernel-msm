@@ -53,6 +53,52 @@ MODULE_PARM_DESC(ksgl_mmu_type,
 
 static struct ion_client *kgsl_ion_client;
 
+int kgsl_memfree_hist_init(void)
+{
+	void *base;
+
+	base = kzalloc(KGSL_MEMFREE_HIST_SIZE, GFP_KERNEL);
+	kgsl_driver.memfree_hist.base_hist_rb = base;
+	if (base == NULL)
+		return -ENOMEM;
+	kgsl_driver.memfree_hist.size = KGSL_MEMFREE_HIST_SIZE;
+	kgsl_driver.memfree_hist.wptr = base;
+	return 0;
+}
+
+void kgsl_memfree_hist_exit(void)
+{
+	kfree(kgsl_driver.memfree_hist.base_hist_rb);
+	kgsl_driver.memfree_hist.base_hist_rb = NULL;
+}
+
+void kgsl_memfree_hist_set_event(unsigned int pid, unsigned int gpuaddr,
+			unsigned int size, int flags)
+{
+	struct kgsl_memfree_hist_elem *p;
+
+	void *base = kgsl_driver.memfree_hist.base_hist_rb;
+	int rbsize = kgsl_driver.memfree_hist.size;
+
+	if (base == NULL)
+		return;
+
+	mutex_lock(&kgsl_driver.memfree_hist_mutex);
+	p = kgsl_driver.memfree_hist.wptr;
+	p->pid = pid;
+	p->gpuaddr = gpuaddr;
+	p->size = size;
+	p->flags = flags;
+
+	kgsl_driver.memfree_hist.wptr++;
+	if ((void *)kgsl_driver.memfree_hist.wptr >= base+rbsize) {
+		kgsl_driver.memfree_hist.wptr =
+			(struct kgsl_memfree_hist_elem *)base;
+	}
+	mutex_unlock(&kgsl_driver.memfree_hist_mutex);
+}
+
+
 /* kgsl_get_mem_entry - get the mem_entry structure for the specified object
  * @device - Pointer to the device structure
  * @ptbase - the pagetable base of the object
@@ -1323,6 +1369,7 @@ static long kgsl_ioctl_drawctxt_destroy(struct kgsl_device_private *dev_priv,
 static long kgsl_ioctl_sharedmem_free(struct kgsl_device_private *dev_priv,
 					unsigned int cmd, void *data)
 {
+	int result = 0;
 	struct kgsl_sharedmem_free *param = data;
 	struct kgsl_process_private *private = dev_priv->process_priv;
 	struct kgsl_mem_entry *entry = NULL;
@@ -1331,15 +1378,22 @@ static long kgsl_ioctl_sharedmem_free(struct kgsl_device_private *dev_priv,
 	entry = kgsl_sharedmem_find(private, param->gpuaddr);
 	spin_unlock(&private->mem_lock);
 
-	if (!entry) {
-		KGSL_MEM_INFO(dev_priv->device, "invalid gpuaddr %08x\n",
-				param->gpuaddr);
-		return -EINVAL;
-	}
-	trace_kgsl_mem_free(entry);
+	if (entry) {
+		trace_kgsl_mem_free(entry);
 
-	kgsl_mem_entry_detach_process(entry);
-	return 0;
+		kgsl_memfree_hist_set_event(
+			entry->priv->pid,
+			entry->memdesc.gpuaddr,
+			entry->memdesc.size,
+			entry->memdesc.flags);
+
+		kgsl_mem_entry_detach_process(entry);
+	} else {
+		KGSL_CORE_ERR("invalid gpuaddr %08x\n", param->gpuaddr);
+		result = -EINVAL;
+	}
+
+	return result;
 }
 
 static long kgsl_ioctl_gpumem_free_id(struct kgsl_device_private *dev_priv,
@@ -2753,6 +2807,8 @@ struct kgsl_driver kgsl_driver  = {
 	.process_mutex = __MUTEX_INITIALIZER(kgsl_driver.process_mutex),
 	.ptlock = __SPIN_LOCK_UNLOCKED(kgsl_driver.ptlock),
 	.devlock = __MUTEX_INITIALIZER(kgsl_driver.devlock),
+	.memfree_hist_mutex =
+		__MUTEX_INITIALIZER(kgsl_driver.memfree_hist_mutex),
 };
 EXPORT_SYMBOL(kgsl_driver);
 
@@ -3077,6 +3133,7 @@ static void kgsl_core_exit(void)
 		kgsl_driver.class = NULL;
 	}
 
+	kgsl_memfree_hist_exit();
 	unregister_chrdev_region(kgsl_driver.major, KGSL_DEVICE_MAX);
 }
 
@@ -3147,6 +3204,9 @@ static int __init kgsl_core_init(void)
 		if (result)
 			goto err;
 	}
+
+	if (kgsl_memfree_hist_init())
+		KGSL_CORE_ERR("failed to init memfree_hist");
 
 	return 0;
 
