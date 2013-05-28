@@ -318,6 +318,20 @@ static inline int adreno_rb_ctxtswitch(unsigned int *cmd)
 		cmd[1] == KGSL_CONTEXT_TO_MEM_IDENTIFIER);
 }
 
+static inline int adreno_context_timestamp(struct kgsl_context *k_ctxt,
+		struct adreno_ringbuffer *rb)
+{
+	struct adreno_context *a_ctxt = NULL;
+
+	if (k_ctxt)
+		a_ctxt = k_ctxt->devctxt;
+
+	if (a_ctxt && a_ctxt->flags & CTXT_FLAGS_PER_CONTEXT_TS)
+		return a_ctxt->timestamp;
+
+	return rb->global_ts;
+}
+
 /**
  * adreno_encode_istore_size - encode istore size in CP format
  * @adreno_dev - The 3D device.
