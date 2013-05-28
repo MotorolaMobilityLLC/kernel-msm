@@ -635,7 +635,10 @@ kgsl_mmu_map(struct kgsl_pagetable *pagetable,
 		}
 	}
 
-	size = kgsl_sg_size(memdesc->sg, memdesc->sglen);
+	/* Add space for the guard page when allocating the mmu VA. */
+	size = memdesc->size;
+	if (kgsl_memdesc_has_guard_page(memdesc))
+		size += PAGE_SIZE;
 
 	pool = pagetable->pool;
 
@@ -733,7 +736,10 @@ kgsl_mmu_unmap(struct kgsl_pagetable *pagetable,
 		return 0;
 	}
 
-	size = kgsl_sg_size(memdesc->sg, memdesc->sglen);
+	/* Add space for the guard page when freeing the mmu VA. */
+	size = memdesc->size;
+	if (kgsl_memdesc_has_guard_page(memdesc))
+		size += PAGE_SIZE;
 
 	start_addr = memdesc->gpuaddr;
 	end_addr = (memdesc->gpuaddr + size);
