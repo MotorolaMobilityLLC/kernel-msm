@@ -1,0 +1,114 @@
+/* Copyright (c) 2013, LGE Inc. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	/* I2C BUS  */
+	i2c@f9925000 {
+		cell-index = <3>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9925000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 97 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <50000000>;
+		qcom,scl-gpio = <&msmgpio 11 0>;
+		qcom,sda-gpio = <&msmgpio 10 0>;
+		qcom,active-only;
+		qcom,master-id = <84>;
+	};
+
+	i2c@f9968000 {
+		cell-index = <12>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9968000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 106 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <50000000>;
+		qcom,scl-gpio = <&msmgpio 88 0>;
+		qcom,sda-gpio = <&msmgpio 87 0>;
+		qcom,active-only;
+		qcom,master-id = <84>;
+	};
+
+	/* I2C device */
+	i2c@f9968000 {
+		/* Invensense */
+		mpu6515_acc@68 {
+			compatible = "inven,mpu6515";
+			reg = <0x68>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <73 0x2>;
+			/* for AKM8963C and BMP280. */
+			inven,vdd_ana-supply = <&pm8941_l17>;
+			/* for MPU6515, AKM8963C and BMP280. */
+			inven,vcc_i2c-supply = <&pm8941_lvs1>;
+			inven,gpio_int1 = <&msmgpio 73 0x00>;
+			fs_range = <0x00>;
+			axis_map_x = <0>;
+			axis_map_y = <1>;
+			axis_map_z = <2>;
+			negate_x = <0>;
+			negate_y = <0>;
+			negate_z = <0>;
+			poll_interval = <200>;
+			min_interval = <5>;
+			inven,secondary_reg = <0x0F>;
+			/* If no compass sensor,
+			 * replace "compass" with "none"
+			 */
+			inven,secondary_type = "compass";
+			inven,secondary_name = "ak8963";
+			inven,secondary_axis_map_x = <0>;
+			inven,secondary_axis_map_y = <1>;
+			inven,secondary_axis_map_z = <2>;
+			inven,secondary_negate_x = <0>;
+			inven,secondary_negate_y = <0>;
+			inven,secondary_negate_z = <0>;
+			inven,aux_reg = <0x76>;
+			/* If no pressure sensor,
+			 * replace "pressure" with "none"
+			 */
+			inven,aux_type = "none";
+			inven,aux_name = "bmp280";
+		};
+	};
+
+	i2c@f9925000 {
+		avago_apds9930@39 {
+			compatible = "avago,apds993x";
+			reg = <0x39>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <61 0x2>;
+			avago,vdd_ana-supply = <&pm8941_l17>;
+			avago,vddio_i2c-supply = <&pm8941_lvs1>;
+			avago,irq-gpio = <&msmgpio 61 0x00>;
+			avago,i2c-pull-up = <1>;
+		};
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa17 {
+		pm8941_l17: regulator-l17 {
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			qcom,init-voltage = <3000000>;
+		};
+	};
+};
