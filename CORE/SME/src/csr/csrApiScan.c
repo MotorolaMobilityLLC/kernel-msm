@@ -7117,15 +7117,7 @@ void csrSetCfgScanControlList( tpAniSirGlobal pMac, tANI_U8 *countryCode, tCsrCh
                    
                 if (found)    // insert a pair(channel#, flag)
                 {
-                    if (CSR_IS_CHANNEL_5GHZ(pControlList[j]))
-                    {
-                        pControlList[j+1] = csrGetScanType(pMac, pControlList[j]);     
-                    }
-                    else  
-                    {
-                        pControlList[j+1]  = eSIR_ACTIVE_SCAN;  
-                    }
-
+                    pControlList[j+1] = csrGetScanType(pMac, pControlList[j]);
                     found = FALSE;  // reset the flag
                 }
                        
