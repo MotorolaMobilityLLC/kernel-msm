@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -57,6 +57,14 @@
 /* Context no fault tolerance */
 #define CTXT_FLAGS_NO_FAULT_TOLERANCE  BIT(16)
 
+/* Symbolic table for the adreno draw context type */
+#define ADRENO_DRAWCTXT_TYPES \
+	{ KGSL_CONTEXT_TYPE_ANY, "any" }, \
+	{ KGSL_CONTEXT_TYPE_GL, "GL" }, \
+	{ KGSL_CONTEXT_TYPE_CL, "CL" }, \
+	{ KGSL_CONTEXT_TYPE_C2D, "C2D" }, \
+	{ KGSL_CONTEXT_TYPE_RS, "RS" }
+
 struct kgsl_device;
 struct adreno_device;
 struct kgsl_device_private;
@@ -95,6 +103,7 @@ struct adreno_context {
 	uint32_t flags;
 	uint32_t pagefault;
 	unsigned long pagefault_ts;
+	unsigned int type;
 	struct kgsl_pagetable *pagetable;
 	struct kgsl_memdesc gpustate;
 	unsigned int reg_restore[3];
@@ -127,7 +136,7 @@ struct adreno_context {
 int adreno_drawctxt_create(struct kgsl_device *device,
 			struct kgsl_pagetable *pagetable,
 			struct kgsl_context *context,
-			uint32_t flags);
+			uint32_t *flags);
 
 void adreno_drawctxt_destroy(struct kgsl_device *device,
 			  struct kgsl_context *context);
