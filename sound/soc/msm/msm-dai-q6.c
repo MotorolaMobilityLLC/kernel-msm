@@ -123,6 +123,16 @@ static u8 num_of_bits_set(u8 sd_line_mask)
 	return num_bits_set;
 }
 
+static unsigned int supported_sample_rates[] = {
+8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000
+};
+
+static struct snd_pcm_hw_constraint_list constraints_sample_rates = {
+	.count = ARRAY_SIZE(supported_sample_rates),
+	.list = supported_sample_rates,
+	.mask = 0,
+};
+
 static int msm_dai_q6_mi2s_startup(struct snd_pcm_substream *substream,
 				   struct snd_soc_dai *dai)
 {
@@ -135,7 +145,7 @@ static int msm_dai_q6_mi2s_startup(struct snd_pcm_substream *substream,
 	if (mi2s_dai_data->rate_constraint.list) {
 		snd_pcm_hw_constraint_list(substream->runtime, 0,
 				SNDRV_PCM_HW_PARAM_RATE,
-				&mi2s_dai_data->rate_constraint);
+				&constraints_sample_rates);
 		snd_pcm_hw_constraint_list(substream->runtime, 0,
 				SNDRV_PCM_HW_PARAM_SAMPLE_BITS,
 				&mi2s_dai_data->bitwidth_constraint);
