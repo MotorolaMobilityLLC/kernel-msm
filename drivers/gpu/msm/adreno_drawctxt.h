@@ -100,6 +100,7 @@ struct adreno_context {
 	char pid_name[TASK_COMM_LEN];
 	unsigned int id;
 	unsigned int ib_gpu_time_used;
+	unsigned int timestamp;
 	uint32_t flags;
 	uint32_t pagefault;
 	unsigned long pagefault_ts;

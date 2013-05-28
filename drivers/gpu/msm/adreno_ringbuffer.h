@@ -56,7 +56,7 @@ struct adreno_ringbuffer {
 	unsigned int wptr; /* write pointer offset in dwords from baseaddr */
 	unsigned int rptr; /* read pointer offset in dwords from baseaddr */
 
-	unsigned int timestamp[KGSL_MEMSTORE_MAX];
+	unsigned int global_ts;
 };
 
 
