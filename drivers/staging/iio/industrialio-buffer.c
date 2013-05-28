@@ -56,10 +56,13 @@ unsigned int iio_buffer_poll(struct file *filp,
 {
 	struct iio_dev *indio_dev = filp->private_data;
 	struct iio_buffer *rb = indio_dev->buffer;
+        if (rb->stufftoread)
+                return POLLIN | POLLRDNORM;
 
 	poll_wait(filp, &rb->pollq, wait);
-	if (rb->stufftoread)
-		return POLLIN | POLLRDNORM;
+        if (rb->stufftoread)
+                return POLLIN | POLLRDNORM;
+
 	/* need a way of knowing if there may be enough data... */
 	return 0;
 }
