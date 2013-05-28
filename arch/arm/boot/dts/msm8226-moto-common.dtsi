@@ -178,6 +178,11 @@
 	status = "ok";
 };
 
+&pm8226_l28 {
+	regulator-max-microvolt = <3100000>;
+	qcom,init-voltage = <3100000>;
+};
+
 &spmi_bus {
 	qcom,pm8226@1 {
 		qcom,vibrator@c000 {
