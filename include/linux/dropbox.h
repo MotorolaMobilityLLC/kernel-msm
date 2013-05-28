@@ -24,6 +24,7 @@ extern void dropbox_register_trigger_callback(const char *name,
 	void (*callback)(void *), void *data);
 extern void dropbox_queue_event_binary(char *name, void *data, size_t size);
 extern void dropbox_queue_event_text(char *name, void *data, size_t size);
+extern void dropbox_queue_event_empty(char *name);
 
 #else
 
@@ -31,6 +32,7 @@ static void dropbox_register_trigger_callback(const char *name,
 	void (*callback)(void *), void *data) {}
 static void dropbox_queue_event_binary(char *name, void *data, size_t size) {}
 static void dropbox_queue_event_text(char *name, void *data, size_t size) {}
+static void dropbox_queue_event_empty(char *name) {}
 
 #endif
 
