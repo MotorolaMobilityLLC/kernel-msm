@@ -1085,9 +1085,10 @@ typedef struct tagCsrConfigParam
     //To enable/disable scanning 2.4Ghz channels twice on a single scan request from HDD
     tANI_BOOLEAN fScanTwice;
 #ifdef WLAN_FEATURE_11AC
-    tANI_U32  nVhtChannelWidth;
-    tANI_U8   enableTxBF;
-    tANI_U8   txBFCsnValue;
+    tANI_U32        nVhtChannelWidth;
+    tANI_U8         enableTxBF;
+    tANI_U8         txBFCsnValue;
+    tANI_BOOLEAN    enableVhtFor24GHz;
 #endif
 
     /*
