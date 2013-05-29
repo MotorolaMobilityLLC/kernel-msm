@@ -49,7 +49,7 @@
 			compatible = "backlight,lm3630";
 			status = "ok";
 			reg = <0x38>;
-			lm3630,lcd_bl_en = <&msmgpio 91 0x00>;
+			lm3630,lcd_bl_en = <&msmgpio 90 0x00>;
 			lm3630,max_current = <0x17>;
 			lm3630,min_brightness = <0x05>;
 			lm3630,default_brightness = <0x9C>;

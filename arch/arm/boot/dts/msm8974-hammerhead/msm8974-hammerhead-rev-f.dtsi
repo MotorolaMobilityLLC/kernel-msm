@@ -29,6 +29,12 @@
 		};
 	};
 
+	i2c@f9967000 {
+		lm3630@38 {
+			lm3630,lcd_bl_en = <&msmgpio 91 0x00>;
+		};
+	};
+
 	qcom,cci@fda0C000 {
 		qcom,camera@20 {
 			gpios = <&msmgpio 15 0>,  // MCLK
