@@ -22,7 +22,7 @@
 #include <linux/usb/otg.h>
 #include "power.h"
 
-#define DWC3_IDEV_CHG_MAX 1500
+#define DWC3_IDEV_CHG_MAX 2500
 
 struct dwc3_charger;
 
