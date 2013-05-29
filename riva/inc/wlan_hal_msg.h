@@ -569,6 +569,7 @@ typedef enum eSriLinkState {
     eSIR_LINK_FINISH_CAL_STATE  = 13,
 #ifdef WLAN_FEATURE_P2P
     eSIR_LINK_LISTEN_STATE      = 14,
+    eSIR_LINK_SEND_ACTION_STATE = 15,
 #endif
     eSIR_LINK_MAX = WLAN_HAL_MAX_ENUM_SIZE
 } tSirLinkState;
