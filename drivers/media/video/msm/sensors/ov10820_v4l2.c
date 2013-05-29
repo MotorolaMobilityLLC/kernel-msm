@@ -101,6 +101,7 @@ static struct msm_camera_i2c_reg_conf ov10820_full_24fps_settings_rev_a1[] = {
 static struct msm_camera_i2c_reg_conf ov10820_full_24fps_settings_rev_b1[] = {
 	{0x3082, 0x64},
 	{0x3092, 0x06},
+	{0x300d, 0x12},
 	{0x3033, 0x42},
 	{0x3034, 0x68},
 	{0x3035, 0x4f},
@@ -200,6 +201,7 @@ static struct msm_camera_i2c_reg_conf ov10820_full_15fps_settings_rev_b1[] = {
 	{0x308e, 0x00},
 	{0x308f, 0x09},
 	{0x3092, 0x06},
+	{0x300d, 0x25},
 	{0x3033, 0x42},
 	{0x3034, 0x68},
 	{0x3035, 0x4f},
@@ -315,6 +317,7 @@ static struct msm_camera_i2c_reg_conf ov10820_qtr_60fps_settings_rev_a1[] = {
 static struct msm_camera_i2c_reg_conf ov10820_qtr_30fps_settings_rev_b1[] = {
 	{0x3082, 0x6c},
 	{0x3092, 0x03},
+	{0x300d, 0x11},
 	{0x3033, 0x73},
 	{0x3034, 0xb6},
 	{0x3035, 0x8a},
@@ -382,6 +385,7 @@ static struct msm_camera_i2c_reg_conf ov10820_qtr_30fps_settings_rev_b1[] = {
 static struct msm_camera_i2c_reg_conf ov10820_qtr_60fps_settings_rev_b1[] = {
 	{0x3082, 0x6c},
 	{0x3092, 0x03},
+	{0x300d, 0x23},
 	{0x3033, 0x73},
 	{0x3034, 0xb6},
 	{0x3035, 0x8a},
@@ -680,7 +684,6 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_b1[] = {
 	{0x308e, 0x00},
 	{0x308f, 0x09},
 	{0x3092, 0x06},
-	{0x300d, 0x25},
 	{0x3011, 0xd0},
 	{0x3012, 0x41},
 	{0x3031, 0x0c},
