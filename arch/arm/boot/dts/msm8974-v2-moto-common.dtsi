@@ -646,7 +646,6 @@
 		gpios = <&msmgpio 81 0>, /* IRQ */
 			<&msmgpio 80 0>; /* RESET */
 		touch_vdd-supply = <&pm8941_l23>;
-		vcc_i2c-supply = <&pm8941_lvs1>;
 		synaptics,normal-mode = <1>;
 		synaptics,reset-on-resume;
 		synaptics,hw-reset;
