@@ -743,12 +743,15 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
             return;
         }
 
-        if (pHddCtx->cfg_ini->fhostArpOffload)
+        // adding the check for association here
+        if ((pHddCtx->cfg_ini->fhostArpOffload) &&
+                (eConnectionState_Associated ==
+                 (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState))
         {
             vstatus = hdd_conf_hostarpoffload(pAdapter, FALSE);
             if (!VOS_IS_STATUS_SUCCESS(vstatus))
             {
-                hddLog(VOS_TRACE_LEVEL_INFO, "%s:Failed to disable ARPOFFLOAD "
+                hddLog(VOS_TRACE_LEVEL_ERROR, "%s:Failed to disable ARPOFFLOAD "
                       "Feature %d\n", __func__, vstatus);
             }
         }

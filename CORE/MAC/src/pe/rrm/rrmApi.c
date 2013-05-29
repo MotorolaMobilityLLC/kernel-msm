@@ -39,15 +39,15 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
+
+
 /**=========================================================================
   
   \file  rrmApi.c
   
   \brief implementation for PE RRM APIs
   
-   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
-   
-   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
 
@@ -228,6 +228,7 @@ rrmSetMaxTxPowerRsp ( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
    if((pSessionEntry = peFindSessionByBssid(pMac, pMaxTxParams->bssId, &sessionId))==NULL)
    {
       PELOGE(limLog(pMac, LOGE, FL("Unable to find session:") );)
+      limPrintMacAddr( pMac, pMaxTxParams->bssId, LOGE );
       retCode = eSIR_FAILURE;
    }
    else
