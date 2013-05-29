@@ -576,6 +576,40 @@
 	regulator-always-on;
 };
 
+&i2c_2 {
+	status = "ok";
+
+	ct406@39 {
+		compatible = "ams,ct406";
+		reg = <0x39>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <65 0x2>;
+		gpios = <&msmgpio 65 0>; /* IRQ */
+		vdd-supply = <&pm8226_l19>;
+		ams,prox-samples-for-noise-floor = <0x05>;
+		ams,ip-prox-limit = <0x200>;
+		ams,ip-als-limit = <10>;
+		ams,prox-saturation-threshold = <0x0208>;
+		ams,prox-covered-offset = <0x0096>;
+		ams,prox-uncovered-offset = <0x006e>;
+		ams,prox-recalibrate-offset = <0x0046>;
+		ams,prox-offset = <0x00>;
+		ams,prox-pulse-count = <0x04>;
+	};
+
+	ak8963@0c {
+		compatible = "akm,akm8963";
+		reg = <0x0c>;
+		vdd-supply = <&pm8226_l19>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <66 0x2>;
+		akm,gpio-irq = <&msmgpio 66 0>;
+		akm,gpio-rst = <&msmgpio 62 0>;
+		akm,outbit = <1>;
+		akm,layout = <8>;
+	};
+};
+
 &i2c_3 {
 	status = "ok";
 
