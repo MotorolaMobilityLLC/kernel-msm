@@ -340,5 +340,6 @@ struct drv260x_platform_data {
 	int rated_voltage;
 	int overdrive_voltage;
 	int effects_library;
+	struct regulator *vibrator_vdd;
 };
 #endif				/* __KERNEL__ */
