@@ -282,6 +282,9 @@
 	status = "ok";
 	qcom,charging-disabled;
 
+	qcom,ibatmax-ma = <2500>;
+	qcom,ibatsafe-ma = <2500>;
+
 	qcom,chgr@1000 {
 		status = "ok";
 	};
