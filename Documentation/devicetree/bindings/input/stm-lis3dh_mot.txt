@@ -1,0 +1,27 @@
+LIS3DH Accelerometer
+
+LIS3DH is a MEMS digital output motion sensor ultra low-power
+high performance 3-axes 'nano' accelerometer.
+It is connected to the host processor on the I2C interface.
+
+Required properties:
+- compatible:		Must be "stm,lis3dh"
+- reg:			Specifies the I2C address of the part.
+- poll-interval:	polling interval in ms.
+- min-interval:		minimum allowed polling interval.
+- g-range:		G-Range scale.
+
+Optional Properties:
+- vdd-supply:	regulator suppy to VDD.
+
+Example:
+
+	lis3dh@19 {
+		compatible = "stm,lis3dh";
+		reg = <0x19>;
+		vdd-supply = <&pm8226_l19>;
+		stm,poll-interval = <200>;
+		stm,min-interval = <1>;
+		stm,g-range = <8>;
+	};
+
