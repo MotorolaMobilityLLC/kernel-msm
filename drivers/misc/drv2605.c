@@ -63,6 +63,7 @@
 #include <linux/wakelock.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <linux/regulator/consumer.h>
 
 /* Address of our device */
 #define DEVICE_ADDR 0x5A
@@ -172,6 +173,7 @@ static struct drv260x {
 	unsigned char default_sequence[4];
 	unsigned char rated_voltage;
 	unsigned char overdrive_voltage;
+	struct regulator *vibrator_vdd;
 } *drv260x;
 
 static struct vibrator {
@@ -299,6 +301,7 @@ static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
 	of_property_read_u32(np, "overdrive_voltage",
 				&pdata->overdrive_voltage);
 	of_property_read_u32(np, "effects_library", &pdata->effects_library);
+	pdata->vibrator_vdd = devm_regulator_get(&client->dev, "vibrator_vdd");
 
 	return pdata;
 }
@@ -375,6 +378,18 @@ static void drv2605_set_waveform_sequence(unsigned char *seq,
 	i2c_master_send(drv260x->client, data, sizeof(data));
 }
 
+static void drv260x_vreg_control(bool vdd_supply_enable)
+{
+	if (!IS_ERR(drv260x->vibrator_vdd)) {
+		if(vdd_supply_enable) {
+			if (regulator_enable(drv260x->vibrator_vdd))
+				dev_err(&drv260x->client->dev,
+					"regulator_enable error\n");
+		} else
+			regulator_disable(drv260x->vibrator_vdd);
+	}
+}
+
 static void drv260x_change_mode(char mode)
 {
 	unsigned char tmp[] = {
@@ -384,6 +399,7 @@ static void drv260x_change_mode(char mode)
 #endif
 		MODE_REG, mode
 	};
+	drv260x_vreg_control(true);
 	if (drv260x->external_trigger)
 		gpio_set_value(drv260x->en_gpio, GPIO_LEVEL_HIGH);
 #ifdef RTP_CLOSED_LOOP_ENABLE
@@ -410,6 +426,8 @@ static void drv260x_standby(void)
 		gpio_set_value(drv260x->en_gpio, GPIO_LEVEL_LOW);
 	} else
 		drv260x_change_mode(MODE_STANDBY);
+
+	drv260x_vreg_control(false);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -604,6 +622,9 @@ static int drv260x_probe(struct i2c_client *client,
 	drv260x->en_gpio = pdata->en_gpio;
 	drv260x->trigger_gpio = pdata->trigger_gpio;
 	drv260x->external_trigger = pdata->external_trigger;
+	drv260x->vibrator_vdd = pdata->vibrator_vdd;
+	if(IS_ERR(drv260x->vibrator_vdd))
+		printk(KERN_ALERT "drv260x->vibrator_vdd not initialized\n");
 
 	if (gpio_request(drv260x->en_gpio, "vibrator-en") < 0) {
 		printk(KERN_ALERT "drv260x: error requesting gpio\n");
@@ -612,6 +633,7 @@ static int drv260x_probe(struct i2c_client *client,
 	drv260x->client = client;
 
 	/* Enable power to the chip */
+	drv260x_vreg_control(true);
 	gpio_export(drv260x->en_gpio, 0);
 	gpio_direction_output(drv260x->en_gpio, GPIO_LEVEL_HIGH);
 
@@ -1019,6 +1041,8 @@ static void drv260x_exit(void)
 {
 	gpio_direction_output(drv260x->en_gpio, GPIO_LEVEL_LOW);
 	gpio_free(drv260x->en_gpio);
+	if (!IS_ERR(drv260x->vibrator_vdd))
+		devm_regulator_put(drv260x->vibrator_vdd);
 	device_destroy(drv260x->class, drv260x->version);
 	class_destroy(drv260x->class);
 	unregister_chrdev_region(drv260x->version, 1);
