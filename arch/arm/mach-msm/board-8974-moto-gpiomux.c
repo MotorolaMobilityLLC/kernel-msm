@@ -1063,6 +1063,28 @@ static void msm_gpiomux_sdc4_install(void)
 static void msm_gpiomux_sdc4_install(void) {}
 #endif /* CONFIG_MMC_MSM_SDC4_SUPPORT */
 
+static struct gpiomux_setting vib_en_gpio_active_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting vib_en_gpio_sleep_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct msm_gpiomux_config vib_en_gpio __initdata = {
+	.gpio = 54,
+	.settings = {
+		[GPIOMUX_ACTIVE]    = &vib_en_gpio_active_cfg,
+		[GPIOMUX_SUSPENDED] = &vib_en_gpio_sleep_cfg,
+	},
+};
+
 void __init msm_8974_moto_init_gpiomux(void)
 {
 	int rc;
@@ -1124,4 +1146,6 @@ void __init msm_8974_moto_init_gpiomux(void)
 	if (of_board_is_rumi())
 		msm_gpiomux_install(msm_rumi_blsp_configs,
 				    ARRAY_SIZE(msm_rumi_blsp_configs));
+
+	msm_gpiomux_install(&vib_en_gpio, 1);
 }
