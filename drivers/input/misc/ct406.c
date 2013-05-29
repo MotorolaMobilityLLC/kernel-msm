@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 Motorola Mobility, Inc.
+ * Copyright (C) 2012-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -26,6 +26,9 @@
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
 #include <linux/mutex.h>
+#include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
@@ -1689,13 +1692,69 @@ static void ct406_resume(struct early_suspend *handler)
 }
 #endif /* CONFIG_HAS_EARLYSUSPEND */
 
+#ifdef CONFIG_OF
+static struct ct406_platform_data *
+ct406_of_init(struct i2c_client *client)
+{
+	struct ct406_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	u32 val;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	val = of_get_gpio(np, 0);
+	if (!gpio_is_valid((int)val)) {
+		dev_err(&client->dev, "ct406 irq gpio invalid\n");
+		return NULL;
+	}
+
+	pdata->irq = gpio_to_irq((int)val);
+
+	if (!of_property_read_u32(np, "ams,prox-samples-for-noise-floor", &val))
+		pdata->prox_samples_for_noise_floor = (u8)val;
+	if (!of_property_read_u32(np, "ams,ip_prox-limit", &val))
+		pdata->ip_prox_limit = (u16)val;
+	if (!of_property_read_u32(np, "ams,ip-als-limit", &val))
+		pdata->ip_als_limit = (u16)val;
+	if (!of_property_read_u32(np, "ams,prox-saturation-threshold", &val))
+		pdata->ct406_prox_saturation_threshold = (u16)val;
+	if (!of_property_read_u32(np, "ams,prox-covered-offset", &val))
+		pdata->ct406_prox_covered_offset = (u16)val;
+	if (!of_property_read_u32(np, "ams,prox-uncovered-offset", &val))
+		pdata->ct406_prox_uncovered_offset = (u16)val;
+	if (!of_property_read_u32(np, "ams,prox-recalibrate-offset", &val))
+		pdata->ct406_prox_recalibrate_offset = (u16)val;
+	if (!of_property_read_u32(np, "ams,prox-offset", &val))
+		pdata->ct406_prox_offset = (u8)val;
+	if (!of_property_read_u32(np, "ams,prox-pulse-count", &val))
+		pdata->ct406_prox_pulse_count = (u8)val;
+
+	return pdata;
+}
+#else
+static inline struct ct406_platform_data *
+ct406_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 static int ct406_probe(struct i2c_client *client,
 		       const struct i2c_device_id *id)
 {
-	struct ct406_platform_data *pdata = client->dev.platform_data;
+	struct ct406_platform_data *pdata;
 	struct ct406_data *ct;
 	u8 reg_data[1] = {0};
 	int error = 0;
+
+	if (client->dev.of_node)
+		pdata = ct406_of_init(client);
+	else
+		pdata = client->dev.platform_data;
 
 	if (pdata == NULL) {
 		pr_err("%s: platform data required\n", __func__);
@@ -1717,15 +1776,10 @@ static int ct406_probe(struct i2c_client *client,
 	ct->client = client;
 	ct->pdata = pdata;
 
-	if (ct->pdata->regulator_name[0] != '\0') {
-		ct->regulator = regulator_get(NULL,
-			ct->pdata->regulator_name);
-		if (IS_ERR(ct->regulator)) {
-			pr_err("%s: cannot acquire regulator [%s]\n",
-				__func__, ct->pdata->regulator_name);
-			error = PTR_ERR(ct->regulator);
-			goto error_regulator_get_failed;
-		}
+	ct->regulator = regulator_get(&client->dev,"vdd");
+	if (IS_ERR(ct->regulator)) {
+		dev_info(&client->dev, "Cannot acquire regulator \n");
+		ct->regulator = NULL;
 	}
 
 	ct->dev = input_allocate_device();
@@ -1875,8 +1929,8 @@ error_misc_register_failed:
 	ct406_misc_data = NULL;
 	input_free_device(ct->dev);
 error_input_allocate_failed:
-	regulator_put(ct->regulator);
-error_regulator_get_failed:
+	if (ct->regulator)
+		regulator_put(ct->regulator);
 	kfree(ct);
 error_alloc_data_failed:
 	return error;
@@ -1899,13 +1953,21 @@ static int ct406_remove(struct i2c_client *client)
 	destroy_workqueue(ct->workqueue);
 
 	misc_deregister(&ct->miscdevice);
-
-	regulator_put(ct->regulator);
+	if (ct->regulator)
+		regulator_put(ct->regulator);
 
 	kfree(ct);
 
 	return 0;
 }
+
+#ifdef CONFIG_OF
+static struct of_device_id ct406_match_tbl[] = {
+	{ .compatible = "ams,ct406" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, ct406_match_tbl);
+#endif
 
 static const struct i2c_device_id ct406_id[] = {
 	{LD_CT406_NAME, 0},
@@ -1919,6 +1981,7 @@ static struct i2c_driver ct406_i2c_driver = {
 	.driver = {
 		.name = LD_CT406_NAME,
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(ct406_match_tbl),
 	},
 };
 
