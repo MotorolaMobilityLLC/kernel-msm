@@ -18,6 +18,7 @@
 #include <linux/mfd/wcd9xxx/wcd9xxx-slimslave.h>
 #include "wcd9xxx-mbhc.h"
 #include "wcd9xxx-resmgr.h"
+#include "wcd9xxx-common.h"
 
 #define TAIKO_NUM_REGISTERS 0x400
 #define TAIKO_MAX_REGISTER (TAIKO_NUM_REGISTERS-1)
@@ -149,5 +150,9 @@ extern void *taiko_get_afe_config(struct snd_soc_codec *codec,
 				  enum afe_config_type config_type);
 
 extern int is_mbhc_disabled(void);
+extern void taiko_event_register(
+	int (*machine_event_cb)(struct snd_soc_codec *codec,
+				enum wcd9xxx_codec_event),
+	struct snd_soc_codec *codec);
 
 #endif
