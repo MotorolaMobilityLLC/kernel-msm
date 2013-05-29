@@ -72,6 +72,7 @@ struct tfa9890_priv {
 	int curr_mode;
 	int vol_idx;
 	int curr_vol_idx;
+	int ic_version;
 };
 
 static const struct tfa9890_regs tfa9890_reg_defaults[] = {
@@ -89,7 +90,7 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 },
 {
 	.reg = TFA9890_SPK_CTL_REG,
-	.value = 0x7832,
+	.value = 0x3832,
 },
 {
 	.reg = TFA9890_DC2DC_CTL_REG,
@@ -113,7 +114,7 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 },
 {
 	.reg = TFA9890_CURRT_SNS1_REG,
-	.value = 0x0640,
+	.value = 0x7be1,
 },
 {
 	.reg = TFA9890_CURRC_SNS_REG,
@@ -129,7 +130,7 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 },
 {
 	.reg = TFA9890_CURRT_SNS2_REG,
-	.value = 0x5901,
+	.value = 0x340,
 },
 };
 
@@ -656,15 +657,83 @@ static int tfa9890_read_spkr_imp(struct tfa9890_priv *tfa9890)
 	return imp;
 }
 
+static int tfa9890_get_ic_ver(struct snd_soc_codec *codec)
+{
+	u16 ver1;
+	u16 ver2;
+	u16 ver3;
+	int ret = TFA9890_N1C2;
+
+	/* read all the three IC version registers to determine tfa9890 type */
+	ver1 = snd_soc_read(codec, 0x8b) & TFA9890_N1B12_VER1_MASK;
+	ver2 = snd_soc_read(codec, 0x8c);
+	ver3 = snd_soc_read(codec, 0x8d) & TFA9890_N1B12_VER3_MASK;
+
+	if ((ver1 == TFA9890_N1B12_VER1_VAL) &&
+			(ver2 == TFA9890_N1B12_VER2_VAL) &&
+			(ver3 == TFA9890_N1B12_VER3_VAL)) {
+		pr_debug("tfa9890: n1b12 version detected\n");
+		ret = TFA9890_N1B12;
+	} else if (!ver1 && !ver2 && !ver3) {
+		pr_debug("tfa9890: n1b4 version detected\n");
+		ret = TFA9890_N1B4;
+	} else
+		/* if it not above types then it must be N1C2 ver type */
+		pr_debug("tfa9890: n1c2 version detected\n");
+
+	return ret;
+}
+
+static int tfa9887_load_dsp_patch(struct snd_soc_codec *codec, const u8 *fw,
+				int fw_len)
+{
+	int index = 0;
+	int length;
+	int size = 0;
+	const u8 *fw_data;
+	int err = -EINVAL;
+
+	length = fw_len - TFA9890_PATCH_HEADER;
+	fw_data = fw + TFA9890_PATCH_HEADER;
+
+	/* process the firmware */
+	while (index < length) {
+		/* extract length from first two bytes*/
+		size = *(fw_data + index) + (*(fw_data + index + 1)) * 256;
+		index += 2;
+		if ((index + size) > length) {
+			/* outside the buffer, error in the input data */
+			pr_err("tfa9890: invalid length");
+			goto out;
+		}
+		if ((size) > TFA9890_MAX_I2C_SIZE) {
+			/* too big */
+			pr_err("tfa9890: ivalid dsp patch");
+			goto out;
+		}
+		err = codec->bulk_write_raw(codec, *(fw_data + index),
+				(fw_data + index), size);
+		if (err < 0) {
+			pr_err("tfa9890: writing dsp patch failed");
+			goto out;
+		}
+		index += size;
+	}
+	err = 0;
+
+out:
+	return err;
+}
+
 static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 {
 	struct snd_soc_codec *codec = tfa9890->codec;
-	int ret;
-	const struct firmware *fw_speaker;
-	const struct firmware *fw_config;
-	const struct firmware *fw_coeff;
+	int ret = -EIO;
+	const struct firmware *fw_speaker = NULL;
+	const struct firmware *fw_config = NULL;
+	const struct firmware *fw_coeff = NULL;
+	const struct firmware *fw_patch = NULL;
 	u16 val;
-
 	char *fw_name;
 
 	fw_name = kzalloc(FIRMWARE_NAME_SIZE, GFP_KERNEL);
@@ -674,6 +743,36 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	}
 
 	/* Load DSP config and firmware files */
+
+	/* check IC version to get correct firmware */
+	tfa9890->ic_version = tfa9890_get_ic_ver(codec);
+	if (tfa9890->ic_version == TFA9890_N1C2) {
+		scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890_n1c2.patch",
+				fw_path);
+		ret = request_firmware(&fw_patch, fw_name, codec->dev);
+		if (ret) {
+			pr_err("tfa9890: Failed to locate tfa9890_n1c2.patch");
+			goto out;
+		}
+	} else if (tfa9890->ic_version == TFA9890_N1B12) {
+		scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890_n1b12.patch",
+				fw_path);
+		ret = request_firmware(&fw_patch, fw_name, codec->dev);
+		if (ret) {
+			pr_err("tfa9890: Failed to locate tfa9890_n1b12.patch");
+			goto out;
+		}
+	} /* else nothing to do for n1b4's */
+
+	if (fw_patch) {
+		ret = tfa9887_load_dsp_patch(codec, fw_patch->data,
+				fw_patch->size);
+		if (ret) {
+			pr_err("tfa9890: Failed to load dsp patch!!");
+			goto out;
+		}
+	}
+
 	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.speaker", fw_path);
 	ret = request_firmware(&fw_speaker, fw_name, codec->dev);
 	if (ret) {
@@ -731,13 +830,16 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	val = val | TFA9890_SYSCTRL_CONFIGURED;
 	snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
 
-	kfree(fw_name);
+	ret = 0;
 
-	return 0;
 out:
 	kfree(fw_name);
-
-	return -EIO;
+	/* release firmware */
+	release_firmware(fw_speaker);
+	release_firmware(fw_coeff);
+	release_firmware(fw_config);
+	release_firmware(fw_patch);
+	return ret;
 }
 
 static void tfa9890_calibaration(struct tfa9890_priv *tfa9890)
