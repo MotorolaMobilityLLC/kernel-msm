@@ -160,6 +160,10 @@
 		reg = <0x8300000 0x40000>,
 		      <0x8340000 0x1000>;
 	};
+	usr_reset_warning {
+		compatible = "mmi,usr-reset-warning";
+		gpios = <&msmgpio 69 0x0>;
+	};
 };
 
 &sdcc1 {
