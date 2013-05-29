@@ -1,0 +1,47 @@
+CT406 Digital Ambient Light Sensor, Proximity Sensor
+
+CT406 is a Digital Ambient Light Sensor,
+Proximity Sensor and IR LED in an Optical Module.
+It is connected to the host processor on the I2C interface.
+
+Required properties:
+- compatible:			Must be "ams,ct406"
+- reg:				Specifies the I2C address of the part.
+- interrupt-parent:		The parent interrupt controller
+- interrupts:			The interrupt line connected to main SoC
+- gpios:			Required GPIOs for operation
+				- IRQ GPIO
+
+- ams,ip-prox-limit:			in pocket detection prox limit.
+- ams,ip-als-limit:			in pocket detection als limit
+- ams,prox-samples-for-noise-floor:
+- ams,prox-saturation-threshold:
+- ams,prox-covered-offset:
+- ams,prox-uncovered-offset:
+- ams,prox-recalibrate-offset:
+- ams,prox-offset:
+- ams,prox-pulse-count:
+
+Optional Properties:
+- vdd-supply:		regulator suppy to VDD.
+
+Example:
+
+	ct406@39 {
+		compatible = "ams,ct406";
+		reg = <0x39>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <65 0x2>;
+		gpios = <&msmgpio 65 0>; /* IRQ */
+		vdd-supply = <&pm8226_l19>;
+		ams,prox-samples-for-noise-floor = <0x05>;
+		ams,ip-prox-limit = <0x200>;
+		ams,ip-als-limit = <10>;
+		ams,prox-saturation-threshold = <0x0208>;
+		ams,prox-covered-offset = <0x0096>;
+		ams,prox-uncovered-offset = <0x006e>;
+		ams,prox-recalibrate-offset = <0x0046>;
+		ams,prox-offset = <0x00>;
+		ams,prox-pulse-count = <0x04>;
+	};
+
