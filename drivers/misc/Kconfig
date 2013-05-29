@@ -772,6 +772,14 @@ config DROPBOX
 	  in dropbox manager service.  This enables fast and simple logging of
 	  various critical events from kernel drivers.
 
+config USR_RESET_WARNING
+	tristate "User reset warning driver"
+	help
+	  This option enables a device driver that monitors user reset warning
+	  GPIO.If the driver receives the warning it calls kernel_halt to notify
+	  drivers registered for the reboot notification about incoming HW reset.
+	default n
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
