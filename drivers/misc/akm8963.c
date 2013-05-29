@@ -15,7 +15,7 @@
  */
 
 /*
- * Revisions Copyright (C) 2012 Motorola Mobility, Inc.
+ * Revisions Copyright (C) 2013 Motorola Mobility, LLC.
  */
 
 /*#define DEBUG*/
@@ -31,11 +31,14 @@
 #include <linux/irq.h>
 #include <linux/i2c.h>
 #include <linux/miscdevice.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
-
 #include <linux/akm8963.h>
+#include <linux/regulator/consumer.h>
 
 #define AKM8963_DEBUG_IF	0
 
@@ -57,6 +60,7 @@ struct akm8963_data {
 	wait_queue_head_t	drdy_wq;
 	wait_queue_head_t	open_wq;
 
+	struct regulator *vdd;
 	struct mutex	sensor_mutex;
 	int8_t		sense_data[SENSOR_DATA_SIZE];
 	uint32_t	drdy_flag;
@@ -1316,6 +1320,48 @@ static void akm8963_resume(struct early_suspend *handler)
 }
 #endif /* CONFIG_HAS_EARLYSUSPEND */
 
+#ifdef CONFIG_OF
+static struct akm8963_platform_data *
+akm8963_of_init(struct i2c_client *client)
+{
+	struct akm8963_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	u32 val;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	val = of_get_named_gpio(np, "akm,gpio-irq", 0);
+	if (!gpio_is_valid((int)val)) {
+		dev_info(&client->dev, "akm8963 irq gpio invalid\n");
+		return NULL;
+	}
+	pdata->gpio_IRQ = gpio_to_irq((int)val);
+
+	pdata->gpio_RST = of_get_named_gpio(np, "akm,gpio-rst", 0);
+	if (!gpio_is_valid(pdata->gpio_RST)) {
+		dev_info(&client->dev, "akm8963 rst gpio invalid\n");
+		pdata->gpio_RST = 0;
+	}
+
+
+	if(!of_property_read_u32(np, "akm,layout", &val))
+		pdata->layout = (u8)val;
+	if(!of_property_read_u32(np, "akm,outbit", &val))
+		pdata->outbit = (u8)val;
+	return pdata;
+}
+#else
+static inline struct akm8963_platform_data *
+akm8963_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct akm8963_platform_data *pdata;
@@ -1341,7 +1387,11 @@ int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	/***** Set layout information *****/
-	pdata = client->dev.platform_data;
+	if (client->dev.of_node)
+		pdata = akm8963_of_init(client);
+	else
+		pdata = client->dev.platform_data;
+
 	if (pdata) {
 		/* Platform data is available. copy its value to local. */
 		s_akm->layout = pdata->layout;
@@ -1354,12 +1404,25 @@ int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto exit_device_fail;
 	}
 
+	s_akm->vdd = regulator_get(&client->dev, "vdd");
+	if (IS_ERR(s_akm->vdd)) {
+		dev_info(&client->dev, "vdd regulator control absent\n");
+		s_akm->vdd = NULL;
+	}
+
+	if (s_akm->vdd != NULL) {
+		err = regulator_enable(s_akm->vdd);
+		usleep_range(100,100);
+		if (err)
+			dev_info(&client->dev, "regulator enable fail\n");
+	}
+
 	/***** I2C initialization *****/
 	s_akm->i2c = client;
 	/* check connection */
 	err = akm8963_i2c_check_device(client);
 	if (err < 0)
-		goto exit_device_fail;
+		goto exit_init_fail;
 	/* set client data */
 	i2c_set_clientdata(client, s_akm);
 
@@ -1446,6 +1509,10 @@ exit_register_fail:
 exit_irq_fail:
 	input_unregister_device(s_akm->input);
 exit_init_fail:
+	if (s_akm->vdd != NULL) {
+		regulator_disable(s_akm->vdd);
+		regulator_put(s_akm->vdd);
+	}
 exit_device_fail:
 	kfree(s_akm);
 exit_kzalloc_fail:
@@ -1456,6 +1523,10 @@ exit_i2c_fail:
 static int akm8963_remove(struct i2c_client *client)
 {
 	struct akm8963_data *akm = i2c_get_clientdata(client);
+	if (akm->vdd != NULL) {
+		regulator_disable(akm->vdd);
+		regulator_put(akm->vdd);
+	}
 
 	unregister_early_suspend(&akm->akm_early_suspend);
 	remove_sysfs_interfaces(akm);
@@ -1469,6 +1540,15 @@ static int akm8963_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id akm8963_match_tbl[] = {
+	{ .compatible = "akm,akm8963" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, akm8963_match_tbl);
+#endif
+
+
 static const struct i2c_device_id akm8963_id[] = {
 	{AKM8963_I2C_NAME, 0 },
 	{ }
@@ -1480,6 +1560,7 @@ static struct i2c_driver akm8963_driver = {
 	.id_table	= akm8963_id,
 	.driver = {
 		.name	= AKM8963_I2C_NAME,
+		.of_match_table = of_match_ptr(akm8963_match_tbl),
 	},
 };
 
