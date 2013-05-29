@@ -1,0 +1,32 @@
+AK8963C Magnetometer
+
+AK8963C is a 3-axis electronic compass to measure earths geomagnetism
+to determine azimuth.
+It is connected to the host processor on the I2C interface.
+
+Required properties:
+- compatible:		Must be "akm,akm8963"
+- reg:			Specifies the I2C address of the part.
+- interrupt-parent:	The parent interrupt controller
+- interrupts:		Interrupt line connected to the main SoC
+- akm,gpio-irq:		IRQ GPIO
+- akm,layout:		physical orientation layout of sensor.
+- akm,outbit:		set number of data bits reported by the sensor.
+
+Optional Properties:
+- akm,gpio-rst:		RESET GPIO
+- akm8963_vdd-supply:	regulator suppy to VDD
+
+Example:
+
+	ak8963@0c {
+		compatible = "akm,akm8963";
+		reg = <0x0c>;
+		akm8963_vdd-supply = <&pm8226_l19>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <66 0x2>;
+		akm,gpio-irq = <&msmgpio 66 0>;
+		akm,gpio-rst = <&msmgpio 62 0>;
+		akm,layout = <1>;
+		akm,outbit = <1>;
+	};
