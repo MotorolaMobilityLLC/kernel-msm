@@ -25,6 +25,17 @@
 	};
 };
 
+&i2c_2 {
+	lis3dh@19 {
+		compatible = "stm,lis3dh";
+		reg = <0x19>;
+		vdd-supply = <&pm8226_l19>;
+		stm,poll-interval = <200>;
+		stm,min-interval = <1>;
+		stm,g-range = <8>;
+	};
+};
+
 &i2c_5 {
 	cyttsp3_i2c@3b {
 		status = "disabled";
