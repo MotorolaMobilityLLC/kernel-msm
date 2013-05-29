@@ -139,6 +139,7 @@ int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 {
 	u8 pwr_mode;
 	int ret = 0;
+	u8 attempts = 1;
 	int keep_hidden = mfd->resume_cfg.keep_hidden;
 	mfd->resume_cfg.keep_hidden = 0;
 
@@ -148,19 +149,27 @@ int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 	} else {
 		mipi_mot_exit_sleep_wait();
 
-		ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
-		if (ret > 0)
-			pr_info("%s: Power_mode =0x%x\n", __func__, pwr_mode);
-		else
-			pr_err("%s: Failed to get power_mode. Ret = %d\n",
-			       __func__, ret);
-
 		mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
 		pr_info("%s: sending display on\n", __func__);
+		do {
+			mipi_mot_tx_cmds(&mot_display_on_cmds[0],
+				ARRAY_SIZE(mot_display_on_cmds));
+			mot_panel->esd_expected_pwr_mode = 0x94;
 
-		mipi_mot_tx_cmds(&mot_display_on_cmds[0],
-			ARRAY_SIZE(mot_display_on_cmds));
-		mot_panel->esd_expected_pwr_mode = 0x94;
+			ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
+			if (ret > 0) {
+				pr_info("%s: Power_mode =0x%x\n", __func__,
+					pwr_mode);
+				/* validate screen is actually on */
+				if ((pwr_mode & 0x04) != 0x04) {
+					pr_err("%s: display on fail! [0x%x]\n",
+						__func__, pwr_mode);
+					ret = -1;
+				}
+			} else
+				pr_err("%s: Failed to get power_mode. [%d]\n",
+					__func__, ret);
+		} while (ret <= 0 && attempts++ < 5);
 	}
 
 	return 0;
