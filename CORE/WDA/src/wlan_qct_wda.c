@@ -4920,7 +4920,6 @@ void WDA_GetStatsReqParamsCallback(
    pGetPEStatsRspParams->msgType = wdiGetStatsRsp->usMsgType;
    pGetPEStatsRspParams->msgLen = sizeof(tAniGetPEStatsRsp) + 
                    (wdiGetStatsRsp->usMsgLen - sizeof(WDI_GetStatsRspParamsType));
-   pGetPEStatsRspParams->msgLen  = wdiGetStatsRsp->usMsgLen + sizeof(tANI_U8);
 
   //Fill the Session Id Properly in PE
    pGetPEStatsRspParams->sessionId = 0;
