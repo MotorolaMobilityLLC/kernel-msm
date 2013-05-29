@@ -165,6 +165,22 @@
 #define TFA9890_SPKR_IMP_EXP	9
 #define TFA9890_MAX_I2C_SIZE	252
 
+/* IC vesion definitions */
+#define TFA9890_N1B4		0x0
+#define TFA9890_N1B12		0x1
+#define TFA9890_N1C2		0x2
+
+/* DSP patch header lenght */
+#define TFA9890_PATCH_HEADER		0x6
+
+/* Version type n1b2 masks and values */
+#define TFA9890_N1B12_VER1_MASK		0x0003
+#define TFA9890_N1B12_VER3_MASK		0xfe00
+
+#define TFA9890_N1B12_VER1_VAL		0x0002
+#define TFA9890_N1B12_VER2_VAL		0x4c64
+#define TFA9890_N1B12_VER3_VAL		0xa000
+
 struct tfa9890_regs {
 	int reg;
 	int value;
