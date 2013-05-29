@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010 Motorola, Inc.
+ * Copyright (C) 2012-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,11 +25,14 @@
 #include <linux/input.h>
 #include <linux/input-polldev.h>
 #include <linux/miscdevice.h>
+#include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/suspend.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
-
 #include <linux/lis3dh_mot.h>
+#include <linux/regulator/consumer.h>
 
 #define NAME				"lis3dh"
 
@@ -101,6 +104,7 @@ struct lis3dh_data {
 	struct delayed_work input_work;
 	struct input_dev *input_dev;
 
+	struct regulator *vdd;
 	int hw_initialized;
 	atomic_t enabled;
 	int on_before_suspend;
@@ -574,13 +578,50 @@ static void lis3dh_suspend(struct early_suspend *handler)
 }
 #endif /* CONFIG_HAS_EARLYSUSPEND */
 
+#ifdef CONFIG_OF
+static struct lis3dh_platform_data *
+lis3dh_of_init(struct i2c_client *client)
+{
+	struct lis3dh_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	u32 val;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	if (!of_property_read_u32(np, "stm,poll-interval", &val))
+		pdata->poll_interval = (int)val;
+	if (!of_property_read_u32(np, "stm,min-interval", &val))
+		pdata->min_interval = (int)val;
+	if (!of_property_read_u32(np, "stm,g-range", &val))
+		pdata->g_range = (int)val;
+
+	return pdata;
+}
+#else
+static inline struct lis3dh_platform_data *
+lis3dh_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 static int lis3dh_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
+	struct lis3dh_platform_data *pdata;
 	struct lis3dh_data *lis;
 	int err = 0;
 
-	if (client->dev.platform_data == NULL) {
+	if (client->dev.of_node)
+		pdata = lis3dh_of_init(client);
+	else
+		pdata = client->dev.platform_data;
+
+	if (pdata == NULL) {
 		dev_err(&client->dev, "platform data is NULL. exiting.\n");
 		err = -ENODEV;
 		goto err0;
@@ -604,18 +645,12 @@ static int lis3dh_probe(struct i2c_client *client,
 	mutex_lock(&lis->lock);
 	lis->client = client;
 
-	lis->pdata = kmalloc(sizeof(*lis->pdata), GFP_KERNEL);
-	if (lis->pdata == NULL) {
-		err = -ENOMEM;
-		goto err1;
-	}
-
-	memcpy(lis->pdata, client->dev.platform_data, sizeof(*lis->pdata));
+	lis->pdata = pdata;
 
 	err = lis3dh_validate_pdata(lis);
 	if (err < 0) {
 		dev_err(&client->dev, "failed to validate platform data\n");
-		goto err1_1;
+		goto err1;
 	}
 
 	i2c_set_clientdata(client, lis);
@@ -623,8 +658,21 @@ static int lis3dh_probe(struct i2c_client *client,
 	if (lis->pdata->init) {
 		err = lis->pdata->init();
 		if (err < 0)
-			goto err1_1;
+			goto err1;
 	}
+
+	lis->vdd = regulator_get(&client->dev, "vdd");
+	if (IS_ERR(lis->vdd)) {
+		dev_info(&client->dev, "vdd regulator control absent\n");
+		lis->vdd = NULL;
+	}
+
+	if (lis->vdd != NULL) {
+		err = regulator_enable(lis->vdd);
+		if (err)
+			dev_info(&client->dev, "regulator enable fail\n");
+	}
+
 
 	memset(lis->resume_state, 0, ARRAY_SIZE(lis->resume_state));
 
@@ -686,12 +734,15 @@ err4:
 err3:
 	lis3dh_device_power_off(lis);
 err2:
+	if (lis->vdd != NULL) {
+		regulator_disable(lis->vdd);
+		regulator_put(lis->vdd);
+	}
+
 	if (lis->pdata->exit)
 		lis->pdata->exit();
-err1_1:
-	mutex_unlock(&lis->lock);
-	kfree(lis->pdata);
 err1:
+	mutex_unlock(&lis->lock);
 	kfree(lis);
 err0:
 	return err;
@@ -700,13 +751,16 @@ err0:
 static int __devexit lis3dh_remove(struct i2c_client *client)
 {
 	struct lis3dh_data *lis = i2c_get_clientdata(client);
+	if (lis->vdd != NULL) {
+		regulator_disable(lis->vdd);
+		regulator_put(lis->vdd);
+	}
 
 	misc_deregister(&lis3dh_misc_device);
 	lis3dh_input_cleanup(lis);
 	lis3dh_device_power_off(lis);
 	if (lis->pdata->exit)
 		lis->pdata->exit();
-	kfree(lis->pdata);
 	kfree(lis);
 
 	return 0;
@@ -717,12 +771,20 @@ static const struct i2c_device_id lis3dh_id[] = {
 	{},
 };
 
+#ifdef CONFIG_OF
+static struct of_device_id lis3dh_match_tbl[] = {
+	{ .compatible = "stm,lis3dh" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, lis3dh_match_tbl);
+#endif
 MODULE_DEVICE_TABLE(i2c, lis3dh_id);
 
 static struct i2c_driver lis3dh_driver = {
 	.driver = {
-		   .name = NAME,
-		   },
+		.name = NAME,
+		.of_match_table = of_match_ptr(lis3dh_match_tbl),
+	},
 	.probe = lis3dh_probe,
 	.remove = __devexit_p(lis3dh_remove),
 	.id_table = lis3dh_id,
