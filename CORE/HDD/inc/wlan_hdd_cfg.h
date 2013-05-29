@@ -591,6 +591,11 @@ typedef enum
 #define CFG_RETRY_LIMIT_TWO_MAX        ( 15 )
 #define CFG_RETRY_LIMIT_TWO_DEFAULT    ( 15 )
 
+#define CFG_DISABLE_AGG_WITH_BTC_NAME       "gDisableAggWithBTC"
+#define CFG_DISABLE_AGG_WITH_BTC_MIN        ( 0 )
+#define CFG_DISABLE_AGG_WITH_BTC_MAX        ( 1 )
+#define CFG_DISABLE_AGG_WITH_BTC_DEFAULT    ( 1 )
+
 #ifdef WLAN_AP_STA_CONCURRENCY
 
 #define CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_NAME      "gPassiveMaxChannelTimeConc"
@@ -2107,6 +2112,7 @@ typedef struct
    v_U8_t                      retryLimitZero;
    v_U8_t                      retryLimitOne;
    v_U8_t                      retryLimitTwo;
+   v_U8_t                      disableAggWithBtc;
    char                        listOfNonDfsCountryCode[128];
    v_BOOL_t                    enableSSR;
    char                        listOfNon11acCountryCode[128];

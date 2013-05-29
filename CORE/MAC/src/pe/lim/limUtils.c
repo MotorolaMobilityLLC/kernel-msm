@@ -5608,60 +5608,135 @@ limProcessAddBaInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
 
 
 /** -------------------------------------------------------------
-\fn limDelAllBASessions
-\brief Deletes all the exisitng BA sessions.
-\        Note : This API is provided for Mac OSx only. The reason for this is that Mac OSx may not
-\                  restart after CFG update.
+\fn      limDeleteBASessions
+\brief   Deletes all the exisitng BA sessions for given session
+         and BA direction.
 \param   tpAniSirGlobal pMac
-\return None
+\param   tpPESession pSessionEntry
+\param   tANI_U32 baDirection
+\return  None
 -------------------------------------------------------------*/
 
 void 
-limDelAllBASessions(tpAniSirGlobal pMac)
+limDeleteBASessions(tpAniSirGlobal pMac, tpPESession pSessionEntry,
+                    tANI_U32 baDirection)
 {
     tANI_U32 i;
     tANI_U8 tid;
     tpDphHashNode pSta;
 
-    tpPESession psessionEntry =  &pMac->lim.gpSession[0]; //TBD-RAJESH HOW TO GET sessionEntry?????
-    for(tid = 0; tid < STACFG_MAX_TC; tid++)
+    if (NULL == pSessionEntry)
     {
-        if((eLIM_AP_ROLE == psessionEntry->limSystemRole) ||(psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)||
-              (eLIM_STA_IN_IBSS_ROLE == psessionEntry->limSystemRole))
+        limLog(pMac, LOGE, FL("Session does not exist"));
+    }
+    else
+    {
+        for(tid = 0; tid < STACFG_MAX_TC; tid++)
         {
-            for(i = 0; i < pMac->lim.maxStation; i++)
+            if ((eLIM_AP_ROLE == pSessionEntry->limSystemRole) ||
+                (pSessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE) ||
+                (eLIM_STA_IN_IBSS_ROLE == pSessionEntry->limSystemRole) ||
+                (pSessionEntry->limSystemRole == eLIM_P2P_DEVICE_GO))
             {
-                pSta = psessionEntry->dph.dphHashTable.pDphNodeArray + i;
-                if (pSta && pSta->added)
+                for (i = 0; i < pMac->lim.maxStation; i++)
                 {
-                    if(eBA_ENABLE == pSta->tcCfg[tid].fUseBATx)
+                    pSta = pSessionEntry->dph.dphHashTable.pDphNodeArray + i;
+                    if (pSta && pSta->added)
                     {
-                        limPostMlmDelBAReq(pMac, pSta, eBA_INITIATOR, tid, eSIR_MAC_UNSPEC_FAILURE_REASON,psessionEntry);
-                    }
-                    else if(eBA_ENABLE == pSta->tcCfg[tid].fUseBARx)
-                    {
-                        limPostMlmDelBAReq(pMac, pSta, eBA_RECIPIENT, tid, eSIR_MAC_UNSPEC_FAILURE_REASON,psessionEntry);
+                        if ((eBA_ENABLE == pSta->tcCfg[tid].fUseBATx) &&
+                                       (baDirection & BA_INITIATOR))
+                        {
+                            limPostMlmDelBAReq(pMac, pSta, eBA_INITIATOR, tid,
+                                               eSIR_MAC_UNSPEC_FAILURE_REASON,
+                                               pSessionEntry);
+                        }
+                        if ((eBA_ENABLE == pSta->tcCfg[tid].fUseBARx) &&
+                                        (baDirection & BA_RECIPIENT))
+                        {
+                            limPostMlmDelBAReq(pMac, pSta, eBA_RECIPIENT, tid,
+                                               eSIR_MAC_UNSPEC_FAILURE_REASON,
+                                               pSessionEntry);
+                        }
                     }
                 }
             }
-        }
-        else if((eLIM_STA_ROLE == psessionEntry->limSystemRole)||(eLIM_BT_AMP_STA_ROLE == psessionEntry->limSystemRole))
-        {
-            pSta = dphGetHashEntry(pMac, DPH_STA_HASH_INDEX_PEER, &psessionEntry->dph.dphHashTable);
-            if (pSta && pSta->added)
+            else if ((eLIM_STA_ROLE == pSessionEntry->limSystemRole) ||
+                     (eLIM_BT_AMP_STA_ROLE == pSessionEntry->limSystemRole) ||
+                     (eLIM_P2P_DEVICE_ROLE == pSessionEntry->limSystemRole))
             {
-                if(eBA_ENABLE == pSta->tcCfg[tid].fUseBATx)
+                pSta = dphGetHashEntry(pMac, DPH_STA_HASH_INDEX_PEER,
+                                       &pSessionEntry->dph.dphHashTable);
+                if (pSta && pSta->added)
                 {
-                    limPostMlmDelBAReq(pMac, pSta, eBA_INITIATOR, tid, eSIR_MAC_UNSPEC_FAILURE_REASON,psessionEntry);
-                }
-                if(eBA_ENABLE == pSta->tcCfg[tid].fUseBARx)
-                {
-                    limPostMlmDelBAReq(pMac, pSta, eBA_RECIPIENT, tid, eSIR_MAC_UNSPEC_FAILURE_REASON,psessionEntry);
+                    if ((eBA_ENABLE == pSta->tcCfg[tid].fUseBATx) &&
+                                    (baDirection & BA_INITIATOR))
+                    {
+                        limPostMlmDelBAReq(pMac, pSta, eBA_INITIATOR, tid,
+                                           eSIR_MAC_UNSPEC_FAILURE_REASON,
+                                           pSessionEntry);
+                    }
+                    if ((eBA_ENABLE == pSta->tcCfg[tid].fUseBARx) &&
+                                    (baDirection & BA_RECIPIENT))
+                    {
+                        limPostMlmDelBAReq(pMac, pSta, eBA_RECIPIENT, tid,
+                                           eSIR_MAC_UNSPEC_FAILURE_REASON,
+                                           pSessionEntry);
+                    }
                 }
             }
         }
     }
 }
+
+/** -------------------------------------------------------------
+\fn     limDelAllBASessions
+\brief  Deletes all the exisitng BA sessions.
+\param  tpAniSirGlobal pMac
+\return None
+-------------------------------------------------------------*/
+
+void limDelAllBASessions(tpAniSirGlobal pMac)
+{
+    tANI_U32 i;
+    tpPESession pSessionEntry;
+
+    for (i = 0; i < pMac->lim.maxBssId; i++)
+    {
+        pSessionEntry = peFindSessionBySessionId(pMac, i);
+        if (pSessionEntry)
+        {
+            limDeleteBASessions(pMac, pSessionEntry, BA_BOTH_DIRECTIONS);
+        }
+    }
+}
+
+/** -------------------------------------------------------------
+\fn     limDelAllBASessionsBtc
+\brief  Deletes all the exisitng BA receipent sessions in 2.4GHz
+        band.
+\param  tpAniSirGlobal pMac
+\return None
+-------------------------------------------------------------*/
+
+void limDelAllBASessionsBtc(tpAniSirGlobal pMac)
+{
+    tANI_U32 i;
+    tpPESession pSessionEntry;
+
+    for (i = 0; i < pMac->lim.maxBssId; i++)
+    {
+        pSessionEntry = peFindSessionBySessionId(pMac, i);
+        if (pSessionEntry)
+        {
+            if (SIR_BAND_2_4_GHZ ==
+                limGetRFBand(pSessionEntry->currentOperChannel))
+            {
+                limDeleteBASessions(pMac, pSessionEntry, BA_RECIPIENT);
+            }
+        }
+    }
+}
+
 /** -------------------------------------------------------------
 \fn limProcessDelTsInd
 \brief handles the DeleteTS indication coming from HAL or generated by PE itself in some error cases.

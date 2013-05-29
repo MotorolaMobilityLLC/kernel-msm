@@ -574,6 +574,7 @@ typedef struct tagCsrConfig
 
     tANI_U32  nActiveMinChnTimeBtc;     //in units of milliseconds
     tANI_U32  nActiveMaxChnTimeBtc;     //in units of milliseconds
+    tANI_U8   disableAggWithBtc;
 #ifdef WLAN_AP_STA_CONCURRENCY
     tANI_U32  nPassiveMinChnTimeConc;    //in units of milliseconds
     tANI_U32  nPassiveMaxChnTimeConc;    //in units of milliseconds
