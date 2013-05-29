@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -72,7 +72,7 @@ enum wled_ovp_threshold {
 	WLED_OVP_35V,
 	WLED_OVP_32V,
 	WLED_OVP_29V,
-	WLED_OVP_37V,
+	WLED_OVP_27V,
 };
 
 /**
@@ -93,6 +93,7 @@ struct wled_config_data {
 	u8	boost_curr_lim;
 	u8	cp_select;
 	u8	ctrl_delay_us;
+	u16	comp_res_val;
 	bool	dig_mod_gen_en;
 	bool	cs_out_en;
 	bool	op_fdbck;
