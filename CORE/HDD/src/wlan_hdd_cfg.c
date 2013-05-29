@@ -822,6 +822,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_RETRY_LIMIT_TWO_MIN,
                  CFG_RETRY_LIMIT_TWO_MAX ),
 
+   REG_VARIABLE( CFG_DISABLE_AGG_WITH_BTC_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, disableAggWithBtc,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_DISABLE_AGG_WITH_BTC_DEFAULT,
+                 CFG_DISABLE_AGG_WITH_BTC_MIN,
+                 CFG_DISABLE_AGG_WITH_BTC_MAX ),
+
 #ifdef WLAN_AP_STA_CONCURRENCY
    REG_VARIABLE( CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, nPassiveMaxChnTimeConc,
@@ -3820,6 +3827,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.nPassiveMinChnTime       = pConfig->nPassiveMinChnTime;
    smeConfig.csrConfig.nActiveMaxChnTimeBtc     = pConfig->nActiveMaxChnTimeBtc;
    smeConfig.csrConfig.nActiveMinChnTimeBtc     = pConfig->nActiveMinChnTimeBtc;
+   smeConfig.csrConfig.disableAggWithBtc        = pConfig->disableAggWithBtc;
 #ifdef WLAN_AP_STA_CONCURRENCY
    smeConfig.csrConfig.nActiveMaxChnTimeConc    = pConfig->nActiveMaxChnTimeConc;
    smeConfig.csrConfig.nActiveMinChnTimeConc    = pConfig->nActiveMinChnTimeConc;
