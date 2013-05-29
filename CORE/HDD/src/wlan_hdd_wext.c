@@ -2329,17 +2329,22 @@ static int iw_get_linkspeed(struct net_device *dev,
                             union iwreq_data *wrqu, char *extra)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+   hdd_context_t *pHddCtx;
    char *pLinkSpeed = (char*)extra;
-   int len = sizeof(v_U16_t) + 1;
-   v_U16_t link_speed;
+   int len = sizeof(v_U32_t) + 1;
+   v_U32_t link_speed;
    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-   int rc;
+   VOS_STATUS status;
+   int rc, valid;
 
-   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+
+   valid = wlan_hdd_validate_context(pHddCtx);
+
+   if (0 != valid)
    {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                                  "%s:LOGP in Progress. Ignore!!!", __func__);
-      return -EBUSY;
+       hddLog(VOS_TRACE_LEVEL_ERROR, FL("HDD context is not valid"));
+       return valid;
    }
 
    if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
@@ -2349,21 +2354,40 @@ static int iw_get_linkspeed(struct net_device *dev,
    }
    else
    {
-       wlan_hdd_get_classAstats(pAdapter);
-       //The linkspeed returned by HAL is in units of 500kbps.
-       //converting it to mbps
-       link_speed = pAdapter->hdd_stats.ClassA_stat.tx_rate/2;
+       status = wlan_hdd_get_classAstats(pAdapter);
+
+       if (!VOS_IS_STATUS_SUCCESS(status ))
+       {
+           hddLog(VOS_TRACE_LEVEL_ERROR, FL("Unable to retrieve SME statistics"));
+           return -EINVAL;
+       }
+
+       /* Unit of link capacity is obtained from the TL API is MbpsX10  */
+       WLANTL_GetSTALinkCapacity(WLAN_HDD_GET_CTX(pAdapter)->pvosContext,
+          (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.staId[0],
+          &link_speed);
+
+       link_speed = link_speed / 10;
+
+       if (0 == link_speed)
+       {
+           /* The linkspeed returned by HAL is in units of 500kbps.
+            * converting it to mbps.
+            * This is required to support legacy firmware which does
+            * not return link capacity.
+            */
+           link_speed = pAdapter->hdd_stats.ClassA_stat.tx_rate/2;
+       }
+
    }
 
    wrqu->data.length = len;
    // return the linkspeed in the format required by the WiFi Framework
-   rc = snprintf(pLinkSpeed, len, "%u", link_speed);
+   rc = snprintf(pLinkSpeed, len, "%lu", link_speed);
    if ((rc < 0) || (rc >= len))
    {
        // encoding or length error?
-       hddLog(VOS_TRACE_LEVEL_ERROR,
-                "%s: Unable to encode link speed, got [%s]",
-                __func__,pLinkSpeed);
+       hddLog(VOS_TRACE_LEVEL_ERROR,FL("Unable to encode link speed"));
        return -EIO;
    }
 
@@ -6890,7 +6914,7 @@ static const struct iw_priv_args we_private_args[] = {
     {
         WLAN_GET_LINK_SPEED,
         IW_PRIV_TYPE_CHAR | 18,
-        IW_PRIV_TYPE_CHAR | 3, "getLinkSpeed" },
+        IW_PRIV_TYPE_CHAR | 5, "getLinkSpeed" },
    
 };
 
