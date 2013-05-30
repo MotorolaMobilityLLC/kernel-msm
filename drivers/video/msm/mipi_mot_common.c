@@ -12,6 +12,7 @@
  *
  */
 
+#include <linux/dropbox.h>
 #include "msm_fb.h"
 #include "mipi_dsi.h"
 #include "mipi_mot.h"
@@ -140,6 +141,7 @@ int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 	u8 pwr_mode;
 	int ret = 0;
 	u8 attempts = 1;
+	u8 failures = 0;
 	int keep_hidden = mfd->resume_cfg.keep_hidden;
 	mfd->resume_cfg.keep_hidden = 0;
 
@@ -165,11 +167,20 @@ int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 					pr_err("%s: display on fail! [0x%x]\n",
 						__func__, pwr_mode);
 					ret = -1;
+					failures = attempts;
 				}
 			} else
 				pr_err("%s: Failed to get power_mode. [%d]\n",
 					__func__, ret);
 		} while (ret <= 0 && attempts++ < 5);
+
+		if (failures > 0) {
+			pr_err("%s: Display failure: DISON (0x04) bit not set"
+				" | fail count: %d, display %s\n",
+				__func__, failures,
+				(ret > 0) ? "recovered" : "did not recover");
+			dropbox_queue_event_empty("display_issue");
+		}
 	}
 
 	return 0;
