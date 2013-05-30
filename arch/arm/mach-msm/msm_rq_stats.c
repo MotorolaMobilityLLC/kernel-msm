@@ -29,6 +29,7 @@
 #include <linux/cpufreq.h>
 #include <linux/kernel_stat.h>
 #include <linux/tick.h>
+#include <linux/suspend.h>
 #include <asm/smp_plat.h>
 #include "acpuclock.h"
 
@@ -206,6 +207,36 @@ static int cpu_hotplug_handler(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+static int system_suspend_handler(struct notifier_block *nb,
+				unsigned long val, void *data)
+{
+	switch (val) {
+	case PM_POST_HIBERNATION:
+	case PM_POST_SUSPEND:
+	case PM_POST_RESTORE:
+		rq_info.hotplug_disabled = 0;
+		break;
+	case PM_HIBERNATION_PREPARE:
+	case PM_SUSPEND_PREPARE:
+		rq_info.hotplug_disabled = 1;
+		break;
+	default:
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+
+static ssize_t hotplug_disable_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	unsigned int val = 0;
+	val = rq_info.hotplug_disabled;
+	return snprintf(buf, MAX_LONG_SIZE, "%d\n", val);
+}
+
+static struct kobj_attribute hotplug_disabled_attr = __ATTR_RO(hotplug_disable);
+
 static void def_work_fn(struct work_struct *work)
 {
 	int64_t diff;
@@ -310,6 +341,7 @@ static struct attribute *rq_attrs[] = {
 	&def_timer_ms_attr.attr,
 	&run_queue_avg_attr.attr,
 	&run_queue_poll_ms_attr.attr,
+	&hotplug_disabled_attr.attr,
 	NULL,
 };
 
@@ -358,6 +390,7 @@ static int __init msm_rq_stats_init(void)
 	rq_info.def_timer_jiffies = DEFAULT_DEF_TIMER_JIFFIES;
 	rq_info.rq_poll_last_jiffy = 0;
 	rq_info.def_timer_last_jiffy = 0;
+	rq_info.hotplug_disabled = 0;
 	ret = init_rq_attribs();
 
 	rq_info.init = 1;
@@ -380,3 +413,16 @@ static int __init msm_rq_stats_init(void)
 	return ret;
 }
 late_initcall(msm_rq_stats_init);
+
+static int __init msm_rq_stats_early_init(void)
+{
+	/* Bail out if this is not an SMP Target */
+	if (!is_smp()) {
+		rq_info.init = 0;
+		return -ENOSYS;
+	}
+
+	pm_notifier(system_suspend_handler, 0);
+	return 0;
+}
+core_initcall(msm_rq_stats_early_init);
