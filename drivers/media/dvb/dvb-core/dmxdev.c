@@ -480,7 +480,6 @@ static int dvr_input_thread_entry(void *arg)
 		/* wait for input */
 		ret = wait_event_interruptible(
 			src->queue,
-			(!src->data) ||
 			(dvb_ringbuffer_avail(src) > 188) ||
 			(src->error != 0) ||
 			dmxdev->dvr_in_exit);
@@ -490,7 +489,7 @@ static int dvr_input_thread_entry(void *arg)
 
 		spin_lock(&dmxdev->dvr_in_lock);
 
-		if (!src->data || dmxdev->exit || dmxdev->dvr_in_exit) {
+		if (dmxdev->exit || dmxdev->dvr_in_exit) {
 			spin_unlock(&dmxdev->dvr_in_lock);
 			break;
 		}
@@ -501,6 +500,11 @@ static int dvr_input_thread_entry(void *arg)
 			break;
 		}
 
+		if (!src->data) {
+			spin_unlock(&dmxdev->dvr_in_lock);
+			continue;
+		}
+
 		dmxdev->dvr_processing_input = 1;
 
 		ret = dvb_ringbuffer_avail(src);
@@ -509,7 +513,6 @@ static int dvr_input_thread_entry(void *arg)
 		split = (src->pread + ret > src->size) ?
 				src->size - src->pread :
 				0;
-
 		/*
 		 * In DVR PULL mode, write might block.
 		 * Lock on DVR buffer is released before calling to
