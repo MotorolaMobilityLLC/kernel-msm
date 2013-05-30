@@ -2395,6 +2395,10 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
           }
           /* Haven't seen any condition that will set by driver after init.
            If we do, then we should also call sme_ChangeCountryCode */
+
+          if (!wiphy->bands[IEEE80211_BAND_5GHZ])
+              goto check_initiator;
+
           for (j=0; j<wiphy->bands[IEEE80211_BAND_5GHZ ]->n_channels; j++)
           {
               // p2p UNII-1 band channels are passive when domain is FCC.
@@ -2415,6 +2419,9 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
                  wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].flags &= ~IEEE80211_CHAN_PASSIVE_SCAN;
               }
           }
+
+check_initiator:
+
           if (request->initiator == NL80211_REGDOM_SET_BY_CORE)
           {
               request->processed = 1;
