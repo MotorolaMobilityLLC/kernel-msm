@@ -2413,7 +2413,7 @@ const struct regmap_config wm5110_spi_regmap = {
 	.pad_bits = 16,
 	.val_bits = 16,
 
-	.max_register = ARIZONA_DSP4_STATUS_3,
+	.max_register = 0x4a9000,
 	.readable_reg = wm5110_readable_register,
 	.volatile_reg = wm5110_volatile_register,
 
@@ -2427,7 +2427,7 @@ const struct regmap_config wm5110_i2c_regmap = {
 	.reg_bits = 32,
 	.val_bits = 16,
 
-	.max_register = ARIZONA_DSP4_STATUS_3,
+	.max_register = 0x4a9000,
 	.readable_reg = wm5110_readable_register,
 	.volatile_reg = wm5110_volatile_register,
 
