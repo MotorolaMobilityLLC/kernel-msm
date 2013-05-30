@@ -469,7 +469,6 @@ static void *freeze_tags(size_t block_size, const struct utag *tags,
  */
 static struct utag *load_utags(const char *partition_name)
 {
-	int res;
 	size_t block_size;
 	ssize_t bytes;
 	struct utag *head = NULL;
@@ -499,14 +498,7 @@ static struct utag *load_utags(const char *partition_name)
 		goto close_block;
 	}
 
-	res =
-	    filp->f_op->unlocked_ioctl(filp, BLKGETSIZE64,
-				       (unsigned long)&block_size);
-	if (0 > res) {
-		pr_err("%s ERR file (%s) ioctl failed\n", __func__,
-		       partition_name);
-		goto close_block;
-	}
+	block_size = i_size_read(inode->i_bdev->bd_inode);
 
 	data = kmalloc(block_size, GFP_KERNEL);
 	if (!data) {
@@ -566,7 +558,6 @@ replace_first_utag(struct utag *head, const char *name, void *payload,
 static enum utag_error
 flash_partition(const char *partition_name, const struct utag *tags)
 {
-	int res;
 	size_t written = 0;
 	size_t block_size = 0, tags_size = 0;
 	char *datap = NULL;
@@ -595,13 +586,7 @@ flash_partition(const char *partition_name, const struct utag *tags)
 		goto close_block;
 	}
 
-	res =
-	    filep->f_op->unlocked_ioctl(filep, BLKGETSIZE64,
-					(unsigned long)&block_size);
-	if (0 > res) {
-		status = UTAG_ERR_PARTITION_NOT_BLKDEV;
-		goto close_block;
-	}
+	block_size = i_size_read(inode->i_bdev->bd_inode);
 
 	datap = freeze_tags(block_size, tags, &tags_size, &status);
 	if (!datap)
