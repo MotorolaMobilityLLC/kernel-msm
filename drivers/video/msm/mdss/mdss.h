@@ -121,6 +121,7 @@ struct mdss_data_type {
 	struct early_suspend early_suspend;
 	void *debug_data;
 	struct completion iommu_attach_done;
+	int current_bus_idx;
 };
 extern struct mdss_data_type *mdss_res;
 
