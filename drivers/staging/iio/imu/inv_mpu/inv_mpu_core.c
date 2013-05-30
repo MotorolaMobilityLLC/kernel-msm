@@ -1506,119 +1506,119 @@ static DEVICE_ATTR(event_smd, S_IRUGO, inv_smd_show, NULL);
 static DEVICE_ATTR(event_pedometer, S_IRUGO, inv_ped_show, NULL);
 
 /* DMP sysfs with power on/off */
-static IIO_DEVICE_ATTR(in_accel_x_dmp_bias, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(in_accel_x_dmp_bias, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_ACCEL_X_DMP_BIAS);
-static IIO_DEVICE_ATTR(in_accel_y_dmp_bias, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(in_accel_y_dmp_bias, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_ACCEL_Y_DMP_BIAS);
-static IIO_DEVICE_ATTR(in_accel_z_dmp_bias, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(in_accel_z_dmp_bias, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_ACCEL_Z_DMP_BIAS);
 
-static IIO_DEVICE_ATTR(in_anglvel_x_dmp_bias, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(in_anglvel_x_dmp_bias, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_GYRO_X_DMP_BIAS);
-static IIO_DEVICE_ATTR(in_anglvel_y_dmp_bias, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(in_anglvel_y_dmp_bias, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_GYRO_Y_DMP_BIAS);
-static IIO_DEVICE_ATTR(in_anglvel_z_dmp_bias, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(in_anglvel_z_dmp_bias, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_GYRO_Z_DMP_BIAS);
 
-static IIO_DEVICE_ATTR(pedometer_int_on, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(pedometer_int_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_PED_INT_ON);
-static IIO_DEVICE_ATTR(pedometer_on, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(pedometer_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_PED_ON);
-static IIO_DEVICE_ATTR(accel_pedometer_step_on, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(accel_pedometer_step_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_ACCEL_PED_ON);
 
-static IIO_DEVICE_ATTR(smd_enable, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(smd_enable, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_SMD_ENABLE);
-static IIO_DEVICE_ATTR(smd_threshold, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(smd_threshold, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_SMD_THLD);
-static IIO_DEVICE_ATTR(smd_delay_threshold, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(smd_delay_threshold, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_SMD_DELAY_THLD);
-static IIO_DEVICE_ATTR(smd_delay_threshold2, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(smd_delay_threshold2, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_SMD_DELAY_THLD2);
-static IIO_DEVICE_ATTR(tap_on, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(tap_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_TAP_ON);
-static IIO_DEVICE_ATTR(tap_threshold, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(tap_threshold, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_TAP_THRESHOLD);
-static IIO_DEVICE_ATTR(tap_min_count, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(tap_min_count, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_TAP_MIN_COUNT);
-static IIO_DEVICE_ATTR(tap_time, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(tap_time, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_TAP_TIME);
-static IIO_DEVICE_ATTR(display_orientation_on, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(display_orientation_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_DISPLAY_ORIENTATION_ON);
 
 /* DMP sysfs without power on/off */
-static IIO_DEVICE_ATTR(dmp_on, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(dmp_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_ON);
-static IIO_DEVICE_ATTR(dmp_int_on, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(dmp_int_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_INT_ON);
-static IIO_DEVICE_ATTR(dmp_event_int_on, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(dmp_event_int_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_EVENT_INT_ON);
-static IIO_DEVICE_ATTR(dmp_output_rate, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(dmp_output_rate, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_OUTPUT_RATE);
-static IIO_DEVICE_ATTR(batchmode_timeout, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(batchmode_timeout, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_BATCHMODE_TIMEOUT);
-static IIO_DEVICE_ATTR(batchmode_wake_fifo_full_on, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(batchmode_wake_fifo_full_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_BATCHMODE_WAKE_FIFO_FULL);
-static IIO_DEVICE_ATTR(six_axes_q_on, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(six_axes_q_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_SIX_Q_ON);
-static IIO_DEVICE_ATTR(three_axes_q_on, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(three_axes_q_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_THREE_Q_ON);
-static IIO_DEVICE_ATTR(ped_q_on, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(ped_q_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_PED_Q_ON);
 
 /* non DMP sysfs with power on/off */
-static IIO_DEVICE_ATTR(motion_lpa_on, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(motion_lpa_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_MOTION_LPA_ON);
-static IIO_DEVICE_ATTR(motion_lpa_freq, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(motion_lpa_freq, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_MOTION_LPA_FREQ);
-static IIO_DEVICE_ATTR(motion_lpa_duration, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(motion_lpa_duration, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_MOTION_LPA_DURATION);
-static IIO_DEVICE_ATTR(motion_lpa_threshold, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(motion_lpa_threshold, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_MOTION_LPA_THRESHOLD);
 
-static IIO_DEVICE_ATTR(in_accel_scale, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_scale, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_ACCEL_SCALE);
-static IIO_DEVICE_ATTR(in_anglvel_scale, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_anglvel_scale, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_GYRO_SCALE);
-static IIO_DEVICE_ATTR(in_magn_scale, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_magn_scale, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_COMPASS_SCALE);
 
-static IIO_DEVICE_ATTR(in_anglvel_x_offset, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_anglvel_x_offset, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_GYRO_X_OFFSET);
-static IIO_DEVICE_ATTR(in_anglvel_y_offset, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_anglvel_y_offset, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_GYRO_Y_OFFSET);
-static IIO_DEVICE_ATTR(in_anglvel_z_offset, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_anglvel_z_offset, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_GYRO_Z_OFFSET);
 
-static IIO_DEVICE_ATTR(in_accel_x_offset, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_x_offset, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_ACCEL_X_OFFSET);
-static IIO_DEVICE_ATTR(in_accel_y_offset, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_y_offset, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_ACCEL_Y_OFFSET);
-static IIO_DEVICE_ATTR(in_accel_z_offset, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_z_offset, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_ACCEL_Z_OFFSET);
 
 /* non DMP sysfs without power on/off */
-static IIO_DEVICE_ATTR(self_test_samples, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(self_test_samples, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_SELF_TEST_SAMPLES);
-static IIO_DEVICE_ATTR(self_test_threshold, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(self_test_threshold, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_SELF_TEST_THRESHOLD);
-static IIO_DEVICE_ATTR(gyro_enable, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(gyro_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_GYRO_ENABLE);
-static IIO_DEVICE_ATTR(gyro_fifo_enable, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(gyro_fifo_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_GYRO_FIFO_ENABLE);
-static IIO_DEVICE_ATTR(accel_enable, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(accel_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_ACCEL_ENABLE);
-static IIO_DEVICE_ATTR(accel_fifo_enable, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(accel_fifo_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_ACCEL_FIFO_ENABLE);
-static IIO_DEVICE_ATTR(compass_enable, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(compass_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_COMPASS_ENABLE);
-static IIO_DEVICE_ATTR(pressure_enable, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(pressure_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_PRESSURE_ENABLE);
-static IIO_DEVICE_ATTR(power_state, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(power_state, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_POWER_STATE);
-static IIO_DEVICE_ATTR(firmware_loaded, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(firmware_loaded, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_FIRMWARE_LOADED);
-static IIO_DEVICE_ATTR(sampling_frequency, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(sampling_frequency, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_SAMPLING_FREQ);
 
 /* show method only sysfs but with power on/off */
@@ -1630,18 +1630,18 @@ static IIO_DEVICE_ATTR(pedometer_time, S_IRUGO, inv_attr_show, NULL,
 	ATTR_DMP_PEDOMETER_TIME);
 
 /* show method only sysfs */
-static IIO_DEVICE_ATTR(in_accel_x_calibbias, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_x_calibbias, S_IRUGO | S_IWUSR, inv_attr_show,
 	NULL, ATTR_ACCEL_X_CALIBBIAS);
-static IIO_DEVICE_ATTR(in_accel_y_calibbias, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_y_calibbias, S_IRUGO | S_IWUSR, inv_attr_show,
 	NULL, ATTR_ACCEL_Y_CALIBBIAS);
-static IIO_DEVICE_ATTR(in_accel_z_calibbias, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_z_calibbias, S_IRUGO | S_IWUSR, inv_attr_show,
 	NULL, ATTR_ACCEL_Z_CALIBBIAS);
 
-static IIO_DEVICE_ATTR(in_anglvel_x_calibbias, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(in_anglvel_x_calibbias, S_IRUGO | S_IWUSR,
 		inv_attr_show, NULL, ATTR_GYRO_X_CALIBBIAS);
-static IIO_DEVICE_ATTR(in_anglvel_y_calibbias, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(in_anglvel_y_calibbias, S_IRUGO | S_IWUSR,
 		inv_attr_show, NULL, ATTR_GYRO_Y_CALIBBIAS);
-static IIO_DEVICE_ATTR(in_anglvel_z_calibbias, S_IRUGO | S_IWUGO,
+static IIO_DEVICE_ATTR(in_anglvel_z_calibbias, S_IRUGO | S_IWUSR,
 		inv_attr_show, NULL, ATTR_GYRO_Z_CALIBBIAS);
 
 static IIO_DEVICE_ATTR(gyro_matrix, S_IRUGO, inv_attr_show, NULL,
@@ -1649,7 +1649,7 @@ static IIO_DEVICE_ATTR(gyro_matrix, S_IRUGO, inv_attr_show, NULL,
 static IIO_DEVICE_ATTR(accel_matrix, S_IRUGO, inv_attr_show, NULL,
 	ATTR_ACCEL_MATRIX);
 #ifdef CONFIG_INV_TESTING /* read/write in test mode */
-static IIO_DEVICE_ATTR(compass_matrix, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(compass_matrix, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_COMPASS_MATRIX);
 #else
 static IIO_DEVICE_ATTR(compass_matrix, S_IRUGO, inv_attr_show, NULL,
@@ -1659,12 +1659,12 @@ static IIO_DEVICE_ATTR(secondary_name, S_IRUGO, inv_attr_show, NULL,
 	ATTR_SECONDARY_NAME);
 
 #ifdef CONFIG_INV_TESTING
-static IIO_DEVICE_ATTR(reg_write, S_IRUGO | S_IWUGO, inv_attr_show,
+static IIO_DEVICE_ATTR(reg_write, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_reg_write_store, ATTR_REG_WRITE);
 /* smd debug related sysfs */
-static IIO_DEVICE_ATTR(debug_smd_enable_testp1, S_IWUGO, NULL,
+static IIO_DEVICE_ATTR(debug_smd_enable_testp1, S_IWUSR, NULL,
 	inv_dmp_attr_store, ATTR_DEBUG_SMD_ENABLE_TESTP1);
-static IIO_DEVICE_ATTR(debug_smd_enable_testp2, S_IWUGO, NULL,
+static IIO_DEVICE_ATTR(debug_smd_enable_testp2, S_IWUSR, NULL,
 	inv_dmp_attr_store, ATTR_DEBUG_SMD_ENABLE_TESTP2);
 static IIO_DEVICE_ATTR(debug_smd_exe_state, S_IRUGO, inv_attr_show,
 	NULL, ATTR_DEBUG_SMD_EXE_STATE);
