@@ -62,12 +62,12 @@
 			ti,int-gpio = <&pm8941_gpios 22 0x02>;
 			ti,chg-current-ma = <1600>;
 			ti,term-current-ma = <128>;
-			ti,vbat-max-mv = <4325>;
+			ti,vbat-max-mv = <4352>;
 			ti,pre-chg-current-ma = <256>;
 			ti,sys-vimin-mv = <3500>;
-			ti,vin-limit-mv = <4360>;
-			ti,step-dwn-current-ma = <1088>;
-			ti,step-dwn-thr-mv = <4000>;
+			ti,vin-limit-mv = <4760>;
+			ti,step-dwn-current-ma = <1024>;
+			ti,step-dwn-thr-mv = <4250>;
 			ti,wlc-support;
 			ti,otg-en-gpio = <&pm8941_gpios 35 0x02>;
 			ti,ext-ovp-otg-ctrl;
