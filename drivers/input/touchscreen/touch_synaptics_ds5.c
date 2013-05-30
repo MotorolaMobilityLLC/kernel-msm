@@ -1043,12 +1043,23 @@ static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info
 	snprintf(fw_info->ic_fw_identifier, sizeof(fw_info->ic_fw_identifier),
 		"%s - %d", ts->fw_info.product_id, ts->fw_info.manufacturer_id);
 
-	TOUCH_INFO_MSG("product id[%s] : syna product id[%s]\n",
-		ts->fw_info.product_id,
-		&SynaFirmware_ds5[FW_OFFSET_PRODUCT_ID]);
+	if (ts->pdata->type == 0) {
+		TOUCH_INFO_MSG("TYPE = %d product id[%s] : syna product id[%s]\n",
+			ts->pdata->type,
+			ts->fw_info.product_id,
+			&SynaFirmware_ds5_0[FW_OFFSET_PRODUCT_ID]);
 
-	ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5;
-	ts->fw_info.fw_size = sizeof(SynaFirmware_ds5);
+		ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5_0;
+		ts->fw_info.fw_size = sizeof(SynaFirmware_ds5_0);
+	} else {
+		TOUCH_INFO_MSG("TYPE = %d product id[%s] : syna product id[%s]\n",
+			ts->pdata->type,
+			ts->fw_info.product_id,
+			&SynaFirmware_ds5_1[FW_OFFSET_PRODUCT_ID]);
+
+		ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5_1;
+		ts->fw_info.fw_size = sizeof(SynaFirmware_ds5_1);
+	}
 
 	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
 		TOUCH_INFO_MSG("IC identifier[%s] fw_version[%s]\n",
@@ -1284,8 +1295,8 @@ static ssize_t show_fw_info(struct device *dev,
 	ret = sprintf(buf, "====== Firmware Info ======\n");
 	ret += sprintf(buf+ret, "manufacturer_id  = %d\n",
 			ts->fw_info.manufacturer_id);
-	ret += sprintf(buf+ret, "product_id       = %s\n",
-			ts->fw_info.product_id);
+	ret += sprintf(buf+ret, "product_id       = %s (type = %d)\n",
+			ts->fw_info.product_id, ts->pdata->type);
 	ret += sprintf(buf+ret, "fw_version       = %s\n",
 			ts->fw_info.config_id);
 	ret += sprintf(buf+ret, "fw_image_version = %s\n",
@@ -1520,10 +1531,27 @@ static int synaptics_parse_dt(struct device *dev, struct touch_platform_data *pd
 	}
 
 	/* reset, irq gpio info */
-	pdata->reset_gpio = of_get_named_gpio_flags(np, "synaptics,reset-gpio",
+	rc = of_get_named_gpio_flags(np, "synaptics,reset-gpio",
 				0, &pdata->reset_gpio_flags);
-	pdata->irq_gpio = of_get_named_gpio_flags(np, "synaptics,irq-gpio",
+	if (rc < 0) {
+		dev_err(dev, "Unable to get reset gpio\n");
+		return rc;
+	} else {
+		pdata->reset_gpio = rc;
+	}
+
+	rc = of_get_named_gpio_flags(np, "synaptics,irq-gpio",
 				0, &pdata->irq_gpio_flags);
+	if (rc < 0) {
+		dev_err(dev, "Unable to get reset gpio\n");
+		return rc;
+	} else {
+		pdata->irq_gpio = rc;
+	}
+
+	rc = of_property_read_u32(np, "synaptics,type", &temp_val);
+	if (rc == 0)
+		pdata->type = temp_val;	/* Default would be 0 if no property */
 
 	return 0;
 }

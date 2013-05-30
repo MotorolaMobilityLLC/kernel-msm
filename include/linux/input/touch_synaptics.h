@@ -63,6 +63,7 @@ struct touch_platform_data {
 	u32             reset_gpio_flags;
 	int             irq_gpio;
 	u32             irq_gpio_flags;
+	int             type;		/* Used when choosing firmware */
 };
 
 struct fw_upgrade_info {
