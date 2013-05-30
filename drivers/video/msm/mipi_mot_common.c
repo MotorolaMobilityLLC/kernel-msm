@@ -606,6 +606,7 @@ int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide)
 	int ret = 0;
 	pr_info("%s(%d)\n", __func__, hide);
 	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
+		mmi_panel_notify(MMI_PANEL_EVENT_HIDE_IMAGE, NULL);
 		mutex_lock(&mfd->dma->ov_mutex);
 		mipi_set_tx_power_mode(0);
 		if (mipi_mot_tx_cmds(
