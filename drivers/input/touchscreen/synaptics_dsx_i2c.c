@@ -1083,7 +1083,8 @@ static const char * const panel_event_names[] = {
 	"PANEL PWR-OFF",
 	"PANEL PWR-ON",
 	"DISPLAY ON",
-	"DISPLAY PRE-OFF"
+	"DISPLAY PRE-OFF",
+	"DISPLAY HIDE-IMAGE"
 };
 
 static const char *synaptics_dsx_get_panel_event(int event)
@@ -1099,6 +1100,7 @@ static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 		container_of(nb, struct synaptics_rmi4_data, panel_nb);
 
 	switch (event) {
+	case MMI_PANEL_EVENT_HIDE_IMAGE:
 	case MMI_PANEL_EVENT_PRE_DEINIT:
 		if (rmi4_data->display_synced_suspend)
 			synaptics_rmi4_early_suspend(&rmi4_data->early_suspend);
