@@ -25,6 +25,7 @@
 #define MMI_PANEL_EVENT_PWR_ON  1
 #define MMI_PANEL_EVENT_POST_INIT  2
 #define MMI_PANEL_EVENT_PRE_DEINIT  3
+#define MMI_PANEL_EVENT_HIDE_IMAGE  4
 
 #ifdef CONFIG_MIPI_MOT_NOTIFICATIONS
 int mmi_panel_register_notifier(struct notifier_block *nb);
