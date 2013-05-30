@@ -550,6 +550,9 @@ struct hdd_station_ctx
 #endif
    /*Increment whenever ibss New peer joins and departs the network */
    int ibss_sta_generation;
+
+   /*Save the wep/wpa-none keys*/
+   tCsrRoamSetKey ibss_enc_key;
 };
 
 #define BSS_STOP    0 
