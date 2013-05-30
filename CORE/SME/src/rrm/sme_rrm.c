@@ -145,7 +145,7 @@ void rrmIndicateNeighborReportResult(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
     /* Stop the timer if it is already running. The timer should be running only in the SUCCESS case. */
     if (VOS_TIMER_STATE_RUNNING == vos_timer_getCurrentState(&pMac->rrm.rrmSmeContext.neighborReqControlInfo.neighborRspWaitTimer))
     {
-        VOS_ASSERT(VOS_STATUS_SUCCESS == vosStatus);
+        smsLog( pMac, LOG1, FL("No entry in neighbor report cache"));
         vos_timer_stop(&pMac->rrm.rrmSmeContext.neighborReqControlInfo.neighborRspWaitTimer);
     }
     callback = pMac->rrm.rrmSmeContext.neighborReqControlInfo.neighborRspCallbackInfo.neighborRspCallback;
