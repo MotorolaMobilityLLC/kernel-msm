@@ -229,7 +229,6 @@ struct utag *generate_empty_tags(void)
 
 struct utag *load_utags(enum utag_error *pstatus)
 {
-	int res;
 	size_t block_size;
 	ssize_t bytes;
 	struct utag *head = NULL;
@@ -255,13 +254,7 @@ struct utag *load_utags(enum utag_error *pstatus)
 		goto close_block;
 	}
 
-	res =
-	    filp->f_op->unlocked_ioctl(filp, BLKGETSIZE64,
-				       (unsigned long)&block_size);
-	if (0 > res) {
-		status = UTAG_ERR_PARTITION_NOT_BLKDEV;
-		goto close_block;
-	}
+	block_size = i_size_read(inode->i_bdev->bd_inode);
 
 	data = kmalloc(block_size, GFP_KERNEL);
 	if (!data) {
@@ -344,7 +337,6 @@ enum utag_error replace_first_utag(struct utag *head, uint32_t type,
 
 enum utag_error store_utags(const struct utag *tags)
 {
-	int res;
 	size_t written = 0;
 	size_t block_size = 0, tags_size = 0;
 	char *datap = NULL;
@@ -373,13 +365,7 @@ enum utag_error store_utags(const struct utag *tags)
 		goto close_block;
 	}
 
-	res =
-	    filep->f_op->unlocked_ioctl(filep, BLKGETSIZE64,
-					(unsigned long)&block_size);
-	if (0 > res) {
-		status = UTAG_ERR_PARTITION_NOT_BLKDEV;
-		goto close_block;
-	}
+	block_size = i_size_read(inode->i_bdev->bd_inode);
 
 	datap = freeze_tags(block_size, tags, &tags_size, &status);
 	if (!datap)
@@ -531,7 +517,8 @@ static int proc_dump_tags(struct seq_file *file)
 
 	tags = load_utags(&status);
 	if (NULL == tags)
-		pr_err("%s Load config failed\n", __func__);
+		pr_err("%s Load config failed (status = %d)\n", __func__,
+			status);
 	else
 		while (tags != NULL) {
 			seq_printf(file,
@@ -571,7 +558,8 @@ static int read_tag(struct seq_file *file, void *v)
 
 	tags = load_utags(&status);
 	if (NULL == tags) {
-		pr_err("%s Load config failed\n", __func__);
+		pr_err("%s Load config failed (status = %d)\n", __func__,
+			status);
 		return -EFAULT;
 	} else {
 		size = find_first_utag(tags, type, (void **)&buf, &status);
