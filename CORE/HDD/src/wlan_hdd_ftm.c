@@ -169,6 +169,7 @@ typedef struct {
 
 extern const sHalNv nvDefaults;
 static int wlan_ftm_register_wext(hdd_adapter_t *pAdapter);
+static int wlan_ftm_stop(hdd_context_t *pHddCtx);
 
 /* for PRIMA: all the available frequency, channal pair i the table are defined for channel frequency @ RF center frequency 
    Since it is associated to agc.channel_freq register for mapping.
@@ -1137,6 +1138,12 @@ int wlan_hdd_ftm_close(hdd_context_t *pHddCtx)
         return VOS_STATUS_E_NOMEM;
     }
 
+    if(WLAN_FTM_STARTED == pHddCtx->ftm.ftm_state)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: Ftm has been started. stopping ftm", __func__);
+        wlan_ftm_stop(pHddCtx);
+    }
 
     //Assert Deep sleep signal now to put Libra HW in lowest power state
     vosStatus = vos_chipAssertDeepSleep( NULL, NULL, NULL );
