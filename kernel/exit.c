@@ -739,15 +739,14 @@ static enum hrtimer_restart exit_timeout(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
-static inline void start_exit_timer(struct exit_timer_data *tdata,
-		unsigned long expiry_secs)
+static inline void start_exit_timer(struct exit_timer_data *tdata)
 {
 	struct timespec expiry_ts;
 
 	tdata->tsk = current;
 	hrtimer_init(&tdata->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	tdata->timer.function = exit_timeout;
-	expiry_ts.tv_sec = expiry_secs;
+	expiry_ts.tv_sec = CONFIG_DO_EXIT_WDOG_TIMEOUT;
 	expiry_ts.tv_nsec = 0;
 	hrtimer_start(&tdata->timer, timespec_to_ktime(expiry_ts),
 			HRTIMER_MODE_REL);
@@ -758,8 +757,7 @@ static inline void stop_exit_timer(struct exit_timer_data *tdata)
 	hrtimer_cancel(&tdata->timer);
 }
 #else
-static inline void start_exit_timer(struct exit_timer_data *tdata,
-		unsigned long expiry_secs) {}
+static inline void start_exit_timer(struct exit_timer_data *tdata) {}
 
 static inline void stop_exit_timer(struct exit_timer_data *tdata) {}
 #endif
@@ -785,7 +783,7 @@ void do_exit(long code)
 	 * exit_files() may call into device drivers that are unproven, so this
 	 * helps flush out deadlocks in those drivers.
 	 */
-	start_exit_timer(&tdata, 900);
+	start_exit_timer(&tdata);
 
 	profile_task_exit(tsk);
 
