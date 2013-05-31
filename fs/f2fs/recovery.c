@@ -102,7 +102,7 @@ out_unmap_put:
 	kunmap(page);
 	f2fs_put_page(page, 0);
 out:
-	f2fs_msg(inode->i_sb, KERN_NOTICE,
+	f2fs_msg(inode->i_sb, KERN_DEBUG,
 			"%s: ino = %x, name = %s, dir = %lx, err = %d",
 			__func__, ino_of_node(ipage), raw_inode->i_name,
 			IS_ERR(dir) ? 0 : dir->i_ino, err);
@@ -128,7 +128,7 @@ static int recover_inode(struct inode *inode, struct page *node_page)
 	if (is_dent_dnode(node_page))
 		return recover_dentry(node_page, inode);
 
-	f2fs_msg(inode->i_sb, KERN_NOTICE, "recover_inode: ino = %x, name = %s",
+	f2fs_msg(inode->i_sb, KERN_DEBUG, "recover_inode: ino = %x, name = %s",
 			ino_of_node(node_page), raw_inode->i_name);
 	return 0;
 }
@@ -389,7 +389,7 @@ err:
 	f2fs_put_dnode(&dn);
 	f2fs_unlock_op(sbi);
 out:
-	f2fs_msg(sbi->sb, KERN_NOTICE,
+	f2fs_msg(sbi->sb, KERN_DEBUG,
 		"recover_data: ino = %lx, recovered = %d blocks, err = %d",
 		inode->i_ino, recovered, err);
 	return err;
