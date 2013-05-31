@@ -1881,6 +1881,9 @@ __acquires(&gcwq->lock)
 		debug_show_held_locks(current);
 		BUG_ON(PANIC_CORRUPTION);
 		dump_stack();
+#ifdef CONFIG_WORKQUEUE_LEAK_PANIC
+		BUG();
+#endif
 	}
 
 	spin_lock_irq(&gcwq->lock);
