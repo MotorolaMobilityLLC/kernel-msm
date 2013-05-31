@@ -379,6 +379,35 @@ void msm_mctl_gettimeofday(struct timeval *tv)
 	tv->tv_usec = ts.tv_nsec/1000;
 }
 
+void msm_mctl_getAVTimer(struct msm_cam_v4l2_dev_inst *pcam_inst, struct timeval *tv)
+{
+   uint32_t avtimer_msw_1st = 0, avtimer_lsw = 0;
+   uint32_t avtimer_msw_2nd = 0;
+   uint8_t iter = 0;
+   tv->tv_sec = 0; tv->tv_usec = 0;
+
+   if (!(pcam_inst->p_avtimer_lsw) || !(pcam_inst->p_avtimer_msw)) {
+       pr_err("%s: ioremap failed\n", __func__);
+       return;
+   }
+
+   do {
+       avtimer_msw_1st = msm_camera_io_r(pcam_inst->p_avtimer_msw);
+       avtimer_lsw = msm_camera_io_r(pcam_inst->p_avtimer_lsw);
+       avtimer_msw_2nd = msm_camera_io_r(pcam_inst->p_avtimer_msw);
+   } while ((avtimer_msw_1st != avtimer_msw_2nd) && (iter++ < AVTIMER_ITERATION_CTR));
+
+   /*Just return if the MSW TimeStamps don't converge after a few iterations
+      Application needs to handle the zero TS values*/
+   if(iter >= AVTIMER_ITERATION_CTR){
+       pr_err("%s: AVTimer MSW TS did not converge !!!\n", __func__);
+       return;
+   }
+
+   tv->tv_sec = avtimer_msw_1st;
+   tv->tv_usec = avtimer_lsw;
+}
+
 struct msm_frame_buffer *msm_mctl_buf_find(
 	struct msm_cam_media_controller *pmctl,
 	struct msm_cam_v4l2_dev_inst *pcam_inst, int del_buf,
