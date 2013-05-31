@@ -1667,6 +1667,13 @@ config DO_EXIT_WDOG
 	 exit_files() never returning due to a deadlock in the close path of a
 	 driver.  It might help (or hurt) in other cases as well.
 
+config DO_EXIT_WDOG_TIMEOUT
+	int "Timeout value for task exit watchdog"
+	default 900
+	depends on DO_EXIT_WDOG
+	help
+	  This is the value for the do_exit() watchdog timer in seconds.
+
 source "samples/Kconfig"
 
 source "lib/Kconfig.kgdb"
