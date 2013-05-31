@@ -735,6 +735,7 @@ static int msm_rotator_get_plane_sizes(uint32_t format,	uint32_t w, uint32_t h,
 uint32_t fast_yuv_invalid_size_checker(unsigned char rot_mode,
 						uint32_t src_width,
 						uint32_t dst_width,
+						uint32_t src_height,
 						uint32_t dst_height,
 						uint32_t dstp0_ystride,
 						uint32_t is_planar420)
@@ -748,6 +749,9 @@ uint32_t fast_yuv_invalid_size_checker(unsigned char rot_mode,
 		return -EINVAL;
 
 	if (rot_mode & MDP_ROT_90) {
+
+		if ((src_height % 128) == 8)
+			return -EINVAL;
 
 		/* if rotation 90 degree on fast yuv
 		 * rotator image input width has to be multiple of 8
@@ -801,9 +805,9 @@ uint32_t fast_yuv_invalid_size_checker(unsigned char rot_mode,
 	} else {
 		/* if NOT applying rotation 90 degree on fast yuv,
 		 * rotator image input width has to be multiple of 8
-		 * rotator image input height has to be multiple of 2
+		 * rotator image input height has to be multiple of 8
 		*/
-		if (((dst_width % 8) != 0) || ((dst_height % 2) != 0))
+		if (((dst_width % 8) != 0) || ((dst_height % 8) != 0))
 			return -EINVAL;
 	}
 
@@ -1956,6 +1960,7 @@ static int msm_rotator_start(unsigned long arg,
 			fast_yuv_en = !fast_yuv_invalid_size_checker(
 						info.rotations,
 						info.src.width,
+						info.src.height,
 						dst_w,
 						dst_h,
 						dst_w,
