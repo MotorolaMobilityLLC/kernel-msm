@@ -1406,8 +1406,7 @@ eHalStatus sme_ChangeCountryCode( tHalHandle hHal,
                                   tSmeChangeCountryCallback callback,
                                   tANI_U8 *pCountry,
                                   void *pContext,
-                                  void* pVosContext,
-                                  tAniBool countryCodeFromSIM);
+                                  void* pVosContext );
 
 
 /* ---------------------------------------------------------------------------

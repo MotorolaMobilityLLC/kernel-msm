@@ -121,8 +121,6 @@ v_U8_t ccpRSNOui07[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x06 }; // RSN-PSK-
 
 #define BEACON_FRAME_IES_OFFSET 12
 
-void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter);
-
 #ifdef WLAN_FEATURE_11W
 void hdd_indicateUnprotMgmtFrame(hdd_adapter_t *pAdapter,
                             tANI_U32 nFrameLength,
@@ -1461,12 +1459,6 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         netif_tx_disable(dev);
         netif_carrier_off(dev);
         
-        if (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode)
-        {
-            /* Association failed; Reset the country code information
-             * so that it re-initialize the valid channel list*/
-            hdd_ResetCountryCodeAfterDisAssoc(pAdapter);
-        }
     }
 
     return eHAL_STATUS_SUCCESS;
@@ -2269,12 +2261,6 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                 }
 #endif
 
-                if (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode)
-                {
-                    /* Disconnected from current AP. Reset the country code information
-                     * so that it re-initialize the valid channel list*/
-                    hdd_ResetCountryCodeAfterDisAssoc(pAdapter);
-                }
             }
             break;
         case eCSR_ROAM_IBSS_LEAVE:
@@ -3435,70 +3421,6 @@ int iw_get_ap_address(struct net_device *dev,
     }
     EXIT();
     return 0;
-}
-
-
-/**---------------------------------------------------------------------------
-
-  \brief hdd_ResetCountryCodeAfterDisAssoc -
-  This function reset the country code to default
-  \param  - pAdapter - Pointer to HDD adapter
-  \return - nothing
-
-  --------------------------------------------------------------------------*/
-void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter)
-{
-    hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
-    tSmeConfigParams smeConfig;
-    eHalStatus status = eHAL_STATUS_SUCCESS;
-    tANI_U8 defaultCountryCode[3] = SME_INVALID_COUNTRY_CODE;
-    tANI_U8 currentCountryCode[3] = SME_INVALID_COUNTRY_CODE;
-
-    sme_GetConfigParam(pHddCtx->hHal, &smeConfig);
-
-    VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-            "%s: 11d is %s\n",__func__,
-            smeConfig.csrConfig.Is11dSupportEnabled ? "Enabled" : "Disabled");
-    /* Reset country code only when 11d is enabled
-    */
-    if (smeConfig.csrConfig.Is11dSupportEnabled)
-    {
-        sme_GetDefaultCountryCodeFrmNv(pHddCtx->hHal, &defaultCountryCode[0]);
-        sme_GetCurrentCountryCode(pHddCtx->hHal, &currentCountryCode[0]);
-
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                "%s: Default country code: %c%c%c, Current Country code: %c%c%c \n",
-                __func__,
-                defaultCountryCode[0], defaultCountryCode[1], defaultCountryCode[2],
-                currentCountryCode[0], currentCountryCode[1], currentCountryCode[2]);
-        /* Reset country code only when there is a mismatch
-         * between current country code and default country code
-         */
-        if ((defaultCountryCode[0] != currentCountryCode[0]) ||
-                (defaultCountryCode[1] != currentCountryCode[1]))
-        {
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                    "%s: Disconnected from the AP/Assoc failed and "
-                    "resetting the country code to default\n",__func__);
-            /*reset the country code of previous connection*/
-            status = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL,
-                    &defaultCountryCode[0], pAdapter,
-                    pHddCtx->pvosContext, eSIR_FALSE
-                    );
-            if( 0 != status )
-            {
-                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                        "%s: failed to Reset the Country Code\n",__func__);
-            }
-        }
-    }
-    else if (smeConfig.csrConfig.Is11hSupportEnabled)
-    {
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                            "%s: Disconnected from the AP/Assoc failed and "
-                            "resetting the 5G power values to default", __func__);
-        sme_ResetPowerValuesFor5G (pHddCtx->hHal);
-    }
 }
 
 #ifdef WLAN_FEATURE_11W

@@ -5703,13 +5703,15 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                     &(WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter))->roamProfile;
     int status = 0;
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-#ifdef FEATURE_WLAN_TDLS
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_scaninfo_t *pScanInfo  = NULL;
+#ifdef FEATURE_WLAN_TDLS
     tANI_U8 staIdx;
 #endif
     
     ENTER();
     
+    pScanInfo =  &pHddCtx->scan_info;
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d\n", 
                                     __func__,pAdapter->device_mode);
 
@@ -5752,6 +5754,12 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                     break;
             }
             pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
+            if ((pScanInfo != NULL) && pScanInfo->mScanPending)
+            {
+                hddLog(VOS_TRACE_LEVEL_INFO," Disconnect is in progress,"
+                                            " Aborting Scan");
+                hdd_abort_mac_scan(pHddCtx);
+            }
             (WLAN_HDD_GET_CTX(pAdapter))->isAmpAllowed = VOS_TRUE;
             INIT_COMPLETION(pAdapter->disconnect_comp_var);
 
