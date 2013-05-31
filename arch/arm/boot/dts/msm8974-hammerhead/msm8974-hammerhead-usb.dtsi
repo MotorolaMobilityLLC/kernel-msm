@@ -21,4 +21,7 @@
 		<0xfd4ab000 0x4>;
 	qcom,dwc-usb3-msm-adc-low-threshold = <20>;
 	qcom,dwc-usb3-msm-adc-high-threshold = <30>;
+
+	/* overwrite hs_phy_irq to dummy to disable irq */
+	interrupt-names = "dummy";
 };
