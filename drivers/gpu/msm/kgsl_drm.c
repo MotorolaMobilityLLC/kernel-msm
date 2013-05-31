@@ -1280,7 +1280,7 @@ int kgsl_gem_prime_handle_to_fd(struct drm_device *dev,
 		ret = -EINVAL;
 	else if (TYPE_IS_PMEM(priv->type) || TYPE_IS_MEM(priv->type)) {
 		if (priv->ion_handle) {
-			*prime_fd = (int)ion_share_dma_buf(
+			*prime_fd = (int)ion_share_dma_buf_fd(
 				kgsl_drm_ion_client, priv->ion_handle);
 		} else {
 			DRM_ERROR("GEM object has no ion memory allocated.\n");
