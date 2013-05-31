@@ -747,7 +747,7 @@ static inline void dec_valid_node_count(struct f2fs_sb_info *sbi,
 	spin_lock(&sbi->stat_lock);
 
 	if (sbi->total_valid_block_count < count) {
-		pr_crit("F2FS-fs (%s): block accounting error: %llu < %u\n",
+		pr_crit("F2FS-fs (%s): block accounting error: %u < %u\n",
 			sbi->sb->s_id, sbi->total_valid_block_count, count);
 		f2fs_handle_error(sbi);
 		sbi->total_valid_block_count = count;
