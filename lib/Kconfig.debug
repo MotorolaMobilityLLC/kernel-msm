@@ -215,6 +215,17 @@ config LOCKUP_IPI_CALL_WDT
 
 	  Say N if unsure.
 
+config WORKQUEUE_LEAK_PANIC
+        bool "Kernel panic when bug on workqueue leaked lock or atomic"
+        help
+          Say Y here to enable kernel panic when process one work in atomic
+          environment.
+
+          Original warning logs would not help us resolve the issue at the
+          first time. So, we prefer to stop and fix the issue before moving on.
+
+          Say N if unsure.
+
 config BOOTPARAM_HARDLOCKUP_PANIC
 	bool "Panic (Reboot) On Hard Lockups"
 	depends on LOCKUP_DETECTOR
