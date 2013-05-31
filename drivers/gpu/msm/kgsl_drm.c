@@ -1258,6 +1258,143 @@ int kgsl_gem_phys_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	}
 }
 
+int kgsl_gem_prime_handle_to_fd(struct drm_device *dev,
+		struct drm_file *file_priv, uint32_t handle, uint32_t flags,
+		int *prime_fd)
+{
+	struct drm_gem_object *obj;
+	struct drm_kgsl_gem_object *priv;
+	int ret = 0;
+
+	obj = drm_gem_object_lookup(dev, file_priv, handle);
+
+	if (obj == NULL) {
+		DRM_ERROR("Invalid GEM handle %x\n", handle);
+		return -EBADF;
+	}
+
+	mutex_lock(&dev->struct_mutex);
+	priv = obj->driver_private;
+
+	if (TYPE_IS_FD(priv->type))
+		ret = -EINVAL;
+	else if (TYPE_IS_PMEM(priv->type) || TYPE_IS_MEM(priv->type)) {
+		if (priv->ion_handle) {
+			*prime_fd = (int)ion_share_dma_buf(
+				kgsl_drm_ion_client, priv->ion_handle);
+		} else {
+			DRM_ERROR("GEM object has no ion memory allocated.\n");
+			ret = -EINVAL;
+		}
+	} else {
+		DRM_ERROR("GEM object has unknown memory type.\n");
+		ret = -EINVAL;
+	}
+
+	drm_gem_object_unreference(obj);
+	mutex_unlock(&dev->struct_mutex);
+
+	return ret;
+}
+
+int kgsl_gem_prime_fd_to_handle(struct drm_device *dev,
+		struct drm_file *file_priv, int prime_fd, uint32_t *handle)
+{
+	struct drm_gem_object *obj;
+	struct ion_handle *ion_handle;
+	struct drm_kgsl_gem_object *priv;
+	struct sg_table *sg_table;
+	struct scatterlist *s;
+	int ret, gem_handle;
+	unsigned long size;
+	struct kgsl_mmu *mmu;
+
+	ion_handle = ion_import_dma_buf(kgsl_drm_ion_client, prime_fd);
+	if (IS_ERR_OR_NULL(ion_handle)) {
+		DRM_ERROR("Unable to import dmabuf\n");
+		return -EINVAL;
+	}
+
+	ion_handle_get_size(kgsl_drm_ion_client, ion_handle, &size);
+
+	if (size == 0) {
+		ion_free(kgsl_drm_ion_client, ion_handle);
+		DRM_ERROR("Tried to create GEM object from"	\
+			"zero size ION buffer\n");
+		return -EINVAL;
+	}
+
+	obj = drm_gem_object_alloc(dev, size);
+
+	if (obj == NULL) {
+		DRM_ERROR("Unable to allocate the GEM object\n");
+		return -ENOMEM;
+	}
+
+	ret = kgsl_gem_init_obj(dev, file_priv, obj, &gem_handle);
+	if (ret)
+		return ret;
+
+	priv = obj->driver_private;
+	priv->ion_handle = ion_handle;
+
+	priv->type = DRM_KGSL_GEM_TYPE_KMEM;
+	list_add(&priv->list, &kgsl_mem_list);
+
+#if defined(CONFIG_ARCH_MSM7X27) || defined(CONFIG_ARCH_MSM8625)
+	mmu = &kgsl_get_device(KGSL_DEVICE_2D0)->mmu;
+#else
+	mmu = &kgsl_get_device(KGSL_DEVICE_3D0)->mmu;
+#endif
+
+	priv->pagetable = kgsl_mmu_getpagetable(mmu, KGSL_MMU_GLOBAL_PT);
+
+	priv->memdesc.pagetable = priv->pagetable;
+
+	sg_table = ion_sg_table(kgsl_drm_ion_client,
+		priv->ion_handle);
+	if (IS_ERR_OR_NULL(priv->ion_handle)) {
+		DRM_ERROR("Unable to get ION sg table\n");
+		ion_free(kgsl_drm_ion_client,
+			priv->ion_handle);
+		priv->ion_handle = NULL;
+		kgsl_mmu_putpagetable(priv->pagetable);
+		drm_gem_object_release(obj);
+		kfree(priv);
+		return -ENOMEM;
+	}
+
+	priv->memdesc.sg = sg_table->sgl;
+
+	/* Calculate the size of the memdesc from the sglist */
+
+	priv->memdesc.sglen = 0;
+
+	for (s = priv->memdesc.sg; s != NULL; s = sg_next(s)) {
+		priv->memdesc.size += s->length;
+		priv->memdesc.sglen++;
+	}
+
+	ret = kgsl_mmu_map(priv->pagetable, &priv->memdesc);
+	if (ret) {
+		DRM_ERROR("kgsl_mmu_map failed.  ret = %d\n", ret);
+		ion_free(kgsl_drm_ion_client,
+			priv->ion_handle);
+		priv->ion_handle = NULL;
+		kgsl_mmu_putpagetable(priv->pagetable);
+		drm_gem_object_release(obj);
+		kfree(priv);
+		return -ENOMEM;
+	}
+
+	priv->bufs[0].offset = 0;
+	priv->bufs[0].gpuaddr = priv->memdesc.gpuaddr;
+	priv->flags |= DRM_KGSL_GEM_FLAG_MAPPED;
+
+	*handle = gem_handle;
+	return 0;
+}
+
 struct drm_ioctl_desc kgsl_drm_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(KGSL_GEM_CREATE, kgsl_gem_create_ioctl, 0),
 	DRM_IOCTL_DEF_DRV(KGSL_GEM_PREP, kgsl_gem_prep_ioctl, 0),
@@ -1298,9 +1435,11 @@ static const struct file_operations kgsl_drm_driver_fops = {
 };
 
 static struct drm_driver driver = {
-	.driver_features = DRIVER_GEM,
+	.driver_features = DRIVER_GEM | DRIVER_PRIME,
 	.gem_init_object = kgsl_gem_init_object,
 	.gem_free_object = kgsl_gem_free_object,
+	.prime_handle_to_fd = kgsl_gem_prime_handle_to_fd,
+	.prime_fd_to_handle = kgsl_gem_prime_fd_to_handle,
 	.ioctls = kgsl_drm_ioctls,
 	.fops = &kgsl_drm_driver_fops,
 	.name = DRIVER_NAME,
