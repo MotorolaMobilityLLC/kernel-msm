@@ -214,7 +214,7 @@ retry:
 		e->ni = *ni;
 		if (ni->blk_addr != NULL_ADDR) {
 			f2fs_msg(sbi->sb, KERN_ERR, "node block address is "
-				"already set: %llu", ni->blk_addr);
+				"already set: %u", ni->blk_addr);
 			f2fs_handle_error(sbi);
 			/* just give up on this node */
 			write_unlock(&nm_i->nat_tree_lock);
