@@ -86,7 +86,7 @@ retry:
 	}
 	err = __f2fs_add_link(dir, &name, inode);
 out:
-	f2fs_msg(inode->i_sb, KERN_NOTICE, "recover_inode and its dentry: "
+	f2fs_msg(inode->i_sb, KERN_DEBUG, "recover_inode and its dentry: "
 			"ino = %x, name = %s, dir = %lx, err = %d",
 			ino_of_node(ipage), raw_inode->i_name,
 			IS_ERR(dir) ? 0 : dir->i_ino, err);
@@ -114,7 +114,7 @@ static int recover_inode(struct inode *inode, struct page *node_page)
 	if (is_dent_dnode(node_page))
 		return recover_dentry(node_page, inode);
 
-	f2fs_msg(inode->i_sb, KERN_NOTICE, "recover_inode: ino = %x, name = %s",
+	f2fs_msg(inode->i_sb, KERN_DEBUG, "recover_inode: ino = %x, name = %s",
 			ino_of_node(node_page), raw_inode->i_name);
 	return 0;
 }
@@ -368,7 +368,7 @@ err:
 	f2fs_put_dnode(&dn);
 	mutex_unlock_op(sbi, ilock);
 
-	f2fs_msg(sbi->sb, KERN_NOTICE, "recover_data: ino = %lx, "
+	f2fs_msg(sbi->sb, KERN_DEBUG, "recover_data: ino = %lx, "
 			"recovered_data = %d blocks, err = %d",
 			inode->i_ino, recovered, err);
 	return err;
