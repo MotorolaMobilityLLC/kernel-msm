@@ -2696,18 +2696,17 @@ static int update_ar_gc_lut(uint32_t *offset, struct mdp_pgc_lut_data *lut_data)
 	uint32_t *c2_params_offset = (uint32_t *)((uint32_t)c2_offset
 						+MDP_GC_PARMS_OFFSET);
 
-
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	for (count = 0; count < MDP_AR_GC_MAX_STAGES; count++) {
-		if (count < lut_data->num_r_stages) {
+		if (count < lut_data->num_g_stages) {
 			outpdw(c0_offset+count,
-				((0xfff & lut_data->r_data[count].x_start)
+				((0xfff & lut_data->g_data[count].x_start)
 					| 0x10000));
 
 			outpdw(c0_params_offset+count,
-				((0x7fff & lut_data->r_data[count].slope)
+				((0x7fff & lut_data->g_data[count].slope)
 					| ((0xffff
-					& lut_data->r_data[count].offset)
+					& lut_data->g_data[count].offset)
 						<< 16)));
 		} else
 			outpdw(c0_offset+count, 0);
@@ -2725,15 +2724,15 @@ static int update_ar_gc_lut(uint32_t *offset, struct mdp_pgc_lut_data *lut_data)
 		} else
 			outpdw(c1_offset+count, 0);
 
-		if (count < lut_data->num_g_stages) {
+		if (count < lut_data->num_r_stages) {
 			outpdw(c2_offset+count,
-				((0xfff & lut_data->g_data[count].x_start)
+				((0xfff & lut_data->r_data[count].x_start)
 					| 0x10000));
 
 			outpdw(c2_params_offset+count,
-				((0x7fff & lut_data->g_data[count].slope)
+				((0x7fff & lut_data->r_data[count].slope)
 				| ((0xffff
-				& lut_data->g_data[count].offset)
+				& lut_data->r_data[count].offset)
 					<< 16)));
 		} else
 			outpdw(c2_offset+count, 0);
