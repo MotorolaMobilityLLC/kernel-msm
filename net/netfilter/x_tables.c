@@ -804,8 +804,6 @@ static int xt_jumpstack_alloc(struct xt_table_info *i)
 	return 0;
 }
 
-DEFINE_SPINLOCK(x_ipt_lock);
-
 struct xt_table_info *
 xt_replace_table(struct xt_table *table,
 	      unsigned int num_counters,
@@ -822,14 +820,14 @@ xt_replace_table(struct xt_table *table,
 	}
 
 	/* Do the substitution. */
-	spin_lock_bh(&x_ipt_lock);
+	local_bh_disable();
 	private = table->private;
 
 	/* Check inside lock: is the old number correct? */
 	if (num_counters != private->number) {
 		pr_debug("num_counters != table->private->number (%u/%u)\n",
 			 num_counters, private->number);
-		spin_unlock_bh(&x_ipt_lock);
+		local_bh_enable();
 		*error = -EAGAIN;
 		return NULL;
 	}
@@ -843,7 +841,7 @@ xt_replace_table(struct xt_table *table,
 	 * resynchronization happens because of the locking done
 	 * during the get_counters() routine.
 	 */
-	spin_unlock_bh(&x_ipt_lock);
+	local_bh_enable();
 
 #ifdef CONFIG_AUDIT
 	if (audit_enabled) {
