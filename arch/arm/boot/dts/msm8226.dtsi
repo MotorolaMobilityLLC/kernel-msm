@@ -644,6 +644,8 @@
 		qcom,bark-time = <22000>;
 		qcom,pet-time = <10000>;
 		qcom,ipi-ping;
+		qcom,memory-reservation-type = "EBI1";
+		qcom,memory-reservation-size = <0xb0000>;
 	};
 
 	qcom,smem@fa00000 {
