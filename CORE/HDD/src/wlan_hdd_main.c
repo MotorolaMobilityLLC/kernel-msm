@@ -1332,11 +1332,11 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            /* Fill destination address (bssid of the AP) */
            vos_mem_copy(finalBuf + 4, targetApBssid, sizeof(targetApBssid));
 
-           /* Fill BSSID (STA mac address) */
+           /* Fill source address (STA mac address) */
            vos_mem_copy(finalBuf + 10, pAdapter->macAddressCurrent.bytes, sizeof(pAdapter->macAddressCurrent.bytes));
 
-           /* Fill source address (STA mac address) */
-           vos_mem_copy(finalBuf + 16, pAdapter->macAddressCurrent.bytes, sizeof(pAdapter->macAddressCurrent.bytes));
+           /* Fill BSSID (AP mac address) */
+           vos_mem_copy(finalBuf + 16, targetApBssid, sizeof(targetApBssid));
 
            /* Fill received buffer from 24th address */
            vos_mem_copy(finalBuf + 24, buf, bufLen);
