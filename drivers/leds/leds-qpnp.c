@@ -222,6 +222,8 @@
 #define KPDBL_MODULE_DIS		0x00
 #define KPDBL_MODULE_EN_MASK		0x80
 
+#define ATC_LED_CTRL(base)		(base + 0x4D)
+
 /**
  * enum qpnp_leds - QPNP supported led ids
  * @QPNP_ID_WLED - White led backlight
@@ -235,6 +237,7 @@ enum qpnp_leds {
 	QPNP_ID_RGB_BLUE,
 	QPNP_ID_LED_MPP,
 	QPNP_ID_KPDBL,
+	QPNP_ID_ATC,
 	QPNP_ID_MAX,
 };
 
@@ -685,6 +688,19 @@ static int qpnp_wled_set(struct qpnp_led_data *led)
 		return rc;
 	}
 	return 0;
+}
+
+static int qpnp_atc_set(struct qpnp_led_data *led)
+{
+	int rc;
+	u8 val;
+	val = (led->cdev.brightness) ? 1 : 0;
+	rc = spmi_ext_register_writel(led->spmi_dev->ctrl,
+		led->spmi_dev->sid, ATC_LED_CTRL(led->base), &val, 1);
+	if (rc)
+		dev_err(&led->spmi_dev->dev,
+			"ATC LED set failed(%d)\n", rc);
+	return rc;
 }
 
 static int qpnp_mpp_set(struct qpnp_led_data *led)
@@ -1378,6 +1394,9 @@ static void __qpnp_led_work(struct qpnp_led_data *led,
 	mutex_lock(&led->lock);
 
 	switch (led->id) {
+	case QPNP_ID_ATC:
+		qpnp_atc_set(led);
+		break;
 	case QPNP_ID_WLED:
 		rc = qpnp_wled_set(led);
 		if (rc < 0)
@@ -1432,6 +1451,9 @@ static void qpnp_led_work(struct work_struct *work)
 static int __devinit qpnp_led_set_max_brightness(struct qpnp_led_data *led)
 {
 	switch (led->id) {
+	case QPNP_ID_ATC:
+		/* Do nothing. Needed to have valid id check */
+		break;
 	case QPNP_ID_WLED:
 		led->cdev.max_brightness = WLED_MAX_LEVEL;
 		break;
@@ -2485,6 +2507,9 @@ static int __devinit qpnp_led_initialize(struct qpnp_led_data *led)
 	int rc = 0;
 
 	switch (led->id) {
+	case QPNP_ID_ATC:
+		/* Do nothing. Needed to have valid id check */
+		break;
 	case QPNP_ID_WLED:
 		rc = qpnp_wled_init(led);
 		if (rc)
@@ -3258,6 +3283,8 @@ static int __devinit qpnp_leds_probe(struct spmi_device *spmi)
 						"Unable to read mpp config data\n");
 				goto fail_id_check;
 			}
+		} else if (strncmp(led_label, "atc", sizeof("atc")) == 0) {
+			/* Do nothing. Needed to have valid id check */
 		} else if (strncmp(led_label, "kpdbl", sizeof("kpdbl")) == 0) {
 			num_kpbl_leds_on = 0;
 			rc = qpnp_get_config_kpdbl(led, temp);
