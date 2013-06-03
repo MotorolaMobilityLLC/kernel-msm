@@ -234,7 +234,7 @@ static int f2fs_set_acl(struct inode *inode, int type, struct posix_acl *acl)
 		}
 	}
 
-	error = f2fs_setxattr(inode, name_index, "", value, size);
+	error = f2fs_setxattr(inode, name_index, "", value, size, NULL);
 
 	kfree(value);
 	if (!error)
