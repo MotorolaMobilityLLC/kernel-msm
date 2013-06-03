@@ -89,6 +89,7 @@ struct bq24192_chip {
 	int  usb_online;
 	int  ac_online;
 	int  ext_pwr;
+	int  wlc_pwr;
 	int  wlc_support;
 	int  ext_ovp_otg_ctrl;
 	int  set_chg_current_ma;
@@ -458,24 +459,35 @@ static void bq24192_irq_worker(struct work_struct *work)
 		container_of(work, struct bq24192_chip, irq_work.work);
 	union power_supply_propval ret = {0,};
 	bool ext_pwr;
-	int wlc_pwr = 0;
+	bool wlc_pwr = 0;
 
 	ext_pwr = bq24192_is_charger_present(chip);
 
 	if (chip->wlc_psy) {
 		chip->wlc_psy->get_property(chip->wlc_psy,
-					POWER_SUPPLY_PROP_ONLINE, &ret);
+				POWER_SUPPLY_PROP_PRESENT, &ret);
 		wlc_pwr = ret.intval;
-		pr_info("wireless charger is = %d\n", wlc_pwr);
 	}
 
-	if (chip->ext_pwr ^ ext_pwr && !wlc_pwr) {
+	if ((chip->ext_pwr ^ ext_pwr) || (chip->wlc_pwr ^ wlc_pwr)) {
+		pr_info("ext pwr changed = %d\n", ext_pwr);
+		if (chip->wlc_psy) {
+			if (wlc_pwr && ext_pwr) {
+				chip->wlc_pwr = true;
+				power_supply_set_online(chip->wlc_psy, true);
+			} else if (chip->wlc_pwr && !(ext_pwr && wlc_pwr)) {
+				chip->wlc_pwr = false;
+				power_supply_set_online(chip->wlc_psy, false);
+			}
+		}
+
+		if (!wlc_pwr) {
+			pr_info("notify vbus to usb otg ext_pwr = %d\n", ext_pwr);
+			power_supply_set_present(chip->usb_psy, ext_pwr);
+		}
+
 		chip->ext_pwr = ext_pwr;
-		pr_info("notify vbus to usb otg ext_pwr = %d\n", ext_pwr);
-		power_supply_set_present(chip->usb_psy, chip->ext_pwr);
 	}
-
-	power_supply_changed(&chip->ac_psy);
 }
 
 #ifdef CONFIG_THERMAL_QPNP_ADC_TM

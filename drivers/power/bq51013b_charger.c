@@ -17,7 +17,6 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/gpio.h>
-#include <linux/interrupt.h>
 #include <linux/errno.h>
 #include <linux/power_supply.h>
 #include <linux/of.h>
@@ -34,6 +33,7 @@ struct bq51013b_chip {
 	unsigned int wlc_int_gpio;
 	int current_ma;
 	int present;
+	int online;
 };
 
 static const struct platform_device_id bq51013b_id[] = {
@@ -70,8 +70,10 @@ static int pm_power_get_property_wireless(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_PRESENT:
+		val->intval = bq51013b_charger_is_present(chip);
+		break;
 	case POWER_SUPPLY_PROP_ONLINE:
-		val->intval = chip->present;
+		val->intval = chip->online;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = chip->current_ma * 1000;
@@ -82,20 +84,23 @@ static int pm_power_get_property_wireless(struct power_supply *psy,
 	return 0;
 }
 
-static irqreturn_t bq51013b_irq_handler(int irq, void *data)
+static int pm_power_set_property_wireless(struct power_supply *psy,
+				  enum power_supply_property psp,
+				  const union power_supply_propval *val)
 {
-	struct bq51013b_chip *chip = data;
-	int present;
+	struct bq51013b_chip *chip = container_of(psy, struct bq51013b_chip,
+						wlc_psy);
 
-	present = bq51013b_charger_is_present(chip);
-
-	if (chip->present ^ present) {
-		pr_info("%s: wlc present = %d\n", __func__, present);
-		chip->present = present;
-		power_supply_changed(&chip->wlc_psy);
+	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		chip->online = val->intval;
+		break;
+	default:
+		return -EINVAL;
 	}
 
-	return IRQ_HANDLED;
+	power_supply_changed(&chip->wlc_psy);
+	return 0;
 }
 
 static int bq51013b_gpio_init(struct bq51013b_chip *chip)
@@ -134,6 +139,7 @@ static int bq51013b_init_wlc_psy(struct bq51013b_chip *chip)
 	chip->wlc_psy.properties = pm_power_props_wireless;
 	chip->wlc_psy.num_properties = ARRAY_SIZE(pm_power_props_wireless);
 	chip->wlc_psy.get_property = pm_power_get_property_wireless;
+	chip->wlc_psy.set_property = pm_power_set_property_wireless;
 
 	ret = power_supply_register(chip->dev, &chip->wlc_psy);
 	if (ret) {
@@ -220,25 +226,10 @@ static int bq51013b_probe(struct platform_device *pdev)
 		goto err_gpio_init;
 	}
 
-	ret = request_threaded_irq(gpio_to_irq(chip->wlc_int_gpio), NULL,
-				bq51013b_irq_handler,
-				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-				"bq51013b", chip);
-	if (ret) {
-		pr_err("%s: failed to request irq", __func__);
-		goto err_req_irq;
-	}
-	enable_irq_wake(gpio_to_irq(chip->wlc_int_gpio));
-
 	platform_set_drvdata(pdev, chip);
-
-	chip->present = bq51013b_charger_is_present(chip);
 
 	return 0;
 
-err_req_irq:
-	gpio_free(chip->chg_ctrl_gpio);
-	gpio_free(chip->wlc_int_gpio);
 err_gpio_init:
 	power_supply_unregister(&chip->wlc_psy);
 err_parse_dt:
@@ -251,7 +242,6 @@ static int bq51013b_remove(struct platform_device *pdev)
 	struct bq51013b_chip *chip = platform_get_drvdata(pdev);
 
 	platform_set_drvdata(pdev, NULL);
-	free_irq(gpio_to_irq(chip->wlc_int_gpio), chip);
 	gpio_free(chip->wlc_int_gpio);
 	gpio_free(chip->chg_ctrl_gpio);
 	power_supply_unregister(&chip->wlc_psy);
