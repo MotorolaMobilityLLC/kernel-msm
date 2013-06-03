@@ -606,7 +606,7 @@
 		akm,gpio-irq = <&msmgpio 66 0>;
 		akm,gpio-rst = <&msmgpio 62 0>;
 		akm,outbit = <1>;
-		akm,layout = <8>;
+		akm,layout = <6>;
 	};
 };
 
