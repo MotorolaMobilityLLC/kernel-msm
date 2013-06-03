@@ -2134,7 +2134,14 @@ VOS_STATUS hdd_parse_send_action_frame_data(tANI_U8 *pValue, tANI_U8 *pTargetApB
     }
     if ( *pBufLen <= 0)  return -EINVAL;
 
-    *pBuf = vos_mem_malloc(sizeof(*pBufLen));
+    /* Allocate the number of bytes based on the number of input characters
+       whether it is even or odd.
+       if the number of input characters are even, then we need N/2 byte.
+       if the number of input characters are odd, then we need do (N+1)/2 to
+       compensate rounding off.
+       For example, if N = 18, then (18 + 1)/2 = 9 bytes are enough.
+       If N = 19, then we need 10 bytes, hence (19 + 1)/2 = 10 bytes */
+    *pBuf = vos_mem_malloc((*pBufLen + 1)/2);
     if (NULL == *pBuf)
     {
         hddLog(VOS_TRACE_LEVEL_FATAL,
