@@ -12,19 +12,19 @@
 
 #define	EPI_MINOR_VERSION	88
 
-#define	EPI_RC_NUMBER		10
+#define	EPI_RC_NUMBER		21
 
 #define	EPI_INCREMENTAL_NUMBER	0
 
 #define	EPI_BUILD_NUMBER	0
 
-#define	EPI_VERSION		1, 88, 10, 0
+#define	EPI_VERSION		1, 88, 21, 0
 
-#define	EPI_VERSION_NUM		0x01580a00
+#define	EPI_VERSION_NUM		0x01581500
 
-#define EPI_VERSION_DEV		1.88.10
+#define EPI_VERSION_DEV		1.88.21
 
 
-#define	EPI_VERSION_STR		"1.88.10 (r395294)"
+#define	EPI_VERSION_STR		"1.88.21 (r403601)"
 
 #endif 

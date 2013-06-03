@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: linux_osl.c 392927 2013-03-25 19:30:25Z $
+ * $Id: linux_osl.c 401964 2013-05-14 03:50:28Z $
  */
 
 #define LINUX_PORT
@@ -817,6 +817,29 @@ osl_pktfree_static(osl_t *osh, void *p, bool send)
 	osl_pktfree(osh, p, send);
 }
 #endif 
+
+int osh_pktpadtailroom(osl_t *osh, void* p, int pad)
+{
+	int err;
+	int ntail;
+	struct sk_buff* skb = (struct sk_buff*)p;
+
+	ntail = skb->data_len + pad - (skb->end - skb->tail);
+	if (likely(skb_cloned(skb) || ntail > 0)) {
+		err = pskb_expand_head(skb, 0, ntail, GFP_ATOMIC);
+		if (unlikely(err))
+			goto done;
+	}
+
+	err = skb_linearize(skb);
+	if (unlikely(err))
+		goto done;
+
+	memset(skb->data + skb->len, 0, pad);
+
+done:
+	return err;
+}
 
 uint32
 osl_pci_read_config(osl_t *osh, uint offset, uint size)

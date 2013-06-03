@@ -655,6 +655,11 @@ bcmsdh_cur_sbwad(void *sdh)
 void
 bcmsdh_chipinfo(void *sdh, uint32 chip, uint32 chiprev)
 {
+#ifdef SUPPORT_MULTIPLE_CHIPSET
+	extern uint32 g_chip;
+	g_chip = chip;
+	printf("CHIP=[%d]\n", g_chip);
+#endif
 	return;
 }
 

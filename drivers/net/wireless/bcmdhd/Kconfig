@@ -23,6 +23,13 @@ config BCM4335BT
 	default n
 	---help---
 
+config BCM4339
+	tristate "Broadcom 4339 wireless cards support"
+	depends on BCMDHD
+	---help---
+	  This module adds support for wireless adapters based on
+	  Broadcom 4339 chipset.
+
 config BCMDHD_FW_PATH
 	depends on BCMDHD
 	string "Firmware path"

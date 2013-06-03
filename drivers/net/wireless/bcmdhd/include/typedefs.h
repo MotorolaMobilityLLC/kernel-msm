@@ -1,6 +1,6 @@
 /*
  * $Copyright Open Broadcom Corporation$
- * $Id: typedefs.h 286783 2011-09-29 06:18:57Z $
+ * $Id: typedefs.h 397286 2013-04-18 01:42:19Z $
  */
 
 #ifndef _TYPEDEFS_H_
@@ -47,6 +47,7 @@ typedef long unsigned int size_t;
 
 
 
+
 #if defined(__sparc__)
 #define TYPEDEF_ULONG
 #endif
@@ -81,7 +82,7 @@ typedef long unsigned int size_t;
 #if defined(__GNUC__) && defined(__STRICT_ANSI__)
 #define TYPEDEF_INT64
 #define TYPEDEF_UINT64
-#endif
+#endif 
 
 
 #if defined(__ICL)

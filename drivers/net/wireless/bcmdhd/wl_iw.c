@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: wl_iw.c 393481 2013-03-27 20:43:17Z $
+ * $Id: wl_iw.c 396420 2013-04-12 06:55:45Z $
  */
 
 #if defined(USE_IW)
@@ -109,7 +109,10 @@ extern int dhd_wait_pend8021x(struct net_device *dev);
 #endif 
 
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define DAEMONIZE(a)
+#elif ((LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)) && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)))
 #define DAEMONIZE(a) daemonize(a); \
 	allow_signal(SIGKILL); \
 	allow_signal(SIGTERM);

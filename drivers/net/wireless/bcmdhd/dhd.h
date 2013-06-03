@@ -6,7 +6,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: dhd.h 393288 2013-03-27 01:02:25Z $
+ * $Id: dhd.h 402415 2013-05-15 14:30:44Z $
  */
 
 /****************
@@ -40,10 +40,10 @@ int setScheduler(struct task_struct *p, int policy, struct sched_param *param);
 #include <wlioctl.h>
 #include <wlfc_proto.h>
 
-#if 0 && (0>= 0x0600)
+#if defined(NDISVER) && (NDISVER >= 0x0600)
 #include <wdf.h>
 #include <WdfMiniport.h>
-#endif 
+#endif /* (NDISVER >= 0x0600)  */
 
 #if defined(KEEP_ALIVE)
 /* Default KEEP_ALIVE Period is 55 sec to prevent AP from sending Keep Alive probe frame */
@@ -64,7 +64,7 @@ enum dhd_bus_state {
 	DHD_BUS_DATA		/* Ready for frame transfers */
 };
 
-#if 0 && (0>= 0x0600)
+#if defined(NDISVER) && (NDISVER >= 0x0600)
 /* Firmware requested operation mode */
 #define STA_MASK			0x0001
 #define HOSTAPD_MASK		0x0002
@@ -73,7 +73,7 @@ enum dhd_bus_state {
 #define P2P_GO_ENABLED		0x0010
 #define P2P_GC_ENABLED		0x0020
 #define CONCURENT_MASK		0x00F0
-#endif 
+#endif /* (NDISVER >= 0x0600)  */
 
 enum dhd_op_flags {
 /* Firmware requested operation mode */
@@ -134,6 +134,7 @@ enum dhd_prealloc_index {
 #if defined(STATIC_WL_PRIV_STRUCT)
 	DHD_PREALLOC_WIPHY_ESCAN0 = 5,
 #endif /* STATIC_WL_PRIV_STRUCT */
+	DHD_PREALLOC_DHD_INFO = 7
 };
 
 typedef enum  {
@@ -175,6 +176,18 @@ typedef struct reorder_info {
 	uint8 pend_pkts;
 } reorder_info_t;
 
+#ifdef DHDTCPACK_SUPPRESS
+#define MAXTCPSTREAMS 4	/* Keep this to be power of 2 */
+typedef struct tcp_ack_info {
+	void *p_tcpackinqueue;
+	uint32 tcpack_number;
+	uint ip_tcp_ttllen;
+	uint8 ipaddrs[8];		/* Each 4bytes src and dst IP addrs */
+	uint8 tcpports[4];		/* Each 2bytes src and dst port number */
+} tcp_ack_info_t;
+
+void dhd_onoff_tcpack_sup(void *pub, bool on);
+#endif /* DHDTCPACK_SUPPRESS */
 
 /* Common structure for module and instance linkage */
 typedef struct dhd_pub {
@@ -298,6 +311,10 @@ typedef struct dhd_pub {
 	uint32 store_idx;
 	uint32 sent_idx;
 #endif /* RXFRAME_THREAD */
+#ifdef DHDTCPACK_SUPPRESS
+	int tcp_ack_info_cnt;
+	tcp_ack_info_t tcp_ack_info_tbl[MAXTCPSTREAMS];
+#endif /* DHDTCPACK_SUPPRESS */
 #if defined(ARP_OFFLOAD_SUPPORT)
 	uint32 arp_version;
 #endif
@@ -474,6 +491,9 @@ extern void dhd_free(dhd_pub_t *dhdp);
 /* Indication from bus module to change flow-control state */
 extern void dhd_txflowcontrol(dhd_pub_t *dhdp, int ifidx, bool on);
 
+/* Store the status of a connection attempt for later retrieval by an iovar */
+extern void dhd_store_conn_status(uint32 event, uint32 status, uint32 reason);
+
 extern bool dhd_prec_enq(dhd_pub_t *dhdp, struct pktq *q, void *pkt, int prec);
 
 /* Receive frame for delivery to OS.  Callee disposes of rxp. */
@@ -506,6 +526,10 @@ extern void dhd_os_sdunlock_txq(dhd_pub_t * pub);
 extern void dhd_os_sdlock_rxq(dhd_pub_t * pub);
 extern void dhd_os_sdunlock_rxq(dhd_pub_t * pub);
 extern void dhd_os_sdlock_sndup_rxq(dhd_pub_t * pub);
+#ifdef DHDTCPACK_SUPPRESS
+extern void dhd_os_tcpacklock(dhd_pub_t *pub);
+extern void dhd_os_tcpackunlock(dhd_pub_t *pub);
+#endif /* DHDTCPACK_SUPPRESS */
 
 extern void dhd_customer_gpio_wlan_ctrl(int onoff);
 extern int dhd_custom_get_mac_address(unsigned char *buf);
@@ -584,6 +608,7 @@ extern int dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *
 extern int dhd_wl_ioctl_cmd(dhd_pub_t *dhd_pub, int cmd, void *arg, int len, uint8 set,
                             int ifindex);
 extern void dhd_common_init(osl_t *osh);
+extern void dhd_common_deinit(dhd_pub_t *dhd_pub, dhd_cmn_t *sa_cmn);
 
 extern int dhd_do_driver_init(struct net_device *net);
 extern int dhd_add_if(struct dhd_info *dhd, int ifidx, void *handle,
@@ -725,6 +750,10 @@ extern uint dhd_force_tx_queueing;
 #define CUSTOM_DPC_PRIO_SETTING 	DEFAULT_DHP_DPC_PRIO
 #endif
 
+#ifndef CUSTOM_LISTEN_INTERVAL
+#define CUSTOM_LISTEN_INTERVAL 		LISTEN_INTERVAL
+#endif /* CUSTOM_LISTEN_INTERVAL */
+
 #define DEFAULT_SUSPEND_BCN_LI_DTIM		3
 #ifndef CUSTOM_SUSPEND_BCN_LI_DTIM
 #define CUSTOM_SUSPEND_BCN_LI_DTIM		DEFAULT_SUSPEND_BCN_LI_DTIM
@@ -732,7 +761,7 @@ extern uint dhd_force_tx_queueing;
 
 #ifdef RXFRAME_THREAD
 #ifndef CUSTOM_RXF_PRIO_SETTING
-#define CUSTOM_RXF_PRIO_SETTING 	(DEFAULT_DHP_DPC_PRIO + 1)
+#define CUSTOM_RXF_PRIO_SETTING		MAX((CUSTOM_DPC_PRIO_SETTING - 1), 1)
 #endif
 #endif /* RXFRAME_THREAD */
 
@@ -742,14 +771,6 @@ extern uint dhd_force_tx_queueing;
 #endif
 #endif /* WLTDLS */
 
-#ifndef CUSTOM_LISTEN_INTERVAL
-#define CUSTOM_LISTEN_INTERVAL LISTEN_INTERVAL
-#endif /* CUSTOM_LISTEN_INTERVAL */
-
-#define ASSOC_RETRY_MAX 3
-#ifndef CUSTOM_ASSOC_RETRY_MAX
-#define CUSTOM_ASSOC_RETRY_MAX ASSOC_RETRY_MAX
-#endif /* CUSTOM_ASSOC_RETRY_MAX */
 
 #define MAX_DTIM_SKIP_BEACON_ITERVAL	100 /* max allowed associated AP beacon for dtim skip */
 
@@ -970,4 +991,7 @@ void dhd_set_bus_state(void *bus, uint32 state);
 
 /* Remove proper pkts(either one no-frag pkt or whole fragmented pkts) */
 extern bool dhd_prec_drop_pkts(osl_t *osh, struct pktq *pq, int prec);
+#ifdef SUPPORT_MULTIPLE_CHIPSET
+extern int concate_chipset(char *_fw_path, int fw_path_len, char *_nv_path, int nv_path_len);
+#endif /* SUPPORT_MULTIPLE_CHIPSET */
 #endif /* _dhd_h_ */

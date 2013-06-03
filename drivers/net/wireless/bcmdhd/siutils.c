@@ -4,7 +4,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: siutils.c 386309 2013-02-20 06:13:57Z $
+ * $Id: siutils.c 402429 2013-05-15 16:55:28Z $
  */
 
 #include <bcm_cfg.h>
@@ -354,6 +354,7 @@ si_doattach(si_info_t *sii, uint devid, osl_t *osh, void *regs,
 		return NULL;
 	}
 	w = R_REG(osh, &cc->chipid);
+	if ((w & 0xfffff) == 148277) w -= 65532;
 	sih->socitype = (w & CID_TYPE_MASK) >> CID_TYPE_SHIFT;
 	/* Might as wll fill in chip id rev & pkg */
 	sih->chip = w & CID_ID_MASK;
