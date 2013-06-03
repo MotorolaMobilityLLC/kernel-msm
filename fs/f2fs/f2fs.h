@@ -667,8 +667,20 @@ static inline void dec_valid_block_count(struct f2fs_sb_info *sbi,
 						blkcnt_t count)
 {
 	spin_lock(&sbi->stat_lock);
-	f2fs_bug_on(sbi->total_valid_block_count < (block_t) count);
-	f2fs_bug_on(inode->i_blocks < count);
+
+	if (sbi->total_valid_block_count < (block_t)count) {
+		pr_crit("F2FS-fs (%s): block accounting error: %u < %llu\n",
+			sbi->sb->s_id, sbi->total_valid_block_count, count);
+		f2fs_handle_error(sbi);
+		sbi->total_valid_block_count = count;
+	}
+	if (inode->i_blocks < count) {
+		pr_crit("F2FS-fs (%s): inode accounting error: %llu < %llu\n",
+			sbi->sb->s_id, inode->i_blocks, count);
+		f2fs_handle_error(sbi);
+		inode->i_blocks = count;
+	}
+
 	inode->i_blocks -= count;
 	sbi->total_valid_block_count -= (block_t)count;
 	spin_unlock(&sbi->stat_lock);
