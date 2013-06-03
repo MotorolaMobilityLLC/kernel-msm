@@ -430,7 +430,7 @@
 				qcom,current-setting = <5>;
 				qcom,id = <6>;
 				qcom,mode = <1>;
-				qcom,source-sel = <1>;
+				qcom,source-sel = <8>;
 				qcom,mode-ctrl = <0x60>;
 				qcom,pwm-channel = <0>;
 				qcom,start-idx = <1>;
