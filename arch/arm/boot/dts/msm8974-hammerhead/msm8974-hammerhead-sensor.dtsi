@@ -60,12 +60,12 @@
 			inven,vcc_i2c-supply = <&pm8941_lvs1>;
 			inven,gpio_int1 = <&msmgpio 73 0x00>;
 			fs_range = <0x00>;
-			axis_map_x = <0>;
-			axis_map_y = <1>;
+			axis_map_x = <1>;
+			axis_map_y = <0>;
 			axis_map_z = <2>;
 			negate_x = <0>;
 			negate_y = <0>;
-			negate_z = <0>;
+			negate_z = <1>;
 			poll_interval = <200>;
 			min_interval = <5>;
 			inven,secondary_reg = <0x0F>;
@@ -74,17 +74,17 @@
 			 */
 			inven,secondary_type = "compass";
 			inven,secondary_name = "ak8963";
-			inven,secondary_axis_map_x = <0>;
-			inven,secondary_axis_map_y = <1>;
+			inven,secondary_axis_map_x = <1>;
+			inven,secondary_axis_map_y = <0>;
 			inven,secondary_axis_map_z = <2>;
 			inven,secondary_negate_x = <0>;
 			inven,secondary_negate_y = <0>;
-			inven,secondary_negate_z = <0>;
+			inven,secondary_negate_z = <1>;
 			inven,aux_reg = <0x76>;
 			/* If no pressure sensor,
 			 * replace "pressure" with "none"
 			 */
-			inven,aux_type = "none";
+			inven,aux_type = "pressure";
 			inven,aux_name = "bmp280";
 		};
 	};

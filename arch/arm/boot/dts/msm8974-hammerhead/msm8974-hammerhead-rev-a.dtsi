@@ -19,6 +19,15 @@
 		};
 	};
 
+	i2c@f9968000 {
+		mpu6515_acc@68 {
+			axis_map_x = <0>;
+			axis_map_y = <1>;
+			negate_z = <0>;
+			inven,aux_type = "none";
+		};
+	};
+
 	vibrator {
 		vdd-supply = <&pm8941_l19>;
 		motor-amp = <70>;
