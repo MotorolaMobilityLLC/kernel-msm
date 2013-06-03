@@ -466,6 +466,19 @@
 				26 22 1E 1A 16 0E 0A 06 04 01];
 			};
 		};
+
+		qcom,leds@1000 {
+			status = "ok";
+			reg = <0x1000 0x100>;
+			compatible = "qcom,leds-qpnp";
+			qcom,led_atc {
+				label = "atc";
+				linux,name = "charging";
+				qcom,max-current = <40>;
+				qcom,id = <8>;
+				qcom,mode = <2>;
+			};
+		};
 	};
 };
 
