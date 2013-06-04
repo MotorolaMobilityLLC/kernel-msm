@@ -121,6 +121,8 @@ static struct debug_reg bq24192_debug_regs[] = {
 	BQ24192_DEBUG_REG(VENDOR_PART_REV_STATUS),
 };
 
+static int bq24192_step_down_detect_disable(struct bq24192_chip *chip);
+
 static int bq24192_read_reg(struct i2c_client *client, int reg, u8 *val)
 {
 	s32 ret;
@@ -470,7 +472,9 @@ static void bq24192_irq_worker(struct work_struct *work)
 	}
 
 	if ((chip->ext_pwr ^ ext_pwr) || (chip->wlc_pwr ^ wlc_pwr)) {
-		pr_info("ext pwr changed = %d\n", ext_pwr);
+		pr_info("power source changed! ext_pwr = %d wlc_pwr = %d\n",
+				ext_pwr, wlc_pwr);
+		bq24192_step_down_detect_disable(chip);
 		if (chip->wlc_psy) {
 			if (wlc_pwr && ext_pwr) {
 				chip->wlc_pwr = true;
@@ -522,6 +526,27 @@ static void bq24192_vbat_notification(enum qpnp_tm_state state, void *ctx)
 	schedule_delayed_work(&chip->vbat_work, msecs_to_jiffies(100));
 }
 
+static int bq24192_step_down_detect_disable(struct bq24192_chip *chip)
+{
+	int ret;
+
+	chip->adc_param.state_request = ADC_TM_HIGH_LOW_THR_DISABLE;
+	chip->adc_param.threshold_notification = bq24192_vbat_notification;
+	chip->adc_param.channel = VBAT_SNS;
+
+	ret = qpnp_adc_tm_channel_measure(&chip->adc_param);
+	if (ret)
+		pr_err("request ADC error %d\n", ret);
+
+	cancel_delayed_work_sync(&chip->vbat_work);
+	if (wake_lock_active(&chip->chg_wake_lock)) {
+		pr_debug("releasing wakelock\n");
+		wake_unlock(&chip->chg_wake_lock);
+	}
+
+	return ret;
+}
+
 static int bq24192_step_down_detect_init(struct bq24192_chip *chip)
 {
 	int ret;
@@ -549,17 +574,23 @@ static int bq24192_step_down_detect_init(struct bq24192_chip *chip)
 #else
 static void bq24192_vbat_work(struct work_struct *work)
 {
-	pr_warn("vbat notification is not suppored!\n");
+	pr_warn("vbat notification is not supported!\n");
 }
 
 static void bq24192_vbat_notification(enum qpnp_tm_state state, void *ctx)
 {
-	pr_warn("vbat notification is not suppored!\n");
+	pr_warn("vbat notification is not supported!\n");
+}
+
+static int bq24192_step_down_detect_disable(struct bq24192_chip *chip)
+{
+	pr_warn("vbat notification is not supported!\n");
+	return 0;
 }
 
 static int bq24192_step_down_detect_init(struct bq24192_chip *chip)
 {
-	pr_warn("vbat notification is not suppored!\n");
+	pr_warn("vbat notification is not supported!\n");
 	return 0;
 }
 #endif
