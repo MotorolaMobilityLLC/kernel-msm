@@ -60,6 +60,7 @@ struct tfa9890_priv {
 	struct work_struct calib_work;
 	struct work_struct mode_work;
 	struct work_struct load_preset;
+	struct delayed_work delay_work;
 	struct mutex dsp_init_lock;
 	struct mutex i2c_rw_lock;
 	int dsp_init;
@@ -938,6 +939,27 @@ static void tfa9890_load_preset(struct work_struct *work)
 	kfree(preset_name);
 }
 
+static void tfa9890_monitor(struct work_struct *work)
+{
+	struct tfa9890_priv *tfa9890 =
+			container_of(work, struct tfa9890_priv,
+				delay_work.work);
+	u16 val;
+
+	mutex_lock(&tfa9890->dsp_init_lock);
+	val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
+	pr_debug("%s: status:0x%x", __func__, val);
+	/* check IC status might need to re init */
+	if ((TFA9890_STATUS_ACS & val) && (val & TFA9890_STATUS_PLLS)) {
+		tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
+		queue_work(tfa9890->tfa9890_wq, &tfa9890->init_work);
+	} /* else just reschedule */
+
+	queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
+				5*HZ);
+	mutex_unlock(&tfa9890->dsp_init_lock);
+}
+
 static void tfa9890_dsp_init(struct work_struct *work)
 {
 	struct tfa9890_priv *tfa9890 =
@@ -1163,18 +1185,37 @@ static int tfa9890_startup(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
+	u16 val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
 
 	mutex_lock(&tfa9890->dsp_init_lock);
-	if (tfa9890->dsp_init != TFA9890_DSP_INIT_FAIL)
+	/* check IC status if cold started, will need to re-init */
+	if (TFA9890_STATUS_ACS & val)
+		tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
+
+	if (tfa9890->dsp_init != TFA9890_DSP_INIT_FAIL) {
+		/* start monitor thread to check IC status 5secs, and re-init
+		 * IC to recover in case Cold start occured while operating */
+		queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
+			5*HZ);
 		tfa9890_power(codec, 1);
+	}
 	mutex_unlock(&tfa9890->dsp_init_lock);
+
 	return 0;
 }
 
 static void tfa9890_shutdown(struct snd_pcm_substream *substream,
 				   struct snd_soc_dai *dai)
 {
+	struct snd_soc_codec *codec = dai->codec;
+	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
+
+	mutex_lock(&tfa9890->dsp_init_lock);
+
+	cancel_delayed_work_sync(&tfa9890->delay_work);
 	tfa9890_power(dai->codec, 0);
+
+	mutex_unlock(&tfa9890->dsp_init_lock);
 }
 
 /* Trigger callback is atomic function, It gets called when pcm is started */
@@ -1644,6 +1685,7 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	INIT_WORK(&tfa9890->calib_work, tfa9890_work_read_imp);
 	INIT_WORK(&tfa9890->mode_work, tfa9890_work_mode);
 	INIT_WORK(&tfa9890->load_preset, tfa9890_load_preset);
+	INIT_DELAYED_WORK(&tfa9890->delay_work, tfa9890_monitor);
 
 	ret = gpio_request(tfa9890->rst_gpio, "tfa reset gpio");
 	if (ret < 0) {
