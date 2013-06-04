@@ -2773,6 +2773,7 @@ int pm8921_batt_temperature(void)
 }
 
 #define SECS_PER_WEEK 604800
+#define SECS_PER_HR 3600
 static void handle_chg_insertion_removal(struct pm8921_chg_chip *chip)
 {
 	struct pm8921_charger_platform_data *pdata;
@@ -2781,6 +2782,7 @@ static void handle_chg_insertion_removal(struct pm8921_chg_chip *chip)
 	struct timeval tv;
 	int chrg_ocv_time = pm8921_bms_get_chrg_ocv_time();
 	int curr_cc = 0;
+	static int chrg_ocv_try_time;
 
 	do_gettimeofday(&tv);
 	pm8921_bms_get_cc_uah(&curr_cc);
@@ -2797,9 +2799,11 @@ static void handle_chg_insertion_removal(struct pm8921_chg_chip *chip)
 				is_dc_chg_plugged_in(chip));
 			wake_lock(&chip->chg_wake_lock);
 			if ((!chip->factory_mode)  &&
-				(tv.tv_sec >= chrg_ocv_time)) {
+			    (tv.tv_sec >= chrg_ocv_time) &&
+			    (tv.tv_sec >= (chrg_ocv_try_time + SECS_PER_HR))) {
 				chip->chrg_ocv_cc_bf_uah = curr_cc;
 				chip->chrg_ocv_time = 0;
+				chrg_ocv_try_time = tv.tv_sec;
 				pm_chg_auto_enable(chip, 0);
 				chip->chrg_ocv_state = CHRG_OCV_OCV_WAIT;
 				pr_info("Start Chrg OCV calculation\n");
