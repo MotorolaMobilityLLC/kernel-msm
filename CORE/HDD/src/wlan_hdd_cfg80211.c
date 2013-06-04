@@ -7590,8 +7590,10 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                 if (eTDLS_LINK_CONNECTED != pTdlsPeer->link_status)
                 {
                     wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
-                    /* start TDLS client registration with TL */
-                    status = hdd_roamRegisterTDLSSTA( pAdapter, peer, pTdlsPeer->staId, pTdlsPeer->signature);
+                    /* Mark TDLS client Authenticated .*/
+                    status = WLANTL_ChangeSTAState( pHddCtx->pvosContext,
+                                                    pTdlsPeer->staId,
+                                                    WLANTL_STA_AUTHENTICATED);
                     if (VOS_STATUS_SUCCESS == status)
                     {
                         if (pTdlsPeer->is_responder == 0)
