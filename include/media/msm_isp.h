@@ -241,6 +241,9 @@
 #define VFE_CMD_SET_STATS_VER                           164
 #define VFE_CMD_RGB_ALL_CFG                             165
 #define VFE_CMD_RGB_ALL_UPDATE                          166
+#define VFE_CMD_STATS_BG_CFG                            167
+#define VFE_CMD_STATS_BF_CFG                            168
+#define VFE_CMD_STATS_BHIST_CFG                         169
 
 struct msm_isp_cmd {
 	int32_t  id;
