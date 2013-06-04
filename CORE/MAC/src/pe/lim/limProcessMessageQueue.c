@@ -1497,6 +1497,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case SIR_LIM_INSERT_SINGLESHOT_NOA_TIMEOUT:
         case SIR_LIM_DISASSOC_ACK_TIMEOUT:
         case SIR_LIM_DEAUTH_ACK_TIMEOUT:
+        case SIR_LIM_CONVERT_ACTIVE_CHANNEL_TO_PASSIVE:
             // These timeout messages are handled by MLM sub module
 
             limProcessMlmReqMessages(pMac,

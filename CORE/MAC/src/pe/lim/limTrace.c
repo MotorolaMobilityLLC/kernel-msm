@@ -109,6 +109,7 @@ static tANI_U8* __limTraceGetTimerString( tANI_U16 timerId )
         CASE_RETURN_STRING(eLIM_DEAUTH_ACK_TIMER);
         CASE_RETURN_STRING(eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER);
         CASE_RETURN_STRING(eLIM_INSERT_SINGLESHOT_NOA_TIMER);
+        CASE_RETURN_STRING(eLIM_CONVERT_ACTIVE_CHANNEL_TO_PASSIVE);
         default:
             return( "UNKNOWN" );
             break;

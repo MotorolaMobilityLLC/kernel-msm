@@ -1466,6 +1466,12 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     PELOG1(limLog(pMac, LOG1, FL("Received SME_JOIN_REQ"));)
 
+    /* After connection, DFS channel list needs to be fill again
+     * so clearing DFS list just before connection.
+     */
+    palZeroMemory(pMac->hHdd, &pMac->lim.dfschannelList, sizeof(tSirDFSChannelList));
+
+
 #ifdef WLAN_FEATURE_VOWIFI
     /* Need to read the CFG here itself as this is used in limExtractAPCapability() below.
     * This CFG is actually read in rrmUpdateConfig() which is called later. Because this is not
