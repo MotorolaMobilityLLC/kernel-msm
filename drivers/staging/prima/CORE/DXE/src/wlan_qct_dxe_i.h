@@ -378,6 +378,7 @@ when           who        what, where, why
 #define WLANDXE_CH_STAT_INT_ED_MASK     0x00002000
 
 #define WLANDXE_CH_STAT_MASKED_MASK     0x00000008
+#define WLANDXE_CH_STAT_ENABLED_MASK    0x00000001
 /* Till here WCNSS DXE register information
  * This is temporary definition location to make compile and unit test
  * If official msmreg.h integrated, this part will be eliminated */
