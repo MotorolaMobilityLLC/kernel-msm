@@ -108,6 +108,7 @@
 #define BAT_Mid_Temp_Wireless 40
 #define FLOAT_VOLT 0x2A
 #define FLOAT_VOLT_LOW 0x1E
+#define FLOAT_VOLT_43V 0x28
 #define THERMAL_RULE1 1
 #define THERMAL_RULE2 2
 
@@ -292,6 +293,46 @@ error:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(smb345_charger_enable);
+
+int smb345_vflt_setting(void)
+{
+	struct i2c_client *client = charger->client;
+	u8 ret = 0, setting;
+
+	ret = smb345_volatile_writes(client, smb345_ENABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in smb345 volatile writes \n", __func__);
+		goto error;
+	}
+
+	ret = smb345_read(client, smb345_FLOAT_VLTG);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in smb345 read \n", __func__);
+		goto error;
+	}
+
+	setting = ret & FLOAT_VOLT_MASK;
+	if (setting != FLOAT_VOLT_43V) {
+		setting = ret & (~FLOAT_VOLT_MASK);
+		setting |= FLOAT_VOLT_43V;
+		SMB_NOTICE("Set Float Volt, retval=%x setting=%x\n", ret, setting);
+		ret = smb345_write(client, smb345_FLOAT_VLTG, setting);
+		if (ret < 0) {
+			dev_err(&client->dev, "%s() error in smb345 write \n", __func__);
+			goto error;
+		}
+	} else
+		SMB_NOTICE("Bypass set Float Volt=%x\n", ret);
+
+	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in smb345 volatile writes \n", __func__);
+		goto error;
+	}
+
+error:
+	return ret;
+}
 
 int
 smb345_set_InputCurrentlimit(struct i2c_client *client, u32 current_setting)
@@ -544,6 +585,7 @@ static void wireless_set(void)
 	charger->wpc_curr_limit = 300;
 	charger->wpc_curr_limit_count = 0;
 	smb345_set_WCInputCurrentlimit(charger->client, 300);
+	smb345_vflt_setting();
 	bq27541_wireless_callback(wireless_on);
 	queue_delayed_work(smb345_wq, &charger->wireless_set_current_work, WPC_SET_CURT_INTERVAL);
 }
@@ -555,8 +597,10 @@ static void wireless_reset(void)
 		cancel_delayed_work(&charger->wireless_set_current_work);
 	charger->wpc_curr_limit = 300;
 	charger->wpc_curr_limit_count = 0;
-	if (ac_on)
+	if (ac_on) {
 		smb345_set_InputCurrentlimit(charger->client, 1200);
+		smb345_vflt_setting();
+	}
 	bq27541_wireless_callback(wireless_on);
 	if (wake_lock_active(&wireless_wakelock))
 		wake_unlock(&wireless_wakelock);
@@ -773,6 +817,7 @@ int usb_cable_type_detect(unsigned int chgr_type)
 
 		if (chgr_type == CHARGER_SDP) {
 			SMB_NOTICE("Cable: SDP\n");
+			smb345_vflt_setting();
 			success =  bq27541_battery_callback(usb_cable);
 			touch_callback(usb_cable);
 		} else {
@@ -786,9 +831,13 @@ int usb_cable_type_detect(unsigned int chgr_type)
 				SMB_NOTICE("Cable: ACA\n");
 			} else {
 				SMB_NOTICE("Cable: TBD\n");
+				smb345_vflt_setting();
+				success =  bq27541_battery_callback(usb_cable);
+				touch_callback(usb_cable);
 				goto done;
 			}
 			smb345_set_InputCurrentlimit(client, 1200);
+			smb345_vflt_setting();
 			success =  bq27541_battery_callback(ac_cable);
 			touch_callback(ac_cable);
 			if (wpc_en) {
@@ -1049,9 +1098,9 @@ int smb345_config_thermal_charging(int temp, int rule)
 
 	setting = retval & FLOAT_VOLT_MASK;
 	if (temp <= BAT_Mid_Temp) {
-		if (setting != FLOAT_VOLT) {
+		if (setting != FLOAT_VOLT_43V) {
 			setting = retval & (~FLOAT_VOLT_MASK);
-			setting |= FLOAT_VOLT;
+			setting |= FLOAT_VOLT_43V;
 			SMB_NOTICE("Set Float Volt, retval=%x setting=%x\n", retval, setting);
 			ret = smb345_write(client, smb345_FLOAT_VLTG, setting);
 			if (ret < 0) {
