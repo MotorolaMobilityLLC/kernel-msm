@@ -441,6 +441,14 @@ static int mdss_dsi_off(struct mdss_panel_data *pdata)
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, 0);
 
+	ret = mdss_dsi_enable_bus_clocks(ctrl_pdata);
+	if (ret) {
+		pr_err("%s: failed to enable bus clocks. rc=%d\n", __func__,
+			ret);
+		mdss_dsi_panel_power_on(pdata, 0);
+		return ret;
+	}
+
 	/* disable DSI phy */
 	mdss_dsi_phy_enable(ctrl_pdata, 0);
 
@@ -504,6 +512,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 	mdss_dsi_phy_sw_reset((ctrl_pdata->ctrl_base));
 	mdss_dsi_phy_init(pdata);
+	mdss_dsi_disable_bus_clocks(ctrl_pdata);
 
 	mdss_dsi_clk_ctrl(ctrl_pdata, 1);
 
@@ -1188,17 +1197,7 @@ int dsi_panel_device_register(struct platform_device *pdev,
 			return rc;
 		}
 
-		rc = mdss_dsi_enable_bus_clocks(ctrl_pdata);
-		if (rc) {
-			pr_err("%s: failed to enable bus clocks. rc=%d\n",
-				__func__, rc);
-			rc = mdss_dsi_panel_power_on(
-				&(ctrl_pdata->panel_data), 0);
-			return rc;
-		}
-
-		if (ctrl_pdata->panel_data.panel_info.type == MIPI_VIDEO_PANEL)
-			mdss_dsi_clk_ctrl(ctrl_pdata, 1);
+		mdss_dsi_clk_ctrl(ctrl_pdata, 1);
 		ctrl_pdata->ctrl_state |=
 			(CTRL_STATE_PANEL_INIT | CTRL_STATE_MDP_ACTIVE);
 	}

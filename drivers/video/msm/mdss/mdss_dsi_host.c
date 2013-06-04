@@ -81,6 +81,7 @@ void mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 	mutex_lock(&ctrl->mutex);
 	if (enable) {
 		if (ctrl->clk_cnt == 0) {
+			mdss_dsi_enable_bus_clocks(ctrl);
 			mdss_dsi_prepare_clocks(ctrl);
 			mdss_dsi_clk_enable(ctrl);
 		}
@@ -91,6 +92,7 @@ void mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
 			if (ctrl->clk_cnt == 0) {
 				mdss_dsi_clk_disable(ctrl);
 				mdss_dsi_unprepare_clocks(ctrl);
+				mdss_dsi_disable_bus_clocks(ctrl);
 			}
 		}
 	}
