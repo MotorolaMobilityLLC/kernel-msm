@@ -50,6 +50,8 @@ struct ct406_platform_data {
 	u16	ip_als_limit;
 
 	u8	als_lens_transmissivity;
+
+	int gpio_irq;
 } __packed;
 
 #endif	/* __KERNEL__ */
