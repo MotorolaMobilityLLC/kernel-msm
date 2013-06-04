@@ -8718,7 +8718,8 @@ WLANTL_Translate8023To80211Header
     for ( ucIndex = 0; ucIndex < WLAN_MAX_STA_COUNT ; ucIndex++)
     {
       if ( ucIndex != ucStaId && pTLCb->atlSTAClients[ucIndex] && pTLCb->atlSTAClients[ucIndex]->ucExists &&
-          !pTLCb->atlSTAClients[ucIndex]->ucTxSuspended &&
+          (pTLCb->atlSTAClients[ucIndex]->tlState == WLANTL_STA_AUTHENTICATED) &&
+          (!pTLCb->atlSTAClients[ucIndex]->ucTxSuspended) &&
           vos_mem_compare( (void*)pTLCb->atlSTAClients[ucIndex]->wSTADesc.vSTAMACAddress.bytes,
             (void*)w8023Header.vDA, 6) )
       {
