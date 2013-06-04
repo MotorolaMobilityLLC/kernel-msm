@@ -2634,7 +2634,7 @@ void sp_tx_hdcp_process(void)
 		sp_tx_aux_dpcdread_bytes(0x06, 0x80, 0x28, 1, &c);
 		if (!(c & 0x01)) {
 			pr_err("Sink is not capable HDCP");
-			sp_tx_video_mute(0);
+			sp_tx_video_mute(1);
 			sp_tx_set_sys_state(STATE_PLAY_BACK);
 			return;
 		}

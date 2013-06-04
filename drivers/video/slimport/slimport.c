@@ -384,6 +384,7 @@ static void slimport_main_proc(struct anx7808_data *anx7808)
 	if (sp_tx_system_state == STATE_HDCP_AUTH) {
 		if (hdcp_enable &&
 			((sp_tx_rx_type == RX_HDMI) ||
+			( sp_tx_rx_type == RX_VGA) ||
 			( sp_tx_rx_type == RX_DP))) {
 			sp_tx_hdcp_process();
 		} else {
