@@ -41,7 +41,7 @@
 #include <linux/msm_mdp.h>
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
+#undef CONFIG_HAS_EARLYSUSPEND
 #endif
 
 #include "msm_fb_panel.h"
