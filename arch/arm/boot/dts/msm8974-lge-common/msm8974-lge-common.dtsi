@@ -26,9 +26,10 @@
 		interrupts = <0 107 0>;
 		status = "disabled";
 	};
-	uart10: uart@f9960000 { /*BLSP2, UART10 For A1 Bluetooth*/
+
+	uart10: uart@f9960000 { /*BLSP2, UART10 For Bluetooth*/
 		compatible = "qcom,msm-hsuart-v14";
-		status = "ok";
+		status = "disabled";
 		reg = <0xf9960000 0x1000>,
 			<0xf9944000 0x19000>;
 		reg-names = "core_mem", "bam_mem";
@@ -51,9 +52,6 @@
 				<84 512 0 0>,
 				<84 512 500 800>;
 	};
-        aliases{
-               uart99 = &uart10;
-        };
 
 	/* label: i2c_0 (label defined in msm8974.dtsi) */
 	i2c@f9967000 {
