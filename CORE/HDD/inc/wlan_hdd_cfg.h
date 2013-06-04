@@ -826,6 +826,16 @@ typedef enum
 #define CFG_ENABLE_WES_MODE_NAME_MIN                        (0)
 #define CFG_ENABLE_WES_MODE_NAME_MAX                        (1)
 #define CFG_ENABLE_WES_MODE_NAME_DEFAULT                    (0)
+
+#define CFG_ROAM_SCAN_N_PROBES                             "gRoamScanNProbes"
+#define CFG_ROAM_SCAN_N_PROBES_MIN                          (1)
+#define CFG_ROAM_SCAN_N_PROBES_MAX                          (10)
+#define CFG_ROAM_SCAN_N_PROBES_DEFAULT                      (2)
+
+#define CFG_ROAM_SCAN_HOME_AWAY_TIME                        "gRoamScanHomeAwayTime"
+#define CFG_ROAM_SCAN_HOME_AWAY_TIME_MIN                    (3)
+#define CFG_ROAM_SCAN_HOME_AWAY_TIME_MAX                    (300)
+#define CFG_ROAM_SCAN_HOME_AWAY_TIME_DEFAULT                (CFG_NEIGHBOR_SCAN_MAX_CHAN_TIME_DEFAULT)
 #endif /* (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR) */
 
 #ifdef FEATURE_WLAN_OKC
@@ -2041,6 +2051,8 @@ typedef struct
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    v_BOOL_t                    nRoamPrefer5GHz;
    v_BOOL_t                    nRoamIntraBand;
+   v_U8_t                      nProbes;
+   v_U16_t                     nRoamScanHomeAwayTime;
 #endif
    v_S31_t                     linkSpeedRssiMid;
    v_S31_t                     linkSpeedRssiLow;

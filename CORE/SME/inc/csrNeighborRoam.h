@@ -263,7 +263,8 @@ VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
 #define REASON_EMPTY_SCAN_REF_PERIOD_CHANGED        10
 #define REASON_PREAUTH_FAILED_FOR_ALL               11
 #define REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW     12
-
+#define REASON_NPROBES_CHANGED                      13
+#define REASON_HOME_AWAY_TIME_CHANGED               14
 eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reason);
 eHalStatus csrNeighborRoamCandidateFoundIndHdlr(tpAniSirGlobal pMac, void* pMsg);
 #endif

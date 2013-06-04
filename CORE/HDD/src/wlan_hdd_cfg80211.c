@@ -1412,7 +1412,7 @@ done:
  * This function validates whether given channel is part of valid
  * channel list.
  */
-static VOS_STATUS wlan_hdd_validate_operation_channel(hdd_adapter_t *pAdapter,int channel)
+VOS_STATUS wlan_hdd_validate_operation_channel(hdd_adapter_t *pAdapter,int channel)
 {
 
     v_U32_t num_ch = 0;
