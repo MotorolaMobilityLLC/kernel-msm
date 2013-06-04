@@ -107,9 +107,13 @@ typedef tANI_U8 tHalIpv4Addr[4];
 #define WLAN_HAL_VERSION_LENGTH  64
 
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define CHANNEL_LIST_STATIC                   1 /* Occupied channel list remains static */
+#define CHANNEL_LIST_DYNAMIC_INIT             2 /* Occupied channel list can be learnt after init */
+#define CHANNEL_LIST_DYNAMIC_FLUSH            3 /* Occupied channel list can be learnt after flush */
+#define CHANNEL_LIST_DYNAMIC_UPDATE           4 /* Occupied channel list can be learnt after update */
 #define WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE     450
 #define WLAN_HAL_ROAM_SCAN_MAX_CHANNELS       NUM_RF_CHANNELS
-#define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     64
+#define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     61
 #endif
 
 /* Message types for messages exchanged between WDI and HAL */
@@ -368,8 +372,8 @@ typedef enum
    WLAN_HAL_DEL_BA_IND                      = 188,
    WLAN_HAL_DHCP_START_IND                  = 189,
    WLAN_HAL_DHCP_STOP_IND                   = 190,
-   WLAN_START_ROAM_CANDIDATE_LOOKUP_REQ     = 191,
-   WLAN_START_ROAM_CANDIDATE_LOOKUP_RSP     = 192,
+   WLAN_ROAM_SCAN_OFFLOAD_REQ               = 191,
+   WLAN_ROAM_SCAN_OFFLOAD_RSP               = 192,
    WLAN_HAL_WIFI_PROXIMITY_REQ              = 193,
    WLAN_HAL_WIFI_PROXIMITY_RSP              = 194,
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
@@ -4932,16 +4936,6 @@ typedef PACKED_PRE struct PACKED_POST
 /*Maximum size of the probe template*/
 #define WLAN_HAL_PNO_MAX_PROBE_SIZE     450
 
-#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-#define CHANNEL_LIST_STATIC                   1 /* Occupied channel list remains static */
-#define CHANNEL_LIST_DYNAMIC_INIT             2 /* Occupied channel list can be learnt after init */
-#define CHANNEL_LIST_DYNAMIC_FLUSH            3 /* Occupied channel list can be learnt after flush */
-#define CHANNEL_LIST_DYNAMIC_UPDATE           4 /* Occupied channel list can be learnt after update */
-#define WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE     450
-#define WLAN_HAL_ROAM_SCAN_MAX_CHANNELS       NUM_RF_CHANNELS
-#define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     64
-#endif
-
 /*Type of PNO enabling 
   Immediate - scanning will start immediately and PNO procedure will
   be repeated based on timer
@@ -5241,6 +5235,8 @@ typedef PACKED_PRE struct PACKED_POST {
    tANI_U16          us5GProbeSize;
    tANI_U8           a5GProbeTemplate[WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE];
    /* Add Reserved bytes */
+   tANI_U8           nProbes;
+   tANI_U16          HomeAwayTime;
    tANI_U8           ReservedBytes[WLAN_HAL_ROAM_SCAN_RESERVED_BYTES];
    tRoamNetworkType  ConnectedNetwork;
    tMobilityDomainInfo MDID;
