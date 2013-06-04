@@ -789,6 +789,14 @@
 	regulator-always-on;
 };
 
+&pm8941_l18 {
+	regulator-always-on;
+};
+
+&pm8941_lvs1 {
+	regulator-always-on;
+};
+
 &pm8941_gpios {
 	gpio@c900 { /* GPIO 10 */
 		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
