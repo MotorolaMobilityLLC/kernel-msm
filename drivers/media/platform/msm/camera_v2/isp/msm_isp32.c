@@ -118,6 +118,8 @@ static void msm_vfe32_init_hardware_reg(struct vfe_device *vfe_dev)
 	msm_camera_io_w_mb(0x1DFFFFFF, vfe_dev->vfe_base + 0x20);
 	msm_camera_io_w(0xFFFFFFFF, vfe_dev->vfe_base + 0x24);
 	msm_camera_io_w_mb(0x1FFFFFFF, vfe_dev->vfe_base + 0x28);
+	msm_camera_io_w(0x80000000, vfe_dev->vfe_base + 0x600);
+
 }
 
 static void msm_vfe32_process_reset_irq(struct vfe_device *vfe_dev,
