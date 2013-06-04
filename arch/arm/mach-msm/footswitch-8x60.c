@@ -460,6 +460,7 @@ static void force_bus_clocks(bool enforce)
 		iv.id = MSM_RPM_ID_RPM_CTL;
 		iv.value |= BIT(6);
 	} else {
+		iv.id = MSM_RPM_ID_RPM_CTL;
 		iv.value &= ~BIT(6);
 	}
 
