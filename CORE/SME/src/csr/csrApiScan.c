@@ -456,7 +456,7 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
     tANI_BOOLEAN fNoCmdPending;
     tSmeCmd *pQueueScanCmd=NULL;
     tSmeCmd *pSendScanCmd=NULL;
-
+    tANI_U8  nNumChanCombinedConc = 0;
     if (NULL == pScanCmd)
     {
         smsLog (pMac, LOGE, FL("Scan Req cmd is NULL"));
@@ -471,6 +471,16 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
      * the scan is delaying the time it takes for LFR to find
      * candidates and resulting in disconnects.
      */
+
+    if(csrIsStaSessionConnected(pMac) &&
+       !csrIsP2pSessionConnected(pMac))
+    {
+      nNumChanCombinedConc = pMac->roam.configParam.nNumStaChanCombinedConc;
+    }
+    else if(csrIsP2pSessionConnected(pMac))
+    {
+      nNumChanCombinedConc = pMac->roam.configParam.nNumP2PChanCombinedConc;
+    }
     if ( (csrIsStaSessionConnected(pMac) && 
 #ifdef FEATURE_WLAN_LFR
          (csrIsConcurrentInfraConnected(pMac) ||
@@ -513,7 +523,7 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
 
         //Whenever we get a scan request with multiple channels we break it up into 2 requests
         //First request  for first channel to scan and second request to scan remaining channels
-        if (numChn > pMac->roam.configParam.nNumChanCombinedConc)
+        if ( numChn > nNumChanCombinedConc)
         {
             palZeroMemory(pMac->hHdd, &scanReq, sizeof(tCsrScanRequest));
 
@@ -546,14 +556,14 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
                 scanReq.ChannelInfo.ChannelList = NULL;
             }
 
-            pChnInfo->numOfChannels = pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels - pMac->roam.configParam.nNumChanCombinedConc;
+            pChnInfo->numOfChannels = pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels - nNumChanCombinedConc;
 
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN,
                     FL(" &channelToScan %p pScanCmd(%p) pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList(%p)numChn(%d)"),
                     &channelToScan[0], pScanCmd,
                     pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList, numChn);
 
-            palCopyMemory(pMac->hHdd, &channelToScan[0], &pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[pMac->roam.configParam.nNumChanCombinedConc],
+            palCopyMemory(pMac->hHdd, &channelToScan[0], &pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[nNumChanCombinedConc],
                     pChnInfo->numOfChannels * sizeof(tANI_U8));
 
             pChnInfo->ChannelList = &channelToScan[0];
@@ -590,7 +600,7 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
 
             /* setup the command to scan 2 channels */
             pSendScanCmd = pScanCmd;
-            pSendScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = pMac->roam.configParam.nNumChanCombinedConc;
+            pSendScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = nNumChanCombinedConc;
             pSendScanCmd->u.scanCmd.u.scanRequest.BSSType = eCSR_BSS_TYPE_ANY;
             pSendScanCmd->u.scanCmd.u.scanRequest.scanType = eSIR_ACTIVE_SCAN;
             //Use concurrency values for min/maxChnTime.
@@ -5831,6 +5841,7 @@ static void csrStaApConcTimerHandler(void *pv)
         tCsrScanRequest scanReq;
         tSmeCmd *pSendScanCmd = NULL;
         tANI_U8 numChn = 0;
+        tANI_U8 nNumChanCombinedConc = 0;
         tANI_U8 i, j;
         tCsrChannelInfo *pChnInfo = &scanReq.ChannelInfo;
         tANI_U8    channelToScan[WNI_CFG_VALID_CHANNEL_LIST_LEN];
@@ -5854,7 +5865,18 @@ static void csrStaApConcTimerHandler(void *pv)
          * the scan is delaying the time it takes for LFR to find
          * candidates and resulting in disconnects.
          */
-        if ( (numChn > pMac->roam.configParam.nNumChanCombinedConc) &&
+
+        if((csrIsStaSessionConnected(pMac) &&
+           !csrIsP2pSessionConnected(pMac)))
+        {
+           nNumChanCombinedConc = pMac->roam.configParam.nNumStaChanCombinedConc;
+        }
+        else if(csrIsP2pSessionConnected(pMac))
+        {
+           nNumChanCombinedConc = pMac->roam.configParam.nNumP2PChanCombinedConc;
+        }
+
+        if ( (numChn > nNumChanCombinedConc) &&
                 ((csrIsStaSessionConnected(pMac) && 
 #ifdef FEATURE_WLAN_LFR
                   (csrIsConcurrentInfraConnected(pMac) ||
@@ -5891,18 +5913,18 @@ static void csrStaApConcTimerHandler(void *pv)
                  scanReq.ChannelInfo.ChannelList = NULL;
              }
              
-             pChnInfo->numOfChannels = pMac->roam.configParam.nNumChanCombinedConc;
+             pChnInfo->numOfChannels = nNumChanCombinedConc;
              palCopyMemory(pMac->hHdd, &channelToScan[0], &pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[0],
                      pChnInfo->numOfChannels * sizeof(tANI_U8)); //just send one channel
              pChnInfo->ChannelList = &channelToScan[0];
 
-             for (i = 0, j = pMac->roam.configParam.nNumChanCombinedConc; i < (numChn-pMac->roam.configParam.nNumChanCombinedConc); i++, j++)
+             for (i = 0, j = nNumChanCombinedConc; i < (numChn-nNumChanCombinedConc); i++, j++)
              {
                  pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[i] = 
                  pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[j]; //Move all the channels one step
              }
           
-             pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = numChn - pMac->roam.configParam.nNumChanCombinedConc; //reduce outstanding # of channels to be scanned
+             pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = numChn - nNumChanCombinedConc; //reduce outstanding # of channels to be scanned
 
              scanReq.BSSType = eCSR_BSS_TYPE_ANY;
              //Modify callers parameters in case of concurrency
