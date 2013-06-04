@@ -24,6 +24,7 @@
 #include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/gpio.h>
 #include <linux/miscdevice.h>
 #include <linux/mutex.h>
 #include <linux/module.h>
@@ -1706,13 +1707,20 @@ ct406_of_init(struct i2c_client *client)
 		return NULL;
 	}
 
-	val = of_get_gpio(np, 0);
-	if (!gpio_is_valid((int)val)) {
+	pdata->gpio_irq = of_get_gpio(np, 0);
+	if (!gpio_is_valid(pdata->gpio_irq)) {
 		dev_err(&client->dev, "ct406 irq gpio invalid\n");
 		return NULL;
 	}
+	if (gpio_request(pdata->gpio_irq, "ct406_irq")) {
+		dev_err(&client->dev, "failed to export ct406 irq gpio\n");
+		return NULL;
+	}
 
-	pdata->irq = gpio_to_irq((int)val);
+	gpio_export(pdata->gpio_irq, 1);
+	gpio_export_link(&client->dev, "ct406_irq", pdata->gpio_irq);
+
+	pdata->irq = gpio_to_irq(pdata->gpio_irq);
 
 	if (!of_property_read_u32(np, "ams,prox-samples-for-noise-floor", &val))
 		pdata->prox_samples_for_noise_floor = (u8)val;
@@ -1764,7 +1772,7 @@ static int ct406_probe(struct i2c_client *client,
 	client->irq = pdata->irq;
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("%s:I2C_FUNC_I2C not supported\n", __func__);
-		return -ENODEV;
+		goto i2c_check_fail;
 	}
 
 	ct = kzalloc(sizeof(struct ct406_data), GFP_KERNEL);
@@ -1933,6 +1941,8 @@ error_input_allocate_failed:
 		regulator_put(ct->regulator);
 	kfree(ct);
 error_alloc_data_failed:
+i2c_check_fail:
+	gpio_free(pdata->gpio_irq);
 	return error;
 }
 
@@ -1956,6 +1966,7 @@ static int ct406_remove(struct i2c_client *client)
 	if (ct->regulator)
 		regulator_put(ct->regulator);
 
+	gpio_free(ct->pdata->gpio_irq);
 	kfree(ct);
 
 	return 0;
