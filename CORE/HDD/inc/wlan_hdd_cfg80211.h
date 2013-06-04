@@ -167,4 +167,7 @@ extern void wlan_hdd_cfg80211_update_replayCounterCallback(void *callbackContext
                             tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp);
 #endif
 
+void hdd_select_cbmode( hdd_adapter_t *pAdapter,v_U8_t operationChannel);
+
+
 #endif

@@ -5356,6 +5356,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                     roamInfo.pBssDesc = pSirBssDesc;
                 }
                 roamInfo.staId = (tANI_U8)pSmeStartBssRsp->staId;
+                vos_mem_copy (roamInfo.bssid, pSirBssDesc->bssId, sizeof(tCsrBssid));
                  //Remove this code once SLM_Sessionization is supported 
                  //BMPS_WORKAROUND_NOT_NEEDED
                 if(!IS_FEATURE_SUPPORTED_BY_FW(SLM_SESSIONIZATION) &&
