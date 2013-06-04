@@ -675,7 +675,9 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 		pr_info("ac is online! i_limit = %d\n",
 				chip->chg_current_ma);
 	} else if (wlc_online) {
-		bq24192_set_input_i_limit(chip, wlc_chg_current_ma);
+		bq24192_set_input_i_limit(chip,
+			INPUT_CURRENT_LIMIT_MAX_MA);
+		bq24192_set_ibat_max(chip, wlc_chg_current_ma);
 		pr_info("wlc is online! i_limit = %d\n",
 				wlc_chg_current_ma);
 	}
