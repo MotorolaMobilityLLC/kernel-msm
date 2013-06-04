@@ -5612,8 +5612,8 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                     &(WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter))->roamProfile;
     int status = 0;
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-#ifdef FEATURE_WLAN_TDLS
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+#ifdef FEATURE_WLAN_TDLS
     tANI_U8 staIdx;
 #endif
 
@@ -5638,6 +5638,7 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
         {
             eCsrRoamDisconnectReason reasonCode =
                                        eCSR_DISCONNECT_REASON_UNSPECIFIED;
+            hdd_scaninfo_t *pScanInfo;
             switch(reason)
             {
                 case WLAN_REASON_MIC_FAILURE:
@@ -5659,6 +5660,14 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                 default:
                     reasonCode = eCSR_DISCONNECT_REASON_UNSPECIFIED;
                     break;
+            }
+            pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
+            pScanInfo =  &pHddCtx->scan_info;
+            if (pScanInfo->mScanPending)
+            {
+               hddLog(VOS_TRACE_LEVEL_INFO, "Disconnect is in progress, "
+                              "Aborting Scan");
+                hdd_abort_mac_scan(pHddCtx);
             }
 
 #ifdef FEATURE_WLAN_TDLS
