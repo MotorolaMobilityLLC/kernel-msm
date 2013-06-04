@@ -1487,8 +1487,8 @@ VOS_STATUS WLANTL_MSDUReorder
    vos_pkt_get_available_buffer_pool(VOS_PKT_TYPE_RX_RAW, &rxFree);
    if(WLANTL_BA_MIN_FREE_RX_VOS_BUFFER >= rxFree)
    {
-      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"RX Free: %d", rxFree));
-      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"RX free buffer count is too low, Pending frame count is %d",
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO, "RX Free: %d", rxFree));
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO, "RX free buffer count is too low, Pending frame count is %d",
                   currentReorderInfo->pendingFramesCount));
       vosPktIdx = NULL;
       status = WLANTL_ChainFrontPkts(ucFwdIdx,
