@@ -303,7 +303,7 @@ static int bq24192_set_input_vin_limit(struct bq24192_chip *chip, int mv)
 	set_vin = reg_val * VIN_LIMIT_STEP_MV + VIN_LIMIT_MIN_MV;
 	reg_val = reg_val << 3;
 
-	pr_info("req_vin = %d set_vin = %d reg_val = 0x%02x\n",
+	pr_debug("req_vin = %d set_vin = %d reg_val = 0x%02x\n",
 				mv, set_vin, reg_val);
 
 	return bq24192_masked_write(chip->client, INPUT_SRC_CONT_REG,
@@ -327,7 +327,7 @@ static int bq24192_set_vbat_max(struct bq24192_chip *chip, int mv)
 	set_vbat = reg_val * VBAT_STEP_MV + VBAT_MIN_MV;
 	reg_val = reg_val << 2;
 
-	pr_info("req_vbat = %d set_vbat = %d reg_val = 0x%02x\n",
+	pr_debug("req_vbat = %d set_vbat = %d reg_val = 0x%02x\n",
 				mv, set_vbat, reg_val);
 
 	return bq24192_masked_write(chip->client, CHARGE_VOLT_CONT_REG,
@@ -351,7 +351,7 @@ static int bq24192_set_system_vmin(struct bq24192_chip *chip, int mv)
 	set_vmin = reg_val * SYSTEM_VMIN_STEP_MV + SYSTEM_VMIN_LOW_MV;
 	reg_val = reg_val << 1;
 
-	pr_info("req_vmin = %d set_vmin = %d reg_val = 0x%02x\n",
+	pr_debug("req_vmin = %d set_vmin = %d reg_val = 0x%02x\n",
 				mv, set_vmin, reg_val);
 
 	return bq24192_masked_write(chip->client, PWR_ON_CONF_REG,
@@ -375,7 +375,7 @@ static int bq24192_set_prechg_i_limit(struct bq24192_chip *chip, int ma)
 	set_ma = reg_val * IPRECHG_STEP_MA + IPRECHG_MIN_MA;
 	reg_val = reg_val << 4;
 
-	pr_info("req_i = %d set_i = %d reg_val = 0x%02x\n",
+	pr_debug("req_i = %d set_i = %d reg_val = 0x%02x\n",
 				ma, set_ma, reg_val);
 
 	return bq24192_masked_write(chip->client, PRE_CHARGE_TERM_CUR_REG,
@@ -398,7 +398,7 @@ static int bq24192_set_term_current(struct bq24192_chip *chip, int ma)
 	reg_val = (ma - ITERM_MIN_MA)/ITERM_STEP_MA;
 	set_ma = reg_val * ITERM_STEP_MA + ITERM_MIN_MA;
 
-	pr_info("req_i = %d set_i = %d reg_val = 0x%02x\n",
+	pr_debug("req_i = %d set_i = %d reg_val = 0x%02x\n",
 				ma, set_ma, reg_val);
 
 	return bq24192_masked_write(chip->client, PRE_CHARGE_TERM_CUR_REG,
@@ -423,7 +423,7 @@ static int bq24192_set_ir_comp_resister(struct bq24192_chip *chip, int mohm)
 	set_ma = reg_val * IRCOMP_R_STEP_MOHM + IRCOMP_R_MIN_MOHM;
 	reg_val = reg_val << 5;
 
-	pr_info("req_r = %d set_r = %d reg_val = 0x%02x\n",
+	pr_debug("req_r = %d set_r = %d reg_val = 0x%02x\n",
 				mohm, set_ma, reg_val);
 
 	return bq24192_masked_write(chip->client, IR_COMP_THERM_CONT_REG,
@@ -448,7 +448,7 @@ static int bq24192_set_vclamp_mv(struct bq24192_chip *chip, int mv)
 	set_ma = reg_val * IRCOMP_VCLAMP_STEP_MV + IRCOMP_VCLAMP_MIN_MV;
 	reg_val = reg_val << 2;
 
-	pr_info("req_mv = %d set_mv = %d reg_val = 0x%02x\n",
+	pr_debug("req_mv = %d set_mv = %d reg_val = 0x%02x\n",
 				mv, set_ma, reg_val);
 
 	return bq24192_masked_write(chip->client, IR_COMP_THERM_CONT_REG,
@@ -687,8 +687,6 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 		chip->wlc_psy->get_property(chip->wlc_psy,
 				  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
 		wlc_chg_current_ma = ret.intval / 1000;
-		pr_info(" wlc_online = %d current = %d\n", wlc_online,
-						wlc_chg_current_ma);
 	}
 
 	if (chip->usb_online &&
@@ -802,7 +800,7 @@ static int bq24192_get_prop_chg_status(struct bq24192_chip *chip)
 		break;
 	}
 
-	pr_info("chg status = %d soc = %d\n", chg_status, soc);
+	pr_debug("chg status = %d soc = %d\n", chg_status, soc);
 	return chg_status;
 }
 
