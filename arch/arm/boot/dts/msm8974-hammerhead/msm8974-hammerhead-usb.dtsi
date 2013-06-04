@@ -10,11 +10,6 @@
 * GNU General Public License for more details.
 */
 
-&usb_otg{
-	compatible = "qcom,hsusb-otg";
-	reg = <0xf9a55000 0x400>;
-};
-
 &usb3 {
 	compatible = "qcom,dwc-usb3-msm";
 	reg = <0xf9200000 0xfc000>,
