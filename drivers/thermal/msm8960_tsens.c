@@ -881,17 +881,11 @@ static int tsens_calib_sensors8660(void)
 static int tsens_calib_sensors8960(void)
 {
 	uint32_t i;
-	uint8_t *main_sensor_addr, *backup_sensor_addr;
+	uint8_t *main_sensor_addr;
 	for (i = 0; i < tmdev->tsens_num_sensor; i++) {
 		main_sensor_addr = TSENS_8960_QFPROM_ADDR0 + i;
-		backup_sensor_addr = TSENS_8960_QFPROM_SPARE_ADDR0 + i;
 
 		tmdev->sensor[i].calib_data = readb_relaxed(main_sensor_addr);
-		tmdev->sensor[i].calib_data_backup =
-			readb_relaxed(backup_sensor_addr);
-		if (tmdev->sensor[i].calib_data_backup)
-			tmdev->sensor[i].calib_data =
-				tmdev->sensor[i].calib_data_backup;
 		if (!tmdev->sensor[i].calib_data) {
 			pr_err("QFPROM TSENS calibration data not present\n");
 			return -ENODEV;
