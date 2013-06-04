@@ -68,5 +68,7 @@
 		qcom,panel-off-cmds = [05 01 00 00 32 00 02 10 00	/* enter sleep */
 				       05 01 00 00 78 00 02 28 00];	/* display off */
 		qcom,off-cmds-dsi-state = "DSI_HS_MODE";
+
+		qcom,panel-esd-power-mode-chk = <0x94>;
 	};
 };
