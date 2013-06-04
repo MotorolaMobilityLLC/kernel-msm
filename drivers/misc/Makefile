@@ -84,3 +84,4 @@ obj-$(CONFIG_DROPBOX) += dropbox.o
 obj-$(CONFIG_SENSORS_AK8963)	+= akm8963.o
 obj-$(CONFIG_USR_RESET_WARNING) += usr-reset-warning.o
 obj-$(CONFIG_SENSORS_LIS3DH_MOT)    += lis3dh_mot.o
+obj-$(CONFIG_SENSORS_L3G4200D) += l3g4200d.o

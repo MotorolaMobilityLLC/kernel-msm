@@ -10,6 +10,13 @@ config SENSORS_LIS3LV02D
 	select INPUT_POLLDEV
 	default n
 
+config SENSORS_L3G4200D
+        tristate "L3G4200D Gyroscope"
+        default n
+        depends on I2C
+        help
+          Support for the L3G4200D driver
+
 config AD525X_DPOT
 	tristate "Analog Devices Digital Potentiometers"
 	depends on (I2C || SPI) && SYSFS
