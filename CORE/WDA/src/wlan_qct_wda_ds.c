@@ -443,6 +443,7 @@ WDA_DS_BuildTxPacketInfo
   VOS_STATUS             vosStatus;
   WDI_DS_TxMetaInfoType* pTxMetaInfo = NULL;
   v_SIZE_t               usMacAddrSize;
+  wpt_FrameCtrl          *pFrameControl;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
   /*------------------------------------------------------------------------
@@ -486,6 +487,29 @@ WDA_DS_BuildTxPacketInfo
   vos_pkt_get_packet_length( vosDataBuff, pusPktLen);
   pTxMetaInfo->fPktlen = *pusPktLen;
 
+  /* For management frames, peek into Frame Control
+     field to get value of Protected Frame bit */
+  pTxMetaInfo->fProtMgmtFrame = 0;
+  if ( WDA_TLI_MGMT_FRAME_TYPE == pTxMetaInfo->frmType )
+  {
+    if ( 1 == ucDisableFrmXtl )  /* should be 802.11, but check */
+    {
+      vosStatus = vos_pkt_peek_data( vosDataBuff, 0, (v_PVOID_t)&pFrameControl,
+                                     sizeof( wpt_FrameCtrl ));
+      if ( VOS_STATUS_SUCCESS != vosStatus )
+      {
+        VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                   "WDA: Failed while attempting to extract Protect Bit in "
+                   "Frame Control, status %d", vosStatus );
+        VOS_ASSERT( 0 );
+        return VOS_STATUS_E_FAULT;
+      }
+      pTxMetaInfo->fProtMgmtFrame = pFrameControl->wep;
+      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,
+                 "WLAN TL: fProtMgmtFrame:%d", pTxMetaInfo->fProtMgmtFrame );
+    }
+  }
+
   // Dst address
   usMacAddrSize = VOS_MAC_ADDR_SIZE;
   vosStatus = vos_pkt_extract_data( vosDataBuff,
@@ -512,9 +536,10 @@ WDA_DS_BuildTxPacketInfo
   VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,
              "WLAN TL: Dump TX meta info: "
              "txFlags:%d, qosEnabled:%d, ac:%d, "
-             "isEapol:%d, fdisableFrmXlt:%d" "frmType%d",
+             "isEapol:%d, fdisableFrmXlt:%d, frmType:%d",
              pTxMetaInfo->txFlags, ucQosEnabled, pTxMetaInfo->ac,
-             pTxMetaInfo->isEapol, pTxMetaInfo->fdisableFrmXlt, pTxMetaInfo->frmType );
+             pTxMetaInfo->isEapol, pTxMetaInfo->fdisableFrmXlt,
+             pTxMetaInfo->frmType );
 
   return VOS_STATUS_SUCCESS;
 }
