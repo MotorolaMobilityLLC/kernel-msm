@@ -160,6 +160,13 @@ static int wlan_hdd_inited;
  */
 #define WLAN_HDD_RESTART_RETRY_DELAY_MS 5000  /* 5 second */
 #define WLAN_HDD_RESTART_RETRY_MAX_CNT  5     /* 5 retries */
+
+/*
+ * Size of Driver command strings from upper layer
+ */
+#define SIZE_OF_SETROAMMODE             11    /* size of SETROAMMODE */
+#define SIZE_OF_GETROAMMODE             11    /* size of GETROAMMODE */
+
 #ifdef WLAN_OPEN_SOURCE
 static struct wake_lock wlan_wake_lock;
 #endif
@@ -861,6 +868,83 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                goto exit;
            }
        }
+#ifdef FEATURE_WLAN_LFR
+       /* SETROAMMODE */
+       else if (strncmp(command, "SETROAMMODE", SIZE_OF_SETROAMMODE) == 0)
+       {
+           tANI_U8 *value = command;
+	   tANI_BOOLEAN roamMode = CFG_LFR_FEATURE_ENABLED_DEFAULT;
+
+	   /* Move pointer to ahead of SETROAMMODE<delimiter> */
+	   value = value + SIZE_OF_SETROAMMODE + 1;
+
+	   /* Convert the value from ascii to integer */
+	   ret = kstrtou8(value, SIZE_OF_SETROAMMODE, &roamMode);
+	   if (ret < 0)
+	   {
+	      /* If the input value is greater than max value of datatype, then also
+		  kstrtou8 fails */
+	      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+		   "%s: kstrtou8 failed range [%d - %d]", __func__,
+		   CFG_LFR_FEATURE_ENABLED_MIN,
+		   CFG_LFR_FEATURE_ENABLED_MAX);
+              ret = -EINVAL;
+	      goto exit;
+	   }
+           if ((roamMode < CFG_LFR_FEATURE_ENABLED_MIN) ||
+	       (roamMode > CFG_LFR_FEATURE_ENABLED_MAX))
+           {
+              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+			"Roam Mode value %d is out of range"
+			" (Min: %d Max: %d)", roamMode,
+			CFG_LFR_FEATURE_ENABLED_MIN,
+			CFG_LFR_FEATURE_ENABLED_MAX);
+	      ret = -EINVAL;
+	      goto exit;
+	   }
+
+	   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+		   "%s: Received Command to Set Roam Mode = %d", __func__, roamMode);
+           /*
+	    * Note that
+	    *     SETROAMMODE 0 is to enable LFR while
+	    *     SETROAMMODE 1 is to disable LFR, but
+	    *     NotifyIsFastRoamIniFeatureEnabled 0/1 is to enable/disable.
+	    *     So, we have to invert the value to call sme_UpdateIsFastRoamIniFeatureEnabled.
+	    */
+	   if (CFG_LFR_FEATURE_ENABLED_MIN == roamMode)
+	       roamMode = CFG_LFR_FEATURE_ENABLED_MAX;    /* Roam enable */
+	   else
+	       roamMode = CFG_LFR_FEATURE_ENABLED_MIN;    /* Roam disable */
+
+	   pHddCtx->cfg_ini->isFastRoamIniFeatureEnabled = roamMode;
+           sme_UpdateIsFastRoamIniFeatureEnabled((tHalHandle)(pHddCtx->hHal), roamMode);
+       }
+       /* GETROAMMODE */
+       else if (strncmp(priv_data.buf, "GETROAMMODE", SIZE_OF_GETROAMMODE) == 0)
+       {
+	   tANI_BOOLEAN roamMode = sme_getIsLfrFeatureEnabled((tHalHandle)(pHddCtx->hHal));
+	   char extra[32];
+	   tANI_U8 len = 0;
+
+           /*
+            * roamMode value shall be inverted because the sementics is different.
+            */
+           if (CFG_LFR_FEATURE_ENABLED_MIN == roamMode)
+	       roamMode = CFG_LFR_FEATURE_ENABLED_MAX;
+           else
+	       roamMode = CFG_LFR_FEATURE_ENABLED_MIN;
+
+	   len = snprintf(extra, sizeof(extra), "%s %d", command, roamMode);
+	   if (copy_to_user(priv_data.buf, &extra, len + 1))
+	   {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+	   }
+       }
+#endif
 #endif
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
        else if (strncmp(command, "SETROAMDELTA", 12) == 0)
