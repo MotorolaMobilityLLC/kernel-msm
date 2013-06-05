@@ -90,11 +90,11 @@
 			debounce-interval = <15>;
 		};
 
-		camera_focus {
-			label = "camera_focus";
-			gpios = <&pm8941_gpios 4 0x1>;
+		vol_down {
+			label = "volume_down";
+			gpios = <&pm8941_gpios 2 0x1>;
 			linux,input-type = <1>;
-			linux,code = <0x210>;
+			linux,code = <114>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
@@ -580,8 +580,11 @@
 
 	gpio@d500 { /* GPIO 22 */
 		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <4>;	/* QPNP_PIN_PULL_DN */
+		qcom,pull = <1>;        /* 1.5 uA   */
+		qcom,invert = <1>;      /* QPNP_PIN_INVERT_ENABLE */
+		qcom,src-sel = <0>;	/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
+		qcom,vin-sel = <0>;	  /* QPNP_PIN_VIN0 */
 	};
 
 	gpio@d600 { /* GPIO 23 */
@@ -736,6 +739,7 @@
 		qcom,cdc-micbias1-ext-cap;
 		qcom,cdc-micbias2-ext-cap;
 		qcom,cdc-micbias4-ext-cap;
+		qcom,cdc-reset-gpio = <&pm8941_gpios 36 0>;
 	};
 };
 
@@ -756,6 +760,16 @@
 		overdrive_voltage = <0x89>; /* 3.0v */
 		vibrator_vdd-supply = <&pm8941_boost>;
 	};
+
+	tpa6165xx@40 {
+		compatible = "ti,tpa6165";
+		reg = <0x40>;
+		interrupts = <&pm8941_gpios 22 0x1>;
+		gpios = <&pm8941_gpios 22 0x1>;
+		hs_det_vdd-supply = <&pm8941_lvs2>;
+		hs_det_micvdd-supply = <&pm8941_l17>;
+		ti,tpa6165-always-on-micbias = <1>;
+		};
 };
 
 &i2c_3 {
