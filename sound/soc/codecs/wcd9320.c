@@ -7005,6 +7005,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 	else
 		rco_clk_rate = TAIKO_MCLK_CLK_9P6MHZ;
 
+#ifndef CONFIG_SND_SOC_TPA6165A2
 	/* init and start mbhc */
 	ret = wcd9xxx_mbhc_init(&taiko->mbhc, &taiko->resmgr, codec,
 				taiko_enable_mbhc_micbias,
@@ -7014,6 +7015,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 		pr_err("%s: mbhc init failed %d\n", __func__, ret);
 		goto err_init;
 	}
+#endif
 
 	taiko->codec = codec;
 	for (i = 0; i < COMPANDER_MAX; i++) {
