@@ -19,10 +19,6 @@
 	compatible = "qcom,msm8226-bigfoot",
 		     "qcom,msm8226-moto",
 		     "qcom,msm8226";
-
-	qcom,mdss_dsi_mot_auo_720p_video {
-		status = "ok";
-	};
 };
 
 &sdcc1 {
@@ -30,6 +26,7 @@
 };
 
 &mot_auo_720p_vid {
+	status = "ok";
 	vddio_disp-supply = <&vddio_disp_vreg>;
 	lcdbias-supply = <&tps65132>;
 };
