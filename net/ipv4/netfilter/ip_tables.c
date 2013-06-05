@@ -284,6 +284,8 @@ struct ipt_entry *ipt_next_entry(const struct ipt_entry *entry)
 	return (void *)entry + entry->next_offset;
 }
 
+DEFINE_SPINLOCK(ipt_lock);
+
 /* Returns one of the generic firewall policies, like NF_ACCEPT. */
 unsigned int
 ipt_do_table(struct sk_buff *skb,
@@ -323,7 +325,7 @@ ipt_do_table(struct sk_buff *skb,
 	acpar.hooknum = hook;
 
 	IP_NF_ASSERT(table->valid_hooks & (1 << hook));
-	local_bh_disable();
+	spin_lock_bh(&ipt_lock);
 	addend = xt_write_recseq_begin();
 	private = table->private;
 	cpu        = smp_processor_id();
@@ -411,7 +413,9 @@ ipt_do_table(struct sk_buff *skb,
 		acpar.target   = t->u.kernel.target;
 		acpar.targinfo = t->data;
 
+		spin_unlock(&ipt_lock);
 		verdict = t->u.kernel.target->target(skb, &acpar);
+		spin_lock(&ipt_lock);
 		/* Target might have changed stuff. */
 		ip = ip_hdr(skb);
 		if (verdict == XT_CONTINUE)
@@ -424,7 +428,7 @@ ipt_do_table(struct sk_buff *skb,
 		 __func__, *stackptr, origptr);
 	*stackptr = origptr;
  	xt_write_recseq_end(addend);
- 	local_bh_enable();
+	spin_unlock_bh(&ipt_lock);
 
 #ifdef DEBUG_ALLOW_ALL
 	return NF_ACCEPT;
@@ -1225,7 +1229,10 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
 	xt_entry_foreach(iter, loc_cpu_old_entry, oldinfo->size)
 		cleanup_entry(iter, net);
 
+	spin_lock(&ipt_lock);
 	xt_free_table_info(oldinfo);
+	spin_unlock(&ipt_lock);
+
 	if (copy_to_user(counters_ptr, counters,
 			 sizeof(struct xt_counters) * num_counters) != 0)
 		ret = -EFAULT;
