@@ -20,7 +20,7 @@
 /include/ "msm8226.dtsi"
 /include/ "msm8226-camera-sensor-falcon.dtsi"
 
-/ {
+&soc {
 	factory_support {
 		compatible = "mmi,factory-support-msm8960";
 
