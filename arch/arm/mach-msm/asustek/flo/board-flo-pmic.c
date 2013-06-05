@@ -350,11 +350,17 @@ struct pwm_device *bl_lpm;
 static void apq8064_pm8921_pwm_init(void)
 {
 	int ret;
+	int bl_level = BL_INIT_LEVEL;
+	hw_rev hw_revision = asustek_get_hw_rev();
 	pr_info("%s+\n", __func__);
 
 	bl_lpm = pwm_request(2,	"backlight");
 
-	ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL * BL_INIT_LEVEL,
+	/* turn off pwm (pmic gpio 26) after ER2 panel */
+	if (hw_revision == HW_REV_D || hw_revision == HW_REV_E)
+		bl_level = 0;
+
+	ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL * bl_level,
 		PWM_PERIOD_USEC);
 	if (ret)
 		pr_err("pwm_config on lpm failed %d\n", ret);
