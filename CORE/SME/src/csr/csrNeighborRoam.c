@@ -473,22 +473,47 @@ VOS_STATUS csrNeighborRoamSetLookupRssiThreshold(tpAniSirGlobal pMac, v_U8_t nei
     {
         NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Currently in CONNECTED state, so deregister all and re-register for DOWN event again"));
         /* De-register existing lookup UP/DOWN, Rssi indications */
-        csrNeighborRoamDeregAllRssiIndication(pMac);
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+        {
+            csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_STOP, REASON_DISCONNECTED);
+        }
+        else
+        {
+#endif
+           csrNeighborRoamDeregAllRssiIndication(pMac);
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        }
+#endif
         pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold = neighborLookupRssiThreshold;
         pNeighborRoamInfo->currentNeighborLookupThreshold = pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold;
 
-        NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Registering neighbor lookup DOWN event with TL, RSSI = %d"), pNeighborRoamInfo->currentNeighborLookupThreshold);
-        /* Register Neighbor Lookup threshold callback with TL for DOWN event only */
-        vosStatus = WLANTL_RegRSSIIndicationCB(pMac->roam.gVosContext, (v_S7_t)pNeighborRoamInfo->currentNeighborLookupThreshold * (-1),
-                                                WLANTL_HO_THRESHOLD_DOWN,
-                                                csrNeighborRoamNeighborLookupDOWNCallback,
-                                                VOS_MODULE_ID_SME, pMac);
-        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        if (pMac->roam.configParam.isRoamOffloadScanEnabled)
         {
-            //err msg
-            smsLog(pMac, LOGW, FL(" Couldn't register csrNeighborRoamNeighborLookupDOWNCallback with TL: Status = %d"), vosStatus);
-            vosStatus = VOS_STATUS_E_FAILURE;
+            csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_CONNECT);
         }
+        else
+        {
+#endif
+           NEIGHBOR_ROAM_DEBUG(pMac, LOG2,
+           FL("Registering neighbor lookup DOWN event with TL, RSSI = %d"),
+           pNeighborRoamInfo->currentNeighborLookupThreshold);
+           /* Register Neighbor Lookup threshold callback with TL for DOWN event only */
+           vosStatus = WLANTL_RegRSSIIndicationCB(pMac->roam.gVosContext,
+                       (v_S7_t)pNeighborRoamInfo->currentNeighborLookupThreshold * (-1),
+                       WLANTL_HO_THRESHOLD_DOWN,
+                       csrNeighborRoamNeighborLookupDOWNCallback,
+                       VOS_MODULE_ID_SME, pMac);
+           if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+           {
+              //err msg
+              smsLog(pMac, LOGW, FL(" Couldn't register csrNeighborRoamNeighborLookupDOWNCallback with TL: Status = %d"), vosStatus);
+              vosStatus = VOS_STATUS_E_FAILURE;
+           }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        }
+#endif
     }
     else if (eCSR_NEIGHBOR_ROAM_STATE_INIT == pNeighborRoamInfo->neighborRoamState)
     {
