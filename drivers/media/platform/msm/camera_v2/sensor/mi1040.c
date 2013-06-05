@@ -30,7 +30,6 @@
 #define CAM_LENS PM8921_GPIO_PM_TO_SYS(24)
 
 /*#define CONFIG_MSMB_CAMERA_DEBUG*/
-#define CONFIG_MSMB_CAMERA_DEBUG
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
