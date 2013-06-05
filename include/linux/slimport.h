@@ -48,7 +48,7 @@ extern unchar sp_tx_pd_mode;
 
 extern unchar bedid_break;
 extern unchar sp_tx_hw_hdcp_en;
-/*extern struct i2c_client *anx7808_client;*/
+extern struct i2c_client *anx7808_client;
 
 int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf);
 int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value);

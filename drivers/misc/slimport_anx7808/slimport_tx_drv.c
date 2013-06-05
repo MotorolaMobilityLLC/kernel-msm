@@ -19,6 +19,8 @@
 #include <linux/slimport.h>
 #include "slimport_tx_drv.h"
 #include "slimport_tx_reg.h"
+#include <linux/platform_data/slimport_device.h>
+#include <linux/i2c.h>
 
 static unchar bytebuf[MAX_BUF_CNT];
 
@@ -128,6 +130,9 @@ static void sp_tx_api_m_gen_clk_select(unchar bspreading)
 
 static void sp_tx_link_phy_initialization(void)
 {
+	struct anx7808_platform_data *pdata =
+		anx7808_client->dev.platform_data;
+
 	/* PHY parameter for cts */
 
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG0, 0x19);
@@ -148,10 +153,25 @@ static void sp_tx_link_phy_initialization(void)
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG15, 0x10);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG18, 0x1F);
 
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG2, 0x36);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG12, 0x08);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG6, 0x3c);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG16, 0x18);
+	if (!pdata->phy_reg2)
+		sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG2, 0x36);
+	else
+		sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG2, pdata->phy_reg2);
+
+	if (!pdata->phy_reg12)
+		sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG12, 0x08);
+	else
+		sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG12, pdata->phy_reg12);
+
+	if (!pdata->phy_reg6)
+		sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG6, 0x3c);
+	else
+		sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG6, pdata->phy_reg6);
+
+	if (!pdata->phy_reg16)
+		sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG16, 0x18);
+	else
+		sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG16, pdata->phy_reg16);
 
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG3, 0x3F);
 }

@@ -25,6 +25,11 @@ struct anx7808_platform_data
 	spinlock_t lock;
 
 	int (*switch_power)(bool on);
+
+	unsigned int phy_reg2;
+	unsigned int phy_reg12;
+	unsigned int phy_reg6;
+	unsigned int phy_reg16;
 };
 
 #endif
