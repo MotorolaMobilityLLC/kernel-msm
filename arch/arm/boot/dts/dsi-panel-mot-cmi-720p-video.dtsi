@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-/ {
+&soc {
 	mot_cmi_720p_vid: qcom,mdss_dsi_mot_cmi_720p_video {
 		compatible = "qcom,mdss-dsi-panel";
 		label = "mot cmi 720p video mode dsi panel";
@@ -60,15 +60,15 @@
 					     00 00 00 00 0a 00 00 01 97 	/* lane2 config */
 					     00 00 00 00 0f 00 00 01 97 	/* lane3 config */
 					     00 c0 00 00 00 00 00 01 bb];	/* Clk ln config */
-		qcom,panel-on-cmds = [29 01 00 00 78 02 11 00		/* exit sleep */
-				      29 01 00 00 00 02 51 ff		/* led_pwm1 */
-				      29 01 00 00 00 02 53 2c		/* led_pwm2 */
-				      29 01 00 00 00 02 35 00		/* turn on tearing sig */
-				      29 01 00 00 00 02 55 03		/* led_pwm3 */
-				      29 01 00 00 00 02 29 00];		/* display on */
+		qcom,panel-on-cmds = [29 01 00 00 78 00 02 11 00	/* exit sleep */
+				      29 01 00 00 00 00 02 51 ff	/* led_pwm1 */
+				      29 01 00 00 00 00 02 53 2c	/* led_pwm2 */
+				      29 01 00 00 00 00 02 35 00	/* turn on tearing sig */
+				      29 01 00 00 00 00 02 55 03	/* led_pwm3 */
+				      29 01 00 00 00 00 02 29 00];	/* display on */
 		qcom,on-cmds-dsi-state = "DSI_LP_MODE";
-		qcom,panel-off-cmds = [05 01 00 00 32 02 10 00		/* enter sleep */
-				       05 01 00 00 78 02 28 00];	/* display off */
+		qcom,panel-off-cmds = [05 01 00 00 32 00 02 10 00	/* enter sleep */
+				       05 01 00 00 78 00 02 28 00];	/* display off */
 		qcom,off-cmds-dsi-state = "DSI_HS_MODE";
 	};
 };
