@@ -784,6 +784,7 @@
 		synaptics,normal-mode = <1>;
 		synaptics,reset-on-resume;
 		synaptics,hw-reset;
+		synaptics,gpio-config;
 	};
 };
 
