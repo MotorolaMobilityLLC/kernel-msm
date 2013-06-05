@@ -1485,6 +1485,9 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 {
 	u32			reg;
 	u32			timeout = 500;
+	unsigned long		csr_timeout;
+	struct dwc3_event_buffer	*evt;
+	int				n;
 
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	if (is_on) {
@@ -1495,6 +1498,41 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 
 		if (dwc->revision >= DWC3_REVISION_194A)
 			reg &= ~DWC3_DCTL_KEEP_CONNECT;
+
+		/* issue device SoftReset */
+		csr_timeout = jiffies + msecs_to_jiffies(500);
+		dwc3_writel(dwc->regs, DWC3_DCTL, reg | DWC3_DCTL_CSFTRST);
+		do {
+			reg = dwc3_readl(dwc->regs, DWC3_DCTL);
+			if (!(reg & DWC3_DCTL_CSFTRST))
+				break;
+
+			if (time_after(jiffies, csr_timeout))
+				dev_err(dwc->dev, "Reset Timed Out\n");
+
+			cpu_relax();
+		} while (true);
+
+
+		for (n = 0; n < dwc->num_event_buffers; n++) {
+			evt = dwc->ev_buffs[n];
+			dev_dbg(dwc->dev, "Event buf %p dma %08llx length %d\n",
+				evt->buf, (unsigned long long) evt->dma,
+				evt->length);
+
+			evt->lpos = 0;
+
+			dwc3_writel(dwc->regs, DWC3_GEVNTADRLO(n),
+					lower_32_bits(evt->dma));
+			dwc3_writel(dwc->regs, DWC3_GEVNTADRHI(n),
+					upper_32_bits(evt->dma));
+			dwc3_writel(dwc->regs, DWC3_GEVNTSIZ(n),
+					(evt->length - 8) & 0xffff);
+			dwc3_writel(dwc->regs, DWC3_GEVNTCOUNT(n), 0);
+		}
+
+		dwc3_gadget_restart(dwc);
+		reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 		reg |= DWC3_DCTL_RUN_STOP;
 	} else {
 		reg &= ~DWC3_DCTL_RUN_STOP;
