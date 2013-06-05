@@ -3936,6 +3936,8 @@ static void vfe32_process_reg_update_irq(
 			break;
 		case VFE_STATE_HW_STOP_REQUESTED:
 			share_ctrl->liveshot_state = VFE_STATE_HW_STOPPED;
+			vfe32_send_isp_msg(&vfe32_ctrl->subdev,
+				share_ctrl->vfeFrameId, MSG_ID_STOP_LS_ACK);
 			break;
 		case VFE_STATE_STOP_REQUESTED:
 			if (share_ctrl->comp_output_mode &
