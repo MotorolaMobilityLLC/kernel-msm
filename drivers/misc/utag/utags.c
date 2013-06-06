@@ -349,7 +349,7 @@ enum utag_error store_utags(const struct utag *tags)
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 
-	filep = filp_open(utags_blkdev, O_RDWR, 0);
+	filep = filp_open(utags_blkdev, O_RDWR|O_SYNC, 0);
 	if (IS_ERR_OR_NULL(filep)) {
 		file_errno = -PTR_ERR(filep);
 		pr_err("%s ERROR opening file (%s) errno=%d\n", __func__,
