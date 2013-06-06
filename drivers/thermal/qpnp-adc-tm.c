@@ -545,6 +545,9 @@ static int32_t qpnp_adc_tm_channel_configure(uint32_t btm_chan,
 	int rc = 0, i = 0, chan_idx = 0;
 	bool chan_found = false;
 	u8 sensor_mask = 0;
+	bool high_thr_int_en = false;
+	bool low_thr_int_en = false;
+	bool measure_en = true;
 
 	while (i < adc_tm->max_channels_available) {
 		if (adc_tm->sensor[i].btm_channel_num == btm_chan) {
@@ -570,41 +573,65 @@ static int32_t qpnp_adc_tm_channel_configure(uint32_t btm_chan,
 			return rc;
 		}
 
-		if ((chan_prop->state_request ==
-					ADC_TM_LOW_THR_ENABLE) ||
-			(chan_prop->state_request ==
-					ADC_TM_HIGH_LOW_THR_ENABLE)) {
-			pr_debug("low sensor mask:%x with state:%d\n",
-					sensor_mask, chan_prop->state_request);
-			/* Enable low threshold's interrupt */
-			rc = qpnp_adc_tm_reg_update(
-				QPNP_ADC_TM_LOW_THR_INT_EN, sensor_mask, true);
-			if (rc < 0) {
-				pr_err("low thr enable err:%d\n", btm_chan);
-				return rc;
-			}
+		switch (chan_prop->state_request) {
+		case ADC_TM_HIGH_THR_ENABLE:
+			high_thr_int_en = true;
+			measure_en = true;
+			break;
+		case ADC_TM_LOW_THR_ENABLE:
+			low_thr_int_en = true;
+			measure_en = true;
+			break;
+		case ADC_TM_HIGH_LOW_THR_ENABLE:
+			high_thr_int_en = true;
+			low_thr_int_en = true;
+			measure_en = true;
+			break;
+		case ADC_TM_HIGH_THR_DISABLE:
+			high_thr_int_en = false;
+			measure_en = false;
+			break;
+		case ADC_TM_LOW_THR_DISABLE:
+			low_thr_int_en = false;
+			measure_en = false;
+			break;
+		case ADC_TM_HIGH_LOW_THR_DISABLE:
+			high_thr_int_en = false;
+			low_thr_int_en = false;
+			measure_en = false;
+			break;
+		default:
+			break;
 		}
 
-		if ((chan_prop->state_request ==
-					ADC_TM_HIGH_THR_ENABLE) ||
-			(chan_prop->state_request ==
-					ADC_TM_HIGH_LOW_THR_ENABLE)) {
-			/* Enable high threshold's interrupt */
-			pr_debug("high sensor mask:%x\n", sensor_mask);
-			rc = qpnp_adc_tm_reg_update(
-				QPNP_ADC_TM_HIGH_THR_INT_EN, sensor_mask, true);
-			if (rc < 0) {
-				pr_err("high thr enable err:%d\n", btm_chan);
-				return rc;
-			}
+		pr_debug("low sensor mask:%x with state:%d\n",
+				sensor_mask, chan_prop->state_request);
+		rc = qpnp_adc_tm_reg_update(
+			QPNP_ADC_TM_LOW_THR_INT_EN, sensor_mask, low_thr_int_en);
+		if (rc < 0) {
+			pr_err("low thr %s err:%d\n", low_thr_int_en ?
+				"enable" : "disable", btm_chan);
+			return rc;
 		}
+
+		pr_debug("high sensor mask:%x with state:%d\n",
+				sensor_mask, chan_prop->state_request);
+		rc = qpnp_adc_tm_reg_update(
+			QPNP_ADC_TM_HIGH_THR_INT_EN, sensor_mask, high_thr_int_en);
+		if (rc < 0) {
+			pr_err("high thr %s err:%d\n", high_thr_int_en ?
+					"enable" : "disable", btm_chan);
+			return rc;
+		}
+
 	}
 
 	/* Enable corresponding BTM channel measurement */
 	rc = qpnp_adc_tm_reg_update(
-		QPNP_ADC_TM_MULTI_MEAS_EN, sensor_mask, true);
+		QPNP_ADC_TM_MULTI_MEAS_EN, sensor_mask, measure_en);
 	if (rc < 0) {
-		pr_err("multi measurement en failed\n");
+		pr_err("multi measurement %s failed\n",
+				measure_en ? "enable" : "disable");
 		return rc;
 	}
 
