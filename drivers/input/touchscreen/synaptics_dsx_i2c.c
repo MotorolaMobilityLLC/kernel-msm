@@ -824,34 +824,31 @@ static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
 			rmi4_data->board;
 
 	sema_init(&reset_semaphore, 0);
+	gpio_set_value(platform_data->reset_gpio, 0);
+	udelay(1500);
 	retval = request_irq(rmi4_data->irq, synaptics_dsx_reset_irq,
 			IRQF_TRIGGER_RISING, "synaptics_reset",
 			&reset_semaphore);
-	if (retval < 0) {
+	if (retval < 0)
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to request irq: %d\n",
 				__func__, retval);
-		return retval;
-	}
-
-	gpio_set_value(platform_data->reset_gpio, 0);
-	udelay(1500);
 	gpio_set_value(platform_data->reset_gpio, 1);
 
 	retval = down_timeout(&reset_semaphore, msecs_to_jiffies(100));
-	free_irq(rmi4_data->irq, &reset_semaphore);
-
 	if (retval) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"timed out waiting for reset to complete\n");
-		return -ETIMEDOUT;
+		retval = -ETIMEDOUT;
+	} else {
+		retval = (int)jiffies_to_msecs(jiffies-start);
+		/* delay extra 0.5 ms to ensure 1st i2c bus access succeeds */
+		udelay(500);
 	}
 
-	/* delay extra 0.5 ms to ensure 1st i2c bus accessing works correctly */
-	udelay(500);
-	pr_debug("successful reset took %ums\n",
-				jiffies_to_msecs(jiffies-start));
-	return 0;
+	free_irq(rmi4_data->irq, &reset_semaphore);
+
+	return retval;
 }
 
 static int synaptics_dsx_alloc_input(struct synaptics_rmi4_data *rmi4_data)
@@ -3030,7 +3027,9 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 			"on" : "off");
 	}
 
-	synaptics_dsx_ic_reset(rmi4_data);
+	retval = synaptics_dsx_ic_reset(rmi4_data);
+	if (retval > 0)
+		pr_debug("successful reset took %dms\n", retval);
 
 	retval = synaptics_rmi4_query_device(rmi4_data);
 	if (retval < 0) {
