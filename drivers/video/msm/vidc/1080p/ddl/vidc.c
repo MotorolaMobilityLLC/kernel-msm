@@ -194,6 +194,95 @@ void vidc_1080p_get_risc2host_cmd_status(u32 err_status,
 
 }
 
+void vidc_1080p_get_mgenaxi_error_info(u32 *axi_error_info_a,
+	u32 *axi_error_info_b)
+{
+	VIDC_HWIO_IN(REG_736158, axi_error_info_a);
+	VIDC_HWIO_IN(REG_598415, axi_error_info_b);
+}
+
+void vidc_1080p_get_mgen2axi_status(struct vidc_1080P_axi_status *axi_a_status,
+	struct vidc_1080P_axi_status *axi_b_status)
+{
+	u32 status;
+	VIDC_HWIO_IN(REG_437878, &status);
+	axi_a_status->axi_error_interrupt = VIDC_GETFIELD(status,
+		HWIO_REG_437878_AXI_A_ERR_INTR_BMSK,
+		HWIO_REG_437878_AXI_A_ERR_INTR_SHFT);
+	axi_a_status->axi_halt_ack = VIDC_GETFIELD(status,
+		HWIO_REG_437878_AXI_A_HALT_ACK_BMSK,
+		HWIO_REG_437878_AXI_A_HALT_ACK_SHFT);
+	axi_a_status->axi_idle = VIDC_GETFIELD(status,
+		HWIO_REG_437878_AXI_A_IDLE_BMSK,
+		HWIO_REG_437878_AXI_A_IDLE_SHFT);
+	axi_a_status->axi_watchdog_error_interrupt = VIDC_GETFIELD(status,
+		HWIO_REG_437878_AXI_A_WDTIMEOUT_INTR_BMSK,
+		HWIO_REG_437878_AXI_A_WDTIMEOUT_INTR_SHFT);
+	axi_b_status->axi_error_interrupt = VIDC_GETFIELD(status,
+		HWIO_REG_437878_AXI_B_ERR_INTR_BMSK,
+		HWIO_REG_437878_AXI_B_ERR_INTR_SHFT);
+	axi_b_status->axi_halt_ack = VIDC_GETFIELD(status,
+		HWIO_REG_437878_AXI_B_HALT_ACK_BMSK,
+		HWIO_REG_437878_AXI_B_HALT_ACK_SHFT);
+	axi_b_status->axi_idle = VIDC_GETFIELD(status,
+		HWIO_REG_437878_AXI_B_IDLE_BMSK,
+		HWIO_REG_437878_AXI_B_IDLE_SHFT);
+	axi_b_status->axi_watchdog_error_interrupt = VIDC_GETFIELD(status,
+		HWIO_REG_437878_AXI_B_WDTIMEOUT_INTR_BMSK,
+		HWIO_REG_437878_AXI_B_WDTIMEOUT_INTR_SHFT);
+}
+
+void vidc_1080p_get_mgen2maxi_ctrl(struct vidc_1080P_axi_ctrl *ctrl)
+{
+	u32 ctrl_value;
+	VIDC_HWIO_IN(REG_471159, &ctrl_value);
+	ctrl->axi_halt_req = VIDC_GETFIELD(ctrl_value,
+		HWIO_REG_471159_AXI_HALT_REQ_BMSK,
+		HWIO_REG_471159_AXI_HALT_REQ_SHFT);
+	ctrl->axi_reset = VIDC_GETFIELD(ctrl_value,
+		HWIO_REG_471159_AXI_RESET_BMSK,
+		HWIO_REG_471159_AXI_RESET_SHFT);
+	ctrl->axi_halt_on_readerror = VIDC_GETFIELD(ctrl_value,
+		HWIO_REG_471159_AXI_HALT_ON_RD_ERR_BMSK,
+		HWIO_REG_471159_AXI_HALT_ON_RD_ERR_SHFT);
+	ctrl->axi_halt_on_writeerror = VIDC_GETFIELD(ctrl_value,
+		HWIO_REG_471159_AXI_HALT_ON_WR_ERR_BMSK,
+		HWIO_REG_471159_AXI_HALT_ON_WR_ERR_SHFT);
+	ctrl->axi_halt_on_watchdog_timeout = VIDC_GETFIELD(ctrl_value,
+		HWIO_REG_471159_AXI_HALT_ON_WDTIMEOUT_BMSK,
+		HWIO_REG_471159_AXI_HALT_ON_WDTIMEOUT_SHFT);
+	ctrl->axi_watchdog_timeout_value = VIDC_GETFIELD(ctrl_value,
+		HWIO_REG_471159_AXI_WDTIMEOUT_LOG2_BMSK,
+		HWIO_REG_471159_AXI_WDTIMEOUT_LOG2_SHFT);
+	ctrl->axi_interrupt_clr = VIDC_GETFIELD(ctrl_value,
+		HWIO_REG_471159_AXI_INTR_CLR_BMSK,
+		HWIO_REG_471159_AXI_INTR_CLR_SHFT);
+}
+
+void vidc_1080p_set_mgen2maxi_ctrl(struct vidc_1080P_axi_ctrl *ctrl)
+{
+	u32 ctrl_value;
+	ctrl_value = VIDC_SETFIELD(ctrl->axi_halt_req,
+		HWIO_REG_471159_AXI_HALT_REQ_SHFT,
+		HWIO_REG_471159_AXI_HALT_REQ_BMSK);
+	ctrl_value |= VIDC_SETFIELD(ctrl->axi_reset,
+		HWIO_REG_471159_AXI_RESET_SHFT,
+		HWIO_REG_471159_AXI_RESET_BMSK);
+	ctrl_value |= VIDC_SETFIELD(ctrl->axi_halt_on_readerror,
+		HWIO_REG_471159_AXI_HALT_ON_RD_ERR_SHFT,
+		HWIO_REG_471159_AXI_HALT_ON_RD_ERR_BMSK);
+	ctrl_value |= VIDC_SETFIELD(ctrl->axi_halt_on_writeerror,
+		HWIO_REG_471159_AXI_HALT_ON_WR_ERR_SHFT,
+		HWIO_REG_471159_AXI_HALT_ON_WR_ERR_BMSK);
+	ctrl_value |= VIDC_SETFIELD(ctrl->axi_halt_on_watchdog_timeout,
+		HWIO_REG_471159_AXI_HALT_ON_WDTIMEOUT_SHFT,
+		HWIO_REG_471159_AXI_HALT_ON_WDTIMEOUT_BMSK);
+	ctrl_value |= VIDC_SETFIELD(ctrl->axi_interrupt_clr,
+		HWIO_REG_471159_AXI_INTR_CLR_SHFT,
+		HWIO_REG_471159_AXI_INTR_CLR_BMSK);
+	VIDC_HWIO_OUT(REG_471159, ctrl_value);
+}
+
 void vidc_1080p_clear_risc2host_cmd(void)
 {
 	VIDC_HWIO_OUT(REG_695082, VIDC_1080P_RISC2HOST_CMD_EMPTY);

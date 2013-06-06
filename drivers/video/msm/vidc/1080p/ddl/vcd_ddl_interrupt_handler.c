@@ -884,7 +884,7 @@ static void ddl_edfu_callback(struct ddl_context *ddl_context)
 	struct ddl_client_context *ddl;
 	u32 channel_inst_id;
 
-	DDL_MSG_MED("ddl_edfu_callback");
+	DDL_MSG_ERROR("ddl_edfu_callback");
 	vidc_1080p_get_returned_channel_inst_id(&channel_inst_id);
 	vidc_1080p_clear_returned_channel_inst_id();
 	ddl = ddl_get_current_ddl_client_for_channel_id(ddl_context,
@@ -964,6 +964,39 @@ static u32 ddl_slice_done_callback(struct ddl_context *ddl_context)
 	return return_status;
 }
 
+
+static u32 ddl_handle_mgen2axi_error(struct ddl_context *ddl_context)
+{
+	u32 axi_error_info_a;
+	u32 axi_error_info_b;
+	struct vidc_1080P_axi_status axi_a_status;
+	struct vidc_1080P_axi_status axi_b_status;
+	struct vidc_1080P_axi_ctrl axi_ctrl;
+	u32 status = false;
+
+	vidc_1080p_get_mgenaxi_error_info(&axi_error_info_a,
+		&axi_error_info_b);
+	vidc_1080p_get_mgen2axi_status(&axi_a_status,
+		&axi_b_status);
+	if (axi_a_status.axi_error_interrupt ||
+		axi_a_status.axi_watchdog_error_interrupt ||
+		axi_b_status.axi_error_interrupt ||
+		axi_b_status.axi_watchdog_error_interrupt) {
+		vidc_1080p_get_mgen2maxi_ctrl(&axi_ctrl);
+		axi_ctrl.axi_interrupt_clr = 1;
+		vidc_1080p_set_mgen2maxi_ctrl(&axi_ctrl);
+		DDL_MSG_HIGH("%s: Wait for 20ms to clear mgen2axi intr",
+			__func__);
+		usleep(20*1000);
+		axi_ctrl.axi_interrupt_clr = 0;
+		vidc_1080p_set_mgen2maxi_ctrl(&axi_ctrl);
+		vidc_1080p_get_mgen2axi_status(&axi_a_status,
+			&axi_b_status);
+		status = true;
+	}
+	return status;
+}
+
 static u32 ddl_process_intr_status(struct ddl_context *ddl_context,
 	u32 intr_status)
 {
@@ -1007,7 +1040,12 @@ static u32 ddl_process_intr_status(struct ddl_context *ddl_context,
 			ddl_dpb_buffers_set_done_callback(ddl_context);
 	break;
 	default:
-		DDL_MSG_LOW("UNKWN_INTR");
+		return_status = ddl_handle_mgen2axi_error(ddl_context);
+		if (return_status) {
+			return_status = false;
+			DDL_MSG_ERROR("Cleared Mgen2axi interrupt");
+		} else
+			DDL_MSG_ERROR("UNKWN_INTR");
 	break;
 	}
 	return return_status;
