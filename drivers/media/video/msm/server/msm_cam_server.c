@@ -1065,6 +1065,12 @@ int msm_server_v4l2_subscribe_event(struct v4l2_fh *fh,
 	int rc = 0;
 
 	D("%s: fh = 0x%x, type = 0x%x", __func__, (u32)fh, sub->type);
+
+	if (!fh) {
+		pr_err("%s: fail for null fh", __func__);
+		return -EINVAL;
+	}
+
 	if (sub->type == V4L2_EVENT_ALL) {
 		/*sub->type = MSM_ISP_EVENT_START;*/
 		sub->type = V4L2_EVENT_PRIVATE_START + MSM_CAM_RESP_CTRL;
@@ -1104,6 +1110,11 @@ int msm_server_v4l2_unsubscribe_event(struct v4l2_fh *fh,
 	struct v4l2_event ev;
 
 	D("%s: fh = 0x%x\n", __func__, (u32)fh);
+
+	if (!fh) {
+		pr_err("%s: fail for null fh", __func__);
+		return -EINVAL;
+	}
 
 	/* Undequeue all pending events and free associated
 	 * msm_isp_event_ctrl  */
