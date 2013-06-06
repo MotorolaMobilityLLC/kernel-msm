@@ -146,25 +146,25 @@ static struct gpiomux_setting lcd_en_act_cfg = {
 	.dir = GPIOMUX_OUT_HIGH,
 };
 
-static struct gpiomux_setting atmel_resout_sus_cfg = {
+static struct gpiomux_setting synaptics_reset_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
+	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-static struct gpiomux_setting atmel_resout_act_cfg = {
+static struct gpiomux_setting synaptics_reset_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
+	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_UP,
 };
 
-static struct gpiomux_setting atmel_int_act_cfg = {
+static struct gpiomux_setting synaptics_int_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
+	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_UP,
 };
 
-static struct gpiomux_setting atmel_int_sus_cfg = {
+static struct gpiomux_setting synaptics_int_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
@@ -208,84 +208,18 @@ static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 	{
 		.gpio      = 80,		/* TOUCH RESET */
 		.settings = {
-			[GPIOMUX_ACTIVE] = &atmel_resout_act_cfg,
-			[GPIOMUX_SUSPENDED] = &atmel_resout_sus_cfg,
+			[GPIOMUX_ACTIVE] = &synaptics_reset_act_cfg,
+			[GPIOMUX_SUSPENDED] = &synaptics_reset_sus_cfg,
 		},
 	},
 	{
 		.gpio      = 81,		/* TOUCH IRQ */
 		.settings = {
-			[GPIOMUX_ACTIVE] = &atmel_int_act_cfg,
-			[GPIOMUX_SUSPENDED] = &atmel_int_sus_cfg,
+			[GPIOMUX_ACTIVE] = &synaptics_int_act_cfg,
+			[GPIOMUX_SUSPENDED] = &synaptics_int_sus_cfg,
 		},
 	},
 
-};
-
-static struct gpiomux_setting hsic_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct gpiomux_setting hsic_act_cfg = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_12MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct gpiomux_setting hsic_hub_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-	.dir = GPIOMUX_IN,
-};
-
-static struct gpiomux_setting hsic_resume_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-	.dir = GPIOMUX_OUT_LOW,
-};
-
-static struct gpiomux_setting hsic_resume_susp_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct msm_gpiomux_config msm_hsic_configs[] = {
-	{
-		.gpio = 144,               /*HSIC_STROBE */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &hsic_act_cfg,
-			[GPIOMUX_SUSPENDED] = &hsic_sus_cfg,
-		},
-	},
-	{
-		.gpio = 145,               /* HSIC_DATA */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &hsic_act_cfg,
-			[GPIOMUX_SUSPENDED] = &hsic_sus_cfg,
-		},
-	},
-	{
-		.gpio = 80,
-		.settings = {
-			[GPIOMUX_ACTIVE] = &hsic_resume_act_cfg,
-			[GPIOMUX_SUSPENDED] = &hsic_resume_susp_cfg,
-		},
-	},
-};
-
-static struct msm_gpiomux_config msm_hsic_hub_configs[] = {
-	{
-		.gpio = 50,               /* HSIC_HUB_INT_N */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &hsic_hub_act_cfg,
-			[GPIOMUX_SUSPENDED] = &hsic_sus_cfg,
-		},
-	},
 };
 
 static struct gpiomux_setting mhl_suspend_config = {
@@ -791,37 +725,6 @@ static struct msm_gpiomux_config msm8974_pri_ter_auxpcm_configs[] __initdata = {
 	},
 };
 
-static struct msm_gpiomux_config msm8974_sec_auxpcm_configs[] __initdata = {
-	{
-		.gpio = 79,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 80,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 81,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 82,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-};
-
 static struct msm_gpiomux_config wcnss_5wire_interface[] = {
 	{
 		.gpio = 36,
@@ -1110,7 +1013,7 @@ void __init msm_8974_moto_init_gpiomux(void)
 			ARRAY_SIZE(msm8974_slimbus_config));
 
 	msm_gpiomux_install(msm_touch_configs, ARRAY_SIZE(msm_touch_configs));
-		msm_gpiomux_install(hap_lvl_shft_config,
+	msm_gpiomux_install(hap_lvl_shft_config,
 				ARRAY_SIZE(hap_lvl_shft_config));
 
 	msm_gpiomux_install(msm_sensor_configs, ARRAY_SIZE(msm_sensor_configs));
@@ -1120,10 +1023,6 @@ void __init msm_8974_moto_init_gpiomux(void)
 	msm_gpiomux_sdc4_install();
 
 	msm_gpiomux_install(msm_taiko_config, ARRAY_SIZE(msm_taiko_config));
-
-	msm_gpiomux_install(msm_hsic_configs, ARRAY_SIZE(msm_hsic_configs));
-	msm_gpiomux_install(msm_hsic_hub_configs,
-				ARRAY_SIZE(msm_hsic_hub_configs));
 
 	msm_gpiomux_install(msm_hdmi_configs, ARRAY_SIZE(msm_hdmi_configs));
 	if (of_board_is_fluid())
@@ -1136,9 +1035,6 @@ void __init msm_8974_moto_init_gpiomux(void)
 	else
 		msm_gpiomux_install(msm8974_pri_pri_auxpcm_configs,
 				 ARRAY_SIZE(msm8974_pri_pri_auxpcm_configs));
-
-	msm_gpiomux_install(msm8974_sec_auxpcm_configs,
-				 ARRAY_SIZE(msm8974_sec_auxpcm_configs));
 
 	msm_gpiomux_install(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
