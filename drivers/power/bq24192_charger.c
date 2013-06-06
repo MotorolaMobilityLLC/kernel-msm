@@ -263,7 +263,7 @@ static int bq24192_set_input_i_limit(struct bq24192_chip *chip, int ma)
 }
 
 #define IBAT_MAX_MA  4532
-#define IBAT_MIN_MA  500
+#define IBAT_MIN_MA  512
 #define IBAT_STEP_MA  64
 static int bq24192_set_ibat_max(struct bq24192_chip *chip, int ma)
 {
