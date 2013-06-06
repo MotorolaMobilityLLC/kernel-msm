@@ -462,8 +462,22 @@ static void bq24192_irq_worker(struct work_struct *work)
 	union power_supply_propval ret = {0,};
 	bool ext_pwr;
 	bool wlc_pwr = 0;
+	bool chg_done = false;
+	u8 temp;
+	int rc;
 
-	ext_pwr = bq24192_is_charger_present(chip);
+	rc = bq24192_read_reg(chip->client, SYSTEM_STATUS_REG, &temp);
+	if (rc) {
+		pr_err("failed to read SYSTEM_STATUS_REG rc=%d\n", rc);
+		return;
+	}
+
+	ext_pwr = !!(temp & PG_STAT_MASK);
+	chg_done = (temp & CHARGING_MASK) == 0x30 ? true : false;
+	if (chg_done) {
+		power_supply_changed(&chip->ac_psy);
+		pr_info("charge done!!\n");
+	}
 
 	if (chip->wlc_psy) {
 		chip->wlc_psy->get_property(chip->wlc_psy,
