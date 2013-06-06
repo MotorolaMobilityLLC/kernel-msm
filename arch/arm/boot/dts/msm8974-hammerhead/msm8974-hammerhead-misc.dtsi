@@ -52,10 +52,10 @@
 			lm3630,lcd_bl_en = <&msmgpio 90 0x00>;
 			lm3630,max_current = <0x17>;
 			lm3630,min_brightness = <0x05>;
-			lm3630,default_brightness = <0x9C>;
+			lm3630,default_brightness = <0x57>;
 			lm3630,max_brightness = <0xFF>;
 			lm3630,enable_pwm = <0>;
-			lm3630,blmap_size = <256>;
+			lm3630,blmap_size = <0>;
 			lm3630,blmap = <
 				3 3 3 3 3 3 3 3 4 4 4 4 4 4 4
 				4 4 4 4 4 4 4 5 5 5 5 5 5 5 5
