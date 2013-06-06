@@ -49,6 +49,10 @@
 #include <mach/iommu.h>
 #include <mach/iommu_domains.h>
 #include <mach/msm_memtypes.h>
+/* HACK: preventing displaying garbage in off-mode charge */
+#ifdef CONFIG_MACH_LGE
+#include <mach/board_lge.h>
+#endif
 
 #include "mdss_fb.h"
 
@@ -638,6 +642,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+	int ret;
 
 	mdss_fb_pan_idle(mfd);
 	if (mfd->op_enable == 0) {
@@ -647,7 +652,17 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 			mfd->suspend.panel_power_on = false;
 		return 0;
 	}
-	return mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
+	ret = mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
+#ifdef CONFIG_MACH_LGE
+	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGER) {
+		/* HACK: preventing displaying garbage in off-mode charge */
+		if (blank_mode == FB_BLANK_UNBLANK &&
+				mfd->panel_info->type == MIPI_CMD_PANEL) {
+			msleep(33);
+		}
+	}
+#endif
+	return ret;
 }
 
 /*
