@@ -2679,6 +2679,10 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 /* In case of JB, for P2P-GO, only change interface will be called,
                  * This is the right place to enable back bmps_imps()
                  */
+                if (pHddCtx->hdd_wlan_suspended)
+                {
+                    hdd_set_pwrparams(pHddCtx);
+                }
                 hdd_enable_bmps_imps(pHddCtx);
                 goto done;
             case NL80211_IFTYPE_AP:
@@ -5641,6 +5645,10 @@ static int wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
         if((VOS_STATUS_SUCCESS == exitbmpsStatus) &&
             (NULL != pHddCtx))
         {
+            if (pHddCtx->hdd_wlan_suspended)
+            {
+                hdd_set_pwrparams(pHddCtx);
+            }
            //ReEnable Bmps and Imps back
            hdd_enable_bmps_imps(pHddCtx);
         }
