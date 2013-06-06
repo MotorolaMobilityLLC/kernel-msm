@@ -1693,6 +1693,14 @@ static int adreno_start(struct kgsl_device *device)
 		goto error_mmu_off;
 	}
 
+	if (regulator_left_on && adreno_dev->gpudev->soft_reset) {
+		/*
+		 * Reset the GPU for A3xx. A2xx does a soft reset in
+		 * the start function.
+		 */
+		adreno_dev->gpudev->soft_reset(adreno_dev);
+	}
+
 	/* Start the GPU */
 	adreno_dev->gpudev->start(adreno_dev);
 
