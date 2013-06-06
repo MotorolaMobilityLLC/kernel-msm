@@ -4239,8 +4239,10 @@ static int msm_otg_pm_suspend(struct device *dev)
 
 	atomic_set(&motg->pm_suspended, 1);
 	ret = msm_otg_suspend(motg);
-	if (ret)
+	if (ret) {
 		atomic_set(&motg->pm_suspended, 0);
+		return ret;
+	}
 
 	disable_irq(irq_num_vbus);
 	if (gpio_get_value(vbus_det_gpio) == 0)
@@ -4256,7 +4258,7 @@ static int msm_otg_pm_suspend(struct device *dev)
 	global_vbus_suspend_status = gpio_get_value(vbus_det_gpio);
 	global_id_pin_suspend_status = gpio_get_value(id_gpio);
 
-	return ret;
+	return 0;
 }
 
 static int msm_otg_pm_resume(struct device *dev)
@@ -4285,6 +4287,9 @@ static int msm_otg_pm_resume(struct device *dev)
 		}
 	}
 
+	if (ret)
+		return ret;
+
 	disable_irq_wake(irq_num_vbus);
 	irq_set_irq_type(irq_num_vbus, IRQ_TYPE_EDGE_BOTH);
 	enable_irq(irq_num_vbus);
@@ -4303,7 +4308,7 @@ static int msm_otg_pm_resume(struct device *dev)
 		wake_lock_timeout(&motg->wlock, 1*HZ);
 	}
 
-	return ret;
+	return 0;
 }
 #endif
 
