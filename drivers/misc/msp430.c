@@ -128,6 +128,7 @@
 #define DISP_ROTATE_DATA		0x4A
 #define FLAT_DATA			0x4B
 #define CAMERA				0x4C
+#define NFC					0x4D
 
 #define ALGO_CFG_ACCUM_MODALITY  0x5D
 #define ALGO_REQ_ACCUM_MODALITY  0x60
@@ -1364,6 +1365,23 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending Camera(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, 0);
+	}
+	if (irq_status & M_NFC) {
+		msp_cmdbuff[0] = NFC;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Reading nfc data from msp failed\n");
+			goto EXIT;
+		}
+		x = read_cmdbuff[0];
+		msp430_as_data_buffer_write(ps_msp430, DT_NFC,
+			x, 0, 0, 0);
+
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending NFC(x,y,z)values:x=%d,y=%d,z=%d\n",
+			x, 0, 0);
+
 	}
 	if (irq2_status & M_MMOVEME) {
 		/* Client recieving action will be upper 2 MSB of status */
