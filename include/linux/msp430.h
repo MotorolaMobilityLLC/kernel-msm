@@ -170,6 +170,7 @@ struct msp430_platform_data {
 #define M_FLATDOWN		0x0200
 #define M_STOWED		0x0400
 #define M_CAMERA_ACT	0x0800
+#define M_NFC			0x1000
 #define M_LOG_MSG		0x8000
 
 /* algo config mask */
@@ -233,6 +234,7 @@ enum MSP430_data_types {
 	DT_MMMOVE,
 	DT_NOMOVE,
 	DT_CAMERA_ACT,
+	DT_NFC,
 	DT_ALGO_EVT,
 	DT_ACCUM_MVMT,
 	DT_RESET
