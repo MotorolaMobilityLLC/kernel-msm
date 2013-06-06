@@ -1641,10 +1641,15 @@ static int adreno_start(struct kgsl_device *device)
 	int status = -EINVAL;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	unsigned int state = device->state;
+	unsigned int regulator_left_on = 0;
 
 	kgsl_cffdump_open(device);
 
 	kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
+
+	regulator_left_on = (regulator_is_enabled(device->pwrctrl.gpu_reg) ||
+				(device->pwrctrl.gpu_cx &&
+				regulator_is_enabled(device->pwrctrl.gpu_cx)));
 
 	/* Clear any GPU faults that might have been left over */
 	adreno_clear_gpu_fault(adreno_dev);
@@ -1677,6 +1682,14 @@ static int adreno_start(struct kgsl_device *device)
 	if (status) {
 		KGSL_DRV_ERR(device, "OCMEM malloc failed\n");
 		goto error_mmu_off;
+	}
+
+	if (regulator_left_on && adreno_dev->gpudev->soft_reset) {
+		/*
+		 * Reset the GPU for A3xx. A2xx does a soft reset in
+		 * the start function.
+		 */
+		adreno_dev->gpudev->soft_reset(adreno_dev);
 	}
 
 	/* Start the GPU */
