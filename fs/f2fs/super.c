@@ -370,9 +370,9 @@ static int parse_android_emu(struct f2fs_sb_info *sbi, char *args)
 	return 0;
 }
 
-static int parse_options(struct super_block *sb, struct f2fs_sb_info *sbi,
-				char *options)
+static int parse_options(struct super_block *sb, char *options)
 {
+	struct f2fs_sb_info *sbi = F2FS_SB(sb);
 	substring_t args[MAX_OPT_ARGS];
 	char *p;
 	int arg = 0;
@@ -638,6 +638,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 		if (err)
 			goto free_sb_buf;
 	}
+	sb->s_fs_info = sbi;
 	/* init some FS parameters */
 	sbi->active_logs = NR_CURSEG_TYPE;
 
@@ -650,7 +651,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	set_opt(sbi, POSIX_ACL);
 #endif
 	/* parse mount options */
-	err = parse_options(sb, sbi, (char *)data);
+	err = parse_options(sb, (char *)data);
 	if (err)
 		goto free_sb_buf;
 
@@ -662,7 +663,6 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_xattr = f2fs_xattr_handlers;
 	sb->s_export_op = &f2fs_export_ops;
 	sb->s_magic = F2FS_SUPER_MAGIC;
-	sb->s_fs_info = sbi;
 	sb->s_time_gran = 1;
 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
 		(test_opt(sbi, POSIX_ACL) ? MS_POSIXACL : 0);
