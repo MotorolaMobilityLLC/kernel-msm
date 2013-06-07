@@ -6701,7 +6701,7 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
 }
 
 static int wlan_hdd_cfg80211_set_power_mgmt(struct wiphy *wiphy,
-                     struct net_device *dev, bool mode, v_SINT_t timeout)
+                     struct net_device *dev, bool mode, int timeout)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx;
