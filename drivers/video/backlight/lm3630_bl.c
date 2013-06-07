@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 LGE, Inc.
+ * Copyright (c) 2013 LGE Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,59 +19,51 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
+#include <linux/platform_data/lm3630_bl.h>
 #include <linux/kernel.h>
-#include <linux/spinlock.h>
+#include <linux/slab.h>
 #include <linux/backlight.h>
 #include <linux/fb.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
-#include <mach/board.h>
 #include <linux/i2c.h>
 #include <linux/of_gpio.h>
+#include <linux/debugfs.h>
 
 #ifdef CONFIG_MACH_LGE
 /* HACK: disable fb notifier unless off-mode charge */
 #include <mach/board_lge.h>
 #endif
 
-#define I2C_BL_NAME                              "lm3630"
-#define MAX_BRIGHTNESS_LM3630                    0xFF
-#define MIN_BRIGHTNESS_LM3630                    0x0F
-#define DEFAULT_BRIGHTNESS                       0xFF
-#define DEFAULT_FTM_BRIGHTNESS                   0x0F
+#define I2C_BL_NAME   "lm3630"
 
-#define BL_ON        1
-#define BL_OFF       0
+/* Register definitions */
+#define CONTROL_REG        0x00
+#define CONFIG_REG         0x01
+#define BOOST_CTL_REG      0x02
+#define BRIGHTNESS_REG     0x03
+#define CURRENT_REG        0x05
+#define ON_OFF_RAMP_REG    0x07
+#define RUN_RAMP_REG       0x08
+#define IRQ_STATUS_REG     0x09
+#define IRQ_ENABLE_REG     0x0A
+#define FAULT_STAT_REG     0x0B
+#define SOFT_RESET_REG     0x0F
+#define PWM_OUT_REG        0x12
+#define REVISION_REG       0x1F
 
-static int exp_min_value = 150;
-static int cal_value;
-static struct i2c_client *lm3630_i2c_client;
-static int store_level_used = 0;
-
-struct backlight_platform_data {
-	void (*platform_init)(void);
-	int gpio;
-	unsigned int mode;
-	int max_current;
-	int init_on_boot;
-	int min_brightness;
-	int max_brightness;
-	int default_brightness;
-	int factory_brightness;
-	int blmap_size;
-	char *blmap;
-};
+static DEFINE_MUTEX(backlight_mtx);
 
 struct lm3630_device {
 	struct i2c_client *client;
 	struct backlight_device *bl_dev;
-	int gpio;
+	struct dentry  *dent;
+	int en_gpio;
 	int max_current;
 	int min_brightness;
 	int max_brightness;
 	int default_brightness;
-	int factory_brightness;
-	struct mutex bl_mutex;
+	int pwm_enable;
 	int blmap_size;
 	char *blmap;
 };
@@ -81,24 +73,38 @@ static const struct i2c_device_id lm3630_bl_id[] = {
 	{ },
 };
 
-static int lm3630_read_reg(struct i2c_client *client, u8 reg, u8 *buf);
-static int lm3630_write_reg(struct i2c_client *client, unsigned char reg, unsigned char val);
-static int cur_main_lcd_level = DEFAULT_BRIGHTNESS;
-static int saved_main_lcd_level = DEFAULT_BRIGHTNESS;
-static int backlight_status = BL_ON;
-static int lm3630_pwm_enable;
-static struct lm3630_device *main_lm3630_dev;
+static struct lm3630_device *lm3630_dev;
 
-static void lm3630_hw_reset(void)
+struct debug_reg {
+	char  *name;
+	u8  reg;
+};
+
+#define LM3630_DEBUG_REG(x) {#x, x##_REG}
+
+static struct debug_reg lm3630_debug_regs[] = {
+	LM3630_DEBUG_REG(CONTROL),
+	LM3630_DEBUG_REG(CONFIG),
+	LM3630_DEBUG_REG(BOOST_CTL),
+	LM3630_DEBUG_REG(BRIGHTNESS),
+	LM3630_DEBUG_REG(CURRENT),
+	LM3630_DEBUG_REG(ON_OFF_RAMP),
+	LM3630_DEBUG_REG(RUN_RAMP),
+	LM3630_DEBUG_REG(IRQ_STATUS),
+	LM3630_DEBUG_REG(IRQ_ENABLE),
+	LM3630_DEBUG_REG(FAULT_STAT),
+	LM3630_DEBUG_REG(SOFT_RESET),
+	LM3630_DEBUG_REG(PWM_OUT),
+	LM3630_DEBUG_REG(REVISION),
+};
+
+static void lm3630_hw_reset(struct lm3630_device *dev)
 {
-	int gpio = main_lm3630_dev->gpio;
-
-	/* Fix GPIO Setting Warning */
-	if (gpio_is_valid(gpio)) {
-		gpio_set_value_cansleep(gpio, 1);
+	if (gpio_is_valid(dev->en_gpio)) {
+		gpio_set_value_cansleep(dev->en_gpio, 1);
 		mdelay(10);
 	} else {
-		pr_err("%s: gpio is not valid !!\n", __func__);
+		pr_err("%s: en_gpio is not valid !!\n", __func__);
 	}
 }
 
@@ -106,147 +112,138 @@ static int lm3630_read_reg(struct i2c_client *client, u8 reg, u8 *buf)
 {
 	int ret;
 
-	pr_debug("%s: reg=0x%x\n", __func__, reg);
+	pr_debug("reg=0x%x\n", reg);
 	ret = i2c_smbus_read_byte_data(client, reg);
+	if (ret < 0) {
+		pr_err("%s: i2c error! addr = 0x%x\n", __func__, reg);
+		return ret;
+	}
 
-	if (ret < 0)
-		pr_err("%s: i2c error\n", __func__);
-	else
-		*buf = ret;
-
+	*buf = (u8) ret;
 	return 0;
-
 }
 
-static int lm3630_write_reg(struct i2c_client *client, unsigned char reg, unsigned char val)
+static int lm3630_write_reg(struct i2c_client *client, u8 reg, u8 val)
 {
-	int err;
-	u8 buf[2];
-	struct i2c_msg msg = {
-		client->addr, 0, 2, buf
-	};
+	int ret;
 
-	buf[0] = reg;
-	buf[1] = val;
+	pr_debug("%s: reg=0x%x\n", __func__, reg);
+	ret = i2c_smbus_write_byte_data(client, reg, val);
+	if (ret < 0)
+		pr_err("%s: i2c error! addr = 0x%x\n", __func__, reg);
 
-	err = i2c_transfer(client->adapter, &msg, 1);
-	if (err < 0)
-		pr_err("%s: i2c write error\n", __func__);
+	return ret;
+}
+
+static int set_reg(void *data, u64 val)
+{
+	u32 addr = (u32) data;
+	int ret;
+	struct i2c_client *client = lm3630_dev->client;
+
+	ret = lm3630_write_reg(client, addr, (u8) val);
+
+	return ret;
+}
+
+static int get_reg(void *data, u64 *val)
+{
+	u32 addr = (u32) data;
+	u8 temp;
+	int ret;
+	struct i2c_client *client = lm3630_dev->client;
+
+	ret = lm3630_read_reg(client, addr, &temp);
+	if (ret < 0)
+		return ret;
+
+	*val = temp;
 
 	return 0;
 }
+
+DEFINE_SIMPLE_ATTRIBUTE(reg_fops, get_reg, set_reg, "0x%02llx\n");
 
 static void lm3630_set_main_current_level(struct i2c_client *client, int level)
 {
 	struct lm3630_device *dev = i2c_get_clientdata(client);
-	int min_brightness = dev->min_brightness;
-	int max_brightness = dev->max_brightness;
 
-	if (level == -1)
-		level = dev->default_brightness;
-	cur_main_lcd_level = level;
-	dev->bl_dev->props.brightness = cur_main_lcd_level;
-	store_level_used = 0;
-	mutex_lock(&dev->bl_mutex);
+	dev->bl_dev->props.brightness = level;
+	mutex_lock(&backlight_mtx);
 	if (level != 0) {
-		if (level > 0 && level <= min_brightness)
-			level = min_brightness;
-		else if (level > max_brightness)
-			level = max_brightness;
+		if (level > 0 && level <= dev->min_brightness)
+			level = dev->min_brightness;
+		else if (level > dev->max_brightness)
+			level = dev->max_brightness;
 
 		if (dev->blmap) {
-			if (level < dev->blmap_size) {
-				cal_value = dev->blmap[level];
-				lm3630_write_reg(client, 0x03, cal_value);
-			} else {
-				pr_warn("%s: invalid index %d:%d\n", __func__,
+			if (level < dev->blmap_size)
+				lm3630_write_reg(client, BRIGHTNESS_REG,
+						dev->blmap[level]);
+			else
+				pr_err("%s: invalid index %d:%d\n", __func__,
 						dev->blmap_size, level);
-			}
 		} else {
-			cal_value = level;
-			lm3630_write_reg(client, 0x03, cal_value);
+			lm3630_write_reg(client, BRIGHTNESS_REG, level);
 		}
 	} else {
-		lm3630_write_reg(client, 0x00, 0x00);
+		lm3630_write_reg(client, CONTROL_REG, 0x00);
 	}
-	mutex_unlock(&dev->bl_mutex);
-	pr_debug("%s: level=%d, cal_value=%d\n", __func__, level, cal_value);
+	mutex_unlock(&backlight_mtx);
+	pr_debug("%s: level=%d\n", __func__, level);
 }
 
-static void lm3630_set_main_current_level_no_mapping(struct i2c_client *client, int level)
+static void lm3630_hw_init(struct lm3630_device *dev)
 {
-	struct lm3630_device *dev = i2c_get_clientdata(client);
-
-	if (level > 255)
-		level = 255;
-	else if (level < 0)
-		level = 0;
-
-	cur_main_lcd_level = level;
-	dev->bl_dev->props.brightness = cur_main_lcd_level;
-	store_level_used = 1;
-	mutex_lock(&main_lm3630_dev->bl_mutex);
-	if (level != 0)
-		lm3630_write_reg(client, 0x03, level);
+	lm3630_hw_reset(dev);
+	/*  OVP(24V),OCP(1.0A) , Boost Frequency(500khz) */
+	lm3630_write_reg(dev->client, BOOST_CTL_REG, 0x30);
+	if (dev->pwm_enable)
+		/* Enable Feedback , disable  PWM for BANK A,B */
+		lm3630_write_reg(dev->client, CONFIG_REG, 0x09);
 	else
-		lm3630_write_reg(client, 0x00, 0x00);
-	mutex_unlock(&main_lm3630_dev->bl_mutex);
+		/* Enable Feedback , disable  PWM for BANK A,B */
+		lm3630_write_reg(dev->client, CONFIG_REG, 0x08);
+	/* Full-Scale Current (23.4mA) of BANK A */
+	lm3630_write_reg(dev->client, CURRENT_REG, 0x17);
+	/* Enable LED A to Linear, LED2 is connected to BANK_A */
+	lm3630_write_reg(dev->client, CONTROL_REG, 0x15);
 }
 
-void lm3630_backlight_on(int level)
+static void lm3630_backlight_on(struct lm3630_device *dev, int level)
 {
-	if (backlight_status == BL_OFF) {
-		lm3630_hw_reset();
-		/*  OVP(24V),OCP(1.0A) , Boost Frequency(500khz) */
-		lm3630_write_reg(main_lm3630_dev->client, 0x02, 0x30);
-		if (lm3630_pwm_enable)
-			/* eble Feedback , disable  PWM for BANK A,B */
-			lm3630_write_reg(main_lm3630_dev->client, 0x01, 0x09);
-		else
-			/* eble Feedback , disable  PWM for BANK A,B */
-			lm3630_write_reg(main_lm3630_dev->client, 0x01, 0x08);
-		/* Full-Scale Current (23.4mA) of BANK A */
-		lm3630_write_reg(main_lm3630_dev->client, 0x05, 0x17);
-		/* Enable LED A to Exponential, LED2 is connected to BANK_A */
-		lm3630_write_reg(main_lm3630_dev->client, 0x00, 0x15);
+	if (dev->bl_dev->props.brightness == 0) {
+		lm3630_hw_init(dev);
 		pr_info("%s\n", __func__);
 	}
 	mdelay(1);
-	lm3630_set_main_current_level(main_lm3630_dev->client, level);
-	backlight_status = BL_ON;
-	return;
+	lm3630_set_main_current_level(dev->client, level);
 }
 
-void lm3630_backlight_off(void)
+static void lm3630_backlight_off(struct lm3630_device *dev)
 {
-	if (backlight_status == BL_OFF)
+	if (dev->bl_dev->props.brightness == 0)
 		return;
 
-	saved_main_lcd_level = cur_main_lcd_level;
-	lm3630_set_main_current_level(main_lm3630_dev->client, 0);
-	backlight_status = BL_OFF;
-	gpio_set_value_cansleep(main_lm3630_dev->gpio, 0);
+	lm3630_set_main_current_level(dev->client, 0);
+	gpio_set_value_cansleep(dev->en_gpio, 0);
 	msleep(6);
 	pr_info("%s\n", __func__);
-	return;
 }
 
 void lm3630_lcd_backlight_set_level(int level)
 {
-	if (!lm3630_i2c_client) {
+	if (!lm3630_dev) {
 		pr_warn("%s: No device\n", __func__);
 		return;
 	}
 
-	if (level > MAX_BRIGHTNESS_LM3630) /* TODO:  dev->max_brightness */
-		level = MAX_BRIGHTNESS_LM3630;
-
 	pr_debug("%s: level=%d\n", __func__, level);
 
 	if (level)
-		lm3630_backlight_on(level);
+		lm3630_backlight_on(lm3630_dev, level);
 	else
-		lm3630_backlight_off();
+		lm3630_backlight_off(lm3630_dev);
 }
 EXPORT_SYMBOL(lm3630_lcd_backlight_set_level);
 
@@ -262,7 +259,7 @@ static int bl_set_intensity(struct backlight_device *bd)
 	else if (brightness == 0)
 		brightness = dev->default_brightness;
 
-	if (brightness == cur_main_lcd_level) {
+	if (brightness == bd->props.brightness) {
 		pr_debug("%s: requsted level is already set!\n", __func__);
 		return 0;
 	}
@@ -279,14 +276,12 @@ static int bl_get_intensity(struct backlight_device *bd)
 static ssize_t lcd_backlight_show_level(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+	struct i2c_client *client = to_i2c_client(dev);
+	struct lm3630_device *lm3630 = i2c_get_clientdata(client);
 	int r = 0;
 
-	if (store_level_used == 0)
-		r = snprintf(buf, PAGE_SIZE, "LCD Backlight Level is : %d\n",
-				cal_value);
-	else if (store_level_used == 1)
-		r = snprintf(buf, PAGE_SIZE, "LCD Backlight Level is : %d\n",
-				cur_main_lcd_level);
+	r = snprintf(buf, PAGE_SIZE, "LCD Backlight Level is : %d\n",
+				lm3630->bl_dev->props.brightness);
 	return r;
 }
 
@@ -299,216 +294,195 @@ static ssize_t lcd_backlight_store_level(struct device *dev,
 
 	if (!count)
 		return -EINVAL;
+
 	level = simple_strtoul(buf, NULL, 10);
-	lm3630_set_main_current_level_no_mapping(client, level);
-	pr_info("%s: level=%d\n", __func__, level);
-	return count;
-}
+	lm3630_set_main_current_level(client, level);
+	pr_debug("%s: level=%d\n", __func__, level);
 
-static int lm3630_bl_resume(struct i2c_client *client)
-{
-	lm3630_lcd_backlight_set_level(saved_main_lcd_level);
-	return 0;
-}
-
-static int lm3630_bl_suspend(struct i2c_client *client, pm_message_t state)
-{
-	pr_info("%s: state.event=%d\n", __func__, state.event);
-	lm3630_lcd_backlight_set_level(saved_main_lcd_level);
-	return 0;
-}
-
-static ssize_t lcd_backlight_show_on_off(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	int r = 0;
-
-	pr_info("%s: received (prev backlight_status: %s)\n",
-		__func__, backlight_status ? "ON" : "OFF");
-	return r;
-}
-
-static ssize_t lcd_backlight_store_on_off(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
-{
-	int on_off;
-	struct i2c_client *client = to_i2c_client(dev);
-
-	if (!count)
-		return -EINVAL;
-	pr_info("%s: received (prev backlight_status: %s)\n",
-		__func__, backlight_status ? "ON" : "OFF");
-	on_off = simple_strtoul(buf, NULL, 10);
-	pr_info("%s: on_off=%d", __func__, on_off);
-	if (on_off == 1)
-		lm3630_bl_resume(client);
-	else if (on_off == 0)
-		lm3630_bl_suspend(client, PMSG_SUSPEND);
-	return count;
-
-}
-static ssize_t lcd_backlight_show_exp_min_value(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	int r;
-
-	r = snprintf(buf, PAGE_SIZE, "LCD Backlight  : %d\n", exp_min_value);
-	return r;
-}
-
-static ssize_t lcd_backlight_store_exp_min_value(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
-{
-	int value;
-
-	if (!count)
-		return -EINVAL;
-	value = simple_strtoul(buf, NULL, 10);
-	exp_min_value = value;
-	return count;
-}
-
-static ssize_t lcd_backlight_show_pwm(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	int r;
-	u8 level, pwm_low, pwm_high, config;
-
-	mutex_lock(&main_lm3630_dev->bl_mutex);
-	lm3630_read_reg(main_lm3630_dev->client, 0x01, &config);
-	mdelay(3);
-	lm3630_read_reg(main_lm3630_dev->client, 0x03, &level);
-	mdelay(3);
-	lm3630_read_reg(main_lm3630_dev->client, 0x12, &pwm_low);
-	mdelay(3);
-	lm3630_read_reg(main_lm3630_dev->client, 0x13, &pwm_high);
-	mdelay(3);
-	mutex_unlock(&main_lm3630_dev->bl_mutex);
-	r = snprintf(buf, PAGE_SIZE, "Show PWM level: %d pwm_low: %d "
-			"pwm_high: %d config: %d\n", level, pwm_low,
-			pwm_high, config);
-	return r;
-}
-
-static ssize_t lcd_backlight_store_pwm(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t count)
-{
-	/* TODO: need? */
 	return count;
 }
 
 DEVICE_ATTR(lm3630_level, 0644, lcd_backlight_show_level,
 		lcd_backlight_store_level);
-DEVICE_ATTR(lm3630_backlight_on_off, 0644, lcd_backlight_show_on_off,
-		lcd_backlight_store_on_off);
-DEVICE_ATTR(lm3630_exp_min_value, 0644, lcd_backlight_show_exp_min_value,
-		lcd_backlight_store_exp_min_value);
-DEVICE_ATTR(lm3630_pwm, 0644, lcd_backlight_show_pwm, lcd_backlight_store_pwm);
 
-#ifdef CONFIG_OF
-static int lm3630_parse_dt(struct device *dev,
-		struct backlight_platform_data *pdata)
+static int lm3630_create_debugfs_entries(struct lm3630_device *chip)
+{
+	int i;
+
+	chip->dent = debugfs_create_dir(I2C_BL_NAME, NULL);
+	if (IS_ERR(chip->dent)) {
+		pr_err("%s: lm3630 driver couldn't create debugfs dir\n",
+				__func__);
+		return -EFAULT;
+	}
+
+	for (i = 0 ; i < ARRAY_SIZE(lm3630_debug_regs) ; i++) {
+		char *name = lm3630_debug_regs[i].name;
+		u32 reg = lm3630_debug_regs[i].reg;
+		struct dentry *file;
+
+		file = debugfs_create_file(name, 0644, chip->dent,
+					(void *) reg, &reg_fops);
+		if (IS_ERR(file)) {
+			pr_err("%s: debugfs_create_file %s failed.\n",
+					__func__, name);
+			return -EFAULT;
+		}
+	}
+
+	return 0;
+}
+
+static int lm3630_parse_dt(struct device_node *node,
+			struct lm3630_device *dev)
 {
 	int rc = 0;
 	int i;
-	u32 *array;
-	struct device_node *np = dev->of_node;
+	u32 *array = NULL;
 
-	pdata->gpio = of_get_named_gpio_flags(np,
-			"lm3630,lcd_bl_en", 0, NULL);
-	rc = of_property_read_u32(np, "lm3630,max_current",
-			&pdata->max_current);
-	rc = of_property_read_u32(np, "lm3630,min_brightness",
-			&pdata->min_brightness);
-	rc = of_property_read_u32(np, "lm3630,default_brightness",
-			&pdata->default_brightness);
-	rc = of_property_read_u32(np, "lm3630,max_brightness",
-			&pdata->max_brightness);
-	rc = of_property_read_u32(np, "lm3630,enable_pwm",
-			&lm3630_pwm_enable);
-	if (rc == -EINVAL)
-		lm3630_pwm_enable = 1;
-	rc = of_property_read_u32(np, "lm3630,blmap_size",
-			&pdata->blmap_size);
-	if (pdata->blmap_size) {
-		array = kzalloc(sizeof(u32) * pdata->blmap_size, GFP_KERNEL);
+	dev->en_gpio = of_get_named_gpio(node, "lm3630,lcd_bl_en", 0);
+	if (dev->en_gpio < 0) {
+		pr_err("%s: failed to get lm3630,lcd_bl_en\n", __func__);
+		rc = dev->en_gpio;
+		goto error;
+	}
+
+	rc = of_property_read_u32(node, "lm3630,max_current",
+				&dev->max_current);
+	if (rc) {
+		pr_err("%s: failed to get lm3630,max_current\n", __func__);
+		goto error;
+	}
+
+	rc = of_property_read_u32(node, "lm3630,min_brightness",
+				&dev->min_brightness);
+	if (rc) {
+		pr_err("%s: failed to get lm3630,min_brightness\n", __func__);
+		goto error;
+	}
+
+	rc = of_property_read_u32(node, "lm3630,default_brightness",
+				&dev->default_brightness);
+	if (rc) {
+		pr_err("%s: failed to get lm3630,default_brightness\n",
+				__func__);
+		goto error;
+	}
+
+	rc = of_property_read_u32(node, "lm3630,max_brightness",
+				&dev->max_brightness);
+	if (rc) {
+		pr_err("%s: failed to get lm3630,max_brightness\n", __func__);
+		goto error;
+	}
+
+	rc = of_property_read_u32(node, "lm3630,enable_pwm",
+				&dev->pwm_enable);
+	if (rc) {
+		pr_err("%s: failed to get lm3630,enable_pwm\n", __func__);
+		goto error;
+	}
+
+	rc = of_property_read_u32(node, "lm3630,blmap_size",
+				&dev->blmap_size);
+	if (rc) {
+		pr_err("%s: failed to get lm3630,blmap_size\n", __func__);
+		goto error;
+	}
+
+	if (dev->blmap_size) {
+		array = kzalloc(sizeof(u32) * dev->blmap_size, GFP_KERNEL);
 		if (!array)
-			return -ENOMEM;
-		rc = of_property_read_u32_array(np, "lm3630,blmap", array, pdata->blmap_size);
+			goto error;
+
+		rc = of_property_read_u32_array(node, "lm3630,blmap", array,
+						dev->blmap_size);
 		if (rc) {
-			pr_err("%s: Uable to read backlight map\n", __func__);
-			return -EINVAL;
+			pr_err("%s: failed to read backlight map\n", __func__);
+			goto err_blmap;
 		}
-		pdata->blmap = kzalloc(sizeof(char) * pdata->blmap_size, GFP_KERNEL);
-		if (!pdata->blmap)
-			return -ENOMEM;
-		for (i = 0; i < pdata->blmap_size; i++)
-			pdata->blmap[i] = (char)array[i];
+
+		dev->blmap = kzalloc(sizeof(char) * dev->blmap_size,
+					GFP_KERNEL);
+		if (!dev->blmap)
+			goto err_blmap;
+
+		for (i = 0; i < dev->blmap_size; i++)
+			dev->blmap[i] = (char)array[i];
+
 		if (array)
 			kfree(array);
-	} else {
-		pdata->blmap = NULL;
 	}
-	pr_debug("%s: gpio=%d, max_current=%d, min=%d, default=%d, max=%d, pwm=%d , blmap_size=%d\n",
-			__func__, pdata->gpio,
-			pdata->max_current,
-			pdata->min_brightness,
-			pdata->default_brightness,
-			pdata->max_brightness,
-			lm3630_pwm_enable,
-			pdata->blmap_size);
 
+	pr_info("%s: en_gpio = %d, max_current = %d, min = %d, default = %d,"
+			"max = %d, pwm = %d , blmap_size = %d\n", __func__,
+			dev->en_gpio, dev->max_current,
+			dev->min_brightness, dev->default_brightness,
+			dev->max_brightness, dev->pwm_enable,
+			dev->blmap_size);
+	return 0;
+
+err_blmap:
+	kfree(array);
+error:
 	return rc;
 }
-#endif
 
 static struct backlight_ops lm3630_bl_ops = {
 	.update_status = bl_set_intensity,
 	.get_brightness = bl_get_intensity,
 };
 
-static int lm3630_probe(struct i2c_client *i2c_dev, const struct i2c_device_id *id)
+static int lm3630_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
 {
-	struct backlight_platform_data *pdata;
+	struct lm3630_platform_data *pdata;
 	struct lm3630_device *dev;
 	struct backlight_device *bl_dev;
 	struct backlight_properties props;
-	int err;
-
-	pr_info("%s: i2c probe start\n", __func__);
-#ifdef CONFIG_OF
-	if (&i2c_dev->dev.of_node) {
-		pdata = devm_kzalloc(&i2c_dev->dev,
-				     sizeof(struct backlight_platform_data),
-				     GFP_KERNEL);
-		if (!pdata) {
-			pr_err("%s: Failed to allocate memory\n", __func__);
-			return -ENOMEM;
-		}
-		err = lm3630_parse_dt(&i2c_dev->dev, pdata);
-		if (err != 0)
-			return err;
-	} else {
-		pdata = i2c_dev->dev.platform_data;
-	}
-#else
-	pdata = i2c_dev->dev.platform_data;
-#endif
+	struct device_node *dev_node = client->dev.of_node;
+	int ret = 0;
 
 	dev = kzalloc(sizeof(struct lm3630_device), GFP_KERNEL);
-	if (dev == NULL) {
-		pr_err("%s: fail alloc for lm3630_device\n", __func__);
+	if (!dev) {
+		pr_err("%s: failed to allocate lm3630_device\n", __func__);
 		return -ENOMEM;
 	}
-	main_lm3630_dev = dev;
+
+	if (dev_node) {
+		ret = lm3630_parse_dt(dev_node, dev);
+		if (ret) {
+			pr_err("%s: failed to parse dt\n", __func__);
+			goto err_parse_dt;
+		}
+	} else {
+		pdata = client->dev.platform_data;
+		if (pdata == NULL) {
+			pr_err("%s: no platform data\n", __func__);
+			goto err_parse_dt;
+		}
+
+		dev->en_gpio = pdata->en_gpio;
+		dev->max_current = pdata->max_current;
+		dev->min_brightness = pdata->min_brightness;
+		dev->default_brightness = pdata->default_brightness;
+		dev->max_brightness = pdata->max_brightness;
+		dev->blmap_size = pdata->blmap_size;
+		if (dev->blmap_size)
+			dev->blmap = pdata->blmap;
+	}
+
 	memset(&props, 0, sizeof(struct backlight_properties));
 	props.type = BACKLIGHT_RAW;
-	props.max_brightness = MAX_BRIGHTNESS_LM3630;
-	bl_dev = backlight_device_register(I2C_BL_NAME, &i2c_dev->dev,
+	props.max_brightness = dev->max_brightness;
+
+	bl_dev = backlight_device_register(I2C_BL_NAME, &client->dev,
 			NULL, &lm3630_bl_ops, &props);
+	if (IS_ERR(bl_dev)) {
+		pr_err("%s: failed to register backlight\n", __func__);
+		ret = PTR_ERR(bl_dev);
+		goto err_bl_dev_reg;
+	}
 
 #ifdef CONFIG_MACH_LGE
 	/* HACK: disable fb notifier unless off-mode charge */
@@ -516,117 +490,86 @@ static int lm3630_probe(struct i2c_client *i2c_dev, const struct i2c_device_id *
 		fb_unregister_client(&bl_dev->fb_notif);
 #endif
 
-	bl_dev->props.max_brightness = MAX_BRIGHTNESS_LM3630; /* TODO */
-	bl_dev->props.brightness = DEFAULT_BRIGHTNESS; /* TODO */
+	bl_dev->props.max_brightness = dev->max_brightness;
+	bl_dev->props.brightness = dev->default_brightness;
 	bl_dev->props.power = FB_BLANK_UNBLANK;
 	dev->bl_dev = bl_dev;
-	dev->client = i2c_dev;
-	dev->gpio = pdata->gpio;
-	dev->max_current = pdata->max_current;
-	dev->min_brightness = pdata->min_brightness;
-	dev->default_brightness = pdata->default_brightness;
-	dev->max_brightness = pdata->max_brightness;
-	dev->blmap_size = pdata->blmap_size;
-	if (dev->blmap_size) {
-		dev->blmap = kzalloc(sizeof(char) * dev->blmap_size, GFP_KERNEL);
-		if (!dev->blmap) {
-			pr_err("%s: Failed to allocate memory\n", __func__);
-			return -ENOMEM;
-		}
-		memcpy(dev->blmap, pdata->blmap, dev->blmap_size);
-	} else {
-		dev->blmap = NULL;
-	}
-	i2c_set_clientdata(i2c_dev, dev);
+	dev->client = client;
+	i2c_set_clientdata(client, dev);
 
-	/* reference the reset procedure from lm3530 */
-	if (gpio_is_valid(dev->gpio)) {
-		err = gpio_request_one(dev->gpio, GPIOF_OUT_INIT_HIGH, "lm3630 reset");
-		if (err < 0) {
-			pr_err("%s: failed to request gpio\n", __func__);
+	if (gpio_is_valid(dev->en_gpio)) {
+		ret = gpio_request_one(dev->en_gpio, GPIOF_OUT_INIT_HIGH,
+					"lm3630_en");
+		if (ret) {
+			pr_err("%s: failed to request en_gpio\n", __func__);
 			goto err_gpio_request;
 		}
 	}
 
-	mutex_init(&dev->bl_mutex);
-	err = device_create_file(&i2c_dev->dev, &dev_attr_lm3630_level);
-	if (err < 0) {
+	ret = device_create_file(&client->dev,
+			&dev_attr_lm3630_level);
+	if (ret) {
 		pr_err("%s: failed to create sysfs level\n", __func__);
 		goto err_create_sysfs_level;
 	}
-	err = device_create_file(&i2c_dev->dev, &dev_attr_lm3630_backlight_on_off);
-	if (err < 0) {
-		pr_err("%s: failed to create sysfs bl_on_off\n", __func__);
-		goto err_create_sysfs_bl_on_off;
+
+	ret = lm3630_create_debugfs_entries(dev);
+	if (ret) {
+		pr_err("%s: lm3630_create_debugfs_entries failed\n", __func__);
+		goto err_create_debugfs;
 	}
-	err = device_create_file(&i2c_dev->dev, &dev_attr_lm3630_exp_min_value);
-	if (err < 0) {
-		pr_err("%s: failed to create sysfs exp_min_value\n", __func__);
-		goto err_create_sysfs_exp_min_value;
-	}
-	err = device_create_file(&i2c_dev->dev, &dev_attr_lm3630_pwm);
-	if (err < 0) {
-		pr_err("%s: failed to create sysfs pwm\n", __func__);
-		goto err_create_sysfs_pwm;
-	}
-	lm3630_i2c_client = i2c_dev;
+
+	lm3630_dev = dev;
+
 	pr_info("%s: lm3630 probed\n", __func__);
 	return 0;
 
-/* error handling */
-err_create_sysfs_pwm:
-	device_remove_file(&i2c_dev->dev, &dev_attr_lm3630_exp_min_value);
-err_create_sysfs_exp_min_value:
-	device_remove_file(&i2c_dev->dev, &dev_attr_lm3630_backlight_on_off);
-err_create_sysfs_bl_on_off:
-	device_remove_file(&i2c_dev->dev, &dev_attr_lm3630_level);
+err_create_debugfs:
+	device_remove_file(&client->dev, &dev_attr_lm3630_level);
 err_create_sysfs_level:
-	/* unregister gpio */
-	if (gpio_is_valid(dev->gpio))
-		gpio_free(dev->gpio);
+	if (gpio_is_valid(dev->en_gpio))
+		gpio_free(dev->en_gpio);
 err_gpio_request:
-	backlight_device_unregister(dev->bl_dev);
+	backlight_device_unregister(bl_dev);
+err_bl_dev_reg:
+	if (dev_node && dev->blmap)
+		kfree(dev->blmap);
+err_parse_dt:
 	kfree(dev);
-	return err;
+	return ret;
 }
 
-static int lm3630_remove(struct i2c_client *i2c_dev)
+static int lm3630_remove(struct i2c_client *client)
 {
-	struct lm3630_device *dev = (struct lm3630_device *)i2c_get_clientdata(i2c_dev);
-	int gpio = dev->gpio; /* main_lm3630_dev->gpio; */
+	struct lm3630_device *dev = i2c_get_clientdata(client);
 
-	lm3630_i2c_client = NULL;
-	device_remove_file(&i2c_dev->dev, &dev_attr_lm3630_level);
-	device_remove_file(&i2c_dev->dev, &dev_attr_lm3630_backlight_on_off);
-	device_remove_file(&i2c_dev->dev, &dev_attr_lm3630_exp_min_value);
-	device_remove_file(&i2c_dev->dev, &dev_attr_lm3630_pwm);
-	i2c_set_clientdata(i2c_dev, NULL);
-	if (gpio_is_valid(gpio))
-		gpio_free(gpio);
+	lm3630_dev = NULL;
+	if (dev->dent)
+		debugfs_remove_recursive(dev->dent);
+	device_remove_file(&client->dev, &dev_attr_lm3630_level);
+	i2c_set_clientdata(client, NULL);
+	if (gpio_is_valid(dev->en_gpio))
+		gpio_free(dev->en_gpio);
 	backlight_device_unregister(dev->bl_dev);
+	if (client->dev.of_node && dev->blmap)
+		kfree(dev->blmap);
 	kfree(dev);
 	return 0;
 }
 
-#ifdef CONFIG_OF
 static struct of_device_id lm3630_match_table[] = {
 	{ .compatible = "backlight,lm3630",},
 	{ },
 };
-#endif
 
 static struct i2c_driver main_lm3630_driver = {
 	.probe = lm3630_probe,
 	.remove = lm3630_remove,
-	.suspend = NULL,
-	.resume = NULL,
 	.id_table = lm3630_bl_id,
 	.driver = {
 		.name = I2C_BL_NAME,
 		.owner = THIS_MODULE,
-#ifdef CONFIG_OF
 		.of_match_table = lm3630_match_table,
-#endif
 	},
 };
 
@@ -638,5 +581,4 @@ static int __init lcd_backlight_init(void)
 module_init(lcd_backlight_init);
 
 MODULE_DESCRIPTION("LM3630 Backlight Control");
-MODULE_AUTHOR("daewoo kwak");
 MODULE_LICENSE("GPL");
