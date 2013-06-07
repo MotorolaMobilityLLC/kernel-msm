@@ -142,11 +142,10 @@ static int32_t calibrate_af_data(struct msm_actuator_ctrl_t *a_ctrl,
 		&a_ctrl->i2c_client, 0x0100,
 		0x01, MSM_CAMERA_I2C_BYTE_DATA);
 
-	/* select otp bank 1 */
+	/* select otp bank 3 */
 	rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
 		&a_ctrl->i2c_client, OTP_BANK_SELECT,
-		0xc1, MSM_CAMERA_I2C_BYTE_DATA);
-
+		0xc3, MSM_CAMERA_I2C_BYTE_DATA);
 
 	/* load otp */
 	rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
@@ -160,8 +159,47 @@ static int32_t calibrate_af_data(struct msm_actuator_ctrl_t *a_ctrl,
 		data, 2);
 	if (rc < 0)
 		pr_err("infinity otp data read failed\n");
-
 	inf_dac = data[0] << 8 | data[1];
+	if (inf_dac == 0) {
+		/* select otp bank 2 */
+		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+			&a_ctrl->i2c_client, OTP_BANK_SELECT,
+			0xc2, MSM_CAMERA_I2C_BYTE_DATA);
+
+		/* load otp */
+		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+			&a_ctrl->i2c_client, OTP_LOAD_DUMP,
+			0x01, MSM_CAMERA_I2C_BYTE_DATA);
+
+		/* read inf */
+		address = OTP_BANK_START;
+		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
+			&a_ctrl->i2c_client, address,
+			data, 2);
+		if (rc < 0)
+			pr_err("infinity otp data read failed\n");
+		inf_dac = data[0] << 8 | data[1];
+		if (inf_dac == 0) {
+			/* select otp bank 1 */
+			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+				&a_ctrl->i2c_client, OTP_BANK_SELECT,
+				0xc1, MSM_CAMERA_I2C_BYTE_DATA);
+
+			/* load otp */
+			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+				&a_ctrl->i2c_client, OTP_LOAD_DUMP,
+				0x01, MSM_CAMERA_I2C_BYTE_DATA);
+
+			/* read inf */
+			address = OTP_BANK_START;
+			rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
+				&a_ctrl->i2c_client, address,
+				data, 2);
+			if (rc < 0)
+				pr_err("infinity otp data read failed\n");
+			inf_dac = data[0] << 8 | data[1];
+		}
+	}
 
 	/* read 1m */
 	address += 2;
