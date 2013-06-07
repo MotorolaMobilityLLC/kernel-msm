@@ -1470,6 +1470,7 @@ void mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	unsigned long flags;
 	int need_wait = 0;
+	uint32_t timeout = 1;
 
 	pr_debug("%s: start pid=%d\n",
 				__func__, current->pid);
@@ -1482,7 +1483,10 @@ void mdss_dsi_cmd_mdp_busy(struct mdss_dsi_ctrl_pdata *ctrl)
 		/* wait until DMA finishes the current job */
 		pr_debug("%s: pending pid=%d\n",
 				__func__, current->pid);
-		wait_for_completion(&ctrl->mdp_comp);
+		timeout = wait_for_completion_timeout(&ctrl->mdp_comp,
+			msecs_to_jiffies(2000));
+		if (!timeout)
+			pr_warn("%s: timedout\n", __func__);
 	}
 	pr_debug("%s: done pid=%d\n",
 				__func__, current->pid);
