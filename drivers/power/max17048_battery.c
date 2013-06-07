@@ -76,6 +76,8 @@ struct max17048_chip {
 	int alert_threshold;
 	int max_mvolt;
 	int min_mvolt;
+	int full_soc;
+	int empty_soc;
 	int batt_tech;
 	int fcc_mah;
 	int voltage;
@@ -179,11 +181,8 @@ static int max17048_get_capacity_from_soc(void)
 	pr_debug("%s: SOC raw = 0x%x%x\n", __func__, buf[0], buf[1]);
 
 	batt_soc = (((int)buf[0]*256)+buf[1])*19531; /* 0.001953125 */
-
-	if (max17048_get_prop_status(ref) == 1)
-		batt_soc = (batt_soc - (13 * 1000000)) / ((950 - 13) * 10000);
-	else
-		batt_soc = (batt_soc - (130 * 1000000)) / ((950 - 130) * 10000);
+	batt_soc = (batt_soc - (ref->empty_soc * 1000000))
+			/ ((ref->full_soc - ref->empty_soc) * 10000);
 
 	if (batt_soc > 100)
 		batt_soc = 100;
@@ -521,6 +520,20 @@ static int max17048_parse_dt(struct device *dev,
 				   &chip->min_mvolt);
 	if (ret) {
 		pr_err("%s: failed to read min voltage\n", __func__);
+		goto out;
+	}
+
+	ret = of_property_read_u32(dev_node, "max17048,full-soc",
+				   &chip->full_soc);
+	if (ret) {
+		pr_err("%s: failed to read full soc\n", __func__);
+		goto out;
+	}
+
+	ret = of_property_read_u32(dev_node, "max17048,empty-soc",
+				   &chip->empty_soc);
+	if (ret) {
+		pr_err("%s: failed to read empty soc\n", __func__);
 		goto out;
 	}
 
