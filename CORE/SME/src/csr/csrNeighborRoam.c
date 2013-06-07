@@ -1149,8 +1149,15 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, tSirRetStatus l
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
         if (csrRoamIsRoamOffloadScanEnabled(pMac))
         {
-          pNeighborRoamInfo->uOsRequestedHandoff = 0;
-          csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART, REASON_PREAUTH_FAILED_FOR_ALL);
+          if(pNeighborRoamInfo->uOsRequestedHandoff)
+          {
+             pNeighborRoamInfo->uOsRequestedHandoff = 0;
+             csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_PREAUTH_FAILED_FOR_ALL);
+          }
+          else
+          {
+             csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART, REASON_PREAUTH_FAILED_FOR_ALL);
+          }
           CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CONNECTED);
         } else
         {
@@ -2029,10 +2036,17 @@ if (csrRoamIsRoamOffloadScanEnabled(pMac))
    {
     if (!tempVal || !roamNow)
     {
-       pNeighborRoamInfo->uOsRequestedHandoff = 0;
-      /* There is no candidate or We are not roaming Now.
-       * Inform the FW to restart Roam Offload Scan  */
-       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
+       if (pNeighborRoamInfo->uOsRequestedHandoff)
+       {
+          csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
+          pNeighborRoamInfo->uOsRequestedHandoff = 0;
+       }
+       else
+       {
+         /* There is no candidate or We are not roaming Now.
+          * Inform the FW to restart Roam Offload Scan  */
+          csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
+       }
        CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CONNECTED);
     }
    }
@@ -4924,23 +4938,24 @@ eHalStatus csrNeighborRoamProceedWithHandoffReq(tpAniSirGlobal pMac)
 
 /* ---------------------------------------------------------------------------
 
-    \fn csrNeighborRoamRestartLfrScan
+    \fn csrNeighborRoamStartLfrScan
 
     \brief  This function is called if HDD requested handoff failed for some
-    reason. Restart the LFR logic at that point.
+    reason. start the LFR logic at that point.By the time, this function is
+    called, a STOP command has already been issued.
 
     \param  pMac - The handle returned by macOpen.
 
     \return eHAL_STATUS_SUCCESS on success, corresponding error code otherwise
 
 ---------------------------------------------------------------------------*/
-eHalStatus csrNeighborRoamRestartLfrScan(tpAniSirGlobal pMac)
+eHalStatus csrNeighborRoamStartLfrScan(tpAniSirGlobal pMac)
 {
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     pNeighborRoamInfo->uOsRequestedHandoff = 0;
     /* There is no candidate or We are not roaming Now.
      * Inform the FW to restart Roam Offload Scan  */
-    csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
+    csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
 
     return eHAL_STATUS_SUCCESS;
 }
