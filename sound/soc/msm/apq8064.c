@@ -526,8 +526,6 @@ static const struct snd_soc_dapm_route apq8064_common_audio_map[] = {
 	{"RX_BIAS", NULL, "MCLK"},
 	{"LDO_H", NULL, "MCLK"},
 
-	{"HEADPHONE", NULL, "LDO_H"},
-
 	/* Speaker path */
 #ifdef CONFIG_SND_SOC_TPA2028D
 	{"Ext Spk Top", NULL, "LINEOUT1"},
@@ -549,8 +547,8 @@ static const struct snd_soc_dapm_route apq8064_common_audio_map[] = {
 	{"MIC BIAS3 External", NULL, "Handset SubMic"},
 #endif
 	/* Headset Mic */
-	{"AMIC2", NULL, "MIC BIAS2 External"},
-	{"MIC BIAS2 External", NULL, "Headset Mic"},
+	{"AMIC2", NULL, "MCLK"},
+	{"MCLK", NULL, "Headset Mic"},
 
 #ifndef CONFIG_SND_SOC_DUAL_AMIC
 	/* Headset ANC microphones */

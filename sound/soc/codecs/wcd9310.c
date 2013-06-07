@@ -361,6 +361,8 @@ struct tabla_priv {
 	bool gpio_irq_resend;
 	struct wake_lock irq_resend_wlock;
 
+	u32 h2w_state;
+
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_poke;
 	struct dentry *debugfs_mbhc;
@@ -1940,11 +1942,13 @@ static void tabla_codec_enable_bandgap(struct snd_soc_codec *codec,
 			0x00);
 	} else if ((tabla->bandgap_type == TABLA_BANDGAP_MBHC_MODE) &&
 		(choice == TABLA_BANDGAP_AUDIO_MODE)) {
-		snd_soc_write(codec, TABLA_A_BIAS_CENTRAL_BG_CTL, 0x50);
+		if (tabla->h2w_state != H2W_HEADSET)
+			snd_soc_write(codec, TABLA_A_BIAS_CENTRAL_BG_CTL, 0x50);
 		usleep_range(100, 100);
 		tabla_codec_enable_audio_mode_bandgap(codec);
 	} else if (choice == TABLA_BANDGAP_OFF) {
-		snd_soc_write(codec, TABLA_A_BIAS_CENTRAL_BG_CTL, 0x50);
+		if (tabla->h2w_state != H2W_HEADSET)
+			snd_soc_write(codec, TABLA_A_BIAS_CENTRAL_BG_CTL, 0x50);
 	} else {
 		pr_err("%s: Error, Invalid bandgap settings\n", __func__);
 	}
@@ -3788,7 +3792,6 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"MIC BIAS2 Internal1", NULL, "LDO_H"},
 	{"MIC BIAS2 Internal2", NULL, "LDO_H"},
 	{"MIC BIAS2 Internal3", NULL, "LDO_H"},
-	{"MIC BIAS2 External", NULL, "LDO_H"},
 	{"MIC BIAS3 Internal1", NULL, "LDO_H"},
 	{"MIC BIAS3 Internal2", NULL, "LDO_H"},
 	{"MIC BIAS3 External", NULL, "LDO_H"},
@@ -4075,6 +4078,13 @@ static void tabla_shutdown(struct snd_pcm_substream *substream,
 		pm_runtime_mark_last_busy(tabla_core->dev->parent);
 		pm_runtime_put(tabla_core->dev->parent);
 	}
+}
+
+void tabla_set_h2w_status(struct snd_soc_codec *codec, u32 status)
+{
+	struct tabla_priv *tabla = snd_soc_codec_get_drvdata(codec);
+
+	tabla->h2w_state = status;
 }
 
 int tabla_check_bandgap_status(struct snd_soc_codec *codec)
@@ -8426,6 +8436,7 @@ static int tabla_codec_probe(struct snd_soc_codec *codec)
 	tabla->mbhc_fake_ins_start = 0;
 	tabla->no_mic_headset_override = false;
 	tabla->hs_polling_irq_prepared = false;
+	tabla->h2w_state = H2W_NONE;
 	mutex_init(&tabla->codec_resource_lock);
 	tabla->codec = codec;
 	wcd9310_codec = codec;

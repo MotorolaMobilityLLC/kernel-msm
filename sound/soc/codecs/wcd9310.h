@@ -182,8 +182,16 @@ struct tabla_mbhc_config {
 };
 extern int tabla_check_bandgap_status(struct snd_soc_codec *codec);
 
+extern void tabla_set_h2w_status(struct snd_soc_codec *codec, u32 status);
+
 extern int tabla_hs_detect(struct snd_soc_codec *codec,
 			   const struct tabla_mbhc_config *cfg);
+
+enum h2w_status {
+	H2W_NONE = 0,
+	H2W_HEADSET,
+	H2W_HEADPHONE,
+};
 
 struct anc_header {
 	u32 reserved[3];
