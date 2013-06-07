@@ -495,6 +495,7 @@ const struct inode_operations f2fs_dir_inode_operations = {
 	.rmdir		= f2fs_rmdir,
 	.mknod		= f2fs_mknod,
 	.rename		= f2fs_rename,
+	.getattr	= f2fs_getattr,
 	.setattr	= f2fs_setattr,
 	.get_acl	= f2fs_get_acl,
 #ifdef CONFIG_F2FS_FS_XATTR
@@ -509,6 +510,7 @@ const struct inode_operations f2fs_symlink_inode_operations = {
 	.readlink       = generic_readlink,
 	.follow_link    = page_follow_link_light,
 	.put_link       = page_put_link,
+	.getattr	= f2fs_getattr,
 	.setattr	= f2fs_setattr,
 #ifdef CONFIG_F2FS_FS_XATTR
 	.setxattr	= generic_setxattr,
@@ -519,6 +521,7 @@ const struct inode_operations f2fs_symlink_inode_operations = {
 };
 
 const struct inode_operations f2fs_special_inode_operations = {
+	.getattr	= f2fs_getattr,
 	.setattr        = f2fs_setattr,
 	.get_acl	= f2fs_get_acl,
 #ifdef CONFIG_F2FS_FS_XATTR
