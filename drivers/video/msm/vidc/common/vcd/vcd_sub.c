@@ -2368,8 +2368,16 @@ u32 vcd_handle_frame_done(
 
 	if (cctxt->decoding)
 		op_frm->vcd_frm.frame = transc->frame;
-	else
+	else {
 		transc->frame = op_frm->vcd_frm.frame;
+		if ((transc->flags & VCD_FRAME_FLAG_EOS) &&
+			!(op_frm->vcd_frm.flags & VCD_FRAME_FLAG_EOS)) {
+			op_frm->vcd_frm.flags |= VCD_FRAME_FLAG_EOS;
+			VCD_MSG_HIGH("%s: add EOS flag to the output "\
+				"from transc(0x%x)",
+				__func__, (u32)transc);
+		}
+	}
 	transc->frame_done = true;
 
 	if (transc->input_done && transc->frame_done) {
