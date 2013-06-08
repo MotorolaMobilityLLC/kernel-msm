@@ -1148,7 +1148,8 @@ int dsi_panel_device_register(struct platform_device *pdev,
 	pr_debug("%s: pclk=%d, bclk=%d\n", __func__,
 			ctrl_pdata->pclk_rate, ctrl_pdata->byte_clk_rate);
 
-	if (ctrl_pdata->panel_data.panel_info.cont_splash_enabled)
+	if (ctrl_pdata->panel_data.panel_info.cont_splash_enabled &&
+		ctrl_pdata->panel_data.panel_info.type == MIPI_VIDEO_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, 1);
 
 	rc = mdss_register_panel(ctrl_pdev, &(ctrl_pdata->panel_data));
