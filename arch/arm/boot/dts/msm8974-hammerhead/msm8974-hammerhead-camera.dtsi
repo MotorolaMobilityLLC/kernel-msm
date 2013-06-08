@@ -12,6 +12,19 @@
  */
 
 &cci {
+	eeprom0: qcom,eeprom@a0 {
+		cell-index = <0>;
+		reg = <0xa0 0x0>;
+		compatible = "qcom,eeprom";
+		qcom,slave-addr = <0xa0>;
+		qcom,cci-master = <0>;
+		qcom,eeprom-name = "imx179_eeprom";
+		qcom,num-blocks = <1>;
+		qcom,page0 = <0 0x0 2 0x0 1 20>;
+		qcom,poll0 = <0 0x0 2 0x0 1 20>;
+		qcom,mem0 = <0x800 0x0000 2 0 1 0>;
+	};
+
 	qcom,camera@20 {
 		status = "ok";
 		compatible = "qcom,imx179";
@@ -20,6 +33,7 @@
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,actuator-src = <&actuator0>;
+		qcom,eeprom-src = <&eeprom0>;
 		qcom,flash-type = <0>;
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,mount-angle = <90>;
@@ -94,15 +108,8 @@
 	};
 
 	actuator0: qcom,actuator@18 {
-		cell-index = <0>;
-		reg = <0x18>;
-		compatible = "qcom,actuator";
-		qcom,cci-master = <0>;
-	};
-
-	actuator1: qcom,actuator@36 {
 		cell-index = <1>;
-		reg = <0x36>;
+		reg = <0x18 0x0>;
 		compatible = "qcom,actuator";
 		qcom,cci-master = <0>;
 	};
