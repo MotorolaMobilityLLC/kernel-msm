@@ -245,6 +245,7 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 			vreg_cfg = 0x00;
 			break;
 		case PANEL_LGE_JDI_NOVATEK_CMD:
+		case PANEL_LGE_JDI_ORISE_CMD:
 			sdm_cfg1  = 0x08;
 			sdm_cfg2  = 0x6f;
 			sdm_cfg3  = 0xd3;
