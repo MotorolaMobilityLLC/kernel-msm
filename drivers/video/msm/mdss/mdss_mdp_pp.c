@@ -1179,11 +1179,13 @@ int mdss_mdp_pp_setup_locked(struct mdss_mdp_ctl *ctl)
 	mutex_lock(&mdss_pp_mutex);
 	if (ctl->mixer_left) {
 		pp_mixer_setup(disp_num, ctl->mixer_left);
-		pp_dspp_setup(disp_num, ctl->mixer_left);
+		if (ctl->mfd->panel_info->type != MIPI_CMD_PANEL)
+			pp_dspp_setup(disp_num, ctl->mixer_left);
 	}
 	if (ctl->mixer_right) {
 		pp_mixer_setup(disp_num, ctl->mixer_right);
-		pp_dspp_setup(disp_num, ctl->mixer_right);
+		if (ctl->mfd->panel_info->type != MIPI_CMD_PANEL)
+			pp_dspp_setup(disp_num, ctl->mixer_right);
 	}
 	/* clear dirty flag */
 	if (disp_num < MDSS_BLOCK_DISP_NUM)
