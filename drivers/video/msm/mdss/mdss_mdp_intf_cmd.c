@@ -266,7 +266,7 @@ static int mdss_mdp_cmd_vsync_ctrl(struct mdss_mdp_ctl *ctl,
 			__func__, ctx, ctx->pp_num, ctx->vsync_enabled, enable,
 					ctx->clk_enabled, ctx->clk_control);
 
-	if (ctx->vsync_enabled == enable) {
+	if (ctx->send_vsync && ctx->vsync_enabled == enable) {
 		mutex_unlock(&ctx->clk_mtx);
 		return 0;
 	}
