@@ -172,10 +172,7 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 	if (ctx->expire) {
 		ctx->expire--;
 		if (ctx->expire == 0) {
-			if (ctx->koff_cnt <= 0) {
-				ctx->clk_control = 1;
-				schedule_work(&ctx->clk_work);
-			} else {
+			if (ctx->koff_cnt > 0) {
 				/* put off one vsync */
 				ctx->expire += 1;
 			}
@@ -433,6 +430,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	int need_wait = 0;
 	struct mdss_mdp_vsync_handler null_handle;
 	int ret;
+	unsigned long flags;
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->priv_data;
 	if (!ctx) {
@@ -442,6 +440,27 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 
 	pr_debug("%s:+ vaync_enable=%d expire=%d\n", __func__,
 		ctx->vsync_enabled, ctx->expire);
+
+	mutex_lock(&ctx->clk_mtx);
+	spin_lock_irqsave(&ctx->clk_lock, flags);
+	if (ctx->clk_enabled) {
+		ctx->clk_enabled = 0;
+		ctx->clk_control = 0;
+		spin_unlock_irqrestore(&ctx->clk_lock, flags);
+		/*
+		 * make sure dsi link is idle  here
+		 */
+		ctx->vsync_enabled = 0;
+		mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
+						ctx->pp_num);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+		/* disable dsi clock */
+		mdss_mdp_ctl_intf_event(ctx->ctl, MDSS_EVENT_PANEL_CLK_CTRL,
+							(void *)0);
+	} else {
+		spin_unlock_irqrestore(&ctx->clk_lock, flags);
+	}
+	mutex_unlock(&ctx->clk_mtx);
 
 	mutex_lock(&ctx->clk_mtx);
 	if (ctx->vsync_enabled) {
