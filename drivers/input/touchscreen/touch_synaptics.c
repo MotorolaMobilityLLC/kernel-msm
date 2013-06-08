@@ -213,12 +213,6 @@ static int synaptics_t1320_power_on(struct i2c_client *client, int on)
 		}
 	}
 
-        rc = regulator_set_voltage(vreg_l22, 3000000, 3000000);
-	if (rc < 0) {
-		TOUCH_ERR_MSG("%s: cannot control regulator:%d\n", __func__, rc);
-		return rc;
-	}
-
 	if (on) {
 		TOUCH_INFO_MSG("touch enable\n");
 		regulator_enable(vreg_l22);
