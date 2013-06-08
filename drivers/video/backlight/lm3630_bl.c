@@ -28,7 +28,11 @@
 #include <mach/board.h>
 #include <linux/i2c.h>
 #include <linux/of_gpio.h>
+
+#ifdef CONFIG_MACH_LGE
+/* HACK: disable fb notifier unless off-mode charge */
 #include <mach/board_lge.h>
+#endif
 
 #define I2C_BL_NAME                              "lm3630"
 #define MAX_BRIGHTNESS_LM3630                    0xFF
@@ -505,6 +509,13 @@ static int lm3630_probe(struct i2c_client *i2c_dev, const struct i2c_device_id *
 	props.max_brightness = MAX_BRIGHTNESS_LM3630;
 	bl_dev = backlight_device_register(I2C_BL_NAME, &i2c_dev->dev,
 			NULL, &lm3630_bl_ops, &props);
+
+#ifdef CONFIG_MACH_LGE
+	/* HACK: disable fb notifier unless off-mode charge */
+	if (lge_get_boot_mode() != LGE_BOOT_MODE_CHARGER)
+		fb_unregister_client(&bl_dev->fb_notif);
+#endif
+
 	bl_dev->props.max_brightness = MAX_BRIGHTNESS_LM3630; /* TODO */
 	bl_dev->props.brightness = DEFAULT_BRIGHTNESS; /* TODO */
 	bl_dev->props.power = FB_BLANK_UNBLANK;
