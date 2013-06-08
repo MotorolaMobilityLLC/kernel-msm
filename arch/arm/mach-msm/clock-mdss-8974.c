@@ -244,6 +244,17 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 			pll_divcfg3 = 0x2;
 			vreg_cfg = 0x00;
 			break;
+		case PANEL_LGE_JDI_NOVATEK_CMD:
+			sdm_cfg1  = 0x08;
+			sdm_cfg2  = 0x6f;
+			sdm_cfg3  = 0xd3;
+			cal_cfg8  = 0x60;
+			cal_cfg10 = 0x79;
+			cal_cfg11 = 0x01;
+			pll_divcfg1 = 0;
+			pll_divcfg3 = 0x2;
+			vreg_cfg = 0x00;
+			break;
 		default:
 			sdm_cfg1  = 0x0a;
 			sdm_cfg2  = 0xab;
