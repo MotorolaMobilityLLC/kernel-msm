@@ -1738,6 +1738,27 @@ static long vid_enc_ioctl(struct file *file,
 		}
 		break;
 	}
+	case VEN_IOCTL_SET_VUI_BITSTREAM_RESTRICT_FLAG:
+	{
+		struct vcd_property_hdr vcd_property_hdr;
+		struct vcd_property_bitstream_restrict_enable vcd_property_val;
+		u32 vcd_status = VCD_ERR_FAIL;
+
+		vcd_property_hdr.prop_id =
+			VCD_I_ENABLE_VUI_BITSTREAM_RESTRICT_FLAG;
+		vcd_property_hdr.sz = sizeof(struct
+				vcd_property_bitstream_restrict_enable);
+
+		vcd_property_val.bitstream_restrict_enable_flag = true;
+
+		vcd_status = vcd_set_property(client_ctx->vcd_handle,
+				&vcd_property_hdr, &vcd_property_val);
+		if (vcd_status) {
+			pr_err("Setting bitstream restrict flag failed");
+			return -EIO;
+		}
+		break;
+	}
 	case VEN_IOCTL_SET_AC_PREDICTION:
 	case VEN_IOCTL_GET_AC_PREDICTION:
 	case VEN_IOCTL_SET_RVLC:
