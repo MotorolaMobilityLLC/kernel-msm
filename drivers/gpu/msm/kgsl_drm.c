@@ -103,6 +103,10 @@ struct drm_kgsl_gem_object {
 
 };
 
+struct drm_kgsl_file_private {
+	pid_t tgid;
+};
+
 static struct ion_client *kgsl_drm_ion_client;
 
 static int kgsl_drm_inited = DRM_KGSL_NOT_INITED;
@@ -113,6 +117,11 @@ static struct list_head kgsl_mem_list;
 struct kgsl_drm_device_priv {
 	struct kgsl_device *device[KGSL_DEVICE_MAX];
 	struct kgsl_device_private *devpriv[KGSL_DEVICE_MAX];
+};
+
+struct kgsl_drm_gem_info_data {
+	struct drm_file *filp;
+	struct seq_file *m;
 };
 
 static int
@@ -1395,6 +1404,104 @@ int kgsl_gem_prime_fd_to_handle(struct drm_device *dev,
 	return 0;
 }
 
+static int kgsl_drm_gem_one_info(int id, void *ptr, void *data)
+{
+	struct drm_gem_object *obj = ptr;
+	struct drm_kgsl_gem_object *priv = obj->driver_private;
+	struct kgsl_drm_gem_info_data *gem_info_data = data;
+	struct drm_kgsl_file_private *file_priv =
+				gem_info_data->filp->driver_priv;
+
+	seq_printf(gem_info_data->m, "%3d \t%3d \t%3d \t%2d \t\t%2d \t0x%08x"\
+				" \t0x%x \t%2d \t\t%2d \t\t%2d\n",
+				(int)gem_info_data->filp->pid,
+				file_priv->tgid,
+				id,
+				atomic_read(&obj->refcount.refcount),
+				atomic_read(&obj->handle_count),
+				priv->memdesc.size,
+				priv->flags,
+				priv->bufcount,
+				obj->export_dma_buf ? 1 : 0,
+				obj->import_attach ? 1 : 0);
+
+	return 0;
+}
+
+static int kgsl_drm_gem_info(struct seq_file *m, void *data)
+{
+	struct drm_info_node *node = (struct drm_info_node *)m->private;
+	struct drm_device *drm_dev = node->minor->dev;
+	struct kgsl_drm_gem_info_data gem_info_data;
+
+	gem_info_data.m = m;
+
+	seq_printf(gem_info_data.m, "pid \ttgid \thandle \trefcount \thcount "\
+				"\tsize \t\tflags \tbufcount \texyport_to_fd "\
+				"\timport_from_fd\n");
+
+	mutex_lock(&drm_dev->struct_mutex);
+	list_for_each_entry(gem_info_data.filp, &drm_dev->filelist, lhead) {
+		spin_lock(&gem_info_data.filp->table_lock);
+		idr_for_each(&gem_info_data.filp->object_idr,
+				kgsl_drm_gem_one_info, &gem_info_data);
+		spin_unlock(&gem_info_data.filp->table_lock);
+	}
+	mutex_unlock(&drm_dev->struct_mutex);
+
+	return 0;
+}
+
+static struct drm_info_list kgsl_drm_debugfs_list[] = {
+	{"gem_info", kgsl_drm_gem_info, DRIVER_GEM},
+};
+#define KGSL_DRM_DEBUGFS_ENTRIES ARRAY_SIZE(kgsl_drm_debugfs_list)
+
+static int kgsl_drm_load(struct drm_device *dev, unsigned long flags)
+{
+	struct drm_minor *minor;
+	int ret;
+
+	minor = dev->primary;
+	ret = drm_debugfs_create_files(kgsl_drm_debugfs_list,
+						KGSL_DRM_DEBUGFS_ENTRIES,
+						minor->debugfs_root, minor);
+	if (ret)
+		DRM_DEBUG_DRIVER("failed to create kgsl-drm debugfs.\n");
+
+	return 0;
+}
+
+static int kgsl_drm_unload(struct drm_device *dev)
+{
+	drm_debugfs_remove_files(kgsl_drm_debugfs_list,
+				KGSL_DRM_DEBUGFS_ENTRIES, dev->primary);
+
+	return 0;
+}
+
+static int kgsl_drm_open(struct drm_device *dev, struct drm_file *file)
+{
+	struct drm_kgsl_file_private *file_priv;
+
+	file_priv = kzalloc(sizeof(*file_priv), GFP_KERNEL);
+	if (!file_priv)
+		return -ENOMEM;
+
+	file_priv->tgid = task_tgid_nr(current);
+	file->driver_priv = file_priv;
+
+	return 0;
+}
+
+static void kgsl_drm_postclose(struct drm_device *dev, struct drm_file *file)
+{
+	BUG_ON(!file->driver_priv);
+
+	kfree(file->driver_priv);
+	file->driver_priv = NULL;
+}
+
 struct drm_ioctl_desc kgsl_drm_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(KGSL_GEM_CREATE, kgsl_gem_create_ioctl, 0),
 	DRM_IOCTL_DEF_DRV(KGSL_GEM_PREP, kgsl_gem_prep_ioctl, 0),
@@ -1436,6 +1543,10 @@ static const struct file_operations kgsl_drm_driver_fops = {
 
 static struct drm_driver driver = {
 	.driver_features = DRIVER_GEM | DRIVER_PRIME,
+	.load = kgsl_drm_load,
+	.unload = kgsl_drm_unload,
+	.open = kgsl_drm_open,
+	.postclose = kgsl_drm_postclose,
 	.gem_init_object = kgsl_gem_init_object,
 	.gem_free_object = kgsl_gem_free_object,
 	.prime_handle_to_fd = kgsl_gem_prime_handle_to_fd,
