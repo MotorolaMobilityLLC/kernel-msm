@@ -110,6 +110,7 @@
 
 #include "wlan_hdd_dev_pwr.h"
 #include "qc_sap_ioctl.h"
+#include "sme_Api.h"
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 extern void hdd_suspend_wlan(struct early_suspend *wlan_suspend);
@@ -4385,6 +4386,12 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
 
                pr_info("Stopping AP mode\n");
 
+               if (TRUE == sme_IsPmcBmps(WLAN_HDD_GET_HAL_CTX(pAdapter)))
+               {
+                  /* EXIT BMPS as fw cannot handle DEL_STA when its in BMPS */
+                  wlan_hdd_enter_bmps(pAdapter, DRIVER_POWER_MODE_ACTIVE);
+               }
+
                /*Make sure that pAdapter cleaned properly*/
                hdd_stop_adapter( pHddCtx, pAdapter_to_stop );
                hdd_deinit_adapter( pHddCtx, pAdapter_to_stop );
@@ -4394,6 +4401,12 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
                        pAdapter_to_stop->macAddressCurrent.bytes);
                hdd_close_adapter(WLAN_HDD_GET_CTX(pAdapter), pAdapter_to_stop,
                        TRUE);
+
+               if (FALSE == sme_IsPmcBmps(WLAN_HDD_GET_HAL_CTX(pAdapter)))
+               {
+                  /* put the device back into BMPS */
+                  wlan_hdd_enter_bmps(pAdapter, DRIVER_POWER_MODE_AUTO);
+               }
            }
            else
            {
