@@ -23,3 +23,9 @@
 		status = "ok";
 	};
 };
+
+&mot_smd_720p_vid {
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&vdd_disp_vreg>;
+	vci_disp-supply = <&vci_disp_vreg>;
+};

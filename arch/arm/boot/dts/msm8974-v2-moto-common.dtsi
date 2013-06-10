@@ -112,6 +112,47 @@
 	sound {
 		qcom,model = "msm8974-taiko-mtp-snd-card";
 	};
+
+	vbat_disp_vreg: vbat_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat_disp";
+		gpio = <&msmgpio 7 0x0>;
+		parent-supply = <&pm8941_boost>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
+	vdd_disp_vreg: vdd_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_disp";
+		gpio = <&msmgpio 6 0x0>;
+		parent-supply = <&pm8941_s3>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
+	vci_disp_vreg: vci_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vci_disp";
+		gpio = <&msmgpio 23 0x0>;
+		parent-supply = <&pm8941_l23>;
+		startup-delay-us = <300>;
+		enable-active-high;
+	};
+
+	mdss_dsi0: qcom,mdss_dsi@fd922800 {
+		compatible = "qcom,mdss-dsi-ctrl";
+		label = "MDSS DSI CTRL->0";
+		cell-index = <0>;
+		reg = <0xfd922800 0x600>;
+		vddio-supply = <&pm8941_l12>;
+		vdda-supply = <&pm8941_l2>;
+		qcom,supply-names = "vddio", "vdda";
+		qcom,supply-min-voltage-level = <1800000 1200000>;
+		qcom,supply-max-voltage-level = <1800000 1200000>;
+		qcom,supply-peak-current = <100000 100000>;
+		qcom,mdss-fb-map = <&mdss_fb0>;
+	};
 };
 
 &spmi_bus {
@@ -563,7 +604,7 @@
 		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
 		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
-		qcom,out-strength = <1>;	/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,out-strength = <3>;	/* QPNP_PIN_OUT_STRENGTH_HIGH */
 		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
@@ -824,5 +865,9 @@
 };
 
 &i2c_2 {
+	status = "disabled";
+};
+
+&mdss_dsi1 {
 	status = "disabled";
 };
