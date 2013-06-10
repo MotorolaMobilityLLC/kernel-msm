@@ -956,6 +956,13 @@ static int32_t ov10820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 	return 0;
 }
 
+static struct msm_camera_i2c_reg_conf ov10820_rgbc_enable[] = {
+	{0x3809, 0xe0},
+	{0x380b, 0x80},
+	{0x3811, 0x10},
+	{0x3813, 0x10},
+};
+
 static int32_t ov10820_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			int update_type, int res)
 {
@@ -975,6 +982,15 @@ static int32_t ov10820_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 				s_ctrl->msm_sensor_reg->mode_settings, res);
 		if (rc < 0)
 			return rc;
+
+		if ((ov660_is_rgbc_output() == 1) &&
+				(res == MSM_SENSOR_RES_FULL)) {
+			rc = msm_camera_i2c_write_tbl(s_ctrl->sensor_i2c_client,
+					ov10820_rgbc_enable,
+					ARRAY_SIZE(ov10820_rgbc_enable),
+					MSM_CAMERA_I2C_BYTE_DATA);
+		}
+
 		v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 			NOTIFY_PCLK_CHANGE, &s_ctrl->msm_sensor_reg->
 			output_settings[res].op_pixel_clk);
