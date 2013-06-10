@@ -63,6 +63,11 @@ static struct ov660_data_t *ov660_data;
 bool allow_asic_control;
 static bool change_rgbc_output;
 
+int32_t ov660_is_rgbc_output()
+{
+	return change_rgbc_output;
+}
+
 static struct ov660_reg_i2c_tbl ov660_ov10820r1a_full_24fps_settings[] = {
 	{0x6020, 0x60},
 	{0x6021, 0x60},
@@ -777,6 +782,12 @@ static int ov660_write_i2c_tbl(struct ov660_reg_i2c_tbl *in_table,
 	return rc;
 }
 
+static struct ov660_reg_i2c_tbl ov660_ov10820_enable_rgbc_output[] = {
+	{0x7002, 0x05},
+	{0x6311, 0xe0},
+	{0x6313, 0x80},
+};
+
 static int32_t ov660_set_rgbc_output(int rgbc_output)
 {
 	uint8_t data;
@@ -785,13 +796,13 @@ static int32_t ov660_set_rgbc_output(int rgbc_output)
 	rc = ov660_read_i2c(I2C_ADDR_RGBC_OUTPUT, &data, 1);
 	GOTO_EXIT_IF((rc < 0), 1);
 
-	if (rgbc_output == 1)
-		data = data & 0xEF; /* RGBC Output */
-	else
-		data = data | 0x10; /* Bayer Output */
+	if (rgbc_output == 1) {
+		/* RGBC Output */
+		ov660_write_i2c_tbl(ov660_ov10820_enable_rgbc_output,
+				ARRAY_SIZE(ov660_ov10820_enable_rgbc_output));
+		GOTO_EXIT_IF((rc < 0), 1);
 
-	rc = ov660_write_i2c(I2C_ADDR_RGBC_OUTPUT, data);
-	GOTO_EXIT_IF((rc < 0), 1);
+	}
 
 EXIT_1:
 	return rc;
@@ -852,7 +863,7 @@ int32_t ov660_set_sensor_mode(int readout, uint16_t revision)
 	if (rc < 0)
 		pr_err("%s: unable to write res: %d\n", __func__, readout);
 
-	if (change_rgbc_output)
+	if (change_rgbc_output && (readout == MSM_SENSOR_RES_FULL))
 		ov660_set_rgbc_output(1);
 
 	return rc;
