@@ -206,12 +206,12 @@ static int synaptics_t1320_power_on(struct i2c_client *client, int on)
 	}
 
 	if (on) {
-		TOUCH_INFO_MSG("touch enable\n");
+		TOUCH_INFO_MSG("touch on\n");
 		regulator_enable(vreg_l22);
 		udelay(6); /* min 5.5 us */
 		regulator_enable(vreg_lvs3);
 	} else {
-		TOUCH_INFO_MSG("touch disable\n");
+		TOUCH_INFO_MSG("touch off\n");
 		regulator_disable(vreg_lvs3);
 		udelay(6); /* min 5.5 us */
 		regulator_disable(vreg_l22);
@@ -281,11 +281,6 @@ static int touch_work_pre_proc(struct synaptics_ts_data *ts)
 {
 	int	ret;
 
-	if (unlikely(ts->work_sync_err_cnt >= MAX_RETRY_COUNT)) {
-		TOUCH_ERR_MSG("Work Sync Failed: Irq-pin has some unknown problems\n");
-		return -EIO;
-	}
-
 	if (gpio_get_value(ts->pdata->irq_gpio) != 0) {
 		TOUCH_DEBUG_MSG("INT STATE HIGH\n");
 		return -EINTR;
@@ -303,59 +298,18 @@ static int touch_work_pre_proc(struct synaptics_ts_data *ts)
 	return 0;
 }
 
-/* touch_work_post_proc
- *
- * Post-process work at touch_work
- */
-static void touch_work_post_proc(struct synaptics_ts_data *ts, int post_proc)
-{
-	if (post_proc >= WORK_POST_MAX)
-		return;
-
-	switch (post_proc) {
-	case WORK_POST_OUT:
-		ts->work_sync_err_cnt = 0;
-		post_proc = WORK_POST_COMPLETE;
-		break;
-
-	case WORK_POST_ERR_RETRY:
-		ts->work_sync_err_cnt++;
-		post_proc = WORK_POST_COMPLETE;
-		break;
-
-	case WORK_POST_ERR_CIRTICAL:
-		ts->work_sync_err_cnt = 0;
-		queue_work(synaptics_wq, &ts->work_recover);
-		post_proc = WORK_POST_COMPLETE;
-		break;
-
-	default:
-		post_proc = WORK_POST_COMPLETE;
-		break;
-	}
-
-	if (post_proc != WORK_POST_COMPLETE)
-		touch_work_post_proc(ts, post_proc);
-}
-
 static irqreturn_t touch_irq_handler(int irq, void *dev_id)
 {
 	struct synaptics_ts_data *ts = (struct synaptics_ts_data *)dev_id;
-	int ret = 0;
 
-	ret = touch_work_pre_proc(ts);
-	if (ret == 0) {
+	switch (touch_work_pre_proc(ts)) {
+	case 0:
 		touch_abs_input_report(ts);
+		break;
+	case -EIO:
+		queue_work(synaptics_wq, &ts->work_recover);
+		break;
 	}
-	else if (ret == -EIO) {
-		touch_work_post_proc(ts, WORK_POST_ERR_CIRTICAL);
-		return IRQ_HANDLED;
-	}
-	else if (ret == -EINTR) {
-		return IRQ_HANDLED;
-	}
-
-	touch_work_post_proc(ts, WORK_POST_OUT);
 
 	return IRQ_HANDLED;
 }
@@ -802,26 +756,26 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 			sizeof(ts->ts_data.interrupt_status_reg),
 			&ts->ts_data.device_status_reg) < 0)) {
 		TOUCH_ERR_MSG("DEVICE_STATUS_REG read fail\n");
-		goto err_synaptics_getdata;
+		return -EIO;
 	}
 
 	/* ESD damage check */
 	if ((ts->ts_data.device_status_reg & DEVICE_FAILURE_MASK) == DEVICE_FAILURE_MASK) {
 		TOUCH_ERR_MSG("ESD damage occured. Reset Touch IC\n");
-		goto err_synaptics_device_damage;
+		return -EIO;
 	}
 
 	/* Internal reset check */
 	if (((ts->ts_data.device_status_reg & DEVICE_STATUS_UNCONFIGURED) >> 7) == 1) {
 		TOUCH_ERR_MSG("Touch IC resetted internally. Reconfigure register setting\n");
-		goto err_synaptics_device_damage;
+		return -EIO;
 	}
 
 	if (unlikely(touch_i2c_read(client, INTERRUPT_STATUS_REG,
 			sizeof(ts->ts_data.interrupt_status_reg),
 			&ts->ts_data.interrupt_status_reg) < 0)) {
 		TOUCH_ERR_MSG("INTERRUPT_STATUS_REG read fail\n");
-		goto err_synaptics_getdata;
+		return -EIO;
 	}
 
 	if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
@@ -830,13 +784,13 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 	/* IC bug Exception handling - Interrupt status reg is 0 when interrupt occur */
 	if (ts->ts_data.interrupt_status_reg == 0 || unlikely(atomic_read(&ts->device_init) != 1)) {
 		TOUCH_ERR_MSG("Interrupt_status reg is 0. -> ignore\n");
-		goto err_synaptics_ignore;
+		return -EINTR;
 	}
 
 	/* Because of ESD damage... */
 	if (unlikely(ts->ts_data.interrupt_status_reg & INTERRUPT_MASK_FLASH)) {
 		TOUCH_ERR_MSG("Impossible Interrupt\n");
-		goto err_synaptics_device_damage;
+		return -EIO;
 	}
 
 	/* Finger */
@@ -846,7 +800,7 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 				ts->pdata->max_id * BYTES_PER_FINGER,
 				&fdata.finger_reg[0][0]) < 0)) {
 			TOUCH_ERR_MSG("FINGER_DATA_REG read fail\n");
-			goto err_synaptics_getdata;
+			return -EIO;
 		}
 
 		if (unlikely(touch_debug_mask & DEBUG_GET_DATA)) {
@@ -904,13 +858,6 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 	}
 
 	return 0;
-
-err_synaptics_ignore:
-	return -EINTR;
-
-err_synaptics_device_damage:
-err_synaptics_getdata:
-	return -EIO;
 }
 
 static int read_page_description_table(struct i2c_client *client)
@@ -1681,7 +1628,6 @@ static int synaptics_ts_probe(
 	}
 
 	ts->ic_init_err_cnt = 0;
-	ts->work_sync_err_cnt = 0;
 
 	ts->client = client;
 	i2c_set_clientdata(client, ts);
