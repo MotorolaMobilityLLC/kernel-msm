@@ -364,7 +364,19 @@ static struct msm_gpiomux_config msm_rumi_blsp_configs[] __initdata = {
 
 static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	{
+		.gpio = 6,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &lcd_en_act_cfg,
+		},
+	},
+	{
 		.gpio = 7,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &lcd_en_act_cfg,
+		},
+	},
+	{
+		.gpio = 23,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &lcd_en_act_cfg,
 		},
