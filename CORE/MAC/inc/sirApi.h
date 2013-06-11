@@ -4170,4 +4170,38 @@ typedef struct sAniHandoffReq
     tANI_U8   channel;
 } tAniHandoffReq, *tpAniHandoffReq;
 
+typedef struct sSirScanOffloadReq {
+    tANI_U8 sessionId;
+    tSirMacAddr bssId;
+    tANI_U8 numSsid;
+    tSirMacSSid ssId[SIR_SCAN_MAX_NUM_SSID];
+    tANI_U8 hiddenSsid;
+    tSirMacAddr selfMacAddr;
+    tSirBssType bssType;
+    tANI_U8 dot11mode;
+    tSirScanType scanType;
+    tANI_U32 minChannelTime;
+    tANI_U32 maxChannelTime;
+    tANI_BOOLEAN p2pSearch;
+    tANI_U16 uIEFieldLen;
+    tANI_U16 uIEFieldOffset;
+    tSirChannelList channelList;
+    /*-----------------------------
+      sSirScanOffloadReq....
+      -----------------------------
+      uIEFieldLen
+      -----------------------------
+      uIEFieldOffset               ----+
+      -----------------------------    |
+      channelList.numChannels          |
+      -----------------------------    |
+      ... variable size up to          |
+      channelNumber[numChannels-1]     |
+      This can be zero, if             |
+      numChannel is zero.              |
+      ----------------------------- <--+
+      ... variable size uIEField
+      up to uIEFieldLen (can be 0)
+      -----------------------------*/
+} tSirScanOffloadReq, *tpSirScanOffloadReq;
 #endif /* __SIR_API_H */
