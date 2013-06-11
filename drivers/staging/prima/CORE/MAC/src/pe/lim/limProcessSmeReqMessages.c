@@ -1382,6 +1382,29 @@ static void __limProcessSmeOemDataReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
 #endif //FEATURE_OEM_DATA_SUPPORT
 
+/**
+ * __limProcessClearDfsChannelList()
+ *
+ *FUNCTION:
+ *Clear DFS channel list  when country is changed/aquired.
+.*This message is sent from SME.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ *
+ * @param  pMac      Pointer to Global MAC structure
+ * @param  *pMsgBuf  A pointer to the SME message buffer
+ * @return None
+ */
+static void __limProcessClearDfsChannelList(tpAniSirGlobal pMac,
+                                                           tpSirMsgQ pMsg)
+{
+    palZeroMemory(pMac->hHdd, &pMac->lim.dfschannelList,
+                  sizeof(tSirDFSChannelList));
+}
 
 /**
  * __limProcessSmeJoinReq()
@@ -1423,12 +1446,6 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 #endif //FEATURE_WLAN_DIAG_SUPPORT
 
     PELOG1(limLog(pMac, LOG1, FL("Received SME_JOIN_REQ\n"));)
-
-    /* After connection, DFS channel list needs to be fill again
-     * so clearing DFS list just before connection.
-     */
-    palZeroMemory(pMac->hHdd, &pMac->lim.dfschannelList, sizeof(tSirDFSChannelList));
-
 
 #ifdef WLAN_FEATURE_VOWIFI
     /* Need to read the CFG here itself as this is used in limExtractAPCapability() below.
@@ -5169,6 +5186,9 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
         case eWNI_SME_UPDATE_NOA:
             __limProcessSmeNoAUpdate(pMac, pMsgBuf);
+            break;
+        case eWNI_SME_CLEAR_DFS_CHANNEL_LIST:
+            __limProcessClearDfsChannelList(pMac, pMsg);
             break;
         case eWNI_SME_JOIN_REQ:
             __limProcessSmeJoinReq(pMac, pMsgBuf);

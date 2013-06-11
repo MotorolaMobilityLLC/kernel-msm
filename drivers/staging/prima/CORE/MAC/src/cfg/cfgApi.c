@@ -566,12 +566,6 @@ wlan_cfgGetStr(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U8 *pBuf, tANI_U32 *pLe
         return retVal;
     }
 
-    if (!pMac->cfg.gCfgEntry) {
-        PELOGE(cfgLog(pMac, LOGE, FL("gCfgEntry is NULL"), cfgId);)
-        retVal = eSIR_CFG_INVALID_ID;
-        return retVal;
-    }
-
     control  = pMac->cfg.gCfgEntry[cfgId].control;
     index    = control & CFG_BUF_INDX_MASK;
     retVal   = eSIR_SUCCESS;

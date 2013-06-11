@@ -2246,8 +2246,8 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
     v_REGDOMAIN_t domainIdCurrent;
     tANI_U8 ccode[WNI_CFG_COUNTRY_CODE_LEN];
     tANI_U8 uBufLen = WNI_CFG_COUNTRY_CODE_LEN;
-    tANI_U8 nBandCapability;
-    int i,j,k,m;
+    eCsrBand nBandCapability;
+    int i=0,j=0,k=0,m=0;
     wiphy_dbg(wiphy, "info: cfg80211 reg_notifier callback for country"
                      " %c%c\n", request->alpha2[0], request->alpha2[1]);
     if (request->initiator == NL80211_REGDOM_SET_BY_USER)
@@ -2325,7 +2325,7 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
        }
        else
        {
-          nBandCapability = pHddCtx->cfg_ini->nBandCapability;
+          sme_GetFreqBand(pHddCtx->hHal, &nBandCapability);
           for (i=0, m=0; i<IEEE80211_NUM_BANDS; i++)
           {
              if (NULL == wiphy->bands[i])
@@ -2343,11 +2343,29 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
              }
              else
              {
-                m = wiphy->bands[i-1]?wiphy->bands[i-1]->n_channels + m:m;
+                if( wiphy->bands[i-1] == NULL)
+                {
+                   m = 14;
+                }
+                else
+                {
+                   if(eCSR_BAND_5G == nBandCapability)
+                   {
+                      m = wiphy->bands[i-1]->n_channels + 11;
+                   }
+                   else
+                   {
+                      m = wiphy->bands[i-1]->n_channels + m;
+                   }
+                }
              }
 
              for (j=0; j<wiphy->bands[i]->n_channels; j++)
              {
+                // k = (m + j) is internal current channel index for 20MHz channel
+                // n is internal channel index for corresponding 40MHz channel
+                k = m + j;
+
                 if (IEEE80211_BAND_2GHZ == i && eCSR_BAND_5G == nBandCapability) // 5G only
                 {
                    // Enable social channels for P2P
@@ -2370,9 +2388,6 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
                    continue;
                 }
 
-                // k = (m + j) is internal current channel index for 20MHz channel
-                // n is internal channel index for corresponding 40MHz channel
-                k = m + j;
                 if (NV_CHANNEL_DISABLE == regChannels[k].enabled ||
                     NV_CHANNEL_INVALID == regChannels[k].enabled)
                 {
@@ -2418,12 +2433,12 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
                 }
              }
           }
-          if (request->initiator == NL80211_REGDOM_SET_BY_CORE)
+
+          if (request->initiator == NL80211_REGDOM_SET_BY_CORE || request->initiator == NL80211_REGDOM_SET_BY_DRIVER)
           {
              request->processed = 1;
           }
        }
-
     }
 return 0;
 }
