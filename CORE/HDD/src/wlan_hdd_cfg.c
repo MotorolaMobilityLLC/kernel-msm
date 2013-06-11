@@ -1596,6 +1596,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ENABLE_HOST_ARPOFFLOAD_MIN,
                  CFG_ENABLE_HOST_ARPOFFLOAD_MAX ),
 
+   REG_VARIABLE( CFG_ENABLE_HOST_NSOFFLOAD_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, fhostNSOffload,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_ENABLE_HOST_NSOFFLOAD_DEFAULT,
+                 CFG_ENABLE_HOST_NSOFFLOAD_MIN,
+                 CFG_ENABLE_HOST_NSOFFLOAD_MAX ),
+
    REG_VARIABLE( CFG_QOS_WMM_TS_INFO_ACK_POLICY_NAME , WLAN_PARAM_HexInteger,
                  hdd_config_t, tsInfoAckPolicy,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,

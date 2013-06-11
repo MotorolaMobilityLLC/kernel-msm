@@ -91,6 +91,7 @@
 #include <linux/inetdevice.h>
 #include <wlan_hdd_cfg.h>
 #include <wlan_hdd_cfg80211.h>
+#include <net/addrconf.h>
 /**-----------------------------------------------------------------------------
 *   Preprocessor definitions and constants
 * ----------------------------------------------------------------------------*/
@@ -510,6 +511,23 @@ void hdd_conf_hostoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
                 hdd_conf_gtk_offload(pAdapter, fenable);
 #endif
+
+#ifdef WLAN_NS_OFFLOAD
+                if (pHddCtx->cfg_ini->fhostNSOffload)
+                {
+                    /*
+                     * Configure the NS Offload.
+                     * Even if it fails we have to reconfigure the MC/BC filter flag
+                     * as we want RIVA not to drop Multicast Packets
+                     */
+
+                    hddLog(VOS_TRACE_LEVEL_INFO,
+                            FL("Calling NS Offload with flag: %d"), fenable);
+                    hdd_conf_ns_offload(pAdapter, fenable);
+                    pHddCtx->configuredMcastBcastFilter &=
+                            ~(HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST);
+                }
+#endif
             }
         }
         else
@@ -521,18 +539,149 @@ void hdd_conf_hostoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
                 if (!VOS_IS_STATUS_SUCCESS(vstatus))
                 {
                     hddLog(VOS_TRACE_LEVEL_ERROR,
-                          "Failed to disable ARPOFfloadFeature %d", vstatus);
+                          "Failed to disable ARPOffload Feature %d", vstatus);
                 }
             }
             //Disable GTK_OFFLOAD
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
-               hdd_conf_gtk_offload(pAdapter, fenable);
+            hdd_conf_gtk_offload(pAdapter, fenable);
+#endif
+
+#ifdef WLAN_NS_OFFLOAD
+            //Disable NSOFFLOAD
+            if (pHddCtx->cfg_ini->fhostNSOffload)
+            {
+                hdd_conf_ns_offload(pAdapter, fenable);
+            }
 #endif
         }
     }
     return;
 }
 
+#ifdef WLAN_NS_OFFLOAD
+void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
+{
+    struct inet6_dev *in6_dev;
+    struct inet6_ifaddr *ifp;
+    struct list_head *p;
+    tANI_U8 selfIPv6Addr[SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA][SIR_MAC_IPV6_ADDR_LEN] = {{0,}};
+    tANI_BOOLEAN selfIPv6AddrValid[SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA] = {0};
+    tSirHostOffloadReq offLoadRequest;
+
+    int i =0;
+    eHalStatus returnStatus;
+
+    ENTER();
+    if (fenable)
+    {
+        in6_dev = __in6_dev_get(pAdapter->dev);
+        if (NULL != in6_dev)
+        {
+            //read_lock_bh(&in6_dev->lock);
+            list_for_each(p, &in6_dev->addr_list)
+            {
+                ifp = list_entry(p, struct inet6_ifaddr, if_list);
+                switch(ipv6_addr_src_scope(&ifp->addr))
+                {
+                    case IPV6_ADDR_SCOPE_LINKLOCAL:
+                        vos_mem_copy(&selfIPv6Addr[0], &ifp->addr.s6_addr,
+                                sizeof(ifp->addr.s6_addr));
+                        selfIPv6AddrValid[0] = SIR_IPV6_ADDR_VALID;
+                        break;
+                    case IPV6_ADDR_SCOPE_GLOBAL:
+                        vos_mem_copy(&selfIPv6Addr[1], &ifp->addr.s6_addr,
+                                sizeof(ifp->addr.s6_addr));
+                        selfIPv6AddrValid[1] = SIR_IPV6_ADDR_VALID;;
+                        break;
+                    default:
+                        hddLog(LOGE, "The Scope %d is not supported",
+                                ipv6_addr_src_scope(&ifp->addr));
+                }
+
+            }
+            //read_unlock_bh(&in6_dev->lock);
+            vos_mem_zero(&offLoadRequest, sizeof(offLoadRequest));
+            for (i =0; i<SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA; i++)
+            {
+                if (selfIPv6AddrValid[i])
+                {
+                    //Filling up the request structure
+                    /* Filling the selfIPv6Addr with solicited address
+                     * A Solicited-Node multicast address is created by
+                     * taking the last 24 bits of a unicast or anycast
+                     * address and appending them to the prefix
+                     *
+                     * FF02:0000:0000:0000:0000:0001:FFXX:XX
+                     *
+                     * here XX is the unicast/anycast bits
+                     */
+                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[0] = 0xFF;
+                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[1] = 0x02;
+                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[11] = 0x01;
+                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[12] = 0xFF;
+                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[13] = selfIPv6Addr[i][13];
+                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[14] = selfIPv6Addr[i][14];
+                    offLoadRequest.nsOffloadInfo.selfIPv6Addr[15] = selfIPv6Addr[i][15];
+                    offLoadRequest.nsOffloadInfo.slotIdx = i;
+
+                    vos_mem_copy(&offLoadRequest.nsOffloadInfo.targetIPv6Addr[0],
+                                &selfIPv6Addr[i][0], sizeof(tANI_U8)*SIR_MAC_IPV6_ADDR_LEN);
+                    vos_mem_copy(&offLoadRequest.nsOffloadInfo.selfMacAddr,
+                                &pAdapter->macAddressCurrent.bytes,
+                                sizeof(tANI_U8)*SIR_MAC_ADDR_LEN);
+
+                    offLoadRequest.nsOffloadInfo.targetIPv6AddrValid[0] = SIR_IPV6_ADDR_VALID;
+                    offLoadRequest.offloadType =  SIR_IPV6_NS_OFFLOAD;
+                    offLoadRequest.enableOrDisable = SIR_OFFLOAD_ENABLE;
+
+                    vos_mem_copy(&offLoadRequest.params.hostIpv6Addr,
+                                &offLoadRequest.nsOffloadInfo.targetIPv6Addr[0],
+                                sizeof(tANI_U8)*SIR_MAC_IPV6_ADDR_LEN);
+
+                    hddLog (VOS_TRACE_LEVEL_INFO,
+                    "Setting NSOffload with solicitedIp: %pI6, targetIp: %pI6",
+                    offLoadRequest.nsOffloadInfo.selfIPv6Addr,
+                    offLoadRequest.nsOffloadInfo.targetIPv6Addr[0]);
+
+                    //Configure the Firmware with this
+                    returnStatus = sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                    pAdapter->sessionId, &offLoadRequest);
+                    if(eHAL_STATUS_SUCCESS != returnStatus)
+                    {
+                        hddLog(VOS_TRACE_LEVEL_ERROR,
+                        FL("Failed to enable HostOffload feature with status: %d"),
+                        returnStatus);
+                    }
+                    vos_mem_zero(&offLoadRequest, sizeof(offLoadRequest));
+                }
+            }
+        }
+        else
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                    FL("IPv6 dev does not exist. Failed to request NSOffload"));
+            return;
+        }
+    }
+    else
+    {
+        //Disable NSOffload
+        vos_mem_zero((void *)&offLoadRequest, sizeof(tSirHostOffloadReq));
+        offLoadRequest.enableOrDisable = SIR_OFFLOAD_DISABLE;
+        offLoadRequest.offloadType =  SIR_IPV6_NS_OFFLOAD;
+
+        if (eHAL_STATUS_SUCCESS !=
+                 sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                 pAdapter->sessionId, &offLoadRequest))
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR, FL("Failure to disable"
+                             "NSOffload feature"));
+        }
+    }
+    return;
+}
+#endif
 VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
 {
    struct in_ifaddr **ifap = NULL;
@@ -621,26 +770,41 @@ VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
 
 /*
  * This function is called before setting mcbc filters
- * to modify filter value considering ARP
+ * to modify filter value considering Different Offloads
 */
-void hdd_mcbc_filter_modification(hdd_context_t* pHddCtx, v_BOOL_t arpFlag,
+void hdd_mcbc_filter_modification(hdd_context_t* pHddCtx,
                                   tANI_U8 *pMcBcFilter)
 {
-    if (TRUE == arpFlag)
+    if (NULL == pHddCtx)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("NULL HDD context passed"));
+        return;
+    }
+
+    *pMcBcFilter = pHddCtx->configuredMcastBcastFilter;
+    if (pHddCtx->cfg_ini->fhostArpOffload)
     {
         /* ARP offload is enabled, do not block bcast packets at RXP
          * Will be using Bitmasking to reset the filter. As we have
          * disable Broadcast filtering, Anding with the negation
          * of Broadcast BIT
          */
-            *pMcBcFilter = pHddCtx->configuredMcastBcastFilter &
-                           ~(HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST);
-            pHddCtx->configuredMcastBcastFilter = *pMcBcFilter;
+        *pMcBcFilter &= ~(HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST);
     }
-    else
+
+#ifdef WLAN_NS_OFFLOAD
+    if (pHddCtx->cfg_ini->fhostNSOffload)
     {
-            *pMcBcFilter = pHddCtx->configuredMcastBcastFilter;
+        /* NS offload is enabled, do not block mcast packets at RXP
+         * Will be using Bitmasking to reset the filter. As we have
+         * disable Multicast filtering, Anding with the negation
+         * of Multicast BIT
+         */
+        *pMcBcFilter &= ~(HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST);
     }
+#endif
+
+    pHddCtx->configuredMcastBcastFilter = *pMcBcFilter;
 }
 
 void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
@@ -658,16 +822,8 @@ void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
         "%s: Configuring Mcast/Bcast Filter Setting. setfilter %d", __func__, setfilter);
     if (TRUE == setfilter)
     {
-        if (pHddCtx->cfg_ini->fhostArpOffload)
-        {
-            hdd_mcbc_filter_modification(pHddCtx, TRUE,
+            hdd_mcbc_filter_modification(pHddCtx,
                   &wlanRxpFilterParam->configuredMcstBcstFilterSetting);
-        }
-        else
-        {
-            hdd_mcbc_filter_modification(pHddCtx, FALSE,
-                  &wlanRxpFilterParam->configuredMcstBcstFilterSetting);
-        }
     }
     else
     {
