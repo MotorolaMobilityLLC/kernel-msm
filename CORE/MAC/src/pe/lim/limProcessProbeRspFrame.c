@@ -176,6 +176,14 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
     {
         frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
+        if (pMac->lim.gLimBackgroundScanMode == eSIR_ROAMING_SCAN)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                      FL("Probe Resp Frame Received: BSSID " MAC_ADDRESS_STR " (RSSI %d)"),
+                      MAC_ADDR_ARRAY(pHdr->bssId),
+                      (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
+        }
+
         // Get pointer to Probe Response frame body
         pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
 
@@ -393,6 +401,14 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     {
         frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
+        if (pMac->lim.gLimBackgroundScanMode == eSIR_ROAMING_SCAN)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                      FL("Probe Resp Frame Received: BSSID " MAC_ADDRESS_STR " (RSSI %d)"),
+                      MAC_ADDR_ARRAY(pHdr->bssId),
+                      (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
+        }
+
         // Get pointer to Probe Response frame body
         pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
 
@@ -413,6 +429,14 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE) )
     {
         frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+
+        if (pMac->lim.gLimBackgroundScanMode == eSIR_ROAMING_SCAN)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                      FL("Probe Resp Frame Received: BSSID " MAC_ADDRESS_STR " (RSSI %d)"),
+                      MAC_ADDR_ARRAY(pHdr->bssId),
+                      (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
+        }
 
         // Get pointer to Probe Response frame body
         pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
