@@ -382,11 +382,6 @@ typedef enum
 #define CFG_ROAM_INTRA_BAND_DEFAULT           ( 0 )
 #endif
 
-#define CFG_STAT_TIMER_INTERVAL_NAME           "gStatTimerInterval"
-#define CFG_STAT_TIMER_INTERVAL_MIN            ( 50 )     //ms
-#define CFG_STAT_TIMER_INTERVAL_MAX            ( 10000 )  
-#define CFG_STAT_TIMER_INTERVAL_DEFAULT        ( 500 )
-
 #define CFG_SHORT_PREAMBLE_NAME                "gShortPreamble"
 #define CFG_SHORT_PREAMBLE_MIN                 WNI_CFG_SHORT_PREAMBLE_STAMIN
 #define CFG_SHORT_PREAMBLE_MAX                 WNI_CFG_SHORT_PREAMBLE_STAMAX
@@ -731,11 +726,6 @@ typedef enum
 #define CFG_QOS_WMM_UAPSD_MASK_MAX                         (0xFF) 
 #define CFG_QOS_WMM_UAPSD_MASK_DEFAULT                     (0x00)   
 
-#define CFG_QOS_WMM_MAX_SP_LEN_NAME                        "MaxSpLength"
-#define CFG_QOS_WMM_MAX_SP_LEN_MIN                          (0)
-#define CFG_QOS_WMM_MAX_SP_LEN_MAX                          (3)
-#define CFG_QOS_WMM_MAX_SP_LEN_DEFAULT                      (0)
-
 #define CFG_QOS_WMM_INFRA_UAPSD_VO_SRV_INTV_NAME           "InfraUapsdVoSrvIntv"
 #define CFG_QOS_WMM_INFRA_UAPSD_VO_SRV_INTV_MIN             (0)
 #define CFG_QOS_WMM_INFRA_UAPSD_VO_SRV_INTV_MAX             (4294967295UL )
@@ -1019,11 +1009,6 @@ typedef enum
 #define CFG_QOS_IMPLICIT_SETUP_ENABLED_MAX                  (1) 
 #define CFG_QOS_IMPLICIT_SETUP_ENABLED_DEFAULT              (1)
 
-#define CFG_19P2_MHZ_PMIC_CLK_ENABLED_NAME                  "19p2MhzPmicClkEnabled"
-#define CFG_19P2_MHZ_PMIC_CLK_ENABLED_MIN                   (0)
-#define CFG_19P2_MHZ_PMIC_CLK_ENABLED_MAX                   (1) 
-#define CFG_19P2_MHZ_PMIC_CLK_ENABLED_DEFAULT               (0)
-
 #define CFG_ENABLE_LOGP_NAME                                "gEnableLogp"
 #define CFG_ENABLE_LOGP_MIN                                 ( 0 )
 #define CFG_ENABLE_LOGP_MAX                                 ( 1 )
@@ -1110,11 +1095,6 @@ typedef enum
 #define CFG_BTC_DHCP_PROT_ON_SCO_DEFAULT     ( 0 )
 
 #if defined WLAN_FEATURE_VOWIFI_11R
-#define CFG_FT_ENABLE_NAME                              "gFtEnabled"
-#define CFG_FT_ENABLE_MIN                               (0)
-#define CFG_FT_ENABLE_MAX                               (1)  
-#define CFG_FT_ENABLE_DEFAULT                           (0)
-
 #define CFG_FT_RESOURCE_REQ_NAME                        "gFTResourceReqSupported"
 #define CFG_FT_RESOURCE_REQ_MIN                         (0)
 #define CFG_FT_RESOURCE_REQ_MAX                         (1)
@@ -1886,7 +1866,6 @@ typedef struct
    v_U32_t       nScanAgeTimeCNPS;
    v_U32_t       nScanAgeTimeCPS;
    v_U8_t        nRssiCatGap;
-   v_U32_t       nStatTimerInterval;
    v_BOOL_t      fIsShortPreamble;
    v_BOOL_t      fIsAutoIbssBssid;
    v_MACADDR_t   IbssBssid;
@@ -1928,7 +1907,6 @@ typedef struct
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
    //Vowifi 11r params
-   v_BOOL_t      fFTEnable;
    v_BOOL_t      fFTResourceReqSupported;
 #endif
 
@@ -1986,7 +1964,6 @@ typedef struct
    hdd_wmm_user_mode_t          WmmMode;
    v_BOOL_t                     b80211eIsEnabled;
    v_U8_t                       UapsdMask;    // what ACs to setup U-APSD for at assoc
-   v_U8_t                       MaxSpLength;
    v_U32_t                      InfraUapsdVoSrvIntv;
    v_U32_t                      InfraUapsdVoSuspIntv;
    v_U32_t                      InfraUapsdViSrvIntv;
@@ -2053,7 +2030,6 @@ typedef struct
 
    /* Wowl pattern */
    char                        wowlPattern[1024];         
-   v_BOOL_t                    b19p2MhzPmicClkEnabled;
 
    /* Control for Replay counetr. value 1 means 
       single replay counter for all TID*/
