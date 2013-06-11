@@ -14,19 +14,11 @@
 /include/ "msm8226-falcon-common.dtsi"
 
 / {
-	qcom,msm-id = <145 0x42 0x8100>;
+	qcom,msm-id = <145 0x42 0x8200>;
 };
 
 &bms_tbls {
 	mmi,batt-tbl-one {
 		qcom,batt-tbl-id = <0 50000>;
-	};
-};
-
-&spmi_bus {
-	qcom,pm8226@0 {
-		qcom,leds@a100 {
-			status = "disabled";
-		};
 	};
 };
