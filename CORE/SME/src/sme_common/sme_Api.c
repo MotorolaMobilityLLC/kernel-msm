@@ -1169,6 +1169,9 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
        csrSetGlobalCfgs(pMac);
    }
 
+   /* update the directed scan offload setting */
+   pMac->fScanOffload = pSmeConfigParams->fScanOffload;
+
    return status;
 }
 
