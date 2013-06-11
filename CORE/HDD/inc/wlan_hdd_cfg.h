@@ -1783,6 +1783,14 @@ typedef enum
 #define CFG_TRAFFIC_IDLE_TIMEOUT_MAX              ( 10000 )
 #define CFG_TRAFFIC_IDLE_TIMEOUT_DEFAULT          ( 5000 )
 
+/*
+ * SCAN Offload
+ */
+#define CFG_SCAN_OFFLOAD_NAME                     "gEnableDirectedScanOffload"
+#define CFG_SCAN_OFFLOAD_DISABLE                  ( 0 )
+#define CFG_SCAN_OFFLOAD_ENABLE                   ( 1 )
+#define CFG_SCAN_OFFLOAD_DEFAULT                  ( CFG_SCAN_OFFLOAD_DISABLE )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2164,6 +2172,7 @@ typedef struct
    v_U8_t                      enableTrafficMonitor;
    v_U32_t                     trafficIdleTimeout;
    v_BOOL_t                    enableVhtFor24GHzBand;
+   v_U8_t                      fScanOffload;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

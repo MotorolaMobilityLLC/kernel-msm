@@ -2318,6 +2318,13 @@ REG_VARIABLE( CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD, WLAN_PARAM_Integer,
              CFG_ENABLE_VHT_FOR_24GHZ_MIN,
              CFG_ENABLE_VHT_FOR_24GHZ_MAX),
 #endif
+
+   REG_VARIABLE( CFG_SCAN_OFFLOAD_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, fScanOffload,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_SCAN_OFFLOAD_DEFAULT,
+                CFG_SCAN_OFFLOAD_DISABLE,
+                CFG_SCAN_OFFLOAD_ENABLE ),
 };
 
 /*
