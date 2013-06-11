@@ -6990,10 +6990,21 @@ eHalStatus csrSetBGScanChannelList( tpAniSirGlobal pMac, tANI_U8 *pAdjustChannel
 void csrSetCfgValidChannelList( tpAniSirGlobal pMac, tANI_U8 *pChannelList, tANI_U8 NumChannels )
 {
     tANI_U32 dataLen = sizeof( tANI_U8 ) * NumChannels;
-
+    eHalStatus status;
 
     ccmCfgSetStr(pMac, WNI_CFG_VALID_CHANNEL_LIST, pChannelList, dataLen, NULL, eANI_BOOLEAN_FALSE);
 
+    if (pMac->fScanOffload)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                "Scan offload is enabled, update default chan list");
+        status = csrUpdateChannelList(&pMac->scan);
+        if (eHAL_STATUS_SUCCESS != status)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                    "failed to update the supported channel list");
+        }
+    }
     return;
 }
 
