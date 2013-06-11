@@ -26,3 +26,11 @@
 &tmp108 {
 	status = "disabled";
 };
+
+&spmi_bus {
+	qcom,pm8226@0 {
+		qcom,leds@a100 {
+			status = "disabled";
+		};
+	};
+};
