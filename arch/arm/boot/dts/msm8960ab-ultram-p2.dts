@@ -61,6 +61,6 @@
 
 &i2c10 {
 	lp8556@2c {
-		ti,lp8556-dev-ctrl-config = <0x84>;
+		ti,lp8556-dev-ctrl-config = <0x82>;
 	};
 };
