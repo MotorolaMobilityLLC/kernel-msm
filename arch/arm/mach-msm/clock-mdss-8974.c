@@ -418,6 +418,8 @@ static int __mdss_dsi_pll_enable(struct clk *c)
 
 	}
 
+	clk_disable(mdss_dsi_ahb_clk);
+
 	if ((status & 0x01) != 1) {
 		pr_err("%s: DSI PLL status=%x failed to Lock\n",
 		       __func__, status);
