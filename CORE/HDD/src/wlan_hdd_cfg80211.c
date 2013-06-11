@@ -3223,31 +3223,49 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
     hddLog(VOS_TRACE_LEVEL_INFO_MED, "%s: encryption type %d",
             __func__, setKey.encType);
 
-        if (
+    if (
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
                 (!pairwise)
 #else
                 (!mac_addr || is_broadcast_ether_addr(mac_addr))
 #endif
-           )
-        {
-            /* set group key*/
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                    "%s- %d: setting Broadcast key",
-                    __func__, __LINE__);
-            setKey.keyDirection = eSIR_RX_ONLY;
-            vos_mem_copy(setKey.peerMac,groupmacaddr,WNI_CFG_BSSID_LEN);
-        }
-        else
-        {
-            /* set pairwise key*/
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                    "%s- %d: setting pairwise key",
-                    __func__, __LINE__);
-            setKey.keyDirection = eSIR_TX_RX;
-            vos_mem_copy(setKey.peerMac, mac_addr,WNI_CFG_BSSID_LEN);
-        }
+       )
+    {
+        /* set group key*/
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s- %d: setting Broadcast key",
+                __func__, __LINE__);
+        setKey.keyDirection = eSIR_RX_ONLY;
+        vos_mem_copy(setKey.peerMac,groupmacaddr,WNI_CFG_BSSID_LEN);
+    }
+    else
+    {
+        /* set pairwise key*/
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s- %d: setting pairwise key",
+                __func__, __LINE__);
+        setKey.keyDirection = eSIR_TX_RX;
+        vos_mem_copy(setKey.peerMac, mac_addr,WNI_CFG_BSSID_LEN);
+    }
+    if ((WLAN_HDD_IBSS == pAdapter->device_mode) && !pairwise)
+    {
+        setKey.keyDirection = eSIR_TX_RX;
+        /*Set the group key*/
+        status = sme_RoamSetKey( WLAN_HDD_GET_HAL_CTX(pAdapter),
+            pAdapter->sessionId, &setKey, &roamId );
 
+        if ( 0 != status )
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                    "%s: sme_RoamSetKey failed, returned %d", __func__, status);
+            return -EINVAL;
+        }
+        /*Save the keys here and call sme_RoamSetKey for setting
+          the PTK after peer joins the IBSS network*/
+        vos_mem_copy(&pAdapter->sessionCtx.station.ibss_enc_key,
+                                    &setKey, sizeof(tCsrRoamSetKey));
+        return status;
+    }
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) ||
            (pAdapter->device_mode == WLAN_HDD_P2P_GO))
     {
@@ -5818,8 +5836,20 @@ static int wlan_hdd_cfg80211_set_privacy_ibss(
         }
         else
         {
+            tDot11fIEWPA dot11WPAIE;
+            tHalHandle halHandle = WLAN_HDD_GET_HAL_CTX(pAdapter);
+
             pWextState->wpaVersion = IW_AUTH_WPA_VERSION_WPA;
-            encryptionType = eCSR_ENCRYPT_TYPE_TKIP;
+            // Unpack the WPA IE
+            //Skip past the EID byte and length byte - and four byte WiFi OUI
+            dot11fUnpackIeWPA((tpAniSirGlobal) halHandle,
+                            &params->ie[2+4],
+                            params->ie[1] - 4,
+                            &dot11WPAIE);
+            /*Extract the multicast cipher, the encType for unicast
+              cipher for wpa-none is none*/
+            encryptionType =
+              hdd_TranslateWPAToCsrEncryptionType(dot11WPAIE.multicast_cipher);
         }
         status = wlan_hdd_cfg80211_set_ie(pAdapter, params->ie, params->ie_len);
 
@@ -5847,11 +5877,11 @@ static int wlan_hdd_cfg80211_set_privacy_ibss(
 
         encryptionType = eCSR_ENCRYPT_TYPE_WEP40_STATICKEY;
     }
-
+    VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+                          "encryptionType=%d", encryptionType);
     pHddStaCtx->conn_info.ucEncryptionType                   = encryptionType;
     pWextState->roamProfile.EncryptionType.numEntries        = 1;
     pWextState->roamProfile.EncryptionType.encryptionType[0] = encryptionType;
-
     return status;
 }
 
