@@ -4225,4 +4225,16 @@ typedef struct sSirScanOffloadEvent{
     tANI_U32 scanId;
 } tSirScanOffloadEvent, *tpSirScanOffloadEvent;
 
+typedef struct sSirUpdateChanParam
+{
+    tANI_U8 chanId;
+    tANI_U8 pwr;
+} tSirUpdateChanParam, *tpSirUpdateChanParam;
+
+typedef struct sSirUpdateChan
+{
+    tANI_U8 numChan;
+    tSirUpdateChanParam chanParam[1];
+} tSirUpdateChanList, *tpSirUpdateChanList;
+
 #endif /* __SIR_API_H */

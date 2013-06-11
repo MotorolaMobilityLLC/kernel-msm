@@ -452,6 +452,45 @@ eHalStatus csrClose(tpAniSirGlobal pMac)
     csrRoamDeInitGlobals(pMac);
     return (status);
 } 
+
+eHalStatus csrUpdateChannelList(tCsrScanStruct *pScan)
+{
+    tSirUpdateChanList *pChanList;
+    tANI_U8 numChan = pScan->base20MHzChannels.numChannels;
+    tANI_U32 bufLen = sizeof(tSirUpdateChanList) +
+        (sizeof(tSirUpdateChanParam) * (numChan - 1));
+    vos_msg_t msg;
+    tANI_U8 i;
+
+    pChanList = (tSirUpdateChanList *) vos_mem_malloc(bufLen);
+    if (!pChanList)
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                "Failed to allocate memory for tSirUpdateChanList");
+        return eHAL_STATUS_FAILED_ALLOC;
+    }
+
+    msg.type = WDA_UPDATE_CHAN_LIST_REQ;
+    msg.reserved = 0;
+    msg.bodyptr = pChanList;
+    pChanList->numChan = numChan;
+    for (i = 0; i < pChanList->numChan; i++)
+    {
+        pChanList->chanParam[i].chanId = pScan->defaultPowerTable[i].chanId;
+        pChanList->chanParam[i].pwr = pScan->defaultPowerTable[i].pwr;
+    }
+
+    if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL,
+                "%s: Failed to post msg to WDA", __func__);
+        vos_mem_free(pChanList);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    return eHAL_STATUS_SUCCESS;
+}
+
 eHalStatus csrStart(tpAniSirGlobal pMac)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
@@ -484,6 +523,14 @@ eHalStatus csrStart(tpAniSirGlobal pMac)
            smsLog(pMac, LOGW, " csrStart: Couldn't Init HO control blk ");
            break;
         }
+
+        if (pMac->fScanOffload)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                    "Scan offload is enabled, update default chan list");
+            status = csrUpdateChannelList(&pMac->scan);
+        }
+
     }while(0);
 #if defined(ANI_LOGDUMP)
     csrDumpInit(pMac);
