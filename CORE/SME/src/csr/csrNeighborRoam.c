@@ -631,6 +631,11 @@ static void csrNeighborRoamResetPreauthControlInfo(tpAniSirGlobal pMac)
         pNeighborRoamInfo->FTRoamInfo.numBssFromNeighborReport = 0;
         vos_mem_zero(pNeighborRoamInfo->FTRoamInfo.neighboReportBssInfo, sizeof(tCsrNeighborReportBssInfo) * MAX_BSS_IN_NEIGHBOR_RPT);
 #endif
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    pNeighborRoamInfo->uOsRequestedHandoff = 0;
+    vos_mem_zero(&pNeighborRoamInfo->handoffReqInfo, sizeof(tCsrHandoffRequest));
+#endif
+
 }
 
 static void csrNeighborRoamDeregAllRssiIndication(tpAniSirGlobal pMac)
@@ -734,6 +739,10 @@ void csrNeighborRoamResetConnectedStateControlInfo(tpAniSirGlobal pMac)
     pNeighborRoamInfo->FTRoamInfo.numBssFromNeighborReport = 0;
     pNeighborRoamInfo->FTRoamInfo.preauthRspPending = 0;
     vos_mem_zero(pNeighborRoamInfo->FTRoamInfo.neighboReportBssInfo, sizeof(tCsrNeighborReportBssInfo) * MAX_BSS_IN_NEIGHBOR_RPT);
+#endif
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    pNeighborRoamInfo->uOsRequestedHandoff = 0;
+    vos_mem_zero(&pNeighborRoamInfo->handoffReqInfo, sizeof(tCsrHandoffRequest));
 #endif
 }
 
@@ -1096,8 +1105,13 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, tSirRetStatus l
             if(pEntry)
             {
                 pNeighborBssNode = GET_BASE_ADDR(pEntry, tCsrNeighborRoamBSSInfo, List);
-            /* Add the BSSID to pre-auth fail list */
+                /* Add the BSSID to pre-auth fail list if it is not requested by HDD */
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+                if(!pNeighborRoamInfo->uOsRequestedHandoff)
+#endif
+                {
             status = csrNeighborRoamAddBssIdToPreauthFailList(pMac, pNeighborBssNode->pBssDescription->bssId);
+                }
             /* Now we can free this node */
             csrNeighborRoamFreeNeighborRoamBSSNode(pMac, pNeighborBssNode);
             }
@@ -1110,6 +1124,7 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, tSirRetStatus l
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
         if (csrRoamIsRoamOffloadScanEnabled(pMac))
         {
+          pNeighborRoamInfo->uOsRequestedHandoff = 0;
           csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART, REASON_PREAUTH_FAILED_FOR_ALL);
           CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CONNECTED);
         } else
@@ -1180,6 +1195,28 @@ eHalStatus csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac, tCsrScan
     /* We dont want to set BSSID based Filter */
     pScanFilter->BSSIDs.numOfBSSIDs = 0;
 
+    //only for HDD requested handoff fill in the BSSID in the filter
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pNeighborRoamInfo->uOsRequestedHandoff)
+    {
+        pScanFilter->BSSIDs.numOfBSSIDs = 1;
+        pScanFilter->BSSIDs.bssid = vos_mem_malloc(sizeof(tSirMacAddr) * pScanFilter->BSSIDs.numOfBSSIDs);
+        if (NULL == pScanFilter->BSSIDs.bssid)
+        {
+            smsLog(pMac, LOGE, FL("Scan Filter BSSID mem alloc failed"));
+            return eHAL_STATUS_FAILED_ALLOC;
+        }
+
+        vos_mem_zero(pScanFilter->BSSIDs.bssid, sizeof(tSirMacAddr) * pScanFilter->BSSIDs.numOfBSSIDs);
+
+        /* Populate the BSSID from handoff info received from HDD */
+        for (i = 0; i < pScanFilter->BSSIDs.numOfBSSIDs; i++)
+        {
+            vos_mem_copy(&pScanFilter->BSSIDs.bssid[i],
+                         pNeighborRoamInfo->handoffReqInfo.bssid, sizeof(tSirMacAddr));
+        }
+    }
+#endif
     /* Populate all the information from the connected profile */
     pScanFilter->SSIDs.numOfSSIDs = 1;  
     pScanFilter->SSIDs.SSIDList = vos_mem_malloc(sizeof(tCsrSSIDInfo));
@@ -1967,6 +2004,7 @@ if (csrRoamIsRoamOffloadScanEnabled(pMac))
    {
     if (!tempVal || !roamNow)
     {
+       pNeighborRoamInfo->uOsRequestedHandoff = 0;
       /* There is no candidate or We are not roaming Now.
        * Inform the FW to restart Roam Offload Scan  */
        csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
@@ -3879,7 +3917,9 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     /*Inform the Firmware to STOP Scanning as the host has a disconnect.*/
     if (csrRoamIsStaMode(pMac, sessionId))
+    {
        csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_STOP, REASON_DISCONNECTED);
+    }
 #endif
     return eHAL_STATUS_SUCCESS;
 }
@@ -4018,7 +4058,10 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
                   * down to firmware.Do not send the START command for other session
                   * connections.*/
                  if(csrRoamIsStaMode(pMac, sessionId))
+                 {
+                     pNeighborRoamInfo->uOsRequestedHandoff = 0;
                   csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_CONNECT);
+                 }
               } else {
 #endif
 
@@ -4592,9 +4635,10 @@ eHalStatus csrNeighborRoamCandidateFoundIndHdlr(tpAniSirGlobal pMac, void* pMsg)
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     eHalStatus status = eHAL_STATUS_SUCCESS;
     /* we must be in connected state, if not ignore it */
-    if (eCSR_NEIGHBOR_ROAM_STATE_CONNECTED != pNeighborRoamInfo->neighborRoamState)
+    if ((eCSR_NEIGHBOR_ROAM_STATE_CONNECTED != pNeighborRoamInfo->neighborRoamState)
+        || (pNeighborRoamInfo->uOsRequestedHandoff))
     {
-        smsLog(pMac, LOGW, FL("Received in not CONNECTED state. Ignore it"));
+        smsLog(pMac, LOGE, FL("Received in not CONNECTED state OR uOsRequestedHandoff is set. Ignore it"));
         status = eHAL_STATUS_FAILURE;
     }
     else
@@ -4611,6 +4655,269 @@ eHalStatus csrNeighborRoamCandidateFoundIndHdlr(tpAniSirGlobal pMac, void* pMsg)
     }
 
     return status;
+}
+
+/* ---------------------------------------------------------------------------
+
+    \fn csrNeighborRoamProcessHandoffReq
+
+    \brief  This function is called start with the handoff process. First do a
+    SSID scan for the BSSID provided
+
+    \param  pMac - The handle returned by macOpen.
+
+    \return eHAL_STATUS_SUCCESS on success, corresponding error code otherwise
+
+---------------------------------------------------------------------------*/
+eHalStatus csrNeighborRoamProcessHandoffReq(tpAniSirGlobal pMac)
+{
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tANI_U32 roamId;
+    tCsrRoamProfile *pProfile = NULL;
+    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, pNeighborRoamInfo->csrSessionId );
+    tANI_U8 i = 0;
+
+    do
+    {
+        roamId = GET_NEXT_ROAM_ID(&pMac->roam);
+        status = palAllocateMemory(pMac->hHdd, (void **)&pProfile, sizeof(tCsrRoamProfile));
+        if(!HAL_STATUS_SUCCESS(status))
+        {
+            smsLog(pMac, LOGE, FL("Memory alloc failed"));
+            break;
+        }
+        palZeroMemory(pMac->hHdd, pProfile, sizeof(tCsrRoamProfile));
+        status = csrRoamCopyProfile(pMac, pProfile, pSession->pCurRoamProfile);
+        if(!HAL_STATUS_SUCCESS(status))
+        {
+            smsLog(pMac, LOGE, FL("Profile copy failed"));
+            break;
+        }
+
+        //Add the BSSID & Channel
+        pProfile->BSSIDs.numOfBSSIDs = 1;
+        pProfile->BSSIDs.bssid = vos_mem_malloc(sizeof(tSirMacAddr) * pProfile->BSSIDs.numOfBSSIDs);
+        if (NULL == pProfile->BSSIDs.bssid)
+        {
+            smsLog(pMac, LOGE, FL("mem alloc failed for BSSID"));
+            status = eHAL_STATUS_FAILURE;
+            break;
+        }
+
+        vos_mem_zero(pProfile->BSSIDs.bssid, sizeof(tSirMacAddr) * pProfile->BSSIDs.numOfBSSIDs);
+
+        /* Populate the BSSID from handoff info received from HDD */
+        for (i = 0; i < pProfile->BSSIDs.numOfBSSIDs; i++)
+        {
+            vos_mem_copy(&pProfile->BSSIDs.bssid[i],
+                         pNeighborRoamInfo->handoffReqInfo.bssid, sizeof(tSirMacAddr));
+        }
+
+        pProfile->ChannelInfo.numOfChannels = 1;
+        pProfile->ChannelInfo.ChannelList =
+            vos_mem_malloc(sizeof(*pProfile->ChannelInfo.ChannelList) *
+                           pProfile->ChannelInfo.numOfChannels);
+        if (NULL == pProfile->ChannelInfo.ChannelList)
+        {
+            smsLog(pMac, LOGE, FL("mem alloc failed for ChannelList"));
+            status = eHAL_STATUS_FAILURE;
+            break;
+        }
+        pProfile->ChannelInfo.ChannelList[0] = pNeighborRoamInfo->handoffReqInfo.channel;
+
+        //clean up csr cache first
+        //csrScanFlushSelectiveResult(pMac, VOS_FALSE);
+        //do a SSID scan
+        status = csrScanForSSID(pMac, pNeighborRoamInfo->csrSessionId, pProfile, roamId, FALSE);
+        if(!HAL_STATUS_SUCCESS(status))
+        {
+            smsLog(pMac, LOGE, FL("SSID scan failed"));
+        }
+    }while(0);
+
+    if(NULL != pProfile)
+    {
+        csrReleaseProfile(pMac, pProfile);
+        palFreeMemory(pMac->hHdd, pProfile);
+    }
+
+    return status;
+}
+
+/* ---------------------------------------------------------------------------
+
+    \fn csrNeighborRoamSssidScanDone
+
+    \brief  This function is called once SSID scan is done. If SSID scan failed
+    to find our candidate add an entry to csr scan cache ourself before starting
+    the handoff process
+
+    \param  pMac - The handle returned by macOpen.
+
+    \return eHAL_STATUS_SUCCESS on success, corresponding error code otherwise
+
+---------------------------------------------------------------------------*/
+eHalStatus csrNeighborRoamSssidScanDone(tpAniSirGlobal pMac, eHalStatus status)
+{
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    eHalStatus                      hstatus;
+
+    smsLog(pMac, LOGE, FL("called "));
+
+    /* we must be in connected state, if not ignore it */
+    if (eCSR_NEIGHBOR_ROAM_STATE_CONNECTED != pNeighborRoamInfo->neighborRoamState)
+    {
+        smsLog(pMac, LOGE, FL("Received in not CONNECTED state. Ignore it"));
+        return eHAL_STATUS_FAILURE;
+    }
+
+    //if SSID scan failed to find our candidate add an entry to csr scan cache ourself
+    if(!HAL_STATUS_SUCCESS(status))
+    {
+        smsLog(pMac, LOGE, FL("Add an entry to csr scan cache"));
+        hstatus = csrScanCreateEntryInScanCache(pMac, pNeighborRoamInfo->csrSessionId,
+                                                pNeighborRoamInfo->handoffReqInfo.bssid,
+                                                pNeighborRoamInfo->handoffReqInfo.channel);
+        if (eHAL_STATUS_SUCCESS != hstatus)
+        {
+            smsLog(pMac, LOGE, FL("csrScanCreateEntryInScanCache failed with status %d"), hstatus);
+            return eHAL_STATUS_FAILURE;
+        }
+    }
+
+    /* Now we have completed scanning for the candidate provided by HDD. Let move on to HO*/
+    hstatus = csrNeighborRoamProcessScanComplete(pMac);
+
+    if (eHAL_STATUS_SUCCESS != hstatus)
+    {
+        smsLog(pMac, LOGE, FL("Neighbor scan process complete failed with status %d"), hstatus);
+        return eHAL_STATUS_FAILURE;
+    }
+    return eHAL_STATUS_SUCCESS;
+}
+
+/* ---------------------------------------------------------------------------
+
+    \fn csrNeighborRoamHandoffReqHdlr
+
+    \brief  This function is called by CSR as soon as it gets a handoff request
+            to SME via MC thread
+
+    \param  pMac - The handle returned by macOpen.
+            pMsg - Msg sent by HDD
+
+    \return eHAL_STATUS_SUCCESS on success, corresponding error code otherwise
+
+---------------------------------------------------------------------------*/
+eHalStatus csrNeighborRoamHandoffReqHdlr(tpAniSirGlobal pMac, void* pMsg)
+{
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    tAniHandoffReq                 *pHandoffReqInfo;
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    /* we must be in connected state, if not ignore it */
+    if (eCSR_NEIGHBOR_ROAM_STATE_CONNECTED != pNeighborRoamInfo->neighborRoamState)
+    {
+        smsLog(pMac, LOGE, FL("Received in not CONNECTED state. Ignore it"));
+        status = eHAL_STATUS_FAILURE;
+    }
+    else
+    {
+        //save the handoff info came from HDD as part of the reassoc req
+        pHandoffReqInfo = (tAniHandoffReq *)pMsg;
+        if (NULL != pHandoffReqInfo)
+        {
+            //sanity check
+            if (VOS_FALSE == vos_mem_compare(pHandoffReqInfo->bssid,
+                                             pNeighborRoamInfo->currAPbssid,
+                                             sizeof(tSirMacAddr)))
+            {
+
+                pNeighborRoamInfo->handoffReqInfo.channel = pHandoffReqInfo->channel;
+                vos_mem_copy(pNeighborRoamInfo->handoffReqInfo.bssid,
+                             pHandoffReqInfo->bssid,
+                             6);
+                pNeighborRoamInfo->uOsRequestedHandoff = 1;
+                status = csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_STOP,
+                                            REASON_OS_REQUESTED_ROAMING_NOW);
+                if (eHAL_STATUS_SUCCESS != status)
+                {
+                    smsLog(pMac, LOGE, FL("csrRoamOffloadScan failed"));
+                    pNeighborRoamInfo->uOsRequestedHandoff = 0;
+                }
+            }
+            else
+            {
+                smsLog(pMac, LOGE, FL("Received req has same BSSID as current AP!!"));
+                status = eHAL_STATUS_FAILURE;
+            }
+        }
+        else
+        {
+            smsLog(pMac, LOGE, FL("Received msg is NULL"));
+            status = eHAL_STATUS_FAILURE;
+        }
+    }
+
+    return status;
+}
+
+/* ---------------------------------------------------------------------------
+
+    \fn csrNeighborRoamProceedWithHandoffReq
+
+    \brief  This function is called by CSR as soon as it gets rsp back for
+            ROAM_SCAN_OFFLOAD_STOP with reason REASON_OS_REQUESTED_ROAMING_NOW
+
+    \param  pMac - The handle returned by macOpen.
+
+    \return eHAL_STATUS_SUCCESS on success, corresponding error code otherwise
+
+---------------------------------------------------------------------------*/
+eHalStatus csrNeighborRoamProceedWithHandoffReq(tpAniSirGlobal pMac)
+{
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    /* we must be in connected state, if not ignore it */
+    if ((eCSR_NEIGHBOR_ROAM_STATE_CONNECTED != pNeighborRoamInfo->neighborRoamState)
+        || (!pNeighborRoamInfo->uOsRequestedHandoff))
+    {
+        smsLog(pMac, LOGE, FL("Received in not CONNECTED state or uOsRequestedHandoff is not set. Ignore it"));
+        status = eHAL_STATUS_FAILURE;
+    }
+    else
+    {
+        //Let's go ahead with handoff
+        status = csrNeighborRoamProcessHandoffReq(pMac);
+    }
+    if(!HAL_STATUS_SUCCESS(status))
+    {
+        pNeighborRoamInfo->uOsRequestedHandoff = 0;
+    }
+    return status;
+}
+
+/* ---------------------------------------------------------------------------
+
+    \fn csrNeighborRoamRestartLfrScan
+
+    \brief  This function is called if HDD requested handoff failed for some
+    reason. Restart the LFR logic at that point.
+
+    \param  pMac - The handle returned by macOpen.
+
+    \return eHAL_STATUS_SUCCESS on success, corresponding error code otherwise
+
+---------------------------------------------------------------------------*/
+eHalStatus csrNeighborRoamRestartLfrScan(tpAniSirGlobal pMac)
+{
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    pNeighborRoamInfo->uOsRequestedHandoff = 0;
+    /* There is no candidate or We are not roaming Now.
+     * Inform the FW to restart Roam Offload Scan  */
+    csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_RESTART, REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW);
+
+    return eHAL_STATUS_SUCCESS;
 }
 #endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */

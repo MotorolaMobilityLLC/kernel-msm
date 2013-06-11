@@ -375,7 +375,9 @@ enum eWniMsgTypes
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
     eWNI_PMC_GTK_OFFLOAD_GETINFO_RSP,
 #endif // WLAN_FEATURE_GTK_OFFLOAD
-    eWNI_SME_CANDIDATE_FOUND_IND, //ROAM candidate indication from FW
+    eWNI_SME_CANDIDATE_FOUND_IND, /*ROAM candidate indication from FW*/
+    eWNI_SME_HANDOFF_REQ,/*upper layer requested handoff to driver in STA mode*/
+    eWNI_SME_ROAM_SCAN_OFFLOAD_RSP,/*Fwd the LFR scan offload rsp from FW to SME*/
     eWNI_SME_MSG_TYPES_END
 };
 
