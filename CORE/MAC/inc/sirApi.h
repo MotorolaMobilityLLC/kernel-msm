@@ -4204,4 +4204,25 @@ typedef struct sSirScanOffloadReq {
       up to uIEFieldLen (can be 0)
       -----------------------------*/
 } tSirScanOffloadReq, *tpSirScanOffloadReq;
+
+typedef enum sSirScanEventType {
+    SCAN_EVENT_STARTED=0x1,          /* Scan command accepted by FW */
+    SCAN_EVENT_COMPLETED=0x2,        /* Scan has been completed by FW */
+    SCAN_EVENT_BSS_CHANNEL=0x4,      /* FW is going to move to HOME channel */
+    SCAN_EVENT_FOREIGN_CHANNEL = 0x8,/* FW is going to move to FORIEGN channel */
+    SCAN_EVENT_DEQUEUED=0x10,       /* scan request got dequeued */
+    SCAN_EVENT_PREEMPTED=0x20,      /* preempted by other high priority scan */
+    SCAN_EVENT_START_FAILED=0x40,   /* scan start failed */
+    SCAN_EVENT_RESTARTED=0x80,      /*scan restarted*/
+    SCAN_EVENT_MAX=0x8000
+} tSirScanEventType;
+
+typedef struct sSirScanOffloadEvent{
+    tSirScanEventType event;
+    tSirResultCodes reasonCode;
+    tANI_U32 chanFreq;
+    tANI_U32 requestor;
+    tANI_U32 scanId;
+} tSirScanOffloadEvent, *tpSirScanOffloadEvent;
+
 #endif /* __SIR_API_H */
