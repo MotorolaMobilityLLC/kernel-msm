@@ -3051,7 +3051,22 @@ eHalStatus csrSaveToChannelPower2G_5G( tpAniSirGlobal pMac, tANI_U32 tableSize, 
     return eHAL_STATUS_SUCCESS;
 }
 
+static  void csrClearDfsChannelList( tpAniSirGlobal pMac )
+{
+    tSirMbMsg *pMsg;
+    tANI_U16 msgLen;
+    eHalStatus status = eHAL_STATUS_SUCCESS;
 
+    msgLen = (tANI_U16)(sizeof( tSirMbMsg ));
+    status = palAllocateMemory(pMac->hHdd, (void **)&pMsg, msgLen);
+    if(HAL_STATUS_SUCCESS(status))
+    {
+       palZeroMemory(pMac->hHdd, (void *)pMsg, msgLen);
+       pMsg->type = pal_cpu_to_be16((tANI_U16)eWNI_SME_CLEAR_DFS_CHANNEL_LIST);
+       pMsg->msgLen = pal_cpu_to_be16(msgLen);
+       palSendMBMessage(pMac->hHdd, pMsg);
+    }
+}
 
 void csrApplyPower2Current( tpAniSirGlobal pMac )
 {
@@ -3105,6 +3120,8 @@ void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannel
         csrSetCfgValidChannelList(pMac, ChannelList.channelList, ChannelList.numChannels);
         // extend scan capability
         csrSetCfgScanControlList(pMac, countryCode, &ChannelList);     //  build a scan list based on the channel list : channel# + active/passive scan
+        /*Send msg to Lim to clear DFS channel list */
+        csrClearDfsChannelList(pMac);
 #ifdef FEATURE_WLAN_SCAN_PNO
         if (updateRiva)
         {
