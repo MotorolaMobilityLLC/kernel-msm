@@ -337,7 +337,7 @@ typedef struct sPESession           // Added to Support BT-AMP
     /*Flag to Track Status/Indicate HBFailure on this session */
     tANI_BOOLEAN LimHBFailureStatus;
     tANI_U32           gLimPhyMode;
-
+    tANI_U8            amsduSupportedInBA;
     tANI_U8          txLdpcIniFeatureEnabled;
     /**
      * Following is the place holder for free peer index pool.
