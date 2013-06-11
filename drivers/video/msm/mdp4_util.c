@@ -27,6 +27,7 @@
 #include <linux/semaphore.h>
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
+#include <linux/irqflags.h>
 #include <asm/system.h>
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
@@ -3341,6 +3342,19 @@ void mdp4_regs_dump(void)
 	MDP4_HANG_LOG("------ MDP dump finished. ------\n");
 }
 
+void mdp4_interrupts_dump(void)
+{
+	uint32 isr, mask;
+	isr = inpdw(MDP_INTR_STATUS);
+	mask = inpdw(MDP_INTR_ENABLE);
+	MDP4_HANG_LOG("------ Interrupt Status ------\n");
+	MDP4_HANG_LOG("MDP_INTR_STATUS: 0x%08X\n", isr);
+	MDP4_HANG_LOG("MDP_INTR_ENABLE: 0x%08X\n", mask);
+	MDP4_HANG_LOG("mdp_is_in_isr: %d\n", mdp_is_in_isr);
+	MDP4_HANG_LOG("global irqs disabled: %d\n", irqs_disabled());
+	MDP4_HANG_LOG("---- Interrupt Status Done ---\n");
+}
+
 void mdp4_hang_dropbox_trigger_callback(void *data)
 {
 	mdp4_hang_dump();
@@ -3367,6 +3381,8 @@ EXPORT_SYMBOL(mdp4_hang_init);
 void mdp4_hang_dump(void)
 {
 	mdp4_hang_data_pos = 0;
+
+	mdp4_interrupts_dump();
 	mdp4_dump_vsync_ctrl();
 	mdp4_stats_dump(mdp4_stat);
 	mdp4_dump_commit_info();
