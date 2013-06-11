@@ -514,12 +514,22 @@ static void touch_init_func(struct work_struct *work_init)
 			container_of(to_delayed_work(work_init),
 					struct synaptics_ts_data, work_init);
 
+	mutex_lock(&ts->input_dev->mutex);
+
+	if (!ts->curr_resume_state) {
+		enable_irq(ts->client->irq);
+		mutex_unlock(&ts->input_dev->mutex);
+		return;
+	}
+
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
 	/* Specific device initialization */
 	touch_ic_init(ts);
 	enable_irq(ts->client->irq);
+
+	mutex_unlock(&ts->input_dev->mutex);
 }
 
 /* touch_recover_func
@@ -1552,7 +1562,6 @@ static int synaptics_ts_stop(struct synaptics_ts_data *ts)
 		return 0;
 	}
 
-	cancel_delayed_work_sync(&ts->work_init);
 	release_all_ts_event(ts);
 	touch_power_cntl(ts, POWER_OFF);
 
@@ -1583,7 +1592,8 @@ static int lcd_notifier_callback(struct notifier_block *this,
 		break;
 	case LCD_EVENT_OFF_START:
 		mutex_lock(&ts->input_dev->mutex);
-		disable_irq(ts->client->irq);
+		if (!cancel_delayed_work_sync(&ts->work_init))
+			disable_irq(ts->client->irq);
 		break;
 	case LCD_EVENT_OFF_END:
 		synaptics_ts_stop(ts);
