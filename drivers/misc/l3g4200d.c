@@ -122,7 +122,7 @@ module_param_named(gyro_debug, l3g4200d_debug, uint, 0644);
  */
 struct l3g4200d_data *l3g4200d_misc_data;
 
-static int l3g4200d_i2c_read(struct l3g4200d_data *gyro, u8 * buf, int len)
+static int l3g4200d_i2c_read(struct l3g4200d_data *gyro, u8 *buf, int len)
 {
 	int err;
 	int tries = 0;
@@ -157,7 +157,7 @@ static int l3g4200d_i2c_read(struct l3g4200d_data *gyro, u8 * buf, int len)
 	return err;
 }
 
-static int l3g4200d_i2c_write(struct l3g4200d_data *gyro, u8 * buf, int len)
+static int l3g4200d_i2c_write(struct l3g4200d_data *gyro, u8 *buf, int len)
 {
 	int err;
 	int tries = 0;
@@ -233,10 +233,10 @@ static int l3g4200d_hw_init(struct l3g4200d_data *gyro)
 static void l3g4200d_device_power_off(struct l3g4200d_data *gyro)
 {
 	int err;
-	u8 buf[2] = {L3G4200D_CTRL_REG1,0 };
+	u8 buf[2] = {L3G4200D_CTRL_REG1, 0};
 
 	err = l3g4200d_i2c_read(gyro, buf, 1);
-	if (err < 0){
+	if (err < 0) {
 		dev_err(&gyro->client->dev, "read register control_1 failed\n");
 		buf[0] = gyro->pdata->ctrl_reg1;
 	}
@@ -267,8 +267,8 @@ static int l3g4200d_device_power_on(struct l3g4200d_data *gyro)
 		buf[0] = gyro->pdata->ctrl_reg1;
 	}
 
-        buf[1] = buf[0] | PM_MASK;
-        buf[0] = L3G4200D_CTRL_REG1;
+	buf[1] = buf[0] | PM_MASK;
+	buf[0] = L3G4200D_CTRL_REG1;
 	err = l3g4200d_i2c_write(gyro, buf, 1);
 	if (err < 0)
 		dev_err(&gyro->client->dev, "soft power on failed\n");
