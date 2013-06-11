@@ -13294,7 +13294,8 @@ WDI_ProcessHostOffloadReq
    if ( NULL == pBSSSes )
    {
        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                 " %s : Association for this BSSID does not exist",__func__);
+                 " %s : Association for this BSSID does not exist " MAC_ADDRESS_STR,
+                 __func__, MAC_ADDR_ARRAY(pwdiHostOffloadParams->wdiHostOffloadInfo.bssId));
        goto fail;
    }
 
@@ -17661,6 +17662,10 @@ WDI_ProcessExitImpsRsp
   -------------------------------------------------------------------------*/
   halStatus = *((eHalStatus*)pEventData->pEventData);
   wdiStatus   =   WDI_HAL_2_WDI_STATUS(halStatus);
+
+  if (halStatus != eHAL_STATUS_SUCCESS)
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                "%s: Exit IMPS response is a failure with halStatus %d", __func__, halStatus);
 
   // notify DTS that we are entering Full power
   wptStatus = WDTS_SetPowerState(pWDICtx, WDTS_POWER_STATE_FULL, NULL);
