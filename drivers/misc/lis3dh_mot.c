@@ -53,6 +53,11 @@
 #define CTRL_REG3		0x22	/* power control reg */
 /* ctrl 4: BDU BLE FS1 FS0 HR ST1 ST0 SIM */
 #define CTRL_REG4		0x23	/* interrupt control reg */
+#define CTRL_REG5		0x24	/* 4D detection interrupt */
+#define INT1_CFG		0x30	/* interrupt 1 config reg */
+#define INT1_SRC		0x31	/* interrupt 1 status reg */
+#define INT1_THS		0x32	/* interrupt 1 threshold reg */
+#define INT1_DURATION		0x33	/* interrupt 1 duration reg  */
 
 #define PM_LOW          	0x08
 #define PM_NORMAL       	0x00
@@ -68,17 +73,47 @@
 #define ODR400		0x70
 #define ODR1250		0x90
 
+#define ROTATE_PM_MODE	(PM_LOW|ODR25|ENABLE_ALL_AXES)
+
 #define G_2G		0x00
 #define G_4G		0x10
 #define G_8G		0x20
 #define G_16G		0x30
 #define HIGH_RES	0x08
+#define BLK_UPDATE	0x80
 
 #define FUZZ			32
 #define FLAT			32
 #define I2C_RETRY_DELAY		5
 #define I2C_RETRIES		5
 #define AUTO_INCREMENT		0x80
+
+#define ENABLE_AOI1		0x40
+#define ENABLE_D4D_INT1		0x04
+
+#define MODE_OFF		0
+#define MODE_ACCEL		1
+#define MODE_ROTATE		2
+#define MODE_ALL		3
+
+#define TYPE_UNKNOWN		-1
+#define TYPE_PORTRAIT		0
+#define TYPE_LANDSCAPE		1
+#define TYPE_INV_PORTRAIT	2
+#define TYPE_INV_LANDSCAPE	3
+
+#define INT_XL_BIT		0x01
+#define INT_XH_BIT		0x02
+#define INT_YL_BIT		0x04
+#define INT_YH_BIT		0x08
+#define INT_ZL_BIT		0x10
+#define INT_ZH_BIT		0x20
+#define INT_4D_BITS		0x0f
+#define INT_6D_BITS		0x3f
+
+#define INT_CFG_ALL		0x7f
+#define INT_CFG_THRESHOLD	0x20
+#define INT_CFG_DURATION	0x05
 
 static struct {
 	unsigned int cutoff;
@@ -101,10 +136,13 @@ struct lis3dh_data {
 
 	struct mutex lock;
 
+	struct work_struct irq_work;
 	struct delayed_work input_work;
 	struct input_dev *input_dev;
 
 	struct regulator *vdd;
+	int irq;
+	int mode;
 	int hw_initialized;
 	atomic_t enabled;
 	int on_before_suspend;
@@ -115,6 +153,7 @@ struct lis3dh_data {
 
 	u8 shift_adj;
 	u8 resume_state[5];
+	u8 irq_config[3];
 };
 
 /*
@@ -187,6 +226,17 @@ static int lis3dh_i2c_write(struct lis3dh_data *lis, u8 * buf, int len)
 	return err;
 }
 
+static int lis3dh_read_int_data(struct lis3dh_data *lis)
+{
+	int err = -1;
+	u8 data[1];
+
+	data[0] =  INT1_SRC;
+	err = lis3dh_i2c_read(lis, data, 1);
+
+	return err ? 0 : (int)data[0];
+}
+
 static int lis3dh_hw_init(struct lis3dh_data *lis)
 {
 	int err = -1;
@@ -202,6 +252,21 @@ static int lis3dh_hw_init(struct lis3dh_data *lis)
 	if (err < 0)
 		return err;
 
+	buf[0] = INT1_CFG;
+	buf[1] = lis->irq_config[0];
+	err = lis3dh_i2c_write(lis, buf, 1);
+	if (err < 0)
+		return err;
+	buf[0] = INT1_THS;
+	buf[1] = lis->irq_config[1];
+	err = lis3dh_i2c_write(lis, buf, 1);
+	if (err < 0)
+		return err;
+	buf[0] = INT1_DURATION;
+	buf[1] = lis->irq_config[2];
+	err = lis3dh_i2c_write(lis, buf, 1);
+	if (err < 0)
+		return err;
 	lis->hw_initialized = 1;
 
 	return 0;
@@ -308,6 +373,10 @@ int lis3dh_update_odr(struct lis3dh_data *lis, int poll_interval)
 
 	config[1] |= ENABLE_ALL_AXES;
 
+	/* Overwrite CTRL_REG1 to set low power mode for ROTATE sensor */
+	if (lis->mode == MODE_ROTATE)
+		config[1] = ROTATE_PM_MODE;
+
 	/* If device is currently enabled, we need to write new
 	 *  configuration out to it */
 	if (atomic_read(&lis->enabled)) {
@@ -356,6 +425,43 @@ static void lis3dh_report_values(struct lis3dh_data *lis, int *xyz)
 	input_sync(lis->input_dev);
 }
 
+static void lis3dh_report_rotate(struct lis3dh_data *lis, int flat)
+{
+	input_report_abs(lis->input_dev, ABS_BRAKE, flat);
+	input_sync(lis->input_dev);
+}
+
+static int lis3dh_enable_pull(struct lis3dh_data *lis)
+{
+	schedule_delayed_work(&lis->input_work,
+				msecs_to_jiffies(lis->pdata->poll_interval));
+	return 0;
+}
+
+static int lis3dh_enable_irq(struct lis3dh_data *lis)
+{
+	int err;
+	u8 buf[2];
+
+	if (atomic_read(&lis->enabled)) {
+		buf[0] = CTRL_REG4;
+		err = lis3dh_i2c_read(lis, buf, 1);
+		if (err < 0)
+			return err;
+		buf[1] = (buf[0] & ~G_16G) & BLK_UPDATE;
+		buf[0] = CTRL_REG4;
+		err = lis3dh_i2c_write(lis, buf, 1);
+		if (err < 0)
+			return err;
+		lis->resume_state[3] = buf[1];
+		lis->shift_adj = SHIFT_ADJ_2G;
+	}
+
+	enable_irq(lis->irq);
+
+	return 0;
+}
+
 static int lis3dh_enable(struct lis3dh_data *lis)
 {
 	int err;
@@ -367,18 +473,30 @@ static int lis3dh_enable(struct lis3dh_data *lis)
 			atomic_set(&lis->enabled, 0);
 			return err;
 		}
-		schedule_delayed_work(&lis->input_work,
-				      msecs_to_jiffies(lis->
-						       pdata->poll_interval));
 	}
 
+	return 0;
+}
+
+static int lis3dh_disable_irq(struct lis3dh_data *lis)
+{
+	int err;
+
+	disable_irq_nosync(lis->irq);
+	err = lis3dh_update_g_range(lis, lis->pdata->g_range);
+
+	return err;
+}
+
+static int lis3dh_disable_pull(struct lis3dh_data *lis)
+{
+	cancel_delayed_work_sync(&lis->input_work);
 	return 0;
 }
 
 static int lis3dh_disable(struct lis3dh_data *lis)
 {
 	if (atomic_cmpxchg(&lis->enabled, 1, 0)) {
-		cancel_delayed_work_sync(&lis->input_work);
 		lis3dh_device_power_off(lis);
 	}
 
@@ -431,14 +549,48 @@ static long lis3dh_misc_ioctl(struct file *file, unsigned int cmd,
 	case LIS3DH_IOCTL_SET_ENABLE:
 		if (copy_from_user(&interval, argp, sizeof(interval)))
 			return -EFAULT;
-		if (interval < 0 || interval > 1)
+		if (interval < MODE_OFF || interval > MODE_ALL)
 			return -EINVAL;
 
-		if (interval)
-			lis3dh_enable(lis);
-		else
+		switch (interval) {
+		case MODE_OFF:  /* ALL OFF */
+			if (lis->mode & MODE_ROTATE)
+					lis3dh_disable_irq(lis);
+			if (lis->mode & MODE_ACCEL)
+					lis3dh_disable_pull(lis);
 			lis3dh_disable(lis);
+			break;
 
+		case MODE_ACCEL: /* ACCEL ON & ROTATE OFF */
+
+			if (!atomic_read(&lis->enabled)) {
+				lis3dh_enable(lis);
+			} else
+				if (lis->mode & MODE_ROTATE)
+						lis3dh_disable_irq(lis);
+			if (!(lis->mode & MODE_ACCEL))
+				lis3dh_enable_pull(lis);
+			break;
+		case MODE_ROTATE: /* ACCEL OFF & ROTATE 0N */
+
+			if (!atomic_read(&lis->enabled)) {
+				lis3dh_enable(lis);
+			} else
+				if (lis->mode & MODE_ACCEL)
+					lis3dh_disable_pull(lis);
+			if (!(lis->mode & MODE_ROTATE))
+				lis3dh_enable_irq(lis);
+
+			break;
+		case MODE_ALL: /* ACCEL ON & ROTATE 0N */
+			lis3dh_enable(lis);
+			if (!(lis->mode & MODE_ROTATE))
+				lis3dh_enable_irq(lis);
+			if (!(lis->mode & MODE_ACCEL))
+				lis3dh_enable_pull(lis);
+			break;
+		}
+			lis->mode = interval;
 		break;
 
 	case LIS3DH_IOCTL_GET_ENABLE:
@@ -502,6 +654,38 @@ void lis3dh_input_close(struct input_dev *dev)
 }
 #endif
 
+static void lis3dh_irq_work(struct work_struct *work)
+{
+	int irq_data = 0, flat = TYPE_UNKNOWN;
+	struct lis3dh_data *lis = container_of(work, struct lis3dh_data,
+						  irq_work);
+	mutex_lock(&lis->lock);
+	irq_data = lis3dh_read_int_data(lis);
+	switch (irq_data & INT_4D_BITS) {
+	case INT_XL_BIT:
+		flat = TYPE_PORTRAIT; break;
+	case INT_XH_BIT:
+		flat = TYPE_INV_PORTRAIT; break;
+	case INT_YL_BIT:
+		flat = TYPE_LANDSCAPE; break;
+	case INT_YH_BIT:
+		flat = TYPE_INV_LANDSCAPE; break;
+	default:
+		flat = TYPE_UNKNOWN;
+	}
+
+	lis3dh_report_rotate(lis, flat);
+	mutex_unlock(&lis->lock);
+
+}
+
+static irqreturn_t lis3dh_isr(int irq, void *data)
+{
+	struct lis3dh_data *lis = data;
+	schedule_work(&lis->irq_work);
+	return IRQ_HANDLED;
+}
+
 static int lis3dh_validate_pdata(struct lis3dh_data *lis)
 {
 	/* Enforce minimum polling interval */
@@ -538,6 +722,7 @@ static int lis3dh_input_init(struct lis3dh_data *lis)
 	input_set_abs_params(lis->input_dev, ABS_X, -G_MAX, G_MAX, FUZZ, FLAT);
 	input_set_abs_params(lis->input_dev, ABS_Y, -G_MAX, G_MAX, FUZZ, FLAT);
 	input_set_abs_params(lis->input_dev, ABS_Z, -G_MAX, G_MAX, FUZZ, FLAT);
+	input_set_abs_params(lis->input_dev, ABS_BRAKE, -1, 4, 0, 0);
 
 	lis->input_dev->name = "accelerometer";
 
@@ -592,12 +777,21 @@ lis3dh_of_init(struct i2c_client *client)
 		return NULL;
 	}
 
+	pdata->irq_gpio = of_get_gpio(np, 0);
 	if (!of_property_read_u32(np, "stm,poll-interval", &val))
 		pdata->poll_interval = (int)val;
 	if (!of_property_read_u32(np, "stm,min-interval", &val))
 		pdata->min_interval = (int)val;
 	if (!of_property_read_u32(np, "stm,g-range", &val))
 		pdata->g_range = (int)val;
+	if (!of_property_read_u32(np, "stm,threshold", &val))
+		pdata->threshold = (int)val;
+	else
+		pdata->threshold = INT_CFG_THRESHOLD;
+	if (!of_property_read_u32(np, "stm,duration", &val))
+		pdata->duration = (int)val;
+	else
+		pdata->duration = INT_CFG_DURATION;
 
 	return pdata;
 }
@@ -678,9 +872,13 @@ static int lis3dh_probe(struct i2c_client *client,
 
 	lis->resume_state[0] = ODR_OFF | ENABLE_ALL_AXES;
 	lis->resume_state[1] = 0;
-	lis->resume_state[2] = 0;
+	lis->resume_state[2] = ENABLE_AOI1;
 	lis->resume_state[3] = 0;
-	lis->resume_state[4] = 0;
+	lis->resume_state[4] = ENABLE_D4D_INT1;
+
+	lis->irq_config[0] = INT_CFG_ALL;
+	lis->irq_config[1] = lis->pdata->threshold;
+	lis->irq_config[2] = lis->pdata->duration;
 
 	err = lis3dh_device_power_on(lis);
 	if (err < 0)
@@ -704,6 +902,26 @@ static int lis3dh_probe(struct i2c_client *client,
 	if (err < 0)
 		goto err3;
 
+	err = devm_gpio_request(&client->dev,
+				lis->pdata->irq_gpio, "lis3dh_irq1");
+	if (err < 0) {
+		pr_err("%s: failed to request lis3dh irq gpio: %d\n",
+			 __func__, err);
+		goto err3;
+	}
+
+	INIT_WORK(&lis->irq_work, lis3dh_irq_work);
+
+	lis->irq = gpio_to_irq(lis->pdata->irq_gpio);
+	err = request_irq(lis->irq, lis3dh_isr, IRQF_TRIGGER_RISING,
+			 "lis3dh_irq1", lis);
+	if (err) {
+		pr_err("%s: lis3dh request irq failed: %d\n",
+			__func__, err);
+		goto err3;
+	}
+
+	disable_irq(lis->irq);
 	lis3dh_misc_data = lis;
 
 	err = misc_register(&lis3dh_misc_device);
