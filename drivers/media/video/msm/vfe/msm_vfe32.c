@@ -3916,6 +3916,8 @@ static void vfe32_process_reg_update_irq(
 
 				share_ctrl->liveshot_state =
 					VFE_STATE_STARTED;
+				msm_camera_io_w_mb(1, share_ctrl->vfebase +
+					VFE_REG_UPDATE_CMD);
 			}
 			break;
 		case VFE_STATE_STARTED:
