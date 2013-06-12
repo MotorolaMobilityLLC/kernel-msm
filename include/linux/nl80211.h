@@ -608,6 +608,9 @@
  *	with the relevant Information Elements. This event is used to report
  *	received FT IEs (MDIE, FTIE, RSN IE, TIE, RICIE).
  *
+ *	@NL80211_CMD_INTERFACE_UNAVAILABLE: Notify the userspace about the
+ *	unavailability of network interface.
+ *
  * @NL80211_CMD_MAX: highest used command number
  * @__NL80211_CMD_AFTER_LAST: internal use
  */
@@ -766,7 +769,10 @@ enum nl80211_commands {
 	NL80211_CMD_GET_PROTOCOL_FEATURES,
 
 	NL80211_CMD_UPDATE_FT_IES,
+
 	NL80211_CMD_FT_EVENT,
+
+	NL80211_CMD_INTERFACE_UNAVAILABLE,
 
 	/* add new commands above here */
 
