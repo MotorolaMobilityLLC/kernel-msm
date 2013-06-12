@@ -1464,7 +1464,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             limProcessAddBaInd(pMac, limMsg);
             break;
         case SIR_LIM_DEL_BA_ALL_IND:
-            limDelAllBASessions(pMac);  // refer notes and change
+            limDelAllBASessions(pMac);
             break;
         case SIR_LIM_DEL_BA_IND:
             limProcessMlmHalBADeleteInd( pMac, limMsg );

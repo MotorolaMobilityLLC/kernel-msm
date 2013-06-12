@@ -348,6 +348,8 @@ tSirRetStatus limPostSMStateUpdate(tpAniSirGlobal pMac,
 
 void limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
 void limProcessAddBaInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
+void limDeleteBASessions(tpAniSirGlobal pMac, tpPESession pSessionEntry, tANI_U32 baDirection);
+void limDelAllBASessionsBtc(tpAniSirGlobal pMac);
 void limDelAllBASessions(tpAniSirGlobal pMac);
 void limDeleteDialogueTokenList(tpAniSirGlobal pMac);
 tSirRetStatus limSearchAndDeleteDialogueToken(tpAniSirGlobal pMac, tANI_U8 token, tANI_U16 assocId, tANI_U16 tid);

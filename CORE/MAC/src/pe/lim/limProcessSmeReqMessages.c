@@ -2142,7 +2142,7 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
      *  is lost upon disassociation and reassociation.
      */
 
-    limDelAllBASessions(pMac);
+    limDeleteBASessions(pMac, psessionEntry, BA_BOTH_DIRECTIONS);
 
     pMlmReassocReq->listenInterval = (tANI_U16) val;
 

@@ -1942,6 +1942,28 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
          smsLog(pMac, LOGW, "Coex indication in %s(), type - SIR_COEX_IND_TYPE_SCAN_NOT_COMPROMISED",
              __func__);
      }
+     else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4)
+     {
+         if (pMac->roam.configParam.disableAggWithBtc)
+         {
+             ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC, 1,
+                             NULL, eANI_BOOLEAN_FALSE);
+             smsLog(pMac, LOGW,
+             "Coex indication in %s(), type - SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4",
+                 __func__);
+         }
+     }
+     else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4)
+     {
+         if (pMac->roam.configParam.disableAggWithBtc)
+         {
+             ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC, 0,
+                             NULL, eANI_BOOLEAN_FALSE);
+             smsLog(pMac, LOGW,
+             "Coex indication in %s(), type - SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4",
+                 __func__);
+         }
+     }
      // unknown indication type
      else
      {

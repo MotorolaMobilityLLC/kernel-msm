@@ -947,6 +947,7 @@ static void initConfigParam(tpAniSirGlobal pMac)
     pMac->roam.configParam.nPassiveMinChnTime = CSR_PASSIVE_MIN_CHANNEL_TIME;
     pMac->roam.configParam.nActiveMaxChnTimeBtc = CSR_ACTIVE_MAX_CHANNEL_TIME_BTC;
     pMac->roam.configParam.nActiveMinChnTimeBtc = CSR_ACTIVE_MIN_CHANNEL_TIME_BTC;
+    pMac->roam.configParam.disableAggWithBtc = eANI_BOOLEAN_TRUE;
 #ifdef WLAN_AP_STA_CONCURRENCY
     pMac->roam.configParam.nActiveMaxChnTimeConc = CSR_ACTIVE_MAX_CHANNEL_TIME_CONC;
     pMac->roam.configParam.nActiveMinChnTimeConc = CSR_ACTIVE_MIN_CHANNEL_TIME_CONC;
@@ -1404,6 +1405,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.bandCapability = pParam->bandCapability;
         pMac->roam.configParam.cbChoice = pParam->cbChoice;
         pMac->roam.configParam.bgScanInterval = pParam->bgScanInterval;
+        pMac->roam.configParam.disableAggWithBtc = pParam->disableAggWithBtc;
         //if HDD passed down non zero values then only update,
         //otherwise keep using the defaults
         if (pParam->nActiveMaxChnTime)
@@ -1637,6 +1639,9 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->nActiveMinChnTime = pMac->roam.configParam.nActiveMinChnTime;
         pParam->nPassiveMaxChnTime = pMac->roam.configParam.nPassiveMaxChnTime;
         pParam->nPassiveMinChnTime = pMac->roam.configParam.nPassiveMinChnTime;
+        pParam->nActiveMaxChnTimeBtc = pMac->roam.configParam.nActiveMaxChnTimeBtc;
+        pParam->nActiveMinChnTimeBtc = pMac->roam.configParam.nActiveMinChnTimeBtc;
+        pParam->disableAggWithBtc = pMac->roam.configParam.disableAggWithBtc;
 #ifdef WLAN_AP_STA_CONCURRENCY
         pParam->nActiveMaxChnTimeConc = pMac->roam.configParam.nActiveMaxChnTimeConc;
         pParam->nActiveMinChnTimeConc = pMac->roam.configParam.nActiveMinChnTimeConc;

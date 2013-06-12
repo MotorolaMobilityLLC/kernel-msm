@@ -38,8 +38,9 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+
+
 /*
- * Airgo Networks, Inc proprietary. All rights reserved.
  * This file sirMacProtDef.h contains the MAC/PHY protocol
  * definitions used across various projects.
  * Author:        Chandra Modumudi
@@ -631,6 +632,10 @@
 
 #define IS_WES_MODE_ENABLED(x) \
                     ((x)->roam.configParam.isWESModeEnabled)
+
+#define BA_RECIPIENT       1
+#define BA_INITIATOR       2
+#define BA_BOTH_DIRECTIONS 3
 
 /// Status Code (present in Management response frames) enum
 
