@@ -33,7 +33,9 @@ struct lis3dh_platform_data {
 	int poll_interval;
 	int min_interval;
 	int g_range;
-
+	int irq_gpio;
+	int threshold;
+	int duration;
 	int (*init)(void);
 	void (*exit)(void);
 	int (*power_on)(void);
