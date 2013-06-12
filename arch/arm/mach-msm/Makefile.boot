@@ -50,6 +50,7 @@ endif
 ifeq ($(CONFIG_MACH_LGE),y)
         dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-a.dtb
         dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-b.dtb
+        dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-bn.dtb
         dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-f.dtb
 else
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-cdp.dtb
