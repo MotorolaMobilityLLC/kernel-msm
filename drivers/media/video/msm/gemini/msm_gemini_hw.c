@@ -499,13 +499,18 @@ int msm_gemini_hw_exec_cmds(struct msm_gemini_hw_cmd *hw_cmd_p, uint32_t m_cmds)
 	return is_copy_to_user;
 }
 
-void msm_gemini_hw_region_dump(int size)
+void msm_gemini_hw_region_dump(uint32_t size)
 {
 	uint32_t *p;
 	uint8_t *p8;
 
 	if (size > gemini_region_size) {
 		GMN_PR_ERR("%s:%d] wrong region dump size\n",
+			__func__, __LINE__);
+		return;
+	}
+	if (!gemini_region_base) {
+		GMN_PR_ERR("%s:%d] gemini region not setup yet\n",
 			__func__, __LINE__);
 		return;
 	}
