@@ -3289,6 +3289,17 @@ bool cfg80211_rx_mgmt(struct net_device *dev, int freq, int sig_dbm,
 void cfg80211_mgmt_tx_status(struct net_device *dev, u64 cookie,
 			     const u8 *buf, size_t len, bool ack, gfp_t gfp);
 
+/**
+ * cfg80211_send_iface_unavailable - Notify unavailable interface
+ * @netdev: network device
+ * @gfp: allocation flags
+ *
+ * This function is used to notify the userspace about the unavailability
+ * of the network interface. The driver may have encountered errors that has
+ * forced it to notify the userpace.
+ */
+void cfg80211_send_iface_unavailable(struct net_device *netdev, gfp_t gfp);
+
 
 /**
  * cfg80211_cqm_rssi_notify - connection quality monitoring rssi event
