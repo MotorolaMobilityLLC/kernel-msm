@@ -11,10 +11,14 @@
  */
 
 &soc {
-	mot_auo_720p_vid: qcom,mdss_dsi_mot_auo_720p_video {
+	mot_auo_720p_vid_v0: qcom,mdss_dsi_mot_auo_720p_video_v0 {
 		compatible = "qcom,mdss-dsi-panel";
-		label = "mot auo 720p video mode dsi panel";
-		status = "disable";
+		label = "mipi_mot_video_auo_hd_450 v0";
+		status = "ok";
+
+		mmi,panel_name = "mipi_mot_video_auo_hd_450";
+		mmi,panel_ver_min = <0x00 0x00>;
+		mmi,panel_ver_max = <0xffffffff 0xffffffff>;
 		qcom,dsi-ctrl-phandle = <&mdss_dsi0>;
 
 		qcom,supply-names = "vddio_disp", "lcdbias";
