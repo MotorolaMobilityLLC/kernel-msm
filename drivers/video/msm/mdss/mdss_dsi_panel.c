@@ -457,6 +457,18 @@ static int mdss_panel_parse_dt(struct platform_device *pdev,
 	}
 	panel_data->panel_info.bpp = (!rc ? tmp : 24);
 
+	rc = of_property_read_u32(np, "qcom,mdss-pan-width", &tmp);
+	if (rc)
+		pr_warn("%s:%d, panel width not specified\n",
+						__func__, __LINE__);
+	panel_data->panel_info.width = (!rc ? tmp : 0);
+
+	rc = of_property_read_u32(np, "qcom,mdss-pan-height", &tmp);
+	if (rc)
+		pr_warn("%s:%d, panel height not specified\n",
+						__func__, __LINE__);
+	panel_data->panel_info.height = (!rc ? tmp : 0);
+
 	pdest = of_get_property(pdev->dev.of_node,
 				"qcom,mdss-pan-dest", NULL);
 	if (strlen(pdest) != 9) {
