@@ -574,6 +574,18 @@ int32_t mi1040_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 				cdata->cfg.exp_compensation);
 		break;
 
+	case CFG_SET_FPS:
+		if (s_ctrl->func_tbl->
+		sensor_set_fps == NULL) {
+			rc = -EFAULT;
+			break;
+		}
+		rc = s_ctrl->func_tbl->
+			sensor_set_fps(
+				s_ctrl,
+				cdata->cfg.fps);
+		break;
+
 	default:
 		rc = -EFAULT;
 		break;
@@ -724,6 +736,53 @@ int32_t mi1040_sensor_set_ev(struct msm_sensor_ctrl_t *s_ctrl, int compensation)
 	return rc;
 }
 
+int32_t mi1040_sensor_set_fps(struct msm_sensor_ctrl_t *s_ctrl, int fps)
+{
+	int32_t rc = 0;
+	pr_info("%s +++ fps: %d\n", __func__, fps);
+
+	switch (fps) {
+	case CAMERA_FPS_FIX_30:
+		CDBG("--CAMERA--CAMERA_FPS_FIX_30\n");
+		rc = sensor_write_table(s_ctrl, Fix_30_fps,
+			ARRAY_SIZE(Fix_30_fps));
+		break;
+	case CAMERA_FPS_FIX_25:
+		CDBG("--CAMERA--CAMERA_FPS_FIX_25\n");
+		rc = sensor_write_table(s_ctrl, Fix_25_fps,
+			ARRAY_SIZE(Fix_25_fps));
+		break;
+	case CAMERA_FPS_FIX_24:
+		CDBG("--CAMERA--CAMERA_FPS_FIX_24\n");
+		rc = sensor_write_table(s_ctrl, Fix_24_fps,
+			ARRAY_SIZE(Fix_24_fps));
+		break;
+	case CAMERA_FPS_FIX_20:
+		CDBG("--CAMERA--CAMERA_FPS_FIX_20\n");
+		rc = sensor_write_table(s_ctrl, Fix_20_fps,
+			ARRAY_SIZE(Fix_20_fps));
+		break;
+	case CAMERA_FPS_FIX_15:
+		CDBG("--CAMERA--CAMERA_FPS_FIX_15\n");
+		rc = sensor_write_table(s_ctrl, Fix_15_fps,
+			ARRAY_SIZE(Fix_15_fps));
+	case CAMERA_FPS_AUTO_30:
+		CDBG("--CAMERA--ERROR CAMERA_FPS_AUTO_30\n");
+		rc = sensor_write_table(s_ctrl, auto_30_fps,
+			ARRAY_SIZE(auto_30_fps));
+		break;
+	default:
+		CDBG("--CAMERA--CAMERA_FPS_AUTO\n");
+		rc = sensor_write_table(s_ctrl, auto_30_fps,
+			ARRAY_SIZE(auto_30_fps));
+		break;
+	}
+
+	msleep(20);
+
+	return rc;
+}
+
 static struct msm_sensor_fn_t mi1040_sensor_func_tbl = {
 	.sensor_config = mi1040_sensor_config,
 	.sensor_power_up = msm_sensor_power_up,
@@ -732,6 +791,7 @@ static struct msm_sensor_fn_t mi1040_sensor_func_tbl = {
 	.sensor_set_effect = mi1040_sensor_set_effect,
 	.sensor_set_wb = mi1040_sensor_set_wb,
 	.sensor_set_ev = mi1040_sensor_set_ev,
+	.sensor_set_fps = mi1040_sensor_set_fps,
 };
 
 static struct msm_sensor_ctrl_t mi1040_s_ctrl = {

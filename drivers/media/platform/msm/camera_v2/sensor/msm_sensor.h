@@ -54,6 +54,7 @@ struct msm_sensor_fn_t {
 			(struct msm_sensor_ctrl_t *, int);
 	int32_t (*sensor_set_ev)
 			(struct msm_sensor_ctrl_t *, int);
+	int32_t (*sensor_set_fps)(struct msm_sensor_ctrl_t *, int);
 };
 
 struct msm_sensor_ctrl_t {

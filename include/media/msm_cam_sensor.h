@@ -269,6 +269,7 @@ struct sensorb_cfg_data {
 		int8_t effect;
 		uint8_t wb_val;
 		int8_t exp_compensation;
+		int8_t fps;
 	} cfg;
 };
 
@@ -334,6 +335,7 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_START_STREAM,
 	CFG_SET_EFFECT,
 	CFG_SET_WB,
+	CFG_SET_FPS,
 	CFG_SET_EXPOSURE_COMPENSATION,
 };
 
@@ -467,6 +469,13 @@ enum af_camera_name {
 #define CAMERA_EXPOSURE_COMPENSATION_LV2			0
 #define CAMERA_EXPOSURE_COMPENSATION_LV3			-6
 #define CAMERA_EXPOSURE_COMPENSATION_LV4			-12
+
+#define CAMERA_FPS_FIX_30			30
+#define CAMERA_FPS_FIX_25			25
+#define CAMERA_FPS_FIX_24			24
+#define CAMERA_FPS_FIX_20			20
+#define CAMERA_FPS_FIX_15			15
+#define CAMERA_FPS_AUTO_30			0
 
 struct msm_actuator_cfg_data {
 	int cfgtype;
