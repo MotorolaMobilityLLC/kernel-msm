@@ -266,7 +266,7 @@ VOS_STATUS vos_free_context( v_VOID_t *pVosContext, VOS_MODULE_ID moduleID,
                              v_VOID_t *pModuleContext );
                              
 v_BOOL_t vos_is_apps_power_collapse_allowed(void* pHddCtx);
-void vos_abort_mac_scan(void);
+void vos_abort_mac_scan(tANI_U8 sessionId);
 
 /**
   @brief vos_wlanShutdown() - This API will shutdown WLAN driver
