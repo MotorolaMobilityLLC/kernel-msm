@@ -15,6 +15,12 @@
 /include/ "msm8974-camera-sensor-mtp.dtsi"
 /include/ "msm8974-leds.dtsi"
 
+/ {
+	aliases {
+		uart3 = &uart3;
+	};
+};
+
 &soc {
 	serial@f991e000 {
 		status = "ok";
@@ -71,6 +77,23 @@
 		interrupt-names = "qup_err_intr";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <50000000>;
+	};
+
+	uart3: uart@f991f000 {	/* BLSP3 (BLSP1 UART2) */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf991f000 0x1000>,
+			<0xf9904000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupts = <0 109 0>, <0 238 0>;
+		interrupt-names = "core_irq", "bam_irq";
+		qcom,bam-tx-ep-pipe-index = <4>;
+		qcom,bam-rx-ep-pipe-index = <5>;
+		qcom,msm-bus,name = "uart3";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<86 512 0 0>,
+				<86 512 500 800>;
 	};
 
 	qcom,hdmi_tx@fd922100 {
@@ -866,6 +889,10 @@
 		qcom,vin-sel = <2>;       /* S3 */
 		qcom,src-sel = <3>;       /* SLEEP_CLK3*/
 	};
+};
+
+&spi_0 {
+	status = "disabled";
 };
 
 &i2c_2 {
