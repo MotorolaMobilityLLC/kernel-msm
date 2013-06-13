@@ -180,6 +180,15 @@
 	qcom,msm-adsp-sensors {
 		status = "disabled";
 	};
+
+	ti,c55-ctrl {
+		compatible = "ti,c55-ctrl";
+		reg = <0 0>;
+		gpios = <&pm8941_gpios 14 2>,	/* gpio_core */
+			<&pm8941_gpios 16 0>,	/* gpio_reset */
+			<&msmgpio 102 1>,	/* gpio_ap_int */
+			<&msmgpio 61 2>;	/* gpio_c55_int */
+	};
 };
 
 &spmi_bus {
