@@ -6614,7 +6614,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	if (chip->update_time)
 		schedule_delayed_work(&chip->update_heartbeat_work,
 				      round_jiffies_relative(msecs_to_jiffies
-							(chip->update_time)));
+							     (100)));
 	return 0;
 
 destroy_wakelock:
