@@ -4774,7 +4774,7 @@ qpnp_chg_hwinit(struct qpnp_chg_chip *chip, u8 subtype,
 		rc = qpnp_chg_masked_write(chip,
 			chip->usb_chgpth_base + USB_CHG_GONE_REV_BST,
 			0xFF,
-			0x00, 1);
+			0x80, 1);
 
 		if ((subtype == SMBBP_USB_CHGPTH_SUBTYPE) ||
 			(subtype == SMBCL_USB_CHGPTH_SUBTYPE)) {
