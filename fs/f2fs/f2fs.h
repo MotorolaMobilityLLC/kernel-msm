@@ -154,7 +154,7 @@ struct extent_info {
  * i_advise uses FADVISE_XXX_BIT. We can add additional hints later.
  */
 #define FADVISE_COLD_BIT	0x01
-#define FADVISE_CP_BIT		0x02
+#define FADVISE_LOST_PINO_BIT	0x02
 #define FADVISE_ANDROID_EMU	0x10
 #define FADVISE_ANDROID_EMU_ROOT 0x20
 
