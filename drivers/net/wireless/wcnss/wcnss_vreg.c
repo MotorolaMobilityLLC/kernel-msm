@@ -320,6 +320,10 @@ static void wcnss_vregs_off(struct vregs_info regulators[], uint size)
 
 	/* Regulators need to be turned off in the reverse order */
 	for (i = (size-1); i >= 0; i--) {
+
+		if(IS_ERR_OR_NULL(regulators[i].regulator))
+			continue;
+
 		if (regulators[i].state == VREG_NULL_CONFIG)
 			continue;
 
