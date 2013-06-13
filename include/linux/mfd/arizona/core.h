@@ -23,6 +23,7 @@
 enum arizona_type {
 	WM5102 = 1,
 	WM5110 = 2,
+	WM8997 = 3,
 	WM8280 = 4
 };
 
@@ -126,6 +127,7 @@ int arizona_set_irq_wake(struct arizona *arizona, int irq, int on);
 
 int wm5102_patch(struct arizona *arizona);
 int florida_patch(struct arizona *arizona);
+int wm8997_patch(struct arizona *arizona);
 
 extern int arizona_of_get_named_gpio(struct arizona *arizona, const char *prop,
 				     bool mandatory, int *gpio);
