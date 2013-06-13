@@ -126,6 +126,9 @@
 #define TFA9890_STATUS_TEMP			(0x1ff)
 #define TFA9890_STATUS_VDDS			(0x1)
 #define TFA9890_STATUS_AMP_SWS			(1<<12)
+#define TFA9890_STATUS_SPKS			(1<<10)
+#define TFA9890_STATUS_WDS			(1<<13)
+#define TFA9890_STATUS_ARFS			(1<<15)
 
 /* Params masks */
 #define TFA9890_I2S_FORMAT		(0x8)
