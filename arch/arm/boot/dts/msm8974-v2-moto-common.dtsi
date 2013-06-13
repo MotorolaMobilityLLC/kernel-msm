@@ -153,6 +153,10 @@
 		qcom,supply-peak-current = <100000 100000>;
 		qcom,mdss-fb-map = <&mdss_fb0>;
 	};
+
+	qcom,msm-adsp-sensors {
+		status = "disabled";
+	};
 };
 
 &spmi_bus {
