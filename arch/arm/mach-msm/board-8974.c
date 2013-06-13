@@ -155,6 +155,8 @@ static struct of_dev_auxdata msm8974_auxdata_lookup[] __initdata = {
 			"msm_hsic_host", NULL),
 	OF_DEV_AUXDATA("qcom,hsic-smsc-hub", 0, "msm_smsc_hub",
 			msm_hsic_host_adata),
+	OF_DEV_AUXDATA("ti,c55-ctrl", 0x0, \
+			"c55_ctrl", NULL),
 	{}
 };
 
