@@ -844,6 +844,39 @@ end:
     return;
 } /*** end limHandle80211Frames() ***/
 
+/**
+ * limSendStopScanOffloadReq()
+ *
+ *FUNCTION:
+ * This function will be called to abort the ongoing offloaded scan
+ * request.
+ *
+ *
+ *NOTE:
+ *
+ * @param  pMac      Pointer to Global MAC structure
+ * @return eHAL_STATUS_SUCCESS or eHAL_STATUS_FAILURE
+ */
+eHalStatus limSendStopScanOffloadReq(tpAniSirGlobal pMac)
+{
+    tSirMsgQ msg;
+    tSirRetStatus rc = eSIR_SUCCESS;
+
+    msg.type = WDA_STOP_SCAN_OFFLOAD_REQ;
+    msg.bodyptr = NULL;
+    msg.bodyval = 0;
+
+    rc = wdaPostCtrlMsg(pMac, &msg);
+    if (rc != eSIR_SUCCESS)
+    {
+        limLog(pMac, LOGE, FL("wdaPostCtrlMsg() return failure"),
+               pMac);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    return eHAL_STATUS_SUCCESS;
+
+}
 
 /**
  * limProcessAbortScanInd()
@@ -873,29 +906,37 @@ limProcessAbortScanInd(tpAniSirGlobal pMac)
 
     limAbortBackgroundScan(pMac);
 
-    /* Abort the scan if its running, else just return */
-    if(limIsSystemInScanState(pMac))
+    if (pMac->fScanOffload)
     {
-        if( (eLIM_HAL_INIT_SCAN_WAIT_STATE == pMac->lim.gLimHalScanState ) ||
-            (eLIM_HAL_START_SCAN_WAIT_STATE == pMac->lim.gLimHalScanState ) ||
-            (eLIM_HAL_END_SCAN_WAIT_STATE == pMac->lim.gLimHalScanState ) ||
-            (eLIM_HAL_FINISH_SCAN_WAIT_STATE == pMac->lim.gLimHalScanState) )
+        /* send stop scan cmd to fw if scan offload is enabled. */
+        limSendStopScanOffloadReq(pMac);
+    }
+    else
+    {
+        /* Abort the scan if its running, else just return */
+        if(limIsSystemInScanState(pMac))
         {
-            //Simply signal we need to abort
-            limLog( pMac, LOGW, FL(" waiting for HAL, simply signal abort gLimHalScanState = %d"), pMac->lim.gLimHalScanState );
-            pMac->lim.abortScan = 1;
-        }
-        else
-        {
-            //Force abort
-            limLog( pMac, LOGW, FL(" Force aborting scan") );
-            pMac->lim.abortScan = 0;
-            limDeactivateAndChangeTimer(pMac, eLIM_MIN_CHANNEL_TIMER);
-            limDeactivateAndChangeTimer(pMac, eLIM_MAX_CHANNEL_TIMER);
-            //Set the resume channel to Any valid channel (invalid). 
-            //This will instruct HAL to set it to any previous valid channel.
-            peSetResumeChannel(pMac, 0, 0);
-            limSendHalFinishScanReq(pMac, eLIM_HAL_FINISH_SCAN_WAIT_STATE);
+            if( (eLIM_HAL_INIT_SCAN_WAIT_STATE == pMac->lim.gLimHalScanState ) ||
+                    (eLIM_HAL_START_SCAN_WAIT_STATE == pMac->lim.gLimHalScanState ) ||
+                    (eLIM_HAL_END_SCAN_WAIT_STATE == pMac->lim.gLimHalScanState ) ||
+                    (eLIM_HAL_FINISH_SCAN_WAIT_STATE == pMac->lim.gLimHalScanState) )
+            {
+                //Simply signal we need to abort
+                limLog( pMac, LOGW, FL(" waiting for HAL, simply signal abort gLimHalScanState = %d"), pMac->lim.gLimHalScanState );
+                pMac->lim.abortScan = 1;
+            }
+            else
+            {
+                //Force abort
+                limLog( pMac, LOGW, FL(" Force aborting scan") );
+                pMac->lim.abortScan = 0;
+                limDeactivateAndChangeTimer(pMac, eLIM_MIN_CHANNEL_TIMER);
+                limDeactivateAndChangeTimer(pMac, eLIM_MAX_CHANNEL_TIMER);
+                //Set the resume channel to Any valid channel (invalid).
+                //This will instruct HAL to set it to any previous valid channel.
+                peSetResumeChannel(pMac, 0, 0);
+                limSendHalFinishScanReq(pMac, eLIM_HAL_FINISH_SCAN_WAIT_STATE);
+            }
         }
     }
     return;
