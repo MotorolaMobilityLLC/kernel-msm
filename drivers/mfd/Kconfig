@@ -1055,6 +1055,12 @@ config MFD_FLORIDA
 	  Support for Wolfson Microelectronics Florida class low power audio SoC
 	  such as the WM8280
 
+config MFD_WM8997
+	bool "Support Wolfson Microelectronics WM8997"
+	depends on MFD_ARIZONA
+	help
+	  Support for Wolfson Microelectronics WM8997 low power audio SoC
+
 config MFD_WM8400
 	bool "Wolfson Microelectronics WM8400"
 	select MFD_CORE
