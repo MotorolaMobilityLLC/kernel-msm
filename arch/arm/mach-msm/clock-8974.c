@@ -4950,6 +4950,7 @@ static struct clk_lookup msm_clocks_8974_common[] __initdata = {
 	CLK_LOOKUP("xo",       cxo_dwc3_clk.c,                 "msm_dwc3"),
 	CLK_LOOKUP("xo",  cxo_ehci_host_clk.c,            "msm_ehci_host"),
 	CLK_LOOKUP("xo",        cxo_lpm_clk.c,        "fc4281d0.qcom,mpm"),
+	CLK_LOOKUP("adc_mclk",   cxo_d1_pin.c,                 "c55_ctrl"),
 
 	CLK_LOOKUP("measure",	measure_clk.c,	"debug"),
 
