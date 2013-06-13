@@ -439,7 +439,7 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 	else if (ret <= 0) {
 		pr_err("%s timeout/error. ret = %d", __func__, ret);
 		if (ret == 0) {
-			mdp4_hang_dump();
+			mdp4_hang_dump(__func__);
 			timeout_occurred[cndx] = 1;
 		}
 	} else {
@@ -477,7 +477,7 @@ static void mdp4_dsi_video_wait4dmap(int cndx)
 			timeout_occurred[cndx] = 1;
 			/* only dump the hang once */
 			if (retries == MAX_DMAP_TIMEOUTS)
-				mdp4_hang_dump();
+				mdp4_hang_dump(__func__);
 		} else {
 			if (timeout_occurred[cndx] > 0)
 				pr_info("%s: recovered from previous timeout\n",
@@ -543,7 +543,7 @@ static void mdp4_dsi_video_wait4ov(int cndx)
 	if (!wait_for_completion_timeout(&vctrl->ov_comp, WAIT_TOUT)) {
 		pr_err("%s: TIMEOUT\n", __func__);
 		timeout_occurred[cndx] = 1;
-		mdp4_hang_dump();
+		mdp4_hang_dump(__func__);
 	} else {
 		if (timeout_occurred[cndx])
 			pr_info("%s: recovered from previous timeout\n",

@@ -3232,14 +3232,14 @@ void mdp4_dump_commit_info(void)
 {
 	int i;
 
-	MDP4_HANG_LOG("------ MDP dump commit info ----\n");
+	MDP4_HANG_DUMP("------ MDP dump commit info ----\n");
 	for (i = 0; i < COMMIT_HIST_TBL_SIZE; i++)
-		MDP4_HANG_LOG(
+		MDP4_HANG_DUMP(
 			"Index = %d commit_num = %d stage_commit = 0x%x\n",
 			i, commit_tbl[i].commit_cnt,
 			commit_tbl[i].stage_commit);
 
-	MDP4_HANG_LOG("------ MDP dump commit info complete ----\n");
+	MDP4_HANG_DUMP("------ MDP dump commit info complete ----\n");
 }
 
 
@@ -3301,7 +3301,7 @@ static void mdp4_reg_range_dump(int offset, int range)
 
 	for (i = 0; i < range ;) {
 		addr = addr_start + i;
-		MDP4_HANG_LOG("0x%8x:%08x %08x %08x %08x %08x %08x %08x %08x\n",
+		MDP4_HANG_DUMP("0x%8x:%08x %08x %08x %08x %08x %08x %08x %08x\n",
 			(uint32)(addr),
 			(uint32)inpdw(addr), (uint32)inpdw(addr + 4),
 			(uint32)inpdw(addr + 8), (uint32)inpdw(addr + 12),
@@ -3312,8 +3312,8 @@ static void mdp4_reg_range_dump(int offset, int range)
 }
 void mdp4_regs_dump(void)
 {
-	MDP4_HANG_LOG(
-		"------- MDP HANG: MDP Regs dump starts ------\n");
+	MDP4_HANG_DUMP(
+		"------- MDP Regs dump starts ------\n");
 	mdp4_reg_range_dump(0, 0x4c);
 	mdp4_reg_range_dump(0x50, 0xc);
 	mdp4_reg_range_dump(0x60, 0x1c);
@@ -3339,7 +3339,7 @@ void mdp4_regs_dump(void)
 	mdp4_reg_range_dump(0xB0000, 0x10);
 	mdp4_reg_range_dump(0xD0000, 0x68);
 	mdp4_reg_range_dump(0xE0000, 0x32);
-	MDP4_HANG_LOG("------ MDP dump finished. ------\n");
+	MDP4_HANG_DUMP("------ MDP Regs dump finished. ------\n");
 }
 
 void mdp4_interrupts_dump(void)
@@ -3357,7 +3357,7 @@ void mdp4_interrupts_dump(void)
 
 void mdp4_hang_dropbox_trigger_callback(void *data)
 {
-	mdp4_hang_dump();
+	mdp4_hang_dump(__func__);
 }
 
 void mdp4_hang_init(void)
@@ -3378,9 +3378,11 @@ void mdp4_hang_init(void)
 }
 EXPORT_SYMBOL(mdp4_hang_init);
 
-void mdp4_hang_dump(void)
+void mdp4_hang_dump(const char *hang_type)
 {
 	mdp4_hang_data_pos = 0;
+
+	MDP4_HANG_DUMP("%s", hang_type);
 
 	mdp4_interrupts_dump();
 	mdp4_dump_vsync_ctrl();
