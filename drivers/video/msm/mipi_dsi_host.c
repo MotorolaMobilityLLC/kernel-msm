@@ -1789,7 +1789,7 @@ void mipi_dsi_cmd_mdp_busy(void)
 			pr_err("%s: timeout waiting for DSI MDP completion\n",
 				__func__);
 			timeout_occurred = 1;
-			mdp4_hang_dump();
+			mdp4_hang_dump(__func__);
 		} else {
 			if (timeout_occurred)
 				pr_info("%s: recovered from previous timeout\n",
@@ -2260,7 +2260,7 @@ static void dsi_reg_range_dump(int offset, int range)
 	addr_start = (uint32)MIPI_DSI_BASE + offset;
 	for (i = 0; i < range ;) {
 		addr = addr_start + i;
-		MDP4_HANG_LOG("0x%8x:%08x %08x %08x %08x %08x %08x %08x %08x\n",
+		MDP4_HANG_DUMP("0x%8x:%08x %08x %08x %08x %08x %08x %08x %08x\n",
 			 (uint32)(addr),
 			 (uint32)inpdw(addr), (uint32)inpdw(addr + 4),
 			 (uint32)inpdw(addr + 8), (uint32)inpdw(addr + 12),
@@ -2273,13 +2273,13 @@ static void dsi_reg_range_dump(int offset, int range)
 void mipi_dsi_regs_dump(void)
 {
 	mipi_dsi_clk_cfg(1);
-	MDP4_HANG_LOG("------- DSI Regs dump starts ------\n");
+	MDP4_HANG_DUMP("------- DSI Regs dump starts ------\n");
 	dsi_reg_range_dump(0, 0xcc);
 	dsi_reg_range_dump(0x108, 0x20);
 	dsi_reg_range_dump(0x190, 0xc8);
 	dsi_reg_range_dump(0x280, 0x10);
 	dsi_reg_range_dump(0x440, 0xb0);
 	dsi_reg_range_dump(0x500, 0x5c);
-	MDP4_HANG_LOG("------- DSI Regs dump done ------\n");
+	MDP4_HANG_DUMP("------- DSI Regs dump done ------\n");
 	mipi_dsi_clk_cfg(0);
 }

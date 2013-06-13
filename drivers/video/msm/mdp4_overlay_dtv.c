@@ -364,7 +364,7 @@ void mdp4_dtv_wait4vsync(int cndx)
 	if (wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT) == 0) {
 		pr_err("%s: TIMEOUT\n", __func__);
 		timeout_occurred[cndx] = 1;
-		mdp4_hang_dump();
+		mdp4_hang_dump(__func__);
 	} else {
 		if (timeout_occurred[cndx])
 			pr_info("%s: recovered from previous timeout\n",
@@ -400,7 +400,7 @@ static void mdp4_dtv_wait4dmae(int cndx)
 			timeout_occurred[cndx] = 1;
 			/* only dump the hang once */
 			if (retries == MAX_DMAP_TIMEOUTS)
-				mdp4_hang_dump();
+				mdp4_hang_dump(__func__);
 		} else {
 			if (timeout_occurred[cndx])
 				pr_info("%s: recovered from previous timeout\n",

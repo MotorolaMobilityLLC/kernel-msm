@@ -1003,7 +1003,7 @@ void mdp4_stats_dump(struct mdp4_statistic stat);
 void mdp4_store_commit_info(void);
 void mdp4_dump_commit_info(void);
 void mdp4_regs_dump(void);
-void mdp4_hang_dump(void);
+void mdp4_hang_dump(const char *hang_type);
 void mdp4_dump_vsync_ctrl(void);
 
 extern char *mdp4_hang_data;
@@ -1012,9 +1012,8 @@ extern void mdp4_hang_init(void);
 extern u8 mdp4_dmap_timeout_counter[];
 
 #define MDP_DUMP_SIZE (4*PAGE_SIZE)
-#define MDP4_HANG_LOG(fmt, args...) \
+#define MDP4_HANG_DUMP(fmt, args...) \
 	do { \
-		pr_err(fmt, ##args); \
 		if (mdp4_hang_data != NULL) { \
 			mdp4_hang_data_pos += scnprintf( \
 				&mdp4_hang_data[mdp4_hang_data_pos], \
@@ -1027,6 +1026,12 @@ extern u8 mdp4_dmap_timeout_counter[];
 					MDP_DUMP_SIZE-mdp4_hang_data_pos-1, \
 					"\n"); \
 		} \
+	} while (0)
+
+#define MDP4_HANG_LOG(fmt, args...) \
+	do { \
+		pr_err(fmt, ##args); \
+		MDP4_HANG_DUMP(fmt, ##args); \
 	} while (0)
 
 #define DMAP_TIMEOUT (HZ/10) /* 100 ms */
