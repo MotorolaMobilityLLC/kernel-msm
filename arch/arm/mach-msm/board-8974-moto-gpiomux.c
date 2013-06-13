@@ -614,79 +614,41 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	},
 };
 
-static struct gpiomux_setting auxpcm_act_cfg = {
+static struct gpiomux_setting c55_i2s_act_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
 
 
-static struct gpiomux_setting auxpcm_sus_cfg = {
-	.func = GPIOMUX_FUNC_1,
+static struct gpiomux_setting c55_i2s_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
 };
 
 /* Primary AUXPCM port sharing GPIO lines with Primary MI2S */
-static struct msm_gpiomux_config msm8974_pri_pri_auxpcm_configs[] __initdata = {
+static struct msm_gpiomux_config c55_i2s_configs[] __initdata = {
 	{
 		.gpio = 65,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+			[GPIOMUX_SUSPENDED] = &c55_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
 		},
 	},
 	{
 		.gpio = 66,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+			[GPIOMUX_SUSPENDED] = &c55_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
 		},
 	},
 	{
 		.gpio = 67,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 68,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-};
-
-/* Primary AUXPCM port sharing GPIO lines with Tertiary MI2S */
-static struct msm_gpiomux_config msm8974_pri_ter_auxpcm_configs[] __initdata = {
-	{
-		.gpio = 74,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 75,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 76,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 77,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+			[GPIOMUX_SUSPENDED] = &c55_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
 		},
 	},
 };
@@ -954,6 +916,35 @@ static struct msm_gpiomux_config vib_en_gpio __initdata = {
 	},
 };
 
+static struct gpiomux_setting c55_c55_int_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting c55_ap_int_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config c55_configs[] __initdata = {
+	{
+		.gpio = 61,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &c55_c55_int_cfg,
+		},
+	},
+	{
+		.gpio = 102,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &c55_ap_int_cfg,
+		},
+	},
+};
+
 void __init msm_8974_moto_init_gpiomux(void)
 {
 	int rc;
@@ -992,12 +983,7 @@ void __init msm_8974_moto_init_gpiomux(void)
 		msm_gpiomux_install(msm_mhl_configs,
 				    ARRAY_SIZE(msm_mhl_configs));
 
-	if (of_board_is_liquid())
-		msm_gpiomux_install(msm8974_pri_ter_auxpcm_configs,
-				 ARRAY_SIZE(msm8974_pri_ter_auxpcm_configs));
-	else
-		msm_gpiomux_install(msm8974_pri_pri_auxpcm_configs,
-				 ARRAY_SIZE(msm8974_pri_pri_auxpcm_configs));
+	msm_gpiomux_install(c55_i2s_configs, ARRAY_SIZE(c55_i2s_configs));
 
 	msm_gpiomux_install(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
@@ -1007,4 +993,6 @@ void __init msm_8974_moto_init_gpiomux(void)
 				    ARRAY_SIZE(msm_rumi_blsp_configs));
 
 	msm_gpiomux_install(&vib_en_gpio, 1);
+
+	msm_gpiomux_install(c55_configs, ARRAY_SIZE(c55_configs));
 }
