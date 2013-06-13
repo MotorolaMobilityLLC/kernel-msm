@@ -3997,6 +3997,10 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
     int  init_ft_flag = FALSE;
 #endif
 
+    if (NULL == pNeighborRoamInfo)
+    {
+        return eHAL_STATUS_FAILURE;
+    }
     smsLog(pMac, LOG2, FL("Connect indication received with session id %d in state %d"), sessionId, pNeighborRoamInfo->neighborRoamState);
 
     // Bail out if this is NOT a STA persona
