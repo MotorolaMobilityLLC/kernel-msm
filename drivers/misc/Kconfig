@@ -620,6 +620,16 @@ config QCOM_LIQUID_DOCK
 	  the docking station of various models of Qualcomm Technology's
 	  LiQUID Mobile Development Platforms.
 
+config EARJACK_DEBUGGER
+	bool "Earjack UART debugger support"
+	depends on SERIAL_MSM_HSL
+	help
+	  Enables support for Earjack Debugger trigger. It controls
+	  uart console. uart console will be disabled if detected earjack
+	  debugger. Otherwise, uart console will be enabled.
+
+	  Say 'y' here to include support for earjack debugger trigger
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
