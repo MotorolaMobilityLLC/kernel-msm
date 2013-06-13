@@ -5839,11 +5839,12 @@ eHalStatus sme_SetPowerParams(tHalHandle hHal, tSirSetPowerParamsReq* pwParams, 
     \fn sme_AbortMacScan
     \brief  API to cancel MAC scan.
     \param  hHal - The handle returned by macOpen.
+    \param  sessionId - sessionId on which we need to abort scan.
     \return VOS_STATUS
             VOS_STATUS_E_FAILURE - failure
             VOS_STATUS_SUCCESS  success
   ---------------------------------------------------------------------------*/
-eHalStatus sme_AbortMacScan(tHalHandle hHal)
+eHalStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId)
 {
     eHalStatus status;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -5851,7 +5852,7 @@ eHalStatus sme_AbortMacScan(tHalHandle hHal)
     status = sme_AcquireGlobalLock( &pMac->sme );
     if ( HAL_STATUS_SUCCESS( status ) )
     {
-       status = csrScanAbortMacScan(pMac);
+       status = csrScanAbortMacScan(pMac, sessionId);
     
        sme_ReleaseGlobalLock( &pMac->sme );
     }

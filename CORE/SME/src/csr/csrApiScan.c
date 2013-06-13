@@ -5100,7 +5100,17 @@ eHalStatus csrSendMBScanReq( tpAniSirGlobal pMac, tANI_U16 sessionId,
             pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_SCAN_REQ);
             pMsg->length = pal_cpu_to_be16(msgLen);
             //ToDO: Fill in session info when we need to do scan base on session.
-            pMsg->sessionId = 0;
+            if ((pMac->fScanOffload) && (sessionId != CSR_SESSION_ID_INVALID))
+            {
+                pMsg->sessionId = sessionId;
+            }
+            else
+            {
+                /* if sessionId == CSR_SESSION_ID_INVALID, then send the scan
+                   request on first available session */
+                pMsg->sessionId = 0;
+            }
+
             pMsg->transactionId = 0;
             pMsg->dot11mode = (tANI_U8) csrTranslateToWNICfgDot11Mode(pMac, csrFindBestPhyMode( pMac, pMac->roam.configParam.phyMode ));
             pMsg->bssType = pal_cpu_to_be32(csrTranslateBsstypeToMacType(pScanReq->BSSType));
@@ -7361,49 +7371,123 @@ eHalStatus csrProcessSetBGScanParam(tpAniSirGlobal pMac, tSmeCmd *pCommand)
 }
 
 
-eHalStatus csrScanAbortMacScan(tpAniSirGlobal pMac)
+eHalStatus csrScanAbortMacScan(tpAniSirGlobal pMac, tANI_U8 sessionId)
 {
-    eHalStatus status = eHAL_STATUS_SUCCESS;
-    tSirMbMsg *pMsg;
+    eHalStatus status = eHAL_STATUS_FAILURE;
+    tSirSmeScanAbortReq *pMsg;
     tANI_U16 msgLen;
     tListElem *pEntry;
     tSmeCmd *pCommand;
 
-#ifdef WLAN_AP_STA_CONCURRENCY
-    csrLLLock(&pMac->scan.scanCmdPendingList);
-    while( NULL != ( pEntry = csrLLRemoveHead( &pMac->scan.scanCmdPendingList, LL_ACCESS_NOLOCK) ) )
+    if (!pMac->fScanOffload)
     {
+#ifdef WLAN_AP_STA_CONCURRENCY
+        csrLLLock(&pMac->scan.scanCmdPendingList);
+        while(NULL !=
+               (pEntry = csrLLRemoveHead(&pMac->scan.scanCmdPendingList,
+                                LL_ACCESS_NOLOCK)))
+        {
 
-        pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
-        csrAbortCommand( pMac, pCommand, eANI_BOOLEAN_FALSE);
-    }
-    csrLLUnlock(&pMac->scan.scanCmdPendingList);
+            pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+            csrAbortCommand( pMac, pCommand, eANI_BOOLEAN_FALSE);
+        }
+        csrLLUnlock(&pMac->scan.scanCmdPendingList);
 #endif
 
-    pMac->scan.fDropScanCmd = eANI_BOOLEAN_TRUE;
-    csrRemoveCmdFromPendingList( pMac, &pMac->roam.roamCmdPendingList, eSmeCommandScan);
-    csrRemoveCmdFromPendingList( pMac, &pMac->sme.smeCmdPendingList, eSmeCommandScan);
-    pMac->scan.fDropScanCmd = eANI_BOOLEAN_FALSE;
+        pMac->scan.fDropScanCmd = eANI_BOOLEAN_TRUE;
+        csrRemoveCmdFromPendingList( pMac, &pMac->roam.roamCmdPendingList, eSmeCommandScan);
+        csrRemoveCmdFromPendingList( pMac, &pMac->sme.smeCmdPendingList, eSmeCommandScan);
+        pMac->scan.fDropScanCmd = eANI_BOOLEAN_FALSE;
+
+        pEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK);
+    }
+    else
+    {
+        pMac->scan.fDropScanCmd = eANI_BOOLEAN_TRUE;
+        csrRemoveCmdWithSessionIdFromPendingList(pMac,
+                sessionId,
+                &pMac->sme.smeScanCmdPendingList,
+                eSmeCommandScan);
+        pMac->scan.fDropScanCmd = eANI_BOOLEAN_FALSE;
+
+        pEntry = csrLLPeekHead(&pMac->sme.smeScanCmdActiveList, LL_ACCESS_LOCK);
+    }
 
     //We need to abort scan only if we are scanning
-    if(NULL != (pEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK)))
+    if(NULL != pEntry)
     {
         pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
-        if(eSmeCommandScan == pCommand->command)
+        if(eSmeCommandScan == pCommand->command &&
+           pCommand->sessionId == sessionId)
         {
-            msgLen = (tANI_U16)(sizeof( tSirMbMsg ));
+            msgLen = (tANI_U16)(sizeof(tSirSmeScanAbortReq));
             status = palAllocateMemory(pMac->hHdd, (void **)&pMsg, msgLen);
             if(HAL_STATUS_SUCCESS(status))
             {
                 palZeroMemory(pMac->hHdd, (void *)pMsg, msgLen);
                 pMsg->type = pal_cpu_to_be16((tANI_U16)eWNI_SME_SCAN_ABORT_IND);
                 pMsg->msgLen = pal_cpu_to_be16(msgLen);
+                pMsg->sessionId = sessionId;
                 status = palSendMBMessage(pMac->hHdd, pMsg);
             }
+            else
+                smsLog(pMac, LOGE, FL("Failed to allocate memory for"
+                                      " SmeScanAbortReq"));
         }
     }
 
-    return( status );
+    return(status);
+}
+
+void csrRemoveCmdWithSessionIdFromPendingList(tpAniSirGlobal pMac,
+                                              tANI_U8 sessionId,
+                                              tDblLinkList *pList,
+                                              eSmeCommandType commandType)
+{
+    tDblLinkList localList;
+    tListElem *pEntry;
+    tSmeCmd   *pCommand;
+    tListElem  *pEntryToRemove;
+
+    vos_mem_zero(&localList, sizeof(tDblLinkList));
+    if(!HAL_STATUS_SUCCESS(csrLLOpen(pMac->hHdd, &localList)))
+    {
+        smsLog(pMac, LOGE, FL(" failed to open list"));
+        return;
+    }
+
+    csrLLLock(pList);
+    if ((pEntry = csrLLPeekHead( pList, LL_ACCESS_NOLOCK)))
+    {
+
+        /* Have to make sure we don't loop back to the head of the list,
+         * which will happen if the entry is NOT on the list */
+        while (pEntry)
+        {
+            pEntryToRemove = pEntry;
+            pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+            pCommand = GET_BASE_ADDR( pEntryToRemove, tSmeCmd, Link );
+            if ((pCommand->command == commandType)  &&
+                    (pCommand->sessionId == sessionId))
+            {
+                /* Remove that entry only */
+                if (csrLLRemoveEntry( pList, pEntryToRemove, LL_ACCESS_NOLOCK))
+                {
+                    csrLLInsertTail(&localList, pEntryToRemove,
+                                    LL_ACCESS_NOLOCK);
+                }
+            }
+        }
+    }
+    csrLLUnlock(pList);
+
+    while ((pEntry = csrLLRemoveHead(&localList, LL_ACCESS_NOLOCK)))
+    {
+        pCommand = GET_BASE_ADDR(pEntry, tSmeCmd, Link);
+        csrAbortCommand(pMac, pCommand, eANI_BOOLEAN_FALSE);
+    }
+
+    csrLLClose(&localList);
 }
 
 void csrRemoveCmdFromPendingList(tpAniSirGlobal pMac, tDblLinkList *pList,
@@ -7457,14 +7541,15 @@ void csrRemoveCmdFromPendingList(tpAniSirGlobal pMac, tDblLinkList *pList,
 }
 
 
-eHalStatus csrScanAbortMacScanNotForConnect(tpAniSirGlobal pMac)
+eHalStatus csrScanAbortMacScanNotForConnect(tpAniSirGlobal pMac,
+                                            tANI_U8 sessionId)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
 
     if( !csrIsScanForRoamCommandActive( pMac ) )
     {
         //Only abort the scan if it is not used for other roam/connect purpose
-        status = csrScanAbortMacScan(pMac);
+        status = csrScanAbortMacScan(pMac, sessionId);
     }
 
     return (status);

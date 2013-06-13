@@ -2280,7 +2280,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
     if ((pScanInfo != NULL) && pScanInfo->mScanPending)
     {
         INIT_COMPLETION(pScanInfo->abortscan_event_var);
-        hdd_abort_mac_scan(staAdapter->pHddCtx);
+        hdd_abort_mac_scan(staAdapter->pHddCtx, pAdapter->sessionId);
         status = wait_for_completion_interruptible_timeout(
                            &pScanInfo->abortscan_event_var,
                            msecs_to_jiffies(WLAN_WAIT_TIME_ABORTSCAN));
@@ -5904,7 +5904,7 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
             {
                hddLog(VOS_TRACE_LEVEL_INFO, "Disconnect is in progress, "
                               "Aborting Scan");
-                hdd_abort_mac_scan(pHddCtx);
+                hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId);
             }
 
 #ifdef FEATURE_WLAN_TDLS
