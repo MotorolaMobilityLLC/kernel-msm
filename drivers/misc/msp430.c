@@ -1359,12 +1359,20 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		}
 		x = CAMERA_DATA;
 		y = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
+
 		msp430_as_data_buffer_write(ps_msp430, DT_CAMERA_ACT,
-			x, y, 0, 0);
+					x, y, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
-			"Sending Camera(x,y,z)values:x=%d,y=%d,z=%d\n",
-			x, y, 0);
+				"Sending Camera(x,y,z)values:x=%d,y=%d,z=%d\n",
+				x, y, 0);
+
+		input_report_key(ps_msp430->input_dev, KEY_CAMERA, 1);
+		input_report_key(ps_msp430->input_dev, KEY_CAMERA, 0);
+		input_sync(ps_msp430->input_dev);
+		dev_dbg(&ps_msp430->client->dev,
+			"Report camkey toggle\n");
+
 	}
 	if (irq_status & M_NFC) {
 		msp_cmdbuff[0] = NFC;
@@ -2942,6 +2950,7 @@ static int msp430_probe(struct i2c_client *client,
 	}
 	input_set_drvdata(ps_msp430->input_dev, ps_msp430);
 	input_set_capability(ps_msp430->input_dev, EV_KEY, KEY_POWER);
+	input_set_capability(ps_msp430->input_dev, EV_KEY, KEY_CAMERA);
 	ps_msp430->input_dev->name = "msp430sensorprocessor";
 
 	err = input_register_device(ps_msp430->input_dev);
