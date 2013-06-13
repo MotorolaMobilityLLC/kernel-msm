@@ -50,7 +50,10 @@
 #define TFA9890_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE)
 
 #define FIRMWARE_NAME_SIZE     128
-
+#define TFA9890_STATUS_UP_MASK	(TFA9890_STATUS_PLLS | \
+					TFA9890_STATUS_CLKS | \
+					TFA9890_STATUS_VDDS | \
+					TFA9890_STATUS_ARFS)
 struct tfa9890_priv {
 	struct i2c_client *control_data;
 	struct regulator *vdd;
@@ -99,7 +102,7 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 },
 {
 	.reg = TFA9890_SYS_CTL1_REG,
-	.value =  0x82FD,
+	.value =  0x827D,
 },
 {
 	.reg = TFA9890_SYS_CTL2_REG,
@@ -524,7 +527,7 @@ static int tfa9890_put_mode(struct snd_kcontrol *kcontrol,
 		tfa9890->vol_idx = vol_value;
 		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
 		/* audio session active switch the preset realtime */
-		if ((val & TFA9890_STATUS_PLLS))
+		if ((val & TFA9890_STATUS_UP_MASK) == TFA9890_STATUS_UP_MASK)
 			tfa9890_set_mode(tfa9890);
 	}
 	mutex_unlock(&tfa9890->dsp_init_lock);
@@ -592,14 +595,9 @@ static void tfa9890_power(struct snd_soc_codec *codec, int on)
 	u16 val;
 
 	val = snd_soc_read(codec, TFA9890_SYS_CTL1_REG);
-	if (on) {
-		/* set up device in follower mode and power up device,
-		 * boost will be put in active mode in hw param callback.
-		 */
-		val = val & ~(TFA9890_STATUS_DC2DC);
-		val = val & ~(0x1 << 7);
-		val = val & ~(0x1);
-	} else
+	if (on)
+		val = val & ~(TFA9890_POWER_DOWN);
+	else
 		val = val | (TFA9890_POWER_DOWN);
 
 	snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
@@ -890,8 +888,7 @@ static void tfa9890_work_mode(struct work_struct *work)
 	/* check if DSP pll is synced, It should be sync'ed at this point */
 	do {
 		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
-		if ((val & TFA9890_STATUS_PLLS) && (val & TFA9890_STATUS_CLKS)
-			&& (val & TFA9890_STATUS_VDDS))
+		if ((val & TFA9890_STATUS_UP_MASK) == TFA9890_STATUS_UP_MASK)
 			break;
 		msleep_interruptible(1);
 	} while ((++tries < PLL_SYNC_RETRIES));
@@ -949,10 +946,15 @@ static void tfa9890_monitor(struct work_struct *work)
 	mutex_lock(&tfa9890->dsp_init_lock);
 	val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
 	pr_debug("%s: status:0x%x", __func__, val);
-	/* check IC status might need to re init */
-	if ((TFA9890_STATUS_ACS & val) && (val & TFA9890_STATUS_PLLS)) {
+	/* check IC status bits: cold start, amp switching, speaker error
+	 * and DSP watch dog bit to re init */
+	if ((TFA9890_STATUS_ACS & val) || (TFA9890_STATUS_WDS & val) ||
+		(TFA9890_STATUS_SPKS & val) ||
+		!(TFA9890_STATUS_AMP_SWS & val)) {
 		tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
-		queue_work(tfa9890->tfa9890_wq, &tfa9890->init_work);
+		/* schedule init now if the clocks are up and stable */
+		if ((val & TFA9890_STATUS_UP_MASK) == TFA9890_STATUS_UP_MASK)
+			queue_work(tfa9890->tfa9890_wq, &tfa9890->init_work);
 	} /* else just reschedule */
 
 	queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
@@ -973,8 +975,7 @@ static void tfa9890_dsp_init(struct work_struct *work)
 	/* check if DSP pll is synced, It should be sync'ed at this point */
 	do {
 		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
-		if ((val & TFA9890_STATUS_PLLS) && (val & TFA9890_STATUS_CLKS)
-			&& (val & TFA9890_STATUS_VDDS))
+		if ((val & TFA9890_STATUS_UP_MASK) == TFA9890_STATUS_UP_MASK)
 			break;
 		msleep_interruptible(1);
 	} while ((++tries < PLL_SYNC_RETRIES));
@@ -1085,11 +1086,6 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 	int bclk_ws_ratio;
 	int bclk_div;
 
-	/* set boost in active mode */
-	val = snd_soc_read(codec, TFA9890_SYS_CTL1_REG);
-	val = val | TFA9890_STATUS_DC2DC;
-	snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
-
 	/* validate and set params */
 	if (params_format(params) != SNDRV_PCM_FORMAT_S16_LE) {
 		pr_err("tfa9890: invalid pcm bit lenght\n");
@@ -1185,20 +1181,15 @@ static int tfa9890_startup(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
-	u16 val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
 
+	pr_debug("%s: enter\n", __func__);
 	mutex_lock(&tfa9890->dsp_init_lock);
-	/* check IC status if cold started, will need to re-init */
-	if (TFA9890_STATUS_ACS & val)
-		tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
 
-	if (tfa9890->dsp_init != TFA9890_DSP_INIT_FAIL) {
-		/* start monitor thread to check IC status 5secs, and re-init
-		 * IC to recover in case Cold start occured while operating */
-		queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
-			5*HZ);
-		tfa9890_power(codec, 1);
-	}
+	/* start monitor thread to check IC status 5secs, and re-init
+	 * IC to recover in case Cold start occured while operating */
+	queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
+		HZ);
+	tfa9890_power(codec, 1);
 	mutex_unlock(&tfa9890->dsp_init_lock);
 
 	return 0;
@@ -1210,6 +1201,7 @@ static void tfa9890_shutdown(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = dai->codec;
 	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
 
+	pr_debug("%s: enter\n", __func__);
 	mutex_lock(&tfa9890->dsp_init_lock);
 
 	cancel_delayed_work_sync(&tfa9890->delay_work);
