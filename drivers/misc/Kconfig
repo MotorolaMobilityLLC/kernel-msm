@@ -682,6 +682,16 @@ config TI_DRV2667
 	  To compile this driver as a module, choose M here: the
 	  module will be called ti_drv2667.
 
+config EARJACK_DEBUGGER
+	bool "Earjack UART debugger support"
+	depends on SERIAL_MSM_HSL
+	help
+	  Enables support for Earjack Debugger trigger. It controls
+	  uart console. uart console will be disabled if detected earjack
+	  debugger. Otherwise, uart console will be enabled.
+
+	  Say 'y' here to include support for earjack debugger trigger
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
