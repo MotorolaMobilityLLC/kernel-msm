@@ -40,5 +40,7 @@ struct msm_serial_hslite_platform_data {
 	int line;
 };
 
+void msm_console_set_enable(bool enable);
+
 #endif
 
