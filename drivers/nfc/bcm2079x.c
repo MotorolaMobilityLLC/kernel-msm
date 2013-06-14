@@ -353,6 +353,8 @@ static int bcm2079x_probe(struct i2c_client *client,
 	if (ret)
 		goto err_exit;
 
+	gpio_set_value(platform_data.en_gpio, 1);
+	msleep(50);
 	gpio_set_value(platform_data.en_gpio, 0);
 	gpio_set_value(platform_data.wake_gpio, 0);
 
