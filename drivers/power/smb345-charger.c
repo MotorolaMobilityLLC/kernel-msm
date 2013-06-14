@@ -1248,6 +1248,10 @@ static int smb345_suspend(struct i2c_client *client, pm_message_t mesg)
 
 static int smb345_resume(struct i2c_client *client)
 {
+	printk("smb345_resume+\n");
+	if (wireless_on != !(gpio_get_value(charger->wpc_pok_gpio)))
+		wake_lock_timeout(&charger_wakelock, 2*HZ);
+	printk("smb345_resume-\n");
 	return 0;
 }
 
