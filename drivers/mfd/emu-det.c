@@ -1123,11 +1123,16 @@ static void detection_work(void)
 	int last_irq;
 	unsigned long delay = 0;
 	bool whisper_ioctl_status = clear_whisper_ioctl_context_flag();
-
+	static unsigned char run_once;
 	static unsigned long last_run;
 
 	if (data->driver_mode != MODE_NORMAL)
 		return;
+
+	if (!run_once) {
+		msleep(3000);
+		run_once = 1;
+	}
 
 	pr_emu_det(DEBUG, "state %s, time since last run %d ms\n",
 				print_state_name(data->state),
@@ -2144,6 +2149,8 @@ static int emu_det_probe(struct platform_device *pdev)
 		pr_err("couldn't register gpios rc=%d\n", ret);
 		goto free_data;
 	}
+
+	mux_ctrl_mode(MUXMODE_UART);
 
 	data->protection_forced_off = true;
 	emu_id_protection_on();
