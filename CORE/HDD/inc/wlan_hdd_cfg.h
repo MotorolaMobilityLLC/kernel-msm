@@ -1791,6 +1791,16 @@ typedef enum
 #define CFG_SCAN_OFFLOAD_ENABLE                   ( 1 )
 #define CFG_SCAN_OFFLOAD_DEFAULT                  ( CFG_SCAN_OFFLOAD_DISABLE )
 
+/*
+ * Enable legacy fast roaming (LFR) on STA link during concurrent sessions
+ */
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define CFG_ENABLE_FAST_ROAM_IN_CONCURRENCY          "gEnableFastRoamInConcurrency"
+#define CFG_ENABLE_FAST_ROAM_IN_CONCURRENCY_MIN      ( 0 )
+#define CFG_ENABLE_FAST_ROAM_IN_CONCURRENCY_MAX      ( 1 )
+#define CFG_ENABLE_FAST_ROAM_IN_CONCURRENCY_DEFAULT  ( 1 )
+#endif
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2173,6 +2183,10 @@ typedef struct
    v_U32_t                     trafficIdleTimeout;
    v_BOOL_t                    enableVhtFor24GHzBand;
    v_U8_t                      fScanOffload;
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+   /* Flag indicating whether legacy fast roam during concurrency is enabled in cfg.ini or not */
+   v_BOOL_t                    bFastRoamInConIniFeatureEnabled;
+#endif
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

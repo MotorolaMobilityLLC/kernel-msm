@@ -212,9 +212,11 @@ typedef struct sCsrNeighborRoamControlInfo
     tANI_U8                     uScanMode;
     tANI_U8                     uOsRequestedHandoff; /* upper layer requested
                                                         a reassoc */
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     tCsrHandoffRequest          handoffReqInfo; /* handoff related info came
                                                    with upper layer's req for
                                                    reassoc */
+#endif
 #endif
 } tCsrNeighborRoamControlInfo, *tpCsrNeighborRoamControlInfo;
 

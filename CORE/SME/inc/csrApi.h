@@ -1101,11 +1101,13 @@ typedef struct tagCsrConfigParam
     tANI_BOOLEAN nRoamIntraBand;
     tANI_U8      nProbes;
     tANI_U16     nRoamScanHomeAwayTime;
-#endif
 
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     tANI_BOOLEAN isRoamOffloadScanEnabled;
+    tANI_BOOLEAN bFastRoamInConIniFeatureEnabled;
 #endif
+#endif
+
 
     tANI_U8 scanCfgAgingTime;
 
