@@ -38,6 +38,7 @@
 #include <linux/version.h>
 #include <linux/of_gpio.h>
 #include <linux/nfc/bcm2079x.h>
+#include <linux/wakelock.h>
 
 /* do not change below */
 #define MAX_BUFFER_SIZE		780
@@ -60,6 +61,7 @@ struct bcm2079x_dev {
 	bool irq_enabled;
 	spinlock_t irq_enabled_lock;
 	unsigned int count_irq;
+	struct wake_lock wake_lock;
 };
 
 static void bcm2079x_init_stat(struct bcm2079x_dev *bcm2079x_dev)
@@ -73,6 +75,7 @@ static void bcm2079x_disable_irq(struct bcm2079x_dev *bcm2079x_dev)
 	spin_lock_irqsave(&bcm2079x_dev->irq_enabled_lock, flags);
 	if (bcm2079x_dev->irq_enabled) {
 		disable_irq_nosync(bcm2079x_dev->client->irq);
+		disable_irq_wake(bcm2079x_dev->client->irq);
 		bcm2079x_dev->irq_enabled = false;
 	}
 	spin_unlock_irqrestore(&bcm2079x_dev->irq_enabled_lock, flags);
@@ -85,6 +88,7 @@ static void bcm2079x_enable_irq(struct bcm2079x_dev *bcm2079x_dev)
 	if (!bcm2079x_dev->irq_enabled) {
 		bcm2079x_dev->irq_enabled = true;
 		enable_irq(bcm2079x_dev->client->irq);
+		enable_irq_wake(bcm2079x_dev->client->irq);
 	}
 	spin_unlock_irqrestore(&bcm2079x_dev->irq_enabled_lock, flags);
 }
@@ -152,6 +156,7 @@ static irqreturn_t bcm2079x_dev_irq_handler(int irq, void *dev_id)
 	bcm2079x_dev->count_irq++;
 	spin_unlock_irqrestore(&bcm2079x_dev->irq_enabled_lock, flags);
 	wake_up(&bcm2079x_dev->read_wq);
+	wake_lock(&bcm2079x_dev->wake_lock);
 
 	return IRQ_HANDLED;
 }
@@ -233,6 +238,9 @@ static ssize_t bcm2079x_dev_read(struct file *filp, char __user *buf,
 			"failed to copy to user space, total = %d\n", total);
 		total = -EFAULT;
 	}
+
+	if (bcm2079x_dev->count_irq == 0)
+		wake_unlock(&bcm2079x_dev->wake_lock);
 
 	return total;
 }
@@ -372,6 +380,8 @@ static int bcm2079x_probe(struct i2c_client *client,
 	bcm2079x_dev.bcm2079x_device.name = "bcm2079x";
 	bcm2079x_dev.bcm2079x_device.fops = &bcm2079x_dev_fops;
 
+	wake_lock_init(&bcm2079x_dev.wake_lock, WAKE_LOCK_SUSPEND, "NFCWAKE");
+
 	ret = misc_register(&bcm2079x_dev.bcm2079x_device);
 	if (ret) {
 		dev_err(&client->dev, "misc_register failed\n");
@@ -399,6 +409,7 @@ static int bcm2079x_probe(struct i2c_client *client,
 err_request_irq_failed:
 	misc_deregister(&bcm2079x_dev.bcm2079x_device);
 err_misc_register:
+	wake_lock_destroy(&bcm2079x_dev.wake_lock);
 	mutex_destroy(&bcm2079x_dev.read_mutex);
 err_exit:
 	gpio_free(platform_data.wake_gpio);
@@ -417,6 +428,7 @@ static int bcm2079x_remove(struct i2c_client *client)
 	bcm2079x_dev = i2c_get_clientdata(client);
 	free_irq(client->irq, bcm2079x_dev);
 	misc_deregister(&bcm2079x_dev->bcm2079x_device);
+	wake_lock_destroy(&bcm2079x_dev->wake_lock);
 	mutex_destroy(&bcm2079x_dev->read_mutex);
 	gpio_free(bcm2079x_dev->irq_gpio);
 	gpio_free(bcm2079x_dev->en_gpio);
