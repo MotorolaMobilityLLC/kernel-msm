@@ -70,11 +70,6 @@ static inline void platform_do_lowpower(unsigned int cpu, int *spurious)
 
 int platform_cpu_kill(unsigned int cpu)
 {
-	int ret;
-
-	ret = msm_pm_wait_cpu_shutdown(cpu);
-	if (ret)
-		return 0;
 	return 1;
 }
 
