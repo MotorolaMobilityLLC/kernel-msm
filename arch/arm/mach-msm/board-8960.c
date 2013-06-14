@@ -2827,7 +2827,6 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_iommu_domain_device,
 	&msm_tsens_device,
 	&msm8960_pc_cntr,
-	&msm8960_cpu_slp_status,
 };
 
 static struct platform_device *cdp_devices[] __initdata = {
