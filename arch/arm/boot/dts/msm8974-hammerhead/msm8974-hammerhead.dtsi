@@ -341,7 +341,9 @@
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
 
-	/* Qualcomm / Broadcom WiFi solution definition. You must choose one solution */
+	/* Qualcomm / Broadcom WiFi solution definition.
+	 * You must choose one solution
+	 */
 
 	/* Qualcomm WiFi solution - Start */
 	/*
@@ -369,6 +371,8 @@
 	qcom,sdcc-sup-voltages = <1800 2950>;
 	qcom,sup-voltages = <1800 2950>;
 	qcom,wifi-control-func;
+	qcom,not-use-vdd;
+	vdd-io-supply = <&pm8941_s3>;
 	/* Broadcom WiFi solution - End */
 
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
