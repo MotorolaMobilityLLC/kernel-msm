@@ -23841,7 +23841,7 @@ WDI_PackRoamScanOffloadParams
    if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_ROAM_SCAN_OFFLOAD_REQ,
                          sizeof(tRoamCandidateListParams),
                          &pSendBuffer, &usDataOffset, &usSendSize))||
-       ( usSendSize < (usDataOffset + sizeof(tpRoamCandidateListParams) )))
+       ( usSendSize < (usDataOffset + sizeof(tRoamCandidateListParams) )))
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
                   "Unable to get send buffer in Start Roam Candidate Lookup Req %x ",
@@ -23850,7 +23850,7 @@ WDI_PackRoamScanOffloadParams
       return WDI_STATUS_E_FAILURE;
    }
    pRoamCandidateListParams = (tpRoamCandidateListParams)(pSendBuffer + usDataOffset);
-   wpalMemoryZero(pRoamCandidateListParams, sizeof(tpRoamCandidateListParams));
+   wpalMemoryZero(pRoamCandidateListParams, sizeof(tRoamCandidateListParams));
    pRoamCandidateListParams->RoamScanOffloadEnabled = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.RoamScanOffloadEnabled;
    wpalMemoryCopy(pRoamCandidateListParams->ConnectedNetwork.currAPbssid,
                   pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.currAPbssid,
