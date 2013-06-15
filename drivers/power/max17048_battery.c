@@ -318,6 +318,19 @@ static int max17048_clear_interrupt(struct i2c_client *client)
 	return 0;
 }
 
+static int max17048_set_rcomp(struct i2c_client *client, int rcomp)
+{
+	struct max17048_chip *chip = i2c_get_clientdata(client);
+	int ret;
+
+	rcomp = rcomp << 8;
+	chip->config = ((chip->config & 0x00FF) | rcomp);
+
+	ret = max17048_write_word(chip->client,
+			MAX17048_CONFIG, chip->config);
+	return ret;
+}
+
 static int max17048_set_athd_alert(struct i2c_client *client, int level)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
@@ -883,6 +896,7 @@ static int max17048_probe(struct i2c_client *client,
 
 	/* Update recently config register */
 	max17048_get_config(client);
+	max17048_set_rcomp(client, chip->rcomp);
 	/* Set low battery alert threshold */
 	max17048_set_athd_alert(client, chip->alert_threshold);
 
