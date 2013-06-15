@@ -56,10 +56,10 @@ static const struct inv_hw_s hw_info[INV_NUM_PARTS] = {
 	{ 63, "MPU3050"},
 	{117, "MPU6050"},
 	{118, "MPU9150"},
-	{119, "MPU6500"},
-	{118, "MPU9250"},
-	{118, "MPU9350"},
-	{118, "MPU6515"},
+	{128, "MPU6500"},
+	{128, "MPU9250"},
+	{128, "MPU9350"},
+	{128, "MPU6515"},
 };
 
 
@@ -74,6 +74,21 @@ const u8 reg_6050_accel_offset[] = {REG_XA_OFFS_H,
 const u8 reg_6500_accel_offset[] = {REG_6500_XA_OFFS_H,
 					REG_6500_YA_OFFS_H,
 					REG_6500_ZA_OFFS_H};
+#ifdef CONFIG_INV_TESTING
+static bool suspend_state;
+static int inv_mpu_suspend(struct device *dev);
+static int inv_mpu_resume(struct device *dev);
+struct test_data_out {
+	bool gyro;
+	bool accel;
+	bool compass;
+	bool pressure;
+	bool LPQ;
+	bool SIXQ;
+	bool PEDQ;
+};
+static struct test_data_out data_out_control;
+#endif
 
 static void inv_setup_reg(struct inv_reg_map_s *reg)
 {
@@ -343,11 +358,10 @@ static int inv_init_config(struct iio_dev *indio_dev)
 	st->chip_config.fifo_rate = INIT_FIFO_RATE;
 	st->chip_config.new_fifo_rate = INIT_FIFO_RATE;
 	st->irq_dur_ns            = INIT_DUR_TIME;
-	st->irq_dmp_dur_ns        = INIT_DUR_TIME;
 	st->chip_config.prog_start_addr = DMP_START_ADDR;
-	st->chip_config.dmp_output_rate = INIT_DMP_OUTPUT_RATE;
 	st->self_test.samples = INIT_ST_SAMPLES;
 	st->self_test.threshold = INIT_ST_THRESHOLD;
+	st->batch.wake_fifo_on = true;
 	if (INV_ITG3500 != st->chip_type) {
 		st->chip_config.accel_fs = INV_FS_02G;
 		result = inv_i2c_single_write(st, reg->accel_config,
@@ -379,6 +393,8 @@ static int inv_init_config(struct iio_dev *indio_dev)
 				return result;
 			st->rom_gyro_offset[i] =
 					(short)be16_to_cpup((__be16 *)(d));
+			st->input_gyro_offset[i] = 0;
+			st->input_gyro_dmp_bias[i] = 0;
 		}
 		if (INV_MPU6050 == st->chip_type)
 			ch = reg_6050_accel_offset;
@@ -390,6 +406,8 @@ static int inv_init_config(struct iio_dev *indio_dev)
 				return result;
 			st->rom_accel_offset[i] =
 					(short)be16_to_cpup((__be16 *)(d));
+			st->input_accel_offset[i] = 0;
+			st->input_accel_dmp_bias[i] = 0;
 		}
 	}
 
@@ -466,6 +484,41 @@ static int inv_set_offset_reg(struct inv_mpu_state *st, int reg, int val)
 	return result;
 }
 
+int inv_reset_offset_reg(struct inv_mpu_state *st, bool en)
+{
+	const u8 *ch;
+	int i, result;
+	s16 gyro[3], accel[3];
+
+	if (en) {
+		for (i = 0; i < 3; i++) {
+			gyro[i] = st->rom_gyro_offset[i];
+			accel[i] = st->rom_accel_offset[i];
+		}
+	} else {
+		for (i = 0; i < 3; i++) {
+			gyro[i] = st->rom_gyro_offset[i] +
+						st->input_gyro_offset[i];
+			accel[i] = st->rom_accel_offset[i] +
+					(st->input_accel_offset[i] << 1);
+		}
+	}
+	if (INV_MPU6050 == st->chip_type)
+		ch = reg_6050_accel_offset;
+	else
+		ch = reg_6500_accel_offset;
+
+	for (i = 0; i < 3; i++) {
+		result = inv_set_offset_reg(st, reg_gyro_offset[i], gyro[i]);
+		if (result)
+			return result;
+		result = inv_set_offset_reg(st, ch[i], accel[i]);
+		if (result)
+			return result;
+	}
+
+	return 0;
+}
 /*
  *  inv_fifo_rate_store() - Set fifo rate.
  */
@@ -511,8 +564,6 @@ static ssize_t inv_reg_dump_show(struct device *dev,
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 
 	mutex_lock(&indio_dev->mlock);
-	if (!st->chip_config.enable)
-		st->set_power_state(st, true);
 	for (ii = 0; ii < st->hw->num_reg; ii++) {
 		/* don't read fifo r/w register */
 		if (ii == st->reg.fifo_r_w)
@@ -522,8 +573,6 @@ static ssize_t inv_reg_dump_show(struct device *dev,
 		bytes_printed += sprintf(buf + bytes_printed, "%#2x: %#2x\n",
 					 ii, data);
 	}
-	if (!st->chip_config.enable)
-		st->set_power_state(st, false);
 	mutex_unlock(&indio_dev->mlock);
 
 	return bytes_printed;
@@ -621,21 +670,7 @@ static ssize_t _dmp_attr_store(struct device *dev,
 		result = inv_enable_pedometer(st, !!data);
 		if (result)
 			goto dmp_attr_store_fail;
-		result = write_be32_key_to_mem(st, 0, KEY_D_PEDSTD_STEPCTR);
-		if (result)
-			goto dmp_attr_store_fail;
-		result = write_be32_key_to_mem(st, 0, KEY_D_PEDSTD_TIMECTR);
-		if (result)
-			goto dmp_attr_store_fail;
 		st->chip_config.ped_on = !!data;
-		break;
-	}
-	case ATTR_DMP_ACCEL_PED_ON:
-	{
-		result = inv_enable_accel_ped_step(st, !!data);
-		if (result)
-			goto dmp_attr_store_fail;
-		st->chip_config.accel_ped_on = !!data;
 		break;
 	}
 	case ATTR_DMP_SMD_ENABLE:
@@ -670,6 +705,20 @@ static ssize_t _dmp_attr_store(struct device *dev,
 		if (result)
 			goto dmp_attr_store_fail;
 		st->smd.delay2 = data;
+		break;
+	case ATTR_DMP_PEDOMETER_STEPS:
+		if (data < 0 || data > INT_MAX)
+			goto dmp_attr_store_fail;
+		result = write_be32_key_to_mem(st, data, KEY_D_PEDSTD_STEPCTR);
+		if (result)
+			goto dmp_attr_store_fail;
+		break;
+	case ATTR_DMP_PEDOMETER_TIME:
+		if (data < 0 || data > INT_MAX)
+			goto dmp_attr_store_fail;
+		result = write_be32_key_to_mem(st, data, KEY_D_PEDSTD_TIMECTR);
+		if (result)
+			goto dmp_attr_store_fail;
 		break;
 	case ATTR_DMP_TAP_ON:
 		result = inv_enable_tap_dmp(st, !!data);
@@ -729,47 +778,55 @@ static ssize_t _dmp_attr_store(struct device *dev,
 	case ATTR_DMP_EVENT_INT_ON:
 		st->chip_config.dmp_event_int_on = !!data;
 		break;
-	case ATTR_DMP_OUTPUT_RATE:
-		if (data <= 0 || data > MAX_DMP_OUTPUT_RATE) {
-			result = -EINVAL;
-			goto dmp_attr_store_fail;
-		}
-		st->chip_config.dmp_output_rate = data;
-		st->irq_dmp_dur_ns = NSEC_PER_SEC / data;
-		if (st->chip_config.has_compass) {
-			st->compass_dmp_divider =
-			st->slave_compass->rate_scale * data / ONE_K_HZ;
-			if (st->compass_dmp_divider > 0)
-				st->compass_dmp_divider -= 1;
-			st->compass_counter = 0;
-		}
-		if (st->chip_config.has_pressure) {
-			st->pressure_dmp_divider =
-			st->slave_pressure->rate_scale * data / ONE_K_HZ;
-			if (st->pressure_dmp_divider > 0)
-				st->pressure_dmp_divider -= 1;
-			st->pressure_counter = 0;
-		}
+	case ATTR_DMP_STEP_INDICATOR_ON:
+		st->chip_config.step_indicator_on = !!data;
 		break;
 	case ATTR_DMP_BATCHMODE_TIMEOUT:
 		if (data < 0 || data > INT_MAX) {
 			result = -EINVAL;
 			goto dmp_attr_store_fail;
 		}
-		st->chip_config.batchmode_timeout = data;
+		st->batch.timeout = data;
 		break;
 	case ATTR_DMP_BATCHMODE_WAKE_FIFO_FULL:
-		st->chip_config.batchmode_wake_fifo_on = !!data;
-		st->chip_config.batchmode_overflow_on = 0;
+		st->batch.wake_fifo_on = !!data;
+		st->batch.overflow_on = 0;
 		break;
 	case ATTR_DMP_SIX_Q_ON:
-		st->chip_config.six_q_on = !!data;
+		st->sensor[SENSOR_SIXQ].on = !!data;
 		break;
-	case ATTR_DMP_THREE_Q_ON:
-		st->chip_config.three_q_on = !!data;
+	case ATTR_DMP_SIX_Q_RATE:
+		if (data > MPU_DEFAULT_DMP_FREQ || data < 0) {
+			result = -EINVAL;
+			goto dmp_attr_store_fail;
+		}
+		st->sensor[SENSOR_SIXQ].rate = data;
+		st->sensor[SENSOR_SIXQ].dur = NSEC_PER_SEC / data;
+		break;
+	case ATTR_DMP_LPQ_ON:
+		st->sensor[SENSOR_LPQ].on = !!data;
+		break;
+	case ATTR_DMP_LPQ_RATE:
+		if (data > MPU_DEFAULT_DMP_FREQ || data < 0) {
+			result = -EINVAL;
+			goto dmp_attr_store_fail;
+		}
+		st->sensor[SENSOR_LPQ].rate = data;
+		st->sensor[SENSOR_LPQ].dur = NSEC_PER_SEC / data;
 		break;
 	case ATTR_DMP_PED_Q_ON:
-		st->chip_config.ped_q_on = !!data;
+		st->sensor[SENSOR_PEDQ].on = !!data;
+		break;
+	case ATTR_DMP_PED_Q_RATE:
+		if (data > MPU_DEFAULT_DMP_FREQ || data < 0) {
+			result = -EINVAL;
+			goto dmp_attr_store_fail;
+		}
+		st->sensor[SENSOR_PEDQ].rate = data;
+		st->sensor[SENSOR_PEDQ].dur = NSEC_PER_SEC / data;
+		break;
+	case ATTR_DMP_STEP_DETECTOR_ON:
+		st->sensor[SENSOR_STEP].on = !!data;
 		break;
 #ifdef CONFIG_INV_TESTING
 	case ATTR_DEBUG_SMD_ENABLE_TESTP1:
@@ -870,6 +927,13 @@ static ssize_t inv_attr_show(struct device *dev,
 	case ATTR_GYRO_Z_CALIBBIAS:
 		axis = this_attr->address - ATTR_GYRO_X_CALIBBIAS;
 		return sprintf(buf, "%d\n", st->gyro_bias[axis]);
+	case ATTR_SELF_TEST_GYRO_SCALE:
+		return sprintf(buf, "%d\n", SELF_TEST_GYRO_FULL_SCALE);
+	case ATTR_SELF_TEST_ACCEL_SCALE:
+		if (INV_MPU6500 == st->chip_type)
+			return sprintf(buf, "%d\n", SELF_TEST_ACCEL_6500_SCALE);
+		else
+			return sprintf(buf, "%d\n", SELF_TEST_ACCEL_FULL_SCALE);
 	case ATTR_GYRO_X_OFFSET:
 	case ATTR_GYRO_Y_OFFSET:
 	case ATTR_GYRO_Z_OFFSET:
@@ -896,8 +960,6 @@ static ssize_t inv_attr_show(struct device *dev,
 		return sprintf(buf, "%d\n", st->chip_config.ped_int_on);
 	case ATTR_DMP_PED_ON:
 		return sprintf(buf, "%d\n", st->chip_config.ped_on);
-	case ATTR_DMP_ACCEL_PED_ON:
-		return sprintf(buf, "%d\n", st->chip_config.accel_ped_on);
 	case ATTR_DMP_SMD_ENABLE:
 		return sprintf(buf, "%d\n", st->chip_config.smd_enable);
 	case ATTR_DMP_SMD_THLD:
@@ -923,21 +985,28 @@ static ssize_t inv_attr_show(struct device *dev,
 		return sprintf(buf, "%d\n", st->chip_config.dmp_int_on);
 	case ATTR_DMP_EVENT_INT_ON:
 		return sprintf(buf, "%d\n", st->chip_config.dmp_event_int_on);
-	case ATTR_DMP_OUTPUT_RATE:
-		return sprintf(buf, "%d\n",
-				st->chip_config.dmp_output_rate);
+	case ATTR_DMP_STEP_INDICATOR_ON:
+		return sprintf(buf, "%d\n", st->chip_config.step_indicator_on);
 	case ATTR_DMP_BATCHMODE_TIMEOUT:
 		return sprintf(buf, "%d\n",
-				st->chip_config.batchmode_timeout);
+				st->batch.timeout);
 	case ATTR_DMP_BATCHMODE_WAKE_FIFO_FULL:
 		return sprintf(buf, "%d\n",
-				st->chip_config.batchmode_wake_fifo_on);
+				st->batch.wake_fifo_on);
 	case ATTR_DMP_SIX_Q_ON:
-		return sprintf(buf, "%d\n", st->chip_config.six_q_on);
-	case ATTR_DMP_THREE_Q_ON:
-		return sprintf(buf, "%d\n", st->chip_config.three_q_on);
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_SIXQ].on);
+	case ATTR_DMP_SIX_Q_RATE:
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_SIXQ].rate);
+	case ATTR_DMP_LPQ_ON:
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_LPQ].on);
+	case ATTR_DMP_LPQ_RATE:
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_LPQ].rate);
 	case ATTR_DMP_PED_Q_ON:
-		return sprintf(buf, "%d\n", st->chip_config.ped_q_on);
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_PEDQ].on);
+	case ATTR_DMP_PED_Q_RATE:
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_PEDQ].rate);
+	case ATTR_DMP_STEP_DETECTOR_ON:
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_STEP].on);
 	case ATTR_MOTION_LPA_ON:
 		return sprintf(buf, "%d\n", st->mot_int.mot_on);
 	case ATTR_MOTION_LPA_FREQ:{
@@ -956,15 +1025,23 @@ static ssize_t inv_attr_show(struct device *dev,
 	case ATTR_GYRO_ENABLE:
 		return sprintf(buf, "%d\n", st->chip_config.gyro_enable);
 	case ATTR_GYRO_FIFO_ENABLE:
-		return sprintf(buf, "%d\n", st->chip_config.gyro_fifo_enable);
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_GYRO].on);
+	case ATTR_GYRO_RATE:
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_GYRO].rate);
 	case ATTR_ACCEL_ENABLE:
 		return sprintf(buf, "%d\n", st->chip_config.accel_enable);
 	case ATTR_ACCEL_FIFO_ENABLE:
-		return sprintf(buf, "%d\n", st->chip_config.accel_fifo_enable);
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_ACCEL].on);
+	case ATTR_ACCEL_RATE:
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_ACCEL].rate);
 	case ATTR_COMPASS_ENABLE:
-		return sprintf(buf, "%d\n", st->chip_config.compass_enable);
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_COMPASS].on);
+	case ATTR_COMPASS_RATE:
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_COMPASS].rate);
 	case ATTR_PRESSURE_ENABLE:
-		return sprintf(buf, "%d\n", st->chip_config.pressure_enable);
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_PRESSURE].on);
+	case ATTR_PRESSURE_RATE:
+		return sprintf(buf, "%d\n", st->sensor[SENSOR_PRESSURE].rate);
 	case ATTR_POWER_STATE:
 		return sprintf(buf, "%d\n", !fake_asleep);
 	case ATTR_FIRMWARE_LOADED:
@@ -1039,6 +1116,21 @@ static ssize_t inv_attr_show(struct device *dev,
 			return -ENODEV;
 		return sprintf(buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 			m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8]);
+	case ATTR_COMPASS_SENS:
+	{
+		/* these 2 conditions should never be met, since the
+		   'compass_sens' sysfs entry should be hidden if the compass
+		   is not an AKM */
+		if (st->plat_data.sec_slave_type !=
+					SECONDARY_SLAVE_TYPE_COMPASS)
+			return -ENODEV;
+		if (st->plat_data.sec_slave_id != COMPASS_ID_AK8975 &&
+		    st->plat_data.sec_slave_id != COMPASS_ID_AK8972 &&
+		    st->plat_data.sec_slave_id != COMPASS_ID_AK8963)
+			return -ENODEV;
+		m = st->chip_info.compass_sens;
+		return sprintf(buf, "%d,%d,%d\n", m[0], m[1], m[2]);
+	}
 	case ATTR_SECONDARY_NAME:
 	{
 		const char *n[] = {"NULL", "AK8975", "AK8972", "AK8963",
@@ -1241,10 +1333,13 @@ static ssize_t _attr_store(struct device *dev,
 	/* check the input and validate it's format */
 	switch (this_attr->address) {
 #ifdef CONFIG_INV_TESTING
-	case ATTR_COMPASS_MATRIX: /* these inputs are strings */
+	/* these inputs are strings */
+	case ATTR_COMPASS_MATRIX:
+	case ATTR_COMPASS_SENS:
 		break;
 #endif
-	default: /* these inputs are integers */
+	/* these inputs are integers */
+	default:
 		result = kstrtoint(buf, 10, &data);
 		if (result)
 			goto attr_store_fail;
@@ -1363,19 +1458,35 @@ static ssize_t _attr_store(struct device *dev,
 		st->chip_config.gyro_enable = !!data;
 		break;
 	case ATTR_GYRO_FIFO_ENABLE:
-		st->chip_config.gyro_fifo_enable = !!data;
+		st->sensor[SENSOR_GYRO].on = !!data;
+		break;
+	case ATTR_GYRO_RATE:
+		st->sensor[SENSOR_GYRO].rate = data;
+		st->sensor[SENSOR_GYRO].dur  = NSEC_PER_SEC / data;
 		break;
 	case ATTR_ACCEL_ENABLE:
 		st->chip_config.accel_enable = !!data;
 		break;
 	case ATTR_ACCEL_FIFO_ENABLE:
-		st->chip_config.accel_fifo_enable = !!data;
+		st->sensor[SENSOR_ACCEL].on = !!data;
+		break;
+	case ATTR_ACCEL_RATE:
+		st->sensor[SENSOR_ACCEL].rate = data;
+		st->sensor[SENSOR_ACCEL].dur  = NSEC_PER_SEC / data;
 		break;
 	case ATTR_COMPASS_ENABLE:
-		st->chip_config.compass_enable = !!data;
+		st->sensor[SENSOR_COMPASS].on = !!data;
+		break;
+	case ATTR_COMPASS_RATE:
+		st->sensor[SENSOR_COMPASS].rate = data;
+		st->sensor[SENSOR_COMPASS].dur  = NSEC_PER_SEC / data;
 		break;
 	case ATTR_PRESSURE_ENABLE:
-		st->chip_config.pressure_enable = !!data;
+		st->sensor[SENSOR_PRESSURE].on = !!data;
+		break;
+	case ATTR_PRESSURE_RATE:
+		st->sensor[SENSOR_PRESSURE].rate = data;
+		st->sensor[SENSOR_PRESSURE].dur  = NSEC_PER_SEC / data;
 		break;
 	case ATTR_POWER_STATE:
 		fake_asleep = !data;
@@ -1395,6 +1506,10 @@ static ssize_t _attr_store(struct device *dev,
 		if (st->plat_data.sec_slave_type == SECONDARY_SLAVE_TYPE_NONE)
 			return -ENODEV;
 		while ((str = strsep((char **)&buf, ","))) {
+			if (d >= 9) {
+				result = -EINVAL;
+				goto attr_store_fail;
+			}
 			result = kstrtoint(str, 10, &data);
 			if (result)
 				goto attr_store_fail;
@@ -1405,10 +1520,54 @@ static ssize_t _attr_store(struct device *dev,
 			m[d] = data;
 			d++;
 		}
+		if (d < 9) {
+			result = -EINVAL;
+			goto attr_store_fail;
+		}
 		memcpy(st->plat_data.secondary_orientation, m, sizeof(m));
 		pr_debug(KERN_INFO
 			 "compass_matrix: %d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 			 m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8]);
+		break;
+	}
+	case ATTR_COMPASS_SENS:
+	{
+		char *str;
+		__s8 s[3];
+		d = 0;
+		/* these 2 conditions should never be met, since the
+		   'compass_sens' sysfs entry should be hidden if the compass
+		   is not an AKM */
+		if (st->plat_data.sec_slave_type == SECONDARY_SLAVE_TYPE_NONE)
+			return -ENODEV;
+		if (st->plat_data.sec_slave_id != COMPASS_ID_AK8975 &&
+		    st->plat_data.sec_slave_id != COMPASS_ID_AK8972 &&
+		    st->plat_data.sec_slave_id != COMPASS_ID_AK8963)
+			return -ENODEV;
+		/* read the input data, expecting 3 comma separated values */
+		while ((str = strsep((char **)&buf, ","))) {
+			if (d >= 3) {
+				result = -EINVAL;
+				goto attr_store_fail;
+			}
+			result = kstrtoint(str, 10, &data);
+			if (result)
+				goto attr_store_fail;
+			if (data < 0 || data > 255) {
+				result = -EINVAL;
+				goto attr_store_fail;
+			}
+			s[d] = data;
+			d++;
+		}
+		if (d < 3) {
+			result = -EINVAL;
+			goto attr_store_fail;
+		}
+		/* store the new compass sensitivity adjustment */
+		memcpy(st->chip_info.compass_sens, s, sizeof(s));
+		pr_debug(KERN_INFO
+			 "compass_sens: %d,%d,%d\n", s[0], s[1], s[2]);
 		break;
 	}
 #endif
@@ -1444,6 +1603,32 @@ static ssize_t inv_attr_store(struct device *dev,
 }
 
 #ifdef CONFIG_INV_TESTING
+static ssize_t inv_test_suspend_resume_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	int data;
+	int result;
+
+	result = kstrtoint(buf, 10, &data);
+	if (result)
+		return result;
+	if (data)
+		inv_mpu_suspend(dev);
+	else
+		inv_mpu_resume(dev);
+	suspend_state = !!data;
+
+	return count;
+}
+
+static ssize_t inv_test_suspend_resume_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+
+	return sprintf(buf, "%d\n", suspend_state);
+}
+
+
 /*
  * inv_reg_write_store() - register write command for testing.
  *                         Format: WSRRDD, where RR is the register in hex,
@@ -1483,6 +1668,151 @@ static ssize_t inv_reg_write_store(struct device *dev,
 
 	return count;
 }
+
+static ssize_t inv_test_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct inv_mpu_state *st = iio_priv(indio_dev);
+	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
+	int data;
+	u8 *m;
+	int result;
+
+	if (st->chip_config.enable)
+		return -EBUSY;
+	result = kstrtoint(buf, 10, &data);
+	if (result)
+		return -EINVAL;
+
+	result = st->set_power_state(st, true);
+	if (result)
+		return result;
+
+	switch (this_attr->address) {
+	case ATTR_DEBUG_ACCEL_COUNTER:
+	{
+		u8 D[6] = {0xf2, 0xb0, 0x80, 0xc0, 0xc8, 0xc2};
+		u8 E[6] = {0xf3, 0xb1, 0x88, 0xc0, 0xc0, 0xc0};
+
+		if (data)
+			m = E;
+		else
+			m = D;
+		result = mem_w_key(KEY_TEST_01, ARRAY_SIZE(D), m);
+		data_out_control.accel = !!data;
+		break;
+	}
+	case ATTR_DEBUG_GYRO_COUNTER:
+	{
+		u8 D[6] = {0xf2, 0xb0, 0x80, 0xc4, 0xcc, 0xc6};
+		u8 E[6] = {0xf3, 0xb1, 0x88, 0xc0, 0xc0, 0xc0};
+
+		if (data)
+			m = E;
+		else
+			m = D;
+		result = mem_w_key(KEY_TEST_02, ARRAY_SIZE(D), m);
+		data_out_control.gyro = !!data;
+		break;
+	}
+	case ATTR_DEBUG_COMPASS_COUNTER:
+	{
+		u8 D[6] = {0xf2, 0xb0, 0x81, 0xc0, 0xc8, 0xc2};
+		u8 E[6] = {0xf3, 0xb1, 0x88, 0xc0, 0xc0, 0xc0};
+
+		if (data)
+			m = E;
+		else
+			m = D;
+		result = mem_w_key(KEY_TEST_03, ARRAY_SIZE(D), m);
+		data_out_control.compass = !!data;
+		break;
+	}
+	case ATTR_DEBUG_PRESSURE_COUNTER:
+	{
+		u8 D[6] = {0xf2, 0xb0, 0x81, 0xc4, 0xcc, 0xc6};
+		u8 E[6] = {0xf3, 0xb1, 0x88, 0xc0, 0xc0, 0xc0};
+
+		if (data)
+			m = E;
+		else
+			m = D;
+		result = mem_w_key(KEY_TEST_04, ARRAY_SIZE(D), m);
+		data_out_control.pressure = !!data;
+		break;
+	}
+	case ATTR_DEBUG_LPQ_COUNTER:
+	{
+		u8 D[6] = {0xf1, 0xb1, 0x83, 0xc2, 0xc4, 0xc6};
+		u8 E[6] = {0xf1, 0xb1, 0x88, 0xc0, 0xc0, 0xc0};
+
+		if (data)
+			m = E;
+		else
+			m = D;
+		result = mem_w_key(KEY_TEST_05, ARRAY_SIZE(D), m);
+		data_out_control.LPQ = !!data;
+		break;
+	}
+	case ATTR_DEBUG_SIXQ_COUNTER:
+	{
+		u8 D[6] = {0xf1, 0xb1, 0x89, 0xc2, 0xc4, 0xc6};
+		u8 E[6] = {0xf1, 0xb1, 0x88, 0xc0, 0xc0, 0xc0};
+
+		if (data)
+			m = E;
+		else
+			m = D;
+		result = mem_w_key(KEY_TEST_06, ARRAY_SIZE(D), m);
+		data_out_control.SIXQ = !!data;
+		break;
+	}
+	case ATTR_DEBUG_PEDQ_COUNTER:
+	{
+		u8 D[6] = {0xf2, 0xf2, 0x88, 0xc2, 0xc4, 0xc6};
+		u8 E[6] = {0xf3, 0xb1, 0x88, 0xc0, 0xc0, 0xc0};
+
+		if (data)
+			m = E;
+		else
+			m = D;
+		result = mem_w_key(KEY_TEST_07, ARRAY_SIZE(D), m);
+		data_out_control.PEDQ = !!data;
+		break;
+	}
+	default:
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static ssize_t inv_test_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
+
+	switch (this_attr->address) {
+	case ATTR_DEBUG_ACCEL_COUNTER:
+		return sprintf(buf, "%d\n", data_out_control.accel);
+	case ATTR_DEBUG_GYRO_COUNTER:
+		return sprintf(buf, "%d\n", data_out_control.gyro);
+	case ATTR_DEBUG_COMPASS_COUNTER:
+		return sprintf(buf, "%d\n", data_out_control.compass);
+	case ATTR_DEBUG_PRESSURE_COUNTER:
+		return sprintf(buf, "%d\n", data_out_control.pressure);
+	case ATTR_DEBUG_LPQ_COUNTER:
+		return sprintf(buf, "%d\n", data_out_control.LPQ);
+	case ATTR_DEBUG_SIXQ_COUNTER:
+		return sprintf(buf, "%d\n", data_out_control.SIXQ);
+	case ATTR_DEBUG_PEDQ_COUNTER:
+		return sprintf(buf, "%d\n", data_out_control.PEDQ);
+	default:
+		return -EINVAL;
+	}
+}
+
 #endif /* CONFIG_INV_TESTING */
 
 static const struct iio_chan_spec inv_mpu_channels[] = {
@@ -1524,8 +1854,6 @@ static IIO_DEVICE_ATTR(pedometer_int_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_PED_INT_ON);
 static IIO_DEVICE_ATTR(pedometer_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_PED_ON);
-static IIO_DEVICE_ATTR(accel_pedometer_step_on, S_IRUGO | S_IWUSR,
-	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_ACCEL_PED_ON);
 
 static IIO_DEVICE_ATTR(smd_enable, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_SMD_ENABLE);
@@ -1535,6 +1863,12 @@ static IIO_DEVICE_ATTR(smd_delay_threshold, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_SMD_DELAY_THLD);
 static IIO_DEVICE_ATTR(smd_delay_threshold2, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_SMD_DELAY_THLD2);
+
+static IIO_DEVICE_ATTR(pedometer_steps, S_IRUGO, inv_attr_show,
+	inv_dmp_attr_store, ATTR_DMP_PEDOMETER_STEPS);
+static IIO_DEVICE_ATTR(pedometer_time, S_IRUGO, inv_attr_show,
+	inv_dmp_attr_store, ATTR_DMP_PEDOMETER_TIME);
+
 static IIO_DEVICE_ATTR(tap_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_TAP_ON);
 static IIO_DEVICE_ATTR(tap_threshold, S_IRUGO | S_IWUSR,
@@ -1553,18 +1887,30 @@ static IIO_DEVICE_ATTR(dmp_int_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_INT_ON);
 static IIO_DEVICE_ATTR(dmp_event_int_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_EVENT_INT_ON);
-static IIO_DEVICE_ATTR(dmp_output_rate, S_IRUGO | S_IWUSR, inv_attr_show,
-	inv_dmp_attr_store, ATTR_DMP_OUTPUT_RATE);
+static IIO_DEVICE_ATTR(step_indicator_on, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_dmp_attr_store, ATTR_DMP_STEP_INDICATOR_ON);
 static IIO_DEVICE_ATTR(batchmode_timeout, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_BATCHMODE_TIMEOUT);
 static IIO_DEVICE_ATTR(batchmode_wake_fifo_full_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_BATCHMODE_WAKE_FIFO_FULL);
+
 static IIO_DEVICE_ATTR(six_axes_q_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_SIX_Q_ON);
+static IIO_DEVICE_ATTR(six_axes_q_rate, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_dmp_attr_store, ATTR_DMP_SIX_Q_RATE);
+
 static IIO_DEVICE_ATTR(three_axes_q_on, S_IRUGO | S_IWUSR, inv_attr_show,
-	inv_dmp_attr_store, ATTR_DMP_THREE_Q_ON);
+	inv_dmp_attr_store, ATTR_DMP_LPQ_ON);
+static IIO_DEVICE_ATTR(three_axes_q_rate, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_dmp_attr_store, ATTR_DMP_LPQ_RATE);
+
 static IIO_DEVICE_ATTR(ped_q_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_dmp_attr_store, ATTR_DMP_PED_Q_ON);
+static IIO_DEVICE_ATTR(ped_q_rate, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_dmp_attr_store, ATTR_DMP_PED_Q_RATE);
+
+static IIO_DEVICE_ATTR(step_detector_on, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_dmp_attr_store, ATTR_DMP_STEP_DETECTOR_ON);
 
 /* non DMP sysfs with power on/off */
 static IIO_DEVICE_ATTR(motion_lpa_on, S_IRUGO | S_IWUSR, inv_attr_show,
@@ -1606,14 +1952,26 @@ static IIO_DEVICE_ATTR(gyro_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_GYRO_ENABLE);
 static IIO_DEVICE_ATTR(gyro_fifo_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_GYRO_FIFO_ENABLE);
+static IIO_DEVICE_ATTR(gyro_rate, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_attr_store, ATTR_GYRO_RATE);
+
 static IIO_DEVICE_ATTR(accel_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_ACCEL_ENABLE);
 static IIO_DEVICE_ATTR(accel_fifo_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_ACCEL_FIFO_ENABLE);
+static IIO_DEVICE_ATTR(accel_rate, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_attr_store, ATTR_ACCEL_RATE);
+
 static IIO_DEVICE_ATTR(compass_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_COMPASS_ENABLE);
+static IIO_DEVICE_ATTR(compass_rate, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_attr_store, ATTR_COMPASS_RATE);
+
 static IIO_DEVICE_ATTR(pressure_enable, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_PRESSURE_ENABLE);
+static IIO_DEVICE_ATTR(pressure_rate, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_attr_store, ATTR_PRESSURE_RATE);
+
 static IIO_DEVICE_ATTR(power_state, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_POWER_STATE);
 static IIO_DEVICE_ATTR(firmware_loaded, S_IRUGO | S_IWUSR, inv_attr_show,
@@ -1624,25 +1982,26 @@ static IIO_DEVICE_ATTR(sampling_frequency, S_IRUGO | S_IWUSR, inv_attr_show,
 /* show method only sysfs but with power on/off */
 static IIO_DEVICE_ATTR(self_test, S_IRUGO, inv_attr_show, NULL,
 	ATTR_SELF_TEST);
-static IIO_DEVICE_ATTR(pedometer_steps, S_IRUGO, inv_attr_show, NULL,
-	ATTR_DMP_PEDOMETER_STEPS);
-static IIO_DEVICE_ATTR(pedometer_time, S_IRUGO, inv_attr_show, NULL,
-	ATTR_DMP_PEDOMETER_TIME);
 
 /* show method only sysfs */
-static IIO_DEVICE_ATTR(in_accel_x_calibbias, S_IRUGO | S_IWUSR, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_x_calibbias, S_IRUGO, inv_attr_show,
 	NULL, ATTR_ACCEL_X_CALIBBIAS);
-static IIO_DEVICE_ATTR(in_accel_y_calibbias, S_IRUGO | S_IWUSR, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_y_calibbias, S_IRUGO, inv_attr_show,
 	NULL, ATTR_ACCEL_Y_CALIBBIAS);
-static IIO_DEVICE_ATTR(in_accel_z_calibbias, S_IRUGO | S_IWUSR, inv_attr_show,
+static IIO_DEVICE_ATTR(in_accel_z_calibbias, S_IRUGO, inv_attr_show,
 	NULL, ATTR_ACCEL_Z_CALIBBIAS);
 
-static IIO_DEVICE_ATTR(in_anglvel_x_calibbias, S_IRUGO | S_IWUSR,
+static IIO_DEVICE_ATTR(in_anglvel_x_calibbias, S_IRUGO,
 		inv_attr_show, NULL, ATTR_GYRO_X_CALIBBIAS);
-static IIO_DEVICE_ATTR(in_anglvel_y_calibbias, S_IRUGO | S_IWUSR,
+static IIO_DEVICE_ATTR(in_anglvel_y_calibbias, S_IRUGO,
 		inv_attr_show, NULL, ATTR_GYRO_Y_CALIBBIAS);
-static IIO_DEVICE_ATTR(in_anglvel_z_calibbias, S_IRUGO | S_IWUSR,
+static IIO_DEVICE_ATTR(in_anglvel_z_calibbias, S_IRUGO,
 		inv_attr_show, NULL, ATTR_GYRO_Z_CALIBBIAS);
+
+static IIO_DEVICE_ATTR(in_anglvel_self_test_scale, S_IRUGO,
+		inv_attr_show, NULL, ATTR_SELF_TEST_GYRO_SCALE);
+static IIO_DEVICE_ATTR(in_accel_self_test_scale, S_IRUGO,
+		inv_attr_show, NULL, ATTR_SELF_TEST_ACCEL_SCALE);
 
 static IIO_DEVICE_ATTR(gyro_matrix, S_IRUGO, inv_attr_show, NULL,
 	ATTR_GYRO_MATRIX);
@@ -1651,9 +2010,13 @@ static IIO_DEVICE_ATTR(accel_matrix, S_IRUGO, inv_attr_show, NULL,
 #ifdef CONFIG_INV_TESTING /* read/write in test mode */
 static IIO_DEVICE_ATTR(compass_matrix, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_COMPASS_MATRIX);
+static IIO_DEVICE_ATTR(compass_sens, S_IRUGO | S_IWUSR, inv_attr_show,
+	inv_attr_store, ATTR_COMPASS_SENS);
 #else
 static IIO_DEVICE_ATTR(compass_matrix, S_IRUGO, inv_attr_show, NULL,
 	ATTR_COMPASS_MATRIX);
+static IIO_DEVICE_ATTR(compass_sens, S_IRUGO, inv_attr_show,
+	NULL, ATTR_COMPASS_SENS);
 #endif
 static IIO_DEVICE_ATTR(secondary_name, S_IRUGO, inv_attr_show, NULL,
 	ATTR_SECONDARY_NAME);
@@ -1670,6 +2033,23 @@ static IIO_DEVICE_ATTR(debug_smd_exe_state, S_IRUGO, inv_attr_show,
 	NULL, ATTR_DEBUG_SMD_EXE_STATE);
 static IIO_DEVICE_ATTR(debug_smd_delay_cntr, S_IRUGO, inv_attr_show,
 	NULL, ATTR_DEBUG_SMD_DELAY_CNTR);
+static DEVICE_ATTR(test_suspend_resume, S_IRUGO | S_IWUSR,
+		inv_test_suspend_resume_show, inv_test_suspend_resume_store);
+
+static IIO_DEVICE_ATTR(test_gyro_counter, S_IRUGO | S_IWUSR, inv_test_show,
+	inv_test_store, ATTR_DEBUG_GYRO_COUNTER);
+static IIO_DEVICE_ATTR(test_accel_counter, S_IRUGO | S_IWUSR, inv_test_show,
+	inv_test_store, ATTR_DEBUG_ACCEL_COUNTER);
+static IIO_DEVICE_ATTR(test_compass_counter, S_IRUGO | S_IWUSR, inv_test_show,
+	inv_test_store, ATTR_DEBUG_COMPASS_COUNTER);
+static IIO_DEVICE_ATTR(test_pressure_counter, S_IRUGO | S_IWUSR, inv_test_show,
+	inv_test_store, ATTR_DEBUG_PRESSURE_COUNTER);
+static IIO_DEVICE_ATTR(test_LPQ_counter, S_IRUGO | S_IWUSR, inv_test_show,
+	inv_test_store, ATTR_DEBUG_LPQ_COUNTER);
+static IIO_DEVICE_ATTR(test_SIXQ_counter, S_IRUGO | S_IWUSR, inv_test_show,
+	inv_test_store, ATTR_DEBUG_SIXQ_COUNTER);
+static IIO_DEVICE_ATTR(test_PEDQ_counter, S_IRUGO | S_IWUSR, inv_test_show,
+	inv_test_store, ATTR_DEBUG_PEDQ_COUNTER);
 #endif
 
 static const struct attribute *inv_gyro_attributes[] = {
@@ -1683,10 +2063,12 @@ static const struct attribute *inv_gyro_attributes[] = {
 	&iio_dev_attr_in_anglvel_x_offset.dev_attr.attr,
 	&iio_dev_attr_in_anglvel_y_offset.dev_attr.attr,
 	&iio_dev_attr_in_anglvel_z_offset.dev_attr.attr,
+	&iio_dev_attr_in_anglvel_self_test_scale.dev_attr.attr,
 	&iio_dev_attr_self_test_samples.dev_attr.attr,
 	&iio_dev_attr_self_test_threshold.dev_attr.attr,
 	&iio_dev_attr_gyro_enable.dev_attr.attr,
 	&iio_dev_attr_gyro_fifo_enable.dev_attr.attr,
+	&iio_dev_attr_gyro_rate.dev_attr.attr,
 	&iio_dev_attr_power_state.dev_attr.attr,
 	&iio_dev_attr_sampling_frequency.dev_attr.attr,
 	&iio_dev_attr_self_test.dev_attr.attr,
@@ -1698,10 +2080,18 @@ static const struct attribute *inv_gyro_attributes[] = {
 	&iio_dev_attr_debug_smd_enable_testp2.dev_attr.attr,
 	&iio_dev_attr_debug_smd_exe_state.dev_attr.attr,
 	&iio_dev_attr_debug_smd_delay_cntr.dev_attr.attr,
+	&dev_attr_test_suspend_resume.attr,
+	&iio_dev_attr_test_gyro_counter.dev_attr.attr,
+	&iio_dev_attr_test_accel_counter.dev_attr.attr,
+	&iio_dev_attr_test_compass_counter.dev_attr.attr,
+	&iio_dev_attr_test_pressure_counter.dev_attr.attr,
+	&iio_dev_attr_test_LPQ_counter.dev_attr.attr,
+	&iio_dev_attr_test_SIXQ_counter.dev_attr.attr,
+	&iio_dev_attr_test_PEDQ_counter.dev_attr.attr,
 #endif
 };
 
-static const struct attribute *inv_mpu6050_attributes[] = {
+static const struct attribute *inv_mpu6xxx_attributes[] = {
 	&dev_attr_event_display_orientation.attr,
 	&dev_attr_event_accel_motion.attr,
 	&dev_attr_event_smd.attr,
@@ -1710,6 +2100,7 @@ static const struct attribute *inv_mpu6050_attributes[] = {
 	&iio_dev_attr_in_accel_x_calibbias.dev_attr.attr,
 	&iio_dev_attr_in_accel_y_calibbias.dev_attr.attr,
 	&iio_dev_attr_in_accel_z_calibbias.dev_attr.attr,
+	&iio_dev_attr_in_accel_self_test_scale.dev_attr.attr,
 	&iio_dev_attr_in_accel_x_offset.dev_attr.attr,
 	&iio_dev_attr_in_accel_y_offset.dev_attr.attr,
 	&iio_dev_attr_in_accel_z_offset.dev_attr.attr,
@@ -1721,7 +2112,6 @@ static const struct attribute *inv_mpu6050_attributes[] = {
 	&iio_dev_attr_in_anglvel_z_dmp_bias.dev_attr.attr,
 	&iio_dev_attr_pedometer_int_on.dev_attr.attr,
 	&iio_dev_attr_pedometer_on.dev_attr.attr,
-	&iio_dev_attr_accel_pedometer_step_on.dev_attr.attr,
 	&iio_dev_attr_pedometer_steps.dev_attr.attr,
 	&iio_dev_attr_pedometer_time.dev_attr.attr,
 	&iio_dev_attr_smd_enable.dev_attr.attr,
@@ -1732,20 +2122,28 @@ static const struct attribute *inv_mpu6050_attributes[] = {
 	&iio_dev_attr_dmp_on.dev_attr.attr,
 	&iio_dev_attr_dmp_int_on.dev_attr.attr,
 	&iio_dev_attr_dmp_event_int_on.dev_attr.attr,
-	&iio_dev_attr_dmp_output_rate.dev_attr.attr,
+	&iio_dev_attr_step_indicator_on.dev_attr.attr,
 	&iio_dev_attr_batchmode_timeout.dev_attr.attr,
 	&iio_dev_attr_batchmode_wake_fifo_full_on.dev_attr.attr,
 	&iio_dev_attr_six_axes_q_on.dev_attr.attr,
+	&iio_dev_attr_six_axes_q_rate.dev_attr.attr,
 	&iio_dev_attr_three_axes_q_on.dev_attr.attr,
+	&iio_dev_attr_three_axes_q_rate.dev_attr.attr,
 	&iio_dev_attr_ped_q_on.dev_attr.attr,
+	&iio_dev_attr_ped_q_rate.dev_attr.attr,
+	&iio_dev_attr_step_detector_on.dev_attr.attr,
 	&iio_dev_attr_motion_lpa_on.dev_attr.attr,
 	&iio_dev_attr_motion_lpa_freq.dev_attr.attr,
-	&iio_dev_attr_motion_lpa_duration.dev_attr.attr,
 	&iio_dev_attr_motion_lpa_threshold.dev_attr.attr,
 	&iio_dev_attr_accel_enable.dev_attr.attr,
 	&iio_dev_attr_accel_fifo_enable.dev_attr.attr,
+	&iio_dev_attr_accel_rate.dev_attr.attr,
 	&iio_dev_attr_firmware_loaded.dev_attr.attr,
 	&iio_dev_attr_accel_matrix.dev_attr.attr,
+};
+
+static const struct attribute *inv_mpu6050_attributes[] = {
+	&iio_dev_attr_motion_lpa_duration.dev_attr.attr,
 };
 
 static const struct attribute *inv_tap_attributes[] = {
@@ -1759,11 +2157,17 @@ static const struct attribute *inv_tap_attributes[] = {
 static const struct attribute *inv_compass_attributes[] = {
 	&iio_dev_attr_in_magn_scale.dev_attr.attr,
 	&iio_dev_attr_compass_enable.dev_attr.attr,
+	&iio_dev_attr_compass_rate.dev_attr.attr,
 	&iio_dev_attr_compass_matrix.dev_attr.attr,
+};
+
+static const struct attribute *inv_akxxxx_attributes[] = {
+	&iio_dev_attr_compass_sens.dev_attr.attr,
 };
 
 static const struct attribute *inv_pressure_attributes[] = {
 	&iio_dev_attr_pressure_enable.dev_attr.attr,
+	&iio_dev_attr_pressure_rate.dev_attr.attr,
 };
 
 static const struct attribute *inv_mpu3050_attributes[] = {
@@ -1772,11 +2176,16 @@ static const struct attribute *inv_mpu3050_attributes[] = {
 	&iio_dev_attr_accel_matrix.dev_attr.attr,
 };
 
-static struct attribute *inv_attributes[ARRAY_SIZE(inv_gyro_attributes) +
-			ARRAY_SIZE(inv_mpu6050_attributes) +
-			ARRAY_SIZE(inv_compass_attributes) +
-			ARRAY_SIZE(inv_pressure_attributes) +
-			ARRAY_SIZE(inv_tap_attributes) + 1];
+static struct attribute *inv_attributes[
+	ARRAY_SIZE(inv_gyro_attributes) +
+	ARRAY_SIZE(inv_mpu6xxx_attributes) +
+	ARRAY_SIZE(inv_mpu6050_attributes) +
+	ARRAY_SIZE(inv_compass_attributes) +
+	ARRAY_SIZE(inv_akxxxx_attributes) +
+	ARRAY_SIZE(inv_pressure_attributes) +
+	ARRAY_SIZE(inv_tap_attributes) +
+	1
+];
 
 static const struct attribute_group inv_attribute_group = {
 	.name = "mpu",
@@ -2034,7 +2443,15 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 		return 0;
 	}
 
+	/* all MPU6xxx based parts */
 	if ((INV_MPU6050 == st->chip_type) || (INV_MPU6500 == st->chip_type)) {
+		memcpy(&inv_attributes[t_ind], inv_mpu6xxx_attributes,
+		       sizeof(inv_mpu6xxx_attributes));
+		t_ind += ARRAY_SIZE(inv_mpu6xxx_attributes);
+	}
+
+	/* MPU6050 only */
+	if (INV_MPU6050 == st->chip_type) {
 		memcpy(&inv_attributes[t_ind], inv_mpu6050_attributes,
 		       sizeof(inv_mpu6050_attributes));
 		t_ind += ARRAY_SIZE(inv_mpu6050_attributes);
@@ -2044,7 +2461,17 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 		memcpy(&inv_attributes[t_ind], inv_compass_attributes,
 		       sizeof(inv_compass_attributes));
 		t_ind += ARRAY_SIZE(inv_compass_attributes);
+
+		/* AKM only */
+		if (st->plat_data.sec_slave_id == COMPASS_ID_AK8975 ||
+		    st->plat_data.sec_slave_id == COMPASS_ID_AK8972 ||
+		    st->plat_data.sec_slave_id == COMPASS_ID_AK8963) {
+			memcpy(&inv_attributes[t_ind], inv_akxxxx_attributes,
+			       sizeof(inv_akxxxx_attributes));
+			t_ind += ARRAY_SIZE(inv_akxxxx_attributes);
+		}
 	}
+
 	if (conf->has_pressure) {
 		memcpy(&inv_attributes[t_ind], inv_pressure_attributes,
 		       sizeof(inv_pressure_attributes));
@@ -2458,6 +2885,8 @@ static int inv_mpu_probe(struct i2c_client *client,
 			"%s could not be turned off.\n", st->hw->name);
 		goto out_unreg_iio;
 	}
+	inv_init_sensor_struct(st);
+	INIT_DELAYED_WORK(&st->work, batch_step_only_work);
 	dev_info(&client->dev, "%s is ready to go!\n",
 					indio_dev->name);
 	pr_debug("Invensense MPU probe complete.\n");
@@ -2513,6 +2942,7 @@ static int inv_mpu_remove(struct i2c_client *client)
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 
+	cancel_delayed_work_sync(&st->work);
 	kfifo_free(&st->timestamps);
 	iio_device_unregister(indio_dev);
 	if (indio_dev->modes & INDIO_BUFFER_TRIGGERED)
@@ -2533,10 +2963,10 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 
 	if (st->chip_config.dmp_on &&
 		st->chip_config.enable &&
-		st->chip_config.batchmode_on &&
+		st->batch.on &&
 		(!st->chip_config.dmp_event_int_on)) {
-		if (!st->chip_config.batchmode_wake_fifo_on) {
-			st->chip_config.batchmode_overflow_on = suspend;
+		if (!st->batch.wake_fifo_on) {
+			st->batch.overflow_on = suspend;
 			result = inv_i2c_single_write(st,
 					st->reg.user_ctrl, 0);
 			if (result)
@@ -2548,6 +2978,10 @@ static int inv_setup_suspend_batchmode(struct iio_dev *indio_dev, bool suspend)
 			if (result)
 				return result;
 		}
+		/* turn off data interrupt in suspend mode;turn on resume */
+		result = inv_set_interrupt_on_gesture_event(st, suspend);
+		if (result)
+			return result;
 	}
 
 	return 0;
@@ -2563,7 +2997,16 @@ static int inv_mpu_resume(struct device *dev)
 	pr_debug("%s inv_mpu_resume\n", st->hw->name);
 	mutex_lock(&indio_dev->mlock);
 	result = st->set_power_state(st, true);
+	if (st->chip_config.dmp_on &&
+			st->chip_config.enable &&
+			st->chip_config.ped_int_on)
+		result |= inv_enable_pedometer_interrupt(st, true);
+
 	result |= inv_setup_suspend_batchmode(indio_dev, false);
+	if (st->batch.step_only)
+		schedule_delayed_work(&st->work,
+			msecs_to_jiffies(st->batch.timeout));
+
 	mutex_unlock(&indio_dev->mlock);
 
 	return result;
@@ -2577,13 +3020,22 @@ static int inv_mpu_suspend(struct device *dev)
 
 	pr_debug("%s inv_mpu_suspend\n", st->hw->name);
 	mutex_lock(&indio_dev->mlock);
-	result = inv_setup_suspend_batchmode(indio_dev, true);
 
-	if ((!st->chip_config.dmp_on) ||
-		(!st->chip_config.enable) ||
-		(st->chip_config.batchmode_on ==
-		st->chip_config.dmp_event_int_on))
-		result |= st->set_power_state(st, false);
+	if (st->chip_config.dmp_on &&
+			st->chip_config.enable &&
+			st->chip_config.ped_int_on) {
+		result |= inv_enable_pedometer_interrupt(st, false);
+	} else {
+		if ((!st->chip_config.dmp_on) ||
+				(!st->chip_config.enable) ||
+				(st->batch.on ==
+				st->chip_config.dmp_event_int_on))
+			result |= st->set_power_state(st, false);
+	}
+	result = inv_setup_suspend_batchmode(indio_dev, true);
+	if (st->batch.step_only)
+		cancel_delayed_work_sync(&st->work);
+
 	mutex_unlock(&indio_dev->mlock);
 
 	return result;

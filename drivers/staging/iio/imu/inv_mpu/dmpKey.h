@@ -336,12 +336,14 @@
 
 /* FIFO output control */
 #define KEY_CFG_OUT_ACCL            (KEY_CFG_WATERMARK_L + 1)
-#define KEY_CFG_ACCL_PEDSTEP        (KEY_CFG_OUT_ACCL + 1)
-#define KEY_CFG_OUT_GYRO            (KEY_CFG_ACCL_PEDSTEP + 1)
+#define KEY_CFG_OUT_GYRO            (KEY_CFG_OUT_ACCL + 1)
 #define KEY_CFG_OUT_3QUAT           (KEY_CFG_OUT_GYRO + 1)
 #define KEY_CFG_OUT_6QUAT           (KEY_CFG_OUT_3QUAT + 1)
 #define KEY_CFG_OUT_PQUAT           (KEY_CFG_OUT_6QUAT + 1)
-#define KEY_CFG_FIFO_INT            (KEY_CFG_OUT_PQUAT + 1)
+#define KEY_CFG_OUT_CPASS           (KEY_CFG_OUT_PQUAT + 1)
+#define KEY_CFG_OUT_PRESS           (KEY_CFG_OUT_CPASS + 1)
+#define KEY_CFG_OUT_STEPDET         (KEY_CFG_OUT_PRESS + 1)
+#define KEY_CFG_FIFO_INT            (KEY_CFG_OUT_STEPDET + 1)
 
 /* Ped Step detection */
 #define KEY_CFG_PEDSTEP_DET         (KEY_CFG_FIFO_INT + 1)
@@ -350,8 +352,40 @@
 #define KEY_SO_DATA                 (KEY_CFG_PEDSTEP_DET + 1)
 
 /* MPU for DMP Android K */
-#define KEY_P_HW_ID                 (KEY_SO_DATA + 1)
-#define NUM_KEYS                    (KEY_P_HW_ID + 1)
+#define KEY_P_INIT                  (KEY_SO_DATA + 1)
+#define KEY_P_HW_ID                 (KEY_P_INIT + 1)
+
+/* DMP running counter */
+#define KEY_DMP_RUN_CNTR            (KEY_P_HW_ID + 1)
+
+/* Sensor's ODR */
+#define KEY_CFG_3QUAT_ODR           (KEY_DMP_RUN_CNTR + 1)
+#define KEY_CFG_6QUAT_ODR           (KEY_CFG_3QUAT_ODR + 1)
+#define KEY_CFG_PQUAT_ODR           (KEY_CFG_6QUAT_ODR + 1)
+#define KEY_CFG_ACCL_ODR            (KEY_CFG_PQUAT_ODR + 1)
+#define KEY_CFG_GYRO_ODR            (KEY_CFG_ACCL_ODR + 1)
+#define KEY_CFG_CPASS_ODR           (KEY_CFG_GYRO_ODR + 1)
+#define KEY_CFG_PRESS_ODR           (KEY_CFG_CPASS_ODR + 1)
+
+#define KEY_ODR_CNTR_3QUAT          (KEY_CFG_PRESS_ODR + 1)
+#define KEY_ODR_CNTR_6QUAT          (KEY_ODR_CNTR_3QUAT + 1)
+#define KEY_ODR_CNTR_PQUAT          (KEY_ODR_CNTR_6QUAT + 1)
+#define KEY_ODR_CNTR_ACCL           (KEY_ODR_CNTR_PQUAT + 1)
+#define KEY_ODR_CNTR_GYRO           (KEY_ODR_CNTR_ACCL + 1)
+#define KEY_ODR_CNTR_CPASS          (KEY_ODR_CNTR_GYRO + 1)
+#define KEY_ODR_CNTR_PRESS          (KEY_ODR_CNTR_CPASS + 1)
+
+/* Test key */
+#define KEY_TEST_01                 (KEY_ODR_CNTR_PRESS + 1)
+#define KEY_TEST_02                 (KEY_TEST_01 + 1)
+#define KEY_TEST_03                 (KEY_TEST_02 + 1)
+#define KEY_TEST_04                 (KEY_TEST_03 + 1)
+#define KEY_TEST_05                 (KEY_TEST_04 + 1)
+#define KEY_TEST_06                 (KEY_TEST_05 + 1)
+#define KEY_TEST_07                 (KEY_TEST_06 + 1)
+#define KEY_TEST_XX                 (KEY_TEST_07 + 1)
+
+#define NUM_KEYS                    (KEY_TEST_XX + 1)
 
 struct tKeyLabel  {
 	unsigned short key;

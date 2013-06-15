@@ -172,6 +172,8 @@
 #define BMP280_TEMPERATURE_XLSB_REG_DATA__REG      BMP280_TEMPERATURE_XLSB_REG
 
 #define BMP280_RATE_SCALE  100
+#define BMP280_DATA_BYTES  6
+#define FAKE_DATA_NUM_BYTES 10
 
 /** this structure holds all device specific calibration parameters */
 struct bmp280_calibration_param_t {
@@ -282,21 +284,9 @@ static int inv_setup_bmp280(struct inv_mpu_state *st)
 	r = inv_i2c_single_write(st, REG_I2C_MST_CTRL, BIT_WAIT_FOR_ES);
 	if (r)
 		return r;
-	/* slave 2 is used to read data from pressure sensor */
-	/*read mode */
-	r = inv_i2c_single_write(st, REG_I2C_SLV2_ADDR,
-					INV_MPU_BIT_I2C_READ |
-					st->plat_data.aux_i2c_addr);
-	if (r)
-		return r;
-	/* start from pressure sensor data MSB */
-	r = inv_i2c_single_write(st, REG_I2C_SLV2_REG,
-					BMP280_PRESSURE_MSB_REG);
-	if (r)
-		return r;
 	/*slave 3 is used for pressure mode change only*/
 	r = inv_i2c_single_write(st, REG_I2C_SLV3_ADDR,
-		st->plat_data.aux_i2c_addr);
+						st->plat_data.aux_i2c_addr);
 	if (r)
 		return r;
 	/* pressure sensor mode register address */
@@ -305,7 +295,7 @@ static int inv_setup_bmp280(struct inv_mpu_state *st)
 		return r;
 	d[0] = (bmp280.osrs_t << SHIFT_LEFT_5_POSITION) +
 			(bmp280.osrs_p << SHIFT_LEFT_2_POSITION) +
-			BMP280_FORCED_MODE;
+						BMP280_FORCED_MODE;
 	r = inv_i2c_single_write(st, INV_MPU_REG_I2C_SLV3_DO, d[0]);
 
 	return r;
@@ -328,9 +318,41 @@ static int inv_resume_bmp280(struct inv_mpu_state *st)
 {
 	int r;
 
+	if (!st->sensor[SENSOR_COMPASS].on) {
+		/* if compass is disabled, read fake data for DMP */
+		/*read mode */
+		r = inv_i2c_single_write(st, REG_I2C_SLV0_ADDR,
+						INV_MPU_BIT_I2C_READ |
+						st->plat_data.aux_i2c_addr);
+		if (r)
+			return r;
+		/* read calibration data as the fake data */
+		r = inv_i2c_single_write(st, REG_I2C_SLV0_REG,
+						BMP280_DIG_T1_LSB_REG);
+		if (r)
+			return r;
+		/* slave 0 is enabled, read 10 bytes from here */
+		r = inv_i2c_single_write(st, REG_I2C_SLV0_CTRL,
+						INV_MPU_BIT_SLV_EN |
+						FAKE_DATA_NUM_BYTES);
+	}
+
+	/* slave 2 is used to read data from pressure sensor */
+	/*read mode */
+	r = inv_i2c_single_write(st, REG_I2C_SLV2_ADDR,
+					INV_MPU_BIT_I2C_READ |
+					st->plat_data.aux_i2c_addr);
+	if (r)
+		return r;
+	/* start from pressure sensor  */
+	r = inv_i2c_single_write(st, REG_I2C_SLV2_REG,
+					BMP280_PRESSURE_MSB_REG);
+	if (r)
+		return r;
+
 	/* slave 2 is enabled, read 6 bytes from here */
 	r = inv_i2c_single_write(st, REG_I2C_SLV2_CTRL,
-						INV_MPU_BIT_SLV_EN | 6);
+				INV_MPU_BIT_SLV_EN | BMP280_DATA_BYTES);
 	if (r)
 		return r;
 	/* slave 3 is enabled, write byte length is 1 */
@@ -343,6 +365,13 @@ static int inv_resume_bmp280(struct inv_mpu_state *st)
 static int inv_suspend_bmp280(struct inv_mpu_state *st)
 {
 	int r;
+
+	if (!st->sensor[SENSOR_COMPASS].on) {
+		/* slave 0 is disabled */
+		r = inv_i2c_single_write(st, REG_I2C_SLV0_CTRL, 0);
+		if (r)
+			return r;
+	}
 
 	/* slave 2 is disabled */
 	r = inv_i2c_single_write(st, REG_I2C_SLV2_CTRL, 0);
@@ -416,17 +445,19 @@ static u32 bmp280_compensate_P_int32(s32 adc_P)
 
 static int inv_bmp280_read_data(struct inv_mpu_state *st, short *o)
 {
-	int r, reg;
-	u8 d[6];
+	int r, i;
+	u8 d[BMP280_DATA_BYTES];
 	s32 upressure, utemperature;
 
-	if (st->chip_config.compass_enable)
-		reg = REG_EXT_SENS_DATA_08;
-	else
-		reg = REG_EXT_SENS_DATA_00;
-	r = inv_i2c_read(st, reg, 6, d);
-	if (r)
-		return r;
+	if (st->chip_config.from_fifo) {
+		for (i = 0; i < 6; i++)
+			d[i] = st->fifo_data[i];
+	} else {
+		r = inv_i2c_read(st, REG_EXT_SENS_DATA_10,
+						BMP280_DATA_BYTES, d);
+		if (r)
+			return r;
+	}
 	/* pressure */
 	upressure = (s32)((((s32)(d[0]))
 		<< SHIFT_LEFT_12_POSITION) | (((u32)(d[1]))

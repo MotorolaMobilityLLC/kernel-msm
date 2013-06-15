@@ -25,413 +25,12 @@
 
 #include "dmpKey.h"
 
-/**
- *  struct inv_reg_map_s - Notable slave registers.
- *  @sample_rate_div:	Divider applied to gyro output rate.
- *  @lpf:		Configures internal LPF.
- *  @bank_sel:		Selects between memory banks.
- *  @user_ctrl:		Enables/resets the FIFO.
- *  @fifo_en:		Determines which data will appear in FIFO.
- *  @gyro_config:	gyro config register.
- *  @accel_config:	accel config register
- *  @fifo_count_h:	Upper byte of FIFO count.
- *  @fifo_r_w:		FIFO register.
- *  @raw_gyro		Address of first gyro register.
- *  @raw_accel		Address of first accel register.
- *  @temperature	temperature register
- *  @int_enable:	Interrupt enable register.
- *  @int_status:	Interrupt flags.
- *  @pwr_mgmt_1:	Controls chip's power state and clock source.
- *  @pwr_mgmt_2:	Controls power state of individual sensors.
- *  @mem_start_addr:	Address of first memory read.
- *  @mem_r_w:		Access to memory.
- *  @prgm_strt_addrh	firmware program start address register
- */
-struct inv_reg_map_s {
-	u8 sample_rate_div;
-	u8 lpf;
-	u8 bank_sel;
-	u8 user_ctrl;
-	u8 fifo_en;
-	u8 gyro_config;
-	u8 accel_config;
-	u8 fifo_count_h;
-	u8 fifo_r_w;
-	u8 raw_gyro;
-	u8 raw_accel;
-	u8 temperature;
-	u8 int_enable;
-	u8 int_status;
-	u8 pwr_mgmt_1;
-	u8 pwr_mgmt_2;
-	u8 mem_start_addr;
-	u8 mem_r_w;
-	u8 prgm_strt_addrh;
-};
-
-/*device enum */
-enum inv_devices {
-	INV_ITG3500,
-	INV_MPU3050,
-	INV_MPU6050,
-	INV_MPU9150,
-	INV_MPU6500,
-	INV_MPU9250,
-	INV_MPU6XXX,
-	INV_MPU9350,
-	INV_MPU6515,
-	INV_NUM_PARTS
-};
-
-/**
- *  struct inv_hw_s - Other important hardware information.
- *  @num_reg:	Number of registers on device.
- *  @name:      name of the chip
- */
-struct inv_hw_s {
-	u8 num_reg;
-	u8 *name;
-};
-
-/**
- *  struct inv_chip_config_s - Cached chip configuration data.
- *  @fsr:		Full scale range.
- *  @lpf:		Digital low pass filter frequency.
- *  @accel_fs:		accel full scale range.
- *  @has_footer:	MPU3050 specific work around.
- *  @has_compass:	has compass or not.
- *  @has_pressure:      has pressure sensor or not.
- *  @enable:		master enable to enable output
- *  @accel_enable:	enable accel functionality
- *  @accel_fifo_enable:	enable accel data output
- *  @gyro_enable:	enable gyro functionality
- *  @gyro_fifo_enable:	enable gyro data output
- *  @compass_enable:	enable compass
- *  @pressure_enable:   enable pressure.
- *  @is_asleep:		1 if chip is powered down.
- *  @dmp_on:		dmp is on/off.
- *  @dmp_int_on:        dmp interrupt on/off.
- *  @dmp_event_int_on:  dmp event interrupt on/off.
- *  @firmware_loaded:	flag indicate firmware loaded or not.
- *  @lpa_mod:		low power mode.
- *  @tap_on:		tap on/off.
- *  @six_q_on:	send 6-axes quaternion data on/off.
- *  @three_q_on: send 3-axes quaternion data on/off.
- *  @ped_q_on:  send pedometer quaternion data on/off.
- *  @display_orient_on:	display orientation on/off.
- *  @normal_compass_measure: discard first compass data after reset.
- *  @smd_enable: disable/enable SMD function.
- *  @batchmode_on: derived variable for batch mode.
- *  @batchmode_overflow_on: overflow mode for batchmode.
- *  @batchmode_wake_fifo_on: overflow for suspend mode.
- *  @ped_int_on:   pedometer interrupt enable/disable.
- *  @ped_on:  pedometer on/off.
- *  @accel_ped_on: accel pedometer on/off.
- *  @lpa_freq:		low power frequency
- *  @prog_start_addr:	firmware program start address.
- *  @fifo_rate:		current FIFO update rate.
- *  @new_fifo_rate:	set FIFO update rate
- *  @dmp_output_rate:   current dmp output rate.
- *  @batchmode_counter: counter for batch mode.
- *  @batchmode_bpm: batchmode bytes per sample.
- *  @batchmode_timeout: timeout value for batchmode in milliseconds.
- *  @bytes_per_datum: number of bytes for 1 sample data.
- */
-struct inv_chip_config_s {
-	u32 fsr:2;
-	u32 lpf:3;
-	u32 accel_fs:2;
-	u32 has_footer:1;
-	u32 has_compass:1;
-	u32 has_pressure:1;
-	u32 enable:1;
-	u32 accel_enable:1;
-	u32 accel_fifo_enable:1;
-	u32 gyro_enable:1;
-	u32 gyro_fifo_enable:1;
-	u32 compass_enable:1;
-	u32 pressure_enable:1;
-	u32 is_asleep:1;
-	u32 dmp_on:1;
-	u32 dmp_int_on:1;
-	u32 dmp_event_int_on:1;
-	u32 firmware_loaded:1;
-	u32 lpa_mode:1;
-	u32 tap_on:1;
-	u32 six_q_on:1;
-	u32 three_q_on:1;
-	u32 ped_q_on:1;
-	u32 display_orient_on:1;
-	u32 normal_compass_measure:1;
-	u32 smd_enable:1;
-	u32 batchmode_on:1;
-	u32 batchmode_overflow_on:1;
-	u32 batchmode_wake_fifo_on:1;
-	u32 ped_int_on:1;
-	u32 ped_on:1;
-	u32 accel_ped_on:1;
-	u16 lpa_freq;
-	u16 prog_start_addr;
-	u16 fifo_rate;
-	u16 new_fifo_rate;
-	u16 dmp_output_rate;
-	u32 batchmode_counter;
-	u16 batchmode_bpm;
-	u32 batchmode_timeout;
-	u16 bytes_per_datum;
-};
-
-/**
- *  struct inv_chip_info_s - Chip related information.
- *  @product_id:	Product id.
- *  @product_revision:	Product revision.
- *  @silicon_revision:	Silicon revision.
- *  @software_revision:	software revision.
- *  @multi:		accel specific multiplier.
- *  @compass_sens:	compass sensitivity.
- *  @gyro_sens_trim:	Gyro sensitivity trim factor.
- *  @accel_sens_trim:    accel sensitivity trim factor.
- */
-struct inv_chip_info_s {
-	u8 product_id;
-	u8 product_revision;
-	u8 silicon_revision;
-	u8 software_revision;
-	u8 multi;
-	u8 compass_sens[3];
-	u32 gyro_sens_trim;
-	u32 accel_sens_trim;
-};
-
-enum inv_channel_num {
-	INV_CHANNEL_NUM = 1,
-};
-
-/**
- *  struct inv_tap structure to store tap data.
- *  @min_count:  minimum taps counted.
- *  @thresh:    tap threshold.
- *  @time:	tap time.
- */
-struct inv_tap {
-	u16 min_count;
-	u16 thresh;
-	u16 time;
-};
-
-/**
- *  struct accel_mot_int_s structure to store motion interrupt data
- *  @mot_thr:    motion threshold.
- *  @mot_dur:    motion duration.
- *  @mot_on:     flag to indicate motion detection on;
- */
-struct accel_mot_int {
-	u16 mot_thr;
-	u32 mot_dur;
-	u8 mot_on:1;
-};
-
-/**
- * struct self_test_setting - self test settables from sysfs
- * samples: number of samples used in self test.
- * threshold: threshold fail/pass criterion in self test.
- *            This value is in the percentage multiplied by 100.
- *            So 14% would be 14.
- */
-struct self_test_setting {
-	u16 samples;
-	u16 threshold;
-};
-
-/**
- * struct inv_smd significant motion detection structure.
- * threshold: accel threshold for motion detection.
- * delay: delay time to confirm 2nd motion.
- * delay2: delay window parameter.
- */
-struct inv_smd {
-	u32 threshold;
-	u32 delay;
-	u32 delay2;
-};
-
-struct inv_ped {
-	u64 steps;
-	u32 time;
-};
-
-struct inv_mpu_slave;
-/**
- *  struct inv_mpu_state - Driver state variables.
- *  @chip_config:	Cached attribute information.
- *  @chip_info:		Chip information from read-only registers.
- *  @trig;              iio trigger.
- *  @tap:               tap data structure.
- *  @smd:               SMD data structure.
- *  @ped:               pedometer data structure.
- *  @reg:		Map of important registers.
- *  @self_test:         self test settings.
- *  @hw:		Other hardware-specific information.
- *  @chip_type:		chip type.
- *  @time_stamp_lock:	spin lock to time stamp.
- *  @client:		i2c client handle.
- *  @plat_data:		platform data.
- *  @slave_accel:       mpu slave handle for accelerometer(MPU3050 only).
- *  @slave_compass:	mpu slave handle for magnetometer.
- *  @slave_pressure:	mpu slave handle for pressure sensor.
- *  (*set_power_state)(struct inv_mpu_state *, int on): function ptr
- *  (*switch_gyro_engine)(struct inv_mpu_state *, int on): function ptr
- *  (*switch_accel_engine)(struct inv_mpu_state *, int on): function ptr
- *  (*init_config)(struct iio_dev *indio_dev): function ptr
- *  (*setup_reg)(struct inv_reg_map_s *reg): function ptr
- *  @timestamps:        kfifo queue to store time stamp.
- *  @irq:               irq number store.
- *  @accel_bias:        accel bias store.
- *  @gyro_bias:         gyro bias store.
- *  @raw_gyro:          raw gyro data.
- *  @raw_accel:         raw accel data.
- *  @raw_compass:       raw compass.
- *  @raw_quaternion     raw quaternion data.
- *  @input_gyro_offset[3]: gyro offset from sysfs.
- *  @input_accel_offset[3]: accel offset from sysfs.
- *  @input_accel_dmp_bias[3]: accel bias for dmp.
- *  @input_gyro_dmp_bias[3];: gyro bias for dmp.
- *  @rom_gyro_bias[3]: gyro bias from sysfs.
- *  @rom_accel_bias[3]: accel bias from sysfs.
- *  @i2c_addr:          i2c address.
- *  @compass_divider:   slow down compass rate.
- *  @compass_dmp_divider: slow down compass rate for dmp.
- *  @compass_counter:   slow down compass rate.
- *  @pressure_divider:   slow down pressure rate.
- *  @pressure_dmp_divider: slow down pressure rate for dmp.
- *  @pressure_counter:   slow down pressure rate.
- *  @sample_divider:    sample divider for dmp.
- *  @fifo_divider:      fifo divider for dmp.
- *  @display_orient_data:display orient data.
- *  @tap_data:          tap data.
- *  @sl_handle:         Handle to I2C port.
- *  @irq_dur_ns:        duration between each irq.
- *  @irq_dmp_dur_ns:    duration between each DMP irq.
- *  @ts_counter:        time stamp counter.
- *  @diff_accumulater:  accumlator for the difference of nominal and actual.
- *  @last_ts:           last time stamp.
- *  @prev_kfifo_ts:     previous kfifo's time stamp.
- *  @mpu6500_last_motion_time: MPU6500 last real motion interrupt time.
- *  @name: name for distiguish MPU6050 and MPU6500 in MPU6XXX.
- *  @secondary_name: name for the slave device in the secondary I2C.
- */
-struct inv_mpu_state {
-#define TIMESTAMP_FIFO_SIZE 64
-	struct inv_chip_config_s chip_config;
-	struct inv_chip_info_s chip_info;
-	struct iio_trigger  *trig;
-	struct inv_tap   tap;
-	struct inv_smd smd;
-	struct inv_ped ped;
-	struct inv_reg_map_s reg;
-	struct self_test_setting self_test;
-	const struct inv_hw_s *hw;
-	enum   inv_devices chip_type;
-	spinlock_t time_stamp_lock;
-	struct i2c_client *client;
-	struct mpu_platform_data plat_data;
-	struct inv_mpu_slave *slave_accel;
-	struct inv_mpu_slave *slave_compass;
-	struct inv_mpu_slave *slave_pressure;
-	struct accel_mot_int mot_int;
-	int (*set_power_state)(struct inv_mpu_state *, bool on);
-	int (*switch_gyro_engine)(struct inv_mpu_state *, bool on);
-	int (*switch_accel_engine)(struct inv_mpu_state *, bool on);
-	int (*init_config)(struct iio_dev *indio_dev);
-	void (*setup_reg)(struct inv_reg_map_s *reg);
-	DECLARE_KFIFO(timestamps, u64, TIMESTAMP_FIFO_SIZE);
-	short irq;
-	int accel_bias[3];
-	int gyro_bias[3];
-	s16 raw_gyro[3];
-	s16 raw_accel[3];
-	s16 raw_compass[3];
-	int raw_quaternion[4];
-	s16 input_gyro_offset[3];
-	s16 input_accel_offset[3];
-	int input_accel_dmp_bias[3];
-	int input_gyro_dmp_bias[3];
-	s16 rom_gyro_offset[3];
-	s16 rom_accel_offset[3];
-	u8 i2c_addr;
-	u8 compass_divider;
-	u8 compass_counter;
-	u8 compass_dmp_divider;
-	u8 pressure_divider;
-	u8 pressure_counter;
-	u8 pressure_dmp_divider;
-	u8 sample_divider;
-	u8 fifo_divider;
-	u8 display_orient_data;
-	u8 tap_data;
-	void *sl_handle;
-	u32 irq_dur_ns;
-	u32 irq_dmp_dur_ns;
-	u32 ts_counter;
-	s64 diff_accumulater;
-	u64 last_ts;
-	u64 prev_kfifo_ts;
-	u64 mpu6500_last_motion_time;
-	u8 name[20];
-	u8 secondary_name[20];
-};
-
-/* produces an unique identifier for each device based on the
-   combination of product version and product revision */
-struct prod_rev_map_t {
-	u16 mpl_product_key;
-	u8 silicon_rev;
-	u16 gyro_trim;
-	u16 accel_trim;
-};
-
-/**
- *  struct inv_mpu_slave - MPU slave structure.
- *  @st_upper:  compass self test upper limit.
- *  @st_lower:  compass self test lower limit.
- *  @scale: compass scale.
- *  @rate_scale: decide how fast a compass can read.
- *  @self_test: self test method of the slave.
- *  @set_scale: set scale of slave
- *  @get_scale: read scale back of the slave.
- *  @suspend:		suspend operation.
- *  @resume:		resume operation.
- *  @setup:		setup chip. initialization.
- *  @combine_data:	combine raw data into meaningful data.
- *  @read_data:        read external sensor and output
- *  @get_mode:		get current chip mode.
- *  @set_lpf            set low pass filter.
- *  @set_fs             set full scale
- */
-struct inv_mpu_slave {
-	const short *st_upper;
-	const short *st_lower;
-	int scale;
-	int rate_scale;
-	int (*self_test)(struct inv_mpu_state *);
-	int (*set_scale)(struct inv_mpu_state *, int scale);
-	int (*get_scale)(struct inv_mpu_state *, int *val);
-	int (*suspend)(struct inv_mpu_state *);
-	int (*resume)(struct inv_mpu_state *);
-	int (*setup)(struct inv_mpu_state *);
-	int (*combine_data)(u8 *in, short *out);
-	int (*read_data)(struct inv_mpu_state *, short *out);
-	int (*get_mode)(void);
-	int (*set_lpf)(struct inv_mpu_state *, int rate);
-	int (*set_fs)(struct inv_mpu_state *, int fs);
-};
-
 /*register and associated bit definition*/
 #define REG_3050_FIFO_EN         0x12
 #define BITS_3050_ACCEL_OUT		0x0E
 
 #define REG_3050_AUX_VDDIO       0x13
-#define BIT_3050_VDDIO			0x04
+#define BIT_3050_VDDIO           0x04
 
 #define REG_3050_SLAVE_ADDR      0x14
 #define REG_3050_SAMPLE_RATE_DIV 0x15
@@ -446,18 +45,18 @@ struct inv_mpu_slave {
 #define REG_3050_FIFO_R_W        0x3C
 
 #define REG_3050_USER_CTRL       0x3D
-#define BIT_3050_AUX_IF_EN		0x20
-#define BIT_3050_FIFO_RST		0x02
+#define BIT_3050_AUX_IF_EN       0x20
+#define BIT_3050_FIFO_RST        0x02
 
 #define REG_3050_PWR_MGMT_1      0x3E
-#define BITS_3050_POWER1		0x30
-#define BITS_3050_POWER2		0x10
-#define BITS_3050_GYRO_STANDBY		0x38
+#define BITS_3050_POWER1         0x30
+#define BITS_3050_POWER2         0x10
+#define BITS_3050_GYRO_STANDBY   0x38
 
 #define REG_3500_OTP            0x0
 
 #define REG_YGOFFS_TC           0x1
-#define BIT_I2C_MST_VDDIO		0x80
+#define BIT_I2C_MST_VDDIO       0x80
 
 #define REG_XA_OFFS_H           0x6
 #define REG_XA_OFFS_L_TC        0x7
@@ -511,6 +110,7 @@ struct inv_mpu_slave {
 #define BIT_6500_WOM_EN                 0x40
 
 #define REG_DMP_INT_STATUS      0x39
+#define BIT_DMP_INT_CI                  0x01
 
 #define REG_INT_STATUS          0x3A
 #define BIT_MOT_INT                     0x40
@@ -520,7 +120,7 @@ struct inv_mpu_slave {
 #define REG_TEMPERATURE         0x41
 #define REG_RAW_GYRO            0x43
 #define REG_EXT_SENS_DATA_00    0x49
-#define REG_EXT_SENS_DATA_08    0x51
+#define REG_EXT_SENS_DATA_10    0x53
 
 #define REG_ACCEL_INTEL_STATUS  0x61
 
@@ -590,24 +190,28 @@ struct inv_mpu_slave {
 #define MPU3050_FOOTER_SIZE      2
 #define FIFO_COUNT_BYTE          2
 #define FIFO_THRESHOLD           500
-#define FIFO_SIZE                1024
+#define FIFO_SIZE                800
+#define HARDWARE_FIFO_SIZE       1024
+#define MAX_READ_SIZE            64
 #define POWER_UP_TIME            100
 #define SENSOR_UP_TIME           30
 #define REG_UP_TIME              5
 #define INV_MPU_SAMPLE_RATE_CHANGE_STABLE 50
 #define MPU_MEM_BANK_SIZE        256
+#define SELF_TEST_GYRO_FULL_SCALE 250
+#define SELF_TEST_ACCEL_FULL_SCALE 8
+#define SELF_TEST_ACCEL_6500_SCALE 2
 
 /* data header defines */
 #define PRESSURE_HDR             0x8000
 #define ACCEL_HDR                0x4000
-#define ACCEL_STEP_HDR           0x4001
 #define GYRO_HDR                 0x2000
 #define COMPASS_HDR              0x1000
 #define LPQUAT_HDR               0x0800
 #define SIXQUAT_HDR              0x0400
 #define PEDQUAT_HDR              0x0200
-#define PEDQUAT_STEP_HDR         0x0201
-#define MAX_BYTES_PER_SAMPLE     56
+#define STEP_DETECTOR_HDR        0x0100
+#define MAX_BYTES_PER_SAMPLE     80
 #define MAX_HW_FIFO_BYTES        (BYTES_PER_SENSOR * 2)
 #define IIO_BUFFER_BYTES         8
 #define HEADERED_NORMAL_BYTES    8
@@ -635,8 +239,8 @@ struct inv_mpu_slave {
 #define INIT_MOT_THR             128
 #define INIT_ZMOT_DUR            128
 #define INIT_ZMOT_THR            128
-#define INIT_ST_SAMPLES          50
-#define INIT_ST_THRESHOLD        14
+#define INIT_ST_SAMPLES          200
+#define INIT_ST_THRESHOLD        50
 #define ST_THRESHOLD_MULTIPLIER  10
 #define ST_MAX_SAMPLES           500
 #define ST_MAX_THRESHOLD         100
@@ -739,6 +343,451 @@ struct inv_mpu_slave {
 #define INV_GYRO_ACC_MASK                 0x007E
 #define INV_ACCEL_MASK                     0x70
 #define INV_GYRO_MASK                     0xE
+
+struct inv_mpu_state;
+
+/**
+ *  struct inv_reg_map_s - Notable slave registers.
+ *  @sample_rate_div:	Divider applied to gyro output rate.
+ *  @lpf:		Configures internal LPF.
+ *  @bank_sel:		Selects between memory banks.
+ *  @user_ctrl:		Enables/resets the FIFO.
+ *  @fifo_en:		Determines which data will appear in FIFO.
+ *  @gyro_config:	gyro config register.
+ *  @accel_config:	accel config register
+ *  @fifo_count_h:	Upper byte of FIFO count.
+ *  @fifo_r_w:		FIFO register.
+ *  @raw_gyro		Address of first gyro register.
+ *  @raw_accel		Address of first accel register.
+ *  @temperature	temperature register
+ *  @int_enable:	Interrupt enable register.
+ *  @int_status:	Interrupt flags.
+ *  @pwr_mgmt_1:	Controls chip's power state and clock source.
+ *  @pwr_mgmt_2:	Controls power state of individual sensors.
+ *  @mem_start_addr:	Address of first memory read.
+ *  @mem_r_w:		Access to memory.
+ *  @prgm_strt_addrh	firmware program start address register
+ */
+struct inv_reg_map_s {
+	u8 sample_rate_div;
+	u8 lpf;
+	u8 bank_sel;
+	u8 user_ctrl;
+	u8 fifo_en;
+	u8 gyro_config;
+	u8 accel_config;
+	u8 fifo_count_h;
+	u8 fifo_r_w;
+	u8 raw_gyro;
+	u8 raw_accel;
+	u8 temperature;
+	u8 int_enable;
+	u8 int_status;
+	u8 pwr_mgmt_1;
+	u8 pwr_mgmt_2;
+	u8 mem_start_addr;
+	u8 mem_r_w;
+	u8 prgm_strt_addrh;
+};
+
+/* device enum */
+enum inv_devices {
+	INV_ITG3500,
+	INV_MPU3050,
+	INV_MPU6050,
+	INV_MPU9150,
+	INV_MPU6500,
+	INV_MPU9250,
+	INV_MPU6XXX,
+	INV_MPU9350,
+	INV_MPU6515,
+	INV_NUM_PARTS
+};
+
+/**
+ *  struct inv_hw_s - Other important hardware information.
+ *  @num_reg:	Number of registers on device.
+ *  @name:      name of the chip
+ */
+struct inv_hw_s {
+	u8 num_reg;
+	u8 *name;
+};
+
+/* enum for sensor */
+enum INV_SENSORS {
+	SENSOR_GYRO = 0,
+	SENSOR_ACCEL,
+	SENSOR_COMPASS,
+	SENSOR_PRESSURE,
+	SENSOR_STEP,
+	SENSOR_PEDQ,
+	SENSOR_SIXQ,
+	SENSOR_LPQ,
+	SENSOR_NUM_MAX,
+};
+
+/**
+ *  struct inv_sensor - information for each sensor.
+ *  @ts: this sensors timestamp.
+ *  @dur: duration between samples in ns.
+ *  @rate:  fifo rate.
+ *  @on:    on/off.
+ *  @sample_size: sample for the sensor.
+ *  @send_data: function pointer to send data or not.
+ *  @set_rate: funcition pointer to set data rate.
+ */
+struct inv_sensor {
+	u64 ts;
+	int dur;
+	int rate;
+	bool on;
+	u8 sample_size;
+	int (*send_data)(struct inv_mpu_state *st, bool on);
+	int (*set_rate)(struct inv_mpu_state *st);
+};
+
+/**
+ *  struct inv_batch - information batchmode.
+ *  @on: derived variable for batch mode.
+ *  @overflow_on: overflow mode for batchmode.
+ *  @wake_fifo_on: overflow for suspend mode.
+ *  @step_only: mean only step detector data is batched.
+ *  @post_isr_run: mean post isr has runned once.
+ *  @counter: counter for batch mode.
+ *  @timeout: nominal timeout value for batchmode in milliseconds.
+ */
+struct inv_batch {
+	bool on;
+	bool overflow_on;
+	bool wake_fifo_on;
+	bool step_only;
+	bool post_isr_run;
+	u32 counter;
+	u32 timeout;
+};
+
+/**
+ *  struct inv_chip_config_s - Cached chip configuration data.
+ *  @fsr:		Full scale range.
+ *  @lpf:		Digital low pass filter frequency.
+ *  @accel_fs:		accel full scale range.
+ *  @has_footer:	MPU3050 specific work around.
+ *  @has_compass:	has compass or not.
+ *  @has_pressure:      has pressure sensor or not.
+ *  @enable:		master enable to enable output
+ *  @accel_enable:	enable accel functionality
+ *  @gyro_enable:	enable gyro functionality
+ *  @is_asleep:		1 if chip is powered down.
+ *  @dmp_on:		dmp is on/off.
+ *  @dmp_int_on:        dmp interrupt on/off.
+ *  @step_indicator_on: step indicate bit added to the sensor or not.
+ *  @dmp_event_int_on:  dmp event interrupt on/off.
+ *  @firmware_loaded:	flag indicate firmware loaded or not.
+ *  @lpa_mod:		low power mode.
+ *  @tap_on:		tap on/off.
+ *  @display_orient_on:	display orientation on/off.
+ *  @normal_compass_measure: discard first compass data after reset.
+ *  @normal_pressure_measure: discard first pressure data after reset.
+ *  @smd_enable: disable/enable SMD function.
+ *  @ped_int_on:   pedometer interrupt enable/disable.
+ *  @ped_on:  pedometer on/off.
+ *  @from_fifo: flag to indicate secondary data is from FIFO or not.
+ *  @lpa_freq:		low power frequency
+ *  @prog_start_addr:	firmware program start address.
+ *  @fifo_rate:		current FIFO update rate.
+ *  @new_fifo_rate:	set FIFO update rate
+ *  @bytes_per_datum: number of bytes for 1 sample data.
+ */
+struct inv_chip_config_s {
+	u32 fsr:2;
+	u32 lpf:3;
+	u32 accel_fs:2;
+	u32 has_footer:1;
+	u32 has_compass:1;
+	u32 has_pressure:1;
+	u32 enable:1;
+	u32 accel_enable:1;
+	u32 gyro_enable:1;
+	u32 is_asleep:1;
+	u32 dmp_on:1;
+	u32 dmp_int_on:1;
+	u32 dmp_event_int_on:1;
+	u32 step_indicator_on:1;
+	u32 firmware_loaded:1;
+	u32 lpa_mode:1;
+	u32 tap_on:1;
+	u32 display_orient_on:1;
+	u32 normal_compass_measure:1;
+	u32 normal_pressure_measure:1;
+	u32 smd_enable:1;
+	u32 ped_int_on:1;
+	u32 ped_on:1;
+	u32 from_fifo:1;
+	u16 lpa_freq;
+	u16 prog_start_addr;
+	u16 fifo_rate;
+	u16 new_fifo_rate;
+	u16 bytes_per_datum;
+};
+
+/**
+ *  struct inv_chip_info_s - Chip related information.
+ *  @product_id:	Product id.
+ *  @product_revision:	Product revision.
+ *  @silicon_revision:	Silicon revision.
+ *  @software_revision:	software revision.
+ *  @multi:		accel specific multiplier.
+ *  @compass_sens:	compass sensitivity.
+ *  @gyro_sens_trim:	Gyro sensitivity trim factor.
+ *  @accel_sens_trim:    accel sensitivity trim factor.
+ */
+struct inv_chip_info_s {
+	u8 product_id;
+	u8 product_revision;
+	u8 silicon_revision;
+	u8 software_revision;
+	u8 multi;
+	u8 compass_sens[3];
+	u32 gyro_sens_trim;
+	u32 accel_sens_trim;
+};
+
+enum inv_channel_num {
+	INV_CHANNEL_NUM = 1,
+};
+
+/**
+ *  struct inv_tap structure to store tap data.
+ *  @min_count:  minimum taps counted.
+ *  @thresh:    tap threshold.
+ *  @time:	tap time.
+ */
+struct inv_tap {
+	u16 min_count;
+	u16 thresh;
+	u16 time;
+};
+
+/**
+ *  struct accel_mot_int_s structure to store motion interrupt data
+ *  @mot_thr:    motion threshold.
+ *  @mot_dur:    motion duration.
+ *  @mot_on:     flag to indicate motion detection on;
+ */
+struct accel_mot_int {
+	u16 mot_thr;
+	u32 mot_dur;
+	u8 mot_on:1;
+};
+
+/**
+ * struct self_test_setting - self test settables from sysfs
+ * samples: number of samples used in self test.
+ * threshold: threshold fail/pass criterion in self test.
+ *            This value is in the percentage multiplied by 100.
+ *            So 14% would be 14.
+ */
+struct self_test_setting {
+	u16 samples;
+	u16 threshold;
+};
+
+/**
+ * struct inv_smd significant motion detection structure.
+ * threshold: accel threshold for motion detection.
+ * delay: delay time to confirm 2nd motion.
+ * delay2: delay window parameter.
+ */
+struct inv_smd {
+	u32 threshold;
+	u32 delay;
+	u32 delay2;
+};
+
+struct inv_ped {
+	u64 steps;
+	u32 time;
+};
+
+struct inv_mpu_slave;
+/**
+ *  struct inv_mpu_state - Driver state variables.
+ *  @chip_config:	Cached attribute information.
+ *  @chip_info:		Chip information from read-only registers.
+ *  @trig;              iio trigger.
+ *  @tap:               tap data structure.
+ *  @smd:               SMD data structure.
+ *  @ped:               pedometer data structure.
+ *  @batch:             batchmode data structure.
+ *  @reg:		Map of important registers.
+ *  @self_test:         self test settings.
+ *  @hw:		Other hardware-specific information.
+ *  @chip_type:		chip type.
+ *  @time_stamp_lock:	spin lock to time stamp.
+ *  @client:		i2c client handle.
+ *  @plat_data:		platform data.
+ *  @slave_accel:       mpu slave handle for accelerometer(MPU3050 only).
+ *  @slave_compass:	mpu slave handle for magnetometer.
+ *  @slave_pressure:	mpu slave handle for pressure sensor.
+ *  (*set_power_state)(struct inv_mpu_state *, int on): function ptr
+ *  (*switch_gyro_engine)(struct inv_mpu_state *, int on): function ptr
+ *  (*switch_accel_engine)(struct inv_mpu_state *, int on): function ptr
+ *  (*init_config)(struct iio_dev *indio_dev): function ptr
+ *  (*setup_reg)(struct inv_reg_map_s *reg): function ptr
+ *  @timestamps:        kfifo queue to store time stamp.
+ *  @irq:               irq number store.
+ *  @accel_bias:        accel bias store.
+ *  @gyro_bias:         gyro bias store.
+ *  @raw_gyro:          raw gyro data.
+ *  @raw_accel:         raw accel data.
+ *  @input_gyro_offset[3]: gyro offset from sysfs.
+ *  @input_accel_offset[3]: accel offset from sysfs.
+ *  @input_accel_dmp_bias[3]: accel bias for dmp.
+ *  @input_gyro_dmp_bias[3];: gyro bias for dmp.
+ *  @rom_gyro_bias[3]: gyro bias from sysfs.
+ *  @rom_accel_bias[3]: accel bias from sysfs.
+ *  @fifo_data[6]: fifo data storage.
+ *  @i2c_addr:          i2c address.
+ *  @compass_divider:   slow down compass rate.
+ *  @compass_dmp_divider: slow down compass rate for dmp.
+ *  @compass_counter:   slow down compass rate.
+ *  @pressure_divider:   slow down pressure rate.
+ *  @pressure_dmp_divider: slow down pressure rate for dmp.
+ *  @pressure_counter:   slow down pressure rate.
+ *  @sample_divider:    sample divider for dmp.
+ *  @fifo_divider:      fifo divider for dmp.
+ *  @display_orient_data:display orient data.
+ *  @tap_data:          tap data.
+ *  @dmp_int_status:    DMP interrupt status bytes.
+ *  @left_over[HEADERED_Q_BYTES]: left over bytes storage.
+ *  @left_over_size: left over size.
+ *  @sensor{SENSOR_NUM_MAX]: sensor individual properties.
+ *  @fifo_count: current fifo_count;
+ *  @sl_handle:         Handle to I2C port.
+ *  @irq_dur_ns:        duration between each irq.
+ *  @ts_counter:        time stamp counter.
+ *  @diff_accumulater:  accumlator for the difference of nominal and actual.
+ *  @base_ts:           base time stamp used by every sensor.
+ *  @last_ts:           last time stamp.
+ *  @step_detector_base_ts: base time stamp for step detector calculation.
+ *  @prev_kfifo_ts:     previous kfifo's time stamp.
+ *  @work: work only for batchmode when only step is batched.
+ *  @name: name for distiguish MPU6050 and MPU6500 in MPU6XXX.
+ *  @secondary_name: name for the slave device in the secondary I2C.
+ */
+struct inv_mpu_state {
+#define TIMESTAMP_FIFO_SIZE 64
+	struct inv_chip_config_s chip_config;
+	struct inv_chip_info_s chip_info;
+	struct iio_trigger  *trig;
+	struct inv_tap   tap;
+	struct inv_smd smd;
+	struct inv_ped ped;
+	struct inv_batch batch;
+	struct inv_reg_map_s reg;
+	struct self_test_setting self_test;
+	const struct inv_hw_s *hw;
+	enum   inv_devices chip_type;
+	spinlock_t time_stamp_lock;
+	struct i2c_client *client;
+	struct mpu_platform_data plat_data;
+	struct inv_mpu_slave *slave_accel;
+	struct inv_mpu_slave *slave_compass;
+	struct inv_mpu_slave *slave_pressure;
+	struct accel_mot_int mot_int;
+	int (*set_power_state)(struct inv_mpu_state *, bool on);
+	int (*switch_gyro_engine)(struct inv_mpu_state *, bool on);
+	int (*switch_accel_engine)(struct inv_mpu_state *, bool on);
+	int (*init_config)(struct iio_dev *indio_dev);
+	void (*setup_reg)(struct inv_reg_map_s *reg);
+	DECLARE_KFIFO(timestamps, u64, TIMESTAMP_FIFO_SIZE);
+	short irq;
+	int accel_bias[3];
+	int gyro_bias[3];
+	s16 raw_gyro[3];
+	s16 raw_accel[3];
+	s16 input_gyro_offset[3];
+	s16 input_accel_offset[3];
+	int input_accel_dmp_bias[3];
+	int input_gyro_dmp_bias[3];
+	s16 rom_gyro_offset[3];
+	s16 rom_accel_offset[3];
+	u8 fifo_data[6];
+	u8 i2c_addr;
+	u8 compass_divider;
+	u8 compass_counter;
+	u8 compass_dmp_divider;
+	u8 pressure_divider;
+	u8 pressure_counter;
+	u8 pressure_dmp_divider;
+	u8 sample_divider;
+	u8 fifo_divider;
+	u8 display_orient_data;
+	u8 tap_data;
+	u8 dmp_int_status;
+	u8 left_over[HEADERED_Q_BYTES];
+	u32 left_over_size;
+	struct inv_sensor sensor[SENSOR_NUM_MAX];
+	u32 fifo_count;
+	void *sl_handle;
+	u32 irq_dur_ns;
+	u32 ts_counter;
+	s64 diff_accumulater;
+	u64 base_ts;
+	u64 last_ts;
+	u64 step_detector_base_ts;
+	u64 prev_kfifo_ts;
+	struct delayed_work work;
+	u8 name[20];
+	u8 secondary_name[20];
+};
+
+/* produces an unique identifier for each device based on the
+   combination of product version and product revision */
+struct prod_rev_map_t {
+	u16 mpl_product_key;
+	u8 silicon_rev;
+	u16 gyro_trim;
+	u16 accel_trim;
+};
+
+/**
+ *  struct inv_mpu_slave - MPU slave structure.
+ *  @st_upper:  compass self test upper limit.
+ *  @st_lower:  compass self test lower limit.
+ *  @scale: compass scale.
+ *  @rate_scale: decide how fast a compass can read.
+ *  @self_test: self test method of the slave.
+ *  @set_scale: set scale of slave
+ *  @get_scale: read scale back of the slave.
+ *  @suspend:		suspend operation.
+ *  @resume:		resume operation.
+ *  @setup:		setup chip. initialization.
+ *  @combine_data:	combine raw data into meaningful data.
+ *  @read_data:        read external sensor and output
+ *  @get_mode:		get current chip mode.
+ *  @set_lpf            set low pass filter.
+ *  @set_fs             set full scale
+ */
+struct inv_mpu_slave {
+	const short *st_upper;
+	const short *st_lower;
+	int scale;
+	int rate_scale;
+	int (*self_test)(struct inv_mpu_state *);
+	int (*set_scale)(struct inv_mpu_state *, int scale);
+	int (*get_scale)(struct inv_mpu_state *, int *val);
+	int (*suspend)(struct inv_mpu_state *);
+	int (*resume)(struct inv_mpu_state *);
+	int (*setup)(struct inv_mpu_state *);
+	int (*combine_data)(u8 *in, short *out);
+	int (*read_data)(struct inv_mpu_state *, short *out);
+	int (*get_mode)(void);
+	int (*set_lpf)(struct inv_mpu_state *, int rate);
+	int (*set_fs)(struct inv_mpu_state *, int fs);
+};
+
 /* scan element definition */
 enum inv_mpu_scan {
 	INV_MPU_SCAN_QUAT_R = 0,
@@ -802,11 +851,12 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_DMP_ACCEL_Z_DMP_BIAS,
 	ATTR_DMP_PED_INT_ON,
 	ATTR_DMP_PED_ON,
-	ATTR_DMP_ACCEL_PED_ON,
 	ATTR_DMP_SMD_ENABLE,
 	ATTR_DMP_SMD_THLD,
 	ATTR_DMP_SMD_DELAY_THLD,
 	ATTR_DMP_SMD_DELAY_THLD2,
+	ATTR_DMP_PEDOMETER_STEPS,
+	ATTR_DMP_PEDOMETER_TIME,
 	ATTR_DMP_TAP_ON,
 	ATTR_DMP_TAP_THRESHOLD,
 	ATTR_DMP_TAP_MIN_COUNT,
@@ -817,12 +867,17 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_DMP_ON,
 	ATTR_DMP_INT_ON,
 	ATTR_DMP_EVENT_INT_ON,
-	ATTR_DMP_OUTPUT_RATE,
+	ATTR_DMP_STEP_INDICATOR_ON,
 	ATTR_DMP_BATCHMODE_TIMEOUT,
 	ATTR_DMP_BATCHMODE_WAKE_FIFO_FULL,
 	ATTR_DMP_SIX_Q_ON,
-	ATTR_DMP_THREE_Q_ON,
+	ATTR_DMP_SIX_Q_RATE,
+	ATTR_DMP_LPQ_ON,
+	ATTR_DMP_LPQ_RATE,
 	ATTR_DMP_PED_Q_ON,
+	ATTR_DMP_PED_Q_RATE,
+	ATTR_DMP_STEP_DETECTOR_ON,
+	ATTR_DMP_STEP_DETECTOR_RATE,
 /*  *****above this line, it is all DMP related features */
 /*  *****below this line, it is all non-DMP related features */
 	ATTR_GYRO_SCALE,
@@ -844,10 +899,14 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_SELF_TEST_THRESHOLD,
 	ATTR_GYRO_ENABLE,
 	ATTR_GYRO_FIFO_ENABLE,
+	ATTR_GYRO_RATE,
 	ATTR_ACCEL_ENABLE,
 	ATTR_ACCEL_FIFO_ENABLE,
+	ATTR_ACCEL_RATE,
 	ATTR_COMPASS_ENABLE,
+	ATTR_COMPASS_RATE,
 	ATTR_PRESSURE_ENABLE,
+	ATTR_PRESSURE_RATE,
 	ATTR_POWER_STATE, /* this is fake sysfs for compatibility */
 	ATTR_FIRMWARE_LOADED,
 	ATTR_SAMPLING_FREQ,
@@ -859,11 +918,12 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_ACCEL_X_CALIBBIAS,
 	ATTR_ACCEL_Y_CALIBBIAS,
 	ATTR_ACCEL_Z_CALIBBIAS,
-	ATTR_DMP_PEDOMETER_STEPS,
-	ATTR_DMP_PEDOMETER_TIME,
+	ATTR_SELF_TEST_GYRO_SCALE,
+	ATTR_SELF_TEST_ACCEL_SCALE,
 	ATTR_GYRO_MATRIX,
 	ATTR_ACCEL_MATRIX,
 	ATTR_COMPASS_MATRIX,
+	ATTR_COMPASS_SENS,
 	ATTR_SECONDARY_NAME,
 #ifdef CONFIG_INV_TESTING
 	ATTR_I2C_COUNTERS,
@@ -871,7 +931,14 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_DEBUG_SMD_ENABLE_TESTP1,
 	ATTR_DEBUG_SMD_ENABLE_TESTP2,
 	ATTR_DEBUG_SMD_EXE_STATE,
-	ATTR_DEBUG_SMD_DELAY_CNTR
+	ATTR_DEBUG_SMD_DELAY_CNTR,
+	ATTR_DEBUG_GYRO_COUNTER,
+	ATTR_DEBUG_ACCEL_COUNTER,
+	ATTR_DEBUG_COMPASS_COUNTER,
+	ATTR_DEBUG_PRESSURE_COUNTER,
+	ATTR_DEBUG_LPQ_COUNTER,
+	ATTR_DEBUG_SIXQ_COUNTER,
+	ATTR_DEBUG_PEDQ_COUNTER,
 #endif
 };
 
@@ -919,7 +986,6 @@ int inv_switch_3050_accel_engine(struct inv_mpu_state *st, bool en);
 int set_power_mpu3050(struct inv_mpu_state *st, bool power_on);
 int inv_set_interrupt_on_gesture_event(struct inv_mpu_state *st, bool on);
 int inv_set_display_orient_interrupt_dmp(struct inv_mpu_state *st, bool on);
-int inv_set_fifo_rate(struct inv_mpu_state *st, u16 fifo_rate);
 u16 inv_dmp_get_address(u16 key);
 int inv_q30_mult(int a, int b);
 int inv_set_tap_threshold_dmp(struct inv_mpu_state *st,
@@ -953,11 +1019,14 @@ int inv_quaternion_on(struct inv_mpu_state *st,
 				 struct iio_buffer *ring, bool en);
 int inv_enable_pedometer_interrupt(struct inv_mpu_state *st, bool en);
 int inv_enable_pedometer(struct inv_mpu_state *st, bool en);
-int inv_enable_accel_ped_step(struct inv_mpu_state *st, bool en);
 int inv_get_pedometer_steps(struct inv_mpu_state *st, u32 *steps);
 int inv_get_pedometer_time(struct inv_mpu_state *st, u32 *time);
 int inv_reset_fifo(struct iio_dev *indio_dev);
+int inv_reset_offset_reg(struct inv_mpu_state *st, bool en);
 int inv_batchmode_setup(struct inv_mpu_state *st);
+int inv_set_65XX_gyro_config(struct inv_mpu_state *st);
+void inv_init_sensor_struct(struct inv_mpu_state *st);
+void batch_step_only_work(struct work_struct *work);
 /* used to print i2c data using pr_debug */
 char *wr_pr_debug_begin(u8 const *data, u32 len, char *string);
 char *wr_pr_debug_end(char *string);

@@ -198,8 +198,6 @@ int inv_init_config_mpu3050(struct iio_dev *indio_dev)
 	st->chip_config.fifo_rate = INIT_FIFO_RATE;
 	st->irq_dur_ns            = INIT_DUR_TIME;
 	st->chip_config.prog_start_addr = DMP_START_ADDR;
-	st->chip_config.gyro_enable = 1;
-	st->chip_config.gyro_fifo_enable = 1;
 	if ((SECONDARY_SLAVE_TYPE_ACCEL == st->plat_data.sec_slave_type) &&
 		st->slave_accel) {
 		result = st->slave_accel->setup(st);
@@ -211,8 +209,6 @@ int inv_init_config_mpu3050(struct iio_dev *indio_dev)
 		result = st->slave_accel->set_lpf(st, INIT_FIFO_RATE);
 		if (result)
 			return result;
-		st->chip_config.accel_enable = 1;
-		st->chip_config.accel_fifo_enable = 1;
 	}
 
 	return 0;

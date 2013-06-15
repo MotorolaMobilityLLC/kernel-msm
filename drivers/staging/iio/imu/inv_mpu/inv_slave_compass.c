@@ -49,7 +49,7 @@
 #define DATA_MLX_SCALE_EMPIRICAL (26214 * (1L << 15))
 
 #define DATA_AKM8963_SCALE_SHIFT      4
-#define DATA_AKM_NUM_BYTES  8
+#define DATA_AKM_NUM_BYTES  10
 
 #define DEF_ST_COMPASS_WAIT_MIN     (10 * 1000)
 #define DEF_ST_COMPASS_WAIT_MAX     (15 * 1000)
@@ -64,10 +64,10 @@
 #define MLX_RATE_SCALE       100
 
 /* MLX90399 compass definition */
-#define DATA_MLX_CMD_READ_MEASURE         0x4E
+#define DATA_MLX_CMD_READ_MEASURE         0x4F
 #define DATA_MLX_CMD_SINGLE_MEASURE       0x3F
-#define DATA_MLX_READ_DATA_BYTES          7
-#define DATA_MLX_STATUS_DATA              2
+#define DATA_MLX_READ_DATA_BYTES          9
+#define DATA_MLX_STATUS_DATA              3
 
 static const short AKM8975_ST_Lower[3] = {-100, -100, -1000};
 static const short AKM8975_ST_Upper[3] = {100, 100, -300};
@@ -124,17 +124,6 @@ static int inv_setup_compass_akm(struct inv_mpu_state *st)
 	result = inv_i2c_single_write(st, REG_I2C_MST_CTRL, BIT_WAIT_FOR_ES);
 	if (result)
 		return result;
-	/* slave 0 is used to read data from compass */
-	/*read mode */
-	result = inv_i2c_single_write(st, REG_I2C_SLV0_ADDR,
-					INV_MPU_BIT_I2C_READ |
-					st->plat_data.secondary_i2c_addr);
-	if (result)
-		return result;
-	/* AKM status register address is 1 */
-	result = inv_i2c_single_write(st, REG_I2C_SLV0_REG, REG_AKM_INFO);
-	if (result)
-		return result;
 	/*slave 1 is used for AKM mode change only*/
 	result = inv_i2c_single_write(st, REG_I2C_SLV1_ADDR,
 		st->plat_data.secondary_i2c_addr);
@@ -158,8 +147,7 @@ static int inv_setup_compass_akm(struct inv_mpu_state *st)
 		st->slave_compass->st_upper = AKM8963_ST_Upper;
 		st->slave_compass->st_lower = AKM8963_ST_Lower;
 		data[0] = DATA_AKM_MODE_SM |
-			  (st->slave_compass->scale
-				<< DATA_AKM8963_SCALE_SHIFT);
+			(st->slave_compass->scale << DATA_AKM8963_SCALE_SHIFT);
 	}
 	result = inv_i2c_single_write(st, INV_MPU_REG_I2C_SLV1_DO, data[0]);
 
@@ -173,18 +161,20 @@ static int inv_akm_read_data(struct inv_mpu_state *st, short *o)
 	u8 d[DATA_AKM_NUM_BYTES];
 	u8 *sens;
 
-	result = inv_i2c_read(st, REG_EXT_SENS_DATA_00,
-					DATA_AKM_NUM_BYTES, d);
-	if ((DATA_AKM_DRDY == d[1]) && (!result)) {
-		sens = st->chip_info.compass_sens;
-		for (i = 0; i < 3; i++) {
-			o[i] = (short)((d[i * 2 + 3] << 8) | d[i * 2 + 2]);
-			o[i] = (short)(((int)o[i] * (sens[i] + 128)) >> 8);
-			st->raw_compass[i] = o[i];
-		}
+	sens = st->chip_info.compass_sens;
+	if (st->chip_config.from_fifo) {
+		for (i = 0; i < 6; i++)
+			d[2 + i] = st->fifo_data[i];
 	} else {
-		for (i = 0; i < 3; i++)
-			o[i] = 0;
+		result = inv_i2c_read(st, REG_EXT_SENS_DATA_00,
+					DATA_AKM_NUM_BYTES, d);
+		if ((DATA_AKM_DRDY != d[1]) || result)
+			for (i = 0; i < 6; i++)
+				d[2 + i] = 0;
+	}
+	for (i = 0; i < 3; i++) {
+		o[i] = (short)((d[i * 2 + 3] << 8) | d[i * 2 + 2]);
+		o[i] = (short)(((int)o[i] * (sens[i] + 128)) >> 8);
 	}
 
 	return 0;
@@ -193,20 +183,24 @@ static int inv_akm_read_data(struct inv_mpu_state *st, short *o)
 static int inv_mlx_read_data(struct inv_mpu_state *st, short *o)
 {
 	int result;
-	int i;
+	int i, z;
 	u8 d[DATA_MLX_READ_DATA_BYTES];
 
 	result = inv_i2c_read(st, REG_EXT_SENS_DATA_00,
 			     DATA_MLX_READ_DATA_BYTES, d);
 	if ((!(d[0] & ~DATA_MLX_STATUS_DATA)) && (!result)) {
-		for (i = 0; i < 3; i++) {
-			o[i] = (short)((d[i * 2 + 1] << 8) + d[i * 2 + 2]);
-			st->raw_compass[i] = o[i];
-		}
+		for (i = 0; i < 3; i++)
+			o[i] = (short)((d[i * 2 + 3] << 8) + d[i * 2 + 4]);
 	} else {
 		for (i = 0; i < 3; i++)
 			o[i] = 0;
 	}
+	z = o[2];
+	/* axis sensitivity conversion. Z axis has different sensitiviy from
+	   x and y */
+	z *= 26;
+	z /= 15;
+	o[2] = z;
 
 	return 0;
 }
@@ -279,13 +273,13 @@ static int inv_check_akm_self_test(struct inv_mpu_state *st)
 	}
 	result = -EINVAL;
 	if (x > st->slave_compass->st_upper[X] ||
-	    x < st->slave_compass->st_lower[X])
+					x < st->slave_compass->st_lower[X])
 		goto AKM_fail;
 	if (y > st->slave_compass->st_upper[Y] ||
-	    y < st->slave_compass->st_lower[Y])
+					y < st->slave_compass->st_lower[Y])
 		goto AKM_fail;
 	if (z > st->slave_compass->st_upper[Z] ||
-	    z < st->slave_compass->st_lower[Z])
+					z < st->slave_compass->st_lower[Z])
 		goto AKM_fail;
 	result = 0;
 AKM_fail:
@@ -359,7 +353,19 @@ static int inv_resume_akm(struct inv_mpu_state *st)
 {
 	int result;
 
-	/* slave 0 is enabled, read 8 bytes from here */
+	/* slave 0 is used to read data from compass */
+	/*read mode */
+	result = inv_i2c_single_write(st, REG_I2C_SLV0_ADDR,
+					INV_MPU_BIT_I2C_READ |
+					st->plat_data.secondary_i2c_addr);
+	if (result)
+		return result;
+	/* AKM status register address is 1 */
+	result = inv_i2c_single_write(st, REG_I2C_SLV0_REG, REG_AKM_INFO);
+	if (result)
+		return result;
+
+	/* slave 0 is enabled, read 10 bytes from here */
 	result = inv_i2c_single_write(st, REG_I2C_SLV0_CTRL,
 						INV_MPU_BIT_SLV_EN |
 						DATA_AKM_NUM_BYTES);
@@ -539,6 +545,34 @@ static int inv_read_mlx_z_axis(struct inv_mpu_state *st, s16 *z)
 	return 0;
 }
 
+static int inv_write_mlx_reg(struct inv_mpu_state *st)
+{
+	int result;
+	int addr;
+	u16 r_val;
+
+	addr = st->plat_data.secondary_i2c_addr;
+
+	/* write register 0 with 0x70 */
+	result = inv_i2c_write_mlx_reg(st, addr, 0, 0x7c);
+	if (result)
+		return result;
+	/* write register 2. set resolution with 0 with all axis */
+	result = inv_i2c_write_mlx_reg(st, addr, 2, 0x13);
+	if (result)
+		return result;
+	/* read register 1 */
+	result = inv_i2c_read_reg_mlx(st, addr, 1, &r_val);
+	if (result)
+		return result;
+	/* enable temp comp */
+	r_val |= 0x400;
+	result = inv_i2c_write_mlx_reg(st, addr, 1, r_val);
+	/* the value should be kept in the volatile memory */
+
+	return result;
+}
+
 static int inv_check_mlx_self_test(struct inv_mpu_state *st)
 {
 	int result;
@@ -556,6 +590,9 @@ static int inv_check_mlx_self_test(struct inv_mpu_state *st)
 	}
 
 	addr = st->plat_data.secondary_i2c_addr;
+
+	/* fake read to flush the previous data */
+	result = inv_read_mlx_z_axis(st, &meas_ref);
 
 	result = inv_read_mlx_z_axis(st, &meas_ref);
 	if (result)
@@ -577,6 +614,9 @@ static int inv_check_mlx_self_test(struct inv_mpu_state *st)
 	result = inv_write_mlx_cmd(st, 0xD0);
 	if (result)
 		return result;
+	result = inv_write_mlx_reg(st);
+	if (result)
+		return result;
 	diff = abs(meas_ref - meas_coil);
 	if (diff < 25 || diff > 300)
 		result = 1;
@@ -588,40 +628,6 @@ static int inv_check_mlx_self_test(struct inv_mpu_state *st)
 	return result;
 }
 
-static int inv_write_mlx_reg(struct inv_mpu_state *st)
-{
-	int result;
-	int addr;
-	u16 r_val;
-
-	addr = st->plat_data.secondary_i2c_addr;
-
-	/* write register 0 with 0x70 */
-	result = inv_i2c_write_mlx_reg(st, addr, 0, 0x70);
-	if (result)
-		return result;
-	/* write register 2. set resolution with 0 with all axis */
-	result = inv_i2c_write_mlx_reg(st, addr, 2, 0x13);
-	if (result)
-		return result;
-	/* read register 1 */
-	result = inv_i2c_read_reg_mlx(st, addr, 1, &r_val);
-	if (result)
-		return result;
-	/* enable temp comp */
-	r_val |= 0x400;
-	result = inv_i2c_write_mlx_reg(st, addr, 1, r_val);
-	if (result)
-		return result;
-	/* now begin to set SENS_TC_HT, SENS_TC_LT */
-	result = inv_i2c_write_mlx_reg(st, addr, 3, (0x67 << 8) | 0x55);
-	if (result)
-		return result;
-	/* memory store */
-	result = inv_write_mlx_cmd(st, 0xE0);
-
-	return result;
-}
 /*
  *  inv_setup_compass_mlx() - Configure akm series compass.
  */
@@ -688,22 +694,15 @@ static int inv_suspend_mlx(struct inv_mpu_state *st)
 {
 	int result;
 
-	/* enable, ignore register, write 1 bytes */
 	result = inv_i2c_single_write(st, REG_I2C_SLV0_CTRL, 0);
 	if (result)
 		return result;
-
-	/* enable, ignore register, read 9 bytes */
 	result = inv_i2c_single_write(st, REG_I2C_SLV1_CTRL, 0);
 	if (result)
 		return result;
-
-	/* enable, ignore register, write 1 bytes */
 	result = inv_i2c_single_write(st, REG_I2C_SLV2_CTRL, 0);
 	if (result)
 		return result;
-
-	/* enable, ignore register, read 1 bytes */
 	result = inv_i2c_single_write(st, REG_I2C_SLV3_CTRL, 0);
 
 	return result;
