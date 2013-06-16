@@ -85,6 +85,7 @@ struct msm_audio {
 	bool set_channel_map;
 	char channel_map[8];
 	int cmd_interrupt;
+	uint32_t volume;
 };
 
 struct output_meta_data_st {
