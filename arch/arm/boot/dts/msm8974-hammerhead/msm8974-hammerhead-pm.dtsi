@@ -32,6 +32,8 @@
 			reg = <0x36>;
 			max17048,alert_gpio = <&msmgpio 9 0x00>;
 			max17048,rcomp = <77>;
+			max17048,rcomp-co-hot = <700>;
+			max17048,rcomp-co-cold = <5225>;
 			max17048,alert_threshold = <2>;
 			max17048,max-mvolt = <4350>;
 			max17048,min-mvolt = <3200>;
