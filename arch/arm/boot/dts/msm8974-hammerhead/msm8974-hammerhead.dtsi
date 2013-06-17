@@ -143,41 +143,6 @@
 };
 
 &spmi_bus {
-	qcom,pm8941@0 {
-		pm8941_chg: qcom,charger {
-			status = "disabled";
-
-			qcom,chg-chgr@1000 {
-				status = "disabled";
-			};
-
-			qcom,chg-buck@1100 {
-				status = "disabled";
-			};
-
-			qcom,chg-bat-if@1200 {
-				status = "disabled";
-			};
-
-			qcom,chg-usb-chgpth@1300 {
-				status = "disabled";
-			};
-
-			qcom,chg-dc-chgpth@1400 {
-				status = "disabled";
-			};
-
-			qcom,chg-boost@1500 {
-				status = "disabled";
-			};
-
-			qcom,chg-misc@1600 {
-				status = "disabled";
-			};
-
-		};
-	};
-
 	qcom,pm8941@1 {
 		qcom,leds@d000 {
 			status = "okay";
