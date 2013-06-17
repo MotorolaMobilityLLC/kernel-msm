@@ -4489,7 +4489,11 @@ static void vfe32_process_output_path_irq_0(
 
 	} else {
 		axi_ctrl->share_ctrl->outpath.out0.frame_drop_cnt++;
-		pr_err("path_irq_0 - no free buffer!\n");
+		if (axi_ctrl->share_ctrl->current_mode &
+				VFE_OUTPUTS_VIDEO_AND_PREVIEW)
+			pr_err("path_irq_0 - no free buffer!\n");
+		else
+			CDBG("path_irq_0 - no free buffer!\n");
 	}
 }
 
@@ -4567,7 +4571,11 @@ static void vfe32_process_output_path_irq_1(
 
 	} else {
 		axi_ctrl->share_ctrl->outpath.out1.frame_drop_cnt++;
-		pr_err("path_irq_1 - no free buffer!\n");
+		if (axi_ctrl->share_ctrl->current_mode &
+				VFE_OUTPUTS_VIDEO_AND_PREVIEW)
+			pr_err("path_irq_1 - no free buffer!\n");
+		else
+			CDBG("path_irq_1 - no free buffer!\n");
 	}
 }
 
