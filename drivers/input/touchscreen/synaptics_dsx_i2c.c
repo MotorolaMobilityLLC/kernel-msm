@@ -816,7 +816,8 @@ static irqreturn_t synaptics_dsx_reset_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
+static int synaptics_dsx_ic_reset(
+		struct synaptics_rmi4_data *rmi4_data, bool hw_reset)
 {
 	int retval;
 	unsigned long start = jiffies;
@@ -824,8 +825,12 @@ static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
 			rmi4_data->board;
 
 	sema_init(&reset_semaphore, 0);
-	gpio_set_value(platform_data->reset_gpio, 0);
-	udelay(1500);
+
+	if (hw_reset) {
+		gpio_set_value(platform_data->reset_gpio, 0);
+		udelay(1500);
+	}
+
 	retval = request_irq(rmi4_data->irq, synaptics_dsx_reset_irq,
 			IRQF_TRIGGER_RISING, "synaptics_reset",
 			&reset_semaphore);
@@ -833,7 +838,9 @@ static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to request irq: %d\n",
 				__func__, retval);
-	gpio_set_value(platform_data->reset_gpio, 1);
+
+	if (hw_reset)
+		gpio_set_value(platform_data->reset_gpio, 1);
 
 	retval = down_timeout(&reset_semaphore, msecs_to_jiffies(100));
 	if (retval) {
@@ -2731,7 +2738,7 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 
 	if (rmi4_data->hw_reset)
 		/* do hard reset instead of soft */
-		synaptics_dsx_ic_reset(rmi4_data);
+		synaptics_dsx_ic_reset(rmi4_data, true);
 	else {
 		retval = synaptics_rmi4_i2c_write(rmi4_data,
 			rmi4_data->f01_cmd_base_addr,
@@ -3027,7 +3034,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 			"on" : "off");
 	}
 
-	retval = synaptics_dsx_ic_reset(rmi4_data);
+	retval = synaptics_dsx_ic_reset(rmi4_data, true);
 	if (retval > 0)
 		pr_debug("successful reset took %dms\n", retval);
 
@@ -3408,6 +3415,8 @@ static int synaptics_rmi4_resume(struct device *dev)
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
 	if (rmi4_data->touch_stopped) {
+		int retval;
+		bool wait4idle = false;
 		const struct synaptics_dsx_platform_data *platform_data =
 						rmi4_data->board;
 		if (platform_data->regulator_en) {
@@ -3416,6 +3425,11 @@ static int synaptics_rmi4_resume(struct device *dev)
 				regulator_is_enabled(rmi4_data->regulator) ?
 				"on" : "off");
 		}
+
+		retval = gpio_get_value(platform_data->reset_gpio);
+		pr_debug("reset gpio state: %d\n", retval);
+		if (retval == 0)
+			wait4idle = true;
 
 		if (gpio_request(platform_data->reset_gpio,
 						RESET_GPIO_NAME) < 0)
@@ -3431,6 +3445,10 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 		if (rmi4_data->reset_on_resume)
 			synaptics_rmi4_reset_device(rmi4_data);
+		else if (wait4idle) {
+			retval = synaptics_dsx_ic_reset(rmi4_data, false);
+			pr_debug("waited for idle %dms\n", retval);
+		}
 	}
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, false);
