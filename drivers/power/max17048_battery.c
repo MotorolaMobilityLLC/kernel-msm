@@ -66,6 +66,8 @@ struct max17048_chip {
 	int alert_gpio;
 	int alert_irq;
 	int rcomp;
+	int rcomp_co_hot;
+	int rcomp_co_cold;
 	int alert_threshold;
 	int max_mvolt;
 	int min_mvolt;
@@ -265,9 +267,25 @@ static uint16_t max17048_get_version(struct max17048_chip *chip)
 static int max17048_set_rcomp(struct max17048_chip *chip)
 {
 	int ret;
+	int scale_coeff;
 	int rcomp;
+	int temp;
 
-	rcomp = chip->rcomp << CFG_RCOMP_SHIFT;
+	temp = chip->batt_temp / 10;
+
+	if (temp > 20)
+		scale_coeff = chip->rcomp_co_hot;
+	else if (temp < 20)
+		scale_coeff = chip->rcomp_co_cold;
+	else
+		scale_coeff = 0;
+
+	rcomp = chip->rcomp * 1000 - (temp-20) * scale_coeff;
+	rcomp = bound_check(255, 0, rcomp / 1000);
+
+	pr_info("%s: new RCOMP = 0x%02X\n", __func__, rcomp);
+
+	rcomp = rcomp << CFG_RCOMP_SHIFT;
 
 	ret = max17048_masked_write_word(chip->client,
 			CONFIG_REG, CFG_RCOMP_MASK, rcomp);
@@ -285,10 +303,15 @@ static int max17048_work(struct max17048_chip *chip)
 
 	pr_debug("%s.\n", __func__);
 
+	max17048_get_prop_temp(chip);
+	max17048_get_prop_current(chip);
+
+	ret = max17048_set_rcomp(chip);
+	if (ret)
+		pr_err("%s : failed to set rcomp\n", __func__);
+
 	max17048_get_vcell(chip);
 	max17048_get_soc(chip);
-	max17048_get_prop_current(chip);
-	max17048_get_prop_temp(chip);
 
 	if (chip->voltage != chip->lasttime_voltage ||
 		chip->capacity_level != chip->lasttime_capacity_level) {
@@ -424,6 +447,20 @@ static int max17048_parse_dt(struct device *dev,
 		goto out;
 	}
 
+	ret = of_property_read_u32(dev_node, "max17048,rcomp-co-hot",
+				&chip->rcomp_co_hot);
+	if (ret) {
+		pr_err("%s: failed to read rcomp_co_hot\n", __func__);
+		goto out;
+	}
+
+	ret = of_property_read_u32(dev_node, "max17048,rcomp-co-cold",
+				&chip->rcomp_co_cold);
+	if (ret) {
+		pr_err("%s: failed to read rcomp_co_cold\n", __func__);
+		goto out;
+	}
+
 	ret = of_property_read_u32(dev_node, "max17048,alert_threshold",
 				&chip->alert_threshold);
 	if (ret) {
@@ -473,6 +510,9 @@ static int max17048_parse_dt(struct device *dev,
 		goto out;
 	}
 
+	pr_info("%s: rcomp = %d rcomp_co_hot = %d rcomp_co_cold = %d",
+			__func__, chip->rcomp, chip->rcomp_co_hot,
+			chip->rcomp_co_cold);
 	pr_info("%s: alert_thres = %d full_soc = %d empty_soc = %d",
 			__func__, chip->alert_threshold,
 			chip->full_soc, chip->empty_soc);
@@ -710,12 +750,6 @@ static int max17048_hw_init(struct max17048_chip *chip)
 			STATUS_REG, STAT_RI_MASK, 0);
 	if (ret) {
 		pr_err("%s: failed to clear ri bit\n", __func__);
-		return ret;
-	}
-
-	ret = max17048_set_rcomp(chip);
-	if (ret) {
-		pr_err("%s: failed to set rcomp\n", __func__);
 		return ret;
 	}
 
