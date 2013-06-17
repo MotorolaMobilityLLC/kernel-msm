@@ -19,7 +19,9 @@
 #include <mach/rpm-regulator.h>
 #include <mach/rpm-regulator-smd.h>
 #include <linux/regulator/consumer.h>
-
+#ifdef CONFIG_IMX179
+#include "msm_eeprom.h"
+#endif
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
@@ -1760,6 +1762,14 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 		kfree(cci_client);
 		return rc;
 	}
+
+#ifdef CONFIG_IMX179
+	if (strcmp(s_ctrl->sensordata->sensor_name, "imx179") == 0) {
+		rc = msm_eeprom_read();
+		if(rc < 0)
+			pr_err("%s read_eeprom_memory failed\n", __func__);
+	}
+#endif
 
 	CDBG("%s %s probe succeeded\n", __func__,
 		s_ctrl->sensordata->sensor_name);

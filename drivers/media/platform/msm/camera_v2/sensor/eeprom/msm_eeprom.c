@@ -692,11 +692,56 @@ static int32_t msm_eeprom_spi_remove(struct spi_device *sdev)
 	return 0;
 }
 
+#ifdef CONFIG_IMX179
+static struct msm_eeprom_ctrl_t *global_e_ctrl = NULL;
+static struct msm_eeprom_board_info *global_eb_info = NULL;
+
+int32_t msm_eeprom_read(void)
+{
+	int32_t rc = 0;
+	int32_t i = 0;
+	uint8_t af_value1, af_value2;
+
+	if (global_e_ctrl == NULL) {
+		pr_err("%s: global_e_ctrl is NULL\n", __func__);
+		return -ENODEV;
+	}
+
+	for (i = 0; i < 3; i++) {
+		rc = read_eeprom_memory(global_e_ctrl);
+		if (rc >= 0)
+			break;
+	}
+	if (rc < 0) {
+		pr_err("%s: read_eeprom_memory failed\n", __func__);
+		goto out;
+	}
+
+	af_value1 = (uint8_t)(global_e_ctrl->memory_data[9]<<8) |
+		(global_e_ctrl->memory_data[10]);
+	af_value2 = (uint8_t)(global_e_ctrl->memory_data[11]<<8) |
+		(global_e_ctrl->memory_data[12]);
+	CDBG("%s af_value1=%d af_value2=%d\n", __func__, af_value1, af_value2);
+
+	return 0;
+
+out:
+	if (global_e_ctrl->memory_data != NULL)
+		kfree(global_e_ctrl->memory_data);
+	if (global_eb_info->eeprom_map != NULL)
+		kfree(global_eb_info->eeprom_map);
+
+	return rc;
+}
+#endif
+
 static int32_t msm_eeprom_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
-	int32_t j = 0;
 	uint32_t temp;
+#ifndef CONFIG_IMX179
+	int32_t j = 0;
+#endif
 
 	struct msm_camera_cci_client *cci_client = NULL;
 	struct msm_eeprom_ctrl_t *e_ctrl = NULL;
@@ -798,6 +843,10 @@ static int32_t msm_eeprom_platform_probe(struct platform_device *pdev)
 	if (rc)
 		goto board_free;
 
+#ifdef CONFIG_IMX179
+	global_e_ctrl = e_ctrl;
+	global_eb_info = eb_info;
+#else
 	rc = read_eeprom_memory(e_ctrl);
 	if (rc < 0) {
 		pr_err("%s read_eeprom_memory failed\n", __func__);
@@ -806,6 +855,7 @@ static int32_t msm_eeprom_platform_probe(struct platform_device *pdev)
 		pr_err("%s line %d\n", __func__, __LINE__);
 	for (j = 0; j < e_ctrl->num_bytes; j++)
 		CDBG("memory_data[%d] = 0x%X\n", j, e_ctrl->memory_data[j]);
+#endif
 
 	v4l2_subdev_init(&e_ctrl->msm_sd.sd,
 		e_ctrl->eeprom_v4l2_subdev_ops);
@@ -831,9 +881,11 @@ static int32_t msm_eeprom_platform_probe(struct platform_device *pdev)
 	CDBG("%s X\n", __func__);
 	return rc;
 
+#ifndef CONFIG_IMX179
 memdata_free:
 	kfree(e_ctrl->memory_data);
 	kfree(eb_info->eeprom_map);
+#endif
 board_free:
 	kfree(e_ctrl->eboard_info);
 cciclient_free:

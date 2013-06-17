@@ -345,6 +345,14 @@ static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 			}
 		}
 	}
+
+	for (step_index = 0;
+		step_index < set_info->af_tuning_params.total_steps;
+		step_index++) {
+		CDBG("step_position_table[%d] = %d", step_index,
+			a_ctrl->step_position_table[step_index]);
+	}
+
 	CDBG("Exit\n");
 	return 0;
 }
