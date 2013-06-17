@@ -40,16 +40,14 @@
 #include <linux/switch.h>
 #include <linux/msm_mdp.h>
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#undef CONFIG_HAS_EARLYSUSPEND
-#endif
-
 #include "msm_fb_panel.h"
 #include "mdp.h"
 
 #define MSM_FB_DEFAULT_PAGE_SIZE 2
 #define MFD_KEY  0x11161126
 #define MSM_FB_MAX_DEV_LIST 32
+/* Disable EARLYSUSPEND for mdp driver */
+#define DISABLE_EARLY_SUSPEND
 
 struct disp_info_type_suspend {
 	boolean op_enable;
@@ -164,11 +162,13 @@ struct msm_fb_data_type {
 	struct dentry *sub_dir;
 #endif
 
+#ifndef DISABLE_EARLY_SUSPEND
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #ifdef CONFIG_FB_MSM_MDDI
 	struct early_suspend mddi_early_suspend;
 	struct early_suspend mddi_ext_early_suspend;
+#endif
 #endif
 #endif
 	u32 mdp_fb_page_protection;
