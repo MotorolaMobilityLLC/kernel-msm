@@ -75,7 +75,6 @@ static void bcm2079x_disable_irq(struct bcm2079x_dev *bcm2079x_dev)
 	spin_lock_irqsave(&bcm2079x_dev->irq_enabled_lock, flags);
 	if (bcm2079x_dev->irq_enabled) {
 		disable_irq_nosync(bcm2079x_dev->client->irq);
-		disable_irq_wake(bcm2079x_dev->client->irq);
 		bcm2079x_dev->irq_enabled = false;
 	}
 	spin_unlock_irqrestore(&bcm2079x_dev->irq_enabled_lock, flags);
