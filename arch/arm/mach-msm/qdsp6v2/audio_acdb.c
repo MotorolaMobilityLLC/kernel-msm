@@ -770,22 +770,16 @@ static long acdb_ioctl(struct file *f,
 		goto done;
 	}
 
-	if (size <= 0) {
+	if ((size <= 0) || (size > sizeof(data))) {
 		pr_err("%s: Invalid size sent to driver: %d\n",
 			__func__, size);
-		result = -EFAULT;
+		result = -EINVAL;
 		goto done;
 	}
 
 	if (copy_from_user(data, (void *)(arg + sizeof(size)), size)) {
 
 		pr_err("%s: fail to copy table size %d\n", __func__, size);
-		result = -EFAULT;
-		goto done;
-	}
-
-	if (data == NULL) {
-		pr_err("%s: NULL pointer sent to driver!\n", __func__);
 		result = -EFAULT;
 		goto done;
 	}
