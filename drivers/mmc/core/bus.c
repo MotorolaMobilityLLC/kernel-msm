@@ -128,7 +128,7 @@ static void mmc_bus_shutdown(struct device *dev)
 	struct mmc_driver *drv = to_mmc_driver(dev->driver);
 	struct mmc_card *card = mmc_dev_to_card(dev);
 
-	if (drv->shutdown)
+	if (drv && drv->shutdown)
 		drv->shutdown(card);
 }
 
