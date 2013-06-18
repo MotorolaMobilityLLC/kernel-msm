@@ -1,0 +1,23 @@
+#
+# Cypress CapSense(TM) devices
+#
+
+config CYPRESS_CAPSENSE
+    tristate "Cypress CapSense Driver"
+    depends on I2C
+    depends on OF
+    help
+      CapSense devices is the analog system contains the capacitive sensing
+      hardware. Several hardware algorithms are supported. This hardware
+      performs capacitive sensing and scanning without requiring external
+      components.
+
+config CYPRESS_CAPSENSE_CY8C20237_24LKXI
+    tristate "Cypress CapSense"
+    depends on CYPRESS_CAPSENSE
+    help
+      This option enables device driver support for the Cypress Capsense IC -
+      CY8C20237_24LKXI.  This is one of PSoC CapSense family.
+      This device congiguration contains 10 sensing inputs, 8k flash memory and
+      1k SRAM.
+
