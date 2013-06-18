@@ -5847,28 +5847,36 @@ static int wlan_hdd_cfg80211_set_privacy_ibss(
 
     if (params->ie_len && ( NULL != params->ie) )
     {
-        if (WLAN_EID_RSN == params->ie[0])
+        if (wlan_hdd_cfg80211_get_ie_ptr (params->ie,
+                            params->ie_len, WLAN_EID_RSN ))
         {
             pWextState->wpaVersion = IW_AUTH_WPA_VERSION_WPA2;
             encryptionType = eCSR_ENCRYPT_TYPE_AES;
         }
-        else
+        else if ( hdd_isWPAIEPresent (params->ie, params->ie_len ))
         {
             tDot11fIEWPA dot11WPAIE;
             tHalHandle halHandle = WLAN_HDD_GET_HAL_CTX(pAdapter);
+            u8 *ie;
 
-            pWextState->wpaVersion = IW_AUTH_WPA_VERSION_WPA;
-            // Unpack the WPA IE
-            //Skip past the EID byte and length byte - and four byte WiFi OUI
-            dot11fUnpackIeWPA((tpAniSirGlobal) halHandle,
-                            &params->ie[2+4],
-                            params->ie[1] - 4,
-                            &dot11WPAIE);
-            /*Extract the multicast cipher, the encType for unicast
-              cipher for wpa-none is none*/
-            encryptionType =
-              hdd_TranslateWPAToCsrEncryptionType(dot11WPAIE.multicast_cipher);
+            ie = wlan_hdd_cfg80211_get_ie_ptr (params->ie,
+                                     params->ie_len, DOT11F_EID_WPA);
+            if ( NULL != ie )
+            {
+                pWextState->wpaVersion = IW_AUTH_WPA_VERSION_WPA;
+                // Unpack the WPA IE
+                //Skip past the EID byte and length byte - and four byte WiFi OUI
+                dot11fUnpackIeWPA((tpAniSirGlobal) halHandle,
+                                &ie[2+4],
+                                ie[1] - 4,
+                                &dot11WPAIE);
+                /*Extract the multicast cipher, the encType for unicast
+                               cipher for wpa-none is none*/
+                encryptionType =
+                  hdd_TranslateWPAToCsrEncryptionType(dot11WPAIE.multicast_cipher);
+            }
         }
+
         status = wlan_hdd_cfg80211_set_ie(pAdapter, params->ie, params->ie_len);
 
         if (0 > status)
