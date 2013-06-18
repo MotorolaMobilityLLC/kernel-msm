@@ -22,6 +22,10 @@
 #ifdef CONFIG_IMX179
 #include "msm_eeprom.h"
 #endif
+#ifdef CONFIG_OIS_ROHM_BU24205GWL
+#include "msm_ois.h"
+#endif
+
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
@@ -1659,6 +1663,34 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		break;
 	}
+#ifdef CONFIG_OIS_ROHM_BU24205GWL
+	case CFG_OIS_ON: {
+		CDBG("%s: ois_on!\n", __func__);
+		rc = msm_init_ois();
+		break;
+	}
+	case CFG_OIS_OFF: {
+		CDBG("%s: ois_off!\n", __func__);
+		rc = msm_ois_off();
+		break;
+	}
+	case CFG_GET_OIS_INFO: {
+		struct msm_sensor_ois_info_t ois_stat;
+
+		CDBG("%s: CFG_GET_OIS_INFO!\n", __func__);
+		rc = msm_ois_info(&ois_stat);
+		memcpy(&cdata->cfg.ois_info,&ois_stat,sizeof(cdata->cfg.ois_info));
+		break;
+	}
+	case CFG_SET_OIS_MODE: {
+		enum ois_mode_t mode;
+
+		mode = *(enum ois_mode_t *)(cdata->cfg.setting);
+		CDBG("%s: CFG_SET_OIS_MODE  %d\n", __func__, mode);
+		rc = msm_ois_mode(mode);
+		break;
+	}
+#endif
 	default:
 		rc = -EFAULT;
 		break;
