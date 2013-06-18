@@ -140,7 +140,7 @@ static int msm_ispif_clk_enable(struct ispif_device *ispif,
 		if (vfe_intf_mask & (1 << params->entries[i].vfe_intf))
 			continue;
 		rc = msm_ispif_clk_enable_one(ispif,
-			params->entries[i].vfe_intf, 1);
+			params->entries[i].vfe_intf, enable);
 		if (rc < 0 && enable) {
 			pr_err("%s: unable to enable clocks for VFE %d",
 				__func__, params->entries[i].vfe_intf);
@@ -991,6 +991,8 @@ end:
 	if (ispif->csid_version >= CSID_VERSION_V3 &&
 		ispif->vfe_info.num_vfe > 1)
 		msm_ispif_clk_enable_one(ispif, VFE1, 0);
+	else
+		return rc;
 
 error_clk1:
 	msm_ispif_clk_enable_one(ispif, VFE0, 0);
@@ -1009,9 +1011,6 @@ static void msm_ispif_release(struct ispif_device *ispif)
 			ispif->ispif_state);
 		return;
 	}
-
-	for (i = 0; i < ispif->vfe_info.num_vfe; i++)
-		msm_ispif_clk_enable_one(ispif, i, 1);
 
 	/* make sure no streaming going on */
 	msm_ispif_reset(ispif);
