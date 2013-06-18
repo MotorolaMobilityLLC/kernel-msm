@@ -615,8 +615,7 @@ static void wireless_reset(void)
 		smb345_vflt_setting();
 	}
 	bq27541_wireless_callback(wireless_on);
-	if (wake_lock_active(&wireless_wakelock))
-		wake_unlock(&wireless_wakelock);
+	wake_unlock(&wireless_wakelock);
 }
 
 static void wireless_isr_work_function(struct work_struct *dat)
@@ -643,10 +642,9 @@ static void wireless_set_current_function(struct work_struct *dat)
 	if (delayed_work_pending(&charger->wireless_set_current_work))
 		cancel_delayed_work(&charger->wireless_set_current_work);
 
-	if (charger->wpc_curr_limit == 700 || charger->wpc_curr_limit_count >= WPC_SET_CURT_LIMIT_CNT) {
-		wake_unlock(&wireless_wakelock);
+	if (charger->wpc_curr_limit == 700 || charger->wpc_curr_limit_count >= WPC_SET_CURT_LIMIT_CNT)
 		return;
-	} else if (charger->wpc_curr_limit == 300)
+	else if (charger->wpc_curr_limit == 300)
 		smb345_set_WCInputCurrentlimit(charger->client, 500);
 	else if (charger->wpc_curr_limit == 500)
 		smb345_set_WCInputCurrentlimit(charger->client, 700);
