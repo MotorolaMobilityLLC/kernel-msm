@@ -53,59 +53,9 @@
 				<84 512 500 800>;
 	};
 
-	/* label: i2c_0 (label defined in msm8974.dtsi) */
-	i2c@f9967000 {
-		cell-index = <0>;
-		compatible = "qcom,i2c-qup";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0xf9967000 0x1000>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 105 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <400000>;
-		qcom,i2c-src-freq = <50000000>;
-		qcom,scl-gpio = <&msmgpio 84 0>;
-		qcom,sda-gpio = <&msmgpio 83 0>;
-		qcom,active-only;
-		qcom,master-id = <84>;
-	};
-
 	/* label: i2c_1 (label defined in msm8974.dtsi) */
 	i2c@f9923000 {
-		cell-index = <1>;
-		compatible = "qcom,i2c-qup";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0xf9923000 0x1000>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 95 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <100000>;
-		qcom,i2c-src-freq = <50000000>;
-		qcom,scl-gpio = <&msmgpio 3 0>;
-		qcom,sda-gpio = <&msmgpio 2 0>;
-		qcom,active-only;
-		qcom,master-id = <86>;
 		status = "ok";
-	};
-
-	/* label: i2c_2 (label defined in msm8974.dtsi) */
-	i2c@f9924000 {
-		cell-index = <2>;
-		compatible = "qcom,i2c-qup";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg = <0xf9924000 0x1000>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 96 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <400000>;
-		qcom,i2c-src-freq = <50000000>;
-		qcom,scl-gpio = <&msmgpio 7 0>;
-		qcom,sda-gpio = <&msmgpio 6 0>;
-		qcom,active-only;
-		qcom,master-id = <86>;
 	};
 };
 
