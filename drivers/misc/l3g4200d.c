@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Motorola Mobility, Inc.
+ * Copyright (C) 2011-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -27,6 +27,9 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
+#include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/mutex.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
@@ -650,13 +653,89 @@ static int l3g4200d_pm_event(struct notifier_block *this, unsigned long event,
 	return NOTIFY_DONE;
 }
 
+static int l3g4200d_gpio_init(struct l3g4200d_platform_data *pdata)
+{
+	int err;
+	err = gpio_request(pdata->irq, "gyro int");
+	if (err) {
+		pr_err("Fail to request l3g4200d int gpio, err = %d\n", err);
+		return err;
+	}
+	gpio_direction_input(pdata->irq);
+	return 0;
+}
+
+static void l3g4200d_gpio_free(struct l3g4200d_platform_data *pdata)
+{
+	gpio_free(pdata->irq);
+}
+
+#ifdef CONFIG_OF
+static struct l3g4200d_platform_data *
+l3g4200d_of_init(struct i2c_client *client)
+{
+	struct l3g4200d_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	u32 val;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure.\n");
+		return NULL;
+	}
+
+	if (!of_property_read_u32(np, "stm,poll_interval", &val))
+		pdata->poll_interval = (int) val;
+
+	pdata->irq = of_get_gpio(np, 0);
+
+	/* According the spec to configure following register */
+	pdata->ctrl_reg1 = 0x1F;
+	pdata->ctrl_reg2 = 0x00;
+	pdata->ctrl_reg3 = 0x08;
+	pdata->ctrl_reg4 = 0xA0;
+	pdata->ctrl_reg5 = 0x00;
+	pdata->reference = 0x00;
+	pdata->fifo_ctrl_reg = 0x00;
+	pdata->int1_cfg = 0x00;
+	pdata->int1_tsh_xh = 0x00;
+	pdata->int1_tsh_xl = 0x00;
+	pdata->int1_tsh_yh = 0x00;
+	pdata->int1_tsh_yl = 0x00;
+	pdata->int1_tsh_zh = 0x00;
+	pdata->int1_tsh_zl = 0x00;
+	pdata->int1_duration = 0x00;
+
+	return pdata;
+}
+#else
+static struct l3g4200d_platform_data *
+l3g4200d_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 static int l3g4200d_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
 	struct l3g4200d_data *gyro;
+	struct l3g4200d_platform_data *pdata;
 	int err = -1;
 
 	pr_err("%s:Enter\n", __func__);
+
+	if (client->dev.of_node)
+		pdata = l3g4200d_of_init(client);
+	else
+		pdata = client->dev.platform_data;
+
+	if (pdata == NULL) {
+		dev_err(&client->dev, "platform data is NULL. exiting.\n");
+		err = -ENODEV;
+		goto err0;
+	}
+
 	if (client->dev.platform_data == NULL) {
 		dev_err(&client->dev, "platform data is NULL. exiting.\n");
 		err = -ENODEV;
@@ -669,26 +748,27 @@ static int l3g4200d_probe(struct i2c_client *client,
 		goto err0;
 	}
 
+	err = l3g4200d_gpio_init(pdata);
+	if (err) {
+		dev_err(&client->dev, "l3g4200 gyro gpio init failed.\n");
+		goto err0;
+	}
+
 	gyro = kzalloc(sizeof(*gyro), GFP_KERNEL);
 	if (gyro == NULL) {
 		dev_err(&client->dev,
 			"failed to allocate memory for module data\n");
 		err = -ENOMEM;
-		goto err0;
+		goto err1;
 	}
 
 	gyro->client = client;
+	gyro->pdata = pdata;
 
-	gyro->pdata = kzalloc(sizeof(*gyro->pdata), GFP_KERNEL);
-	if (gyro->pdata == NULL)
-		goto err1;
+	gyro->client->irq = gpio_to_irq(gyro->pdata->irq);
 
-	memcpy(gyro->pdata, client->dev.platform_data, sizeof(*gyro->pdata));
+	gyro->regulator = regulator_get(&client->dev, "vdd");
 
-	gyro->client->irq = gyro->pdata->irq;
-
-	gyro->regulator = regulator_get(&client->dev,
-				gyro->pdata->regulator_name);
 	if (IS_ERR_OR_NULL(gyro->regulator)) {
 		dev_err(&client->dev, "unable to get regulator\n");
 		gyro->regulator = NULL;
@@ -745,9 +825,9 @@ err4:
 err3:
 	if (gyro->regulator)
 		regulator_put(gyro->regulator);
-	kfree(gyro->pdata);
-err1:
 	kfree(gyro);
+err1:
+	l3g4200d_gpio_free(pdata);
 err0:
 	return err;
 }
@@ -763,7 +843,7 @@ static int __devexit l3g4200d_remove(struct i2c_client *client)
 	if (gyro->regulator)
 		regulator_put(gyro->regulator);
 	unregister_pm_notifier(&gyro->pm_notifier);
-	free_irq(gyro->client->irq, gyro);
+	l3g4200d_gpio_free(gyro->pdata);
 	kfree(gyro->pdata);
 	kfree(gyro);
 
@@ -777,9 +857,18 @@ static const struct i2c_device_id l3g4200d_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, l3g4200d_id);
 
+#ifdef CONFIG_OF
+static struct of_device_id l3g4200d_match_tbl[] = {
+		{.compatible = "stm,l3g4200d"},
+		{},
+};
+MODULE_DEVICE_TABLE(of, l3g4200d_match_tbl);
+#endif
+
 static struct i2c_driver l3g4200d_driver = {
 	.driver = {
-		   .name = L3G4200D_NAME,
+		.name = L3G4200D_NAME,
+		.of_match_table = of_match_ptr(l3g4200d_match_tbl),
 		   },
 	.probe = l3g4200d_probe,
 	.remove = __devexit_p(l3g4200d_remove),
