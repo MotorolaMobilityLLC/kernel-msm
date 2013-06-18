@@ -80,11 +80,13 @@ struct tpa6165_data {
 	int mono_hs_detect_state;
 	int force_hstype;
 	int jack_detect_config;
+	atomic_t is_suspending;
 	struct mutex lock;
 	struct wake_lock wake_lock;
 	struct work_struct work;
 	struct workqueue_struct *wq;
 	struct delayed_work delay_work;
+	struct delayed_work work_det;
 };
 
 static const struct tpa6165_regs tpa6165_reg_defaults[] = {
@@ -906,10 +908,8 @@ static void tpa6165_report_button(struct tpa6165_data *tpa6165)
 
 static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 {
-	mutex_lock(&tpa6165->lock);
 	if ((tpa6165->button_jack == NULL) || (tpa6165->hs_jack == NULL)) {
 		pr_err("tpa6165: Failed to report hs, jacks not initialized");
-		mutex_unlock(&tpa6165->lock);
 		return -EINVAL;
 	}
 
@@ -976,7 +976,6 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 				~TPA6165_VOL_SLEW_DONE,
 				TPA6165_VOL_SLEW_DONE);
 	}
-	mutex_unlock(&tpa6165->lock);
 	return 0;
 }
 
@@ -1015,27 +1014,80 @@ int tpa6165_hs_detect(struct snd_soc_codec *codec)
 		/* add controls */
 		snd_soc_add_codec_controls(codec, tpa6165_controls,
 						ARRAY_SIZE(tpa6165_controls));
-
+		mutex_lock(&tpa6165->lock);
 		/* check device status registers for boot time detection */
 		tpa6165_update_device_status(tpa6165);
 		ret = tpa6165_report_hs(tpa6165);
+		mutex_unlock(&tpa6165->lock);
 	}
 
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tpa6165_hs_detect);
 
-static irqreturn_t tpa6165_det_thread(int irq, void *data)
+#ifdef CONFIG_PM
+static int tpa6165_suspend(struct i2c_client *client, pm_message_t mesg)
+{
+	struct tpa6165_data *tpa6165 =
+					i2c_get_clientdata(tpa6165_client);
+
+	mutex_lock(&tpa6165->lock);
+	pr_debug("tpa6165: suspending ..\n");
+	if (wake_lock_active(&tpa6165->wake_lock)) {
+		pr_debug("tpa6165: detection thread ON fail suspend\n");
+		mutex_unlock(&tpa6165->lock);
+		return -EBUSY;
+	}
+	atomic_set(&tpa6165->is_suspending, 1);
+	mutex_unlock(&tpa6165->lock);
+	return 0;
+}
+
+static int tpa6165_resume(struct i2c_client *client)
+{
+	struct tpa6165_data *tpa6165 =
+					i2c_get_clientdata(tpa6165_client);
+
+	pr_debug("tpa6165: resuming ..\n");
+	atomic_set(&tpa6165->is_suspending, 0);
+	return 0;
+}
+#else
+#define tpa6165_suspend		NULL
+#define tpa6165_resume		NULL
+#endif /* CONFIG_PM */
+
+static irqreturn_t tpa6165_irq_handler(int irq, void *data)
 {
 	struct tpa6165_data *irq_data = data;
 
-	pr_debug("%s: Enter", __func__);
 	wake_lock_timeout(&irq_data->wake_lock, HZ);
+	queue_delayed_work(irq_data->wq, &irq_data->work_det, 0);
+	return IRQ_HANDLED;
+}
 
+static void tpa6165_det_thread(struct work_struct *work)
+{
+	struct tpa6165_data *irq_data =
+				i2c_get_clientdata(tpa6165_client);
+
+	mutex_lock(&irq_data->lock);
+	wake_lock(&irq_data->wake_lock);
+	pr_debug("%s: Enter", __func__);
+	if (atomic_read(&irq_data->is_suspending)) {
+		pr_debug("tpa6165_det_thread: pm state: suspend retry work\n");
+		wake_lock_timeout(&irq_data->wake_lock, HZ);
+		queue_delayed_work(irq_data->wq, &irq_data->work_det,
+				msecs_to_jiffies(20));
+		mutex_unlock(&irq_data->lock);
+		return;
+	}
 	tpa6165_update_device_status(irq_data);
 	tpa6165_report_hs(irq_data);
 
-	return IRQ_HANDLED;
+	/* timed wake lock here so that user space wakeup in time */
+	wake_lock_timeout(&irq_data->wake_lock, HZ/2);
+	mutex_unlock(&irq_data->lock);
 }
 
 #ifdef CONFIG_OF
@@ -1162,11 +1214,13 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 		goto wq_fail;
 	}
 	INIT_DELAYED_WORK(&tpa6165->delay_work, tpa6165_delayed_mono_work);
+	INIT_DELAYED_WORK(&tpa6165->work_det, tpa6165_det_thread);
 
 	tpa6165->gpio_irq = gpio_to_irq(tpa6165->gpio);
 	/* active low interrupt */
-	err = request_threaded_irq(tpa6165->gpio_irq , NULL, tpa6165_det_thread,
-			IRQF_TRIGGER_FALLING, "hs_det", tpa6165);
+	err = request_irq(tpa6165->gpio_irq, tpa6165_irq_handler,
+					IRQF_TRIGGER_FALLING,
+			"hs_det", tpa6165);
 	if (err) {
 		pr_err("%s: IRQ request failed: %d\n", __func__, err);
 		goto irq_fail;
@@ -1235,6 +1289,8 @@ static struct i2c_driver tpa6165_driver = {
 			.owner = THIS_MODULE,
 			.of_match_table = of_match_ptr(tpa6165_match_tbl),
 	},
+	.suspend = tpa6165_suspend,
+	.resume = tpa6165_resume,
 	.probe = tpa6165_probe,
 	.remove = __devexit_p(tpa6165_remove),
 	.id_table = tpa6165_id,
