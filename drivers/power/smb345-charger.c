@@ -450,6 +450,18 @@ error:
 
 static irqreturn_t smb345_inok_isr(int irq, void *dev_id)
 {
+	struct smb345_charger *smb = dev_id;
+	int status = gpio_get_value(GPIO_AC_OK);
+
+	SMB_NOTICE("VBUS_DET = %s\n", status ? "H" : "L");
+
+	if (ac_on && !status)
+		queue_delayed_work(smb345_wq, &smb->cable_det_work, 0);
+	else {
+		if (delayed_work_pending(&charger->cable_det_work))
+			cancel_delayed_work(&charger->cable_det_work);
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -639,6 +651,30 @@ static void wireless_set_current_function(struct work_struct *dat)
 		smb345_set_WCInputCurrentlimit(charger->client, 700);
 
 	queue_delayed_work(smb345_wq, &charger->wireless_set_current_work, WPC_SET_CURT_INTERVAL);
+}
+
+static void cable_det_work_function(struct work_struct *dat)
+{
+	struct i2c_client *client = charger->client;
+
+	if (delayed_work_pending(&charger->cable_det_work))
+		cancel_delayed_work(&charger->cable_det_work);
+
+	if (ac_on && !gpio_get_value(GPIO_AC_OK)) {
+		int retval;
+		retval = smb345_read(client, smb345_STS_REG_E);
+		if (retval < 0)
+			dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+			__func__, smb345_STS_REG_E);
+		else {
+			SMB_NOTICE("Status Reg E=0x02%x\n", retval);
+
+			if ((retval & 0xF) <= 0x1) {
+				SMB_NOTICE("reconfig input current limit\n");
+				smb345_set_InputCurrentlimit(client, 1200);
+			}
+		}
+	}
 }
 
 static int smb345_inok_irq(struct smb345_charger *smb)
@@ -1174,6 +1210,8 @@ static int __devinit smb345_probe(struct i2c_client *client,
 		wireless_det_work_function);
 	INIT_DELAYED_WORK_DEFERRABLE(&charger->wireless_set_current_work,
 		wireless_set_current_function);
+	INIT_DELAYED_WORK_DEFERRABLE(&charger->cable_det_work,
+		cable_det_work_function);
 
 	wake_lock_init(&charger_wakelock, WAKE_LOCK_SUSPEND,
 			"charger_configuration");
