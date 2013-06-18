@@ -52,11 +52,6 @@
 				<84 512 0 0>,
 				<84 512 500 800>;
 	};
-
-	/* label: i2c_1 (label defined in msm8974.dtsi) */
-	i2c@f9923000 {
-		status = "ok";
-	};
 };
 
 &spmi_bus {
@@ -67,4 +62,17 @@
 			};
 		};
 	};
+};
+
+&i2c_0 {
+	qcom,active-only;
+};
+
+&i2c_1 {
+	qcom,active-only;
+	status = "ok";
+};
+
+&i2c_2 {
+	qcom,active-only;
 };
