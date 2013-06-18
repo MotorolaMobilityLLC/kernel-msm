@@ -1,0 +1,28 @@
+l3g4200d Gyro sensor
+
+The L3G4200D is a low-power three-axis angular
+rate sensor able to provide unprecedented
+stablility of zero rate level and sensitivity over
+temperature and time. It includes a sensing
+element and an IC interface capable of providing
+the measured angular rate to the external world
+through a digital interface (I2C/SPI).
+
+Required properties:
+	- compatible:	Must be "stm,l3g4200d"
+	- reg:		Specifies the I2C address of the part.
+	- poll-interval:polling interval in ms.
+	- gpios:
+			an array specifiying the three required GPIOs for operation.
+	Optional Properties:
+	- vdd-supply:;       regulator suppy to VDD.
+
+	Example:
+
+		l3g4200d@6A {
+			compatible = "stm,l3g4200d";
+			reg = <0x6A>;
+			vdd-supply = <&pm8226_l19>;
+			stm,poll-interval = <200>;
+			gpios = <&msmgpio 51 0>, /* INT1 */
+		};
