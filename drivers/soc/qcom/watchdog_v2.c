@@ -49,6 +49,7 @@
 
 static struct workqueue_struct *wdog_wq;
 static struct msm_watchdog_data *wdog_data;
+static struct msm_watchdog_data *g_wdog_dd;
 
 static int cpu_idle_pc_state[NR_CPUS];
 
@@ -138,6 +139,43 @@ static int msm_watchdog_resume(struct device *dev)
 	wdog_dd->enabled = true;
 	wdog_dd->last_pet = sched_clock();
 	return 0;
+}
+
+void msm_watchdog_reset(unsigned int timeout)
+{
+	unsigned long flags;
+	void __iomem *msm_wdt_base;
+
+	local_irq_save(flags);
+
+	if (timeout > 60)
+		timeout = 60;
+
+	msm_wdt_base = g_wdog_dd->base;
+	__raw_writel(WDT_HZ * timeout, msm_wdt_base + WDT0_BARK_TIME);
+	__raw_writel(WDT_HZ * (timeout + 2), msm_wdt_base + WDT0_BITE_TIME);
+	__raw_writel(1, msm_wdt_base + WDT0_EN);
+	__raw_writel(1, msm_wdt_base + WDT0_RST);
+
+	for (timeout += 2; timeout > 0; timeout--)
+		mdelay(1000);
+
+	for (timeout = 2; timeout > 0; timeout--) {
+		__raw_writel(0, msm_wdt_base + WDT0_BARK_TIME);
+		__raw_writel(WDT_HZ, msm_wdt_base + WDT0_BITE_TIME);
+		__raw_writel(1, msm_wdt_base + WDT0_RST);
+		mdelay(1000);
+	}
+
+	for (timeout = 2; timeout > 0; timeout--) {
+		__raw_writel(WDT_HZ, msm_wdt_base + WDT0_BARK_TIME);
+		__raw_writel(0, msm_wdt_base + WDT0_BITE_TIME);
+		__raw_writel(1, msm_wdt_base + WDT0_RST);
+		mdelay(1000);
+	}
+	pr_err("Watchdog reset has failed\n");
+
+	local_irq_restore(flags);
 }
 
 static int panic_wdog_handler(struct notifier_block *this,
@@ -283,6 +321,11 @@ static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 	if (slack_ns < wdog_dd->min_slack_ns)
 		wdog_dd->min_slack_ns = slack_ns;
 	wdog_dd->last_pet = time_ns;
+}
+
+void g_pet_watchdog(void)
+{
+	pet_watchdog(g_wdog_dd);
 }
 
 static void keep_alive_response(void *info)
@@ -695,6 +738,7 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 	cpumask_clear(&wdog_dd->alive_mask);
 	INIT_WORK(&wdog_dd->init_dogwork_struct, init_watchdog_work);
 	INIT_DELAYED_WORK(&wdog_dd->dogwork_struct, pet_watchdog_work);
+	g_wdog_dd = wdog_dd;
 	queue_work(wdog_wq, &wdog_dd->init_dogwork_struct);
 	return 0;
 err:
