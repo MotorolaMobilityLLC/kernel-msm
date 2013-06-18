@@ -58,7 +58,7 @@
 #define L3G4200D_OUT_Z_H		0x2d
 
 #define L3G4200D_FIFO_CTRL		0x2e
-#define L3G4200D_FIFO_SRC		0x2e
+#define L3G4200D_FIFO_SRC		0x2f
 
 #define L3G4200D_INTERRUPT_CFG		0x30
 #define L3G4200D_INTERRUPT_SRC		0x31
@@ -341,7 +341,7 @@ static irqreturn_t gyro_irq_thread(int irq, void *dev)
 
 	err = l3g4200d_get_gyro_data(gyro, &data);
 	if (err < 0)
-		dev_err(&gyro->client->dev, "get_acceleration_data failed\n");
+		dev_err(&gyro->client->dev, "get_gyro_data failed\n");
 	else
 		l3g4200d_report_values(gyro, &data);
 
@@ -404,6 +404,7 @@ static int l3g4200d_enable(struct l3g4200d_data *gyro)
 		 * flush data before enabling irq */
 		schedule_delayed_work(&gyro->enable_work,
 			msecs_to_jiffies(L3G4200D_PU_DELAY));
+		gpio_set_value(gyro->pdata->gpio_data_en, 1);
 		gyro->enabled = true;
 	}
 	return 0;
@@ -423,6 +424,7 @@ static int l3g4200d_disable(struct l3g4200d_data *gyro)
 			regulator_disable(gyro->regulator);
 			gyro->hw_initialized = false;
 		}
+		gpio_set_value(gyro->pdata->gpio_data_en, 0);
 		gyro->enabled = false;
 	}
 	return 0;
@@ -662,12 +664,35 @@ static int l3g4200d_gpio_init(struct l3g4200d_platform_data *pdata)
 		return err;
 	}
 	gpio_direction_input(pdata->irq);
+
+	err = gpio_request(pdata->gpio_drdy, "gyro drdy");
+	if (err) {
+		pr_err("Fail to request l3g4200d drdy gpio, err = %d\n", err);
+		goto free_int;
+	}
+	gpio_direction_input(pdata->gpio_drdy);
+
+	err = gpio_request(pdata->gpio_data_en, "gyro data_en");
+	if (err) {
+		pr_err("Fail to request l3g4200d data_en, err = %d\n", err);
+		goto free_drdy;
+	}
+	gpio_direction_output(pdata->gpio_data_en, 0);
+
 	return 0;
+free_drdy:
+	gpio_free(pdata->gpio_drdy);
+free_int:
+	gpio_free(pdata->irq);
+
+return err;
 }
 
 static void l3g4200d_gpio_free(struct l3g4200d_platform_data *pdata)
 {
 	gpio_free(pdata->irq);
+	gpio_free(pdata->gpio_drdy);
+	gpio_free(pdata->gpio_data_en);
 }
 
 #ifdef CONFIG_OF
@@ -688,6 +713,8 @@ l3g4200d_of_init(struct i2c_client *client)
 		pdata->poll_interval = (int) val;
 
 	pdata->irq = of_get_gpio(np, 0);
+	pdata->gpio_drdy = of_get_gpio(np, 1);
+	pdata->gpio_data_en = of_get_gpio(np, 2);
 
 	/* According the spec to configure following register */
 	pdata->ctrl_reg1 = 0x1F;
@@ -731,13 +758,7 @@ static int l3g4200d_probe(struct i2c_client *client,
 		pdata = client->dev.platform_data;
 
 	if (pdata == NULL) {
-		dev_err(&client->dev, "platform data is NULL. exiting.\n");
-		err = -ENODEV;
-		goto err0;
-	}
-
-	if (client->dev.platform_data == NULL) {
-		dev_err(&client->dev, "platform data is NULL. exiting.\n");
+		dev_err(&client->dev, "pdata is NULL. exiting.\n");
 		err = -ENODEV;
 		goto err0;
 	}
@@ -765,7 +786,11 @@ static int l3g4200d_probe(struct i2c_client *client,
 	gyro->client = client;
 	gyro->pdata = pdata;
 
-	gyro->client->irq = gpio_to_irq(gyro->pdata->irq);
+	/*
+	 * Use drdy pin as interrupt pin. If we want to use the INT1,
+	 * we need to ask verdor to give the new register values.
+	 */
+	gyro->client->irq = gpio_to_irq(gyro->pdata->gpio_drdy);
 
 	gyro->regulator = regulator_get(&client->dev, "vdd");
 

@@ -25,4 +25,6 @@ Required properties:
 			vdd-supply = <&pm8226_l19>;
 			stm,poll-interval = <200>;
 			gpios = <&msmgpio 51 0>, /* INT1 */
+				<&msmgpio 64 0>, /* DRDY/INT2 */
+				<&msmgpio 114 0>; /* DATA_EN */
 		};
