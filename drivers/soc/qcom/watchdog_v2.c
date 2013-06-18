@@ -51,6 +51,7 @@
 #define MAX_CPU_CTX_SIZE	2048
 
 static struct msm_watchdog_data *wdog_data;
+static struct msm_watchdog_data *g_wdog_dd;
 
 static int cpu_idle_pc_state[NR_CPUS];
 
@@ -340,6 +341,11 @@ static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 	if (slack_ns < wdog_dd->min_slack_ns)
 		wdog_dd->min_slack_ns = slack_ns;
 	wdog_dd->last_pet = time_ns;
+}
+
+void g_pet_watchdog(void)
+{
+	pet_watchdog(g_wdog_dd);
 }
 
 static void keep_alive_response(void *info)
@@ -841,6 +847,7 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 		goto err;
 	}
 	init_watchdog_data(wdog_dd);
+	g_wdog_dd = wdog_dd;
 	return 0;
 err:
 	kzfree(wdog_dd);
