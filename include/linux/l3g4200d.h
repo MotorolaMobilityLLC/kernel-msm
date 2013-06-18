@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Motorola, Inc.
+ * Copyright (C) 2010-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -35,6 +35,7 @@
 struct l3g4200d_platform_data {
 	int poll_interval;
 	unsigned int gpio_drdy;
+	unsigned int gpio_data_en;
 	unsigned int irq;
 
 	u8 ctrl_reg1;
