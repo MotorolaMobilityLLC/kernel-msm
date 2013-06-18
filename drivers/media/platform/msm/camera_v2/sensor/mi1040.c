@@ -220,22 +220,22 @@ int32_t mi1040_sensor_read_vendor_id(struct msm_sensor_ctrl_t *s_ctrl)
 
 	switch (vendor) {
 	case 0:
-			vendor_id =  A;
-			snprintf(s_ctrl->sensordata->vendor_name,
-				sizeof(s_ctrl->sensordata->vendor_name),
-				"%s", "A");
-			pr_info("Vendor is A\n");
-			break;
-	case 1:
-			vendor_id = B;
+			vendor_id =  B;
 			snprintf(s_ctrl->sensordata->vendor_name,
 				sizeof(s_ctrl->sensordata->vendor_name),
 				"%s", "B");
 			pr_info("Vendor is B\n");
 			break;
+	case 1:
+			vendor_id = A;
+			snprintf(s_ctrl->sensordata->vendor_name,
+				sizeof(s_ctrl->sensordata->vendor_name),
+				"%s", "A");
+			pr_info("Vendor is A\n");
+			break;
 	default:
-			vendor_id =  A;
-			pr_info("Default Vendor is A\n");
+			vendor_id =  B;
+			pr_info("Default Vendor is B\n");
 			break;
 	}
 	return vendor_id;
