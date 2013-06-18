@@ -52,6 +52,7 @@
 
 static struct workqueue_struct *wdog_wq;
 static struct msm_watchdog_data *wdog_data;
+static struct msm_watchdog_data *g_wdog_dd;
 
 static int cpu_idle_pc_state[NR_CPUS];
 
@@ -300,6 +301,11 @@ static void pet_watchdog(struct msm_watchdog_data *wdog_dd)
 	if (slack_ns < wdog_dd->min_slack_ns)
 		wdog_dd->min_slack_ns = slack_ns;
 	wdog_dd->last_pet = time_ns;
+}
+
+void g_pet_watchdog(void)
+{
+	pet_watchdog(g_wdog_dd);
 }
 
 static void keep_alive_response(void *info)
@@ -720,6 +726,7 @@ static int msm_watchdog_probe(struct platform_device *pdev)
 	cpumask_clear(&wdog_dd->alive_mask);
 	INIT_WORK(&wdog_dd->init_dogwork_struct, init_watchdog_work);
 	INIT_DELAYED_WORK(&wdog_dd->dogwork_struct, pet_watchdog_work);
+	g_wdog_dd = wdog_dd;
 	queue_work(wdog_wq, &wdog_dd->init_dogwork_struct);
 	return 0;
 err:
