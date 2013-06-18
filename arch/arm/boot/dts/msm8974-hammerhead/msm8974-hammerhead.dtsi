@@ -695,3 +695,7 @@
 		};
 	};
 };
+
+&pm8941_mvs1 {
+	parent-supply = <&pm8941_boost>;
+};
