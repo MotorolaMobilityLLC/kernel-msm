@@ -256,6 +256,8 @@ static int msm_ispif_reset(struct ispif_device *ispif)
 	BUG_ON(!ispif);
 
 	memset(ispif->sof_count, 0, sizeof(ispif->sof_count));
+	msm_camera_io_w(ISPIF_STOP_INTF_IMMEDIATELY,
+		ispif->base + ISPIF_VFE_m_INTF_CMD_0(0));
 
 	msm_camera_io_w(ISPIF_RST_CMD_MASK, ispif->base + ISPIF_RST_CMD_ADDR);
 
@@ -1080,6 +1082,12 @@ static long msm_ispif_subdev_ioctl(struct v4l2_subdev *sd,
 	switch (cmd) {
 	case VIDIOC_MSM_ISPIF_CFG:
 		return msm_ispif_cmd(sd, arg);
+	case MSM_SD_SHUTDOWN: {
+		struct ispif_device *ispif =
+			(struct ispif_device *)v4l2_get_subdevdata(sd);
+		msm_ispif_release(ispif);
+		return 0;
+	}
 	default:
 		pr_err("%s: invalid cmd 0x%x received\n", __func__, cmd);
 		return -ENOIOCTLCMD;
@@ -1162,6 +1170,7 @@ static int __devinit ispif_probe(struct platform_device *pdev)
 	ispif->msm_sd.sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV;
 	ispif->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_ISPIF;
 	ispif->msm_sd.sd.entity.name = pdev->name;
+	ispif->msm_sd.close_seq = MSM_SD_CLOSE_1ST_CATEGORY | 0x1;
 	rc = msm_sd_register(&ispif->msm_sd);
 	if (rc) {
 		pr_err("%s: msm_sd_register error = %d\n", __func__, rc);

@@ -274,7 +274,7 @@ static void msm_vfe32_read_irq_status(struct vfe_device *vfe_dev,
 	*irq_status0 = msm_camera_io_r(vfe_dev->vfe_base + 0x2C);
 	*irq_status1 = msm_camera_io_r(vfe_dev->vfe_base + 0x30);
 	msm_camera_io_w(*irq_status0, vfe_dev->vfe_base + 0x24);
-	msm_camera_io_w(*irq_status1, vfe_dev->vfe_base + 0x28);
+	msm_camera_io_w_mb(*irq_status1, vfe_dev->vfe_base + 0x28);
 	msm_camera_io_w_mb(1, vfe_dev->vfe_base + 0x18);
 
 	if (*irq_status1 & BIT(0))
@@ -720,8 +720,7 @@ static long msm_vfe32_axi_halt(struct vfe_device *vfe_dev)
 	halt_mask |= BIT(24);
 	msm_camera_io_w_mb(halt_mask, vfe_dev->vfe_base + 0x20);
 	init_completion(&vfe_dev->halt_complete);
-	/*TD: Need to fix crashes with this*/
-	/*msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x1D8);*/
+	msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x1D8);
 	return wait_for_completion_interruptible_timeout(
 		&vfe_dev->halt_complete, msecs_to_jiffies(500));
 }

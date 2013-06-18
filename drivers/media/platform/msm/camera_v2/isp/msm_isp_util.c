@@ -386,6 +386,11 @@ long msm_isp_ioctl(struct v4l2_subdev *sd,
 		rc = msm_isp_update_axi_stream(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
+	case MSM_SD_SHUTDOWN:
+		while (vfe_dev->vfe_open_cnt != 0)
+			msm_isp_close_node(sd, NULL);
+		break;
+
 	default:
 		pr_err("%s: Invalid ISP command\n", __func__);
 		rc = -EINVAL;
@@ -756,6 +761,7 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 	struct vfe_device *vfe_dev = (struct vfe_device *) data;
 	uint32_t irq_status0, irq_status1;
 	uint32_t error_mask0, error_mask1;
+	uint32_t halt_mask;
 
 	vfe_dev->hw_info->vfe_ops.irq_ops.
 		read_irq_status(vfe_dev, &irq_status0, &irq_status1);
@@ -776,6 +782,14 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 	}
 
 	spin_lock_irqsave(&vfe_dev->tasklet_lock, flags);
+	if (irq_status1 & BIT(24)) {
+		msm_camera_io_w_mb(0, vfe_dev->vfe_base + 0x1D8);
+		halt_mask = msm_camera_io_r(vfe_dev->vfe_base + 0x20);
+		halt_mask &= 0xFEFFFFFF ;
+		/* Disable AXI IRQ */
+		msm_camera_io_w_mb(halt_mask, vfe_dev->vfe_base + 0x20);
+	}
+
 	queue_cmd = &vfe_dev->tasklet_queue_cmd[vfe_dev->taskletq_idx];
 	if (queue_cmd->cmd_used) {
 		pr_err_ratelimited("%s: Tasklet queue overflow: %d\n",
@@ -906,10 +920,9 @@ int msm_isp_close_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 		mutex_unlock(&vfe_dev->realtime_mutex);
 		return -ENODEV;
 	}
-
 	rc = vfe_dev->hw_info->vfe_ops.axi_ops.halt(vfe_dev);
 	if (rc <= 0)
-		pr_err("%s: halt timeout\n", __func__);
+		pr_err("%s: halt timeout rc=%ld\n", __func__, rc);
 
 	vfe_dev->buf_mgr->ops->buf_mgr_deinit(vfe_dev->buf_mgr);
 	vfe_dev->hw_info->vfe_ops.core_ops.release_hw(vfe_dev);
