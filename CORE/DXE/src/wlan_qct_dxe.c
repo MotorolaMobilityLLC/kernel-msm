@@ -39,6 +39,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
 /**=========================================================================
   
   @file  wlan_qct_dxe.c
@@ -46,9 +47,9 @@
   @brief 
                
    This file contains the external API exposed by the wlan data transfer abstraction layer module.
-   Copyright (c) 2010-2011 QUALCOMM Incorporated.
+   Copyright (c) 2010-2011 Qualcomm Technologies, Inc.
    All Rights Reserved.
-   Qualcomm Confidential and Proprietary
+   Qualcomm Technologies Confidential and Proprietary
 ========================================================================*/
 
 /*===========================================================================
@@ -2250,11 +2251,11 @@ static wpt_status dxeRXFrameReady
          {
             if(!(WLANDXE_U32_SWAP_ENDIAN(descCtrl) & WLANDXE_DESC_CTRL_VALID))
             {
-               HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_WARN,
                         "Found Invalidated Descriptor %d", (int)descLoop);
                if(eWLAN_PAL_STATUS_SUCCESS == wpalIsPacketLocked(currentCtrlBlk->xfrFrame))
                {
-                  HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_WARN,
                            "Packet locked, Resync Host and HW");
                   channelEntry->headCtrlBlk = currentCtrlBlk;
                   invalidatedFound = 1;
@@ -2262,7 +2263,7 @@ static wpt_status dxeRXFrameReady
                }
                else
                {
-                  HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_WARN,
                            "Packet Not Locked, cannot transfer frame");
                }
             }
