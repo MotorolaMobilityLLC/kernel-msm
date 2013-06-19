@@ -149,6 +149,10 @@ typedef struct tagSmeStruct
 #ifdef FEATURE_WLAN_LPHB
     void (*pLphbWaitTimeoutCb) (void *pAdapter, void *indParam);
 #endif /* FEATURE_WLAN_LPHB */
+    //pending scan command list
+    tDblLinkList smeScanCmdPendingList;
+    //active scan command list
+    tDblLinkList smeScanCmdActiveList;
 } tSmeStruct, *tpSmeStruct;
 
 

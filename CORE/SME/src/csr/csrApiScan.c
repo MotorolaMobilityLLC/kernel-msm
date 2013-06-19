@@ -884,7 +884,11 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
                         {
                             //Start process the command
 #ifdef WLAN_AP_STA_CONCURRENCY
-                            status = csrQueueScanRequest(pMac, p11dScanCmd);
+                            if (!pMac->fScanOffload)
+                                status = csrQueueScanRequest(pMac, p11dScanCmd);
+                            else
+                                status = csrQueueSmeCommand(pMac, p11dScanCmd,
+                                                            eANI_BOOLEAN_FALSE);
 #else
                             status = csrQueueSmeCommand(pMac, p11dScanCmd, eANI_BOOLEAN_FALSE);
 #endif                   
@@ -920,7 +924,11 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
                 {
                     //Start process the command
 #ifdef WLAN_AP_STA_CONCURRENCY
-                    status = csrQueueScanRequest(pMac,pScanCmd); 
+                    if (!pMac->fScanOffload)
+                        status = csrQueueScanRequest(pMac,pScanCmd);
+                    else
+                        status = csrQueueSmeCommand(pMac, pScanCmd,
+                                                    eANI_BOOLEAN_FALSE);
 #else
                     status = csrQueueSmeCommand(pMac, pScanCmd, eANI_BOOLEAN_FALSE);                   
 #endif
@@ -4128,7 +4136,10 @@ tANI_BOOLEAN csrScanComplete( tpAniSirGlobal pMac, tSirSmeScanRsp *pScanRsp )
     tANI_BOOLEAN fRemoveCommand = eANI_BOOLEAN_TRUE;
     tANI_BOOLEAN fSuccess;
 
-    pEntry = csrLLPeekHead( &pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK );
+    if (pMac->fScanOffload)
+        pEntry = csrLLPeekHead(&pMac->sme.smeScanCmdActiveList, LL_ACCESS_LOCK);
+    else
+        pEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK);
 
     if ( pEntry )
     {
@@ -4725,6 +4736,9 @@ static tANI_BOOLEAN csrScanProcessScanResults( tpAniSirGlobal pMac, tSmeCmd *pCo
     }
 
 #ifdef WLAN_AP_STA_CONCURRENCY
+    if (pMac->fScanOffload)
+        return fRet;
+
     if (!csrLLIsListEmpty( &pMac->scan.scanCmdPendingList, LL_ACCESS_LOCK ))
     {
         /* Pending scan commands in the list because the previous scan command
@@ -4733,21 +4747,21 @@ static tANI_BOOLEAN csrScanProcessScanResults( tpAniSirGlobal pMac, tSmeCmd *pCo
          *
          * Start timer to trigger processing of the next scan command.
          * NOTE for LFR:
-         * Do not split scans if no concurrent infra connections are 
+         * Do not split scans if no concurrent infra connections are
          * active and if the scan is a BG scan triggered by LFR (OR)
          * any scan if LFR is in the middle of a BG scan. Splitting
          * the scan is delaying the time it takes for LFR to find
          * candidates and resulting in disconnects.
          */
-        if ( (csrIsStaSessionConnected(pMac) && 
+        if ( (csrIsStaSessionConnected(pMac) &&
 #ifdef FEATURE_WLAN_LFR
                     (csrIsConcurrentInfraConnected(pMac) ||
                      ((pCommand->u.scanCmd.reason != eCsrScanBgScan) &&
-                      (pMac->roam.neighborRoamInfo.neighborRoamState != 
+                      (pMac->roam.neighborRoamInfo.neighborRoamState !=
                        eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN))) &&
 #endif
                     (pCommand->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
-             (csrIsP2pSessionConnected(pMac)) )
+                (csrIsP2pSessionConnected(pMac)) )
         {
             /* if active connected sessions present then continue to split scan
              * with specified interval between consecutive scans */
@@ -4788,7 +4802,11 @@ eHalStatus csrScanSmeScanResponse( tpAniSirGlobal pMac, void *pMsgBuf )
     tANI_BOOLEAN fRemoveCommand = eANI_BOOLEAN_TRUE;
     eCsrScanReason reason = eCsrScanOther;
 
-    pEntry = csrLLPeekHead( &pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK );
+    if (pMac->fScanOffload)
+        pEntry = csrLLPeekHead(&pMac->sme.smeScanCmdActiveList,
+                               LL_ACCESS_LOCK);
+    else
+        pEntry = csrLLPeekHead(&pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK);
 
     if ( pEntry )
     {
@@ -5375,10 +5393,26 @@ eHalStatus csrProcessScanCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
     tANI_U32 len = 0;
 
     // Transition to Scanning state...
-    for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
+    if (!pMac->fScanOffload)
     {
-      pCommand->u.scanCmd.lastRoamState[i] = csrRoamStateChange( pMac, eCSR_ROAMING_STATE_SCANNING, i);
-      smsLog( pMac, LOG3, "starting SCAN command from %d state.... reason is %d", pCommand->u.scanCmd.lastRoamState[i], pCommand->u.scanCmd.reason );
+        for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
+        {
+            pCommand->u.scanCmd.lastRoamState[i] =
+                csrRoamStateChange( pMac, eCSR_ROAMING_STATE_SCANNING, i);
+            smsLog( pMac, LOG3, "starting SCAN command from %d state...."
+                    " reason is %d", pCommand->u.scanCmd.lastRoamState[i],
+                    pCommand->u.scanCmd.reason );
+        }
+    }
+    else
+    {
+        pCommand->u.scanCmd.lastRoamState[pCommand->sessionId] =
+            csrRoamStateChange(pMac, eCSR_ROAMING_STATE_SCANNING,
+                               pCommand->sessionId);
+        smsLog( pMac, LOG3,
+                "starting SCAN command from %d state.... reason is %d",
+                pCommand->u.scanCmd.lastRoamState[pCommand->sessionId],
+                pCommand->u.scanCmd.reason );
     }
 
     switch(pCommand->u.scanCmd.reason)
@@ -6568,22 +6602,44 @@ tANI_BOOLEAN csrScanRemoveFreshScanCommand(tpAniSirGlobal pMac, tANI_U8 sessionI
 void csrReleaseScanCommand(tpAniSirGlobal pMac, tSmeCmd *pCommand, eCsrScanStatus scanStatus)
 {
     eCsrScanReason reason = pCommand->u.scanCmd.reason;
-    tANI_U32 i;
-    for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
+    tANI_BOOLEAN status;
+
+    if (!pMac->fScanOffload)
     {
-         csrRoamStateChange( pMac, pCommand->u.scanCmd.lastRoamState[i], i);
+        tANI_U32 i;
+        for(i = 0; i < CSR_ROAM_SESSION_MAX; i++)
+            csrRoamStateChange(pMac, pCommand->u.scanCmd.lastRoamState[i], i);
+    }
+    else
+    {
+        csrRoamStateChange(pMac,
+                pCommand->u.scanCmd.lastRoamState[pCommand->sessionId],
+                pCommand->sessionId);
     }
 
-        csrScanCallCallback(pMac, pCommand, scanStatus);
+    csrScanCallCallback(pMac, pCommand, scanStatus);
 
     smsLog(pMac, LOG3, "   Remove Scan command reason = %d", reason);
-    if( csrLLRemoveEntry( &pMac->sme.smeCmdActiveList, &pCommand->Link, LL_ACCESS_LOCK ) )
+    if (pMac->fScanOffload)
+    {
+        status = csrLLRemoveEntry(&pMac->sme.smeScanCmdActiveList,
+                                  &pCommand->Link, LL_ACCESS_LOCK);
+    }
+    else
+    {
+        status = csrLLRemoveEntry(&pMac->sme.smeCmdActiveList,
+                                  &pCommand->Link, LL_ACCESS_LOCK);
+    }
+
+    if(status)
     {
         csrReleaseCommandScan( pMac, pCommand );
     }
     else
     {
-        smsLog(pMac, LOGE, " ********csrReleaseScanCommand cannot release command reason %d", pCommand->u.scanCmd.reason );
+        smsLog(pMac, LOGE,
+                " ********csrReleaseScanCommand cannot release command reason %d",
+                pCommand->u.scanCmd.reason );
     }
 }
 
