@@ -797,7 +797,7 @@ wpt_status wpalIsPacketLocked( wpt_packet *pPacket)
    /* Validate the parameter pointers */
    if (NULL == pPacket)
    {
-      WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+      WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_WARN,
                 "%s : NULL input pointer", __func__);
       return eWLAN_PAL_STATUS_E_INVAL;
    }
