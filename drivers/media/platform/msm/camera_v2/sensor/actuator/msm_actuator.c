@@ -230,8 +230,8 @@ static int32_t calibrate_af_data(struct msm_actuator_ctrl_t *a_ctrl,
 	CDBG("OTP start = 0x%x", start_dac);
 
 	if ((inf_dac != 0) && (macro_dac != 0) && (macro_dac > inf_dac)) {
-		if (inf_dac > 120)
-			inf_dac -= 120;
+		if (inf_dac > 60)
+			inf_dac -= 60;
 		set_info->af_tuning_params.initial_code = inf_dac;
 		a_ctrl->region_params[0].code_per_step =
 		   (macro_dac - inf_dac) /
