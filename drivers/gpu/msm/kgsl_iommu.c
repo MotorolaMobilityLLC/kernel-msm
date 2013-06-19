@@ -418,9 +418,13 @@ void *kgsl_iommu_create_pagetable(void)
 				sizeof(struct kgsl_iommu_pt));
 		return NULL;
 	}
-
-	iommu_pt->domain = iommu_domain_alloc(&platform_bus_type, 0);
-
+	/* L2 redirect is not stable on IOMMU v2 */
+	if (msm_soc_version_supports_iommu_v1())
+		iommu_pt->domain = iommu_domain_alloc(&platform_bus_type,
+					MSM_IOMMU_DOMAIN_PT_CACHEABLE);
+	else
+		iommu_pt->domain = iommu_domain_alloc(&platform_bus_type,
+					0);
 	if (!iommu_pt->domain) {
 		KGSL_CORE_ERR("Failed to create iommu domain\n");
 		kfree(iommu_pt);
