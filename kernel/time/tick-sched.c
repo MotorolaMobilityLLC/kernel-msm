@@ -525,6 +525,13 @@ ktime_t tick_nohz_get_sleep_length(void)
 	return ktime_sub(dev->next_event, ts->idle_entrytime);
 }
 
+ktime_t tick_nohz_get_cpu_sleep_length(int cpu)
+{
+	struct tick_sched *ts = &per_cpu(tick_cpu_sched, cpu);
+	struct clock_event_device *dev = per_cpu(tick_cpu_device, cpu).evtdev;
+	return ktime_sub(dev->next_event, ts->idle_entrytime);
+}
+
 static void tick_nohz_restart(struct tick_sched *ts, ktime_t now)
 {
 	hrtimer_cancel(&ts->sched_timer);
