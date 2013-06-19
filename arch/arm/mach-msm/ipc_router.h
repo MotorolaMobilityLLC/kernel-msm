@@ -170,6 +170,7 @@ struct msm_ipc_router_xprt {
 	int (*write)(void *data, uint32_t len,
 		     struct msm_ipc_router_xprt *xprt);
 	int (*close)(struct msm_ipc_router_xprt *xprt);
+	void (*sft_close_done)(struct msm_ipc_router_xprt *xprt);
 };
 
 extern struct completion msm_ipc_remote_router_up;
