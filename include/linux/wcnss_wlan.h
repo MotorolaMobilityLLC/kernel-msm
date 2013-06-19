@@ -25,6 +25,12 @@ struct wcnss_wlan_config {
 	int		use_48mhz_xo;
 };
 
+enum {
+	WCNSS_XO_48MHZ = 1,
+	WCNSS_XO_19MHZ,
+	WCNSS_XO_INVALID,
+};
+
 #define WCNSS_WLAN_IRQ_INVALID -1
 #define HAVE_WCNSS_RESET_INTR 1
 
@@ -54,6 +60,7 @@ void wcnss_prevent_suspend(void);
 void wcnss_ssr_boot_notify(void);
 void wcnss_reset_intr(void);
 int wcnss_cold_boot_done(void);
+int wcnss_wlan_iris_xo_mode(void);
 
 #define wcnss_wlan_get_drvdata(dev) dev_get_drvdata(dev)
 #define wcnss_wlan_set_drvdata(dev, data) dev_set_drvdata((dev), (data))
