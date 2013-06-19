@@ -1009,7 +1009,7 @@ static void msm_rpmrs_exit_sleep(void *limits, bool from_idle,
 	/* Disable L2 for now, we dont want L2 to do retention by default */
 	msm_rpmrs_L2_restore(limits, notify_rpm, collapsed);
 
-	if (msm_rpmrs_use_mpm(limits))
+	if (limits && msm_rpmrs_use_mpm(limits))
 		msm_mpm_exit_sleep(from_idle);
 }
 
@@ -1021,7 +1021,7 @@ static int rpmrs_cpu_callback(struct notifier_block *nfb,
 	case CPU_ONLINE:
 		if (num_online_cpus() > 1)
 			msm_rpmrs_l2_cache.rs[0].value =
-				MSM_RPMRS_L2_CACHE_ACTIVE;
+				MSM_RPMRS_L2_CACHE_GDHS;
 		break;
 	case CPU_DEAD_FROZEN:
 	case CPU_DEAD:
@@ -1137,7 +1137,7 @@ static int __init msm_rpmrs_l2_init(void)
 	    soc_class_is_apq8064()) {
 
 		msm_pm_set_l2_flush_flag(0);
-
+		msm_rpmrs_l2_cache.rs[0].value = MSM_RPMRS_L2_CACHE_GDHS;
 		msm_rpmrs_l2_cache.beyond_limits =
 			msm_spm_l2_cache_beyond_limits;
 		msm_rpmrs_l2_cache.aggregate = NULL;

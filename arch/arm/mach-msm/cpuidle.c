@@ -16,6 +16,7 @@
 #include <linux/cpuidle.h>
 
 #include <mach/cpuidle.h>
+#include <asm/hardware/gic.h>
 
 #include "pm.h"
 
@@ -28,68 +29,82 @@ static struct cpuidle_driver msm_cpuidle_driver = {
 
 static struct msm_cpuidle_state msm_cstates[] = {
 	{0, 0, "C0", "WFI",
-		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
+		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT, 1, 100},
 
-	{0, 1, "C1", "RETENTION",
-		MSM_PM_SLEEP_MODE_RETENTION},
+	/* {0, 1, "C1", "RETENTION",
+		MSM_PM_SLEEP_MODE_RETENTION}, */
 
-	{0, 2, "C2", "STANDALONE_POWER_COLLAPSE",
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
+	{0, 1, "C2", "STANDALONE_POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE, 1300, 2000},
 
-	{0, 3, "C3", "POWER_COLLAPSE",
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE},
+	{0, 2, "C3", "POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE, 2000, 8000},
 
 	{1, 0, "C0", "WFI",
-		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
+		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT, 1, 100},
 
-	{1, 1, "C1", "RETENTION",
-		MSM_PM_SLEEP_MODE_RETENTION},
+	/* {1, 1, "C1", "RETENTION",
+		MSM_PM_SLEEP_MODE_RETENTION}, */
 
-	{1, 2, "C2", "STANDALONE_POWER_COLLAPSE",
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
+	{1, 1, "C2", "STANDALONE_POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE, 1300, 2000},
+
+	{1, 2, "C3", "POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE, 2000, 8000},
 
 	{2, 0, "C0", "WFI",
-		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
+		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT, 1, 100},
 
-	{2, 1, "C1", "RETENTION",
-		MSM_PM_SLEEP_MODE_RETENTION},
+	/* {2, 1, "C1", "RETENTION",
+		MSM_PM_SLEEP_MODE_RETENTION}, */
 
-	{2, 2, "C2", "STANDALONE_POWER_COLLAPSE",
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
+	{2, 1, "C2", "STANDALONE_POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE, 1300, 2000},
+
+	{2, 2, "C3", "POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE, 2000, 8000},
 
 	{3, 0, "C0", "WFI",
-		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
+		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT, 1, 100},
 
-	{3, 1, "C1", "RETENTION",
-		MSM_PM_SLEEP_MODE_RETENTION},
+	/* {3, 1, "C1", "RETENTION",
+		MSM_PM_SLEEP_MODE_RETENTION}, */
 
-	{3, 2, "C2", "STANDALONE_POWER_COLLAPSE",
-		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
+	{3, 1, "C2", "STANDALONE_POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE, 1300, 2000},
+
+	{3, 2, "C3", "POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE, 2000, 8000},
 };
+
+static atomic_t exit_idle;
+static int msm_cpuidle_enter_coupled(struct cpuidle_device *dev,
+		struct cpuidle_driver *drv, int index)
+{
+#ifdef CONFIG_CPU_PM
+	cpu_pm_enter();
+#endif
+	msm_pm_idle_enter(dev, drv, index, true);
+	gic_raise_softirq(cpu_online_mask, 1);
+	cpuidle_coupled_parallel_barrier(dev, &exit_idle);
+#ifdef CONFIG_CPU_PM
+	cpu_pm_exit();
+#endif
+	return index;
+}
 
 static int msm_cpuidle_enter(
 	struct cpuidle_device *dev, struct cpuidle_driver *drv, int index)
 {
-	int ret = 0;
-	int i = 0;
-	enum msm_pm_sleep_mode pm_mode;
-	struct cpuidle_state_usage *st_usage = NULL;
+#ifdef CONFIG_CPU_PM
+	cpu_pm_enter();
+#endif
 
-	pm_mode = msm_pm_idle_prepare(dev, drv, index);
-	dev->last_residency = msm_pm_idle_enter(pm_mode);
-	for (i = 0; i < dev->state_count; i++) {
-		st_usage = &dev->states_usage[i];
-		if ((enum msm_pm_sleep_mode) cpuidle_get_statedata(st_usage)
-		    == pm_mode) {
-			ret = i;
-			break;
-		}
-	}
-
+	msm_pm_idle_enter(dev, drv, index, false);
 
 	local_irq_enable();
 
-	return ret;
+	return index;
 }
 
 static void __init msm_cpuidle_set_states(void)
@@ -115,16 +130,22 @@ static void __init msm_cpuidle_set_states(void)
 		snprintf(state->name, CPUIDLE_NAME_LEN, cstate->name);
 		snprintf(state->desc, CPUIDLE_DESC_LEN, cstate->desc);
 		state->flags = 0;
-		state->exit_latency = 0;
+		if (cstate->mode_nr == MSM_PM_SLEEP_MODE_POWER_COLLAPSE) {
+			state->flags |= CPUIDLE_FLAG_COUPLED;
+			state->enter = msm_cpuidle_enter_coupled;
+		} else {
+			state->enter = msm_cpuidle_enter;
+		};
+
+		state->exit_latency = cstate->exit_latency;
 		state->power_usage = 0;
-		state->target_residency = 0;
-		state->enter = msm_cpuidle_enter;
+		state->target_residency = cstate->target_residency;
 
 		state_count++;
 		BUG_ON(state_count >= CPUIDLE_STATE_MAX);
 	}
 	msm_cpuidle_driver.state_count = state_count;
-	msm_cpuidle_driver.safe_state_index = 0;
+	msm_cpuidle_driver.safe_state_index = 1;
 }
 
 static void __init msm_cpuidle_set_cpu_statedata(struct cpuidle_device *dev)
@@ -164,6 +185,7 @@ int __init msm_cpuidle_init(void)
 
 		dev->cpu = cpu;
 		msm_cpuidle_set_cpu_statedata(dev);
+		dev->coupled_cpus = *cpu_possible_mask;
 		ret = cpuidle_register_device(dev);
 		if (ret) {
 			pr_err("%s: failed to register cpuidle device for "
