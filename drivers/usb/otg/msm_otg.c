@@ -394,6 +394,7 @@ static struct usb_phy_io_ops msm_otg_io_ops = {
 	.write = ulpi_write,
 };
 
+static int otg_host_on = 0;
 static void ulpi_init(struct msm_otg *motg)
 {
 	struct msm_otg_platform_data *pdata = motg->pdata;
@@ -405,7 +406,12 @@ static void ulpi_init(struct msm_otg *motg)
 	while (seq[0] >= 0) {
 		dev_vdbg(motg->phy.dev, "ulpi: write 0x%02x to 0x%02x\n",
 				seq[0], seq[1]);
-		ulpi_write(&motg->phy, seq[0], seq[1]);
+		if (otg_host_on == 1 && seq[1] == 0x81) {
+			printk(KERN_INFO"Host mode: Set DC level as 0x68.\n");
+			ulpi_write(&motg->phy, 0x68, seq[1]);
+		} else {
+			ulpi_write(&motg->phy, seq[0], seq[1]);
+		}
 		seq += 2;
 	}
 }
@@ -1243,7 +1249,6 @@ static int msm_otg_set_power(struct usb_phy *phy, unsigned mA)
 	return 0;
 }
 
-static int otg_host_on = 0;
 static void msm_otg_start_host(struct usb_otg *otg, int on)
 {
 	struct msm_otg *motg = container_of(otg->phy, struct msm_otg, phy);
@@ -1259,6 +1264,9 @@ static void msm_otg_start_host(struct usb_otg *otg, int on)
 		dev_dbg(otg->phy->dev, "host on\n");
 		smb345_otg_status(true);
 		otg_host_on = 1;
+
+		// Reset to apply new parameter for host.
+		msm_otg_reset(otg->phy);
 
 		if (pdata->otg_control == OTG_PHY_CONTROL)
 			ulpi_write(otg->phy, OTG_COMP_DISABLE,
