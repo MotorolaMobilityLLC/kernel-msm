@@ -139,6 +139,13 @@ wpt_uint32 wpalGetSystemTime(void);
 ---------------------------------------------------------------------------*/
 wpt_status wpalSleep(wpt_uint32 timeout);
 
-
+/*---------------------------------------------------------------------------
+    wpalUsecSleep - sleep for a specified Micro Sec interval
+    Param:
+        timeout - amount of time to sleep. In unit of micro-seconds.
+    Return:
+        eWLAN_PAL_STATUS_SUCCESS - success. Fail otherwise.
+---------------------------------------------------------------------------*/
+wpt_status wpalUsecSleep(wpt_uint32 timeout);
 
 #endif // __WLAN_QCT_PAL_TIMER_H
