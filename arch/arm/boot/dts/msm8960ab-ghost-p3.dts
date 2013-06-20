@@ -1,0 +1,61 @@
+/* Copyright (c) 2012-2013, Motorola Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+/include/ "msm8960ab-ghost-common.dtsi"
+
+/* Note, this is common with p1 */
+/include/ "msm8960ab-ghost-p1-legacy.dtsi"
+
+/ {
+	mmi,revision = "p3";
+
+	System@0 {
+		I2C@4 {
+			I2C,Board@2 {
+				class = [4f56313038323000];
+				gpio_dig_en = <0x000000a0>;
+				gpio_pwd = <0x0000005f>;
+				gpio_reset = <0x00000061>;
+				is_asic_ver_r1b = <0x00000001>;
+				is_new_pk_dvdd = <0x00000001>;
+				i2c,address = <0x00000036>;
+				i2c,type = [6f76313038323000];
+				type = <0x00290003>;
+			};
+		};
+
+		Regulators@0 {
+			RegulatorChip@0 {
+				RegulatorChip@1 {
+					class = [47656e65726963526567756c61746f7200];
+					id = <0x0000000b>;
+					type = <0x00000020>;
+
+					ConsumerSupply@0 {
+						dev_name = [342d3030333600];
+						supply = [63616d5f706b5f6476646400];
+					};
+				};
+			};
+		};
+	};
+};
+
+
+/* GSBI10 - I2C */
+&i2c10 {
+	tpa6165xx@40 {
+		ti,tpa6165-jack-detect-config = <0xC0>;
+	};
+};
