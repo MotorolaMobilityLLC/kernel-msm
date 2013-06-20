@@ -17,7 +17,28 @@ Required properties:
 	- gpios:
 		an array specifiying the required GPIO for operation
 			- IRQ GPIO
-
+Optional properties:
+	- ti,tpa6165-always-on-micbias:
+		this property indicates that mic bias is always turned ON when
+		headset is plugged in. This should be set by products which has
+		low power dsp support for always on voice recognition and continous
+		noise estimates.
+	- ti,tpa6165-jack-detect-config:
+		this property allow to set custom default value for the jack
+		detection test hardware settings register (0x18).
+		The value bits are :
+		BIT 7 - Maximum Impedance During Short
+			Defines maximum impedance below which pin is considered
+			short.This information is used while detecting whether
+			PIN2_ROUT is ground.
+			0 = 4 Ω
+			1 = 7 Ω
+		BIT 6 - Threshold Impedance to Distinguish Between Headphone and
+			Lineout Load.Defines impedance below which load is Headphone
+			and above is Lineout.
+			0 = 700 Ω
+			1 = 1.5 kΩ
+		BITS 5-0 - Reserved
 Example:
 
 	i2c@1a200000 {
@@ -32,5 +53,10 @@ Example:
 			interrupt-parent = <&pm8921_gpio>;
 			interrupts = <38 0>;
 			gpios = <&pm8921_gpio 38 0>;     /* IRQ */
+<<<<<<< HEAD
+=======
+			ti,tpa6165-always-on-micbias = <1>;
+			ti,tpa6165-jack-detect-config = <0xC0>;
+>>>>>>> 340af33... IKJBXLINE-13953 ASoC TPA6165: Add config for jack detect register
 		};
 	};

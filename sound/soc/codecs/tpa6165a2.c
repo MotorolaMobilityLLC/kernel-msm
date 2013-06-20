@@ -79,6 +79,7 @@ struct tpa6165_data {
 	int mode;
 	int mono_hs_detect_state;
 	int force_hstype;
+	int jack_detect_config;
 	struct mutex lock;
 	struct wake_lock wake_lock;
 	struct work_struct work;
@@ -261,6 +262,11 @@ static void tpa6165_initialize_work(struct work_struct *work)
 		if (retval != 0)
 			goto error;
 	}
+
+	/* Update jack detect config register with dts value */
+	tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
+				tpa6165->jack_detect_config, 0xff);
+
 	pr_info("tpa6165_initialize success\n");
 error:
 	return;
@@ -428,10 +434,11 @@ static int tpa6165_set_mode(struct snd_kcontrol *kcontrol,
 	if (value)
 		/* enable tty mode */
 		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
-				0xc0, 0xff);
+				TPA6165_JACK_SHORT_Z|TPA6165_JACK_HP_LO_TH,
+				0xff);
 	else
 		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
-				0x80, 0xff);
+				tpa6165->jack_detect_config, 0xff);
 
 	pr_debug("%s: mode set: %s\n", __func__, tpa6165_mode[value]);
 
@@ -1047,6 +1054,9 @@ tpa6165_of_init(struct i2c_client *client)
 	of_property_read_u32(np, "ti,tpa6165-always-on-micbias",
 				&pdata->alwayson_micbias);
 	pdata->irq_gpio = of_get_gpio(np, 0);
+	pdata->jack_detect_config = TPA6165_JACK_SHORT_Z;
+	of_property_read_u32(np, "ti,tpa6165-jack-detect-config",
+				&pdata->jack_detect_config);
 
 	return pdata;
 }
@@ -1109,6 +1119,7 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 	 * operations and noise estimate.
 	 */
 	tpa6165->alwayson_micb = tpa6165_pdata->alwayson_micbias;
+	tpa6165->jack_detect_config = tpa6165_pdata->jack_detect_config;
 
 	/* enable regulators */
 	tpa6165->vdd = regulator_get(&client->dev, "hs_det_vdd");
