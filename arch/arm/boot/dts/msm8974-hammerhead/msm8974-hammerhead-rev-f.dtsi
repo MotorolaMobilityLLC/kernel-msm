@@ -41,7 +41,9 @@
 			        <&msmgpio 90 0>,  // MAIN_CAM_RESET
 				<&msmgpio 16 0>,  // 13M_VANA_EN
 				<&msmgpio 96 0>,  // 13M_VIO_EN
-				<&msmgpio 57 0>;  // 13M_VCM_EN
+				<&msmgpio 57 0>,  // 13M_VCM_EN
+				<&msmgpio 145 0>, // OIS_LDO_EN
+				<&msmgpio 29 0>;  // OIS_RESET
 		};
 	};
 

@@ -49,14 +49,24 @@
 			<&msmgpio 4 0>,   // MAIN_CAM_RESET
 			<&msmgpio 16 0>,  // 13M_VANA_EN
 			<&msmgpio 96 0>,  // 13M_VIO_EN
-			<&msmgpio 57 0>;  // 13M_VCM_EN
+			<&msmgpio 57 0>,  // 13M_VCM_EN
+			<&msmgpio 145 0>, // OIS_LDO_EN
+			<&msmgpio 29 0>;  // OIS_RESET
 		qcom,gpio-reset = <1>;
 		qcom,gpio-vana = <2>;
 		qcom,gpio-vio = <3>;
 		qcom,gpio-vcm = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <0 0 0 0 0>;
-		qcom,gpio-req-tbl-label =  "CAMIF_MCLK", "CAM_RESET1", "MAIN_VANA_EN", "MAIN_VIO_EN", "MAIN_VCM_EN";
+		qcom,gpio-ois-ldo = <5>;
+		qcom,gpio-ois-reset = <6>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5 6>;
+		qcom,gpio-req-tbl-flags = <0 0 0 0 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+			"CAM_RESET1",
+			"MAIN_VANA_EN",
+			"MAIN_VIO_EN",
+			"MAIN_VCM_EN",
+			"OIS_LDO_EN",
+			"OIS_RESET";
 		qcom,csi-lane-assign = <0x4320>;
 		qcom,csi-lane-mask = <0x1F>;
 		qcom,sensor-position = <0>;
