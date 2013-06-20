@@ -22,6 +22,7 @@
 struct tpa6165a2_platform_data {
 	int irq_gpio;
 	int alwayson_micbias;
+	int jack_detect_config;
 };
 
 #endif  /* __TPA6165A2_H__ */
