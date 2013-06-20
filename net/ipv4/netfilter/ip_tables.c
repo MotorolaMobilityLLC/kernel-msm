@@ -284,8 +284,6 @@ struct ipt_entry *ipt_next_entry(const struct ipt_entry *entry)
 	return (void *)entry + entry->next_offset;
 }
 
-DEFINE_SPINLOCK(ipt_lock);
-
 /* Returns one of the generic firewall policies, like NF_ACCEPT. */
 unsigned int
 ipt_do_table(struct sk_buff *skb,
@@ -416,6 +414,11 @@ ipt_do_table(struct sk_buff *skb,
 		spin_unlock(&ipt_lock);
 		verdict = t->u.kernel.target->target(skb, &acpar);
 		spin_lock(&ipt_lock);
+		/* table info might have changed during unlock period */
+		if (private != table->private) {
+			verdict = NF_DROP;
+			break;
+		}
 		/* Target might have changed stuff. */
 		ip = ip_hdr(skb);
 		if (verdict == XT_CONTINUE)
@@ -1229,10 +1232,7 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
 	xt_entry_foreach(iter, loc_cpu_old_entry, oldinfo->size)
 		cleanup_entry(iter, net);
 
-	spin_lock(&ipt_lock);
 	xt_free_table_info(oldinfo);
-	spin_unlock(&ipt_lock);
-
 	if (copy_to_user(counters_ptr, counters,
 			 sizeof(struct xt_counters) * num_counters) != 0)
 		ret = -EFAULT;
