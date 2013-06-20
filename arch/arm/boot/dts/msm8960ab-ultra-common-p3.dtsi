@@ -56,3 +56,10 @@
         };
 };
 
+/* GSBI10 - I2C */
+&i2c10 {
+	tpa6165xx@40 {
+		ti,tpa6165-jack-detect-config = <0xC0>;
+	};
+};
+
