@@ -626,65 +626,69 @@ static struct msm_camera_i2c_reg_conf ColorEffect_Solarize[] = {
 };
 
 static struct msm_camera_i2c_reg_conf Whitebalance_Auto[] = {
-	/* [4.1 AWB -- default] */
-	{0x098E, 0x0000},
-	{0xC909, 0x02, MSM_CAMERA_I2C_BYTE_DATA},
+	{0x098E, 0xC909},
+	{0xC909, 0x03, MSM_CAMERA_I2C_BYTE_DATA},
+	{0xAC04, 0x0288},
 };
 
 static struct msm_camera_i2c_reg_conf Whitebalance_Incandescent[] = {
-	/* [4.5 MWB: A Light] */
-	{0x098E, 0x0000},
+	{0x098E, 0xC909},
 	{0xC909, 0x00, MSM_CAMERA_I2C_BYTE_DATA},
-	{0xC8F0, 0x0A8C},
+	{0xAC04, 0x0288},
+	{0xC8F0, 0x09C4},
 };
 
 static struct msm_camera_i2c_reg_conf Whitebalance_Daylight[] = {
-	/* [4.2 MWB: D65] */
-	{0x098E, 0x0000},
+	{0x098E, 0xC909},
 	{0xC909, 0x00, MSM_CAMERA_I2C_BYTE_DATA},
+	{0xAC04, 0x0288},
 	{0xC8F0, 0x1964},
 };
 
 static struct msm_camera_i2c_reg_conf Whitebalance_Fluorescent[] = {
-	/* [4.4 MWB: TL84] */
-	{0x098E, 0x0000},
+	{0x098E, 0xC909},
 	{0xC909, 0x00, MSM_CAMERA_I2C_BYTE_DATA},
-	{0xC8F0, 0x0E74},
+	{0xAC04, 0x0288},
+	{0xC8F0, 0x0D67},
+};
+
+static struct msm_camera_i2c_reg_conf Whitebalance_Cloudy[] = {
+	{0x098E, 0xC909},
+	{0xC909, 0x00, MSM_CAMERA_I2C_BYTE_DATA} ,
+	{0xAC04, 0x0208},
+	{0xC8F0, 0x1964},
+	{0xAC12, 0x00B4},
+	{0xAC14, 0x0080},
 };
 
 static struct msm_camera_i2c_reg_conf EV_zero[] = {
 	/* [3.3 EV0: 128 -- default] */
-	{0x098E, 0xC87A},
-	{0xC87A, 0x3C, MSM_CAMERA_I2C_BYTE_DATA},
-	{0xC87B, 0x1E, MSM_CAMERA_I2C_BYTE_DATA},
+	{0x098E, 0x4C0A},
+	{0xCC0A, 0x0037},
 };
 
 static struct msm_camera_i2c_reg_conf EV_plus_1[] = {
 	/* [3.4 EV+1: 138] */
-	{0x098E, 0xC87A},
-	{0xC87A, 0x42, MSM_CAMERA_I2C_BYTE_DATA},
-	{0xC87B, 0x21, MSM_CAMERA_I2C_BYTE_DATA},
+	{0x098E, 0x4C0A},
+	{0xCC0A, 0x004E},
 };
 
 static struct msm_camera_i2c_reg_conf EV_plus_2[] = {
 	/* [3.5 EV+2: 148] */
-	{0x098E, 0xC87A},
-	{0xC87A, 0x48, MSM_CAMERA_I2C_BYTE_DATA},
-	{0xC87B, 0x24, MSM_CAMERA_I2C_BYTE_DATA},
+	{0x098E, 0x4C0A},
+	{0xCC0A, 0x006E},
 };
 
 static struct msm_camera_i2c_reg_conf EV_minus_1[] = {
 	/* [3.2 EV-1: 118] */
-	{0x098E, 0xC87A},
-	{0xC87A, 0x36, MSM_CAMERA_I2C_BYTE_DATA},
-	{0xC87B, 0x1B, MSM_CAMERA_I2C_BYTE_DATA},
+	{0x098E, 0x4C0A},
+	{0xCC0A, 0x002A},
 };
 
 static struct msm_camera_i2c_reg_conf EV_minus_2[] = {
 	/* [3.1 EV-2: 108] */
-	{0x098E, 0xC87A},
-	{0xC87A, 0x32, MSM_CAMERA_I2C_BYTE_DATA},
-	{0xC87B, 0x19, MSM_CAMERA_I2C_BYTE_DATA},
+	{0x098E, 0x4C0A},
+	{0xCC0A, 0x001F},
 };
 
 static struct msm_camera_i2c_reg_conf Fix_30_fps[] = {

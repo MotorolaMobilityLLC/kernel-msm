@@ -676,10 +676,16 @@ int32_t mi1040_sensor_set_wb(struct msm_sensor_ctrl_t *s_ctrl, int wb)
 				ARRAY_SIZE(Whitebalance_Daylight));
 			break;
 		case YUV_CAMERA_WB_FLUORESCENT:
-			CDBG("--CAMERA--YUV_CAMERA_WB_DAYLIGHT\n");
+			CDBG("--CAMERA--YUV_CAMERA_WB_FLUORESCENT\n");
 			rc = sensor_write_table(s_ctrl,
 				Whitebalance_Fluorescent,
 				ARRAY_SIZE(Whitebalance_Fluorescent));
+			break;
+		case YUV_CAMERA_WB_CLOUDY_DAYLIGHT:
+			CDBG("--CAMERA--YUV_CAMERA_WB_CLOUDY_DAYLIGHT\n");
+			rc = sensor_write_table(s_ctrl,
+				Whitebalance_Cloudy,
+				ARRAY_SIZE(Whitebalance_Cloudy));
 			break;
 		default:
 			rc = sensor_write_table(s_ctrl, Whitebalance_Auto,

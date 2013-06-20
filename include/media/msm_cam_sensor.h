@@ -459,10 +459,11 @@ enum af_camera_name {
 #define  YUV_CAMERA_WB_CUSTOM             1
 #define  YUV_CAMERA_WB_INCANDESCENT       2
 #define  YUV_CAMERA_WB_FLUORESCENT        3
-#define  YUV_CAMERA_WB_DAYLIGHT           4
-#define  YUV_CAMERA_WB_CLOUDY_DAYLIGHT    5
-#define  YUV_CAMERA_WB_TWILIGHT           6
-#define  YUV_CAMERA_WB_SHADE              7
+#define  YUV_CAMERA_WB_WARM_FLUORESCENT   4
+#define  YUV_CAMERA_WB_DAYLIGHT           5
+#define  YUV_CAMERA_WB_CLOUDY_DAYLIGHT    6
+#define  YUV_CAMERA_WB_TWILIGHT           7
+#define  YUV_CAMERA_WB_SHADE              8
 
 #define CAMERA_EXPOSURE_COMPENSATION_LV0			12
 #define CAMERA_EXPOSURE_COMPENSATION_LV1			6
