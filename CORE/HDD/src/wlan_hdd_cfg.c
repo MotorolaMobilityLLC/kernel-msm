@@ -734,14 +734,6 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_BEACON_INTERVAL_MIN,
                  CFG_BEACON_INTERVAL_MAX ),
 
-   REG_VARIABLE( CFG_ENABLE_HANDOFF_NAME, WLAN_PARAM_Integer,
-                 hdd_config_t, fIsHandoffEnabled,
-                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-                 CFG_ENABLE_HANDOFF_DEFAULT,
-                 CFG_ENABLE_HANDOFF_MIN,
-                 CFG_ENABLE_HANDOFF_MAX ),
-
-
    REG_VARIABLE( CFG_ENABLE_IDLE_SCAN_NAME , WLAN_PARAM_Integer,
                  hdd_config_t, nEnableIdleScan,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
