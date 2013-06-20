@@ -57,6 +57,10 @@
 /* jack sense mask */
 #define TPA6165_JACK_SENSE  0x04
 
+/* jack detect config */
+#define TPA6165_JACK_SHORT_Z  0x80
+#define TPA6165_JACK_HP_LO_TH  0x40
+
 /* single button press mask */
 #define TPA6165_JACK_BUTTON  0x02
 
