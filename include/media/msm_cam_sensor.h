@@ -82,6 +82,8 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_VDIG,
 	SENSOR_GPIO_VIO,
 	SENSOR_GPIO_VCM,
+	SENSOR_GPIO_OIS_LDO_EN,
+	SENSOR_GPIO_OIS_RESET,
 	SENSOR_GPIO_MAX,
 };
 
@@ -238,6 +240,22 @@ struct msm_sensor_info_t {
 	int32_t     subdev_id[SUB_MODULE_MAX];
 };
 
+struct msm_sensor_ois_info_t {
+	char ois_provider[MAX_SENSOR_NAME];
+	int16_t gyro[2];
+	int16_t target[2];
+	int16_t hall[2];
+	uint8_t is_stable;
+};
+
+enum ois_mode_t {
+	OIS_MODE_PREVIEW_CAPTURE,
+	OIS_MODE_VIDEO,
+	OIS_MODE_CAPTURE,
+	OIS_MODE_CENTERING_ONLY,
+	OIS_MODE_CENTERING_OFF
+};
+
 struct camera_vreg_t {
 	const char *reg_name;
 	enum camera_vreg_type type;
@@ -271,6 +289,7 @@ struct sensorb_cfg_data {
 	union {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
+		struct msm_sensor_ois_info_t  ois_info;
 		void                         *setting;
 	} cfg;
 };
@@ -335,6 +354,10 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_RESOLUTION,
 	CFG_SET_STOP_STREAM,
 	CFG_SET_START_STREAM,
+	CFG_OIS_ON,
+	CFG_OIS_OFF,
+	CFG_GET_OIS_INFO,
+	CFG_SET_OIS_MODE
 };
 
 enum msm_actuator_cfg_type_t {

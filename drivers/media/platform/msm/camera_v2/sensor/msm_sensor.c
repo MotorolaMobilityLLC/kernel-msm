@@ -623,6 +623,42 @@ static int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VCM]);
 	}
 
+#ifdef CONFIG_OIS_ROHM_BU24205GWL
+	if (of_property_read_bool(of_node, "qcom,gpio-ois-ldo") == true) {
+		rc = of_property_read_u32(of_node, "qcom,gpio-ois-ldo", &val);
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-ois-ldo failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-ois-ldo invalid %d\n",
+				__func__, __LINE__, val);
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_LDO_EN] =
+			gpio_array[val];
+		CDBG("%s qcom,gpio-ois-ldo %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_LDO_EN]);
+	}
+
+	if (of_property_read_bool(of_node, "qcom,gpio-ois-reset") == true) {
+		rc = of_property_read_u32(of_node, "qcom,gpio-ois-reset", &val);
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-ois-reset failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-ois-reset invalid %d\n",
+				__func__, __LINE__, val);
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_RESET] =
+			gpio_array[val];
+		CDBG("%s qcom,gpio-ois-reset %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_RESET]);
+    }
+#endif
+
 	if (of_property_read_bool(of_node, "qcom,gpio-standby") == true) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-standby", &val);
 		if (rc < 0) {

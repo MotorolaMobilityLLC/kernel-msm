@@ -30,7 +30,7 @@ static struct msm_sensor_power_setting imx179_power_setting[] = {
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_RESET,
 		.config_val = GPIO_OUT_LOW,
-		.delay = 1,
+		.delay = 0,
 	},
 	{
 		.seq_type = SENSOR_GPIO,
@@ -64,15 +64,27 @@ static struct msm_sensor_power_setting imx179_power_setting[] = {
 	},
 	{
 		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_LOW,
-		.delay = 1,
+		.seq_val = SENSOR_GPIO_OIS_LDO_EN,
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 10,
 	},
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_RESET,
 		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
+		.delay = 10,
+	},
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_OIS_RESET,
+		.config_val = GPIO_OUT_LOW,
+		.delay = 5,
+	},
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_OIS_RESET,
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 10,
 	},
 	{
 		.seq_type = SENSOR_I2C_MUX,
