@@ -1,5 +1,4 @@
 /*
-<<<<<<< HEAD:CORE/MAC/inc/wniCfgSta.h
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -39,16 +38,8 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
- * Copyright (C) 2007-2009 QUALCOMM Incorporated. All rights reserved. Proprietary and Confidential.
-=======
- * Copyright (C) 2007-2009 Qualcomm Technologies, Inc. All rights reserved. Proprietary and Confidential.
->>>>>>> 5f03499... TDLS : Host Changes supporting PUAPSD implementation.:prima/CORE/MAC/inc/wniCfgSta.h
- */
-
-/*
- * DO NOT EDIT - This file is generated automaticlly
+ * DO NOT EDIT - This file is generated automatically
  */
 
 /*
@@ -1204,13 +1195,13 @@
 #define WNI_CFG_VHT_TX_MCS_MAP_STAMAX    65535
 #define WNI_CFG_VHT_TX_MCS_MAP_STADEF    65534
 
-#define WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_STAMIN    1
-#define WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_STAMAX    434
-#define WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_STADEF    434
+#define WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_STAMIN    0
+#define WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_STAMAX    390
+#define WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_STADEF    0
 
-#define WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_STAMIN    1
-#define WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_STAMAX    434
-#define WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_STADEF    434
+#define WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_STAMIN    0
+#define WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_STAMAX    390
+#define WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_STADEF    0
 
 #define WNI_CFG_VHT_CHANNEL_WIDTH_STAMIN    0
 #define WNI_CFG_VHT_CHANNEL_WIDTH_STAMAX    3
