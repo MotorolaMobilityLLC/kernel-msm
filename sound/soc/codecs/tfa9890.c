@@ -109,10 +109,6 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 	.value = 0x38E5,
 },
 {
-	.reg = TFA9890_RESERVED_REG,
-	.value = 0x7F,
-},
-{
 	.reg = TFA9890_PWM_CTL_REG,
 	.value = 0x0308,
 },
@@ -171,7 +167,7 @@ static u8 tfa9890_reg_readable[TFA9890_REG_CACHE_SIZE] = {
 [TFA9890_SYS_CTL1_REG] = 1,
 [TFA9890_SYS_CTL2_REG] = 1,
 [TFA9890_MTP_KEY_REG] = 1,
-[TFA9890_RESERVED_REG] = 1,
+[TFA9890_LDO_REG] = 1,
 [TFA9890_PWM_CTL_REG] = 1,
 [TFA9890_CURRT_SNS1_REG] = 1,
 [TFA9890_CURRT_SNS2_REG] = 1,
