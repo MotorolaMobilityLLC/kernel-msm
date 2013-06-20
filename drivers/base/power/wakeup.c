@@ -6,6 +6,8 @@
  * This file is released under the GPLv2.
  */
 
+#define REALLY_WANT_DEBUGFS
+
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
