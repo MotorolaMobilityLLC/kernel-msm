@@ -93,9 +93,15 @@ static const struct i2c_device_id ar0543_i2c_id[] = {
 	{ }
 };
 
+static int32_t msm_ar0543_i2c_probe(struct i2c_client *client,
+	const struct i2c_device_id *id)
+{
+	return msm_sensor_i2c_probe(client, id, &ar0543_s_ctrl);
+}
+
 static struct i2c_driver ar0543_i2c_driver = {
 	.id_table = ar0543_i2c_id,
-	.probe  = msm_sensor_i2c_probe,
+	.probe  = msm_ar0543_i2c_probe,
 	.driver = {
 		.name = AR0543_SENSOR_NAME,
 	},
