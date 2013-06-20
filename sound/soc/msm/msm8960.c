@@ -1298,11 +1298,15 @@ static int msm_mi2s_rx_startup(struct snd_pcm_substream *substream)
 			goto msm_dai_fail;
 		}
 
-		ret = snd_soc_dai_set_fmt(codec_dai,
-			SND_SOC_DAIFMT_CBS_CFS|SND_SOC_DAIFMT_I2S);
-		if (ret < 0) {
-			pr_err("set format for codec dai failed\n");
-			goto codec_dai_fail;
+		 /* if it is msm stub dummy codec dai, it doesnt support this op
+			causes an unnecessary failure to startup path. */
+		if (strncmp(codec_dai->name, "msm-stub-tx", 11)) {
+			ret = snd_soc_dai_set_fmt(codec_dai,
+				SND_SOC_DAIFMT_CBS_CFS|SND_SOC_DAIFMT_I2S);
+			if (ret < 0) {
+				pr_err("set format for codec dai failed\n");
+				goto codec_dai_fail;
+			}
 		}
 	}
 	pr_debug("%s: ret = %d\n", __func__, ret);
