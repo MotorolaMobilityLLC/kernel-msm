@@ -11,13 +11,6 @@
  * GNU General Public License for more details.
  */
 
-/* Reserve for persistent memory - ram console */
-/memreserve/ 0x3eae0000 0x20000;
-
-/* Reserve for persistent memory - bootinfo backup for last_kmsg */
-/memreserve/ 0x3eb00000 0x800;
-
-/include/ "msm8226.dtsi"
 /include/ "msm8226-camera-sensor-falcon.dtsi"
 
 &soc {
