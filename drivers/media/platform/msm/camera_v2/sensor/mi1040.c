@@ -42,6 +42,7 @@ static struct msm_sensor_ctrl_t mi1040_s_ctrl;
 static int effect_value = -1;
 static int wb_value = -1;
 static int ev_value = -1;
+static int fps_value = -1;
 static int vendor_id = -1;
 
 static struct msm_sensor_power_setting mi1040_power_setting[] = {
@@ -499,9 +500,14 @@ int32_t mi1040_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		break;
 
 	case CFG_POWER_DOWN:
-		if (s_ctrl->func_tbl->sensor_power_down)
+		if (s_ctrl->func_tbl->sensor_power_down) {
 			rc = s_ctrl->func_tbl->sensor_power_down(
 				s_ctrl);
+			effect_value = -1;
+			wb_value = -1;
+			ev_value = -1;
+			fps_value = -1;
+		}
 		else
 			rc = -EFAULT;
 		break;
@@ -600,10 +606,9 @@ int32_t mi1040_sensor_set_effect(struct msm_sensor_ctrl_t *s_ctrl,
 	int effect)
 {
 	int32_t rc = 0;
-	pr_info("%s +++ effect: %d effect_value: %d\n", __func__,
-		effect, effect_value);
-
 	if (effect_value != effect) {
+		pr_info("%s +++ effect: %d effect_value: %d\n", __func__,
+			effect, effect_value);
 		effect_value = effect;
 		switch (effect)	{
 		case CAMERA_EFFECT_MONO:
@@ -648,9 +653,9 @@ int32_t mi1040_sensor_set_effect(struct msm_sensor_ctrl_t *s_ctrl,
 int32_t mi1040_sensor_set_wb(struct msm_sensor_ctrl_t *s_ctrl, int wb)
 {
 	int32_t rc = 0;
-	pr_info("%s +++ wb: %d wb_value: %d\n", __func__, wb, wb_value);
-
 	if (wb_value != wb) {
+		pr_info("%s +++ wb: %d wb_value: %d\n", __func__,
+			wb, wb_value);
 		wb_value = wb;
 		switch (wb) {
 		case YUV_CAMERA_WB_AUTO:
@@ -689,10 +694,9 @@ int32_t mi1040_sensor_set_wb(struct msm_sensor_ctrl_t *s_ctrl, int wb)
 int32_t mi1040_sensor_set_ev(struct msm_sensor_ctrl_t *s_ctrl, int compensation)
 {
 	int32_t rc = 0;
-	pr_info("%s +++ ev: %d ev_value: %d\n", __func__,
-		compensation, ev_value);
-
 	if (ev_value != compensation) {
+		pr_info("%s +++ ev: %d ev_value: %d\n", __func__,
+			compensation, ev_value);
 		ev_value = compensation;
 		switch (compensation) {
 		case CAMERA_EXPOSURE_COMPENSATION_LV0:
@@ -739,46 +743,49 @@ int32_t mi1040_sensor_set_ev(struct msm_sensor_ctrl_t *s_ctrl, int compensation)
 int32_t mi1040_sensor_set_fps(struct msm_sensor_ctrl_t *s_ctrl, int fps)
 {
 	int32_t rc = 0;
-	pr_info("%s +++ fps: %d\n", __func__, fps);
 
-	switch (fps) {
-	case CAMERA_FPS_FIX_30:
-		CDBG("--CAMERA--CAMERA_FPS_FIX_30\n");
-		rc = sensor_write_table(s_ctrl, Fix_30_fps,
-			ARRAY_SIZE(Fix_30_fps));
-		break;
-	case CAMERA_FPS_FIX_25:
-		CDBG("--CAMERA--CAMERA_FPS_FIX_25\n");
-		rc = sensor_write_table(s_ctrl, Fix_25_fps,
-			ARRAY_SIZE(Fix_25_fps));
-		break;
-	case CAMERA_FPS_FIX_24:
-		CDBG("--CAMERA--CAMERA_FPS_FIX_24\n");
-		rc = sensor_write_table(s_ctrl, Fix_24_fps,
-			ARRAY_SIZE(Fix_24_fps));
-		break;
-	case CAMERA_FPS_FIX_20:
-		CDBG("--CAMERA--CAMERA_FPS_FIX_20\n");
-		rc = sensor_write_table(s_ctrl, Fix_20_fps,
-			ARRAY_SIZE(Fix_20_fps));
-		break;
-	case CAMERA_FPS_FIX_15:
-		CDBG("--CAMERA--CAMERA_FPS_FIX_15\n");
-		rc = sensor_write_table(s_ctrl, Fix_15_fps,
-			ARRAY_SIZE(Fix_15_fps));
-	case CAMERA_FPS_AUTO_30:
-		CDBG("--CAMERA--ERROR CAMERA_FPS_AUTO_30\n");
-		rc = sensor_write_table(s_ctrl, auto_30_fps,
-			ARRAY_SIZE(auto_30_fps));
-		break;
-	default:
-		CDBG("--CAMERA--CAMERA_FPS_AUTO\n");
-		rc = sensor_write_table(s_ctrl, auto_30_fps,
-			ARRAY_SIZE(auto_30_fps));
-		break;
+	if (fps_value != fps) {
+		pr_info("%s +++ fps: %d fps_value: %d\n", __func__,
+			fps, fps_value);
+		fps_value = fps;
+		switch (fps) {
+		case CAMERA_FPS_FIX_30:
+			CDBG("--CAMERA--CAMERA_FPS_FIX_30\n");
+			rc = sensor_write_table(s_ctrl, Fix_30_fps,
+				ARRAY_SIZE(Fix_30_fps));
+			break;
+		case CAMERA_FPS_FIX_25:
+			CDBG("--CAMERA--CAMERA_FPS_FIX_25\n");
+			rc = sensor_write_table(s_ctrl, Fix_25_fps,
+				ARRAY_SIZE(Fix_25_fps));
+			break;
+		case CAMERA_FPS_FIX_24:
+			CDBG("--CAMERA--CAMERA_FPS_FIX_24\n");
+			rc = sensor_write_table(s_ctrl, Fix_24_fps,
+				ARRAY_SIZE(Fix_24_fps));
+			break;
+		case CAMERA_FPS_FIX_20:
+			CDBG("--CAMERA--CAMERA_FPS_FIX_20\n");
+			rc = sensor_write_table(s_ctrl, Fix_20_fps,
+				ARRAY_SIZE(Fix_20_fps));
+			break;
+		case CAMERA_FPS_FIX_15:
+			CDBG("--CAMERA--CAMERA_FPS_FIX_15\n");
+			rc = sensor_write_table(s_ctrl, Fix_15_fps,
+				ARRAY_SIZE(Fix_15_fps));
+		case CAMERA_FPS_AUTO_30:
+			CDBG("--CAMERA--ERROR CAMERA_FPS_AUTO_30\n");
+			rc = sensor_write_table(s_ctrl, auto_30_fps,
+				ARRAY_SIZE(auto_30_fps));
+			break;
+		default:
+			CDBG("--CAMERA--CAMERA_FPS_AUTO\n");
+			rc = sensor_write_table(s_ctrl, auto_30_fps,
+				ARRAY_SIZE(auto_30_fps));
+			break;
+		}
+		msleep(20);
 	}
-
-	msleep(20);
 
 	return rc;
 }
