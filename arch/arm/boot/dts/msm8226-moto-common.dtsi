@@ -625,8 +625,6 @@
 		gpios = <&msmgpio 65 0>; /* IRQ */
 		vdd-supply = <&pm8226_l19>;
 		ams,prox-samples-for-noise-floor = <0x05>;
-		ams,ip-prox-limit = <0x200>;
-		ams,ip-als-limit = <10>;
 		ams,prox-saturation-threshold = <0x0208>;
 		ams,prox-covered-offset = <0x0096>;
 		ams,prox-uncovered-offset = <0x006e>;
