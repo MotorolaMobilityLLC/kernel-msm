@@ -2105,6 +2105,7 @@ static int mdss_mdp_overlay_ioctl_handler(struct msm_fb_data_type *mfd,
 					  u32 cmd, void __user *argp)
 {
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	struct mdss_panel_data *pdata;
 	struct mdp_overlay req;
 	int val, ret = -ENOSYS;
 	struct msmfb_metadata metadata;
@@ -2221,6 +2222,15 @@ static int mdss_mdp_overlay_ioctl_handler(struct msm_fb_data_type *mfd,
 	default:
 		if (mfd->panel.type == WRITEBACK_PANEL)
 			ret = mdss_mdp_wb_ioctl_handler(mfd, cmd, argp);
+		else if (mfd->panel.type == MIPI_VIDEO_PANEL ||
+			mfd->panel.type == MIPI_CMD_PANEL) {
+			pdata = dev_get_platdata(&mfd->pdev->dev);
+			if (!pdata)
+				return -EFAULT;
+			mutex_lock(&mdp5_data->ov_lock);
+			ret = mdss_dsi_ioctl_handler(pdata, cmd, argp);
+			mutex_unlock(&mdp5_data->ov_lock);
+		}
 		break;
 	}
 
