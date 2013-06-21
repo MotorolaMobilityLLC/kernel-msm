@@ -535,8 +535,6 @@ struct hdd_station_ctx
 
    roaming_info_t roam_info;
 
-   v_BOOL_t bSendDisconnect;
-
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    int     ft_carrier_on;
 #endif
