@@ -1095,9 +1095,11 @@ static int __init get_pvs_bin(u32 pte_efuse)
 
 	if (pvs_bin == 0x7) {
 		pvs_bin = 0;
-		dev_warn(drv.dev, "ACPU PVS: Defaulting to %d\n", pvs_bin);
+		dev_warn(drv.dev, "ACPU PVS: Defaulting to %d (fuse %X)\n",
+							pvs_bin, pte_efuse);
 	} else {
-		dev_info(drv.dev, "ACPU PVS: %d\n", pvs_bin);
+		dev_info(drv.dev, "ACPU PVS: %d (fuse %X)\n",
+							pvs_bin, pte_efuse);
 	}
 
 	return pvs_bin;
