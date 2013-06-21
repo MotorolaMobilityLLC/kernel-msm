@@ -108,6 +108,8 @@ static int work_lock=0x00;
 #define USB_Cable ((1 << (USB_SHIFT)) | (USB_DETECT_CABLE))
 #define USB_AC_Adapter ((1 << (AC_SHIFT)) | (USB_DETECT_CABLE))
 #define USB_CALBE_DETECT_MASK (USB_Cable  | USB_DETECT_CABLE)
+/*use for slim port to hdmi*/
+#define SLIM_HDMI_MODE 3
 static unsigned now_usb_cable_status=0;
 static unsigned int gPrint_point = 0; 
 
@@ -848,9 +850,11 @@ static int elan_ktf3k_ts_set_power_source(struct i2c_client *client, u8 state)
 	int length = 0;
 
 	dev_dbg(&client->dev, "[elan] %s: enter\n", __func__);
-    /*0x52 0x40 0x00 0x01  =>    Battery Mode
-       0x52 0x41 0x00 0x01  =>    USB and AC Adapter Mode
-      */
+	/*
+	0x52 0x40 0x00 0x01  =>    Battery Mode
+	0x52 0x41 0x00 0x01  =>    USB and AC Adapter Mode
+	0x52 0x43 0x00 0x01  =>    SLIM Port to HDMI
+	*/
 	cmd[1] |= state & 0x0F;
 
 	dev_dbg(&client->dev,
@@ -889,7 +893,11 @@ static void update_power_source(void){
       unsigned power_source = now_usb_cable_status;
       if(private_ts == NULL || work_lock) return;
 	// Send power state 1 if USB cable and AC charger was plugged on. 
-      elan_ktf3k_ts_set_power_source(private_ts->client, power_source != USB_NO_Cable);
+	if (power_source == SLIM_HDMI_MODE) {
+		elan_ktf3k_ts_set_power_source(private_ts->client, SLIM_HDMI_MODE);
+	} else {
+		elan_ktf3k_ts_set_power_source(private_ts->client, power_source != USB_NO_Cable);
+	}
 }
 
 void touch_callback(unsigned cable_status){ 

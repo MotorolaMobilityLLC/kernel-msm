@@ -31,6 +31,11 @@
 #define SP_TX_HDCP_FAIL_TH 10
 #define SP_TX_DS_VID_STB_TH 20
 
+/*Use for Touch CallBack in HDMI Mode*/
+#define UNPLUG_HDMI 0
+#define PLUG_HDMI 3
+extern void touch_callback(unsigned cable_status);
+
 extern unchar bedid_extblock[128];
 extern unchar bedid_firstblock[128];
 extern unchar slimport_link_bw;
