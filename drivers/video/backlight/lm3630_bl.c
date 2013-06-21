@@ -102,7 +102,7 @@ static void lm3630_hw_reset(struct lm3630_device *dev)
 {
 	if (gpio_is_valid(dev->en_gpio)) {
 		gpio_set_value_cansleep(dev->en_gpio, 1);
-		mdelay(10);
+		mdelay(1);
 	} else {
 		pr_err("%s: en_gpio is not valid !!\n", __func__);
 	}
@@ -168,10 +168,10 @@ static void lm3630_set_main_current_level(struct i2c_client *client, int level)
 {
 	struct lm3630_device *dev = i2c_get_clientdata(client);
 
-	dev->bl_dev->props.brightness = level;
 	mutex_lock(&backlight_mtx);
+	dev->bl_dev->props.brightness = level;
 	if (level != 0) {
-		if (level > 0 && level <= dev->min_brightness)
+		if (level < dev->min_brightness)
 			level = dev->min_brightness;
 		else if (level > dev->max_brightness)
 			level = dev->max_brightness;
@@ -208,6 +208,7 @@ static void lm3630_hw_init(struct lm3630_device *dev)
 	lm3630_write_reg(dev->client, CURRENT_REG, 0x17);
 	/* Enable LED A to Linear, LED2 is connected to BANK_A */
 	lm3630_write_reg(dev->client, CONTROL_REG, 0x15);
+	mdelay(1);
 }
 
 static void lm3630_backlight_on(struct lm3630_device *dev, int level)
@@ -216,7 +217,6 @@ static void lm3630_backlight_on(struct lm3630_device *dev, int level)
 		lm3630_hw_init(dev);
 		pr_info("%s\n", __func__);
 	}
-	mdelay(1);
 	lm3630_set_main_current_level(dev->client, level);
 }
 
@@ -227,7 +227,7 @@ static void lm3630_backlight_off(struct lm3630_device *dev)
 
 	lm3630_set_main_current_level(dev->client, 0);
 	gpio_set_value_cansleep(dev->en_gpio, 0);
-	msleep(6);
+	udelay(1);
 	pr_info("%s\n", __func__);
 }
 
