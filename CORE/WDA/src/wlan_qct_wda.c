@@ -2954,12 +2954,20 @@ VOS_STATUS WDA_ProcessConfigBssReq(tWDA_CbContext *pWDA,
                                          tAddBssParams* configBssReqParam)
 {
    WDI_Status status = WDI_STATUS_SUCCESS ;
-   WDI_ConfigBSSReqParamsType *wdiConfigBssReqParam =
-                             (WDI_ConfigBSSReqParamsType *)vos_mem_malloc(
-                                   sizeof(WDI_ConfigBSSReqParamsType)) ;
+   WDI_ConfigBSSReqParamsType *wdiConfigBssReqParam;
    tWDA_ReqParams *pWdaParams ;
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> %s " ,__func__);
+   if (NULL == configBssReqParam)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_FATAL,
+                           "%s: configBssReqParam is NULL", __func__);
+      return VOS_STATUS_E_INVAL;
+   }
+
+   wdiConfigBssReqParam = (WDI_ConfigBSSReqParamsType *)vos_mem_malloc(
+                          sizeof(WDI_ConfigBSSReqParamsType)) ;
+
    if(NULL == wdiConfigBssReqParam) 
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
