@@ -75,6 +75,27 @@ static const struct wm_adsp_region *wm5110_dsp_regions[] = {
 	wm5110_dsp4_regions,
 };
 
+static const struct wm_adsp_region wm5110_rev_d_dsp2_regions[] = {
+	{ .type = WMFW_ADSP2_PM, .base = 0x200000 },
+	{ .type = WMFW_ADSP2_ZM, .base = 0x280000 },
+	{ .type = WMFW_ADSP2_XM, .base = 0x290000 },
+	{ .type = WMFW_ADSP2_YM, .base = 0x2a8000 },
+};
+
+static const struct wm_adsp_region wm5110_rev_d_dsp3_regions[] = {
+	{ .type = WMFW_ADSP2_PM, .base = 0x300000 },
+	{ .type = WMFW_ADSP2_ZM, .base = 0x380000 },
+	{ .type = WMFW_ADSP2_XM, .base = 0x390000 },
+	{ .type = WMFW_ADSP2_YM, .base = 0x3a8000 },
+};
+
+static const struct wm_adsp_region *wm5110_rev_d_dsp_regions[] = {
+	wm5110_dsp1_regions,
+	wm5110_rev_d_dsp2_regions,
+	wm5110_rev_d_dsp3_regions,
+	wm5110_dsp4_regions,
+};
+
 static DECLARE_TLV_DB_SCALE(ana_tlv, 0, 100, 0);
 static DECLARE_TLV_DB_SCALE(eq_tlv, -1200, 100, 0);
 static DECLARE_TLV_DB_SCALE(digital_tlv, -6400, 50, 0);
@@ -1336,11 +1357,19 @@ static int __devinit wm5110_probe(struct platform_device *pdev)
 
 		wm5110->core.adsp[i].base = ARIZONA_DSP1_CONTROL_1
 			+ (0x100 * i);
-		wm5110->core.adsp[i].mem = wm5110_dsp_regions[i];
-		wm5110->core.adsp[i].num_mems
-			= ARRAY_SIZE(wm5110_dsp1_regions);
+		wm5110->core.adsp[i].num_mems =
+			ARRAY_SIZE(wm5110_dsp1_regions);
 
-	        ret = wm_adsp2_init(&wm5110->core.adsp[i], false);
+		switch (arizona->rev) {
+		case 0 ... 2:
+			wm5110->core.adsp[i].mem = wm5110_dsp_regions[i];
+			break;
+		default:
+			wm5110->core.adsp[i].mem = wm5110_rev_d_dsp_regions[i];
+			break;
+		}
+
+		ret = wm_adsp2_init(&wm5110->core.adsp[i], false);
 		if (ret != 0)
 			return ret;
 	}
