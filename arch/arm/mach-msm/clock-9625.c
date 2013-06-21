@@ -394,6 +394,10 @@ static struct pll_freq_tbl apcs_pll_freq[] = {
 	PLL_F_END
 };
 
+/*
+ * Need to skip handoff of the acpu pll to avoid handoff code
+ * to turn off the pll when the acpu is running off this pll.
+ */
 static struct pll_clk apcspll_clk_src = {
 	.mode_reg = (void __iomem *)APCS_CPU_PLL_MODE_REG,
 	.l_reg = (void __iomem *)APCS_CPU_PLL_L_REG,
@@ -415,6 +419,7 @@ static struct pll_clk apcspll_clk_src = {
 		.dbg_name = "apcspll_clk_src",
 		.ops = &clk_ops_local_pll,
 		CLK_INIT(apcspll_clk_src.c),
+		.flags = CLKFLAG_SKIP_HANDOFF,
 	},
 };
 
