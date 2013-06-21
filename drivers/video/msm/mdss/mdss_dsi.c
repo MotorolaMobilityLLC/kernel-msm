@@ -20,6 +20,7 @@
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
 #include <linux/err.h>
+#include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
 
 #include "mdss.h"
@@ -886,6 +887,95 @@ end:
 	dsi_pan_node = mdss_dsi_pref_prim_panel(pdev);
 
 	return dsi_pan_node;
+}
+
+static int mdss_dsi_ioctl_panel_reg_write(struct mdss_panel_data *pdata,
+					void __user *arg)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	int ret = 0;
+	struct msmfb_reg_access reg_access;
+	u8 *reg_access_buf;
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (!pdata->panel_info.panel_power_on) {
+		pr_err("%s: Panel is off\n", __func__);
+		return -EPERM;
+	}
+
+	if (copy_from_user(&reg_access, arg, sizeof(reg_access)))
+		return -EFAULT;
+
+	reg_access_buf = kmalloc(reg_access.buffer_size + 1, GFP_KERNEL);
+	if (reg_access_buf == NULL)
+		return -ENOMEM;
+
+	reg_access_buf[0] = reg_access.address;
+	if (copy_from_user(&reg_access_buf[1], reg_access.buffer,
+				reg_access.buffer_size)) {
+		kfree(reg_access_buf);
+		return -EFAULT;
+	}
+
+	ret = ctrl_pdata->reg_write(pdata, reg_access.use_hs_mode,
+				reg_access.buffer_size + 1, reg_access_buf);
+
+	kfree(reg_access_buf);
+	return ret;
+}
+
+static int mdss_dsi_ioctl_panel_reg_read(struct mdss_panel_data *pdata,
+					void __user *arg)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	int ret = 0;
+	struct msmfb_reg_access reg_access;
+	u8 *reg_access_buf;
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (!pdata->panel_info.panel_power_on) {
+		pr_err("%s: Panel is off\n", __func__);
+		return -EPERM;
+	}
+
+	if (copy_from_user(&reg_access, arg, sizeof(reg_access)))
+		return -EFAULT;
+
+	reg_access_buf = kmalloc(reg_access.buffer_size, GFP_KERNEL);
+	if (reg_access_buf == NULL)
+		return -ENOMEM;
+
+	ret = ctrl_pdata->reg_read(pdata, reg_access.address,
+				reg_access.use_hs_mode,
+				reg_access.buffer_size, reg_access_buf);
+
+	if ((ret == 0) &&
+		(copy_to_user(reg_access.buffer, reg_access_buf,
+			reg_access.buffer_size))) {
+		ret = -EFAULT;
+	}
+
+	kfree(reg_access_buf);
+	return ret;
+}
+
+int mdss_dsi_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg)
+{
+	int ret = -ENOSYS;
+
+	switch (cmd) {
+	case MSMFB_REG_WRITE:
+		ret = mdss_dsi_ioctl_panel_reg_write(pdata, arg);
+		break;
+	case MSMFB_REG_READ:
+		ret = mdss_dsi_ioctl_panel_reg_read(pdata, arg);
+		break;
+	}
+	return ret;
 }
 
 static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)

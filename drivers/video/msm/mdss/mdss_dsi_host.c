@@ -413,6 +413,18 @@ void mdss_set_tx_power_mode(int mode, struct mdss_panel_data *pdata)
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x3c, data);
 }
 
+int mdss_get_tx_power_mode(struct mdss_panel_data *pdata)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	u32 data;
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	data = MIPI_INP((ctrl_pdata->ctrl_base) + 0x3c);
+	return !!(data & BIT(26));
+}
+
 void mdss_dsi_sw_reset(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;

@@ -952,6 +952,122 @@ static int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pda
 	return 0;
 }
 
+static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
+				int mode, size_t size, u8 *buffer)
+{
+	int old_tx_mode;
+	int ret;
+	struct dcs_cmd_req cmdreq;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct dsi_cmd_desc reg_read_cmd = {
+		.dchdr.dtype = DTYPE_DCS_READ,
+		.dchdr.last = 1,
+		.dchdr.vc = 0,
+		.dchdr.ack = 1,
+		.dchdr.wait = 1,
+		.dchdr.dlen = 1,
+		.payload = &reg
+	};
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	if (size > MDSS_DSI_LEN) {
+		pr_warning("%s: size %d, max rx length is %d.\n", __func__,
+				size, MDSS_DSI_LEN);
+		return -EINVAL;
+	}
+
+	pr_debug("%s: Reading %d bytes from 0x%02x\n", __func__, size, reg);
+
+	old_tx_mode = mdss_get_tx_power_mode(pdata);
+	if (mode != old_tx_mode)
+		mdss_set_tx_power_mode(mode, pdata);
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &reg_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	cmdreq.rlen = size;
+	cmdreq.cb = NULL; /* call back */
+	cmdreq.rbuf = kmalloc(MDSS_DSI_LEN, GFP_KERNEL);
+	if (!cmdreq.rbuf) {
+		ret = -ENOMEM;
+		goto err1;
+	}
+	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+
+	if (ret <= 0) {
+		pr_err("%s: Error reading %d bytes from reg 0x%02x error.\n",
+			__func__, size, (unsigned int) reg);
+		ret = -EFAULT;
+	} else {
+		memcpy(buffer, cmdreq.rbuf, size);
+		ret = 0;
+	}
+	kfree(cmdreq.rbuf);
+
+err1:
+	if (mode != old_tx_mode)
+		mdss_set_tx_power_mode(old_tx_mode, pdata);
+	return ret;
+}
+
+static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata, int mode,
+				size_t size, u8 *buffer)
+{
+	int old_tx_mode;
+	int ret = 0;
+	struct dcs_cmd_req cmdreq;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct dsi_cmd_desc reg_write_cmd = {
+		.dchdr.dtype = DTYPE_DCS_LWRITE,
+		.dchdr.last = 1,
+		.dchdr.vc = 0,
+		.dchdr.ack = 0,
+		.dchdr.wait = 0,
+		.dchdr.dlen = size,
+		.payload = buffer
+	};
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+
+	pr_debug("%s: Writing %d bytes to 0x%02x\n", __func__, size, buffer[0]);
+
+	old_tx_mode = mdss_get_tx_power_mode(pdata);
+	if (mode != old_tx_mode)
+		mdss_set_tx_power_mode(mode, pdata);
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &reg_write_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if (ret <= 0) {
+		pr_err("%s: Failed writing %d bytes to 0x%02x.\n",
+			__func__, size, buffer[0]);
+		ret = -EFAULT;
+	} else
+		ret = 0;
+
+	if (mode != old_tx_mode)
+		mdss_set_tx_power_mode(old_tx_mode, pdata);
+
+	return ret;
+}
+
 static int mdss_panel_parse_dt(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -1321,6 +1437,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->lock_mutex = mdss_dsi_panel_lock_mutex;
 	ctrl_pdata->unlock_mutex = mdss_dsi_panel_unlock_mutex;
+	ctrl_pdata->reg_read = mdss_dsi_panel_reg_read;
+	ctrl_pdata->reg_write = mdss_dsi_panel_reg_write;
+
 
 	return 0;
 }
