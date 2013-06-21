@@ -39,9 +39,9 @@ static inline void mmi_panic_annotate(const char *str)
 
 static void __init mmi_msm8960_get_acpu_info(void)
 {
-	uint32_t pte_efuse, pvs;
-	struct proc_dir_entry *proc;
-	char acpu_type[32];
+	uint32_t pte_efuse, pvs, hexagon;
+	struct proc_dir_entry *proc, *hexaproc;
+	char acpu_type[60];
 
 	pte_efuse = readl_relaxed(QFPROM_PTE_EFUSE_ADDR);
 
@@ -49,10 +49,13 @@ static void __init mmi_msm8960_get_acpu_info(void)
 	if (pvs == 0x7)
 		pvs = (pte_efuse >> 13) & 0x7;
 
-	if (pvs == 0x7)
-		snprintf(acpu_type, 30, "ACPU PVS: Defaulting to 0\n");
-	else
-		snprintf(acpu_type, 30, "ACPU PVS: %d\n", pvs);
+	hexagon = (pte_efuse >> 16) & 0x7;
+	if (hexagon == 0x7)
+		hexagon = (pte_efuse >> 19) & 0x7;
+
+	snprintf(acpu_type, sizeof(acpu_type),
+			"ACPU Krait PVS: %d Hexagon: %d Fuse: 0x%X\n",
+			pvs, hexagon, pte_efuse);
 
 	proc = create_proc_read_entry("cpu/msm_acpu_pvs",
 			(S_IFREG | S_IRUGO), NULL,
@@ -61,6 +64,14 @@ static void __init mmi_msm8960_get_acpu_info(void)
 		pr_err("Failed to create /proc/cpu/msm_acpu_pvs.\n");
 	else
 		proc->size = 1;
+
+	hexaproc = create_proc_read_entry("cpu/msm_hexagon_pvs",
+			(S_IFREG | S_IRUGO), NULL,
+			mmi_msm8960_acpu_proc_read, (void *)hexagon);
+	if (!hexaproc)
+		pr_err("Failed to create /proc/cpu/msm_hexagon_pvs.\n");
+	else
+		hexaproc->size = 1;
 
 	mmi_panic_annotate(acpu_type);
 }
