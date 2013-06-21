@@ -11,6 +11,9 @@
  */
 
 /dts-v1/;
+
+/include/ "msm8226-moto-reserve.dtsi"
+/include/ "msm8226-v1.dtsi"
 /include/ "msm8226-falcon-common.dtsi"
 
 / {
