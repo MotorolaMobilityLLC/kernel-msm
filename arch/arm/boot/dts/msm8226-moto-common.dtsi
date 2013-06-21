@@ -430,7 +430,7 @@
 				qcom,max-current = <40>;
 				qcom,current-setting = <5>;
 				qcom,id = <6>;
-				qcom,mode = <1>;
+				qcom,mode = "lpg";
 				qcom,source-sel = <14>;
 				qcom,mode-ctrl = <0x60>;
 				qcom,pwm-channel = <3>;
@@ -454,7 +454,7 @@
 				qcom,max-current = <40>;
 				qcom,current-setting = <5>;
 				qcom,id = <6>;
-				qcom,mode = <1>;
+				qcom,mode = "lpg";
 				qcom,source-sel = <8>;
 				qcom,mode-ctrl = <0x60>;
 				qcom,pwm-channel = <0>;
@@ -478,7 +478,7 @@
 				qcom,max-current = <40>;
 				qcom,current-setting = <5>;
 				qcom,id = <6>;
-				qcom,mode = <1>;
+				qcom,mode = "lpg";
 				qcom,source-sel = <10>;
 				qcom,mode-ctrl = <0x60>;
 				qcom,pwm-channel = <5>;
