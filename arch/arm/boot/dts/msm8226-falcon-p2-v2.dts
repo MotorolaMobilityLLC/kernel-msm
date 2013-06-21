@@ -1,0 +1,27 @@
+/* Copyright (c) 2013, Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+/include/ "msm8226-moto-reserve.dtsi"
+/include/ "msm8226-v2.dtsi"
+/include/ "msm8226-falcon-common.dtsi"
+
+/ {
+	qcom,msm-id = <145 0x42 0x8202>;
+};
+
+&bms_tbls {
+	mmi,batt-tbl-one {
+		qcom,batt-tbl-id = <0 50000>;
+	};
+};
