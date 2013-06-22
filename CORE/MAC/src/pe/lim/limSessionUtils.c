@@ -147,15 +147,9 @@ tpPESession peGetValidPowerSaveSession(tpAniSirGlobal pMac)
 
     for(i = 0; i < pMac->lim.maxBssId; i++)
     {
-        /* To order to check number of established sessions, we are currently chceking
-         * for eLIM_MLM_LINK_ESTABLISHED_STATE state along with this state we also need
-         * to consider the device is not in eLIM_SME_WT_DEAUTH_STATE beacuse the actual
-         * disconnection can be considered when DEL_STA_RESP is recived
-        */
         if( (pMac->lim.gpSession[i].valid == TRUE)&&
             (pMac->lim.gpSession[i].limSystemRole == eLIM_STA_ROLE)&&
-            (pMac->lim.gpSession[i].limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE) &&
-            (pMac->lim.gpSession[i].limSmeState != eLIM_SME_WT_DEAUTH_STATE)) {
+            (pMac->lim.gpSession[i].limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE)) {
             sessioncount++;
             sessionId = i;
 
