@@ -7452,13 +7452,6 @@ eHalStatus sme_setNeighborLookupRssiThreshold(tHalHandle hHal,
         }
         sme_ReleaseGlobalLock( &pMac->sme );
     }
-
-#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
-    {
-       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_LOOKUP_THRESH_CHANGED);
-    }
-#endif
     return status;
 }
 
@@ -7638,6 +7631,13 @@ eHalStatus sme_UpdateEmptyScanRefreshPeriod(tHalHandle hHal, v_U16_t nEmptyScanR
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG,
+                          REASON_EMPTY_SCAN_REF_PERIOD_CHANGED);
+    }
+#endif
     return status ;
 }
 
@@ -7699,6 +7699,13 @@ eHalStatus sme_setNeighborScanMaxChanTime(tHalHandle hHal, const v_U16_t nNeighb
         pMac->roam.neighborRoamInfo.cfgParams.maxChannelScanTime = nNeighborScanMaxChanTime;
         sme_ReleaseGlobalLock( &pMac->sme );
     }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG,
+                          REASON_SCAN_CH_TIME_CHANGED);
+    }
+#endif
 
     return status ;
 }
@@ -7732,7 +7739,7 @@ v_U16_t sme_getNeighborScanMaxChanTime(tHalHandle hHal)
     \brief  Update nNeighborScanPeriod
             This function is called through dynamic setConfig callback function
             to configure nNeighborScanPeriod
-            Usage: adb shell iwpriv wlan0 setConfig nNeighborScanPeriod=[0 .. 60]
+            Usage: adb shell iwpriv wlan0 setConfig nNeighborScanPeriod=[0 .. 1000]
     \param  hHal - HAL handle for device
     \param  nNeighborScanPeriod - neighbor scan period
     \- return Success or failure
@@ -7754,6 +7761,13 @@ eHalStatus sme_setNeighborScanPeriod(tHalHandle hHal, const v_U16_t nNeighborSca
         pMac->roam.neighborRoamInfo.cfgParams.neighborScanPeriod = nNeighborScanPeriod;
         sme_ReleaseGlobalLock( &pMac->sme );
     }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG,
+                          REASON_SCAN_HOME_TIME_CHANGED);
+    }
+#endif
 
     return status ;
 }

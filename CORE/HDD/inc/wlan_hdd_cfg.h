@@ -1148,8 +1148,8 @@ typedef enum
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
 #define CFG_NEIGHBOR_SCAN_TIMER_PERIOD_NAME             "gNeighborScanTimerPeriod"
-#define CFG_NEIGHBOR_SCAN_TIMER_PERIOD_MIN              (0)
-#define CFG_NEIGHBOR_SCAN_TIMER_PERIOD_MAX              (1000)
+#define CFG_NEIGHBOR_SCAN_TIMER_PERIOD_MIN              (3)
+#define CFG_NEIGHBOR_SCAN_TIMER_PERIOD_MAX              (300)
 #define CFG_NEIGHBOR_SCAN_TIMER_PERIOD_DEFAULT          (200)
 
 #define CFG_NEIGHBOR_REASSOC_RSSI_THRESHOLD_NAME              "gNeighborReassocThreshold"
@@ -1171,8 +1171,8 @@ typedef enum
 #define CFG_NEIGHBOR_SCAN_MIN_CHAN_TIME_DEFAULT               (20)   
 
 #define CFG_NEIGHBOR_SCAN_MAX_CHAN_TIME_NAME                  "gNeighborScanChannelMaxTime"
-#define CFG_NEIGHBOR_SCAN_MAX_CHAN_TIME_MIN                   (10)   
-#define CFG_NEIGHBOR_SCAN_MAX_CHAN_TIME_MAX                   (40)   
+#define CFG_NEIGHBOR_SCAN_MAX_CHAN_TIME_MIN                   (3)
+#define CFG_NEIGHBOR_SCAN_MAX_CHAN_TIME_MAX                   (300)
 #define CFG_NEIGHBOR_SCAN_MAX_CHAN_TIME_DEFAULT               (30)   
 
 #define CFG_11R_NEIGHBOR_REQ_MAX_TRIES_NAME           "gMaxNeighborReqTries"
