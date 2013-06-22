@@ -10,7 +10,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                     \
 	-DEMBEDDED_PLATFORM -DENABLE_INSMOD_NO_FW_LOAD -DPNO_SUPPORT          \
 	-DOEM_ANDROID -DLINUX -DWL_ENABLE_P2P_IF -DWL_CFG80211_STA_EVENT -DHT40_GO  \
 	-DSDIO_CRC_ERROR_FIX -DDEBUGFS_CFG80211 -DSUPPORT_PM2_ONLY \
-	-DESCAN_RESULT_PATCH -DSUPPORT_MULTIPLE_CHIPSET \
+	-DESCAN_RESULT_PATCH -DSUPPORT_MULTIPLE_CHIPSET -DNO_CONFIG_FILE \
 	-Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
 
 DHDOFILES = aiutils.o bcmsdh_sdmmc_linux.o dhd_linux.o siutils.o bcmutils.o   \

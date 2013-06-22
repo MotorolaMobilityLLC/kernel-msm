@@ -111,6 +111,10 @@ static struct notifier_block dhd_notifier = {
 };
 #endif /* ARP_OFFLOAD_SUPPORT */
 
+#ifdef NO_CONFIG_FILE
+static void dhd_apply_config(dhd_pub_t *dhd);
+#endif /* NO_CONFIG_FILE */
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP)
 #include <linux/suspend.h>
 volatile bool dhd_mmc_suspend = FALSE;
@@ -3922,6 +3926,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
 #endif /* defined(AP) && !defined(WLP2P) */
 
+#ifdef NO_CONFIG_FILE
+	dhd_apply_config(dhd);
+#endif /* NO_CONFIG_FILE */
 
 #if defined(SOFTAP)
 	if (ap_fw_loaded == TRUE) {
@@ -6531,3 +6538,58 @@ void htsf_update(dhd_info_t *dhd, void *data)
 }
 
 #endif /* WLMEDIA_HTSF */
+
+#ifdef NO_CONFIG_FILE
+#define DEFAULT_CCODE "XZ/11"
+static void dhd_apply_config(dhd_pub_t *dhd)
+{
+	/*  Room for "event_msgs" + '\0' + bitvec  */
+	char iovbuf[WL_EVENTING_MASK_LEN + 12];
+	uint32 btc_mode = 1;
+	char value[] = DEFAULT_CCODE;
+	char *revstr = strchr(value, '/');
+	char *endptr = NULL;
+	wl_country_t cspec = {{0}, -1, {0}};
+	int iolen;
+	char smbuf[WLC_IOCTL_SMLEN*2];
+	uint32 vlan_mode = 0;
+	uint16 wme_auto_trigger = 0;
+	uint16 wme_apsd_trigger = 29000;
+
+	/* btc_mode */
+	bcm_mkiovar("btc_mode", (char *)&btc_mode, 4, iovbuf, sizeof(iovbuf));
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+
+	/* Country Code */
+	if (revstr) {
+		cspec.rev = bcm_strtoul(revstr + 1, &endptr, 10);
+		memcpy(cspec.country_abbrev,value,WLC_CNTRY_BUF_SZ);
+		cspec.country_abbrev[2] = '\0';
+		memcpy(cspec.ccode,cspec.country_abbrev,WLC_CNTRY_BUF_SZ);
+		memset(smbuf, 0, sizeof(smbuf));
+		printf("config country code is country : %s, rev : %d !!\n",
+				cspec.country_abbrev,cspec.rev);
+		iolen = bcm_mkiovar("country", (char*)&cspec, sizeof(cspec),
+				smbuf, sizeof(smbuf));
+		dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR,
+				smbuf, iolen, TRUE, 0);
+	} else {
+		dhd_wl_ioctl_cmd(dhd, WLC_SET_COUNTRY,
+				value, WLC_CNTRY_BUF_SZ, TRUE, 0);
+	}
+
+	/* vlan_mode */
+	bcm_mkiovar("vlan_mode", (char *)&vlan_mode, 4, iovbuf, sizeof(iovbuf));
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+
+	/* wme_auto_trigger */
+	bcm_mkiovar("wme_auto_trigger",
+			(char *)&wme_auto_trigger, 2, iovbuf, sizeof(iovbuf));
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+
+	/* wme_apsd_trigger */
+	bcm_mkiovar("wme_apsd_trigger",
+			(char *)&wme_apsd_trigger, 2, iovbuf, sizeof(iovbuf));
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+}
+#endif /* NO_CONFIG_FILE */
