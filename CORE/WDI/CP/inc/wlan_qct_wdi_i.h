@@ -446,6 +446,9 @@ typedef enum
   /*WLAN DAL Set Tx Power Request*/
   WDI_SET_TX_POWER_REQ                          = 82,
   WDI_ROAM_SCAN_OFFLOAD_REQ                     = 83,
+
+  WDI_TDLS_LINK_ESTABLISH_REQ                   = 84,
+
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -712,6 +715,8 @@ typedef enum
 
   WDI_SET_TX_POWER_RESP                         = 81,
   WDI_ROAM_SCAN_OFFLOAD_RESP                    = 82,
+
+  WDI_TDLS_LINK_ESTABLISH_REQ_RESP              = 83,
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
@@ -758,6 +763,9 @@ typedef enum
 
   /* NOA Start Indication from FW to Host */
   WDI_HAL_P2P_NOA_START_IND            = WDI_HAL_IND_MIN + 12,
+
+  /* TDLS Indication from FW to Host */
+  WDI_HAL_TDLS_IND                     = WDI_HAL_IND_MIN + 13,
 
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
@@ -2221,6 +2229,23 @@ WDI_ProcessP2PGONOAReq
 );
 
 /**
+ @brief Process TDLS Link Establish Request function (called when Main FSM
+        allows it)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessTdlsLinkEstablishReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+/**
  @brief Process Enter IMPS Request function (called when 
         Main FSM allows it)
  
@@ -3407,6 +3432,23 @@ WDI_ProcessSetTxPowerRsp
   WDI_EventInfoType*             pEventData
 );
 
+  /**
+ @brief Process TDLS Link Establish Req Rsp function (called when a response
+        is being received over the bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessLinkEstablishReqRsp
+(
+  WDI_ControlBlockType*          pWDICtx,
+  WDI_EventInfoType*             pEventData
+);
+
 /**
  @brief Process Nv download(called when a response
         is being received over the bus from HAL)
@@ -4064,6 +4106,24 @@ WDI_ProcessCoexInd
 */
 WDI_Status
 WDI_ProcessTxCompleteInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+/**
+*@brief Process Tdls Indication function (called when
+        an indication of this kind is being received over the
+        bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessTdlsInd
 (
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData

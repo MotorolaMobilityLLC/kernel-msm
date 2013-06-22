@@ -390,6 +390,9 @@ typedef enum
   /* P2P_NOA_Start_Indication */
   WDI_P2P_NOA_START_IND,
 
+  /* TDLS_Indication */
+  WDI_TDLS_IND,
+
   WDI_MAX_IND
 }WDI_LowLevelIndEnumType;
 
@@ -551,6 +554,16 @@ typedef struct
   wpt_uint32      bssIdx;
 }WDI_P2pNoaStartIndType;
 
+/*---------------------------------------------------------------------------
+ *WDI_TdlsIndType
+ *-------------------------------------------------------------------------*/
+typedef struct
+{
+  wpt_uint16      status;
+  wpt_uint16      assocId;
+  wpt_uint16      staIdx;
+  wpt_uint16      reasonCode;
+}WDI_TdlsIndType;
 
 #ifdef WLAN_WAKEUP_EVENTS
 /*---------------------------------------------------------------------------
@@ -615,6 +628,8 @@ typedef struct
     /* P2P NOA ATTR Indication */
     WDI_P2pNoaAttrIndType        wdiP2pNoaAttrInfo;
     WDI_P2pNoaStartIndType       wdiP2pNoaStartInfo;
+    /* TDLS Indications */
+    WDI_TdlsIndType              wdiTdlsIndInfo;
 
 
 #ifdef FEATURE_WLAN_SCAN_PNO
@@ -3051,6 +3066,33 @@ typedef struct
     function pointer will be called */
   void*             pUserData;
 }WDI_SetP2PGONOAReqParamsType;
+
+typedef struct
+{
+    wpt_uint16 uStaIdx;
+    wpt_uint8  uIsResponder;
+    wpt_uint8  uUapsdQueues;
+    wpt_uint8  uMaxSp;
+    wpt_uint8  uIsBufSta;
+}WDI_SetTDLSLinkEstablishReqInfoType;
+/*---------------------------------------------------------------------------
+  WDI_SetTDLSLinkEstablishReqParamsType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /*TDLS Link Establish Req*/
+  WDI_SetTDLSLinkEstablishReqInfoType  wdiTDLSLinkEstablishInfo;
+
+  /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb   wdiReqStatusCB;
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*             pUserData;
+}WDI_SetTDLSLinkEstablishReqParamsType;
+
 
 
 /*---------------------------------------------------------------------------
@@ -5713,6 +5755,27 @@ typedef void  (*WDI_UpdateProbeRspTemplateRspCb)(WDI_Status   wdiStatus,
 typedef void  (*WDI_SetP2PGONOAReqParamsRspCb)(WDI_Status   wdiStatus,
                                 void*        pUserData);
 
+/*---------------------------------------------------------------------------
+   WDI_SetTDLSLinkEstablishReqParamsRspCb
+
+   DESCRIPTION
+
+   This callback is invoked by DAL when it has received a TDLS Link Establish Req response from
+   the underlying device.
+
+   PARAMETERS
+
+    IN
+    wdiStatus:  response status received from HAL
+    pUserData:  user data
+
+
+
+  RETURN VALUE
+    The result code associated with performing the operation
+---------------------------------------------------------------------------*/
+typedef void  (*WDI_SetTDLSLinkEstablishReqParamsRspCb)(WDI_Status   wdiStatus,
+                                void*        pUserData);
 
 /*---------------------------------------------------------------------------
    WDI_SetPwrSaveCfgCb
@@ -7771,6 +7834,37 @@ WDI_SetP2PGONOAReq
   void*                            pUserData
 );
 
+/**
+ @brief WDI_SetTDLSLinkEstablishReq will be called when the
+        upper MAC wants to send TDLS Link Establish Request Parameters
+         Upon the call of this API the WLAN DAL will
+        pack and send the TDLS Link Establish Request  message to the
+        lower RIVA sub-system if DAL is in state STARTED.
+
+        In state BUSY this request will be queued. Request won't
+        be allowed in any other state.
+
+
+ @param pwdiTDLSLinkEstablishReqParams: TDLS Peer Parameters
+        for Link Establishment (Used for PUAPSD , TDLS Off Channel ...)
+
+        wdiTDLSLinkEstablishReqRspCb: callback for passing back the
+        response of the TDLS Link Establish request received
+        from the device
+
+        pUserData: user data will be passed back with the
+        callback
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_SetTDLSLinkEstablishReq
+(
+  WDI_SetTDLSLinkEstablishReqParamsType*    pwdiTDLSLinkEstablishReqParams,
+  WDI_SetTDLSLinkEstablishReqParamsRspCb    wdiTDLSLinkEstablishReqRspCb,
+  void*                            pUserData
+);
 
 /*======================================================================== 
  

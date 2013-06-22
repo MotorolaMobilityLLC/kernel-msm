@@ -555,6 +555,7 @@ typedef enum
     eCSR_ROAM_RESULT_DELETE_TDLS_PEER,
     eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND,
     eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND,
+    eCSR_ROAM_RESULT_LINK_ESTABLISH_REQ_RSP,
 #ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
     eCSR_ROAM_RESULT_TDLS_DISAPPEAR_AP_IND,
 #endif
@@ -1330,6 +1331,16 @@ typedef struct tagCsrRoamRemoveKey
 } tCsrRoamRemoveKey;
 
 #ifdef FEATURE_WLAN_TDLS
+
+typedef struct tagCsrLinkEstablishParams
+{
+    tSirMacAddr peerMac;
+    tANI_U8 uapsdQueues;
+    tANI_U8 maxSp;
+    tANI_U8 isBufSta;
+    tANI_U8 isResponder;
+}tCsrTdlsLinkEstablishParams;
+
 typedef struct tagCsrTdlsSendMgmt
 {
         tSirMacAddr peerMac;

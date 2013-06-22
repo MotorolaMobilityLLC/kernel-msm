@@ -1202,6 +1202,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case eWNI_SME_TDLS_SEND_MGMT_REQ:
         case eWNI_SME_TDLS_ADD_STA_REQ:
         case eWNI_SME_TDLS_DEL_STA_REQ:
+        case eWNI_SME_TDLS_LINK_ESTABLISH_REQ:
 #endif
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eWNI_SME_TDLS_DISCOVERY_START_REQ:
@@ -1349,7 +1350,41 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             limMsg->bodyptr = NULL;
          }
             break;
+#ifdef FEATURE_WLAN_TDLS
+        case SIR_HAL_TDLS_IND:
+        {
+            tSirTdlsInd  *pTdlsInd = (tpSirTdlsInd)limMsg->bodyptr ;
+            tpDphHashNode pStaDs = NULL ;
+            tpPESession psessionEntry = NULL;
+            tANI_U8             sessionId;
+            if((psessionEntry = peFindSessionByStaId(pMac,pTdlsInd->staIdx,&sessionId))== NULL)
+            {
+               limLog(pMac, LOG1, FL("session does not exist for given bssId\n"));
+               palFreeMemory(pMac->hHdd, (tANI_U8 *)limMsg->bodyptr);
+               limMsg->bodyptr = NULL;
+               return;
+            }
+            if ((pStaDs = dphGetHashEntry(pMac, pTdlsInd->assocId, &psessionEntry->dph.dphHashTable)) == NULL)
+            {
+               limLog(pMac, LOG1, FL("pStaDs Does not exist for given staId\n"));
+               palFreeMemory(pMac->hHdd, (tANI_U8 *)limMsg->bodyptr);
+               limMsg->bodyptr = NULL;
+               return;
+            }
 
+            if ((STA_ENTRY_TDLS_PEER == pStaDs->staType))
+            {
+                limLog(pMac, LOGE,
+                       FL("received TDLS Indication from the Firmware with Reason Code %d "),
+                       pTdlsInd->reasonCode);
+                limSendSmeTDLSDelStaInd(pMac, pStaDs, psessionEntry,
+                                        /*pTdlsInd->reasonCode*/eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE);
+            }
+            palFreeMemory(pMac->hHdd, (tANI_U8 *)limMsg->bodyptr);
+            limMsg->bodyptr = NULL;
+         }
+         break;
+#endif
         case SIR_HAL_P2P_NOA_ATTR_IND:
             {
                 tpPESession psessionEntry = &pMac->lim.gpSession[0];  
@@ -1888,6 +1923,14 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #endif
         }
         break;
+#ifdef FEATURE_WLAN_TDLS
+        case WDA_SET_TDLS_LINK_ESTABLISH_REQ_RSP:
+        {
+            /*TODO Sunil , See how do you enhance this , Reason Code ???*/
+            limSendSmeTdlsLinkEstablishReqRsp(pMac, 0 , NULL, NULL, eSIR_SUCCESS ) ;
+            break;
+        }
+#endif
     default:
         vos_mem_free((v_VOID_t*)limMsg->bodyptr);
         limMsg->bodyptr = NULL;

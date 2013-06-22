@@ -4498,3 +4498,50 @@ HAL
 V    RW    NP
 HAL
 1    255    3
+
+*
+*TDLS Station's UAPSD MASK Configuration
+*
+*
+*
+WNI_CFG_TDLS_QOS_WMM_UAPSD_MASK  I   4   7
+V    RW    NP
+LIM
+0    15    0
+V    RW    NP
+LIM
+0    15   0
+*
+*TDLS Stations Buffer STA Capability
+*
+*
+*
+WNI_CFG_TDLS_BUF_STA_ENABLED  I   4   7
+V    RW    NP
+LIM
+0    1    0
+V    RW    NP
+LIM
+0    1    0
+*TDLS Stations PUAPSD Inactivity Timer
+*
+*
+*
+WNI_CFG_TDLS_PUAPSD_INACT_TIME  I   4   7
+V    RW    NP
+LIM
+0    10    0
+V    RW    NP
+LIM
+0    10    0
+*TDLS Stations PUAPSD RX Frame Threshold
+*
+*
+*
+WNI_CFG_TDLS_RX_FRAME_THRESHOLD  I   4   7
+V    RW    NP
+LIM
+10   20    10
+V    RW    NP
+LIM
+10   20    10

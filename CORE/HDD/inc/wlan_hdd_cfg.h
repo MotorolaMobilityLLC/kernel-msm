@@ -1646,6 +1646,26 @@ typedef enum
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_MIN        ( -120 )
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_MAX        ( 0 )
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_DEFAULT    ( -75 )
+
+#define CFG_TDLS_QOS_WMM_UAPSD_MASK_NAME            "gTDLSUapsdMask" // ACs to setup U-APSD for TDLS Sta
+#define CFG_TDLS_QOS_WMM_UAPSD_MASK_MIN             (0)
+#define CFG_TDLS_QOS_WMM_UAPSD_MASK_MAX             (15)
+#define CFG_TDLS_QOS_WMM_UAPSD_MASK_DEFAULT         (0)
+
+#define CFG_TDLS_BUFFER_STA_SUPPORT_ENABLE          "gEnableTDLSBufferSta"
+#define CFG_TDLS_BUFFER_STA_SUPPORT_ENABLE_MIN      (0)
+#define CFG_TDLS_BUFFER_STA_SUPPORT_ENABLE_MAX      (1)
+#define CFG_TDLS_BUFFER_STA_SUPPORT_ENABLE_DEFAULT  (1)
+
+#define CFG_TDLS_PUAPSD_INACTIVITY_TIME             "gTDLSPuapsdInactivityTime"
+#define CFG_TDLS_PUAPSD_INACTIVITY_TIME_MIN         (0)
+#define CFG_TDLS_PUAPSD_INACTIVITY_TIME_MAX         (10)
+#define CFG_TDLS_PUAPSD_INACTIVITY_TIME_DEFAULT     (0)
+
+#define CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD          "gTDLSPuapsdRxFrameThreshold"
+#define CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_MIN      (10)
+#define CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_MAX      (20)
+#define CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_DEFAULT  (10)
 #endif
 
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
@@ -2108,6 +2128,10 @@ typedef struct
    v_U32_t                     fTDLSRSSIHysteresis;
    v_S31_t                     fTDLSRSSITriggerThreshold;
    v_S31_t                     fTDLSRSSITeardownThreshold;
+   v_U32_t                     fTDLSUapsdMask;    // what ACs to setup U-APSD for TDLS
+   v_U32_t                     fEnableTDLSBufferSta;
+   v_U32_t                     fTDLSPuapsdInactivityTimer;
+   v_U32_t                     fTDLSRxFrameThreshold;
 #endif
    v_U32_t                     enableLpwrImgTransition;
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
