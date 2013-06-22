@@ -3400,33 +3400,70 @@ void hdd_cleanup_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_
 
 void hdd_set_pwrparams(hdd_context_t *pHddCtx)
 {
-   tSirSetPowerParamsReq powerRequest = { 0 };
+   VOS_STATUS status;
+   hdd_adapter_t *pAdapter = NULL;
+   hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
 
-   powerRequest.uIgnoreDTIM = 1;
-   powerRequest.uMaxLIModulatedDTIM = pHddCtx->cfg_ini->fMaxLIModulatedDTIM;
+   status =  hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
 
-   if (pHddCtx->cfg_ini->enableModulatedDTIM)
+   /*loop through all adapters.*/
+   while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
    {
-       powerRequest.uDTIMPeriod = pHddCtx->cfg_ini->enableModulatedDTIM;
-       powerRequest.uListenInterval = pHddCtx->hdd_actual_LI_value;
-   }
-   else
-   {
-       powerRequest.uListenInterval = pHddCtx->cfg_ini->enableDynamicDTIM;
-   }
+       pAdapter = pAdapterNode->pAdapter;
+       if ( (WLAN_HDD_INFRA_STATION != pAdapter->device_mode)
+         && (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode) )
 
-   /* Update ignoreDTIM and ListedInterval in CFG to remain at the DTIM
-   *specified during Enter/Exit BMPS when LCD off*/
-   ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_IGNORE_DTIM, powerRequest.uIgnoreDTIM,
-                    NULL, eANI_BOOLEAN_FALSE);
-   ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_LISTEN_INTERVAL, powerRequest.uListenInterval,
-                    NULL, eANI_BOOLEAN_FALSE);
+       {  // we skip this registration for modes other than STA and P2P client modes.
+           status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+           pAdapterNode = pNext;
+           continue;
+       }
 
-   /* switch to the DTIM specified in cfg.ini */
-   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                  "Switch to DTIM%d", powerRequest.uListenInterval);
-   sme_SetPowerParams( pHddCtx->hHal, &powerRequest, TRUE);
+       //Apply Dynamic DTIM For P2P
+       //Only if ignoreDynamicDtimInP2pMode is not set in ini
+      if ((pHddCtx->cfg_ini->enableDynamicDTIM ||
+           pHddCtx->cfg_ini->enableModulatedDTIM) &&
+          ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+          ((WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) &&
+          !(pHddCtx->cfg_ini->ignoreDynamicDtimInP2pMode))) &&
+          (eANI_BOOLEAN_TRUE == pAdapter->higherDtimTransition) &&
+          (eConnectionState_Associated ==
+          (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState) &&
+          (pHddCtx->cfg_ini->fIsBmpsEnabled))
+      {
+           tSirSetPowerParamsReq powerRequest = { 0 };
 
+           powerRequest.uIgnoreDTIM = 1;
+           powerRequest.uMaxLIModulatedDTIM = pHddCtx->cfg_ini->fMaxLIModulatedDTIM;
+
+           if (pHddCtx->cfg_ini->enableModulatedDTIM)
+           {
+               powerRequest.uDTIMPeriod = pHddCtx->cfg_ini->enableModulatedDTIM;
+               powerRequest.uListenInterval = pHddCtx->hdd_actual_LI_value;
+           }
+           else
+           {
+               powerRequest.uListenInterval = pHddCtx->cfg_ini->enableDynamicDTIM;
+           }
+
+           /* Update ignoreDTIM and ListedInterval in CFG to remain at the DTIM
+            * specified during Enter/Exit BMPS when LCD off*/
+            ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_IGNORE_DTIM, powerRequest.uIgnoreDTIM,
+                       NULL, eANI_BOOLEAN_FALSE);
+            ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_LISTEN_INTERVAL, powerRequest.uListenInterval,
+                       NULL, eANI_BOOLEAN_FALSE);
+
+           /* switch to the DTIM specified in cfg.ini */
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      "Switch to DTIM %d", powerRequest.uListenInterval);
+            sme_SetPowerParams( pHddCtx->hHal, &powerRequest, TRUE);
+            break;
+
+      }
+
+      status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+      pAdapterNode = pNext;
+    }
 }
 
 void hdd_reset_pwrparams(hdd_context_t *pHddCtx)
@@ -3774,7 +3811,11 @@ resume_bmps:
    //If bmps disabled enable it
    if(VOS_STATUS_SUCCESS == exitbmpsStatus)
    {
-      hdd_enable_bmps_imps(pHddCtx);
+       if (pHddCtx->hdd_wlan_suspended)
+       {
+           hdd_set_pwrparams(pHddCtx);
+       }
+       hdd_enable_bmps_imps(pHddCtx);
    }
    return NULL;
 }
@@ -3811,7 +3852,11 @@ VOS_STATUS hdd_close_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
            ((pHddCtx->no_of_sessions[VOS_STA_MODE] >= 1) || 
            (pHddCtx->no_of_sessions[VOS_P2P_CLIENT_MODE] >= 1)))
       {
-         hdd_enable_bmps_imps(pHddCtx);
+          if (pHddCtx->hdd_wlan_suspended)
+          {
+              hdd_set_pwrparams(pHddCtx);
+          }
+          hdd_enable_bmps_imps(pHddCtx);
       }
 
       return VOS_STATUS_SUCCESS;
@@ -5040,6 +5085,7 @@ VOS_STATUS hdd_post_voss_start_config(hdd_context_t* pHddCtx)
 {
    eHalStatus halStatus;
    v_U32_t listenInterval;
+   tANI_U32    ignoreDtim;
 
 
    // Send ready indication to the HDD.  This will kick off the MAC
@@ -5052,12 +5098,15 @@ VOS_STATUS hdd_post_voss_start_config(hdd_context_t* pHddCtx)
       return VOS_STATUS_E_FAILURE;
    }
 
-   // Set default LI into HDD context,
+   // Set default LI and ignoreDtim into HDD context,
    // otherwise under some race condition, HDD will set 0 LI value into RIVA,
    // And RIVA will crash
    wlan_cfgGetInt(pHddCtx->hHal, WNI_CFG_LISTEN_INTERVAL, &listenInterval);
    pHddCtx->hdd_actual_LI_value = listenInterval;
-   
+   wlan_cfgGetInt(pHddCtx->hHal, WNI_CFG_IGNORE_DTIM, &ignoreDtim);
+   pHddCtx->hdd_actual_ignore_DTIM_value = ignoreDtim;
+
+
    return VOS_STATUS_SUCCESS;
 }
 
