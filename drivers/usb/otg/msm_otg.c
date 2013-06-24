@@ -3227,8 +3227,8 @@ static void msm_otg_acok_init(struct msm_otg *motg)
 	if (err < 0) {
 		printk("%s irq %d request failed \n","msm_otg_ap_acok", irq_num);
 	}
+	enable_irq_wake(irq_num);
 	printk("%s: GPIO pin irq %d requested ok, msm_otg_ACOK = %s\n", __func__, irq_num, gpio_get_value(gpio)? "H":"L");
-
 }
 
 static void msm_otg_acok_free(struct msm_otg *motg)
@@ -3266,6 +3266,7 @@ static void msm_otg_id_pin_init(struct msm_otg *motg)
 	if (err < 0) {
 		printk("%s irq %d request failed \n","msm_otg_id_pin", irq_num);
 	}
+	enable_irq_wake(irq_num);
 	printk("%s: GPIO pin irq %d requested ok, msm_otg_id_pin = %s\n", __func__, irq_num, gpio_get_value(gpio)? "H":"L");
 
 	id_pin_irq_enable = 1;
@@ -4239,8 +4240,6 @@ static int msm_otg_pm_suspend(struct device *dev)
 	int ret = 0;
 	struct msm_otg *motg = dev_get_drvdata(dev);
 	unsigned id_gpio = APQ_OTG_ID_PIN, vbus_det_gpio = APQ_AP_ACOK;
-	unsigned irq_num_id = gpio_to_irq(id_gpio);
-	unsigned irq_num_vbus = gpio_to_irq(vbus_det_gpio);
 
 
 	dev_dbg(dev, "OTG PM suspend\n");
@@ -4251,17 +4250,6 @@ static int msm_otg_pm_suspend(struct device *dev)
 		atomic_set(&motg->pm_suspended, 0);
 		return ret;
 	}
-
-	disable_irq(irq_num_vbus);
-	if (gpio_get_value(vbus_det_gpio) == 0)
-		irq_set_irq_type(irq_num_vbus, IRQ_TYPE_EDGE_RISING);
-	else
-		irq_set_irq_type(irq_num_vbus, IRQ_TYPE_EDGE_FALLING);
-	enable_irq_wake(irq_num_vbus);
-
-	if (!slimport_is_connected())
-		disable_irq(irq_num_id);
-	enable_irq_wake(irq_num_id);
 
 	global_vbus_suspend_status = gpio_get_value(vbus_det_gpio);
 	global_id_pin_suspend_status = gpio_get_value(id_gpio);
@@ -4274,8 +4262,6 @@ static int msm_otg_pm_resume(struct device *dev)
 	int ret = 0;
 	struct msm_otg *motg = dev_get_drvdata(dev);
 	unsigned id_gpio = APQ_OTG_ID_PIN, vbus_det_gpio = APQ_AP_ACOK;
-	unsigned irq_num_id = gpio_to_irq(id_gpio);
-	unsigned irq_num_vbus = gpio_to_irq(vbus_det_gpio);
 
 	dev_dbg(dev, "OTG PM resume\n");
 
@@ -4297,14 +4283,6 @@ static int msm_otg_pm_resume(struct device *dev)
 
 	if (ret)
 		return ret;
-
-	disable_irq_wake(irq_num_vbus);
-	irq_set_irq_type(irq_num_vbus, IRQ_TYPE_EDGE_BOTH);
-	enable_irq(irq_num_vbus);
-
-	disable_irq_wake(irq_num_id);
-	if (!slimport_is_connected())
-		enable_irq(irq_num_id);
 
 	if (gpio_get_value(vbus_det_gpio) != global_vbus_suspend_status) {
 		dev_info(dev, "%s: usb vbus change in suspend\n", __func__);
