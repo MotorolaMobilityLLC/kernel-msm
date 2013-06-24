@@ -14,6 +14,7 @@
 
 /include/ "msm8610.dtsi"
 /include/ "dsi-v2-panel-truly-wvga-video.dtsi"
+/include/ "msm8610-camera-sensor-cdp-mtp.dtsi"
 
 / {
 	model = "Qualcomm MSM 8610 MTP";
@@ -191,6 +192,7 @@
 				qcom,id = <6>;
 				qcom,source-sel = <1>;
 				qcom,mode-ctrl = <0x60>;
+				qcom,mode = "manual";
 			};
 		};
 
@@ -205,6 +207,7 @@
 				qcom,id = <6>;
 				qcom,source-sel = <1>;
 				qcom,mode-ctrl = <0x10>;
+				qcom,mode = "manual";
 			};
 		};
 	};
@@ -229,6 +232,7 @@
 
 	vdd-io-supply = <&pm8110_l6>;
 	qcom,vdd-io-always-on;
+	qcom,vdd-io-lpm-sup;
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
 	qcom,vdd-io-current-level = <200 60000>;
 
@@ -250,8 +254,6 @@
 	qcom,vdd-current-level = <15000 400000>;
 
 	vdd-io-supply = <&pm8110_l21>;
-	qcom,vdd-io-always-on;
-	qcom,vdd-io-lpm-sup;
 	qcom,vdd-io-voltage-level = <1800000 2950000>;
 	qcom,vdd-io-current-level = <200 50000>;
 

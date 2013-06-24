@@ -18,17 +18,18 @@
 #include <linux/uaccess.h>
 #include <linux/interrupt.h>
 #include <linux/workqueue.h>
-
+#include <linux/dma-buf.h>
 #include <linux/vmalloc.h>
 #include <linux/pm_runtime.h>
 #include <linux/genlock.h>
 #include <linux/rbtree.h>
 #include <linux/ashmem.h>
 #include <linux/major.h>
-#include <linux/msm_ion.h>
 #include <linux/io.h>
 #include <mach/socinfo.h>
 #include <linux/mman.h>
+#include <linux/sort.h>
+#include <asm/cacheflush.h>
 
 #include "kgsl.h"
 #include "kgsl_debugfs.h"
@@ -51,7 +52,11 @@ module_param_named(mmutype, ksgl_mmu_type, charp, 0);
 MODULE_PARM_DESC(ksgl_mmu_type,
 "Type of MMU to be used for graphics. Valid values are 'iommu' or 'gpummu' or 'nommu'");
 
-static struct ion_client *kgsl_ion_client;
+struct kgsl_dma_buf_meta {
+	struct dma_buf_attachment *attach;
+	struct dma_buf *dmabuf;
+	struct sg_table *table;
+};
 
 /**
  * kgsl_trace_issueibcmds() - Call trace_issueibcmds by proxy
@@ -186,6 +191,14 @@ kgsl_mem_entry_create(void)
 	return entry;
 }
 
+static void kgsl_destroy_ion(struct kgsl_dma_buf_meta *meta)
+{
+	dma_buf_unmap_attachment(meta->attach, meta->table, DMA_FROM_DEVICE);
+	dma_buf_detach(meta->dmabuf, meta->attach);
+	dma_buf_put(meta->dmabuf);
+	kfree(meta);
+}
+
 void
 kgsl_mem_entry_destroy(struct kref *kref)
 {
@@ -215,7 +228,7 @@ kgsl_mem_entry_destroy(struct kref *kref)
 			fput(entry->priv_data);
 		break;
 	case KGSL_MEM_ENTRY_ION:
-		ion_free(kgsl_ion_client, entry->priv_data);
+		kgsl_destroy_ion(entry->priv_data);
 		break;
 	}
 
@@ -674,7 +687,7 @@ static void kgsl_destroy_process_private(struct kref *kref)
 	list_del(&private->list);
 	mutex_unlock(&kgsl_driver.process_mutex);
 
-	if (private->kobj.parent)
+	if (private->kobj.ktype)
 		kgsl_process_uninit_sysfs(private);
 	if (private->debug_root)
 		debugfs_remove_recursive(private->debug_root);
@@ -791,7 +804,7 @@ kgsl_get_process_private(struct kgsl_device_private *cur_dev_priv)
 		}
 	}
 
-	if (!private->kobj.parent)
+	if (!private->kobj.ktype)
 		kgsl_process_init_sysfs(private);
 	if (!private->debug_root)
 		kgsl_process_init_debugfs(private);
@@ -1842,38 +1855,55 @@ static int kgsl_setup_ashmem(struct kgsl_mem_entry *entry,
 #endif
 
 static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
-		struct kgsl_pagetable *pagetable, void *data)
+		struct kgsl_pagetable *pagetable, void *data,
+		struct kgsl_device *device)
 {
-	struct ion_handle *handle;
 	struct scatterlist *s;
 	struct sg_table *sg_table;
 	struct kgsl_map_user_mem *param = data;
 	int fd = param->fd;
+	struct dma_buf *dmabuf;
+	struct dma_buf_attachment *attach;
+	struct kgsl_dma_buf_meta *meta;
+	int ret;
 
 	if (!param->len)
 		return -EINVAL;
 
-	if (IS_ERR_OR_NULL(kgsl_ion_client))
-		return -ENODEV;
+	meta = kzalloc(sizeof(*meta), GFP_KERNEL);
+	if (!meta)
+		return -ENOMEM;
 
-	handle = ion_import_dma_buf(kgsl_ion_client, fd);
-	if (IS_ERR(handle))
-		return PTR_ERR(handle);
-	else if (!handle)
-		return -EINVAL;
+	dmabuf = dma_buf_get(fd);
+	if (IS_ERR_OR_NULL(dmabuf)) {
+		ret = PTR_ERR(dmabuf);
+		goto err1;
+	}
+
+	attach = dma_buf_attach(dmabuf, device->dev);
+	if (IS_ERR_OR_NULL(attach)) {
+		ret = PTR_ERR(attach);
+		goto err2;
+	}
+
+	meta->dmabuf = dmabuf;
+	meta->attach = attach;
 
 	entry->memtype = KGSL_MEM_ENTRY_ION;
-	entry->priv_data = handle;
+	entry->priv_data = meta;
 	entry->memdesc.pagetable = pagetable;
 	entry->memdesc.size = 0;
 	/* USE_CPU_MAP is not impemented for ION. */
 	entry->memdesc.flags &= ~KGSL_MEMFLAGS_USE_CPU_MAP;
 
-	sg_table = ion_sg_table(kgsl_ion_client, handle);
+	sg_table = dma_buf_map_attachment(attach, DMA_TO_DEVICE);
 
-	if (IS_ERR_OR_NULL(sg_table))
-		goto err;
+	if (IS_ERR_OR_NULL(sg_table)) {
+		ret = PTR_ERR(sg_table);
+		goto err3;
+	}
 
+	meta->table = sg_table;
 	entry->memdesc.sg = sg_table->sgl;
 
 	/* Calculate the size of the memdesc from the sglist */
@@ -1888,9 +1918,13 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 	entry->memdesc.size = PAGE_ALIGN(entry->memdesc.size);
 
 	return 0;
-err:
-	ion_free(kgsl_ion_client, handle);
-	return -ENOMEM;
+err3:
+	dma_buf_detach(dmabuf, attach);
+err2:
+	dma_buf_put(dmabuf);
+err1:
+	kfree(meta);
+	return ret;
 }
 
 static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
@@ -1978,7 +2012,8 @@ static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 		entry->memtype = KGSL_MEM_ENTRY_ASHMEM;
 		break;
 	case KGSL_USER_MEM_TYPE_ION:
-		result = kgsl_setup_ion(entry, private->pagetable, data);
+		result = kgsl_setup_ion(entry, private->pagetable, data,
+					dev_priv->device);
 		break;
 	default:
 		KGSL_CORE_ERR("Invalid memory type: %x\n", memtype);
@@ -2025,7 +2060,7 @@ error_put_file_ptr:
 			fput(entry->priv_data);
 		break;
 	case KGSL_MEM_ENTRY_ION:
-		ion_free(kgsl_ion_client, entry->priv_data);
+		kgsl_destroy_ion(entry->priv_data);
 		break;
 	default:
 		break;
@@ -2101,6 +2136,97 @@ kgsl_ioctl_gpumem_sync_cache(struct kgsl_device_private *dev_priv,
 
 	ret = _kgsl_gpumem_sync_cache(entry, param->op);
 	kgsl_mem_entry_put(entry);
+	return ret;
+}
+
+static int mem_id_cmp(const void *_a, const void *_b)
+{
+	const unsigned int *a = _a, *b = _b;
+	int cmp = a - b;
+	return (cmp < 0) ? -1 : (cmp > 0);
+}
+
+static long
+kgsl_ioctl_gpumem_sync_cache_bulk(struct kgsl_device_private *dev_priv,
+	unsigned int cmd, void *data)
+{
+	int i;
+	struct kgsl_gpumem_sync_cache_bulk *param = data;
+	struct kgsl_process_private *private = dev_priv->process_priv;
+	unsigned int id, last_id = 0, *id_list = NULL, actual_count = 0;
+	struct kgsl_mem_entry **entries = NULL;
+	long ret = 0;
+	size_t op_size = 0;
+	bool full_flush = false;
+
+	if (param->id_list == NULL || param->count == 0
+			|| param->count > (UINT_MAX/sizeof(unsigned int)))
+		return -EINVAL;
+
+	id_list = kzalloc(param->count * sizeof(unsigned int), GFP_KERNEL);
+	if (id_list == NULL)
+		return -ENOMEM;
+
+	entries = kzalloc(param->count * sizeof(*entries), GFP_KERNEL);
+	if (entries == NULL) {
+		ret = -ENOMEM;
+		goto end;
+	}
+
+	if (copy_from_user(id_list, param->id_list,
+				param->count * sizeof(unsigned int))) {
+		ret = -EFAULT;
+		goto end;
+	}
+	/* sort the ids so we can weed out duplicates */
+	sort(id_list, param->count, sizeof(int), mem_id_cmp, NULL);
+
+	for (i = 0; i < param->count; i++) {
+		unsigned int cachemode;
+		struct kgsl_mem_entry *entry = NULL;
+
+		id = id_list[i];
+		/* skip 0 ids or duplicates */
+		if (id == last_id)
+			continue;
+
+		entry = kgsl_sharedmem_find_id(private, id);
+		if (entry == NULL)
+			continue;
+
+		/* skip uncached memory */
+		cachemode = kgsl_memdesc_get_cachemode(&entry->memdesc);
+		if (cachemode != KGSL_CACHEMODE_WRITETHROUGH &&
+		    cachemode != KGSL_CACHEMODE_WRITEBACK) {
+			kgsl_mem_entry_put(entry);
+			continue;
+		}
+
+		op_size += entry->memdesc.size;
+		entries[actual_count++] = entry;
+
+		/* If we exceed the breakeven point, flush the entire cache */
+		if (op_size >= kgsl_driver.full_cache_threshold &&
+		    param->op == KGSL_GPUMEM_CACHE_FLUSH) {
+			full_flush = true;
+			break;
+		}
+		last_id = id;
+	}
+	if (full_flush) {
+		trace_kgsl_mem_sync_full_cache(actual_count, op_size,
+					       param->op);
+		__cpuc_flush_kern_all();
+	}
+
+	for (i = 0; i < actual_count; i++) {
+		if (!full_flush)
+			_kgsl_gpumem_sync_cache(entries[i], param->op);
+		kgsl_mem_entry_put(entries[i]);
+	}
+end:
+	kfree(entries);
+	kfree(id_list);
 	return ret;
 }
 
@@ -2510,6 +2636,8 @@ static const struct {
 			kgsl_ioctl_gpumem_get_info, 0),
 	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUMEM_SYNC_CACHE,
 			kgsl_ioctl_gpumem_sync_cache, 0),
+	KGSL_IOCTL_FUNC(IOCTL_KGSL_GPUMEM_SYNC_CACHE_BULK,
+			kgsl_ioctl_gpumem_sync_cache_bulk, 0),
 };
 
 static long kgsl_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
@@ -2809,16 +2937,17 @@ kgsl_get_unmapped_area(struct file *file, unsigned long addr,
 			ret = ALIGN(ret, (1 << align));
 
 		/*make sure there isn't a GPU only mapping at this address */
-		if (kgsl_sharedmem_region_empty(private, ret, len))
+		if (kgsl_sharedmem_region_empty(private, ret, orig_len))
 			break;
 
-		trace_kgsl_mem_unmapped_area_collision(entry, addr, len, ret);
+		trace_kgsl_mem_unmapped_area_collision(entry, addr, orig_len,
+							ret);
 
 		/*
 		 * If we collided, bump the hint address so that
 		 * get_umapped_area knows to look somewhere else.
 		 */
-		addr = (addr == 0) ? ret + len : addr + len;
+		addr = (addr == 0) ? ret + orig_len : addr + orig_len;
 
 		/*
 		 * The addr hint can be set by userspace to be near
@@ -2952,6 +3081,11 @@ struct kgsl_driver kgsl_driver  = {
 	.devlock = __MUTEX_INITIALIZER(kgsl_driver.devlock),
 	.memfree_hist_mutex =
 		__MUTEX_INITIALIZER(kgsl_driver.memfree_hist_mutex),
+	/*
+	 * Full cache flushes are faster than line by line on at least
+	 * 8064 and 8974 once the region to be flushed is > 16mb.
+	 */
+	.full_cache_threshold = SZ_16M,
 };
 EXPORT_SYMBOL(kgsl_driver);
 
@@ -3031,8 +3165,6 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	status = kgsl_pwrctrl_init(device);
 	if (status)
 		goto error;
-
-	kgsl_ion_client = msm_ion_client_create(UINT_MAX, KGSL_NAME);
 
 	/* Get starting physical address of device registers */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,

@@ -1001,9 +1001,15 @@ static void tavarua_handle_interrupts(struct tavarua_device *radio)
 			FMDBG("Search list has %d stations\n",
 						radio->registers[XFRCTRL+1]);
 			radio->xfr_bytes_left = radio->registers[XFRCTRL+1]*2;
-			if (radio->xfr_bytes_left > 14) {
+			if (!radio->registers[XFRCTRL+1]) {
 				copy_from_xfr(radio, TAVARUA_BUF_SRCH_LIST,
-							XFR_REG_NUM);
+									1);
+				tavarua_q_event(radio,
+						TAVARUA_EVT_NEW_SRCH_LIST);
+				radio->xfr_in_progress = 0;
+			} else if (radio->xfr_bytes_left > 14) {
+				copy_from_xfr(radio, TAVARUA_BUF_SRCH_LIST,
+							RX_STATIONS0_LEN);
 				request_read_xfr(radio,	RX_STATIONS_1);
 			} else if (radio->xfr_bytes_left) {
 				FMDBG("In else RX_STATIONS_0\n");

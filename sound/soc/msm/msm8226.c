@@ -72,6 +72,7 @@ static struct wcd9xxx_mbhc_config mbhc_cfg = {
 	.gpio_irq = 0,
 	.gpio_level_insert = 0,
 	.detect_extn_cable = true,
+	.micbias_enable_flags = 0,
 	.insert_detect = true,
 	.swap_gnd_mic = NULL,
 };
@@ -90,6 +91,7 @@ struct msm8226_asoc_mach_data {
 	int mclk_gpio;
 	u32 mclk_freq;
 	struct msm_auxpcm_ctrl *auxpcm_ctrl;
+	u32 us_euro_gpio;
 };
 
 #define GPIO_NAME_INDEX 0
@@ -638,7 +640,7 @@ void *def_tapan_mbhc_cal(void)
 #undef S
 #define S(X, Y) ((WCD9XXX_MBHC_CAL_PLUG_TYPE_PTR(tapan_cal)->X) = (Y))
 	S(v_no_mic, 30);
-	S(v_hs_max, 1650);
+	S(v_hs_max, 2450);
 #undef S
 #define S(X, Y) ((WCD9XXX_MBHC_CAL_BTN_DET_PTR(tapan_cal)->X) = (Y))
 	S(c[0], 62);
@@ -1352,6 +1354,44 @@ static int msm8226_prepare_codec_mclk(struct snd_soc_card *card)
 	return 0;
 }
 
+static bool msm8226_swap_gnd_mic(struct snd_soc_codec *codec)
+{
+	struct snd_soc_card *card = codec->card;
+	struct msm8226_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	int value = gpio_get_value_cansleep(pdata->us_euro_gpio);
+
+	pr_debug("%s: swap select switch %d to %d\n", __func__, value, !value);
+	gpio_direction_output(pdata->us_euro_gpio, !value);
+
+	return true;
+}
+
+static int msm8226_setup_hs_jack(struct platform_device *pdev,
+		struct msm8226_asoc_mach_data *pdata)
+{
+	int rc;
+
+	pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
+				"qcom,cdc-us-euro-gpios", 0);
+	if (pdata->us_euro_gpio < 0) {
+		dev_info(&pdev->dev,
+			"property %s in node %s not found %d\n",
+			"qcom,cdc-us-euro-gpios", pdev->dev.of_node->full_name,
+			pdata->us_euro_gpio);
+	} else {
+		rc = gpio_request(pdata->us_euro_gpio,
+						  "TAPAN_CODEC_US_EURO_GPIO");
+		if (rc) {
+			dev_err(&pdev->dev,
+				"%s: Failed to request tapan us-euro gpio %d\n",
+				__func__, pdata->us_euro_gpio);
+		} else {
+			mbhc_cfg.swap_gnd_mic = msm8226_swap_gnd_mic;
+		}
+	}
+	return 0;
+}
+
 static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &snd_soc_card_msm8226;
@@ -1441,6 +1481,7 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 
 	mbhc_cfg.gpio_level_insert = of_property_read_bool(pdev->dev.of_node,
 					"qcom,headset-jack-type-NO");
+	msm8226_setup_hs_jack(pdev, pdata);
 
 	ret = msm8226_prepare_codec_mclk(card);
 	if (ret)
@@ -1504,6 +1545,9 @@ static int __devexit msm8226_asoc_machine_remove(struct platform_device *pdev)
 
 	gpio_free(pdata->mclk_gpio);
 	gpio_free(vdd_spkr_gpio);
+	if (pdata->us_euro_gpio > 0)
+		gpio_free(pdata->us_euro_gpio);
+
 	vdd_spkr_gpio = -1;
 	snd_soc_unregister_card(card);
 

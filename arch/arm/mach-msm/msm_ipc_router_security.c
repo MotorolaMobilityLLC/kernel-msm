@@ -22,6 +22,7 @@
 #include <linux/uaccess.h>
 #include <linux/kernel.h>
 #include <linux/msm_ipc.h>
+#include <linux/rwsem.h>
 
 #include <asm/uaccess.h>
 
@@ -31,6 +32,11 @@
 
 #define IRSC_COMPLETION_TIMEOUT_MS 30000
 #define SEC_RULES_HASH_SZ 32
+
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
+#endif
+
 struct security_rule {
 	struct list_head list;
 	uint32_t service_id;
@@ -40,7 +46,7 @@ struct security_rule {
 	gid_t *group_id;
 };
 
-static DEFINE_MUTEX(security_rules_lock);
+static DECLARE_RWSEM(security_rules_lock_lha4);
 static struct list_head security_rules[SEC_RULES_HASH_SZ];
 static DECLARE_COMPLETION(irsc_completion);
 
@@ -98,7 +104,7 @@ int msm_ipc_config_sec_rules(void *arg)
 	struct config_sec_rules_args sec_rules_arg;
 	struct security_rule *rule, *temp_rule;
 	int key;
-	int group_info_sz;
+	size_t group_info_sz;
 	int ret;
 
 	if (current_euid())
@@ -112,12 +118,12 @@ int msm_ipc_config_sec_rules(void *arg)
 	if (sec_rules_arg.num_group_info <= 0)
 		return -EINVAL;
 
-	group_info_sz = sec_rules_arg.num_group_info * sizeof(gid_t);
-	if ((group_info_sz / sizeof(gid_t)) != sec_rules_arg.num_group_info) {
+	if (sec_rules_arg.num_group_info > (SIZE_MAX / sizeof(gid_t))) {
 		pr_err("%s: Integer Overflow %d * %d\n", __func__,
 			sizeof(gid_t), sec_rules_arg.num_group_info);
 		return -EINVAL;
 	}
+	group_info_sz = sec_rules_arg.num_group_info * sizeof(gid_t);
 
 	rule = kzalloc(sizeof(struct security_rule), GFP_KERNEL);
 	if (!rule) {
@@ -146,7 +152,7 @@ int msm_ipc_config_sec_rules(void *arg)
 	}
 
 	key = rule->service_id & (SEC_RULES_HASH_SZ - 1);
-	mutex_lock(&security_rules_lock);
+	down_write(&security_rules_lock_lha4);
 	if (rule->service_id == ALL_SERVICE) {
 		temp_rule = list_first_entry(&security_rules[key],
 					     struct security_rule, list);
@@ -155,7 +161,7 @@ int msm_ipc_config_sec_rules(void *arg)
 		kfree(temp_rule);
 	}
 	list_add_tail(&rule->list, &security_rules[key]);
-	mutex_unlock(&security_rules_lock);
+	up_write(&security_rules_lock_lha4);
 
 	if (rule->service_id == ALL_SERVICE)
 		msm_ipc_sync_default_sec_rule((void *)rule);
@@ -198,10 +204,10 @@ static int msm_ipc_add_default_rule(void)
 	rule->instance_id = ALL_INSTANCE;
 	rule->num_group_info = 1;
 	*(rule->group_id) = AID_NET_RAW;
-	mutex_lock(&security_rules_lock);
+	down_write(&security_rules_lock_lha4);
 	key = (ALL_SERVICE & (SEC_RULES_HASH_SZ - 1));
 	list_add_tail(&rule->list, &security_rules[key]);
-	mutex_unlock(&security_rules_lock);
+	up_write(&security_rules_lock_lha4);
 	return 0;
 }
 
@@ -222,12 +228,12 @@ void *msm_ipc_get_security_rule(uint32_t service_id, uint32_t instance_id)
 	struct security_rule *rule;
 
 	key = (service_id & (SEC_RULES_HASH_SZ - 1));
-	mutex_lock(&security_rules_lock);
+	down_read(&security_rules_lock_lha4);
 	/* Return the rule for a specific <service:instance>, if found. */
 	list_for_each_entry(rule, &security_rules[key], list) {
 		if ((rule->service_id == service_id) &&
 		    (rule->instance_id == instance_id)) {
-			mutex_unlock(&security_rules_lock);
+			up_read(&security_rules_lock_lha4);
 			return (void *)rule;
 		}
 	}
@@ -236,7 +242,7 @@ void *msm_ipc_get_security_rule(uint32_t service_id, uint32_t instance_id)
 	list_for_each_entry(rule, &security_rules[key], list) {
 		if ((rule->service_id == service_id) &&
 		    (rule->instance_id == ALL_INSTANCE)) {
-			mutex_unlock(&security_rules_lock);
+			up_read(&security_rules_lock_lha4);
 			return (void *)rule;
 		}
 	}
@@ -246,10 +252,11 @@ void *msm_ipc_get_security_rule(uint32_t service_id, uint32_t instance_id)
 	list_for_each_entry(rule, &security_rules[key], list) {
 		if ((rule->service_id == ALL_SERVICE) &&
 		    (rule->instance_id == ALL_INSTANCE)) {
-			mutex_unlock(&security_rules_lock);
+			up_read(&security_rules_lock_lha4);
 			return (void *)rule;
 		}
 	}
+	up_read(&security_rules_lock_lha4);
 	return NULL;
 }
 EXPORT_SYMBOL(msm_ipc_get_security_rule);

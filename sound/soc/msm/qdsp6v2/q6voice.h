@@ -14,6 +14,7 @@
 
 #include <mach/qdsp6v2/apr.h>
 #include <linux/msm_ion.h>
+#include <sound/voice_params.h>
 
 #define MAX_VOC_PKT_SIZE 642
 #define SESSION_NAME_LEN 20
@@ -41,11 +42,15 @@ struct voice_init {
 	void *cb_handle;
 };
 
-/* Device information payload structure */
+/* Stream information payload structure */
+struct stream_data {
+	uint32_t stream_mute;
+};
 
+/* Device information payload structure */
 struct device_data {
 	uint32_t volume; /* in index */
-	uint32_t mute;
+	uint32_t dev_mute;
 	uint32_t sample;
 	uint32_t enabled;
 	uint32_t dev_id;
@@ -194,9 +199,6 @@ struct vss_unmap_memory_cmd {
 #define VSS_ICOMMON_CMD_SET_VOICE_TIMING		0x000111E0
 /* Set the voice timing parameters. */
 
-#define VSS_IWIDEVOICE_CMD_SET_WIDEVOICE                0x00011243
-/* Enable/disable WideVoice */
-
 #define VSS_IMEMORY_CMD_MAP_PHYSICAL			0x00011334
 #define VSS_IMEMORY_RSP_MAP				0x00011336
 #define VSS_IMEMORY_CMD_UNMAP				0x00011337
@@ -291,14 +293,6 @@ struct vss_imvm_cmd_set_policy_dual_control_t {
 	/* Set to TRUE to enable modem state machine control */
 } __packed;
 
-struct vss_iwidevoice_cmd_set_widevoice_t {
-	uint32_t enable;
-	/* WideVoice enable/disable; possible values:
-	* - 0 -- WideVoice disabled
-	* - 1 -- WideVoice enabled
-	*/
-} __packed;
-
 struct mvm_attach_vocproc_cmd {
 	struct apr_hdr hdr;
 	struct vss_istream_cmd_attach_vocproc_t mvm_attach_cvp_handle;
@@ -342,11 +336,6 @@ struct mvm_set_network_cmd {
 struct mvm_set_voice_timing_cmd {
 	struct apr_hdr hdr;
 	struct vss_icommon_cmd_set_voice_timing_t timing;
-} __packed;
-
-struct mvm_set_widevoice_enable_cmd {
-	struct apr_hdr hdr;
-	struct vss_iwidevoice_cmd_set_widevoice_t vss_set_wv;
 } __packed;
 
 struct vss_imemory_table_descriptor_t {
@@ -484,7 +473,6 @@ struct vss_imemory_cmd_unmap_t {
 #define VSS_ISTREAM_CMD_SET_ENC_DTX_MODE		0x0001101D
 /* Set encoder DTX mode. */
 
-#define MODULE_ID_VOICE_MODULE_FENS			0x00010EEB
 #define MODULE_ID_VOICE_MODULE_ST			0x00010EE3
 #define VOICE_PARAM_MOD_ENABLE				0x00010E00
 #define MOD_ENABLE_PARAM_LEN				4
@@ -904,7 +892,7 @@ struct vss_istream_cmd_set_packet_exchange_mode_t {
 
 #define APRV2_IBASIC_CMD_DESTROY_SESSION		0x0001003C
 
-#define VSS_IVOCPROC_CMD_SET_DEVICE			0x000100C4
+#define VSS_IVOCPROC_CMD_SET_DEVICE_V2			0x000112C6
 
 #define VSS_IVOCPROC_CMD_SET_VP3_DATA			0x000110EB
 
@@ -1042,8 +1030,8 @@ struct vss_ivocproc_cmd_set_volume_index_t {
 	 */
 } __packed;
 
-struct vss_ivocproc_cmd_set_device_t {
-	uint32_t tx_port_id;
+struct vss_ivocproc_cmd_set_device_v2_t {
+	uint16_t tx_port_id;
 	/*
 	 * TX device port ID which vocproc will connect to.
 	 * VSS_IVOCPROC_PORT_ID_NONE means vocproc will not connect to any port.
@@ -1054,7 +1042,7 @@ struct vss_ivocproc_cmd_set_device_t {
 	 * VSS_IVOCPROC_TOPOLOGY_ID_NONE means vocproc does not contain any
 	 * pre/post-processing blocks and is pass-through.
 	 */
-	int32_t rx_port_id;
+	uint16_t rx_port_id;
 	/*
 	 * RX device port ID which vocproc will connect to.
 	 * VSS_IVOCPROC_PORT_ID_NONE means vocproc will not connect to any port.
@@ -1064,6 +1052,15 @@ struct vss_ivocproc_cmd_set_device_t {
 	 * RX leg topology ID.
 	 * VSS_IVOCPROC_TOPOLOGY_ID_NONE means vocproc does not contain any
 	 * pre/post-processing blocks and is pass-through.
+	 */
+	uint32_t vocproc_mode;
+	/* Vocproc mode. The supported values:
+	 * VSS_IVOCPROC_VOCPROC_MODE_EC_INT_MIXING - 0x00010F7C
+	 * VSS_IVOCPROC_VOCPROC_MODE_EC_EXT_MIXING - 0x00010F7D
+	 */
+	uint16_t ec_ref_port_id;
+	/* Port ID to which the vocproc connects for receiving
+	 * echo
 	 */
 } __packed;
 
@@ -1128,7 +1125,7 @@ struct cvp_command {
 
 struct cvp_set_device_cmd {
 	struct apr_hdr hdr;
-	struct vss_ivocproc_cmd_set_device_t cvp_set_device;
+	struct vss_ivocproc_cmd_set_device_v2_t cvp_set_device_v2;
 } __packed;
 
 struct cvp_set_vp3_data_cmd {
@@ -1230,9 +1227,13 @@ struct voice_data {
 	wait_queue_head_t cvs_wait;
 	wait_queue_head_t cvp_wait;
 
-	/* cache the values related to Rx and Tx */
+	/* Cache the values related to Rx and Tx devices */
 	struct device_data dev_rx;
 	struct device_data dev_tx;
+
+	/* Cache the values related to Rx and Tx streams */
+	struct stream_data stream_rx;
+	struct stream_data stream_tx;
 
 	u32 mvm_state;
 	u32 cvs_state;
@@ -1249,14 +1250,11 @@ struct voice_data {
 
 	uint16_t sidetone_gain;
 	uint8_t tty_mode;
-	/* widevoice enable value */
-	uint8_t wv_enable;
 	/* slowtalk enable value */
 	uint32_t st_enable;
-	/* FENC enable value */
-	uint32_t fens_enable;
-
 	uint32_t dtmf_rx_detect_en;
+	/* Local Call Hold mode */
+	uint8_t lch_mode;
 
 	struct voice_dev_route_state voc_route_state;
 
@@ -1345,14 +1343,13 @@ enum {
 int voc_set_pp_enable(uint16_t session_id, uint32_t module_id,
 		      uint32_t enable);
 int voc_get_pp_enable(uint16_t session_id, uint32_t module_id);
-int voc_set_widevoice_enable(uint16_t session_id, uint32_t wv_enable);
-uint32_t voc_get_widevoice_enable(uint16_t session_id);
 uint8_t voc_get_tty_mode(uint16_t session_id);
 int voc_set_tty_mode(uint16_t session_id, uint8_t tty_mode);
 int voc_start_voice_call(uint16_t session_id);
 int voc_end_voice_call(uint16_t session_id);
 int voc_standby_voice_call(uint16_t session_id);
 int voc_resume_voice_call(uint16_t session_id);
+int voc_set_lch(uint16_t session_id, enum voice_lch_mode lch_mode);
 int voc_set_rxtx_port(uint16_t session_id,
 		      uint32_t dev_port_id,
 		      uint32_t dev_type);

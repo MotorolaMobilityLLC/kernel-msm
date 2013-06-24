@@ -306,6 +306,7 @@ config ARCH_APQ8084
 	select ARCH_WANT_KMAP_ATOMIC_FLUSH
 	select MEMORY_HOLE_CARVEOUT
 	select DONT_MAP_HOLE_AFTER_MEMBANK0
+	select QMI_ENCDEC
 
 config ARCH_MPQ8092
 	bool "MPQ8092"
@@ -2732,14 +2733,25 @@ config MSM_OCMEM_POWER_DEBUG
 	  related operations of OCMEM. Both local power management
 	  and RPM assisted power management operations are supported.
 
-config MSM_OCMEM_POWER_DISABLE
-	bool "OCMEM Disable Power Control"
+config MSM_OCMEM_DEBUG_ALWAYS_ON
+	bool "Keep OCMEM always turned ON"
 	depends on MSM_OCMEM_DEBUG
 	help
+	  Always vote for all OCMEM clocks and keep all OCMEM
+	  macros turned ON and never allow them to be turned OFF.
+	  Both local power management and RPM assisted power modes
+	  are supported for individual macro power control operations.
+
+config MSM_OCMEM_POWER_DISABLE
+	bool "OCMEM Disable Power Control"
+	depends on MSM_OCMEM
+	help
 	  Disable all OCMEM power management.
-	  This keeps all OCMEM macros turned ON at all times thus
-	  never allowing them to be turned OFF. Both local power
-	  management and RPM assisted power modes are supported.
+	  Skip all OCMEM power operations that turn ON or
+	  turn OFF the macros. Both local power management and
+	  RPM assisted power management operations are skipped.
+	  Enable this configuration if OCMEM is being exclusively
+	  used as GMEM or OCIMEM.
 
 config SENSORS_ADSP
 	bool "Enable Sensors Driver Support for ADSP"
@@ -3023,4 +3035,21 @@ config MSM_CPR_REGULATOR
 	  suggestions in efuse as initial settings. It converts corner vote
 	  to voltage value before writing to a voltage regulator API, such as
 	  that provided by spm-regulator driver.
+
+config WALL_CLK
+	tristate "Wall Clock hardware block simulation"
+	depends on ARCH_APQ8064
+	help
+	 This driver simulates the wall-clock hardware block on fsm8064_ep
+	 femto emulation platform. This block will be used to provide
+	 clock information to the LTE Layer 2 module running on the hexagon
+	 processor.
+
+config WALL_CLK_SYSFS
+	tristate "Wall Clock SysFS Support"
+	depends on SYSFS && WALL_CLK
+	help
+	 Support the wallclk directory in sysfs filesystem to enable the
+	 wall clock simulation and read the current SFN.
+
 endif

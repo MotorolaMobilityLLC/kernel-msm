@@ -85,11 +85,11 @@
 #include "pm.h"
 #include "pm-boot.h"
 #include "devices-msm8x60.h"
-#include "smd_private.h"
 #include "platsmp.h"
 
 #define MHL_GPIO_INT           30
 #define MHL_GPIO_RESET         35
+#include "sysmon.h"
 
 #define MSM_PMEM_ADSP_SIZE         0x7800000
 #define MSM_PMEM_AUDIO_SIZE        0x4CF000
@@ -1902,6 +1902,8 @@ static struct mdm_platform_data mdm_platform_data = {
 	.peripheral_platform_device = &apq8064_device_hsic_host,
 	.ramdump_timeout_ms = 120000,
 	.mdm2ap_status_gpio_run_cfg = &mdm2ap_status_gpio_run_cfg,
+	.sysmon_subsys_id_valid = 1,
+	.sysmon_subsys_id = SYSMON_SS_EXT_MODEM,
 };
 
 static struct tsens_platform_data apq_tsens_pdata  = {

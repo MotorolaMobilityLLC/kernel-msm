@@ -125,7 +125,6 @@ static void compr_event_handler(uint32_t opcode,
 	int i = 0;
 	int time_stamp_flag = 0;
 	int buffer_length = 0;
-	int stop_playback = 0;
 
 	pr_debug("%s opcode =%08x\n", __func__, opcode);
 	switch (opcode) {
@@ -150,15 +149,9 @@ static void compr_event_handler(uint32_t opcode,
 		/*
 		 * check for underrun
 		 */
-		snd_pcm_stream_lock_irq(substream);
-		if (snd_pcm_playback_empty(substream)) {
+		if (runtime->status->hw_ptr >= runtime->control->appl_ptr) {
+			pr_err("render stopped");
 			runtime->render_flag |= SNDRV_RENDER_STOPPED;
-			stop_playback = 1;
-		}
-		snd_pcm_stream_unlock_irq(substream);
-
-		if (stop_playback) {
-			pr_err("%s empty buffer, stop writes\n", __func__);
 			break;
 		}
 
@@ -493,15 +486,6 @@ static int msm_compr_trigger(struct snd_pcm_substream *substream, int cmd)
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		prtd->pcm_irq_pos = 0;
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			if (!atomic_cmpxchg(&compressed_audio.audio_ocmem_req,
-									0, 1))
-				audio_ocmem_process_req(AUDIO, true);
-			else
-				atomic_inc(&compressed_audio.audio_ocmem_req);
-			pr_debug("%s: req: %d\n", __func__,
-			atomic_read(&compressed_audio.audio_ocmem_req));
-		}
 
 		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 			switch (compr->info.codec_param.codec.id) {
@@ -624,17 +608,32 @@ static int msm_compr_open(struct snd_pcm_substream *substream)
 	runtime->private_data = compr;
 	atomic_set(&prtd->eos, 0);
 	compressed_audio.prtd =  &compr->prtd;
-
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (!atomic_cmpxchg(&compressed_audio.audio_ocmem_req, 0, 1))
+			audio_ocmem_process_req(AUDIO, true);
+		else
+			atomic_inc(&compressed_audio.audio_ocmem_req);
+		pr_debug("%s: req: %d\n", __func__,
+			atomic_read(&compressed_audio.audio_ocmem_req));
+	}
 	return 0;
 }
 
 int compressed_set_volume(unsigned volume)
 {
 	int rc = 0;
+	int avg_vol = 0;
 	if (compressed_audio.prtd && compressed_audio.prtd->audio_client) {
-		rc = q6asm_set_lrgain(compressed_audio.prtd->audio_client,
-						(volume >> 16) & 0xFFFF,
-						volume & 0xFFFF);
+		if (compressed_audio.prtd->channel_mode > 2) {
+			avg_vol = (((volume >> 16) & 0xFFFF) +
+				   (volume & 0xFFFF)) / 2;
+			rc = q6asm_set_volume(
+				compressed_audio.prtd->audio_client, avg_vol);
+		} else {
+			rc = q6asm_set_lrgain(
+				compressed_audio.prtd->audio_client,
+				(volume >> 16) & 0xFFFF, volume & 0xFFFF);
+		}
 		if (rc < 0) {
 			pr_err("%s: Send Volume command failed rc=%d\n",
 						__func__, rc);
@@ -742,8 +741,16 @@ static int msm_compr_mmap(struct snd_pcm_substream *substream,
 	struct msm_audio *prtd = runtime->private_data;
 	struct audio_client *ac = prtd->audio_client;
 	struct audio_port_data *apd = ac->port;
-	struct audio_buffer *ab = &(apd[IN].buf[0]);
+	struct audio_buffer *ab;
+	int dir = -1;
+
 	prtd->mmap_flag = 1;
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		dir = IN;
+	else
+		dir = OUT;
+	ab = &(apd[dir].buf[0]);
 
 	return msm_audio_ion_mmap(ab, vma);
 }
@@ -794,6 +801,11 @@ static int msm_compr_hw_params(struct snd_pcm_substream *substream,
 			prtd->audio_client->perf_mode,
 			prtd->session_id,
 			substream->stream);
+		/* the number of channels are required to call volume api
+		   accoridngly. So, get channels from hw params */
+		if ((params_channels(params) > 0) &&
+		    (params_periods(params) <= runtime->hw.channels_max))
+			prtd->channel_mode = params_channels(params);
 
 		ret = compressed_set_volume(0);
 		if (ret < 0)
@@ -1047,7 +1059,7 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 			}
 			rc = wait_event_timeout(the_locks.flush_wait,
 				prtd->cmd_ack, 5 * HZ);
-			if (rc < 0)
+			if (!rc)
 				pr_err("Flush cmd timeout\n");
 			prtd->pcm_irq_pos = 0;
 		}

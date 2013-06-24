@@ -4055,11 +4055,13 @@ static void mpq_sdmx_pes_filter_results(struct mpq_demux *mpq_demux,
 		pes_event.pes_end.start_gap = 0;
 		pes_event.data_length = 0;
 
-		/* Parse error indicators - TODO: these should be per filter */
+		/* Parse error indicators */
 		if (sts->error_indicators & SDMX_FILTER_ERR_INVALID_PES_LEN)
 			pes_event.pes_end.pes_length_mismatch = 1;
-		if (sts->error_indicators & SDMX_FILTER_ERR_CONT_CNT_INVALID)
-			pes_event.pes_end.disc_indicator_set = 0;
+		else
+			pes_event.pes_end.pes_length_mismatch = 0;
+
+		pes_event.pes_end.disc_indicator_set = 0;
 
 		pes_event.pes_end.stc = 0;
 		pes_event.pes_end.tei_counter = counters.transport_err_count;
@@ -4606,10 +4608,10 @@ static int mpq_sdmx_process_buffer(struct mpq_demux *mpq_demux,
 		mpq_demux->sdmx_filter_count, mpq_demux->filters_status);
 
 	process_end_time = current_kernel_time();
-	mpq_dmx_update_sdmx_stat(mpq_demux, prev_fill_count,
-		&process_start_time, &process_end_time);
-
 	bytes_read = prev_fill_count - fill_count;
+
+	mpq_dmx_update_sdmx_stat(mpq_demux, bytes_read,
+			&process_start_time, &process_end_time);
 
 	MPQ_DVB_DBG_PRINT(
 		"%s: SDMX result=%d, input_fill_count=%u, read_offset=%u, read %d bytes from input, status=0x%X, errors=0x%X\n",

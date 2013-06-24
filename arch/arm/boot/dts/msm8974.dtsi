@@ -26,6 +26,35 @@
 		sdhc4 = &sdhc_4; /* SDC4 SDIO slot */
 	};
 
+	cpus {
+		#size-cells = <0>;
+		#address-cells = <1>;
+
+		CPU0: cpu@0 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x0>;
+		};
+
+		CPU1: cpu@1 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x1>;
+		};
+
+		CPU2: cpu@2 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x2>;
+		};
+
+		CPU3: cpu@3 {
+			device_type = "cpu";
+			compatible = "qcom,krait";
+			reg = <0x3>;
+		};
+	};
+
 	memory {
 		secure_mem: secure_region {
 			linux,contiguous-region;
@@ -208,8 +237,8 @@
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
-				<84 512 0 0>,
-				<84 512 500 800>;
+				<86 512 0 0>,
+				<86 512 500 800>;
 	};
 
 	usb_otg: usb@f9a55000 {
@@ -616,7 +645,9 @@
 			elemental-addr = [00 01 A0 00 17 02];
 
 			interrupt-parent = <&wcd9xxx_intc>;
-			interrupts = <0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28>;
+			interrupts = <0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+				      17 18 19 20 21 22 23 24 25 26 27 28 29
+				      30>;
 
 			qcom,cdc-reset-gpio = <&msmgpio 63 0>;
 
@@ -738,6 +769,7 @@
 		interrupt-names = "qup_err_intr";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <50000000>;
+		qcom,master-id = <84>;
 	};
 
 	i2c_1: i2c@f9923000 {
@@ -753,6 +785,7 @@
 		qcom,i2c-src-freq = <19200000>;
 		qcom,scl-gpio = <&msmgpio 3 0>;
 		qcom,sda-gpio = <&msmgpio 2 0>;
+		qcom,master-id = <86>;
 		status = "disabled";
 	};
 
@@ -767,6 +800,7 @@
 		interrupt-names = "qup_err_intr";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <50000000>;
+		qcom,master-id = <86>;
 	};
 
 	spi_0: spi@f9923000 {
@@ -1181,8 +1215,8 @@
 		qcom,iris-vdddig-supply = <&pm8941_l3>;
 
 		gpios = <&msmgpio 36 0>, <&msmgpio 37 0>, <&msmgpio 38 0>, <&msmgpio 39 0>, <&msmgpio 40 0>;
-		qcom,has_48mhz_xo;
-		qcom,has_pronto_hw;
+		qcom,has-48mhz-xo;
+		qcom,has-pronto-hw;
 	};
 
 	qcom,ocmem@fdd00000 {
@@ -1584,6 +1618,7 @@
 
 &gdsc_venus {
 	qcom,clock-names = "core_clk";
+	qcom,skip-logic-collapse;
 	status = "ok";
 };
 

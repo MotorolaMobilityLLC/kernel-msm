@@ -55,6 +55,7 @@ struct adm_ctl {
 	atomic_t mem_map_cal_index;
 
 	int set_custom_topology;
+	int ec_ref_rx;
 };
 
 static struct adm_ctl			this_adm;
@@ -965,7 +966,13 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 
 		open.mode_of_operation = path;
 		open.endpoint_id_1 = tmp_port;
-		open.endpoint_id_2 = 0xFFFF;
+
+		if (this_adm.ec_ref_rx == -1) {
+			open.endpoint_id_2 = 0xFFFF;
+		} else if (this_adm.ec_ref_rx && (path != 1)) {
+			open.endpoint_id_2 = this_adm.ec_ref_rx;
+			this_adm.ec_ref_rx = -1;
+		}
 
 		open.topology_id = topology;
 		if ((open.topology_id == VPM_TX_SM_ECNS_COPP_TOPOLOGY) ||
@@ -1187,24 +1194,7 @@ int adm_matrix_map(int session_id, int path, int num_copps,
 		ret = -EINVAL;
 		goto fail_cmd;
 	}
-	if (perf_mode) {
-		for (i = 0; i < num_copps; i++) {
-			int tmp;
-
-			tmp = afe_get_port_index(port_id[i]);
-			if (tmp >= 0 && tmp < AFE_MAX_PORTS) {
-				rtac_add_adm_device(port_id[i], atomic_read(
-					&this_adm.copp_low_latency_id[tmp]),
-					path, session_id);
-				pr_debug("%s, copp_id: %d\n", __func__,
-					atomic_read(
-					&this_adm.copp_low_latency_id[tmp]));
-			} else {
-				pr_debug("%s: Invalid port index %d",
-					__func__, tmp);
-			}
-		}
-	} else {
+	if (!perf_mode) {
 		for (i = 0; i < num_copps; i++)
 			send_adm_cal(port_id[i], path);
 
@@ -1383,6 +1373,12 @@ int adm_get_copp_id(int port_index)
 	return atomic_read(&this_adm.copp_id[port_index]);
 }
 
+void adm_ec_ref_rx_id(int port_id)
+{
+	this_adm.ec_ref_rx = port_id;
+	pr_debug("%s ec_ref_rx:%d", __func__, this_adm.ec_ref_rx);
+}
+
 int adm_close(int port_id, bool perf_mode)
 {
 	struct apr_hdr close;
@@ -1473,8 +1469,8 @@ int adm_close(int port_id, bool perf_mode)
 			goto fail_cmd;
 		}
 	}
-	if (!atomic_read(&this_adm.copp_cnt[index]) &&
-		!atomic_read(&this_adm.copp_low_latency_cnt[index])) {
+
+	if (!perf_mode) {
 		pr_debug("%s: remove adm device from rtac\n", __func__);
 		rtac_remove_adm_device(port_id);
 	}
@@ -1488,6 +1484,7 @@ static int __init adm_init(void)
 	int i = 0;
 	this_adm.apr = NULL;
 	this_adm.set_custom_topology = 1;
+	this_adm.ec_ref_rx = -1;
 
 	for (i = 0; i < AFE_MAX_PORTS; i++) {
 		atomic_set(&this_adm.copp_id[i], RESET_COPP_ID);

@@ -414,7 +414,7 @@ static int msm_pcm_playback_copy(struct snd_pcm_substream *substream, int a,
 				__func__, atomic_read(&prtd->out_count));
 	ret = wait_event_timeout(the_locks.write_wait,
 			(atomic_read(&prtd->out_count)), 5 * HZ);
-	if (ret < 0) {
+	if (!ret) {
 		pr_err("%s: wait_event_timeout failed\n", __func__);
 		goto fail;
 	}
@@ -474,7 +474,7 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 		dir = IN;
 		ret = wait_event_timeout(the_locks.eos_wait,
 					prtd->cmd_ack, 5 * HZ);
-		if (ret < 0)
+		if (!ret)
 			pr_err("%s: CMD_EOS failed\n", __func__);
 		q6asm_cmd(prtd->audio_client, CMD_CLOSE);
 		q6asm_audio_client_buf_free_contiguous(dir,
@@ -513,7 +513,7 @@ static int msm_pcm_capture_copy(struct snd_pcm_substream *substream,
 
 	ret = wait_event_timeout(the_locks.read_wait,
 			(atomic_read(&prtd->in_count)), 5 * HZ);
-	if (ret < 0) {
+	if (!ret) {
 		pr_debug("%s: wait_event_timeout failed\n", __func__);
 		goto fail;
 	}
@@ -637,8 +637,16 @@ static int msm_pcm_mmap(struct snd_pcm_substream *substream,
 	struct msm_audio *prtd = runtime->private_data;
 	struct audio_client *ac = prtd->audio_client;
 	struct audio_port_data *apd = ac->port;
-	struct audio_buffer *ab = &(apd[IN].buf[0]);
+	struct audio_buffer *ab;
+	int dir = -1;
+
 	prtd->mmap_flag = 1;
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		dir = IN;
+	else
+		dir = OUT;
+	ab = &(apd[dir].buf[0]);
 
 	return msm_audio_ion_mmap(ab, vma);
 }

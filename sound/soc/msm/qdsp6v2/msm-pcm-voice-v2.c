@@ -281,6 +281,58 @@ static int msm_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	return ret;
 }
 
+static int msm_pcm_ioctl(struct snd_pcm_substream *substream,
+			 unsigned int cmd, void *arg)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct msm_voice *prtd = runtime->private_data;
+	uint16_t session_id = get_session_id(prtd);
+	enum voice_lch_mode lch_mode;
+	int ret = 0;
+
+	switch (cmd) {
+	case SNDRV_VOICE_IOCTL_LCH:
+		if (copy_from_user(&lch_mode, (void *)arg,
+				   sizeof(enum voice_lch_mode))) {
+			pr_err("%s: Copy from user failed, size %d\n", __func__,
+			       sizeof(enum voice_lch_mode));
+
+			ret = -EFAULT;
+			break;
+		}
+
+		pr_debug("%s: %s lch_mode:%d\n",
+			 __func__, substream->pcm->id, lch_mode);
+
+		switch (lch_mode) {
+		case VOICE_LCH_START:
+		case VOICE_LCH_STOP:
+			ret = voc_set_lch(session_id, lch_mode);
+			break;
+
+		default:
+			pr_err("%s: Invalid LCH MODE %d\n", __func__, lch_mode);
+
+			ret = -EFAULT;
+		}
+
+		break;
+	default:
+		pr_debug("%s: Falling into default snd_lib_ioctl cmd 0x%x\n",
+			 __func__, cmd);
+
+		ret = snd_pcm_lib_ioctl(substream, cmd, arg);
+		break;
+	}
+
+	if (!ret)
+		pr_debug("%s: ret %d\n", __func__, ret);
+	else
+		pr_err("%s: cmd 0x%x failed %d\n", __func__, cmd, ret);
+
+	return ret;
+}
+
 static int msm_voice_volume_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -476,29 +528,6 @@ static int msm_voice_tty_mode_put(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
-static int msm_voice_widevoice_put(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	int wv_enable = ucontrol->value.integer.value[0];
-
-	pr_debug("%s: wv enable=%d\n", __func__, wv_enable);
-
-	voc_set_widevoice_enable(voc_get_session_id(VOICE_SESSION_NAME),
-				 wv_enable);
-	voc_set_widevoice_enable(voc_get_session_id(VOICE2_SESSION_NAME),
-				 wv_enable);
-
-	return 0;
-}
-
-static int msm_voice_widevoice_get(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] =
-	       voc_get_widevoice_enable(voc_get_session_id(VOICE_SESSION_NAME));
-	return 0;
-}
-
 
 static int msm_voice_slowtalk_put(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
@@ -524,30 +553,6 @@ static int msm_voice_slowtalk_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int msm_voice_fens_put(struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol)
-{
-	int fens_enable = ucontrol->value.integer.value[0];
-
-	pr_debug("%s: fens enable=%d\n", __func__, fens_enable);
-
-	voc_set_pp_enable(voc_get_session_id(VOICE_SESSION_NAME),
-			  MODULE_ID_VOICE_MODULE_FENS, fens_enable);
-	voc_set_pp_enable(voc_get_session_id(VOICE2_SESSION_NAME),
-			  MODULE_ID_VOICE_MODULE_FENS, fens_enable);
-
-	return 0;
-}
-
-static int msm_voice_fens_get(struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] =
-		voc_get_pp_enable(voc_get_session_id(VOICE_SESSION_NAME),
-				MODULE_ID_VOICE_MODULE_FENS);
-	return 0;
-}
-
 static struct snd_kcontrol_new msm_voice_controls[] = {
 	SOC_SINGLE_EXT("Voice Rx Device Mute", SND_SOC_NOPM, 0, 1, 0,
 				msm_voice_rx_device_mute_get,
@@ -558,12 +563,8 @@ static struct snd_kcontrol_new msm_voice_controls[] = {
 				msm_voice_volume_get, msm_voice_volume_put),
 	SOC_ENUM_EXT("TTY Mode", msm_tty_mode_enum[0], msm_voice_tty_mode_get,
 				msm_voice_tty_mode_put),
-	SOC_SINGLE_EXT("Widevoice Enable", SND_SOC_NOPM, 0, 1, 0,
-			msm_voice_widevoice_get, msm_voice_widevoice_put),
 	SOC_SINGLE_EXT("Slowtalk Enable", SND_SOC_NOPM, 0, 1, 0,
 				msm_voice_slowtalk_get, msm_voice_slowtalk_put),
-	SOC_SINGLE_EXT("FENS Enable", SND_SOC_NOPM, 0, 1, 0,
-				msm_voice_fens_get, msm_voice_fens_put),
 	SOC_SINGLE_EXT("VoLTE Rx Device Mute", SND_SOC_NOPM, 0, 1, 0,
 			msm_volte_rx_device_mute_get,
 			msm_volte_rx_device_mute_put),
@@ -581,11 +582,12 @@ static struct snd_kcontrol_new msm_voice_controls[] = {
 };
 
 static struct snd_pcm_ops msm_pcm_ops = {
-	.open           = msm_pcm_open,
-	.hw_params	= msm_pcm_hw_params,
-	.close          = msm_pcm_close,
-	.prepare        = msm_pcm_prepare,
-	.trigger	= msm_pcm_trigger,
+	.open			= msm_pcm_open,
+	.hw_params		= msm_pcm_hw_params,
+	.close			= msm_pcm_close,
+	.prepare		= msm_pcm_prepare,
+	.trigger		= msm_pcm_trigger,
+	.ioctl			= msm_pcm_ioctl,
 };
 
 

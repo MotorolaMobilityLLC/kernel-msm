@@ -11,9 +11,10 @@
  */
 
 /include/ "dsi-panel-sharp-qhd-video.dtsi"
+/include/ "msm8974-camera-sensor-dragonboard.dtsi"
 /include/ "msm8974-leds.dtsi"
 
-/ {
+&soc {
 	serial@f991e000 {
 		status = "ok";
 	};
@@ -92,6 +93,7 @@
 	};
 
 	i2c@f9923000 {
+		status = "ok";
 		atmel_mxt_ts@4a {
 			compatible = "atmel,mxt-ts";
 			reg = <0x4a>;
@@ -538,12 +540,12 @@
 				qcom,cs-out-en;
 				qcom,op-fdbck = <1>;
 				qcom,default-state = "on";
-				qcom,max-current = <25>;
+				qcom,max-current = <20>;
 				qcom,ctrl-delay-us = <0>;
 				qcom,boost-curr-lim = <3>;
 				qcom,cp-sel = <0>;
 				qcom,switch-freq = <2>;
-				qcom,ovp-val = <2>;
+				qcom,ovp-val = <1>;
 				qcom,num-strings = <1>;
 				qcom,id = <0>;
 			};
@@ -554,25 +556,25 @@
 &pm8941_chg {
 	status = "ok";
 
-	qcom,chg-charging-disabled;
+	qcom,charging-disabled;
 
-	qcom,chg-chgr@1000 {
+	qcom,chgr@1000 {
 		status = "ok";
 	};
 
-	qcom,chg-buck@1100 {
+	qcom,buck@1100 {
 		status = "ok";
 	};
 
-	qcom,chg-usb-chgpth@1300 {
+	qcom,usb-chgpth@1300 {
 		status = "ok";
 	};
 
-	qcom,chg-dc-chgpth@1400 {
+	qcom,dc-chgpth@1400 {
 		status = "ok";
 	};
 
-	qcom,chg-boost@1500 {
+	qcom,boost@1500 {
 		status = "ok";
 	};
 

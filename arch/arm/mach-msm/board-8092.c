@@ -35,21 +35,6 @@
 #include "clock.h"
 #include "platsmp.h"
 
-static struct clk_lookup msm_clocks_dummy[] = {
-	CLK_DUMMY("core_clk",   BLSP1_UART_CLK, "msm_serial_hsl.0", OFF),
-	CLK_DUMMY("iface_clk",  BLSP1_UART_CLK, "msm_serial_hsl.0", OFF),
-	CLK_DUMMY("core_clk",	SDC1_CLK,	"msm_sdcc.1", OFF),
-	CLK_DUMMY("iface_clk",	SDC1_P_CLK,	"msm_sdcc.1", OFF),
-	CLK_DUMMY("core_clk",	SDC2_CLK,	"msm_sdcc.2", OFF),
-	CLK_DUMMY("iface_clk",	SDC2_P_CLK,	"msm_sdcc.2", OFF),
-
-};
-
-struct clock_init_data mpq8092_clock_init_data __initdata = {
-	.table = msm_clocks_dummy,
-	.size = ARRAY_SIZE(msm_clocks_dummy),
-};
-
 static struct memtype_reserve mpq8092_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
 	},
@@ -90,8 +75,6 @@ static void __init mpq8092_map_io(void)
 static struct of_dev_auxdata mpq8092_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-lsuart-v14", 0xF991F000, \
 			"msm_serial_hsl.0", NULL),
-	OF_DEV_AUXDATA("qcom,spmi-pmic-arb", 0xFC4C0000, \
-			"spmi-pmic-arb.0", NULL),
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
 			"msm_sdcc.1", NULL),
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, \

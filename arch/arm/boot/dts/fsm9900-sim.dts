@@ -10,13 +10,23 @@
  * GNU General Public License for more details.
  */
 
-#ifndef __ARCH_ARM_MACH_MSM_CLOCK_MDSS_8226
-#define __ARCH_ARM_MACH_MSM_CLOCK_MDSS_8226
+/dts-v1/;
 
-extern struct clk_ops clk_ops_dsi_byte_pll;
-extern struct clk_ops clk_ops_dsi_pixel_pll;
+/include/ "fsm9900.dtsi"
 
-void mdss_clk_ctrl_pre_init(struct clk *ahb_clk);
-void mdss_clk_ctrl_post_init(void);
+/ {
+	model = "Qualcomm FSM9900 Simulator";
+	compatible = "qcom,fsm9900-sim", "qcom,fsm9900", "qcom-sim";
+	qcom,msm-id = <188 0 0>;
 
-#endif /* __ARCH_ARM_MACH_MSM_CLOCK_MDSS_8226 */
+	aliases {
+		serial0 = &uart0;
+	};
+};
+
+&soc {
+	uart0: serial@f9960000 {
+		interrupts = <0 116 0>;
+		status = "ok";
+	};
+};

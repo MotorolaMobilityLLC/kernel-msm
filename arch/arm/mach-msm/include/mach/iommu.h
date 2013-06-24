@@ -186,6 +186,22 @@ struct msm_iommu_ctx_drvdata {
 	int attach_count;
 };
 
+struct msm_iommu_context_regs {
+	uint32_t far;
+	uint32_t par;
+	uint32_t fsr;
+	uint32_t fsynr0;
+	uint32_t fsynr1;
+	uint32_t ttbr0;
+	uint32_t ttbr1;
+	uint32_t sctlr;
+	uint32_t actlr;
+	uint32_t prrr;
+	uint32_t nmrr;
+};
+
+void print_ctx_regs(struct msm_iommu_context_regs *regs);
+
 /*
  * Interrupt handler for the IOMMU context fault interrupt. Hooking the
  * interrupt is not supported in the API yet, but this will print an error
@@ -193,6 +209,7 @@ struct msm_iommu_ctx_drvdata {
  */
 irqreturn_t msm_iommu_fault_handler(int irq, void *dev_id);
 irqreturn_t msm_iommu_fault_handler_v2(int irq, void *dev_id);
+irqreturn_t msm_iommu_secure_fault_handler_v2(int irq, void *dev_id);
 
 enum {
 	PROC_APPS,

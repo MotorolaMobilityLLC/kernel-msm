@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -228,6 +228,7 @@ static DEFINE_SPINLOCK(lock2);
 static unsigned long lock_flags2;
 
 static atomic_t sdio_dld_in_use = ATOMIC_INIT(0);
+static atomic_t sdio_dld_setup_done = ATOMIC_INIT(0);
 
 /*
  * sdio_op_mode sets the operation mode of the sdio_dloader -
@@ -2388,6 +2389,14 @@ int sdio_downloader_setup(struct mmc_card *card,
 	if (atomic_read(&sdio_dld_in_use) == 1)
 		return -EBUSY;
 
+	/*
+	 * If the setup is already complete tear down the existing
+	 * one and reinitialize. This might happen during modem restarts
+	 * in boot phase.
+	 */
+	if (atomic_read(&sdio_dld_setup_done) == 1)
+		sdio_dld_tear_down(NULL);
+
 	if (num_of_devices == 0 || num_of_devices > MAX_NUM_DEVICES) {
 		pr_err(MODULE_NAME ": %s - invalid number of devices\n",
 		       __func__);
@@ -2478,6 +2487,7 @@ int sdio_downloader_setup(struct mmc_card *card,
 		pr_err(MODULE_NAME ": %s - tty_register_device() "
 			"failed\n", __func__);
 		tty_unregister_driver(sdio_dld->tty_drv);
+		put_tty_driver(sdio_dld->tty_drv);
 		kfree(sdio_dld);
 		return PTR_ERR(tty_dev);
 	}
@@ -2518,6 +2528,7 @@ int sdio_downloader_setup(struct mmc_card *card,
 		goto exit_err;
 	}
 
+	atomic_set(&sdio_dld_setup_done, 1);
 	return 0;
 
 exit_err:
@@ -2526,7 +2537,9 @@ exit_err:
 	if (result)
 		pr_err(MODULE_NAME ": %s - tty_unregister_driver() "
 		       "failed. result=%d\n", __func__, -result);
+	put_tty_driver(sdio_dld->tty_drv);
 	kfree(sdio_dld);
+	atomic_set(&sdio_dld_setup_done, 0);
 	return status;
 }
 
@@ -2534,22 +2547,24 @@ static void sdio_dld_tear_down(struct work_struct *work)
 {
 	int status = 0;
 
-	del_timer_sync(&sdio_dld->timer);
-	del_timer_sync(&sdio_dld->push_timer);
-
-	sdio_dld_dealloc_local_buffers();
+	if (atomic_read(&sdio_dld_in_use) == 1) {
+		del_timer_sync(&sdio_dld->timer);
+		del_timer_sync(&sdio_dld->push_timer);
+		sdio_dld_dealloc_local_buffers();
+	}
 
 	tty_unregister_device(sdio_dld->tty_drv, 0);
 
 	status = tty_unregister_driver(sdio_dld->tty_drv);
-
 	if (status) {
 		pr_err(MODULE_NAME ": %s - tty_unregister_driver() failed\n",
 		       __func__);
 	}
 
+	put_tty_driver(sdio_dld->tty_drv);
 	kfree(sdio_dld);
 	atomic_set(&sdio_dld_in_use, 0);
+	atomic_set(&sdio_dld_setup_done, 0);
 }
 
 MODULE_LICENSE("GPL v2");

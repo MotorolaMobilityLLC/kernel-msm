@@ -123,6 +123,15 @@ static int mmc_bus_remove(struct device *dev)
 	return 0;
 }
 
+static void mmc_bus_shutdown(struct device *dev)
+{
+	struct mmc_driver *drv = to_mmc_driver(dev->driver);
+	struct mmc_card *card = mmc_dev_to_card(dev);
+
+	if (drv->shutdown)
+		drv->shutdown(card);
+}
+
 #ifdef CONFIG_PM_SLEEP
 static int mmc_bus_suspend(struct device *dev)
 {
@@ -153,10 +162,18 @@ static int mmc_runtime_suspend(struct device *dev)
 {
 	struct mmc_card *card = mmc_dev_to_card(dev);
 
-	if (mmc_use_core_runtime_pm(card->host))
-		return 0;
-	else
+	if (mmc_use_core_runtime_pm(card->host)) {
+		/*
+		 * If idle time bkops is running on the card, let's not get
+		 * into suspend.
+		 */
+		if (mmc_card_doing_bkops(card) && mmc_card_is_prog_state(card))
+			return -EBUSY;
+		else
+			return 0;
+	} else {
 		return mmc_power_save_host(card->host);
+	}
 }
 
 static int mmc_runtime_resume(struct device *dev)
@@ -238,6 +255,7 @@ static struct bus_type mmc_bus_type = {
 	.uevent		= mmc_bus_uevent,
 	.probe		= mmc_bus_probe,
 	.remove		= mmc_bus_remove,
+	.shutdown        = mmc_bus_shutdown,
 	.pm		= &mmc_bus_pm_ops,
 };
 

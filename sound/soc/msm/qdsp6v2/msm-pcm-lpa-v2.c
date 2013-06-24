@@ -364,7 +364,7 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 		pr_debug("%s\n", __func__);
 		rc = wait_event_timeout(the_locks.eos_wait,
 			prtd->cmd_ack, 5 * HZ);
-		if (rc < 0)
+		if (!rc)
 			pr_err("EOS cmd timeout\n");
 		prtd->pcm_irq_pos = 0;
 	}
@@ -427,8 +427,16 @@ static int msm_pcm_mmap(struct snd_pcm_substream *substream,
 	struct msm_audio *prtd = runtime->private_data;
 	struct audio_client *ac = prtd->audio_client;
 	struct audio_port_data *apd = ac->port;
-	struct audio_buffer *ab = &(apd[IN].buf[0]);
+	struct audio_buffer *ab;
+	int dir = -1;
+
 	prtd->mmap_flag = 1;
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		dir = IN;
+	else
+		dir = OUT;
+	ab = &(apd[dir].buf[0]);
 
 	return msm_audio_ion_mmap(ab, vma);
 }
@@ -565,7 +573,7 @@ static int msm_pcm_ioctl(struct snd_pcm_substream *substream,
 			pr_err("%s: flush cmd failed rc=%d\n", __func__, rc);
 		rc = wait_event_timeout(the_locks.eos_wait,
 			prtd->cmd_ack, 5 * HZ);
-		if (rc < 0)
+		if (!rc)
 			pr_err("Flush cmd timeout\n");
 		prtd->pcm_irq_pos = 0;
 		break;

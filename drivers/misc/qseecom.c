@@ -45,7 +45,6 @@
 #include "qseecom_kernel.h"
 
 #define QSEECOM_DEV			"qseecom"
-#define QSEOS_VERSION_13		0x13
 #define QSEOS_VERSION_14		0x14
 #define QSEEE_VERSION_00		0x400000
 #define QSEE_VERSION_01			0x401000
@@ -89,11 +88,6 @@ enum qseecom_ce_hw_instance {
 static struct class *driver_class;
 static dev_t qseecom_device_no;
 static struct cdev qseecom_cdev;
-
-/* Data structures used in legacy support */
-static void *pil;
-static uint32_t pil_ref_cnt;
-static DEFINE_MUTEX(pil_access_lock);
 
 static DEFINE_MUTEX(qsee_bw_mutex);
 static DEFINE_MUTEX(app_access_lock);
@@ -1004,27 +998,8 @@ static int qseecom_send_cmd(struct qseecom_dev_handle *data, void __user *argp)
 	return ret;
 }
 
-static int __qseecom_send_cmd_req_clean_up(
-			struct qseecom_send_modfd_cmd_req *req)
-{
-	char *field;
-	uint32_t *update;
-	int ret = 0;
-	int i = 0;
-
-	for (i = 0; i < MAX_ION_FD; i++) {
-		if (req->ifd_data[i].fd > 0) {
-			field = (char *)req->cmd_req_buf +
-					req->ifd_data[i].cmd_buf_offset;
-			update = (uint32_t *) field;
-			*update = 0;
-		}
-	}
-	return ret;
-}
-
-static int __qseecom_update_with_phy_addr(
-			struct qseecom_send_modfd_cmd_req *req)
+static int __qseecom_update_cmd_buf(struct qseecom_send_modfd_cmd_req *req,
+								bool cleanup)
 {
 	struct ion_handle *ihandle;
 	char *field;
@@ -1063,7 +1038,11 @@ static int __qseecom_update_with_phy_addr(
 			if (sg_ptr->nents == 1) {
 				uint32_t *update;
 				update = (uint32_t *) field;
-				*update = (uint32_t)sg_dma_address(sg_ptr->sgl);
+				if (cleanup)
+					*update = 0;
+				else
+					*update = (uint32_t)sg_dma_address(
+								sg_ptr->sgl);
 			} else {
 				struct qseecom_sg_entry *update;
 				struct scatterlist *sg;
@@ -1071,9 +1050,14 @@ static int __qseecom_update_with_phy_addr(
 				update = (struct qseecom_sg_entry *) field;
 				sg = sg_ptr->sgl;
 				for (j = 0; j < sg_ptr->nents; j++) {
-					update->phys_addr = (uint32_t)
-						sg_dma_address(sg);
-					update->len = (uint32_t)sg->length;
+					if (cleanup) {
+						update->phys_addr = 0;
+						update->len = 0;
+					} else {
+						update->phys_addr = (uint32_t)
+							sg_dma_address(sg);
+						update->len = sg->length;
+					}
 					update++;
 					sg = sg_next(sg);
 				}
@@ -1107,15 +1091,15 @@ static int qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 	send_cmd_req.resp_buf = req.resp_buf;
 	send_cmd_req.resp_len = req.resp_len;
 
-	ret = __qseecom_update_with_phy_addr(&req);
+	ret = __qseecom_update_cmd_buf(&req, false);
 	if (ret)
 		return ret;
-
 	ret = __qseecom_send_cmd(data, &send_cmd_req);
-	__qseecom_send_cmd_req_clean_up(&req);
 	if (ret)
 		return ret;
-
+	ret = __qseecom_update_cmd_buf(&req, true);
+	if (ret)
+		return ret;
 	pr_debug("sending cmd_req->rsp size: %u, ptr: 0x%p\n",
 			req.resp_len, req.resp_buf);
 	return ret;
@@ -1483,34 +1467,26 @@ int qseecom_start_app(struct qseecom_handle **handle,
 		*handle = NULL;
 		return -EINVAL;
 	}
-
+	mutex_lock(&app_access_lock);
 	if (qseecom.qsee_version > QSEEE_VERSION_00) {
-		mutex_lock(&app_access_lock);
 		if (qseecom.commonlib_loaded == false) {
 			ret = qseecom_load_commonlib_image(data);
 			if (ret == 0)
 				qseecom.commonlib_loaded = true;
 		}
-		mutex_unlock(&app_access_lock);
 	}
-
 	if (ret) {
 		pr_err("Failed to load commonlib image\n");
-		kfree(data);
-		kfree(*handle);
-		*handle = NULL;
-		return -EIO;
+		ret = -EIO;
+		goto err;
 	}
 
 	app_ireq.qsee_cmd_id = QSEOS_APP_LOOKUP_COMMAND;
 	memcpy(app_ireq.app_name, app_name, MAX_APP_NAME_SIZE);
 	ret = __qseecom_check_app_exists(app_ireq);
-	if (ret < 0) {
-		kzfree(data);
-		kfree(*handle);
-		*handle = NULL;
-		return -EINVAL;
-	}
+	if (ret < 0)
+		goto err;
+
 	data->client.app_id = ret;
 	if (ret > 0) {
 		pr_warn("App id %d for [%s] app exists\n", ret,
@@ -1533,26 +1509,17 @@ int qseecom_start_app(struct qseecom_handle **handle,
 		/* load the app and get the app_id  */
 		pr_debug("%s: Loading app for the first time'\n",
 				qseecom.pdev->init_name);
-		mutex_lock(&app_access_lock);
 		ret = __qseecom_load_fw(data, app_name);
-		mutex_unlock(&app_access_lock);
-
-		if (ret < 0) {
-			kfree(*handle);
-			kfree(data);
-			*handle = NULL;
-			return ret;
-		}
+		if (ret < 0)
+			goto err;
 		data->client.app_id = ret;
 	}
 	if (!found_app) {
 		entry = kmalloc(sizeof(*entry), GFP_KERNEL);
 		if (!entry) {
-			pr_err("kmalloc failed\n");
-			kfree(data);
-			kfree(*handle);
-			*handle = NULL;
-			return -ENOMEM;
+			pr_err("kmalloc for app entry failed\n");
+			ret =  -ENOMEM;
+			goto err;
 		}
 		entry->app_id = ret;
 		entry->ref_cnt = 1;
@@ -1577,7 +1544,8 @@ int qseecom_start_app(struct qseecom_handle **handle,
 	kclient_entry = kzalloc(sizeof(*kclient_entry), GFP_KERNEL);
 	if (!kclient_entry) {
 		pr_err("kmalloc failed\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err;
 	}
 	kclient_entry->handle = *handle;
 
@@ -1586,7 +1554,15 @@ int qseecom_start_app(struct qseecom_handle **handle,
 			&qseecom.registered_kclient_list_head);
 	spin_unlock_irqrestore(&qseecom.registered_kclient_list_lock, flags);
 
+	mutex_unlock(&app_access_lock);
 	return 0;
+
+err:
+	kfree(data);
+	kfree(*handle);
+	*handle = NULL;
+	mutex_unlock(&app_access_lock);
+	return ret;
 }
 EXPORT_SYMBOL(qseecom_start_app);
 
@@ -3023,10 +2999,10 @@ static int __devinit qseecom_probe(struct platform_device *pdev)
 		}
 		qseecom.qseos_version = QSEOS_VERSION_14;
 	} else {
-		qseecom.qseos_version = QSEOS_VERSION_13;
-		qseecom.qsee_version = 0;
-		pil = NULL;
-		pil_ref_cnt = 0;
+		pr_err("QSEE legacy version is not supported:");
+		pr_err("Support for TZ1.3 and earlier is deprecated\n");
+		rc = -EINVAL;
+		goto err;
 	}
 	qseecom.commonlib_loaded = false;
 	qseecom.pdev = class_dev;

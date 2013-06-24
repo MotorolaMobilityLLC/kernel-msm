@@ -34,6 +34,10 @@
 static struct clk_lookup msm_clocks_dummy[] = {
 	CLK_DUMMY("core_clk",   BLSP1_UART_CLK, "f991f000.serial", OFF),
 	CLK_DUMMY("iface_clk",  BLSP1_UART_CLK, "f991f000.serial", OFF),
+	CLK_DUMMY("core_clk",	SDC1_CLK,	"msm_sdcc.1", OFF),
+	CLK_DUMMY("iface_clk",	SDC1_P_CLK,	"msm_sdcc.1", OFF),
+	CLK_DUMMY("core_clk",	SDC2_CLK,	"msm_sdcc.2", OFF),
+	CLK_DUMMY("iface_clk",	SDC2_P_CLK,	"msm_sdcc.2", OFF),
 };
 
 static struct clock_init_data msm_dummy_clock_init_data __initdata = {
@@ -42,6 +46,10 @@ static struct clock_init_data msm_dummy_clock_init_data __initdata = {
 };
 
 static struct of_dev_auxdata msmsamarium_auxdata_lookup[] __initdata = {
+	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
+			"msm_sdcc.1", NULL),
+	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, \
+			"msm_sdcc.2", NULL),
 	{},
 };
 

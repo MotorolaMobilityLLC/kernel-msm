@@ -26,7 +26,7 @@
 	memory {
 		secure_mem: secure_region {
 			linux,contiguous-region;
-			reg = <0 0x3800000>;
+			reg = <0 0x6D00000>;
 			label = "secure_mem";
 		};
 
@@ -271,6 +271,7 @@
 		compatible = "qcom,android-usb";
 		reg = <0xfe8050c8 0xc8>;
 		qcom,android-usb-cdrom;
+		qcom,android-usb-swfi-latency = <1>;
 	};
 
 	wcd9xxx_intc: wcd9xxx-irq {
@@ -328,7 +329,7 @@
 
 			qcom,cdc-micbias-ldoh-v = <0x3>;
 			qcom,cdc-micbias-cfilt1-mv = <1800>;
-			qcom,cdc-micbias-cfilt2-mv = <1800>;
+			qcom,cdc-micbias-cfilt2-mv = <2700>;
 			qcom,cdc-micbias-cfilt3-mv = <1800>;
 
 			qcom,cdc-micbias1-cfilt-sel = <0x0>;
@@ -546,7 +547,8 @@
 		qcom,iris-vdddig-supply = <&pm8226_l24>;
 
 		gpios = <&msmgpio 40 0>, <&msmgpio 41 0>, <&msmgpio 42 0>, <&msmgpio 43 0>, <&msmgpio 44 0>;
-		qcom,has_pronto_hw;
+		qcom,has-pronto-hw;
+		qcom,has-autodetect-xo;
 	};
 
 	qcom,msm-adsp-sensors {
@@ -638,6 +640,10 @@
 		compatible = "qcom,rpm-smd";
 		rpm-channel-name = "rpm_requests";
 		rpm-channel-type = <15>; /* SMD_APPS_RPM */
+	};
+
+	qcom,bcl {
+		compatible = "qcom,bcl";
 	};
 
 	sdcc1: qcom,sdcc@f9824000 {
@@ -984,8 +990,8 @@
 		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
-				<56 512 0 0>,
-				<56 512 3936000 393600>;
+				<55 512 0 0>,
+				<55 512 3936000 393600>;
 	};
 
         qcom,qcedev@fd400000 {
@@ -1002,8 +1008,8 @@
 		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
-				<56 512 0 0>,
-				<56 512 3936000 393600>;
+				<55 512 0 0>,
+				<55 512 3936000 393600>;
 	};
 };
 

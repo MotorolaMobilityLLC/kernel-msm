@@ -146,6 +146,7 @@ struct mhl_tx_ctrl {
 	struct completion msc_cmd_done;
 	uint8_t devcap[16];
 	uint8_t devcap_state;
+	uint8_t status[2];
 	uint8_t path_en_state;
 	void *hdmi_mhl_ops;
 	struct work_struct mhl_msc_send_work;
@@ -161,6 +162,7 @@ struct mhl_tx_ctrl {
 	spinlock_t lock;
 	bool tx_powered_off;
 	uint8_t dwnstream_hpd;
+	bool mhl_det_discon;
 };
 
 int mhl_i2c_reg_read(struct i2c_client *client,

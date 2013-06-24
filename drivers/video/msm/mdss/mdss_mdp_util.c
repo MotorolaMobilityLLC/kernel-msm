@@ -27,7 +27,7 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_formats.h"
-
+#include "mdss_debug.h"
 #define DEFAULT_FRAME_RATE	60
 
 enum {
@@ -124,6 +124,7 @@ static inline void mdss_mdp_intr_done(int index)
 
 irqreturn_t mdss_mdp_isr(int irq, void *ptr)
 {
+	struct mdss_data_type *mdata = ptr;
 	u32 isr, mask, hist_isr, hist_mask;
 
 
@@ -172,17 +173,25 @@ irqreturn_t mdss_mdp_isr(int irq, void *ptr)
 	if (isr & MDSS_MDP_INTR_PING_PONG_2_RD_PTR)
 		mdss_mdp_intr_done(MDP_INTR_PING_PONG_2_RD_PTR);
 
-	if (isr & MDSS_MDP_INTR_INTF_0_VSYNC)
+	if (isr & MDSS_MDP_INTR_INTF_0_VSYNC) {
 		mdss_mdp_intr_done(MDP_INTR_VSYNC_INTF_0);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_EDP);
+	}
 
-	if (isr & MDSS_MDP_INTR_INTF_1_VSYNC)
+	if (isr & MDSS_MDP_INTR_INTF_1_VSYNC) {
 		mdss_mdp_intr_done(MDP_INTR_VSYNC_INTF_1);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_DSI0);
+	}
 
-	if (isr & MDSS_MDP_INTR_INTF_2_VSYNC)
+	if (isr & MDSS_MDP_INTR_INTF_2_VSYNC) {
 		mdss_mdp_intr_done(MDP_INTR_VSYNC_INTF_2);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_DSI1);
+	}
 
-	if (isr & MDSS_MDP_INTR_INTF_3_VSYNC)
+	if (isr & MDSS_MDP_INTR_INTF_3_VSYNC) {
 		mdss_mdp_intr_done(MDP_INTR_VSYNC_INTF_3);
+		mdss_misr_crc_collect(mdata, DISPLAY_MISR_HDMI);
+	}
 
 	if (isr & MDSS_MDP_INTR_WB_0_DONE)
 		mdss_mdp_intr_done(MDP_INTR_WB_0);
@@ -225,7 +234,6 @@ int mdss_mdp_get_rau_strides(u32 w, u32 h,
 			       struct mdss_mdp_format_params *fmt,
 			       struct mdss_mdp_plane_sizes *ps)
 {
-	u32 stride_off;
 	if (fmt->is_yuv) {
 		ps->rau_cnt = DIV_ROUND_UP(w, 64);
 		ps->ystride[0] = 64 * 4;
@@ -249,9 +257,8 @@ int mdss_mdp_get_rau_strides(u32 w, u32 h,
 		return -EINVAL;
 	}
 
-	stride_off = DIV_ROUND_UP(ps->rau_cnt, 8);
-	ps->ystride[0] = ps->ystride[0] * ps->rau_cnt + stride_off;
-	ps->ystride[1] = ps->ystride[1] * ps->rau_cnt + stride_off;
+	ps->ystride[0] *= ps->rau_cnt;
+	ps->ystride[1] *= ps->rau_cnt;
 	ps->num_planes = 2;
 
 	return 0;
@@ -277,9 +284,16 @@ int mdss_mdp_get_plane_sizes(u32 format, u32 w, u32 h,
 	memset(ps, 0, sizeof(struct mdss_mdp_plane_sizes));
 
 	if (bwc_mode) {
+		u32 meta_size;
+
 		rc = mdss_mdp_get_rau_strides(w, h, fmt, ps);
 		if (rc)
 			return rc;
+
+		meta_size = DIV_ROUND_UP(ps->rau_cnt, 8);
+		ps->ystride[0] += meta_size;
+		ps->ystride[1] += meta_size;
+
 		ystride0_off = DIV_ROUND_UP(h, ps->rau_h[0]);
 		ystride1_off = DIV_ROUND_UP(h, ps->rau_h[1]);
 		ps->plane_size[0] = (ps->ystride[0] * ystride0_off) +

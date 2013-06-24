@@ -1583,10 +1583,7 @@ int sps_transfer(struct sps_pipe *h, struct sps_transfer *transfer)
 	for (i = 0; i < transfer->iovec_count; i++) {
 		u32 flags = iovec->flags;
 
-		if (iovec->addr == 0) {
-			SPS_ERR("sps:%s:iovec address is invalid.\n", __func__);
-			return SPS_ERROR;
-		} else if (iovec->size > SPS_IOVEC_MAX_SIZE) {
+		if (iovec->size > SPS_IOVEC_MAX_SIZE) {
 			SPS_ERR("sps:%s:iovec size is invalid.\n", __func__);
 			return SPS_ERROR;
 		}
@@ -1986,6 +1983,35 @@ int sps_get_unused_desc_num(struct sps_pipe *h, u32 *desc_num)
 	return result;
 }
 EXPORT_SYMBOL(sps_get_unused_desc_num);
+
+/**
+ * Vote for or relinquish BAM DMA clock
+ *
+ */
+int sps_ctrl_bam_dma_clk(bool clk_on)
+{
+	int ret;
+
+	SPS_DBG("sps:%s.", __func__);
+
+	if (!sps->is_ready)
+		return -EPROBE_DEFER;
+
+	if (clk_on == true) {
+		SPS_DBG("sps:vote for bam dma clk.\n");
+		ret = clk_prepare_enable(sps->bamdma_clk);
+		if (ret) {
+			SPS_ERR("sps:fail to enable bamdma_clk:ret=%d\n", ret);
+			return ret;
+		}
+	} else {
+		SPS_DBG("sps:relinquish bam dma clk.\n");
+		clk_disable_unprepare(sps->bamdma_clk);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(sps_ctrl_bam_dma_clk);
 
 /**
  * Register a BAM device
@@ -2528,11 +2554,13 @@ static int __devinit msm_sps_probe(struct platform_device *pdev)
 		SPS_ERR("sps:sps_device_init err.");
 #ifdef CONFIG_SPS_SUPPORT_BAMDMA
 		clk_disable_unprepare(sps->dfab_clk);
+		clk_disable_unprepare(sps->bamdma_clk);
 #endif
 		goto sps_device_init_err;
 	}
 #ifdef CONFIG_SPS_SUPPORT_BAMDMA
 	clk_disable_unprepare(sps->dfab_clk);
+	clk_disable_unprepare(sps->bamdma_clk);
 #endif
 	sps->is_ready = true;
 

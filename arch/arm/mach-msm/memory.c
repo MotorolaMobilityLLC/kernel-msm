@@ -315,6 +315,8 @@ int __init dt_scan_for_memory_reserve(unsigned long node, const char *uname,
 	unsigned long memory_remove_prop_length;
 	unsigned long memory_size_prop_length;
 	unsigned int *memory_size_prop;
+	unsigned int *memory_reserve_prop;
+	unsigned long memory_reserve_prop_length;
 	unsigned int memory_size;
 	unsigned int memory_start;
 	int ret;
@@ -326,7 +328,11 @@ int __init dt_scan_for_memory_reserve(unsigned long node, const char *uname,
 						"qcom,memblock-remove",
 						&memory_remove_prop_length);
 
-	if (memory_name_prop || memory_remove_prop) {
+	memory_reserve_prop = of_get_flat_dt_prop(node,
+						"qcom,memblock-reserve",
+						&memory_reserve_prop_length);
+
+	if (memory_name_prop || memory_remove_prop || memory_reserve_prop) {
 		if (!check_for_compat(node))
 			goto out;
 	} else {
@@ -365,7 +371,7 @@ mem_remove:
 	if (memory_remove_prop) {
 		if (memory_remove_prop_length != (2*sizeof(unsigned int))) {
 			WARN(1, "Memory remove malformed\n");
-			goto out;
+			goto mem_reserve;
 		}
 
 		memory_start = be32_to_cpu(memory_remove_prop[0]);
@@ -380,11 +386,52 @@ mem_remove:
 				memory_start, memory_start+memory_size);
 	}
 
+mem_reserve:
+
+	if (memory_reserve_prop) {
+		if (memory_reserve_prop_length != (2*sizeof(unsigned int))) {
+			WARN(1, "Memory reserve malformed\n");
+			goto out;
+		}
+
+		memory_start = be32_to_cpu(memory_reserve_prop[0]);
+		memory_size = be32_to_cpu(memory_reserve_prop[1]);
+
+		ret = memblock_reserve(memory_start, memory_size);
+		if (ret)
+			WARN(1, "Failed to reserve memory %x-%x\n",
+				memory_start, memory_start+memory_size);
+		else
+			pr_info("Node %s memblock_reserve memory %x-%x\n",
+				uname, memory_start, memory_start+memory_size);
+	}
+
 out:
 	return 0;
 }
 
-/* This function scans the device tree to populate the memory hole table */
+/* Function to remove any meminfo blocks which are of size zero */
+static void merge_meminfo(void)
+{
+	int i = 0;
+
+	while (i < meminfo.nr_banks) {
+		struct membank *bank = &meminfo.bank[i];
+
+		if (bank->size == 0) {
+			memmove(bank, bank + 1,
+			(meminfo.nr_banks - i) * sizeof(*bank));
+			meminfo.nr_banks--;
+			continue;
+		}
+		i++;
+	}
+}
+
+/*
+ * Function to scan the device tree and adjust the meminfo table to
+ * reflect the memory holes.
+ */
 int __init dt_scan_for_memory_hole(unsigned long node, const char *uname,
 		int depth, void *data)
 {
@@ -413,16 +460,6 @@ int __init dt_scan_for_memory_hole(unsigned long node, const char *uname,
 		hole_start = be32_to_cpu(memory_remove_prop[0]);
 		hole_size = be32_to_cpu(memory_remove_prop[1]);
 
-		if (hole_start + hole_size <= MAX_HOLE_ADDRESS) {
-			if (memory_hole_start == 0 && memory_hole_end == 0) {
-				memory_hole_start = hole_start;
-				memory_hole_end = hole_start + hole_size;
-			} else if ((memory_hole_end - memory_hole_start)
-							<= hole_size) {
-				memory_hole_start = hole_start;
-				memory_hole_end = hole_start + hole_size;
-			}
-		}
 		adjust_meminfo(hole_start, hole_size);
 	}
 
@@ -452,6 +489,7 @@ void adjust_meminfo(unsigned long start, unsigned long size)
 			bank[1].start = (start + size);
 			bank[1].size -= (bank->size + size);
 			bank[1].highmem = 0;
+			merge_meminfo();
 		}
 	}
 }

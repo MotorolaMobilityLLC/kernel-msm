@@ -192,19 +192,20 @@ void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pr_debug("%s: enable = %d\n", __func__, enable);
 
 	if (enable) {
-		msleep(100);
-		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-		wmb();
-		msleep(40);
-
 		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		msleep(20);
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		udelay(200);
 		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		msleep(20);
-		wmb();
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+		if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
+			pr_debug("%s: Panel Not properly turned OFF\n",
+						__func__);
+			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
+			pr_debug("%s: Reset panel done\n", __func__);
+		}
 	} else {
 		if (mdss_panel_id == PANEL_LGE_JDI_ORISE_VIDEO ||
 			mdss_panel_id == PANEL_LGE_JDI_ORISE_CMD ||

@@ -33,6 +33,7 @@
 	soc: soc { };
 };
 
+/include/ "msm8610-camera.dtsi"
 /include/ "msm-iommu-v0.dtsi"
 /include/ "msm8610-ion.dtsi"
 /include/ "msm8610-gpu.dtsi"
@@ -472,7 +473,7 @@
                 qcom,i2c-bus-freq = <100000>;
         };
 
-	i2c@f9928000 { /* BLSP1 QUP6 */
+	i2c: i2c@f9928000 { /* BLSP1 QUP6 */
 		cell-index = <6>;
 		compatible = "qcom,i2c-qup";
 		#address-cells = <1>;
@@ -667,7 +668,8 @@
 		qcom,iris-vdddig-supply = <&pm8110_l5>;
 
 		gpios = <&msmgpio 23 0>, <&msmgpio 24 0>, <&msmgpio 25 0>, <&msmgpio 26 0>, <&msmgpio 27 0>;
-		qcom,has_pronto_hw;
+		qcom,has-pronto-hw;
+		qcom,wlan-rx-buff-count = <256>;
 	};
 
 	qcom,mss@fc880000 {
@@ -813,6 +815,43 @@
 		compatible = "qcom,tz-log";
 		reg = <0x0fe805720 0x1000>;
 	};
+
+	qcom,qcrypto@fd404000 {
+		compatible = "qcom,qcrypto";
+                reg  =  <0xfd400000 0x20000>,
+                        <0xfd404000 0x8000>;
+		reg-names = "crypto-base","crypto-bam-base";
+		interrupts = <0 207 0>;
+		qcom,bam-pipe-pair = <2>;
+		qcom,ce-hw-instance = <1>;
+		qcom,ce-hw-shared;
+		qcom,msm-bus,name = "qcrypto-noc";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<55 512 0 0>,
+				<55 512 393600 3936000>;
+	};
+
+        qcom,qcedev@fd400000 {
+		compatible = "qcom,qcedev";
+		reg  =  <0xfd400000 0x20000>,
+			<0xfd404000 0x8000>;
+		reg-names = "crypto-base","crypto-bam-base";
+		interrupts = <0 207 0>;
+		qcom,bam-pipe-pair = <1>;
+		qcom,ce-hw-instance = <1>;
+		qcom,ce-hw-shared;
+		qcom,msm-bus,name = "qcedev-noc";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<55 512 0 0>,
+				<55 512 393600 3936000>;
+	};
+
 };
 
 &gdsc_vfe {

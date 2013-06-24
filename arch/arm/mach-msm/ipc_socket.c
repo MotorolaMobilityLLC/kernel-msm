@@ -55,6 +55,10 @@ do { \
 	} \
 } while (0) \
 
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
+#endif
+
 static int sockets_enabled;
 static struct proto msm_ipc_proto;
 static const struct proto_ops msm_ipc_proto_ops;
@@ -264,7 +268,6 @@ static int msm_ipc_router_create(struct net *net,
 {
 	struct sock *sk;
 	struct msm_ipc_port *port_ptr;
-	void *pil;
 
 	if (unlikely(protocol != 0)) {
 		pr_err("%s: Protocol not supported\n", __func__);
@@ -297,9 +300,7 @@ static int msm_ipc_router_create(struct net *net,
 	sock_init_data(sock, sk);
 	sk->sk_rcvtimeo = DEFAULT_RCV_TIMEO;
 
-	pil = msm_ipc_load_default_node();
 	msm_ipc_sk(sk)->port = port_ptr;
-	msm_ipc_sk(sk)->default_pil = pil;
 
 	return 0;
 }
@@ -407,9 +408,9 @@ static int msm_ipc_router_recvmsg(struct kiocb *iocb, struct socket *sock,
 
 	lock_sock(sk);
 	timeout = sk->sk_rcvtimeo;
-	mutex_lock(&port_ptr->port_rx_q_lock);
+	mutex_lock(&port_ptr->port_rx_q_lock_lhb3);
 	while (list_empty(&port_ptr->port_rx_q)) {
-		mutex_unlock(&port_ptr->port_rx_q_lock);
+		mutex_unlock(&port_ptr->port_rx_q_lock_lhb3);
 		release_sock(sk);
 		if (timeout < 0) {
 			ret = wait_event_interruptible(
@@ -431,9 +432,9 @@ static int msm_ipc_router_recvmsg(struct kiocb *iocb, struct socket *sock,
 			return 0;
 		}
 		lock_sock(sk);
-		mutex_lock(&port_ptr->port_rx_q_lock);
+		mutex_lock(&port_ptr->port_rx_q_lock_lhb3);
 	}
-	mutex_unlock(&port_ptr->port_rx_q_lock);
+	mutex_unlock(&port_ptr->port_rx_q_lock_lhb3);
 
 	ret = msm_ipc_router_read(port_ptr, &msg, buf_len);
 	if (ret <= 0 || !msg) {
@@ -458,7 +459,8 @@ static int msm_ipc_router_ioctl(struct socket *sock,
 	struct msm_ipc_port *port_ptr;
 	struct server_lookup_args server_arg;
 	struct msm_ipc_server_info *srv_info = NULL;
-	unsigned int n, srv_info_sz = 0;
+	unsigned int n;
+	size_t srv_info_sz = 0;
 	int ret;
 
 	if (!sk)
@@ -499,16 +501,16 @@ static int msm_ipc_router_ioctl(struct socket *sock,
 			break;
 		}
 		if (server_arg.num_entries_in_array) {
-			srv_info_sz = server_arg.num_entries_in_array *
-					sizeof(*srv_info);
-			if ((srv_info_sz / sizeof(*srv_info)) !=
-			    server_arg.num_entries_in_array) {
+			if (server_arg.num_entries_in_array >
+				(SIZE_MAX / sizeof(*srv_info))) {
 				pr_err("%s: Integer Overflow %d * %d\n",
 					__func__, sizeof(*srv_info),
 					server_arg.num_entries_in_array);
 				ret = -EINVAL;
 				break;
 			}
+			srv_info_sz = server_arg.num_entries_in_array *
+					sizeof(*srv_info);
 			srv_info = kmalloc(srv_info_sz, GFP_KERNEL);
 			if (!srv_info) {
 				ret = -ENOMEM;
@@ -580,12 +582,10 @@ static int msm_ipc_router_close(struct socket *sock)
 {
 	struct sock *sk = sock->sk;
 	struct msm_ipc_port *port_ptr = msm_ipc_sk_port(sk);
-	void *pil = msm_ipc_sk(sk)->default_pil;
 	int ret;
 
 	lock_sock(sk);
 	ret = msm_ipc_router_close_port(port_ptr);
-	msm_ipc_unload_default_node(pil);
 	release_sock(sk);
 	sock_put(sk);
 	sock->sk = NULL;

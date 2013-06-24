@@ -3387,19 +3387,17 @@ static int  _qcrypto_probe(struct platform_device *pdev)
 	cp->pdev = pdev;
 	qce_hw_support(cp->qce, &cp->ce_support);
 	if (cp->ce_support.bam)	 {
-		cp->platform_support.ce_shared = 0;
+		cp->platform_support.ce_shared = cp->ce_support.is_shared;
 		cp->platform_support.shared_ce_resource = 0;
-		cp->platform_support.hw_key_support = 0;
+		cp->platform_support.hw_key_support = cp->ce_support.hw_key;
 		cp->platform_support.bus_scale_table =	NULL;
 		cp->platform_support.sha_hmac = 1;
 
-		if (cp->ce_support.is_shared == false) {
-			cp->platform_support.bus_scale_table =
-				(struct msm_bus_scale_pdata *)
-						msm_bus_cl_get_pdata(pdev);
-			if (!cp->platform_support.bus_scale_table)
-				pr_warn("bus_scale_table is NULL\n");
-		}
+		cp->platform_support.bus_scale_table =
+			(struct msm_bus_scale_pdata *)
+					msm_bus_cl_get_pdata(pdev);
+		if (!cp->platform_support.bus_scale_table)
+			pr_warn("bus_scale_table is NULL\n");
 	} else {
 		platform_support =
 			(struct msm_ce_hw_support *)pdev->dev.platform_data;
