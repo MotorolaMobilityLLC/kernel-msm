@@ -43,6 +43,17 @@ static int kgsl_cff_dump_enable_get(void *data, u64 *val)
 DEFINE_SIMPLE_ATTRIBUTE(kgsl_cff_dump_enable_fops, kgsl_cff_dump_enable_get,
 			kgsl_cff_dump_enable_set, "%llu\n");
 
+static int _active_count_get(void *data, u64 *val)
+{
+	struct kgsl_device *device = data;
+	unsigned int i = atomic_read(&device->active_cnt);
+
+	*val = (u64) i;
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(_active_count_fops, _active_count_get, NULL, "%llu\n");
+
 typedef void (*reg_read_init_t)(struct kgsl_device *device);
 typedef void (*reg_read_fill_t)(struct kgsl_device *device, int i,
 	unsigned int *vals, int linec);
@@ -64,23 +75,18 @@ void adreno_debugfs_init(struct kgsl_device *device)
 	adreno_dev->fast_hang_detect = 1;
 	debugfs_create_u32("fast_hang_detect", 0644, device->d_debugfs,
 			   &adreno_dev->fast_hang_detect);
-
-	/* Top level switch to enable/disable userspace FT control */
-	adreno_dev->ft_user_control = 0;
-	debugfs_create_u32("ft_user_control", 0644, device->d_debugfs,
-			   &adreno_dev->ft_user_control);
 	/*
 	 * FT policy can be set to any of the options below.
-	 * KGSL_FT_DISABLE -> BIT(0) Set to disable FT
+	 * KGSL_FT_OFF -> BIT(0) Set to turn off FT
 	 * KGSL_FT_REPLAY  -> BIT(1) Set to enable replay
 	 * KGSL_FT_SKIPIB  -> BIT(2) Set to skip IB
 	 * KGSL_FT_SKIPFRAME -> BIT(3) Set to skip frame
+	 * KGSL_FT_DISABLE -> BIT(4) Set to disable FT for faulting context
 	 * by default set FT policy to KGSL_FT_DEFAULT_POLICY
 	 */
 	adreno_dev->ft_policy = KGSL_FT_DEFAULT_POLICY;
 	debugfs_create_u32("ft_policy", 0644, device->d_debugfs,
 			   &adreno_dev->ft_policy);
-
 	/* By default enable long IB detection */
 	adreno_dev->long_ib_detect = 1;
 	debugfs_create_u32("long_ib_detect", 0644, device->d_debugfs,
@@ -96,7 +102,10 @@ void adreno_debugfs_init(struct kgsl_device *device)
 	 * KGSL_FT_PAGEFAULT_LOG_ONE_PER_INT -> BIT(3) Set to log only one
 	 * pagefault per INT.
 	 */
-	adreno_dev->ft_pf_policy = KGSL_FT_PAGEFAULT_DEFAULT_POLICY;
-	debugfs_create_u32("ft_pagefault_policy", 0644, device->d_debugfs,
-			   &adreno_dev->ft_pf_policy);
+	 adreno_dev->ft_pf_policy = KGSL_FT_PAGEFAULT_DEFAULT_POLICY;
+	 debugfs_create_u32("ft_pagefault_policy", 0644, device->d_debugfs,
+			&adreno_dev->ft_pf_policy);
+
+	debugfs_create_file("active_cnt", 0644, device->d_debugfs, device,
+			    &_active_count_fops);
 }

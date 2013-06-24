@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -106,7 +106,12 @@ static int snapshot_context_info(int id, void *ptr, void *data)
 {
 	struct kgsl_snapshot_linux_context *header = _ctxtptr;
 	struct kgsl_context *context = ptr;
-	struct kgsl_device *device = context->dev_priv->device;
+	struct kgsl_device *device;
+
+	if (context)
+		device = context->device;
+	else
+		device = (struct kgsl_device *)data;
 
 	header->id = id;
 
@@ -139,9 +144,12 @@ static int snapshot_os(struct kgsl_device *device,
 	/* Figure out how many active contexts there are - these will
 	 * be appended on the end of the structure */
 
-	rcu_read_lock();
+	read_lock(&device->context_lock);
 	idr_for_each(&device->context_idr, snapshot_context_count, &ctxtcount);
-	rcu_read_unlock();
+	read_unlock(&device->context_lock);
+
+	/* Increment ctxcount for the global memstore */
+	ctxtcount++;
 
 	size += ctxtcount * sizeof(struct kgsl_snapshot_linux_context);
 
@@ -171,8 +179,9 @@ static int snapshot_os(struct kgsl_device *device,
 	header->grpclk = kgsl_get_clkrate(pwr->grp_clks[0]);
 	header->busclk = kgsl_get_clkrate(pwr->ebi1_clk);
 
-	/* Future proof for per-context timestamps */
-	header->current_context = -1;
+	/* Save the last active context */
+	kgsl_sharedmem_readl(&device->memstore, &header->current_context,
+		KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL, current_context));
 
 	/* Get the current PT base */
 	header->ptbase = kgsl_mmu_get_current_ptbase(&device->mmu);
@@ -187,11 +196,17 @@ static int snapshot_os(struct kgsl_device *device,
 
 	header->ctxtcount = ctxtcount;
 
-	/* append information for each context */
 	_ctxtptr = snapshot + sizeof(*header);
-	rcu_read_lock();
+
+	/* append information for the global context */
+	snapshot_context_info(KGSL_MEMSTORE_GLOBAL, NULL, device);
+
+	/* append information for each context */
+
+	read_lock(&device->context_lock);
 	idr_for_each(&device->context_idr, snapshot_context_info, NULL);
-	rcu_read_unlock();
+	read_unlock(&device->context_lock);
+
 	/* Return the size of the data segment */
 	return size;
 }
@@ -286,7 +301,7 @@ static void kgsl_snapshot_put_object(struct kgsl_device *device,
 {
 	list_del(&obj->node);
 
-	obj->entry->flags &= ~KGSL_MEM_ENTRY_FROZEN;
+	obj->entry->memdesc.priv &= ~KGSL_MEMDESC_FROZEN;
 	kgsl_mem_entry_put(obj->entry);
 
 	kfree(obj);
@@ -317,6 +332,7 @@ int kgsl_snapshot_have_object(struct kgsl_device *device, unsigned int ptbase,
 
 	return 0;
 }
+EXPORT_SYMBOL(kgsl_snapshot_have_object);
 
 /* kgsl_snapshot_get_object - Mark a GPU buffer to be frozen
  * @device - the device that is being snapshotted
@@ -336,6 +352,10 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	struct kgsl_mem_entry *entry;
 	struct kgsl_snapshot_object *obj;
 	int offset;
+	int ret = -EINVAL;
+
+	if (!gpuaddr)
+		return 0;
 
 	entry = kgsl_get_mem_entry(device, ptbase, gpuaddr, size);
 
@@ -349,7 +369,7 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	if (entry->memtype != KGSL_MEM_ENTRY_KERNEL) {
 		KGSL_DRV_ERR(device,
 			"Only internal GPU buffers can be frozen\n");
-		return -EINVAL;
+		goto err_put;
 	}
 
 	/*
@@ -372,35 +392,32 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	if (size + offset > entry->memdesc.size) {
 		KGSL_DRV_ERR(device, "Invalid size for GPU buffer %8.8X\n",
 				gpuaddr);
-		return -EINVAL;
+		goto err_put;
 	}
 
 	/* If the buffer is already on the list, skip it */
 	list_for_each_entry(obj, &device->snapshot_obj_list, node) {
 		if (obj->gpuaddr == gpuaddr && obj->ptbase == ptbase) {
-			/* If the size is different, use the new size */
-			if (obj->size != size)
+			/* If the size is different, use the bigger size */
+			if (obj->size < size)
 				obj->size = size;
-
-			return 0;
+			ret = 0;
+			goto err_put;
 		}
 	}
 
 	if (kgsl_memdesc_map(&entry->memdesc) == NULL) {
 		KGSL_DRV_ERR(device, "Unable to map GPU buffer %X\n",
 				gpuaddr);
-		return -EINVAL;
+		goto err_put;
 	}
 
 	obj = kzalloc(sizeof(*obj), GFP_KERNEL);
 
 	if (obj == NULL) {
 		KGSL_DRV_ERR(device, "Unable to allocate memory\n");
-		return -EINVAL;
+		goto err_put;
 	}
-
-	/* Ref count the mem entry */
-	kgsl_mem_entry_get(entry);
 
 	obj->type = type;
 	obj->entry = entry;
@@ -419,12 +436,15 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	 * 0 so it doesn't get counted twice
 	 */
 
-	if (entry->flags & KGSL_MEM_ENTRY_FROZEN)
-		return 0;
+	ret = (entry->memdesc.priv & KGSL_MEMDESC_FROZEN) ? 0
+		: entry->memdesc.size;
 
-	entry->flags |= KGSL_MEM_ENTRY_FROZEN;
+	entry->memdesc.priv |= KGSL_MEMDESC_FROZEN;
 
-	return entry->memdesc.size;
+	return ret;
+err_put:
+	kgsl_mem_entry_put(entry);
+	return ret;
 }
 EXPORT_SYMBOL(kgsl_snapshot_get_object);
 

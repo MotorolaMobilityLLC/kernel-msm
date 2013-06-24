@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -560,7 +560,7 @@ void kgsl_mmu_putpagetable(struct kgsl_pagetable *pagetable)
 }
 EXPORT_SYMBOL(kgsl_mmu_putpagetable);
 
-void kgsl_setstate(struct kgsl_mmu *mmu, unsigned int context_id,
+int kgsl_setstate(struct kgsl_mmu *mmu, unsigned int context_id,
 			uint32_t flags)
 {
 	struct kgsl_device *device = mmu->device;
@@ -568,14 +568,16 @@ void kgsl_setstate(struct kgsl_mmu *mmu, unsigned int context_id,
 
 	if (!(flags & (KGSL_MMUFLAGS_TLBFLUSH | KGSL_MMUFLAGS_PTUPDATE))
 		&& !adreno_is_a2xx(adreno_dev))
-		return;
+		return 0;
 
 	if (KGSL_MMU_TYPE_NONE == kgsl_mmu_type)
-		return;
+		return 0;
 	else if (device->ftbl->setstate)
-		device->ftbl->setstate(device, context_id, flags);
+		return device->ftbl->setstate(device, context_id, flags);
 	else if (mmu->mmu_ops->mmu_device_setstate)
-		mmu->mmu_ops->mmu_device_setstate(mmu, flags);
+		return mmu->mmu_ops->mmu_device_setstate(mmu, flags);
+
+	return 0;
 }
 EXPORT_SYMBOL(kgsl_setstate);
 
@@ -584,7 +586,6 @@ void kgsl_mh_start(struct kgsl_device *device)
 	struct kgsl_mh *mh = &device->mh;
 	/* force mmu off to for now*/
 	kgsl_regwrite(device, MH_MMU_CONFIG, 0);
-	kgsl_idle(device);
 
 	/* define physical memory range accessible by the core */
 	kgsl_regwrite(device, MH_MMU_MPU_BASE, mh->mpu_base);
@@ -605,16 +606,17 @@ void kgsl_mh_start(struct kgsl_device *device)
 	 * kgsl_pwrctrl_irq() is called
 	 */
 }
+EXPORT_SYMBOL(kgsl_mh_start);
 
 int
 kgsl_mmu_map(struct kgsl_pagetable *pagetable,
-				struct kgsl_memdesc *memdesc,
-				unsigned int protflags)
+				struct kgsl_memdesc *memdesc)
 {
 	int ret;
 	struct gen_pool *pool = NULL;
 	int size;
 	int page_align = ilog2(PAGE_SIZE);
+	unsigned int protflags = kgsl_memdesc_protflags(memdesc);
 
 	if (kgsl_mmu_type == KGSL_MMU_TYPE_NONE) {
 		if (memdesc->sglen == 1) {
@@ -634,7 +636,10 @@ kgsl_mmu_map(struct kgsl_pagetable *pagetable,
 		}
 	}
 
-	size = kgsl_sg_size(memdesc->sg, memdesc->sglen);
+	/* Add space for the guard page when allocating the mmu VA. */
+	size = memdesc->size;
+	if (kgsl_memdesc_has_guard_page(memdesc))
+		size += PAGE_SIZE;
 
 	pool = pagetable->pool;
 
@@ -732,7 +737,10 @@ kgsl_mmu_unmap(struct kgsl_pagetable *pagetable,
 		return 0;
 	}
 
-	size = kgsl_sg_size(memdesc->sg, memdesc->sglen);
+	/* Add space for the guard page when freeing the mmu VA. */
+	size = memdesc->size;
+	if (kgsl_memdesc_has_guard_page(memdesc))
+		size += PAGE_SIZE;
 
 	start_addr = memdesc->gpuaddr;
 	end_addr = (memdesc->gpuaddr + size);
@@ -777,7 +785,7 @@ kgsl_mmu_unmap(struct kgsl_pagetable *pagetable,
 EXPORT_SYMBOL(kgsl_mmu_unmap);
 
 int kgsl_mmu_map_global(struct kgsl_pagetable *pagetable,
-			struct kgsl_memdesc *memdesc, unsigned int protflags)
+			struct kgsl_memdesc *memdesc)
 {
 	int result = -EINVAL;
 	unsigned int gpuaddr = 0;
@@ -789,11 +797,10 @@ int kgsl_mmu_map_global(struct kgsl_pagetable *pagetable,
 	/* Not all global mappings are needed for all MMU types */
 	if (!memdesc->size)
 		return 0;
-
 	gpuaddr = memdesc->gpuaddr;
 	memdesc->priv |= KGSL_MEMDESC_GLOBAL;
 
-	result = kgsl_mmu_map(pagetable, memdesc, protflags);
+	result = kgsl_mmu_map(pagetable, memdesc);
 	if (result)
 		goto error;
 

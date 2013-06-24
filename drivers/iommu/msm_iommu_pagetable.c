@@ -351,11 +351,6 @@ int msm_iommu_pagetable_map_range(struct iommu_pt *pt, unsigned int va,
 	sl_offset = SL_OFFSET(va);
 
 	chunk_pa = get_phys_addr(sg);
-	if (chunk_pa == 0) {
-		pr_debug("No dma address for sg %p\n", sg);
-		ret = -EINVAL;
-		goto fail;
-	}
 
 	while (offset < len) {
 		/* Set up a 2nd level page table if one doesn't exist */
@@ -399,12 +394,6 @@ int msm_iommu_pagetable_map_range(struct iommu_pt *pt, unsigned int va,
 				chunk_offset = 0;
 				sg = sg_next(sg);
 				chunk_pa = get_phys_addr(sg);
-				if (chunk_pa == 0) {
-					pr_debug("No dma address for sg %p\n",
-						sg);
-					ret = -EINVAL;
-					goto fail;
-				}
 			}
 		}
 
