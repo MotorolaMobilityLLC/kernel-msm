@@ -21,6 +21,22 @@
 
 #define SHADER_MEMORY_SIZE 0x4000
 
+/**
+ * _rbbm_debug_bus_read - Helper function to read data from the RBBM
+ * debug bus.
+ * @device - GPU device to read/write registers
+ * @block_id - Debug bus block to read from
+ * @index - Index in the debug bus block to read
+ * @ret - Value of the register read
+ */
+static void _rbbm_debug_bus_read(struct kgsl_device *device,
+	unsigned int block_id, unsigned int index, unsigned int *val)
+{
+	unsigned int block = (block_id << 8) | 1 << 16;
+	adreno_regwrite(device, A3XX_RBBM_DEBUG_BUS_CTL, block | index);
+	adreno_regread(device, A3XX_RBBM_DEBUG_BUS_DATA_STATUS, val);
+}
+
 static int a3xx_snapshot_shader_memory(struct kgsl_device *device,
 	void *snapshot, int remain, void *priv)
 {
@@ -243,11 +259,8 @@ static int a3xx_snapshot_debugbus_block(struct kgsl_device *device,
 	header->id = id;
 	header->count = DEBUGFS_BLOCK_SIZE;
 
-	for (i = 0; i < DEBUGFS_BLOCK_SIZE; i++) {
-		adreno_regwrite(device, A3XX_RBBM_DEBUG_BUS_CTL, val | i);
-		adreno_regread(device, A3XX_RBBM_DEBUG_BUS_DATA_STATUS,
-			&data[i]);
-	}
+	for (i = 0; i < DEBUGFS_BLOCK_SIZE; i++)
+		_rbbm_debug_bus_read(device, id, i, &data[i]);
 
 	return size;
 }
@@ -309,18 +322,58 @@ static void _snapshot_hlsq_regs(struct kgsl_snapshot_registers *regs,
 	struct kgsl_snapshot_registers_list *list,
 	struct adreno_device *adreno_dev)
 {
-	/* HLSQ specific registers */
+	struct kgsl_device *device = &adreno_dev->dev;
+
 	/*
-	 * Don't dump any a3xx HLSQ registers just yet.  Reading the HLSQ
-	 * registers can cause the device to hang if the HLSQ block is
-	 * busy.  Add specific checks for each a3xx core as the requirements
-	 * are discovered.  Disable by default for now.
+	 * Trying to read HLSQ registers when the HLSQ block is busy
+	 * will cause the device to hang.  The RBBM_DEBUG_BUS has information
+	 * that will tell us if the HLSQ block is busy or not.  Read values
+	 * from the debug bus to ensure the HLSQ block is not busy (this
+	 * is hardware dependent).  If the HLSQ block is busy do not
+	 * dump the registers, otherwise dump the HLSQ registers.
 	 */
-	if (!adreno_is_a3xx(adreno_dev)) {
-		regs[list->count].regs = (unsigned int *) a3xx_hlsq_registers;
-		regs[list->count].count = a3xx_hlsq_registers_count;
-		list->count++;
+
+	if (adreno_is_a330(adreno_dev)) {
+		/*
+		 * stall_ctxt_full status bit: RBBM_BLOCK_ID_HLSQ index 49 [27]
+		 *
+		 * if (!stall_context_full)
+		 * then dump HLSQ registers
+		 */
+		unsigned int stall_context_full = 0;
+
+		_rbbm_debug_bus_read(device, RBBM_BLOCK_ID_HLSQ, 49,
+				&stall_context_full);
+		stall_context_full &= 0x08000000;
+
+		if (stall_context_full)
+			return;
+	} else {
+		/*
+		 * tpif status bits: RBBM_BLOCK_ID_HLSQ index 4 [4:0]
+		 * spif status bits: RBBM_BLOCK_ID_HLSQ index 7 [5:0]
+		 *
+		 * if ((tpif == 0, 1, 28) && (spif == 0, 1, 10))
+		 * then dump HLSQ registers
+		 */
+		unsigned int next_pif = 0;
+
+		/* check tpif */
+		_rbbm_debug_bus_read(device, RBBM_BLOCK_ID_HLSQ, 4, &next_pif);
+		next_pif &= 0x1f;
+		if (next_pif != 0 && next_pif != 1 && next_pif != 28)
+			return;
+
+		/* check spif */
+		_rbbm_debug_bus_read(device, RBBM_BLOCK_ID_HLSQ, 7, &next_pif);
+		next_pif &= 0x3f;
+		if (next_pif != 0 && next_pif != 1 && next_pif != 10)
+			return;
 	}
+
+	regs[list->count].regs = (unsigned int *) a3xx_hlsq_registers;
+	regs[list->count].count = a3xx_hlsq_registers_count;
+	list->count++;
 }
 
 static void _snapshot_a330_regs(struct kgsl_snapshot_registers *regs,
@@ -414,7 +467,7 @@ void *a3xx_snapshot(struct adreno_device *adreno_dev, void *snapshot,
 
 	/* Enable Clock gating */
 	adreno_regwrite(device, A3XX_RBBM_CLOCK_CTL,
-			A3XX_RBBM_CLOCK_CTL_DEFAULT);
+		adreno_a3xx_rbbm_clock_ctl_default(adreno_dev));
 
 	return snapshot;
 }

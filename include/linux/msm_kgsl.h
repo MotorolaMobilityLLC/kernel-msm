@@ -12,25 +12,27 @@
 #define KGSL_VERSION_MINOR        14
 
 /*context flags */
-#define KGSL_CONTEXT_SAVE_GMEM		  0x00000001
-#define KGSL_CONTEXT_NO_GMEM_ALLOC	  0x00000002
-#define KGSL_CONTEXT_SUBMIT_IB_LIST	  0x00000004
-#define KGSL_CONTEXT_CTX_SWITCH		  0x00000008
-#define KGSL_CONTEXT_PREAMBLE		  0x00000010
-#define KGSL_CONTEXT_TRASH_STATE	  0x00000020
-#define KGSL_CONTEXT_PER_CONTEXT_TS	  0x00000040
-#define KGSL_CONTEXT_USER_GENERATED_TS	  0x00000080
-#define KGSL_CONTEXT_END_OF_FRAME         0x00000100
-#define KGSL_CONTEXT_NO_FAULT_TOLERANCE	  0x00000200
-/* bits [12:15] are reserved for future use */
-#define KGSL_CONTEXT_TYPE_MASK            0x01F00000
-#define KGSL_CONTEXT_TYPE_SHIFT           20
+#define KGSL_CONTEXT_SAVE_GMEM		0x00000001
+#define KGSL_CONTEXT_NO_GMEM_ALLOC	0x00000002
+#define KGSL_CONTEXT_SUBMIT_IB_LIST	0x00000004
+#define KGSL_CONTEXT_CTX_SWITCH		0x00000008
+#define KGSL_CONTEXT_PREAMBLE		0x00000010
+#define KGSL_CONTEXT_TRASH_STATE	0x00000020
+#define KGSL_CONTEXT_PER_CONTEXT_TS	0x00000040
+#define KGSL_CONTEXT_USER_GENERATED_TS	0x00000080
+#define KGSL_CONTEXT_END_OF_FRAME	0x00000100
 
-#define KGSL_CONTEXT_TYPE_ANY		  0
-#define KGSL_CONTEXT_TYPE_GL		  1
-#define KGSL_CONTEXT_TYPE_CL		  2
-#define KGSL_CONTEXT_TYPE_C2D		  3
-#define KGSL_CONTEXT_TYPE_RS		  4
+#define KGSL_CONTEXT_NO_FAULT_TOLERANCE 0x00000200
+#define KGSL_CONTEXT_SYNC               0x00000400
+/* bits [12:15] are reserved for future use */
+#define KGSL_CONTEXT_TYPE_MASK          0x01F00000
+#define KGSL_CONTEXT_TYPE_SHIFT         20
+
+#define KGSL_CONTEXT_TYPE_ANY		0
+#define KGSL_CONTEXT_TYPE_GL		1
+#define KGSL_CONTEXT_TYPE_CL		2
+#define KGSL_CONTEXT_TYPE_C2D		3
+#define KGSL_CONTEXT_TYPE_RS		4
 
 #define KGSL_CONTEXT_INVALID 0xffffffff
 
@@ -194,31 +196,6 @@ enum kgsl_property_type {
 	KGSL_PROP_VERSION         = 0x00000008,
 	KGSL_PROP_GPU_RESET_STAT  = 0x00000009,
 	KGSL_PROP_PWRCTRL         = 0x0000000E,
-	KGSL_PROP_FAULT_TOLERANCE = 0x00000011,
-};
-
-/* Fault Tolerance policy flags */
-#define  KGSL_FT_DISABLE                  0x00000001
-#define  KGSL_FT_REPLAY                   0x00000002
-#define  KGSL_FT_SKIPIB                   0x00000004
-#define  KGSL_FT_SKIPFRAME                0x00000008
-#define  KGSL_FT_DEFAULT_POLICY           (KGSL_FT_REPLAY + KGSL_FT_SKIPIB)
-
-/* Pagefault policy flags */
-#define KGSL_FT_PAGEFAULT_INT_ENABLE         0x00000001
-#define KGSL_FT_PAGEFAULT_GPUHALT_ENABLE     0x00000002
-#define KGSL_FT_PAGEFAULT_LOG_ONE_PER_PAGE   0x00000004
-#define KGSL_FT_PAGEFAULT_LOG_ONE_PER_INT    0x00000008
-#define KGSL_FT_PAGEFAULT_DEFAULT_POLICY     (KGSL_FT_PAGEFAULT_INT_ENABLE + \
-					KGSL_FT_PAGEFAULT_LOG_ONE_PER_PAGE)
-
-/* Fault tolerance config */
-struct kgsl_ft_config {
-	unsigned int ft_policy;    /* Fault Tolerance policy flags */
-	unsigned int ft_pf_policy; /* Pagefault policy flags */
-	unsigned int ft_pm_dump;   /* KGSL enable postmortem dump */
-	unsigned int ft_detect_ms;
-	unsigned int ft_dos_timeout_ms;
 };
 
 struct kgsl_shadowprop {
@@ -233,6 +210,26 @@ struct kgsl_version {
 	unsigned int dev_major;
 	unsigned int dev_minor;
 };
+
+/* Performance counter groups */
+
+#define KGSL_PERFCOUNTER_GROUP_CP 0x0
+#define KGSL_PERFCOUNTER_GROUP_RBBM 0x1
+#define KGSL_PERFCOUNTER_GROUP_PC 0x2
+#define KGSL_PERFCOUNTER_GROUP_VFD 0x3
+#define KGSL_PERFCOUNTER_GROUP_HLSQ 0x4
+#define KGSL_PERFCOUNTER_GROUP_VPC 0x5
+#define KGSL_PERFCOUNTER_GROUP_TSE 0x6
+#define KGSL_PERFCOUNTER_GROUP_RAS 0x7
+#define KGSL_PERFCOUNTER_GROUP_UCHE 0x8
+#define KGSL_PERFCOUNTER_GROUP_TP 0x9
+#define KGSL_PERFCOUNTER_GROUP_SP 0xA
+#define KGSL_PERFCOUNTER_GROUP_RB 0xB
+#define KGSL_PERFCOUNTER_GROUP_PWR 0xC
+#define KGSL_PERFCOUNTER_GROUP_VBIF 0xD
+#define KGSL_PERFCOUNTER_GROUP_VBIF_PWR 0xE
+
+#define KGSL_PERFCOUNTER_NOT_USED 0xFFFFFFFF
 
 /* structure holds list of ibs */
 struct kgsl_ibdesc {
@@ -287,7 +284,7 @@ struct kgsl_device_waittimestamp_ctxtid {
 #define IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID \
 	_IOW(KGSL_IOC_TYPE, 0x7, struct kgsl_device_waittimestamp_ctxtid)
 
-/* issue indirect commands to the GPU.
+/* DEPRECATED: issue indirect commands to the GPU.
  * drawctxt_id must have been created with IOCTL_KGSL_DRAWCTXT_CREATE
  * ibaddr and sizedwords must specify a subset of a buffer created
  * with IOCTL_KGSL_SHAREDMEM_FROM_PMEM
@@ -295,6 +292,9 @@ struct kgsl_device_waittimestamp_ctxtid {
  * timestamp is a returned counter value which can be passed to
  * other ioctls to determine when the commands have been executed by
  * the GPU.
+ *
+ * This fucntion is deprecated - consider using IOCTL_KGSL_SUBMIT_COMMANDS
+ * instead
  */
 struct kgsl_ringbuffer_issueibcmds {
 	unsigned int drawctxt_id;
@@ -683,6 +683,202 @@ struct kgsl_gpumem_sync_cache {
 
 #define IOCTL_KGSL_GPUMEM_SYNC_CACHE \
 	_IOW(KGSL_IOC_TYPE, 0x37, struct kgsl_gpumem_sync_cache)
+
+/**
+ * struct kgsl_perfcounter_get - argument to IOCTL_KGSL_PERFCOUNTER_GET
+ * @groupid: Performance counter group ID
+ * @countable: Countable to select within the group
+ * @offset: Return offset of the reserved counter
+ *
+ * Get an available performance counter from a specified groupid.  The offset
+ * of the performance counter will be returned after successfully assigning
+ * the countable to the counter for the specified group.  An error will be
+ * returned and an offset of 0 if the groupid is invalid or there are no
+ * more counters left.  After successfully getting a perfcounter, the user
+ * must call kgsl_perfcounter_put(groupid, contable) when finished with
+ * the perfcounter to clear up perfcounter resources.
+ *
+ */
+struct kgsl_perfcounter_get {
+	unsigned int groupid;
+	unsigned int countable;
+	unsigned int offset;
+/* private: reserved for future use */
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define IOCTL_KGSL_PERFCOUNTER_GET \
+	_IOWR(KGSL_IOC_TYPE, 0x38, struct kgsl_perfcounter_get)
+
+/**
+ * struct kgsl_perfcounter_put - argument to IOCTL_KGSL_PERFCOUNTER_PUT
+ * @groupid: Performance counter group ID
+ * @countable: Countable to release within the group
+ *
+ * Put an allocated performance counter to allow others to have access to the
+ * resource that was previously taken.  This is only to be called after
+ * successfully getting a performance counter from kgsl_perfcounter_get().
+ *
+ */
+struct kgsl_perfcounter_put {
+	unsigned int groupid;
+	unsigned int countable;
+/* private: reserved for future use */
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define IOCTL_KGSL_PERFCOUNTER_PUT \
+	_IOW(KGSL_IOC_TYPE, 0x39, struct kgsl_perfcounter_put)
+
+/**
+ * struct kgsl_perfcounter_query - argument to IOCTL_KGSL_PERFCOUNTER_QUERY
+ * @groupid: Performance counter group ID
+ * @countable: Return active countables array
+ * @size: Size of active countables array
+ * @max_counters: Return total number counters for the group ID
+ *
+ * Query the available performance counters given a groupid.  The array
+ * *countables is used to return the current active countables in counters.
+ * The size of the array is passed in so the kernel will only write at most
+ * size or counter->size for the group id.  The total number of available
+ * counters for the group ID is returned in max_counters.
+ * If the array or size passed in are invalid, then only the maximum number
+ * of counters will be returned, no data will be written to *countables.
+ * If the groupid is invalid an error code will be returned.
+ *
+ */
+struct kgsl_perfcounter_query {
+	unsigned int groupid;
+	/* Array to return the current countable for up to size counters */
+	unsigned int *countables;
+	unsigned int count;
+	unsigned int max_counters;
+/* private: reserved for future use */
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define IOCTL_KGSL_PERFCOUNTER_QUERY \
+	_IOWR(KGSL_IOC_TYPE, 0x3A, struct kgsl_perfcounter_query)
+
+/**
+ * struct kgsl_perfcounter_query - argument to IOCTL_KGSL_PERFCOUNTER_QUERY
+ * @groupid: Performance counter group IDs
+ * @countable: Performance counter countable IDs
+ * @value: Return performance counter reads
+ * @size: Size of all arrays (groupid/countable pair and return value)
+ *
+ * Read in the current value of a performance counter given by the groupid
+ * and countable.
+ *
+ */
+
+struct kgsl_perfcounter_read_group {
+	unsigned int groupid;
+	unsigned int countable;
+	unsigned long long value;
+};
+
+struct kgsl_perfcounter_read {
+	struct kgsl_perfcounter_read_group *reads;
+	unsigned int count;
+/* private: reserved for future use */
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define IOCTL_KGSL_PERFCOUNTER_READ \
+	_IOWR(KGSL_IOC_TYPE, 0x3B, struct kgsl_perfcounter_read)
+/*
+ * struct kgsl_gpumem_sync_cache_bulk - argument to
+ * IOCTL_KGSL_GPUMEM_SYNC_CACHE_BULK
+ * @id_list: list of GPU buffer ids of the buffers to sync
+ * @count: number of GPU buffer ids in id_list
+ * @op: a mask of KGSL_GPUMEM_CACHE_* values
+ *
+ * Sync the cache for memory headed to and from the GPU. Certain
+ * optimizations can be made on the cache operation based on the total
+ * size of the working set of memory to be managed.
+ */
+struct kgsl_gpumem_sync_cache_bulk {
+	unsigned int *id_list;
+	unsigned int count;
+	unsigned int op;
+/* private: reserved for future use */
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define IOCTL_KGSL_GPUMEM_SYNC_CACHE_BULK \
+	_IOWR(KGSL_IOC_TYPE, 0x3C, struct kgsl_gpumem_sync_cache_bulk)
+
+/*
+ * struct kgsl_cmd_syncpoint_timestamp
+ * @context_id: ID of a KGSL context
+ * @timestamp: GPU timestamp
+ *
+ * This structure defines a syncpoint comprising a context/timestamp pair. A
+ * list of these may be passed by IOCTL_KGSL_SUBMIT_COMMANDS to define
+ * dependencies that must be met before the command can be submitted to the
+ * hardware
+ */
+struct kgsl_cmd_syncpoint_timestamp {
+	unsigned int context_id;
+	unsigned int timestamp;
+};
+
+#define KGSL_CMD_SYNCPOINT_TYPE_TIMESTAMP 0
+
+struct kgsl_cmd_syncpoint_fence {
+	int fd;
+};
+
+#define KGSL_CMD_SYNCPOINT_TYPE_FENCE 1
+
+/**
+ * struct kgsl_cmd_syncpoint - Define a sync point for a command batch
+ * @type: type of sync point defined here
+ * @priv: Pointer to the type specific buffer
+ * @size: Size of the type specific buffer
+ *
+ * This structure contains pointers defining a specific command sync point.
+ * The pointer and size should point to a type appropriate structure.
+ */
+struct kgsl_cmd_syncpoint {
+	int type;
+	void __user *priv;
+	unsigned int size;
+};
+
+/**
+ * struct kgsl_submit_commands - Argument to IOCTL_KGSL_SUBMIT_COMMANDS
+ * @context_id: KGSL context ID that owns the commands
+ * @flags:
+ * @cmdlist: User pointer to a list of kgsl_ibdesc structures
+ * @numcmds: Number of commands listed in cmdlist
+ * @synclist: User pointer to a list of kgsl_cmd_syncpoint structures
+ * @numsyncs: Number of sync points listed in synclist
+ * @timestamp: On entry the a user defined timestamp, on exist the timestamp
+ * assigned to the command batch
+ *
+ * This structure specifies a command to send to the GPU hardware.  This is
+ * similar to kgsl_issueibcmds expect that it doesn't support the legacy way to
+ * submit IB lists and it adds sync points to block the IB until the
+ * dependencies are satisified.  This entry point is the new and preferred way
+ * to submit commands to the GPU.
+ */
+
+struct kgsl_submit_commands {
+	unsigned int context_id;
+	unsigned int flags;
+	struct kgsl_ibdesc __user *cmdlist;
+	unsigned int numcmds;
+	struct kgsl_cmd_syncpoint __user *synclist;
+	unsigned int numsyncs;
+	unsigned int timestamp;
+/* private: reserved for future use */
+	unsigned int __pad[4];
+};
+
+#define IOCTL_KGSL_SUBMIT_COMMANDS \
+	_IOWR(KGSL_IOC_TYPE, 0x3D, struct kgsl_submit_commands)
 
 #ifdef __KERNEL__
 #ifdef CONFIG_MSM_KGSL_DRM
