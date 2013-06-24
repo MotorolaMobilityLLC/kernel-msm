@@ -212,7 +212,9 @@ struct msm_fb_data_type {
 	struct completion commit_comp;
 	u32 is_committing;
 	atomic_t commit_cnt;
-	struct work_struct commit_work;
+	struct task_struct *commit_thread;
+	wait_queue_head_t commit_queue;
+	int wake_commit_thread;
 	void *msm_fb_backup;
 	boolean panel_driver_on;
 	int vsync_sysfs_created;
