@@ -20,6 +20,19 @@
 	qcom,msm-id = <145 0x42 0x8200>;
 };
 
+&soc {
+	gpio_keys {
+		lid-sw {
+			label = "lid-switch";
+			gpios = <&msmgpio 51 0x1>;
+			linux,input-type = <5>;
+			linux,code = <0>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
+
 &bms_tbls {
 	mmi,batt-tbl-one {
 		qcom,batt-tbl-id = <0 50000>;
