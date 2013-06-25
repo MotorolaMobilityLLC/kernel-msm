@@ -223,9 +223,18 @@ eHalStatus sme_Stop(tHalHandle hHal, tANI_BOOLEAN pmcFlag);
   \sa
   
   --------------------------------------------------------------------------*/
-eHalStatus sme_OpenSession(tHalHandle hHal, csrRoamCompleteCallback callback, void *pContext, 
-                           tANI_U8 *pSelfMacAddr, tANI_U8 *pbSessionId);
+eHalStatus sme_OpenSession(tHalHandle hHal, csrRoamCompleteCallback callback,
+                           void *pContext, tANI_U8 *pSelfMacAddr,
+                           tANI_U8 *pbSessionId);
 
+/*--------------------------------------------------------------------------
+
+  \brief sme_SetCurrDeviceMode() - Sets the current operating device mode.
+  \param hHal - The handle returned by macOpen.
+  \param currDeviceMode - Current operating device mode.
+  --------------------------------------------------------------------------*/
+
+void sme_SetCurrDeviceMode (tHalHandle hHal, tVOS_CON_MODE currDeviceMode);
 
 /*--------------------------------------------------------------------------
   

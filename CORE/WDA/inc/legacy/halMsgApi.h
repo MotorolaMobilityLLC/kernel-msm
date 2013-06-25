@@ -1296,7 +1296,7 @@ typedef struct sMaxTxPowerParams
 typedef struct sAddStaSelfParams
 {
    tSirMacAddr selfMacAddr;
-
+   tVOS_CON_MODE currDeviceMode;
    tANI_U32 status;
 }tAddStaSelfParams, *tpAddStaSelfParams;
 

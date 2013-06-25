@@ -3244,9 +3244,10 @@ VOS_STATUS hdd_init_station_mode( hdd_adapter_t *pAdapter )
    int rc = 0;
 
    INIT_COMPLETION(pAdapter->session_open_comp_var);
+   sme_SetCurrDeviceMode(pHddCtx->hHal, pAdapter->device_mode);
    //Open a SME session for future operation
    halStatus = sme_OpenSession( pHddCtx->hHal, hdd_smeRoamCallback, pAdapter,
-         (tANI_U8 *)&pAdapter->macAddressCurrent, &pAdapter->sessionId );
+         (tANI_U8 *)&pAdapter->macAddressCurrent, &pAdapter->sessionId);
    if ( !HAL_STATUS_SUCCESS( halStatus ) )
    {
       hddLog(VOS_TRACE_LEVEL_FATAL,

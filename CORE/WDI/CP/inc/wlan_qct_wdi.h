@@ -3112,6 +3112,9 @@ typedef struct
   /*Self Station MAC address*/
   wpt_macAddr selfMacAddr;
 
+  /*Self STA device mode*/
+  wpt_uint32 currDeviceMode;
+
   /*Status of the operation*/
   wpt_uint32  uStatus;
 }WDI_AddSTASelfInfoType;
