@@ -20,9 +20,14 @@
 #include <linux/switch.h>
 #include <linux/gpio.h>
 #include <linux/input.h>
+#include <linux/netdevice.h>
 
 #include <asm/mach-types.h>
 #include <linux/i2c/cap1106.h>
+
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+extern bool rmnet_netdev_cmp(struct net_device *);
+#endif
 
 /*
  * Debug Utility
@@ -54,6 +59,9 @@ struct cap1106_data {
 	int det_gpio;
 	char *det_gpio_name;
 	const unsigned char *init_table;
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+	struct notifier_block netdev_obs;
+#endif
 };
 
 static DEFINE_MUTEX(cap_mtx);
@@ -63,7 +71,11 @@ static int is_wood_sensitivity = 0;
 static int ac2 = 0; // Accumulated Count Ch2
 static int ac6 = 0; // Accumulated Count Ch6
 static int ac_limit = 10;
-static int force_enable = 1;
+static int force_enable = 0;
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+static int rmnet_ctl = 1;
+static int rmnet_if_up = 0;
+#endif
 
 /*
  * Function Declaration
@@ -82,6 +94,9 @@ static void cap1106_work_function(struct work_struct *work);
 static int cap1106_init_sensor(struct i2c_client *client);
 static int cap1106_config_irq(struct i2c_client *client);
 static void cap1106_enable_sensor(struct i2c_client *client, int enable);
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+static void rmnet_state_changed(struct i2c_client *client);
+#endif
 static ssize_t show_attrs_handler(struct device *dev,
         struct device_attribute *devattr, char *buf);
 static ssize_t store_attrs_handler(struct device *dev,
@@ -125,6 +140,9 @@ DEVICE_ATTR(sensor_onoff, 0644, show_attrs_handler, store_attrs_handler);
 DEVICE_ATTR(sensor_recal, 0644, show_attrs_handler, store_attrs_handler);
 DEVICE_ATTR(sensor_app2mdm_sar, 0644, NULL, store_attrs_handler);
 DEVICE_ATTR(sensor_main, 0644, show_attrs_handler, NULL);
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+DEVICE_ATTR(sensor_rmnetctl, 0644, show_attrs_handler, store_attrs_handler);
+#endif
 
 static struct attribute *cap1106_attr_deb[] = {
 	&dev_attr_obj_detect.attr,					// 1
@@ -141,6 +159,9 @@ static struct attribute *cap1106_attr_deb[] = {
 	&dev_attr_sensor_recal.attr,				// 12
 	&dev_attr_sensor_app2mdm_sar.attr,			// 13
 	&dev_attr_sensor_main.attr,			// 14
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+	&dev_attr_sensor_rmnetctl.attr,				// 15
+#endif
 	NULL
 };
 
@@ -186,6 +207,10 @@ static ssize_t show_attrs_handler(struct device *dev,
 			        cap1106_read_reg(client, 0x26) == 0x0 ? "OK\n" : "FAIL\n");
 		} else if (!strcmp(attr_name, dev_attr_sensor_main.attr.name)) {
 			ret = sprintf(buf, "%02X\n", cap1106_read_reg(client, 0x00));
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+		} else if (!strcmp(attr_name, dev_attr_sensor_rmnetctl.attr.name)) {
+			ret = sprintf(buf, "%d\n", rmnet_ctl);
+#endif
 		}
 	} else {
 		if (!strcmp(attr_name, dev_attr_sensor_main.attr.name)) {
@@ -234,19 +259,35 @@ static ssize_t store_attrs_handler(struct device *dev,
 		} else if (!strcmp(attr_name, dev_attr_sensor_onoff.attr.name)) {
 			if (value == 0) {
 				force_enable = 0;
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+				rmnet_ctl = 0;
+#endif
 				cap1106_enable_sensor(client, 0);
 			}
 		} else if (!strcmp(attr_name, dev_attr_sensor_recal.attr.name)) {
 			cap1106_write_reg(client, 0x26, 0x22);
 		} else if (!strcmp(attr_name, dev_attr_sensor_app2mdm_sar.attr.name)) {
 			gpio_set_value(data->sar_gpio, value);
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+		} else if (!strcmp(attr_name, dev_attr_sensor_rmnetctl.attr.name)) {
+			rmnet_ctl = value;
+			rmnet_state_changed(client);
+#endif
 		}
 	} else {
 		if (!strcmp(attr_name, dev_attr_sensor_onoff.attr.name)) {
 			if (value == 1) {
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+				rmnet_ctl = 0;
+#endif
 				force_enable = 1;
 				cap1106_enable_sensor(client, 1);
 			}
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+		} else if (!strcmp(attr_name, dev_attr_sensor_rmnetctl.attr.name)) {
+			rmnet_ctl = value;
+			rmnet_state_changed(client);
+#endif
 		}
 	}
 	mutex_unlock(&cap_mtx);
@@ -270,6 +311,47 @@ static ssize_t print_cap_state(struct switch_dev *sdev, char *buf)
 	else
 		return sprintf(buf, "0\n");
 }
+
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+static int netdev_changed_event(struct notifier_block *this,
+			      unsigned long event, void *ptr)
+{
+	struct net_device *dev = (struct net_device *)ptr;
+	struct cap1106_data *data = container_of(this, struct cap1106_data, netdev_obs);
+	int before_if_up = rmnet_if_up;
+
+	CAP_DEBUG("+\n");
+	if (!rmnet_netdev_cmp(dev))
+		goto done;
+
+	mutex_lock(&cap_mtx);
+	switch (event) {
+	case NETDEV_UP:
+		++rmnet_if_up;
+		CAP_DEBUG("netdev %s is up, rmnet_if_up=%d\n", dev->name, rmnet_if_up);
+		break;
+
+	case NETDEV_DOWN:
+		--rmnet_if_up;
+		CAP_DEBUG("netdev %s is down, rmnet_if_up=%d\n", dev->name, rmnet_if_up);
+		break;
+
+	default:
+		break;
+	}
+	if (rmnet_if_up < 0) {
+		CAP_ERROR("rmnet_if_up is negative! Unbalanced netdev state change?\n");
+		rmnet_if_up = 0;
+	}
+	if (before_if_up != rmnet_if_up)
+		rmnet_state_changed(data->client);
+	mutex_unlock(&cap_mtx);
+
+done:
+	CAP_DEBUG("-\n");
+	return NOTIFY_DONE;
+}
+#endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void cap1106_enable_sensor(struct i2c_client *client, int enable)
@@ -301,6 +383,16 @@ static void cap1106_enable_sensor(struct i2c_client *client, int enable)
 		CAP_INFO("data->enable: %d\n", data->enable);
 	}
 }
+
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+static void rmnet_state_changed(struct i2c_client *client)
+{
+	if (force_enable || (rmnet_ctl && rmnet_if_up > 0))
+		cap1106_enable_sensor(client, 1);
+	else
+		cap1106_enable_sensor(client, 0);
+}
+#endif
 
 static s32 cap1106_read_reg(struct i2c_client *client, u8 command)
 {
@@ -579,6 +671,11 @@ static int __devinit cap1106_probe(struct i2c_client *client,
 	queue_delayed_work(data->cap_wq, &data->checking_work,
 	        msecs_to_jiffies(1000));
 
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+	data->netdev_obs.notifier_call = netdev_changed_event;
+	register_netdevice_notifier(&data->netdev_obs);
+#endif
+
 	pivate_data = data;
 
 	CAP_INFO("OK\n");
@@ -601,6 +698,9 @@ static int __devexit cap1106_remove(struct i2c_client *client)
 {
 	struct cap1106_data *data = i2c_get_clientdata(client);
 	CAP_DEBUG("+\n");
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+	unregister_netdevice_notifier(&data->netdev_obs);
+#endif
 	switch_dev_unregister(&cap_sdev);
 	sysfs_remove_group(&client->dev.kobj, &data->attrs);
 	free_irq(client->irq, client);

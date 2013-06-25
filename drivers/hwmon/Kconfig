@@ -1435,6 +1435,13 @@ config SENSORS_CAP1106
 	  To compile this driver as a module, choose m here. The module will
 	  be called cap1106.
 
+config CAP_SENSOR_RMNET_CTL
+	bool "RMNET-controled SMSC CAP1106"
+	depends on MSM_RMNET_USB && SENSORS_CAP1106
+	help
+	  Enable/disable SMSC 1106 cap sensor by state change of RMNET-related
+	  network interface.
+
 if ACPI
 
 comment "ACPI drivers"

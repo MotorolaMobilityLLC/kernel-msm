@@ -95,6 +95,22 @@ module_param(no_rmnet_insts_per_dev, uint, S_IRUGO | S_IWUSR);
 static int rmnet_data_start(void);
 static bool rmnet_data_init;
 
+#if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
+bool rmnet_netdev_cmp(struct net_device *dev)
+{
+	int i;
+	const char *rmnet_name;
+
+	for (i = 0; i < 2; ++i) {
+		rmnet_name = rmnet_names[i];
+		if (0 == strncmp(dev->name, rmnet_name, strlen(rmnet_name)-2))
+			return true;
+	}
+	return false;
+}
+EXPORT_SYMBOL(rmnet_netdev_cmp);
+#endif
+
 static int rmnet_init(const char *val, const struct kernel_param *kp)
 {
 	int ret = 0;
