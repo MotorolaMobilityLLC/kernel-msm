@@ -263,6 +263,7 @@ static void msm_vb2_ops_buf_cleanup(struct vb2_buffer *vb)
 		}
 		spin_unlock_irqrestore(&pcam_inst->vq_irqlock, flags);
 	}
+	buf = container_of(vb, struct msm_frame_buffer, vidbuf);
 	pmctl = msm_cam_server_get_mctl(pcam->mctl_handle);
 	if (pmctl == NULL || pmctl->client == NULL) {
 		pr_err("%s No mctl found\n", __func__);
