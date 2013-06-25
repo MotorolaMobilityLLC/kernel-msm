@@ -2085,22 +2085,22 @@ int wlan_hdd_ftm_set_nv_field
          /* If Last byte is larger than 252 (0xFC), return Error,
           * Since 3MACs should be derived from first MAC */
          if(QWLAN_MAX_MAC_LAST_BYTE_VALUE <
-            nvField->fieldData.macAddr[VOS_MAC_ADDRESS_LEN - 1])
+            nvField->fieldData.macAddr.macAddr1[VOS_MAC_ADDRESS_LEN - 1])
          {
             VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                        "Last Byte of the seed MAC is too large 0x%x",
-                        nvField->fieldData.macAddr[VOS_MAC_ADDRESS_LEN - 1]);
+                        nvField->fieldData.macAddr.macAddr1[VOS_MAC_ADDRESS_LEN - 1]);
             return -EILSEQ;
          }
 
          pNVMac = (v_U8_t *)nvContents->fields.macAddr;
-         lastByteMAC = nvField->fieldData.macAddr[VOS_MAC_ADDRESS_LEN - 1];
+         lastByteMAC = nvField->fieldData.macAddr.macAddr1[VOS_MAC_ADDRESS_LEN - 1];
          for(macLoop = 0; macLoop < VOS_MAX_CONCURRENCY_PERSONA; macLoop++)
          {
-            nvField->fieldData.macAddr[VOS_MAC_ADDRESS_LEN - 1] =
+            nvField->fieldData.macAddr.macAddr1[VOS_MAC_ADDRESS_LEN - 1] =
                                                lastByteMAC + macLoop;
             vos_mem_copy(pNVMac + (macLoop * NV_FIELD_MAC_ADDR_SIZE),
-                         &nvField->fieldData.macAddr[0],
+                         &nvField->fieldData.macAddr.macAddr1[0],
                          NV_FIELD_MAC_ADDR_SIZE);
          }
          break;
@@ -3719,7 +3719,7 @@ static VOS_STATUS wlan_ftm_priv_set_mac_address(hdd_adapter_t *pAdapter,char *bu
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "MacAddress = %02x:%02x:%02x:%02x:%02x:%02x",MAC_ADDR_ARRAY(macAddr));
 
 
-    pMacAddress = &pMsgBody->SetNvField.fieldData.macAddr[0];
+    pMacAddress = &pMsgBody->SetNvField.fieldData.macAddr.macAddr1[0];
 
     for(ii = 0; ii < VOS_MAC_ADDRESS_LEN; ii++)
        pMacAddress[ii] = (v_U8_t)macAddr[ii];
