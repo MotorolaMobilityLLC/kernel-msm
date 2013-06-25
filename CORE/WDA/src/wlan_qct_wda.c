@@ -3486,6 +3486,7 @@ VOS_STATUS WDA_ProcessAddStaSelfReq( tWDA_CbContext *pWDA, tpAddStaSelfParams pA
    }
    wdiAddStaSelfReq->wdiReqStatusCB = NULL;
    vos_mem_copy( wdiAddStaSelfReq->wdiAddSTASelfInfo.selfMacAddr, pAddStaSelfReq->selfMacAddr, 6);
+   wdiAddStaSelfReq->wdiAddSTASelfInfo.currDeviceMode = pAddStaSelfReq->currDeviceMode;
    /* Store Init Req pointer, as this will be used for response */
    /* store Params pass it to WDI */
    pWdaParams->pWdaContext = pWDA;
