@@ -1148,10 +1148,13 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
+	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
 	u16 val;
 	u16 tries = 0;
 
+	mutex_lock(&tfa9890->dsp_init_lock);
 	if (mute) {
+		cancel_delayed_work_sync(&tfa9890->delay_work);
 		tfa9890_set_mute(codec, TFA9890_AMP_MUTE);
 		do {
 			/* need to wait for amp to stop switching, to minimize
@@ -1165,9 +1168,15 @@ static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 				break;
 			usleep_range(10000, 10000);
 		} while ((++tries < 20));
-	} else
+	} else {
 		tfa9890_set_mute(codec, TFA9890_MUTE_OFF);
-
+		/* start monitor thread to check IC status bit 5secs, and
+		 * re-init IC to recover.
+		 */
+		queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
+			HZ);
+	}
+	mutex_unlock(&tfa9890->dsp_init_lock);
 	return 0;
 }
 
@@ -1176,17 +1185,10 @@ static int tfa9890_startup(struct snd_pcm_substream *substream,
 				   struct snd_soc_dai *dai)
 {
 	struct snd_soc_codec *codec = dai->codec;
-	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
 
 	pr_debug("%s: enter\n", __func__);
-	mutex_lock(&tfa9890->dsp_init_lock);
 
-	/* start monitor thread to check IC status 5secs, and re-init
-	 * IC to recover in case Cold start occured while operating */
-	queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
-		HZ);
 	tfa9890_power(codec, 1);
-	mutex_unlock(&tfa9890->dsp_init_lock);
 
 	return 0;
 }
@@ -1194,16 +1196,8 @@ static int tfa9890_startup(struct snd_pcm_substream *substream,
 static void tfa9890_shutdown(struct snd_pcm_substream *substream,
 				   struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec *codec = dai->codec;
-	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
-
 	pr_debug("%s: enter\n", __func__);
-	mutex_lock(&tfa9890->dsp_init_lock);
-
-	cancel_delayed_work_sync(&tfa9890->delay_work);
 	tfa9890_power(dai->codec, 0);
-
-	mutex_unlock(&tfa9890->dsp_init_lock);
 }
 
 /* Trigger callback is atomic function, It gets called when pcm is started */
