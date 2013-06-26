@@ -1585,6 +1585,7 @@ static int synaptics_ts_probe(
 	struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct synaptics_ts_data *ts;
+	struct touch_platform_data *pdata;
 	int ret = 0;
 	u8 i2c_test = 0;
 	int i;
@@ -1592,41 +1593,42 @@ static int synaptics_ts_probe(
 	if (touch_debug_mask & DEBUG_TRACE)
 		TOUCH_DEBUG_MSG("\n");
 
-	synaptics_wq = create_singlethread_workqueue("synaptics_wq");
-	if (!synaptics_wq)
-		return -ENOMEM;
+	if (client->dev.of_node) {
+		pdata = devm_kzalloc(&client->dev,
+			sizeof(struct touch_platform_data), GFP_KERNEL);
+		if (!pdata) {
+			dev_err(&client->dev, "Failed to allocate memory\n");
+			return -ENOMEM;
+		}
+
+		ret = synaptics_parse_dt(&client->dev, pdata);
+		if (ret)
+			return ret;
+	} else {
+		pdata = client->dev.platform_data;
+		if (!pdata)
+			return -ENODEV;
+	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		TOUCH_ERR_MSG("i2c functionality check error\n");
 		return -EPERM;
 	}
 
-	ts = kzalloc(sizeof(struct synaptics_ts_data), GFP_KERNEL);
-	if (!ts) {
-		TOUCH_ERR_MSG("Can not allocate memory\n");
+	synaptics_wq = create_singlethread_workqueue("synaptics_wq");
+	if (!synaptics_wq) {
+		TOUCH_ERR_MSG("create_singlethread_workqueue error\n");
 		return -ENOMEM;
 	}
 
-	if (client->dev.of_node) {
-		ts->pdata  = devm_kzalloc(&client->dev,
-			sizeof(struct touch_platform_data), GFP_KERNEL);
-		if (!ts->pdata) {
-			dev_err(&client->dev, "Failed to allocate memory\n");
-			ret = -ENOMEM;
-			goto err_alloc_data_failed;
-		}
-
-		ret = synaptics_parse_dt(&client->dev, ts->pdata);
-		if (ret)
-			goto err_alloc_platformdata_failed;
-	} else {
-		ts->pdata  = client->dev.platform_data;
-		if (!ts->pdata) {
-			ret = -EINVAL;
-			goto err_alloc_data_failed;
-		}
+	ts = kzalloc(sizeof(struct synaptics_ts_data), GFP_KERNEL);
+	if (!ts) {
+		TOUCH_ERR_MSG("Can not allocate memory\n");
+		ret = -ENOMEM;
+		goto err_kzalloc_failed;
 	}
 
+	ts->pdata = pdata;
 	ts->ic_init_err_cnt = 0;
 
 	ts->client = client;
@@ -1638,7 +1640,7 @@ static int synaptics_ts_probe(
 	ret = gpio_request(ts->pdata->reset_gpio, "touch_reset");
 	if (ret < 0) {
 		TOUCH_ERR_MSG("FAIL: touch_reset gpio_request\n");
-		goto err_assign_platform_data;
+		goto err_reset_gpio_request_failed;
 	}
 	gpio_direction_output(ts->pdata->reset_gpio, 1);
 
@@ -1649,12 +1651,14 @@ static int synaptics_ts_probe(
 	if (lcd_register_client(&ts->notif) != 0) {
 		TOUCH_ERR_MSG("Failed to register fb callback\n");
 		ret = -EINVAL;
-		goto err_fb_register;
+		goto err_fb_register_failed;
 	}
 
 	/* Power on */
-	if (touch_power_cntl(ts, POWER_ON) < 0)
+	if (touch_power_cntl(ts, POWER_ON) < 0) {
+		ret = -EINVAL;
 		goto err_power_failed;
+	}
 
 	/* init work_queue */
 	INIT_DELAYED_WORK(&ts->work_init, touch_init_func);
@@ -1698,7 +1702,7 @@ static int synaptics_ts_probe(
 	ret = gpio_request(ts->pdata->irq_gpio, "touch_int");
 	if (ret < 0) {
 		TOUCH_ERR_MSG("FAIL: touch_int gpio_request\n");
-		goto err_interrupt_failed;
+		goto err_int_gpio_request_failed;
 	}
 	gpio_direction_input(ts->pdata->irq_gpio);
 
@@ -1717,7 +1721,8 @@ static int synaptics_ts_probe(
 			TOUCH_ERR_MSG("Touch I2C  read fail\n");
 			if (i == MAX_RETRY_COUNT-1) {
 				TOUCH_ERR_MSG("No Touch Panel \n");
-				return -EIO;
+				ret = -EIO;
+				goto err_touch_i2c_read_failed;
 			}
 		} else {
 			TOUCH_DEBUG_MSG("Touch I2C read success \n");
@@ -1741,34 +1746,49 @@ static int synaptics_ts_probe(
 	return ret;
 
 err_dev_create_file:
+	for (i = i - 1; i >= 0; i--) {
+		device_remove_file(&ts->client->dev,
+				&synaptics_device_attrs[i]);
+	}
+err_touch_i2c_read_failed:
 	free_irq(ts->client->irq, ts);
 err_interrupt_failed:
+	gpio_free(ts->pdata->irq_gpio);
+err_int_gpio_request_failed:
 err_input_register_device_failed:
 	input_free_device(ts->input_dev);
 err_input_dev_alloc_failed:
 	touch_power_cntl(ts, POWER_OFF);
 err_power_failed:
-err_assign_platform_data:
-err_fb_register:
+	lcd_unregister_client(&ts->notif);
+err_fb_register_failed:
+	gpio_free(ts->pdata->reset_gpio);
+err_reset_gpio_request_failed:
 	kfree(ts);
-	return ret;
-err_alloc_platformdata_failed:
-	kfree(ts->pdata);
-err_alloc_data_failed:
-	kfree(ts);
-
+err_kzalloc_failed:
+	destroy_workqueue(synaptics_wq);
+	synaptics_wq = NULL;
 	return ret;
 }
 
 static int synaptics_ts_remove(struct i2c_client *client)
 {
 	struct synaptics_ts_data *ts = i2c_get_clientdata(client);
+	int i;
 
-	/* Power off */
+	for (i = 0; i < ARRAY_SIZE(synaptics_device_attrs); i++) {
+		device_remove_file(&client->dev,
+				&synaptics_device_attrs[i]);
+	}
+	free_irq(client->irq, ts);
+	gpio_free(ts->pdata->irq_gpio);
 	touch_power_cntl(ts, POWER_OFF);
 	free_irq(client->irq, ts);
 	input_unregister_device(ts->input_dev);
+	gpio_free(ts->pdata->reset_gpio);
 	kfree(ts);
+	destroy_workqueue(synaptics_wq);
+	synaptics_wq = NULL;
 
 	return 0;
 }
@@ -1815,7 +1835,7 @@ static struct i2c_driver synaptics_ts_driver = {
 	},
 };
 
-static int __devinit synaptics_ts_init(void)
+static int __init synaptics_ts_init(void)
 {
 	return i2c_add_driver(&synaptics_ts_driver);
 }
