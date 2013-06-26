@@ -448,10 +448,10 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 	if (ret)
 		goto err;
 
-	kgsl_sharedmem_writel(&device->memstore,
+	kgsl_sharedmem_writel(device, &device->memstore,
 			KGSL_MEMSTORE_OFFSET(drawctxt->base.id, soptimestamp),
 			0);
-	kgsl_sharedmem_writel(&device->memstore,
+	kgsl_sharedmem_writel(device, &device->memstore,
 			KGSL_MEMSTORE_OFFSET(drawctxt->base.id, eoptimestamp),
 			0);
 

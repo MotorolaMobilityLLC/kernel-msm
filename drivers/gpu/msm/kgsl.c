@@ -985,7 +985,7 @@ int kgsl_open_device(struct kgsl_device *device)
 		 * which will be called by kgsl_active_count_get().
 		 */
 		atomic_inc(&device->active_cnt);
-		kgsl_sharedmem_set(&device->memstore, 0, 0,
+		kgsl_sharedmem_set(device, &device->memstore, 0, 0,
 				device->memstore.size);
 
 		result = device->ftbl->init(device);
@@ -3104,7 +3104,8 @@ static long kgsl_ioctl_cff_user_event(struct kgsl_device_private *dev_priv,
 	int result = 0;
 	struct kgsl_cff_user_event *param = data;
 
-	kgsl_cffdump_user_event(param->cff_opcode, param->op1, param->op2,
+	kgsl_cffdump_user_event(dev_priv->device, param->cff_opcode,
+			param->op1, param->op2,
 			param->op3, param->op4, param->op5);
 
 	return result;
@@ -3988,7 +3989,7 @@ int kgsl_postmortem_dump(struct kgsl_device *device, int manual)
 
 	BUG_ON(device == NULL);
 
-	kgsl_cffdump_hang(device->id);
+	kgsl_cffdump_hang(device);
 
 	/* For a manual dump, make sure that the system is idle */
 
