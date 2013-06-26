@@ -172,6 +172,7 @@ static struct cap1106_i2c_platform_data cap1106_pdata = {
 			0x31, 0x0A, // Threshold of CS 2
 			0x35, 0x0A, // Threshold of CS 6
 			0x26, 0x22, // Force re-cal CS2+CS6
+			0x44, 0x44, // Disable RF Noise filter
 			0x00, 0x80, // Reset INT. bit.
     },
 };

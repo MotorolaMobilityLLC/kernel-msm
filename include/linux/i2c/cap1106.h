@@ -7,7 +7,7 @@
 #define CAP1106_SAR_GPIO_NAME "APP2MDM_SAR"
 #define CAP1106_DET_GPIO 52 /* SAR_DET_3G */
 #define CAP1106_DET_GPIO_NAME "SAR_DET_3G"
-#define CAP1106_INIT_TABLE_SIZE 24
+#define CAP1106_INIT_TABLE_SIZE 26
 
 struct cap1106_i2c_platform_data {
 	int app2mdm_enable;
