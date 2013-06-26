@@ -1999,6 +1999,39 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            }
        }
 #endif
+#ifdef WLAN_FEATURE_PACKET_FILTERING
+       else if (strncmp(command, "ENABLE_PKTFILTER_IPV6", 21) == 0)
+       {
+           tANI_U8 filterType = 0;
+           tANI_U8 *value = command;
+
+           /* Move pointer to ahead of ENABLE_PKTFILTER_IPV6<delimiter> */
+           value = value + 22;
+
+           /* Convert the value from ascii to integer */
+           ret = kstrtou8(value, 10, &filterType);
+           if (ret < 0)
+           {
+               /* If the input value is greater than max value of datatype,
+                * then also kstrtou8 fails
+                */
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: kstrtou8 failed range ", __func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           if (filterType != 0 && filterType != 1)
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: Accepted Values are 0 and 1 ", __func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+           wlan_hdd_setIPv6Filter(WLAN_HDD_GET_CTX(pAdapter), filterType,
+                   pAdapter->sessionId);
+       }
+#endif
        else {
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);
