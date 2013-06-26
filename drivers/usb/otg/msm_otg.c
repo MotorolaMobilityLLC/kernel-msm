@@ -3195,6 +3195,7 @@ static irqreturn_t msm_otg_acok_irq(int irq, void *dev_id)
 	struct msm_otg *motg = dev_id;
 
 	queue_delayed_work(msm_otg_acok_wq, &motg->acok_irq_work, 0.6*HZ);
+	wake_lock_timeout(&motg->wlock, 1*HZ);
 
 	return IRQ_HANDLED;
 }
@@ -3204,6 +3205,8 @@ static irqreturn_t msm_otg_id_pin_irq(int irq, void *dev_id)
 	struct msm_otg *motg = dev_id;
 
 	queue_delayed_work(msm_otg_id_pin_wq, &motg->id_pin_irq_work, 0.6*HZ);
+	wake_lock_timeout(&motg->wlock, 1*HZ);
+
 	return IRQ_HANDLED;
 }
 
