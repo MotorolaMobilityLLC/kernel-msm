@@ -407,8 +407,13 @@ static void ulpi_init(struct msm_otg *motg)
 		dev_vdbg(motg->phy.dev, "ulpi: write 0x%02x to 0x%02x\n",
 				seq[0], seq[1]);
 		if (otg_host_on == 1 && seq[1] == 0x81) {
-			printk(KERN_INFO"Host mode: Set DC level as 0x68.\n");
-			ulpi_write(&motg->phy, 0x68, seq[1]);
+			if (machine_is_apq8064_flo()) {
+				printk(KERN_INFO"Host mode: Set DC level as 0x68 for flo.\n");
+				ulpi_write(&motg->phy, 0x68, seq[1]);
+			} else if(machine_is_apq8064_deb()) {
+                                printk(KERN_INFO"Host mode: Set DC level as 0x61 for deb.\n");
+                                ulpi_write(&motg->phy, 0x61, seq[1]);
+			}
 		} else {
 			ulpi_write(&motg->phy, seq[0], seq[1]);
 		}
