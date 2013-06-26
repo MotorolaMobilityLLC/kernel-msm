@@ -3844,7 +3844,7 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
 #ifdef FEATURE_WLAN_LFR
     /*Free the current previous profile and move the current profile to prev profile.*/
     csrRoamFreeConnectProfile(pMac, pPrevProfile);
-    csrRoamGetConnectProfile(pMac, sessionId, pPrevProfile);
+    csrRoamCopyConnectProfile(pMac, sessionId, pPrevProfile);
 #endif
     if (NULL != pSession)
     {
