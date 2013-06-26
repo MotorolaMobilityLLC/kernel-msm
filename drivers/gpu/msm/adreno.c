@@ -2046,15 +2046,15 @@ static bool adreno_hw_isidle(struct kgsl_device *device)
 static bool adreno_isidle(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
+	unsigned int rptr;
 
 	/* If the device isn't active, don't force it on. */
 	if (device->state != KGSL_STATE_ACTIVE)
 		return true;
 
-	GSL_RB_GET_READPTR(rb, &rb->rptr);
+	rptr = adreno_get_rptr(&adreno_dev->ringbuffer);
 
-	if (rb->rptr == rb->wptr)
+	if (rptr == adreno_dev->ringbuffer.wptr)
 		return adreno_hw_isidle(device);
 
 	return false;
