@@ -1483,10 +1483,6 @@ static int adreno_of_get_pdata(struct platform_device *pdev)
 		&pdata->idle_timeout))
 		pdata->idle_timeout = HZ/12;
 
-	if (adreno_of_read_property(pdev->dev.of_node, "qcom,nap-allowed",
-		&pdata->nap_allowed))
-		pdata->nap_allowed = 1;
-
 	pdata->strtstp_sleepwake = of_property_read_bool(pdev->dev.of_node,
 						"qcom,strtstp-sleepwake");
 
@@ -1959,8 +1955,6 @@ static int adreno_setproperty(struct kgsl_device *device,
 	switch (type) {
 	case KGSL_PROP_PWRCTRL: {
 			unsigned int enable;
-			struct kgsl_device_platform_data *pdata =
-				kgsl_device_get_drvdata(device);
 
 			if (sizebytes != sizeof(enable))
 				break;
@@ -1972,12 +1966,9 @@ static int adreno_setproperty(struct kgsl_device *device,
 			}
 
 			if (enable) {
-				if (pdata->nap_allowed)
-					device->pwrctrl.nap_allowed = true;
 				adreno_dev->fast_hang_detect = 1;
 				kgsl_pwrscale_enable(device);
 			} else {
-				device->pwrctrl.nap_allowed = false;
 				adreno_dev->fast_hang_detect = 0;
 				kgsl_pwrscale_disable(device);
 			}
