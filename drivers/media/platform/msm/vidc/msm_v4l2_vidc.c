@@ -743,7 +743,7 @@ static size_t get_u32_array_num_elements(struct platform_device *pdev,
 	int len;
 	size_t num_elements = 0;
 	if (!of_get_property(np, name, &len)) {
-		dprintk(VIDC_ERR, "Failed to read %s from device tree\n",
+		dprintk(VIDC_DBG, "Failed to read %s from device tree\n",
 			name);
 		goto fail_read;
 	}
@@ -840,7 +840,7 @@ static int msm_vidc_load_freq_table(struct msm_vidc_platform_resources *res)
 
 	num_elements = get_u32_array_num_elements(pdev, "qcom,load-freq-tbl");
 	if (num_elements == 0) {
-		dprintk(VIDC_ERR, "no elements in frequency table\n");
+		dprintk(VIDC_DBG, "no elements in frequency table\n");
 		return rc;
 	}
 
@@ -1402,7 +1402,7 @@ static int __devinit msm_vidc_probe(struct platform_device *pdev)
 		goto err_v4l2_register;
 	}
 	if (core->hfi_type == VIDC_HFI_Q6) {
-		dprintk(VIDC_ERR, "Q6 hfi device probe called\n");
+		dprintk(VIDC_DBG, "Q6 hfi device probe called\n");
 		nr += MSM_VIDC_MAX_DEVICES;
 	}
 	rc = v4l2_device_register(&pdev->dev, &core->v4l2_dev);
