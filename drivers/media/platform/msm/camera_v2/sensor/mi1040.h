@@ -167,8 +167,6 @@ static struct msm_camera_i2c_reg_conf mi1040_960p_settings[] = {
 	{0xC856, 0x0000,},
 	{0xC858, 0x0500,},
 	{0xC85A, 0x03C0,},
-	{0xC88C, 0x1E02,},
-	{0xC88E, 0x0F00,},
 	{0xC914, 0x0000,},
 	{0xC916, 0x0000,},
 	{0xC918, 0x04FF,},
@@ -692,7 +690,7 @@ static struct msm_camera_i2c_reg_conf EV_minus_2[] = {
 };
 
 static struct msm_camera_i2c_reg_conf Fix_30_fps[] = {
-	/* [fis 30 fps] */
+	/* [fix 30 fps] */
 	{0x098E, 0x1000,},
 	{0xC810, 0x05B3,},
 	{0xC812, 0x03EE,},
@@ -705,7 +703,7 @@ static struct msm_camera_i2c_reg_conf Fix_30_fps[] = {
 };
 
 static struct msm_camera_i2c_reg_conf Fix_25_fps[] = {
-	/* [fis 25 fps] */
+	/* [fix 25 fps] */
 	{0x098E, 0x1000,},
 	{0xC810, 0x05BD,},
 	{0xC812, 0x04B0,},
@@ -718,7 +716,7 @@ static struct msm_camera_i2c_reg_conf Fix_25_fps[] = {
 };
 
 static struct msm_camera_i2c_reg_conf Fix_24_fps[] = {
-	/* [fis 24 fps] */
+	/* [fix 24 fps] */
 	{0x098E, 0x1000,},
 	{0xC810, 0x05BD,},
 	{0xC812, 0x04E2,},
@@ -731,7 +729,7 @@ static struct msm_camera_i2c_reg_conf Fix_24_fps[] = {
 };
 
 static struct msm_camera_i2c_reg_conf Fix_20_fps[] = {
-	/* [fis 20 fps] */
+	/* [fix 20 fps] */
 	{0x098E, 0x1000,},
 	{0xC810, 0x05BD,},
 	{0xC812, 0x05DC,},
@@ -744,7 +742,7 @@ static struct msm_camera_i2c_reg_conf Fix_20_fps[] = {
 };
 
 static struct msm_camera_i2c_reg_conf Fix_15_fps[] = {
-	/* [fis 15 fps] */
+	/* [fix 15 fps] */
 	{0x098E, 0x1000,},
 	{0xC810, 0x05BD,},
 	{0xC812, 0x07D0,},
@@ -759,7 +757,8 @@ static struct msm_camera_i2c_reg_conf Fix_15_fps[] = {
 static struct msm_camera_i2c_reg_conf auto_30_fps[] = {
 	/* [auto 30 fps] */
 	{0x098E, 0x1000,},
-	{0xC88E, 0x0780,},
+	{0xC88C, 0x1E02,},
+	{0xC88E, 0x0F00,},
 	{0x098E, 0xDC00,},
 	{0xDC00, 0x28, MSM_CAMERA_I2C_BYTE_DATA,},
 	{0x0080, 0x8002,},
