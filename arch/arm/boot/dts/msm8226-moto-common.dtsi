@@ -194,7 +194,7 @@
 
 		mmi,batt-tbl-one {
 			qcom,batt-tbl-name = "mmi,batt-tbl-ed30-temp";
-			qcom,batt-tbl-id = <4005 4389>;
+			qcom,batt-tbl-id = <220008 241102>;
 
 			qcom,batt-tbl-fcc = <1950>;
 			qcom,batt-tbl-default-rbatt-mohm = <193>;
