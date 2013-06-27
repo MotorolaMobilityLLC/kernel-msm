@@ -2738,6 +2738,7 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
     tANI_U8 *pRsnIe;
     tANI_U16 RSNIeLen;
     tPmkidCacheInfo PMKIDCache[4]; // Local transfer memory
+    v_BOOL_t updatePMKCache = FALSE;
 
     /* Clear struct of tDot11fIERSN and tDot11fIEWPA specifically setting present
        flag to 0 */
@@ -2790,10 +2791,11 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
             {
                 break;
             }
-            if ( hdd_IsMACAddrNULL( (u_char *) pBssid , sizeof( (char *) pBssid)))
+            if ( hdd_IsMACAddrNULL( (u_char *) pBssid->ether_addr_octet , 6))
             {
                 break;
             }
+            updatePMKCache = TRUE;
             // For right now, I assume setASSOCIATE() has passed in the bssid.
             vos_mem_copy(PMKIDCache[i].BSSID,
                             pBssid, ETHER_ADDR_LEN);
@@ -2801,13 +2803,17 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
                             dot11RSNIE.pmkid[i],
                             CSR_RSN_PMKID_SIZE);
         }
-        // Calling csrRoamSetPMKIDCache to configure the PMKIDs into the cache
-        hddLog(LOG1, FL("%s: Calling csrRoamSetPMKIDCache with cache entry %ld."),
+
+        if (updatePMKCache)
+        {
+            // Calling csrRoamSetPMKIDCache to configure the PMKIDs into the cache
+            hddLog(LOG1, FL("%s: Calling csrRoamSetPMKIDCache with cache entry %ld."),
                                                                             __func__, i );
-        // Finally set the PMKSA ID Cache in CSR
-        result = sme_RoamSetPMKIDCache(halHandle,pAdapter->sessionId,
-                                        PMKIDCache,
-                                        dot11RSNIE.pmkid_count );
+            // Finally set the PMKSA ID Cache in CSR
+            result = sme_RoamSetPMKIDCache(halHandle,pAdapter->sessionId,
+                                           PMKIDCache,
+                                           dot11RSNIE.pmkid_count );
+        }
     }
     else if (gen_ie[0] == DOT11F_EID_WPA)
     {
