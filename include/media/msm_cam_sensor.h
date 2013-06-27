@@ -442,6 +442,7 @@ enum msm_actuator_cfg_type_t {
 	CFG_SET_ACTUATOR_INFO,
 	CFG_SET_DEFAULT_FOCUS,
 	CFG_MOVE_FOCUS,
+	CFG_DIRECT_I2C_WRITE, /*to support non-trivial actuators*/
 };
 
 enum actuator_type {
@@ -538,6 +539,18 @@ enum af_camera_name {
 	ACTUATOR_WEB_CAM_2,
 };
 
+struct msm_actuator_i2c {
+	uint16_t addr;
+	uint16_t value;
+	uint32_t wait_time;
+};
+
+#define MSM_ACTUATOR_I2C_MAX_TABLE_SIZE (8)
+struct msm_actuator_i2c_table {
+	struct msm_actuator_i2c data[MSM_ACTUATOR_I2C_MAX_TABLE_SIZE];
+	uint32_t size;
+};
+
 struct msm_actuator_cfg_data {
 	int cfgtype;
 	uint8_t is_af_supported;
@@ -546,6 +559,7 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_set_info_t set_info;
 		struct msm_actuator_get_info_t get_info;
 		enum af_camera_name cam_name;
+		struct msm_actuator_i2c_table i2c_table;
 	} cfg;
 };
 
