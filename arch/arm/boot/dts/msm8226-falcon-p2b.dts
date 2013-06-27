@@ -17,7 +17,11 @@
 /include/ "msm8226-falcon-common.dtsi"
 
 / {
-	qcom,msm-id = <145 0x45 0x82B0>;
+	/* HWREV: 0x0002 0x82b0
+	 *        ^^^^^^ ^^^^^^
+	 *         ESv2    P2B
+	 */
+	qcom,msm-id = <145 0x42 0x000282b0>;
 };
 
 &soc {
