@@ -137,21 +137,22 @@ static void sp_tx_api_m_gen_clk_select(unchar bspreading)
 static void sp_tx_link_phy_initialization(void)
 {
 	/* PHY parameter for cts */
-
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG4, 0x1b);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG7, 0x22);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG4, 0x1F);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG7, 0x25);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG9, 0x23);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG14, 0x09);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG17, 0x16);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG19, 0x1F);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG1, 0x26);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG1, 0x2C);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG5, 0x28);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG8, 0x2F);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG15, 0x10);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG18, 0x1F);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG2, 0x36);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG2, 0x3F);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG12, 0x08);
+	sp_write_reg(TX_P2, 0xDC, 0x68);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG6, 0x3c);
-	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG0, 0x19);
+	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG0, 0x1C);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG16, 0x18);
 	sp_write_reg(TX_P1, SP_TX_LT_CTRL_REG3, 0x3F);
 }
