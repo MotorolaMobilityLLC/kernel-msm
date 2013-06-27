@@ -39,15 +39,13 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
 /**=========================================================================
   
   \file  sme_Qos.c
   
   \brief implementation for SME QoS APIs
   
-   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
-   
-   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
 /* $Header$ */
@@ -2982,6 +2980,7 @@ eHalStatus sme_QosProcessSetKeySuccessInd(tpAniSirGlobal pMac, v_U8_t sessionId,
 {
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN, 
             "########### Set Key Complete #############");
+    (void)sme_QosProcessBufferedCmd(sessionId);
     return eHAL_STATUS_SUCCESS;
 }
 #endif
@@ -3975,9 +3974,6 @@ eHalStatus sme_QosProcessAddTsRsp(tpAniSirGlobal pMac, void *pMsgBuf)
     sme_QosACInfo *pACInfo;
     sme_QosEdcaAcType ac;
 #endif
-#ifdef FEATURE_WLAN_DIAG_SUPPORT
-    WLAN_VOS_DIAG_EVENT_DEF(qos, vos_event_wlan_qos_payload_type);
-#endif
 
     pSession = &sme_QosCb.sessionInfo[sessionId];
 
@@ -4006,7 +4002,9 @@ eHalStatus sme_QosProcessAddTsRsp(tpAniSirGlobal pMac, void *pMsgBuf)
     }
 #endif
 
-
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+   WLAN_VOS_DIAG_EVENT_DEF(qos, vos_event_wlan_qos_payload_type);
+#endif
    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH, 
              "%s: %d: Invoked on session %d with return code %d",
              __func__, __LINE__,
