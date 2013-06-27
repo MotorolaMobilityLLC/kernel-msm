@@ -3095,6 +3095,14 @@ typedef struct
 }WDI_SetTDLSLinkEstablishReqParamsType;
 
 
+typedef struct
+{
+  /*Result of the operation*/
+  WDI_Status wdiStatus;
+
+  /*STA Idx*/
+  wpt_uint16 uStaIdx;
+}WDI_SetTdlsLinkEstablishReqResp;
 
 /*---------------------------------------------------------------------------
   WDI_SetAddSTASelfParamsType
@@ -5776,7 +5784,8 @@ typedef void  (*WDI_SetP2PGONOAReqParamsRspCb)(WDI_Status   wdiStatus,
   RETURN VALUE
     The result code associated with performing the operation
 ---------------------------------------------------------------------------*/
-typedef void  (*WDI_SetTDLSLinkEstablishReqParamsRspCb)(WDI_Status   wdiStatus,
+typedef void  (*WDI_SetTDLSLinkEstablishReqParamsRspCb)(WDI_SetTdlsLinkEstablishReqResp *
+                                wdiSetTdlsLinkEstablishReqRsp,
                                 void*        pUserData);
 
 /*---------------------------------------------------------------------------
