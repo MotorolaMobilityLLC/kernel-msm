@@ -340,7 +340,8 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
         sme_RemainOnChannel(
                        WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId,
                        chan->hw_value, duration,
-                       wlan_hdd_remain_on_channel_callback, pAdapter );
+                       wlan_hdd_remain_on_channel_callback, pAdapter,
+                       (tANI_U8)(request_type == REMAIN_ON_CHANNEL_REQUEST)? TRUE:FALSE);
 
         if( REMAIN_ON_CHANNEL_REQUEST == request_type)
         {

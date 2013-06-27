@@ -112,6 +112,7 @@ typedef struct sRemainChlCmd
     tANI_U8 chn;
     tANI_U8 phyMode;
     tANI_U32 duration;
+    tANI_U8 isP2PProbeReqAllowed;
     void* callback;
     void* callbackCtx;
 }tRemainChlCmd;

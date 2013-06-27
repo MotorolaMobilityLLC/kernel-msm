@@ -5641,18 +5641,19 @@ eHalStatus sme_DeregisterMgmtFrame(tHalHandle hHal, tANI_U8 sessionId,
     \param context - HDD Callback param
     \return eHalStatus
   ---------------------------------------------------------------------------*/
-
 eHalStatus sme_RemainOnChannel(tHalHandle hHal, tANI_U8 sessionId,
                                tANI_U8 channel, tANI_U32 duration,
-                               remainOnChanCallback callback, 
-                               void *pContext)
+                               remainOnChanCallback callback,
+                               void *pContext,
+                               tANI_U8 isP2PProbeReqAllowed)
 {
   eHalStatus status = eHAL_STATUS_SUCCESS;
   tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
   if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme ) ) )
   {
-    status = p2pRemainOnChannel (hHal, sessionId, channel, duration, callback, pContext
+    status = p2pRemainOnChannel (hHal, sessionId, channel, duration, callback, pContext,
+                                 isP2PProbeReqAllowed
 #ifdef WLAN_FEATURE_P2P_INTERNAL
                                 , eP2PRemainOnChnReasonUnknown
 #endif
