@@ -38,6 +38,9 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+
+
+
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file schBeaconGen.cc contains beacon generation related
@@ -366,8 +369,8 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     {
           PopulateDot11fWPA( pMac, &psessionEntry->pLimStartBssReq->rsnIE,
                        &pBcn2->WPA );
-          PopulateDot11fRSN( pMac, &psessionEntry->pLimStartBssReq->rsnIE,
-                       &pBcn2->RSN );
+          PopulateDot11fRSNOpaque( pMac, &psessionEntry->pLimStartBssReq->rsnIE,
+                       &pBcn2->RSNOpaque );
     }
 
     if(psessionEntry->limWmeEnabled)
@@ -594,12 +597,12 @@ void limUpdateProbeRspTemplateIeBitmapBeacon2(tpAniSirGlobal pMac,
     }
 
     /* RSN */
-    if(beacon2->RSN.present)
+    if(beacon2->RSNOpaque.present)
     {
         SetProbeRspIeBitmap(DefProbeRspIeBitmap,SIR_MAC_RSN_EID);
-        palCopyMemory(pMac->hHdd,(void *)&prb_rsp->RSN,
-                            (void *)&beacon2->RSN,
-                            sizeof(beacon2->RSN));
+        palCopyMemory(pMac->hHdd,(void *)&prb_rsp->RSNOpaque,
+                            (void *)&beacon2->RSNOpaque,
+                            sizeof(beacon2->RSNOpaque));
 
     }
 /*

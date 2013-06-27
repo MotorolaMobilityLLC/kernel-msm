@@ -441,10 +441,17 @@ limCheckMCSSet(tpAniSirGlobal pMac, tANI_U8* supportedMCSSet)
  */
 
 tANI_U8
-limCheckRxRSNIeMatch(tpAniSirGlobal pMac, tDot11fIERSN rxRSNIe,tpPESession pSessionEntry, tANI_U8 staIsHT)
+limCheckRxRSNIeMatch(tpAniSirGlobal pMac, tDot11fIERSN rxRSNIe,tpPESession pSessionEntry,
+                     tANI_U8 staIsHT, tANI_BOOLEAN *pmfConnection)
 {
     tDot11fIERSN    *pRSNIe;
     tANI_U8         i, j, match, onlyNonHtCipher = 1;
+#ifdef WLAN_FEATURE_11W
+    tANI_BOOLEAN weRequirePMF;
+    tANI_BOOLEAN weArePMFCapable;
+    tANI_BOOLEAN theyRequirePMF;
+    tANI_BOOLEAN theyArePMFCapable;
+#endif
 
 
     //RSN IE should be received from PE
@@ -500,6 +507,23 @@ limCheckRxRSNIeMatch(tpAniSirGlobal pMac, tDot11fIERSN rxRSNIe,tpPESession pSess
     {
         return eSIR_MAC_INVALID_RSN_IE_CAPABILITIES_STATUS;
     }
+
+    *pmfConnection = eANI_BOOLEAN_FALSE;
+#ifdef WLAN_FEATURE_11W
+    weRequirePMF = (pRSNIe->RSN_Cap[0] >> 6) & 0x1;
+    weArePMFCapable = (pRSNIe->RSN_Cap[0] >> 7) & 0x1;
+    theyRequirePMF = (rxRSNIe.RSN_Cap[0] >> 6) & 0x1;
+    theyArePMFCapable = (rxRSNIe.RSN_Cap[0] >> 7) & 0x1;
+
+    if ((theyRequirePMF && !weArePMFCapable) || (weRequirePMF && !theyArePMFCapable))
+    {
+        limLog(pMac, LOG1, FL("Association fail, robust management frames policy violation"));
+        return eSIR_MAC_ROBUST_MGMT_FRAMES_POLICY_VIOLATION;
+    }
+
+    if(theyArePMFCapable && weArePMFCapable)
+        *pmfConnection = eANI_BOOLEAN_TRUE;
+#endif
 
     return eSIR_SUCCESS;
 } /****** end limCheckRxRSNIeMatch() ******/
@@ -2325,7 +2349,14 @@ limAddSta(
         limLog( pMac, LOG1, FL( "uAPSD = 0x%x, maxSpLen = %d" ),
             pAddStaParams->uAPSD, pAddStaParams->maxSPLen);
     }
-  //we need to defer the message until we get the response back from HAL.
+
+#ifdef WLAN_FEATURE_11W
+    pAddStaParams->rmfEnabled = pStaDs->rmfEnabled;
+    limLog( pMac, LOG1, FL( "Adding station, station index %d, PMF enabled %d"),
+            pAddStaParams->staIdx, pAddStaParams->rmfEnabled);
+#endif
+
+    //we need to defer the message until we get the response back from HAL.
     if (pAddStaParams->respReqd)
         SET_LIM_PROCESS_DEFD_MESGS(pMac, false);
 
