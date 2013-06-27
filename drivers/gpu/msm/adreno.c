@@ -814,8 +814,6 @@ static int adreno_iommu_setstate(struct kgsl_device *device,
 
 	adreno_ctx = ADRENO_CONTEXT(context);
 
-
-
 	result = kgsl_mmu_enable_clk(&device->mmu,
 				KGSL_IOMMU_CONTEXT_USER);
 	if (result)
@@ -894,7 +892,6 @@ static int adreno_gpummu_setstate(struct kgsl_device *device,
 		context = kgsl_context_get(device, context_id);
 		if (context == NULL)
 			return -EINVAL;
-
 		adreno_ctx = ADRENO_CONTEXT(context);
 
 		if (flags & KGSL_MMUFLAGS_PTUPDATE) {
@@ -2048,8 +2045,6 @@ static bool adreno_hw_isidle(struct kgsl_device *device)
 	} else if (adreno_is_a3xx(adreno_dev)) {
 		if (!(reg_rbbm_status & 0x80000000))
 			return true;
-	} else {
-		BUG();
 	}
 
 	return false;
@@ -2100,11 +2095,12 @@ int adreno_idle(struct kgsl_device *device)
 
 	if (adreno_is_a2xx(adreno_dev))
 		kgsl_cffdump_regpoll(device,
-			adreno_dev->gpudev->reg_rbbm_status << 2, 0x110, 0x110);
+			adreno_getreg(adreno_dev, ADRENO_REG_RBBM_STATUS) << 2,
+			0x110, 0x110);
 	else
 		kgsl_cffdump_regpoll(device,
-			adreno_dev->gpudev->reg_rbbm_status << 2, 0,
-			0x80000000);
+			adreno_getreg(adreno_dev, ADRENO_REG_RBBM_STATUS) << 2,
+		        0x00000000, 0x80000000);
 
 	while (time_before(jiffies, wait)) {
 		if (adreno_isidle(device))

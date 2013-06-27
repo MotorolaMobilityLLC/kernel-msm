@@ -16,6 +16,7 @@
 #include <linux/slab.h>
 #include <linux/idr.h>
 #include <linux/pm_qos.h>
+#include <linux/sched.h>
 
 #include "kgsl.h"
 #include "kgsl_mmu.h"
@@ -526,7 +527,7 @@ kgsl_context_put(struct kgsl_context *context)
  *
  * Check if a context has been destroyed by userspace and is only waiting
  * for reference counts to go away. This check is used to weed out
- * contexts that shouldn't use the gpu, so NULL is considered detached.
+ * contexts that shouldn't use the gpu so NULL is considered detached.
  */
 static inline bool kgsl_context_detached(struct kgsl_context *context)
 {

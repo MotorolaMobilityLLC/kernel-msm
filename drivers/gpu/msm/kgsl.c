@@ -410,7 +410,7 @@ static void kgsl_mem_entry_detach_process(struct kgsl_mem_entry *entry)
  * function to initialize the common members of its context struct.
  * If this function succeeds, reference counting is active in the context
  * struct and the caller should kgsl_context_put() it on error.
- * If it fails, the caller should just free the context structer
+ * If it fails, the caller should just free the context structure
  * it passed in.
  */
 int kgsl_context_init(struct kgsl_device_private *dev_priv,
@@ -454,9 +454,8 @@ int kgsl_context_init(struct kgsl_device_private *dev_priv,
 	context->pid = dev_priv->process_priv->pid;
 
 	ret = kgsl_sync_timeline_create(context);
-	if (ret) {
+	if (ret)
 		goto fail_free_id;
-	}
 
 	/* Initialize the pending event list */
 	INIT_LIST_HEAD(&context->events);
@@ -514,11 +513,12 @@ int kgsl_context_detach(struct kgsl_context *context)
 
 	/*
 	 * Cancel events after the device-specific context is
-	 * destroyed, to avoid possibly freeing memory while
+	 * detached, to avoid possibly freeing memory while
 	 * it is still in use by the GPU.
 	 */
 
 	kgsl_context_cancel_events(device, context);
+
 	kgsl_context_put(context);
 
 	return ret;

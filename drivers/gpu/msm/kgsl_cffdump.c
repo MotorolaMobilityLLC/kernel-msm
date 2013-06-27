@@ -414,7 +414,6 @@ void kgsl_cffdump_syncmem(struct kgsl_device *device,
 			  struct kgsl_memdesc *memdesc, uint gpuaddr,
 			  uint sizebytes, bool clean_cache)
 {
-	struct kgsl_device *device = dev_priv->device;
 	const void *src;
 
 	if (!device->cff_dump_enable)

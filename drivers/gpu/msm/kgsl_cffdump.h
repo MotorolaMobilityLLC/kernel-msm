@@ -74,7 +74,7 @@ static inline void kgsl_cffdump_close(struct kgsl_device *device)
 	return;
 }
 
-static inline void kgsl_cffdump_syncmem(struct kgsl_device_private *dev_priv,
+static inline void kgsl_cffdump_syncmem(struct kgsl_device *device,
 		struct kgsl_memdesc *memdesc, uint physaddr, uint sizebytes,
 		bool clean_cache)
 {

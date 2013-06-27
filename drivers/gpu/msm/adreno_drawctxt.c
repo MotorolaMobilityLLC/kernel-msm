@@ -375,17 +375,14 @@ void adreno_drawctxt_invalidate(struct kgsl_device *device,
 
 /**
  * adreno_drawctxt_create - create a new adreno draw context
- * @device - KGSL device to create the context on
- * @pagetable - Pagetable for the context
- * @context- Generic KGSL context structure
- * @flags - flags for the context (passed from user space)
+ * @dev_priv: the owner of the context
+ * @flags: flags for the context (passed from user space)
  *
- * Create a new draw context for the 3D core.  Return 0 on success,
- * or error code on failure.
+ * Create and return a new draw context for the 3D core.
  */
-	struct kgsl_context *
+struct kgsl_context *
 adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
-		uint32_t *flags)
+			uint32_t *flags)
 {
 	struct adreno_context *drawctxt;
 	struct kgsl_device *device = dev_priv->device;
@@ -393,7 +390,6 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 	int ret;
 
 	drawctxt = kzalloc(sizeof(struct adreno_context), GFP_KERNEL);
-
 	if (drawctxt == NULL)
 		return ERR_PTR(-ENOMEM);
 
