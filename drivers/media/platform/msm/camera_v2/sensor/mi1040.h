@@ -757,6 +757,9 @@ static struct msm_camera_i2c_reg_conf Fix_15_fps[] = {
 static struct msm_camera_i2c_reg_conf auto_30_fps[] = {
 	/* [auto 30 fps] */
 	{0x098E, 0x1000,},
+	{0xC810, 0x05B3,},
+	{0xC812, 0x03EE,},
+	{0xC814, 0x0636,},
 	{0xC88C, 0x1E02,},
 	{0xC88E, 0x0F00,},
 	{0x098E, 0xDC00,},
