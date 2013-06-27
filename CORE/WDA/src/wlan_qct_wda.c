@@ -12806,7 +12806,7 @@ void WDA_RoamOffloadScanReqCallback(WDI_Status status, void* pUserData)
    vos_msg_t vosMsg;
    wpt_uint8 reason = 0;
 
-   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_FATAL,
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
     if (NULL == pWdaParams)
    {
