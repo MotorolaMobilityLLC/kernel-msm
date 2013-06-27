@@ -1172,6 +1172,29 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
    return status;
 }
 
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+void sme_ProcessGetGtkInfoRsp( tHalHandle hHal,
+                            tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp)
+{
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   if (NULL == pMac)
+   {
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL,
+           "%s: pMac is null", __func__);
+       return ;
+   }
+   if (pMac->pmc.GtkOffloadGetInfoCB == NULL)
+   {
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+           "%s: HDD callback is null", __func__);
+       return ;
+   }
+   pMac->pmc.GtkOffloadGetInfoCB(pMac->pmc.GtkOffloadGetInfoCBContext,
+                                 pGtkOffloadGetInfoRsp);
+}
+#endif
+
 /* ---------------------------------------------------------------------------
     \fn sme_ChangeConfigParams
     \brief The SME API exposed for HDD to provide config params to SME during
@@ -1765,6 +1788,19 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                 break;
 #endif // WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+           case eWNI_PMC_GTK_OFFLOAD_GETINFO_RSP:
+                if (pMsg->bodyptr)
+                {
+                    sme_ProcessGetGtkInfoRsp(pMac, pMsg->bodyptr);
+                    vos_mem_free(pMsg->bodyptr);
+                }
+                else
+                {
+                    smsLog(pMac, LOGE, "Empty rsp message for (eWNI_PMC_GTK_OFFLOAD_GETINFO_RSP), nothing to process");
+                }
+                break ;
+#endif
           default:
 
              if ( ( pMsg->type >= eWNI_SME_MSG_TYPES_BEGIN )

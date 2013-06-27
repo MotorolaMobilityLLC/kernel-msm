@@ -863,9 +863,9 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
         (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
     {
-        pHddStaCtx->gtkOffloadRequestParams.requested = FALSE;
-        memset(&pHddStaCtx->gtkOffloadRequestParams.gtkOffloadReqParams,
-              0, sizeof (tSirGtkOffloadParams));
+        memset(&pHddStaCtx->gtkOffloadReqParams, 0,
+              sizeof (tSirGtkOffloadParams));
+        pHddStaCtx->gtkOffloadReqParams.ulFlags = GTK_OFFLOAD_DISABLE;
     }
 #endif
 
