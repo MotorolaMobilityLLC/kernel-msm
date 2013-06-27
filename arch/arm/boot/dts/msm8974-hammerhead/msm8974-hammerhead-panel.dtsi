@@ -1057,6 +1057,8 @@
 		qcom,mdss-pan-id = <5>;
 		qcom,mdss-pan-res = <1080 1920>;
 		qcom,mdss-pan-bpp = <24>;
+		qcom,mdss-pan-width = <62>;
+		qcom,mdss-pan-height = <110>;
 		qcom,mdss-pan-dest = "display_1";
 		qcom,mdss-pan-porch-values = <2 2 4 2 2 2>;
 		qcom,mdss-pan-underflow-clr = <0xff>;
