@@ -37,12 +37,6 @@
 	};
 };
 
-&bms_tbls {
-	mmi,batt-tbl-one {
-		qcom,batt-tbl-id = <0 50000>;
-	};
-};
-
 &pm8226_bms {
 	qcom,use-external-rsense = <1>;
 };
