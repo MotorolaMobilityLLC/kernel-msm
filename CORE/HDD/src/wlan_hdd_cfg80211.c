@@ -3067,22 +3067,7 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
             }
         }
 #endif
-        if(params->sta_flags_set & BIT(NL80211_STA_FLAG_AUTHORIZED))
-        {
-            status = WLANTL_ChangeSTAState(pHddCtx->pvosContext, pHddStaCtx->conn_info.staId[ 0 ],
-                                           WLANTL_STA_AUTHENTICATED);
-            if (status != VOS_STATUS_SUCCESS)
-            {
-                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                          "%s: Not able to change TL state to AUTHENTICATED", __func__);
-                return -EINVAL;
-            }
-            pHddStaCtx->conn_info.uIsAuthenticated = VOS_TRUE;
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                    "%s: TL Moving to Authenticated state", __func__);
-         }
-     }
-
+    }
     EXIT();
     return status;
 }
