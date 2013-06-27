@@ -206,8 +206,7 @@ out:
 	return err;
 }
 
-static void destroy_fsync_dnodes(struct f2fs_sb_info *sbi,
-					struct list_head *head)
+static void destroy_fsync_dnodes(struct list_head *head)
 {
 	struct fsync_inode_entry *entry, *tmp;
 
@@ -472,7 +471,7 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 		err = -EIO;
 	}
 out:
-	destroy_fsync_dnodes(sbi, &inode_list);
+	destroy_fsync_dnodes(&inode_list);
 	kmem_cache_destroy(fsync_entry_slab);
 	sbi->por_doing = 0;
 	if (!err) {
