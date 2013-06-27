@@ -2607,46 +2607,71 @@ int iw_get_softap_linkspeed(struct net_device *dev,
 
 {
    hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
+   hdd_context_t *pHddCtx;
    char *pLinkSpeed = (char*)extra;
-   v_U16_t link_speed;
+   v_U32_t link_speed;
    unsigned short staId;
-   int len = sizeof(v_U16_t)+1;
+   int len = sizeof(v_U32_t)+1;
    v_BYTE_t macAddress[VOS_MAC_ADDR_SIZE];
    VOS_STATUS status;
-   int rc;
+   int rc, valid;
+
+   pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
+
+   valid = wlan_hdd_validate_context(pHddCtx);
+
+   if (0 != valid)
+   {
+       hddLog(VOS_TRACE_LEVEL_ERROR, FL("HDD context not valid"));
+       return valid;
+   }
 
    if ( hdd_string_to_hex ((char *)wrqu->data.pointer, wrqu->data.length, macAddress ) )
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL, "ERROR: Command not found");
+      hddLog(VOS_TRACE_LEVEL_FATAL, FL("ERROR: Command not found"));
       return -EINVAL;
    }
 
    status = hdd_softap_GetStaId(pHostapdAdapter, (v_MACADDR_t *)macAddress, (void *)(&staId));
 
-   if (!VOS_IS_STATUS_SUCCESS(status ))
+   if (!VOS_IS_STATUS_SUCCESS(status))
    {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, FL("ERROR: HDD Failed to find sta id!!"));
+      hddLog(VOS_TRACE_LEVEL_ERROR, FL("ERROR: HDD Failed to find sta id!!"));
       link_speed = 0;
    }
    else
    {
       status = wlan_hdd_get_classAstats_for_station(pHostapdAdapter , staId);
+
       if (!VOS_IS_STATUS_SUCCESS(status ))
       {
-          hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Unable to retrieve SME statistics", __func__);
+          hddLog(VOS_TRACE_LEVEL_ERROR, FL("Unable to retrieve SME statistics"));
           return -EINVAL;
       }
-      link_speed =(int)pHostapdAdapter->hdd_stats.ClassA_stat.tx_rate/2;
+
+      WLANTL_GetSTALinkCapacity(pHddCtx->pvosContext,
+                                staId, &link_speed);
+
+      link_speed = link_speed / 10;
+
+      if (0 == link_speed)
+      {
+          /* The linkspeed returned by HAL is in units of 500kbps.
+           * converting it to mbps.
+           * This is required to support legacy firmware which does
+           * not return link capacity.
+           */
+          link_speed =(int)pHostapdAdapter->hdd_stats.ClassA_stat.tx_rate/2;
+      }
    }
 
    wrqu->data.length = len;
-   rc = snprintf(pLinkSpeed, len, "%u", link_speed);
+   rc = snprintf(pLinkSpeed, len, "%lu", link_speed);
+
    if ((rc < 0) || (rc >= len))
    {
       // encoding or length error?
-      hddLog(VOS_TRACE_LEVEL_ERROR,
-            "%s: Unable to encode link speed, got [%s]",
-             __func__, pLinkSpeed);
+      hddLog(VOS_TRACE_LEVEL_ERROR,FL( "Unable to encode link speed"));
       return -EIO;
    }
 
@@ -2768,7 +2793,7 @@ static const struct iw_priv_args hostapd_private_args[] = {
         IW_PRIV_TYPE_BYTE | QCSAP_MAX_WSC_IE, 0, "ap_stats" },
   { QCSAP_IOCTL_PRIV_GET_SOFTAP_LINK_SPEED,
         IW_PRIV_TYPE_CHAR | 18,
-        IW_PRIV_TYPE_CHAR | 3, "getLinkSpeed" },
+        IW_PRIV_TYPE_CHAR | 5, "getLinkSpeed" },
 
   { QCSAP_IOCTL_PRIV_SET_THREE_INT_GET_NONE,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 3, 0, "" },

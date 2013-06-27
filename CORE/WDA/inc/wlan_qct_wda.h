@@ -1122,6 +1122,9 @@ v_BOOL_t WDA_IsHwFrameTxTranslationCapable(v_PVOID_t pVosGCtx,
 #define WDA_UpdateRssiBmps(pvosGCtx,  staId, rssi) \
         WLANTL_UpdateRssiBmps(pvosGCtx, staId, rssi)
 
+#define WDA_UpdateLinkCapacity(pvosGCtx,  staId, linkCapacity) \
+        WLANTL_UpdateLinkCapacity(pvosGCtx, staId, linkCapacity)
+
 #ifdef WLAN_PERF 
 /*==========================================================================
   FUNCTION    WDA_TLI_FastHwFwdDataFrame
