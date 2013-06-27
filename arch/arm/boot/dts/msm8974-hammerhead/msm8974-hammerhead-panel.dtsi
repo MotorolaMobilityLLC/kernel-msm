@@ -616,11 +616,11 @@
 		qcom,mdss-pan-dsi-rgb-swap = <0>;
 		qcom,mdss-pan-dsi-data-lanes = <1 1 1 1>;
 		qcom,mdss-pan-dsi-dlane-swap = <0>;
-		qcom,mdss-pan-dsi-t-clk = <0x51 0x30>;
+		qcom,mdss-pan-dsi-t-clk = <0x35 0x1E>;
 		qcom,mdss-pan-dsi-stream = <0>;
 		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
 		qcom,mdss-pan-dsi-dma-tr = <0x04>;
-		qcom,mdss-pan-dsi-frame-rate = <60>;
+		qcom,mdss-pan-dsi-frame-rate = <64>;
 		qcom,mdss-pan-te-sel = <1>;
 		qcom,mdss-pan-wr-mem-continue = <0x3c>;
 		qcom,mdss-pan-wr-mem-start = <0x2c>;
@@ -629,8 +629,8 @@
 			03 01 01 00  /* Regualotor settings */
 			20 00 01];
 		qcom,panel-phy-timingSettings = [
-			ad 3c 2f 00 54 4e
-			31 3e 4c 03 04 00];
+			c1 3d 34 00 58 4d
+			36 3f 53 03 04 00];
 		qcom,panel-phy-strengthCtrl = [
 			77 06];
 		qcom,panel-phy-bistCtrl = [
@@ -1074,11 +1074,11 @@
 		qcom,mdss-pan-dsi-rgb-swap = <0>;
 		qcom,mdss-pan-dsi-data-lanes = <1 1 1 1>;
 		qcom,mdss-pan-dsi-dlane-swap = <0>;
-		qcom,mdss-pan-dsi-t-clk = <0x32 0x1F>;
+		qcom,mdss-pan-dsi-t-clk = <0x35 0x1E>;
 		qcom,mdss-pan-dsi-stream = <0>;
 		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
 		qcom,mdss-pan-dsi-dma-tr = <0x04>;
-		qcom,mdss-pan-dsi-frame-rate = <60>;
+		qcom,mdss-pan-dsi-frame-rate = <64>;
 		qcom,mdss-pan-te-sel = <1>;
 		qcom,mdss-pan-wr-mem-continue = <0x3c>;
 		qcom,mdss-pan-wr-mem-start = <0x2c>;
@@ -1087,8 +1087,8 @@
 			03 01 01 00  /* Regualotor settings */
 			20 00 01];
 		qcom,panel-phy-timingSettings = [
-			ad 3c 2f 00 54 4e
-			31 3e 4c 03 04 00];
+			c1 3d 34 00 58 4d
+			36 3f 53 03 04 00];
 		qcom,panel-phy-strengthCtrl = [
 			77 06];
 		qcom,panel-phy-bistCtrl = [
