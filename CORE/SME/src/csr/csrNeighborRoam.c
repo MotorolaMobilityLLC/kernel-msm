@@ -1406,6 +1406,24 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
             continue;
         }
 
+#ifdef FEATURE_WLAN_LFR
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+       /* In case of reassoc requested by upper layer, look for exact match of bssid & channel;
+          csr cache might have duplicates*/
+       if ((pNeighborRoamInfo->uOsRequestedHandoff) &&
+           ((VOS_FALSE == vos_mem_compare(pScanResult->BssDescriptor.bssId,
+                                         pNeighborRoamInfo->handoffReqInfo.bssid,
+                                         sizeof(tSirMacAddr)))||
+            (pScanResult->BssDescriptor.channelId != pNeighborRoamInfo->handoffReqInfo.channel)))
+
+       {
+           VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                      "SKIP-not a candidate AP for OS requested roam");
+           continue;
+       }
+#endif
+#endif
+
        /* This condition is to ensure to roam to an AP with better RSSI. if the value of RoamRssiDiff is Zero, this feature
         * is disabled and we continue to roam without any check*/
        if ((RoamRssiDiff > 0)
