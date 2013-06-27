@@ -6425,10 +6425,12 @@ VOS_STATUS WDA_ProcessSetP2PGONOAReq(tWDA_CbContext *pWDA,
  * FUNCTION: WDA_SetP2PGONOAReqParamsCallback
  *  Free the memory. No need to send any response to PE in this case
  */
-void WDA_SetTDLSLinkEstablishReqParamsCallback(WDI_Status status, void* pUserData)
+void WDA_SetTDLSLinkEstablishReqParamsCallback(WDI_SetTdlsLinkEstablishReqResp *wdiSetTdlsLinkEstablishReqRsp,
+                                               void* pUserData)
 {
    tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
    tWDA_CbContext *pWDA = NULL;
+   tTdlsLinkEstablishParams *pTdlsLinkEstablishParams;
 
 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
@@ -6449,12 +6451,24 @@ void WDA_SetTDLSLinkEstablishReqParamsCallback(WDI_Status status, void* pUserDat
       VOS_ASSERT(0) ;
       return ;
    }
-   /* send response to UMAC*/
-   WDA_SendMsg(pWDA, WDA_SET_TDLS_LINK_ESTABLISH_REQ_RSP, NULL , 0) ;
-
+   pTdlsLinkEstablishParams = (tTdlsLinkEstablishParams *)pWdaParams->wdaMsgParam ;
+   if( NULL == pTdlsLinkEstablishParams )
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                          "%s: pTdlsLinkEstablishParams "
+                                          "received NULL " ,__func__);
+      VOS_ASSERT(0);
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams);
+      return ;
+   }
+   pTdlsLinkEstablishParams->status = CONVERT_WDI2SIR_STATUS(
+                                               wdiSetTdlsLinkEstablishReqRsp->wdiStatus);
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
-   vos_mem_free(pWdaParams->wdaMsgParam) ;
    vos_mem_free(pWdaParams);
+   /* send response to UMAC*/
+   WDA_SendMsg(pWDA, WDA_SET_TDLS_LINK_ESTABLISH_REQ_RSP, pTdlsLinkEstablishParams, 0) ;
+
    return ;
 }
 
@@ -6486,15 +6500,15 @@ VOS_STATUS WDA_ProcessSetTdlsLinkEstablishReq(tWDA_CbContext *pWDA,
         return VOS_STATUS_E_NOMEM;
     }
     wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uStaIdx =
-                                                  pTdlsLinkEstablishParams->sta_idx;
+                                                  pTdlsLinkEstablishParams->staIdx;
     wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uIsResponder =
-                                                  pTdlsLinkEstablishParams->is_responder;
+                                                  pTdlsLinkEstablishParams->isResponder;
     wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uUapsdQueues =
-                                                  pTdlsLinkEstablishParams->uapsd_queues;
+                                                  pTdlsLinkEstablishParams->uapsdQueues;
     wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uMaxSp =
-                                                  pTdlsLinkEstablishParams->max_sp;
+                                                  pTdlsLinkEstablishParams->maxSp;
     wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uIsBufSta =
-                                                  pTdlsLinkEstablishParams->is_bufsta;
+                                                  pTdlsLinkEstablishParams->isBufsta;
 
     wdiSetTDLSLinkEstablishReqParam->wdiReqStatusCB = NULL ;
     /* Store msg pointer from PE, as this will be used for response */

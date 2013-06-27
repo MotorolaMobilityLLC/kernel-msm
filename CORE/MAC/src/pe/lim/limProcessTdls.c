@@ -5568,13 +5568,13 @@ tSirRetStatus limProcesSmeTdlsLinkEstablishReq(tpAniSirGlobal pMac,
         return eSIR_MEM_ALLOC_FAILED;
     }
 
-    palZeroMemory( pMac->hHdd, (tANI_U8 *)pMsgTdlsLinkEstablishReq, sizeof(tpTdlsLinkEstablishParams));
+    palZeroMemory( pMac->hHdd, (tANI_U8 *)pMsgTdlsLinkEstablishReq, sizeof(tTdlsLinkEstablishParams));
 
-    pMsgTdlsLinkEstablishReq->sta_idx = pStaDs->staIndex;
-    pMsgTdlsLinkEstablishReq->is_responder = pTdlsLinkEstablishReq->isResponder;
-    pMsgTdlsLinkEstablishReq->uapsd_queues = pTdlsLinkEstablishReq->uapsdQueues;
-    pMsgTdlsLinkEstablishReq->max_sp = pTdlsLinkEstablishReq->maxSp;
-    pMsgTdlsLinkEstablishReq->is_bufsta = pTdlsLinkEstablishReq->isBufSta;
+    pMsgTdlsLinkEstablishReq->staIdx = pStaDs->staIndex;
+    pMsgTdlsLinkEstablishReq->isResponder = pTdlsLinkEstablishReq->isResponder;
+    pMsgTdlsLinkEstablishReq->uapsdQueues = pTdlsLinkEstablishReq->uapsdQueues;
+    pMsgTdlsLinkEstablishReq->maxSp = pTdlsLinkEstablishReq->maxSp;
+    pMsgTdlsLinkEstablishReq->isBufsta = pTdlsLinkEstablishReq->isBufSta;
     msg.type = WDA_SET_TDLS_LINK_ESTABLISH_REQ;
     msg.reserved = 0;
     msg.bodyptr = pMsgTdlsLinkEstablishReq;
