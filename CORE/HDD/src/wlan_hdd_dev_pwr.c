@@ -500,6 +500,16 @@ void hddDevTmLevelChangedHandler(struct device *dev, int changedTmLevel)
       return;
    }
 
+   /* Only STA mode support TM now
+    * all other mode, TM feature should be disabled */
+   if (~VOS_STA & pHddCtx->concurrency_mode)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
+                "%s: CMODE 0x%x, TM disable",
+                __func__, pHddCtx->concurrency_mode);
+      newTmLevel = WLAN_HDD_TM_LEVEL_0;
+   }
+
    if ((newTmLevel < WLAN_HDD_TM_LEVEL_0) ||
        (newTmLevel >= WLAN_HDD_TM_LEVEL_MAX))
    {

@@ -86,6 +86,7 @@
 #include "wlan_hdd_wmm.h"
 #endif
 #include "wlan_nv.h"
+#include "wlan_hdd_dev_pwr.h"
 
 #define g_mode_rates_size (12)
 #define a_mode_rates_size (8)
@@ -2744,6 +2745,15 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
 done:
     /*set bitmask based on updated value*/
     wlan_hdd_set_concurrency_mode(pHddCtx, pAdapter->device_mode);
+
+   /* Only STA mode support TM now
+    * all other mode, TM feature should be disabled */
+    if ( (pHddCtx->cfg_ini->thermalMitigationEnable) &&
+         (~VOS_STA & pHddCtx->concurrency_mode) )
+    {
+        hddDevTmLevelChangedHandler(pHddCtx->parent_dev, 0);
+    }
+
 #ifdef WLAN_BTAMP_FEATURE
     if((NL80211_IFTYPE_STATION == type) && (pHddCtx->concurrency_mode <= 1) &&
        (pHddCtx->no_of_sessions[WLAN_HDD_INFRA_STATION] <=1))
