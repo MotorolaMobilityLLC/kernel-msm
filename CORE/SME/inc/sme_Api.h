@@ -2283,7 +2283,9 @@ eHalStatus sme_UpdateRoamScanNProbes(tHalHandle hHal, const v_U8_t nProbes);
     \param  nRoamScanAwayTime Scan home away time
     \- return Success or failure
     -------------------------------------------------------------------------*/
-eHalStatus sme_UpdateRoamScanHomeAwayTime(tHalHandle hHal, const v_U16_t nRoamScanHomeAwayTime);
+eHalStatus sme_UpdateRoamScanHomeAwayTime(tHalHandle hHal,
+                                          const v_U16_t nRoamScanHomeAwayTime,
+                                          const eAniBoolean bSendOffloadCmd);
 
 /* ---------------------------------------------------------------------------
     \fn sme_getRoamIntraBand

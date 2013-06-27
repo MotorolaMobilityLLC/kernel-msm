@@ -838,7 +838,7 @@ typedef enum
 #define CFG_ROAM_SCAN_HOME_AWAY_TIME                        "gRoamScanHomeAwayTime"
 #define CFG_ROAM_SCAN_HOME_AWAY_TIME_MIN                    (3)
 #define CFG_ROAM_SCAN_HOME_AWAY_TIME_MAX                    (300)
-#define CFG_ROAM_SCAN_HOME_AWAY_TIME_DEFAULT                (0)
+#define CFG_ROAM_SCAN_HOME_AWAY_TIME_DEFAULT                (CFG_ROAM_SCAN_HOME_AWAY_TIME_MIN)
 #endif /* (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR) */
 
 #ifdef FEATURE_WLAN_OKC
