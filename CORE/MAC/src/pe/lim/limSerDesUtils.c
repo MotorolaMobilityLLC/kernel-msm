@@ -1103,6 +1103,13 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
 #endif
 
 #ifdef FEATURE_WLAN_CCX
+    //CCX version IE
+    pJoinReq->isCCXFeatureIniEnabled = (tAniBool)limGetU32(pBuf);
+    pBuf += sizeof(tAniBool);
+    len -= sizeof(tAniBool);
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+       return eSIR_FAILURE;
+
     //isCCXconnection;
     pJoinReq->isCCXconnection = (tAniBool)limGetU32(pBuf);
     pBuf += sizeof(tAniBool);
