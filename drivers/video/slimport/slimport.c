@@ -29,6 +29,7 @@
 #include <linux/err.h>
 #include <linux/of_gpio.h>
 #include <linux/slimport.h>
+#include <linux/async.h>
 
 #include "slimport_private.h"
 #include "slimport_tx_drv.h"
@@ -750,9 +751,19 @@ static struct i2c_driver anx7808_driver = {
 	.id_table  = anx7808_id,
 };
 
+static void __init anx7808_init_async(void *data, async_cookie_t cookie)
+{
+	int ret = 0;
+
+	ret = i2c_add_driver(&anx7808_driver);
+	if (ret)
+		pr_err("%s: failed to register anx7808 driver\n", __func__);
+}
+
 static int __init anx7808_init(void)
 {
-	return i2c_add_driver(&anx7808_driver);
+	async_schedule(anx7808_init_async, NULL);
+	return 0;
 }
 
 static void __exit anx7808_exit(void)
