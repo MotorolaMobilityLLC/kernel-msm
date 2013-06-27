@@ -2055,6 +2055,7 @@ eHalStatus csrGet24GChannels(tpAniSirGlobal pMac)
     tANI_U8 num20MHzChannelsFound = 0;
     VOS_STATUS vosStatus;
     tANI_U8 Index = 0;
+    tANI_U8 numChan = 0;
     tANI_U8 num40MHzChannelsFound = 0;
     tANI_U8 channelList5GBackup[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0}, nuum5GchannelListBackup;
     tANI_U8 channelList = 0;
@@ -2088,23 +2089,26 @@ eHalStatus csrGet24GChannels(tpAniSirGlobal pMac)
             }
         }
         // Updating the 2.4GHz list
-        for ( Index = 0; Index < num20MHzChannelsFound; Index++)
+        for ( Index = 0, numChan = 0; Index < num20MHzChannelsFound; Index++)
         {
             if(pMac->scan.defaultPowerTable[Index].chanId > 0 && pMac->scan.defaultPowerTable[Index].chanId <= 14)
-                pMac->scan.base20MHzChannels.channelList[ Index ] = pMac->scan.defaultPowerTable[Index].chanId;
+            {
+                pMac->scan.base20MHzChannels.channelList[ numChan ] = pMac->scan.defaultPowerTable[Index].chanId;
+                numChan++;
+            }
         }
         // Restoring the Backed up 5 GHZ channels
         for(channelList = 0;channelList < nuum5GchannelListBackup; channelList++ )
         {
-            if (Index < WNI_CFG_VALID_CHANNEL_LIST_LEN)
+            if (numChan < WNI_CFG_VALID_CHANNEL_LIST_LEN)
             {
-                pMac->scan.base20MHzChannels.channelList[ Index ] = channelList5GBackup[channelList];
-                Index++;
+                pMac->scan.base20MHzChannels.channelList[ numChan ] = channelList5GBackup[channelList];
+                numChan++;
             }
         }
 
-        pMac->scan.numChannelsDefault = (num20MHzChannelsFound > Index) ? num20MHzChannelsFound : Index;
-        pMac->scan.base20MHzChannels.numChannels = (num20MHzChannelsFound > Index) ? num20MHzChannelsFound : Index;
+        pMac->scan.numChannelsDefault = (num20MHzChannelsFound > numChan) ? num20MHzChannelsFound : numChan;
+        pMac->scan.base20MHzChannels.numChannels = (num20MHzChannelsFound > numChan) ? num20MHzChannelsFound : numChan;
     }
     return (status);
 }
