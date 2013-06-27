@@ -463,7 +463,7 @@ static void *msm_bus_noc_allocate_noc_data(struct platform_device *pdev,
 
 	for (i = 0; i < NUM_CTX; i++) {
 		ninfo->cdata[i].mas = kzalloc(sizeof(struct
-			msm_bus_node_hw_info) * fab_pdata->nmasters * 2,
+			msm_bus_node_hw_info) * fab_pdata->nmasters,
 			GFP_KERNEL);
 		if (!ninfo->cdata[i].mas) {
 			MSM_BUS_DBG("Couldn't alloc mem for noc master-bw\n");
@@ -473,7 +473,7 @@ static void *msm_bus_noc_allocate_noc_data(struct platform_device *pdev,
 		}
 
 		ninfo->cdata[i].slv = kzalloc(sizeof(struct
-			msm_bus_node_hw_info) * fab_pdata->nslaves * 2,
+			msm_bus_node_hw_info) * fab_pdata->nslaves,
 			GFP_KERNEL);
 		if (!ninfo->cdata[i].slv) {
 			MSM_BUS_DBG("Couldn't alloc mem for noc master-bw\n");

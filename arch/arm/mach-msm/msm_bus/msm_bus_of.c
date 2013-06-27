@@ -327,6 +327,7 @@ static struct msm_bus_node_info *get_nodes(struct device_node *of_node,
 	struct device_node *child_node = NULL;
 	int i = 0, ret;
 	int num_bw = 0;
+	int j, max_masterp = 0, max_slavep = 0;
 
 	for_each_child_of_node(of_node, child_node) {
 		i++;
@@ -371,11 +372,15 @@ static struct msm_bus_node_info *get_nodes(struct device_node *of_node,
 		info[i].qport = get_arr(pdev, child_node,
 					"qcom,qport", &ret);
 		pdata->nmasters += info[i].num_mports;
+		for (j = 0; j < info[i].num_mports; j++)
+			max_masterp = max(info[i].masterp[j], max_masterp);
 
 
 		info[i].slavep = get_arr(pdev, child_node,
 					"qcom,slavep", &info[i].num_sports);
 		pdata->nslaves += info[i].num_sports;
+		for (j = 0; j < info[i].num_sports; j++)
+			max_slavep = max(info[i].slavep[j], max_slavep);
 
 
 		info[i].tier = get_arr(pdev, child_node,
@@ -516,6 +521,12 @@ static struct msm_bus_node_info *get_nodes(struct device_node *of_node,
 		i++;
 	}
 
+	if (pdata->nmasters)
+		pdata->nmasters = max(pdata->nmasters,
+				(unsigned int)(max_masterp + 1));
+	if (pdata->nslaves)
+		pdata->nslaves = max(pdata->nslaves,
+				(unsigned int)(max_slavep + 1));
 	pr_debug("Bus %d added: %d masters\n", pdata->id, pdata->nmasters);
 	pr_debug("Bus %d added: %d slaves\n", pdata->id, pdata->nslaves);
 	return info;
