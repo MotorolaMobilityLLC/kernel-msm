@@ -18,6 +18,7 @@
 #include <linux/cred.h>
 #include <linux/sched.h>
 #include <linux/statfs.h>
+#include <linux/seq_file.h>
 #include "overlayfs.h"
 
 MODULE_AUTHOR("Miklos Szeredi <miklos@szeredi.hu>");
@@ -26,12 +27,21 @@ MODULE_LICENSE("GPL");
 
 #define OVERLAYFS_SUPER_MAGIC 0x794c764f
 
+struct ovl_config {
+	char *lowerdir;
+	char *upperdir;
+};
+
+/* private information held for overlayfs's superblock */
 struct ovl_fs {
 	struct vfsmount *upper_mnt;
 	struct vfsmount *lower_mnt;
 	long lower_namelen;
+	/* pathnames of lower and upper dirs, for show_options */
+	struct ovl_config config;
 };
 
+/* private information held for every overlayfs dentry */
 struct ovl_entry {
 	/*
 	 * Keep "double reference" on upper dentries, so that
@@ -388,6 +398,8 @@ static void ovl_put_super(struct super_block *sb)
 	mntput(ufs->upper_mnt);
 	mntput(ufs->lower_mnt);
 
+	kfree(ufs->config.lowerdir);
+	kfree(ufs->config.upperdir);
 	kfree(ufs);
 }
 
@@ -436,15 +448,27 @@ static int ovl_statfs(struct dentry *dentry, struct kstatfs *buf)
 	return err;
 }
 
+/**
+ * ovl_show_options
+ *
+ * Prints the mount options for a given superblock.
+ * Returns zero; does not fail.
+ */
+static int ovl_show_options(struct seq_file *m, struct dentry *dentry)
+{
+	struct super_block *sb = dentry->d_sb;
+	struct ovl_fs *ufs = sb->s_fs_info;
+
+	seq_printf(m, ",lowerdir=%s", ufs->config.lowerdir);
+	seq_printf(m, ",upperdir=%s", ufs->config.upperdir);
+	return 0;
+}
+
 static const struct super_operations ovl_super_operations = {
 	.put_super	= ovl_put_super,
 	.remount_fs	= ovl_remount_fs,
 	.statfs		= ovl_statfs,
-};
-
-struct ovl_config {
-	char *lowerdir;
-	char *upperdir;
+	.show_options	= ovl_show_options,
 };
 
 enum {
@@ -504,34 +528,33 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 	struct dentry *root_dentry;
 	struct ovl_entry *oe;
 	struct ovl_fs *ufs;
-	struct ovl_config config;
 	struct kstatfs statfs;
 	int err;
-
-	err = ovl_parse_opt((char *) data, &config);
-	if (err)
-		goto out;
-
-	err = -EINVAL;
-	if (!config.upperdir || !config.lowerdir) {
-		pr_err("overlayfs: missing upperdir or lowerdir\n");
-		goto out_free_config;
-	}
 
 	err = -ENOMEM;
 	ufs = kmalloc(sizeof(struct ovl_fs), GFP_KERNEL);
 	if (!ufs)
+		goto out;
+
+	err = ovl_parse_opt((char *) data, &ufs->config);
+	if (err)
+		goto out_free_ufs;
+
+	err = -EINVAL;
+	if (!ufs->config.upperdir || !ufs->config.lowerdir) {
+		pr_err("overlayfs: missing upperdir or lowerdir\n");
 		goto out_free_config;
+	}
 
 	oe = ovl_alloc_entry();
 	if (oe == NULL)
-		goto out_free_ufs;
+		goto out_free_config;
 
-	err = kern_path(config.upperdir, LOOKUP_FOLLOW, &upperpath);
+	err = kern_path(ufs->config.upperdir, LOOKUP_FOLLOW, &upperpath);
 	if (err)
 		goto out_free_oe;
 
-	err = kern_path(config.lowerdir, LOOKUP_FOLLOW, &lowerpath);
+	err = kern_path(ufs->config.lowerdir, LOOKUP_FOLLOW, &lowerpath);
 	if (err)
 		goto out_put_upperpath;
 
@@ -615,11 +638,11 @@ out_put_upperpath:
 	path_put(&upperpath);
 out_free_oe:
 	kfree(oe);
+out_free_config:
+	kfree(ufs->config.lowerdir);
+	kfree(ufs->config.upperdir);
 out_free_ufs:
 	kfree(ufs);
-out_free_config:
-	kfree(config.lowerdir);
-	kfree(config.upperdir);
 out:
 	return err;
 }
