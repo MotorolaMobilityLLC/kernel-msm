@@ -341,7 +341,6 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
 	int ret;
-	ktime_t timestamp;
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -356,10 +355,7 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 
 	mdp4_video_vsync_irq_ctrl(cndx, 1);
 
-	timestamp = vctrl->vsync_time;
-	ret = wait_event_interruptible_timeout(vctrl->wait_queue,
-			!ktime_equal(timestamp, vctrl->vsync_time) &&
-			vctrl->vsync_irq_enabled,
+	ret = wait_event_interruptible_timeout(vctrl->wait_queue, 1,
 			msecs_to_jiffies(VSYNC_PERIOD * 8));
 
 	if (ret <= 0)
