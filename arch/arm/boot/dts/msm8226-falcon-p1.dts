@@ -22,7 +22,7 @@
 
 &bms_tbls {
 	mmi,batt-tbl-one {
-		qcom,batt-tbl-id = <0 50000>;
+		qcom,batt-tbl-id = <0 1800000>;
 	};
 };
 
