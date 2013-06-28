@@ -129,6 +129,7 @@ bool otg_on;
 extern int ac_on;
 extern int usb_on;
 static bool wpc_en;
+static bool disable_DCIN;
 
 /* Sysfs interface */
 static DEVICE_ATTR(reg_status, S_IWUSR | S_IRUGO, smb345_reg_show, NULL);
@@ -841,13 +842,18 @@ int usb_cable_type_detect(unsigned int chgr_type)
 
 	if (chgr_type == CHARGER_NONE) {
 		SMB_NOTICE("INOK=H\n");
+		if (wpc_en) {
+			if (disable_DCIN) {
+				SMB_NOTICE("enable wpc_pok, enable DCIN\n");
+				disable_DCIN = false;
+				enable_irq_wake(gpio_to_irq(charger->wpc_pok_gpio));
+				enable_irq(gpio_to_irq(charger->wpc_pok_gpio));
+				gpio_set_value(charger->wpc_en1, 0);
+				gpio_set_value(charger->wpc_en2, 0);
+			}
+		}
 		success =  bq27541_battery_callback(non_cable);
 		touch_callback(non_cable);
-		if (wpc_en) {
-			SMB_NOTICE("enable DCIN");
-			gpio_set_value(charger->wpc_en1, 0);
-			gpio_set_value(charger->wpc_en2, 0);
-		}
 	} else {
 		SMB_NOTICE("INOK=L\n");
 
@@ -879,9 +885,17 @@ int usb_cable_type_detect(unsigned int chgr_type)
 			if (wpc_en) {
 				if (delayed_work_pending(&charger->wireless_set_current_work))
 					cancel_delayed_work(&charger->wireless_set_current_work);
-				SMB_NOTICE("AC cable detect, disable DCIN");
-				gpio_set_value(charger->wpc_en1, 1);
-				gpio_set_value(charger->wpc_en2, 1);
+				if (!disable_DCIN) {
+					SMB_NOTICE("AC cable detect, disable wpc_pok, disable DCIN");
+					disable_DCIN = true;
+					disable_irq(gpio_to_irq(charger->wpc_pok_gpio));
+					disable_irq_wake(gpio_to_irq(charger->wpc_pok_gpio));
+					gpio_set_value(charger->wpc_en1, 1);
+					gpio_set_value(charger->wpc_en2, 1);
+					mdelay(200);
+					if (wireless_on)
+						wireless_reset();
+				}
 			}
 		}
 	}
@@ -1228,6 +1242,7 @@ static int __devinit smb345_probe(struct i2c_client *client,
 	wireless_on = false;
 	otg_on = false;
 	wpc_en = false;
+	disable_DCIN = false;
 
 	ret = smb345_inok_irq(charger);
 	if (ret) {
