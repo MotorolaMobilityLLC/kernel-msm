@@ -33,9 +33,7 @@ ifeq ($(KERNEL_BUILD),0)
 	CONFIG_QCOM_TDLS := y
 
 	#Flag to enable Fast Transition (11r) feature
-	ifeq ($(CONFIG_PRONTO_WLAN), m)
 	CONFIG_QCOM_VOWIFI_11R := y
-	endif
 
 	#Flag to enable Protected Managment Frames (11w) feature
 	ifneq ($(CONFIG_PRONTO_WLAN),)
