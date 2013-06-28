@@ -149,9 +149,9 @@
 			qcom,rgb_0 {
 				label = "rgb";
 				linux,name = "red";
-				qcom,mode = <1>;
+				qcom,mode = "lpg";
 				qcom,pwm-channel = <6>;
-				qcom,pwm-us = <5000>;
+				qcom,pwm-us = <200>;
 				qcom,duty-ms = <70>;
 				qcom,start-idx = <0>;
 				qcom,idx-len = <63>;
@@ -179,9 +179,9 @@
 			qcom,rgb_1 {
 				label = "rgb";
 				linux,name = "green";
-				qcom,mode = <1>;
+				qcom,mode = "lpg";
 				qcom,pwm-channel = <5>;
-				qcom,pwm-us = <5000>;
+				qcom,pwm-us = <200>;
 				qcom,duty-ms = <70>;
 				qcom,start-idx = <0>;
 				qcom,idx-len = <63>;
@@ -209,9 +209,9 @@
 			qcom,rgb_2 {
 				label = "rgb";
 				linux,name = "blue";
-				qcom,mode = <1>;
+				qcom,mode = "lpg";
 				qcom,pwm-channel = <4>;
-				qcom,pwm-us = <5000>;
+				qcom,pwm-us = <200>;
 				qcom,duty-ms = <70>;
 				qcom,start-idx = <0>;
 				qcom,idx-len = <63>;
