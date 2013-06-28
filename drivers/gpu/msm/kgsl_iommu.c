@@ -849,13 +849,10 @@ static int kgsl_iommu_init_sync_lock(struct kgsl_mmu *mmu)
 		return status;
 
 	/* Map Lock variables to GPU pagetable */
-	iommu->sync_lock_desc.priv |= KGSL_MEMDESC_GLOBAL;
-
 	pagetable = mmu->priv_bank_table ? mmu->priv_bank_table :
 				mmu->defaultpagetable;
 
-	status = kgsl_mmu_map(pagetable, &iommu->sync_lock_desc,
-				     GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
+	status = kgsl_mmu_map_global(pagetable, &iommu->sync_lock_desc);
 
 	if (status) {
 		kgsl_mmu_unmap(pagetable, &iommu->sync_lock_desc);
@@ -1160,23 +1157,18 @@ static int kgsl_iommu_setup_regs(struct kgsl_mmu *mmu,
 		return 0;
 
 	for (i = 0; i < iommu->unit_count; i++) {
-		iommu->iommu_units[i].reg_map.priv |= KGSL_MEMDESC_GLOBAL;
-		status = kgsl_mmu_map(pt,
-				&(iommu->iommu_units[i].reg_map),
-				GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
-		if (status) {
-			iommu->iommu_units[i].reg_map.priv &=
-				~KGSL_MEMDESC_GLOBAL;
+		status = kgsl_mmu_map_global(pt,
+				&(iommu->iommu_units[i].reg_map));
+		if (status)
 			goto err;
-		}
 	}
+
 	return 0;
 err:
-	for (i--; i >= 0; i--) {
+	for (i--; i >= 0; i--)
 		kgsl_mmu_unmap(pt,
 				&(iommu->iommu_units[i].reg_map));
-		iommu->iommu_units[i].reg_map.priv &= ~KGSL_MEMDESC_GLOBAL;
-	}
+
 	return status;
 }
 
@@ -1540,22 +1532,19 @@ kgsl_iommu_map(void *mmu_specific_pt,
 	unsigned int iommu_virt_addr;
 	struct kgsl_iommu_pt *iommu_pt = mmu_specific_pt;
 	int size = kgsl_sg_size(memdesc->sg, memdesc->sglen);
-	unsigned int iommu_flags = IOMMU_READ;
 
 	BUG_ON(NULL == iommu_pt);
 
-	if (protflags & GSL_PT_PAGE_WV)
-		iommu_flags |= IOMMU_WRITE;
 
 	iommu_virt_addr = memdesc->gpuaddr;
 
 	ret = iommu_map_range(iommu_pt->domain, iommu_virt_addr, memdesc->sg,
-				size, iommu_flags);
+				size, protflags);
 	if (ret) {
 		KGSL_CORE_ERR("iommu_map_range(%p, %x, %p, %d, %d) "
 				"failed with err: %d\n", iommu_pt->domain,
 				iommu_virt_addr, memdesc->sg, size,
-				iommu_flags, ret);
+				protflags, ret);
 		return ret;
 	}
 
