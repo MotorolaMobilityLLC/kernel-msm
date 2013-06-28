@@ -72,6 +72,8 @@ wfi_done:
 ENDPROC(msm_arch_idle)
 
 ENTRY(msm_pm_pc_hotplug)
+ UNWIND(.fnstart	)
+ UNWIND(.save {lr})
 	stmfd	sp!, {lr}
 #if defined(CONFIG_MSM_FIQ_SUPPORT)
 	cpsid   f
@@ -140,6 +142,7 @@ skip_hp_debug2:
 	mov     r0, #0                   /* return power collapse failed */
 	ldmfd	sp!, {lr}
 	bx      lr
+ UNWIND(.fnend		)
 ENDPROC(msm_pm_pc_hotplug)
 
 ENTRY(msm_pm_collapse)
