@@ -618,7 +618,8 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 	 * state, use the CPU instead of the GPU to reprogram the
 	 * iommu for simplicity's sake.
 	 */
-	 if (!adreno_dev->drawctxt_active || device->ftbl->isidle(device))
+	 if (!adreno_dev->drawctxt_active || device->ftbl->isidle(device) ||
+		 !device->active_cnt)
 		return kgsl_mmu_device_setstate(&device->mmu, flags);
 
 	num_iommu_units = kgsl_mmu_get_num_iommu_units(&device->mmu);
