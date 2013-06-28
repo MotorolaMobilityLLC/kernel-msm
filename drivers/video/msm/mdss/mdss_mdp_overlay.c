@@ -2445,11 +2445,12 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		}
 	}
 
+	mdss_mdp_video_unlock_panel(mdp5_data->ctl);
+
 	if (IS_ERR_VALUE(rc)) {
 		pr_err("Failed to turn on fb%d\n", mfd->index);
 		mdss_mdp_overlay_off(mfd);
 	}
-	mdss_mdp_video_unlock_panel(mdp5_data->ctl);
 
 	return rc;
 }
