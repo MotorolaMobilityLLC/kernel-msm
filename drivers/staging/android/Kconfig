@@ -132,6 +132,14 @@ config ANDROID_BIG_FD
 	  If this value is undefined but CONFIG_ANDROID_DEBUG_FD_LEAK is
 	  enabled, the value (__FD_SETSIZE / 2) will be assumed.
 
+config ANDROID_LMK_ADJ_RBTREE
+	bool "Use RBTREE for Android Low Memory Killer"
+	depends on ANDROID_LOW_MEMORY_KILLER
+	default N
+	---help---
+	  Use oom_score_adj rbtree to select the best proecss to kill
+	  when system in low memory status.
+
 endif # if ANDROID
 
 endmenu
