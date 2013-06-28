@@ -259,7 +259,12 @@ repeat:
 	if (PageUptodate(page))
 		return page;
 
-	BUG_ON(dn.data_blkaddr == NEW_ADDR);
+	if (dn.data_blkaddr == NEW_ADDR) {
+		f2fs_handle_error(sbi);
+		f2fs_put_page(page, 1);
+		return ERR_PTR(-ENOENT);
+	}
+
 	BUG_ON(dn.data_blkaddr == NULL_ADDR);
 
 	err = f2fs_readpage(sbi, page, dn.data_blkaddr, READ_SYNC);
