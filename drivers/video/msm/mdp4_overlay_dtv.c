@@ -648,6 +648,7 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	wake_up_interruptible_all(&vctrl->wait_queue);
 
 	mdp4_dtv_wait4vsync(cndx);
+	mdp4_unmap_sec_resource(mfd);
 
 	pipe = vctrl->base_pipe;
 	if (pipe != NULL) {
