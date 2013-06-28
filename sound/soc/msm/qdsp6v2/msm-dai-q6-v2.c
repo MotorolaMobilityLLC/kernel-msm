@@ -192,7 +192,6 @@ static void msm_dai_q6_auxpcm_shutdown(struct snd_pcm_substream *substream,
 {
 	int rc = 0;
 	struct afe_clk_cfg *lpass_pcm_src_clk = NULL;
-	struct afe_clk_cfg lpass_pcm_oe_clk;
 	struct msm_dai_q6_auxpcm_dai_data *aux_dai_data =
 		dev_get_drvdata(dai->dev);
 
@@ -248,11 +247,6 @@ static void msm_dai_q6_auxpcm_shutdown(struct snd_pcm_substream *substream,
 	afe_set_lpass_clock(aux_dai_data->rx_pid, lpass_pcm_src_clk);
 	afe_set_lpass_clock(aux_dai_data->tx_pid, lpass_pcm_src_clk);
 
-	memcpy(&lpass_pcm_oe_clk, &lpass_clk_cfg_default,
-			 sizeof(struct afe_clk_cfg));
-	lpass_pcm_oe_clk.clk_val1 = 0;
-	afe_set_lpass_clock(aux_dai_data->rx_pid, &lpass_pcm_oe_clk);
-
 exit:
 	mutex_unlock(&aux_dai_data->rlock);
 	return;
@@ -267,7 +261,6 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	struct msm_dai_auxpcm_pdata *auxpcm_pdata = NULL;
 	int rc = 0;
 	unsigned long pcm_clk_rate;
-	struct afe_clk_cfg lpass_pcm_oe_clk;
 	struct afe_clk_cfg *lpass_pcm_src_clk = NULL;
 
 	auxpcm_pdata = dai->dev->platform_data;
@@ -336,10 +329,6 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 			sizeof(struct afe_clk_cfg));
 	lpass_pcm_src_clk->clk_val1 = pcm_clk_rate;
 
-	memcpy(&lpass_pcm_oe_clk, &lpass_clk_cfg_default,
-			sizeof(struct afe_clk_cfg));
-	lpass_pcm_oe_clk.clk_val1 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
-
 	rc = afe_set_lpass_clock(aux_dai_data->rx_pid, lpass_pcm_src_clk);
 	if (rc < 0) {
 		dev_err(dai->dev,
@@ -352,14 +341,6 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	if (rc < 0) {
 		dev_err(dai->dev,
 			"%s:afe_set_lpass_clock on TX pcm_src_clk failed\n",
-			__func__);
-		goto fail;
-	}
-
-	rc = afe_set_lpass_clock(aux_dai_data->rx_pid, &lpass_pcm_oe_clk);
-	if (rc < 0) {
-		dev_err(dai->dev,
-			"%s:afe_set_lpass_clock on pcm_oe_clk failed\n",
 			__func__);
 		goto fail;
 	}
@@ -412,7 +393,6 @@ static int msm_dai_q6_dai_auxpcm_remove(struct snd_soc_dai *dai)
 {
 	struct msm_dai_q6_auxpcm_dai_data *aux_dai_data;
 	struct afe_clk_cfg *lpass_pcm_src_clk = NULL;
-	struct afe_clk_cfg lpass_pcm_oe_clk;
 	int rc;
 
 	aux_dai_data = dev_get_drvdata(dai->dev);
@@ -436,11 +416,6 @@ static int msm_dai_q6_dai_auxpcm_remove(struct snd_soc_dai *dai)
 	lpass_pcm_src_clk->clk_val1 = 0;
 	afe_set_lpass_clock(aux_dai_data->rx_pid, lpass_pcm_src_clk);
 	afe_set_lpass_clock(aux_dai_data->tx_pid, lpass_pcm_src_clk);
-
-	memcpy(&lpass_pcm_oe_clk, &lpass_clk_cfg_default,
-			 sizeof(struct afe_clk_cfg));
-	lpass_pcm_oe_clk.clk_val1 = 0;
-	afe_set_lpass_clock(aux_dai_data->rx_pid, &lpass_pcm_oe_clk);
 
 	return 0;
 }
