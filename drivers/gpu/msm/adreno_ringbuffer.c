@@ -565,6 +565,9 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	/* 2 dwords to store the start of command sequence */
 	total_sizedwords += 2;
 
+	/* internal ib command identifier for the ringbuffer */
+	total_sizedwords += (flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE) ? 2 : 0;
+
 	/* Add CP_COND_EXEC commands to generate CP_INTERRUPT */
 	total_sizedwords += context ? 13 : 0;
 
@@ -602,6 +605,11 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 
 	GSL_RB_WRITE(ringcmds, rcmd_gpu, cp_nop_packet(1));
 	GSL_RB_WRITE(ringcmds, rcmd_gpu, KGSL_CMD_IDENTIFIER);
+
+	if (flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE) {
+		GSL_RB_WRITE(ringcmds, rcmd_gpu, cp_nop_packet(1));
+		GSL_RB_WRITE(ringcmds, rcmd_gpu, KGSL_CMD_INTERNAL_IDENTIFIER);
+	}
 
 	if (flags & KGSL_CMD_FLAGS_PMODE) {
 		/* disable protected mode error checking */
