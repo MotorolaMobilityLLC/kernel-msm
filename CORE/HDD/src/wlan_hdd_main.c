@@ -6134,6 +6134,7 @@ static void hdd_driver_exit(void)
 {
    hdd_context_t *pHddCtx = NULL;
    v_CONTEXT_t pVosContext = NULL;
+   int retry = 0;
 
    pr_info("%s: unloading driver v%s\n", WLAN_MODULE_NAME, QWLAN_VERSIONSTR);
 
@@ -6155,11 +6156,18 @@ static void hdd_driver_exit(void)
    }
    else
    {
-      /* module exit should never proceed if SSR is not completed */
-      while(isWDresetInProgress()){
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:SSR in Progress; block rmmod for 1 second!!!",__func__);
+      while(isWDresetInProgress()) {
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+              "%s:SSR in Progress; block rmmod for 1 second!!!", __func__);
          msleep(1000);
-       }
+
+         if (retry++ == HDD_MOD_EXIT_SSR_MAX_RETRIES) {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+              "%s:SSR never completed, fatal error", __func__);
+            VOS_BUG(0);
+         }
+      }
+
 
       pHddCtx->isLoadUnloadInProgress = TRUE;
       vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);
