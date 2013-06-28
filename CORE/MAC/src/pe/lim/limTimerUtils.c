@@ -1847,6 +1847,16 @@ limHeartBeatDeactivateAndChangeTimer(tpAniSirGlobal pMac, tpPESession psessionEn
                  val1, psessionEntry->beaconParams.beaconInterval,
                  psessionEntry->peSessionId);)
 
+    /* The HB timer timeout value of 4 seconds (40 beacon intervals) is not enough
+     * to judge the peer device inactivity when 32 peers are connected. Hence
+     * increasing the HB timer timeout to
+     * HBtimeout = (TBTT * num_beacons * num_peers)
+     */
+    if (eSIR_IBSS_MODE == psessionEntry->bssType)
+    {
+      val1 = val1 * pMac->lim.gLimNumIbssPeers;
+    }
+
     // Change timer to reactivate it in future
     val = SYS_MS_TO_TICKS(val * val1);
 
