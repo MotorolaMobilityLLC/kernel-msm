@@ -616,6 +616,14 @@ static int kgsl_pwrctrl_gpu_available_frequencies_show(
 	return num_chars;
 }
 
+static int kgsl_pwrctrl_reset_count_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	struct kgsl_device *device = kgsl_device_from_dev(dev);
+	return snprintf(buf, PAGE_SIZE, "%d\n", device->reset_counter);
+}
+
 DEVICE_ATTR(gpuclk, 0644, kgsl_pwrctrl_gpuclk_show, kgsl_pwrctrl_gpuclk_store);
 DEVICE_ATTR(max_gpuclk, 0644, kgsl_pwrctrl_max_gpuclk_show,
 	kgsl_pwrctrl_max_gpuclk_store);
@@ -641,6 +649,9 @@ DEVICE_ATTR(thermal_pwrlevel, 0644,
 DEVICE_ATTR(num_pwrlevels, 0444,
 	kgsl_pwrctrl_num_pwrlevels_show,
 	NULL);
+DEVICE_ATTR(reset_count, 0444,
+	kgsl_pwrctrl_reset_count_show,
+	NULL);
 
 static const struct device_attribute *pwrctrl_attr_list[] = {
 	&dev_attr_gpuclk,
@@ -654,6 +665,7 @@ static const struct device_attribute *pwrctrl_attr_list[] = {
 	&dev_attr_min_pwrlevel,
 	&dev_attr_thermal_pwrlevel,
 	&dev_attr_num_pwrlevels,
+	&dev_attr_reset_count,
 	NULL
 };
 
