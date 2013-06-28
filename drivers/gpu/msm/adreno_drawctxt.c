@@ -148,7 +148,6 @@ int adreno_drawctxt_create(struct kgsl_device *device,
 {
 	struct adreno_context *drawctxt;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 	int ret;
 
 	drawctxt = kzalloc(sizeof(struct adreno_context), GFP_KERNEL);
@@ -161,7 +160,7 @@ int adreno_drawctxt_create(struct kgsl_device *device,
 	drawctxt->pagetable = pagetable;
 	drawctxt->bin_base_offset = 0;
 	drawctxt->id = context->id;
-	rb->timestamp[context->id] = 0;
+	drawctxt->timestamp = 0;
 
 	*flags &= (KGSL_CONTEXT_PREAMBLE |
 		KGSL_CONTEXT_NO_GMEM_ALLOC |
