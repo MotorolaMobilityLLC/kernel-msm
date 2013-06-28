@@ -155,6 +155,8 @@ unchar sp_tx_get_cable_type(void);
 bool sp_tx_get_dp_connection(void);
 bool sp_tx_get_hdmi_connection(void);
 bool sp_tx_get_vga_connection(void);
+unchar sp_tx_get_downstream_type(void);
+unchar sp_tx_get_downstream_connection(enum RX_CBL_TYPE cabletype);
 void sp_tx_edid_read(void);
 uint sp_tx_link_err_check(void);
 void sp_tx_eye_diagram_test(void);
