@@ -39,6 +39,7 @@
 
 #define DRIVER_NAME "synaptics_dsx_i2c"
 #define INPUT_PHYS_NAME "synaptics_dsx_i2c/input0"
+#define TYPE_B_PROTOCOL
 
 #define NO_0D_WHILE_2D
 /*
@@ -1601,6 +1602,11 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		 * 10 = finger present but data may be inaccurate
 		 * 11 = reserved
 		 */
+#ifdef TYPE_B_PROTOCOL
+		input_mt_slot(rmi4_data->input_dev, finger);
+		input_mt_report_slot_state(rmi4_data->input_dev,
+					MT_TOOL_FINGER, finger_status);
+#endif
 		if (finger_status) {
 			data_offset = data_addr +
 					num_of_finger_status_regs +
@@ -1648,13 +1654,17 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_TOUCH_MINOR, min(wx, wy));
 #endif
+#ifndef TYPE_B_PROTOCOL
 			input_mt_sync(rmi4_data->input_dev);
+#endif
 			touch_count++;
 		}
 	}
 
+#ifndef TYPE_B_PROTOCOL
 	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
+#endif
 
 	input_sync(rmi4_data->input_dev);
 
@@ -2116,12 +2126,19 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_TOUCH_MAJOR, 0,
 			15, 0, 0);
+	input_set_abs_params(rmi4_data->input_dev,
+			ABS_MT_TOUCH_MINOR, 0,
+			15, 0, 0);
 #endif
+#ifdef TYPE_B_PROTOCOL
+	input_mt_init_slots(rmi4_data->input_dev,
+			rmi4_data->num_of_fingers);
+#else
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_TRACKING_ID, 0,
 			rmi4_data->num_of_fingers - 1, 0, 0);
-
 	input_set_events_per_packet(rmi4_data->input_dev, 64);
+#endif
 
 	return retval;
 }
@@ -2704,7 +2721,16 @@ static void synaptics_dsx_on_resume(struct synaptics_rmi4_data *rmi4_data)
 	 * Enforce touch release event report to work-around such event
 	 * missing while touch IC is off.
 	 */
+#ifdef TYPE_B_PROTOCOL
+	int i;
+	for (i = 0; i < rmi4_data->num_of_fingers; i++) {
+		input_mt_slot(rmi4_data->input_dev, i);
+		input_mt_report_slot_state(rmi4_data->input_dev,
+				MT_TOOL_FINGER, false);
+	}
+#else
 	input_mt_sync(rmi4_data->input_dev);
+#endif
 	input_sync(rmi4_data->input_dev);
 
 	/* reset some TSB global vars like fingers_on_2d after resume
