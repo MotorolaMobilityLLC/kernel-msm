@@ -53,7 +53,7 @@ BUILD_DEBUG_VERSION := 1
 BUILD_DIAG_VERSION := 0
 
 #Do we panic on bug?  default is to warn
-PANIC_ON_BUG := 0
+PANIC_ON_BUG := 1
 
 #Re-enable wifi on WDI timeout
 RE_ENABLE_WIFI_ON_WDI_TIMEOUT := 0
