@@ -1853,13 +1853,16 @@ static unsigned int a2xx_irq_pending(struct adreno_device *adreno_dev)
 		 MASTER_INT_SIGNAL__RBBM_INT_STAT)) ? 1 : 0;
 }
 
-static void a2xx_rb_init(struct adreno_device *adreno_dev,
+static int a2xx_rb_init(struct adreno_device *adreno_dev,
 			struct adreno_ringbuffer *rb)
 {
 	unsigned int *cmds, cmds_gpu;
 
 	/* ME_INIT */
 	cmds = adreno_ringbuffer_allocspace(rb, NULL, 19);
+	if (cmds == NULL)
+		return -ENOMEM;
+
 	cmds_gpu = rb->buffer_desc.gpuaddr + sizeof(uint)*(rb->wptr-19);
 
 	GSL_RB_WRITE(cmds, cmds_gpu, cp_type3_packet(CP_ME_INIT, 18));
@@ -1912,6 +1915,8 @@ static void a2xx_rb_init(struct adreno_device *adreno_dev,
 	GSL_RB_WRITE(cmds, cmds_gpu, 0x00000000);
 
 	adreno_ringbuffer_submit(rb);
+
+	return 0;
 }
 
 static unsigned int a2xx_busy_cycles(struct adreno_device *adreno_dev)
