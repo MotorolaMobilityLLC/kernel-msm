@@ -140,6 +140,7 @@ skip_hp_debug2:
 	mov     r0, #0                   /* return power collapse failed */
 	ldmfd	sp!, {lr}
 	bx      lr
+ENDPROC(msm_pm_pc_hotplug)
 
 ENTRY(msm_pm_collapse)
  UNWIND(.fnstart	)
