@@ -18,7 +18,6 @@
 #include "kgsl.h"
 #include "kgsl_sharedmem.h"
 #include "kgsl_cffdump.h"
-#include "kgsl_trace.h"
 
 #include "adreno.h"
 #include "adreno_pm4types.h"
@@ -1097,7 +1096,7 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	}
 
 done:
-	trace_kgsl_issueibcmds(device, context->id, ibdesc, numibs,
+	kgsl_trace_issueibcmds(device, context->id, ibdesc, numibs,
 		*timestamp, flags, ret, drawctxt->type);
 
 	kfree(link);
