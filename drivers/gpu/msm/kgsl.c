@@ -254,14 +254,19 @@ kgsl_create_context(struct kgsl_device_private *dev_priv)
 
 	context = kzalloc(sizeof(*context), GFP_KERNEL);
 
-	if (context == NULL)
-		return NULL;
+	if (context == NULL) {
+		KGSL_DRV_INFO(dev_priv->device, "kzalloc(%d) failed\n",
+				sizeof(*context));
+		return ERR_PTR(-ENOMEM);
+	}
 
 	while (1) {
 		if (idr_pre_get(&dev_priv->device->context_idr,
 				GFP_KERNEL) == 0) {
-			kfree(context);
-			return NULL;
+			KGSL_DRV_INFO(dev_priv->device,
+					"idr_pre_get: ENOMEM\n");
+			ret = -ENOMEM;
+			goto func_end;
 		}
 
 		ret = idr_get_new_above(&dev_priv->device->context_idr,
@@ -271,10 +276,8 @@ kgsl_create_context(struct kgsl_device_private *dev_priv)
 			break;
 	}
 
-	if (ret) {
-		kfree(context);
-		return NULL;
-	}
+	if (ret)
+		goto func_end;
 
 	/* MAX - 1, there is one memdesc in memstore for device info */
 	if (id >= KGSL_MEMSTORE_MAX) {
@@ -282,15 +285,16 @@ kgsl_create_context(struct kgsl_device_private *dev_priv)
 				"ctxts due to memstore limitation\n",
 				KGSL_MEMSTORE_MAX);
 		idr_remove(&dev_priv->device->context_idr, id);
-		kfree(context);
-		return NULL;
+		ret = -ENOSPC;
+		goto func_end;
 	}
 
 	kref_init(&context->refcount);
 	context->id = id;
 	context->dev_priv = dev_priv;
 
-	if (kgsl_sync_timeline_create(context)) {
+	ret = kgsl_sync_timeline_create(context);
+	if (ret) {
 		idr_remove(&dev_priv->device->context_idr, id);
 		goto func_end;
 	}
@@ -312,7 +316,7 @@ kgsl_create_context(struct kgsl_device_private *dev_priv)
 func_end:
 	if (ret) {
 		kfree(context);
-		return NULL;
+		return ERR_PTR(ret);
 	}
 
 	return context;
@@ -1280,8 +1284,8 @@ static long kgsl_ioctl_drawctxt_create(struct kgsl_device_private *dev_priv,
 
 	context = kgsl_create_context(dev_priv);
 
-	if (context == NULL) {
-		result = -ENOMEM;
+	if (IS_ERR(context)) {
+		result = PTR_ERR(context);
 		goto done;
 	}
 
@@ -1295,7 +1299,7 @@ static long kgsl_ioctl_drawctxt_create(struct kgsl_device_private *dev_priv,
 	trace_kgsl_context_create(dev_priv->device, context, param->flags);
 	param->drawctxt_id = context->id;
 done:
-	if (result && context)
+	if (result && !IS_ERR(context))
 		kgsl_context_detach(context);
 
 	return result;
