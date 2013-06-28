@@ -19,16 +19,6 @@
 		n-value = <127>;
 	};
 
-	pmic_gpio_led {
-		compatible = "gpio-leds";
-		pmic_gpio_led {
-			label = "button-backlight";
-			gpios = <&pm8941_gpios 36 0>;
-			linux,default-trigger = "none";
-			default-state = "off";
-		};
-	};
-
 	earjack-debugger {
 		compatible = "serial,earjack-debugger";
 		status = "ok";
