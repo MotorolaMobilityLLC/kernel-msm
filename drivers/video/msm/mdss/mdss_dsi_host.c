@@ -19,6 +19,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
 #include <linux/iopoll.h>
+#include <linux/ratelimit.h>
 
 #include <mach/iommu_domains.h>
 
@@ -1746,7 +1747,7 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 	pr_debug("%s: isr=%x", __func__, isr);
 
 	if (isr & DSI_INTR_ERROR) {
-		pr_err("%s: isr=%x %x", __func__, isr, (int)DSI_INTR_ERROR);
+		pr_err_ratelimited("%s: isr=%x %x", __func__, isr, (int)DSI_INTR_ERROR);
 		spin_lock(&ctrl->mdp_lock);
 		ctrl->mdp_busy = false;
 		mdss_dsi_disable_irq_nosync(ctrl, DSI_MDP_TERM);
