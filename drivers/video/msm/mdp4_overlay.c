@@ -2754,9 +2754,8 @@ static int mdp4_calc_req_mdp_clk(struct msm_fb_data_type *mfd,
 		yscale <<= shift;
 		yscale /= dst_h;
 	} else {		/* upscale */
-		yscale = dst_h;
+		yscale = 1;
 		yscale <<= shift;
-		yscale /= src_h;
 	}
 
 	yscale *= src_w;
