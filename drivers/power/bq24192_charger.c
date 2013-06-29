@@ -79,12 +79,15 @@ struct bq24192_chip {
 	int  otg_en_gpio;
 	int  irq;
 	struct i2c_client  *client;
-	struct delayed_work  irq_work;
+	struct work_struct  irq_work;
+	int  irq_scheduled_time_status;
+	spinlock_t irq_work_lock;
 	struct delayed_work  vbat_work;
 	struct delayed_work  input_limit_work;
 	struct dentry  *dent;
 	struct wake_lock  chg_wake_lock;
 	struct wake_lock  icl_wake_lock;
+	struct wake_lock  irq_wake_lock;
 	struct power_supply  *usb_psy;
 	struct power_supply  ac_psy;
 	struct power_supply  *wlc_psy;
@@ -534,18 +537,30 @@ static int bq24192_set_vclamp_mv(struct bq24192_chip *chip, int mv)
 static void bq24192_irq_worker(struct work_struct *work)
 {
 	struct bq24192_chip *chip =
-		container_of(work, struct bq24192_chip, irq_work.work);
+		container_of(work, struct bq24192_chip, irq_work);
 	union power_supply_propval ret = {0,};
 	bool ext_pwr;
 	bool wlc_pwr = 0;
 	bool chg_done = false;
 	u8 temp;
 	int rc;
+	unsigned long flags;
+
+	wake_lock(&chip->irq_wake_lock);
+
+	msleep(100 * chip->irq_scheduled_time_status);
 
 	rc = bq24192_read_reg(chip->client, SYSTEM_STATUS_REG, &temp);
+	/* Open up for next possible interrupt handler beyond read reg
+	 * asap, lest we miss an interrupt
+	 */
+	spin_lock_irqsave(&chip->irq_work_lock, flags);
+	chip->irq_scheduled_time_status = 0;
+	spin_unlock_irqrestore(&chip->irq_work_lock, flags);
+
 	if (rc) {
 		pr_err("failed to read SYSTEM_STATUS_REG rc=%d\n", rc);
-		return;
+		goto irq_worker_exit;
 	}
 
 	ext_pwr = !!(temp & PG_STAT_MASK);
@@ -586,6 +601,9 @@ static void bq24192_irq_worker(struct work_struct *work)
 
 		chip->ext_pwr = ext_pwr;
 	}
+
+irq_worker_exit:
+	wake_lock_timeout(&chip->irq_wake_lock, 2*HZ);
 }
 
 #ifdef CONFIG_THERMAL_QPNP_ADC_TM
@@ -703,8 +721,14 @@ static int bq24192_step_down_detect_init(struct bq24192_chip *chip)
 static irqreturn_t bq24192_irq(int irq, void *dev_id)
 {
 	struct bq24192_chip *chip = dev_id;
+	unsigned long flags;
 
-	schedule_delayed_work(&chip->irq_work, msecs_to_jiffies(100));
+	spin_lock_irqsave(&chip->irq_work_lock, flags);
+	if (chip->irq_scheduled_time_status == 0) {
+		schedule_work(&chip->irq_work);
+		chip->irq_scheduled_time_status = 1;
+	}
+	spin_unlock_irqrestore(&chip->irq_work_lock, flags);
 
 	return IRQ_HANDLED;
 }
@@ -1086,11 +1110,17 @@ static int bq24192_power_set_property(struct power_supply *psy,
 	struct bq24192_chip *chip = container_of(psy,
 						struct bq24192_chip,
 						ac_psy);
+	unsigned long flags;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_PRESENT:
-		schedule_delayed_work(&chip->irq_work,
-				msecs_to_jiffies(200));
+		spin_lock_irqsave(&chip->irq_work_lock, flags);
+		if (chip->irq_scheduled_time_status == 0) {
+			schedule_work(&chip->irq_work);
+			/* Set by wireless needs 2 units of 100 ms delay */
+			chip->irq_scheduled_time_status = 2;
+		}
+		spin_unlock_irqrestore(&chip->irq_work_lock, flags);
 		return 0;
 	case POWER_SUPPLY_PROP_HEALTH:
 		bq24192_check_restore_ibatt(chip,
@@ -1354,6 +1384,7 @@ static int bq24192_probe(struct i2c_client *client,
 	struct device_node *dev_node = client->dev.of_node;
 	struct bq24192_chip *chip;
 	int ret = 0;
+	unsigned long flags;
 
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_SMBUS_BYTE_DATA)) {
@@ -1458,14 +1489,19 @@ static int bq24192_probe(struct i2c_client *client,
 		goto err_debugfs;
 	}
 
+	spin_lock_init(&chip->irq_work_lock);
+	chip->irq_scheduled_time_status = 0;
+
 	wake_lock_init(&chip->chg_wake_lock,
 		       WAKE_LOCK_SUSPEND, BQ24192_NAME);
 	wake_lock_init(&chip->icl_wake_lock,
 		       WAKE_LOCK_SUSPEND, "icl_wake_lock");
+	wake_lock_init(&chip->irq_wake_lock,
+			WAKE_LOCK_SUSPEND, BQ24192_NAME "irq");
 
 	INIT_DELAYED_WORK(&chip->vbat_work, bq24192_vbat_work);
-	INIT_DELAYED_WORK(&chip->irq_work, bq24192_irq_worker);
 	INIT_DELAYED_WORK(&chip->input_limit_work, bq24192_input_limit_worker);
+	INIT_WORK(&chip->irq_work, bq24192_irq_worker);
 	if (chip->irq) {
 		ret = request_irq(chip->irq, bq24192_irq,
 				IRQF_TRIGGER_FALLING,
@@ -1478,7 +1514,14 @@ static int bq24192_probe(struct i2c_client *client,
 	}
 
 	bq24192_enable_charging(chip, true);
-	schedule_delayed_work(&chip->irq_work, msecs_to_jiffies(2000));
+
+	spin_lock_irqsave(&chip->irq_work_lock, flags);
+	if (chip->irq_scheduled_time_status == 0) {
+		schedule_work(&chip->irq_work);
+		chip->irq_scheduled_time_status = 20;
+	}
+	spin_unlock_irqrestore(&chip->irq_work_lock, flags);
+
 	pr_info("probe success\n");
 
 	return 0;
@@ -1486,6 +1529,7 @@ static int bq24192_probe(struct i2c_client *client,
 err_req_irq:
 	wake_lock_destroy(&chip->chg_wake_lock);
 	wake_lock_destroy(&chip->icl_wake_lock);
+	wake_lock_destroy(&chip->irq_wake_lock);
 	if (chip->dent)
 		debugfs_remove_recursive(chip->dent);
 err_debugfs:
@@ -1511,6 +1555,8 @@ static int bq24192_remove(struct i2c_client *client)
 		free_irq(chip->irq, chip);
 	wake_lock_destroy(&chip->chg_wake_lock);
 	wake_lock_destroy(&chip->icl_wake_lock);
+	wake_lock_destroy(&chip->irq_wake_lock);
+
 	if (chip->dent)
 		debugfs_remove_recursive(chip->dent);
 	power_supply_unregister(&chip->ac_psy);
