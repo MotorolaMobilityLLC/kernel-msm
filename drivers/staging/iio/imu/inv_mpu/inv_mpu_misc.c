@@ -32,8 +32,8 @@
 #include "inv_test/inv_counters.h"
 
 /* DMP defines */
-#define DMP_ORIENTATION_TIME		500
-#define DMP_ORIENTATION_ANGLE		60
+#define DMP_ORIENTATION_TIME            500
+#define DMP_ORIENTATION_ANGLE           60
 #define DMP_DEFAULT_FIFO_RATE           200
 #define DMP_TAP_SCALE                   (767603923 / 5)
 #define DMP_MULTI_SHIFT                 30
@@ -46,62 +46,61 @@
 #define DMP_MAX_DIVIDER                 4
 #define DMP_MAX_MIN_TAPS                4
 #define DMP_IMAGE_CRC_VALUE             0x5cee889c
-#define DMP_IMAGE_SIZE                  2634
 
 /*--- Test parameters defaults --- */
-#define DEF_OLDEST_SUPP_PROD_REV    8
-#define DEF_OLDEST_SUPP_SW_REV      2
+#define DEF_OLDEST_SUPP_PROD_REV        8
+#define DEF_OLDEST_SUPP_SW_REV          2
 
 /* sample rate */
-#define DEF_SELFTEST_SAMPLE_RATE             0
+#define DEF_SELFTEST_SAMPLE_RATE        0
 /* full scale setting dps */
-#define DEF_SELFTEST_GYRO_FS                 (0 << 3)
-#define DEF_SELFTEST_ACCEL_FS                 (2 << 3)
-#define DEF_SELFTEST_GYRO_SENS               (32768 / 250)
+#define DEF_SELFTEST_GYRO_FS            (0 << 3)
+#define DEF_SELFTEST_ACCEL_FS           (2 << 3)
+#define DEF_SELFTEST_GYRO_SENS          (32768 / 250)
 /* wait time before collecting data */
-#define DEF_GYRO_WAIT_TIME          10
-#define DEF_ST_STABLE_TIME          200
-#define DEF_ST_6500_STABLE_TIME     20
-#define DEF_GYRO_SCALE              131
-#define DEF_ST_PRECISION            1000
-#define DEF_ST_ACCEL_FS_MG           8000UL
-#define DEF_ST_SCALE                (1L << 15)
-#define DEF_ST_TRY_TIMES            2
-#define DEF_ST_COMPASS_RESULT_SHIFT 2
-#define DEF_ST_ACCEL_RESULT_SHIFT   1
-#define DEF_ST_OTP0_THRESH          60
-#define DEF_ST_ABS_THRESH           20
-#define DEF_ST_TOR                  2
+#define DEF_GYRO_WAIT_TIME              10
+#define DEF_ST_STABLE_TIME              200
+#define DEF_ST_6500_STABLE_TIME         20
+#define DEF_GYRO_SCALE                  131
+#define DEF_ST_PRECISION                1000
+#define DEF_ST_ACCEL_FS_MG              8000UL
+#define DEF_ST_SCALE                    (1L << 15)
+#define DEF_ST_TRY_TIMES                2
+#define DEF_ST_COMPASS_RESULT_SHIFT     2
+#define DEF_ST_ACCEL_RESULT_SHIFT       1
+#define DEF_ST_OTP0_THRESH              60
+#define DEF_ST_ABS_THRESH               20
+#define DEF_ST_TOR                      2
 
-#define X                           0
-#define Y                           1
-#define Z                           2
+#define X                               0
+#define Y                               1
+#define Z                               2
 /*---- MPU6050 notable product revisions ----*/
-#define MPU_PRODUCT_KEY_B1_E1_5      105
-#define MPU_PRODUCT_KEY_B2_F1        431
+#define MPU_PRODUCT_KEY_B1_E1_5         105
+#define MPU_PRODUCT_KEY_B2_F1           431
 /* accelerometer Hw self test min and max bias shift (mg) */
-#define DEF_ACCEL_ST_SHIFT_MIN       300
-#define DEF_ACCEL_ST_SHIFT_MAX       950
+#define DEF_ACCEL_ST_SHIFT_MIN          300
+#define DEF_ACCEL_ST_SHIFT_MAX          950
 
-#define DEF_ACCEL_ST_SHIFT_DELTA     140
-#define DEF_GYRO_CT_SHIFT_DELTA      140
+#define DEF_ACCEL_ST_SHIFT_DELTA        140
+#define DEF_GYRO_CT_SHIFT_DELTA         140
 /* gyroscope Coriolis self test min and max bias shift (dps) */
-#define DEF_GYRO_CT_SHIFT_MIN        10
-#define DEF_GYRO_CT_SHIFT_MAX        105
+#define DEF_GYRO_CT_SHIFT_MIN           10
+#define DEF_GYRO_CT_SHIFT_MAX           105
 
 /*---- MPU6500 Self Test Pass/Fail Criteria ----*/
 /* Gyro Offset Max Value (dps) */
-#define DEF_GYRO_OFFSET_MAX	20
+#define DEF_GYRO_OFFSET_MAX             20
 /* Gyro Self Test Absolute Limits ST_AL (dps) */
-#define DEF_GYRO_ST_AL		60
+#define DEF_GYRO_ST_AL                  60
 /* Accel Self Test Absolute Limits ST_AL (mg) */
-#define DEF_ACCEL_ST_AL_MIN	225
-#define DEF_ACCEL_ST_AL_MAX	675
-#define DEF_6500_ACCEL_ST_SHIFT_DELTA     500
-#define DEF_6500_GYRO_CT_SHIFT_DELTA      500
-#define DEF_ST_MPU6500_ACCEL_LPF    2
-#define DEF_ST_6500_ACCEL_FS_MG      2000UL
-#define DEF_SELFTEST_6500_ACCEL_FS            (0 << 3)
+#define DEF_ACCEL_ST_AL_MIN             225
+#define DEF_ACCEL_ST_AL_MAX             675
+#define DEF_6500_ACCEL_ST_SHIFT_DELTA   500
+#define DEF_6500_GYRO_CT_SHIFT_DELTA    500
+#define DEF_ST_MPU6500_ACCEL_LPF        2
+#define DEF_ST_6500_ACCEL_FS_MG         2000UL
+#define DEF_SELFTEST_6500_ACCEL_FS      (0 << 3)
 
 /* Note: The ST_AL values are only used when ST_OTP = 0,
  * i.e no factory self test values for reference
@@ -746,9 +745,10 @@ static int inv_check_6050_gyro_self_test(struct inv_mpu_state *st,
 		else
 			ct_shift_prod[i] = 0;
 	}
+	ct_shift_prod[1] = -ct_shift_prod[1];
 
 	for (i = 0; i < 3; i++) {
-		st_shift_cust[i] = abs(reg_avg[i] - st_avg[i]);
+		st_shift_cust[i] =  st_avg[i] - reg_avg[i];
 		if (ct_shift_prod[i]) {
 			st_shift_ratio[i] = abs(st_shift_cust[i] /
 				ct_shift_prod[i] - DEF_ST_PRECISION);
@@ -792,6 +792,8 @@ static int inv_check_6500_gyro_self_test(struct inv_mpu_state *st,
 	result = inv_i2c_read(st, REG_6500_XG_ST_DATA, 3, regs);
 	if (result)
 		return result;
+	pr_debug("%s self_test gyro shift_code - %02x %02x %02x\n",
+		 st->hw->name, regs[0], regs[1], regs[2]);
 
 	for (i = 0; i < 3; i++) {
 		if (regs[i] != 0) {
@@ -801,10 +803,13 @@ static int inv_check_6500_gyro_self_test(struct inv_mpu_state *st,
 			otp_value_zero = 1;
 		}
 	}
+	pr_debug("%s self_test gyro ct_shift_prod - %+d %+d %+d\n",
+		 st->hw->name, ct_shift_prod[0], ct_shift_prod[1],
+		 ct_shift_prod[2]);
 
 	for (i = 0; i < 3; i++) {
 		st_shift_cust[i] = st_avg[i] - reg_avg[i];
-		if (otp_value_zero == 0) {
+		if (!otp_value_zero) {
 			/* Self Test Pass/Fail Criteria A */
 			if (st_shift_cust[i] < DEF_6500_GYRO_CT_SHIFT_DELTA
 						* ct_shift_prod[i])
@@ -817,6 +822,10 @@ static int inv_check_6500_gyro_self_test(struct inv_mpu_state *st,
 				ret_val = 1;
 		}
 	}
+	pr_debug("%s self_test gyro st_shift_cust - %+d %+d %+d\n",
+		 st->hw->name, st_shift_cust[0], st_shift_cust[1],
+		 st_shift_cust[2]);
+
 	if (ret_val == 0) {
 		/* Self Test Pass/Fail Criteria C */
 		for (i = 0; i < 3; i++)
@@ -853,6 +862,8 @@ static int inv_check_6500_accel_self_test(struct inv_mpu_state *st,
 	result = inv_i2c_read(st, REG_6500_XA_ST_DATA, 3, regs);
 	if (result)
 		return result;
+	pr_debug("%s self_test accel shift_code - %02x %02x %02x\n",
+		 st->hw->name, regs[0], regs[1], regs[2]);
 
 	for (i = 0; i < 3; i++) {
 		if (regs[i] != 0) {
@@ -862,14 +873,18 @@ static int inv_check_6500_accel_self_test(struct inv_mpu_state *st,
 			otp_value_zero = 1;
 		}
 	}
-	if (otp_value_zero == 0) {
+	pr_debug("%s self_test accel ct_shift_prod - %+d %+d %+d\n",
+		 st->hw->name, ct_shift_prod[0], ct_shift_prod[1],
+		 ct_shift_prod[2]);
+
+	if (!otp_value_zero) {
 		/* Self Test Pass/Fail Criteria A */
 		for (i = 0; i < 3; i++) {
 			st_shift_cust[i] = st_avg[i] - reg_avg[i];
 			st_shift_ratio[i] = abs(st_shift_cust[i] /
 					ct_shift_prod[i] - DEF_ST_PRECISION);
 			if (st_shift_ratio[i] > DEF_6500_ACCEL_ST_SHIFT_DELTA)
-					ret_val = 1;
+				ret_val = 1;
 		}
 	} else {
 		/* Self Test Pass/Fail Criteria B */
@@ -880,6 +895,9 @@ static int inv_check_6500_accel_self_test(struct inv_mpu_state *st,
 				ret_val = 1;
 		}
 	}
+	pr_debug("%s self_test accel st_shift_cust - %+d %+d %+d\n",
+		 st->hw->name, st_shift_cust[0], st_shift_cust[1],
+		 st_shift_cust[2]);
 
 	return ret_val;
 }
@@ -919,7 +937,7 @@ int inv_do_test(struct inv_mpu_state *st, int self_test_flag,
 	if (result)
 		return result;
 	/* setup parameters */
-	result = inv_i2c_single_write(st, reg->lpf, INV_FILTER_188HZ);
+	result = inv_i2c_single_write(st, reg->lpf, INV_FILTER_98HZ);
 	if (result)
 		return result;
 
@@ -969,63 +987,70 @@ int inv_do_test(struct inv_mpu_state *st, int self_test_flag,
 		d = BITS_GYRO_OUT | BIT_ACCEL_OUT;
 	else
 		d = BITS_GYRO_OUT;
-	result = inv_i2c_single_write(st, reg->fifo_en, d);
-	if (result)
-		return result;
-
 	for (i = 0; i < THREE_AXIS; i++) {
 		gyro_result[i] = 0;
 		accel_result[i] = 0;
 	}
 	s = 0;
 	while (s < st->self_test.samples) {
+		result = inv_i2c_single_write(st, reg->fifo_en, d);
+		if (result)
+			return result;
 		mdelay(DEF_GYRO_WAIT_TIME);
+		result = inv_i2c_single_write(st, reg->fifo_en, 0);
+		if (result)
+			return result;
+
 		result = inv_i2c_read(st, reg->fifo_count_h,
 					FIFO_COUNT_BYTE, data);
 		if (result)
 			return result;
 		fifo_count = be16_to_cpup((__be16 *)(&data[0]));
+		pr_debug("%s self_test fifo_count - %d\n",
+			 st->hw->name, fifo_count);
 		packet_count = fifo_count / packet_size;
-		result = inv_i2c_read(st, reg->fifo_r_w, packet_size, data);
-		if (result)
-			return result;
 		i = 0;
 		while ((i < packet_count) && (s < st->self_test.samples)) {
+			short vals[3];
 			result = inv_i2c_read(st, reg->fifo_r_w,
 				packet_size, data);
 			if (result)
 				return result;
 			ind = 0;
 			if (has_accel) {
-				for (j = 0; j < THREE_AXIS; j++)
-					accel_result[j] +=
-					(short)be16_to_cpup(
-					(__be16 *)(&data[ind + 2 * j]));
+				for (j = 0; j < THREE_AXIS; j++) {
+					vals[j] = (short)be16_to_cpup(
+					    (__be16 *)(&data[ind + 2 * j]));
+					accel_result[j] += vals[j];
+				}
 				ind += BYTES_PER_SENSOR;
+				pr_debug(
+				    "%s self_test accel data - %d %+d %+d %+d",
+				    st->hw->name, s, vals[0], vals[1], vals[2]);
 			}
-			for (j = 0; j < THREE_AXIS; j++)
-				gyro_result[j] +=
-					(short)be16_to_cpup(
+
+			for (j = 0; j < THREE_AXIS; j++) {
+				vals[j] = (short)be16_to_cpup(
 					(__be16 *)(&data[ind + 2 * j]));
+				gyro_result[j] += vals[j];
+			}
+			pr_debug("%s self_test gyro data - %d %+d %+d %+d",
+				 st->hw->name, s, vals[0], vals[1], vals[2]);
+
 			s++;
 			i++;
 		}
 	}
 
-	/* stop sending data to FIFO */
-	result = inv_i2c_single_write(st, reg->fifo_en, 0);
-	if (result)
-		return result;
-	for (j = 0; j < THREE_AXIS; j++) {
-		gyro_result[j] = gyro_result[j]/s;
-		gyro_result[j] *= DEF_ST_PRECISION;
-	}
-
 	if (has_accel) {
 		for (j = 0; j < THREE_AXIS; j++) {
-			accel_result[j] = accel_result[j]/s;
+			accel_result[j] = accel_result[j] / s;
 			accel_result[j] *= DEF_ST_PRECISION;
 		}
+	}
+	for (j = 0; j < THREE_AXIS; j++) {
+		gyro_result[j] = gyro_result[j] / s;
+		gyro_result[j] *= DEF_ST_PRECISION;
 	}
 
 	return 0;
@@ -1094,8 +1119,8 @@ int inv_hw_self_test(struct inv_mpu_state *st)
 	if (result)
 		return result;
 	compass_result = 0;
-	accel_result   = 0;
-	gyro_result    = 0;
+	accel_result = 0;
+	gyro_result = 0;
 	test_times = DEF_ST_TRY_TIMES;
 	while (test_times > 0) {
 		result = inv_do_test(st, 0, gyro_bias_regular,
@@ -1107,6 +1132,13 @@ int inv_hw_self_test(struct inv_mpu_state *st)
 	}
 	if (result)
 		goto test_fail;
+	pr_debug("%s self_test accel bias_regular - %+d %+d %+d\n",
+		 st->hw->name, accel_bias_regular[0],
+		 accel_bias_regular[1], accel_bias_regular[2]);
+	pr_debug("%s self_test gyro bias_regular - %+d %+d %+d\n",
+		 st->hw->name, gyro_bias_regular[0], gyro_bias_regular[1],
+		 gyro_bias_regular[2]);
+
 	for (i = 0; i < 3; i++) {
 		st->gyro_bias[i] = gyro_bias_regular[i];
 		st->accel_bias[i] = accel_bias_regular[i];
@@ -1123,6 +1155,13 @@ int inv_hw_self_test(struct inv_mpu_state *st)
 	}
 	if (result)
 		goto test_fail;
+	pr_debug("%s self_test accel bias_st - %+d %+d %+d\n",
+		 st->hw->name, accel_bias_st[0], accel_bias_st[1],
+		 accel_bias_st[2]);
+	pr_debug("%s self_test gyro bias_st - %+d %+d %+d\n",
+		 st->hw->name, gyro_bias_st[0], gyro_bias_st[1],
+		 gyro_bias_st[2]);
+
 	if (st->chip_type == INV_ITG3500) {
 		gyro_result = !inv_check_3500_gyro_self_test(st,
 			gyro_bias_regular, gyro_bias_st);
@@ -1142,6 +1181,7 @@ int inv_hw_self_test(struct inv_mpu_state *st)
 				gyro_bias_regular, gyro_bias_st);
 		}
 	}
+
 test_fail:
 	inv_recover_setting(st);
 

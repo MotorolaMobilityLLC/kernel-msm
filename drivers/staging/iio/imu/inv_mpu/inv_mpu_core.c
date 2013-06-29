@@ -37,9 +37,6 @@
 #include <linux/of_device.h>
 #include <linux/regulator/consumer.h>
 
-//int of_property_read_string(struct device_node *np, const char *propname, const char **out_string);
-//int of_property_read_u32(const struct device_node *np, const char *propname, u32 *out_value);
-
 s64 get_time_ns(void)
 {
 	struct timespec ts;
@@ -409,6 +406,8 @@ static int inv_init_config(struct iio_dev *indio_dev)
 			st->input_accel_offset[i] = 0;
 			st->input_accel_dmp_bias[i] = 0;
 		}
+		st->pedometer_step = 0;
+		st->pedometer_time = 0;
 	}
 
 	return 0;
@@ -598,6 +597,95 @@ int inv_write_2bytes(struct inv_mpu_state *st, int k, int data)
 	return mem_w_key(k, ARRAY_SIZE(d), d);
 }
 
+static ssize_t _dmp_bias_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct inv_mpu_state *st = iio_priv(indio_dev);
+	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
+	int result, data, tmp;
+
+	if (!st->chip_config.firmware_loaded)
+		return -EINVAL;
+
+	if (!st->chip_config.enable) {
+		result = st->set_power_state(st, true);
+		if (result)
+			return result;
+	}
+
+	result = kstrtoint(buf, 10, &data);
+	if (result)
+		goto dmp_bias_store_fail;
+	switch (this_attr->address) {
+	case ATTR_DMP_ACCEL_X_DMP_BIAS:
+		tmp = st->input_accel_dmp_bias[0];
+		st->input_accel_dmp_bias[0] = data;
+		result = inv_set_accel_bias_dmp(st);
+		if (result)
+			st->input_accel_dmp_bias[0] = tmp;
+		break;
+	case ATTR_DMP_ACCEL_Y_DMP_BIAS:
+		tmp = st->input_accel_dmp_bias[1];
+		st->input_accel_dmp_bias[1] = data;
+		result = inv_set_accel_bias_dmp(st);
+		if (result)
+			st->input_accel_dmp_bias[1] = tmp;
+		break;
+	case ATTR_DMP_ACCEL_Z_DMP_BIAS:
+		tmp = st->input_accel_dmp_bias[2];
+		st->input_accel_dmp_bias[2] = data;
+		result = inv_set_accel_bias_dmp(st);
+		if (result)
+			st->input_accel_dmp_bias[2] = tmp;
+		break;
+	case ATTR_DMP_GYRO_X_DMP_BIAS:
+		result = write_be32_key_to_mem(st, data,
+					KEY_CFG_EXT_GYRO_BIAS_X);
+		if (result)
+			goto dmp_bias_store_fail;
+		st->input_gyro_dmp_bias[0] = data;
+		break;
+	case ATTR_DMP_GYRO_Y_DMP_BIAS:
+		result = write_be32_key_to_mem(st, data,
+					KEY_CFG_EXT_GYRO_BIAS_Y);
+		if (result)
+			goto dmp_bias_store_fail;
+		st->input_gyro_dmp_bias[1] = data;
+		break;
+	case ATTR_DMP_GYRO_Z_DMP_BIAS:
+		result = write_be32_key_to_mem(st, data,
+					KEY_CFG_EXT_GYRO_BIAS_Z);
+		if (result)
+			goto dmp_bias_store_fail;
+		st->input_gyro_dmp_bias[2] = data;
+		break;
+	default:
+		break;
+	}
+
+dmp_bias_store_fail:
+	if (!st->chip_config.enable)
+		result |= st->set_power_state(st, false);
+	if (result)
+		return result;
+
+	return count;
+}
+
+static ssize_t inv_dmp_bias_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	int result;
+
+	mutex_lock(&indio_dev->mlock);
+	result = _dmp_bias_store(dev, attr, buf, count);
+	mutex_unlock(&indio_dev->mlock);
+
+	return result;
+}
+
 static ssize_t _dmp_attr_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -620,45 +708,6 @@ static ssize_t _dmp_attr_store(struct device *dev,
 	if (result)
 		goto dmp_attr_store_fail;
 	switch (this_attr->address) {
-	case ATTR_DMP_ACCEL_X_DMP_BIAS:
-		st->input_accel_dmp_bias[0] = data;
-		result = inv_set_accel_bias_dmp(st);
-		if (result)
-			goto dmp_attr_store_fail;
-		break;
-	case ATTR_DMP_ACCEL_Y_DMP_BIAS:
-		st->input_accel_dmp_bias[1] = data;
-		result = inv_set_accel_bias_dmp(st);
-		if (result)
-			goto dmp_attr_store_fail;
-		break;
-	case ATTR_DMP_ACCEL_Z_DMP_BIAS:
-		st->input_accel_dmp_bias[2] = data;
-		result = inv_set_accel_bias_dmp(st);
-		if (result)
-			goto dmp_attr_store_fail;
-		break;
-	case ATTR_DMP_GYRO_X_DMP_BIAS:
-		st->input_gyro_dmp_bias[0] = data;
-		result = write_be32_key_to_mem(st, data,
-					KEY_CFG_EXT_GYRO_BIAS_X);
-		if (result)
-			goto dmp_attr_store_fail;
-		break;
-	case ATTR_DMP_GYRO_Y_DMP_BIAS:
-		st->input_gyro_dmp_bias[1] = data;
-		result = write_be32_key_to_mem(st, data,
-					KEY_CFG_EXT_GYRO_BIAS_Y);
-		if (result)
-			goto dmp_attr_store_fail;
-		break;
-	case ATTR_DMP_GYRO_Z_DMP_BIAS:
-		st->input_gyro_dmp_bias[2] = data;
-		result = write_be32_key_to_mem(st, data,
-					KEY_CFG_EXT_GYRO_BIAS_Z);
-		if (result)
-			goto dmp_attr_store_fail;
-		break;
 	case ATTR_DMP_PED_INT_ON:
 		result = inv_enable_pedometer_interrupt(st, !!data);
 		if (result)
@@ -705,20 +754,6 @@ static ssize_t _dmp_attr_store(struct device *dev,
 		if (result)
 			goto dmp_attr_store_fail;
 		st->smd.delay2 = data;
-		break;
-	case ATTR_DMP_PEDOMETER_STEPS:
-		if (data < 0 || data > INT_MAX)
-			goto dmp_attr_store_fail;
-		result = write_be32_key_to_mem(st, data, KEY_D_PEDSTD_STEPCTR);
-		if (result)
-			goto dmp_attr_store_fail;
-		break;
-	case ATTR_DMP_PEDOMETER_TIME:
-		if (data < 0 || data > INT_MAX)
-			goto dmp_attr_store_fail;
-		result = write_be32_key_to_mem(st, data, KEY_D_PEDSTD_TIMECTR);
-		if (result)
-			goto dmp_attr_store_fail;
 		break;
 	case ATTR_DMP_TAP_ON:
 		result = inv_enable_tap_dmp(st, !!data);
@@ -882,6 +917,89 @@ static ssize_t inv_dmp_attr_store(struct device *dev,
 	mutex_unlock(&indio_dev->mlock);
 
 	return result;
+}
+
+static ssize_t inv_attr64_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct inv_mpu_state *st = iio_priv(indio_dev);
+	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
+	int result;
+	u64 tmp;
+	u32 ped;
+
+	mutex_lock(&indio_dev->mlock);
+	if (!st->chip_config.enable || !st->chip_config.dmp_on) {
+		mutex_unlock(&indio_dev->mlock);
+		return -EINVAL;
+	}
+
+	switch (this_attr->address) {
+	case ATTR_DMP_PEDOMETER_STEPS:
+		result = inv_get_pedometer_steps(st, &ped);
+		tmp = st->pedometer_step + ped;
+		break;
+	case ATTR_DMP_PEDOMETER_TIME:
+		result = inv_get_pedometer_time(st, &ped);
+		tmp = st->pedometer_time + ped;
+		break;
+	default:
+		result = -EINVAL;
+		break;
+	}
+	mutex_unlock(&indio_dev->mlock);
+	if (result)
+		return -EINVAL;
+	return sprintf(buf, "%lld\n", tmp);
+}
+
+static ssize_t inv_attr64_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
+	struct inv_mpu_state *st = iio_priv(indio_dev);
+	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
+	int result;
+	u64 data;
+
+	mutex_lock(&indio_dev->mlock);
+	if (st->chip_config.enable || (!st->chip_config.firmware_loaded)) {
+		mutex_unlock(&indio_dev->mlock);
+		return -EINVAL;
+	}
+	result = st->set_power_state(st, true);
+	if (result) {
+		mutex_unlock(&indio_dev->mlock);
+		return result;
+	}
+	result = kstrtoull(buf, 10, &data);
+	if (result)
+		goto attr64_store_fail;
+	switch (this_attr->address) {
+	case ATTR_DMP_PEDOMETER_STEPS:
+		result = write_be32_key_to_mem(st, 0, KEY_D_PEDSTD_STEPCTR);
+		if (result)
+			goto attr64_store_fail;
+		st->pedometer_step = data;
+		break;
+	case ATTR_DMP_PEDOMETER_TIME:
+		result = write_be32_key_to_mem(st, 0, KEY_D_PEDSTD_TIMECTR);
+		if (result)
+			goto attr64_store_fail;
+		st->pedometer_time = data;
+		break;
+	default:
+		result = -EINVAL;
+		break;
+	}
+attr64_store_fail:
+	mutex_unlock(&indio_dev->mlock);
+	result = st->set_power_state(st, false);
+	if (result)
+		return result;
+
+	return count;
 }
 /*
  * inv_attr_show() -  calling this function will show current
@@ -1060,40 +1178,6 @@ static ssize_t inv_attr_show(struct device *dev,
 			result = inv_hw_self_test(st);
 		mutex_unlock(&indio_dev->mlock);
 		return sprintf(buf, "%d\n", result);
-
-	case ATTR_DMP_PEDOMETER_STEPS:
-	{
-		u32 steps;
-
-		mutex_lock(&indio_dev->mlock);
-		if (!st->chip_config.enable ||
-				!st->chip_config.dmp_on) {
-			mutex_unlock(&indio_dev->mlock);
-			return -EINVAL;
-		}
-		result = inv_get_pedometer_steps(st, &steps);
-		mutex_unlock(&indio_dev->mlock);
-		if (result)
-			return -EINVAL;
-		return sprintf(buf, "%d\n", steps);
-	}
-	case ATTR_DMP_PEDOMETER_TIME:
-	{
-		u32 time;
-
-		mutex_lock(&indio_dev->mlock);
-		if (!st->chip_config.enable ||
-				!st->chip_config.dmp_on) {
-			mutex_unlock(&indio_dev->mlock);
-			return -EINVAL;
-		}
-		result = inv_get_pedometer_time(st, &time);
-		mutex_unlock(&indio_dev->mlock);
-		if (result)
-			return -EINVAL;
-
-		return sprintf(buf, "%d\n", time);
-	}
 	case ATTR_GYRO_MATRIX:
 		m = st->plat_data.orientation;
 		return sprintf(buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
@@ -1116,21 +1200,6 @@ static ssize_t inv_attr_show(struct device *dev,
 			return -ENODEV;
 		return sprintf(buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
 			m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8]);
-	case ATTR_COMPASS_SENS:
-	{
-		/* these 2 conditions should never be met, since the
-		   'compass_sens' sysfs entry should be hidden if the compass
-		   is not an AKM */
-		if (st->plat_data.sec_slave_type !=
-					SECONDARY_SLAVE_TYPE_COMPASS)
-			return -ENODEV;
-		if (st->plat_data.sec_slave_id != COMPASS_ID_AK8975 &&
-		    st->plat_data.sec_slave_id != COMPASS_ID_AK8972 &&
-		    st->plat_data.sec_slave_id != COMPASS_ID_AK8963)
-			return -ENODEV;
-		m = st->chip_info.compass_sens;
-		return sprintf(buf, "%d,%d,%d\n", m[0], m[1], m[2]);
-	}
 	case ATTR_SECONDARY_NAME:
 	{
 		const char *n[] = {"NULL", "AK8975", "AK8972", "AK8963",
@@ -1151,6 +1220,21 @@ static ssize_t inv_attr_show(struct device *dev,
 #ifdef CONFIG_INV_TESTING
 	case ATTR_REG_WRITE:
 		return sprintf(buf, "1\n");
+	case ATTR_COMPASS_SENS:
+	{
+		/* these 2 conditions should never be met, since the
+		   'compass_sens' sysfs entry should be hidden if the compass
+		   is not an AKM */
+		if (st->plat_data.sec_slave_type !=
+					SECONDARY_SLAVE_TYPE_COMPASS)
+			return -ENODEV;
+		if (st->plat_data.sec_slave_id != COMPASS_ID_AK8975 &&
+		    st->plat_data.sec_slave_id != COMPASS_ID_AK8972 &&
+		    st->plat_data.sec_slave_id != COMPASS_ID_AK8963)
+			return -ENODEV;
+		m = st->chip_info.compass_sens;
+		return sprintf(buf, "%d,%d,%d\n", m[0], m[1], m[2]);
+	}
 	case ATTR_DEBUG_SMD_EXE_STATE:
 	{
 		u8 d[2];
@@ -1322,6 +1406,7 @@ static ssize_t _attr_store(struct device *dev,
 	u8 d, axis;
 	int result;
 
+	result = 0;
 	if (st->chip_config.enable)
 		return -EBUSY;
 	if (this_attr->address <= ATTR_MOTION_LPA_THRESHOLD) {
@@ -1837,18 +1922,18 @@ static DEVICE_ATTR(event_pedometer, S_IRUGO, inv_ped_show, NULL);
 
 /* DMP sysfs with power on/off */
 static IIO_DEVICE_ATTR(in_accel_x_dmp_bias, S_IRUGO | S_IWUSR,
-	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_ACCEL_X_DMP_BIAS);
+	inv_attr_show, inv_dmp_bias_store, ATTR_DMP_ACCEL_X_DMP_BIAS);
 static IIO_DEVICE_ATTR(in_accel_y_dmp_bias, S_IRUGO | S_IWUSR,
-	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_ACCEL_Y_DMP_BIAS);
+	inv_attr_show, inv_dmp_bias_store, ATTR_DMP_ACCEL_Y_DMP_BIAS);
 static IIO_DEVICE_ATTR(in_accel_z_dmp_bias, S_IRUGO | S_IWUSR,
-	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_ACCEL_Z_DMP_BIAS);
+	inv_attr_show, inv_dmp_bias_store, ATTR_DMP_ACCEL_Z_DMP_BIAS);
 
 static IIO_DEVICE_ATTR(in_anglvel_x_dmp_bias, S_IRUGO | S_IWUSR,
-	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_GYRO_X_DMP_BIAS);
+	inv_attr_show, inv_dmp_bias_store, ATTR_DMP_GYRO_X_DMP_BIAS);
 static IIO_DEVICE_ATTR(in_anglvel_y_dmp_bias, S_IRUGO | S_IWUSR,
-	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_GYRO_Y_DMP_BIAS);
+	inv_attr_show, inv_dmp_bias_store, ATTR_DMP_GYRO_Y_DMP_BIAS);
 static IIO_DEVICE_ATTR(in_anglvel_z_dmp_bias, S_IRUGO | S_IWUSR,
-	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_GYRO_Z_DMP_BIAS);
+	inv_attr_show, inv_dmp_bias_store, ATTR_DMP_GYRO_Z_DMP_BIAS);
 
 static IIO_DEVICE_ATTR(pedometer_int_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_PED_INT_ON);
@@ -1864,10 +1949,10 @@ static IIO_DEVICE_ATTR(smd_delay_threshold, S_IRUGO | S_IWUSR,
 static IIO_DEVICE_ATTR(smd_delay_threshold2, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_SMD_DELAY_THLD2);
 
-static IIO_DEVICE_ATTR(pedometer_steps, S_IRUGO, inv_attr_show,
-	inv_dmp_attr_store, ATTR_DMP_PEDOMETER_STEPS);
-static IIO_DEVICE_ATTR(pedometer_time, S_IRUGO, inv_attr_show,
-	inv_dmp_attr_store, ATTR_DMP_PEDOMETER_TIME);
+static IIO_DEVICE_ATTR(pedometer_steps, S_IRUGO | S_IWUSR, inv_attr64_show,
+	inv_attr64_store, ATTR_DMP_PEDOMETER_STEPS);
+static IIO_DEVICE_ATTR(pedometer_time, S_IRUGO | S_IWUSR, inv_attr64_show,
+	inv_attr64_store, ATTR_DMP_PEDOMETER_TIME);
 
 static IIO_DEVICE_ATTR(tap_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_TAP_ON);
@@ -2015,8 +2100,6 @@ static IIO_DEVICE_ATTR(compass_sens, S_IRUGO | S_IWUSR, inv_attr_show,
 #else
 static IIO_DEVICE_ATTR(compass_matrix, S_IRUGO, inv_attr_show, NULL,
 	ATTR_COMPASS_MATRIX);
-static IIO_DEVICE_ATTR(compass_sens, S_IRUGO, inv_attr_show,
-	NULL, ATTR_COMPASS_SENS);
 #endif
 static IIO_DEVICE_ATTR(secondary_name, S_IRUGO, inv_attr_show, NULL,
 	ATTR_SECONDARY_NAME);
@@ -2162,7 +2245,9 @@ static const struct attribute *inv_compass_attributes[] = {
 };
 
 static const struct attribute *inv_akxxxx_attributes[] = {
+#ifdef CONFIG_INV_TESTING
 	&iio_dev_attr_compass_sens.dev_attr.attr,
+#endif
 };
 
 static const struct attribute *inv_pressure_attributes[] = {
@@ -2481,6 +2566,7 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 	inv_attributes[t_ind] = NULL;
 
 	return 0;
+
 }
 
 /*
@@ -2491,7 +2577,7 @@ static const struct bin_attribute dmp_firmware = {
 		.name = "dmp_firmware",
 		.mode = S_IRUGO | S_IWUSR
 	},
-	.size = 4096,
+	.size = DMP_IMAGE_SIZE,
 	.read = inv_dmp_firmware_read,
 	.write = inv_dmp_firmware_write,
 };
@@ -2797,7 +2883,6 @@ static int inv_mpu_probe(struct i2c_client *client,
 	result = invensense_mpu_parse_dt(&client->dev, &st->plat_data);
 	if (result)
 		goto out_free;
-	//*(struct mpu_platform_data *)dev_get_platdata(&client->dev);
 
 	//Power on device.
 	if (st->plat_data.power_on) {
@@ -2828,7 +2913,7 @@ static int inv_mpu_probe(struct i2c_client *client,
 	else
 		indio_dev->name = id->name;
 	indio_dev->channels = inv_mpu_channels;
-	indio_dev->num_channels = INV_CHANNEL_NUM;
+	indio_dev->num_channels = ARRAY_SIZE(inv_mpu_channels);
 
 	indio_dev->info = &mpu_info;
 	indio_dev->modes = INDIO_DIRECT_MODE;
@@ -2996,16 +3081,22 @@ static int inv_mpu_resume(struct device *dev)
 
 	pr_debug("%s inv_mpu_resume\n", st->hw->name);
 	mutex_lock(&indio_dev->mlock);
-	result = st->set_power_state(st, true);
-	if (st->chip_config.dmp_on &&
-			st->chip_config.enable &&
-			st->chip_config.ped_int_on)
-		result |= inv_enable_pedometer_interrupt(st, true);
 
-	result |= inv_setup_suspend_batchmode(indio_dev, false);
-	if (st->batch.step_only)
-		schedule_delayed_work(&st->work,
-			msecs_to_jiffies(st->batch.timeout));
+	result = 0;
+	if (st->chip_config.dmp_on && st->chip_config.enable) {
+		result = st->set_power_state(st, true);
+		if (st->chip_config.ped_int_on)
+			result |= inv_enable_pedometer_interrupt(st, true);
+		if (st->chip_config.display_orient_on)
+			result |= inv_set_display_orient_interrupt_dmp(st,
+								true);
+		result |= inv_setup_suspend_batchmode(indio_dev, false);
+		if (st->batch.step_only)
+			schedule_delayed_work(&st->work,
+				msecs_to_jiffies(st->batch.timeout));
+	} else if (st->chip_config.enable) {
+		result = st->set_power_state(st, true);
+	}
 
 	mutex_unlock(&indio_dev->mlock);
 
@@ -3021,20 +3112,26 @@ static int inv_mpu_suspend(struct device *dev)
 	pr_debug("%s inv_mpu_suspend\n", st->hw->name);
 	mutex_lock(&indio_dev->mlock);
 
-	if (st->chip_config.dmp_on &&
-			st->chip_config.enable &&
-			st->chip_config.ped_int_on) {
-		result |= inv_enable_pedometer_interrupt(st, false);
-	} else {
-		if ((!st->chip_config.dmp_on) ||
-				(!st->chip_config.enable) ||
-				(st->batch.on ==
-				st->chip_config.dmp_event_int_on))
+	result = 0;
+	if (st->chip_config.dmp_on && st->chip_config.enable) {
+		/* turn off pedometer interrupt during suspend */
+		if (st->chip_config.ped_int_on)
+			result |= inv_enable_pedometer_interrupt(st, false);
+		/* turn off orientation interrupt during suspend */
+		if (st->chip_config.display_orient_on)
+			result |= inv_set_display_orient_interrupt_dmp(st,
+								false);
+		/* setup batch mode related during suspend */
+		result = inv_setup_suspend_batchmode(indio_dev, true);
+		if (st->batch.step_only)
+			cancel_delayed_work_sync(&st->work);
+		/* only in DMP non-batch data mode, turn off the power */
+		if ((!st->batch.on) && (!st->chip_config.dmp_event_int_on))
 			result |= st->set_power_state(st, false);
+	} else if (st->chip_config.enable) {
+		/* in non DMP case, just turn off the power */
+		result |= st->set_power_state(st, false);
 	}
-	result = inv_setup_suspend_batchmode(indio_dev, true);
-	if (st->batch.step_only)
-		cancel_delayed_work_sync(&st->work);
 
 	mutex_unlock(&indio_dev->mlock);
 

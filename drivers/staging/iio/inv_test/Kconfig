@@ -9,3 +9,5 @@ config INV_TESTING
 	help
 	  This flag enables display of additional testing information from the
 	  Invensense IIO drivers
+	  It also enables the I2C counters facility to perform IO profiling.
+	  Some additional sysfs entries will appear when this flag is enabled.

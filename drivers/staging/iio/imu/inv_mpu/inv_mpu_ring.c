@@ -186,12 +186,14 @@ static int inv_batchmode_calc(struct inv_mpu_state *st)
 		}
 	}
 	if ((num_sensor_on == 0) && st->sensor[SENSOR_STEP].on) {
-		st->batch.step_only = 1;
 		/* in step only batchmode, counter is fixed */
 		st->batch.counter = FIFO_SIZE / 8;
+		st->batch.step_only = true;
+		st->batch.on = true;
+
 		return 0;
-	} else {
-		st->batch.step_only = 0;
+	} else if (num_sensor_on == 0) {
+		return 0;
 	}
 
 	b = st->batch.timeout * one_sec_size;
@@ -202,9 +204,7 @@ static int inv_batchmode_calc(struct inv_mpu_state *st)
 
 	/* 5 ms per count */
 	timeout_count = timeout / 5;
-	if (num_sensor_on == 0) {
-		return -EINVAL;
-	} else if (num_rate == 1) {
+	if (num_rate == 1) {
 		c = timeout * rate / ONE_K_HZ;
 	} else {
 		c = 0;
@@ -221,6 +221,7 @@ static int inv_batchmode_calc(struct inv_mpu_state *st)
 		}
 	}
 	st->batch.counter = c;
+	st->batch.on = true;
 
 	return 0;
 }
@@ -229,21 +230,22 @@ int inv_batchmode_setup(struct inv_mpu_state *st)
 {
 	int r;
 
-	if (st->batch.on) {
+	r = inv_write_2bytes(st, KEY_BM_NUMWORD_TOFILL, 0);
+	if (r)
+		return r;
+	r = inv_write_2bytes(st, KEY_BM_BATCH_CNTR, 0);
+	if (r)
+		return r;
+
+	if (st->chip_config.dmp_on && (st->batch.timeout > 0) &&
+			(st->chip_config.dmp_event_int_on == 0)) {
 		r = inv_batchmode_calc(st);
 		if (r)
 			return r;
-		r = inv_write_2bytes(st, KEY_BM_NUMWORD_TOFILL, 0);
-		if (r)
-			return r;
+	}
+
+	if (st->batch.on) {
 		r = inv_write_2bytes(st, KEY_BM_BATCH_THLD, st->batch.counter);
-		if (r)
-			return r;
-		r = inv_write_2bytes(st, KEY_BM_BATCH_CNTR, 0);
-		if (r)
-			return r;
-	} else {
-		r = inv_write_2bytes(st, KEY_BM_BATCH_THLD, 0);
 		if (r)
 			return r;
 	}
@@ -458,7 +460,7 @@ static int inv_set_master_delay(struct inv_mpu_state *st)
 		d = max(d, st->slave_compass->rate_scale);
 	}
 	if (st->sensor[SENSOR_PRESSURE].on) {
-		/* read fake data when compass is disabled */
+		/* read fake data when compass is disabled for DMP read */
 		if (!st->sensor[SENSOR_COMPASS].on)
 			delay |= BIT_SLV0_DLY_EN;
 		switch (st->plat_data.aux_slave_id) {
@@ -593,6 +595,7 @@ static int reset_fifo_itg(struct iio_dev *indio_dev)
 	st->chip_config.normal_pressure_measure = 0;
 	st->left_over_size = 0;
 	st->batch.post_isr_run = false;
+	st->chip_config.smd_triggered = false;
 	for (i = 0; i < SENSOR_NUM_MAX; i++)
 		st->sensor[i].ts = st->last_ts;
 	result = inv_lpa_mode(st, st->chip_config.lpa_mode);
@@ -946,14 +949,9 @@ static int set_inv_enable(struct iio_dev *indio_dev,
 
 	reg = &st->reg;
 	if (enable) {
-		if (st->chip_config.dmp_on &&
-			(st->batch.timeout > 0) &&
-			(st->chip_config.dmp_event_int_on == 0)) {
-			st->batch.on = true;
-		} else {
-			st->batch.on = false;
-			st->batch.step_only = false;
-		}
+		st->batch.on = false;
+		st->batch.step_only = false;
+
 		inv_get_data_count(st);
 		if (st->chip_config.new_fifo_rate !=
 				st->chip_config.fifo_rate) {
@@ -1263,7 +1261,6 @@ static int inv_process_dmp_interrupt(struct inv_mpu_state *st)
 {
 	int r;
 	u8 d[2];
-	u64 ts;
 	struct iio_dev *indio_dev = iio_priv_to_dev(st);
 
 #define DMP_INT_SMD             0x04
@@ -1279,7 +1276,8 @@ static int inv_process_dmp_interrupt(struct inv_mpu_state *st)
 		if (d[0] & DMP_INT_SMD) {
 				sysfs_notify(&indio_dev->dev.kobj, NULL,
 						"event_smd");
-				st->chip_config.smd_enable = 0;
+				st->chip_config.smd_enable = false;
+				st->chip_config.smd_triggered = true;
 		}
 		if (d[0] & DMP_INT_PED)
 			sysfs_notify(&indio_dev->dev.kobj, NULL,
@@ -1293,10 +1291,6 @@ static int inv_process_dmp_interrupt(struct inv_mpu_state *st)
 			sysfs_notify(&indio_dev->dev.kobj, NULL,
 				     "event_display_orientation");
 		}
-	}
-	if (!(st->dmp_int_status & BIT_DMP_INT_CI)) {
-		r = kfifo_out(&st->timestamps, &ts, 1);
-		return -EINVAL;
 	}
 
 	return 0;
@@ -1314,8 +1308,10 @@ static int inv_process_batchmode(struct inv_mpu_state *st)
 	u64 t;
 	bool done_flag, q_flag, valid_hdr;
 
-	if (!(st->dmp_int_status & BIT_DMP_INT_CI))
+	if ((!(st->dmp_int_status & BIT_DMP_INT_CI)) &&
+				(!st->chip_config.smd_triggered))
 		return -EINVAL;
+	st->chip_config.smd_triggered = false;
 	d = fifo_data;
 
 	if (st->left_over_size > 0) {

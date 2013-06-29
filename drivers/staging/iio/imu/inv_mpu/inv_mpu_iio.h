@@ -27,7 +27,7 @@
 
 /*register and associated bit definition*/
 #define REG_3050_FIFO_EN         0x12
-#define BITS_3050_ACCEL_OUT		0x0E
+#define BITS_3050_ACCEL_OUT      0x0E
 
 #define REG_3050_AUX_VDDIO       0x13
 #define BIT_3050_VDDIO           0x04
@@ -67,18 +67,18 @@
 #define REG_CONFIG              0x1A
 
 #define REG_GYRO_CONFIG         0x1B
-#define BITS_SELF_TEST_EN		0xE0
+#define BITS_SELF_TEST_EN       0xE0
 
-#define REG_ACCEL_CONFIG	0x1C
+#define REG_ACCEL_CONFIG        0x1C
 #define REG_ACCEL_MOT_THR       0x1F
 #define REG_ACCEL_MOT_DUR       0x20
 
 #define REG_FIFO_EN             0x23
-#define BIT_ACCEL_OUT			0x08
-#define BITS_GYRO_OUT			0x70
+#define BIT_ACCEL_OUT           0x08
+#define BITS_GYRO_OUT           0x70
 
 #define REG_I2C_MST_CTRL        0x24
-#define BIT_WAIT_FOR_ES			0x40
+#define BIT_WAIT_FOR_ES         0x40
 
 #define REG_I2C_SLV0_ADDR       0x25
 #define REG_I2C_SLV0_REG        0x26
@@ -94,27 +94,27 @@
 #define REG_I2C_SLV3_CTRL       0x30
 #define REG_I2C_SLV4_CTRL       0x34
 
-#define INV_MPU_BIT_SLV_EN		0x80
+#define INV_MPU_BIT_SLV_EN      0x80
 #define INV_MPU_BIT_BYTE_SW     0x40
 #define INV_MPU_BIT_REG_DIS     0x20
-#define INV_MPU_BIT_I2C_READ	0x80
+#define INV_MPU_BIT_I2C_READ    0x80
 
 #define REG_INT_PIN_CFG         0x37
-#define BIT_BYPASS_EN                   0x2
+#define BIT_BYPASS_EN           0x2
 
 #define REG_INT_ENABLE          0x38
-#define BIT_DATA_RDY_EN                 0x01
-#define BIT_DMP_INT_EN                  0x02
-#define BIT_ZMOT_EN                     0x20
-#define BIT_MOT_EN                      0x40
-#define BIT_6500_WOM_EN                 0x40
+#define BIT_DATA_RDY_EN         0x01
+#define BIT_DMP_INT_EN          0x02
+#define BIT_ZMOT_EN             0x20
+#define BIT_MOT_EN              0x40
+#define BIT_6500_WOM_EN         0x40
 
 #define REG_DMP_INT_STATUS      0x39
-#define BIT_DMP_INT_CI                  0x01
+#define BIT_DMP_INT_CI          0x01
 
 #define REG_INT_STATUS          0x3A
-#define BIT_MOT_INT                     0x40
-#define BIT_ZMOT_INT                    0x20
+#define BIT_MOT_INT             0x40
+#define BIT_ZMOT_INT            0x20
 
 #define REG_RAW_ACCEL           0x3B
 #define REG_TEMPERATURE         0x41
@@ -149,7 +149,7 @@
 #define BIT_CLK_MASK                    0x7
 
 #define REG_PWR_MGMT_2          0x6C
-#define BIT_PWR_ACCEL_STBY               0x38
+#define BIT_PWR_ACCEL_STBY              0x38
 #define BIT_PWR_GYRO_STBY               0x07
 #define BIT_LPA_FREQ                    0xC0
 
@@ -269,6 +269,7 @@
 #define CRC_FIRMWARE_SEED        0
 #define SELF_TEST_SUCCESS        1
 #define MS_PER_DMP_TICK          20
+#define DMP_IMAGE_SIZE           2634
 
 /* init parameters */
 #define INIT_FIFO_RATE           50
@@ -281,7 +282,7 @@
 #define MPU_INIT_SMD_DELAY2_THLD 1
 #define MPU_INIT_SMD_THLD        3000
 #define MPU_DEFAULT_DMP_FREQ     200
-#define MPL_PROD_KEY(ver, rev) (ver * 100 + rev)
+#define MPL_PROD_KEY(ver, rev)  (ver * 100 + rev)
 #define NUM_OF_PROD_REVS (ARRAY_SIZE(prod_rev_map))
 /*---- MPU6050 Silicon Revisions ----*/
 #define MPU_SILICON_REV_A2                    1       /* MPU6050A2 Device */
@@ -293,7 +294,7 @@
 
 #define TIME_STAMP_TOR                        5
 #define MAX_CATCH_UP                          5
-#define DEFAULT_ACCEL_TRIM                     16384
+#define DEFAULT_ACCEL_TRIM                    16384
 #define DEFAULT_GYRO_TRIM                     131
 #define MAX_FIFO_RATE                         1000
 #define MAX_DMP_OUTPUT_RATE                   200
@@ -317,12 +318,12 @@
 #define INV_TAP_AXIS_Y                        0x2
 #define INV_TAP_AXIS_Z                        0x4
 
-#define INV_TAP_AXIS_ALL                      \
+#define INV_TAP_AXIS_ALL               \
 		(INV_TAP_AXIS_X            |   \
 		INV_TAP_AXIS_Y             |   \
 		INV_TAP_AXIS_Z)
 
-#define INT_SRC_TAP    0x01
+#define INT_SRC_TAP             0x01
 #define INT_SRC_DISPLAY_ORIENT  0x08
 #define INT_SRC_SHAKE           0x10
 
@@ -341,7 +342,7 @@
 #define INV_ALL                           0xFFFF
 #define INV_ELEMENT_MASK                  0x00FF
 #define INV_GYRO_ACC_MASK                 0x007E
-#define INV_ACCEL_MASK                     0x70
+#define INV_ACCEL_MASK                    0x70
 #define INV_GYRO_MASK                     0xE
 
 struct inv_mpu_state;
@@ -490,6 +491,7 @@ struct inv_batch {
  *  @normal_compass_measure: discard first compass data after reset.
  *  @normal_pressure_measure: discard first pressure data after reset.
  *  @smd_enable: disable/enable SMD function.
+ *  @smd_triggered: smd triggered flag.
  *  @ped_int_on:   pedometer interrupt enable/disable.
  *  @ped_on:  pedometer on/off.
  *  @from_fifo: flag to indicate secondary data is from FIFO or not.
@@ -521,6 +523,7 @@ struct inv_chip_config_s {
 	u32 normal_compass_measure:1;
 	u32 normal_pressure_measure:1;
 	u32 smd_enable:1;
+	u32 smd_triggered:1;
 	u32 ped_int_on:1;
 	u32 ped_on:1;
 	u32 from_fifo:1;
@@ -551,10 +554,6 @@ struct inv_chip_info_s {
 	u8 compass_sens[3];
 	u32 gyro_sens_trim;
 	u32 accel_sens_trim;
-};
-
-enum inv_channel_num {
-	INV_CHANNEL_NUM = 1,
 };
 
 /**
@@ -672,6 +671,8 @@ struct inv_mpu_slave;
  *  @last_ts:           last time stamp.
  *  @step_detector_base_ts: base time stamp for step detector calculation.
  *  @prev_kfifo_ts:     previous kfifo's time stamp.
+ *  @pedometer_step:    pedometer steps stored in driver.
+ *  @pedometer_time:    pedometer time stored in driver.
  *  @work: work only for batchmode when only step is batched.
  *  @name: name for distiguish MPU6050 and MPU6500 in MPU6XXX.
  *  @secondary_name: name for the slave device in the secondary I2C.
@@ -738,6 +739,8 @@ struct inv_mpu_state {
 	u64 last_ts;
 	u64 step_detector_base_ts;
 	u64 prev_kfifo_ts;
+	u64 pedometer_step;
+	u64 pedometer_time;
 	struct delayed_work work;
 	u8 name[20];
 	u8 secondary_name[20];
@@ -923,9 +926,9 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_GYRO_MATRIX,
 	ATTR_ACCEL_MATRIX,
 	ATTR_COMPASS_MATRIX,
-	ATTR_COMPASS_SENS,
 	ATTR_SECONDARY_NAME,
 #ifdef CONFIG_INV_TESTING
+	ATTR_COMPASS_SENS,
 	ATTR_I2C_COUNTERS,
 	ATTR_REG_WRITE,
 	ATTR_DEBUG_SMD_ENABLE_TESTP1,

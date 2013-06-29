@@ -553,7 +553,7 @@ static int inv_write_mlx_reg(struct inv_mpu_state *st)
 
 	addr = st->plat_data.secondary_i2c_addr;
 
-	/* write register 0 with 0x70 */
+	/* write register 0 with 0x7C */
 	result = inv_i2c_write_mlx_reg(st, addr, 0, 0x7c);
 	if (result)
 		return result;
