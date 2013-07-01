@@ -198,7 +198,15 @@ static int msm_stats_buf_prepare(struct msm_stats_bufq_ctrl *stats_ctrl,
 	D("%s: type : %d, buf num : %d\n", __func__,
 		info->type, info->buf_idx);
 
-	bufq = stats_ctrl->bufq[info->type];
+	if (stats_ctrl)
+		bufq = stats_ctrl->bufq[info->type];
+	if(!bufq) {
+		pr_err("%s:%d bufq is NULL stats_ctrl :%x\n", __func__, __LINE__,
+				(unsigned int)stats_ctrl);
+		rc = -1;
+		goto out1;
+	}
+
 	stats_buf = &bufq->bufs[info->buf_idx];
 	if (stats_buf->state == MSM_STATS_BUFFER_STATE_UNUSED) {
 		pr_err("%s: need reqbuf first, stats type = %d",
@@ -278,7 +286,15 @@ static int msm_stats_buf_unprepare(struct msm_stats_bufq_ctrl *stats_ctrl,
 	struct msm_stats_meta_buf *stats_buf = NULL;
 
 	D("%s: type : %d, idx : %d\n", __func__, stats_type, buf_idx);
-	bufq = stats_ctrl->bufq[stats_type];
+	if(stats_ctrl)
+		bufq = stats_ctrl->bufq[stats_type];
+	if(bufq == NULL) {
+		pr_err("%s: bufq is NULL for stats type %d",
+			__func__, stats_type);
+		rc = -1;
+		goto end;
+	}
+
 	stats_buf = &bufq->bufs[buf_idx];
 	if (stats_buf->state == MSM_STATS_BUFFER_STATE_UNUSED) {
 		pr_err("%s: need reqbuf first, stats type = %d",
@@ -316,7 +332,14 @@ static int msm_stats_bufq_flush(struct msm_stats_bufq_ctrl *stats_ctrl,
 	struct msm_stats_bufq *bufq = NULL;
 	struct msm_stats_meta_buf *stats_buf = NULL;
 
-	bufq = stats_ctrl->bufq[stats_type];
+	if(stats_ctrl)
+		bufq = stats_ctrl->bufq[stats_type];
+	if(!bufq) {
+		pr_err("%s:%d bufq is NULL stats_ctrl :%x\n", __func__, __LINE__,
+			(unsigned int)stats_ctrl);
+		rc = -1;
+		return rc;
+	}
 
 	for (i = 0; i < bufq->num_bufs; i++) {
 		stats_buf = &bufq->bufs[i];
@@ -351,6 +374,14 @@ static int msm_stats_dqbuf(struct msm_stats_bufq_ctrl *stats_ctrl,
 
 	D("%s: type : %d\n", __func__, stats_type);
 	*pp_stats_buf = NULL;
+	if(stats_ctrl)
+		bufq = stats_ctrl->bufq[stats_type];
+	if(!bufq) {
+		pr_err("%s:%d bufq is NULL stats_ctrl :%x\n", __func__, __LINE__,
+			(unsigned int)stats_ctrl);
+		rc = -1;
+		return rc;
+	}
 	bufq = stats_ctrl->bufq[stats_type];
 
 	list_for_each_entry(stats_buf, &bufq->head, list) {
@@ -384,6 +415,14 @@ static int msm_stats_querybuf(struct msm_stats_bufq_ctrl *stats_ctrl,
 	*pp_stats_buf = NULL;
 	D("%s: stats type : %d, buf_idx : %d", __func__, info->type,
 		   info->buf_idx);
+	if(stats_ctrl)
+		bufq = stats_ctrl->bufq[info->type];
+	if(!bufq) {
+		pr_err("%s:%d bufq is NULL stats_ctrl :%x\n", __func__, __LINE__,
+			(unsigned int)stats_ctrl);
+		rc = -1;
+		return rc;
+	}
 	bufq = stats_ctrl->bufq[info->type];
 	*pp_stats_buf = &bufq->bufs[info->buf_idx];
 
@@ -400,7 +439,8 @@ static int msm_stats_qbuf(struct msm_stats_bufq_ctrl *stats_ctrl,
 	D("%s: stats type : %d, buf_idx : %d", __func__, stats_type,
 		   buf_idx);
 
-	bufq = stats_ctrl->bufq[stats_type];
+	if(stats_ctrl)
+		bufq = stats_ctrl->bufq[stats_type];
 	if (!bufq) {
 		pr_err("%s: null bufq, stats type = %d", __func__, stats_type);
 		rc = -1;
@@ -445,6 +485,15 @@ static int msm_stats_buf_dispatch(struct msm_stats_bufq_ctrl *stats_ctrl,
 	*buf_idx = -1;
 	*vaddr = NULL;
 	*fd = 0;
+	if(stats_ctrl)
+	 	bufq = stats_ctrl->bufq[stats_type];
+	if(!bufq) {
+		pr_err("%s:%d bufq is NULL stats_ctrl :%x\n", __func__, __LINE__,
+			(unsigned int)stats_ctrl);
+		rc = -1;
+		return rc;
+	}
+
 	bufq = stats_ctrl->bufq[stats_type];
 	for (i = 0; i < bufq->num_bufs; i++) {
 		if (bufq->bufs[i].paddr == phy_addr) {
