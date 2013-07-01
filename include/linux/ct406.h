@@ -41,6 +41,8 @@ struct ct406_platform_data {
 	u8	ct406_prox_pulse_count;
 	u8	ct406_prox_offset;
 
+	u8	ink_type;
+
 	int gpio_irq;
 } __packed;
 
