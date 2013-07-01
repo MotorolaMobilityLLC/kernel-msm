@@ -175,6 +175,7 @@ struct ct406_data {
 	u8 prox_pulse_count;
 	u8 prox_offset;
 	u16 pdata_max;
+	u8 ink_type;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend ct406_early_suspend;
 #endif
@@ -888,7 +889,8 @@ static void ct406_report_als(struct ct406_data *ct)
 	unsigned int c0data;
 	unsigned int c1data;
 	unsigned int ratio;
-	unsigned int lux = 0;
+	int lux1 = 0;
+	int lux2 = 0;
 	unsigned int threshold_delta;
 
 	reg_data[0] = (CT406_C0DATA | CT406_COMMAND_AUTO_INCREMENT);
@@ -914,39 +916,77 @@ static void ct406_report_als(struct ct406_data *ct)
 		ct->als_high_threshold = CT406_C0DATA_MAX;
 	ct406_write_als_thresholds(ct);
 
-	/* calculate lux using piecewise function from TAOS */
-	if (c0data == 0)
-		c0data = 1;
-	ratio = ((100 * c1data) + c0data - 1) / c0data;
-	switch (ct->als_mode) {
-	case CT406_ALS_MODE_LOW_LUX:
-		if (c0data == 0x4800 || c1data == 0x4800)
-			lux = CT406_ALS_LOW_TO_HIGH_THRESHOLD;
-		else if (ratio <= 51)
-			lux = (121*c0data - 227*c1data) / 100;
-		else if (ratio <= 58)
-			lux = (40*c0data - 68*c1data) / 100;
-		else
-			lux = 0;
-		break;
-	case CT406_ALS_MODE_HIGH_LUX:
-		if (c0data == 0x4800 || c1data == 0x4800)
-			lux = 0xFFFF;
-		else if (ratio <= 51)
-			lux = (964*c0data - 1818*c1data) / 100;
-		else if (ratio <= 58)
-			lux = (317*c0data - 544*c1data) / 100;
-		else
-			lux = 0;
-		break;
-	default:
-		pr_err("%s: ALS mode is %d!\n", __func__, ct->als_mode);
+
+	if (ct->ink_type == 0) {
+		/* calculate lux using piecewise function from TAOS */
+		if (c0data == 0)
+			c0data = 1;
+		ratio = ((100 * c1data) + c0data - 1) / c0data;
+		switch (ct->als_mode) {
+		case CT406_ALS_MODE_LOW_LUX:
+			if (c0data == 0x4800 || c1data == 0x4800)
+				lux1 = CT406_ALS_LOW_TO_HIGH_THRESHOLD;
+			else if (ratio <= 51)
+				lux1 = (121*c0data - 227*c1data) / 100;
+			else if (ratio <= 58)
+				lux1 = (40*c0data - 68*c1data) / 100;
+			else
+				lux1 = 0;
+			break;
+		case CT406_ALS_MODE_HIGH_LUX:
+			if (c0data == 0x4800 || c1data == 0x4800)
+				lux1 = 0xFFFF;
+			else if (ratio <= 51)
+				lux1 = (964*c0data - 1818*c1data) / 100;
+			else if (ratio <= 58)
+				lux1 = (317*c0data - 544*c1data) / 100;
+			else
+				lux1 = 0;
+			break;
+		default:
+			pr_err("%s: ALS mode is %d!\n", __func__, ct->als_mode);
+		}
+	} else {
+		switch (ct->als_mode) {
+		case CT406_ALS_MODE_LOW_LUX:
+			if (c0data == 0x4800 || c1data == 0x4800)
+				lux1 = CT406_ALS_LOW_TO_HIGH_THRESHOLD;
+			else {
+				lux1 = ((1000 * c0data) - (2005 * c1data))
+					/ (71 * 8);
+				if (lux1 < 0)
+					lux1 = 0;
+				lux2 = ((604 * c0data) - (1090 * c1data))
+					/ (71 * 8);
+				if (lux2 < 0)
+					lux2 = 0;
+				if (lux1 < lux2)
+					lux1 = lux2;
+			}
+			break;
+		case CT406_ALS_MODE_HIGH_LUX:
+			if (c0data == 0x4800 || c1data == 0x4800)
+				lux1 = 0xFFFF;
+			else {
+				lux1 = ((1000 * c0data) - (2005 * c1data)) / 71;
+				if (lux1 < 0)
+					lux1 = 0;
+				lux2 = ((604 * c0data) - (1090 * c1data)) / 71;
+				if (lux2 < 0)
+					lux2 = 0;
+				if (lux1 < lux2)
+					lux1 = lux2;
+			}
+			break;
+		default:
+			pr_err("%s: ALS mode is %d!\n", __func__, ct->als_mode);
+		}
 	}
 
 	/* input.c filters consecutive LED_MISC values <=1. */
-	lux = (lux >= 2) ? lux : 2;
+	lux1 = (lux1 >= 2) ? lux1 : 2;
 
-	input_event(ct->dev, EV_LED, LED_MISC, lux);
+	input_event(ct->dev, EV_LED, LED_MISC, lux1);
 	input_sync(ct->dev);
 
 	if (ct->als_first_report == 0) {
@@ -960,7 +1000,7 @@ static void ct406_report_als(struct ct406_data *ct)
 		ct->als_first_report = 1;
 	}
 
-	ct406_check_als_range(ct, lux);
+	ct406_check_als_range(ct, lux1);
 
 	ct406_clear_als_flag(ct);
 }
@@ -1387,6 +1427,8 @@ ct406_of_init(struct i2c_client *client)
 		pdata->ct406_prox_offset = (u8)val;
 	if (!of_property_read_u32(np, "ams,prox-pulse-count", &val))
 		pdata->ct406_prox_pulse_count = (u8)val;
+	if (!of_property_read_u32(np, "ams,ink_type", &val))
+		pdata->ink_type = (u8)val;
 
 	return pdata;
 }
@@ -1526,6 +1568,7 @@ static int ct406_probe(struct i2c_client *client,
 	ct->prox_pulse_count = ct->pdata->ct406_prox_pulse_count;
 	ct->prox_offset = ct->pdata->ct406_prox_offset;
 	ct->pdata_max = CT406_PDATA_MAX;
+	ct->ink_type = ct->pdata->ink_type;
 
 	error = ct406_device_init(ct);
 	if (error) {
