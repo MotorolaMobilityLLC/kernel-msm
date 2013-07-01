@@ -314,6 +314,71 @@ u8 arch_get_max_wp_len(void)
 	return max_watchpoint_len;
 }
 
+static void arch_restore_hw_wbp(struct perf_event **slots, int max_slots,
+		int ctrl_base, int val_base)
+{
+	struct arch_hw_breakpoint *info;
+	struct perf_event **slot;
+	int i;
+	u32 addr, ctrl;
+
+	for (i = 0; i < max_slots; ++i) {
+		slot = &slots[i];
+		if (*slot) {
+			info = counter_arch_bp(*slot);
+			addr = info->address;
+			ctrl = encode_ctrl_reg(info->ctrl) | 0x1;
+
+			if (info->step_ctrl.enabled) {
+				addr = info->trigger & ~0x3;
+				addr += 4;
+				ctrl = encode_ctrl_reg(info->step_ctrl);
+				if (info->ctrl.type != ARM_BREAKPOINT_EXECUTE) {
+					i = 0;
+					ctrl_base =
+						ARM_BASE_BCR + core_num_brps;
+					val_base =
+						ARM_BASE_BVR + core_num_brps;
+				}
+			}
+			write_wb_reg(val_base + i, addr);
+			write_wb_reg(ctrl_base + i, ctrl);
+		}
+	}
+}
+
+static void arch_restore_hw_bp(void)
+{
+	struct perf_event **slots;
+	int max_slots, ctrl_base, val_base;
+
+	ctrl_base = ARM_BASE_BCR;
+	val_base = ARM_BASE_BVR;
+	slots = (struct perf_event **)__get_cpu_var(bp_on_reg);
+	max_slots = core_num_brps;
+	arch_restore_hw_wbp(slots, max_slots, ctrl_base, val_base);
+}
+
+static void arch_restore_hw_wp(void)
+{
+	struct perf_event **slots;
+	int max_slots, ctrl_base, val_base;
+
+	ctrl_base = ARM_BASE_WCR;
+	val_base = ARM_BASE_WVR;
+	slots = (struct perf_event **)__get_cpu_var(wp_on_reg);
+	max_slots = core_num_wrps;
+	arch_restore_hw_wbp(slots, max_slots, ctrl_base, val_base);
+}
+
+static void reset_ctrl_regs(void *unused);
+static void restore_cpu_wb_setting(void *unused)
+{
+	reset_ctrl_regs(unused);
+	arch_restore_hw_bp();
+	arch_restore_hw_wp();
+}
+
 /*
  * Install a perf counter breakpoint.
  */
@@ -363,6 +428,7 @@ int arch_install_hw_breakpoint(struct perf_event *bp)
 	/* Override the breakpoint data with the step data. */
 	if (info->step_ctrl.enabled) {
 		addr = info->trigger & ~0x3;
+		addr += 4;
 		ctrl = encode_ctrl_reg(info->step_ctrl);
 		if (info->ctrl.type != ARM_BREAKPOINT_EXECUTE) {
 			i = 0;
@@ -379,6 +445,126 @@ int arch_install_hw_breakpoint(struct perf_event *bp)
 
 out:
 	return ret;
+}
+
+int arch_install_hw_breakpoint_percpu(struct perf_event __percpu *bp, int type)
+{
+	struct perf_event **slot, **slots;
+	int cpu, i, max_slots, ret = 0;
+
+	if (type == 0) {
+		/* Breakpoint */
+		max_slots = core_num_brps;
+	} else {
+		/* Watchpoint */
+		max_slots = core_num_wrps;
+	}
+
+	i = max_slots;
+	for_each_possible_cpu(cpu) {
+		slots = (struct perf_event **)*per_cpu_ptr(&wp_on_reg, cpu);
+		for (i = 0; i < max_slots; ++i) {
+			slot = &slots[i];
+			if (!*slot)
+				break;
+		}
+	}
+
+	if (WARN_ONCE(i == max_slots, "Can't find any breakpoint slot\n")) {
+		ret = -EBUSY;
+		goto out;
+	} else {
+		for_each_possible_cpu(cpu) {
+			if (type == 0)
+				slots =	(struct perf_event **)
+						*per_cpu_ptr(&bp_on_reg, cpu);
+			else
+				slots = (struct perf_event **)
+						*per_cpu_ptr(&wp_on_reg, cpu);
+			slot = &slots[i];
+			*slot = per_cpu_ptr(bp, cpu);
+		}
+	}
+
+	on_each_cpu(restore_cpu_wb_setting, NULL, 1);
+
+out:
+	return ret;
+}
+
+void install_hw_watchpoint(unsigned int *addr)
+{
+	struct perf_event __percpu *event;
+	int cpu;
+
+	event = __alloc_percpu(sizeof(*event), 2 * sizeof(void *));
+	if (!event)
+		return;
+
+	for_each_possible_cpu(cpu) {
+		struct perf_event *e;
+		e = per_cpu_ptr(event, cpu);
+		memset(e, 0, sizeof(struct perf_event));
+
+		e->attr.bp_type = HW_BREAKPOINT_W;
+		e->attr.bp_len  = HW_BREAKPOINT_LEN_4;
+		e->attr.bp_addr = (unsigned int)addr;
+
+		arch_validate_hwbkpt_settings(e);
+	}
+	arch_install_hw_breakpoint_percpu(event, 1);
+}
+
+void uninstall_hw_watchpoint(unsigned int *addr)
+{
+	struct perf_event **slot, **slots;
+	struct perf_event *e;
+	int cpu, i;
+	int max_slots = core_num_wrps;
+
+	for_each_possible_cpu(cpu) {
+		slots = (struct perf_event **)*per_cpu_ptr(&wp_on_reg, cpu);
+		for (i = 0; i < max_slots; ++i) {
+			slot = &slots[i];
+			if (slot) {
+				e = *slot;
+				if (e && e->attr.bp_addr == (unsigned int)addr)
+					*slot = NULL;
+			}
+		}
+	}
+	on_each_cpu(restore_cpu_wb_setting, NULL, 1);
+}
+
+void arch_hw_wbp_status(unsigned int type)
+{
+	struct perf_event **slot, **slots;
+	int i, max_slots, base;
+
+	if (type == 0) {
+		/* Breakpoint */
+		base = ARM_BASE_BCR;
+		slots = (struct perf_event **)__get_cpu_var(bp_on_reg);
+		max_slots = core_num_brps;
+	} else {
+		/* Watchpoint */
+		base = ARM_BASE_WCR;
+		slots = (struct perf_event **)__get_cpu_var(wp_on_reg);
+		max_slots = core_num_wrps;
+	}
+
+	/* Remove the breakpoint. */
+	for (i = 0; i < max_slots; ++i) {
+		slot = &slots[i];
+
+		if (*slot != NULL) {
+			pr_info("slot %d is being used\n", i);
+			break;
+		}
+	}
+
+	if (i == max_slots)
+		pr_info("%d slots are free\n", i);
 }
 
 void arch_uninstall_hw_breakpoint(struct perf_event *bp)
@@ -643,9 +829,10 @@ int arch_validate_hwbkpt_settings(struct perf_event *bp)
 		 * reports them.
 		 */
 		if (!debug_exception_updates_fsr() &&
-		    (info->ctrl.type == ARM_BREAKPOINT_LOAD ||
-		     info->ctrl.type == ARM_BREAKPOINT_STORE))
+				(info->ctrl.type == ARM_BREAKPOINT_LOAD ||
+				 info->ctrl.type == ARM_BREAKPOINT_STORE))
 			return -EINVAL;
+
 	}
 
 out:
@@ -660,7 +847,7 @@ static void enable_single_step(struct perf_event *bp, u32 addr)
 	struct arch_hw_breakpoint *info = counter_arch_bp(bp);
 
 	arch_uninstall_hw_breakpoint(bp);
-	info->step_ctrl.mismatch  = 1;
+	info->step_ctrl.mismatch  = 0;
 	info->step_ctrl.len	  = ARM_BREAKPOINT_LEN_4;
 	info->step_ctrl.type	  = ARM_BREAKPOINT_EXECUTE;
 	info->step_ctrl.privilege = info->ctrl.privilege;
@@ -734,8 +921,7 @@ static void watchpoint_handler(unsigned long addr, unsigned int fsr,
 			info->trigger = addr;
 		}
 
-		pr_debug("watchpoint fired: address = 0x%x\n", info->trigger);
-		perf_bp_event(wp, regs);
+		pr_info("watchpoint fired: address = 0x%x\n", info->trigger);
 
 		/*
 		 * If no overflow handler is present, insert a temporary
@@ -744,6 +930,8 @@ static void watchpoint_handler(unsigned long addr, unsigned int fsr,
 		 */
 		if (!wp->overflow_handler)
 			enable_single_step(wp, instruction_pointer(regs));
+
+		panic("watchpoint caused panic\n");
 
 unlock:
 		rcu_read_unlock();
@@ -896,6 +1084,7 @@ static struct undef_hook debug_reg_hook = {
 	.fn		= debug_reg_trap,
 };
 
+
 static void reset_ctrl_regs(void *unused)
 {
 	int i, raw_num_brps, err = 0, cpu = smp_processor_id();
@@ -999,7 +1188,8 @@ static int __cpuinit dbg_reset_notify(struct notifier_block *self,
 				      unsigned long action, void *cpu)
 {
 	if (action == CPU_ONLINE)
-		smp_call_function_single((int)cpu, reset_ctrl_regs, NULL, 1);
+		smp_call_function_single((int)cpu, restore_cpu_wb_setting,
+				NULL, 1);
 
 	return NOTIFY_OK;
 }

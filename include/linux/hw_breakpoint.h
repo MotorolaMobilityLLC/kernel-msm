@@ -110,6 +110,8 @@ static inline struct arch_hw_breakpoint *counter_arch_bp(struct perf_event *bp)
 {
 	return &bp->hw.info;
 }
+extern void install_hw_watchpoint(unsigned int *addr);
+extern void uninstall_hw_watchpoint(unsigned int *addr);
 
 #else /* !CONFIG_HAVE_HW_BREAKPOINT */
 

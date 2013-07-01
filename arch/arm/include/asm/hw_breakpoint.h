@@ -123,6 +123,8 @@ extern u8 arch_get_max_wp_len(void);
 extern void clear_ptrace_hw_breakpoint(struct task_struct *tsk);
 
 int arch_install_hw_breakpoint(struct perf_event *bp);
+int arch_install_hw_breakpoint_percpu(struct perf_event __percpu *bp, int type);
+void arch_hw_wbp_status(unsigned int type);
 void arch_uninstall_hw_breakpoint(struct perf_event *bp);
 void hw_breakpoint_pmu_read(struct perf_event *bp);
 int hw_breakpoint_slots(int type);
