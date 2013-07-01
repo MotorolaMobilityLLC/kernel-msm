@@ -184,11 +184,9 @@ static int vibrator_pwm_set(int enable, int amp, int n_value)
 		writel(((m_val) & 0xff), MMSS_CC_GP1_BASE(REG_M));
 		writel(((~(n_value - m_val)) & 0xff), MMSS_CC_GP1_BASE(REG_N));
 		writel(((~(d_val << 1)) & 0xff), MMSS_CC_GP1_BASE(REG_D));
+		writel(enable, MMSS_CC_GP1_BASE(REG_CMD_RCGR)); /* UPDATE */
 	}
 	writel(enable, MMSS_CC_GP1_BASE(REG_CBCR));
-	writel((enable << 1) | /* ROOT_EN[1] */
-	        enable,             /* UPDATE[0] */
-		MMSS_CC_GP1_BASE(REG_CMD_RCGR));
 
 	return 0;
 }
@@ -230,10 +228,10 @@ static int msm8974_pwm_vibrator_force_set(struct timed_vibrator_data *vib,
 
 	/* TODO: control the gain of vibrator */
 	if (nForce == 0) {
-		vibrator_set_power(0, vib);
 		vibrator_ic_enable_set(0, vib);
 		vibrator_pwm_set(0, 0, n_value);
 		/* should be checked for vibrator response time */
+		vibrator_set_power(0, vib);
 		atomic_set(&vib->vib_status, false);
 	} else {
 		if (work_pending(&vib->work_vibrator_off))
@@ -242,10 +240,9 @@ static int msm8974_pwm_vibrator_force_set(struct timed_vibrator_data *vib,
 
 		vib_duration_ms = atomic_read(&vib->ms_time);
 		/* should be checked for vibrator response time */
+		vibrator_set_power(1, vib);
 		vibrator_pwm_set(1, nForce, n_value);
 		vibrator_ic_enable_set(1, vib);
-		vibrator_set_power(1, vib);
-
 		atomic_set(&vib->vib_status, true);
 
 		hrtimer_start(&vib->timer,
