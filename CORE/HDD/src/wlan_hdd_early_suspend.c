@@ -865,19 +865,11 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
         wlanSuspendParam->configuredMcstBcstFilterSetting = pHddCtx->configuredMcastBcastFilter;
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
-        if (pHddCtx->cfg_ini->isMcAddrListFilter)
-        {
-           /*Multicast addr list filter is enabled during suspend*/
-           if (((pAdapter->device_mode == WLAN_HDD_INFRA_STATION) || 
-                    (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT))
-                 && pAdapter->mc_addr_list.mc_cnt
-                 && (eConnectionState_Associated == 
-                    (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState))
-           {
-              /*set the filter*/
-              wlan_hdd_set_mc_addr_list(pAdapter, TRUE);
-           }
-        }
+        /* During suspend, configure MC Addr list filter to the firmware
+         * function takes care of checking necessary conditions before
+         * configuring.
+         */
+        wlan_hdd_set_mc_addr_list(pAdapter, TRUE);
 #endif
     }
 
@@ -922,17 +914,11 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
     }
 
 
-#ifdef WLAN_FEATURE_PACKET_FILTERING    
-    if (pHddCtx->cfg_ini->isMcAddrListFilter)
-    {
-       /*Multicast addr filtering is enabled*/
-       if (pAdapter->mc_addr_list.isFilterApplied)
-       {
-          /*Filter applied during suspend mode*/
-          /*Clear it here*/
-          wlan_hdd_set_mc_addr_list(pAdapter, FALSE);
-       }
-    }
+#ifdef WLAN_FEATURE_PACKET_FILTERING
+    /* Filer was applied during suspend inditication
+     * clear it when we resume.
+     */
+    wlan_hdd_set_mc_addr_list(pAdapter, FALSE);
 #endif
 }
 
