@@ -429,9 +429,6 @@ void vidc_cleanup_addr_table(struct video_client_ctx *client_ctx,
 		}
 		if (!IS_ERR_OR_NULL(buf_addr_table[i].buff_ion_handle)) {
 			if (!IS_ERR_OR_NULL(client_ctx->user_ion_client)) {
-				ion_unmap_kernel(client_ctx->user_ion_client,
-						buf_addr_table[i].
-						buff_ion_handle);
 				if (!res_trk_check_for_sec_session() &&
 				   (res_trk_get_core_type() !=
 				   (u32)VCD_CORE_720P)) {
