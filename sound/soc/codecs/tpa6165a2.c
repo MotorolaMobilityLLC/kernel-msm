@@ -871,8 +871,18 @@ static void tpa6165_report_button(struct tpa6165_data *tpa6165)
 					SND_JACK_BTN_0,
 					tpa6165->button_jack->jack->type);
 				tpa6165->button_pressed = 1;
+			} else {
+				if (tpa6165->dev_status_reg1 &
+						TPA6165_VOL_SLEW_DONE) {
+					pr_err("%s:Unknown button state",
+						__func__);
+					/* clear vol slew interrupt mask */
+					tpa6165_reg_write(tpa6165,
+						TPA6165_INT_MASK_REG1,
+						~TPA6165_VOL_SLEW_DONE,
+						TPA6165_VOL_SLEW_DONE);
+				}
 			}
-
 		} else {
 			/* at this point not sure if it is single or
 			 * or multi, button event wake up the IC and
@@ -939,6 +949,8 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 		}
 		/* clear flag and put the IC in regular sleep mode */
 		tpa6165->special_hs = 0;
+		/* disable button detect */
+		tpa6165_button_detect_state(tpa6165, 0);
 		tpa6165_sleep(tpa6165, TPA6165_SLEEP);
 	} else if ((tpa6165->dev_status_reg1 & TPA6165_JACK_DETECT) &&
 			tpa6165->inserted) {
