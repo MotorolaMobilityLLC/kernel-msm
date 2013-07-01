@@ -42,3 +42,9 @@
 		qcom,batt-tbl-id = <0 50000>;
 	};
 };
+
+&i2c_2 {
+	ct406@39 {
+		ams,ink_type = <0x01>;
+	};
+};
