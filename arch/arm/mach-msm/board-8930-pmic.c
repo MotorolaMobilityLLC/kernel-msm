@@ -378,7 +378,7 @@ static struct wled_config_data wled_cfg = {
 	.cs_out_en = true,
 	.ctrl_delay_us = 0,
 	.op_fdbck = true,
-	.ovp_val = WLED_OVP_32V,
+	.ovp_val = WLED_OVP_35V,
 	.boost_curr_lim = WLED_CURR_LIMIT_525mA,
 	.num_strings = 1,
 };
@@ -596,9 +596,12 @@ void __init msm8930_init_pmic(void)
 			pm8921_bms_pdata.battery_type = BATT_PALLADIUM;
 		else if (machine_is_msm8930_cdp())
 			pm8921_chg_pdata.has_dc_supply = true;
-		if (machine_is_msm8930_evt())
+		if (machine_is_msm8930_evt()) {
 			pm8038_platform_data.vibrator_pdata =
 				&pm8038_vib_pdata;
+			pm8038_platform_data.leds_pdata->configs[0]
+					.wled_cfg->comp_res_val = 80;
+		}
 	} else {
 		/* PM8917 configuration */
 		pmic_reset_irq = PM8917_IRQ_BASE + PM8921_RESOUT_IRQ;
