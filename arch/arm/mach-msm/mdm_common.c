@@ -98,6 +98,7 @@ struct mdm_device {
 	struct work_struct sfr_reason_work;
 
 	struct notifier_block mdm_panic_blk;
+	struct notifier_block ssr_notifier_blk;
 
 	int ssr_started_internally;
 };
@@ -567,6 +568,24 @@ static int mdm_modem_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
+static int ssr_notifier_cb(struct notifier_block *this,
+				unsigned long code,
+				void *data)
+{
+	struct mdm_device *mdev =
+		container_of(this, struct mdm_device, ssr_notifier_blk);
+
+	switch (code) {
+	case SUBSYS_AFTER_POWERUP:
+		mdm_ssr_completed(mdev);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
 static int mdm_panic_prep(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
@@ -690,7 +709,6 @@ static int mdm_subsys_powerup(const struct subsys_desc *crashed_subsys)
 
 	mdm_ops->power_on_mdm_cb(mdm_drv);
 	mdm_drv->boot_type = CHARM_NORMAL_BOOT;
-	mdm_ssr_completed(mdev);
 	complete(&mdev->mdm_needs_reload);
 	if (!wait_for_completion_timeout(&mdev->mdm_boot,
 			msecs_to_jiffies(MDM_BOOT_TIMEOUT))) {
@@ -996,6 +1014,11 @@ static int mdm_configure_ipc(struct mdm_device *mdev)
 		ret = PTR_ERR(mdev->mdm_subsys_dev);
 		goto fatal_err;
 	}
+	memset((void *)&mdev->ssr_notifier_blk, 0,
+			sizeof(struct notifier_block));
+	mdev->ssr_notifier_blk.notifier_call  = ssr_notifier_cb;
+	subsys_notif_register_notifier(mdev->subsys_name,
+			&mdev->ssr_notifier_blk);
 
 	/* ERR_FATAL irq. */
 	irq = MSM_GPIO_TO_INT(mdm_drv->mdm2ap_errfatal_gpio);
