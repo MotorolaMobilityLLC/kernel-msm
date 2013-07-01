@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -52,6 +52,7 @@
 #define WLED_SYNC_REG			SSBI_REG_ADDR_WLED_CTRL(11)
 #define WLED_OVP_CFG_REG		SSBI_REG_ADDR_WLED_CTRL(13)
 #define WLED_BOOST_CFG_REG		SSBI_REG_ADDR_WLED_CTRL(14)
+#define WLED_RESISTOR_COMPENSATION_CFG_REG	SSBI_REG_ADDR_WLED_CTRL(15)
 #define WLED_HIGH_POLE_CAP_REG		SSBI_REG_ADDR_WLED_CTRL(16)
 
 #define WLED_STRINGS			0x03
@@ -76,8 +77,13 @@
 
 #define WLED_MAX_LEVEL			255
 #define WLED_8_BIT_MASK			0xFF
+#define WLED_4_BIT_MASK			0x0F
 #define WLED_8_BIT_SHFT			0x08
+#define WLED_4_BIT_SHFT			0x04
 #define WLED_MAX_DUTY_CYCLE		0xFFF
+
+#define WLED_RESISTOR_COMPENSATION_DEFAULT	20
+#define WLED_RESISTOR_COMPENSATION_MAX	320
 
 #define WLED_SYNC_VAL			0x07
 #define WLED_SYNC_RESET_VAL		0x00
@@ -682,12 +688,13 @@ static enum led_brightness pm8xxx_led_get(struct led_classdev *led_cdev)
 static int __devinit init_wled(struct pm8xxx_led_data *led)
 {
 	int rc, i;
-	u8 val, num_wled_strings;
+	u8 val, num_wled_strings, comp;
+	u16 temp;
 
 	num_wled_strings = led->wled_cfg->num_strings;
 
 	/* program over voltage protection threshold */
-	if (led->wled_cfg->ovp_val > WLED_OVP_37V) {
+	if (led->wled_cfg->ovp_val > WLED_OVP_27V) {
 		dev_err(led->dev->parent, "Invalid ovp value");
 		return -EINVAL;
 	}
@@ -733,6 +740,46 @@ static int __devinit init_wled(struct pm8xxx_led_data *led)
 		dev_err(led->dev->parent, "can't write wled boost config"
 			" register rc=%d\n", rc);
 		return rc;
+	}
+
+	if (led->wled_cfg->comp_res_val) {
+		/* Add Validation for compensation resistor value */
+		if (!(led->wled_cfg->comp_res_val >=
+			WLED_RESISTOR_COMPENSATION_DEFAULT &&
+			led->wled_cfg->comp_res_val <=
+				WLED_RESISTOR_COMPENSATION_MAX &&
+			led->wled_cfg->comp_res_val %
+				WLED_RESISTOR_COMPENSATION_DEFAULT == 0)) {
+			dev_err(led->dev->parent, "Invalid Value " \
+			"for compensation register.\n");
+			return -EINVAL;
+		}
+
+		/* Compute the compensation resistor register value */
+		temp = led->wled_cfg->comp_res_val;
+		temp = (temp - WLED_RESISTOR_COMPENSATION_DEFAULT) /
+					WLED_RESISTOR_COMPENSATION_DEFAULT;
+		comp = (temp << WLED_4_BIT_SHFT);
+
+		rc = pm8xxx_readb(led->dev->parent,
+				WLED_RESISTOR_COMPENSATION_CFG_REG, &val);
+		if (rc) {
+			dev_err(led->dev->parent, "can't read wled " \
+			"resistor compensation config register rc=%d\n", rc);
+			return rc;
+		}
+
+		val = val && WLED_4_BIT_MASK;
+		val = val | comp;
+
+		/* program compenstation resistor register */
+		rc = pm8xxx_writeb(led->dev->parent,
+				WLED_RESISTOR_COMPENSATION_CFG_REG, val);
+		if (rc) {
+			dev_err(led->dev->parent, "can't write wled " \
+			"resistor compensation config register rc=%d\n", rc);
+			return rc;
+		}
 	}
 
 	/* program high pole capacitance */
