@@ -2451,28 +2451,22 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
         case eCSR_ROAM_LOSTLINK:
         case eCSR_ROAM_DISASSOCIATED:
             {
-                hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                         "****eCSR_ROAM_DISASSOCIATED****");
                 halStatus = hdd_DisConnectHandler( pAdapter, pRoamInfo, roamId, roamStatus, roamResult );
                 /* Check if Mcast/Bcast Filters are set, if yes clear the filters here */
-                if ((WLAN_HDD_GET_CTX(pAdapter))->hdd_mcastbcast_filter_set == TRUE) {
+                if ((WLAN_HDD_GET_CTX(pAdapter))->hdd_mcastbcast_filter_set == TRUE)
+                {
+
                     hdd_conf_mcastbcast_filter((WLAN_HDD_GET_CTX(pAdapter)), FALSE);
                     (WLAN_HDD_GET_CTX(pAdapter))->hdd_mcastbcast_filter_set = FALSE;
                 }
 #ifdef WLAN_FEATURE_PACKET_FILTERING
-                if (pHddCtx->cfg_ini->isMcAddrListFilter)
-                {
-                    /*Multicast addr filtering is enabled*/
-                    if (pAdapter->mc_addr_list.isFilterApplied)
-                    {
-                        /*Filter applied during suspend mode*/
-                        /*Clear it here*/
-                        wlan_hdd_set_mc_addr_list(pAdapter, FALSE);
-                    }
-                }
+                /* Call to clear any MC Addr List filter applied after
+                 * successful connection.
+                 */
+                wlan_hdd_set_mc_addr_list(pAdapter, FALSE);
 #endif
-
             }
             break;
         case eCSR_ROAM_IBSS_LEAVE:
