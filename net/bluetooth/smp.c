@@ -453,6 +453,7 @@ int le_user_confirm_reply(struct hci_conn *hcon, u16 mgmt_op, void *cp)
 		clear_bit(HCI_CONN_ENCRYPT_PEND, &hcon->pend);
 		mgmt_auth_failed(hcon->hdev->id, conn->dst, reason);
 		hci_conn_put(hcon);
+		l2cap_conn_del(hcon, EACCES, 0);
 	} else if (hcon->cfm_pending) {
 		BT_DBG("send_pairing_confirm");
 		ret = send_pairing_confirm(conn);
@@ -1084,4 +1085,6 @@ void smp_timeout(unsigned long arg)
 	clear_bit(HCI_CONN_ENCRYPT_PEND, &conn->hcon->pend);
 	mgmt_auth_failed(conn->hcon->hdev->id, conn->dst, SMP_UNSPECIFIED);
 	hci_conn_put(conn->hcon);
+	//delete the l2cap connection
+	l2cap_conn_del(conn->hcon, EACCES, 0);
 }
