@@ -1026,7 +1026,7 @@ static int adcmap_get_devtree(struct device_node *np,
 }
 
 static int set_adcmap_data(struct device_node *np,
-		const struct qpnp_vadc_map_pt *adcmap,
+		const struct qpnp_vadc_map_pt **adcmap,
 		int *size, char *len_key, char *threshold_key)
 {
 	struct qpnp_vadc_map_pt *buf;
@@ -1052,7 +1052,7 @@ static int set_adcmap_data(struct device_node *np,
 		return -EINVAL;
 	}
 
-	adcmap = buf;
+	*adcmap = buf;
 	return 0;
 }
 
@@ -1061,7 +1061,7 @@ static int qpnp_adcmap_dt(struct device_node *np)
 	int rc;
 
 	rc = set_adcmap_data(np,
-			adcmap_btm_threshold,
+			&adcmap_btm_threshold,
 			&adcmap_btm_threshold_size,
 			"qcom,adcmap_btm_data_num",
 			"qcom,adcmap_btm_threshold");
@@ -1071,7 +1071,7 @@ static int qpnp_adcmap_dt(struct device_node *np)
 	}
 
 	rc = set_adcmap_data(np,
-			adcmap_qrd_btm_threshold,
+			&adcmap_qrd_btm_threshold,
 			&adcmap_qrd_btm_threshold_size,
 			"qcom,adcmap_qrd_btm_data_num",
 			"qcom,adcmap_qrd_btm_threshold");
@@ -1081,7 +1081,7 @@ static int qpnp_adcmap_dt(struct device_node *np)
 	}
 
 	rc = set_adcmap_data(np,
-			adcmap_100k_104ef_104fb,
+			&adcmap_100k_104ef_104fb,
 			&adcmap_100k_104ef_104fb_size,
 			"qcom,adcmap_adcmap_100k_data_num",
 			"qcom,adcmap_100k_104ef_104fb");
@@ -1091,7 +1091,7 @@ static int qpnp_adcmap_dt(struct device_node *np)
 	}
 
 	rc = set_adcmap_data(np,
-			adcmap_150k_104ef_104fb,
+			&adcmap_150k_104ef_104fb,
 			&adcmap_150k_104ef_104fb_size,
 			"qcom,adcmap_adcmap_100k_data_num",
 			"qcom,adcmap_150k_104ef_104fb");
