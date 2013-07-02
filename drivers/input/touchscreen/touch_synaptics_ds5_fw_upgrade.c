@@ -233,9 +233,6 @@ static bool CheckFlashStatus(struct synaptics_ts_data *ts,
 	 */
 	readRMI_ds5(ts->client, SynaF34_FlashStatus, &uData, 1);
 
-	TOUCH_DEBUG_MSG("SynaF34_FlashStatus=[%x], uData=[%x]\n",
-						SynaF34_FlashStatus, uData);
-
 	/*if ((uData & 0x3F) != 0)
 		TOUCH_ERR_MSG( "Command %s failed.\n\tFlash status : 0x%X\n", SynaFlashCommandStr[command], uData & 0x3F); */
 
