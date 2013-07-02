@@ -1,0 +1,66 @@
+			Cypress CapSense devices programming support
+			--------------------------------------------
+
+Overview
+--------
+
+This driver implements the programming for Linux of Cypress CapSense devices by
+simulating in-system serial programming protocol (ISSP) on GPIO pins.
+By using this driver you can reprogram the in-system flash without additional
+adapters. This solution is working with blank or non-blank flash memory.
+Current release was tested with cy8c20237_24lkxi CapSense device.
+
+References
+----------
+
+The main references are at (http://www.cypress.com) see:
+
+1. Protocol description:
+ISSP Programming Specifications, Document #: 001-57631
+http://www.cypress.com/?rID=40048
+
+2. Description of simplified Intel HEX file format:
+ImageCraft Assembly Language Guide, Document # 001-44475
+http://www.cypress.com/?docID=41696
+
+Device tree nodes
+-----------------
+
+label         - IC type name, it is used to identify firmware file name
+silicon_id    - IC type identifier, used to identify connected IC.
+block_size    - In-system flash memory block size
+num_of_blocks - Number of flash memory blocks.
+secure_bytes  - Each block has 2 bits in flash memory for protection attributes;
+gpios         - Three interface gpio pins. Index 0 is reset line,
+				index 1 - clock line, index 2 - data line.
+
+
+Using the driver
+----------------
+
+Once the driver is loaded you can use sysfs support to erase or to program
+in-system flash memory.
+
+1. Program firmware with auto-matching file name and silicon Id. If file with
+name cy8c20237_24lkxi.hex present in directory /system/etc/firmware and HW
+system has IC cy8c20237_24lkxi then following command will automatically flash
+firmware to IC. Firmware will be flashed if checksum in hex file does not match
+with checksum of in-system flash memory:
+
+#find -name cycapsense_fw
+./sys/devices/cy8c20237_prog.72/cycapsense_fw
+#echo 1 > /sys/devices/cy8c20237_prog.72/cycapsense_fw
+
+2. Program firmware without checking name and checksum. If file <file_name>.hex
+is present in /system/etc/firmware directory you may program it with following
+command:
+
+#echo <file_name>.hex > /sys/devices/cy8c20237_prog.72/cycapsense_fw
+
+3. To erase in-system flash memory:
+
+#echo erase > /sys/devices/cy8c20237_prog.72/cycapsense_fw
+
+4. To use driver from another module there is exported API cycapsense_fw_update,
+which implements same logic as case #1 above.
+
