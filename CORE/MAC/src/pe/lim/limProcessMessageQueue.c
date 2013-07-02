@@ -1908,13 +1908,33 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #ifdef FEATURE_WLAN_TDLS
         case WDA_SET_TDLS_LINK_ESTABLISH_REQ_RSP:
         {
+            tpPESession     psessionEntry;
+            tANI_U8         sessionId;
             tTdlsLinkEstablishParams *pTdlsLinkEstablishParams;
             pTdlsLinkEstablishParams = (tTdlsLinkEstablishParams*) limMsg->bodyptr;
-            limSendSmeTdlsLinkEstablishReqRsp(pMac,
-                                              0,
-                                              NULL,
-                                              NULL,
-                                              pTdlsLinkEstablishParams->status) ;
+
+            if((psessionEntry = peFindSessionByStaId(pMac,
+                                                     pTdlsLinkEstablishParams->staIdx,
+                                                     &sessionId))== NULL)
+            {
+                limLog(pMac, LOGE, FL("session %u  does not exist.\n"), sessionId);
+                /* Still send the eWNI_SME_TDLS_LINK_ESTABLISH_RSP message to SME
+                   with session id as zero and status as FAILURE so, that message
+                   queued in SME queue can be freed to prevent the SME cmd buffer leak */
+                limSendSmeTdlsLinkEstablishReqRsp(pMac,
+                                                  0,
+                                                  NULL,
+                                                  NULL,
+                                                  eSIR_FAILURE);
+            }
+            else
+            {
+                limSendSmeTdlsLinkEstablishReqRsp(pMac,
+                                                  psessionEntry->smeSessionId,
+                                                  NULL,
+                                                  NULL,
+                                                  pTdlsLinkEstablishParams->status) ;
+            }
             vos_mem_free((v_VOID_t *)(limMsg->bodyptr));
             limMsg->bodyptr = NULL;
             break;
