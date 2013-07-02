@@ -863,13 +863,14 @@ error:
 static void hdmi_tx_hpd_int_work(struct work_struct *work)
 {
 	struct hdmi_tx_ctrl *hdmi_ctrl = NULL;
+	struct dss_io_data *io;
 
 	hdmi_ctrl = container_of(work, struct hdmi_tx_ctrl, hpd_int_work);
 	if (!hdmi_ctrl || !hdmi_ctrl->hpd_initialized) {
 		DEV_DBG("%s: invalid input\n", __func__);
 		return;
 	}
-
+	io = &hdmi_ctrl->pdata.io[HDMI_TX_CORE_IO];
 	DEV_DBG("%s: Got HPD interrupt\n", __func__);
 
 	if (hdmi_ctrl->hpd_state) {
@@ -877,6 +878,9 @@ static void hdmi_tx_hpd_int_work(struct work_struct *work)
 			DEV_ERR("%s: Failed to enable ddc power\n", __func__);
 			return;
 		}
+		/* Enable SW DDC before EDID read */
+		DSS_REG_W_ND(io, HDMI_DDC_ARBITRATION ,
+			DSS_REG_R(io, HDMI_DDC_ARBITRATION) & ~(BIT(4)));
 
 		/* wait if iommu isn't attached */
 		if (!is_mdss_iommu_attached()) {
