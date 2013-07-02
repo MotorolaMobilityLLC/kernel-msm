@@ -221,6 +221,10 @@ static int mss_start(const struct subsys_desc *desc)
 		return 0;
 
 	INIT_COMPLETION(drv->stop_ack);
+
+	/* ignore error, IC may be not placed */
+	cycapsense_fw_update();
+
 	ret = pil_boot(&drv->q6->desc);
 	if (ret)
 		return ret;
