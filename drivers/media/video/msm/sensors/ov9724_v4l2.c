@@ -111,7 +111,7 @@ static struct msm_sensor_output_info_t ov9724_dimensions[] = {
 		.line_length_pclk = 0x628, /* 1576 */
 		.frame_length_lines = 0x2f8, /* 760 */
 		.vt_pixel_clk = 36000000,
-		.op_pixel_clk = 36000000,
+		.op_pixel_clk = 94000000,
 		.binning_factor = 1,
 	},
 };
