@@ -7613,6 +7613,8 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
 
                 if (eTDLS_LINK_CONNECTED != pTdlsPeer->link_status)
                 {
+                    long ret;
+
                     if (0 != wlan_hdd_tdls_get_link_establish_params(pAdapter, peer,&tdlsLinkEstablishParams)) {
                          return -EINVAL;
                     }
@@ -7624,13 +7626,13 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                      * register with the TL on after the response for this operation
                      * is received .
                      */
-                    status = wait_for_completion_interruptible_timeout(&pAdapter->tdls_link_establish_req_comp,
+                    ret = wait_for_completion_interruptible_timeout(&pAdapter->tdls_link_establish_req_comp,
                               msecs_to_jiffies(WAIT_TIME_TDLS_LINK_ESTABLISH_REQ));
-                    if (status <= 0)
+                    if (ret <= 0)
                     {
                         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                                   "%s: Link Establish Request Faled Status %ld",
-                                  __func__, status);
+                                  __func__, ret);
                         return -EINVAL;
                     }
                     wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
