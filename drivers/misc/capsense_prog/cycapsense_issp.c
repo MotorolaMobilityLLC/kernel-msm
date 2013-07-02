@@ -1,8 +1,6 @@
 /*
  * Source file for:
  * Cypress CapSense(TM) firmware downloader.
- * Supported parts include:
- * CY8C20237
  *
  * Copyright (c) 2012-2013 Motorola Mobility LLC
  *
@@ -70,11 +68,6 @@ const unsigned char ascii2bin[] = {
 #define a_2_b(a)	(ascii2bin[((a) & 0xff) - 0x30])
 #define a_a_2_byte(a1, a2)	((a_2_b(a1) << 4) | a_2_b(a2))
 
-const struct capsense_id supported_ids[] = {
-#ifdef CONFIG_CYPRESS_CAPSENSE_CY8C20237_24LKXI
-	{"cy8c20237_24lkxi", 0x0142, 128, 64, 16},
-#endif
-};
 const unsigned int id_set1_len = 594;
 const unsigned char id_set1[] = {
 	0xCA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -335,7 +328,7 @@ static void cycapsense_issp_send_block(const struct issp_data *d, int block)
 	int offs, i;
 	unsigned char addr;
 
-	offs = d->id->block_size * block;
+	offs = d->block_size * block;
 	addr = 0;/* 7-bit only, to have them in MSB will be incremented by 2 */
 
 	local_irq_save(flags);
@@ -343,7 +336,7 @@ static void cycapsense_issp_send_block(const struct issp_data *d, int block)
 	cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, rw_setup, rw_setup_len);
 
 	gpio_direction_output(d->d_gpio, 1);
-	for (i = 0; i < d->id->block_size; i++, offs++, addr += 2) {
+	for (i = 0; i < d->block_size; i++, offs++, addr += 2) {
 		SEND_PART_BYTE(wr_start, d->c_gpio, d->d_gpio, wr_start_len);
 		SEND_PART_BYTE(addr, d->c_gpio, d->d_gpio, 7);
 		SEND_BYTE(*(d->inf.data + offs), d->c_gpio, d->d_gpio);
@@ -430,7 +423,7 @@ static bool cycapsense_issp_verify_block(const struct issp_data *d, int block)
 	int offs, i;
 	unsigned char addr, val;
 
-	offs = d->id->block_size * block;
+	offs = d->block_size * block;
 	addr = 0;/* 7-bit only, to have them in MSB will be incremented by 2 */
 
 	local_irq_save(flags);
@@ -438,7 +431,7 @@ static bool cycapsense_issp_verify_block(const struct issp_data *d, int block)
 	cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, rw_setup, rw_setup_len);
 
 	gpio_direction_output(d->d_gpio, 1);
-	for (i = 0; i < d->id->block_size; i++, offs++, addr += 2) {
+	for (i = 0; i < d->block_size; i++, offs++, addr += 2) {
 		SEND_PART_BYTE(rd_start, d->c_gpio, d->d_gpio, rd_start_len);
 		SEND_PART_BYTE(addr, d->c_gpio, d->d_gpio, 7);
 		cycapsense_issp_w2r(d->c_gpio);
@@ -471,7 +464,7 @@ static bool cycapsense_issp_flash_security(const struct issp_data *d)
 	cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, rw_setup, rw_setup_len);
 	gpio_direction_output(d->d_gpio, 1);
 	/* addr is 7-bit only, to have bits in MSB will be incremented by 2 */
-	for (i = 0, addr = 0; i < d->id->secure_bytes; i++, addr += 2) {
+	for (i = 0, addr = 0; i < d->secure_bytes; i++, addr += 2) {
 		SEND_PART_BYTE(wr_start, d->c_gpio, d->d_gpio, wr_start_len);
 		SEND_PART_BYTE(addr, d->c_gpio, d->d_gpio, 7);
 		SEND_BYTE(*(d->inf.s_data + i), d->c_gpio, d->d_gpio);
@@ -497,7 +490,7 @@ static bool cycapsense_issp_verify_security(const struct issp_data *d)
 	cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, rd_security_setup,
 		rd_security_setup_len);
 
-	for (addr = 0; addr < d->id->secure_bytes * 2; addr += 2) {
+	for (addr = 0; addr < d->secure_bytes * 2; addr += 2) {
 		cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, sync_en,
 			sync_en_len);
 		cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, rd_sec1_start,
@@ -525,7 +518,7 @@ static bool cycapsense_issp_verify_security(const struct issp_data *d)
 	cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, sync_en, sync_en_len);
 
 	gpio_direction_output(d->d_gpio, 1);
-	for (addr = 0; addr < d->id->secure_bytes * 2; addr += 2) {
+	for (addr = 0; addr < d->secure_bytes * 2; addr += 2) {
 		SEND_PART_BYTE(rd_start, d->c_gpio, d->d_gpio, rd_start_len);
 		SEND_PART_BYTE(addr, d->c_gpio, d->d_gpio, 7);
 		cycapsense_issp_w2r(d->c_gpio);
@@ -582,8 +575,7 @@ get_cs_end:
 }
 
 /* this simplifyied version of Intel HEX, Cypress PSoC specific*/
-int cycapsense_issp_parse_hex(struct hex_info *inf, const u8 *src, int len,
-		const struct capsense_id *id)
+int cycapsense_issp_parse_hex(struct issp_data *d, const u8 *src, int len)
 {
 	enum r_type { REC_DATA_T = 0, REC_EOF_T = 1, REC_EXT_L_ADDR_T = 4 };
 	struct { int len; enum r_type type; int e_addr; } rec = { 0, 0, 0 };
@@ -594,24 +586,24 @@ int cycapsense_issp_parse_hex(struct hex_info *inf, const u8 *src, int len,
 	u8 *dst;
 	u8 rec_cs = 0, val;
 
-	if (id == NULL) {
+	if (d == NULL) {
 		pr_err("%s: ID is not defined.\n", __func__);
 		return -EINVAL;
 	}
 
-	cnt = id->block_size * id->num_of_blocks;
-	inf->data = kzalloc(cnt, GFP_KERNEL);
-	if (inf->data == NULL) {
+	cnt = d->block_size * d->num_of_blocks;
+	d->inf.data = kzalloc(cnt, GFP_KERNEL);
+	if (d->inf.data == NULL) {
 		pr_err("%s: Error kzalloc (%d).\n", __func__, cnt);
 		return -ENOMEM;
 	}
-	inf->s_data = kzalloc(id->secure_bytes, GFP_KERNEL);
-	if (inf->s_data == NULL) {
-		pr_err("%s: Error kzalloc (%d).\n", __func__, id->secure_bytes);
-		kfree(inf->data);
+	d->inf.s_data = kzalloc(d->secure_bytes, GFP_KERNEL);
+	if (d->inf.s_data == NULL) {
+		pr_err("%s: Error kzalloc (%d).\n", __func__, d->secure_bytes);
+		kfree(d->inf.data);
 		return -ENOMEM;
 	}
-	dst = inf->data; /* data always first in PSoC HEX (see 001-44475 doc) */
+	dst = d->inf.data; /*data always first in PSoC HEX (see 001-44475 doc)*/
 	while (i < len) {
 		switch (state) {
 		case REC_START:
@@ -664,12 +656,12 @@ int cycapsense_issp_parse_hex(struct hex_info *inf, const u8 *src, int len,
 				if (rec.e_addr == 0x10) {
 					if (j > cnt) {
 						pr_err("%s: Too big for %s.\n",
-						__func__, id->name);
+						__func__, d->name);
 						goto parse_hex_end_err;
 					}
-					inf->cs = cs;
-					dst = inf->s_data;
-					cnt = id->secure_bytes;
+					d->inf.cs = cs;
+					dst = d->inf.s_data;
+					cnt = d->secure_bytes;
 					j = 0;
 				} else if (rec.e_addr == 0x20) {
 					dst = (u8 *)&f_cs;
@@ -683,7 +675,7 @@ int cycapsense_issp_parse_hex(struct hex_info *inf, const u8 *src, int len,
 				state = REC_CS;
 				break;
 			case REC_EOF_T:
-				if (be16_to_cpu(f_cs) != inf->cs) {
+				if (be16_to_cpu(f_cs) != d->inf.cs) {
 					pr_err("%s: Data check sum failed\n",
 						__func__);
 					goto parse_hex_end_err;
@@ -727,20 +719,19 @@ int cycapsense_issp_parse_hex(struct hex_info *inf, const u8 *src, int len,
 	return 0;
 parse_hex_end_err:
 	pr_err("%s: HEX format error.\n", __func__);
-	kfree(inf->data);
-	inf->data = NULL;
-	kfree(inf->s_data);
-	inf->s_data = NULL;
+	kfree(d->inf.data);
+	d->inf.data = NULL;
+	kfree(d->inf.s_data);
+	d->inf.s_data = NULL;
 	return -EINVAL;
 }
 
 
-const struct capsense_id *cycapsense_issp_verify_id(const struct issp_data *d)
+int cycapsense_issp_verify_id(const struct issp_data *d)
 {
-	const struct capsense_id *ret = NULL;
+	int ret = -EIO;
 	unsigned short id = 0;
 	unsigned long flags;
-	int i;
 
 	/* 1: RESET */
 	gpio_set_value(d->rst_gpio, 1);
@@ -774,22 +765,19 @@ const struct capsense_id *cycapsense_issp_verify_id(const struct issp_data *d)
 	/* 8: SYNC-DISABLE */
 	/* will set direction back to input*/
 	cycapsense_issp_send_bits(d->c_gpio, d->d_gpio, sync_dis, sync_dis_len);
-	for (i = 0; i < (sizeof(supported_ids)/sizeof(supported_ids[0])); i++) {
-		if (supported_ids[i].id == id) {
-			ret = &supported_ids[i];
-			break;
-		}
-	}
+	if (id == d->silicon_id)
+		ret = 0;
 
 verify_id_end:
 	local_irq_restore(flags);
-	if (ret != NULL)
-		pr_info("%s: Device %s is detected\n", __func__, ret->name);
+	if (ret == 0)
+		pr_info("%s: Device %s is detected\n", __func__, d->name);
 	else if (id != 0)
 		pr_err("%s: Detected unsupported device with id 0x%04X\n",
-				__func__, id);
+			__func__, id);
 	else
-		pr_err("%s: Failed to verify id\n", __func__);
+		pr_err("%s: Failed to verify silicon id for %s (0x%04X)\n",
+			__func__, d->name, d->silicon_id);
 	return ret;
 }
 
@@ -797,7 +785,7 @@ int cycapsense_issp_erase(const struct issp_data *d)
 {
 	int ret = -EIO;
 
-	if (cycapsense_issp_verify_id(d) != NULL
+	if (cycapsense_issp_verify_id(d) == 0
 		&& cycapsense_issp_send_erase(d->c_gpio, d->d_gpio))
 		ret = 0;
 
@@ -809,7 +797,7 @@ int cycapsense_issp_dnld(const struct issp_data *d)
 	int i, st;
 	unsigned int chks;
 
-	if (d->id == NULL || d->inf.data == NULL || d->inf.s_data == NULL) {
+	if (d->inf.data == NULL || d->inf.s_data == NULL) {
 		pr_err("%s: Invalid input arguments\n", __func__);
 		return -EINVAL;
 	}
@@ -817,7 +805,7 @@ int cycapsense_issp_dnld(const struct issp_data *d)
 	/* 2: Erase (assuming verify id done by caller) */
 	if (!cycapsense_issp_send_erase(d->c_gpio, d->d_gpio))
 		return -EIO;
-	for (i = 0; i < d->id->num_of_blocks; i++) {
+	for (i = 0; i < d->num_of_blocks; i++) {
 		cycapsense_issp_send_block(d, i);
 		if (!cycapsense_issp_flash_block(d, i)) {
 			pr_err("%s: Flash block failed (%d)\n", __func__, i);
@@ -829,7 +817,7 @@ int cycapsense_issp_dnld(const struct issp_data *d)
 			return -EIO;
 		}
 	}
-	for (i = 0; i < d->id->num_of_blocks; i++) {
+	for (i = 0; i < d->num_of_blocks; i++) {
 		if (!cycapsense_issp_verify_setup(d, i)) {
 			pr_err("%s: Verify setup failed (%d)\n", __func__, i);
 			return -EIO;
@@ -866,4 +854,4 @@ int cycapsense_issp_dnld(const struct issp_data *d)
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Cypress CapSense(R) firmware downloader");
-MODULE_AUTHOR("Motorola LLC");
+MODULE_AUTHOR("Motorola Mobility LLC");
