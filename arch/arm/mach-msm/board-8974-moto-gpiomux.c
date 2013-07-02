@@ -916,6 +916,28 @@ static struct msm_gpiomux_config vib_en_gpio __initdata = {
 	},
 };
 
+static struct msm_gpiomux_config cycapsence_issp_gpio_configs[] = {
+	/*
+	 * pull down are enabled by default on following pins, they should be
+	 * disabled according Cypress specification for ISSP programming
+	 */
+	{
+		.gpio = 111, /*SCLK*/
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_suspend_config[1],
+			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
+		},
+	},
+	{
+		.gpio = 110, /*SDATA*/
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_suspend_config[0],
+			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
+		},
+	},
+};
+
+
 static struct gpiomux_setting c55_c55_int_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -995,4 +1017,6 @@ void __init msm_8974_moto_init_gpiomux(void)
 	msm_gpiomux_install(&vib_en_gpio, 1);
 
 	msm_gpiomux_install(c55_configs, ARRAY_SIZE(c55_configs));
+	msm_gpiomux_install(cycapsence_issp_gpio_configs,
+			ARRAY_SIZE(cycapsence_issp_gpio_configs));
 }
