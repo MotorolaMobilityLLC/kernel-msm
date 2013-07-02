@@ -149,6 +149,7 @@
 	usb@f9a55000 {
 		qcom,hsusb-otg-phy-init-seq = <0x34 0x82 0x2f 0x81 0xffffffff>;
 		qcom,hsusb-otg-mode = <3>;
+		vbus_otg-supply = <&pm8226_chg_otg>;
 		otg,id_flt_gpio = <&msmgpio 111 0x0>;
 		otg,id_gnd_gpio = <&msmgpio 112 0x0>;
 		id_flt_active_high = <1>;
