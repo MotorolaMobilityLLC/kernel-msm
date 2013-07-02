@@ -872,6 +872,9 @@ static int bq24192_power_set_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_PRESENT:
+		schedule_delayed_work(&chip->irq_work,
+				msecs_to_jiffies(200));
+		return 0;
 	case POWER_SUPPLY_PROP_ONLINE:
 		chip->ac_online = val->intval;
 		break;

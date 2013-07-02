@@ -18,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/gpio.h>
 #include <linux/errno.h>
+#include <linux/interrupt.h>
 #include <linux/power_supply.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -29,6 +30,7 @@
 struct bq51013b_chip {
 	struct device *dev;
 	struct power_supply wlc_psy;
+	struct power_supply *ac_psy;
 	unsigned int chg_ctrl_gpio;
 	unsigned int wlc_int_gpio;
 	int current_ma;
@@ -82,6 +84,25 @@ static int pm_power_get_property_wireless(struct power_supply *psy,
 		return -EINVAL;
 	}
 	return 0;
+}
+
+static irqreturn_t bq51013b_irq_handler(int irq, void *data)
+{
+	struct bq51013b_chip *chip = data;
+	int present;
+
+	if (!chip->ac_psy)
+		chip->ac_psy = power_supply_get_by_name("ac");
+
+	if (!chip->ac_psy)
+		return IRQ_HANDLED;
+
+	present = bq51013b_charger_is_present(chip);
+
+	pr_debug("%s: wlc present = %d\n", __func__, present);
+	power_supply_set_present(chip->ac_psy, present);
+
+	return IRQ_HANDLED;
 }
 
 static int pm_power_set_property_wireless(struct power_supply *psy,
@@ -226,10 +247,22 @@ static int bq51013b_probe(struct platform_device *pdev)
 		goto err_gpio_init;
 	}
 
+	ret = request_threaded_irq(gpio_to_irq(chip->wlc_int_gpio), NULL,
+				bq51013b_irq_handler,
+				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+				"bq51013b", chip);
+	if (ret) {
+		pr_err("%s: failed to request irq", __func__);
+		goto err_req_irq;
+	}
+	enable_irq_wake(gpio_to_irq(chip->wlc_int_gpio));
 	platform_set_drvdata(pdev, chip);
 
 	return 0;
 
+err_req_irq:
+	gpio_free(chip->chg_ctrl_gpio);
+	gpio_free(chip->wlc_int_gpio);
 err_gpio_init:
 	power_supply_unregister(&chip->wlc_psy);
 err_parse_dt:
@@ -242,6 +275,7 @@ static int bq51013b_remove(struct platform_device *pdev)
 	struct bq51013b_chip *chip = platform_get_drvdata(pdev);
 
 	platform_set_drvdata(pdev, NULL);
+	free_irq(gpio_to_irq(chip->wlc_int_gpio), chip);
 	gpio_free(chip->wlc_int_gpio);
 	gpio_free(chip->chg_ctrl_gpio);
 	power_supply_unregister(&chip->wlc_psy);
