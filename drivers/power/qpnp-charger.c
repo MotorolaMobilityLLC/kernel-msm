@@ -82,6 +82,7 @@
 #define CHGR_USB_USB_SUSP			0x47
 #define CHGR_USB_USB_OTG_CTL			0x48
 #define CHGR_USB_ENUM_T_STOP			0x4E
+#define CHGR_USB_USB_OCP_CLR			0x53
 #define CHGR_USB_TRIM				0xF1
 #define CHGR_CHG_TEMP_THRESH			0x66
 #define CHGR_BAT_IF_PRES_STATUS			0x08
@@ -1717,6 +1718,7 @@ switch_usb_to_charge_mode(struct qpnp_chg_chip *chip)
 	return 0;
 }
 
+#define PULSE BIT(7)
 static int
 switch_usb_to_host_mode(struct qpnp_chg_chip *chip)
 {
@@ -1733,6 +1735,14 @@ switch_usb_to_host_mode(struct qpnp_chg_chip *chip)
 			return rc;
 		}
 	}
+
+	/* Clear any OCP condition before turning off OVP FET */
+	rc = qpnp_chg_masked_write(chip,
+			chip->usb_chgpth_base + CHGR_USB_USB_OCP_CLR,
+			PULSE,
+			PULSE, 1);
+	if (rc)
+		pr_err("Failed to clear ocp latch event rc = %d\n", rc);
 
 	/* force usb ovp fet off */
 	rc = qpnp_chg_masked_write(chip,
