@@ -6391,7 +6391,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
 
              if(lrc <= 0) {
 
-                hddLog(VOS_TRACE_LEVEL_ERROR,"%s: %s while while waiting for csrRoamDisconnect ",
+                hddLog(VOS_TRACE_LEVEL_ERROR,"%s: %s while waiting for csrRoamDisconnect ",
                  __func__, (0 == lrc) ? "Timeout" : "Interrupt");
 
                 return (0 == lrc) ? -ETIMEDOUT : -EINTR;

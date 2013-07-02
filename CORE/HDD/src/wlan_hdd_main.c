@@ -730,15 +730,29 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        else if (strncmp(command, "SETROAMTRIGGER", 14) == 0)
        {
            tANI_U8 *value = command;
-           int rssi = 0;
+           tANI_S8 rssi = 0;
            tANI_U8 lookUpThreshold = CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_DEFAULT;
            eHalStatus status = eHAL_STATUS_SUCCESS;
 
            /* Move pointer to ahead of SETROAMTRIGGER<delimiter> */
            value = value + 15;
 
-           sscanf(value, "%d", &rssi);
+           /* Convert the value from ascii to integer */
+           ret = kstrtos8(value, 10, &rssi);
+           if (ret < 0)
+           {
+               /* If the input value is greater than max value of datatype, then also
+                  kstrtou8 fails */
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: kstrtou8 failed Input value may be out of range[%d - %d]",
+                      CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MIN,
+                      CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MAX);
+               ret = -EINVAL;
+               goto exit;
+           }
+
            lookUpThreshold = abs(rssi);
+
            if ((lookUpThreshold < CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MIN) ||
                (lookUpThreshold > CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MAX))
            {
@@ -787,19 +801,20 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        else if (strncmp(command, "SETROAMSCANPERIOD", 17) == 0)
        {
            tANI_U8 *value = command;
+           tANI_U8 roamScanPeriod = 0;
            tANI_U16 neighborEmptyScanRefreshPeriod = CFG_EMPTY_SCAN_REFRESH_PERIOD_DEFAULT;
+
            /* input refresh period is in terms of seconds */
            /* Move pointer to ahead of SETROAMSCANPERIOD<delimiter> */
            value = value + 18;
            /* Convert the value from ascii to integer */
-           ret = kstrtou16(value, 10, &neighborEmptyScanRefreshPeriod);
+           ret = kstrtou8(value, 10, &roamScanPeriod);
            if (ret < 0)
            {
                /* If the input value is greater than max value of datatype, then also
-                  kstrtou16 fails */
+                  kstrtou8 fails */
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "%s: kstrtou16 failed ",
-                      "Input value may be out of range[%d - %d]",
+                      "%s: kstrtou8 failed Input value may be out of range[%d - %d]",
                       __func__,
                       (CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN/1000),
                       (CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX/1000));
@@ -807,22 +822,22 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                goto exit;
            }
 
-           neighborEmptyScanRefreshPeriod = neighborEmptyScanRefreshPeriod * 1000;
-           if ((neighborEmptyScanRefreshPeriod < CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN) ||
-               (neighborEmptyScanRefreshPeriod > CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX))
+           if ((roamScanPeriod < (CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN/1000)) ||
+               (roamScanPeriod > (CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX/1000)))
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "Neighbor empty scan results refresh period value %d is out of range"
-                      " (Min: %d Max: %d)", neighborEmptyScanRefreshPeriod/1000,
+                      "Roam scan period value %d is out of range"
+                      " (Min: %d Max: %d)", roamScanPeriod,
                       (CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN/1000),
                       (CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX/1000));
                ret = -EINVAL;
                goto exit;
            }
+           neighborEmptyScanRefreshPeriod = roamScanPeriod * 1000;
 
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                       "%s: Received Command to Set roam scan period"
-                      " (Empty Scan refresh period) = %d", __func__, neighborEmptyScanRefreshPeriod/1000);
+                      " (Empty Scan refresh period) = %d", __func__, roamScanPeriod);
 
            pHddCtx->cfg_ini->nEmptyScanRefreshPeriod = neighborEmptyScanRefreshPeriod;
            sme_UpdateEmptyScanRefreshPeriod((tHalHandle)(pHddCtx->hHal), neighborEmptyScanRefreshPeriod);
@@ -846,42 +861,44 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        else if (strncmp(command, "SETROAMSCANREFRESHPERIOD", 24) == 0)
        {
            tANI_U8 *value = command;
+           tANI_U8 roamScanRefreshPeriod = 0;
            tANI_U16 neighborScanRefreshPeriod = CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_DEFAULT;
+
            /* input refresh period is in terms of seconds */
            /* Move pointer to ahead of SETROAMSCANREFRESHPERIOD<delimiter> */
            value = value + 25;
+
            /* Convert the value from ascii to integer */
-           ret = kstrtou16(value, 10, &neighborScanRefreshPeriod);
+           ret = kstrtou8(value, 10, &roamScanRefreshPeriod);
            if (ret < 0)
            {
                /* If the input value is greater than max value of datatype, then also
-                  kstrtou16 fails */
+                  kstrtou8 fails */
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "%s: kstrtou16 failed ",
-                      "Input value may be out of range[%d - %d]",
+                      "%s: kstrtou8 failed Input value may be out of range[%d - %d]",
                       __func__,
-                      (CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN/1000),
-                      (CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX/1000));
-               ret = -EINVAL;
-               goto exit;
-           }
-
-           neighborScanRefreshPeriod = neighborScanRefreshPeriod * 1000;
-           if ((neighborScanRefreshPeriod < CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN) ||
-               (neighborScanRefreshPeriod > CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX))
-           {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "Neighbor scan results refresh period value %d is out of range"
-                      " (Min: %d Max: %d)", neighborScanRefreshPeriod/1000,
                       (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN/1000),
                       (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX/1000));
                ret = -EINVAL;
                goto exit;
            }
 
+           if ((roamScanRefreshPeriod < (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN/1000)) ||
+               (roamScanRefreshPeriod > (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX/1000)))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "Neighbor scan results refresh period value %d is out of range"
+                      " (Min: %d Max: %d)", roamScanRefreshPeriod,
+                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN/1000),
+                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX/1000));
+               ret = -EINVAL;
+               goto exit;
+           }
+           neighborScanRefreshPeriod = roamScanRefreshPeriod * 1000;
+
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                       "%s: Received Command to Set roam scan refresh period"
-                      " (Scan refresh period) = %d", __func__, neighborScanRefreshPeriod/1000);
+                      " (Scan refresh period) = %d", __func__, roamScanRefreshPeriod);
 
            pHddCtx->cfg_ini->nNeighborResultsRefreshPeriod = neighborScanRefreshPeriod;
            sme_setNeighborScanRefreshPeriod((tHalHandle)(pHddCtx->hHal), neighborScanRefreshPeriod);
@@ -1183,7 +1200,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                goto exit;
            }
        }
-       else if (strncmp(command, "GETFASTROAM", 10) == 0)
+       else if (strncmp(command, "GETFASTROAM", 11) == 0)
        {
            tANI_BOOLEAN lfrMode = sme_getIsLfrFeatureEnabled((tHalHandle)(pHddCtx->hHal));
            char extra[32];
