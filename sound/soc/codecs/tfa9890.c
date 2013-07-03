@@ -1133,8 +1133,8 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 	snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 	/* calc bclk to ws freq ratio, tfa9890 supports only 32, 48, 64 */
 	bclk_div = tfa9890->sysclk/(params_rate(params) * 16 * 2);
-	bclk = tfa9890->sysclk/bclk_div;
-	bclk_ws_ratio = bclk/params_rate(params);
+	bclk = tfa9890->sysclk*100/bclk_div;
+	bclk_ws_ratio = bclk*100/params_rate(params);
 	if (bclk_ws_ratio != 32 && bclk_ws_ratio != 48
 			&& bclk_ws_ratio != 64) {
 		pr_err("tfa9890: invalid bit clk to ws freq ratio %d:",
