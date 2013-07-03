@@ -4044,6 +4044,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 
    /* update SSR config */
    sme_UpdateEnableSSR((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->enableSSR);
+   /* Update the Directed scan offload setting */
+   smeConfig.fScanOffload =  pHddCtx->cfg_ini->fScanOffload;
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, &smeConfig);
    if ( !HAL_STATUS_SUCCESS( halStatus ) )
