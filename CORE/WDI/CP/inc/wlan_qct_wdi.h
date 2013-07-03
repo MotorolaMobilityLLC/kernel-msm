@@ -3565,6 +3565,7 @@ typedef struct
    wpt_uint8 srcIPv6AddrValid : 1;
    wpt_uint8 targetIPv6Addr1Valid : 1;
    wpt_uint8 targetIPv6Addr2Valid : 1;
+   wpt_uint8 slotIdx;
 } WDI_NSOffloadParams;
 #endif //WLAN_NS_OFFLOAD
 
