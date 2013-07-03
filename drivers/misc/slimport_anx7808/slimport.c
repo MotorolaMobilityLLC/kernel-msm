@@ -694,4 +694,4 @@ module_exit(anx7808_exit);
 MODULE_DESCRIPTION("Slimport  transmitter ANX7808 driver");
 MODULE_AUTHOR("FeiWang <fwang@analogixsemi.com>");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("V0.4");
+MODULE_VERSION("V0.5");

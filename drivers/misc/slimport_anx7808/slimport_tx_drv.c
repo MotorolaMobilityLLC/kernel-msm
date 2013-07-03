@@ -3183,13 +3183,14 @@ void hdmi_rx_set_termination(unchar enable)
 	}
 }
 
+static void hdmi_rx_set_sys_state(enum HDMI_RX_System_State ss);
 static void hdmi_rx_restart_audio_chk(void)
 {
-	if (hdmi_system_state == HDMI_AUDIO_CONFIG) {
-		SP_DEV_DBG("WAIT_AUDIO: hdmi_rx_restart_audio_chk.\n");
-		g_cts_got = 0;
-		g_audio_got = 0;
-	}
+	SP_DEV_DBG("WAIT_AUDIO: hdmi_rx_restart_audio_chk.\n");
+	g_cts_got = 0;
+	g_audio_got = 0;
+	if (hdmi_system_state == HDMI_AUDIO_CONFIG)
+		hdmi_rx_set_sys_state(HDMI_AUDIO_CONFIG);
 }
 
 static void hdmi_rx_set_sys_state(enum HDMI_RX_System_State ss)
