@@ -116,20 +116,7 @@ static struct adreno_device device_3d0 = {
 #define LONG_IB_DETECT_REG_INDEX_START 1
 #define LONG_IB_DETECT_REG_INDEX_END 5
 
-unsigned int ft_detect_regs[FT_DETECT_REGS_COUNT] = {
-	A3XX_RBBM_STATUS,
-	REG_CP_RB_RPTR,   /* LONG_IB_DETECT_REG_INDEX_START */
-	REG_CP_IB1_BASE,
-	REG_CP_IB1_BUFSZ,
-	REG_CP_IB2_BASE,
-	REG_CP_IB2_BUFSZ, /* LONG_IB_DETECT_REG_INDEX_END */
-	0,
-	0,
-	0,
-	0,
-	0,
-	0
-};
+unsigned int ft_detect_regs[FT_DETECT_REGS_COUNT];
 
 /*
  * This is the master list of all GPU cores that are supported by this
@@ -700,6 +687,7 @@ static unsigned int _adreno_iommu_setstate_v1(struct kgsl_device *device,
 					phys_addr_t pt_val,
 					int num_iommu_units, uint32_t flags)
 {
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	phys_addr_t ttbr0_val;
 	unsigned int reg_pt_val;
 	unsigned int *cmds = cmds_orig;
@@ -729,7 +717,9 @@ static unsigned int _adreno_iommu_setstate_v1(struct kgsl_device *device,
 				 * WAIT_FOR_ME
 				 */
 				cmds += adreno_wait_reg_eq(cmds,
-				A3XX_CP_WFI_PEND_CTR, 1, 0xFFFFFFFF, 0xF);
+					adreno_getreg(adreno_dev,
+						ADRENO_REG_CP_WFI_PEND_CTR),
+					1, 0xFFFFFFFF, 0xF);
 
 				/* set the iommu lock bit */
 				*cmds++ = cp_type3_packet(CP_REG_RMW, 3);
@@ -1119,7 +1109,17 @@ adreno_identify_gpu(struct adreno_device *adreno_dev)
 	adreno_dev->instruction_size = adreno_gpulist[i].instruction_size;
 	adreno_dev->gmem_size = adreno_gpulist[i].gmem_size;
 	adreno_dev->gpulist_index = i;
-
+	/*
+	 * Initialize uninitialzed gpu registers, only needs to be done once
+	 * Make all offsets that are not initialized to ADRENO_REG_UNUSED
+	 */
+	for (i = 0; i < ADRENO_REG_REGISTER_MAX; i++) {
+		if (adreno_dev->gpudev->reg_offsets->offset_0 != i &&
+			!adreno_dev->gpudev->reg_offsets->offsets[i]) {
+			adreno_dev->gpudev->reg_offsets->offsets[i] =
+						ADRENO_REG_UNUSED;
+		}
+	}
 }
 
 static struct platform_device_id adreno_id_table[] = {
@@ -1686,6 +1686,8 @@ static int __devexit adreno_remove(struct platform_device *pdev)
 static int adreno_init(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
+	int i;
 
 	kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
 
@@ -1724,9 +1726,23 @@ static int adreno_init(struct kgsl_device *device)
 		adreno_gpulist[adreno_dev->gpulist_index].sync_lock_pfp_ver))
 		device->mmu.flags |= KGSL_MMU_FLAGS_IOMMU_SYNC;
 
-	/* Assign correct RBBM status register to hang detect regs
-	 */
-	ft_detect_regs[0] = adreno_dev->gpudev->reg_rbbm_status;
+	rb->global_ts = 0;
+
+	/* Initialize ft detection register offsets */
+	ft_detect_regs[0] = adreno_getreg(adreno_dev,
+						ADRENO_REG_RBBM_STATUS);
+	ft_detect_regs[1] = adreno_getreg(adreno_dev,
+						ADRENO_REG_CP_RB_RPTR);
+	ft_detect_regs[2] = adreno_getreg(adreno_dev,
+						ADRENO_REG_CP_IB1_BASE);
+	ft_detect_regs[3] = adreno_getreg(adreno_dev,
+						ADRENO_REG_CP_IB1_BUFSZ);
+	ft_detect_regs[4] = adreno_getreg(adreno_dev,
+						ADRENO_REG_CP_IB2_BASE);
+	ft_detect_regs[5] = adreno_getreg(adreno_dev,
+						ADRENO_REG_CP_IB2_BUFSZ);
+	for (i = 6; i < FT_DETECT_REGS_COUNT; i++)
+		ft_detect_regs[i] = 0;
 
 	adreno_perfcounter_init(device);
 
@@ -2023,8 +2039,7 @@ static bool adreno_hw_isidle(struct kgsl_device *device)
 		return false;
 
 	/* Read the correct RBBM status for the GPU type */
-	adreno_regread(device,
-		adreno_dev->gpudev->reg_rbbm_status,
+	adreno_regread(device, ADRENO_REG_RBBM_STATUS,
 		&reg_rbbm_status);
 
 	if (adreno_is_a2xx(adreno_dev)) {
