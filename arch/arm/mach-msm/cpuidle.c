@@ -81,25 +81,15 @@ static atomic_t exit_idle;
 static int msm_cpuidle_enter_coupled(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int index)
 {
-#ifdef CONFIG_CPU_PM
-	cpu_pm_enter();
-#endif
 	msm_pm_idle_enter(dev, drv, index, true);
 	gic_raise_softirq(cpu_online_mask, 1);
 	cpuidle_coupled_parallel_barrier(dev, &exit_idle);
-#ifdef CONFIG_CPU_PM
-	cpu_pm_exit();
-#endif
 	return index;
 }
 
 static int msm_cpuidle_enter(
 	struct cpuidle_device *dev, struct cpuidle_driver *drv, int index)
 {
-#ifdef CONFIG_CPU_PM
-	cpu_pm_enter();
-#endif
-
 	msm_pm_idle_enter(dev, drv, index, false);
 
 	local_irq_enable();
