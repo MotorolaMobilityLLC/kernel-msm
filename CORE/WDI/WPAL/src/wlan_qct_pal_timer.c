@@ -60,6 +60,8 @@
 #include "wlan_qct_os_status.h"
 #include "vos_threads.h"
 
+#include <linux/delay.h>
+
 /*---------------------------------------------------------------------------
  \brief wpalTimerCback - VOS timer callback function
 
@@ -227,5 +229,18 @@ wpt_uint32 wpalGetSystemTime(void)
 wpt_status wpalSleep(wpt_uint32 timeout)
 {
    vos_sleep( timeout );
+   return eWLAN_PAL_STATUS_SUCCESS;
+}
+
+/*---------------------------------------------------------------------------
+    wpalUsecSleep - sleep for a specified Micro Sec interval
+    Param:
+        timeout - amount of time to sleep. In unit of micro-seconds.
+    Return:
+        eWLAN_PAL_STATUS_SUCCESS - success. Fail otherwise.
+---------------------------------------------------------------------------*/
+wpt_status wpalUsecSleep(wpt_uint32 timeout)
+{
+   usleep( timeout );
    return eWLAN_PAL_STATUS_SUCCESS;
 }
