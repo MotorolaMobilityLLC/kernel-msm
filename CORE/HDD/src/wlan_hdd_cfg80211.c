@@ -7550,7 +7550,7 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         "NL80211_TDLS_TEARDOWN",
         "NL80211_TDLS_ENABLE_LINK",
         "NL80211_TDLS_DISABLE_LINK",
-        "NL80211_TDLS_UNKONW_OPER"};
+        "NL80211_TDLS_UNKNOWN_OPER"};
 #endif
     hddTdlsPeer_t *pTdlsPeer;
 
