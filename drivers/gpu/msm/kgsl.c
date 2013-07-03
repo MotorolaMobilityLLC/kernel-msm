@@ -610,7 +610,7 @@ static int kgsl_suspend_device(struct kgsl_device *device, pm_message_t state)
 	device->ftbl->drain(device);
 
 	/* Wait for the active count to hit zero */
-	kgsl_active_count_wait(device);
+	kgsl_active_count_wait(device, 0);
 
 	/*
 	 * An interrupt could have snuck in and requested NAP in
@@ -904,6 +904,10 @@ int kgsl_close_device(struct kgsl_device *device)
 	int result = 0;
 	device->open_count--;
 	if (device->open_count == 0) {
+
+		/* Wait for the active count to go to 1 */
+		kgsl_active_count_wait(device, 1);
+
 		/* Fail if the wait times out */
 		BUG_ON(atomic_read(&device->active_cnt) > 1);
 
@@ -3994,7 +3998,7 @@ int kgsl_postmortem_dump(struct kgsl_device *device, int manual)
 	/* For a manual dump, make sure that the system is idle */
 
 	if (manual) {
-		kgsl_active_count_wait(device);
+		kgsl_active_count_wait(device, 0);
 
 		if (device->state == KGSL_STATE_ACTIVE)
 			kgsl_idle(device);
