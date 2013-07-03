@@ -1,4 +1,24 @@
 /*
+  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+  *
+  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+  *
+  *
+  * Permission to use, copy, modify, and/or distribute this software for
+  * any purpose with or without fee is hereby granted, provided that the
+  * above copyright notice and this permission notice appear in all
+  * copies.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+  * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+  * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+  * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+  * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+  * PERFORMANCE OF THIS SOFTWARE.
+*/
+/*
 * Copyright (c) 2012 Qualcomm Atheros, Inc.
 * All Rights Reserved.
 * Qualcomm Atheros Confidential and Proprietary.
@@ -98,6 +118,14 @@ typedef enum
 #define WLAN_NV_VERSION     NV_VERSION_11N_11AC_FW_CONFIG
 #endif //WCN_PRONTO
 
+typedef PACKED_PRE struct PACKED_POST
+{
+    uint8   macAddr1[NV_FIELD_MAC_ADDR_SIZE];   /* Default, not change name for compatibility */
+    uint8   macAddr2[NV_FIELD_MAC_ADDR_SIZE];
+    uint8   macAddr3[NV_FIELD_MAC_ADDR_SIZE];
+    uint8   macAddr4[NV_FIELD_MAC_ADDR_SIZE];
+} sMacAddr;
+
 typedef PACKED_PRE union PACKED_POST
 {
     //common NV fields
@@ -106,10 +134,7 @@ typedef PACKED_PRE union PACKED_POST
     uint8   wlanNvRevId;
     uint8   numOfTxChains;
     uint8   numOfRxChains;
-    uint8   macAddr[NV_FIELD_MAC_ADDR_SIZE];   /* Default, not change name for compatibility */
-    uint8   macAddr2[NV_FIELD_MAC_ADDR_SIZE];
-    uint8   macAddr3[NV_FIELD_MAC_ADDR_SIZE];
-    uint8   macAddr4[NV_FIELD_MAC_ADDR_SIZE];
+    sMacAddr macAddr;
     uint8   mfgSN[NV_FIELD_MFG_SN_SIZE];
     uint8   couplerType;
     uint8   nvVersion;
@@ -627,17 +652,40 @@ typedef PACKED_PRE struct PACKED_POST
     uint8 countryCode[NV_FIELD_COUNTRY_CODE_SIZE];    // string identifier
 }sDefaultCountry;
 
+
+#define GF_PA_BIAS_SELECT_MASK         0X7 //(3 bits)
+#define TSMC_PA_BIAS_SELECT_MASK       0x7 //(3 bits)
+
+#define GF_PA_BIAS_SELECT_1            0X0
+#define GF_PA_BIAS_SELECT_2            0X1
+
+#define TSMC_PA_BIAS_SELECT_1          0X0
+#define TSMC_PA_BIAS_SELECT_2          0X1
+#define TSMC_PA_BIAS_SELECT_3          0x2
+
+
+#define EXT_PA_CTRL_POLARITY_DEFAULT   0X0
+#define EXT_PA_CTRL_POLARITY_VALID     0X80
+
+#define EXT_PA_CTRL0_POLARITY_MASK     0X3
+#define EXT_PA_CTRL0_POLARITY_OFFSET   0X0
+#define EXT_PA_CTRL1_POLARITY_MASK     0XC
+#define EXT_PA_CTRL1_POLARITY_OFFSET   0X2
+
+#define EXT_PA_CTRL_POLARITY_ZERO      0X1
+#define EXT_PA_CTRL_POLARITY_ONE       0X2
+
 typedef PACKED_PRE struct PACKED_POST
 {
     uint8 skuID; 
     uint8 tpcMode2G;
     uint8 tpcMode5G;
-    uint8 reserved1;
+    uint8 configItem1;
 
     uint8 xPA2G;
     uint8 xPA5G;
-    uint8 paPolarityTx;
-    uint8 paPolarityRx;
+    uint8 extPaCtrl0Polarity;
+    uint8 extPaCtrl1Polarity;
 
     uint8 xLNA2G;
     uint8 xLNA5G;
@@ -654,9 +702,9 @@ typedef PACKED_PRE struct PACKED_POST
     uint8 pdadcSelect5GMid;
     uint8 pdadcSelect5GHigh;
 
-    uint32 reserved2;
-    uint32 resreved3;
-    uint32 resreved4;
+    uint32 configItem2;
+    uint32 configItem3;
+    uint32 configItem4;
 }sFwConfig;
 
 

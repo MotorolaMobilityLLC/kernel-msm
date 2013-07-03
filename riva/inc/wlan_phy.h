@@ -237,11 +237,16 @@ typedef tANI_U32 eGainSteps;
 typedef PACKED_PRE struct PACKED_POST {
     tANI_U8  dpdCalFailCnt;                     //Count for number of times DPD cal failed.
     tANI_U8  dpdCalSuccessCnt;                  //Count for number of times DPD cal passed.
+    tANI_U8  dpdColdBootRepeatCalStatus;
+    tANI_U8  dpdLastIteration;
     tANI_S16 dpd_threshold[DPD_RESPONSE_SIZE];
     tANI_S16 dpd_aoffset[DPD_RESPONSE_SIZE];
     tANI_S16 dpd_again[DPD_RESPONSE_SIZE];
     tANI_S16 dpd_poffset[DPD_RESPONSE_SIZE];
     tANI_S16 dpd_pgain[DPD_RESPONSE_SIZE];
+    tANI_S32 dpd_sample[20];
+    tANI_U8  dpd_try;
+    tANI_U8  band;
 }sDPDcorrectionCalValues;
 
 typedef PACKED_PRE struct PACKED_POST {
