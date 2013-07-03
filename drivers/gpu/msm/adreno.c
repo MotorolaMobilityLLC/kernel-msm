@@ -1867,6 +1867,9 @@ static int adreno_stop(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
+	if (adreno_dev->drawctxt_active)
+		kgsl_context_put(&adreno_dev->drawctxt_active->base);
+
 	adreno_dev->drawctxt_active = NULL;
 
 	adreno_ringbuffer_stop(&adreno_dev->ringbuffer);
@@ -2273,6 +2276,9 @@ int adreno_soft_reset(struct kgsl_device *device)
 		return -EINVAL;
 	}
 
+	if (adreno_dev->drawctxt_active)
+		kgsl_context_put(&adreno_dev->drawctxt_active->base);
+
 	adreno_dev->drawctxt_active = NULL;
 
 	/* Stop the ringbuffer */
@@ -2609,6 +2615,10 @@ play_good_cmds:
 			adreno_context->flags = (adreno_context->flags &
 				~CTXT_FLAGS_GPU_HANG) | CTXT_FLAGS_GPU_HANG_FT;
 		}
+
+		if (last_active_ctx)
+			_kgsl_context_get(&last_active_ctx->base);
+
 		adreno_dev->drawctxt_active = last_active_ctx;
 	}
 
@@ -2636,9 +2646,7 @@ play_good_cmds:
 		struct kgsl_context *last_ctx = kgsl_context_get(device,
 			ft_data->last_valid_ctx_id);
 
-		if (last_ctx)
-			adreno_dev->drawctxt_active = ADRENO_CONTEXT(last_ctx);
-		kgsl_context_put(last_ctx);
+		adreno_dev->drawctxt_active = ADRENO_CONTEXT(last_ctx);
 	}
 
 done:
