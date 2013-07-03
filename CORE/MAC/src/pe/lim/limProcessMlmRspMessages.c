@@ -39,8 +39,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
 /*
- * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limProcessMlmRspMessages.cc contains the code
  * for processing response messages from MLM state machine.
  * Author:        Chandra Modumudi
@@ -4819,4 +4819,56 @@ limSendBeaconInd(tpAniSirGlobal pMac, tpPESession psessionEntry){
     limMsg.bodyptr = pBeaconGenParams;
     schProcessPreBeaconInd(pMac, &limMsg);
     return;
+}
+
+void limSendScanOffloadComplete(tpAniSirGlobal pMac,
+                                tSirResultCodes reasonCode)
+{
+    tANI_U16 scanRspLen = 0;
+
+    pMac->lim.gLimSmeScanResultLength +=
+        pMac->lim.gLimMlmScanResultLength;
+    if ((pMac->lim.gLimRspReqd) ||
+            pMac->lim.gLimReportBackgroundScanResults)
+    {
+        pMac->lim.gLimRspReqd = false;
+        if ((reasonCode == eSIR_SME_SUCCESS) ||
+                pMac->lim.gLimSmeScanResultLength) {
+            scanRspLen = sizeof(tSirSmeScanRsp) +
+                pMac->lim.gLimSmeScanResultLength -
+                sizeof(tSirBssDescription);
+        }
+        else
+            scanRspLen = sizeof(tSirSmeScanRsp);
+
+        limSendSmeScanRsp(pMac, scanRspLen, reasonCode,
+                pMac->lim.gSmeSessionId,
+                pMac->lim.gTransactionId);
+    }
+}
+
+
+void limProcessRxScanEvent(tpAniSirGlobal pMac, void *buf)
+{
+    tSirScanOffloadEvent *pScanEvent = (tSirScanOffloadEvent *) buf;
+
+    VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+            "scan_id = %lu", pScanEvent->scanId);
+
+    switch (pScanEvent->event)
+    {
+        case SCAN_EVENT_STARTED:
+            break;
+        case SCAN_EVENT_START_FAILED:
+        case SCAN_EVENT_COMPLETED:
+            limSendScanOffloadComplete(pMac, pScanEvent->reasonCode);
+            break;
+        case SCAN_EVENT_BSS_CHANNEL:
+        case SCAN_EVENT_FOREIGN_CHANNEL:
+        case SCAN_EVENT_DEQUEUED:
+        case SCAN_EVENT_PREEMPTED:
+        default:
+            VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_DEBUG,
+                    "Received unhandled scan event %lu", pScanEvent->event);
+    }
 }
