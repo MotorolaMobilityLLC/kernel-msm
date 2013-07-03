@@ -34,11 +34,11 @@
 #define ADRENO_CHIPID_PATCH(_id) ((_id) & 0xFF)
 
 /* Flags to control command packet settings */
-#define KGSL_CMD_FLAGS_NONE             0x00000000
-#define KGSL_CMD_FLAGS_PMODE		0x00000001
-#define KGSL_CMD_FLAGS_INTERNAL_ISSUE	0x00000002
-#define KGSL_CMD_FLAGS_GET_INT		0x00000004
-#define KGSL_CMD_FLAGS_EOF	        0x00000100
+#define KGSL_CMD_FLAGS_NONE             0
+#define KGSL_CMD_FLAGS_PMODE		BIT(0)
+#define KGSL_CMD_FLAGS_INTERNAL_ISSUE   BIT(1)
+#define KGSL_CMD_FLAGS_GET_INT		BIT(2)
+#define KGSL_CMD_FLAGS_WFI              BIT(3)
 
 /* Command identifiers */
 #define KGSL_CONTEXT_TO_MEM_IDENTIFIER	0x2EADBEEF
@@ -121,6 +121,7 @@ struct adreno_dispatcher {
 	struct mutex mutex;
 	unsigned int state;
 	struct timer_list timer;
+	struct timer_list fault_timer;
 	unsigned int inflight;
 	int fault;
 	struct plist_head pending;
@@ -339,6 +340,9 @@ struct log_field {
 #define  KGSL_FT_DISABLE                  BIT(4)
 #define  KGSL_FT_TEMP_DISABLE             BIT(5)
 #define  KGSL_FT_DEFAULT_POLICY           (KGSL_FT_REPLAY + KGSL_FT_SKIPIB)
+
+/* This internal bit is used to skip the PM dump on replayed command batches */
+#define  KGSL_FT_SKIP_PMDUMP              BIT(31)
 
 /* Pagefault policy flags */
 #define KGSL_FT_PAGEFAULT_INT_ENABLE         BIT(0)

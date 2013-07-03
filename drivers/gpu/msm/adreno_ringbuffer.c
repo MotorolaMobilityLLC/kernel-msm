@@ -623,8 +623,8 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	if (adreno_is_a20x(adreno_dev))
 		total_sizedwords += 2; /* CACHE_FLUSH */
 
-	if (flags & KGSL_CMD_FLAGS_EOF)
-		total_sizedwords += 2;
+	if (flags & KGSL_CMD_FLAGS_WFI)
+		total_sizedwords += 2; /* WFI */
 
 	ringcmds = adreno_ringbuffer_allocspace(rb, drawctxt, total_sizedwords);
 
@@ -738,6 +738,12 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		GSL_RB_WRITE(rb->device, ringcmds, rcmd_gpu,
 			(0x4<<16)|(A3XX_HLSQ_CL_KERNEL_GROUP_X_REG - 0x2000));
 		GSL_RB_WRITE(rb->device, ringcmds, rcmd_gpu, 0);
+	}
+
+	if (flags & KGSL_CMD_FLAGS_WFI) {
+		GSL_RB_WRITE(rb->device, ringcmds, rcmd_gpu,
+			cp_type3_packet(CP_WAIT_FOR_IDLE, 1));
+		GSL_RB_WRITE(rb->device, ringcmds, rcmd_gpu, 0x00000000);
 	}
 
 	adreno_ringbuffer_submit(rb);
@@ -1039,9 +1045,22 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	commands are stored in the first node of the IB chain. We can skip that
 	if a context switch hasn't occured */
 
-	if (drawctxt->flags & CTXT_FLAGS_PREAMBLE &&
-		adreno_dev->drawctxt_active == drawctxt)
+	if ((drawctxt->flags & CTXT_FLAGS_PREAMBLE) &&
+		!(cmdbatch->priv & CMDBATCH_FLAG_FORCE_PREAMBLE) &&
+		(adreno_dev->drawctxt_active == drawctxt))
 		start_index = 1;
+
+	/*
+	 * In skip mode don't issue the draw IBs but keep all the other
+	 * accoutrements of a submision (including the interrupt) to keep
+	 * the accounting sane. Set start_index and numibs to 0 to just
+	 * generate the start and end markers and skip everything else
+	 */
+
+	if (cmdbatch->priv & CMDBATCH_FLAG_SKIP) {
+		start_index = 0;
+		numibs = 0;
+	}
 
 	cmds = link = kzalloc(sizeof(unsigned int) * (numibs * 3 + 4),
 				GFP_KERNEL);
@@ -1061,7 +1080,17 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 		*cmds++ = ibdesc[0].sizedwords;
 	}
 	for (i = start_index; i < numibs; i++) {
-		*cmds++ = CP_HDR_INDIRECT_BUFFER_PFD;
+
+		/*
+		 * Skip 0 sized IBs - these are presumed to have been removed
+		 * from consideration by the FT policy
+		 */
+
+		if (ibdesc[i].sizedwords == 0)
+			*cmds++ = cp_nop_packet(2);
+		else
+			*cmds++ = CP_HDR_INDIRECT_BUFFER_PFD;
+
 		*cmds++ = ibdesc[i].gpuaddr;
 		*cmds++ = ibdesc[i].sizedwords;
 	}

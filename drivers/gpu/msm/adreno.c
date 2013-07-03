@@ -112,15 +112,6 @@ static struct adreno_device device_3d0 = {
 	.ib_check_level = 0,
 };
 
-/* This set of registers are used for Hang detection
- * If the values of these registers are same after
- * KGSL_TIMEOUT_PART time, GPU hang is reported in
- * kernel log.
- * *****ALERT******ALERT********ALERT*************
- * Order of registers below is important, registers
- * from LONG_IB_DETECT_REG_INDEX_START to
- * LONG_IB_DETECT_REG_INDEX_END are used in long ib detection.
- */
 #define LONG_IB_DETECT_REG_INDEX_START 1
 #define LONG_IB_DETECT_REG_INDEX_END 5
 

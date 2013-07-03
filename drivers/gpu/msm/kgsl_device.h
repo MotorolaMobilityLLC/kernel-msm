@@ -162,6 +162,9 @@ struct kgsl_event {
  * @context: KGSL context that created the command
  * @timestamp: Timestamp assigned to the command (currently unused)
  * @flags: flags
+ * @priv: Internal flags
+ * @fault_policy: Internal policy describing how to handle this command in case
+ * of a fault
  * @ibcount: Number of IBs in the command list
  * @ibdesc: Pointer to the list of IBs
  * @expires: Point in time when the cmdbatch is considered to be hung
@@ -172,11 +175,18 @@ struct kgsl_cmdbatch {
 	struct kgsl_context *context;
 	uint32_t timestamp;
 	uint32_t flags;
+	uint32_t priv;
+	uint32_t fault_policy;
 	uint32_t ibcount;
 	struct kgsl_ibdesc *ibdesc;
 	unsigned long expires;
 	int invalid;
 };
+
+/* Internal cmdbatch flags */
+
+#define CMDBATCH_FLAG_SKIP BIT(0)
+#define CMDBATCH_FLAG_FORCE_PREAMBLE BIT(1)
 
 struct kgsl_device {
 	struct device *dev;
