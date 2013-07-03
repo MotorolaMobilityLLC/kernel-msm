@@ -519,8 +519,8 @@ void hddDevTmLevelChangedHandler(struct device *dev, int changedTmLevel)
       return;
    }
 
-   if (changedTmLevel != WLAN_HDD_TM_LEVEL_4)
-      sme_SetTmLevel(pHddCtx->hHal, changedTmLevel, 0);
+   if (newTmLevel != WLAN_HDD_TM_LEVEL_4)
+      sme_SetTmLevel(pHddCtx->hHal, newTmLevel, 0);
 
    if (mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
    {
@@ -529,7 +529,7 @@ void hddDevTmLevelChangedHandler(struct device *dev, int changedTmLevel)
       return;
    }
 
-   pHddCtx->tmInfo.currentTmLevel = changedTmLevel;
+   pHddCtx->tmInfo.currentTmLevel = newTmLevel;
    pHddCtx->tmInfo.txFrameCount = 0;
    vos_mem_copy(&pHddCtx->tmInfo.tmAction,
                 &thermalMigrationAction[newTmLevel],
