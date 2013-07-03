@@ -99,6 +99,8 @@
 
 #define GET_TIM_WAIT_COUNT(LIntrvl)        ((LIntrvl * LIM_TIM_WAIT_COUNT_FACTOR) > LIM_MIN_TIM_WAIT_COUNT ? \
                                                                     (LIntrvl * LIM_TIM_WAIT_COUNT_FACTOR) : LIM_MIN_TIM_WAIT_COUNT)
+#define IS_5G_BAND(__rfBand)     ((__rfBand & 0x3) == 0x2)
+#define IS_24G_BAND(__rfBand)    ((__rfBand & 0x3) == 0x1)
 
 // enums exported by LIM are as follows
 
