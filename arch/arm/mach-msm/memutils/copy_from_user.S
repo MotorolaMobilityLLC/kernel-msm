@@ -69,9 +69,22 @@
 	.endm
 
 	.macro ldstr8w ptrl ptrw reg1 reg2 reg3 reg4 reg5 reg6 reg7 reg8 abort
-	ldr4w \ptrl, \reg1, \reg2, \reg3, \reg4, \abort
-	ldr4w \ptrl, \reg5, \reg6, \reg7, \reg8, \abort
-	stmia \ptrw!, {\reg1, \reg2, \reg3, \reg4, \reg5, \reg6, \reg7, \reg8}
+	ldr1w \ptrl, \reg1, \abort
+	str1w \ptrw, \reg1, \abort
+	ldr1w \ptrl, \reg2, \abort
+	str1w \ptrw, \reg2, \abort
+	ldr1w \ptrl, \reg3, \abort
+	str1w \ptrw, \reg3, \abort
+	ldr1w \ptrl, \reg4, \abort
+	str1w \ptrw, \reg4, \abort
+	ldr1w \ptrl, \reg5, \abort
+	str1w \ptrw, \reg5, \abort
+	ldr1w \ptrl, \reg6, \abort
+	str1w \ptrw, \reg6, \abort
+	ldr1w \ptrl, \reg7, \abort
+	str1w \ptrw, \reg7, \abort
+	ldr1w \ptrl, \reg8, \abort
+	str1w \ptrw, \reg8, \abort
 	.endm
 
 	.macro str1b ptr reg cond=al abort
