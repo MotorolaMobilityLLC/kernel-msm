@@ -99,6 +99,10 @@
 			avago,vddio_i2c-supply = <&pm8941_lvs1>;
 			avago,irq-gpio = <&msmgpio 61 0x00>;
 			avago,i2c-pull-up = <1>;
+			avago,ps_threshold = <250>;
+			avago,ps_hysteresis_threshold = <150>;
+			avago,ps_pulse = <10>;
+			avago,ps_pgain = <0x08>;
 		};
 	};
 };
