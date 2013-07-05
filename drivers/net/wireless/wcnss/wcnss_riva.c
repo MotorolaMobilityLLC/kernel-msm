@@ -106,15 +106,12 @@ static int configure_iris_xo(struct device *dev, bool use_48mhz_xo, int on)
 			goto fail;
 		}
 		/* NV bit is set to indicate that platform driver is capable
-		 * of doing NV download. SSR should not set NV bit; during
-		 * SSR NV bin is downloaded by WLAN drive.
+		 * of doing NV download.
 		 */
-		if (!wcnss_cold_boot_done()) {
-			pr_debug("wcnss: Indicate NV bin download\n");
-			reg = readl_relaxed(RIVA_SPARE_OUT);
-			reg |= NVBIN_DLND_BIT;
-			writel_relaxed(reg, RIVA_SPARE_OUT);
-		}
+		pr_debug("wcnss: Indicate NV bin download\n");
+		reg = readl_relaxed(RIVA_SPARE_OUT);
+		reg |= NVBIN_DLND_BIT;
+		writel_relaxed(reg, RIVA_SPARE_OUT);
 
 		writel_relaxed(0, RIVA_PMU_CFG);
 		reg = readl_relaxed(RIVA_PMU_CFG);
