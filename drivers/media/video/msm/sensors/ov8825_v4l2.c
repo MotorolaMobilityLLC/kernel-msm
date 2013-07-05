@@ -1084,11 +1084,12 @@ uint16_t ov8825_update_otp(struct msm_sensor_ctrl_t *s_ctrl)
 static int32_t ov8825_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
-	uint32_t fl_lines, offset;
+	uint32_t offset;
 	uint8_t int_time[3];
-
-	fl_lines =
-		(s_ctrl->curr_frame_length_lines * s_ctrl->fps_divider) / Q10;
+	uint32_t fl_lines = s_ctrl->curr_frame_length_lines;
+	if(s_ctrl->curr_res < MSM_SENSOR_RES_2)
+		fl_lines =
+			(s_ctrl->curr_frame_length_lines * s_ctrl->fps_divider) / Q10;
 	offset = s_ctrl->sensor_exp_gain_info->vert_offset;
 	if (line > (fl_lines - offset))
 		fl_lines = line + offset;
