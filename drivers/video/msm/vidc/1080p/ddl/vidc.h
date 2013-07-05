@@ -429,6 +429,23 @@ struct vidc_1080p_enc_slice_batch_out_param {
 	struct vidc_1080p_enc_slice_info slice_info
 		[VIDC_1080P_SLICE_BATCH_MAX_STRM_BFR];
 };
+
+struct vidc_1080P_axi_ctrl {
+	u32 axi_halt_req;
+	u32 axi_reset;
+	u32 axi_halt_on_readerror;
+	u32 axi_halt_on_writeerror;
+	u32 axi_halt_on_watchdog_timeout;
+	u32 axi_watchdog_timeout_value;
+	u32 axi_interrupt_clr;
+};
+struct vidc_1080P_axi_status {
+	u32 axi_halt_ack;
+	u32 axi_idle;
+	u32 axi_error_interrupt;
+	u32 axi_watchdog_error_interrupt;
+};
+
 struct vidc_1080p_dec_disp_info{
 	u32 disp_resl_change;
 	u32 dec_resl_change;
@@ -473,6 +490,12 @@ void vidc_1080p_get_risc2host_cmd(u32 *pn_risc2host_command,
 	u32 *pn_risc2host_arg3, u32 *pn_risc2host_arg4);
 void vidc_1080p_get_risc2host_cmd_status(u32 err_status,
 	u32 *dec_err_status, u32 *disp_err_status);
+void vidc_1080p_get_mgen2maxi_ctrl(struct vidc_1080P_axi_ctrl *ctrl);
+void vidc_1080p_set_mgen2maxi_ctrl(struct vidc_1080P_axi_ctrl *ctrl);
+void vidc_1080p_get_mgenaxi_error_info(u32 *axi_error_info_a,
+	u32 *axi_error_info_b);
+void vidc_1080p_get_mgen2axi_status(struct vidc_1080P_axi_status *axi_a_status,
+	struct vidc_1080P_axi_status *axi_b_status);
 void vidc_1080p_clear_risc2host_cmd(void);
 void vidc_1080p_get_fw_version(u32 *pn_fw_version);
 void vidc_1080p_get_fw_status(u32 *pn_fw_status);
