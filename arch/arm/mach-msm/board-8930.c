@@ -2980,7 +2980,12 @@ static void __init msm8930_cdp_init(void)
 		BUG_ON(msm_rpmrs_levels_init(&msm_rpmrs_data_pm8917));
 	}
 
-	if (machine_is_msm8930_evt())
+	/*
+	 * Configure LDO L17 as away on only for EVT1,
+	 * because it is the power source for a set of
+	 * MSM gpios on 8930 SGLTE EVT1.
+	 */
+	if (machine_is_msm8930_evt() && major_ver == 1 && minor_ver == 0)
 		configure_8930_sglte_regulator();
 
 	regulator_suppress_info_printing();
