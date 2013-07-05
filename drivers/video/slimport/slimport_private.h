@@ -27,18 +27,18 @@
 #define AUX_ERR  1
 #define AUX_OK   0
 
-extern unchar sp_tx_hw_lt_done;
+extern bool sp_tx_hw_lt_done;
 extern bool sp_tx_hw_lt_enable;
-extern unchar sp_tx_link_config_done ;
+extern bool sp_tx_link_config_done;
 extern enum SP_TX_System_State sp_tx_system_state;
 extern enum RX_CBL_TYPE sp_tx_rx_type;
 extern enum RX_CBL_TYPE  sp_tx_rx_type_backup;
 extern unchar sp_tx_pd_mode;
 extern unchar bedid_break;
+extern unchar sp_tx_hw_hdcp_en;
 
 int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf);
 int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value);
 void sp_tx_hardware_poweron(void);
 void sp_tx_hardware_powerdown(void);
-
 #endif

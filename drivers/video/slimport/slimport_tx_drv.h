@@ -18,10 +18,10 @@
 #define FALSE 0
 #define TRUE 1
 
-#define MAX_BUF_CNT 10
+#define MAX_BUF_CNT 16
 #define VID_DVI_MODE 0x00
 #define VID_HDMI_MODE 0x01
-#define VIDEO_STABLE_TH 3
+#define VIDEO_STABLE_TH 2
 #define AUDIO_STABLE_TH 1
 #define SCDT_EXPIRE_TH 10
 #define SP_TX_HDCP_FAIL_TH 10
@@ -29,6 +29,7 @@
 
 extern unchar bedid_extblock[128];
 extern unchar bedid_firstblock[128];
+extern unchar slimport_link_bw;
 
 enum SP_TX_System_State {
 	STATE_INIT = 1,
@@ -66,7 +67,6 @@ enum SP_TX_POWER_BLOCK {
 };
 
 enum SP_TX_SEND_MSG {
-	MSG_OCM_EN,
 	MSG_INPUT_HDMI,
 	MSG_INPUT_DVI,
 	MSG_CLEAR_IRQ,
@@ -115,15 +115,17 @@ enum SP_LINK_BW {
 };
 
 enum RX_CBL_TYPE {
+	RX_NULL = 0x00,
 	RX_HDMI = 0x01,
 	RX_DP = 0x02,
-	RX_VGA = 0x03,
-	RX_NULL = 0x00
+	RX_VGA_GEN = 0x03,
+	RX_VGA_9832 = 0x04,
 };
 
 void sp_tx_variable_init(void);
 void sp_tx_initialization(void);
 void sp_tx_show_infomation(void);
+void hdmi_rx_show_video_info(void);
 void sp_tx_power_down(enum SP_TX_POWER_BLOCK sp_tx_pd_block);
 void sp_tx_power_on(enum SP_TX_POWER_BLOCK sp_tx_pd_block);
 void sp_tx_avi_setup(void);
@@ -136,21 +138,27 @@ void sp_tx_config_packets(enum PACKETS_TYPE bType);
 unchar sp_tx_hw_link_training(void);
 unchar sp_tx_lt_pre_config(void);
 void sp_tx_video_mute(unchar enable);
+void sp_tx_aux_polling_enable(bool benable);
 void sp_tx_set_colorspace(void);
-void sp_tx_set_3d_packets(void);
 void sp_tx_int_irq_handler(void);
 void sp_tx_send_message(enum SP_TX_SEND_MSG message);
 void sp_tx_hdcp_process(void);
 void sp_tx_set_sys_state(enum SP_TX_System_State ss);
-unchar sp_tx_get_cable_type(void);
+unchar sp_tx_get_cable_type(bool bdelay);
 bool sp_tx_get_dp_connection(void);
 bool sp_tx_get_hdmi_connection(void);
 bool sp_tx_get_vga_connection(void);
+unchar sp_tx_get_downstream_type(void);
+unchar sp_tx_get_downstream_connection(enum RX_CBL_TYPE cabletype);
 void sp_tx_edid_read(void);
 uint sp_tx_link_err_check(void);
 void sp_tx_eye_diagram_test(void);
 void sp_tx_phy_auto_test(void);
 void sp_tx_enable_video_input(unchar enable);
+unchar sp_tx_aux_dpcdwrite_bytes(unchar addrh, unchar addrm,
+	unchar addrl, unchar cCount, unchar *pBuf);
+unchar sp_tx_aux_dpcdread_bytes(unchar addrh, unchar addrm,
+	unchar addrl, unchar cCount, unchar *pBuf);
 
 /* ***************************************************************** */
 

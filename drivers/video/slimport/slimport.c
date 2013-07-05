@@ -58,38 +58,7 @@ static bool hdcp_enable = 1;
 static bool hdcp_enable;
 #endif
 
-static unchar slimport_link_bw;
 
-bool slimport_is_connected(void)
-{
-	bool result = false;
-
-	if (!the_chip)
-		return false;
-
-	if (gpio_get_value_cansleep(the_chip->gpio_cbl_det)) {
-		mdelay(10);
-		if (gpio_get_value_cansleep(the_chip->gpio_cbl_det)) {
-			pr_info("slimport cable is detected\n");
-			result = true;
-		}
-	}
-
-	return result;
-}
-EXPORT_SYMBOL(slimport_is_connected);
-
-unchar sp_get_link_bw(void)
-{
-	return slimport_link_bw;
-}
-EXPORT_SYMBOL(sp_get_link_bw);
-
-void sp_set_link_bw(unchar link_bw)
-{
-	slimport_link_bw = link_bw;
-}
-EXPORT_SYMBOL(sp_set_link_bw);
 
 static int anx7808_avdd_3p3_power(struct anx7808_data *chip, int on)
 {
@@ -245,20 +214,6 @@ void sp_tx_hardware_powerdown(void)
 	pr_info("anx7808 power down\n");
 }
 
-int slimport_read_edid_block(int block, uint8_t *edid_buf)
-{
-	if (block == 0) {
-		memcpy(edid_buf, bedid_firstblock, sizeof(bedid_firstblock));
-	} else if (block == 1) {
-		memcpy(edid_buf, bedid_extblock, sizeof(bedid_extblock));
-	} else {
-		pr_err("block number %d is invalid\n", block);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL(slimport_read_edid_block);
 
 static void sp_tx_power_down_and_init(void)
 {
@@ -294,8 +249,7 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 				hdmi_rx_initialization();
 				sp_tx_initialization();
 				sp_tx_vbus_poweron();
-				msleep(200);
-				if (!sp_tx_get_cable_type()) {
+				if (!sp_tx_get_cable_type(1)) {
 					pr_err("AUX ERR\n");
 					sp_tx_power_down_and_init();
 					return;
@@ -312,7 +266,11 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 				if (sp_tx_get_dp_connection())
 					sp_tx_set_sys_state(STATE_PARSE_EDID);
 				break;
-			case RX_VGA:
+			case RX_VGA_GEN:
+				if (sp_tx_get_vga_connection())
+					sp_tx_set_sys_state(STATE_PARSE_EDID);
+				break;
+			case RX_VGA_9832:
 				if (sp_tx_get_vga_connection()) {
 					sp_tx_send_message(MSG_CLEAR_IRQ);
 					sp_tx_set_sys_state(STATE_PARSE_EDID);
@@ -323,22 +281,75 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 				break;
 			}
 		}
-	} else { /* dettach cable */
-		if (sp_tx_pd_mode == 0)
+	} else if (sp_tx_pd_mode == 0) {
 			sp_tx_power_down_and_init();
 	}
 }
 
 static void slimport_edid_proc(void)
 {
+	sp_tx_aux_polling_enable(0);
 	sp_tx_edid_read();
 
 	if (bedid_break)
 		pr_err("EDID corruption!\n");
+	sp_tx_aux_polling_enable(1);
 	hdmi_rx_set_hpd(1);
 	hdmi_rx_set_termination(1);
-	sp_tx_set_sys_state(STATE_CONFIG_HDMI);
+	sp_tx_set_sys_state(STATE_LINK_TRAINING);
 }
+
+int slimport_read_edid_block(int block, uint8_t *edid_buf)
+{
+	if (block == 0) {
+		memcpy(edid_buf, bedid_firstblock, sizeof(bedid_firstblock));
+	} else if (block == 1) {
+		memcpy(edid_buf, bedid_extblock, sizeof(bedid_extblock));
+	} else {
+		pr_err("%s: block number %d is invalid\n", __func__, block);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(slimport_read_edid_block);
+
+unchar sp_get_link_bw(void)
+{
+	return slimport_link_bw;
+}
+EXPORT_SYMBOL(sp_get_link_bw);
+
+void sp_set_link_bw(unchar link_bw)
+{
+	slimport_link_bw = link_bw;
+}
+EXPORT_SYMBOL(sp_set_link_bw);
+
+enum RX_CBL_TYPE sp_get_ds_cable_type(void)
+{
+	return sp_tx_rx_type;
+}
+EXPORT_SYMBOL(sp_get_ds_cable_type);
+
+bool slimport_is_connected(void)
+{
+	bool result = false;
+
+	if (!the_chip)
+		return false;
+
+	if (gpio_get_value_cansleep(the_chip->gpio_cbl_det)) {
+		mdelay(10);
+		if (gpio_get_value_cansleep(the_chip->gpio_cbl_det)) {
+			pr_info("slimport cable is detected\n");
+			result = true;
+		}
+	}
+
+	return result;
+}
+EXPORT_SYMBOL(slimport_is_connected);
 
 static void slimport_config_output(void)
 {
@@ -382,14 +393,12 @@ static void slimport_main_proc(struct anx7808_data *anx7808)
 		slimport_config_output();
 
 	if (sp_tx_system_state == STATE_HDCP_AUTH) {
-		if (hdcp_enable &&
-			((sp_tx_rx_type == RX_HDMI) ||
-			( sp_tx_rx_type == RX_VGA) ||
-			( sp_tx_rx_type == RX_DP))) {
+		if (hdcp_enable) {
 			sp_tx_hdcp_process();
 		} else {
 			sp_tx_power_down(SP_TX_PWR_HDCP);
 			sp_tx_video_mute(0);
+			hdmi_rx_show_video_info();
 			sp_tx_show_infomation();
 			sp_tx_set_sys_state(STATE_PLAY_BACK);
 		}
@@ -491,6 +500,7 @@ static int anx7808_system_init(void)
 static irqreturn_t anx7808_cbl_det_isr(int irq, void *data)
 {
 	struct anx7808_data *anx7808 = data;
+	int status;
 
 	if (gpio_get_value(anx7808->gpio_cbl_det)) {
 		wake_lock(&anx7808->slimport_lock);
@@ -498,7 +508,9 @@ static irqreturn_t anx7808_cbl_det_isr(int irq, void *data)
 		queue_delayed_work(anx7808->workqueue, &anx7808->work, 0);
 	} else {
 		pr_info("detect cable removal\n");
-		cancel_delayed_work_sync(&anx7808->work);
+		status = cancel_delayed_work_sync(&anx7808->work);
+		if (status == 0)
+			flush_workqueue(anx7808->workqueue);
 		wake_unlock(&anx7808->slimport_lock);
 		wake_lock_timeout(&anx7808->slimport_lock, 2*HZ);
 	}
@@ -754,4 +766,4 @@ module_exit(anx7808_exit);
 MODULE_DESCRIPTION("Slimport  transmitter ANX7808 driver");
 MODULE_AUTHOR("ChoongRyeol Lee <choongryeol.lee@lge.com>");
 MODULE_LICENSE("GPL");
-MODULE_VERSION("0.3");
+MODULE_VERSION("0.4");
