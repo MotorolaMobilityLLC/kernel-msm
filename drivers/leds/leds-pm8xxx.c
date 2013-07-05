@@ -144,6 +144,10 @@
 			_rgb_led_blue << PM8XXX_ID_RGB_LED_BLUE, \
 	}
 
+#define PM8XXX_PWM_CURRENT_4MA		4
+#define PM8XXX_PWM_CURRENT_8MA		8
+#define PM8XXX_PWM_CURRENT_12MA		12
+
 /**
  * supported_leds - leds supported for each PMIC version
  * @version - version of PMIC
@@ -445,6 +449,7 @@ static int pm8xxx_led_pwm_pattern_update(struct pm8xxx_led_data * led)
 	int temp = 0;
 	int pwm_max = 0;
 	int total_ms, on_ms;
+	int flags;
 
 	if (!led->pwm_duty_cycles || !led->pwm_duty_cycles->duty_pcts) {
 		dev_err(led->cdev.dev, "duty_cycles and duty_pcts is not exist\n");
@@ -498,11 +503,27 @@ static int pm8xxx_led_pwm_pattern_update(struct pm8xxx_led_data * led)
 		return -EINVAL;
 	}
 
+	flags = PM8XXX_LED_PWM_FLAGS;
+	switch (led->max_current) {
+	case PM8XXX_PWM_CURRENT_4MA:
+		flags |= PM_PWM_BANK_LO;
+		break;
+	case PM8XXX_PWM_CURRENT_8MA:
+		flags |= PM_PWM_BANK_HI;
+		break;
+	case PM8XXX_PWM_CURRENT_12MA:
+		flags |= (PM_PWM_BANK_LO | PM_PWM_BANK_HI);
+		break;
+	default:
+		flags |= (PM_PWM_BANK_LO | PM_PWM_BANK_HI);
+		break;
+	}
+
 	rc = pm8xxx_pwm_lut_config(led->pwm_dev, led->pwm_period_us,
 			led->pwm_duty_cycles->duty_pcts,
 			led->pwm_duty_cycles->duty_ms,
 			start_idx, idx_len, led->pwm_pause_lo, led->pwm_pause_hi,
-			PM8XXX_LED_PWM_FLAGS);
+			flags);
 
 	return rc;
 }
