@@ -5853,6 +5853,14 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 	struct vfe_cmd_stats_buf *scfg = NULL;
 	struct vfe_cmd_stats_ack *sack = NULL;
 
+	CDBG("%s\n", __func__);
+	if (subdev_cmd == VIDIOC_MSM_VFE_INIT) {
+		CDBG("%s init\n", __func__);
+		return msm_vfe_subdev_init(sd);
+	} else if (subdev_cmd == VIDIOC_MSM_VFE_RELEASE) {
+		msm_vfe_subdev_release(sd);
+		return 0;
+	}
 	if (!vfe32_ctrl->share_ctrl->vfebase) {
 		if (arg) {
 			vfe_params = (struct msm_camvfe_params *)arg;
@@ -5867,14 +5875,6 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 			}
 		} else
 			return -EFAULT;
-	}
-	CDBG("%s\n", __func__);
-	if (subdev_cmd == VIDIOC_MSM_VFE_INIT) {
-		CDBG("%s init\n", __func__);
-		return msm_vfe_subdev_init(sd);
-	} else if (subdev_cmd == VIDIOC_MSM_VFE_RELEASE) {
-		msm_vfe_subdev_release(sd);
-		return 0;
 	}
 	vfe_params = (struct msm_camvfe_params *)arg;
 	if (vfe_params) {
