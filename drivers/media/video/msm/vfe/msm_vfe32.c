@@ -6130,6 +6130,11 @@ int msm_axi_subdev_init(struct v4l2_subdev *sd,
 		goto clk_enable_failed;
 
 #ifdef CONFIG_MSM_IOMMU
+	if (mctl->domain == NULL) {
+		pr_err("%s: iommu domain not initialized\n", __func__);
+		rc = -EINVAL;
+		goto device_imgwr_attach_failed;
+	}
 	rc = iommu_attach_device(mctl->domain, axi_ctrl->iommu_ctx_imgwr);
 	if (rc < 0) {
 		pr_err("%s: imgwr attach failed rc = %d\n", __func__, rc);
