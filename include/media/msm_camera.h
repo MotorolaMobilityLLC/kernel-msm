@@ -570,6 +570,7 @@ struct msm_camera_cfg_cmd {
 #define CMD_AXI_STOP   0xE2
 #define CMD_AXI_RESET  0xE3
 #define CMD_AXI_ABORT  0xE4
+#define CMD_AXI_STOP_RECOVERY  0xE5
 
 
 
