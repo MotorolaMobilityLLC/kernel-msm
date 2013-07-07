@@ -121,7 +121,6 @@ void __limProcessSmeAssocCnfNew(tpAniSirGlobal, tANI_U32, tANI_U32 *);
 
 extern void peRegisterTLHandle(tpAniSirGlobal pMac);
 
-extern int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg);
 
 #ifdef BACKGROUND_SCAN_ENABLED
 
@@ -5257,12 +5256,13 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 {
     tANI_BOOLEAN bufConsumed = TRUE; //Set this flag to false within case block of any following message, that doesnt want pMsgBuf to be freed.
     tANI_U32 *pMsgBuf = pMsg->bodyptr;
-
+    tpSirSmeScanReq     pScanReq;
     PELOG1(limLog(pMac, LOG1, FL("LIM Received SME Message %s(%d) Global LimSmeState:%s(%d) Global LimMlmState: %s(%d)"),
          limMsgStr(pMsg->type), pMsg->type,
          limSmeStateStr(pMac->lim.gLimSmeState), pMac->lim.gLimSmeState,
          limMlmStateStr(pMac->lim.gLimMlmState), pMac->lim.gLimMlmState );)
 
+    pScanReq = (tpSirSmeScanReq) pMsgBuf;
     /* Special handling of some SME Req msgs where we have an existing GO session and
      * want to insert NOA before processing those msgs. These msgs will be processed later when
      * start event happens
@@ -5270,8 +5270,42 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     switch (pMsg->type)
     {
         case eWNI_SME_SCAN_REQ:
-        case eWNI_SME_OEM_DATA_REQ:
         case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
+
+            /* If scan is disabled return from here
+             */
+            if (pMac->lim.fScanDisabled)
+            {
+                PELOGE(limLog(pMac, LOGE, FL("Error: Scan Disabled"));)
+                if (pMsg->type == eWNI_SME_SCAN_REQ)
+                {
+                   limSendSmeScanRsp(pMac,
+                                     offsetof(tSirSmeScanRsp,bssDescription[0]),
+                                     eSIR_SME_INVALID_PARAMETERS,
+                                     pScanReq->sessionId,
+                                     pScanReq->transactionId);
+
+                   bufConsumed = TRUE;
+                }
+                else if (pMsg->type == eWNI_SME_REMAIN_ON_CHANNEL_REQ)
+                {
+                    pMac->lim.gpDefdSmeMsgForNOA = NULL;
+                    pMac->lim.gpLimRemainOnChanReq = (tpSirRemainOnChnReq )pMsgBuf;
+                    limRemainOnChnRsp(pMac,eHAL_STATUS_FAILURE, NULL);
+
+                    /*
+                     * limRemainOnChnRsp will free the buffer this change is to
+                     * avoid "double free"
+                     */
+                    bufConsumed = FALSE;
+                }
+
+                return bufConsumed;
+            }
+            /*
+             * Do not add BREAK here
+             */
+        case eWNI_SME_OEM_DATA_REQ:
         case eWNI_SME_JOIN_REQ:
             /* If we have an existing P2P GO session we need to insert NOA before actually process this SME Req */
             if ((limIsNOAInsertReqd(pMac) == TRUE) && IS_FEATURE_SUPPORTED_BY_FW(P2P_GO_NOA_DECOUPLE_INIT_SCAN))
