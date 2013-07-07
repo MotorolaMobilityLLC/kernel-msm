@@ -2927,12 +2927,12 @@ tANI_BOOLEAN limCheckDisassocDeauthAckPending(tpAniSirGlobal pMac,
                               sizeof(tSirMacAddr))))
        )
     {
-        PELOGE(limLog(pMac, LOGE,FL("Disassoc/Deauth ack pending"));)
+        PELOG1(limLog(pMac, LOG1, FL("Disassoc/Deauth ack pending"));)
         return eANI_BOOLEAN_TRUE;
     }
      else
      {
-        PELOGE(limLog(pMac, LOGE,FL("Disassoc/Deauth Ack not pending"));)
+        PELOG1(limLog(pMac, LOG1, FL("Disassoc/Deauth Ack not pending"));)
         return eANI_BOOLEAN_FALSE;
      }
 }
