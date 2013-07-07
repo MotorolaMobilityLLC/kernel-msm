@@ -1644,6 +1644,15 @@ typedef enum
     HAL_MAX_CONCURRENCY_PERSONA=4
 } tHalConcurrencyMode;
 
+// IFACE PERSONA for different Operating modes
+typedef enum
+{
+    HAL_IFACE_UNKNOWN,
+    HAL_IFACE_STA_MODE,
+    HAL_IFACE_P2P_MODE,
+    HAL_IFACE_MAX
+} tHalIfacePersona;
+
 typedef PACKED_PRE struct PACKED_POST
 {
     /* BSSID */
@@ -4563,11 +4572,20 @@ typedef PACKED_PRE struct PACKED_POST
   tANI_U32    status;
 }tAddStaSelfParams, *tpAddStaSelfParams;
 
+typedef PACKED_PRE struct PACKED_POST
+{
+  tSirMacAddr selfMacAddr;
+  tANI_U32    status;
+  tHalIfacePersona iface_persona;
+}tAddStaSelfParams_V1, *tpAddStaSelfParams_V1;
 
 typedef PACKED_PRE struct PACKED_POST
 {
     tHalMsgHeader header;
+    PACKED_PRE union PACKED_POST {
     tAddStaSelfParams addStaSelfParams;
+    tAddStaSelfParams_V1 addStaSelfParams_V1;
+    }uAddStaSelfParams;
 }tAddStaSelfReq, *tpAddStaSelfReq;
 
 /*---------------------------------------------------------------------------

@@ -424,7 +424,8 @@ VOS_STATUS hdd_exit_deep_sleep(hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter)
 
    //Open a SME session for future operation
    halStatus = sme_OpenSession( pHddCtx->hHal, hdd_smeRoamCallback, pHddCtx,
-                                (tANI_U8 *)&pAdapter->macAddressCurrent, &pAdapter->sessionId );
+                                (tANI_U8 *)&pAdapter->macAddressCurrent,
+                                &pAdapter->sessionId);
    if ( !HAL_STATUS_SUCCESS( halStatus ) )
    {
       hddLog(VOS_TRACE_LEVEL_FATAL,"sme_OpenSession() failed with status code %08d [x%08lx]",

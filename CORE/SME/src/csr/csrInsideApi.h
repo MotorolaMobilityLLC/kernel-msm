@@ -410,8 +410,10 @@ eHalStatus csrScanGetSupportedChannels( tpAniSirGlobal pMac );
 //pIes cannot be NULL
 tANI_BOOLEAN csrMatchCountryCode( tpAniSirGlobal pMac, tANI_U8 *pCountry, tDot11fBeaconIEs *pIes );
 eHalStatus csrRoamSetKey( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamSetKey *pSetKey, tANI_U32 roamId );
-eHalStatus csrRoamOpenSession( tpAniSirGlobal pMac, csrRoamCompleteCallback callback, void *pContext,
-                          tANI_U8 *pSelfMacAddr, tANI_U8 *pbSessionId );
+eHalStatus csrRoamOpenSession(tpAniSirGlobal pMac,
+                              csrRoamCompleteCallback callback,
+                              void *pContext, tANI_U8 *pSelfMacAddr,
+                              tANI_U8 *pbSessionId);
 //fSync: TRUE means cleanupneeds to handle synchronously.
 eHalStatus csrRoamCloseSession( tpAniSirGlobal pMac, tANI_U32 sessionId,
                                 tANI_BOOLEAN fSync, 
