@@ -4941,15 +4941,17 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
          * by either hdd_AssociationCompletionHandler() or hdd_DisConnectHandler() in sme_RoamCallback()
          * if sme_RomConnect is to be queued, Connecting state will remain until it is completed.
          */
-        if (WLAN_HDD_INFRA_STATION == pAdapter->device_mode)
+        if (WLAN_HDD_INFRA_STATION == pAdapter->device_mode ||
+            WLAN_HDD_P2P_CLIENT == pAdapter->device_mode)
             hdd_connSetConnectionState(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
                                                  eConnectionState_Connecting);
 
         status = sme_RoamConnect( WLAN_HDD_GET_HAL_CTX(pAdapter),
                             pAdapter->sessionId, pRoamProfile, &roamId);
 
-        if( (eHAL_STATUS_SUCCESS != status) &&
-            (WLAN_HDD_INFRA_STATION == pAdapter->device_mode) )
+        if ((eHAL_STATUS_SUCCESS != status) &&
+            (WLAN_HDD_INFRA_STATION == pAdapter->device_mode ||
+             WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
 
         {
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s: sme_RoamConnect (session %d) failed with "
