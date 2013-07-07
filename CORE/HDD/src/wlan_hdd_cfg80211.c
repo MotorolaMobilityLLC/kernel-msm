@@ -7657,66 +7657,23 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                     wlan_hdd_tdls_check_bmps(pAdapter);
 
                     /* Update TL about the UAPSD masks , to route the packets to firmware */
-                    if ( TRUE == pHddCtx->cfg_ini->fEnableTDLSBufferSta &&
-                        pHddCtx->cfg_ini->fTDLSUapsdMask & HDD_AC_VO )
+                    if ((TRUE == pHddCtx->cfg_ini->fEnableTDLSBufferSta)
+                        || pHddCtx->cfg_ini->fTDLSUapsdMask )
                     {
-                        status = WLANTL_EnableUAPSDForAC( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
-                                                          pTdlsPeer->staId,
-                                                          WLANTL_AC_VO,
-                                                          7,
-                                                          7,
-                                                          0,
-                                                          0,
-                                                          WLANTL_BI_DIR );
-
-                        VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status ));
+                        int ac;
+                        uint8 ucAc[4] = { WLANTL_AC_VO,
+                                          WLANTL_AC_VI,
+                                          WLANTL_AC_BK,
+                                          WLANTL_AC_BE };
+                        uint8 tlTid[4] = { 7, 5, 2, 3 } ;
+                        for(ac=0; ac < 4; ac++)
+                        {
+                            status = WLANTL_EnableUAPSDForAC( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
+                                                               pTdlsPeer->staId, ucAc[ac],
+                                                               tlTid[ac], tlTid[ac], 0, 0,
+                                                               WLANTL_BI_DIR );
+                        }
                     }
-
-                    if ( TRUE == pHddCtx->cfg_ini->fEnableTDLSBufferSta &&
-                        pHddCtx->cfg_ini->fTDLSUapsdMask & HDD_AC_VI )
-                    {
-                       status = WLANTL_EnableUAPSDForAC( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
-                                                         pTdlsPeer->staId,
-                                                         WLANTL_AC_VI,
-                                                         5,
-                                                         5,
-                                                         0,
-                                                         0,
-                                                         WLANTL_BI_DIR );
-
-                       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status ));
-                    }
-
-                    if ( TRUE == pHddCtx->cfg_ini->fEnableTDLSBufferSta &&
-                        pHddCtx->cfg_ini->fTDLSUapsdMask & HDD_AC_BK )
-                    {
-                       status = WLANTL_EnableUAPSDForAC( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
-                                                         pTdlsPeer->staId,
-                                                         WLANTL_AC_BK,
-                                                         2,
-                                                         2,
-                                                         0,
-                                                         0,
-                                                         WLANTL_BI_DIR );
-
-                       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status ));
-                    }
-
-                    if ( TRUE == pHddCtx->cfg_ini->fEnableTDLSBufferSta &&
-                        pHddCtx->cfg_ini->fTDLSUapsdMask & HDD_AC_BE )
-                    {
-                       status = WLANTL_EnableUAPSDForAC( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
-                                                         pTdlsPeer->staId,
-                                                         WLANTL_AC_BE,
-                                                         3,
-                                                         3,
-                                                         0,
-                                                         0,
-                                                         WLANTL_BI_DIR );
-
-                       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( status ));
-                    }
-
                 }
 
             }
