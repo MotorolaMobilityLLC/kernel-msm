@@ -12,13 +12,13 @@
 
 /dts-v1/;
 
-/include/ "msm8974-v2-2.dtsi"
-/include/ "msm8974-cdp.dtsi"
+/include/ "msm8974-v2.2.dtsi"
+/include/ "msm8974-liquid.dtsi"
 
 / {
-	model = "Qualcomm MSM 8974v2 CDP";
-	compatible = "qcom,msm8974-cdp", "qcom,msm8974", "qcom,cdp";
-	qcom,msm-id = <126 1 0x20002>,
-		      <185 1 0x20002>,
-		      <186 1 0x20002>;
+	model = "Qualcomm MSM 8974v2 LIQUID";
+	compatible = "qcom,msm8974-liquid", "qcom,msm8974", "qcom,liquid";
+	qcom,msm-id = <126 9 0x20002>,
+		      <185 9 0x20002>,
+		      <186 9 0x20002>;
 };

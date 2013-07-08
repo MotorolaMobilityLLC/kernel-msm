@@ -68,6 +68,10 @@ else
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2-mtp.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= apq8074-v2-liquid.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= apq8074-v2-dragonboard.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.2-cdp.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.2-fluid.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.2-liquid.dtb
+        dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.2-mtp.dtb
 endif
 
 # APQ8084
