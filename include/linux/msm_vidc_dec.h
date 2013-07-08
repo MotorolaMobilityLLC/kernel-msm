@@ -223,6 +223,10 @@ struct vdec_ioctl_msg {
 #define VDEC_IOCTL_GET_ENABLE_SEC_METADATA \
 	_IOR(VDEC_IOCTL_MAGIC, 41, struct vdec_ioctl_msg)
 
+/*IOCTL params:GET: InputData - NULL, OutputData - unsigned int.*/
+#define VDEC_IOCTL_GET_PERF_LEVEL \
+	_IOR(VDEC_IOCTL_MAGIC, 42, struct vdec_ioctl_msg)
+
 enum vdec_picture {
 	PICTURE_TYPE_I,
 	PICTURE_TYPE_P,
