@@ -468,6 +468,11 @@ struct venc_ioctl_msg{
 #define VEN_IOCTL_SET_VUI_BITSTREAM_RESTRICT_FLAG \
 	_IO(VEN_IOCTLBASE_ENC, 52)
 
+/*IOCTL params:GET: InputData - NULL, OutputData - unsigned int.*/
+#define VEN_IOCTL_GET_PERF_LEVEL \
+	_IOR(VEN_IOCTLBASE_ENC, 53, struct venc_ioctl_msg)
+
+
 struct venc_switch{
 	unsigned char	status;
 };
