@@ -2022,3 +2022,27 @@ u32 vid_enc_get_recon_buffer_size(struct video_client_ctx *client_ctx,
 			return false;
 		}
 }
+
+u32 vid_enc_get_curr_perf_level(struct video_client_ctx *client_ctx,
+		u32 *curr_perf_level)
+{
+	struct vcd_property_hdr vcd_property_hdr;
+	u32 vcd_status = VCD_ERR_FAIL;
+	u32 curr_perf_lvl = 0;
+
+	if (!client_ctx)
+		return false;
+
+	vcd_property_hdr.prop_id = VCD_I_GET_CURR_PERF_LEVEL;
+	vcd_property_hdr.sz = sizeof(u32);
+	vcd_status = vcd_get_property(client_ctx->vcd_handle,
+					&vcd_property_hdr, &curr_perf_lvl);
+	if (vcd_status) {
+		ERR("VCD_I_GET_PERF_LEVEL failed!!");
+		*curr_perf_level = 0;
+		return false;
+	} else {
+		*curr_perf_level = curr_perf_lvl;
+		return true;
+	}
+}
