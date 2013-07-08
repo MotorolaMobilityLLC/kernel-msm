@@ -1539,8 +1539,10 @@ static int mmc_shutdown(struct mmc_host *host)
 	/* Ignore errors */
 	mmc_cache_ctrl(host, 0);
 
-	if (mmc_can_poweroff_notify(host->card))
+	if (mmc_can_poweroff_notify(host->card)) {
 		err = mmc_poweroff_notify(host->card, EXT_CSD_POWER_OFF_SHORT);
+		mmc_delay(500);
+	}
 	else if (mmc_card_can_sleep(host))
 		err = mmc_card_sleep(host);
 	else if (!mmc_host_is_spi(host))
