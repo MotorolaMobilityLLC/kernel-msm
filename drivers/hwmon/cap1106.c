@@ -72,6 +72,7 @@ static int ac2 = 0; // Accumulated Count Ch2
 static int ac6 = 0; // Accumulated Count Ch6
 static int ac_limit = 10;
 static int force_enable = 0;
+static bool bSkip_Checking = false;
 #if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
 static int rmnet_ctl = 1;
 static int rmnet_if_up = 0;
@@ -364,6 +365,7 @@ static void cap1106_enable_sensor(struct i2c_client *client, int enable)
 		reg_value = cap1106_read_reg(client, 0x00);
 		if (enable) {
 			cap1106_write_reg(client, 0x00, reg_value & 0xCE);
+			bSkip_Checking = false;
 			// Time to first conversion is 200ms (Max)
 			queue_delayed_work(data->cap_wq, &data->work,
 			        msecs_to_jiffies(200));
@@ -372,9 +374,10 @@ static void cap1106_enable_sensor(struct i2c_client *client, int enable)
 			        msecs_to_jiffies(1000));
 		} else {
 			disable_irq(client->irq);
-			cancel_delayed_work_sync(&data->work);
-			cancel_delayed_work_sync(&data->checking_work);
-			flush_workqueue(data->cap_wq);
+			bSkip_Checking = true;  // if checking_work_function is in progress, checking_work_function must skip.
+			//cancel_delayed_work_sync(&data->work);
+			//cancel_delayed_work_sync(&data->checking_work);
+			//flush_workqueue(data->cap_wq);
 			switch_set_state(&cap_sdev, 0);
 			cap1106_write_reg(client, 0x00, reg_value | 0x30);
 		}
@@ -551,8 +554,16 @@ static void cap1106_checking_work_function(struct work_struct *work)
 	struct cap1106_data *data =
 	        container_of((struct delayed_work *)work, struct cap1106_data, checking_work);
 
+	mutex_lock(&cap_mtx);
+	CAP_DEBUG("+\n");
+	if( bSkip_Checking )
+	{
+		// skip this round
+		mutex_unlock(&cap_mtx);
+		return;
+	}
+
 	if (is_wood_sensitivity == 1) {
-		mutex_lock(&cap_mtx);
 		if (data->enable) {
 			status = cap1106_read_reg(data->client, 0x03);
 			dc2 = cap1106_read_reg(data->client, 0x11);
@@ -578,10 +589,10 @@ static void cap1106_checking_work_function(struct work_struct *work)
 				queue_delayed_work(data->cap_wq, &data->work, 0);
 			}
 		}
-		mutex_unlock(&cap_mtx);
 	}
 	queue_delayed_work(data->cap_wq, &data->checking_work,
 	        msecs_to_jiffies(1000));
+	mutex_unlock(&cap_mtx);
 }
 
 static int __devinit cap1106_probe(struct i2c_client *client,
