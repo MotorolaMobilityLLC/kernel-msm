@@ -16,7 +16,7 @@
 #define __SLIMPORT_PRIVATE_H
 
 #define SSC_EN
-/* #define HDCP_EN */
+#define HDCP_EN
 
 #if 0
 #define SSC_1
