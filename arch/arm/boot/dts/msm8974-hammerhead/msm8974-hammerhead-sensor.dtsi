@@ -26,7 +26,7 @@
 		qcom,scl-gpio = <&msmgpio 11 0>;
 		qcom,sda-gpio = <&msmgpio 10 0>;
 		qcom,active-only;
-		qcom,master-id = <84>;
+		qcom,master-id = <86>;
 	};
 
 	i2c@f9968000 {
