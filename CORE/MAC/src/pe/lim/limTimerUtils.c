@@ -1821,47 +1821,48 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
 void
 limHeartBeatDeactivateAndChangeTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
 {
-    tANI_U32    val, val1;
+   tANI_U32    val, val1;
 
-    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
+   MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
-    if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
-       return;
+   if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
+      return;
 #endif
 
-    if (tx_timer_deactivate(&pMac->lim.limTimers.gLimHeartBeatTimer) != TX_SUCCESS)
-        limLog(pMac, LOGP, FL("Fail to deactivate HeartBeatTimer "));
+   if (tx_timer_deactivate(&pMac->lim.limTimers.gLimHeartBeatTimer) != TX_SUCCESS)
+      limLog(pMac, LOGP, FL("Fail to deactivate HeartBeatTimer "));
 
-    /* HB Timer sessionisation: In case of 2 or more sessions, the HB interval keeps
-       changing. to avoid this problem, HeartBeat interval is made constant, by
-       fixing beacon interval to 100ms immaterial of the beacon interval of the session */
+   /* HB Timer sessionisation: In case of 2 or more sessions, the HB interval keeps
+      changing. to avoid this problem, HeartBeat interval is made constant, by
+      fixing beacon interval to 100ms immaterial of the beacon interval of the session */
 
-    //val = psessionEntry->beaconParams.beaconInterval;
-    val = LIM_HB_TIMER_BEACON_INTERVAL;
+   //val = psessionEntry->beaconParams.beaconInterval;
+   val = LIM_HB_TIMER_BEACON_INTERVAL;
 
-    if (wlan_cfgGetInt(pMac, WNI_CFG_HEART_BEAT_THRESHOLD, &val1) != eSIR_SUCCESS)
-        limLog(pMac, LOGP, FL("Fail to get WNI_CFG_HEART_BEAT_THRESHOLD "));
+   if (wlan_cfgGetInt(pMac, WNI_CFG_HEART_BEAT_THRESHOLD, &val1) != eSIR_SUCCESS)
+      limLog(pMac, LOGP, FL("Fail to get WNI_CFG_HEART_BEAT_THRESHOLD "));
 
-    PELOGW(limLog(pMac,LOGW,
-                 FL("HB Timer Int.=100ms * %d, Beacon Int.=%dms,Session Id=%d "),
-                 val1, psessionEntry->beaconParams.beaconInterval,
-                 psessionEntry->peSessionId);)
+   PELOGW(limLog(pMac,LOGW,
+            FL("HB Timer Int.=100ms * %d, Beacon Int.=%dms,Session Id=%d "),
+            val1, psessionEntry->beaconParams.beaconInterval,
+            psessionEntry->peSessionId);)
 
-    /* The HB timer timeout value of 4 seconds (40 beacon intervals) is not enough
-     * to judge the peer device inactivity when 32 peers are connected. Hence
-     * increasing the HB timer timeout to
-     * HBtimeout = (TBTT * num_beacons * num_peers)
-     */
-    if (eSIR_IBSS_MODE == psessionEntry->bssType)
-    {
+   /* The HB timer timeout value of 4 seconds (40 beacon intervals) is not
+    * enough to judge the peer device inactivity when 32 peers are connected.
+    * Hence increasing the HB timer timeout to
+    * HBtimeout = (TBTT * num_beacons * num_peers)
+    */
+   if (eSIR_IBSS_MODE == psessionEntry->bssType &&
+         pMac->lim.gLimNumIbssPeers > 0)
+   {
       val1 = val1 * pMac->lim.gLimNumIbssPeers;
-    }
+   }
 
-    // Change timer to reactivate it in future
-    val = SYS_MS_TO_TICKS(val * val1);
+   // Change timer to reactivate it in future
+   val = SYS_MS_TO_TICKS(val * val1);
 
-    if (tx_timer_change(&pMac->lim.limTimers.gLimHeartBeatTimer, val, 0) != TX_SUCCESS)
-        limLog(pMac, LOGP, FL("Fail to change HeartBeatTimer"));
+   if (tx_timer_change(&pMac->lim.limTimers.gLimHeartBeatTimer, val, 0) != TX_SUCCESS)
+      limLog(pMac, LOGP, FL("Fail to change HeartBeatTimer"));
 
 } /****** end limHeartBeatDeactivateAndChangeTimer() ******/
 

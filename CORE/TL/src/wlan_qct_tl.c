@@ -2390,7 +2390,8 @@ WLANTL_TxBAPFrm
   {
     vosStatus =  WLANTL_Translate8023To80211Header( vosDataBuff, &vosStatus,
                                                     pTLCb, &ucStaId,
-                                                    pMetaInfo->ucUP, &ucWDSEnabled, &extraHeadSpace);
+                                                    pMetaInfo, &ucWDSEnabled,
+                                                    &extraHeadSpace);
 
     if ( VOS_STATUS_SUCCESS != vosStatus )
     {
@@ -6500,7 +6501,8 @@ WLANTL_STATxConn
   {
     vosStatus =  WLANTL_Translate8023To80211Header( vosDataBuff, &vosStatus,
                                                     pTLCb, &ucSTAId,
-                                                    tlMetaInfo.ucUP, &ucWDSEnabled, &extraHeadSpace);
+                                                    &tlMetaInfo, &ucWDSEnabled,
+                                                    &extraHeadSpace);
     if ( VOS_STATUS_SUCCESS != vosStatus )
     {
       TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
@@ -6902,7 +6904,8 @@ WLANTL_STATxAuth
 
        vosStatus =  WLANTL_Translate8023To80211Header( vosDataBuff, &vosStatus,
                                                     pTLCb, &ucSTAId,
-                                                    tlMetaInfo.ucUP, &ucWDSEnabled, &extraHeadSpace);
+                                                    &tlMetaInfo, &ucWDSEnabled,
+                                                    &extraHeadSpace);
        if ( VOS_STATUS_SUCCESS != vosStatus )
        {
           TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
@@ -8694,7 +8697,7 @@ WLANTL_Translate8023To80211Header
   VOS_STATUS*     pvosStatus,
   WLANTL_CbType*  pTLCb,
   v_U8_t          *pucStaId,
-  v_U8_t          ucUP,
+  WLANTL_MetaInfoType *tlMetaInfo,
   v_U8_t          *ucWDSEnabled,
   v_U8_t          *extraHeadSpace
 )
@@ -8879,7 +8882,7 @@ WLANTL_Translate8023To80211Header
   {
       pw80211Header->wFrmCtrl.subType  = WLANTL_80211_DATA_QOS_SUBTYPE;
 
-      *((v_U16_t *)((v_U8_t *)ppvBDHeader + ucQoSOffset)) = ucUP;
+      *((v_U16_t *)((v_U8_t *)ppvBDHeader + ucQoSOffset)) = tlMetaInfo->ucUP;
 
   }
   else
@@ -8894,36 +8897,49 @@ WLANTL_Translate8023To80211Header
 
   switch( pClientSTA->wSTADesc.wSTAType )
   {
-      case WLAN_STA_IBSS:
+     case WLAN_STA_IBSS:
         pw80211Header->wFrmCtrl.toDS          = 0;
         pw80211Header->wFrmCtrl.fromDS        = 0;
-        /*Fix me*/
-        vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA1,
-              &pClientSTA->wSTADesc.vSTAMACAddress);
+
+        /*
+         * If the frame is a multicast frame, then, the Address1
+         * should be the destination address filled in the packet. Which is
+         * the multicast address. Otherwise, set it to BSSID
+         */
+        if (0 == tlMetaInfo->ucBcast && 1 == tlMetaInfo->ucMcast)
+        {
+           vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA1,
+                             (v_MACADDR_t*)&w8023Header.vDA);
+        }
+        else
+        {
+           vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA1,
+                 &pClientSTA->wSTADesc.vSTAMACAddress);
+        }
         vos_mem_copy( pw80211Header->vA3,
               &pClientSTA->wSTADesc.vBSSIDforIBSS ,
               VOS_MAC_ADDR_SIZE);
         break;
 
-      case WLAN_STA_BT_AMP:
+     case WLAN_STA_BT_AMP:
         *ucWDSEnabled = 1; // WDS on.
         pw80211Header->wFrmCtrl.toDS          = 1;
         pw80211Header->wFrmCtrl.fromDS        = 1;
         vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA1,
               &pClientSTA->wSTADesc.vSTAMACAddress);
         vos_mem_copy( pw80211Header->vA2,
-                w8023Header.vSA, VOS_MAC_ADDR_SIZE);
+              w8023Header.vSA, VOS_MAC_ADDR_SIZE);
         vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA3,
               &pClientSTA->wSTADesc.vSTAMACAddress);
         /* fill the optional A4 header */
         vos_mem_copy( pw80211Header->optvA4,
-                w8023Header.vSA, VOS_MAC_ADDR_SIZE);
+              w8023Header.vSA, VOS_MAC_ADDR_SIZE);
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-            "BTAMP CASE NOW ---------staid=%d\n",
-            ucStaId));
+                 "BTAMP CASE NOW ---------staid=%d\n",
+                 ucStaId));
         break;
 
-      case WLAN_STA_SOFTAP:
+     case WLAN_STA_SOFTAP:
         *ucWDSEnabled = 0; // WDS off.
         pw80211Header->wFrmCtrl.toDS          = 0;
         pw80211Header->wFrmCtrl.fromDS        = 1;
@@ -8932,13 +8948,13 @@ WLANTL_Translate8023To80211Header
         vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA2,
               &pClientSTA->wSTADesc.vSelfMACAddress);
         vos_mem_copy( pw80211Header->vA3,
-                w8023Header.vSA, VOS_MAC_ADDR_SIZE);
+              w8023Header.vSA, VOS_MAC_ADDR_SIZE);
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-            "sw 802 to 80211 softap case  ---------staid=%d\n",
-            ucStaId));
+                 "sw 802 to 80211 softap case  ---------staid=%d\n",
+                 ucStaId));
         break;
 #ifdef FEATURE_WLAN_TDLS
-      case WLAN_STA_TDLS:
+     case WLAN_STA_TDLS:
         pw80211Header->wFrmCtrl.toDS          = 0;
         pw80211Header->wFrmCtrl.fromDS        = 0;
         /*Fix me*/
@@ -8948,19 +8964,19 @@ WLANTL_Translate8023To80211Header
               &pClientSTA->wSTADesc.vBSSIDforIBSS ,
               VOS_MAC_ADDR_SIZE);
         VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-            ("TL:TDLS CASE NOW ---------staid=%d\n"), ucStaId);
+              ("TL:TDLS CASE NOW ---------staid=%d\n"), ucStaId);
         break;
 #endif
-      case WLAN_STA_INFRA:
-      default:
+     case WLAN_STA_INFRA:
+     default:
         pw80211Header->wFrmCtrl.toDS          = 1;
         pw80211Header->wFrmCtrl.fromDS        = 0;
         vos_copy_macaddr( (v_MACADDR_t*)&pw80211Header->vA1,
               &pClientSTA->wSTADesc.vSTAMACAddress);
         vos_mem_copy( pw80211Header->vA3, w8023Header.vDA , VOS_MAC_ADDR_SIZE);
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-            "REGULAR INFRA LINK CASE---------staid=%d\n",
-            ucStaId));
+                 "REGULAR INFRA LINK CASE---------staid=%d\n",
+                 ucStaId));
         break;
   }
   // OK now we have the space. Fill the 80211 header
