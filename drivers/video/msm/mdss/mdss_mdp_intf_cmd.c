@@ -16,6 +16,8 @@
 #include "mdss_mdp.h"
 #include "mdss_panel.h"
 
+#include "mdss_timeout.h"
+
 #define VSYNC_EXPIRE_TICK 4
 
 #define START_THRESHOLD 4
@@ -611,6 +613,18 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	return 0;
 }
 
+void mdss_mdp_cmd_dump_ctx(struct mdss_mdp_ctl *ctl)
+{
+	struct mdss_mdp_cmd_ctx *ctx = ctl->priv_data;
+
+	MDSS_TIMEOUT_LOG("pp_num=%u\n", ctx->pp_num);
+	MDSS_TIMEOUT_LOG("panel_on=%d\n", ctx->panel_on);
+	MDSS_TIMEOUT_LOG("koff_cnt=%d\n", ctx->koff_cnt);
+	MDSS_TIMEOUT_LOG("clk_enabled=%d\n", ctx->clk_enabled);
+	MDSS_TIMEOUT_LOG("vsync_enabled=%d\n", ctx->vsync_enabled);
+	MDSS_TIMEOUT_LOG("rdptr_enabled=%d\n", ctx->rdptr_enabled);
+}
+
 int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_cmd_ctx *ctx;
@@ -678,6 +692,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->add_vsync_handler = mdss_mdp_cmd_add_vsync_handler;
 	ctl->remove_vsync_handler = mdss_mdp_cmd_remove_vsync_handler;
 	ctl->read_line_cnt_fnc = mdss_mdp_cmd_line_count;
+	ctl->ctx_dump_fnc = mdss_mdp_cmd_dump_ctx;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;
