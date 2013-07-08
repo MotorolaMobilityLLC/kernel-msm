@@ -296,6 +296,48 @@
 	qcom,init-voltage = <3100000>;
 };
 
+&pm8226_chg {
+	qcom,vddmax-mv = <4200>;
+	qcom,vddsafe-mv = <4400>;
+	qcom,vinmin-mv = <4400>;
+	qcom,vbatdet-delta-mv = <150>;
+	qcom,ibatmax-ma = <2000>;
+	qcom,ibatterm-ma = <100>;
+	qcom,ibatsafe-ma = <3250>;
+	qcom,thermal-mitigation = <1500 700 600 325>;
+	qcom,tchg-mins = <512>;
+	qcom,warm_bat_decidegc = <450>;
+	qcom,cool_bat_decidegc = <0>;
+	qcom,warm_bat_mv = <4000>;
+	qcom,cool_bat_mv = <4000>;
+	qcom,warm_bat_chg_ma = <3250>;
+	qcom,cool_bat_chg_ma = <3250>;
+};
+
+&pm8226_bms {
+	qcom,r-sense-uohm = <10000>;
+	qcom,v-cutoff-uv = <3200000>;
+	qcom,max-voltage-uv = <4200000>;
+	qcom,r-conn-mohm = <0>;
+	qcom,shutdown-soc-valid-limit = <100>;
+	qcom,adjust-soc-low-threshold = <15>;
+	qcom,use-ocv-thresholds = <0>;
+	qcom,low-soc-calculate-soc-threshold = <15>;
+	qcom,low-soc-calculate-soc-ms = <5000>;
+	qcom,calculate-soc-ms = <20000>;
+	qcom,chg-term-ua = <100000>;
+	qcom,batt-type = <0>;
+	qcom,tm-temp-margin = <5000>;
+	qcom,low-ocv-correction-limit-uv = <100>;
+	qcom,high-ocv-correction-limit-uv = <50>;
+	qcom,hold-soc-est = <3>;
+	qcom,low-voltage-threshold = <3220000>;
+	qcom,enable-fcc-learning = <1>;
+	qcom,min-fcc-learning-soc = <20>;
+	qcom,min-fcc-ocv-pc = <20>;
+	qcom,min-fcc-learning-samples = <4>;
+};
+
 &spmi_bus {
 	qcom,pm8226@1 {
 		qcom,vibrator@c000 {
