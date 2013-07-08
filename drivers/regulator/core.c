@@ -956,6 +956,20 @@ static int machine_constraints_voltage(struct regulator_dev *rdev,
 		}
 	}
 
+	if (rdev->constraints->init_uV) {
+		ret = _regulator_do_set_voltage(rdev,
+						rdev->constraints->init_uV,
+						rdev->constraints->init_uV);
+		if (ret < 0) {
+			rdev_err(rdev, "failed to set init %duV constraint\n",
+				 rdev->constraints->init_uV);
+			return ret;
+		}
+
+		rdev_info(rdev, "applied init %duV constraint\n",
+				 rdev->constraints->init_uV);
+	}
+
 	/* constrain machine-level voltage specs to fit
 	 * the actual range supported by this regulator.
 	 */
