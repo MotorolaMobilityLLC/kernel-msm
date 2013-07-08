@@ -47,3 +47,4 @@ obj-$(CONFIG_FB_MSM_MDSS_DSI_CTRL_STATUS) += dsi_status_v2.o
 else
 obj-$(CONFIG_FB_MSM_MDSS_DSI_CTRL_STATUS) += mdss_dsi_status.o
 endif
+obj-$(CONFIG_FB_MSM_MDSS_TIMEOUT_DUMP) += mdss_timeout.o

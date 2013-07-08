@@ -34,6 +34,7 @@
 #include "mdss_fb.h"
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
+#include "mdss_timeout.h"
 
 #include "splash.h"
 
@@ -3071,6 +3072,8 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			rc = 0;
 		}
 	}
+
+	mdss_timeout_init(mfd);
 
 	return rc;
 init_fail:
