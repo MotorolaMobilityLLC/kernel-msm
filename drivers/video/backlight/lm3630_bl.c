@@ -41,8 +41,10 @@
 #define CONTROL_REG        0x00
 #define CONFIG_REG         0x01
 #define BOOST_CTL_REG      0x02
-#define BRIGHTNESS_REG     0x03
-#define CURRENT_REG        0x05
+#define BRIGHTNESS_A_REG   0x03
+#define BRIGHTNESS_B_REG   0x04
+#define CURRENT_A_REG      0x05
+#define CURRENT_B_REG      0x06
 #define ON_OFF_RAMP_REG    0x07
 #define RUN_RAMP_REG       0x08
 #define IRQ_STATUS_REG     0x09
@@ -52,6 +54,28 @@
 #define PWM_OUT_REG        0x12
 #define REVISION_REG       0x1F
 
+#define SLEEP_CMD_MASK     0x80
+#define LINEAR_A_MASK      0x10
+#define LINEAR_B_MASK      0x08
+#define LED_A_EN_MASK      0x04
+#define LED_B_EN_MASK      0x02
+#define LED2_ON_A_MASK     0x01
+#define FEEDBACK_B_MASK    0x10
+#define FEEDBACK_A_MASK    0x08
+#define PWM_EN_B_MASK      0x02
+#define PWM_EN_A_MASK      0x01
+
+#define DEFAULT_CTRL_REG   0xC0
+#define DEFAULT_CFG_REG    0x18
+
+#define BL_OFF 0x00
+
+enum {
+	LED_BANK_A,
+	LED_BANK_B,
+	LED_BANK_AB,
+};
+
 static DEFINE_MUTEX(backlight_mtx);
 
 struct lm3630_device {
@@ -59,6 +83,11 @@ struct lm3630_device {
 	struct backlight_device *bl_dev;
 	struct dentry  *dent;
 	int en_gpio;
+	int boost_ctrl_reg;
+	int ctrl_reg;
+	int bank_sel;
+	int cfg_reg;
+	int linear_map;
 	int max_current;
 	int min_brightness;
 	int max_brightness;
@@ -86,8 +115,10 @@ static struct debug_reg lm3630_debug_regs[] = {
 	LM3630_DEBUG_REG(CONTROL),
 	LM3630_DEBUG_REG(CONFIG),
 	LM3630_DEBUG_REG(BOOST_CTL),
-	LM3630_DEBUG_REG(BRIGHTNESS),
-	LM3630_DEBUG_REG(CURRENT),
+	LM3630_DEBUG_REG(BRIGHTNESS_A),
+	LM3630_DEBUG_REG(BRIGHTNESS_B),
+	LM3630_DEBUG_REG(CURRENT_A),
+	LM3630_DEBUG_REG(CURRENT_B),
 	LM3630_DEBUG_REG(ON_OFF_RAMP),
 	LM3630_DEBUG_REG(RUN_RAMP),
 	LM3630_DEBUG_REG(IRQ_STATUS),
@@ -164,6 +195,18 @@ static int get_reg(void *data, u64 *val)
 
 DEFINE_SIMPLE_ATTRIBUTE(reg_fops, get_reg, set_reg, "0x%02llx\n");
 
+static void lm3630_set_brightness_reg(struct lm3630_device *dev, int level)
+{
+	if (dev->bank_sel == LED_BANK_A) {
+		lm3630_write_reg(dev->client, BRIGHTNESS_A_REG, level);
+	} else if (dev->bank_sel == LED_BANK_B) {
+		lm3630_write_reg(dev->client, BRIGHTNESS_B_REG, level);
+	} else {
+		lm3630_write_reg(dev->client, BRIGHTNESS_A_REG, level);
+		lm3630_write_reg(dev->client, BRIGHTNESS_B_REG, level);
+	}
+}
+
 static void lm3630_set_main_current_level(struct i2c_client *client, int level)
 {
 	struct lm3630_device *dev = i2c_get_clientdata(client);
@@ -178,36 +221,39 @@ static void lm3630_set_main_current_level(struct i2c_client *client, int level)
 
 		if (dev->blmap) {
 			if (level < dev->blmap_size)
-				lm3630_write_reg(client, BRIGHTNESS_REG,
-						dev->blmap[level]);
+				lm3630_set_brightness_reg(dev, dev->blmap[level]);
 			else
 				pr_err("%s: invalid index %d:%d\n", __func__,
 						dev->blmap_size, level);
 		} else {
-			lm3630_write_reg(client, BRIGHTNESS_REG, level);
+			lm3630_set_brightness_reg(dev, level);
 		}
 	} else {
-		lm3630_write_reg(client, CONTROL_REG, 0x00);
+		lm3630_write_reg(client, CONTROL_REG, BL_OFF);
 	}
 	mutex_unlock(&backlight_mtx);
 	pr_debug("%s: level=%d\n", __func__, level);
 }
 
+static void lm3630_set_max_current_reg(struct lm3630_device *dev, int val)
+{
+	if (dev->bank_sel == LED_BANK_A) {
+		lm3630_write_reg(dev->client, CURRENT_A_REG, val);
+	} else if (dev->bank_sel == LED_BANK_B) {
+		lm3630_write_reg(dev->client, CURRENT_B_REG, val);
+	} else {
+		lm3630_write_reg(dev->client, CURRENT_A_REG, val);
+		lm3630_write_reg(dev->client, CURRENT_B_REG, val);
+	}
+}
+
 static void lm3630_hw_init(struct lm3630_device *dev)
 {
 	lm3630_hw_reset(dev);
-	/*  OVP(24V),OCP(1.0A) , Boost Frequency(500khz) */
-	lm3630_write_reg(dev->client, BOOST_CTL_REG, 0x30);
-	if (dev->pwm_enable)
-		/* Enable Feedback , disable  PWM for BANK A,B */
-		lm3630_write_reg(dev->client, CONFIG_REG, 0x09);
-	else
-		/* Enable Feedback , disable  PWM for BANK A,B */
-		lm3630_write_reg(dev->client, CONFIG_REG, 0x08);
-	/* Full-Scale Current (23.4mA) of BANK A */
-	lm3630_write_reg(dev->client, CURRENT_REG, 0x17);
-	/* Enable LED A to Linear, LED2 is connected to BANK_A */
-	lm3630_write_reg(dev->client, CONTROL_REG, 0x15);
+	lm3630_write_reg(dev->client, BOOST_CTL_REG, dev->boost_ctrl_reg);
+	lm3630_write_reg(dev->client, CONFIG_REG, dev->cfg_reg);
+	lm3630_set_max_current_reg(dev, dev->max_current);
+	lm3630_write_reg(dev->client, CONTROL_REG, dev->ctrl_reg);
 	mdelay(1);
 }
 
@@ -333,17 +379,81 @@ static int lm3630_create_debugfs_entries(struct lm3630_device *chip)
 	return 0;
 }
 
+static void lm3630_set_init_values(struct lm3630_device *dev)
+{
+	if (dev->bank_sel == LED_BANK_A) {
+		dev->ctrl_reg = (DEFAULT_CTRL_REG & ~SLEEP_CMD_MASK)
+			| LED_A_EN_MASK | LED2_ON_A_MASK;
+
+		if (dev->linear_map)
+			dev->ctrl_reg = dev->ctrl_reg | LINEAR_A_MASK;
+
+		dev->cfg_reg = (DEFAULT_CFG_REG & ~ FEEDBACK_B_MASK)
+			| FEEDBACK_A_MASK;
+
+		if (dev->pwm_enable)
+			dev->cfg_reg = dev->cfg_reg | PWM_EN_A_MASK;
+	} else if (dev->bank_sel == LED_BANK_B) {
+		dev->ctrl_reg = (DEFAULT_CTRL_REG & ~SLEEP_CMD_MASK)
+			| LINEAR_B_MASK | LED_B_EN_MASK;
+
+		if (dev->linear_map)
+			dev->ctrl_reg = dev->ctrl_reg | LINEAR_B_MASK;
+
+		dev->cfg_reg = (DEFAULT_CFG_REG & ~FEEDBACK_A_MASK)
+				| FEEDBACK_B_MASK;
+
+		if (dev->pwm_enable)
+			dev->cfg_reg = dev->cfg_reg | PWM_EN_B_MASK;
+	} else {
+		dev->ctrl_reg = (DEFAULT_CTRL_REG & ~SLEEP_CMD_MASK)
+			| LINEAR_A_MASK | LINEAR_B_MASK
+			| LED_A_EN_MASK | LED_B_EN_MASK;
+
+		if (dev->linear_map)
+			dev->ctrl_reg = dev->ctrl_reg
+				| LINEAR_A_MASK | LINEAR_B_MASK;
+
+		dev->cfg_reg = DEFAULT_CFG_REG
+			| FEEDBACK_A_MASK | FEEDBACK_B_MASK;
+
+		if (dev->pwm_enable)
+			dev->cfg_reg = dev->cfg_reg
+				| PWM_EN_A_MASK | PWM_EN_B_MASK;
+	}
+}
+
 static int lm3630_parse_dt(struct device_node *node,
 			struct lm3630_device *dev)
 {
-	int rc = 0;
-	int i;
+	int i = 0, rc = 0;
 	u32 *array = NULL;
 
 	dev->en_gpio = of_get_named_gpio(node, "lm3630,lcd_bl_en", 0);
 	if (dev->en_gpio < 0) {
 		pr_err("%s: failed to get lm3630,lcd_bl_en\n", __func__);
 		rc = dev->en_gpio;
+		goto error;
+	}
+
+	rc = of_property_read_u32(node, "lm3630,boost_ctrl_reg",
+				&dev->boost_ctrl_reg);
+	if (rc) {
+		pr_err("%s: failed to get lm3630,boost_ctrl_reg\n", __func__);
+		goto error;
+	}
+
+	rc = of_property_read_u32(node, "lm3630,bank_sel",
+				&dev->bank_sel);
+	if (rc) {
+		pr_err("%s: failed to get lm3630,bank_sel\n", __func__);
+		goto error;
+	}
+
+	rc = of_property_read_u32(node, "lm3630,linear_map",
+				&dev->linear_map);
+	if (rc) {
+		pr_err("%s: failed to get lm3630,linear_map\n", __func__);
 		goto error;
 	}
 
@@ -376,10 +486,10 @@ static int lm3630_parse_dt(struct device_node *node,
 		goto error;
 	}
 
-	rc = of_property_read_u32(node, "lm3630,enable_pwm",
+	rc = of_property_read_u32(node, "lm3630,pwm_enable",
 				&dev->pwm_enable);
 	if (rc) {
-		pr_err("%s: failed to get lm3630,enable_pwm\n", __func__);
+		pr_err("%s: failed to get lm3630,pwm_enable\n", __func__);
 		goto error;
 	}
 
@@ -414,12 +524,22 @@ static int lm3630_parse_dt(struct device_node *node,
 			kfree(array);
 	}
 
-	pr_info("%s: en_gpio = %d, max_current = %d, min = %d, default = %d,"
-			"max = %d, pwm = %d , blmap_size = %d\n", __func__,
-			dev->en_gpio, dev->max_current,
-			dev->min_brightness, dev->default_brightness,
-			dev->max_brightness, dev->pwm_enable,
-			dev->blmap_size);
+	pr_info("%s: max_current =0x%X min_brightness = 0x%X "
+		"max_brightness = 0x%X default_brightness = 0x%X \n",
+					__func__,
+					dev->max_current,
+					dev->min_brightness,
+					dev->max_brightness,
+					dev->default_brightness);
+	pr_info("%s: boost_ctrl_reg = 0x%X bank_sel = %d "
+		"linear_map = %d pwm_enable = %d blmap_size = %d\n",
+					__func__,
+					dev->boost_ctrl_reg,
+					dev->bank_sel,
+					dev->linear_map,
+					dev->pwm_enable,
+					dev->blmap_size);
+
 	return 0;
 
 err_blmap:
@@ -463,14 +583,21 @@ static int lm3630_probe(struct i2c_client *client,
 		}
 
 		dev->en_gpio = pdata->en_gpio;
+		dev->boost_ctrl_reg = pdata->boost_ctrl_reg;
+		dev->bank_sel = pdata->bank_sel;
+		dev->linear_map = pdata->linear_map;
 		dev->max_current = pdata->max_current;
 		dev->min_brightness = pdata->min_brightness;
 		dev->default_brightness = pdata->default_brightness;
 		dev->max_brightness = pdata->max_brightness;
+		dev->pwm_enable = pdata->pwm_enable;
 		dev->blmap_size = pdata->blmap_size;
 		if (dev->blmap_size)
 			dev->blmap = pdata->blmap;
 	}
+
+	/* initialize register values for hw reset */
+	lm3630_set_init_values(dev);
 
 	memset(&props, 0, sizeof(struct backlight_properties));
 	props.type = BACKLIGHT_RAW;
