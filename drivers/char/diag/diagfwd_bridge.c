@@ -61,9 +61,11 @@ void connect_bridge(int process_cable, int index)
 		diag_bridge[index].usb_connected = 1;
 	}
 
-	if (index == SMUX && driver->diag_smux_enabled) {
-		driver->in_busy_smux = 0;
-		diagfwd_connect_smux();
+	if (index == SMUX) {
+		if (driver->diag_smux_enabled) {
+			driver->in_busy_smux = 0;
+			diagfwd_connect_smux();
+		}
 	} else {
 		if (diag_hsic[index].hsic_device_enabled &&
 			(driver->logging_mode != MEMORY_DEVICE_MODE ||
