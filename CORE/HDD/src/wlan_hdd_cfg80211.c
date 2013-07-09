@@ -2356,6 +2356,10 @@ static int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 #endif
         status = wlan_hdd_cfg80211_start_bss(pAdapter, &params->beacon, params->ssid,
                                              params->ssid_len, params->hidden_ssid);
+        if (0 == status)
+        {
+            hdd_start_p2p_go_connection_in_progress_timer(pAdapter);
+        }
     }
 
     EXIT();
@@ -4308,6 +4312,14 @@ v_BOOL_t hdd_isScanAllowed( hdd_context_t *pHddCtx )
     VOS_STATUS status = 0;
     v_U8_t staId = 0;
     v_U8_t *staMac = NULL;
+
+    if (VOS_TIMER_STATE_RUNNING ==
+                vos_timer_getCurrentState(&pHddCtx->hdd_p2p_go_conn_is_in_progress))
+    {
+        hddLog(VOS_TRACE_LEVEL_INFO,
+              "%s: Connection is in progress, Do not allow the scan", __func__);
+        return VOS_FALSE;
+    }
 
     status = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
 

@@ -4872,6 +4872,21 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    // all scans will be cancelled.
    hdd_abort_mac_scan( pHddCtx );
 
+   //Stop the timer if already running
+   if (VOS_TIMER_STATE_RUNNING ==
+           vos_timer_getCurrentState(&pHddCtx->hdd_p2p_go_conn_is_in_progress))
+   {
+       vos_timer_stop(&pHddCtx->hdd_p2p_go_conn_is_in_progress);
+   }
+
+   // Destroy hdd_p2p_go_conn_is_in_progress timer
+   if (!VOS_IS_STATUS_SUCCESS(vos_timer_destroy(
+                         &pHddCtx->hdd_p2p_go_conn_is_in_progress)))
+   {
+       hddLog(VOS_TRACE_LEVEL_ERROR,
+           "%s: Cannot deallocate p2p connection timer", __func__);
+   }
+
    //Disable IMPS/BMPS as we do not want the device to enter any power
    //save mode during shutdown
    sme_DisablePowerSave(pHddCtx->hHal, ePMC_IDLE_MODE_POWER_SAVE);
@@ -5851,10 +5866,16 @@ int hdd_wlan_startup(struct device *dev )
 
    vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    hdd_allow_suspend();
-   
+
    // Initialize the restart logic
    wlan_hdd_restart_init(pHddCtx);
 
+   if (!VOS_IS_STATUS_SUCCESS( vos_timer_init( &pHddCtx->hdd_p2p_go_conn_is_in_progress,
+         VOS_TIMER_TYPE_SW, wlan_hdd_p2p_go_connection_in_progresscb, pAdapter) ) )
+   {
+       hddLog(VOS_TRACE_LEVEL_ERROR,
+           "%s: vos timer init failed for hdd_p2p_go_conn_is_in_progress", __func__);
+   }
    goto success;
 
 err_nl_srv:
