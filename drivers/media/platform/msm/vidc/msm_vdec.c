@@ -71,6 +71,7 @@ static const char *const mpeg_video_vidc_extradata[] = {
 static const char *const mpeg_vidc_video_alloc_mode_type[] = {
 	"Buffer Allocation Static",
 	"Buffer Allocation Ring Buffer",
+	"Buffer Allocation Dynamic Buffer"
 };
 
 static const char *const perf_level[] = {
@@ -254,15 +255,32 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.step = 0,
 	},
 	{
-		.id = V4L2_CID_MPEG_VIDC_VIDEO_ALLOC_MODE,
-		.name = "Buffer allocation mode",
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_ALLOC_MODE_INPUT,
+		.name = "Buffer allocation mode for input",
 		.type = V4L2_CTRL_TYPE_MENU,
 		.minimum = V4L2_MPEG_VIDC_VIDEO_STATIC,
-		.maximum = V4L2_MPEG_VIDC_VIDEO_RING,
+		.maximum = V4L2_MPEG_VIDC_VIDEO_DYNAMIC,
 		.default_value = V4L2_MPEG_VIDC_VIDEO_STATIC,
 		.menu_skip_mask = ~(
 			(1 << V4L2_MPEG_VIDC_VIDEO_STATIC) |
-			(1 << V4L2_MPEG_VIDC_VIDEO_RING)
+			(1 << V4L2_MPEG_VIDC_VIDEO_RING) |
+			(1 << V4L2_MPEG_VIDC_VIDEO_DYNAMIC)
+			),
+		.qmenu = mpeg_vidc_video_alloc_mode_type,
+		.step = 0,
+		.cluster = 0,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_ALLOC_MODE_OUTPUT,
+		.name = "Buffer allocation mode for output",
+		.type = V4L2_CTRL_TYPE_MENU,
+		.minimum = V4L2_MPEG_VIDC_VIDEO_STATIC,
+		.maximum = V4L2_MPEG_VIDC_VIDEO_DYNAMIC,
+		.default_value = V4L2_MPEG_VIDC_VIDEO_STATIC,
+		.menu_skip_mask = ~(
+			(1 << V4L2_MPEG_VIDC_VIDEO_STATIC) |
+			(1 << V4L2_MPEG_VIDC_VIDEO_RING) |
+			(1 << V4L2_MPEG_VIDC_VIDEO_DYNAMIC)
 			),
 		.qmenu = mpeg_vidc_video_alloc_mode_type,
 		.step = 0,
@@ -1290,12 +1308,13 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	int rc = 0;
 	struct hal_nal_stream_format_supported stream_format;
 	struct hal_enable_picture enable_picture;
-	struct hal_enable hal_property;/*, prop;*/
+	struct hal_enable hal_property;
 	enum hal_property property_id = 0;
 	u32 property_val = 0;
 	void *pdata = NULL;
 	struct hfi_device *hdev;
 	struct hal_extradata_enable extra;
+	struct hal_buffer_alloc_mode alloc_mode;
 
 	if (!inst || !inst->core || !inst->core->device) {
 		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
@@ -1384,15 +1403,14 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		}
 
 		break;
-	case V4L2_CID_MPEG_VIDC_VIDEO_ALLOC_MODE:
-	{
-		struct hal_buffer_alloc_mode mode;
+	case V4L2_CID_MPEG_VIDC_VIDEO_ALLOC_MODE_INPUT:
+		if (ctrl->val == V4L2_MPEG_VIDC_VIDEO_DYNAMIC)
+			rc = -ENOTSUPP;
 		property_id = HAL_PARAM_BUFFER_ALLOC_MODE;
-		mode.buffer_mode = ctrl->val;
-		mode.buffer_type = HAL_BUFFER_INPUT;
-		pdata = &mode;
+		alloc_mode.buffer_mode = ctrl->val;
+		alloc_mode.buffer_type = HAL_BUFFER_INPUT;
+		pdata = &alloc_mode;
 		break;
-	}
 	case V4L2_CID_MPEG_VIDC_VIDEO_FRAME_ASSEMBLY:
 	{
 		property_id = HAL_PARAM_VDEC_FRAME_ASSEMBLY;
@@ -1400,6 +1418,23 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		pdata = &hal_property;
 		break;
 	}
+	case V4L2_CID_MPEG_VIDC_VIDEO_ALLOC_MODE_OUTPUT:
+		property_id = HAL_PARAM_BUFFER_ALLOC_MODE;
+		if (ctrl->val == V4L2_MPEG_VIDC_VIDEO_RING)
+			rc = -ENOTSUPP;
+		else if (ctrl->val == V4L2_MPEG_VIDC_VIDEO_DYNAMIC &&
+			!(inst->output_alloc_mode_supported &
+			HAL_BUFFER_MODE_DYNAMIC)) {
+				dprintk(VIDC_DBG,
+					"Dynamic buffer mode not supported for Capture Port\n");
+				rc = -ENOTSUPP;
+		} else {
+			alloc_mode.buffer_mode = ctrl->val;
+			alloc_mode.buffer_type = HAL_BUFFER_OUTPUT;
+			pdata = &alloc_mode;
+			inst->output_alloc_mode = alloc_mode.buffer_mode;
+		}
+		break;
 	default:
 		break;
 	}
