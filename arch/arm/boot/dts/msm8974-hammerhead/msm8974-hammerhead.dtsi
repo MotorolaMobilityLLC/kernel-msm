@@ -507,6 +507,11 @@
 	};
 
 	gpio@d400 { /* GPIO 21 */
+		status = "ok";
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,pull = <4>;
+		qcom,src-sel = <0>;
 	};
 
 	gpio@d500 { /* GPIO 22 */

@@ -27,6 +27,14 @@
 		serial,irq-gpio = <&pm8941_gpios 1 0x0>;
 	};
 
+	pm8941,boost_gpio {
+		compatible = "pm8941,boost_gpio";
+		label = "PM8941 GPIO 21 for Boost IC";
+		status = "ok";
+		pm8941,bb_boost_gpio_name = "bb_boost_gpio";
+		pm8941,bb_gpio = <&pm8941_gpios 21 0>;
+	};
+
   hall-bu52031nvx {
     compatible = "rohm,hall-bu52031nvx";
 		interrupt-parent = <&msmgpio>;
