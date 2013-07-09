@@ -40,11 +40,14 @@
 			status = "ok";
 			reg = <0x38>;
 			lm3630,lcd_bl_en = <&msmgpio 90 0x00>;
+			lm3630,boost_ctrl_reg = <0x30>;  /* OVP 24V, OCP 1.0A */
+			lm3630,bank_sel = <0>;  /* BANK A */
+			lm3630,linear_map = <1>;
 			lm3630,max_current = <0x17>;
 			lm3630,min_brightness = <0x05>;
 			lm3630,default_brightness = <0x57>;
 			lm3630,max_brightness = <0xFF>;
-			lm3630,enable_pwm = <0>;
+			lm3630,pwm_enable = <0>;
 			lm3630,blmap_size = <0>;
 			lm3630,blmap = <
 				3 3 3 3 3 3 3 3 4 4 4 4 4 4 4
