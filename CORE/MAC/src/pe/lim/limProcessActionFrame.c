@@ -2106,7 +2106,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
               if ((eLIM_STA_ROLE == psessionEntry->limSystemRole) &&
                   (VOS_TRUE == palEqualMemory(pMac->hHdd, psessionEntry->selfMacAddr,
                     &pHdr->da[0], sizeof(tSirMacAddr))) &&
-                  IS_WES_MODE_ENABLED(pMac) && palEqualMemory( pMac->hHdd, pVendorSpecific->Oui, Oui, 3))
+                   palEqualMemory( pMac->hHdd, pVendorSpecific->Oui, Oui, 3))
               {
                   PELOGE( limLog( pMac, LOGW, FL("Received Vendor specific action frame, OUI %x %x %x"),
                          pVendorSpecific->Oui[0], pVendorSpecific->Oui[1], pVendorSpecific->Oui[2]);)
@@ -2119,9 +2119,8 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
               else
               {
                  limLog( pMac, LOGE, FL("Dropping the vendor specific action frame because of( "
-                                        "WES Mode not enabled (WESMODE = %d) or OUI mismatch (%02x %02x %02x) or "
+                                        "OUI mismatch (%02x %02x %02x) or "
                                         "not received with SelfSta Mac address) system role = %d"),
-                                        IS_WES_MODE_ENABLED(pMac),
                                         pVendorSpecific->Oui[0], pVendorSpecific->Oui[1],
                                         pVendorSpecific->Oui[2],
                                         psessionEntry->limSystemRole );
