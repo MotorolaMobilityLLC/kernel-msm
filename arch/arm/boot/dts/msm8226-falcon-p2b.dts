@@ -56,7 +56,7 @@
 			interrupt-names = "kpdpwr", "resin", "kpdpwr-bark";
 
 			qcom,pon_1 {
-				qcom,support-reset = <1>;
+				qcom,support-reset = <0>;
 				qcom,s1-timer = <6720>;
 				qcom,s2-timer = <2000>;
 				qcom,s2-type = <7>;
