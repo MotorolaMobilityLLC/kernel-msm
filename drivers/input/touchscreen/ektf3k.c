@@ -109,7 +109,8 @@ static int work_lock=0x00;
 #define USB_AC_Adapter ((1 << (AC_SHIFT)) | (USB_DETECT_CABLE))
 #define USB_CALBE_DETECT_MASK (USB_Cable  | USB_DETECT_CABLE)
 /*use for slim port to hdmi*/
-#define SLIM_HDMI_MODE 3
+#define SLIM_HDMI_MODE 10
+#define HDMI_POWER_SOURCE_CMD 3
 static unsigned now_usb_cable_status=0;
 static unsigned int gPrint_point = 0; 
 
@@ -894,7 +895,7 @@ static void update_power_source(void){
       if(private_ts == NULL || work_lock) return;
 	// Send power state 1 if USB cable and AC charger was plugged on. 
 	if (power_source == SLIM_HDMI_MODE) {
-		elan_ktf3k_ts_set_power_source(private_ts->client, SLIM_HDMI_MODE);
+		elan_ktf3k_ts_set_power_source(private_ts->client, HDMI_POWER_SOURCE_CMD);
 	} else {
 		elan_ktf3k_ts_set_power_source(private_ts->client, power_source != USB_NO_Cable);
 	}

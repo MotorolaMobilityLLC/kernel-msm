@@ -33,7 +33,7 @@
 
 /*Use for Touch CallBack in HDMI Mode*/
 #define UNPLUG_HDMI 0
-#define PLUG_HDMI 3
+#define PLUG_HDMI 10
 extern void touch_callback(unsigned cable_status);
 
 extern unchar bedid_extblock[128];
