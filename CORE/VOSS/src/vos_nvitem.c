@@ -133,7 +133,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_N_AMER_EXC_FCC, {'A', 'Z'}},  //AZERBAIJAN
         { REGDOMAIN_ETSI,    {'B', 'A'}},  //BOSNIA AND HERZEGOVINA
         { REGDOMAIN_APAC,    {'B', 'B'}},  //BARBADOS
-        { REGDOMAIN_NO_5GHZ, {'B', 'D'}},  //BANGLADESH
+        { REGDOMAIN_HI_5GHZ, {'B', 'D'}},  //BANGLADESH
         { REGDOMAIN_ETSI,    {'B', 'E'}},  //BELGIUM
         { REGDOMAIN_HI_5GHZ, {'B', 'F'}},  //BURKINA FASO
         { REGDOMAIN_ETSI,    {'B', 'G'}},  //BULGARIA
@@ -236,7 +236,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_KOREA,   {'K', '2'}},  //Korea alternate 2
         { REGDOMAIN_KOREA,   {'K', '3'}},  //Korea alternate 3
         { REGDOMAIN_KOREA,   {'K', '4'}},  //Korea alternate 4
-        { REGDOMAIN_HI_5GHZ, {'K', 'E'}},  //KENYA
+        { REGDOMAIN_APAC,    {'K', 'E'}},  //KENYA
         { REGDOMAIN_NO_5GHZ, {'K', 'G'}},  //KYRGYZSTAN
         { REGDOMAIN_ETSI,    {'K', 'H'}},  //CAMBODIA
         { REGDOMAIN_WORLD,   {'K', 'I'}},  //KIRIBATI
@@ -248,7 +248,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_FCC,     {'K', 'Y'}},  //CAYMAN ISLANDS
         { REGDOMAIN_WORLD,   {'K', 'Z'}},  //KAZAKHSTAN
         { REGDOMAIN_WORLD,   {'L', 'A'}},  //LAO PEOPLE'S DEMOCRATIC REPUBLIC
-        { REGDOMAIN_HI_5GHZ, {'L', 'B'}},  //LEBANON
+        { REGDOMAIN_WORLD,   {'L', 'B'}},  //LEBANON
         { REGDOMAIN_WORLD,   {'L', 'C'}},  //SAINT LUCIA
         { REGDOMAIN_ETSI,    {'L', 'I'}},  //LIECHTENSTEIN
         { REGDOMAIN_WORLD,   {'L', 'K'}},  //SRI LANKA
@@ -259,7 +259,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_ETSI,    {'L', 'V'}},  //LATVIA
         { REGDOMAIN_NO_5GHZ, {'L', 'Y'}},  //LIBYAN ARAB JAMAHIRIYA
         { REGDOMAIN_APAC,    {'M', 'A'}},  //MOROCCO
-        { REGDOMAIN_N_AMER_EXC_FCC, {'M', 'C'}},  //MONACO
+        { REGDOMAIN_ETSI,    {'M', 'C'}},  //MONACO
         { REGDOMAIN_ETSI,    {'M', 'D'}},  //MOLDOVA, REPUBLIC OF
         { REGDOMAIN_ETSI,    {'M', 'E'}},  //MONTENEGRO
         { REGDOMAIN_NO_5GHZ, {'M', 'G'}},  //MADAGASCAR
@@ -292,12 +292,12 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_NO_5GHZ, {'N', 'R'}},  //NAURU
         { REGDOMAIN_WORLD,   {'N', 'U'}},  //NIUE
         { REGDOMAIN_APAC,    {'N', 'Z'}},  //NEW ZEALAND
-        { REGDOMAIN_WORLD,   {'O', 'M'}},  //OMAN
+        { REGDOMAIN_ETSI,    {'O', 'M'}},  //OMAN
         { REGDOMAIN_APAC,    {'P', 'A'}},  //PANAMA
         { REGDOMAIN_WORLD,   {'P', 'E'}},  //PERU
         { REGDOMAIN_ETSI,    {'P', 'F'}},  //FRENCH POLYNESIA
-        { REGDOMAIN_APAC,    {'P', 'G'}},  //PAPUA NEW GUINEA
-        { REGDOMAIN_HI_5GHZ, {'P', 'H'}},  //PHILIPPINES
+        { REGDOMAIN_WORLD,   {'P', 'G'}},  //PAPUA NEW GUINEA
+        { REGDOMAIN_WORLD,   {'P', 'H'}},  //PHILIPPINES
         { REGDOMAIN_HI_5GHZ, {'P', 'K'}},  //PAKISTAN
         { REGDOMAIN_ETSI,    {'P', 'L'}},  //POLAND
         { REGDOMAIN_WORLD,   {'P', 'M'}},  //SAINT PIERRE AND MIQUELON
@@ -343,7 +343,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_NO_5GHZ, {'T', 'M'}},  //TURKMENISTAN
         { REGDOMAIN_N_AMER_EXC_FCC, {'T', 'N'}},  //TUNISIA
         { REGDOMAIN_NO_5GHZ, {'T', 'O'}},  //TONGA
-        { REGDOMAIN_N_AMER_EXC_FCC, {'T', 'R'}},  //TURKEY
+        { REGDOMAIN_ETSI,    {'T', 'R'}},  //TURKEY
         { REGDOMAIN_WORLD,   {'T', 'T'}},  //TRINIDAD AND TOBAGO
         { REGDOMAIN_NO_5GHZ, {'T', 'V'}},  //TUVALU
         { REGDOMAIN_FCC,     {'T', 'W'}},  //TAIWAN, PROVINCE OF CHINA
@@ -358,7 +358,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_HI_5GHZ, {'V', 'E'}},  //VENEZUELA
         { REGDOMAIN_ETSI,    {'V', 'G'}},  //VIRGIN ISLANDS, BRITISH
         { REGDOMAIN_FCC,     {'V', 'I'}},  //VIRGIN ISLANDS, US
-        { REGDOMAIN_N_AMER_EXC_FCC, {'V', 'N'}},  //VIET NAM
+        { REGDOMAIN_FCC,     {'V', 'N'}},  //VIET NAM
         { REGDOMAIN_NO_5GHZ, {'V', 'U'}},  //VANUATU
         { REGDOMAIN_WORLD,   {'W', 'F'}},  //WALLIS AND FUTUNA
         { REGDOMAIN_N_AMER_EXC_FCC, {'W', 'S'}},  //SOMOA
