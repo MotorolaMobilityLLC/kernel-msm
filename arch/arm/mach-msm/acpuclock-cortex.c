@@ -337,6 +337,7 @@ void __init get_speed_bin(void __iomem *base, struct bin_info *bin)
 		bin->speed = (pte_efuse >> 27) & 0x7;
 
 	bin->speed_valid = !!(pte_efuse & BIT(3));
+	pr_info("get_speed_bin: pte_efuse[%X]\n", pte_efuse);
 }
 
 static struct clkctl_acpu_speed *__init select_freq_plan(void)
