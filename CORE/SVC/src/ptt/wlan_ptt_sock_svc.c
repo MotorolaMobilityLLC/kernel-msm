@@ -314,6 +314,9 @@ int ptt_sock_activate_svc(void *pAdapter)
    pAdapterHandle = (struct hdd_context_s*)pAdapter;
    nl_srv_register(ANI_NL_MSG_PUMAC, ptt_sock_rx_nlink_msg);
    nl_srv_register(ANI_NL_MSG_PTT, ptt_sock_rx_nlink_msg);
+#ifdef WLAN_KD_READY_NOTIFIER
+   nl_srv_nl_ready_indication();
+#endif /* WLAN_KD_READY_NOTIFIER */
    return 0;
 }
 #endif //PTT_SOCK_SVC_ENABLE
