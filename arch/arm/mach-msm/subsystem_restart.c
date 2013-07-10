@@ -389,6 +389,10 @@ static void do_epoch_check(struct subsys_device *dev)
 	if (time_first && n >= max_restarts_check) {
 		if ((curr_time->tv_sec - time_first->tv_sec) <
 				max_history_time_check)
+#ifdef CONFIG_LGE_HANDLE_PANIC
+			lge_set_magic_subsystem(dev->desc->name,
+					LGE_ERR_SUB_SD);
+#endif
 			panic("Subsystems have crashed %d times in less than "
 				"%ld seconds!", max_restarts_check,
 				max_history_time_check);
@@ -736,6 +740,9 @@ static void __subsystem_restart_dev(struct subsys_device *dev)
 			wake_lock(&dev->wake_lock);
 			queue_work(ssr_wq, &dev->work);
 		} else {
+#ifdef CONFIG_LGE_HANDLE_PANIC
+			lge_set_magic_subsystem(name, LGE_ERR_SUB_SD);
+#endif
 			panic("Subsystem %s crashed during SSR!", name);
 		}
 	}
