@@ -73,16 +73,19 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
     if ((eLIM_STA_ROLE == psessionEntry->limSystemRole) && (eLIM_SME_WT_DEAUTH_STATE == psessionEntry->limSmeState))
     {
+        /*Every 15th deauth frame will be logged in kmsg*/
         if(!(pMac->lim.deauthMsgCnt & 0xF))
         {
             PELOGE(limLog(pMac, LOGE,
-             FL("received Deauth frame in DEAUTH_WT_STATE(already processing previously received DEAUTH frame).. Dropping this.. Deauth Failed %d \n "),++pMac->lim.deauthMsgCnt);)
-            return;
+             FL("received Deauth frame in DEAUTH_WT_STATE"
+                "(already processing previously received DEAUTH frame).."
+                "Dropping this.. Deauth Failed %d \n "),++pMac->lim.deauthMsgCnt);)
         }
         else
         {
             pMac->lim.deauthMsgCnt++;
         }
+        return;
     }
 
     if (limIsGroupAddr(pHdr->sa))
