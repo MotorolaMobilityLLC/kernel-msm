@@ -665,11 +665,14 @@ static int __devinit cap1106_probe(struct i2c_client *client,
 		goto err_config_irq_failed;
 	}
 
-	data->enable = 1;
+	data->enable = force_enable;
 	data->overflow_status = 0x0;
-	queue_delayed_work(data->cap_wq, &data->work, msecs_to_jiffies(200));
-	queue_delayed_work(data->cap_wq, &data->checking_work,
-	        msecs_to_jiffies(1000));
+	if (data->enable) {
+		queue_delayed_work(data->cap_wq, &data->work, msecs_to_jiffies(200));
+		queue_delayed_work(data->cap_wq, &data->checking_work,
+				msecs_to_jiffies(1000));
+	} else
+		disable_irq(data->client->irq);
 
 #if defined(CONFIG_CAP_SENSOR_RMNET_CTL)
 	data->netdev_obs.notifier_call = netdev_changed_event;
