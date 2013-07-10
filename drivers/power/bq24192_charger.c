@@ -79,8 +79,10 @@ struct bq24192_chip {
 	struct i2c_client  *client;
 	struct delayed_work  irq_work;
 	struct delayed_work  vbat_work;
+	struct delayed_work  input_limit_work;
 	struct dentry  *dent;
 	struct wake_lock  chg_wake_lock;
+	struct wake_lock  icl_wake_lock;
 	struct power_supply  *usb_psy;
 	struct power_supply  ac_psy;
 	struct power_supply  *wlc_psy;
@@ -96,6 +98,10 @@ struct bq24192_chip {
 	int  vbat_noti_stat;
 	int  step_dwn_thr_mv;
 	int  step_dwn_currnet_ma;
+	int  icl_idx;
+	bool icl_first;
+	int  icl_fail_cnt;
+	int  icl_vbus_mv;
 };
 
 static struct bq24192_chip *the_chip;
@@ -119,6 +125,16 @@ static struct debug_reg bq24192_debug_regs[] = {
 	BQ24192_DEBUG_REG(SYSTEM_STATUS),
 	BQ24192_DEBUG_REG(FAULT),
 	BQ24192_DEBUG_REG(VENDOR_PART_REV_STATUS),
+};
+
+struct current_limit_entry {
+	int input_limit;
+	int chg_limit;
+};
+
+static struct current_limit_entry adap_tbl[] = {
+	{1200, 1024},
+	{2000, 1536},
 };
 
 static int bq24192_step_down_detect_disable(struct bq24192_chip *chip);
@@ -488,6 +504,10 @@ static void bq24192_irq_worker(struct work_struct *work)
 	if ((chip->ext_pwr ^ ext_pwr) || (chip->wlc_pwr ^ wlc_pwr)) {
 		pr_info("power source changed! ext_pwr = %d wlc_pwr = %d\n",
 				ext_pwr, wlc_pwr);
+		if (wake_lock_active(&chip->icl_wake_lock))
+			wake_unlock(&chip->icl_wake_lock);
+
+		cancel_delayed_work_sync(&chip->input_limit_work);
 		bq24192_step_down_detect_disable(chip);
 		if (chip->wlc_psy) {
 			if (wlc_pwr && ext_pwr) {
@@ -681,6 +701,7 @@ static bool bq24192_is_otg_mode(struct bq24192_chip *chip)
 	return !!(temp & OTG_EN_MASK);
 }
 
+#define WLC_INPUT_I_LIMIT_MA 900
 static void bq24192_external_power_changed(struct power_supply *psy)
 {
 	struct bq24192_chip *chip = container_of(psy,
@@ -711,15 +732,17 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 		pr_info("usb is online! i_limit = %d\n", ret.intval / 1000);
 	} else if (chip->ac_online &&
 			bq24192_is_charger_present(chip)) {
-		bq24192_set_input_i_limit(chip,
-			INPUT_CURRENT_LIMIT_MAX_MA);
-		bq24192_set_ibat_max(chip, chip->chg_current_ma);
-		bq24192_step_down_detect_init(chip);
+		chip->icl_first = true;
+		bq24192_set_input_i_limit(chip, adap_tbl[0].input_limit);
+		bq24192_set_ibat_max(chip, adap_tbl[0].chg_limit);
+		wake_lock(&chip->icl_wake_lock);
+		schedule_delayed_work(&chip->input_limit_work,
+					msecs_to_jiffies(200));
 		pr_info("ac is online! i_limit = %d\n",
-				chip->chg_current_ma);
+				adap_tbl[0].chg_limit);
 	} else if (wlc_online) {
 		bq24192_set_input_i_limit(chip,
-			INPUT_CURRENT_LIMIT_MAX_MA);
+			WLC_INPUT_I_LIMIT_MA);
 		bq24192_set_ibat_max(chip, wlc_chg_current_ma);
 		pr_info("wlc is online! i_limit = %d\n",
 				wlc_chg_current_ma);
@@ -818,6 +841,72 @@ static int bq24192_get_prop_chg_status(struct bq24192_chip *chip)
 	return chg_status;
 }
 
+#define UNINIT_VBUS_UV 5000000
+static int bq24192_get_prop_input_voltage(struct bq24192_chip *chip)
+{
+	int rc = 0;
+	struct qpnp_vadc_result results;
+
+	rc = qpnp_vadc_read(USBIN, &results);
+	if (rc) {
+		pr_err("Unable to read vbus rc=%d\n", rc);
+		return UNINIT_VBUS_UV;
+	}
+
+	return (int)results.physical;
+}
+
+static void bq24192_input_limit_worker(struct work_struct *work)
+{
+	struct bq24192_chip *chip = container_of(work, struct bq24192_chip,
+						input_limit_work.work);
+	int vbus_mv = 0;
+
+	vbus_mv = bq24192_get_prop_input_voltage(chip);
+	vbus_mv = vbus_mv/1000;
+
+	pr_info("vbus_mv = %d\n", vbus_mv);
+
+	if (chip->icl_first && chip->icl_idx > 0) {
+		chip->icl_fail_cnt++;
+		if (chip->icl_fail_cnt > 1)
+			vbus_mv = chip->icl_vbus_mv;
+		else
+			chip->icl_idx = 0;
+	}
+	chip->icl_first = false;
+
+	if (vbus_mv > chip->icl_vbus_mv
+			&& chip->icl_idx < (ARRAY_SIZE(adap_tbl) - 1)) {
+		chip->icl_idx++;
+		bq24192_set_input_i_limit(chip,
+				adap_tbl[chip->icl_idx].input_limit);
+		bq24192_set_ibat_max(chip,
+				adap_tbl[chip->icl_idx].chg_limit);
+		schedule_delayed_work(&chip->input_limit_work,
+					msecs_to_jiffies(500));
+	} else {
+		if (chip->icl_idx > 0 && vbus_mv <= chip->icl_vbus_mv)
+			chip->icl_idx--;
+
+		bq24192_set_input_i_limit(chip,
+				adap_tbl[chip->icl_idx].input_limit);
+		bq24192_set_ibat_max(chip,
+				adap_tbl[chip->icl_idx].chg_limit);
+
+		if (adap_tbl[chip->icl_idx].chg_limit
+				> chip->step_dwn_currnet_ma)
+			bq24192_step_down_detect_init(chip);
+
+		pr_info("optimal input i limit = %d chg limit = %d\n",
+					adap_tbl[chip->icl_idx].input_limit,
+					adap_tbl[chip->icl_idx].chg_limit);
+		chip->icl_idx = 0;
+		chip->icl_fail_cnt = 0;
+		wake_unlock(&chip->icl_wake_lock);
+	}
+}
+
 static char *bq24192_power_supplied_to[] = {
 	"battery",
 };
@@ -829,6 +918,7 @@ static enum power_supply_property bq24192_power_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
 
 static int bq24192_power_get_property(struct power_supply *psy,
@@ -855,6 +945,9 @@ static int bq24192_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		val->intval = bq24192_get_prop_charge_type(chip);
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		val->intval = bq24192_get_prop_input_voltage(chip);
 		break;
 	default:
 		return -EINVAL;
@@ -956,22 +1049,9 @@ static int bq24192_hw_init(struct bq24192_chip *chip)
 		return ret;
 	}
 
-	ret = bq24192_set_input_i_limit(chip,
-				INPUT_CURRENT_LIMIT_MAX_MA);
-	if (ret) {
-		pr_err("failed to set input current limit\n");
-		return ret;
-	}
-
 	ret = bq24192_set_system_vmin(chip, chip->sys_vmin_mv);
 	if (ret) {
 		pr_err("failed to set system min voltage\n");
-		return ret;
-	}
-
-	ret = bq24192_set_ibat_max(chip, chip->chg_current_ma);
-	if (ret) {
-		pr_err("failed to set charging current\n");
 		return ret;
 	}
 
@@ -1083,6 +1163,13 @@ static int bq24192_parse_dt(struct device_node *dev_node,
 		return ret;
 	}
 
+	ret = of_property_read_u32(dev_node, "ti,icl-vbus-mv",
+				   &chip->icl_vbus_mv);
+	if (ret) {
+		pr_err("Unable to read icl threshod voltage.\n");
+		return ret;
+	}
+
 	chip->wlc_support =
 			of_property_read_bool(dev_node, "ti,wlc-support");
 
@@ -1157,6 +1244,7 @@ static int bq24192_probe(struct i2c_client *client,
 		chip->pre_chg_current_ma = pdata->pre_chg_current_ma;
 		chip->sys_vmin_mv = pdata->sys_vmin_mv;
 		chip->vin_limit_mv = pdata->vin_limit_mv;
+		chip->icl_vbus_mv = pdata->icl_vbus_mv;
 	}
 	chip->set_chg_current_ma = chip->chg_current_ma;
 
@@ -1212,8 +1300,12 @@ static int bq24192_probe(struct i2c_client *client,
 
 	wake_lock_init(&chip->chg_wake_lock,
 		       WAKE_LOCK_SUSPEND, BQ24192_NAME);
+	wake_lock_init(&chip->icl_wake_lock,
+		       WAKE_LOCK_SUSPEND, "icl_wake_lock");
+
 	INIT_DELAYED_WORK(&chip->vbat_work, bq24192_vbat_work);
 	INIT_DELAYED_WORK(&chip->irq_work, bq24192_irq_worker);
+	INIT_DELAYED_WORK(&chip->input_limit_work, bq24192_input_limit_worker);
 	if (chip->irq) {
 		ret = request_irq(chip->irq, bq24192_irq,
 				IRQF_TRIGGER_FALLING,
@@ -1233,6 +1325,7 @@ static int bq24192_probe(struct i2c_client *client,
 
 err_req_irq:
 	wake_lock_destroy(&chip->chg_wake_lock);
+	wake_lock_destroy(&chip->icl_wake_lock);
 	if (chip->dent)
 		debugfs_remove_recursive(chip->dent);
 err_debugfs:
@@ -1257,6 +1350,7 @@ static int bq24192_remove(struct i2c_client *client)
 	if (chip->irq)
 		free_irq(chip->irq, chip);
 	wake_lock_destroy(&chip->chg_wake_lock);
+	wake_lock_destroy(&chip->icl_wake_lock);
 	if (chip->dent)
 		debugfs_remove_recursive(chip->dent);
 	power_supply_unregister(&chip->ac_psy);
