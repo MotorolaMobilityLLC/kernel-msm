@@ -191,7 +191,7 @@ static void max1462x_button_pressed(struct work_struct *work)
 					__func__, rc);
 	} else {
 		acc_read_value = (int)result.physical;
-		pr_info("%s: acc_read_value - %d\n", __func__, acc_read_value);
+		pr_debug("%s: acc_read_value - %d\n", __func__, acc_read_value);
 	}
 
 	pr_debug("%s: hs_pressed!\n", __func__);
@@ -280,23 +280,21 @@ static void max1462x_insert_headset(struct max1462x_hsd_info *hi)
 {
 	int earjack_type;
 
-	pr_debug("max1462x_insert_headset\n");
-	irq_set_irq_wake(hi->irq_key, 1);
+	pr_info("%s\n", __func__);
 
-	/* If you reduce the delay time, it will cause problems. */
+        /* If you reduce the delay time, it will cause problems. */
 	msleep(40);
 
 	/* Issue : Recognized 3-pole after reboot from 4-pole earjack plug. */
 
 	/* check if 3-pole or 4-pole
-	   1. read gpio_key
-	   2. check if 3-pole or 4-pole
-	   3-1. NOT regiter irq with gpio_key if 3-pole. complete.
-	   3-2. regiter irq with gpio_key if 4-pole
-	   4. read MPP6 and decide a pressed key when interrupt occurs */
-
+	 * 1. read gpio_key
+	 * 2. check if 3-pole or 4-pole
+	 * 3-1. NOT regiter irq with gpio_key if 3-pole. complete.
+	 * 3-2. regiter irq with gpio_key if 4-pole
+	 * 4. read MPP6 and decide a pressed key when interrupt occurs
+	 */
 	earjack_type = gpio_get_value(hi->gpio_key);
-
 	if (earjack_type == 1) {
 		pr_debug("%s: 4 polarity earjack\n", __func__);
 		atomic_set(&hi->is_3_pole_or_not, 0);
@@ -313,7 +311,8 @@ static void max1462x_insert_headset(struct max1462x_hsd_info *hi)
 				__func__, hi->irq_key);
 			enable_irq(hi->irq_key);
 			atomic_set(&hi->irq_key_enabled, true);
-		}
+                        enable_irq_wake(hi->irq_key);
+                }
 	} else {
 		pr_debug("%s; 3 polarity earjack\n", __func__);
 		atomic_set(&hi->is_3_pole_or_not, 1);
@@ -324,7 +323,13 @@ static void max1462x_insert_headset(struct max1462x_hsd_info *hi)
 		input_sync(hi->input);
 		mutex_unlock(&hi->mutex_lock);
 
-		irq_set_irq_wake(hi->irq_key, 0);
+		if (atomic_read(&hi->irq_key_enabled)) {
+			pr_debug("%s: irq_key_enabled = TRUE, key IRQ = %d\n",
+				__func__, hi->irq_key);
+			disable_irq(hi->irq_key);
+			atomic_set(&hi->irq_key_enabled, false);
+                        disable_irq_wake(hi->irq_key);
+                }
 	}
 }
 
@@ -332,7 +337,7 @@ static void max1462x_remove_headset(struct max1462x_hsd_info *hi)
 {
 	int earjack_type = JACK_NONE;
 
-	pr_debug("max1462x_remove_headset\n");
+	pr_info("%s\n", __func__);
 
 	if (atomic_read(&hi->is_3_pole_or_not))
 		earjack_type = JACK_HEADPHONE_3_POLE;
@@ -340,20 +345,19 @@ static void max1462x_remove_headset(struct max1462x_hsd_info *hi)
 		earjack_type = JACK_HEADPSET_4_POLE;
 
 	atomic_set(&hi->is_3_pole_or_not, 1);
-	mutex_lock(&hi->mutex_lock);
 
+	mutex_lock(&hi->mutex_lock);
 	switch_set_state(&hi->sdev, NO_DEVICE);
 	input_report_switch(hi->input, SW_HEADPHONE_INSERT, 0);
 	if (earjack_type == JACK_HEADPSET_4_POLE)
 		input_report_switch(hi->input, SW_MICROPHONE_INSERT, 0);
-
 	input_sync(hi->input);
-
 	mutex_unlock(&hi->mutex_lock);
 
 	if (atomic_read(&hi->irq_key_enabled)) {
 		disable_irq(hi->irq_key);
 		atomic_set(&hi->irq_key_enabled, false);
+                disable_irq_wake(hi->irq_key);
 	}
 
 	if (atomic_read(&hi->btn_state)) {
@@ -368,7 +372,7 @@ static void max1462x_detect_work(struct work_struct *work)
 	struct max1462x_hsd_info *hi =
         container_of(work, struct max1462x_hsd_info, work);
 
-	pr_debug("max1462x_detect_work\n");
+	pr_debug("%s\n", __func__);
 
 	state = gpio_get_value(hi->gpio_detect);
 
@@ -391,10 +395,9 @@ static irqreturn_t max1462x_earjack_det_irq_handler(int irq, void *dev_id)
 {
 	struct max1462x_hsd_info *hi = (struct max1462x_hsd_info *) dev_id;
 
+	pr_debug("%s\n", __func__);
+
 	wake_lock_timeout(&ear_hook_wake_lock, 2 * HZ);
-
-	pr_debug("max1462x_earjack_det_irq_handler\n");
-
 	queue_work(local_max1462x_workqueue, &(hi->work));
 	return IRQ_HANDLED;
 }
@@ -404,8 +407,9 @@ static irqreturn_t max1462x_button_irq_handler(int irq, void *dev_id)
 	struct max1462x_hsd_info *hi = (struct max1462x_hsd_info *) dev_id;
 	int value;
 
+	pr_debug("%s\n", __func__);
+
 	wake_lock_timeout(&ear_hook_wake_lock, 2 * HZ);
-	pr_debug("max1462x_button_irq_handler\n");
 	value = gpio_get_value(hi->gpio_key);
 	pr_debug("gpio_get_value(hi->gpio_key) : %d\n", value);
 
@@ -516,7 +520,7 @@ static int max1462x_hsd_probe(struct platform_device *pdev)
 		goto err_gpio_detect;
 	}
 
-	/*init gpio_key */
+	/* init gpio_key */
 	ret = gpio_request_one(hi->gpio_key, GPIOF_IN, "gpio_key");
 	if (ret < 0) {
 		pr_err("%s: Failed to configure gpio%d(gpio_key)\n",
@@ -524,24 +528,24 @@ static int max1462x_hsd_probe(struct platform_device *pdev)
 		goto err_gpio_key;
 	}
 
-	hi->irq_detect = gpio_to_irq(hi->gpio_detect);
-	pr_debug("%s: hi->irq_detect = %d\n", __func__, hi->irq_detect);
-
-	if (hi->irq_detect < 0) {
+	ret = gpio_to_irq(hi->gpio_detect);
+	if (ret < 0) {
 		pr_err("%s: Failed to get interrupt number\n", __func__);
-		ret = hi->irq_detect;
 		goto err_irq_detect;
 	}
+	hi->irq_detect = ret;
+	pr_debug("%s: hi->irq_detect = %d\n", __func__, hi->irq_detect);
+
 	ret = request_threaded_irq(hi->irq_detect, NULL,
 				max1462x_earjack_det_irq_handler,
 				IRQF_TRIGGER_RISING|IRQF_TRIGGER_FALLING,
 				pdev->name, hi);
-	if (ret) {
+	if (ret < 0) {
 		pr_err("%s: failed to request button irq\n", __func__);
 		goto err_irq_detect_request;
 	}
 
-	ret = irq_set_irq_wake(hi->irq_detect, 1);
+	ret = enable_irq_wake(hi->irq_detect);
 	if (ret < 0) {
 		pr_err("%s: Failed to set gpio_detect interrupt wake\n",
 			__func__);
@@ -549,31 +553,27 @@ static int max1462x_hsd_probe(struct platform_device *pdev)
 	}
 
 	/* initialize irq of gpio_key */
-	hi->irq_key = gpio_to_irq(hi->gpio_key);
-
-	pr_debug("%s: hi->irq_key = %d\n", __func__, hi->irq_key);
-
-	if (hi->irq_key < 0) {
+	ret = gpio_to_irq(hi->gpio_key);
+	if (ret < 0) {
 		pr_err("%s: Failed to get interrupt number\n", __func__);
-		ret = hi->irq_key;
 		goto err_irq_key;
 	}
+	hi->irq_key = ret;
+	pr_debug("%s: hi->irq_key = %d\n", __func__, hi->irq_key);
+
 	ret = request_threaded_irq(hi->irq_key, NULL,
 			max1462x_button_irq_handler,
 			IRQF_TRIGGER_RISING|IRQF_TRIGGER_FALLING,
 			pdev->name, hi);
-	if (ret) {
+	if (ret < 0) {
 		pr_err("%s: failed to request button irq\n", __func__);
 		goto err_irq_key_request;
 	}
 
-	ret = irq_set_irq_wake(hi->irq_key, 1);
-	if (ret < 0) {
-		pr_err("%s: Failed to set irq_key interrupt wake\n", __func__);
-		goto err_irq_key_wake;
-	}
+        disable_irq(hi->irq_key);
+        atomic_set(&hi->irq_key_enabled, false);
 
-	/* initialize switch device */
+        /* initialize switch device */
 	hi->sdev.name = pdata->switch_name;
 	hi->sdev.print_state = max1462x_hsd_print_state;
 	hi->sdev.print_name = max1462x_hsd_print_name;
@@ -629,7 +629,7 @@ static int max1462x_hsd_probe(struct platform_device *pdev)
 	input_set_capability(hi->input, EV_SW, SW_MICROPHONE_INSERT);
 
 	ret = input_register_device(hi->input);
-	if (ret) {
+	if (ret < 0) {
 		pr_err("%s: Failed to register input device\n", __func__);
 		goto err_input_register_device;
 	}
@@ -645,12 +645,11 @@ err_input_register_device:
 err_input_allocate_device:
 	switch_dev_unregister(&hi->sdev);
 err_switch_dev_register:
-err_irq_key_wake:
-	free_irq(hi->irq_detect, hi);
+        free_irq(hi->irq_key, hi);
 err_irq_key_request:
 err_irq_key:
 err_irq_detect_wake:
-	free_irq(hi->irq_key, hi);
+	free_irq(hi->irq_detect, hi);
 err_irq_detect_request:
 err_irq_detect:
 	gpio_free(hi->gpio_key);
@@ -718,9 +717,8 @@ static int __init max1462x_hsd_init(void)
 	int ret;
 
 	ret = platform_driver_register(&max1462x_hsd_driver);
-	if (ret) {
+	if (ret < 0)
 		pr_err("%s: Fail to register platform driver\n", __func__);
-	}
 
 	return ret;
 }
