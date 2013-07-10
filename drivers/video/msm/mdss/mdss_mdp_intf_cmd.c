@@ -489,6 +489,8 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	mdss_mdp_set_intr_callback(MDSS_MDP_IRQ_PING_PONG_COMP, ctx->pp_num,
 				   NULL, NULL);
 
+	flush_work_sync(&ctx->clk_work);
+
 	memset(ctx, 0, sizeof(*ctx));
 	ctl->priv_data = NULL;
 
