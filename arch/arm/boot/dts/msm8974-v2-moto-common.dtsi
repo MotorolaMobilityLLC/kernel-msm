@@ -146,6 +146,7 @@
 
 	sound {
 		qcom,model = "msm8974-taiko-mtp-snd-card";
+		qcom,cdc-micbias2-headset-only;
 	};
 
 	vbat_disp_vreg: vbat_disp_vreg {
@@ -485,6 +486,10 @@
 };
 
 &pm8941_bms {
+	qcom,enable-fcc-learning;
+	qcom,min-fcc-learning-soc = <20>;
+	qcom,min-fcc-ocv-pc = <30>;
+	qcom,min-fcc-learning-samples = <5>;
 	status = "ok";
 };
 
@@ -629,7 +634,7 @@
 		qcom,output-type = <0>;
 		qcom,pull = <5>;
 		qcom,vin-sel = <2>;
-		qcom,out-strength = <3>;
+		qcom,out-strength = <1>;
 		qcom,src-sel = <2>;
 		qcom,master-en = <1>;
 	};
@@ -781,13 +786,6 @@
 	};
 
 	mpp@a400 { /* MPP 5 */
-		/* SPI_ETH config */
-		qcom,mode = <1>; /* DIG_OUT */
-		qcom,output-type = <0>; /* CMOS */
-		qcom,vin-sel = <2>; /* PM8941_S3 1.8V > 1.6V */
-		qcom,src-sel = <0>; /* CONSTANT */
-		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,master-en = <1>; /* ENABLE MPP */
 	};
 
 	mpp@a500 { /* MPP 6 */
