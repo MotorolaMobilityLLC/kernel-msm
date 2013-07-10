@@ -5992,6 +5992,9 @@ static int hdd_driver_init( void)
    {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Libra WLAN not Powered Up. "
           "exiting", __func__);
+#ifdef WLAN_OPEN_SOURCE
+      wake_lock_destroy(&wlan_wake_lock);
+#endif
       return -EIO;
    }
 
@@ -6010,6 +6013,9 @@ static int hdd_driver_init( void)
    }
    if (max_retries >= 5) {
       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: WCNSS driver not ready", __func__);
+#ifdef WLAN_OPEN_SOURCE
+      wake_lock_destroy(&wlan_wake_lock);
+#endif
       return -ENODEV;
    }
 #endif
@@ -6099,7 +6105,6 @@ static int hdd_driver_init( void)
       send_btc_nlink_msg(WLAN_MODULE_UP_IND, 0);
 
       pr_info("%s: driver loaded\n", WLAN_MODULE_NAME);
-
    }
 
    EXIT();
