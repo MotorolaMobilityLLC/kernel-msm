@@ -5037,6 +5037,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 
    vos_chipVoteOffXOBuffer(NULL, NULL, NULL);
 
+
    //This requires pMac access, Call this before vos_close().
    hdd_unregister_mcast_bcast_filter(pHddCtx);
 
@@ -5068,7 +5069,11 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 
    //Clean up HDD Nlink Service
    send_btc_nlink_msg(WLAN_MODULE_DOWN_IND, 0);
+#ifdef WLAN_KD_READY_NOTIFIER
+   nl_srv_exit(pHddCtx->ptt_pid);
+#else
    nl_srv_exit();
+#endif /* WLAN_KD_READY_NOTIFIER */
 
    /* Cancel the vote for XO Core ON. 
     * This is done here to ensure there is no race condition since MC, TX and WD threads have
@@ -5949,8 +5954,11 @@ int hdd_wlan_startup(struct device *dev )
    goto success;
 
 err_nl_srv:
+#ifdef WLAN_KD_READY_NOTIFIER
+   nl_srv_exit(pHddCtx->ptt_pid);
+#else
    nl_srv_exit();
-
+#endif /* WLAN_KD_READY_NOTIFIER */
 err_reg_netdev:
    unregister_netdevice_notifier(&hdd_netdev_notifier);
 
