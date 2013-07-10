@@ -46,6 +46,7 @@
 
 #define I2C_RETRY_DELAY		5 /* ms */
 #define I2C_RETRIES		5
+#define TPA6165_POLLING_FREQ	(2*HZ)
 
 #define TPA6165A2_JACK_MASK (SND_JACK_HEADSET | SND_JACK_HEADPHONE| \
 				SND_JACK_UNSUPPORTED)
@@ -76,6 +77,7 @@ struct tpa6165_data {
 	int special_hs;
 	int alwayson_micb;
 	int button_detect_state;
+	int polling_state;
 	int mode;
 	int mono_hs_detect_state;
 	int force_hstype;
@@ -87,6 +89,7 @@ struct tpa6165_data {
 	struct workqueue_struct *wq;
 	struct delayed_work delay_work;
 	struct delayed_work work_det;
+	struct delayed_work poll_work;
 };
 
 static const struct tpa6165_regs tpa6165_reg_defaults[] = {
@@ -404,61 +407,6 @@ static inline void tpa6165_remove_debugfs(void)
 {
 }
 #endif
-
-static char const *tpa6165_mode[] = {
-	"Default",
-	"TTY",
-};
-
-static int tpa6165_get_mode(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
-{
-	struct tpa6165_data *tpa6165 =
-					i2c_get_clientdata(tpa6165_client);
-	ucontrol->value.integer.value[0] = tpa6165->mode;
-
-	return 0;
-}
-
-static int tpa6165_set_mode(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
-{
-	struct tpa6165_data *tpa6165 =
-					i2c_get_clientdata(tpa6165_client);
-	uint8_t value = ucontrol->value.integer.value[0];
-
-	/* check for bounds */
-	if (value < 0 || (value > (ARRAY_SIZE(tpa6165_mode) - 1))) {
-		pr_err("%s: invalid mode value received\n", __func__);
-		return -EINVAL;
-	}
-
-	if (value)
-		/* enable tty mode */
-		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
-				TPA6165_JACK_SHORT_Z|TPA6165_JACK_HP_LO_TH,
-				0xff);
-	else
-		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
-				tpa6165->jack_detect_config, 0xff);
-
-	pr_debug("%s: mode set: %s\n", __func__, tpa6165_mode[value]);
-
-	tpa6165->mode = value;
-
-	return 1;
-}
-
-static const struct soc_enum tpa6165_mode_enum[] = {
-	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tpa6165_mode), tpa6165_mode)
-};
-
-/* Mixer Controls */
-static const struct snd_kcontrol_new tpa6165_controls[] = {
-	SOC_ENUM_EXT("TPA6165 MODE", tpa6165_mode_enum,
-		       tpa6165_get_mode, tpa6165_set_mode
-		       ),
-};
 
 static void tpa6165_sleep(struct tpa6165_data *tpa6165, int sleep_state)
 {
@@ -991,6 +939,225 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 	return 0;
 }
 
+static void tpa6165_poll_acc_det(struct work_struct *work)
+{
+	struct tpa6165_data *tpa6165 =
+				i2c_get_clientdata(tpa6165_client);
+	int force_type = 0;
+	mutex_lock(&tpa6165->lock);
+	if (tpa6165->inserted) {
+		pr_debug("tpa6165: acc already detected  ..\n");
+		mutex_unlock(&tpa6165->lock);
+		return;
+	}
+	if (atomic_read(&tpa6165->is_suspending)) {
+		/* reschedule if the device is not resumed yet to avoid
+		 * possibility of I2C read write errors.
+		 */
+		pr_debug("tpa6165: not completely resumed yet  ..\n");
+		goto poll;
+	}
+
+	pr_debug("tpa6165: polling for accessory ..\n");
+	/* disable interrupts, clear interrupt mask regs */
+	tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
+		0x00, 0xff);
+	tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG2,
+		0, 0xff);
+	/* force to flt gnd flt mode */
+	tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+		TPA6165_STEREO_LINEOUT4, 0xff);
+	tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+			TPA6165_FORCE_TYPE | TPA6165_STEREO_LINEOUT4,
+			0xff);
+	msleep_interruptible(100);
+	tpa6165_update_device_status(tpa6165);
+
+	if ((tpa6165->hs_acc_reg & (0x7f)) == TPA6165_STEREO_LINEOUT4) {
+		/* re-run detection */
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
+			0x0, 0x80);
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
+			0x80, 0x80);
+		msleep_interruptible(200);
+		tpa6165_update_device_status(tpa6165);
+
+		if (((tpa6165->hs_acc_reg & (0x7f)) == TPA6165_NO_ACC_DET3)) {
+			/* force to CTIA stereo headset mode first and check for
+			 * button press to verify if its valid.
+			 */
+			tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+				TPA6165_STEREO_MIC_0N_SLEEVE, 0xff);
+			tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+				(TPA6165_FORCE_TYPE |
+				TPA6165_STEREO_MIC_0N_SLEEVE),
+				0xff);
+			tpa6165_update_device_status(tpa6165);
+			/* check for button press after 100 ms, if button
+			 * press detected try OMTP type. */
+			msleep_interruptible(100);
+			tpa6165_update_device_status(tpa6165);
+
+			if (tpa6165->dev_status_reg1 & TPA6165_JACK_BUTTON) {
+				tpa6165_reg_write(tpa6165,
+					TPA6165_ACC_STATE_REG,
+					TPA6165_STEREO_MIC_0N_RING, 0xff);
+				tpa6165_reg_write(tpa6165,
+					TPA6165_ACC_STATE_REG,
+					(TPA6165_FORCE_TYPE |
+					TPA6165_STEREO_MIC_0N_RING),
+					0xff);
+				tpa6165_update_device_status(tpa6165);
+				/* check for button press after 200 ms, if
+				 * still pressed check for OMTP type. Need to
+				 * use 2X delay time make sure the cap charge's
+				 * fully for omtp
+				 */
+				msleep_interruptible(200);
+				tpa6165_update_device_status(tpa6165);
+				if (tpa6165->dev_status_reg1 &
+							TPA6165_JACK_BUTTON) {
+
+					tpa6165_reg_write(tpa6165,
+						TPA6165_ACC_STATE_REG,
+						TPA6165_STEREO_HEADPHONE1,
+						0xff);
+					tpa6165_reg_write(tpa6165,
+						TPA6165_ACC_STATE_REG,
+						(TPA6165_FORCE_TYPE |
+						TPA6165_STEREO_HEADPHONE1),
+						0xff);
+					pr_debug("tpa6165: polling force to stereo lineout\n");
+					force_type = TPA6165_STEREO_HEADPHONE1;
+					tpa6165->hs_acc_type =
+							SND_JACK_HEADPHONE;
+				} else {
+					pr_debug("tpa6165: polling force to OMTP stereo hs\n");
+					force_type = TPA6165_STEREO_MIC_0N_RING;
+					tpa6165->hs_acc_type = SND_JACK_HEADSET;
+				}
+			} else {
+				pr_debug("tpa6165: force to CTIA stereo hs\n");
+				force_type = TPA6165_STEREO_MIC_0N_SLEEVE;
+				tpa6165->hs_acc_type = SND_JACK_HEADSET;
+			}
+		} else {
+			/* other valid accessory detected use normal method */
+			pr_debug("other valid accessory detected\n");
+			tpa6165_report_hs(tpa6165);
+		}
+	} /* else no valid acc inserted at this time*/
+
+	if (force_type) {
+		/* need this check again after forcing to make sure its not a
+		 * false detect, which happens when is polling mechanishm
+		 * forcing the acc type just the acc is removed.
+		 */
+		msleep_interruptible(100);
+		tpa6165_update_device_status(tpa6165);
+		if (((tpa6165->hs_acc_reg & (0x7f)) == force_type)) {
+			pr_info("tpa6165: polling accessory detected, reporting\n");
+			tpa6165->inserted = 1;
+			snd_soc_jack_report_no_dapm(tpa6165->hs_jack,
+				tpa6165->hs_acc_type,
+				tpa6165->hs_jack->jack->type);
+		} else
+			pr_debug("tpa6165: false acc detected, not reporting\n");
+	}
+	/* enable interrupts */
+	tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
+		0xc2, 0xff);
+	tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG2,
+		0x4, 0xff);
+
+	pr_debug("tpa6165 polling for accessory done ..\n");
+
+poll:
+	queue_delayed_work(tpa6165->wq, &tpa6165->poll_work,
+		TPA6165_POLLING_FREQ);
+	mutex_unlock(&tpa6165->lock);
+
+}
+
+static int tpa6165_poll_acc_state(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+
+	struct tpa6165_data *tpa6165 =
+					i2c_get_clientdata(tpa6165_client);
+	uint8_t value = ucontrol->value.integer.value[0];
+
+	pr_debug("tpa6165 polling enabled: %d", value);
+	mutex_lock(&tpa6165->lock);
+	if (value == 1) {
+		tpa6165->polling_state = 1;
+		queue_delayed_work(tpa6165->wq, &tpa6165->poll_work, 0);
+	} else {
+		cancel_delayed_work_sync(&tpa6165->poll_work);
+		tpa6165->polling_state = 0;
+	}
+	mutex_unlock(&tpa6165->lock);
+	return 1;
+}
+
+static char const *tpa6165_mode[] = {
+	"Default",
+	"TTY",
+};
+
+static int tpa6165_get_mode(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct tpa6165_data *tpa6165 =
+					i2c_get_clientdata(tpa6165_client);
+	ucontrol->value.integer.value[0] = tpa6165->mode;
+
+	return 0;
+}
+
+static int tpa6165_set_mode(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct tpa6165_data *tpa6165 =
+					i2c_get_clientdata(tpa6165_client);
+	uint8_t value = ucontrol->value.integer.value[0];
+
+	/* check for bounds */
+	if (value < 0 || (value > (ARRAY_SIZE(tpa6165_mode) - 1))) {
+		pr_err("%s: invalid mode value received\n", __func__);
+		return -EINVAL;
+	}
+
+	if (value)
+		/* enable tty mode */
+		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
+				TPA6165_JACK_SHORT_Z|TPA6165_JACK_HP_LO_TH,
+				0xff);
+	else
+		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
+				tpa6165->jack_detect_config, 0xff);
+
+	pr_debug("%s: mode set: %s\n", __func__, tpa6165_mode[value]);
+
+	tpa6165->mode = value;
+
+	return 1;
+}
+
+static const struct soc_enum tpa6165_mode_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tpa6165_mode), tpa6165_mode)
+};
+
+/* Mixer Controls */
+static const struct snd_kcontrol_new tpa6165_controls[] = {
+	SOC_ENUM_EXT("TPA6165 MODE", tpa6165_mode_enum,
+		       tpa6165_get_mode, tpa6165_set_mode
+		       ),
+	SOC_SINGLE_EXT("TPA6165 POLL ACC DET", 0,
+	0, 1, 0, NULL,
+	 tpa6165_poll_acc_state),
+};
+
 int tpa6165_hs_detect(struct snd_soc_codec *codec)
 {
 	int ret = -EINVAL;
@@ -1085,6 +1252,11 @@ static void tpa6165_det_thread(struct work_struct *work)
 				i2c_get_clientdata(tpa6165_client);
 
 	mutex_lock(&irq_data->lock);
+	/* if polling is running cancel it here */
+	if (irq_data->polling_state) {
+		pr_debug("tpa6165: cancel polling ..\n");
+		cancel_delayed_work_sync(&irq_data->poll_work);
+	}
 	wake_lock(&irq_data->wake_lock);
 	pr_debug("%s: Enter", __func__);
 	if (atomic_read(&irq_data->is_suspending)) {
@@ -1100,6 +1272,11 @@ static void tpa6165_det_thread(struct work_struct *work)
 
 	/* timed wake lock here so that user space wakeup in time */
 	wake_lock_timeout(&irq_data->wake_lock, HZ/2);
+	if (irq_data->polling_state) {
+		pr_debug("tpa6165: enable polling ..\n");
+		queue_delayed_work(irq_data->wq, &irq_data->poll_work,
+			TPA6165_POLLING_FREQ);
+	}
 	mutex_unlock(&irq_data->lock);
 }
 
@@ -1228,6 +1405,7 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 	}
 	INIT_DELAYED_WORK(&tpa6165->delay_work, tpa6165_delayed_mono_work);
 	INIT_DELAYED_WORK(&tpa6165->work_det, tpa6165_det_thread);
+	INIT_DELAYED_WORK(&tpa6165->poll_work, tpa6165_poll_acc_det);
 
 	tpa6165->gpio_irq = gpio_to_irq(tpa6165->gpio);
 	/* active low interrupt */
