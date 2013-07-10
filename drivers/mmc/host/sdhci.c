@@ -1488,9 +1488,11 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	int vdd_bit = -1;
 	u8 ctrl;
 
+	mutex_lock(&host->ios_mutex);
 	if (host->flags & SDHCI_DEVICE_DEAD) {
 		if (host->vmmc && ios->power_mode == MMC_POWER_OFF)
 			mmc_regulator_set_ocr(host->mmc, host->vmmc, 0);
+		mutex_unlock(&host->ios_mutex);
 		return;
 	}
 
@@ -1500,6 +1502,7 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	spin_lock_irqsave(&host->lock, flags);
 	if (!host->clock) {
 		spin_unlock_irqrestore(&host->lock, flags);
+		mutex_unlock(&host->ios_mutex);
 		return;
 	}
 	spin_unlock_irqrestore(&host->lock, flags);
@@ -1656,6 +1659,7 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 		sdhci_set_clock(host, ios->clock);
 
 	mmiowb();
+	mutex_unlock(&host->ios_mutex);
 }
 
 static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
@@ -2892,6 +2896,7 @@ struct sdhci_host *sdhci_alloc_host(struct device *dev,
 	host->mmc = mmc;
 
 	spin_lock_init(&host->lock);
+	mutex_init(&host->ios_mutex);
 
 	return host;
 }
