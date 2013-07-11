@@ -72,9 +72,9 @@
 //default beacon interval value used in HB timer interval calculation
 #define LIM_HB_TIMER_BEACON_INTERVAL             100
 
-/* This timer is a periodic timer which expires at every 5 sec to
+/* This timer is a periodic timer which expires at every 1 sec to
    convert  ACTIVE DFS channel to DFS channels */
-#define ACTIVE_TO_PASSIVE_CONVERISON_TIMEOUT     5000
+#define ACTIVE_TO_PASSIVE_CONVERISON_TIMEOUT     1000
 
 /**
  * limCreateTimers()
