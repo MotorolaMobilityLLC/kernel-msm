@@ -340,6 +340,10 @@
 
 	qcom,pm8226@0 {
 
+		qcom,power-on@800 {
+			qcom,s3-debounce = <16>;
+		};
+
 		pm8226_chg_fac: qcom,chargerfac {
 			spmi-dev-container;
 			compatible = "qcom,qpnp-charger-factory";
