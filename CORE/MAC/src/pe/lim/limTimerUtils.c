@@ -611,10 +611,10 @@ limCreateTimers(tpAniSirGlobal pMac)
                FL("could not retrieve mac preauth value"));
     }
     pMac->lim.gLimPreAuthTimerTable.numEntry = cfgValue;
-    if (palAllocateMemory(pMac->hHdd, (void **) &pMac->lim.gLimPreAuthTimerTable.pTable,
-          cfgValue*sizeof(tLimPreAuthNode)) != eHAL_STATUS_SUCCESS)
+    pMac->lim.gLimPreAuthTimerTable.pTable = vos_mem_malloc(cfgValue*sizeof(tLimPreAuthNode));
+    if(pMac->lim.gLimPreAuthTimerTable.pTable == NULL)
     {
-        limLog(pMac, LOGP, FL("palAllocateMemory failed!"));
+        limLog(pMac, LOGP, FL("AllocateMemory failed!"));
         goto err_timer;
     }
 
@@ -791,7 +791,7 @@ limCreateTimers(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimActiveToPassiveChannelTimer);
 
         if(NULL != pMac->lim.gLimPreAuthTimerTable.pTable)
-            palFreeMemory(pMac->hHdd, pMac->lim.gLimPreAuthTimerTable.pTable);
+            vos_mem_free(pMac->lim.gLimPreAuthTimerTable.pTable);
 
         return TX_TIMER_ERROR;
 
@@ -965,7 +965,7 @@ limAssocFailureTimerHandler(void *pMacGlobal, tANI_U32 param)
             limLog(pMac, LOGW, FL("Reassoc request retry MAX(%d) reached"), LIM_MAX_REASSOC_RETRY_LIMIT);
             if(NULL != pMac->lim.pSessionEntry->pLimMlmReassocRetryReq)
             {
-                palFreeMemory( pMac->hHdd, pMac->lim.pSessionEntry->pLimMlmReassocRetryReq);
+                vos_mem_free( pMac->lim.pSessionEntry->pLimMlmReassocRetryReq);
                 pMac->lim.pSessionEntry->pLimMlmReassocRetryReq = NULL;
             }
         }
