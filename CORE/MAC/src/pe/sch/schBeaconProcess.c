@@ -376,7 +376,8 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         if(limGetStaHashBssidx(pMac, DPH_STA_HASH_INDEX_PEER, &bssIdx, psessionEntry) != eSIR_SUCCESS)
             goto fail;
         beaconParams.bssIdx = bssIdx;
-        palCopyMemory( pMac->hHdd, ( tANI_U8* )&psessionEntry->lastBeaconTimeStamp, ( tANI_U8* )pBeacon->timeStamp, sizeof(tANI_U64) );
+        vos_mem_copy(( tANI_U8* )&psessionEntry->lastBeaconTimeStamp,
+                     ( tANI_U8* )pBeacon->timeStamp, sizeof(tANI_U64));
         psessionEntry->lastBeaconDtimCount = pBeacon->tim.dtimCount;
         psessionEntry->lastBeaconDtimPeriod= pBeacon->tim.dtimPeriod;
         psessionEntry->currentBssBeaconCnt++;

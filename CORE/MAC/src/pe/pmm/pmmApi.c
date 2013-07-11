@@ -353,7 +353,7 @@ void pmmExitBmpsRequestHandler(tpAniSirGlobal pMac, tpExitBmpsInfo pExitBmpsInfo
          * checked when PMM receives SIR_HAL_EXIT_BMPS_RSP from HAL
          */
         pMac->pmm.gPmmExitBmpsReasonCode = pExitBmpsInfo->exitBmpsReason;
-        palFreeMemory( pMac->hHdd, (tANI_U8 *) pExitBmpsInfo);
+        vos_mem_free(pExitBmpsInfo);
 
         PELOGW(pmmLog(pMac, LOGW, 
             FL("pmmBmps: Rcvd EXIT_BMPS with reason code%d "), pMac->pmm.gPmmExitBmpsReasonCode);)
@@ -382,7 +382,7 @@ void pmmExitBmpsRequestHandler(tpAniSirGlobal pMac, tpExitBmpsInfo pExitBmpsInfo
 
         respStatus = eSIR_SME_INVALID_PMM_STATE;
         pmmBmpsUpdateInvalidStateCnt(pMac);
-        palFreeMemory( pMac->hHdd, (tANI_U8 *) pExitBmpsInfo);
+        vos_mem_free(pExitBmpsInfo);
         goto failure;
     }
     return;
@@ -553,9 +553,10 @@ tSirRetStatus pmmSendChangePowerSaveMsg(tpAniSirGlobal pMac)
     tpPESession psessionEntry;
     tANI_U8  currentOperatingChannel = limGetCurrentOperatingChannel(pMac);
 
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pExitBmpsParams, sizeof(*pExitBmpsParams)) )
+    pExitBmpsParams = vos_mem_malloc(sizeof(*pExitBmpsParams));
+    if ( NULL == pExitBmpsParams )
     {
-        pmmLog(pMac, LOGW, FL("palAllocateMemory() failed"));
+        pmmLog(pMac, LOGW, FL("Failed to allocate memory"));
         retStatus = eSIR_MEM_ALLOC_FAILED;
         return retStatus;
     }
@@ -563,11 +564,11 @@ tSirRetStatus pmmSendChangePowerSaveMsg(tpAniSirGlobal pMac)
     if((psessionEntry = peGetValidPowerSaveSession(pMac)) == NULL )
     {
         retStatus = eSIR_FAILURE;
-        palFreeMemory(pMac->hHdd, (tANI_U8*)pExitBmpsParams);
+        vos_mem_free(pExitBmpsParams);
         return retStatus;
     }
 
-    palZeroMemory( pMac->hHdd, (tANI_U8 *)pExitBmpsParams, sizeof(*pExitBmpsParams));
+    vos_mem_set( (tANI_U8 *)pExitBmpsParams, sizeof(*pExitBmpsParams), 0);
     msgQ.type = WDA_EXIT_BMPS_REQ;
     msgQ.reserved = 0;
     msgQ.bodyptr = pExitBmpsParams;
@@ -595,7 +596,7 @@ tSirRetStatus pmmSendChangePowerSaveMsg(tpAniSirGlobal pMac)
     if( eSIR_SUCCESS != retStatus )
     {
         PELOGE(pmmLog( pMac, LOGE, FL("Sending WDA_EXIT_BMPS_REQ failed, reason=%X "), retStatus );)
-        palFreeMemory(pMac->hHdd, (tANI_U8*)pExitBmpsParams);
+        vos_mem_free(pExitBmpsParams);
         return retStatus;
     }
 
@@ -642,7 +643,8 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
         return eSIR_FAILURE;
     }
 
-    if (palAllocateMemory(pMac->hHdd, (void **)&pBmpsParams, sizeof(tEnterBmpsParams)) != eHAL_STATUS_SUCCESS)
+    pBmpsParams = vos_mem_malloc(sizeof(tEnterBmpsParams));
+    if ( NULL == pBmpsParams )
     {
         pmmLog(pMac, LOGP, "PMM: Not able to allocate memory for Enter Bmps");
         return eSIR_FAILURE;
@@ -728,7 +730,7 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
-        palFreeMemory(pMac->hHdd, pBmpsParams);
+        vos_mem_free(pBmpsParams);
         PELOGE(pmmLog( pMac, LOGE,
             FL("Posting WDA_ENTER_BMPS_REQ to HAL failed, reason=%X"),
             retCode );)
@@ -816,7 +818,7 @@ tSirRetStatus pmmSendPowerSaveCfg(tpAniSirGlobal pMac, tpSirPowerSaveCfg pUpdate
     pUpdatedPwrSaveCfg->ignoreDtim = (tANI_U8) ignoreDtim;
 
     //Save a copy of the CFG in global pmm context.
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) &pMac->pmm.gPmmCfg,  pUpdatedPwrSaveCfg, sizeof(tSirPowerSaveCfg));
+    vos_mem_copy( (tANI_U8 *) &pMac->pmm.gPmmCfg,  pUpdatedPwrSaveCfg, sizeof(tSirPowerSaveCfg));
 
 
     msgQ.type = WDA_PWR_SAVE_CFG;
@@ -840,7 +842,7 @@ returnFailure:
     /* In case of failure, we need to free the memory */
     if (NULL != pUpdatedPwrSaveCfg)
     {
-        palFreeMemory( pMac->hHdd, (tANI_U8 *) pUpdatedPwrSaveCfg);
+        vos_mem_free(pUpdatedPwrSaveCfg);
     }
     return retCode;
 }
@@ -1208,11 +1210,12 @@ void pmmProcessMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             tpSirPowerSaveCfg pPSCfg;
             tSirMbMsg *pMbMsg = (tSirMbMsg *)pMsg->bodyptr;
 
-            if (palAllocateMemory(pMac->hHdd, (void **)&pPSCfg, sizeof(tSirPowerSaveCfg)) != eHAL_STATUS_SUCCESS)
+            pPSCfg = vos_mem_malloc(sizeof(tSirPowerSaveCfg));
+            if ( NULL == pPSCfg )
             {
                 pmmLog(pMac, LOGP, "PMM: Not able to allocate memory for PMC Config");
             }
-            (void) palCopyMemory(pMac->hHdd, pPSCfg, pMbMsg->data, sizeof(tSirPowerSaveCfg));
+            (void) vos_mem_copy(pPSCfg, pMbMsg->data, sizeof(tSirPowerSaveCfg));
             (void) pmmSendPowerSaveCfg(pMac, pPSCfg);
         }
             break;
@@ -1230,11 +1233,12 @@ void pmmProcessMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             tpExitBmpsInfo  pExitBmpsInfo;
             tSirMbMsg      *pMbMsg = (tSirMbMsg *)pMsg->bodyptr;
 
-            if (palAllocateMemory(pMac->hHdd, (void **)&pExitBmpsInfo, sizeof(tExitBmpsInfo)) != eHAL_STATUS_SUCCESS)
+            pExitBmpsInfo = vos_mem_malloc(sizeof(tExitBmpsInfo));
+            if ( NULL == pExitBmpsInfo )
             {
                 pmmLog(pMac, LOGP, "PMM: Failed to allocate memory for Exit BMPS Info ");
             }
-            (void) palCopyMemory(pMac->hHdd, pExitBmpsInfo, pMbMsg->data, sizeof(tExitBmpsInfo));
+            (void) vos_mem_copy(pExitBmpsInfo, pMbMsg->data, sizeof(tExitBmpsInfo));
             (void) pmmExitBmpsRequestHandler(pMac, pExitBmpsInfo);
         }
             break;
@@ -1323,7 +1327,7 @@ void pmmProcessMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
     if (NULL != pMsg->bodyptr)
     {
-        palFreeMemory(pMac->hHdd, (tANI_U8 *)pMsg->bodyptr);
+        vos_mem_free(pMsg->bodyptr);
         pMsg->bodyptr = NULL;
     }
 }
@@ -2048,12 +2052,13 @@ void pmmSendWowlAddBcastPtrn(tpAniSirGlobal pMac,  tpSirMsgQ pMsg)
     tSirRetStatus          retCode = eSIR_SUCCESS;
     tSirMsgQ               msgQ;
 
-    if (palAllocateMemory(pMac->hHdd, (void **)&pBcastPtrn, sizeof(*pBcastPtrn)) != eHAL_STATUS_SUCCESS)
+    pBcastPtrn = vos_mem_malloc(sizeof(*pBcastPtrn));
+    if ( NULL == pBcastPtrn )
     {
         pmmLog(pMac, LOGP, FL("Fail to allocate memory for WoWLAN Add Bcast Pattern "));
         return;
     }
-    (void) palCopyMemory(pMac->hHdd, pBcastPtrn, pMbMsg->data, sizeof(*pBcastPtrn));
+    (void) vos_mem_copy(pBcastPtrn, pMbMsg->data, sizeof(*pBcastPtrn));
 
     if (NULL == pBcastPtrn)
     {
@@ -2074,7 +2079,7 @@ void pmmSendWowlAddBcastPtrn(tpAniSirGlobal pMac,  tpSirMsgQ pMsg)
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
         if (pBcastPtrn != NULL)
-            palFreeMemory( pMac->hHdd, (tANI_U8 *) pBcastPtrn);
+            vos_mem_free(pBcastPtrn);
         pmmLog( pMac, LOGP, FL("Posting WDA_WOWL_ADD_BCAST_PTRN failed, reason=%X"), retCode );
     }
     return;
@@ -2095,12 +2100,13 @@ void pmmSendWowlDelBcastPtrn(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     tSirRetStatus           retCode = eSIR_SUCCESS;
     tSirMsgQ                msgQ;
 
-    if (palAllocateMemory(pMac->hHdd, (void **)&pDeletePtrn, sizeof(*pDeletePtrn)) != eHAL_STATUS_SUCCESS)
+    pDeletePtrn = vos_mem_malloc(sizeof(*pDeletePtrn));
+    if ( NULL == pDeletePtrn )
     {
         pmmLog(pMac, LOGP, FL("Fail to allocate memory for WoWLAN Delete Bcast Pattern "));
         return;
     }
-    (void) palCopyMemory(pMac->hHdd, pDeletePtrn, pMbMsg->data, sizeof(*pDeletePtrn));
+    (void) vos_mem_copy(pDeletePtrn, pMbMsg->data, sizeof(*pDeletePtrn));
 
     if (NULL == pDeletePtrn)
     {
@@ -2121,7 +2127,7 @@ void pmmSendWowlDelBcastPtrn(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
         if (NULL != pDeletePtrn)
-            palFreeMemory( pMac->hHdd, (tANI_U8 *) pDeletePtrn);
+            vos_mem_free(pDeletePtrn);
         pmmLog( pMac, LOGP, FL("Posting WDA_WOWL_DEL_BCAST_PTRN failed, reason=%X"), retCode );
     }
     return;
@@ -2186,17 +2192,19 @@ void pmmEnterWowlRequestHandler(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         goto end;
     }
 
-    if (palAllocateMemory(pMac->hHdd, (void **)&pHalWowlParams, sizeof(*pHalWowlParams)) != eHAL_STATUS_SUCCESS)
+    pHalWowlParams = vos_mem_malloc(sizeof(*pHalWowlParams));
+    if ( NULL == pHalWowlParams )
     {
         pmmLog(pMac, LOGP, FL("Fail to allocate memory for Enter Wowl Request "));
         goto end;
     }
-    (void) palZeroMemory(pMac->hHdd, (tANI_U8 *)pHalWowlParams, sizeof(*pHalWowlParams) );
+    (void) vos_mem_set((tANI_U8 *)pHalWowlParams, sizeof(*pHalWowlParams), 0);
 
     // fill in the message field
     pHalWowlParams->ucMagicPktEnable = pSmeWowlParams->ucMagicPktEnable;
     pHalWowlParams->ucPatternFilteringEnable = pSmeWowlParams->ucPatternFilteringEnable;
-    (void)palCopyMemory( pMac->hHdd, (tANI_U8 *)pHalWowlParams->magicPtrn, (tANI_U8 *)pSmeWowlParams->magicPtrn, sizeof(tSirMacAddr) );
+    (void)vos_mem_copy( (tANI_U8 *)pHalWowlParams->magicPtrn, (tANI_U8 *)pSmeWowlParams->magicPtrn,
+                         sizeof(tSirMacAddr) );
 
 #ifdef WLAN_WAKEUP_EVENTS
     pHalWowlParams->ucWoWEAPIDRequestEnable = pSmeWowlParams->ucWoWEAPIDRequestEnable;
@@ -2261,7 +2269,7 @@ void pmmEnterWowlRequestHandler(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
 end:
     if (pHalWowlParams != NULL)
-        palFreeMemory( pMac->hHdd, (tANI_U8 *) pHalWowlParams);
+        vos_mem_free(pHalWowlParams);
     return;
 }
 
@@ -2367,12 +2375,13 @@ void pmmExitWowlanRequestHandler(tpAniSirGlobal pMac)
 
     if((pSessionEntry = peFindSessionBySessionId(pMac,PowersavesessionId)) == NULL )
     {
-        PELOGW(pmmLog(pMac, LOGE, FL("pmmWowl :palAllocateMemory() failed"));)
+        PELOGW(pmmLog(pMac, LOGE, FL("pmmWowl : failed to allocate memory"));)
         smeRspCode = eSIR_SME_WOWL_EXIT_REQ_FAILED;
         goto failure;
     }
 
-    if (palAllocateMemory(pMac->hHdd, (void **)&pHalWowlMsg, sizeof(*pHalWowlMsg)) != eHAL_STATUS_SUCCESS)
+    pHalWowlMsg = vos_mem_malloc(sizeof(*pHalWowlMsg));
+    if ( NULL == pHalWowlMsg )
     {
         pmmLog(pMac, LOGP, FL("Fail to allocate memory for WoWLAN Add Bcast Pattern "));
         smeRspCode = eSIR_SME_WOWL_EXIT_REQ_FAILED;
@@ -2392,7 +2401,7 @@ void pmmExitWowlanRequestHandler(tpAniSirGlobal pMac)
         goto failure;
     }
 
-    (void) palZeroMemory(pMac->hHdd, (tANI_U8 *)pHalWowlMsg, sizeof(*pHalWowlMsg) );
+    (void) vos_mem_set((tANI_U8 *)pHalWowlMsg, sizeof(*pHalWowlMsg), 0);
     pHalWowlMsg->bssIdx = pSessionEntry->bssIdx;
 
     if((retStatus = pmmSendExitWowlReq(pMac, pHalWowlMsg)) != eSIR_SUCCESS)
@@ -2407,7 +2416,7 @@ void pmmExitWowlanRequestHandler(tpAniSirGlobal pMac)
 
 failure:
     if (pHalWowlMsg != NULL)
-        palFreeMemory( pMac->hHdd, (tANI_U8 *) pHalWowlMsg);
+       vos_mem_free(pHalWowlMsg);
     limSendSmeRsp(pMac, eWNI_PMC_EXIT_WOWL_RSP, smeRspCode, 0, 0);
     return;
 }
@@ -2571,21 +2580,22 @@ tSirRetStatus pmmUapsdSendChangePwrSaveMsg (tpAniSirGlobal pMac, tANI_U8 mode)
 
     if((pSessionEntry = peGetValidPowerSaveSession(pMac)) == NULL )
     {
-        PELOGW(pmmLog(pMac, LOGW, FL("pmmUapsd :palAllocateMemory() failed"));)
+        PELOGW(pmmLog(pMac, LOGW, FL("pmmUapsd : failed to allocate memory"));)
         retStatus = eSIR_FAILURE;
         return retStatus;
     }
 
     if (SIR_PM_SLEEP_MODE == mode)
     {
-        if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pUapsdParams, sizeof(tUapsdParams)) )
+        pUapsdParams = vos_mem_malloc(sizeof(tUapsdParams));
+        if ( NULL == pUapsdParams )
         {
-            PELOGW(pmmLog(pMac, LOGW, FL("pmmUapsd :palAllocateMemory() failed"));)
+            PELOGW(pmmLog(pMac, LOGW, FL("pmmUapsd : failed to allocate memory"));)
             retStatus = eSIR_MEM_ALLOC_FAILED;
             return retStatus;
         }
 
-        palZeroMemory( pMac->hHdd, (tANI_U8 *)pUapsdParams, sizeof(tUapsdParams));
+        vos_mem_set( (tANI_U8 *)pUapsdParams, sizeof(tUapsdParams), 0);
         msgQ.type = WDA_ENTER_UAPSD_REQ;
         msgQ.bodyptr = pUapsdParams;
 
@@ -2624,14 +2634,15 @@ tSirRetStatus pmmUapsdSendChangePwrSaveMsg (tpAniSirGlobal pMac, tANI_U8 mode)
     }
     else
     {
-        if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pExitUapsdParams, sizeof(tExitUapsdParams)) )
+        pExitUapsdParams = vos_mem_malloc(sizeof(tExitUapsdParams));
+        if ( NULL == pExitUapsdParams )
         {
-            PELOGW(pmmLog(pMac, LOGW, FL("pmmUapsd :palAllocateMemory() failed"));)
+            PELOGW(pmmLog(pMac, LOGW, FL("pmmUapsd : failed to allocate memory"));)
             retStatus = eSIR_MEM_ALLOC_FAILED;
             return retStatus;
         }
 
-        palZeroMemory( pMac->hHdd, (tANI_U8 *)pExitUapsdParams, sizeof(tExitUapsdParams));
+        vos_mem_set( (tANI_U8 *)pExitUapsdParams, sizeof(tExitUapsdParams), 0);
         msgQ.type = WDA_EXIT_UAPSD_REQ;
         msgQ.bodyptr = pExitUapsdParams;
         pExitUapsdParams->bssIdx = pSessionEntry->bssIdx;
@@ -2653,9 +2664,9 @@ tSirRetStatus pmmUapsdSendChangePwrSaveMsg (tpAniSirGlobal pMac, tANI_U8 mode)
             FL("pmmUapsd: WDA_ENTER/EXIT_UAPSD_REQ to HAL failed, reason=%X"),
             retStatus);)
         if (SIR_PM_SLEEP_MODE == mode)
-            palFreeMemory(pMac->hHdd, (tANI_U8*)pUapsdParams);
+            vos_mem_free(pUapsdParams);
         else
-            palFreeMemory(pMac->hHdd, (tANI_U8*)pExitUapsdParams);
+            vos_mem_free(pExitUapsdParams);
     }
 
     return retStatus;
