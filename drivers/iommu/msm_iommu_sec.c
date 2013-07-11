@@ -324,7 +324,7 @@ static int msm_iommu_sec_ptbl_map(struct msm_iommu_drvdata *iommu_drvdata,
 	map.info.ctx_id = ctx_drvdata->num;
 	map.info.va = va;
 	map.info.size = len;
-	map.flags = IOMMU_TLBINVAL_FLAG;
+	map.flags = 0;
 
 	if (scm_call(SCM_SVC_MP, IOMMU_SECURE_MAP2, &map, sizeof(map), &ret,
 								sizeof(ret)))
@@ -363,7 +363,7 @@ static int msm_iommu_sec_ptbl_map_range(struct msm_iommu_drvdata *iommu_drvdata,
 	map.info.ctx_id = ctx_drvdata->num;
 	map.info.va = va;
 	map.info.size = len;
-	map.flags = IOMMU_TLBINVAL_FLAG;
+	map.flags = 0;
 
 	if (sg->length == len) {
 		pa = get_phys_addr(sg);
