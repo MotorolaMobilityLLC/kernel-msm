@@ -2235,7 +2235,7 @@ static long vid_dec_ioctl(struct file *file,
 			client_ctx->seq_hdr_ion_handle = ion_import_dma_buf(
 				client_ctx->user_ion_client,
 				seq_header.pmem_fd);
-			if (!client_ctx->seq_hdr_ion_handle) {
+			if (IS_ERR_OR_NULL(client_ctx->seq_hdr_ion_handle)) {
 				ERR("%s(): get_ION_handle failed\n", __func__);
 				return false;
 			}
@@ -2252,7 +2252,7 @@ static long vid_dec_ioctl(struct file *file,
 			ker_vaddr = (unsigned long) ion_map_kernel(
 				client_ctx->user_ion_client,
 				client_ctx->seq_hdr_ion_handle);
-			if (!ker_vaddr) {
+			if (IS_ERR_OR_NULL((void *)ker_vaddr)) {
 				ERR("%s():get_ION_kernel virtual addr fail\n",
 							 __func__);
 				ion_free(client_ctx->user_ion_client,
@@ -2295,7 +2295,7 @@ static long vid_dec_ioctl(struct file *file,
 			return -EFAULT;
 		}
 		if (vcd_get_ion_status()) {
-			if (client_ctx->seq_hdr_ion_handle) {
+			if (!IS_ERR_OR_NULL(client_ctx->seq_hdr_ion_handle)) {
 				ion_unmap_kernel(client_ctx->user_ion_client,
 						client_ctx->seq_hdr_ion_handle);
 				ion_free(client_ctx->user_ion_client,
