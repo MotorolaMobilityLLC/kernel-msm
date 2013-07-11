@@ -164,13 +164,14 @@
 #define QWLAN_HAL_CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_IN_SP 111
 #define QWLAN_HAL_CFG_ANTENNA_DIVERSITY                 112
 #define QWLAN_HAL_CFG_ATH_DISABLE                       113
-#define QWLAN_HAL_CFG_MAX_PARAMS                        114
+#define QWLAN_HAL_CFG_ENABLE_ADAPTIVE_RX_DRAIN_FEATURE  115
+#define QWLAN_HAL_CFG_MAX_PARAMS                        116
 
 
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                      114
+#define QWLAN_HAL_CFG_INTEGER_PARAM                      116
 
 
 /*-------------------------------------------------------------------------
