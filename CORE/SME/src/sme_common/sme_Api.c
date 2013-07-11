@@ -90,6 +90,7 @@ extern tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #include <wlan_qct_pal_api.h>
 
 #define READ_MEMORY_DUMP_CMD     9
+#define TL_INIT_STATE            0
 
 // TxMB Functions
 extern eHalStatus pmcPrepareCommand( tpAniSirGlobal pMac, eSmeCommandType cmdType, void *pvParam,
@@ -4026,6 +4027,30 @@ eHalStatus sme_GetStatistics(tHalHandle hHal, eCsrStatsRequesterType requesterId
 
    return (status);
 
+}
+
+/* ---------------------------------------------------------------------------
+    \fn smeGetTLSTAState
+    \helper function to get the TL STA State whenever the function is called.
+
+    \param staId - The staID to be passed to the TL
+            to get the relevant TL STA State
+    \return the state as tANI_U16
+  ---------------------------------------------------------------------------*/
+tANI_U16 smeGetTLSTAState(tHalHandle hHal, tANI_U8 staId)
+{
+   tANI_U16 tlSTAState = TL_INIT_STATE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+   eHalStatus status = eHAL_STATUS_FAILURE;
+
+   status = sme_AcquireGlobalLock( &pMac->sme );
+   if ( HAL_STATUS_SUCCESS( status ) )
+   {
+      tlSTAState = csrGetTLSTAState( pMac, staId);
+      sme_ReleaseGlobalLock( &pMac->sme );
+   }
+
+   return tlSTAState;
 }
 
 /* ---------------------------------------------------------------------------

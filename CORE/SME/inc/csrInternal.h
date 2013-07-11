@@ -1207,6 +1207,15 @@ eHalStatus csrGetStatistics(tpAniSirGlobal pMac, eCsrStatsRequesterType requeste
                             tANI_U32 periodicity, tANI_BOOLEAN cache,
                             tANI_U8 staId, void *pContext);
 
+/* ---------------------------------------------------------------------------
+    \fn csrGetTLSTAState
+    \helper function to get the TL STA State whenever the function is called.
+
+    \param staId - The staID to be passed to the TL
+            to get the relevant TL STA State
+    \return the state as tANI_U16
+  ---------------------------------------------------------------------------*/
+tANI_U16 csrGetTLSTAState(tpAniSirGlobal pMac, tANI_U8 staId);
 
 eHalStatus csrGetRssi(tpAniSirGlobal pMac,tCsrRssiCallback callback,tANI_U8 staId,tCsrBssid bssId,void * pContext,void * pVosContext);
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
