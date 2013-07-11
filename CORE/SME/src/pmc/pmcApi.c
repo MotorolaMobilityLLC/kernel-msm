@@ -101,7 +101,7 @@ eHalStatus pmcOpen (tHalHandle hHal)
     palZeroMemory(pMac->hHdd, &(pMac->pmc.smpsConfig), sizeof(tPmcSmpsConfigParams));
 
     /* Allocate a timer to use with IMPS. */
-    if (palTimerAlloc(pMac->hHdd, &pMac->pmc.hImpsTimer, pmcImpsTimerExpired, hHal) != eHAL_STATUS_SUCCESS)
+    if (vos_timer_init(&pMac->pmc.hImpsTimer, VOS_TIMER_TYPE_SW, pmcImpsTimerExpired, hHal) != VOS_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, FL("Cannot allocate timer for IMPS"));
         return eHAL_STATUS_FAILURE;
@@ -118,7 +118,7 @@ eHalStatus pmcOpen (tHalHandle hHal)
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT    
     /* Allocate a timer used to report current PMC state through periodic DIAG event */
-    if (palTimerAlloc(pMac->hHdd, &pMac->pmc.hDiagEvtTimer, pmcDiagEvtTimerExpired, hHal) != eHAL_STATUS_SUCCESS)
+    if (vos_timer_init(&pMac->pmc.hDiagEvtTimer, VOS_TIMER_TYPE_SW, pmcDiagEvtTimerExpired, hHal) != VOS_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, FL("Cannot allocate timer for diag event reporting"));
         return eHAL_STATUS_FAILURE;
@@ -130,8 +130,8 @@ eHalStatus pmcOpen (tHalHandle hHal)
     pMac->pmc.bmpsConfig.bmpsPeriod = WNI_CFG_LISTEN_INTERVAL_STADEF;
 
     /* Allocate a timer used to schedule a deferred power save mode exit. */
-    if (palTimerAlloc(pMac->hHdd, &pMac->pmc.hExitPowerSaveTimer,
-                      pmcExitPowerSaveTimerExpired, hHal) != eHAL_STATUS_SUCCESS)
+    if (vos_timer_init(&pMac->pmc.hExitPowerSaveTimer, VOS_TIMER_TYPE_SW,
+                      pmcExitPowerSaveTimerExpired, hHal) !=VOS_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, FL("Cannot allocate exit power save mode timer"));
         PMC_ABORT;
@@ -291,7 +291,7 @@ eHalStatus pmcStop (tHalHandle hHal)
     smsLog(pMac, LOG2, FL("Entering pmcStop"));
 
     /* Cancel any running timers. */
-    if (palTimerStop(pMac->hHdd, pMac->pmc.hImpsTimer) != eHAL_STATUS_SUCCESS)
+    if (vos_timer_stop(&pMac->pmc.hImpsTimer) != VOS_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, FL("Cannot cancel IMPS timer"));
     }
@@ -302,7 +302,7 @@ eHalStatus pmcStop (tHalHandle hHal)
     pmcStopDiagEvtTimer(hHal);
 #endif
 
-    if (palTimerStop(pMac->hHdd, pMac->pmc.hExitPowerSaveTimer) != eHAL_STATUS_SUCCESS)
+    if (vos_timer_stop(&pMac->pmc.hExitPowerSaveTimer) != VOS_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, FL("Cannot cancel exit power save mode timer"));
     }
@@ -353,7 +353,7 @@ eHalStatus pmcClose (tHalHandle hHal)
     smsLog(pMac, LOG2, FL("Entering pmcClose"));
 
     /* Free up allocated resources. */
-    if (palTimerFree(pMac->hHdd, pMac->pmc.hImpsTimer) != eHAL_STATUS_SUCCESS)
+    if (vos_timer_destroy(&pMac->pmc.hImpsTimer) != VOS_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, FL("Cannot deallocate IMPS timer"));
     }
@@ -362,12 +362,12 @@ eHalStatus pmcClose (tHalHandle hHal)
         smsLog(pMac, LOGE, FL("Cannot deallocate traffic timer"));
     }
 #ifdef FEATURE_WLAN_DIAG_SUPPORT    
-    if (palTimerFree(pMac->hHdd, pMac->pmc.hDiagEvtTimer) != eHAL_STATUS_SUCCESS)
+    if (vos_timer_destroy(&pMac->pmc.hDiagEvtTimer) != VOS_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, FL("Cannot deallocate timer for diag event reporting"));
     }
 #endif
-    if (palTimerFree(pMac->hHdd, pMac->pmc.hExitPowerSaveTimer) != eHAL_STATUS_SUCCESS)
+    if (vos_timer_destroy(&pMac->pmc.hExitPowerSaveTimer) != VOS_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, FL("Cannot deallocate exit power save mode timer"));
     }
@@ -1040,12 +1040,10 @@ eHalStatus pmcRequestFullPower (tHalHandle hHal, void (*callbackRoutine) (void *
 
     /* If in IMPS State, then cancel the timer. */
     if (pMac->pmc.pmcState == IMPS)
-        if (palTimerStop(pMac->hHdd, pMac->pmc.hImpsTimer) != eHAL_STATUS_SUCCESS)
+        if (vos_timer_stop(&pMac->pmc.hImpsTimer) != VOS_STATUS_SUCCESS)
         {
             smsLog(pMac, LOGE, FL("Cannot cancel IMPS timer"));
-            return eHAL_STATUS_FAILURE;
         }
-
     /* Enter Request Full Power State. */
     if (pmcEnterRequestFullPowerState(hHal, fullPowerReason) != eHAL_STATUS_SUCCESS)
         return eHAL_STATUS_FAILURE;
@@ -2779,7 +2777,7 @@ pmcPopulateMacHeader( tpAniSirGlobal pMac,
                       tANI_U8* pBD,
                       tANI_U8 type,
                       tANI_U8 subType,
-                      tSirMacAddr peerAddr ,
+                      tSirMacAddr peerAddr,
                       tSirMacAddr selfMacAddr)
 {
     tSirRetStatus   statusCode = eSIR_SUCCESS;
@@ -2870,7 +2868,7 @@ pmcPrepareProbeReqTemplate(tpAniSirGlobal pMac,
 
     // Next, we fill out the buffer descriptor:
     nSirStatus = pmcPopulateMacHeader( pMac, pFrame, SIR_MAC_MGMT_FRAME,
-                                SIR_MAC_MGMT_PROBE_REQ, bssId ,selfMacAddr);
+                                SIR_MAC_MGMT_PROBE_REQ, bssId,selfMacAddr);
 
     if ( eSIR_SUCCESS != nSirStatus )
     {

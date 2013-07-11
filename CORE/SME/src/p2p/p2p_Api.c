@@ -315,9 +315,8 @@ eHalStatus sme_sendActionCnf( tHalHandle hHal, tANI_U8* pMsg)
 
       if(NULL == pP2pContext->pNextActionFrm)
       {
-         status = palTimerStart(pMac->hHdd, pP2pContext->retryActionFrameTimer, 
-                        ACTION_FRAME_RETRY_TIMEOUT * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
-         if (!HAL_STATUS_SUCCESS(status))
+         status = vos_timer_start(&pP2pContext->retryActionFrameTimer, ACTION_FRAME_RETRY_TIMEOUT);
+         if (!VOS_IS_STATUS_SUCCESS(status))
          {
             smsLog(pMac, LOGE, " %s fail to start retryActionFrameTimerHandler",
                __func__, pP2pContext->NextActionFrameType);
@@ -336,12 +335,14 @@ eHalStatus sme_sendActionCnf( tHalHandle hHal, tANI_U8* pMsg)
 
    if (pP2pContext->actionFrameTimer)
    {
-      status = palTimerStop(pMac, pP2pContext->actionFrameTimer);
+      vos_timer_stop(&pP2pContext->actionFrameTimer);
+      status = eHAL_STATUS_SUCCESS;
    }
 
    if (pP2pContext->retryActionFrameTimer)
    {
-      status = palTimerStop(pMac, pP2pContext->retryActionFrameTimer);
+      vos_timer_stop(&pP2pContext->retryActionFrameTimer);
+      status = eHAL_STATUS_SUCCESS;
    }
 
    if(pP2pContext->pSentActionFrame)
@@ -390,9 +391,8 @@ eHalStatus sme_sendActionCnf( tHalHandle hHal, tANI_U8* pMsg)
    {
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, " sending next frame %d type",
                   pP2pContext->NextActionFrameType);
-      status = palTimerStart(pMac->hHdd, pP2pContext->actionFrameTimer, 
-                        pP2pContext->ActionFrameSendTimeout * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_start(&pP2pContext->actionFrameTimer, pP2pContext->ActionFrameSendTimeout);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, FL(" %s fail to start timer status %d"), __func__, status);
          //Without the timer we cannot continue
@@ -414,9 +414,8 @@ eHalStatus sme_sendActionCnf( tHalHandle hHal, tANI_U8* pMsg)
       {
          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, " sending next frame %d type",
                   pP2pContext->NextActionFrameType);
-         status = palTimerStart(pMac->hHdd, pP2pContext->retryActionFrameTimer, 
-                     ACTION_FRAME_RETRY_TIMEOUT * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
-         if (!HAL_STATUS_SUCCESS(status))
+         status = vos_timer_start(&pP2pContext->retryActionFrameTimer, ACTION_FRAME_RETRY_TIMEOUT);
+         if (!VOS_IS_STATUS_SUCCESS(status))
          {
             smsLog(pMac, LOGE, " %s fail to start retryActionFrameTimerHandler", __func__);
          }
@@ -535,22 +534,22 @@ void p2pResetContext(tp2pContext *pP2pContext)
 
       if (pP2pContext->actionFrameTimer)
       {
-         palTimerStop(pMac->hHdd, pP2pContext->actionFrameTimer);
+         vos_timer_stop(&pP2pContext->actionFrameTimer);
       }
 
       if (pP2pContext->discoverTimer)
       {
-         palTimerStop(pMac->hHdd, pP2pContext->discoverTimer);
+         vos_timer_stop(&pP2pContext->discoverTimer);
       }
 
       if (pP2pContext->listenTimerHandler)
       {
-         palTimerStop(pMac->hHdd, pP2pContext->listenTimerHandler);
+         vos_timer_stop(&pP2pContext->listenTimerHandler);
       }
 
       if (pP2pContext->WPSRegistrarCheckTimerHandler)
       {
-         palTimerStop(pMac->hHdd, pP2pContext->WPSRegistrarCheckTimerHandler);
+         vos_timer_stop(&pP2pContext->WPSRegistrarCheckTimerHandler);
       }
 
       if (pP2pContext->directedDiscoveryFilter)
@@ -588,30 +587,29 @@ eHalStatus sme_p2pOpen( tHalHandle hHal )
 
       p2pResetContext(pP2pContext);
 
-      status = palTimerAlloc(pMac->hHdd, &pP2pContext->actionFrameTimer, 
-                                    p2pActionFrameTimerHandler, pP2pContext);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_init(&pP2pContext->actionFrameTimer, VOS_TIMER_TYPE_SW, p2pActionFrameTimerHandler, pP2pContext);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, " %s fail to alloc actionFrame timer for session %d", __func__, i);
          break;
       }
-      status = palTimerAlloc(pMac->hHdd, &pP2pContext->listenTimerHandler, 
-                              p2pListenDiscoverTimerHandler, pP2pContext);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_init(&pP2pContext->listenTimerHandler, VOS_TIMER_TYPE_SW,
+                                        p2pListenDiscoverTimerHandler, pP2pContext);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, " %s fail to alloc listen timer for session %d", __func__, i);
          break;
       } 
-      status = palTimerAlloc(pMac->hHdd, &pP2pContext->discoverTimer, p2pDiscoverTimerHandler, pP2pContext);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_init(&pP2pContext->discoverTimer, VOS_TIMER_TYPE_SW, p2pDiscoverTimerHandler, pP2pContext);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, " %s fail to alloc discover timer for session %d", __func__, i);
          break;
       }
 
-      status = palTimerAlloc(pMac->hHdd, &pP2pContext->retryActionFrameTimer, 
+      status = vos_timer_init(&pP2pContext->retryActionFrameTimer, VOS_TIMER_TYPE_SW,
                      p2pRetryActionFrameTimerHandler, pP2pContext);
-      if (!HAL_STATUS_SUCCESS(status))
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          smsLog(pMac, LOGE, " %s fail to alloc retryActionFrameTimerHandler timer for session %d", __func__, i);
          break;
@@ -674,25 +672,25 @@ eHalStatus sme_p2pClose( tHalHandle hHal )
       pContext = &pMac->p2pContext[i];
       if (pContext->actionFrameTimer)
       {
-         palTimerFree(hHal, pContext->actionFrameTimer);
+         vos_timer_destroy(&pContext->actionFrameTimer);
          pContext->actionFrameTimer = NULL;
       }
 
       if (pContext->discoverTimer)
       {
-         palTimerFree(hHal, pContext->discoverTimer);
+         vos_timer_destroy(&pContext->discoverTimer);
          pContext->discoverTimer = NULL;
       }
 
       if (pContext->listenTimerHandler)
       {
-         palTimerFree(hHal, pContext->listenTimerHandler);
+         vos_timer_destroy(&pContext->listenTimerHandler);
          pContext->listenTimerHandler = NULL;
       }
 
       if (pContext->WPSRegistrarCheckTimerHandler)
       {
-         palTimerFree(hHal, pContext->WPSRegistrarCheckTimerHandler);
+         vos_timer_destroy(&pContext->WPSRegistrarCheckTimerHandler);
          pContext->WPSRegistrarCheckTimerHandler = NULL;
       }
 
@@ -1410,9 +1408,9 @@ eHalStatus p2pCreateSendActionFrame(tHalHandle hHal, tANI_U8 HDDSessionID,
          pP2pContext->ActionFrameSendTimeout = WLAN_P2P_DEF_ACTION_FRM_TIMEOUT_VALUE;
       }
 
-      status = palTimerStart(pMac->hHdd, pP2pContext->actionFrameTimer, 
-                        pP2pContext->ActionFrameSendTimeout * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
-      if (!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_start(&pP2pContext->actionFrameTimer,
+                        pP2pContext->ActionFrameSendTimeout);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          tCsrRoamInfo RoamInfo;
 
@@ -1498,8 +1496,8 @@ static eHalStatus p2pListenStateDiscoverableCallback(tHalHandle halHandle, void 
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s restart listen timer expire time %d",
                   __func__, p2pContext->expire_time);
       //We can restart the listening
-      status = palTimerStart(pMac->hHdd, p2pContext->listenTimerHandler, p2pContext->expire_time, eANI_BOOLEAN_FALSE);
-      if (eHAL_STATUS_SUCCESS != status)
+      status = vos_timer_start(&p2pContext->listenTimerHandler, (p2pContext->expire_time)/PAL_TIMER_TO_MS_UNIT);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          VOS_ASSERT(status);
       }
@@ -1532,7 +1530,8 @@ eHalStatus P2P_ListenStateDiscoverable(tHalHandle hHal, tANI_U8 sessionId,
 
          if (pMac->p2pContext[sessionId].listenTimerHandler)
          {
-            status = palTimerStop(pMac->hHdd, pMac->p2pContext[sessionId].listenTimerHandler);
+            vos_timer_stop(&pMac->p2pContext[sessionId].listenTimerHandler);
+            status = eHAL_STATUS_SUCCESS;
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s Timer Stop status %d",
                         __func__, status);
          }
@@ -1912,9 +1911,9 @@ eHalStatus P2P_DiscoverRequest(tHalHandle hHal,
 
       pP2pContext->uDiscoverTimeout = pDiscoverRequest->uDiscoverTimeout;
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_MED, "%s Start discover", __func__);
-      status = palTimerStart(pMac->hHdd, pP2pContext->discoverTimer, 
-                     pP2pContext->uDiscoverTimeout * 1000, eANI_BOOLEAN_FALSE);
-      if(!HAL_STATUS_SUCCESS(status))
+      status = vos_timer_start(&pP2pContext->discoverTimer,
+                     pP2pContext->uDiscoverTimeout);
+      if (!VOS_IS_STATUS_SUCCESS(status))
       {
          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
             "%s failt to start discover timer", __func__);
@@ -2120,7 +2119,7 @@ eHalStatus p2pStopDiscovery(tHalHandle hHal, tANI_U8 SessionID)
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
    eHalStatus status = eHAL_STATUS_SUCCESS;
 
-   status = palTimerStop(pMac->hHdd, pMac->p2pContext[SessionID].discoverTimer);
+   status = vos_timer_stop(&pMac->p2pContext[SessionID].discoverTimer);
    if (status != eHAL_STATUS_SUCCESS)
    {
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s Timer Stop status %d",  __func__, status);
