@@ -1074,7 +1074,8 @@ static irqreturn_t tpa6165_irq_handler(int irq, void *data)
 	struct tpa6165_data *irq_data = data;
 
 	wake_lock_timeout(&irq_data->wake_lock, HZ);
-	queue_delayed_work(irq_data->wq, &irq_data->work_det, 0);
+	queue_delayed_work(irq_data->wq, &irq_data->work_det,
+						msecs_to_jiffies(2));
 	return IRQ_HANDLED;
 }
 
