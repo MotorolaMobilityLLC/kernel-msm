@@ -309,6 +309,10 @@
 
 		qcom,leds@d300 {
 			status = "okay";
+			pm8226_flash0: qcom,flash_0 {
+				qcom,current = <1000>;
+				qcom,clamp-curr = <1000>;
+			};
 		};
 
 		qcom,leds@d800 {
