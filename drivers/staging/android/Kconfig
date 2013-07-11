@@ -140,6 +140,15 @@ config ANDROID_LMK_ADJ_RBTREE
 	  Use oom_score_adj rbtree to select the best proecss to kill
 	  when system in low memory status.
 
+config ANDROID_BG_SCAN_MEM
+	bool "SCAN free memory more frequently"
+	depends on ANDROID_LOW_MEMORY_KILLER && ANDROID_LMK_ADJ_RBTREE && CGROUP_SCHED
+	default N
+	---help---
+	  Add more free-memory check point. Such as, when a task is moved to
+	  background task groups, we can trigger low memory killer to scan
+	  memory and decide whether it needs to reclaim memory by killing tasks.
+
 endif # if ANDROID
 
 endmenu
