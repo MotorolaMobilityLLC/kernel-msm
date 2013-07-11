@@ -2355,17 +2355,26 @@ unchar sp_tx_get_cable_type(bool bdelay)
 bool sp_tx_get_hdmi_connection(void)
 {
 	unchar c;
+	unsigned int i;
 
-	msleep(200);
-
-	if (AUX_OK != sp_tx_aux_dpcdread_bytes
-		(0x00, 0x05, 0x18, 1, &c)) {
-		return FALSE;
+	for (i = 0; i < GET_HDMI_CONNECTION_MAX_TRIES; i++) {
+		if (AUX_OK != sp_tx_aux_dpcdread_bytes
+			(0x00, 0x05, 0x18, 1, &c)) {
+			pr_err("AUX ERR.\n");
+			return FALSE;
+		}
+		if ((c & 0x41) == 0x41) {
+			pr_info("connection ok.\n");
+			return TRUE;
+		} else {
+			pr_debug("try again - %d\n", (i + 1));
+			msleep(200);
+			continue;
+		}
 	}
-	if ((c & 0x41) == 0x41)
-		return TRUE;
-	else
-		return FALSE;
+
+	pr_err("get failed. \n");
+	return FALSE;
 }
 
 bool sp_tx_get_vga_connection(void)

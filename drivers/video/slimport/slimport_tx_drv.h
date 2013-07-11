@@ -26,6 +26,7 @@
 #define SCDT_EXPIRE_TH 10
 #define SP_TX_HDCP_FAIL_TH 10
 #define SP_TX_DS_VID_STB_TH 20
+#define GET_HDMI_CONNECTION_MAX_TRIES 6
 
 extern unchar bedid_extblock[128];
 extern unchar bedid_firstblock[128];
