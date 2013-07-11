@@ -195,7 +195,7 @@ void limTriggerBackgroundScan(tpAniSirGlobal pMac)
     smeScanReq.messageType = eWNI_SME_SCAN_REQ;
     smeScanReq.length      = sizeof(tSirSmeScanReq);
     smeScanReq.bssType     = eSIR_INFRASTRUCTURE_MODE;
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) smeScanReq.bssId,
+    vos_mem_copy( (tANI_U8 *) smeScanReq.bssId,
                   (tANI_U8 *) &bcAddr, sizeof(tSirMacAddr));
  
     if (wlan_cfgGetStr(pMac, WNI_CFG_SSID,
