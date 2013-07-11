@@ -75,7 +75,7 @@ tANI_U8
 rrmGetMinOfMaxTxPower(tPowerdBm regMax, tPowerdBm apTxPower)
 {
     tANI_U8 maxTxPower = 0;
-    tANI_U8 txPower = VOS_MIN( regMax , (apTxPower) );
+    tANI_U8 txPower = VOS_MIN( regMax, (apTxPower) );
     if((txPower >= RRM_MIN_TX_PWR_CAP) && (txPower <= RRM_MAX_TX_PWR_CAP))
         maxTxPower =  txPower;
     else if (txPower < RRM_MIN_TX_PWR_CAP)
@@ -168,8 +168,8 @@ rrmSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, tPowerdBm txPower, tpPESession pS
       PELOGE(limLog(pMac, LOGE, FL(" Inavalid parameters"));)
       return eSIR_FAILURE;
    }
-   if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-            (void **) &pMaxTxParams, sizeof(tMaxTxPowerParams) ) ) 
+   pMaxTxParams = vos_mem_malloc(sizeof(tMaxTxPowerParams));
+   if ( NULL == pMaxTxParams )
    {
       limLog( pMac, LOGP, FL("Unable to allocate memory for pMaxTxParams ") );
       return eSIR_MEM_ALLOC_FAILED;
@@ -179,8 +179,8 @@ rrmSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, tPowerdBm txPower, tpPESession pS
    PELOGE(limLog( pMac, LOGE, FL(" Allocated memory for pMaxTxParams...will be freed in other module") );)
 #endif
    pMaxTxParams->power = txPower;
-   palCopyMemory( pMac->hHdd, pMaxTxParams->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr) );
-   palCopyMemory( pMac->hHdd, pMaxTxParams->selfStaMacAddr, pSessionEntry->selfMacAddr, sizeof(tSirMacAddr) );
+   vos_mem_copy(pMaxTxParams->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr));
+   vos_mem_copy(pMaxTxParams->selfStaMacAddr, pSessionEntry->selfMacAddr, sizeof(tSirMacAddr));
 
 
    msgQ.type = WDA_SET_MAX_TX_POWER_REQ;
@@ -194,7 +194,7 @@ rrmSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, tPowerdBm txPower, tpPESession pS
    if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
    {
       limLog( pMac, LOGP, FL("Posting WDA_SET_MAX_TX_POWER_REQ to HAL failed, reason=%X"), retCode );
-      palFreeMemory( pMac->hHdd, (tANI_U8 *) pMaxTxParams );
+      vos_mem_free(pMaxTxParams);
       return retCode;
    }
    return retCode;
@@ -250,7 +250,7 @@ rrmSetMaxTxPowerRsp ( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
       }
    }
 
-   palFreeMemory(pMac->hHdd, (void*)limMsgQ->bodyptr);
+   vos_mem_free(limMsgQ->bodyptr);
    limMsgQ->bodyptr = NULL;
    return retCode;
 }
@@ -378,14 +378,14 @@ rrmProcessNeighborReportResponse( tpAniSirGlobal pMac,
             (sizeof( tSirNeighborBssDescription ) * (pNeighborRep->num_NeighborReport - 1) ) ; 
             
    //Prepare the request to send to SME.
-   if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-            (void **) &pSmeNeighborRpt, length ) )
+   pSmeNeighborRpt = vos_mem_malloc(length);
+   if( NULL == pSmeNeighborRpt )
    {
       PELOGE(limLog( pMac, LOGP, FL("Unable to allocate memory") );)
       return eSIR_MEM_ALLOC_FAILED;
 
    }
-   palZeroMemory( pMac->hHdd, pSmeNeighborRpt, length ); 
+   vos_mem_set(pSmeNeighborRpt, length, 0);
 #if defined WLAN_VOWIFI_DEBUG
    PELOGE(limLog( pMac, LOGE, FL(" Allocated memory for pSmeNeighborRpt...will be freed by other module") );)
 #endif
@@ -393,8 +393,9 @@ rrmProcessNeighborReportResponse( tpAniSirGlobal pMac,
    for( i = 0 ; i < pNeighborRep->num_NeighborReport ; i++ )
    {
       pSmeNeighborRpt->sNeighborBssDescription[i].length = sizeof( tSirNeighborBssDescription ); /*+ any optional ies */
-      palCopyMemory( pMac->hHdd, pSmeNeighborRpt->sNeighborBssDescription[i].bssId,
-            pNeighborRep->NeighborReport[i].bssid, sizeof(tSirMacAddr) );
+      vos_mem_copy(pSmeNeighborRpt->sNeighborBssDescription[i].bssId,
+                   pNeighborRep->NeighborReport[i].bssid,
+                   sizeof(tSirMacAddr));
       pSmeNeighborRpt->sNeighborBssDescription[i].bssidInfo.rrmInfo.fApPreauthReachable = pNeighborRep->NeighborReport[i].APReachability;
       pSmeNeighborRpt->sNeighborBssDescription[i].bssidInfo.rrmInfo.fSameSecurityMode = pNeighborRep->NeighborReport[i].Security;
       pSmeNeighborRpt->sNeighborBssDescription[i].bssidInfo.rrmInfo.fSameAuthenticator = pNeighborRep->NeighborReport[i].KeyScope;
@@ -414,7 +415,7 @@ rrmProcessNeighborReportResponse( tpAniSirGlobal pMac,
    pSmeNeighborRpt->messageType = eWNI_SME_NEIGHBOR_REPORT_IND;
    pSmeNeighborRpt->length = length;
    pSmeNeighborRpt->numNeighborReports = pNeighborRep->num_NeighborReport;
-   palCopyMemory( pMac->hHdd, pSmeNeighborRpt->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr) );
+   vos_mem_copy(pSmeNeighborRpt->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr));
 
    //Send request to SME.
    mmhMsg.type    = pSmeNeighborRpt->messageType;
@@ -466,13 +467,13 @@ rrmProcessNeighborReportReq( tpAniSirGlobal pMac,
    PELOGE(limLog( pMac, LOGE, "SSID present = %d ", pNeighborReq->noSSID );)
 #endif
 
-   palZeroMemory( pMac->hHdd, &NeighborReportReq, sizeof( tSirMacNeighborReportReq ) );
+   vos_mem_set(&NeighborReportReq,sizeof( tSirMacNeighborReportReq ), 0);
 
    NeighborReportReq.dialogToken = ++pMac->rrm.rrmPEContext.DialogToken;
    NeighborReportReq.ssid_present = !pNeighborReq->noSSID; 
    if( NeighborReportReq.ssid_present )
    {
-      palCopyMemory( pMac->hHdd, &NeighborReportReq.ssid, &pNeighborReq->ucSSID, sizeof(tSirMacSSid) );
+      vos_mem_copy(&NeighborReportReq.ssid, &pNeighborReq->ucSSID, sizeof(tSirMacSSid));
 #if defined WLAN_VOWIFI_DEBUG
       PELOGE(sirDumpBuf( pMac, SIR_LIM_MODULE_ID, LOGE, (tANI_U8*) NeighborReportReq.ssid.ssId, NeighborReportReq.ssid.length );)
 #endif
@@ -568,21 +569,21 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
 
    if( pBeaconReq->measurement_request.Beacon.RequestedInfo.present )
    {
-      if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void**) &pCurrentReq->request.Beacon.reqIes.pElementIds, 
-                                                    ( sizeof( tANI_U8) * 
-                                                    pBeaconReq->measurement_request.Beacon.RequestedInfo.num_requested_eids ) ) )
+      pCurrentReq->request.Beacon.reqIes.pElementIds = vos_mem_malloc(sizeof(tANI_U8) *
+                      pBeaconReq->measurement_request.Beacon.RequestedInfo.num_requested_eids);
+      if ( NULL == pCurrentReq->request.Beacon.reqIes.pElementIds )
       {
             limLog( pMac, LOGP,
-               FL( "Unable to PAL allocate memory for request IEs buffer" ));
+               FL( "Unable to allocate memory for request IEs buffer" ));
             return eRRM_FAILURE;
       }
 #if defined WLAN_VOWIFI_DEBUG
       PELOGE(limLog( pMac, LOGE, FL(" Allocated memory for pElementIds") );)
 #endif
       pCurrentReq->request.Beacon.reqIes.num = pBeaconReq->measurement_request.Beacon.RequestedInfo.num_requested_eids;
-      palCopyMemory ( pMac->hHdd, pCurrentReq->request.Beacon.reqIes.pElementIds, 
-            pBeaconReq->measurement_request.Beacon.RequestedInfo.requested_eids, 
-            pCurrentReq->request.Beacon.reqIes.num );      
+      vos_mem_copy(pCurrentReq->request.Beacon.reqIes.pElementIds,
+                   pBeaconReq->measurement_request.Beacon.RequestedInfo.requested_eids,
+                   pCurrentReq->request.Beacon.reqIes.num);
    }
 
    if( pBeaconReq->measurement_request.Beacon.num_APChannelReport )
@@ -592,23 +593,22 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
    }
 
    //Prepare the request to send to SME.
-   if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-            (void **) &pSmeBcnReportReq,
-            (sizeof( tSirBeaconReportReqInd ) + num_channels) ) )
+   pSmeBcnReportReq = vos_mem_malloc(sizeof( tSirBeaconReportReqInd ) + num_channels);
+   if ( NULL == pSmeBcnReportReq )
    {
       limLog( pMac, LOGP,
-            FL( "Unable to PAL allocate memory during Beacon Report Req Ind to SME" ));
+            FL( "Unable to allocate memory during Beacon Report Req Ind to SME" ));
 
       return eRRM_FAILURE;
 
    }
 
-   palZeroMemory( pMac->hHdd, pSmeBcnReportReq, sizeof( tSirBeaconReportReqInd ) + num_channels );
+   vos_mem_set(pSmeBcnReportReq,sizeof( tSirBeaconReportReqInd ) + num_channels,0);
 
 #if defined WLAN_VOWIFI_DEBUG
    PELOGE(limLog( pMac, LOGE, FL(" Allocated memory for pSmeBcnReportReq....will be freed by other module") );)
 #endif
-   palCopyMemory( pMac->hHdd, pSmeBcnReportReq->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr) );
+   vos_mem_copy(pSmeBcnReportReq->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr));
    pSmeBcnReportReq->messageType = eWNI_SME_BEACON_REPORT_REQ_IND;
    pSmeBcnReportReq->length = sizeof( tSirBeaconReportReqInd ) + num_channels;
    pSmeBcnReportReq->uDialogToken = pBeaconReq->measurement_token;
@@ -618,13 +618,15 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
    pSmeBcnReportReq->fMeasurementtype = pBeaconReq->measurement_request.Beacon.meas_mode;
    pSmeBcnReportReq->channelInfo.regulatoryClass = pBeaconReq->measurement_request.Beacon.regClass;
    pSmeBcnReportReq->channelInfo.channelNum = pBeaconReq->measurement_request.Beacon.channel;
-   palCopyMemory( pMac->hHdd, pSmeBcnReportReq->macaddrBssid, pBeaconReq->measurement_request.Beacon.BSSID, sizeof(tSirMacAddr) );
+   vos_mem_copy(pSmeBcnReportReq->macaddrBssid, pBeaconReq->measurement_request.Beacon.BSSID,
+                sizeof(tSirMacAddr));
 
    if( pBeaconReq->measurement_request.Beacon.SSID.present )
    {
       pSmeBcnReportReq->ssId.length = pBeaconReq->measurement_request.Beacon.SSID.num_ssid;
-      palCopyMemory( pMac->hHdd, pSmeBcnReportReq->ssId.ssId,  pBeaconReq->measurement_request.Beacon.SSID.ssid, 
-            pSmeBcnReportReq->ssId.length );
+      vos_mem_copy(pSmeBcnReportReq->ssId.ssId,
+                   pBeaconReq->measurement_request.Beacon.SSID.ssid,
+                   pSmeBcnReportReq->ssId.length);
    }
 
    pCurrentReq->token = pBeaconReq->measurement_token;
@@ -635,9 +637,9 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
       tANI_U8 *pChanList = pSmeBcnReportReq->channelList.channelNumber;
       for( num_APChanReport = 0 ; num_APChanReport < pBeaconReq->measurement_request.Beacon.num_APChannelReport ; num_APChanReport++ )
       {
-         palCopyMemory( pMac->hHdd, pChanList, 
-               pBeaconReq->measurement_request.Beacon.APChannelReport[num_APChanReport].channelList, 
-               pBeaconReq->measurement_request.Beacon.APChannelReport[num_APChanReport].num_channelList );
+         vos_mem_copy(pChanList,
+          pBeaconReq->measurement_request.Beacon.APChannelReport[num_APChanReport].channelList,
+          pBeaconReq->measurement_request.Beacon.APChannelReport[num_APChanReport].num_channelList);
 
          pChanList += pBeaconReq->measurement_request.Beacon.APChannelReport[num_APChanReport].num_channelList;
       }
@@ -717,7 +719,7 @@ rrmFillBeaconIes( tpAniSirGlobal pMac,
 #if defined WLAN_VOWIFI_DEBUG
             PELOGE(limLog( pMac, LOGE, "Adding Eid %d, len=%d", *pBcnIes, len );)
 #endif
-            palCopyMemory( pMac->hHdd, pIes, pBcnIes, len ); 
+            vos_mem_copy(pIes, pBcnIes, len);
             pIes += len;
             *pNumIes += len;
             count++;
@@ -778,7 +780,7 @@ rrmProcessBeaconReportXmit( tpAniSirGlobal pMac,
    }
 
    pReport = &report;
-   palZeroMemory( pMac->hHdd, pReport, sizeof(tSirMacRadioMeasureReport) );
+   vos_mem_set(pReport, sizeof(tSirMacRadioMeasureReport), 0);
    //Prepare the beacon report and send it to the peer.
    pReport->token = pBcnReport->uDialogToken;
    pReport->refused = 0;
@@ -798,9 +800,9 @@ rrmProcessBeaconReportXmit( tpAniSirGlobal pMac,
       if ( flagBSSPresent )
       {
           pReport->report.beaconReport.channel = pBcnReport->pBssDescription[0]->channelId;
-          palCopyMemory( pMac->hHdd, pReport->report.beaconReport.measStartTime,
-                         pBcnReport->pBssDescription[0]->startTSF,
-                         sizeof( pBcnReport->pBssDescription[0]->startTSF) );
+          vos_mem_copy( pReport->report.beaconReport.measStartTime,
+                        pBcnReport->pBssDescription[0]->startTSF,
+                        sizeof( pBcnReport->pBssDescription[0]->startTSF) );
           pReport->report.beaconReport.measDuration = SYS_MS_TO_TU(pBcnReport->duration);
           pReport->report.beaconReport.phyType = pBcnReport->pBssDescription[0]->nwType;
           pReport->report.beaconReport.bcnProbeRsp = 1;
@@ -809,7 +811,7 @@ rrmProcessBeaconReportXmit( tpAniSirGlobal pMac,
 
           pReport->report.beaconReport.antennaId = 0;
           pReport->report.beaconReport.parentTSF = pBcnReport->pBssDescription[0]->parentTSF;
-          palCopyMemory(pMac->hHdd, pReport->report.beaconReport.bssid,
+          vos_mem_copy( pReport->report.beaconReport.bssid,
                         pBcnReport->pBssDescription[0]->bssId, sizeof(tSirMacAddr));
       }
 
@@ -871,15 +873,14 @@ void rrmProcessBeaconRequestFailure(tpAniSirGlobal pMac, tpPESession pSessionEnt
     tpSirMacRadioMeasureReport pReport = NULL;
     tpRRMReq pCurrentReq = pMac->rrm.rrmPEContext.pCurrentReq; 
 
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-               (void **) &pReport,
-               sizeof( tSirMacRadioMeasureReport ) ) )
+    pReport = vos_mem_malloc(sizeof( tSirMacRadioMeasureReport ));
+    if ( NULL == pReport )
     {
          limLog( pMac, LOGP,
-               FL( "Unable to PAL allocate memory during RRM Req processing" ));
+               FL( "Unable to allocate memory during RRM Req processing" ));
          return;
     }
-    palZeroMemory( pMac->hHdd, pReport, sizeof(tSirMacRadioMeasureReport) );
+    vos_mem_set(pReport, sizeof(tSirMacRadioMeasureReport), 0);
     pReport->token = pCurrentReq->token;
     pReport->type = SIR_MAC_RRM_BEACON_TYPE;
 
@@ -893,14 +894,14 @@ void rrmProcessBeaconRequestFailure(tpAniSirGlobal pMac, tpPESession pSessionEnt
             break;
         default:
             PELOGE(limLog( pMac, LOGE, FL(" Beacon request processing failed no report sent with status %d "), status););
-            palFreeMemory( pMac->hHdd, pReport );
+            vos_mem_free(pReport);
             return;
     }
 
     limSendRadioMeasureReportActionFrame( pMac, pCurrentReq->dialog_token, 1, 
                                                         pReport, peer, pSessionEntry );
 
-    palFreeMemory( pMac->hHdd, pReport );
+    vos_mem_free(pReport);
 #if defined WLAN_VOWIFI_DEBUG
     PELOGE(limLog( pMac, LOGE, FL(" Free memory for pReport") );)
 #endif
@@ -943,15 +944,14 @@ rrmProcessRadioMeasurementRequest( tpAniSirGlobal pMac,
    {
       //No measurement requests....
       //
-      if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-               (void **) &pReport,
-               sizeof( tSirMacRadioMeasureReport ) ) )
+      pReport = vos_mem_malloc(sizeof( tSirMacRadioMeasureReport ));
+      if ( NULL ==  pReport )
       {
          limLog( pMac, LOGP,
-               FL( "Unable to PAL allocate memory during RRM Req processing" ));
+               FL( "Unable to allocate memory during RRM Req processing" ));
          return eSIR_MEM_ALLOC_FAILED;
       }
-      palZeroMemory( pMac->hHdd, pReport, sizeof(tSirMacRadioMeasureReport) );
+      vos_mem_set(pReport, sizeof(tSirMacRadioMeasureReport),0);
 #if defined WLAN_VOWIFI_DEBUG
       PELOGE(limLog( pMac, LOGE, FL(" Allocated memory for pReport") );)
 #endif
@@ -959,7 +959,7 @@ rrmProcessRadioMeasurementRequest( tpAniSirGlobal pMac,
       num_report = 1;
       limSendRadioMeasureReportActionFrame( pMac, pRRMReq->DialogToken.token, num_report,
                   pReport, peer, pSessionEntry );
-      palFreeMemory( pMac->hHdd, pReport );
+      vos_mem_free(pReport);
       PELOGE(limLog( pMac, LOGE, "No requestIes in the measurement request" );)
       return eSIR_FAILURE;
    }
@@ -968,15 +968,14 @@ rrmProcessRadioMeasurementRequest( tpAniSirGlobal pMac,
    if( pRRMReq->NumOfRepetitions.repetitions > 0 )
    {
       //Send a report with incapable bit set. Not supporting repetitions.
-      if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-               (void **) &pReport,
-               sizeof( tSirMacRadioMeasureReport ) ) )
+      pReport = vos_mem_malloc(sizeof( tSirMacRadioMeasureReport ));
+      if ( NULL == pReport )
       {
          limLog( pMac, LOGP,
-               FL( "Unable to PAL allocate memory during RRM Req processing" ));
+               FL( "Unable to allocate memory during RRM Req processing" ));
          return eSIR_MEM_ALLOC_FAILED;
       }
-      palZeroMemory( pMac->hHdd, pReport, sizeof(tSirMacRadioMeasureReport) );
+      vos_mem_set(pReport, sizeof(tSirMacRadioMeasureReport), 0);
 #if defined WLAN_VOWIFI_DEBUG
       PELOGE(limLog( pMac, LOGE, FL(" Allocated memory for pReport") );)
 #endif
@@ -997,15 +996,18 @@ rrmProcessRadioMeasurementRequest( tpAniSirGlobal pMac,
             {
                if ( pReport == NULL ) //Allocate memory to send reports for any subsequent requests.
                {
-                  if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-                           (void **) &pReport,
-                           sizeof( tSirMacRadioMeasureReport ) * (pRRMReq->num_MeasurementRequest - i) ) )
+                  pReport = vos_mem_malloc(sizeof( tSirMacRadioMeasureReport )
+                                           * (pRRMReq->num_MeasurementRequest - i));
+                  if ( NULL == pReport )
                   {
                      limLog( pMac, LOGP,
-                           FL( "Unable to PAL allocate memory during RRM Req processing" ));
+                           FL( "Unable to allocate memory during RRM Req processing" ));
                      return eSIR_MEM_ALLOC_FAILED;
                   }
-                  palZeroMemory( pMac->hHdd, pReport, sizeof( tSirMacRadioMeasureReport ) * (pRRMReq->num_MeasurementRequest - i) ); 
+                  vos_mem_set(pReport,
+                              sizeof( tSirMacRadioMeasureReport )
+                              * (pRRMReq->num_MeasurementRequest - i),
+                              0);
 #if defined WLAN_VOWIFI_DEBUG
                   limLog( pMac, LOGE, FL(" Allocated memory for pReport") );
 #endif
@@ -1019,19 +1021,18 @@ rrmProcessRadioMeasurementRequest( tpAniSirGlobal pMac,
             }
             else
             {
-               if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-                        (void **) &pCurrentReq,
-                        sizeof( *pCurrentReq ) ) )
+               pCurrentReq = vos_mem_malloc(sizeof( *pCurrentReq ));
+               if ( NULL == pCurrentReq )
                {
                   limLog( pMac, LOGP,
-                        FL( "Unable to PAL allocate memory during RRM Req processing" ));
-                  palFreeMemory( pMac->hHdd, pReport );
+                        FL( "Unable to allocate memory during RRM Req processing" ));
+                  vos_mem_free(pReport);
                   return eSIR_MEM_ALLOC_FAILED;
                }
 #if defined WLAN_VOWIFI_DEBUG
                PELOGE(limLog( pMac, LOGE, FL(" Allocated memory for pCurrentReq") );)
 #endif
-               palZeroMemory( pMac->hHdd, pCurrentReq, sizeof( *pCurrentReq ) );
+                vos_mem_set(pCurrentReq, sizeof( *pCurrentReq ), 0);
                pCurrentReq->dialog_token = pRRMReq->DialogToken.token;
                pCurrentReq->token = pRRMReq->MeasurementRequest[i].measurement_token;
                pMac->rrm.rrmPEContext.pCurrentReq = pCurrentReq;
@@ -1047,15 +1048,18 @@ rrmProcessRadioMeasurementRequest( tpAniSirGlobal pMac,
             //Send a report with incapabale bit set.
             if ( pReport == NULL ) //Allocate memory to send reports for any subsequent requests.
             {
-               if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-                        (void **) &pReport,
-                        sizeof( tSirMacRadioMeasureReport ) * (pRRMReq->num_MeasurementRequest - i) ) )
+               pReport = vos_mem_malloc(sizeof( tSirMacRadioMeasureReport )
+                                         * (pRRMReq->num_MeasurementRequest - i));
+               if ( NULL == pReport )
                {
                   limLog( pMac, LOGP,
-                        FL( "Unable to PAL allocate memory during RRM Req processing" ));
+                        FL( "Unable to allocate memory during RRM Req processing" ));
                   return eSIR_MEM_ALLOC_FAILED;
                }
-               palZeroMemory( pMac->hHdd, pReport, sizeof( tSirMacRadioMeasureReport ) * (pRRMReq->num_MeasurementRequest - i) ); 
+               vos_mem_set(pReport,
+                           sizeof( tSirMacRadioMeasureReport )
+                           * (pRRMReq->num_MeasurementRequest - i),
+                           0);
 #if defined WLAN_VOWIFI_DEBUG
                PELOGE(limLog( pMac, LOGE, FL(" Allocated memory for pReport") );)
 #endif
@@ -1075,7 +1079,7 @@ end:
       limSendRadioMeasureReportActionFrame( pMac, pRRMReq->DialogToken.token, num_report, 
             pReport, peer, pSessionEntry );
 
-      palFreeMemory( pMac->hHdd, pReport );
+      vos_mem_free(pReport);
 #if defined WLAN_VOWIFI_DEBUG
       PELOGE(limLog( pMac, LOGE, FL(" Free memory for pReport") );)
 #endif
@@ -1231,7 +1235,7 @@ rrmInitialize(tpAniSirGlobal pMac)
 
    pMac->rrm.rrmPEContext.rrmEnable = 0;
 
-   palZeroMemory( pMac->hHdd, pRRMCaps, sizeof(tRRMCaps) );
+   vos_mem_set(pRRMCaps, sizeof(tRRMCaps), 0);
    pRRMCaps->LinkMeasurement = 1;
    pRRMCaps->NeighborRpt = 1;
    pRRMCaps->BeaconPassive = 1;
@@ -1272,13 +1276,13 @@ rrmCleanup(tpAniSirGlobal pMac)
    {
       if( pMac->rrm.rrmPEContext.pCurrentReq->request.Beacon.reqIes.pElementIds )
       {
-         palFreeMemory( pMac->hHdd, pMac->rrm.rrmPEContext.pCurrentReq->request.Beacon.reqIes.pElementIds );
+         vos_mem_free(pMac->rrm.rrmPEContext.pCurrentReq->request.Beacon.reqIes.pElementIds);
 #if defined WLAN_VOWIFI_DEBUG
          PELOGE(limLog( pMac, LOGE, FL(" Free memory for pElementIds") );)
 #endif
       }
 
-      palFreeMemory( pMac->hHdd, pMac->rrm.rrmPEContext.pCurrentReq ); 
+      vos_mem_free(pMac->rrm.rrmPEContext.pCurrentReq);
 #if defined WLAN_VOWIFI_DEBUG
       PELOGE(limLog( pMac, LOGE, FL(" Free memory for pCurrentReq") );)
 #endif
