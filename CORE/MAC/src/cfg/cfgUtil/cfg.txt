@@ -4545,3 +4545,15 @@ LIM
 V    RW    NP
 LIM
 10   20    10
+*
+*MCC ENABLE/DISABLE ADAPTIVE RX Drain feature
+*
+*
+*
+WNI_CFG_ENABLE_ADAPT_RX_DRAIN I   4   7
+V    RW    NP
+HAL
+0    1    1
+NV    RW    NP
+HAL
+0    1    1
