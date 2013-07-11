@@ -63,6 +63,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/wireless.h>
+#include <macTrace.h>
 #include <wlan_hdd_includes.h>
 #include <wlan_btc_svc.h>
 #include <wlan_nlink_common.h>
@@ -213,6 +214,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #ifdef WLAN_FEATURE_11W
 #define WE_GET_11W_INFO      9
 #endif
+#define WE_GET_STATES        10
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_NONE   (SIOCIWFIRSTPRIV + 6)
@@ -347,6 +349,9 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define TX_PER_TRACKING_DEFAULT_RATIO             5
 #define TX_PER_TRACKING_MAX_RATIO                10
 #define TX_PER_TRACKING_DEFAULT_WATERMARK         5
+
+#define WLAN_ADAPTER 0
+#define P2P_ADAPTER  1
 
 /*MCC Configuration parameters */
 enum {
@@ -2657,7 +2662,6 @@ void* wlan_hdd_change_country_code_callback(void *pAdapter)
 {
 
     hdd_adapter_t *call_back_pAdapter = pAdapter;
-  
     complete(&call_back_pAdapter->change_country_code);
 
     return NULL;
@@ -3974,9 +3978,8 @@ static int iw_setnone_getint(struct net_device *dev, struct iw_request_info *inf
         case WE_GET_11D_STATE:
         {
            tSmeConfigParams smeConfig;
-           
            sme_GetConfigParam(hHal,&smeConfig);
-           
+
            *value = smeConfig.csrConfig.Is11dSupportEnabled;
 
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, ("11D state=%ld!!\n"),*value);
@@ -4215,6 +4218,134 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             break;
         }
 
+/* The case prints the current state of the HDD, SME, CSR, PE, TL
+   *it can be extended for WDI Global State as well.
+   *And currently it only checks P2P_CLIENT adapter.
+   *P2P_DEVICE and P2P_GO have not been added as of now.
+*/
+        case WE_GET_STATES:
+        {
+            int buf = 0, len = 0;
+            int adapter_num = 0;
+            int count = 0, check = 1;
+
+            tANI_U16 tlState;
+            tHalHandle hHal;
+            tpAniSirGlobal pMac;
+            hdd_station_ctx_t *pHddStaCtx;
+
+            hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+            hdd_adapter_t *useAdapter = NULL;
+
+            /* Print wlan0 or p2p0 states based on the adapter_num
+              *by using the correct adapter
+            */
+            while ( adapter_num < 2 )
+            {
+                if ( WLAN_ADAPTER == adapter_num )
+                {
+                    useAdapter = pAdapter;
+                    buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
+                            "\n\n wlan0 States:-");
+                    len += buf;
+                }
+                else if ( P2P_ADAPTER == adapter_num )
+                {
+                    buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
+                            "\n\n p2p0 States:-");
+                    len += buf;
+
+                    if( !pHddCtx )
+                    {
+                        buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
+                                "\n pHddCtx is NULL");
+                        len += buf;
+                        break;
+                    }
+
+                    /*Printing p2p0 states only in the case when the device is
+                      configured as a p2p_client*/
+                    useAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_CLIENT);
+                    if ( !useAdapter )
+                    {
+                        buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
+                                "\n Device not configured as P2P_CLIENT.");
+                        len += buf;
+                        break;
+                    }
+                }
+
+                hHal = WLAN_HDD_GET_HAL_CTX( useAdapter );
+                pMac = PMAC_STRUCT( hHal );
+                pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR( useAdapter );
+                if( !pHddStaCtx )
+                {
+                    buf = snprintf(extra + len,  WE_MAX_STR_LEN - len,
+                            "\n pHddStaCtx is NULL");
+                    len += buf;
+                    break;
+                }
+
+                tlState = smeGetTLSTAState(hHal, pHddStaCtx->conn_info.staId[0]);
+
+                buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
+                        "\n HDD Conn State - %s "
+                        "\n \n SME State:"
+                        "\n Neighbour Roam State - %s"
+                        "\n CSR State - %s"
+                        "\n CSR Substate - %s"
+                        "\n \n TL STA %d State: %s",
+                        macTraceGetHDDWlanConnState(
+                                pHddStaCtx->conn_info.connState),
+                        macTraceGetNeighbourRoamState(
+                                pMac->roam.neighborRoamInfo.neighborRoamState),
+                        macTraceGetcsrRoamState(
+                                pMac->roam.curState[useAdapter->sessionId]),
+                        macTraceGetcsrRoamSubState(
+                                pMac->roam.curSubState[useAdapter->sessionId]),
+                        pHddStaCtx->conn_info.staId[0],
+                        macTraceGetTLState(tlState)
+                        );
+                len += buf;
+                adapter_num++;
+            }
+
+            /* Printing Lim State starting with global lim states */
+            buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
+                    "\n \n LIM STATES:-"
+                    "\n Global Sme State - %s "\
+                    "\n Global mlm State - %s "\
+                    "\n",
+                    macTraceGetLimSmeState(pMac->lim.gLimSmeState),
+                    macTraceGetLimMlmState(pMac->lim.gLimMlmState)
+                    );
+            len += buf;
+
+            /*printing the PE Sme and Mlm states for valid lim sessions*/
+            while ( check < 3 && count < 255)
+            {
+                if ( pMac->lim.gpSession[count].valid )
+                {
+                    buf = snprintf(extra + len, WE_MAX_STR_LEN - len,
+                    "\n Lim Valid Session %d:-"
+                    "\n PE Sme State - %s "
+                    "\n PE Mlm State - %s "
+                    "\n",
+                    check,
+                    macTraceGetLimSmeState(pMac->lim.gpSession[count].limSmeState),
+                    macTraceGetLimMlmState(pMac->lim.gpSession[count].limMlmState)
+                    );
+
+                    len += buf;
+                    check++;
+                }
+                count++;
+            }
+
+            wrqu->data.length = strlen(extra)+1;
+            break;
+        }
+
         case WE_GET_CFG:
         {
             hdd_cfg_get_config(WLAN_HDD_GET_CTX(pAdapter), extra, WE_MAX_STR_LEN);
@@ -4231,7 +4362,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             break;
         }
 #endif
-           
+
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
         case WE_GET_ROAM_RSSI:
         {
@@ -4334,7 +4465,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
            break;
        }
 #endif
-        default:  
+        default:
         {
             hddLog(LOGE, "Invalid IOCTL command %d  \n",  sub_cmd );
             break;
@@ -4480,7 +4611,7 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
             sme_RoamReassoc(pMac, pAdapter->sessionId, NULL, modProfileFields, &roamId, 1);
             return 0;
         }
-        
+
 
         default:
         {
@@ -6419,10 +6550,10 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
         return -EIO;
     }
 
-    if ( (band == eCSR_BAND_24 && pHddCtx->cfg_ini->nBandCapability==2) || 
-         (band == eCSR_BAND_5G && pHddCtx->cfg_ini->nBandCapability==1) || 
-         (band == eCSR_BAND_ALL && pHddCtx->cfg_ini->nBandCapability!=0)) 
-    {       
+    if ( (band == eCSR_BAND_24 && pHddCtx->cfg_ini->nBandCapability==2) ||
+         (band == eCSR_BAND_5G && pHddCtx->cfg_ini->nBandCapability==1) ||
+         (band == eCSR_BAND_ALL && pHddCtx->cfg_ini->nBandCapability!=0))
+    {
          VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
              "%s: band value %u violate INI settings %u", __func__,
              band, pHddCtx->cfg_ini->nBandCapability);
@@ -6970,6 +7101,10 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getStats" },
+    {   WE_GET_STATES,
+        0,
+        IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
+        "getHostStates" },
     {   WE_GET_CFG,
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
@@ -6992,7 +7127,7 @@ static const struct iw_priv_args we_private_args[] = {
         "getWmmStatus" },
     {
         WE_GET_CHANNEL_LIST,
-        0, 
+        0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getChannelList" },
 #ifdef FEATURE_WLAN_TDLS
@@ -7218,7 +7353,6 @@ static const struct iw_priv_args we_private_args[] = {
         WLAN_GET_LINK_SPEED,
         IW_PRIV_TYPE_CHAR | 18,
         IW_PRIV_TYPE_CHAR | 5, "getLinkSpeed" },
-   
 };
 
 
