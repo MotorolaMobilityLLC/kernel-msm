@@ -123,7 +123,7 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     if((psessionEntry = peFindSessionByBssid(pMac,pMsg->bssId,&sessionId))== NULL)
     {
         PELOGE(limLog(pMac, LOGE,FL("session does not exist for given BSSId"));)
-            palFreeMemory(pMac->hHdd, pMsg);
+        vos_mem_free(pMsg);
         return;
     }
 
@@ -140,7 +140,7 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
              if (!pStaDs)
              {
                  PELOGE(limLog(pMac, LOGE, FL("Skip STA deletion (invalid STA) limSystemRole=%d"),psessionEntry->limSystemRole);)
-                 palFreeMemory(pMac->hHdd, pMsg);
+                 vos_mem_free(pMsg);
                  return;
              }
 
@@ -150,7 +150,7 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
              if (pStaDs->staIndex != pMsg->staId)
              {
                  PELOGE(limLog(pMac, LOGE, FL("staid mismatch: %d vs %d "), pStaDs->staIndex, pMsg->staId);)
-                 palFreeMemory(pMac->hHdd, pMsg);
+                 vos_mem_free(pMsg);
                  return;
              }
 
@@ -185,8 +185,8 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                     pStaDs->mlmStaContext.cleanupTrigger = eLIM_LINK_MONITORING_DEAUTH;
 
                     // Issue Deauth Indication to SME.
-                    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
-                            pStaDs->staAddr, sizeof(tSirMacAddr));
+                    vos_mem_copy((tANI_U8 *) &mlmDeauthInd.peerMacAddr,
+                                  pStaDs->staAddr, sizeof(tSirMacAddr));
                     mlmDeauthInd.reasonCode    = (tANI_U8) pStaDs->mlmStaContext.disassocReason;
                     mlmDeauthInd.deauthTrigger =  pStaDs->mlmStaContext.cleanupTrigger;
 
@@ -195,7 +195,7 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                     if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
                         (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
                             limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
-                            palFreeMemory(pMac->hHdd, pMsg);
+                            vos_mem_free(pMsg);
                             return ;
                     }
 #endif
@@ -222,7 +222,7 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
              break;
 
     }
-    palFreeMemory(pMac->hHdd, pMsg);
+    vos_mem_free(pMsg);
     return;
 }
 
@@ -263,9 +263,10 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
      * take care of disassociation as well.
      */
 
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSmeDeauthReq, sizeof(tSirSmeDeauthReq)))
+    pSmeDeauthReq = vos_mem_malloc(sizeof(tSirSmeDeauthReq));
+    if (NULL == pSmeDeauthReq)
     {
-        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_DEAUTH_REQ "));
+        limLog(pMac, LOGP, FL("AllocateMemory failed for eWNI_SME_DEAUTH_REQ "));
         return;
     }
 
@@ -292,12 +293,12 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
     msgLength += sizeof(tANI_U16);
 
     //bssId
-    palCopyMemory( pMac->hHdd, pBuf, psessionEntry->bssId, sizeof(tSirMacAddr) );
+    vos_mem_copy(pBuf, psessionEntry->bssId, sizeof(tSirMacAddr));
     pBuf += sizeof(tSirMacAddr);
     msgLength += sizeof(tSirMacAddr);
 
     //peerMacAddr
-    palCopyMemory( pMac->hHdd, pBuf, pStaDs->staAddr, sizeof(tSirMacAddr) );
+    vos_mem_copy(pBuf, pStaDs->staAddr, sizeof(tSirMacAddr));
     pBuf += sizeof(tSirMacAddr);
     msgLength += sizeof(tSirMacAddr);
 
@@ -319,7 +320,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
     limCopyU16((tANI_U8*)pLen , msgLength);
 
     limPostSmeMessage(pMac, eWNI_SME_DISASSOC_REQ, (tANI_U32 *) pSmeDeauthReq);
-    palFreeMemory( pMac->hHdd, pSmeDeauthReq );
+    vos_mem_free(pSmeDeauthReq);
 
 } /*** end limTriggerSTAdeletion() ***/
 
@@ -394,7 +395,7 @@ limTearDownLinkWithAp(tpAniSirGlobal pMac, tANI_U8 sessionId, tSirMacReasonCodes
         pStaDs->mlmStaContext.cleanupTrigger = eLIM_LINK_MONITORING_DEAUTH;
 
         /// Issue Deauth Indication to SME.
-        palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
+        vos_mem_copy((tANI_U8 *) &mlmDeauthInd.peerMacAddr,
                       pStaDs->staAddr,
                       sizeof(tSirMacAddr));
         mlmDeauthInd.reasonCode    = (tANI_U8) pStaDs->mlmStaContext.disassocReason;
