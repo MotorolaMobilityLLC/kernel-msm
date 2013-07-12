@@ -30,6 +30,8 @@
 #include <linux/shrinker.h>
 #include <linux/types.h>
 
+#define ION_ALLOC_CLIENT_NAME_SIZE 64
+
 struct ion_buffer *ion_handle_buffer(struct ion_handle *handle);
 
 /**
@@ -84,6 +86,7 @@ struct ion_buffer {
 	int handle_count;
 	char task_comm[TASK_COMM_LEN];
 	pid_t pid;
+	char alloc_client_name[ION_ALLOC_CLIENT_NAME_SIZE];
 };
 void ion_buffer_destroy(struct ion_buffer *buffer);
 
