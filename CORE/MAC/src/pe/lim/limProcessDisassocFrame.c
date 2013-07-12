@@ -294,9 +294,9 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
     pStaDs->mlmStaContext.disassocReason = (tSirMacReasonCodes) reasonCode;
 
     // Issue Disassoc Indication to SME.
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDisassocInd.peerMacAddr,
-                  (tANI_U8 *) pStaDs->staAddr,
-                  sizeof(tSirMacAddr));
+    vos_mem_copy((tANI_U8 *) &mlmDisassocInd.peerMacAddr,
+                 (tANI_U8 *) pStaDs->staAddr,
+                 sizeof(tSirMacAddr));
     mlmDisassocInd.reasonCode =
         (tANI_U8) pStaDs->mlmStaContext.disassocReason;
     mlmDisassocInd.disassocTrigger = eLIM_PEER_ENTITY_DISASSOC;
@@ -314,7 +314,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
         PELOGE(limLog(pMac, LOGE, FL("received Disassoc from AP while waiting for Reassoc Rsp"));)
      
         if (psessionEntry->limAssocResponseData) {
-            palFreeMemory(pMac->hHdd, psessionEntry->limAssocResponseData);
+            vos_mem_free(psessionEntry->limAssocResponseData);
             psessionEntry->limAssocResponseData = NULL;                            
         }
 

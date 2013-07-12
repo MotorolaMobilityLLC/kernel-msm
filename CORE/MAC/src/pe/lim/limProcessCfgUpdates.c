@@ -154,7 +154,7 @@ void limSetCfgProtection(tpAniSirGlobal pMac, tpPESession pesessionEntry)
 
     if(( pesessionEntry != NULL ) && (pesessionEntry->limSystemRole == eLIM_AP_ROLE )){
         if (pesessionEntry->gLimProtectionControl == WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE )
-            palZeroMemory( pMac->hHdd, (void *)&pesessionEntry->cfgProtection , sizeof(tCfgProtection));
+            vos_mem_set((void *)&pesessionEntry->cfgProtection, sizeof(tCfgProtection), 0);
         else{
             limLog(pMac, LOG1, FL(" frm11a = %d, from11b = %d, frm11g = %d, "
                                     "ht20 = %d, nongf = %d, lsigTxop = %d, "
@@ -184,8 +184,8 @@ void limSetCfgProtection(tpAniSirGlobal pMac, tpPESession pesessionEntry)
         return;
     }
 
-    if(pMac->lim.gLimProtectionControl == WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
-        palZeroMemory( pMac->hHdd, (void *)&pMac->lim.cfgProtection , sizeof(tCfgProtection));
+    if (pMac->lim.gLimProtectionControl == WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
+        vos_mem_set((void *)&pMac->lim.cfgProtection, sizeof(tCfgProtection), 0);
     else
         {
             pMac->lim.cfgProtection.fromlla = (val >> WNI_CFG_PROTECTION_ENABLED_FROM_llA) & 1;
@@ -556,8 +556,8 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
             tpSirPowerSaveCfg pPowerSaveConfig;
 
             /* Allocate and fill in power save configuration. */
-            if (palAllocateMemory(pMac->hHdd, (void **)&pPowerSaveConfig,
-                                  sizeof(tSirPowerSaveCfg)) != eHAL_STATUS_SUCCESS)
+            pPowerSaveConfig = vos_mem_malloc(sizeof(tSirPowerSaveCfg));
+            if ( NULL == pPowerSaveConfig )
             {
                 PELOGE(limLog(pMac, LOGE, FL("LIM: Cannot allocate memory for power save configuration"));)
                 break;
@@ -566,7 +566,7 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
             /* This context should be valid if power-save configuration message has been already dispathed 
              * during initialization process. Re-using the present configuration mask
              */
-            palCopyMemory(pMac->hHdd, pPowerSaveConfig, (tANI_U8 *)&pMac->pmm.gPmmCfg, sizeof(tSirPowerSaveCfg));
+            vos_mem_copy(pPowerSaveConfig, (tANI_U8 *)&pMac->pmm.gPmmCfg, sizeof(tSirPowerSaveCfg));
 
             if ( (pmmSendPowerSaveCfg(pMac, pPowerSaveConfig)) != eSIR_SUCCESS)
             {
