@@ -2620,6 +2620,7 @@ static int msm_rotator_finish(unsigned long arg)
 	if (copy_from_user(&session_id, (void __user *)arg, sizeof(s)))
 		return -EFAULT;
 
+	rot_wait_for_commit_queue(true);
 	mutex_lock(&msm_rotator_dev->rotator_lock);
 	for (s = 0; s < MAX_SESSIONS; s++) {
 		if ((msm_rotator_dev->rot_session[s] != NULL) &&
