@@ -2901,16 +2901,14 @@ static wpt_status dxeTXPushFrame
 #else
    wpt_iterator                iterator;
 #endif /* FEATURE_R33D */
-   wpt_uint32                  isEmpty = 0;
 
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
             "%s Enter", __func__);
 
-   tempDxeCtrlBlk->smsmToggled = eWLAN_PAL_FALSE;
-   if((0 == tempDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_LOW_PRI].numRsvdDesc) &&
-      (0 == tempDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_HIGH_PRI].numRsvdDesc))
+   if(WLANDXE_POWER_STATE_BMPS == tempDxeCtrlBlk->hostPowerState)
    {
-      isEmpty = 1;
+      tempDxeCtrlBlk->rivaPowerState = WLANDXE_RIVA_POWER_STATE_BMPS_UNKNOWN;
+      dxeNotifySmsm(eWLAN_PAL_FALSE, eWLAN_PAL_TRUE);
    }
 
    channelEntry->numFragmentCurrentChain = 0;
@@ -3053,16 +3051,10 @@ static wpt_status dxeTXPushFrame
    {
       /* Update channel head as next avaliable linked slot */
       channelEntry->headCtrlBlk = currentCtrlBlk;
-      if(isEmpty)
-      {
-         tempDxeCtrlBlk->ringNotEmpty = eWLAN_PAL_TRUE;
-         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
-                  "SMSM_ret LO=%d HI=%d",
-                  tempDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_LOW_PRI].numRsvdDesc,
-                  tempDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_HIGH_PRI].numRsvdDesc );
-         dxeNotifySmsm(eWLAN_PAL_TRUE, eWLAN_PAL_FALSE);
-         tempDxeCtrlBlk->smsmToggled = eWLAN_PAL_TRUE;
-      }
+      tempDxeCtrlBlk->ringNotEmpty = eWLAN_PAL_TRUE;
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW, "SMSM_ret LO=%d HI=%d", tempDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_LOW_PRI].numRsvdDesc,
+               tempDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_HIGH_PRI].numRsvdDesc );
+      dxeNotifySmsm(eWLAN_PAL_TRUE, eWLAN_PAL_FALSE);
       return status;
    }
 
@@ -3742,18 +3734,6 @@ void dxeTXCompleteProcessing
                dxeCtxt->dxeChannel[WDTS_CHANNEL_TX_HIGH_PRI].numRsvdDesc,
                channelType[dxeCtxt->dxeChannel[WDTS_CHANNEL_TX_LOW_PRI].channelType],
                dxeCtxt->dxeChannel[WDTS_CHANNEL_TX_LOW_PRI].numRsvdDesc);
-
-      if((WLANDXE_POWER_STATE_FULL != dxeCtxt->hostPowerState) &&
-         (eWLAN_PAL_FALSE == tempDxeCtrlBlk->smsmToggled))
-      {
-         /* After TX Comp processing, still remaining frame on the DXE TX ring
-          * And when push frame, RING was not empty marked
-          * Then when push frame, no SMSM toggle happen
-          * To avoid permanent TX stall, SMSM toggle is needed at here
-          * With this toggle, host should gaurantee SMSM state should be changed */
-         dxeNotifySmsm(eWLAN_PAL_FALSE, eWLAN_PAL_TRUE);
-         dxeNotifySmsm(eWLAN_PAL_TRUE, eWLAN_PAL_FALSE);
-      }
    }
    
    /*Kicking the DXE after the TX Complete interrupt was enabled - to avoid 
@@ -4206,7 +4186,6 @@ void *WLANDXE_Open
    tempDxeCtrlBlk->rxIntDisabledByIMPS = eWLAN_PAL_FALSE;
    tempDxeCtrlBlk->txIntDisabledByIMPS = eWLAN_PAL_FALSE;
    tempDxeCtrlBlk->driverReloadInProcessing = eWLAN_PAL_FALSE;
-   tempDxeCtrlBlk->smsmToggled              = eWLAN_PAL_FALSE;
 
    /* Initialize SMSM state
     * Init State is
