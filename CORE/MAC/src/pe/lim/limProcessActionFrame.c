@@ -265,7 +265,6 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
     tANI_U32                val;
     tANI_U32                frameLen;
     tANI_U32                nStatus;
-    eHalStatus              status;
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
@@ -275,11 +274,11 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
     if (!psessionEntry->lim11hEnable)
         return;
 
-    status = palAllocateMemory( pMac->hHdd, (void **)&pChannelSwitchFrame, sizeof(*pChannelSwitchFrame));
-    if (eHAL_STATUS_SUCCESS != status)
+    pChannelSwitchFrame = vos_mem_malloc(sizeof(*pChannelSwitchFrame));
+    if (NULL == pChannelSwitchFrame)
     {
         limLog(pMac, LOGE,
-            FL("palAllocateMemory failed, status = %d "), status);
+            FL("AllocateMemory failed"));
         return;
     }
 
@@ -292,7 +291,7 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
             FL( "Failed to unpack and parse an 11h-CHANSW Request (0x%08x, %d bytes):"),
             nStatus,
             frameLen);
-        palFreeMemory(pMac->hHdd, pChannelSwitchFrame);
+        vos_mem_free(pChannelSwitchFrame);
         return;
     }
     else if(DOT11F_WARNED( nStatus ))
@@ -303,14 +302,14 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
             frameLen);
     }
 
-    if (palEqualMemory( pMac->hHdd,(tANI_U8 *) &psessionEntry->bssId,
-                  (tANI_U8 *) &pHdr->sa,
-                  sizeof(tSirMacAddr)))
+    if (vos_mem_compare((tANI_U8 *) &psessionEntry->bssId,
+                        (tANI_U8 *) &pHdr->sa,
+                        sizeof(tSirMacAddr)))
     {
         #if 0
         if (wlan_cfgGetInt(pMac, WNI_CFG_BEACON_INTERVAL, &val) != eSIR_SUCCESS)
         {
-            palFreeMemory(pMac->hHdd, pChannelSwitchFrame);
+            vos_mem_free(pChannelSwitchFrame);
             limLog(pMac, LOGP, FL("could not retrieve Beacon interval"));
             return;
         }
@@ -382,7 +381,7 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
         PELOG1(limLog(pMac, LOG1, FL("Could not start channel switch"));)
     }
 
-    palFreeMemory(pMac->hHdd, pChannelSwitchFrame);
+    vos_mem_free(pChannelSwitchFrame);
     return;
 } /*** end limProcessChannelSwitchActionFrame() ***/
 
@@ -397,7 +396,6 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
     tDot11fOperatingMode    *pOperatingModeframe;
     tANI_U32                frameLen;
     tANI_U32                nStatus;
-    eHalStatus              status;
     tpDphHashNode           pSta;
     tANI_U16                aid;
     tANI_U8  operMode;
@@ -407,11 +405,11 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
     frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
     PELOG3(limLog(pMac, LOG3, FL("Received Operating Mode action frame"));)
-    status = palAllocateMemory( pMac->hHdd, (void **)&pOperatingModeframe, sizeof(*pOperatingModeframe));
-    if (eHAL_STATUS_SUCCESS != status)
+    pOperatingModeframe = vos_mem_malloc(sizeof(*pOperatingModeframe));
+    if (NULL == pOperatingModeframe)
     {
         limLog(pMac, LOGE,
-            FL("palAllocateMemory failed, status = %d "), status);
+            FL("AllocateMemory failed"));
         return;
     }
 
@@ -424,7 +422,7 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
             FL( "Failed to unpack and parse an 11h-CHANSW Request (0x%08x, %d bytes):"),
             nStatus,
             frameLen);
-        palFreeMemory(pMac->hHdd, pOperatingModeframe);
+        vos_mem_free(pOperatingModeframe);
         return;
     }
     else if(DOT11F_WARNED( nStatus ))
@@ -471,7 +469,7 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
         limCheckVHTOpModeChange( pMac, psessionEntry, 
                                  (pOperatingModeframe->OperatingMode.chanWidth), pSta->staIndex);\
     }
-    palFreeMemory(pMac->hHdd, pOperatingModeframe);
+    vos_mem_free(pOperatingModeframe);
     return;
 }
 #endif
@@ -990,11 +988,11 @@ __limProcessMeasurementRequestFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
     frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
-    if ( eHAL_STATUS_SUCCESS !=
-        palAllocateMemory( pMac->hHdd, (void **)&pMeasReqFrame, sizeof( tSirMacMeasReqActionFrame ) ) )
+    pMeasReqFrame = vos_mem_malloc(sizeof( tSirMacMeasReqActionFrame ));
+    if (NULL == pMeasReqFrame)
     {
         limLog(pMac, LOGE,
-            FL("limProcessMeasurementRequestFrame: palAllocateMemory failed "));
+            FL("limProcessMeasurementRequestFrame: AllocateMemory failed "));
         return;
     }
 
@@ -1056,10 +1054,10 @@ __limProcessTpcRequestFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
 
     PELOG1(limLog(pMac, LOG1, FL("****LIM: Processing TPC Request from peer ****"));)
 
-    if ( eHAL_STATUS_SUCCESS !=
-        palAllocateMemory( pMac->hHdd, (void **)&pTpcReqFrame, sizeof( tSirMacTpcReqActionFrame ) ) )
+    pTpcReqFrame = vos_mem_malloc(sizeof( tSirMacTpcReqActionFrame ));
+    if (NULL == pTpcReqFrame)
     {
-        PELOGE(limLog(pMac, LOGE, FL("palAllocateMemory failed "));)
+        PELOGE(limLog(pMac, LOGE, FL("AllocateMemory failed "));)
         return;
     }
 
@@ -1755,16 +1753,16 @@ __limProcessNeighborReport( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo ,tpPESes
      pBody = WDA_GET_RX_MPDU_DATA( pRxPacketInfo );
      frameLen = WDA_GET_RX_PAYLOAD_LEN( pRxPacketInfo );
 
-     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
-                                                 (void **)&pFrm, sizeof(tDot11fNeighborReportResponse)))
+     pFrm = vos_mem_malloc(sizeof(tDot11fNeighborReportResponse));
+     if (NULL == pFrm)
      {
-         limLog(pMac, LOGE, FL("Unable to PAL allocate memory in __limProcessNeighborReport") );
+         limLog(pMac, LOGE, FL("Unable to allocate memory in __limProcessNeighborReport") );
          return;
      }
 
-     if( psessionEntry == NULL )
+     if(psessionEntry == NULL)
      {
-          palFreeMemory(pMac->hHdd, pFrm);
+          vos_mem_free(pFrm);
           return;
      }
 
@@ -1775,7 +1773,7 @@ __limProcessNeighborReport( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo ,tpPESes
           limLog( pMac, LOGE, FL( "Failed to unpack and parse a Neighbor report response (0x%08x, %d bytes):"),
                     nStatus, frameLen );
           PELOG2(sirDumpBuf( pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frameLen );)
-          palFreeMemory(pMac->hHdd, pFrm);
+          vos_mem_free(pFrm);
           return;
      }else if ( DOT11F_WARNED( nStatus ) ) {
           limLog(pMac, LOGW, FL( "There were warnings while unpacking a Neighbor report response (0x%08x, %d bytes):"),
@@ -1786,7 +1784,7 @@ __limProcessNeighborReport( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo ,tpPESes
      //Call rrm function to handle the request.
      rrmProcessNeighborReportResponse( pMac, pFrm, psessionEntry ); 
      
-     palFreeMemory(pMac->hHdd, pFrm);
+     vos_mem_free(pFrm);
 }
 
 #endif
@@ -1834,7 +1832,7 @@ static void __limProcessSAQueryRequestActionFrame(tpAniSirGlobal pMac, tANI_U8 *
       Category       : 1 byte
       Action         : 1 byte
       Transaction ID : 2 bytes */
-    vos_mem_copy( &transId[0], &pBody[2], 2 );
+    vos_mem_copy(&transId[0], &pBody[2], 2);
 
     //Send 11w SA query response action frame
     if (limSendSaQueryResponseFrame(pMac,
@@ -2104,9 +2102,9 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
 
               //Check if it is a vendor specific action frame.
               if ((eLIM_STA_ROLE == psessionEntry->limSystemRole) &&
-                  (VOS_TRUE == palEqualMemory(pMac->hHdd, psessionEntry->selfMacAddr,
+                  (VOS_TRUE == vos_mem_compare(psessionEntry->selfMacAddr,
                     &pHdr->da[0], sizeof(tSirMacAddr))) &&
-                   palEqualMemory( pMac->hHdd, pVendorSpecific->Oui, Oui, 3))
+                   vos_mem_compare(pVendorSpecific->Oui, Oui, 3))
               {
                   PELOGE( limLog( pMac, LOGW, FL("Received Vendor specific action frame, OUI %x %x %x"),
                          pVendorSpecific->Oui[0], pVendorSpecific->Oui[1], pVendorSpecific->Oui[2]);)
@@ -2141,7 +2139,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
               frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
               //Check if it is a P2P public action frame.
-              if( palEqualMemory( pMac->hHdd, pPubAction->Oui, P2POui, 4 ) )
+              if (vos_mem_compare(pPubAction->Oui, P2POui, 4))
               {
                  /* Forward to the SME to HDD to wpa_supplicant */
                  // type is ACTION
@@ -2273,7 +2271,7 @@ limProcessActionFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd)
                 frameLen = WDA_GET_RX_PAYLOAD_LEN(pBd);
 
                 //Check if it is a P2P public action frame.
-                if( palEqualMemory( pMac->hHdd, pActionHdr->Oui, P2POui, 4 ) )
+                if (vos_mem_compare(pActionHdr->Oui, P2POui, 4))
                 {
                   /* Forward to the SME to HDD to wpa_supplicant */
                   // type is ACTION
