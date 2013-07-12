@@ -248,7 +248,15 @@ int limProcessFTPreAuthReq(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
     // Now we are starting fresh make sure all's cleanup.
     limFTInit(pMac);
-    pMac->ft.ftPEContext.ftPreAuthStatus = eSIR_FAILURE;  // Can set it only after sending auth
+    // Can set it only after sending auth
+    pMac->ft.ftPEContext.ftPreAuthStatus = eSIR_FAILURE;
+
+    if( pMac->ft.ftPEContext.pFTPreAuthReq &&
+        pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription)
+    {
+        vos_mem_free(pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription);
+        pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription = NULL;
+    }
 
     // We need information from the Pre-Auth Req. Lets save that
     pMac->ft.ftPEContext.pFTPreAuthReq = (tpSirFTPreAuthReq)pMsg->bodyptr;
@@ -270,7 +278,12 @@ int limProcessFTPreAuthReq(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         limPrintMacAddr( pMac, pMac->ft.ftPEContext.pFTPreAuthReq->currbssId, LOGE );
         // Post the FT Pre Auth Response to SME
         limPostFTPreAuthRsp(pMac, eSIR_FAILURE, NULL, 0, NULL);
-        pMac->ft.ftPEContext.pFTPreAuthReq = NULL;	
+        if (pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription)
+        {
+            vos_mem_free(pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription);
+            pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription = NULL;
+        }
+        pMac->ft.ftPEContext.pFTPreAuthReq = NULL;
         return TRUE;
     }
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
@@ -384,24 +397,24 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
     tANI_U8 chanWidthSupp = 0;
     tSchBeaconStruct *pBeaconStruct;
 
-    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
-                                                (void **)&pBeaconStruct, sizeof(tSchBeaconStruct)))
+    pBeaconStruct = vos_mem_malloc(sizeof(tSchBeaconStruct));
+    if (NULL == pBeaconStruct)
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory for creating ADD_BSS") );
+        limLog(pMac, LOGE, FL("Unable to allocate memory for creating ADD_BSS") );
         return eSIR_MEM_ALLOC_FAILED;
     }
 
     // Package SIR_HAL_ADD_BSS_REQ message parameters
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-        (void **) &pAddBssParams, sizeof( tAddBssParams )))
+    pAddBssParams = vos_mem_malloc(sizeof( tAddBssParams ));
+    if (NULL == pAddBssParams)
     {
-        palFreeMemory(pMac->hHdd, pBeaconStruct);
+        vos_mem_free(pBeaconStruct);
         limLog( pMac, LOGP,
-                FL( "Unable to PAL allocate memory for creating ADD_BSS" ));
+                FL( "Unable to allocate memory for creating ADD_BSS" ));
         return (eSIR_MEM_ALLOC_FAILED);
     }
     
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) pAddBssParams, sizeof( tAddBssParams ));
+    vos_mem_set((tANI_U8 *) pAddBssParams, sizeof( tAddBssParams ), 0);
 
 
     limExtractApCapabilities( pMac,
@@ -411,12 +424,12 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
     if (pMac->lim.gLimProtectionControl != WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
         limDecideStaProtectionOnAssoc(pMac, pBeaconStruct, pftSessionEntry);
 
-    palCopyMemory( pMac->hHdd, pAddBssParams->bssId, bssDescription->bssId,
-        sizeof( tSirMacAddr ));
+    vos_mem_copy(pAddBssParams->bssId, bssDescription->bssId,
+                 sizeof(tSirMacAddr));
 
     // Fill in tAddBssParams selfMacAddr
-    palCopyMemory( pMac->hHdd,  pAddBssParams->selfMacAddr, pftSessionEntry->selfMacAddr,
-        sizeof( tSirMacAddr ));
+    vos_mem_copy(pAddBssParams->selfMacAddr, pftSessionEntry->selfMacAddr,
+                 sizeof(tSirMacAddr));
 
     pAddBssParams->bssType = pftSessionEntry->bssType;//eSIR_INFRASTRUCTURE_MODE;
     pAddBssParams->operMode = BSS_OPERATIONAL_MODE_STA;
@@ -434,8 +447,8 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
 
 
     pAddBssParams->rateSet.numRates = pBeaconStruct->supportedRates.numRates;
-    palCopyMemory( pMac->hHdd,  pAddBssParams->rateSet.rate,
-                   pBeaconStruct->supportedRates.rate, pBeaconStruct->supportedRates.numRates );
+    vos_mem_copy(pAddBssParams->rateSet.rate,
+                 pBeaconStruct->supportedRates.rate, pBeaconStruct->supportedRates.numRates);
 
     pAddBssParams->nwType = bssDescription->nwType;
     
@@ -486,9 +499,9 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
     {
         pAddBssParams->staContext.staType = STA_ENTRY_OTHER; // Identifying AP as an STA
 
-        palCopyMemory( pMac->hHdd,  pAddBssParams->staContext.bssId,
-                       bssDescription->bssId,
-                       sizeof( tSirMacAddr ));
+        vos_mem_copy(pAddBssParams->staContext.bssId,
+                     bssDescription->bssId,
+                     sizeof(tSirMacAddr));
         pAddBssParams->staContext.listenInterval = bssDescription->beaconInterval;
 
         pAddBssParams->staContext.assocId = 0; // Is SMAC OK with this?
@@ -577,7 +590,7 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
     limLog( pMac, LOG1, FL( "Saving SIR_HAL_ADD_BSS_REQ for pre-auth ap..." ));
 #endif
 
-    palFreeMemory(pMac->hHdd, pBeaconStruct);
+    vos_mem_free(pBeaconStruct);
     return 0;
 }
 
@@ -596,10 +609,10 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
     tPowerdBm        regMax;
     tSchBeaconStruct *pBeaconStruct;
 
-    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
-                                                (void **)&pBeaconStruct, sizeof(tSchBeaconStruct)))
+    pBeaconStruct = vos_mem_malloc(sizeof(tSchBeaconStruct));
+    if (NULL == pBeaconStruct)
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory for creating limFillFTSession") );
+        limLog(pMac, LOGE, FL("Unable to allocate memory for creating limFillFTSession") );
         return NULL;
     }
 
@@ -630,16 +643,16 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
                             pBeaconStruct );
 
     pftSessionEntry->rateSet.numRates = pBeaconStruct->supportedRates.numRates;
-    palCopyMemory( pMac->hHdd,  pftSessionEntry->rateSet.rate,
-        pBeaconStruct->supportedRates.rate, pBeaconStruct->supportedRates.numRates );
+    vos_mem_copy(pftSessionEntry->rateSet.rate,
+        pBeaconStruct->supportedRates.rate, pBeaconStruct->supportedRates.numRates);
 
     pftSessionEntry->extRateSet.numRates = pBeaconStruct->extendedRates.numRates;
-    palCopyMemory(pMac->hHdd, pftSessionEntry->extRateSet.rate, 
+    vos_mem_copy(pftSessionEntry->extRateSet.rate,
         pBeaconStruct->extendedRates.rate, pftSessionEntry->extRateSet.numRates);
 
 
     pftSessionEntry->ssId.length = pBeaconStruct->ssId.length;
-    palCopyMemory( pMac->hHdd, pftSessionEntry->ssId.ssId, pBeaconStruct->ssId.ssId,
+    vos_mem_copy(pftSessionEntry->ssId.ssId, pBeaconStruct->ssId.ssId,
         pftSessionEntry->ssId.length);
 
 
@@ -717,7 +730,7 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
 
     pftSessionEntry->encryptType = psessionEntry->encryptType;
 
-    palFreeMemory(pMac->hHdd, pBeaconStruct);
+    vos_mem_free(pBeaconStruct);
     return pftSessionEntry;
 }
 
@@ -901,7 +914,7 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
     //tSirRetStatus   sirStatus = eSIR_SUCCESS;
 
     pFTPreAuthRsp = (tpSirFTPreAuthRsp)vos_mem_malloc(rspLen);
-    if(NULL == pFTPreAuthRsp)
+    if (NULL == pFTPreAuthRsp)
     {
        PELOGE(limLog( pMac, LOGE, "Failed to allocate memory");)
        VOS_ASSERT(pFTPreAuthRsp != NULL);
@@ -912,7 +925,7 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
     PELOGE(limLog( pMac, LOG1, "%s: Auth Rsp = %p", pFTPreAuthRsp);)
 #endif
          
-    palZeroMemory(pMac, (tANI_U8*)pFTPreAuthRsp, rspLen);
+    vos_mem_set((tANI_U8*)pFTPreAuthRsp, rspLen, 0);
     pFTPreAuthRsp->messageType = eWNI_SME_FT_PRE_AUTH_RSP;
     pFTPreAuthRsp->length = (tANI_U16) rspLen;
     pFTPreAuthRsp->status = status;
@@ -1084,17 +1097,17 @@ void limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,
         limLog(pMac, LOGE, FL("pAddBssReq is NULL"));
         return;
     }
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMlmReassocReq,
-        sizeof(tLimMlmReassocReq)))
+    pMlmReassocReq = vos_mem_malloc(sizeof(tLimMlmReassocReq));
+    if (NULL == pMlmReassocReq)
     {
         // Log error
-        limLog(pMac, LOGE, FL("call to palAllocateMemory failed for mlmReassocReq"));
+        limLog(pMac, LOGE, FL("call to AllocateMemory failed for mlmReassocReq"));
         return;
     }
 
-    palCopyMemory( pMac->hHdd, pMlmReassocReq->peerMacAddr,
-                  psessionEntry->bssId,
-                  sizeof(tSirMacAddr));
+    vos_mem_copy(pMlmReassocReq->peerMacAddr,
+                 psessionEntry->bssId,
+                 sizeof(tSirMacAddr));
 
     if (wlan_cfgGetInt(pMac, WNI_CFG_REASSOCIATION_FAILURE_TIMEOUT,
                   (tANI_U32 *) &pMlmReassocReq->reassocFailureTimeout)
@@ -1105,7 +1118,7 @@ void limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,
          * from CFG. Log error.
          */
         limLog(pMac, LOGE, FL("could not retrieve ReassocFailureTimeout value"));
-        palFreeMemory(pMac->hHdd, pMlmReassocReq);
+        vos_mem_free(pMlmReassocReq);
         return;
     }
 
@@ -1116,7 +1129,7 @@ void limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,
          * from CFG. Log error.
          */
         limLog(pMac, LOGE, FL("could not retrieve Capabilities value"));
-        palFreeMemory(pMac->hHdd, pMlmReassocReq);
+        vos_mem_free(pMlmReassocReq);
         return;
     }
     pMlmReassocReq->capabilityInfo = caps;
@@ -1129,7 +1142,7 @@ void limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,
        eSIR_SUCCESS)
     {
        limLog(pMac, LOGP, FL("Couldn't get WNI_CFG_TELE_BCN_WAKEUP_EN"));
-       palFreeMemory(pMac->hHdd, pMlmReassocReq);
+       vos_mem_free(pMlmReassocReq);
        return;
     }
 
@@ -1142,7 +1155,7 @@ void limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,
             * from CFG. Log error.
           */
           limLog(pMac, LOGE, FL("could not retrieve ListenInterval"));
-          palFreeMemory(pMac->hHdd, pMlmReassocReq);
+          vos_mem_free(pMlmReassocReq);
           return;
        }
     }
@@ -1155,21 +1168,21 @@ void limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,
             * from CFG. Log error.
             */
          limLog(pMac, LOGE, FL("could not retrieve ListenInterval"));
-         palFreeMemory(pMac->hHdd, pMlmReassocReq);
+         vos_mem_free(pMlmReassocReq);
          return;
       }
     }
     if (limSetLinkState(pMac, eSIR_LINK_PREASSOC_STATE, psessionEntry->bssId,
                         psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
     {
-        palFreeMemory(pMac->hHdd, pMlmReassocReq);
+        vos_mem_free(pMlmReassocReq);
         return;
     }
 
     if (limSetLinkState(pMac, eSIR_LINK_PREASSOC_STATE, psessionEntry->bssId,
                         psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
     {
-        palFreeMemory(pMac->hHdd, pMlmReassocReq);
+        vos_mem_free(pMlmReassocReq);
         return;
     }
 
@@ -1259,8 +1272,8 @@ tANI_BOOLEAN limProcessFTUpdateKey(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf )
     /* Store the key information in the ADD BSS parameters */
     pAddBssParams->extSetStaKeyParamValid = 1;
     pAddBssParams->extSetStaKeyParam.encType = pKeyInfo->keyMaterial.edType;
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) &pAddBssParams->extSetStaKeyParam.key,
-                  (tANI_U8 *) &pKeyInfo->keyMaterial.key, sizeof( tSirKeys ));
+    vos_mem_copy((tANI_U8 *) &pAddBssParams->extSetStaKeyParam.key,
+                 (tANI_U8 *) &pKeyInfo->keyMaterial.key, sizeof(tSirKeys));
     if(eSIR_SUCCESS != wlan_cfgGetInt(pMac, WNI_CFG_SINGLE_TID_RC, &val))
     {
         limLog( pMac, LOGP, FL( "Unable to read WNI_CFG_SINGLE_TID_RC" ));
@@ -1319,11 +1332,10 @@ limProcessFTAggrQosReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf )
     tANI_U8 sessionId;
     int i;
 
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-                (void **)&pAggrAddTsParam,
-                sizeof(tAggrAddTsParams)))
+    pAggrAddTsParam = vos_mem_malloc(sizeof(tAggrAddTsParams));
+    if (NULL == pAggrAddTsParam)
     {
-        PELOGE(limLog(pMac, LOGE, FL("palAllocateMemory() failed"));)
+        PELOGE(limLog(pMac, LOGE, FL("AllocateMemory() failed"));)
         return eSIR_MEM_ALLOC_FAILED;
     }
 
@@ -1331,7 +1343,7 @@ limProcessFTAggrQosReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf )
 
     if (psessionEntry == NULL) {
         PELOGE(limLog(pMac, LOGE, FL("psession Entry Null for sessionId = %d"), aggrQosReq->sessionId);)
-        palFreeMemory(pMac->hHdd, (tANI_U8*)pAggrAddTsParam);
+        vos_mem_free(pAggrAddTsParam);
         return eSIR_FAILURE;
     }
 
@@ -1339,12 +1351,12 @@ limProcessFTAggrQosReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf )
     if (pSta == NULL)
     {
         PELOGE(limLog(pMac, LOGE, FL("Station context not found - ignoring AddTsRsp"));)
-        palFreeMemory(pMac->hHdd, (tANI_U8*)pAggrAddTsParam);
+        vos_mem_free(pAggrAddTsParam);
         return eSIR_FAILURE;
     }
 
-    palZeroMemory( pMac->hHdd, (tANI_U8 *)pAggrAddTsParam,
-            sizeof(tAggrAddTsParams));
+    vos_mem_set((tANI_U8 *)pAggrAddTsParam,
+                 sizeof(tAggrAddTsParams), 0);
     pAggrAddTsParam->staIdx = psessionEntry->staId;
     // Fill in the sessionId specific to PE
     pAggrAddTsParam->sessionId = sessionId;
@@ -1406,7 +1418,7 @@ limProcessFTAggrQosReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf )
             {
                 PELOGE(limLog(pMac, LOGE, FL("Adding entry in lim Tspec Table failed "));)
                 pMac->lim.gLimAddtsSent = false;
-                palFreeMemory(pMac->hHdd, (tANI_U8*)pAggrAddTsParam);
+                vos_mem_free(pAggrAddTsParam);
                 return eSIR_FAILURE; //Error handling. send the response with error status. need to send DelTS to tear down the TSPEC status.
             }
 
@@ -1429,7 +1441,7 @@ limProcessFTAggrQosReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf )
     {
        PELOGW(limLog(pMac, LOGW, FL("wdaPostCtrlMsg() failed"));)
        SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
-       palFreeMemory(pMac->hHdd, (tANI_U8*)pAggrAddTsParam);
+       vos_mem_free(pAggrAddTsParam);
        return eSIR_FAILURE;
     }
 
@@ -1448,14 +1460,14 @@ limFTSendAggrQosRsp(tpAniSirGlobal pMac, tANI_U8 rspReqd,
         return;
     }
 
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&rsp,
-                sizeof(tSirAggrQosRsp)))
+    rsp = vos_mem_malloc(sizeof(tSirAggrQosRsp));
+    if (NULL == rsp)
     {
-        limLog(pMac, LOGP, FL("palAllocateMemory failed for tSirAggrQosRsp"));
+        limLog(pMac, LOGP, FL("AllocateMemory failed for tSirAggrQosRsp"));
         return;
     }
 
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) rsp, sizeof(*rsp));
+    vos_mem_set((tANI_U8 *) rsp, sizeof(*rsp), 0);
     rsp->messageType = eWNI_SME_FT_AGGR_QOS_RSP;
     rsp->sessionId = smesessionId;
     rsp->length = sizeof(*rsp);
@@ -1507,7 +1519,7 @@ void limProcessFTAggrQoSRsp(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         PELOGE(limLog(pMac, LOGE, FL("Cant find session entry for %s"), __func__);)
         if( pAggrQosRspMsg != NULL )
         {
-            palFreeMemory( pMac->hHdd, (void *)pAggrQosRspMsg );
+            vos_mem_free(pAggrQosRspMsg);
         }
         return;
     }
@@ -1545,7 +1557,7 @@ void limProcessFTAggrQoSRsp(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
             psessionEntry->smeSessionId);
     if( pAggrQosRspMsg != NULL )
     {
-        palFreeMemory( pMac->hHdd, (void *)pAggrQosRspMsg );
+        vos_mem_free(pAggrQosRspMsg);
     }
     return;
 }

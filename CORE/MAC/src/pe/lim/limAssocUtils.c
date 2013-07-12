@@ -121,8 +121,8 @@ tANI_U8
 limCmpSSid(tpAniSirGlobal pMac, tSirMacSSid *prxSSid,tpPESession psessionEntry)
 {
 
-    if( palEqualMemory( pMac->hHdd,  (tANI_U8* ) prxSSid, (tANI_U8 *) &psessionEntry->ssId, 
-                                    (tANI_U8) (psessionEntry->ssId.length + 1)))
+    if (vos_mem_compare((tANI_U8* ) prxSSid, (tANI_U8 *) &psessionEntry->ssId,
+                       (tANI_U8) (psessionEntry->ssId.length + 1)))
         return true;
     else
         return false;
@@ -277,10 +277,11 @@ limCheckRxBasicRates(tpAniSirGlobal pMac, tSirMacRateSet rxRateSet,tpPESession p
     tSirMacRateSet    *pRateSet, basicRate;
     tANI_U8    i, j, k, match;
 
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pRateSet, sizeof(tSirMacRateSet)))
+    pRateSet = vos_mem_malloc(sizeof(tSirMacRateSet));
+    if (NULL == pRateSet)
     {
         // Log error
-        limLog(pMac, LOGP, FL("call to palAllocateMemory failed for RATESET"));
+        limLog(pMac, LOGP, FL("call to AllocateMemory failed for RATESET"));
 
         return false;
     }
@@ -295,14 +296,15 @@ limCheckRxBasicRates(tpAniSirGlobal pMac, tSirMacRateSet rxRateSet,tpPESession p
         limLog(pMac, LOGP, FL("could not retrieve Operational rateset"));
 
         // Free up memory allocated for rateset
-        palFreeMemory( pMac->hHdd, (tANI_U8 *) pRateSet);
+        vos_mem_free((tANI_U8 *) pRateSet);
 
         return false;
     }
     #endif //TO SUPPORT BT-AMP
 
     /* Copy operational rate set from session Entry */
-    palCopyMemory(pMac->hHdd,  pRateSet->rate,  (psessionEntry->rateSet.rate),  psessionEntry->rateSet.numRates);
+    vos_mem_copy(pRateSet->rate, (psessionEntry->rateSet.rate),
+                 psessionEntry->rateSet.numRates);
     
     pRateSet->numRates = psessionEntry->rateSet.numRates;
 
@@ -332,14 +334,14 @@ limCheckRxBasicRates(tpAniSirGlobal pMac, tSirMacRateSet rxRateSet,tpPESession p
         if (!match)
         {
             // Free up memory allocated for rateset
-            palFreeMemory( pMac->hHdd, (tANI_U8 *) pRateSet);
+            vos_mem_free((tANI_U8 *)pRateSet);
 
             return false;
         }
     }
 
     // Free up memory allocated for rateset
-    palFreeMemory( pMac->hHdd, (tANI_U8 *) pRateSet);
+    vos_mem_free((tANI_U8 *)pRateSet);
 
     return true;
 } /****** end limCheckRxBasicRates() ******/
@@ -475,9 +477,9 @@ limCheckRxRSNIeMatch(tpAniSirGlobal pMac, tDot11fIERSN rxRSNIe,tpPESession pSess
     {
         for(j = 0; j < pRSNIe->pwise_cipher_suite_count; j++)
         {
-            if(palEqualMemory(pMac,&rxRSNIe.pwise_cipher_suites[i],
-                                  &pRSNIe->pwise_cipher_suites[j],
-                                  sizeof(pRSNIe->pwise_cipher_suites[j])))
+            if (vos_mem_compare(&rxRSNIe.pwise_cipher_suites[i],
+                                &pRSNIe->pwise_cipher_suites[j],
+                                sizeof(pRSNIe->pwise_cipher_suites[j])))
             {
                 match = 1;
                 break;
@@ -577,9 +579,9 @@ limCheckRxWPAIeMatch(tpAniSirGlobal pMac, tDot11fIEWPA rxWPAIe,tpPESession pSess
     {
         for(j = 0; j < pWPAIe->unicast_cipher_count; j++)
         {
-            if(palEqualMemory(pMac,rxWPAIe.unicast_ciphers[i],
-                                  pWPAIe->unicast_ciphers[j],
-                                  4))
+            if (vos_mem_compare(rxWPAIe.unicast_ciphers[i],
+                               pWPAIe->unicast_ciphers[j],
+                               4))
             {
                 match = 1;
                 break;
@@ -778,7 +780,7 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
         // MLM state machine
         if (psessionEntry->pLimMlmJoinReq)
         {
-            palFreeMemory( pMac->hHdd, (tANI_U8 *) psessionEntry->pLimMlmJoinReq);
+            vos_mem_free(psessionEntry->pLimMlmJoinReq);
             psessionEntry->pLimMlmJoinReq = NULL;
         }
 
@@ -801,10 +803,9 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
            limLog( pMac, LOGW, FL("Lim Posting DISASSOC_CNF to Sme. Trigger: %X"), mlmStaContext.cleanupTrigger);
 
 
-        palCopyMemory( pMac->hHdd,
-                   (tANI_U8 *) &mlmDisassocCnf.peerMacAddr,
-                   (tANI_U8 *) staDsAddr,
-                   sizeof(tSirMacAddr));
+        vos_mem_copy((tANI_U8 *) &mlmDisassocCnf.peerMacAddr,
+                     (tANI_U8 *) staDsAddr,
+                      sizeof(tSirMacAddr));
         mlmDisassocCnf.resultCode = statusCode;
         mlmDisassocCnf.disassocTrigger =
                                    mlmStaContext.cleanupTrigger;
@@ -825,8 +826,8 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
          * Issue Deauth Confirm to SME.
          */
         limLog( pMac, LOGW, FL("Lim Posting DEAUTH_CNF to Sme. Trigger: %X"), mlmStaContext.cleanupTrigger);
-        palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthCnf.peerMacAddr,
-                      (tANI_U8 *) staDsAddr,
+        vos_mem_copy((tANI_U8 *) &mlmDeauthCnf.peerMacAddr,
+                     (tANI_U8 *) staDsAddr,
                       sizeof(tSirMacAddr));
         mlmDeauthCnf.resultCode    = statusCode;
         mlmDeauthCnf.deauthTrigger =
@@ -848,9 +849,9 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
          * Issue Purge Ind to SME.
          */
         limLog( pMac, LOGW, FL("Lim Posting PURGE_STA_IND to Sme. Trigger: %X"), mlmStaContext.cleanupTrigger) ;
-        palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmPurgeStaInd.peerMacAddr,
-                      (tANI_U8 *) staDsAddr,
-                      sizeof(tSirMacAddr));
+        vos_mem_copy((tANI_U8 *) &mlmPurgeStaInd.peerMacAddr,
+                     (tANI_U8 *) staDsAddr,
+                     sizeof(tSirMacAddr));
         mlmPurgeStaInd.reasonCode   = (tANI_U8) mlmStaContext.disassocReason;
         mlmPurgeStaInd.aid          = staDsAssocId;
         mlmPurgeStaInd.purgeTrigger = mlmStaContext.cleanupTrigger;
@@ -889,7 +890,7 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
         }
         else
         {
-        palFreeMemory( pMac->hHdd, psessionEntry->pLimJoinReq);
+        vos_mem_free(psessionEntry->pLimJoinReq);
         psessionEntry->pLimJoinReq = NULL;
 
         if(mlmStaContext.resultCode != eSIR_SME_SUCCESS)
@@ -962,7 +963,7 @@ limRejectAssociation(tpAniSirGlobal pMac, tSirMacAddr peerAddr, tANI_U8 subType,
 
         if (pAuthNode)
         {
-            palCopyMemory( pMac->hHdd, (tANI_U8 *) pAuthNode->peerMacAddr,
+            vos_mem_copy((tANI_U8 *) pAuthNode->peerMacAddr,
                           peerAddr,
                           sizeof(tSirMacAddr));
             pAuthNode->fTimerStarted = 0;
@@ -1006,10 +1007,10 @@ limRejectAssociation(tpAniSirGlobal pMac, tSirMacAddr peerAddr, tANI_U8 subType,
             // Assoction confirmation is complete, free the copy of association request frame
             if ( ((tpSirAssocReq)(psessionEntry->parsedAssocReq[pStaDs->assocId]))->assocReqFrame) 
             {
-                palFreeMemory(pMac->hHdd,((tpSirAssocReq)(psessionEntry->parsedAssocReq[pStaDs->assocId]))->assocReqFrame);
+                vos_mem_free(((tpSirAssocReq)(psessionEntry->parsedAssocReq[pStaDs->assocId]))->assocReqFrame);
                 ((tpSirAssocReq)(psessionEntry->parsedAssocReq[pStaDs->assocId]))->assocReqFrame = NULL;
             }            
-            palFreeMemory(pMac->hHdd, psessionEntry->parsedAssocReq[pStaDs->assocId]);    
+            vos_mem_free(psessionEntry->parsedAssocReq[pStaDs->assocId]);
             psessionEntry->parsedAssocReq[pStaDs->assocId] = NULL;
         }
     }
@@ -1051,7 +1052,7 @@ limDecideApProtectionOnHt20Delete(tpAniSirGlobal pMac,
         {
             if (psessionEntry->protStaCache[i].active)
             {
-                if (palEqualMemory( pMac->hHdd,psessionEntry->protStaCache[i].addr,
+                if (vos_mem_compare(psessionEntry->protStaCache[i].addr,
                         pStaDs->staAddr, sizeof(tSirMacAddr)))
                 {
                     psessionEntry->gLimHt20Params.numSta--;
@@ -1109,7 +1110,7 @@ limDecideApProtectionOnDelete(tpAniSirGlobal pMac,
                     {
                         if (psessionEntry->protStaCache[i].active)
                         {
-                            if (palEqualMemory( pMac->hHdd,psessionEntry->protStaCache[i].addr,
+                            if (vos_mem_compare( psessionEntry->protStaCache[i].addr,
                                     pStaDs->staAddr, sizeof(tSirMacAddr)))
                             {
                                 psessionEntry->gLim11aParams.numSta--;
@@ -1147,7 +1148,7 @@ limDecideApProtectionOnDelete(tpAniSirGlobal pMac,
                 {
                     if (psessionEntry->protStaCache[i].active)
                     {
-                        if (palEqualMemory( pMac->hHdd,psessionEntry->protStaCache[i].addr,
+                        if (vos_mem_compare( psessionEntry->protStaCache[i].addr,
                                 pStaDs->staAddr, sizeof(tSirMacAddr)))
                         {
                             psessionEntry->gLim11bParams.numSta--;
@@ -1181,7 +1182,7 @@ limDecideApProtectionOnDelete(tpAniSirGlobal pMac,
                     {
                         if (psessionEntry->protStaCache[i].active)
                         {
-                            if (palEqualMemory( pMac->hHdd,psessionEntry->protStaCache[i].addr,
+                            if (vos_mem_compare( psessionEntry->protStaCache[i].addr,
                                     pStaDs->staAddr, sizeof(tSirMacAddr)))
                             {
                                 psessionEntry->gLim11gParams.numSta--;
@@ -1217,7 +1218,7 @@ limDecideApProtectionOnDelete(tpAniSirGlobal pMac,
                 {
                     if (psessionEntry->protStaCache[i].active)
                     {
-                        if (palEqualMemory( pMac->hHdd,psessionEntry->protStaCache[i].addr,
+                        if (vos_mem_compare( psessionEntry->protStaCache[i].addr,
                                 pStaDs->staAddr, sizeof(tSirMacAddr)))
                         {
                             psessionEntry->gLimNonGfParams.numSta--;
@@ -1253,7 +1254,7 @@ limDecideApProtectionOnDelete(tpAniSirGlobal pMac,
                 {
                     if (psessionEntry->protStaCache[i].active)
                     {
-                        if (palEqualMemory( pMac->hHdd,psessionEntry->protStaCache[i].addr,
+                        if (vos_mem_compare( psessionEntry->protStaCache[i].addr,
                                 pStaDs->staAddr, sizeof(tSirMacAddr)))
                         {
                             psessionEntry->gLimLsigTxopParams.numSta--;
@@ -1299,7 +1300,7 @@ void limDecideShortPreamble(tpAniSirGlobal pMac,
           {
              if (psessionEntry->gLimNoShortParams.staNoShortCache[i].active)
              {
-                if (palEqualMemory( pMac->hHdd, psessionEntry->gLimNoShortParams.staNoShortCache[i].addr,
+                if (vos_mem_compare( psessionEntry->gLimNoShortParams.staNoShortCache[i].addr,
                                    pStaDs->staAddr, sizeof(tSirMacAddr)))
                 {
                     psessionEntry->gLimNoShortParams.numNonShortPreambleSta--;
@@ -1315,7 +1316,8 @@ void limDecideShortPreamble(tpAniSirGlobal pMac,
          // enable short preamble
          PELOG1(limLog(pMac, LOG1, FL("All associated STAs have short preamble support now."));)
          //reset the cache
-         palZeroMemory( pMac->hHdd, (tANI_U8 *)&psessionEntry->gLimNoShortParams , sizeof(tLimNoShortParams));
+         vos_mem_set((tANI_U8 *)&psessionEntry->gLimNoShortParams,
+                      sizeof(tLimNoShortParams), 0);
          if (limEnableShortPreamble(pMac, true, pBeaconParams, psessionEntry) != eSIR_SUCCESS)
              PELOGE(limLog(pMac, LOGE, FL("Cannot enable short preamble"));)
       }
@@ -1348,7 +1350,7 @@ limDecideShortSlot(tpAniSirGlobal pMac, tpDphHashNode pStaDs,
           {
              if (psessionEntry->gLimNoShortSlotParams.staNoShortSlotCache[i].active)
              {
-                if (palEqualMemory( pMac->hHdd, psessionEntry->gLimNoShortSlotParams.staNoShortSlotCache[i].addr,
+                if (vos_mem_compare(psessionEntry->gLimNoShortSlotParams.staNoShortSlotCache[i].addr,
                     pStaDs->staAddr, sizeof(tSirMacAddr)))
                     {
                         psessionEntry->gLimNoShortSlotParams.numNonShortSlotSta--;
@@ -1366,7 +1368,7 @@ limDecideShortSlot(tpAniSirGlobal pMac, tpDphHashNode pStaDs,
              {
                if (pMac->lim.gLimNoShortSlotParams.staNoShortSlotCache[i].active)
                {
-                  if (palEqualMemory( pMac->hHdd, pMac->lim.gLimNoShortSlotParams.staNoShortSlotCache[i].addr,
+                  if (vos_mem_compare(pMac->lim.gLimNoShortSlotParams.staNoShortSlotCache[i].addr,
                       pStaDs->staAddr, sizeof(tSirMacAddr)))
                   {
                       pMac->lim.gLimNoShortSlotParams.numNonShortSlotSta--;
@@ -1386,7 +1388,8 @@ limDecideShortSlot(tpAniSirGlobal pMac, tpDphHashNode pStaDs,
          // enable short slot time
          PELOG1(limLog(pMac, LOG1, FL("All associated STAs have short slot time support now."));)
          //reset the cache
-         palZeroMemory( pMac->hHdd, (tANI_U8 *)&psessionEntry->gLimNoShortSlotParams , sizeof(tLimNoShortSlotParams));
+         vos_mem_set((tANI_U8 *)&psessionEntry->gLimNoShortSlotParams,
+                     sizeof(tLimNoShortSlotParams), 0);
          // in case of AP set SHORT_SLOT_TIME to enable
          if (psessionEntry->limSystemRole == eLIM_AP_ROLE)
          {
@@ -1402,7 +1405,8 @@ limDecideShortSlot(tpAniSirGlobal pMac, tpDphHashNode pStaDs,
             // enable short slot time
             PELOG1(limLog(pMac, LOG1, FL("All associated STAs have short slot time support now."));)
             //reset the cache
-            palZeroMemory( pMac->hHdd, (tANI_U8 *)&pMac->lim.gLimNoShortSlotParams , sizeof(tLimNoShortSlotParams));
+            vos_mem_set((tANI_U8 *)&pMac->lim.gLimNoShortSlotParams,
+                        sizeof(tLimNoShortSlotParams), 0);
             // in case of AP set SHORT_SLOT_TIME to enable
             if (psessionEntry->limSystemRole == eLIM_AP_ROLE)
             {
@@ -1707,7 +1711,7 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
         tANI_U8 aRateIndex = 0;
         tANI_U8 bRateIndex = 0;
 
-        palZeroMemory( pMac->hHdd, (tANI_U8 *) pRates, sizeof(tSirSupportedRates));
+        vos_mem_set((tANI_U8 *) pRates, sizeof(tSirSupportedRates), 0);
         for(i = 0;i < tempRateSet.numRates; i++)
         {
             min = 0;
@@ -1870,7 +1874,8 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
     #endif // TO SUPPORT BT-AMP
 
     /* copy operational rate set from psessionEntry */
-    palCopyMemory(pMac->hHdd,(tempRateSet.rate),(psessionEntry->rateSet.rate),psessionEntry->rateSet.numRates);
+    vos_mem_copy((tempRateSet.rate), (psessionEntry->rateSet.rate),
+                 psessionEntry->rateSet.numRates);
     tempRateSet.numRates = (tANI_U8) psessionEntry->rateSet.numRates;
 
     if (phyMode == WNI_CFG_PHY_MODE_11G)
@@ -1883,7 +1888,8 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
                       (tANI_U8 *) &tempRateSet2.rate,
                       &val) != eSIR_SUCCESS)
         #endif
-        palCopyMemory(pMac->hHdd,(tempRateSet2.rate),(psessionEntry->extRateSet.rate),psessionEntry->extRateSet.numRates);
+        vos_mem_copy((tempRateSet2.rate), (psessionEntry->extRateSet.rate),
+                     psessionEntry->extRateSet.numRates);
         tempRateSet2.numRates = (tANI_U8) psessionEntry->extRateSet.numRates;
     }
     else
@@ -1996,7 +2002,7 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
         tpSirSupportedRates  rates = &pStaDs->supportedRates;
         tANI_U8 aRateIndex = 0;
         tANI_U8 bRateIndex = 0;
-        palZeroMemory( pMac->hHdd, (tANI_U8 *) rates, sizeof(tSirSupportedRates));
+        vos_mem_set((tANI_U8 *) rates, sizeof(tSirSupportedRates), 0);
         for(i = 0;(i < tempRateSet2.numRates && i < SIR_MAC_RATESET_EID_MAX ); i++)
         {
             for(j = 0;(j < tempRateSet.numRates && j < SIR_MAC_RATESET_EID_MAX); j++)
@@ -2127,13 +2133,13 @@ limAddSta(
     
     sirCopyMacAddr(staMac,psessionEntry->selfMacAddr);
 
-    if( eHAL_STATUS_SUCCESS !=
-        palAllocateMemory( pMac->hHdd, (void **) &pAddStaParams, sizeof( tAddStaParams )))
-      {
-        limLog( pMac, LOGP, FL( "Unable to allocate memory during ADD_STA" ));
-        return eSIR_MEM_ALLOC_FAILED;
-      }
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) pAddStaParams, sizeof(tAddStaParams));
+    pAddStaParams = vos_mem_malloc(sizeof(tAddStaParams));
+    if (NULL == pAddStaParams)
+    {
+       limLog( pMac, LOGP, FL( "Unable to allocate memory during ADD_STA" ));
+       return eSIR_MEM_ALLOC_FAILED;
+    }
+    vos_mem_set((tANI_U8 *) pAddStaParams, sizeof(tAddStaParams), 0);
 
     if ((limGetSystemRole(psessionEntry) == eLIM_AP_ROLE) ||
         (limGetSystemRole(psessionEntry) == eLIM_STA_IN_IBSS_ROLE) ||
@@ -2149,15 +2155,15 @@ limAddSta(
     else
         pStaAddr = &staMac;
 
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) pAddStaParams->staMac,
-                  (tANI_U8 *) *pStaAddr, sizeof(tSirMacAddr));
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) pAddStaParams->bssId,
-                   psessionEntry->bssId, sizeof(tSirMacAddr));
+    vos_mem_copy((tANI_U8 *) pAddStaParams->staMac,
+                 (tANI_U8 *) *pStaAddr, sizeof(tSirMacAddr));
+    vos_mem_copy((tANI_U8 *) pAddStaParams->bssId,
+                  psessionEntry->bssId, sizeof(tSirMacAddr));
 
     limFillSupportedRatesInfo(pMac, pStaDs, &pStaDs->supportedRates,psessionEntry);
 
     //Copy legacy rates
-    palCopyMemory(pMac->hHdd, (tANI_U8*)&pAddStaParams->supportedRates,
+    vos_mem_copy ((tANI_U8*)&pAddStaParams->supportedRates,
                   (tANI_U8*)&pStaDs->supportedRates, sizeof(tSirSupportedRates));
 
     pAddStaParams->assocId = pStaDs->assocId;
@@ -2348,7 +2354,7 @@ limAddSta(
           SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
         limLog( pMac, LOGE, FL("ADD_STA_REQ for aId %d failed (reason %X)"),
                             pStaDs->assocId, retCode );
-        palFreeMemory(pMac->hHdd, (void*)pAddStaParams);
+        vos_mem_free(pAddStaParams);
     }
 
   return retCode;
@@ -2389,13 +2395,14 @@ limDelSta(
     tSirMsgQ msgQ;
     tSirRetStatus     retCode = eSIR_SUCCESS;
 
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **) &pDelStaParams, sizeof( tDeleteStaParams )))
+    pDelStaParams = vos_mem_malloc(sizeof( tDeleteStaParams ));
+    if (NULL == pDelStaParams)
     {
-        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during ADD_STA" ));
+        limLog( pMac, LOGP, FL( "Unable to allocate memory during ADD_STA" ));
         return eSIR_MEM_ALLOC_FAILED;
     }
 
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) pDelStaParams, sizeof(tDeleteStaParams));
+    vos_mem_set((tANI_U8 *) pDelStaParams, sizeof(tDeleteStaParams), 0);
 
   //
   // DPH contains the STA index only for "peer" STA entries.
@@ -2471,7 +2478,7 @@ limDelSta(
            SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
         limLog( pMac, LOGE, FL("Posting DELETE_STA_REQ to HAL failed, reason=%X"),
                         retCode );
-        palFreeMemory(pMac->hHdd, (void*)pDelStaParams);
+        vos_mem_free(pDelStaParams);
     }
 
     return retCode;
@@ -2517,7 +2524,7 @@ tSirRetStatus limAddFTStaSelf(tpAniSirGlobal pMac, tANI_U16 assocId, tpPESession
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
         limLog( pMac, LOGE, FL("Posting ADD_STA_REQ to HAL failed, reason=%X"), retCode );
-        palFreeMemory(pMac->hHdd, (void*)pAddStaParams);
+        vos_mem_free(pAddStaParams);
     }
     //
     // Dont need it any more
@@ -2581,20 +2588,20 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
     #endif //TO SUPPORT BT-AMP
     sirCopyMacAddr(staMac,psessionEntry->selfMacAddr);
 
-    if( eHAL_STATUS_SUCCESS !=
-        palAllocateMemory( pMac->hHdd, (void **) &pAddStaParams, sizeof( tAddStaParams )))
+    pAddStaParams = vos_mem_malloc(sizeof(tAddStaParams));
+    if (NULL == pAddStaParams)
     {
-        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during ADD_STA" ));
+        limLog( pMac, LOGP, FL( "Unable to allocate memory during ADD_STA" ));
         return eSIR_MEM_ALLOC_FAILED;
     }
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) pAddStaParams, sizeof(tAddStaParams));
+    vos_mem_set((tANI_U8 *) pAddStaParams, sizeof(tAddStaParams), 0);
 
     /// Add STA context at MAC HW (BMU, RHP & TFP)
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) pAddStaParams->staMac,
-                  (tANI_U8 *) staMac, sizeof(tSirMacAddr));
+    vos_mem_copy((tANI_U8 *) pAddStaParams->staMac,
+                 (tANI_U8 *) staMac, sizeof(tSirMacAddr));
 
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) pAddStaParams->bssId,
-                psessionEntry->bssId, sizeof(tSirMacAddr));
+    vos_mem_copy((tANI_U8 *) pAddStaParams->bssId,
+                 psessionEntry->bssId, sizeof(tSirMacAddr));
 
     pAddStaParams->assocId = psessionEntry->limAID;
     pAddStaParams->staType = STA_ENTRY_SELF;
@@ -2698,7 +2705,7 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
   if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
         limLog( pMac, LOGE, FL("Posting ADD_STA_REQ to HAL failed, reason=%X"), retCode );
-        palFreeMemory(pMac->hHdd, (void*)pAddStaParams);
+        vos_mem_free(pAddStaParams);
     }
       return retCode;
 }
@@ -2911,9 +2918,9 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
     tANI_U32             noa;
     tANI_U32             TotalNum_NoADesc = 0;
 
-    palCopyMemory( pMac->hHdd, currentSSID.ssId,
-                       psessionEntry->ssId.ssId,
-                       psessionEntry->ssId.length);
+    vos_mem_copy(currentSSID.ssId,
+                 psessionEntry->ssId.ssId,
+                 psessionEntry->ssId.length);
    
     currentSSID.length = (tANI_U8)psessionEntry->ssId.length ;
 
@@ -2923,7 +2930,7 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
         ( (SIR_MAC_MGMT_FRAME  == pHdr->fc.type) &&
           (SIR_MAC_MGMT_PROBE_RSP == pHdr->fc.subType) ) &&
         currentSSID.length &&
-        (!palEqualMemory( pMac->hHdd,(tANI_U8 *) &pBPR->ssId,
+        (!vos_mem_compare((tANI_U8 *) &pBPR->ssId,
                    (tANI_U8 *) &currentSSID,
                    (tANI_U8) (1 + currentSSID.length)) ))
     {
@@ -3032,7 +3039,7 @@ tSirRetStatus limExtractApCapabilities( tpAniSirGlobal pMac,
     tANI_U16 ieLen,
     tpSirProbeRespBeacon beaconStruct )
 {
-  palZeroMemory( pMac->hHdd, (tANI_U8 *) beaconStruct, sizeof( tSirProbeRespBeacon ));
+  vos_mem_set((tANI_U8 *) beaconStruct, sizeof( tSirProbeRespBeacon ), 0);
 
   PELOG3(limLog( pMac, LOG3,
       FL( "In limExtractApCapabilities: The IE's being received are:" ));
@@ -3079,13 +3086,13 @@ limDelBss(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tANI_U16 bssIdx,tpPESession
     tSirMsgQ msgQ;
     tSirRetStatus     retCode = eSIR_SUCCESS;
     
-     if( eHAL_STATUS_SUCCESS !=
-        palAllocateMemory( pMac->hHdd, (void **) &pDelBssParams, sizeof( tDeleteBssParams )))
-     {
-        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during ADD_BSS" ));
+    pDelBssParams = vos_mem_malloc(sizeof(tDeleteBssParams));
+    if (NULL == pDelBssParams)
+    {
+        limLog( pMac, LOGP, FL( "Unable to allocate memory during ADD_BSS" ));
         return eSIR_MEM_ALLOC_FAILED;
-     }
-     palZeroMemory( pMac->hHdd, (tANI_U8 *) pDelBssParams, sizeof(tDeleteBssParams));
+    }
+    vos_mem_set((tANI_U8 *) pDelBssParams, sizeof(tDeleteBssParams), 0);
 
 
     pDelBssParams->sessionId = psessionEntry->peSessionId; //update PE session Id
@@ -3122,7 +3129,7 @@ limDelBss(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tANI_U16 bssIdx,tpPESession
     {
         SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
         limLog( pMac, LOGE, FL("Posting DELETE_BSS_REQ to HAL failed, reason=%X"), retCode );
-        palFreeMemory(pMac->hHdd, (void*)pDelBssParams);
+        vos_mem_free(pDelBssParams);
     }
 
     return retCode;
@@ -3169,24 +3176,23 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
     tpDphHashNode pStaDs = NULL;
     tANI_U8 chanWidthSupp = 0;
     // Package SIR_HAL_ADD_BSS_REQ message parameters
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-                                                  (void **) &pAddBssParams,
-                                                  sizeof( tAddBssParams )))
+    pAddBssParams = vos_mem_malloc(sizeof( tAddBssParams ));
+    if (NULL == pAddBssParams)
     {
         limLog( pMac, LOGP,
-                FL( "Unable to PAL allocate memory during ADD_BSS" ));
+                FL( "Unable to allocate memory during ADD_BSS" ));
         retCode = eSIR_MEM_ALLOC_FAILED;
         goto returnFailure;
     }
     else
-        palZeroMemory( pMac->hHdd, (tANI_U8 *) pAddBssParams, sizeof( tAddBssParams ));
+        vos_mem_set((tANI_U8 *) pAddBssParams, sizeof( tAddBssParams ), 0);
 
-    palCopyMemory( pMac->hHdd,  pAddBssParams->bssId,bssDescription->bssId,
-                   sizeof( tSirMacAddr ));
+    vos_mem_copy(pAddBssParams->bssId,bssDescription->bssId,
+                 sizeof(tSirMacAddr));
     // Fill in tAddBssParams selfMacAddr
-    palCopyMemory( pMac->hHdd,  pAddBssParams->selfMacAddr, 
-                   psessionEntry->selfMacAddr,
-                   sizeof( tSirMacAddr ));
+    vos_mem_copy(pAddBssParams->selfMacAddr,
+                 psessionEntry->selfMacAddr,
+                 sizeof(tSirMacAddr));
     
     if(psessionEntry->bssType == eSIR_BTAMP_AP_MODE)
     {
@@ -3214,8 +3220,8 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
     pAddBssParams->cfParamSet.cfpDurRemaining = pBeaconStruct->cfParamSet.cfpDurRemaining;
 
     pAddBssParams->rateSet.numRates = pAssocRsp->supportedRates.numRates;
-    palCopyMemory( pMac->hHdd,  pAddBssParams->rateSet.rate,
-                   pAssocRsp->supportedRates.rate, pAssocRsp->supportedRates.numRates );
+    vos_mem_copy(pAddBssParams->rateSet.rate,
+                 pAssocRsp->supportedRates.rate, pAssocRsp->supportedRates.numRates);
 
     pAddBssParams->nwType = bssDescription->nwType;
     
@@ -3281,9 +3287,9 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
         /* staType = PEER*/
         pAddBssParams->staContext.staType = STA_ENTRY_OTHER; // Identifying AP as an STA
 
-        palCopyMemory( pMac->hHdd,  pAddBssParams->staContext.bssId,
-                       bssDescription->bssId,
-                       sizeof( tSirMacAddr ));
+        vos_mem_copy(pAddBssParams->staContext.bssId,
+                     bssDescription->bssId,
+                     sizeof( tSirMacAddr));
         pAddBssParams->staContext.listenInterval = bssDescription->beaconInterval;
 
         /* Fill Assoc id from the dph table */
@@ -3374,7 +3380,7 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
         if (pStaDs != NULL)
         {
             limFillSupportedRatesInfo(pMac, pStaDs, &pStaDs->supportedRates,psessionEntry);
-            palCopyMemory(pMac->hHdd, (tANI_U8*)&pAddBssParams->staContext.supportedRates,
+            vos_mem_copy((tANI_U8*)&pAddBssParams->staContext.supportedRates,
                                                 (tANI_U8*)&pStaDs->supportedRates,
                                                 sizeof(tSirSupportedRates));
         }
@@ -3445,7 +3451,7 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
     if( eSIR_SUCCESS != retCode) 
     {
         SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
-        palFreeMemory(pMac->hHdd, pAddBssParams);
+        vos_mem_free(pAddBssParams);
         limLog( pMac, LOGE, FL("Posting ADD_BSS_REQ to HAL failed, reason=%X"),
                 retCode );
         goto returnFailure;
@@ -3472,26 +3478,25 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
     tANI_U8 chanWidthSupp = 0;
     tpSirBssDescription bssDescription = &psessionEntry->pLimJoinReq->bssDescription;
 
-    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
-                                                (void **)&pBeaconStruct, sizeof(tSchBeaconStruct)))
+    pBeaconStruct = vos_mem_malloc(sizeof(tSchBeaconStruct));
+    if (NULL == pBeaconStruct)
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory during ADD_BSS") );
+        limLog(pMac, LOGE, FL("Unable to allocate memory during ADD_BSS") );
         return eSIR_MEM_ALLOC_FAILED;
     }
 
 
     // Package SIR_HAL_ADD_BSS_REQ message parameters
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
-                                                  (void **) &pAddBssParams,
-                                                  sizeof( tAddBssParams )))
+    pAddBssParams = vos_mem_malloc(sizeof(tAddBssParams));
+    if (NULL == pAddBssParams)
     {
         limLog( pMac, LOGP,
-                FL( "Unable to PAL allocate memory during ADD_BSS" ));
+                FL( "Unable to allocate memory during ADD_BSS" ));
         retCode = eSIR_MEM_ALLOC_FAILED;
         goto returnFailure;
     }
     
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) pAddBssParams, sizeof( tAddBssParams ));
+    vos_mem_set((tANI_U8 *) pAddBssParams, sizeof( tAddBssParams ), 0);
 
 
     limExtractApCapabilities( pMac,
@@ -3501,13 +3506,13 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
 
     if(pMac->lim.gLimProtectionControl != WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
         limDecideStaProtectionOnAssoc(pMac, pBeaconStruct, psessionEntry);
-        palCopyMemory( pMac->hHdd,  pAddBssParams->bssId,bssDescription->bssId,
-                   sizeof( tSirMacAddr ));
+        vos_mem_copy(pAddBssParams->bssId, bssDescription->bssId,
+                     sizeof(tSirMacAddr));
 
     // Fill in tAddBssParams selfMacAddr
-    palCopyMemory( pMac->hHdd,  pAddBssParams->selfMacAddr, 
-                   psessionEntry->selfMacAddr,
-                   sizeof( tSirMacAddr ));
+    vos_mem_copy(pAddBssParams->selfMacAddr,
+                 psessionEntry->selfMacAddr,
+                 sizeof(tSirMacAddr));
 
     /* Incorrect BSS Type which caused UMA Descriptor to be overwritten on
      * top of an already established Infra link. This lead to issues in 
@@ -3530,8 +3535,8 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
 
 
     pAddBssParams->rateSet.numRates = pBeaconStruct->supportedRates.numRates;
-    palCopyMemory( pMac->hHdd,  pAddBssParams->rateSet.rate,
-                   pBeaconStruct->supportedRates.rate, pBeaconStruct->supportedRates.numRates );
+    vos_mem_copy(pAddBssParams->rateSet.rate,
+                 pBeaconStruct->supportedRates.rate, pBeaconStruct->supportedRates.numRates);
 
     pAddBssParams->nwType = bssDescription->nwType;
     
@@ -3593,9 +3598,9 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
     {
         pAddBssParams->staContext.staType = STA_ENTRY_OTHER; // Identifying AP as an STA
 
-        palCopyMemory( pMac->hHdd,  pAddBssParams->staContext.bssId,
-                       bssDescription->bssId,
-                       sizeof( tSirMacAddr ));
+        vos_mem_copy(pAddBssParams->staContext.bssId,
+                     bssDescription->bssId,
+                     sizeof(tSirMacAddr));
         pAddBssParams->staContext.listenInterval = bssDescription->beaconInterval;
 
         pAddBssParams->staContext.assocId = 0; // Is SMAC OK with this?
@@ -3742,7 +3747,7 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
     if( eSIR_SUCCESS != retCode) 
     {
         SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
-        palFreeMemory(pMac->hHdd, pAddBssParams);
+        vos_mem_free(pAddBssParams);
         limLog( pMac, LOGE, FL("Posting ADD_BSS_REQ to HAL failed, reason=%X"),
                 retCode );
         goto returnFailure;
@@ -3750,13 +3755,13 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
     }
     else
     {
-        palFreeMemory(pMac->hHdd, pBeaconStruct);    
+        vos_mem_free(pBeaconStruct);
         return retCode;
     }
 
  returnFailure:
     // Clean-up will be done by the caller...
-    palFreeMemory(pMac->hHdd, pBeaconStruct);
+    vos_mem_free(pBeaconStruct);
     return retCode;
 }
 
@@ -3789,7 +3794,7 @@ limPrepareAndSendDelStaCnf(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tSirResult
       return;
     }
     staDsAssocId = pStaDs->assocId;
-    palCopyMemory( pMac->hHdd, (tANI_U8 *)staDsAddr,
+    vos_mem_copy((tANI_U8 *)staDsAddr,
             pStaDs->staAddr,
             sizeof(tSirMacAddr));
 
@@ -4022,14 +4027,14 @@ void limSendSmeUnprotectedMgmtFrameInd(
 
     length = sizeof(tSirSmeUnprotMgmtFrameInd) + frameLen;
 
-    if (eHAL_STATUS_SUCCESS !=
-         palAllocateMemory(pMac->hHdd, (void **)&pSirSmeMgmtFrame, length))
+    pSirSmeMgmtFrame = vos_mem_malloc(length);
+    if (NULL == pSirSmeMgmtFrame)
     {
         limLog(pMac, LOGP,
-               FL("palAllocateMemory failed for tSirSmeUnprotectedMgmtFrameInd"));
+               FL("AllocateMemory failed for tSirSmeUnprotectedMgmtFrameInd"));
         return;
     }
-    palZeroMemory(pMac->hHdd, (void*)pSirSmeMgmtFrame, length);
+    vos_mem_set((void*)pSirSmeMgmtFrame, length, 0);
 
     pSirSmeMgmtFrame->sessionId = sessionId;
     pSirSmeMgmtFrame->frameType = frameType;

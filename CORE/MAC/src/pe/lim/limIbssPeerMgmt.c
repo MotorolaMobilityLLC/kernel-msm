@@ -92,9 +92,9 @@ ibss_peer_find(
 
     while (pTempNode != NULL)
     {
-        if (palEqualMemory( pMac->hHdd,(tANI_U8 *) macAddr,
-                      (tANI_U8 *) &pTempNode->peerMacAddr,
-                      sizeof(tSirMacAddr)) )
+        if (vos_mem_compare((tANI_U8 *) macAddr,
+                            (tANI_U8 *) &pTempNode->peerMacAddr,
+                            sizeof(tSirMacAddr)))
             break;
         pTempNode = pTempNode->next;
     }
@@ -142,10 +142,10 @@ ibss_peer_add(tpAniSirGlobal pMac, tLimIbssPeerNode *pPeerNode)
         }
         if(pTemp->beacon)
         {
-            palFreeMemory(pMac->hHdd, pTemp->beacon);
+            vos_mem_free(pTemp->beacon);
         }
 
-        palFreeMemory( pMac->hHdd, (tANI_U8 *) pTemp);
+        vos_mem_free(pTemp);
         pPrev->next = NULL;
     }
     else
@@ -188,7 +188,7 @@ ibss_peer_collect(
     tLimIbssPeerNode    *pPeer,
     tpPESession         psessionEntry)
 {
-    palCopyMemory( pMac->hHdd, pPeer->peerMacAddr, pHdr->sa, sizeof(tSirMacAddr));
+    vos_mem_copy(pPeer->peerMacAddr, pHdr->sa, sizeof(tSirMacAddr));
 
     pPeer->capabilityInfo       = pBeacon->capabilityInfo;
     pPeer->extendedRatesPresent = pBeacon->extendedRatesPresent;
@@ -200,9 +200,9 @@ ibss_peer_collect(
         (pBeacon->HTCaps.present))
     {
         pPeer->htCapable =  pBeacon->HTCaps.present;
-        palCopyMemory(pMac->hHdd, (tANI_U8 *)pPeer->supportedMCSSet,
-                        (tANI_U8 *)pBeacon->HTCaps.supportedMCSSet,
-                        sizeof(pPeer->supportedMCSSet));
+        vos_mem_copy((tANI_U8 *)pPeer->supportedMCSSet,
+                     (tANI_U8 *)pBeacon->HTCaps.supportedMCSSet,
+                     sizeof(pPeer->supportedMCSSet));
         pPeer->htGreenfield = (tANI_U8)pBeacon->HTCaps.greenField;
         pPeer->htSupportedChannelWidthSet = ( tANI_U8 ) pBeacon->HTCaps.supportedChannelWidthSet;
         pPeer->htMIMOPSState =  (tSirMacHTMIMOPowerSaveState)pBeacon->HTCaps.mimoPowerSave;
@@ -223,18 +223,20 @@ ibss_peer_collect(
         pPeer->vhtCapable = pBeacon->VHTCaps.present;
 
         // Collect VHT capabilities from beacon
-        palCopyMemory(pMac->hHdd, (tANI_U8 *) &pPeer->VHTCaps, (tANI_U8 *) &pBeacon->VHTCaps, sizeof(tDot11fIEVHTCaps) );
+        vos_mem_copy((tANI_U8 *) &pPeer->VHTCaps,
+                     (tANI_U8 *) &pBeacon->VHTCaps,
+                     sizeof(tDot11fIEVHTCaps));
     }
 #endif
     pPeer->erpIePresent = pBeacon->erpPresent;
 
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) &pPeer->supportedRates,
-                  (tANI_U8 *) &pBeacon->supportedRates,
-                  pBeacon->supportedRates.numRates + 1);
+    vos_mem_copy((tANI_U8 *) &pPeer->supportedRates,
+                 (tANI_U8 *) &pBeacon->supportedRates,
+                 pBeacon->supportedRates.numRates + 1);
     if (pPeer->extendedRatesPresent)
-        palCopyMemory( pMac->hHdd, (tANI_U8 *) &pPeer->extendedRates,
-                          (tANI_U8 *) &pBeacon->extendedRates,
-                          pBeacon->extendedRates.numRates + 1);
+        vos_mem_copy((tANI_U8 *) &pPeer->extendedRates,
+                     (tANI_U8 *) &pBeacon->extendedRates,
+                     pBeacon->extendedRates.numRates + 1);
     else
         pPeer->extendedRates.numRates = 0;
 
@@ -414,9 +416,9 @@ ibss_coalesce_free(
     tpAniSirGlobal pMac)
 {
     if (pMac->lim.ibssInfo.pHdr != NULL)
-        palFreeMemory(pMac->hHdd, pMac->lim.ibssInfo.pHdr);
+        vos_mem_free(pMac->lim.ibssInfo.pHdr);
     if (pMac->lim.ibssInfo.pBeacon != NULL)
-        palFreeMemory(pMac->hHdd, pMac->lim.ibssInfo.pBeacon);
+        vos_mem_free(pMac->lim.ibssInfo.pBeacon);
 
     pMac->lim.ibssInfo.pHdr    = NULL;
     pMac->lim.ibssInfo.pBeacon = NULL;
@@ -431,29 +433,25 @@ ibss_coalesce_save(
     tpSirMacMgmtHdr     pHdr,
     tpSchBeaconStruct   pBeacon)
 {
-    eHalStatus status;
-
     // get rid of any saved info
     ibss_coalesce_free(pMac);
 
-    status = palAllocateMemory(pMac->hHdd, (void **) &pMac->lim.ibssInfo.pHdr,
-                               sizeof(*pHdr));
-    if (status != eHAL_STATUS_SUCCESS)
+    pMac->lim.ibssInfo.pHdr = vos_mem_malloc(sizeof(*pHdr));
+    if (NULL == pMac->lim.ibssInfo.pHdr)
     {
         PELOGE(limLog(pMac, LOGE, FL("ibbs-save: Failed malloc pHdr"));)
         return;
     }
-    status = palAllocateMemory(pMac->hHdd, (void **) &pMac->lim.ibssInfo.pBeacon,
-                               sizeof(*pBeacon));
-    if (status != eHAL_STATUS_SUCCESS)
+    pMac->lim.ibssInfo.pBeacon = vos_mem_malloc(sizeof(*pBeacon));
+    if (NULL == pMac->lim.ibssInfo.pBeacon)
     {
         PELOGE(limLog(pMac, LOGE, FL("ibbs-save: Failed malloc pBeacon"));)
         ibss_coalesce_free(pMac);
         return;
     }
 
-    palCopyMemory(pMac->hHdd, pMac->lim.ibssInfo.pHdr, pHdr, sizeof(*pHdr));
-    palCopyMemory(pMac->hHdd, pMac->lim.ibssInfo.pBeacon, pBeacon, sizeof(*pBeacon));
+    vos_mem_copy(pMac->lim.ibssInfo.pHdr, pHdr, sizeof(*pHdr));
+    vos_mem_copy(pMac->lim.ibssInfo.pBeacon, pBeacon, sizeof(*pBeacon));
 }
 
 /*
@@ -540,7 +538,7 @@ ibss_status_chg_notify(
 
     if(beacon != NULL)
     {
-        palFreeMemory(pMac->hHdd, beacon);
+        vos_mem_free(beacon);
     }
 }
 
@@ -562,8 +560,8 @@ ibss_bss_add(
         return;
     }
 
-    palCopyMemory( pMac->hHdd, psessionEntry->bssId, pHdr->bssId,
-                   sizeof(tSirMacAddr));
+    vos_mem_copy(psessionEntry->bssId, pHdr->bssId,
+                 sizeof(tSirMacAddr));
 
     #if 0
     if (cfgSetStr(pMac, WNI_CFG_BSSID, (tANI_U8 *) pHdr->bssId, sizeof(tSirMacAddr))
@@ -599,10 +597,9 @@ ibss_bss_add(
     {
         psessionEntry->shortSlotTimeSupported = pBeacon->capabilityInfo.shortSlotTime;
     }
-    palCopyMemory( pMac->hHdd,
-       (tANI_U8 *) &psessionEntry->pLimStartBssReq->operationalRateSet,
-       (tANI_U8 *) &pBeacon->supportedRates,
-       pBeacon->supportedRates.numRates);
+    vos_mem_copy((tANI_U8 *) &psessionEntry->pLimStartBssReq->operationalRateSet,
+                 (tANI_U8 *) &pBeacon->supportedRates,
+                  pBeacon->supportedRates.numRates);
 
     #if 0
     if (cfgSetStr(pMac, WNI_CFG_OPERATIONAL_RATE_SET,
@@ -639,13 +636,13 @@ ibss_bss_add(
     * even though all the nodes are capable of doing CB.
     * so it is decided to leave the self HT capabilties intact. This may change if some issues are found in interop.
     */
-    palZeroMemory(pMac->hHdd, (void *) &mlmStartReq, sizeof(mlmStartReq));
+    vos_mem_set((void *) &mlmStartReq, sizeof(mlmStartReq), 0);
 
-    palCopyMemory(pMac->hHdd, mlmStartReq.bssId, pHdr->bssId, sizeof(tSirMacAddr));
+    vos_mem_copy(mlmStartReq.bssId, pHdr->bssId, sizeof(tSirMacAddr));
     mlmStartReq.rateSet.numRates = psessionEntry->pLimStartBssReq->operationalRateSet.numRates;
-    palCopyMemory(pMac->hHdd, &mlmStartReq.rateSet.rate[0],
-                  &psessionEntry->pLimStartBssReq->operationalRateSet.rate[0],
-                  mlmStartReq.rateSet.numRates);
+    vos_mem_copy(&mlmStartReq.rateSet.rate[0],
+                 &psessionEntry->pLimStartBssReq->operationalRateSet.rate[0],
+                 mlmStartReq.rateSet.numRates);
     mlmStartReq.bssType             = eSIR_IBSS_MODE;
     mlmStartReq.beaconPeriod        = pBeacon->beaconInterval;
     mlmStartReq.nwType              = psessionEntry->pLimStartBssReq->nwType; //psessionEntry->nwType is also OK????
@@ -667,9 +664,9 @@ ibss_bss_add(
     mlmStartReq.cbMode              = psessionEntry->pLimStartBssReq->cbMode;
 
     // Copy the SSID for RxP filtering based on SSID.
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmStartReq.ssId,
-        (tANI_U8 *) &psessionEntry->pLimStartBssReq->ssId,
-        psessionEntry->pLimStartBssReq->ssId.length + 1);
+    vos_mem_copy((tANI_U8 *) &mlmStartReq.ssId,
+                 (tANI_U8 *) &psessionEntry->pLimStartBssReq->ssId,
+                  psessionEntry->pLimStartBssReq->ssId.length + 1);
 
     PELOG1(limLog(pMac, LOG1, FL("invoking ADD_BSS as part of coalescing!"));)
     if (limMlmAddBss(pMac, &mlmStartReq,psessionEntry) != eSIR_SME_SUCCESS)
@@ -735,7 +732,7 @@ limIbssInit(
     pMac->lim.gLimNumIbssPeers = 0;
 
     // ibss info - params for which ibss to join while coalescing
-    palZeroMemory(pMac->hHdd, &pMac->lim.ibssInfo, sizeof(tAniSirLimIbss));
+    vos_mem_set(&pMac->lim.ibssInfo, sizeof(tAniSirLimIbss), 0);
 } /*** end limIbssInit() ***/
 
 /**
@@ -798,9 +795,9 @@ void limIbssDeleteAllPeers( tpAniSirGlobal pMac ,tpPESession psessionEntry)
 
         if(pCurrNode->beacon)
         {
-            palFreeMemory(pMac->hHdd, pCurrNode->beacon);
+            vos_mem_free(pCurrNode->beacon);
         }
-        palFreeMemory( pMac->hHdd, (tANI_U8 *) pCurrNode);
+        vos_mem_free(pCurrNode);
         if (pMac->lim.gLimNumIbssPeers > 0) // be paranoid
             pMac->lim.gLimNumIbssPeers--;
         pCurrNode = pTempNode;
@@ -873,9 +870,9 @@ limIbssPeerDelete(tpAniSirGlobal pMac, tSirMacAddr macAddr)
 
     while (pTempNode != NULL)
     {
-        if (palEqualMemory( pMac->hHdd,(tANI_U8 *) macAddr,
-                      (tANI_U8 *) &pTempNode->peerMacAddr,
-                      sizeof(tSirMacAddr)) )
+        if (vos_mem_compare((tANI_U8 *) macAddr,
+                            (tANI_U8 *) &pTempNode->peerMacAddr,
+                            sizeof(tSirMacAddr)) )
         {
             // Found node to be deleted
             if (pMac->lim.gLimIbssPeerList == pTempNode) /** First Node to be deleted*/
@@ -885,10 +882,10 @@ limIbssPeerDelete(tpAniSirGlobal pMac, tSirMacAddr macAddr)
 
             if(pTempNode->beacon)
             {
-                palFreeMemory(pMac->hHdd, pTempNode->beacon);
+                vos_mem_free(pTempNode->beacon);
                 pTempNode->beacon = NULL;
             }
-            palFreeMemory( pMac->hHdd, (tANI_U8 *) pTempNode);
+            vos_mem_free(pTempNode);
             pMac->lim.gLimNumIbssPeers--;
             return;
         }
@@ -972,8 +969,7 @@ limIbssUpdateProtectionParams(tpAniSirGlobal pMac,
           PELOG1(limLog(pMac, LOG1, FL("Addr: "));)
           PELOG1(limPrintMacAddr(pMac, pMac->lim.protStaCache[i].addr, LOG1);)
 
-          if (palEqualMemory( pMac->hHdd,
-              pMac->lim.protStaCache[i].addr,
+          if (vos_mem_compare(pMac->lim.protStaCache[i].addr,
               peerMacAddr, sizeof(tSirMacAddr)))
           {
               PELOG1(limLog(pMac, LOG1, FL("matching cache entry at %d already active."), i);)
@@ -994,9 +990,9 @@ limIbssUpdateProtectionParams(tpAniSirGlobal pMac,
       return;
   }
 
-  palCopyMemory( pMac->hHdd, pMac->lim.protStaCache[i].addr,
-                peerMacAddr,
-                sizeof(tSirMacAddr));
+  vos_mem_copy(pMac->lim.protStaCache[i].addr,
+               peerMacAddr,
+               sizeof(tSirMacAddr));
 
   pMac->lim.protStaCache[i].protStaCacheType = protStaCacheType;
   pMac->lim.protStaCache[i].active = true;
@@ -1096,7 +1092,7 @@ limIbssStaAdd(
     tSirMacAddr         *pPeerAddr = (tSirMacAddr *) pBody;
     tUpdateBeaconParams beaconParams; 
 
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) &beaconParams, sizeof(tUpdateBeaconParams));
+    vos_mem_set((tANI_U8 *) &beaconParams, sizeof(tUpdateBeaconParams), 0);
 
     if (pBody == 0)
     {
@@ -1178,7 +1174,7 @@ limIbssAddStaRsp(
     {
         PELOGE(limLog(pMac, LOGE, FL("IBSS: ADD_STA_RSP for unknown MAC addr "));)
         limPrintMacAddr(pMac, pAddStaParams->staMac, LOGE);
-        palFreeMemory( pMac->hHdd, (void *) pAddStaParams );
+        vos_mem_free(pAddStaParams);
         return eSIR_FAILURE;
     }
 
@@ -1186,7 +1182,7 @@ limIbssAddStaRsp(
     {
         PELOGE(limLog(pMac, LOGE, FL("IBSS: ADD_STA_RSP error (%x) "), pAddStaParams->status);)
         limPrintMacAddr(pMac, pAddStaParams->staMac, LOGE);
-        palFreeMemory( pMac->hHdd, (void *) pAddStaParams );
+        vos_mem_free(pAddStaParams);
         return eSIR_FAILURE;
     }
 
@@ -1203,7 +1199,7 @@ limIbssAddStaRsp(
                            pStaDs->ucUcastSig, pStaDs->ucBcastSig,
                            eWNI_SME_IBSS_NEW_PEER_IND,
                            psessionEntry->smeSessionId);
-    palFreeMemory( pMac->hHdd, (void *) pAddStaParams );
+    vos_mem_free(pAddStaParams);
 
     return eSIR_SUCCESS;
 }
@@ -1236,7 +1232,7 @@ void limIbssDelBssRspWhenCoalescing(tpAniSirGlobal  pMac,  void *msg,tpPESession
 
     end:
     if(pDelBss != NULL)
-        palFreeMemory( pMac->hHdd, (void *) pDelBss );
+        vos_mem_free(pDelBss);
 }
 
 
@@ -1261,11 +1257,11 @@ void limIbssAddBssRspWhenCoalescing(tpAniSirGlobal  pMac, void *msg, tpPESession
     infoLen = sizeof(tSirMacAddr) + sizeof(tSirMacChanNum) +
               sizeof(tANI_U8) + pBeacon->ssId.length + 1;
 
-    palZeroMemory(pMac->hHdd, (void *) &newBssInfo, sizeof(newBssInfo));
-    palCopyMemory( pMac->hHdd, newBssInfo.bssId, pHdr->bssId, sizeof(tSirMacAddr));
+    vos_mem_set((void *) &newBssInfo, sizeof(newBssInfo), 0);
+    vos_mem_copy(newBssInfo.bssId, pHdr->bssId, sizeof(tSirMacAddr));
     newBssInfo.channelNumber = (tSirMacChanNum) pAddBss->currentOperChannel;
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) &newBssInfo.ssId,
-                  (tANI_U8 *) &pBeacon->ssId, pBeacon->ssId.length + 1);
+    vos_mem_copy((tANI_U8 *) &newBssInfo.ssId,
+                 (tANI_U8 *) &pBeacon->ssId, pBeacon->ssId.length + 1);
 
     PELOGW(limLog(pMac, LOGW, FL("Sending JOINED_NEW_BSS notification to SME."));)
 
@@ -1358,7 +1354,7 @@ limIbssDelBssRsp(
 
     end:
     if(pDelBss != NULL)
-        palFreeMemory( pMac->hHdd, (void *) pDelBss );
+        vos_mem_free(pDelBss);
     /* Delete PE session once BSS is deleted */
     if (NULL != psessionEntry) {
         limSendSmeRsp(pMac, eWNI_SME_STOP_BSS_RSP, rc,psessionEntry->smeSessionId,psessionEntry->transactionId);
@@ -1403,14 +1399,14 @@ limIbssCoalesce(
     tpDphHashNode       pStaDs;
     tUpdateBeaconParams beaconParams; 
 
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) &beaconParams, sizeof(tUpdateBeaconParams));
+    vos_mem_set((tANI_U8 *)&beaconParams, sizeof(tUpdateBeaconParams), 0);
 
     sirCopyMacAddr(currentBssId,psessionEntry->bssId);
 
     limLog(pMac, LOG1, FL("Current BSSID :" MAC_ADDRESS_STR " Received BSSID :" MAC_ADDRESS_STR ),
                                   MAC_ADDR_ARRAY(currentBssId), MAC_ADDR_ARRAY(pHdr->bssId));
     /* Check for IBSS Coalescing only if Beacon is from different BSS */
-    if ( !palEqualMemory( pMac->hHdd, currentBssId, pHdr->bssId, sizeof( tSirMacAddr ) ) )
+    if ( !vos_mem_compare(currentBssId, pHdr->bssId, sizeof( tSirMacAddr )))
     {
         if (! fTsfLater) // No Coalescing happened.
         {
@@ -1448,8 +1444,8 @@ limIbssCoalesce(
 #endif
         frameLen = sizeof(tLimIbssPeerNode) + ieLen - sizeof(tANI_U32);
 
-        if (eHAL_STATUS_SUCCESS !=
-            palAllocateMemory(pMac->hHdd, (void **) &pPeerNode, (tANI_U16)frameLen))
+        pPeerNode = vos_mem_malloc((tANI_U16)frameLen);
+        if (NULL == pPeerNode)
         {
             limLog(pMac, LOGP, FL("alloc fail (%d bytes) storing IBSS peer info"),
                    frameLen);
@@ -1460,14 +1456,14 @@ limIbssCoalesce(
         pPeerNode->beaconLen = 0;
 
         ibss_peer_collect(pMac, pBeacon, pHdr, pPeerNode,psessionEntry);
-        if(eHAL_STATUS_SUCCESS !=
-                palAllocateMemory(pMac->hHdd, (void**)&pPeerNode->beacon, ieLen))
-       {
+        pPeerNode->beacon = vos_mem_malloc(ieLen);
+        if (NULL == pPeerNode->beacon)
+        {
                 PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store beacon"));)
         }
         else
         {
-            palCopyMemory(pMac->hHdd, pPeerNode->beacon, pIEs, ieLen);
+            vos_mem_copy(pPeerNode->beacon, pIEs, ieLen);
             pPeerNode->beaconLen = (tANI_U16)ieLen;
         }
         ibss_peer_add(pMac, pPeerNode);
@@ -1599,7 +1595,7 @@ void limIbssHeartBeatHandle(tpAniSirGlobal pMac,tpPESession psessionEntry)
                 else
                     pPrevNode->next = pTempNode->next;
 
-                palFreeMemory(pMac->hHdd,pTempNode);
+                vos_mem_free(pTempNode);
                 pMac->lim.gLimNumIbssPeers--;
 
                 pTempNode = pTempNextNode; //Since we deleted current node, prevNode remains same.
@@ -1685,8 +1681,8 @@ limIbssDecideProtectionOnDelete(tpAniSirGlobal pMac,
                 {
                     if (pMac->lim.protStaCache[i].active)
                     {
-                        if (palEqualMemory( pMac->hHdd,pMac->lim.protStaCache[i].addr,
-                                pStaDs->staAddr, sizeof(tSirMacAddr)))
+                        if (vos_mem_compare(pMac->lim.protStaCache[i].addr,
+                                            pStaDs->staAddr, sizeof(tSirMacAddr)))
                         {
                             psessionEntry->gLim11bParams.numSta--;
                             pMac->lim.protStaCache[i].active = false;
