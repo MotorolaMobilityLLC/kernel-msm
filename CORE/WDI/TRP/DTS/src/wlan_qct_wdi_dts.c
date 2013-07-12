@@ -288,6 +288,9 @@ static WDI_DTS_TrafficStatsType gDsTrafficStats;
 #define DTS_RATE_TPUT(x) gRateInfo[x].tputBpus
 #define DTS_11BRATE_TPUT_MULTIPLIER(x) g11bRateInfo[x].tputBpus
 
+/* RX thread frame size threshold to delay frame drain */
+#define DTS_RX_DELAY_FRAMESIZE_THRESHOLD  500
+
 /* Tx/Rx stats function
  * This function should be invoked to fetch the current stats
   * Parameters:
@@ -532,6 +535,18 @@ wpt_status WDTS_RxPacket (void *pContext, wpt_packet *pFrame, WDTS_ChannelType c
   usMPDULen     = (wpt_uint16)WDI_RX_BD_GET_MPDU_LEN(pBDHeader);
   ucMPDUHLen    = (wpt_uint8)WDI_RX_BD_GET_MPDU_H_LEN(pBDHeader);
   ucTid         = (wpt_uint8)WDI_RX_BD_GET_TID(pBDHeader);
+
+  /* If RX thread drain small size of frame from HW too fast
+   * Sometimes HW cannot handle interrupt fast enough
+   * And system crash might happen
+   * To avoid system crash, input 1usec delay each frame draining
+   * within host side, if frame size is smaller that threshold.
+   * This is SW work around, to fix HW problem
+   * Throughput and SnS test done successfully */
+  if (usMPDULen < DTS_RX_DELAY_FRAMESIZE_THRESHOLD)
+  {
+    wpalBusyWait(1);
+  }
 
   /*------------------------------------------------------------------------
     Gather AMSDU information 
