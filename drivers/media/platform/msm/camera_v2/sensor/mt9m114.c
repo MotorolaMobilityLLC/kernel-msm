@@ -81,6 +81,7 @@ static struct msm_sensor_power_setting mt9m114_power_setting[] = {
 	},
 };
 
+#if 0
 static struct msm_camera_i2c_reg_conf mt9m114_720p_settings[] = {
 	{0xdc00, 0x50, MSM_CAMERA_I2C_BYTE_DATA, MSM_CAMERA_I2C_CMD_WRITE},
 	{MT9M114_COMMAND_REGISTER, MT9M114_COMMAND_REGISTER_SET_STATE,
@@ -127,8 +128,8 @@ static struct msm_camera_i2c_reg_conf mt9m114_720p_settings[] = {
 	{0xC920, 0x00FF,},/*stat_ae_window_xend = 255*/
 	{0xC922, 0x008F,},/*stat_ae_window_yend = 143*/
 };
+#endif
 
-#if 0
 static struct msm_camera_i2c_reg_conf mt9m114_1280x960_settings[] = {
 	{0xdc00, 0x50, MSM_CAMERA_I2C_BYTE_DATA, MSM_CAMERA_I2C_CMD_WRITE},
 	{MT9M114_COMMAND_REGISTER, MT9M114_COMMAND_REGISTER_SET_STATE,
@@ -175,7 +176,6 @@ static struct msm_camera_i2c_reg_conf mt9m114_1280x960_settings[] = {
 	{0xC920, 0x00FF,},/*stat_ae_window_xend = 255*/
 	{0xC922, 0x00BF,},/*stat_ae_window_yend = 191*/
 };
-#endif
 
 static struct msm_camera_i2c_reg_conf mt9m114_recommend_settings[] = {
 	{0x301A, 0x0200, MSM_CAMERA_I2C_SET_WORD_MASK},
@@ -1573,8 +1573,8 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	case CFG_SET_RESOLUTION:
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
 			i2c_write_conf_tbl(
-			s_ctrl->sensor_i2c_client, mt9m114_720p_settings,
-			ARRAY_SIZE(mt9m114_720p_settings),
+			s_ctrl->sensor_i2c_client, mt9m114_1280x960_settings,
+			ARRAY_SIZE(mt9m114_1280x960_settings),
 			MSM_CAMERA_I2C_WORD_DATA);
 		break;
 	case CFG_SET_STOP_STREAM:
