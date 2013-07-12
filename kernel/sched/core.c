@@ -81,6 +81,7 @@
 #include <asm/paravirt.h>
 #endif
 
+#include <mach/mmi_watchdog.h>
 #include "sched.h"
 #include "../workqueue_sched.h"
 
@@ -5054,6 +5055,7 @@ void show_state_thread_filter(unsigned long state_filter,
 		 * console might take a lot of time:
 		 */
 		touch_nmi_watchdog();
+		touch_hw_watchdog();
 		if ((!state_filter || (p->state & state_filter)) &&
 			(((threads_filter & SHOW_KTHREADS) && (!p->mm))
 			|| ((threads_filter & SHOW_APP_THREADS) && (p->mm))))
