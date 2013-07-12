@@ -185,7 +185,7 @@ void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, const tANI_U8 *ft_ies,
 
             // Save the FT IEs
             pMac->ft.ftSmeContext.auth_ft_ies = vos_mem_malloc(ft_ies_length);
-            if(pMac->ft.ftSmeContext.auth_ft_ies == NULL)
+            if ( NULL == pMac->ft.ftSmeContext.auth_ft_ies )
             {
                smsLog( pMac, LOGE, FL("Memory allocation failed for "
                                       "auth_ft_ies"));
@@ -193,9 +193,8 @@ void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, const tANI_U8 *ft_ies,
                return;
             }
             pMac->ft.ftSmeContext.auth_ft_ies_length = ft_ies_length;
-            vos_mem_copy((tANI_U8 *)pMac->ft.ftSmeContext.auth_ft_ies, ft_ies,
-                ft_ies_length);
-                
+            vos_mem_copy((tANI_U8 *)pMac->ft.ftSmeContext.auth_ft_ies,
+                          ft_ies,ft_ies_length);
             pMac->ft.ftSmeContext.FTState = eFT_AUTH_REQ_READY;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
@@ -239,7 +238,7 @@ void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, const tANI_U8 *ft_ies,
 
             // Save the FT IEs
             pMac->ft.ftSmeContext.reassoc_ft_ies = vos_mem_malloc(ft_ies_length);
-            if(pMac->ft.ftSmeContext.reassoc_ft_ies == NULL)
+            if ( NULL == pMac->ft.ftSmeContext.reassoc_ft_ies )
             {
                smsLog( pMac, LOGE, FL("Memory allocation failed for "
                                       "reassoc_ft_ies"));
@@ -248,7 +247,7 @@ void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, const tANI_U8 *ft_ies,
             }
             pMac->ft.ftSmeContext.reassoc_ft_ies_length = ft_ies_length;
             vos_mem_copy((tANI_U8 *)pMac->ft.ftSmeContext.reassoc_ft_ies, ft_ies,
-                ft_ies_length);
+                          ft_ies_length);
                 
             pMac->ft.ftSmeContext.FTState = eFT_SET_KEY_WAIT;
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
@@ -288,13 +287,13 @@ eHalStatus sme_FTSendUpdateKeyInd(tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo)
        sizeof( pMsg->keyMaterial.length ) + sizeof( pMsg->keyMaterial.edType ) + 
        sizeof( pMsg->keyMaterial.numKeys ) + sizeof( pMsg->keyMaterial.key );
                      
-    status = palAllocateMemory(pMac->hHdd, (void **)&pMsg, msgLen);
-    if ( !HAL_STATUS_SUCCESS(status) )
+    pMsg = vos_mem_malloc(msgLen);
+    if ( NULL == pMsg )
     {
        return eHAL_STATUS_FAILURE;
     }
 
-    palZeroMemory(pMac->hHdd, pMsg, msgLen);
+    vos_mem_set(pMsg, msgLen, 0);
     pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_FT_UPDATE_KEY);
     pMsg->length = pal_cpu_to_be16(msgLen);
 
@@ -318,17 +317,14 @@ eHalStatus sme_FTSendUpdateKeyInd(tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo)
     keymaterial->key[ 0 ].unicast = (tANI_U8)eANI_BOOLEAN_TRUE;
     keymaterial->key[ 0 ].keyDirection = pFTKeyInfo->keyDirection;
 
-    palCopyMemory( pMac->hHdd, &keymaterial->key[ 0 ].keyRsc,
-                   pFTKeyInfo->keyRsc, CSR_MAX_RSC_LEN );
-
+    vos_mem_copy(&keymaterial->key[ 0 ].keyRsc, pFTKeyInfo->keyRsc, CSR_MAX_RSC_LEN);
     keymaterial->key[ 0 ].paeRole = pFTKeyInfo->paeRole;
 
     keymaterial->key[ 0 ].keyLength = pFTKeyInfo->keyLength;
 
     if ( pFTKeyInfo->keyLength && pFTKeyInfo->Key )
     {
-        palCopyMemory( pMac->hHdd, &keymaterial->key[ 0 ].key,
-                       pFTKeyInfo->Key, pFTKeyInfo->keyLength );
+        vos_mem_copy(&keymaterial->key[ 0 ].key, pFTKeyInfo->Key, pFTKeyInfo->keyLength);
         if(pFTKeyInfo->keyLength == 16)
         {
           smsLog(pMac, LOG1, "SME Set Update Ind keyIdx (%d) encType(%d) key = "

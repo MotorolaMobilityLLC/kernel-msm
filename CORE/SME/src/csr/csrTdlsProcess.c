@@ -139,20 +139,23 @@ eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMg
             tdlsSendMgmtCmdInfo->dialog = tdlsSendMgmt->dialog ;   
             tdlsSendMgmtCmdInfo->statusCode = tdlsSendMgmt->statusCode ;
             tdlsSendMgmtCmdInfo->responder = tdlsSendMgmt->responder;
-            palCopyMemory(pMac->hHdd, tdlsSendMgmtCmdInfo->peerMac, 
+            vos_mem_copy(tdlsSendMgmtCmdInfo->peerMac,
                                    tdlsSendMgmt->peerMac, sizeof(tSirMacAddr)) ; 
 
             if( (0 != tdlsSendMgmt->len) && (NULL != tdlsSendMgmt->buf) )
             {
-                status = palAllocateMemory( pMac->hHdd, (void **)&tdlsSendMgmtCmdInfo->buf, 
-                        tdlsSendMgmt->len );
+                tdlsSendMgmtCmdInfo->buf = vos_mem_malloc(tdlsSendMgmt->len);
+                if ( NULL == tdlsSendMgmtCmdInfo->buf )
+                    status = eHAL_STATUS_FAILURE;
+                else
+                    status = eHAL_STATUS_SUCCESS;
                 if(!HAL_STATUS_SUCCESS( status ) )
                 {
                     smsLog( pMac, LOGE, FL("Alloc Failed") );
                     VOS_ASSERT(0) ;
                     return status ;
                 }
-                palCopyMemory(pMac->hHdd, tdlsSendMgmtCmdInfo->buf,
+                vos_mem_copy(tdlsSendMgmtCmdInfo->buf,
                         tdlsSendMgmt->buf, tdlsSendMgmt->len );
                 tdlsSendMgmtCmdInfo->len = tdlsSendMgmt->len;
             }
@@ -198,33 +201,33 @@ eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr 
 
             tdlsAddStaCmd->sessionId = sessionId;
 
-            palCopyMemory(pMac->hHdd, tdlsAddStaCmdInfo->peerMac,
+            vos_mem_copy(tdlsAddStaCmdInfo->peerMac,
                           peerMac, sizeof(tSirMacAddr)) ;
             tdlsAddStaCmdInfo->capability = pstaParams->capability;
             tdlsAddStaCmdInfo->uapsdQueues = pstaParams->uapsd_queues;
             tdlsAddStaCmdInfo->maxSp = pstaParams->max_sp;
-            palCopyMemory(pMac->hHdd, tdlsAddStaCmdInfo->extnCapability,
+            vos_mem_copy(tdlsAddStaCmdInfo->extnCapability,
                           pstaParams->extn_capability,
                           sizeof(pstaParams->extn_capability));
 
             tdlsAddStaCmdInfo->htcap_present = pstaParams->htcap_present;
             if(pstaParams->htcap_present)
-                palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->HTCap,
+                vos_mem_copy( &tdlsAddStaCmdInfo->HTCap,
                               &pstaParams->HTCap, sizeof(pstaParams->HTCap));
             else
-                palZeroMemory(pMac->hHdd, &tdlsAddStaCmdInfo->HTCap, sizeof(pstaParams->HTCap));
+                vos_mem_set(&tdlsAddStaCmdInfo->HTCap, sizeof(pstaParams->HTCap), 0);
 
             tdlsAddStaCmdInfo->vhtcap_present = pstaParams->vhtcap_present;
             if(pstaParams->vhtcap_present)
-                palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->VHTCap,
+                vos_mem_copy( &tdlsAddStaCmdInfo->VHTCap,
                               &pstaParams->VHTCap, sizeof(pstaParams->VHTCap));
             else
-                palZeroMemory(pMac->hHdd, &tdlsAddStaCmdInfo->VHTCap, sizeof(pstaParams->VHTCap));
+                vos_mem_set(&tdlsAddStaCmdInfo->VHTCap, sizeof(pstaParams->VHTCap), 0);
 
-			tdlsAddStaCmdInfo->supportedRatesLen = pstaParams->supported_rates_len;
+            tdlsAddStaCmdInfo->supportedRatesLen = pstaParams->supported_rates_len;
 
             if (0 != pstaParams->supported_rates_len)
-                palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->supportedRates,
+                vos_mem_copy( &tdlsAddStaCmdInfo->supportedRates,
                               pstaParams->supported_rates,
                               pstaParams->supported_rates_len);
 
@@ -262,7 +265,7 @@ VOS_STATUS csrTdlsSendLinkEstablishParams(tHalHandle hHal,
 
             tdlsLinkEstablishCmd->sessionId = sessionId;
 
-            palCopyMemory(pMac->hHdd, tdlsLinkEstablishCmdInfo->peerMac,
+            vos_mem_copy( tdlsLinkEstablishCmdInfo->peerMac,
                           peerMac, sizeof(tSirMacAddr));
             tdlsLinkEstablishCmdInfo->isBufSta = tdlsLinkEstablishParams->isBufSta;
             tdlsLinkEstablishCmdInfo->isResponder= tdlsLinkEstablishParams->isResponder;
@@ -302,7 +305,7 @@ eHalStatus csrTdlsAddPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr pee
             tdlsAddStaCmd->sessionId = sessionId;
             tdlsAddStaCmdInfo->tdlsAddOper = TDLS_OPER_ADD;
 
-            palCopyMemory(pMac->hHdd, tdlsAddStaCmdInfo->peerMac, 
+            vos_mem_copy( tdlsAddStaCmdInfo->peerMac,
                     peerMac, sizeof(tSirMacAddr)) ; 
 
             tdlsAddStaCmd->command = eSmeCommandTdlsAddPeer ;
@@ -338,7 +341,7 @@ eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr pee
 
             tdlsDelStaCmd->sessionId = sessionId;
 
-            palCopyMemory(pMac->hHdd, tdlsDelStaCmdInfo->peerMac, 
+            vos_mem_copy(tdlsDelStaCmdInfo->peerMac,
                                    peerMac, sizeof(tSirMacAddr)) ; 
 
             tdlsDelStaCmd->command = eSmeCommandTdlsDelPeer ;
@@ -373,7 +376,7 @@ eHalStatus csrTdlsDiscoveryReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsDisRe
             tdlsDisReqCmd->sessionId = sessionId;
 
             disReqCmdInfo->tdlsDisType = tdlsDisReq->disType ;   
-            palCopyMemory(pMac->hHdd, disReqCmdInfo->peerMac, 
+            vos_mem_copy(disReqCmdInfo->peerMac,
                                    tdlsDisReq->peerMac, sizeof(tSirMacAddr)) ; 
             tdlsDisReqCmd->command = eSmeCommandTdlsDiscovery ;
             tdlsDisReqCmd->u.tdlsCmd.size = sizeof(tTdlsDisReqCmdinfo) ;
@@ -406,7 +409,7 @@ eHalStatus csrTdlsSetupReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSetupRequ
 
             tdlsSetupReqCmd->sessionId = sessionId;
 
-            palCopyMemory(pMac->hHdd, setupCmdInfo->peerMac, 
+            vos_mem_copy(setupCmdInfo->peerMac,
                                 tdlsSetupReq->peerMac, sizeof(tSirMacAddr)) ; 
             tdlsSetupReqCmd->command = eSmeCommandTdlsLinkSetup ;
             tdlsSetupReqCmd->u.tdlsCmd.size = sizeof(tTdlsLinkSetupReqCmdinfo) ;
@@ -439,7 +442,7 @@ eHalStatus csrTdlsTeardownReq(tHalHandle hHal, tANI_U8 sessionId,
 
             tdlsTeardownReqCmd->sessionId = sessionId;
 
-            palCopyMemory(pMac->hHdd, teardownCmdInfo->peerMac, 
+            vos_mem_copy(teardownCmdInfo->peerMac,
                          tdlsTeardownReq->peerMac, sizeof(tSirMacAddr)) ; 
             tdlsTeardownReqCmd->command = eSmeCommandTdlsLinkTear ;
             tdlsTeardownReqCmd->u.tdlsCmd.size = 
@@ -490,8 +493,12 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
         return eHAL_STATUS_FAILURE;
     }
 
-    status = palAllocateMemory( pMac->hHdd, (void **)&tdlsSendMgmtReq, 
-            (sizeof(tSirTdlsSendMgmtReq) + tdlsSendMgmtCmdInfo->len ) );
+    tdlsSendMgmtReq = vos_mem_malloc(
+                      sizeof(tSirTdlsSendMgmtReq) + tdlsSendMgmtCmdInfo->len);
+    if ( NULL == tdlsSendMgmtReq )
+       status = eHAL_STATUS_FAILURE;
+    else
+       status = eHAL_STATUS_SUCCESS;
 
     if (!HAL_STATUS_SUCCESS( status ) )
     {
@@ -507,15 +514,15 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tdlsSendMgmtReq->statusCode =  tdlsSendMgmtCmdInfo->statusCode ;
     tdlsSendMgmtReq->responder =  tdlsSendMgmtCmdInfo->responder;
 
-    palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->bssid,
+    vos_mem_copy(tdlsSendMgmtReq->bssid,
                   pSession->pConnectBssDesc->bssId, sizeof (tSirMacAddr));
 
-    palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->peerMac, 
+    vos_mem_copy(tdlsSendMgmtReq->peerMac,
             tdlsSendMgmtCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
 
     if(tdlsSendMgmtCmdInfo->len && tdlsSendMgmtCmdInfo->buf)
     {
-        palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->addIe, tdlsSendMgmtCmdInfo->buf,
+        vos_mem_copy(tdlsSendMgmtReq->addIe, tdlsSendMgmtCmdInfo->buf,
                 tdlsSendMgmtCmdInfo->len);
 
     }
@@ -530,7 +537,7 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
     if(tdlsSendMgmtCmdInfo->len && tdlsSendMgmtCmdInfo->buf)
     {
         //Done with the buf. Free it.
-        palFreeMemory( pMac->hHdd, tdlsSendMgmtCmdInfo->buf );
+        vos_mem_free( tdlsSendMgmtCmdInfo->buf );
         tdlsSendMgmtCmdInfo->len = 0;
     }
 
@@ -550,8 +557,11 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
         return eHAL_STATUS_FAILURE;
     }
 
-    status = palAllocateMemory( pMac->hHdd, (void **)&tdlsAddStaReq, 
-            (sizeof(tSirTdlsAddStaReq) ) );
+    tdlsAddStaReq = vos_mem_malloc(sizeof(tSirTdlsAddStaReq));
+    if ( NULL == tdlsAddStaReq )
+        status = eHAL_STATUS_FAILURE;
+    else
+        status = eHAL_STATUS_SUCCESS;
 
     if (!HAL_STATUS_SUCCESS( status ) )
     {
@@ -564,27 +574,27 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
     //Using dialog as transactionId. This can be used to match response with request
     tdlsAddStaReq->transactionId = 0;
 
-    palCopyMemory(pMac->hHdd, tdlsAddStaReq->bssid,
+    vos_mem_copy( tdlsAddStaReq->bssid,
                   pSession->pConnectBssDesc->bssId, sizeof (tSirMacAddr));
 
-    palCopyMemory(pMac->hHdd, tdlsAddStaReq->peerMac, 
+    vos_mem_copy( tdlsAddStaReq->peerMac,
             tdlsAddStaCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
 
     tdlsAddStaReq->capability = tdlsAddStaCmdInfo->capability;
     tdlsAddStaReq->uapsd_queues = tdlsAddStaCmdInfo->uapsdQueues;
     tdlsAddStaReq->max_sp = tdlsAddStaCmdInfo->maxSp;
 
-    palCopyMemory(pMac->hHdd, tdlsAddStaReq->extn_capability,
+    vos_mem_copy( tdlsAddStaReq->extn_capability,
                               tdlsAddStaCmdInfo->extnCapability,
                               SIR_MAC_MAX_EXTN_CAP);
     tdlsAddStaReq->htcap_present = tdlsAddStaCmdInfo->htcap_present;
-    palCopyMemory(pMac->hHdd, &tdlsAddStaReq->htCap,
+    vos_mem_copy( &tdlsAddStaReq->htCap,
                   &tdlsAddStaCmdInfo->HTCap, sizeof(tdlsAddStaCmdInfo->HTCap));
     tdlsAddStaReq->vhtcap_present = tdlsAddStaCmdInfo->vhtcap_present;
-    palCopyMemory(pMac->hHdd, &tdlsAddStaReq->vhtCap,
+    vos_mem_copy( &tdlsAddStaReq->vhtCap,
                   &tdlsAddStaCmdInfo->VHTCap, sizeof(tdlsAddStaCmdInfo->VHTCap));
     tdlsAddStaReq->supported_rates_length = tdlsAddStaCmdInfo->supportedRatesLen;
-    palCopyMemory(pMac->hHdd, &tdlsAddStaReq->supported_rates,
+    vos_mem_copy( &tdlsAddStaReq->supported_rates,
                   tdlsAddStaCmdInfo->supportedRates, tdlsAddStaCmdInfo->supportedRatesLen);
 
     // Send the request to PE.
@@ -611,8 +621,12 @@ eHalStatus csrTdlsProcessDelSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
         return eHAL_STATUS_FAILURE;
     }
 
-    status = palAllocateMemory( pMac->hHdd, (void **)&tdlsDelStaReq, 
-            (sizeof(tSirTdlsDelStaReq) ) );
+    tdlsDelStaReq = vos_mem_malloc(sizeof(tSirTdlsDelStaReq));
+    if ( NULL == tdlsDelStaReq )
+        status = eHAL_STATUS_FAILURE;
+    else
+        status = eHAL_STATUS_SUCCESS;
+
 
     if (!HAL_STATUS_SUCCESS( status ) )
     {
@@ -624,10 +638,10 @@ eHalStatus csrTdlsProcessDelSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
     //Using dialog as transactionId. This can be used to match response with request
     tdlsDelStaReq->transactionId = 0;
 
-    palCopyMemory(pMac->hHdd, tdlsDelStaReq->bssid,
+    vos_mem_copy( tdlsDelStaReq->bssid,
                   pSession->pConnectBssDesc->bssId, sizeof (tSirMacAddr));
 
-    palCopyMemory(pMac->hHdd, tdlsDelStaReq->peerMac, 
+    vos_mem_copy( tdlsDelStaReq->peerMac,
             tdlsDelStaCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
 
     // Send the request to PE.
@@ -693,8 +707,8 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
             {
                status = eANI_BOOLEAN_FALSE ;
             }
-	}
-	break;
+        }
+        break;
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eSmeCommandTdlsDiscovery:
         {
@@ -702,8 +716,11 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
             tSirTdlsDisReq *disReq = NULL ;
             tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, cmd->sessionId );
             
-            status = palAllocateMemory( pMac->hHdd, (void **)&disReq, 
-                                                      sizeof(tSirTdlsDisReq));
+            disReq = vos_mem_malloc(sizeof(tSirTdlsDisReq));
+            if ( NULL == disReq )
+                status = eHAL_STATUS_FAILURE;
+            else
+                status = eHAL_STATUS_SUCCESS;
 
             if(!HAL_STATUS_SUCCESS( status ) )
             {
@@ -714,9 +731,9 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
             disReq->sessionId = cmd->sessionId;
             disReq->transactionId = 0;  /* TODO ? */
             disReq->reqType =  disReqCmdInfo->tdlsDisType ;
-            palCopyMemory(pMac->hHdd, disReq->bssid, pSession->pConnectBssDesc->bssId, 
+            vos_mem_copy( disReq->bssid, pSession->pConnectBssDesc->bssId,
                                  sizeof (tSirMacAddr));
-            palCopyMemory(pMac->hHdd, disReq->peerMac, 
+            vos_mem_copy( disReq->peerMac,
                                  disReqCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
             smsLog( pMac, LOGE, "sending TDLS discovery to PE " );
             status = tdlsSendMessage(pMac, eWNI_SME_TDLS_DISCOVERY_START_REQ, 
@@ -736,8 +753,12 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
             tSirTdlsSetupReq *setupReq = NULL ;
             tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, cmd->sessionId );
 
-            status = palAllocateMemory( pMac->hHdd, (void **)&setupReq, 
-                                                sizeof(tSirTdlsSetupReq));
+            setupReq = vos_mem_malloc(sizeof(tSirTdlsSetupReq));
+            if ( NULL == setupReq )
+                status = eHAL_STATUS_FAILURE;
+            else
+                status = eHAL_STATUS_SUCCESS;
+
 
             if(!HAL_STATUS_SUCCESS( status ) )
             {
@@ -748,9 +769,9 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
             setupReq->sessionId = cmd->sessionId;
             setupReq->transactionId = 0;  /* TODO ? */
             
-            palCopyMemory(pMac->hHdd, setupReq->bssid, pSession->pConnectBssDesc->bssId, 
+            vos_mem_copy( setupReq->bssid, pSession->pConnectBssDesc->bssId,
                                  sizeof (tSirMacAddr));
-            palCopyMemory(pMac->hHdd, setupReq->peerMac, 
+            vos_mem_copy( setupReq->peerMac,
                            linkSetupReqCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
     
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
@@ -772,8 +793,12 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
             tSirTdlsTeardownReq *teardownReq = NULL ;
             tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, cmd->sessionId );
 
-            status = palAllocateMemory( pMac->hHdd, (void **)&teardownReq, 
-                                                sizeof(tSirTdlsTeardownReq));
+            teardownReq = vos_mem_malloc(sizeof(tSirTdlsTeardownReq));
+            if ( NULL == teardownReq )
+                status = eHAL_STATUS_FAILURE;
+            else
+                status = eHAL_STATUS_SUCCESS;
+
             if(!HAL_STATUS_SUCCESS( status ) )
             {
                 smsLog( pMac, LOGE, "teardown Req alloc failed " );
@@ -783,9 +808,9 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
             teardownReq->sessionId = cmd->sessionId;
             teardownReq->transactionId = 0;  /* TODO ? */
 
-            palCopyMemory(pMac->hHdd, teardownReq->bssid, pSession->pConnectBssDesc->bssId, 
+            vos_mem_copy( teardownReq->bssid, pSession->pConnectBssDesc->bssId,
                                  sizeof (tSirMacAddr));
-            palCopyMemory(pMac->hHdd, &teardownReq->peerMac, 
+            vos_mem_copy( &teardownReq->peerMac,
                            linkTeardownCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
                                                 ("teardown request..")) ;
@@ -817,10 +842,9 @@ eHalStatus csrTdlsProcessLinkEstablish( tpAniSirGlobal pMac, tSmeCmd *cmd )
     eHalStatus status = eHAL_STATUS_FAILURE;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, cmd->sessionId );
 
-    status = palAllocateMemory( pMac->hHdd, (void **)&tdlsLinkEstablishReq,
-            (sizeof(tSirTdlsLinkEstablishReq) ) );
+    tdlsLinkEstablishReq = vos_mem_malloc(sizeof(tSirTdlsLinkEstablishReq));
 
-    if (!HAL_STATUS_SUCCESS( status ) )
+    if (tdlsLinkEstablishReq == NULL)
     {
         smsLog( pMac, LOGE, FL("alloc failed \n") );
         VOS_ASSERT(0) ;
@@ -829,9 +853,9 @@ eHalStatus csrTdlsProcessLinkEstablish( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tdlsLinkEstablishReq->sessionId = cmd->sessionId;
     //Using dialog as transactionId. This can be used to match response with request
     tdlsLinkEstablishReq->transactionId = 0;
-    palCopyMemory(pMac->hHdd, tdlsLinkEstablishReq->peerMac,
+    vos_mem_copy(tdlsLinkEstablishReq->peerMac,
                   tdlsLinkEstablishCmdInfo->peerMac, sizeof(tSirMacAddr));
-    palCopyMemory(pMac->hHdd, tdlsLinkEstablishReq->bssid, pSession->pConnectBssDesc->bssId,
+    vos_mem_copy(tdlsLinkEstablishReq->bssid, pSession->pConnectBssDesc->bssId,
                   sizeof (tSirMacAddr));
     tdlsLinkEstablishReq->isBufSta = tdlsLinkEstablishCmdInfo->isBufSta;
     tdlsLinkEstablishReq->isResponder= tdlsLinkEstablishCmdInfo->isResponder;
@@ -869,7 +893,7 @@ tCsrTdlsPeerLinkinfo *findTdlsPeer(tpAniSirGlobal pMac,
                                                         tdlsPeerStaLink) ;
         peerInfo = &peerLinkInfo->tdlsDisPeerInfo ;
  
-        if(palEqualMemory( pMac->hHdd,(tANI_U8 *)peerInfo->peerMac,
+        if ( vos_mem_compare( (tANI_U8 *)peerInfo->peerMac,
                               (tANI_U8 *) peerMac, sizeof(tSirMacAddr)) )
         {
             break ;
@@ -894,7 +918,8 @@ static eHalStatus tdlsDeleteTdlsPeerInfo(tpAniSirGlobal pMac,
     if((csrLLRemoveEntry(&disInfo->tdlsPotentialPeerList, 
                         &peerInfo->tdlsPeerStaLink, LL_ACCESS_NOLOCK)))
     {
-       status = palFreeMemory(pMac->hHdd, (void *)peerInfo) ;
+       vos_mem_free((void *)peerInfo) ;
+       status = eHAL_STATUS_SUCCESS;
 
     }
 
@@ -946,8 +971,11 @@ static eHalStatus tdlsSaveTdlsPeerInfo(tpAniSirGlobal pMac,
      * at the time the peer node is getting deleted, possible case is 
      * teardown
      */
-    status = palAllocateMemory( pMac->hHdd, (void **)&peerInfo, 
-                                sizeof(tCsrTdlsPeerLinkinfo));
+    peerInfo = vos_mem_malloc(sizeof(tCsrTdlsPeerLinkinfo));
+    if ( NULL = peerInfo )
+        status = eHAL_STATUS_FAILURE;
+    else
+        status = eHAL_STATUS_SUCCESS;
 
     /* 
      * go ahead and copy peerInfo and insert this node info discovery rsp
@@ -955,9 +983,9 @@ static eHalStatus tdlsSaveTdlsPeerInfo(tpAniSirGlobal pMac,
      */ 
     if (HAL_STATUS_SUCCESS(status))
     {
-        palZeroMemory(pMac->hHdd, &peerInfo->tdlsDisPeerInfo, 
-                                            sizeof(tSirTdlsPeerInfo));
-        palCopyMemory(pMac->hHdd, &peerInfo->tdlsDisPeerInfo, disPeerInfo, 
+        vos_mem_set( &peerInfo->tdlsDisPeerInfo,
+                                            sizeof(tSirTdlsPeerInfo), 0);
+        vos_mem_copy( &peerInfo->tdlsDisPeerInfo, disPeerInfo,
                                              sizeof(tSirTdlsPeerInfo));
 
         /*
@@ -998,7 +1026,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             tSirTdlsAddStaRsp *addStaRsp = (tSirTdlsAddStaRsp *) pMsgBuf ;
             eCsrRoamResult roamResult ;
             tCsrRoamInfo roamInfo = {0} ;
-            palCopyMemory(pMac->hHdd, &roamInfo.peerMac, addStaRsp->peerMac, 
+            vos_mem_copy( &roamInfo.peerMac, addStaRsp->peerMac,
                                          sizeof(tSirMacAddr)) ;
             roamInfo.staId = addStaRsp->staId ;
             roamInfo.ucastSig = addStaRsp->ucastSig ;
@@ -1025,7 +1053,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             tSirTdlsDelStaRsp *delStaRsp = (tSirTdlsDelStaRsp *) pMsgBuf ;
             tCsrRoamInfo roamInfo = {0} ;
 
-            palCopyMemory(pMac->hHdd, &roamInfo.peerMac, delStaRsp->peerMac, 
+            vos_mem_copy( &roamInfo.peerMac, delStaRsp->peerMac,
                                          sizeof(tSirMacAddr)) ;
             roamInfo.staId = delStaRsp->staId ;
             roamInfo.statusCode = delStaRsp->statusCode ;
@@ -1044,7 +1072,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
         {
             tpSirTdlsDelStaInd pSirTdlsDelStaInd = (tpSirTdlsDelStaInd) pMsgBuf ;
             tCsrRoamInfo roamInfo = {0} ;
-            palCopyMemory(pMac->hHdd, &roamInfo.peerMac, pSirTdlsDelStaInd->peerMac,
+            vos_mem_copy( &roamInfo.peerMac, pSirTdlsDelStaInd->peerMac,
                                          sizeof(tSirMacAddr)) ;
             roamInfo.staId = pSirTdlsDelStaInd->staId ;
             roamInfo.reasonCode = pSirTdlsDelStaInd->reasonCode ;
@@ -1077,11 +1105,11 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             break;
         }
         case eWNI_SME_TDLS_LINK_ESTABLISH_RSP:
-	{
+        {
             tSirTdlsLinkEstablishReqRsp *linkEstablishReqRsp = (tSirTdlsLinkEstablishReqRsp *) pMsgBuf ;
             tCsrRoamInfo roamInfo = {0} ;
 #if 0
-            palCopyMemory(pMac->hHdd, &roamInfo.peerMac, delStaRsp->peerMac,
+            vos_mem_copy(&roamInfo.peerMac, delStaRsp->peerMac,
                                          sizeof(tSirMacAddr)) ;
             roamInfo.staId = delStaRsp->staId ;
             roamInfo.statusCode = delStaRsp->statusCode ;
@@ -1225,7 +1253,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
         {
             tSirTdlsPeerInd *peerInd = (tSirTdlsPeerInd *) pMsgBuf ;
             tCsrRoamInfo roamInfo = {0} ;
-            palCopyMemory(pMac->hHdd, &roamInfo.peerMac, peerInd->peerMac, 
+            vos_mem_copy( &roamInfo.peerMac, peerInd->peerMac,
                                          sizeof(tSirMacAddr)) ;
             roamInfo.staId = peerInd->staId ;
             roamInfo.ucastSig = peerInd->ucastSig ;
@@ -1244,7 +1272,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
         {
             tSirTdlsPeerInd *peerInd = (tSirTdlsPeerInd *) pMsgBuf ;
             tCsrRoamInfo roamInfo = {0} ;
-            palCopyMemory(pMac->hHdd, &roamInfo.peerMac, peerInd->peerMac, 
+            vos_mem_copy( &roamInfo.peerMac, peerInd->peerMac,
                                          sizeof(tSirMacAddr)) ;
             roamInfo.staId = peerInd->staId ;
             /*

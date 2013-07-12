@@ -236,7 +236,7 @@ dump_pmc_enter_wowl( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32
 
     (void) arg4;
 
-    palZeroMemory(pMac->hHdd, &wowlEnterParams, sizeof(tSirSmeWowlEnterParams));
+    vos_mem_set(&wowlEnterParams, sizeof(tSirSmeWowlEnterParams), 0);
 
     if (arg1 == 0 && arg2 == 0)
     {
@@ -300,7 +300,7 @@ dump_pmc_remove_ptrn( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U3
     tANI_U8  sessionId = 0;
     (void) arg3; (void) arg4;
  
-    palZeroMemory(pMac->hHdd, &delPattern, sizeof(tSirWowlDelBcastPtrn));
+    vos_mem_set(&delPattern, sizeof(tSirWowlDelBcastPtrn), 0);
 
     if((arg1 <= 7) || (arg2 == CSR_ROAM_SESSION_MAX))
     {
@@ -350,9 +350,9 @@ dump_pmc_test_Wowl( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 
     tANI_U8            sessionId = 0;
 
     smeRsp.statusCode = eSIR_SME_SUCCESS;
-    palZeroMemory(pMac->hHdd, &addPattern, sizeof(tSirWowlAddBcastPtrn));
-    palZeroMemory(pMac->hHdd, &delPattern, sizeof(tSirWowlDelBcastPtrn));
-    palZeroMemory(pMac->hHdd, &wowlEnterParams, sizeof(tSirSmeWowlEnterParams));
+    vos_mem_set(&addPattern, sizeof(tSirWowlAddBcastPtrn), 0);
+    vos_mem_set(&delPattern, sizeof(tSirWowlDelBcastPtrn), 0);
+    vos_mem_set(&wowlEnterParams, sizeof(tSirSmeWowlEnterParams), 0);
 
     (void) arg2; (void) arg3; (void) arg4;
 
