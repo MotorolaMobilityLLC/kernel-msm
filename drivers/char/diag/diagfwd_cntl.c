@@ -332,6 +332,7 @@ void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 	char buf[sizeof(struct diag_ctrl_msg_diagmode)];
 	int msg_size = sizeof(struct diag_ctrl_msg_diagmode);
 	int wr_size = -ENOMEM, retry_count = 0, timer;
+	struct diag_smd_info *data;
 
 	/* For now only allow the modem to receive the message */
 	if (!smd_info || smd_info->type != SMD_CNTL_TYPE)
@@ -365,11 +366,7 @@ void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 				for (timer = 0; timer < 5; timer++)
 					udelay(2000);
 			} else {
-				struct diag_smd_info *data =
-				&driver->smd_data[smd_info->peripheral];
 				driver->real_time_mode = real_time;
-				process_lock_enabling(&data->nrt_lock,
-								real_time);
 				break;
 			}
 		}
@@ -381,6 +378,8 @@ void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 		pr_err("diag: ch invalid, feature update on proc %d\n",
 				smd_info->peripheral);
 	}
+	data = &driver->smd_data[smd_info->peripheral];
+	process_lock_enabling(&data->nrt_lock, real_time);
 
 	mutex_unlock(&driver->diag_cntl_mutex);
 }
