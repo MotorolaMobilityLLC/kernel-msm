@@ -736,7 +736,7 @@ eHalStatus pmcSendPowerSaveConfigMessage (tHalHandle hHal)
 
     pmcLog(pMac, LOG2, FL("Entering pmcSendPowerSaveConfigMessage"));
 
-    palZeroMemory(pMac->hHdd, &(powerSaveConfig), sizeof(tSirPowerSaveCfg));
+    vos_mem_set(&(powerSaveConfig), sizeof(tSirPowerSaveCfg), 0);
 
     switch (pMac->pmc.bmpsConfig.forwardBeacons)
     {
@@ -828,7 +828,8 @@ eHalStatus pmcSendMessage (tpAniSirGlobal pMac, tANI_U16 messageType, void *pMes
     pmcLog(pMac, LOG2, FL("Entering pmcSendMessage, message type %d"), messageType);
 
     /* Allocate and fill in message. */
-    if (palAllocateMemory(pMac->hHdd, (void **)&pMsg, WNI_CFG_MB_HDR_LEN + messageSize) != eHAL_STATUS_SUCCESS)
+    pMsg = vos_mem_malloc(WNI_CFG_MB_HDR_LEN + messageSize);
+    if ( NULL == pMsg )
     {
         pmcLog(pMac, LOGE, FL("Cannot allocate memory for message"));
         PMC_ABORT;
@@ -838,12 +839,7 @@ eHalStatus pmcSendMessage (tpAniSirGlobal pMac, tANI_U16 messageType, void *pMes
     pMsg->msgLen = (tANI_U16) (WNI_CFG_MB_HDR_LEN + messageSize);
     if (messageSize > 0)
     {
-        if (palCopyMemory(pMac->hHdd, pMsg->data, pMessageData, messageSize) != eHAL_STATUS_SUCCESS)
-        {
-            pmcLog(pMac, LOGE, FL("Cannot copy message data"));
-            PMC_ABORT;
-            return eHAL_STATUS_FAILURE;
-        }
+        vos_mem_copy(pMsg->data, pMessageData, messageSize);
     }
 
     /* Send message. */
@@ -895,11 +891,7 @@ void pmcDoCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
         pRequestFullPowerEntry = GET_BASE_ADDR(pEntry, tRequestFullPowerEntry, link);
         if (pRequestFullPowerEntry->callbackRoutine)
            pRequestFullPowerEntry->callbackRoutine(pRequestFullPowerEntry->callbackContext, callbackStatus);
-        if (palFreeMemory(pMac->hHdd, pRequestFullPowerEntry) != eHAL_STATUS_SUCCESS)
-        {
-            pmcLog(pMac, LOGE, FL("Cannot free request full power routine list entry"));
-            PMC_ABORT;
-        }
+        vos_mem_free(pRequestFullPowerEntry);
     }
 
 }
@@ -1150,7 +1142,7 @@ void pmcDoBmpsCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
       if (pRequestBmpsEntry->callbackRoutine)
          pRequestBmpsEntry->callbackRoutine(pRequestBmpsEntry->callbackContext,
          callbackStatus);
-      palFreeMemory(pMac->hHdd, pRequestBmpsEntry);
+      vos_mem_free(pRequestBmpsEntry);
       pEntry = csrLLRemoveHead(&pMac->pmc.requestBmpsList, FALSE);
    }
    csrLLUnlock(&pMac->pmc.requestBmpsList);
@@ -1190,7 +1182,7 @@ void pmcDoStartUapsdCallbacks (tHalHandle hHal, eHalStatus callbackStatus)
       pStartUapsdEntry = GET_BASE_ADDR(pEntry, tStartUapsdEntry, link);
       pStartUapsdEntry->callbackRoutine(pStartUapsdEntry->callbackContext,
          callbackStatus);
-      palFreeMemory(pMac->hHdd, pStartUapsdEntry);
+      vos_mem_free(pStartUapsdEntry);
       pEntry = csrLLRemoveHead(&pMac->pmc.requestStartUapsdList, FALSE);
    }
    csrLLUnlock(&pMac->pmc.requestStartUapsdList);
@@ -1875,7 +1867,7 @@ static void pmcProcessDeferredMsg( tpAniSirGlobal pMac )
             break;
         }
         //Need to free the memory here
-        palFreeMemory( pMac->hHdd, pDeferredMsg );
+        vos_mem_free(pDeferredMsg);
     } //while
 }
 
@@ -1885,23 +1877,18 @@ eHalStatus pmcDeferMsg( tpAniSirGlobal pMac, tANI_U16 messageType, void *pData, 
     tPmcDeferredMsg *pDeferredMsg;
     eHalStatus status;
 
-    if( !HAL_STATUS_SUCCESS( palAllocateMemory( pMac->hHdd, (void **)&pDeferredMsg, sizeof(tPmcDeferredMsg) ) ) )
+    pDeferredMsg = vos_mem_malloc(sizeof(tPmcDeferredMsg));
+    if ( NULL == pDeferredMsg )
     {
         pmcLog(pMac, LOGE, FL("Cannot allocate memory for callback context"));
         return eHAL_STATUS_RESOURCES;
     }
-    palZeroMemory( pMac->hHdd, pDeferredMsg, sizeof(tPmcDeferredMsg) );
+    vos_mem_set(pDeferredMsg, sizeof(tPmcDeferredMsg), 0);
     pDeferredMsg->messageType = messageType;
     pDeferredMsg->size = (tANI_U16)size;
     if( pData )
     {
-        if( !HAL_STATUS_SUCCESS( palCopyMemory( pMac->hHdd, &pDeferredMsg->u.data,
-                                    pData, size ) ) )
-        {
-            pmcLog(pMac, LOGE, FL("Cannot copy pattern for callback context"));
-            palFreeMemory( pMac->hHdd, pDeferredMsg );
-            return eHAL_STATUS_FAILURE;
-        }
+        vos_mem_copy(&pDeferredMsg->u.data, pData, size);
     }
     csrLLInsertTail( &pMac->pmc.deferredMsgList, &pDeferredMsg->link, eANI_BOOLEAN_TRUE );
     //No callback is needed. The messages are put into deferred queue and be processed first
@@ -1912,7 +1899,7 @@ eHalStatus pmcDeferMsg( tpAniSirGlobal pMac, tANI_U16 messageType, void *pData, 
         //either fail or already in full power
         if( csrLLRemoveEntry( &pMac->pmc.deferredMsgList, &pDeferredMsg->link, eANI_BOOLEAN_TRUE ) )
         {
-            palFreeMemory( pMac->hHdd, pDeferredMsg );
+            vos_mem_free(pDeferredMsg);
         }
         if( !HAL_STATUS_SUCCESS( status ) )
         {
@@ -1934,7 +1921,7 @@ void pmcReleaseCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
     else
     {
         //this is a specially allocated comamnd due to out of command buffer. free it.
-        palFreeMemory(pMac->hHdd, pCommand);
+        vos_mem_free(pCommand);
     }
 }
 
@@ -2035,21 +2022,23 @@ eHalStatus pmcPrepareCommand( tpAniSirGlobal pMac, eSmeCommandType cmdType, void
         else
         {
             pmcLog( pMac, LOGE,
-                    FL(" fail to get command buffer for command 0x%X curState = %d"), cmdType, pMac->pmc.pmcState );
+                    FL(" fail to get command buffer for command 0x%X curState = %d"),
+                    cmdType, pMac->pmc.pmcState );
             //For certain PMC command, we cannot fail
             if( PMC_IS_COMMAND_CANNOT_FAIL(cmdType) )
             {
                 pmcLog( pMac, LOGE,
                         FL(" command 0x%X  cannot fail try allocating memory for it"), cmdType );
-                status = palAllocateMemory(pMac->hHdd, (void **)&pCommand, sizeof(tSmeCmd));
-                if(!HAL_STATUS_SUCCESS(status))
+                pCommand = vos_mem_malloc(sizeof(tSmeCmd));
+                if ( NULL == pCommand )
                 {
-                    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL, "%s fail to allocate memory for command (0x%X)",
-                        __func__, cmdType);
+                    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL,
+                                "%s fail to allocate memory for command (0x%X)",
+                                __func__, cmdType);
                     pCommand = NULL;
-                    break;
+                    return eHAL_STATUS_FAILURE;
                 }
-                palZeroMemory(pMac->hHdd, pCommand, sizeof(tSmeCmd));
+                vos_mem_set(pCommand, sizeof(tSmeCmd), 0);
                 //Make sure it will be free when it is done
                 pCommand->u.pmcCmd.fReleaseWhenDone = TRUE;
             }
