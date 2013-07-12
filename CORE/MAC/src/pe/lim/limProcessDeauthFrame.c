@@ -287,10 +287,9 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
                     case eLIM_MLM_AUTHENTICATED_STATE:
                         /// Issue Deauth Indication to SME.
-                        palCopyMemory( pMac->hHdd,
-                               (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
-                               pHdr->sa,
-                               sizeof(tSirMacAddr));
+                        vos_mem_copy((tANI_U8 *) &mlmDeauthInd.peerMacAddr,
+                                     pHdr->sa,
+                                     sizeof(tSirMacAddr));
                         mlmDeauthInd.reasonCode = reasonCode;
 
                         psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
@@ -313,7 +312,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
                        if (psessionEntry->pLimMlmJoinReq)
                         {
-                            palFreeMemory( pMac->hHdd, psessionEntry->pLimMlmJoinReq);
+                            vos_mem_free(psessionEntry->pLimMlmJoinReq);
                             psessionEntry->pLimMlmJoinReq = NULL;
                         }
 
@@ -434,7 +433,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
     pStaDs->mlmStaContext.cleanupTrigger = eLIM_PEER_ENTITY_DEAUTH;
 
     /// Issue Deauth Indication to SME.
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
+    vos_mem_copy((tANI_U8 *) &mlmDeauthInd.peerMacAddr,
                   pStaDs->staAddr,
                   sizeof(tSirMacAddr));
     mlmDeauthInd.reasonCode    = (tANI_U8) pStaDs->mlmStaContext.disassocReason;
@@ -457,7 +456,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
             limDeletePreAuthNode(pMac, pHdr->sa);
 
         if (psessionEntry->limAssocResponseData) {
-            palFreeMemory(pMac->hHdd, psessionEntry->limAssocResponseData);
+            vos_mem_free(psessionEntry->limAssocResponseData);
             psessionEntry->limAssocResponseData = NULL;                            
         }
 
