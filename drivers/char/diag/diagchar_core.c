@@ -1408,7 +1408,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 				&& (!driver->usb_connected)) ||
 				(driver->logging_mode == NO_LOGGING_MODE)) {
 		/*Drop the diag payload */
-		pr_err("diag: Dropping packet, usb is not connected in usb mode and non-dci data type\n");
+		pr_err_ratelimited("diag: Dropping packet, usb is not connected in usb mode and non-dci data type\n");
 		return -EIO;
 	}
 #endif /* DIAG over USB */
@@ -1741,7 +1741,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 			if (driver->logging_mode == USB_MODE)
 				diagmem_free(driver, (unsigned char *)driver->
 					write_ptr_svc, POOL_TYPE_WRITE_STRUCT);
-			pr_err("diag: device write failed in response data type\n");
+			pr_err_ratelimited("diag: device write failed in response data type\n");
 			ret = -EIO;
 			goto fail_free_hdlc;
 		}
@@ -1771,7 +1771,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 			if (driver->logging_mode == USB_MODE)
 				diagmem_free(driver, (unsigned char *)driver->
 					write_ptr_svc, POOL_TYPE_WRITE_STRUCT);
-			pr_err("diag: device write failed during hdlc encoding\n");
+			pr_err_ratelimited("diag: device write failed during hdlc encoding\n");
 			ret = -EIO;
 			goto fail_free_hdlc;
 		}
@@ -1798,7 +1798,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 			if (driver->logging_mode == USB_MODE)
 				diagmem_free(driver, (unsigned char *)driver->
 					write_ptr_svc, POOL_TYPE_WRITE_STRUCT);
-			pr_err("diag: device write failed while aggregating in a newly allocated buffer\n");
+			pr_err_ratelimited("diag: device write failed while aggregating in a newly allocated buffer\n");
 			ret = -EIO;
 			goto fail_free_hdlc;
 		}
