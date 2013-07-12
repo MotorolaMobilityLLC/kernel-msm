@@ -155,6 +155,7 @@ static int ion_buffer_alloc_dirty(struct ion_buffer *buffer);
 /* this function should only be called while dev->lock is held */
 static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 				     struct ion_device *dev,
+				     const char *alloc_client_name,
 				     unsigned long len,
 				     unsigned long align,
 				     unsigned long flags)
@@ -187,6 +188,9 @@ static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 
 	buffer->dev = dev;
 	buffer->size = len;
+
+	snprintf(buffer->alloc_client_name, ION_ALLOC_CLIENT_NAME_SIZE,
+		 "%s", alloc_client_name);
 
 	table = heap->ops->map_dma(heap, buffer);
 	if (IS_ERR_OR_NULL(table)) {
@@ -498,7 +502,8 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 			continue;
 		trace_ion_alloc_buffer_start(client->name, heap->name, len,
 					     heap_id_mask, flags);
-		buffer = ion_buffer_create(heap, dev, len, align, flags);
+		buffer = ion_buffer_create(heap, dev,
+					   client->name, len, align, flags);
 		trace_ion_alloc_buffer_end(client->name, heap->name, len,
 					   heap_id_mask, flags);
 		if (!IS_ERR_OR_NULL(buffer))
@@ -1893,6 +1898,75 @@ int ion_unsecure_heap(struct ion_device *dev, int heap_id, int version,
 }
 EXPORT_SYMBOL(ion_unsecure_heap);
 
+static int ion_debug_allbufs_show(struct seq_file *s, void *unused)
+{
+	struct ion_device *dev = s->private;
+	struct rb_node *n;
+
+	seq_printf(s, "%16.s %12.s %12.s %12.s %20.s    %s\n", "heap",
+		"buffer", "size", "ref cnt", "allocator", "references");
+
+	down_read(&dev->lock);
+	mutex_lock(&dev->buffer_lock);
+	for (n = rb_first(&dev->buffers); n; n = rb_next(n)) {
+		struct rb_node *j;
+		struct ion_buffer *buf = rb_entry(n, struct ion_buffer, node);
+		int buf_refcount = atomic_read(&buf->ref.refcount);
+		int refs_found = 0;
+		int clients_busy = 0;
+
+		seq_printf(s, "%16.s %12.x %12.x %12.d %20.s    %s",
+			buf->heap->name, (int)buf, buf->size, buf_refcount,
+			buf->alloc_client_name, "");
+
+		for (j = rb_first(&dev->clients); j; j = rb_next(j)) {
+			struct ion_client *entry = rb_entry(j,
+							    struct ion_client,
+							    node);
+			struct ion_handle *handle;
+
+			if (!mutex_trylock(&entry->lock)) {
+				clients_busy++;
+				continue;
+			}
+			handle = ion_handle_lookup(entry, buf);
+			if (handle) {
+				seq_printf(s, "%s, ", entry->name);
+				refs_found++;
+			}
+			mutex_unlock(&entry->lock);
+		}
+		if (refs_found != buf_refcount) {
+			if ((buf_refcount == 1) && (!clients_busy))
+				seq_printf(s, "orphaned_by: %d (%s)",
+					buf->pid, buf->task_comm);
+			else if (!clients_busy)
+				seq_printf(s, "missing x %d",
+					(buf_refcount-refs_found));
+			else
+				seq_printf(s,
+					"!!!some clients were busy!!!");
+		}
+
+		seq_printf(s, "\n");
+	}
+	mutex_unlock(&dev->buffer_lock);
+	up_read(&dev->lock);
+	return 0;
+}
+
+static int ion_debug_allbufs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, ion_debug_allbufs_show, inode->i_private);
+}
+
+static const struct file_operations debug_allbufs_fops = {
+	.open = ion_debug_allbufs_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
 struct ion_device *ion_device_create(long (*custom_ioctl)
 				     (struct ion_client *client,
 				      unsigned int cmd,
@@ -1938,6 +2012,8 @@ debugfs_done:
 	init_rwsem(&idev->lock);
 	plist_head_init(&idev->heaps);
 	idev->clients = RB_ROOT;
+	debugfs_create_file("check_all_bufs", 0664, idev->debug_root, idev,
+			    &debug_allbufs_fops);
 	return idev;
 }
 
