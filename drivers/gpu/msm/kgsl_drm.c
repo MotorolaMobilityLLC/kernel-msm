@@ -17,6 +17,8 @@
 #include "drmP.h"
 #include "drm.h"
 
+#include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/msm_ion.h>
 #include <linux/genlock.h>
 
@@ -1561,7 +1563,7 @@ static struct drm_driver driver = {
 	.patchlevel = DRIVER_PATCHLEVEL,
 };
 
-int kgsl_drm_init(struct platform_device *dev)
+static int __devinit kgsl_drm_probe(struct platform_device *pdev)
 {
 	/* Only initialize once */
 	if (kgsl_drm_inited == DRM_KGSL_INITED)
@@ -1570,6 +1572,7 @@ int kgsl_drm_init(struct platform_device *dev)
 	kgsl_drm_inited = DRM_KGSL_INITED;
 
 	driver.num_ioctls = DRM_ARRAY_SIZE(kgsl_drm_ioctls);
+	driver.kdriver.platform_device = pdev;
 
 	INIT_LIST_HEAD(&kgsl_mem_list);
 
@@ -1580,10 +1583,10 @@ int kgsl_drm_init(struct platform_device *dev)
 		return -ENOMEM;
 	}
 
-	return drm_platform_init(&driver, dev);
+	return drm_platform_init(&driver, pdev);
 }
 
-void kgsl_drm_exit(void)
+static int kgsl_drm_remove(struct platform_device *pdev)
 {
 	kgsl_drm_inited = DRM_KGSL_NOT_INITED;
 
@@ -1592,4 +1595,53 @@ void kgsl_drm_exit(void)
 	kgsl_drm_ion_client = NULL;
 
 	drm_platform_exit(&driver, driver.kdriver.platform_device);
+
+	return 0;
 }
+
+static int kgsl_drm_suspend(struct platform_device *dev, pm_message_t state)
+{
+	/* TODO */
+	return 0;
+}
+
+static int kgsl_drm_resume(struct platform_device *dev)
+{
+	/* TODO */
+	return 0;
+}
+
+static const struct of_device_id kgsl_drm_dt_match[] = {
+	{ .compatible = "qcom,kgsl_drm",},
+	{}
+};
+MODULE_DEVICE_TABLE(of, kgsl_drm_dt_match);
+
+static struct platform_driver kgsl_drm_driver = {
+	.probe = kgsl_drm_probe,
+	.remove = kgsl_drm_remove,
+	.suspend = kgsl_drm_suspend,
+	.resume = kgsl_drm_resume,
+	.shutdown = NULL,
+	.driver = {
+		/*
+		 * Driver name must match the device name added in
+		 * platform.c.
+		 */
+		.name = "kgsl_drm",
+		.of_match_table = kgsl_drm_dt_match,
+	},
+};
+
+static int __init kgsl_drm_init(void)
+{
+	return platform_driver_register(&kgsl_drm_driver);
+}
+
+static void __exit kgsl_drm_exit(void)
+{
+	platform_driver_unregister(&kgsl_drm_driver);
+}
+
+module_init(kgsl_drm_init);
+module_exit(kgsl_drm_exit);
