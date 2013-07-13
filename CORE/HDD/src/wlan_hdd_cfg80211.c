@@ -7458,16 +7458,20 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
        }
     }
 
+    /* For explicit trigger of DIS_REQ come out of BMPS for
+       successfully receiving DIS_RSP from peer. */
     if ((SIR_MAC_TDLS_SETUP_RSP == action_code) ||
-        (SIR_MAC_TDLS_DIS_RSP == action_code))
+        (SIR_MAC_TDLS_DIS_RSP == action_code) ||
+        (SIR_MAC_TDLS_DIS_REQ == action_code))
     {
         if (TRUE == sme_IsPmcBmps(WLAN_HDD_GET_HAL_CTX(pAdapter)))
         {
             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                       "%s: Sending Disc/Setup Rsp Frame.Disable BMPS", __func__);
+                       "%s: Sending frame action_code %u.Disable BMPS", __func__, action_code);
             hdd_disable_bmps_imps(pHddCtx, WLAN_HDD_INFRA_STATION);
         }
-        wlan_hdd_tdls_set_cap(pAdapter, peerMac, eTDLS_CAP_SUPPORTED);
+        if (SIR_MAC_TDLS_DIS_REQ != action_code)
+            wlan_hdd_tdls_set_cap(pAdapter, peerMac, eTDLS_CAP_SUPPORTED);
     }
 
     /* make sure doesn't call send_mgmt() while it is pending */
