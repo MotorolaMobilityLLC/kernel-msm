@@ -3,6 +3,8 @@
 
 #include "drm.h"
 
+#define KGSL_DRM_IRQ	"kgsl_drm_irq"
+
 #define DRM_KGSL_GEM_CREATE 0x00
 #define DRM_KGSL_GEM_PREP   0x01
 #define DRM_KGSL_GEM_SETMEMTYPE 0x02
