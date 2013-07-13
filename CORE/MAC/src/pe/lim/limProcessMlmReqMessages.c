@@ -1695,6 +1695,11 @@ limMlmAddBss (
     pAddBssParams->extSetStaKeyParamValid = 0;
 #endif
 
+#ifdef WLAN_FEATURE_11W
+    pAddBssParams->rmfEnabled = (psessionEntry->gStartBssRSNIe.RSN_Cap[0] >> 7) & 0x1;
+    limLog( pMac, LOG1, FL("PMF capable value for BSS is %d"), pAddBssParams->rmfEnabled);
+#endif
+
     //
     // FIXME_GEN4
     // A global counter (dialog token) is required to keep track of

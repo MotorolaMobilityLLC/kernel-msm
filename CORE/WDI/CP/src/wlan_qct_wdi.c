@@ -16884,6 +16884,8 @@ WDI_ProcessConfigStaRsp
         pWDICtx->wdiCachedConfigStaReq.wdiReqInfo.ucHTCapable;
       wdiAddSTAParam.ucStaType    =
         pWDICtx->wdiCachedConfigStaReq.wdiReqInfo.wdiSTAType;
+      wdiAddSTAParam.ucRmfEnabled =
+        pWDICtx->wdiCachedConfigStaReq.wdiReqInfo.ucRMFEnabled;
 
       /* MAC Address of STA */
       wpalMemoryCopy(wdiAddSTAParam.staMacAddr,
@@ -16916,7 +16918,6 @@ WDI_ProcessConfigStaRsp
          halConfigStaRsp.configStaRspParams.bcastDpuIndex;
       wdiAddSTAParam.bcastDpuSignature =
          halConfigStaRsp.configStaRspParams.ucBcastSig;
-      wdiAddSTAParam.ucRmfEnabled          = pBSSSes->ucRmfEnabled;
       wdiAddSTAParam.ucBSSIdx              = ucCurrentBSSSesIdx;
 
       WDI_STATableAddSta(pWDICtx,&wdiAddSTAParam);

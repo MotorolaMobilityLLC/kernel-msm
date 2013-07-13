@@ -2004,10 +2004,10 @@ tSirRetStatus sirConvertProbeFrame2Struct(tpAniSirGlobal       pMac,
         pProbeResp->channelNumber = pr->HTInfo.primaryChannel;
     }
 
-    if ( pr->RSN.present )
+    if ( pr->RSNOpaque.present )
     {
         pProbeResp->rsnPresent = 1;
-        ConvertRSN( pMac, &pProbeResp->rsn, &pr->RSN );
+        ConvertRSNOpaque( pMac, &pProbeResp->rsn, &pr->RSNOpaque );
     }
 
     if ( pr->WPA.present )
