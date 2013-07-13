@@ -5447,13 +5447,7 @@ int wlan_hdd_cfg80211_set_privacy( hdd_adapter_t *pAdapter,
 
     if (req->crypto.wpa_versions)
     {
-        if ( (NL80211_WPA_VERSION_1 == req->crypto.wpa_versions)
-            && ( (req->ie_len)
-           && (hdd_isWPAIEPresent(req->ie, req->ie_len) ) ) )
-           // Make sure that it is including a WPA IE.
-           /* Currently NL is putting WPA version 1 even for open,
-            * since p2p ie is also put in same buffer.
-            * */
+        if (NL80211_WPA_VERSION_1 == req->crypto.wpa_versions)
         {
             pWextState->wpaVersion = IW_AUTH_WPA_VERSION_WPA;
         }
