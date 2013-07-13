@@ -74,6 +74,13 @@
 #define TYPE_IS_SECURE(_t) \
 	((_t & DRM_KGSL_GEM_TYPE_MEM_MASK) == DRM_KGSL_GEM_TYPE_MEM_SECURE)
 
+struct drm_kgsl_private {
+	void __iomem *regs;
+	size_t reg_size;
+	unsigned int irq;
+	atomic_t vbl_received;
+};
+
 struct drm_kgsl_gem_object {
 	struct drm_gem_object *obj;
 	uint32_t type;
@@ -1269,6 +1276,89 @@ int kgsl_gem_phys_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	}
 }
 
+static u32
+kgsl_drm_get_vblank_counter(struct drm_device *dev, int crtc)
+{
+	struct drm_kgsl_private *dev_priv =
+		(struct drm_kgsl_private *)dev->dev_private;
+
+	DRM_DEBUG("%s:crtc[%d]\n", __func__, crtc);
+
+	if (crtc != 0)
+		return 0;
+
+	return atomic_read(&dev_priv->vbl_received);
+}
+
+static int
+kgsl_drm_enable_vblank(struct drm_device *dev, int crtc)
+{
+	DRM_DEBUG("%s:crtc[%d]\n", __func__, crtc);
+
+	if (crtc != 0) {
+		DRM_ERROR("failed to enable vblank.\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void
+kgsl_drm_disable_vblank(struct drm_device *dev, int crtc)
+{
+	DRM_DEBUG("%s:crtc[%d]\n", __func__, crtc);
+
+	if (crtc != 0)
+		DRM_ERROR("failed to disable vblank.\n");
+}
+
+static irqreturn_t
+kgsl_drm_irq_handler(DRM_IRQ_ARGS)
+{
+	struct drm_device *dev = (struct drm_device *)arg;
+
+	drm_handle_vblank(dev, 0);
+
+	return IRQ_HANDLED;
+}
+
+static void
+kgsl_drm_irq_preinstall(struct drm_device *dev)
+{
+	struct drm_kgsl_private *dev_priv =
+		(struct drm_kgsl_private *)dev->dev_private;
+
+	DRM_DEBUG("%s\n", __func__);
+
+	atomic_set(&dev_priv->vbl_received, 0);
+
+	dev->irq_enabled = 0;
+}
+
+static int
+kgsl_drm_irq_postinstall(struct drm_device *dev)
+{
+	struct drm_kgsl_private *dev_priv =
+		(struct drm_kgsl_private *)dev->dev_private;
+
+	DRM_DEBUG("%s:regs[0x%x]\n", __func__, (int)dev_priv->regs);
+
+	dev->irq_enabled = 1;
+
+	return 0;
+}
+
+static void
+kgsl_drm_irq_uninstall(struct drm_device *dev)
+{
+	struct drm_kgsl_private *dev_priv =
+		(struct drm_kgsl_private *)dev->dev_private;
+
+	DRM_DEBUG("%s:regs[0x%x]\n", __func__, (int)dev_priv->regs);
+
+	dev->irq_enabled = 0;
+}
+
 int kgsl_gem_prime_handle_to_fd(struct drm_device *dev,
 		struct drm_file *file_priv, uint32_t handle, uint32_t flags,
 		int *prime_fd)
@@ -1461,10 +1551,55 @@ static struct drm_info_list kgsl_drm_debugfs_list[] = {
 
 static int kgsl_drm_load(struct drm_device *dev, unsigned long flags)
 {
+	struct drm_kgsl_private *dev_priv;
+	struct platform_device *pdev;
+	struct resource *res;
 	struct drm_minor *minor;
 	int ret;
 
 	minor = dev->primary;
+
+	pdev = dev->driver->kdriver.platform_device;
+	if (!pdev) {
+		DRM_ERROR("failed to get platform device.\n");
+		return -EFAULT;
+	}
+
+	dev_priv = devm_kzalloc(&pdev->dev, sizeof(*dev_priv), GFP_KERNEL);
+	if (!dev_priv) {
+		DRM_ERROR("failed to alloc dev private data.\n");
+		return -ENOMEM;
+	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mdp_phys");
+	if (!res) {
+		DRM_ERROR("failed to get MDP base address\n");
+		return -ENOMEM;
+	}
+
+	dev_priv->reg_size = resource_size(res);
+	dev_priv->regs = devm_ioremap(&pdev->dev, res->start,
+					dev_priv->reg_size);
+	if (unlikely(!dev_priv->regs)) {
+		DRM_ERROR("failed to map MDP base\n");
+		return -ENOMEM;
+	}
+
+	/* acquire interrupt */
+	dev_priv->irq = platform_get_irq_byname(pdev, KGSL_DRM_IRQ);
+	dev->dev_private = (void *)dev_priv;
+
+	DRM_DEBUG("%s:irq[%d]start[0x%x]regs[0x%x]reg_size[0x%x]\n", __func__,
+		dev_priv->irq, (int)res->start, (int)dev_priv->regs,
+		(int)dev_priv->reg_size);
+
+	/* initialize variables related to vblank and waitqueue. */
+	ret = drm_vblank_init(dev, 1);
+	if (ret) {
+		DRM_ERROR("failed to init vblank.\n");
+		return ret;
+	}
+
 	ret = drm_debugfs_create_files(kgsl_drm_debugfs_list,
 						KGSL_DRM_DEBUGFS_ENTRIES,
 						minor->debugfs_root, minor);
@@ -1476,6 +1611,11 @@ static int kgsl_drm_load(struct drm_device *dev, unsigned long flags)
 
 static int kgsl_drm_unload(struct drm_device *dev)
 {
+	struct drm_kgsl_private *dev_priv =
+		(struct drm_kgsl_private *)dev->dev_private;
+
+	kfree(dev_priv);
+
 	drm_debugfs_remove_files(kgsl_drm_debugfs_list,
 				KGSL_DRM_DEBUGFS_ENTRIES, dev->primary);
 
@@ -1545,13 +1685,21 @@ static const struct file_operations kgsl_drm_driver_fops = {
 };
 
 static struct drm_driver driver = {
-	.driver_features = DRIVER_GEM | DRIVER_PRIME,
+	.driver_features = DRIVER_GEM | DRIVER_PRIME |
+		DRIVER_HAVE_IRQ | DRIVER_IRQ_SHARED,
 	.load = kgsl_drm_load,
 	.unload = kgsl_drm_unload,
 	.open = kgsl_drm_open,
 	.postclose = kgsl_drm_postclose,
 	.gem_init_object = kgsl_gem_init_object,
 	.gem_free_object = kgsl_gem_free_object,
+	.get_vblank_counter = kgsl_drm_get_vblank_counter,
+	.enable_vblank = kgsl_drm_enable_vblank,
+	.disable_vblank = kgsl_drm_disable_vblank,
+	.irq_handler = kgsl_drm_irq_handler,
+	.irq_preinstall = kgsl_drm_irq_preinstall,
+	.irq_postinstall = kgsl_drm_irq_postinstall,
+	.irq_uninstall = kgsl_drm_irq_uninstall,
 	.prime_handle_to_fd = kgsl_gem_prime_handle_to_fd,
 	.prime_fd_to_handle = kgsl_gem_prime_fd_to_handle,
 	.ioctls = kgsl_drm_ioctls,
