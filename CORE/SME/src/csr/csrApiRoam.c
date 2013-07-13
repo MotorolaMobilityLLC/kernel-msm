@@ -5369,7 +5369,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                 }
                 if (!CSR_IS_INFRA_AP(pProfile))
                 {
-                    pScanResult = csrScanAppendBssDescription( pMac, pSirBssDesc, pIes );
+                    pScanResult = csrScanAppendBssDescription( pMac, pSirBssDesc, pIes, FALSE );
                 }
                 csrRoamSaveConnectedBssDesc(pMac, sessionId, pSirBssDesc);
                 csrRoamFreeConnectProfile(pMac, &pSession->connectedProfile);
@@ -15054,7 +15054,7 @@ eHalStatus csrRoamOffloadScanRspHdlr(tpAniSirGlobal pMac, tANI_U8 reason)
             csrNeighborRoamProceedWithHandoffReq(pMac);
             break;
         default:
-            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG, "Rsp for Roam Scan Offload with unknown Reason %d", reason);
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "Rsp for Roam Scan Offload with reason %d", reason);
     }
     return eHAL_STATUS_SUCCESS;
 }

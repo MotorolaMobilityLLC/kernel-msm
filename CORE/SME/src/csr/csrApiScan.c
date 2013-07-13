@@ -2576,7 +2576,7 @@ void csrCheckNSaveWscIe(tpAniSirGlobal pMac, tSirBssDescription *pNewBssDescr, t
 
 //pIes may be NULL
 tANI_BOOLEAN csrRemoveDupBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pSirBssDescr,
-                                         tDot11fBeaconIEs *pIes, tAniSSID *pSsid , v_TIME_t *timer ) 
+                                         tDot11fBeaconIEs *pIes, tAniSSID *pSsid , v_TIME_t *timer, tANI_BOOLEAN fForced )
 {
     tListElem *pEntry;
 
@@ -2595,7 +2595,7 @@ tANI_BOOLEAN csrRemoveDupBssDescription( tpAniSirGlobal pMac, tSirBssDescription
         // we have a duplicate scan results only when BSSID, SSID, Channel and NetworkType
         // matches
         if ( csrIsDuplicateBssDescription( pMac, &pBssDesc->Result.BssDescriptor, 
-                                                        pSirBssDescr, pIes ) )
+                                                        pSirBssDescr, pIes, fForced ) )
         {
             pSirBssDescr->rssi = (tANI_S8)( (((tANI_S32)pSirBssDescr->rssi * CSR_SCAN_RESULT_RSSI_WEIGHT ) +
                                              ((tANI_S32)pBssDesc->Result.BssDescriptor.rssi * (100 - CSR_SCAN_RESULT_RSSI_WEIGHT) )) / 100 );
@@ -2863,7 +2863,7 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
             csrFreeScanResultEntry(pMac, pBssDescription);
             continue;
         }
-        fDupBss = csrRemoveDupBssDescription( pMac, &pBssDescription->Result.BssDescriptor, pIesLocal, &tmpSsid , &timer );
+        fDupBss = csrRemoveDupBssDescription( pMac, &pBssDescription->Result.BssDescriptor, pIesLocal, &tmpSsid , &timer, FALSE );
         //Check whether we have reach out limit, but don't lose the LFR candidates came from FW
         if( CSR_SCAN_IS_OVER_BSS_LIMIT(pMac)
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
@@ -2994,7 +2994,7 @@ static tCsrScanResult *csrScanSaveBssDescription( tpAniSirGlobal pMac, tSirBssDe
 // Append a Bss Description...
 tCsrScanResult *csrScanAppendBssDescription( tpAniSirGlobal pMac, 
                                              tSirBssDescription *pSirBssDescription, 
-                                             tDot11fBeaconIEs *pIes )
+                                             tDot11fBeaconIEs *pIes, tANI_BOOLEAN fForced )
 {
     tCsrScanResult *pCsrBssDescription = NULL;
     tAniSSID tmpSsid;
@@ -3002,7 +3002,7 @@ tCsrScanResult *csrScanAppendBssDescription( tpAniSirGlobal pMac,
     int result;
 
     tmpSsid.length = 0;
-    result = csrRemoveDupBssDescription( pMac, pSirBssDescription, pIes, &tmpSsid, &timer );
+    result = csrRemoveDupBssDescription( pMac, pSirBssDescription, pIes, &tmpSsid, &timer, fForced );
     pCsrBssDescription = csrScanSaveBssDescription( pMac, pSirBssDescription, pIes );
     if (result && (pCsrBssDescription != NULL))
     {
@@ -4305,7 +4305,7 @@ static void csrScanRemoveDupBssDescriptionFromInterimList( tpAniSirGlobal pMac,
         // matches
 
         if ( csrIsDuplicateBssDescription( pMac, &pCsrBssDescription->Result.BssDescriptor, 
-                                             pSirBssDescr, pIes ) )
+                                             pSirBssDescr, pIes, FALSE ) )
         {
             pSirBssDescr->rssi = (tANI_S8)( (((tANI_S32)pSirBssDescr->rssi * CSR_SCAN_RESULT_RSSI_WEIGHT ) +
                                     ((tANI_S32)pCsrBssDescription->Result.BssDescriptor.rssi * (100 - CSR_SCAN_RESULT_RSSI_WEIGHT) )) / 100 );
@@ -4376,7 +4376,7 @@ tCsrScanResult *csrScanSaveBssDescriptionToInterimList( tpAniSirGlobal pMac,
     
 
 tANI_BOOLEAN csrIsDuplicateBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pSirBssDesc1, 
-                                           tSirBssDescription *pSirBssDesc2, tDot11fBeaconIEs *pIes2 )
+                                           tSirBssDescription *pSirBssDesc2, tDot11fBeaconIEs *pIes2, tANI_BOOLEAN fForced )
 {
     tANI_BOOLEAN fMatch = FALSE;
     tSirMacCapabilityInfo *pCap1, *pCap2;
@@ -4389,7 +4389,7 @@ tANI_BOOLEAN csrIsDuplicateBssDescription( tpAniSirGlobal pMac, tSirBssDescripti
     {
         if (pCap1->ess && 
                 csrIsMacAddressEqual( pMac, (tCsrBssid *)pSirBssDesc1->bssId, (tCsrBssid *)pSirBssDesc2->bssId)&&
-                (pSirBssDesc1->channelId == pSirBssDesc2->channelId))
+            (fForced || (pSirBssDesc1->channelId == pSirBssDesc2->channelId)))
         {
             fMatch = TRUE;
             // Check for SSID match, if exists
@@ -4961,7 +4961,7 @@ tANI_BOOLEAN csrScanAgeOutBss(tpAniSirGlobal pMac, tCsrScanResult *pResult)
             //Not to remove the BSS we are connected to.
             if(csrIsConnStateDisconnected(pMac, i) || (NULL == pSession->pConnectBssDesc) ||
               (!csrIsDuplicateBssDescription(pMac, &pResult->Result.BssDescriptor, 
-                                                      pSession->pConnectBssDesc, NULL))
+                                             pSession->pConnectBssDesc, NULL, FALSE))
               )
             {
                 smsLog(pMac, LOGW, "Aging out BSS %02X-%02X-%02X-%02X-%02X-%02X Channel %d",
@@ -7572,7 +7572,7 @@ eHalStatus csrScanSavePreferredNetworkFound(tpAniSirGlobal pMac,
    }
 
    fDupBss = csrRemoveDupBssDescription( pMac,
-           &pScanResult->Result.BssDescriptor, pIesLocal, &tmpSsid , &timer);
+           &pScanResult->Result.BssDescriptor, pIesLocal, &tmpSsid , &timer, FALSE);
    //Check whether we have reach out limit
    if ( CSR_SCAN_IS_OVER_BSS_LIMIT(pMac) )
    {
@@ -7711,9 +7711,9 @@ eHalStatus csrScanCreateEntryInScanCache(tpAniSirGlobal pMac, tANI_U32 sessionId
             palCopyMemory( pMac->hHdd, pNewBssDescriptor->bssId, bssid,
                            sizeof(tSirMacAddr) );
             pNewBssDescriptor->channelId = channel;
-            if(NULL == csrScanSaveBssDescription( pMac, pNewBssDescriptor, pNewIes ))
+            if(NULL == csrScanAppendBssDescription( pMac, pNewBssDescriptor, pNewIes, TRUE ))
             {
-                smsLog(pMac, LOGE, FL("%s: csrScanSaveBssDescription failed"),
+                smsLog(pMac, LOGE, FL("%s: csrScanAppendBssDescription failed"),
                                       __func__);
                 status = eHAL_STATUS_FAILURE;
                 break;
