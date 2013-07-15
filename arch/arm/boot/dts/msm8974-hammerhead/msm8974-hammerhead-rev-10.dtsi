@@ -32,4 +32,15 @@
 		status = "ok";
 		qcom,cont-splash-enabled;
 	};
+
+	gpio_keys {
+		cover-switch {
+			label = "cover-switch";
+			gpios = <&msmgpio 144 0x01>;
+			linux,input-type = <5>;
+			linux,code = <0>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
 };
