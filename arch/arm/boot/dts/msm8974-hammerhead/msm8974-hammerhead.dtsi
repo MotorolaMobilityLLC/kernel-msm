@@ -140,6 +140,15 @@
 	qcom,msm-thermal {
 		qcom,limit-temp = <90>;
 	};
+
+	bluesleep {
+		compatible = "qcom,bluesleep";
+		bt_host_wake = <&msmgpio 42 0>;
+		bt_ext_wake = <&msmgpio 62 0>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <42 0>;
+		interrupt-names = "host_wake";
+	};
 };
 
 &spmi_bus {
