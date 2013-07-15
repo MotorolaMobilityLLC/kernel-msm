@@ -1651,68 +1651,40 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
 {
     tSirMacRateSet          tempRateSet;
     tSirMacRateSet          tempRateSet2;
-    tANI_U32                     i,j,val,min,isArate;
+    tANI_U32                i,j,val,min,isArate;
     tANI_U32 phyMode = 0;
-
     tANI_U32 selfStaDot11Mode=0;
+
     isArate = 0;
 
     wlan_cfgGetInt(pMac, WNI_CFG_DOT11_MODE, &selfStaDot11Mode);
     limGetPhyMode(pMac, &phyMode, psessionEntry);
 
-    // Get own rate set
-    #if 0
-    val = WNI_CFG_OPERATIONAL_RATE_SET_LEN;
-    if (wlan_cfgGetStr(pMac, WNI_CFG_OPERATIONAL_RATE_SET,
-                  (tANI_U8 *) &tempRateSet.rate,
-                  &val) != eSIR_SUCCESS)
+    /* Include 11b rates only when the device configured in
+           auto, 11a/b/g or 11b_only */
+    if ( (selfStaDot11Mode == WNI_CFG_DOT11_MODE_ALL) ||
+         (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11A) ||
+         (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11AC) ||
+         (selfStaDot11Mode == WNI_CFG_DOT11_MODE_11B) )
     {
-        /// Could not get rateset from CFG. Log error.
-        limLog(pMac, LOGP, FL("could not retrieve rateset"));
-    }
-    #endif // TO SUPPORT BT-AMP
-    
-    /* copy operational rate set from psessionEntry */
-    if ( psessionEntry->rateSet.numRates < SIR_MAC_RATESET_EID_MAX )
-    {
-        palCopyMemory(pMac->hHdd,(tANI_U8 *)tempRateSet.rate,(tANI_U8*)(psessionEntry->rateSet.rate), psessionEntry->rateSet.numRates);
-        tempRateSet.numRates = psessionEntry->rateSet.numRates;
+        val = WNI_CFG_SUPPORTED_RATES_11B_LEN;
+        wlan_cfgGetStr( pMac, WNI_CFG_SUPPORTED_RATES_11B,
+                       (tANI_U8 *)&tempRateSet.rate, &val );
+        tempRateSet.numRates = (tANI_U8) val;
     }
     else
-    {
-        limLog(pMac, LOGE, FL("more than SIR_MAC_RATESET_EID_MAX rates\n"));
-        goto error;
-    }
+        tempRateSet.numRates = 0;
 
-    if (phyMode == WNI_CFG_PHY_MODE_11G)
+     /* Include 11a rates when the device configured in non-11b mode */
+    if (!IS_DOT11_MODE_11B(selfStaDot11Mode))
     {
-
-        // get own extended rate set
-        #if 0
-        val = WNI_CFG_EXTENDED_OPERATIONAL_RATE_SET_LEN;
-        if (wlan_cfgGetStr(pMac, WNI_CFG_EXTENDED_OPERATIONAL_RATE_SET,
-                      (tANI_U8 *) &tempRateSet2.rate,
-                      &val) != eSIR_SUCCESS)
-        {
-            /// Could not get extended rateset from CFG. Log error.
-            limLog(pMac, LOGP, FL("could not retrieve extended rateset"));
-        }
+        val = WNI_CFG_SUPPORTED_RATES_11A_LEN;
+        wlan_cfgGetStr( pMac, WNI_CFG_SUPPORTED_RATES_11A,
+                (tANI_U8 *)&tempRateSet2.rate, &val );
         tempRateSet2.numRates = (tANI_U8) val;
-        #endif
-        if (psessionEntry->extRateSet.numRates < SIR_MAC_RATESET_EID_MAX)
-        {
-            palCopyMemory(pMac->hHdd,(tANI_U8 *)tempRateSet2.rate, (tANI_U8*)(psessionEntry->extRateSet.rate), psessionEntry->extRateSet.numRates);
-            tempRateSet2.numRates = psessionEntry->extRateSet.numRates;
-        }
-        else {
-           limLog(pMac, LOGE, FL("psessionEntry->extRateSet.numRates more than SIR_MAC_RATESET_EID_MAX rates\n"));
-           goto error;
-        }
-
     }
     else
-        tempRateSet2.numRates = 0;
-
+         tempRateSet2.numRates = 0;
 
     if ((tempRateSet.numRates + tempRateSet2.numRates) > 12)
     {
@@ -1721,7 +1693,6 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
         //panic
         goto error;
     }
-
 
     //copy all rates in tempRateSet, there are 12 rates max
     for (i = 0;i < tempRateSet2.numRates; i++)
