@@ -418,11 +418,6 @@ static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 
 	register_syscore_ops(&panel_syscore_ops);
 
-	if (hw_revision == 0) {
-		gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR1;
-		gpio_LCM_XRES = gpio_LCM_XRES_SR1;
-	}
-
 	pr_info("%s-\n", __func__);
 	return 0;
 }
