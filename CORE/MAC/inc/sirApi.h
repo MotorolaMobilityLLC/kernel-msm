@@ -2127,6 +2127,15 @@ typedef struct sAniChangeCountryCodeReq
     
 } tAniChangeCountryCodeReq, *tpAniChangeCountryCodeReq;
 
+typedef struct sAniDHCPStopInd
+{
+    tANI_U16                msgType;      // message type is same as the request type
+    tANI_U16                msgLen;       // length of the entire request
+    tANI_U8                 device_mode;  // Mode of the device(ex:STA, AP)
+    tSirMacAddr             macAddr;
+
+} tAniDHCPInd, *tpAniDHCPInd;
+
 typedef struct sAniSummaryStatsInfo
 {
     tANI_U32 retry_cnt[4];         //Total number of packets(per AC) that were successfully transmitted with retries

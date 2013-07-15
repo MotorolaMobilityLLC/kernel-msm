@@ -369,6 +369,8 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
   -------------------------------------------------------------------------*/
   WDI_ProcessHostSuspendInd,            /* WDI_HOST_SUSPEND_IND*/
   WDI_ProcessTrafficStatsInd,           /* WDI_TRAFFIC_STATS_IND*/
+  WDI_ProcessDHCPStartInd,              /* WDI_DHCP_START_IND*/
+  WDI_ProcessDHCPStopInd,               /* WDI_DHCP_STOP_IND*/
 #ifdef WLAN_FEATURE_11W
   WDI_ProcessExcludeUnencryptInd,       /* WDI_EXCLUDE_UNENCRYPTED_IND */
 #else
@@ -22168,6 +22170,10 @@ WDI_2_HAL_REQ_TYPE
 #endif
   case WDI_GET_ROAM_RSSI_REQ:
     return WLAN_HAL_GET_ROAM_RSSI_REQ;
+  case WDI_DHCP_START_IND:
+    return WLAN_HAL_DHCP_START_IND;
+  case WDI_DHCP_STOP_IND:
+    return WLAN_HAL_DHCP_STOP_IND;
   default:
     return WLAN_HAL_MSG_MAX;
   }
@@ -26083,6 +26089,225 @@ WDI_ProcessSetPowerParamsRsp
 
    return WDI_STATUS_SUCCESS;
 }/*WDI_ProcessSetPowerParamsRsp*/
+
+/**
+ @brief WDI_dhcpStartInd
+        Host will send an event to the FW when DHCP is initiated
+
+ @param
+        WDI_DHCPInd: DHCP Indication
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_dhcpStartInd
+(
+  WDI_DHCPInd *wdiDHCPInd
+)
+{
+   WDI_EventInfoType   wdiEventData;
+
+   /*------------------------------------------------------------------------
+     Sanity Check
+   ------------------------------------------------------------------------*/
+   if ( eWLAN_PAL_FALSE == gWDIInitialized )
+   {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "WDI API call before module is initialized - Fail request");
+
+      return WDI_STATUS_E_NOT_ALLOWED;
+   }
+
+   wdiEventData.wdiRequest      = WDI_DHCP_START_IND;
+   wdiEventData.pEventData      = wdiDHCPInd;
+   wdiEventData.uEventDataSize  = sizeof(wdiDHCPInd);
+   wdiEventData.pCBfnc          = NULL;
+   wdiEventData.pUserData       = NULL;
+
+   return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+
+/**
+ @brief WDI_dhcpStopInd
+        Host will send an event to the FW when DHCP is completed
+
+ @param
+        WDI_DHCPInd: DHCP Indication
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_dhcpStopInd
+(
+  WDI_DHCPInd *wdiDHCPInd
+)
+{
+   WDI_EventInfoType   wdiEventData;
+
+   /*------------------------------------------------------------------------
+     Sanity Check
+   ------------------------------------------------------------------------*/
+   if ( eWLAN_PAL_FALSE == gWDIInitialized )
+   {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "WDI API call before module is initialized - Fail request");
+
+      return WDI_STATUS_E_NOT_ALLOWED;
+   }
+
+   wdiEventData.wdiRequest      = WDI_DHCP_STOP_IND;
+   wdiEventData.pEventData      = wdiDHCPInd;
+   wdiEventData.uEventDataSize  = sizeof(wdiDHCPInd);
+   wdiEventData.pCBfnc          = NULL;
+   wdiEventData.pUserData       = NULL;
+
+   return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+
+/**
+ @brief Process DHCP Start Indication message and post it to HAL
+
+ @param  pWDICtx:    pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessDHCPStartInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  wpt_uint8*              pSendBuffer        = NULL;
+  wpt_uint16              usDataOffset       = 0;
+  wpt_uint16              usSendSize         = 0;
+  wpt_uint16              usLen              = 0;
+  WDI_DHCPInd*            pwdiDHCPInd        = NULL;
+  tDHCPInfo*              pDHCPInfo;
+
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+         "%s", __func__);
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pEventData ) || ( NULL == pEventData->pEventData ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+  pwdiDHCPInd = (WDI_DHCPInd*)pEventData->pEventData;
+  /*-----------------------------------------------------------------------
+    Get message buffer
+  -----------------------------------------------------------------------*/
+
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx,
+                        WDI_DHCP_START_IND,
+                        sizeof(tDHCPInfo),
+                        &pSendBuffer, &usDataOffset, &usSendSize))||
+      ( usSendSize < (usDataOffset + usLen )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
+              "Unable to get send buffer in DHCP Start req %p ",
+                pEventData);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  pDHCPInfo = (tDHCPInfo*)pSendBuffer+usDataOffset;
+  pDHCPInfo->device_mode = pwdiDHCPInd->device_mode;
+  wpalMemoryCopy(pDHCPInfo->macAddr, pwdiDHCPInd->macAddr,
+                                        WDI_MAC_ADDR_LEN);
+
+  pWDICtx->pReqStatusUserData = NULL;
+  pWDICtx->pfncRspCB = NULL;
+
+ /*-------------------------------------------------------------------------
+    Send DHCP Start Indication to HAL
+  -------------------------------------------------------------------------*/
+  return  WDI_SendIndication( pWDICtx, pSendBuffer, usSendSize);
+
+}/*WDI_ProcessDHCPStartInd*/
+
+/**
+ @brief Process DHCP Stop indication message and post it to HAL
+
+ @param  pWDICtx:    pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessDHCPStopInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  wpt_uint8*              pSendBuffer        = NULL;
+  wpt_uint16              usDataOffset       = 0;
+  wpt_uint16              usSendSize         = 0;
+  wpt_uint16              usLen              = 0;
+  WDI_DHCPInd*            pwdiDHCPInd        = NULL;
+  tDHCPInfo*              pDHCPInfo;
+
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+         "%s", __func__);
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+
+  if (( NULL == pEventData ) || ( NULL == pEventData->pEventData ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+  pwdiDHCPInd = (WDI_DHCPInd*)pEventData->pEventData;
+  /*-----------------------------------------------------------------------
+    Get message buffer
+  -----------------------------------------------------------------------*/
+
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx,
+                        WDI_DHCP_STOP_IND,
+                        sizeof(tDHCPInfo),
+                        &pSendBuffer, &usDataOffset, &usSendSize))||
+      ( usSendSize < (usDataOffset + usLen )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
+              "Unable to get send buffer in DHCP Start req %p ",
+                pEventData);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  pDHCPInfo = (tDHCPInfo*)pSendBuffer+usDataOffset;
+  pDHCPInfo->device_mode = pwdiDHCPInd->device_mode;
+  wpalMemoryCopy(pDHCPInfo->macAddr, pwdiDHCPInd->macAddr,
+                                        WDI_MAC_ADDR_LEN);
+
+  pWDICtx->pReqStatusUserData = NULL;
+  pWDICtx->pfncRspCB = NULL;
+ /*-------------------------------------------------------------------------
+    Send DHCP Stop indication to HAL
+  -------------------------------------------------------------------------*/
+  return  WDI_SendIndication( pWDICtx, pSendBuffer, usSendSize);
+
+}/*WDI_ProcessDHCPStopInd*/
+
 
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
 /**

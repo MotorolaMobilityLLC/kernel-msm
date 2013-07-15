@@ -1058,6 +1058,9 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #endif // WLAN_FEATURE_PACKET_FILTERING
 
 #define WDA_SET_POWER_PARAMS_REQ   SIR_HAL_SET_POWER_PARAMS_REQ
+#define WDA_DHCP_START_IND              SIR_HAL_DHCP_START_IND
+#define WDA_DHCP_STOP_IND               SIR_HAL_DHCP_STOP_IND
+
 
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
 #define WDA_GTK_OFFLOAD_REQ             SIR_HAL_GTK_OFFLOAD_REQ

@@ -10574,6 +10574,70 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
    return status;
 }
 /*
+ * FUNCTION: WDA_ProcessDHCPStartInd
+ * Forward DHCP Start to WDI
+ */
+static VOS_STATUS WDA_ProcessDHCPStartInd (tWDA_CbContext *pWDA,
+                                           tAniDHCPInd *dhcpStartInd)
+{
+   WDI_Status status;
+   WDI_DHCPInd *wdiDHCPInd = (WDI_DHCPInd*)vos_mem_malloc(sizeof(WDI_DHCPInd)) ;
+   if (NULL == wdiDHCPInd)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(dhcpStartInd);
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   wdiDHCPInd->device_mode = dhcpStartInd->device_mode;
+   vos_mem_copy(wdiDHCPInd->macAddr, dhcpStartInd->macAddr,
+                                               sizeof(tSirMacAddr));
+
+   status = WDI_dhcpStartInd(wdiDHCPInd);
+
+   if (IS_WDI_STATUS_FAILURE(status))
+   {
+      vos_mem_free(wdiDHCPInd);
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "DHCP Start Indication failed");
+   }
+   vos_mem_free(dhcpStartInd);
+   return CONVERT_WDI2VOS_STATUS(status) ;
+}
+
+ /*
+  * FUNCTION: WDA_ProcessDHCPStopInd
+  * Forward DHCP Stop to WDI
+  */
+ static VOS_STATUS WDA_ProcessDHCPStopInd (tWDA_CbContext *pWDA,
+                                           tAniDHCPInd *dhcpStopInd)
+ {
+   WDI_Status status;
+   WDI_DHCPInd *wdiDHCPInd = (WDI_DHCPInd*)vos_mem_malloc(sizeof(WDI_DHCPInd)) ;
+   if (NULL == wdiDHCPInd)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(dhcpStopInd);
+      return VOS_STATUS_E_NOMEM;
+   }
+   wdiDHCPInd->device_mode = dhcpStopInd->device_mode;
+   vos_mem_copy(wdiDHCPInd->macAddr, dhcpStopInd->macAddr, sizeof(tSirMacAddr));
+   status = WDI_dhcpStopInd(wdiDHCPInd);
+   if (IS_WDI_STATUS_FAILURE(status))
+   {
+      vos_mem_free(wdiDHCPInd);
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "DHCP Start Indication failed");
+   }
+   vos_mem_free(dhcpStopInd);
+   return CONVERT_WDI2VOS_STATUS(status) ;
+ }
+
+/*
  * FUNCTION: WDA_McProcessMsg
  * Trigger DAL-AL to start CFG download 
  */ 
@@ -11206,6 +11270,16 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
           break;
       }
 #endif
+      case WDA_DHCP_START_IND:
+      {
+          WDA_ProcessDHCPStartInd(pWDA, (tAniDHCPInd *)pMsg->bodyptr);
+          break;
+      }
+      case WDA_DHCP_STOP_IND:
+      {
+          WDA_ProcessDHCPStopInd(pWDA, (tAniDHCPInd *)pMsg->bodyptr);
+          break;
+      }
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -13740,6 +13814,7 @@ tANI_U8 WDA_getFwWlanFeatCaps(tANI_U8 featEnumValue)
 {
    return WDI_getFwWlanFeatCaps(featEnumValue);
 }
+
 
 /*
  * FUNCTION: WDA_shutdown
