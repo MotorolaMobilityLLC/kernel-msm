@@ -449,6 +449,7 @@ typedef enum
 
   WDI_TDLS_LINK_ESTABLISH_REQ                   = 84,
 
+
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -456,6 +457,12 @@ typedef enum
 
   /* Send a traffic stats indication to HAL */
   WDI_TRAFFIC_STATS_IND,
+
+  /* DHCP Start Indication */
+  WDI_DHCP_START_IND,
+
+  /* DHCP Stop Indication */
+  WDI_DHCP_STOP_IND,
 
   /* Drop/Receive unencrypted frames indication to HAL */
   WDI_EXCLUDE_UNENCRYPTED_IND,
@@ -2738,6 +2745,38 @@ WDI_ProcessSetTmLevelReq
 WDI_Status
 WDI_ProcessHostSuspendInd
 ( 
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+/**
+ @brief DHCP Start Event Indication
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessDHCPStartInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+/**
+ @brief DHCP Stop Event Indication
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessDHCPStopInd
+(
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
