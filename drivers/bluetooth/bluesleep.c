@@ -272,13 +272,13 @@ static void bluesleep_outgoing_data(void)
 	/* log data passing by */
 	set_bit(BT_TXDATA, &flags);
 
+	spin_unlock_irqrestore(&rw_lock, irq_flags);
+
 	/* if the tx side is sleeping... */
 	if (test_bit(BT_EXT_WAKE, &flags)) {
 		BT_DBG("tx was sleeping");
 		bluesleep_sleep_wakeup();
 	}
-
-	spin_unlock_irqrestore(&rw_lock, irq_flags);
 }
 
 #if BT_BLUEDROID_SUPPORT
