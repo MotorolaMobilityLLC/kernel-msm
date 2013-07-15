@@ -804,9 +804,8 @@ static int bluesleep_probe(struct platform_device *pdev)
 				  bsi->ext_wake, ret);
 			goto free_bt_host_wake;
 		}
-	} else {
-		clear_bit(BT_EXT_WAKE, &flags);
 	}
+	clear_bit(BT_EXT_WAKE, &flags);
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_IRQ,
 						"host_wake");
