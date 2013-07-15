@@ -47,6 +47,13 @@ typedef enum {
 } lcd_type;
 
 typedef enum {
+	LCD_PWM_TYPE_INVALID = -1,
+	LCD_PWM_TYPE_A = 0,
+	LCD_PWM_TYPE_B = 1,
+	LCD_PWM_TYPE_MAX
+} lcd_pwm_type;
+
+typedef enum {
 	HW_REV_INVALID = -1,
 	/* HW_REV_A is deprecated */
 	HW_REV_A = 0,
@@ -97,6 +104,8 @@ void __init asustek_add_pcbid_devices(void);
 tp_type asustek_get_tp_type(void);
 
 lcd_type asustek_get_lcd_type(void);
+
+lcd_pwm_type asustek_get_lcd_pwm_type(void);
 
 hw_rev asustek_get_hw_rev(void);
 

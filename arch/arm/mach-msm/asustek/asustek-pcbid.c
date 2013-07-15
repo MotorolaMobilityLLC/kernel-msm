@@ -37,6 +37,7 @@ static const char *asustek_chipid;
 static unsigned int tp_type_pcbid[] = {0, 1};
 static unsigned int lcd_type_pcbid[] = {2, 3};
 static unsigned int hw_rev_pcbid[] = {4, 5};
+static unsigned int lcd_pwm_pcbid[] = {8};
 
 struct pcbid_maps
 {
@@ -47,6 +48,7 @@ struct pcbid_maps
 	{"TP_TYPE", tp_type_pcbid, ARRAY_SIZE(tp_type_pcbid)},
 	{"LCD_TYPE", lcd_type_pcbid, ARRAY_SIZE(lcd_type_pcbid)},
 	{"HW_REV", hw_rev_pcbid, ARRAY_SIZE(hw_rev_pcbid)},
+	{"LCD_PWM_TYPE", lcd_pwm_pcbid, ARRAY_SIZE(lcd_pwm_pcbid)},
 };
 
 #define NUM_MAPS (sizeof asustek_pcbid_maps / sizeof asustek_pcbid_maps[0])
@@ -115,6 +117,22 @@ lcd_type asustek_get_lcd_type(void)
 	return ret;
 }
 EXPORT_SYMBOL(asustek_get_lcd_type);
+
+lcd_pwm_type asustek_get_lcd_pwm_type(void)
+{
+	lcd_pwm_type ret = LCD_PWM_TYPE_INVALID;
+
+	ret = get_pcbid_type("LCD_PWM_TYPE");
+
+	if (debug_mask & DEBUG_VERBOSE)
+		pr_info("%s: %d\n", __func__, ret);
+
+	if ((ret == -ENODEV) || (ret >= LCD_PWM_TYPE_MAX))
+		ret = LCD_PWM_TYPE_INVALID;
+
+	return ret;
+}
+EXPORT_SYMBOL(asustek_get_lcd_pwm_type);
 
 
 /* for asustek board revision */
