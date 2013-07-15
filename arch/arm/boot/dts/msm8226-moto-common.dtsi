@@ -326,10 +326,11 @@
 				qcom,default-state = "on";
 				qcom,max-current = <21>;
 				qcom,ctrl-delay-us = <0>;
-				qcom,boost-curr-lim = <3>;
-				qcom,max-boost-duty = <0>;
+				qcom,boost-curr-lim = <0x03>;
+				qcom,max-boost-duty = <0x02>;
+				qcom,mod-scheme = <0x00>;
 				qcom,cp-sel = <0>;
-				qcom,switch-freq = <0x0B>;
+				qcom,switch-freq = <0x0b>;
 				qcom,ovp-val = <2>;
 				qcom,num-strings = <1>;
 				qcom,id = <0>;
