@@ -83,7 +83,7 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,union 
 static int bq27541_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val);
 extern unsigned  get_usb_cable_status(void);
-extern int smb345_config_thermal_charging(int temp, int rule);
+extern int smb345_config_thermal_charging(int temp, int volt, int rule);
 
 module_param(battery_current, uint, 0644);
 module_param(battery_remaining_capacity, uint, 0644);
@@ -384,11 +384,11 @@ static void battery_status_poll(struct work_struct *work)
 
 	if (!bq27541_device->temp_err) {
 		if (ac_on)
-			smb345_config_thermal_charging(bq27541_device->old_temperature/10, THERMAL_RULE1);
+			smb345_config_thermal_charging(bq27541_device->old_temperature/10, bq27541_device->bat_vol, THERMAL_RULE1);
 		else if (wireless_on)
-			smb345_config_thermal_charging(bq27541_device->old_temperature/10, THERMAL_RULE2);
+			smb345_config_thermal_charging(bq27541_device->old_temperature/10, bq27541_device->bat_vol, THERMAL_RULE2);
 		else if (usb_on)
-			smb345_config_thermal_charging(bq27541_device->old_temperature/10, THERMAL_RULE1);
+			smb345_config_thermal_charging(bq27541_device->old_temperature/10, bq27541_device->bat_vol, THERMAL_RULE1);
 	}
 
 	/* Schedule next polling */

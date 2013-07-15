@@ -96,6 +96,7 @@
 #define FLOAT_VOLT_MASK	0x3F
 #define ENABLE_PIN_CTRL_MASK 0x60
 #define HOT_LIMIT_MASK 0x33
+#define BAT_OVER_VOLT_MASK 0x40
 #define STAT_OUTPUT_EN		0x20
 #define GPIO_AC_OK		APQ_AP_ACOK
 #define WPC_DEBOUNCE_INTERVAL	(1 * HZ)
@@ -109,6 +110,7 @@
 #define FLOAT_VOLT 0x2A
 #define FLOAT_VOLT_LOW 0x1E
 #define FLOAT_VOLT_43V 0x28
+#define FLOAT_VOLT_LOW_DECIMAL 4110000
 #define THERMAL_RULE1 1
 #define THERMAL_RULE2 2
 
@@ -1094,7 +1096,7 @@ error:
 	return ret;
 }
 
-int smb345_config_thermal_charging(int temp, int rule)
+int smb345_config_thermal_charging(int temp, int volt, int rule)
 {
 	struct i2c_client *client = charger->client;
 	int ret = 0, retval, setting = 0;
@@ -1107,33 +1109,12 @@ int smb345_config_thermal_charging(int temp, int rule)
 
 	smb345_config_thermal_limit();
 
+	SMB_NOTICE("temp=%d, volt=%d\n", temp, volt);
+
 	ret = smb345_volatile_writes(client, smb345_ENABLE_WRITE);
 	if (ret < 0) {
 		dev_err(&client->dev, "%s() charger enable write error..\n", __func__);
 		goto error;
-	}
-
-	/*charger enable/disable*/
-	retval = smb345_read(client, smb345_PIN_CTRL);
-	if (retval < 0) {
-		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
-				__func__, smb345_PIN_CTRL);
-		goto error;
-	}
-
-	setting = retval & ENABLE_PIN_CTRL_MASK;
-	if (temp < BAT_Cold_Limit || temp > BAT_Hot_Limit) {
-		if (setting != 0x40) {
-			SMB_NOTICE("Charger disable\n");
-			smb345_charger_enable(false);
-		} else
-			SMB_NOTICE("Bypass charger disable\n");
-	} else {
-		if (setting != 0x60) {
-			SMB_NOTICE("Charger enable\n");
-			smb345_charger_enable(true);
-		} else
-			SMB_NOTICE("Bypass charger enable\n");
 	}
 
 	/*control float voltage*/
@@ -1145,7 +1126,9 @@ int smb345_config_thermal_charging(int temp, int rule)
 	}
 
 	setting = retval & FLOAT_VOLT_MASK;
-	if (temp <= BAT_Mid_Temp) {
+	if (temp <= BAT_Mid_Temp
+		|| (temp > BAT_Mid_Temp && volt > FLOAT_VOLT_LOW_DECIMAL)
+		|| temp > BAT_Hot_Limit) {
 		if (setting != FLOAT_VOLT_43V) {
 			setting = retval & (~FLOAT_VOLT_MASK);
 			setting |= FLOAT_VOLT_43V;
@@ -1171,6 +1154,43 @@ int smb345_config_thermal_charging(int temp, int rule)
 			}
 		} else
 			SMB_NOTICE("Bypass set Float Volt=%x\n", retval);
+	}
+
+	/*charger enable/disable*/
+	retval = smb345_read(client, smb345_PIN_CTRL);
+	if (retval < 0) {
+		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+				__func__, smb345_PIN_CTRL);
+		goto error;
+	}
+
+	setting = retval & ENABLE_PIN_CTRL_MASK;
+	if (temp < BAT_Cold_Limit || temp > BAT_Hot_Limit ||
+		(temp > BAT_Mid_Temp && volt > FLOAT_VOLT_LOW_DECIMAL)) {
+		if (setting != 0x40) {
+			SMB_NOTICE("Charger disable\n");
+			smb345_charger_enable(false);
+		} else
+			SMB_NOTICE("Bypass charger disable\n");
+	} else {
+		if (setting != 0x60) {
+			SMB_NOTICE("Charger enable\n");
+			smb345_charger_enable(true);
+		} else {
+			/*interrupt status*/
+			retval = smb345_read(client, smb345_INTR_STS_B);
+			if (retval < 0) {
+				dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+					__func__, smb345_INTR_STS_B);
+				goto error;
+			}
+			if ((retval & BAT_OVER_VOLT_MASK) == 0x40) {
+				SMB_NOTICE("disable then enable charger to recover bat over-volt\n");
+				smb345_charger_enable(false);
+				smb345_charger_enable(true);
+			} else
+				SMB_NOTICE("Bypass charger enable\n");
+		}
 	}
 
 	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
