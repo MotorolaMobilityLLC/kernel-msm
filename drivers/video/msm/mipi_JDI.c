@@ -42,6 +42,7 @@ static int gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
 static int gpio_LCM_XRES = gpio_LCM_XRES_SR2;
 static bool first_cmd = true;
 static hw_rev hw_revision;
+static lcd_pwm_type lcd_pwm;
 
 static struct mipi_dsi_panel_platform_data *mipi_JDI_pdata;
 extern struct pwm_device *bl_lpm;
@@ -394,6 +395,8 @@ static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 
 	hw_revision = asustek_get_hw_rev();
 	pr_info("%s, hw_revision=%d\n", __func__, hw_revision);
+	lcd_pwm = asustek_get_lcd_pwm_type();
+	pr_info("%s, lcd_pwm_type=%d\n", __func__, lcd_pwm);
 
 	if (pdev->id == 0) {
 		mipi_JDI_pdata = pdev->dev.platform_data;
@@ -417,6 +420,11 @@ static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 	msm_fb_add_device(pdev);
 
 	register_syscore_ops(&panel_syscore_ops);
+
+	if (lcd_pwm == LCD_PWM_TYPE_B) { /* set pwm frequency to 22K */
+		backlight_control4[18] = 0x04;
+		backlight_control4[19] = 0x00;
+	}
 
 	pr_info("%s-\n", __func__);
 	return 0;
