@@ -35,6 +35,7 @@ Optional properties for WLED:
 - linux,default-trigger: trigger the led from external modules such as display
 - qcom,default-state:  default state of the led, should be "on" or "off"
 - qcom,max-boost-duty: Maximum duty cycle for WLED boost: 0 = 25ns, 1 = 52ns, 3 = 104ns, 4 =  156ns
+- qcom,mod-scheme: configure WLED1_MODULATION_SCHEME register of the WLED module.
 
 Flash is used primarily as a camera or video flash.
 
