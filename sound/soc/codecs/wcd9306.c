@@ -186,7 +186,7 @@ enum {
 
 static const DECLARE_TLV_DB_SCALE(digital_gain, 0, 1, 0);
 static const DECLARE_TLV_DB_SCALE(line_gain, 0, 7, 1);
-static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 25, 1);
+static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 5, 1);
 static struct snd_soc_dai_driver tapan_dai[];
 static const DECLARE_TLV_DB_SCALE(aux_pga_gain, 0, 2, 0);
 
@@ -518,8 +518,14 @@ static int tapan_pa_gain_get(struct snd_kcontrol *kcontrol,
 
 	if (ear_pa_gain == 0x00) {
 		ucontrol->value.integer.value[0] = 0;
-	} else if (ear_pa_gain == 0x04) {
+	} else if (ear_pa_gain == 0x01) {
 		ucontrol->value.integer.value[0] = 1;
+	} else if (ear_pa_gain == 0x02) {
+		ucontrol->value.integer.value[0] = 2;
+	} else if (ear_pa_gain == 0x03) {
+		ucontrol->value.integer.value[0] = 3;
+	} else if (ear_pa_gain == 0x04) {
+		ucontrol->value.integer.value[0] = 4;
 	} else  {
 		pr_err("%s: ERROR: Unsupported Ear Gain = 0x%x\n",
 				__func__, ear_pa_gain);
@@ -545,6 +551,15 @@ static int tapan_pa_gain_put(struct snd_kcontrol *kcontrol,
 		ear_pa_gain = 0x00;
 		break;
 	case 1:
+		ear_pa_gain = 0x20;
+		break;
+	case 2:
+		ear_pa_gain = 0x40;
+		break;
+	case 3:
+		ear_pa_gain = 0x60;
+		break;
+	case 4:
 		ear_pa_gain = 0x80;
 		break;
 	default:
@@ -1013,9 +1028,11 @@ static int tapan_config_compander(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static const char * const tapan_ear_pa_gain_text[] = {"POS_6_DB", "POS_2_DB"};
+static const char * const tapan_ear_pa_gain_text[] = {
+	"POS_6_DB", "POS_4P5_DB", "POS_3_DB", "POS_1P5_DB", "POS_0_DB"
+};
 static const struct soc_enum tapan_ear_pa_gain_enum[] = {
-		SOC_ENUM_SINGLE_EXT(2, tapan_ear_pa_gain_text),
+		SOC_ENUM_SINGLE_EXT(5, tapan_ear_pa_gain_text),
 };
 
 static const char *const tapan_anc_func_text[] = {"OFF", "ON"};
