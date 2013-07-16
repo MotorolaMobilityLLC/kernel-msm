@@ -1315,10 +1315,8 @@ static int firmware_update_header(struct i2c_client *client, unsigned char *firm
     int recvCount;
     int write_times; 
     unsigned char packet_data[8] = {0};
-    const unsigned char isp_cmd[4] = {0x54, 0x00, 0x12, 0x34};
     unsigned char nb_isp_cmd[4] = {0x45, 0x49, 0x41, 0x50};
     unsigned char *cursor; 
-    int boot_code = 0;
     struct elan_ktf3k_ts_data *ts = i2c_get_clientdata(client);
 	
     if(ts == NULL) 
@@ -1328,29 +1326,13 @@ static int firmware_update_header(struct i2c_client *client, unsigned char *firm
     disable_irq(client->irq);  // Blocking call no need to do extra wait
     wake_lock(&ts->wakelock);
     work_lock = 1;
-    elan_ktf3k_ts_hw_reset(client, 0);
-    // Step 1: Check boot code version
-    
-    //boot_code = gpio_get_value(ts->intr_gpio);
-    boot_code =1;
-    if(boot_code == 0){ // if the boot code is old
-        touch_debug(DEBUG_INFO, "The firmware update of old boot code\n");
-        if(recvI2CPacket(client, packet_data, 4) < 0) 
-	      goto fw_update_failed;
+	/*add delay for waiting bootcode initial*/
+	elan_ktf3k_ts_hw_reset(client, 20);
+	touch_debug(DEBUG_INFO, "Send command into IAP mode\n");
+	/*get into IAP mode*/
+	if (sendI2CPacket(client, nb_isp_cmd, sizeof(nb_isp_cmd)) < 0)
+		goto fw_update_failed;
 
-	  touch_debug(DEBUG_INFO, "The received bytes 0x%X 0x%X 0x%X 0x%X\n", packet_data[0], packet_data[1], 
-	  	           packet_data[2], packet_data[3]);
-        if(packet_data[0] == 0x55 && packet_data[1] == 0x55 && packet_data[2] == 0x80 && packet_data[3] == 0x80)
-	      touch_debug(DEBUG_INFO, "In the recovery mode\n");
-
-        if(sendI2CPacket(client,isp_cmd, (unsigned int)sizeof(isp_cmd)) < 0) // get into ISP mode
-	      goto fw_update_failed;	  
-    }else{ // if the boot code is new
-        touch_debug(DEBUG_INFO, "The firmware update of new boot code\n");
-        if(sendI2CPacket(client, nb_isp_cmd, sizeof(nb_isp_cmd)) < 0) // get into ISP mode
-	      goto fw_update_failed;
-    }
-	
     msleep(100);
     packet_data[0] = 0x10; 
     if(sendI2CPacket(client, packet_data, 1) < 0) // send dummy byte
