@@ -27,9 +27,11 @@
 		qcom,supply-max-voltage-level = <1800000 5400000>;
 		qcom,supply-peak-current = <100000 100000>;
 		qcom,supply-post-en-delay-ms = <1 10>;
+		qcom,supply-post-dis-delay-ms = <0 1>;
 
 		qcom,rst-gpio = <&msmgpio 25 0>;
 		qcom,rst-post-en-delay-ms = <10>;
+		qcom,rst-post-dis-delay-ms = <2>;
 		qcom,mdss-pan-res = <720 1280>;
 		qcom,mdss-pan-bpp = <24>;
 		qcom,mdss-pan-dest = "display_1";
