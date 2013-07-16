@@ -1176,6 +1176,19 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            char extra[32];
            tANI_U8 len = 0;
 
+           /* Check if the features OKC/CCX/11R are supported simultaneously,
+              then this operation is not permitted (return FAILURE) */
+           if (ccxMode &&
+               hdd_is_okc_mode_enabled(pHddCtx) &&
+               sme_getIsFtFeatureEnabled((tHalHandle)(pHddCtx->hHal)))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+                  "%s: OKC/CCX/11R are supported simultaneously"
+                  " hence this operation is not permitted!", __func__);
+               ret = -EPERM;
+               goto exit;
+           }
+
            len = snprintf(extra, sizeof(extra), "%s %d", "GETCCXMODE", ccxMode);
            if (copy_to_user(priv_data.buf, &extra, len + 1))
            {
@@ -1190,6 +1203,19 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            tANI_BOOLEAN okcMode = hdd_is_okc_mode_enabled(pHddCtx);
            char extra[32];
            tANI_U8 len = 0;
+
+           /* Check if the features OKC/CCX/11R are supported simultaneously,
+              then this operation is not permitted (return FAILURE) */
+           if (okcMode &&
+               sme_getIsCcxFeatureEnabled((tHalHandle)(pHddCtx->hHal)) &&
+               sme_getIsFtFeatureEnabled((tHalHandle)(pHddCtx->hHal)))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+                  "%s: OKC/CCX/11R are supported simultaneously"
+                  " hence this operation is not permitted!", __func__);
+               ret = -EPERM;
+               goto exit;
+           }
 
            len = snprintf(extra, sizeof(extra), "%s %d", "GETOKCMODE", okcMode);
            if (copy_to_user(priv_data.buf, &extra, len + 1))
@@ -1832,6 +1858,19 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            tANI_U8 *value = command;
            tANI_U8 ccxMode = CFG_CCX_FEATURE_ENABLED_DEFAULT;
 
+           /* Check if the features OKC/CCX/11R are supported simultaneously,
+              then this operation is not permitted (return FAILURE) */
+           if (sme_getIsCcxFeatureEnabled((tHalHandle)(pHddCtx->hHal)) &&
+               hdd_is_okc_mode_enabled(pHddCtx) &&
+               sme_getIsFtFeatureEnabled((tHalHandle)(pHddCtx->hHal)))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+                  "%s: OKC/CCX/11R are supported simultaneously"
+                  " hence this operation is not permitted!", __func__);
+               ret = -EPERM;
+               goto exit;
+           }
+
            /* Move pointer to ahead of SETCCXMODE<delimiter> */
            value = value + 11;
            /* Convert the value from ascii to integer */
@@ -1902,6 +1941,19 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        {
            tANI_U8 *value = command;
            tANI_U8 okcMode = CFG_OKC_FEATURE_ENABLED_DEFAULT;
+
+           /* Check if the features OKC/CCX/11R are supported simultaneously,
+              then this operation is not permitted (return FAILURE) */
+           if (sme_getIsCcxFeatureEnabled((tHalHandle)(pHddCtx->hHal)) &&
+               hdd_is_okc_mode_enabled(pHddCtx) &&
+               sme_getIsFtFeatureEnabled((tHalHandle)(pHddCtx->hHal)))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+                  "%s: OKC/CCX/11R are supported simultaneously"
+                  " hence this operation is not permitted!", __func__);
+               ret = -EPERM;
+               goto exit;
+           }
 
            /* Move pointer to ahead of SETOKCMODE<delimiter> */
            value = value + 11;
