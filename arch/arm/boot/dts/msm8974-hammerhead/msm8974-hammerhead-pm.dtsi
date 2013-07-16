@@ -86,7 +86,7 @@
 		interrupts = <34 0x3>;
 		ti,chg-ctrl-gpio = <&pm8941_gpios 23 0x0>;
 		ti,wlc-int-gpio = <&pm8941_gpios 34 0x2>;
-		ti,chg-current-ma = <768>;
+		ti,chg-current-ma = <704>;
 	};
 };
 
