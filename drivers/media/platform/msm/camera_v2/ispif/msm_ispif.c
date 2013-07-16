@@ -381,6 +381,12 @@ static int msm_ispif_config(struct ispif_device *ispif,
 		rc = -EPERM;
 		return rc;
 	}
+	if (params->num > MAX_PARAM_ENTRIES) {
+		pr_err("%s: invalid param entries %d\n", __func__,
+			params->num);
+		rc = -EINVAL;
+		return rc;
+	}
 
 	for (i = 0; i < params->num; i++) {
 		vfe_intf = params->entries[i].vfe_intf;
@@ -481,6 +487,11 @@ static void msm_ispif_intf_cmd(struct ispif_device *ispif, uint32_t cmd_bits,
 			pr_err("%s: invalid interface type\n", __func__);
 			return;
 		}
+		if (params->entries[i].num_cids > MAX_CID_CH) {
+			pr_err("%s: out of range of cid_num %d\n",
+				__func__, params->entries[i].num_cids);
+			return;
+		}
 	}
 
 	for (i = 0; i < params->num; i++) {
@@ -536,6 +547,12 @@ static int msm_ispif_stop_immediately(struct ispif_device *ispif,
 		return rc;
 	}
 
+	if (params->num > MAX_PARAM_ENTRIES) {
+		pr_err("%s: invalid param entries %d\n", __func__,
+			params->num);
+		rc = -EINVAL;
+		return rc;
+	}
 	msm_ispif_intf_cmd(ispif, ISPIF_INTF_CMD_DISABLE_IMMEDIATELY, params);
 
 	/* after stop the interface we need to unmask the CID enable bits */
@@ -560,6 +577,12 @@ static int msm_ispif_start_frame_boundary(struct ispif_device *ispif,
 		rc = -EPERM;
 		return rc;
 	}
+	if (params->num > MAX_PARAM_ENTRIES) {
+		pr_err("%s: invalid param entries %d\n", __func__,
+			params->num);
+		rc = -EINVAL;
+		return rc;
+	}
 
 	msm_ispif_intf_cmd(ispif, ISPIF_INTF_CMD_ENABLE_FRAME_BOUNDARY, params);
 
@@ -582,6 +605,13 @@ static int msm_ispif_stop_frame_boundary(struct ispif_device *ispif,
 		pr_err("%s: ispif invalid state %d\n", __func__,
 			ispif->ispif_state);
 		rc = -EPERM;
+		return rc;
+	}
+
+	if (params->num > MAX_PARAM_ENTRIES) {
+		pr_err("%s: invalid param entries %d\n", __func__,
+			params->num);
+		rc = -EINVAL;
 		return rc;
 	}
 
