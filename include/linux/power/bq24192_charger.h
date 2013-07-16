@@ -33,6 +33,7 @@ struct bq24192_platform_data {
 	int step_dwn_thr_mv;
 	int step_dwn_currnet_ma;
 	int icl_vbus_mv;
+	int wlc_dwn_i_ma;
 };
 
 #endif

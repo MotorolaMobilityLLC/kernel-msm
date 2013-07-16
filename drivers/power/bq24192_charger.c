@@ -73,6 +73,7 @@ struct bq24192_chip {
 	int  pre_chg_current_ma;
 	int  sys_vmin_mv;
 	int  vin_limit_mv;
+	int  wlc_vin_limit_mv;
 	int  int_gpio;
 	int  otg_en_gpio;
 	int  irq;
@@ -102,6 +103,12 @@ struct bq24192_chip {
 	bool icl_first;
 	int  icl_fail_cnt;
 	int  icl_vbus_mv;
+	int  dwn_chg_i_ma;
+	int  up_chg_i_ma;
+	int  dwn_input_i_ma;
+	int  up_input_i_ma;
+	int  wlc_dwn_i_ma;
+	int  wlc_dwn_input_i_ma;
 };
 
 static struct bq24192_chip *the_chip;
@@ -534,17 +541,22 @@ static void bq24192_vbat_work(struct work_struct *work)
 	struct bq24192_chip *chip =
 		container_of(work, struct bq24192_chip, vbat_work.work);
 	int step_current_ma;
+	int step_input_i_ma;
 
 	if (chip->vbat_noti_stat == ADC_TM_HIGH_STATE) {
-		step_current_ma = chip->step_dwn_currnet_ma;
+		step_current_ma = chip->dwn_chg_i_ma;
+		step_input_i_ma = chip->dwn_input_i_ma;
 		chip->adc_param.state_request = ADC_TM_LOW_THR_ENABLE;
 	} else {
-		step_current_ma = chip->chg_current_ma;
+		step_current_ma = chip->up_chg_i_ma;
+		step_input_i_ma = chip->up_input_i_ma;
 		chip->adc_param.state_request = ADC_TM_HIGH_THR_ENABLE;
 	}
 
 	if (bq24192_is_charger_present(chip)) {
-		pr_info("change chg current step to %d\n", step_current_ma);
+		pr_info("change to chg current = %d, input_limit = %d\n",
+				step_current_ma, step_input_i_ma);
+		bq24192_set_input_i_limit(chip, step_input_i_ma);
 		bq24192_set_ibat_max(chip, step_current_ma);
 		qpnp_adc_tm_channel_measure(&chip->adc_param);
 	}
@@ -728,24 +740,33 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 			bq24192_is_charger_present(chip)) {
 		chip->usb_psy->get_property(chip->usb_psy,
 				  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
+		bq24192_set_input_vin_limit(chip, chip->vin_limit_mv);
 		bq24192_set_input_i_limit(chip, ret.intval / 1000);
-		pr_info("usb is online! i_limit = %d\n", ret.intval / 1000);
+		pr_info("usb is online! i_limit = %d v_limit = %d\n",
+				ret.intval / 1000, chip->vin_limit_mv);
 	} else if (chip->ac_online &&
 			bq24192_is_charger_present(chip)) {
 		chip->icl_first = true;
+		bq24192_set_input_vin_limit(chip, chip->vin_limit_mv);
 		bq24192_set_input_i_limit(chip, adap_tbl[0].input_limit);
 		bq24192_set_ibat_max(chip, adap_tbl[0].chg_limit);
 		wake_lock(&chip->icl_wake_lock);
 		schedule_delayed_work(&chip->input_limit_work,
 					msecs_to_jiffies(200));
-		pr_info("ac is online! i_limit = %d\n",
-				adap_tbl[0].chg_limit);
+		pr_info("ac is online! i_limit = %d v_limit = %d\n",
+				adap_tbl[0].chg_limit, chip->vin_limit_mv);
 	} else if (wlc_online) {
+		chip->dwn_chg_i_ma = chip->wlc_dwn_i_ma;
+		chip->up_chg_i_ma = wlc_chg_current_ma;
+		chip->dwn_input_i_ma = chip->wlc_dwn_input_i_ma;
+		chip->up_input_i_ma = WLC_INPUT_I_LIMIT_MA;
+		bq24192_set_input_vin_limit(chip, chip->wlc_vin_limit_mv);
 		bq24192_set_input_i_limit(chip,
 			WLC_INPUT_I_LIMIT_MA);
 		bq24192_set_ibat_max(chip, wlc_chg_current_ma);
-		pr_info("wlc is online! i_limit = %d\n",
-				wlc_chg_current_ma);
+		bq24192_step_down_detect_init(chip);
+		pr_info("wlc is online! i_limit = %d v_limit = %d\n",
+				wlc_chg_current_ma, chip->wlc_vin_limit_mv);
 	}
 
 	chip->usb_psy->get_property(chip->usb_psy,
@@ -895,8 +916,13 @@ static void bq24192_input_limit_worker(struct work_struct *work)
 				adap_tbl[chip->icl_idx].chg_limit);
 
 		if (adap_tbl[chip->icl_idx].chg_limit
-				> chip->step_dwn_currnet_ma)
+				> chip->step_dwn_currnet_ma) {
+			chip->dwn_chg_i_ma = chip->step_dwn_currnet_ma;
+			chip->up_chg_i_ma = adap_tbl[chip->icl_idx].chg_limit;
+			chip->dwn_input_i_ma = adap_tbl[chip->icl_idx].input_limit;
+			chip->up_input_i_ma = adap_tbl[chip->icl_idx].input_limit;
 			bq24192_step_down_detect_init(chip);
+		}
 
 		pr_info("optimal input i limit = %d chg limit = %d\n",
 					adap_tbl[chip->icl_idx].input_limit,
@@ -1149,6 +1175,13 @@ static int bq24192_parse_dt(struct device_node *dev_node,
 		return ret;
 	}
 
+	ret = of_property_read_u32(dev_node, "ti,wlc-vin-limit-mv",
+				   &chip->wlc_vin_limit_mv);
+	if (ret) {
+		pr_err("Unable to read wlc-vin-limit-mv.\n");
+		return ret;
+	}
+
 	ret = of_property_read_u32(dev_node, "ti,step-dwn-current-ma",
 				   &chip->step_dwn_currnet_ma);
 	if (ret) {
@@ -1167,6 +1200,20 @@ static int bq24192_parse_dt(struct device_node *dev_node,
 				   &chip->icl_vbus_mv);
 	if (ret) {
 		pr_err("Unable to read icl threshod voltage.\n");
+		return ret;
+	}
+
+	ret = of_property_read_u32(dev_node, "ti,wlc-step-dwn-i-ma",
+				   &chip->wlc_dwn_i_ma);
+	if (ret) {
+		pr_err("Unable to read step down current for wlc.\n");
+		return ret;
+	}
+
+	ret = of_property_read_u32(dev_node, "ti,wlc-dwn-input-i-ma",
+				   &chip->wlc_dwn_input_i_ma);
+	if (ret) {
+		pr_err("Unable to read step down input i limit for wlc.\n");
 		return ret;
 	}
 
@@ -1245,6 +1292,7 @@ static int bq24192_probe(struct i2c_client *client,
 		chip->sys_vmin_mv = pdata->sys_vmin_mv;
 		chip->vin_limit_mv = pdata->vin_limit_mv;
 		chip->icl_vbus_mv = pdata->icl_vbus_mv;
+		chip->wlc_dwn_i_ma = pdata->wlc_dwn_i_ma;
 	}
 	chip->set_chg_current_ma = chip->chg_current_ma;
 
