@@ -611,10 +611,14 @@ static int bq27541_get_capacity(union power_supply_propval *val)
 	s32 ret;
 	s32 temp_capacity;
 	int smb_retry=0;
+	bool check_cap = false;
+	int smb_retry_max = (SMBUS_RETRY + 2);
 
 	do {
 		bq27541_device->smbus_status = bq27541_smbus_read_data(REG_CAPACITY, 0 ,&bq27541_device->bat_capacity);
-	} while((bq27541_device->smbus_status < 0) && ( ++smb_retry <= SMBUS_RETRY));
+		if ((bq27541_device->bat_capacity <= 0) || (bq27541_device->bat_capacity > 100))
+			check_cap = true;
+	} while(((bq27541_device->smbus_status < 0) || check_cap) && ( ++smb_retry <= smb_retry_max));
 
 	if (bq27541_device->smbus_status < 0) {
 		dev_err(&bq27541_device->client->dev, "%s: i2c read for %d "
