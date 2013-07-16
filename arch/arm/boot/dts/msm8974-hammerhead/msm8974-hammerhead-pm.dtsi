@@ -70,12 +70,15 @@
 			ti,pre-chg-current-ma = <256>;
 			ti,sys-vimin-mv = <3500>;
 			ti,vin-limit-mv = <4600>;
+			ti,wlc-vin-limit-mv = <4840>;
 			ti,step-dwn-current-ma = <1024>;
 			ti,step-dwn-thr-mv = <4250>;
 			ti,wlc-support;
 			ti,otg-en-gpio = <&pm8941_gpios 35 0x02>;
 			ti,ext-ovp-otg-ctrl;
 			ti,icl-vbus-mv = <4650>;
+			ti,wlc-step-dwn-i-ma = <512>;
+			ti,wlc-dwn-input-i-ma = <500>;
 		};
 	};
 
