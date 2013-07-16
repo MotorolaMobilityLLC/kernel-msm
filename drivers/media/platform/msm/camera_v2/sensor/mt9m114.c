@@ -1735,16 +1735,34 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	}
 
 	case CFG_POWER_UP:
-		if (s_ctrl->func_tbl->sensor_power_up)
+		if (s_ctrl->func_tbl->sensor_power_up) {
 			rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);
+			if (rc < 0) {
+				pr_err("%s:%d failed rc %ld\n", __func__,
+					__LINE__, rc);
+				break;
+			}
+			s_ctrl->sensor_state = MSM_SENSOR_POWER_UP;
+			pr_debug("%s:%d sensor state %d\n", __func__, __LINE__,
+				s_ctrl->sensor_state);
+		}
 		else
 			rc = -EFAULT;
 		break;
 
 	case CFG_POWER_DOWN:
-		if (s_ctrl->func_tbl->sensor_power_down)
+		if (s_ctrl->func_tbl->sensor_power_down) {
 			rc = s_ctrl->func_tbl->sensor_power_down(
 				s_ctrl);
+			if (rc < 0) {
+				pr_err("%s:%d failed rc %ld\n", __func__,
+					__LINE__, rc);
+				break;
+			}
+			s_ctrl->sensor_state = MSM_SENSOR_POWER_DOWN;
+			pr_debug("%s:%d sensor state %d\n", __func__, __LINE__,
+				s_ctrl->sensor_state);
+		}
 		else
 			rc = -EFAULT;
 		break;
