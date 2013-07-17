@@ -10,19 +10,6 @@ config BCMDHD
 	  If you choose to build a module, it'll be called dhd. Say M if
 	  unsure.
 
-config BCM4335
-	tristate "Broadcom 4335 wireless cards support"
-	depends on BCMDHD
-	---help---
-	  This module adds support for wireless adapters based on
-	  Broadcom 4335 chipset.
-
-config BCM4335BT
-	bool "Broadcom 4335 BT/WLAN"
-	depends on BCMDHD
-	default n
-	---help---
-
 config BCM4339
 	tristate "Broadcom 4339 wireless cards support"
 	depends on BCMDHD
@@ -51,12 +38,6 @@ config BCMDHD_WEXT
 	select WEXT_PRIV
 	help
 	  Enables WEXT support
-
-config BROADCOM_WIFI_RESERVED_MEM
-	bool "BROADCOM Reserved memory for wifi device"
-	depends on BCMDHD
-	---help---
-	  This is a configuration for broadcom WLAN driver.
 
 config DHD_USE_STATIC_BUF
 	bool "Enable memory preallocation"

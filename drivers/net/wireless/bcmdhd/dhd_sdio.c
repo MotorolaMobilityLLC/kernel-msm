@@ -1,9 +1,27 @@
 /*
  * DHD Bus Module for SDIO
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_sdio.c 402604 2013-05-16 08:36:25Z $
+ * $Id: dhd_sdio.c 408340 2013-06-18 17:35:43Z $
  */
 
 #include <typedefs.h>
@@ -145,11 +163,6 @@ extern void dhd_wlfc_txcomplete(dhd_pub_t *dhd, void *txp, bool success);
 extern void dhd_wlfc_trigger_pktcommit(dhd_pub_t *dhd);
 #endif
 
-#if defined(MULTIPLE_SUPPLICANT)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-DEFINE_MUTEX(_dhd_sdio_mutex_lock_);
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) */
-#endif 
 
 #ifdef DHD_DEBUG
 /* Device console log buffer state */
@@ -1716,7 +1729,7 @@ dhdsdio_txpkt(dhd_bus_t *bus, void *pkt, uint chan, bool free_pkt, bool queue_on
 	int ret;
 	osl_t *osh;
 	uint8 *frame;
-	uint16 len, pad1 = 0;
+	uint16 len, pad1 = 0, act_len = 0;
 	uint32 swheader;
 	uint retries = 0;
 	uint32 real_pad = 0;
@@ -1731,7 +1744,6 @@ dhdsdio_txpkt(dhd_bus_t *bus, void *pkt, uint chan, bool free_pkt, bool queue_on
 	char *p;
 	htsfts_t *htsf_ts;
 #endif
-
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
@@ -1803,7 +1815,8 @@ dhdsdio_txpkt(dhd_bus_t *bus, void *pkt, uint chan, bool free_pkt, bool queue_on
 
 #ifdef BCMSDIOH_TXGLOM
 	if (bus->glom_enable) {
-		uint32 hwheader1 = 0, hwheader2 = 0, act_len = len;
+		uint32 hwheader1 = 0, hwheader2 = 0;
+		act_len = len;
 
 		/* Software tag: channel, sequence number, data offset */
 		swheader = ((chan << SDPCM_CHANNEL_SHIFT) & SDPCM_CHANNEL_MASK) |
@@ -1901,6 +1914,7 @@ dhdsdio_txpkt(dhd_bus_t *bus, void *pkt, uint chan, bool free_pkt, bool queue_on
 #ifdef BCMLXSDMMC
 				PKTSETLEN(osh, pkt, len);
 #endif /* BCMLXSDMMC */
+
 				/* Post the frame pointer to sdio glom array */
 				dhd_bcmsdh_glom_post(bus, frame, pkt, len);
 				/* Save the pkt pointer in bus glom array */
@@ -1916,7 +1930,7 @@ dhdsdio_txpkt(dhd_bus_t *bus, void *pkt, uint chan, bool free_pkt, bool queue_on
 	} else
 #endif /* BCMSDIOH_TXGLOM */
 	{
-	uint32 act_len = len;
+	act_len = len;
 	/* Software tag: channel, sequence number, data offset */
 	swheader = ((chan << SDPCM_CHANNEL_SHIFT) & SDPCM_CHANNEL_MASK) | bus->tx_seq |
 	        (((pad1 + SDPCM_HDRLEN) << SDPCM_DOFFSET_SHIFT) & SDPCM_DOFFSET_MASK);
@@ -1967,9 +1981,15 @@ dhdsdio_txpkt(dhd_bus_t *bus, void *pkt, uint chan, bool free_pkt, bool queue_on
 			DHD_ERROR(("CHK3: padding error size %d\n", real_pad));
 			ret = BCME_NOMEM;
 			goto done;
-		} else
+		}
+#ifndef BCMLXSDMMC
+		else
 			PKTSETLEN(osh, pkt, act_len);
+#endif
 	}
+#ifdef BCMLXSDMMC
+	PKTSETLEN(osh, pkt, len);
+#endif /* BCMLXSDMMC */
 	}
 	do {
 		ret = dhd_bcmsdh_send_buf(bus, bcmsdh_cur_sbwad(sdh), SDIO_FUNC_2, F2SYNC,
@@ -2046,7 +2066,11 @@ done:
 		} else
 #endif /* BCMSDIOH_TXGLOM */
 		{
-	PKTPULL(osh, pkt, SDPCM_HDRLEN + pad1);
+#ifdef BCMLXSDMMC
+			if (act_len > 0)
+				PKTSETLEN(osh, pkt, act_len);
+#endif /* BCMLXSDMMC */
+			PKTPULL(osh, pkt, SDPCM_HDRLEN + pad1);
 		}
 #ifdef PROP_TXSTATUS
 	if (bus->dhd->wlfc_state) {
@@ -4541,6 +4565,8 @@ dhd_txglom_enable(dhd_pub_t *dhdp, bool enable)
 	uint32 rxglom;
 	int32 ret;
 
+	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
+
 	if (enable) {
 		rxglom = 1;
 		memset(buf, 0, sizeof(buf));
@@ -6920,17 +6946,6 @@ dhdsdio_probe(uint16 venid, uint16 devid, uint16 bus_no, uint16 slot,
 	struct ether_addr ea_addr;
 #endif /* GET_CUSTOM_MAC_ENABLE */
 
-#if defined(MULTIPLE_SUPPLICANT)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	if (mutex_is_locked(&_dhd_sdio_mutex_lock_) == 0) {
-		DHD_ERROR(("%s : no mutex held. set lock\n", __FUNCTION__));
-	}
-	else {
-		DHD_ERROR(("%s : mutex is locked!. wait for unlocking\n", __FUNCTION__));
-	}
-	mutex_lock(&_dhd_sdio_mutex_lock_);
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) */
-#endif 
 
 	/* Init global variables at run-time, not as part of the declaration.
 	 * This is required to support init/de-init of the driver. Initialization
@@ -6944,11 +6959,7 @@ dhdsdio_probe(uint16 venid, uint16 devid, uint16 bus_no, uint16 slot,
 	sd1idle = TRUE;
 	dhd_readahead = TRUE;
 	retrydata = FALSE;
-#if !defined(PLATFORM_MPS)
 	dhd_doflow = FALSE;
-#else
-	dhd_doflow = TRUE;
-#endif /* OEM_ANDROID */
 	dhd_dongle_ramsize = 0;
 	dhd_txminmax = DHD_TXMINMAX;
 
@@ -7096,12 +7107,6 @@ dhdsdio_probe(uint16 venid, uint16 devid, uint16 bus_no, uint16 slot,
 	}
 
 
-#if defined(MULTIPLE_SUPPLICANT)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	mutex_unlock(&_dhd_sdio_mutex_lock_);
-	DHD_ERROR(("%s : the lock is released.\n", __FUNCTION__));
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
-#endif 
 
 	return bus;
 
@@ -7109,294 +7114,10 @@ fail:
 	dhdsdio_release(bus, osh);
 
 forcereturn:
-#if defined(MULTIPLE_SUPPLICANT)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	mutex_unlock(&_dhd_sdio_mutex_lock_);
-	DHD_ERROR(("%s : the lock is released.\n", __FUNCTION__));
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
-#endif 
 
 	return NULL;
 }
 
-#ifdef REGON_BP_HANG_FIX
-static int dhd_sdio_backplane_reset(struct dhd_bus *bus)
-{
-	uint32 temp = 0;
-	DHD_ERROR(("Resetting  the backplane to avoid failure in firmware download..\n"));
-
-	temp = bcmsdh_reg_read(bus->sdh, 0x180021e0, 4);
-	DHD_INFO(("SDIO Clk Control Reg = %x\n", temp));
-
-	/* Force HT req from PMU */
-	bcmsdh_reg_write(bus->sdh, 0x18000644, 4, 0x6000005);
-
-	/* Increase the clock stretch duration. */
-	bcmsdh_reg_write(bus->sdh, 0x18000630, 4, 0xC8FFC8);
-
-	/* Setting ALP clock request in SDIOD clock control status register */
-	bcmsdh_reg_write(bus->sdh, 0x180021e0, 4, 0x41);
-
-	/* Allowing clock from SR engine to SR memory */
-	bcmsdh_reg_write(bus->sdh, 0x18004400, 4, 0xf92f1);
-	/* Disabling SR Engine before SR binary download. */
-	bcmsdh_reg_write(bus->sdh, 0x18000650, 4, 0x3);
-	bcmsdh_reg_write(bus->sdh, 0x18000654, 4, 0x0);
-
-	/* Enabling clock from backplane to SR memory */
-	bcmsdh_reg_write(bus->sdh, 0x18004400, 4, 0xf9af1);
-
-	/* Initializing SR memory address register in SOCRAM */
-	bcmsdh_reg_write(bus->sdh, 0x18004408, 4, 0x0);
-
-	/* Downloading the SR binary */
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0xc0002000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x80008000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x1051f080);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x80008000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x1050f080);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x80008000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x1050f080);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x80008000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x1050f080);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000004);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000604);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00001604);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00001404);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a08c80);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00010001);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x14a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00011404);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00002000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x04a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00002000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0xf8000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00002000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x04a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00002000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0xf8000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00011604);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00010604);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00010004);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00010000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x14a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000004);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00010001);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x14a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00010004);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00010000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00010000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x14a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x30a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000008);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x04a00000);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0x00000008);
-	bcmsdh_reg_write(bus->sdh, 0x1800440c, 4, 0xfc000000);
-	/* SR Binary Download complete */
-
-	/* Allowing clock from SR engine to SR memory */
-	bcmsdh_reg_write(bus->sdh, 0x18004400, 4, 0xf92f1);
-
-	/* Turning ON SR Engine to initiate backplane reset  Repeated ?? Maharana */
-	bcmsdh_reg_write(bus->sdh, 0x18000650, 4, 0x3);
-	bcmsdh_reg_write(bus->sdh, 0x18000654, 4, 0x0);
-	bcmsdh_reg_write(bus->sdh, 0x18000650, 4, 0x3);
-	bcmsdh_reg_write(bus->sdh, 0x18000654, 4, 0x2);
-	bcmsdh_reg_write(bus->sdh, 0x18000650, 4, 0x3);
-	bcmsdh_reg_write(bus->sdh, 0x18000654, 4, 0x3);
-	bcmsdh_reg_write(bus->sdh, 0x18000650, 4, 0x3);
-	bcmsdh_reg_write(bus->sdh, 0x18000654, 4, 0x37);
-	bcmsdh_reg_write(bus->sdh, 0x18000650, 4, 0x3);
-	temp = bcmsdh_reg_read(bus->sdh, 0x18000654, 4);
-	DHD_INFO(("0x18000654 = %x\n", temp));
-	bcmsdh_reg_write(bus->sdh, 0x18000654, 4, 0x800037);
-	OSL_DELAY(100000);
-	/* Rolling back the original values for clock stretch and PMU timers */
-	bcmsdh_reg_write(bus->sdh, 0x18000644, 4, 0x0);
-	bcmsdh_reg_write(bus->sdh, 0x18000630, 4, 0xC800C8);
-	/* Removing ALP clock request in SDIOD clock control status register */
-	bcmsdh_reg_write(bus->sdh, 0x180021e0, 4, 0x40);
-	OSL_DELAY(10000);
-	return TRUE;
-}
-
-static int dhdsdio_sdio_hang_war(struct dhd_bus *bus)
-{
-	uint32 temp = 0, temp2 = 0, counter = 0, BT_pwr_up = 0, BT_ready = 0;
-	/* Removing reset of D11 Core */
-	bcmsdh_reg_write(bus->sdh, 0x18101408, 4, 0x3);
-	bcmsdh_reg_write(bus->sdh, 0x18101800, 4, 0x0);
-	bcmsdh_reg_write(bus->sdh, 0x18101408, 4, 0x1);
-	/* Reading CLB XTAL BT cntrl register */
-	bcmsdh_reg_write(bus->sdh, 0x180013D8, 2, 0xD1);
-	bcmsdh_reg_write(bus->sdh, 0x180013DA, 2, 0x12);
-	bcmsdh_reg_write(bus->sdh, 0x180013D8, 2, 0x2D0);
-	/* Read if BT is powered up */
-	temp = bcmsdh_reg_read(bus->sdh, 0x180013DA, 2);
-	/* Read BT_ready from WLAN wireless register */
-	temp2 = bcmsdh_reg_read(bus->sdh, 0x1800002C, 4);
-	/*
-	Check if the BT is powered up and ready. The duration between BT being powered up
-	and BT becoming ready is the problematic window for WLAN. If we move ahead at this
-	time then we may encounter a corrupted backplane later. So we wait for BT to be ready
-	and then proceed after checking the health of the backplane. If the backplane shows
-	indications of failure then we	have to do a full reset of the backplane using SR engine
-	and then proceed.
-	*/
-	(temp & 0xF0) ? (BT_pwr_up = 1):(BT_pwr_up = 0);
-	(temp2 & (1<<17)) ? (BT_ready = 1):(BT_ready = 0);
-	DHD_ERROR(("WARNING: Checking if BT is ready BT_pwr_up = %x"
-		"BT_ready = %x \n", BT_pwr_up, BT_ready));
-	while (BT_pwr_up && !BT_ready)
-	{
-		OSL_DELAY(1000);
-		bcmsdh_reg_write(bus->sdh, 0x180013D8, 2, 0x2D0);
-		temp = bcmsdh_reg_read(bus->sdh, 0x180013DA, 2);
-		temp2 = bcmsdh_reg_read(bus->sdh, 0x1800002C, 4);
-		(temp & 0xF0) ? (BT_pwr_up = 1):(BT_pwr_up = 0);
-		(temp2 & (1<<17)) ? (BT_ready = 1):(BT_ready = 0);
-		counter++;
-		if (counter == 5000)
-		{
-			DHD_ERROR(("WARNING: Going ahead after 5 secs with"
-					"risk of failure because BT ready is not yet set\n"));
-			break;
-		}
-	}
-	DHD_ERROR(("\nWARNING: WL Proceeding BT_pwr_up = %x BT_ready = %x"
-			"\n", BT_pwr_up, BT_ready));
-	counter = 0;
-	OSL_DELAY(10000);
-	/*
-	Get the information of who accessed the crucial backplane entities
-	by reading read and write access registers
-	*/
-	DHD_TRACE(("%d: Read Value @ 0x18104808 = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18104808, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x1810480C = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810480C, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x18106808 = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18106808, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x1810680C = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810680C, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x18107808 = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18107808, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x1810780C = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810780C, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x18108808 = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18108808, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x1810880C = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810880C, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x18109808 = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18109808, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x1810980C = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810980C, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x1810C808 = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810c808, 4)));
-	DHD_TRACE(("%d: Read Value @ 0x1810C80C = %x."
-			"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810c80C, 4)));
-	counter = 0;
-	while ((bcmsdh_reg_read(bus->sdh, 0x18104808, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810480C, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x18106808, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810680C, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810780C, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810780C, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810880C, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810880C, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810980C, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810980C, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810C80C, 4) == 5) ||
-		(bcmsdh_reg_read(bus->sdh, 0x1810C80C, 4) == 5))
-	{
-		if (++counter > 10)
-		{
-			DHD_ERROR(("Unable to recover the backkplane corruption"
-					"..Tried %d times.. Exiting\n", counter));
-			break;
-		}
-		OSL_DELAY(10000);
-		dhd_sdio_backplane_reset(bus);
-		/*
-		Get the information of who accessed the crucial backplane
-		entities by reading read and write access registers
-		*/
-		DHD_ERROR(("%d: Read Value @ 0x18104808 = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18104808, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x1810480C = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810480C, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x18106808 = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18106808, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x1810680C = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810680C, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x18107808 = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18107808, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x1810780C = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810780C, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x18108808 = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18108808, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x1810880C = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810880C, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x18109808 = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x18109808, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x1810980C = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810980C, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x1810C808 = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810c808, 4)));
-		DHD_ERROR(("%d: Read Value @ 0x1810C80C = %x."
-				"\n", __LINE__, bcmsdh_reg_read(bus->sdh, 0x1810c80C, 4)));
-	}
-	/* Set the WL ready to indicate BT that we are done with backplane reset */
-	DHD_ERROR(("Setting up AXI_OK\n"));
-	bcmsdh_reg_write(bus->sdh, 0x18000658, 4, 0x3);
-	temp = bcmsdh_reg_read(bus->sdh, 0x1800065c, 4);
-	temp |= 0x80000000;
-	bcmsdh_reg_write(bus->sdh, 0x1800065c, 4, temp);
-	return TRUE;
-}
-#endif /* REGON_BP_HANG_FIX */
 static bool
 dhdsdio_probe_attach(struct dhd_bus *bus, osl_t *osh, void *sdh, void *regsva,
                      uint16 devid)
@@ -7487,11 +7208,6 @@ dhdsdio_probe_attach(struct dhd_bus *bus, osl_t *osh, void *sdh, void *regsva,
 		bus->sih->chippkg));
 #endif /* DHD_DEBUG */
 
-#ifdef REGON_BP_HANG_FIX
-	/* WAR - for 43241 B0-B1-B2. B3 onwards do not need this */
-	if (((uint16)bus->sih->chip == BCM4324_CHIP_ID) && (bus->sih->chiprev < 3))
-			dhdsdio_sdio_hang_war(bus);
-#endif /* REGON_BP_HANG_FIX */
 
 	bcmsdh_chipinfo(sdh, bus->sih->chip, bus->sih->chiprev);
 
@@ -7865,17 +7581,6 @@ dhdsdio_disconnect(void *ptr)
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
-#if defined(MULTIPLE_SUPPLICANT)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	if (mutex_is_locked(&_dhd_sdio_mutex_lock_) == 0) {
-		DHD_ERROR(("%s : no mutex held. set lock\n", __FUNCTION__));
-	}
-	else {
-		DHD_ERROR(("%s : mutex is locked!. wait for unlocking\n", __FUNCTION__));
-	}
-	mutex_lock(&_dhd_sdio_mutex_lock_);
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) */
-#endif 
 
 
 	if (bus) {
@@ -7883,12 +7588,6 @@ dhdsdio_disconnect(void *ptr)
 		dhdsdio_release(bus, bus->dhd->osh);
 	}
 
-#if defined(MULTIPLE_SUPPLICANT)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
-	mutex_unlock(&_dhd_sdio_mutex_lock_);
-	DHD_ERROR(("%s : the lock is released.\n", __FUNCTION__));
-#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) */
-#endif /* LINUX */
 
 
 	DHD_TRACE(("%s: Disconnected\n", __FUNCTION__));
@@ -8398,12 +8097,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 						dhd_txflowcontrol(bus->dhd, ALL_INTERFACES, OFF);
 #endif 
 						dhd_os_wd_timer(dhdp, dhd_watchdog_ms);
-#if defined(BCMSDIOH_TXGLOM) && !defined(ENABLE_INSMOD_NO_FW_LOAD)
-						if ((dhdp->busstate == DHD_BUS_DATA) &&
-							bcmsdh_glom_enabled()) {
-							dhd_txglom_enable(dhdp, TRUE);
-						}
-#endif /* BCMSDIOH_TXGLOM */
+
 						DHD_TRACE(("%s: WLAN ON DONE\n", __FUNCTION__));
 					} else {
 						dhd_bus_stop(bus, FALSE);
@@ -8528,29 +8222,3 @@ dhd_get_chipid(dhd_pub_t *dhd)
 	else
 		return 0;
 }
-#if defined(SUPPORT_MULTIPLE_CHIPSET)
-uint32 g_chip;
-int
-concate_chipset(char *_fw_path, int fw_path_len, char *_nv_path, int nv_path_len)
-{
-	char *chipset=NULL;
-	printk("%s===g_chip=[%d]\n",__FUNCTION__, g_chip);
-	switch (g_chip) {
-		case BCM4335_CHIP_ID:
-			chipset = "_4335";
-			break;
-		case BCM4339_CHIP_ID:
-			chipset = "_4339";
-			break;
-		default:
-			chipset = "_4339";
-			break;
-	}
-	if(strstr(_fw_path, "_433") == NULL)  //add
-		bcmstrcat(_fw_path, chipset);
-	if(strstr(_nv_path, "_433") == NULL)
-		bcmstrcat(_nv_path, chipset); //add
-
-	return 0;
-}
-#endif /* SUPPORT_MULTIPLE_CHIPSET */

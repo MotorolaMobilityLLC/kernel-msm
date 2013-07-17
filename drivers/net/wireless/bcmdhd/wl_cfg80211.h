@@ -1,7 +1,25 @@
 /*
  * Linux cfg80211 driver
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: wl_cfg80211.h 401713 2013-05-13 12:11:03Z $
  */
@@ -453,55 +471,7 @@ struct parsed_ies {
 	u32 wpa2_ie_len;
 };
 
-#ifdef WL_SDO
-/* Service discovery */
-typedef struct {
-	uint8	transaction_id; /* Transaction ID */
-	uint8   protocol;       /* Service protocol type */
-	uint16  query_len;      /* Length of query */
-	uint16  response_len;   /* Length of response */
-	uint8   qrbuf[1];
-} wl_sd_qr_t;
 
-typedef struct {
-	uint16	period;                 /* extended listen period */
-	uint16	interval;               /* extended listen interval */
-} wl_sd_listen_t;
-
-#define WL_SD_STATE_IDLE 0x0000
-#define WL_SD_SEARCH_SVC 0x0001
-#define WL_SD_ADV_SVC    0x0002
-
-enum wl_dd_state {
-    WL_DD_STATE_IDLE,
-    WL_DD_STATE_SEARCH,
-    WL_DD_STATE_LISTEN
-};
-
-#define MAX_SDO_PROTO_STR_LEN 20
-typedef struct wl_sdo_proto {
-	char str[MAX_SDO_PROTO_STR_LEN];
-	u32 val;
-} wl_sdo_proto_t;
-
-typedef struct sd_offload {
-	u32 sd_state;
-	enum wl_dd_state dd_state;
-	wl_sd_listen_t sd_listen;
-} sd_offload_t;
-
-typedef struct sdo_event {
-	u8 addr[ETH_ALEN];
-	uint16	freq;        /* channel Freq */
-	uint8	count;       /* Tlv count  */
-	uint16	update_ind;
-} sdo_event_t;
-#endif /* WL_SDO */
-
-#ifdef WL11U
-/* Max length of Interworking element */
-#define IW_IES_MAX_BUF_LEN 		9
-#endif
 
 #define MAX_EVENT_BUF_NUM 16
 typedef struct wl_eventmsg_buf {
@@ -603,21 +573,10 @@ struct wl_priv {
 		struct net_info *_net_info, enum wl_status state, bool set);
 	unsigned long interrested_state;
 	wlc_ssid_t hostapd_ssid;
-#ifdef WL_SDO
-	sd_offload_t *sdo;
-#endif
-#ifdef WL11U
-	bool wl11u;
-	u8 iw_ie[IW_IES_MAX_BUF_LEN];
-	u32 iw_ie_len;
-#endif /* WL11U */
 	bool sched_scan_running;	/* scheduled scan req status */
 #ifdef WL_SCHED_SCAN
 	struct cfg80211_sched_scan_request *sched_scan_req;	/* scheduled scan req */
 #endif /* WL_SCHED_SCAN */
-#ifdef WL_HOST_BAND_MGMT
-	u8 curr_band;
-#endif /* WL_HOST_BAND_MGMT */
 	bool scan_suppressed;
 	struct timer_list scan_supp_timer;
 	struct work_struct wlan_work;
@@ -827,33 +786,21 @@ wl_get_netinfo_by_netdev(struct wl_priv *wl, struct net_device *ndev)
 #define ndev_to_wlc_ndev(ndev, wl)	(ndev)
 #endif /* WL_ENABLE_P2P_IF */
 
-#if defined(WL_CFG80211_P2P_DEV_IF)
-#define wdev_to_wlc_ndev(wdev, wl)	\
-	((wdev->iftype == NL80211_IFTYPE_P2P_DEVICE) ? \
-	wl_to_prmry_ndev(wl) : wdev_to_ndev(wdev))
-#define cfgdev_to_wlc_ndev(cfgdev, wl)	wdev_to_wlc_ndev(cfgdev, wl)
-#elif defined(WL_ENABLE_P2P_IF)
+#if defined(WL_ENABLE_P2P_IF)
 #define cfgdev_to_wlc_ndev(cfgdev, wl)	ndev_to_wlc_ndev(cfgdev, wl)
 #else
 #define cfgdev_to_wlc_ndev(cfgdev, wl)	(cfgdev)
-#endif /* WL_CFG80211_P2P_DEV_IF */
+#endif 
 
-#if defined(WL_CFG80211_P2P_DEV_IF)
-#define ndev_to_cfgdev(ndev)	ndev_to_wdev(ndev)
-#else
 #define ndev_to_cfgdev(ndev)	(ndev)
-#endif /* WL_CFG80211_P2P_DEV_IF */
 
-#if defined(WL_CFG80211_P2P_DEV_IF)
-#define scan_req_match(wl)	(((wl) && (wl->scan_request) && \
-	(wl->scan_request->wdev == wl->p2p_wdev)) ? true : false)
-#elif defined(WL_ENABLE_P2P_IF)
+#if defined(WL_ENABLE_P2P_IF)
 #define scan_req_match(wl)	(((wl) && (wl->scan_request) && \
 	(wl->scan_request->dev == wl->p2p_net)) ? true : false)
 #else
 #define scan_req_match(wl)	(((wl) && p2p_is_on(wl) && p2p_scan(wl)) ? \
 	true : false)
-#endif /* WL_CFG80211_P2P_DEV_IF */
+#endif 
 
 #define wl_to_sr(w) (w->scan_req_int)
 #if defined(STATIC_WL_PRIV_STRUCT)
@@ -919,13 +866,6 @@ extern s32 wl_cfg80211_get_p2p_noa(struct net_device *net, char* buf, int len);
 extern s32 wl_cfg80211_set_wps_p2p_ie(struct net_device *net, char *buf, int len,
 	enum wl_management_type type);
 extern s32 wl_cfg80211_set_p2p_ps(struct net_device *net, char* buf, int len);
-#ifdef WL_SDO
-extern s32 wl_cfg80211_sdo_init(struct wl_priv *wl);
-extern s32 wl_cfg80211_sdo_deinit(struct wl_priv *wl);
-extern s32 wl_cfg80211_sd_offload(struct net_device *net, char *cmd, char* buf, int len);
-extern s32 wl_cfg80211_pause_sdo(struct net_device *dev, struct wl_priv *wl);
-extern s32 wl_cfg80211_resume_sdo(struct net_device *dev, struct wl_priv *wl);
-#endif
 #ifdef WL_SUPPORT_AUTO_CHANNEL
 #define CHANSPEC_BUF_SIZE	1024
 #define CHAN_SEL_IOCTL_DELAY	300
@@ -949,12 +889,6 @@ extern chanspec_t wl_ch_host_to_driver(u16 channel);
 extern s32 wl_add_remove_eventmsg(struct net_device *ndev, u16 event, bool add);
 extern void wl_stop_wait_next_action_frame(struct wl_priv *wl);
 extern int wl_cfg80211_update_power_mode(struct net_device *dev);
-#ifdef WL_HOST_BAND_MGMT
-extern s32 wl_cfg80211_set_band(struct net_device *ndev, int band);
-#endif /* WL_HOST_BAND_MGMT */
-#if defined(DHCP_SCAN_SUPPRESS)
-extern int wl_cfg80211_scan_suppress(struct net_device *dev, int suppress);
-#endif /* OEM_ANDROID */
 extern void wl_cfg80211_add_to_eventbuffer(wl_eventmsg_buf_t *ev, u16 event, bool set);
 extern s32 wl_cfg80211_apply_eventbuffer(struct net_device *ndev,
 	struct wl_priv *wl, wl_eventmsg_buf_t *ev);

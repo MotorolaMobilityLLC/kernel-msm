@@ -1,7 +1,25 @@
 /*
  * Linux cfgp2p driver
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: wl_cfgp2p.h 401719 2013-05-13 12:47:24Z $
  */
@@ -159,25 +177,20 @@ enum wl_cfgp2p_status {
 		add_timer(timer); \
 	} while (0);
 
-#if !defined(WL_CFG80211_P2P_DEV_IF) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#if !0 && (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #define WL_CFG80211_P2P_DEV_IF
-#endif /* !WL_CFG80211_P2P_DEV_IF && (LINUX_VERSION >= VERSION(3, 8, 0)) */
+#endif 
 
-#if defined(WL_ENABLE_P2P_IF) && (defined(WL_CFG80211_P2P_DEV_IF) || \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)))
+#if defined(WL_ENABLE_P2P_IF) && (0 || (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)))
 #error Disable 'WL_ENABLE_P2P_IF', if 'WL_CFG80211_P2P_DEV_IF' is enabled \
 	or kernel version is 3.8.0 or above
-#endif /* WL_ENABLE_P2P_IF && (WL_CFG80211_P2P_DEV_IF || (LINUX_VERSION >= VERSION(3, 8, 0))) */
+#endif 
 
-#if !defined(WLP2P) && (defined(WL_ENABLE_P2P_IF) || defined(WL_CFG80211_P2P_DEV_IF))
+#if !defined(WLP2P) && defined(WL_ENABLE_P2P_IF)
 #error WLP2P not defined
-#endif /* !WLP2P && (WL_ENABLE_P2P_IF || WL_CFG80211_P2P_DEV_IF) */
+#endif 
 
-#if defined(WL_CFG80211_P2P_DEV_IF)
-#define bcm_struct_cfgdev	struct wireless_dev
-#else
 #define bcm_struct_cfgdev	struct net_device
-#endif /* WL_CFG80211_P2P_DEV_IF */
 
 extern void
 wl_cfgp2p_listen_expired(unsigned long data);
@@ -314,19 +327,6 @@ wl_cfgp2p_unregister_ndev(struct wl_priv *wl);
 extern bool
 wl_cfgp2p_is_ifops(const struct net_device_ops *if_ops);
 
-#if defined(WL_CFG80211_P2P_DEV_IF)
-extern struct wireless_dev *
-wl_cfgp2p_add_p2p_disc_if(void);
-
-extern int
-wl_cfgp2p_start_p2p_device(struct wiphy *wiphy, struct wireless_dev *wdev);
-
-extern void
-wl_cfgp2p_stop_p2p_device(struct wiphy *wiphy, struct wireless_dev *wdev);
-
-extern int
-wl_cfgp2p_del_p2p_disc_if(struct wireless_dev *wdev);
-#endif /* WL_CFG80211_P2P_DEV_IF */
 
 /* WiFi Direct */
 #define SOCIAL_CHAN_1 1

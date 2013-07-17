@@ -1194,7 +1194,7 @@ txglomfail:
 			/* Align Patch */
 			if (!write || pkt_len < 32)
 				pkt_len = (pkt_len + 3) & 0xFFFFFFFC;
-			else if (pkt_len % blk_size)
+			else if ((pkt_len > blk_size) && (pkt_len % blk_size))
 				pkt_len += blk_size - (pkt_len % blk_size);
 
 #ifdef CONFIG_MMC_MSM7X00A

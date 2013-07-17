@@ -1,7 +1,25 @@
 /*
  * DHD PROP_TXSTATUS Module.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
  * $Id: dhd_wlfc.c 402043 2013-05-14 12:11:22Z $
  *
@@ -42,11 +60,7 @@ typedef struct dhd_wlfc_commit_info {
 
 #ifdef PROP_TXSTATUS
 
-#ifdef QMONITOR
-#define DHD_WLFC_QMON_COMPLETE(entry) dhd_qmon_txcomplete(&entry->qmon)
-#else
 #define DHD_WLFC_QMON_COMPLETE(entry)
-#endif /* QMONITOR */
 
 void
 dhd_wlfc_dump(dhd_pub_t *dhdp, struct bcmstrbuf *strbuf)
@@ -1114,9 +1128,6 @@ _dhd_wlfc_enque_delayq(athost_wl_status_info_t* ctx, void* pktbuf, int prec)
 			return BCME_ERROR;
 		}
 
-#ifdef QMONITOR
-		dhd_qmon_tx(&entry->qmon);
-#endif
 		/*
 		A packet has been pushed, update traffic availability bitmap,
 		if applicable
@@ -1138,9 +1149,6 @@ _dhd_wlfc_mac_entry_update(athost_wl_status_info_t* ctx, wlfc_mac_descriptor_t* 
 {
 	int rc = BCME_OK;
 
-#ifdef QMONITOR
-	dhd_qmon_reset(&entry->qmon);
-#endif
 
 	if (action == eWLFC_MAC_ENTRY_ACTION_ADD) {
 		entry->occupied = 1;

@@ -1,7 +1,25 @@
 /*
  * Driver O/S-independent utility routines
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  * $Id: bcmutils.c 380908 2013-01-24 12:26:18Z $
  */
 
@@ -1763,20 +1781,10 @@ static const char *crypto_algo_names[] = {
 	"AES_CCM",
 	"AES_OCB_MSDU",
 	"AES_OCB_MPDU",
-#ifdef BCMCCX
-	"CKIP",
-	"CKIP_MMH",
-	"WEP_MMH",
-	"NALG"
-#else
 	"NALG"
 	"UNDEF",
 	"UNDEF",
 	"UNDEF",
-#endif /* BCMCCX */
-#ifdef BCMWAPI_WPI
-	"WAPI",
-#endif /* BCMWAPI_WPI */
 	"UNDEF"
 };
 
@@ -2258,7 +2266,7 @@ bcm_uint64_divide(uint32* r, uint32 a_high, uint32 a_low, uint32 b)
 	*r = r0;
 }
 
-#ifndef setbit       /* As in the header file */
+#ifndef setbit     /* As in the header file */
 #ifdef BCMUTILS_BIT_MACROS_USE_FUNCS
 /* Set bit in byte array. */
 void

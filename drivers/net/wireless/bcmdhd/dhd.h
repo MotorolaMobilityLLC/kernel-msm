@@ -4,9 +4,27 @@
  * Provides type definitions and function prototypes used to link the
  * DHD OS, bus, and protocol modules.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd.h 402415 2013-05-15 14:30:44Z $
+ * $Id: dhd.h 407649 2013-06-13 19:55:14Z $
  */
 
 /****************
@@ -25,6 +43,7 @@
 #include <linux/random.h>
 #include <linux/spinlock.h>
 #include <linux/ethtool.h>
+#include <linux/string.h>
 #include <asm/uaccess.h>
 #include <asm/unaligned.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_HAS_WAKELOCK)
@@ -40,10 +59,10 @@ int setScheduler(struct task_struct *p, int policy, struct sched_param *param);
 #include <wlioctl.h>
 #include <wlfc_proto.h>
 
-#if defined(NDISVER) && (NDISVER >= 0x0600)
+#if 0 && (0>= 0x0600)
 #include <wdf.h>
 #include <WdfMiniport.h>
-#endif /* (NDISVER >= 0x0600)  */
+#endif 
 
 #if defined(KEEP_ALIVE)
 /* Default KEEP_ALIVE Period is 55 sec to prevent AP from sending Keep Alive probe frame */
@@ -64,7 +83,7 @@ enum dhd_bus_state {
 	DHD_BUS_DATA		/* Ready for frame transfers */
 };
 
-#if defined(NDISVER) && (NDISVER >= 0x0600)
+#if 0 && (0>= 0x0600)
 /* Firmware requested operation mode */
 #define STA_MASK			0x0001
 #define HOSTAPD_MASK		0x0002
@@ -73,7 +92,7 @@ enum dhd_bus_state {
 #define P2P_GO_ENABLED		0x0010
 #define P2P_GC_ENABLED		0x0020
 #define CONCURENT_MASK		0x00F0
-#endif /* (NDISVER >= 0x0600)  */
+#endif 
 
 enum dhd_op_flags {
 /* Firmware requested operation mode */
@@ -86,7 +105,8 @@ enum dhd_op_flags {
 	/* Current P2P mode for P2P connection */
 	DHD_FLAG_P2P_GC_MODE				= (1 << (5)),
 	DHD_FLAG_P2P_GO_MODE				= (1 << (6)),
-	DHD_FLAG_MBSS_MODE				= (1 << (7)) /* MBSS in future */
+	DHD_FLAG_MBSS_MODE				= (1 << (7)), /* MBSS in future */
+	DHD_FLAG_IBSS_MODE				= (1 << (8))
 };
 
 #define MANUFACTRING_FW 	"WLTEST"
@@ -144,6 +164,13 @@ typedef enum  {
 	DHD_IF_CHANGE,
 	DHD_IF_DELETING
 } dhd_if_state_t;
+
+
+typedef enum  {
+	DHD_IPV6_ADDR_NONE = 0,
+	DHD_IPV6_ADDR_ADD,
+	DHD_IPV6_ADDR_DELETE
+} dhd_ipv6_op_t;
 
 
 #if defined(CONFIG_DHD_USE_STATIC_BUF)
@@ -277,9 +304,6 @@ typedef struct dhd_pub {
 	struct mutex 	wl_softap_lock;		 /* lock/unlock for any SoftAP/STA settings */
 #endif 
 
-#ifdef WLBTAMP
-	uint16	maxdatablks;
-#endif /* WLBTAMP */
 #ifdef PROP_TXSTATUS
 	int	wlfc_enabled;
 	void*	wlfc_state;
@@ -305,6 +329,7 @@ typedef struct dhd_pub {
 	uint8 htsfdlystat_sz; /* Size of delay stats, max 255B */
 #endif
 	struct reorder_info *reorder_bufs[WLHOST_REORDERDATA_MAXFLOWS];
+	char  fw_capabilities[WLC_IOCTL_SMLEN];
 #ifdef RXFRAME_THREAD
 #define MAXSKBPEND 1024
 	void *skbbuf[MAXSKBPEND];
@@ -317,9 +342,6 @@ typedef struct dhd_pub {
 #endif /* DHDTCPACK_SUPPRESS */
 #if defined(ARP_OFFLOAD_SUPPORT)
 	uint32 arp_version;
-#endif
-#if defined(BCMSUP_4WAY_HANDSHAKE) && defined(WLAN_AKM_SUITE_FT_8021X)
-	bool fw_4way_handshake;		/* Whether firmware will to do the 4way handshake. */
 #endif
 } dhd_pub_t;
 
@@ -429,11 +451,6 @@ inline static void MUTEX_UNLOCK_SOFTAP_SET(dhd_pub_t * dhdp)
 void dhd_net_if_lock(struct net_device *dev);
 void dhd_net_if_unlock(struct net_device *dev);
 
-#if defined(MULTIPLE_SUPPLICANT)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25)) && 1 && 1
-extern struct mutex _dhd_sdio_mutex_lock_;
-#endif
-#endif /* MULTIPLE_SUPPLICANT */
 
 typedef struct dhd_if_event {
 	uint8 ifidx;
@@ -959,7 +976,7 @@ extern void dhd_wait_event_wakeup(dhd_pub_t*dhd);
 	NdisStallExecution(1);
 #define IFUNLOCK(lock)  InterlockedExchange((lock), 0)
 #define IFLOCK_FREE(lock)
-
+#define FW_SUPPORTED(dhd, capa) ((strstr(dhd->fw_capabilities, #capa) != NULL))
 #ifdef PNO_SUPPORT
 extern int dhd_pno_enable(dhd_pub_t *dhd, int pfn_enabled);
 extern int dhd_pnoenable(dhd_pub_t *dhd, int pfn_enabled);
@@ -984,6 +1001,10 @@ int dhd_arp_get_arp_hostip_table(dhd_pub_t *dhd, void *buf, int buflen, int idx)
 void dhd_arp_offload_add_ip(dhd_pub_t *dhd, uint32 ipaddr, int idx);
 #endif /* ARP_OFFLOAD_SUPPORT */
 
+/* Neighbor Discovery Offload Support */
+int dhd_ndo_enable(dhd_pub_t * dhd, int ndo_enable);
+int dhd_ndo_add_ip(dhd_pub_t *dhd, char* ipaddr, int idx);
+int dhd_ndo_remove_ip(dhd_pub_t *dhd, int idx);
 /* ioctl processing for nl80211 */
 int dhd_ioctl_process(dhd_pub_t *pub, int ifidx, struct dhd_ioctl *ioc);
 
@@ -991,7 +1012,4 @@ void dhd_set_bus_state(void *bus, uint32 state);
 
 /* Remove proper pkts(either one no-frag pkt or whole fragmented pkts) */
 extern bool dhd_prec_drop_pkts(osl_t *osh, struct pktq *pq, int prec);
-#ifdef SUPPORT_MULTIPLE_CHIPSET
-extern int concate_chipset(char *_fw_path, int fw_path_len, char *_nv_path, int nv_path_len);
-#endif /* SUPPORT_MULTIPLE_CHIPSET */
 #endif /* _dhd_h_ */

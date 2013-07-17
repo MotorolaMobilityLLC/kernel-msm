@@ -2,9 +2,27 @@
  * Linux-specific abstractions to gain some independence from linux kernel versions.
  * Pave over some 2.2 versus 2.4 versus 2.6 kernel differences.
  *
- * $Copyright Open Broadcom Corporation$
+ * Copyright (C) 1999-2013, Broadcom Corporation
+ * 
+ *      Unless you and Broadcom execute a separate written software license
+ * agreement governing use of this software, this software is licensed to you
+ * under the terms of the GNU General Public License version 2 (the "GPL"),
+ * available at http://www.broadcom.com/licenses/GPLv2.php, with the
+ * following added to such license:
+ * 
+ *      As a special exception, the copyright holders of this software give you
+ * permission to link this software with independent modules, and to copy and
+ * distribute the resulting executable under terms of your choice, provided that
+ * you also meet, for each linked independent module, the terms and conditions of
+ * the license of that module.  An independent module is a module which is not
+ * derived from this software.  The special exception does not apply to any
+ * modifications of the software.
+ * 
+ *      Notwithstanding the above, under no circumstances may you combine this
+ * software in any way with any other Broadcom software provided under a license
+ * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linuxver.h 397171 2013-04-17 14:22:23Z $
+ * $Id: linuxver.h 407802 2013-06-14 13:59:38Z $
  */
 
 #ifndef _linuxver_h_
@@ -19,17 +37,17 @@
 #else
 #include <linux/autoconf.h>
 #endif
-#endif 
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)) */
 #include <linux/module.h>
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0))
-
+/* __NO_VERSION__ must be defined for all linkables except one in 2.2 */
 #ifdef __UNDEF_NO_VERSION__
 #undef __NO_VERSION__
 #else
 #define __NO_VERSION__
 #endif
-#endif	
+#endif	/* LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 5, 0)
 #define module_param(_name_, _type_, _perm_)	MODULE_PARM(_name_, "i")
@@ -37,7 +55,7 @@
 		MODULE_PARM(_string_, "c" __MODULE_STRING(_size_))
 #endif
 
-
+/* linux/malloc.h is deprecated, use linux/slab.h instead. */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 9))
 #include <linux/malloc.h>
 #else
@@ -50,15 +68,16 @@
 #include <linux/string.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
+#include <linux/kthread.h>
 #include <linux/netdevice.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 #include <linux/semaphore.h>
 #else
 #include <asm/semaphore.h>
-#endif 
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28))
 #undef IP_TOS
-#endif 
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28)) */
 #include <asm/io.h>
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 41))
@@ -77,7 +96,7 @@
 #ifndef flush_scheduled_work
 #define flush_scheduled_work() flush_scheduled_tasks()
 #endif
-#endif	
+#endif	/* LINUX_VERSION_CODE > KERNEL_VERSION(2, 5, 41) */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 #define DAEMONIZE(a)
@@ -86,14 +105,14 @@
 #define DAEMONIZE(a) daemonize(a); \
 	allow_signal(SIGKILL); \
 	allow_signal(SIGTERM);
-#else 
+#else /* Linux 2.4 (w/o preemption patch) */
 #define RAISE_RX_SOFTIRQ() \
 	cpu_raise_softirq(smp_processor_id(), NET_RX_SOFTIRQ)
 #define DAEMONIZE(a) daemonize(); \
 	do { if (a) \
 		strncpy(current->comm, a, MIN(sizeof(current->comm), (strlen(a)))); \
 	} while (0);
-#endif 
+#endif /* LINUX_VERSION_CODE  */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
 #define	MY_INIT_WORK(_work, _func)	INIT_WORK(_work, _func)
@@ -101,13 +120,13 @@
 #define	MY_INIT_WORK(_work, _func)	INIT_WORK(_work, _func, _work)
 #if !(LINUX_VERSION_CODE == KERNEL_VERSION(2, 6, 18) && defined(RHEL_MAJOR) && \
 	(RHEL_MAJOR == 5))
-
+/* Exclude RHEL 5 */
 typedef void (*work_func_t)(void *work);
 #endif
-#endif	
+#endif	/* >= 2.6.20 */
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
-
+/* Some distributions have their own 2.6.x compatibility layers */
 #ifndef IRQ_NONE
 typedef void irqreturn_t;
 #define IRQ_NONE
@@ -116,26 +135,30 @@ typedef void irqreturn_t;
 #endif
 #else
 typedef irqreturn_t(*FN_ISR) (int irq, void *dev_id, struct pt_regs *ptregs);
-#endif	
+#endif	/* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0) */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18)
 #define IRQF_SHARED	SA_SHIRQ
-#endif 
+#endif /* < 2.6.18 */
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 17)
 #ifdef	CONFIG_NET_RADIO
 #define	CONFIG_WIRELESS_EXT
 #endif
-#endif	
+#endif	/* < 2.6.17 */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 67)
 #define MOD_INC_USE_COUNT
 #define MOD_DEC_USE_COUNT
-#endif 
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 5, 67) */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32)
 #include <linux/sched.h>
-#endif
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) */
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0))
+#include <linux/sched/rt.h>
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0) */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 29)
 #include <net/lib80211.h>
@@ -146,8 +169,7 @@ typedef irqreturn_t(*FN_ISR) (int irq, void *dev_id, struct pt_regs *ptregs);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 14)
 #include <net/ieee80211.h>
 #endif
-#endif 
-
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 30) */
 
 
 #ifndef __exit
@@ -171,35 +193,39 @@ typedef irqreturn_t(*FN_ISR) (int irq, void *dev_id, struct pt_regs *ptregs);
 #define pci_get_drvdata(dev)		(dev)->sysdata
 #define pci_set_drvdata(dev, value)	(dev)->sysdata = (value)
 
-
+/*
+ * New-style (2.4.x) PCI/hot-pluggable PCI/CardBus registration
+ */
 
 struct pci_device_id {
-	unsigned int vendor, device;		
-	unsigned int subvendor, subdevice;	
-	unsigned int class, class_mask;		
-	unsigned long driver_data;		
+	unsigned int vendor, device;		/* Vendor and device ID or PCI_ANY_ID */
+	unsigned int subvendor, subdevice;	/* Subsystem ID's or PCI_ANY_ID */
+	unsigned int class, class_mask;		/* (class,subclass,prog-if) triplet */
+	unsigned long driver_data;		/* Data private to the driver */
 };
 
 struct pci_driver {
 	struct list_head node;
 	char *name;
-	const struct pci_device_id *id_table;	
+	const struct pci_device_id *id_table;	/* NULL if wants all devices */
 	int (*probe)(struct pci_dev *dev,
-	             const struct pci_device_id *id); 
-	void (*remove)(struct pci_dev *dev);	
-	void (*suspend)(struct pci_dev *dev);	
-	void (*resume)(struct pci_dev *dev);	
+	             const struct pci_device_id *id); /* New device inserted */
+	void (*remove)(struct pci_dev *dev);	/* Device removed (NULL if not a hot-plug
+						 * capable driver)
+						 */
+	void (*suspend)(struct pci_dev *dev);	/* Device suspended */
+	void (*resume)(struct pci_dev *dev);	/* Device woken up */
 };
 
 #define MODULE_DEVICE_TABLE(type, name)
 #define PCI_ANY_ID (~0)
 
-
+/* compatpci.c */
 #define pci_module_init pci_register_driver
 extern int pci_register_driver(struct pci_driver *drv);
 extern void pci_unregister_driver(struct pci_driver *drv);
 
-#endif 
+#endif /* PCI registration */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 18))
 #define pci_module_init pci_register_driver
@@ -213,7 +239,7 @@ extern void pci_unregister_driver(struct pci_driver *drv);
 #define module_init(x)	__initcall(x);
 #define module_exit(x)	__exitcall(x);
 #endif
-#endif	
+#endif	/* LINUX_VERSION_CODE < KERNEL_VERSION(2, 2, 18) */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31)
 #define WL_USE_NETDEV_OPS
@@ -248,7 +274,11 @@ extern void pci_unregister_driver(struct pci_driver *drv);
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 42))
 
-
+/*
+ * DMA mapping
+ *
+ * See linux/Documentation/DMA-mapping.txt
+ */
 
 #ifndef PCI_DMA_TODEVICE
 #define	PCI_DMA_TODEVICE	1
@@ -257,7 +287,7 @@ extern void pci_unregister_driver(struct pci_driver *drv);
 
 typedef u32 dma_addr_t;
 
-
+/* Pure 2^n version of get_order */
 static inline int get_order(unsigned long size)
 {
 	int order;
@@ -293,17 +323,26 @@ static inline void pci_free_consistent(struct pci_dev *hwdev, size_t size,
 #define pci_map_single(cookie, address, size, dir)	virt_to_bus(address)
 #define pci_unmap_single(cookie, address, size, dir)
 
-#endif 
+#endif /* DMA mapping */
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 3, 43))
 
 #define dev_kfree_skb_any(a)		dev_kfree_skb(a)
 #define netif_down(dev)			do { (dev)->start = 0; } while (0)
 
-
+/* pcmcia-cs provides its own netdevice compatibility layer */
 #ifndef _COMPAT_NETDEVICE_H
 
-
+/*
+ * SoftNet
+ *
+ * For pre-softnet kernels we need to tell the upper layer not to
+ * re-enter start_xmit() while we are in there. However softnet
+ * guarantees not to enter while we are in there so there is no need
+ * to do the netif_stop_queue() dance unless the transmit queue really
+ * gets stuck. This should also improve performance according to tests
+ * done by Aman Singla.
+ */
 
 #define dev_kfree_skb_irq(a)	dev_kfree_skb(a)
 #define netif_wake_queue(dev) \
@@ -320,12 +359,12 @@ static inline void netif_start_queue(struct net_device *dev)
 #define netif_queue_stopped(dev)	(dev)->tbusy
 #define netif_running(dev)		(dev)->start
 
-#endif 
+#endif /* _COMPAT_NETDEVICE_H */
 
 #define netif_device_attach(dev)	netif_start_queue(dev)
 #define netif_device_detach(dev)	netif_stop_queue(dev)
 
-
+/* 2.4.x renamed bottom halves to tasklets */
 #define tasklet_struct				tq_struct
 static inline void tasklet_schedule(struct tasklet_struct *tasklet)
 {
@@ -344,25 +383,29 @@ static inline void tasklet_init(struct tasklet_struct *tasklet,
 }
 #define tasklet_kill(tasklet)	{ do {} while (0); }
 
-
+/* 2.4.x introduced del_timer_sync() */
 #define del_timer_sync(timer) del_timer(timer)
 
 #else
 
 #define netif_down(dev)
 
-#endif 
+#endif /* SoftNet */
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 3))
 
-
+/*
+ * Emit code to initialise a tq_struct's routine and data pointers
+ */
 #define PREPARE_TQUEUE(_tq, _routine, _data)			\
 	do {							\
 		(_tq)->routine = _routine;			\
 		(_tq)->data = _data;				\
 	} while (0)
 
-
+/*
+ * Emit code to initialise all of a tq_struct
+ */
 #define INIT_TQUEUE(_tq, _routine, _data)			\
 	do {							\
 		INIT_LIST_HEAD(&(_tq)->list);			\
@@ -370,9 +413,9 @@ static inline void tasklet_init(struct tasklet_struct *tasklet,
 		PREPARE_TQUEUE((_tq), (_routine), (_data));	\
 	} while (0)
 
-#endif	
+#endif	/* LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 3) */
 
-
+/* Power management related macro & routines */
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 9)
 #define	PCI_SAVE_STATE(a, b)	pci_save_state(a)
 #define	PCI_RESTORE_STATE(a, b)	pci_restore_state(a)
@@ -402,7 +445,12 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 		for (i = 0; i < 16; i++)
 			pci_write_config_dword(dev, i * 4, buffer[i]);
 	}
-	
+	/*
+	 * otherwise, write the context information we know from bootup.
+	 * This works around a problem where warm-booting from Windows
+	 * combined with a D3(hot)->D0 transition causes PCI config
+	 * header data to be forgotten.
+	 */
 	else {
 		for (i = 0; i < 6; i ++)
 			pci_write_config_dword(dev,
@@ -412,14 +460,14 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 	}
 	return 0;
 }
-#endif 
+#endif /* PCI power management */
 
-
+/* Old cp0 access macros deprecated in 2.4.19 */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 19))
 #define read_c0_count() read_32bit_cp0_register(CP0_COUNT)
 #endif
 
-
+/* Module refcount handled internally in 2.6.x */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24))
 #ifndef SET_MODULE_OWNER
 #define SET_MODULE_OWNER(dev)		do {} while (0)
@@ -429,7 +477,7 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 #define OLD_MOD_INC_USE_COUNT		do {} while (0)
 #define OLD_MOD_DEC_USE_COUNT		do {} while (0)
 #endif
-#else 
+#else /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24) */
 #ifndef SET_MODULE_OWNER
 #define SET_MODULE_OWNER(dev)		do {} while (0)
 #endif
@@ -441,7 +489,7 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 #endif
 #define OLD_MOD_INC_USE_COUNT		MOD_INC_USE_COUNT
 #define OLD_MOD_DEC_USE_COUNT		MOD_DEC_USE_COUNT
-#endif 
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24) */
 
 #ifndef SET_NETDEV_DEV
 #define SET_NETDEV_DEV(net, pdev)	do {} while (0)
@@ -451,14 +499,14 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 #ifndef HAVE_FREE_NETDEV
 #define free_netdev(dev)		kfree(dev)
 #endif
-#endif 
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3, 1, 0) */
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
-
+/* struct packet_type redefined in 2.6.x */
 #define af_packet_priv			data
 #endif
 
-
+/* suspend args */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 11)
 #define DRV_SUSPEND_STATE_TYPE pm_message_t
 #else
@@ -470,19 +518,19 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 #endif
 
 typedef struct {
-	void 	*parent;  
+	void 	*parent;  /* some external entity that the thread supposed to work for */
 	char 	*proc_name;
 	struct	task_struct *p_task;
 	long 	thr_pid;
-	int 	prio; 
+	int 	prio; /* priority */
 	struct	semaphore sema;
 	int	terminated;
 	struct	completion completed;
 } tsk_ctl_t;
 
 
-
-
+/* requires  tsk_ctl_t tsk  argument, the caller's priv data is passed in owner ptr */
+/* note this macro assumes there may be only one context waiting on thread's completion */
 #ifdef DHD_DEBUG
 #define DBG_THR(x) printk x
 #else
@@ -495,8 +543,6 @@ typedef struct {
 #define SMP_RD_BARRIER_DEPENDS(x) smp_rmb(x)
 #endif
 
-#ifdef USE_KTHREAD_API
-#include <linux/kthread.h>
 #define PROC_START(thread_func, owner, tsk_ctl, flags, name) \
 { \
 	sema_init(&((tsk_ctl)->sema), 0); \
@@ -509,21 +555,6 @@ typedef struct {
 	DBG_THR(("%s(): thread:%s:%lx started\n", __FUNCTION__, \
 		(tsk_ctl)->proc_name, (tsk_ctl)->thr_pid)); \
 }
-#else
-#define PROC_START(thread_func, owner, tsk_ctl, flags, name) \
-{ \
-	sema_init(&((tsk_ctl)->sema), 0); \
-	init_completion(&((tsk_ctl)->completed)); \
-	(tsk_ctl)->parent = owner; \
-	(tsk_ctl)->proc_name = name;  \
-	(tsk_ctl)->terminated = FALSE; \
-	(tsk_ctl)->thr_pid = kernel_thread(thread_func, tsk_ctl, flags); \
-	if ((tsk_ctl)->thr_pid > 0) \
-		wait_for_completion(&((tsk_ctl)->completed)); \
-	DBG_THR(("%s(): thread:%s:%lx started\n", __FUNCTION__, \
-		(tsk_ctl)->proc_name, (tsk_ctl)->thr_pid)); \
-}
-#endif 
 
 #define PROC_STOP(tsk_ctl) \
 { \
@@ -536,7 +567,7 @@ typedef struct {
 	(tsk_ctl)->thr_pid = -1; \
 }
 
-
+/*  ----------------------- */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31))
 #define KILL_PROC(nr, sig) \
@@ -562,7 +593,7 @@ if (tsk) send_sig(sig, tsk, 1); \
 	kill_proc(pid, sig, 1); \
 }
 #endif
-#endif 
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 31) */
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
 #include <linux/time.h>
@@ -601,9 +632,14 @@ do {									\
 	__ret;								\
 })
 
-#endif 
+#endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)) */
 
-
+/*
+For < 2.6.24, wl creates its own netdev but doesn't
+align the priv area like the genuine alloc_netdev().
+Since netdev_priv() always gives us the aligned address, it will
+not match our unaligned address for < 2.6.24
+*/
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 24))
 #define DEV_PRIV(dev)	(dev->priv)
 #else
@@ -614,10 +650,22 @@ do {									\
 #define WL_ISR(i, d, p)         wl_isr((i), (d))
 #else
 #define WL_ISR(i, d, p)         wl_isr((i), (d), (p))
-#endif  
+#endif  /* < 2.6.20 */
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 #define netdev_priv(dev) dev->priv
-#endif 
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)) */
 
-#endif 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define RANDOM32	prandom_u32
+#else
+#define RANDOM32	random32
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0) */
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
+#define SRANDOM32(entropy)	prandom_seed(entropy)
+#else
+#define SRANDOM32(entropy)	srandom32(entropy)
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0) */
+
+#endif /* _linuxver_h_ */
