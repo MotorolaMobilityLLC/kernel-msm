@@ -4201,7 +4201,8 @@ typedef PACKED_PRE struct PACKED_POST
     tANI_U32             bRssiThres3PosCross : 1;
     tANI_U32             bRssiThres3NegCross : 1;
     tANI_U32             avgRssi             : 8;
-    tANI_U32             bReserved           : 18;
+    tANI_U32             uBssIdx             : 8;
+    tANI_U32             bReserved           : 10;
 } tHalRSSINotification, *tpHalRSSINotification;
 
 typedef PACKED_PRE struct PACKED_POST
