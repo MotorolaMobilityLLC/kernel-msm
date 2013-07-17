@@ -4814,20 +4814,10 @@ err_out:
 	return -EINVAL;
 }
 
-#define XO_BUF_ADDR 0x11A
 static void pm8921_chg_force_19p2mhz_clk(struct pm8921_chg_chip *chip)
 {
 	int err;
 	u8 temp;
-
-	/* Enable D1 XO Buffer */
-	/* Prevents PMIC Latchup */
-	err = pm8xxx_writeb(chip->dev->parent, XO_BUF_ADDR, 0x44);
-	if (err) {
-		pr_err("Error %d writing %d to addr %d\n", err, 0x44,
-		       XO_BUF_ADDR);
-		return;
-	}
 
 	temp  = 0xD1;
 	err = pm_chg_write(chip, CHG_TEST, temp);
@@ -4885,15 +4875,6 @@ static void pm8921_chg_force_19p2mhz_clk(struct pm8921_chg_chip *chip)
 	err = pm_chg_write(chip, CHG_TEST, temp);
 	if (err) {
 		pr_err("Error %d writing %d to addr %d\n", err, temp, CHG_TEST);
-		return;
-	}
-
-	/* Disable D1 XO Buffer */
-	/* Prevents PMIC Latchup */
-	err = pm8xxx_writeb(chip->dev->parent, XO_BUF_ADDR, 0x45);
-	if (err) {
-		pr_err("Error %d writing %d to addr %d\n", err, 0x45,
-		       XO_BUF_ADDR);
 		return;
 	}
 }
