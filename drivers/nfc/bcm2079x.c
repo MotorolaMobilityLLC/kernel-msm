@@ -39,6 +39,7 @@
 #include <linux/of_gpio.h>
 #include <linux/nfc/bcm2079x.h>
 #include <linux/wakelock.h>
+#include <linux/async.h>
 
 /* do not change below */
 #define MAX_BUFFER_SIZE		780
@@ -456,9 +457,17 @@ static struct i2c_driver bcm2079x_driver = {
  * module load/unload record keeping
  */
 
+static void __init bcm2079x_dev_init_async(void *data, async_cookie_t cookie)
+{
+	int ret = i2c_add_driver(&bcm2079x_driver);
+	if (ret)
+		pr_err("%s: i2c_add_driver failed ret=%d\n", __func__, ret);
+}
+
 static int __init bcm2079x_dev_init(void)
 {
-	return i2c_add_driver(&bcm2079x_driver);
+	async_schedule(bcm2079x_dev_init_async, NULL);
+	return 0;
 }
 module_init(bcm2079x_dev_init);
 
