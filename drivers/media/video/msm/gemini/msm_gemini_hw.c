@@ -499,50 +499,6 @@ int msm_gemini_hw_exec_cmds(struct msm_gemini_hw_cmd *hw_cmd_p, uint32_t m_cmds)
 	return is_copy_to_user;
 }
 
-void msm_gemini_hw_region_dump(uint32_t size)
-{
-	uint32_t *p;
-	uint8_t *p8;
-
-	if (size > gemini_region_size) {
-		GMN_PR_ERR("%s:%d] wrong region dump size\n",
-			__func__, __LINE__);
-		return;
-	}
-	if (!gemini_region_base) {
-		GMN_PR_ERR("%s:%d] gemini region not setup yet\n",
-			__func__, __LINE__);
-		return;
-	}
-
-	p = (uint32_t *) gemini_region_base;
-	while (size >= 16) {
-		GMN_DBG("0x%08X] %08X %08X %08X %08X\n",
-			gemini_region_size - size,
-			readl(p), readl(p+1), readl(p+2), readl(p+3));
-		p += 4;
-		size -= 16;
-	}
-
-	if (size > 0) {
-		uint32_t d;
-		GMN_DBG("0x%08X] ", gemini_region_size - size);
-		while (size >= 4) {
-			GMN_DBG("%08X ", readl(p++));
-			size -= 4;
-		}
-
-		d = readl(p);
-		p8 = (uint8_t *) &d;
-		while (size) {
-			GMN_DBG("%02X", *p8++);
-			size--;
-		}
-
-		GMN_DBG("\n");
-	}
-}
-
 void msm_gemini_io_dump(int size)
 {
 	char line_str[128], *p_str;
