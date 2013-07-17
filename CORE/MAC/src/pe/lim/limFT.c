@@ -956,8 +956,9 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
     PELOGE(limLog( pMac, LOGE, "Posted Auth Rsp to SME with status of 0x%x", status);)
 #endif
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
-    if( status == eHAL_STATUS_SUCCESS )
-        limDiagEventReport(pMac, WLAN_PE_DIAG_PREAUTH_DONE, psessionEntry, status, 0);
+    if (status == eSIR_SUCCESS)
+        limDiagEventReport(pMac, WLAN_PE_DIAG_PREAUTH_DONE, psessionEntry,
+                           status, 0);
 #endif
     limSysProcessMmhMsgApi(pMac, &mmhMsg,  ePROT);
 }
