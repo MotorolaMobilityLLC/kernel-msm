@@ -1056,7 +1056,7 @@ config MFD_FLORIDA
 	  such as the WM8280
 
 config MFD_WM8997
-	bool "Support Wolfson Microelectronics WM8997"
+	bool "Wolfson Microelectronics WM8997"
 	depends on MFD_ARIZONA
 	help
 	  Support for Wolfson Microelectronics WM8997 low power audio SoC
