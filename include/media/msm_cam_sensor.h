@@ -215,6 +215,11 @@ struct camera_vreg_t {
 	enum camera_vreg_type type;
 };
 
+struct var_fps_range_t {
+	uint16_t min_fps;
+	uint16_t max_fps;
+};
+
 struct sensorb_cfg_data {
 	int cfgtype;
 	union {
@@ -401,6 +406,7 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_AUTOFOCUS,
 	CFG_CANCEL_AUTOFOCUS,
 	CFG_SET_STREAM_TYPE,
+	CFG_SET_FPS_RANGE,
 };
 
 enum msm_actuator_cfg_type_t {
