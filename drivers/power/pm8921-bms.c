@@ -2016,6 +2016,7 @@ static void backup_soc_and_iavg(struct pm8921_bms_chip *chip, int batt_temp,
 				int soc)
 {
 	u8 temp;
+#ifndef CONFIG_PM8921_EXTENDED_INFO
 	int iavg_ma = chip->prev_uuc_iavg_ma;
 
 	if (iavg_ma > IAVG_START)
@@ -2025,6 +2026,7 @@ static void backup_soc_and_iavg(struct pm8921_bms_chip *chip, int batt_temp,
 
 	pm_bms_masked_write(chip, TEMP_IAVG_STORAGE,
 			TEMP_IAVG_STORAGE_USE_MASK, temp);
+#endif
 
 	/* since only 6 bits are available for SOC, we store half the soc */
 	if (soc == 0)
@@ -2042,6 +2044,7 @@ static void read_shutdown_soc_and_iavg(struct pm8921_bms_chip *chip)
 	int rc;
 	u8 temp;
 
+#ifndef CONFIG_PM8921_EXTENDED_INFO
 	rc = pm8xxx_readb(chip->dev->parent, TEMP_IAVG_STORAGE, &temp);
 	if (rc) {
 		pr_err("failed to read addr = %d %d assuming %d\n",
@@ -2057,6 +2060,9 @@ static void read_shutdown_soc_and_iavg(struct pm8921_bms_chip *chip)
 					+ IAVG_STEP_SIZE_MA * (temp + 1);
 		}
 	}
+#else
+	chip->shutdown_iavg_ua = 0;
+#endif
 
 	rc = pm8xxx_readb(chip->dev->parent, TEMP_SOC_STORAGE, &temp);
 	if (rc) {
