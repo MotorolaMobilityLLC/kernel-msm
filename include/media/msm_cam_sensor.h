@@ -356,6 +356,11 @@ struct msm_sensor_init_params {
 	uint32_t            sensor_mount_angle;
 };
 
+struct var_fps_range_t {
+	uint16_t min_fps;
+	uint16_t max_fps;
+};
+
 struct sensorb_cfg_data {
 	int cfgtype;
 	union {
@@ -442,6 +447,7 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_GAMMA,
 	CFG_SET_LENS_SHADING,
 	CFG_SET_TARGET_EXPOSURE,
+	CFG_SET_FPS_RANGE,
 };
 
 enum msm_actuator_cfg_type_t {
