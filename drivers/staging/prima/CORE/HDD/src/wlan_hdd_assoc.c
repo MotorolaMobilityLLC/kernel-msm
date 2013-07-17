@@ -2202,6 +2202,7 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                 }
             }
             pHddStaCtx->ft_carrier_on = TRUE;
+            pHddStaCtx->hdd_ReassocScenario = VOS_TRUE;
             break;
 #endif
 
@@ -2309,7 +2310,43 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             break;
 
         case eCSR_ROAM_SET_KEY_COMPLETE:
-            halStatus = hdd_RoamSetKeyCompleteHandler( pAdapter, pRoamInfo, roamId, roamStatus, roamResult );
+            {
+                hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
+
+                if((pHddCtx) &&
+                   (pHddCtx->cfg_ini->enableDynamicDTIM ||
+                     pHddCtx->cfg_ini->enableModulatedDTIM) &&
+                   (WLAN_HDD_INFRA_STATION == pAdapter->device_mode) &&
+                   (eANI_BOOLEAN_TRUE == pAdapter->higherDtimTransition) &&
+                   (pHddCtx->cfg_ini->fIsBmpsEnabled) &&
+                   (VOS_TRUE == pHddStaCtx->hdd_ReassocScenario) &&
+                   (TRUE == pHddCtx->hdd_wlan_suspended) &&
+                   (eCSR_ROAM_RESULT_NONE == roamResult))
+                {
+                    /* Send DTIM period to the FW; only if the wlan is already in suspend
+                       This is the case with roaming (reassoc), DELETE_BSS_REQ zeroes out
+                       Modulated/Dynamic DTIM sent in previous suspend_wlan.
+                       Sending SET_POWER_PARAMS_REQ before the ENTER_BMPS_REQ ensures
+                       Listen Interval is regained back to LI * Modulated DTIM */
+                    hdd_set_pwrparams(pHddCtx);
+                    pHddStaCtx->hdd_ReassocScenario = VOS_FALSE;
+
+                    /* At this point, device should not be in BMPS;
+                       if due to unexpected scenario, if we are in BMPS, then trigger
+                       Exit and Enter BMPS to take DTIM period effective */
+                    if (BMPS == pmcGetPmcState(pHddCtx->hHal))
+                    {
+                        hddLog( LOGE, FL("Not expected: device is already in BMPS mode, Exit & Enter BMPS again!"));
+
+                        /* put the device into full power */
+                        wlan_hdd_enter_bmps(pAdapter, DRIVER_POWER_MODE_ACTIVE);
+
+                        /* put the device back into BMPS */
+                        wlan_hdd_enter_bmps(pAdapter, DRIVER_POWER_MODE_AUTO);
+                    }
+                }
+                halStatus = hdd_RoamSetKeyCompleteHandler( pAdapter, pRoamInfo, roamId, roamStatus, roamResult );
+            }
             break;
 #ifdef WLAN_FEATURE_VOWIFI_11R
         case eCSR_ROAM_FT_RESPONSE:

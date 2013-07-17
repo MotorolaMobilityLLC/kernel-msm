@@ -531,6 +531,7 @@ struct hdd_station_ctx
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
    hddGtkOffloadParams gtkOffloadRequestParams;
 #endif
+   v_BOOL_t hdd_ReassocScenario;
 };
 
 #define BSS_STOP    0 
