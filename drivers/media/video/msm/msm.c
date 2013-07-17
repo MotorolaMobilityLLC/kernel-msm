@@ -454,12 +454,14 @@ static int msm_camera_v4l2_streamoff(struct file *f, void *pctx,
 	if (msm_server_get_usecount() > 0)
 		rc = msm_server_streamoff(pcam, pcam_inst->my_index);
 
-	if (rc < 0)
-		pr_err("%s: hw failed to stop streaming\n", __func__);
-
-	/* stop buffer streaming */
-	rc = vb2_streamoff(&pcam_inst->vid_bufq, buf_type);
-	D("%s, videobuf_streamoff returns %d\n", __func__, rc);
+	if (rc < 0) {
+		pr_err("%s: hw failed to stop streaming, skip buffer release\n", __func__);
+		pcam_inst->skip_queue_release = 1;
+	} else {
+		/* stop buffer streaming */
+		rc = vb2_streamoff(&pcam_inst->vid_bufq, buf_type);
+		D("%s, videobuf_streamoff returns %d\n", __func__, rc);
+	}
 
 	mutex_unlock(&pcam_inst->inst_lock);
 	mutex_unlock(&pcam->vid_lock);
@@ -1146,7 +1148,7 @@ static int msm_close(struct file *f)
 	pcam_inst->streamon = 0;
 	pcam->use_count--;
 	pcam->dev_inst_map[pcam_inst->image_mode] = NULL;
-	if (pcam_inst->vbqueue_initialized)
+	if (pcam_inst->vbqueue_initialized && !pcam_inst->skip_queue_release)
 		vb2_queue_release(&pcam_inst->vid_bufq);
 	D("%s Closing down instance %p ", __func__, pcam_inst);
 	D("%s index %d nodeid %d count %d\n", __func__, pcam_inst->my_index,
