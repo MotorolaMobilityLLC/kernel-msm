@@ -472,3 +472,5 @@ extern struct platform_device bmdm_8064_device;
 
 extern struct platform_device sglte_mdm_8064_device;
 extern struct platform_device sglte2_qsc_8064_device;
+
+extern struct dev_avtimer_data dev_avtimer_pdata;
