@@ -115,6 +115,8 @@ int pm8xxx_reset_pwr_off(int reset);
  */
 int pm8xxx_hw_reset_debounce_timer_set(unsigned char val);
 
+int pm8xxx_cal_rc1_rsv_set(unsigned char val);
+
 int pm8xxx_uart_gpio_mux_ctrl(enum pm8xxx_uart_path_sel uart_path_sel);
 
 /**
