@@ -86,7 +86,6 @@ static int voice_send_set_pp_enable_cmd(struct voice_data *v,
 					uint32_t module_id, int enable);
 
 static struct voice_data *voice_get_session_by_idx(int idx);
-static int voice_get_idx_for_session(u32 session_id);
 
 static u16 voice_get_mvm_handle(struct voice_data *v)
 {
@@ -231,7 +230,7 @@ static struct voice_data *voice_get_session(u32 session_id)
 	return v;
 }
 
-static int voice_get_idx_for_session(u32 session_id)
+int voice_get_idx_for_session(u32 session_id)
 {
 	int idx = 0;
 

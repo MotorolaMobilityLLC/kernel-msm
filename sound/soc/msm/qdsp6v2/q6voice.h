@@ -1372,4 +1372,6 @@ uint32_t voc_get_session_id(char *name);
 
 int voc_start_playback(uint32_t set);
 int voc_start_record(uint32_t port_id, uint32_t set);
+int voice_get_idx_for_session(u32 session_id);
+
 #endif
