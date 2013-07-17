@@ -95,6 +95,10 @@
 #define PM8058_SMPS_ADVANCED_MODE		0x02
 #define PM8058_SMPS_LEGACY_MODE			0x00
 
+/* CAL_RC1 register */
+#define REG_PM8921_CAL_RC1_REG			0x105
+#define PM8921_CAL_RC1_RSV_MASK			0x0F
+
 /* SLEEP CTRL register */
 #define REG_PM8058_SLEEP_CTRL			0x02B
 #define REG_PM8921_SLEEP_CTRL			0x10A
@@ -588,6 +592,37 @@ int pm8xxx_hw_reset_debounce_timer_set(unsigned char val)
 	return rc;
 }
 EXPORT_SYMBOL_GPL(pm8xxx_hw_reset_debounce_timer_set);
+
+int pm8xxx_cal_rc1_rsv_set(unsigned char val)
+{
+	struct pm8xxx_misc_chip *chip;
+	unsigned long flags;
+	int rc = -1;
+
+	spin_lock_irqsave(&pm8xxx_misc_chips_lock, flags);
+
+	/* Loop over all attached PMICs and call specific functions for them. */
+	list_for_each_entry(chip, &pm8xxx_misc_chips, link) {
+		switch (chip->version) {
+		case PM8XXX_VERSION_8921:
+			rc = pm8xxx_misc_masked_write(chip,
+				REG_PM8921_CAL_RC1_REG,
+				PM8921_CAL_RC1_RSV_MASK,
+				val);
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (rc)
+		pr_err("pm8xxx_misc_masked_write failed, rc=%d\n", rc);
+
+	spin_unlock_irqrestore(&pm8xxx_misc_chips_lock, flags);
+
+	return rc;
+}
+EXPORT_SYMBOL_GPL(pm8xxx_cal_rc1_rsv_set);
 
 /**
  * pm8xxx_smpl_control - enables/disables SMPL detection
