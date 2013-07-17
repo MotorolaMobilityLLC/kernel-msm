@@ -1172,6 +1172,66 @@ static void __exit mt9m114_exit_module(void)
 	return;
 }
 
+static struct msm_camera_i2c_reg_conf mt9m114_15_15_fps_settings[] = {
+	{0xC810, 0x05BD,}, /*cam_sensor_cfg_fine_integ_time_max = 1469*/
+	{0xC812, 0x07D0,}, /*cam_sensor_cfg_frame_length_lines = 2000*/
+	{0xC814, 0x0640,}, /*cam_sensor_cfg_line_length_pclk = 1600*/
+	{0xC88C, 0x0F00,}, /*cam_aet_max_frame_rate = 3840*/
+	{0xC88E, 0x0F00,}, /*cam_aet_min_frame_rate = 3840*/
+};
+
+static struct msm_camera_i2c_reg_conf mt9m114_15_30_fps_settings[] = {
+	{0xC810, 0x05B3,}, /*cam_sensor_cfg_fine_integ_time_max = 1459*/
+	{0xC812, 0x03EE,}, /*cam_sensor_cfg_frame_length_lines = 1006*/
+	{0xC814, 0x0636,}, /*cam_sensor_cfg_line_length_pclk = 1590*/
+	{0xC88C, 0x1E02,}, /*cam_aet_max_frame_rate = 7682*/
+	{0xC88E, 0x0F00,}, /*cam_aet_min_frame_rate = 3840*/
+};
+
+static int32_t mt9m114_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
+		struct var_fps_range_t *fps_range)
+{
+	int32_t rc = 0;
+	static bool fps_15_30 = true;
+
+	if (fps_range->min_fps == 15 && fps_range->max_fps == 30) {
+		if (fps_15_30)
+			return rc;
+
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+			i2c_write_conf_tbl(
+					s_ctrl->sensor_i2c_client,
+					mt9m114_15_30_fps_settings,
+					ARRAY_SIZE(mt9m114_15_30_fps_settings),
+					MSM_CAMERA_I2C_WORD_DATA);
+		fps_15_30 = true;
+	} else if (fps_range->min_fps == 15 && fps_range->max_fps == 15) {
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+			i2c_write_conf_tbl(
+					s_ctrl->sensor_i2c_client,
+					mt9m114_15_15_fps_settings,
+					ARRAY_SIZE(mt9m114_15_15_fps_settings),
+					MSM_CAMERA_I2C_WORD_DATA);
+		fps_15_30 = false;
+	} else {
+		pr_err("%s: Invalid frame rate range!\n", __func__);
+		return -EINVAL;
+	}
+
+	if (rc) {
+		pr_err("%s: failed to set frame rate range (%d)\n",
+				__func__, rc);
+		return rc;
+	}
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
+			s_ctrl->sensor_i2c_client,
+			mt9m114_config_change_settings,
+			ARRAY_SIZE(mt9m114_config_change_settings),
+			MSM_CAMERA_I2C_WORD_DATA);
+	return rc;
+}
+
 int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	void __user *argp)
 {
@@ -1396,6 +1456,20 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			break;
 		case CFG_SET_ISO:
 			break;
+	case CFG_SET_FPS_RANGE: {
+		struct var_fps_range_t data;
+		if (copy_from_user(&data,
+			(void *)cdata->cfg.setting,
+			sizeof(data))) {
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+			rc = -EFAULT;
+			break;
+		}
+		CDBG("%s:%d CFG_SET_FPS_RANGE %u,%u\n", __func__,
+				__LINE__, data.min_fps, data.max_fps);
+		rc = mt9m114_set_frame_rate_range(s_ctrl, &data);
+		break;
+	}
 		default:
 		rc = -EFAULT;
 		break;
