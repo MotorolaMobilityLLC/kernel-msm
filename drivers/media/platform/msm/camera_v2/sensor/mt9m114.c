@@ -1515,6 +1515,60 @@ static int32_t mt9m114_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
+static struct msm_camera_i2c_reg_conf mt9m114_15_15_fps_settings[] = {
+	{0xC810, 0x05BD,}, /*cam_sensor_cfg_fine_integ_time_max = 1521*/
+	{0xC812, 0x07D0,}, /*cam_sensor_cfg_frame_length_lines = 1984*/
+	{0xC814, 0x0640,}, /*cam_sensor_cfg_line_length_pclk = 1652*/
+	{0xC88C, 0x0F00,}, /*cam_aet_max_frame_rate = 3840*/
+	{0xC88E, 0x0F00,}, /*cam_aet_min_frame_rate = 3840*/
+};
+
+static struct msm_camera_i2c_reg_conf mt9m114_15_30_fps_settings[] = {
+	{0xC810, 0x05B3,}, /*cam_sensor_cfg_fine_integ_time_max = 1473*/
+	{0xC812, 0x03EE,}, /*cam_sensor_cfg_frame_length_lines = 1011*/
+	{0xC814, 0x0636,}, /*cam_sensor_cfg_line_length_pclk = 1604*/
+	{0xC88C, 0x1E02,}, /*cam_aet_max_frame_rate = 7577*/
+	{0xC88E, 0x0F00,}, /*cam_aet_min_frame_rate = 3840*/
+};
+
+static int32_t mt9m114_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
+		struct var_fps_range_t *fps_range)
+{
+	int32_t rc = 0;
+
+	if (fps_range->min_fps == 15 && fps_range->max_fps == 15) {
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+			i2c_write_conf_tbl(
+					s_ctrl->sensor_i2c_client,
+					mt9m114_15_15_fps_settings,
+					ARRAY_SIZE(mt9m114_15_15_fps_settings),
+					MSM_CAMERA_I2C_WORD_DATA);
+	} else if (fps_range->min_fps == 15 && fps_range->max_fps == 30) {
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
+			i2c_write_conf_tbl(
+					s_ctrl->sensor_i2c_client,
+					mt9m114_15_30_fps_settings,
+					ARRAY_SIZE(mt9m114_15_30_fps_settings),
+					MSM_CAMERA_I2C_WORD_DATA);
+	} else {
+		pr_err("%s: Invalid frame rate range!\n", __func__);
+		return -EINVAL;
+	}
+
+	if (rc) {
+		pr_err("%s: failed to set frame rate range (%d)\n",
+				__func__, rc);
+		return rc;
+	}
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
+			s_ctrl->sensor_i2c_client,
+			mt9m114_config_change_settings,
+			ARRAY_SIZE(mt9m114_config_change_settings),
+			MSM_CAMERA_I2C_WORD_DATA);
+	return rc;
+}
+
 int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	void __user *argp)
 {
@@ -1872,6 +1926,20 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		CDBG("%s:%d CFG_SET_TARGET_EXPOSURE %d\n", __func__,
 				__LINE__, expo);
 		rc = mt9m114_set_target_exposure(s_ctrl, (int8_t)expo);
+		break;
+	}
+	case CFG_SET_FPS_RANGE: {
+		struct var_fps_range_t data;
+		if (copy_from_user(&data,
+			(void *)cdata->cfg.setting,
+			sizeof(data))) {
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+			rc = -EFAULT;
+			break;
+		}
+		CDBG("%s:%d CFG_SET_FPS_RANGE %u,%u\n", __func__,
+				__LINE__, data.min_fps, data.max_fps);
+		rc = mt9m114_set_frame_rate_range(s_ctrl, &data);
 		break;
 	}
 	default:
