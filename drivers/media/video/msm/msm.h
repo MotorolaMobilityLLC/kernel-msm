@@ -360,6 +360,7 @@ struct msm_cam_v4l2_dev_inst {
 	struct mutex inst_lock;
 	uint32_t inst_handle;
 	uint32_t sequence;
+	uint8_t skip_queue_release;
 };
 
 struct msm_cam_mctl_node {
