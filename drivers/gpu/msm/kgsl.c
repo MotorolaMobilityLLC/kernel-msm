@@ -723,8 +723,11 @@ void kgsl_late_resume_driver(struct early_suspend *h)
 	device->pwrctrl.restore_slumber = false;
 	if (device->pwrscale.policy == NULL)
 		kgsl_pwrctrl_pwrlevel_change(device, KGSL_PWRLEVEL_TURBO);
-	if (kgsl_pwrctrl_wake(device) != 0)
+
+	if (kgsl_pwrctrl_wake(device) != 0) {
+		mutex_unlock(&device->mutex);
 		return;
+	}
 	/*
 	 * We don't have a way to go directly from
 	 * a deeper sleep state to NAP, which is
