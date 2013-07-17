@@ -6780,6 +6780,15 @@ static const struct iw_priv_args we_private_args[] = {
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         0,
         "setMaxTxPower" },
+
+    /* SAP has TxMax whereas STA has MaxTx, adding TxMax for STA
+     * as well to keep same syntax as in SAP. Now onwards, STA
+     * will support both */
+    {   WE_SET_MAX_TX_POWER,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "setTxMaxPower" },
+
     /* set Higher DTIM Transition (DTIM1 to DTIM3)
      * 1 = enable and 0 = disable */
     {
