@@ -1666,7 +1666,7 @@ static int vfe32_start(
 static void vfe32_update(struct vfe32_ctrl_type *vfe32_ctrl)
 {
 	unsigned long flags;
-	uint32_t value = 0;
+	uint32_t value = 0, old_val = 0;
 	if (vfe32_ctrl->update_linear) {
 		if (!msm_camera_io_r(
 			vfe32_ctrl->share_ctrl->vfebase +
@@ -1708,6 +1708,16 @@ static void vfe32_update(struct vfe32_ctrl_type *vfe32_ctrl)
 		msm_camera_io_w(value,
 			vfe32_ctrl->share_ctrl->vfebase + V32_RGB_G_OFF);
 		vfe32_ctrl->update_gamma = false;
+	}
+
+	if (vfe32_ctrl->update_abcc) {
+		value = msm_camera_io_r(vfe32_ctrl->share_ctrl->vfebase + V32_DEMOSAICV3_0_OFF);
+		old_val = value & V33_ABCC_LUT_BANK_SEL_MASK;
+		value &= ~V33_ABCC_LUT_BANK_SEL_MASK;
+		value |= (old_val) ? 0x0 : 0x100;
+		CDBG("%s: ABCC update 0x%x 0x%x", __func__, value, old_val);
+		msm_camera_io_w(value, vfe32_ctrl->share_ctrl->vfebase + V32_DEMOSAICV3_0_OFF);
+		vfe32_ctrl->update_abcc = false;
 	}
 
 	spin_lock_irqsave(&vfe32_ctrl->share_ctrl->update_ack_lock, flags);
@@ -2038,6 +2048,7 @@ static int vfe32_proc_general(
 	uint32_t *cmdp_local = NULL;
 	uint32_t snapshot_cnt = 0;
 	uint32_t temp1 = 0, temp2 = 0;
+	uint32_t abcc_update = 0;
 	struct msm_camera_vfe_params_t vfe_params;
 
 	CDBG("vfe32_proc_general: cmdID = %s, length = %d\n",
@@ -2818,9 +2829,64 @@ static int vfe32_proc_general(
 			cmdp_local, 2 * V32_DEMOSAICV3_0_LEN);
 		break;
 
-	case VFE_CMD_DEMOSAICV3_ABCC_CFG:
-		rc = -EFAULT;
+	case VFE_CMD_DEMOSAICV3_ABCC_UPDATE:
+		abcc_update = TRUE;
+		/* fall through */
+	case VFE_CMD_DEMOSAICV3_ABCC_CFG: {
+		  enum VFE32_DMI_RAM_SEL dmi_sel = DEMOSAIC_LUT_RAM_BANK0;
+
+		  if (cmd->length != (V32_DEMOSAICV3_0_LEN +
+				 (V33_ABCC_LUT_TABLE_SIZE * sizeof(uint64_t)))) {
+				 CDBG("%s: invalid ABCC len %d", __func__,
+						cmd->length);
+				 rc = -EFAULT;
+				 goto proc_general_done;
+		  }
+
+		  cmdp = kmalloc(cmd->length, GFP_ATOMIC);
+		  if (!cmdp) {
+				 rc = -ENOMEM;
+				 goto proc_general_done;
+		  }
+		  if (copy_from_user(cmdp,
+				 (void __user *)(cmd->value) , cmd->length)) {
+				 rc = -EFAULT;
+				 goto proc_general_done;
+		  }
+
+		  cmdp_local = cmdp;
+		  new_val = *cmdp_local;
+
+		  old_val = msm_camera_io_r(vfe32_ctrl->share_ctrl->vfebase + V32_DEMOSAICV3_0_OFF);
+		  old_val &= ABCC_MASK;
+		  new_val = new_val | old_val;
+		  *cmdp_local = new_val;
+
+		  msm_camera_io_memcpy(vfe32_ctrl->share_ctrl->vfebase + V32_DEMOSAICV3_0_OFF,
+				 cmdp_local, V32_DEMOSAICV3_0_LEN);
+
+		  cmdp_local++;
+		  CDBG("%s: start ABCC table update %d cfg 0x%x 0x%x\n",
+				  __func__, abcc_update, old_val, new_val);
+		  if (abcc_update) {
+				 dmi_sel = (old_val & V33_ABCC_LUT_BANK_SEL_MASK) ?
+						DEMOSAIC_LUT_RAM_BANK0 :
+						DEMOSAIC_LUT_RAM_BANK1;
+		  }
+		  vfe32_program_dmi_cfg(dmi_sel, vfe32_ctrl);
+
+		  for (i = 0 ; i < V33_ABCC_LUT_TABLE_SIZE ; i++) {
+				 msm_camera_io_w(*(cmdp_local + 1),
+						vfe32_ctrl->share_ctrl->vfebase + VFE33_DMI_DATA_HI);
+				 msm_camera_io_w(*cmdp_local,
+						vfe32_ctrl->share_ctrl->vfebase + VFE33_DMI_DATA_LO);
+				 cmdp_local += 2;
+		  }
+		  vfe32_program_dmi_cfg(NO_MEM_SELECTED, vfe32_ctrl);
+		  vfe32_ctrl->update_abcc = abcc_update;
+		  CDBG("%s: end writing ABCC table\n", __func__);
 		break;
+	}
 
 	case VFE_CMD_DEMOSAICV3_ABF_UPDATE:/* 116 ABF update  */
 	case VFE_CMD_DEMOSAICV3_ABF_CFG: { /* 108 ABF config  */
@@ -6263,6 +6329,7 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd)
 	else
 		vfe32_ctrl->vfe_sof_count_enable = true;
 
+	vfe32_ctrl->update_abcc = false;
 	vfe32_ctrl->hfr_mode = HFR_MODE_OFF;
 	vfe32_ctrl->share_ctrl->rdi_comp = VFE_RDI_COMPOSITE;
 
