@@ -303,10 +303,6 @@
 	};
 };
 
-&sdcc1 {
-	status = "ok";
-};
-
 &sdcc2 {
 	#address-cells = <0>;
 	interrupt-parent = <&sdcc2>;
@@ -350,6 +346,28 @@
 
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
 	qcom,vdd-io-current-level = <6 22000>;
+	status = "ok";
+};
+
+&sdhc_1 {
+	vdd-supply = <&pm8941_l20>;
+	vdd-io-supply = <&pm8941_s3>;
+
+	qcom,vdd-always-on;
+	qcom,vdd-lpm-sup;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <800 500000>;
+
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <250 154000>;
+
+	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
+	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+
+	qcom,nonremovable;
 	status = "ok";
 };
 

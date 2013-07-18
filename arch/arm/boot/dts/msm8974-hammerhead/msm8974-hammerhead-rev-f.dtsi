@@ -71,7 +71,7 @@
 		2 &msmgpio 74 0x3>;
 };
 
-&sdcc1 {
+&sdhc_1 {
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000>;
 	qcom,bus-speed-mode = "DDR_1p8v";
 	qcom,msm-bus,num-cases = <7>;
