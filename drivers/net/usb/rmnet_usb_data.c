@@ -571,7 +571,7 @@ static int rmnet_usb_probe(struct usb_interface *iface,
 		device_set_wakeup_enable(&udev->parent->dev, 1);
 
 		/* set default autosuspend timeout for modem and roothub */
-		pm_runtime_set_autosuspend_delay(&udev->dev, 1000);
+		pm_runtime_set_autosuspend_delay(&udev->dev, 2000);
 		pm_runtime_set_autosuspend_delay(&udev->parent->dev, 200);
 	}
 
