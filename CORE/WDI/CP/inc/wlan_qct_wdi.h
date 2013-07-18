@@ -2165,8 +2165,8 @@ typedef struct
 ---------------------------------------------------------------------------*/
 typedef struct
 {
-   /*BSS Index of the BSS*/
-   wpt_uint8      ucBssIdx;
+  /*BSS Index of the BSS*/
+  wpt_uint16      ucBssIdx;
 
   /* Boolean to indicate if EDCA params are valid. UMAC might not have valid 
     EDCA params or might not desire to apply EDCA params during config BSS. 
