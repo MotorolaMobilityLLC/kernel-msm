@@ -201,7 +201,7 @@ static void set_restart_reason(unsigned reason)
 	 * to pmic also */
 	if (!cpu_is_msm8960() &&
 	    (reason >= REBOOT_MIN) && (reason <= REBOOT_MAX))
-		pm8xxx_hw_reset_debounce_timer_set(reason - REBOOT_MIN + 1);
+		pm8xxx_cal_rc1_rsv_set(reason - REBOOT_MIN + 1);
 }
 
 struct work_struct msm_resout_work;
