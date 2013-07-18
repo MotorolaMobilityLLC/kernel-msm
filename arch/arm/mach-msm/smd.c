@@ -3180,6 +3180,10 @@ void smd_post_init(bool is_legacy, unsigned remote_pid)
 		smd_alloc_loopback_channel();
 		for (i = 1; i < NUM_SMD_SUBSYSTEMS; ++i)
 			schedule_work(&remote_info[i].probe_work);
+		local_bh_disable();
+		smd_fake_irq_handler(0);
+		local_bh_enable();
+
 	} else {
 		schedule_work(&remote_info[remote_pid].probe_work);
 	}
