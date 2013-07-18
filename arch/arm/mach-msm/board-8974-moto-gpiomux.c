@@ -132,13 +132,6 @@ static struct gpiomux_setting synaptics_int_sus_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-static struct gpiomux_setting taiko_reset = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_LOW,
-};
-
 static struct gpiomux_setting taiko_int = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -491,28 +484,6 @@ static struct gpiomux_setting cam_settings[] = {
 	},
 };
 
-static struct gpiomux_setting sd_card_det_active_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_IN,
-};
-
-static struct gpiomux_setting sd_card_det_sleep_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-	.dir = GPIOMUX_IN,
-};
-
-static struct msm_gpiomux_config sd_card_det __initdata = {
-	.gpio = 62,
-	.settings = {
-		[GPIOMUX_ACTIVE]    = &sd_card_det_active_config,
-		[GPIOMUX_SUSPENDED] = &sd_card_det_sleep_config,
-	},
-};
-
 static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	{
 		.gpio = 15, /* CAM_MCLK0 */
@@ -710,12 +681,6 @@ static struct msm_gpiomux_config ath_gpio_configs[] = {
 };
 
 static struct msm_gpiomux_config msm_taiko_config[] __initdata = {
-	{
-		.gpio	= 63,		/* SYS_RST_N */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &taiko_reset,
-		},
-	},
 	{
 		.gpio	= 72,		/* CDC_INT */
 		.settings = {
@@ -967,6 +932,57 @@ static struct msm_gpiomux_config c55_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting auxpcm_act_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting auxpcm_sus_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+/* Quaternary MI2S port port setting used for high audio speaker */
+static struct msm_gpiomux_config msm8974_quat_auxpcm_configs[] __initdata = {
+	{
+		.gpio = 57,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+	{
+		.gpio = 58,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+	{
+		.gpio = 59,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+	{
+		.gpio = 62,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+	{
+		.gpio = 63,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+};
+
 void __init msm_8974_moto_init_gpiomux(void)
 {
 	int rc;
@@ -994,7 +1010,6 @@ void __init msm_8974_moto_init_gpiomux(void)
 
 	msm_gpiomux_install(msm_sensor_configs, ARRAY_SIZE(msm_sensor_configs));
 
-	msm_gpiomux_install(&sd_card_det, 1);
 	msm_gpiomux_sdc3_install();
 	msm_gpiomux_sdc4_install();
 
@@ -1006,6 +1021,9 @@ void __init msm_8974_moto_init_gpiomux(void)
 				    ARRAY_SIZE(msm_mhl_configs));
 
 	msm_gpiomux_install(c55_i2s_configs, ARRAY_SIZE(c55_i2s_configs));
+
+	msm_gpiomux_install(msm8974_quat_auxpcm_configs,
+				 ARRAY_SIZE(msm8974_quat_auxpcm_configs));
 
 	msm_gpiomux_install(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
