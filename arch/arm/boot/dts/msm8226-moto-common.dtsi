@@ -552,6 +552,12 @@
 	};
 
 	gpio@c600 { /* GPIO 7 */
+		/* TX_GTR_THRESH FUNC for PA_ON_NOFLASH */
+		qcom,mode = <0>;		/* Digital input */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO*/
+		qcom,vin-sel = <3>;		/* QPNP_PIN_VIN3 L6 1.8V */
+		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
+		qcom,master-en = <1>;	/* Enable GPIO */
 	};
 
 	gpio@c700 { /* GPIO 8 */
