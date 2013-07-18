@@ -66,6 +66,9 @@
 #include "wlan_hal_msg.h"       // it is needed to build qwptt static lib
 #endif
 
+// Max NV fragment size
+#define MAX_NV_BIN_SIZE 2000
+
 enum
 {
    PTT_STATUS_SUCCESS = 0,

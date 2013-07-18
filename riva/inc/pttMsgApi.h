@@ -108,6 +108,11 @@ typedef enum {
    PTT_MSG_STORE_NV_TABLE = 0x3022,
    PTT_MSG_SET_REG_DOMAIN = 0x3023,
 
+//new NV format Service
+   PTT_MSG_GET_NV_BIN = 0x3030,
+   PTT_MSG_SET_NV_BIN = 0x3031,
+   PTT_MSG_GET_DICTIONARY = 0x3032,
+
 //Device Register Access
    PTT_MSG_DBG_READ_REGISTER = 0x3040,
    PTT_MSG_DBG_WRITE_REGISTER = 0x3041,
@@ -335,6 +340,20 @@ typedef PACKED_PRE struct PACKED_POST {
 typedef PACKED_PRE struct PACKED_POST {
    eRegDomainId regDomainId;
 } tMsgPttSetRegDomain;
+
+typedef PACKED_PRE struct PACKED_POST {
+	tANI_U32 tableSize;
+	tANI_U32 chunkSize;
+	eNvTable nvTable;
+	tANI_U8 nvData[MAX_NV_BIN_SIZE];
+} tMsgPttGetNvBin;
+
+typedef PACKED_PRE struct PACKED_POST {
+	tANI_U32 tableSize;
+	tANI_U32 chunkSize;
+	eNvTable nvTable;
+	tANI_U8 nvData[MAX_NV_BIN_SIZE];
+} tMsgPttSetNvBin;
 
 //Device Register Access
 typedef PACKED_PRE struct PACKED_POST {
@@ -841,6 +860,8 @@ typedef PACKED_PRE union PACKED_POST pttMsgUnion{
    tMsgPttSetRegDomain SetRegDomain;
    tMsgPttGetNvField GetNvField;
    tMsgPttSetNvField SetNvField;
+	tMsgPttGetNvBin GetNvBin;
+	tMsgPttSetNvBin SetNvBin;
    tMsgPttDbgReadRegister DbgReadRegister;
    tMsgPttDbgWriteRegister DbgWriteRegister;
    tMsgPttDbgReadMemory DbgReadMemory;
