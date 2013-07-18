@@ -346,7 +346,8 @@
 			reg = <0xc000 0x100>;
 			label = "vibrator";
 			qcom,vib-timeout-ms = <30000>;
-			qcom,vib-vtg-level-mV = <2800>;
+			qcom,vib-vtg-level-mV = <1800>;
+			qcom,vib-vtg-level-mV-haptic = <2800>;
 		};
 
 		qcom,leds@d300 {
