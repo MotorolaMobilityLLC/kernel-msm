@@ -695,6 +695,52 @@ static int __init ext_display_setup(char *param)
 }
 early_param("ext_display", ext_display_setup);
 
+static unsigned long limit_mem;
+
+static int __init limit_mem_setup(char *param)
+{
+	limit_mem = memparse(param, NULL);
+	return 0;
+}
+early_param("limit_mem", limit_mem_setup);
+
+static void __init limit_mem_reserve(void)
+{
+	unsigned long to_remove;
+	unsigned long reserved_mem;
+	unsigned long i;
+	phys_addr_t base;
+
+	if (!limit_mem)
+		return;
+
+	reserved_mem = ALIGN(memblock.reserved.total_size, PAGE_SIZE);
+
+	to_remove = memblock.memory.total_size - reserved_mem - limit_mem;
+
+	pr_info("Limiting memory from %lu KB to to %lu kB by removing %lu kB\n",
+			(memblock.memory.total_size - reserved_mem) / 1024,
+			limit_mem / 1024,
+			to_remove / 1024);
+
+	/* First find as many highmem pages as possible */
+	for (i = 0; i < to_remove; i += PAGE_SIZE) {
+		base = memblock_find_in_range(memblock.current_limit,
+				MEMBLOCK_ALLOC_ANYWHERE, PAGE_SIZE, PAGE_SIZE);
+		if (!base)
+			break;
+		memblock_remove(base, PAGE_SIZE);
+	}
+	/* Then find as many lowmem 1M sections as possible */
+	for (; i < to_remove; i += SECTION_SIZE) {
+		base = memblock_find_in_range(0, MEMBLOCK_ALLOC_ACCESSIBLE,
+				SECTION_SIZE, SECTION_SIZE);
+		if (!base)
+			break;
+		memblock_remove(base, SECTION_SIZE);
+	}
+}
+
 static void __init apq8064_reserve(void)
 {
 	msm_reserve();
@@ -712,6 +758,7 @@ static void __init apq8064_reserve(void)
 #endif
 	}
 	lge_reserve();
+	limit_mem_reserve();
 }
 
 static void __init place_movable_zone(void)
