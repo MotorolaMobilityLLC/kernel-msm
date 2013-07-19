@@ -1726,6 +1726,39 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		break;
 	}
+
+	case CFG_GET_MODULE_INFO: {
+		if (s_ctrl->func_tbl->sensor_get_module_info == NULL) {
+			pr_err("%s: sensor_get_module_info is null!\n",
+					__func__);
+			rc = -EFAULT;
+			break;
+		}
+
+		rc = s_ctrl->func_tbl->sensor_get_module_info(s_ctrl);
+		if (rc < 0) {
+			pr_err("%s: Unable to get module info!\n",
+					__func__);
+			break;
+		}
+
+		if (copy_to_user((void *)cdata->cfg.sensor_otp.otp_info,
+					s_ctrl->sensor_otp.otp_info,
+					s_ctrl->sensor_otp.size)) {
+			pr_err("%s: error copying otp buffer to user\n",
+					__func__);
+			rc = -EFAULT;
+			break;
+		}
+
+		cdata->cfg.sensor_otp.size = s_ctrl->sensor_otp.size;
+		cdata->cfg.sensor_otp.hw_rev = s_ctrl->sensor_otp.hw_rev;
+		cdata->cfg.sensor_otp.asic_rev = s_ctrl->sensor_otp.asic_rev;
+		for (i = 0; i < 4; i++)
+			cdata->cfg.sensor_otp.sn[i] = s_ctrl->sensor_otp.sn[i];
+
+		break;
+	}
 	default:
 		rc = -EFAULT;
 		break;
