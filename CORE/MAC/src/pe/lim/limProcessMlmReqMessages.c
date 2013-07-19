@@ -71,7 +71,9 @@
 #ifdef WLAN_FEATURE_VOWIFI_11R
 #include <limFT.h>
 #endif
-
+#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM
+#include "vos_diag_core_log.h"
+#endif
 
 
 // MLM REQ processing function templates
@@ -3927,6 +3929,9 @@ limProcessJoinFailureTimeout(tpAniSirGlobal pMac)
     tLimMlmJoinCnf  mlmJoinCnf;
     tSirMacAddr bssid;
     tANI_U32 len;
+#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT_LIM
+    vos_log_rssi_pkt_type *pRssiLog = NULL;
+#endif //FEATURE_WLAN_DIAG_SUPPORT_LIM
     
     //fetch the sessionEntry based on the sessionId
     tpPESession psessionEntry;
@@ -3936,7 +3941,17 @@ limProcessJoinFailureTimeout(tpAniSirGlobal pMac)
         limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
         return;
     }
-        
+
+#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT_LIM
+    WLAN_VOS_DIAG_LOG_ALLOC(pRssiLog,
+                            vos_log_rssi_pkt_type, LOG_WLAN_RSSI_UPDATE_C);
+    if (pRssiLog)
+    {
+        pRssiLog->rssi = psessionEntry->rssi;
+    }
+    WLAN_VOS_DIAG_LOG_REPORT(pRssiLog);
+#endif //FEATURE_WLAN_DIAG_SUPPORT_LIM
+
     if (psessionEntry->limMlmState == eLIM_MLM_WT_JOIN_BEACON_STATE)
     {
         len = sizeof(tSirMacAddr);
@@ -4073,13 +4088,25 @@ limProcessAuthFailureTimeout(tpAniSirGlobal pMac)
 {
     //fetch the sessionEntry based on the sessionId
     tpPESession psessionEntry;
+#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT_LIM
+    vos_log_rssi_pkt_type *pRssiLog = NULL;
+#endif //FEATURE_WLAN_DIAG_SUPPORT_LIM
 
     if((psessionEntry = peFindSessionBySessionId(pMac, pMac->lim.limTimers.gLimAuthFailureTimer.sessionId))== NULL) 
     {
         limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
         return;
     }
-    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT_LIM
+    WLAN_VOS_DIAG_LOG_ALLOC(pRssiLog,
+                            vos_log_rssi_pkt_type, LOG_WLAN_RSSI_UPDATE_C);
+    if (pRssiLog)
+    {
+        pRssiLog->rssi = psessionEntry->rssi;
+    }
+    WLAN_VOS_DIAG_LOG_REPORT(pRssiLog);
+#endif //FEATURE_WLAN_DIAG_SUPPORT_LIM
+
     switch (psessionEntry->limMlmState)
     {
         case eLIM_MLM_WT_AUTH_FRAME2_STATE:
@@ -4208,6 +4235,9 @@ limProcessAssocFailureTimeout(tpAniSirGlobal pMac, tANI_U32 MsgType)
 
     tLimMlmAssocCnf     mlmAssocCnf;
     tpPESession         psessionEntry;
+#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT_LIM
+    vos_log_rssi_pkt_type *pRssiLog = NULL;
+#endif //FEATURE_WLAN_DIAG_SUPPORT_LIM
     
     //to fetch the lim/mlm state based on the sessionId, use the below sessionEntry
     tANI_U8 sessionId;
@@ -4226,7 +4256,16 @@ limProcessAssocFailureTimeout(tpAniSirGlobal pMac, tANI_U32 MsgType)
         limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
         return;
     }
-    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT_LIM
+    WLAN_VOS_DIAG_LOG_ALLOC(pRssiLog,
+                            vos_log_rssi_pkt_type, LOG_WLAN_RSSI_UPDATE_C);
+    if (pRssiLog)
+    {
+        pRssiLog->rssi = psessionEntry->rssi;
+    }
+    WLAN_VOS_DIAG_LOG_REPORT(pRssiLog);
+#endif //FEATURE_WLAN_DIAG_SUPPORT_LIM
+
     /**
      * Expected Re/Association Response frame
      * not received within Re/Association Failure Timeout.

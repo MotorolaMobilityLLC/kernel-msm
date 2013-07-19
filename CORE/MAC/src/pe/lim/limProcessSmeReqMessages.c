@@ -1749,6 +1749,10 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         }
 #endif
 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM
+        psessionEntry->rssi =  pSmeJoinReq->bssDescription.rssi;
+#endif
+
         /*Store Persona */
         psessionEntry->pePersona = pSmeJoinReq->staPersona;
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,

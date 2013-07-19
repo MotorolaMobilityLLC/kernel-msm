@@ -374,6 +374,16 @@ typedef struct
    vos_log_data_stall_channel_type  dxeChannelInfo[4];
 } vos_log_data_stall_type;
 
+/*---------------------------------------------------------------------------
+   This packet contains the rssi value from BSS descriptor
+   LOG_WLAN_RSSI_UPDATE_C                          0x1354
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  log_hdr_type       hdr;
+  v_S7_t            rssi;
+} vos_log_rssi_pkt_type;
+
 /*------------------------------------------------------------------------- 
   Function declarations and documenation
   ------------------------------------------------------------------------*/
