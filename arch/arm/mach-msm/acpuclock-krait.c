@@ -123,10 +123,10 @@ static void hfpll_enable(struct scalable *sc, bool skip_regulators)
 
 	/*
 	 * H/W requires a 5us delay between disabling the bypass and
-	 * de-asserting the reset. Delay 20us just to be safe.
+	 * de-asserting the reset. Delay 10us just to be safe.
 	 */
 	mb();
-	udelay(20);
+	udelay(10);
 
 	/* De-assert active-low PLL reset. */
 	writel_relaxed(0x6, sc->hfpll_base + drv.hfpll_data->mode_offset);
