@@ -131,6 +131,34 @@ enum sensor_sub_module_t {
 	SUB_MODULE_MAX,
 };
 
+struct otp_info_t {
+	uint8_t *otp_info;
+	uint16_t size;
+	uint16_t hw_rev;
+	uint8_t asic_rev;
+	uint16_t sn[4];
+};
+
+/* NOTE: Careful when adding params below,
+ * certain sensor drivers are doing one
+ * big copy for muliple params at one time
+ */
+struct mod_info_t {
+	uint8_t SensorSerialNum[13];
+	uint8_t MotPartNum[8];
+	uint8_t LensId[1];
+	uint8_t ManufactureId[2];
+	uint8_t FactoryId[2];
+	uint8_t ManufactureDate[9];
+	uint8_t ManufactureLine[2];
+	uint8_t ModuleSerialNum[4];
+	uint8_t FocuserLiftoff[2];
+	uint8_t FocuserMacro[2];
+	uint8_t FocuserInf[2];
+	uint8_t ShutterCal[16];
+	uint8_t SensorHwRev[5];
+};
+
 enum {
 	MSM_CAMERA_EFFECT_MODE_OFF,
 	MSM_CAMERA_EFFECT_MODE_MONO,
@@ -367,6 +395,7 @@ struct sensorb_cfg_data {
 		struct msm_sensor_info_t      sensor_info;
 		struct msm_sensor_init_params sensor_init_params;
 		void                         *setting;
+		struct otp_info_t             sensor_otp;
 	} cfg;
 };
 
@@ -448,6 +477,7 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_LENS_SHADING,
 	CFG_SET_TARGET_EXPOSURE,
 	CFG_SET_FPS_RANGE,
+	CFG_GET_MODULE_INFO,
 };
 
 enum msm_actuator_cfg_type_t {
