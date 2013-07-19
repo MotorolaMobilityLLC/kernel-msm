@@ -291,6 +291,10 @@ union reg_cp_rb_cntl {
 #define REG_RBBM_PERFCOUNTER1_HI         0x0398
 #define REG_RBBM_PERFCOUNTER1_LO         0x0397
 
+#define REG_SQ_PERFCOUNTER3_SELECT       0x0DCB
+#define REG_SQ_PERFCOUNTER3_LO           0x0DD2
+#define REG_SQ_PERFCOUNTER3_HI           0x0DD3
+
 #define REG_MASTER_INT_SIGNAL            0x03B7
 
 #define REG_PA_CL_VPORT_XSCALE           0x210F
