@@ -44,7 +44,7 @@ static unsigned int _context_cmdbatch_burst = 5;
 static unsigned int _dispatcher_inflight = 15;
 
 /* Command batch timeout (in milliseconds) */
-static unsigned int _cmdbatch_timeout = 10000;
+static unsigned int _cmdbatch_timeout = 2000;
 
 /* Interval for reading and comparing fault detection registers */
 static unsigned int _fault_timer_interval = 100;
