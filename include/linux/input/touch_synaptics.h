@@ -19,34 +19,6 @@
 
 #define MAX_FINGER                      10
 
-/* Debug Mask setting */
-#define TOUCH_DEBUG_PRINT (0)
-#define TOUCH_ERROR_PRINT (1)
-#define TOUCH_INFO_PRINT (1)
-
-#if TOUCH_INFO_PRINT
-#define TOUCH_INFO_MSG(fmt, args...) \
-		printk(KERN_INFO "[Touch] " fmt, ##args)
-#else
-#define TOUCH_INFO_MSG(fmt, args...)
-#endif
-
-#if TOUCH_ERROR_PRINT
-#define TOUCH_ERR_MSG(fmt, args...) \
-	printk(KERN_ERR "[Touch E] [%s %d] "\
-				fmt, __FUNCTION__, __LINE__, ##args)
-#else
-#define TOUCH_ERR_MSG(fmt, args...)
-#endif
-
-#if TOUCH_DEBUG_PRINT
-#define TOUCH_DEBUG_MSG(fmt, args...) \
-		printk(KERN_INFO "[Touch D] [%s %d] " \
-				fmt, __FUNCTION__, __LINE__, ##args)
-#else
-#define TOUCH_DEBUG_MSG(fmt, args...)
-#endif
-
 #define DESCRIPTION_TABLE_START 0xe9
 #define PAGE_SELECT_REG	        0xFF        /* Button exists Page 02 */
 #define PAGE_MAX_NUM            4           /* number of page register */
@@ -232,4 +204,45 @@ enum{
 	WORK_POST_MAX,
 };
 
+/* Debug Mask setting */
+#define TOUCH_DEBUG_BASE_INFO(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_BASE_INFO )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_TRACE(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_TRACE )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_GET_DATA(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_GET_DATA )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_ABS(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_ABS )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_BUTTON(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_BUTTON )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_FW_UPGRADE(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_FW_UPGRADE )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_GHOST(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_GHOST )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_IRQ_HANDLE(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_IRQ_HANDLE )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_POWER(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_POWER )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_JITTER(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_JITTER )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+#define TOUCH_DEBUG_ACCURACY(fmt, args...) \
+	if(unlikely(touch_debug_mask & DEBUG_ACCURACY )) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+
+#define TOUCH_INFO_MSG(fmt, args...) \
+		printk(KERN_INFO "[Touch] " fmt, ##args)
+
+#define TOUCH_ERR_MSG(fmt, args...) \
+	printk(KERN_ERR "[Touch E] [%s %d] "\
+				fmt, __FUNCTION__, __LINE__, ##args)
 #endif

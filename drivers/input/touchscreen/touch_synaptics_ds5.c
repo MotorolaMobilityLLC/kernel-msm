@@ -223,7 +223,7 @@ static int synaptics_t1320_power_on(struct i2c_client *client, int on)
 /* Debug mask value
  * usage: echo [debug_mask] > /sys/module/touch_synaptics/parameters/debug_mask
  */
-static u32 touch_debug_mask = DEBUG_BASE_INFO | DEBUG_FW_UPGRADE | DEBUG_GET_DATA;
+static u32 touch_debug_mask = DEBUG_BASE_INFO | DEBUG_FW_UPGRADE;
 module_param_named(debug_mask, touch_debug_mask, int, S_IRUGO|S_IWUSR|S_IWGRP);
 
 static int touch_power_cntl(struct synaptics_ts_data *ts, int onoff);
@@ -284,15 +284,14 @@ static void touch_abs_input_report(struct synaptics_ts_data *ts, const ktime_t t
  */
 static int touch_work_pre_proc(struct synaptics_ts_data *ts)
 {
-	int	ret;
+	int ret;
+
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
 
 	if (gpio_get_value(ts->pdata->irq_gpio) != 0) {
-		TOUCH_DEBUG_MSG("INT STATE HIGH\n");
+		TOUCH_DEBUG_TRACE("%s: INT STATE HIGH\n", __func__);
 		return -EINTR;
 	}
-
-	if (unlikely(touch_debug_mask & DEBUG_TRACE))
-		TOUCH_DEBUG_MSG("\n");
 
 	ret = synaptics_ts_get_data(ts->client, ts->ts_data.curr_data);
 	if (ret != 0) {
@@ -369,10 +368,8 @@ static int touch_power_cntl(struct synaptics_ts_data *ts, int onoff)
 		break;
 	}
 
-	if (unlikely(touch_debug_mask & DEBUG_POWER))
-		if (ret >= 0)
-			TOUCH_INFO_MSG("%s: power_state[%d]",
-					__FUNCTION__, ts->curr_pwr_state);
+	if(ret >=0)
+		TOUCH_DEBUG_POWER("%s: power_state[%d]", __func__, ts->curr_pwr_state);
 
 	return ret;
 }
@@ -401,14 +398,12 @@ static int synaptics_ts_fw_upgrade(struct i2c_client *client,
  */
 static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 {
-	struct synaptics_ts_data *ts =
-			container_of(work_fw_upgrade,
+	struct synaptics_ts_data *ts = container_of(work_fw_upgrade,
 				struct synaptics_ts_data, work_fw_upgrade);
-	u8	saved_state;
-	int	ver, img_ver, rv;
+	u8 saved_state;
+	int ver, img_ver, rv;
 
-	if (unlikely(touch_debug_mask & DEBUG_TRACE))
-		TOUCH_DEBUG_MSG("\n");
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
 
 	rv = kstrtoint(&ts->fw_info.config_id[1], 10, &ver);
 	if (rv != 0)
@@ -437,8 +432,7 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 		msleep(BOOTING_DELAY);
 	}
 
-	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
-		TOUCH_INFO_MSG("F/W upgrade - Start\n");
+	TOUCH_DEBUG_FW_UPGRADE("F/W upgrade - Start\n");
 
 	if (synaptics_ts_fw_upgrade(ts->client, &ts->fw_info) < 0) {
 		TOUCH_ERR_MSG("Firmware upgrade was failed\n");
@@ -453,8 +447,7 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 		touch_power_cntl(ts, POWER_OFF);
 	}
 
-	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
-		TOUCH_INFO_MSG("F/W upgrade - Finish\n");
+	TOUCH_DEBUG_FW_UPGRADE("F/W upgrade - Finish\n");
 
 	mutex_unlock(&ts->input_dev->mutex);
 out:
@@ -474,6 +467,8 @@ static void touch_init_func(struct work_struct *work_init)
 			container_of(to_delayed_work(work_init),
 					struct synaptics_ts_data, work_init);
 
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
+
 	mutex_lock(&ts->input_dev->mutex);
 
 	if (!ts->curr_resume_state) {
@@ -481,9 +476,6 @@ static void touch_init_func(struct work_struct *work_init)
 		mutex_unlock(&ts->input_dev->mutex);
 		return;
 	}
-
-	if (unlikely(touch_debug_mask & DEBUG_TRACE))
-		TOUCH_DEBUG_MSG("\n");
 
 	/* Specific device initialization */
 	touch_ic_init(ts);
@@ -755,11 +747,10 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 			(struct synaptics_ts_data *)get_touch_handle(client);
 	int id;
 
-	if (unlikely(touch_debug_mask & DEBUG_TRACE))
-		TOUCH_DEBUG_MSG("\n");
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
 
 	if (unlikely(touch_i2c_read(client, DEVICE_STATUS_REG,
-			sizeof(ts->ts_data.interrupt_status_reg),
+			sizeof(ts->ts_data.device_status_reg),
 			&ts->ts_data.device_status_reg) < 0)) {
 		TOUCH_ERR_MSG("DEVICE_STATUS_REG read fail\n");
 		return -EIO;
@@ -784,8 +775,8 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 		return -EIO;
 	}
 
-	if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
-		TOUCH_DEBUG_MSG("Interrupt_status : 0x%x\n", ts->ts_data.interrupt_status_reg);
+	TOUCH_DEBUG_GET_DATA("%s: Interrupt_status : 0x%x\n", __func__,
+						ts->ts_data.interrupt_status_reg);
 
 	/* IC bug Exception handling - Interrupt status reg is 0 when interrupt occur */
 	if (ts->ts_data.interrupt_status_reg == 0 || unlikely(atomic_read(&ts->device_init) != 1)) {
@@ -809,8 +800,9 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 			return -EIO;
 		}
 
-		if (unlikely(touch_debug_mask & DEBUG_GET_DATA)) {
-			TOUCH_DEBUG_MSG("Finger_status : 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x\n",
+		TOUCH_DEBUG_GET_DATA("%s: Finger_status: 0x%x, 0x%x, 0x%x, 0x%x, "
+				"0x%x, 0x%x, 0x%x, 0x%x, 0x%x, 0x%x\n",
+				__func__,
 				fdata.finger_reg[0][0],
 				fdata.finger_reg[1][0],
 				fdata.finger_reg[2][0],
@@ -821,7 +813,6 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 				fdata.finger_reg[7][0],
 				fdata.finger_reg[8][0],
 				fdata.finger_reg[9][0]);
-		}
 
 		for (id = 0; id < ts->pdata->max_id; id++) {
 			switch ((fdata.finger_reg[id][0])) {
@@ -840,8 +831,9 @@ static int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 				data[id].width_major = TS_SNTS_GET_WIDTH_MAJOR(fdata.finger_reg[id][REG_Wx],fdata.finger_reg[id][REG_Wy]);
 				data[id].width_minor = TS_SNTS_GET_WIDTH_MINOR(fdata.finger_reg[id][REG_Wx],fdata.finger_reg[id][REG_Wy]);
 
-				if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
-					TOUCH_DEBUG_MSG("[%d] pos(%4d,%4d) w_m[%2d] w_n[%2d] p[%2d]\n",
+				TOUCH_DEBUG_GET_DATA("%s: [%d] pos(%4d,%4d) "
+						"w_m[%2d] w_n[%2d] p[%2d]\n",
+						__func__,
 						id,
 						data[id].x_position,
 						data[id].y_position,
@@ -874,8 +866,7 @@ static int read_page_description_table(struct i2c_client *client)
 	unsigned short u_address = 0;
 	unsigned short page_num = 0;
 
-	if (touch_debug_mask & DEBUG_TRACE)
-		TOUCH_DEBUG_MSG("\n");
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
 
 	memset(&buffer, 0x0, sizeof(struct function_descriptor));
 	memset(&ts->common_fc, 0x0, sizeof(struct ts_ic_function));
@@ -904,11 +895,13 @@ static int read_page_description_table(struct i2c_client *client)
 			if (buffer.id == 0)
 				break;
 
-			TOUCH_DEBUG_MSG("buffer.id=[%x], [%x][%x][%x][%x][%x][%x]\n",
-				buffer.id,
-				buffer.query_base, buffer.command_base,
-				buffer.control_base, buffer.data_base,
-				buffer.int_source_count, buffer.id);
+			TOUCH_DEBUG_TRACE("%s: buffer.id=[%x], "
+					"[%x][%x][%x][%x][%x][%x]\n",
+					__func__,
+					buffer.id,
+					buffer.query_base, buffer.command_base,
+					buffer.control_base, buffer.data_base,
+					buffer.int_source_count, buffer.id);
 
 			switch (buffer.id) {
 			case RMI_DEVICE_CONTROL:
@@ -947,13 +940,16 @@ static int read_page_description_table(struct i2c_client *client)
 		return -EPERM;
 	}
 
-	if (touch_debug_mask & DEBUG_BASE_INFO)
-		TOUCH_DEBUG_MSG("common[%dP:0x%02x] finger[%dP:0x%02x] button[%dP:0x%02x] analog[%dP:0x%02x] flash[%dP:0x%02x]\n",
+	TOUCH_DEBUG_TRACE("%s: common[%dP:0x%02x] finger[%dP:0x%02x] "
+			"button[%dP:0x%02x] analog[%dP:0x%02x] "
+			"flash[%dP:0x%02x]\n",
+			__func__,
 			ts->common_fc.function_page, ts->common_fc.dsc.id,
 			ts->finger_fc.function_page, ts->finger_fc.dsc.id,
 			ts->button_fc.function_page, ts->button_fc.dsc.id,
 			ts->analog_fc.function_page, ts->analog_fc.dsc.id,
 			ts->flash_fc.function_page, ts->flash_fc.dsc.id);
+
 	return 0;
 }
 
@@ -1014,8 +1010,7 @@ static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info
 		ts->fw_info.fw_size = sizeof(SynaFirmware_ds5_1);
 	}
 
-	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
-		TOUCH_INFO_MSG("IC identifier[%s] fw_version[%s]\n",
+	TOUCH_DEBUG_BASE_INFO("IC identifier[%s] fw_version[%s]\n",
 			ts->fw_info.ic_fw_identifier, ts->fw_info.config_id);
 
 	strncpy(ts->fw_info.fw_image_product_id,
@@ -1023,9 +1018,7 @@ static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info
 	strncpy(ts->fw_info.image_config_id,
 		&ts->fw_info.fw_start[FW_OFFSET_IMAGE_VERSION], 4);
 
-	if (likely(touch_debug_mask &
-				(DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
-		TOUCH_INFO_MSG("image_version[%s] : force[%d]\n",
+	TOUCH_DEBUG_BASE_INFO("image_version[%s] : force[%d]\n",
 			ts->fw_info.image_config_id,
 			ts->fw_info.fw_upgrade.fw_force_upgrade);
 
@@ -1063,8 +1056,7 @@ static int synaptics_init_panel(struct i2c_client *client, struct synaptics_ts_f
 			(struct synaptics_ts_data *)get_touch_handle(client);
 	u8 buf;
 
-	if (touch_debug_mask & DEBUG_TRACE)
-		TOUCH_DEBUG_MSG("\n");
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
 
 	if (!ts->is_probed)
 		if (unlikely(get_ic_info(ts, fw_info) < 0))
@@ -1102,8 +1094,7 @@ static int synaptics_ts_power(struct i2c_client *client, int power_ctrl)
 	struct synaptics_ts_data *ts =
 			(struct synaptics_ts_data *)get_touch_handle(client);
 
-	if (touch_debug_mask & DEBUG_TRACE)
-		TOUCH_DEBUG_MSG("\n");
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
 
 	switch (power_ctrl) {
 	case POWER_OFF:
@@ -1162,8 +1153,7 @@ static int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 				return -EIO;
 			}
 
-			if (unlikely(touch_debug_mask & DEBUG_GHOST))
-				TOUCH_INFO_MSG("BASELINE_OPEN\n");
+			TOUCH_DEBUG_TRACE("BASELINE_OPEN\n");
 
 			break;
 		case BASELINE_FIX:
@@ -1182,8 +1172,7 @@ static int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 				return -EIO;
 			}
 
-			if (unlikely(touch_debug_mask & DEBUG_GHOST))
-				TOUCH_INFO_MSG("BASELINE_FIX\n");
+			TOUCH_DEBUG_TRACE("BASELINE_FIX\n");
 
 			break;
 		case BASELINE_REBASE:
@@ -1511,8 +1500,7 @@ static int synaptics_parse_dt(struct device *dev, struct touch_platform_data *pd
 
 static int synaptics_ts_start(struct synaptics_ts_data *ts)
 {
-	if (unlikely(touch_debug_mask & DEBUG_TRACE))
-		TOUCH_DEBUG_MSG("\n");
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
 
 	if (ts->curr_resume_state)
 		return 0;
@@ -1529,12 +1517,10 @@ static int synaptics_ts_start(struct synaptics_ts_data *ts)
 
 static int synaptics_ts_stop(struct synaptics_ts_data *ts)
 {
-	if (unlikely(touch_debug_mask & DEBUG_TRACE))
-		TOUCH_DEBUG_MSG("\n");
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
 
-	if (!ts->curr_resume_state) {
+	if (!ts->curr_resume_state)
 		return 0;
-	}
 
 	ts->curr_resume_state = 0;
 
@@ -1555,7 +1541,7 @@ static int lcd_notifier_callback(struct notifier_block *this,
 	struct synaptics_ts_data *ts =
 		container_of(this, struct synaptics_ts_data, notif);
 
-	TOUCH_DEBUG_MSG("%s: event = %lu\n", __func__, event);
+	TOUCH_DEBUG_TRACE("%s: event = %lu\n", __func__, event);
 
 	switch (event) {
 	case LCD_EVENT_ON_START:
@@ -1596,8 +1582,7 @@ static int synaptics_ts_probe(
 	u8 i2c_test = 0;
 	int i;
 
-	if (touch_debug_mask & DEBUG_TRACE)
-		TOUCH_DEBUG_MSG("\n");
+	TOUCH_DEBUG_TRACE("%s\n", __func__);
 
 	if (client->dev.of_node) {
 		pdata = devm_kzalloc(&client->dev,
@@ -1731,7 +1716,8 @@ static int synaptics_ts_probe(
 				goto err_touch_i2c_read_failed;
 			}
 		} else {
-			TOUCH_DEBUG_MSG("Touch I2C read success \n");
+			TOUCH_DEBUG_TRACE("%s: Touch I2C read success \n",
+							__func__);
 			break;
 		}
 	}
