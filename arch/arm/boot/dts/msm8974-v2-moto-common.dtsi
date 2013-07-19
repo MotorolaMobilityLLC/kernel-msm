@@ -190,7 +190,7 @@
 	};
 
 	qcom,msm-adsp-sensors {
-		status = "disabled";
+//		status = "disabled";
 	};
 
 	ti,c55-ctrl {
