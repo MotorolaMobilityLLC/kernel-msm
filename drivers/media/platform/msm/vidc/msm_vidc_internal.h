@@ -227,6 +227,7 @@ struct msm_vidc_inst {
 	struct buf_count count;
 	enum msm_vidc_modes flags;
 	struct msm_vidc_core_capability capability;
+	u32 output_alloc_mode_supported;
 };
 
 extern struct msm_vidc_drv *vidc_driver;
