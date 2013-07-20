@@ -141,7 +141,7 @@ static eHalStatus sendCfg(tpAniSirGlobal pMac, tHddHandle hHdd, tCfgReq *req, tA
         status = palSendMBMessage(hHdd, msg) ;
         if (status != eHAL_STATUS_SUCCESS)
         {
-            smsLog( pMac, LOGW, FL("palSendMBMessage() failed"));
+            smsLog( pMac, LOGE, FL("palSendMBMessage() failed"));
             //No need to free msg. palSendMBMessage frees it.
             status = eHAL_STATUS_FAILURE ;
         }
@@ -243,7 +243,7 @@ static void sendQueuedReqToMacSw(tpAniSirGlobal pMac, tHddHandle hHdd)
             req->state = eCCM_REQ_SENT;
             if (sendCfg(pMac, hHdd, req, eANI_BOOLEAN_TRUE) != eHAL_STATUS_SUCCESS)
             {
-                smsLog( pMac, LOGW, FL("sendCfg() failed"));
+                smsLog( pMac, LOGE, FL("sendCfg() failed"));
                 palSpinLockTake(hHdd, pMac->ccm.lock);
                 del_req(req, &pMac->ccm.reqQ) ;
                 palSpinLockGive(hHdd, pMac->ccm.lock);
@@ -322,7 +322,7 @@ static eHalStatus cfgSetSub(tpAniSirGlobal pMac, tHddHandle hHdd, tANI_U32 cfgId
             status = sendCfg(pMac, hHdd, req, eANI_BOOLEAN_TRUE) ;
             if (status != eHAL_STATUS_SUCCESS)
             {
-                smsLog( pMac, LOGW, FL("sendCfg() failed"));
+                smsLog( pMac, LOGE, FL("sendCfg() failed"));
                 palSpinLockTake(hHdd, pMac->ccm.lock);
                 del_req(req, &pMac->ccm.reqQ);
                 palSpinLockGive(hHdd, pMac->ccm.lock);

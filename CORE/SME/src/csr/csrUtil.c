@@ -3116,7 +3116,7 @@ eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                 break;
 
                 default :
-                    smsLog(pMac, LOG1, FL(" Persona not supported : %d"),currBssPersona);
+                    smsLog(pMac, LOGE, FL(" Persona not supported : %d"),currBssPersona);
                     return eHAL_STATUS_FAILURE;
             }
         }
@@ -6143,7 +6143,7 @@ v_CountryInfoSource_t source
         }
         else
         {
-            smsLog(pMac, LOGW, FL("  doesn't match country %c%c"), pCountry[0], pCountry[1]);
+            smsLog(pMac, LOGW, FL(" Couldn't find domain for country code  %c%c"), pCountry[0], pCountry[1]);
             status = eHAL_STATUS_INVALID_PARAMETER;
         }
     }
