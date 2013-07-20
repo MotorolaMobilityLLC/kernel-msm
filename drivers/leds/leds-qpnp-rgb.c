@@ -28,6 +28,8 @@
 #define RGB_LED_SRC_SEL(base)		(base + 0x45)
 #define RGB_LED_EN_CTL(base)		(base + 0x46)
 #define RGB_LED_ATC_CTL(base)		(base + 0x47)
+#define LUT_RAMP_CONTROL		0xB0C8
+#define LUT_RAMP_SID			1
 
 #define RGB_MAX_LEVEL			LED_FULL
 #define RGB_LED_ENABLE_RED		0x80
@@ -213,41 +215,40 @@ module_param_array_named(pcts, duty_pcts_ramp, uint, NULL, 0644);
 
 static void qpnp_blink_enable_leds(void)
 {
-	int i, ret, val;
+	int i, ret;
 	struct pwm_config_data *pwm;
 	struct qpnp_led_data *led;
+	u8 lpg_map = 0;
+	struct spmi_device *spmi_dev;
 
 	for (i = 0; i < blink_cnt; i++) {
 		led = blink_array[i].led;
 		if (!led->cdev.brightness)
 			continue;
 		pwm = led->mpp_cfg->pwm_cfg;
-		ret = pwm_enable(pwm->pwm_dev);
-		if (ret) {
+		ret = pwm_enable_lut_no_ramp(pwm->pwm_dev);
+		if (ret < 0)
 			dev_err(&led->spmi_dev->dev,
-				"%s PWM enable error (%d)\n", __func__, ret);
-			return;
-		}
-
-		val = (led->mpp_cfg->source_sel & LED_MPP_SRC_MASK) |
-			(led->mpp_cfg->mode_ctrl &
-			LED_MPP_MODE_CTRL_MASK);
-
-		ret = qpnp_led_masked_write(led,
-			LED_MPP_MODE_CTRL(led->base), LED_MPP_MODE_MASK,
-			val);
-		if (ret)
-			dev_err(&led->spmi_dev->dev,
-				"%s Led mode error (%d)\n", __func__, ret);
-
+				"%s lut config err (%d)\n", __func__, ret);
 		ret = qpnp_led_masked_write(led,
 			LED_MPP_EN_CTRL(led->base), LED_MPP_EN_MASK,
 			LED_MPP_EN_ENABLE);
 		if (ret)
 			dev_err(&led->spmi_dev->dev,
 				"%s Enable led error (%d)\n", __func__, ret);
+		spmi_dev = led->spmi_dev;
 		pwm->blinking = 1;
+		lpg_map |= 1 << pwm->pwm_channel;
 		blinking_leds++;
+	}
+
+	if (lpg_map) {
+		/* Start all ramps with one write command */
+		ret = spmi_ext_register_writel(spmi_dev->ctrl, LUT_RAMP_SID,
+			LUT_RAMP_CONTROL, &lpg_map, 1);
+		if (ret)
+			dev_err(&spmi_dev->dev,
+				"Unable set lut enable rc(%d)\n", ret);
 	}
 }
 
@@ -263,10 +264,6 @@ static void qpnp_blink_config_luts(void)
 			continue;
 		pwm = led->mpp_cfg->pwm_cfg;
 		pwm_disable(pwm->pwm_dev);
-		ret = pwm_change_mode(pwm->pwm_dev, LPG_MODE);
-		if (ret < 0)
-			dev_err(&led->spmi_dev->dev,
-				"%s Change to LPG err (%d)\n", __func__, ret);
 		pwm->lut_params.start_idx = start_idx;
 		pwm->duty_cycles->start_idx = start_idx;
 		pwm->lut_params.idx_len = num_idx;
@@ -313,6 +310,7 @@ static int qpnp_blink_set(unsigned on)
 			if (ret < 0)
 				dev_err(&led->spmi_dev->dev,
 					"Change to PWM err (%d)\n", ret);
+			pwm->blinking = 0;
 			ret = qpnp_mpp_set(led);
 			if (ret < 0)
 				dev_err(&led->spmi_dev->dev,
@@ -520,7 +518,7 @@ static void qpnp_dump_regs(struct qpnp_led_data *led, u8 regs[], u8 array_size)
 
 static int qpnp_mpp_set(struct qpnp_led_data *led)
 {
-	int rc, val;
+	int rc;
 	int duty_us;
 
 	if (led->cdev.brightness) {
@@ -551,17 +549,6 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 		if (led->mpp_cfg->pwm_mode != MANUAL_MODE)
 			pwm_enable(led->mpp_cfg->pwm_cfg->pwm_dev);
 
-		val = (led->mpp_cfg->source_sel & LED_MPP_SRC_MASK) |
-			(led->mpp_cfg->mode_ctrl & LED_MPP_MODE_CTRL_MASK);
-
-		rc = qpnp_led_masked_write(led,
-			LED_MPP_MODE_CTRL(led->base), LED_MPP_MODE_MASK,
-			val);
-		if (rc) {
-			dev_err(&led->spmi_dev->dev,
-					"Failed to write led mode reg\n");
-			return rc;
-		}
 
 		rc = qpnp_led_masked_write(led,
 				LED_MPP_EN_CTRL(led->base), LED_MPP_EN_MASK,
@@ -583,16 +570,6 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 				led->mpp_cfg->pwm_cfg->blinking = 0;
 				blinking_leds--;
 			}
-		}
-
-		rc = qpnp_led_masked_write(led,
-					LED_MPP_MODE_CTRL(led->base),
-					LED_MPP_MODE_MASK,
-					LED_MPP_MODE_DISABLE);
-		if (rc) {
-			dev_err(&led->spmi_dev->dev,
-					"Failed to write led mode reg\n");
-			return rc;
 		}
 
 		rc = qpnp_led_masked_write(led,
@@ -849,6 +826,18 @@ static int qpnp_mpp_init(struct qpnp_led_data *led)
 				"Failed to initialize pwm\n");
 			return rc;
 		}
+	}
+
+	val = (led->mpp_cfg->source_sel & LED_MPP_SRC_MASK) |
+		(led->mpp_cfg->mode_ctrl & LED_MPP_MODE_CTRL_MASK);
+
+	rc = qpnp_led_masked_write(led,
+		LED_MPP_MODE_CTRL(led->base), LED_MPP_MODE_MASK,
+		val);
+	if (rc) {
+		dev_err(&led->spmi_dev->dev,
+				"Failed to write led mode reg\n");
+		return rc;
 	}
 
 	return 0;
