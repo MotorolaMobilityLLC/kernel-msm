@@ -29,6 +29,12 @@ int pwm_config(struct pwm_device *pwm, int duty_ns, int period_ns);
 int pwm_enable(struct pwm_device *pwm);
 
 /*
+ * pwm_enable_lut_no_ramp - configure LUT on pwm device
+ * but do not start ramping it
+ */
+int __weak pwm_enable_lut_no_ramp(struct pwm_device *pwm);
+
+/*
  * pwm_disable - stop a PWM output toggling
  */
 void pwm_disable(struct pwm_device *pwm);
