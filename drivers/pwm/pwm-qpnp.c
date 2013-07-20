@@ -1032,6 +1032,35 @@ static int qpnp_dtest_config(struct qpnp_pwm_chip *chip, bool enable)
 	return rc;
 }
 
+int pwm_enable_lut_no_ramp(struct pwm_device *pwm)
+{
+	struct qpnp_pwm_chip *chip = container_of(pwm->chip,
+		struct qpnp_pwm_chip, chip);
+	struct qpnp_lpg_config	*lpg_config = &chip->lpg_config;
+	u8			mask2, *reg2;
+	u16			addr;
+	unsigned long		flags;
+	int			rc;
+
+	spin_lock_irqsave(&chip->lpg_lock, flags);
+
+	reg2 = &chip->qpnp_lpg_registers[QPNP_ENABLE_CONTROL];
+	mask2 = QPNP_EN_PWM_HIGH_MASK | QPNP_EN_PWM_LO_MASK |
+		QPNP_EN_PWM_OUTPUT_MASK | QPNP_PWM_SRC_SELECT_MASK |
+					QPNP_PWM_EN_RAMP_GEN_MASK;
+
+	addr = SPMI_LPG_REG_ADDR(lpg_config->base_addr, QPNP_ENABLE_CONTROL);
+
+	rc = qpnp_lpg_save_and_write(QPNP_ENABLE_LPG_MODE, mask2, reg2,
+					addr, 1, chip);
+
+	spin_unlock_irqrestore(&chip->lpg_lock, flags);
+
+	return rc;
+
+}
+EXPORT_SYMBOL_GPL(pwm_enable_lut_no_ramp);
+
 static int qpnp_lpg_configure_lut_state(struct qpnp_pwm_chip *chip,
 				enum qpnp_lut_state state)
 {
