@@ -381,13 +381,7 @@ PopulateDot11fDSParams(tpAniSirGlobal     pMac,
                        tDot11fIEDSParams *pDot11f, tANI_U8 channel,
                        tpPESession psessionEntry)
 {
-//    tSirRetStatus       nSirStatus;
-    tANI_U32            nPhyMode;
-
-    // Get PHY mode and based on that add DS Parameter Set IE
-    limGetPhyMode(pMac, &nPhyMode, psessionEntry);
-
-    if ( (WNI_CFG_PHY_MODE_11A != nPhyMode) || pMac->rrm.rrmPEContext.rrmEnable )
+    if ((IS_24G_CH(channel)) || pMac->rrm.rrmPEContext.rrmEnable)
     {
         // .11b/g mode PHY => Include the DS Parameter Set IE:
         pDot11f->curr_channel = channel;
