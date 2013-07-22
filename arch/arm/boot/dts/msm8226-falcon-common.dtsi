@@ -21,6 +21,12 @@
 		     "qcom,msm8226";
 };
 
+&soc {
+        vddio_disp_vreg: vddio_disp_vreg {
+		regulator-boot-on;
+        };
+};
+
 &i2c_2 {
 	lis3dh@19 {
 		compatible = "stm,lis3dh";
@@ -32,6 +38,14 @@
 		stm,g-range = <8>;
 		stm,threshold = <0x20>;
 		stm,duration = <0x1>;
+	};
+};
+
+&i2c_3 {
+	tps65132@3e {
+		tps65132: regulator {
+			regulator-boot-on;
+		};
 	};
 };
 
