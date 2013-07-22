@@ -175,7 +175,8 @@ typedef enum
 {
     PHY_TX_CHAIN_0 = 0,
 
-    PHY_MAX_TX_CHAINS = 1,
+    NUM_PHY_MAX_TX_CHAINS = 1,
+    PHY_MAX_TX_CHAINS = NUM_PHY_MAX_TX_CHAINS,
     PHY_ALL_TX_CHAINS,
 
     //possible tx chain combinations
@@ -320,7 +321,6 @@ typedef enum
 
     MIN_2_4GHZ_CHANNEL = RF_CHAN_1,
     MAX_2_4GHZ_CHANNEL = RF_CHAN_14,
-    NUM_2_4GHZ_CHANNELS = (MAX_2_4GHZ_CHANNEL - MIN_2_4GHZ_CHANNEL + 1),
 
     MIN_5GHZ_CHANNEL = RF_CHAN_240,
     MAX_5GHZ_CHANNEL = RF_CHAN_165,
@@ -346,6 +346,26 @@ typedef enum
     INVALID_RF_CHANNEL = 0xBAD,
     RF_CHANNEL_INVALID_MAX_FIELD = 0x7FFFFFFF  /* define as 4 bytes data */
 }eRfChannels;
+
+typedef enum
+{
+   RF_CHAN_1_1 = RF_CHAN_1,
+   RF_CHAN_2_1 = RF_CHAN_2,
+   RF_CHAN_3_1 = RF_CHAN_3,
+   RF_CHAN_4_1 = RF_CHAN_4,
+   RF_CHAN_5_1 = RF_CHAN_5,
+   RF_CHAN_6_1 = RF_CHAN_6,
+   RF_CHAN_7_1 = RF_CHAN_7,
+   RF_CHAN_8_1 = RF_CHAN_8,
+   RF_CHAN_9_1 = RF_CHAN_9,
+   RF_CHAN_10_1 = RF_CHAN_10,
+   RF_CHAN_11_1 = RF_CHAN_11,
+   RF_CHAN_12_1 = RF_CHAN_12,
+   RF_CHAN_13_1 = RF_CHAN_13,
+   RF_CHAN_14_1 = RF_CHAN_14,
+// The above params are used for scripts.
+   NUM_2_4GHZ_CHANNELS,
+}eRfChannels_2_4GHz;
 
 enum
 {
@@ -459,7 +479,7 @@ typedef PACKED_PRE struct PACKED_POST
                                        //MSB set if extraPrecision.hi8_adjustedPwrDet is used
 }tTpcCaldPowerPoint;
 
-typedef tTpcCaldPowerPoint tTpcCaldPowerTable[PHY_MAX_TX_CHAINS][MAX_TPC_CAL_POINTS];
+typedef tTpcCaldPowerPoint tTpcCaldPowerTable[NUM_PHY_MAX_TX_CHAINS][MAX_TPC_CAL_POINTS];
 
 typedef PACKED_PRE struct PACKED_POST
 {
@@ -471,7 +491,7 @@ typedef PACKED_PRE struct PACKED_POST
 #define TPC_MEM_POWER_LUT_DEPTH 256
 #endif
 
-typedef tTpcLutValue tTpcPowerTable[PHY_MAX_TX_CHAINS][TPC_MEM_POWER_LUT_DEPTH];
+typedef tTpcLutValue tTpcPowerTable[NUM_PHY_MAX_TX_CHAINS][TPC_MEM_POWER_LUT_DEPTH];
 
 typedef PACKED_PRE struct PACKED_POST
 {
@@ -642,7 +662,7 @@ typedef enum
 }eHalPhyRates;
 
 #define NUM_RATE_POWER_GROUPS           NUM_HAL_PHY_RATES  //total number of rate power groups including the CB_RATE_POWER_OFFSET
-typedef uAbsPwrPrecision tRateGroupPwr[NUM_RATE_POWER_GROUPS];
+typedef uAbsPwrPrecision tRateGroupPwr[NUM_HAL_PHY_RATES];
 
 //From halNvTables.h
 #define NV_FIELD_COUNTRY_CODE_SIZE  3
