@@ -24,6 +24,7 @@
 #include <linux/nmi.h>
 #include <linux/dmi.h>
 #include <linux/coresight.h>
+#include <linux/console.h>
 
 #define PANIC_TIMER_STEP 100
 #define PANIC_BLINK_SPD 18
@@ -125,6 +126,9 @@ void panic(const char *fmt, ...)
 	crash_kexec(NULL);
 
 	kmsg_dump(KMSG_DUMP_PANIC);
+
+	if (is_console_locked())
+		console_unlock();
 
 	/*
 	 * Note smp_send_stop is the usual smp shutdown function, which
