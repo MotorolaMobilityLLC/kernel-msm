@@ -9098,6 +9098,9 @@ VOS_STATUS WDA_ProcessWowlEnterReq(tWDA_CbContext *pWDA,
       vos_mem_free(wdiWowlEnterInfo);
       return VOS_STATUS_E_NOMEM;
    }
+
+   vos_mem_zero(pWdaParams, sizeof(tWDA_ReqParams));
+
    vos_mem_copy(wdiWowlEnterInfo->wdiWowlEnterInfo.magicPtrn,
                 pWowlEnterParams->magicPtrn,
                 sizeof(tSirMacAddr));

@@ -95,9 +95,19 @@ static inline int find_ptrn_len(const char* ptrn)
 
 static void hdd_wowl_callback( void *pContext, eHalStatus halStatus )
 {
-  VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
-    "%s: Return code = (%ld)\n", __func__, halStatus );
+  VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+      "%s: Return code = (%ld)\n", __func__, halStatus );
 }
+
+#ifdef WLAN_WAKEUP_EVENTS
+static void hdd_wowl_wakeIndication_callback( void *pContext,
+    tpSirWakeReasonInd pWakeReasonInd )
+{
+  VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Wake Reason %d",
+      __func__, pWakeReasonInd->ulReason );
+  hdd_exit_wowl((hdd_adapter_t *)pContext);
+}
+#endif
 
 static void dump_hdd_wowl_ptrn(tSirWowlAddBcastPtrn *ptrn)
 {
@@ -361,7 +371,12 @@ v_BOOL_t hdd_enter_wowl (hdd_adapter_t *pAdapter, v_BOOL_t enable_mp, v_BOOL_t e
 
   // Request to put Libra into WoWL
   halStatus = sme_EnterWowl( hHal, hdd_wowl_callback, 
-                             pAdapter, &wowParams, pAdapter->sessionId);
+                             pAdapter,
+#ifdef WLAN_WAKEUP_EVENTS
+                             hdd_wowl_wakeIndication_callback,
+                             pAdapter,
+#endif // WLAN_WAKEUP_EVENTS
+                             &wowParams, pAdapter->sessionId);
 
   if ( !HAL_STATUS_SUCCESS( halStatus ) )
   {

@@ -2190,28 +2190,22 @@ eHalStatus pmcWowlAddBcastPattern (
            pmcGetPmcStateStr(pMac->pmc.pmcState));
         return eHAL_STATUS_FAILURE;
     }
+
     if( pMac->pmc.pmcState == IMPS || pMac->pmc.pmcState == REQUEST_IMPS )
     {
-        eHalStatus status;
-        vos_mem_copy(pattern->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
-        //Wake up the chip first
-        status = pmcDeferMsg( pMac, eWNI_PMC_WOWL_ADD_BCAST_PTRN, 
-                                    pattern, sizeof(tSirWowlAddBcastPtrn) );
-
-        if( eHAL_STATUS_PMC_PENDING == status )
-        {
-            return eHAL_STATUS_SUCCESS;
-        }
-        else 
-        {
-            //either fail or already in full power
-            if( !HAL_STATUS_SUCCESS( status ) )
-            {
-                return ( status );
-            }
-            //else let it through because it is in full power state
-        }
+        smsLog(pMac, LOGE, FL("Cannot add WoWL Pattern as chip is in %s state"),
+           pmcGetPmcStateStr(pMac->pmc.pmcState));
+        return eHAL_STATUS_FAILURE;
     }
+
+    if( !csrIsConnStateConnected(pMac, sessionId) )
+    {
+        smsLog(pMac, LOGE, FL("Cannot add WoWL Pattern session in %d state"),
+           pSession->connectState);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    vos_mem_copy(pattern->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
 
     if (pmcSendMessage(hHal, eWNI_PMC_WOWL_ADD_BCAST_PTRN, pattern, sizeof(tSirWowlAddBcastPtrn))
         != eHAL_STATUS_SUCCESS)
@@ -2382,9 +2376,6 @@ eHalStatus pmcEnterWowl (
        return eHAL_STATUS_FAILURE;
    }
 
-   vos_mem_copy(wowlEnterParams->bssId, pSession->connectedProfile.bssid, 
-               sizeof(tSirMacAddr));
-
    if( !PMC_IS_READY(pMac) )
    {
        smsLog(pMac, LOGE, FL("Requesting WoWL when PMC not ready"));
@@ -2430,6 +2421,9 @@ eHalStatus pmcEnterWowl (
              "will not be accepted");
       return eHAL_STATUS_FAILURE;
    }
+
+   vos_mem_copy(wowlEnterParams->bssId, pSession->connectedProfile.bssid,
+               sizeof(tSirMacAddr));
 
    // To avoid race condition, set callback routines before sending message.
    /* cache the WOWL information */
