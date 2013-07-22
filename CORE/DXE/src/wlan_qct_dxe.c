@@ -1079,24 +1079,6 @@ static wpt_status dxeDescAllocAndLink
          return eWLAN_PAL_STATUS_E_FAULT;
       }
 
-      if((WDTS_CHANNEL_TX_LOW_PRI == channelEntry->channelType) ||
-         (WDTS_CHANNEL_TX_HIGH_PRI == channelEntry->channelType))
-      {
-         currentDesc->descCtrl.ctrl = channelEntry->extraConfig.cw_ctrl_write;
-         currentDesc->dxedesc.dxe_short_desc.dstMemAddrL = channelEntry->extraConfig.refWQ_swapped;
-      }
-      else if((WDTS_CHANNEL_RX_LOW_PRI == channelEntry->channelType) ||
-              (WDTS_CHANNEL_RX_HIGH_PRI == channelEntry->channelType))
-      {
-         currentDesc->descCtrl.ctrl = channelEntry->extraConfig.cw_ctrl_read;
-         currentDesc->dxedesc.dxe_short_desc.srcMemAddrL = channelEntry->extraConfig.refWQ_swapped;
-      }
-      else
-      {
-         /* Just in case. H2H Test RX channel, do nothing
-          * By Definition this must not happen */
-      }
-
       currentCtrlBlk->linkedDesc        = currentDesc;
       currentCtrlBlk->linkedDescPhyAddr = (unsigned int)physAddress;
       /* First descriptor, next none
@@ -1149,6 +1131,24 @@ static wpt_status dxeDescAllocAndLink
             return status;
          }
          --channelEntry->numFreeDesc;
+      }
+
+      if((WDTS_CHANNEL_TX_LOW_PRI == channelEntry->channelType) ||
+         (WDTS_CHANNEL_TX_HIGH_PRI == channelEntry->channelType))
+      {
+         currentDesc->descCtrl.ctrl = channelEntry->extraConfig.cw_ctrl_write;
+         currentDesc->dxedesc.dxe_short_desc.dstMemAddrL = channelEntry->extraConfig.refWQ_swapped;
+      }
+      else if((WDTS_CHANNEL_RX_LOW_PRI == channelEntry->channelType) ||
+              (WDTS_CHANNEL_RX_HIGH_PRI == channelEntry->channelType))
+      {
+         currentDesc->descCtrl.ctrl = channelEntry->extraConfig.cw_ctrl_read;
+         currentDesc->dxedesc.dxe_short_desc.srcMemAddrL = channelEntry->extraConfig.refWQ_swapped;
+      }
+      else
+      {
+         /* Just in case. H2H Test RX channel, do nothing
+          * By Definition this must not happen */
       }
 
       currentCtrlBlk = currentCtrlBlk->nextCtrlBlk;
@@ -1884,6 +1884,13 @@ static wpt_status dxeRXFrameSingleBufferAlloc
 
    currentDesc            = currentCtrlBlock->linkedDesc;
 
+   if(currentDesc->descCtrl.valid)
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "This Descriptor is valid, Do not refill");
+      return eWLAN_PAL_STATUS_E_EXISTS;
+   }
+
    /* First check if a packet pointer has already been provided by a previously
       invoked Rx packet available callback. If so use that packet. */
    if(dxeCtxt->rxPalPacketUnavailable && (NULL != dxeCtxt->freeRXPacket))
@@ -2008,11 +2015,18 @@ static wpt_status dxeRXFrameRefillRing
                                            channelEntry,
                                            currentCtrlBlk);
 
-      if(eWLAN_PAL_STATUS_SUCCESS != status)
+      if((eWLAN_PAL_STATUS_SUCCESS != status) &&
+         (eWLAN_PAL_STATUS_E_EXISTS != status))
       {
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "dxeRXFrameRefillRing, out of RX buffer pool, break here");
          break;
+      }
+
+      if(eWLAN_PAL_STATUS_E_EXISTS == status)
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  "dxeRXFrameRefillRing, Descriptor Non-Empry");
       }
 
       currentDesc = currentCtrlBlk->linkedDesc;
@@ -2033,7 +2047,10 @@ static wpt_status dxeRXFrameRefillRing
                            1 << channelEntry->assignedDMAChannel);
       }
       currentCtrlBlk = currentCtrlBlk->nextCtrlBlk;
-      --channelEntry->numFreeDesc;
+      if(eWLAN_PAL_STATUS_E_EXISTS != status)
+      {
+         --channelEntry->numFreeDesc;
+      }
    }
    
    channelEntry->tailCtrlBlk = currentCtrlBlk;
