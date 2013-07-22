@@ -58,4 +58,5 @@
 &mot_cmi_720p_vid_v0 {
 	vddio_disp-supply = <&vddio_disp_vreg>;
 	lcdbias-supply = <&tps65132>;
+	qcom,cont-splash-enabled;
 };
