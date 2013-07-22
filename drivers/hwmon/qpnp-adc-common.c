@@ -36,6 +36,147 @@
 #define QPNP_VADC_MAX_ADC_CODE			0xA800
 #define KELVINMIL_DEGMIL	273160
 
+static const struct qpnp_vadc_map_pt adcmap_btm_threshold_mmi_neg10[] = {
+	{-400, 1713},
+	{-390, 1708},
+	{-380, 1703},
+	{-370, 1697},
+	{-360, 1690},
+	{-350, 1682},
+	{-340, 1676},
+	{-330, 1669},
+	{-320, 1661},
+	{-310, 1653},
+	{-300, 1643},
+	{-290, 1635},
+	{-280, 1627},
+	{-270, 1617},
+	{-260, 1607},
+	{-250, 1595},
+	{-240, 1586},
+	{-230, 1575},
+	{-220, 1564},
+	{-210, 1552},
+	{-200, 1538},
+	{-190, 1527},
+	{-180, 1514},
+	{-170, 1501},
+	{-160, 1487},
+	{-150, 1471},
+	{-140, 1458},
+	{-130, 1444},
+	{-120, 1429},
+	{-110, 1413},
+	{-100, 1395},
+	{-90, 1381},
+	{-80, 1366},
+	{-70, 1350},
+	{-60, 1332},
+	{-50, 1313},
+	{-40, 1298},
+	{-30, 1281},
+	{-20, 1264},
+	{-10, 1246},
+	{0, 1226},
+	{10, 1210},
+	{20, 1193},
+	{30, 1175},
+	{40, 1156},
+	{50, 1136},
+	{60, 1120},
+	{70, 1103},
+	{80, 1086},
+	{90, 1067},
+	{100, 1047},
+	{110, 1032},
+	{120, 1015},
+	{130, 998},
+	{140, 980},
+	{150, 962},
+	{160, 947},
+	{170, 931},
+	{180, 915},
+	{190, 899},
+	{200, 881},
+	{210, 867},
+	{220, 853},
+	{230, 838},
+	{240, 823},
+	{250, 807},
+	{260, 795},
+	{270, 782},
+	{280, 768},
+	{290, 755},
+	{300, 741},
+	{310, 729},
+	{320, 718},
+	{330, 706},
+	{340, 694},
+	{350, 681},
+	{360, 671},
+	{370, 661},
+	{380, 651},
+	{390, 641},
+	{400, 630},
+	{410, 621},
+	{420, 612},
+	{430, 603},
+	{440, 594},
+	{450, 585},
+	{460, 578},
+	{470, 570},
+	{480, 562},
+	{490, 555},
+	{500, 547},
+	{510, 540},
+	{520, 534},
+	{530, 527},
+	{540, 521},
+	{550, 514},
+	{560, 509},
+	{570, 503},
+	{580, 498},
+	{590, 492},
+	{600, 487},
+	{610, 482},
+	{620, 477},
+	{630, 473},
+	{640, 468},
+	{650, 463},
+	{660, 459},
+	{670, 455},
+	{680, 451},
+	{690, 447},
+	{700, 443},
+	{710, 440},
+	{720, 437},
+	{730, 433},
+	{740, 430},
+	{750, 427},
+	{760, 424},
+	{770, 421},
+	{780, 418},
+	{790, 415},
+	{800, 412},
+	{810, 410},
+	{820, 408},
+	{830, 405},
+	{840, 403},
+	{850, 401},
+	{860, 399},
+	{870, 396},
+	{880, 394},
+	{890, 392},
+	{900, 390},
+	{950, 382},
+	{1000, 375},
+	{1050, 368},
+	{1100, 363},
+	{1150, 359},
+	{1200, 355},
+	{1250, 351}
+};
+
 /* Units for temperature below (on x axis) is in 0.1DegC as
    required by the battery driver. Note the resolution used
    here to compute the table was done for DegC to milli-volts.
@@ -617,15 +758,26 @@ int32_t qpnp_adc_scale_batt_therm(struct qpnp_vadc_chip *chip,
 		struct qpnp_vadc_result *adc_chan_result)
 {
 	int64_t bat_voltage = 0;
+	int rc;
 
 	bat_voltage = qpnp_adc_scale_ratiometric_calib(adc_code,
 			adc_properties, chan_properties);
 
-	return qpnp_adc_map_temp_voltage(
-			adcmap_btm_threshold,
-			ARRAY_SIZE(adcmap_btm_threshold),
-			bat_voltage,
-			&adc_chan_result->physical);
+	if (qpnp_vadc_get_batt_therm_type(chip) == 1) {
+		rc = qpnp_adc_map_temp_voltage(
+				adcmap_btm_threshold_mmi_neg10,
+				ARRAY_SIZE(adcmap_btm_threshold_mmi_neg10),
+				bat_voltage,
+				&adc_chan_result->physical);
+	} else {
+		rc = qpnp_adc_map_temp_voltage(
+				adcmap_btm_threshold,
+				ARRAY_SIZE(adcmap_btm_threshold),
+				bat_voltage,
+				&adc_chan_result->physical);
+	}
+
+	return rc;
 }
 EXPORT_SYMBOL(qpnp_adc_scale_batt_therm);
 
@@ -916,11 +1068,20 @@ int32_t qpnp_adc_btm_scaler(struct qpnp_vadc_chip *chip,
 
 	pr_debug("warm_temp:%d and cool_temp:%d\n", param->high_temp,
 				param->low_temp);
-	rc = qpnp_adc_map_voltage_temp(
-		adcmap_btm_threshold,
-		ARRAY_SIZE(adcmap_btm_threshold),
-		(param->low_temp),
-		&low_output);
+
+	if (qpnp_adc_tm_get_batt_therm_type() == 1) {
+		rc = qpnp_adc_map_voltage_temp(
+				adcmap_btm_threshold_mmi_neg10,
+				ARRAY_SIZE(adcmap_btm_threshold_mmi_neg10),
+				(param->low_temp),
+				&low_output);
+	} else {
+		rc = qpnp_adc_map_voltage_temp(
+				adcmap_btm_threshold,
+				ARRAY_SIZE(adcmap_btm_threshold),
+				(param->low_temp),
+				&low_output);
+	}
 	if (rc) {
 		pr_debug("low_temp mapping failed with %d\n", rc);
 		return rc;
@@ -931,11 +1092,19 @@ int32_t qpnp_adc_btm_scaler(struct qpnp_vadc_chip *chip,
 	do_div(low_output, btm_param.adc_vref);
 	low_output += btm_param.adc_gnd;
 
-	rc = qpnp_adc_map_voltage_temp(
-		adcmap_btm_threshold,
-		ARRAY_SIZE(adcmap_btm_threshold),
-		(param->high_temp),
-		&high_output);
+	if (qpnp_adc_tm_get_batt_therm_type() == 1) {
+		rc = qpnp_adc_map_voltage_temp(
+				adcmap_btm_threshold_mmi_neg10,
+				ARRAY_SIZE(adcmap_btm_threshold_mmi_neg10),
+				(param->high_temp),
+				&high_output);
+	} else {
+		rc = qpnp_adc_map_voltage_temp(
+				adcmap_btm_threshold,
+				ARRAY_SIZE(adcmap_btm_threshold),
+				(param->high_temp),
+				&high_output);
+	}
 	if (rc) {
 		pr_debug("high temp mapping failed with %d\n", rc);
 		return rc;
@@ -1102,6 +1271,10 @@ int32_t qpnp_adc_get_devicetree_data(struct spmi_device *spmi,
 		pr_err("Invalid adc bit resolution property\n");
 		return -EINVAL;
 	}
+	rc = of_property_read_u32(node, "qcom,adc-batt-therm-type",
+			&adc_prop->batt_therm_type);
+	if (rc)
+		pr_err("Invalid batt therm type property using Default\n");
 	adc_qpnp->adc_prop = adc_prop;
 
 	/* Get the peripheral address */

@@ -1324,6 +1324,16 @@ hwmon_err_sens:
 	return rc;
 }
 
+int32_t qpnp_vadc_get_batt_therm_type(struct qpnp_vadc_chip *qpnp_vadc)
+{
+
+	if (!qpnp_vadc || !(qpnp_vadc->adc) || !(qpnp_vadc->adc->adc_prop))
+		return 0;
+
+	return qpnp_vadc->adc->adc_prop->batt_therm_type;
+}
+EXPORT_SYMBOL(qpnp_vadc_get_batt_therm_type);
+
 static int __devinit qpnp_vadc_probe(struct spmi_device *spmi)
 {
 	struct qpnp_vadc_chip *vadc;
