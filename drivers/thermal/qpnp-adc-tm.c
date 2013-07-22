@@ -1793,6 +1793,22 @@ struct qpnp_adc_tm_chip *qpnp_get_adc_tm(struct device *dev, const char *name)
 }
 EXPORT_SYMBOL(qpnp_get_adc_tm);
 
+int32_t qpnp_adc_tm_get_batt_therm_type(void)
+{
+	struct qpnp_adc_tm_chip *qpnp_adc_tm = NULL;
+
+	list_for_each_entry(qpnp_adc_tm, &qpnp_adc_tm_device_list, list)
+		break;
+
+	if (!qpnp_adc_tm ||
+	    !(qpnp_adc_tm->adc) ||
+	    !(qpnp_adc_tm->adc->adc_prop))
+		return 0;
+
+	return qpnp_adc_tm->adc->adc_prop->batt_therm_type;
+}
+EXPORT_SYMBOL(qpnp_adc_tm_get_batt_therm_type);
+
 static int __devinit qpnp_adc_tm_probe(struct spmi_device *spmi)
 {
 	struct device_node *node = spmi->dev.of_node, *child;
