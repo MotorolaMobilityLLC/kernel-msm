@@ -110,6 +110,7 @@ struct bq24192_chip {
 	int  wlc_dwn_i_ma;
 	int  wlc_dwn_input_i_ma;
 	int  batt_health;
+	int  saved_ibat_ma;
 };
 
 static struct bq24192_chip *the_chip;
@@ -313,6 +314,13 @@ static int bq24192_set_ibat_max(struct bq24192_chip *chip, int ma)
 		return -EINVAL;
 	}
 
+	if ((chip->batt_health == POWER_SUPPLY_HEALTH_OVERHEAT)
+			&& (ma > chip->set_chg_current_ma)) {
+		chip->saved_ibat_ma = ma;
+		pr_info("reject %d mA setting due to overheat\n", ma);
+		return 0;
+	}
+
 	reg_val = (ma - IBAT_MIN_MA)/IBAT_STEP_MA;
 	set_ibat = reg_val * IBAT_STEP_MA + IBAT_MIN_MA;
 	reg_val = reg_val << 2;
@@ -322,6 +330,35 @@ static int bq24192_set_ibat_max(struct bq24192_chip *chip, int ma)
 
 	return bq24192_masked_write(chip->client, CHARGE_CUR_CONT_REG,
 			CHG_CURRENT_LIMIT_MASK, reg_val);
+}
+
+static int bq24192_check_restore_ibatt(struct bq24192_chip *chip,
+				int old_health, int new_health)
+{
+	if (old_health == new_health)
+		return 0;
+
+	switch (new_health) {
+	case POWER_SUPPLY_HEALTH_OVERHEAT:
+		chip->saved_ibat_ma = chip->set_chg_current_ma;
+		break;
+	case POWER_SUPPLY_HEALTH_GOOD:
+		chip->batt_health = new_health;
+		if (chip->saved_ibat_ma) {
+			bq24192_set_ibat_max(chip,
+					chip->saved_ibat_ma);
+			pr_info("restore ibat max = %d by decreasing temp",
+						chip->saved_ibat_ma);
+		}
+		chip->saved_ibat_ma = 0;
+		break;
+	case POWER_SUPPLY_HEALTH_COLD:
+	case POWER_SUPPLY_HEALTH_UNKNOWN:
+	default:
+		break;
+	}
+
+	return 0;
 }
 
 #define VIN_LIMIT_MIN_MV  3880
@@ -950,6 +987,9 @@ static void bq24192_input_limit_worker(struct work_struct *work)
 
 static char *bq24192_power_supplied_to[] = {
 	"battery",
+#ifdef CONFIG_BATTERY_TEMP_CONTROL
+	"batt_therm",
+#endif
 };
 
 static enum power_supply_property bq24192_power_props[] = {
@@ -1018,6 +1058,8 @@ static int bq24192_power_set_property(struct power_supply *psy,
 				msecs_to_jiffies(200));
 		return 0;
 	case POWER_SUPPLY_PROP_HEALTH:
+		bq24192_check_restore_ibatt(chip,
+				chip->batt_health, val->intval);
 		chip->batt_health = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
