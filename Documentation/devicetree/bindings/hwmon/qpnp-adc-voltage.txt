@@ -17,6 +17,9 @@ Required properties:
 - qcom,adc-bit-resolution : Bit resolution of the ADC.
 - qcom,adc-vdd-reference : Voltage reference used by the ADC.
 
+Optional properties:
+- qcom,adc-batt-therm-type : If present which Battery Thermistor map to use.
+
 Channel nodes
 NOTE: Atleast one Channel node is required.
 
