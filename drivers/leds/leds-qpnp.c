@@ -44,6 +44,7 @@
 #define WLED_BOOST_LIMIT_REG(base)		(base + 0x4E)
 #define WLED_CURR_SINK_REG(base)		(base + 0x4F)
 #define WLED_HIGH_POLE_CAP_REG(base)		(base + 0x58)
+#define WLED_CABC_REG(base)			(base + 0x66)
 #define WLED_CURR_SINK_MASK		0xE0
 #define WLED_CURR_SINK_SHFT		0x05
 #define WLED_DISABLE_ALL_SINKS		0x00
@@ -71,6 +72,7 @@
 #define WLED_OP_FDBCK_DEFAULT		0x00
 #define WLED_BOOST_DUTY_MASK		0x03
 #define WLED_MOD_SCHEME_MASK		0xFF
+#define WLED_CABC_MASK			0x80
 
 #define WLED_MAX_LEVEL			4095
 #define WLED_8_BIT_MASK			0xFF
@@ -92,6 +94,9 @@
 #define WLED_CP_SEL_DEFAULT		0x00
 #define WLED_CTRL_DLY_DEFAULT		0x00
 #define WLED_SWITCH_FREQ_DEFAULT	0x0B
+#define WLED_CABC_ENABLE		0x80
+#define WLED_PANEL_DEFAULT		0xffffffffffffffffULL
+#define WLED_PANEL_ES5			0x85
 
 #define FLASH_SAFETY_TIMER(base)	(base + 0x40)
 #define FLASH_MAX_CURR(base)		(base + 0x41)
@@ -362,6 +367,7 @@ struct wled_config_data {
 	u8	pmic_version;
 	u8	max_boost_duty;
 	u8	mod_scheme;
+	bool	cabc_en;
 	bool	dig_mod_gen_en;
 	bool	cs_out_en;
 };
@@ -1620,6 +1626,17 @@ static int __devinit qpnp_wled_init(struct qpnp_led_data *led)
 		}
 	}
 
+	/* program cabc mode */
+	if (led->wled_cfg->cabc_en) {
+		rc = qpnp_led_masked_write(led, WLED_CABC_REG(led->base),
+			WLED_CABC_MASK, WLED_CABC_ENABLE);
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"WLED cabc reg write failed(%d)\n", rc);
+			return rc;
+		}
+	}
+
 	/* program high pole capacitance */
 	rc = qpnp_led_masked_write(led, WLED_HIGH_POLE_CAP_REG(led->base),
 		WLED_CP_SELECT_MASK, led->wled_cfg->cp_select);
@@ -2618,6 +2635,8 @@ static int __devinit qpnp_get_config_wled(struct qpnp_led_data *led,
 {
 	u32 val;
 	int rc;
+	unsigned long long panel_ver;
+	struct device_node *np;
 
 	led->wled_cfg = devm_kzalloc(&led->spmi_dev->dev,
 				sizeof(struct wled_config_data), GFP_KERNEL);
@@ -2701,6 +2720,22 @@ static int __devinit qpnp_get_config_wled(struct qpnp_led_data *led,
 
 	led->wled_cfg->cs_out_en =
 		of_property_read_bool(node, "qcom,cs-out-en");
+
+	/* Use panel revision check to enable cabc */
+	np = of_find_node_by_path("/chosen");
+	panel_ver = WLED_PANEL_DEFAULT;
+	of_property_read_u64(np, "mmi,panel_ver", &panel_ver);
+	panel_ver = (panel_ver & 0xff00) >> 8;
+	of_node_put(np);
+	if ((panel_ver == 0xff) || (panel_ver < WLED_PANEL_ES5)) {
+		led->wled_cfg->cabc_en = 0;
+		dev_info(&led->spmi_dev->dev,
+			"no CABC panel rev. %#x\n", (u32)panel_ver);
+	} else {
+		led->wled_cfg->cabc_en = 1;
+		dev_info(&led->spmi_dev->dev,
+			"CABC enabled panel rev. %#x\n", (u32)panel_ver);
+	}
 
 	return 0;
 }
