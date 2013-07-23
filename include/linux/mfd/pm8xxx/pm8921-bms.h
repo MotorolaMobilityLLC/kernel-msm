@@ -71,6 +71,17 @@ struct pm8921_bms_platform_data {
 #endif
 };
 
+enum bms_request_operation {
+	CALC_FCC,
+	CALC_PC,
+	CALC_SOC,
+	CALIB_HKADC,
+	CALIB_CCADC,
+	GET_VBAT_VSENSE_SIMULTANEOUS,
+	STOP_OCV,
+	START_OCV,
+};
+
 #if defined(CONFIG_PM8921_BMS) || defined(CONFIG_PM8921_BMS_MODULE)
 /**
  * pm8921_bms_get_vsense_avg - return the voltage across the sense
@@ -180,6 +191,11 @@ void pm8921_bms_charging_full(void);
  *				is attached.
  */
 void pm8921_bms_no_external_accy(void);
+/**
+ * pm8921_bms_control_ocv_updates - function to notify the bms driver to
+ *				start/stop ocv updates.
+ */
+void pm8921_bms_control_ocv_updates(enum bms_request_operation ctrl_ocv);
 #else
 static inline void pm8921_bms_charging_full(void)
 {
