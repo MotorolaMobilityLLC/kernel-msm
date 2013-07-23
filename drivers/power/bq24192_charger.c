@@ -109,6 +109,7 @@ struct bq24192_chip {
 	int  up_input_i_ma;
 	int  wlc_dwn_i_ma;
 	int  wlc_dwn_input_i_ma;
+	int  batt_health;
 };
 
 static struct bq24192_chip *the_chip;
@@ -237,6 +238,20 @@ static int bq24192_enable_charging(struct bq24192_chip *chip, bool enable)
 	}
 
 	return 0;
+}
+
+static int bq24192_is_chg_enabled(struct bq24192_chip *chip)
+{
+	int ret;
+	u8 temp;
+
+	ret = bq24192_read_reg(chip->client, PWR_ON_CONF_REG, &temp);
+	if (ret) {
+		pr_err("failed to read PWR_ON_CONF_REG rc=%d\n", ret);
+		return ret;
+	}
+
+	return (temp & CHG_CONFIG_MASK) == 0x10;
 }
 
 struct input_ma_limit_entry {
@@ -945,6 +960,8 @@ static enum power_supply_property bq24192_power_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+	POWER_SUPPLY_PROP_VOLTAGE_MAX,
+	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 };
 
 static int bq24192_power_get_property(struct power_supply *psy,
@@ -960,7 +977,7 @@ static int bq24192_power_get_property(struct power_supply *psy,
 		val->intval = bq24192_get_prop_chg_status(chip);
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
-		val->intval = POWER_SUPPLY_HEALTH_UNKNOWN;
+		val->intval = chip->batt_health;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = chip->set_chg_current_ma * 1000;
@@ -974,6 +991,12 @@ static int bq24192_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = bq24192_get_prop_input_voltage(chip);
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		val->intval = chip->vbat_max_mv * 1000;
+		break;
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+		val->intval = bq24192_is_chg_enabled(chip);
 		break;
 	default:
 		return -EINVAL;
@@ -994,11 +1017,20 @@ static int bq24192_power_set_property(struct power_supply *psy,
 		schedule_delayed_work(&chip->irq_work,
 				msecs_to_jiffies(200));
 		return 0;
+	case POWER_SUPPLY_PROP_HEALTH:
+		chip->batt_health = val->intval;
+		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		chip->ac_online = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		bq24192_set_ibat_max(chip, val->intval / 1000);
+		break;
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+		bq24192_enable_charging(chip, val->intval);
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		bq24192_set_vbat_max(chip, val->intval / 1000);
 		break;
 	default:
 		return -EINVAL;
@@ -1295,6 +1327,7 @@ static int bq24192_probe(struct i2c_client *client,
 		chip->wlc_dwn_i_ma = pdata->wlc_dwn_i_ma;
 	}
 	chip->set_chg_current_ma = chip->chg_current_ma;
+	chip->batt_health = POWER_SUPPLY_HEALTH_GOOD;
 
 	if (chip->wlc_support) {
 		chip->wlc_psy = power_supply_get_by_name("wireless");
