@@ -342,6 +342,8 @@ struct pm8921_chg_chip {
 	int				chrg_ocv_cc_af_uah;
 	int				chrg_ocv_cc_ef_uah;
 	int				chrg_ocv_bv_mv;
+	unsigned int			float_charge_timer;
+	unsigned long			float_charge_start_time;
 #endif
 };
 
@@ -1489,6 +1491,12 @@ static int is_battery_valid(struct pm8921_chg_chip *chip)
 				batt_data.step_charge_vinmin;
 			pr_debug("step_charge_vinmin = %d\n",
 				chip->step_charge_vinmin);
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+			chip->float_charge_timer =
+				batt_data.float_charge_timer;
+			pr_debug("float_charge_timer = %d\n",
+				 chip->float_charge_timer);
+#endif
 			pm8921_chg_hw_config(chip);
 		}
 		chip->batt_valid = batt_vld;
@@ -2819,6 +2827,10 @@ static void handle_chg_insertion_removal(struct pm8921_chg_chip *chip)
 			chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
 			if (pdata->force_therm_bias)
 				pdata->force_therm_bias(chip->dev, 0);
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+			chip->float_charge_start_time = 0;
+			pm8921_bms_control_ocv_updates(START_OCV);
+#endif
 			wake_unlock(&chip->chg_wake_lock);
 		}
 		prev_plugged = plugged;
@@ -3776,7 +3788,7 @@ static void update_heartbeat(struct work_struct *work)
 	struct pm8921_charger_platform_data *pdata =
 		chip->dev->platform_data;
 	struct pm8921_charger_battery_data data;
-	int64_t enable = 0;
+	int64_t enable = 1;
 	int64_t retval = 0;
 	int rc = 0;
 	int batt_mvolt;
@@ -3787,6 +3799,14 @@ static void update_heartbeat(struct work_struct *work)
 	int seconds = 0;
 	int curr_time =
 		ktime_to_timespec(alarm_get_elapsed_realtime()).tv_sec;
+#endif
+
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+	int64_t float_enable = 1;
+	struct timespec bootup_time;
+	unsigned long float_timestamp;
+	get_monotonic_boottime(&bootup_time);
+	float_timestamp = bootup_time.tv_sec;
 #endif
 
 	get_wl_psy();
@@ -3890,6 +3910,31 @@ static void update_heartbeat(struct work_struct *work)
 			alarm_state = PM_BATT_ALARM_NORMAL;
 	}
 
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+	if (!(is_usb_chg_plugged_in(chip) ||
+	      is_dc_chg_plugged_in(chip))) {
+		chip->float_charge_start_time = 0;
+		chip->bms_notify.is_battery_full = 0;
+	}
+
+	if ((get_prop_batt_status(chip) == POWER_SUPPLY_STATUS_FULL) &&
+	    (chip->float_charge_start_time)) {
+		if (((float_timestamp - chip->float_charge_start_time) >=
+		     chip->float_charge_timer)) {
+			float_enable = 0;
+			pm8921_bms_control_ocv_updates(STOP_OCV);
+		}
+
+		if ((percent_soc <= chip->resume_charge_percent)) {
+			float_enable = 1;
+			chip->float_charge_start_time = 0;
+			cancel_delayed_work(&chip->eoc_work);
+			schedule_delayed_work(&chip->eoc_work,
+					msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
+		}
+	}
+#endif
+
 	if (pdata->temp_range_cb) {
 		data.max_voltage = chip->max_voltage_mv;
 		data.cool_temp = (chip->cool_temp_dc / 10);
@@ -3904,13 +3949,22 @@ static void update_heartbeat(struct work_struct *work)
 					      &data, &enable, &btm_state);
 		if (retval == 1) {
 			pm_chg_vddmax_set(chip, data.max_voltage);
+#ifndef CONFIG_PM8921_FLOAT_CHARGE
 			pm_chg_auto_enable(chip, enable);
+#endif
 			pr_debug("Config VDDMAX = %d mV, Enable = %d\n",
 				 data.max_voltage,
 				(int)enable);
 			pr_info("Temperature State = %d\n", btm_state);
 		}
 	}
+
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+	if (retval == 1)
+		pm_chg_auto_enable(chip, (enable & float_enable));
+	else
+		pm_chg_auto_enable(chip, float_enable);
+#endif
 
 	if ((chip->step_charge_voltage < chip->max_voltage_mv) &&
 	    (chip->step_charge_voltage > chip->min_voltage_mv)) {
@@ -4449,6 +4503,9 @@ static void eoc_worker(struct work_struct *work)
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct pm8921_chg_chip *chip = container_of(dwork,
 				struct pm8921_chg_chip, eoc_work);
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+	struct timespec start_time;
+#endif
 	static int count;
 	int end;
 	int vbat_meas_uv, vbat_meas_mv;
@@ -4499,6 +4556,8 @@ static void eoc_worker(struct work_struct *work)
 #endif
 #ifdef CONFIG_PM8921_FLOAT_CHARGE
 		pr_info("Taper Reached Float Charging\n");
+		get_monotonic_boottime(&start_time);
+		chip->float_charge_start_time = start_time.tv_sec;
 		chip->bms_notify.is_battery_full = 1;
 		pm8921_bms_get_cc_uah(&chip->chrg_ocv_cc_ef_uah);
 		bms_notify_check(chip);
@@ -6345,7 +6404,9 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	chip->chrg_ocv_cc_ef_uah = 0;
 	chip->chrg_ocv_bv_mv = 0;
 #endif
-
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+	chip->float_charge_start_time = 0;
+#endif
 	chip->cold_thr = pdata->cold_thr;
 	chip->hot_thr = pdata->hot_thr;
 	chip->rconn_mohm = pdata->rconn_mohm;
