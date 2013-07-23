@@ -75,6 +75,7 @@ struct pm8921_charger_battery_data {
 	int				hot_temp_offset;
 	int				hot_temp_pcb;
 	signed char			hot_temp_pcb_offset;
+	unsigned int                    float_charge_timer;
 };
 #endif
 

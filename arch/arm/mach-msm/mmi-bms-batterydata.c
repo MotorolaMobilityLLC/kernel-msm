@@ -112,6 +112,7 @@ static struct pm8921_charger_battery_data mmi_eg30_lg_charging_data = {
 	.step_charge_current		= 1130,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_eg30_lg_cell_data = {
@@ -218,6 +219,7 @@ static struct pm8921_charger_battery_data mmi_eu20_lg_charging_data = {
 	.step_charge_current		= 1250,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_eu20_lg_cell_data = {
@@ -324,6 +326,7 @@ static struct pm8921_charger_battery_data mmi_ex34_lg_charging_data = {
 	.step_charge_current		= 1600,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_ex34_lg_cell_data = {
@@ -366,6 +369,7 @@ static struct pm8921_charger_battery_data mmi_mock_ex34_lg_charging_data = {
 	.step_charge_current		= 1000,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_mock_ex34_lg_cell_data = {
@@ -472,6 +476,7 @@ static struct pm8921_charger_battery_data mmi_eb40_lg_charging_data = {
 	.step_charge_current		= 1130,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_eb40_lg_cell_data = {
@@ -578,6 +583,7 @@ static struct pm8921_charger_battery_data mmi_eu40_lg_charging_data = {
 	.step_charge_current		= 1700,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_eu40_lg_cell_data = {
@@ -684,6 +690,7 @@ static struct pm8921_charger_battery_data mmi_eb20_sdi_charging_data = {
 	.step_charge_current		= 1130,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_eb20_sdi_cell_data = {
@@ -790,6 +797,7 @@ static struct pm8921_charger_battery_data mmi_eg30_sdi_charging_data = {
 	.step_charge_current		= 1120,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_eg30_sdi_cell_data = {
@@ -896,6 +904,7 @@ static struct pm8921_charger_battery_data mmi_ev30_charging_data = {
 	.step_charge_current		= 1600,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_ev30_cid5858_cell_data = {
@@ -1009,6 +1018,7 @@ static struct pm8921_charger_battery_data mmi_eb41_charging_data = {
 	.step_charge_current		= 1130,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_eb41_cell_data = {
@@ -1115,6 +1125,7 @@ static struct pm8921_charger_battery_data mmi_eb20_charging_data = {
 	.step_charge_current		= 1130,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_eb20_cell_data = {
@@ -1149,6 +1160,7 @@ static struct pm8921_charger_battery_data mmi_eb20_pre_charging_data = {
 	.step_charge_current		= 1130,
 	.step_charge_voltage		= 4200,
 	.step_charge_vinmin		= 4500,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_eb20_pre_cell_data = {
@@ -1255,6 +1267,7 @@ static struct pm8921_charger_battery_data mmi_df_charging_data = {
 	.step_charge_current		= 0,
 	.step_charge_voltage		= 0,
 	.step_charge_vinmin		= 0,
+	.float_charge_timer             = 1800,
 };
 
 static struct mmi_battery_cell mmi_df_cell_data = {
