@@ -2037,6 +2037,21 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                    pAdapter->sessionId);
        }
 #endif
+       else if (strncmp(command, "BTCOEXMODE", 10) == 0 )
+       {
+           char *dhcpPhase;
+           dhcpPhase = command + 12;
+           if ('1' == *dhcpPhase)
+           {
+               sme_DHCPStartInd(pHddCtx->hHal, pAdapter->device_mode,
+                                pAdapter->macAddressCurrent.bytes);
+           }
+           else if ('2' == *dhcpPhase)
+           {
+               sme_DHCPStopInd(pHddCtx->hHal, pAdapter->device_mode,
+                               pAdapter->macAddressCurrent.bytes);
+           }
+       }
        else {
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);

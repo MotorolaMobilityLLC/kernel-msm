@@ -1419,6 +1419,49 @@ eHalStatus sme_ChangeCountryCode( tHalHandle hHal,
                                   void* pVosContext,
                                   tAniBool countryFromUserSpace );
 
+/* ---------------------------------------------------------------------------
+
+    \fn sme_DHCPStartInd
+
+    \brief Indicate FW about DHCP start event.
+
+    \param hHal - The handle returned by macOpen.
+
+    \param device_mode the mode of the device
+
+    \param macAddr the macAddress of the devices
+
+    \return eHalStatus  SUCCESS.
+
+                         FAILURE or RESOURCES  The API finished and failed.
+
+  -------------------------------------------------------------------------------*/
+
+eHalStatus sme_DHCPStartInd( tHalHandle hHal,
+                             tANI_U8 device_mode,
+                             tANI_U8 *macAddr );
+
+/* ---------------------------------------------------------------------------
+
+    \fn sme_DHCPStopInd
+
+    \brief Indicate FW about DHCP stop event.
+
+    \param hHal - The handle returned by macOpen.
+
+    \param device_mode the mode of the device
+
+    \param macAddr the macAddress of the devices
+
+    \return eHalStatus  SUCCESS.
+
+                         FAILURE or RESOURCES  The API finished and failed.
+
+ -------------------------------------------------------------------------------*/
+eHalStatus sme_DHCPStopInd( tHalHandle hHal,
+                            tANI_U8 device_mode,
+                            tANI_U8 *macAddr );
+
 
 /* ---------------------------------------------------------------------------
     \fn sme_BtcSignalBtEvent
