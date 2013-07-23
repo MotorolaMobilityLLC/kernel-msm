@@ -919,6 +919,7 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
     tLimDisassocDeauthCnfReq limDisassocDeauthCnfReq;
     tANI_U8 deferredMsgCnt;
     tSirDFSChannelList    dfschannelList;
+    tANI_U8 deauthMsgCnt;
 } tAniSirLim, *tpAniSirLim;
 
 typedef struct sLimMgmtFrameRegistration
