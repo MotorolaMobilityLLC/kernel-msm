@@ -47,10 +47,13 @@ static unsigned int _dispatcher_inflight = 15;
 static unsigned int _cmdbatch_timeout = 2000;
 
 /* Interval for reading and comparing fault detection registers */
-static unsigned int _fault_timer_interval = 100;
+static unsigned int _fault_timer_interval = 50;
 
 /* Local array for the current set of fault detect registers */
-static unsigned int *fault_detect_regs;
+static unsigned int fault_detect_regs[FT_DETECT_REGS_COUNT];
+
+/* The last retired global timestamp read during fault detect */
+static unsigned int fault_detect_ts;
 
 /**
  * fault_detect_read() - Read the set of fault detect registers
@@ -64,12 +67,48 @@ static void fault_detect_read(struct kgsl_device *device)
 {
 	int i;
 
+	fault_detect_ts = kgsl_readtimestamp(device, NULL,
+		KGSL_TIMESTAMP_RETIRED);
+
 	for (i = 0; i < FT_DETECT_REGS_COUNT; i++) {
 		if (ft_detect_regs[i] == 0)
 			continue;
 		kgsl_regread(device, ft_detect_regs[i],
 			&fault_detect_regs[i]);
 	}
+}
+
+/**
+ * fault_detect_read_compare() - Read the fault detect registers and compare
+ * them to the current value
+ * @device: Pointer to the KGSL device struct
+ *
+ * Read the set of fault detect registers and compare them to the current set
+ * of registers.  Return 1 if any of the register values changed
+ */
+static int fault_detect_read_compare(struct kgsl_device *device)
+{
+	int i, ret = 0;
+	unsigned int ts;
+
+	for (i = 0; i < FT_DETECT_REGS_COUNT; i++) {
+		unsigned int val;
+
+		if (ft_detect_regs[i] == 0)
+			continue;
+		kgsl_regread(device, ft_detect_regs[i], &val);
+		if (val != fault_detect_regs[i])
+			ret = 1;
+		fault_detect_regs[i] = val;
+	}
+
+	ts = kgsl_readtimestamp(device, NULL, KGSL_TIMESTAMP_RETIRED);
+	if (ts != fault_detect_ts)
+		ret = 1;
+
+	fault_detect_ts = ts;
+
+	return ret;
 }
 
 /*
@@ -88,36 +127,6 @@ static inline bool _isidle(struct kgsl_device *device)
 		return true;
 
 	return false;
-}
-
-/**
- * fault_detect_read_compare() - Read the fault detect registers and compare
- * them to the current value
- * @device: Pointer to the KGSL device struct
- *
- * Read the set of fault detect registers and compare them to the current set
- * of registers.  Return 1 if any of the register values changed
- */
-static int fault_detect_read_compare(struct kgsl_device *device)
-{
-	int i, ret = 0;
-
-	/* Check to see if the device is idle - if so report no hang */
-	if (_isidle(device) == true)
-		ret = 1;
-
-	for (i = 0; i < FT_DETECT_REGS_COUNT; i++) {
-		unsigned int val;
-
-		if (ft_detect_regs[i] == 0)
-			continue;
-		kgsl_regread(device, ft_detect_regs[i], &val);
-		if (val != fault_detect_regs[i])
-			ret = 1;
-		fault_detect_regs[i] = val;
-	}
-
-	return ret;
 }
 
 /**
@@ -499,7 +508,7 @@ static int get_timestamp(struct adreno_context *drawctxt,
 }
 
 /**
- * adreno_context_queue_cmd() - Queue a new command in the context
+ * adreno_dispatcher_queue_cmd() - Queue a new command in the context
  * @adreno_dev: Pointer to the adreno device struct
  * @drawctxt: Pointer to the adreno draw context
  * @cmdbatch: Pointer to the command batch being submitted
@@ -508,7 +517,7 @@ static int get_timestamp(struct adreno_context *drawctxt,
  * Queue a command in the context - if there isn't any room in the queue, then
  * block until there is
  */
-int adreno_context_queue_cmd(struct adreno_device *adreno_dev,
+int adreno_dispatcher_queue_cmd(struct adreno_device *adreno_dev,
 		struct adreno_context *drawctxt, struct kgsl_cmdbatch *cmdbatch,
 		uint32_t *timestamp)
 {
@@ -597,6 +606,16 @@ int adreno_context_queue_cmd(struct adreno_device *adreno_dev,
 	/* The batch fault policy is the current system fault policy */
 	cmdbatch->fault_policy = adreno_dev->ft_policy;
 
+	/*
+	 * Set the fault tolerance policy for the command batch - assuming the
+	 * context hsn't disabled FT use the current device policy
+	 */
+
+	if (drawctxt->flags & CTXT_FLAGS_NO_FAULT_TOLERANCE)
+		set_bit(KGSL_FT_DISABLE, &cmdbatch->fault_policy);
+	else
+		cmdbatch->fault_policy = adreno_dev->ft_policy;
+
 	/* Put the command into the queue */
 	drawctxt->cmdqueue[drawctxt->cmdqueue_tail] = cmdbatch;
 	drawctxt->cmdqueue_tail = (drawctxt->cmdqueue_tail + 1) %
@@ -667,12 +686,12 @@ static void cmdbatch_skip_frame(struct kgsl_cmdbatch *cmdbatch,
 		 */
 
 		if (skip) {
-			replay[i]->priv |= CMDBATCH_FLAG_SKIP;
+			set_bit(CMDBATCH_FLAG_SKIP, &replay[i]->priv);
 
 			if (replay[i]->flags & KGSL_CONTEXT_END_OF_FRAME)
 				skip = 0;
 		} else {
-			replay[i]->priv |= CMDBATCH_FLAG_FORCE_PREAMBLE;
+			set_bit(CMDBATCH_FLAG_FORCE_PREAMBLE, &replay[i]->priv);
 			return;
 		}
 	}
@@ -722,7 +741,70 @@ static void remove_invalidated_cmdbatches(struct kgsl_device *device,
 	}
 }
 
-static void dispatcher_do_fault(struct kgsl_device *device)
+static char _pidname[TASK_COMM_LEN];
+
+static inline const char *_kgsl_context_comm(struct kgsl_context *context)
+{
+	struct task_struct *task = NULL;
+
+	if (context)
+		task = find_task_by_vpid(context->pid);
+
+	if (task)
+		get_task_comm(_pidname, task);
+	else
+		snprintf(_pidname, TASK_COMM_LEN, "unknown");
+
+	return _pidname;
+}
+
+#define pr_fault(_d, _c, fmt, args...) \
+		dev_err((_d)->dev, "%s[%d]: " fmt, \
+		_kgsl_context_comm((_c)->context), \
+		(_c)->context->pid, ##args)
+
+
+static void adreno_fault_header(struct kgsl_device *device,
+	struct kgsl_cmdbatch *cmdbatch)
+{
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+	unsigned int status, base, rptr, wptr, ib1base, ib2base, ib1sz, ib2sz;
+
+	kgsl_regread(device,
+			adreno_getreg(adreno_dev, ADRENO_REG_RBBM_STATUS),
+			&status);
+	kgsl_regread(device,
+		adreno_getreg(adreno_dev, ADRENO_REG_CP_RB_BASE),
+		&base);
+	kgsl_regread(device,
+		adreno_getreg(adreno_dev, ADRENO_REG_CP_RB_RPTR),
+		&rptr);
+	kgsl_regread(device,
+		adreno_getreg(adreno_dev, ADRENO_REG_CP_RB_WPTR),
+		&wptr);
+	kgsl_regread(device,
+		adreno_getreg(adreno_dev, ADRENO_REG_CP_IB1_BASE),
+		&ib1base);
+	kgsl_regread(device,
+		adreno_getreg(adreno_dev, ADRENO_REG_CP_IB1_BUFSZ),
+		&ib1sz);
+	kgsl_regread(device,
+		adreno_getreg(adreno_dev, ADRENO_REG_CP_IB2_BASE),
+		&ib2base);
+	kgsl_regread(device,
+		adreno_getreg(adreno_dev, ADRENO_REG_CP_IB2_BUFSZ),
+		&ib2sz);
+
+	trace_adreno_gpu_fault(cmdbatch->context->id, cmdbatch->timestamp,
+		status, rptr, wptr, ib1base, ib1sz, ib2base, ib2sz);
+
+	pr_fault(device, cmdbatch,
+		"gpu fault ctx %d ts %d status %8.8X rb %4.4x/%4.4x ib1 %8.8x/%4.4x ib2 %8.8x/%4.4x\n",
+		cmdbatch->context->id, cmdbatch->timestamp, status,
+		rptr, wptr, ib1base, ib1sz, ib2base, ib2sz);
+}
+
+static int dispatcher_do_fault(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
@@ -731,8 +813,13 @@ static void dispatcher_do_fault(struct kgsl_device *device)
 	struct kgsl_cmdbatch **replay = NULL;
 	struct kgsl_cmdbatch *cmdbatch;
 	int ret, i, count = 0;
-
+	int fault, first = 0;
+	bool pagefault = false;
 	BUG_ON(dispatcher->inflight == 0);
+
+	fault = atomic_xchg(&dispatcher->fault, 0);
+	if (fault == 0)
+		return 0;
 
 	/* Turn off all the timers */
 	del_timer_sync(&dispatcher->timer);
@@ -742,29 +829,35 @@ static void dispatcher_do_fault(struct kgsl_device *device)
 
 	cmdbatch = dispatcher->cmdqueue[dispatcher->head];
 
+	trace_adreno_cmdbatch_fault(cmdbatch, fault);
+
 	/*
 	 * If the fault was due to a timeout then stop the CP to ensure we don't
 	 * get activity while we are trying to dump the state of the system
 	 */
 
-	if (dispatcher->fault == ADRENO_DISPATCHER_TIMEOUT_FAULT) {
-		kgsl_regread(device, REG_CP_ME_CNTL, &reg);
+	if (fault == ADRENO_TIMEOUT_FAULT) {
+		adreno_readreg(adreno_dev, ADRENO_REG_CP_ME_CNTL, &reg);
 		reg |= (1 << 27) | (1 << 28);
-		kgsl_regwrite(device, REG_CP_ME_CNTL, reg);
+		adreno_writereg(adreno_dev, ADRENO_REG_CP_ME_CNTL, reg);
 
 		/* Skip the PM dump for a timeout because it confuses people */
-		cmdbatch->fault_policy |= KGSL_FT_SKIP_PMDUMP;
+		set_bit(KGSL_FT_SKIP_PMDUMP, &cmdbatch->fault_policy);
 	}
 
-	kgsl_regread(device, REG_CP_IB1_BASE, &base);
+	adreno_readreg(adreno_dev, ADRENO_REG_CP_IB1_BASE, &base);
 
 	/*
 	 * Dump the postmortem and snapshot information if this is the first
 	 * detected fault for the oldest active command batch
 	 */
 
-	if (!(cmdbatch->fault_policy & KGSL_FT_SKIP_PMDUMP)) {
-		kgsl_postmortem_dump(device, 0);
+	if (!test_bit(KGSL_FT_SKIP_PMDUMP, &cmdbatch->fault_policy)) {
+		adreno_fault_header(device, cmdbatch);
+
+		if (device->pm_dump_enable)
+			kgsl_postmortem_dump(device, 0);
+
 		kgsl_device_snapshot(device, 1);
 	}
 
@@ -811,11 +904,23 @@ static void dispatcher_do_fault(struct kgsl_device *device)
 	cmdbatch = replay[0];
 
 	/*
+	 * If FT is disabled for this cmdbatch invalidate immediately
+	 */
+
+	if (test_bit(KGSL_FT_DISABLE, &cmdbatch->fault_policy) ||
+		test_bit(KGSL_FT_TEMP_DISABLE, &cmdbatch->fault_policy)) {
+		pr_fault(device, cmdbatch, "gpu skipped ctx %d ts %d\n",
+			cmdbatch->context->id, cmdbatch->timestamp);
+
+		adreno_drawctxt_invalidate(device, cmdbatch->context);
+	}
+
+	/*
 	 * Set a flag so we don't print another PM dump if the cmdbatch fails
 	 * again on replay
 	 */
 
-	cmdbatch->fault_policy |= KGSL_FT_SKIP_PMDUMP;
+	set_bit(KGSL_FT_SKIP_PMDUMP, &cmdbatch->fault_policy);
 
 	/*
 	 * A hardware fault generally means something was deterministically
@@ -823,16 +928,29 @@ static void dispatcher_do_fault(struct kgsl_device *device)
 	 * Clear the replay bit and move on to the next policy level
 	 */
 
-	if (dispatcher->fault == ADRENO_DISPATCHER_HARD_FAULT)
-		cmdbatch->fault_policy &= ~KGSL_FT_REPLAY;
+	if (fault == ADRENO_HARD_FAULT)
+		clear_bit(KGSL_FT_REPLAY, &(cmdbatch->fault_policy));
 
 	/*
-	 * A timeout fault means the IB timed out - don't be silly and replay
-	 * it, because it will probably timeout again
+	 * A timeout fault means the IB timed out - clear the policy and
+	 * invalidate - this will clear the FT_SKIP_PMDUMP bit but that is okay
+	 * because we won't see this cmdbatch again
 	 */
 
-	if (dispatcher->fault == ADRENO_DISPATCHER_TIMEOUT_FAULT)
-		cmdbatch->fault_policy &= ~KGSL_FT_REPLAY;
+	if (fault == ADRENO_TIMEOUT_FAULT)
+		bitmap_zero(&cmdbatch->fault_policy, BITS_PER_LONG);
+
+	/*
+	 * If the context had a GPU page fault then it is likely it would fault
+	 * again if replayed
+	 */
+
+	if (test_bit(KGSL_CONTEXT_PAGEFAULT, &cmdbatch->context->priv)) {
+		/* we'll need to resume the mmu later... */
+		pagefault = true;
+		clear_bit(KGSL_FT_REPLAY, &cmdbatch->fault_policy);
+		clear_bit(KGSL_CONTEXT_PAGEFAULT, &cmdbatch->context->priv);
+	}
 
 	/*
 	 * Execute the fault tolerance policy. Each command batch stores the
@@ -844,8 +962,9 @@ static void dispatcher_do_fault(struct kgsl_device *device)
 	 */
 
 	/* Replay the hanging command batch again */
-	if (cmdbatch->fault_policy & KGSL_FT_REPLAY) {
-		cmdbatch->fault_policy &= ~KGSL_FT_REPLAY;
+	if (test_and_clear_bit(KGSL_FT_REPLAY, &cmdbatch->fault_policy)) {
+		trace_adreno_cmdbatch_recovery(cmdbatch, BIT(KGSL_FT_REPLAY));
+		set_bit(KGSL_FT_REPLAY, &cmdbatch->fault_recovery);
 		goto replay;
 	}
 
@@ -857,8 +976,9 @@ static void dispatcher_do_fault(struct kgsl_device *device)
 	 * supposedly bad IB1 where ever it lurks.
 	 */
 
-	if (cmdbatch->fault_policy & KGSL_FT_SKIPIB) {
-		cmdbatch->fault_policy &= ~KGSL_FT_SKIPIB;
+	if (test_and_clear_bit(KGSL_FT_SKIPIB, &cmdbatch->fault_policy)) {
+		trace_adreno_cmdbatch_recovery(cmdbatch, BIT(KGSL_FT_SKIPIB));
+		set_bit(KGSL_FT_SKIPIB, &cmdbatch->fault_recovery);
 
 		for (i = 0; i < count; i++) {
 			if (replay[i] != NULL)
@@ -868,9 +988,10 @@ static void dispatcher_do_fault(struct kgsl_device *device)
 		goto replay;
 	}
 
-	if (cmdbatch->fault_policy & KGSL_FT_SKIPFRAME) {
-
-		cmdbatch->fault_policy &= ~KGSL_FT_SKIPFRAME;
+	if (test_and_clear_bit(KGSL_FT_SKIPFRAME, &cmdbatch->fault_policy)) {
+		trace_adreno_cmdbatch_recovery(cmdbatch,
+			BIT(KGSL_FT_SKIPFRAME));
+		set_bit(KGSL_FT_SKIPFRAME, &cmdbatch->fault_recovery);
 
 		/*
 		 * Skip all the pending command batches for this context until
@@ -880,13 +1001,14 @@ static void dispatcher_do_fault(struct kgsl_device *device)
 		goto replay;
 	}
 
-	/* If we get here then all the policies failed or FT is disabled */
+	/* If we get here then all the policies failed */
+
+	pr_fault(device, cmdbatch, "gpu failed ctx %d ts %d\n",
+		cmdbatch->context->id, cmdbatch->timestamp);
 
 	/* Invalidate the context */
 	adreno_drawctxt_invalidate(device, cmdbatch->context);
 
-	/* Remove any pending command batches that have been invalidated */
-	remove_invalidated_cmdbatches(device, replay, count);
 
 replay:
 	/* Reset the dispatcher queue */
@@ -895,19 +1017,19 @@ replay:
 
 	/* Reset the GPU */
 	mutex_lock(&device->mutex);
+
+	/* resume the MMU if it is stalled */
+	if (pagefault && device->mmu.mmu_ops->mmu_pagefault_resume != NULL)
+		device->mmu.mmu_ops->mmu_pagefault_resume(&device->mmu);
+
 	ret = adreno_reset(device);
 	mutex_unlock(&device->mutex);
 
 	/* If adreno_reset() fails then what hope do we have for the future? */
 	BUG_ON(ret);
 
-	/*
-	 * Force the preamble on the first command (if applicable) to avoid any
-	 * strange stage issues
-	 */
-
-	if (replay[0])
-		replay[0]->priv |= CMDBATCH_FLAG_FORCE_PREAMBLE;
+	/* Remove any pending command batches that have been invalidated */
+	remove_invalidated_cmdbatches(device, replay, count);
 
 	/* Replay the pending command buffers */
 	for (i = 0; i < count; i++) {
@@ -918,11 +1040,21 @@ replay:
 			continue;
 
 		/*
-		 * Force each command batch to wait for idle - this avoids wierd
+		 * Force the preamble on the first command (if applicable) to
+		 * avoid any strange stage issues
+		 */
+
+		if (first == 0) {
+			set_bit(CMDBATCH_FLAG_FORCE_PREAMBLE, &replay[i]->priv);
+			first = 1;
+		}
+
+		/*
+		 * Force each command batch to wait for idle - this avoids weird
 		 * CP parse issues
 		 */
 
-		replay[i]->flags |=  KGSL_CMD_FLAGS_WFI;
+		set_bit(CMDBATCH_FLAG_WFI, &replay[i]->priv);
 
 		ret = sendcmd(adreno_dev, replay[i]);
 
@@ -932,8 +1064,11 @@ replay:
 		 */
 
 		if (ret) {
-			adreno_drawctxt_invalidate(device, cmdbatch->context);
+			pr_fault(device, replay[i],
+				"gpu reset failed ctx %d ts %d\n",
+				replay[i]->context->id, replay[i]->timestamp);
 
+			adreno_drawctxt_invalidate(device, replay[i]->context);
 			remove_invalidated_cmdbatches(device, &replay[i],
 				count - i);
 		}
@@ -944,6 +1079,8 @@ replay:
 	mutex_unlock(&device->mutex);
 
 	kfree(replay);
+
+	return 1;
 }
 
 static inline int cmdbatch_consumed(struct kgsl_cmdbatch *cmdbatch,
@@ -951,6 +1088,30 @@ static inline int cmdbatch_consumed(struct kgsl_cmdbatch *cmdbatch,
 {
 	return ((timestamp_cmp(cmdbatch->timestamp, consumed) >= 0) &&
 		(timestamp_cmp(retired, cmdbatch->timestamp) < 0));
+}
+
+static void _print_recovery(struct kgsl_device *device,
+		struct kgsl_cmdbatch *cmdbatch)
+{
+	static struct {
+		unsigned int mask;
+		const char *str;
+	} flags[] = { ADRENO_FT_TYPES };
+
+	int i, nr = find_first_bit(&cmdbatch->fault_recovery, BITS_PER_LONG);
+	char *result = "unknown";
+
+	for (i = 0; i < ARRAY_SIZE(flags); i++) {
+		if (flags[i].mask == BIT(nr)) {
+			result = (char *) flags[i].str;
+			break;
+		}
+	}
+
+	pr_fault(device, cmdbatch,
+		"gpu %s ctx %d ts %d policy %lX\n",
+		result, cmdbatch->context->id, cmdbatch->timestamp,
+		cmdbatch->fault_recovery);
 }
 
 /**
@@ -967,7 +1128,6 @@ static void adreno_dispatcher_work(struct work_struct *work)
 		container_of(dispatcher, struct adreno_device, dispatcher);
 	struct kgsl_device *device = &adreno_dev->dev;
 	int count = 0;
-	int last_context = KGSL_CONTEXT_INVALID;
 
 	mutex_lock(&dispatcher->mutex);
 
@@ -995,11 +1155,16 @@ static void adreno_dispatcher_work(struct work_struct *work)
 		if (kgsl_context_detached(cmdbatch->context) ||
 			(timestamp_cmp(cmdbatch->timestamp, retired) <= 0)) {
 
+			/*
+			 * If the cmdbatch in question had faulted announce its
+			 * successful completion to the world
+			 */
+
+			if (cmdbatch->fault_recovery != 0)
+				_print_recovery(device, cmdbatch);
+
 			trace_adreno_cmdbatch_retired(cmdbatch,
 				dispatcher->inflight - 1);
-
-			/* Remember the last context that got retired */
-			last_context = cmdbatch->context->id;
 
 			/* Reduce the number of inflight command batches */
 			dispatcher->inflight--;
@@ -1032,19 +1197,16 @@ static void adreno_dispatcher_work(struct work_struct *work)
 		 * is to blame.  Invalidate it, reset and replay
 		 */
 
-		if (dispatcher->fault) {
-			dispatcher_do_fault(device);
-			dispatcher->fault = 0;
+		if (dispatcher_do_fault(device))
 			goto done;
-		}
 
 		/* Get the last consumed timestamp */
 		consumed = kgsl_readtimestamp(device, cmdbatch->context,
 			KGSL_TIMESTAMP_CONSUMED);
 
 		/*
-		 * Break here if fault detection is dsiabled for the context or
-		 * if the long running IB detection is disabled device wide
+		 * Break here if fault detection is disabled for the context or
+		 * if the long running IB detection is disaled device wide
 		 * Long running command buffers will be allowed to run to
 		 * completion - but badly behaving command buffers (infinite
 		 * shaders etc) can end up running forever.
@@ -1065,11 +1227,11 @@ static void adreno_dispatcher_work(struct work_struct *work)
 
 		/* Boom goes the dynamite */
 
-		KGSL_DRV_ERR(device,
-			"Context %d, timestamp %d ran too long\n",
-			drawctxt->base.id, drawctxt->timestamp);
+		pr_fault(device, cmdbatch,
+			"gpu timeout ctx %d ts %d\n",
+			cmdbatch->context->id, cmdbatch->timestamp);
 
-		dispatcher->fault = ADRENO_DISPATCHER_TIMEOUT_FAULT;
+		adreno_set_gpu_fault(adreno_dev, ADRENO_TIMEOUT_FAULT);
 
 		dispatcher_do_fault(device);
 		break;
@@ -1098,18 +1260,6 @@ done:
 
 		/* Update the timeout timer for the next command batch */
 		mod_timer(&dispatcher->timer, cmdbatch->expires);
-
-		/*
-		 * if the context for the next pending cmdbatch is different
-		 * than the last one we retired, then trace it as a GPU switch
-		 */
-
-		if (cmdbatch->context->id != last_context) {
-			u64 now = ktime_to_ns(ktime_get());
-			kgsl_trace_gpu_sched_switch(device->name, now,
-				cmdbatch->context->id, cmdbatch->priority,
-				cmdbatch->timestamp);
-		}
 	} else {
 		del_timer_sync(&dispatcher->timer);
 		del_timer_sync(&dispatcher->fault_timer);
@@ -1166,13 +1316,10 @@ void adreno_dispatcher_fault_timer(unsigned long data)
 	if (adreno_dev->fast_hang_detect == 0)
 		return;
 
-	/* Don't do anything if the dispatcher is idle or faulted */
-	if (dispatcher->inflight == 0 || dispatcher->fault)
+	if (adreno_gpu_fault(adreno_dev)) {
+		adreno_dispatcher_schedule(device);
 		return;
-
-	/* Make sure the device is active before trying a read */
-	if (device->state != KGSL_STATE_ACTIVE)
-		return;
+	}
 
 	/*
 	 * Read the fault registers - if it returns 0 then they haven't changed
@@ -1180,7 +1327,7 @@ void adreno_dispatcher_fault_timer(unsigned long data)
 	 */
 
 	if (!fault_detect_read_compare(device)) {
-		dispatcher->fault = ADRENO_DISPATCHER_SOFT_FAULT;
+		adreno_set_gpu_fault(adreno_dev, ADRENO_SOFT_FAULT);
 		adreno_dispatcher_schedule(device);
 	} else {
 		mod_timer(&dispatcher->fault_timer,
@@ -1208,10 +1355,7 @@ void adreno_dispatcher_timer(unsigned long data)
  */
 void adreno_dispatcher_irq_fault(struct kgsl_device *device)
 {
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
-
-	dispatcher->fault = ADRENO_DISPATCHER_HARD_FAULT;
+	adreno_set_gpu_fault(ADRENO_DEVICE(device), ADRENO_HARD_FAULT);
 	adreno_dispatcher_schedule(device);
 }
 
@@ -1264,6 +1408,8 @@ void adreno_dispatcher_stop(struct adreno_device *adreno_dev)
 
 	del_timer_sync(&dispatcher->timer);
 	del_timer_sync(&dispatcher->fault_timer);
+
+	dispatcher->state = ADRENO_DISPATCHER_PAUSE;
 }
 
 /**
@@ -1285,9 +1431,6 @@ void adreno_dispatcher_close(struct adreno_device *adreno_dev)
 		dispatcher->head = (dispatcher->head + 1)
 			% ADRENO_DISPATCH_CMDQUEUE_SIZE;
 	}
-
-	kfree(fault_detect_regs);
-	fault_detect_regs = NULL;
 
 	mutex_unlock(&dispatcher->mutex);
 
@@ -1443,12 +1586,6 @@ int adreno_dispatcher_init(struct adreno_device *adreno_dev)
 
 	ret = kobject_init_and_add(&dispatcher->kobj, &ktype_dispatcher,
 		&device->dev->kobj, "dispatch");
-
-	fault_detect_regs = kzalloc(FT_DETECT_REGS_COUNT * sizeof(unsigned int),
-		GFP_KERNEL);
-
-	if (fault_detect_regs == NULL)
-		ret = -ENOMEM;
 
 	return ret;
 }

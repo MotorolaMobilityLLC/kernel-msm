@@ -1613,10 +1613,18 @@ static int adreno_start(struct kgsl_device *device)
 	int status = -EINVAL;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	unsigned int state = device->state;
+	unsigned int regulator_left_on = 0;
 
 	kgsl_cffdump_open(device);
 
 	kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
+
+	regulator_left_on = (regulator_is_enabled(device->pwrctrl.gpu_reg) ||
+				(device->pwrctrl.gpu_cx &&
+				regulator_is_enabled(device->pwrctrl.gpu_cx)));
+
+	/* Clear any GPU faults that might have been left over */
+	adreno_set_gpu_fault(adreno_dev, 0);
 
 	/* Power up the device */
 	kgsl_pwrctrl_enable(device);
@@ -2197,6 +2205,13 @@ int adreno_soft_reset(struct kgsl_device *device)
 	/* Stop the ringbuffer */
 	adreno_ringbuffer_stop(&adreno_dev->ringbuffer);
 
+	if (kgsl_pwrctrl_isenabled(device))
+		device->ftbl->irqctrl(device, 0);
+
+	kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
+
+	adreno_set_gpu_fault(adreno_dev, 0);
+
 	/* Delete the idle timer */
 	del_timer_sync(&device->idle_timer);
 
@@ -2284,11 +2299,19 @@ int adreno_idle(struct kgsl_device *device)
 		        0x00000000, 0x80000000);
 
 	while (time_before(jiffies, wait)) {
+		/*
+		 * If we fault, stop waiting and return an error. The dispatcher
+		 * will clean up the fault from the work queue, but we need to
+		 * make sure we don't block it by waiting for an idle that
+		 * will never come.
+		 */
+
+		if (adreno_gpu_fault(adreno_dev) != 0)
+			return -EDEADLK;
+
 		if (adreno_isidle(device))
 			return 0;
 	}
-
-	kgsl_postmortem_dump(device, 0);
 
 	return -ETIMEDOUT;
 }
