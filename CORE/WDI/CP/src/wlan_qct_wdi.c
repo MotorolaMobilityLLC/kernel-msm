@@ -15297,7 +15297,7 @@ WDI_ProcessConfigBSSRsp
         Add Broadcast STA only in AP mode
       -------------------------------------------------------------------------*/
     if( pWDICtx->wdiCachedConfigBssReq.wdiReqInfo.ucOperMode ==
-        WDI_BSS_OPERATIONAL_MODE_AP )
+        WDI_BSS_OPERATIONAL_MODE_AP || pBSSSes->wdiBssType == WDI_IBSS_MODE)
     {
        WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
                   "Add BCAST STA to table for index: %d",
