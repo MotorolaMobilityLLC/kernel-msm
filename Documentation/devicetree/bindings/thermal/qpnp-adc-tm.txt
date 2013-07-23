@@ -26,6 +26,7 @@ Optional properties:
 		to set temperature thresholds and receive notification when the temperature
 		crosses a set threshold, read temperature and enable/set trip types supported
 		by the thermal framework.
+- qcom,adc-batt-therm-type : If present tells the btm which Battery Thermistor map to use.
 
 Client required property:
 - qcom,<consumer name>-adc_tm : The phandle to the corresponding adc_tm device.
