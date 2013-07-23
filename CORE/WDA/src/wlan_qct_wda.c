@@ -11818,6 +11818,31 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
       }
 #endif /* FEATURE_WLAN_LPHB */
 
+      case WDI_IBSS_PEER_INACTIVITY_IND:
+      {
+         tSirIbssPeerInactivityInd  *pIbssInd =
+            (tSirIbssPeerInactivityInd *)
+            vos_mem_malloc(sizeof(tSirIbssPeerInactivityInd));
+
+         if (NULL == pIbssInd)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                  "Memory allocation failure, "
+                  "WDI_IBSS_PEER_INACTIVITY_IND not forwarded");
+            break;
+         }
+
+         pIbssInd->bssIdx =
+            wdiLowLevelInd->wdiIndicationData.wdiIbssPeerInactivityInd.bssIdx;
+         pIbssInd->staIdx =
+            wdiLowLevelInd->wdiIndicationData.wdiIbssPeerInactivityInd.staIdx;
+         vos_mem_copy(pIbssInd->peerAddr,
+               wdiLowLevelInd->wdiIndicationData.wdiIbssPeerInactivityInd.staMacAddr,
+               sizeof(tSirMacAddr));
+         WDA_SendMsg(pWDA, WDA_IBSS_PEER_INACTIVITY_IND, (void *)pIbssInd, 0) ;
+         break;
+      }
+
       default:
       {
          /* TODO error */

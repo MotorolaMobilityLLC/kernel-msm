@@ -6710,7 +6710,8 @@ limRestorePreChannelSwitchState(tpAniSirGlobal pMac, tpPESession psessionEntry)
 
         if (val > 0 && TX_TIMER_VALID(pMac->lim.limTimers.gLimBackgroundScanTimer))
         {
-            MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_BACKGROUND_SCAN_TIMER));
+            MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE,
+                     psessionEntry->peSessionId, eLIM_BACKGROUND_SCAN_TIMER));
             if(tx_timer_activate(&pMac->lim.limTimers.gLimBackgroundScanTimer) != TX_SUCCESS)
             {
                 limLog(pMac, LOGP, FL("Could not restart background scan timer, doing LOGP"));
@@ -6723,8 +6724,10 @@ limRestorePreChannelSwitchState(tpAniSirGlobal pMac, tpPESession psessionEntry)
     /* Enable heartbeat timer */
     if (TX_TIMER_VALID(pMac->lim.limTimers.gLimHeartBeatTimer))
     {
-        MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
-        if((limActivateHearBeatTimer(pMac) != TX_SUCCESS) && (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
+        MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE,
+                 psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
+        if((limActivateHearBeatTimer(pMac, psessionEntry) != TX_SUCCESS) &&
+              (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
         {
             limLog(pMac, LOGP, FL("Could not restart heartbeat timer, doing LOGP"));
             return (eSIR_FAILURE);
@@ -6786,7 +6789,7 @@ tSirRetStatus limRestorePreQuietState(tpAniSirGlobal pMac, tpPESession psessionE
     if (TX_TIMER_VALID(pMac->lim.limTimers.gLimHeartBeatTimer))
     {
         MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
-        if(limActivateHearBeatTimer(pMac) != TX_SUCCESS)
+        if(limActivateHearBeatTimer(pMac, psessionEntry) != TX_SUCCESS)
         {
             limLog(pMac, LOGP, FL("Could not restart heartbeat timer, doing LOGP"));
             return (eSIR_FAILURE);

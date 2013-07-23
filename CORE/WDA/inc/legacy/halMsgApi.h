@@ -1213,6 +1213,15 @@ typedef struct sBaActivityInd
 } tBaActivityInd, * tpBaActivityInd;
 
 
+// Mesg Type = SIR_LIM_IBSS_PEER_INACTIVITY_IND
+typedef struct sIbssPeerInactivityInd
+{
+   tANI_U8     bssIdx;
+   tANI_U8     staIdx;
+   tSirMacAddr staAddr;
+}tIbssPeerInactivityInd, *tpIbssPeerInactivityInd;
+
+
 typedef struct tHalIndCB
 {
 

@@ -1947,6 +1947,14 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         limProcessRxScanEvent(pMac, limMsg->bodyptr);
         break;
 
+    case WDA_IBSS_PEER_INACTIVITY_IND:
+    {
+       limProcessIbssPeerInactivity(pMac, limMsg->bodyptr);
+       vos_mem_free((v_VOID_t *)(limMsg->bodyptr));
+       limMsg->bodyptr = NULL;
+       break;
+    }
+
     default:
         vos_mem_free((v_VOID_t*)limMsg->bodyptr);
         limMsg->bodyptr = NULL;

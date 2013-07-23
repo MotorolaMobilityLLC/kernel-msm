@@ -2719,6 +2719,14 @@ typedef struct sSmeIbssPeerInd
     //Beacon will be appended for new Peer indication.
 }tSmeIbssPeerInd, *tpSmeIbssPeerInd;
 
+typedef struct sSirIbssPeerInactivityInd
+{
+   tANI_U8       bssIdx;
+   tANI_U8       staIdx;
+   tSirMacAddr   peerAddr;
+}tSirIbssPeerInactivityInd, *tpSirIbssPeerInactivityInd;
+
+
 typedef struct sLimScanChn
 {
     tANI_U16 numTimeScan;   //how many time this channel is scan
