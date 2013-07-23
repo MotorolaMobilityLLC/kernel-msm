@@ -3190,17 +3190,6 @@ desay:
 		return 0;
 }
 
-enum bms_request_operation {
-	CALC_FCC,
-	CALC_PC,
-	CALC_SOC,
-	CALIB_HKADC,
-	CALIB_CCADC,
-	GET_VBAT_VSENSE_SIMULTANEOUS,
-	STOP_OCV,
-	START_OCV,
-};
-
 static int test_batt_temp = 5;
 static int test_chargecycle = 150;
 static int test_ocv = 3900000;
@@ -3314,6 +3303,20 @@ static int set_calc(void *data, u64 val)
 	return ret;
 }
 DEFINE_SIMPLE_ATTRIBUTE(calc_fops, get_calc, set_calc, "%llu\n");
+
+void pm8921_bms_control_ocv_updates(enum bms_request_operation ctrl_ocv)
+{
+	switch (ctrl_ocv) {
+	case STOP_OCV:
+		pm8921_bms_stop_ocv_updates();
+		break;
+	case START_OCV:
+		pm8921_bms_start_ocv_updates();
+		break;
+	default:
+		break;
+	}
+}
 
 static int get_reading(void *data, u64 * val)
 {
