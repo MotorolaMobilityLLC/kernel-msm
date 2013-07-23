@@ -523,4 +523,11 @@ config BQ24192_CHARGER
 	  management and system power path management device for 1 cell
 	  Li-Ion and Li-Polymer battery.
 
+config BATTERY_TEMP_CONTROL
+	bool "Battery Temperature Control Configuration"
+	default n
+	help
+	  Say Y to enable battery temperature control for safety.
+	  It controls charging current depending on battery temperature.
+
 endif # POWER_SUPPLY
