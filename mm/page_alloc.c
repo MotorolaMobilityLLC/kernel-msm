@@ -199,6 +199,10 @@ static char * const zone_names[MAX_NR_ZONES] = {
 };
 
 int min_free_kbytes = 1024;
+int min_free_normal_offset[2] = {
+	 0,
+	 0,
+};
 int min_free_order_shift = 1;
 
 static unsigned long __meminitdata nr_kernel_pages;
@@ -5247,8 +5251,22 @@ static void __setup_per_zone_wmarks(void)
 			zone->watermark[WMARK_MIN] = tmp;
 		}
 
-		zone->watermark[WMARK_LOW]  = min_wmark_pages(zone) + (tmp >> 2);
-		zone->watermark[WMARK_HIGH] = min_wmark_pages(zone) + (tmp >> 1);
+		if (is_normal(zone) &&
+			min_free_normal_offset[0] != 0 &&
+			min_free_normal_offset[1] != 0 &&
+			min_free_normal_offset[0] < min_free_normal_offset[1]) {
+
+			zone->watermark[WMARK_LOW]  = min_wmark_pages(zone) +
+				(min_free_normal_offset[0] >> (PAGE_SHIFT - 10));
+			zone->watermark[WMARK_HIGH] = min_wmark_pages(zone) +
+				(min_free_normal_offset[1] >> (PAGE_SHIFT - 10));
+
+		} else {
+			zone->watermark[WMARK_LOW]  = min_wmark_pages(zone) +
+				(tmp >> 2);
+			zone->watermark[WMARK_HIGH] = min_wmark_pages(zone) +
+				(tmp >> 1);
+		}
 
 		setup_zone_migrate_reserve(zone);
 		spin_unlock_irqrestore(&zone->lock, flags);
@@ -5371,6 +5389,21 @@ int min_free_kbytes_sysctl_handler(ctl_table *table, int write,
 		setup_per_zone_wmarks();
 	return 0;
 }
+
+/*
+ * min_free_normal_offset_sysctl_handler - just a wrapper around proc_dointvec()
+ *	so that we can call setup_per_zone_wmarks() whenever
+ *	min_free_normal_offset changes.
+ */
+int min_free_normal_offset_sysctl_handler(ctl_table *table, int write,
+	void __user *buffer, size_t *length, loff_t *ppos)
+{
+	proc_dointvec_minmax(table, write, buffer, length, ppos);
+	if (write)
+		setup_per_zone_wmarks();
+	return 0;
+}
+
 
 #ifdef CONFIG_NUMA
 int sysctl_min_unmapped_ratio_sysctl_handler(ctl_table *table, int write,
