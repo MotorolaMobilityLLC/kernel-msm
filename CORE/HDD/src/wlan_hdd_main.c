@@ -5387,6 +5387,12 @@ void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx)
          if(!pHddCtx->cfg_ini->fEnableActiveModeOffload)
             sme_disableFeatureCapablity(WLANACTIVE_OFFLOAD);
 #endif
+         /* Indicate if IBSS heartbeat monitoring needs to be offloaded */
+         if (!pHddCtx->cfg_ini->enableIbssHeartBeatOffload)
+         {
+            sme_disableFeatureCapablity(IBSS_HEARTBEAT_OFFLOAD);
+         }
+
          sme_featureCapsExchange(pHddCtx->hHal);
       }
 

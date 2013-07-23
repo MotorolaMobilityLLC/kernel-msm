@@ -1515,7 +1515,7 @@ limIbssCoalesce(
         limSendSmeWmStatusChangeNtf(pMac, eSIR_SME_IBSS_ACTIVE, NULL, 0, psessionEntry->smeSessionId);
         limHeartBeatDeactivateAndChangeTimer(pMac, psessionEntry);
         MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
-        if (limActivateHearBeatTimer(pMac) != TX_SUCCESS)
+        if (limActivateHearBeatTimer(pMac, psessionEntry) != TX_SUCCESS)
             limLog(pMac, LOGP, FL("could not activate Heartbeat timer"));
     }
 
@@ -1700,3 +1700,136 @@ limIbssDecideProtectionOnDelete(tpAniSirGlobal pMac,
         }
     }
 }
+
+/** -----------------------------------------------------------------
+\fn __limIbssPeerInactivityHandler
+\brief Internal function. Deletes FW indicated peer which is inactive
+\
+\param  tpAniSirGlobal    pMac
+\param  tpPESession       psessionEntry
+\param  tpSirIbssPeerInactivityInd peerInactivityInd
+\return None
+  -----------------------------------------------------------------*/
+static void
+__limIbssPeerInactivityHandler(tpAniSirGlobal    pMac,
+                               tpPESession psessionEntry,
+                               tpSirIbssPeerInactivityInd peerInactivityInd)
+{
+   tLimIbssPeerNode *pTempNode, *pPrevNode;
+   tLimIbssPeerNode *pTempNextNode = NULL;
+   tpDphHashNode     pStaDs;
+   tANI_U16          peerIdx;
+   tANI_U16          staIndex;
+   tANI_U8           ucUcastSig;
+   tANI_U8           ucBcastSig;
+
+   if(psessionEntry->limMlmState != eLIM_MLM_BSS_STARTED_STATE)
+   {
+      limReactivateHeartBeatTimer(pMac, psessionEntry);
+      return;
+   }
+
+   pPrevNode = pTempNode  = pMac->lim.gLimIbssPeerList;
+
+   /** Monitor the HeartBeat with the Individual PEERS in the IBSS */
+   while (NULL != pTempNode)
+   {
+      pTempNextNode = pTempNode->next;
+      PELOGE(limLog(pMac, LOGE, FL("Heartbeat fail = %d  thres = %d"),
+               pTempNode->heartbeatFailure, pMac->lim.gLimNumIbssPeers);)
+
+      /* this is the main control loop */
+      if (palEqualMemory( pMac->hHdd, (tANI_U8 *) peerInactivityInd->peerAddr,
+                          (tANI_U8 *) &pTempNode->peerMacAddr,
+                          sizeof(tSirMacAddr)) )
+      {
+         //Remove this entry from the list.
+         pStaDs = dphLookupHashEntry(pMac, peerInactivityInd->peerAddr,
+               &peerIdx, &psessionEntry->dph.dphHashTable);
+         if (pStaDs)
+         {
+            staIndex = pStaDs->staIndex;
+            ucUcastSig = pStaDs->ucUcastSig;
+            ucBcastSig = pStaDs->ucBcastSig;
+
+            (void) limDelSta(pMac, pStaDs, false /*asynchronous*/, psessionEntry);
+            limDeleteDphHashEntry(pMac, pStaDs->staAddr, peerIdx, psessionEntry);
+            limReleasePeerIdx(pMac, peerIdx, psessionEntry);
+
+            // Send indication to upper layers
+            ibss_status_chg_notify(pMac, peerInactivityInd->peerAddr, staIndex,
+                                   ucUcastSig, ucBcastSig,
+                                   eWNI_SME_IBSS_PEER_DEPARTED_IND,
+                                   psessionEntry->smeSessionId );
+            if (pTempNode == pMac->lim.gLimIbssPeerList)
+            {
+               pMac->lim.gLimIbssPeerList = pTempNode->next;
+               pPrevNode = pMac->lim.gLimIbssPeerList;
+            }
+            else
+               pPrevNode->next = pTempNode->next;
+
+            palFreeMemory(pMac->hHdd, pTempNode);
+            pMac->lim.gLimNumIbssPeers--;
+
+            pTempNode = pTempNextNode;
+            break;
+         }
+      }
+      pPrevNode = pTempNode;
+      pTempNode = pTempNextNode;
+   }
+}
+
+
+/** -------------------------------------------------------------
+\fn limProcessIbssPeerInactivity
+\brief Peer inactivity message handler
+\
+\param  tpAniSirGlobal    pMac
+\param  void*             buf
+\return None
+  -------------------------------------------------------------*/
+void
+limProcessIbssPeerInactivity(tpAniSirGlobal pMac, void *buf)
+{
+   /*
+    * --------------- HEARTBEAT OFFLOAD CASE ------------------
+    * This message handler is executed when the firmware identifies
+    * inactivity from one or more peer devices. We will come here
+    * for every inactive peer device
+    */
+   tANI_U8       i;
+
+   tSirIbssPeerInactivityInd *peerInactivityInd =
+      (tSirIbssPeerInactivityInd *) buf;
+
+   /*
+    * If IBSS is not started or heartbeat offload is not enabled
+    * we should not handle this request
+    */
+   if (eLIM_STA_IN_IBSS_ROLE != pMac->lim.gLimSystemRole &&
+         !IS_IBSS_HEARTBEAT_OFFLOAD_FEATURE_ENABLE)
+   {
+      return;
+   }
+
+   /** If LinkMonitor is Disabled */
+   if (!pMac->sys.gSysEnableLinkMonitorMode)
+   {
+      return;
+   }
+
+   for (i = 0; i < pMac->lim.maxBssId; i++)
+   {
+      if (VOS_TRUE == pMac->lim.gpSession[i].valid &&
+            eSIR_IBSS_MODE == pMac->lim.gpSession[i].bssType)
+      {
+         __limIbssPeerInactivityHandler(pMac,
+               &pMac->lim.gpSession[i],
+               peerInactivityInd);
+         break;
+      }
+   }
+}
+

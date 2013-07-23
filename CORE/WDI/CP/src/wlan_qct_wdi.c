@@ -128,26 +128,43 @@ static tWlanFeatCaps *gpFwWlanFeatCaps;
 static placeHolderInCapBitmap supportEnabledFeatures[] =
    {MCC, P2P, DOT11AC, SLM_SESSIONIZATION, DOT11AC_OPMODE
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
-    ,SAP32STA
+    ,SAP32STA                       //5
 #else
     ,FEATURE_NOT_SUPPORTED
 #endif
 #ifdef FEATURE_WLAN_TDLS
-    ,TDLS
+    ,TDLS                           //6
 #else
     ,FEATURE_NOT_SUPPORTED
 #endif
-    ,P2P_GO_NOA_DECOUPLE_INIT_SCAN
+    ,P2P_GO_NOA_DECOUPLE_INIT_SCAN  //7
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
-    ,WLANACTIVE_OFFLOAD
+    ,WLANACTIVE_OFFLOAD             //8
 #else
     ,FEATURE_NOT_SUPPORTED
 #endif
+    ,FEATURE_NOT_SUPPORTED          //9
+    ,FEATURE_NOT_SUPPORTED          //10
+    ,FEATURE_NOT_SUPPORTED          //11
+    ,FEATURE_NOT_SUPPORTED          //12
+    ,FEATURE_NOT_SUPPORTED          //13
+    ,FEATURE_NOT_SUPPORTED          //14
+    ,FEATURE_NOT_SUPPORTED          //15
+    ,FEATURE_NOT_SUPPORTED          //16
+    ,FEATURE_NOT_SUPPORTED          //17
+    ,FEATURE_NOT_SUPPORTED          //18
+    ,FEATURE_NOT_SUPPORTED          //19
+    ,FEATURE_NOT_SUPPORTED          //20
+    ,FEATURE_NOT_SUPPORTED          //21
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-    ,WLAN_ROAM_SCAN_OFFLOAD
+    ,WLAN_ROAM_SCAN_OFFLOAD         //22
 #else
     ,FEATURE_NOT_SUPPORTED
 #endif
+    ,FEATURE_NOT_SUPPORTED          //23
+    ,FEATURE_NOT_SUPPORTED          //24
+    ,FEATURE_NOT_SUPPORTED          //25
+    ,IBSS_HEARTBEAT_OFFLOAD         //26
    };
 
 /*-------------------------------------------------------------------------- 
@@ -606,6 +623,8 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 #else
   NULL,
 #endif /* FEATURE_WLAN_LPHB */
+
+  WDI_ProcessIbssPeerInactivityInd,     /* WDI_HAL_IBSS_PEER_INACTIVITY_IND */
 };
 
 
@@ -22524,12 +22543,17 @@ case WLAN_HAL_DEL_STA_SELF_RSP:
   case WLAN_HAL_GET_ROAM_RSSI_RSP:
     return WDI_GET_ROAM_RSSI_RESP;
 #endif
+
 #ifdef FEATURE_WLAN_LPHB
   case WLAN_HAL_LPHB_IND:
     return WDI_HAL_LPHB_WAIT_TIMEOUT_IND;
   case WLAN_HAL_LPHB_CFG_RSP:
     return WDI_LPHB_CFG_RESP;
 #endif /* FEATURE_WLAN_LPHB */
+
+  case WLAN_HAL_IBSS_PEER_INACTIVITY_IND:
+    return WDI_HAL_IBSS_PEER_INACTIVITY_IND;
+
   default:
     return eDRIVER_TYPE_MAX;
   }
@@ -27629,7 +27653,6 @@ void WDI_SetEnableSSR(wpt_boolean  enableSSR)
 
  @param  pWDICtx : wdi context
          pEventData : indication data
-
  @see
  @return Result of the function call
 */
@@ -27931,3 +27954,62 @@ WDI_Status WDI_LPHBConfReq(void *lphbconfParam,
 }
 #endif /* FEATURE_WLAN_LPHB */
 
+/**
+  @brief WDI_ProcessIbssPeerInactivityInd
+  Process peer inactivity indication coming from HAL
+
+  @param pWDICtx: pointer to the WLAN DAL context
+         pEventData: pointer to the event information structure
+  @see
+  @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessIbssPeerInactivityInd
+(
+   WDI_ControlBlockType* pWDICtx,
+   WDI_EventInfoType* pEventData
+)
+{
+   WDI_LowLevelIndType  wdiInd;
+   tIbssPeerInactivityIndMsg halIbssIndMsg;
+
+   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+   /*-------------------------------------------------------------------------
+   Sanity check
+   -------------------------------------------------------------------------*/
+   if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData ))
+   {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT( 0 );
+     return WDI_STATUS_E_FAILURE;
+   }
+
+   /*-------------------------------------------------------------------------
+   Extract indication and send it to UMAC
+   -------------------------------------------------------------------------*/
+   wpalMemoryCopy( &halIbssIndMsg.ibssPeerInactivityIndParams,
+                  pEventData->pEventData,
+                  sizeof(halIbssIndMsg.ibssPeerInactivityIndParams) );
+
+   /*Fill in the indication parameters*/
+   wdiInd.wdiIndicationType = WDI_IBSS_PEER_INACTIVITY_IND;
+
+   wdiInd.wdiIndicationData.wdiIbssPeerInactivityInd.bssIdx
+                          = halIbssIndMsg.ibssPeerInactivityIndParams.bssIdx;
+
+   wdiInd.wdiIndicationData.wdiIbssPeerInactivityInd.staIdx
+                          = halIbssIndMsg.ibssPeerInactivityIndParams.staIdx;
+
+   wpalMemoryCopy(wdiInd.wdiIndicationData.wdiIbssPeerInactivityInd.staMacAddr,
+                 halIbssIndMsg.ibssPeerInactivityIndParams.staAddr,
+                 sizeof(tSirMacAddr));
+
+   /*Notify UMAC*/
+   pWDICtx->wdiLowLevelIndCB( &wdiInd, pWDICtx->pIndUserData );
+
+   return WDI_STATUS_SUCCESS;
+
+} /*WDI_ProcessIbssPeerInactivityInd*/

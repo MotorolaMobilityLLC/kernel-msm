@@ -396,6 +396,9 @@ typedef enum
   /* LPHB Timeout Indication from FW to umac */
   WDI_LPHB_WAIT_TIMEOUT_IND,
 
+  /* IBSS Peer Inactivity Indication */
+  WDI_IBSS_PEER_INACTIVITY_IND,
+
   WDI_MAX_IND
 }WDI_LowLevelIndEnumType;
 
@@ -618,6 +621,16 @@ typedef struct
 #endif /* FEATURE_WLAN_LPHB */
 
 /*---------------------------------------------------------------------------
+ WDI_IbssPeerInactivityIndType
+-----------------------------------------------------------------------------*/
+typedef struct
+{
+   wpt_uint8   bssIdx;
+   wpt_uint8   staIdx;
+   wpt_macAddr staMacAddr;
+}WDI_IbssPeerInactivityIndType;
+
+/*---------------------------------------------------------------------------
   WDI_LowLevelIndType
     Inidcation type and information about the indication being carried
     over
@@ -666,9 +679,14 @@ typedef struct
     WDI_WakeReasonIndType        wdiWakeReasonInd;
 #endif // WLAN_WAKEUP_EVENTS
     WDI_MissedBeaconIndType      wdiMissedBeaconInd;
+
 #ifdef FEATURE_WLAN_LPHB
     WDI_LPHBTimeoutIndData       wdiLPHBTimeoutInd;
 #endif /* FEATURE_WLAN_LPHB */
+
+    /* IBSS Peer Inactivity Indication */
+    WDI_IbssPeerInactivityIndType   wdiIbssPeerInactivityInd;
+
   }  wdiIndicationData;
 }WDI_LowLevelIndType;
 

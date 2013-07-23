@@ -1893,13 +1893,38 @@ limReactivateHeartBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
     MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
 
     //only start the hearbeat-timer if the timeout value is non-zero
-    if(pMac->lim.limTimers.gLimHeartBeatTimer.initScheduleTimeInMsecs > 0) {
-        if (tx_timer_activate(&pMac->lim.limTimers.gLimHeartBeatTimer)!= TX_SUCCESS)
-        {
-            limLog(pMac, LOGP,FL("could not activate Heartbeat timer"));
-        }
-        limLog(pMac, LOGW, FL("Reactivated heartbeat link monitoring"));
-        limResetHBPktCount(psessionEntry);
+    if(pMac->lim.limTimers.gLimHeartBeatTimer.initScheduleTimeInMsecs > 0)
+    {
+       /*
+        * There is increasing need to limit the apps wakeup due to WLAN
+        * activity. During HB monitoring, the beacons from peer are sent to
+        * the host causing the host to wakeup. Hence, offloading the HB
+        * monitoring to LMAC
+        */
+       if (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE &&
+             IS_IBSS_HEARTBEAT_OFFLOAD_FEATURE_ENABLE)
+       {
+          if (tx_timer_deactivate(&pMac->lim.limTimers.gLimHeartBeatTimer)!= TX_SUCCESS)
+          {
+             limLog(pMac, LOGP,FL("IBSS HeartBeat Offloaded, Could not deactivate Heartbeat timer"));
+          }
+          else
+          {
+             limLog(pMac, LOGE, FL("IBSS HeartBeat Offloaded, Deactivated heartbeat link monitoring"));
+          }
+       }
+       else
+       {
+          if (tx_timer_activate(&pMac->lim.limTimers.gLimHeartBeatTimer)!= TX_SUCCESS)
+          {
+             limLog(pMac, LOGP,FL("could not activate Heartbeat timer"));
+          }
+          else
+          {
+             limLog(pMac, LOGW, FL("Reactivated heartbeat link monitoring"));
+          }
+       }
+       limResetHBPktCount(psessionEntry);
     }
 
 } /****** end limReactivateHeartBeatTimer() ******/
@@ -1919,11 +1944,12 @@ limReactivateHeartBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
  * @note   staId for eLIM_AUTH_RSP_TIMER is auth Node Index.
  *
  * @param  pMac    - Pointer to Global MAC structure
+ * @param  psessionEntry - Session Entry
  *
  * @return TX_SUCCESS - timer is activated
  *         errors - fail to start the timer
  */
-v_UINT_t limActivateHearBeatTimer(tpAniSirGlobal pMac)
+v_UINT_t limActivateHearBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
 {
     v_UINT_t status = TX_TIMER_ERROR;
 
@@ -1937,12 +1963,39 @@ v_UINT_t limActivateHearBeatTimer(tpAniSirGlobal pMac)
         //consider 0 interval a ok case
         if( pMac->lim.limTimers.gLimHeartBeatTimer.initScheduleTimeInMsecs )
         {
-            status = tx_timer_activate(&pMac->lim.limTimers.gLimHeartBeatTimer);
-            if( TX_SUCCESS != status )
-            {
-                PELOGE(limLog(pMac, LOGE,
-                   FL("could not activate Heartbeat timer status(%d)"), status);)
-            }
+           if (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE &&
+               IS_IBSS_HEARTBEAT_OFFLOAD_FEATURE_ENABLE)
+           {
+              /* HB offload in IBSS mode */
+              status = tx_timer_deactivate(&pMac->lim.limTimers.gLimHeartBeatTimer);
+              if (TX_SUCCESS != status)
+              {
+                 PELOGE(limLog(pMac, LOGE,
+                 FL("IBSS HB Offload, Could not deactivate HB timer status(%d)"),
+                 status);)
+              }
+              else
+              {
+                 PELOGE(limLog(pMac, LOGE,
+                 FL("%s] IBSS HB Offloaded, Heartbeat timer deactivated"),
+                 __func__);)
+              }
+
+           }
+           else
+           {
+              status = tx_timer_activate(&pMac->lim.limTimers.gLimHeartBeatTimer);
+              if ( TX_SUCCESS != status )
+              {
+                 PELOGE(limLog(pMac, LOGE,
+                 FL("could not activate Heartbeat timer status(%d)"), status);)
+              }
+              else
+              {
+                 PELOGE(limLog(pMac, LOGW,
+                 FL("%s] Activated Heartbeat timer status(%d)"), __func__, status);)
+              }
+           }
         }
         else
         {

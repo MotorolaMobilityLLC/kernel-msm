@@ -2434,7 +2434,7 @@ limProcessApMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ)
             limResetHBPktCount( psessionEntry );
             limHeartBeatDeactivateAndChangeTimer(pMac, psessionEntry);
             MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
-            if (limActivateHearBeatTimer(pMac) != TX_SUCCESS)
+            if (limActivateHearBeatTimer(pMac, psessionEntry) != TX_SUCCESS)
                 limLog(pMac, LOGP, FL("could not activate Heartbeat timer"));
         }
         psessionEntry->bssIdx     = (tANI_U8) pAddBssParams->bssIdx;
@@ -2542,7 +2542,7 @@ limProcessIbssMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESession 
         /* Timer related functions are not modified for BT-AMP : To be Done */
         limHeartBeatDeactivateAndChangeTimer(pMac, psessionEntry);
         MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
-        if (limActivateHearBeatTimer(pMac) != TX_SUCCESS)
+        if (limActivateHearBeatTimer(pMac, psessionEntry) != TX_SUCCESS)
             limLog(pMac, LOGP, FL("could not activate Heartbeat timer"));
         psessionEntry->bssIdx     = (tANI_U8) pAddBssParams->bssIdx;
         psessionEntry->limSystemRole = eLIM_STA_IN_IBSS_ROLE;
