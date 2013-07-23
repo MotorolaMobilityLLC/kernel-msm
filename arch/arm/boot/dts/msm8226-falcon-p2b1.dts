@@ -74,3 +74,11 @@
 		ams,ink_type = <0x01>;
 	};
 };
+
+&pm8226_vadc {
+	qcom,adc-batt-therm-type = <1>;
+};
+
+&pm8226_adc_tm {
+	qcom,adc-batt-therm-type = <1>;
+};
