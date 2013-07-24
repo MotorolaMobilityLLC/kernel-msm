@@ -60,7 +60,7 @@ void ConvertSSID(tpAniSirGlobal pMac,
                        tDot11fIESSID    *pNew)
 {
     pOld->length = pNew->num_ssid;
-    palCopyMemory( pMac->hHdd, pOld->ssId, pNew->ssid, pNew->num_ssid );
+    vos_mem_copy( pOld->ssId, pNew->ssid, pNew->num_ssid );
 }
 
 void ConvertSuppRates(tpAniSirGlobal   pMac,
@@ -68,7 +68,7 @@ void ConvertSuppRates(tpAniSirGlobal   pMac,
                             tDot11fIESuppRates *pNew)
 {
     pOld->numRates = pNew->num_rates;
-    palCopyMemory( pMac->hHdd, pOld->rate, pNew->rates, pNew->num_rates );
+    vos_mem_copy( pOld->rate, pNew->rates, pNew->num_rates );
 }
 
 void ConvertExtSuppRates(tpAniSirGlobal      pMac,
@@ -76,7 +76,7 @@ void ConvertExtSuppRates(tpAniSirGlobal      pMac,
                                tDot11fIEExtSuppRates *pNew)
 {
     pOld->numRates = pNew->num_rates;
-    palCopyMemory( pMac->hHdd, pOld->rate, pNew->rates, pNew->num_rates );
+    vos_mem_copy(  pOld->rate, pNew->rates, pNew->num_rates );
 }
 
 
@@ -124,7 +124,7 @@ tSirRetStatus ConvertWPA(tpAniSirGlobal  pMac,
     }
 
     pOld->length = (tANI_U8)written - 2;
-    palCopyMemory( pMac->hHdd, pOld->info, buffer + 2, pOld->length );
+    vos_mem_copy( pOld->info, buffer + 2, pOld->length );
 
     return eSIR_SUCCESS;
 }
@@ -140,7 +140,7 @@ tSirRetStatus ConvertWPAOpaque( tpAniSirGlobal      pMac,
     pOld->info[ 1 ] = 0x50;
     pOld->info[ 2 ] = 0xf2;
     pOld->info[ 3 ] = 0x01;
-    palCopyMemory( pMac->hHdd, pOld->info + 4, pNew->data, pNew->num_data );
+    vos_mem_copy( pOld->info + 4, pNew->data, pNew->num_data );
 
     return eSIR_SUCCESS;
 }
@@ -160,7 +160,7 @@ tSirRetStatus ConvertWscOpaque( tpAniSirGlobal      pMac,
     pOld->addIEdata[ curAddIELen++ ] = 0x50;
     pOld->addIEdata[ curAddIELen++ ] = 0xf2;
     pOld->addIEdata[ curAddIELen++ ] = 0x04;
-    palCopyMemory( pMac->hHdd, pOld->addIEdata + curAddIELen, pNew->data, pNew->num_data );
+    vos_mem_copy( pOld->addIEdata + curAddIELen, pNew->data, pNew->num_data );
 
     return eSIR_SUCCESS;
 }
@@ -180,7 +180,7 @@ tSirRetStatus ConvertP2POpaque( tpAniSirGlobal      pMac,
     pOld->addIEdata[ curAddIELen++ ] = 0x6f;
     pOld->addIEdata[ curAddIELen++ ] = 0x9A;
     pOld->addIEdata[ curAddIELen++ ] = 0x09;
-    palCopyMemory( pMac->hHdd, pOld->addIEdata + curAddIELen, pNew->data, pNew->num_data );
+    vos_mem_copy( pOld->addIEdata + curAddIELen, pNew->data, pNew->num_data );
 
     return eSIR_SUCCESS;
 }
@@ -201,7 +201,7 @@ tSirRetStatus ConvertWFDOpaque( tpAniSirGlobal      pMac,
     pOld->addIEdata[ curAddIELen++ ] = 0x6f;
     pOld->addIEdata[ curAddIELen++ ] = 0x9A;
     pOld->addIEdata[ curAddIELen++ ] = 0x0a;
-    palCopyMemory( pMac->hHdd, pOld->addIEdata + curAddIELen, pNew->data, pNew->num_data );
+    vos_mem_copy( pOld->addIEdata + curAddIELen, pNew->data, pNew->num_data );
 
     return eSIR_SUCCESS;
 }
@@ -222,7 +222,7 @@ tSirRetStatus ConvertRSN(tpAniSirGlobal  pMac,
     }
 
     pOld->length = (tANI_U8)written - 2;
-    palCopyMemory( pMac->hHdd, pOld->info, buffer + 2, pOld->length );
+    vos_mem_copy( pOld->info, buffer + 2, pOld->length );
 
     return eSIR_SUCCESS;
 }
@@ -234,7 +234,7 @@ tSirRetStatus ConvertRSNOpaque( tpAniSirGlobal      pMac,
     // This is awful, I know, but the old code just rammed the IE into
     // an opaque array.
     pOld->length = pNew->num_data;
-    palCopyMemory( pMac->hHdd, pOld->info, pNew->data, pOld->length );
+    vos_mem_copy( pOld->info, pNew->data, pOld->length );
 
     return eSIR_SUCCESS;
 }
@@ -255,7 +255,7 @@ void ConvertSuppChannels(tpAniSirGlobal             pMac,
 {
     pOld->type   = 36;
     pOld->length = ( pNew->num_bands * 2 );
-    palCopyMemory( pMac->hHdd, ( tANI_U8* )pOld->supportedChannels, ( tANI_U8* )pNew->bands, pOld->length );
+    vos_mem_copy( ( tANI_U8* )pOld->supportedChannels, ( tANI_U8* )pNew->bands, pOld->length );
 }
 
 void ConvertCFParams(tpAniSirGlobal     pMac,
@@ -277,7 +277,7 @@ void ConvertTIM(tpAniSirGlobal pMac,
     pOld->bitmapControl = pNew->bmpctl;
     pOld->bitmapLength  = pNew->num_vbmp;
 
-    palCopyMemory( pMac->hHdd, pOld->bitmap, pNew->vbmp, pNew->num_vbmp );
+    vos_mem_copy( pOld->bitmap, pNew->vbmp, pNew->num_vbmp );
 }
 
 void ConvertCountry(tpAniSirGlobal          pMac,
@@ -286,7 +286,7 @@ void ConvertCountry(tpAniSirGlobal          pMac,
 {
     int i;
 
-    palCopyMemory( pMac->hHdd, pOld->countryString, pNew->country, COUNTRY_STRING_LENGTH );
+    vos_mem_copy( pOld->countryString, pNew->country, COUNTRY_STRING_LENGTH );
 
     pOld->numIntervals = pNew->num_triplets;
 
@@ -305,7 +305,7 @@ void ConvertWMMParams(tpAniSirGlobal         pMac,
     pOld->type = 221;
     pOld->length = 24;
 
-    palCopyMemory( pMac->hHdd, ( tANI_U8* )&pOld->qosInfo, ( tANI_U8* )&pNew->qosInfo, 1 );
+    vos_mem_copy( ( tANI_U8* )&pOld->qosInfo, ( tANI_U8* )&pNew->qosInfo, 1 );
 
     pOld->acbe.aci.aifsn  = pNew->acbe_aifsn;
     pOld->acbe.aci.acm    = pNew->acbe_acm;
@@ -352,7 +352,7 @@ void ConvertEDCAParam(tpAniSirGlobal         pMac,
     pOld->type   = 12;
     pOld->length = 20;
 
-    palCopyMemory( pMac->hHdd, ( tANI_U8* )&pOld->qosInfo, ( tANI_U8* )&pNew->qos, 1 );
+    vos_mem_copy( ( tANI_U8* )&pOld->qosInfo, ( tANI_U8* )&pNew->qos, 1 );
 
     pOld->acbe.aci.aifsn  = pNew->acbe_aifsn;
     pOld->acbe.aci.acm    = pNew->acbe_acm;
@@ -436,8 +436,8 @@ tSirRetStatus ConvertTCLAS(tpAniSirGlobal  pMac,
     switch ( pNew->classifier_type )
     {
     case 0:
-        palCopyMemory( pMac->hHdd, pOld->tclasParams.eth.srcAddr, pNew->info.EthParams.source, 6 );
-        palCopyMemory( pMac->hHdd, pOld->tclasParams.eth.dstAddr, pNew->info.EthParams.dest, 6 );
+        vos_mem_copy( pOld->tclasParams.eth.srcAddr, pNew->info.EthParams.source, 6 );
+        vos_mem_copy( pOld->tclasParams.eth.dstAddr, pNew->info.EthParams.dest, 6 );
         pOld->tclasParams.eth.type = pNew->info.EthParams.type;
         break;
     case 1:
@@ -445,8 +445,10 @@ tSirRetStatus ConvertTCLAS(tpAniSirGlobal  pMac,
         if ( 4 == pNew->info.IpParams.version )
         {
             pOld->tclasParams.ipv4.version = 4;
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )&pOld->tclasParams.ipv4.srcIpAddr, ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.source, 4 );
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )&pOld->tclasParams.ipv4.dstIpAddr, ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.dest, 4 );
+            vos_mem_copy( ( tANI_U8* )&pOld->tclasParams.ipv4.srcIpAddr,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.source, 4 );
+            vos_mem_copy( ( tANI_U8* )&pOld->tclasParams.ipv4.dstIpAddr,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.dest, 4 );
             pOld->tclasParams.ipv4.srcPort  = pNew->info.IpParams.params.IpV4Params.src_port;
             pOld->tclasParams.ipv4.dstPort  = pNew->info.IpParams.params.IpV4Params.dest_port;
             pOld->tclasParams.ipv4.dscp     = pNew->info.IpParams.params.IpV4Params.DSCP;
@@ -456,11 +458,14 @@ tSirRetStatus ConvertTCLAS(tpAniSirGlobal  pMac,
         else if ( 6 == pNew->info.IpParams.version )
         {
             pOld->tclasParams.ipv6.version = 6;
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )pOld->tclasParams.ipv6.srcIpAddr, ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.source, 16 );
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )pOld->tclasParams.ipv6.dstIpAddr, ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.dest, 16 );
+            vos_mem_copy( ( tANI_U8* )pOld->tclasParams.ipv6.srcIpAddr,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.source, 16 );
+            vos_mem_copy( ( tANI_U8* )pOld->tclasParams.ipv6.dstIpAddr,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.dest, 16 );
             pOld->tclasParams.ipv6.srcPort  = pNew->info.IpParams.params.IpV6Params.src_port;
             pOld->tclasParams.ipv6.dstPort  = pNew->info.IpParams.params.IpV6Params.dest_port;
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )pOld->tclasParams.ipv6.flowLabel, ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.flow_label, 3 );
+            vos_mem_copy( ( tANI_U8* )pOld->tclasParams.ipv6.flowLabel,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.flow_label, 3 );
         }
         else
         {
@@ -526,8 +531,8 @@ tSirRetStatus ConvertWMMTCLAS(tpAniSirGlobal    pMac,
     switch ( pNew->classifier_type )
     {
     case 0:
-        palCopyMemory( pMac->hHdd, pOld->tclasParams.eth.srcAddr, pNew->info.EthParams.source, 6 );
-        palCopyMemory( pMac->hHdd, pOld->tclasParams.eth.dstAddr, pNew->info.EthParams.dest, 6 );
+        vos_mem_copy(  pOld->tclasParams.eth.srcAddr, pNew->info.EthParams.source, 6 );
+        vos_mem_copy( pOld->tclasParams.eth.dstAddr, pNew->info.EthParams.dest, 6 );
         pOld->tclasParams.eth.type = pNew->info.EthParams.type;
         break;
     case 1:
@@ -535,8 +540,10 @@ tSirRetStatus ConvertWMMTCLAS(tpAniSirGlobal    pMac,
         if ( 4 == pNew->info.IpParams.version )
         {
             pOld->tclasParams.ipv4.version = 4;
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )&pOld->tclasParams.ipv4.srcIpAddr, ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.source, 4 );
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )&pOld->tclasParams.ipv4.dstIpAddr, ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.dest, 4 );
+            vos_mem_copy( ( tANI_U8* )&pOld->tclasParams.ipv4.srcIpAddr,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.source, 4 );
+            vos_mem_copy( ( tANI_U8* )&pOld->tclasParams.ipv4.dstIpAddr,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.dest, 4 );
             pOld->tclasParams.ipv4.srcPort  = pNew->info.IpParams.params.IpV4Params.src_port;
             pOld->tclasParams.ipv4.dstPort  = pNew->info.IpParams.params.IpV4Params.dest_port;
             pOld->tclasParams.ipv4.dscp     = pNew->info.IpParams.params.IpV4Params.DSCP;
@@ -546,11 +553,14 @@ tSirRetStatus ConvertWMMTCLAS(tpAniSirGlobal    pMac,
         else if ( 6 == pNew->info.IpParams.version )
         {
             pOld->tclasParams.ipv6.version = 6;
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )pOld->tclasParams.ipv6.srcIpAddr, ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.source, 16 );
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )pOld->tclasParams.ipv6.dstIpAddr, ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.dest, 16 );
+            vos_mem_copy( ( tANI_U8* )pOld->tclasParams.ipv6.srcIpAddr,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.source, 16 );
+            vos_mem_copy( ( tANI_U8* )pOld->tclasParams.ipv6.dstIpAddr,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.dest, 16 );
             pOld->tclasParams.ipv6.srcPort  = pNew->info.IpParams.params.IpV6Params.src_port;
             pOld->tclasParams.ipv6.dstPort  = pNew->info.IpParams.params.IpV6Params.dest_port;
-            palCopyMemory( pMac->hHdd, ( tANI_U8* )pOld->tclasParams.ipv6.flowLabel, ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.flow_label, 3 );
+            vos_mem_copy( ( tANI_U8* )pOld->tclasParams.ipv6.flowLabel,
+                          ( tANI_U8* )pNew->info.IpParams.params.IpV6Params.flow_label, 3 );
         }
         else
         {
@@ -651,11 +661,11 @@ void CreateScanDataNullFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr,
     macMgmtHdr->seqControl.fragNum = 0;
     macMgmtHdr->seqControl.seqNumLo = 0;
     macMgmtHdr->seqControl.seqNumHi = 2;
-    palCopyMemory(pMac->hHdd, (void *)&macMgmtHdr->da,
+    vos_mem_copy( (void *)&macMgmtHdr->da,
                               (void *)bssid, sizeof(tSirMacAddr));
-    palCopyMemory(pMac->hHdd, (void *)&macMgmtHdr->sa,
+    vos_mem_copy( (void *)&macMgmtHdr->sa,
                               (void *)selfMacAddr, sizeof(tSirMacAddr));
-    palCopyMemory(pMac->hHdd, (void *)&macMgmtHdr->bssId,
+    vos_mem_copy( (void *)&macMgmtHdr->bssId,
                               (void *)bssid, sizeof(tSirMacAddr));
     
     return;
@@ -676,7 +686,7 @@ void CreateScanCtsFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tSirMac
     macMgmtHdr->fc.toDS = 0;
     macMgmtHdr->durationLo = (tANI_U8) (SIR_MAC_MAX_DURATION_MICRO_SECONDS & 0xff);
     macMgmtHdr->durationHi = (tANI_U8) ((SIR_MAC_MAX_DURATION_MICRO_SECONDS & 0xff00) >> 8);
-    palCopyMemory(pMac->hHdd, (void *)macMgmtHdr->da, (void *)selfMac, sizeof(tSirMacAddr));
+    vos_mem_copy( (void *)macMgmtHdr->da, (void *)selfMac, sizeof(tSirMacAddr));
             
     return;
 }
@@ -716,9 +726,9 @@ void CreateInitScanRawFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tBs
         macMgmtHdr->seqControl.fragNum = 0;
         macMgmtHdr->seqControl.seqNumLo = 0;
         macMgmtHdr->seqControl.seqNumHi = 2;
-        palCopyMemory(pMac->hHdd, (void *)&macMgmtHdr->da, (void *)pSta[0].bssId, 6);
-        palCopyMemory(pMac->hHdd, &macMgmtHdr->sa, pSta[0].staAddr, 6);
-        palCopyMemory(pMac->hHdd, (void *)&macMgmtHdr->bssId, (void *)pSta[0].bssId, 6);
+        vos_mem_copy( (void *)&macMgmtHdr->da, (void *)pSta[0].bssId, 6);
+        vos_mem_copy( &macMgmtHdr->sa, pSta[0].staAddr, 6);
+        vos_mem_copy( (void *)&macMgmtHdr->bssId, (void *)pSta[0].bssId, 6);
     }
     else if (role == eSYSTEM_AP_ROLE || role == eSYSTEM_STA_IN_IBSS_ROLE)
     {
@@ -734,7 +744,7 @@ void CreateInitScanRawFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tBs
         macMgmtHdr->fc.toDS = 0;
         macMgmtHdr->durationLo = (tANI_U8) (SIR_MAC_MAX_DURATION_MICRO_SECONDS & 0xff);
         macMgmtHdr->durationHi = (tANI_U8) ((SIR_MAC_MAX_DURATION_MICRO_SECONDS & 0xff00) >> 8);
-        palCopyMemory(pMac->hHdd, (void *)macMgmtHdr->da, (void *)pSta[0].staAddr, 6);
+        vos_mem_copy( (void *)macMgmtHdr->da, (void *)pSta[0].staAddr, 6);
     }
     return;
 #endif
@@ -770,9 +780,9 @@ void CreateFinishScanRawFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, t
         macMgmtHdr->seqControl.fragNum = 0;
         macMgmtHdr->seqControl.seqNumLo = 0;
         macMgmtHdr->seqControl.seqNumHi = 2;
-        palCopyMemory(pMac->hHdd, (void *)macMgmtHdr->da, (void *)pSta[0].bssId, 6);
-        palCopyMemory(pMac->hHdd, macMgmtHdr->sa, pSta[0].staAddr, 6);
-        palCopyMemory(pMac->hHdd, (void *)macMgmtHdr->bssId, (void *)pSta[0].bssId, 6);
+        vos_mem_copy( (void *)macMgmtHdr->da, (void *)pSta[0].bssId, 6);
+        vos_mem_copy( macMgmtHdr->sa, pSta[0].staAddr, 6);
+        vos_mem_copy( (void *)macMgmtHdr->bssId, (void *)pSta[0].bssId, 6);
 
     }
     

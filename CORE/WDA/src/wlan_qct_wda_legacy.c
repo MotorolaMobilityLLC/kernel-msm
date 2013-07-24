@@ -179,13 +179,14 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb)
    // host buffer
 
    // second parameter, 'wait option', to palAllocateMemory is ignored on Windows
-   if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMbLocal, pMb->msgLen))
+   pMbLocal = vos_mem_malloc(pMb->msgLen);
+   if ( NULL == pMbLocal )
    {
       WDALOGE( wdaLog(pMac, LOGE, FL("Buffer Allocation failed!\n")));
       return eSIR_FAILURE;
    }
 
-   palCopyMemory(pMac, (void *)pMbLocal, (void *)pMb, pMb->msgLen);
+   vos_mem_copy((void *)pMbLocal, (void *)pMb, pMb->msgLen);
    msg.bodyptr = pMbLocal;
 
    switch (msg.type & HAL_MMH_MB_MSG_TYPE_MASK)
@@ -216,12 +217,7 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb)
              msg.type));
 
       // Release the memory.
-      if (palFreeMemory( pMac->hHdd, (void*)(msg.bodyptr))
-            != eHAL_STATUS_SUCCESS)
-      {
-         WDALOGE( wdaLog(pMac, LOGE, FL("Buffer Allocation failed!\n")));
-         return eSIR_FAILURE;
-      }
+      vos_mem_free(msg.bodyptr);
       break;
    }
 

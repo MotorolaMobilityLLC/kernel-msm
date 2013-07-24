@@ -95,7 +95,7 @@ tSirRetStatus
 sysInitGlobals(tpAniSirGlobal pMac)
 {
 
-    palZeroMemory(pMac->hHdd, (tANI_U8 *) &pMac->sys, sizeof(pMac->sys));
+    vos_mem_set((tANI_U8 *) &pMac->sys, sizeof(pMac->sys), 0);
 
     pMac->sys.gSysEnableScanMode        = 1;
     pMac->sys.gSysEnableLinkMonitorMode = 0;

@@ -121,7 +121,7 @@ cfgProcessMbMsg(tpAniSirGlobal pMac, tSirMbMsg *pMsg)
     gCfgFunc[index](pMac, len, pParam);
 
     // Free up buffer
-    palFreeMemory( pMac->hHdd, (void*)pMsg);
+    vos_mem_free(pMsg);
 
 } /*** end cfgProcessMbMsg() ***/
 
