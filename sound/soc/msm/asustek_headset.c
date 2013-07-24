@@ -240,7 +240,7 @@ static void detection_work(struct work_struct *work)
 		printk(KERN_INFO "HOOK_GPIO value: %d\n", mic_in);
 		if (switch_get_state(&hs_data->sdev) == NO_DEVICE)
 			insert_headset();
-		else if (mic_in == 1)
+		if (mic_in == 1)
 			goto closed_micbias;
 	} else{
 		printk(KERN_INFO "HEADSET: Jack-in GPIO is low, but not a headset\n");
