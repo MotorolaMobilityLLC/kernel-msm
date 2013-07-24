@@ -724,7 +724,7 @@ SysProcessMmhMsg
     /* free the mem and return */
     if(pMsg->bodyptr)
     {
-      palFreeMemory( pMac->hHdd, pMsg->bodyptr);
+      vos_mem_free( pMsg->bodyptr);
     }
   }
 
