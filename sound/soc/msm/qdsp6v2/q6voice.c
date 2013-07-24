@@ -2427,6 +2427,54 @@ done:
 	return result;
 }
 
+int voice_unmap_cal_blocks(void)
+{
+	int			result = 0;
+	int			i;
+	struct voice_data	*v = NULL;
+	pr_debug("%s\n", __func__);
+
+	mutex_lock(&common.common_lock);
+
+	if (common.cal_mem_handle == 0)
+		goto done;
+
+	for (i = 0; i < MAX_VOC_SESSIONS; i++) {
+		v = &common.voice[i];
+
+		mutex_lock(&v->lock);
+		if (is_voc_state_active(v->voc_state)) {
+			result = voc_standby_voice_call(v->session_id);
+			if (result) {
+				pr_err("%s: voc_standby_voice_callv Failed for session 0x%x!\n",
+					__func__, v->session_id);
+			}
+
+			voice_send_cvp_deregister_vol_cal_cmd(v);
+			voice_send_cvp_deregister_cal_cmd(v);
+			voice_send_cvp_deregister_dev_cfg_cmd(v);
+			voice_send_cvs_deregister_cal_cmd(v);
+
+		}
+
+		if ((common.cal_mem_handle != 0) &&
+				(!is_other_session_active(v->session_id))) {
+
+			result = voice_send_mvm_unmap_memory_physical_cmd(
+				v, common.cal_mem_handle);
+			if (result)
+				pr_err("%s: voice_send_mvm_unmap_memory_physical_cmd Failed for session 0x%x!\n",
+				__func__, v->session_id);
+
+			common.cal_mem_handle = 0;
+		}
+		mutex_unlock(&v->lock);
+	}
+done:
+	mutex_unlock(&common.common_lock);
+	return result;
+}
+
 static int voice_map_memory_physical_cmd(struct voice_data *v,
 					 struct mem_map_table *table_info,
 					 dma_addr_t phys,
@@ -3018,7 +3066,6 @@ static int voice_destroy_vocproc(struct voice_data *v)
 	voice_send_cvp_deregister_vol_cal_cmd(v);
 	voice_send_cvp_deregister_cal_cmd(v);
 	voice_send_cvp_deregister_dev_cfg_cmd(v);
-
 	voice_send_cvs_deregister_cal_cmd(v);
 
 	/* destrop cvp session */

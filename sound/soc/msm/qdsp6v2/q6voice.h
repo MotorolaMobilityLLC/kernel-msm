@@ -1430,6 +1430,7 @@ int voc_alloc_voip_shared_memory(void);
 int is_voc_initialized(void);
 int voc_register_vocproc_vol_table(void);
 int voc_deregister_vocproc_vol_table(void);
+int voice_unmap_cal_blocks(void);
 
 uint32_t voc_get_session_id(char *name);
 

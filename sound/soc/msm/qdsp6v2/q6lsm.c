@@ -45,6 +45,7 @@ enum {
 	LSM_INVALID_SESSION_ID = 0,
 	LSM_MIN_SESSION_ID = 1,
 	LSM_MAX_SESSION_ID = 8,
+	LSM_CONTROL_SESSION = 0x0F,
 };
 
 struct lsm_common {
@@ -53,6 +54,7 @@ struct lsm_common {
 	uint32_t lsm_cal_addr;
 	uint32_t lsm_cal_size;
 	uint32_t mmap_handle_for_cal;
+	struct lsm_client	common_client;
 	struct mutex apr_lock;
 };
 
@@ -173,6 +175,8 @@ static void *q6lsm_mmap_apr_reg(void)
 				 __func__);
 			atomic_dec(&lsm_common.apr_users);
 		}
+		lsm_common.common_client.apr = lsm_common.apr;
+		lsm_common.common_client.mmap_apr = lsm_common.apr;
 	}
 
 	return lsm_common.apr;
@@ -185,13 +189,15 @@ static int q6lsm_mmap_apr_dereg(void)
 	} else {
 		if (atomic_dec_return(&lsm_common.apr_users) == 0) {
 			apr_deregister(lsm_common.apr);
+			lsm_common.common_client.apr = NULL;
+			lsm_common.common_client.mmap_apr = NULL;
 			pr_debug("%s:APR De-Register common port\n", __func__);
 		}
 	}
 	return 0;
 }
 
-struct lsm_client *q6lsm_client_alloc(app_cb cb, void *priv)
+struct lsm_client *q6lsm_client_alloc(lsm_app_cb cb, void *priv)
 {
 	struct lsm_client *client;
 	int n;
@@ -626,6 +632,30 @@ bail:
 	return rc;
 }
 
+int q6lsm_unmap_cal_blocks(void)
+{
+	int				result = 0;
+
+	if (lsm_common.mmap_handle_for_cal == 0)
+		goto done;
+
+	q6lsm_mmap_apr_reg();
+	result = q6lsm_memory_unmap_regions(
+		&lsm_common.common_client,
+		lsm_common.mmap_handle_for_cal);
+	q6lsm_mmap_apr_dereg();
+	if (result < 0)
+		pr_err("%s: unmap failed, err %d\n",
+			__func__, result);
+
+	lsm_common.lsm_cal_addr = 0;
+	lsm_common.lsm_cal_size = 0;
+	lsm_common.mmap_handle_for_cal = 0;
+
+done:
+	return result;
+}
+
 int q6lsm_snd_model_buf_free(struct lsm_client *client)
 {
 	int rc;
@@ -655,6 +685,11 @@ static struct lsm_client *q6lsm_get_lsm_client(int session_id)
 	unsigned long flags;
 	struct lsm_client *client = NULL;
 
+	if (session_id == LSM_CONTROL_SESSION) {
+		client = &lsm_common.common_client;
+		goto done;
+	}
+
 	spin_lock_irqsave(&lsm_session_lock, flags);
 	if (session_id < LSM_MIN_SESSION_ID || session_id > LSM_MAX_SESSION_ID)
 		pr_err("%s: Invalid session %d\n", __func__, session_id);
@@ -663,7 +698,7 @@ static struct lsm_client *q6lsm_get_lsm_client(int session_id)
 	else
 		client = lsm_session[session_id];
 	spin_unlock_irqrestore(&lsm_session_lock, flags);
-
+done:
 	return client;
 }
 
@@ -844,6 +879,7 @@ static int __init q6lsm_init(void)
 	spin_lock_init(&lsm_session_lock);
 	spin_lock_init(&mmap_lock);
 	mutex_init(&lsm_common.apr_lock);
+	lsm_common.common_client.session = LSM_CONTROL_SESSION;
 	return 0;
 }
 
