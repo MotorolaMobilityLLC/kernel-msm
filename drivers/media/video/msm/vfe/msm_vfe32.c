@@ -740,6 +740,29 @@ static void vfe32_subdev_notify(int id, int path, uint32_t inst_handle,
 	spin_unlock_irqrestore(&share_ctrl->sd_notify_lock, flags);
 }
 
+static void vfe32_complete_reset(struct axi_ctrl_t *axi_ctrl)
+{
+	pr_info("%s E", __func__);
+	/* Clear all IRQs from MASK 0 */
+	msm_camera_io_w(0x0, axi_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_0);
+	/* Clear all IRQs from MASK 1 except RESET IRQ */
+	msm_camera_io_w((0x1 << 23),
+		axi_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_1);
+
+	msm_camera_io_w(VFE_CLEAR_ALL_IRQS,
+		axi_ctrl->share_ctrl->vfebase + VFE_IRQ_CLEAR_0);
+	msm_camera_io_w(VFE_CLEAR_ALL_IRQS,
+		axi_ctrl->share_ctrl->vfebase + VFE_IRQ_CLEAR_1);
+
+	/* Disable CAMIF capture */
+	msm_camera_io_w(0x2, axi_ctrl->share_ctrl->vfebase +
+		VFE_CAMIF_COMMAND);
+	msm_camera_io_w(AXI_HALT,
+		axi_ctrl->share_ctrl->vfebase + VFE_AXI_CMD);
+	wmb();
+	pr_info("%s X", __func__);
+}
+
 static int vfe32_config_axi(
 	struct axi_ctrl_t *axi_ctrl, int mode, uint32_t *ao)
 {
@@ -1558,6 +1581,7 @@ static void vfe32_start_common(struct vfe32_ctrl_type *vfe32_ctrl)
 		VFE_CAMIF_COMMAND);
 	msm_camera_io_w_mb(VFE_AXI_CFG_MASK,
 		vfe32_ctrl->share_ctrl->vfebase + VFE_AXI_CFG);
+	vfe32_ctrl->share_ctrl->overflow_count = 0;
 }
 
 static int vfe32_start_recording(
@@ -4210,17 +4234,32 @@ static void vfe32_process_reset_irq(
 	unsigned long flags;
 
 	if (atomic_read(&recovery_active) == 1) {
-		pr_info("Recovery restart start\n");
-		if (atomic_read(&fault_recovery) == 1) {
+		vfe32_ctrl->share_ctrl->overflow_count++;
+		CDBG("%s Overflow incident # %d ", __func__,
+			vfe32_ctrl->share_ctrl->overflow_count);
+		if ((atomic_read(&fault_recovery) == 1) ||
+			(vfe32_ctrl->share_ctrl->overflow_count >
+				BUS_OVERFLOW_THRESHOLD)) {
+			/* This means either:
+			 * 1. IOMMU pagefault occurred.
+			 * 2. No of bus overflow incidents crossed the
+			 *    predefined threshold.
+			 * In either case, there is no point in continuing with
+			 * recovery at this point. Since VFE is already RESET,
+			 * instead of starting it again, just notify the
+			 * application about the error so that the camera
+			 * application can be gracefully exited. */
 			atomic_set(&recovery_active, 0);
-			pr_err("potential page fault occured, stop recovery & send app notification");
-			v4l2_subdev_notify(&vfe32_ctrl->subdev, NOTIFY_VFE_CAMIF_ERROR,
-					(void *)NULL);
+			pr_info("Stop recovery and notify application");
+			v4l2_subdev_notify(&vfe32_ctrl->subdev,
+				NOTIFY_VFE_CAMIF_ERROR, (void *)NULL);
 			vfe32_send_isp_msg(&vfe32_ctrl->subdev,
-					vfe32_ctrl->share_ctrl->vfeFrameId, MSG_ID_CAMIF_ERROR);
+				vfe32_ctrl->share_ctrl->vfeFrameId,
+				MSG_ID_CAMIF_ERROR);
 			return;
 		}
 
+		pr_info("Recovery restart start\n");
 		msm_camera_io_w(VFE_RELOAD_ALL_WRITE_MASTERS,
 			vfe32_ctrl->share_ctrl->vfebase + VFE_BUS_CMD);
 		msm_camera_io_w(recover_irq_mask0,
@@ -4357,14 +4396,17 @@ static void vfe32_process_error_irq(
 		pr_err("vfe32_irq: camif errors\n");
 		reg_value = msm_camera_io_r(
 			axi_ctrl->share_ctrl->vfebase + VFE_CAMIF_STATUS);
-		if (reg_value & ~0x80000000) {
-#if 0 ////Erased for bus overflow recovery patch, automatically recover.
+		/* In case of camif errors, notify the applicaiton only
+		 * if overflow recovery is not active. If we are trying to
+		 * automatically recover, then we dont want to inform the
+		 * application of the error. */
+		if ((reg_value & ~0x80000000) &&
+				!atomic_read(&recovery_active)) {
 			v4l2_subdev_notify(&axi_ctrl->subdev,
 				NOTIFY_VFE_CAMIF_ERROR, (void *)NULL);
 			pr_err("camifStatus  = 0x%x\n", reg_value);
 			vfe32_send_isp_msg(&axi_ctrl->subdev,
 			axi_ctrl->share_ctrl->vfeFrameId, MSG_ID_CAMIF_ERROR);
-#endif
 		}
 	}
 
@@ -5569,13 +5611,16 @@ static void axi32_do_tasklet(unsigned long data)
 					VFE_IRQ_STATUS0_STATS_CS);
 		}
 
-		if (atomic_read(&fault_recovery) && !atomic_read(&recovery_active)) {
+		if (atomic_read(&fault_recovery) &&
+				!atomic_read(&recovery_active)) {
 			pr_err("avert page fault when overflow recovery not in progress");
-			msm_camera_io_w_mb(AXI_HALT_CLEAR, axi_ctrl->share_ctrl->vfebase + VFE_AXI_CMD);
-			v4l2_subdev_notify(&vfe32_ctrl->subdev, NOTIFY_VFE_CAMIF_ERROR,
-					(void *)NULL);
+			msm_camera_io_w_mb(AXI_HALT_CLEAR,
+				axi_ctrl->share_ctrl->vfebase + VFE_AXI_CMD);
+			v4l2_subdev_notify(&vfe32_ctrl->subdev,
+				NOTIFY_VFE_CAMIF_ERROR,	(void *)NULL);
 			vfe32_send_isp_msg(&vfe32_ctrl->subdev,
-					vfe32_ctrl->share_ctrl->vfeFrameId, MSG_ID_CAMIF_ERROR);
+				vfe32_ctrl->share_ctrl->vfeFrameId,
+				MSG_ID_CAMIF_ERROR);
 		}
 
 		if (!atomic_read(&recovery_active)) {
@@ -5787,34 +5832,15 @@ static irqreturn_t vfe32_parse_irq(int irq_num, void *data)
 	qcmd->vfeInterruptStatus1 = irq.vfeIrqStatus1;
         if (atomic_read(&fault_recovery)) {
 		printk("Start fault recovery\n");
-		msm_camera_io_w(0x0, axi_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_0);
-		msm_camera_io_w((0x1 << 23), axi_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_1);
-		msm_camera_io_w(VFE_CLEAR_ALL_IRQS, axi_ctrl->share_ctrl->vfebase + VFE_IRQ_CLEAR_0);
-		msm_camera_io_w(VFE_CLEAR_ALL_IRQS, axi_ctrl->share_ctrl->vfebase + VFE_IRQ_CLEAR_1);
-		msm_camera_io_w(0x2, axi_ctrl->share_ctrl->vfebase + 0x1E0);
-		msm_camera_io_w(AXI_HALT, axi_ctrl->share_ctrl->vfebase + VFE_AXI_CMD);
-	} else if ((qcmd->vfeInterruptStatus1 & 0x3FFF00) && !atomic_read(&recovery_active)) {
+		vfe32_complete_reset(axi_ctrl);
+	} else if ((qcmd->vfeInterruptStatus1 & 0x3FFF00) &&
+				!atomic_read(&recovery_active)) {
 		printk("Start bus overflow recovery\n");
-
 		recover_irq_mask0 = msm_camera_io_r(
 			axi_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_0);
 		recover_irq_mask1 = msm_camera_io_r(
 			axi_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_1);
-		/* Clear all IRQs from MASK 0 */
-		msm_camera_io_w(0x0, axi_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_0);
-		/* Clear all IRQs from MASK 1 except RESET IRQ */
-		msm_camera_io_w((0x1 << 23),
-			axi_ctrl->share_ctrl->vfebase + VFE_IRQ_MASK_1);
-		msm_camera_io_w(VFE_CLEAR_ALL_IRQS,
-			axi_ctrl->share_ctrl->vfebase + VFE_IRQ_CLEAR_0);
-		msm_camera_io_w(VFE_CLEAR_ALL_IRQS,
-			axi_ctrl->share_ctrl->vfebase + VFE_IRQ_CLEAR_1);
-		/* Disable CAMIF capture */
-		msm_camera_io_w(0x2, axi_ctrl->share_ctrl->vfebase +
-			VFE_CAMIF_COMMAND);
-		msm_camera_io_w(AXI_HALT,
-			axi_ctrl->share_ctrl->vfebase + VFE_AXI_CMD);
-		wmb();
+		vfe32_complete_reset(axi_ctrl);
 		atomic_set(&recovery_active, 2);
 	}
 	spin_lock_irqsave(&axi_ctrl->tasklet_lock, flags);
