@@ -819,6 +819,9 @@ static int msm_pm_idle_prepare(struct cpuidle_device *dev,
 				allow = false;
 			break;
 		case MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE:
+			if (num_online_cpus() > 1)
+				allow = false;
+			break;
 		case MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT:
 			break;
 		default:
