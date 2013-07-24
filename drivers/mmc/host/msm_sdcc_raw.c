@@ -1761,7 +1761,10 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 	/* If Data Mover is NOT used for data xfer: */
 	do {
 		mmc_ret = RAW_MMC_E_SUCCESS;
-		mmc_status = readl(RAW_MMC_MCI_STATUS);
+		for (i = 0; i < 3; i++) {
+			mmc_status = readl(RAW_MMC_MCI_STATUS);
+			mdelay(1);
+		}
 
 		if (mmc_status & write_error) {
 			mmc_ret = raw_mmc_status_error(mmc_status);
