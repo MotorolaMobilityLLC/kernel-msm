@@ -26,6 +26,7 @@
 #include "mdss_dsi.h"
 
 #define DT_CMD_HDR 6
+#define ESD_DROPBOX_MSG "ESD event detected"
 
 /* MDSS_PANEL_ESD_SELFTEST is used to run ESD detection/recovery stress test */
 /* #define MDSS_PANEL_ESD_SELFTEST 1 */
@@ -472,6 +473,7 @@ static void mdss_panel_esd_work(struct work_struct *work)
 {
 	u8 pwr_mode = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	static bool dropbox_sent;
 #ifdef MDSS_PANEL_ESD_SELF_TRIGGER
 	static int esd_count;
 	static int esd_trigger_cnt;
@@ -507,6 +509,12 @@ static void mdss_panel_esd_work(struct work_struct *work)
 					__func__, pwr_mode,
 					ctrl->panel_config.esd_pwr_mode_chk);
 		mdss_panel_esd_recovery_start(&ctrl->panel_data);
+		if (!dropbox_sent) {
+			dropbox_queue_event_text("display_issue",
+						ESD_DROPBOX_MSG,
+						strlen(ESD_DROPBOX_MSG));
+			dropbox_sent = true;
+		}
 	}
 end:
 	if (ctrl->panel_data.panel_info.panel_power_on)
