@@ -4634,11 +4634,11 @@ void hdd_wmm_tx_snapshot(hdd_adapter_t *pAdapter)
     int i = 0, j = 0;
     for ( i=0; i< NUM_TX_QUEUES; i++)
     {
-        spin_lock(&pAdapter->wmm_tx_queue[i].lock);
+        spin_lock_bh(&pAdapter->wmm_tx_queue[i].lock);
         hddLog(LOGE, "HDD WMM TxQueue Info For AC: %d Count: %d PrevAdress:0x%x, NextAddress:0x%x",
                i, pAdapter->wmm_tx_queue[i].count,
                pAdapter->wmm_tx_queue[i].anchor.prev, pAdapter->wmm_tx_queue[i].anchor.next);
-        spin_unlock(&pAdapter->wmm_tx_queue[i].lock);
+        spin_unlock_bh(&pAdapter->wmm_tx_queue[i].lock);
     }
 
     for(i =0; i<WLAN_MAX_STA_COUNT; i++)
@@ -4648,12 +4648,12 @@ void hdd_wmm_tx_snapshot(hdd_adapter_t *pAdapter)
              hddLog(LOGE, "******STAIndex: %d*********", i);
              for ( j=0; j< NUM_TX_QUEUES; j++)
              {
-                spin_lock(&pAdapter->aStaInfo[i].wmm_tx_queue[j].lock);
+                spin_lock_bh(&pAdapter->aStaInfo[i].wmm_tx_queue[j].lock);
                 hddLog(LOGE, "HDD TxQueue Info For AC: %d Count: %d PrevAdress:0x%x, NextAddress:0x%x",
                        j, pAdapter->aStaInfo[i].wmm_tx_queue[j].count,
                        pAdapter->aStaInfo[i].wmm_tx_queue[j].anchor.prev,
                        pAdapter->aStaInfo[i].wmm_tx_queue[j].anchor.next);
-                spin_unlock(&pAdapter->aStaInfo[i].wmm_tx_queue[j].lock);
+                spin_unlock_bh(&pAdapter->aStaInfo[i].wmm_tx_queue[j].lock);
              }
         }
     }
