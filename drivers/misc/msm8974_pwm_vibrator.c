@@ -63,12 +63,12 @@ static DEFINE_MUTEX(vib_lock);
 struct timed_vibrator_data {
 	struct timed_output_dev dev;
 	struct hrtimer timer;
-	spinlock_t lock;
+	struct mutex lock;
 	int max_timeout;
-	atomic_t ms_time;       /* vibrator duration */
+	int ms_time;            /* vibrator duration */
 	atomic_t vib_status;    /* on/off */
-	atomic_t vibe_gain;     /* default max gain */
-	atomic_t vibe_pwm;
+	int vibe_gain;          /* default max gain */
+	int vibe_pwm;
 	atomic_t gp1_clk_flag;
 	int amp;
 	int vibe_n_value;
@@ -223,7 +223,7 @@ static int msm8974_pwm_vibrator_force_set(struct timed_vibrator_data *vib,
 
 	if (vib->vibe_warmup_delay > 0) { /*warmup delay isn't used now */
 		if (atomic_read(&vib->vib_status))
-			msleep(vib->vibe_warmup_delay);
+			usleep(vib->vibe_warmup_delay * 1000);
 	}
 
 	/* TODO: control the gain of vibrator */
@@ -233,12 +233,26 @@ static int msm8974_pwm_vibrator_force_set(struct timed_vibrator_data *vib,
 		/* should be checked for vibrator response time */
 		vibrator_set_power(0, vib);
 		atomic_set(&vib->vib_status, false);
+
+		mutex_lock(&vib_lock);
+		if (atomic_read(&vib->gp1_clk_flag) == 1) {
+			clk_disable_unprepare(cam_gp1_clk);
+			atomic_set(&vib->gp1_clk_flag, 0);
+		}
+		mutex_unlock(&vib_lock);
 	} else {
+		mutex_lock(&vib_lock);
+		if (atomic_read(&vib->gp1_clk_flag) == 0) {
+			clk_prepare_enable(cam_gp1_clk);
+			atomic_set(&vib->gp1_clk_flag, 1);
+		}
+		mutex_unlock(&vib_lock);
+
 		if (work_pending(&vib->work_vibrator_off))
 			cancel_work_sync(&vib->work_vibrator_off);
 		hrtimer_cancel(&vib->timer);
 
-		vib_duration_ms = atomic_read(&vib->ms_time);
+		vib_duration_ms = vib->ms_time;
 		/* should be checked for vibrator response time */
 		vibrator_set_power(1, vib);
 		vibrator_pwm_set(1, nForce, n_value);
@@ -258,8 +272,8 @@ static void msm8974_pwm_vibrator_on(struct work_struct *work)
 	struct timed_vibrator_data *vib =
 		container_of(work, struct timed_vibrator_data,
 				work_vibrator_on);
-	int gain = atomic_read(&vib->vibe_gain);
-	int pwm = atomic_read(&vib->vibe_pwm);
+	int gain = vib->vibe_gain;
+	int pwm = vib->vibe_pwm;
 	/* suspend /resume logging test */
 	pr_debug("%s: gain = %d pwm = %d\n", __func__, gain, pwm);
 
@@ -300,30 +314,19 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 {
 	struct timed_vibrator_data *vib =
 		container_of(dev, struct timed_vibrator_data, dev);
-	unsigned long flags;
 
-	spin_lock_irqsave(&vib->lock, flags);
+	mutex_lock(&vib->lock);
 	if (value > 0) {
-		if (atomic_read(&vib->gp1_clk_flag) == 0) {
-			clk_prepare_enable(cam_gp1_clk);
-			atomic_set(&vib->gp1_clk_flag, 1);
-		}
-
 		if (value > vib->max_timeout)
 			value = vib->max_timeout;
 
-		atomic_set(&vib->ms_time, value);
+		vib->ms_time = value;
 
 		vibrator_work_on(&vib->work_vibrator_on);
 	} else {
-		if (atomic_read(&vib->gp1_clk_flag) == 1) {
-			clk_disable_unprepare(cam_gp1_clk);
-			atomic_set(&vib->gp1_clk_flag, 0);
-		}
-
 		vibrator_work_off(&vib->work_vibrator_off);
 	}
-	spin_unlock_irqrestore(&vib->lock, flags);
+	mutex_unlock(&vib->lock);
 }
 
 static int vibrator_gpio_init(struct timed_vibrator_data *vib)
@@ -410,7 +413,7 @@ static ssize_t vibrator_amp_show(struct device *dev,
 	struct timed_output_dev *_dev = dev_get_drvdata(dev);
 	struct timed_vibrator_data *vib =
 		container_of(_dev, struct timed_vibrator_data, dev);
-	int gain = atomic_read(&(vib->vibe_gain));
+	int gain = vib->vibe_gain;
 
 	return sprintf(buf, "%d\n", gain);
 }
@@ -424,7 +427,7 @@ static ssize_t vibrator_amp_store(struct device *dev,
 	int gain;
 
 	sscanf(buf, "%d", &gain);
-	atomic_set(&vib->vibe_gain, gain);
+	vib->vibe_gain = gain;
 
 	return size;
 }
@@ -434,9 +437,8 @@ static ssize_t vibrator_pwm_show(struct device *dev, struct device_attribute *at
 	struct timed_output_dev *_dev = dev_get_drvdata(dev);
 	struct timed_vibrator_data *vib =
 		container_of(_dev, struct timed_vibrator_data, dev);
-	int gain = atomic_read(&(vib->vibe_pwm));
 
-	return sprintf(buf, "%d\n", gain);
+	return sprintf(buf, "%d\n", vib->vibe_pwm);
 }
 
 static ssize_t vibrator_pwm_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -444,10 +446,10 @@ static ssize_t vibrator_pwm_store(struct device *dev, struct device_attribute *a
 	struct timed_output_dev *_dev = dev_get_drvdata(dev);
 	struct timed_vibrator_data *vib =
 		container_of(_dev, struct timed_vibrator_data, dev);
-	int gain;
+	int pwm;
 
-	sscanf(buf, "%d", &gain);
-	atomic_set(&vib->vibe_pwm, gain);
+	sscanf(buf, "%d", &pwm);
+	vib->vibe_pwm = pwm;
 
 	return size;
 }
@@ -504,8 +506,8 @@ static int msm8974_pwm_vibrator_probe(struct platform_device *pdev)
 	}
 	clk_set_rate(cam_gp1_clk, 29268);
 
-	atomic_set(&vib->vibe_gain, vib->amp);
-	atomic_set(&vib->vibe_pwm, vib->vibe_n_value);
+	vib->vibe_gain = vib->amp;
+	vib->vibe_pwm = vib->vibe_n_value;
 	atomic_set(&vib->vib_status, false);
 	atomic_set(&vib->gp1_clk_flag, 0);
 
@@ -513,7 +515,7 @@ static int msm8974_pwm_vibrator_probe(struct platform_device *pdev)
 	INIT_WORK(&vib->work_vibrator_on, msm8974_pwm_vibrator_on);
 	hrtimer_init(&vib->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	vib->timer.function = vibrator_timer_func;
-	spin_lock_init(&vib->lock);
+	mutex_init(&vib->lock);
 
 	ret = timed_output_dev_register(&vib->dev);
 	if (ret < 0) {
