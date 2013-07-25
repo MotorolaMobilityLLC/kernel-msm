@@ -4623,7 +4623,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 
 	if (qpnp_charger_mmi_factory()) {
 		pr_info("Factory Mode Disabling!\n");
-		return 0;
+		return -ENODEV;
 	}
 
 	chip = devm_kzalloc(&spmi->dev,
