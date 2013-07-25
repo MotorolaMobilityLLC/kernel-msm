@@ -1213,57 +1213,6 @@ void sapSortChlWeight(tSapChSelSpectInfo *pSpectInfoParams)
 }
 
 /*==========================================================================
-  FUNCTION    sapComputeNonOverlapChannel
-
-  DESCRIPTION
-    Checking for the Free Non Overlapping Channel
-
-  DEPENDENCIES
-    NA.
-
-  PARAMETERS
-
-    IN
-    pSpectInfoParams: Spectrum Info params
-
-  RETURN VALUE
-    v_U8_t          : Success - Bit mask
-
-  SIDE EFFECTS
-============================================================================*/
-v_U8_t  sapComputeNonOverlapChannel(tSapChSelSpectInfo* pSpectInfoParams)
-{
-    v_U8_t nonOverlap = 0;
-    tSapSpectChInfo *pSpectCh   = NULL;
-    v_U8_t chn_num = 0;
-    pSpectCh = pSpectInfoParams->pSpectCh;
-    for (chn_num = 0; chn_num < (pSpectInfoParams->numSpectChans); chn_num++) {
-        if(pSpectCh->chNum == CHANNEL_1 || pSpectCh->chNum == CHANNEL_6 || pSpectCh->chNum == CHANNEL_11)
-        {
-            switch(pSpectCh->chNum)
-            {
-                case 1:
-                if(pSpectCh->weight == 0)
-                    nonOverlap |= 0x1; //Bit 0 For channel 1
-                break;
-                case 6:
-                if(pSpectCh->weight == 0)
-                    nonOverlap |= 0x2; // Bit 1 For Channel 6
-                break;
-                case 11:
-                if(pSpectCh->weight == 0)
-                    nonOverlap |= 0x4; // Bit 2 for Channel 11
-                break;
-                default:
-                break;
-            }
-        }
-        pSpectCh++;
-    }
-    return nonOverlap;
-}
-
-/*==========================================================================
   FUNCTION    sapSelectChannel
 
   DESCRIPTION 
@@ -1289,7 +1238,6 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     // DFS param object holding all the data req by the algo
     tSapChSelSpectInfo oSpectInfoParams = {NULL,0}; 
     tSapChSelSpectInfo *pSpectInfoParams = &oSpectInfoParams; // Memory? NB    
-    v_U8_t nonOverlap = 0;
     v_U8_t bestChNum = 0;
 #ifdef SOFTAP_CHANNEL_RANGE
     v_U32_t startChannelNum;
@@ -1319,21 +1267,33 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL, &endChannelNum);
     ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND, &operatingBand);
 
-    // Calculating the Non overlapping Channel Availability */
-    if(operatingBand == RF_SUBBAND_2_4_GHZ)
-        nonOverlap = sapComputeNonOverlapChannel(pSpectInfoParams);
-
     /*Loop till get the best channel in the given range */
     for(count=0; count < pSpectInfoParams->numSpectChans ; count++)
     {
         if((startChannelNum <= pSpectInfoParams->pSpectCh[count].chNum)&&
           ( endChannelNum >= pSpectInfoParams->pSpectCh[count].chNum))
         {
-            bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[count].chNum;
-            break;
-        }
-    }
-
+            if(bestChNum == 0)
+            {
+                bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[count].chNum;
+            }
+            else
+            {
+                if(operatingBand == RF_SUBBAND_2_4_GHZ)
+                {
+                    /* Give preference to Non-overlap channels */
+                    if(((pSpectInfoParams->pSpectCh[count].chNum == CHANNEL_1) ||
+                      (pSpectInfoParams->pSpectCh[count].chNum == CHANNEL_6) ||
+                      (pSpectInfoParams->pSpectCh[count].chNum == CHANNEL_11))&&
+                      (pSpectInfoParams->pSpectCh[count].weight == 0))
+                      {
+                           bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[count].chNum;
+                           break;
+                      }
+                }
+            }
+         }
+      }
 #else
     // Get the first channel in sorted array as best 20M Channel
     bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[0].chNum;
@@ -1341,27 +1301,6 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
 
     //Select Best Channel from Channel List if Configured
     bestChNum = sapSelectPreferredChannelFromChannelList(bestChNum, pSapCtx, pSpectInfoParams);
-
-    if(operatingBand == RF_SUBBAND_2_4_GHZ)
-    {
-        if(nonOverlap)
-        {
-            switch(nonOverlap)
-            {
-                case 0x1:
-                    bestChNum = CHANNEL_1;
-                break;
-                case 0x2:
-                    bestChNum = CHANNEL_6;
-                break;
-                case 0x4:
-                    bestChNum = CHANNEL_11;
-                break;
-                default:
-                break;
-            }
-        }
-    }
 
     // Free all the allocated memory
     sapChanSelExit(pSpectInfoParams);
