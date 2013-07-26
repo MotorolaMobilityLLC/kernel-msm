@@ -515,7 +515,8 @@ static int arizona_of_get_core_pdata(struct arizona *arizona)
 		dev_err(arizona->dev, "Failed to parse GPIO defaults: %d\n",
 			ret);
 	}
-
+	of_property_read_u32(arizona->dev->of_node, "irq-base", &arizona->pdata.irq_base);
+	of_property_read_u32(arizona->dev->of_node, "gpio-base", &arizona->pdata.gpio_base);
 	return 0;
 }
 
