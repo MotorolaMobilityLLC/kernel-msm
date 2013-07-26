@@ -16,6 +16,9 @@
 #include "msm_ois.h"
 #include "msm_cci.h"
 #include "msm_ois_i2c.h"
+#ifdef CONFIG_OIS_ONSEMI_LC898111A
+#include "lgit_ois_onsemi.h"
+#endif
 #ifdef CONFIG_OIS_ROHM_BU24205GWL
 #include "lgit_ois_rohm.h"
 #endif
@@ -316,6 +319,19 @@ int msm_init_ois(enum ois_ver_t ver)
 	pr_info("%s : OIS chipid=%d\n", __func__, chipid); /* Don't remove this ! */
 
 	switch (chipid) {
+#ifdef CONFIG_OIS_ONSEMI_LC898111A
+	case 0x01:
+		lgit_ois_onsemi_init(&msm_ois_t);
+		msm_ois_t.i2c_client.cci_client->sid = msm_ois_t.sid_ois;
+		rc = ois_i2c_read(0x027F, &chipid, 1);
+		if (rc < 0) {
+			msm_ois_t.ois_func_tbl = NULL;
+			pr_err("%s: kernel ois not supported, rc = %d\n", __func__, rc);
+			return OIS_INIT_NOT_SUPPORTED;
+		}
+		CDBG("%s : LGIT OIS module type #1!\n", __func__);
+		break;
+#endif
 #ifdef CONFIG_OIS_ROHM_BU24205GWL
 	case 0x02:
 	case 0x05:
