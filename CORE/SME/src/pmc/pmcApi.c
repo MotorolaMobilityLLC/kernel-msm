@@ -1347,15 +1347,16 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             /* Check that we are in the correct state for this message. */
             if (pMac->pmc.pmcState != REQUEST_FULL_POWER)
             {
-                smsLog(pMac, LOGE, FL("Got Exit IMPS Response Message while in state %d"), pMac->pmc.pmcState);
+                smsLog(pMac, LOGE, FL("Got Exit IMPS Response Message while "
+                   "in state %d"), pMac->pmc.pmcState);
                 break;
             }
 
             /* Enter Full Power State. */
             if (pMsg->statusCode != eSIR_SME_SUCCESS)
             {
-                smsLog(pMac, LOGP, FL("Response message to request to exit IMPS indicates failure, status %x"),
-                       pMsg->statusCode);
+                smsLog(pMac, LOGE, FL("Response message to request to exit "
+                   "IMPS indicates failure, status %x"), pMsg->statusCode);
             }
             pmcEnterFullPowerState(pMac);
         break;
