@@ -1050,4 +1050,11 @@ config FSM9900_GSM_NL
 	  The serial port connection can be established to communicate with the
 	  GSM NL module.
 
+config MMI_DEVICE_DTBS
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility Device DTBs"
+	help
+	  Only include Motorola device specific DTBs to limit the number that
+	  get built during kernel compilation.
 endif
