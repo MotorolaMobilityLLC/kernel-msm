@@ -219,7 +219,9 @@ struct dsi_buf {
 #define DTYPE_GEN_READ1		0x14	/* long read, 1 parameter */
 #define DTYPE_GEN_READ2		0x24	/* long read, 2 parameter */
 
-#define DTYPE_TEAR_ON		0x35	/* set tear on */
+#define DCS_CMD_GET_POWER_MODE	0x0A	/* get power_mode */
+
+#define DTYPE_TEAR_ON           0x35    /* set tear on */
 #define DTYPE_MAX_PKTSIZE	0x37	/* set max packet size */
 #define DTYPE_NULL_PKT		0x09	/* null packet, no data */
 #define DTYPE_BLANK_PKT		0x19	/* blankiing packet, no data */
@@ -294,7 +296,17 @@ struct dsi_kickoff_action {
 };
 
 struct mdss_panel_config {
+	bool is_panel_config_loaded;
+	bool esd_enable;
+	struct workqueue_struct *esd_wq;
+	bool esd_detection_run;
+	bool esd_recovery_run;
+	struct mutex panel_mutex;
+	int esd_pwr_mode_chk;
+	bool esd_disable_bl;
+
 	bool bare_board;
+	u64 panel_ver;
 };
 
 struct dsi_drv_cm_data {
@@ -322,6 +334,9 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
 	struct dss_module_power panel_vregs;
+	void(*lock_mutex) (struct mdss_panel_data *pdata);
+	void(*unlock_mutex) (struct mdss_panel_data *pdata);
+	struct delayed_work esd_work;
 	unsigned char *ctrl_base;
 	int reg_size;
 	u32 clk_cnt;
