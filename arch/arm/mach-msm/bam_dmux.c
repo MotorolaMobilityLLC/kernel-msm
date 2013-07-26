@@ -1656,7 +1656,7 @@ static int ssrestart_check(void)
 	in_global_reset = 1;
 	ret = subsystem_restart("modem");
 	if (ret == -ENODEV)
-		panic("modem subsystem restart failed\n");
+		PR_BUG("modem subsystem restart failed\n");
 	return 1;
 }
 
