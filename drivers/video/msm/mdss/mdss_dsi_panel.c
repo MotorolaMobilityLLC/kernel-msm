@@ -401,10 +401,17 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mdss_dsi_panel_regulator_on(pdata, 1);
 
 	mdss_dsi_panel_reset(pdata, 1);
+
+	if (ctrl->panel_config.bare_board == true) {
+		pr_warning("%s: This is bare_board configuration\n", __func__);
+		goto end;
+	}
+
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
-	pr_info("%s:-\n", __func__);
+end:
+	pr_info("%s-:\n", __func__);
 
 	return 0;
 }
@@ -426,9 +433,13 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	mipi  = &pdata->panel_info.mipi;
 
+	if (ctrl->panel_config.bare_board == true)
+		goto disable_regs;
+
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
+disable_regs:
 	mdss_dsi_panel_reset(pdata, 0);
 	mdss_dsi_panel_regulator_on(pdata, 0);
 	pr_info("%s:-\n", __func__);
@@ -740,6 +751,23 @@ static int mdss_dsi_parse_reset_seq(struct device_node *np,
 	return 0;
 }
 
+static int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+
+	if (of_property_read_bool(np, "mmi,bare_board") == true &&
+		of_property_read_bool(np, "mmi,factory-cable") == true)
+			ctrl_pdata->panel_config.bare_board = true;
+
+	pr_debug("%s: bare_board_bl=%d, factory_cable=%d "
+			"bare_board=%d\n", __func__,
+			of_property_read_bool(np, "mmi,bare_board"),
+			of_property_read_bool(np, "mmi,factory-cable"),
+			ctrl_pdata->panel_config.bare_board);
+	of_node_put(np);
+
+	return 0;
+}
 
 static int mdss_panel_parse_dt(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
@@ -1051,6 +1079,13 @@ int mdss_dsi_panel_init(struct device_node *node,
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
+		return rc;
+	}
+
+	rc = mdss_panel_parse_panel_config_dt(ctrl_pdata);
+	if (rc) {
+		pr_err("%s:%d panel config dt parse failed\n",
+			__func__, __LINE__);
 		return rc;
 	}
 
