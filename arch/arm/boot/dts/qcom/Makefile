@@ -39,6 +39,8 @@ dtb-$(CONFIG_ARCH_MSM8909) += msm8909-sim.dtb \
 	msm8909-1gb-qrd-skua.dtb \
 	msm8909-1gb-cdp.dtb \
 	msm8909-1gb-mtp.dtb
+# Do not include QC default DTBs if not needed
+ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-sim.dtb \
 	msm8916-rumi.dtb \
 	msm8916-cdp.dtb \
@@ -81,6 +83,8 @@ dtb-$(CONFIG_ARCH_MSM8916) += msm8916-sim.dtb \
 	msm8929-mtp-jdi-smb1360.dtb \
 	msm8929-mtp-wcd9306-smb1360.dtb \
 	msm8929-cdp-jdi.dtb
+endif # CONFIG_MMI_DEVICE_DTBS
+
 dtb-$(CONFIG_ARCH_MSM8226) += msm8226-sim.dtb \
 	msm8226-fluid.dtb \
 	msm8226-v1-cdp.dtb \
@@ -213,6 +217,12 @@ dtb-$(CONFIG_ARCH_MSM8994) += msm8994-v1-sim.dtb \
 
 dtb-$(CONFIG_ARCH_MSM8992) += msm8992-sim.dtb \
 	msm8992-rumi.dtb
+
+ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
+# Add 1k of padding to the DTBs to allow for environment variables
+# to be runtime added by the bootloader (i.e. /chosen properties)
+DTC_FLAGS := -p 1024
+endif
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)
