@@ -751,6 +751,14 @@ config TRACER_PKT
 	  processor communication protocols. The profiling information
 	  can be logged into the tracer packet itself.
 
+config MMI_DEVICE_DTBS
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility Device DTBs"
+	help
+	  Only include Motorola device specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 config MSM_SECURE_BUFFER
 	bool "Helper functions for securing buffers through TZ"
 	help
