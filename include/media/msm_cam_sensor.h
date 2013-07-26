@@ -407,6 +407,9 @@ enum msm_sensor_cfg_type_t {
 	CFG_CANCEL_AUTOFOCUS,
 	CFG_SET_STREAM_TYPE,
 	CFG_SET_FPS_RANGE,
+        CFG_SET_GAMMA,
+        CFG_SET_LENS_SHADING,
+        CFG_SET_TARGET_EXPOSURE,
 };
 
 enum msm_actuator_cfg_type_t {
