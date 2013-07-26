@@ -1266,6 +1266,172 @@ static struct snd_soc_dai_driver wm5110_dai[] = {
 	},
 };
 
+static irqreturn_t adsp2_irq(int irq, void *data)
+{
+	return IRQ_HANDLED;
+}
+
+static int wm5110_open(struct snd_compr_stream *stream)
+{
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct wm5110_priv *wm5110 = snd_soc_codec_get_drvdata(rtd->codec);
+	struct arizona *arizona = wm5110->core.arizona;
+	int i, ret = 0;
+
+	mutex_lock(&wm5110->compr_info.lock);
+
+	if (wm5110->compr_info.stream) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	for (i = 0; i < WM5110_NUM_ADSP; ++i) {
+		if (wm_adsp_compress_supported(&wm5110->core.adsp[i], stream)) {
+			wm5110->compr_info.adsp = &wm5110->core.adsp[i];
+			break;
+		}
+	}
+
+	if (!wm5110->compr_info.adsp) {
+		dev_err(arizona->dev,
+			"No suitable firmware for compressed stream\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = arizona_request_irq(arizona, ARIZONA_IRQ_DSP_IRQ1,
+				  "ADSP2 interrupt 1", adsp2_irq, wm5110);
+	if (ret != 0) {
+		dev_err(arizona->dev, "Failed to request DSP IRQ: %d\n", ret);
+		goto out;
+	}
+
+	wm5110->compr_info.stream = stream;
+out:
+	mutex_unlock(&wm5110->compr_info.lock);
+
+	return ret;
+}
+
+static int wm5110_free(struct snd_compr_stream *stream)
+{
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct wm5110_priv *wm5110 = snd_soc_codec_get_drvdata(rtd->codec);
+	struct arizona *arizona = wm5110->core.arizona;
+
+	mutex_lock(&wm5110->compr_info.lock);
+
+	arizona_free_irq(arizona, ARIZONA_IRQ_DSP_IRQ1, wm5110);
+
+	wm5110->compr_info.stream = NULL;
+
+	wm_adsp_stream_free(wm5110->compr_info.adsp);
+
+	mutex_unlock(&wm5110->compr_info.lock);
+
+	return 0;
+}
+
+static int wm5110_set_params(struct snd_compr_stream *stream,
+			     struct snd_compr_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct wm5110_priv *wm5110 = snd_soc_codec_get_drvdata(rtd->codec);
+	struct arizona *arizona = wm5110->core.arizona;
+	struct wm5110_compr *compr = &wm5110->compr_info;
+	int ret = 0;
+
+	mutex_lock(&compr->lock);
+
+	if (!wm_adsp_format_supported(compr->adsp, stream, params)) {
+		dev_err(arizona->dev,
+			"Invalid params: id:%u, chan:%u,%u, rate:%u format:%u\n",
+			params->codec.id, params->codec.ch_in,
+			params->codec.ch_out, params->codec.sample_rate,
+			params->codec.format);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = wm_adsp_stream_alloc(compr->adsp, params);
+
+out:
+	mutex_unlock(&compr->lock);
+
+	return ret;
+}
+
+static int wm5110_get_params(struct snd_compr_stream *stream,
+			     struct snd_codec *params)
+{
+	return 0;
+}
+
+static int wm5110_trigger(struct snd_compr_stream *stream, int cmd)
+{
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct wm5110_priv *wm5110 = snd_soc_codec_get_drvdata(rtd->codec);
+	int ret = 0;
+
+	mutex_lock(&wm5110->compr_info.lock);
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+		ret = wm_adsp_stream_start(wm5110->compr_info.adsp);
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	mutex_unlock(&wm5110->compr_info.lock);
+
+	return ret;
+}
+
+static int wm5110_pointer(struct snd_compr_stream *stream,
+			  struct snd_compr_tstamp *tstamp)
+{
+	return 0;
+}
+
+static int wm5110_copy(struct snd_compr_stream *stream, char __user *buf,
+		       size_t count)
+{
+	return 0;
+}
+
+static int wm5110_get_caps(struct snd_compr_stream *stream,
+			   struct snd_compr_caps *caps)
+{
+	struct snd_soc_pcm_runtime *rtd = stream->private_data;
+	struct wm5110_priv *wm5110 = snd_soc_codec_get_drvdata(rtd->codec);
+
+	mutex_lock(&wm5110->compr_info.lock);
+
+	memset(caps, 0, sizeof(*caps));
+
+	caps->direction = stream->direction;
+	caps->min_fragment_size = WM5110_DEFAULT_FRAGMENT_SIZE;
+	caps->max_fragment_size = WM5110_DEFAULT_FRAGMENT_SIZE;
+	caps->min_fragments = WM5110_DEFAULT_FRAGMENTS;
+	caps->max_fragments = WM5110_DEFAULT_FRAGMENTS;
+
+	wm_adsp_get_caps(wm5110->compr_info.adsp, stream, caps);
+
+	mutex_unlock(&wm5110->compr_info.lock);
+
+	return 0;
+}
+
+static int wm5110_get_codec_caps(struct snd_compr_stream *stream,
+				 struct snd_compr_codec_caps *codec)
+{
+	return 0;
+}
+
 static int wm5110_codec_probe(struct snd_soc_codec *codec)
 {
 	struct wm5110_priv *priv = snd_soc_codec_get_drvdata(codec);
