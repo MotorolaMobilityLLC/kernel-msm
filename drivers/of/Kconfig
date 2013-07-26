@@ -118,4 +118,9 @@ config OF_BATTERYDATA
 	help
 	  OpenFirmware BatteryData accessors
 
+config OF_QPNP
+	def_tristate QPNP_BMS
+	depends on QPNP_BMS
+	help
+	  Say Y here to enable support for QPNP OF Support.
 endmenu # OF
