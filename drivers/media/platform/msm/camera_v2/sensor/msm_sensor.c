@@ -654,6 +654,24 @@ int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 			__func__, __LINE__, rc);
 		goto ERROR;
 	}
+
+	if (of_property_read_bool(of_node, "qcom,gpio-pwren") == true) {
+		rc = of_property_read_u32(of_node, "qcom,gpio-pwren", &val);
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-pwren failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-pwren invalid %d\n",
+				__func__, __LINE__, val);
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_PWREN] =
+			gpio_array[val];
+		CDBG("%s qcom,gpio-pwren %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_PWREN]);
+	}
+
 	return 0;
 
 ERROR:
@@ -991,6 +1009,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		CDBG("%s index %d\n", __func__, index);
 		power_setting = &power_setting_array->power_setting[index];
 		CDBG("%s type %d\n", __func__, power_setting->seq_type);
+               CDBG("%s val %d\n", __func__, power_setting->seq_val);
 		switch (power_setting->seq_type) {
 		case SENSOR_CLK:
 			if (power_setting->seq_val >= s_ctrl->clk_info_size) {
