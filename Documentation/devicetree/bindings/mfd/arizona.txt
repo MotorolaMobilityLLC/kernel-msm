@@ -33,7 +33,8 @@ Optional properties:
 
   - reset : GPIO specifier for the GPIO controlling /RESET
   - ldoena : GPIO specifier for the GPIO controlling LDOENA
-
+  - irq-base : IRQ base for Arizona interrupt controller
+  - gpio-bage : GPIO base for Arizona GPIO controller
   - gpio-defaults : A list of GPIO configuration register values. If
     absent, no configuration of these registers is performed. If any
     entry has a value that is out of range for a 16 bit register then
