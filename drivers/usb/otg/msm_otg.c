@@ -26,6 +26,8 @@
 #include <linux/seq_file.h>
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
 #include <linux/dma-mapping.h>
 
 #include <linux/usb.h>
@@ -1684,12 +1686,15 @@ static bool msm_otg_read_pmic_id_state(struct msm_otg *motg)
 	unsigned long flags;
 	int id;
 
-	if (!motg->pdata->pmic_id_irq)
+	if (motg->pdata->id_gnd_gpio)
+		id = gpio_get_value(motg->pdata->id_gnd_gpio) ^
+			motg->pdata->id_gnd_active_high;
+	else if (motg->pdata->pmic_id_irq){
+		local_irq_save(flags);
+		id = irq_read_line(motg->pdata->pmic_id_irq);
+		local_irq_restore(flags);
+	} else
 		return -ENODEV;
-
-	local_irq_save(flags);
-	id = irq_read_line(motg->pdata->pmic_id_irq);
-	local_irq_restore(flags);
 
 	/*
 	 * If we can not read ID line state for some reason, treat
@@ -2428,8 +2433,10 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			else
 				clear_bit(B_SESS_VLD, &motg->inputs);
 		} else if (pdata->otg_control == OTG_PMIC_CONTROL) {
-			if (pdata->pmic_id_irq) {
-				if (msm_otg_read_pmic_id_state(motg))
+			if (pdata->id_gnd_gpio || pdata->pmic_id_irq) {
+				if (msm_otg_read_pmic_id_state(motg) ||
+					!(gpio_get_value(pdata->id_flt_gpio) ^
+					pdata->id_flt_active_high))
 					set_bit(ID, &motg->inputs);
 				else
 					clear_bit(ID, &motg->inputs);
@@ -3327,8 +3334,12 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 	struct msm_otg *motg = container_of(w, struct msm_otg,
 						pmic_id_status_work.work);
 	int work = 0;
+	int id_flt = gpio_get_value(motg->pdata->id_flt_gpio) ^
+			motg->pdata->id_flt_active_high;
 
-	if (msm_otg_read_pmic_id_state(motg)) {
+	if (msm_otg_read_pmic_id_state(motg) || !id_flt) {
+		if (!id_flt)
+			pr_info_once("Factory Cable Attached\n");
 		if (!test_and_set_bit(ID, &motg->inputs)) {
 			pr_debug("PMIC: ID set\n");
 			work = 1;
@@ -4105,6 +4116,69 @@ static ssize_t dpdm_pulldown_enable_store(struct device *dev,
 static DEVICE_ATTR(dpdm_pulldown_enable, S_IRUGO | S_IWUSR,
 		dpdm_pulldown_enable_show, dpdm_pulldown_enable_store);
 
+static void msm_otg_get_id_gpio(struct msm_otg_platform_data *pdata,
+			struct platform_device* pdev)
+{
+	int ret;
+	struct device_node *node = pdev->dev.of_node;
+
+	if (!node) {
+		dev_err(&pdev->dev, "No OF DT node found.\n");
+		return;
+	}
+
+	pdata->id_flt_gpio = of_get_named_gpio(node, "otg,id_flt_gpio", 0);
+	if (pdata->id_flt_gpio < 0)
+		pdata->id_flt_gpio = 0;
+	pdata->id_gnd_gpio = of_get_named_gpio(node, "otg,id_gnd_gpio", 0);
+	if (pdata->id_gnd_gpio < 0)
+		pdata->id_gnd_gpio = 0;
+
+	if (!(pdata->id_gnd_gpio && pdata->id_flt_gpio))
+		return;
+	pdata->id_flt_active_high = of_property_read_bool(node,
+				"id_flt_active_high");
+	pdata->id_gnd_active_high = of_property_read_bool(node,
+				"id_gnd_active_high");
+
+	ret = gpio_request_one(pdata->id_flt_gpio, GPIOF_IN, "id_flt");
+	if (ret)
+		return;
+
+	ret = gpio_export(pdata->id_flt_gpio, 0);
+	if (ret)
+		goto free_flt;
+
+	ret = gpio_export_link(&pdev->dev, "id_flt", pdata->id_flt_gpio);
+	if (ret)
+		goto free_flt;
+
+	ret = gpio_request_one(pdata->id_gnd_gpio, GPIOF_IN, "id_gnd");
+	if (ret)
+		goto free_flt;
+
+	ret = gpio_export(pdata->id_gnd_gpio, 0);
+	if (ret)
+		goto free_gnd;
+
+	ret = gpio_export_link(&pdev->dev, "id_gnd", pdata->id_gnd_gpio);
+	if (ret)
+		goto free_gnd;
+
+	if (pdata->mode == USB_OTG &&
+		pdata->otg_control == OTG_PMIC_CONTROL)
+		pdata->pmic_id_irq = gpio_to_irq(pdata->id_gnd_gpio);
+	return;
+
+free_gnd:
+	gpio_free(pdata->id_gnd_gpio);
+	pdata->id_gnd_gpio = 0;
+free_flt:
+	gpio_free(pdata->id_flt_gpio);
+	pdata->id_flt_gpio = 0;
+	return;
+}
+
 struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -4164,6 +4238,8 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 
 	pdata->l1_supported = of_property_read_bool(node,
 				"qcom,hsusb-l1-supported");
+
+	msm_otg_get_id_gpio(pdata, pdev);
 
 	return pdata;
 }
@@ -4683,6 +4759,11 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 		(motg->pdata->mpm_dpshv_int || motg->pdata->mpm_dmshv_int))
 			device_remove_file(&pdev->dev,
 					&dev_attr_dpdm_pulldown_enable);
+	if (motg->pdata->id_gnd_gpio)
+		gpio_free(motg->pdata->id_gnd_gpio);
+	if (motg->pdata->id_flt_gpio)
+		gpio_free(motg->pdata->id_flt_gpio);
+
 	if (motg->pdata->otg_control == OTG_PHY_CONTROL &&
 		motg->pdata->mpm_otgsessvld_int)
 		msm_mpm_enable_pin(motg->pdata->mpm_otgsessvld_int, 0);
