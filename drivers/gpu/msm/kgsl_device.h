@@ -168,6 +168,7 @@ struct kgsl_event {
  * @priv: Internal flags
  * @fault_policy: Internal policy describing how to handle this command in case
  * of a fault
+ * @fault_recovery: recovery actions actually tried for this batch
  * @ibcount: Number of IBs in the command list
  * @ibdesc: Pointer to the list of IBs
  * @expires: Point in time when the cmdbatch is considered to be hung
@@ -185,8 +186,9 @@ struct kgsl_cmdbatch {
 	spinlock_t lock;
 	uint32_t timestamp;
 	uint32_t flags;
-	uint32_t priv;
-	uint32_t fault_policy;
+	unsigned long priv;
+	unsigned long fault_policy;
+	unsigned long fault_recovery;
 	uint32_t ibcount;
 	struct kgsl_ibdesc *ibdesc;
 	unsigned long expires;
@@ -195,10 +197,18 @@ struct kgsl_cmdbatch {
 	struct list_head synclist;
 };
 
-/* Internal cmdbatch flags */
+/**
+ * enum kgsl_cmdbatch_priv - Internal cmdbatch flags
+ * @CMDBATCH_FLAG_SKIP - skip the entire command batch
+ * @CMDBATCH_FLAG_FORCE_PREAMBLE - Force the preamble on for the cmdbatch
+ * @CMDBATCH_FLAG_WFI - Force wait-for-idle for the submission
+ */
 
-#define CMDBATCH_FLAG_SKIP BIT(0)
-#define CMDBATCH_FLAG_FORCE_PREAMBLE BIT(1)
+enum kgsl_cmdbatch_priv {
+	CMDBATCH_FLAG_SKIP = 0,
+	CMDBATCH_FLAG_FORCE_PREAMBLE,
+	CMDBATCH_FLAG_WFI,
+};
 
 struct kgsl_device {
 	struct device *dev;
@@ -644,7 +654,8 @@ void kgsl_cmdbatch_destroy_object(struct kref *kref);
  */
 static inline void kgsl_cmdbatch_put(struct kgsl_cmdbatch *cmdbatch)
 {
-	kref_put(&cmdbatch->refcount, kgsl_cmdbatch_destroy_object);
+	if (cmdbatch)
+		kref_put(&cmdbatch->refcount, kgsl_cmdbatch_destroy_object);
 }
 
 /**

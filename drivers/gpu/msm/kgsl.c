@@ -1632,7 +1632,8 @@ static int kgsl_cmdbatch_add_sync_timestamp(struct kgsl_device *device,
 	/* Sanity check - you can't create a sync point on your own context */
 	if (context == cmdbatch->context) {
 		KGSL_DRV_ERR(device,
-			"Cannot create a sync point on your own context\n");
+			"Cannot create a sync point on your own context %d\n",
+			context->id);
 		goto done;
 	}
 
@@ -1761,7 +1762,7 @@ static struct kgsl_cmdbatch *kgsl_cmdbatch_create(struct kgsl_device *device,
 	cmdbatch->device = device;
 	cmdbatch->ibcount = (flags & KGSL_CONTEXT_SYNC) ? 0 : numibs;
 	cmdbatch->context = context;
-	cmdbatch->flags = flags;
+	cmdbatch->flags = flags & ~KGSL_CONTEXT_SUBMIT_IB_LIST;
 
 	/*
 	 * Increase the reference count on the context so it doesn't disappear
@@ -1790,15 +1791,22 @@ static bool _kgsl_cmdbatch_verify(struct kgsl_device_private *dev_priv,
 	for (i = 0; i < cmdbatch->ibcount; i++) {
 		if (cmdbatch->ibdesc[i].sizedwords == 0) {
 			KGSL_DRV_ERR(dev_priv->device,
-				"Invalid IB: size is 0\n");
+				"invalid size ctx %d ib(%d) %X/%X\n",
+				cmdbatch->context->id, i,
+				cmdbatch->ibdesc[i].gpuaddr,
+				cmdbatch->ibdesc[i].sizedwords);
+
 			return false;
 		}
 
 		if (!kgsl_mmu_gpuaddr_in_range(private->pagetable,
 			cmdbatch->ibdesc[i].gpuaddr)) {
 			KGSL_DRV_ERR(dev_priv->device,
-				"Invalid IB: address 0x%X is out of range\n",
-				cmdbatch->ibdesc[i].gpuaddr);
+				"Invalid address ctx %d ib(%d) %X/%X\n",
+				cmdbatch->context->id, i,
+				cmdbatch->ibdesc[i].gpuaddr,
+				cmdbatch->ibdesc[i].sizedwords);
+
 			return false;
 		}
 	}
@@ -1894,8 +1902,6 @@ done:
 		return ERR_PTR(ret);
 	}
 
-	cmdbatch->flags = flags;
-
 	return cmdbatch;
 }
 
@@ -1923,7 +1929,7 @@ static long kgsl_ioctl_rb_issueibcmds(struct kgsl_device_private *dev_priv,
 		 * submission
 		 */
 
-		if (param->numibs == 0 || param->numibs > 100000)
+		if (param->numibs == 0 || param->numibs > KGSL_MAX_NUMIBS)
 			goto done;
 
 		cmdbatch = _kgsl_cmdbatch_create(device, context, param->flags,
@@ -1937,10 +1943,8 @@ static long kgsl_ioctl_rb_issueibcmds(struct kgsl_device_private *dev_priv,
 	}
 
 	/* Run basic sanity checking on the command */
-	if (!_kgsl_cmdbatch_verify(dev_priv, cmdbatch)) {
-		KGSL_DRV_ERR(device, "Unable to verify the IBs\n");
+	if (!_kgsl_cmdbatch_verify(dev_priv, cmdbatch))
 		goto free_cmdbatch;
-	}
 
 	result = dev_priv->device->ftbl->issueibcmds(dev_priv, context,
 		cmdbatch, &param->timestamp);
@@ -1966,10 +1970,10 @@ static long kgsl_ioctl_submit_commands(struct kgsl_device_private *dev_priv,
 
 	/* The number of IBs are completely ignored for sync commands */
 	if (!(param->flags & KGSL_CONTEXT_SYNC)) {
-		if (param->numcmds == 0 || param->numcmds > 100000)
+		if (param->numcmds == 0 || param->numcmds > KGSL_MAX_NUMIBS)
 			return -EINVAL;
 	} else if (param->numcmds != 0) {
-		KGSL_DRV_ERR(device,
+		KGSL_DEV_ERR_ONCE(device,
 			"Commands specified with the SYNC flag.  They will be ignored\n");
 	}
 
@@ -1987,10 +1991,8 @@ static long kgsl_ioctl_submit_commands(struct kgsl_device_private *dev_priv,
 	}
 
 	/* Run basic sanity checking on the command */
-	if (!_kgsl_cmdbatch_verify(dev_priv, cmdbatch)) {
-		KGSL_DRV_ERR(device, "Unable to verify the IBs\n");
+	if (!_kgsl_cmdbatch_verify(dev_priv, cmdbatch))
 		goto free_cmdbatch;
-	}
 
 	result = dev_priv->device->ftbl->issueibcmds(dev_priv, context,
 		cmdbatch, &param->timestamp);
