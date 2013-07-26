@@ -150,6 +150,8 @@ enum dsi_lane_map_type {
 #define DSI_BTA_TERM    BIT(1)
 #define DSI_CMD_TERM    BIT(0)
 
+#define DCS_CMD_GET_POWER_MODE 0x0A    /* get power_mode */
+
 extern struct device dsi_dev;
 extern int mdss_dsi_clk_on;
 extern u32 dsi_irq;
@@ -195,7 +197,6 @@ struct dsi_clk_desc {
 	u32 pre_div_func;
 };
 
-
 struct dsi_panel_cmds {
 	char *buf;
 	int blen;
@@ -211,7 +212,17 @@ struct dsi_kickoff_action {
 };
 
 struct mdss_panel_config {
+	bool is_panel_config_loaded;
+	bool esd_enable;
+	struct workqueue_struct *esd_wq;
+	bool esd_detection_run;
+	bool esd_recovery_run;
+	struct mutex panel_mutex;
+	int esd_pwr_mode_chk;
+	bool esd_disable_bl;
+
 	bool bare_board;
+	u64 panel_ver;
 };
 
 struct dsi_drv_cm_data {
@@ -243,6 +254,9 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
 	struct dss_module_power panel_vregs;
+	void(*lock_mutex) (struct mdss_panel_data *pdata);
+	void(*unlock_mutex) (struct mdss_panel_data *pdata);
+	struct delayed_work esd_work;
 	unsigned char *ctrl_base;
 	int reg_size;
 	u32 clk_cnt;

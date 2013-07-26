@@ -510,6 +510,8 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_writeback_start(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 		struct mdp_display_commit *data);
+void mdss_mdp_video_lock_panel(struct mdss_mdp_ctl *ctl);
+void mdss_mdp_video_unlock_panel(struct mdss_mdp_ctl *ctl);
 
 struct mdss_mdp_ctl *mdss_mdp_ctl_init(struct mdss_panel_data *pdata,
 					struct msm_fb_data_type *mfd);
