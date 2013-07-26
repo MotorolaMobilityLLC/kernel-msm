@@ -3119,4 +3119,13 @@ config MMI_SOC_INFO
 	bool "Motorola Mobility SOC Info"
 	help
 	Provide mechanism to annotate SOC info to panic data.
+
+config MMI_8X26_DEVICE_DTBS
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility Device DTBs"
+	help
+	  Only include Motorola device specific DTBs to limit the number that
+	  get built during kernel compilation.
+
 endif
