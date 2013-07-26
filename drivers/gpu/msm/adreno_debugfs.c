@@ -91,6 +91,6 @@ void adreno_debugfs_init(struct kgsl_device *device)
 	 debugfs_create_u32("ft_pagefault_policy", 0644, device->d_debugfs,
 			&adreno_dev->ft_pf_policy);
 
-	debugfs_create_file("active_cnt", 0644, device->d_debugfs, device,
+	debugfs_create_file("active_cnt", 0444, device->d_debugfs, device,
 			    &_active_count_fops);
 }
