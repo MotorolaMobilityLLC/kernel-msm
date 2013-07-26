@@ -305,6 +305,83 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
+static int mdss_dsi_panel_regulator_init(struct mdss_panel_data *pdata)
+{
+	int ret = 0;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct platform_device *pdev;
+
+	pr_debug("%s: is called\n", __func__);
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+	if (!ctrl) {
+		pr_err("%s: Invalid ctrl\n", __func__);
+		return -EINVAL;
+	}
+
+	pdev = ctrl->pdev;
+	if (!pdev) {
+		pr_err("%s: Invalid pdev\n", __func__);
+		return -EINVAL;
+	}
+
+	if (ctrl->panel_vregs.num_vreg > 0) {
+		ret = msm_dss_config_vreg(&pdev->dev,
+					ctrl->panel_vregs.vreg_config,
+					ctrl->panel_vregs.num_vreg, 1);
+		if (ret)
+			pr_err("%s:fail to init regs. ret=%d\n", __func__, ret);
+	}
+
+	return ret;
+}
+
+static int mdss_dsi_panel_regulator_on(struct mdss_panel_data *pdata,
+						int enable)
+{
+	int ret = 0;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	static bool is_reg_inited;
+
+	pr_debug("%s(%d) is called\n", __func__, enable);
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+
+	if (is_reg_inited == false) {
+		ret = mdss_dsi_panel_regulator_init(pdata);
+		if (ret)
+			goto error;
+		else
+			is_reg_inited = true;
+	}
+
+	if (enable) {
+		if (ctrl->panel_vregs.num_vreg > 0) {
+			ret = msm_dss_enable_vreg(ctrl->panel_vregs.vreg_config,
+						ctrl->panel_vregs.num_vreg, 1);
+			if (ret)
+				pr_err("%s:Failed to enable regulators.rc=%d\n",
+							__func__, ret);
+		} else
+			pr_err("%s(%d): No panel regulators in the list\n",
+							__func__, enable);
+	} else {
+
+		if (ctrl->panel_vregs.num_vreg > 0) {
+			ret = msm_dss_enable_vreg(ctrl->panel_vregs.vreg_config,
+						ctrl->panel_vregs.num_vreg, 0);
+			if (ret)
+				pr_err("%s: Failed to disable regs.rc=%d\n",
+						__func__, ret);
+		} else
+			pr_err("%s(%d): No panel regulators in the list\n",
+							__func__, enable);
+	}
+
+error:
+	return ret;
+}
+
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mipi_panel_info *mipi;
@@ -319,13 +396,16 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
 
-	pr_info("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+
+	mdss_dsi_panel_regulator_on(pdata, 1);
 
 	mdss_dsi_panel_reset(pdata, 1);
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
 
-	pr_debug("%s:-\n", __func__);
+	pr_info("%s:-\n", __func__);
+
 	return 0;
 }
 
@@ -342,14 +422,17 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
 
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
 
-	pr_debug("%s:-\n", __func__);
+	mdss_dsi_panel_reset(pdata, 0);
+	mdss_dsi_panel_regulator_on(pdata, 0);
+	pr_info("%s:-\n", __func__);
+
 	return 0;
 }
 
@@ -480,6 +563,30 @@ exit_free:
 	return -ENOMEM;
 }
 
+static int mdss_panel_parse_panel_reg_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+					struct device_node *node)
+{
+	int rc;
+
+	pr_debug("%s is called\n", __func__);
+
+	/* Parse the regulator information */
+	rc = mdss_dsi_get_dt_vreg_data(&ctrl_pdata->pdev->dev,
+				&ctrl_pdata->panel_vregs, node);
+	if (rc) {
+		pr_err("%s: failed to get vreg data from dt. rc=%d\n",
+								__func__, rc);
+		goto error_vreg;
+	}
+
+	return 0;
+
+error_vreg:
+	mdss_dsi_put_dt_vreg_data(&ctrl_pdata->pdev->dev,
+				&ctrl_pdata->panel_vregs);
+
+	return rc;
+}
 
 static int mdss_panel_dt_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 				char *dst_format)
@@ -643,7 +750,13 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	static const char *pdest;
 	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
 
+	pr_debug("%s is called\n", __func__);
+	rc = mdss_panel_parse_panel_reg_dt(ctrl_pdata, np);
+	if (rc)
+		return rc;
+
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-panel-width", &tmp);
+
 	if (rc) {
 		pr_err("%s:%d, panel width not specified\n",
 						__func__, __LINE__);

@@ -237,6 +237,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	struct mdss_panel_data panel_data;
+	struct dss_module_power panel_vregs;
 	unsigned char *ctrl_base;
 	int reg_size;
 	u32 clk_cnt;
@@ -292,11 +293,16 @@ struct mdss_dsi_ctrl_pdata {
 
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
+	struct platform_device *pdev;
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,
 				struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
+int mdss_dsi_get_dt_vreg_data(struct device *dev,
+			struct dss_module_power *mp, struct device_node *node);
+void mdss_dsi_put_dt_vreg_data(struct device *dev,
+				struct dss_module_power *module_power);
 int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 		struct dsi_cmd_desc *cmds, int cnt);
 
