@@ -99,6 +99,9 @@ endif
 
 # MSM8226
    zreladdr-$(CONFIG_ARCH_MSM8226)	:= 0x00008000
+
+# Do not include QC default DTBs if not needed
+ifneq ($(CONFIG_MMI_8X26_DEVICE_DTBS),y)
         dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-sim.dtb
         dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-fluid.dtb
         dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-cdp.dtb
@@ -121,6 +124,20 @@ endif
         dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-xpm.dtb
         dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-cdp.dtb
         dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-mtp.dtb
+endif
+
+# MSM8226 Motorola Devices
+dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-bigfoot-p1.dtb
+dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p1.dtb
+dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p2.dtb
+dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p2-v2.dtb
+dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p2b.dtb
+
+ifeq ($(CONFIG_MMI_8X26_DEVICE_DTBS),y)
+# Add 1k of padding to the DTBs to allow for environment variables
+# to be runtime added by the bootloader (i.e. /chosen properties)
+DTC_FLAGS := -p 1024
+endif
 
 # FSM9XXX
    zreladdr-$(CONFIG_ARCH_FSM9XXX)	:= 0x10008000
