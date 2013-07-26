@@ -878,6 +878,7 @@ static int msm_otg_suspend(struct msm_otg *motg)
 	u32 phy_ctrl_val = 0, cmd_val;
 	unsigned ret;
 	u32 portsc, config2;
+	u32 retries = 3;
 
 	if (atomic_read(&motg->in_lpm))
 		return 0;
@@ -951,15 +952,24 @@ static int msm_otg_suspend(struct msm_otg *motg)
 	 * mode (LPM). Hence poll for 500 msec and reset the PHY and link
 	 * in failure case.
 	 */
-	portsc = readl_relaxed(USB_PORTSC);
-	if (!(portsc & PORTSC_PHCD)) {
-		writel_relaxed(portsc | PORTSC_PHCD,
-				USB_PORTSC);
-		while (cnt < PHY_SUSPEND_TIMEOUT_USEC) {
+	while (retries--) {
+		portsc = readl_relaxed(USB_PORTSC);
+		if (!(portsc & PORTSC_PHCD)) {
+			cnt = 0;
+			writel_relaxed(portsc | PORTSC_PHCD,
+					USB_PORTSC);
+			while (cnt < PHY_SUSPEND_TIMEOUT_USEC) {
+				if (readl_relaxed(USB_PORTSC) & PORTSC_PHCD)
+					break;
+				udelay(1);
+				cnt++;
+			}
 			if (readl_relaxed(USB_PORTSC) & PORTSC_PHCD)
 				break;
-			udelay(1);
-			cnt++;
+			dev_info(phy->dev, "Retrying PHY suspend\n");
+			if (pdata->disable_reset_on_disconnect)
+				motg->reset_counter = 0;
+			msm_otg_reset(phy);
 		}
 	}
 
