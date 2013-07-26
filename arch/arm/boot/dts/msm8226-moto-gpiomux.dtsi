@@ -714,6 +714,40 @@
 			};
 		};
 
+		pin@fd516f0 {
+			reg = <0xfd5116f0 0x10>;	/* ID_FLT */
+			qcom,pin-num = <111>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(111)       */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(111)       */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51700 {
+			reg = <0xfd511700 0x10>;	/* ID_GND */
+			qcom,pin-num = <112>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(112)       */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(112)       */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
 		pin@fd51720 {
 			reg = <0xfd511720 0x10>;	/* GYRO_DATA_EN */
 			qcom,pin-num = <114>;
