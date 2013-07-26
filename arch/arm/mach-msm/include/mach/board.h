@@ -182,10 +182,6 @@ struct msm_gpio_set_tbl {
 	uint32_t delay;
 };
 
-struct msm_camera_gpio_num_info {
-	uint16_t gpio_num[7];
-};
-
 struct msm_camera_gpio_conf {
 	void *cam_gpiomux_conf_tbl;
 	uint8_t cam_gpiomux_conf_tbl_size;
