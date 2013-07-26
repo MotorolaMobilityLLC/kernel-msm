@@ -71,32 +71,19 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 				__func__, ret);
 			goto error;
 		}
-
-		if (!pdata->panel_info.mipi.lp11_init) {
-			ret = mdss_dsi_panel_reset(pdata, 1);
-			if (ret) {
-				pr_err("%s: Panel reset failed. rc=%d\n",
-						__func__, ret);
-				if (msm_dss_enable_vreg(
-				ctrl_pdata->power_data.vreg_config,
-				ctrl_pdata->power_data.num_vreg, 0))
-					pr_err("Disable vregs failed\n");
-				goto error;
-			}
-		}
 	} else {
-		ret = mdss_dsi_panel_reset(pdata, 0);
-		if (ret) {
-			pr_err("%s: Panel reset failed. rc=%d\n",
-					__func__, ret);
-			goto error;
-		}
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data.vreg_config,
 			ctrl_pdata->power_data.num_vreg, 0);
 		if (ret) {
 			pr_err("%s: Failed to disable vregs.rc=%d\n",
 				__func__, ret);
+		}
+		ret = mdss_dsi_panel_reset(pdata, 0);
+		if (ret) {
+			pr_err("%s: Panel reset failed. rc=%d\n",
+					__func__, ret);
+			goto error;
 		}
 	}
 error:
