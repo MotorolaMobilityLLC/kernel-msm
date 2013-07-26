@@ -223,7 +223,8 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 			}
 			rc = regulator_enable(in_vreg[i].vreg);
 			if (in_vreg[i].post_on_sleep)
-				msleep(in_vreg[i].post_on_sleep);
+				usleep_range(in_vreg[i].post_on_sleep * 1000,
+					in_vreg[i].post_on_sleep * 1000);
 			if (rc < 0) {
 				DEV_ERR("%pS->%s: %s enable failed\n",
 					__builtin_return_address(0), __func__,
