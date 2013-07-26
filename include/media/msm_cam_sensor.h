@@ -439,6 +439,9 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_WHITE_BALANCE,
 	CFG_SET_AUTOFOCUS,
 	CFG_CANCEL_AUTOFOCUS,
+	CFG_SET_GAMMA,
+	CFG_SET_LENS_SHADING,
+	CFG_SET_TARGET_EXPOSURE,
 };
 
 enum msm_actuator_cfg_type_t {
