@@ -86,3 +86,4 @@ obj-$(CONFIG_USR_RESET_WARNING) += usr-reset-warning.o
 obj-$(CONFIG_SENSORS_LIS3DH_MOT)    += lis3dh_mot.o
 obj-$(CONFIG_SENSORS_L3G4200D) += l3g4200d.o
 obj-$(CONFIG_CYPRESS_CAPSENSE_PROGRAMMING)	+= capsense_prog/
+obj-$(CONFIG_SENSORS_STM401) += stm401/
