@@ -34,6 +34,13 @@ struct wm_adsp_alg_region {
 	size_t len;
 };
 
+struct wm_adsp_buffer_region {
+	unsigned int offset_samps;
+	unsigned int cumulative_samps;
+	unsigned int mem_type;
+	unsigned int base_addr;
+};
+
 struct wm_adsp {
 	const char *part;
 	int num;
@@ -59,6 +66,12 @@ struct wm_adsp {
 	struct regulator *dvfs;
 
 	struct wm_coeff *wm_coeff;
+
+	u32 host_buf_ptr;
+	u32 low_water_mark;
+
+	int sample_size;
+	struct wm_adsp_buffer_region *host_regions;
 };
 
 #define WM_ADSP1(wname, num) \
@@ -89,5 +102,10 @@ extern bool wm_adsp_format_supported(const struct wm_adsp *adsp,
 extern void wm_adsp_get_caps(const struct wm_adsp *adsp,
 			     const struct snd_compr_stream *stream,
 			     struct snd_compr_caps *caps);
+
+extern int wm_adsp_stream_alloc(struct wm_adsp* adsp,
+				const struct snd_compr_params *params);
+extern int wm_adsp_stream_free(struct wm_adsp* adsp);
+extern int wm_adsp_stream_start(struct wm_adsp *adsp);
 
 #endif
