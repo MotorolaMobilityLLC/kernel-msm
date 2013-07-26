@@ -805,6 +805,7 @@ source "drivers/misc/carma/Kconfig"
 source "drivers/misc/altera-stapl/Kconfig"
 source "drivers/misc/sec/Kconfig"
 source "drivers/misc/capsense_prog/Kconfig"
+source "drivers/misc/stm401/Kconfig"
 
 endmenu
 
