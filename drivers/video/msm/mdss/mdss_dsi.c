@@ -73,14 +73,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 				__func__, ret);
 			goto error;
 		}
-
-		if (pdata->panel_info.panel_power_on == 0)
-			mdss_dsi_panel_reset(pdata, 1);
-
 	} else {
-
-		mdss_dsi_panel_reset(pdata, 0);
-
 		ret = msm_dss_enable_vreg(
 			ctrl_pdata->power_data.vreg_config,
 			ctrl_pdata->power_data.num_vreg, 0);
@@ -88,6 +81,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata, int enable)
 			pr_err("%s: Failed to disable vregs.rc=%d\n",
 				__func__, ret);
 		}
+		mdss_dsi_panel_reset(pdata, 0);
 	}
 error:
 	return ret;
