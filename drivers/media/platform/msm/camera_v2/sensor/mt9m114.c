@@ -1172,6 +1172,163 @@ static void __exit mt9m114_exit_module(void)
 	return;
 }
 
+static int32_t mt9m114_set_gamma(struct msm_sensor_ctrl_t *s_ctrl,
+		uint8_t unity)
+{
+	int32_t rc = 0;
+	uint16_t data = 0;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client,
+			0x3210, &data,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: read gamma register failed\n", __func__);
+		return rc;
+	}
+
+	if (unity)
+		data |= 0x0080;
+	else
+		data &= 0xFF7F;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x3210, data,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: write gamma register failed\n", __func__);
+		return rc;
+	}
+
+	return rc;
+}
+
+static int32_t mt9m114_set_sharpening(struct msm_sensor_ctrl_t *s_ctrl,
+		uint8_t sharpening)
+{
+	int32_t rc = 0;
+	uint16_t data1 = 0;
+	uint16_t data2 = 0;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client,
+			0xBC04, &data1,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: read algo register failed\n", __func__);
+		return rc;
+	}
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client,
+			0x3210, &data2,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: read sharpening register failed\n", __func__);
+		return rc;
+	}
+
+	if (sharpening != 0x00) {
+		/* Enable sharpening */
+		data1 |= 0x0010;
+		data2 |= 0x0010;
+	} else {
+		/* Disable sharpening */
+		data1 &= 0xFFEF;
+		data2 &= 0xFFEF;
+	}
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0xBC04, data1,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: write algo register failed\n", __func__);
+		return rc;
+	}
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0x3210, data2,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: write sharpening register failed\n", __func__);
+		return rc;
+	}
+
+	return rc;
+}
+
+static int32_t mt9m114_set_lens_shading(struct msm_sensor_ctrl_t *s_ctrl,
+		uint8_t enable)
+{
+	int32_t rc = 0;
+	uint16_t data = 0;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client,
+			0xC95E, &data,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: read lens shading register failed\n", __func__);
+		return rc;
+	}
+
+	if (enable)
+		data |= 0x0003;
+	else
+		data &= 0xFFFC;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0xC95E, data,
+			MSM_CAMERA_I2C_WORD_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: read lens shading register failed\n", __func__);
+		return rc;
+	}
+
+	return rc;
+}
+
+static int32_t mt9m114_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
+		int8_t target_exposure)
+{
+	int32_t rc = 0;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0xC87A, target_exposure,
+			MSM_CAMERA_I2C_BYTE_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: Write tgt exp average luma register failed\n",
+				__func__);
+		return rc;
+	}
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
+			s_ctrl->sensor_i2c_client,
+			0xC87B, target_exposure,
+			MSM_CAMERA_I2C_BYTE_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: Write tgt exp average luma dark register failed\n",
+				__func__);
+		return rc;
+	}
+
+	return rc;
+}
 static struct msm_camera_i2c_reg_conf mt9m114_15_15_fps_settings[] = {
 	{0xC810, 0x05BD,}, /*cam_sensor_cfg_fine_integ_time_max = 1469*/
 	{0xC812, 0x07D0,}, /*cam_sensor_cfg_frame_length_lines = 2000*/
@@ -1423,6 +1580,20 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		pr_debug("%s: Contrast Value is %d", __func__, con_lev);
 		break;
 		}
+	case CFG_SET_GAMMA: {
+		int gamma = 0;
+		if (copy_from_user(&gamma,
+			(void *)cdata->cfg.setting,
+			sizeof(gamma))) {
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+			rc = -EFAULT;
+			break;
+		}
+		CDBG("%s:%d CFG_SET_GAMMA %d\n", __func__,
+				__LINE__, gamma);
+		rc = mt9m114_set_gamma(s_ctrl, (uint8_t)gamma);
+		break;
+		}
 		case CFG_SET_SHARPNESS: {
 			int32_t shp_lev;
 			if (copy_from_user(&shp_lev, (void *)cdata->cfg.setting,
@@ -1432,8 +1603,37 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 				break;
 			}
 		pr_debug("%s: Sharpness Value is %d", __func__, shp_lev);
+		rc = mt9m114_set_sharpening(s_ctrl, (uint8_t)shp_lev);
 		break;
 		}
+	        case CFG_SET_LENS_SHADING: {
+	                int lens = 0;
+	                if (copy_from_user(&lens,
+	                        (void *)cdata->cfg.setting,
+	                        sizeof(lens))) {
+	                        pr_err("%s:%d failed\n", __func__, __LINE__);
+	                        rc = -EFAULT;
+	                        break;
+	                }
+                CDBG("%s:%d CFG_SET_LENS_SHADING %d\n", __func__,
+                                __LINE__, lens);
+                rc = mt9m114_set_lens_shading(s_ctrl, (uint8_t)lens);
+                break;
+	        }
+	        case CFG_SET_TARGET_EXPOSURE: {
+	                int expo = 0;
+	                if (copy_from_user(&expo,
+	                        (void *)cdata->cfg.setting,
+	                        sizeof(expo))) {
+	                        pr_err("%s:%d failed\n", __func__, __LINE__);
+	                        rc = -EFAULT;
+				break;
+	                }
+	                CDBG("%s:%d CFG_SET_TARGET_EXPOSURE %d\n", __func__,
+	                                __LINE__, expo);
+	                rc = mt9m114_set_target_exposure(s_ctrl, (int8_t)expo);
+                break;
+	        }
 		case CFG_SET_AUTOFOCUS: {
 		/* TO-DO: set the Auto Focus */
 		pr_debug("%s: Setting Auto Focus", __func__);
