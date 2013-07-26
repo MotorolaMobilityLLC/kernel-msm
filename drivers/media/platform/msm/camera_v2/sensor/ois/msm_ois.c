@@ -16,11 +16,11 @@
 #include "msm_ois.h"
 #include "msm_cci.h"
 #include "msm_ois_i2c.h"
+#ifdef CONFIG_OIS_ROHM_BU24205GWL
+#include "lgit_ois_rohm.h"
+#endif
 
 #define OIS_MAKER_ID_ADDR    (0x700)
-
-extern void fuji_ois_init(struct msm_ois_ctrl_t *msm_ois_t);
-extern void lgit_ois_init(struct msm_ois_ctrl_t *msm_ois_t);
 
 static int ois_lock = 0;
 
@@ -49,11 +49,6 @@ static struct msm_camera_i2c_fn_t msm_sensor_qup_func_tbl = {
 	.i2c_write_seq_table = msm_camera_qup_i2c_write_seq_table,
 	.i2c_write_table_w_microdelay =
 		msm_camera_qup_i2c_write_table_w_microdelay,
-};
-
-static const struct v4l2_subdev_internal_ops msm_ois_internal_ops = {
-/*	.open = msm_ois_open, */
-/*	.close = msm_ois_close, */
 };
 
 int32_t ois_i2c_write_table(
@@ -159,30 +154,12 @@ int32_t ois_i2c_act_write(uint8_t data1, uint8_t data2)
 	return ret;
 }
 
-int ois_set(int val)
-{
-	if (val) {
-		CDBG("%s : OIS setting start!\n", __func__);
-		if (msm_ois_t.ois_func_tbl)
-			msm_ois_t.ois_func_tbl->ois_on();
-		else
-			pr_err("%s: No OIS support!\n", __func__);
-	} else {
-		CDBG("%s : OIS off!\n", __func__);
-		if (msm_ois_t.ois_func_tbl)
-			msm_ois_t.ois_func_tbl->ois_off();
-		else
-			pr_err("%s: No OIS support!\n", __func__);
-	}
-	return 0;
-}
-
 static int32_t msm_ois_i2c_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
 	int rc = 0;
 	struct msm_ois_ctrl_t *act_ctrl_t = NULL;
-	pr_err("Enter\n");
+	CDBG("Enter\n");
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("i2c_check_functionality failed\n");
@@ -207,14 +184,13 @@ static int32_t msm_ois_i2c_probe(struct i2c_client *client,
 		act_ctrl_t->i2c_client.client,
 		act_ctrl_t->act_v4l2_subdev_ops);
 	v4l2_set_subdevdata(&act_ctrl_t->msm_sd.sd, act_ctrl_t);
-	act_ctrl_t->msm_sd.sd.internal_ops = &msm_ois_internal_ops;
 	act_ctrl_t->msm_sd.sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	media_entity_init(&act_ctrl_t->msm_sd.sd.entity, 0, NULL, 0);
 	act_ctrl_t->msm_sd.sd.entity.type = MEDIA_ENT_T_V4L2_SUBDEV;
 	act_ctrl_t->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_OIS;
 	msm_sd_register(&act_ctrl_t->msm_sd);
 	CDBG("succeeded\n");
-	pr_err("Exit\n");
+	CDBG("Exit\n");
 
 probe_failure:
 	return rc;
@@ -224,7 +200,7 @@ static int32_t msm_ois_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
 	struct msm_camera_cci_client *cci_client = NULL;
-	pr_err("Enter\n");
+	CDBG("Enter\n");
 
 	if (!pdev->dev.of_node) {
 		pr_err("of_node NULL\n");
@@ -274,7 +250,6 @@ static int32_t msm_ois_platform_probe(struct platform_device *pdev)
 	v4l2_subdev_init(&msm_ois_t.msm_sd.sd,
 		msm_ois_t.act_v4l2_subdev_ops);
 	v4l2_set_subdevdata(&msm_ois_t.msm_sd.sd, &msm_ois_t);
-	msm_ois_t.msm_sd.sd.internal_ops = &msm_ois_internal_ops;
 	msm_ois_t.msm_sd.sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	snprintf(msm_ois_t.msm_sd.sd.name,
 		ARRAY_SIZE(msm_ois_t.msm_sd.sd.name), "msm_ois");
@@ -332,31 +307,40 @@ static int __init msm_ois_init_module(void)
 	return i2c_add_driver(msm_ois_t.i2c_driver);
 }
 
-int msm_init_ois(void)
+int msm_init_ois(enum ois_ver_t ver)
 {
 	int rc = 0;
 	uint16_t chipid = 0;
-	CDBG("Enter\n");
 
 	ois_i2c_e2p_read(OIS_MAKER_ID_ADDR, &chipid, 1);
-	printk("%s : OIS chipid=%d\n", __func__, chipid); /* Don't remove this ! */
+	pr_info("%s : OIS chipid=%d\n", __func__, chipid); /* Don't remove this ! */
 
 	switch (chipid) {
+#ifdef CONFIG_OIS_ROHM_BU24205GWL
 	case 0x02:
-		lgit_ois_init(&msm_ois_t);
-		CDBG("%s : LGIT module!\n", __func__);
+	case 0x05:
+		lgit_ois_rohm_init(&msm_ois_t);
+		CDBG("%s : LGIT OIS module type #2!\n", __func__);
 		break;
-	case 0x01:
-	case 0x03:
+#endif
 	default:
-		pr_err("%s : unknown OIS module maker id = %d\n", __func__, chipid);
-		return rc;
+		pr_err("%s : unknown module! maker id = %d\n", __func__, chipid);
+		msm_ois_t.ois_func_tbl = NULL;
+		return OIS_INIT_NOT_SUPPORTED;
 	}
 	msm_ois_t.i2c_client.cci_client->sid = msm_ois_t.sid_ois;
 
 	if (ois_lock) {
 		mutex_lock(msm_ois_t.ois_mutex);
-		rc = ois_set(1);
+		if (msm_ois_t.ois_func_tbl)	{
+			rc = msm_ois_t.ois_func_tbl->ois_on(ver);
+			if (rc < 0) {
+				msm_ois_t.ois_func_tbl = NULL;
+				pr_err("%s: ois open fail\n", __func__);
+			}
+		} else {
+			pr_err("%s: No OIS support!\n", __func__);
+		}
 		mutex_unlock(msm_ois_t.ois_mutex);
 	}
 	return rc;
@@ -369,17 +353,21 @@ int msm_ois_off(void)
 
 	if (ois_lock) {
 		mutex_lock(msm_ois_t.ois_mutex);
-		rc = ois_set(0);
+		if (msm_ois_t.ois_func_tbl)
+			msm_ois_t.ois_func_tbl->ois_off();
+		else
+			pr_err("%s: No OIS support!\n", __func__);
 		mutex_unlock(msm_ois_t.ois_mutex);
-	} else
+	} else {
 		ois_lock = 1;
+	}
 
 	return rc;
 }
 
 int msm_ois_info(struct msm_sensor_ois_info_t *ois_info)
 {
-	int32_t rc = 0;
+	int rc = 0;
 
 	if (msm_ois_t.ois_func_tbl)
 		rc = msm_ois_t.ois_func_tbl->ois_stat(ois_info);
@@ -389,12 +377,21 @@ int msm_ois_info(struct msm_sensor_ois_info_t *ois_info)
 
 int msm_ois_mode(enum ois_mode_t data)
 {
-	int32_t rc = 0;
+	int rc = 0;
 
 	CDBG("%s: mode = %d\n", __func__, data);
 	if (msm_ois_t.ois_func_tbl)
 		rc = msm_ois_t.ois_func_tbl->ois_mode(data);
+	return rc;
+}
 
+int msm_ois_move_lens (int16_t offset_x, int16_t offset_y)
+{
+	int rc = 0;
+	CDBG("%s: offset = %x, %x\n", __func__, offset_x, offset_y);
+
+	if (msm_ois_t.ois_func_tbl)
+		rc = msm_ois_t.ois_func_tbl->ois_move_lens(offset_x, offset_y);
 	return rc;
 }
 
@@ -403,6 +400,7 @@ static long msm_ois_subdev_ioctl(struct v4l2_subdev *sd,
 {
 	struct msm_ois_ctrl_t *a_ctrl = v4l2_get_subdevdata(sd);
 	void __user *argp = (void __user *)arg;
+
 	CDBG("Enter\n");
 
 	CDBG("%s:%d a_ctrl %p argp %p\n", __func__, __LINE__, a_ctrl, argp);

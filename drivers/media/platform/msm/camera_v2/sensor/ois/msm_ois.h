@@ -23,11 +23,25 @@
 #define DEFINE_MSM_MUTEX(mutexname) \
 	static struct mutex mutexname = __MUTEX_INITIALIZER(mutexname)
 
+#define OIS_SUCCESS             0
+#define OIS_FAIL                -1
+
+#define OIS_INIT_OLD_MODULE     1
+#define OIS_INIT_NOT_SUPPORTED  -2
+#define OIS_INIT_CHECKSUM_ERROR -3
+#define OIS_INIT_EEPROM_ERROR   -4
+#define OIS_INIT_I2C_ERROR      -5
+#define OIS_INIT_TIMEOUT        -6
+#define OIS_INIT_LOAD_BIN_ERROR -7
+#define OIS_INIT_NOMEM          -8
+
 struct msm_ois_fn_t {
-	void (*ois_on) (void);
-	void (*ois_off) (void);
+	int (*ois_on) (enum ois_ver_t);
+	int (*ois_off) (void);
 	int (*ois_mode) (enum ois_mode_t);
 	int (*ois_stat) (struct msm_sensor_ois_info_t *);
+	int (*ois_move_lens) (int16_t, int16_t);
+	int ois_cur_mode;
 };
 
 struct msm_ois_ctrl_t {
@@ -47,17 +61,15 @@ struct msm_ois_ctrl_t {
 	struct msm_ois_fn_t *ois_func_tbl;
 };
 
-#ifdef CONFIG_OIS_ROHM_BU24205GWL
-int msm_init_ois(void);
+int msm_init_ois(enum ois_ver_t ver);
 int msm_ois_off(void);
-int msm_ois_mode(enum ois_mode_t);
-int msm_ois_info(struct msm_sensor_ois_info_t *);
-#endif
+int msm_ois_info(struct msm_sensor_ois_info_t *info);
+int msm_ois_mode(enum ois_mode_t data);
+int msm_ois_move_lens (int16_t offset_x, int16_t offset_y);
 
-/*#define MSM_OIS_DEBUG*/
 #undef CDBG
 #ifdef MSM_OIS_DEBUG
-#define CDBG(fmt, args...) pr_err(fmt, ##args)
+#define CDBG(fmt, args...) pr_info(fmt, ##args)
 #else
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 #endif

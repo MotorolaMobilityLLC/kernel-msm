@@ -268,6 +268,12 @@ enum ois_mode_t {
 	OIS_MODE_CENTERING_OFF
 };
 
+enum ois_ver_t {
+	OIS_VER_RELEASE,
+	OIS_VER_CALIBRATION,
+	OIS_VER_DEBUG
+};
+
 struct camera_vreg_t {
 	const char *reg_name;
 	enum camera_vreg_type type;
@@ -294,6 +300,7 @@ struct msm_sensor_init_params {
 	enum camb_position_t position;
 	/* sensor mount angle */
 	uint32_t            sensor_mount_angle;
+	int                 ois_supported;
 };
 
 struct sensorb_cfg_data {
@@ -371,7 +378,8 @@ enum msm_sensor_cfg_type_t {
 	CFG_OIS_ON,
 	CFG_OIS_OFF,
 	CFG_GET_OIS_INFO,
-	CFG_SET_OIS_MODE
+	CFG_SET_OIS_MODE,
+	CFG_OIS_MOVE_LENS
 };
 
 enum msm_actuator_cfg_type_t {

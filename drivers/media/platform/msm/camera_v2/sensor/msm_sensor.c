@@ -22,7 +22,7 @@
 #ifdef CONFIG_IMX179
 #include "msm_eeprom.h"
 #endif
-#ifdef CONFIG_OIS_ROHM_BU24205GWL
+#ifdef CONFIG_OIS_CONTROLLER
 #include "msm_ois.h"
 #endif
 
@@ -627,7 +627,7 @@ static int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VCM]);
 	}
 
-#ifdef CONFIG_OIS_ROHM_BU24205GWL
+#ifdef CONFIG_OIS_CONTROLLER
 	if (of_property_read_bool(of_node, "qcom,gpio-ois-ldo") == true) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-ois-ldo", &val);
 		if (rc < 0) {
@@ -786,6 +786,9 @@ static int32_t msm_sensor_get_dt_data(struct device_node *of_node,
 		sensordata->sensor_init_params->sensor_mount_angle = 0;
 		rc = 0;
 	}
+
+	if (of_property_read_bool(of_node, "qcom,gpio-ois-ldo"))
+		sensordata->sensor_init_params->ois_supported = true;
 
 	rc = of_property_read_u32(of_node, "qcom,cci-master",
 		&s_ctrl->cci_i2c_master);
@@ -1793,10 +1796,19 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		break;
 	}
-#ifdef CONFIG_OIS_ROHM_BU24205GWL
+#ifdef CONFIG_OIS_CONTROLLER
 	case CFG_OIS_ON: {
-		CDBG("%s: ois_on!\n", __func__);
-		rc = msm_init_ois();
+		enum ois_ver_t ver;
+
+		if (copy_from_user(&ver,
+			(void *)cdata->cfg.setting,
+			sizeof(enum ois_ver_t))) {
+			pr_debug("%s:%d ois status will be OIS_VER_RELEASE",
+				__func__, __LINE__);
+			ver = OIS_VER_RELEASE;
+		}
+		CDBG("%s: ois_on! %d \n", __func__, ver);
+		rc = msm_init_ois(ver);
 		break;
 	}
 	case CFG_OIS_OFF: {
@@ -1808,6 +1820,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		struct msm_sensor_ois_info_t ois_stat;
 
 		CDBG("%s: CFG_GET_OIS_INFO!\n", __func__);
+		memset(&ois_stat, 0, sizeof(struct msm_sensor_ois_info_t));
 		rc = msm_ois_info(&ois_stat);
 		memcpy(&cdata->cfg.ois_info,&ois_stat,sizeof(cdata->cfg.ois_info));
 		break;
@@ -1815,9 +1828,29 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	case CFG_SET_OIS_MODE: {
 		enum ois_mode_t mode;
 
-		mode = *(enum ois_mode_t *)(cdata->cfg.setting);
+		if (copy_from_user(&mode,
+			(void *)cdata->cfg.setting,
+			sizeof(enum ois_mode_t))) {
+			pr_debug("%s:%d ois status will be OIS_MODE_PREVIEW_CAPTURE",
+				__func__, __LINE__);
+			mode = OIS_MODE_PREVIEW_CAPTURE;
+		}
 		CDBG("%s: CFG_SET_OIS_MODE  %d\n", __func__, mode);
 		rc = msm_ois_mode(mode);
+		break;
+	}
+	case CFG_OIS_MOVE_LENS: {
+		int16_t offset[2];
+
+		if (copy_from_user(offset,
+			(void *)cdata->cfg.setting,
+			sizeof(int16_t)*2)) {
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+			rc = -EFAULT;
+			break;
+		}
+		CDBG("%s:CFG_OIS_MOVE_LENS %x, %x\n", __func__, offset[0], offset[1]);
+		rc = msm_ois_move_lens(offset[0], offset[1]);
 		break;
 	}
 #endif

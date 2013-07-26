@@ -14,12 +14,27 @@ config MSM_CAMERA_SENSOR
           data for camera support. The driver support V4L2
           subdev APIs.
 
+config OIS_CONTROLLER
+	bool "OIS Support"
+	depends on MSMB_CAMERA
+	---help---
+          This is Optical image statbilization driver flag.
+
 config OIS_ROHM_BU24205GWL
 	bool "OIS driver for rohm bu24205gwl"
 	depends on MSMB_CAMERA
+	select OIS_CONTROLLER
 	---help---
           This is Optical image statbilization driver for rohm
           bu24205gwl controller.
+
+config OIS_ONSEMI_LC898111A
+	bool "OIS driver for onsemi lc898111a"
+	depends on MSMB_CAMERA
+	select OIS_CONTROLLER
+	---help---
+          This is Optical image statbilization driver for onsemi
+          lc898111a controller.
 
 config MSM_CPP
         bool "Qualcomm MSM Camera Post Processing Engine support"
