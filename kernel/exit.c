@@ -721,12 +721,48 @@ static void check_stack_usage(void)
 static inline void check_stack_usage(void) {}
 #endif
 
+#ifdef CONFIG_DO_EXIT_WDOG
+static void exit_timeout(unsigned long data)
+{
+	struct task_struct *tsk = (struct task_struct *)data;
+	pr_emerg("**** do_exit() timeout for task %s (%d)\n",
+			tsk->comm, task_pid_nr(tsk));
+	BUG();
+}
+
+static inline void start_exit_wdog(struct timer_list *timer,
+		unsigned long expires)
+{
+	mod_timer(timer, expires);
+}
+
+static inline void stop_exit_wdog(struct timer_list *timer)
+{
+	del_timer_sync(timer);
+}
+#else
+static void exit_timeout(unsigned long data) {}
+
+static inline void start_exit_wdog(struct timer_list *timer,
+		unsigned long expires) {}
+
+static inline void stop_exit_wdog(struct timer_list *timer) {}
+#endif
+
 void do_exit(long code)
 {
 	struct task_struct *tsk = current;
+	DEFINE_TIMER(wdog, exit_timeout, 0, (unsigned long)tsk);
 	int group_dead;
 
 	profile_task_exit(tsk);
+
+	/*
+	 * If do_exit() doesn't finish within 30 seconds, then we assume
+	 * that one of the task cleanup routines below is hopelessly stuck and
+	 * we should crash to recover.
+	 */
+	start_exit_wdog(&wdog, jiffies + (HZ * 30));
 
 	WARN_ON(blk_needs_flush_plug(tsk));
 
@@ -899,6 +935,7 @@ void do_exit(long code)
 	/* causes final put_task_struct in finish_task_switch(). */
 	tsk->state = TASK_DEAD;
 	tsk->flags |= PF_NOFREEZE;	/* tell freezer to ignore us */
+	stop_exit_wdog(&wdog);
 	schedule();
 	BUG();
 	/* Avoid "noreturn function does return".  */
