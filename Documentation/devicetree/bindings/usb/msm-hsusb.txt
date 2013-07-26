@@ -95,6 +95,11 @@ Optional properties :
 	vdd min.
 - qcom,usbin-vadc: Corresponding vadc device's phandle to read usbin voltage using VADC.
 	This will be used to get value of usb power supply's VOLTAGE_NOW property.
+- otg,<gpio-name>-gpio : handle to the GPIO node, see "gpios property"
+        in Documentation/devicetree/bindings/gpio/gpio.txt.
+        Optional "gpio-name" can be "id_gnd" and "id_flt".
+- id_flt_active_high: Active logic of the id_flt gpio if present.
+- id_gnd_active_high: Active logic of the id_gnd gpio if present.
 
 Example HSUSB OTG controller device node :
 	usb@f9690000 {
