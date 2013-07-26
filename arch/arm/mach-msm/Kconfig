@@ -269,6 +269,7 @@ config ARCH_MSM8226
 	select PINCTRL_MSM_TLMM_V3
 	select ENABLE_VMALLOC_SAVINGS
 	select MSM_IRQ
+	select HAS_MACH_MEMUTILS
 
 config ARCH_MSMSAMARIUM
 	bool "MSMSAMARIUM"
@@ -1442,4 +1443,10 @@ config MMI_RAM_INFO
 	bool "Motorola Mobility RAM Info"
 	help
 	Provide mechanism to access RAM size and MR registers values via sysfs.
+
+config HAS_MACH_MEMUTILS
+	default n
+	bool "Motorola MSM memcpy enhancements"
+	help
+	Faster memcpy performance for Krait
 endif
