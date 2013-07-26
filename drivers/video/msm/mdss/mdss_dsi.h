@@ -293,6 +293,10 @@ struct dsi_kickoff_action {
 	void *data;
 };
 
+struct mdss_panel_config {
+	bool bare_board;
+};
+
 struct dsi_drv_cm_data {
 	struct regulator *vdd_vreg;
 	struct regulator *vdd_io_vreg;
@@ -316,6 +320,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*off) (struct mdss_panel_data *pdata);
 	int (*partial_update_fnc) (struct mdss_panel_data *pdata);
 	struct mdss_panel_data panel_data;
+	struct mdss_panel_config panel_config;
 	struct dss_module_power panel_vregs;
 	unsigned char *ctrl_base;
 	int reg_size;
