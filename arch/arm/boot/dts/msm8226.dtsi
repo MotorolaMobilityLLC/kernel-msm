@@ -941,6 +941,19 @@
 		qcom,pmic-arb-channel = <0>;
 	};
 
+	i2c_2: i2c@f9924000 { /* BLSP-1 QUP-2 */
+		cell-index = <2>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9924000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 96 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		status = "disabled";
+	};
+
 	i2c_3: i2c@f9925000 { /* BLSP-1 QUP-3 */
 		cell-index = <3>;
 		compatible = "qcom,i2c-qup";
