@@ -1656,6 +1656,17 @@ config SOFTLOCKUP_WATCHDOG_TEST
 
          Say N if you are unsure.
 
+config DO_EXIT_WDOG
+	bool "Task exit watchdog"
+	help
+	 This feature runs a watchdog timer while do_exit() cleans up a task.
+	 If it doesn't complete in the specified time, then it will force a
+	 crash.  When this happens, we assume that one of the task cleanup
+	 routines is hopelessly stuck and the best course of action is to
+	 crash to recover functionality.  The original catalyst for this was
+	 exit_files() never returning due to a deadlock in the close path of a
+	 driver.  It might help (or hurt) in other cases as well.
+
 source "samples/Kconfig"
 
 source "lib/Kconfig.kgdb"
