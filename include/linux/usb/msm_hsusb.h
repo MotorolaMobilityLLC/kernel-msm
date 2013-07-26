@@ -234,6 +234,10 @@ enum usb_vdd_value {
  *		mode with controller in device mode.
  * @disable_retention_with_vdd_min: Indicates whether to enable allowing
  *		VDD min without putting PHY into retention
+ * @id_flt_gpio: GPIO from external detection IC for ID Float
+ * @id_gnd_gpio: GPIO from external detection IC for ID Gnd
+ * @id_flt_active_high: Active logic for id_flt_gpio
+ * @id_gnd_active_high: Active logic for id_gnd_gpio
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
@@ -264,6 +268,10 @@ struct msm_otg_platform_data {
 	bool dpdm_pulldown_added;
 	bool enable_ahb2ahb_bypass;
 	bool disable_retention_with_vdd_min;
+	int id_flt_gpio;
+	int id_gnd_gpio;
+	bool id_flt_active_high;
+	bool id_gnd_active_high;
 };
 
 /* phy related flags */
