@@ -86,6 +86,11 @@ Optional properties :
 	for detection of dp line transition during VDD minimization.
 - qcom,hsusb-otg-dmsehv-int: If present, indicates mpm interrupt to be configured
 	for detection of dm line transition during VDD minimization.
+- otg,<gpio-name>-gpio : handle to the GPIO node, see "gpios property"
+        in Documentation/devicetree/bindings/gpio/gpio.txt.
+        Optional "gpio-name" can be "id_gnd" and "id_flt".
+- id_flt_active_high: Active logic of the id_flt gpio if present.
+- id_gnd_active_high: Active logic of the id_gnd gpio if present.
 
 Example HSUSB OTG controller device node :
 	usb@f9690000 {
