@@ -55,6 +55,9 @@ bool coresight_fuse_access_disabled(void)
 	uint32_t config0, config1;
 	bool ret;
 
+	if (drvdata == NULL)
+		return false;
+
 	config0 = fuse_readl(drvdata, OEM_CONFIG0);
 	config1 = fuse_readl(drvdata, OEM_CONFIG1);
 
@@ -88,6 +91,9 @@ bool coresight_fuse_apps_access_disabled(void)
 	struct fuse_drvdata *drvdata = fusedrvdata;
 	uint32_t config0, config1;
 	bool ret;
+
+	if (drvdata == NULL)
+		return false;
 
 	config0 = fuse_readl(drvdata, OEM_CONFIG0);
 	config1 = fuse_readl(drvdata, OEM_CONFIG1);
