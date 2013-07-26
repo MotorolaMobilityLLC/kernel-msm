@@ -1047,6 +1047,31 @@ static struct device_node *mdss_dsi_pref_prim_panel(
 	return dsi_pan_node;
 }
 
+static struct device_node *mdss_dsi_panel_search_dt_nodes(
+	struct platform_device *pdev,
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	struct device_node *mdss_node;
+	struct device_node *node;
+
+	mdss_node = of_parse_phandle(pdev->dev.of_node,
+				"qcom,mdss-mdp", 0);
+
+	if (!mdss_node) {
+		pr_err("%s: %d: mdss_node null\n",
+			__func__, __LINE__);
+		return NULL;
+	}
+
+	for_each_child_of_node(mdss_node, node) {
+		if (mdss_dsi_match_chosen_panel(node,
+			&ctrl_pdata->panel_config))
+			return node;
+	}
+
+	return NULL;
+}
+
 /**
  * mdss_dsi_find_panel_of_node(): find device node of dsi panel
  * @pdev: platform_device of the dsi ctrl node
@@ -1062,7 +1087,8 @@ static struct device_node *mdss_dsi_pref_prim_panel(
  * returns pointer to panel node on success, NULL on error.
  */
 static struct device_node *mdss_dsi_find_panel_of_node(
-		struct platform_device *pdev, char *panel_cfg)
+	struct platform_device *pdev, char *panel_cfg,
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int len, i;
 	int ctrl_id = pdev->id - 1;
@@ -1073,6 +1099,11 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 
 	len = strlen(panel_cfg);
 	if (!len) {
+		dsi_pan_node = mdss_dsi_panel_search_dt_nodes(pdev,
+								ctrl_pdata);
+		if (dsi_pan_node)
+			return dsi_pan_node;
+
 		/* no panel cfg chg, parse dt */
 		pr_debug("%s:%d: no cmd line cfg present\n",
 			 __func__, __LINE__);
@@ -1293,8 +1324,16 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_warn("%s:%d:dsi specific cfg not present\n",
 			__func__, __LINE__);
 
+	/* Parse panel config */
+	rc = mdss_panel_parse_panel_config_dt(ctrl_pdata);
+	if (rc) {
+		pr_err("%s: failed to parse panel config dt, rc = %d\n",
+			__func__, rc);
+		goto error_vreg;
+	}
+
 	/* find panel device node */
-	dsi_pan_node = mdss_dsi_find_panel_of_node(pdev, panel_cfg);
+	dsi_pan_node = mdss_dsi_find_panel_of_node(pdev, panel_cfg, ctrl_pdata);
 	if (!dsi_pan_node) {
 		pr_err("%s: can't find panel node %s\n", __func__, panel_cfg);
 		goto error_pan_node;

@@ -228,12 +228,12 @@ struct mdss_panel_esd_pdata {
 };
 
 struct mdss_panel_config {
-	bool is_panel_config_loaded;
 	bool esd_enable;
 	struct mutex panel_mutex;
 	bool esd_disable_bl;
 
 	bool bare_board;
+	char panel_name[32];
 	u64 panel_ver;
 };
 
@@ -405,6 +405,9 @@ bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl, u8 clk_type);
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		bool cmd_cfg_cont_splash);
+int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
+bool mdss_dsi_match_chosen_panel(struct device_node *np,
+				struct mdss_panel_config *pconfig);
 
 static inline bool mdss_dsi_broadcast_mode_enabled(void)
 {
