@@ -65,6 +65,10 @@ static int override_phy_init;
 module_param(override_phy_init, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(override_phy_init, "Override HSPHY Init Seq");
 
+static int override_phy_host_init;
+module_param(override_phy_host_init, int, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_phy_host_init, "Override HSPHY HOST Init Seq");
+
 /* Enable Proprietary charger detection */
 static bool prop_chg_detect;
 module_param(prop_chg_detect, bool, S_IRUGO | S_IWUSR);
@@ -189,6 +193,7 @@ struct dwc3_msm {
 	atomic_t		in_lpm;
 	int			hs_phy_irq;
 	int			hsphy_init_seq;
+	int			hsphy_host_init_seq;
 	bool			lpm_irq_seen;
 	struct delayed_work	resume_work;
 	struct work_struct	restart_usb_work;
@@ -1363,6 +1368,23 @@ static void dwc3_msm_qscratch_reg_init(struct dwc3_msm *msm)
 		dwc3_msm_read_reg(msm->base, CGCTL_REG) | 0x18);
 
 	dwc3_msm_ss_phy_reg_init(msm);
+}
+
+static void dwc3_msm_hsphy_host_init_seq(void)
+{
+	struct dwc3_msm *msm = context;
+
+	if (!msm) {
+		pr_err("%s: No device\n", __func__);
+		return;
+	}
+
+	if (override_phy_host_init)
+		msm->hsphy_host_init_seq = override_phy_host_init;
+	if (msm->hsphy_host_init_seq)
+		dwc3_msm_write_readback(msm->base,
+					PARAMETER_OVERRIDE_X_REG, 0x03FFFFFF,
+					msm->hsphy_host_init_seq & 0x03FFFFFF);
 }
 
 static void dwc3_msm_block_reset(bool core_reset)
@@ -2561,6 +2583,10 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	else if (!msm->hsphy_init_seq)
 		dev_warn(&pdev->dev, "incorrect hsphyinitseq.Using PORvalue\n");
 
+	if (of_property_read_u32(node, "qcom,dwc-hsphy-host-init",
+						&msm->hsphy_host_init_seq))
+		dev_dbg(&pdev->dev, "Unable to read hsphy host init seq\n");
+
 	dwc3_msm_qscratch_reg_init(msm);
 
 	pm_runtime_set_active(msm->dev);
@@ -2659,6 +2685,9 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 
 		if (msm->ext_xceiv.otg_capability)
 			msm->ext_xceiv.ext_block_reset = dwc3_msm_block_reset;
+		if (msm->hsphy_host_init_seq)
+			msm->ext_xceiv.ext_hsphy_host_init_seq =
+				dwc3_msm_hsphy_host_init_seq;
 		ret = dwc3_set_ext_xceiv(msm->otg_xceiv->otg, &msm->ext_xceiv);
 		if (ret || !msm->ext_xceiv.notify_ext_events) {
 			dev_err(&pdev->dev, "failed to register xceiver: %d\n",

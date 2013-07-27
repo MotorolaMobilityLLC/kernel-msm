@@ -43,6 +43,9 @@ static void dwc3_otg_set_host_regs(struct dwc3_otg *dotg)
 	struct dwc3 *dwc = dotg->dwc;
 	struct dwc3_ext_xceiv *ext_xceiv = dotg->ext_xceiv;
 
+	if (ext_xceiv && ext_xceiv->ext_hsphy_host_init_seq)
+		ext_xceiv->ext_hsphy_host_init_seq();
+
 	if (ext_xceiv && !ext_xceiv->otg_capability) {
 		/* Set OCTL[6](PeriMode) to 0 (host) */
 		reg = dwc3_readl(dotg->regs, DWC3_OCTL);

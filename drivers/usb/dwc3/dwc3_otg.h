@@ -113,6 +113,8 @@ struct dwc3_ext_xceiv {
 					enum dwc3_ext_events ext_event);
 	/* for block reset USB core */
 	void	(*ext_block_reset)(bool core_reset);
+	/* for hsphy host init */
+	void	(*ext_hsphy_host_init_seq)(void);
 };
 
 /* for external transceiver driver */
