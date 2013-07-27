@@ -46,8 +46,10 @@
 		qcom,power-on@800 {
 			interrupts = <0x0 0x8 0x0>,
 				     <0x0 0x8 0x1>,
-				     <0x0 0x8 0x3>;
-			interrupt-names = "kpdpwr", "resin", "kpdpwr-bark";
+				     <0x0 0x8 0x3>,
+				     <0x0 0x8 0x5>;
+			interrupt-names = "kpdpwr", "resin",
+				"kpdpwr-bark", "kpdpwr-resin-bark";
 
 			qcom,pon_1 {
 				qcom,support-reset = <0>;
@@ -57,6 +59,9 @@
 			};
 
 			qcom,pon_2 {
+				qcom,support-reset = <0>;
+			};
+			qcom,pon_3 {
 				qcom,support-reset = <0>;
 			};
 		};
