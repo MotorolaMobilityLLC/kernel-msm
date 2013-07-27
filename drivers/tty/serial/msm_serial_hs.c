@@ -1671,6 +1671,10 @@ void msm_hs_set_mctrl_locked(struct uart_port *uport,
 {
 	unsigned int set_rts;
 	unsigned int data;
+	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
+
+	if (msm_uport->clk_state <= MSM_HS_CLK_OFF)
+		return;
 
 	/* RTS is active low */
 	set_rts = TIOCM_RTS & mctrl ? 0 : 1;
@@ -3250,11 +3254,9 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	 */
 	mb();
 
-	if (msm_uport->clk_state != MSM_HS_CLK_OFF) {
-		/* to balance clk_state */
-		msm_hs_clock_unvote(msm_uport);
+	if (msm_uport->clk_state != MSM_HS_CLK_OFF)
 		wake_unlock(&msm_uport->dma_wake_lock);
-	}
+
 	msm_hs_clock_unvote(msm_uport);
 
 	msm_uport->clk_state = MSM_HS_CLK_PORT_OFF;
