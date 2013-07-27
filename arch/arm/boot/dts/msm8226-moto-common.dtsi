@@ -476,6 +476,7 @@
 	qcom,low-voltage-threshold = <3220000>;
 	qcom,enable-fcc-learning = <1>;
 	qcom,min-fcc-learning-soc = <20>;
+	qcom,fcc-resolution = <10>;
 	qcom,min-fcc-ocv-pc = <20>;
 	qcom,min-fcc-learning-samples = <4>;
 };
