@@ -1034,8 +1034,6 @@ static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 	if (sys_reset && sys_reset_dev) {
 		dev_err(&spmi->dev, "qcom,system-reset property can only be specified for one device on the system\n");
 		return -EINVAL;
-	} else if (sys_reset) {
-		sys_reset_dev = pon;
 	}
 
 	pon->spmi = spmi;
@@ -1132,6 +1130,10 @@ static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 			"Unable to intialize PON configurations\n");
 		return rc;
 	}
+
+	/* Only populate sys_reset_dev on success */
+	if (sys_reset)
+		sys_reset_dev = pon;
 
 	return rc;
 }
