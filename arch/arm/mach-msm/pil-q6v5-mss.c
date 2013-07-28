@@ -57,10 +57,14 @@ struct modem_data {
 
 #define subsys_to_drv(d) container_of(d, struct modem_data, subsys_desc)
 
+static char pil_ssr_reason[MAX_SSR_REASON_LEN];
+static char *ssr_reason = pil_ssr_reason;
+module_param(ssr_reason, charp, S_IRUGO);
+
 static void log_modem_sfr(void)
 {
 	u32 size;
-	char *smem_reason, reason[MAX_SSR_REASON_LEN];
+	char *smem_reason;
 
 	smem_reason = smem_get_entry_no_rlock(SMEM_SSR_REASON_MSS0, &size);
 	if (!smem_reason || !size) {
@@ -72,8 +76,8 @@ static void log_modem_sfr(void)
 		return;
 	}
 
-	strlcpy(reason, smem_reason, min(size, sizeof(reason)));
-	pr_err("modem subsystem failure reason: %s.\n", reason);
+	strlcpy(pil_ssr_reason, smem_reason, min(size, sizeof(pil_ssr_reason)));
+	pr_err("modem subsystem failure reason: %s.\n", pil_ssr_reason);
 
 	smem_reason[0] = '\0';
 	wmb();
