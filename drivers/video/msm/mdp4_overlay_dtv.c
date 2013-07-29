@@ -355,6 +355,7 @@ void mdp4_dtv_wait4vsync(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
+	int ret;
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -369,8 +370,10 @@ void mdp4_dtv_wait4vsync(int cndx)
 
 	mdp4_dtv_vsync_irq_ctrl(cndx, 1);
 
-	wait_event_interruptible_timeout(vctrl->wait_queue, 1,
+	ret = wait_event_interruptible_timeout(vctrl->wait_queue, 1,
 			msecs_to_jiffies(VSYNC_PERIOD * 8));
+	if (ret <= 0)
+		pr_err("%s timeout ret=%d", __func__, ret);
 
 	mdp4_dtv_vsync_irq_ctrl(cndx, 0);
 	mdp4_stat.wait4vsync1++;
@@ -651,8 +654,7 @@ static void mdp4_dtv_tg_off(struct vsycn_ctrl *vctrl)
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	MDP_OUTP(MDP_BASE + DTV_BASE, 0); /* turn off timing generator */
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
-
-	mdp4_dtv_wait4vsync(0);
+	msleep(20);
 }
 
 int mdp4_dtv_off(struct platform_device *pdev)
