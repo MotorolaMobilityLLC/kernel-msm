@@ -3094,6 +3094,12 @@ struct i2c_registry {
 	int                    len;
 };
 
+/* AVTimer */
+static struct platform_device msm_dev_avtimer_device = {
+	.name = "dev_avtimer",
+	.dev = { .platform_data = &dev_avtimer_pdata },
+};
+
 /* Sensors DSPS platform data */
 #ifdef CONFIG_MSM_DSPS
 #define DSPS_PIL_GENERIC_NAME		"dsps"
@@ -3465,6 +3471,10 @@ static void __init msm8960_cdp_init(void)
 	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
 		mdm_sglte_device.dev.platform_data = &sglte_platform_data;
 		platform_device_register(&mdm_sglte_device);
+	}
+	if (machine_is_msm8960_mtp() || machine_is_msm8960_fluid() ||
+		machine_is_msm8960_cdp()) {
+		platform_device_register(&msm_dev_avtimer_device);
 	}
 }
 
