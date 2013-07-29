@@ -369,6 +369,11 @@ int of_qpnp_populate_bms_tbls(struct bms_battery_data **batt_data,
 		return -ENOMEM;
 	}
 
+	/* Initialize defaults */
+	(*batt_data)->max_voltage_uv = -EINVAL;
+	(*batt_data)->cutoff_uv = -EINVAL;
+	(*batt_data)->iterm_ua = -EINVAL;
+
 	of_property_read_string(nbatt_chd, "qcom,batt-tbl-name",
 				batt_name);
 	pr_err("Battery Table %s found batt_id = %d\n", *batt_name,
