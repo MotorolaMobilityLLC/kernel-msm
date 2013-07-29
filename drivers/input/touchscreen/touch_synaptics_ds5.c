@@ -1764,7 +1764,6 @@ err_int_gpio_request_failed:
 err_input_register_device_failed:
 	input_free_device(ts->input_dev);
 err_input_dev_alloc_failed:
-	touch_power_cntl(ts, POWER_OFF);
 err_power_failed:
 	lcd_unregister_client(&ts->notif);
 err_fb_register_failed:
