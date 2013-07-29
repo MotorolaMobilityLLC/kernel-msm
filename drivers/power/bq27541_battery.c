@@ -614,10 +614,14 @@ static int bq27541_get_capacity(union power_supply_propval *val)
 	bool check_cap = false;
 	int smb_retry_max = (SMBUS_RETRY + 2);
 
+	bq27541_device->bat_capacity = 0;
 	do {
 		bq27541_device->smbus_status = bq27541_smbus_read_data(REG_CAPACITY, 0 ,&bq27541_device->bat_capacity);
-		if ((bq27541_device->bat_capacity <= 0) || (bq27541_device->bat_capacity > 100))
+		if ((bq27541_device->bat_capacity <= 0) || (bq27541_device->bat_capacity > 100)) {
 			check_cap = true;
+			BAT_NOTICE("check capacity, cap = %d, smb_retry = %d\n", bq27541_device->bat_capacity, smb_retry);
+		} else
+			check_cap = false;
 	} while(((bq27541_device->smbus_status < 0) || check_cap) && ( ++smb_retry <= smb_retry_max));
 
 	if (bq27541_device->smbus_status < 0) {
@@ -634,9 +638,14 @@ static int bq27541_get_capacity(union power_supply_propval *val)
 		}
 	}
 
-	ret = bq27541_device->bat_capacity;
+	temp_capacity = ret = bq27541_device->bat_capacity;
 
-	temp_capacity = ((ret >= 100) ? 100 : ret);
+	if (!(bq27541_device->bat_capacity >= bq27541_data[REG_CAPACITY].min_value &&
+			bq27541_device->bat_capacity <= bq27541_data[REG_CAPACITY].max_value)) {
+		val->intval = bq27541_device->old_capacity;
+		BAT_NOTICE("use old capacity=%u\n", bq27541_device->old_capacity);
+		return 0;
+	}
 
 	/* start: for mapping %99 to 100%. Lose 84%*/
 	if(temp_capacity==99)
