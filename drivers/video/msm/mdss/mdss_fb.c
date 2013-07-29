@@ -592,6 +592,10 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 
 	if ((!mfd->panel_power_on || !bl_updated) && !IS_CALIB_MODE_BL(mfd)) {
 		unset_bl_level = bkl_lvl;
+		pr_info("skip lvl=%d old_lvl=%d power=%d updated=%d"
+				" calib=%d\n", bkl_lvl, bl_level_old,
+				mfd->panel_power_on, bl_updated,
+				IS_CALIB_MODE_BL(mfd));
 		return;
 	} else {
 		unset_bl_level = 0;
