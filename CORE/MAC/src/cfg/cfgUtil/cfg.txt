@@ -4557,3 +4557,13 @@ HAL
 NV    RW    NP
 HAL
 0    1    1
+*
+* Oxygen network data (prop IE for IBSS)
+*
+WNI_CFG_OXYGEN_NETWORK_DATA   I    2    0
+V    RW    NP
+SCH
+0    0x2000   0x2000
+V    RW    NP
+SCH
+0    0x2000   0x2000
