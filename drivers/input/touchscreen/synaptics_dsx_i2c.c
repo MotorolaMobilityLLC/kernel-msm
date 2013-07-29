@@ -80,6 +80,7 @@
 #define ONE_TOUCH_RECALIBRATION 49
 #define ONE_TOUCH_SUPPRESSION 5
 #define MULTI_TOUCH_SUPPRESSION 1
+#define F11_DELTA_MAX (2*MULTI_TOUCH_SUPPRESSION)
 
 #define X_1T_SUPPRESSION ONE_TOUCH_SUPPRESSION
 #define Y_1T_SUPPRESSION ONE_TOUCH_SUPPRESSION
@@ -2090,6 +2091,20 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 			__func__, fhandler->fn_number,
 			rmi4_data->sensor_max_x,
 			rmi4_data->sensor_max_y);
+
+	/* Reporting mode */
+	if (!(control[0] & MASK_3BIT)) {
+		pr_warn("Reporting mode: continuous\n");
+	} else {
+		dev_dbg(&rmi4_data->i2c_client->dev,
+			"%s: thresholds: x=0x%x, y=0x%x\n",
+			__func__, control[2], control[3]);
+		/* Delta thresholds */
+		if (control[2] > F11_DELTA_MAX)
+			pr_warn("excessive x threshold: 0x%x\n", control[2]);
+		if (control[3] > F11_DELTA_MAX)
+			pr_warn("excessive y threshold: 0x%x\n", control[3]);
+	}
 
 	fhandler->intr_reg_num = (intr_count + 7) / 8;
 	if (fhandler->intr_reg_num != 0)
