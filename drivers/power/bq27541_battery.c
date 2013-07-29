@@ -84,6 +84,7 @@ static int bq27541_get_property(struct power_supply *psy,
 	enum power_supply_property psp, union power_supply_propval *val);
 extern unsigned  get_usb_cable_status(void);
 extern int smb345_config_thermal_charging(int temp, int volt, int rule);
+extern void reconfig_AICL(void);
 
 module_param(battery_current, uint, 0644);
 module_param(battery_remaining_capacity, uint, 0644);
@@ -380,6 +381,7 @@ static void battery_status_poll(struct work_struct *work)
 	if(!bq27541_battery_driver_ready)
 		BAT_NOTICE("battery driver not ready\n");
 
+	reconfig_AICL();
 	power_supply_changed(&bq27541_supply[Charger_Type_Battery]);
 
 	if (!bq27541_device->temp_err) {
