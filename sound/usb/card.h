@@ -8,6 +8,9 @@
 #define SYNC_URBS	4	/* always four urbs for sync */
 #define MAX_QUEUE	24	/* try not to exceed this queue length, in ms */
 
+#define BIT_USB_HEADSET_ANLG 1  /* analog usb headset uevent switch state */
+#define BIT_USB_HEADSET_DGTL 2  /* digital usb headset uevent switch state */
+
 struct audioformat {
 	struct list_head list;
 	u64 formats;			/* ALSA format bits */
