@@ -66,7 +66,7 @@ struct wm_adsp {
 
 	struct regulator *dvfs;
 
-	struct wm_coeff *wm_coeff;
+	struct list_head ctl_list;
 
 	u32 host_buf_ptr;
 	u32 low_water_mark;
