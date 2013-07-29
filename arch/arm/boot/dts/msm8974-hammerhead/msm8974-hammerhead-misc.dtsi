@@ -43,7 +43,7 @@
 			lm3630,boost_ctrl_reg = <0x30>;  /* OVP 24V, OCP 1.0A */
 			lm3630,bank_sel = <0>;  /* BANK A */
 			lm3630,linear_map = <1>;
-			lm3630,max_current = <0x14>;
+			lm3630,max_current = <0x12>;
 			lm3630,min_brightness = <0x05>;
 			lm3630,default_brightness = <0x57>;
 			lm3630,max_brightness = <0xFF>;
