@@ -2343,6 +2343,12 @@ REG_VARIABLE( CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD, WLAN_PARAM_Integer,
                  CFG_ENABLE_ADAPT_RX_DRAIN_MIN,
                  CFG_ENABLE_ADAPT_RX_DRAIN_MAX),
 
+   REG_VARIABLE( CFG_ENABLE_OXYNWK_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, enableOxygenNwk,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_ENABLE_OXYNWK_DEFAULT,
+                 CFG_ENABLE_OXYNWK_MIN,
+                 CFG_ENABLE_OXYNWK_MAX ),
 };
 
 /*
@@ -4084,6 +4090,9 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.scanCfgAgingTime = pConfig->scanAgingTimeout;
 
    smeConfig.csrConfig.enableTxLdpc = pConfig->enableTxLdpc;
+
+   // Prop IE enabling/disabling option
+   smeConfig.csrConfig.enableOxygenNwk = pConfig->enableOxygenNwk;
 
    /* update SSR config */
    sme_UpdateEnableSSR((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->enableSSR);

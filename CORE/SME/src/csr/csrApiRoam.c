@@ -1652,6 +1652,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.enableVhtFor24GHz = pParam->enableVhtFor24GHz;
 #endif
         pMac->roam.configParam.txLdpcEnable = pParam->enableTxLdpc;
+        pMac->roam.configParam.enableOxygenNwk = pParam->enableOxygenNwk;
     }
     
     return status;
@@ -1773,6 +1774,8 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
 #endif
 
         pParam->enableTxLdpc = pMac->roam.configParam.txLdpcEnable;
+        pParam->enableOxygenNwk = pMac->roam.configParam.enableOxygenNwk;
+
         csrSetChannels(pMac, pParam);
 
         status = eHAL_STATUS_SUCCESS;
@@ -13110,9 +13113,12 @@ eHalStatus csrSendMBStartBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, eCs
         //txLdpcIniFeatureEnabled
         *pBuf = (tANI_U8)(tANI_U8)pMac->roam.configParam.txLdpcEnable;
         pBuf++;
-        
-        
-        // set RSN IE 
+
+        // prop IE enabled in .ini file
+        *pBuf = (tANI_U8)pMac->roam.configParam.enableOxygenNwk;
+        pBuf++;
+
+        // set RSN IE
         if( pParam->nRSNIELength > sizeof(pMsg->rsnIE.rsnIEdata) )
         {
             status = eHAL_STATUS_INVALID_PARAMETER;

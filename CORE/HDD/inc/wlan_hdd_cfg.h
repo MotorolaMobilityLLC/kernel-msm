@@ -282,6 +282,11 @@
 #define CFG_ENABLE_ADAPT_RX_DRAIN_MAX       WNI_CFG_ENABLE_ADAPT_RX_DRAIN_STAMAX
 #define CFG_ENABLE_ADAPT_RX_DRAIN_DEFAULT   WNI_CFG_ENABLE_ADAPT_RX_DRAIN_STADEF
 
+//Enable Prop IE
+#define CFG_ENABLE_OXYNWK_NAME                   "gEnableOxygenNwk"
+#define CFG_ENABLE_OXYNWK_MIN                    ( 0 )
+#define CFG_ENABLE_OXYNWK_MAX                    ( 1 )
+#define CFG_ENABLE_OXYNWK_DEFAULT                ( 0 )
 
 typedef enum
 {
@@ -2167,6 +2172,7 @@ typedef struct
    v_BOOL_t                    bFastRoamInConIniFeatureEnabled;
 #endif
    v_BOOL_t                    fEnableAdaptRxDrain;
+   v_BOOL_t                    enableOxygenNwk;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

@@ -653,6 +653,7 @@ typedef struct tagCsrConfig
     tANI_BOOLEAN enableVhtFor24GHz;
 #endif
     tANI_U8   txLdpcEnable;
+    tANI_BOOLEAN  enableOxygenNwk;
 
 }tCsrConfig;
 

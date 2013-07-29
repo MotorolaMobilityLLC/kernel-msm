@@ -646,6 +646,18 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     }
 #endif
 
+    if (psessionEntry->oxygenNwkIniFeatureEnabled &&
+       (eLIM_STA_IN_IBSS_ROLE == psessionEntry->limSystemRole)) {
+        if (wlan_cfgGetInt(pMac, WNI_CFG_OXYGEN_NETWORK_DATA,
+                                     &tmp) != eSIR_SUCCESS){
+            limLog(pMac, LOGW, FL("Unable to get WNI_CFG_OXYGEN_NETWORK_DATA"));
+        }
+        else {
+            pFrm->OxygenNetwork.present = 1;
+            pFrm->OxygenNetwork.data = (tmp & 0xffff);
+        }
+    }
+
     if ( psessionEntry->pLimStartBssReq ) 
     {
       PopulateDot11fWPA( pMac, &( psessionEntry->pLimStartBssReq->rsnIE ),
