@@ -104,6 +104,7 @@
 #include <linux/wireless.h>
 #include <net/cfg80211.h>
 #include "wlan_qct_pal_trace.h"
+#include "wlan_qct_tl.h"
 
 #include "wlan_hdd_misc.h"
 #include "bap_hdd_misc.h"
@@ -222,6 +223,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_DISABLE_AMP       5
 #define WE_ENABLE_DXE_STALL_DETECT 6
 #define WE_DISPLAY_DXE_SNAP_SHOT   7
+#define WE_DISPLAY_DATAPATH_SNAP_SHOT    9
 #define WE_SET_REASSOC_TRIGGER     8
 
 /* Private ioctls and their sub-ioctls */
@@ -4461,6 +4463,13 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
             sme_transportDebug(hHal, VOS_TRUE, VOS_FALSE);
             break;
         }
+        case WE_DISPLAY_DATAPATH_SNAP_SHOT:
+        {
+            hddLog(LOGE, "%s: called %d",__func__, sub_cmd);
+            hdd_wmm_tx_snapshot(pAdapter);
+            WLANTL_TLDebugMessage(VOS_TRUE);
+            break;
+        }
         case  WE_SET_REASSOC_TRIGGER:
         {
             hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
@@ -4483,6 +4492,42 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
     return ret;
 }
 
+void hdd_wmm_tx_snapshot(hdd_adapter_t *pAdapter)
+{
+    /*
+     * Function to display HDD WMM information
+     * for Tx Queues.
+     * Prints globala as well as per client depending
+     * whether the clients are registered or not.
+     */
+    int i = 0, j = 0;
+    for ( i=0; i< NUM_TX_QUEUES; i++)
+    {
+        spin_lock(&pAdapter->wmm_tx_queue[i].lock);
+        hddLog(LOGE, "HDD WMM TxQueue Info For AC: %d Count: %d PrevAdress:0x%x, NextAddress:0x%x",
+               i, pAdapter->wmm_tx_queue[i].count,
+               pAdapter->wmm_tx_queue[i].anchor.prev, pAdapter->wmm_tx_queue[i].anchor.next);
+        spin_unlock(&pAdapter->wmm_tx_queue[i].lock);
+    }
+
+    for(i =0; i<WLAN_MAX_STA_COUNT; i++)
+    {
+        if(pAdapter->aStaInfo[i].isUsed)
+        {
+             hddLog(LOGE, "******STAIndex: %d*********", i);
+             for ( j=0; j< NUM_TX_QUEUES; j++)
+             {
+                spin_lock(&pAdapter->aStaInfo[i].wmm_tx_queue[j].lock);
+                hddLog(LOGE, "HDD TxQueue Info For AC: %d Count: %d PrevAdress:0x%x, NextAddress:0x%x",
+                       j, pAdapter->aStaInfo[i].wmm_tx_queue[j].count,
+                       pAdapter->aStaInfo[i].wmm_tx_queue[j].anchor.prev,
+                       pAdapter->aStaInfo[i].wmm_tx_queue[j].anchor.next);
+                spin_unlock(&pAdapter->aStaInfo[i].wmm_tx_queue[j].lock);
+             }
+        }
+    }
+
+}
 int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info,
         union iwreq_data *wrqu, char *extra)
 {
@@ -6999,6 +7044,10 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         0,
         "dxeSnapshot" },
+    {   WE_DISPLAY_DATAPATH_SNAP_SHOT,
+        0,
+        0,
+        "dataSnapshot"},
     {
         WE_SET_REASSOC_TRIGGER,
         0,
