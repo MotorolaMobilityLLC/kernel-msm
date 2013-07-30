@@ -1008,6 +1008,99 @@ static char *WDI_getRespMsgString(wpt_uint16 wdiRespMsgId)
 }
 
 /**
+  @brief WDI_TraceHostFWCapabilities - Parses both host and Firmware
+                                         Capability bitmap array.
+  @param capabilityBitmap - Base address of Bitmap array
+  @see
+  @returns  None
+  */
+void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
+{
+     int i;
+     char capStr[512];
+     char *pCapStr = capStr;
+     for (i = 0; i < 32; i++) {
+          if ((*(capabilityBitmap + 0) & (1 << i))) {
+               switch(i) {
+                     case MCC: snprintf(pCapStr, sizeof("MCC"), "%s", "MCC");
+                          pCapStr += strlen("MCC");
+                          break;
+                     case P2P: snprintf(pCapStr, sizeof("P2P"), "%s", "P2P");
+                          pCapStr += strlen("P2P");
+                          break;
+                     case DOT11AC: snprintf(pCapStr, sizeof("DOT11AC") , "%s", "DOT11AC");
+                          pCapStr += strlen("DOT11AC");
+                          break;
+                     case SLM_SESSIONIZATION: snprintf(pCapStr, sizeof("SLM_SESSIONIZATION"), "%s", "SLM_SESSIONIZATION");
+                          pCapStr += strlen("SLM_SESSIONIZATION");
+                          break;
+                     case DOT11AC_OPMODE: snprintf(pCapStr,  sizeof("DOT11AC_OPMODE"), "%s", "DOT11AC_OPMODE");
+                          pCapStr += strlen("DOT11AC_OPMODE");
+                          break;
+                     case SAP32STA: snprintf(pCapStr, sizeof("SAP32STA"), "%s", "SAP32STA");
+                          pCapStr += strlen("SAP32STA");
+                          break;
+                     case TDLS: snprintf(pCapStr, sizeof("TDLS"), "%s", "TDLS");
+                          pCapStr += strlen("TDLS");
+                          break;
+                     case P2P_GO_NOA_DECOUPLE_INIT_SCAN: snprintf(pCapStr, sizeof("P2P_GO_NOA_DECOUPLE_INIT_SCAN"), "%s", "P2P_GO_NOA_DECOUPLE_INIT_SCAN");
+                          pCapStr += strlen("P2P_GO_NOA_DECOUPLE_INIT_SCAN");
+                          break;
+                     case WLANACTIVE_OFFLOAD: snprintf(pCapStr, sizeof("WLANACTIVE_OFFLOAD"), "%s", "WLANACTIVE_OFFLOAD");
+                          pCapStr += strlen("WLANACTIVE_OFFLOAD");
+                          break;
+                     case BEACON_OFFLOAD: snprintf(pCapStr, sizeof("BEACON_OFFLOAD"), "%s","BEACON_OFFLOAD");
+                          pCapStr += strlen("BEACON_OFFLOAD");
+                          break;
+                     case SCAN_OFFLOAD: snprintf(pCapStr, sizeof("SCAN_OFFLOAD"), "%s", "SCAN_OFFLOAD");
+                          pCapStr += strlen("SCAN_OFFLOAD");
+                          break;
+                     case ROAM_OFFLOAD: snprintf(pCapStr,  sizeof("ROAM_OFFLOAD"), "%s", "ROAM_OFFLOAD");
+                          pCapStr += strlen("ROAM_OFFLOAD");
+                          break;
+                     case BCN_MISS_OFFLOAD: snprintf(pCapStr, sizeof("BCN_MISS_OFFLOAD"), "%s", "BCN_MISS_OFFLOAD");
+                          pCapStr += strlen("BCN_MISS_OFFLOAD");
+                          break;
+                     case STA_POWERSAVE: snprintf(pCapStr, sizeof("STA_POWERSAVE"), "%s", "STA_POWERSAVE");
+                          pCapStr += strlen("STA_POWERSAVE");
+                          break;
+                     case AP_UAPSD: snprintf(pCapStr, sizeof("AP_UAPSD"), "%s", "AP_UAPSD");
+                          pCapStr += strlen("AP_UAPSD");
+                          break;
+                     case AP_DFS: snprintf(pCapStr, sizeof("AP_DFS"), "%s", "AP_DFS");
+                          pCapStr += strlen("AP_DFS");
+                          break;
+                     case BLOCKACK: snprintf(pCapStr, sizeof("BLOCKACK"), "%s", "BLOCKACK");
+                          pCapStr += strlen("BLOCKACK");
+                          break;
+                     case PHY_ERR: snprintf(pCapStr, sizeof("PHY_ERR"), "%s", "PHY_ERR");
+                          pCapStr += strlen("PHY_ERR");
+                          break;
+                     case BCN_FILTER: snprintf(pCapStr, sizeof("BCN_FILTER"), "%s", "BCN_FILTER");
+                          pCapStr += strlen("BCN_FILTER");
+                          break;
+                     case RTT: snprintf(pCapStr, sizeof("RTT"), "%s", "RTT");
+                          pCapStr += strlen("RTT");
+                          break;
+                     case RATECTRL: snprintf(pCapStr, sizeof("RATECTRL"), "%s", "RATECTRL");
+                          pCapStr += strlen("RATECTRL");
+                          break;
+                     case WOW: snprintf(pCapStr, sizeof("WOW"), "%s", "WOW");
+                          pCapStr += strlen("WOW");
+                          break;
+                     case WLAN_ROAM_SCAN_OFFLOAD: snprintf(pCapStr, sizeof("WLAN_ROAM_SCAN_OFFLOAD"), "%s", "WLAN_ROAM_SCAN_OFFLOAD");
+                          pCapStr += strlen("WLAN_ROAM_SCAN_OFFLOAD");
+                          break;
+              }
+              *pCapStr++ = ',';
+              *pCapStr++ = ' ';
+         }
+     }
+     pCapStr = capStr;
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR, "\t\t\t%s", pCapStr);
+}
+
+/**
  @brief WDI_getHALStatusMsgString prints the HAL status in string.
 
  @param halStatusId: HAL status Id
@@ -27044,14 +27137,15 @@ WDI_featureCapsExchangeReq
    ------------------------------------------------------------------------*/
    FillAllFeatureCaps(gpHostWlanFeatCaps, supportEnabledFeatures,
       (sizeof(supportEnabledFeatures)/sizeof(supportEnabledFeatures[0])));
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
       "Host caps %x %x %x %x\n",
       gpHostWlanFeatCaps->featCaps[0],
       gpHostWlanFeatCaps->featCaps[1],
       gpHostWlanFeatCaps->featCaps[2],
       gpHostWlanFeatCaps->featCaps[3]
    );
-   
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR, "Host Capability");
+   WDI_TraceHostFWCapabilities(gpHostWlanFeatCaps->featCaps);
    wdiEventData.wdiRequest      = WDI_FEATURE_CAPS_EXCHANGE_REQ;
    wdiEventData.pEventData      = gpHostWlanFeatCaps; 
    wdiEventData.uEventDataSize  = fCapsStructSize; 
@@ -27211,13 +27305,15 @@ WDI_ProcessFeatureCapsExchangeRsp
 
    wpalMemoryCopy(gpFwWlanFeatCaps,(tWlanFeatCaps *) pEventData -> pEventData,
                     fCapsStructSize);
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
       "FW caps %x %x %x %x\n",
       gpFwWlanFeatCaps->featCaps[0],
       gpFwWlanFeatCaps->featCaps[1],
       gpFwWlanFeatCaps->featCaps[2],
       gpFwWlanFeatCaps->featCaps[3]
-     );
+   );
+   WPAL_TRACE(  eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR, "Firmware Capability");
+   WDI_TraceHostFWCapabilities(gpFwWlanFeatCaps->featCaps);
    wdiFeatureCapsExchangeCb = (WDI_featureCapsExchangeCb) pWDICtx -> pfncRspCB; 
 
    /*Notify UMAC - there is no callback right now but can be used in future if reqd */
