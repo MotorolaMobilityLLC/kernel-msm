@@ -241,9 +241,14 @@ static void *get_touch_handle(struct i2c_client *client);
  *
  * finger status report
  */
-static void touch_abs_input_report(struct synaptics_ts_data *ts)
+static void touch_abs_input_report(struct synaptics_ts_data *ts, const ktime_t timestamp)
 {
 	int	id;
+
+	input_event(ts->input_dev, EV_SYN, SYN_TIME_SEC,
+				ktime_to_timespec(timestamp).tv_sec);
+	input_event(ts->input_dev, EV_SYN, SYN_TIME_NSEC,
+				ktime_to_timespec(timestamp).tv_nsec);
 
 	for (id = 0; id < ts->pdata->max_id; id++) {
 		if (!ts->ts_data.curr_data[id].state)
@@ -301,10 +306,11 @@ static int touch_work_pre_proc(struct synaptics_ts_data *ts)
 static irqreturn_t touch_irq_handler(int irq, void *dev_id)
 {
 	struct synaptics_ts_data *ts = (struct synaptics_ts_data *)dev_id;
+	ktime_t timestamp = ktime_get();
 
 	switch (touch_work_pre_proc(ts)) {
 	case 0:
-		touch_abs_input_report(ts);
+		touch_abs_input_report(ts, timestamp);
 		break;
 	case -EIO:
 		queue_work(synaptics_wq, &ts->work_recover);
