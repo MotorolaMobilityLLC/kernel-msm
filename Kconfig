@@ -1,15 +1,25 @@
 comment "Qualcomm Atheros Prima WLAN module"
+
 config PRIMA_WLAN
+
 	tristate "Qualcomm Atheros Prima WLAN module"
 	default n
 	help
 	Add support for the Qualcomm Atheros Prima WLAN module
 
+config PRONTO_WLAN
+
+	tristate "Qualcomm Atheros Pronto WLAN module"
+	default n
+	help
+	Add support for the Qualcomm Atheros Pronto WLAN module
+
+
 #	depends on WLAN
 #	depends on CFG80211
 #        depends on WCNSS_CORE
 
-if PRIMA_WLAN != n
+if PRIMA_WLAN != n || PRONTO_WLAN != n
 
 config PRIMA_WLAN_BTAMP
 	bool "Enable the Prima WLAN BT-AMP feature"
@@ -35,4 +45,4 @@ config QCOM_VOWIFI_11R
 	bool "Enable Fast Transition (11r) feature"
 	default n
 
-endif # PRIMA_WLAN
+endif # PRIMA_WLAN || PRONTO_WLAN
