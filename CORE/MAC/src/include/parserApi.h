@@ -63,6 +63,9 @@
 #define MAX_SIZE_OF_TRIPLETS_IN_COUNTRY_IE (COUNTRY_STRING_LENGTH * COUNTRY_INFO_MAX_CHANNEL)
 #define HIGHEST_24GHZ_CHANNEL_NUM  ( 14 )
 
+#define IS_24G_CH(__chNum) ((__chNum > 0) && (__chNum < 14))
+#define IS_5G_CH(__chNum) ((__chNum >= 36) && (__chNum <= 165))
+
 typedef struct sSirCountryInformation
 {
     tANI_U8 countryString[COUNTRY_STRING_LENGTH];
