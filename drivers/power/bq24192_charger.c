@@ -51,6 +51,7 @@
 #define PRE_CHARGE_MASK            0x10
 #define FAST_CHARGE_MASK           0x20
 #define CHARGING_MASK (PRE_CHARGE_MASK | FAST_CHARGE_MASK)
+#define CHG_DONE_MASK              0x30
 #define INPUT_CURRENT_LIMIT_MASK   0x07
 #define INPUT_VOLTAGE_LIMIT_MASK   0x78
 #define SYSTEM_MIN_VOLTAGE_MASK    0x0E
@@ -765,6 +766,34 @@ static bool bq24192_is_otg_mode(struct bq24192_chip *chip)
 	return !!(temp & OTG_EN_MASK);
 }
 
+static bool bq24192_is_chg_done(struct bq24192_chip *chip)
+{
+	int ret;
+	u8 temp;
+
+	ret = bq24192_read_reg(chip->client, SYSTEM_STATUS_REG, &temp);
+	if (ret) {
+		pr_err("i2c read fail\n");
+		return false;
+	}
+
+	return (temp & CHG_DONE_MASK) == CHG_DONE_MASK;
+}
+
+static void bq24192_trigger_recharge(struct bq24192_chip *chip)
+{
+
+	if (chip->batt_health != POWER_SUPPLY_HEALTH_GOOD)
+		return;
+
+	if (!bq24192_is_chg_done(chip))
+		return;
+
+	bq24192_set_vbat_max(chip, VBAT_MAX_MV);
+	msleep(150);
+	bq24192_set_vbat_max(chip, chip->vbat_max_mv);
+}
+
 #define WLC_INPUT_I_LIMIT_MA 900
 static void bq24192_external_power_changed(struct power_supply *psy)
 {
@@ -1070,6 +1099,8 @@ static int bq24192_power_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		bq24192_enable_charging(chip, val->intval);
+		if (val->intval)
+			bq24192_trigger_recharge(chip);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		bq24192_set_vbat_max(chip, val->intval / 1000);
