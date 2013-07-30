@@ -2057,7 +2057,7 @@ static bool adreno_hw_isidle(struct kgsl_device *device)
  * Return true if the GPU hardware is idle and there are no commands pending in
  * the ringbuffer
  */
-static bool adreno_isidle(struct kgsl_device *device)
+bool adreno_isidle(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	unsigned int rptr;
