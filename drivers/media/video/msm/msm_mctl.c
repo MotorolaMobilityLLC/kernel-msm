@@ -648,7 +648,7 @@ static void msm_mctl_release(struct msm_cam_media_controller *p_mctl)
 	struct msm_sensor_ctrl_t *s_ctrl = get_sctrl(p_mctl->sensor_sdev);
 	struct msm_camera_sensor_info *sinfo =
 		(struct msm_camera_sensor_info *) s_ctrl->sensordata;
-
+	mutex_lock(&p_mctl->lock);
 	if (p_mctl->opencnt) {
 		v4l2_subdev_call(p_mctl->sensor_sdev, core, ioctl,
 			VIDIOC_MSM_SENSOR_RELEASE, NULL);
@@ -697,6 +697,7 @@ static void msm_mctl_release(struct msm_cam_media_controller *p_mctl)
 		p_mctl->opencnt--;
 		wake_unlock(&p_mctl->wake_lock);
 	}
+	mutex_unlock(&p_mctl->lock);
 }
 
 int msm_mctl_init_user_formats(struct msm_cam_v4l2_device *pcam)
