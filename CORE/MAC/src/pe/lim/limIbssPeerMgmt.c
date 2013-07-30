@@ -219,9 +219,7 @@ ibss_peer_collect(
 #ifdef WLAN_FEATURE_11AC
     if ( pBeacon->VHTCaps.present )
     {
-        pPeer->vhtSupportedChannelWidthSet =
-             (tANI_U8)((pBeacon->VHTOperation.chanWidth == WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ) ?
-             eHT_CHANNEL_WIDTH_80MHZ : WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ);
+        pPeer->vhtSupportedChannelWidthSet = pBeacon->VHTOperation.chanWidth;
         pPeer->vhtCapable = pBeacon->VHTCaps.present;
 
         // Collect VHT capabilities from beacon
