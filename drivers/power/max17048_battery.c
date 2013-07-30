@@ -242,6 +242,17 @@ static int max17048_get_vcell(struct max17048_chip *chip)
 	return 0;
 }
 
+static void max17048_check_recharge(struct max17048_chip *chip)
+{
+	union power_supply_propval ret = {true,};
+
+	if (chip->capacity_level == 99 &&
+			chip->lasttime_capacity_level == 100)
+		chip->ac_psy->set_property(chip->ac_psy,
+				POWER_SUPPLY_PROP_CHARGING_ENABLED,
+				&ret);
+}
+
 static int max17048_get_soc(struct max17048_chip *chip)
 {
 	int soc;
@@ -316,6 +327,7 @@ static int max17048_work(struct max17048_chip *chip)
 	if (chip->voltage != chip->lasttime_voltage ||
 		chip->capacity_level != chip->lasttime_capacity_level) {
 		chip->lasttime_voltage = chip->voltage;
+		max17048_check_recharge(chip);
 		chip->lasttime_capacity_level = chip->capacity_level;
 
 		power_supply_changed(&chip->batt_psy);
