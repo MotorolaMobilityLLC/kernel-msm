@@ -389,6 +389,13 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 	return count;
 }
 
+static void plist_move(struct plist_head *old, struct plist_head *new)
+{
+	plist_head_init(new);
+	list_splice_tail(&old->node_list, &new->node_list);
+	plist_head_init(old);
+}
+
 /**
  * _adreno_dispatcher_issuecmds() - Issue commmands from pending contexts
  * @adreno_dev: Pointer to the adreno device struct
@@ -399,27 +406,36 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 static int _adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
 {
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
+	struct plist_head tmp;
+	struct adreno_context *drawctxt, *next;
 
-	/* Don't do anything if the dispatcher is paused */
-	if (dispatcher->state != ADRENO_DISPATCHER_ACTIVE)
-		return 0;
+	/* Leave early if the dispatcher isn't in a happy state */
+	if ((dispatcher->state != ADRENO_DISPATCHER_ACTIVE) ||
+		adreno_gpu_fault(adreno_dev) != 0)
+			return 0;
 
+	/* Copy the current context list to a temporary list */
+	spin_lock(&dispatcher->plist_lock);
+	plist_move(&dispatcher->pending, &tmp);
+	spin_unlock(&dispatcher->plist_lock);
+
+	/* Try to fill the ringbuffer as much as possible */
 	while (dispatcher->inflight < _dispatcher_inflight) {
-		struct adreno_context *drawctxt = NULL;
 
-		spin_lock(&dispatcher->plist_lock);
-
-		if (!plist_head_empty(&dispatcher->pending)) {
-			drawctxt = plist_first_entry(&dispatcher->pending,
-				struct adreno_context, pending);
-
-			plist_del(&drawctxt->pending, &dispatcher->pending);
-		}
-
-		spin_unlock(&dispatcher->plist_lock);
-
-		if (drawctxt == NULL)
+		/* Stop doing things if the dispatcher is paused or faulted */
+		if ((dispatcher->state != ADRENO_DISPATCHER_ACTIVE) ||
+			adreno_gpu_fault(adreno_dev) != 0)
 			break;
+
+		if (plist_head_empty(&tmp))
+			break;
+
+		/* Get the next entry on the list */
+		drawctxt = plist_first_entry(&tmp, struct adreno_context,
+			pending);
+
+		/* Remove it from the list */
+		plist_del(&drawctxt->pending, &tmp);
 
 		if (kgsl_context_detached(&drawctxt->base) ||
 			drawctxt->state == ADRENO_CONTEXT_STATE_INVALID) {
@@ -430,6 +446,22 @@ static int _adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
 		dispatcher_context_sendcmds(adreno_dev, drawctxt);
 		kgsl_context_put(&drawctxt->base);
 	}
+
+	/* Requeue any remaining contexts for the next go around */
+
+	spin_lock(&dispatcher->plist_lock);
+
+	plist_for_each_entry_safe(drawctxt, next, &tmp, pending) {
+		int prio = drawctxt->pending.prio;
+
+		/* Reset the context node */
+		plist_node_init(&drawctxt->pending, prio);
+
+		/* And put it back in the master list */
+		plist_add(&drawctxt->pending, &dispatcher->pending);
+	}
+
+	spin_unlock(&dispatcher->plist_lock);
 
 	return 0;
 }
