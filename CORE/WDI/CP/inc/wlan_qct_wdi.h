@@ -2168,11 +2168,6 @@ typedef struct
   /*BSS Index of the BSS*/
   wpt_uint16      ucBssIdx;
 
-  /* Boolean to indicate if EDCA params are valid. UMAC might not have valid 
-    EDCA params or might not desire to apply EDCA params during config BSS. 
-    0 implies Not Valid ; Non-Zero implies valid*/
-  wpt_uint8   ucEDCAParamsValid;
-
   /*EDCA params for BE*/
   WDI_EdcaParamRecord wdiEdcaBEInfo;
 
