@@ -15028,7 +15028,18 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
           }
           pRequestBuf->ValidChannelCount = num_channels;
     } else {
-       ChannelList = pMac->roam.validChannelList;
+       tANI_U32 host_channels = sizeof(pMac->roam.validChannelList);
+       if (HAL_STATUS_SUCCESS(csrGetCfgValidChannels(pMac, pMac->roam.validChannelList, &host_channels)))
+       {
+           ChannelList = pMac->roam.validChannelList;
+           pMac->roam.numValidChannels = host_channels;
+       }
+       else
+       {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                 "%s:Failed to get the valid channel list", __func__);
+           return eHAL_STATUS_FAILURE;
+       }
        for(i=0; i<pMac->roam.numValidChannels; i++)
           {
             if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
