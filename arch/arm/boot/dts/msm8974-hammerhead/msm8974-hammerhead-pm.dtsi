@@ -37,8 +37,8 @@
 			max17048,alert_threshold = <2>;
 			max17048,max-mvolt = <4350>;
 			max17048,min-mvolt = <3200>;
-			max17048,full-soc = <950>;
-			max17048,empty-soc = <15>;
+			max17048,full-soc = <970>;
+			max17048,empty-soc = <10>;
 			max17048,batt-tech = <2>;
 			max17048,fcc-mah = <2300>;
 		};
