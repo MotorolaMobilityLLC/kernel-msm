@@ -1705,7 +1705,11 @@ err_vosclose:
        unregister_netdevice_notifier(&hdd_netdev_notifier);
        /* Clean up HDD Nlink Service */
        send_btc_nlink_msg(WLAN_MODULE_DOWN_IND, 0);
+#ifdef WLAN_KD_READY_NOTIFIER
+       nl_srv_exit(pHddCtx->ptt_pid);
+#else
        nl_srv_exit();
+#endif /* WLAN_KD_READY_NOTIFIER */
        /* Free up dynamically allocated members inside HDD Adapter */
        kfree(pHddCtx->cfg_ini);
        pHddCtx->cfg_ini= NULL;

@@ -62,6 +62,11 @@ static DEFINE_MUTEX(nl_srv_sem);
 static struct sock *nl_srv_sock;
 static nl_srv_msg_callback nl_srv_msg_handler[NLINK_MAX_CALLBACKS];
 
+#ifdef WLAN_KD_READY_NOTIFIER
+const char driverLoaded[]   = "KNLREADY";
+const char driverUnLoaded[] = "KNLCLOSE";
+#endif /* WLAN_KD_READY_NOTIFIER */
+
 //Forward declaration
 static void nl_srv_rcv (struct sk_buff *sk);
 static void nl_srv_rcv_skb (struct sk_buff *skb);
@@ -106,8 +111,18 @@ int nl_srv_init(void)
  * Deinit the netlink service.
  * Netlink service is unusable after this.
  */
+#ifdef WLAN_KD_READY_NOTIFIER
+void nl_srv_exit(int dst_pid)
+#else
 void nl_srv_exit(void)
+#endif /* WLAN_KD_READY_NOTIFIER */
 {
+#ifdef WLAN_KD_READY_NOTIFIER
+   if (0 != dst_pid)
+   {
+      nl_srv_nl_close_indication(dst_pid);
+   }
+#endif /* WLAN_KD_READY_NOTIFIER */
    netlink_kernel_release(nl_srv_sock);
 }
 
@@ -293,4 +308,93 @@ static void nl_srv_rcv_msg (struct sk_buff *skb, struct nlmsghdr *nlh)
          "NLINK: No handler for Netlink Msg [0x%X]", type);
    }
 }
+
+#ifdef WLAN_KD_READY_NOTIFIER
+/*
+ * Send Net Link interface ready indication to application daemon
+ * Each netlink message will have a message of type tAniMsgHdr inside.
+ */
+void nl_srv_nl_ready_indication
+(
+   void
+)
+{
+   struct sk_buff *skb = NULL;
+   struct nlmsghdr *nlh;
+   int    err;
+
+   skb = alloc_skb(NLMSG_SPACE(sizeof(driverLoaded)), GFP_KERNEL);
+   if (NULL == skb)
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "NLINK: skb alloc fail %s", __func__);
+      return;
+   }
+
+   nlh = (struct nlmsghdr *)skb->data;
+   nlh->nlmsg_pid = 0;  /* from kernel */
+   nlh->nlmsg_flags = 0;
+   nlh->nlmsg_seq = 0;
+   nlh->nlmsg_len = sizeof(driverLoaded);
+   memcpy(((char *)nlh) + sizeof(struct nlmsghdr),
+          driverLoaded,
+          sizeof(driverLoaded));
+   skb_put(skb, NLMSG_SPACE(sizeof(driverLoaded)));
+
+   /* sender is in group 1<<0 */
+   NETLINK_CB(skb).dst_group = WLAN_NLINK_MCAST_GRP_ID;
+
+   /*multicast the message to all listening processes*/
+   err = netlink_broadcast(nl_srv_sock, skb, 0, 1, GFP_KERNEL);
+   if (!err)
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "NLINK: Ready Indication Send Fail %s", __func__);
+   }
+   return;
+}
+
+/*
+ * Send Net Link interface close indication to application daemon
+ * Each netlink message will have a message of type tAniMsgHdr inside.
+ */
+void nl_srv_nl_close_indication
+(
+   int pid
+)
+{
+   struct sk_buff *skb = NULL;
+   struct nlmsghdr *nlh;
+   int err;
+
+   skb = alloc_skb(sizeof(driverUnLoaded),GFP_KERNEL);
+   if (NULL == skb)
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "NLINK: skb alloc fail %s", __func__);
+      return;
+   }
+
+   nlh = (struct nlmsghdr *)skb->data;
+   nlh->nlmsg_pid = 0;  /* from kernel */
+   nlh->nlmsg_flags = 0;
+   nlh->nlmsg_seq = 0;
+   nlh->nlmsg_len = sizeof(driverUnLoaded);
+   memcpy(((char *)nlh) + sizeof(struct nlmsghdr),
+          driverUnLoaded,
+          sizeof(driverUnLoaded));
+   skb_put(skb, NLMSG_SPACE(sizeof(driverUnLoaded)));
+
+   /* sender is in group 1<<0 */
+   NETLINK_CB(skb).dst_group = 0;
+   err = netlink_unicast(nl_srv_sock, skb, pid, MSG_DONTWAIT);
+   if (!err)
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "NLINK: Close Indication Send Fail %s", __func__);
+   }
+
+   return;
+}
+#endif /* WLAN_KD_READY_NOTIFIER */
 
