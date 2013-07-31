@@ -33,7 +33,8 @@ Optional properties:
         active low configuration: VEN GPIO is enabled when logical level 0.
              0 - active high for enable
              1 - active low for enable
-
+ - vdd-supply:
+	this is for the power supply for nfc chip.
 Example:
 
 	i2c@1a200000 {
@@ -53,6 +54,7 @@ Example:
 
 			nxp,pnxxx-discharge-delay = <2000>;
 			nxp,pnxxx-ven-inv-polarity = <0>;
+			vdd-supply = <&pm8226_l22>;
 		};
 	};
 
