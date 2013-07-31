@@ -89,6 +89,8 @@
 #define VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_SHFT 13
 #define VIDC_SM_ENC_EXT_CTRL_AU_DELIMITER_EN_BMSK    0x00000800
 #define VIDC_SM_ENC_EXT_CTRL_AU_DELIMITER_EN_SHFT    11
+#define VIDC_SM_ENC_EXT_CTRL_LONG_TERM_REF_ENABLE_BMSK 0x00000400
+#define VIDC_SM_ENC_EXT_CTRL_LONG_TERM_REF_ENABLE_SHFT 10
 #define VIDC_SM_ENC_EXT_CTRL_H263_CPCFC_ENABLE_BMSK  0x80
 #define VIDC_SM_ENC_EXT_CTRL_H263_CPCFC_ENABLE_SHFT  7
 #define VIDC_SM_ENC_EXT_CTRL_SPS_PPS_CONTROL_BMSK    0X100
@@ -482,7 +484,7 @@ void vidc_sm_set_extended_encoder_control(struct ddl_buf_addr
 	u32 seq_hdr_in_band, u32 vbv_buffer_size, u32 cpcfc_enable,
 	u32 sps_pps_control, u32 closed_gop_enable,
 	u32 au_delim_enable, u32 vui_timing_info_enable,
-	u32 restrict_bitstream_enable)
+	u32 restrict_bitstream_enable, u32 ltr_enable)
 {
 	u32 enc_ctrl;
 	enc_ctrl = VIDC_SETFIELD((hec_enable) ? 1 : 0,
@@ -514,7 +516,10 @@ void vidc_sm_set_extended_encoder_control(struct ddl_buf_addr
 			VIDC_SM_ENC_EXT_CTRL_TIMING_INFO_EN_BMSK) |
 			VIDC_SETFIELD((restrict_bitstream_enable) ? 1 : 0,
 			VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_SHFT,
-			VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_BMSK);
+			VIDC_SM_ENC_EXT_CTRL_STREAM_RESTRICT_EN_BMSK) |
+			VIDC_SETFIELD((ltr_enable) ? 1 : 0,
+			VIDC_SM_ENC_EXT_CTRL_LONG_TERM_REF_ENABLE_SHFT,
+			VIDC_SM_ENC_EXT_CTRL_LONG_TERM_REF_ENABLE_BMSK);
 
 	DDL_MEM_WRITE_32(shared_mem, VIDC_SM_ENC_EXT_CTRL_ADDR, enc_ctrl);
 }
