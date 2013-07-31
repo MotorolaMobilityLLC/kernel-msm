@@ -80,6 +80,7 @@ struct vcd_frame_data {
 	struct vcd_aspect_ratio aspect_ratio_info;
 	u32 metadata_len;
 	u32 metadata_offset;
+	u32 curr_ltr_id;
 };
 
 struct vcd_sequence_hdr {
