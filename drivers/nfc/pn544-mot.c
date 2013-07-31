@@ -38,6 +38,7 @@
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
 #include <linux/nfc/pn544-mot.h>
+#include <linux/regulator/consumer.h>
 
 /*
  * Virtual device /sys/devices/virtual/misc/pn544/pn544_control_dev
@@ -47,6 +48,7 @@ struct pn544_dev	{
 	struct mutex		read_mutex;
 	struct i2c_client	*client;
 	struct miscdevice	pn544_device;
+	struct regulator        *vdd;
 	struct device		*pn544_control_device;
 	unsigned int		ven_gpio;
 	unsigned int		firmware_gpio;
@@ -435,6 +437,20 @@ static int pn544_probe(struct i2c_client *client,
 	pn544_dev->discharge_delay = platform_data->discharge_delay;
 	pn544_dev->client   = client;
 
+	pn544_dev->vdd = regulator_get(&client->dev, "vdd");
+	if (IS_ERR(pn544_dev->vdd)) {
+		dev_info(&client->dev, "vdd regulator control absent\n");
+		pn544_dev->vdd = NULL;
+	}
+	if (pn544_dev->vdd != NULL) {
+		regulator_set_voltage(pn544_dev->vdd, 2950000, 2950000);
+		ret = regulator_enable(pn544_dev->vdd);
+		if (ret < 0) {
+			dev_err(&client->dev, "Error enabling vddswp regulator\n");
+			goto err_en_regulator_swp;
+		}
+	}
+
 	/* init mutex and queues */
 	init_waitqueue_head(&pn544_dev->read_wq);
 	mutex_init(&pn544_dev->read_mutex);
@@ -491,6 +507,11 @@ err_device_create_file_failed:
 err_misc_register:
 	mutex_destroy(&pn544_dev->read_mutex);
 	pn544_gpio_free(pn544_dev);
+	if (pn544_dev->vdd != NULL)
+		regulator_disable(pn544_dev->vdd);
+err_en_regulator_swp:
+	if (pn544_dev->vdd != NULL)
+		regulator_put(pn544_dev->vdd);
 err_gpio_init:
 	kfree(pn544_dev);
 err_exit:
@@ -508,6 +529,10 @@ static int pn544_remove(struct i2c_client *client)
 				&dev_attr_pn544_control_dev);
 	misc_deregister(&pn544_dev->pn544_device);
 	mutex_destroy(&pn544_dev->read_mutex);
+	if (pn544_dev->vdd != NULL) {
+		regulator_disable(pn544_dev->vdd);
+		regulator_put(pn544_dev->vdd);
+	}
 	kfree(pn544_dev);
 
 	return 0;
