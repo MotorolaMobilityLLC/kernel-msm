@@ -704,6 +704,9 @@ limApplyConfiguration(tpAniSirGlobal pMac,tpPESession psessionEntry)
         limLog(pMac, LOGP, FL("could not retrieve WNI_CFG_SCAN_IN_POWERSAVE"));
         return;
     }
+
+    PELOG1(limLog(pMac, LOG1, FL("pMac->lim.gScanInPowersave = %hu"),
+                pMac->lim.gScanInPowersave);)
     pMac->lim.gScanInPowersave = (tANI_U8) val;
 
 } /*** end limApplyConfiguration() ***/
