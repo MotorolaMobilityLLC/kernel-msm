@@ -378,7 +378,8 @@ static void usbnet_if_config(struct work_struct *work)
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_ifrn.ifrn_name, context->dev->name,
 		sizeof(ifr.ifr_ifrn.ifrn_name));
-	ifr.ifr_flags = ((context->dev->flags) | context->iff_flag);
+	ifr.ifr_flags = context->dev->flags & ~IFF_UP;
+	ifr.ifr_flags |= context->iff_flag;
 	err = devinet_ioctl(dev_net(context->dev), SIOCSIFFLAGS, &ifr);
 	if (err)
 		USBNETDBG(context, "%s: Error in SIOCSIFFLAGS\n", __func__);
