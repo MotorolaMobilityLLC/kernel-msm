@@ -103,10 +103,10 @@
 			avago,ps_hysteresis_threshold = <150>;
 			avago,ps_pulse = <10>;
 			avago,ps_pgain = <0x08>;
-			avago,als_B = <189>;
+			avago,als_B = <202>;
 			avago,als_C = <62>;
-			avago,als_D = <112>;
-			avago,ga_value = <194>;
+			avago,als_D = <119>;
+			avago,ga_value = <136>;
 		};
 	};
 };
