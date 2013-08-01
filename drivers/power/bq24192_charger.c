@@ -84,6 +84,7 @@ struct bq24192_chip {
 	spinlock_t irq_work_lock;
 	struct delayed_work  vbat_work;
 	struct delayed_work  input_limit_work;
+	struct delayed_work  therm_work;
 	struct dentry  *dent;
 	struct wake_lock  chg_wake_lock;
 	struct wake_lock  icl_wake_lock;
@@ -115,9 +116,13 @@ struct bq24192_chip {
 	int  wlc_dwn_input_i_ma;
 	int  batt_health;
 	int  saved_ibat_ma;
+	int  saved_input_i_ma;
+	bool  therm_mitigation;
+	int  max_input_i_ma;
 };
 
 static struct bq24192_chip *the_chip;
+static int input_limit_idx = 0;
 
 struct debug_reg {
 	char  *name;
@@ -300,10 +305,76 @@ static int bq24192_set_input_i_limit(struct bq24192_chip *chip, int ma)
 
 	temp = icl_ma_table[i].value;
 
-	pr_info("input current limit=%d setting 0x%02x\n", ma, temp);
+	if (ma > chip->max_input_i_ma) {
+		chip->saved_input_i_ma = ma;
+		pr_info("reject %d mA due to therm mitigation\n", ma);
+		return 0;
+	}
+
+	if (!chip->therm_mitigation)
+		chip->saved_input_i_ma = ma;
+
+	chip->therm_mitigation = false;
+	pr_info("input current limit = %d setting 0x%02x\n", ma, temp);
 	return bq24192_masked_write(chip->client, INPUT_SRC_CONT_REG,
 			INPUT_CURRENT_LIMIT_MASK, temp);
 }
+
+static int mitigate_tbl[] = {3000, 900, 500};
+static void bq24192_therm_mitigation_work(struct work_struct *work)
+{
+	struct bq24192_chip *chip = container_of(work,
+				struct bq24192_chip, therm_work.work);
+	int ret;
+	int input_limit_ma;
+
+	chip->max_input_i_ma = mitigate_tbl[input_limit_idx];
+	if (chip->max_input_i_ma < chip->saved_input_i_ma) {
+		input_limit_ma = chip->max_input_i_ma;
+		chip->therm_mitigation = true;
+	} else {
+		input_limit_ma = chip->saved_input_i_ma;
+		chip->therm_mitigation = false;
+	}
+
+	ret = bq24192_set_input_i_limit(chip, input_limit_ma);
+	if (ret)
+		pr_err("failed to set input current limit as %d\n",
+					input_limit_ma);
+}
+
+static int bq24192_therm_set_input_i_limit(const char *val,
+					const struct kernel_param *kp)
+{
+	int ret;
+
+	if (!the_chip)
+		return -ENODEV;
+
+	ret = param_set_int(val, kp);
+	if (ret) {
+		pr_err("failed to set input_limit_idx\n");
+		return ret;
+	}
+
+	if (input_limit_idx >= ARRAY_SIZE(mitigate_tbl))
+		input_limit_idx = ARRAY_SIZE(mitigate_tbl) - 1;
+
+	if (!power_supply_is_system_supplied())
+		return -ENODEV;
+
+	schedule_delayed_work(&the_chip->therm_work,
+			msecs_to_jiffies(2000));
+
+	return ret;
+}
+
+static struct kernel_param_ops therm_input_limit_ops = {
+	.set = bq24192_therm_set_input_i_limit,
+	.get = param_get_int,
+};
+module_param_cb(input_current_idx, &therm_input_limit_ops,
+				&input_limit_idx, 0644);
 
 #define IBAT_MAX_MA  4532
 #define IBAT_MIN_MA  512
@@ -583,9 +654,12 @@ static void bq24192_irq_worker(struct work_struct *work)
 			wake_unlock(&chip->icl_wake_lock);
 
 		cancel_delayed_work_sync(&chip->input_limit_work);
+		cancel_delayed_work_sync(&chip->therm_work);
 		bq24192_step_down_detect_disable(chip);
 		chip->saved_ibat_ma = 0;
 		chip->set_chg_current_ma = chip->chg_current_ma;
+		chip->max_input_i_ma = INPUT_CURRENT_LIMIT_MAX_MA;
+
 		if (chip->wlc_psy) {
 			if (wlc_pwr && ext_pwr) {
 				chip->wlc_pwr = true;
@@ -881,6 +955,10 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 		pr_info("wlc is online! i_limit = %d v_limit = %d\n",
 				wlc_chg_current_ma, chip->wlc_vin_limit_mv);
 	}
+
+	if (bq24192_is_charger_present(chip))
+		schedule_delayed_work(&chip->therm_work,
+				msecs_to_jiffies(2000));
 
 	chip->usb_psy->get_property(chip->usb_psy,
 			  POWER_SUPPLY_PROP_SCOPE, &ret);
@@ -1440,6 +1518,7 @@ static int bq24192_probe(struct i2c_client *client,
 	}
 	chip->set_chg_current_ma = chip->chg_current_ma;
 	chip->batt_health = POWER_SUPPLY_HEALTH_GOOD;
+	chip->max_input_i_ma = INPUT_CURRENT_LIMIT_MAX_MA;
 
 	if (chip->wlc_support) {
 		chip->wlc_psy = power_supply_get_by_name("wireless");
@@ -1503,6 +1582,7 @@ static int bq24192_probe(struct i2c_client *client,
 
 	INIT_DELAYED_WORK(&chip->vbat_work, bq24192_vbat_work);
 	INIT_DELAYED_WORK(&chip->input_limit_work, bq24192_input_limit_worker);
+	INIT_DELAYED_WORK(&chip->therm_work, bq24192_therm_mitigation_work);
 	INIT_WORK(&chip->irq_work, bq24192_irq_worker);
 	if (chip->irq) {
 		ret = request_irq(chip->irq, bq24192_irq,
