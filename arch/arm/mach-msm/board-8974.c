@@ -48,7 +48,7 @@
 #include "pm.h"
 #include "modem_notifier.h"
 #include "platsmp.h"
-
+#include "linux/slimbus/slimbus.h"
 
 static struct memtype_reserve msm8974_reserve_table[] __initdata = {
 	[MEMTYPE_SMI] = {
@@ -165,6 +165,19 @@ static void __init msm8974_map_io(void)
 	msm_map_8974_io();
 }
 
+static struct slim_device wm5110_slim_audio = {
+        .name = "wm5110-slim-audio",
+        .e_addr = {0x00, 0x00, 0x10, 0x51, 0x2f, 0x01 },
+};
+
+static struct slim_boardinfo msm_slim_devices[] = {
+        {
+                .bus_num = 1,
+                .slim_slave = &wm5110_slim_audio,
+        },
+};
+
+
 void __init msm8974_init(void)
 {
 	struct of_dev_auxdata *adata = msm8974_auxdata_lookup;
@@ -178,6 +191,8 @@ void __init msm8974_init(void)
 		msm_8974_init_gpiomux();
 	regulator_has_full_constraints();
 	board_dt_populate(adata);
+	/* Don't use device tree for the wolfson slimbus device */
+	slim_register_board_info(msm_slim_devices, ARRAY_SIZE(msm_slim_devices));
 	msm8974_add_drivers();
 }
 
