@@ -4831,13 +4831,6 @@ static struct clk_lookup msm_clocks_8974[] = {
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9923000.spi"),
 #endif
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, ""),
-
-	/* Activate Sensors */
-	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9925000.i2c"),
-	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"),
-	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f9968000.i2c"),
-	CLK_LOOKUP("core_clk", gcc_blsp2_qup6_i2c_apps_clk.c, "f9968000.i2c"),
-
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_spi_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup4_i2c_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup4_spi_apps_clk.c, ""),
