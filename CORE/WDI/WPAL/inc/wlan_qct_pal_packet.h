@@ -55,6 +55,9 @@
 
 #include "wlan_qct_pal_type.h"
 #include "wlan_qct_pal_status.h"
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+#include "vos_diag_core_log.h"
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
 // The size of the data buffer in vos/pal packets
 // Explanation:
@@ -85,6 +88,13 @@
 // in BD/PDUs that means 30 (one BD = 128 bytes) 
 // we must add the size of the 802.11 header to that 
 #define VPKT_SIZE_BUFFER  ((30 * 128) + 32)
+
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+/* Transport channel count to report DIAG */
+#define WPT_NUM_TRPT_CHANNEL      4
+/* Transport channel name string size */
+#define WPT_TRPT_CHANNEL_NAME     4
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
 typedef enum
 {
@@ -128,6 +138,30 @@ typedef struct swpt_iterator
    void *pContext;
 } wpt_iterator;
 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+/* Each specific channel dedicated information should be logged */
+typedef struct
+{
+   char         channelName[WPT_TRPT_CHANNEL_NAME];
+   v_U32_t      numDesc;
+   v_U32_t      numFreeDesc;
+   v_U32_t      numRsvdDesc;
+   v_U32_t      headDescOrder;
+   v_U32_t      tailDescOrder;
+   v_U32_t      ctrlRegVal;
+   v_U32_t      statRegVal;
+   v_U32_t      numValDesc;
+   v_U32_t      numInvalDesc;
+} wpt_log_data_stall_channel_type;
+
+/* Transport log context */
+typedef struct
+{
+   v_U32_t                          PowerState;
+   v_U32_t                          numFreeBd;
+   wpt_log_data_stall_channel_type  dxeChannelInfo[WPT_NUM_TRPT_CHANNEL];
+} wpt_log_data_stall_type;
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
 //pPkt is a pointer to wpt_packet
 #define WPAL_PACKET_SET_BD_POINTER(pPkt, pBd)   ( (pPkt)->pBD = (pBd) )
@@ -335,5 +369,45 @@ wpt_status wpalIsPacketLocked( wpt_packet *pPacket);
        eWLAN_PAL_STATUS_SUCCESS
 ---------------------------------------------------------------------------*/
 wpt_status wpalGetNumRxRawPacket(wpt_uint32 *numRxResource);
+
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+/*---------------------------------------------------------------------------
+    wpalPacketStallUpdateInfo – Update each channel information when stall
+       detected, also power state and free resource count
+
+    Param:
+       powerState  ? WLAN system power state when stall detected
+       numFreeBd   ? Number of free resource count in HW
+       channelInfo ? Each channel specific information when stall happen
+       channelNum  ? Channel number update information
+
+    Return:
+       NONE
+
+---------------------------------------------------------------------------*/
+void wpalPacketStallUpdateInfo
+(
+   v_U32_t                         *powerState,
+   v_U32_t                         *numFreeBd,
+   wpt_log_data_stall_channel_type *channelInfo,
+   v_U8_t                           channelNum
+);
+
+/*---------------------------------------------------------------------------
+    wpalPacketStallDumpLog – Trigger to send log packet to DIAG
+       Updated transport system information will be sent to DIAG
+
+    Param:
+        NONE
+
+    Return:
+        NONE
+
+---------------------------------------------------------------------------*/
+void wpalPacketStallDumpLog
+(
+   void
+);
+#endif /* FEATURE_WLAN_DIAG_SUPPORT */
 
 #endif // __WLAN_QCT_PAL_PACKET_H
