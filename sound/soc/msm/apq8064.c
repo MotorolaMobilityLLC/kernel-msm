@@ -20,6 +20,7 @@
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
 #include <linux/slimbus/slimbus.h>
+#include <linux/input.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -1238,7 +1239,7 @@ static int msm_slimbus_4_hw_params(struct snd_pcm_substream *substream,
 
 static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 {
-	int err;
+	int err, ret;
 #ifndef CONFIG_SWITCH_FSA8008
 	uint32_t revision;
 #endif
@@ -1293,6 +1294,14 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	if (err) {
 		pr_err("failed to create new jack\n");
 		return err;
+	}
+
+	ret = snd_jack_set_key(button_jack.jack,
+			       SND_JACK_BTN_0,
+			       KEY_MEDIA);
+	if (ret) {
+		pr_err("%s: Failed to set code for btn-0\n", __func__);
+		return ret;
 	}
 
 	codec_clk = clk_get(cpu_dai->dev, "osr_clk");
