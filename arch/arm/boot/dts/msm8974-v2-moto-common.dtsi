@@ -825,7 +825,7 @@
 	mpp@a300 { /* MPP 4 */
 	};
 };
-
+/*
 &slim_msm {
 	taiko_codec {
 		qcom,cdc-micbias1-ext-cap;
@@ -834,7 +834,7 @@
 		qcom,cdc-reset-gpio = <&pm8941_gpios 36 0>;
 	};
 };
-
+*/
 &spi_epm {
 	status = "disabled";
 };
