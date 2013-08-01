@@ -688,10 +688,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,supply-names = "vddio", "vdda";
-	qcom,supply-min-voltage-level = <1800000 1200000>;
-	qcom,supply-max-voltage-level = <1800000 1200000>;
-	qcom,supply-peak-current = <100000 100000>;
+	qcom,platform-reset-gpio = <&msmgpio 25 0>;
 };
 
 &cci {
