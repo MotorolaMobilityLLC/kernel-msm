@@ -2349,6 +2349,14 @@ REG_VARIABLE( CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD, WLAN_PARAM_Integer,
                  CFG_ENABLE_OXYNWK_DEFAULT,
                  CFG_ENABLE_OXYNWK_MIN,
                  CFG_ENABLE_OXYNWK_MAX ),
+
+   REG_VARIABLE( CFG_FLEX_CONNECT_POWER_FACTOR_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, flexConnectPowerFactor,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_MINMAX,
+                 CFG_FLEX_CONNECT_POWER_FACTOR_DEFAULT,
+                 CFG_FLEX_CONNECT_POWER_FACTOR_MIN,
+                 CFG_FLEX_CONNECT_POWER_FACTOR_MAX ),
+
 };
 
 /*
@@ -2730,6 +2738,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
 
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gEnableTrafficMonitor] Value = [%u] ", pHddCtx->cfg_ini->enableTrafficMonitor);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gTrafficIdleTimeout] Value = [%u] ", pHddCtx->cfg_ini->trafficIdleTimeout);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gFlexConnectPowerFactor] Value = [%u] ", pHddCtx->cfg_ini->flexConnectPowerFactor);
 }
 
 
@@ -3884,6 +3893,16 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       fStatus = FALSE;
       hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_ADAPT_RX_DRAIN to CCM");
    }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_FLEX_CONNECT_POWER_FACTOR,
+                    pConfig->flexConnectPowerFactor, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Failure: Could not pass on "
+             "WNI_CFG_FLEX_CONNECT_POWER_FACTOR to CCM");
+   }
+
    return fStatus;
 }
 
