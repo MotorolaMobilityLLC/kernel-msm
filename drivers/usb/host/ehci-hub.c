@@ -210,8 +210,8 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 
 	ehci_dbg(ehci, "suspend root hub\n");
 
-	if (time_before (jiffies, ehci->next_statechange))
-		msleep(5);
+	if (time_before_eq(jiffies, ehci->next_statechange))
+		usleep_range(10000, 10000);
 	del_timer_sync(&ehci->watchdog);
 	del_timer_sync(&ehci->iaa_watchdog);
 
@@ -345,8 +345,8 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 	int			i;
 	unsigned long		resume_needed = 0;
 
-	if (time_before (jiffies, ehci->next_statechange))
-		msleep(5);
+	if (time_before_eq(jiffies, ehci->next_statechange))
+		usleep_range(10000, 10000);
 	spin_lock_irq (&ehci->lock);
 	if (!HCD_HW_ACCESSIBLE(hcd)) {
 		spin_unlock_irq(&ehci->lock);
