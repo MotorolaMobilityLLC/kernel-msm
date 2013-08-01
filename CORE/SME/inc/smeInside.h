@@ -241,7 +241,8 @@ tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac );
 void smePushCommand( tpAniSirGlobal pMac, tSmeCmd *pCmd, tANI_BOOLEAN fHighPriority );
 void smeProcessPendingQueue( tpAniSirGlobal pMac );
 void smeReleaseCommand(tpAniSirGlobal pMac, tSmeCmd *pCmd);
-void purgeSmeSessionCmdList(tpAniSirGlobal pMac, tANI_U32 sessionId);
+void purgeSmeSessionCmdList(tpAniSirGlobal pMac, tANI_U32 sessionId,
+        tDblLinkList *pList);
 tANI_BOOLEAN smeCommandPending(tpAniSirGlobal pMac);
 tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand );
 //this function is used to abort a command where the normal processing of the command
