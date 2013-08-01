@@ -1226,6 +1226,12 @@ static iw_softap_set_max_tx_power(struct net_device *dev,
     if (NULL == value)
         return -ENOMEM;
 
+    /* Assign correct slef MAC address */
+    vos_mem_copy(bssid, pHostapdAdapter->macAddressCurrent.bytes,
+                 VOS_MAC_ADDR_SIZE);
+    vos_mem_copy(selfMac, pHostapdAdapter->macAddressCurrent.bytes,
+                 VOS_MAC_ADDR_SIZE);
+
     set_value = value[0];
     if (eHAL_STATUS_SUCCESS != sme_SetMaxTxPower(hHal, bssid, selfMac, set_value))
     {
