@@ -48,6 +48,7 @@ struct wm_adsp {
 	int type;
 	struct device *dev;
 	struct regmap *regmap;
+	struct snd_soc_card *card;
 
 	int base;
 	int sysclk_reg;
