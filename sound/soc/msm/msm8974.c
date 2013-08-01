@@ -37,6 +37,9 @@
 #ifdef CONFIG_SND_SOC_TPA6165A2
 #include "../codecs/tpa6165a2-core.h"
 #endif
+#ifdef CONFIG_SND_SOC_WM5110
+#include "../codecs/wm5110.h"
+#endif
 
 #define DRV_NAME "msm8974-asoc-taiko"
 
@@ -2643,8 +2646,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Slimbus Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16384",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name	= "wm5110-slim1",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name	= "taiko_rx1",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
 		.init = &msm_audrx_init,
