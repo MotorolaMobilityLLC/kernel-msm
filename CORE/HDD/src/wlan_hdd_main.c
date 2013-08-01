@@ -2060,6 +2060,41 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        {
           pHddCtx->scan_info.scan_mode = eSIR_PASSIVE_SCAN;
        }
+       else if (strncmp(command, "GETDWELLTIME", 12) == 0)
+       {
+           hdd_config_t *pCfg = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
+           char extra[32];
+           tANI_U8 len = 0;
+
+           len = snprintf(extra, sizeof(extra), "GETDWELLTIME %u\n",
+                  (int)pCfg->nActiveMaxChnTime);
+           if (copy_to_user(priv_data.buf, &extra, len + 1))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+           ret = len;
+       }
+       else if (strncmp(command, "SETDWELLTIME", 12) == 0)
+       {
+           tANI_U8 *value = command;
+           hdd_config_t *pCfg = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
+           int val = 0, temp;
+
+           value = value + 13;
+           temp = kstrtou32(value, 10, &val);
+           if ( temp != 0 || val < CFG_ACTIVE_MAX_CHANNEL_TIME_MIN ||
+                             val > CFG_ACTIVE_MAX_CHANNEL_TIME_MAX )
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: argument passed for SETDWELLTIME is incorrect", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+           pCfg->nActiveMaxChnTime = val;
+       }
        else {
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);
