@@ -180,6 +180,7 @@ limSearchAndDeleteDialogueToken(tpAniSirGlobal pMac, tANI_U8 token, tANI_U16 ass
         //if the node being deleted is the last one then we also need to move the tail pointer to the prevNode.
         if(NULL == pCurrNode->next)
               pMac->lim.pDialogueTokenTail = pPrevNode;
+        palFreeMemory(pMac->hHdd, (void *) pCurrNode);
         return eSIR_SUCCESS;
     }
 
