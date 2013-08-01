@@ -220,11 +220,11 @@ void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
 
-		for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+		for (i = 0; i < ctrl_pdata->rst_seq_len; ++i) {
 			gpio_set_value((ctrl_pdata->rst_gpio),
-				pdata->panel_info.rst_seq[i]);
-			if (pdata->panel_info.rst_seq[++i])
-				usleep(pdata->panel_info.rst_seq[i] * 1000);
+				ctrl_pdata->rst_seq[i]);
+			if (ctrl_pdata->rst_seq[++i])
+				usleep(ctrl_pdata->rst_seq[i] * 1000);
 		}
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
@@ -239,8 +239,15 @@ void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
+
 	} else {
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		for (i = 0; i < ctrl_pdata->dis_rst_seq_len; i++) {
+			gpio_set_value((ctrl_pdata->rst_gpio),
+				ctrl_pdata->dis_rst_seq[i++]);
+			if (ctrl_pdata->dis_rst_seq[i])
+				usleep_range(ctrl_pdata->dis_rst_seq[i] * 1000,
+					ctrl_pdata->dis_rst_seq[i] * 1000);
+		}
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 	}
@@ -884,6 +891,34 @@ static int mdss_dsi_parse_fbc_params(struct device_node *np,
 	return 0;
 }
 
+static int mdss_panel_parse_reset_seq(struct device_node *np, const char *name,
+				int rst_seq[MDSS_DSI_RST_SEQ_LEN], int *rst_len)
+{
+	int num_u32 = 0;
+	int rc;
+	struct property *pp;
+	u32 tmp[MDSS_DSI_RST_SEQ_LEN];
+
+	*rst_len = 0;
+
+	pp = of_find_property(np, name, &num_u32);
+	num_u32 /= sizeof(u32);
+	if (!pp || num_u32 == 0 || num_u32 > MDSS_DSI_RST_SEQ_LEN ||
+		num_u32 % 2)
+		pr_err("%s:%d, error reading property %s, num_u32 = %d\n",
+			__func__, __LINE__, name, num_u32);
+	else {
+		rc = of_property_read_u32_array(np, name, tmp, num_u32);
+		if (rc)
+			pr_err("%s:%d, unable to read %s, rc = %d\n",
+				__func__, __LINE__, name, rc);
+		else {
+			memcpy(rst_seq, tmp, num_u32 * sizeof(u32));
+			*rst_len = num_u32;
+		}
+	}
+	return 0;
+}
 
 static int mdss_dsi_parse_reset_seq(struct device_node *np,
 		u32 rst_seq[MDSS_DSI_RST_SEQ_LEN], u32 *rst_len,
@@ -1362,6 +1397,14 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		ctrl_pdata->panel_config.esd_enable,
 		of_property_read_bool(np, "qcom,panel-esd-detect-disable"),
 		ctrl_pdata->panel_config.esd_pwr_mode_chk);
+
+	mdss_panel_parse_reset_seq(np, "qcom,panel-en-reset-sequence",
+				ctrl_pdata->rst_seq,
+				&ctrl_pdata->rst_seq_len);
+
+	mdss_panel_parse_reset_seq(np, "qcom,panel-dis-reset-sequence",
+				ctrl_pdata->dis_rst_seq,
+				&ctrl_pdata->dis_rst_seq_len);
 
 	return 0;
 
