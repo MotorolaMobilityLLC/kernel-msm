@@ -117,7 +117,7 @@ static int arizona_slim_get_channel_map(struct snd_soc_dai *dai,
 	*rx_num = 2;
 
 	for (i = 0; i < *rx_num; i++)
-		rx_slot[i] = 128 + i;
+		rx_slot[i] = 144 + i;
 
 	for (i = 0; i < *rx_num; i++) {
 		ret = slim_get_slaveport(la, 0 + i, &rx_sph[i], SLIM_SINK);
