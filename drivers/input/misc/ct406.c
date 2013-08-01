@@ -1524,6 +1524,10 @@ static int ct406_probe(struct i2c_client *client,
 	INIT_WORK(&ct->work, ct406_work_func);
 	INIT_WORK(&ct->work_prox_start, ct406_work_prox_start);
 
+	mutex_init(&ct->mutex);
+
+	wake_lock_init(&ct->wl, WAKE_LOCK_SUSPEND, "ct406_wake");
+
 	error = request_irq(client->irq, ct406_irq_handler,
 		IRQF_TRIGGER_LOW, LD_CT406_NAME, ct);
 	if (error != 0) {
@@ -1535,10 +1539,6 @@ static int ct406_probe(struct i2c_client *client,
 	disable_irq(client->irq);
 
 	i2c_set_clientdata(client, ct);
-
-	mutex_init(&ct->mutex);
-
-	wake_lock_init(&ct->wl, WAKE_LOCK_SUSPEND, "ct406_wake");
 
 	error = input_register_device(ct->dev);
 	if (error) {
@@ -1592,10 +1592,11 @@ error_create_registers_file_failed:
 	input_unregister_device(ct->dev);
 	ct->dev = NULL;
 error_input_register_failed:
-	mutex_destroy(&ct->mutex);
 	i2c_set_clientdata(client, NULL);
 	free_irq(ct->client->irq, ct);
 error_req_irq_failed:
+	mutex_destroy(&ct->mutex);
+	wake_lock_destroy(&ct->wl);
 	destroy_workqueue(ct->workqueue);
 error_create_wq_failed:
 	misc_deregister(&ct->miscdevice);
