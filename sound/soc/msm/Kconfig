@@ -185,6 +185,7 @@ config SND_SOC_MSM8974
 	select DOLBY_DAP
 	select SND_SOC_TPA6165A2
 	select SND_SOC_TFA9890
+	select SND_SOC_WM5110
 	help
 	 To add support for SoC audio on MSM8974.
 	 This will enable sound soc drivers which
