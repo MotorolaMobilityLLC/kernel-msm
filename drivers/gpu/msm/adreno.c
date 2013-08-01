@@ -3216,8 +3216,6 @@ unsigned int adreno_ft_detect(struct kgsl_device *device,
 			if ((long_ib_detected) &&
 				(!(curr_context->flags &
 				 CTXT_FLAGS_NO_FAULT_TOLERANCE))) {
-				curr_context->ib_gpu_time_used +=
-					KGSL_TIMEOUT_PART;
 				if (curr_context->ib_gpu_time_used >
 					KGSL_TIMEOUT_LONG_IB_DETECTION) {
 					if (adreno_dev->long_ib_ts !=
