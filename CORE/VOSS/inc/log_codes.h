@@ -2022,8 +2022,10 @@ when       who     what, where, why
 
 #define LOG_GNSS_PDSM_PPM_SESSION_END_C                             ((0x4E9) + LOG_1X_BASE_C)
 
+#define LOG_TRSP_DATA_STALL_C                                       ((0x801) + LOG_1X_BASE_C)
+
 /* The last defined DMSS log code */
-#define LOG_1X_LAST_C                                   ((0x4E9) + LOG_1X_BASE_C)
+#define LOG_1X_LAST_C                                   ((0x801) + LOG_1X_BASE_C)
 
 
 /* This is only here for old (pre equipment ID update) logging code */
