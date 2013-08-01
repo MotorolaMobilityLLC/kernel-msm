@@ -29,6 +29,7 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
 		qcom,mdss-dsi-panel-height = <1280>;
+		qcom,mdss-dsi-panel-clock-rate = <797600000>;
 		qcom,mdss-dsi-h-front-porch = <64>;
 		qcom,mdss-dsi-h-back-porch = <64>;
 		qcom,mdss-dsi-h-pulse-width = <8>;
@@ -77,6 +78,8 @@
 		qcom,mdss-dsi-mdp-trigger = <0>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
+		qcom,panel-en-reset-sequence = <1 10>;
+		qcom,panel-dis-reset-sequence = <0 2>;
 		qcom,platform-supply-entry1 {
 			qcom,supply-name = "vddio_disp";
 			qcom,supply-min-voltage = <1800000>;
@@ -95,6 +98,5 @@
 			qcom,supply-post-en-delay-ms = <10>;
 			qcom,supply-post-dis-delay-ms = <1>;
 		};
-
 	};
 };
