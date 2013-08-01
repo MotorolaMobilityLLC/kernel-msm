@@ -187,7 +187,7 @@ struct wm_coeff {
 };
 
 struct wm_coeff_ctl {
-	const char *name;
+	char *name;
 	struct snd_card *card;
 	struct wm_adsp_alg_region region;
 	struct wm_coeff_ctl_ops ops;
