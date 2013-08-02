@@ -17,7 +17,7 @@
 		label = "mot smd 720p video mode dsi panel";
 		status = "disable";
 		qcom,dsi-ctrl-phandle = <&mdss_dsi0>;
-		qcom,rst-gpio = <&pm8941_gpios 19 0>;
+		qcom,rst-gpio = <&pm8941_gpios 12 0>;
 		qcom,supply-names = "vbat_disp", "vdd_disp", "vci_disp";
 		qcom,supply-min-voltage-level = <5000000 1800000 3000000>;
 		qcom,supply-max-voltage-level = <5000000 1800000 3000000>;
@@ -64,7 +64,7 @@
 				       39 01 00 00 01 00 03 fc 5a 5a	/* unlock_lvl_3 */
 				       15 01 00 00 01 00 02 f2 05		/* set video mode */
 				       15 01 00 00 01 00 02 35 00		/* enable_te */
-				       39 01 00 00 01 00 02 53 20		/* disp_ctrl */ 
+				       39 01 00 00 01 00 02 53 20		/* disp_ctrl */
 				       15 01 00 00 01 00 02 51 7f		/* brightness_ctrl */
 				       39 01 00 00 01 00 02 55 00		/* acl_enable_disable_settings */
 				       39 01 00 00 01 00 05		/* set window size normal_col */

@@ -12,7 +12,6 @@
  */
 
 /include/ "msm8974-v2.dtsi"
-/include/ "msm8974-camera-sensor-mtp.dtsi"
 /include/ "msm8974-leds.dtsi"
 
 / {
@@ -34,12 +33,30 @@
 };
 
 &soc {
-	serial@f991e000 {
+	serial@f991d000 {	/* "UART_AP_*_SP" on BLSP1 (BLSP1 UART0) */
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf991d000 0x1000>;
+		interrupts = <0 107 0>;
 		status = "ok";
 	};
 
+	serial@f991e000 {	/* "UART1DM" on BLSP2 (BLSP1 UART1) */
+		status = "ok";
+	};
 
-	i2c_3: i2c@f9927000 {	/* BLSP5 (BLSP1 QUP4) */
+	i2c_0: i2c@f9967000 {	/* "I2C5" on BLSP11 (BLSP2 QUP4) */
+		status = "ok";
+	};
+
+	i2c_1: i2c@f9923000 {	/* "I2C4" on BLSP1 (BLSP1 UART0) */
+		status = "ok";
+	};
+
+	i2c_2: i2c@f9924000 {	/* Unused QUP on BLSP2 (BLSP1 QUP1) */
+		status = "disabled";
+	};
+
+	i2c_3: i2c@f9927000 {	/* "I2C1" on BLSP5 (BLSP1 QUP4) */
 		cell-index = <3>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9927000 0x1000>;
@@ -50,9 +67,10 @@
 		interrupt-names = "qup_err_intr";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <50000000>;
+		qcom,master-id = <86>;
 	};
 
-	i2c_4: i2c@f9964000 {	/* BLSP8 (BLSP2 QUP1) */
+	i2c_4: i2c@f9964000 {	/* "I2C2" on BLSP8 (BLSP2 QUP1) */
 		cell-index = <4>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9964000 0x1000>;
@@ -63,9 +81,10 @@
 		interrupt-names = "qup_err_intr";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <50000000>;
+		qcom,master-id = <84>;
 	};
 
-	i2c_5: i2c@f9926000 {	/* BLSP4 (BLSP1 QUP3) */
+	i2c_5: i2c@f9926000 {	/* "I2C3" on BLSP4 (BLSP1 QUP3) */
 		cell-index = <5>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9926000 0x1000>;
@@ -76,22 +95,18 @@
 		interrupt-names = "qup_err_intr";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <50000000>;
+		qcom,master-id = <86>;
 	};
 
 	i2c_6: i2c@f9966000 {	/* BLSP10 (BLSP2 QUP3) */
-		cell-index = <6>;
-		compatible = "qcom,i2c-qup";
-		reg = <0xf9966000 0x1000>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 104 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <100000>;
-		qcom,i2c-src-freq = <50000000>;
+		status = "disabled";
 	};
 
-	uart3: uart@f991f000 {	/* BLSP3 (BLSP1 UART2) */
+	spi_0: spi@f9923000 {
+		status = "disabled";
+	};
+
+	uart3: uart@f991f000 {	/* "UART_AP_*_C55" on BLSP3 (BLSP1 UART2) */
 		compatible = "qcom,msm-hsuart-v14";
 		reg = <0xf991f000 0x1000>,
 			<0xf9904000 0x19000>;
@@ -152,7 +167,7 @@
 	vbat_disp_vreg: vbat_disp_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vbat_disp";
-		gpio = <&msmgpio 7 0x0>;
+		gpio = <&pm8941_gpios 14 0x0>;
 		parent-supply = <&pm8941_boost>;
 		startup-delay-us = <300>;
 		enable-active-high;
@@ -161,7 +176,7 @@
 	vdd_disp_vreg: vdd_disp_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vdd_disp";
-		gpio = <&msmgpio 6 0x0>;
+		gpio = <&pm8941_gpios 23 0x0>;
 		parent-supply = <&pm8941_s3>;
 		startup-delay-us = <300>;
 		enable-active-high;
@@ -170,7 +185,7 @@
 	vci_disp_vreg: vci_disp_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vci_disp";
-		gpio = <&msmgpio 23 0x0>;
+		gpio = <&pm8941_gpios 19 0>;
 		parent-supply = <&pm8941_l23>;
 		startup-delay-us = <300>;
 		enable-active-high;
@@ -197,9 +212,9 @@
 	ti,c55-ctrl {
 		compatible = "ti,c55-ctrl";
 		reg = <0 0>;
-		gpios = <&pm8941_gpios 14 2>,	/* gpio_core */
-			<&pm8941_gpios 16 0>,	/* gpio_reset */
-			<&msmgpio 102 1>,	/* gpio_ap_int */
+		gpios = <&msmgpio 77 2>,	/* gpio_core */
+			<&msmgpio 6 0>,		/* gpio_reset */
+			<&msmgpio 79 1>,	/* gpio_ap_int */
 			<&msmgpio 61 2>;	/* gpio_c55_int */
 	};
 };
@@ -396,10 +411,8 @@
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 125 0
-			1 &intc 0 220 0
-			2 &msmgpio 62 0x3>;
+			1 &intc 0 220 0>;
 	interrupt-names = "core_irq", "bam_irq", "status_irq";
-	cd-gpios = <&msmgpio 62 0x1>;
 	status = "disabled";
 };
 
@@ -432,10 +445,8 @@
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
 	interrupt-map = <0 &intc 0 125 0
-			1 &intc 0 221 0
-			2 &msmgpio 62 0x3>;
+			1 &intc 0 221 0>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
-	cd-gpios = <&msmgpio 62 0x1>;
 
 	vdd-supply = <&pm8941_l21>;
 	vdd-io-supply = <&pm8941_l13>;
@@ -479,10 +490,6 @@
 
 &uart7 {
 	status = "ok";
-};
-
-&usb3 {
-	qcom,otg-capability;
 };
 
 &pm8941_bms {
@@ -606,9 +613,12 @@
 	};
 
 	gpio@cb00 { /* GPIO 12 */
-		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
-		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1  */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <1>;	/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
 
@@ -660,7 +670,7 @@
 		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
 		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
 		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
-		qcom,out-strength = <3>;	/* QPNP_PIN_OUT_STRENGTH_HIGH */
+		qcom,out-strength = <1>;	/* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
@@ -685,9 +695,12 @@
 	};
 
 	gpio@d600 { /* GPIO 23 */
-		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
-		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1  */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <1>;	/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
 		qcom,master-en = <1>;
 	};
 
@@ -831,7 +844,7 @@
 		qcom,cdc-micbias1-ext-cap;
 		qcom,cdc-micbias2-ext-cap;
 		qcom,cdc-micbias4-ext-cap;
-		qcom,cdc-reset-gpio = <&pm8941_gpios 36 0>;
+		qcom,cdc-reset-gpio = <&msmgpio 23 0>;
 	};
 };
 */
@@ -840,19 +853,6 @@
 };
 
 &i2c_0 {
-	/* TI drv2605 */
-	drv2605@5a {
-		compatible = "ti,drv2605";
-		reg = <0x5A>;
-		gpios = <&msmgpio 54 0>, /* EN_GPIO */
-			<&pm8941_gpios 2 0>; /* Trigger */
-		external_trigger = <1>;
-		default_effect = <17>;      /* Strong Click 100% */
-		rated_voltage = <0x70>;     /* 2.4v */
-		overdrive_voltage = <0x89>; /* 3.0v */
-		vibrator_vdd-supply = <&pm8941_boost>;
-	};
-
 	tpa6165xx@40 {
 		compatible = "ti,tpa6165";
 		reg = <0x40>;
@@ -864,14 +864,47 @@
 		};
 };
 
+&i2c_1 {
+	msp430@48 {
+		compatible = "ti,msp430";
+		reg = <0x48>;
+		gpios = <&msmgpio 20 0>,	/* IRQ */
+			<&msmgpio 145 0>,	/* RESET */
+			<&msmgpio 33 0>,	/* BSLEN */
+			<&msmgpio 95 0>,	/* WakeIRQ */
+			<&msmgpio 14 0>,	/* MIPI_REQ */
+			<&msmgpio 13 0>;	/* MIPI_BUSY */
+		lux_table = <5 50 100 1500 3000 8000>;
+		brightness_table = <9 14 18 46 67 93 140>;
+		bslen_pin_active_value = <1>;
+		ct406_detect_threshold = <0x006E>;
+		ct406_undetect_threshold = <0x0050>;
+		ct406_recalibrate_threshold = <0x0064>;
+		ct406_pulse_count = <0x04>;
+	};
+};
+
 &i2c_3 {
+	/* TI drv2605 */
+	drv2605@5a {
+		compatible = "ti,drv2605";
+		reg = <0x5A>;
+		gpios = <&msmgpio 45 0>, /* EN_GPIO */
+			<&pm8941_gpios 2 0>; /* Trigger */
+		external_trigger = <1>;
+		default_effect = <17>;      /* Strong Click 100% */
+		rated_voltage = <0x70>;     /* 2.4v */
+		overdrive_voltage = <0x89>; /* 3.0v */
+		vibrator_vdd-supply = <&pm8941_boost>;
+	};
+
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
 		interrupt-parent = <&msmgpio>;
 		interrupts = <81 0>;
 		gpios = <&msmgpio 81 0>, /* IRQ */
-			<&msmgpio 80 0>; /* RESET */
+			<&msmgpio 60 0>; /* RESET */
 		touch_vdd-supply = <&pm8941_l23>;
 		synaptics,normal-mode = <1>;
 		synaptics,reset-on-resume;
@@ -885,9 +918,8 @@
 	interrupts = <0 1>;
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0x0 0xffffffff>;
-	interrupt-map = <0x0 0 &intc 0 133 0
-			 0x0 1 &spmi_bus 0x0 0x0 0x9 0x0>;
-	interrupt-names = "hs_phy_irq", "pmic_id_irq";
+	interrupt-map = <0x0 0 &intc 0 133 0>;
+	interrupt-names = "hs_phy_irq";
 
 	qcom,misc-ref = <&pm8941_misc>;
 };
