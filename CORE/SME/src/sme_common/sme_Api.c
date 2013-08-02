@@ -1806,6 +1806,19 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                 }
                 break ;
 #endif
+
+#ifdef FEATURE_WLAN_LPHB
+          /* LPHB timeout indication arrived, send IND to client */
+          case eWNI_SME_LPHB_WAIT_TIMEOUT_IND:
+                if (pMac->sme.pLphbWaitTimeoutCb)
+                {
+                   pMac->sme.pLphbWaitTimeoutCb(pMac->pAdapter, pMsg->bodyptr);
+                }
+                vos_mem_free(pMsg->bodyptr);
+
+                break;
+#endif /* FEATURE_WLAN_LPHB */
+
           default:
 
              if ( ( pMsg->type >= eWNI_SME_MSG_TYPES_BEGIN )
@@ -8705,4 +8718,60 @@ VOS_STATUS sme_isSta_p2p_clientConnected(tHalHandle hHal)
     }
     return VOS_STATUS_E_FAILURE;
 }
+
+
+#ifdef FEATURE_WLAN_LPHB
+/* ---------------------------------------------------------------------------
+    \fn sme_LPHBConfigReq
+    \API to make configuration LPHB within FW.
+    \param hHal - The handle returned by macOpen
+    \param lphdReq - LPHB request argument by client
+    \param pCallbackfn - LPHB timeout notification callback function pointer
+    \- return Configuration message posting status, SUCCESS or Fail
+    -------------------------------------------------------------------------*/
+eHalStatus sme_LPHBConfigReq
+(
+   tHalHandle hHal,
+   tSirLPHBReq *lphdReq,
+   void (*pCallbackfn)(void *pAdapter, void *indParam)
+)
+{
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS          vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal      pMac      = PMAC_STRUCT(hHal);
+    vos_msg_t           vosMessage;
+
+    status = sme_AcquireGlobalLock(&pMac->sme);
+    if (eHAL_STATUS_SUCCESS == status)
+    {
+        if ((LPHB_SET_EN_PARAMS_INDID == lphdReq->cmd) &&
+            (NULL == pCallbackfn) &&
+            (NULL == pMac->sme.pLphbWaitTimeoutCb))
+        {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Indication Call back did not registered", __func__);
+           sme_ReleaseGlobalLock(&pMac->sme);
+           return eHAL_STATUS_FAILURE;
+        }
+        else if (NULL != pCallbackfn)
+        {
+           pMac->sme.pLphbWaitTimeoutCb = pCallbackfn;
+        }
+
+        /* serialize the req through MC thread */
+        vosMessage.bodyptr = lphdReq;
+        vosMessage.type    = WDA_LPHB_CONF_REQ;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+        {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Post Config LPHB MSG fail", __func__);
+           status = eHAL_STATUS_FAILURE;
+        }
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+
+    return(status);
+}
+#endif /* FEATURE_WLAN_LPHB */
 

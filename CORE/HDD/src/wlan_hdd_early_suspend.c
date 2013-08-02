@@ -961,6 +961,45 @@ void hdd_suspend_wlan(void)
    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
    {
        pAdapter = pAdapterNode->pAdapter;
+
+#ifdef FEATURE_WLAN_LPHB
+       if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) &&
+           (pHddCtx->lphbEnableReq.enable))
+       {
+           tSirLPHBReq *hb_params = NULL;
+
+           hb_params = (tSirLPHBReq *)vos_mem_malloc(sizeof(tSirLPHBReq));
+           if (NULL == hb_params)
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                         "%s: hb_params alloc failed", __func__);
+           }
+           else
+           {
+               eHalStatus smeStatus;
+
+               hb_params->cmd    = LPHB_SET_EN_PARAMS_INDID;
+               hb_params->params.lphbEnableReq.enable  =
+                                    pHddCtx->lphbEnableReq.enable;
+               hb_params->params.lphbEnableReq.item    =
+                                    pHddCtx->lphbEnableReq.item;
+               hb_params->params.lphbEnableReq.session =
+                                    pHddCtx->lphbEnableReq.session;
+               /* If WLAN is suspend state, send enable command immediately */
+               smeStatus = sme_LPHBConfigReq((tHalHandle)(pHddCtx->hHal),
+                                             hb_params,
+                                             NULL);
+               if (eHAL_STATUS_SUCCESS != smeStatus)
+               {
+                   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                             "LPHB Config Fail, disable");
+                   pHddCtx->lphbEnableReq.enable = 0;
+                   vos_mem_free(hb_params);
+               }
+           }
+       }
+#endif /* FEATURE_WLAN_LPHB */
+
        if ( (WLAN_HDD_INFRA_STATION != pAdapter->device_mode)
          && (WLAN_HDD_SOFTAP != pAdapter->device_mode)
          && (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode) )
@@ -1272,6 +1311,44 @@ void hdd_resume_wlan(void)
       }
 
       hdd_conf_resume_ind(pAdapter);
+
+#ifdef FEATURE_WLAN_LPHB
+      if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) &&
+          (pHddCtx->lphbEnableReq.enable))
+      {
+         tSirLPHBReq *hb_params = NULL;
+
+         hb_params = (tSirLPHBReq *)vos_mem_malloc(sizeof(tSirLPHBReq));
+         if (NULL == hb_params)
+         {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: hb_params alloc failed", __func__);
+         }
+         else
+         {
+            eHalStatus smeStatus;
+
+            hb_params->cmd    = LPHB_SET_EN_PARAMS_INDID;
+            hb_params->params.lphbEnableReq.enable  = 0;
+            hb_params->params.lphbEnableReq.item    =
+                              pHddCtx->lphbEnableReq.item;
+            hb_params->params.lphbEnableReq.session =
+                              pHddCtx->lphbEnableReq.session;
+            /* If WLAN is suspend state, send enable command immediately */
+            smeStatus = sme_LPHBConfigReq((tHalHandle)(pHddCtx->hHal),
+                                          hb_params,
+                                          NULL);
+            if (eHAL_STATUS_SUCCESS != smeStatus)
+            {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                         "LPHB Config Fail, disable");
+               pHddCtx->lphbEnableReq.enable = 0;
+               vos_mem_free(hb_params);
+            }
+         }
+      }
+#endif /* FEATURE_WLAN_LPHB */
+
       status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
       pAdapterNode = pNext;
    }
