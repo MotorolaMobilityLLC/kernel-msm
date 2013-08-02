@@ -955,7 +955,9 @@ struct hdd_context_s
    
    /** ptt Process ID*/
    v_SINT_t ptt_pid;
-
+#ifdef WLAN_KD_READY_NOTIFIER
+   v_BOOL_t kd_nl_init;
+#endif /* WLAN_KD_READY_NOTIFIER */
    v_U8_t change_iface;
 
    /** Concurrency Parameters*/
