@@ -1540,6 +1540,7 @@ static const struct file_operations kgsl_drm_driver_fops = {
 	.unlocked_ioctl = drm_ioctl,
 	.mmap = drm_gem_mmap,
 	.poll = drm_poll,
+	.read = drm_read,
 	.fasync = drm_fasync,
 };
 
