@@ -1057,6 +1057,10 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
        goto err_ftm_register_wext_close;
     }
 
+#ifdef WLAN_KD_READY_NOTIFIER
+   pHddCtx->kd_nl_init = 1;
+#endif /* WLAN_KD_READY_NOTIFIER */
+
 #ifdef PTT_SOCK_SVC_ENABLE
     //Initialize the PTT service
     if(ptt_sock_activate_svc(pHddCtx) != 0)
