@@ -3277,10 +3277,10 @@ static struct i2c_registry i2c_anx7808_devices __initdata = {
 static void __init add_i2c_anx7808_device(void)
 {
 	if (machine_is_apq8064_flo()) {
-		anx7808_pdata.phy_reg2 = 0x39;
-		anx7808_pdata.phy_reg12 = 0x09;
+		anx7808_pdata.phy_reg2 = 0x3f;
+		anx7808_pdata.phy_reg12 = 0x10;
 		anx7808_pdata.phy_reg6 = 0x3f;
-		anx7808_pdata.phy_reg16 = 0x1d;
+		anx7808_pdata.phy_reg16 = 0x1f;
 	} else if (machine_is_apq8064_deb()) {
 		anx7808_pdata.phy_reg2 = 0x3a;
 		anx7808_pdata.phy_reg12 = 0x09;
