@@ -12,6 +12,7 @@
  */
 #include "msm_sensor.h"
 #include <linux/crc16.h>
+#include <linux/bitrev.h>
 #define AR0543_SENSOR_NAME "ar0543"
 DEFINE_MSM_MUTEX(ar0543_mut);
 
@@ -29,6 +30,8 @@ static struct msm_sensor_ctrl_t ar0543_s_ctrl;
 #define AR0543_OTP_CRC_OFFSET 31
 #define AR0543_OTP_CRC_INIT 0
 #define AR0543_SN_SIZE 4
+
+/*#define DEBUG_OTP_RAW_DUMP*/
 
 static uint16_t ar0543_otp[AR0543_OTP_SIZE];
 
@@ -190,38 +193,57 @@ static void __exit ar0543_exit_module(void)
 	return;
 }
 
-#if 0
-static void ar0543_otp_raw_dump(uint16_t *ar0543_otp_ptr)
+#ifdef DEBUG_OTP_RAW_DUMP
+static void ar0543_otp_raw_dump(uint8_t *data, uint16_t size)
 {
 	int i = 0;
 
 	/* Print raw words */
-	for (i = 0; i < AR0543_OTP_SIZE; i++) {
-		pr_info("%s: ar0543_otp[%d] = 0x%x\n",
-				__func__, i, *(ar0543_otp_ptr+i));
+	for (i = 0; i < size; i++) {
+		pr_info("%s: data[%d] = 0x%x\n",
+				__func__, i, *(data+i));
 	}
 }
 #endif
 
-static int32_t ar0543_otp_validate_crc(uint16_t *ar0543_otp_ptr)
+static int32_t ar0543_otp_validate_crc(uint8_t *ar0543_otp_ptr, uint16_t size)
 {
 	int32_t rc = 0;
 	u16 crc_otp = 0;
 	u16 crc = 0;
+	u16 crc_ref = 0;
+	u8 *otp_ref;
+	int i;
+
+	/* Allocate memory for reflected OTP data */
+	otp_ref = kmalloc(size, GFP_KERNEL);
+	if (otp_ref == NULL)
+		return -ENOMEM;
+
+	/* Reflect OTP data */
+	for (i = 0; i < size; i++)
+		*(otp_ref + i) = bitrev8(*(ar0543_otp_ptr + i));
+
+	/* Calculate CRC */
+	crc = crc16(crc, otp_ref, size);
+
+	/* Reflect CRC */
+	crc_ref = bitrev16(crc);
 
 	/* Read OTP CRC */
-	crc_otp = *(ar0543_otp_ptr+AR0543_OTP_CRC_SIZE);
+	crc_otp = *(ar0543_otp_ptr + size) | *(ar0543_otp_ptr + size + 1) << 8;
 
-	/* Check CRC16 */
-	crc = crc16(AR0543_OTP_CRC_INIT, (u8 *)ar0543_otp_ptr,
-			(AR0543_OTP_CRC_SIZE)*2);
-	if (crc == crc_otp) {
+	/* Compare CRC */
+	if (crc_ref == crc_otp) {
 		pr_debug("%s: OTP CRC pass\n", __func__);
 	} else {
-		pr_warn("%s: OTP CRC fail(crc = 0x%x, crc_otp = 0x%x)!\n",
-				__func__, crc, crc_otp);
+		pr_warn("%s: OTP CRC fail(crc_ref = 0x%x, crc_otp = 0x%x)!\n",
+				__func__, crc_ref, crc_otp);
 		rc = -1;
 	}
+
+	/* Free reflected OTP data */
+	kfree(otp_ref);
 
 	return rc;
 }
@@ -298,6 +320,7 @@ static int32_t ar0543_read_otp(struct msm_sensor_ctrl_t *s_ctrl,
 	uint8_t i = 0;
 	uint8_t otp_rt = 0;
 	uint16_t j = 0;
+	uint16_t swap = 0;
 
 	/* For the maximum number of OTP entries */
 	for (i = 0; i < AR0543_OTP_MAX_ENTRIES; i++) {
@@ -335,9 +358,15 @@ static int32_t ar0543_read_otp(struct msm_sensor_ctrl_t *s_ctrl,
 					__func__, otp_rt);
 		}
 
+		/* Fix endianness of data, except CRC bytes */
+		for (j = 0; j < (AR0543_OTP_CRC_SIZE-1); j++) {
+			swap = ar0543_otp_ptr[j];
+			ar0543_otp_ptr[j] = (swap>>8) | (swap<<8);
+		}
 
 		/* Validate OTP CRC */
-		rc = ar0543_otp_validate_crc(ar0543_otp_ptr);
+		rc = ar0543_otp_validate_crc((uint8_t *)ar0543_otp_ptr,
+				(AR0543_OTP_CRC_SIZE*2));
 		if (rc < 0) {
 			pr_warn("%s: OTP CRC (record group = %d) fail!\n",
 					__func__, i);
@@ -348,10 +377,11 @@ static int32_t ar0543_read_otp(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 	}
 
-#if 0
+#ifdef DEBUG_OTP_RAW_DUMP
 	/* Dump OTP */
-	ar0543_otp_raw_dump(ar0543_otp_ptr);
+	ar0543_otp_raw_dump((uint8_t *)ar0543_otp_ptr, AR0543_OTP_SIZE*2);
 #endif
+
 	return rc;
 }
 
