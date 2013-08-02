@@ -226,6 +226,18 @@ struct synaptics_dsx_hob {
 	unsigned char f01_c9;
 };
 
+/* global variable init-ed from kernel cmd line */
+static int touch_test_mode;
+
+int __init touch_test_mode_init(char *s)
+{
+	touch_test_mode = 1;
+	pr_info("touch driver in TEST mode\n");
+	return 1;
+}
+
+__setup("touch_test_mode", touch_test_mode_init);
+
 static struct synaptics_dsx_hob hob_data;
 static unsigned char tsb_buff_clean_flag = 1;
 
@@ -916,7 +928,8 @@ static int synaptics_dsx_wait_for_idle(struct synaptics_rmi4_data *rmi4_data)
 		current_state = synaptics_dsx_get_state_safe(rmi4_data);
 		if (!(current_state == STATE_INIT ||
 			current_state == STATE_FLASH ||
-			current_state == STATE_UNKNOWN))
+			current_state == STATE_UNKNOWN ||
+			touch_test_mode))
 			break;
 
 		usleep_range(1000, 1000);
@@ -955,9 +968,10 @@ static int synaptics_dsx_sensor_ready_state(
 	ui_mode = status.flash_prog == 0;
 	pr_debug("UI mode: %s\n", ui_mode ? "true" : "false");
 
-	if (ui_mode)
+	if (ui_mode) {
 		state = standby ? STATE_STANDBY : STATE_ACTIVE;
-	else
+		state = touch_test_mode ? STATE_ACTIVE : state;
+	} else
 		if (!(state == STATE_INIT || state == STATE_FLASH))
 			state = STATE_BL;
 
