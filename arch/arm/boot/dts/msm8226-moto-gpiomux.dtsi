@@ -1,0 +1,735 @@
+/* Copyright (c) 2013, Motorola Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	gpiomux {
+		compatible = "qcom,msm8x26-pinmux";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		pin@fd51000 {
+			reg = <0xfd511000 0x10>;	/* SPI_MOSI */
+			qcom,pin-num = <0>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* blsp1_3                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* blsp1_3                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51010 {
+			reg = <0xfd511010 0x10>;	/* SPI_MISO */
+			qcom,pin-num = <1>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* blsp1_2                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* blsp1_2                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51020 {
+			reg = <0xfd511020 0x10>;	/* SPI_CMMB_CS_N */
+			qcom,pin-num = <2>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* blsp1_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* blsp1_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51030 {
+			reg = <0xfd511030 0x10>;	/* SPI_CLK */
+			qcom,pin-num = <3>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* blsp1_0                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* blsp1_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51040 {
+			reg = <0xfd511040 0x10>;	/* MSM_HS_DET */
+			qcom,pin-num = <4>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(4)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(4)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51060 {
+			reg = <0xfd511060 0x10>;	/* I2C2_SDA_SENS */
+			qcom,pin-num = <6>;
+			qcom,active@0 {
+				qcom,func = <3>;  /* blsp2_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <3>;  /* blsp2_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51070 {
+			reg = <0xfd511070 0x10>;	/* I2C2_SCL_SENS */
+			qcom,pin-num = <7>;
+			qcom,active@0 {
+				qcom,func = <3>;  /* blsp2_0                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <3>;  /* blsp2_0                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd510a0 {
+			reg = <0xfd5110a0 0x10>;	/* I2C3_SDA */
+			qcom,pin-num = <10>;
+			qcom,active@0 {
+				qcom,func = <3>;  /* blsp3_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <3>;  /* blsp3_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd510b0 {
+			reg = <0xfd5110b0 0x10>;	/* I2C3_SCL */
+			qcom,pin-num = <11>;
+			qcom,active@0 {
+				qcom,func = <3>;  /* blsp3_0                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <3>;  /* blsp3_0                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+
+		pin@fd510d0 {
+			reg = <0xfd5110d0 0x10>;	/* TEMP_ALERT_N */
+			qcom,pin-num = <13>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(13)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(13)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd510e0 {
+			reg = <0xfd5110e0 0x10>;	/* I2C4_SDA */
+			qcom,pin-num = <14>;
+			qcom,active@0 {
+				qcom,func = <3>;  /* blsp4_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <3>;  /* blsp4_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd510f0 {
+			reg = <0xfd5110f0 0x10>;	/* I2C4_SCL */
+			qcom,pin-num = <15>;
+			qcom,active@0 {
+				qcom,func = <3>;  /* blsp4_0                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <3>;  /* blsp4_0                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51100 {
+			reg = <0xfd511100 0x10>;	/* CTP_RST_N */
+			qcom,pin-num = <16>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(16)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(16)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51110 {
+			reg = <0xfd511110 0x10>;	/* CTP_INT */
+			qcom,pin-num = <17>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(17)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(17)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51120 {
+			reg = <0xfd511120 0x10>;	/* I2C5_SDA_CTP */
+			qcom,pin-num = <18>;
+			qcom,active@0 {
+				qcom,func = <3>;  /* blsp5_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <3>;  /* blsp5_1                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51130 {
+			reg = <0xfd511130 0x10>;	/* I2C5_SCL_CTP */
+			qcom,pin-num = <19>;
+			qcom,active@0 {
+				qcom,func = <3>;  /* blsp5_0                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <3>;  /* blsp5_0                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51160 {
+			reg = <0xfd511160 0x10>;	/* SPI_ETH_CS_N */
+			qcom,pin-num = <22>;
+			qcom,active@0 {
+				qcom,func = <4>;  /* spi_cs3_n_blsp1        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <2>;   /* 6ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <4>;  /* spi_cs3_n_blsp1        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <2>;   /* 6ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51190 {
+			reg = <0xfd511190 0x10>;	/* DSI_RST_N */
+			qcom,pin-num = <25>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(25)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <2>;   /* output low             */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(25)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd511a0 {
+			reg = <0xfd5111a0 0x10>;	/* CAM_MCLK0 */
+			qcom,pin-num = <26>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* cam_mclk0              */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <2>;   /* 6ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* cam_mclk0              */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd511b0 {
+			reg = <0xfd5111b0 0x10>;	/* CAM_MCLK1 */
+			qcom,pin-num = <27>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* cam_mclk1              */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <2>;   /* 6ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* cam_mclk1              */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd511d0 {
+			reg = <0xfd5111d0 0x10>;	/* I2C0_SDA_CAM */
+			qcom,pin-num = <29>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* cci_i2c0_sda           */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(29)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd511e0 {
+			reg = <0xfd5111e0 0x10>;	/* I2C0_SCL_CAM */
+			qcom,pin-num = <30>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* cci_i2c0_scl           */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(30)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51220 {
+			reg = <0xfd511220 0x10>;	/* DISP_VDDIO_EN */
+			qcom,pin-num = <34>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(34)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(34)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+		};
+
+		pin@fd51230 {
+			reg = <0xfd511230 0x10>;	/* CAM2_STANDBY_N */
+			qcom,pin-num = <35>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(35)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(35)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51240 {
+			reg = <0xfd511240 0x10>;	/* CAM1_STANDBY_N */
+			qcom,pin-num = <36>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(36)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(36)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51250 {
+			reg = <0xfd511250 0x10>;	/* CAM1_RST_N */
+			qcom,pin-num = <37>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(37)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(37)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51260 {
+			reg = <0xfd511260 0x10>;	/* SD_CARD_DET_N */
+			qcom,pin-num = <38>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(38)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(38)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51280 {
+			reg = <0xfd511280 0x10>;	/* WLAN_DATA2 */
+			qcom,pin-num = <40>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* wlan_data_2            */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(40)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51290 {
+			reg = <0xfd511290 0x10>;	/* WLAN_DATA1 */
+			qcom,pin-num = <41>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* wlan_data_1            */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(41)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd512a0 {
+			reg = <0xfd5112a0 0x10>;	/* WLAN_DATA0 */
+			qcom,pin-num = <42>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* wlan_data_0            */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(42)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd512b0 {
+			reg = <0xfd5112b0 0x10>;	/* WLAN_SET */
+			qcom,pin-num = <43>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* wlan_set               */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(43)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd512c0 {
+			reg = <0xfd5112c0 0x10>;	/* WLAN_CLK */
+			qcom,pin-num = <44>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* wlan_clk               */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(44)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51330 {
+			reg = <0xfd511330 0x10>;	/* GYRO_INT2 */
+			qcom,pin-num = <51>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(51)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(51)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd513e0 {
+			reg = <0xfd5113e0 0x10>;	/* SENSOR_RST_N */
+			qcom,pin-num = <62>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(62)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(62)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+		};
+
+		pin@fd513f0 {
+			reg = <0xfd5113f0 0x10>;	/* ACCL_INT_N */
+			qcom,pin-num = <63>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(63)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(63)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51400 {
+			reg = <0xfd511400 0x10>;	/* GYRO_INT_N */
+			qcom,pin-num = <64>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(64)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(64)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51450 {
+			reg = <0xfd511450 0x10>;	/* USR_RST_WARN_N */
+			qcom,pin-num = <69>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(69)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(69)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd5116a0 {
+			reg = <0xfd5116a0 0x10>;	/* KPSNS0 */
+			qcom,pin-num = <106>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(106)       */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(106)       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd5116b0 {
+			reg = <0xfd5116b0 0x10>;	/* KPSNS1 */
+			qcom,pin-num = <107>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(107)       */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(107)       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd5116c0 {
+			reg = <0xfd5116c0 0x10>;	/* KPSNS2 */
+			qcom,pin-num = <108>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(108)       */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(108)       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd516d0 {
+			reg = <0xfd5116d0 0x10>;	/* RF_CONN_DET */
+			qcom,pin-num = <109>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(109)       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(109)       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51720 {
+			reg = <0xfd511720 0x10>;	/* GYRO_DATA_EN */
+			qcom,pin-num = <114>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(114)       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(114)       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+	};
+};
