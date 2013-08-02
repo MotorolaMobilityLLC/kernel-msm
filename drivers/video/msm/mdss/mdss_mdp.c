@@ -831,6 +831,7 @@ void mdss_mdp_clk_ctrl(int enable)
 	if (enable && changed)
 		mdss_mdp_idle_pc_restore();
 }
+EXPORT_SYMBOL(mdss_mdp_clk_ctrl);
 
 static inline int mdss_mdp_irq_clk_register(struct mdss_data_type *mdata,
 					    char *clk_name, int clk_idx)
