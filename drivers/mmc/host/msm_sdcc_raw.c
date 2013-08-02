@@ -554,6 +554,8 @@ struct raw_mmc_host {
 /* TODO: handle multiple versions of MSM */
 #define MSM_SDC1_BASE	0xf9824000
 
+#define MAX_TRIES	10000
+
 /* data access time unit in ns */
 static const unsigned int taac_unit[] = {
 	1, 10, 100, 1000, 10000, 100000, 1000000, 10000000
@@ -1686,6 +1688,7 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 	unsigned int write_error;
 	unsigned int status;
 	int i;
+	int count = 0;
 
 	if ((host == NULL) || (card == NULL))
 		return RAW_MMC_E_INVAL;
@@ -1761,10 +1764,7 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 	/* If Data Mover is NOT used for data xfer: */
 	do {
 		mmc_ret = RAW_MMC_E_SUCCESS;
-		for (i = 0; i < 3; i++) {
-			mmc_status = readl(RAW_MMC_MCI_STATUS);
-			mdelay(1);
-		}
+		mmc_status = readl_relaxed(RAW_MMC_MCI_STATUS);
 
 		if (mmc_status & write_error) {
 			mmc_ret = raw_mmc_status_error(mmc_status);
@@ -1798,9 +1798,20 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 			mmc_ptr++;
 			/* increase mmc_count by word size */
 			mmc_count += sizeof(unsigned int);
-		} else if ((mmc_status & RAW_MMC_MCI_STAT_DATA_END))
-			break;	/* success */
 
+			udelay(700);
+		} else if ((mmc_status & RAW_MMC_MCI_STAT_DATA_END)) {
+			break;	/* success */
+		} else if (mmc_count >= data_len) {
+			count++;
+			udelay(20);
+			if (count > MAX_TRIES) {
+				pr_crit("raw: Reached at max retry times: status=%x, count=%u, len=%u\n"
+					, mmc_status, mmc_count, data_len);
+				mmc_ret = RAW_MMC_E_FAILURE;
+				break;
+			}
+		}
 	} while (1);
 
 	if (mmc_ret != RAW_MMC_E_SUCCESS) {
@@ -1808,7 +1819,7 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 				"Card(RCA:%x)\n", mmc_ret, card->rca);
 		/* In case of any failure happening for multi block transfer */
 		if (xfer_type == RAW_MMC_XFER_MULTI_BLOCK)
-			raw_mmc_send_stop_transmission(card, 1);
+			mmc_ret = raw_mmc_send_stop_transmission(card, 1);
 		return mmc_ret;
 	}
 
