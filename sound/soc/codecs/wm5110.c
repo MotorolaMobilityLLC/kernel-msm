@@ -609,13 +609,13 @@ SND_SOC_DAPM_AIF_OUT("SLIMTX4", "Slim1 Capture", 0,
 SND_SOC_DAPM_AIF_OUT("SLIMTX5", "Slim2 Capture", 0,
 		     ARIZONA_SLIMBUS_TX_CHANNEL_ENABLE,
 		     ARIZONA_SLIMTX5_ENA_SHIFT, 0),
-SND_SOC_DAPM_AIF_OUT("SLIMTX6", "Slim3 Capture", 0,
+SND_SOC_DAPM_AIF_OUT("SLIMTX6", "Slim2 Capture", 0,
 		     ARIZONA_SLIMBUS_TX_CHANNEL_ENABLE,
 		     ARIZONA_SLIMTX6_ENA_SHIFT, 0),
-SND_SOC_DAPM_AIF_OUT("SLIMTX7", "Slim4 Capture", 0,
+SND_SOC_DAPM_AIF_OUT("SLIMTX7", "Slim3 Capture", 0,
 		     ARIZONA_SLIMBUS_TX_CHANNEL_ENABLE,
 		     ARIZONA_SLIMTX7_ENA_SHIFT, 0),
-SND_SOC_DAPM_AIF_OUT("SLIMTX8", "Slim4 Capture", 0,
+SND_SOC_DAPM_AIF_OUT("SLIMTX8", "Slim3 Capture", 0,
 		     ARIZONA_SLIMBUS_TX_CHANNEL_ENABLE,
 		     ARIZONA_SLIMTX8_ENA_SHIFT, 0),
 
@@ -1128,6 +1128,8 @@ static int wm5110_codec_probe(struct snd_soc_codec *codec)
 	arizona_init_spk(codec);
 
 	snd_soc_dapm_disable_pin(&codec->dapm, "HAPTICS");
+
+	printk("wm5110: probed \n");
 
 	priv->core.arizona->dapm = &codec->dapm;
 
