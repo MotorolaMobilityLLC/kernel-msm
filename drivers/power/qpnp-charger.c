@@ -3719,6 +3719,11 @@ qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 			return rc;
 		}
 
+		pr_info("batt_id = %d uV, max_voltage = %d uV, term_curr = %d uA\n",
+			(int)result.physical,
+			(int)batt_data.max_voltage_uv,
+			(int)batt_data.iterm_ua);
+
 		if (batt_data.max_voltage_uv >= 0) {
 			chip->max_voltage_mv = batt_data.max_voltage_uv / 1000;
 			chip->safe_voltage_mv = chip->max_voltage_mv
