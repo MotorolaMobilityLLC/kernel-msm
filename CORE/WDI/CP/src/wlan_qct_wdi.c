@@ -364,6 +364,11 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
 #else
  NULL,
 #endif
+#ifdef FEATURE_WLAN_LPHB
+  WDI_ProcessLPHBConfReq,               /* WDI_LPHB_CFG_REQ */
+#else
+  NULL,
+#endif /* FEATURE_WLAN_LPHB */
   /*-------------------------------------------------------------------------
     Indications
   -------------------------------------------------------------------------*/
@@ -554,6 +559,11 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 #else
   NULL,
 #endif
+#ifdef FEATURE_WLAN_LPHB
+    WDI_ProcessLphbCfgRsp,             /* WDI_LPHB_CFG_RESP */
+#else
+    NULL,
+#endif /* FEATURE_WLAN_LPHB */
   /*---------------------------------------------------------------------
     Indications
   ---------------------------------------------------------------------*/
@@ -590,6 +600,12 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 #else
   NULL,
 #endif
+
+#ifdef FEATURE_WLAN_LPHB
+  WDI_ProcessLphbWaitTimeoutInd,    /* WDI_HAL_LPHB_WAIT_TIMEOUT_IND */
+#else
+  NULL,
+#endif /* FEATURE_WLAN_LPHB */
 };
 
 
@@ -22269,6 +22285,10 @@ WDI_2_HAL_REQ_TYPE
     return WLAN_HAL_DHCP_START_IND;
   case WDI_DHCP_STOP_IND:
     return WLAN_HAL_DHCP_STOP_IND;
+#ifdef FEATURE_WLAN_LPHB
+   case WDI_LPHB_CFG_REQ:
+      return WLAN_HAL_LPHB_CFG_REQ;
+#endif /* FEATURE_WLAN_LPHB */
   default:
     return WLAN_HAL_MSG_MAX;
   }
@@ -22504,6 +22524,12 @@ case WLAN_HAL_DEL_STA_SELF_RSP:
   case WLAN_HAL_GET_ROAM_RSSI_RSP:
     return WDI_GET_ROAM_RSSI_RESP;
 #endif
+#ifdef FEATURE_WLAN_LPHB
+  case WLAN_HAL_LPHB_IND:
+    return WDI_HAL_LPHB_WAIT_TIMEOUT_IND;
+  case WLAN_HAL_LPHB_CFG_RSP:
+    return WDI_LPHB_CFG_RESP;
+#endif /* FEATURE_WLAN_LPHB */
   default:
     return eDRIVER_TYPE_MAX;
   }
@@ -27593,3 +27619,315 @@ void WDI_SetEnableSSR(wpt_boolean  enableSSR)
 {
    gWDICb.bEnableSSR = enableSSR;
 }
+
+
+#ifdef FEATURE_WLAN_LPHB
+/**
+ @brief WDI_ProcessLphbWaitTimeoutInd -
+    This function will be invoked when FW detects low power
+    heart beat failure
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessLphbWaitTimeoutInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LowLevelIndType  wdiInd;
+  tHalLowPowerHeartBeatIndMsg *lphbIndicationParam;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /*-------------------------------------------------------------------------
+  Sanity check
+ -------------------------------------------------------------------------*/
+  if ((NULL == pWDICtx) || (NULL == pEventData) ||
+      (NULL == pEventData->pEventData))
+  {
+     WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  /*-------------------------------------------------------------------------
+  Extract indication and send it to UMAC
+ -------------------------------------------------------------------------*/
+  lphbIndicationParam = (tHalLowPowerHeartBeatIndMsg *)pEventData->pEventData;
+
+  wdiInd.wdiIndicationType = WDI_LPHB_WAIT_TIMEOUT_IND;
+  wdiInd.wdiIndicationData.wdiLPHBTimeoutInd.bssIdx =
+               lphbIndicationParam->lowPowerHeartBeatIndParams.bssIdx;
+  wdiInd.wdiIndicationData.wdiLPHBTimeoutInd.sessionIdx =
+               lphbIndicationParam->lowPowerHeartBeatIndParams.sessionIdx;
+  wdiInd.wdiIndicationData.wdiLPHBTimeoutInd.protocolType =
+               lphbIndicationParam->lowPowerHeartBeatIndParams.protocolType;
+  wdiInd.wdiIndicationData.wdiLPHBTimeoutInd.eventReason =
+               lphbIndicationParam->lowPowerHeartBeatIndParams.eventReason;
+  /*Notify UMAC*/
+  if (pWDICtx->wdiLowLevelIndCB)
+  {
+    pWDICtx->wdiLowLevelIndCB(&wdiInd, pWDICtx->pIndUserData);
+  }
+
+  return WDI_STATUS_SUCCESS;
+}
+
+/**
+ @brief WDI_ProcessLphbCfgRsp -
+    LPHB configuration response from FW
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status WDI_ProcessLphbCfgRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+   WDI_Status           wdiStatus;
+   eHalStatus           halStatus;
+   WDI_LphbCfgCb        wdiLphbCfgCb;
+   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+   /*-------------------------------------------------------------------------
+     Sanity check
+   -------------------------------------------------------------------------*/
+   if ((NULL == pWDICtx) || (NULL == pEventData) ||
+       (NULL == pEventData->pEventData))
+   {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                  "%s: Invalid parameters", __func__);
+      WDI_ASSERT(0);
+      return WDI_STATUS_E_FAILURE;
+   }
+
+   wdiLphbCfgCb = (WDI_LphbCfgCb)pWDICtx->pfncRspCB;
+
+   /*-------------------------------------------------------------------------
+     Extract response and send it to UMAC
+   -------------------------------------------------------------------------*/
+   halStatus = *((eHalStatus*)pEventData->pEventData);
+   wdiStatus = WDI_HAL_2_WDI_STATUS(halStatus);
+
+   WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+              "LPHB Cfg Rsp Return status %d", wdiStatus);
+   /*Notify UMAC*/
+   if (NULL != wdiLphbCfgCb)
+   {
+      wdiLphbCfgCb(wdiStatus, pWDICtx->pRspCBUserData);
+   }
+
+   return WDI_STATUS_SUCCESS;
+}
+
+/**
+ @brief WDI_ProcessLPHBConfReq -
+    LPHB configuration request to FW
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+
+ @see
+ @return none
+*/
+WDI_Status WDI_ProcessLPHBConfReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LPHBReq                   *pLphbReqParams;
+  WDI_Status                     wdiStatus;
+  wpt_uint8*                     pSendBuffer        = NULL;
+  wpt_uint16                     usDataOffset       = 0;
+  wpt_uint16                     usSendSize         = 0;
+  tHalLowPowerHeartBeatReq      *halLphbReqRarams;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /*-------------------------------------------------------------------------
+     Sanity check
+  -------------------------------------------------------------------------*/
+  if ((NULL == pEventData) || (NULL == pEventData->pEventData))
+  {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+               "%s: Invalid parameters in Suspend ind",__func__);
+      WDI_ASSERT(0);
+      return WDI_STATUS_E_FAILURE;
+  }
+
+  pLphbReqParams = (WDI_LPHBReq *)pEventData->pEventData;
+
+   /*-----------------------------------------------------------------------
+     Get message buffer
+   -----------------------------------------------------------------------*/
+  if ((WDI_STATUS_SUCCESS != WDI_GetMessageBuffer(pWDICtx,
+                              WDI_LPHB_CFG_REQ,
+                              sizeof(tHalLowPowerHeartBeatReqMsg),
+                              &pSendBuffer, &usDataOffset, &usSendSize))||
+      (usSendSize < (usDataOffset + sizeof(tHalLowPowerHeartBeatReqMsg))))
+  {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+                  "Unable to get send buffer in LPHB Ind ");
+      WDI_ASSERT(0);
+      return WDI_STATUS_E_FAILURE;
+  }
+
+  halLphbReqRarams = (tHalLowPowerHeartBeatReq *)(pSendBuffer + usDataOffset);
+  wpalMemoryZero(halLphbReqRarams, sizeof(tHalLowPowerHeartBeatReq));
+
+  halLphbReqRarams->lowPowerHeartBeatCmdType =
+                     (tANI_U16)(++pLphbReqParams->cmd);
+  switch ((tANI_U16)pLphbReqParams->cmd)
+  {
+    case WDI_LPHB_SET_EN_PARAMS_INDID:
+      halLphbReqRarams->sessionIdx =
+                                pLphbReqParams->params.lphbEnableReq.session;
+      halLphbReqRarams->options.control.heartBeatEnable =
+                                pLphbReqParams->params.lphbEnableReq.enable;
+      halLphbReqRarams->options.control.heartBeatType =
+                                pLphbReqParams->params.lphbEnableReq.item;
+      break;
+
+    case WDI_LPHB_SET_TCP_PARAMS_INDID:
+      halLphbReqRarams->sessionIdx =
+                                pLphbReqParams->params.lphbTcpParamReq.session;
+      halLphbReqRarams->options.tcpParams.timeOutSec =
+                                pLphbReqParams->params.lphbTcpParamReq.timeout;
+      wpalMemoryCopy(&halLphbReqRarams->options.tcpParams.hostIpv4Addr,
+                     &pLphbReqParams->params.lphbTcpParamReq.dev_ip,
+                     sizeof(v_U32_t));
+      wpalMemoryCopy(&halLphbReqRarams->options.tcpParams.destIpv4Addr,
+                     &pLphbReqParams->params.lphbTcpParamReq.srv_ip,
+                     sizeof(v_U32_t));
+
+      wpalMemoryCopy(halLphbReqRarams->options.tcpParams.gatewayMacAddr,
+                     pLphbReqParams->params.lphbTcpParamReq.gateway_mac,
+                     WDI_MAC_ADDR_LEN);
+
+      halLphbReqRarams->options.tcpParams.hostPort =
+                                pLphbReqParams->params.lphbTcpParamReq.src_port;
+      halLphbReqRarams->options.tcpParams.destPort =
+                                pLphbReqParams->params.lphbTcpParamReq.dst_port;
+      break;
+
+    case WDI_LPHB_SET_TCP_PKT_FILTER_INDID:
+      halLphbReqRarams->sessionIdx =
+                               pLphbReqParams->params.lphbTcpFilterReq.session;
+      halLphbReqRarams->options.tcpUdpFilter.offset =
+                               pLphbReqParams->params.lphbTcpFilterReq.offset;
+      halLphbReqRarams->options.tcpUdpFilter.filterLength =
+                               pLphbReqParams->params.lphbTcpFilterReq.length;
+      wpalMemoryCopy(halLphbReqRarams->options.tcpUdpFilter.filter,
+                     pLphbReqParams->params.lphbTcpFilterReq.filter,
+                     WDI_LPHB_FILTER_LEN);
+      break;
+
+    case WDI_LPHB_SET_UDP_PARAMS_INDID:
+      halLphbReqRarams->sessionIdx =
+                                pLphbReqParams->params.lphbUdpParamReq.session;
+      halLphbReqRarams->options.udpParams.timeOutSec =
+                                pLphbReqParams->params.lphbUdpParamReq.timeout;
+      halLphbReqRarams->options.udpParams.timePeriodSec =
+                                pLphbReqParams->params.lphbUdpParamReq.interval;
+      wpalMemoryCopy(&halLphbReqRarams->options.udpParams.hostIpv4Addr,
+                     &pLphbReqParams->params.lphbUdpParamReq.dev_ip,
+                     sizeof(v_U32_t));
+      wpalMemoryCopy(&halLphbReqRarams->options.udpParams.destIpv4Addr,
+                     &pLphbReqParams->params.lphbUdpParamReq.srv_ip,
+                     sizeof(v_U32_t));
+
+      wpalMemoryCopy(halLphbReqRarams->options.udpParams.gatewayMacAddr,
+                     pLphbReqParams->params.lphbUdpParamReq.gateway_mac,
+                     WDI_MAC_ADDR_LEN);
+
+      halLphbReqRarams->options.udpParams.hostPort =
+                                pLphbReqParams->params.lphbUdpParamReq.src_port;
+      halLphbReqRarams->options.udpParams.destPort =
+                                pLphbReqParams->params.lphbUdpParamReq.dst_port;
+      break;
+
+    case WDI_LPHB_SET_UDP_PKT_FILTER_INDID:
+      halLphbReqRarams->sessionIdx =
+                                pLphbReqParams->params.lphbUdpFilterReq.session;
+      halLphbReqRarams->options.tcpUdpFilter.offset =
+                                pLphbReqParams->params.lphbUdpFilterReq.offset;
+      halLphbReqRarams->options.tcpUdpFilter.filterLength =
+                                pLphbReqParams->params.lphbUdpFilterReq.length;
+      wpalMemoryCopy(halLphbReqRarams->options.tcpUdpFilter.filter,
+                     pLphbReqParams->params.lphbUdpFilterReq.filter,
+                     WDI_LPHB_FILTER_LEN);
+      break;
+
+    case WDI_LPHB_SET_NETWORK_INFO_INDID:
+      /* NA */
+      break;
+
+    default:
+      break;
+  }
+
+  /*-------------------------------------------------------------------------
+    Send Suspend Request to HAL
+  -------------------------------------------------------------------------*/
+  pWDICtx->pfncRspCB          = pEventData->pCBfnc;
+  pWDICtx->pReqStatusUserData = pEventData->pUserData;
+
+  wdiStatus = WDI_SendMsg(pWDICtx, pSendBuffer,
+                          usSendSize, pWDICtx->pfncRspCB,
+                          pWDICtx->pReqStatusUserData,
+                          WDI_LPHB_CFG_RESP);
+
+  return wdiStatus;
+}
+
+/**
+ @brief WDI_LPHBConfReq -
+    LPHB configuration request API
+
+ @param  lphbconfParam : configuration parameter
+         usrData : client context
+         lphbCfgCb : callback function pointer
+
+ @see
+ @return Success or fail status code
+*/
+WDI_Status WDI_LPHBConfReq(void *lphbconfParam,
+                           void *usrData, WDI_LphbCfgCb lphbCfgCb)
+{
+  WDI_EventInfoType      wdiEventData;
+
+  /*------------------------------------------------------------------------
+    Sanity Check
+  ------------------------------------------------------------------------*/
+  if (eWLAN_PAL_FALSE == gWDIInitialized)
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+              "WDI API call before module is initialized - Fail request");
+
+    return WDI_STATUS_E_NOT_ALLOWED;
+  }
+
+  /*------------------------------------------------------------------------
+    Fill in Event data and post to the Main FSM
+  ------------------------------------------------------------------------*/
+  wdiEventData.wdiRequest      = WDI_LPHB_CFG_REQ;
+  wdiEventData.pEventData      = lphbconfParam;
+  wdiEventData.uEventDataSize  = sizeof(WDI_LPHBReq);
+  wdiEventData.pCBfnc          = lphbCfgCb;
+  wdiEventData.pUserData       = usrData;
+
+  return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+#endif /* FEATURE_WLAN_LPHB */
+

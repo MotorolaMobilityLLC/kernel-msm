@@ -449,6 +449,8 @@ typedef enum
 
   WDI_TDLS_LINK_ESTABLISH_REQ                   = 84,
 
+  /* WLAN FW LPHB config request */
+  WDI_LPHB_CFG_REQ                              = 85,
 
   WDI_MAX_REQ,
 
@@ -724,6 +726,10 @@ typedef enum
   WDI_ROAM_SCAN_OFFLOAD_RESP                    = 82,
 
   WDI_TDLS_LINK_ESTABLISH_REQ_RESP              = 83,
+
+  /* WLAN FW LPHB Config response */
+  WDI_LPHB_CFG_RESP                             = 84,
+
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
@@ -774,6 +780,8 @@ typedef enum
   /* TDLS Indication from FW to Host */
   WDI_HAL_TDLS_IND                     = WDI_HAL_IND_MIN + 13,
 
+  /* LPHB timeout indication */
+  WDI_HAL_LPHB_WAIT_TIMEOUT_IND        = WDI_HAL_IND_MIN + 14,
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
 
@@ -2729,6 +2737,24 @@ WDI_ProcessSetTmLevelReq
   WDI_EventInfoType*     pEventData
 );
 
+#ifdef FEATURE_WLAN_LPHB
+/**
+ @brief WDI_ProcessLPHBConfReq -
+    LPHB configuration request to FW
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+
+ @see
+ @return esult of the function call
+*/
+WDI_Status WDI_ProcessLPHBConfReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+#endif /* FEATURE_WLAN_LPHB */
+
 /*=========================================================================
                              Indications
 =========================================================================*/
@@ -4222,6 +4248,26 @@ WDI_ProcessTxPerHitInd
   WDI_EventInfoType*     pEventData
 );
 
+#ifdef FEATURE_WLAN_LPHB
+/**
+ @brief WDI_ProcessLphbWaitTimeoutInd -
+    This function will be invoked when FW detects low power
+    heart beat failure
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessLphbWaitTimeoutInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+#endif /* FEATURE_WLAN_LPHB */
+
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /**
  @brief Process Aggrgated Add TSpec Request function (called when Main FSM
@@ -5281,6 +5327,24 @@ WDI_wdiEdTypeEncToEdTypeEnc
  WDI_EdType wdiEdType
 );
 #endif
+
+#ifdef FEATURE_WLAN_LPHB
+/**
+ @brief WDI_ProcessLphbCfgRsp -
+    LPHB configuration response from FW
+
+ @param  pWDICtx : wdi context
+         pEventData : indication data
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status WDI_ProcessLphbCfgRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+#endif /* FEATURE_WLAN_LPHB */
 
 #endif /*WLAN_QCT_WDI_I_H*/
 

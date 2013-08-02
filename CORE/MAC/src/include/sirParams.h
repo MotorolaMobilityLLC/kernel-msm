@@ -586,6 +586,9 @@ typedef struct sSirMbMsgP2p
 #define SIR_HAL_DHCP_START_IND             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 204)
 #define SIR_HAL_DHCP_STOP_IND              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 205)
 
+#define SIR_HAL_LPHB_CONF_IND              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 206)
+#define SIR_HAL_LPHB_WAIT_EXPIRE_IND       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 207)
+
 #define SIR_HAL_MSG_TYPES_END              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 0xFF)
 // CFG message types
 #define SIR_CFG_MSG_TYPES_BEGIN        (SIR_CFG_MODULE_ID << 8)

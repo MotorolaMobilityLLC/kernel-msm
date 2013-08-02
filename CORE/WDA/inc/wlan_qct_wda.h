@@ -1085,6 +1085,11 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_UPDATE_CHAN_LIST_RSP    SIR_HAL_UPDATE_CHAN_LIST_RSP
 #define WDA_RX_SCAN_EVENT           SIR_HAL_RX_SCAN_EVENT
 
+#ifdef FEATURE_WLAN_LPHB
+#define WDA_LPHB_CONF_REQ          SIR_HAL_LPHB_CONF_IND
+#define WDA_LPHB_WAIT_EXPIRE_IND   SIR_HAL_LPHB_WAIT_EXPIRE_IND
+#endif /* FEATURE_WLAN_LPHB */
+
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
 eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId);
