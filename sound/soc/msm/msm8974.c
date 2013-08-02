@@ -2408,8 +2408,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Slimbus4 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16393",
 		.platform_name = "msm-pcm-hostless",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name	= "wm5110-slim1",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name	= "taiko_vifeedback",
+#endif
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_TX,
 		.be_hw_params_fixup = msm_slim_4_tx_be_hw_params_fixup,
 		.ops = &msm8974_be_ops,
@@ -2422,8 +2427,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "SLIMBUS_2 Hostless Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16388",
 		.platform_name = "msm-pcm-hostless",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name = "wm5110-slim2",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name = "taiko_rx2",
+#endif
 		.ignore_suspend = 1,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm8974_slimbus_2_be_ops,
@@ -2434,8 +2444,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "SLIMBUS_2 Hostless Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16389",
 		.platform_name = "msm-pcm-hostless",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name = "wm5110-slim2",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name = "taiko_tx2",
+#endif
 		.ignore_suspend = 1,
 		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ops = &msm8974_slimbus_2_be_ops,
@@ -2605,8 +2620,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Slimbus Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16385",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name	= "wm5110-slim1",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name	= "taiko_tx1",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_TX,
 		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
@@ -2618,8 +2638,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Slimbus1 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16386",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name	= "wm5110-slim1",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name	= "taiko_rx1",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_RX,
 		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
@@ -2633,8 +2658,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Slimbus1 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16387",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name	= "wm5110-slim1",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name	= "taiko_tx1",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX,
 		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
@@ -2646,8 +2676,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Slimbus3 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16390",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name	= "wm5110-slim1",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name	= "taiko_rx1",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_3_RX,
 		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
@@ -2661,8 +2696,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Slimbus3 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16391",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name	= "wm5110-slim1",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name	= "taiko_tx1",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_3_TX,
 		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
@@ -2674,8 +2714,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Slimbus4 Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16392",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name	= "wm5110-slim1",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name	= "taiko_rx1",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_RX,
 		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
@@ -2716,8 +2761,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Slimbus5 Capture",
 		.cpu_dai_name = "msm-dai-q6-dev.16395",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name = "wm5110-slim3",
+#else
 		.codec_name = "taiko_codec",
 		.codec_dai_name = "taiko_mad1",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_5_TX,
 		.be_hw_params_fixup = msm_slim_5_tx_be_hw_params_fixup,
