@@ -29,10 +29,11 @@ static struct kmem_cache *winode_slab;
 static int gc_thread_func(void *data)
 {
 	struct f2fs_sb_info *sbi = data;
+	struct f2fs_gc_kthread *gc_th = sbi->gc_thread;
 	wait_queue_head_t *wq = &sbi->gc_thread->gc_wait_queue_head;
 	long wait_ms;
 
-	wait_ms = GC_THREAD_MIN_SLEEP_TIME;
+	wait_ms = gc_th->min_sleep_time;
 
 	do {
 		if (try_to_freeze())
@@ -61,15 +62,15 @@ static int gc_thread_func(void *data)
 			continue;
 
 		if (!is_idle(sbi)) {
-			wait_ms = increase_sleep_time(wait_ms);
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
 			mutex_unlock(&sbi->gc_mutex);
 			continue;
 		}
 
 		if (has_enough_invalid_blocks(sbi))
-			wait_ms = decrease_sleep_time(wait_ms);
+			wait_ms = decrease_sleep_time(gc_th, wait_ms);
 		else
-			wait_ms = increase_sleep_time(wait_ms);
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
 
 #ifdef CONFIG_F2FS_STAT_FS
 		sbi->bg_gc++;
@@ -77,7 +78,7 @@ static int gc_thread_func(void *data)
 
 		/* if return value is not zero, no victim was selected */
 		if (f2fs_gc(sbi))
-			wait_ms = GC_THREAD_NOGC_SLEEP_TIME;
+			wait_ms = gc_th->no_gc_sleep_time;
 	} while (!kthread_should_stop());
 	return 0;
 }
@@ -95,6 +96,10 @@ int start_gc_thread(struct f2fs_sb_info *sbi)
 		err = -ENOMEM;
 		goto out;
 	}
+
+	gc_th->min_sleep_time = DEF_GC_THREAD_MIN_SLEEP_TIME;
+	gc_th->max_sleep_time = DEF_GC_THREAD_MAX_SLEEP_TIME;
+	gc_th->no_gc_sleep_time = DEF_GC_THREAD_NOGC_SLEEP_TIME;
 
 	sbi->gc_thread = gc_th;
 	init_waitqueue_head(&sbi->gc_thread->gc_wait_queue_head);
