@@ -384,6 +384,8 @@ get_bpd(const char *name)
 	return -EINVAL;
 }
 
+static struct qpnp_chg_chip *the_chip;
+
 static int
 qpnp_chg_read(struct qpnp_chg_chip *chip, u8 *val,
 			u16 base, int count)
@@ -3238,6 +3240,382 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	return rc;
 }
 
+#define CHG_SHOW_MAX_SIZE 50
+static ssize_t force_chg_usb_suspend_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid usb suspend mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = qpnp_chg_usb_suspend_enable(the_chip, mode ? USB_SUSPEND_BIT : 0);
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_usb_suspend_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = qpnp_chg_read(the_chip, &value,
+			the_chip->usb_chgpth_base + CHGR_USB_USB_SUSP, 1);
+	if (ret) {
+		pr_err("qpnp_chg_read CHGR_USB_USB_SUSP failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = (USB_SUSPEND_BIT & value) ? 1 : 0;
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_usb_suspend, 0664,
+		force_chg_usb_suspend_show,
+		force_chg_usb_suspend_store);
+
+static ssize_t force_chg_fail_clear_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid chg fail mode value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = qpnp_chg_masked_write(the_chip,
+		the_chip->chgr_base + CHGR_CHG_FAILED,
+		CHGR_CHG_FAILED_BIT,
+		CHGR_CHG_FAILED_BIT, 1);
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_fail_clear_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = qpnp_chg_read(the_chip, &value,
+			the_chip->chgr_base + CHGR_CHG_FAILED, 1);
+	if (ret) {
+		pr_err("qpnp_chg_read CHGR_CHG_FAILED ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = ((CHGR_CHG_FAILED_BIT) & value);
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_fail_clear, 0664,
+		force_chg_fail_clear_show,
+		force_chg_fail_clear_store);
+
+static ssize_t force_chg_auto_enable_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid auto enable value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = qpnp_chg_masked_write(the_chip, the_chip->chgr_base + CHGR_CHG_CTRL,
+			CHGR_CHG_EN,
+			mode ? CHGR_CHG_EN : 0, 1);
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_auto_enable_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = qpnp_chg_read(the_chip, &value,
+				the_chip->chgr_base + CHGR_CHG_CTRL, 1);
+
+	if (ret) {
+		pr_err("qpnp_chg_read CHGR_CHG_CTRL failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = (CHGR_CHG_EN & value) ? 1 : 0;
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_auto_enable, 0664,
+		force_chg_auto_enable_show,
+		force_chg_auto_enable_store);
+
+static ssize_t force_chg_ibatt_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long chg_current;
+
+	r = kstrtoul(buf, 0, &chg_current);
+	if (r) {
+		pr_err("Invalid ibatt value = %lu\n", chg_current);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	r = qpnp_chg_ibatmax_set(the_chip, chg_current);
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_ibatt_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = qpnp_chg_read(the_chip, &value,
+				the_chip->chgr_base + CHGR_IBAT_MAX, 1);
+
+	if (ret) {
+		pr_err("qpnp_chg_read CHG_IBAT_MAX failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = ((value & QPNP_CHG_I_MASK) * QPNP_CHG_I_STEP_MA);
+	state += QPNP_CHG_I_MIN_MA;
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_ibatt, 0664,
+		force_chg_ibatt_show,
+		force_chg_ibatt_store);
+
+static ssize_t force_chg_iusb_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long usb_curr;
+	u8 temp = 8, usb_reg = 0;
+
+	r = kstrtoul(buf, 0, &usb_curr);
+	if (r) {
+		pr_err("Invalid iusb value = %lu\n", usb_curr);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	usb_reg = ((int) usb_curr) / QPNP_CHG_I_MAXSTEP_MA;
+
+	if (the_chip->flags & CHG_FLAGS_VCP_WA) {
+		temp = 0xA5;
+		r =  qpnp_chg_write(the_chip, &temp,
+			the_chip->buck_base + SEC_ACCESS, 1);
+		r =  qpnp_chg_masked_write(the_chip,
+			the_chip->buck_base + CHGR_BUCK_COMPARATOR_OVRIDE_3,
+			0x0C, 0x0C, 1);
+	}
+
+	r = qpnp_chg_write(the_chip, &usb_reg,
+		the_chip->usb_chgpth_base + CHGR_I_MAX_REG, 1);
+
+	if (the_chip->flags & CHG_FLAGS_VCP_WA) {
+		temp = 0xA5;
+		udelay(200);
+		r =  qpnp_chg_write(the_chip, &temp,
+			the_chip->buck_base + SEC_ACCESS, 1);
+		r =  qpnp_chg_masked_write(the_chip,
+			the_chip->buck_base + CHGR_BUCK_COMPARATOR_OVRIDE_3,
+			0x0C, 0x00, 1);
+	}
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_iusb_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		ret = -ENODEV;
+		goto end;
+	}
+
+	ret = qpnp_chg_read(the_chip, &value,
+				the_chip->usb_chgpth_base + CHGR_I_MAX_REG, 1);
+
+	if (ret) {
+		pr_err("qpnp_chg_read CHGR_I_MAX_REG failed ret = %d\n", ret);
+		ret = -EFAULT;
+		goto end;
+	}
+
+	if (value == 0)
+		ret = 100;
+	else if (value == 1)
+		ret = 150;
+	else
+		ret = value * QPNP_CHG_I_MAXSTEP_MA;
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", ret);
+}
+
+static DEVICE_ATTR(force_chg_iusb, 0664,
+		force_chg_iusb_show,
+		force_chg_iusb_store);
+
+#define ITRICK_STEP 10
+#define ITRICK_OFFSET 50
+#define ITRICK_MASK 0xF
+static ssize_t force_chg_itrick_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long trick_curr;
+	u8 bits = 0;
+
+	r = kstrtoul(buf, 0, &trick_curr);
+	if (r) {
+		pr_err("Invalid itrick value = %lu\n", trick_curr);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	bits = (trick_curr - ITRICK_OFFSET) / ITRICK_STEP;
+
+	r = qpnp_chg_masked_write(the_chip,
+				  the_chip->chgr_base + CHGR_IBAT_ATC_A,
+				  ITRICK_MASK,
+				  bits, 1);
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_itrick_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	u8 value;
+	int state;
+	int ret;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = qpnp_chg_read(the_chip, &value,
+				the_chip->chgr_base + CHGR_IBAT_ATC_A, 1);
+
+	if (ret) {
+		pr_err("failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = ITRICK_OFFSET + (ITRICK_STEP * value);
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_itrick, 0664,
+		   force_chg_itrick_show,
+		   force_chg_itrick_store);
+
 static bool __devinit qpnp_charger_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
@@ -3578,6 +3956,48 @@ qpnp_charger_fac_probe(struct spmi_device *spmi)
 	if (qpnp_chg_is_usb_chg_plugged_in(chip))
 		power_supply_set_online(chip->usb_psy, 1);
 
+	rc = device_create_file(&spmi->dev,
+				&dev_attr_force_chg_auto_enable);
+	if (rc) {
+		pr_err("couldn't create force_chg_auto_enable\n");
+		goto fail_chg_enable;
+	}
+
+	rc = device_create_file(&spmi->dev,
+				&dev_attr_force_chg_ibatt);
+	if (rc) {
+		pr_err("couldn't create force_chg_ibatt\n");
+		goto fail_chg_enable;
+	}
+
+	rc = device_create_file(&spmi->dev,
+				&dev_attr_force_chg_iusb);
+	if (rc) {
+		pr_err("couldn't create force_chg_iusb\n");
+		goto fail_chg_enable;
+	}
+
+	rc = device_create_file(&spmi->dev,
+				&dev_attr_force_chg_usb_suspend);
+	if (rc) {
+		pr_err("couldn't create force_chg_usb_suspend\n");
+		goto fail_chg_enable;
+	}
+
+	rc = device_create_file(&spmi->dev,
+				&dev_attr_force_chg_itrick);
+	if (rc) {
+		pr_err("couldn't create force_chg_itrick\n");
+		goto fail_chg_enable;
+	}
+
+	rc = device_create_file(&spmi->dev,
+				&dev_attr_force_chg_fail_clear);
+	if (rc) {
+		pr_err("couldn't create force_chg_fail_clear\n");
+		goto fail_chg_enable;
+	}
+
 	pr_info("success chg_dis = %d, bpd = %d, usb = %d, dc = %d b_health = %d batt_present = %d\n",
 			chip->charging_disabled,
 			chip->bpd_detection,
@@ -3585,6 +4005,9 @@ qpnp_charger_fac_probe(struct spmi_device *spmi)
 			qpnp_chg_is_dc_chg_plugged_in(chip),
 			get_prop_batt_present(chip),
 			get_prop_batt_health(chip));
+
+	the_chip = chip;
+
 	return 0;
 
 unregister_batt:
@@ -3593,6 +4016,7 @@ unregister_batt:
 fail_chg_enable:
 	regulator_unregister(chip->otg_vreg.rdev);
 	regulator_unregister(chip->boost_vreg.rdev);
+	the_chip = NULL;
 	kfree(chip->thermal_mitigation);
 	kfree(chip);
 	dev_set_drvdata(&spmi->dev, NULL);
@@ -3614,6 +4038,12 @@ qpnp_charger_fac_remove(struct spmi_device *spmi)
 	regulator_unregister(chip->otg_vreg.rdev);
 	regulator_unregister(chip->boost_vreg.rdev);
 
+	device_remove_file(&spmi->dev, &dev_attr_force_chg_usb_suspend);
+	device_remove_file(&spmi->dev, &dev_attr_force_chg_iusb);
+	device_remove_file(&spmi->dev, &dev_attr_force_chg_ibatt);
+	device_remove_file(&spmi->dev, &dev_attr_force_chg_auto_enable);
+	device_remove_file(&spmi->dev, &dev_attr_force_chg_itrick);
+	device_remove_file(&spmi->dev, &dev_attr_force_chg_fail_clear);
 	dev_set_drvdata(&spmi->dev, NULL);
 	kfree(chip);
 
