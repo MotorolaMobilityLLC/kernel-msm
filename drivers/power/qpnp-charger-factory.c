@@ -130,7 +130,7 @@
 #define SMBCL_USB_CHGPTH_SUBTYPE		0x44
 #define SMBCL_MISC_SUBTYPE			0x47
 
-#define QPNP_CHARGER_DEV_NAME	"qcom,qpnp-charger"
+#define QPNP_CHARGER_FAC_DEV_NAME	"qcom,qpnp-charger"
 
 /* Status bits and masks */
 #define CHGR_BOOT_DONE			BIT(7)
@@ -343,7 +343,7 @@ struct qpnp_chg_chip {
 
 
 static struct of_device_id qpnp_charger_match_table[] = {
-	{ .compatible = QPNP_CHARGER_DEV_NAME, },
+	{ .compatible = QPNP_CHARGER_FAC_DEV_NAME, },
 	{}
 };
 
@@ -3238,14 +3238,32 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	return rc;
 }
 
+static bool __devinit qpnp_charger_mmi_factory(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+	of_node_put(np);
+
+	return factory;
+}
+
 static int __devinit
-qpnp_charger_probe(struct spmi_device *spmi)
+qpnp_charger_fac_probe(struct spmi_device *spmi)
 {
 	u8 subtype;
 	struct qpnp_chg_chip	*chip;
 	struct resource *resource;
 	struct spmi_resource *spmi_resource;
 	int rc = 0;
+
+	if (!qpnp_charger_mmi_factory()) {
+		pr_info("Not Factory Mode!\n");
+		return -ENODEV;
+	}
+	pr_info("QPNP Charger Factory Driver Probe!\n");
 
 	chip = kzalloc(sizeof *chip, GFP_KERNEL);
 	if (chip == NULL) {
@@ -3582,7 +3600,7 @@ fail_chg_enable:
 }
 
 static int __devexit
-qpnp_charger_remove(struct spmi_device *spmi)
+qpnp_charger_fac_remove(struct spmi_device *spmi)
 {
 	struct qpnp_chg_chip *chip = dev_get_drvdata(&spmi->dev);
 	if (chip->cool_bat_decidegc && chip->warm_bat_decidegc
@@ -3642,10 +3660,10 @@ static const struct dev_pm_ops qpnp_chg_pm_ops = {
 };
 
 static struct spmi_driver qpnp_charger_driver = {
-	.probe		= qpnp_charger_probe,
-	.remove		= __devexit_p(qpnp_charger_remove),
+	.probe		= qpnp_charger_fac_probe,
+	.remove		= __devexit_p(qpnp_charger_fac_remove),
 	.driver		= {
-		.name		= QPNP_CHARGER_DEV_NAME,
+		.name		= QPNP_CHARGER_FAC_DEV_NAME,
 		.owner		= THIS_MODULE,
 		.of_match_table	= qpnp_charger_match_table,
 		.pm		= &qpnp_chg_pm_ops,
@@ -3656,20 +3674,20 @@ static struct spmi_driver qpnp_charger_driver = {
  * qpnp_chg_init() - register spmi driver for qpnp-chg
  */
 int __init
-qpnp_chg_init(void)
+qpnp_chg_fac_init(void)
 {
 	return spmi_driver_register(&qpnp_charger_driver);
 }
-module_init(qpnp_chg_init);
+module_init(qpnp_chg_fac_init);
 
 static void __exit
-qpnp_chg_exit(void)
+qpnp_chg_fac_exit(void)
 {
 	spmi_driver_unregister(&qpnp_charger_driver);
 }
-module_exit(qpnp_chg_exit);
+module_exit(qpnp_chg_fac_exit);
 
 
 MODULE_DESCRIPTION("QPNP charger driver");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("platform:" QPNP_CHARGER_DEV_NAME);
+MODULE_ALIAS("platform:" QPNP_CHARGER_FAC_DEV_NAME);
