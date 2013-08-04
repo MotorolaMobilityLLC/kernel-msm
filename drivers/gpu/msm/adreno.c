@@ -2461,10 +2461,12 @@ adreno_ft(struct kgsl_device *device,
 
 	/* Restore correct states after fault tolerance */
 	if (adreno_dev->drawctxt_active)
-		device->mmu.hwpagetable =
-			adreno_dev->drawctxt_active->pagetable;
+		kgsl_mmu_setstate(&device->mmu,
+			adreno_dev->drawctxt_active->pagetable,
+			adreno_dev->drawctxt_active->id);
 	else
-		device->mmu.hwpagetable = device->mmu.defaultpagetable;
+		kgsl_mmu_setstate(&device->mmu,
+			device->mmu.defaultpagetable, KGSL_MEMSTORE_GLOBAL);
 	kgsl_sharedmem_writel(&device->memstore,
 			KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
 			eoptimestamp), rb->global_ts);
