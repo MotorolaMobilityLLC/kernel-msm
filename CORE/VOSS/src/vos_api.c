@@ -107,6 +107,9 @@
 /* Approximate amount of time to wait for WDA to stop WDI */
 #define VOS_WDA_STOP_TIMEOUT WDA_STOP_TIMEOUT 
 
+/* Approximate amount of time to wait for WDA to issue a DUMP req */
+#define VOS_WDA_RESP_TIMEOUT WDA_STOP_TIMEOUT
+
 /*---------------------------------------------------------------------------
  * Data definitions
  * ------------------------------------------------------------------------*/
@@ -2123,4 +2126,51 @@ VOS_STATUS vos_wlanRestart(void)
    /* Reload the driver */
    vstatus = wlan_hdd_restart_driver(pHddCtx);
    return vstatus;
+}
+
+
+/**
+  @brief vos_fwDumpReq()
+
+  This function is called to issue dump commands to Firmware
+
+  @param
+       cmd - Command No. to execute
+       arg1 - argument 1 to cmd
+       arg2 - argument 2 to cmd
+       arg3 - argument 3 to cmd
+       arg4 - argument 4 to cmd
+  @return
+       NONE
+*/
+v_VOID_t vos_fwDumpReq(tANI_U32 cmd, tANI_U32 arg1, tANI_U32 arg2,
+                        tANI_U32 arg3, tANI_U32 arg4)
+{
+   VOS_STATUS vStatus          = VOS_STATUS_SUCCESS;
+
+   /* Reset wda wait event */
+   vos_event_reset(&gpVosContext->wdaCompleteEvent);
+
+   WDA_HALDumpCmdReq(NULL, cmd, arg1, arg2, arg3, arg4, NULL);
+
+   /* Need to update time out of complete */
+   vStatus = vos_wait_single_event(&gpVosContext->wdaCompleteEvent,
+                                   VOS_WDA_RESP_TIMEOUT );
+
+   if (vStatus != VOS_STATUS_SUCCESS)
+   {
+      if (vStatus == VOS_STATUS_E_TIMEOUT)
+      {
+         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+          "%s: Timeout occurred before WDA HAL DUMP complete\n", __func__);
+      }
+      else
+      {
+         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+           "%s: reporting other error", __func__);
+      }
+   }
+
+   return;
+
 }
