@@ -1812,6 +1812,24 @@ typedef enum
 #define CFG_ENABLE_SNR_MONITORING_MIN               ( 0 )
 #define CFG_ENABLE_SNR_MONITORING_MAX               ( 1 )
 #define CFG_ENABLE_SNR_MONITORING_DEFAULT           ( 0 )
+//Macro to enable/disable dynamic timer
+#define CFG_DYNAMIC_SPLIT_SCAN_NAME                    "gEnableDynSplitScan"
+#define CFG_DYNAMIC_SPLIT_SCAN_MIN                     ( 0 )
+#define CFG_DYNAMIC_SPLIT_SCAN_MAX                     ( 1 )
+#define CFG_DYNAMIC_SPLIT_SCAN_DEFAULT                 ( 1 )
+
+//Macro to monitor the packet count
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_THRSHLD_NAME    "gSplitScanTxRxThreshold"
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_THRSHLD_MIN     ( 10 )
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_THRSHLD_MAX     ( 100 )
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_THRSHLD_DEFAULT ( 50 )
+
+//Macro to handle the monitor timer value in milliseconds
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_NAME      "gSplitScanTxRxTimer"
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_MIN       ( 1000 )
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_MAX       ( 10000 )
+#define CFG_SPLIT_SCAN_TRAFFIC_MONITOR_TIMER_DEFAULT   ( 5000 )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2189,6 +2207,12 @@ typedef struct
    v_BOOL_t                    bFastRoamInConIniFeatureEnabled;
 #endif
    v_BOOL_t                    fEnableAdaptRxDrain;
+   //TX and RX traffic threshold for split scan
+   v_U8_t                      txRxThresholdForSplitScan;
+   v_U8_t                      dynSplitscan;   //Enable/Disable dynamic
+                                                 //splitscan
+   //Traffic monitor timer for split scan
+   v_U32_t                     trafficMntrTmrForSplitScan;
    v_BOOL_t                    enableOxygenNwk;
    v_U8_t                      flexConnectPowerFactor;
    v_BOOL_t                    enableIbssHeartBeatOffload;

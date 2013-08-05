@@ -47,15 +47,6 @@
   \file  wlan_hdd_tx_rx.h
 
   \brief Linux HDD Tx/RX APIs
-         Copyright 2008 (c) Qualcomm, Incorporated.
-         All Rights Reserved.
-<<<<<<< HEAD:CORE/HDD/inc/wlan_hdd_tx_rx.h
-         Qualcomm Confidential and Proprietary.
-  
-=======
-         Qualcomm Technologies Confidential and Proprietary.
-
->>>>>>> 009551c... wlan: hdd: remove obsolete "WLAN_SOFTAP_FEATURE" featurization:prima/CORE/HDD/inc/wlan_hdd_tx_rx.h
   ==========================================================================*/
 
 /*---------------------------------------------------------------------------
@@ -263,5 +254,13 @@ void hdd_mon_tx_work_queue(struct work_struct *work);
   ===========================================================================*/
 VOS_STATUS hdd_Ibss_GetStaId(hdd_station_ctx_t *pHddStaCtx,
                                   v_MACADDR_t *pMacAddress, v_U8_t *staId);
+
+/**============================================================================
+  @brief hdd_tx_rx_pkt_cnt_stat_timer_handler() -
+                    Timer handler to check enable/disable split scan
+  @param pHddStaCtx : Hdd adapter
+  @return    : VOS_STATUS_SUCCESS/VOS_STATUS_E_FAILURE
+  ===========================================================================*/
+void hdd_tx_rx_pkt_cnt_stat_timer_handler( void *pAdapter);
 
 #endif    // end #if !defined( WLAN_HDD_TX_RX_H )

@@ -1359,6 +1359,7 @@ VOS_STATUS hdd_softap_rx_packet_cbk( v_VOID_t *vosContext,
          if (NET_RX_SUCCESS == rxstat)
          {
             ++pAdapter->hdd_stats.hddTxRxStats.rxDelivered;
+            ++pAdapter->hdd_stats.hddTxRxStats.pkt_rx_count;
          }
          else
          {
@@ -1541,6 +1542,15 @@ VOS_STATUS hdd_softap_RegisterSTA( hdd_adapter_t *pAdapter,
                  "SOFTAP WLANTL_RegisterSTAClient() failed to register.  Status= %d [0x%08lX]",
                  vosStatus, vosStatus );
       return vosStatus;      
+   }
+
+   //Timer value should be in milliseconds
+   if ( pHddCtx->cfg_ini->dynSplitscan &&
+      ( VOS_TIMER_STATE_RUNNING !=
+                      vos_timer_getCurrentState(&pHddCtx->tx_rx_trafficTmr)))
+   {
+        vos_timer_start(&pHddCtx->tx_rx_trafficTmr,
+                        pHddCtx->cfg_ini->trafficMntrTmrForSplitScan);
    }
 
    // if ( WPA ), tell TL to go to 'connected' and after keys come to the driver, 
