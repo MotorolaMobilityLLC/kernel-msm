@@ -3400,7 +3400,7 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 				pr_info("Factory Kill Disabled!\n");
 			} else {
 				pr_info("2 sec to power off.\n");
-				kernel_halt();
+				kernel_power_off();
 				return;
 			}
 		}
