@@ -1396,7 +1396,8 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
    pAdapter = pHddCtx->sta_to_adapter[staId];
    if( NULL == pAdapter )
    {
-      VOS_ASSERT(0);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: pAdapter is Null for staId %u",
+                 __func__, staId);
       return VOS_STATUS_E_FAILURE;
    }
 
