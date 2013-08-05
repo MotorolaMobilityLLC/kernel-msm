@@ -1949,6 +1949,56 @@ end:
 	return ret;
 }
 
+#ifdef CONFIG_SND_SOC_WM5110
+#define MSM8974_AIF1_CHANNELS 2
+#define MSM8974_AIF1_SAMPLE_DEPTH 16
+#define MSM8974_AIF1_BCLK_RATE (SAMPLE_RATE_48KHZ * MSM8974_AIF1_SAMPLE_DEPTH * MSM8974_AIF1_CHANNELS)
+#define WM5110_SYSCLK_RATE (48000 * 1024 * 2)
+
+static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+        int ret;
+        struct snd_soc_codec *codec = rtd->codec;
+
+	dev_crit(codec->dev, "wm5110_dai_init first BE dai initing ...\n");
+
+        ret = clk_set_rate(codec_clk, 24576000);
+        if (ret != 0) {
+                dev_err(codec->dev, "clk set rate failed\n");
+        }
+
+        ret = clk_prepare_enable(codec_clk);
+        if (ret != 0) {
+                dev_err(codec->dev, "clk prepare enable failed \n");
+        }
+
+        ret = snd_soc_codec_set_pll(codec, WM5110_FLL1_REFCLK, ARIZONA_FLL_SRC_NONE,
+                                        0,
+                                        0);
+
+        if (ret != 0) {
+                dev_err(codec->dev, "Failed to set FLL1REFCLK\n");
+        }
+
+        ret = snd_soc_codec_set_pll(codec, WM5110_FLL1, ARIZONA_FLL_SRC_MCLK1,
+                                                24576000,
+                                                WM5110_SYSCLK_RATE);
+
+        if (ret != 0)
+                dev_err(codec->dev, "Failed to start FLL1: %d \n", ret);
+
+        ret = snd_soc_codec_set_sysclk(codec, ARIZONA_CLK_SYSCLK,
+                                                ARIZONA_CLK_SRC_FLL1,
+                                                WM5110_SYSCLK_RATE,
+                                                SND_SOC_CLOCK_IN);
+
+        if (ret != 0)
+                dev_err(codec->dev, "Failed to set SYSCLK: %d \n", ret);
+
+        return 0;
+
+}
+#endif
 
 static struct snd_soc_ops msm8974_slimbus_2_be_ops = {
 	.startup = msm8974_snd_startup,
@@ -2655,7 +2705,11 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 #endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
+#ifdef CONFIG_SND_SOC_WM5110
+		.init = &wm5110_dai_init,
+#else
 		.init = &msm_audrx_init,
+#endif
 		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
 		.ops = &msm8974_be_ops,
 		.ignore_pmdown_time = 1, /* dai link has playback support */
@@ -2870,6 +2924,8 @@ static struct snd_soc_dai_link msm8974_hdmi_dai_link[] = {
 		.platform_name = "msm-pcm-routing",
 		.codec_name     = "msm-hdmi-audio-codec-rx",
 		.codec_dai_name = "msm_hdmi_audio_codec_rx_dai",
+		/* BODGE: avoid commenting out most of the file due to build opts */
+		.init = &msm_audrx_init,
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_HDMI_RX,
 		.be_hw_params_fixup = msm8974_hdmi_be_hw_params_fixup,
