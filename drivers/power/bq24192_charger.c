@@ -589,6 +589,8 @@ static void bq24192_irq_worker(struct work_struct *work)
 }
 
 #ifdef CONFIG_THERMAL_QPNP_ADC_TM
+#define DISABLE_HIGH_THR 6000000
+#define DISABLE_LOW_THR 0
 static void bq24192_vbat_work(struct work_struct *work)
 {
 	struct bq24192_chip *chip =
@@ -600,10 +602,14 @@ static void bq24192_vbat_work(struct work_struct *work)
 		step_current_ma = chip->dwn_chg_i_ma;
 		step_input_i_ma = chip->dwn_input_i_ma;
 		chip->adc_param.state_request = ADC_TM_LOW_THR_ENABLE;
+		chip->adc_param.high_thr = DISABLE_HIGH_THR;
+		chip->adc_param.low_thr = (chip->step_dwn_thr_mv - 100) * 1000;
 	} else {
 		step_current_ma = chip->up_chg_i_ma;
 		step_input_i_ma = chip->up_input_i_ma;
 		chip->adc_param.state_request = ADC_TM_HIGH_THR_ENABLE;
+		chip->adc_param.high_thr = chip->step_dwn_thr_mv * 1000;
+		chip->adc_param.low_thr = DISABLE_LOW_THR;
 	}
 
 	if (bq24192_is_charger_present(chip)) {
@@ -657,9 +663,9 @@ static int bq24192_step_down_detect_init(struct bq24192_chip *chip)
 	}
 
 	chip->adc_param.high_thr = chip->step_dwn_thr_mv * 1000;
-	chip->adc_param.low_thr = (chip->step_dwn_thr_mv - 100) * 1000;
+	chip->adc_param.low_thr = DISABLE_LOW_THR;
 	chip->adc_param.timer_interval = ADC_MEAS1_INTERVAL_2S;
-	chip->adc_param.state_request = ADC_TM_HIGH_THR_ENABLE;
+	chip->adc_param.state_request = ADC_TM_HIGH_LOW_THR_ENABLE;
 	chip->adc_param.btm_ctx = chip;
 	chip->adc_param.threshold_notification = bq24192_vbat_notification;
 	chip->adc_param.channel = VBAT_SNS;
