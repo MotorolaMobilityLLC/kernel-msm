@@ -863,35 +863,46 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
             goto error;
         } // if (pStaDs->mlmStaContext.mlmState != eLIM_MLM_LINK_ESTABLISHED_STATE)
 
-        /**
-         * STA sent Re/Association Request frame while already in
+           /* STA sent association Request frame while already in
+            * 'associated' state and no change in the capability
+            *  so drop the frame */
+        if ((VOS_TRUE == vos_mem_compare(&pStaDs->mlmStaContext.capabilityInfo,
+                                          &pAssocReq->capabilityInfo,
+                                          sizeof(tSirMacCapabilityInfo)))&&
+                                         (subType == LIM_ASSOC))
+        {
+            limLog(pMac, LOGE, FL(" Received Assoc req in state %X STAid=%d"),
+                                       pStaDs->mlmStaContext.mlmState,peerIdx);
+            goto error;
+        }
+        else
+        {
+         /**
+         * STA sent Re/association Request frame while already in
          * 'associated' state. Update STA capabilities and
          * send Association response frame with same AID
          */
+            pStaDs->mlmStaContext.capabilityInfo = pAssocReq->capabilityInfo;
+            if (pStaPreAuthContext &&
+                (pStaPreAuthContext->mlmState ==
+                                           eLIM_MLM_AUTHENTICATED_STATE))
+            {
+                /// STA has triggered pre-auth again
+                authType = pStaPreAuthContext->authType;
+                limDeletePreAuthNode(pMac, pHdr->sa);
+            }
+            else
+                authType = pStaDs->mlmStaContext.authType;
 
-        pStaDs->mlmStaContext.capabilityInfo = pAssocReq->capabilityInfo;
-
-        if (pStaPreAuthContext &&
-            (pStaPreAuthContext->mlmState ==
-                                       eLIM_MLM_AUTHENTICATED_STATE))
-        {
-            /// STA has triggered pre-auth again
-            authType = pStaPreAuthContext->authType;
-            limDeletePreAuthNode(pMac, pHdr->sa);
+            updateContext = true;
+            if (dphInitStaState(pMac, pHdr->sa, peerIdx, true, &psessionEntry->dph.dphHashTable)
+                                      == NULL)
+            {
+                limLog(pMac, LOGE, FL("could not Init STAid=%d"), peerIdx);
+                goto  error;
+            }
         }
-        else
-            authType = pStaDs->mlmStaContext.authType;
-
-        updateContext = true;
-
-        if (dphInitStaState(pMac, pHdr->sa, peerIdx, true, &psessionEntry->dph.dphHashTable) == NULL)   
-        {
-            limLog(pMac, LOGE, FL("could not Init STAid=%d"), peerIdx);
-            goto  error;
-        }
-
-
-        goto sendIndToSme;
+       goto sendIndToSme;
     } // end if (lookup for STA in perStaDs fails)
 
 
