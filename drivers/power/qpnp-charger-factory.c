@@ -24,6 +24,7 @@
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/power_supply.h>
 #include <linux/bitops.h>
+#include <linux/reboot.h>
 #include <linux/ratelimit.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
@@ -476,6 +477,12 @@ qpnp_chg_disable_irq(struct qpnp_chg_irq *irq)
 		disable_irq_nosync(irq->irq);
 	}
 }
+
+static int qpnp_charging_reboot(struct notifier_block *, unsigned long,
+				  void *);
+static struct notifier_block qpnp_charging_reboot_notifier = {
+	.notifier_call = qpnp_charging_reboot,
+};
 
 #define USB_OTG_EN_BIT	BIT(0)
 static int
@@ -3519,6 +3526,51 @@ static DEVICE_ATTR(force_chg_itrick, 0664,
 		   force_chg_itrick_show,
 		   force_chg_itrick_store);
 
+
+static int qpnp_charging_reboot(struct notifier_block *nb,
+				unsigned long event, void *unused)
+{
+	struct qpnp_vadc_result res;
+#define VBUS_OFF_THRESHOLD 900000
+
+	/*
+	 * Hack to power down when both VBUS and BPLUS are present.
+	 * This targets factory environment, where we need to power down
+	 * units with non-removable batteries between stations so that we
+	 * do not drain batteries to death.
+	 * Poll for VBUS to go away (controlled by external supply)
+	 * before proceeding with shutdown.
+	 */
+	switch (event) {
+	case SYS_POWER_OFF:
+		if (!the_chip) {
+			pr_err("called before qpnp charging init\n");
+			break;
+		}
+
+		qpnp_chg_masked_write(the_chip,
+				      the_chip->chgr_base + CHGR_CHG_CTRL,
+				      CHGR_ON_BAT_FORCE_BIT,
+				      CHGR_ON_BAT_FORCE_BIT, 1);
+
+		res.physical = 0;
+		do {
+			if (qpnp_vadc_read(the_chip->vadc_dev, USBIN, &res)) {
+				pr_err("VBUS ADC read error\n");
+				break;
+			} else
+				pr_info("VBUS:= %lld mV\n", res.physical);
+			msleep(100);
+		} while (res.physical > VBUS_OFF_THRESHOLD);
+
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
 static bool __devinit qpnp_charger_mmi_factory(void)
 {
 	struct device_node *np = of_find_node_by_path("/chosen");
@@ -3911,6 +3963,10 @@ qpnp_charger_fac_probe(struct spmi_device *spmi)
 
 	the_chip = chip;
 
+	rc = register_reboot_notifier(&qpnp_charging_reboot_notifier);
+	if (rc)
+		pr_err("%s can't register reboot notifier\n", __func__);
+
 	return 0;
 
 unregister_batt:
@@ -3948,6 +4004,7 @@ qpnp_charger_fac_remove(struct spmi_device *spmi)
 	device_remove_file(&spmi->dev, &dev_attr_force_chg_itrick);
 	device_remove_file(&spmi->dev, &dev_attr_force_chg_fail_clear);
 	dev_set_drvdata(&spmi->dev, NULL);
+	unregister_reboot_notifier(&qpnp_charging_reboot_notifier);
 	kfree(chip);
 
 	return 0;
