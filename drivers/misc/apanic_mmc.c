@@ -84,6 +84,7 @@ struct apanic_data {
 static int start_apanic_threads;
 static int emergency_dump_flag;
 static struct apanic_data drv_ctx;
+static unsigned int add_apanic_done;
 static struct work_struct proc_removal_work;
 /* avoid collision of proc interface operation and proc removal */
 static DEFINE_MUTEX(drv_mutex);
@@ -396,6 +397,7 @@ static void mmc_panic_notify_add(struct hd_struct *hd)
 	}
 
 	ctx->hd = hd;
+	add_apanic_done = 1;
 	page = virt_to_page(ctx->bounce);
 
 	bio_init(&bio);
@@ -414,7 +416,7 @@ static void mmc_panic_notify_add(struct hd_struct *hd)
 	submit_bio(READ, &bio);
 	wait_for_completion(&complete);
 
-	blkdev_put(bdev, FMODE_READ);
+	blkdev_put(bdev, FMODE_WRITE);
 
 	pr_err("apanic: Bound to mmc block device '%s(%u:%u)'\n",
 	       dev_name(dev), MAJOR(dev->devt), MINOR(dev->devt));
@@ -878,7 +880,7 @@ void apanic_mmc_partition_add(struct hd_struct *part)
 
 	if (strncmp(part->info->volname, CONFIG_APANIC_PLABEL, BDEVNAME_SIZE)
 			== 0) {
-		if (drv_ctx.hd == part)
+		if ((drv_ctx.hd == part) || (add_apanic_done != 0))
 			return;
 
 		if (drv_ctx.hd) {
