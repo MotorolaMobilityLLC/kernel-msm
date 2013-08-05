@@ -146,6 +146,11 @@
 				label = "usb_id_nopull";
 				reg = <0x39>;
 			};
+
+			chan@30 {
+				qcom,hw-settle-time = <0xf>;
+			};
+
 		};
 
 	        adcmap_table {
