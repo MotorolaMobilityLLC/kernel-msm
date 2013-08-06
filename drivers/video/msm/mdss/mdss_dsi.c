@@ -230,6 +230,9 @@ int mdss_dsi_get_dt_vreg_data(struct device *dev,
 			}
 			mp->vreg_config[i].post_off_sleep = (!rc ? tmp : 0);
 
+			mp->vreg_config[i].boot_on = of_property_read_bool(of_node,
+					"qcom,cont-splash-enabled");
+
 			pr_debug("%s: %s min=%d, max=%d, enable=%d, disable=%d, preonsleep=%d, postonsleep=%d, preoffsleep=%d, postoffsleep=%d\n",
 				__func__,
 				mp->vreg_config[i].vreg_name,
