@@ -242,6 +242,16 @@ static unsigned char LRA_autocal_sequence[] = {
 	GO_REG, GO,
 };
 
+static unsigned char reinit_sequence[] = {
+	RATED_VOLTAGE_REG, 0,
+	AUTO_CALI_RESULT_REG, 0,
+	AUTO_CALI_BACK_EMF_RESULT_REG, 0,
+	FEEDBACK_CONTROL_REG, 0,
+	Control1_REG, 0,
+	Control2_REG, 0,
+	LIBRARY_SELECTION_REG, 0,
+};
+
 #if SKIP_LRA_AUTOCAL == 1
 static unsigned char LRA_init_sequence[] = {
 	MODE_REG, MODE_INTERNAL_TRIGGER,
@@ -335,6 +345,20 @@ static void drv260x_write_reg_val(const unsigned char *data, unsigned int size)
 				"drv2605: i2c write retry %d\n", tries+1);
 			msleep_interruptible(I2C_RETRY_DELAY);
 		}
+		i += 2;
+	}
+}
+
+static void drv260x_read_reg_val(unsigned char *data, unsigned int size)
+{
+	int i = 0;
+
+	if (size % 2 != 0)
+		return;
+
+	while (i < size) {
+		data[i + 1] = i2c_smbus_read_byte_data(drv260x->client,
+							data[i]);
 		i += 2;
 	}
 }
@@ -434,6 +458,11 @@ static void drv260x_change_mode(char mode)
 	drv260x_vreg_control(true);
 	if (drv260x->external_trigger)
 		gpio_set_value(drv260x->en_gpio, GPIO_LEVEL_HIGH);
+	/* POR may occur after enable,add time to stabilize the part before
+	   the I2C accesses */
+	udelay(850);
+	drv260x_write_reg_val(reinit_sequence, sizeof(reinit_sequence));
+
 #ifdef RTP_CLOSED_LOOP_ENABLE
 	if (mode != MODE_REAL_TIME_PLAYBACK) {
 		tmp[1] |= ERM_OpenLoop_Enabled;
@@ -684,7 +713,7 @@ static int drv260x_probe(struct i2c_client *client,
 	else
 		drv260x->overdrive_voltage = ERM_OVERDRIVE_CLAMP_VOLTAGE;
 
-	if ((pdata->effects_library >= LIBRARY_A) ||
+	if ((pdata->effects_library >= LIBRARY_A) &&
 		(pdata->effects_library <= LIBRARY_F))
 		g_effect_bank = pdata->effects_library;
 
@@ -773,10 +802,11 @@ static void probe_work(struct work_struct *work)
 	}
 #endif
 
+	/* Choose default effect library */
+	drv2605_select_library(g_effect_bank);
+
 	/* Read calibration results */
-	drv260x_read_reg(AUTO_CALI_RESULT_REG);
-	drv260x_read_reg(AUTO_CALI_BACK_EMF_RESULT_REG);
-	drv260x_read_reg(FEEDBACK_CONTROL_REG);
+	drv260x_read_reg_val(reinit_sequence, sizeof(reinit_sequence));
 
 	/* Read device ID */
 	device_id = (status & DEV_ID_MASK);
@@ -791,9 +821,6 @@ static void probe_work(struct work_struct *work)
 		printk(KERN_ALERT "drv260x driver found: unknown.\n");
 		break;
 	}
-
-	/* Choose default effect library */
-	drv2605_select_library(g_effect_bank);
 
 	/* Put hardware in standby */
 	drv260x_standby();

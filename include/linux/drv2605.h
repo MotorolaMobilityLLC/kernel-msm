@@ -76,7 +76,7 @@
 #define DIAG_BAD            (1 << 3)
 
 #define DEV_ID_MASK (7 << 5)
-#define DRV2605 (5 << 5)
+#define DRV2605 (3 << 5)
 #define DRV2604 (4 << 5)
 
 /*
