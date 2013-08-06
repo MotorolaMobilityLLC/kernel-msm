@@ -162,6 +162,9 @@ int msm_dss_config_vreg(struct device *dev, struct dss_vreg *in_vreg,
 					goto vreg_set_voltage_fail;
 				}
 			}
+
+			if (curr_vreg->boot_on)
+				regulator_enable(curr_vreg->vreg);
 		}
 	} else {
 		for (i = num_vreg-1; i >= 0; i--) {

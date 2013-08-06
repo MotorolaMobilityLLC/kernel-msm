@@ -58,6 +58,7 @@ struct dss_vreg {
 	int post_on_sleep;
 	int pre_off_sleep;
 	int post_off_sleep;
+	int boot_on;
 };
 
 struct dss_gpio {
