@@ -20,12 +20,6 @@
 	qcom,msm-id = <145 0x41 0x8100>;
 };
 
-&bms_tbls {
-	mmi,batt-tbl-one {
-		qcom,batt-tbl-id = <0 50000>;
-	};
-};
-
 &tmp108 {
 	status = "disabled";
 };

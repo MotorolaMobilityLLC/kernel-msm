@@ -20,9 +20,9 @@
 	qcom,msm-id = <145 0x42 0x8100>;
 };
 
-&bms_tbls {
-	mmi,batt-tbl-one {
-		qcom,batt-tbl-id = <0 1800000>;
+&mmi_batterydata {
+	mmi,ed30-temp-batterydata {
+		qcom,batt-id-range = <0 1800000>;
 	};
 };
 

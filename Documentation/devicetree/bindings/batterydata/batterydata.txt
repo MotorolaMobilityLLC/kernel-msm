@@ -27,6 +27,10 @@ Profile data node required properties:
 			module when the ID resistance of some battery modules goes across
 			several ranges.
 
+qcom,battery-data node optional properties:
+qcom,batt-id-limits :  If defined this will be used as a hard range limit on
+		       detecting this battery resistor.  The units are in uV.
+
 Profile data node required subnodes:
 - qcom,fcc-temp-lut : An 1-dimensional lookup table node that encodes
 			temperature to fcc lookup. The units for this lookup
