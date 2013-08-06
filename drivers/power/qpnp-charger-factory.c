@@ -131,7 +131,7 @@
 #define SMBCL_USB_CHGPTH_SUBTYPE		0x44
 #define SMBCL_MISC_SUBTYPE			0x47
 
-#define QPNP_CHARGER_FAC_DEV_NAME	"qcom,qpnp-charger"
+#define QPNP_CHARGER_FAC_DEV_NAME	"qcom,qpnp-charger-factory"
 
 /* Status bits and masks */
 #define CHGR_BOOT_DONE			BIT(7)
