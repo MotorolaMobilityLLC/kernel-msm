@@ -70,7 +70,7 @@ static int msm8974_auxpcm_rate = 8000;
 
 #define WCD9XXX_MBHC_DEF_BUTTONS 8
 #define WCD9XXX_MBHC_DEF_RLOADS 5
-#define TAIKO_EXT_CLK_RATE 9600000
+#define TAIKO_EXT_CLK_RATE 24576000
 
 /* It takes about 13ms for Class-D PAs to ramp-up */
 #define EXT_CLASS_D_EN_DELAY 13000
@@ -658,7 +658,9 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 
 		if (codec_clk) {
 			clk_prepare_enable(codec_clk);
+#ifndef CONFIG_SND_SOC_WM5110
 			taiko_mclk_enable(codec, 1, dapm);
+#endif
 		} else {
 			pr_err("%s: Error setting Taiko MCLK\n", __func__);
 			clk_users--;
@@ -668,7 +670,7 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 		if (clk_users > 0) {
 			clk_users--;
 			if (clk_users == 0) {
-				taiko_mclk_enable(codec, 0, dapm);
+				//taiko_mclk_enable(codec, 0, dapm);
 				clk_disable_unprepare(codec_clk);
 			}
 		} else {
@@ -1962,15 +1964,12 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
 
 	dev_crit(codec->dev, "wm5110_dai_init first BE dai initing ...\n");
 
-        ret = clk_set_rate(codec_clk, 24576000);
-        if (ret != 0) {
-                dev_err(codec->dev, "clk set rate failed\n");
-        }
+	codec_clk = clk_get(rtd->cpu_dai->dev, "osr_clk");
+	ret = msm_snd_enable_codec_ext_clk(codec, 1, true);
 
-        ret = clk_prepare_enable(codec_clk);
-        if (ret != 0) {
-                dev_err(codec->dev, "clk prepare enable failed \n");
-        }
+	if (ret != 0) {
+		dev_err(codec->dev, "failed to enable the codec clk %d \n", ret);
+	}
 
         ret = snd_soc_codec_set_pll(codec, WM5110_FLL1_REFCLK, ARIZONA_FLL_SRC_NONE,
                                         0,
