@@ -1,0 +1,118 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013 Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "msm8226-moto-common.dtsi"
+/include/ "dsi-panel-mot-cmi-720p-video.dtsi"
+
+/ {
+	model = "Motorola QC-MSM8926 Peregrine";
+	compatible = "qcom,msm8926-peregrine",
+		     "qcom,msm8226-moto",
+		     "qcom,msm8226";
+};
+
+&soc {
+	gpio_keys {
+		lid-sw {
+			label = "lid-switch";
+			gpios = <&msmgpio 51 0x1>;
+			linux,input-type = <5>;
+			linux,code = <0>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
+
+&i2c_2 {
+	l3g4200d@6a {
+		compatible = "stm,l3g4200d";
+		reg = <0x6a>;
+		vdd-supply =  <&pm8226_l19>;
+		stm,poll-interval = <200>;
+		gpios = <&msmgpio 35 0>; /* DRDY/INT2 */
+	};
+
+	pnxxx@28 {
+		compatible = "nxp,pn544";
+		reg = <0x28>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <21 0>;
+		gpios = <&msmgpio 21 0>,     /* IRQ */
+			<&msmgpio 20 0>,     /* VEN */
+			<&msmgpio 22 0>;     /* Firmware */
+		nxp,pnxxx-discharge-delay = <2000>;
+		nxp,pnxxx-ven-inv-polarity = <0>;
+		vdd-supply = <&pm8226_l22>;
+	};
+};
+
+
+&cci {
+	qcom,cameraTmp@6c {
+		gpios = <&msmgpio 26 0>,
+			<&msmgpio 37 0>,
+			<&msmgpio 36 0>,
+			<&msmgpio 23 0>,
+			<&msmgpio 0 0>;
+		qcom,gpio-pwren2 = <4>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					  "CAM_RESET1",
+					  "CAM_STANDBY",
+					  "CAM_PWREN",
+					  "CAM_PWREN2";
+	};
+
+	qcom,camera@6c {
+		gpios = <&msmgpio 26 0>,
+			<&msmgpio 37 0>,
+			<&msmgpio 36 0>,
+			<&msmgpio 23 0>,
+			<&msmgpio 0 0>;
+		qcom,gpio-pwren2 = <4>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					  "CAM_RESET1",
+					  "CAM_STANDBY",
+					  "CAM_PWREN",
+					  "CAM_PWREN2";
+	};
+
+	qcom,camera@90 {
+		gpios = <&msmgpio 27 0>,
+			<&msmgpio 28 0>,
+			<&msmgpio 1 0>,
+			<&msmgpio 49 0>;
+		qcom,gpio-pwren2 = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					  "CAM_RESET1",
+					  "CAM_PWREN",
+					  "CAM_PWREN2";
+	};
+};
+
+&i2c_5 {
+	cyttsp3_i2c@3b {
+		status = "disabled";
+	};
+};
+
+&mot_cmi_720p_vid_v0 {
+	vddio_disp-supply = <&vddio_disp_vreg>;
+	lcdbias-supply = <&tps65132>;
+};
