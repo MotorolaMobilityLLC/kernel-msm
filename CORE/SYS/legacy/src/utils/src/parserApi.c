@@ -3124,6 +3124,17 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
     }
 #endif
 
+#ifdef FEATURE_WLAN_CCX
+    if (pBeacon->CCXTxmitPower.present)
+    {
+        //CCX Tx Power
+        pBeaconStruct->ccxTxPwr.present = 1;
+        palCopyMemory( pMac->hHdd, &pBeaconStruct->ccxTxPwr,
+                                   &pBeacon->CCXTxmitPower,
+                                   sizeof(tDot11fIECCXTxmitPower));
+    }
+#endif
+
 #ifdef WLAN_FEATURE_11AC
     if ( pBeacon->VHTCaps.present )
     {
