@@ -94,14 +94,12 @@
 
 	qcom,camera@90 {
 		gpios = <&msmgpio 27 0>,
-			<&msmgpio 28 0>,
 			<&msmgpio 1 0>,
 			<&msmgpio 49 0>;
-		qcom,gpio-pwren2 = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-pwren2 = <2>;
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
-					  "CAM_RESET1",
 					  "CAM_PWREN",
 					  "CAM_PWREN2";
 	};
