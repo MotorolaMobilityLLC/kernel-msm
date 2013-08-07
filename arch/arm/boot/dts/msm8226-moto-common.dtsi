@@ -704,6 +704,10 @@
 	qcom,platform-reset-gpio = <&msmgpio 25 0>;
 };
 
+&spi_0 {
+	status = "disabled";
+};
+
 &cci {
 	qcom,hw-thigh = <20>;
 	qcom,hw-tlow = <28>;
