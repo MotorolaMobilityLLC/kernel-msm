@@ -37,6 +37,12 @@ static struct otp_info_t ar0543_otp_info;
 static struct msm_sensor_power_setting ar0543_power_setting[] = {
 	{
 		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_PWREN2,
+		.config_val = GPIO_OUT_LOW,
+		.delay = 0,
+	},
+	{
+		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_PWREN,
 		.config_val = GPIO_OUT_LOW,
 		.delay = 0,
@@ -62,6 +68,12 @@ static struct msm_sensor_power_setting ar0543_power_setting[] = {
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_PWREN,
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 0,
+	},
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_PWREN2,
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 0,
 	},
