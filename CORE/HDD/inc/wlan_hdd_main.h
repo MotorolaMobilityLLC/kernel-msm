@@ -1026,6 +1026,9 @@ struct hdd_context_s
 #ifdef FEATURE_WLAN_LPHB
     lphbEnableStruct  lphbEnableReq;
 #endif /* FEATURE_WLAN_LPHB */
+
+    /* debugfs entry */
+    struct dentry *debugfs_phy;
 };
 
 
