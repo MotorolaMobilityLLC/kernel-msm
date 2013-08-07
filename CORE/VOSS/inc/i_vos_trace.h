@@ -86,6 +86,9 @@
   --------------------------------------------------------------------------*/
 void vos_trace_msg( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, char *strFormat, ... );
 
+void vos_trace_hex_dump( VOS_MODULE_ID module, VOS_TRACE_LEVEL level,
+                                void *data, int buf_len );
+
 void vos_trace_display(void);
 
 void vos_trace_setValue( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, v_U8_t on );
@@ -102,8 +105,10 @@ void vos_trace_setValue( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, v_U8_t on 
 // without being bogged down by all the tracing in the code.
 #if defined( WLAN_DEBUG )
 #define VOS_TRACE vos_trace_msg
+#define VOS_TRACE_HEX_DUMP vos_trace_hex_dump
 #else
-#define VOS_TRACE(arg...) 
+#define VOS_TRACE(arg...)
+#define VOS_TRACE_HEX_DUMP(arg...)
 #endif
 
 
