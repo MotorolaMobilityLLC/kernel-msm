@@ -309,11 +309,12 @@
 		pin@fd51190 {
 			reg = <0xfd511190 0x10>;	/* DSI_RST_N */
 			qcom,pin-num = <25>;
+			qcom,pin-keep-state;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(25)        */
 				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <3>;   /* 8ma                    */
-				qcom,dir = <2>;   /* output low             */
+				qcom,dir = <1>;   /* output high            */
 			};
 			qcom,suspend@1 {
 				qcom,func = <0>;  /* gpio_in_out(25)        */
@@ -391,9 +392,46 @@
 			};
 		};
 
+		pin@fd511f0 {
+			reg = <0xfd5111f0 0x10>;	/* DISP_VSP_EN */
+			qcom,pin-num = <31>;
+			qcom,pin-keep-state;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(31)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(31)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51210 {
+			reg = <0xfd511210 0x10>;	/* DISP_VSN_EN */
+			qcom,pin-num = <33>;
+			qcom,pin-keep-state;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(33)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(33)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
 		pin@fd51220 {
 			reg = <0xfd511220 0x10>;	/* DISP_VDDIO_EN */
 			qcom,pin-num = <34>;
+			qcom,pin-keep-state;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(34)        */
 				qcom,pull = <0>;  /* none                   */
