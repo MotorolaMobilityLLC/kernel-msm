@@ -679,6 +679,23 @@ int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_PWREN]);
 	}
 
+	if (of_property_read_bool(of_node, "qcom,gpio-pwren2") == true) {
+		rc = of_property_read_u32(of_node, "qcom,gpio-pwren2", &val);
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-pwren2 failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-pwren2 invalid %d\n",
+				__func__, __LINE__, val);
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_PWREN2] =
+			gpio_array[val];
+		CDBG("%s qcom,gpio-pwren2 %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_PWREN2]);
+	}
+
 	return 0;
 
 ERROR:
