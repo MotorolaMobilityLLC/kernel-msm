@@ -12,6 +12,7 @@
  */
 
 /include/ "msm8226-moto-common.dtsi"
+/include/ "msm8926-peregrine-gpiomux.dtsi"
 /include/ "dsi-panel-mot-cmi-720p-video.dtsi"
 
 / {
