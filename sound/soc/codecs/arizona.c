@@ -675,6 +675,8 @@ static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
 	static const u8 e_addr[] =  {0x00, 0x00, 0x10, 0x51, 0x2f, 0x01 };
 	int ret;
 
+	msleep(100);
+
 	do {
 		if (!slim_audio_dev) {
 			dev_err((struct device const *)dev, "Waiting for probe...\n");
@@ -694,18 +696,18 @@ static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
 	return 0;
 }
 
-#define TX_STREAM_1 134
-#define TX_STREAM_2 132
-#define TX_STREAM_3 130
+#define TX_STREAM_1 128
+#define TX_STREAM_2 130
+#define TX_STREAM_3 132
 
 static u32 rx_porth1[2], rx_porth2[1], rx_porth3[2], rx_porth1m[1];
 static u32 tx_porth1[1], tx_porth2[1], tx_porth3[1], tx_porth1s[2];
 static u16 rx_handles1[] = { 144, 145 };
-static u16 rx_handles2[] = { 143 };
-static u16 rx_handles3[] = { 152, 153 };
+static u16 rx_handles2[] = { 146, 147 };
+static u16 rx_handles3[] = { 148, 149 };
 static u16 tx_handles1[] = { TX_STREAM_1, TX_STREAM_1 + 1 };
-static u16 tx_handles2[] = { TX_STREAM_2 };
-static u16 tx_handles3[] = { TX_STREAM_3 };
+static u16 tx_handles2[] = { TX_STREAM_2, TX_STREAM_2 + 1 };
+static u16 tx_handles3[] = { TX_STREAM_3, TX_STREAM_3 + 1 };
 static u16 rx_group1, rx_group2, rx_group3;
 static u16 tx_group1, tx_group2, tx_group3;
 
@@ -977,7 +979,7 @@ static int arizona_get_channel_map(struct snd_soc_dai *dai,
 	}
 
 	for (i = 0; i < ARRAY_SIZE(rx_handles2); i++) {
-		ret = slim_query_ch(slim_audio_dev, 143 + i,
+		ret = slim_query_ch(slim_audio_dev, 146 + i,
 					&rx_handles2[i]);
 		if (ret != 0) {
 			dev_err(arizona->dev, "slim_alloc_ch() failed: %d\n",
@@ -987,7 +989,7 @@ static int arizona_get_channel_map(struct snd_soc_dai *dai,
 	}
 
 	for (i = 0; i < ARRAY_SIZE(rx_handles2); i++) {
-		ret = slim_query_ch(slim_audio_dev, 132 + i,
+		ret = slim_query_ch(slim_audio_dev, 148 + i,
 					&rx_handles3[i]);
 		if (ret != 0) {
 			dev_err(arizona->dev, "slim_alloc_ch() failed: %d\n",
@@ -1037,17 +1039,20 @@ static int arizona_get_channel_map(struct snd_soc_dai *dai,
 		tx_slot[1] = TX_STREAM_1 + 1;
 		break;
 	case ARIZONA_SLIM2:
-		*rx_num = 1;
-		rx_slot[0] = 143;
-		*tx_num = 1;
+		*rx_num = 2;
+		rx_slot[0] = 146;
+		rx_slot[1] = 147;
+		*tx_num = 2;
 		tx_slot[0] = TX_STREAM_2;
+		tx_slot[1] = TX_STREAM_2 + 1;
 		break;
 	case ARIZONA_SLIM3:
 		*rx_num = 2;
-		rx_slot[0] = 133;
-		rx_slot[1] = 134;
-		*tx_num = 1;
+		rx_slot[0] = 148;
+		rx_slot[1] = 149;
+		*tx_num = 2;
 		tx_slot[0] = TX_STREAM_3;
+		tx_slot[1] = TX_STREAM_3 + 1;
 		break;
 
 	default:
