@@ -4580,3 +4580,19 @@ NONE
 V    RW    NP
 NONE
 0    9     0
+
+*
+* Antenna Diversity
+*
+* 0 = disabled
+* 1 = Ant 1
+* 2 = Ant 2
+* 3 = Adaptive
+*
+WNI_CFG_ANTENNA_DIVESITY    I    4    7
+V    RW    NP
+HAL
+0    3    0
+V    RW    NP
+HAL
+0    3    0

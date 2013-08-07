@@ -333,6 +333,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"ENABLE_ADAPT_RX_DRAIN",
     (unsigned char *)"OXYGEN_NETWORK_DATA",
     (unsigned char *)"FLEX_CONNECT_POWER_FACTOR",
+    (unsigned char *)"ANTENNA_DIVESITY",
 };
 
 
