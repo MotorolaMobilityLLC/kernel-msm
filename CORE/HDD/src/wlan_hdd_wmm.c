@@ -1515,6 +1515,38 @@ VOS_STATUS hdd_wmm_adapter_init( hdd_adapter_t *pAdapter )
 
    return VOS_STATUS_SUCCESS;
 }
+
+/**============================================================================
+  @brief hdd_wmm_adapter_clear() - Function which will clear the WMM status
+  for all the ACs
+
+  @param pAdapter : [in]  pointer to Adapter context
+
+  @return         : VOS_STATUS_SUCCESS if succssful
+                  : other values if failure
+
+  ===========================================================================*/
+VOS_STATUS hdd_wmm_adapter_clear( hdd_adapter_t *pAdapter )
+{
+   hdd_wmm_ac_status_t *pAcStatus;
+   WLANTL_ACEnumType acType;
+   VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO_LOW,
+             "%s: Entered", __func__);
+   for (acType = 0; acType < WLANTL_MAX_AC; acType++)
+   {
+      pAcStatus = &pAdapter->hddWmmStatus.wmmAcStatus[acType];
+      pAcStatus->wmmAcAccessRequired = VOS_FALSE;
+      pAcStatus->wmmAcAccessNeeded = VOS_FALSE;
+      pAcStatus->wmmAcAccessPending = VOS_FALSE;
+      pAcStatus->wmmAcAccessFailed = VOS_FALSE;
+      pAcStatus->wmmAcAccessGranted = VOS_FALSE;
+      pAcStatus->wmmAcAccessAllowed = VOS_FALSE;
+      pAcStatus->wmmAcTspecValid = VOS_FALSE;
+      pAcStatus->wmmAcUapsdInfoValid = VOS_FALSE;
+   }
+   return VOS_STATUS_SUCCESS;
+}
+
 /**============================================================================
   @brief hdd_wmm_close() - Function which will perform any necessary work to
   to clean up the WMM functionality prior to the kernel module unload
