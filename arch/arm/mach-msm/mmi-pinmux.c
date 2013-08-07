@@ -30,8 +30,11 @@ static int msm_pinmux_install(struct device_node *node)
 {
 	int rc;
 	int gpio;
+	int count = 0;
+	int i;
 	struct device_node *child;
-	struct gpiomux_setting s;
+	struct gpiomux_setting s[GPIOMUX_NSETTINGS];
+	struct msm_gpiomux_config c;
 	enum msm_gpiomux_setting which;  /* active or suspended */
 
 
@@ -41,28 +44,45 @@ static int msm_pinmux_install(struct device_node *node)
 		return -ENODEV;
 	}
 
+	for (i = 0; i < GPIOMUX_NSETTINGS; i++) {
+		s[i].func = GPIOMUX_FUNC_GPIO;
+		s[i].drv = GPIOMUX_DRV_2MA;
+		s[i].pull = GPIOMUX_PULL_NONE;
+		s[i].dir = GPIOMUX_IN;
+	}
+
 	for_each_child_of_node(node, child) {
 		which = GPIOMUX_SUSPENDED;
-		s.func = GPIOMUX_FUNC_GPIO;
-		s.drv = GPIOMUX_DRV_2MA;
-		s.pull = GPIOMUX_PULL_NONE;
-		s.dir = GPIOMUX_IN;
 
 		pr_debug("\tpin %d\tname = %s\n", gpio, child->name);
+
 		if (!strcmp("qcom,active", child->name))
 			which = GPIOMUX_ACTIVE;
 
-		of_property_read_u32(child, "qcom,func", &s.func);
-		of_property_read_u32(child, "qcom,drv", &s.drv);
-		of_property_read_u32(child, "qcom,pull", &s.pull);
-		of_property_read_u32(child, "qcom,dir", &s.dir);
+		of_property_read_u32(child, "qcom,func", &s[which].func);
+		of_property_read_u32(child, "qcom,drv", &s[which].drv);
+		of_property_read_u32(child, "qcom,pull", &s[which].pull);
+		of_property_read_u32(child, "qcom,dir", &s[which].dir);
 
-		rc = msm_gpiomux_write(gpio, which, &s, NULL);
-		if (rc)
-			pr_err("Failed to install GPIO%d, ret: %d\n", gpio, rc);
+		count++;
 	}
 
-	return rc;
+	if (count != GPIOMUX_NSETTINGS) {
+		pr_debug("%s: gpio %d dt entry count %d.\n", __func__, gpio,
+				count);
+		return msm_gpiomux_write(gpio, which, &s[which], NULL);
+	}
+
+	c.gpio = gpio;
+	for (i = 0; i < GPIOMUX_NSETTINGS; i++)
+		c.settings[i] = &s[i];
+
+	if (of_property_read_bool(node, "qcom,pin-keep-state"))
+		msm_gpiomux_install_nowrite(&c, 1);
+	else
+		msm_gpiomux_install(&c, 1);
+
+	return 0;
 }
 
 static int __devinit msm_pinmux_probe(struct platform_device *pdev)
