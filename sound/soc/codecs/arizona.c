@@ -67,136 +67,6 @@
 #define arizona_aif_dbg(_dai, fmt, ...) \
 	dev_dbg(_dai->dev, "AIF%d: " fmt, _dai->id, ##__VA_ARGS__)
 
-static struct slim_device *slim_audio_dev;
-
-static int arizona_slim_get_la(struct device *dev, u8 *la)
-{
-	static const u8 e_addr[] =  {0x00, 0x00, 0x10, 0x51, 0x2f, 0x01 };
-	int ret;
-
-	do {
-		if (!slim_audio_dev) {
-			dev_err(dev, "Waiting for probe...\n");
-			msleep(10);
-			continue;
-		}
-
-		ret = slim_get_logical_addr(slim_audio_dev, e_addr,
-					    sizeof(e_addr), la);
-		if (ret != 0) {
-			dev_err(dev, "Waiting for enum...\n");
-			msleep(10);
-		}
-	} while (!la);
-
-	dev_info(dev, "LA %d\n", *la);
-
-	return 0;
-}
-
-static u32 rx_sph[2];
-static u16 rx_ch[2];
-static u16 rx_group;
-
-static int arizona_slim_set_channel_map(struct snd_soc_dai *dai,
-					unsigned int tx_num, unsigned int *tx_slot,
-					unsigned int rx_num, unsigned int *rx_slot)
-{
-	return 0;
-}
-
-static int arizona_slim_get_channel_map(struct snd_soc_dai *dai,
-					unsigned int *tx_num, unsigned int *tx_slot,
-					unsigned int *rx_num, unsigned int *rx_slot)
-{
-	u8 la;
-	int i, ret;
-
-	arizona_slim_get_la(dai->dev, &la);
-
-	*rx_num = 2;
-
-	for (i = 0; i < *rx_num; i++)
-		rx_slot[i] = 144 + i;
-
-	for (i = 0; i < *rx_num; i++) {
-		ret = slim_get_slaveport(la, 0 + i, &rx_sph[i], SLIM_SINK);
-		if (ret != 0) {
-			dev_err(dai->dev, "Failed to get SPH %d: %d\n", i, ret);
-			return ret;
-		}
-
-		ret = slim_query_ch(slim_audio_dev, rx_slot[i], &rx_ch[i]);
-		if (ret != 0) {
-			dev_err(dai->dev, "Failed to get RX chan %d: %d\n", i, ret);
-			return ret;
-		}
-	}
-
-	return 0;
-}
-
-int arizona_slim_ev(struct snd_soc_dapm_widget *w,
-		    struct snd_kcontrol *kcontrol,
-		    int event)
-{
-	//u16 chan[2] = { 128, 129 };
-	struct slim_ch prop;
-	u8 la;
-	int ret, i;
-
-	arizona_slim_get_la(w->dapm->dev, &la);
-
-	memset(&prop, 0, sizeof(prop));
-        prop.prot = SLIM_AUTO_ISO;
-        prop.baser = SLIM_RATE_4000HZ;
-        prop.dataf = SLIM_CH_DATAF_NOT_DEFINED;
-        prop.auxf = SLIM_CH_AUXF_NOT_APPLICABLE;
-        prop.ratem = (48000/4000);
-        prop.sampleszbits = 16;
-
-	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		ret = slim_define_ch(slim_audio_dev, &prop, rx_ch, 2, true, &rx_group);
-		if (ret != 0) {
-			dev_err(w->dapm->dev, "slim_define_ch() failed: %d\n",
-				ret);
-			return ret;
-		}
-
-		for (i = 0; i < 2; i++) {
-			ret = slim_connect_sink(slim_audio_dev, &rx_sph[i], 1, rx_ch[i]);
-			if (ret != 0) {
-				dev_err(w->dapm->dev, "slim_connect_sink() %d failed: %d\n",
-					i, ret);
-				return ret;
-			}
-		}
-
-		ret = slim_control_ch(slim_audio_dev, rx_group, SLIM_CH_ACTIVATE, true);
-		if (ret != 0) {
-			dev_err(w->dapm->dev, "channel activate failed: %d\n",
-			ret);
-			return ret;
-		}
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		ret = slim_control_ch(slim_audio_dev, rx_group, SLIM_CH_REMOVE, true);
-		if (ret != 0) {
-			dev_err(w->dapm->dev, "channel remove failed: %d\n", ret);
-		}
-		
-		ret = slim_disconnect_ports(slim_audio_dev, rx_sph, 2);
-		if (ret != 0) {
-			dev_err(w->dapm->dev, "disconnect port failed: %d\n", ret);
-		}
-		
-		break;
-	}
-
-	return 0;
-}
-
 static int arizona_spk_ev(struct snd_soc_dapm_widget *w,
 			  struct snd_kcontrol *kcontrol,
 			  int event)
@@ -798,6 +668,406 @@ int arizona_hp_ev(struct snd_soc_dapm_widget *w,
 }
 EXPORT_SYMBOL_GPL(arizona_hp_ev);
 
+static struct slim_device *slim_audio_dev;
+
+static int arizona_slim_get_la(struct slim_device *dev, u8 *la)
+{
+	static const u8 e_addr[] =  {0x00, 0x00, 0x10, 0x51, 0x2f, 0x01 };
+	int ret;
+
+	do {
+		if (!slim_audio_dev) {
+			dev_err((struct device const *)dev, "Waiting for probe...\n");
+			msleep(25);
+			continue;
+		}
+
+		ret = slim_get_logical_addr(slim_audio_dev, e_addr,
+                                           sizeof(e_addr), la);
+		if (ret != 0) {
+			dev_err((struct device const *)dev, "Waiting for enum...\n");
+			msleep(25);
+		}
+	} while (!la);
+
+	dev_info((struct device const *)dev, "LA %d\n", *la);
+	return 0;
+}
+
+#define TX_STREAM_1 134
+#define TX_STREAM_2 132
+#define TX_STREAM_3 130
+
+static u32 rx_porth1[2], rx_porth2[1], rx_porth3[2], rx_porth1m[1];
+static u32 tx_porth1[1], tx_porth2[1], tx_porth3[1], tx_porth1s[2];
+static u16 rx_handles1[] = { 144, 145 };
+static u16 rx_handles2[] = { 143 };
+static u16 rx_handles3[] = { 152, 153 };
+static u16 tx_handles1[] = { TX_STREAM_1, TX_STREAM_1 + 1 };
+static u16 tx_handles2[] = { TX_STREAM_2 };
+static u16 tx_handles3[] = { TX_STREAM_3 };
+static u16 rx_group1, rx_group2, rx_group3;
+static u16 tx_group1, tx_group2, tx_group3;
+
+int arizona_slim_tx_ev(struct snd_soc_dapm_widget *w,
+		       struct snd_kcontrol *kcontrol,
+		       int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	struct arizona *arizona = priv->arizona;
+	struct slim_ch prop;
+	int ret, i;
+	u32 *porth;
+	u16 *handles, *group;
+	int chcnt = 0;
+
+	switch (w->shift) {
+	case ARIZONA_SLIMTX1_ENA_SHIFT:
+		dev_crit(codec->dev, "TX1\n");
+		porth = tx_porth1;
+		handles = tx_handles1;
+		group = &tx_group1;
+		chcnt = ARRAY_SIZE(tx_porth1);
+		break;
+	case ARIZONA_SLIMTX3_ENA_SHIFT:
+		dev_crit(codec->dev, "TX1S\n");
+		porth = tx_porth1s;
+		handles = tx_handles1;
+		group = &tx_group1;
+		chcnt = ARRAY_SIZE(tx_porth1s);
+		break;
+	case ARIZONA_SLIMTX5_ENA_SHIFT:
+		dev_crit(codec->dev, "TX2\n");
+		porth = tx_porth2;
+		handles = tx_handles2;
+		group = &tx_group2;
+		chcnt = ARRAY_SIZE(tx_porth2);
+		break;
+	case ARIZONA_SLIMTX7_ENA_SHIFT:
+		dev_crit(codec->dev, "TX3\n");
+		porth = tx_porth3;
+		handles = tx_handles3;
+		group = &tx_group3;
+		chcnt = ARRAY_SIZE(tx_porth3);
+		break;
+	default:
+		return 0;
+	}
+
+	prop.prot = SLIM_AUTO_ISO;
+	prop.baser = SLIM_RATE_4000HZ;
+	prop.dataf = SLIM_CH_DATAF_NOT_DEFINED;
+	prop.auxf = SLIM_CH_AUXF_NOT_APPLICABLE;
+	prop.ratem = (48000/4000);
+	prop.sampleszbits = 16;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+	case SND_SOC_DAPM_POST_PMU:
+		dev_err(arizona->dev, "Start slimbus TX\n");
+		ret = slim_define_ch(slim_audio_dev, &prop, handles, chcnt,
+				     true, group);
+		if (ret != 0) {
+			dev_err(arizona->dev, "slim_define_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+
+		for (i = 0; i < chcnt; i++) {
+			ret = slim_connect_src(slim_audio_dev, porth[i],
+					       handles[i]);
+			if (ret != 0) {
+				dev_err(arizona->dev, "src connect fail %d: %d\n",
+					i, ret);
+				return ret;
+			}
+		}
+
+		ret = slim_control_ch(slim_audio_dev, *group,
+					SLIM_CH_ACTIVATE, true);
+		if (ret != 0) {
+			dev_err(arizona->dev, "Failed to activate: %d\n", ret);
+			return ret;
+		}
+		break;
+
+	case SND_SOC_DAPM_POST_PMD:
+	case SND_SOC_DAPM_PRE_PMD:
+		dev_err(arizona->dev, "Stop slimbus Tx\n");
+		ret = slim_control_ch(slim_audio_dev, *group,
+					SLIM_CH_REMOVE, true);
+		if (ret != 0)
+			dev_err(arizona->dev, "Failed to remove tx: %d\n", ret);
+
+		/* Cargo culted from QC */
+		usleep_range(15000, 15000);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_slim_tx_ev);
+
+int arizona_slim_rx_ev(struct snd_soc_dapm_widget *w,
+		    struct snd_kcontrol *kcontrol,
+		    int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	struct arizona *arizona = priv->arizona;
+	struct slim_ch prop;
+	int ret, i;
+	u32 *porth;
+	u16 *handles, *group;
+	int chcnt = 0;
+
+	/* BODGE: should do this per port */
+	switch (w->shift) {
+	case ARIZONA_SLIMRX1_ENA_SHIFT:
+		dev_crit(codec->dev, "RX1\n");
+		porth = rx_porth1;
+		handles = rx_handles1;
+		group = &rx_group1;
+		chcnt = ARRAY_SIZE(rx_porth1);
+		break;
+	case ARIZONA_SLIMRX3_ENA_SHIFT:
+		dev_crit(codec->dev, "RX1M\n");
+		porth = rx_porth1m;
+		handles = rx_handles1;
+		group = &rx_group1;
+		chcnt = ARRAY_SIZE(rx_porth1m);
+		break;
+	case ARIZONA_SLIMRX5_ENA_SHIFT:
+		dev_crit(codec->dev, "RX2\n");
+		porth = rx_porth2;
+		handles = rx_handles2;
+		group = &rx_group2;
+		chcnt = ARRAY_SIZE(rx_porth2);
+		break;
+	case ARIZONA_SLIMRX7_ENA_SHIFT:
+		dev_crit(codec->dev, "RX3\n");
+		porth = rx_porth3;
+		handles = rx_handles3;
+		group = &rx_group3;
+		chcnt = ARRAY_SIZE(rx_porth3);
+		break;
+	default:
+		return 0;
+	}
+
+	prop.prot = SLIM_AUTO_ISO;
+	prop.baser = SLIM_RATE_4000HZ;
+	prop.dataf = SLIM_CH_DATAF_NOT_DEFINED;
+	prop.auxf = SLIM_CH_AUXF_NOT_APPLICABLE;
+	prop.ratem = (48000/4000);
+	prop.sampleszbits = 16;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+	case SND_SOC_DAPM_POST_PMU:
+		dev_err(arizona->dev, "Start slimbus\n");
+		ret = slim_define_ch(slim_audio_dev, &prop, handles, chcnt,
+				     true, group);
+		if (ret != 0) {
+			dev_err(arizona->dev, "slim_define_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+
+		for (i = 0; i < chcnt; i++) {
+			ret = slim_connect_sink(slim_audio_dev, &porth[i], 1,
+						handles[i]);
+			if (ret != 0) {
+				dev_err(arizona->dev, "sink connect fail %d: %d\n",
+					i, ret);
+				return ret;
+			}
+		}
+
+		ret = slim_control_ch(slim_audio_dev, *group,
+					SLIM_CH_ACTIVATE, true);
+		if (ret != 0) {
+			dev_err(arizona->dev, "Failed to activate: %d\n", ret);
+			return ret;
+		}
+		break;
+
+	case SND_SOC_DAPM_POST_PMD:
+	case SND_SOC_DAPM_PRE_PMD:
+		dev_err(arizona->dev, "Stop slimbus Rx %x\n", *group);
+		ret = slim_control_ch(slim_audio_dev, *group,
+					SLIM_CH_REMOVE, true);
+		if (ret != 0)
+			dev_err(arizona->dev, "Failed to remove rx: %d\n", ret);
+
+		/* Cargo culted from QC */
+		usleep_range(15000, 15000);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_slim_rx_ev);
+
+static int arizona_get_channel_map(struct snd_soc_dai *dai,
+				   unsigned int *tx_num, unsigned int *tx_slot,
+				   unsigned int *rx_num, unsigned int *rx_slot)
+{
+	struct arizona_priv *priv = snd_soc_codec_get_drvdata(dai->codec);
+	struct arizona *arizona = priv->arizona;
+	int i, ret;
+	u8 laddr;
+
+	arizona_slim_get_la(slim_audio_dev, &laddr);
+
+	for (i = 0; i < ARRAY_SIZE(rx_porth1); i++) {
+		slim_get_slaveport(laddr, i,
+				   &rx_porth1[i], SLIM_SINK);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(rx_porth1m); i++) {
+		slim_get_slaveport(laddr, i + 2,
+				   &rx_porth1m[i], SLIM_SINK);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(rx_porth2); i++) {
+		slim_get_slaveport(laddr, i + 4,
+				   &rx_porth2[i], SLIM_SINK);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(rx_porth3); i++) {
+		slim_get_slaveport(laddr, i + 6,
+				   &rx_porth3[i], SLIM_SINK);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tx_porth1); i++) {
+		slim_get_slaveport(laddr, i + 8,
+				   &tx_porth1[i], SLIM_SRC);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tx_porth1s); i++) {
+		slim_get_slaveport(laddr, i + 10,
+				   &tx_porth1s[i], SLIM_SRC);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tx_porth2); i++) {
+		slim_get_slaveport(laddr, i + 12,
+				   &tx_porth2[i], SLIM_SRC);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tx_porth3); i++) {
+		slim_get_slaveport(laddr, i + 14,
+				   &tx_porth3[i], SLIM_SRC);
+	}
+
+	/* This actually allocates the channel or refcounts it if there... */
+	for (i = 0; i < ARRAY_SIZE(rx_handles1); i++) {
+		ret = slim_query_ch(slim_audio_dev, 144 + i,
+					&rx_handles1[i]);
+		if (ret != 0) {
+			dev_err(arizona->dev, "slim_alloc_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(rx_handles2); i++) {
+		ret = slim_query_ch(slim_audio_dev, 143 + i,
+					&rx_handles2[i]);
+		if (ret != 0) {
+			dev_err(arizona->dev, "slim_alloc_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(rx_handles2); i++) {
+		ret = slim_query_ch(slim_audio_dev, 132 + i,
+					&rx_handles3[i]);
+		if (ret != 0) {
+			dev_err(arizona->dev, "slim_alloc_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tx_handles1); i++) {
+		ret = slim_query_ch(slim_audio_dev, TX_STREAM_1 + i,
+					&tx_handles1[i]);
+		if (ret != 0) {
+			dev_err(arizona->dev, "slim_alloc_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tx_handles2); i++) {
+		ret = slim_query_ch(slim_audio_dev, TX_STREAM_2 + i,
+					&tx_handles2[i]);
+		if (ret != 0) {
+			dev_err(arizona->dev, "slim_alloc_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tx_handles3); i++) {
+		ret = slim_query_ch(slim_audio_dev, TX_STREAM_3 + i,
+					&tx_handles3[i]);
+		if (ret != 0) {
+			dev_err(arizona->dev, "slim_alloc_ch() failed: %d\n",
+				ret);
+			return ret;
+		}
+	}
+
+	/* Handle both the playback and capture substreams per DAI*/
+	switch (dai->id) {
+	case ARIZONA_SLIM1:
+		*rx_num = 2;
+		rx_slot[0] = 144;
+		rx_slot[1] = 145;
+		*tx_num = 2;
+		tx_slot[0] = TX_STREAM_1;
+		tx_slot[1] = TX_STREAM_1 + 1;
+		break;
+	case ARIZONA_SLIM2:
+		*rx_num = 1;
+		rx_slot[0] = 143;
+		*tx_num = 1;
+		tx_slot[0] = TX_STREAM_2;
+		break;
+	case ARIZONA_SLIM3:
+		*rx_num = 2;
+		rx_slot[0] = 133;
+		rx_slot[1] = 134;
+		*tx_num = 1;
+		tx_slot[0] = TX_STREAM_3;
+		break;
+
+	default:
+		dev_err(arizona->dev, "get_channel_map unknown dai->id %d",
+			dai->id);
+		return -EINVAL;
+	break;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(arizona_get_channel_map);
+
+static int arizona_set_channel_map(struct snd_soc_dai *dai,
+				   unsigned int tx_num, unsigned int *tx_slot,
+				   unsigned int rx_num, unsigned int *rx_slot)
+{
+	return 0;
+}
+
 static unsigned int arizona_sysclk_48k_rates[] = {
 	6144000,
 	12288000,
@@ -1368,14 +1638,6 @@ static int arizona_set_tristate(struct snd_soc_dai *dai, int tristate)
 				   ARIZONA_AIF1_TRI, reg);
 }
 
-#if 0
-static int arizona_set_channel_map(struct snd_soc_dai *dai,
-				unsigned int tx_num, unsigned int *tx_slot,
-				unsigned int rx_num, unsigned int *rx_slot)
-{
-}
-#endif
-
 const struct snd_soc_dai_ops arizona_dai_ops = {
 	.startup = arizona_startup,
 	.set_fmt = arizona_set_fmt,
@@ -1389,10 +1651,19 @@ const struct snd_soc_dai_ops arizona_simple_dai_ops = {
 	.startup = arizona_startup,
 	.hw_params = arizona_hw_params_rate,
 	.set_sysclk = arizona_dai_set_sysclk,
-	.set_channel_map = arizona_slim_set_channel_map,
-	.get_channel_map = arizona_slim_get_channel_map,
+	.set_channel_map = arizona_set_channel_map,
+	.get_channel_map = arizona_get_channel_map,
 };
 EXPORT_SYMBOL_GPL(arizona_simple_dai_ops);
+
+const struct snd_soc_dai_ops arizona_slim_dai_ops = {
+	.startup = arizona_startup,
+	.hw_params = arizona_hw_params_rate,
+	.set_sysclk = arizona_dai_set_sysclk,
+	.set_channel_map = arizona_set_channel_map,
+	.get_channel_map = arizona_get_channel_map,
+};
+EXPORT_SYMBOL_GPL(arizona_slim_dai_ops);
 
 int arizona_init_dai(struct arizona_priv *priv, int id)
 {
@@ -1832,7 +2103,7 @@ EXPORT_SYMBOL_GPL(arizona_set_output_mode);
 
 static int arizona_slim_audio_probe(struct slim_device *slim)
 {
-	dev_crit(&slim->dev, "Probed\n");
+	dev_crit(&slim->dev, "Slimbus device probed\n");
 
 	slim_audio_dev = slim;
 
