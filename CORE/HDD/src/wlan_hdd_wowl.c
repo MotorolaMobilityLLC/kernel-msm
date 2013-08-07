@@ -61,7 +61,7 @@
 
 #define WOWL_PTRN_MAX_SIZE          128
 #define WOWL_PTRN_MASK_MAX_SIZE      16
-#define WOWL_MAX_PTRNS_ALLOWED        8
+#define WOWL_MAX_PTRNS_ALLOWED       16
 #define WOWL_INTER_PTRN_TOKENIZER   ';'
 #define WOWL_INTRA_PTRN_TOKENIZER   ':'
 
@@ -69,7 +69,9 @@
  * Type Declarations
  * -------------------------------------------------------------------------*/
 
-char *g_hdd_wowl_ptrns[WOWL_MAX_PTRNS_ALLOWED]; //Patterns 0-7 
+static char *g_hdd_wowl_ptrns[WOWL_MAX_PTRNS_ALLOWED]; //Patterns 0-15
+static v_BOOL_t g_hdd_wowl_ptrns_debugfs[WOWL_MAX_PTRNS_ALLOWED] = {0};
+static v_U8_t g_hdd_wowl_ptrns_count = 0;
 
 int hdd_parse_hex(unsigned char c)
 {
@@ -343,6 +345,181 @@ v_BOOL_t hdd_del_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
     }
   }
   return VOS_FALSE;
+}
+
+/**============================================================================
+  @brief hdd_add_wowl_ptrn_debugfs() - Function which will add a WoW pattern
+  to be used when PBM filtering is enabled and MP filtering is disabled
+
+  @param pAdapter       : [in] pointer to the adapter
+         pattern_idx    : [in] index of the pattern to be added
+         pattern_offset : [in] offset of the pattern in the frame payload
+         pattern_buf    : [in] pointer to the pattern hex string to be added
+
+  @return               : FALSE if any errors encountered
+                        : TRUE otherwise
+  ===========================================================================*/
+v_BOOL_t hdd_add_wowl_ptrn_debugfs(hdd_adapter_t *pAdapter, v_U8_t pattern_idx,
+                                   v_U8_t pattern_offset, char *pattern_buf)
+{
+  tSirWowlAddBcastPtrn localPattern;
+  eHalStatus halStatus;
+  tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+  v_U8_t sessionId = pAdapter->sessionId;
+  v_U16_t pattern_len, i;
+
+  if (pattern_idx > (WOWL_MAX_PTRNS_ALLOWED - 1))
+  {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: WoW pattern index %d is out of range (0 ~ %d).",
+               __func__, pattern_idx, WOWL_MAX_PTRNS_ALLOWED - 1);
+
+    return VOS_FALSE;
+  }
+
+  pattern_len = strlen(pattern_buf);
+
+  /* Since the pattern is a hex string, 2 characters represent 1 byte. */
+  if (pattern_len % 2)
+  {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: Malformed WoW pattern!", __func__);
+
+    return VOS_FALSE;
+  }
+  else
+    pattern_len >>= 1;
+
+  if (!pattern_len || pattern_len > WOWL_PTRN_MAX_SIZE)
+  {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: WoW pattern length %d is out of range (1 ~ %d).",
+               __func__, pattern_len, WOWL_PTRN_MAX_SIZE);
+
+    return VOS_FALSE;
+  }
+
+  localPattern.ucPatternId = pattern_idx;
+  localPattern.ucPatternByteOffset = pattern_offset;
+  localPattern.ucPatternSize = pattern_len;
+
+  /* Extract the pattern */
+  for (i = 0; i < localPattern.ucPatternSize; i++)
+  {
+    localPattern.ucPattern[i] =
+      (hdd_parse_hex(pattern_buf[0]) << 4) + hdd_parse_hex(pattern_buf[1]);
+
+    /* Skip to next byte */
+    pattern_buf += 2;
+  }
+
+  /* Generate bytemask by pattern length */
+  for (i = 0; i < (pattern_len >> 3); i++)
+    localPattern.ucPatternMask[i] = 0xFF;
+
+  localPattern.ucPatternMaskSize = i;
+
+  if (pattern_len % 8)
+  {
+    localPattern.ucPatternMask[i] = (1 << (pattern_len % 8)) - 1;
+    localPattern.ucPatternMaskSize += 1;
+  }
+
+  /* Register the pattern downstream */
+  halStatus = sme_WowlAddBcastPattern(hHal, &localPattern, sessionId);
+
+  if (!HAL_STATUS_SUCCESS(halStatus))
+  {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: sme_WowlAddBcastPattern failed with error code (%ld).",
+               __func__, halStatus);
+
+    return VOS_FALSE;
+  }
+
+  /* Enable WoW immediately after add a pattern. By default,
+   * disable magic packet mode and enable pattern byte matching mode. */
+  if (!hdd_enter_wowl(pAdapter, 0, 1))
+  {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: hdd_enter_wowl failed!", __func__);
+
+    return VOS_FALSE;
+  }
+
+  /* All is good. */
+  if (!g_hdd_wowl_ptrns_debugfs[pattern_idx])
+  {
+    g_hdd_wowl_ptrns_debugfs[pattern_idx] = 1;
+    g_hdd_wowl_ptrns_count++;
+  }
+
+  dump_hdd_wowl_ptrn(&localPattern);
+
+  return VOS_TRUE;
+}
+
+/**============================================================================
+  @brief hdd_del_wowl_ptrn_debugfs() - Function which will remove a WoW pattern
+
+  @param pAdapter    : [in] pointer to the adapter
+         pattern_idx : [in] index of the pattern to be removed
+
+  @return            : FALSE if any errors encountered
+                     : TRUE otherwise
+  ===========================================================================*/
+v_BOOL_t hdd_del_wowl_ptrn_debugfs(hdd_adapter_t *pAdapter, v_U8_t pattern_idx)
+{
+  tSirWowlDelBcastPtrn delPattern;
+  tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+  eHalStatus halStatus;
+  v_U8_t sessionId = pAdapter->sessionId;
+
+  if (pattern_idx > (WOWL_MAX_PTRNS_ALLOWED - 1))
+  {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: WoW pattern index %d is not in the range (0 ~ %d).",
+               __func__, pattern_idx, WOWL_MAX_PTRNS_ALLOWED - 1);
+
+    return VOS_FALSE;
+  }
+
+  if (!g_hdd_wowl_ptrns_debugfs[pattern_idx])
+  {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: WoW pattern %d is not in the table.",
+               __func__, pattern_idx);
+
+    return VOS_FALSE;
+  }
+
+  delPattern.ucPatternId = pattern_idx;
+  halStatus = sme_WowlDelBcastPattern(hHal, &delPattern, sessionId);
+
+  if (!HAL_STATUS_SUCCESS(halStatus))
+  {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: sme_WowlDelBcastPattern failed with error code (%ld).",
+               __func__, halStatus);
+
+    return VOS_FALSE;
+  }
+
+  g_hdd_wowl_ptrns_debugfs[pattern_idx] = 0;
+  g_hdd_wowl_ptrns_count--;
+
+  if (g_hdd_wowl_ptrns_count == 0)
+  {
+    if (!hdd_exit_wowl(pAdapter))
+    {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: hdd_exit_wowl failed!", __func__);
+
+      return VOS_FALSE;
+    }
+  }
+
+  return VOS_TRUE;
 }
 
 /**============================================================================
