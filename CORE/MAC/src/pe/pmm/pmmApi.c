@@ -632,9 +632,8 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
     tSirRetStatus   retCode = eSIR_SUCCESS;
     tSirMsgQ msgQ;
     tpEnterBmpsParams pBmpsParams = NULL;
-    tANI_U8     i = 0;
     tANI_U32    rssiFilterPeriod = 5;
-    tANI_U32    numBeaconPerRssiAverage = 5;
+    tANI_U32    numBeaconPerRssiAverage = 20;
     tANI_U32    bRssiFilterEnable = FALSE;
 
     if(psessionEntry->currentBssBeaconCnt == 0 )
@@ -658,52 +657,23 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
     pBmpsParams->dtimPeriod = psessionEntry->lastBeaconDtimPeriod;
     pBmpsParams->bssIdx = psessionEntry->bssIdx;
 
+    /* TODO: Config parameters (Rssi filter period, FW RSSI Monitoring
+       and Number of beacons per RSSI average) values sent down to FW during
+       initial exchange (driver load) is same as ENTER_BMPS_REQ.
+       Sending these values again in ENTER_BMPS_REQ is not required
+       (can be removed). This is kept as-is for now to support
+       backward compatibility with the older host running on new FW. */
+
     if(wlan_cfgGetInt(pMac, WNI_CFG_RSSI_FILTER_PERIOD, &rssiFilterPeriod) != eSIR_SUCCESS)
         pmmLog(pMac, LOGP, FL("pmmCfg: cfgGet failed for Rssi filter period"));
+    pBmpsParams->rssiFilterPeriod = (tANI_U8)rssiFilterPeriod;
 
-    // This flag can be overwritten when 11r/CCXEnabled=1 or FastTransition=1
     if(wlan_cfgGetInt(pMac, WNI_CFG_PS_ENABLE_RSSI_MONITOR, &bRssiFilterEnable) != eSIR_SUCCESS)
         pmmLog(pMac, LOGP, FL("pmmCfg: cfgGet failed for Rssi monitor enable flag"));
     pBmpsParams->bRssiFilterEnable = bRssiFilterEnable;
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
-    // If there is a CCX assoc or 11r assoc we need to pick up the rssiFilterPeriod from the
-    // FT config value.
-    if (TRUE != pBmpsParams->bRssiFilterEnable)
-    {
-        for (i = 0; i < pMac->lim.maxBssId; i++)
-        {
-            if (limisFastTransitionRequired(pMac, i))
-            {
-                // We need to override the ini value to enable
-                // FW RSSI Monitoring. Basically if CCX or FT are enabled
-                // then enable FW RSSI Monitoring
-                pBmpsParams->bRssiFilterEnable = TRUE;
-                break;
-            }
-        }
-    }
-#endif
-
-#ifdef FEATURE_WLAN_LFR
-    /* if LFR is enabled, then enabled FW RSSI Monitoring */
-    if (TRUE != pBmpsParams->bRssiFilterEnable)
-    {
-        for (i = 0; i < pMac->lim.maxBssId; i++)
-        {
-            if (limIsFastRoamEnabled(pMac, i))
-            {
-                pBmpsParams->bRssiFilterEnable = TRUE;
-                break;
-            }
-        }
-    }
-#endif
-
-    pBmpsParams->rssiFilterPeriod = (tANI_U8)rssiFilterPeriod;
-
-    /* The numBeaconPerRssiAverage should be less than the max allowed (default set to 20 in CFG)
-     */
+    /* The numBeaconPerRssiAverage should be less than
+       the max allowed (default set to 20 in CFG) */
     if(wlan_cfgGetInt(pMac, WNI_CFG_NUM_BEACON_PER_RSSI_AVERAGE, &numBeaconPerRssiAverage) != eSIR_SUCCESS)
         pmmLog(pMac, LOGP, FL("pmmCfg: cfgGet failed for num beacon per rssi"));
 

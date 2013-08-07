@@ -3488,18 +3488,6 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       hddLog(LOGE, "Failure: Could not pass on WNI_CFG_PS_BCN_FILTER configuration info to CCM\n");
    }
 
-#ifdef FEATURE_WLAN_LFR
-   if (pConfig->isFastRoamIniFeatureEnabled)
-   {
-       pConfig->fEnableFwRssiMonitoring = TRUE;
-   }
-#endif
-#ifdef FEATURE_WLAN_CCX
-   if (pConfig->isCcxIniFeatureEnabled)
-   {
-       pConfig->fEnableFwRssiMonitoring = TRUE;
-   }
-#endif
    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_PS_ENABLE_RSSI_MONITOR, pConfig->fEnableFwRssiMonitoring,
                     NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
    {
@@ -4079,10 +4067,6 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #endif
 #ifdef FEATURE_WLAN_LFR
    smeConfig.csrConfig.isFastRoamIniFeatureEnabled = pConfig->isFastRoamIniFeatureEnabled;
-   if( pConfig->isFastRoamIniFeatureEnabled )
-   {
-       pConfig->isFastTransitionEnabled = TRUE;
-   }
 #endif
 #ifdef FEATURE_WLAN_CCX
    smeConfig.csrConfig.isCcxIniFeatureEnabled = pConfig->isCcxIniFeatureEnabled;
