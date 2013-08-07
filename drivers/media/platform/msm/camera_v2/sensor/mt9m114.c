@@ -44,6 +44,12 @@ static struct msm_sensor_power_setting mt9m114_power_setting[] = {
 		.delay = 0,
 	},
 	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_PWREN2,
+		.config_val = GPIO_OUT_LOW,
+		.delay = 0,
+	},
+	{
 		.seq_type = SENSOR_VREG,
 		.seq_val = CAM_VDIG,
 		.config_val = 0,
@@ -52,6 +58,12 @@ static struct msm_sensor_power_setting mt9m114_power_setting[] = {
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_PWREN,
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 0,
+	},
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_PWREN2,
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 0,
 	},
