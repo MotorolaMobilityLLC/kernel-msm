@@ -29,6 +29,8 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <720>;
 		qcom,mdss-dsi-panel-height = <1280>;
+		qcom,mdss-pan-physical-width-dimension = <56>;
+		qcom,mdss-pan-physical-height-dimension = <99>;
 		qcom,mdss-dsi-h-front-porch = <140>;
 		qcom,mdss-dsi-h-back-porch = <24>;
 		qcom,mdss-dsi-h-pulse-width = <2>;
