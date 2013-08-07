@@ -1044,7 +1044,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
 		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_MAG, x, y, z,
-			msp_cmdbuff[12]);
+			read_cmdbuff[12]);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending mag(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -1055,7 +1055,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		/* roll value needs to be negated */
 		z = -((read_cmdbuff[10] << 8) | read_cmdbuff[11]);
 		msp430_as_data_buffer_write(ps_msp430, DT_ORIENT, x, y, z,
-			msp_cmdbuff[12]);
+			read_cmdbuff[12]);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending orient(x,y,z)values:x=%d,y=%d,z=%d\n",
