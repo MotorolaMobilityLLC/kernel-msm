@@ -768,6 +768,12 @@ static const struct snd_soc_dapm_route tpa6165_hp_map[] = {
 };
 #endif	/* CONFIG_SND_SOC_TPA6165A2 */
 
+#ifdef CONFIG_SND_SOC_WM5110
+static const struct snd_soc_dapm_route wm5110_audio_routes[] = {
+	{"IN2R", NULL, "MICBIAS3"},
+	{"Handset Mic", NULL, "IN2R"},
+};
+#endif
 
 static const char *const spk_function[] = {"Off", "On"};
 static const char *const slim0_rx_ch_text[] = {"One", "Two"};
@@ -1961,6 +1967,7 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
         int ret;
         struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
 
 	dev_crit(codec->dev, "wm5110_dai_init first BE dai initing ...\n");
 
@@ -1991,9 +1998,23 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
                                                 WM5110_SYSCLK_RATE,
                                                 SND_SOC_CLOCK_IN);
 
+	ret = snd_soc_dapm_new_controls(dapm, msm8974_dapm_widgets,
+				ARRAY_SIZE(msm8974_dapm_widgets));
+
+	if (ret != 0)
+		dev_err(codec->dev, "Failed to add msm8974_dapm_widgets\n");
+
         if (ret != 0)
                 dev_err(codec->dev, "Failed to set SYSCLK: %d \n", ret);
 
+	ret = snd_soc_dapm_add_routes(dapm, wm5110_audio_routes,
+				ARRAY_SIZE(wm5110_audio_routes));
+
+	if (ret != 0)
+		dev_err(codec->dev, "Failed to add wm5110_audio_routes\n");
+
+	/* Cargo-culted from QC */
+	snd_soc_dapm_sync(dapm);
         return 0;
 
 }
