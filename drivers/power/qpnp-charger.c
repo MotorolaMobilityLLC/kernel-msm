@@ -1499,11 +1499,14 @@ qpnp_chg_bat_if_batt_pres_irq_handler(int irq, void *_chip)
 						&& batt_present) {
 			pr_debug("enabling vadc notifications\n");
 			schedule_work(&chip->adc_measure_work);
-		} else if ((chip->cool_bat_decidegc || chip->warm_bat_decidegc)
+		}
+#if 0
+		else if ((chip->cool_bat_decidegc || chip->warm_bat_decidegc)
 				&& !batt_present) {
 			schedule_work(&chip->adc_disable_work);
 			pr_debug("disabling vadc notifications\n");
 		}
+#endif
 	}
 
 	return IRQ_HANDLED;
