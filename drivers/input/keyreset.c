@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 #include <linux/syscalls.h>
 #include <linux/workqueue.h>
+#include <linux/of_platform.h>
 
 
 struct keyreset_state {
@@ -190,6 +191,69 @@ static const struct input_device_id keyreset_ids[] = {
 };
 MODULE_DEVICE_TABLE(input, keyreset_ids);
 
+/*
+ * Translate dt node properties into platform_data
+ */
+static int keyreset_get_devtree_pdata(struct device *dev,
+		struct keyreset_platform_data *pdata)
+{
+	struct device_node *node = dev->of_node;
+	struct device_node *pp;
+	int *key_downs;
+	int key_count = 0;
+	int i;
+	int ret;
+
+	ret = of_property_read_u32(node, "down-time-ms", &pdata->down_time_ms);
+	if (ret < 0) {
+		pr_err("%s: failed to read 'down-time-ms' from dt\n",
+				__func__);
+		return ret;
+	}
+
+	/* First count the subnodes */
+	pp = NULL;
+	while ((pp = of_get_next_child(node, pp)))
+		key_count++;
+
+	if (key_count == 0) {
+		pr_err("%s: no keydata\n", __func__);
+		return -ENODEV;
+	}
+
+	key_downs = devm_kzalloc(dev, ++key_count * sizeof(int), GFP_KERNEL);
+	if (!key_downs) {
+		pr_err("%s: no memory\n", __func__);
+		return -ENOMEM;
+	}
+
+	pp = NULL;
+	i = 0;
+	while ((pp = of_get_next_child(node, pp))) {
+		ret = of_property_read_u32(pp, "linux,code", &key_downs[i++]);
+		if (ret < 0) {
+			pr_err("%s: Key without keycode\n", __func__);
+			return ret;
+		}
+	}
+	key_downs[i] = 0;
+	pdata->keys_down = key_downs;
+
+	return 0;
+}
+
+static struct of_device_id keyreset_of_match[] = {
+	{ .compatible = "keyreset", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, keyreset_of_match);
+
+static int keyreset_default_reset(void)
+{
+	kernel_restart(NULL);
+	return -ENOEXEC;
+}
+
 static int keyreset_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -197,8 +261,17 @@ static int keyreset_probe(struct platform_device *pdev)
 	struct keyreset_state *state;
 	struct keyreset_platform_data *pdata = pdev->dev.platform_data;
 
-	if (!pdata)
-		return -EINVAL;
+	if (pdev->dev.of_node) {
+		pdata = devm_kzalloc(&pdev->dev,
+				sizeof(struct keyreset_platform_data),
+				GFP_KERNEL);
+		ret = keyreset_get_devtree_pdata(&pdev->dev, pdata);
+		if (ret < 0)
+			return ret;
+	} else {
+		if (!pdata)
+			return -EINVAL;
+	}
 
 	state = kzalloc(sizeof(*state), GFP_KERNEL);
 	if (!state)
@@ -224,6 +297,8 @@ static int keyreset_probe(struct platform_device *pdev)
 
 	if (pdata->reset_fn)
 		state->reset_fn = pdata->reset_fn;
+	else
+		state->reset_fn = keyreset_default_reset;
 
 	if (pdata->down_time_ms)
 		state->down_time_ms = pdata->down_time_ms;
@@ -255,9 +330,13 @@ int keyreset_remove(struct platform_device *pdev)
 
 
 struct platform_driver keyreset_driver = {
-	.driver.name = KEYRESET_NAME,
 	.probe = keyreset_probe,
 	.remove = keyreset_remove,
+	.driver = {
+		.name = KEYRESET_NAME,
+		.owner = THIS_MODULE,
+		.of_match_table = keyreset_of_match,
+	}
 };
 
 static int __init keyreset_init(void)
