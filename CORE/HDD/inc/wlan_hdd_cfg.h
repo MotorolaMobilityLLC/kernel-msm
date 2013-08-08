@@ -1792,6 +1792,15 @@ typedef enum
 #define CFG_ENABLE_FAST_ROAM_IN_CONCURRENCY_DEFAULT  ( 1 )
 #endif
 
+/*
+ * FlexConnectPowerFactor parameter
+ * Default: Disable (0)
+ */
+#define CFG_FLEX_CONNECT_POWER_FACTOR_NAME          "gFlexConnectPowerFactor"
+#define CFG_FLEX_CONNECT_POWER_FACTOR_MIN           ( 0 )
+#define CFG_FLEX_CONNECT_POWER_FACTOR_MAX           ( 9 )
+#define CFG_FLEX_CONNECT_POWER_FACTOR_DEFAULT       ( 0 )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2173,6 +2182,7 @@ typedef struct
 #endif
    v_BOOL_t                    fEnableAdaptRxDrain;
    v_BOOL_t                    enableOxygenNwk;
+   v_U8_t                      flexConnectPowerFactor;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
