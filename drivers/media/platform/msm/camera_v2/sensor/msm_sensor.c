@@ -527,6 +527,7 @@ int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 {
 	int32_t rc = 0;
 	int32_t val = 0;
+	int i;
 
 	gconf->gpio_num_info = kzalloc(sizeof(struct msm_camera_gpio_num_info),
 		GFP_KERNEL);
@@ -535,6 +536,12 @@ int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 		rc = -ENOMEM;
 		return rc;
 	}
+
+	/* Not all GPIOs may be needed on every platform by the driver, force
+	 * them to invalid values so we don't start setting GPIO0.
+	 */
+	for (i = 0; i < SENSOR_GPIO_MAX; i++)
+		gconf->gpio_num_info->gpio_num[i] = -EINVAL;
 
 	if (of_property_read_bool(of_node, "qcom,gpio-reset") == true) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-reset", &val);
@@ -1042,6 +1049,12 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 					SENSOR_GPIO_MAX);
 				goto power_up_failed;
 			}
+
+			if (!gpio_is_valid(
+				    data->gpio_conf->gpio_num_info->gpio_num
+				    [power_setting->seq_val]))
+				break;
+
 			pr_debug("%s:%d gpio set val %d\n", __func__, __LINE__,
 				data->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val]);
@@ -1196,6 +1209,12 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 					SENSOR_GPIO_MAX);
 				continue;
 			}
+
+			if (!gpio_is_valid(
+				    data->gpio_conf->gpio_num_info->gpio_num
+				    [power_setting->seq_val]))
+				break;
+
 			gpio_set_value_cansleep(
 				data->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val], GPIOF_OUT_INIT_LOW);
