@@ -5190,7 +5190,16 @@ VOS_STATUS WDA_ProcessUpdateEDCAParamReq(tWDA_CbContext *pWDA,
       return VOS_STATUS_E_NOMEM;
    }
    wdiEdcaParam->wdiEDCAInfo.ucBssIdx = pEdcaParams->bssIdx;
-   wdiEdcaParam->wdiEDCAInfo.ucEDCAParamsValid = pEdcaParams->highPerformance;
+   /*
+    Since firmware is not using highperformance flag, we have removed
+    this flag from wdiEDCAInfo structure to match sizeof the structure
+    between host and firmware.In future if we are planning to use
+    highperformance flag then Please define this flag  in wdiEDCAInfo
+    structure, update it here and send it to firmware. i.e.
+    Following is the original line which we removed as part of the fix
+    wdiEdcaParam->wdiEDCAInfo.ucEDCAParamsValid =
+                  pEdcaParams->highPerformance;
+   */
    WDA_UpdateEdcaParamsForAC(pWDA, &wdiEdcaParam->wdiEDCAInfo.wdiEdcaBEInfo,
                                                            &pEdcaParams->acbe);
    WDA_UpdateEdcaParamsForAC(pWDA, &wdiEdcaParam->wdiEDCAInfo.wdiEdcaBKInfo,
