@@ -347,6 +347,33 @@ typedef struct
   v_U16_t         medium_time;
 } vos_log_qos_tspec_pkt_type;
 
+/*---------------------------------------------------------------------------
+   This packet contains data information when stall detected
+   LOG_TRSP_DATA_STALL_C                           0x1801
+---------------------------------------------------------------------------*/
+
+typedef struct
+{
+   char         channelName[4];
+   v_U32_t      numDesc;
+   v_U32_t      numFreeDesc;
+   v_U32_t      numRsvdDesc;
+   v_U32_t      headDescOrder;
+   v_U32_t      tailDescOrder;
+   v_U32_t      ctrlRegVal;
+   v_U32_t      statRegVal;
+   v_U32_t      numValDesc;
+   v_U32_t      numInvalDesc;
+} vos_log_data_stall_channel_type;
+
+typedef struct
+{
+   log_hdr_type                     hdr;
+   v_U32_t                          PowerState;
+   v_U32_t                          numFreeBd;
+   vos_log_data_stall_channel_type  dxeChannelInfo[4];
+} vos_log_data_stall_type;
+
 /*------------------------------------------------------------------------- 
   Function declarations and documenation
   ------------------------------------------------------------------------*/
