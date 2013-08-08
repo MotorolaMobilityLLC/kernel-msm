@@ -603,7 +603,7 @@ void limRemainOnChnRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data)
     limSendSmeRsp(pMac, eWNI_SME_REMAIN_ON_CHN_RSP, status, 
                   MsgRemainonChannel->sessionId, 0);
 
-    palFreeMemory( pMac->hHdd, pMac->lim.gpLimRemainOnChanReq );
+    vos_mem_free(pMac->lim.gpLimRemainOnChanReq);
     pMac->lim.gpLimRemainOnChanReq = NULL;
 
     pMac->lim.gLimMlmState = pMac->lim.gLimPrevMlmState;
@@ -636,14 +636,14 @@ void limSendSmeMgmtFrameInd(
 
     length = sizeof(tSirSmeMgmtFrameInd) + frameLen;
 
-    if( eHAL_STATUS_SUCCESS !=
-         palAllocateMemory( pMac->hHdd, (void **)&pSirSmeMgmtFrame, length ))
+    pSirSmeMgmtFrame = vos_mem_malloc(length);
+    if (NULL == pSirSmeMgmtFrame)
     {
         limLog(pMac, LOGP,
-               FL("palAllocateMemory failed for eWNI_SME_LISTEN_RSP"));
+               FL("AllocateMemory failed for eWNI_SME_LISTEN_RSP"));
         return;
     }
-    palZeroMemory(pMac->hHdd, (void*)pSirSmeMgmtFrame, length);
+    vos_mem_set((void*)pSirSmeMgmtFrame, length, 0);
 
     pSirSmeMgmtFrame->mesgType = eWNI_SME_MGMT_FRM_IND;
     pSirSmeMgmtFrame->mesgLen = length;
@@ -677,8 +677,8 @@ void limSendSmeMgmtFrameInd(
 
     pSirSmeMgmtFrame->rxChan = rxChannel;
 
-    vos_mem_zero(pSirSmeMgmtFrame->frameBuf,frameLen);
-    vos_mem_copy(pSirSmeMgmtFrame->frameBuf,frame,frameLen);
+    vos_mem_zero(pSirSmeMgmtFrame->frameBuf, frameLen);
+    vos_mem_copy(pSirSmeMgmtFrame->frameBuf, frame, frameLen);
 
     mmhMsg.type = eWNI_SME_MGMT_FRM_IND;
     mmhMsg.bodyptr = pSirSmeMgmtFrame;
@@ -764,9 +764,9 @@ void limSetHtCaps(tpAniSirGlobal pMac, tpPESession psessionEntry, tANI_U8 *pIeSt
         pHtcap->lsigTXOPProtection = dot11HtCap.lsigTXOPProtection;
         pHtcap->maxRxAMPDUFactor = dot11HtCap.maxRxAMPDUFactor;
         pHtcap->mpduDensity = dot11HtCap.mpduDensity;
-        palCopyMemory( pMac->hHdd, (void *)pHtcap->supportedMCSSet,
-                       (void *)(dot11HtCap.supportedMCSSet),
-                        sizeof(pHtcap->supportedMCSSet));
+        vos_mem_copy((void *)pHtcap->supportedMCSSet,
+                     (void *)(dot11HtCap.supportedMCSSet),
+                      sizeof(pHtcap->supportedMCSSet));
         pHtcap->pco = dot11HtCap.pco;
         pHtcap->transitionTime = dot11HtCap.transitionTime;
         pHtcap->mcsFeedback = dot11HtCap.mcsFeedback;
@@ -899,8 +899,8 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
                 tpSirMacP2PActionFrameHdr pActionHdr =
                     (tpSirMacP2PActionFrameHdr)((v_U8_t *)pMbMsg->data +
                                                         ACTION_OFFSET);
-                if ( palEqualMemory( pMac->hHdd, pActionHdr->Oui,
-                     SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE ) &&
+                if (vos_mem_compare( pActionHdr->Oui,
+                    SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE ) &&
                     (SIR_MAC_ACTION_P2P_SUBTYPE_PRESENCE_RSP ==
                     pActionHdr->OuiSubType))
                 { //In case of Presence RSP response
@@ -1026,22 +1026,22 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     }
 
     // Paranoia:
-    palZeroMemory( pMac->hHdd, pFrame, nBytes );
+    vos_mem_set(pFrame, nBytes, 0);
 
     if ((noaLen > 0) && (noaLen<(SIR_MAX_NOA_ATTR_LEN + SIR_P2P_IE_HEADER_LEN)))
     {
         // Add 2 bytes for length and Arribute field
         v_U32_t nBytesToCopy = ((pP2PIe + origLen + 2 ) -
                                 (v_U8_t *)pMbMsg->data);
-        palCopyMemory( pMac->hHdd, pFrame, pMbMsg->data, nBytesToCopy);
-        palCopyMemory( pMac->hHdd, (pFrame + nBytesToCopy), noaStream, noaLen);
-        palCopyMemory( pMac->hHdd, (pFrame + nBytesToCopy + noaLen),
-            pMbMsg->data + nBytesToCopy, nBytes - nBytesToCopy - noaLen);
+        vos_mem_copy(pFrame, pMbMsg->data, nBytesToCopy);
+        vos_mem_copy((pFrame + nBytesToCopy), noaStream, noaLen);
+        vos_mem_copy((pFrame + nBytesToCopy + noaLen),
+        pMbMsg->data + nBytesToCopy, nBytes - nBytesToCopy - noaLen);
 
     }
     else
     {
-        palCopyMemory(pMac->hHdd, pFrame, pMbMsg->data, nBytes);
+        vos_mem_copy(pFrame, pMbMsg->data, nBytes);
     }
 
     /* Use BD rate 2 for all P2P related frames. As these frames need to go
@@ -1114,15 +1114,15 @@ tSirRetStatus __limProcessSmeNoAUpdate(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     pNoA = (tpP2pPsConfig) pMsgBuf;
 
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory(
-                  pMac->hHdd, (void **) &pMsgNoA, sizeof( tP2pPsConfig )))
+    pMsgNoA = vos_mem_malloc(sizeof( tP2pPsConfig ));
+    if (NULL == pMsgNoA)
     {
         limLog( pMac, LOGE,
                      FL( "Unable to allocate memory during NoA Update" ));
         return eSIR_MEM_ALLOC_FAILED;
     }
 
-    palZeroMemory( pMac->hHdd, (tANI_U8 *)pMsgNoA, sizeof(tP2pPsConfig));
+    vos_mem_set((tANI_U8 *)pMsgNoA, sizeof(tP2pPsConfig), 0);
     pMsgNoA->opp_ps = pNoA->opp_ps;
     pMsgNoA->ctWindow = pNoA->ctWindow;
     pMsgNoA->duration = pNoA->duration;
