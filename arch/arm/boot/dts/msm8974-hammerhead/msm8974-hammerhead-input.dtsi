@@ -150,4 +150,14 @@
 			debounce-interval = <15>;
 		};
 	};
+
+	keyreset {
+		compatible = "keyreset";
+		down-time-ms = <1500>;
+		enable-boot-mode = "charger";
+
+		power_key {
+			linux,code = <116>;
+		};
+	};
 };
