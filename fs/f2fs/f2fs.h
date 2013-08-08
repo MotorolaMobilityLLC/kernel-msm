@@ -29,6 +29,7 @@
 #define F2FS_MOUNT_XATTR_USER		0x00000010
 #define F2FS_MOUNT_POSIX_ACL		0x00000020
 #define F2FS_MOUNT_DISABLE_EXT_IDENTIFY	0x00000040
+#define F2FS_MOUNT_INLINE_XATTR		0x00000080
 #define F2FS_MOUNT_ANDROID_EMU		0x00001000
 #define F2FS_MOUNT_ERRORS_PANIC		0x00002000
 #define F2FS_MOUNT_ERRORS_RECOVER	0x00004000
@@ -944,6 +945,7 @@ enum {
 	FI_NO_ALLOC,		/* should not allocate any blocks */
 	FI_UPDATE_DIR,		/* should update inode block for consistency */
 	FI_DELAY_IPUT,		/* used for the recovery */
+	FI_INLINE_XATTR,	/* used for inline xattr */
 };
 
 static inline void set_inode_flag(struct f2fs_inode_info *fi, int flag)
@@ -983,6 +985,22 @@ int f2fs_android_emu(struct f2fs_sb_info *, struct inode *, u32 *, u32 *,
 	(test_opt((sbi), ANDROID_EMU) &&				\
 	 (((fi)->i_advise & FADVISE_ANDROID_EMU) ||			\
 	  ((pfi)->i_advise & FADVISE_ANDROID_EMU)))
+
+static inline void get_inline_info(struct f2fs_inode_info *fi,
+					struct f2fs_inode *ri)
+{
+	if (ri->i_inline & F2FS_INLINE_XATTR)
+		set_inode_flag(fi, FI_INLINE_XATTR);
+}
+
+static inline void set_raw_inline(struct f2fs_inode_info *fi,
+					struct f2fs_inode *ri)
+{
+	ri->i_inline = 0;
+
+	if (is_inode_flag_set(fi, FI_INLINE_XATTR))
+		ri->i_inline |= F2FS_INLINE_XATTR;
+}
 
 static inline int f2fs_readonly(struct super_block *sb)
 {
