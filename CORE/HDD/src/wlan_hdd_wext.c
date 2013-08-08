@@ -3143,7 +3143,8 @@ static int iw_get_encodeext(struct net_device *dev,
     {
         dwrq->flags |= IW_ENCODE_ENABLED;
         dwrq->length = pRoamProfile->Keys.KeyLength[keyId];
-        palCopyMemory(dev,extra,&(pRoamProfile->Keys.KeyMaterial[keyId][0]),pRoamProfile->Keys.KeyLength[keyId]);
+        vos_mem_copy(extra, &(pRoamProfile->Keys.KeyMaterial[keyId][0]),
+                     pRoamProfile->Keys.KeyLength[keyId]);
     }
     else
     {

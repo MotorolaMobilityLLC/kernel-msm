@@ -273,7 +273,7 @@ tpDphHashNode dphInitStaState(tpAniSirGlobal pMac, tSirMacAddr staAddr,
     PELOG1(limLog(pMac, LOG1, FL("Assoc Id %d, Addr %08X"), assocId, pStaDs);)
 
     // Clear the STA node except for the next pointer (last 4 bytes)
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) pStaDs, sizeof(tDphHashNode) - sizeof(tpDphHashNode));
+    vos_mem_set( (tANI_U8 *) pStaDs, sizeof(tDphHashNode) - sizeof(tpDphHashNode), 0);
 
     // Initialize the assocId
     pStaDs->assocId = assocId;
@@ -283,7 +283,7 @@ tpDphHashNode dphInitStaState(tpAniSirGlobal pMac, tSirMacAddr staAddr,
       pStaDs->staIndex = HAL_STA_INVALID_IDX;
 
     // Initialize STA mac address
-    palCopyMemory( pMac->hHdd, pStaDs->staAddr, staAddr, sizeof(tSirMacAddr));
+    vos_mem_copy( pStaDs->staAddr, staAddr, sizeof(tSirMacAddr));
 
     // Initialize fragmentation threshold
     if (wlan_cfgGetInt(pMac, WNI_CFG_FRAGMENTATION_THRESHOLD, &val) != eSIR_SUCCESS)
