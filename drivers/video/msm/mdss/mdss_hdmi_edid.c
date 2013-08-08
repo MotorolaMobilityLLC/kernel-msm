@@ -842,6 +842,40 @@ static void hdmi_edid_add_sink_3d_format(struct hdmi_edid_sink_data *sink_data,
 		string, added ? "added" : "NOT added");
 } /* hdmi_edid_add_sink_3d_format */
 
+static void hdmi_limit_supported_video_format(u32 *video_format)
+{
+	switch (sp_get_link_bw()) {
+	case 0x06: /* 1.62 Gbps */
+		DEV_DBG("%s: 1.62G\n", __func__);
+		if (*video_format != HDMI_VFRMT_640x480p60_4_3)
+			*video_format = HDMI_VFRMT_640x480p60_4_3;
+		break;
+	case 0x0a: /* 2.7 Gbps */
+		DEV_DBG("%s: 2.7G\n", __func__);
+		if ((*video_format == HDMI_VFRMT_1920x1080p60_16_9) ||
+			(*video_format == HDMI_VFRMT_2880x480p60_4_3) ||
+			(*video_format == HDMI_VFRMT_2880x480p60_16_9) ||
+			(*video_format == HDMI_VFRMT_1280x720p120_16_9))
+			*video_format = HDMI_VFRMT_1280x720p60_16_9;
+		else if ((*video_format == HDMI_VFRMT_1920x1080p50_16_9) ||
+				 (*video_format == HDMI_VFRMT_2880x576p50_4_3) ||
+				 (*video_format == HDMI_VFRMT_2880x576p50_16_9) ||
+				 (*video_format == HDMI_VFRMT_1280x720p100_16_9))
+			*video_format = HDMI_VFRMT_1280x720p50_16_9;
+		else if (*video_format == HDMI_VFRMT_1920x1080i100_16_9)
+			*video_format = HDMI_VFRMT_1920x1080i50_16_9;
+		else if (*video_format == HDMI_VFRMT_1920x1080i120_16_9)
+			*video_format = HDMI_VFRMT_1920x1080i60_16_9;
+		else if (*video_format == HDMI_VFRMT_1280x1024p60_5_4)
+			*video_format = HDMI_VFRMT_1024x768p60_4_3;
+		break;
+	case 0x14: /* 5.4 Gbps */
+		DEV_DBG("%s: 5.4G\n", __func__);
+	default:
+		break;
+	}
+}
+
 static void hdmi_edid_add_sink_video_format(
 	struct hdmi_edid_sink_data *sink_data, u32 video_format)
 {
@@ -849,6 +883,7 @@ static void hdmi_edid_add_sink_video_format(
 		hdmi_get_supported_mode(video_format);
 	u32 supported = timing != NULL;
 
+	hdmi_limit_supported_video_format(&video_format);
 	if (video_format >= HDMI_VFRMT_MAX) {
 		DEV_ERR("%s: video format: %s is not supported\n", __func__,
 			msm_hdmi_mode_2string(video_format));
@@ -1508,7 +1543,10 @@ u32 hdmi_edid_get_sink_mode(void *input)
 		return 0;
 	}
 
-	return edid_ctrl->sink_mode;
+	if (is_slimport_dp())
+		return 1;
+	else
+		return edid_ctrl->sink_mode;
 } /* hdmi_edid_get_sink_mode */
 
 int hdmi_edid_get_audio_blk(void *input, struct msm_hdmi_audio_edid_blk *blk)

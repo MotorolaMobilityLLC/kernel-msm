@@ -30,11 +30,13 @@ struct anx7808_platform_data
 #ifdef CONFIG_SLIMPORT_ANX7808
 int slimport_read_edid_block(int block, uint8_t *edid_buf);
 bool slimport_is_connected(void);
+bool is_slimport_dp(void);
 unchar sp_get_link_bw(void);
 void sp_set_link_bw(unchar link_bw);
 #else
 static inline int slimport_read_edid_block(int block, uint8_t *edid_buf) { return -ENOSYS; }
 static inline bool slimport_is_connected(void) { return false; }
+static inline bool is_slimport_dp(void) { return false; }
 static inline unchar sp_get_link_bw(void) { return 0};
 static inline void sp_set_link_bw(unchar link_bw) {};
 #endif

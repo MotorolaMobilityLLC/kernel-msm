@@ -352,6 +352,12 @@ bool slimport_is_connected(void)
 }
 EXPORT_SYMBOL(slimport_is_connected);
 
+bool is_slimport_dp(void)
+{
+	return (sp_tx_rx_type == RX_DP);
+}
+EXPORT_SYMBOL(is_slimport_dp);
+
 static void slimport_config_output(void)
 {
 	sp_tx_clean_hdcp();
