@@ -3526,6 +3526,54 @@ static DEVICE_ATTR(force_chg_itrick, 0664,
 		   force_chg_itrick_show,
 		   force_chg_itrick_store);
 
+static ssize_t force_chg_usb_otg_ctl_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	int state;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	state = qpnp_chg_is_otg_en_set(the_chip);
+
+end:
+	return scnprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static ssize_t force_chg_usb_otg_ctl_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long mode;
+
+	r = kstrtoul(buf, 0, &mode);
+	if (r) {
+		pr_err("Invalid otg ctl value = %lu\n", mode);
+		return -EINVAL;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		return -ENODEV;
+	}
+
+	if (mode)
+		r = switch_usb_to_host_mode(the_chip);
+	else
+		r = switch_usb_to_charge_mode(the_chip);
+
+	return r ? r : count;
+}
+
+static DEVICE_ATTR(force_chg_usb_otg_ctl, 0664,
+		   force_chg_usb_otg_ctl_show,
+		   force_chg_usb_otg_ctl_store);
+
 
 static int qpnp_charging_reboot(struct notifier_block *nb,
 				unsigned long event, void *unused)
@@ -3953,6 +4001,13 @@ qpnp_charger_fac_probe(struct spmi_device *spmi)
 		goto fail_chg_enable;
 	}
 
+	rc = device_create_file(&spmi->dev,
+				&dev_attr_force_chg_usb_otg_ctl);
+	if (rc) {
+		pr_err("couldn't create force_chg_usb_otg_ctl\n");
+		goto fail_chg_enable;
+	}
+
 	pr_info("success chg_dis = %d, bpd = %d, usb = %d, dc = %d b_health = %d batt_present = %d\n",
 			chip->charging_disabled,
 			chip->bpd_detection,
@@ -4003,6 +4058,7 @@ qpnp_charger_fac_remove(struct spmi_device *spmi)
 	device_remove_file(&spmi->dev, &dev_attr_force_chg_auto_enable);
 	device_remove_file(&spmi->dev, &dev_attr_force_chg_itrick);
 	device_remove_file(&spmi->dev, &dev_attr_force_chg_fail_clear);
+	device_remove_file(&spmi->dev, &dev_attr_force_chg_usb_otg_ctl);
 	dev_set_drvdata(&spmi->dev, NULL);
 	unregister_reboot_notifier(&qpnp_charging_reboot_notifier);
 	kfree(chip);
