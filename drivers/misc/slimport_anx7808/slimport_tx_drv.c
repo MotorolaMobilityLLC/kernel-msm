@@ -2060,7 +2060,7 @@ void sp_tx_edid_read(void)
 	bedid_break = 0;
 	sp_tx_addronly_set(1);
 	sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG, 0x04);
-	sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG2, 0x01);
+	sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG2, 0x03);
 	sp_tx_wait_aux_finished();
 
 	edid_block = sp_tx_get_edid_block();
