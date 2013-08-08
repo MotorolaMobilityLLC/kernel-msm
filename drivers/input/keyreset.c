@@ -23,7 +23,13 @@
 #include <linux/syscalls.h>
 #include <linux/workqueue.h>
 #include <linux/of_platform.h>
+#include <asm/setup.h>
 
+#ifdef CONFIG_ANDROID
+#define MAX_CHAR_BOOT_MODE 128
+
+static char boot_mode[MAX_CHAR_BOOT_MODE];
+#endif
 
 struct keyreset_state {
 	struct input_handler input_handler;
@@ -203,6 +209,16 @@ static int keyreset_get_devtree_pdata(struct device *dev,
 	int key_count = 0;
 	int i;
 	int ret;
+#ifdef CONFIG_ANDROID
+	const char *enable_boot_mode;
+
+	enable_boot_mode = of_get_property(node, "enable-boot-mode",NULL);
+	if (!enable_boot_mode)
+		return -ENODEV;
+
+	if (strcmp(enable_boot_mode, boot_mode))
+		return -ENODEV;
+#endif
 
 	ret = of_property_read_u32(node, "down-time-ms", &pdata->down_time_ms);
 	if (ret < 0) {
@@ -328,6 +344,14 @@ int keyreset_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_ANDROID
+static int __init keyreset_check_boot_mode(char *s)
+{
+	strcpy(boot_mode,s);
+	return 1;
+}
+early_param("androidboot.mode", keyreset_check_boot_mode);
+#endif
 
 struct platform_driver keyreset_driver = {
 	.probe = keyreset_probe,
