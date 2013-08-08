@@ -354,7 +354,7 @@ struct msm_sensor_info_t {
 };
 
 struct msm_camera_gpio_num_info {
-	uint16_t gpio_num[SENSOR_GPIO_MAX];
+	int16_t gpio_num[SENSOR_GPIO_MAX];
 };
 
 struct camera_vreg_t {
