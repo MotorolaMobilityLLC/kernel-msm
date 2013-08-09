@@ -305,7 +305,7 @@
 				qcom,cs-out-en;
 				qcom,op-fdbck = <1>;
 				qcom,default-state = "on";
-				qcom,max-current = <21>;
+				qcom,max-current = <18>;
 				qcom,ctrl-delay-us = <0>;
 				qcom,boost-curr-lim = <0x03>;
 				qcom,max-boost-duty = <0x02>;
