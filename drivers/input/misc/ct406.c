@@ -886,8 +886,8 @@ static void ct406_report_als(struct ct406_data *ct)
 {
 	int error;
 	u8 reg_data[4] = {0};
-	unsigned int c0data;
-	unsigned int c1data;
+	int c0data;
+	int c1data;
 	unsigned int ratio;
 	int lux1 = 0;
 	int lux2 = 0;
