@@ -1302,6 +1302,12 @@ typedef struct sMaxTxPowerParams
     tPowerdBm  power;
 }tMaxTxPowerParams, *tpMaxTxPowerParams;
 
+typedef struct sMaxTxPowerPerBandParams
+{
+    eCsrBand   bandInfo;
+    tPowerdBm  power;
+}tMaxTxPowerPerBandParams, *tpMaxTxPowerPerBandParams;
+
 typedef struct sAddStaSelfParams
 {
    tSirMacAddr selfMacAddr;

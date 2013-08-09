@@ -3219,6 +3219,45 @@ typedef struct
 }WDI_SetMaxTxPowerParamsType;
 
 /*---------------------------------------------------------------------------
+  WDI_Band
+---------------------------------------------------------------------------*/
+typedef enum
+{
+    WDI_BAND_ALL,
+    WDI_BAND_24,
+    WDI_BAND_5G,
+    WDI_BAND_MAX,
+}eWDIBand;
+
+/*---------------------------------------------------------------------------
+  WDI_MaxTxPowerPerBandInfoType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  eWDIBand   bandInfo;
+  /* In request  power == MaxTxpower to be used.*/
+  wpt_uint8  ucPower;
+}WDI_MaxTxPowerPerBandInfoType;
+
+/*---------------------------------------------------------------------------
+  WDI_SetMaxTxPowerPerBandParamsType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /*Link Info*/
+  WDI_MaxTxPowerPerBandInfoType  wdiMaxTxPowerPerBandInfo;
+
+  /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb   wdiReqStatusCB;
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*             pUserData;
+}WDI_SetMaxTxPowerPerBandParamsType;
+
+/*---------------------------------------------------------------------------
   WDI_SetTxPowerParamsType
 ---------------------------------------------------------------------------*/
 typedef struct
@@ -3249,6 +3288,19 @@ typedef struct
   WDI_Status wdiStatus;
  
 }WDI_SetMaxTxPowerRspMsg;
+
+/*---------------------------------------------------------------------------
+  WDI_SetMaxTxPowerPerBandRspMsg
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /* In response, power==tx power used for management frames*/
+  wpt_int8  ucPower;
+
+  /*Result of the operation*/
+  WDI_Status wdiStatus;
+
+}WDI_SetMaxTxPowerPerBandRspMsg;
 
 /*---------------------------------------------------------------------------
   WDI_SetTxPowerRspMsg
@@ -6076,6 +6128,27 @@ typedef void (*WDA_SetMaxTxPowerRspCb)(WDI_SetMaxTxPowerRspMsg *wdiSetMaxTxPower
                                              void* pUserData);
 
 /*---------------------------------------------------------------------------
+   WDA_SetMaxTxPowerPerBandRspCb
+
+   DESCRIPTION
+
+   This callback is invoked by DAL when it has received a
+   set max Tx Power Per Band response from the underlying device.
+
+   PARAMETERS
+
+    IN
+    wdiSetMaxTxPowerPerBandRsp:  response status received from HAL
+    pUserData:  user data
+
+  RETURN VALUE
+    The result code associated with performing the operation
+---------------------------------------------------------------------------*/
+typedef void (*WDA_SetMaxTxPowerPerBandRspCb)(WDI_SetMaxTxPowerPerBandRspMsg
+                                              *wdiSetMaxTxPowerPerBandRsp,
+                                              void* pUserData);
+
+/*---------------------------------------------------------------------------
    WDA_SetTxPowerRspCb
 
    DESCRIPTION
@@ -7904,6 +7977,37 @@ WDI_SetMaxTxPowerReq
   WDI_SetMaxTxPowerParamsType*   pwdiSetMaxTxPowerParams,
   WDA_SetMaxTxPowerRspCb         wdiReqStatusCb,
   void*                          pUserData
+);
+
+/**
+ @brief WDI_SetMaxTxPowerPerBandReq will be called when the upper
+        MAC wants to set Max Tx Power to HW for specific band. Upon the
+        call of this API the WLAN DAL will pack and send a HAL
+        Set Max Tx Power Per Band request message to the lower RIVA
+        sub-system if DAL is in state STARTED.
+
+        In state BUSY this request will be queued. Request won't
+        be allowed in any other state.
+
+
+ @param WDI_SetMaxTxPowerPerBandParamsType: Max Tx Per Band Info
+
+        WDA_SetMaxTxPowerPerBandRspCb: This callback is invoked by DAL
+        when it has received a set max Tx Power Per Band response from
+        the underlying device.
+
+        pUserData: user data will be passed back with the
+        callback
+
+ @see WDI_SetMaxTxPowerPerBandReq
+ @return Result of the function call
+*/
+WDI_Status
+WDI_SetMaxTxPowerPerBandReq
+(
+  WDI_SetMaxTxPowerPerBandParamsType*   pwdiSetMaxTxPowerPerBandParams,
+  WDA_SetMaxTxPowerPerBandRspCb         wdiReqStatusCb,
+  void*                                 pUserData
 );
 
 #ifdef FEATURE_WLAN_CCX
