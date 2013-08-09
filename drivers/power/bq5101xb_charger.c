@@ -16,6 +16,7 @@
  * 02111-1307, USA
  *
  */
+#include <linux/android_alarm.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
@@ -26,7 +27,8 @@
 #include <linux/power/bq5101xb_charger.h>
 #include <linux/printk.h>
 
-#define BQ5101XB_TEMP_HYS 2
+#define BQ5101XB_TEMP_HYS_COLD 2
+#define BQ5101XB_TEMP_HYS_HOT  5
 #define BQ5101XB_CHRG_CMPLT_SOC 100
 
 struct bq5101xb_chip {
@@ -37,6 +39,7 @@ struct bq5101xb_chip {
 	struct power_supply wl_psy;
 	struct power_supply *batt_psy;
 	struct notifier_block psy_notifier;
+	int cool_time;
 };
 
 enum bq5101xb_state {
@@ -119,6 +122,8 @@ static void bq5101xb_worker(struct work_struct *work)
 	struct bq5101xb_charger_platform_data *pdata;
 	struct blocking_notifier_head *ntfy_hd;
 	struct notifier_block *batt_ntfy;
+	int curr_time =
+		ktime_to_timespec(alarm_get_elapsed_realtime()).tv_sec;
 
 	dwork = to_delayed_work(work);
 	chip = container_of(dwork, struct bq5101xb_chip, bq5101xb_work);
@@ -201,12 +206,6 @@ static void bq5101xb_worker(struct work_struct *work)
 			chip->state = BQ5101XB_WIRED_CONN;
 		} else if (powered) {
 			chip->state = BQ5101XB_RUNNING;
-		} else if (batt_temp >= pdata->hot_temp) {
-			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
-			chip->state = BQ5101XB_OUT_OF_TEMP_HOT;
-		} else if (batt_temp <= pdata->cold_temp) {
-			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
-			chip->state = BQ5101XB_OUT_OF_TEMP_COLD;
 		}
 		break;
 	case BQ5101XB_WIRED_CONN:
@@ -223,7 +222,8 @@ static void bq5101xb_worker(struct work_struct *work)
 			bq5101xb_set_pins(pdata, 0, 0, 1, 0);
 			chip->state = BQ5101XB_WAIT;
 		} else if (batt_temp >= pdata->hot_temp) {
-			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
+			/* Set Charge Complete instead of Charge Terminate */
+			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 			chip->state = BQ5101XB_OUT_OF_TEMP_HOT;
 		} else if (batt_temp <= pdata->cold_temp) {
 			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
@@ -239,15 +239,10 @@ static void bq5101xb_worker(struct work_struct *work)
 			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 			chip->state = BQ5101XB_WIRED_CONN;
 		} else if (batt_temp < (pdata->hot_temp -
-					BQ5101XB_TEMP_HYS)) {
-			if ((batt_soc >= BQ5101XB_CHRG_CMPLT_SOC) &&
-			    (batt_status == POWER_SUPPLY_STATUS_FULL)) {
-				bq5101xb_set_pins(pdata, 1, 1, 0, 0);
-				chip->state = BQ5101XB_CHRG_CMPLT;
-			} else {
-				bq5101xb_set_pins(pdata, 0, 0, 1, 0);
-				chip->state = BQ5101XB_WAIT;
-			}
+					BQ5101XB_TEMP_HYS_HOT)) {
+			bq5101xb_set_pins(pdata, 0, 0, 1, 0);
+			chip->state = BQ5101XB_WAIT;
+			chip->cool_time = curr_time;
 		}
 		break;
 	case BQ5101XB_OUT_OF_TEMP_COLD:
@@ -255,27 +250,15 @@ static void bq5101xb_worker(struct work_struct *work)
 			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 			chip->state = BQ5101XB_WIRED_CONN;
 		} else if (batt_temp > (pdata->cold_temp +
-					BQ5101XB_TEMP_HYS)) {
-			if ((batt_soc >= BQ5101XB_CHRG_CMPLT_SOC) &&
-			    (batt_status == POWER_SUPPLY_STATUS_FULL)) {
-				bq5101xb_set_pins(pdata, 1, 1, 0, 0);
-				chip->state = BQ5101XB_CHRG_CMPLT;
-			} else {
-				bq5101xb_set_pins(pdata, 0, 0, 1, 0);
-				chip->state = BQ5101XB_WAIT;
-			}
+					BQ5101XB_TEMP_HYS_COLD)) {
+			bq5101xb_set_pins(pdata, 0, 0, 1, 0);
+			chip->state = BQ5101XB_WAIT;
 		}
 		break;
 	case BQ5101XB_CHRG_CMPLT:
 		if (wired && (pdata->priority == BQ5101XB_WIRED)) {
 			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 			chip->state = BQ5101XB_WIRED_CONN;
-		} else if (batt_temp >= pdata->hot_temp) {
-			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
-			chip->state = BQ5101XB_OUT_OF_TEMP_HOT;
-		} else if (batt_temp <= pdata->cold_temp) {
-			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
-			chip->state = BQ5101XB_OUT_OF_TEMP_COLD;
 		} else if ((batt_soc <= pdata->resume_soc) ||
 			   (batt_volt <= pdata->resume_vbatt)){
 			bq5101xb_set_pins(pdata, 0, 0, 1, 0);
@@ -294,12 +277,15 @@ static enum power_supply_property bq5101xb_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 };
 
+#define PAD_LOCKOUT_TIME 360
 static int bq5101xb_get_property(struct power_supply *psy,
 				 enum power_supply_property psp,
 				 union power_supply_propval *val)
 {
 	struct bq5101xb_chip *chip;
 	int batt_health = POWER_SUPPLY_HEALTH_UNKNOWN;
+	int curr_time =
+		ktime_to_timespec(alarm_get_elapsed_realtime()).tv_sec;
 
 	if (!psy || !psy->dev || !val) {
 		pr_err("bq5101xb_get_property NO dev!\n");
@@ -318,6 +304,11 @@ static int bq5101xb_get_property(struct power_supply *psy,
 					   &batt_health))
 			dev_err(chip->dev, "Error Reading Health\n");
 
+	if ((chip->cool_time &&
+	     ((curr_time - chip->cool_time) > PAD_LOCKOUT_TIME)) ||
+	    (chip->state != BQ5101XB_WAIT))
+		chip->cool_time = 0;
+
 	val->intval = 0;
 
 	switch (psp) {
@@ -326,7 +317,9 @@ static int bq5101xb_get_property(struct power_supply *psy,
 		    (chip->state != BQ5101XB_WIRED_CONN))
 			val->intval = 1;
 	case POWER_SUPPLY_PROP_ONLINE:
-		if (chip->state == BQ5101XB_RUNNING)
+		if ((chip->state == BQ5101XB_RUNNING) ||
+		    (chip->state == BQ5101XB_OUT_OF_TEMP_HOT) ||
+		    ((chip->state == BQ5101XB_WAIT) && chip->cool_time))
 			val->intval = 1;
 		if (batt_health == POWER_SUPPLY_HEALTH_DEAD)
 			val->intval = 0;
