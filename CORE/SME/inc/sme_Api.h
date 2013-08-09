@@ -2918,4 +2918,19 @@ eHalStatus sme_HandoffRequest(tHalHandle hHal, tCsrHandoffRequest *pHandoffInfo)
  * return status
 */
 VOS_STATUS sme_isSta_p2p_clientConnected(tHalHandle hHal);
+
+#ifdef FEATURE_WLAN_LPHB
+/* ---------------------------------------------------------------------------
+    \fn sme_LPHBConfigReq
+    \API to make configuration LPHB within FW.
+    \param hHal - The handle returned by macOpen
+    \param lphdReq - LPHB request argument by client
+    \param pCallbackfn - LPHB timeout notification callback function pointer
+    \- return Configuration message posting status, SUCCESS or Fail
+    -------------------------------------------------------------------------*/
+eHalStatus sme_LPHBConfigReq(
+                      tHalHandle hHal,
+                      tSirLPHBReq *lphdReq,
+                      void (*pCallbackfn)(void *pAdapter, void *indParam));
+#endif /* FEATURE_WLAN_LPHB */
 #endif //#if !defined( __SME_API_H )
