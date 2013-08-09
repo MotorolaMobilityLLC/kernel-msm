@@ -35,6 +35,18 @@
 
 #define WM5110_NUM_ADSP 4
 
+#define WM5110_DEFAULT_FRAGMENTS       1
+#define WM5110_DEFAULT_FRAGMENT_SIZE   4096
+
+struct wm5110_compr {
+	struct mutex lock;
+
+	struct snd_compr_stream *stream;
+	struct wm_adsp* adsp;
+
+	size_t total_copied;
+};
+
 struct wm5110_priv {
 	struct arizona_priv core;
 	struct arizona_fll fll[2];
@@ -1268,6 +1280,24 @@ static struct snd_soc_dai_driver wm5110_dai[] = {
 
 static irqreturn_t adsp2_irq(int irq, void *data)
 {
+	struct wm5110_priv *wm5110 = data;
+	int ret;
+
+	mutex_lock(&wm5110->compr_info.lock);
+
+	ret = wm_adsp_stream_capture(wm5110->compr_info.adsp);
+	if (ret < 0) {
+		dev_err(wm5110->core.arizona->dev,
+			"Failed to capture DSP data: %d\n",
+			ret);
+		goto out;
+	}
+
+	wm5110->compr_info.total_copied += ret;
+
+out:
+	mutex_unlock(&wm5110->compr_info.lock);
+
 	return IRQ_HANDLED;
 }
 
@@ -1324,6 +1354,7 @@ static int wm5110_free(struct snd_compr_stream *stream)
 	arizona_free_irq(arizona, ARIZONA_IRQ_DSP_IRQ1, wm5110);
 
 	wm5110->compr_info.stream = NULL;
+	wm5110->compr_info.total_copied = 0;
 
 	wm_adsp_stream_free(wm5110->compr_info.adsp);
 
