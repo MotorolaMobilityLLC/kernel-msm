@@ -346,10 +346,11 @@ void nl_srv_nl_ready_indication
 
    /*multicast the message to all listening processes*/
    err = netlink_broadcast(nl_srv_sock, skb, 0, 1, GFP_KERNEL);
-   if (!err)
+   if (err)
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 "NLINK: Ready Indication Send Fail %s", __func__);
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_LOW,
+                "NLINK: Ready Indication Send Fail %s, err %d",
+                __func__, err);
    }
    return;
 }
@@ -388,10 +389,10 @@ void nl_srv_nl_close_indication
    /* sender is in group 1<<0 */
    NETLINK_CB(skb).dst_group = 0;
    err = netlink_unicast(nl_srv_sock, skb, pid, MSG_DONTWAIT);
-   if (!err)
+   if (err)
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 "NLINK: Close Indication Send Fail %s", __func__);
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_LOW,
+                "NLINK: Close Indication Send Fail %s", __func__);
    }
 
    return;
