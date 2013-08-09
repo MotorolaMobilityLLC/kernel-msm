@@ -33,7 +33,7 @@ enum {
 
 #define WCNSS_WLAN_IRQ_INVALID -1
 #define HAVE_WCNSS_RESET_INTR 1
-#define HAVE_WCNSS_CAL_DOWNLOAD 1
+//#define HAVE_WCNSS_CAL_DOWNLOAD 1
 
 struct device *wcnss_wlan_get_device(void);
 struct resource *wcnss_wlan_get_memory_map(struct device *dev);
