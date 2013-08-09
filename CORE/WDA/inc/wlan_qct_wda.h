@@ -167,6 +167,9 @@ typedef enum
 #define IS_ROAM_SCAN_OFFLOAD_FEATURE_ENABLE 0
 #endif
 
+/* Check if heartbeat offload is enabled */
+#define IS_IBSS_HEARTBEAT_OFFLOAD_FEATURE_ENABLE ((WDI_getHostWlanFeatCaps(IBSS_HEARTBEAT_OFFLOAD)) & (WDA_getFwWlanFeatCaps(IBSS_HEARTBEAT_OFFLOAD)))
+
 /*--------------------------------------------------------------------------
   Definitions for Data path APIs
  --------------------------------------------------------------------------*/
@@ -1084,6 +1087,7 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_UPDATE_CHAN_LIST_REQ    SIR_HAL_UPDATE_CHAN_LIST_REQ
 #define WDA_UPDATE_CHAN_LIST_RSP    SIR_HAL_UPDATE_CHAN_LIST_RSP
 #define WDA_RX_SCAN_EVENT           SIR_HAL_RX_SCAN_EVENT
+#define WDA_IBSS_PEER_INACTIVITY_IND SIR_HAL_IBSS_PEER_INACTIVITY_IND
 
 #ifdef FEATURE_WLAN_LPHB
 #define WDA_LPHB_CONF_REQ          SIR_HAL_LPHB_CONF_IND

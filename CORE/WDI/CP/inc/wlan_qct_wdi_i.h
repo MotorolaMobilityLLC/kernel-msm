@@ -782,6 +782,10 @@ typedef enum
 
   /* LPHB timeout indication */
   WDI_HAL_LPHB_WAIT_TIMEOUT_IND        = WDI_HAL_IND_MIN + 14,
+
+  /* IBSS Peer Inactivity Indication from FW to Host */
+  WDI_HAL_IBSS_PEER_INACTIVITY_IND     = WDI_HAL_IND_MIN + 15,
+
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
 
@@ -4371,6 +4375,26 @@ WDI_ProcessHALDumpCmdRsp
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
+
+/**
+ @brief WDI_ProcessIbssPeerInactivityInd
+        Process peer inactivity indication coming from HAL.
+
+  @param  pWDICtx:         pointer to the WLAN DAL context
+          pEventData:      pointer to the event information structure
+
+  @see
+  @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessIbssPeerInactivityInd
+
+(
+ WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+
 /*========================================================================
          Internal Helper Routines 
 ========================================================================*/

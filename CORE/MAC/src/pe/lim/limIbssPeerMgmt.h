@@ -64,4 +64,4 @@ void limIbssDelBssRspWhenCoalescing(tpAniSirGlobal,  void *,tpPESession);
 void limIbssAddBssRspWhenCoalescing(tpAniSirGlobal  pMac, void * msg, tpPESession pSessionEntry);
 void limIbssDecideProtectionOnDelete(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpUpdateBeaconParams pBeaconParams,tpPESession pSessionEntry);
 void limIbssHeartBeatHandle(tpAniSirGlobal pMac,tpPESession psessionEntry);
-
+void limProcessIbssPeerInactivity(tpAniSirGlobal pMac, void *buf);

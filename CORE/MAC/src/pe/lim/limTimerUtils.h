@@ -142,11 +142,12 @@ void limCBScanDurationTimerHandler(void *, tANI_U32);
  * @note   staId for eLIM_AUTH_RSP_TIMER is auth Node Index.
  *
  * @param  pMac    - Pointer to Global MAC structure
+ * @param  psessionEntry - Pointer to PE session entry
  *
  * @return TX_SUCCESS - timer is activated
  *         errors - fail to start the timer
  */
-v_UINT_t limActivateHearBeatTimer(tpAniSirGlobal pMac);
+v_UINT_t limActivateHearBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry);
 
 #if 0
 void limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param);
