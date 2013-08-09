@@ -8,6 +8,7 @@
  * This function is used through-out the kernel (including mm and fs)
  * to indicate a major problem.
  */
+#include <linux/console.h>
 #include <linux/debug_locks.h>
 #include <linux/interrupt.h>
 #include <linux/kmsg_dump.h>
@@ -131,6 +132,10 @@ void panic(const char *fmt, ...)
 	 * situation.
 	 */
 	smp_send_stop();
+
+	/* print last_kmsg even after console suspend */
+	if (is_console_suspended())
+		resume_console();
 
 	kmsg_dump(KMSG_DUMP_PANIC);
 
