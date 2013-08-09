@@ -111,7 +111,10 @@
 #define INT_4D_BITS		0x0f
 #define INT_6D_BITS		0x3f
 
-#define INT_CFG_ALL		0x7f
+#define INT_CFG_XY		0x4f
+#define INT_CFG_XZ		0x73
+#define INT_CFG_YZ		0x7C
+#define INT_CFG_INIT_THRESHOLD	0x2D
 #define INT_CFG_THRESHOLD	0x20
 #define INT_CFG_DURATION	0x05
 
@@ -258,7 +261,7 @@ static int lis3dh_hw_init(struct lis3dh_data *lis)
 	if (err < 0)
 		return err;
 	buf[0] = INT1_THS;
-	buf[1] = lis->irq_config[1];
+	buf[1] = INT_CFG_INIT_THRESHOLD;
 	err = lis3dh_i2c_write(lis, buf, 1);
 	if (err < 0)
 		return err;
@@ -438,6 +441,26 @@ static int lis3dh_enable_pull(struct lis3dh_data *lis)
 	return 0;
 }
 
+static int lis3dh_set_threshold(struct lis3dh_data *lis, u8 config,
+		u8 threshold)
+{
+	int err = -1;
+	u8 buf[6];
+
+	buf[0] = INT1_CFG;
+	buf[1] = config;
+	err = lis3dh_i2c_write(lis, buf, 1);
+	if (err < 0)
+		return err;
+	buf[0] = INT1_THS;
+	buf[1] = threshold;
+	err = lis3dh_i2c_write(lis, buf, 1);
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+
 static int lis3dh_enable_irq(struct lis3dh_data *lis)
 {
 	int err;
@@ -453,6 +476,22 @@ static int lis3dh_enable_irq(struct lis3dh_data *lis)
 		err = lis3dh_i2c_write(lis, buf, 1);
 		if (err < 0)
 			return err;
+
+		buf[0] = CTRL_REG5;
+		err = lis3dh_i2c_read(lis, buf, 1);
+		if (err < 0)
+			return err;
+		buf[1] = (buf[0] | 0x4);
+		buf[0] = CTRL_REG5;
+		err = lis3dh_i2c_write(lis, buf, 1);
+		if (err < 0)
+			return err;
+
+		err = lis3dh_set_threshold(lis, lis->irq_config[0],
+				INT_CFG_INIT_THRESHOLD);
+		if (err < 0)
+			return err;
+
 		lis->resume_state[3] = buf[1];
 		lis->shift_adj = SHIFT_ADJ_2G;
 	}
@@ -663,14 +702,23 @@ static void lis3dh_irq_work(struct work_struct *work)
 	irq_data = lis3dh_read_int_data(lis);
 	switch (irq_data & INT_4D_BITS) {
 	case INT_XL_BIT:
-		flat = TYPE_PORTRAIT; break;
+		flat = TYPE_PORTRAIT;
+		lis3dh_set_threshold(lis, INT_CFG_YZ, lis->irq_config[1]);
+		break;
 	case INT_XH_BIT:
-		flat = TYPE_INV_PORTRAIT; break;
+		flat = TYPE_INV_PORTRAIT;
+		lis3dh_set_threshold(lis, INT_CFG_YZ, lis->irq_config[1]);
+		break;
 	case INT_YL_BIT:
-		flat = TYPE_LANDSCAPE; break;
+		flat = TYPE_LANDSCAPE;
+		lis3dh_set_threshold(lis, INT_CFG_XZ, lis->irq_config[1]);
+		break;
 	case INT_YH_BIT:
-		flat = TYPE_INV_LANDSCAPE; break;
+		flat = TYPE_INV_LANDSCAPE;
+		lis3dh_set_threshold(lis, INT_CFG_XZ, lis->irq_config[1]);
+		break;
 	default:
+		lis3dh_set_threshold(lis, INT_CFG_XY, lis->irq_config[1]);
 		flat = TYPE_UNKNOWN;
 	}
 
@@ -876,7 +924,7 @@ static int lis3dh_probe(struct i2c_client *client,
 	lis->resume_state[3] = 0;
 	lis->resume_state[4] = ENABLE_D4D_INT1;
 
-	lis->irq_config[0] = INT_CFG_ALL;
+	lis->irq_config[0] = INT_CFG_XY;
 	lis->irq_config[1] = lis->pdata->threshold;
 	lis->irq_config[2] = lis->pdata->duration;
 
