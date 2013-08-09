@@ -127,6 +127,10 @@ void panic(const char *fmt, ...)
 
 	kmsg_dump(KMSG_DUMP_PANIC);
 
+	/* print last_kmsg even after console suspend */
+	if (is_console_suspended())
+		resume_console();
+
 	if (is_console_locked())
 		console_unlock();
 
