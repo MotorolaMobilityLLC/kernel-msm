@@ -280,6 +280,7 @@ rrmProcessLinkMeasurementRequest( tpAniSirGlobal pMac,
    tSirMacLinkReport LinkReport;
    tpSirMacMgmtHdr   pHdr;
    v_S7_t            currentRSSI = 0;
+   tPowerdBm         maxTxPower = 0;
 
 #if defined WLAN_VOWIFI_DEBUG
    PELOGE(limLog( pMac, LOGE, "Received Link measurement request");)
@@ -290,16 +291,37 @@ rrmProcessLinkMeasurementRequest( tpAniSirGlobal pMac,
       return eSIR_FAILURE;
    }
    pHdr = WDA_GET_RX_MAC_HEADER( pRxPacketInfo );
-#if defined WLAN_VOWIFI_DEBUG
    if( pSessionEntry->maxTxPower != (tPowerdBm) pLinkReq->MaxTxPower.maxTxPower )
    {
-      PELOGE(limLog( pMac, LOGE, FL(" maxTx power in link request is not same as local...Local = %d LinkReq = %d"),
-           pSessionEntry->maxTxPower, pLinkReq->MaxTxPower.maxTxPower );)
+      PELOG1(limLog( pMac,
+                     LOG1,
+                     FL(" maxTx power in link request is not same as local... "
+                        " Local = %d LinkReq = %d"),
+                     pSessionEntry->maxTxPower,
+                     pLinkReq->MaxTxPower.maxTxPower );)
+      if( MIN_STA_PWR_CAP_DBM <= (tPowerdBm) pLinkReq->MaxTxPower.maxTxPower &&
+         MAX_STA_PWR_CAP_DBM >= (tPowerdBm) pLinkReq->MaxTxPower.maxTxPower )
+         maxTxPower = (tPowerdBm) pLinkReq->MaxTxPower.maxTxPower;
+      else if( MIN_STA_PWR_CAP_DBM > (tPowerdBm) pLinkReq->MaxTxPower.maxTxPower &&
+               MIN_STA_PWR_CAP_DBM != pSessionEntry->maxTxPower )
+         maxTxPower = MIN_STA_PWR_CAP_DBM;
+      else if(MAX_STA_PWR_CAP_DBM < (tPowerdBm) pLinkReq->MaxTxPower.maxTxPower &&
+              MAX_STA_PWR_CAP_DBM != pSessionEntry->maxTxPower )
+         maxTxPower = MAX_STA_PWR_CAP_DBM;
+
+      if( (maxTxPower != pSessionEntry->maxTxPower) &&
+          (eSIR_SUCCESS == rrmSendSetMaxTxPowerReq ( pMac,
+                                                     pSessionEntry->maxTxPower,
+                                                     pSessionEntry)) )
+      {
+         pSessionEntry->maxTxPower = maxTxPower;
+      }
    }
-#endif
 
    LinkReport.dialogToken = pLinkReq->DialogToken.token;
-   LinkReport.txPower = pSessionEntry->txMgmtPower;
+   if( (MIN_STA_PWR_CAP_DBM <= pSessionEntry->maxTxPower) &&
+       (MAX_STA_PWR_CAP_DBM >= pSessionEntry->maxTxPower) )
+      LinkReport.txPower = pSessionEntry->maxTxPower;
    LinkReport.rxAntenna = 0;
    LinkReport.txAntenna = 0;
    currentRSSI = WDA_GET_RX_RSSI_DB(pRxPacketInfo);
