@@ -6436,6 +6436,114 @@ void WDA_SetMaxTxPowerCallBack(WDI_SetMaxTxPowerRspMsg * pwdiSetMaxTxPowerRsp,
 #endif
 
 /*
+ * FUNCTION: WDA_SetMaxTxPowerPerBandCallBack
+ * send the response to PE with power value received from WDI
+ */
+void WDA_SetMaxTxPowerPerBandCallBack(WDI_SetMaxTxPowerPerBandRspMsg
+                                      *pwdiSetMaxTxPowerPerBandRsp,
+                                      void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_CbContext *pWDA = NULL;
+   tMaxTxPowerPerBandParams *pMxTxPwrPerBandParams = NULL;
+
+   VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+             "<------ %s ", __func__);
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return ;
+   }
+   pWDA = (tWDA_CbContext *) pWdaParams->pWdaContext;
+   pMxTxPwrPerBandParams = (tMaxTxPowerPerBandParams*)pWdaParams->wdaMsgParam;
+   if ( NULL == pMxTxPwrPerBandParams )
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: pMxTxPwrPerBandParams received NULL ", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams);
+      return;
+   }
+
+  /*need to free memory for the pointers used in the
+    WDA Process.Set Max Tx Power Req function*/
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   vos_mem_free(pWdaParams);
+   pMxTxPwrPerBandParams->power = pwdiSetMaxTxPowerPerBandRsp->ucPower;
+
+  /* send response to UMAC*/
+   WDA_SendMsg(pWDA, WDA_SET_MAX_TX_POWER_PER_BAND_RSP,
+               pMxTxPwrPerBandParams, 0);
+
+   return;
+}
+
+/*
+ * FUNCTION: WDA_ProcessSetMaxTxPowerPerBandReq
+ * Request to WDI to send set Max Tx Power Per band Request
+ */
+ VOS_STATUS WDA_ProcessSetMaxTxPowerPerBandReq(tWDA_CbContext *pWDA,
+                                               tMaxTxPowerPerBandParams
+                                               *MaxTxPowerPerBandParams)
+{
+   WDI_Status status = WDI_STATUS_SUCCESS;
+   WDI_SetMaxTxPowerPerBandParamsType *wdiSetMxTxPwrPerBandParams = NULL;
+   tWDA_ReqParams *pWdaParams = NULL;
+
+   VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+             "------> %s ", __func__);
+
+   wdiSetMxTxPwrPerBandParams = vos_mem_malloc(
+                                sizeof(WDI_SetMaxTxPowerPerBandParamsType));
+
+   if (NULL == wdiSetMxTxPwrPerBandParams)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_NOMEM;
+   }
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams));
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: VOS MEM Alloc Failure", __func__);
+      vos_mem_free(wdiSetMxTxPwrPerBandParams);
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_NOMEM;
+   }
+   /* Copy.Max.Tx.Power.Per.Band Params to WDI structure */
+   wdiSetMxTxPwrPerBandParams->wdiMaxTxPowerPerBandInfo.bandInfo = \
+                               MaxTxPowerPerBandParams->bandInfo;
+   wdiSetMxTxPwrPerBandParams->wdiMaxTxPowerPerBandInfo.ucPower = \
+                               MaxTxPowerPerBandParams->power;
+   wdiSetMxTxPwrPerBandParams->wdiReqStatusCB = NULL;
+   pWdaParams->pWdaContext = pWDA;
+   pWdaParams->wdaMsgParam = (void *)MaxTxPowerPerBandParams;
+   /* store Params pass it to WDI */
+   pWdaParams->wdaWdiApiMsgParam = (void *)wdiSetMxTxPwrPerBandParams;
+   status = WDI_SetMaxTxPowerPerBandReq(wdiSetMxTxPwrPerBandParams,
+                                        WDA_SetMaxTxPowerPerBandCallBack,
+                                        pWdaParams);
+   if (IS_WDI_STATUS_FAILURE(status))
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "Failure in SET MAX TX Power REQ Params WDI API,"
+                " free all the memory");
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams);
+      /* send response to UMAC*/
+      WDA_SendMsg(pWDA,
+                  WDA_SET_MAX_TX_POWER_PER_BAND_RSP,
+                  MaxTxPowerPerBandParams, 0);
+   }
+   return CONVERT_WDI2VOS_STATUS(status);
+}
+
+/*
  * FUNCTION: WDA_SetTxPowerCallBack
  * send the response to PE with power value received from WDI
  */
@@ -11667,6 +11775,12 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          break;
       }
 #endif
+      case WDA_SET_MAX_TX_POWER_PER_BAND_REQ:
+      {
+         WDA_ProcessSetMaxTxPowerPerBandReq(pWDA, (tMaxTxPowerPerBandParams *)
+                                            pMsg->bodyptr);
+         break;
+      }
       case WDA_SET_TX_POWER_REQ:
       {
          WDA_ProcessSetTxPowerReq(pWDA,
