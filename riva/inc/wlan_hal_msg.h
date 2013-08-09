@@ -386,6 +386,7 @@ typedef enum
    WLAN_HAL_TDLS_LINK_TEARDOWN_REQ          = 200,
    WLAN_HAL_TDLS_LINK_TEARDOWN_RSP          = 201,
    WLAN_HAL_TDLS_IND                        = 202,
+   WLAN_HAL_IBSS_PEER_INACTIVITY_IND        = 203,
 
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
@@ -5722,6 +5723,7 @@ typedef enum {
     WLAN_ROAM_SCAN_OFFLOAD = 23,
     SPECULATIVE_PS_POLL = 24,
     SCAN_SCH            = 25,
+    IBSS_HEARTBEAT_OFFLOAD = 26,
     MAX_FEATURE_SUPPORTED = 128,
 } placeHolderInCapBitmap;
 
@@ -5744,6 +5746,7 @@ typedef PACKED_PRE struct PACKED_POST{
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 #define IS_ROAM_SCAN_OFFLOAD_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(WLAN_ROAM_SCAN_OFFLOAD)))
 #endif
+#define IS_IBSS_HEARTBEAT_OFFLOAD_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(IBSS_HEARTBEAT_OFFLOAD)))
 
 tANI_U8 halMsg_GetHostWlanFeatCaps(tANI_U8 feat_enum_value);
 
@@ -6216,6 +6219,25 @@ typedef PACKED_PRE struct PACKED_POST
 }tTdlsIndMsg, *tpTdlsIndMsg;
 
 #endif
+
+/*---------------------------------------------------------------------------
+ *WLAN_HAL_IBSS_PEER_INACTIVITY_IND
+ *--------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U8     bssIdx;
+    tANI_U8     staIdx;
+    tSirMacAddr staAddr;
+}tIbssPeerInactivityIndParams, *tpIbssPeerInactivityIndParams;
+
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tIbssPeerInactivityIndParams ibssPeerInactivityIndParams;
+}tIbssPeerInactivityIndMsg, *tpIbssPeerInactivityIndMsg;
+
 
 #if defined(__ANI_COMPILER_PRAGMA_PACK_STACK)
 #pragma pack(pop)
