@@ -537,15 +537,51 @@
 	};
 
 	gpio@c200 { /* GPIO 3 */
+		/* unused, force low power state */
+		qcom,mode = <0>;
+		qcom,output-type = <0>;
+		qcom,invert = <0>;
+		qcom,pull = <4>;
+		qcom,vin-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
 	};
 
 	gpio@c300 { /* GPIO 4 */
+		/* BATT_UIM_ALARM */
+		qcom,mode = <2>;
+		qcom,output-type = <0>;
+		qcom,invert = <0>;
+		qcom,pull = <4>;
+		qcom,vin-sel = <3>;
+		qcom,out-strength = <1>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
 	};
 
 	gpio@c400 { /* GPIO 5 */
+		/* unused, force low power state */
+		qcom,mode = <0>;
+		qcom,output-type = <0>;
+		qcom,invert = <0>;
+		qcom,pull = <4>;
+		qcom,vin-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
 	};
 
 	gpio@c500 { /* GPIO 6 */
+		/* LCD_CABC_WLED */
+		qcom,mode = <0>;
+		qcom,output-type = <0>;
+		qcom,invert = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <3>;
+		qcom,out-strength = <1>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
 	};
 
 	gpio@c600 { /* GPIO 7 */
@@ -558,44 +594,121 @@
 	};
 
 	gpio@c700 { /* GPIO 8 */
+		/* unused, force low power state */
+		qcom,mode = <0>;
+		qcom,output-type = <0>;
+		qcom,invert = <0>;
+		qcom,pull = <4>;
+		qcom,vin-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
 	};
 };
 
 &pm8226_mpps {
 	mpp@a000 { /* MPP 1 */
+		/* MSM_PX config */
+		qcom,mode = <5>;
+		qcom,invert = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <1>;
+		qcom,master-en = <1>;
+		qcom,aout-ref = <0>;
+		qcom,ain-route = <0>;
+		qcom,cs-out = <0>;
 	};
 
 	mpp@a100 { /* MPP 2 */
+		/* HR_LED_SINK config */
+		qcom,mode = <6>;
+		qcom,invert = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <12>;
+		qcom,master-en = <1>;
+		qcom,aout-ref = <0>;
+		qcom,ain-route = <0>;
+		qcom,cs-out = <0>;
 	};
 
 	mpp@a200 { /* MPP 3 */
+		/* VREF_LDO config */
+		qcom,mode = <5>;
+		qcom,invert = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <1>;
+		qcom,master-en = <1>;
+		qcom,aout-ref = <0>;
+		qcom,ain-route = <0>;
+		qcom,cs-out = <0>;
 	};
 
 	mpp@a300 { /* MPP 4 */
+		/* LED1_SINK config */
+		qcom,mode = <6>;
+		qcom,invert = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <8>;
+		qcom,master-en = <1>;
+		qcom,aout-ref = <0>;
+		qcom,ain-route = <0>;
+		qcom,cs-out = <0>;
 	};
 
 	mpp@a400 { /* MPP 5 */
 		/* PA_THERM0 config */
-		qcom,mode = <4>; /* AIN input */
-		qcom,invert = <1>; /* Enable MPP */
-		qcom,ain-route = <0>; /* AMUX 5 */
+		qcom,mode = <4>;
+		qcom,invert = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <1>;
 		qcom,master-en = <1>;
-		qcom,src-sel = <0>; /* Function constant */
+		qcom,aout-ref = <0>;
+		qcom,ain-route = <0>;
+		qcom,cs-out = <0>;
 	};
 
 	mpp@a500 { /* MPP 6 */
+		/* LED2_SINK config */
+		qcom,mode = <6>;
+		qcom,invert = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <10>;
+		qcom,master-en = <1>;
+		qcom,aout-ref = <0>;
+		qcom,ain-route = <0>;
+		qcom,cs-out = <0>;
 	};
 
 	mpp@a600 { /* MPP 7 */
+		/* unused, force low power state */
+		qcom,mode = <0>;
+		qcom,invert = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <0>;
+		qcom,aout-ref = <0>;
+		qcom,ain-route = <0>;
+		qcom,cs-out = <0>;
 	};
 
 	mpp@a700 { /* MPP 8 */
-		/* PA_THERM1 config */
-		qcom,mode = <4>; /* AIN input */
-		qcom,invert = <1>; /* Enable MPP */
-		qcom,ain-route = <3>; /* AMUX 8 */
-		qcom,master-en = <1>;
-		qcom,src-sel = <0>; /* Function constant */
+		/* unused, force low power state */
+		qcom,mode = <0>;
+		qcom,invert = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <0>;
+		qcom,aout-ref = <0>;
+		qcom,ain-route = <0>;
+		qcom,cs-out = <0>;
 	};
 };
 
