@@ -30,7 +30,7 @@
 #include "q6voice.h"
 
 
-#define TIMEOUT_MS 200
+#define TIMEOUT_MS 500
 
 
 #define CMD_STATUS_SUCCESS 0
