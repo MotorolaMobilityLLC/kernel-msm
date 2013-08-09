@@ -31,7 +31,7 @@
 		stm,min-interval = <1>;
 		stm,g-range = <8>;
 		stm,threshold = <0x20>;
-		stm,duration = <0x5>;
+		stm,duration = <0x1>;
 	};
 };
 
