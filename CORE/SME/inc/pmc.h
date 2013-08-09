@@ -168,12 +168,12 @@ typedef struct sPmcInfo
     void (*impsCallbackRoutine) (void *callbackContext, eHalStatus status);  /* routine to call when IMPS period
                                                                                 has finished */ 
     void *impsCallbackContext;  /* value to be passed as parameter to routine specified above */
-    tPalTimerHandle hImpsTimer;  /* timer to use with IMPS */
+    vos_timer_t hImpsTimer;  /* timer to use with IMPS */
     vos_timer_t hTrafficTimer;  /* timer to measure traffic for BMPS */
 #ifdef FEATURE_WLAN_DIAG_SUPPORT    
-    tPalTimerHandle hDiagEvtTimer;  /* timer to report PMC state through DIAG event */
+    vos_timer_t hDiagEvtTimer;  /* timer to report PMC state through DIAG event */
 #endif
-    tPalTimerHandle hExitPowerSaveTimer;  /* timer for deferred exiting of power save mode */
+    vos_timer_t hExitPowerSaveTimer;  /* timer for deferred exiting of power save mode */
     tDblLinkList powerSaveCheckList; /* power save check routine list */
     tDblLinkList requestFullPowerList; /* request full power callback routine list */
     tANI_U32 cLastTxUnicastFrames;  /* transmit unicast frame count at last BMPS traffic timer expiration */
