@@ -701,40 +701,6 @@
 			};
 		};
 
-		pin@fd5116b0 {
-			reg = <0xfd5116b0 0x10>;	/* KPSNS1 */
-			qcom,pin-num = <107>;
-			qcom,active@0 {
-				qcom,func = <0>;  /* gpio_in_out(107)       */
-				qcom,pull = <3>;  /* up                     */
-				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
-			};
-			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out(107)       */
-				qcom,pull = <0>;  /* none                   */
-				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
-			};
-		};
-
-		pin@fd5116c0 {
-			reg = <0xfd5116c0 0x10>;	/* KPSNS2 */
-			qcom,pin-num = <108>;
-			qcom,active@0 {
-				qcom,func = <0>;  /* gpio_in_out(108)       */
-				qcom,pull = <3>;  /* up                     */
-				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
-			};
-			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out(108)       */
-				qcom,pull = <0>;  /* none                   */
-				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
-			};
-		};
-
 		pin@fd516d0 {
 			reg = <0xfd5116d0 0x10>;	/* RF_CONN_DET */
 			qcom,pin-num = <109>;
