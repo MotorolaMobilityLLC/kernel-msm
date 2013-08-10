@@ -672,7 +672,8 @@ WDI_FillTxBd
         /* Mark the BD could not be reused */
         uTxBdSignature = WDI_TXBD_SIG_MGMT_MAGIC; 
 #endif
-        if(ucTxFlag & WDI_USE_SELF_STA_REQUESTED_MASK)
+        if((ucTxFlag & WDI_USE_SELF_STA_REQUESTED_MASK) &&
+            !(ucIsRMF && ucProtMgmtFrame))
         {
 #ifdef HAL_SELF_STA_PER_BSS
             // Get the (self) station index from ADDR2, which should be the self MAC addr
@@ -849,25 +850,7 @@ WDI_FillTxBd
                 if(!ucUnicastDst)
                     pBd->dpuDescIdx = pSta->bcastMgmtDpuIndex; /* IGTK */
                 else
-                {
-                    wpt_uint8 peerStaId;
-
-                    //We need to find the peer's station's DPU index to send this
-                    //frame using PTK
-                    wdiStatus = WDI_STATableFindStaidByAddr( pWDICtx,
-                                        *(wpt_macAddr*)pDestMacAddr, &peerStaId );
-                    if (WDI_STATUS_SUCCESS != wdiStatus)
-                    {
-                        WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                           "%s failed to find peer sta %02X-%02X-%02X-%02X-%02X-%02X",
-                           __FUNCTION__, ((wpt_uint8 *)pDestMacAddr)[0],
-                           ((wpt_uint8 *)pDestMacAddr)[1], ((wpt_uint8 *)pDestMacAddr)[5],
-                           ((wpt_uint8 *)pDestMacAddr)[3], ((wpt_uint8 *)pDestMacAddr)[4],
-                           ((wpt_uint8 *)pDestMacAddr)[5]);
-                        return WDI_STATUS_E_FAILURE;
-                    }
-                    pBd->dpuDescIdx = ((WDI_StaStruct*)pWDICtx->staTable)[peerStaId].dpuIndex; /* PTK */
-                }
+                    pBd->dpuDescIdx = pSta->dpuIndex; /* PTK */
             }
             else
             {
