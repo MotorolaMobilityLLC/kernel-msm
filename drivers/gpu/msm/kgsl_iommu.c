@@ -331,6 +331,15 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	ret = get_iommu_unit(dev, &mmu, &iommu_unit);
 	if (ret)
 		goto done;
+
+	device = mmu->device;
+	adreno_dev = ADRENO_DEVICE(device);
+	if (atomic_read(&mmu->fault)) {
+		if (adreno_dev->ft_pf_policy & KGSL_FT_PAGEFAULT_GPUHALT_ENABLE)
+			ret = -EBUSY;
+		goto done;
+	}
+
 	iommu_dev = get_iommu_device(iommu_unit, dev);
 	if (!iommu_dev) {
 		KGSL_CORE_ERR("Invalid IOMMU device %p\n", dev);
@@ -338,8 +347,6 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 		goto done;
 	}
 	iommu = mmu->priv;
-	device = mmu->device;
-	adreno_dev = ADRENO_DEVICE(device);
 
 	ptbase = KGSL_IOMMU_GET_CTX_REG(iommu, iommu_unit,
 					iommu_dev->ctx_id, TTBR0);
@@ -390,7 +397,7 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 			KGSL_LOG_DUMP(iommu_dev->kgsldev, "*EMPTY*\n");
 	}
 
-	mmu->fault = 1;
+	atomic_set(&mmu->fault, 1);
 	iommu_dev->fault = 1;
 
 	kgsl_sharedmem_readl(&device->memstore, &curr_context_id,
@@ -1303,6 +1310,7 @@ static int kgsl_iommu_init(struct kgsl_mmu *mmu)
 	int status = 0;
 	struct kgsl_iommu *iommu;
 
+	atomic_set(&mmu->fault, 0);
 	iommu = kzalloc(sizeof(struct kgsl_iommu), GFP_KERNEL);
 	if (!iommu) {
 		KGSL_CORE_ERR("kzalloc(%d) failed\n",
@@ -1769,7 +1777,7 @@ void kgsl_iommu_pagefault_resume(struct kgsl_mmu *mmu)
 	struct kgsl_iommu *iommu = mmu->priv;
 	int i, j;
 
-	if (mmu->fault) {
+	if (atomic_read(&mmu->fault)) {
 		for (i = 0; i < iommu->unit_count; i++) {
 			struct kgsl_iommu_unit *iommu_unit =
 						&iommu->iommu_units[i];
@@ -1786,7 +1794,7 @@ void kgsl_iommu_pagefault_resume(struct kgsl_mmu *mmu)
 				}
 			}
 		}
-		mmu->fault = 0;
+		atomic_set(&mmu->fault, 0);
 	}
 }
 
