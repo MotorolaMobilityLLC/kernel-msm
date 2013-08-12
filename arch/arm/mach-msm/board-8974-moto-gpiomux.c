@@ -375,6 +375,7 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_func4_cfg,
 		},
 	},
+#ifndef CONFIG_MFD_WM5110
 	{
 		.gpio = 55,		/* BLSP2 QUP3 I2C_DAT */
 		.settings = {
@@ -387,6 +388,7 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_func3_cfg,
 		},
 	},
+#endif
 	{
 		.gpio = 83,		/* BLSP2 QUP4 I2C_DAT */
 		.settings = {
@@ -983,6 +985,41 @@ static struct msm_gpiomux_config msm8974_quat_auxpcm_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting gpio_blsp10_spi_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config wm5110_spi_configs[] __initdata = {
+#ifdef CONFIG_MFD_WM5110
+	{
+		.gpio = 53,		/* BLSP2 QUP3 SPI_MOSI */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp10_spi_config,
+		},
+	},
+	{
+		.gpio = 54,		/* BLSP2 QUP3 SPI_MISO */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp10_spi_config,
+		},
+	},
+	{
+		.gpio = 55,		/* BLSP2 QUP3 SPI_CS0 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp10_spi_config,
+		},
+	},
+	{
+		.gpio = 56,		/* BLSP2 QUP3 SPI_CLK */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp10_spi_config,
+		},
+	},
+#endif
+};
+
 void __init msm_8974_moto_init_gpiomux(void)
 {
 	int rc;
@@ -1037,4 +1074,6 @@ void __init msm_8974_moto_init_gpiomux(void)
 	msm_gpiomux_install(c55_configs, ARRAY_SIZE(c55_configs));
 	msm_gpiomux_install(cycapsence_issp_gpio_configs,
 			ARRAY_SIZE(cycapsence_issp_gpio_configs));
+	msm_gpiomux_install(wm5110_spi_configs,
+			ARRAY_SIZE(wm5110_spi_configs));
 }
