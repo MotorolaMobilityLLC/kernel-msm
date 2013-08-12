@@ -60,6 +60,9 @@
 		gpio = <&msmgpio 23 0x0>;
 	};
 
+	spi_7 {
+		status = "disabled";
+	};
 };
 
 &pm8941_gpios {

@@ -848,8 +848,35 @@
 	};
 };
 */
-&spi_epm {
-	status = "disabled";
+
+&spi_7 {
+	wm5110@0 {
+		compatible = "wlf,wm5110";
+		spi-max-frequency = <9600000>;
+		reg = <0x0>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <72 0>;
+		irq-base = <800>;
+		gpio-base = <200>;
+		reset = <&msmgpio 23 0>;
+		AVDD-supply = <&pm8941_s3>;
+		DCVDD-supply = <&pm8941_s3>;
+		DBVDD1-supply = <&pm8941_s3>;
+		DBVDD2-supply = <&pm8941_s3>;
+		DBVDD3-supply = <&pm8941_s3>;
+		CPVDD-supply = <&pm8941_s3>;
+		SPKVDDL-supply = <&pm8941_boost>;
+		SPKVDDR-supply = <&pm8941_boost>;
+
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		gpio-defaults = <0x00002102
+				0xffffffff
+				0x00010000
+				0x00000004
+				0xffffffff>;
+	};
 };
 
 &i2c_0 {
