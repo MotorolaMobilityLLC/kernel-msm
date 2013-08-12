@@ -584,6 +584,8 @@ static void bq24192_irq_worker(struct work_struct *work)
 
 		cancel_delayed_work_sync(&chip->input_limit_work);
 		bq24192_step_down_detect_disable(chip);
+		chip->saved_ibat_ma = 0;
+		chip->set_chg_current_ma = chip->chg_current_ma;
 		if (chip->wlc_psy) {
 			if (wlc_pwr && ext_pwr) {
 				chip->wlc_pwr = true;
