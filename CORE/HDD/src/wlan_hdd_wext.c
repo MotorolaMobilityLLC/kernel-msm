@@ -5934,7 +5934,7 @@ void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set)
 
     /* Check if INI is enabled or not, other wise just return
      */
-    if (pHddCtx->cfg_ini->isMcAddrListFilter)
+    if (pHddCtx->cfg_ini->fEnableMCAddrList)
     {
         pMulticastAddrs = vos_mem_malloc(sizeof(tSirRcvFltMcAddrList));
         if (NULL == pMulticastAddrs)
@@ -5989,7 +5989,7 @@ void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set)
     else
     {
         hddLog(VOS_TRACE_LEVEL_INFO,
-                FL("isMcAddrListFilter is not enabled in INI"));
+                FL("gMCAddrListEnable is not enabled in INI"));
     }
     return;
 }

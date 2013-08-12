@@ -1328,12 +1328,6 @@ typedef enum
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_MAX                 ( 1 )
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_DEFAULT             ( 0 )
 
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-#define CFG_MC_ADDR_LIST_FILTER_NAME               "isMcAddrListFilter"
-#define CFG_MC_ADDR_LIST_FILTER_MIN                ( 0 )
-#define CFG_MC_ADDR_LIST_FILTER_MAX                ( 1 )
-#define CFG_MC_ADDR_LIST_FILTER_DEFAULT            ( 0 )
-#endif
 
 #define CFG_ENABLE_SSR                      "gEnableSSR"
 #define CFG_ENABLE_SSR_MIN                  ( 0 )
@@ -2129,9 +2123,6 @@ typedef struct
    v_U8_t                      allowMCCGODiffBI;
    v_BOOL_t                    isP2pDeviceAddrAdministrated;
    v_U8_t                      thermalMitigationEnable;
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-   v_BOOL_t                    isMcAddrListFilter;
-#endif
 #ifdef WLAN_FEATURE_11AC
    v_U8_t                      vhtChannelWidth;
    v_U8_t                      vhtRxMCS;
