@@ -770,8 +770,22 @@ static const struct snd_soc_dapm_route tpa6165_hp_map[] = {
 
 #ifdef CONFIG_SND_SOC_WM5110
 static const struct snd_soc_dapm_route wm5110_audio_routes[] = {
-	{"IN2R", NULL, "MICBIAS3"},
-	{"Handset Mic", NULL, "IN2R"},
+	/* AMIC 1 */
+	{"IN1L", NULL, "MICBIAS1"},
+	/* AMIC 2 */
+	{"IN1R", NULL, "MICBIAS3"},
+	/* AMIC 3 */
+	{"IN2L", NULL, "MICBIAS2"},
+
+	/* IN2R is the headset mic and is biased from an external micbias
+         * will probably have to add and event to enable the external
+	 * MICBIAS
+	 */
+
+	/* AMIC 4 */
+	{"IN3L", NULL, "MICBIAS3"},
+	/* AMIC 5 */
+	{"IN3R", NULL, "MICBIAS3"},
 };
 #endif
 
@@ -1971,13 +1985,6 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
 
 	dev_crit(codec->dev, "wm5110_dai_init first BE dai initing ...\n");
 
-	codec_clk = clk_get(rtd->cpu_dai->dev, "osr_clk");
-	ret = msm_snd_enable_codec_ext_clk(codec, 1, true);
-
-	if (ret != 0) {
-		dev_err(codec->dev, "failed to enable the codec clk %d \n", ret);
-	}
-
         ret = snd_soc_codec_set_pll(codec, WM5110_FLL1_REFCLK, ARIZONA_FLL_SRC_NONE,
                                         0,
                                         0);
@@ -1986,8 +1993,8 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
                 dev_err(codec->dev, "Failed to set FLL1REFCLK\n");
         }
 
-        ret = snd_soc_codec_set_pll(codec, WM5110_FLL1, ARIZONA_FLL_SRC_MCLK1,
-                                                24576000,
+        ret = snd_soc_codec_set_pll(codec, WM5110_FLL1, ARIZONA_FLL_SRC_MCLK2,
+                                                32768,
                                                 WM5110_SYSCLK_RATE);
 
         if (ret != 0)
@@ -2911,8 +2918,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Quaternary MI2S Capture",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name     = "wm5110-codec",
+		.codec_dai_name = "wm5110-aif3",
+#else
 		.codec_name     = "tfa9890.0-0034",
 		.codec_dai_name = "tfa9890_codec",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
@@ -2924,8 +2936,13 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Quaternary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name     = "wm5110-codec",
+		.codec_dai_name = "wm5110-aif3",
+#else
 		.codec_name     = "tfa9890.0-0034",
 		.codec_dai_name = "tfa9890_codec",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
