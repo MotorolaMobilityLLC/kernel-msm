@@ -3110,7 +3110,7 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 
 }
 
-#define MSM_PMIC_ID_STATUS_DELAY	5 /* 5msec */
+#define MSM_PMIC_ID_STATUS_DELAY	25 /* 25msec */
 static irqreturn_t msm_pmic_id_irq(int irq, void *data)
 {
 	struct msm_otg *motg = data;
