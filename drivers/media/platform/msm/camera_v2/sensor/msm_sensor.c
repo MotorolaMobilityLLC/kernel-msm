@@ -1158,6 +1158,10 @@ power_up_failed:
 				0);
 			break;
 		case SENSOR_GPIO:
+			if (!gpio_is_valid(
+				    data->gpio_conf->gpio_num_info->gpio_num
+				    [power_setting->seq_val]))
+				break;
 			gpio_set_value_cansleep(
 				data->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val], GPIOF_OUT_INIT_LOW);
