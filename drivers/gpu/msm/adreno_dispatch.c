@@ -172,13 +172,19 @@ done:
  *
  * Failure to submit a command to the ringbuffer isn't the fault of the command
  * being submitted so if a failure happens, push it back on the head of the the
- * context queue to be reconsidered again
+ * context queue to be reconsidered again unless the context got detached.
  */
-static inline void adreno_context_requeue_cmdbatch(
+static inline int adreno_dispatcher_requeue_cmdbatch(
 		struct adreno_context *drawctxt, struct kgsl_cmdbatch *cmdbatch)
 {
 	unsigned int prev;
 	mutex_lock(&drawctxt->mutex);
+
+	if (kgsl_context_detached(&drawctxt->base) ||
+		drawctxt->state == ADRENO_CONTEXT_STATE_INVALID) {
+		mutex_unlock(&drawctxt->mutex);
+		return -EINVAL;
+	}
 
 	prev = drawctxt->cmdqueue_head - 1;
 
@@ -198,6 +204,7 @@ static inline void adreno_context_requeue_cmdbatch(
 	/* Reset the command queue head to reflect the newly requeued change */
 	drawctxt->cmdqueue_head = prev;
 	mutex_unlock(&drawctxt->mutex);
+	return 0;
 }
 
 /**
@@ -277,7 +284,7 @@ static int sendcmd(struct adreno_device *adreno_dev,
 	if (ret) {
 		dispatcher->inflight--;
 		KGSL_DRV_ERR(device,
-			"Unable to submit command to the ringbuffer\n");
+			"Unable to submit command to the ringbuffer %d\n", ret);
 		return ret;
 	}
 
@@ -320,6 +327,7 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 {
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 	int count = 0;
+	int requeued = 0;
 
 	/*
 	 * Each context can send a specific number of command batches per cycle
@@ -340,8 +348,10 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 		 * reqeueued
 		 */
 
-		if (IS_ERR(cmdbatch))
-			return count;
+		if (IS_ERR(cmdbatch) && PTR_ERR(cmdbatch) == -EAGAIN) {
+			requeued = 1;
+			break;
+		}
 
 		/*
 		 * If this is a synchronization submission then there are no
@@ -366,9 +376,12 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 		 * conditions improve
 		 */
 		if (ret) {
-			adreno_context_requeue_cmdbatch(drawctxt, cmdbatch);
+			requeued = adreno_dispatcher_requeue_cmdbatch(drawctxt,
+				cmdbatch) ? 0 : 1;
 			break;
 		}
+
+		count++;
 	}
 
 	/*
@@ -390,7 +403,7 @@ static int dispatcher_context_sendcmds(struct adreno_device *adreno_dev,
 		wake_up_interruptible_all(&drawctxt->wq);
 	}
 
-	return count;
+	return (count || requeued) ? 1 : 0;
 }
 
 static void plist_move(struct plist_head *old, struct plist_head *new)
@@ -630,16 +643,19 @@ int adreno_dispatcher_queue_cmd(struct adreno_device *adreno_dev,
 			mutex_unlock(&drawctxt->mutex);
 			return (ret == 0) ? -ETIMEDOUT : (int) ret;
 		}
+	}
+	/*
+	 * Account for the possiblity that the context got invalidated
+	 * while we were sleeping
+	 */
 
-		/*
-		 * Account for the possiblity that the context got invalidated
-		 * while we were sleeping
-		 */
-
-		if (drawctxt->state == ADRENO_CONTEXT_STATE_INVALID) {
-			mutex_unlock(&drawctxt->mutex);
-			return -EDEADLK;
-		}
+	if (drawctxt->state == ADRENO_CONTEXT_STATE_INVALID) {
+		mutex_unlock(&drawctxt->mutex);
+		return -EDEADLK;
+	}
+	if (kgsl_context_detached(&drawctxt->base)) {
+		mutex_unlock(&drawctxt->mutex);
+		return -EINVAL;
 	}
 
 	ret = get_timestamp(drawctxt, cmdbatch, timestamp);
