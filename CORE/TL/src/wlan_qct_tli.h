@@ -247,6 +247,8 @@ when        who    what, where, why
 /*get RSSI1 from a RX BD*/
 #define WLANTL_GETRSSI1(pBD)    (WDA_GETRSSI1(pBD) - WLAN_TL_RSSI_CORRECTION)
 
+#define WLANTL_GETSNR(pBD)      WDA_GET_RX_SNR(pBD)
+
 /* Check whether Rx frame is LS or EAPOL packet (other than data) */
 #define WLANTL_BAP_IS_NON_DATA_PKT_TYPE(usType) \
   ((WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
@@ -514,6 +516,18 @@ typedef struct
 
   /* Value of the averaged RSSI for this station */
   v_U32_t                       uLinkQualityAvg;
+
+  /* Sum of SNR for snrIdx number of consecutive frames */
+  v_U32_t                       snrSum;
+
+  /* Number of consecutive frames over which snrSum is calculated */
+  v_S7_t                        snrIdx;
+
+  /* Average SNR of previous 20 frames */
+  v_S7_t                        prevSnrAvg;
+
+  /* Average SNR returned by fw */
+  v_S7_t                        snrAvgBmps;
 
   /* Tx packet count per station per TID */
   v_U32_t                       auTxCount[WLAN_MAX_TID];
@@ -1619,6 +1633,23 @@ VOS_STATUS WLANTL_ReadRSSI
    v_U8_t           STAid
 );
 
+/*==========================================================================
+
+   FUNCTION
+
+   DESCRIPTION   Read SNR value out of a RX BD
+
+   PARAMETERS: Caller must validate all parameters
+
+   RETURN VALUE
+
+============================================================================*/
+VOS_STATUS WLANTL_ReadSNR
+(
+   v_PVOID_t        pAdapter,
+   v_PVOID_t        pBDHeader,
+   v_U8_t           STAid
+);
 
 
 void WLANTL_PowerStateChangedCB

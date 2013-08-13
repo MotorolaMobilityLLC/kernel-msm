@@ -1223,6 +1223,22 @@ eHalStatus csrGetStatistics(tpAniSirGlobal pMac, eCsrStatsRequesterType requeste
 tANI_U16 csrGetTLSTAState(tpAniSirGlobal pMac, tANI_U8 staId);
 
 eHalStatus csrGetRssi(tpAniSirGlobal pMac,tCsrRssiCallback callback,tANI_U8 staId,tCsrBssid bssId,void * pContext,void * pVosContext);
+
+/* ---------------------------------------------------------------------------
+    \fn csrGetSnr
+    \brief csr function that client calls to register a callback to get
+     SNR stored in TL
+
+    \param callback - SME sends back the requested stats using the callback
+    \param staId - The station ID for which the stats is requested for
+    \param bssid - The bssid for the connected session
+    \param pContext - user context to be passed back along with the callback
+
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus csrGetSnr(tpAniSirGlobal pMac, tCsrSnrCallback callback,
+                     tANI_U8 staId, tCsrBssid bssId, void *pContext);
+
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
 eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
                           tCsrRssiCallback callback,
