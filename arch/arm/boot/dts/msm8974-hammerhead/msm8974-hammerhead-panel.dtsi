@@ -1092,7 +1092,7 @@
 			c1 3d 34 00 58 4d
 			36 3f 53 03 04 00];
 		qcom,panel-phy-strengthCtrl = [
-			77 06];
+			bb 06];
 		qcom,panel-phy-bistCtrl = [
 			00 00 b1 ff           /* BIST Ctrl settings */
 			00 00];
