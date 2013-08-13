@@ -1971,6 +1971,8 @@ end:
 	return ret;
 }
 
+static struct snd_soc_codec *wm5110_codec;
+
 #ifdef CONFIG_SND_SOC_WM5110
 #define MSM8974_AIF1_CHANNELS 2
 #define MSM8974_AIF1_SAMPLE_DEPTH 16
@@ -1982,6 +1984,9 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
         int ret;
         struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	/* BODGE */
+	wm5110_codec = rtd->codec;
 
 	dev_crit(codec->dev, "wm5110_dai_init first BE dai initing ...\n");
 
@@ -2025,6 +2030,37 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
         return 0;
 
 }
+
+static int wm5110_tfa9890_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	int dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF;
+	int wm5110_dai_fmt = dai_fmt | SND_SOC_DAIFMT_CBM_CFM;
+	int tfa9890_dai_fmt = dai_fmt | SND_SOC_DAIFMT_CBS_CFS;
+
+	dev_err(rtd->dev, "wm5110-tf9890 codec-codec dai init\n");
+
+	/* The soc core doesn't have support for codec-codec dais
+	 * so for now use a static reference to the wm5110 assigned
+	 * when the first BE dai gets initd
+	 * */
+	rtd->cpu_dai->codec = wm5110_codec;
+
+	ret = snd_soc_dai_set_fmt(rtd->cpu_dai, wm5110_dai_fmt);
+
+	if (ret != 0)
+		dev_err(rtd->cpu_dai->codec->dev, "Failed to set format for wm5110 aif1 %d\n",
+			ret);
+
+	ret = snd_soc_dai_set_fmt(rtd->codec_dai, tfa9890_dai_fmt);
+
+	if (ret != 0)
+		dev_err(rtd->cpu_dai->codec->dev, "Failed to set format for tfa9890 %d\n",
+			ret);
+
+	return ret;
+}
+
 #endif
 
 static struct snd_soc_ops msm8974_slimbus_2_be_ops = {
@@ -2918,13 +2954,8 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Quaternary MI2S Capture",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
-#ifdef CONFIG_SND_SOC_WM5110
 		.codec_name     = "wm5110-codec",
 		.codec_dai_name = "wm5110-aif3",
-#else
-		.codec_name     = "tfa9890.0-0034",
-		.codec_dai_name = "tfa9890_codec",
-#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
@@ -2936,13 +2967,8 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Quaternary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
-#ifdef CONFIG_SND_SOC_WM5110
 		.codec_name     = "wm5110-codec",
 		.codec_dai_name = "wm5110-aif3",
-#else
-		.codec_name     = "tfa9890.0-0034",
-		.codec_dai_name = "tfa9890_codec",
-#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
@@ -2950,6 +2976,19 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
 	},
+#ifdef CONFIG_SND_SOC_WM5110
+	/* WM5110 - TFA9890 codec-codec link */
+	{
+		.name = "wm5110-tfa9890",
+		.stream_name = "codec-codec link",
+		.cpu_dai_name = "wm5110-aif1",
+		.codec_name = "tfa9890.0-0034",
+		.codec_dai_name = "tfa9890_codec",
+		.init = &wm5110_tfa9890_init,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+	},
+#endif
 };
 
 static struct snd_soc_dai_link msm8974_hdmi_dai_link[] = {
