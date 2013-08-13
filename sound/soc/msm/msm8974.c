@@ -2025,6 +2025,25 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret != 0)
 		dev_err(codec->dev, "Failed to add wm5110_audio_routes\n");
 
+#ifdef CONFIG_SND_SOC_TPA6165A2
+	ret = tpa6165_hs_detect(codec);
+	if (ret != 0) {
+		pr_err("%s: tpa6165 hs_detect failed %d\n", __func__, ret);
+	} else {
+		pr_info("%s:tpa6165 hs det mechanism is used", __func__);
+		/* dapm controls for tpa6165 */
+		snd_soc_dapm_new_controls(dapm, tpa6165_dapm_widgets,
+				ARRAY_SIZE(tpa6165_dapm_widgets));
+
+		snd_soc_dapm_add_routes(dapm, tpa6165_hp_map,
+				ARRAY_SIZE(tpa6165_hp_map));
+
+		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headphone");
+		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headset Mic");
+		snd_soc_dapm_sync(dapm);
+	}
+#endif
+
 	/* Cargo-culted from QC */
 	snd_soc_dapm_sync(dapm);
         return 0;
