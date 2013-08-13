@@ -547,7 +547,9 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	unsigned int context_id;
 	unsigned int gpuaddr = rb->device->memstore.gpuaddr;
 
-	/* The global timestamp always needs to be incremented */
+	if (drawctxt != NULL && kgsl_context_detached(&drawctxt->base))
+		return -EINVAL;
+
 	rb->global_ts++;
 
 	/* If this is a internal IB, use the global timestamp for it */
@@ -558,6 +560,12 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		context_id = drawctxt->base.id;
 	}
 
+	/*
+	 * Note that we cannot safely take drawctxt->mutex here without
+	 * potential mutex inversion with device->mutex which is held
+	 * here. As a result, any other code that accesses this variable
+	 * must also use device->mutex.
+	 */
 	if (drawctxt)
 		drawctxt->internal_timestamp = rb->global_ts;
 
