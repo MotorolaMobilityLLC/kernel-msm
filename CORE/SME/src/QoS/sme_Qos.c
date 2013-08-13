@@ -162,7 +162,7 @@ typedef enum
   Table to map user priority passed in as an argument to appropriate Access 
   Category as specified in 802.11e/WMM
 ---------------------------------------------------------------------------*/
-sme_QosEdcaAcType sme_QosUPtoACMap[SME_QOS_WMM_UP_MAX] = 
+sme_QosEdcaAcType sme_QosUPtoACMap[SME_QOS_WMM_UP_MAX] =
 {
    SME_QOS_EDCA_AC_BE, /* User Priority 0 */
    SME_QOS_EDCA_AC_BK, /* User Priority 1 */
@@ -2791,14 +2791,10 @@ sme_QosStatusType sme_QosSetup(tpAniSirGlobal pMac,
       //notify HDD through the synchronous status msg
       return SME_QOS_STATUS_SETUP_NOT_QOS_AP_RSP;
    }
-   if(pTspec_Info->max_service_interval || pTspec_Info->min_service_interval)
-   {
-      pTspec_Info->ts_info.psb = 1;
-   }
-   else
-   {
-      pTspec_Info->ts_info.psb = 0;
-   }
+
+   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+             "%s: UAPSD/PSB set %d: ", __func__, __LINE__,
+             pTspec_Info->ts_info.psb);
 
    pACInfo = &pSession->ac_info[ac];
    do
@@ -7298,9 +7294,8 @@ eHalStatus sme_QosProcessIntoUapsdMode(tpAniSirGlobal pMac)
       flow_info = GET_BASE_ADDR( pEntry, sme_QosFlowInfoEntry, link );
       pSession = &sme_QosCb.sessionInfo[flow_info->sessionId];
       //only notify the flows which already successfully setup UAPSD
-      if((flow_info->QoSInfo.max_service_interval ||
-          flow_info->QoSInfo.min_service_interval) &&
-         (SME_QOS_REASON_REQ_SUCCESS == flow_info->reason))
+      if( (flow_info->QoSInfo.ts_info.psb) &&
+         (SME_QOS_REASON_REQ_SUCCESS == flow_info->reason) )
       {
          flow_info->QoSCallback(pMac, flow_info->HDDcontext, 
                                 &pSession->ac_info[flow_info->ac_type].curr_QoSInfo[flow_info->tspec_mask - 1],
@@ -7599,8 +7594,7 @@ sme_QosStatusType sme_QosTriggerUapsdChange( tpAniSirGlobal pMac )
                         tspec1 = SME_QOS_TSPEC_MASK_BIT_1_2_SET & pACInfo->tspec_mask_status;
                      }
                      // Does TSPEC 1 really require UAPSD?
-                     fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[tspec1 - 1].max_service_interval || 
-                                                 pACInfo->curr_QoSInfo[tspec1 - 1].min_service_interval);
+                     fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[tspec1 - 1].ts_info.psb);
                      //double check whether we need to do anything
                      if( fIsUapsdNeeded )
                      {
@@ -7615,8 +7609,7 @@ sme_QosStatusType sme_QosTriggerUapsdChange( tpAniSirGlobal pMac )
                      if( tspec2 )
                      {
                         // Does TSPEC 2 really require UAPSD?
-                        fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[tspec2 - 1].max_service_interval || 
-                                                    pACInfo->curr_QoSInfo[tspec2 - 1].min_service_interval);
+                        fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[tspec2 - 1].ts_info.psb);
                         if( fIsUapsdNeeded )
                         {
                            //No need to inform HDD
@@ -7643,8 +7636,7 @@ sme_QosStatusType sme_QosTriggerUapsdChange( tpAniSirGlobal pMac )
                else
                {
                   //Since ACM bit is not set, there should be only one QoS information for both directions.
-                  fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[0].max_service_interval || 
-                                              pACInfo->curr_QoSInfo[0].min_service_interval);
+                  fIsUapsdNeeded = (v_BOOL_t)(pACInfo->curr_QoSInfo[0].ts_info.psb);
                   if(fIsUapsdNeeded)
                   {
                      // we need UAPSD on this AC (and we may not currently have it)
