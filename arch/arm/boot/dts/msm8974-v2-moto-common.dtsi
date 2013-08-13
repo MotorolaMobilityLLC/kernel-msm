@@ -889,6 +889,14 @@
 		hs_det_micvdd-supply = <&pm8941_l17>;
 		ti,tpa6165-always-on-micbias = <1>;
 		};
+
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&pm8941_gpios 20 0>;     /* RESET */
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
+		};
 };
 
 &i2c_1 {
