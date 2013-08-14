@@ -25,6 +25,7 @@
 #include <linux/msm_tsens.h>
 #include <linux/err.h>
 #include <linux/of.h>
+#include <linux/wakelock.h>
 
 #include <mach/msm_iomap.h>
 
@@ -228,6 +229,9 @@
 #define TSENS_QFPROM_BACKUP_REDUN_SEL	0xe0000000
 #define TSENS_QFPROM_BACKUP_REDUN_SHIFT	29
 
+#define TSENS_WAKE_LOCK_NAME		"msm_tsens_lock"
+#define TSENS_OPERATION_HOLD_TIME	2000
+
 enum tsens_calib_fuse_map_type {
 	TSENS_CALIB_FUSE_MAP_8974 = 0,
 	TSENS_CALIB_FUSE_MAP_8X26,
@@ -260,6 +264,7 @@ struct tsens_tm_device_sensor {
 struct tsens_tm_device {
 	struct platform_device		*pdev;
 	struct workqueue_struct		*tsens_wq;
+	struct wake_lock		wakelock;
 	bool				prev_reading_avail;
 	bool				calibration_less_mode;
 	bool				tsens_local_init;
@@ -673,6 +678,8 @@ static void tsens_scheduler_fn(struct work_struct *work)
 				sensor_sw_id));
 		}
 	}
+	wake_lock_timeout(&tmdev->wakelock,
+			msecs_to_jiffies(TSENS_OPERATION_HOLD_TIME));
 	mb();
 }
 
@@ -1515,6 +1522,9 @@ static int __devinit tsens_tm_probe(struct platform_device *pdev)
 	} else
 		return -ENODEV;
 
+	wake_lock_init(&tmdev->wakelock, WAKE_LOCK_SUSPEND,
+			TSENS_WAKE_LOCK_NAME);
+
 	tmdev->pdev = pdev;
 	tmdev->tsens_wq = alloc_workqueue("tsens_wq", WQ_HIGHPRI, 0);
 	if (!tmdev->tsens_wq) {
@@ -1536,6 +1546,8 @@ static int __devinit tsens_tm_probe(struct platform_device *pdev)
 
 	return 0;
 fail:
+	wake_lock_destroy(&tmdev->wakelock);
+
 	if (tmdev->tsens_wq)
 		destroy_workqueue(tmdev->tsens_wq);
 	if (tmdev->tsens_calib_addr)
@@ -1629,6 +1641,7 @@ static int __devexit tsens_tm_remove(struct platform_device *pdev)
 			tmdev->tsens_len);
 	free_irq(tmdev->tsens_irq, tmdev);
 	destroy_workqueue(tmdev->tsens_wq);
+	wake_lock_destroy(&tmdev->wakelock);
 	platform_set_drvdata(pdev, NULL);
 
 	return 0;
