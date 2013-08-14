@@ -162,6 +162,10 @@ of NV fragment is nt possbile.The next multiple of 1Kb is 3K */
 
 #define WDI_SET_POWER_STATE_TIMEOUT  10000 /* in msec a very high upper limit */
 
+/* Periodic Tx pattern offload feature */
+#define PERIODIC_TX_PTRN_MAX_SIZE 1536
+#define MAXNUM_PERIODIC_TX_PTRNS 6
+
 /*============================================================================
  *     GENERIC STRUCTURES 
   
@@ -399,6 +403,9 @@ typedef enum
   /* IBSS Peer Inactivity Indication */
   WDI_IBSS_PEER_INACTIVITY_IND,
 
+  /* Periodic Tx Pattern FW Indication */
+  WDI_PERIODIC_TX_PTRN_FW_IND,
+
   WDI_MAX_IND
 }WDI_LowLevelIndEnumType;
 
@@ -620,6 +627,17 @@ typedef struct
 } WDI_LPHBTimeoutIndData;
 #endif /* FEATURE_WLAN_LPHB */
 
+/*-----------------------------------------------------------------------------
+WDI_PeriodicTxPtrnFwIndType
+-----------------------------------------------------------------------------*/
+typedef struct
+{
+    wpt_uint8  bssIdx;
+    wpt_uint32 selfStaIdx;
+    wpt_uint32 status;
+    wpt_uint32 patternIdBitmap;
+} WDI_PeriodicTxPtrnFwIndType;
+
 /*---------------------------------------------------------------------------
  WDI_IbssPeerInactivityIndType
 -----------------------------------------------------------------------------*/
@@ -687,6 +705,8 @@ typedef struct
     /* IBSS Peer Inactivity Indication */
     WDI_IbssPeerInactivityIndType   wdiIbssPeerInactivityInd;
 
+    /* Periodic TX Pattern FW Indication */
+    WDI_PeriodicTxPtrnFwIndType  wdiPeriodicTxPtrnFwInd;
   }  wdiIndicationData;
 }WDI_LowLevelIndType;
 
@@ -5112,6 +5132,66 @@ typedef struct
 }WDI_LPHBConfigParamsType;
 #endif /* FEATURE_WLAN_LPHB */
 
+/*---------------------------------------------------------------------------
+  WDI_AddPeriodicTxPtrnInfoType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /* MAC Address for the adapter  */
+  wpt_macAddr macAddr;
+
+  wpt_uint8  ucPtrnId;           // Pattern ID
+  wpt_uint16 ucPtrnSize;         // Pattern size
+  wpt_uint32 usPtrnIntervalMs;   // In msec
+  wpt_uint8  ucPattern[PERIODIC_TX_PTRN_MAX_SIZE]; // Pattern buffer
+} WDI_AddPeriodicTxPtrnInfoType;
+
+/*---------------------------------------------------------------------------
+  WDI_DelPeriodicTxPtrnInfoType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /* MAC Address for the adapter  */
+  wpt_macAddr macAddr;
+
+  /* Bitmap of pattern IDs that needs to be deleted */
+  wpt_uint32 ucPatternIdBitmap;
+} WDI_DelPeriodicTxPtrnInfoType;
+
+/*---------------------------------------------------------------------------
+  WDI_AddPeriodicTxPtrnParamsType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  WDI_AddPeriodicTxPtrnInfoType wdiAddPeriodicTxPtrnParams;
+
+  /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb   wdiReqStatusCB;
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*             pUserData;
+} WDI_AddPeriodicTxPtrnParamsType;
+
+/*---------------------------------------------------------------------------
+  WDI_DelPeriodicTxPtrnParamsType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  WDI_DelPeriodicTxPtrnInfoType wdiDelPeriodicTxPtrnParams;
+
+  /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb   wdiReqStatusCB;
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*             pUserData;
+} WDI_DelPeriodicTxPtrnParamsType;
+
 /*----------------------------------------------------------------------------
  *   WDI callback types
  *--------------------------------------------------------------------------*/
@@ -9286,6 +9366,36 @@ WDI_ExcludeUnencryptedInd
   WDI_ExcludeUnencryptIndType *pWdiExcUnencParams
 );
 #endif
+
+/**
+ @brief WDI_AddPeriodicTxPtrnInd
+
+ @param WDI_AddPeriodicTxPtrnParamsType
+
+ @see
+
+ @return Status of the request
+*/
+WDI_Status
+WDI_AddPeriodicTxPtrnInd
+(
+  WDI_AddPeriodicTxPtrnParamsType *addPeriodicTxPtrnParams
+);
+
+/**
+ @brief WDI_DelPeriodicTxPtrnInd
+
+ @param WDI_DelPeriodicTxPtrnParamsType
+
+ @see
+
+ @return Status of the request
+*/
+WDI_Status
+WDI_DelPeriodicTxPtrnInd
+(
+  WDI_DelPeriodicTxPtrnParamsType *delPeriodicTxPtrnParams
+);
 
 #ifdef FEATURE_WLAN_SCAN_PNO
 /**

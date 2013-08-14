@@ -139,6 +139,10 @@ typedef tANI_U8 tSirIpv4Addr[SIR_IPV4_ADDR_LEN];
 #define SIR_VERSION_STRING_LEN 64
 typedef tANI_U8 tSirVersionString[SIR_VERSION_STRING_LEN];
 
+/* Periodic Tx pattern offload feature */
+#define PERIODIC_TX_PTRN_MAX_SIZE 1536
+#define MAXNUM_PERIODIC_TX_PTRNS 6
+
 enum eSirHostMsgTypes
 {
     SIR_HAL_APP_SETUP_NTF = SIR_HAL_HOST_MSG_START,
@@ -4337,5 +4341,25 @@ typedef struct sSirLPHBTimeoutInd
    v_U8_t eventReason;
 } tSirLPHBTimeoutInd;
 #endif /* FEATURE_WLAN_LPHB */
+
+typedef struct sSirAddPeriodicTxPtrn
+{
+    /* MAC Address for the adapter */
+    tSirMacAddr macAddress;
+
+    tANI_U8  ucPtrnId;           // Pattern ID
+    tANI_U16 ucPtrnSize;         // Pattern size
+    tANI_U32 usPtrnIntervalMs;   // In msec
+    tANI_U8  ucPattern[PERIODIC_TX_PTRN_MAX_SIZE]; // Pattern buffer
+} tSirAddPeriodicTxPtrn, *tpSirAddPeriodicTxPtrn;
+
+typedef struct sSirDelPeriodicTxPtrn
+{
+    /* MAC Address for the adapter */
+    tSirMacAddr macAddress;
+
+    /* Bitmap of pattern IDs that need to be deleted */
+    tANI_U32 ucPatternIdBitmap;
+} tSirDelPeriodicTxPtrn, *tpSirDelPeriodicTxPtrn;
 
 #endif /* __SIR_API_H */
