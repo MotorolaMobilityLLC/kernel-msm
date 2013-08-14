@@ -24,6 +24,7 @@
 #include <linux/power_supply.h>
 #include <linux/slab.h>
 #include <linux/qpnp/qpnp-adc.h>
+#include <linux/suspend.h>
 
 struct batt_tm_data {
 	struct device *dev;
@@ -35,6 +36,7 @@ struct batt_tm_data {
 	struct wake_lock tm_wake_lock;
 	struct tm_ctrl_data *warm_cfg;
 	struct tm_ctrl_data *cold_cfg;
+	struct notifier_block pm_notifier;
 	int warm_cfg_size;
 	int cold_cfg_size;
 	int batt_vreg_uv;
@@ -444,6 +446,28 @@ error:
 	return ret;
 }
 
+static int batt_tm_pm_notifier(struct notifier_block *notifier,
+			unsigned long pm_event, void *unused)
+{
+	struct batt_tm_data *batt_tm = container_of(notifier,
+				struct batt_tm_data, pm_notifier);
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		if (!batt_tm->chg_online)
+			batt_tm_notification_end(batt_tm);
+		break;
+	case PM_POST_SUSPEND:
+		if (!batt_tm->chg_online)
+			batt_tm_notification_start(batt_tm);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
 static int batt_tm_ctrl_probe(struct platform_device *pdev)
 {
 	struct batt_tm_data *batt_tm;
@@ -483,6 +507,13 @@ static int batt_tm_ctrl_probe(struct platform_device *pdev)
 		goto err_tm_init;
 	}
 
+	batt_tm->pm_notifier.notifier_call = batt_tm_pm_notifier;
+	ret = register_pm_notifier(&batt_tm->pm_notifier);
+	if (ret) {
+		pr_err("failed to register pm notifier\n");
+		goto err_tm_init;
+	}
+
 	platform_set_drvdata(pdev, batt_tm);
 	pr_info("probe success\n");
 
@@ -506,6 +537,7 @@ static int batt_tm_ctrl_remove(struct platform_device *pdev)
 	struct batt_tm_data *batt_tm = platform_get_drvdata(pdev);
 
 	platform_set_drvdata(pdev, NULL);
+	unregister_pm_notifier(&batt_tm->pm_notifier);
 	power_supply_unregister(&batt_tm->tm_psy);
 	wake_lock_destroy(&batt_tm->tm_wake_lock);
 	if(batt_tm->warm_cfg)
