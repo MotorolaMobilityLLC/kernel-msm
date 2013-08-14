@@ -725,12 +725,10 @@ static int msm_actuator_open(struct v4l2_subdev *sd,
 		pr_err("failed\n");
 		return -EINVAL;
 	}
-	if (a_ctrl->act_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
-		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_util(
-			&a_ctrl->i2c_client, MSM_CCI_INIT);
-		if (rc < 0)
-			pr_err("cci_init failed\n");
-	}
+
+	/* CCI initialization occurs after sensor power up */
+	CDBG("%s - Skipping call to initialize CCI\n", __func__);
+
 	CDBG("Exit\n");
 	return rc;
 }
@@ -744,12 +742,10 @@ static int msm_actuator_close(struct v4l2_subdev *sd,
 		pr_err("failed\n");
 		return -EINVAL;
 	}
-	if (a_ctrl->act_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
-		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_util(
-			&a_ctrl->i2c_client, MSM_CCI_RELEASE);
-		if (rc < 0)
-			pr_err("cci_init failed\n");
-	}
+
+	/* CCI release occurs before sensor power down */
+	CDBG("%s - Skipping call to release CCI\n", __func__);
+
 	kfree(a_ctrl->i2c_reg_tbl);
 	a_ctrl->i2c_reg_tbl = NULL;
 
