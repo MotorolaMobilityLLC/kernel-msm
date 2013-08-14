@@ -82,8 +82,8 @@
 #define HIGH_RES	0x08
 #define BLK_UPDATE	0x80
 
-#define FUZZ			32
-#define FLAT			32
+#define FUZZ			0
+#define FLAT			0
 #define I2C_RETRY_DELAY		5
 #define I2C_RETRIES		5
 #define AUTO_INCREMENT		0x80
