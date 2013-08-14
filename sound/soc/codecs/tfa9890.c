@@ -553,10 +553,12 @@ static const struct snd_soc_dapm_widget tfa9890_dapm_widgets[] = {
 	SND_SOC_DAPM_MIXER("NXP Output Mixer", SND_SOC_NOPM, 0, 0,
 			   &tfa9890_mixer_controls[0],
 			   ARRAY_SIZE(tfa9890_mixer_controls)),
+	SND_SOC_DAPM_OUTPUT("NXP Speaker Boost"),
 };
 
 static const struct snd_soc_dapm_route tfa9890_dapm_routes[] = {
 	{"NXP Output Mixer", "DSP Switch", "I2S1"},
+	{"NXP Speaker Boost", "Null", "NXP Output Mixer"},
 };
 
 /*
