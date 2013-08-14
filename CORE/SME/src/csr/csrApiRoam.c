@@ -113,6 +113,10 @@
 #define RSSI_HACK_BMPS (-40)
 #define MAX_CB_VALUE_IN_INI (2)
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+static tANI_BOOLEAN bRoamScanOffloadStarted = VOS_FALSE;
+#endif
+
 /*-------------------------------------------------------------------------- 
   Static Type declarations
   ------------------------------------------------------------------------*/
@@ -14872,8 +14876,14 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
 
    if (0 == csrRoamIsRoamOffloadScanEnabled(pMac))
    {
-      smsLog( pMac, LOGE,"isRoamOffloadScanEnabled not set \n");
+      smsLog( pMac, LOGE,"isRoamOffloadScanEnabled not set");
       return eHAL_STATUS_FAILURE;
+   }
+
+   if ((VOS_TRUE == bRoamScanOffloadStarted) && (ROAM_SCAN_OFFLOAD_START == command))
+   {
+        smsLog( pMac, LOGE,"Roam Scan Offload is already started");
+        return eHAL_STATUS_FAILURE;
    }
    status = csrRoamGetSessionIdFromBSSID(pMac,
                             (tCsrBssid *)pNeighborRoamInfo->currAPbssid,
@@ -15076,10 +15086,17 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
    msg.bodyptr  = pRequestBuf;
    if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
    {
-           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to post WDA_ROAM_SCAN_OFFLOAD_REQ message to WDA", __func__);
-           vos_mem_free(pRequestBuf);
-           return eHAL_STATUS_FAILURE;
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to post WDA_ROAM_SCAN_OFFLOAD_REQ message to WDA", __func__);
+       vos_mem_free(pRequestBuf);
+       return eHAL_STATUS_FAILURE;
    }
+   else
+   {
+        if (ROAM_SCAN_OFFLOAD_START == command)
+            bRoamScanOffloadStarted = VOS_TRUE;
+        else if (ROAM_SCAN_OFFLOAD_STOP == command)
+            bRoamScanOffloadStarted = VOS_FALSE;
+    }
 
    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG, "Roam Scan Offload Command %d, Reason %d", command, reason);
    return status;
