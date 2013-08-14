@@ -777,15 +777,17 @@ static const struct snd_soc_dapm_route wm5110_audio_routes[] = {
 	/* AMIC 3 */
 	{"IN2L", NULL, "MICBIAS2"},
 
-	/* IN2R is the headset mic and is biased from an external micbias
-         * will probably have to add and event to enable the external
-	 * MICBIAS
-	 */
+	/* IN2R is the headset mic and is biased from an external micbias */
+	{"IN2R", NULL, "TPA6165 Headset Mic"},
 
 	/* AMIC 4 */
 	{"IN3L", NULL, "MICBIAS3"},
 	/* AMIC 5 */
 	{"IN3R", NULL, "MICBIAS3"},
+
+	/* Headphone out via TPA6165 */
+	{"TPA6165 Headphone", NULL, "OUT1L"},
+	{"TPA6165 Headphone", NULL, "OUT1R"}
 };
 #endif
 
@@ -1716,9 +1718,6 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		snd_soc_dapm_new_controls(dapm, tpa6165_dapm_widgets,
 				ARRAY_SIZE(tpa6165_dapm_widgets));
 
-		snd_soc_dapm_add_routes(dapm, tpa6165_hp_map,
-				ARRAY_SIZE(tpa6165_hp_map));
-
 		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headphone");
 		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headset Mic");
 		snd_soc_dapm_sync(dapm);
@@ -2016,14 +2015,8 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret != 0)
 		dev_err(codec->dev, "Failed to add msm8974_dapm_widgets\n");
 
-        if (ret != 0)
-                dev_err(codec->dev, "Failed to set SYSCLK: %d \n", ret);
-
-	ret = snd_soc_dapm_add_routes(dapm, wm5110_audio_routes,
-				ARRAY_SIZE(wm5110_audio_routes));
-
 	if (ret != 0)
-		dev_err(codec->dev, "Failed to add wm5110_audio_routes\n");
+		dev_err(codec->dev, "Failed to set SYSCLK: %d\n", ret);
 
 #ifdef CONFIG_SND_SOC_TPA6165A2
 	ret = tpa6165_hs_detect(codec);
@@ -2034,15 +2027,17 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
 		/* dapm controls for tpa6165 */
 		snd_soc_dapm_new_controls(dapm, tpa6165_dapm_widgets,
 				ARRAY_SIZE(tpa6165_dapm_widgets));
-
-		snd_soc_dapm_add_routes(dapm, tpa6165_hp_map,
-				ARRAY_SIZE(tpa6165_hp_map));
-
 		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headphone");
 		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headset Mic");
 		snd_soc_dapm_sync(dapm);
 	}
 #endif
+
+	ret = snd_soc_dapm_add_routes(dapm, wm5110_audio_routes,
+				ARRAY_SIZE(wm5110_audio_routes));
+
+	if (ret != 0)
+		dev_err(codec->dev, "Failed to add wm5110_audio_routes\n");
 
 	/* Cargo-culted from QC */
 	snd_soc_dapm_sync(dapm);
