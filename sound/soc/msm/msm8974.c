@@ -3028,8 +3028,31 @@ static struct snd_soc_dai_link msm8974_dai_links[
 					 ARRAY_SIZE(msm8974_common_dai_links) +
 					 ARRAY_SIZE(msm8974_hdmi_dai_link)];
 
+static const struct snd_soc_dapm_route wm5110_tfa9890_routes[] = {
+	{"I2S1", NULL, "AIF1TX1"},
+};
+
+int msm8974_late_probe(struct snd_soc_card *card)
+{
+	int ret;
+	/* Add the wm5110-aif1 to tfa9890 route as
+	   the soc-core does not do this for us
+	   yet.
+	 */
+	dev_err(card->dev, "%s called\n", __func__);
+
+	ret = snd_soc_dapm_add_routes(&card->dapm, wm5110_tfa9890_routes,
+				ARRAY_SIZE(wm5110_tfa9890_routes));
+
+	if (ret != 0)
+		dev_err(card->dev, "Failed to add wm5110_tfa9890 routes %d\n",
+			ret);
+	return ret;
+}
+
 struct snd_soc_card snd_soc_card_msm8974 = {
 	.name		= "msm8974-taiko-snd-card",
+	.late_probe	= &msm8974_late_probe,
 };
 
 static int msm8974_dtparse_auxpcm(struct platform_device *pdev,
