@@ -18,7 +18,6 @@ inline VOS_STATUS hdd_debugfs_init(hdd_adapter_t *pAdapter)
 inline void hdd_debugfs_exit(hdd_context_t *pHddCtx)
 {
 }
-#endif
-
+#endif /* #ifdef WLAN_OPEN_SOURCE */
 #endif /* #ifndef _WLAN_HDD_DEBUGFS_H */
 

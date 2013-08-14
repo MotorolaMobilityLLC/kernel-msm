@@ -10337,6 +10337,98 @@ VOS_STATUS WDA_ProcessGTKOffloadGetInfoReq(tWDA_CbContext *pWDA,
 #endif // WLAN_FEATURE_GTK_OFFLOAD
 
 /*
+ * FUNCTION: WDA_ProcessAddPeriodicTxPtrnInd
+ *
+ */
+VOS_STATUS WDA_ProcessAddPeriodicTxPtrnInd(tWDA_CbContext *pWDA,
+                               tSirAddPeriodicTxPtrn *pAddPeriodicTxPtrnParams)
+{
+   WDI_Status wdiStatus;
+   WDI_AddPeriodicTxPtrnParamsType *addPeriodicTxPtrnParams;
+
+   addPeriodicTxPtrnParams =
+      vos_mem_malloc(sizeof(WDI_AddPeriodicTxPtrnParamsType));
+
+   if (NULL == addPeriodicTxPtrnParams)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for addPeriodicTxPtrnParams!",
+                __func__);
+
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   vos_mem_copy(&(addPeriodicTxPtrnParams->wdiAddPeriodicTxPtrnParams),
+                pAddPeriodicTxPtrnParams, sizeof(tSirAddPeriodicTxPtrn));
+
+   addPeriodicTxPtrnParams->wdiReqStatusCB = WDA_WdiIndicationCallback;
+   addPeriodicTxPtrnParams->pUserData = pWDA;
+
+   wdiStatus = WDI_AddPeriodicTxPtrnInd(addPeriodicTxPtrnParams);
+
+   if (WDI_STATUS_PENDING == wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                "Pending received for %s:%d", __func__, __LINE__ );
+   }
+   else if (WDI_STATUS_SUCCESS_SYNC != wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "Failure in %s:%d", __func__, __LINE__ );
+   }
+
+   vos_mem_free(addPeriodicTxPtrnParams);
+
+   return CONVERT_WDI2VOS_STATUS(wdiStatus);
+}
+
+/*
+ * FUNCTION: WDA_ProcessDelPeriodicTxPtrnInd
+ *
+ */
+VOS_STATUS WDA_ProcessDelPeriodicTxPtrnInd(tWDA_CbContext *pWDA,
+                               tSirDelPeriodicTxPtrn *pDelPeriodicTxPtrnParams)
+{
+   WDI_Status wdiStatus;
+   WDI_DelPeriodicTxPtrnParamsType *delPeriodicTxPtrnParams;
+
+   delPeriodicTxPtrnParams =
+      vos_mem_malloc(sizeof(WDI_DelPeriodicTxPtrnParamsType));
+
+   if (NULL == delPeriodicTxPtrnParams)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "%s: Not able to allocate memory for delPeriodicTxPtrnParams!",
+                __func__);
+
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   vos_mem_copy(&(delPeriodicTxPtrnParams->wdiDelPeriodicTxPtrnParams),
+                pDelPeriodicTxPtrnParams, sizeof(tSirDelPeriodicTxPtrn));
+
+   delPeriodicTxPtrnParams->wdiReqStatusCB = WDA_WdiIndicationCallback;
+   delPeriodicTxPtrnParams->pUserData = pWDA;
+
+   wdiStatus = WDI_DelPeriodicTxPtrnInd(delPeriodicTxPtrnParams);
+
+   if (WDI_STATUS_PENDING == wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                "Pending received for %s:%d", __func__, __LINE__ );
+   }
+   else if (WDI_STATUS_SUCCESS_SYNC != wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "Failure in %s:%d", __func__, __LINE__ );
+   }
+
+   vos_mem_free(delPeriodicTxPtrnParams);
+
+   return CONVERT_WDI2VOS_STATUS(wdiStatus);
+}
+
+/*
  * -------------------------------------------------------------------------
  * DATA interface with WDI for Mgmt Frames
  * ------------------------------------------------------------------------- 
@@ -11344,6 +11436,19 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          break;
       }
 #endif
+      case WDA_ADD_PERIODIC_TX_PTRN_IND:
+      {
+         WDA_ProcessAddPeriodicTxPtrnInd(pWDA,
+            (tSirAddPeriodicTxPtrn *)pMsg->bodyptr);
+         break;
+      }
+      case WDA_DEL_PERIODIC_TX_PTRN_IND:
+      {
+         WDA_ProcessDelPeriodicTxPtrnInd(pWDA,
+            (tSirDelPeriodicTxPtrn *)pMsg->bodyptr);
+         break;
+      }
+
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -11842,6 +11947,18 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
          break;
       }
 #endif /* FEATURE_WLAN_LPHB */
+      case WDI_PERIODIC_TX_PTRN_FW_IND:
+      {
+         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+            "%s: WDI_PERIODIC_TX_PTRN_FW_IND received, bssIdx: %d, "
+            "selfStaIdx: %d, status: %d, patternIdBitmap: %d", __func__,
+            (int)wdiLowLevelInd->wdiIndicationData.wdiPeriodicTxPtrnFwInd.bssIdx,
+            (int)wdiLowLevelInd->wdiIndicationData.wdiPeriodicTxPtrnFwInd.selfStaIdx,
+            (int)wdiLowLevelInd->wdiIndicationData.wdiPeriodicTxPtrnFwInd.status,
+            (int)wdiLowLevelInd->wdiIndicationData.wdiPeriodicTxPtrnFwInd.patternIdBitmap);
+
+         break;
+      }
 
       case WDI_IBSS_PEER_INACTIVITY_IND:
       {
