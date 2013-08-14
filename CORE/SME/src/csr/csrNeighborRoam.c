@@ -472,30 +472,21 @@ VOS_STATUS csrNeighborRoamSetLookupRssiThreshold(tpAniSirGlobal pMac, v_U8_t nei
     if (eCSR_NEIGHBOR_ROAM_STATE_CONNECTED == pNeighborRoamInfo->neighborRoamState)
     {
         NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Currently in CONNECTED state, so deregister all and re-register for DOWN event again"));
+
+        pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold = neighborLookupRssiThreshold;
+        pNeighborRoamInfo->currentNeighborLookupThreshold = pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold;
+
         /* De-register existing lookup UP/DOWN, Rssi indications */
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
         if (pMac->roam.configParam.isRoamOffloadScanEnabled)
         {
-            csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_STOP, REASON_DISCONNECTED);
+            csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_LOOKUP_THRESH_CHANGED);
         }
         else
         {
 #endif
            csrNeighborRoamDeregAllRssiIndication(pMac);
-#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-        }
-#endif
-        pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold = neighborLookupRssiThreshold;
-        pNeighborRoamInfo->currentNeighborLookupThreshold = pMac->roam.neighborRoamInfo.cfgParams.neighborLookupThreshold;
 
-#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-        if (pMac->roam.configParam.isRoamOffloadScanEnabled)
-        {
-            csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_START, REASON_CONNECT);
-        }
-        else
-        {
-#endif
            NEIGHBOR_ROAM_DEBUG(pMac, LOG2,
            FL("Registering neighbor lookup DOWN event with TL, RSSI = %d"),
            pNeighborRoamInfo->currentNeighborLookupThreshold);
