@@ -1555,6 +1555,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 	pr_info("%s: Continuous splash %s", __func__,
 		pinfo->cont_splash_enabled ? "enabled" : "disabled");
 
+	/* If it is bare board, disable splash feature. */
+	if (ctrl_pdata->panel_config.bare_board)
+		pinfo->cont_splash_enabled = 0;
+
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
