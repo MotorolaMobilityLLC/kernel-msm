@@ -2045,14 +2045,34 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
 
 }
 
+static struct snd_pcm_hw_params wm5110_tfa9890_params;
+
+/* Use the dai init for the codec to codec dai to
+ * enable the tfa speaker boost and clock the i2s
+ * interface. Will most likely get wrapped in a
+ * kcontrol, but for now just assume the role
+ * of the soc-core until it's updated
+ * */
+
 static int wm5110_tfa9890_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret;
 	int dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF;
 	int wm5110_dai_fmt = dai_fmt | SND_SOC_DAIFMT_CBM_CFM;
 	int tfa9890_dai_fmt = dai_fmt | SND_SOC_DAIFMT_CBS_CFS;
+	struct snd_interval *rate;
+	struct snd_interval *channels;
 
-	dev_err(rtd->dev, "wm5110-tf9890 codec-codec dai init\n");
+	channels = hw_param_interval(&wm5110_tfa9890_params,
+					SNDRV_PCM_HW_PARAM_CHANNELS);
+	rate = hw_param_interval(&wm5110_tfa9890_params,
+					SNDRV_PCM_HW_PARAM_RATE);
+
+	/* 2 channels, 48k, 16bit LE */
+	channels->min = channels->max = 2;
+	rate->min = rate->max = 48000;
+	param_set_mask(&wm5110_tfa9890_params, SNDRV_PCM_HW_PARAM_FORMAT,
+	SNDRV_PCM_FORMAT_S16_LE);
 
 	/* The soc core doesn't have support for codec-codec dais
 	 * so for now use a static reference to the wm5110 assigned
@@ -2060,17 +2080,58 @@ static int wm5110_tfa9890_init(struct snd_soc_pcm_runtime *rtd)
 	 * */
 	rtd->cpu_dai->codec = wm5110_codec;
 
+	/* wm5110 is master */
 	ret = snd_soc_dai_set_fmt(rtd->cpu_dai, wm5110_dai_fmt);
 
 	if (ret != 0)
-		dev_err(rtd->cpu_dai->codec->dev, "Failed to set format for wm5110 aif1 %d\n",
+		dev_err(rtd->cpu_dai->codec->dev,
+			"Failed to set format for wm5110 aif1 %d\n",
 			ret);
 
+	/* tfa9890 is slave */
 	ret = snd_soc_dai_set_fmt(rtd->codec_dai, tfa9890_dai_fmt);
 
 	if (ret != 0)
-		dev_err(rtd->cpu_dai->codec->dev, "Failed to set format for tfa9890 %d\n",
+		dev_err(rtd->cpu_dai->codec->dev,
+			"Failed to set format for tfa9890 %d\n",
 			ret);
+
+	dev_err(rtd->dev, "Calling HW params with hw params: %p\n",
+		&wm5110_tfa9890_params);
+	dev_err(rtd->dev, "hw params: min/max rate: %d / %d\n",
+		rate->min, rate->max);
+
+	/* Set the sysclk for the tfa9890 codec.
+	 * Can't see anywhere we feed a separate sysclk
+	 **/
+	rtd->codec_dai->driver->ops->startup(0, rtd->codec_dai);
+	rtd->codec_dai->driver->ops->set_sysclk(rtd->codec_dai,
+						0, 48000 * 32, 0);
+
+	/* Call HW params and hope they persist while we have the dai pointers.
+	 * Neither of the hw_params make use of the substream
+	 * */
+
+	WARN_ON(!rtd->cpu_dai->driver->ops->hw_params);
+	WARN_ON(!rtd->codec_dai->driver->ops->hw_params);
+
+	rtd->cpu_dai->driver->ops->hw_params(0, &wm5110_tfa9890_params,
+				 rtd->cpu_dai);
+
+	/* The DSP on the tfa takes the I2S clock to ramp up the PLL
+	 * so let the clocks come up and then trigger it as if userspace
+	 * started pcm playback
+	 **/
+
+	msleep(100);
+	rtd->codec_dai->driver->ops->trigger(0, SNDRV_PCM_TRIGGER_START,
+					     rtd->codec_dai);
+
+	/* un-mute */
+	rtd->codec_dai->driver->ops->digital_mute(rtd->codec_dai, 0);
+
+	rtd->codec_dai->driver->ops->hw_params(0, &wm5110_tfa9890_params,
+				   rtd->codec_dai);
 
 	return ret;
 }
