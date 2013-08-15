@@ -12,7 +12,6 @@
  *
  */
 
-#include <linux/dropbox.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -3216,8 +3215,6 @@ static struct mdp4_commit_hist_tbl commit_tbl[COMMIT_HIST_TBL_SIZE];
 static bool dump_mdp_regs;
 static bool dump_mdp_stats;
 static bool dump_mdp_hang;
-char *mdp4_hang_data;
-u32 mdp4_hang_data_pos;
 
 void mdp4_store_commit_info(void)
 {
@@ -3231,67 +3228,47 @@ void mdp4_dump_commit_info(void)
 {
 	int i;
 
-	MDP4_HANG_LOG("------ MDP dump commit info ----\n");
+	pr_err("------ MDP dump commit info ----\n");
 	for (i = 0; i < COMMIT_HIST_TBL_SIZE; i++)
-		MDP4_HANG_LOG(
-			"Index = %d commit_num = %d stage_commit = 0x%x\n",
+		pr_err("Index = %d commit_num = %d stage_commit = 0x%x\n",
 			i, commit_tbl[i].commit_cnt,
 			commit_tbl[i].stage_commit);
 
-	MDP4_HANG_LOG("------ MDP dump commit info complete ----\n");
+	pr_err("------ MDP dump commit info complete ----\n");
 }
 
 
 void mdp4_stats_dump(struct mdp4_statistic stat)
 {
 	if (dump_mdp_stats == false) {
-		MDP4_HANG_LOG("------ MDP stats dump Starts ------.\n");
-		MDP4_HANG_LOG("mdp4_stat.intr_tot = %ld\n",
-			stat.intr_tot);
-		MDP4_HANG_LOG("mdp4_stat.intr_dma_p = %ld\n",
-			stat.intr_dma_p);
-		MDP4_HANG_LOG("mdp4_stat.intr_overlay0 = %ld\n",
-			stat.intr_overlay0);
-		MDP4_HANG_LOG("mdp4_stat.dsi_clk_on = %ld\n",
-			stat.dsi_clk_on);
-		MDP4_HANG_LOG("mdp4_stat.dsi_clk_off = %ld\n",
-			stat.dsi_clk_off);
-		MDP4_HANG_LOG("mdp4_stat.intr_dsi = %ld\n",
-			stat.intr_dsi);
-		MDP4_HANG_LOG("mdp4_stat.intr_dsi_mdp = %ld\n",
-			stat.intr_dsi_mdp);
-		MDP4_HANG_LOG("mdp4_stat.intr_dsi_cmd = %ld\n",
-			stat.intr_dsi_cmd);
-		MDP4_HANG_LOG("mdp4_stat.intr_dsi_err = %ld\n",
-			stat.intr_dsi_err);
-		MDP4_HANG_LOG("mdp4_stat.kickoff_ov0 = %ld\n",
-			stat.kickoff_ov0);
-		MDP4_HANG_LOG("mdp4_stat.kickoff_dmap = %ld\n",
-			stat.kickoff_dmap);
-		MDP4_HANG_LOG("mdp4_stat.dsi_clkoff = %ld\n",
-			stat.dsi_clkoff);
-		MDP4_HANG_LOG("mdp4_stat.err_mixer = %ld\n",
-			stat.err_mixer);
-		MDP4_HANG_LOG("mdp4_stat.err_zorder = %ld\n",
-			stat.err_zorder);
-		MDP4_HANG_LOG("mdp4_stat.err_size = %ld\n",
-			stat.err_size);
-		MDP4_HANG_LOG("mdp4_stat.err_scale = %ld\n",
-			stat.err_scale);
-		MDP4_HANG_LOG("mdp4_stat.err_format = %ld\n",
-			stat.err_format);
-		MDP4_HANG_LOG("mdp4_stat.err_stage = %ld\n",
-			stat.err_stage);
-		MDP4_HANG_LOG("mdp4_stat.err_play = %ld\n",
-			stat.err_play);
-		MDP4_HANG_LOG("mdp4_stat.overlay_set[MDP4_MIXER0] = %ld\n",
+		pr_err("------ MDP stats dump Starts ------.\n");
+		pr_err("mdp4_stat.intr_tot = %ld\n", stat.intr_tot);
+		pr_err("mdp4_stat.intr_dma_p = %ld\n", stat.intr_dma_p);
+		pr_err("mdp4_stat.intr_overlay0 = %ld\n", stat.intr_overlay0);
+		pr_err("mdp4_stat.dsi_clk_on = %ld\n", stat.dsi_clk_on);
+		pr_err("mdp4_stat.dsi_clk_off = %ld\n", stat.dsi_clk_off);
+		pr_err("mdp4_stat.intr_dsi = %ld\n", stat.intr_dsi);
+		pr_err("mdp4_stat.intr_dsi_mdp = %ld\n", stat.intr_dsi_mdp);
+		pr_err("mdp4_stat.intr_dsi_cmd = %ld\n", stat.intr_dsi_cmd);
+		pr_err("mdp4_stat.intr_dsi_err = %ld\n", stat.intr_dsi_err);
+		pr_err("mdp4_stat.kickoff_ov0 = %ld\n", stat.kickoff_ov0);
+		pr_err("mdp4_stat.kickoff_dmap = %ld\n", stat.kickoff_dmap);
+		pr_err("mdp4_stat.dsi_clkoff = %ld\n", stat.dsi_clkoff);
+		pr_err("mdp4_stat.err_mixer = %ld\n", stat.err_mixer);
+		pr_err("mdp4_stat.err_zorder = %ld\n", stat.err_zorder);
+		pr_err("mdp4_stat.err_size = %ld\n", stat.err_size);
+		pr_err("mdp4_stat.err_scale = %ld\n", stat.err_scale);
+		pr_err("mdp4_stat.err_format = %ld\n", stat.err_format);
+		pr_err("mdp4_stat.err_stage = %ld\n", stat.err_stage);
+		pr_err("mdp4_stat.err_play = %ld\n", stat.err_play);
+		pr_err("mdp4_stat.overlay_set[MDP4_MIXER0] = %ld\n",
 			stat.overlay_set[MDP4_MIXER0]);
-		MDP4_HANG_LOG("mdp4_stat.overlay_unset[MDP4_MIXER0] = %ld\n",
+		pr_err("mdp4_stat.overlay_unset[MDP4_MIXER0] = %ld\n",
 			stat.overlay_unset[MDP4_MIXER0]);
-		MDP4_HANG_LOG("mdp4_stat.overlay_play[MDP4_MIXER0] = %ld\n",
+		pr_err("mdp4_stat.overlay_play[MDP4_MIXER0] = %ld\n",
 			stat.overlay_play[MDP4_MIXER0]);
 
-		MDP4_HANG_LOG("------- MDP stats dump finished. ------\n");
+		pr_err("------- MDP stats dump finished. ------\n");
 		dump_mdp_stats = true;
 	}
 }
@@ -3303,7 +3280,7 @@ static void mdp4_reg_range_dump(int offset, int range)
 
 	for (i = 0; i < range ;) {
 		addr = addr_start + i;
-		MDP4_HANG_LOG("0x%8x:%08x %08x %08x %08x %08x %08x %08x %08x\n",
+		pr_err("0x%8x:%08x %08x %08x %08x %08x %08x %08x %08x\n",
 			(uint32)(addr),
 			(uint32)inpdw(addr), (uint32)inpdw(addr + 4),
 			(uint32)inpdw(addr + 8), (uint32)inpdw(addr + 12),
@@ -3315,8 +3292,7 @@ static void mdp4_reg_range_dump(int offset, int range)
 void mdp4_regs_dump(void)
 {
 	if (dump_mdp_regs == false) {
-		MDP4_HANG_LOG(
-			"------- MDP HANG: MDP Regs dump starts ------\n");
+		pr_err("------- MDP HANG: MDP Regs dump starts ------\n");
 		mdp4_reg_range_dump(0, 0x4c);
 		mdp4_reg_range_dump(0x50, 0xc);
 		mdp4_reg_range_dump(0x60, 0x1c);
@@ -3342,39 +3318,15 @@ void mdp4_regs_dump(void)
 		mdp4_reg_range_dump(0xB0000, 0x10);
 		mdp4_reg_range_dump(0xD0000, 0x68);
 		mdp4_reg_range_dump(0xE0000, 0x32);
-		MDP4_HANG_LOG("------ MDP dump finished. ------\n");
+		pr_err("------ MDP dump finished. ------\n");
 
 		dump_mdp_regs = true;
 		dump_stack();
 	 }
 }
-
-void mdp4_hang_dropbox_trigger_callback(void *data)
-{
-	mdp4_clear_dump_flags();
-	mdp4_hang_panic();
-	mdp4_clear_dump_flags();
-}
-
-void mdp4_hang_init(void)
-{
-	static int initialized;
-
-	if (!initialized) {
-		mdp4_hang_data = vzalloc(MDP_DUMP_SIZE);
-		mdp4_hang_data_pos = 0;
-
-		dropbox_register_trigger_callback("mdp4_hang",
-			&mdp4_hang_dropbox_trigger_callback, NULL);
-		initialized = 1;
-	}
-}
-EXPORT_SYMBOL(mdp4_hang_init);
-
 void mdp4_hang_panic(void)
 {
 	if (dump_mdp_hang == false) {
-		mdp4_hang_data_pos = 0;
 		mdp4_dump_vsync_ctrl();
 		mdp4_stats_dump(mdp4_stat);
 		mdp4_dump_commit_info();
@@ -3383,10 +3335,7 @@ void mdp4_hang_panic(void)
 		mipi_dsi_regs_dump();
 		dump_stack();
 		dump_mdp_hang = true;
-
-		dropbox_queue_event_text("mdp4_hang", mdp4_hang_data,
-			mdp4_hang_data_pos);
-	}
+	 }
 }
 
 

@@ -1299,9 +1299,9 @@ void mdp4_dump_vsync_ctrl(void)
 
 	vctrl = &vsync_ctrl_db[cndx];
 
-	MDP4_HANG_LOG("vctrl->clk_enabled = %d\n", vctrl->clk_enabled);
-	MDP4_HANG_LOG("vctrl->clk_control = %d\n", vctrl->clk_control);
-	MDP4_HANG_LOG("vctrl->expire_tick = %d\n", vctrl->expire_tick);
-	MDP4_HANG_LOG("vctrl->wait_vsync_cnt = %d\n", vctrl->wait_vsync_cnt);
-	MDP4_HANG_LOG("mdp_intr_mask = 0x%08x\n", mdp_intr_mask);
+	pr_err("vctrl->clk_enabled = %d\n", vctrl->clk_enabled);
+	pr_err("vctrl->clk_control = %d\n", vctrl->clk_control);
+	pr_err("vctrl->expire_tick = %d\n", vctrl->expire_tick);
+	pr_err("vctrl->wait_vsync_cnt = %d\n", vctrl->wait_vsync_cnt);
+	pr_err("mdp_intr_mask = 0x%08x\n", mdp_intr_mask);
 }
