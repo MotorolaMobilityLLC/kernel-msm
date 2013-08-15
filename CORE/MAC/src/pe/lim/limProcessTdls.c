@@ -1019,7 +1019,8 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
             tdlsDisRsp.HTCaps.present = 0;
         }
 #ifdef WLAN_FEATURE_11AC
-        if (IS_DOT11_MODE_VHT(selfDot11Mode))
+        if (IS_DOT11_MODE_VHT(selfDot11Mode) &&
+            IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
         {
             /* Include VHT Capability IE */
             PopulateDot11fVHTCaps( pMac, &tdlsDisRsp.VHTCaps );
@@ -1297,9 +1298,8 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
             tdlsSetupReq.HTCaps.present = 0;
         }
 #ifdef WLAN_FEATURE_11AC
-        /* Include VHT Capability IE */
-        PopulateDot11fVHTCaps( pMac, &tdlsSetupReq.VHTCaps );
-        if (IS_DOT11_MODE_VHT(selfDot11Mode))
+        if (IS_DOT11_MODE_VHT(selfDot11Mode) &&
+            IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
         {
             tANI_U16 aid;
             tpDphHashNode       pStaDs;
@@ -1310,6 +1310,9 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
                 tdlsSetupReq.AID.present = 1;
                 tdlsSetupReq.AID.assocId = aid | LIM_AID_MASK; // set bit 14 and 15 1's
             }
+
+            /* Include VHT Capability IE */
+            PopulateDot11fVHTCaps( pMac, &tdlsSetupReq.VHTCaps );
         }
         else
         {
@@ -1760,9 +1763,8 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
             tdlsSetupRsp.HTCaps.present = 0;
         }
 #ifdef WLAN_FEATURE_11AC
-        /* Include VHT Capability IE */
-        PopulateDot11fVHTCaps( pMac, &tdlsSetupRsp.VHTCaps );
-        if (IS_DOT11_MODE_VHT(selfDot11Mode))
+        if (IS_DOT11_MODE_VHT(selfDot11Mode) &&
+            IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
         {
             tANI_U16 aid;
             tpDphHashNode       pStaDs;
@@ -1773,6 +1775,9 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
                 tdlsSetupRsp.AID.present = 1;
                 tdlsSetupRsp.AID.assocId = aid | LIM_AID_MASK; // set bit 14 and 15 1's
             }
+
+            /* Include VHT Capability IE */
+            PopulateDot11fVHTCaps( pMac, &tdlsSetupRsp.VHTCaps );
         }
         else
         {
