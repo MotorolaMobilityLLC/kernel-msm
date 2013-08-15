@@ -2265,11 +2265,12 @@ eHalStatus pmcWowlDelBcastPattern (
         return eHAL_STATUS_FAILURE;
     }
 
+    vos_mem_copy(pattern->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
+
     if( pMac->pmc.pmcState == IMPS || pMac->pmc.pmcState == REQUEST_IMPS )
     {
         eHalStatus status;
 
-        vos_mem_copy(pattern->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
         //Wake up the chip first
         status = pmcDeferMsg( pMac, eWNI_PMC_WOWL_DEL_BCAST_PTRN, 
                                     pattern, sizeof(tSirWowlDelBcastPtrn) );
