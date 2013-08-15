@@ -991,20 +991,4 @@ static inline void mdp4_unmap_sec_resource(struct msm_fb_data_type *mfd);
 }
 #endif
 
-#define COMMIT_HIST_TBL_SIZE 20
-
-/*having a struct in case further info needs to be added*/
-struct mdp4_commit_hist_tbl {
-	uint32 commit_cnt;
-	int32_t stage_commit;
-};
-
-void mdp4_stats_dump(struct mdp4_statistic stat);
-void mdp4_store_commit_info(void);
-void mdp4_dump_commit_info(void);
-void mdp4_regs_dump(void);
-void mdp4_hang_panic(void);
-void mdp4_clear_dump_flags(void);
-void mdp4_dump_vsync_ctrl(void);
-
 #endif /* MDP_H */
