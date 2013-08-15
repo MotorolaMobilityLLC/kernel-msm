@@ -31,9 +31,6 @@
 #include "mipi_dsi.h"
 #include "mdp4.h"
 
-#define TOUT_PERIOD	HZ	/* 1 second */
-#define MS_100		(HZ/10)	/* 100 ms */
-
 static int vsync_start_y_adjust = 4;
 
 #define MAX_CONTROLLER	1
@@ -494,10 +491,7 @@ void mdp4_dsi_cmd_wait4vsync(int cndx)
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	if (!wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT)) {
-		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
-		mdp4_hang_panic();
-	}
+	wait_for_completion(&vctrl->vsync_comp);
 	mdp4_stat.wait4vsync0++;
 }
 
@@ -515,11 +509,7 @@ static void mdp4_dsi_cmd_wait4dmap(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	if (!wait_for_completion_timeout(&vctrl->dmap_comp, WAIT_TOUT)) {
-		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
-		mdp4_hang_panic();
-	}
-
+	wait_for_completion(&vctrl->dmap_comp);
 }
 
 static void mdp4_dsi_cmd_wait4ov(int cndx)
@@ -536,11 +526,9 @@ static void mdp4_dsi_cmd_wait4ov(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	if (!wait_for_completion_timeout(&vctrl->ov_comp, WAIT_TOUT)) {
-		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
-		mdp4_hang_panic();
-	}
+	wait_for_completion(&vctrl->ov_comp);
 }
+
 /*
  * primary_rdptr_isr:
  * called from interrupt context
@@ -1290,18 +1278,4 @@ void mdp4_dsi_panel_off(struct msm_fb_data_type *mfd)
 
 		dsi_panel_on = false;
 	}
-}
-
-void mdp4_dump_vsync_ctrl(void)
-{
-	int cndx = 0;
-	struct vsycn_ctrl *vctrl;
-
-	vctrl = &vsync_ctrl_db[cndx];
-
-	pr_err("vctrl->clk_enabled = %d\n", vctrl->clk_enabled);
-	pr_err("vctrl->clk_control = %d\n", vctrl->clk_control);
-	pr_err("vctrl->expire_tick = %d\n", vctrl->expire_tick);
-	pr_err("vctrl->wait_vsync_cnt = %d\n", vctrl->wait_vsync_cnt);
-	pr_err("mdp_intr_mask = 0x%08x\n", mdp_intr_mask);
 }
