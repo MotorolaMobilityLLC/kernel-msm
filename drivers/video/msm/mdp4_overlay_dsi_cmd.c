@@ -59,6 +59,7 @@ static struct vsycn_ctrl {
 	uint32 rdptr_intr_tot;
 	uint32 rdptr_sirq_tot;
 	atomic_t suspend;
+	int wait_vsync_cnt;
 	int blt_change;
 	int blt_free;
 	int blt_end;
@@ -67,7 +68,6 @@ static struct vsycn_ctrl {
 	struct completion ov_comp;
 	struct completion dmap_comp;
 	struct completion vsync_comp;
-	struct completion show_event_comp;
 	spinlock_t spin_lock;
 	struct msm_fb_data_type *mfd;
 	struct mdp4_overlay_pipe *base_pipe;
@@ -489,7 +489,9 @@ void mdp4_dsi_cmd_wait4vsync(int cndx)
 		return;
 
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
-	INIT_COMPLETION(vctrl->vsync_comp);
+	if (vctrl->wait_vsync_cnt == 0)
+		INIT_COMPLETION(vctrl->vsync_comp);
+	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
 	if (!wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT)) {
@@ -562,8 +564,8 @@ static void primary_rdptr_isr(int cndx)
 		return;
 	}
 
-	complete(&vctrl->vsync_comp);
-	complete(&vctrl->show_event_comp);
+	complete_all(&vctrl->vsync_comp);
+	vctrl->wait_vsync_cnt = 0;
 
 	if (vctrl->expire_tick) {
 		vctrl->expire_tick--;
@@ -709,13 +711,17 @@ ssize_t mdp4_dsi_cmd_show_event(struct device *dev,
 		return 0;
 
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
-	INIT_COMPLETION(vctrl->show_event_comp);
+	if (vctrl->wait_vsync_cnt == 0)
+		INIT_COMPLETION(vctrl->vsync_comp);
+	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	ret = wait_for_completion_interruptible_timeout(&vctrl->show_event_comp,
+	ret = wait_for_completion_interruptible_timeout(&vctrl->vsync_comp,
 		msecs_to_jiffies(VSYNC_PERIOD * 4));
-	if (ret <= 0)
+	if (ret <= 0) {
+		vctrl->wait_vsync_cnt = 0;
 		vctrl->vsync_time = ktime_get();
+	}
 
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	vsync_tick = ktime_to_ns(vctrl->vsync_time);
@@ -745,7 +751,6 @@ void mdp4_dsi_rdptr_init(int cndx)
 	init_completion(&vctrl->ov_comp);
 	init_completion(&vctrl->dmap_comp);
 	init_completion(&vctrl->vsync_comp);
-	init_completion(&vctrl->show_event_comp);
 	spin_lock_init(&vctrl->spin_lock);
 	atomic_set(&vctrl->suspend, 1);
 	INIT_WORK(&vctrl->clk_work, clk_ctrl_work);
@@ -1115,8 +1120,7 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 	need_wait = 0;
 	mutex_lock(&vctrl->update_lock);
 
-	complete(&vctrl->vsync_comp);
-	complete(&vctrl->show_event_comp);
+	complete_all(&vctrl->vsync_comp);
 
 	pr_debug("%s: clk=%d pan=%d\n", __func__,
 			vctrl->clk_enabled, vctrl->pan_display);
@@ -1300,6 +1304,7 @@ void mdp4_dump_vsync_ctrl(void)
 	MDP4_HANG_LOG("vctrl->clk_enabled = %d\n", vctrl->clk_enabled);
 	MDP4_HANG_LOG("vctrl->clk_control = %d\n", vctrl->clk_control);
 	MDP4_HANG_LOG("vctrl->expire_tick = %d\n", vctrl->expire_tick);
+	MDP4_HANG_LOG("vctrl->wait_vsync_cnt = %d\n", vctrl->wait_vsync_cnt);
 	MDP4_HANG_LOG("vctrl->ov_koff = %d\n", vctrl->ov_koff);
 	MDP4_HANG_LOG("vctrl->ov_done = %d\n", vctrl->ov_done);
 	MDP4_HANG_LOG("vctrl->dmap_koff = %d\n", vctrl->dmap_koff);
