@@ -320,4 +320,20 @@ VOS_STATUS vos_wlanReInit(void);
 */
 VOS_STATUS vos_wlanRestart(void);
 
+/**
+  @brief vos_fwDumpReq()
+
+  This function is called to issue dump commands to Firmware
+
+  @param
+       cmd - Command No. to execute
+       arg1 - argument 1 to cmd
+       arg2 - argument 2 to cmd
+       arg3 - argument 3 to cmd
+       arg4 - argument 4 to cmd
+  @return
+       NONE
+*/
+v_VOID_t vos_fwDumpReq(tANI_U32 cmd, tANI_U32 arg1, tANI_U32 arg2,
+                        tANI_U32 arg3, tANI_U32 arg4);
 #endif // if !defined __VOS_NVITEM_H
