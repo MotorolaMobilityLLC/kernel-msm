@@ -476,8 +476,6 @@ void mdp4_dsi_cmd_wait4vsync(int cndx)
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
 	unsigned long flags;
-	static int timeout_occurred[MAX_CONTROLLER];
-	uint32 prev_rdptr_intr;
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -494,18 +492,9 @@ void mdp4_dsi_cmd_wait4vsync(int cndx)
 	INIT_COMPLETION(vctrl->vsync_comp);
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	prev_rdptr_intr = vctrl->rdptr_intr_tot;
-	if (!wait_for_completion_timeout(&vctrl->vsync_comp,
-			msecs_to_jiffies(VSYNC_PERIOD * 4))) {
-		pr_err("%s: TIMEOUT (rdptr_intr: prev: %u cur: %u)\n", __func__,
-			prev_rdptr_intr, vctrl->rdptr_intr_tot);
-		timeout_occurred[cndx] = 1;
-		mdp4_hang_dump();
-	} else {
-		if (timeout_occurred[cndx])
-			pr_info("%s: recovered from previous timeout\n",
-				__func__);
-		timeout_occurred[cndx] = 0;
+	if (!wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT)) {
+		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
+		mdp4_hang_panic();
 	}
 	mdp4_stat.wait4vsync0++;
 }
@@ -513,8 +502,6 @@ void mdp4_dsi_cmd_wait4vsync(int cndx)
 static void mdp4_dsi_cmd_wait4dmap(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
-	int retries = MAX_DMAP_TIMEOUTS;
-	static int timeout_occurred[MAX_CONTROLLER];
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -526,35 +513,16 @@ static void mdp4_dsi_cmd_wait4dmap(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	while (retries) {
-		if (!wait_for_completion_timeout(&vctrl->dmap_comp,
-						WAIT_TOUT)) {
-			pr_err("%s: TIMEOUT (retries left: %d)\n", __func__,
-				retries);
-			timeout_occurred[cndx] = 1;
-			/* only dump the hang once */
-			if (retries == MAX_DMAP_TIMEOUTS)
-				mdp4_hang_dump();
-		} else {
-			if (timeout_occurred[cndx])
-				pr_info("%s: recovered from previous timeout\n",
-					__func__);
-			timeout_occurred[cndx] = 0;
-			break;
-		}
-		retries--;
+	if (!wait_for_completion_timeout(&vctrl->dmap_comp, WAIT_TOUT)) {
+		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
+		mdp4_hang_panic();
 	}
 
-	/* Timeouts will continue forever, BUG out until we come up with a good
-	   way to recover the state of the MDP subsystem */
-	if (!retries)
-		BUG();
 }
 
 static void mdp4_dsi_cmd_wait4ov(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
-	static int timeout_occurred[MAX_CONTROLLER];
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -567,14 +535,8 @@ static void mdp4_dsi_cmd_wait4ov(int cndx)
 		return;
 
 	if (!wait_for_completion_timeout(&vctrl->ov_comp, WAIT_TOUT)) {
-		pr_err("%s: TIMEOUT\n", __func__);
-		timeout_occurred[cndx] = 1;
-		mdp4_hang_dump();
-	} else {
-		if (timeout_occurred[cndx])
-			pr_info("%s: recovered from previous timeout\n",
-				__func__);
-		timeout_occurred[cndx] = 0;
+		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
+		mdp4_hang_panic();
 	}
 }
 /*
@@ -739,8 +701,6 @@ ssize_t mdp4_dsi_cmd_show_event(struct device *dev,
 	ssize_t ret = 0;
 	unsigned long flags;
 	u64 vsync_tick;
-	static int timeout_occurred;
-	uint32 prev_rdptr_intr;
 
 	cndx = 0;
 	vctrl = &vsync_ctrl_db[0];
@@ -752,32 +712,10 @@ ssize_t mdp4_dsi_cmd_show_event(struct device *dev,
 	INIT_COMPLETION(vctrl->show_event_comp);
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	prev_rdptr_intr = vctrl->rdptr_intr_tot;
-	while (1) {
-		ret = wait_for_completion_interruptible_timeout(
-			&vctrl->show_event_comp,
-			msecs_to_jiffies(VSYNC_PERIOD * 4));
-		if (ret == -ERESTARTSYS) {
-			pr_warning("%s is interrupted\n", __func__);
-			continue;
-		} else if (ret <= 0) {
-			if (ret == 0) {
-				pr_err("%s: TIMEOUT (rdptr_intr: prev: %u "
-					"cur: %u)\n", __func__, prev_rdptr_intr,
-					vctrl->rdptr_intr_tot);
-				timeout_occurred = 1;
-				mdp4_hang_dump();
-			}
-
-			vctrl->vsync_time = ktime_get();
-		} else {
-			if (timeout_occurred)
-				pr_info("%s: recovered from previous timeout\n",
-					__func__);
-			timeout_occurred = 0;
-		}
-		break;
-	}
+	ret = wait_for_completion_interruptible_timeout(&vctrl->show_event_comp,
+		msecs_to_jiffies(VSYNC_PERIOD * 4));
+	if (ret <= 0)
+		vctrl->vsync_time = ktime_get();
 
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	vsync_tick = ktime_to_ns(vctrl->vsync_time);

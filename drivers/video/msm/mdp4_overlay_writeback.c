@@ -478,7 +478,6 @@ void mdp4_wfd_init(int cndx)
 static void mdp4_wfd_wait4ov(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
-	static int timeout_occurred[MAX_CONTROLLER];
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -491,14 +490,8 @@ static void mdp4_wfd_wait4ov(int cndx)
 		return;
 
 	if (!wait_for_completion_timeout(&vctrl->ov_comp, HZ)) {
-		pr_err("%s: TIMEOUT\n", __func__);
-		timeout_occurred[cndx] = 1;
-		mdp4_hang_dump();
-	} else {
-		if (timeout_occurred[cndx])
-			pr_info("%s: recovered from previous timeout\n",
-				__func__);
-		timeout_occurred[cndx] = 0;
+		pr_err("%s failed to wait for dma_busy\n", __func__);
+		mdp4_hang_panic();
 	}
 }
 

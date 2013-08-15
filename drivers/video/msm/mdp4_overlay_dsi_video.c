@@ -408,7 +408,6 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 	unsigned long flags;
 	int ret;
 	unsigned int data;
-	static int timeout_occurred[MAX_CONTROLLER];
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -438,15 +437,8 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 		pr_warning("%s is interrupted\n", __func__);
 	else if (ret <= 0) {
 		pr_err("%s timeout/error. ret = %d", __func__, ret);
-		if (ret == 0) {
-			mdp4_hang_dump();
-			timeout_occurred[cndx] = 1;
-		}
-	} else {
-		if (timeout_occurred[cndx])
-			pr_info("%s: recovered from previous timeout\n",
-				__func__);
-		timeout_occurred[cndx] = 0;
+		if (ret == 0)
+			mdp4_hang_panic();
 	}
 
 	mdp4_video_vsync_irq_ctrl(cndx, 0);
@@ -456,8 +448,6 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 static void mdp4_dsi_video_wait4dmap(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
-	int retries = MAX_DMAP_TIMEOUTS;
-	static int timeout_occurred[MAX_CONTROLLER];
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -469,29 +459,10 @@ static void mdp4_dsi_video_wait4dmap(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	while (retries) {
-		if (!wait_for_completion_timeout(&vctrl->dmap_comp,
-						 WAIT_TOUT)) {
-			pr_err("%s %d  TIMEOUT_ (retries left: %d)\n", __func__,
-				__LINE__, retries);
-			timeout_occurred[cndx] = 1;
-			/* only dump the hang once */
-			if (retries == MAX_DMAP_TIMEOUTS)
-				mdp4_hang_dump();
-		} else {
-			if (timeout_occurred[cndx])
-				pr_info("%s: recovered from previous timeout\n",
-					__func__);
-			timeout_occurred[cndx] = 0;
-			break;
-		}
-		retries--;
+	if (!wait_for_completion_timeout(&vctrl->dmap_comp, WAIT_TOUT)) {
+		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
+		mdp4_hang_panic();
 	}
-
-	/* Timeouts will continue forever, BUG out until we come up with a good
-	   way to recover the state of the MDP subsystem */
-	if (!retries)
-		BUG();
 }
 
 
@@ -517,7 +488,6 @@ static void mdp4_dsi_video_wait4dmap_done(int cndx)
 static void mdp4_dsi_video_wait4ov(int cndx)
 {
 	struct vsycn_ctrl *vctrl;
-	static int timeout_occurred[MAX_CONTROLLER];
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -530,14 +500,8 @@ static void mdp4_dsi_video_wait4ov(int cndx)
 		return;
 
 	if (!wait_for_completion_timeout(&vctrl->ov_comp, WAIT_TOUT)) {
-		pr_err("%s: TIMEOUT\n", __func__);
-		timeout_occurred[cndx] = 1;
-		mdp4_hang_dump();
-	} else {
-		if (timeout_occurred[cndx])
-			pr_info("%s: recovered from previous timeout\n",
-				__func__);
-		timeout_occurred[cndx] = 0;
+		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
+		mdp4_hang_panic();
 	}
 }
 
