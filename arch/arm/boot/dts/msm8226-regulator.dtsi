@@ -103,7 +103,6 @@
 		qcom,cpr-fuse-redun-target-quot = <24 12 0>;
 		qcom,cpr-fuse-redun-ro-sel = <46 36 39>;
 
-		qcom,cpr-enable;
 		qcom,cpr-fuse-cond-min-volt-sel = <54 42 6 7 1>;
 		qcom,cpr-cond-min-voltage = <1140000>;
 		qcom,cpr-fuse-uplift-sel = <22 53 1 0 0>;
