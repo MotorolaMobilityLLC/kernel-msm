@@ -1222,6 +1222,11 @@ static int __devinit wm5110_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, wm5110);
 
+	/* Pass of_node from SPI device to the codec to let
+	   the regulator frameworks find supplies from
+	   the device tree.*/
+	pdev->dev.of_node = arizona->dev->of_node;
+
 	wm5110->core.arizona = arizona;
 	wm5110->core.num_inputs = 8;
 
