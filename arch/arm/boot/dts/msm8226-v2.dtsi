@@ -59,6 +59,7 @@
 			<2 2 2 4 10>,
 			<5 2 2 4 14>;
 	qcom,cpr-quot-adjust-scaling-factor-max = <650>;
+	qcom,cpr-enable;
 };
 
 &msm_gpu {
