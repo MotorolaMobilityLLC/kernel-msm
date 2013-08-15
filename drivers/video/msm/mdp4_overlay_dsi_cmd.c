@@ -515,7 +515,6 @@ static void mdp4_dsi_cmd_wait4dmap(int cndx)
 	struct vsycn_ctrl *vctrl;
 	int retries = MAX_DMAP_TIMEOUTS;
 	static int timeout_occurred[MAX_CONTROLLER];
-	unsigned long flags;
 
 	if (cndx >= MAX_CONTROLLER) {
 		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
@@ -527,9 +526,9 @@ static void mdp4_dsi_cmd_wait4dmap(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	while (retries > 0) {
+	while (retries) {
 		if (!wait_for_completion_timeout(&vctrl->dmap_comp,
-						DMAP_TIMEOUT)) {
+						WAIT_TOUT)) {
 			pr_err("%s: TIMEOUT (retries left: %d)\n", __func__,
 				retries);
 			timeout_occurred[cndx] = 1;
@@ -537,46 +536,19 @@ static void mdp4_dsi_cmd_wait4dmap(int cndx)
 			if (retries == MAX_DMAP_TIMEOUTS)
 				mdp4_hang_dump();
 		} else {
-			if (timeout_occurred[cndx] > 0)
+			if (timeout_occurred[cndx])
 				pr_info("%s: recovered from previous timeout\n",
 					__func__);
 			timeout_occurred[cndx] = 0;
-
-			if (mdp4_dmap_timeout_counter[cndx] > 0) {
-				pr_info("%s: successful dmap wait after a "
-					"failure\n", __func__);
-				mdp4_dmap_timeout_counter[cndx] = 0;
-			}
-
 			break;
 		}
 		retries--;
 	}
 
-	if (retries == 0) {
-		mdp4_dmap_timeout_counter[cndx]++;
-		if (mdp4_dmap_timeout_counter[cndx] >= DMAP_TIMEOUT_BUG_COUNT) {
-			pr_err("%s: Reached maximum number of dmap timeouts, "
-				"bugging out", __func__);
-			BUG();
-		}
-
-		pr_warning("%s: Attempting to recover from dmap timeout "
-			"[%u total timeouts]", __func__,
-			mdp4_dmap_timeout_counter[cndx]);
-
-		spin_lock_irqsave(&vctrl->spin_lock, flags);
-		vctrl->dmap_done++;
-		pr_warning("%s: Incrementing dmap_done to %u", __func__,
-			vctrl->dmap_done);
-
-		if (vctrl->pan_display) {
-			vctrl->pan_display--;
-			pr_warning("%s: Decrementing pan_display to %u",
-				__func__, vctrl->pan_display);
-		}
-		spin_unlock_irqrestore(&vctrl->spin_lock, flags);
-	}
+	/* Timeouts will continue forever, BUG out until we come up with a good
+	   way to recover the state of the MDP subsystem */
+	if (!retries)
+		BUG();
 }
 
 static void mdp4_dsi_cmd_wait4ov(int cndx)
@@ -658,18 +630,6 @@ void mdp4_dmap_done_dsi_cmd(int cndx)
 	 /* blt enabled */
 	spin_lock(&vctrl->spin_lock);
 	vsync_irq_disable(INTR_DMA_P_DONE, MDP_DMAP_TERM);
-	if (vctrl->dmap_done >= vctrl->dmap_koff) {
-		if (mdp4_dmap_timeout_counter[cndx] > 0)
-			pr_warning("%s: received dmap interrupt after a "
-				"timeout and recovery!\n", __func__);
-		else
-			pr_err("%s: dmap_done/koff counters in unexpected "
-				"state!\n", __func__);
-		pr_warning("%s: dmap_done: [%u] dmap_koff: [%u]\n", __func__,
-			vctrl->dmap_done, vctrl->dmap_koff);
-		spin_unlock(&vctrl->spin_lock);
-		return;
-	}
 	vctrl->dmap_done++;
 
 	if (vctrl->pan_display)

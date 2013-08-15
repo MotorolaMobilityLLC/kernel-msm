@@ -3216,9 +3216,6 @@ static struct mdp4_commit_hist_tbl commit_tbl[COMMIT_HIST_TBL_SIZE];
 char *mdp4_hang_data;
 u32 mdp4_hang_data_pos;
 
-#define MAX_CONTROLLER	1
-u8 mdp4_dmap_timeout_counter[MAX_CONTROLLER];
-
 void mdp4_store_commit_info(void)
 {
 	 int index = commit_cnt % COMMIT_HIST_TBL_SIZE;
@@ -3349,7 +3346,6 @@ void mdp4_hang_dropbox_trigger_callback(void *data)
 void mdp4_hang_init(void)
 {
 	static int initialized;
-	int i;
 
 	if (!initialized) {
 		mdp4_hang_data = vzalloc(MDP_DUMP_SIZE);
@@ -3358,8 +3354,6 @@ void mdp4_hang_init(void)
 		dropbox_register_trigger_callback("mdp4_hang",
 			&mdp4_hang_dropbox_trigger_callback, NULL);
 		initialized = 1;
-		for (i = 0; i < MAX_CONTROLLER; i++)
-			mdp4_dmap_timeout_counter[i] = 0;
 	}
 }
 EXPORT_SYMBOL(mdp4_hang_init);
