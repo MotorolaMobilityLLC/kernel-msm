@@ -392,6 +392,7 @@ void mipi_dsi_configure_fb_divider(u32 fps_level);
 void mipi_dsi_wait4video_done(void);
 int mipi_dsi_panel_power_enable(int on);
 void mipi_dsi_regs_dump(void);
+void mipi_dsi_clear_dump_flag(void);
 void mipi_set_mem_start_mem_cont(int mem_start, int mem_cont);
 int mipi_dsi_cont_splash_enabled(void);
 

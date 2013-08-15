@@ -1003,7 +1003,8 @@ void mdp4_stats_dump(struct mdp4_statistic stat);
 void mdp4_store_commit_info(void);
 void mdp4_dump_commit_info(void);
 void mdp4_regs_dump(void);
-void mdp4_hang_dump(void);
+void mdp4_hang_panic(void);
+void mdp4_clear_dump_flags(void);
 void mdp4_dump_vsync_ctrl(void);
 
 extern char *mdp4_hang_data;
@@ -1027,7 +1028,5 @@ extern void mdp4_hang_init(void);
 					"\n"); \
 		} \
 	} while (0)
-
-#define MAX_DMAP_TIMEOUTS 10
 
 #endif /* MDP_H */

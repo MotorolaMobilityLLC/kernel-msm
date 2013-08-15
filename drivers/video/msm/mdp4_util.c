@@ -3213,6 +3213,9 @@ u32 mdp4_get_mixer_num(u32 panel_type)
 
 static uint32 commit_cnt;
 static struct mdp4_commit_hist_tbl commit_tbl[COMMIT_HIST_TBL_SIZE];
+static bool dump_mdp_regs;
+static bool dump_mdp_stats;
+static bool dump_mdp_hang;
 char *mdp4_hang_data;
 u32 mdp4_hang_data_pos;
 
@@ -3241,53 +3244,56 @@ void mdp4_dump_commit_info(void)
 
 void mdp4_stats_dump(struct mdp4_statistic stat)
 {
-	MDP4_HANG_LOG("------ MDP stats dump Starts ------.\n");
-	MDP4_HANG_LOG("mdp4_stat.intr_tot = %ld\n",
-		stat.intr_tot);
-	MDP4_HANG_LOG("mdp4_stat.intr_dma_p = %ld\n",
-		stat.intr_dma_p);
-	MDP4_HANG_LOG("mdp4_stat.intr_overlay0 = %ld\n",
-		stat.intr_overlay0);
-	MDP4_HANG_LOG("mdp4_stat.dsi_clk_on = %ld\n",
-		stat.dsi_clk_on);
-	MDP4_HANG_LOG("mdp4_stat.dsi_clk_off = %ld\n",
-		stat.dsi_clk_off);
-	MDP4_HANG_LOG("mdp4_stat.intr_dsi = %ld\n",
-		stat.intr_dsi);
-	MDP4_HANG_LOG("mdp4_stat.intr_dsi_mdp = %ld\n",
-		stat.intr_dsi_mdp);
-	MDP4_HANG_LOG("mdp4_stat.intr_dsi_cmd = %ld\n",
-		stat.intr_dsi_cmd);
-	MDP4_HANG_LOG("mdp4_stat.intr_dsi_err = %ld\n",
-		stat.intr_dsi_err);
-	MDP4_HANG_LOG("mdp4_stat.kickoff_ov0 = %ld\n",
-		stat.kickoff_ov0);
-	MDP4_HANG_LOG("mdp4_stat.kickoff_dmap = %ld\n",
-		stat.kickoff_dmap);
-	MDP4_HANG_LOG("mdp4_stat.dsi_clkoff = %ld\n",
-		stat.dsi_clkoff);
-	MDP4_HANG_LOG("mdp4_stat.err_mixer = %ld\n",
-		stat.err_mixer);
-	MDP4_HANG_LOG("mdp4_stat.err_zorder = %ld\n",
-		stat.err_zorder);
-	MDP4_HANG_LOG("mdp4_stat.err_size = %ld\n",
-		stat.err_size);
-	MDP4_HANG_LOG("mdp4_stat.err_scale = %ld\n",
-		stat.err_scale);
-	MDP4_HANG_LOG("mdp4_stat.err_format = %ld\n",
-		stat.err_format);
-	MDP4_HANG_LOG("mdp4_stat.err_stage = %ld\n",
-		stat.err_stage);
-	MDP4_HANG_LOG("mdp4_stat.err_play = %ld\n",
-		stat.err_play);
-	MDP4_HANG_LOG("mdp4_stat.overlay_set[MDP4_MIXER0] = %ld\n",
-		stat.overlay_set[MDP4_MIXER0]);
-	MDP4_HANG_LOG("mdp4_stat.overlay_unset[MDP4_MIXER0] = %ld\n",
-		stat.overlay_unset[MDP4_MIXER0]);
-	MDP4_HANG_LOG("mdp4_stat.overlay_play[MDP4_MIXER0] = %ld\n",
-		stat.overlay_play[MDP4_MIXER0]);
+	if (dump_mdp_stats == false) {
+		MDP4_HANG_LOG("------ MDP stats dump Starts ------.\n");
+		MDP4_HANG_LOG("mdp4_stat.intr_tot = %ld\n",
+			stat.intr_tot);
+		MDP4_HANG_LOG("mdp4_stat.intr_dma_p = %ld\n",
+			stat.intr_dma_p);
+		MDP4_HANG_LOG("mdp4_stat.intr_overlay0 = %ld\n",
+			stat.intr_overlay0);
+		MDP4_HANG_LOG("mdp4_stat.dsi_clk_on = %ld\n",
+			stat.dsi_clk_on);
+		MDP4_HANG_LOG("mdp4_stat.dsi_clk_off = %ld\n",
+			stat.dsi_clk_off);
+		MDP4_HANG_LOG("mdp4_stat.intr_dsi = %ld\n",
+			stat.intr_dsi);
+		MDP4_HANG_LOG("mdp4_stat.intr_dsi_mdp = %ld\n",
+			stat.intr_dsi_mdp);
+		MDP4_HANG_LOG("mdp4_stat.intr_dsi_cmd = %ld\n",
+			stat.intr_dsi_cmd);
+		MDP4_HANG_LOG("mdp4_stat.intr_dsi_err = %ld\n",
+			stat.intr_dsi_err);
+		MDP4_HANG_LOG("mdp4_stat.kickoff_ov0 = %ld\n",
+			stat.kickoff_ov0);
+		MDP4_HANG_LOG("mdp4_stat.kickoff_dmap = %ld\n",
+			stat.kickoff_dmap);
+		MDP4_HANG_LOG("mdp4_stat.dsi_clkoff = %ld\n",
+			stat.dsi_clkoff);
+		MDP4_HANG_LOG("mdp4_stat.err_mixer = %ld\n",
+			stat.err_mixer);
+		MDP4_HANG_LOG("mdp4_stat.err_zorder = %ld\n",
+			stat.err_zorder);
+		MDP4_HANG_LOG("mdp4_stat.err_size = %ld\n",
+			stat.err_size);
+		MDP4_HANG_LOG("mdp4_stat.err_scale = %ld\n",
+			stat.err_scale);
+		MDP4_HANG_LOG("mdp4_stat.err_format = %ld\n",
+			stat.err_format);
+		MDP4_HANG_LOG("mdp4_stat.err_stage = %ld\n",
+			stat.err_stage);
+		MDP4_HANG_LOG("mdp4_stat.err_play = %ld\n",
+			stat.err_play);
+		MDP4_HANG_LOG("mdp4_stat.overlay_set[MDP4_MIXER0] = %ld\n",
+			stat.overlay_set[MDP4_MIXER0]);
+		MDP4_HANG_LOG("mdp4_stat.overlay_unset[MDP4_MIXER0] = %ld\n",
+			stat.overlay_unset[MDP4_MIXER0]);
+		MDP4_HANG_LOG("mdp4_stat.overlay_play[MDP4_MIXER0] = %ld\n",
+			stat.overlay_play[MDP4_MIXER0]);
 
-	MDP4_HANG_LOG("------- MDP stats dump finished. ------\n");
+		MDP4_HANG_LOG("------- MDP stats dump finished. ------\n");
+		dump_mdp_stats = true;
+	}
 }
 
 static void mdp4_reg_range_dump(int offset, int range)
@@ -3308,39 +3314,46 @@ static void mdp4_reg_range_dump(int offset, int range)
 }
 void mdp4_regs_dump(void)
 {
-	MDP4_HANG_LOG(
-		"------- MDP HANG: MDP Regs dump starts ------\n");
-	mdp4_reg_range_dump(0, 0x4c);
-	mdp4_reg_range_dump(0x50, 0xc);
-	mdp4_reg_range_dump(0x60, 0x1c);
-	mdp4_reg_range_dump(0x90 , 0xc);
-	mdp4_reg_range_dump(0xa0 , 0xc);
-	mdp4_reg_range_dump(0xb0 , 0xc);
-	mdp4_reg_range_dump(0x100, 0x48);
-	mdp4_reg_range_dump(0x200, 0x24);
-	mdp4_reg_range_dump(0x10000, 0x32);
-	mdp4_reg_range_dump(0x10100, 0x32);
-	mdp4_reg_range_dump(0x18000, 0x10);
-	mdp4_reg_range_dump(0x20000, 0x92);
-	mdp4_reg_range_dump(0x21004, 0x32);
-	mdp4_reg_range_dump(0x30000, 0x8e);
-	mdp4_reg_range_dump(0x40000, 0x32);
-	mdp4_reg_range_dump(0x40058, 0x3e);
-	mdp4_reg_range_dump(0x41000, 0x32);
-	mdp4_reg_range_dump(0x50000, 0x82);
-	mdp4_reg_range_dump(0x51000, 0x32);
-	mdp4_reg_range_dump(0x90000, 0x32);
-	mdp4_reg_range_dump(0x90070, 0x10);
-	mdp4_reg_range_dump(0x91000, 0x10);
-	mdp4_reg_range_dump(0xB0000, 0x10);
-	mdp4_reg_range_dump(0xD0000, 0x68);
-	mdp4_reg_range_dump(0xE0000, 0x32);
-	MDP4_HANG_LOG("------ MDP dump finished. ------\n");
+	if (dump_mdp_regs == false) {
+		MDP4_HANG_LOG(
+			"------- MDP HANG: MDP Regs dump starts ------\n");
+		mdp4_reg_range_dump(0, 0x4c);
+		mdp4_reg_range_dump(0x50, 0xc);
+		mdp4_reg_range_dump(0x60, 0x1c);
+		mdp4_reg_range_dump(0x90 , 0xc);
+		mdp4_reg_range_dump(0xa0 , 0xc);
+		mdp4_reg_range_dump(0xb0 , 0xc);
+		mdp4_reg_range_dump(0x100, 0x48);
+		mdp4_reg_range_dump(0x200, 0x24);
+		mdp4_reg_range_dump(0x10000, 0x32);
+		mdp4_reg_range_dump(0x10100, 0x32);
+		mdp4_reg_range_dump(0x18000, 0x10);
+		mdp4_reg_range_dump(0x20000, 0x92);
+		mdp4_reg_range_dump(0x21004, 0x32);
+		mdp4_reg_range_dump(0x30000, 0x8e);
+		mdp4_reg_range_dump(0x40000, 0x32);
+		mdp4_reg_range_dump(0x40058, 0x3e);
+		mdp4_reg_range_dump(0x41000, 0x32);
+		mdp4_reg_range_dump(0x50000, 0x82);
+		mdp4_reg_range_dump(0x51000, 0x32);
+		mdp4_reg_range_dump(0x90000, 0x32);
+		mdp4_reg_range_dump(0x90070, 0x10);
+		mdp4_reg_range_dump(0x91000, 0x10);
+		mdp4_reg_range_dump(0xB0000, 0x10);
+		mdp4_reg_range_dump(0xD0000, 0x68);
+		mdp4_reg_range_dump(0xE0000, 0x32);
+		MDP4_HANG_LOG("------ MDP dump finished. ------\n");
+
+		dump_mdp_regs = true;
+		dump_stack();
+	 }
 }
 
 void mdp4_hang_dropbox_trigger_callback(void *data)
 {
-	mdp4_hang_dump();
+	mdp4_clear_dump_flags();
+	mdp4_hang_panic();
+	mdp4_clear_dump_flags();
 }
 
 void mdp4_hang_init(void)
@@ -3358,17 +3371,29 @@ void mdp4_hang_init(void)
 }
 EXPORT_SYMBOL(mdp4_hang_init);
 
-void mdp4_hang_dump(void)
+void mdp4_hang_panic(void)
 {
-	mdp4_hang_data_pos = 0;
-	mdp4_dump_vsync_ctrl();
-	mdp4_stats_dump(mdp4_stat);
-	mdp4_dump_commit_info();
+	if (dump_mdp_hang == false) {
+		mdp4_hang_data_pos = 0;
+		mdp4_dump_vsync_ctrl();
+		mdp4_stats_dump(mdp4_stat);
+		mdp4_dump_commit_info();
 
-	mdp4_regs_dump();
-	mipi_dsi_regs_dump();
-	dump_stack();
+		mdp4_regs_dump();
+		mipi_dsi_regs_dump();
+		dump_stack();
+		dump_mdp_hang = true;
 
-	dropbox_queue_event_text("mdp4_hang", mdp4_hang_data,
-		mdp4_hang_data_pos);
+		dropbox_queue_event_text("mdp4_hang", mdp4_hang_data,
+			mdp4_hang_data_pos);
+	}
+}
+
+
+void mdp4_clear_dump_flags(void)
+{
+	 dump_mdp_hang = false;
+	 dump_mdp_regs = false;
+	 dump_mdp_stats = false;
+	 mipi_dsi_clear_dump_flag();
 }
