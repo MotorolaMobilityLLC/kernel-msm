@@ -781,7 +781,6 @@ ssize_t mdp4_dsi_cmd_show_event(struct device *dev,
 	u64 vsync_tick;
 	static int timeout_occurred;
 	uint32 prev_rdptr_intr;
-	int retries = 2;
 
 	cndx = 0;
 	vctrl = &vsync_ctrl_db[0];
@@ -793,36 +792,28 @@ ssize_t mdp4_dsi_cmd_show_event(struct device *dev,
 	INIT_COMPLETION(vctrl->show_event_comp);
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	while (retries-- > 0) {
-		prev_rdptr_intr = vctrl->rdptr_intr_tot;
-		ret = wait_for_completion_interruptible_timeout(
-			&vctrl->show_event_comp,
-			msecs_to_jiffies(VSYNC_PERIOD * 4));
-		if (ret == -ERESTARTSYS) {
-			pr_warning("%s: is interrupted\n", __func__);
-			return ret;
-		} else if (ret <= 0) {
-			if (!dsi_panel_on && retries) {
-				pr_warning("%s: TIMEOUT with panel off, "
-					"retrying", __func__);
-				continue;
-			} else
-				vctrl->vsync_time = ktime_get();
-		} else {
-			if (timeout_occurred)
-				pr_info("%s: recovered from previous timeout\n",
-					__func__);
-			timeout_occurred = 0;
+	prev_rdptr_intr = vctrl->rdptr_intr_tot;
+	ret = wait_for_completion_interruptible_timeout(
+		&vctrl->show_event_comp,
+		msecs_to_jiffies(VSYNC_PERIOD * 4));
+	if (ret == -ERESTARTSYS) {
+		pr_warning("%s is interrupted\n", __func__);
+		return ret;
+	} else if (ret <= 0) {
+		if (ret == 0) {
+			pr_err("%s: TIMEOUT (rdptr_intr: prev: %u "
+				"cur: %u)\n", __func__, prev_rdptr_intr,
+				vctrl->rdptr_intr_tot);
+			timeout_occurred = 1;
+			mdp4_hang_dump();
 		}
-		break;
-	}
 
-	if (ret == 0) {
-		pr_err("%s: TIMEOUT (rdptr_intr: prev: %u "
-			"cur: %u)\n", __func__, prev_rdptr_intr,
-			vctrl->rdptr_intr_tot);
-		timeout_occurred = 1;
-		mdp4_hang_dump();
+		vctrl->vsync_time = ktime_get();
+	} else {
+		if (timeout_occurred)
+			pr_info("%s: recovered from previous timeout\n",
+				__func__);
+		timeout_occurred = 0;
 	}
 
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
