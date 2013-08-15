@@ -360,10 +360,7 @@ void mdp4_dtv_wait4vsync(int cndx)
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	if (wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT) == 0) {
-		pr_err("%s: timeout waiting for vsync ompletion\n", __func__);
-		mdp4_hang_panic();
-	}
+	wait_for_completion(&vctrl->vsync_comp);
 	mdp4_dtv_vsync_irq_ctrl(cndx, 0);
 	mdp4_stat.wait4vsync1++;
 }
@@ -382,11 +379,7 @@ static void mdp4_dtv_wait4dmae(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	if (wait_for_completion_timeout(&vctrl->dmae_comp, WAIT_TOUT) == 0) {
-		pr_err("%s: timeout waiting for DMA_E Done ompletion\n",
-								__func__);
-		mdp4_hang_panic();
-	}
+	wait_for_completion(&vctrl->dmae_comp);
 }
 
 ssize_t mdp4_dtv_show_event(struct device *dev,
