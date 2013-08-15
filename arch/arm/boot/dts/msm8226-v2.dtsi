@@ -66,6 +66,8 @@
 	qcom,cpr-up-threshold = <0>;
 	qcom,cpr-down-threshold = <5>;
 	qcom,cpr-apc-volt-step = <10000>;
+
+	qcom,cpr-enable;
 };
 
 &msm_gpu {
