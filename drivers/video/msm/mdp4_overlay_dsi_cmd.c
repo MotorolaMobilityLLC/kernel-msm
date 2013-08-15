@@ -1296,23 +1296,12 @@ void mdp4_dump_vsync_ctrl(void)
 {
 	int cndx = 0;
 	struct vsycn_ctrl *vctrl;
-	unsigned long flags;
 
 	vctrl = &vsync_ctrl_db[cndx];
 
-	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	MDP4_HANG_LOG("vctrl->clk_enabled = %d\n", vctrl->clk_enabled);
 	MDP4_HANG_LOG("vctrl->clk_control = %d\n", vctrl->clk_control);
 	MDP4_HANG_LOG("vctrl->expire_tick = %d\n", vctrl->expire_tick);
 	MDP4_HANG_LOG("vctrl->wait_vsync_cnt = %d\n", vctrl->wait_vsync_cnt);
-	MDP4_HANG_LOG("vctrl->ov_koff = %d\n", vctrl->ov_koff);
-	MDP4_HANG_LOG("vctrl->ov_done = %d\n", vctrl->ov_done);
-	MDP4_HANG_LOG("vctrl->dmap_koff = %d\n", vctrl->dmap_koff);
-	MDP4_HANG_LOG("vctrl->dmap_done = %d\n", vctrl->dmap_done);
-	MDP4_HANG_LOG("vctrl->blt_change = %d\n", vctrl->blt_change);
-	MDP4_HANG_LOG("vctrl->blt_free = %d\n", vctrl->blt_free);
-	MDP4_HANG_LOG("vctrl->blt_end = %d\n", vctrl->blt_end);
-	MDP4_HANG_LOG("vctrl->blt_wait = %d\n", vctrl->blt_wait);
 	MDP4_HANG_LOG("mdp_intr_mask = 0x%08x\n", mdp_intr_mask);
-	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 }
