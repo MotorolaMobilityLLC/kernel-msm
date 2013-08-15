@@ -1007,26 +1007,4 @@ void mdp4_hang_panic(void);
 void mdp4_clear_dump_flags(void);
 void mdp4_dump_vsync_ctrl(void);
 
-extern char *mdp4_hang_data;
-extern u32 mdp4_hang_data_pos;
-extern void mdp4_hang_init(void);
-
-#define MDP_DUMP_SIZE (4*PAGE_SIZE)
-#define MDP4_HANG_LOG(fmt, args...) \
-	do { \
-		pr_err(fmt, ##args); \
-		if (mdp4_hang_data != NULL) { \
-			mdp4_hang_data_pos += scnprintf( \
-				&mdp4_hang_data[mdp4_hang_data_pos], \
-				MDP_DUMP_SIZE-mdp4_hang_data_pos-1, \
-				fmt, ##args); \
-			if (mdp4_hang_data_pos > 0 && \
-				mdp4_hang_data[mdp4_hang_data_pos-1] != '\n') \
-				mdp4_hang_data_pos += scnprintf( \
-					&mdp4_hang_data[mdp4_hang_data_pos], \
-					MDP_DUMP_SIZE-mdp4_hang_data_pos-1, \
-					"\n"); \
-		} \
-	} while (0)
-
 #endif /* MDP_H */
