@@ -1774,7 +1774,6 @@ void mipi_dsi_cmd_mdp_busy(void)
 {
 	unsigned long flags;
 	int need_wait = 0;
-	static int timeout_occurred;
 
 	pr_debug("%s: start pid=%d\n",
 				__func__, current->pid);
@@ -1783,20 +1782,13 @@ void mipi_dsi_cmd_mdp_busy(void)
 		need_wait++;
 	spin_unlock_irqrestore(&dsi_mdp_lock, flags);
 
-	if (need_wait) {
+	if (need_wait)
 		if (wait_for_completion_timeout(&dsi_mdp_comp,
 			WAIT_TOUT) == 0) {
-			pr_err("%s: timeout waiting for DSI MDP completion\n",
+			pr_err("%s: timeout waiting for DSI MDP ompletion\n",
 				__func__);
-			timeout_occurred = 1;
-			mdp4_hang_dump();
-		} else {
-			if (timeout_occurred)
-				pr_info("%s: recovered from previous timeout\n",
-					__func__);
-			timeout_occurred = 0;
+			mdp4_hang_panic();
 		}
-	}
 }
 
 /*
@@ -2270,16 +2262,26 @@ static void dsi_reg_range_dump(int offset, int range)
 	 }
 }
 
+static bool dump_dsi_regs;
 void mipi_dsi_regs_dump(void)
 {
-	mipi_dsi_clk_cfg(1);
-	MDP4_HANG_LOG("------- DSI Regs dump starts ------\n");
-	dsi_reg_range_dump(0, 0xcc);
-	dsi_reg_range_dump(0x108, 0x20);
-	dsi_reg_range_dump(0x190, 0xc8);
-	dsi_reg_range_dump(0x280, 0x10);
-	dsi_reg_range_dump(0x440, 0xb0);
-	dsi_reg_range_dump(0x500, 0x5c);
-	MDP4_HANG_LOG("------- DSI Regs dump done ------\n");
-	mipi_dsi_clk_cfg(0);
+	 if (dump_dsi_regs == false) {
+		mipi_dsi_clk_cfg(1);
+		MDP4_HANG_LOG("------- DSI Regs dump starts ------\n");
+		dsi_reg_range_dump(0, 0xcc);
+		dsi_reg_range_dump(0x108, 0x20);
+		dsi_reg_range_dump(0x190, 0xc8);
+		dsi_reg_range_dump(0x280, 0x10);
+		dsi_reg_range_dump(0x440, 0xb0);
+		dsi_reg_range_dump(0x500, 0x5c);
+		MDP4_HANG_LOG("------- DSI Regs dump done ------\n");
+
+		dump_dsi_regs = true;
+		mipi_dsi_clk_cfg(0);
+	 }
+}
+
+void mipi_dsi_clear_dump_flag(void)
+{
+	 dump_dsi_regs = false;
 }
