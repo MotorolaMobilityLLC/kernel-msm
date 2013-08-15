@@ -24,11 +24,18 @@
 };
 
 &soc {
-	serial@f991e000 {
+	serial@f9922000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf9922000 0x1000>;
+		interrupts = <0 112 0>;
 		status = "ok";
 	};
 
-	i2c@f9923000{
+	i2c@f9928000 {
+		status = "disabled";
+	};
+
+	i2c@f9923000 {
 		atmel_mxt_ts@4a {
 		compatible = "atmel,mxt-ts";
 		reg = <0x4a>;
