@@ -1009,7 +1009,6 @@ void mdp4_dump_vsync_ctrl(void);
 extern char *mdp4_hang_data;
 extern u32 mdp4_hang_data_pos;
 extern void mdp4_hang_init(void);
-extern u8 mdp4_dmap_timeout_counter[];
 
 #define MDP_DUMP_SIZE (4*PAGE_SIZE)
 #define MDP4_HANG_LOG(fmt, args...) \
@@ -1029,8 +1028,6 @@ extern u8 mdp4_dmap_timeout_counter[];
 		} \
 	} while (0)
 
-#define DMAP_TIMEOUT (HZ/10) /* 100 ms */
-#define MAX_DMAP_TIMEOUTS 4
-#define DMAP_TIMEOUT_BUG_COUNT 5
+#define MAX_DMAP_TIMEOUTS 10
 
 #endif /* MDP_H */
