@@ -489,10 +489,7 @@ static void mdp4_wfd_wait4ov(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	if (!wait_for_completion_timeout(&vctrl->ov_comp, HZ)) {
-		pr_err("%s failed to wait for dma_busy\n", __func__);
-		mdp4_hang_panic();
-	}
+	wait_for_completion(&mfd->dma->comp);
 }
 
 
