@@ -1213,6 +1213,8 @@ qpnp_chg_usb_chg_gone_irq_handler(int irq, void *_chip)
 			&& (usb_sts & CHG_GONE_IRQ)) {
 		qpnp_chg_charge_en(chip, 0);
 		qpnp_chg_force_run_on_batt(chip, 1);
+		chip->resuming_charging = true;
+		qpnp_chg_set_appropriate_vbatdet(chip);
 		schedule_delayed_work(&chip->arb_stop_work,
 			msecs_to_jiffies(ARB_STOP_WORK_MS));
 	}
