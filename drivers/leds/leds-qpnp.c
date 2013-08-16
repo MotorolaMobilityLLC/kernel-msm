@@ -956,6 +956,21 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 
 	pwm_cfg->duty_cycles->num_duty_pcts = num_duty_pcts;
 	pwm_cfg->duty_cycles->start_idx = 0;
+
+	switch (led->id) {
+	case QPNP_ID_RGB_RED:
+		pwm_cfg->duty_cycles->start_idx = 0;
+		break;
+	case QPNP_ID_RGB_GREEN:
+		pwm_cfg->duty_cycles->start_idx = 21;
+		break;
+	case QPNP_ID_RGB_BLUE:
+		pwm_cfg->duty_cycles->start_idx = 42;
+		break;
+	default:
+		break;
+	}
+
 	pwm_cfg->lut_params.ramp_step_ms = ramp_step_ms;
 	pwm_cfg->lut_params.start_idx = 0;
 	pwm_cfg->lut_params.idx_len = pwm_cfg->duty_cycles->num_duty_pcts;
