@@ -2696,46 +2696,36 @@ joinFailure:
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /*------------------------------------------------------------------------------------------
  *
- * Function to handle callback after setting link state to post assoc.
+ * Function to handle WDA_ADD_BSS_RSP, in FT reassoc state.
+ * Function to Send ReAssociation Request.
  *
  *
  *------------------------------------------------------------------------------------------
  */
-void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
+static inline void
+limProcessStaMlmAddBssRspFT(tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPESession psessionEntry)
 {
     tLimMlmReassocCnf       mlmReassocCnf; // keep sme 
-    tSetLinkCbackParams * pCbackParams = (tSetLinkCbackParams *)msgParam;
-    tpPESession psessionEntry = NULL;
-    tpAddBssParams pAddBssParams = NULL;
     tpDphHashNode pStaDs    = NULL;
     tpAddStaParams pAddStaParams = NULL;
-    tLimMlmReassocReq * pMlmReassocReq = NULL;
     tANI_U32 listenInterval = WNI_CFG_LISTEN_INTERVAL_STADEF;
-
+    tpAddBssParams pAddBssParams = (tpAddBssParams) limMsgQ->bodyptr;
     /* Sanity Checks */
-    if (pCbackParams == NULL)
-    {
-        PELOGE(limLog(pMac, LOGE, FL("Invalid parameters"));)
-        goto end;
-    }
-
-    pAddBssParams = (tpAddBssParams)(pCbackParams->cbackDataPtr);
 
     if (pAddBssParams == NULL)
     {
         PELOGE(limLog(pMac, LOGE, FL("Invalid parameters"));)
         goto end;
     }
-
     if((psessionEntry = peFindSessionBySessionId(pMac,pAddBssParams->sessionId))== NULL)
     {
         limLog( pMac, LOGE, FL( "Session Does not exist for given sessionId" ));
         goto end;
     }
-
-    pMlmReassocReq = (tLimMlmReassocReq *)(psessionEntry->pLimMlmReassocReq);
-
-    limPrintMacAddr(pMac, pAddBssParams->bssId, LOG1);
+    if ( eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE != psessionEntry->limMlmState )
+    {
+        goto end;
+    }
 
     if ((pStaDs = dphAddHashEntry(pMac, pAddBssParams->bssId, DPH_STA_HASH_INDEX_PEER,
         &psessionEntry->dph.dphHashTable)) == NULL)
@@ -2875,30 +2865,28 @@ void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
     // Lets save this for when we receive the Reassoc Rsp
     pMac->ft.ftPEContext.pAddStaReq = pAddStaParams;
 
-    if (pCbackParams != NULL)
+    if (pAddBssParams != NULL)
     {
-        if (pCbackParams->cbackDataPtr != NULL)
-        {
-            vos_mem_free(pCbackParams->cbackDataPtr);
-        }
-        vos_mem_free(pCbackParams);
+        vos_mem_free(pAddBssParams);
+        pAddBssParams = NULL;
+        limMsgQ->bodyptr = NULL;
     }
     return;
 
 end:
     // Free up buffer allocated for reassocReq
-    if (pMlmReassocReq != NULL)
+    if (psessionEntry != NULL)
+    if (psessionEntry->pLimMlmReassocReq != NULL)
     {
-        vos_mem_free(pMlmReassocReq);
+        vos_mem_free(psessionEntry->pLimMlmReassocReq);
+        psessionEntry->pLimMlmReassocReq = NULL;
     }
 
-    if (pCbackParams != NULL)
+    if (pAddBssParams != NULL)
     {
-        if (pCbackParams->cbackDataPtr != NULL)
-        {
-            vos_mem_free(pCbackParams->cbackDataPtr);
-        }
-        vos_mem_free(pCbackParams);
+        vos_mem_free(pAddBssParams);
+        pAddBssParams = NULL;
+        limMsgQ->bodyptr = NULL;
     }
 
     mlmReassocCnf.resultCode = eSIR_SME_FT_REASSOC_FAILURE;
@@ -2911,77 +2899,7 @@ end:
 
     limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
 }
-/*------------------------------------------------------------------------------------------
- *
- * Function to handle WDA_ADD_BSS_RSP, in FT reassoc state.
- *
- *
- *------------------------------------------------------------------------------------------
- */
-static inline void
-limProcessStaMlmAddBssRspFT(tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPESession psessionEntry)
-{
-    tSetLinkCbackParams * pCbackParam = NULL;
-    tAddBssParams * pAddBssCbackInfo = NULL;
-    tLimMlmReassocCnf       mlmReassocCnf;
-    tpAddBssParams pAddBssParams = (tpAddBssParams) limMsgQ->bodyptr;
-
-    if ( eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE != psessionEntry->limMlmState )
-    {
-        goto end;
-    }
-
-    pCbackParam = vos_mem_malloc(sizeof( tSetLinkCbackParams ));
-    if ( NULL == pCbackParam )
-    {
-        PELOGE(limLog(pMac, LOGE,  FL("Could not allocate memory for LinkState callback params"));)
-        goto end;
-    }
-
-    pAddBssCbackInfo = vos_mem_malloc(sizeof( tAddBssParams ));
-    if ( NULL == pAddBssCbackInfo )
-    {
-        PELOGE(limLog(pMac, LOGE,  FL("Could not allocate memory for Add BSS info callback param"));)
-        goto end;
-    }
-
-    vos_mem_copy(pAddBssCbackInfo, pAddBssParams, sizeof(tAddBssParams));
-
-    pCbackParam->cbackDataPtr = (void*)pAddBssCbackInfo;
-
-    // Set the filter state to post assoc and send out re-assoc request OTA only after response is received
-    if (limSetLinkState(pMac, eSIR_LINK_POSTASSOC_STATE,
-            pAddBssParams->bssId, psessionEntry->selfMacAddr,
-            (tpSetLinkStateCallback)limSetLinkStateForPostAssocCallback, 
-                        (void *)pCbackParam) != eSIR_SUCCESS)
-    {
-        PELOGE(limLog(pMac, LOGE,  FL("Failed to set the LinkState"));)
-        goto end;
-    }
-
-    return;
-
-end:
-
-    if (pCbackParam != NULL)
-    {
-        if (pCbackParam->cbackDataPtr != NULL)
-        {
-            vos_mem_free(pCbackParam->cbackDataPtr);
-        }
-        vos_mem_free(pCbackParam);
-    }
-
-    mlmReassocCnf.resultCode = eSIR_SME_FT_REASSOC_FAILURE;
-    mlmReassocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
-    /* Update PE sessio Id*/
-    mlmReassocCnf.sessionId = psessionEntry->peSessionId;
-
-    limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
-}
 #endif /* WLAN_FEATURE_VOWIFI_11R */
-
-
 /**
  * limProcessStaMlmAddBssRsp()
  *
