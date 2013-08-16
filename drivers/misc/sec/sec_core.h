@@ -22,6 +22,7 @@
 #define SEC_IOCTL_READ_FUSE	_IOWR(0x99, 121, int*)
 #define SEC_IOCTL_READ_PROC_ID  _IOWR(0x99, 123, int*)
 #define SEC_IOCTL_GET_TZ_VERSION _IOWR(0x99, 124, int*)
+#define SEC_IOCTL_GET_TZ_CODES _IOWR(0x99, 125, int*)
 
 struct SEC_EFUSE_PARM_T {
 	unsigned int which_bank;
@@ -32,3 +33,5 @@ enum SEC_KM_RESULT_T {
 	SEC_KM_SUCCESS = 98,
 	SEC_KM_FAIL = 99,
 };
+
+void print_hab_fail_codes(void);
