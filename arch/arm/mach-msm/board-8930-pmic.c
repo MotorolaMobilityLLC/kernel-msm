@@ -490,7 +490,7 @@ static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 	.enable_fcc_learning		= 1,
 	.min_fcc_learning_soc		= 20,
 	.min_fcc_ocv_pc			= 30,
-	.min_fcc_learning_samples	= 5,
+	.max_fcc_learning_samples	= 5,
 };
 
 static struct pm8038_platform_data pm8038_platform_data __devinitdata = {
