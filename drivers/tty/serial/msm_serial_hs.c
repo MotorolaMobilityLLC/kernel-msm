@@ -3256,13 +3256,13 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	 */
 	mb();
 
+	msm_hs_clock_unvote(msm_uport);
+
 	if (msm_uport->clk_state != MSM_HS_CLK_OFF) {
 		/* to balance clk_state */
 		msm_hs_clock_unvote(msm_uport);
 		wake_unlock(&msm_uport->dma_wake_lock);
 	}
-
-	msm_hs_clock_unvote(msm_uport);
 
 	msm_uport->clk_state = MSM_HS_CLK_PORT_OFF;
 	dma_unmap_single(uport->dev, msm_uport->tx.dma_base,
