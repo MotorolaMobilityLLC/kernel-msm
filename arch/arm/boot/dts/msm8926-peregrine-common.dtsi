@@ -24,6 +24,15 @@
 
 &soc {
 	gpio_keys {
+		ptt_key {
+			label = "ptt key";
+			gpios = <&msmgpio 107 0x1>;
+			linux,input-type = <1>;
+			linux,code = <0x2fd>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+
 		lid-sw {
 			label = "lid-switch";
 			gpios = <&msmgpio 51 0x1>;
