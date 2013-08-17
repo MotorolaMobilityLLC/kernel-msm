@@ -134,3 +134,11 @@
 		akm,gpio-irq = <&msmgpio 15 0>;
 	};
 };
+
+&cci {
+	qcom,camera@90 {
+		gpios = <&msmgpio 27 0>,
+			<&msmgpio 1 0>,
+			<&msmgpio 49 0>;
+	};
+};
