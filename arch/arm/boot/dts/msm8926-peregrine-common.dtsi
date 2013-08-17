@@ -56,6 +56,29 @@
 		nxp,pnxxx-ven-inv-polarity = <0>;
 		vdd-supply = <&pm8226_l22>;
 	};
+
+	lis3dh@18 {
+		compatible = "stm,lis3dh";
+		reg = <0x18>;
+		vdd-supply = <&pm8226_l19>;
+		gpios = <&msmgpio 1 0>; /* IRQ */
+		stm,poll-interval = <200>;
+		stm,min-interval = <1>;
+		stm,g-range = <8>;
+		stm,threshold = <0x20>;
+		stm,duration = <0x1>;
+	};
+
+	ct406@39 {
+		interrupts = <69 0x2>;
+		gpios = <&msmgpio 69 0>;
+		ams,ink_type = <0x01>;
+	};
+
+	ak8963@0c {
+		interrupts = <38 0x2>;
+		akm,gpio-irq = <&msmgpio 38 0>;
+	};
 };
 
 
@@ -94,7 +117,7 @@
 
 	qcom,camera@90 {
 		gpios = <&msmgpio 27 0>,
-			<&msmgpio 1 0>,
+			<&msmgpio 12 0>,
 			<&msmgpio 49 0>;
 		qcom,gpio-pwren2 = <2>;
 		qcom,gpio-req-tbl-num = <0 1 2>;
