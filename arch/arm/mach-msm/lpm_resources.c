@@ -766,13 +766,15 @@ int msm_lpmrs_enter_sleep(uint32_t sclk_count, struct msm_rpmrs_limits *limits,
 			rs->aggregate(limits);
 	}
 
-	msm_lpm_get_rpm_notif = false;
+	if (notify_rpm)
+		msm_lpm_get_rpm_notif = false;
 	for (i = 0; i < ARRAY_SIZE(msm_lpm_resources); i++) {
 		rs = msm_lpm_resources[i];
 		if (rs->valid && rs->flush)
 			rs->flush(notify_rpm);
 	}
-	msm_lpm_get_rpm_notif = true;
+	if (notify_rpm)
+		msm_lpm_get_rpm_notif = true;
 
 	if (notify_rpm)
 		msm_mpm_enter_sleep(sclk_count, from_idle);
