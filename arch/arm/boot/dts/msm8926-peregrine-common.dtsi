@@ -42,6 +42,10 @@
 			debounce-interval = <15>;
 		};
 	};
+
+	usr_reset_warning {
+		status = "disabled";
+	};
 };
 
 &i2c_2 {
