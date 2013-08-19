@@ -44,6 +44,12 @@
 		status = "ok";
 	};
 
+	hob_ram@7e00000 {
+		compatible = "mmi,hob_ram";
+		reg = <0x7e00000 0x40000>,  /* hob address */
+			<0x7e40000 0x2000>; /* dhob address */
+	};
+
 	i2c_0: i2c@f9967000 {	/* "I2C5" on BLSP11 (BLSP2 QUP4) */
 		status = "ok";
 	};
