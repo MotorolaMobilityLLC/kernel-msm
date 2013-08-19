@@ -197,6 +197,13 @@ rtc_rw_fail:
 }
 
 static int
+qpnp_rtc_set_time_mmi_cfc_fixup(struct device *dev, struct rtc_time *tm)
+{
+	dev_dbg(dev, "Pretend RTC write succeeded.\n");
+	return 0;
+}
+
+static int
 qpnp_rtc_read_time(struct device *dev, struct rtc_time *tm)
 {
 	int rc;
@@ -421,6 +428,22 @@ rtc_alarm_handled:
 	return IRQ_HANDLED;
 }
 
+static void __devinit qpnp_rtc_mmi_fixup(struct qpnp_rtc *rtc)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory;
+
+	factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	/* If in factory mode, enable RTC writes always */
+	if (np && factory) {
+		rtc->rtc_write_enable = true;
+		qpnp_rtc_ops.set_time = qpnp_rtc_set_time_mmi_cfc_fixup;
+	}
+
+	of_node_put(np);
+}
+
 static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 {
 	int rc;
@@ -533,6 +556,9 @@ static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 
 	if (rtc_dd->rtc_write_enable == true)
 		qpnp_rtc_ops.set_time = qpnp_rtc_set_time;
+
+	/* Special handling for factory mode */
+	qpnp_rtc_mmi_fixup(rtc_dd);
 
 	dev_set_drvdata(&spmi->dev, rtc_dd);
 
