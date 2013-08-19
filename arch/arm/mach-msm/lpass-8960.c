@@ -24,6 +24,7 @@
 #include <mach/peripheral-loader.h>
 #include <mach/subsystem_restart.h>
 #include <mach/subsystem_notif.h>
+#include <mach/rpm.h>
 
 #if defined(CONFIG_LGE_CRASH_HANDLER)
 #include <mach/restart.h>
@@ -33,6 +34,7 @@
 #include "smd_private.h"
 #include "ramdump.h"
 #include "sysmon.h"
+#include "rpm_resources.h"
 
 #define SCM_Q6_NMI_CMD                  0x1
 #define MODULE_NAME			"lpass_8960"
@@ -122,6 +124,18 @@ static void lpass_log_failure_reason(void)
 
 static void lpass_fatal_fn(struct work_struct *work)
 {
+
+	struct msm_rpm_iv_pair req;
+	int rc;
+
+	req.id = MSM_RPM_ID_RPM_CTL; /* MSM_RPM_ID_RPM_CTL */
+	req.value |= BIT(6); /* 6 bit set */
+	rc = msm_rpm_set(MSM_RPM_CTX_SET_0, &req, 1);
+	if (rc)
+		pr_err("Unable to send CTL message to RPM\n");
+
+	mdelay(100);
+
 	pr_err("%s %s: Watchdog bite received from Q6!\n", MODULE_NAME,
 		__func__);
 	lpass_log_failure_reason();
