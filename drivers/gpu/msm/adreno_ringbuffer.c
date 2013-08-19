@@ -1030,6 +1030,13 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 		}
 	}
 
+	/*
+	 * Return -EPROTO if the device has faulted since the last time we
+	 * checked - userspace uses this to perform post-fault activities
+	 */
+	if (!ret && test_and_clear_bit(ADRENO_CONTEXT_FAULT, &drawctxt->priv))
+		ret = -EPROTO;
+
 	return ret;
 }
 
