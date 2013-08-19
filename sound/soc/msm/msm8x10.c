@@ -32,6 +32,9 @@
 #include <mach/gpiomux.h>
 #include "../codecs/msm8x10-wcd.h"
 #define DRV_NAME "msm8x10-asoc-wcd"
+#ifdef CONFIG_SND_SOC_TPA6165A2
+#include "../codecs/tpa6165a2-core.h"
+#endif
 #define BTSCO_RATE_8KHZ 8000
 #define BTSCO_RATE_16KHZ 16000
 
@@ -83,7 +86,9 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 }
 
 
+#ifndef CONFIG_SND_SOC_TPA6165A2
 static void *def_msm8x10_wcd_mbhc_cal(void);
+#endif
 static int msm8x10_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
 static struct wcd9xxx_mbhc_config mbhc_cfg = {
@@ -168,6 +173,37 @@ static const struct snd_soc_dapm_widget msm8x10_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic2", NULL),
 };
+#ifdef CONFIG_SND_SOC_TPA6165A2
+static int msm_ext_hp_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		tpa6165_hp_event(1);
+	else
+		tpa6165_hp_event(0);
+	return 0;
+}
+
+static int msm_ext_mic_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		tpa6165_mic_event(1);
+	else
+		tpa6165_mic_event(0);
+	return 0;
+}
+
+static const struct snd_soc_dapm_widget tpa6165_dapm_widgets[] = {
+	SND_SOC_DAPM_MIC("TPA6165 Headset Mic", msm_ext_mic_event),
+	SND_SOC_DAPM_HP("TPA6165 Headphone", msm_ext_hp_event),
+};
+
+static const struct snd_soc_dapm_route tpa6165_hp_map[] = {
+	{"TPA6165 Headphone", NULL, "HEADPHONE"},
+	{"MIC BIAS2 External", NULL, "TPA6165 Headset Mic"},
+};
+#endif
 static int msm8x10_ext_spk_power_amp_init(void)
 {
 	int ret = 0;
@@ -530,6 +566,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	pr_debug("%s(),dev_name%s\n", __func__, dev_name(cpu_dai->dev));
 	msm8x10_ext_spk_power_amp_init();
 
+#ifndef CONFIG_SND_SOC_TPA6165A2
 	mbhc_cfg.calibration = def_msm8x10_wcd_mbhc_cal();
 	if (mbhc_cfg.calibration) {
 		ret = msm8x10_wcd_hs_detect(codec, &mbhc_cfg);
@@ -541,6 +578,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		ret = -ENOMEM;
 		goto exit;
 	}
+#endif
 
 	snd_soc_dapm_new_controls(dapm, msm8x10_dapm_widgets,
 				ARRAY_SIZE(msm8x10_dapm_widgets));
@@ -553,13 +591,35 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
+#ifdef CONFIG_SND_SOC_TPA6165A2
+	ret = tpa6165_hs_detect(codec);
+	if (!ret) {
+		pr_info("%s:tpa6165 hs det mechanism is used", __func__);
+		/* dapm controls for tpa6165 */
+		snd_soc_dapm_new_controls(dapm, tpa6165_dapm_widgets,
+				ARRAY_SIZE(tpa6165_dapm_widgets));
+
+		snd_soc_dapm_add_routes(dapm, tpa6165_hp_map,
+				ARRAY_SIZE(tpa6165_hp_map));
+
+		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headphone");
+		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headset Mic");
+		snd_soc_dapm_sync(dapm);
+	}
+
+	return ret;
+#endif
+
+#ifndef CONFIG_SND_SOC_TPA6165A2
 exit:
 	if (gpio_is_valid(ext_spk_amp_gpio))
 		gpio_free(ext_spk_amp_gpio);
 
 	return ret;
+#endif
 }
 
+#ifndef CONFIG_SND_SOC_TPA6165A2
 static void *def_msm8x10_wcd_mbhc_cal(void)
 {
 	void *msm8x10_wcd_cal;
@@ -638,6 +698,7 @@ static void *def_msm8x10_wcd_mbhc_cal(void)
 
 	return msm8x10_wcd_cal;
 }
+#endif
 
 static int msm_proxy_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
