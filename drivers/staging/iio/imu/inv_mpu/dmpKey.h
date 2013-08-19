@@ -217,12 +217,21 @@
 #define KEY_CPASS_MTX_21            (KEY_CPASS_MTX_20 + 1)
 #define KEY_CPASS_MTX_22            (KEY_CPASS_MTX_21 + 1)
 
+/* Tap Keys */
+#define KEY_DMP_TAP_GATE              (KEY_CPASS_MTX_22 + 1)
+#define KEY_DMP_TAPW_MIN              (KEY_DMP_TAP_GATE + 1)
+#define KEY_DMP_TAP_THR_Z             (KEY_DMP_TAPW_MIN + 1)
+#define KEY_DMP_TAP_PREV_JERK_Z       (KEY_DMP_TAP_THR_Z + 1)
+#define KEY_DMP_TAP_MIN_TAPS          (KEY_DMP_TAP_PREV_JERK_Z + 1)
+#define KEY_DMP_TAP_NEXT_TAP_THRES    (KEY_DMP_TAP_MIN_TAPS + 1)
+#define KEY_DMP_TAP_SHAKE_REJECT      (KEY_DMP_TAP_NEXT_TAP_THRES + 1)
+#define KEY_DMP_TAP_SHAKE_COUNT_MAX   (KEY_DMP_TAP_SHAKE_REJECT + 1)
+#define KEY_DMP_TAP_SHAKE_TIMEOUT_MAX (KEY_DMP_TAP_SHAKE_COUNT_MAX + 1)
+#define KEY_DMP_TAP_DIRECTION         (KEY_DMP_TAP_SHAKE_TIMEOUT_MAX + 1)
+#define KEY_DMP_TAP_COUNT             (KEY_DMP_TAP_DIRECTION + 1)
+
 /* Gesture Keys */
-#define KEY_DMP_TAPW_MIN            (KEY_CPASS_MTX_22 + 1)
-#define KEY_DMP_TAP_THR_X           (KEY_DMP_TAPW_MIN + 1)
-#define KEY_DMP_TAP_THR_Y           (KEY_DMP_TAP_THR_X + 1)
-#define KEY_DMP_TAP_THR_Z           (KEY_DMP_TAP_THR_Y + 1)
-#define KEY_DMP_SH_TH_Y             (KEY_DMP_TAP_THR_Z + 1)
+#define KEY_DMP_SH_TH_Y             (KEY_DMP_TAP_COUNT + 1)
 #define KEY_DMP_SH_TH_X             (KEY_DMP_SH_TH_Y + 1)
 #define KEY_DMP_SH_TH_Z             (KEY_DMP_SH_TH_X + 1)
 #define KEY_DMP_ORIENT              (KEY_DMP_SH_TH_Z + 1)
@@ -338,8 +347,8 @@
 #define KEY_CFG_OUT_ACCL            (KEY_CFG_WATERMARK_L + 1)
 #define KEY_CFG_OUT_GYRO            (KEY_CFG_OUT_ACCL + 1)
 #define KEY_CFG_OUT_3QUAT           (KEY_CFG_OUT_GYRO + 1)
-#define KEY_CFG_OUT_6QUAT           (KEY_CFG_OUT_3QUAT + 1)
-#define KEY_CFG_OUT_PQUAT           (KEY_CFG_OUT_6QUAT + 1)
+#define KEY_CFG_OUT_QUAT            (KEY_CFG_OUT_3QUAT + 1)
+#define KEY_CFG_OUT_PQUAT           (KEY_CFG_OUT_QUAT + 1)
 #define KEY_CFG_OUT_CPASS           (KEY_CFG_OUT_PQUAT + 1)
 #define KEY_CFG_OUT_PRESS           (KEY_CFG_OUT_CPASS + 1)
 #define KEY_CFG_OUT_STEPDET         (KEY_CFG_OUT_PRESS + 1)
@@ -360,23 +369,39 @@
 
 /* Sensor's ODR */
 #define KEY_CFG_3QUAT_ODR           (KEY_DMP_RUN_CNTR + 1)
-#define KEY_CFG_6QUAT_ODR           (KEY_CFG_3QUAT_ODR + 1)
-#define KEY_CFG_PQUAT_ODR           (KEY_CFG_6QUAT_ODR + 1)
+#define KEY_CFG_QUAT_ODR            (KEY_CFG_3QUAT_ODR + 1)
+#define KEY_CFG_PQUAT_ODR           (KEY_CFG_QUAT_ODR + 1)
 #define KEY_CFG_ACCL_ODR            (KEY_CFG_PQUAT_ODR + 1)
 #define KEY_CFG_GYRO_ODR            (KEY_CFG_ACCL_ODR + 1)
 #define KEY_CFG_CPASS_ODR           (KEY_CFG_GYRO_ODR + 1)
 #define KEY_CFG_PRESS_ODR           (KEY_CFG_CPASS_ODR + 1)
 
 #define KEY_ODR_CNTR_3QUAT          (KEY_CFG_PRESS_ODR + 1)
-#define KEY_ODR_CNTR_6QUAT          (KEY_ODR_CNTR_3QUAT + 1)
-#define KEY_ODR_CNTR_PQUAT          (KEY_ODR_CNTR_6QUAT + 1)
+#define KEY_ODR_CNTR_QUAT           (KEY_ODR_CNTR_3QUAT + 1)
+#define KEY_ODR_CNTR_PQUAT          (KEY_ODR_CNTR_QUAT + 1)
 #define KEY_ODR_CNTR_ACCL           (KEY_ODR_CNTR_PQUAT + 1)
 #define KEY_ODR_CNTR_GYRO           (KEY_ODR_CNTR_ACCL + 1)
 #define KEY_ODR_CNTR_CPASS          (KEY_ODR_CNTR_GYRO + 1)
 #define KEY_ODR_CNTR_PRESS          (KEY_ODR_CNTR_CPASS + 1)
 
+/* DMP fusion LP-Quat */
+#define KEY_DMP_LPQ0                (KEY_ODR_CNTR_PRESS + 1)
+#define KEY_DMP_LPQ1                (KEY_DMP_LPQ0 + 1)
+#define KEY_DMP_LPQ2                (KEY_DMP_LPQ1 + 1)
+#define KEY_DMP_LPQ3                (KEY_DMP_LPQ2 + 1)
+
+/* DMP fusion 6-axis Quat */
+#define KEY_DMP_Q0                  (KEY_DMP_LPQ3 + 1)
+#define KEY_DMP_Q1                  (KEY_DMP_Q0 + 1)
+#define KEY_DMP_Q2                  (KEY_DMP_Q1 + 1)
+#define KEY_DMP_Q3                  (KEY_DMP_Q2 + 1)
+
+/* 9-axis fusion */
+#define KEY_CPASS_VALID             (KEY_DMP_Q3 + 1)
+#define KEY_9AXIS_ACCURACY          (KEY_CPASS_VALID + 1)
+
 /* Test key */
-#define KEY_TEST_01                 (KEY_ODR_CNTR_PRESS + 1)
+#define KEY_TEST_01                 (KEY_9AXIS_ACCURACY + 1)
 #define KEY_TEST_02                 (KEY_TEST_01 + 1)
 #define KEY_TEST_03                 (KEY_TEST_02 + 1)
 #define KEY_TEST_04                 (KEY_TEST_03 + 1)
@@ -491,7 +516,6 @@ struct tKeyLabel  {
 #define DINA91 0x91
 #define DINAB6 0xb6
 #define DINAB4 0xb4
-
 
 #define DINC00 0x00
 #define DINC01 0x01

@@ -172,6 +172,7 @@
 #define BMP280_TEMPERATURE_XLSB_REG_DATA__REG      BMP280_TEMPERATURE_XLSB_REG
 
 #define BMP280_RATE_SCALE  100
+#define DATA_BMP280_MIN_READ_TIME            (97 * NSEC_PER_MSEC)
 #define BMP280_DATA_BYTES  6
 #define FAKE_DATA_NUM_BYTES 10
 
@@ -318,7 +319,7 @@ static int inv_resume_bmp280(struct inv_mpu_state *st)
 {
 	int r;
 
-	if (!st->sensor[SENSOR_COMPASS].on) {
+	if ((!st->sensor[SENSOR_COMPASS].on) && st->chip_config.dmp_on) {
 		/* if compass is disabled, read fake data for DMP */
 		/*read mode */
 		r = inv_i2c_single_write(st, REG_I2C_SLV0_ADDR,
@@ -366,7 +367,7 @@ static int inv_suspend_bmp280(struct inv_mpu_state *st)
 {
 	int r;
 
-	if (!st->sensor[SENSOR_COMPASS].on) {
+	if ((!st->sensor[SENSOR_COMPASS].on) && st->chip_config.dmp_on) {
 		/* slave 0 is disabled */
 		r = inv_i2c_single_write(st, REG_I2C_SLV0_CTRL, 0);
 		if (r)
@@ -446,15 +447,18 @@ static u32 bmp280_compensate_P_int32(s32 adc_P)
 static int inv_bmp280_read_data(struct inv_mpu_state *st, short *o)
 {
 	int r, i;
-	u8 d[BMP280_DATA_BYTES];
+	u8 d[BMP280_DATA_BYTES], reg_addr;
 	s32 upressure, utemperature;
 
-	if (st->chip_config.from_fifo) {
+	if (st->chip_config.dmp_on) {
 		for (i = 0; i < 6; i++)
 			d[i] = st->fifo_data[i];
 	} else {
-		r = inv_i2c_read(st, REG_EXT_SENS_DATA_10,
-						BMP280_DATA_BYTES, d);
+		if (st->sensor[SENSOR_COMPASS].on)
+			reg_addr = REG_EXT_SENS_DATA_08;
+		else
+			reg_addr = REG_EXT_SENS_DATA_00;
+		r = inv_i2c_read(st, reg_addr, BMP280_DATA_BYTES, d);
 		if (r)
 			return r;
 	}
@@ -488,6 +492,7 @@ static struct inv_mpu_slave slave_bmp280 = {
 	.setup     = inv_setup_bmp280,
 	.read_data = inv_bmp280_read_data,
 	.rate_scale = BMP280_RATE_SCALE,
+	.min_read_time = DATA_BMP280_MIN_READ_TIME,
 };
 
 int inv_mpu_setup_pressure_slave(struct inv_mpu_state *st)

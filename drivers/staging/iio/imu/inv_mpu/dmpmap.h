@@ -48,20 +48,20 @@
 #define DMP_BLPFMZL    62
 #define DMP_BLPFC    64
 #define DMP_SMCTH    66
-#define DMP_0H2    68
-#define DMP_0L2    70
-#define DMP_BERR2H    72
-#define DMP_BERR2L    74
+#define DMP_TAP_DIRECTION 68
+#define DMP_TAP_COUNT 70
+#define DMP_TAP_GATE    72
+#define DMP_TAP_MIN_TAPS    74
 #define DMP_BERR2NH    76
 #define DMP_SMCINC    78
-#define DMP_ANGVBXH    80
+#define DMP_TAP_SHAKE_REJECT    80
 #define DMP_ANGVBXL    82
-#define DMP_ANGVBYH    84
-#define DMP_ANGVBYL    86
-#define DMP_ANGVBZH    88
-#define DMP_ANGVBZL    90
-#define DMP_BERR1H    92
-#define DMP_BERR1L    94
+#define DMP_TAP_SHAKE_COUNT_MAX    84
+#define DMP_TAP_SHAKE_TIMEOUT_MAX    86
+#define DMP_TAP_THZ    88
+#define DMP_TAPW_MIN    90
+#define DMP_TAP_PREV_JERK_Z    92
+#define DMP_TAP_NEXT_TAP_THRES    94
 #define DMP_ATCH    96
 #define DMP_BIASUNCSF    98
 #define DMP_ACT2H    100
@@ -243,8 +243,6 @@
 #define DMP_TAP_TIMER    466
 #define DMP_TAP_THX    468
 #define DMP_TAP_THY    472
-#define DMP_TAP_THZ    476
-#define DMP_TAPW_MIN    478
 #define DMP_TMP25    480
 #define DMP_TMP26    482
 #define DMP_TMP27    484
@@ -263,4 +261,3 @@
 #define DMP_BLPFNMZL    510
 
 #endif
-

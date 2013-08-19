@@ -106,7 +106,6 @@ void inv_setup_reg_mpu3050(struct inv_reg_map_s *reg)
 	reg->fifo_r_w        = REG_3050_FIFO_R_W;
 	reg->user_ctrl       = REG_3050_USER_CTRL;
 	reg->pwr_mgmt_1      = REG_3050_PWR_MGMT_1;
-	reg->raw_gyro        = REG_3050_RAW_GYRO;
 	reg->raw_accel        = REG_3050_AUX_XOUT_H;
 	reg->temperature     = REG_3050_TEMPERATURE;
 	reg->int_enable      = REG_3050_INT_ENABLE;

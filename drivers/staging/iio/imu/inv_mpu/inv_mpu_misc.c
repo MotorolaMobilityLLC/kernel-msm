@@ -45,7 +45,7 @@
 #define DMP_PRECISION                   1000
 #define DMP_MAX_DIVIDER                 4
 #define DMP_MAX_MIN_TAPS                4
-#define DMP_IMAGE_CRC_VALUE             0x5cee889c
+#define DMP_IMAGE_CRC_VALUE             0xa139df62
 
 /*--- Test parameters defaults --- */
 #define DEF_OLDEST_SUPP_PROD_REV        8
@@ -507,8 +507,7 @@ int inv_get_silicon_rev_mpu6050(struct inv_mpu_state *st)
 	prod_ver &= 0xf;
 	/*memory read need more time after power up */
 	msleep(POWER_UP_TIME);
-	result = mpu_memory_read(st, st->i2c_addr, mem_addr,
-			1, &prod_rev);
+	result = mpu_memory_read(st, st->i2c_addr, mem_addr, 1, &prod_rev);
 	if (result)
 		return result;
 	prod_rev >>= 2;
@@ -725,7 +724,7 @@ static int inv_check_6050_gyro_self_test(struct inv_mpu_state *st,
 						int *reg_avg, int *st_avg){
 	int result;
 	int ret_val;
-	int ct_shift_prod[3], st_shift_cust[3], st_shift_ratio[3], i;
+	int st_shift_prod[3], st_shift_cust[3], st_shift_ratio[3], i;
 	u8 regs[3];
 
 	if (st->chip_info.software_revision < DEF_OLDEST_SUPP_SW_REV &&
@@ -741,17 +740,17 @@ static int inv_check_6050_gyro_self_test(struct inv_mpu_state *st,
 	regs[Z] &= 0x1f;
 	for (i = 0; i < 3; i++) {
 		if (regs[i] != 0)
-			ct_shift_prod[i] = gyro_6050_st_tb[regs[i] - 1];
+			st_shift_prod[i] = gyro_6050_st_tb[regs[i] - 1];
 		else
-			ct_shift_prod[i] = 0;
+			st_shift_prod[i] = 0;
 	}
-	ct_shift_prod[1] = -ct_shift_prod[1];
+	st_shift_prod[1] = -st_shift_prod[1];
 
 	for (i = 0; i < 3; i++) {
 		st_shift_cust[i] =  st_avg[i] - reg_avg[i];
-		if (ct_shift_prod[i]) {
+		if (st_shift_prod[i]) {
 			st_shift_ratio[i] = abs(st_shift_cust[i] /
-				ct_shift_prod[i] - DEF_ST_PRECISION);
+				st_shift_prod[i] - DEF_ST_PRECISION);
 			if (st_shift_ratio[i] > DEF_GYRO_CT_SHIFT_DELTA)
 				ret_val = 1;
 		} else {
@@ -786,7 +785,7 @@ static int inv_check_6500_gyro_self_test(struct inv_mpu_state *st,
 	u8 regs[3];
 	int ret_val, result;
 	int otp_value_zero = 0;
-	int ct_shift_prod[3], st_shift_cust[3], i;
+	int st_shift_prod[3], st_shift_cust[3], i;
 
 	ret_val = 0;
 	result = inv_i2c_read(st, REG_6500_XG_ST_DATA, 3, regs);
@@ -797,22 +796,22 @@ static int inv_check_6500_gyro_self_test(struct inv_mpu_state *st,
 
 	for (i = 0; i < 3; i++) {
 		if (regs[i] != 0) {
-			ct_shift_prod[i] = mpu_6500_st_tb[regs[i] - 1];
+			st_shift_prod[i] = mpu_6500_st_tb[regs[i] - 1];
 		} else {
-			ct_shift_prod[i] = 0;
+			st_shift_prod[i] = 0;
 			otp_value_zero = 1;
 		}
 	}
-	pr_debug("%s self_test gyro ct_shift_prod - %+d %+d %+d\n",
-		 st->hw->name, ct_shift_prod[0], ct_shift_prod[1],
-		 ct_shift_prod[2]);
+	pr_debug("%s self_test gyro st_shift_prod - %+d %+d %+d\n",
+		 st->hw->name, st_shift_prod[0], st_shift_prod[1],
+		 st_shift_prod[2]);
 
 	for (i = 0; i < 3; i++) {
 		st_shift_cust[i] = st_avg[i] - reg_avg[i];
 		if (!otp_value_zero) {
 			/* Self Test Pass/Fail Criteria A */
 			if (st_shift_cust[i] < DEF_6500_GYRO_CT_SHIFT_DELTA
-						* ct_shift_prod[i])
+						* st_shift_prod[i])
 					ret_val = 1;
 		} else {
 			/* Self Test Pass/Fail Criteria B */
@@ -849,7 +848,7 @@ static int inv_check_6500_gyro_self_test(struct inv_mpu_state *st,
 static int inv_check_6500_accel_self_test(struct inv_mpu_state *st,
 						int *reg_avg, int *st_avg) {
 	int ret_val, result;
-	int ct_shift_prod[3], st_shift_cust[3], st_shift_ratio[3], i;
+	int st_shift_prod[3], st_shift_cust[3], st_shift_ratio[3], i;
 	u8 regs[3];
 	int otp_value_zero = 0;
 
@@ -867,22 +866,22 @@ static int inv_check_6500_accel_self_test(struct inv_mpu_state *st,
 
 	for (i = 0; i < 3; i++) {
 		if (regs[i] != 0) {
-			ct_shift_prod[i] = mpu_6500_st_tb[regs[i] - 1];
+			st_shift_prod[i] = mpu_6500_st_tb[regs[i] - 1];
 		} else {
-			ct_shift_prod[i] = 0;
+			st_shift_prod[i] = 0;
 			otp_value_zero = 1;
 		}
 	}
-	pr_debug("%s self_test accel ct_shift_prod - %+d %+d %+d\n",
-		 st->hw->name, ct_shift_prod[0], ct_shift_prod[1],
-		 ct_shift_prod[2]);
+	pr_debug("%s self_test accel st_shift_prod - %+d %+d %+d\n",
+		 st->hw->name, st_shift_prod[0], st_shift_prod[1],
+		 st_shift_prod[2]);
 
 	if (!otp_value_zero) {
 		/* Self Test Pass/Fail Criteria A */
 		for (i = 0; i < 3; i++) {
 			st_shift_cust[i] = st_avg[i] - reg_avg[i];
 			st_shift_ratio[i] = abs(st_shift_cust[i] /
-					ct_shift_prod[i] - DEF_ST_PRECISION);
+					st_shift_prod[i] - DEF_ST_PRECISION);
 			if (st_shift_ratio[i] > DEF_6500_ACCEL_ST_SHIFT_DELTA)
 				ret_val = 1;
 		}
@@ -1321,38 +1320,37 @@ int inv_set_display_orient_interrupt_dmp(struct inv_mpu_state *st, bool on)
 	return r;
 }
 
-static int inv_set_tap_interrupt_dmp(struct inv_mpu_state *st,
-	u8 on)
+static int inv_set_tap_interrupt_dmp(struct inv_mpu_state *st, u8 on)
 {
 	int result;
-	u8  regs[] = {0};
+	u16 d;
 
 	if (on)
-		regs[0] = 0xf8;
+		d = 192;
 	else
-		regs[0] = DINAD8;
-	result = mem_w_key(KEY_CFG_20, ARRAY_SIZE(regs), regs);
-	if (result)
-		return result;
+		d = 128;
+
+	result = inv_write_2bytes(st, KEY_DMP_TAP_GATE, d);
+
 	return result;
 }
 
-int inv_set_tap_threshold_dmp(struct inv_mpu_state *st,
-				u32 axis, u16 threshold)
+/*
+ * inv_set_tap_threshold_dmp():
+ * Sets the tap threshold in the dmp
+ * Simultaneously sets secondary tap threshold to help correct the tap
+ * direction for soft taps.
+ */
+int inv_set_tap_threshold_dmp(struct inv_mpu_state *st, u16 threshold)
 {
-	/* Sets the tap threshold in the dmp
-	Simultaneously sets secondary tap threshold to help correct the tap
-	direction for soft taps */
 	int result;
-	/* DMP Algorithm */
-	u8 data[2];
 	int sampleDivider;
 	int scaledThreshold;
 	u32 dmpThreshold;
 	u8 sample_div;
 	const u32  accel_sens = (0x20000000 / 0x00010000);
 
-	if ((axis & ~(INV_TAP_AXIS_ALL)) || (threshold > (1 << 15)))
+	if (threshold > (1 << 15))
 		return -EINVAL;
 	sample_div = st->sample_divider;
 
@@ -1377,90 +1375,50 @@ int inv_set_tap_threshold_dmp(struct inv_mpu_state *st,
 	else
 		return -EINVAL;
 	dmpThreshold = dmpThreshold / DMP_PRECISION;
-
-	data[0] = dmpThreshold >> 8;
-	data[1] = dmpThreshold & 0xFF;
-
-	/* MPL algorithm */
-	if (axis & INV_TAP_AXIS_X) {
-		result = mem_w_key(KEY_DMP_TAP_THR_X, ARRAY_SIZE(data), data);
-		if (result)
-			return result;
-
-		/*Also set additional threshold for correcting the direction
-		of taps that were very near the threshold. */
-		data[0] = (dmpThreshold * 3 / 4) >> 8;
-		data[1] = (dmpThreshold * 3 / 4) & 0xFF;
-		result = mem_w_key(KEY_D_1_36, ARRAY_SIZE(data), data);
-		if (result)
-			return result;
-	}
-	if (axis & INV_TAP_AXIS_Y) {
-		result = mem_w_key(KEY_DMP_TAP_THR_Y, 2, data);
-		if (result)
-			return result;
-		data[0] = (dmpThreshold * 3 / 4) >> 8;
-		data[1] = (dmpThreshold * 3 / 4) & 0xFF;
-
-		result = mem_w_key(KEY_D_1_40, ARRAY_SIZE(data), data);
-		if (result)
-			return result;
-	}
-	if (axis & INV_TAP_AXIS_Z) {
-		result = mem_w_key(KEY_DMP_TAP_THR_Z, ARRAY_SIZE(data), data);
-		if (result)
-			return result;
-		data[0] = (dmpThreshold * 3 / 4) >> 8;
-		data[1] = (dmpThreshold * 3 / 4) & 0xFF;
-
-		result = mem_w_key(KEY_D_1_44, ARRAY_SIZE(data), data);
-		if (result)
-			return result;
-	}
-	return 0;
-}
-
-static int inv_set_tap_axes_dmp(struct inv_mpu_state *st,
-				u32 axes)
-{
-	/* Sets a mask in the DMP that indicates what tap events
-	should result in an interrupt */
-	u8 regs[4];
-	u8 result;
-
-	/* check if any spurious bit other the ones expected are set */
-	if (axes & (~(INV_TAP_ALL_DIRECTIONS)))
-		return -EINVAL;
-
-	regs[0] = (u8)axes;
-	result = mem_w_key(KEY_D_1_72, 1, regs);
+	result = inv_write_2bytes(st, KEY_DMP_TAP_THR_Z, dmpThreshold);
+	if (result)
+		return result;
+	result = inv_write_2bytes(st, KEY_DMP_TAP_PREV_JERK_Z,
+						dmpThreshold * 3 / 4);
 
 	return result;
 }
 
-int inv_set_min_taps_dmp(struct inv_mpu_state *st,
-				u16 min_taps) {
-	/*Indicates the minimum number of consecutive taps required
-		before the DMP will generate an interrupt */
-	u8 regs[1];
+
+/*
+ * inv_set_min_taps_dmp():
+ * Indicates the minimum number of consecutive taps required
+ * before the DMP will generate an interrupt.
+ */
+int inv_set_min_taps_dmp(struct inv_mpu_state *st, u16 min_taps)
+{
 	u8 result;
+
 	/* check if any spurious bit other the ones expected are set */
 	if ((min_taps > DMP_MAX_MIN_TAPS) || (min_taps < 1))
 		return -EINVAL;
-	regs[0] = (u8)(min_taps-1);
-	result = mem_w_key(KEY_D_1_79, ARRAY_SIZE(regs), regs);
+
+	/* DMP tap count is zero-based. So single-tap is 0.
+	   Furthermore, DMP code checks for tap_count > min_taps.
+	   So we have to do minus 2 here.
+	   For example, if the user expects any single tap will generate an
+	   interrupt, (s)he will call inv_set_min_taps_dmp(1).
+	   When DMP gets a single tap, tap_count = 0. To get
+	   tap_count > min_taps, we have to decrement min_taps by 2 to -1. */
+	result = inv_write_2bytes(st, KEY_DMP_TAP_MIN_TAPS, (u16)(min_taps-2));
 
 	return result;
 }
 
+/*
+ * inv_set_tap_time_dmp():
+ * Determines how long after a tap the DMP requires before
+ * another tap can be registered.
+ */
 int  inv_set_tap_time_dmp(struct inv_mpu_state *st, u16 time)
 {
-	/* Determines how long after a tap the DMP requires before
-	  another tap can be registered*/
 	int result;
-	/* DMP Algorithm */
 	u16 dmpTime;
-	u8 data[2];
 	u8 sampleDivider;
 
 	sampleDivider = st->sample_divider;
@@ -1468,23 +1426,20 @@ int  inv_set_tap_time_dmp(struct inv_mpu_state *st, u16 time)
 
 	/* 60 ms minimum time added */
 	dmpTime = ((time) / sampleDivider);
-	data[0] = dmpTime >> 8;
-	data[1] = dmpTime & 0xFF;
-
-	result = mem_w_key(KEY_DMP_TAPW_MIN, ARRAY_SIZE(data), data);
+	result = inv_write_2bytes(st, KEY_DMP_TAPW_MIN, dmpTime);
 
 	return result;
 }
 
-static int inv_set_multiple_tap_time_dmp(struct inv_mpu_state *st,
-					u32 time)
+/*
+ * inv_set_multiple_tap_time_dmp():
+ * Determines how close together consecutive taps must occur
+ * to be considered double/triple taps.
+ */
+static int inv_set_multiple_tap_time_dmp(struct inv_mpu_state *st, u32 time)
 {
-	/*Determines how close together consecutive taps must occur
-	to be considered double/triple taps*/
 	int result;
-	/* DMP Algorithm */
 	u16 dmpTime;
-	u8 data[2];
 	u8 sampleDivider;
 
 	sampleDivider = st->sample_divider;
@@ -1492,9 +1447,7 @@ static int inv_set_multiple_tap_time_dmp(struct inv_mpu_state *st,
 
 	/* 60 ms minimum time added */
 	dmpTime = ((time) / sampleDivider);
-	data[0] = dmpTime >> 8;
-	data[1] = dmpTime & 0xFF;
-	result = mem_w_key(KEY_D_1_218, ARRAY_SIZE(data), data);
+	result = inv_write_2bytes(st, KEY_DMP_TAP_NEXT_TAP_THRES, dmpTime);
 
 	return result;
 }
@@ -1670,11 +1623,13 @@ int inv_set_accel_bias_dmp(struct inv_mpu_state *st)
 	return result;
 }
 
+/*
+ * inv_set_gyro_sf_dmp():
+ * The gyro threshold, in dps, above which taps will be rejected.
+ */
 static int inv_set_gyro_sf_dmp(struct inv_mpu_state *st)
 {
-	/*The gyro threshold, in dps, above which taps will be rejected*/
 	int result;
-	/* DMP Algorithm */
 	u8 sampleDivider;
 	u32 gyro_sf;
 	const u32 gyro_sens = 0x03e80000;
@@ -1687,16 +1642,19 @@ static int inv_set_gyro_sf_dmp(struct inv_mpu_state *st)
 	return result;
 }
 
+/*
+ * inv_set_shake_reject_thresh_dmp():
+ * The gyro threshold, in dps, above which taps will be rejected.
+ */
 static int inv_set_shake_reject_thresh_dmp(struct inv_mpu_state *st,
 						int thresh)
-{	/*THIS FUNCTION FAILS MEM_W*/
-	/*The gyro threshold, in dps, above which taps will be rejected */
+{
 	int result;
-	/* DMP Algorithm */
 	u8 sampleDivider;
 	int thresh_scaled;
 	u32 gyro_sf;
 	const u32 gyro_sens = 0x03e80000;
+
 	sampleDivider = st->sample_divider;
 	gyro_sf = inv_q30_mult(gyro_sens, (int)(DMP_TAP_SCALE *
 			(sampleDivider + 1)));
@@ -1705,20 +1663,22 @@ static int inv_set_shake_reject_thresh_dmp(struct inv_mpu_state *st,
 	thresh_scaled = gyro_sens / (1L << 16);
 	thresh_scaled = thresh_scaled / thresh;
 	thresh_scaled = gyro_sf / thresh_scaled;
-	result = write_be32_key_to_mem(st, thresh_scaled, KEY_D_1_92);
+	result = write_be32_key_to_mem(st, thresh_scaled,
+						KEY_DMP_TAP_SHAKE_REJECT);
 
 	return result;
 }
 
+/*
+ * inv_set_shake_reject_time_dmp():
+ * How long a gyro axis must remain above its threshold
+ * before taps are rejected.
+ */
 static int inv_set_shake_reject_time_dmp(struct inv_mpu_state *st,
 						u32 time)
 {
-	/* How long a gyro axis must remain above its threshold
-	before taps are rejected */
 	int result;
-	/* DMP Algorithm */
 	u16 dmpTime;
-	u8 data[2];
 	u8 sampleDivider;
 
 	sampleDivider = st->sample_divider;
@@ -1726,22 +1686,21 @@ static int inv_set_shake_reject_time_dmp(struct inv_mpu_state *st,
 
 	/* 60 ms minimum time added */
 	dmpTime = ((time) / sampleDivider);
-	data[0] = dmpTime >> 8;
-	data[1] = dmpTime & 0xFF;
+	result = inv_write_2bytes(st, KEY_DMP_TAP_SHAKE_COUNT_MAX, dmpTime);
 
-	result = mem_w_key(KEY_D_1_88, ARRAY_SIZE(data), data);
 	return result;
 }
 
+/*
+ * inv_set_shake_reject_timeout_dmp():
+ * How long the gyros must remain below their threshold,
+ * after taps have been rejected, before taps can be detected again.
+ */
 static int inv_set_shake_reject_timeout_dmp(struct inv_mpu_state *st,
 						u32 time)
 {
-	/*How long the gyros must remain below their threshold,
-	after taps have been rejected, before taps can be detected again*/
 	int result;
-	/* DMP Algorithm */
 	u16 dmpTime;
-	u8 data[2];
 	u8 sampleDivider;
 
 	sampleDivider = st->sample_divider;
@@ -1749,10 +1708,8 @@ static int inv_set_shake_reject_timeout_dmp(struct inv_mpu_state *st,
 
 	/* 60 ms minimum time added */
 	dmpTime = ((time) / sampleDivider);
-	data[0] = dmpTime >> 8;
-	data[1] = dmpTime & 0xFF;
+	result = inv_write_2bytes(st, KEY_DMP_TAP_SHAKE_TIMEOUT_MAX, dmpTime);
 
-	result = mem_w_key(KEY_D_1_90, ARRAY_SIZE(data), data);
 	return result;
 }
 
@@ -1777,27 +1734,14 @@ int inv_set_interrupt_on_gesture_event(struct inv_mpu_state *st, bool on)
 int inv_enable_tap_dmp(struct inv_mpu_state *st, bool on)
 {
 	int result;
+
 	result = inv_set_tap_interrupt_dmp(st, on);
 	if (result)
 		return result;
-	if (on) {
-		result = inv_set_tap_threshold_dmp(st, INV_TAP_AXIS_X,
-						   st->tap.thresh);
-		if (result)
-			return result;
-		result = inv_set_tap_threshold_dmp(st, INV_TAP_AXIS_Y,
-						   st->tap.thresh);
-		if (result)
-			return result;
-		result = inv_set_tap_threshold_dmp(st, INV_TAP_AXIS_Z,
-						   st->tap.thresh);
-		if (result)
-			return result;
-	}
-
-	result = inv_set_tap_axes_dmp(st, INV_TAP_ALL_DIRECTIONS);
+	result = inv_set_tap_threshold_dmp(st, st->tap.thresh);
 	if (result)
 		return result;
+
 	result = inv_set_min_taps_dmp(st, st->tap.min_count);
 	if (result)
 		return result;
@@ -1825,13 +1769,6 @@ int inv_enable_tap_dmp(struct inv_mpu_state *st, bool on)
 	result = inv_set_shake_reject_timeout_dmp(st,
 						  DMP_SHAKE_REJECT_TIMEOUT);
 	return result;
-}
-
-static int inv_enable_ext_gyro_bias(struct inv_mpu_state *st)
-{
-	const u8 r[] = {0xa3, 0xa3, 0xa3, 0xa3, 0xa3, 0xa3};
-
-	return mem_w_key(KEY_CFG_EXT_GYRO_BIAS, ARRAY_SIZE(r), r);
 }
 
 static int inv_dry_run_dmp(struct inv_mpu_state *st)
@@ -1881,7 +1818,6 @@ static void inv_test_reset(struct inv_mpu_state *st)
 		else
 			result = inv_i2c_single_write(st, ii, d[ii]);
 	}
-	inv_set_65XX_gyro_config(st);
 }
 
 /*
@@ -1908,7 +1844,8 @@ ssize_t inv_dmp_firmware_write(struct file *fp, struct kobject *kobj,
 
 	reg = &st->reg;
 	if (DMP_IMAGE_SIZE != size) {
-		pr_err("wrong DMP image size\n");
+		pr_err("wrong DMP image size - expected %d, actual %d\n",
+			DMP_IMAGE_SIZE, size);
 		return -EINVAL;
 	}
 
@@ -1955,12 +1892,10 @@ ssize_t inv_dmp_firmware_write(struct file *fp, struct kobject *kobj,
 	result = inv_accel_dmp_cal(st);
 	if (result)
 		goto firmware_write_fail;
-	result = inv_enable_ext_gyro_bias(st);
-	if (result)
-		goto firmware_write_fail;
 	result = inv_dry_run_dmp(st);
 	if (result)
 		goto firmware_write_fail;
+
 	st->chip_config.firmware_loaded = 1;
 
 firmware_write_fail:
@@ -2018,5 +1953,50 @@ ssize_t inv_dmp_firmware_read(struct file *filp,
 		return result;
 
 	return count;
+}
+
+ssize_t inv_six_q_write(struct file *fp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t pos, size_t size)
+{
+	u8 q[QUATERNION_BYTES];
+	struct inv_reg_map_s *reg;
+	struct iio_dev *indio_dev;
+	struct inv_mpu_state *st;
+	int result;
+
+	indio_dev = dev_get_drvdata(container_of(kobj, struct device, kobj));
+	st = iio_priv(indio_dev);
+
+	mutex_lock(&indio_dev->mlock);
+
+	if (!st->chip_config.firmware_loaded) {
+		mutex_unlock(&indio_dev->mlock);
+		return -EINVAL;
+	}
+	if (st->chip_config.enable) {
+		mutex_unlock(&indio_dev->mlock);
+		return -EBUSY;
+	}
+	reg = &st->reg;
+	if (QUATERNION_BYTES != size) {
+		pr_err("wrong quaternion size=%d, should=%d\n", size,
+							QUATERNION_BYTES);
+		mutex_unlock(&indio_dev->mlock);
+		return -EINVAL;
+	}
+
+	memcpy(q, buf, size);
+	result = st->set_power_state(st, true);
+	if (result)
+		goto firmware_write_fail;
+	result = mem_w_key(KEY_DMP_Q0, QUATERNION_BYTES, q);
+
+firmware_write_fail:
+	result |= st->set_power_state(st, false);
+	mutex_unlock(&indio_dev->mlock);
+	if (result)
+		return result;
+
+	return size;
 }
 

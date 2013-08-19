@@ -16,38 +16,34 @@
 #include "dmpKey.h"
 #include "dmpmap.h"
 
-#define CFG_OUT_STEPDET         (2016)
-#define CFG_OUT_3QUAT           (2046)
-#define OUT_3QUAT_DAT           (2056)
-#define CFG_OUT_6QUAT           (2081)
-#define OUT_6QUAT_DAT           (2091)
-#define CFG_OUT_PQUAT           (2116)
-#define OUT_PQUAT_DAT           (2125)
-#define CFG_OUT_ACCL            (2150)
-#define OUT_ACCL_DAT            (2159)
-#define CFG_OUT_GYRO            (2184)
-#define OUT_GYRO_DAT            (2193)
-#define CFG_OUT_CPASS           (2218)
-#define OUT_CPASS_DAT           (2227)
-#define CFG_OUT_PRESS           (2252)
-#define OUT_PRESS_DAT           (2261)
-#define CFG_PED_ENABLE          (2350)
-#define CFG_PEDSTEP_DET         (2600)
-#define CFG_DISPLAY_ORIENT_INT  (1754)
-#define CFG_PED_INT             (2588)
-#define CFG_FIFO_INT            (2348)
-#define CFG_AUTH                (1051)
-#define FCFG_1                  (1078)
-#define FCFG_3                  (1103)
-#define FCFG_2                  (1082)
-#define FCFG_7                  (1089)
-#define FCFG_6                  (1121)
-#define CFG_EXT_GYRO_BIAS       (1200)
-#define CFG_7                   (1419)
-#define SMD_TP2                 (1382)
-#define SMD_TP1                 (1359)
-#define CFG_MOTION_BIAS         (1421)
-#define CFG_GYRO_RAW_DATA       (2193)
+#define CFG_OUT_PRESS   (2266)
+#define CFG_OUT_QUAT    (2095)
+#define CFG_PED_ENABLE  (2364)
+#define CFG_OUT_GYRO    (2198)
+#define CFG_PEDSTEP_DET (2605)
+#define OUT_GYRO_DAT    (2207)
+#define CFG_FIFO_INT    (2362)
+#define OUT_CPASS_DAT   (2241)
+#define CFG_AUTH        (1176)
+#define OUT_ACCL_DAT    (2173)
+#define FCFG_1          (1203)
+#define FCFG_3          (1228)
+#define FCFG_2          (1207)
+#define CFG_OUT_CPASS   (2232)
+#define FCFG_7          (1214)
+#define CFG_OUT_3QUAT   (2060)
+#define OUT_PRESS_DAT   (2275)
+#define OUT_QUAT_DAT    (2105)
+#define OUT_3QUAT_DAT   (2070)
+#define CFG_7           (1425)
+#define OUT_PQUAT_DAT   (2139)
+#define CFG_PED_INT     (2593)
+#define SMD_TP2         (1390)
+#define SMD_TP1         (1369)
+#define CFG_MOTION_BIAS (1427)
+#define CFG_OUT_ACCL    (2164)
+#define CFG_OUT_STEPDET (2030)
+#define CFG_OUT_PQUAT   (2130)
 
 #define D_0_22                  (22+512)
 #define D_0_24                  (24+512)
@@ -106,7 +102,18 @@
 #define D_2_244                 (512 + 244)
 #define D_2_248                 (512 + 248)
 #define D_2_252                 (512 + 252)
-
+#define CPASS_BIAS_X            (30 * 16 + 4)
+#define CPASS_BIAS_Y            (30 * 16 + 8)
+#define CPASS_BIAS_Z            (30 * 16 + 12)
+#define CPASS_MTX_00            (32 * 16 + 4)
+#define CPASS_MTX_01            (32 * 16 + 8)
+#define CPASS_MTX_02            (36 * 16 + 12)
+#define CPASS_MTX_10            (33 * 16)
+#define CPASS_MTX_11            (33 * 16 + 4)
+#define CPASS_MTX_12            (33 * 16 + 8)
+#define CPASS_MTX_20            (33 * 16 + 12)
+#define CPASS_MTX_21            (34 * 16 + 4)
+#define CPASS_MTX_22            (34 * 16 + 8)
 #define D_EXT_GYRO_BIAS_X       (61 * 16)
 #define D_EXT_GYRO_BIAS_Y       (61 * 16 + 4)
 #define D_EXT_GYRO_BIAS_Z       (61 * 16 + 8)
@@ -133,14 +140,10 @@
 #define D_AUTH_B                (1004)
 
 #define D_PEDSTD_BP_B           (768 + 0x1C)
-#define D_PEDSTD_HP_A           (768 + 0x78)
-#define D_PEDSTD_HP_B           (768 + 0x7C)
 #define D_PEDSTD_BP_A4          (768 + 0x40)
 #define D_PEDSTD_BP_A3          (768 + 0x44)
 #define D_PEDSTD_BP_A2          (768 + 0x48)
 #define D_PEDSTD_BP_A1          (768 + 0x4C)
-#define D_PEDSTD_INT_THRSH      (768 + 0x68)
-#define D_PEDSTD_CLIP           (768 + 0x6C)
 #define D_PEDSTD_SB             (768 + 0x28)
 #define D_PEDSTD_SB_TIME        (768 + 0x2C)
 #define D_PEDSTD_PEAKTHRSH      (768 + 0x98)
@@ -153,17 +156,6 @@
 
 #define D_HOST_NO_MOT           (976)
 #define D_ACCEL_BIAS            (660)
-
-#define D_ORIENT_GAP            (76)
-
-#define D_TILT0_H               (48)
-#define D_TILT0_L               (50)
-#define D_TILT1_H               (52)
-#define D_TILT1_L               (54)
-#define D_TILT2_H               (56)
-#define D_TILT2_L               (58)
-#define D_TILT3_H               (60)
-#define D_TILT3_L               (62)
 
 #define D_BM_BATCH_CNTR         (27 * 16 + 4)
 #define D_BM_BATCH_THLD         (27 * 16 + 8)
@@ -194,11 +186,24 @@
 #define D_ODR_CNTR_S6           (46*16+2)
 #define D_ODR_CNTR_S7           (46*16+6)
 
+#define D_FS_LPQ0               (59*16)
+#define D_FS_LPQ1               (59*16 + 4)
+#define D_FS_LPQ2               (59*16 + 8)
+#define D_FS_LPQ3               (59*16 + 12)
+
+#define D_FS_Q0                 (12*16)
+#define D_FS_Q1                 (12*16 + 4)
+#define D_FS_Q2                 (12*16 + 8)
+#define D_FS_Q3                 (12*16 + 12)
+
+#define D_CPASS_VALID           (27*16+2)
+#define D_9A_ACCURACY           (27*16)
+
 static const struct tKeyLabel dmpTConfig[] = {
 	{KEY_CFG_OUT_ACCL,              CFG_OUT_ACCL},
 	{KEY_CFG_OUT_GYRO,              CFG_OUT_GYRO},
 	{KEY_CFG_OUT_3QUAT,             CFG_OUT_3QUAT},
-	{KEY_CFG_OUT_6QUAT,             CFG_OUT_6QUAT},
+	{KEY_CFG_OUT_QUAT,              CFG_OUT_QUAT},
 	{KEY_CFG_OUT_PQUAT,             CFG_OUT_PQUAT},
 	{KEY_CFG_PED_ENABLE,            CFG_PED_ENABLE},
 	{KEY_CFG_FIFO_INT,              CFG_FIFO_INT},
@@ -206,14 +211,9 @@ static const struct tKeyLabel dmpTConfig[] = {
 	{KEY_FCFG_1,                    FCFG_1},
 	{KEY_FCFG_3,                    FCFG_3},
 	{KEY_FCFG_2,                    FCFG_2},
-	{KEY_CFG_DISPLAY_ORIENT_INT,    CFG_DISPLAY_ORIENT_INT},
 	{KEY_FCFG_7,                    FCFG_7},
-	{KEY_FCFG_6,                    FCFG_6},
-	{KEY_CFG_EXT_GYRO_BIAS,         CFG_EXT_GYRO_BIAS},
 	{KEY_CFG_7,                     CFG_7},
 	{KEY_CFG_MOTION_BIAS,           CFG_MOTION_BIAS},
-	{KEY_CFG_DISPLAY_ORIENT_INT,    CFG_DISPLAY_ORIENT_INT},
-	{KEY_CFG_GYRO_RAW_DATA,         CFG_GYRO_RAW_DATA},
 	{KEY_CFG_PEDSTEP_DET,           CFG_PEDSTEP_DET},
 	{KEY_D_0_22,                    D_0_22},
 	{KEY_D_0_96,                    D_0_96},
@@ -233,6 +233,17 @@ static const struct tKeyLabel dmpTConfig[] = {
 	{KEY_D_1_218,                   D_1_218},
 	{KEY_D_1_232,                   D_1_232},
 	{KEY_D_1_250,                   D_1_250},
+	{KEY_DMP_TAP_GATE,              DMP_TAP_GATE},
+	{KEY_DMP_TAP_THR_Z,             DMP_TAP_THZ},
+	{KEY_DMP_TAP_PREV_JERK_Z,       DMP_TAP_PREV_JERK_Z},
+	{KEY_DMP_TAP_MIN_TAPS,          DMP_TAP_MIN_TAPS},
+	{KEY_DMP_TAPW_MIN,              DMP_TAPW_MIN},
+	{KEY_DMP_TAP_NEXT_TAP_THRES,    DMP_TAP_NEXT_TAP_THRES},
+	{KEY_DMP_TAP_SHAKE_REJECT,      DMP_TAP_SHAKE_REJECT},
+	{KEY_DMP_TAP_SHAKE_COUNT_MAX,   DMP_TAP_SHAKE_COUNT_MAX},
+	{KEY_DMP_TAP_SHAKE_TIMEOUT_MAX, DMP_TAP_SHAKE_TIMEOUT_MAX},
+	{KEY_DMP_TAP_DIRECTION,         DMP_TAP_DIRECTION},
+	{KEY_DMP_TAP_COUNT,             DMP_TAP_COUNT},
 	{KEY_DMP_SH_TH_Y,               DMP_SH_TH_Y},
 	{KEY_DMP_SH_TH_X,               DMP_SH_TH_X},
 	{KEY_DMP_SH_TH_Z,               DMP_SH_TH_Z},
@@ -241,19 +252,27 @@ static const struct tKeyLabel dmpTConfig[] = {
 	{KEY_D_AUTH_IN,                 D_AUTH_IN},
 	{KEY_D_AUTH_A,                  D_AUTH_A},
 	{KEY_D_AUTH_B,                  D_AUTH_B},
+	{KEY_CPASS_BIAS_X,          CPASS_BIAS_X},
+	{KEY_CPASS_BIAS_Y,          CPASS_BIAS_Y},
+	{KEY_CPASS_BIAS_Z,          CPASS_BIAS_Z},
+	{KEY_CPASS_MTX_00,          CPASS_MTX_00},
+	{KEY_CPASS_MTX_01,          CPASS_MTX_01},
+	{KEY_CPASS_MTX_02,          CPASS_MTX_02},
+	{KEY_CPASS_MTX_10,          CPASS_MTX_10},
+	{KEY_CPASS_MTX_11,          CPASS_MTX_11},
+	{KEY_CPASS_MTX_12,          CPASS_MTX_12},
+	{KEY_CPASS_MTX_20,          CPASS_MTX_20},
+	{KEY_CPASS_MTX_21,          CPASS_MTX_21},
+	{KEY_CPASS_MTX_22,          CPASS_MTX_22},
 	{KEY_D_ACT0,                    D_ACT0},
 	{KEY_D_ACSX,                    D_ACSX},
 	{KEY_D_ACSY,                    D_ACSY},
 	{KEY_D_ACSZ,                    D_ACSZ},
 	{KEY_D_PEDSTD_BP_B,             D_PEDSTD_BP_B},
-	{KEY_D_PEDSTD_HP_A,             D_PEDSTD_HP_A},
-	{KEY_D_PEDSTD_HP_B,             D_PEDSTD_HP_B},
 	{KEY_D_PEDSTD_BP_A4,            D_PEDSTD_BP_A4},
 	{KEY_D_PEDSTD_BP_A3,            D_PEDSTD_BP_A3},
 	{KEY_D_PEDSTD_BP_A2,            D_PEDSTD_BP_A2},
 	{KEY_D_PEDSTD_BP_A1,            D_PEDSTD_BP_A1},
-	{KEY_D_PEDSTD_INT_THRSH,        D_PEDSTD_INT_THRSH},
-	{KEY_D_PEDSTD_CLIP,             D_PEDSTD_CLIP},
 	{KEY_D_PEDSTD_SB,               D_PEDSTD_SB},
 	{KEY_D_PEDSTD_SB_TIME,          D_PEDSTD_SB_TIME},
 	{KEY_D_PEDSTD_PEAKTHRSH,        D_PEDSTD_PEAKTHRSH},
@@ -265,15 +284,6 @@ static const struct tKeyLabel dmpTConfig[] = {
 	{KEY_D_PEDSTD_DECI,             D_PEDSTD_DECI},
 	{KEY_D_HOST_NO_MOT,             D_HOST_NO_MOT},
 	{KEY_D_ACCEL_BIAS,              D_ACCEL_BIAS},
-	{KEY_D_ORIENT_GAP,              D_ORIENT_GAP},
-	{KEY_D_TILT0_H,                 D_TILT0_H},
-	{KEY_D_TILT0_L,                 D_TILT0_L},
-	{KEY_D_TILT1_H,                 D_TILT1_H},
-	{KEY_D_TILT1_L,                 D_TILT1_L},
-	{KEY_D_TILT2_H,                 D_TILT2_H},
-	{KEY_D_TILT2_L,                 D_TILT2_L},
-	{KEY_D_TILT3_H,                 D_TILT3_H},
-	{KEY_D_TILT3_L,                 D_TILT3_L},
 	{KEY_CFG_EXT_GYRO_BIAS_X,       D_EXT_GYRO_BIAS_X},
 	{KEY_CFG_EXT_GYRO_BIAS_Y,       D_EXT_GYRO_BIAS_Y},
 	{KEY_CFG_EXT_GYRO_BIAS_Z,       D_EXT_GYRO_BIAS_Z},
@@ -297,26 +307,36 @@ static const struct tKeyLabel dmpTConfig[] = {
 	{KEY_CFG_OUT_PRESS,             CFG_OUT_PRESS},
 	{KEY_CFG_OUT_STEPDET,           CFG_OUT_STEPDET},
 	{KEY_CFG_3QUAT_ODR,             D_ODR_S1},
-	{KEY_CFG_6QUAT_ODR,             D_ODR_S2},
+	{KEY_CFG_QUAT_ODR,             D_ODR_S2},
 	{KEY_CFG_PQUAT_ODR,             D_ODR_S3},
 	{KEY_CFG_ACCL_ODR,              D_ODR_S4},
 	{KEY_CFG_GYRO_ODR,              D_ODR_S5},
 	{KEY_CFG_CPASS_ODR,             D_ODR_S6},
 	{KEY_CFG_PRESS_ODR,             D_ODR_S7},
 	{KEY_ODR_CNTR_3QUAT,            D_ODR_CNTR_S1},
-	{KEY_ODR_CNTR_6QUAT,            D_ODR_CNTR_S2},
+	{KEY_ODR_CNTR_QUAT,            D_ODR_CNTR_S2},
 	{KEY_ODR_CNTR_PQUAT,            D_ODR_CNTR_S3},
 	{KEY_ODR_CNTR_ACCL,             D_ODR_CNTR_S4},
 	{KEY_ODR_CNTR_GYRO,             D_ODR_CNTR_S5},
 	{KEY_ODR_CNTR_CPASS,            D_ODR_CNTR_S6},
 	{KEY_ODR_CNTR_PRESS,            D_ODR_CNTR_S7},
 	{KEY_DMP_RUN_CNTR,              D_DMP_RUN_CNTR},
+	{KEY_DMP_LPQ0,                  D_FS_LPQ0},
+	{KEY_DMP_LPQ1,                  D_FS_LPQ1},
+	{KEY_DMP_LPQ2,                  D_FS_LPQ2},
+	{KEY_DMP_LPQ3,                  D_FS_LPQ3},
+	{KEY_DMP_Q0,                    D_FS_Q0},
+	{KEY_DMP_Q1,                    D_FS_Q1},
+	{KEY_DMP_Q2,                    D_FS_Q2},
+	{KEY_DMP_Q3,                    D_FS_Q3},
+	{KEY_CPASS_VALID,               D_CPASS_VALID},
+	{KEY_9AXIS_ACCURACY,            D_9A_ACCURACY},
 	{KEY_TEST_01,                   OUT_ACCL_DAT},
 	{KEY_TEST_02,                   OUT_GYRO_DAT},
 	{KEY_TEST_03,                   OUT_CPASS_DAT},
 	{KEY_TEST_04,                   OUT_PRESS_DAT},
 	{KEY_TEST_05,                   OUT_3QUAT_DAT},
-	{KEY_TEST_06,                   OUT_6QUAT_DAT},
+	{KEY_TEST_06,                   OUT_QUAT_DAT},
 	{KEY_TEST_07,                   OUT_PQUAT_DAT}
 };
 #define NUM_LOCAL_KEYS (sizeof(dmpTConfig)/sizeof(dmpTConfig[0]))

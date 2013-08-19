@@ -14,7 +14,6 @@ Table of Contents:
     > MPU-6515 + AKM8975 and BMP280 on the secondary I2C interface
     > MPU-9150
     > MPU-9250
-    > MPU-9350
     > MPU-3050 + BMA250 on the secondary I2C interface
 - Board File Modifications for Invensense Devices
     > MPU-3050
@@ -25,14 +24,12 @@ Table of Contents:
     > MPU-6XXX
     > MPU-9150
     > MPU-9250
-    > MPU-9350
 - IIO Subsystem
     > Communicating with the Driver in Userspace
     > ITG-3500
     > MPU-6050 and MPU-6500
     > MPU-9150
     > MPU-9250
-    > MPU-9350
     > MPU-3050 + BMA250 on the secondary I2C interface
 - Suspend and Resume
 - DMP Event
@@ -55,7 +52,6 @@ Linux kernel. The Invensense driver currently supports the following sensors:
 - MPU-9150
 - MPU-6500
 - MPU-9250
-- MPU-9350
 - MPU-3050
 - MPU-6XXX(either MPU6050 or MPU6500, driver to do auto detection)
 
@@ -227,24 +223,6 @@ static struct mpu_platform_data gyro_platform_data = {
                                    0,  0,  1 },
 };
 
-MPU-9350
-------------
-For MPU-9350, please provide the following secondary I2C bus information.
-
-static struct mpu_platform_data mpu_data = {
-        .int_config  = 0x00,
-        .level_shifter = 0,
-        .orientation = {   1,  0,  0,
-                           0,  1,  0,
-                           0,  0,  1 },
-        .sec_slave_type = SECONDARY_SLAVE_TYPE_COMPASS,
-        .sec_slave_id   = COMPASS_ID_MLX90399,
-        .secondary_i2c_addr = 0x0C,
-        .secondary_orientation = { -1,  0, 0,
-                                    0, -1, 0,
-                                    0,  0, 1 },
-};
-
 MPU-3050 + BMA250 on the secondary I2C interface
 ------------------------------------------------
 For BMA250 on the secondary I2C bus, please provide the following information.
@@ -344,17 +322,6 @@ static struct i2c_board_info __initdata single_chip_board_info[] = {
                 .irq = (IH_GPIO_BASE + MPUIRQ_GPIO),
                 .platform_data = &gyro_platform_data,
         },
-};
-
-MPU9350
--------
-arch/arm/mach-omap2/board-omap4panda.c
-static struct i2c_board_info __initdata chip_board_info[] = {
-        {
-                I2C_BOARD_INFO("mpu9350", 0x68),
-                .irq = (IH_GPIO_BASE + MPUIRQ_GPIO),
-                .platform_data = &mpu_data,
-        }
 };
 
 IIO subsystem
