@@ -38,5 +38,35 @@
 	i2c@f9928000 {
 		status = "disabled";
 	};
+
+        i2c@f9925000 {
+		qcom,sda-gpio = <&msmgpio 10 0>;
+		qcom,scl-gpio = <&msmgpio 11 0>;
+	};
+
+	rpm-regulator-ldoa14 {
+		regulator-l14 {
+			regulator-always-on;
+		};
+	};
+
+	rpm-regulator-ldoa21 {
+		regulator-l21 {
+			regulator-min-microvolt = <2950000>;
+		};
+	};
 };
 
+&i2c_3 {
+	status = "ok";
+
+	tpa6165xx@40 {
+		compatible = "ti,tpa6165";
+		reg = <0x40>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <84 0x2>;
+		gpios = <&msmgpio 84 0x0>;
+		hs_det_vdd-supply = <&pm8110_l6>;
+		hs_det_micvdd-supply = <&pm8110_l21>;
+	};
+};
