@@ -2388,7 +2388,12 @@ static int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
         }
         pAdapter->sessionCtx.ap.beacon = new;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
-        wlan_hdd_cfg80211_set_channel(wiphy, dev, params->channel, params->channel_type);
+        wlan_hdd_cfg80211_set_channel(wiphy, dev,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+        params->channel, params->channel_type);
+#else
+        params->chandef.chan, cfg80211_get_chandef_type(&(params->chandef)));
+#endif
 #endif
         status = wlan_hdd_cfg80211_start_bss(pAdapter, &params->beacon, params->ssid,
                                              params->ssid_len, params->hidden_ssid);
@@ -4142,7 +4147,11 @@ static int wlan_hdd_cfg80211_update_bss( struct wiphy *wiphy,
         }
         else
         {
-            cfg80211_put_bss(bss_status);
+            cfg80211_put_bss(
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+                             wiphy,
+#endif
+                             bss_status);
         }
 
         pScanResult = sme_ScanResultGetNext(hHal, pResult);
@@ -6019,7 +6028,12 @@ static int wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
     }
 
     /* Set Channel */
-    if (NULL != params->channel)
+    if (NULL !=
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
+                params->chandef.chan)
+#else
+                params->channel)
+#endif
     {
         u8 channelNum;
         v_U32_t numChans = WNI_CFG_VALID_CHANNEL_LIST_LEN;
@@ -6029,8 +6043,12 @@ static int wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
 
         /* Get channel number */
         channelNum =
-               ieee80211_frequency_to_channel(params->channel->center_freq);
-
+               ieee80211_frequency_to_channel(
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
+                                            params->chandef.chan->center_freq);
+#else
+                                            params->channel->center_freq);
+#endif
 
         if (0 != ccmCfgGetStr(hHal, WNI_CFG_VALID_CHANNEL_LIST,
                     validChan, &numChans))
@@ -6270,6 +6288,9 @@ static int wlan_hdd_cfg80211_set_wiphy_params(struct wiphy *wiphy,
  * This function is used to set the txpower
  */
 static int wlan_hdd_cfg80211_set_txpower(struct wiphy *wiphy,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0)
+        struct wireless_dev *wdev,
+#endif
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,35)
         enum tx_power_setting type,
 #else
@@ -6338,7 +6359,11 @@ static int wlan_hdd_cfg80211_set_txpower(struct wiphy *wiphy,
  * FUNCTION: wlan_hdd_cfg80211_get_txpower
  * This function is used to read the txpower
  */
-static int wlan_hdd_cfg80211_get_txpower(struct wiphy *wiphy, int *dbm)
+static int wlan_hdd_cfg80211_get_txpower(struct wiphy *wiphy,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0)
+                                         struct wireless_dev *wdev,
+#endif
+                                         int *dbm)
 {
 
     hdd_adapter_t *pAdapter;

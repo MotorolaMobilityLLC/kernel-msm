@@ -1947,9 +1947,6 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
 #endif
                                 struct cfg80211_scan_request *request)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
-    struct net_device *dev = request->wdev->netdev;
-#endif
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     u16 connectedTdlsPeers;
     hddTdlsPeer_t *curr_peer;
