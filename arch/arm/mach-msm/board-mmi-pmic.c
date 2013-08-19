@@ -307,7 +307,7 @@ out:
 void __init mmi_init_pm8921_gpio_mpp(void)
 {
 	int i;
-	unsigned int size;
+	unsigned int size = 0;
 	struct pm8xxx_gpio_init *gpios = NULL;
 	struct pm8xxx_mpp_init *mpps = NULL;
 
