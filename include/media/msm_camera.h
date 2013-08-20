@@ -1,5 +1,5 @@
 /* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
- *
+*
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
  * only version 2 as published by the Free Software Foundation.
@@ -570,6 +570,7 @@ struct msm_camera_cfg_cmd {
 #define CMD_AXI_STOP   0xE2
 #define CMD_AXI_RESET  0xE3
 #define CMD_AXI_ABORT  0xE4
+#define CMD_AXI_STOP_RECOVERY  0xE5
 
 
 
@@ -907,7 +908,8 @@ struct msm_stats_buf {
 #define MSM_V4L2_PID_INST_HANDLE            (V4L2_CID_PRIVATE_BASE+16)
 #define MSM_V4L2_PID_MMAP_INST              (V4L2_CID_PRIVATE_BASE+17)
 #define MSM_V4L2_PID_PP_PLANE_INFO          (V4L2_CID_PRIVATE_BASE+18)
-#define MSM_V4L2_PID_MAX                    MSM_V4L2_PID_PP_PLANE_INFO
+#define MSM_V4L2_PID_AVTIMER                (V4L2_CID_PRIVATE_BASE+19)
+#define MSM_V4L2_PID_MAX                     MSM_V4L2_PID_AVTIMER
 
 /* camera operation mode for video recording - two frame output queues */
 #define MSM_V4L2_CAM_OP_DEFAULT         0
@@ -1024,7 +1026,9 @@ struct msm_snapshot_pp_status {
 #define CFG_DIRECT_I2C_READ           61
 #define CFG_HDR_UPDATE                62
 #define CFG_SET_STROBE                63
-#define CFG_MAX                       64
+#define CFG_ACTUAOTOR_REG_INIT        64
+#define CFG_MAX                       65
+
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
@@ -1720,6 +1724,7 @@ struct damping_params_t {
 enum actuator_type {
 	ACTUATOR_VCM,
 	ACTUATOR_PIEZO,
+	ACTUATOR_HALL_EFFECT,
 };
 
 enum msm_actuator_data_type {

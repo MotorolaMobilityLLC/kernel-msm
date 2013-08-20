@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -12,6 +12,7 @@
  */
 
 #include <linux/slab.h>
+#include <linux/msm_kgsl.h>
 
 #include "kgsl.h"
 #include "kgsl_sharedmem.h"
@@ -143,11 +144,10 @@ void build_quad_vtxbuff(struct adreno_context *drawctxt,
  */
 int adreno_drawctxt_create(struct kgsl_device *device,
 			struct kgsl_pagetable *pagetable,
-			struct kgsl_context *context, uint32_t flags)
+			struct kgsl_context *context, uint32_t *flags)
 {
 	struct adreno_context *drawctxt;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 	int ret;
 
 	drawctxt = kzalloc(sizeof(struct adreno_context), GFP_KERNEL);
@@ -160,27 +160,37 @@ int adreno_drawctxt_create(struct kgsl_device *device,
 	drawctxt->pagetable = pagetable;
 	drawctxt->bin_base_offset = 0;
 	drawctxt->id = context->id;
-	rb->timestamp[context->id] = 0;
+	drawctxt->timestamp = 0;
 
-	if (flags & KGSL_CONTEXT_PREAMBLE)
+	*flags &= (KGSL_CONTEXT_PREAMBLE |
+		KGSL_CONTEXT_NO_GMEM_ALLOC |
+		KGSL_CONTEXT_PER_CONTEXT_TS |
+		KGSL_CONTEXT_USER_GENERATED_TS |
+		KGSL_CONTEXT_NO_FAULT_TOLERANCE |
+		KGSL_CONTEXT_TYPE_MASK);
+
+	if (*flags & KGSL_CONTEXT_PREAMBLE)
 		drawctxt->flags |= CTXT_FLAGS_PREAMBLE;
 
-	if (flags & KGSL_CONTEXT_NO_GMEM_ALLOC)
+	if (*flags & KGSL_CONTEXT_NO_GMEM_ALLOC)
 		drawctxt->flags |= CTXT_FLAGS_NOGMEMALLOC;
 
-	if (flags & KGSL_CONTEXT_PER_CONTEXT_TS)
+	if (*flags & KGSL_CONTEXT_PER_CONTEXT_TS)
 		drawctxt->flags |= CTXT_FLAGS_PER_CONTEXT_TS;
 
-	if (flags & KGSL_CONTEXT_USER_GENERATED_TS) {
-		if (!(flags & KGSL_CONTEXT_PER_CONTEXT_TS)) {
+	if (*flags & KGSL_CONTEXT_USER_GENERATED_TS) {
+		if (!(*flags & KGSL_CONTEXT_PER_CONTEXT_TS)) {
 			ret = -EINVAL;
 			goto err;
 		}
 		drawctxt->flags |= CTXT_FLAGS_USER_GENERATED_TS;
 	}
 
-	if (flags & KGSL_CONTEXT_NO_FAULT_TOLERANCE)
+	if (*flags & KGSL_CONTEXT_NO_FAULT_TOLERANCE)
 		drawctxt->flags |= CTXT_FLAGS_NO_FAULT_TOLERANCE;
+
+	drawctxt->type =
+		(*flags & KGSL_CONTEXT_TYPE_MASK) >> KGSL_CONTEXT_TYPE_SHIFT;
 
 	ret = adreno_dev->gpudev->ctxt_create(adreno_dev, drawctxt);
 	if (ret)

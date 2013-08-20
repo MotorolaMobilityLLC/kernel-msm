@@ -86,17 +86,12 @@ struct kgsl_fence_event_priv {
  */
 
 static inline void kgsl_fence_event_cb(struct kgsl_device *device,
-	void *priv, u32 context_id, u32 timestamp)
+	void *priv, u32 context_id, u32 timestamp, u32 type)
 {
 	struct kgsl_fence_event_priv *ev = priv;
 
-	/*
-	 * Always signal the timeline with the timestamp that it expects. If the
-	 * context is canceled, the passed in timestamp might be different which
-	 * confuses sync
-	 */
-
-	kgsl_sync_timeline_signal(ev->context->timeline, ev->timestamp);
+	/* Signal time timeline for every event type */
+	kgsl_sync_timeline_signal(ev->context->timeline, timestamp);
 	kgsl_context_put(ev->context);
 	kfree(ev);
 }
@@ -128,16 +123,19 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	if (len != sizeof(priv))
 		return -EINVAL;
 
-	context = kgsl_find_context(owner, context_id);
-	if (context == NULL)
-		return -EINVAL;
-
 	event = kzalloc(sizeof(*event), GFP_KERNEL);
 	if (event == NULL)
 		return -ENOMEM;
+
+	context = kgsl_context_get_owner(owner, context_id);
+
+	if (context == NULL) {
+		kfree(event);
+		return -EINVAL;
+	}
+
 	event->context = context;
 	event->timestamp = timestamp;
-	kgsl_context_get(context);
 
 	pt = kgsl_sync_pt_create(context->timeline, timestamp);
 	if (pt == NULL) {
@@ -168,6 +166,10 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 		goto fail_copy_fd;
 	}
 
+	/*
+	 * Hold the context ref-count for the event - it will get released in
+	 * the callback
+	 */
 	ret = kgsl_add_event(device, context_id, timestamp,
 			kgsl_fence_event_cb, event, owner);
 	if (ret)
@@ -218,6 +220,15 @@ static void kgsl_sync_pt_value_str(struct sync_pt *sync_pt,
 	snprintf(str, size, "%u", kpt->timestamp);
 }
 
+static void kgsl_sync_timeline_release_obj(struct sync_timeline *sync_timeline)
+{
+	/*
+	 * Make sure to free the timeline only after destroy flag is set.
+	 * This is to avoid further accessing to the timeline from KGSL and
+	 * also to catch any unbalanced kref of timeline.
+	 */
+	BUG_ON(sync_timeline && (sync_timeline->destroyed != true));
+}
 static const struct sync_timeline_ops kgsl_sync_timeline_ops = {
 	.driver_name = "kgsl-timeline",
 	.dup = kgsl_sync_pt_dup,
@@ -225,6 +236,7 @@ static const struct sync_timeline_ops kgsl_sync_timeline_ops = {
 	.compare = kgsl_sync_pt_compare,
 	.timeline_value_str = kgsl_sync_timeline_value_str,
 	.pt_value_str = kgsl_sync_pt_value_str,
+	.release_obj = kgsl_sync_timeline_release_obj,
 };
 
 int kgsl_sync_timeline_create(struct kgsl_context *context)
