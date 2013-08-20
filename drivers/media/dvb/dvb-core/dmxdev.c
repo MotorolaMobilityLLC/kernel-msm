@@ -480,7 +480,6 @@ static int dvr_input_thread_entry(void *arg)
 		/* wait for input */
 		ret = wait_event_interruptible(
 			src->queue,
-			(!src->data) ||
 			(dvb_ringbuffer_avail(src) > 188) ||
 			(src->error != 0) ||
 			dmxdev->dvr_in_exit);
@@ -490,7 +489,7 @@ static int dvr_input_thread_entry(void *arg)
 
 		spin_lock(&dmxdev->dvr_in_lock);
 
-		if (!src->data || dmxdev->exit || dmxdev->dvr_in_exit) {
+		if (dmxdev->exit || dmxdev->dvr_in_exit) {
 			spin_unlock(&dmxdev->dvr_in_lock);
 			break;
 		}
@@ -501,6 +500,11 @@ static int dvr_input_thread_entry(void *arg)
 			break;
 		}
 
+		if (!src->data) {
+			spin_unlock(&dmxdev->dvr_in_lock);
+			continue;
+		}
+
 		dmxdev->dvr_processing_input = 1;
 
 		ret = dvb_ringbuffer_avail(src);
@@ -509,7 +513,6 @@ static int dvr_input_thread_entry(void *arg)
 		split = (src->pread + ret > src->size) ?
 				src->size - src->pread :
 				0;
-
 		/*
 		 * In DVR PULL mode, write might block.
 		 * Lock on DVR buffer is released before calling to
@@ -2073,8 +2076,18 @@ static int dvb_dmxdev_ts_event_cb(struct dmx_ts_feed *feed,
 		return 0;
 	}
 
-	if ((dmxdevfilter->params.pes.output == DMX_OUT_DECODER) ||
-		(buffer->error)) {
+	if (dmxdevfilter->params.pes.output == DMX_OUT_DECODER) {
+		if (DMX_OVERRUN_ERROR == dmx_data_ready->status) {
+			dprintk("dmxdev: buffer overflow\n");
+			event.type = DMX_EVENT_BUFFER_OVERFLOW;
+			dvb_dmxdev_add_event(&dmxdevfilter->events, &event);
+		}
+		spin_unlock(&dmxdevfilter->dev->lock);
+		wake_up_all(&buffer->queue);
+		return 0;
+	}
+
+	if (buffer->error) {
 		spin_unlock(&dmxdevfilter->dev->lock);
 		wake_up_all(&buffer->queue);
 		return 0;
@@ -2712,10 +2725,18 @@ static int dvb_dmxdev_add_pid(struct dmxdev *dmxdev,
 static int dvb_dmxdev_remove_pid(struct dmxdev *dmxdev,
 				  struct dmxdev_filter *filter, u16 pid)
 {
+	int feed_count;
 	struct dmxdev_feed *feed, *tmp;
 
 	if ((filter->type != DMXDEV_TYPE_PES) ||
 	    (filter->state < DMXDEV_STATE_SET))
+		return -EINVAL;
+
+	feed_count = 0;
+	list_for_each_entry(tmp, &filter->feed.ts, next)
+		feed_count++;
+
+	if (feed_count <= 1)
 		return -EINVAL;
 
 	list_for_each_entry_safe(feed, tmp, &filter->feed.ts, next) {

@@ -816,6 +816,13 @@ int msm_server_proc_ctrl_cmd(struct msm_cam_v4l2_device *pcam,
 		rc = -EINVAL;
 		goto end;
 	}
+
+	if(tmp_cmd.length > 0xffff) {
+		 pr_err("%s Integer Overflow occurred \n",__func__);
+		 rc = -EINVAL;
+		 goto end;
+	}
+
 	value_len = tmp_cmd.length;
 	ctrl_data = kzalloc(value_len+cmd_len, GFP_KERNEL);
 	if (!ctrl_data) {
@@ -1582,9 +1589,9 @@ int msm_server_update_sensor_info(struct msm_cam_v4l2_device *pcam,
 	  device info*/
 	snprintf(pcam->media_dev.serial,
 			sizeof(pcam->media_dev.serial),
-			"%s-%d-%d", QCAMERA_NAME,
+			"%s-%d-%d-%d", QCAMERA_NAME,
 			sdata->sensor_platform_info->mount_angle,
-			sdata->camera_type);
+			sdata->camera_type,sdata->sensor_type);
 
 	g_server_dev.camera_info.num_cameras++;
 	g_server_dev.mctl_node_info.num_mctl_nodes++;
@@ -1822,6 +1829,10 @@ static void msm_cam_server_subdev_notify(struct v4l2_subdev *sd,
 	case NOTIFY_VFE_MSG_COMP_STATS:
 	case NOTIFY_VFE_BUF_EVT:
 		p_mctl = msm_cam_server_get_mctl(mctl_handle);
+		if (p_mctl == NULL) {
+			pr_err("%s: Not find p_mctl instance!\n", __func__);
+			return;
+		}
 		if (p_mctl && p_mctl->isp_notify && p_mctl->vfe_sdev)
 			rc = p_mctl->isp_notify(p_mctl,
 				p_mctl->vfe_sdev, notification, arg);
@@ -2642,6 +2653,7 @@ int msm_server_open_client(int *p_qidx)
 		MAX_SERVER_PAYLOAD_LENGTH, GFP_KERNEL);
 	if (!queue->ctrl_data) {
 		pr_err("%s: Could not find memory\n", __func__);
+		mutex_unlock(&g_server_dev.server_lock);
 		return -ENOMEM;
 	}
 	msm_queue_init(&queue->ctrl_q, "control");

@@ -436,6 +436,7 @@ struct mpq_demux {
 	u32 sdmx_process_packets_sum;
 	u32 sdmx_process_packets_average;
 	u32 sdmx_process_packets_min;
+	enum sdmx_log_level sdmx_log_level;
 
 	struct timespec decoder_out_last_time;
 	struct timespec last_notification_time;
@@ -620,12 +621,13 @@ int mpq_dmx_process_video_packet(struct dvb_demux_feed *feed, const u8 *buf);
 int mpq_dmx_process_pcr_packet(struct dvb_demux_feed *feed, const u8 *buf);
 
 /**
- * mpq_dmx_init_hw_statistics -
- * Extend dvb-demux debugfs with HW statistics.
+ * mpq_dmx_init_debugfs_entries -
+ * Extend dvb-demux debugfs with mpq related entries (HW statistics and secure
+ * demux log level).
  *
  * @mpq_demux: The mpq_demux device to initialize.
  */
-void mpq_dmx_init_hw_statistics(struct mpq_demux *mpq_demux);
+void mpq_dmx_init_debugfs_entries(struct mpq_demux *mpq_demux);
 
 /**
  * mpq_dmx_update_hw_statistics -
@@ -710,13 +712,15 @@ int mpq_dmx_write(struct dmx_demux *demux, const char *buf, size_t count);
  * @input: input buffer descriptor
  * @fill_count: number of data bytes in input buffer that can be read
  * @read_offset: offset in buffer for reading
+ * @tsp_size: size of single TS packet
  *
  * Return number of bytes read or error code
  */
 int mpq_sdmx_process(struct mpq_demux *mpq_demux,
 	struct sdmx_buff_descr *input,
 	u32 fill_count,
-	u32 read_offset);
+	u32 read_offset,
+	size_t tsp_size);
 
 /**
  * mpq_sdmx_loaded - Returns 1 if secure demux application is loaded,

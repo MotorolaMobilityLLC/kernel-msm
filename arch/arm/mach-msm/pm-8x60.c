@@ -56,6 +56,7 @@
 #include "timer.h"
 #include "pm-boot.h"
 #include <mach/event_timer.h>
+#include <linux/cpu_pm.h>
 
 /******************************************************************************
  * Debug Definitions
@@ -124,7 +125,6 @@ static char *msm_pm_sleep_mode_labels[MSM_PM_SLEEP_MODE_NR] = {
 static struct hrtimer pm_hrtimer;
 static struct msm_pm_sleep_ops pm_sleep_ops;
 static struct msm_pm_sleep_status_data *msm_pm_slp_sts;
-
 /*
  * Write out the attribute.
  */
@@ -537,6 +537,9 @@ static bool __ref msm_pm_spm_power_collapse(
 		pr_info("CPU%u: %s: notify_rpm %d\n",
 			cpu, __func__, (int) notify_rpm);
 
+	if (from_idle == true)
+		cpu_pm_enter();
+
 	ret = msm_spm_set_low_power_mode(
 			MSM_SPM_MODE_POWER_COLLAPSE, notify_rpm);
 	WARN_ON(ret);
@@ -564,6 +567,10 @@ static bool __ref msm_pm_spm_power_collapse(
 
 	ret = msm_spm_set_low_power_mode(MSM_SPM_MODE_CLOCK_GATING, false);
 	WARN_ON(ret);
+
+	if (from_idle == true)
+		cpu_pm_exit();
+
 	return collapsed;
 }
 
@@ -881,8 +888,11 @@ int msm_pm_idle_enter(enum msm_pm_sleep_mode sleep_mode)
 		break;
 
 	case MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE:
-		msm_pm_power_collapse_standalone(true);
-		exit_stat = MSM_PM_STAT_IDLE_STANDALONE_POWER_COLLAPSE;
+		if(msm_pm_power_collapse_standalone(true))
+			exit_stat = MSM_PM_STAT_IDLE_STANDALONE_POWER_COLLAPSE;
+		else
+			exit_stat =
+			     MSM_PM_STAT_IDLE_FAILED_STANDALONE_POWER_COLLAPSE;
 		break;
 
 	case MSM_PM_SLEEP_MODE_POWER_COLLAPSE: {
@@ -892,7 +902,7 @@ int msm_pm_idle_enter(enum msm_pm_sleep_mode sleep_mode)
 		int ret = -ENODEV;
 		int notify_rpm =
 			(sleep_mode == MSM_PM_SLEEP_MODE_POWER_COLLAPSE);
-		int collapsed;
+		int collapsed = 0;
 
 		timer_expiration = msm_pm_timer_enter_idle();
 
@@ -929,7 +939,10 @@ int msm_pm_idle_enter(enum msm_pm_sleep_mode sleep_mode)
 						true, notify_rpm, collapsed);
 		}
 		msm_pm_timer_exit_idle(timer_halted);
-		exit_stat = MSM_PM_STAT_IDLE_POWER_COLLAPSE;
+		if (collapsed)
+			exit_stat = MSM_PM_STAT_IDLE_POWER_COLLAPSE;
+		else
+			exit_stat = MSM_PM_STAT_IDLE_FAILED_POWER_COLLAPSE;
 		break;
 	}
 
@@ -955,13 +968,13 @@ cpuidle_enter_bail:
 
 int msm_pm_wait_cpu_shutdown(unsigned int cpu)
 {
-	int timeout = 0;
+	int timeout = 10;
 
 	if (!msm_pm_slp_sts)
 		return 0;
 	if (!msm_pm_slp_sts[cpu].base_addr)
 		return 0;
-	while (1) {
+	while (timeout--) {
 		/*
 		 * Check for the SPM of the core being hotplugged to set
 		 * its sleep state.The SPM sleep state indicates that the
@@ -972,10 +985,10 @@ int msm_pm_wait_cpu_shutdown(unsigned int cpu)
 		if (acc_sts & msm_pm_slp_sts[cpu].mask)
 			return 0;
 		udelay(100);
-		WARN(++timeout == 20, "CPU%u didn't collape within 2ms\n",
-					cpu);
 	}
 
+	pr_info("%s(): Timed out waiting for CPU %u SPM to enter sleep state",
+		__func__, cpu);
 	return -EBUSY;
 }
 
@@ -1036,6 +1049,7 @@ static int msm_pm_enter(suspend_state_t state)
 		void *rs_limits = NULL;
 		int ret = -ENODEV;
 		uint32_t power;
+		int collapsed = 0;
 
 		if (MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask)
 			pr_info("%s: power collapse\n", __func__);
@@ -1060,7 +1074,7 @@ static int msm_pm_enter(suspend_state_t state)
 						msm_pm_max_sleep_time,
 						rs_limits, false, true);
 			if (!ret) {
-				int collapsed = msm_pm_power_collapse(false);
+				collapsed = msm_pm_power_collapse(false);
 				if (pm_sleep_ops.exit_sleep) {
 					pm_sleep_ops.exit_sleep(rs_limits,
 						false, true, collapsed);
@@ -1071,7 +1085,10 @@ static int msm_pm_enter(suspend_state_t state)
 				__func__);
 		}
 		time = msm_pm_timer_exit_suspend(time, period);
-		msm_pm_add_stat(MSM_PM_STAT_SUSPEND, time);
+		if (collapsed)
+			msm_pm_add_stat(MSM_PM_STAT_SUSPEND, time);
+		else
+			msm_pm_add_stat(MSM_PM_STAT_FAILED_SUSPEND, time);
 	} else if (allow[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE]) {
 		if (MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask)
 			pr_info("%s: standalone power collapse\n", __func__);
@@ -1155,6 +1172,93 @@ fail:
 static struct of_device_id msm_pc_debug_table[] = {
 	{.compatible = "qcom,pc-cntr"},
 	{},
+};
+static int __devinit msm_cpu_status_probe(struct platform_device *pdev)
+{
+	struct msm_pm_sleep_status_data *pdata;
+	char *key;
+	u32 cpu;
+
+	if (!pdev)
+		return -EFAULT;
+
+	msm_pm_slp_sts =
+		kzalloc(sizeof(*msm_pm_slp_sts) * num_possible_cpus(),
+				GFP_KERNEL);
+
+	if (!msm_pm_slp_sts)
+		return -ENOMEM;
+
+	if (pdev->dev.of_node) {
+		struct resource *res;
+		u32 offset;
+		int rc;
+		u32 mask;
+
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res)
+			goto fail_free_mem;
+
+		key = "qcom,cpu-alias-addr";
+		rc = of_property_read_u32(pdev->dev.of_node, key, &offset);
+
+		if (rc)
+			goto fail_free_mem;
+
+		key = "qcom,sleep-status-mask";
+		rc = of_property_read_u32(pdev->dev.of_node, key,
+					&mask);
+		if (rc)
+			goto fail_free_mem;
+
+		for_each_possible_cpu(cpu) {
+			msm_pm_slp_sts[cpu].base_addr =
+				ioremap(res->start + cpu * offset,
+					resource_size(res));
+			msm_pm_slp_sts[cpu].mask = mask;
+
+			if (!msm_pm_slp_sts[cpu].base_addr)
+				goto failed_of_node;
+		}
+
+	} else {
+		pdata = pdev->dev.platform_data;
+		if (!pdev->dev.platform_data)
+			goto fail_free_mem;
+
+		for_each_possible_cpu(cpu) {
+			msm_pm_slp_sts[cpu].base_addr =
+				pdata->base_addr + cpu * pdata->cpu_offset;
+			msm_pm_slp_sts[cpu].mask = pdata->mask;
+		}
+	}
+
+	return 0;
+
+failed_of_node:
+	pr_info("%s(): Failed to key=%s\n", __func__, key);
+	for_each_possible_cpu(cpu) {
+		if (msm_pm_slp_sts[cpu].base_addr)
+			iounmap(msm_pm_slp_sts[cpu].base_addr);
+	}
+fail_free_mem:
+	kfree(msm_pm_slp_sts);
+	return -EINVAL;
+
+};
+
+static struct of_device_id msm_slp_sts_match_tbl[] = {
+	{.compatible = "qcom,cpu-sleep-status"},
+	{},
+};
+
+static struct platform_driver msm_cpu_status_driver = {
+	.probe = msm_cpu_status_probe,
+	.driver = {
+		.name = "cpu_slp_status",
+		.owner = THIS_MODULE,
+		.of_match_table = msm_slp_sts_match_tbl,
+	},
 };
 
 static struct platform_driver msm_pc_counter_driver = {
@@ -1244,96 +1348,10 @@ static int __init msm_pm_setup_saved_state(void)
 }
 core_initcall(msm_pm_setup_saved_state);
 
-static int __devinit msm_cpu_status_probe(struct platform_device *pdev)
-{
-	struct msm_pm_sleep_status_data *pdata;
-	char *key;
-	u32 cpu;
-
-	if (!pdev)
-		return -EFAULT;
-
-	msm_pm_slp_sts =
-		kzalloc(sizeof(*msm_pm_slp_sts) * num_possible_cpus(),
-				GFP_KERNEL);
-
-	if (!msm_pm_slp_sts)
-		return -ENOMEM;
-
-	if (pdev->dev.of_node) {
-		struct resource *res;
-		u32 offset;
-		int rc;
-		u32 mask;
-
-		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (!res)
-			goto fail_free_mem;
-
-		key = "qcom,cpu-alias-addr";
-		rc = of_property_read_u32(pdev->dev.of_node, key, &offset);
-
-		if (rc)
-			goto fail_free_mem;
-
-		key = "qcom,sleep-status-mask";
-		rc = of_property_read_u32(pdev->dev.of_node, key,
-					&mask);
-		if (rc)
-			goto fail_free_mem;
-
-		for_each_possible_cpu(cpu) {
-			msm_pm_slp_sts[cpu].base_addr =
-				ioremap(res->start + cpu * offset,
-					resource_size(res));
-			msm_pm_slp_sts[cpu].mask = mask;
-
-			if (!msm_pm_slp_sts[cpu].base_addr)
-				goto failed_of_node;
-		}
-
-	} else {
-		pdata = pdev->dev.platform_data;
-		if (!pdev->dev.platform_data)
-			goto fail_free_mem;
-
-		for_each_possible_cpu(cpu) {
-			msm_pm_slp_sts[cpu].base_addr =
-				pdata->base_addr + cpu * pdata->cpu_offset;
-			msm_pm_slp_sts[cpu].mask = pdata->mask;
-		}
-	}
-
-	return 0;
-
-failed_of_node:
-	pr_info("%s(): Failed to key=%s\n", __func__, key);
-	for_each_possible_cpu(cpu) {
-		if (msm_pm_slp_sts[cpu].base_addr)
-			iounmap(msm_pm_slp_sts[cpu].base_addr);
-	}
-fail_free_mem:
-	kfree(msm_pm_slp_sts);
-	return -EINVAL;
-
-};
-
-static struct of_device_id msm_slp_sts_match_tbl[] = {
-	{.compatible = "qcom,cpu-sleep-status"},
-	{},
-};
-
-static struct platform_driver msm_cpu_status_driver = {
-	.probe = msm_cpu_status_probe,
-	.driver = {
-		.name = "cpu_slp_status",
-		.owner = THIS_MODULE,
-		.of_match_table = msm_slp_sts_match_tbl,
-	},
-};
-
 static int __init msm_pm_init(void)
 {
+	int rc;
+
 	enum msm_pm_time_stats_id enable_stats[] = {
 		MSM_PM_STAT_IDLE_WFI,
 		MSM_PM_STAT_RETENTION,
@@ -1350,7 +1368,13 @@ static int __init msm_pm_init(void)
 	hrtimer_init(&pm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	msm_cpuidle_init();
 	platform_driver_register(&msm_pc_counter_driver);
-	platform_driver_register(&msm_cpu_status_driver);
+	rc = platform_driver_register(&msm_cpu_status_driver);
+
+	if (rc) {
+		pr_err("%s(): failed to register driver %s\n", __func__,
+				msm_cpu_status_driver.driver.name);
+		return rc;
+	}
 
 	atomic_set(&cpu_online_num, num_online_cpus());
 

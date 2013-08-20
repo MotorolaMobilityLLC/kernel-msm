@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -49,6 +49,7 @@ static unsigned char c_byt_pair_index;
 static char utf_8_flag;
 static char rt_ert_flag;
 static char formatting_dir;
+static DEFINE_MUTEX(iris_fm);
 
 module_param(rds_buf, uint, 0);
 MODULE_PARM_DESC(rds_buf, "RDS buffer entries: *100*");
@@ -1167,6 +1168,7 @@ static int __radio_hci_request(struct radio_hci_dev *hdev,
 
 	DECLARE_WAITQUEUE(wait, current);
 
+	mutex_lock(&iris_fm);
 	hdev->req_status = HCI_REQ_PEND;
 
 	add_wait_queue(&hdev->req_wait_q, &wait);
@@ -1178,8 +1180,10 @@ static int __radio_hci_request(struct radio_hci_dev *hdev,
 
 	remove_wait_queue(&hdev->req_wait_q, &wait);
 
-	if (signal_pending(current))
+	if (signal_pending(current)) {
+		mutex_unlock(&iris_fm);
 		return -EINTR;
+	}
 
 	switch (hdev->req_status) {
 	case HCI_REQ_DONE:
@@ -1197,6 +1201,7 @@ static int __radio_hci_request(struct radio_hci_dev *hdev,
 	}
 
 	hdev->req_status = hdev->req_result = 0;
+	mutex_unlock(&iris_fm);
 
 	return err;
 }
@@ -1630,8 +1635,9 @@ static void hci_cc_fm_disable_rsp(struct radio_hci_dev *hdev,
 
 	if (status)
 		return;
-	if (radio->mode != FM_CALIB)
+	if ((radio->mode != FM_CALIB) && (radio->mode != FM_OFF))
 		iris_q_event(radio, IRIS_EVT_RADIO_DISABLED);
+	radio->mode = FM_OFF;
 
 	radio_hci_req_complete(hdev, status);
 }
@@ -2380,7 +2386,7 @@ static inline void hci_ev_radio_text(struct radio_hci_dev *hdev,
 
 	iris_q_event(radio, IRIS_EVT_NEW_RT_RDS);
 
-	while ((skb->data[len+RDS_OFFSET] != 0x0d) && (len < RX_RT_DATA_LENGTH))
+	while ((skb->data[len+RDS_OFFSET] != 0x0d) && (len < MAX_RT_LENGTH))
 		len++;
 	data = kmalloc(len+RDS_OFFSET, GFP_ATOMIC);
 	if (!data) {
@@ -2392,7 +2398,7 @@ static inline void hci_ev_radio_text(struct radio_hci_dev *hdev,
 	data[1] = skb->data[RDS_PTYPE];
 	data[2] = skb->data[RDS_PID_LOWER];
 	data[3] = skb->data[RDS_PID_HIGHER];
-	data[4] = 0;
+	data[4] = skb->data[RT_A_B_FLAG_OFFSET];
 
 	memcpy(data+RDS_OFFSET, &skb->data[RDS_OFFSET], len);
 	data[len+RDS_OFFSET] = 0x00;
@@ -2411,6 +2417,10 @@ static void hci_ev_af_list(struct radio_hci_dev *hdev,
 	ev.tune_freq = *((int *) &skb->data[0]);
 	ev.pi_code = *((__le16 *) &skb->data[PI_CODE_OFFSET]);
 	ev.af_size = skb->data[AF_SIZE_OFFSET];
+	if (ev.af_size > AF_LIST_MAX) {
+		FMDERR("AF list size received more than available size");
+		return;
+	}
 	memcpy(&ev.af_list[0], &skb->data[AF_LIST_OFFSET], ev.af_size);
 	iris_q_event(radio, IRIS_EVT_NEW_AF_LIST);
 	iris_q_evt_data(radio, (char *)&ev, sizeof(ev), IRIS_BUF_AF_LIST);
@@ -2683,7 +2693,7 @@ static int iris_do_calibration(struct iris_device *radio)
 			radio->fm_hdev);
 	if (retval < 0)
 		FMDERR("Disable Failed after calibration %d", retval);
-	radio->mode = FM_OFF;
+	radio->mode = FM_TURNING_OFF;
 	return retval;
 }
 static int iris_vidioc_g_ctrl(struct file *file, void *priv,
@@ -2691,6 +2701,9 @@ static int iris_vidioc_g_ctrl(struct file *file, void *priv,
 {
 	struct iris_device *radio = video_get_drvdata(video_devdata(file));
 	int retval = 0;
+	int cf0;
+	struct hci_fm_def_data_rd_req rd;
+	int lsb, msb;
 
 	switch (ctrl->id) {
 	case V4L2_CID_AUDIO_VOLUME:
@@ -2852,6 +2865,113 @@ static int iris_vidioc_g_ctrl(struct file *file, void *priv,
 		break;
 	case V4L2_CID_PRIVATE_VALID_CHANNEL:
 		ctrl->value = radio->is_station_valid;
+		break;
+	case V4L2_CID_PRIVATE_AF_RMSSI_TH:
+		rd.mode = FM_RDS_CNFG_MODE;
+		rd.length = FM_RDS_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("Get AF Jump Threshold failed %x", retval);
+			return retval;
+		}
+		lsb = radio->default_data.data[AF_RMSSI_TH_LSB_OFFSET];
+		msb = radio->default_data.data[AF_RMSSI_TH_MSB_OFFSET];
+		ctrl->value = ((msb << 8) | lsb);
+		break;
+	case V4L2_CID_PRIVATE_AF_RMSSI_SAMPLES:
+		rd.mode = FM_RDS_CNFG_MODE;
+		rd.length = FM_RDS_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("Get AF jump rmssi samples failed %x", retval);
+			return retval;
+		}
+		ctrl->value = radio->default_data.data[AF_RMSSI_SAMPLES_OFFSET];
+		break;
+	case V4L2_CID_PRIVATE_GOOD_CH_RMSSI_TH:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("get good channel rmssi th failed %x", retval);
+			return retval;
+		}
+		ctrl->value = radio->default_data.data[GD_CH_RMSSI_TH_OFFSET];
+		if (ctrl->value > MAX_GD_CH_RMSSI_TH)
+			ctrl->value -= 256;
+		break;
+	case V4L2_CID_PRIVATE_SRCHALGOTYPE:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("get search algo type failed %x", retval);
+			return retval;
+		}
+		ctrl->value = radio->default_data.data[SRCH_ALGO_TYPE_OFFSET];
+		break;
+	case V4L2_CID_PRIVATE_SINRFIRSTSTAGE:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		ctrl->value = radio->default_data.data[SINRFIRSTSTAGE_OFFSET];
+		if (ctrl->value > MAX_SINR_FIRSTSTAGE)
+			ctrl->value -= 256;
+		break;
+	case V4L2_CID_PRIVATE_RMSSIFIRSTSTAGE:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		ctrl->value = radio->default_data.data[RMSSIFIRSTSTAGE_OFFSET];
+		if (ctrl->value > MAX_RMSSI_FIRSTSTAGE)
+			ctrl->value -= 256;
+		break;
+	case V4L2_CID_PRIVATE_CF0TH12:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		ctrl->value = radio->default_data.data[CF0TH12_BYTE1_OFFSET];
+		cf0 = radio->default_data.data[CF0TH12_BYTE2_OFFSET];
+		ctrl->value |= (cf0 << 8);
+		cf0 = radio->default_data.data[CF0TH12_BYTE3_OFFSET];
+		ctrl->value |= (cf0 << 16);
+		cf0 = radio->default_data.data[CF0TH12_BYTE4_OFFSET];
+		if (cf0 > 127)
+			cf0 -= 256;
+		ctrl->value |= (cf0 << 24);
 		break;
 	default:
 		retval = -EINVAL;
@@ -3017,8 +3137,8 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 	unsigned long arg = 0;
 	struct hci_fm_tx_ps tx_ps = {0};
 	struct hci_fm_tx_rt tx_rt = {0};
-	struct hci_fm_def_data_rd_req rd_txgain;
-	struct hci_fm_def_data_wr_req wr_txgain;
+	struct hci_fm_def_data_rd_req rd;
+	struct hci_fm_def_data_wr_req wrd;
 	char sinr_th, sinr;
 	__u8 intf_det_low_th, intf_det_high_th, intf_det_out;
 
@@ -3119,7 +3239,7 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 						   " %d\n", retval);
 					return retval;
 				}
-				radio->mode = FM_OFF;
+				radio->mode = FM_TURNING_OFF;
 				break;
 			case FM_TRANS:
 				retval = hci_cmd(HCI_FM_DISABLE_TRANS_CMD,
@@ -3130,7 +3250,7 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 						" %d\n", retval);
 					return retval;
 				}
-				radio->mode = FM_OFF;
+				radio->mode = FM_TURNING_OFF;
 				break;
 			default:
 				retval = -EINVAL;
@@ -3320,25 +3440,25 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 			ctrl->value = FM_TX_PWR_LVL_MAX;
 		if (ctrl->value < FM_TX_PWR_LVL_0)
 			ctrl->value = FM_TX_PWR_LVL_0;
-		rd_txgain.mode = FM_TX_PHY_CFG_MODE;
-		rd_txgain.length = FM_TX_PHY_CFG_LEN;
-		rd_txgain.param_len = 0x00;
-		rd_txgain.param = 0x00;
+		rd.mode = FM_TX_PHY_CFG_MODE;
+		rd.length = FM_TX_PHY_CFG_LEN;
+		rd.param_len = 0x00;
+		rd.param = 0x00;
 
-		retval = hci_def_data_read(&rd_txgain, radio->fm_hdev);
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
 		if (retval < 0) {
 			FMDERR("Default data read failed for PHY_CFG %d\n",
 			retval);
 			break;
 		}
-		memset(&wr_txgain, 0, sizeof(wr_txgain));
-		wr_txgain.mode = FM_TX_PHY_CFG_MODE;
-		wr_txgain.length = FM_TX_PHY_CFG_LEN;
-		memcpy(&wr_txgain.data, &radio->default_data.data,
+		memset(&wrd, 0, sizeof(wrd));
+		wrd.mode = FM_TX_PHY_CFG_MODE;
+		wrd.length = FM_TX_PHY_CFG_LEN;
+		memcpy(&wrd.data, &radio->default_data.data,
 					radio->default_data.ret_data_len);
-		wr_txgain.data[FM_TX_PWR_GAIN_OFFSET] =
+		wrd.data[FM_TX_PWR_GAIN_OFFSET] =
 				(ctrl->value) * FM_TX_PWR_LVL_STEP_SIZE;
-		retval = hci_def_data_write(&wr_txgain, radio->fm_hdev);
+		retval = hci_def_data_write(&wrd, radio->fm_hdev);
 		if (retval < 0)
 			FMDERR("Default write failed for PHY_TXGAIN %d\n",
 			retval);
@@ -3530,6 +3650,171 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 			radio->is_station_valid = VALID_CHANNEL;
 		else
 			radio->is_station_valid = INVALID_CHANNEL;
+		break;
+	case V4L2_CID_PRIVATE_AF_RMSSI_TH:
+		rd.mode = FM_RDS_CNFG_MODE;
+		rd.length = FM_RDS_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		wrd.mode = FM_RDS_CNFG_MODE;
+		wrd.length = FM_RDS_CNFG_LEN;
+		memcpy(&wrd.data, &radio->default_data.data,
+				radio->default_data.ret_data_len);
+		wrd.data[AF_RMSSI_TH_LSB_OFFSET] = ((ctrl->value) & 255);
+		wrd.data[AF_RMSSI_TH_MSB_OFFSET] = ((ctrl->value) >> 8);
+		retval = hci_def_data_write(&wrd, radio->fm_hdev);
+		if (retval < 0)
+			FMDERR("set AF jump RMSSI threshold failed\n");
+		break;
+	case V4L2_CID_PRIVATE_AF_RMSSI_SAMPLES:
+		rd.mode = FM_RDS_CNFG_MODE;
+		rd.length = FM_RDS_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		wrd.mode = FM_RDS_CNFG_MODE;
+		wrd.length = FM_RDS_CNFG_LEN;
+		memcpy(&wrd.data, &radio->default_data.data,
+				radio->default_data.ret_data_len);
+		wrd.data[AF_RMSSI_SAMPLES_OFFSET] = ctrl->value;
+		retval = hci_def_data_write(&wrd, radio->fm_hdev);
+		if (retval < 0)
+			FMDERR("set AF jump RMSSI Samples failed\n");
+		break;
+	case V4L2_CID_PRIVATE_GOOD_CH_RMSSI_TH:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		wrd.mode = FM_RX_CONFG_MODE;
+		wrd.length = FM_RX_CNFG_LEN;
+		memcpy(&wrd.data, &radio->default_data.data,
+				radio->default_data.ret_data_len);
+		wrd.data[GD_CH_RMSSI_TH_OFFSET] = ctrl->value;
+		retval = hci_def_data_write(&wrd, radio->fm_hdev);
+		if (retval < 0)
+			FMDERR("set good channel RMSSI th failed\n");
+		break;
+	case V4L2_CID_PRIVATE_SRCHALGOTYPE:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		wrd.mode = FM_RX_CONFG_MODE;
+		wrd.length = FM_RX_CNFG_LEN;
+		memcpy(&wrd.data, &radio->default_data.data,
+				radio->default_data.ret_data_len);
+		wrd.data[SRCH_ALGO_TYPE_OFFSET] = ctrl->value;
+		retval = hci_def_data_write(&wrd, radio->fm_hdev);
+		if (retval < 0)
+			FMDERR("set Search Algo Type failed\n");
+		break;
+	case V4L2_CID_PRIVATE_SINRFIRSTSTAGE:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		wrd.mode = FM_RX_CONFG_MODE;
+		wrd.length = FM_RX_CNFG_LEN;
+		memcpy(&wrd.data, &radio->default_data.data,
+				radio->default_data.ret_data_len);
+		wrd.data[SINRFIRSTSTAGE_OFFSET] = ctrl->value;
+		retval = hci_def_data_write(&wrd, radio->fm_hdev);
+		if (retval < 0)
+			FMDERR("set SINR First Stage failed\n");
+		break;
+	case V4L2_CID_PRIVATE_RMSSIFIRSTSTAGE:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		wrd.mode = FM_RX_CONFG_MODE;
+		wrd.length = FM_RX_CNFG_LEN;
+		memcpy(&wrd.data, &radio->default_data.data,
+				radio->default_data.ret_data_len);
+		wrd.data[RMSSIFIRSTSTAGE_OFFSET] = ctrl->value;
+		retval = hci_def_data_write(&wrd, radio->fm_hdev);
+		if (retval < 0)
+			FMDERR("set RMSSI First Stage failed\n");
+		break;
+	case V4L2_CID_PRIVATE_CF0TH12:
+		rd.mode = FM_RX_CONFG_MODE;
+		rd.length = FM_RX_CNFG_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed %x", retval);
+			return retval;
+		}
+		wrd.mode = FM_RX_CONFG_MODE;
+		wrd.length = FM_RX_CNFG_LEN;
+		memcpy(&wrd.data, &radio->default_data.data,
+				radio->default_data.ret_data_len);
+		wrd.data[CF0TH12_BYTE1_OFFSET] = (ctrl->value & 255);
+		wrd.data[CF0TH12_BYTE2_OFFSET] = ((ctrl->value >> 8) & 255);
+		wrd.data[CF0TH12_BYTE3_OFFSET] = ((ctrl->value >> 16) & 255);
+		wrd.data[CF0TH12_BYTE4_OFFSET] = ((ctrl->value >> 24) & 255);
+		retval = hci_def_data_write(&wrd, radio->fm_hdev);
+		if (retval < 0)
+			FMDERR("set CF0 Threshold failed\n");
+		break;
+	case V4L2_CID_PRIVATE_RXREPEATCOUNT:
+		rd.mode = RDS_PS0_XFR_MODE;
+		rd.length = RDS_PS0_LEN;
+		rd.param_len = 0;
+		rd.param = 0;
+
+		retval = hci_def_data_read(&rd, radio->fm_hdev);
+		if (retval < 0) {
+			FMDERR("default data read failed for PS0 %x", retval);
+			return retval;
+		}
+		wrd.mode = RDS_PS0_XFR_MODE;
+		wrd.length = RDS_PS0_LEN;
+		memcpy(&wrd.data, &radio->default_data.data,
+				radio->default_data.ret_data_len);
+		wrd.data[RX_REPEATE_BYTE_OFFSET] = ctrl->value;
+
+		retval = hci_def_data_write(&wrd, radio->fm_hdev);
+		if (retval < 0)
+			FMDERR("set RxRePeat count failed\n");
 		break;
 	default:
 		retval = -EINVAL;
@@ -3756,16 +4041,18 @@ static int iris_fops_release(struct file *file)
 	if (radio->mode == FM_OFF)
 		return 0;
 
-	if (radio->mode == FM_RECV)
+	if (radio->mode == FM_RECV) {
+		radio->mode = FM_OFF;
 		retval = hci_cmd(HCI_FM_DISABLE_RECV_CMD,
 						radio->fm_hdev);
-	else if (radio->mode == FM_TRANS)
+	} else if (radio->mode == FM_TRANS) {
+		radio->mode = FM_OFF;
 		retval = hci_cmd(HCI_FM_DISABLE_TRANS_CMD,
 					radio->fm_hdev);
+	}
 	if (retval < 0)
 		FMDERR("Err on disable FM %d\n", retval);
 
-	radio->mode = FM_OFF;
 	return retval;
 }
 

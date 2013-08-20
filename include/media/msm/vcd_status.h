@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -33,6 +33,7 @@
 #define VCD_EVT_IND_RESOURCES_LOST        (VCD_EVT_IND_BASE + 0x4)
 #define VCD_EVT_IND_INFO_OUTPUT_RECONFIG  (VCD_EVT_IND_BASE + 0x5)
 #define VCD_EVT_IND_INFO_FIELD_DROPPED    (VCD_EVT_IND_BASE + 0x6)
+#define VCD_EVT_IND_INFO_LTRUSE_FAILED    (VCD_EVT_IND_BASE + 0x7)
 
 #define VCD_S_SUCCESS           0x0
 

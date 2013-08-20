@@ -489,7 +489,7 @@ static void mdp4_wfd_wait4ov(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	wait_for_completion(&mfd->dma->comp);
+	wait_for_completion(&vctrl->ov_comp);
 }
 
 

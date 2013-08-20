@@ -163,11 +163,14 @@
 /* For DBPC bit 0 is set to zero and other's 1 */
 #define DBPC_MASK 0xFFFFFFFE
 
-/* For DBPC bit 1 is set to zero and other's 1 */
+/* For DBCC bit 1 is set to zero and other's 1 */
 #define DBCC_MASK 0xFFFFFFFD
 
+/* For ABCC bit 1 is set to zero and other's 1 */
+#define ABCC_MASK 0xFFFFFFFB
+
 /* For DBPC/ABF/DBCC/ABCC bits are set to 1 all others 0 */
-#define DEMOSAIC_MASK 0xF
+#define DEMOSAIC_MASK 0x10F
 
 /* For MCE enable bit 28 set to zero and other's 1 */
 #define MCE_EN_MASK 0xEFFFFFFF
@@ -200,6 +203,11 @@
 #define HFR_MODE_OFF 1
 #define VFE_FRAME_SKIP_PERIOD_MASK 0x0000001F /*bits 0 -4*/
 
+#define VFE_RELOAD_ALL_WRITE_MASTERS 0x00003FFF
+
+#define VFE_IOMMU_FAULT_HANDLER 1
+#define BUS_OVERFLOW_THRESHOLD  5
+
 enum VFE32_DMI_RAM_SEL {
 	NO_MEM_SELECTED          = 0,
 	BLACK_LUT_RAM_BANK0      = 0x1,
@@ -231,6 +239,8 @@ enum vfe_output_state {
 	VFE_STATE_STARTED,
 	VFE_STATE_STOP_REQUESTED,
 	VFE_STATE_STOPPED,
+	VFE_STATE_HW_STOP_REQUESTED,
+	VFE_STATE_HW_STOPPED,
 };
 
 #define V32_CAMIF_OFF             0x000001E4
@@ -307,6 +317,9 @@ enum vfe_output_state {
 #define V33_PCA_ROLL_OFF_CFG_OFF2             0x000007A8
 #define V33_PCA_ROLL_OFF_TABLE_SIZE           (17 + (13*4))
 #define V33_PCA_ROLL_OFF_LUT_BANK_SEL_MASK    0x00010000
+
+#define V33_ABCC_LUT_TABLE_SIZE       512
+#define V33_ABCC_LUT_BANK_SEL_MASK    0x00000100
 
 #define V32_COLOR_COR_OFF 0x00000388
 #define V32_COLOR_COR_LEN 52
@@ -902,6 +915,7 @@ struct vfe32_frame_extra {
 #define VFE_BUS_STATS_SKIN_BHIST_WR_PONG_ADDR    0x00000140
 #define VFE_BUS_STATS_SKIN_BHIST_UB_CFG          0x00000144
 #define VFE_CAMIF_COMMAND               0x000001E0
+#define VFE_CAMIF_FRAME_CFG		0x000001EC
 #define VFE_CAMIF_STATUS                0x00000204
 #define VFE_REG_UPDATE_CMD              0x00000260
 #define VFE_DEMUX_GAIN_0                0x00000288
@@ -934,7 +948,7 @@ struct vfe32_frame_extra {
 
 #define VFE33_DMI_DATA_HI               0x000005A0
 #define VFE33_DMI_DATA_LO               0x000005A4
-#define VFE_AXI_CFG_MASK                0xFFFFFFFF
+#define VFE_AXI_CFG_MASK                0x80000000
 
 #define VFE32_OUTPUT_MODE_PT			BIT(0)
 #define VFE32_OUTPUT_MODE_S			BIT(1)
@@ -1011,7 +1025,7 @@ struct vfe_share_ctrl_t {
 
 	uint8_t stream_error;
 	uint32_t rdi_comp;
-
+	uint32_t overflow_count;
 };
 
 struct axi_ctrl_t {
@@ -1031,6 +1045,7 @@ struct axi_ctrl_t {
 	struct vfe_share_ctrl_t *share_ctrl;
 	struct device *iommu_ctx_imgwr;
 	struct device *iommu_ctx_misc;
+	uint32_t simultaneous_sof_frame;
 };
 
 struct vfe32_ctrl_type {
@@ -1044,6 +1059,7 @@ struct vfe32_ctrl_type {
 	int8_t update_rolloff;
 	int8_t update_la;
 	int8_t update_gamma;
+	int8_t update_abcc;
 
 	struct vfe_share_ctrl_t *share_ctrl;
 

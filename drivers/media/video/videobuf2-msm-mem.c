@@ -225,6 +225,10 @@ void videobuf2_pmem_contig_user_put(struct videobuf2_contig_pmem *mem,
 {
 	if (mem->is_userptr) {
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	if (IS_ERR_OR_NULL(mem->ion_handle)) {
+		pr_err("%s ION import failed\n", __func__);
+		return;
+	}
 		ion_unmap_iommu(client, mem->ion_handle,
 				domain_num, 0);
 		ion_free(client, mem->ion_handle);

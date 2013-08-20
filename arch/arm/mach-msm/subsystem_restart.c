@@ -52,6 +52,18 @@ struct restart_log {
 	struct list_head list;
 };
 
+enum subsys_state {
+	SUBSYS_OFFLINE,
+	SUBSYS_ONLINE,
+	SUBSYS_CRASHED,
+};
+
+static const char * const subsys_states[] = {
+	[SUBSYS_OFFLINE] = "OFFLINE",
+	[SUBSYS_ONLINE] = "ONLINE",
+	[SUBSYS_CRASHED] = "CRASHED",
+};
+
 struct subsys_device {
 	struct subsys_desc *desc;
 	struct list_head list;
@@ -59,7 +71,8 @@ struct subsys_device {
 	char wlname[64];
 	struct work_struct work;
 	spinlock_t restart_lock;
-	int restart_count;
+	bool restarting;
+	enum subsys_state state;
 	int subsys_restart_count;
 
 	void *notify;
@@ -163,6 +176,7 @@ static int restart_level_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
 	int old_val = restart_level;
+	int subtype;
 
 	if (cpu_is_msm9615()) {
 		pr_err("Only Phase 1 subsystem restart is supported\n");
@@ -175,7 +189,9 @@ static int restart_level_set(const char *val, struct kernel_param *kp)
 
 	switch (restart_level) {
 	case RESET_SUBSYS_INDEPENDENT:
-		if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
+		subtype = socinfo_get_platform_subtype();
+		if ((subtype == PLATFORM_SUBTYPE_SGLTE) ||
+			(subtype == PLATFORM_SUBTYPE_SGLTE2)) {
 			pr_info("Phase 3 is currently unsupported. Using phase 2 instead.\n");
 			restart_level = RESET_SUBSYS_COUPLED;
 		}
@@ -192,6 +208,20 @@ static int restart_level_set(const char *val, struct kernel_param *kp)
 
 module_param_call(restart_level, restart_level_set, param_get_int,
 			&restart_level, 0644);
+
+static void subsys_set_state(struct subsys_device *subsys,
+			     enum subsys_state state)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&subsys->restart_lock, flags);
+	if (subsys->state != state) {
+		subsys->state = state;
+		spin_unlock_irqrestore(&subsys->restart_lock, flags);
+		return;
+	}
+	spin_unlock_irqrestore(&subsys->restart_lock, flags);
+}
 
 static struct subsys_soc_restart_order *
 update_restart_order(struct subsys_device *dev)
@@ -318,6 +348,7 @@ static void subsystem_shutdown(struct subsys_device *dev, void *data)
 			current, name);
 		BUG();
 	}
+	subsys_set_state(dev, SUBSYS_OFFLINE);
 }
 
 static void subsystem_ramdump(struct subsys_device *dev, void *data)
@@ -338,6 +369,7 @@ static void subsystem_powerup(struct subsys_device *dev, void *data)
 		pr_err("[%p]: Failed to powerup %s!", current, name);
 		BUG();
 	}
+	subsys_set_state(dev, SUBSYS_ONLINE);
 }
 
 static void subsystem_restart_wq_func(struct work_struct *work)
@@ -387,7 +419,10 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	 * Now that we've acquired the shutdown lock, either we're the first to
 	 * restart these subsystems or some other thread is doing the powerup
 	 * sequence for these subsystems. In the latter case, panic and bail
-	 * out, since a subsystem died in its powerup sequence.
+	 * out, since a subsystem died in its powerup sequence. This catches
+	 * the case where a subsystem in a restart order isn't the one
+	 * who initiated the original restart but has crashed while the restart
+	 * order is being rebooted.
 	 */
 	if (!mutex_trylock(powerup_lock)) {
 		pr_err("%s[%p]: Subsystem died during powerup!",
@@ -436,33 +471,37 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 
 out:
 	spin_lock_irqsave(&dev->restart_lock, flags);
-	dev->restart_count--;
-	if (!dev->restart_count)
-		wake_unlock(&dev->wake_lock);
+	dev->restarting = false;
+	wake_unlock(&dev->wake_lock);
 	spin_unlock_irqrestore(&dev->restart_lock, flags);
 }
 
 static void __subsystem_restart_dev(struct subsys_device *dev)
 {
 	struct subsys_desc *desc = dev->desc;
+	const char *name = dev->desc->name;
 	unsigned long flags;
 
 	pr_debug("Restarting %s [level=%d]!\n", desc->name, restart_level);
 
+	/*
+	 * We want to allow drivers to call subsystem_restart{_dev}() as many
+	 * times as they want up until the point where the subsystem is
+	 * shutdown.
+	 */
 	spin_lock_irqsave(&dev->restart_lock, flags);
-	if (!dev->restart_count)
-		wake_lock(&dev->wake_lock);
-	dev->restart_count++;
 	dev->subsys_restart_count++;
-	spin_unlock_irqrestore(&dev->restart_lock, flags);
-
-	if (!queue_work(ssr_wq, &dev->work)) {
-		spin_lock_irqsave(&dev->restart_lock, flags);
-		dev->restart_count--;
-		if (!dev->restart_count)
-			wake_unlock(&dev->wake_lock);
-		spin_unlock_irqrestore(&dev->restart_lock, flags);
+	if (dev->state != SUBSYS_CRASHED) {
+		if (dev->state == SUBSYS_ONLINE && !dev->restarting) {
+			dev->restarting = true;
+			dev->state = SUBSYS_CRASHED;
+			wake_lock(&dev->wake_lock);
+			queue_work(ssr_wq, &dev->work);
+		} else {
+			panic("Subsystem %s crashed during SSR!", name);
+		}
 	}
+	spin_unlock_irqrestore(&dev->restart_lock, flags);
 }
 
 int subsystem_restart_dev(struct subsys_device *dev)
@@ -531,6 +570,7 @@ struct subsys_device *subsys_register(struct subsys_desc *desc)
 	dev->desc = desc;
 	dev->notify = subsys_notif_add_subsys(desc->name);
 	dev->restart_order = update_restart_order(dev);
+	dev->state = SUBSYS_ONLINE; /* Until proper refcounting appears */
 
 	snprintf(dev->wlname, sizeof(dev->wlname), "ssr(%s)", desc->name);
 	wake_lock_init(&dev->wake_lock, WAKE_LOCK_SUSPEND, dev->wlname);

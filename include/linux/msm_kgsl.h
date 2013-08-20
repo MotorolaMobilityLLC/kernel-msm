@@ -1,30 +1,58 @@
 #ifndef _MSM_KGSL_H
 #define _MSM_KGSL_H
 
+/*
+ * The KGSL version has proven not to be very useful in userspace if features
+ * are cherry picked into other trees out of order so it is frozen as of 3.14.
+ * It is left here for backwards compatabilty and as a reminder that
+ * software releases are never linear. Also, I like pie.
+ */
+
 #define KGSL_VERSION_MAJOR        3
 #define KGSL_VERSION_MINOR        14
 
 /*context flags */
-#define KGSL_CONTEXT_SAVE_GMEM		0x00000001
-#define KGSL_CONTEXT_NO_GMEM_ALLOC	0x00000002
-#define KGSL_CONTEXT_SUBMIT_IB_LIST	0x00000004
-#define KGSL_CONTEXT_CTX_SWITCH		0x00000008
-#define KGSL_CONTEXT_PREAMBLE		0x00000010
-#define KGSL_CONTEXT_TRASH_STATE	0x00000020
-#define KGSL_CONTEXT_PER_CONTEXT_TS	0x00000040
-#define KGSL_CONTEXT_USER_GENERATED_TS	0x00000080
-#define KGSL_CONTEXT_NO_FAULT_TOLERANCE 0x00000200
+#define KGSL_CONTEXT_SAVE_GMEM		  0x00000001
+#define KGSL_CONTEXT_NO_GMEM_ALLOC	  0x00000002
+#define KGSL_CONTEXT_SUBMIT_IB_LIST	  0x00000004
+#define KGSL_CONTEXT_CTX_SWITCH		  0x00000008
+#define KGSL_CONTEXT_PREAMBLE		  0x00000010
+#define KGSL_CONTEXT_TRASH_STATE	  0x00000020
+#define KGSL_CONTEXT_PER_CONTEXT_TS	  0x00000040
+#define KGSL_CONTEXT_USER_GENERATED_TS	  0x00000080
+#define KGSL_CONTEXT_END_OF_FRAME         0x00000100
+#define KGSL_CONTEXT_NO_FAULT_TOLERANCE	  0x00000200
+/* bits [12:15] are reserved for future use */
+#define KGSL_CONTEXT_TYPE_MASK            0x01F00000
+#define KGSL_CONTEXT_TYPE_SHIFT           20
 
+#define KGSL_CONTEXT_TYPE_ANY		  0
+#define KGSL_CONTEXT_TYPE_GL		  1
+#define KGSL_CONTEXT_TYPE_CL		  2
+#define KGSL_CONTEXT_TYPE_C2D		  3
+#define KGSL_CONTEXT_TYPE_RS		  4
 
 #define KGSL_CONTEXT_INVALID 0xffffffff
 
-/* Memory allocayion flags */
-#define KGSL_MEMFLAGS_GPUREADONLY	0x01000000
+/* --- Memory allocation flags --- */
 
+/* General allocation hints */
+#define KGSL_MEMFLAGS_GPUREADONLY 0x01000000
+#define KGSL_MEMFLAGS_USE_CPU_MAP 0x10000000
+
+/* Memory caching hints */
+#define KGSL_CACHEMODE_MASK 0x0C000000
+#define KGSL_CACHEMODE_SHIFT 26
+
+#define KGSL_CACHEMODE_WRITECOMBINE 0
+#define KGSL_CACHEMODE_UNCACHED 1
+#define KGSL_CACHEMODE_WRITETHROUGH 2
+#define KGSL_CACHEMODE_WRITEBACK 3
+
+/* Memory types for which allocations are made */
 #define KGSL_MEMTYPE_MASK		0x0000FF00
 #define KGSL_MEMTYPE_SHIFT		8
 
-/* Memory types for which allocations are made */
 #define KGSL_MEMTYPE_OBJECTANY			0
 #define KGSL_MEMTYPE_FRAMEBUFFER		1
 #define KGSL_MEMTYPE_RENDERBUFFER		2
@@ -55,7 +83,8 @@
 #define KGSL_MEMALIGN_MASK		0x00FF0000
 #define KGSL_MEMALIGN_SHIFT		16
 
-/* generic flag values */
+/* --- generic KGSL flag values --- */
+
 #define KGSL_FLAGS_NORMALMODE  0x00000000
 #define KGSL_FLAGS_SAFEMODE    0x00000001
 #define KGSL_FLAGS_INITIALIZED0 0x00000002
@@ -179,6 +208,26 @@ struct kgsl_version {
 	unsigned int dev_major;
 	unsigned int dev_minor;
 };
+
+/* Performance counter groups */
+
+#define KGSL_PERFCOUNTER_GROUP_CP 0x0
+#define KGSL_PERFCOUNTER_GROUP_RBBM 0x1
+#define KGSL_PERFCOUNTER_GROUP_PC 0x2
+#define KGSL_PERFCOUNTER_GROUP_VFD 0x3
+#define KGSL_PERFCOUNTER_GROUP_HLSQ 0x4
+#define KGSL_PERFCOUNTER_GROUP_VPC 0x5
+#define KGSL_PERFCOUNTER_GROUP_TSE 0x6
+#define KGSL_PERFCOUNTER_GROUP_RAS 0x7
+#define KGSL_PERFCOUNTER_GROUP_UCHE 0x8
+#define KGSL_PERFCOUNTER_GROUP_TP 0x9
+#define KGSL_PERFCOUNTER_GROUP_SP 0xA
+#define KGSL_PERFCOUNTER_GROUP_RB 0xB
+#define KGSL_PERFCOUNTER_GROUP_PWR 0xC
+#define KGSL_PERFCOUNTER_GROUP_VBIF 0xD
+#define KGSL_PERFCOUNTER_GROUP_VBIF_PWR 0xE
+
+#define KGSL_PERFCOUNTER_NOT_USED 0xFFFFFFFF
 
 /* structure holds list of ibs */
 struct kgsl_ibdesc {
@@ -421,6 +470,14 @@ struct kgsl_sharedmem_from_vmalloc {
 #define IOCTL_KGSL_SHAREDMEM_FROM_VMALLOC \
 	_IOWR(KGSL_IOC_TYPE, 0x23, struct kgsl_sharedmem_from_vmalloc)
 
+/*
+ * This is being deprecated in favor of IOCTL_KGSL_GPUMEM_CACHE_SYNC which
+ * supports both directions (flush and invalidate). This code will still
+ * work, but by definition it will do a flush of the cache which might not be
+ * what you want to have happen on a buffer following a GPU operation.  It is
+ * safer to go with IOCTL_KGSL_GPUMEM_CACHE_SYNC
+ */
+
 #define IOCTL_KGSL_SHAREDMEM_FLUSH_CACHE \
 	_IOW(KGSL_IOC_TYPE, 0x24, struct kgsl_sharedmem_free)
 
@@ -512,6 +569,219 @@ struct kgsl_timestamp_event_fence {
 
 #define IOCTL_KGSL_TIMESTAMP_EVENT \
 	_IOWR(KGSL_IOC_TYPE, 0x33, struct kgsl_timestamp_event)
+
+/**
+ * struct kgsl_gpumem_alloc_id - argument to IOCTL_KGSL_GPUMEM_ALLOC_ID
+ * @id: returned id value for this allocation.
+ * @flags: mask of KGSL_MEM* values requested and actual flags on return.
+ * @size: requested size of the allocation and actual size on return.
+ * @mmapsize: returned size to pass to mmap() which may be larger than 'size'
+ * @gpuaddr: returned GPU address for the allocation
+ *
+ * Allocate memory for access by the GPU. The flags and size fields are echoed
+ * back by the kernel, so that the caller can know if the request was
+ * adjusted.
+ *
+ * Supported flags:
+ * KGSL_MEMFLAGS_GPUREADONLY: the GPU will be unable to write to the buffer
+ * KGSL_MEMTYPE*: usage hint for debugging aid
+ * KGSL_MEMALIGN*: alignment hint, may be ignored or adjusted by the kernel.
+ * KGSL_MEMFLAGS_USE_CPU_MAP: If set on call and return, the returned GPU
+ * address will be 0. Calling mmap() will set the GPU address.
+ */
+struct kgsl_gpumem_alloc_id {
+	unsigned int id;
+	unsigned int flags;
+	unsigned int size;
+	unsigned int mmapsize;
+	unsigned long gpuaddr;
+/* private: reserved for future use*/
+	unsigned int __pad[2];
+};
+
+#define IOCTL_KGSL_GPUMEM_ALLOC_ID \
+	_IOWR(KGSL_IOC_TYPE, 0x34, struct kgsl_gpumem_alloc_id)
+
+/**
+ * struct kgsl_gpumem_free_id - argument to IOCTL_KGSL_GPUMEM_FREE_ID
+ * @id: GPU allocation id to free
+ *
+ * Free an allocation by id, in case a GPU address has not been assigned or
+ * is unknown. Freeing an allocation by id with this ioctl or by GPU address
+ * with IOCTL_KGSL_SHAREDMEM_FREE are equivalent.
+ */
+struct kgsl_gpumem_free_id {
+	unsigned int id;
+/* private: reserved for future use*/
+	unsigned int __pad;
+};
+
+#define IOCTL_KGSL_GPUMEM_FREE_ID \
+	_IOWR(KGSL_IOC_TYPE, 0x35, struct kgsl_gpumem_free_id)
+
+/**
+ * struct kgsl_gpumem_get_info - argument to IOCTL_KGSL_GPUMEM_GET_INFO
+ * @gpuaddr: GPU address to query. Also set on return.
+ * @id: GPU allocation id to query. Also set on return.
+ * @flags: returned mask of KGSL_MEM* values.
+ * @size: returned size of the allocation.
+ * @mmapsize: returned size to pass mmap(), which may be larger than 'size'
+ * @useraddr: returned address of the userspace mapping for this buffer
+ *
+ * This ioctl allows querying of all user visible attributes of an existing
+ * allocation, by either the GPU address or the id returned by a previous
+ * call to IOCTL_KGSL_GPUMEM_ALLOC_ID. Legacy allocation ioctls may not
+ * return all attributes so this ioctl can be used to look them up if needed.
+ *
+ */
+struct kgsl_gpumem_get_info {
+	unsigned long gpuaddr;
+	unsigned int id;
+	unsigned int flags;
+	unsigned int size;
+	unsigned int mmapsize;
+	unsigned long useraddr;
+/* private: reserved for future use*/
+	unsigned int __pad[4];
+};
+
+#define IOCTL_KGSL_GPUMEM_GET_INFO\
+	_IOWR(KGSL_IOC_TYPE, 0x36, struct kgsl_gpumem_get_info)
+
+/**
+ * struct kgsl_gpumem_sync_cache - argument to IOCTL_KGSL_GPUMEM_SYNC_CACHE
+ * @gpuaddr: GPU address of the buffer to sync.
+ * @id: id of the buffer to sync. Either gpuaddr or id is sufficient.
+ * @op: a mask of KGSL_GPUMEM_CACHE_* values
+ *
+ * Sync the L2 cache for memory headed to and from the GPU - this replaces
+ * KGSL_SHAREDMEM_FLUSH_CACHE since it can handle cache management for both
+ * directions
+ *
+ */
+struct kgsl_gpumem_sync_cache {
+	unsigned int gpuaddr;
+	unsigned int id;
+	unsigned int op;
+/* private: reserved for future use*/
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define KGSL_GPUMEM_CACHE_CLEAN (1 << 0)
+#define KGSL_GPUMEM_CACHE_TO_GPU KGSL_GPUMEM_CACHE_CLEAN
+
+#define KGSL_GPUMEM_CACHE_INV (1 << 1)
+#define KGSL_GPUMEM_CACHE_FROM_GPU KGSL_GPUMEM_CACHE_INV
+
+#define KGSL_GPUMEM_CACHE_FLUSH \
+	(KGSL_GPUMEM_CACHE_CLEAN | KGSL_GPUMEM_CACHE_INV)
+
+#define IOCTL_KGSL_GPUMEM_SYNC_CACHE \
+	_IOW(KGSL_IOC_TYPE, 0x37, struct kgsl_gpumem_sync_cache)
+
+/**
+ * struct kgsl_perfcounter_get - argument to IOCTL_KGSL_PERFCOUNTER_GET
+ * @groupid: Performance counter group ID
+ * @countable: Countable to select within the group
+ * @offset: Return offset of the reserved counter
+ *
+ * Get an available performance counter from a specified groupid.  The offset
+ * of the performance counter will be returned after successfully assigning
+ * the countable to the counter for the specified group.  An error will be
+ * returned and an offset of 0 if the groupid is invalid or there are no
+ * more counters left.  After successfully getting a perfcounter, the user
+ * must call kgsl_perfcounter_put(groupid, contable) when finished with
+ * the perfcounter to clear up perfcounter resources.
+ *
+ */
+struct kgsl_perfcounter_get {
+	unsigned int groupid;
+	unsigned int countable;
+	unsigned int offset;
+/* private: reserved for future use */
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define IOCTL_KGSL_PERFCOUNTER_GET \
+	_IOWR(KGSL_IOC_TYPE, 0x38, struct kgsl_perfcounter_get)
+
+/**
+ * struct kgsl_perfcounter_put - argument to IOCTL_KGSL_PERFCOUNTER_PUT
+ * @groupid: Performance counter group ID
+ * @countable: Countable to release within the group
+ *
+ * Put an allocated performance counter to allow others to have access to the
+ * resource that was previously taken.  This is only to be called after
+ * successfully getting a performance counter from kgsl_perfcounter_get().
+ *
+ */
+struct kgsl_perfcounter_put {
+	unsigned int groupid;
+	unsigned int countable;
+/* private: reserved for future use */
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define IOCTL_KGSL_PERFCOUNTER_PUT \
+	_IOW(KGSL_IOC_TYPE, 0x39, struct kgsl_perfcounter_put)
+
+/**
+ * struct kgsl_perfcounter_query - argument to IOCTL_KGSL_PERFCOUNTER_QUERY
+ * @groupid: Performance counter group ID
+ * @countable: Return active countables array
+ * @size: Size of active countables array
+ * @max_counters: Return total number counters for the group ID
+ *
+ * Query the available performance counters given a groupid.  The array
+ * *countables is used to return the current active countables in counters.
+ * The size of the array is passed in so the kernel will only write at most
+ * size or counter->size for the group id.  The total number of available
+ * counters for the group ID is returned in max_counters.
+ * If the array or size passed in are invalid, then only the maximum number
+ * of counters will be returned, no data will be written to *countables.
+ * If the groupid is invalid an error code will be returned.
+ *
+ */
+struct kgsl_perfcounter_query {
+	unsigned int groupid;
+	/* Array to return the current countable for up to size counters */
+	unsigned int *countables;
+	unsigned int count;
+	unsigned int max_counters;
+/* private: reserved for future use */
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define IOCTL_KGSL_PERFCOUNTER_QUERY \
+	_IOWR(KGSL_IOC_TYPE, 0x3A, struct kgsl_perfcounter_query)
+
+/**
+ * struct kgsl_perfcounter_query - argument to IOCTL_KGSL_PERFCOUNTER_QUERY
+ * @groupid: Performance counter group IDs
+ * @countable: Performance counter countable IDs
+ * @value: Return performance counter reads
+ * @size: Size of all arrays (groupid/countable pair and return value)
+ *
+ * Read in the current value of a performance counter given by the groupid
+ * and countable.
+ *
+ */
+
+struct kgsl_perfcounter_read_group {
+	unsigned int groupid;
+	unsigned int countable;
+	uint64_t value;
+};
+
+struct kgsl_perfcounter_read {
+	struct kgsl_perfcounter_read_group *reads;
+	unsigned int count;
+/* private: reserved for future use */
+	unsigned int __pad[2]; /* For future binary compatibility */
+};
+
+#define IOCTL_KGSL_PERFCOUNTER_READ \
+	_IOWR(KGSL_IOC_TYPE, 0x3B, struct kgsl_perfcounter_read)
 
 #ifdef __KERNEL__
 #ifdef CONFIG_MSM_KGSL_DRM
