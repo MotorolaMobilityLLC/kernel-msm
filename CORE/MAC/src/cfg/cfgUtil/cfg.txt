@@ -789,10 +789,10 @@ SCH
 WNI_CFG_FIXED_RATE  I   4   0
 V    RW    NP
 HAL
-0    31     0
+0    44     0
 V    RW    NP
 HAL
-0    31     0
+0    44     0
 
 #ENUM AUTO 	                                0
 
@@ -832,6 +832,19 @@ HAL
 #ENUM 0_5MBPS_SLR_20MHZ_SIMO                30
 
 #ENUM 68_25MBPS_QC_PROP_20MHZ_SIMO          31
+#ENUM 54MBPS_MCS3_40MHZ_SIMO                32
+#ENUM 81MBPS_MCS4_40MHZ_SIMO                33
+#ENUM 108MBPS_MCS5_40MHZ_SIMO               34
+#ENUM 121_5MBPS_MCS6_40MHZ_SIMO             35
+#ENUM 135MBPS_MCS7_40MHZ_SIMO               36
+#ENUM 15MBPS_MCS0_40MHZ_SIMO_SGI            37
+#ENUM 30MBPS_MCS1_40MHZ_SIMO_SGI            38
+#ENUM 45MBPS_MCS2_40MHZ_SIMO_SGI            39
+#ENUM 60MBPS_MCS3_40MHZ_SIMO_SGI            40
+#ENUM 90MBPS_MCS4_40MHZ_SIMO_SGI            41
+#ENUM 120MBPS_MCS5_40MHZ_SIMO_SGI           42
+#ENUM 135MBPS_MCS6_40MHZ_SIMO_SGI           43
+#ENUM 150MBPS_MCS7_40MHZ_SIMO_SGI           44
 
 * *********************************************************
 *
