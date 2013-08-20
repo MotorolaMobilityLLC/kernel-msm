@@ -84,6 +84,7 @@ enum MDSS_MDP_REG {
 };
 
 struct drm_kgsl_private {
+	struct drm_device *drm_dev;
 	void __iomem *regs;
 	size_t reg_size;
 	unsigned int irq;
@@ -1734,6 +1735,9 @@ static int kgsl_drm_load(struct drm_device *dev, unsigned long flags)
 
 	/* acquire interrupt */
 	dev_priv->irq = platform_get_irq_byname(pdev, KGSL_DRM_IRQ);
+
+	/* store dev structure */
+	dev_priv->drm_dev = dev;
 
 	dev->dev_private = (void *)dev_priv;
 
