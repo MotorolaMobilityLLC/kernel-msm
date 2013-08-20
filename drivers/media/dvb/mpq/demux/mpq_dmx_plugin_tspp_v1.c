@@ -54,14 +54,16 @@
 #define TSPP_RAW_TTS_SIZE		192
 #define TSPP_RAW_SIZE			188
 
-#define MAX_BAM_DESCRIPTOR_SIZE	(32*1024 - 1)
+#define MAX_BAM_DESCRIPTOR_SIZE	(32 * 1024 - 1)
+
+#define MAX_BAM_DESCRIPTOR_COUNT	(8 * 1024 - 2)
 
 #define TSPP_BUFFER_SIZE		(500 * 1024) /* 500KB */
 
 #define TSPP_DESCRIPTOR_SIZE	(TSPP_RAW_TTS_SIZE)
 
 #define TSPP_BUFFER_COUNT(buffer_size)	\
-	((buffer_size) / TSPP_RAW_TTS_SIZE)
+	((buffer_size) / TSPP_DESCRIPTOR_SIZE)
 
 /* When TSPP notifies demux that new packets are received.
  * Using max descriptor size (170 packets).
@@ -382,7 +384,8 @@ static void mpq_dmx_tspp_aggregated_process(int tsif, int channel_id)
 			buff_current_addr_phys - buff_start_addr_phys);
 
 		mpq_sdmx_process(mpq_demux, &input, aggregate_len,
-			buff_current_addr_phys - buff_start_addr_phys);
+			buff_current_addr_phys - buff_start_addr_phys,
+			TSPP_RAW_TTS_SIZE);
 	}
 
 	for (i = 0; i < aggregate_count; i++)
@@ -1773,7 +1776,7 @@ static int mpq_tspp_dmx_init(
 	}
 
 	/* Extend dvb-demux debugfs with TSPP statistics. */
-	mpq_dmx_init_hw_statistics(mpq_demux);
+	mpq_dmx_init_debugfs_entries(mpq_demux);
 
 	return 0;
 
@@ -1794,6 +1797,11 @@ static int __init mpq_dmx_tspp_plugin_init(void)
 	for (i = 0; i < TSIF_COUNT; i++) {
 		mpq_dmx_tspp_info.tsif[i].buffer_count =
 				TSPP_BUFFER_COUNT(tspp_out_buffer_size);
+
+		if (mpq_dmx_tspp_info.tsif[i].buffer_count >
+			MAX_BAM_DESCRIPTOR_COUNT)
+			mpq_dmx_tspp_info.tsif[i].buffer_count =
+				MAX_BAM_DESCRIPTOR_COUNT;
 
 		mpq_dmx_tspp_info.tsif[i].aggregate_ids =
 			vzalloc(mpq_dmx_tspp_info.tsif[i].buffer_count *

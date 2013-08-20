@@ -295,7 +295,7 @@ void msm_jpeg_hw_delay(struct msm_jpeg_hw_cmd *hw_cmd_p, int m_us)
 	}
 }
 
-int msm_jpeg_hw_exec_cmds(struct msm_jpeg_hw_cmd *hw_cmd_p, int m_cmds)
+int msm_jpeg_hw_exec_cmds(struct msm_jpeg_hw_cmd *hw_cmd_p, uint32_t m_cmds)
 {
 	int is_copy_to_user = -1;
 	uint32_t data;

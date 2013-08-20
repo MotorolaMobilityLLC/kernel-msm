@@ -110,7 +110,7 @@ VREG_CONSUMERS(L11) = {
 	REGULATOR_SUPPLY("VDDIO_CDC",		"sitar1p1-slim"),
 	REGULATOR_SUPPLY("CDC_VDDA_TX",		"sitar1p1-slim"),
 	REGULATOR_SUPPLY("CDC_VDDA_RX",		"sitar1p1-slim"),
-	REGULATOR_SUPPLY("vddp",		"0-0048"),
+	REGULATOR_SUPPLY("vcc_i2c",		"0-0048"),
 	REGULATOR_SUPPLY("mhl_iovcc18",		"0-0039"),
 };
 VREG_CONSUMERS(L12) = {
@@ -238,7 +238,6 @@ VREG_CONSUMERS(LVS2) = {
 	REGULATOR_SUPPLY("vcc_i2c",		"3-004a"),
 	REGULATOR_SUPPLY("vcc_i2c",		"3-0024"),
 	REGULATOR_SUPPLY("vcc_i2c",		"3-0020"),
-	REGULATOR_SUPPLY("vcc_i2c",		"0-0048"),
 	REGULATOR_SUPPLY("vddio",		"12-0018"),
 	REGULATOR_SUPPLY("vlogic",		"12-0068"),
 };
@@ -615,3 +614,19 @@ msm8930_pm8038_rpm_regulator_pdata __devinitdata = {
 	.consumer_map		= msm_rpm_regulator_consumer_mapping,
 	.consumer_map_len = ARRAY_SIZE(msm_rpm_regulator_consumer_mapping),
 };
+
+void __init configure_8930_sglte_regulator(void)
+{
+	int i;
+	struct rpm_regulator_init_data *rpm_data;
+
+	for (i = 0; i < ARRAY_SIZE(msm8930_rpm_regulator_init_data); i++) {
+		rpm_data = &msm8930_rpm_regulator_init_data[i];
+		if (rpm_data->id == RPM_VREG_ID_PM8038_L17) {
+			rpm_data->init_data.constraints.always_on = 1;
+			rpm_data->system_uA = 10000;
+			rpm_data->peak_uA = 10000;
+			break;
+		}
+	}
+}

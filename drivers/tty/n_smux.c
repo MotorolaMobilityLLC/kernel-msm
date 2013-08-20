@@ -1,6 +1,6 @@
 /* drivers/tty/n_smux.c
  *
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -259,6 +259,8 @@ struct smux_ldisc_t {
 	unsigned powerdown_enabled;
 	unsigned power_ctl_remote_req_received;
 	struct list_head power_queue;
+	unsigned remote_initiated_wakeup_count;
+	unsigned local_initiated_wakeup_count;
 };
 
 
@@ -279,6 +281,7 @@ static const char * const smux_cmds[] = {
 	[SMUX_CMD_CLOSE_LCH] = "CLOSE",
 	[SMUX_CMD_STATUS] = "STATUS",
 	[SMUX_CMD_PWR_CTL] = "PWR",
+	[SMUX_CMD_DELAY] = "DELAY",
 	[SMUX_CMD_BYTE] = "Raw Byte",
 };
 
@@ -294,6 +297,8 @@ static const char * const smux_events[] = {
 	[SMUX_HIGH_WM_HIT] = "HIGH_WM_HIT",
 	[SMUX_RX_RETRY_HIGH_WM_HIT] = "RX_RETRY_HIGH_WM_HIT",
 	[SMUX_RX_RETRY_LOW_WM_HIT] = "RX_RETRY_LOW_WM_HIT",
+	[SMUX_LOCAL_CLOSED] = "LOCAL_CLOSED",
+	[SMUX_REMOTE_CLOSED] = "REMOTE_CLOSED",
 };
 
 static const char * const smux_local_state[] = {
@@ -550,6 +555,8 @@ static void smux_lch_purge(void)
 
 	/* Close all ports */
 	for (i = 0 ; i < SMUX_NUM_LOGICAL_CHANNELS; i++) {
+		union notifier_metadata meta;
+		int send_disconnect = 0;
 		ch = &smux_lch[i];
 		SMUX_DBG("smux: %s: cleaning up lcid %d\n", __func__, i);
 
@@ -560,14 +567,19 @@ static void smux_lch_purge(void)
 		smux_purge_ch_tx_queue(ch, 1);
 		spin_unlock(&ch->tx_lock_lhb2);
 
+		meta.disconnected.is_ssr = smux.in_reset;
 		/* Notify user of disconnect and reset channel state */
 		if (ch->local_state == SMUX_LCH_LOCAL_OPENED ||
 			ch->local_state == SMUX_LCH_LOCAL_CLOSING) {
-			union notifier_metadata meta;
-
-			meta.disconnected.is_ssr = smux.in_reset;
-			schedule_notify(ch->lcid, SMUX_DISCONNECTED, &meta);
+			schedule_notify(ch->lcid, SMUX_LOCAL_CLOSED, &meta);
+			send_disconnect = 1;
 		}
+		if (ch->remote_state != SMUX_LCH_REMOTE_CLOSED) {
+			schedule_notify(ch->lcid, SMUX_REMOTE_CLOSED, &meta);
+			send_disconnect = 1;
+		}
+		if (send_disconnect)
+			schedule_notify(ch->lcid, SMUX_DISCONNECTED, &meta);
 
 		ch->local_state = SMUX_LCH_LOCAL_CLOSED;
 		ch->remote_state = SMUX_LCH_REMOTE_CLOSED;
@@ -854,6 +866,10 @@ static int schedule_notify(uint8_t lcid, int event,
 
 	IPC_LOG_STR("smux: %s ch:%d\n", event_to_str(event), lcid);
 	ch = &smux_lch[lcid];
+	if (!ch->notify) {
+		SMUX_DBG("%s: [%d]lcid notify fn is NULL\n", __func__, lcid);
+		return ret;
+	}
 	notify_handle = kzalloc(sizeof(struct smux_notify_handle),
 						GFP_ATOMIC);
 	if (!notify_handle) {
@@ -1170,6 +1186,7 @@ static int smux_handle_rx_open_ack(struct smux_pkt_t *pkt)
 	int ret;
 	struct smux_lch_t *ch;
 	int enable_powerdown = 0;
+	int tx_ready = 0;
 
 	lcid = pkt->hdr.lcid;
 	ch = &smux_lch[lcid];
@@ -1184,8 +1201,11 @@ static int smux_handle_rx_open_ack(struct smux_pkt_t *pkt)
 			enable_powerdown = 1;
 
 		ch->local_state = SMUX_LCH_LOCAL_OPENED;
-		if (ch->remote_state == SMUX_LCH_REMOTE_OPENED)
+		if (ch->remote_state == SMUX_LCH_REMOTE_OPENED) {
 			schedule_notify(lcid, SMUX_CONNECTED, NULL);
+			if (!(list_empty(&ch->tx_queue)))
+				tx_ready = 1;
+		}
 		ret = 0;
 	} else if (ch->remote_mode == SMUX_LCH_MODE_REMOTE_LOOPBACK) {
 		SMUX_DBG("smux: Remote loopback OPEN ACK received\n");
@@ -1206,6 +1226,9 @@ static int smux_handle_rx_open_ack(struct smux_pkt_t *pkt)
 		}
 		spin_unlock(&smux.tx_lock_lha2);
 	}
+
+	if (tx_ready)
+		list_channel(ch);
 
 	return ret;
 }
@@ -1229,6 +1252,7 @@ static int smux_handle_close_ack(struct smux_pkt_t *pkt)
 				SMUX_LCH_LOCAL_CLOSING,
 				SMUX_LCH_LOCAL_CLOSED);
 		ch->local_state = SMUX_LCH_LOCAL_CLOSED;
+		schedule_notify(lcid, SMUX_LOCAL_CLOSED, &meta_disconnected);
 		if (ch->remote_state == SMUX_LCH_REMOTE_CLOSED)
 			schedule_notify(lcid, SMUX_DISCONNECTED,
 				&meta_disconnected);
@@ -1416,6 +1440,7 @@ static int smux_handle_rx_close_cmd(struct smux_pkt_t *pkt)
 			}
 		}
 
+		schedule_notify(lcid, SMUX_REMOTE_CLOSED, &meta_disconnected);
 		if (ch->local_state == SMUX_LCH_LOCAL_CLOSED)
 			schedule_notify(lcid, SMUX_DISCONNECTED,
 				&meta_disconnected);
@@ -1908,6 +1933,7 @@ static void smux_handle_wakeup_req(void)
 		/* wakeup system */
 		SMUX_PWR("smux: %s: Power %d->%d\n", __func__,
 				smux.power_state, SMUX_PWR_ON);
+		smux.remote_initiated_wakeup_count++;
 		smux.power_state = SMUX_PWR_ON;
 		queue_work(smux_tx_wq, &smux_wakeup_work);
 		queue_work(smux_tx_wq, &smux_tx_work);
@@ -2163,6 +2189,62 @@ bool smux_remote_is_active(void)
 }
 
 /**
+ * Sends a delay command to the remote side.
+ *
+ * @ms: Time in milliseconds for the remote side to delay
+ *
+ * This command defines the delay that the remote side will use
+ * to slow the response time for DATA commands.
+ */
+void smux_set_loopback_data_reply_delay(uint32_t ms)
+{
+	struct smux_lch_t *ch = &smux_lch[SMUX_TEST_LCID];
+	struct smux_pkt_t *pkt;
+
+	pkt = smux_alloc_pkt();
+	if (!pkt) {
+		pr_err("%s: unable to allocate packet\n", __func__);
+		return;
+	}
+
+	pkt->hdr.lcid = ch->lcid;
+	pkt->hdr.cmd = SMUX_CMD_DELAY;
+	pkt->hdr.flags = 0;
+	pkt->hdr.payload_len = sizeof(uint32_t);
+	pkt->hdr.pad_len = 0;
+
+	if (smux_alloc_pkt_payload(pkt)) {
+		pr_err("%s: unable to allocate payload\n", __func__);
+		smux_free_pkt(pkt);
+		return;
+	}
+	memcpy(pkt->payload, &ms, sizeof(uint32_t));
+
+	smux_tx_queue(pkt, ch, 1);
+}
+
+/**
+ * Retrieve wakeup counts.
+ *
+ * @local_cnt: Pointer to local wakeup count
+ * @remote_cnt: Pointer to remote wakeup count
+ */
+void smux_get_wakeup_counts(int *local_cnt, int *remote_cnt)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&smux.tx_lock_lha2, flags);
+
+	if (local_cnt)
+		*local_cnt = smux.local_initiated_wakeup_count;
+
+	if (remote_cnt)
+		*remote_cnt = smux.remote_initiated_wakeup_count;
+
+	spin_unlock_irqrestore(&smux.tx_lock_lha2, flags);
+}
+
+/**
  * Add channel to transmit-ready list and trigger transmit worker.
  *
  * @ch Channel to add
@@ -2297,8 +2379,11 @@ static void smux_purge_ch_tx_queue(struct smux_lch_t *ch, int is_ssr)
 		union notifier_metadata meta_disconnected;
 
 		meta_disconnected.disconnected.is_ssr = smux.in_reset;
-		schedule_notify(ch->lcid, SMUX_DISCONNECTED,
+		schedule_notify(ch->lcid, SMUX_LOCAL_CLOSED,
 			&meta_disconnected);
+		if (ch->remote_state == SMUX_LCH_REMOTE_CLOSED)
+			schedule_notify(ch->lcid, SMUX_DISCONNECTED,
+				&meta_disconnected);
 	}
 }
 
@@ -2744,6 +2829,7 @@ static void smux_tx_worker(struct work_struct *work)
 				SMUX_PWR("smux: %s: Power %d->%d\n", __func__,
 						smux.power_state,
 						SMUX_PWR_TURNING_ON);
+				smux.local_initiated_wakeup_count++;
 				smux.power_state = SMUX_PWR_TURNING_ON;
 				spin_unlock_irqrestore(&smux.tx_lock_lha2,
 						flags);
@@ -3025,11 +3111,15 @@ int msm_smux_set_ch_option(uint8_t lcid, uint32_t set, uint32_t clear)
  *
  * @returns 0 for success, <0 otherwise
  *
- * A channel must be fully closed (either not previously opened or
- * msm_smux_close() has been called and the SMUX_DISCONNECTED has been
- * received.
+ * The local channel state must be closed (either not previously
+ * opened or msm_smux_close() has been called and the SMUX_LOCAL_CLOSED
+ * notification has been received).
  *
- * One the remote side is opened, the client will receive a SMUX_CONNECTED
+ * If open is called before the SMUX_LOCAL_CLOSED has been received,
+ * then the function will return -EAGAIN and the client will need to
+ * retry the open later.
+ *
+ * Once the remote side is opened, the client will receive a SMUX_CONNECTED
  * event.
  */
 int msm_smux_open(uint8_t lcid, void *priv,
@@ -3106,7 +3196,8 @@ out:
  * @returns 0 for success, <0 otherwise
  *
  * Once the close event has been acknowledge by the remote side, the client
- * will receive a SMUX_DISCONNECTED notification.
+ * will receive an SMUX_LOCAL_CLOSED notification.  If the remote side is also
+ * closed, then an SMUX_DISCONNECTED notification will also be sent.
  */
 int msm_smux_close(uint8_t lcid)
 {

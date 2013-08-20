@@ -633,7 +633,7 @@ static int adb_bind_config(struct usb_configuration *c)
 	struct adb_dev *dev = _adb_dev;
 	int status = -1;
 
-	printk(KERN_INFO "adb_bind_config\n");
+	pr_debug("adb_bind_config\n");
 
 	if (adb_string_defs[STRING_INTERFACE].id == 0) {
 		status = usb_string_id(c->cdev);

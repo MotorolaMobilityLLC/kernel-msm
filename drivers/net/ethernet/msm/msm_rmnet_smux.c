@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -55,7 +55,7 @@ module_param_named(debug_enable, msm_rmnet_smux_debug_mask,
 #define DBG2(x...) DBG(DEBUG_MASK_LVL2, x)
 
 /* Configure device instances */
-#define RMNET_SMUX_DEVICE_COUNT (1)
+#define RMNET_SMUX_DEVICE_COUNT (2)
 
 /* allow larger frames */
 #define RMNET_DATA_LEN 2000
@@ -804,7 +804,7 @@ static int smux_rmnet_probe(struct platform_device *pdev)
 	for (i = 0; i < RMNET_SMUX_DEVICE_COUNT; i++) {
 		p = netdev_priv(netdevs[i]);
 
-		if ((p != NULL) && (p->device_state == DEVICE_INACTIVE)) {
+		if (p != NULL) {
 			r =  msm_smux_open(p->ch_id,
 					   netdevs[i],
 					   rmnet_smux_notify,
@@ -828,7 +828,7 @@ static int smux_rmnet_remove(struct platform_device *pdev)
 	for (i = 0; i < RMNET_SMUX_DEVICE_COUNT; i++) {
 		p = netdev_priv(netdevs[i]);
 
-		if ((p != NULL) && (p->device_state == DEVICE_ACTIVE)) {
+		if (p != NULL) {
 			r =  msm_smux_close(p->ch_id);
 
 			if (r < 0) {

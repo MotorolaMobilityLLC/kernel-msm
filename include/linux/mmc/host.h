@@ -21,6 +21,8 @@
 
 struct mmc_ios {
 	unsigned int	clock;			/* clock rate */
+	unsigned int	old_rate;       /* saved clock rate */
+	unsigned long	clk_ts;         /* time stamp of last updated clock */
 	unsigned short	vdd;
 
 /* vdd stores the bit number of the selected voltage range from below. */
@@ -82,6 +84,12 @@ struct mmc_ios {
 #define MMC_SET_DRIVER_TYPE_D	3
 };
 
+/* states to represent load on the host */
+enum mmc_load {
+	MMC_LOAD_HIGH,
+	MMC_LOAD_LOW,
+};
+
 struct mmc_host_ops {
 	/*
 	 * 'enable' is called when the host is claimed and 'disable' is called
@@ -138,6 +146,9 @@ struct mmc_host_ops {
 	void	(*enable_preset_value)(struct mmc_host *host, bool enable);
 	int	(*select_drive_strength)(unsigned int max_dtr, int host_drv, int card_drv);
 	void	(*hw_reset)(struct mmc_host *host);
+	unsigned long (*get_max_frequency)(struct mmc_host *host);
+	unsigned long (*get_min_frequency)(struct mmc_host *host);
+	int     (*notify_load)(struct mmc_host *, enum mmc_load);
 };
 
 struct mmc_card;
@@ -251,6 +262,7 @@ struct mmc_host {
 
 #define MMC_CAP2_SANITIZE	(1 << 13)		/* Support Sanitize */
 #define MMC_CAP2_INIT_BKOPS	    (1 << 15)	/* Need to set BKOPS_EN */
+#define MMC_CAP2_CLK_SCALE	(1 << 16)	/* Allow dynamic clk scaling */
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
 	int			clk_requests;	/* internal reference counter */
@@ -375,6 +387,20 @@ struct mmc_host {
 	u32			*mmc_cmd_log;
 #endif
 	struct mmc_ios saved_ios;
+	struct {
+		unsigned long	busy_time_us;
+		unsigned long	window_time;
+		unsigned long	curr_freq;
+		unsigned long	polling_delay_ms;
+		unsigned int	up_threshold;
+		unsigned int	down_threshold;
+		ktime_t		start_busy;
+		bool		enable;
+		bool		initialized;
+		bool		in_progress;
+		struct delayed_work work;
+		enum mmc_load	state;
+	} clk_scaling;
 	unsigned long		private[0] ____cacheline_aligned;
 };
 
@@ -427,6 +453,12 @@ extern int mmc_cache_ctrl(struct mmc_host *, u8);
 
 static inline void mmc_signal_sdio_irq(struct mmc_host *host)
 {
+	if (!host->sdio_irqs) {
+		pr_err("%s: SDIO interrupt recieved without function driver claiming an irq\n",
+				mmc_hostname(host));
+		return;
+	}
+
 	host->ops->enable_sdio_irq(host, 0);
 	host->sdio_irq_pending = true;
 	wake_up_process(host->sdio_irq_thread);

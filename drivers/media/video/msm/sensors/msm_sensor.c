@@ -170,7 +170,7 @@ void msm_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 		s_ctrl->msm_sensor_reg->start_stream_conf,
 		s_ctrl->msm_sensor_reg->start_stream_conf_size,
 		s_ctrl->msm_sensor_reg->default_data_type);
-	msm_sensor_delay_frames(s_ctrl);
+	msleep(20);
 }
 
 void msm_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
@@ -1884,6 +1884,11 @@ int32_t msm_sensor_power(struct v4l2_subdev *sd, int on)
 	struct msm_sensor_ctrl_t *s_ctrl = get_sctrl(sd);
 	mutex_lock(s_ctrl->msm_sensor_mutex);
 	if (on) {
+		if(s_ctrl->sensor_state == MSM_SENSOR_POWER_UP) {
+			pr_err("%s: sensor already in power up state\n", __func__);
+			mutex_unlock(s_ctrl->msm_sensor_mutex);
+			return -EINVAL;
+		}
 		rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);
 		if (rc < 0) {
 			pr_err("%s: %s power_up failed rc = %d\n", __func__,
@@ -1904,13 +1909,20 @@ int32_t msm_sensor_power(struct v4l2_subdev *sd, int on)
 					__func__,
 					s_ctrl->sensordata->sensor_name);
 				s_ctrl->sensor_state = MSM_SENSOR_POWER_DOWN;
+				goto power_up_failed;
 			}
 			s_ctrl->sensor_state = MSM_SENSOR_POWER_UP;
 		}
 	} else {
+		if(s_ctrl->sensor_state == MSM_SENSOR_POWER_DOWN) {
+			pr_err("%s: sensor already in power down state\n",__func__);
+			mutex_unlock(s_ctrl->msm_sensor_mutex);
+			return -EINVAL;
+		}
 		rc = s_ctrl->func_tbl->sensor_power_down(s_ctrl);
 		s_ctrl->sensor_state = MSM_SENSOR_POWER_DOWN;
 	}
+power_up_failed:
 	mutex_unlock(s_ctrl->msm_sensor_mutex);
 	return rc;
 }

@@ -75,7 +75,7 @@ int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
 		type = *(uint32_t *)(buf);
 		data_len = *(uint32_t *)(buf + 4);
 		if (type < DIAG_CTRL_MSG_REG ||
-				 type > DIAG_CTRL_MSG_F3_MASK_V2) {
+				 type > DIAG_CTRL_MSG_LAST) {
 			pr_alert("diag: In %s, Invalid Msg type %d proc %d",
 				 __func__, type, smd_info->peripheral);
 			break;
@@ -94,7 +94,7 @@ int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
 			pkt_params->count = msg->count_entries;
 			pkt_params->params = kzalloc(pkt_params->count *
 				sizeof(struct bindpkt_params), GFP_KERNEL);
-			if (pkt_params->params == NULL) {
+			if (ZERO_OR_NULL_PTR(pkt_params->params)) {
 				pr_alert("diag: In %s, Memory alloc fail\n",
 					__func__);
 				kfree(pkt_params);

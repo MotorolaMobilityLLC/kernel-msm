@@ -527,12 +527,20 @@ u32 res_trk_power_down(void)
 
 u32 res_trk_get_max_perf_level(u32 *pn_max_perf_lvl)
 {
+	bool turbo_supported =
+		!resource_context.vidc_platform_data->disable_turbo;
+
 	if (!pn_max_perf_lvl) {
 		VCDRES_MSG_ERROR("%s(): pn_max_perf_lvl is NULL\n",
 			__func__);
 		return false;
 	}
-	*pn_max_perf_lvl = RESTRK_1080P_MAX_PERF_LEVEL;
+	if (turbo_supported)
+		*pn_max_perf_lvl = RESTRK_1080P_TURBO_PERF_LEVEL;
+	else
+		*pn_max_perf_lvl = RESTRK_1080P_MAX_PERF_LEVEL;
+	VCDRES_MSG_MED("%s: %u", __func__, (u32)*pn_max_perf_lvl);
+
 	return true;
 }
 
@@ -600,16 +608,14 @@ u32 res_trk_set_perf_level(u32 req_perf_lvl, u32 *pn_set_perf_lvl,
 			__func__, dev_ctxt);
 	}
 
-#ifdef CONFIG_MSM_BUS_SCALING
-	if (!res_trk_update_bus_perf_level(dev_ctxt, req_perf_lvl) < 0) {
-		VCDRES_MSG_ERROR("%s(): update buf perf level failed\n",
-			__func__);
-		return false;
+	if (dev_ctxt->reqd_perf_lvl + dev_ctxt->curr_perf_lvl == 0) {
+		if (turbo_supported)
+			req_perf_lvl = RESTRK_1080P_TURBO_PERF_LEVEL;
+		else
+			req_perf_lvl = RESTRK_1080P_MAX_PERF_LEVEL;
+		VCDRES_MSG_MED("Set initial perf level to %u",
+			req_perf_lvl);
 	}
-
-#endif
-	if (dev_ctxt->reqd_perf_lvl + dev_ctxt->curr_perf_lvl == 0)
-		req_perf_lvl = RESTRK_1080P_MAX_PERF_LEVEL;
 
 	if (req_perf_lvl <= RESTRK_1080P_VGA_PERF_LEVEL) {
 		vidc_freq = vidc_clk_table[0];
@@ -624,7 +630,6 @@ u32 res_trk_set_perf_level(u32 req_perf_lvl, u32 *pn_set_perf_lvl,
 		vidc_freq = vidc_clk_table[4];
 		*pn_set_perf_lvl = RESTRK_1080P_TURBO_PERF_LEVEL;
 	}
-
 	if (!turbo_supported &&
 		 *pn_set_perf_lvl == RESTRK_1080P_TURBO_PERF_LEVEL) {
 		vidc_freq = vidc_clk_table[2];
@@ -632,8 +637,16 @@ u32 res_trk_set_perf_level(u32 req_perf_lvl, u32 *pn_set_perf_lvl,
 	}
 
 	resource_context.perf_level = *pn_set_perf_lvl;
-	VCDRES_MSG_MED("VIDC: vidc_freq = %u, req_perf_lvl = %u\n",
-		vidc_freq, req_perf_lvl);
+	VCDRES_MSG_HIGH("VIDC: vidc_freq = %u, req_perf_lvl = %u, "\
+		"set_perf_lvl = %u\n", vidc_freq, req_perf_lvl,
+		(u32)*pn_set_perf_lvl);
+#ifdef CONFIG_MSM_BUS_SCALING
+	if (!res_trk_update_bus_perf_level(dev_ctxt, req_perf_lvl) < 0) {
+		VCDRES_MSG_ERROR("%s(): update buf perf level failed\n",
+			__func__);
+		return false;
+	}
+#endif
 #ifdef USE_RES_TRACKER
     if (req_perf_lvl != RESTRK_1080P_MIN_PERF_LEVEL) {
 		VCDRES_MSG_MED("%s(): Setting vidc freq to %u\n",
@@ -1075,18 +1088,28 @@ u32 get_res_trk_perf_level(enum vcd_perf_level perf_level)
 		VCD_MSG_ERROR("Invalid perf level: %d\n", perf_level);
 		res_trk_perf_level = -EINVAL;
 	}
+	VCDRES_MSG_MED("%s: res_trk_perf_level = %u", __func__,
+		res_trk_perf_level);
 	return res_trk_perf_level;
 }
 
 u32 res_trk_estimate_perf_level(u32 pn_perf_lvl)
 {
-	VCDRES_MSG_MED("%s(), req_perf_lvl = %d", __func__, pn_perf_lvl);
+	bool turbo_supported =
+		!resource_context.vidc_platform_data->disable_turbo;
+
+	VCDRES_MSG_MED("%s(): pn_perf_lvl = %d, turbo support = %d",
+		__func__, pn_perf_lvl, turbo_supported);
 	if ((pn_perf_lvl >= RESTRK_1080P_VGA_PERF_LEVEL) &&
 		(pn_perf_lvl < RESTRK_1080P_720P_PERF_LEVEL)) {
 		return RESTRK_1080P_720P_PERF_LEVEL;
 	} else if ((pn_perf_lvl >= RESTRK_1080P_720P_PERF_LEVEL) &&
 			(pn_perf_lvl < RESTRK_1080P_MAX_PERF_LEVEL)) {
 		return RESTRK_1080P_MAX_PERF_LEVEL;
+	} else if ((pn_perf_lvl >= RESTRK_1080P_MAX_PERF_LEVEL) &&
+			(pn_perf_lvl < RESTRK_1080P_TURBO_PERF_LEVEL) &&
+			turbo_supported) {
+		return RESTRK_1080P_TURBO_PERF_LEVEL;
 	} else {
 		return pn_perf_lvl;
 	}
