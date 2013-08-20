@@ -404,7 +404,6 @@ static int l3g4200d_enable(struct l3g4200d_data *gyro)
 		 * flush data before enabling irq */
 		schedule_delayed_work(&gyro->enable_work,
 			msecs_to_jiffies(L3G4200D_PU_DELAY));
-		gpio_set_value(gyro->pdata->gpio_data_en, 1);
 		gyro->enabled = true;
 	}
 	return 0;
@@ -424,7 +423,6 @@ static int l3g4200d_disable(struct l3g4200d_data *gyro)
 			regulator_disable(gyro->regulator);
 			gyro->hw_initialized = false;
 		}
-		gpio_set_value(gyro->pdata->gpio_data_en, 0);
 		gyro->enabled = false;
 	}
 	return 0;
@@ -658,41 +656,20 @@ static int l3g4200d_pm_event(struct notifier_block *this, unsigned long event,
 static int l3g4200d_gpio_init(struct l3g4200d_platform_data *pdata)
 {
 	int err;
-	err = gpio_request(pdata->irq, "gyro int");
-	if (err) {
-		pr_err("Fail to request l3g4200d int gpio, err = %d\n", err);
-		return err;
-	}
-	gpio_direction_input(pdata->irq);
 
 	err = gpio_request(pdata->gpio_drdy, "gyro drdy");
 	if (err) {
 		pr_err("Fail to request l3g4200d drdy gpio, err = %d\n", err);
-		goto free_int;
+		return err;
 	}
 	gpio_direction_input(pdata->gpio_drdy);
 
-	err = gpio_request(pdata->gpio_data_en, "gyro data_en");
-	if (err) {
-		pr_err("Fail to request l3g4200d data_en, err = %d\n", err);
-		goto free_drdy;
-	}
-	gpio_direction_output(pdata->gpio_data_en, 0);
-
 	return 0;
-free_drdy:
-	gpio_free(pdata->gpio_drdy);
-free_int:
-	gpio_free(pdata->irq);
-
-return err;
 }
 
 static void l3g4200d_gpio_free(struct l3g4200d_platform_data *pdata)
 {
-	gpio_free(pdata->irq);
 	gpio_free(pdata->gpio_drdy);
-	gpio_free(pdata->gpio_data_en);
 }
 
 #ifdef CONFIG_OF
@@ -712,9 +689,7 @@ l3g4200d_of_init(struct i2c_client *client)
 	if (!of_property_read_u32(np, "stm,poll_interval", &val))
 		pdata->poll_interval = (int) val;
 
-	pdata->irq = of_get_gpio(np, 0);
-	pdata->gpio_drdy = of_get_gpio(np, 1);
-	pdata->gpio_data_en = of_get_gpio(np, 2);
+	pdata->gpio_drdy = of_get_gpio(np, 0);
 
 	/* According the spec to configure following register */
 	pdata->ctrl_reg1 = 0x1F;
