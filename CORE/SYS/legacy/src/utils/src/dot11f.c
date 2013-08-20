@@ -20822,6 +20822,17 @@ static tANI_U32 UnpackTlvCore( tpAniSirGlobal   pCtx,
         // Now, *if* we found a hit...
         if ( pTlv )
         {
+            if ( len < pTlv->minSize - npec )
+            {
+                FRAMES_LOG3( pCtx, FRLOGW, FRFL("The IE %s must be "
+                    "at least %d bytes in size, but the size is only "
+                    "%d bytes.\n"),
+                     pTlv->name, pTlv->minSize, len );
+                FRAMES_DUMP( pCtx, FRLOG1, pBuf, nBuf );
+                status |= DOT11F_INCOMPLETE_TLV;
+                FRAMES_DBG_BREAK( );
+                goto MandatoryCheck;
+            }
             if ( nBufRemaining < pTlv->minSize - npec - (pTlv->sType + pTlv->sLen) )
             {
                 FRAMES_LOG3( pCtx, FRLOGW, FRFL("The IE %s must be "
