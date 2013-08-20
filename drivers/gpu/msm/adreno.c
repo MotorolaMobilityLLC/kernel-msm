@@ -303,11 +303,6 @@ int adreno_perfcounter_read_group(struct adreno_device *adreno_dev,
 	if (reads == NULL || count == 0 || count > 100)
 		return -EINVAL;
 
-	/* verify valid inputs group ids and countables */
-	for (i = 0; i < count; i++) {
-		if (reads[i].groupid >= counters->group_count)
-			return -EINVAL;
-	}
 
 	list = kmalloc(sizeof(struct kgsl_perfcounter_read_group) * count,
 			GFP_KERNEL);
@@ -318,6 +313,12 @@ int adreno_perfcounter_read_group(struct adreno_device *adreno_dev,
 			sizeof(struct kgsl_perfcounter_read_group) * count)) {
 		ret = -EFAULT;
 		goto done;
+	}
+
+	/* verify valid inputs group ids and countables */
+	for (i = 0; i < count; i++) {
+		if (list[i].groupid >= counters->group_count)
+			return -EINVAL;
 	}
 
 	/* list iterator */
