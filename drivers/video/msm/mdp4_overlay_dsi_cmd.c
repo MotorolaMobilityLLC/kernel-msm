@@ -535,6 +535,7 @@ static void primary_rdptr_isr(int cndx)
 	struct vsycn_ctrl *vctrl;
 	u32 cur_vsync_ms;
 	int vsync_diff;
+
 	vctrl = &vsync_ctrl_db[cndx];
 	pr_debug("%s: ISR, tick=%d pan=%d cpu=%d\n", __func__,
 		vctrl->expire_tick, vctrl->pan_display, smp_processor_id());
@@ -573,6 +574,7 @@ void mdp4_dmap_done_dsi_cmd(int cndx)
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
 	int diff;
+
 	vctrl = &vsync_ctrl_db[cndx];
 	pipe = vctrl->base_pipe;
 
@@ -752,57 +754,32 @@ static __u32 msm_fb_line_length(__u32 fb_index, __u32 xres, int bpp)
 void mdp4_mipi_vsync_enable(struct msm_fb_data_type *mfd,
 		struct mdp4_overlay_pipe *pipe, int which)
 {
-	uint32 data, tear_en;
+	uint32 start_y, data, tear_en;
 
 	tear_en = (1 << which);
 
 	mdp_clk_ctrl(1);
-
-	data = inpdw(MDP_BASE + 0x20c);
 	if ((mfd->use_mdp_vsync) && (mfd->ibuf.vsync_enable) &&
-	    (mfd->panel_info.lcd.vsync_enable)) {
+		(mfd->panel_info.lcd.vsync_enable)) {
+
+		if (vsync_start_y_adjust <= pipe->dst_y)
+			start_y = pipe->dst_y - vsync_start_y_adjust;
+		else
+			start_y = (mfd->total_lcd_lines - 1) -
+				(vsync_start_y_adjust - pipe->dst_y);
+		if (which == 0)
+			MDP_OUTP(MDP_BASE + 0x210, start_y);	/* primary */
+		else
+			MDP_OUTP(MDP_BASE + 0x214, start_y);	/* secondary */
+
+		data = inpdw(MDP_BASE + 0x20c);
 		data |= tear_en;
-		/*
-		 * rdptr init and irq cannot be same due to h/w bug.
-		 * if they are same, rdptr irqs could be missed.
-		 */
-		if (mfd->panel_info.lcd.primary_vsync_init ||
-			mfd->panel_info.lcd.primary_rdptr_irq) {
-			MDP_OUTP(MDP_BASE + 0x128,
-				mfd->panel_info.lcd.primary_vsync_init);
-			MDP_OUTP(MDP_BASE + 0x21C,
-				mfd->panel_info.lcd.primary_rdptr_irq);
-		} else {
-			MDP_OUTP(MDP_BASE + 0x128, 0);
-			MDP_OUTP(MDP_BASE + 0x21C, 1);
-		}
-
-		/*
-		 * adjust start position and threshold to make sure
-		 * write ptr follows read pts (TE is effective), and
-		 * at the same write is not throttled(shorter dmap
-		 * time)
-		 */
-		if (mfd->panel_info.lcd.primary_start_pos)
-			MDP_OUTP(MDP_BASE + 0x210,
-				mfd->panel_info.lcd.primary_start_pos);
-		else
-			MDP_OUTP(MDP_BASE + 0x210,
-				 mfd->panel_info.lcd.v_back_porch +
-				 mfd->panel_info.lcd.v_front_porch +
-				 vsync_start_y_adjust);
-
-		if (mfd->panel_info.lcd.vsync_threshold_continue &&
-				mfd->panel_info.lcd.vsync_threshold_start)
-			MDP_OUTP(MDP_BASE + 0x200,
-			 ((mfd->panel_info.lcd.vsync_threshold_continue << 16) |
-				mfd->panel_info.lcd.vsync_threshold_start));
-		else
-			MDP_OUTP(MDP_BASE + 0x200,
-			 ((4 << 16) | mfd->panel_info.lcd.v_pulse_width));
-	} else
+		MDP_OUTP(MDP_BASE + 0x20c, data);
+	} else {
+		data = inpdw(MDP_BASE + 0x20c);
 		data &= ~tear_en;
-	MDP_OUTP(MDP_BASE + 0x20c, data);
+		MDP_OUTP(MDP_BASE + 0x20c, data);
+	}
 	mdp_clk_ctrl(0);
 }
 
@@ -924,6 +901,8 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
 	mdp4_calc_blt_mdp_bw(mfd, pipe);
+
+	MDP_OUTP(MDP_BASE + 0x021c, 10); /* read pointer */
 
 	/*
 	 * configure dsi stream id
