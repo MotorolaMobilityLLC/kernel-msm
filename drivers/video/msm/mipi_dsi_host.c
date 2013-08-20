@@ -1714,6 +1714,7 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 		ret = -1;
 		goto end;
 	}
+	ret = tp->len;
 
 	INIT_COMPLETION(dsi_dma_comp);
 
