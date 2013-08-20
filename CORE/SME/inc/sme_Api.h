@@ -2665,18 +2665,6 @@ eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
                                          tANI_U8 numChannels);
 
 /*--------------------------------------------------------------------------
-  \brief sme_ChangeCountryValidChannelListByRevision() - Change Korea valid channel list
-  based on country revision number
-  This is a synchronuous call
-  \param hHal - The handle returned by macOpen.
-  \return eHAL_STATUS_SUCCESS - SME update config successful.
-          Other status means SME is failed to update
-  \sa
-  --------------------------------------------------------------------------*/
-eHalStatus sme_ChangeCountryValidChannelListByRevision(tHalHandle hHal,
-                                         tANI_U8 Revision);
-
-/*--------------------------------------------------------------------------
   \brief csrUpdateBgScanConfigIniChannelList() - Update bgscan roam cache
   This is a synchronuous call
   \param hHal - The handle returned by macOpen.
@@ -2698,16 +2686,6 @@ eHalStatus sme_UpdateBgScanConfigIniChannelList(tHalHandle hHal,
   --------------------------------------------------------------------------*/
 eHalStatus sme_getRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
                                          tANI_U8 *pNumChannels);
-
-/*--------------------------------------------------------------------------
-  \brief sme_GetCountryRevision() - get Country revision index
-  This is a synchronuous call
-  \param hHal - The handle returned by macOpen.
-  \return eHAL_STATUS_SUCCESS - SME update config successful.
-          Other status means SME is failed to update
-  \sa
-  --------------------------------------------------------------------------*/
-eHalStatus sme_GetCountryRevision(tHalHandle hHal, tANI_U8 *pRevision);
 
 /*--------------------------------------------------------------------------
   \brief sme_getIsCcxFeatureEnabled() - get CCX feature enabled or not

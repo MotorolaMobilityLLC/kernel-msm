@@ -84,9 +84,6 @@ typedef struct sCsrNeighborRoamCfgParams
     tANI_U32        minChannelScanTime;
     tANI_U32        maxChannelScanTime;
     tANI_U16        neighborResultsRefreshPeriod;
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-    tCsrCountryChannelInfo countryChannelInfo;
-#endif
     tANI_U16        emptyScanRefreshPeriod;
 } tCsrNeighborRoamCfgParams, *tpCsrNeighborRoamCfgParams;
 
