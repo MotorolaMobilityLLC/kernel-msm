@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,7 +11,6 @@
  */
 
 #include <linux/module.h>
-#include <linux/firmware.h>
 #include <linux/io.h>
 #include <linux/slab.h>
 #include <linux/err.h>
@@ -48,7 +47,6 @@
 
 /* module params */
 #define WCNSS_CONFIG_UNSPECIFIED (-1)
-
 static int has_48mhz_xo = WCNSS_CONFIG_UNSPECIFIED;
 module_param(has_48mhz_xo, int, S_IWUSR | S_IRUGO);
 MODULE_PARM_DESC(has_48mhz_xo, "Is an external 48 MHz XO present");
@@ -80,13 +78,10 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define WCNSS_CTRL_MSG_START	0x01000000
 #define	WCNSS_VERSION_REQ             (WCNSS_CTRL_MSG_START + 0)
 #define	WCNSS_VERSION_RSP             (WCNSS_CTRL_MSG_START + 1)
-#define	WCNSS_NVBIN_DNLD_REQ          (WCNSS_CTRL_MSG_START + 2)
-#define	WCNSS_NVBIN_DNLD_RSP          (WCNSS_CTRL_MSG_START + 3)
-#define	WCNSS_CALDATA_UPLD_REQ        (WCNSS_CTRL_MSG_START + 4)
-#define	WCNSS_CALDATA_UPLD_RSP        (WCNSS_CTRL_MSG_START + 5)
-#define	WCNSS_CALDATA_DNLD_REQ        (WCNSS_CTRL_MSG_START + 6)
-#define	WCNSS_CALDATA_DNLD_RSP        (WCNSS_CTRL_MSG_START + 7)
-
+#define	WCNSS_CALDATA_UPLD_REQ        (WCNSS_CTRL_MSG_START + 2)
+#define	WCNSS_CALDATA_UPLD_RSP        (WCNSS_CTRL_MSG_START + 3)
+#define	WCNSS_CALDATA_DNLD_REQ        (WCNSS_CTRL_MSG_START + 4)
+#define	WCNSS_CALDATA_DNLD_RSP        (WCNSS_CTRL_MSG_START + 5)
 
 #define VALID_VERSION(version) \
 	((strncmp(version, "INVALID", WCNSS_VERSION_LEN)) ? 1 : 0)
@@ -95,8 +90,8 @@ static DEFINE_SPINLOCK(reg_spinlock);
 	((penv->fw_major >= 1) && (penv->fw_minor >= 5) ? 1 : 0)
 
 struct smd_msg_hdr {
-	unsigned int msg_type;
-	unsigned int msg_len;
+        unsigned int msg_type;
+        unsigned int msg_len;
 };
 
 struct wcnss_version {
@@ -122,67 +117,12 @@ static struct wcnss_pmic_dump wcnss_pmic_reg_dump[] = {
 	{"LVS1", 0x060}, /*LVS7*/
 };
 
-#define NVBIN_FILE "wlan/prima/WCNSS_qcom_wlan_nv.bin"
-
-/*
- * On SMD channel 4K of maximum data can be transferred, including message
- * header, so NV fragment size as next multiple of 1Kb is 3Kb.
- */
-#define NV_FRAGMENT_SIZE  3072
 #define MAX_CALIBRATED_DATA_SIZE  (64*1024)
 #define LAST_FRAGMENT        (1 << 0)
 #define MESSAGE_TO_FOLLOW    (1 << 1)
 #define CAN_RECEIVE_CALDATA  (1 << 15)
 #define WCNSS_RESP_SUCCESS   1
 #define WCNSS_RESP_FAIL      0
-
-
-/* Macro to find the total number fragments of the NV bin Image */
-#define TOTALFRAGMENTS(x) (((x % NV_FRAGMENT_SIZE) == 0) ? \
-	(x / NV_FRAGMENT_SIZE) : ((x / NV_FRAGMENT_SIZE) + 1))
-
-struct nvbin_dnld_req_params {
-	/*
-	 * Fragment sequence number of the NV bin Image. NV Bin Image
-	 * might not fit into one message due to size limitation of
-	 * the SMD channel FIFO so entire NV blob is chopped into
-	 * multiple fragments starting with seqeunce number 0. The
-	 * last fragment is indicated by marking is_last_fragment field
-	 * to 1. At receiving side, NV blobs would be concatenated
-	 * together without any padding bytes in between.
-	 */
-	unsigned short frag_number;
-
-	/*
-	 * bit 0: When set to 1 it indicates that no more fragments will
-	 * be sent.
-	 * bit 1: When set, a new message will be followed by this message
-	 * bit 2- bit 14:  Reserved
-	 * bit 15: when set, it indicates that the sender is capable of
-	 * receiving Calibrated data.
-	 */
-	unsigned short msg_flags;
-
-	/* NV Image size (number of bytes) */
-	unsigned int nvbin_buffer_size;
-
-	/*
-	 * Following the 'nvbin_buffer_size', there should be
-	 * nvbin_buffer_size bytes of NV bin Image i.e.
-	 * uint8[nvbin_buffer_size].
-	 */
-};
-
-
-struct nvbin_dnld_req_msg {
-	/*
-	 * Note: The length specified in nvbin_dnld_req_msg messages
-	 * should be hdr.msg_len = sizeof(nvbin_dnld_req_msg) +
-	 * nvbin_buffer_size.
-	 */
-	struct smd_msg_hdr hdr;
-	struct nvbin_dnld_req_params dnld_req_params;
-};
 
 struct cal_data_params {
 
@@ -237,7 +177,6 @@ static struct {
 	struct wcnss_wlan_config wlan_config;
 	struct delayed_work wcnss_work;
 	struct work_struct wcnssctrl_version_work;
-	struct work_struct wcnssctrl_nvbin_dnld_work;
 	struct work_struct wcnssctrl_rx_work;
 	struct wake_lock wcnss_wake_lock;
 	void __iomem *msm_wcnss_base;
@@ -790,7 +729,7 @@ static int wcnss_smd_tx(void *data, int len)
 	ret = smd_write_avail(penv->smd_ch);
 	if (ret < len) {
 		pr_err("wcnss: no space available for smd frame\n");
-		return -ENOSPC;
+		ret =  -ENOSPC;
 	}
 	ret = smd_write(penv->smd_ch, data, len);
 	if (ret < len) {
@@ -798,27 +737,6 @@ static int wcnss_smd_tx(void *data, int len)
 		ret = -ENODEV;
 	}
 	return ret;
-}
-
-static unsigned char wcnss_fw_status(void)
-{
-	int len = 0;
-	int rc = 0;
-
-	unsigned char fw_status = 0xFF;
-
-	len = smd_read_avail(penv->smd_ch);
-	if (len < 1) {
-		pr_err("%s: invalid firmware status", __func__);
-		return fw_status;
-	}
-
-	rc = smd_read(penv->smd_ch, &fw_status, 1);
-	if (rc < 0) {
-		pr_err("%s: incomplete data read from smd\n", __func__);
-		return fw_status;
-	}
-	return fw_status;
 }
 
 static void wcnss_send_cal_rsp(unsigned char fw_status)
@@ -937,7 +855,6 @@ static void wcnssctrl_rx_handler(struct work_struct *worker)
 	unsigned char buf[sizeof(struct wcnss_version)];
 	struct smd_msg_hdr *phdr;
 	struct wcnss_version *pversion;
-	unsigned char fw_status = 0;
 
 	len = smd_read_avail(penv->smd_ch);
 	if (len > WCNSS_MAX_FRAME_SIZE) {
@@ -979,35 +896,6 @@ static void wcnssctrl_rx_handler(struct work_struct *worker)
 			"%02x%02x%02x%02x", pversion->major, pversion->minor,
 					pversion->version, pversion->revision);
 		pr_info("wcnss: version %s\n", penv->wcnss_version);
-		/*
-		 * schedule work to download nvbin to riva ccpu,
-		 * only if riva major >= 1 and minor >= 4.
-		 */
-		if ((pversion->major >= 1) && (pversion->minor >= 4)) {
-			pr_info("wcnss: schedule dnld work for riva\n");
-			schedule_work(&penv->wcnssctrl_nvbin_dnld_work);
-		} else {
-			penv->nv_downloaded = true;
-		}
-		break;
-
-	case WCNSS_NVBIN_DNLD_RSP:
-		penv->nv_downloaded = true;
-		fw_status = wcnss_fw_status();
-		pr_debug("wcnss: received WCNSS_NVBIN_DNLD_RSP from ccpu %u\n",
-			fw_status);
-		break;
-
-	case WCNSS_CALDATA_DNLD_RSP:
-		penv->nv_downloaded = true;
-		fw_status = wcnss_fw_status();
-		pr_debug("wcnss: received WCNSS_CALDATA_DNLD_RSP from ccpu %u\n",
-			fw_status);
-		break;
-
-	case WCNSS_CALDATA_UPLD_REQ:
-		penv->fw_cal_available = 0;
-		extract_cal_data(len);
 		break;
 
 	default:
@@ -1029,254 +917,6 @@ static void wcnss_send_version_req(struct work_struct *worker)
 
 	return;
 }
-
-
-static void wcnss_nvbin_dnld(void)
-{
-	int ret = 0;
-	struct nvbin_dnld_req_msg *dnld_req_msg;
-	unsigned short total_fragments = 0;
-	unsigned short count = 0;
-	unsigned short retry_count = 0;
-	unsigned short cur_frag_size = 0;
-	unsigned char *outbuffer = NULL;
-	const void *nv_blob_addr = NULL;
-	unsigned int nv_blob_size = 0;
-	const struct firmware *nv = NULL;
-	struct device *dev = &penv->pdev->dev;
-
-	ret = request_firmware(&nv, NVBIN_FILE, dev);
-
-	if (ret || !nv || !nv->data || !nv->size) {
-		pr_err("wcnss: %s: request_firmware failed for %s\n",
-			__func__, NVBIN_FILE);
-		return;
-	}
-
-	/*
-	 * First 4 bytes in nv blob is validity bitmap.
-	 * We cannot validate nv, so skip those 4 bytes.
-	 */
-	nv_blob_addr = nv->data + 4;
-	nv_blob_size = nv->size - 4;
-
-	total_fragments = TOTALFRAGMENTS(nv_blob_size);
-
-	pr_info("wcnss: NV bin size: %d, total_fragments: %d\n",
-		nv_blob_size, total_fragments);
-
-	/* get buffer for nv bin dnld req message */
-	outbuffer = kmalloc((sizeof(struct nvbin_dnld_req_msg) +
-		NV_FRAGMENT_SIZE), GFP_KERNEL);
-
-	if (NULL == outbuffer) {
-		pr_err("wcnss: %s: failed to get buffer\n", __func__);
-		goto err_free_nv;
-	}
-
-	dnld_req_msg = (struct nvbin_dnld_req_msg *)outbuffer;
-
-	dnld_req_msg->hdr.msg_type = WCNSS_NVBIN_DNLD_REQ;
-	dnld_req_msg->dnld_req_params.msg_flags = 0;
-
-	for (count = 0; count < total_fragments; count++) {
-		dnld_req_msg->dnld_req_params.frag_number = count;
-
-		if (count == (total_fragments - 1)) {
-			/* last fragment, take care of boundry condition */
-			cur_frag_size = nv_blob_size % NV_FRAGMENT_SIZE;
-			if (!cur_frag_size)
-				cur_frag_size = NV_FRAGMENT_SIZE;
-
-			dnld_req_msg->dnld_req_params.msg_flags |=
-				LAST_FRAGMENT;
-			dnld_req_msg->dnld_req_params.msg_flags |=
-				CAN_RECEIVE_CALDATA;
-		} else {
-			cur_frag_size = NV_FRAGMENT_SIZE;
-			dnld_req_msg->dnld_req_params.msg_flags &=
-				~LAST_FRAGMENT;
-		}
-
-		dnld_req_msg->dnld_req_params.nvbin_buffer_size =
-			cur_frag_size;
-
-		dnld_req_msg->hdr.msg_len =
-			sizeof(struct nvbin_dnld_req_msg) + cur_frag_size;
-
-		/* copy NV fragment */
-		memcpy((outbuffer + sizeof(struct nvbin_dnld_req_msg)),
-			(nv_blob_addr + count * NV_FRAGMENT_SIZE),
-			cur_frag_size);
-
-		ret = wcnss_smd_tx(outbuffer, dnld_req_msg->hdr.msg_len);
-
-		retry_count = 0;
-		while ((ret == -ENOSPC) && (retry_count <= 3)) {
-			pr_debug("wcnss: %s: smd tx failed, ENOSPC\n",
-				__func__);
-			pr_debug("fragment: %d, len: %d, TotFragments: %d, retry_count: %d\n",
-				count, dnld_req_msg->hdr.msg_len,
-				total_fragments, retry_count);
-
-			/* wait and try again */
-			msleep(20);
-			retry_count++;
-			ret = wcnss_smd_tx(outbuffer,
-					dnld_req_msg->hdr.msg_len);
-		}
-
-		if (ret < 0) {
-			pr_err("wcnss: %s: smd tx failed\n", __func__);
-			pr_err("fragment %d, len: %d, TotFragments: %d, retry_count: %d\n",
-				count, dnld_req_msg->hdr.msg_len,
-				total_fragments, retry_count);
-			goto err_dnld;
-		}
-	}
-
-err_dnld:
-	/* free buffer */
-	kfree(outbuffer);
-
-err_free_nv:
-	/* release firmware */
-	release_firmware(nv);
-
-	return;
-}
-
-
-static void wcnss_caldata_dnld(const void *cal_data,
-		unsigned int cal_data_size, bool msg_to_follow)
-{
-	int ret = 0;
-	struct cal_data_msg *cal_msg;
-	unsigned short total_fragments = 0;
-	unsigned short count = 0;
-	unsigned short retry_count = 0;
-	unsigned short cur_frag_size = 0;
-	unsigned char *outbuffer = NULL;
-
-	total_fragments = TOTALFRAGMENTS(cal_data_size);
-
-	outbuffer = kmalloc((sizeof(struct cal_data_msg) +
-		NV_FRAGMENT_SIZE), GFP_KERNEL);
-
-	if (NULL == outbuffer) {
-		pr_err("wcnss: %s: failed to get buffer\n", __func__);
-		return;
-	}
-
-	cal_msg = (struct cal_data_msg *)outbuffer;
-
-	cal_msg->hdr.msg_type = WCNSS_CALDATA_DNLD_REQ;
-	cal_msg->cal_params.msg_flags = 0;
-
-	for (count = 0; count < total_fragments; count++) {
-		cal_msg->cal_params.frag_number = count;
-
-		if (count == (total_fragments - 1)) {
-			cur_frag_size = cal_data_size % NV_FRAGMENT_SIZE;
-			if (!cur_frag_size)
-				cur_frag_size = NV_FRAGMENT_SIZE;
-
-			cal_msg->cal_params.msg_flags
-			    |= LAST_FRAGMENT;
-			if (msg_to_follow)
-				cal_msg->cal_params.msg_flags |=
-					MESSAGE_TO_FOLLOW;
-		} else {
-			cur_frag_size = NV_FRAGMENT_SIZE;
-			cal_msg->cal_params.msg_flags &=
-				~LAST_FRAGMENT;
-		}
-
-		cal_msg->cal_params.total_size = cal_data_size;
-		cal_msg->cal_params.frag_size =
-			cur_frag_size;
-
-		cal_msg->hdr.msg_len =
-			sizeof(struct cal_data_msg) + cur_frag_size;
-
-		memcpy((outbuffer + sizeof(struct cal_data_msg)),
-			(cal_data + count * NV_FRAGMENT_SIZE),
-			cur_frag_size);
-
-		ret = wcnss_smd_tx(outbuffer, cal_msg->hdr.msg_len);
-
-		retry_count = 0;
-		while ((ret == -ENOSPC) && (retry_count <= 3)) {
-			pr_debug("wcnss: %s: smd tx failed, ENOSPC\n",
-					__func__);
-			pr_debug("fragment: %d, len: %d, TotFragments: %d, retry_count: %d\n",
-				count, cal_msg->hdr.msg_len,
-				total_fragments, retry_count);
-
-			/* wait and try again */
-			msleep(20);
-			retry_count++;
-			ret = wcnss_smd_tx(outbuffer,
-				cal_msg->hdr.msg_len);
-		}
-
-		if (ret < 0) {
-			pr_err("wcnss: %s: smd tx failed\n", __func__);
-			pr_err("fragment %d, len: %d, TotFragments: %d, retry_count: %d\n",
-				count, cal_msg->hdr.msg_len,
-				total_fragments, retry_count);
-			goto err_dnld;
-		}
-	}
-
-
-err_dnld:
-	/* free buffer */
-	kfree(outbuffer);
-
-	return;
-}
-
-
-static void wcnss_nvbin_dnld_main(struct work_struct *worker)
-{
-	int retry = 0;
-
-	if (!FW_CALDATA_CAPABLE())
-		goto nv_download;
-
-	if (!penv->fw_cal_available && WCNSS_CONFIG_UNSPECIFIED
-		!= has_calibrated_data && !penv->user_cal_available) {
-		while (!penv->user_cal_available && retry++ < 5)
-			msleep(500);
-	}
-
-	/* only cal data is sent during ssr (if available) */
-	if (penv->fw_cal_available && penv->ssr_boot) {
-		pr_info_ratelimited("wcnss: cal download during SSR, using fw cal");
-		wcnss_caldata_dnld(penv->fw_cal_data, penv->fw_cal_rcvd, false);
-		return;
-
-	} else if (penv->user_cal_available && penv->ssr_boot) {
-		pr_info_ratelimited("wcnss: cal download during SSR, using user cal");
-		wcnss_caldata_dnld(penv->user_cal_data,
-		penv->user_cal_rcvd, false);
-		return;
-
-	} else if (penv->user_cal_available) {
-		pr_info_ratelimited("wcnss: cal download during cold boot, using user cal");
-		wcnss_caldata_dnld(penv->user_cal_data,
-		penv->user_cal_rcvd, true);
-	}
-
-nv_download:
-	pr_info_ratelimited("wcnss: NV download");
-	wcnss_nvbin_dnld();
-
-	return;
-}
-
-
 
 static int
 wcnss_trigger_config(struct platform_device *pdev)
@@ -1348,7 +988,6 @@ wcnss_trigger_config(struct platform_device *pdev)
 
 	INIT_WORK(&penv->wcnssctrl_rx_work, wcnssctrl_rx_handler);
 	INIT_WORK(&penv->wcnssctrl_version_work, wcnss_send_version_req);
-	INIT_WORK(&penv->wcnssctrl_nvbin_dnld_work, wcnss_nvbin_dnld_main);
 
 	wake_lock_init(&penv->wcnss_wake_lock, WAKE_LOCK_SUSPEND, "wcnss");
 
@@ -1534,12 +1173,11 @@ wcnss_wlan_probe(struct platform_device *pdev)
 	if (ret)
 		return -ENOENT;
 
+	mutex_init(&penv->dev_lock);
+	init_waitqueue_head(&penv->read_wait);
 
 	/* populate serial_number during init */
 	penv->serial_number = system_serial_low;
-
-	mutex_init(&penv->dev_lock);
-	init_waitqueue_head(&penv->read_wait);
 
 	/*
 	 * Since we were built into the kernel we'll be called as part
