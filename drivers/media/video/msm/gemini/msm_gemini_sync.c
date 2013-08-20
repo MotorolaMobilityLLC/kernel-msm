@@ -22,7 +22,9 @@
 #include "msm_gemini_common.h"
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
+#include <linux/delay.h>
 
+#  define UINT32_MAX    (4294967295U)
 static int release_buf;
 
 /* size is based on 4k page size */
@@ -266,6 +268,7 @@ void msm_gemini_err_irq(struct msm_gemini_device *pgmn_dev,
 	if (!rc)
 		GMN_PR_ERR("%s:%d] err err\n", __func__, __LINE__);
 
+	pgmn_dev->core_reset = 1;
 	return;
 }
 
@@ -580,8 +583,8 @@ int msm_gemini_input_buf_enqueue(struct msm_gemini_device *pgmn_dev,
 		return -1;
 	}
 
-	GMN_DBG("%s:%d] 0x%08x %d\n", __func__, __LINE__,
-		(int) buf_cmd.vaddr, buf_cmd.y_len);
+	GMN_DBG("%s:%d] 0x%08x %d mode %d\n", __func__, __LINE__,
+		(int) buf_cmd.vaddr, buf_cmd.y_len, pgmn_dev->op_mode);
 
 	if (pgmn_dev->op_mode == MSM_GEMINI_MODE_REALTIME_ENCODE) {
 		rc = msm_iommu_map_contig_buffer(
@@ -721,6 +724,7 @@ int __msm_gemini_open(struct msm_gemini_device *pgmn_dev)
 	pgmn_dev->max_out_size = g_max_out_size;
 	pgmn_dev->out_frag_cnt = 0;
 	pgmn_dev->bus_perf_client = 0;
+	pgmn_dev->core_reset = 0;
 
 	if (p_bus_scale_data) {
 		GMN_DBG("%s:%d] register bus client", __func__, __LINE__);
@@ -753,6 +757,16 @@ int __msm_gemini_release(struct msm_gemini_device *pgmn_dev)
 	} else if (pgmn_dev->out_buf_set) {
 		msm_gemini_platform_p2v(pgmn_dev->out_buf.file,
 			&pgmn_dev->out_buf.handle);
+	}
+
+	if (pgmn_dev->core_reset) {
+		GMN_PR_ERR(KERN_ERR "gemini core reset cfg %x mode %d",
+			msm_gemini_io_r(0x8),
+			pgmn_dev->op_mode);
+		wmb();
+		msm_gemini_io_w(0x4, 0x8000);
+		msleep(5);
+		wmb();
 	}
 	msm_gemini_q_cleanup(&pgmn_dev->evt_q);
 	msm_gemini_q_cleanup(&pgmn_dev->output_rtn_q);
@@ -804,7 +818,7 @@ int msm_gemini_ioctl_hw_cmds(struct msm_gemini_device *pgmn_dev,
 	void * __user arg)
 {
 	int is_copy_to_user;
-	int len;
+	uint32_t len;
 	uint32_t m;
 	struct msm_gemini_hw_cmds *hw_cmds_p;
 	struct msm_gemini_hw_cmd *hw_cmd_p;
@@ -812,6 +826,12 @@ int msm_gemini_ioctl_hw_cmds(struct msm_gemini_device *pgmn_dev,
 	if (copy_from_user(&m, arg, sizeof(m))) {
 		GMN_PR_ERR("%s:%d] failed\n", __func__, __LINE__);
 		return -EFAULT;
+	}
+	if ((m == 0) || (m > ((UINT32_MAX-sizeof(struct msm_gemini_hw_cmds))/
+		sizeof(struct msm_gemini_hw_cmd)))) {
+		GMN_PR_ERR("%s:%d] outof range of hwcmds\n",
+			 __func__, __LINE__);
+		return -EINVAL;
 	}
 
 	len = sizeof(struct msm_gemini_hw_cmds) +
@@ -934,7 +954,7 @@ int msm_gemini_ioctl_reset(struct msm_gemini_device *pgmn_dev,
 		return -EFAULT;
 	}
 
-	pgmn_dev->op_mode = ctrl_cmd.type;
+	pgmn_dev->op_mode = MSM_GEMINI_MODE_OFFLINE_ENCODE;
 
 	rc = msm_gemini_core_reset(pgmn_dev->op_mode, pgmn_dev->base,
 		resource_size(pgmn_dev->mem));
@@ -957,14 +977,6 @@ int msm_gemini_ioctl_set_outmode(struct msm_gemini_device *pgmn_dev,
 		||(mode == MSM_GMN_OUTMODE_SINGLE))
 		pgmn_dev->out_mode = mode;
 	return rc;
-}
-
-int msm_gemini_ioctl_test_dump_region(struct msm_gemini_device *pgmn_dev,
-	unsigned long arg)
-{
-	GMN_DBG("%s:%d] Enter\n", __func__, __LINE__);
-	msm_gemini_hw_region_dump(arg);
-	return 0;
 }
 
 long __msm_gemini_ioctl(struct msm_gemini_device *pgmn_dev,
@@ -1033,10 +1045,6 @@ long __msm_gemini_ioctl(struct msm_gemini_device *pgmn_dev,
 
 	case MSM_GMN_IOCTL_HW_CMDS:
 		rc = msm_gemini_ioctl_hw_cmds(pgmn_dev, (void __user *) arg);
-		break;
-
-	case MSM_GMN_IOCTL_TEST_DUMP_REGION:
-		rc = msm_gemini_ioctl_test_dump_region(pgmn_dev, arg);
 		break;
 
 	case MSM_GMN_IOCTL_SET_MODE:

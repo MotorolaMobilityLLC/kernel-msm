@@ -42,7 +42,11 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/pm_runtime.h>
 #include "spi_qsd.h"
+
+static int msm_spi_pm_resume_runtime(struct device *device);
+static int msm_spi_pm_suspend_runtime(struct device *device);
 
 static inline int msm_spi_configure_gsbi(struct msm_spi *dd,
 					struct platform_device *pdev)
@@ -127,13 +131,72 @@ static inline void msm_spi_free_gpios(struct msm_spi *dd)
 	}
 }
 
+/**
+ * msm_spi_clk_max_rate: finds the nearest lower rate for a clk
+ * @clk the clock for which to find nearest lower rate
+ * @rate clock frequency in Hz
+ * @return nearest lower rate or negative error value
+ *
+ * Public clock API extends clk_round_rate which is a ceiling function. This
+ * function is a floor function implemented as a binary search using the
+ * ceiling function.
+ */
+static long msm_spi_clk_max_rate(struct clk *clk, unsigned long rate)
+{
+	long lowest_available, nearest_low, step_size, cur;
+	long step_direction = -1;
+	long guess = rate;
+	int  max_steps = 10;
+
+	cur =  clk_round_rate(clk, rate);
+	if (cur == rate)
+		return rate;
+
+	/* if we got here then: cur > rate */
+	lowest_available =  clk_round_rate(clk, 0);
+	if (lowest_available > rate)
+		return -EINVAL;
+
+	step_size = (rate - lowest_available) >> 1;
+	nearest_low = lowest_available;
+
+	while (max_steps-- && step_size) {
+		guess += step_size * step_direction;
+
+		cur =  clk_round_rate(clk, guess);
+
+		if ((cur < rate) && (cur > nearest_low))
+			nearest_low = cur;
+
+		/*
+		 * if we stepped too far, then start stepping in the other
+		 * direction with half the step size
+		 */
+		if (((cur > rate) && (step_direction > 0))
+		 || ((cur < rate) && (step_direction < 0))) {
+			step_direction = -step_direction;
+			step_size >>= 1;
+		 }
+	}
+	return nearest_low;
+}
+
 static void msm_spi_clock_set(struct msm_spi *dd, int speed)
 {
+	long rate;
 	int rc;
 
-	rc = clk_set_rate(dd->clk, speed);
+	rate = msm_spi_clk_max_rate(dd->clk, speed);
+	if (rate < 0) {
+		dev_err(dd->dev,
+		"%s: no match found for requested clock frequency:%d",
+			__func__, speed);
+		return;
+	}
+
+	rc = clk_set_rate(dd->clk, rate);
 	if (!rc)
-		dd->clock_speed = speed;
+		dd->clock_speed = rate;
 }
 
 static int msm_spi_calculate_size(int *fifo_size,
@@ -608,6 +671,10 @@ static inline irqreturn_t msm_spi_qup_irq(int irq, void *dev_id)
 	u32 op, ret = IRQ_NONE;
 	struct msm_spi *dd = dev_id;
 
+	if (pm_runtime_suspended(dd->dev)) {
+		dev_warn(dd->dev, "QUP: pm runtime suspend, irq:%d\n", irq);
+		return ret;
+	}
 	if (readl_relaxed(dd->base + SPI_ERROR_FLAGS) ||
 	    readl_relaxed(dd->base + QUP_ERROR_FLAGS)) {
 		struct spi_master *master = dev_get_drvdata(dd->dev);
@@ -971,7 +1038,7 @@ static inline int msm_use_dm(struct msm_spi *dd, struct spi_transfer *tr,
 	}
 
 	if (tr->cs_change &&
-	   ((bpw != 8) || (bpw != 16) || (bpw != 32)))
+	   ((bpw != 8) && (bpw != 16) && (bpw != 32)))
 		return 0;
 	return 1;
 }
@@ -1337,35 +1404,21 @@ static void msm_spi_workq(struct work_struct *work)
 		container_of(work, struct msm_spi, work_data);
 	unsigned long        flags;
 	u32                  status_error = 0;
-	int                  rc = 0;
+
+	pm_runtime_get_sync(dd->dev);
 
 	mutex_lock(&dd->core_lock);
 
-	/* Don't allow power collapse until we release mutex */
-	if (pm_qos_request_active(&qos_req_list))
-		pm_qos_update_request(&qos_req_list,
-				  dd->pm_lat);
+	/*
+	 * Counter-part of system-suspend when runtime-pm is not enabled.
+	 * This way, resume can be left empty and device will be put in
+	 * active mode only if client requests anything on the bus
+	 */
+	if (!pm_runtime_enabled(dd->dev))
+		msm_spi_pm_resume_runtime(dd->dev);
+
 	if (dd->use_rlock)
 		remote_mutex_lock(&dd->r_lock);
-
-	/* Configure the spi clk, miso, mosi and cs gpio */
-	if (dd->pdata->gpio_config) {
-		rc = dd->pdata->gpio_config();
-		if (rc) {
-			dev_err(dd->dev,
-					"%s: error configuring GPIOs\n",
-					__func__);
-			status_error = 1;
-		}
-	}
-
-	rc = msm_spi_request_gpios(dd);
-	if (rc)
-		status_error = 1;
-
-	clk_prepare_enable(dd->clk);
-	clk_prepare_enable(dd->pclk);
-	msm_spi_enable_irqs(dd);
 
 	if (!msm_spi_is_valid_state(dd)) {
 		dev_err(dd->dev, "%s: SPI operational state not valid\n",
@@ -1374,6 +1427,7 @@ static void msm_spi_workq(struct work_struct *work)
 	}
 
 	spin_lock_irqsave(&dd->queue_lock, flags);
+	dd->transfer_pending = 1;
 	while (!list_empty(&dd->queue)) {
 		dd->cur_msg = list_entry(dd->queue.next,
 					 struct spi_message, queue);
@@ -1390,24 +1444,14 @@ static void msm_spi_workq(struct work_struct *work)
 	dd->transfer_pending = 0;
 	spin_unlock_irqrestore(&dd->queue_lock, flags);
 
-	msm_spi_disable_irqs(dd);
-	clk_disable_unprepare(dd->clk);
-	clk_disable_unprepare(dd->pclk);
-
-	/* Free  the spi clk, miso, mosi, cs gpio */
-	if (!rc && dd->pdata && dd->pdata->gpio_release)
-		dd->pdata->gpio_release();
-	if (!rc)
-		msm_spi_free_gpios(dd);
-
 	if (dd->use_rlock)
 		remote_mutex_unlock(&dd->r_lock);
 
-	if (pm_qos_request_active(&qos_req_list))
-		pm_qos_update_request(&qos_req_list,
-				  PM_QOS_DEFAULT_VALUE);
-
 	mutex_unlock(&dd->core_lock);
+
+	pm_runtime_mark_last_busy(dd->dev);
+	pm_runtime_put_autosuspend(dd->dev);
+
 	/* If needed, this can be done after the current message is complete,
 	   and work can be continued upon resume. No motivation for now. */
 	if (dd->suspended)
@@ -1421,8 +1465,6 @@ static int msm_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 	struct spi_transfer *tr;
 
 	dd = spi_master_get_devdata(spi->master);
-	if (dd->suspended)
-		return -EBUSY;
 
 	if (list_empty(&msg->transfers) || !msg->complete)
 		return -EINVAL;
@@ -1442,11 +1484,6 @@ static int msm_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 	}
 
 	spin_lock_irqsave(&dd->queue_lock, flags);
-	if (dd->suspended) {
-		spin_unlock_irqrestore(&dd->queue_lock, flags);
-		return -EBUSY;
-	}
-	dd->transfer_pending = 1;
 	list_add_tail(&msg->queue, &dd->queue);
 	spin_unlock_irqrestore(&dd->queue_lock, flags);
 	queue_work(dd->workqueue, &dd->work_data);
@@ -1477,35 +1514,16 @@ static int msm_spi_setup(struct spi_device *spi)
 
 	dd = spi_master_get_devdata(spi->master);
 
+	pm_runtime_get_sync(dd->dev);
+
 	mutex_lock(&dd->core_lock);
-	if (dd->suspended) {
-		mutex_unlock(&dd->core_lock);
-		return -EBUSY;
-	}
+
+	/* Counter-part of system-suspend when runtime-pm is not enabled. */
+	if (!pm_runtime_enabled(dd->dev))
+		msm_spi_pm_resume_runtime(dd->dev);
 
 	if (dd->use_rlock)
 		remote_mutex_lock(&dd->r_lock);
-
-	/* Configure the spi clk, miso, mosi, cs gpio */
-	if (dd->pdata->gpio_config) {
-		rc = dd->pdata->gpio_config();
-		if (rc) {
-			dev_err(&spi->dev,
-					"%s: error configuring GPIOs\n",
-					__func__);
-			rc = -ENXIO;
-			goto err_setup_gpio;
-		}
-	}
-
-	rc = msm_spi_request_gpios(dd);
-	if (rc) {
-		rc = -ENXIO;
-		goto err_setup_gpio;
-	}
-
-	clk_prepare_enable(dd->clk);
-	clk_prepare_enable(dd->pclk);
 
 	spi_ioc = readl_relaxed(dd->base + SPI_IO_CONTROL);
 	mask = SPI_IO_C_CS_N_POLARITY_0 << spi->chip_select;
@@ -1533,18 +1551,19 @@ static int msm_spi_setup(struct spi_device *spi)
 
 	/* Ensure previous write completed before disabling the clocks */
 	mb();
-	clk_disable_unprepare(dd->clk);
-	clk_disable_unprepare(dd->pclk);
 
-	/* Free  the spi clk, miso, mosi, cs gpio */
-	if (dd->pdata && dd->pdata->gpio_release)
-		dd->pdata->gpio_release();
-	msm_spi_free_gpios(dd);
-
-err_setup_gpio:
 	if (dd->use_rlock)
 		remote_mutex_unlock(&dd->r_lock);
+
+	/* Counter-part of system-resume when runtime-pm is not enabled. */
+	if (!pm_runtime_enabled(dd->dev))
+		msm_spi_pm_suspend_runtime(dd->dev);
+
 	mutex_unlock(&dd->core_lock);
+
+	pm_runtime_mark_last_busy(dd->dev);
+	pm_runtime_put_autosuspend(dd->dev);
+
 err_setup_exit:
 	return rc;
 }
@@ -2122,7 +2141,7 @@ skip_dma_resources:
 	clk_enabled = 0;
 	pclk_enabled = 0;
 
-	dd->suspended = 0;
+	dd->suspended = 1;
 	dd->transfer_pending = 0;
 	dd->multi_xfr = 0;
 	dd->mode = SPI_MODE_NONE;
@@ -2137,6 +2156,10 @@ skip_dma_resources:
 
 	mutex_unlock(&dd->core_lock);
 	locked = 0;
+
+	pm_runtime_set_autosuspend_delay(&pdev->dev, MSEC_PER_SEC);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 
 	rc = spi_register_master(master);
 	if (rc)
@@ -2155,6 +2178,7 @@ skip_dma_resources:
 err_attrs:
 	spi_unregister_master(master);
 err_probe_reg_master:
+	pm_runtime_disable(&pdev->dev);
 err_probe_irq:
 err_probe_state:
 	msm_spi_teardown_dma(dd);
@@ -2187,48 +2211,130 @@ err_probe_exit:
 }
 
 #ifdef CONFIG_PM
-static int msm_spi_suspend(struct platform_device *pdev, pm_message_t state)
+static int msm_spi_pm_suspend_runtime(struct device *device)
 {
+	struct platform_device *pdev = to_platform_device(device);
 	struct spi_master *master = platform_get_drvdata(pdev);
-	struct msm_spi    *dd;
-	unsigned long      flags;
+	struct msm_spi	  *dd;
+	unsigned long	   flags;
 
+	dev_dbg(device, "pm_runtime: suspending...\n");
 	if (!master)
 		goto suspend_exit;
 	dd = spi_master_get_devdata(master);
 	if (!dd)
 		goto suspend_exit;
 
-	/* Make sure nothing is added to the queue while we're suspending */
+	if (dd->suspended)
+		return 0;
+
+	/*
+	 * Make sure nothing is added to the queue while we're
+	 * suspending
+	 */
 	spin_lock_irqsave(&dd->queue_lock, flags);
 	dd->suspended = 1;
 	spin_unlock_irqrestore(&dd->queue_lock, flags);
 
 	/* Wait for transactions to end, or time out */
-	wait_event_interruptible(dd->continue_suspend, !dd->transfer_pending);
+	wait_event_interruptible(dd->continue_suspend,
+		!dd->transfer_pending);
 
+	msm_spi_disable_irqs(dd);
+	clk_disable_unprepare(dd->clk);
+	clk_disable_unprepare(dd->pclk);
+
+	/* Free  the spi clk, miso, mosi, cs gpio */
+	if (dd->pdata && dd->pdata->gpio_release)
+		dd->pdata->gpio_release();
+
+	msm_spi_free_gpios(dd);
+
+	if (pm_qos_request_active(&qos_req_list))
+		pm_qos_update_request(&qos_req_list,
+				PM_QOS_DEFAULT_VALUE);
 suspend_exit:
 	return 0;
 }
 
-static int msm_spi_resume(struct platform_device *pdev)
+static int msm_spi_pm_resume_runtime(struct device *device)
 {
+	struct platform_device *pdev = to_platform_device(device);
 	struct spi_master *master = platform_get_drvdata(pdev);
-	struct msm_spi    *dd;
+	struct msm_spi	  *dd;
+	int ret = 0;
 
+	dev_dbg(device, "pm_runtime: resuming...\n");
 	if (!master)
 		goto resume_exit;
 	dd = spi_master_get_devdata(master);
 	if (!dd)
 		goto resume_exit;
 
+	if (!dd->suspended)
+		return 0;
+
+	if (pm_qos_request_active(&qos_req_list))
+		pm_qos_update_request(&qos_req_list,
+				  dd->pm_lat);
+
+	/* Configure the spi clk, miso, mosi and cs gpio */
+	if (dd->pdata->gpio_config) {
+		ret = dd->pdata->gpio_config();
+		if (ret) {
+			dev_err(dd->dev,
+					"%s: error configuring GPIOs\n",
+					__func__);
+			return ret;
+		}
+	}
+
+	ret = msm_spi_request_gpios(dd);
+	if (ret)
+		return ret;
+
+	clk_prepare_enable(dd->clk);
+	clk_prepare_enable(dd->pclk);
+	msm_spi_enable_irqs(dd);
 	dd->suspended = 0;
 resume_exit:
+	return 0;
+}
+
+static int msm_spi_suspend(struct device *device)
+{
+	if (!pm_runtime_enabled(device) || !pm_runtime_suspended(device)) {
+		struct platform_device *pdev = to_platform_device(device);
+		struct spi_master *master = platform_get_drvdata(pdev);
+		struct msm_spi   *dd;
+
+		dev_dbg(device, "system suspend");
+		if (!master)
+			goto suspend_exit;
+		dd = spi_master_get_devdata(master);
+		if (!dd)
+			goto suspend_exit;
+		msm_spi_pm_suspend_runtime(device);
+	}
+suspend_exit:
+	return 0;
+}
+
+static int msm_spi_resume(struct device *device)
+{
+	/*
+	 * Rely on runtime-PM to call resume in case it is enabled
+	 * Even if it's not enabled, rely on 1st client transaction to do
+	 * clock ON and gpio configuration
+	 */
+	dev_dbg(device, "system resume");
 	return 0;
 }
 #else
 #define msm_spi_suspend NULL
 #define msm_spi_resume NULL
+#define msm_spi_pm_suspend_runtime NULL
+#define msm_spi_pm_resume_runtime NULL
 #endif /* CONFIG_PM */
 
 static int __devexit msm_spi_remove(struct platform_device *pdev)
@@ -2242,6 +2348,8 @@ static int __devexit msm_spi_remove(struct platform_device *pdev)
 
 	msm_spi_teardown_dma(dd);
 
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_set_suspended(&pdev->dev);
 	clk_put(dd->clk);
 	clk_put(dd->pclk);
 	destroy_workqueue(dd->workqueue);
@@ -2252,14 +2360,19 @@ static int __devexit msm_spi_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct dev_pm_ops msm_spi_dev_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(msm_spi_suspend, msm_spi_resume)
+	SET_RUNTIME_PM_OPS(msm_spi_pm_suspend_runtime,
+			msm_spi_pm_resume_runtime, NULL)
+};
+
 static struct platform_driver msm_spi_driver = {
 	.driver		= {
 		.name	= SPI_DRV_NAME,
 		.owner	= THIS_MODULE,
+		.pm		= &msm_spi_dev_pm_ops,
 		.of_match_table = msm_spi_dt_match,
 	},
-	.suspend        = msm_spi_suspend,
-	.resume         = msm_spi_resume,
 	.remove		= __exit_p(msm_spi_remove),
 };
 
