@@ -67,6 +67,7 @@
 #define IR_COMP_R_MASK             0xE0
 #define IR_COMP_VCLAMP_MASK        0x1C
 #define THERM_REG_MASK             0x03
+#define BOOST_LIM_MASK             0x01
 
 struct bq24192_chip {
 	int  chg_current_ma;
@@ -1337,6 +1338,13 @@ static int bq24192_hw_init(struct bq24192_chip *chip)
 	ret = bq24192_set_vclamp_mv(chip, IRCOMP_VCLAMP_MAX_MV);
 	if (ret) {
 		pr_err("failed to set ir vclamp voltage\n");
+		return ret;
+	}
+
+	ret = bq24192_masked_write(chip->client, PWR_ON_CONF_REG,
+			BOOST_LIM_MASK, 0);
+	if (ret) {
+		pr_err("failed to set boost current limit\n");
 		return ret;
 	}
 
