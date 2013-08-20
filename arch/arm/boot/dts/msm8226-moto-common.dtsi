@@ -164,20 +164,21 @@
 		enable-active-high;
 	};
 
-	hob_ram@8300000 {
+	qcom,msm-mem-hole {
+		compatible = "qcom,msm-mem-hole";
+		qcom,memblock-remove = <0x08400000 0x4000000
+					0x0d200000 0x2400000
+					0x0fa00000 0x500000>; /* Address and Size of Hole */
+	};
+
+	hob_ram@f500000 {
 		compatible = "mmi,hob_ram";
-		reg = <0x8300000 0x40000>,
-		      <0x8340000 0x2000>;
+		reg = <0x0f500000 0x40000>,
+		      <0x0f540000 0x2000>;
 	};
 	usr_reset_warning {
 		compatible = "mmi,usr-reset-warning";
 		gpios = <&msmgpio 69 0x0>;
-	};
-
-	qcom,ion {
-		qcom,ion-heap@23 { /* OTHER PIL HEAP */
-			qcom,memory-fixed = <0x06400000 0x1F00000>;
-		};
 	};
 
 	mmi_batterydata: qcom,battery-data {
