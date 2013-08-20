@@ -84,6 +84,7 @@ struct msm_gemini_device {
 	int out_frag_cnt;
 
 	uint32_t bus_perf_client;
+	uint32_t core_reset;
 };
 
 int __msm_gemini_open(struct msm_gemini_device *pgmn_dev);

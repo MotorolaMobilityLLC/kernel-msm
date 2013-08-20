@@ -60,9 +60,8 @@
 /*
  * BAM descriptor FIFO size (in number of descriptors).
  * Max number of descriptors allowed by SPS which is 8K-1.
- * Restrict it to half of this to save DMA memory.
  */
-#define TSPP_SPS_DESCRIPTOR_COUNT      (4 * 1024 - 1)
+#define TSPP_SPS_DESCRIPTOR_COUNT      (8 * 1024 - 1)
 #define TSPP_PACKET_LENGTH             188
 #define TSPP_MIN_BUFFER_SIZE           (TSPP_PACKET_LENGTH)
 
@@ -1571,6 +1570,7 @@ int tspp_close_channel(u32 dev, u32 channel_id)
 	int id;
 	int table_idx;
 	u32 val;
+	unsigned long flags;
 
 	struct sps_connect *config;
 	struct tspp_device *pdev;
@@ -1590,6 +1590,15 @@ int tspp_close_channel(u32 dev, u32 channel_id)
 	/* if the channel is not used, we are done */
 	if (!channel->used)
 		return 0;
+
+	/*
+	 * Need to protect access to used and waiting fields, as they are
+	 * used by the tasklet which is invoked from interrupt context
+	 */
+	spin_lock_irqsave(&pdev->spinlock, flags);
+	channel->used = 0;
+	channel->waiting = NULL;
+	spin_unlock_irqrestore(&pdev->spinlock, flags);
 
 	if (channel->expiration_period_ms)
 		del_timer(&channel->expiration_timer);
@@ -1644,9 +1653,7 @@ int tspp_close_channel(u32 dev, u32 channel_id)
 	channel->buffer_count = 0;
 	channel->data = NULL;
 	channel->read = NULL;
-	channel->waiting = NULL;
 	channel->locked = NULL;
-	channel->used = 0;
 
 	if (tspp_channels_in_use(pdev) == 0) {
 		wake_unlock(&pdev->wake_lock);
@@ -2188,6 +2195,12 @@ int tspp_allocate_buffers(u32 dev, u32 channel_id, u32 count, u32 size,
 	if (count < MIN_ACCEPTABLE_BUFFER_COUNT) {
 		pr_err("%s: tspp requires a minimum of %i buffers\n",
 			__func__, MIN_ACCEPTABLE_BUFFER_COUNT);
+		return -EINVAL;
+	}
+
+	if (count > TSPP_NUM_BUFFERS) {
+		pr_err("%s: tspp requires a maximum of %i buffers\n",
+			__func__, TSPP_NUM_BUFFERS);
 		return -EINVAL;
 	}
 

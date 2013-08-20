@@ -48,9 +48,6 @@
 #define MSM_GMN_IOCTL_HW_CMDS \
 	_IOW(MSM_GMN_IOCTL_MAGIC, 14, struct msm_gemini_hw_cmds *)
 
-#define MSM_GMN_IOCTL_TEST_DUMP_REGION \
-	_IOW(MSM_GMN_IOCTL_MAGIC, 15, unsigned long)
-
 #define MSM_GMN_IOCTL_SET_MODE \
 	_IOW(MSM_GMN_IOCTL_MAGIC, 16, enum msm_gmn_out_mode)
 

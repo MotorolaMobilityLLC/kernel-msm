@@ -626,8 +626,77 @@ static inline void mpq_dmx_update_sdmx_stat(struct mpq_demux *mpq_demux,
 		mpq_demux->sdmx_process_time_max = process_time;
 }
 
-/* Extend dvb-demux debugfs with HW statistics */
-void mpq_dmx_init_hw_statistics(struct mpq_demux *mpq_demux)
+static int mpq_sdmx_log_level_open(struct inode *inode, struct file *file)
+{
+	file->private_data = inode->i_private;
+	return 0;
+}
+
+static ssize_t mpq_sdmx_log_level_read(struct file *fp,
+	char __user *user_buffer, size_t count, loff_t *position)
+{
+	char user_str[16];
+	struct mpq_demux *mpq_demux = fp->private_data;
+	int ret;
+
+	ret = scnprintf(user_str, 16, "%d", mpq_demux->sdmx_log_level);
+	ret = simple_read_from_buffer(user_buffer, count, position,
+		user_str, ret+1);
+
+	return ret;
+}
+
+static ssize_t mpq_sdmx_log_level_write(struct file *fp,
+	const char __user *user_buffer, size_t count, loff_t *position)
+{
+	char user_str[16];
+	int ret;
+	int ret_count;
+	int level;
+	struct mpq_demux *mpq_demux = fp->private_data;
+
+	if (count >= 16)
+		return -EINVAL;
+
+	ret_count = simple_write_to_buffer(user_str, 16, position, user_buffer,
+		count);
+	if (ret_count < 0)
+		return ret_count;
+
+	ret = sscanf(user_str, "%d", &level);
+	if (ret != 1)
+		return -EINVAL;
+
+	if (level < SDMX_LOG_NO_PRINT || level > SDMX_LOG_VERBOSE)
+		return -EINVAL;
+
+	mutex_lock(&mpq_demux->mutex);
+	mpq_demux->sdmx_log_level = level;
+	if (mpq_demux->sdmx_session_handle != SDMX_INVALID_SESSION_HANDLE) {
+		ret = sdmx_set_log_level(mpq_demux->sdmx_session_handle,
+			mpq_demux->sdmx_log_level);
+		if (ret) {
+			MPQ_DVB_ERR_PRINT(
+				"%s: Could not set sdmx log level. ret = %d\n",
+				__func__, ret);
+			mutex_unlock(&mpq_demux->mutex);
+			return -EINVAL;
+		}
+	}
+
+	mutex_unlock(&mpq_demux->mutex);
+	return ret_count;
+}
+
+static const struct file_operations sdmx_debug_fops = {
+	.open = mpq_sdmx_log_level_open,
+	.read = mpq_sdmx_log_level_read,
+	.write = mpq_sdmx_log_level_write,
+	.owner = THIS_MODULE,
+};
+
+/* Extend dvb-demux debugfs with common plug-in entries */
+void mpq_dmx_init_debugfs_entries(struct mpq_demux *mpq_demux)
 {
 	/*
 	 * Extend dvb-demux debugfs with HW statistics.
@@ -749,8 +818,14 @@ void mpq_dmx_init_hw_statistics(struct mpq_demux *mpq_demux)
 		S_IRUGO | S_IWUSR | S_IWGRP,
 		mpq_demux->demux.dmx.debugfs_demux_dir,
 		&mpq_demux->sdmx_process_packets_min);
+
+	debugfs_create_file("sdmx_log_level",
+		S_IRUGO | S_IWUSR | S_IWGRP,
+		mpq_demux->demux.dmx.debugfs_demux_dir,
+		mpq_demux,
+		&sdmx_debug_fops);
 }
-EXPORT_SYMBOL(mpq_dmx_init_hw_statistics);
+EXPORT_SYMBOL(mpq_dmx_init_debugfs_entries);
 
 /* Update dvb-demux debugfs with HW notification statistics */
 void mpq_dmx_update_hw_statistics(struct mpq_demux *mpq_demux)
@@ -911,6 +986,7 @@ int mpq_dmx_plugin_init(mpq_dmx_init dmx_init_func)
 		mpq_demux->num_active_feeds = 0;
 		mpq_demux->sdmx_filter_count = 0;
 		mpq_demux->sdmx_session_handle = SDMX_INVALID_SESSION_HANDLE;
+		mpq_demux->sdmx_log_level = SDMX_LOG_NO_PRINT;
 
 		if (mpq_demux->demux.feednum > MPQ_MAX_DMX_FILES) {
 			MPQ_DVB_ERR_PRINT(
@@ -1230,6 +1306,8 @@ int mpq_dmx_reuse_decoder_buffer(struct dvb_demux_feed *feed, int cookie)
 			__func__);
 		return -EPERM;
 	}
+
+	MPQ_DVB_DBG_PRINT("%s: cookie=%d\n", __func__, cookie);
 
 	if (cookie < 0) {
 		MPQ_DVB_ERR_PRINT("%s: invalid cookie parameter\n", __func__);
@@ -2451,9 +2529,15 @@ static inline void mpq_dmx_prepare_es_event_data(
 
 	data->data_length = 0;
 	data->buf.handle = packet->raw_data_handle;
+
 	/* this has to succeed when called here, after packet was written */
 	data->buf.cookie = mpq_streambuffer_pkt_next(stream_buffer,
 				feed_data->last_pkt_index, &len);
+	if (data->buf.cookie < 0)
+		MPQ_DVB_DBG_PRINT(
+			"%s: received invalid packet index %d\n",
+			__func__, data->buf.cookie);
+
 	data->buf.offset = packet->raw_data_offset;
 	data->buf.len = packet->raw_data_len;
 	data->buf.pts_exists = pts_dts->pts_exist;
@@ -2468,6 +2552,8 @@ static inline void mpq_dmx_prepare_es_event_data(
 
 	/* save for next time: */
 	feed_data->last_pkt_index = data->buf.cookie;
+
+	MPQ_DVB_DBG_PRINT("%s: cookie=%d\n", __func__, data->buf.cookie);
 
 	/* reset counters */
 	feed_data->ts_packets_num = 0;
@@ -3300,6 +3386,15 @@ int mpq_sdmx_open_session(struct mpq_demux *mpq_demux)
 		return -EINVAL;
 	}
 
+	ret = sdmx_set_log_level(mpq_demux->sdmx_session_handle,
+		mpq_demux->sdmx_log_level);
+	if (ret != SDMX_SUCCESS) {
+		MPQ_DVB_ERR_PRINT("%s: Could not set log level. ret=%d\n",
+				__func__, ret);
+		/* Don't fail open session if just log level setting failed */
+		ret = 0;
+	}
+
 	mpq_demux->sdmx_process_count = 0;
 	mpq_demux->sdmx_process_time_sum = 0;
 	mpq_demux->sdmx_process_time_average = 0;
@@ -3331,7 +3426,6 @@ int mpq_sdmx_close_session(struct mpq_demux *mpq_demux)
 		if (status != SDMX_SUCCESS) {
 			MPQ_DVB_ERR_PRINT("%s: sdmx_close_session failed %d\n",
 				__func__, status);
-			return -EINVAL;
 		}
 		mpq_demux->sdmx_session_handle = SDMX_INVALID_SESSION_HANDLE;
 	}
@@ -3578,8 +3672,7 @@ static int mpq_sdmx_filter_setup(struct mpq_demux *mpq_demux,
 			MPQ_DVB_ERR_PRINT(
 				"%s: FAILED to set key ladder, ret=%d\n",
 				__func__, ret);
-			ret = -ENODEV;
-			goto end;
+			ret = 0;
 		}
 	}
 
@@ -4028,11 +4121,13 @@ static void mpq_sdmx_pes_filter_results(struct mpq_demux *mpq_demux,
 		pes_event.pes_end.start_gap = 0;
 		pes_event.data_length = 0;
 
-		/* Parse error indicators - TODO: these should be per filter */
+		/* Parse error indicators */
 		if (sts->error_indicators & SDMX_FILTER_ERR_INVALID_PES_LEN)
 			pes_event.pes_end.pes_length_mismatch = 1;
-		if (sts->error_indicators & SDMX_FILTER_ERR_CONT_CNT_INVALID)
-			pes_event.pes_end.disc_indicator_set = 0;
+		else
+			pes_event.pes_end.pes_length_mismatch = 0;
+
+		pes_event.pes_end.disc_indicator_set = 0;
 
 		pes_event.pes_end.stc = 0;
 		pes_event.pes_end.tei_counter = counters.transport_err_count;
@@ -4247,7 +4342,12 @@ static void mpq_sdmx_decoder_filter_results(struct mpq_demux *mpq_demux,
 				__func__, ret);
 		}
 		mpq_dmx_update_decoder_stat(mpq_demux);
-		mpq_streambuffer_pkt_write(sbuf, &packet, (u8 *)&meta_data);
+		if (mpq_streambuffer_pkt_write(sbuf,
+				&packet,
+				(u8 *)&meta_data) < 0)
+			MPQ_DVB_ERR_PRINT(
+				"%s: Couldn't write packet. Should never happen\n",
+				__func__);
 
 		if (generate_es_events) {
 			struct dmx_data_ready data;
@@ -4389,10 +4489,12 @@ static void mpq_sdmx_process_results(struct mpq_demux *mpq_demux)
 {
 	int i;
 	int j;
+	int sdmx_filters;
 	struct sdmx_filter_status *sts;
 	struct mpq_feed *mpq_feed;
 
-	for (i = 0; i < mpq_demux->sdmx_filter_count; i++) {
+	sdmx_filters = mpq_demux->sdmx_filter_count;
+	for (i = 0; i < sdmx_filters; i++) {
 		/*
 		 * MPQ_TODO: review lookup optimization
 		 * Can have the related mpq_feed index already associated with
@@ -4509,7 +4611,7 @@ static int mpq_sdmx_process_buffer(struct mpq_demux *mpq_demux,
 	}
 
 	MPQ_DVB_DBG_PRINT(
-		"\n\n%s: Before SDMX_process: input read_offset=%u, fill count=%u\n",
+		"%s: Before SDMX_process: input read_offset=%u, fill count=%u\n",
 		__func__, read_offset, fill_count);
 
 	process_start_time = current_kernel_time();
@@ -4552,14 +4654,19 @@ static int mpq_sdmx_process_buffer(struct mpq_demux *mpq_demux,
 int mpq_sdmx_process(struct mpq_demux *mpq_demux,
 	struct sdmx_buff_descr *input,
 	u32 fill_count,
-	u32 read_offset)
+	u32 read_offset,
+	size_t tsp_size)
 {
 	int ret;
 	int todo;
 	int total_bytes_read = 0;
-	int limit = mpq_sdmx_proc_limit * mpq_demux->demux.ts_packet_size;
+	int limit = mpq_sdmx_proc_limit * tsp_size;
 
-	while (fill_count >= mpq_demux->demux.ts_packet_size) {
+	MPQ_DVB_DBG_PRINT(
+		"\n\n%s: read_offset=%u, fill_count=%u, tsp_size=%u\n",
+		__func__, read_offset, fill_count, tsp_size);
+
+	while (fill_count >= tsp_size) {
 		todo = fill_count > limit ? limit : fill_count;
 		ret = mpq_sdmx_process_buffer(mpq_demux, input, todo,
 			read_offset);
@@ -4615,7 +4722,8 @@ static int mpq_sdmx_write(struct mpq_demux *mpq_demux,
 	buf_desc.size = rbuf->size;
 	read_offset = rbuf->pread;
 
-	return mpq_sdmx_process(mpq_demux, &buf_desc, count, read_offset);
+	return mpq_sdmx_process(mpq_demux, &buf_desc, count,
+				read_offset, mpq_demux->demux.ts_packet_size);
 }
 
 int mpq_dmx_write(struct dmx_demux *demux, const char *buf, size_t count)

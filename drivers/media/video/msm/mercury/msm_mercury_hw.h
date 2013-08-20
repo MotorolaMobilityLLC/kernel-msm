@@ -55,7 +55,7 @@ uint32_t msm_mercury_hw_read(struct msm_mercury_hw_cmd *hw_cmd_p);
 void msm_mercury_hw_write(struct msm_mercury_hw_cmd *hw_cmd_p);
 int msm_mercury_hw_wait(struct msm_mercury_hw_cmd *hw_cmd_p, int m_us);
 void msm_mercury_hw_delay(struct msm_mercury_hw_cmd *hw_cmd_p, int m_us);
-int msm_mercury_hw_exec_cmds(struct msm_mercury_hw_cmd *hw_cmd_p, int m_cmds);
+int msm_mercury_hw_exec_cmds(struct msm_mercury_hw_cmd *hw_cmd_p, uint32_t m_cmds);
 void msm_mercury_hw_region_dump(int size);
 
 

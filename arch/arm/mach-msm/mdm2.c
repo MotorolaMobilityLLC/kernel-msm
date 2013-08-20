@@ -169,14 +169,13 @@ static void mdm_do_first_power_on(struct mdm_modem_drv *mdm_drv)
 		/* Pull AP2MDM_KPDPWR gpio high and wait for PS_HOLD to settle,
 		 * then	pull it back low.
 		 */
-		pr_debug("%s:id %d: Pulling AP2MDM_KPDPWR gpio high\n",
-				 __func__, mdm_drv->device_id);
-		gpio_direction_output(mdm_drv->ap2mdm_kpdpwr_n_gpio,
-				kpd_direction_assert);
+		pr_debug("%s: Pulling AP2MDM_KPDPWR gpio high\n", __func__);
+		gpio_direction_output(mdm_drv->ap2mdm_kpdpwr_n_gpio, 1);
+		gpio_direction_output(mdm_drv->ap2mdm_status_gpio, 1);
 		msleep(1000);
-		gpio_direction_output(mdm_drv->ap2mdm_kpdpwr_n_gpio,
-				kpd_direction_de_assert);
-	}
+		gpio_direction_output(mdm_drv->ap2mdm_kpdpwr_n_gpio, 0);
+	} else
+		gpio_direction_output(mdm_drv->ap2mdm_status_gpio, 1);
 
 	if (!GPIO_IS_VALID(mdm_drv->mdm2ap_pblrdy))
 		goto start_mdm_peripheral;

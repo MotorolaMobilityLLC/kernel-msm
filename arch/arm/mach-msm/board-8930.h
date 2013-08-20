@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -150,6 +150,7 @@ void msm8930_pm8038_gpio_mpp_init(void);
 void msm8930_pm8917_gpio_mpp_init(void);
 void msm8930_mdp_writeback(struct memtype_reserve *reserve_table);
 void __init msm8930_init_gpu(void);
+void __init configure_8930_sglte_regulator(void);
 
 #define PLATFORM_IS_CHARM25() \
 	(machine_is_msm8930_cdp() && \
