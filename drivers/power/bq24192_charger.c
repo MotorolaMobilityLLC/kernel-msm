@@ -45,6 +45,7 @@
 
 #define RESET_REGISTER_MASK        0x80
 #define CHG_CONFIG_MASK            0x30
+#define EN_CHG_MASK                0x10
 #define PG_STAT_MASK               0x04
 #define OTG_EN_MASK                0x20
 #define VBUS_STAT_MASK             0xC0
@@ -241,9 +242,9 @@ static int bq24192_enable_charging(struct bq24192_chip *chip, bool enable)
 	pr_info("enable=%d\n", enable);
 
 	ret = bq24192_masked_write(chip->client, PWR_ON_CONF_REG,
-						CHG_CONFIG_MASK, val);
+						EN_CHG_MASK, val);
 	if (ret) {
-		pr_err("failed to set CHG_CONFIG rc=%d\n", ret);
+		pr_err("failed to set EN_CHG rc=%d\n", ret);
 		return ret;
 	}
 
