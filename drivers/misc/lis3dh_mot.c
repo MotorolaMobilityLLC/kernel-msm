@@ -73,7 +73,7 @@
 #define ODR400		0x70
 #define ODR1250		0x90
 
-#define ROTATE_PM_MODE	(PM_LOW|ODR25|ENABLE_ALL_AXES)
+#define ROTATE_PM_MODE	(PM_LOW|ODR100|ENABLE_ALL_AXES)
 
 #define G_2G		0x00
 #define G_4G		0x10
@@ -430,7 +430,7 @@ static void lis3dh_report_values(struct lis3dh_data *lis, int *xyz)
 
 static void lis3dh_report_rotate(struct lis3dh_data *lis, int flat)
 {
-	input_report_abs(lis->input_dev, ABS_BRAKE, flat);
+	input_event(lis->input_dev, EV_MSC, MSC_RAW, flat);
 	input_sync(lis->input_dev);
 }
 
@@ -770,7 +770,7 @@ static int lis3dh_input_init(struct lis3dh_data *lis)
 	input_set_abs_params(lis->input_dev, ABS_X, -G_MAX, G_MAX, FUZZ, FLAT);
 	input_set_abs_params(lis->input_dev, ABS_Y, -G_MAX, G_MAX, FUZZ, FLAT);
 	input_set_abs_params(lis->input_dev, ABS_Z, -G_MAX, G_MAX, FUZZ, FLAT);
-	input_set_abs_params(lis->input_dev, ABS_BRAKE, -1, 4, 0, 0);
+	input_set_capability(lis->input_dev, EV_MSC, MSC_RAW);
 
 	lis->input_dev->name = "accelerometer";
 
