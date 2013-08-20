@@ -121,16 +121,6 @@ static tANI_BOOLEAN bRoamScanOffloadStarted = VOS_FALSE;
   Static Type declarations
   ------------------------------------------------------------------------*/
 static tCsrRoamSession csrRoamRoamSession[CSR_ROAM_SESSION_MAX];
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-static const char KR_3[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                            36, 40, 44, 48, 52, 56, 60, 64, 100, 104,
-                            108, 112, 116, 120, 124, 149, 153, 157, 161};
-static const char KR_24[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                            36, 40, 44, 48, 52, 56, 60, 64, 100, 104,
-                            108, 112, 116, 120, 124, 149, 153, 157, 161};
-static const char KR_25[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                            36, 40, 44, 48, 149, 153, 157, 161};
-#endif
 
 /*-------------------------------------------------------------------------- 
   Type declarations
@@ -1049,42 +1039,6 @@ eCsrBand csrGetCurrentBand(tHalHandle hHal)
 }
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-tANI_BOOLEAN csrIsChannelInCountryValidList(tpAniSirGlobal pMac, tANI_U8 channel)
-{
-    /* Get country code from CFG */
-    tANI_U8 *pCountryCode = pMac->scan.countryCodeCurrent;
-    tANI_U8 i = 0;
-    v_BOOL_t retVal = FALSE;
-    tANI_U8 *pCountryValidChannelList = pMac->roam.neighborRoamInfo.cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
-    tANI_U8 *pNumChannels = &pMac->roam.neighborRoamInfo.cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels;
-
-    /* Compare against KR valid list */
-    if ((0 == strncmp(pCountryCode, "KR", 2)) &&
-        (NULL != pCountryValidChannelList))
-    {
-        for (i = 0; i <(*pNumChannels); i++)
-        {
-            if (channel == pCountryValidChannelList[i])
-            {
-                retVal = TRUE;
-                break;
-            }
-        }
-    }
-    else
-    {
-        retVal = csrRoamIsChannelValid(pMac, channel);
-    }
-
-    return retVal;
-}
-
-void csr_SetRevision(tpAniSirGlobal pMac, tANI_U8 revision)
-{
-    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-    pNeighborRoamInfo->cfgParams.countryChannelInfo.revision = revision;
-}
-
 /*
  This function flushes the roam scan cache
 */
@@ -1168,7 +1122,7 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
     {
         for (i = 0; i < inNumChannels; i++)
         {
-            if (CSR_IS_CHANNEL_24GHZ(inPtr[i]) && csrIsChannelInCountryValidList(pMac, inPtr[i]))
+            if (CSR_IS_CHANNEL_24GHZ(inPtr[i]) && csrRoamIsChannelValid(pMac, inPtr[i]))
             {
                 ChannelList[outNumChannels++] = inPtr[i];
             }
@@ -1182,7 +1136,7 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
         {
             /* Add 5G Non-DFS channel */
             if (CSR_IS_CHANNEL_5GHZ(inPtr[i]) &&
-               csrIsChannelInCountryValidList(pMac, inPtr[i]) &&
+               csrRoamIsChannelValid(pMac, inPtr[i]) &&
                !CSR_IS_CHANNEL_DFS(inPtr[i]))
             {
                ChannelList[outNumChannels++] = inPtr[i];
@@ -1195,7 +1149,7 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
     {
         for (i = 0; i < inNumChannels; i++)
         {
-            if (csrIsChannelInCountryValidList(pMac, inPtr[i]) &&
+            if (csrRoamIsChannelValid(pMac, inPtr[i]) &&
                !CSR_IS_CHANNEL_DFS(inPtr[i]))
             {
                ChannelList[outNumChannels++] = inPtr[i];
@@ -1213,53 +1167,6 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
 
     return status;
 }
-
-/*
- This function initializes the valid channel list based on country code
-*/
-eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
-                                        tANI_U8 Revision)
-{
-    eHalStatus status = eHAL_STATUS_SUCCESS;
-    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-    tANI_U8 **pOutChannelList = &pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
-    tANI_U8 *pNumChannels = &pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels;
-    const tANI_U8 *pChannelList = NULL;
-
-    if (SME_KR_3 == Revision)
-    {
-        pChannelList = KR_3;
-        *pNumChannels = sizeof(KR_3)/sizeof(KR_3[0]);
-    }
-    else if (SME_KR_24 == Revision)
-    {
-        pChannelList = KR_24;
-        *pNumChannels = sizeof(KR_24)/sizeof(KR_24[0]);
-    }
-    else if (SME_KR_25 == Revision)
-    {
-        pChannelList = KR_25;
-        *pNumChannels = sizeof(KR_25)/sizeof(KR_25[0]);
-    }
-    else
-        return eHAL_STATUS_INVALID_PARAMETER;
-
-    /* Free any existing channel list */
-    vos_mem_free(*pOutChannelList);
-
-    *pOutChannelList = vos_mem_malloc(*pNumChannels);
-
-    if (NULL == *pOutChannelList)
-    {
-        smsLog(pMac, LOGE, FL("Memory Allocation for CFG Channel List failed"));
-        *pNumChannels = 0;
-        return eHAL_STATUS_RESOURCES;
-    }
-    /* Update the roam global structure */
-    palCopyMemory(pMac->hHdd, *pOutChannelList, pChannelList, *pNumChannels);
-    return status;
-}
-
 #endif
 
 eHalStatus csrSetBand(tHalHandle hHal, eCsrBand eBand)
@@ -14983,6 +14890,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
    tANI_U32 sessionId;
    eHalStatus status = eHAL_STATUS_SUCCESS;
    tpCsrChannelInfo    currChannelListInfo;
+   tANI_U32 host_channels = 0;
    currChannelListInfo = &pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo;
 
    if (0 == csrRoamIsRoamOffloadScanEnabled(pMac))
@@ -15141,41 +15049,28 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
     ChannelList = NULL;
 
     /* Maintain the Valid Channels List*/
-    if (0 == strncmp(pMac->scan.countryCodeCurrent, "KR", 2))
+    host_channels = sizeof(pMac->roam.validChannelList);
+    if (HAL_STATUS_SUCCESS(csrGetCfgValidChannels(pMac, pMac->roam.validChannelList, &host_channels)))
     {
-       ChannelList = pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
-       for(i=0; i<pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels; i++)
-          {
-            if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
-              {
-                 pRequestBuf->ValidChannelList[num_channels++] = *ChannelList;
-              }
-                 ChannelList++;
-          }
-          pRequestBuf->ValidChannelCount = num_channels;
-    } else {
-       tANI_U32 host_channels = sizeof(pMac->roam.validChannelList);
-       if (HAL_STATUS_SUCCESS(csrGetCfgValidChannels(pMac, pMac->roam.validChannelList, &host_channels)))
-       {
-           ChannelList = pMac->roam.validChannelList;
-           pMac->roam.numValidChannels = host_channels;
-       }
-       else
-       {
-           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-                 "%s:Failed to get the valid channel list", __func__);
-           return eHAL_STATUS_FAILURE;
-       }
-       for(i=0; i<pMac->roam.numValidChannels; i++)
-          {
-            if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
-              {
-                 pRequestBuf->ValidChannelList[num_channels++] = *ChannelList;
-              }
-                 ChannelList++;
-          }
-          pRequestBuf->ValidChannelCount = num_channels;
+        ChannelList = pMac->roam.validChannelList;
+        pMac->roam.numValidChannels = host_channels;
     }
+    else
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+              "%s:Failed to get the valid channel list", __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+    for(i=0; i<pMac->roam.numValidChannels; i++)
+    {
+        if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
+        {
+            pRequestBuf->ValidChannelList[num_channels++] = *ChannelList;
+        }
+        ChannelList++;
+    }
+    pRequestBuf->ValidChannelCount = num_channels;
+
     pRequestBuf->MDID.mdiePresent =
             pMac->roam.roamSession[sessionId].connectedProfile.MDID.mdiePresent;
     pRequestBuf->MDID.mobilityDomain =

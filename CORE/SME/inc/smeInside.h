@@ -331,8 +331,6 @@ eHalStatus csrCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
                                             const tANI_U8 *pChannelList,
                                             const tANI_U8 numChannels);
 eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac, eCsrBand eBand);
-eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac, tANI_U8 revision);
-void csr_SetRevision(tpAniSirGlobal pMac, tANI_U8 revision);
 #endif
 
 
