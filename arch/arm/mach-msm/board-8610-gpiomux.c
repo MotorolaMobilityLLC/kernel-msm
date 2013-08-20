@@ -18,6 +18,12 @@
 #include <mach/gpiomux.h>
 #include <mach/socinfo.h>
 
+static struct gpiomux_setting gpio_2ma_pull_up = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
 static struct gpiomux_setting gpio_spi_config = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_6MA,
@@ -597,6 +603,16 @@ static struct msm_gpiomux_config msm_interrupt_configs[] __initdata = {
 	},
 };
 
+static struct msm_gpiomux_config peripheral_configs[] = {
+	{
+		.gpio = 84, /* HS_DET_N */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_2ma_pull_up,
+			[GPIOMUX_SUSPENDED] = &gpio_2ma_pull_up,
+		},
+	},
+};
+
 void __init msm8610_init_gpiomux(void)
 {
 	int rc;
@@ -608,6 +624,7 @@ void __init msm8610_init_gpiomux(void)
 	}
 
 	msm_gpiomux_install(msm_blsp_configs, ARRAY_SIZE(msm_blsp_configs));
+	msm_gpiomux_install(peripheral_configs, ARRAY_SIZE(peripheral_configs));
 	if (of_board_is_qrd()) {
 		msm_gpiomux_install(msm_focaltech_configs,
 			ARRAY_SIZE(msm_focaltech_configs));
