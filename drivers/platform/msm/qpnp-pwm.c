@@ -26,6 +26,7 @@
 #include <linux/of_device.h>
 #include <linux/radix-tree.h>
 #include <linux/qpnp/pwm.h>
+#include <linux/delay.h>
 
 #define QPNP_LPG_DRIVER_NAME	"qcom,qpnp-pwm"
 #define QPNP_LPG_CHANNEL_BASE	"qpnp-lpg-channel-base"
@@ -987,6 +988,8 @@ static int qpnp_lpg_configure_lut_state(struct pwm_device *pwm,
 					addr, 1, chip);
 	if (rc)
 		return rc;
+
+	mdelay(5);
 
 	return qpnp_lpg_save_and_write(value1, mask1, reg1,
 					addr1, 1, chip);
