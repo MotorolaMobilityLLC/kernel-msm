@@ -490,31 +490,31 @@ struct cntry_locales_custom {
 /* Customized Locale table */
 static struct cntry_locales_custom wifi_translate_custom_table[] = {
 /* Table should be filled out based on custom platform regulatory requirement */
-	{"",   "XZ", 11},	/* Universal if Country code is unknown or empty */
-	{"IR", "XZ", 11},	/* Universal if Country code is IRAN, (ISLAMIC REPUBLIC OF) */
-	{"SD", "XZ", 11},	/* Universal if Country code is SUDAN */
-	{"SY", "XZ", 11},	/* Universal if Country code is SYRIAN ARAB REPUBLIC */
-	{"GL", "XZ", 11},	/* Universal if Country code is GREENLAND */
-	{"PS", "XZ", 11},	/* Universal if Country code is PALESTINIAN TERRITORY, OCCUPIED */
-	{"TL", "XZ", 11},	/* Universal if Country code is TIMOR-LESTE (EAST TIMOR) */
-	{"MH", "XZ", 11},	/* Universal if Country code is MARSHALL ISLANDS */
-	{"PK", "XZ", 11},	/* Universal if Country code is PAKISTAN */
-	{"CK", "XZ", 11},	/* Universal if Country code is Cook Island (13.4.27)*/
-	{"CU", "XZ", 11},	/* Universal if Country code is Cuba (13.4.27)*/
-	{"FK", "XZ", 11},	/* Universal if Country code is Falkland Island (13.4.27)*/
-	{"FO", "XZ", 11},	/* Universal if Country code is Faroe Island (13.4.27)*/
-	{"GI", "XZ", 11},	/* Universal if Country code is Gibraltar (13.4.27)*/
-	{"IM", "XZ", 11},	/* Universal if Country code is Isle of Man (13.4.27)*/
-	{"CI", "XZ", 11},	/* Universal if Country code is Ivory Coast (13.4.27)*/
-	{"JE", "XZ", 11},	/* Universal if Country code is Jersey (13.4.27)*/
-	{"KP", "XZ", 11},	/* Universal if Country code is North Korea (13.4.27)*/
-	{"FM", "XZ", 11},	/* Universal if Country code is Micronesia (13.4.27)*/
-	{"MM", "XZ", 11},	/* Universal if Country code is Myanmar (13.4.27)*/
-	{"NU", "XZ", 11},	/* Universal if Country code is Niue (13.4.27)*/
-	{"NF", "XZ", 11},	/* Universal if Country code is Norfolk Island (13.4.27)*/
-	{"PN", "XZ", 11},	/* Universal if Country code is Pitcairn Islands (13.4.27)*/
-	{"PM", "XZ", 11},	/* Universal if Country code is Saint Pierre and Miquelon (13.4.27)*/
-	{"SS", "XZ", 11},	/* Universal if Country code is South_Sudan (13.4.27)*/
+	{"",   "XV", 16},	/* Universal if Country code is unknown or empty */
+	{"IR", "XV", 16},	/* Universal if Country code is IRAN, (ISLAMIC REPUBLIC OF) */
+	{"SD", "XV", 16},	/* Universal if Country code is SUDAN */
+	{"SY", "XV", 16},	/* Universal if Country code is SYRIAN ARAB REPUBLIC */
+	{"GL", "XV", 16},	/* Universal if Country code is GREENLAND */
+	{"PS", "XV", 16},	/* Universal if Country code is PALESTINIAN TERRITORY, OCCUPIED */
+	{"TL", "XV", 16},	/* Universal if Country code is TIMOR-LESTE (EAST TIMOR) */
+	{"MH", "XV", 16},	/* Universal if Country code is MARSHALL ISLANDS */
+	{"PK", "XV", 16},	/* Universal if Country code is PAKISTAN */
+	{"CK", "XV", 16},	/* Universal if Country code is Cook Island (13.4.27)*/
+	{"CU", "XV", 16},	/* Universal if Country code is Cuba (13.4.27)*/
+	{"FK", "XV", 16},	/* Universal if Country code is Falkland Island (13.4.27)*/
+	{"FO", "XV", 16},	/* Universal if Country code is Faroe Island (13.4.27)*/
+	{"GI", "XV", 16},	/* Universal if Country code is Gibraltar (13.4.27)*/
+	{"IM", "XV", 16},	/* Universal if Country code is Isle of Man (13.4.27)*/
+	{"CI", "XV", 16},	/* Universal if Country code is Ivory Coast (13.4.27)*/
+	{"JE", "XV", 16},	/* Universal if Country code is Jersey (13.4.27)*/
+	{"KP", "XV", 16},	/* Universal if Country code is North Korea (13.4.27)*/
+	{"FM", "XV", 16},	/* Universal if Country code is Micronesia (13.4.27)*/
+	{"MM", "XV", 16},	/* Universal if Country code is Myanmar (13.4.27)*/
+	{"NU", "XV", 16},	/* Universal if Country code is Niue (13.4.27)*/
+	{"NF", "XV", 16},	/* Universal if Country code is Norfolk Island (13.4.27)*/
+	{"PN", "XV", 16},	/* Universal if Country code is Pitcairn Islands (13.4.27)*/
+	{"PM", "XV", 16},	/* Universal if Country code is Saint Pierre and Miquelon (13.4.27)*/
+	{"SS", "XV", 16},	/* Universal if Country code is South_Sudan (13.4.27)*/
 	{"AL", "AL", 2},
 	{"DZ", "DZ", 1},
 	{"AS", "AS", 12},	/* changed 2 -> 12*/
