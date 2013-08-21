@@ -385,6 +385,7 @@ struct qpnp_chg_chip {
 	struct work_struct		reduce_power_stage_work;
 	bool				power_stage_workaround_running;
 	bool				power_stage_workaround_enable;
+	char				shutdown_needed;
 };
 
 
@@ -2269,6 +2270,11 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 			qpnp_chg_charge_en(chip, !chip->charging_disabled);
 		}
 		if (soc == 0) {
+			if (!chip->shutdown_needed) {
+				power_supply_set_present(chip->usb_psy, 0);
+				power_supply_set_online(chip->usb_psy, 0);
+			}
+			chip->shutdown_needed = 1;
 			if (!qpnp_chg_is_usb_chg_plugged_in(chip)
 				&& !qpnp_chg_is_usb_chg_plugged_in(chip))
 				pr_warn_ratelimited("Battery 0, CHG absent\n");
