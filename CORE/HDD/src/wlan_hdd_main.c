@@ -123,6 +123,7 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
 #endif
+#include "wlan_hdd_debugfs.h"
 
 #ifdef MODULE
 #define WLAN_MODULE_NAME  module_name(THIS_MODULE)
@@ -5048,6 +5049,8 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
       }
    }
 
+   hdd_debugfs_exit(pHddCtx);
+
    // Unregister the Net Device Notifier
    unregister_netdevice_notifier(&hdd_netdev_notifier);
    
@@ -5911,6 +5914,14 @@ int hdd_wlan_startup(struct device *dev )
 #endif //WLAN_BTAMP_FEATURE
    }
 
+   /* Open debugfs interface */
+   if (VOS_STATUS_SUCCESS != hdd_debugfs_init(pAdapter))
+   {
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "%s: hdd_debugfs_init failed!", __func__);
+      goto err_close_debugfs;
+   }
+
    /* Register TM level change handler function to the platform */
    status = hddDevTmRegisterNotifyCallback(pHddCtx);
    if ( !VOS_IS_STATUS_SUCCESS( status ) )
@@ -6017,6 +6028,9 @@ err_free_power_on_lock:
 err_unregister_pmops:
    hddDevTmUnregisterNotifyCallback(pHddCtx);
    hddDeregisterPmOps(pHddCtx);
+
+err_close_debugfs:
+   hdd_debugfs_exit(pHddCtx);
 
 #ifdef WLAN_BTAMP_FEATURE
 err_bap_stop:
