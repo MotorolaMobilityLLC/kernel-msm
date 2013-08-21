@@ -1741,6 +1741,35 @@ static int scale_soc_while_chg(struct qpnp_bms_chip *chip, int chg_time_sec,
 	return scaled_soc;
 }
 
+static void soc_sanity_check(struct qpnp_bms_chip *chip,
+			    int batt_temp, int soc)
+{
+	int pc;
+	int ibat_ua, vbat_uv, ocv_uv;
+	int rc;
+	int rbatt_mohm = get_rbatt(chip, soc, batt_temp);
+
+	if (wake_lock_active(&chip->low_voltage_wake_lock)) {
+		chip->last_soc = 0;
+		return;
+	}
+
+	rc = get_simultaneous_batt_v_and_i(chip, &ibat_ua, &vbat_uv);
+	if (rc) {
+		pr_err("simultaneous failed rc = %d\n", rc);
+		return;
+	}
+
+	ocv_uv = vbat_uv + (ibat_ua * rbatt_mohm) / 1000;
+	pc = calculate_pc(chip, ocv_uv, batt_temp);
+	pr_debug("voltage_soc = %d\n", pc);
+
+	/* for this first Interation just calculate */
+	/* voltage_soc but don't manipulate last_soc */
+	/* Calculation is done so that debug print will be generated */
+	return;
+}
+
 /*
  * bms_fake_battery is set in setups where a battery emulator is used instead
  * of a real battery. This makes the bms driver report a different/fake value
@@ -1879,6 +1908,7 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 			chip->last_soc, chip->calculated_soc,
 			soc, time_since_last_change_sec);
 	chip->last_soc = bound_soc(soc);
+	soc_sanity_check(chip, batt_temp, chip->last_soc);
 	backup_soc_and_iavg(chip, batt_temp, chip->last_soc);
 	pr_debug("Reported SOC = %d\n", chip->last_soc);
 	chip->t_soc_queried = now;
