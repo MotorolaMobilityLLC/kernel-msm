@@ -18,6 +18,12 @@
 	qcom,msm-id = <126 0x41 0x8100>;
 };
 
+/ {
+	mot_smd_720p_vid: qcom,mdss_dsi_mot_smd_720p_video {
+		qcom,rst-gpio = <&pm8941_gpios 19 0>;
+	};
+};
+
 &soc {
 	i2c_1: i2c@f9923000 {	/* Unused QUP on BLSP1 (BLSP1 UART0) */
 		status = "disabled";
@@ -60,7 +66,7 @@
 		gpio = <&msmgpio 23 0x0>;
 	};
 
-	spi_7 {
+	spi_7: spi_epm: spi@f9966000 {
 		status = "disabled";
 	};
 };
@@ -107,6 +113,10 @@
 };
 
 &i2c_3 {
+	drv2605@5a {
+		status = "disabled";
+	};
+
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
 		gpios = <&msmgpio 81 0>, /* IRQ */
