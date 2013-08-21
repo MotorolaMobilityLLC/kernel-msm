@@ -21,11 +21,13 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_android.c 408788 2013-06-20 18:06:11Z $
+ * $Id: wl_android.c 417976 2013-08-13 11:12:34Z $
  */
 
 #include <linux/module.h>
 #include <linux/netdevice.h>
+#include <linux/of_gpio.h>
+#include <linux/regulator/consumer.h>
 
 #include <wl_android.h>
 #include <wldev_common.h>
@@ -177,6 +179,7 @@ int dhd_dev_init_ioctl(struct net_device *dev);
 #ifdef WL_CFG80211
 int wl_cfg80211_get_p2p_dev_addr(struct net_device *net, struct ether_addr *p2pdev_addr);
 int wl_cfg80211_set_btcoex_dhcp(struct net_device *dev, char *command);
+int wl_cfg80211_get_ioctl_version(void);
 #else
 int wl_cfg80211_get_p2p_dev_addr(struct net_device *net, struct ether_addr *p2pdev_addr)
 { return 0; }
@@ -204,7 +207,6 @@ extern bool ap_fw_loaded;
 extern char iface_name[IFNAMSIZ];
 #endif 
 
-#define WIFI_TURNOFF_DELAY	0
 /**
  * Local (static) functions and variables
  */
@@ -718,7 +720,7 @@ int wl_android_set_roam_mode(struct net_device *dev, char *command, int total_le
 int wl_android_set_ibss_beacon_ouidata(struct net_device *dev, char *command, int total_len)
 {
 	char ie_buf[VNDR_IE_MAX_LEN];
-	char smbuf[WLC_IOCTL_SMLEN];
+	char *ioctl_buf = NULL;
 	char hex[] = "XX";
 	char *pcmd = NULL;
 	int ielen = 0, datalen = 0, idx = 0, tot_len = 0;
@@ -727,6 +729,13 @@ int wl_android_set_ibss_beacon_ouidata(struct net_device *dev, char *command, in
 	uint32 pktflag;
 	u16 kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
 	s32 err = BCME_OK;
+
+	/* Check the VSIE (Vendor Specific IE) which was added.
+	 *  If exist then send IOVAR to delete it
+	 */
+	if (wl_cfg80211_ibss_vsie_delete(dev) != BCME_OK) {
+		return -EINVAL;
+	}
 
 	pcmd = command + strlen(CMD_SETIBSSBEACONOUIDATA) + 1;
 	for (idx = 0; idx < DOT11_OUI_LEN; idx++) {
@@ -769,11 +778,34 @@ int wl_android_set_ibss_beacon_ouidata(struct net_device *dev, char *command, in
 
 	ielen = DOT11_OUI_LEN + datalen;
 	vndr_ie->vndr_ie_buffer.vndr_ie_list[0].vndr_ie_data.len = (uchar) ielen;
-	err = wldev_iovar_setbuf(dev, "ie", vndr_ie, tot_len, smbuf, WLC_IOCTL_SMLEN, NULL);
-	if (err != BCME_OK)
+
+	ioctl_buf = kmalloc(WLC_IOCTL_MEDLEN, GFP_KERNEL);
+	if (!ioctl_buf) {
+		WL_ERR(("ioctl memory alloc failed\n"));
+		if (vndr_ie) {
+			kfree(vndr_ie);
+		}
+		return -ENOMEM;
+	}
+	memset(ioctl_buf, 0, WLC_IOCTL_MEDLEN);	/* init the buffer */
+	err = wldev_iovar_setbuf(dev, "ie", vndr_ie, tot_len, ioctl_buf, WLC_IOCTL_MEDLEN, NULL);
+
+
+	if (err != BCME_OK) {
 		err = -EINVAL;
-	if (vndr_ie)
-		kfree(vndr_ie);
+		if (vndr_ie) {
+			kfree(vndr_ie);
+		}
+	}
+	else {
+		/* do NOT free 'vndr_ie' for the next process */
+		wl_cfg80211_ibss_vsie_set_buffer(vndr_ie, tot_len);
+	}
+
+	if (ioctl_buf) {
+		kfree(ioctl_buf);
+	}
+
 	return err;
 }
 
@@ -1199,7 +1231,7 @@ void wl_android_post_init(void)
 	if (!dhd_download_fw_on_driverload) {
 		/* Call customer gpio to turn off power with WL_REG_ON signal */
 		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_OFF);
-		g_wifi_on = 0;
+		g_wifi_on = FALSE;
 	}
 }
 
@@ -1214,6 +1246,7 @@ static int g_wifidev_registered = 0;
 static struct semaphore wifi_control_sem;
 static struct wifi_platform_data *wifi_control_data = NULL;
 static struct resource *wifi_irqres = NULL;
+static struct regulator *wifi_regulator = NULL;
 
 static int wifi_add_dev(void);
 static void wifi_del_dev(void);
@@ -1282,6 +1315,8 @@ int wifi_set_power(int on, unsigned long msec)
 {
 	int ret = 0;
 	DHD_ERROR(("%s = %d\n", __FUNCTION__, on));
+	if (wifi_regulator && on)
+		ret = regulator_enable(wifi_regulator);
 	if (wifi_control_data && wifi_control_data->set_power) {
 #ifdef ENABLE_4335BT_WAR
 		if (on) {
@@ -1298,8 +1333,11 @@ int wifi_set_power(int on, unsigned long msec)
 		ret = wifi_control_data->set_power(on);
 	}
 
+	if (wifi_regulator && !on)
+		ret = regulator_disable(wifi_regulator);
+
 	if (msec && !ret)
-		msleep(msec);
+		OSL_SLEEP(msec);
 	return ret;
 }
 
@@ -1338,16 +1376,46 @@ static int wifi_set_carddetect(int on)
 	return 0;
 }
 
+static struct resource *get_wifi_irqres_from_of(struct platform_device *pdev)
+{
+	static struct resource gpio_wifi_irqres;
+	int irq;
+	int gpio = of_get_gpio(pdev->dev.of_node, 0);
+	if (gpio < 0)
+		return NULL;
+	irq = gpio_to_irq(gpio);
+	if (irq < 0)
+		return NULL;
+
+	gpio_wifi_irqres.name = "bcmdhd_wlan_irq";
+	gpio_wifi_irqres.start = irq;
+	gpio_wifi_irqres.end = irq;
+	gpio_wifi_irqres.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL |
+		IORESOURCE_IRQ_SHAREABLE;
+
+	return &gpio_wifi_irqres;
+}
+
 static int wifi_probe(struct platform_device *pdev)
 {
 	int err;
+	struct regulator *regulator;
 	struct wifi_platform_data *wifi_ctrl =
 		(struct wifi_platform_data *)(pdev->dev.platform_data);
+
+	if (!wifi_ctrl) {
+		regulator = regulator_get(&pdev->dev, "wlreg_on");
+		if (IS_ERR(regulator))
+			return PTR_ERR(regulator);
+		wifi_regulator = regulator;
+	}
 
 	wifi_irqres = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "bcmdhd_wlan_irq");
 	if (wifi_irqres == NULL)
 		wifi_irqres = platform_get_resource_byname(pdev,
 			IORESOURCE_IRQ, "bcm4329_wlan_irq");
+	if (wifi_irqres == NULL)
+		wifi_irqres = get_wifi_irqres_from_of(pdev);
 	wifi_control_data = wifi_ctrl;
 	err = wifi_set_power(1, 200);	/* Power On */
 	if (unlikely(err)) {
@@ -1381,6 +1449,10 @@ static int wifi_remove(struct platform_device *pdev)
 			kfree(cur);
 		}
 	}
+	if (wifi_regulator) {
+		regulator_put(wifi_regulator);
+		wifi_regulator = NULL;
+	}
 
 	up(&wifi_control_sem);
 	return 0;
@@ -1405,6 +1477,12 @@ static int wifi_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id wifi_device_dt_match[] = {
+	{ .compatible = "android,bcmdhd_wlan", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, wifi_device_dt_match);
+
 static struct platform_driver wifi_device = {
 	.probe          = wifi_probe,
 	.remove         = wifi_remove,
@@ -1412,6 +1490,7 @@ static struct platform_driver wifi_device = {
 	.resume         = wifi_resume,
 	.driver         = {
 	.name   = "bcmdhd_wlan",
+	.of_match_table = wifi_device_dt_match,
 	}
 };
 
