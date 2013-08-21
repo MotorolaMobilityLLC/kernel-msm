@@ -96,22 +96,6 @@
 
 
 &cci {
-	qcom,cameraTmp@6c {
-		gpios = <&msmgpio 26 0>,
-			<&msmgpio 37 0>,
-			<&msmgpio 36 0>,
-			<&msmgpio 23 0>,
-			<&msmgpio 0 0>;
-		qcom,gpio-pwren2 = <4>;
-		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
-		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
-					  "CAM_RESET1",
-					  "CAM_STANDBY",
-					  "CAM_PWREN",
-					  "CAM_PWREN2";
-	};
-
 	qcom,camera@6c {
 		gpios = <&msmgpio 26 0>,
 			<&msmgpio 37 0>,
