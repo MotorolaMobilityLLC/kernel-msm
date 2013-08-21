@@ -13,6 +13,7 @@
 &soc {
 	/* I2C BUS  */
 	i2c@f9925000 {
+		status = "disabled";
 		cell-index = <3>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9925000 0x1000>;
@@ -30,6 +31,7 @@
 	};
 
 	i2c@f9968000 {
+		status = "disabled";
 		cell-index = <12>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9968000 0x1000>;
@@ -48,6 +50,7 @@
 
 	/* I2C device */
 	i2c@f9968000 {
+		status = "disabled";
 		/* Invensense */
 		mpu6515_acc@68 {
 			compatible = "inven,mpu6515";
@@ -90,6 +93,7 @@
 	};
 
 	i2c@f9925000 {
+		status = "disabled";
 		avago_apds9930@39 {
 			compatible = "avago,apds993x";
 			reg = <0x39>;
