@@ -479,6 +479,12 @@ void invalidate_blocks(struct f2fs_sb_info *sbi, block_t addr)
 	if (addr == NEW_ADDR)
 		return;
 
+	if (segno >= TOTAL_SEGS(sbi)) {
+		f2fs_msg(sbi->sb, KERN_ERR, "invalid segment number %u", segno);
+		if (f2fs_handle_error(sbi))
+			return;
+	}
+
 	/* add it into sit main buffer */
 	mutex_lock(&sit_i->sentry_lock);
 
