@@ -30,6 +30,7 @@
 #include <linux/device.h>
 #include <linux/miscdevice.h>
 #include <linux/io.h>
+#include <linux/sec_export.h>
 #include <mach/scm.h>
 #include <linux/memory_alloc.h>
 #include "sec_core.h"
