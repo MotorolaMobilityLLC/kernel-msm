@@ -604,60 +604,6 @@ static struct gpiomux_setting auxpcm_act_cfg = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting sensor_int_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv  = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir  = GPIOMUX_IN,
-};
-
-static struct msm_gpiomux_config sensor_configs[] __initdata = {
-	{
-		.gpio = 87,    /* BLSP12 QUP I2C_DAT */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio = 88,    /* BLSP12 QUP I2C_CLK */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 10,    /* BLSP3 QUP I2C_DAT */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 11,    /* BLSP3 QUP I2C_CLK */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 67,    /* COMPASS_DRDY */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &sensor_int_config,
-			[GPIOMUX_SUSPENDED] = &sensor_int_config,
-		},
-	},
-	{
-		.gpio      = 73,    /* ACCL_INT */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &sensor_int_config,
-			[GPIOMUX_SUSPENDED] = &sensor_int_config,
-		},
-	},
-	{
-		.gpio      = 61,    /* PROXIMITY_INT */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &sensor_int_config,
-			[GPIOMUX_SUSPENDED] = &sensor_int_config,
-		},
-	},
-};
 
 static struct gpiomux_setting auxpcm_sus_cfg = {
 	.func = GPIOMUX_FUNC_1,
@@ -1314,8 +1260,6 @@ void __init msm_8974_init_gpiomux(void)
 
 	msm_gpiomux_install(slimport_configs,
 					ARRAY_SIZE(slimport_configs));
-
-	msm_gpiomux_install(sensor_configs, ARRAY_SIZE(sensor_configs));
 
 	if (HW_REV_F == lge_get_board_revno()) {
 		msm_gpiomux_install_nowrite(msm_display_configs_rev_f,
