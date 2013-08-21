@@ -224,7 +224,7 @@
 &pm8226_chg {
 	qcom,vddmax-mv = <4200>;
 	qcom,vddsafe-mv = <4400>;
-	qcom,vinmin-mv = <4400>;
+	qcom,vinmin-mv = <4300>;
 	qcom,vbatdet-delta-mv = <150>;
 	qcom,ibatmax-ma = <2000>;
 	qcom,ibatterm-ma = <100>;
