@@ -341,6 +341,7 @@ struct qpnp_chg_chip {
 	int				term_current;
 	int				soc_resume_limit;
 	bool				resuming_charging;
+	int				charger_enable_set;
 	unsigned int			maxinput_usb_ma;
 	unsigned int			maxinput_dc_ma;
 	unsigned int			hot_batt_p;
@@ -428,6 +429,9 @@ enum usbin_health {
 
 static void
 qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip);
+
+static int
+qpnp_chg_vbatdet_set(struct qpnp_chg_chip *chip, int vbatdet_mv);
 
 static inline int
 get_bpd(const char *name)
@@ -1017,6 +1021,12 @@ qpnp_chg_charge_en(struct qpnp_chg_chip *chip, int enable)
 		return 0;
 	}
 	pr_debug("charging %s\n", enable ? "enabled" : "disabled");
+
+	if (!chip->charger_enable_set && enable)
+		qpnp_chg_vbatdet_set(chip, chip->max_voltage_mv
+			+ chip->resume_delta_mv);
+	chip->charger_enable_set = enable;
+
 	return qpnp_chg_masked_write(chip, chip->chgr_base + CHGR_CHG_CTRL,
 			CHGR_CHG_EN,
 			enable ? CHGR_CHG_EN : 0, 1);
@@ -4733,6 +4743,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	chip->fake_battery_soc = -EINVAL;
 	chip->dev = &(spmi->dev);
 	chip->spmi = spmi;
+	chip->charger_enable_set = 0;
 
 	chip->usb_psy = power_supply_get_by_name("usb");
 	if (!chip->usb_psy) {
