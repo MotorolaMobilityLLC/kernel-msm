@@ -2046,6 +2046,36 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            pHddCtx->drvr_miracast = filterType;
            hdd_tx_rx_pkt_cnt_stat_timer_handler(pHddCtx);
         }
+       else if (strncmp(command, "SETMCRATE", 9) == 0)
+       {
+           int      rc;
+           tANI_U8 *value = command;
+           int      targetRate;
+
+           /* Only valid for SAP mode */
+           if (WLAN_HDD_SOFTAP != pAdapter->device_mode)
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: SAP mode is not running", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+
+           /* Move pointer to ahead of SETMCRATE<delimiter> */
+           /* input value is in units of hundred kbps */
+           value = value + 10;
+           /* Convert the value from ascii to integer, decimal base */
+           ret = kstrtouint(value, 10, &targetRate);
+
+           rc = hdd_hostapd_set_mc_rate(pAdapter, targetRate);
+           if (rc)
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Set MC Rate Fail %d", __func__, rc);
+               ret = -EFAULT;
+               goto exit;
+           }
+       }
        else {
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);

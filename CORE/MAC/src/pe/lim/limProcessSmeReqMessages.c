@@ -3212,6 +3212,13 @@ void limProcessSmeGetAssocSTAsInfo(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             pAssocStasTemp->assocId = (v_U8_t)pStaDs->assocId;         // Association Id
             pAssocStasTemp->staId   = (v_U8_t)pStaDs->staIndex;        // Station Id
 
+            palCopyMemory(pMac->hHdd, (tANI_U8 *)&pAssocStasTemp->supportedRates,
+                                      (tANI_U8 *)&pStaDs->supportedRates,
+                                      sizeof(tSirSupportedRates));
+            pAssocStasTemp->ShortGI40Mhz = pStaDs->htShortGI40Mhz;
+            pAssocStasTemp->ShortGI20Mhz = pStaDs->htShortGI20Mhz;
+            pAssocStasTemp->Support40Mhz = pStaDs->htDsssCckRate40MHzSupport;
+
             limLog(pMac, LOG1, FL("dph Station Number = %d"), staCount+1);
             limLog(pMac, LOG1, FL("MAC = %02x:%02x:%02x:%02x:%02x:%02x"),
                                         pStaDs->staAddr[0],
