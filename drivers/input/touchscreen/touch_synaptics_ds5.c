@@ -208,12 +208,12 @@ static int synaptics_t1320_power_on(struct i2c_client *client, int on)
 	if (on) {
 		TOUCH_INFO_MSG("touch on\n");
 		regulator_enable(vreg_l22);
-		udelay(6); /* min 5.5 us */
+		udelay(6); /* Min delay 5.5us */
 		regulator_enable(vreg_lvs3);
 	} else {
 		TOUCH_INFO_MSG("touch off\n");
 		regulator_disable(vreg_lvs3);
-		udelay(6); /* min 5.5 us */
+		mdelay(6); /* max falling time 6ms */
 		regulator_disable(vreg_l22);
 	}
 
