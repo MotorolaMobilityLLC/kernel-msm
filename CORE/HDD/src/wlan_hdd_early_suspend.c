@@ -589,11 +589,17 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
                         vos_mem_copy(&selfIPv6Addr[0], &ifp->addr.s6_addr,
                                 sizeof(ifp->addr.s6_addr));
                         selfIPv6AddrValid[0] = SIR_IPV6_ADDR_VALID;
+                        hddLog (VOS_TRACE_LEVEL_INFO,
+                               "Found IPV6_ADDR_SCOPE_LINKLOCAL Address : %pI6",
+                               selfIPv6Addr[0]);
                         break;
                     case IPV6_ADDR_SCOPE_GLOBAL:
                         vos_mem_copy(&selfIPv6Addr[1], &ifp->addr.s6_addr,
                                 sizeof(ifp->addr.s6_addr));
-                        selfIPv6AddrValid[1] = SIR_IPV6_ADDR_VALID;;
+                        selfIPv6AddrValid[1] = SIR_IPV6_ADDR_VALID;
+                        hddLog (VOS_TRACE_LEVEL_INFO,
+                               "Found IPV6_ADDR_SCOPE_GLOBAL Address : %pI6",
+                               selfIPv6Addr[1]);
                         break;
                     default:
                         hddLog(LOGE, "The Scope %d is not supported",
