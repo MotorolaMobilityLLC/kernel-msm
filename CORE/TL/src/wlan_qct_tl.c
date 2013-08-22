@@ -6837,7 +6837,7 @@ WLANTL_STATxConn
   /*Make sure TID is valid*/
   if ( WLANTL_TID_INVALID(ucTid)) 
   {
-     TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+     TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
             "WLAN TL:Invalid TID sent in meta info %d - defaulting to 0 (BE)", 
              ucTid));
      ucTid = 0; 
@@ -7146,7 +7146,7 @@ WLANTL_STATxAuth
   /*Make sure TID is valid*/
   if ( WLANTL_TID_INVALID(ucTid)) 
   {
-     TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+     TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
             "WLAN TL:Invalid TID sent in meta info %d - defaulting to 0 (BE)", 
              ucTid));
      ucTid = 0; 
