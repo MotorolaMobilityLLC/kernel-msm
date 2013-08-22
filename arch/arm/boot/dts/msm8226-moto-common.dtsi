@@ -436,51 +436,12 @@
 			};
 		};
 
-		qcom,leds@a100 {
-			compatible = "qcom,leds-qpnp-rgb";
-			reg = <0xa100 0x100>;
-			status = "okay";
-			qcom,led_mpp_2 {
-				label = "mpp";
-				linux,name = "blue";
-				linux,default-trigger = "none";
-				qcom,default-state = "off";
-				qcom,max-current = <40>;
-				qcom,current-setting = <5>;
-				qcom,id = <6>;
-				qcom,mode = "pwm";
-				qcom,source-sel = <14>;
-				qcom,mode-ctrl = <0x60>;
-				qcom,pwm-channel = <3>;
-				qcom,pwm-us = <1000>;
-			};
-		};
-
-		qcom,leds@a300 {
-			compatible = "qcom,leds-qpnp-rgb";
-			status = "okay";
-			qcom,led_mpp_4 {
-				label = "mpp";
-				linux,name = "green";
-				linux,default-trigger = "none";
-				qcom,default-state = "off";
-				qcom,max-current = <40>;
-				qcom,current-setting = <5>;
-				qcom,id = <6>;
-				qcom,mode = "pwm";
-				qcom,source-sel = <8>;
-				qcom,mode-ctrl = <0x60>;
-				qcom,pwm-channel = <0>;
-				qcom,pwm-us = <1000>;
-			};
-		};
-
 		qcom,leds@a500 {
 			compatible = "qcom,leds-qpnp-rgb";
 			status = "okay";
 			qcom,led_mpp_6 {
 				label = "mpp";
-				linux,name = "red";
+				linux,name = "white";
 				linux,default-trigger = "none";
 				qcom,default-state = "off";
 				qcom,max-current = <40>;
