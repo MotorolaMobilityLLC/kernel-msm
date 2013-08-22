@@ -398,6 +398,8 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
 #else
   NULL,
 #endif
+  WDI_ProcessAddPeriodicTxPtrnInd,      /* WDI_ADD_PERIODIC_TX_PATTERN_IND */
+  WDI_ProcessDelPeriodicTxPtrnInd,      /* WDI_DEL_PERIODIC_TX_PATTERN_IND */
 };
 
 
@@ -625,6 +627,8 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 #endif /* FEATURE_WLAN_LPHB */
 
   WDI_ProcessIbssPeerInactivityInd,     /* WDI_HAL_IBSS_PEER_INACTIVITY_IND */
+
+  WDI_ProcessPeriodicTxPtrnFwInd,   /* WDI_HAL_PERIODIC_TX_PTRN_FW_IND */
 };
 
 
@@ -5997,6 +6001,86 @@ WDI_ExcludeUnencryptedInd
 #endif
 
 /**
+ @brief WDI_AddPeriodicTxPtrnInd: Add Periodic TX Pattern Indication to FW
+
+ @param addPeriodicTxPtrnParams: Add Pattern parameters
+
+ @see
+
+ @return Status of the request
+*/
+WDI_Status
+WDI_AddPeriodicTxPtrnInd
+(
+  WDI_AddPeriodicTxPtrnParamsType*    addPeriodicTxPtrnParams
+)
+{
+  WDI_EventInfoType      wdiEventData;
+
+  /*-------------------------------------------------------------------------
+    Sanity Check
+   ------------------------------------------------------------------------*/
+  if (eWLAN_PAL_FALSE == gWDIInitialized)
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "WDI API call before module is initialized - Fail request!");
+
+    return WDI_STATUS_E_NOT_ALLOWED;
+  }
+
+  /*-------------------------------------------------------------------------
+    Fill in Event data and post to the Main FSM
+   ------------------------------------------------------------------------*/
+  wdiEventData.wdiRequest      = WDI_ADD_PERIODIC_TX_PATTERN_IND;
+  wdiEventData.pEventData      = addPeriodicTxPtrnParams;
+  wdiEventData.uEventDataSize  = sizeof(WDI_AddPeriodicTxPtrnParamsType);
+  wdiEventData.pCBfnc          = NULL;
+  wdiEventData.pUserData       = NULL;
+
+  return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+/**
+ @brief WDI_DelPeriodicTxPtrnInd: Delete Periodic TX Pattern Indication to FW
+
+ @param delPeriodicTxPtrnParams: Delete Pattern parameters
+
+ @see
+
+ @return Status of the request
+*/
+WDI_Status
+WDI_DelPeriodicTxPtrnInd
+(
+  WDI_DelPeriodicTxPtrnParamsType*    delPeriodicTxPtrnParams
+)
+{
+  WDI_EventInfoType      wdiEventData;
+
+  /*-------------------------------------------------------------------------
+    Sanity Check
+   ------------------------------------------------------------------------*/
+  if (eWLAN_PAL_FALSE == gWDIInitialized)
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "WDI API call before module is initialized - Fail request!");
+
+    return WDI_STATUS_E_NOT_ALLOWED;
+  }
+
+  /*-------------------------------------------------------------------------
+    Fill in Event data and post to the Main FSM
+   ------------------------------------------------------------------------*/
+  wdiEventData.wdiRequest      = WDI_DEL_PERIODIC_TX_PATTERN_IND;
+  wdiEventData.pEventData      = delPeriodicTxPtrnParams;
+  wdiEventData.uEventDataSize  = sizeof(WDI_DelPeriodicTxPtrnParamsType);
+  wdiEventData.pCBfnc          = NULL;
+  wdiEventData.pUserData       = NULL;
+
+  return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+/**
  @brief WDI_HALDumpCmdReq
         Post HAL DUMP Command Event
 
@@ -10882,6 +10966,182 @@ WDI_ProcessExcludeUnencryptInd
   return  ( wdiStatus != WDI_STATUS_SUCCESS )?wdiStatus:WDI_STATUS_SUCCESS_SYNC;
 }/*WDI_ProcessExcludeUnencryptInd*/
 #endif
+
+/**
+ @brief Process Add Periodic Tx Pattern Indication function (called when
+           Main FSM allows it)
+
+ @param pWDICtx:         pointer to the WLAN DAL context
+        pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessAddPeriodicTxPtrnInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_AddPeriodicTxPtrnParamsType   *pAddPeriodicTxPtrnParams;
+  wpt_uint8*                     pSendBuffer         = NULL;
+  wpt_uint16                     usDataOffset        = 0;
+  wpt_uint16                     usSendSize          = 0;
+  WDI_Status                     wdiStatus;
+  tHalAddPeriodicTxPtrn          *halAddPeriodicTxPtrn;
+  wpt_uint8                      selfStaIdx          = 0;
+
+  /*-------------------------------------------------------------------------
+     Sanity check
+  -------------------------------------------------------------------------*/
+  if ((NULL == pEventData) || (NULL == pEventData->pEventData))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+               "%s: Invalid parameters in AddPeriodicTxPtrnInd!", __func__);
+    WDI_ASSERT(0);
+    return WDI_STATUS_E_FAILURE;
+  }
+
+  pAddPeriodicTxPtrnParams =
+    (WDI_AddPeriodicTxPtrnParamsType *)pEventData->pEventData;
+
+   /*------------------------------------------------------------------------
+     Get message buffer
+   ------------------------------------------------------------------------*/
+  if ((WDI_STATUS_SUCCESS != WDI_GetMessageBuffer(pWDICtx,
+       WDI_ADD_PERIODIC_TX_PATTERN_IND, sizeof(tHalAddPeriodicTxPtrn),
+       &pSendBuffer, &usDataOffset, &usSendSize))||
+       (usSendSize < (usDataOffset + sizeof(tHalAddPeriodicTxPtrn))))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+               "%s: Unable to get send buffer in AddPeriodicTxPtrnInd!",
+               __func__);
+    WDI_ASSERT(0);
+    return WDI_STATUS_E_FAILURE;
+  }
+
+  halAddPeriodicTxPtrn = (tHalAddPeriodicTxPtrn *)(pSendBuffer + usDataOffset);
+
+  if (WDI_STATUS_SUCCESS != WDI_STATableFindStaidByAddr(pWDICtx,
+      pAddPeriodicTxPtrnParams->wdiAddPeriodicTxPtrnParams.macAddr,
+      &selfStaIdx))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "%s: Failed to get selfStaIdx!", __func__);
+
+    return WDI_STATUS_E_FAILURE;
+  }
+
+  halAddPeriodicTxPtrn->selfStaIdx = selfStaIdx;
+  halAddPeriodicTxPtrn->ucPtrnId =
+    pAddPeriodicTxPtrnParams->wdiAddPeriodicTxPtrnParams.ucPtrnId;
+  halAddPeriodicTxPtrn->usPtrnSize =
+    pAddPeriodicTxPtrnParams->wdiAddPeriodicTxPtrnParams.ucPtrnSize;
+  halAddPeriodicTxPtrn->uPtrnIntervalMs =
+    pAddPeriodicTxPtrnParams->wdiAddPeriodicTxPtrnParams.usPtrnIntervalMs;
+
+  wpalMemoryCopy(halAddPeriodicTxPtrn->ucPattern,
+    pAddPeriodicTxPtrnParams->wdiAddPeriodicTxPtrnParams.ucPattern,
+    pAddPeriodicTxPtrnParams->wdiAddPeriodicTxPtrnParams.ucPtrnSize);
+
+  /*-------------------------------------------------------------------------
+    Send Indication to HAL
+  -------------------------------------------------------------------------*/
+  pWDICtx->wdiReqStatusCB     = pAddPeriodicTxPtrnParams->wdiReqStatusCB;
+  pWDICtx->pReqStatusUserData = pAddPeriodicTxPtrnParams->pUserData;
+
+  wdiStatus = WDI_SendIndication(pWDICtx, pSendBuffer, usSendSize);
+
+  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+             "%s: Sent WLAN_HAL_ADD_PERIODIC_TX_PTRN_IND to HAL.", __func__);
+
+  return (wdiStatus != WDI_STATUS_SUCCESS) ? wdiStatus : WDI_STATUS_SUCCESS_SYNC;
+} /* WDI_ProcessAddPeriodicTxPtrnInd */
+
+/**
+ @brief Process Delete Periodic Tx Pattern Indication function (called when
+           Main FSM allows it)
+
+ @param pWDICtx:         pointer to the WLAN DAL context
+        pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessDelPeriodicTxPtrnInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_DelPeriodicTxPtrnParamsType   *pDelPeriodicTxPtrnParams;
+  wpt_uint8*                     pSendBuffer         = NULL;
+  wpt_uint16                     usDataOffset        = 0;
+  wpt_uint16                     usSendSize          = 0;
+  WDI_Status                     wdiStatus;
+  tHalDelPeriodicTxPtrn          *halDelPeriodicTxPtrn;
+  wpt_uint8                      selfStaIdx          = 0;
+
+  /*-------------------------------------------------------------------------
+     Sanity check
+  -------------------------------------------------------------------------*/
+  if ((NULL == pEventData) || (NULL == pEventData->pEventData))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+               "%s: Invalid parameters in DelPeriodicTxPtrnInd!", __func__);
+    WDI_ASSERT(0);
+    return WDI_STATUS_E_FAILURE;
+  }
+
+  pDelPeriodicTxPtrnParams =
+    (WDI_DelPeriodicTxPtrnParamsType *)pEventData->pEventData;
+
+   /*------------------------------------------------------------------------
+     Get message buffer
+   ------------------------------------------------------------------------*/
+  if ((WDI_STATUS_SUCCESS != WDI_GetMessageBuffer(pWDICtx,
+       WDI_DEL_PERIODIC_TX_PATTERN_IND, sizeof(tHalDelPeriodicTxPtrn),
+       &pSendBuffer, &usDataOffset, &usSendSize))||
+       (usSendSize < (usDataOffset + sizeof(tHalDelPeriodicTxPtrn))))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+               "%s: Unable to get send buffer in DelPeriodicTxPtrnInd!",
+               __func__);
+    WDI_ASSERT(0);
+    return WDI_STATUS_E_FAILURE;
+  }
+
+  halDelPeriodicTxPtrn = (tHalDelPeriodicTxPtrn *)(pSendBuffer + usDataOffset);
+
+  if (WDI_STATUS_SUCCESS != WDI_STATableFindStaidByAddr(pWDICtx,
+      pDelPeriodicTxPtrnParams->wdiDelPeriodicTxPtrnParams.macAddr,
+      &selfStaIdx))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "%s: Failed to get selfStaIdx!", __func__);
+
+    return WDI_STATUS_E_FAILURE;
+  }
+
+  halDelPeriodicTxPtrn->selfStaIdx = selfStaIdx;
+  halDelPeriodicTxPtrn->uPatternIdBitmap =
+    pDelPeriodicTxPtrnParams->wdiDelPeriodicTxPtrnParams.ucPatternIdBitmap;
+
+  /*-------------------------------------------------------------------------
+    Send Indication to HAL
+  -------------------------------------------------------------------------*/
+  pWDICtx->wdiReqStatusCB     = pDelPeriodicTxPtrnParams->wdiReqStatusCB;
+  pWDICtx->pReqStatusUserData = pDelPeriodicTxPtrnParams->pUserData;
+
+  wdiStatus = WDI_SendIndication(pWDICtx, pSendBuffer, usSendSize);
+
+  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+             "%s: Sent WLAN_HAL_DEL_PERIODIC_TX_PTRN_IND to HAL.", __func__);
+
+  return (wdiStatus != WDI_STATUS_SUCCESS) ? wdiStatus : WDI_STATUS_SUCCESS_SYNC;
+} /* WDI_ProcessDelPeriodicTxPtrnInd */
 
 /*==========================================================================
                   MISC CONTROL PROCESSING REQUEST API
@@ -20021,6 +20281,52 @@ WDI_ProcessTxPerHitInd
 }/*WDI_ProcessTxPerHitInd*/
 
 /**
+ @brief Process Periodic Tx Pattern Fw Indication function
+
+ @param pWDICtx:         pointer to the WLAN DAL context
+        pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessPeriodicTxPtrnFwInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LowLevelIndType  wdiInd;
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if ((NULL == pWDICtx) || (NULL == pEventData) ||
+      (NULL == pEventData->pEventData))
+  {
+     WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  /*-------------------------------------------------------------------------
+    Extract indication and send it to UMAC
+  -------------------------------------------------------------------------*/
+  wpalMemoryCopy(&(wdiInd.wdiIndicationData.wdiPeriodicTxPtrnFwInd),
+                 (tHalPeriodicTxPtrnFwInd *)pEventData->pEventData,
+                 sizeof(tHalPeriodicTxPtrnFwInd));
+
+  if (pWDICtx->wdiLowLevelIndCB)
+  {
+    /*Notify UMAC*/
+    pWDICtx->wdiLowLevelIndCB(&wdiInd, pWDICtx->pIndUserData);
+  }
+
+  return WDI_STATUS_SUCCESS;
+}
+
+/**
  @brief WDI_ProcessFTMCommandReq
         Process FTM Command, simply route to HAL
 
@@ -22310,6 +22616,11 @@ WDI_2_HAL_REQ_TYPE
    case WDI_LPHB_CFG_REQ:
       return WLAN_HAL_LPHB_CFG_REQ;
 #endif /* FEATURE_WLAN_LPHB */
+  case WDI_ADD_PERIODIC_TX_PATTERN_IND:
+    return WLAN_HAL_ADD_PERIODIC_TX_PTRN_IND;
+  case WDI_DEL_PERIODIC_TX_PATTERN_IND:
+    return WLAN_HAL_DEL_PERIODIC_TX_PTRN_IND;
+
   default:
     return WLAN_HAL_MSG_MAX;
   }
@@ -22555,6 +22866,8 @@ case WLAN_HAL_DEL_STA_SELF_RSP:
 
   case WLAN_HAL_IBSS_PEER_INACTIVITY_IND:
     return WDI_HAL_IBSS_PEER_INACTIVITY_IND;
+  case WLAN_HAL_PERIODIC_TX_PTRN_FW_IND:
+    return WDI_HAL_PERIODIC_TX_PTRN_FW_IND;
 
   default:
     return eDRIVER_TYPE_MAX;

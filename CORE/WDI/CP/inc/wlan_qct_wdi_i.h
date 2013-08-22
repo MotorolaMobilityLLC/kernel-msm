@@ -469,6 +469,12 @@ typedef enum
   /* Drop/Receive unencrypted frames indication to HAL */
   WDI_EXCLUDE_UNENCRYPTED_IND,
 
+  /* Send an add periodic Tx pattern indication to HAL */
+  WDI_ADD_PERIODIC_TX_PATTERN_IND,
+
+  /* Send a delete periodic Tx pattern indicationto HAL */
+  WDI_DEL_PERIODIC_TX_PATTERN_IND,
+
   /*Keep adding the indications to the max request
     such that we keep them sepparate */
 
@@ -785,6 +791,9 @@ typedef enum
 
   /* IBSS Peer Inactivity Indication from FW to Host */
   WDI_HAL_IBSS_PEER_INACTIVITY_IND     = WDI_HAL_IND_MIN + 15,
+
+  /* Periodic Tx Pattern Indication from FW to Host */
+  WDI_HAL_PERIODIC_TX_PTRN_FW_IND     = WDI_HAL_IND_MIN + 16,
 
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
@@ -2847,6 +2856,40 @@ WDI_ProcessExcludeUnencryptInd
 );
 #endif
 
+/**
+ @brief Process Add Periodic Tx Pattern Indication function (called when
+           Main FSM allows it)
+
+ @param  pWDICtx:        pointer to the WLAN DAL context
+         pEventData:     pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessAddPeriodicTxPtrnInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+/**
+ @brief Process Delete Periodic Tx Pattern Indication function (called when
+           Main FSM allows it)
+
+ @param  pWDICtx:        pointer to the WLAN DAL context
+         pEventData:     pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessDelPeriodicTxPtrnInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
 /*========================================================================
           Main DAL Control Path Response Processing API 
 ========================================================================*/
@@ -4271,6 +4314,22 @@ WDI_ProcessLphbWaitTimeoutInd
   WDI_EventInfoType*     pEventData
 );
 #endif /* FEATURE_WLAN_LPHB */
+
+/**
+ @brief Process Periodic Tx Pattern Fw Indication function
+
+ @param  pWDICtx:        pointer to the WLAN DAL context
+         pEventData:     pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessPeriodicTxPtrnFwInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /**
