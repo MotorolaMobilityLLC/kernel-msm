@@ -3242,7 +3242,9 @@ qpnp_eoc_work(struct work_struct *work)
 	static int vbat_low_count;
 	int ibat_ma, vbat_mv, rc = 0;
 	u8 batt_sts = 0, buck_sts = 0, chg_sts = 0;
+#ifdef QCOM_WA
 	bool vbat_lower_than_vbatdet;
+#endif
 
 	pm_stay_awake(chip->dev);
 	qpnp_chg_charge_en(chip, (!chip->charging_disabled &&
@@ -3296,6 +3298,7 @@ qpnp_eoc_work(struct work_struct *work)
 			goto stop_eoc;
 		}
 
+#ifdef QCOM_WA
 		vbat_lower_than_vbatdet = !(chg_sts & VBAT_DET_LOW_IRQ);
 		if (vbat_lower_than_vbatdet && vbat_mv <
 				(chip->max_voltage_mv - chip->resume_delta_mv
@@ -3316,7 +3319,7 @@ qpnp_eoc_work(struct work_struct *work)
 		} else {
 			vbat_low_count = 0;
 		}
-
+#endif
 		if (buck_sts & VDD_LOOP_IRQ)
 			qpnp_chg_adjust_vddmax(chip, vbat_mv);
 
