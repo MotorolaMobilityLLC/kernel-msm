@@ -5266,8 +5266,6 @@ eHalStatus sme_QosProcessAddTsSuccessRsp(tpAniSirGlobal pMac,
                 "%s: %d: On session %d an AddTS is not pending on AC %d",
                 __func__, __LINE__,
                 sessionId, ac);
-      //ASSERT
-      VOS_ASSERT(0);
       return eHAL_STATUS_FAILURE;
    }
    //App is looking for APSD or the App which was looking for APSD has been 
