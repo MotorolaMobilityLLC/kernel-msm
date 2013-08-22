@@ -7207,6 +7207,7 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     v_U32_t num_channels_allowed = WNI_CFG_VALID_CHANNEL_LIST_LEN;
     eHalStatus status = eHAL_STATUS_FAILURE;
     int result;
+    int ret = 0;
 
     if (NULL == pAdapter)
     {
@@ -7222,7 +7223,7 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: HDD context is not valid", __func__);
-        return result;
+        return -EINVAL;
     }
 
     hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
@@ -7238,7 +7239,7 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
                   "%s: vos_mem_malloc failed", __func__);
-        return -ENODEV;
+        return -ENOMEM;
     }
 
     pPnoRequest->enable = 1; /*Enable PNO */
@@ -7249,6 +7250,7 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "Network input is not correct");
+        ret = -EINVAL;
         goto error;
     }
 
@@ -7256,6 +7258,7 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "Incorrect number of channels");
+        ret = -EINVAL;
         goto error;
     }
 
@@ -7266,6 +7269,7 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s: failed to get valid channel list", __func__);
+        ret = -EINVAL;
         goto error;
     }
     /* Checking each channel against allowed channel list */
@@ -7294,6 +7298,7 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                       "SSID Len %d is not correct for network %d",
                       pPnoRequest->aNetworks[i].ssId.length, i);
+            ret = -EINVAL;
             goto error;
         }
 
@@ -7325,12 +7330,13 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "Failed to enable PNO");
+        ret = -EINVAL;
         goto error;
     }
 
 error:
     vos_mem_free(pPnoRequest);
-    return status;
+    return ret;
 }
 
 /*
@@ -7345,7 +7351,7 @@ static int wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
     hdd_context_t *pHddCtx;
     tHalHandle hHal;
     tpSirPNOScanReq pPnoRequest = NULL;
-    int result;
+    int ret = 0;
 
     ENTER();
 
@@ -7357,13 +7363,35 @@ static int wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
     }
 
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-    result = wlan_hdd_validate_context(pHddCtx);
 
-    if (0 != result)
+    if (NULL == pHddCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "%s: HDD context is not valid", __func__);
-        return result;
+                "%s: HDD context is Null", __func__);
+        return -ENODEV;
+    }
+
+    /* The return 0 is intentional when isLogpInProgress and
+     * isLoadUnloadInProgress. We did observe a crash due to a return of
+     * failure in sched_scan_stop , especially for a case where the unload
+     * of the happens at the same time. The function __cfg80211_stop_sched_scan
+     * was clearing rdev->sched_scan_req only when the sched_scan_stop returns
+     * success. If it returns a failure , then its next invocation due to the
+     * clean up of the second interface will have the dev pointer corresponding
+     * to the first one leading to a crash.
+     */
+    if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: LOGP in Progress. Ignore!!!", __func__);
+        return ret;
+    }
+
+    if (pHddCtx->isLoadUnloadInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Unloading/Loading in Progress. Ignore!!!", __func__);
+        return ret;
     }
 
     hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
@@ -7379,7 +7407,7 @@ static int wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
                    "%s: vos_mem_malloc failed", __func__);
-        return -ENODEV;
+        return -ENOMEM;
     }
 
     memset(pPnoRequest, 0, sizeof (tSirPNOScanReq));
@@ -7393,12 +7421,13 @@ static int wlan_hdd_cfg80211_sched_scan_stop(struct wiphy *wiphy,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "Failed to disabled PNO");
+        ret = -EINVAL;
     }
 
     vos_mem_free(pPnoRequest);
 
     EXIT();
-    return status;
+    return ret;
 }
 
 #endif /*FEATURE_WLAN_SCAN_PNO*/
