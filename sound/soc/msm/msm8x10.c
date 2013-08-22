@@ -201,7 +201,7 @@ static const struct snd_soc_dapm_widget tpa6165_dapm_widgets[] = {
 
 static const struct snd_soc_dapm_route tpa6165_hp_map[] = {
 	{"TPA6165 Headphone", NULL, "HEADPHONE"},
-	{"MIC BIAS2 External", NULL, "TPA6165 Headset Mic"},
+	{"MIC BIAS Internal2", NULL, "TPA6165 Headset Mic"},
 };
 #endif
 static int msm8x10_ext_spk_power_amp_init(void)
