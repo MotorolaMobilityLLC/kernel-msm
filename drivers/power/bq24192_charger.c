@@ -43,6 +43,7 @@
 #define FAULT_REG                       0X09
 #define VENDOR_PART_REV_STATUS_REG      0X0A
 
+#define EN_HIZ_MASK                0x80
 #define RESET_REGISTER_MASK        0x80
 #define CHG_CONFIG_MASK            0x30
 #define EN_CHG_MASK                0x10
@@ -158,6 +159,8 @@ static struct current_limit_entry adap_tbl[] = {
 };
 
 static int bq24192_step_down_detect_disable(struct bq24192_chip *chip);
+static int bq24192_get_soc_from_batt_psy(struct bq24192_chip *chip);
+static void bq24192_trigger_recharge(struct bq24192_chip *chip);
 
 static int bq24192_read_reg(struct i2c_client *client, int reg, u8 *val)
 {
@@ -234,13 +237,29 @@ static bool bq24192_is_charger_present(struct bq24192_chip *chip)
 	return !!chg_online;
 }
 
+#define EN_HIZ_SHIFT 7
+static int bq24192_enable_hiz(struct bq24192_chip *chip, bool enable)
+{
+	int ret;
+	u8 val = (u8)(!!enable << EN_HIZ_SHIFT);
+
+	ret = bq24192_masked_write(chip->client, INPUT_SRC_CONT_REG,
+				EN_HIZ_MASK, val);
+	if (ret) {
+		pr_err("failed to set HIZ rc=%d\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 #define CHG_ENABLE_SHIFT  4
 static int bq24192_enable_charging(struct bq24192_chip *chip, bool enable)
 {
 	int ret;
 	u8 val = (u8)(!!enable << CHG_ENABLE_SHIFT);
 
-	pr_info("enable=%d\n", enable);
+	pr_debug("enable=%d\n", enable);
 
 	ret = bq24192_masked_write(chip->client, PWR_ON_CONF_REG,
 						EN_CHG_MASK, val);
@@ -639,8 +658,13 @@ static void bq24192_irq_worker(struct work_struct *work)
 	ext_pwr = !!(temp & PG_STAT_MASK);
 	chg_done = (temp & CHARGING_MASK) == 0x30 ? true : false;
 	if (chg_done) {
-		power_supply_changed(&chip->ac_psy);
-		pr_info("charge done!!\n");
+		if (chip->batt_health != POWER_SUPPLY_HEALTH_OVERHEAT &&
+				bq24192_get_soc_from_batt_psy(chip) < 100) {
+			bq24192_trigger_recharge(chip);
+		} else {
+			power_supply_changed(&chip->ac_psy);
+			pr_info("charge done!!\n");
+		}
 	}
 
 	if (chip->wlc_psy) {
@@ -897,9 +921,8 @@ static void bq24192_trigger_recharge(struct bq24192_chip *chip)
 	if (!bq24192_is_chg_done(chip))
 		return;
 
-	bq24192_set_vbat_max(chip, VBAT_MAX_MV);
-	msleep(150);
-	bq24192_set_vbat_max(chip, chip->vbat_max_mv);
+	bq24192_enable_hiz(chip, true);
+	bq24192_enable_hiz(chip, false);
 }
 
 #define WLC_INPUT_I_LIMIT_MA 900
