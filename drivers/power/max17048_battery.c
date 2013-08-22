@@ -29,6 +29,7 @@
 #include <linux/of_gpio.h>
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/debugfs.h>
+#include <linux/suspend.h>
 
 #define MODE_REG      0x06
 #define VCELL_REG     0x02
@@ -59,6 +60,7 @@ struct max17048_chip {
 	struct power_supply *ac_psy;
 	struct max17048_platform_data *pdata;
 	struct dentry *dent;
+	struct notifier_block pm_notifier;
 	int vcell;
 	int soc;
 	int capacity_level;
@@ -780,6 +782,27 @@ static int max17048_hw_init(struct max17048_chip *chip)
 	return 0;
 }
 
+static int max17048_pm_notifier(struct notifier_block *notifier,
+			unsigned long pm_event, void *unused)
+{
+	struct max17048_chip *chip = container_of(notifier,
+				struct max17048_chip, pm_notifier);
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		max17048_set_alsc_alert(chip, false);
+		break;
+	case PM_POST_SUSPEND:
+		max17048_work(chip);
+		max17048_set_alsc_alert(chip, true);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
 static int max17048_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -898,6 +921,13 @@ static int max17048_probe(struct i2c_client *client,
 		goto err_hw_init;
 	}
 
+	chip->pm_notifier.notifier_call = max17048_pm_notifier;
+	ret = register_pm_notifier(&chip->pm_notifier);
+	if (ret) {
+		pr_err("%s: failed to register pm notifier\n", __func__);
+		goto err_hw_init;
+	}
+
 	max17048_work(chip);
 	enable_irq(chip->alert_irq);
 
@@ -927,6 +957,7 @@ static int max17048_remove(struct i2c_client *client)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
 
+	unregister_pm_notifier(&chip->pm_notifier);
 	debugfs_remove_recursive(chip->dent);
 	device_remove_file(&client->dev, &dev_attr_fuelrst);
 	disable_irq_wake(chip->alert_irq);
@@ -937,27 +968,6 @@ static int max17048_remove(struct i2c_client *client)
 	ref = NULL;
 	kfree(chip);
 
-	return 0;
-}
-
-static int max17048_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct max17048_chip *chip = i2c_get_clientdata(client);
-
-	/* Disable ALSC(1% alert) */
-	max17048_set_alsc_alert(chip, false);
-	return 0;
-}
-
-static int max17048_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct max17048_chip *chip = i2c_get_clientdata(client);
-
-	max17048_work(chip);
-	/* Enable ALSC(1% alert) */
-	max17048_set_alsc_alert(chip, true);
 	return 0;
 }
 
@@ -972,17 +982,11 @@ static const struct i2c_device_id max17048_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, max17048_id);
 
-static const struct dev_pm_ops max17048_pm_ops = {
-	.resume = max17048_resume,
-	.suspend = max17048_suspend,
-};
-
 static struct i2c_driver max17048_i2c_driver = {
 	.driver	= {
 		.name = "max17048",
 		.owner = THIS_MODULE,
 		.of_match_table = max17048_match_table,
-		.pm = &max17048_pm_ops,
 	},
 	.probe = max17048_probe,
 	.remove = max17048_remove,
