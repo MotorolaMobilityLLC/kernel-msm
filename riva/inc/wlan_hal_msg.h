@@ -390,6 +390,12 @@ typedef enum
    WLAN_HAL_TDLS_LINK_TEARDOWN_RSP          = 201,
    WLAN_HAL_TDLS_IND                        = 202,
    WLAN_HAL_IBSS_PEER_INACTIVITY_IND        = 203,
+
+   /* APIs to offload TCP/UDP Heartbeat handshakes */
+   WLAN_HAL_LPHB_CFG_REQ                    = 211,
+   WLAN_HAL_LPHB_CFG_RSP                    = 212,
+   WLAN_HAL_LPHB_IND                        = 213,
+
    WLAN_HAL_ADD_PERIODIC_TX_PTRN_IND        = 214,
    WLAN_HAL_DEL_PERIODIC_TX_PTRN_IND        = 215,
    WLAN_HAL_PERIODIC_TX_PTRN_FW_IND         = 216,
@@ -3810,6 +3816,124 @@ typedef PACKED_PRE struct PACKED_POST
    tHalNSOffloadParams nsOffloadParams;
 }  tHalHostOffloadReqMsg, *tpHalHostOffloadReqMsg;
 
+
+#ifdef FEATURE_WLAN_LPHB
+typedef enum
+{
+   WIFI_HB_SET_ENABLE         = 0x0001,
+   WIFI_HB_SET_TCP_PARAMS     = 0x0002,
+   WIFI_HB_SET_TCP_PKT_FILTER = 0x0003,
+   WIFI_HB_SET_UDP_PARAMS     = 0x0004,
+   WIFI_HB_SET_UDP_PKT_FILTER = 0x0005,
+   WIFI_HB_SET_NETWORK_INFO   = 0x0006,
+}tLowPowerHeartBeatCmdType ;
+
+#define MAX_FLITER_SIZE 64
+/*---------------------------------------------------------------------------
+ *FEATURE_WLAN_LPHB REQ
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint32 hostIpv4Addr;
+   uint32 destIpv4Addr;
+   uint16 hostPort;
+   uint16 destPort;
+   uint16 timeOutSec;  // in seconds
+   tSirMacAddr gatewayMacAddr;
+} tlowPowerHeartBeatParamsTcpStruct;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint32 hostIpv4Addr;
+   uint32 destIpv4Addr;
+   uint16 hostPort;
+   uint16 destPort;
+   uint16 timePeriodSec;// in seconds
+   uint16 timeOutSec;   // in seconds
+   tSirMacAddr gatewayMacAddr;
+} tlowPowerHeartBeatParamsUdpStruct;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint32 offset;
+   uint32 filterLength;
+   uint8  filter[MAX_FLITER_SIZE];
+} tlowPowerHeartBeatFilterStruct;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint8 heartBeatEnable;
+   uint8 heartBeatType; //TCP or UDP
+} tlowPowerHeartBeatEnableStruct;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+  uint8 dummy;
+} tlowPowerHeartBeatNetworkInfoStruct;
+
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint8 sessionIdx;
+   uint16 lowPowerHeartBeatCmdType;
+   PACKED_PRE union PACKED_PRO
+   {
+      tlowPowerHeartBeatEnableStruct control;
+      tlowPowerHeartBeatFilterStruct tcpUdpFilter;
+      tlowPowerHeartBeatParamsTcpStruct tcpParams;
+      tlowPowerHeartBeatParamsUdpStruct udpParams;
+      tlowPowerHeartBeatNetworkInfoStruct info;
+    }options;
+} tHalLowPowerHeartBeatReq, *tpHalLowPowerHeartBeatReq;
+
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalLowPowerHeartBeatReq lowPowerHeartBeatParams;
+}  tHalLowPowerHeartBeatReqMsg, *tpHalLowPowerHeartBeatReqMsg;
+
+/*---------------------------------------------------------------------------
+ * FEATURE_WLAN_LPHB RSP
+ *--------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   /* success or failure */
+   uint8  sessionIdx;
+   uint32 status;
+   uint16 lowPowerHeartBeatCmdType;
+}tHalLowPowerHeartBeatRspParams, *tpHalLowPowerHeartBeatRspParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalLowPowerHeartBeatRspParams lowPowerHeartBeatRspParams;
+}tHalLowPowerHeartBeatRspMsg, *tpHalLowPowerHeartBeatRspMsg;
+
+
+/*---------------------------------------------------------------------------
+ * FEATURE_WLAN_LPHB IND
+ *--------------------------------------------------------------------------*/
+#define WIFI_HB_EVENT_TCP_RX_TIMEOUT 0x0001
+#define WIFI_HB_EVENT_UDP_RX_TIMEOUT 0x0002
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   uint8 bssIdx;
+   uint8 sessionIdx;
+   uint8 protocolType; /*TCP or UDP*/
+   uint8 eventReason;
+
+}tHalLowPowerHeartBeatIndParam,*tpHalLowPowerHeartBeatIndParam;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalLowPowerHeartBeatIndParam lowPowerHeartBeatIndParams;
+}tHalLowPowerHeartBeatIndMsg, *tpHalLowPowerHeartBeatIndMsg;
+
+#endif
 /*---------------------------------------------------------------------------
  * WLAN_HAL_KEEP_ALIVE_REQ
  *--------------------------------------------------------------------------*/
