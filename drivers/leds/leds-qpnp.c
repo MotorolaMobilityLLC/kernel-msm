@@ -1526,8 +1526,30 @@ static int __devinit qpnp_wled_init(struct qpnp_led_data *led)
 {
 	int rc, i;
 	u8 num_wled_strings;
+	u8 val = 0;
 
 	num_wled_strings = led->wled_cfg->num_strings;
+
+	rc = spmi_ext_register_readl(led->spmi_dev->ctrl, led->spmi_dev->sid,
+			 WLED_MOD_CTRL_REG(led->base), &val, 1);
+	if (rc) {
+		dev_err(&led->spmi_dev->dev,
+			"Unable to read from addr=%x, rc(%d)\n",
+			WLED_MOD_CTRL_REG(led->base), rc);
+		return rc;
+	}
+
+	if (WLED_BOOST_ON == val) {
+		val = WLED_BOOST_OFF;
+		rc = spmi_ext_register_writel(led->spmi_dev->ctrl,
+			led->spmi_dev->sid, WLED_MOD_CTRL_REG(led->base),
+			&val, 1);
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"WLED write ctrl reg failed(%d)\n", rc);
+			return rc;
+		}
+	}
 
 	/* verify ranges */
 	if (led->wled_cfg->ovp_val > WLED_OVP_27V) {
@@ -1675,6 +1697,18 @@ static int __devinit qpnp_wled_init(struct qpnp_led_data *led)
 			return rc;
 		}
 
+	}
+
+	if (WLED_BOOST_OFF == val) {
+		val = WLED_BOOST_ON;
+		rc = spmi_ext_register_writel(led->spmi_dev->ctrl,
+			led->spmi_dev->sid, WLED_MOD_CTRL_REG(led->base),
+			&val, 1);
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"WLED write ctrl reg failed(%d)\n", rc);
+			return rc;
+		}
 	}
 
 	/* dump wled registers */
