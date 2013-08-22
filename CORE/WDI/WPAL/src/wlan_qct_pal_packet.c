@@ -143,6 +143,9 @@ VOS_STATUS wpalPacketRXLowResourceCB(vos_pkt_t *pPacket, v_VOID_t *userData)
    }
 
    wpalPacketAvailableCB( (wpt_packet *)pPacket, userData );
+
+   wpalPacketAvailableCB = NULL;
+
    return VOS_STATUS_SUCCESS;
 }
 
@@ -164,8 +167,6 @@ wpt_packet * wpalPacketAlloc(wpt_packet_type pktType, wpt_uint32 nPktSize,
    v_U16_t      allocLen;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-   /* Initialize DXE CB function pointer storage */
-   wpalPacketAvailableCB = NULL;
    switch (pktType)
    {
    case eWLAN_PAL_PKT_TYPE_TX_802_11_MGMT:
