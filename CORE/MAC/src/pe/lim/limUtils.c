@@ -2592,6 +2592,8 @@ void limProcessChannelSwitchTimeout(tpAniSirGlobal pMac)
                         eSIR_MAC_UNSPEC_FAILURE_REASON);
         return;
     }
+    limCovertChannelScanType(pMac, psessionEntry->currentOperChannel, false);
+    pMac->lim.dfschannelList.timeStamp[psessionEntry->currentOperChannel] = 0;
     switch(psessionEntry->gLimChannelSwitch.state)
     {
         case eLIM_CHANNEL_SWITCH_PRIMARY_ONLY:
