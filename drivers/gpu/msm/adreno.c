@@ -2106,7 +2106,7 @@ _adreno_ft_restart_device(struct kgsl_device *device,
 		   struct kgsl_context *context)
 {
 
-	struct adreno_context *adreno_context = context->devctxt;
+	struct adreno_context *adreno_context = NULL;
 
 	/* restart device */
 	if (adreno_stop(device)) {
@@ -2124,9 +2124,11 @@ _adreno_ft_restart_device(struct kgsl_device *device,
 		return 1;
 	}
 
-	if (context)
+	if ((context != NULL) && (context->devctxt != NULL)) {
+		adreno_context = context->devctxt;
 		kgsl_mmu_setstate(&device->mmu, adreno_context->pagetable,
 			KGSL_MEMSTORE_GLOBAL);
+	}
 
 	/* If iommu is used then we need to make sure that the iommu clocks
 	 * are on since there could be commands in pipeline that touch iommu */
