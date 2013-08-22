@@ -1131,8 +1131,10 @@ void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
               *pCapStr++ = ' ';
          }
      }
+     pCapStr -= 2;
+     *pCapStr = '\0';
      pCapStr = capStr;
-     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR, "\t\t\t%s", pCapStr);
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR, "\t\t%s", pCapStr);
 }
 
 /**
