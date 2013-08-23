@@ -110,6 +110,10 @@ Parent node optional properties:
 					DC and USB OVP FETs. Please note that this should only
 					be enabled in board designs with PM8941 which have DC_IN
 					and USB_IN connected via a short.
+- qcom,step-charge-voltage              Voltage threshold for High Voltage batteries to
+                                        charge at a reduced rate.
+- qcom,step-charge-current             Reduced charge rate for High Voltage batteries
+                                        which are above a certain Voltage threshold
 
 Sub node required structure:
 - A qcom,chg node must be a child of an SPMI node that has specified
