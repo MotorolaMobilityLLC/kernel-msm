@@ -229,6 +229,7 @@ struct sdhci_host {
 	struct sdhci_next next_data;
 	ktime_t data_start_time;
 	struct mutex ios_mutex;
+	u32 auto_cmd_err_sts;
 
 	unsigned long private[0] ____cacheline_aligned;
 };
