@@ -25,6 +25,7 @@
 #include <linux/power_supply.h>
 #include <linux/power/bq24192_charger.h>
 #include <linux/bitops.h>
+#include <linux/ktime.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
@@ -925,6 +926,33 @@ static void bq24192_trigger_recharge(struct bq24192_chip *chip)
 	bq24192_enable_hiz(chip, false);
 }
 
+#define WLC_BOUNCE_INTERVAL_MS 15000
+#define WLC_BOUNCE_COUNT 3
+static bool bq24192_is_wlc_bounced(struct bq24192_chip *chip)
+{
+	ktime_t now_time;
+	uint32_t interval_ms;
+	static ktime_t prev_time;
+	static int bounced_cnt = 0;
+
+	now_time = ktime_get();
+
+	interval_ms = (uint32_t)ktime_to_ms(ktime_sub(now_time, prev_time));
+	if (interval_ms < WLC_BOUNCE_INTERVAL_MS)
+		bounced_cnt ++;
+	else
+		bounced_cnt = 0;
+
+	prev_time = now_time;
+	if (bounced_cnt >= WLC_BOUNCE_COUNT) {
+		pr_info("detect wlc bouncing!\n");
+		bounced_cnt = 0;
+		return true;
+	}
+
+	return false;
+}
+
 #define WLC_INPUT_I_LIMIT_MA 900
 static void bq24192_external_power_changed(struct power_supply *psy)
 {
@@ -971,10 +999,12 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 		chip->dwn_chg_i_ma = chip->wlc_dwn_i_ma;
 		chip->up_chg_i_ma = wlc_chg_current_ma;
 		chip->dwn_input_i_ma = chip->wlc_dwn_input_i_ma;
-		chip->up_input_i_ma = WLC_INPUT_I_LIMIT_MA;
+		if (bq24192_is_wlc_bounced(chip))
+			chip->up_input_i_ma = chip->wlc_dwn_input_i_ma;
+		else
+			chip->up_input_i_ma = WLC_INPUT_I_LIMIT_MA;
 		bq24192_set_input_vin_limit(chip, chip->wlc_vin_limit_mv);
-		bq24192_set_input_i_limit(chip,
-			WLC_INPUT_I_LIMIT_MA);
+		bq24192_set_input_i_limit(chip, chip->up_input_i_ma);
 		bq24192_set_ibat_max(chip, wlc_chg_current_ma);
 		bq24192_step_down_detect_init(chip);
 		pr_info("wlc is online! i_limit = %d v_limit = %d\n",
