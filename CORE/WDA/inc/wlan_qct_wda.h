@@ -407,6 +407,9 @@ typedef struct
    v_BOOL_t             needShutdown;
    v_BOOL_t             wdiFailed;
    v_BOOL_t             wdaTimersCreated;
+
+   /* Event to wait for WDA stop on FTM mode */
+   vos_event_t          ftmStopDoneEvent;
 } tWDA_CbContext ; 
 
 typedef struct

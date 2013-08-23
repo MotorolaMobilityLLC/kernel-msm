@@ -502,6 +502,10 @@ VOS_STATUS WDA_start(v_PVOID_t pVosContext)
          wdaContext->wdaTimersCreated = VOS_TRUE;
       }
    }
+   else
+   {
+      vos_event_init(&wdaContext->ftmStopDoneEvent);
+   }
    return status;
 }
 
@@ -1661,6 +1665,18 @@ void WDA_stopCallback(WDI_Status status, void* pUserData)
       wdaContext->wdaState = WDA_STOP_STATE;
    }
 
+   /* FTM Driver stop procedure should be synced.
+    * Stop and Close will happen on same context */
+   if (eDRIVER_TYPE_MFG == wdaContext->driverMode)
+   {
+      if (VOS_STATUS_SUCCESS != vos_event_set(&wdaContext->ftmStopDoneEvent))
+      {
+         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   "%s: FTM Stop Event Set Fail", __func__);
+         VOS_ASSERT(0);
+      }
+   }
+
    /* Indicate VOSS about the start complete */
    vos_WDAComplete_cback(wdaContext->pVosContext);
 
@@ -1744,6 +1760,21 @@ VOS_STATUS WDA_stop(v_PVOID_t pVosContext, tANI_U8 reason)
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
       vos_mem_free(pWdaParams);
       status = VOS_STATUS_E_FAILURE;
+   }
+
+   /* FTM Driver stop procedure should be synced.
+    * Stop and Close will happen on same context */
+   if (eDRIVER_TYPE_MFG == pWDA->driverMode)
+   {
+      status = vos_wait_single_event(&pWDA->ftmStopDoneEvent,
+                                     WDI_RESPONSE_TIMEOUT);
+      if (status != VOS_STATUS_SUCCESS)
+      {
+         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   "%s: FTM Stop Timepoout", __func__);
+         VOS_ASSERT(0);
+         vos_event_reset(&pWDA->ftmStopDoneEvent);
+      }
    }
    return status;
 }
@@ -14095,6 +14126,10 @@ VOS_STATUS WDA_shutdown(v_PVOID_t pVosContext, wpt_boolean closeTransport)
       wdaDestroyTimers(pWDA);
       pWDA->wdaTimersCreated = VOS_FALSE;
    }
+   else
+   {
+      vos_event_destroy(&pWDA->ftmStopDoneEvent);
+  }
 
    /* call WDI shutdown */
    wdiStatus = WDI_Shutdown(closeTransport);
