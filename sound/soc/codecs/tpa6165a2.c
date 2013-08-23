@@ -1061,6 +1061,18 @@ static void tpa6165_poll_acc_det(struct work_struct *work)
 			snd_soc_jack_report_no_dapm(tpa6165->hs_jack,
 				tpa6165->hs_acc_type,
 				tpa6165->hs_jack->jack->type);
+			/* If its headset toggle mic bias line to make sure
+			 * jawbone accessory wakes up and detects phone, doing
+			 * this helps with sync issues with acessory and doesnot
+			 * impact other accesories which are detected using
+			 * polling mechanism.
+			 */
+			if (tpa6165->hs_acc_type == SND_JACK_HEADSET) {
+				tpa6165_sleep(tpa6165, TPA6165_SPECIAL_SLEEP);
+				tpa6165_sleep(tpa6165, TPA6165_SLEEP);
+				msleep_interruptible(1);
+				tpa6165_sleep(tpa6165, TPA6165_SPECIAL_SLEEP);
+			}
 		} else
 			pr_debug("tpa6165: false acc detected, not reporting\n");
 	}
