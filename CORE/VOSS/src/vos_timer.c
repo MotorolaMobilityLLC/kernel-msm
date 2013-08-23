@@ -793,10 +793,6 @@ VOS_STATUS vos_timer_start( vos_timer_t *timer, v_U32_t expirationTime )
     
   \return VOS_STATUS_SUCCESS - timer was successfully stopped.
   
-          VOS_STATUS_E_EMPTY - The implementation has detected an attempt 
-          to stop a timer that has not been started or has already 
-          expired.
-
           VOS_STATUS_E_INVAL - The value specified by timer is invalid.
           
           VOS_STATUS_E_FAULT  - timer is an invalid pointer.     
@@ -840,7 +836,7 @@ VOS_STATUS vos_timer_stop ( vos_timer_t *timer )
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
                 "%s: Cannot stop timer in state = %d",
                 __func__, timer->state);
-      return VOS_STATUS_E_FAULT;
+      return VOS_STATUS_SUCCESS;
    }
    
    timer->state = VOS_TIMER_STATE_STOPPED;
