@@ -277,6 +277,12 @@ struct qpnp_chg_regulator {
  * @batt_psy:			power supply to export information to userspace
  * @flags:			flags to activate specific workarounds
  *				throughout the driver
+ * @step_charge_mv:		Voltage threshold for High Voltage batteries to
+ *                              charge at a reduced rate
+ * @step_charge_ma:             Reduced charge rate for High Voltage batteries
+ *                              which are above a certain Voltage threshold
+ * @cutoff_mv:                  cutoff voltage where the battery is considered
+ *                              dead
  *
  */
 struct qpnp_chg_chip {
@@ -387,6 +393,9 @@ struct qpnp_chg_chip {
 	bool				power_stage_workaround_running;
 	bool				power_stage_workaround_enable;
 	char				shutdown_needed;
+	unsigned int			step_charge_mv;
+	unsigned int			step_charge_ma;
+	unsigned int			cutoff_mv;
 };
 
 
@@ -3247,6 +3256,21 @@ qpnp_eoc_work(struct work_struct *work)
 #endif
 
 	pm_stay_awake(chip->dev);
+
+	if ((chip->step_charge_mv < chip->max_voltage_mv) &&
+		(chip->step_charge_mv > chip->cutoff_mv)) {
+		if ((get_prop_battery_voltage_now(chip)/1000) >=
+			chip->step_charge_mv) {
+			pr_debug("Step Rate used Batt V = %d\n",
+				(get_prop_battery_voltage_now(chip)/1000));
+			qpnp_chg_ibatmax_set(chip, chip->step_charge_ma);
+		} else {
+			pr_debug("Step Rate NOT used Batt V = %d\n",
+				(get_prop_battery_voltage_now(chip)/1000));
+			qpnp_chg_ibatmax_set(chip, chip->max_bat_chg_current);
+		}
+	}
+
 	qpnp_chg_charge_en(chip, (!chip->charging_disabled &&
 				  !chip->out_of_temp &&
 				  !chip->ext_hi_temp));
@@ -4257,6 +4281,9 @@ qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 		}
 		if (batt_data.iterm_ua >= 0)
 			chip->term_current = batt_data.iterm_ua / 1000;
+
+		if (batt_data.cutoff_uv >= 0)
+			chip->cutoff_mv = batt_data.cutoff_uv / 1000;
 	}
 
 	return 0;
@@ -4602,6 +4629,8 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	OF_PROP_READ(chip, soc_resume_limit, "resume-soc", rc, 1);
 	OF_PROP_READ(chip, batt_weak_voltage_mv, "vbatweak-mv", rc, 1);
 	OF_PROP_READ(chip, vbatdet_max_err_mv, "vbatdet-maxerr-mv", rc, 1);
+	OF_PROP_READ(chip, step_charge_mv, "step-charge-voltage", rc, 1);
+	OF_PROP_READ(chip, step_charge_ma, "step-charge-current", rc, 1);
 
 	if (rc)
 		return rc;
