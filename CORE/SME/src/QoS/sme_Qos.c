@@ -5293,8 +5293,56 @@ eHalStatus sme_QosProcessAddTsSuccessRsp(tpAniSirGlobal pMac,
          return eHAL_STATUS_FAILURE;
       }
    }
-   pACInfo->curr_QoSInfo[tspec_pending - 1] = 
-      pACInfo->requested_QoSInfo[tspec_pending - 1];
+
+   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.burst_size_defn =
+                              pRsp->tspec.tsinfo.traffic.burstSizeDefn;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.ack_policy =
+                              pRsp->tspec.tsinfo.traffic.ackPolicy;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.up =
+                              pRsp->tspec.tsinfo.traffic.userPrio;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.psb =
+                                        pRsp->tspec.tsinfo.traffic.psb;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.direction =
+                                  pRsp->tspec.tsinfo.traffic.direction;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].ts_info.tid =
+                                       pRsp->tspec.tsinfo.traffic.tsid;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].nominal_msdu_size =
+                                       pRsp->tspec.nomMsduSz;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].maximum_msdu_size =
+                                                 pRsp->tspec.maxMsduSz;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].min_service_interval =
+                                            pRsp->tspec.minSvcInterval;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].max_service_interval =
+                                            pRsp->tspec.maxSvcInterval;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].inactivity_interval =
+                                             pRsp->tspec.inactInterval;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].suspension_interval =
+                                           pRsp->tspec.suspendInterval;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].svc_start_time =
+                                              pRsp->tspec.svcStartTime;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].min_data_rate =
+                                              pRsp->tspec.minDataRate;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].mean_data_rate =
+                                             pRsp->tspec.meanDataRate;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].peak_data_rate =
+                                             pRsp->tspec.peakDataRate;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].max_burst_size =
+                                               pRsp->tspec.maxBurstSz;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].delay_bound =
+                                               pRsp->tspec.delayBound;
+
+   pACInfo->curr_QoSInfo[tspec_pending - 1].min_phy_rate =
+                                               pRsp->tspec.minPhyRate;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].surplus_bw_allowance =
+                                                pRsp->tspec.surplusBw;
+   pACInfo->curr_QoSInfo[tspec_pending - 1].medium_time =
+                                               pRsp->tspec.mediumTime;
+
+   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+             "%s: %d: On session %d AddTspec Medium Time %d",
+             __func__, __LINE__,
+             sessionId, pRsp->tspec.mediumTime);
+
    /* Check if the current flow is for bi-directional. If so, update the number of flows
     * to reflect that all flows are aggregated into tspec index 0. */
    if((pACInfo->curr_QoSInfo[pACInfo->tspec_pending - 1].ts_info.direction == SME_QOS_WMM_TS_DIR_BOTH) &&
