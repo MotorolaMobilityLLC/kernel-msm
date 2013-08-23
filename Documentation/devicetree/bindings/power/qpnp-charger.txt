@@ -93,6 +93,10 @@ Parent node optional properties:
 					set, the charger ovp status is monitored in software.
 - qcom,ext-ovp-present			Indicates if an external OVP exists which reduces the
 					overall input resistance of the charge path.
+- qcom,step-charge-voltage              Voltage threshold for High Voltage batteries to
+                                        charge at a reduced rate.
+- qcom,step-charge-current             Reduced charge rate for High Voltage batteries
+                                        which are above a certain Voltage threshold
 
 Sub node required structure:
 - A qcom,chg node must be a child of an SPMI node that has specified
