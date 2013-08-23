@@ -1148,6 +1148,12 @@ v_BOOL_t WDA_IsHwFrameTxTranslationCapable(v_PVOID_t pVosGCtx,
 #define WDA_UpdateRssiBmps(pvosGCtx,  staId, rssi) \
         WLANTL_UpdateRssiBmps(pvosGCtx, staId, rssi)
 
+#define WDA_UpdateSnrBmps(pvosGCtx,  staId, rssi) \
+        WLANTL_UpdateSnrBmps(pvosGCtx, staId, snr)
+
+#define WDA_GetSnr(staId, snr) \
+        WLANTL_GetSnr(staId, snr)
+
 #define WDA_UpdateLinkCapacity(pvosGCtx,  staId, linkCapacity) \
         WLANTL_UpdateLinkCapacity(pvosGCtx, staId, linkCapacity)
 

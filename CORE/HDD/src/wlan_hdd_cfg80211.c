@@ -8236,6 +8236,107 @@ static int wlan_hdd_cfg80211_testmode(struct wiphy *wiphy, void *data, int len)
 }
 #endif /* CONFIG_NL80211_TESTMODE */
 
+static int wlan_hdd_cfg80211_dump_survey(struct wiphy *wiphy,
+                                         struct net_device *dev,
+                                         int idx, struct survey_info *survey)
+{
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_context_t *pHddCtx;
+    tHalHandle halHandle;
+    v_U32_t channel, freq;
+    v_S7_t snr,rssi;
+    int status, i, j, filled = 0;
+
+    ENTER();
+
+
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s: HDD adapter is Null", __func__);
+        return -ENODEV;
+    }
+
+    if (NULL == wiphy)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s: wiphy is Null", __func__);
+        return -ENODEV;
+    }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    status = wlan_hdd_validate_context(pHddCtx);
+
+    if (0 != status)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD context is not valid", __func__);
+        return status;
+    }
+
+    if (0 == pHddCtx->cfg_ini->fEnableSNRMonitoring ||
+        0 != pAdapter->survey_idx)
+    {
+        /* The survey dump ops when implemented completely is expected to
+         * return a survey of all channels and the ops is called by the
+         * kernel with incremental values of the argument 'idx' till it
+         * returns -ENONET. But we can only support the survey for the
+         * operating channel for now. survey_idx is used to track
+         * that the ops is called only once and then return -ENONET for
+         * the next iteration
+         */
+        pAdapter->survey_idx = 0;
+        return -ENONET;
+    }
+
+    halHandle = WLAN_HDD_GET_HAL_CTX(pAdapter);
+
+    wlan_hdd_get_snr(pAdapter, &snr);
+    wlan_hdd_get_rssi(pAdapter, &rssi);
+
+    sme_GetOperationChannel(halHandle, &channel, pAdapter->sessionId);
+    hdd_wlan_get_freq(channel, &freq);
+
+
+    for (i = 0; i < IEEE80211_NUM_BANDS; i++)
+    {
+        if (NULL == wiphy->bands[i])
+        {
+           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                     "%s: wiphy->bands[i] is NULL, i = %d", __func__, i);
+           continue;
+        }
+
+        for (j = 0; j < wiphy->bands[i]->n_channels; j++)
+        {
+            struct ieee80211_supported_band *band = wiphy->bands[i];
+
+            if (band->channels[j].center_freq == (v_U16_t)freq)
+            {
+                survey->channel = &band->channels[j];
+                /* The Rx BDs contain SNR values in dB for the received frames
+                 * while the supplicant expects noise. So we calculate and
+                 * return the value of noise (dBm)
+                 *  SNR (dB) = RSSI (dBm) - NOISE (dBm)
+                 */
+                survey->noise = rssi - snr;
+                survey->filled = SURVEY_INFO_NOISE_DBM;
+                filled = 1;
+            }
+        }
+     }
+
+     if (filled)
+        pAdapter->survey_idx = 1;
+     else
+     {
+        pAdapter->survey_idx = 0;
+        return -ENONET;
+     }
+
+     return 0;
+}
+
 /* cfg80211_ops */
 static struct cfg80211_ops wlan_hdd_cfg80211_ops =
 {
@@ -8303,5 +8404,6 @@ static struct cfg80211_ops wlan_hdd_cfg80211_ops =
 #ifdef WLAN_NL80211_TESTMODE
      .testmode_cmd = wlan_hdd_cfg80211_testmode,
 #endif
+     .dump_survey = wlan_hdd_cfg80211_dump_survey,
 };
 

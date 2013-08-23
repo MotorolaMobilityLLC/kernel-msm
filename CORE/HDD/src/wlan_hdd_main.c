@@ -5577,6 +5577,21 @@ int hdd_wlan_startup(struct device *dev )
          pHddCtx->cfg_ini->nBandCapability = 1;
       }
    }
+
+   /* If SNR Monitoring is enabled, FW has to parse all beacons
+    * for calcaluting and storing the average SNR, so set Nth beacon
+    * filter to 1 to enable FW to parse all the beaocons
+    */
+   if (1 == pHddCtx->cfg_ini->fEnableSNRMonitoring)
+   {
+      /* The log level is deliberately set to WARN as overriding
+       * nthBeaconFilter to 1 will increase power cosumption and this
+       * might just prove helpful to detect the power issue.
+       */
+      hddLog(VOS_TRACE_LEVEL_WARN,
+             "%s: Setting pHddCtx->cfg_ini->nthBeaconFilter = 1", __func__);
+      pHddCtx->cfg_ini->nthBeaconFilter = 1;
+   }
    /*
     * cfg80211: Initialization and registration ...
     */

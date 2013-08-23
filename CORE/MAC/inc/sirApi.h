@@ -2104,6 +2104,17 @@ typedef struct sAniGetRssiReq
     
 } tAniGetRssiReq, *tpAniGetRssiReq;
 
+typedef struct sAniGetSnrReq
+{
+    // Common for all types are requests
+    tANI_U16                msgType;    // message type is same as the request type
+    tANI_U16                msgLen;  // length of the entire request
+    tANI_U8                 sessionId;
+    tANI_U8                 staId;
+    void                    *snrCallback;
+    void                    *pDevContext; //device context
+} tAniGetSnrReq, *tpAniGetSnrReq;
+
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
 typedef struct sAniGetRoamRssiRsp
 {
