@@ -193,6 +193,13 @@ static struct gpiomux_setting gpio_int_sus_cfg = {
 
 static struct msm_gpiomux_config msm_gpio_int_configs[] __initdata = {
 	{
+		.gpio = 81,
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &gpio_int_act_cfg,
+			[GPIOMUX_SUSPENDED]	= &gpio_int_sus_cfg,
+		},
+	},
+	{
 		.gpio = 84,
 		.settings = {
 			[GPIOMUX_ACTIVE]	= &gpio_int_act_cfg,
