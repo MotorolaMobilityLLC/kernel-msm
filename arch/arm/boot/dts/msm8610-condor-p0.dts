@@ -44,17 +44,15 @@
 		qcom,scl-gpio = <&msmgpio 11 0>;
 	};
 
-	rpm-regulator-ldoa14 {
-		regulator-l14 {
-			regulator-always-on;
-		};
-	};
-
 	rpm-regulator-ldoa21 {
 		regulator-l21 {
 			regulator-min-microvolt = <2950000>;
 		};
 	};
+};
+
+&pm8110_l14 {
+	regulator-always-on;
 };
 
 &i2c_3 {
@@ -68,5 +66,24 @@
 		gpios = <&msmgpio 84 0x0>;
 		hs_det_vdd-supply = <&pm8110_l6>;
 		hs_det_micvdd-supply = <&pm8110_l21>;
+	};
+
+	kionix@e {
+		compatible = "kionix,kxtj9";
+		reg = <0x0e>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <81 0x2>; /* GPIO # will be converted to GPIO_IRQ # */
+		vio-supply = <&pm8110_l14>;
+		vdd-supply = <&pm8110_l19>;
+		kionix,min-interval = <5>;
+		kionix,init-interval = <200>;
+		kionix,axis-map-x = <1>;
+		kionix,axis-map-y = <0>;
+		kionix,axis-map-z = <2>;
+		kionix,g-range = <2>;
+		kionix,negate-x;
+		kionix,negate-y;
+		kionix,negate-z;
+		kionix,res-12bit;
 	};
 };
