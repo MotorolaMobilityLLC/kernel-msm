@@ -54,6 +54,15 @@ static ssize_t wcnss_wowpattern_write(struct file *file,
         return -EINVAL;
     }
 
+    if (!sme_IsFeatureSupportedByFW(WOW))
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: Wake-on-Wireless feature is not supported "
+                   "in firmware!", __func__);
+
+        return -EINVAL;
+    }
+
     if (count > MAX_USER_COMMAND_SIZE_WOWL_PATTERN)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -128,10 +137,11 @@ static ssize_t wcnss_patterngen_write(struct file *file,
         return -EINVAL;
     }
 
-    if (!hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter)))
+    if (!sme_IsFeatureSupportedByFW(WLAN_PERIODIC_TX_PTRN))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Not in Connected state!", __func__);
+                   "%s: Periodic Tx Pattern Offload feature is not supported "
+                   "in firmware!", __func__);
 
         return -EINVAL;
     }
@@ -203,6 +213,15 @@ static ssize_t wcnss_patterngen_write(struct file *file,
         vos_mem_free(delPeriodicTxPtrnParams);
         vos_mem_free(cmd);
         return count;
+    }
+
+    /* Check if it's in connected state only when adding patterns */
+    if (!hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter)))
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: Not in Connected state!", __func__);
+
+        return -EINVAL;
     }
 
     /* Get pattern */
