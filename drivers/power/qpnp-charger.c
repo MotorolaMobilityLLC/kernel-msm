@@ -1999,6 +1999,7 @@ static enum power_supply_property msm_batt_power_props[] = {
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 	POWER_SUPPLY_PROP_VOLTAGE_OCV,
+	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 };
 
 static char *pm_power_supplied_to[] = {
@@ -2243,6 +2244,23 @@ get_prop_charge_full(struct qpnp_chg_chip *chip)
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
 			  POWER_SUPPLY_PROP_CHARGE_FULL, &ret);
+		return ret.intval;
+	} else {
+		pr_debug("No BMS supply registered return 0\n");
+	}
+
+	return 0;
+}
+
+static int
+get_prop_charge_counter(struct qpnp_chg_chip *chip)
+{
+	union power_supply_propval ret = {0,};
+
+	if (chip->bms_psy) {
+		chip->bms_psy->get_property(chip->bms_psy,
+					    POWER_SUPPLY_PROP_CHARGE_COUNTER,
+					    &ret);
 		return ret.intval;
 	} else {
 		pr_debug("No BMS supply registered return 0\n");
@@ -2506,6 +2524,9 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = get_prop_online(chip);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
+		val->intval = get_prop_charge_counter(chip);
 		break;
 	default:
 		return -EINVAL;
