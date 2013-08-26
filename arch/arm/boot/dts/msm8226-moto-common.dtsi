@@ -792,3 +792,7 @@
 	qcom,hw-trdhld = <6>;
 	qcom,hw-tsp = <3>;
 };
+
+&qsecom_mem {
+	reg = <0 0x400000>;
+};
