@@ -313,6 +313,7 @@ static int discard_backup_fcc_data(struct qpnp_bms_chip *chip);
 static void backup_charge_cycle(struct qpnp_bms_chip *chip);
 
 static bool bms_reset;
+static int last_ocv_uv = -EINVAL;
 
 static int qpnp_read_wrapper(struct qpnp_bms_chip *chip, u8 *val,
 			u16 base, int count)
@@ -1690,6 +1691,32 @@ static struct kernel_param_ops bms_reset_ops = {
 module_param_cb(bms_reset, &bms_reset_ops, &bms_reset, 0644);
 
 #define SOC_STORAGE_MASK	0xFE
+
+static int ocv_ops_get(char *buffer, const struct kernel_param *kp)
+{
+	if (*(int *)kp->arg) {
+		struct power_supply *bms_psy = power_supply_get_by_name("bms");
+		struct qpnp_bms_chip *chip = container_of(bms_psy,
+							  struct qpnp_bms_chip,
+							  bms_psy);
+
+		if (chip) {
+			last_ocv_uv = chip->last_ocv_uv;
+			return param_get_int(buffer, kp);
+		} else {
+			return 0;
+		}
+	}
+	return 0;
+}
+
+static struct kernel_param_ops ocv_param_ops = {
+	.set = NULL,
+	.get = ocv_ops_get,
+};
+
+module_param_cb(last_ocv_uv, &ocv_param_ops, &last_ocv_uv, 0644);
+
 static void backup_soc_and_iavg(struct qpnp_bms_chip *chip, int batt_temp,
 				int soc)
 {
