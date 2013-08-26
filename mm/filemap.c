@@ -769,12 +769,23 @@ struct page *find_or_create_page(struct address_space *mapping,
 {
 	struct page *page;
 	int err;
+	gfp_t gfp_notmask = 0;
+
 repeat:
 	page = find_lock_page(mapping, index);
 	if (!page) {
-		page = __page_cache_alloc(gfp_mask);
+retry:
+		page = __page_cache_alloc(gfp_mask & ~gfp_notmask);
 		if (!page)
 			return NULL;
+
+		if (is_cma_pageblock(page)) {
+			__free_page(page);
+			gfp_notmask |= __GFP_MOVABLE;
+			goto retry;
+		}
+
+
 		/*
 		 * We want a regular kernel memory (not highmem or DMA etc)
 		 * allocation for the radix tree nodes, but we need to honour
