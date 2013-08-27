@@ -80,6 +80,12 @@
 	};
 };
 
+&qsecom_mem {
+	linux,contiguous-region;
+	reg = <0 0x600000>;
+	label = "qsecom_mem";
+};
+
 &pm8110_l14 {
 	regulator-always-on;
 };
