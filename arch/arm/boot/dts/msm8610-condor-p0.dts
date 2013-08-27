@@ -45,6 +45,11 @@
 	};
 
 	i2c@f9923000 {
+		atmel_mxt_ts@4a {
+			atmel,panel-coords = <0 0 1023 1023>;
+			atmel,display-coords = <0 0 1023 1023>;
+		};
+
 		tps65132@3e {
 			compatible = "ti,tps65132";
 			reg = <0x3e>;
