@@ -66,3 +66,9 @@
 	lcdbias-supply = <&tps65132>;
 	qcom,cont-splash-enabled;
 };
+
+&mot_cmi_720p_vid_v2 {
+	vddio_disp-supply = <&vddio_disp_vreg>;
+	lcdbias-supply = <&tps65132>;
+	qcom,cont-splash-enabled;
+};
