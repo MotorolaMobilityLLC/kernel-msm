@@ -68,6 +68,16 @@
 			regulator-min-microvolt = <2950000>;
 		};
 	};
+
+	vddio_disp_vreg: vddio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vddio_disp";
+		gpio = <&msmgpio 7 0x0>;
+		parent-supply = <&pm8110_l14>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-always-on;
+	};
 };
 
 &pm8110_l14 {
