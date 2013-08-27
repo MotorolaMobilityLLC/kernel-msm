@@ -44,6 +44,25 @@
 		qcom,scl-gpio = <&msmgpio 11 0>;
 	};
 
+	i2c@f9923000 {
+		tps65132@3e {
+			compatible = "ti,tps65132";
+			reg = <0x3e>;
+			gpios = <&msmgpio 5 0x0>, <&msmgpio 6 0x0>;
+			active-dis;
+			bias-delay-us = <2000>;
+			vcc_i2c-supply = <&pm8110_l14>;
+			tps65132: regulator {
+				regulator-name = "tps65132";
+				regulator-min-microvolt = <4000000>;
+				regulator-max-microvolt = <6000000>;
+				startup-delay-us = <10000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+		};
+	};
+
 	rpm-regulator-ldoa21 {
 		regulator-l21 {
 			regulator-min-microvolt = <2950000>;
