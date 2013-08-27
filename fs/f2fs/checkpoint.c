@@ -356,7 +356,10 @@ void remove_orphan_inode(struct f2fs_sb_info *sbi, nid_t ino)
 static void recover_orphan_inode(struct f2fs_sb_info *sbi, nid_t ino)
 {
 	struct inode *inode = f2fs_iget(sbi->sb, ino);
-	f2fs_bug_on(IS_ERR(inode));
+	if (IS_ERR(inode)) {
+		f2fs_handle_error(sbi);
+		return;
+	}
 	clear_nlink(inode);
 
 	/* truncate all the data during iput */
