@@ -348,7 +348,7 @@ static int __init msm_pmic_restart_init(void)
 
 	if (pmic_reset_irq != 0) {
 		rc = request_any_context_irq(pmic_reset_irq,
-					resout_irq_handler, IRQF_TRIGGER_HIGH,
+					resout_irq_handler, IRQF_TRIGGER_RISING,
 					"restart_from_pmic", NULL);
 		if (rc < 0)
 			pr_err("pmic restart irq fail rc = %d\n", rc);
