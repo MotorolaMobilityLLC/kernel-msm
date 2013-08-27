@@ -126,4 +126,20 @@
 		kionix,negate-z;
 		kionix,res-12bit;
 	};
+
+	ct406@39 {
+		compatible = "ams,ct406";
+		reg = <0x39>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <80 0x2>;
+		gpios = <&msmgpio 80 0>; /* IRQ */
+		vdd-supply = <&pm8110_l19>;
+		ams,prox-samples-for-noise-floor = <0x05>;
+		ams,prox-covered-offset = <0x0096>;
+		ams,prox-uncovered-offset = <0x006e>;
+		ams,prox-recalibrate-offset = <0x0046>;
+		ams,prox-offset = <0x00>;
+		ams,prox-pulse-count = <0x04>;
+		ams,ink_type = <0x01>;
+	};
 };
