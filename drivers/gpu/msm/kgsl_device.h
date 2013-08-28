@@ -187,6 +187,7 @@ struct kgsl_device {
 	struct dentry *d_debugfs;
 	struct idr context_idr;
 	struct early_suspend display_off;
+	rwlock_t context_lock;
 
 	void *snapshot;		/* Pointer to the snapshot memory region */
 	int snapshot_maxsize;   /* Max size of the snapshot region */
@@ -469,12 +470,14 @@ static inline struct kgsl_context *kgsl_context_get(struct kgsl_device *device,
 {
 	struct kgsl_context *context = NULL;
 
-	rcu_read_lock();
+	read_lock(&device->context_lock);
+
 	context = idr_find(&device->context_idr, id);
 
 	_kgsl_context_get(context);
 
-	rcu_read_unlock();
+	read_unlock(&device->context_lock);
+
 	return context;
 }
 
