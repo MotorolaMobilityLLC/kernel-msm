@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_android.c 419132 2013-08-19 21:33:05Z $
+ * $Id: wl_android.c 420671 2013-08-28 11:37:19Z $
  */
 
 #include <linux/module.h>
@@ -89,9 +89,6 @@
 #define CMD_SETIBSSBEACONOUIDATA	"SETIBSSBEACONOUIDATA"
 #define CMD_MIRACAST		"MIRACAST"
 
-#if defined(WL_SUPPORT_AUTO_CHANNEL)
-#define CMD_GET_BEST_CHANNELS	"GET_BEST_CHANNELS"
-#endif /* WL_SUPPORT_AUTO_CHANNEL */
 
 
 /* CCX Private Commands */
@@ -1192,9 +1189,11 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	else if (strnicmp(command, CMD_PNOSSIDCLR_SET, strlen(CMD_PNOSSIDCLR_SET)) == 0) {
 		bytes_written = dhd_dev_pno_stop_for_ssid(net);
 	}
+#ifndef WL_SCHED_SCAN
 	else if (strnicmp(command, CMD_PNOSETUP_SET, strlen(CMD_PNOSETUP_SET)) == 0) {
 		bytes_written = wl_android_set_pno_setup(net, command, priv_cmd.total_len);
 	}
+#endif /* !WL_SCHED_SCAN */
 	else if (strnicmp(command, CMD_PNOENABLE_SET, strlen(CMD_PNOENABLE_SET)) == 0) {
 		int enable = *(command + strlen(CMD_PNOENABLE_SET) + 1) - '0';
 		bytes_written = (enable)? 0 : dhd_dev_pno_stop_for_ssid(net);
@@ -1234,13 +1233,6 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		bytes_written = wl_android_set_pmk(net, command, priv_cmd.total_len);
 	else if (strnicmp(command, CMD_OKC_ENABLE, strlen(CMD_OKC_ENABLE)) == 0)
 		bytes_written = wl_android_okc_enable(net, command, priv_cmd.total_len);
-#if defined(WL_SUPPORT_AUTO_CHANNEL)
-	else if (strnicmp(command, CMD_GET_BEST_CHANNELS,
-		strlen(CMD_GET_BEST_CHANNELS)) == 0) {
-		bytes_written = wl_cfg80211_get_best_channels(net, command,
-			priv_cmd.total_len);
-	}
-#endif /* WL_SUPPORT_AUTO_CHANNEL */
 	else if (strnicmp(command, CMD_HAPD_MAC_FILTER, strlen(CMD_HAPD_MAC_FILTER)) == 0) {
 		int skip = strlen(CMD_HAPD_MAC_FILTER) + 1;
 		wl_android_set_mac_address_filter(net, (const char*)command+skip);
