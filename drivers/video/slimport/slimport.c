@@ -660,7 +660,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	if (ret)
 		goto err2;
 
-	ret = anx7808_vdd_1p0_power(anx7808, true);
+	ret = anx7808_vdd_1p0_power(anx7808, false);
 	if (ret)
 		goto err3;
 
