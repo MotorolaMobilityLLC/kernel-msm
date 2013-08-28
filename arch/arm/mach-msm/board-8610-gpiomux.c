@@ -193,6 +193,13 @@ static struct gpiomux_setting gpio_int_sus_cfg = {
 
 static struct msm_gpiomux_config msm_gpio_int_configs[] __initdata = {
 	{
+		.gpio = 8,		/* TEMP_ALERT_N */
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &gpio_int_act_cfg,
+			[GPIOMUX_SUSPENDED]	= &gpio_int_sus_cfg,
+		},
+	},
+	{
 		.gpio = 80,
 		.settings = {
 			[GPIOMUX_ACTIVE]	= &gpio_int_act_cfg,
@@ -589,13 +596,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	},
 	{
 		.gpio = 19, /* FLASH_LED_NOW */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
-		},
-	},
-	{
-		.gpio = 8, /* CAM1_STANDBY_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
