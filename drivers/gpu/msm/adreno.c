@@ -1797,62 +1797,77 @@ static int adreno_stop(struct kgsl_device *device)
 	return 0;
 }
 
+/*
+ * Set the reset status of all contexts to
+ * INNOCENT_CONTEXT_RESET_EXT except for the bad context
+ * since thats the guilty party, if fault tolerance failed then
+ * mark all as guilty
+ */
+
+static int _mark_context_status(int id, void *ptr, void *data)
+{
+	unsigned int ft_status = *((unsigned int *) data);
+	struct kgsl_context *context = ptr;
+	struct adreno_context *adreno_context = context->devctxt;
+
+	if (ft_status) {
+		context->reset_status =
+				KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT;
+		adreno_context->flags |= CTXT_FLAGS_GPU_HANG;
+	} else if (KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT !=
+		context->reset_status) {
+		if (adreno_context->flags & (CTXT_FLAGS_GPU_HANG |
+			CTXT_FLAGS_GPU_HANG_FT))
+			context->reset_status =
+			KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT;
+		else
+			context->reset_status =
+			KGSL_CTX_STAT_INNOCENT_CONTEXT_RESET_EXT;
+	}
+
+	return 0;
+}
+
 static void adreno_mark_context_status(struct kgsl_device *device,
 					int ft_status)
 {
-	struct kgsl_context *context;
-	int next = 0;
-	/*
-	 * Set the reset status of all contexts to
-	 * INNOCENT_CONTEXT_RESET_EXT except for the bad context
-	 * since thats the guilty party, if fault tolerance failed then
-	 * mark all as guilty
-	 */
+	/* Mark the status for all the contexts in the device */
 
-	rcu_read_lock();
-	while ((context = idr_get_next(&device->context_idr, &next))) {
-		struct adreno_context *adreno_context = context->devctxt;
-		if (ft_status) {
-			context->reset_status =
-					KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT;
-			adreno_context->flags |= CTXT_FLAGS_GPU_HANG;
-		} else if (KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT !=
-			context->reset_status) {
-			if (adreno_context->flags & (CTXT_FLAGS_GPU_HANG |
-				CTXT_FLAGS_GPU_HANG_FT))
-				context->reset_status =
-				KGSL_CTX_STAT_GUILTY_CONTEXT_RESET_EXT;
-			else
-				context->reset_status =
-				KGSL_CTX_STAT_INNOCENT_CONTEXT_RESET_EXT;
-		}
-		next = next + 1;
+	read_lock(&device->context_lock);
+	idr_for_each(&device->context_idr, _mark_context_status, &ft_status);
+	read_unlock(&device->context_lock);
+}
+
+/*
+ * For hung contexts set the current memstore value to the most recent issued
+ * timestamp - this resets the status and lets the system continue on
+ */
+
+static int _set_max_ts(int id, void *ptr, void *data)
+{
+	struct kgsl_device *device = data;
+	struct kgsl_context *context = ptr;
+	struct adreno_context *drawctxt = context->devctxt;
+
+	if (drawctxt->flags & CTXT_FLAGS_GPU_HANG) {
+		kgsl_sharedmem_writel(&device->memstore,
+			KGSL_MEMSTORE_OFFSET(context->id,
+			soptimestamp),
+			drawctxt->timestamp);
+		kgsl_sharedmem_writel(&device->memstore,
+			KGSL_MEMSTORE_OFFSET(context->id,
+			eoptimestamp),
+			drawctxt->timestamp);
 	}
-	rcu_read_unlock();
+
+	return 0;
 }
 
 static void adreno_set_max_ts_for_bad_ctxs(struct kgsl_device *device)
 {
-	struct kgsl_context *context;
-	struct adreno_context *temp_adreno_context;
-	int next = 0;
-
-	rcu_read_lock();
-	while ((context = idr_get_next(&device->context_idr, &next))) {
-		temp_adreno_context = context->devctxt;
-		if (temp_adreno_context->flags & CTXT_FLAGS_GPU_HANG) {
-			kgsl_sharedmem_writel(&device->memstore,
-				KGSL_MEMSTORE_OFFSET(context->id,
-				soptimestamp),
-				temp_adreno_context->timestamp);
-			kgsl_sharedmem_writel(&device->memstore,
-				KGSL_MEMSTORE_OFFSET(context->id,
-				eoptimestamp),
-				temp_adreno_context->timestamp);
-		}
-		next = next + 1;
-	}
-	rcu_read_unlock();
+	read_lock(&device->context_lock);
+	idr_for_each(&device->context_idr, _set_max_ts, device);
+	read_unlock(&device->context_lock);
 }
 
 static void adreno_destroy_ft_data(struct adreno_ft_data *ft_data)
@@ -2079,16 +2094,7 @@ static void adreno_setup_ft_data(struct kgsl_device *device,
 	ft_data->status = 0;
 
 	/* find the start of bad command sequence in rb */
-	context = idr_find(&device->context_idr, ft_data->context_id);
-	/* Look for the command stream that is right after the global eop */
-
-	if (!context) {
-		/*
-		 * If there is no context then fault tolerance does not need to
-		 * replay anything, just reset GPU and thats it
-		 */
-		return;
-	}
+	context = kgsl_context_get(device, ft_data->context_id);
 
 	ft_data->ft_policy = adreno_dev->ft_policy;
 
@@ -2099,26 +2105,31 @@ static void adreno_setup_ft_data(struct kgsl_device *device,
 					ft_data->global_eop + 1, false);
 	if (ret) {
 		ft_data->ft_policy |= KGSL_FT_TEMP_DISABLE;
-		return;
-	} else
+		goto done;
+	} else {
+		ft_data->start_of_replay_cmds = rb_rptr;
 		ft_data->ft_policy &= ~KGSL_FT_TEMP_DISABLE;
+}
 
-	ft_data->start_of_replay_cmds = rb_rptr;
-
-	adreno_context = context->devctxt;
-	if (adreno_context->flags & CTXT_FLAGS_PREAMBLE) {
-		if (ft_data->ib1) {
-			ret = _find_hanging_ib_sequence(rb,
-					&rb_rptr, ft_data->ib1);
-			if (ret) {
-				KGSL_FT_ERR(device,
-				"Start not found for replay IB sequence\n");
-				return;
+	if (context) {
+		adreno_context = context->devctxt;
+		if (adreno_context->flags & CTXT_FLAGS_PREAMBLE) {
+			if (ft_data->ib1) {
+				ret = _find_hanging_ib_sequence(rb,
+						&rb_rptr, ft_data->ib1);
+				if (ret) {
+					KGSL_FT_ERR(device,
+					"Start not found for replay IB seq\n");
+					goto done;
+				}
+				ft_data->start_of_replay_cmds = rb_rptr;
+				ft_data->replay_for_snapshot = rb_rptr;
 			}
-			ft_data->start_of_replay_cmds = rb_rptr;
-			ft_data->replay_for_snapshot = rb_rptr;
 		}
 	}
+
+done:
+	kgsl_context_put(context);
 }
 
 static int
@@ -3191,7 +3202,8 @@ struct kgsl_memdesc *adreno_find_ctxtmem(struct kgsl_device *device,
 	int next = 0;
 	struct kgsl_memdesc *desc = NULL;
 
-	rcu_read_lock();
+
+	read_lock(&device->context_lock);
 	while (1) {
 		context = idr_get_next(&device->context_idr, &next);
 		if (context == NULL)
@@ -3212,7 +3224,7 @@ struct kgsl_memdesc *adreno_find_ctxtmem(struct kgsl_device *device,
 		next = next + 1;
 		desc = NULL;
 	}
-	rcu_read_unlock();
+	read_unlock(&device->context_lock);
 	return desc;
 }
 
@@ -3494,8 +3506,10 @@ unsigned int adreno_ft_detect(struct kgsl_device *device,
 				&curr_context_id,
 				KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
 				current_context));
-			context = idr_find(&device->context_idr,
-				curr_context_id);
+			/* Make sure the memstore read has posted */
+			mb();
+
+			context = kgsl_context_get(device, curr_context_id);
 			if (context != NULL) {
 				curr_context = context->devctxt;
 				curr_context->ib_gpu_time_used = 0;
@@ -3580,6 +3594,7 @@ unsigned int adreno_ft_detect(struct kgsl_device *device,
 	} else {
 		/* GPU is moving forward */
 		prev_global_ts = curr_global_ts;
+		kgsl_context_put(context);
 		context = NULL;
 		curr_context = NULL;
 		adreno_dev->long_ib = 0;
