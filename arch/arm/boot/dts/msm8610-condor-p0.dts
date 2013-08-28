@@ -142,4 +142,10 @@
 		ams,prox-pulse-count = <0x04>;
 		ams,ink_type = <0x01>;
 	};
+
+	tmp108@48 {
+		compatible = "ti,tmp108";
+		reg = <0x48>;
+		gpios = <&msmgpio 8 0>;
+	};
 };
