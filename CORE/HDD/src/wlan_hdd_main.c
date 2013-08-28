@@ -4895,21 +4895,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    // all scans will be cancelled.
    hdd_abort_mac_scan( pHddCtx, pAdapter->sessionId);
 
-   //Stop the timer if already running
-   if (VOS_TIMER_STATE_RUNNING ==
-           vos_timer_getCurrentState(&pHddCtx->hdd_p2p_go_conn_is_in_progress))
-   {
-       vos_timer_stop(&pHddCtx->hdd_p2p_go_conn_is_in_progress);
-   }
-
-   // Destroy hdd_p2p_go_conn_is_in_progress timer
-   if (!VOS_IS_STATUS_SUCCESS(vos_timer_destroy(
-                         &pHddCtx->hdd_p2p_go_conn_is_in_progress)))
-   {
-       hddLog(VOS_TRACE_LEVEL_ERROR,
-           "%s: Cannot deallocate p2p connection timer", __func__);
-   }
-
    //Stop the traffic monitor timer
    if ( VOS_TIMER_STATE_RUNNING ==
                         vos_timer_getCurrentState(&pHddCtx->tx_rx_trafficTmr))
@@ -5953,13 +5938,6 @@ int hdd_wlan_startup(struct device *dev )
 
    // Initialize the restart logic
    wlan_hdd_restart_init(pHddCtx);
-
-   if (!VOS_IS_STATUS_SUCCESS( vos_timer_init( &pHddCtx->hdd_p2p_go_conn_is_in_progress,
-         VOS_TIMER_TYPE_SW, wlan_hdd_p2p_go_connection_in_progresscb, pAdapter) ) )
-   {
-       hddLog(VOS_TRACE_LEVEL_ERROR,
-           "%s: vos timer init failed for hdd_p2p_go_conn_is_in_progress", __func__);
-   }
 
    //Register the traffic monitor timer now
    if ( pHddCtx->cfg_ini->dynSplitscan)

@@ -1150,11 +1150,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                 if (!VOS_IS_STATUS_SUCCESS(vos_status))
                    hddLog(LOGE, FL("Failed to start AP inactivity timer\n"));
             }
-            if (VOS_TIMER_STATE_RUNNING ==
-                    vos_timer_getCurrentState(&pHddCtx->hdd_p2p_go_conn_is_in_progress))
-            {
-                vos_timer_stop(&pHddCtx->hdd_p2p_go_conn_is_in_progress);
-            }
 #ifdef WLAN_OPEN_SOURCE
             if (wake_lock_active(&pHddCtx->sap_wake_lock))
             {
@@ -1236,11 +1231,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                     else
                         VOS_ASSERT(vos_timer_getCurrentState(&pHddApCtx->hdd_ap_inactivity_timer) == VOS_TIMER_STATE_STOPPED);
                 }
-            }
-            if (VOS_TIMER_STATE_RUNNING ==
-                    vos_timer_getCurrentState(&pHddCtx->hdd_p2p_go_conn_is_in_progress))
-            {
-                vos_timer_stop(&pHddCtx->hdd_p2p_go_conn_is_in_progress);
             }
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
             cfg80211_del_sta(dev,
