@@ -3238,7 +3238,7 @@ eHalStatus sme_QosCreateTspecRICIE(tpAniSirGlobal pMac, sme_QosWmmTspecInfo *pTs
     ricIE.TSPEC.max_msdu_size = pTspec_Info->maximum_msdu_size;
     ricIE.TSPEC.max_service_int = pTspec_Info->max_service_interval;
     ricIE.TSPEC.mean_data_rate = pTspec_Info->mean_data_rate;
-    ricIE.TSPEC.medium_time = pTspec_Info->medium_time;
+    ricIE.TSPEC.medium_time = 0;
     ricIE.TSPEC.min_data_rate = pTspec_Info->min_data_rate;
     ricIE.TSPEC.min_phy_rate = pTspec_Info->min_phy_rate;
     ricIE.TSPEC.min_service_int = pTspec_Info->min_service_interval;
@@ -3282,7 +3282,7 @@ eHalStatus sme_QosCreateTspecRICIE(tpAniSirGlobal pMac, sme_QosWmmTspecInfo *pTs
     ricIE.WMMTSPEC.max_msdu_size = pTspec_Info->maximum_msdu_size;
     ricIE.WMMTSPEC.max_service_int = pTspec_Info->max_service_interval;
     ricIE.WMMTSPEC.mean_data_rate = pTspec_Info->mean_data_rate;
-    ricIE.WMMTSPEC.medium_time = pTspec_Info->medium_time;
+    ricIE.WMMTSPEC.medium_time = 0;
     ricIE.WMMTSPEC.min_data_rate = pTspec_Info->min_data_rate;
     ricIE.WMMTSPEC.min_phy_rate = pTspec_Info->min_phy_rate;
     ricIE.WMMTSPEC.min_service_int = pTspec_Info->min_service_interval;
