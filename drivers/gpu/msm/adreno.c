@@ -3582,6 +3582,7 @@ unsigned int adreno_ft_detect(struct kgsl_device *device,
 								curr_global_ts;
 						curr_context->ib_gpu_time_used =
 								0;
+						kgsl_context_put(context);
 						return 1;
 					}
 				}
