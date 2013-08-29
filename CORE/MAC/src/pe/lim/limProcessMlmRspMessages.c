@@ -4777,23 +4777,19 @@ void limSendScanOffloadComplete(tpAniSirGlobal pMac,
 
     pMac->lim.gLimSmeScanResultLength +=
         pMac->lim.gLimMlmScanResultLength;
-    if ((pMac->lim.gLimRspReqd) ||
-            pMac->lim.gLimReportBackgroundScanResults)
-    {
-        pMac->lim.gLimRspReqd = false;
-        if ((reasonCode == eSIR_SME_SUCCESS) ||
-                pMac->lim.gLimSmeScanResultLength) {
-            scanRspLen = sizeof(tSirSmeScanRsp) +
-                pMac->lim.gLimSmeScanResultLength -
-                sizeof(tSirBssDescription);
-        }
-        else
-            scanRspLen = sizeof(tSirSmeScanRsp);
-
-        limSendSmeScanRsp(pMac, scanRspLen, reasonCode,
-                pMac->lim.gSmeSessionId,
-                pMac->lim.gTransactionId);
+    pMac->lim.gLimRspReqd = false;
+    if ((reasonCode == eSIR_SME_SUCCESS) ||
+            pMac->lim.gLimSmeScanResultLength) {
+        scanRspLen = sizeof(tSirSmeScanRsp) +
+            pMac->lim.gLimSmeScanResultLength -
+            sizeof(tSirBssDescription);
     }
+    else
+        scanRspLen = sizeof(tSirSmeScanRsp);
+
+    limSendSmeScanRsp(pMac, scanRspLen, reasonCode,
+            pMac->lim.gSmeSessionId,
+            pMac->lim.gTransactionId);
 }
 
 
