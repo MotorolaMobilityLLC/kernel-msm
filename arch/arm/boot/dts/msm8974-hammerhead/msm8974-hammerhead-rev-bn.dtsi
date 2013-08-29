@@ -22,7 +22,6 @@
 
 	vibrator {
 		vdd-supply = <&pm8941_l19>;
-		motor-amp = <70>;
 		use-vdd-supply;
 		vibe-warmup-delay = <25>;
 	};
