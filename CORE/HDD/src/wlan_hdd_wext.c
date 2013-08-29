@@ -5023,6 +5023,30 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
    }
    tSpec.ts_info.up = params[HDD_WLAN_WMM_PARAM_USER_PRIORITY];
 
+   if ((tSpec.ts_info.up == SME_QOS_WMM_UP_VO) ||
+       (tSpec.ts_info.up == SME_QOS_WMM_UP_NC))
+   {
+       tSpec.ts_info.psb = ((WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->UapsdMask &
+                             SME_QOS_UAPSD_VO);
+   }
+   else if ((tSpec.ts_info.up == SME_QOS_WMM_UP_VI) ||
+            (tSpec.ts_info.up == SME_QOS_WMM_UP_CL))
+   {
+       tSpec.ts_info.psb = ((WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->UapsdMask &
+                             SME_QOS_UAPSD_VI);
+
+   }
+   else if (tSpec.ts_info.up == SME_QOS_WMM_UP_BE)
+   {
+       tSpec.ts_info.psb = ((WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->UapsdMask &
+                             SME_QOS_UAPSD_BE);
+   }
+   else if (tSpec.ts_info.up == SME_QOS_WMM_UP_BK)
+   {
+       tSpec.ts_info.psb = ((WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->UapsdMask &
+                             SME_QOS_UAPSD_BK);
+   }
+
    tSpec.nominal_msdu_size = params[HDD_WLAN_WMM_PARAM_NOMINAL_MSDU_SIZE];
    tSpec.maximum_msdu_size = params[HDD_WLAN_WMM_PARAM_MAXIMUM_MSDU_SIZE];
    tSpec.min_data_rate = params[HDD_WLAN_WMM_PARAM_MINIMUM_DATA_RATE];
