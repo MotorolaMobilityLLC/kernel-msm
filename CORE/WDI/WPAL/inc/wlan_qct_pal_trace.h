@@ -148,5 +148,5 @@ wpt_boolean wpalTraceCheckLevel( wpt_moduleid module, wpt_tracelevel level );
   --------------------------------------------------------------------------*/
 void wpalTraceDisplay(void);
 
-
+#define WPAL_BUG VOS_BUG
 #endif // __WLAN_QCT_PAL_TRACE_H

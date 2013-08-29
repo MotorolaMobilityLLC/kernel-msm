@@ -590,6 +590,12 @@ wpt_status WDTS_RxPacket (void *pContext, wpt_packet *pFrame, WDTS_ChannelType c
       if(VPKT_SIZE_BUFFER < (usMPDULen+ucMPDUHOffset)){
         DTI_TRACE( DTI_TRACE_LEVEL_FATAL,
                    "Invalid Frame size, might memory corrupted");
+
+        /* Size of the packet tranferred by the DMA engine is
+         * greater than the the memory allocated for the skb
+         */
+        WPAL_BUG(0);
+
         wpalPacketFree(pFrame);
         return eWLAN_PAL_STATUS_SUCCESS;
       }

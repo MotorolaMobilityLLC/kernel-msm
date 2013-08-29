@@ -21,6 +21,7 @@
 #if !defined( __WLAN_QCT_OS_TRACE_H )
 #define __WLAN_QCT_OS_TRACE_H
 
+#include <vos_trace.h>
 
 #ifdef WLAN_DEBUG
 
