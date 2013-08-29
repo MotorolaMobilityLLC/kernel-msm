@@ -279,8 +279,6 @@ void adreno_regwrite(struct kgsl_device *device, unsigned int offsetwords,
 				unsigned int value);
 
 int adreno_dump(struct kgsl_device *device, int manual);
-int adreno_postmortem_sysfs_init(struct kgsl_device *device);
-void adreno_postmortem_sysfs_close(struct kgsl_device *device);
 unsigned int adreno_a3xx_rbbm_clock_ctl_default(struct adreno_device
 							*adreno_dev);
 
