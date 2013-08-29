@@ -240,6 +240,12 @@
 			<&msmgpio 79 1>,	/* gpio_ap_int */
 			<&msmgpio 61 2>;	/* gpio_c55_int */
 	};
+
+	factory_support {
+		compatible = "mmi,factory-support-msm8960";
+		gpios = <&pm8941_gpios 36 0x2>; /* GPIOF_OUT_INIT_HIGH */
+		gpio-names = "factory_kill_disable";
+	};
 };
 
 &spmi_bus {
