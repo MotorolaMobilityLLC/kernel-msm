@@ -1025,6 +1025,8 @@ struct hdd_context_s
      * */
     v_U8_t configuredMcastBcastFilter;
 
+    v_U8_t sus_res_mcastbcast_filter;
+
     vos_timer_t hdd_p2p_go_conn_is_in_progress;
 
 #ifdef FEATURE_WLAN_LPHB

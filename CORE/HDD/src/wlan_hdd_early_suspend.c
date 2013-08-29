@@ -848,6 +848,9 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
     tpSirWlanSuspendParam wlanSuspendParam =
       vos_mem_malloc(sizeof(tSirWlanSuspendParam));
 
+    pHddCtx->sus_res_mcastbcast_filter =
+        pHddCtx->configuredMcastBcastFilter;
+
     if(NULL == wlanSuspendParam)
     {
         hddLog(VOS_TRACE_LEVEL_FATAL,
@@ -912,6 +915,9 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
             vos_mem_free(wlanResumeParam);
         pHddCtx->hdd_mcastbcast_filter_set = FALSE;
     }
+
+    pHddCtx->configuredMcastBcastFilter =
+      pHddCtx->sus_res_mcastbcast_filter;
 
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
@@ -1065,7 +1071,6 @@ static void hdd_PowerStateChangedCB
 )
 {
    hdd_context_t *pHddCtx = callbackContext;
-   
    /* if the driver was not in BMPS during early suspend,
     * the dynamic DTIM is now updated at Riva */
    if ((newState == BMPS) && pHddCtx->hdd_wlan_suspended
@@ -1077,11 +1082,12 @@ static void hdd_PowerStateChangedCB
    spin_lock(&pHddCtx->filter_lock);
    if((newState == BMPS) &&  pHddCtx->hdd_wlan_suspended) {
       spin_unlock(&pHddCtx->filter_lock);
+      pHddCtx->sus_res_mcastbcast_filter = pHddCtx->configuredMcastBcastFilter;
       hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
       if(pHddCtx->hdd_mcastbcast_filter_set != TRUE)
          hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Not able to set mcast/bcast filter ", __func__);
    }
-   else 
+   else
       spin_unlock(&pHddCtx->filter_lock);
 }
 
