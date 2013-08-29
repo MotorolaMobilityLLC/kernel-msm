@@ -39,6 +39,7 @@
 #include <linux/spinlock.h>
 #include <linux/nfc/pn544-mot.h>
 #include <linux/reboot.h>
+#include <linux/wakelock.h>
 
 /*
  * Virtual device /sys/devices/virtual/misc/pn544/pn544_control_dev
@@ -57,6 +58,7 @@ struct pn544_dev	{
 	bool			irq_enabled;
 	spinlock_t		irq_enabled_lock; /* irq lock for reading */
 	struct notifier_block reboot_notify;
+	struct wake_lock wakelock;
 };
 
 static void pn544_disable_irq(struct pn544_dev *pn544_dev)
@@ -77,6 +79,8 @@ static irqreturn_t pn544_dev_irq_handler(int irq, void *dev_id)
 	struct pn544_dev *pn544_dev = dev_id;
 
 	pn544_disable_irq(pn544_dev);
+
+	wake_lock_timeout(&pn544_dev->wakelock, HZ);
 
 	/* Wake up waiting readers */
 	wake_up(&pn544_dev->read_wq);
@@ -128,7 +132,7 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 	do {
 		ret = i2c_master_recv(pn544_dev->client, data, count);
 		if (ret < 0)
-			msleep_interruptible(5);
+			msleep_interruptible(15);
 	} while ((ret < 0) && (++tries < 5));
 
 	mutex_unlock(&pn544_dev->read_mutex);
@@ -146,6 +150,7 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 
 free_buf:
 	kfree(data);
+	pr_debug("%s : read %d\n", __func__, ret);
 	return ret;
 }
 
@@ -175,7 +180,7 @@ static ssize_t pn544_dev_write(struct file *filp, const char __user *buf,
 	do {
 		ret = i2c_master_send(pn544_dev->client, data, count);
 		if (ret < 0)
-			msleep_interruptible(5);
+			msleep_interruptible(15);
 	} while ((ret < 0) && (++tries < 5));
 
 	if (ret < 0)
@@ -453,6 +458,8 @@ static int pn544_probe(struct i2c_client *client,
 	pn544_dev->discharge_delay = platform_data->discharge_delay;
 	pn544_dev->client   = client;
 
+	wake_lock_init(&pn544_dev->wakelock, WAKE_LOCK_SUSPEND, "pn544c3");
+
 	/* init mutex and queues */
 	init_waitqueue_head(&pn544_dev->read_wq);
 	mutex_init(&pn544_dev->read_mutex);
@@ -511,6 +518,8 @@ err_device_create_file_failed:
 err_misc_register:
 	mutex_destroy(&pn544_dev->read_mutex);
 	pn544_gpio_free(pn544_dev);
+	wake_unlock(&pn544_dev->wakelock);
+	wake_lock_destroy(&pn544_dev->wakelock);
 err_gpio_init:
 	kfree(pn544_dev);
 err_exit:
@@ -529,6 +538,8 @@ static int pn544_remove(struct i2c_client *client)
 				&dev_attr_pn544_control_dev);
 	misc_deregister(&pn544_dev->pn544_device);
 	mutex_destroy(&pn544_dev->read_mutex);
+	wake_unlock(&pn544_dev->wakelock);
+	wake_lock_destroy(&pn544_dev->wakelock);
 	kfree(pn544_dev);
 
 	return 0;
