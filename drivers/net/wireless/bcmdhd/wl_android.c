@@ -411,6 +411,7 @@ wls_parse_batching_cmd(struct net_device *dev, char *command, int total_len)
 exit:
 	return err;
 }
+
 #ifndef WL_SCHED_SCAN
 static int wl_android_set_pno_setup(struct net_device *dev, char *command, int total_len)
 {
@@ -1187,6 +1188,7 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 
 
 #ifdef PNO_SUPPORT
+#ifndef WL_SCHED_SCAN
 	else if (strnicmp(command, CMD_PNOSSIDCLR_SET, strlen(CMD_PNOSSIDCLR_SET)) == 0) {
 		bytes_written = dhd_dev_pno_stop_for_ssid(net);
 	}
@@ -1197,6 +1199,7 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		int enable = *(command + strlen(CMD_PNOENABLE_SET) + 1) - '0';
 		bytes_written = (enable)? 0 : dhd_dev_pno_stop_for_ssid(net);
 	}
+#endif
 	else if (strnicmp(command, CMD_WLS_BATCHING, strlen(CMD_WLS_BATCHING)) == 0) {
 		bytes_written = wls_parse_batching_cmd(net, command, priv_cmd.total_len);
 	}
