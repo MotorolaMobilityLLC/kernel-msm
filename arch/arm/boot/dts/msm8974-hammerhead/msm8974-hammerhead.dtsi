@@ -580,9 +580,10 @@
 	gpio@df00 { /* GPIO 32 */
 		status = "ok";
 		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
-		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
-		qcom,master-en = <1>;		/* Enable Module */
+		qcom,pull = <4>;		/* QPNP_PIN_PULL_DOWN */
+		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
 		qcom,vin-sel = <2>;		/* Select 1.8V Source */
+		qcom,master-en = <1>;		/* Enable Module */
 	};
 
 	gpio@e000 { /* GPIO 33 */
