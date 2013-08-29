@@ -1546,7 +1546,6 @@ adreno_probe(struct platform_device *pdev)
 
 	adreno_ft_init(adreno_dev);
 
-	adreno_postmortem_sysfs_init(device);
 #ifdef CONFIG_DEBUG_FS
 	adreno_debugfs_init(device);
 #endif
@@ -1575,8 +1574,6 @@ static int __devexit adreno_remove(struct platform_device *pdev)
 
 	device = (struct kgsl_device *)pdev->id_entry->driver_data;
 	adreno_dev = ADRENO_DEVICE(device);
-
-	adreno_postmortem_sysfs_close(device);
 
 	kgsl_pwrscale_detach_policy(device);
 	kgsl_pwrscale_close(device);
