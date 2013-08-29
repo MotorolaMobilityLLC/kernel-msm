@@ -106,7 +106,7 @@
 #include "wlan_hdd_power.h"
 #include "wlan_hdd_packet_filtering.h"
 
-#define HDD_SSR_BRING_UP_TIME 10000
+#define HDD_SSR_BRING_UP_TIME 180000
 
 static eHalStatus g_full_pwr_status;
 static eHalStatus g_standby_status;
@@ -1413,6 +1413,12 @@ static void hdd_ssr_timer_del(void)
 static void hdd_ssr_timer_cb(unsigned long data)
 {
     hddLog(VOS_TRACE_LEVEL_FATAL, "%s: HDD SSR timer expired", __func__);
+
+#ifdef WCN_PRONTO
+    if (wcnss_hardware_type() == WCNSS_PRONTO_HW)
+        wcnss_pronto_log_debug_regs();
+#endif
+
     VOS_BUG(0);
 }
 
