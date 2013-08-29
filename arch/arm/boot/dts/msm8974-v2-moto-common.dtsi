@@ -800,6 +800,11 @@
 	};
 
 	gpio@e300 { /* GPIO 36 */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,vin-sel = <2>;       	/* S3 */
+		qcom,out-strength = <1>;	/* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 };
 
