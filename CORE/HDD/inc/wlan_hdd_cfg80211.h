@@ -154,7 +154,11 @@ void wlan_hdd_cfg80211_post_voss_start(hdd_adapter_t* pAdapter);
 
 void wlan_hdd_cfg80211_pre_voss_stop(hdd_adapter_t* pAdapter);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+void wlan_hdd_crda_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);
+#else
 int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);
+#endif
 int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg);
 extern v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
                                         eConnectionState connState );

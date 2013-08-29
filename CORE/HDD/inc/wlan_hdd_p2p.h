@@ -112,7 +112,9 @@ int wlan_hdd_cfg80211_remain_on_channel( struct wiphy *wiphy,
                                 struct net_device *dev,
 #endif
                                 struct ieee80211_channel *chan,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
                                 enum nl80211_channel_type channel_type,
+#endif
                                 unsigned int duration, u64 *cookie );
 
 int wlan_hdd_cfg80211_cancel_remain_on_channel( struct wiphy *wiphy,
@@ -152,8 +154,11 @@ v_VOID_t wlan_hdd_p2p_go_connection_in_progresscb (v_PVOID_t userData );
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
 int wlan_hdd_action( struct wiphy *wiphy, struct wireless_dev *wdev,
                      struct ieee80211_channel *chan, bool offchan,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
                      enum nl80211_channel_type channel_type,
-                     bool channel_type_valid, unsigned int wait,
+                     bool channel_type_valid,
+#endif
+                     unsigned int wait,
                      const u8 *buf, size_t len,  bool no_cck,
                      bool dont_wait_for_ack, u64 *cookie );
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0))

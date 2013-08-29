@@ -360,7 +360,10 @@ VosMCThread
   }
   set_user_nice(current, -2);
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
   daemonize("MC_Thread");
+#endif
+
   /*
   ** Ack back to the context from which the main controller thread has been
   ** created.
@@ -664,7 +667,11 @@ VosWDThread
         "%s: Bad Args passed", __func__);
      return 0;
   }
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
   daemonize("WD_Thread");
+#endif
+
   /*
   ** Ack back to the context from which the Watchdog thread has been
   ** created.
@@ -795,7 +802,11 @@ static int VosTXThread ( void * Arg )
          "%s Bad Args passed", __func__);
      return 0;
   }
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
   daemonize("TX_Thread");
+#endif
+
   /*
   ** Ack back to the context from which the main controller thread has been
   ** created.
@@ -992,7 +1003,11 @@ static int VosRXThread ( void * Arg )
          "%s Bad Args passed", __func__);
      return 0;
   }
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
   daemonize("RX_Thread");
+#endif
+
   /*
   ** Ack back to the context from which the main controller thread has been
   ** created.
