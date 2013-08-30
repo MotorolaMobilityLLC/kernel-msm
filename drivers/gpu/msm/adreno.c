@@ -651,7 +651,6 @@ error:
 static bool adreno_use_default_setstate(struct adreno_device *adreno_dev)
 {
 	return (adreno_isidle(&adreno_dev->dev) ||
-			adreno_dev->drawctxt_active == NULL ||
 			KGSL_STATE_ACTIVE != adreno_dev->dev.state ||
 			adreno_dev->dev.active_cnt == 0 ||
 			kgsl_cff_dump_enable);
