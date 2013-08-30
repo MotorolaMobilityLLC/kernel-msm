@@ -510,6 +510,12 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
         }
         else
         {
+            PELOGW(limLog(pMac, LOGW,
+              FL("Heart Beat missed from AP on DFS chanel moving to passive"));)
+            if (psessionEntry->currentOperChannel < SIR_MAX_24G_5G_CHANNEL_RANGE){
+               limCovertChannelScanType(pMac, psessionEntry->currentOperChannel, false);
+               pMac->lim.dfschannelList.timeStamp[psessionEntry->currentOperChannel] = 0;
+            }
             /* Connected on DFS channel so should not send the probe request
             * tear down the link directly */
             limTearDownLinkWithAp(pMac, psessionEntry->peSessionId, eSIR_MAC_UNSPEC_FAILURE_REASON);
