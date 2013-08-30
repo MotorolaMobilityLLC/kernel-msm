@@ -35,14 +35,14 @@
 		qcom,mdss-pan-dsi-rgb-swap = <0>;
 		qcom,mdss-pan-dsi-data-lanes = <1 1 0 0>;
 		qcom,mdss-pan-dsi-dlane-swap = <1>;
-		qcom,mdss-pan-dsi-t-clk = <0x1a 0x04>;
+		qcom,mdss-pan-dsi-t-clk = <0x19 0x04>;
 		qcom,mdss-pan-dsi-stream = <0>;
 		qcom,mdss-pan-dsi-mdp-tr = <0x0>;/*todo*/
 		qcom,mdss-pan-dsi-dma-tr = <0x04>;
-		qcom,mdss-pan-dsi-frame-rate = <60>;
+		qcom,mdss-pan-dsi-frame-rate = <55>;
 		qcom,panel-phy-regulatorSettings =[02 08 05 00 20 03];
-		qcom,panel-phy-timingSettings = [7B 1A 10 00 3E 40
-						 16 1C 15 03 04 00];
+		qcom,panel-phy-timingSettings = [7B 18 10 00 3A 3C
+						 14 1A 13 03 04 00];
 		qcom,panel-phy-strengthCtrl = [ff 06];
 		qcom,panel-phy-bistCtrl = [03 03 00 00 0f 00];
 		qcom,panel-phy-laneConfig =
