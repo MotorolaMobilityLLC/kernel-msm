@@ -90,8 +90,8 @@ static inline void kgsl_fence_event_cb(struct kgsl_device *device,
 {
 	struct kgsl_fence_event_priv *ev = priv;
 
-	/* Signal time timeline for every event type */
-	kgsl_sync_timeline_signal(ev->context->timeline, timestamp);
+	/* Signal event time timeline for every event type */
+	kgsl_sync_timeline_signal(ev->context->timeline, ev->timestamp);
 	kgsl_context_put(ev->context);
 	kfree(ev);
 }
