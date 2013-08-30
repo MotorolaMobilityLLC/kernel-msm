@@ -1136,6 +1136,20 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		}
 	}
 
+	if (s_ctrl->func_tbl->sensor_read_otp_info)
+		rc = s_ctrl->func_tbl->sensor_read_otp_info(s_ctrl);
+	if (rc < 0) {
+		pr_warn("%s:%d read OTP info failed rc %d\n",
+				__func__, __LINE__, rc);
+	}
+
+	if (s_ctrl->func_tbl->sensor_set_lsc)
+		rc = s_ctrl->func_tbl->sensor_set_lsc(s_ctrl);
+	if (rc < 0) {
+		pr_warn("%s:%d set LSC failed rc %d\n",
+				__func__, __LINE__, rc);
+	}
+
 	CDBG("%s exit\n", __func__);
 	return 0;
 power_up_failed:
@@ -1804,6 +1818,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		cdata->cfg.sensor_otp.size = s_ctrl->sensor_otp.size;
 		cdata->cfg.sensor_otp.hw_rev = s_ctrl->sensor_otp.hw_rev;
 		cdata->cfg.sensor_otp.asic_rev = s_ctrl->sensor_otp.asic_rev;
+		cdata->cfg.sensor_otp.cal_ver = s_ctrl->sensor_otp.cal_ver;
 		for (i = 0; i < 4; i++)
 			cdata->cfg.sensor_otp.sn[i] = s_ctrl->sensor_otp.sn[i];
 
@@ -1874,6 +1889,7 @@ static struct msm_camera_i2c_fn_t msm_sensor_cci_func_tbl = {
 	.i2c_read_seq = msm_camera_cci_i2c_read_seq,
 	.i2c_write = msm_camera_cci_i2c_write,
 	.i2c_write_table = msm_camera_cci_i2c_write_table,
+	.i2c_write_seq = msm_camera_cci_i2c_write_seq,
 	.i2c_write_seq_table = msm_camera_cci_i2c_write_seq_table,
 	.i2c_write_table_w_microdelay =
 		msm_camera_cci_i2c_write_table_w_microdelay,
@@ -1886,6 +1902,7 @@ static struct msm_camera_i2c_fn_t msm_sensor_qup_func_tbl = {
 	.i2c_read_seq = msm_camera_qup_i2c_read_seq,
 	.i2c_write = msm_camera_qup_i2c_write,
 	.i2c_write_table = msm_camera_qup_i2c_write_table,
+	.i2c_write_seq = msm_camera_qup_i2c_write_seq,
 	.i2c_write_seq_table = msm_camera_qup_i2c_write_seq_table,
 	.i2c_write_table_w_microdelay =
 		msm_camera_qup_i2c_write_table_w_microdelay,
