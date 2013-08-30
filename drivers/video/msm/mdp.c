@@ -1677,11 +1677,9 @@ void mdp_disable_irq_nosync(uint32 term)
 void mdp_pipe_kickoff_simplified(uint32 term)
 {
 	if (term == MDP_OVERLAY0_TERM) {
-		mdp_clk_ctrl(1);
 		mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 		mdp_lut_enable();
 		outpdw(MDP_BASE + 0x0004, 0);
-		mdp_clk_ctrl(0);
 	}
 }
 
