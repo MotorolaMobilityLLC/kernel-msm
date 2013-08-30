@@ -1363,6 +1363,70 @@ limIbssDelBssRsp(
     }
 }
 
+static void
+__limIbssSearchAndDeletePeer(tpAniSirGlobal    pMac,
+                             tpPESession psessionEntry,
+                             tSirMacAddr macAddr)
+{
+   tLimIbssPeerNode *pTempNode, *pPrevNode;
+   tLimIbssPeerNode *pTempNextNode = NULL;
+   tpDphHashNode     pStaDs;
+   tANI_U16          peerIdx;
+   tANI_U16          staIndex;
+   tANI_U8           ucUcastSig;
+   tANI_U8           ucBcastSig;
+
+   pPrevNode = pTempNode  = pMac->lim.gLimIbssPeerList;
+
+   limLog(pMac, LOG1, FL(" PEER ADDR :" MAC_ADDRESS_STR ),MAC_ADDR_ARRAY(macAddr));
+
+   /** Compare Peer */
+   while (NULL != pTempNode)
+   {
+      pTempNextNode = pTempNode->next;
+
+      /* Delete the STA with MAC address */
+      if (palEqualMemory( pMac->hHdd, (tANI_U8 *) macAddr,
+               (tANI_U8 *) &pTempNode->peerMacAddr,
+               sizeof(tSirMacAddr)) )
+      {
+         pStaDs = dphLookupHashEntry(pMac, macAddr,
+               &peerIdx, &psessionEntry->dph.dphHashTable);
+         if (pStaDs)
+         {
+            staIndex = pStaDs->staIndex;
+            ucUcastSig = pStaDs->ucUcastSig;
+            ucBcastSig = pStaDs->ucBcastSig;
+
+            (void) limDelSta(pMac, pStaDs, false /*asynchronous*/, psessionEntry);
+            limDeleteDphHashEntry(pMac, pStaDs->staAddr, peerIdx, psessionEntry);
+            limReleasePeerIdx(pMac, peerIdx, psessionEntry);
+
+            /* Send indication to upper layers */
+            ibss_status_chg_notify(pMac, macAddr, staIndex,
+                                   ucUcastSig, ucBcastSig,
+                                   eWNI_SME_IBSS_PEER_DEPARTED_IND,
+                                   psessionEntry->smeSessionId );
+            if (pTempNode == pMac->lim.gLimIbssPeerList)
+            {
+               pMac->lim.gLimIbssPeerList = pTempNode->next;
+               pPrevNode = pMac->lim.gLimIbssPeerList;
+            }
+            else
+               pPrevNode->next = pTempNode->next;
+
+            palFreeMemory(pMac->hHdd, pTempNode);
+            pMac->lim.gLimNumIbssPeers--;
+
+            pTempNode = pTempNextNode;
+            break;
+         }
+      }
+      pPrevNode = pTempNode;
+      pTempNode = pTempNextNode;
+   }
+}
+
 /**
  * limIbssCoalesce()
  *
@@ -1405,26 +1469,46 @@ limIbssCoalesce(
 
     limLog(pMac, LOG1, FL("Current BSSID :" MAC_ADDRESS_STR " Received BSSID :" MAC_ADDRESS_STR ),
                                   MAC_ADDR_ARRAY(currentBssId), MAC_ADDR_ARRAY(pHdr->bssId));
+
     /* Check for IBSS Coalescing only if Beacon is from different BSS */
     if ( !vos_mem_compare(currentBssId, pHdr->bssId, sizeof( tSirMacAddr )))
     {
-        if (! fTsfLater) // No Coalescing happened.
-        {
-            PELOGW(limLog(pMac, LOGW, FL("No Coalescing happened"));)
-            return eSIR_LIM_IGNORE_BEACON;
-        }
-        /*
-         * IBSS Coalescing happened.
-         * save the received beacon, and delete the current BSS. The rest of the
-         * processing will be done in the delBss response processing
-         */
-        pMac->lim.gLimIbssCoalescingHappened = true;
-        PELOGW(limLog(pMac, LOGW, FL("IBSS Coalescing happened"));)
-        ibss_coalesce_save(pMac, pHdr, pBeacon);
-        limLog(pMac, LOGW, FL("Delete BSSID :" MAC_ADDRESS_STR ),
-                                  MAC_ADDR_ARRAY(currentBssId));
-        ibss_bss_delete(pMac,psessionEntry);
-        return eSIR_SUCCESS;
+       /*
+        * If STA entry is already available in the LIM hash table, then it is
+        * possible that the peer may have left and rejoined within the heartbeat
+        * timeout. In the offloaded case with 32 peers, the HB timeout is whopping
+        * 128 seconds. In that case, the FW will not let any frames come in until
+        * atleast the last sequence number is received before the peer is left
+        * Hence, if the coalescing peer is already there in the peer list and if
+        * the BSSID matches then, invoke delSta() to cleanup the entries. We will
+        * let the peer coalesce when we receive next beacon from the peer
+        */
+       pPeerNode = ibss_peer_find(pMac, pHdr->sa);
+       if (NULL != pPeerNode)
+       {
+          __limIbssSearchAndDeletePeer (pMac, psessionEntry, pHdr->sa);
+          PELOGW(limLog(pMac, LOGW,
+               FL("** Peer attempting to reconnect before HB timeout, deleted **"));)
+          return eSIR_LIM_IGNORE_BEACON;
+       }
+
+       if (! fTsfLater) // No Coalescing happened.
+       {
+          PELOGW(limLog(pMac, LOGW, FL("No Coalescing happened"));)
+          return eSIR_LIM_IGNORE_BEACON;
+       }
+       /*
+        * IBSS Coalescing happened.
+        * save the received beacon, and delete the current BSS. The rest of the
+        * processing will be done in the delBss response processing
+        */
+       pMac->lim.gLimIbssCoalescingHappened = true;
+       PELOGW(limLog(pMac, LOGW, FL("IBSS Coalescing happened"));)
+          ibss_coalesce_save(pMac, pHdr, pBeacon);
+       limLog(pMac, LOGW, FL("Delete BSSID :" MAC_ADDRESS_STR ),
+             MAC_ADDR_ARRAY(currentBssId));
+       ibss_bss_delete(pMac,psessionEntry);
+       return eSIR_SUCCESS;
     }
 
     // STA in IBSS mode and SSID matches with ours
@@ -1715,72 +1799,16 @@ __limIbssPeerInactivityHandler(tpAniSirGlobal    pMac,
                                tpPESession psessionEntry,
                                tpSirIbssPeerInactivityInd peerInactivityInd)
 {
-   tLimIbssPeerNode *pTempNode, *pPrevNode;
-   tLimIbssPeerNode *pTempNextNode = NULL;
-   tpDphHashNode     pStaDs;
-   tANI_U16          peerIdx;
-   tANI_U16          staIndex;
-   tANI_U8           ucUcastSig;
-   tANI_U8           ucBcastSig;
-
    if(psessionEntry->limMlmState != eLIM_MLM_BSS_STARTED_STATE)
    {
       limReactivateHeartBeatTimer(pMac, psessionEntry);
       return;
    }
 
-   pPrevNode = pTempNode  = pMac->lim.gLimIbssPeerList;
+   /* delete the peer for which heartbeat is observed */
+   __limIbssSearchAndDeletePeer (pMac, psessionEntry, peerInactivityInd->peerAddr);
 
-   /** Monitor the HeartBeat with the Individual PEERS in the IBSS */
-   while (NULL != pTempNode)
-   {
-      pTempNextNode = pTempNode->next;
-      PELOGE(limLog(pMac, LOGE, FL("Heartbeat fail = %d  thres = %d"),
-               pTempNode->heartbeatFailure, pMac->lim.gLimNumIbssPeers);)
-
-      /* this is the main control loop */
-      if (palEqualMemory( pMac->hHdd, (tANI_U8 *) peerInactivityInd->peerAddr,
-                          (tANI_U8 *) &pTempNode->peerMacAddr,
-                          sizeof(tSirMacAddr)) )
-      {
-         //Remove this entry from the list.
-         pStaDs = dphLookupHashEntry(pMac, peerInactivityInd->peerAddr,
-               &peerIdx, &psessionEntry->dph.dphHashTable);
-         if (pStaDs)
-         {
-            staIndex = pStaDs->staIndex;
-            ucUcastSig = pStaDs->ucUcastSig;
-            ucBcastSig = pStaDs->ucBcastSig;
-
-            (void) limDelSta(pMac, pStaDs, false /*asynchronous*/, psessionEntry);
-            limDeleteDphHashEntry(pMac, pStaDs->staAddr, peerIdx, psessionEntry);
-            limReleasePeerIdx(pMac, peerIdx, psessionEntry);
-
-            // Send indication to upper layers
-            ibss_status_chg_notify(pMac, peerInactivityInd->peerAddr, staIndex,
-                                   ucUcastSig, ucBcastSig,
-                                   eWNI_SME_IBSS_PEER_DEPARTED_IND,
-                                   psessionEntry->smeSessionId );
-            if (pTempNode == pMac->lim.gLimIbssPeerList)
-            {
-               pMac->lim.gLimIbssPeerList = pTempNode->next;
-               pPrevNode = pMac->lim.gLimIbssPeerList;
-            }
-            else
-               pPrevNode->next = pTempNode->next;
-
-            palFreeMemory(pMac->hHdd, pTempNode);
-            pMac->lim.gLimNumIbssPeers--;
-
-            pTempNode = pTempNextNode;
-            break;
-         }
-      }
-      pPrevNode = pTempNode;
-      pTempNode = pTempNextNode;
-   }
 }
-
 
 /** -------------------------------------------------------------
 \fn limProcessIbssPeerInactivity
