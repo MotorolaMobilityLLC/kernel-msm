@@ -383,12 +383,12 @@ static int bq24192_therm_set_input_i_limit(const char *val,
 		input_limit_idx = ARRAY_SIZE(mitigate_tbl) - 1;
 
 	if (!power_supply_is_system_supplied())
-		return -ENODEV;
+		return 0;
 
 	schedule_delayed_work(&the_chip->therm_work,
 			msecs_to_jiffies(2000));
 
-	return ret;
+	return 0;
 }
 
 static struct kernel_param_ops therm_input_limit_ops = {
