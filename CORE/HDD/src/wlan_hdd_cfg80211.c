@@ -8326,8 +8326,9 @@ static int wlan_hdd_cfg80211_dump_survey(struct wiphy *wiphy,
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx;
+    hdd_station_ctx_t *pHddStaCtx;
     tHalHandle halHandle;
-    v_U32_t channel, freq;
+    v_U32_t channel = 0, freq = 0; /* Initialization Required */
     v_S7_t snr,rssi;
     int status, i, j, filled = 0;
 
@@ -8358,8 +8359,11 @@ static int wlan_hdd_cfg80211_dump_survey(struct wiphy *wiphy,
         return status;
     }
 
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
     if (0 == pHddCtx->cfg_ini->fEnableSNRMonitoring ||
-        0 != pAdapter->survey_idx)
+        0 != pAdapter->survey_idx ||
+        eConnectionState_Associated != pHddStaCtx->conn_info.connState)
     {
         /* The survey dump ops when implemented completely is expected to
          * return a survey of all channels and the ops is called by the
