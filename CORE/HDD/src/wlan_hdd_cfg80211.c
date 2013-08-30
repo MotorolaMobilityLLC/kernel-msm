@@ -6919,7 +6919,8 @@ static int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
             v_U16_t i;
             for(i = 0; i < WLAN_MAX_STA_COUNT; i++)
             {
-                if(pAdapter->aStaInfo[i].isUsed)
+                if ((pAdapter->aStaInfo[i].isUsed) &&
+                    (!pAdapter->aStaInfo[i].isDeauthInProgress))
                 {
                     u8 *macAddr = pAdapter->aStaInfo[i].macAddrSTA.bytes;
                     hddLog(VOS_TRACE_LEVEL_INFO,
@@ -6928,7 +6929,9 @@ static int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                         __func__,
                                         macAddr[0], macAddr[1], macAddr[2],
                                         macAddr[3], macAddr[4], macAddr[5]);
-                    hdd_softap_sta_deauth(pAdapter, macAddr);
+                    vos_status = hdd_softap_sta_deauth(pAdapter, macAddr);
+                    if (VOS_IS_STATUS_SUCCESS(vos_status))
+                        pAdapter->aStaInfo[i].isDeauthInProgress = TRUE;
                 }
             }
         }
