@@ -176,7 +176,7 @@ eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMg
 }
 
 /*
- * TDLS request API, called from HDD to add a TDLS peer 
+ * TDLS request API, called from HDD to modify an existing TDLS peer
  */
 eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac,
                                 tCsrStaParams *pstaParams)
@@ -184,6 +184,9 @@ eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr 
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     tSmeCmd *tdlsAddStaCmd ;
     eHalStatus status = eHAL_STATUS_FAILURE ;
+
+    if (NULL == pstaParams)
+        return status;
 
     //If connected and in Infra. Only then allow this
     if (CSR_IS_SESSION_VALID( pMac, sessionId ) &&
