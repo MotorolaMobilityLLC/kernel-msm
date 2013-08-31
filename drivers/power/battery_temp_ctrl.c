@@ -209,7 +209,7 @@ static int batt_tm_notification_start(struct batt_tm_data *batt_tm)
 		return rc;
 	}
 
-	if (batt_tm->ac_psy) {
+	if (batt_tm->ac_psy && batt_tm->chg_online) {
 		batt_tm->ac_psy->get_property(batt_tm->ac_psy,
 					POWER_SUPPLY_PROP_VOLTAGE_MAX, &ret);
 		batt_tm->batt_vreg_uv = ret.intval;
