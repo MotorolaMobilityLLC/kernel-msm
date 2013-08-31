@@ -954,6 +954,7 @@ static bool bq24192_is_wlc_bounced(struct bq24192_chip *chip)
 }
 
 #define WLC_INPUT_I_LIMIT_MA 900
+#define USB_MAX_IBAT_MA 1500
 static void bq24192_external_power_changed(struct power_supply *psy)
 {
 	struct bq24192_chip *chip = container_of(psy,
@@ -982,6 +983,7 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 				  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
 		bq24192_set_input_vin_limit(chip, chip->vin_limit_mv);
 		bq24192_set_input_i_limit(chip, ret.intval / 1000);
+		bq24192_set_ibat_max(chip, USB_MAX_IBAT_MA);
 		pr_info("usb is online! i_limit = %d v_limit = %d\n",
 				ret.intval / 1000, chip->vin_limit_mv);
 	} else if (chip->ac_online &&
