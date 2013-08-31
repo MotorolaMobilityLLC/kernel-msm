@@ -8995,7 +8995,7 @@ eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
     eHalStatus          status    = eHAL_STATUS_SUCCESS;
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     tANI_U8 oldChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN*2] = {0};
-    tANI_U8 newChannelList[128] = {0};
+    tANI_U8 newChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN*2] = {0};
     tANI_U8 i = 0, j = 0;
 
     status = sme_AcquireGlobalLock( &pMac->sme );
