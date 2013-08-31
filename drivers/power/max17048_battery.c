@@ -61,6 +61,7 @@ struct max17048_chip {
 	struct max17048_platform_data *pdata;
 	struct dentry *dent;
 	struct notifier_block pm_notifier;
+	struct delayed_work monitor_work;
 	int vcell;
 	int soc;
 	int capacity_level;
@@ -308,8 +309,10 @@ static int max17048_set_rcomp(struct max17048_chip *chip)
 	return ret;
 }
 
-static int max17048_work(struct max17048_chip *chip)
+static void max17048_work(struct work_struct *work)
 {
+	struct max17048_chip *chip =
+		container_of(work, struct max17048_chip, monitor_work.work);
 	int ret = 0;
 
 	wake_lock(&chip->alert_lock);
@@ -347,8 +350,6 @@ static int max17048_work(struct max17048_chip *chip)
 			__func__, chip->batt_current, chip->batt_temp);
 
 	wake_unlock(&chip->alert_lock);
-
-	return 0;
 }
 
 static irqreturn_t max17048_interrupt_handler(int irq, void *data)
@@ -356,7 +357,7 @@ static irqreturn_t max17048_interrupt_handler(int irq, void *data)
 	struct max17048_chip *chip = data;
 
 	pr_debug("%s : interupt occured\n", __func__);
-	max17048_work(chip);
+	schedule_delayed_work(&chip->monitor_work, 0);
 
 	return IRQ_HANDLED;
 }
@@ -431,7 +432,7 @@ ssize_t max17048_store_status(struct device *dev,
 
 	if (strncmp(buf, "reset", 5) == 0) {
 		max17048_set_reset(chip);
-		max17048_work(chip);
+		schedule_delayed_work(&chip->monitor_work, 0);
 	} else {
 		return -EINVAL;
 	}
@@ -707,6 +708,7 @@ static int max17048_get_property(struct power_supply *psy,
 	default:
 		return -EINVAL;
 	}
+
 	return 0;
 }
 
@@ -791,9 +793,11 @@ static int max17048_pm_notifier(struct notifier_block *notifier,
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		max17048_set_alsc_alert(chip, false);
+		cancel_delayed_work_sync(&chip->monitor_work);
 		break;
 	case PM_POST_SUSPEND:
-		max17048_work(chip);
+		schedule_delayed_work(&chip->monitor_work,
+					msecs_to_jiffies(200));
 		max17048_set_alsc_alert(chip, true);
 		break;
 	default:
@@ -867,6 +871,7 @@ static int max17048_probe(struct i2c_client *client,
 		goto error;
 	}
 
+	INIT_DELAYED_WORK(&chip->monitor_work, max17048_work);
 	wake_lock_init(&chip->alert_lock, WAKE_LOCK_SUSPEND,
 			"max17048_alert");
 
@@ -928,7 +933,7 @@ static int max17048_probe(struct i2c_client *client,
 		goto err_hw_init;
 	}
 
-	max17048_work(chip);
+	schedule_delayed_work(&chip->monitor_work, 0);
 	enable_irq(chip->alert_irq);
 
 	pr_info("%s: done\n", __func__);
