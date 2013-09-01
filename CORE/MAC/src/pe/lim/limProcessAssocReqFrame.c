@@ -204,7 +204,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
     tANI_U8    *wpsIe = NULL;
     tSirMacRateSet  basicRates;
     tANI_U8 i = 0, j = 0;
-    tANI_BOOLEAN pmfConnection;
+    tANI_BOOLEAN pmfConnection = eANI_BOOLEAN_FALSE;
 
     limGetPhyMode(pMac, &phyMode, psessionEntry);
 
