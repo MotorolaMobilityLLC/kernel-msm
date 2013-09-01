@@ -12,6 +12,7 @@
  */
 
 /include/ "msm8226-moto-common.dtsi"
+/include/ "msm8226-v1-pm.dtsi"
 /include/ "msm8926-peregrine-gpiomux.dtsi"
 /include/ "dsi-panel-mot-cmi-720p-video.dtsi"
 
@@ -52,6 +53,11 @@
 	usr_reset_warning {
 		status = "disabled";
 	};
+};
+
+&pm8226_bms {
+	qcom,use-external-rsense = <1>;
+	status = "ok";
 };
 
 &i2c_2 {
