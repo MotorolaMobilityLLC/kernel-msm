@@ -2007,6 +2007,8 @@ int msm_venc_inst_init(struct msm_vidc_inst *inst)
 	inst->prop.height = DEFAULT_HEIGHT;
 	inst->prop.width = DEFAULT_WIDTH;
 	inst->prop.fps = 15;
+	inst->fmts[CAPTURE_PORT]->buf_type = V4L2_MPEG_VIDC_VIDEO_STATIC;
+	inst->fmts[OUTPUT_PORT]->buf_type = V4L2_MPEG_VIDC_VIDEO_STATIC;
 	return rc;
 }
 

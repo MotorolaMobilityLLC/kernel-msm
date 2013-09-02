@@ -112,6 +112,7 @@ struct msm_vidc_format {
 	u32 fourcc;
 	int num_planes;
 	int type;
+	enum buffer_mode_type buf_type;
 	u32 (*get_frame_size)(int plane, u32 height, u32 width);
 };
 
