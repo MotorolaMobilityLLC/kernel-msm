@@ -8081,44 +8081,6 @@ eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
 }
 
 /*--------------------------------------------------------------------------
-  \brief sme_ChangeCountryValidChannelListByRevision() - Change Korea valid channel list
-  based on country revision number
-  This is a synchronous call
-  \param hHal - The handle returned by macOpen.
-  \return eHAL_STATUS_SUCCESS - SME update config successful.
-          Other status means SME is failed to update
-  \sa
-  --------------------------------------------------------------------------*/
-eHalStatus sme_ChangeCountryValidChannelListByRevision(tHalHandle hHal,
-                                         tANI_U8 Revision)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    eHalStatus          status    = eHAL_STATUS_SUCCESS;
-
-    status = sme_AcquireGlobalLock( &pMac->sme );
-    if ( HAL_STATUS_SUCCESS( status ) )
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-                     "LFR runtime successfully set country/revision to %s/%d - old value is %s/%d - roam state is %d",
-                     "KR", Revision, "KR",
-                     pMac->roam.neighborRoamInfo.cfgParams.countryChannelInfo.revision,
-                     pMac->roam.neighborRoamInfo.neighborRoamState);
-        csr_SetRevision(pMac, Revision);
-        csrInitCountryValidChannelList(pMac, Revision);
-        sme_ReleaseGlobalLock( &pMac->sme );
-    }
-#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
-    {
-       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_VALID_CHANNEL_LIST_CHANGED);
-    }
-#endif
-
-    return status ;
-}
-
-
-/*--------------------------------------------------------------------------
   \brief csrUpdateBgScanConfigIniChannelList() - Update bgscan roam cache
   This is a synchronous call
   \param hHal - The handle returned by macOpen.
@@ -8171,26 +8133,6 @@ eHalStatus sme_getRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
         sme_ReleaseGlobalLock( &pMac->sme );
     }
     return status ;
-}
-
-/*--------------------------------------------------------------------------
-  \brief sme_GetCountryRevision() - get Country revision index
-  This is a synchronous call
-  \param hHal - The handle returned by macOpen.
-  \return eHAL_STATUS_SUCCESS - SME update config successful.
-          Other status means SME is failed to update
-  \sa
-  --------------------------------------------------------------------------*/
-eHalStatus sme_GetCountryRevision(tHalHandle hHal, tANI_U8 *pRevision)
-{
-    /* this is valid for Country KR only now */
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-    eHalStatus          status    = eHAL_STATUS_SUCCESS;
-
-    *pRevision = pNeighborRoamInfo->cfgParams.countryChannelInfo.revision;
-
-    return status;
 }
 
 /*--------------------------------------------------------------------------
