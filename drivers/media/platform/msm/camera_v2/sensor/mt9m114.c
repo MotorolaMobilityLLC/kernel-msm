@@ -1721,6 +1721,13 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		struct msm_camera_i2c_reg_setting conf_array;
 		struct msm_camera_i2c_reg_array *reg_setting = NULL;
 
+		if (s_ctrl->sensor_state != MSM_SENSOR_POWER_UP) {
+			pr_err("%s:%d failed: invalid state %d\n", __func__,
+				__LINE__, s_ctrl->sensor_state);
+			rc = -EFAULT;
+			break;
+		}
+
 		if (copy_from_user(&conf_array,
 			(void *)cdata->cfg.setting,
 			sizeof(struct msm_camera_i2c_reg_setting))) {
@@ -1749,6 +1756,12 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_table(
 			s_ctrl->sensor_i2c_client, &conf_array);
 		kfree(reg_setting);
+		break;
+	}
+	case CFG_SLAVE_READ_I2C: {
+		mutex_unlock(s_ctrl->msm_sensor_mutex);
+		rc = msm_sensor_config(s_ctrl, argp);
+		mutex_lock(s_ctrl->msm_sensor_mutex);
 		break;
 	}
 	case CFG_WRITE_I2C_SEQ_ARRAY: {

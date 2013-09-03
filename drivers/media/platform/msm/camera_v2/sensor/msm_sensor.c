@@ -1526,6 +1526,14 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		struct msm_camera_i2c_read_config read_config;
 		uint16_t local_data = 0;
 		uint16_t orig_slave_addr = 0, read_slave_addr = 0;
+
+		if (s_ctrl->sensor_state != MSM_SENSOR_POWER_UP) {
+			pr_err("%s:%d failed: invalid state %d\n", __func__,
+				__LINE__, s_ctrl->sensor_state);
+			rc = -EFAULT;
+			break;
+		}
+
 		if (copy_from_user(&read_config,
 			(void *)cdata->cfg.setting,
 			sizeof(struct msm_camera_i2c_read_config))) {
