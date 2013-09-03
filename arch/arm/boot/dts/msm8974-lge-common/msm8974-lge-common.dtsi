@@ -25,6 +25,14 @@
 		reg = <0xf991d000 0x1000>;
 		interrupts = <0 107 0>;
 		status = "disabled";
+
+		qcom,msm-bus,name = "serial_uart1";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<86 512 0 0>,
+			<86 512 500 800>;
 	};
 
 	uart10: uart@f9960000 { /*BLSP2, UART10 For Bluetooth*/
