@@ -108,7 +108,7 @@
 				<&pm8921_gpio 11 0>, /* MIPI_REQ */
 				<&pm8921_gpio 12 0>; /* MIPI_BUSY */
 			lux_table = <5 50 100 1500 3000 8000>;
-			brightness_table = <9 14 18 46 67 93 140>;
+			brightness_table = <8 13 17 42 61 84 140>;
 			bslen_pin_active_value = <1>;
 			ct406_detect_threshold = <0x006E>;
 			ct406_undetect_threshold = <0x0050>;
