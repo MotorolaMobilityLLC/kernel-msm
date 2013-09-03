@@ -157,6 +157,21 @@ void msm_set_restart_mode(int mode)
 }
 EXPORT_SYMBOL(msm_set_restart_mode);
 
+static bool scm_pmic_arbiter_disable_supported;
+/*
+ * Force the SPMI PMIC arbiter to shutdown so that no more SPMI transactions
+ * are sent from the MSM to the PMIC.  This is required in order to avoid an
+ * SPMI lockup on certain PMIC chips if PS_HOLD is lowered in the middle of
+ * an SPMI transaction.
+ */
+static void halt_spmi_pmic_arbiter(void)
+{
+	if (scm_pmic_arbiter_disable_supported) {
+		pr_crit("Calling SCM to disable SPMI PMIC arbiter\n");
+		scm_call_atomic1(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER, 0);
+	}
+}
+
 static void __msm_power_off(int lower_pshold)
 {
 	printk(KERN_CRIT "Powering off the SoC\n");
@@ -167,10 +182,12 @@ static void __msm_power_off(int lower_pshold)
 	qpnp_pon_system_pwr_off(PON_POWER_OFF_SHUTDOWN);
 
 	if (lower_pshold) {
-		if (!use_restart_v2())
+		if (!use_restart_v2()) {
 			__raw_writel(0, PSHOLD_CTL_SU);
-		else
+		} else {
+			halt_spmi_pmic_arbiter();
 			__raw_writel(0, MSM_MPM2_PSHOLD_BASE);
+		}
 
 		mdelay(10000);
 		printk(KERN_ERR "Powering off has failed\n");
@@ -306,6 +323,7 @@ void msm_restart(char mode, const char *cmd)
 	} else {
 		/* Needed to bypass debug image on some chips */
 		msm_disable_wdog_debug();
+		halt_spmi_pmic_arbiter();
 		__raw_writel(0, MSM_MPM2_PSHOLD_BASE);
 	}
 
@@ -356,6 +374,9 @@ static int __init msm_restart_init(void)
 	if (!lge_is_handle_panic_enable())
 		set_dload_mode(0);
 #endif
+	if (scm_is_call_available(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER) > 0)
+		scm_pmic_arbiter_disable_supported = true;
+
 	return 0;
 }
 early_initcall(msm_restart_init);
