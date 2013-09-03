@@ -830,8 +830,6 @@ static void kgsl_destroy_process_private(struct kref *kref)
 		mutex_unlock(&kgsl_driver.process_mutex);
 		return;
 	}
-	list_del(&private->list);
-	mutex_unlock(&kgsl_driver.process_mutex);
 
 	if (private->kobj.parent)
 		kgsl_process_uninit_sysfs(private);
@@ -854,6 +852,9 @@ static void kgsl_destroy_process_private(struct kref *kref)
 	}
 	kgsl_mmu_putpagetable(private->pagetable);
 	idr_destroy(&private->mem_idr);
+
+	list_del(&private->list);
+	mutex_unlock(&kgsl_driver.process_mutex);
 
 	kfree(private);
 	return;
