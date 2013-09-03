@@ -151,6 +151,7 @@
 /* To set 4MAC addresses from given first MAC address,
  * Last byte value within given MAC address must less than 0xFF - 3 */
 #define QWLAN_MAX_MAC_LAST_BYTE_VALUE       0xFC
+#define NV_EMBEDDED_VERSION                 0x80
 
 typedef struct {
    tANI_U32 tableSize;                      /* Whole NV Table Size */
@@ -163,15 +164,16 @@ typedef struct {
    tANI_U32 tableSize;                      /* Whole NV Table Size */
    tANI_U32 chunkSize;                      /* Current Chunk Size < 2K */
    eNvTable nvTable;
-   tANI_U8  tableData; 
+   tANI_U8  tableData;
 } pttSetNvTable;
 
 
 extern const sHalNv nvDefaults;
 static int wlan_ftm_register_wext(hdd_adapter_t *pAdapter);
 static int wlan_ftm_stop(hdd_context_t *pHddCtx);
+VOS_STATUS wlan_write_to_efs (v_U8_t *pData, v_U16_t data_len);
 
-/* for PRIMA: all the available frequency, channal pair i the table are defined for channel frequency @ RF center frequency 
+/* for PRIMA: all the available frequency, channal pair i the table are defined for channel frequency @ RF center frequency
    Since it is associated to agc.channel_freq register for mapping.
    For channel bonding, the channel number is +2 or -2 for CB with primary high, or with primary low respectively.
 */
@@ -397,7 +399,7 @@ static VOS_STATUS wlan_ftm_vos_open( v_CONTEXT_t pVosContext, v_SIZE_t hddContex
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s: Unable to init wdaCompleteEvent",__func__);
       VOS_ASSERT(0);
-    
+
       goto err_probe_event;
    }
 
@@ -468,6 +470,15 @@ static VOS_STATUS wlan_ftm_vos_open( v_CONTEXT_t pVosContext, v_SIZE_t hddContex
      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s: Failed to initialize the NV module", __func__);
      goto err_wda_close;
+   }
+
+   vStatus = vos_nv_get_dictionary_data();
+
+   if (!VOS_IS_STATUS_SUCCESS(vStatus))
+   {
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                "%s : failed to get dictionary data for NV", __func__);
+      goto err_wda_close;
    }
 
    /* If we arrive here, both threads dispacthing messages correctly */
@@ -840,8 +851,8 @@ static VOS_STATUS wlan_ftm_priv_get_status(hdd_adapter_t *pAdapter,char *buf)
 
     lenRes = snprintf(buf, lenBuf, "\n chainSelect: %s\n rxmode: %s\n "
                                    "txpktgen: %s\n  txifs: %ld\n  txrate: ",
-                      chain[ftm_status.chainSelect], rx[ftm_status.rxmode], 
-                      tx[ftm_status.frameGenEnabled], 
+                      chain[ftm_status.chainSelect], rx[ftm_status.rxmode],
+                      tx[ftm_status.frameGenEnabled],
                       ftm_status.frameParams.interFrameSpace);
     if ((lenRes < 0) || (lenRes >= lenBuf))
     {
@@ -874,8 +885,8 @@ static VOS_STATUS wlan_ftm_priv_get_status(hdd_adapter_t *pAdapter,char *buf)
     lenBuf -= lenRes;
 
     lenRes = snprintf(buf, lenBuf, "\n  txpower: %d\n  txpktcnt: %ld\n  "
-                                   "txpktlen: %d\n", ftm_status.txpower, 
-                      ftm_status.frameParams.numTestPackets, 
+                                   "txpktlen: %d\n", ftm_status.txpower,
+                      ftm_status.frameParams.numTestPackets,
                       ftm_status.frameParams.payloadLength);
 
     if ((lenRes < 0) || (lenRes >= lenBuf))
@@ -928,7 +939,7 @@ VOS_STATUS vos_ftm_preStart( v_CONTEXT_t vosContext )
 {
    VOS_STATUS vStatus          = VOS_STATUS_SUCCESS;
    pVosContextType pVosContext = (pVosContextType)vosContext;
-   
+
    VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
              "vos prestart");
 
@@ -948,8 +959,8 @@ VOS_STATUS vos_ftm_preStart( v_CONTEXT_t vosContext )
    ccmStart(pVosContext->pMACContext);
 
    /* Reset wda wait event */
-   vos_event_reset(&pVosContext->wdaCompleteEvent);   
-    
+   vos_event_reset(&pVosContext->wdaCompleteEvent);
+
 
    /*call WDA pre start*/
    vStatus = WDA_preStart(pVosContext);
@@ -1001,7 +1012,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
     VOS_STATUS vStatus       = VOS_STATUS_SUCCESS;
     pVosContextType pVosContext= NULL;
     hdd_adapter_t *pAdapter;
-    
+
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
                "%s: Opening VOSS", __func__);
 
@@ -1092,7 +1103,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                  "%s: NV Table Buffer Alloc Fail", __func__);
       VOS_ASSERT(0);
-      goto err_nl_srv_init; 
+      goto err_nl_srv_init;
    }
    vos_mem_zero((v_VOID_t *)pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
 
@@ -1172,7 +1183,7 @@ int wlan_hdd_ftm_close(hdd_context_t *pHddCtx)
 
     hdd_close_all_adapters( pHddCtx );
 #if 0
-    if(test_bit(NET_DEVICE_REGISTERED, &pAdapter->event_flags)) 
+    if(test_bit(NET_DEVICE_REGISTERED, &pAdapter->event_flags))
     {
         unregister_netdev(pAdapter->dev);
         clear_bit(NET_DEVICE_REGISTERED, &pAdapter->event_flags);
@@ -1270,9 +1281,9 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
         goto err_status_failure;
     }
 
-   
+
     if (pVosContext->pMACContext == NULL)
-    {    
+    {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                "%s: MAC NULL context",__func__);
         goto err_status_failure;
@@ -1314,7 +1325,7 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
                     "%s: WDA_NVDownload_Start reporting  other error \n",__func__);
        }
        VOS_ASSERT(0);
-       goto err_wda_stop;   
+       goto err_wda_stop;
     }
 
     vStatus = WDA_start(pVosContext);
@@ -1324,7 +1335,7 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
                  "%s: Failed to start WDA",__func__);
        goto err_status_failure;
     }
-    
+
 
     /* Start the MAC */
     vos_mem_zero((v_PVOID_t)&halStartParams, sizeof(tHalMacStartParameters));
@@ -1352,7 +1363,7 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
 
     return VOS_STATUS_SUCCESS;
 
-err_wda_stop:   
+err_wda_stop:
    vos_event_reset(&(pVosContext->wdaCompleteEvent));
    WDA_stop(pVosContext, HAL_STOP_TYPE_RF_KILL);
    vStatus = vos_wait_single_event(&(pVosContext->wdaCompleteEvent), 1000);
@@ -1557,12 +1568,12 @@ int wlan_hdd_ftm_get_nv_table
       pHddCtx->ftm.targetNVTableSize    = 0;
       pHddCtx->ftm.processedNVTableSize = 0;
       vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
- 
+
       return -EINVAL;
    }
 
    /* Copy next chunk of NV table value into response buffer */
-   vos_mem_copy(&nvTable->tableData, 
+   vos_mem_copy(&nvTable->tableData,
                 pHddCtx->ftm.tempNVTableBuffer + pHddCtx->ftm.processedNVTableSize,
                 nvTable->chunkSize);
    /* Update processed pointer to prepare next chunk copy */
@@ -1712,7 +1723,7 @@ int wlan_hdd_ftm_set_nv_table
       return -EINVAL;
    }
    vos_mem_copy(pHddCtx->ftm.tempNVTableBuffer + pHddCtx->ftm.processedNVTableSize,
-                &nvTable->tableData, 
+                &nvTable->tableData,
                 nvTable->chunkSize);
 
    pHddCtx->ftm.processedNVTableSize += nvTable->chunkSize;
@@ -2016,9 +2027,22 @@ int wlan_hdd_ftm_get_nv_field
          break;
 
       case NV_COMMON_NV_VERSION:
-         memcpy((void *)&nvField->fieldData,
-                &nvFieldDataBuffer.nvVersion,
-                sizeof(nvFieldDataBuffer.nvVersion));
+         {
+            VOS_STATUS nvEmbededStatus = VOS_STATUS_SUCCESS;
+            v_U8_t nvVersion = nvFieldDataBuffer.nvVersion;
+
+            nvEmbededStatus = vos_nv_isEmbeddedNV();
+
+            if ( nvEmbededStatus == VOS_STATUS_SUCCESS )
+            {
+                // High bit is set to indicate embedded NV..
+                nvVersion = nvVersion | NV_EMBEDDED_VERSION;
+            }
+
+            memcpy((void *)&nvField->fieldData,
+                   &nvVersion,
+                   sizeof(nvFieldDataBuffer.nvVersion));
+         }
          break;
 
       default:
@@ -2056,7 +2080,7 @@ int wlan_hdd_ftm_set_nv_field
    v_U8_t            *pNVMac;
    v_U8_t             lastByteMAC;
 
-   
+
    nvStatus = vos_nv_getNVBuffer((void **)&nvContents, &nvSize);
    if((VOS_STATUS_SUCCESS != nvStatus) || (NULL == nvContents))
    {
@@ -2243,7 +2267,7 @@ int wlan_hdd_ftm_store_nv_table
          tablePtr     = (void *)&nvContents->tables.fwConfig;
          tableSize    = sizeof(nvContents->tables.fwConfig);
          tableVNVType = VNV_FW_CONFIG;
-         break;         
+         break;
 
       case NV_TABLE_ANTENNA_PATH_LOSS:
          tablePtr     = (void *)&nvContents->tables.antennaPathLoss[0];
@@ -2262,7 +2286,7 @@ int wlan_hdd_ftm_store_nv_table
                     "Not Supported Table Type %d", nvTable->nvTable);
          return -EIO;
          break;
-         
+
    }
 
    nvStatus = vos_nv_write(tableVNVType,
@@ -2271,6 +2295,241 @@ int wlan_hdd_ftm_store_nv_table
    if(VOS_STATUS_SUCCESS != nvStatus)
    {
       return -EIO;
+   }
+
+   return 1;
+}
+
+/* --------------------------------------------------------------------------
+  \brief wlan_hdd_ftm_get_nv_bin() -
+            Get NV bin read from Flash Memory, file
+
+  \param  - ftmCmd - Pointer FTM Commad Buffer
+
+  \return - int
+            -1, Process Host command fail, vail out
+             0, Process Host command success
+--------------------------------------------------------------------------*/
+
+static int wlan_hdd_ftm_get_nv_bin
+(
+   v_U16_t msgId,
+   hdd_context_t  *pHddCtx,
+   tPttMsgbuffer  *ftmCmd
+)
+{
+   VOS_STATUS          nvStatus = VOS_STATUS_SUCCESS;
+   pttGetNvTable      *nvTable = (pttGetNvTable *)&ftmCmd->msgBody.GetNvBin;
+   v_SIZE_t            nvSize;
+   v_U8_t             *nvContents;
+   v_U16_t offset = 0;
+
+
+   if ((NV_MAX_TABLE == pHddCtx->ftm.processingNVTable) ||
+      (0 == pHddCtx->ftm.processedNVTableSize))
+   {
+      if ( msgId == PTT_MSG_GET_NV_BIN )
+      {
+         nvStatus = vos_nv_getNVEncodedBuffer((void **)&nvContents, &nvSize);
+      }
+      else
+      {
+         nvStatus = vos_nv_getNVDictionary((void **)&nvContents, &nvSize);
+      }
+
+      if ((VOS_STATUS_SUCCESS != nvStatus) || (NULL == nvContents))
+      {
+         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                    "Fail to get cached NV value Status %d", nvStatus);
+         return -EIO;
+      }
+
+      switch (nvTable->nvTable)
+      {
+         case NV_BINARY_IMAGE:
+            pHddCtx->ftm.targetNVTablePointer = (v_U8_t *)nvContents;
+            break;
+         default:
+            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                       "Not Valid NV Table %d", nvTable->nvTable);
+            return -EIO;
+            break;
+      }
+
+      /* Set Current Processing NV table type */
+      pHddCtx->ftm.processingNVTable = nvTable->nvTable;
+      if ( msgId == PTT_MSG_GET_NV_BIN )
+      {
+         pHddCtx->ftm.targetNVTableSize = nvSize + sizeof(v_U32_t);
+         /* Validity Period */
+         pHddCtx->ftm.tempNVTableBuffer[0] = 0xFF;
+         pHddCtx->ftm.tempNVTableBuffer[1] = 0xFF;
+         pHddCtx->ftm.tempNVTableBuffer[2] = 0xFF;
+         pHddCtx->ftm.tempNVTableBuffer[3] = 0xFF;
+         offset = sizeof(v_U32_t);
+      }
+      else
+      {
+         pHddCtx->ftm.targetNVTableSize = nvSize;
+         offset = 0;
+      }
+
+      /* Copy target NV table value into temp context buffer */
+      vos_mem_copy(&pHddCtx->ftm.tempNVTableBuffer[offset],
+                   pHddCtx->ftm.targetNVTablePointer,
+                   pHddCtx->ftm.targetNVTableSize);
+   }
+
+
+   if (pHddCtx->ftm.processingNVTable != nvTable->nvTable)
+   {
+      /* Invalid table type */
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                 "Invalid NV Table, now Processing %d, not %d",
+                  pHddCtx->ftm.processingNVTable, nvTable->nvTable);
+
+      pHddCtx->ftm.processingNVTable    = NV_MAX_TABLE;
+      pHddCtx->ftm.targetNVTableSize    = 0;
+      pHddCtx->ftm.processedNVTableSize = 0;
+      vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
+
+      return -EINVAL;
+   }
+
+   nvTable->tableSize = pHddCtx->ftm.targetNVTableSize;
+
+   /* Update processed pointer to prepare next chunk copy */
+   if ( (nvTable->chunkSize + pHddCtx->ftm.processedNVTableSize) >
+          pHddCtx->ftm.targetNVTableSize )
+   {
+      nvTable->chunkSize =
+          (pHddCtx->ftm.targetNVTableSize - pHddCtx->ftm.processedNVTableSize);
+   }
+
+   /* Copy next chunk of NV table value into response buffer */
+   vos_mem_copy(
+        &nvTable->tableData,
+        pHddCtx->ftm.tempNVTableBuffer + pHddCtx->ftm.processedNVTableSize,
+        nvTable->chunkSize);
+
+   pHddCtx->ftm.processedNVTableSize += nvTable->chunkSize;
+
+   if (pHddCtx->ftm.targetNVTableSize == pHddCtx->ftm.processedNVTableSize)
+   {
+      /* Finished to process last chunk of data, initialize buffer */
+      pHddCtx->ftm.processingNVTable    = NV_MAX_TABLE;
+      pHddCtx->ftm.targetNVTableSize    = 0;
+      pHddCtx->ftm.processedNVTableSize = 0;
+      vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
+   }
+
+   return 1;
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief wlan_hdd_ftm_set_nv_bin() -
+            Set NV bin to Flash Memory, file
+
+  \param  - ftmCmd - Pointer FTM Commad Buffer
+
+  \return - int
+            -1, Process Host command fail, vail out
+             0, Process Host command success
+
++----------------------------------------------------------------------------*/
+
+static int wlan_hdd_ftm_set_nv_bin
+(
+   hdd_context_t  *pHddCtx,
+   tPttMsgbuffer  *ftmCmd
+)
+{
+   VOS_STATUS          nvStatus = VOS_STATUS_SUCCESS;
+   pttSetNvTable      *nvTable = (pttSetNvTable *)&ftmCmd->msgBody.SetNvBin;
+
+   /* Test first chunk of NV table */
+   if ((NV_MAX_TABLE == pHddCtx->ftm.processingNVTable) ||
+       (0 == pHddCtx->ftm.processedNVTableSize))
+   {
+      switch (nvTable->nvTable)
+      {
+         case NV_BINARY_IMAGE:
+            pHddCtx->ftm.targetNVTableSize = nvTable->tableSize;
+            break;
+         default:
+            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                       "Not Valid NV Table %d", nvTable->nvTable);
+            return -EIO;
+            break;
+      }
+
+      /* Set Current Processing NV table type */
+      pHddCtx->ftm.processingNVTable = nvTable->nvTable;
+      pHddCtx->ftm.processedNVTableSize = 0;
+
+      if (pHddCtx->ftm.targetNVTableSize != nvTable->tableSize)
+      {
+         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                    "Invalid Table Size %d", nvTable->tableSize);
+         pHddCtx->ftm.processingNVTable    = NV_MAX_TABLE;
+         pHddCtx->ftm.targetNVTableSize    = 0;
+         pHddCtx->ftm.processedNVTableSize = 0;
+         vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
+         return -EINVAL;
+      }
+   }
+
+   if (pHddCtx->ftm.processingNVTable != nvTable->nvTable)
+   {
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "Invalid NV Table, now Processing %d, not %d",
+                  pHddCtx->ftm.processingNVTable, nvTable->nvTable);
+      pHddCtx->ftm.processingNVTable    = NV_MAX_TABLE;
+      pHddCtx->ftm.targetNVTableSize    = 0;
+      pHddCtx->ftm.processedNVTableSize = 0;
+      vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
+      return -EINVAL;
+   }
+
+   vos_mem_copy(
+       pHddCtx->ftm.tempNVTableBuffer + pHddCtx->ftm.processedNVTableSize,
+       &nvTable->tableData,
+       nvTable->chunkSize);
+
+   pHddCtx->ftm.processedNVTableSize += nvTable->chunkSize;
+
+   if (pHddCtx->ftm.targetNVTableSize == pHddCtx->ftm.processedNVTableSize)
+   {
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+         "Processing Done!! write encoded Buffer %d",
+          pHddCtx->ftm.targetNVTableSize);
+
+      nvStatus = wlan_write_to_efs ((v_U8_t*)pHddCtx->ftm.tempNVTableBuffer,
+                   (v_U16_t)pHddCtx->ftm.targetNVTableSize);
+
+      if ((VOS_STATUS_SUCCESS != nvStatus))
+      {
+         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                    "Fail to set NV Binary %d", nvStatus);
+         return -EIO;
+      }
+
+      nvStatus = vos_nv_setNVEncodedBuffer(
+            (v_U8_t*)pHddCtx->ftm.tempNVTableBuffer,
+            (v_SIZE_t)pHddCtx->ftm.targetNVTableSize);
+
+      if ((VOS_STATUS_SUCCESS != nvStatus))
+      {
+         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                    "Fail to set NV Binary %d", nvStatus);
+         return -EIO;
+      }
+
+      pHddCtx->ftm.processingNVTable    = NV_MAX_TABLE;
+      pHddCtx->ftm.targetNVTableSize    = 0;
+      pHddCtx->ftm.processedNVTableSize = 0;
+      vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
    }
 
    return 1;
@@ -2365,6 +2624,17 @@ int wlan_hdd_process_ftm_host_cmd
 
       case PTT_MSG_STORE_NV_TABLE:
          hostState = wlan_hdd_ftm_store_nv_table(pFTMCmd);
+         needToRouteHal = 0;
+         break;
+
+      case PTT_MSG_GET_NV_BIN:
+      case PTT_MSG_GET_DICTIONARY:
+         hostState = wlan_hdd_ftm_get_nv_bin(pFTMCmd->msgId, pHddCtx, pFTMCmd);
+         needToRouteHal = 0;
+         break;
+
+      case PTT_MSG_SET_NV_BIN:
+         hostState = wlan_hdd_ftm_set_nv_bin(pHddCtx, pFTMCmd);
          needToRouteHal = 0;
          break;
 
@@ -2625,7 +2895,7 @@ static VOS_STATUS wlan_ftm_priv_start_stop_ftm(hdd_adapter_t *pAdapter,
     VOS_STATUS status;
     hdd_context_t *pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
 
-    if (start) 
+    if (start)
     {
         pHddCtx->ftm.cmd_iwpriv = TRUE;
         status = wlan_hdd_ftm_start(pHddCtx);
@@ -3219,7 +3489,7 @@ static VOS_STATUS wlan_ftm_priv_get_channel(hdd_adapter_t *pAdapter,v_U16_t *pCh
         goto done;
     }
 
-    *pChannel = freq_chan_tbl[indx].chan; 
+    *pChannel = freq_chan_tbl[indx].chan;
 
      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Channel = %d  freq = %d\n",*pChannel, freq);
  done:
@@ -3382,7 +3652,7 @@ VOS_STATUS wlan_ftm_priv_get_ftm_version(hdd_adapter_t *pAdapter,char *pftmVer)
     lenBuf -= lenRes;
 
     /*Read the RevID*/
-    lenRes = snprintf(buf, lenBuf, "%x.%x-",(v_U8_t)(reg_val >> 8), (v_U8_t)(reg_val &0x000000FF)); 
+    lenRes = snprintf(buf, lenBuf, "%x.%x-",(v_U8_t)(reg_val >> 8), (v_U8_t)(reg_val &0x000000FF));
     if(lenRes < 0 || lenRes >= lenBuf)
     {
         status = VOS_STATUS_E_FAILURE;
@@ -3572,7 +3842,7 @@ static VOS_STATUS wlan_ftm_priv_get_rx_rssi(hdd_adapter_t *pAdapter,char *buf)
     VOS_STATUS status;
     hdd_context_t *pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
    int ret;
-   
+
     if(pHddCtx->ftm.ftm_state != WLAN_FTM_STARTED)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:Ftm has not started. Please start the ftm. ",__func__);
@@ -3607,15 +3877,15 @@ static VOS_STATUS wlan_ftm_priv_get_rx_rssi(hdd_adapter_t *pAdapter,char *buf)
         goto done;
     }
 
-   ret = snprintf(buf, WE_FTM_MAX_STR_LEN, " R0:%d, R1:%d", 
-                      pMsgBody->GetRxRssi.rssi.rx[0], 
+   ret = snprintf(buf, WE_FTM_MAX_STR_LEN, " R0:%d, R1:%d",
+                      pMsgBody->GetRxRssi.rssi.rx[0],
                   pMsgBody->GetRxRssi.rssi.rx[1]);
 
    if( ret < 0 || ret >= WE_FTM_MAX_STR_LEN )
    {
       status = VOS_STATUS_E_FAILURE;
    }
-   
+
 done:
     vos_mem_free((v_VOID_t * )pMsgBuf);
 
@@ -3641,7 +3911,7 @@ static VOS_STATUS wlan_ftm_priv_get_mac_address(hdd_adapter_t *pAdapter,char *bu
     v_BOOL_t itemIsValid = VOS_FALSE;
     v_U8_t macAddr[VOS_MAC_ADDRESS_LEN] = {0, 0x0a, 0xf5, 4,5, 6};
     int ret;
-   
+
     hdd_context_t *pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
 
     if(pHddCtx->ftm.ftm_state != WLAN_FTM_STARTED)
@@ -3652,12 +3922,12 @@ static VOS_STATUS wlan_ftm_priv_get_mac_address(hdd_adapter_t *pAdapter,char *bu
     /*Check the NV FIELD is valid or not*/
     if (vos_nv_getValidity(VNV_FIELD_IMAGE, &itemIsValid) == VOS_STATUS_SUCCESS)
     {
-       if (itemIsValid == VOS_TRUE) 
+       if (itemIsValid == VOS_TRUE)
        {
             vos_nv_readMacAddress(macAddr);
 
-         ret = snprintf(buf, WE_FTM_MAX_STR_LEN, 
-                             "%02x:%02x:%02x:%02x:%02x:%02x", 
+         ret = snprintf(buf, WE_FTM_MAX_STR_LEN,
+                             "%02x:%02x:%02x:%02x:%02x:%02x",
                         MAC_ADDR_ARRAY(macAddr));
          if( ret < 0 || ret >= WE_FTM_MAX_STR_LEN )
          {
@@ -3665,11 +3935,11 @@ static VOS_STATUS wlan_ftm_priv_get_mac_address(hdd_adapter_t *pAdapter,char *bu
          }
        }
    }
-   else 
+   else
    {
          /*Return Hard coded mac address*/
-      ret = snprintf(buf, WE_FTM_MAX_STR_LEN, 
-                            "%02x:%02x:%02x:%02x:%02x:%02x", 
+      ret = snprintf(buf, WE_FTM_MAX_STR_LEN,
+                            "%02x:%02x:%02x:%02x:%02x:%02x",
                      MAC_ADDR_ARRAY(macAddr));
 
       if( ret < 0 || ret >= WE_FTM_MAX_STR_LEN )
@@ -4366,7 +4636,7 @@ static int wlan_ftm_register_wext(hdd_adapter_t *pAdapter)
 
     // Zero the memory.  This zeros the profile structure.
     //memset(pwextBuf, 0,sizeof(hdd_wext_state_t));
-   
+
     pAdapter->dev->wireless_handlers = (struct iw_handler_def *)&we_ftm_handler_def;
 
     return 0;
@@ -4409,7 +4679,7 @@ VOS_STATUS WLANFTM_McProcessMsg (v_VOID_t *message)
     pHddCtx->ftm.wnl->wmsg.length = FTM_SWAP16(pHddCtx->ftm.wnl->wmsg.length);
 
     /*Response expects the length to be in */
-    pHddCtx->ftm.pResponseBuf->ftm_hdr.data_len = pHddCtx->ftm.pRequestBuf->ftm_hdr.data_len - 
+    pHddCtx->ftm.pResponseBuf->ftm_hdr.data_len = pHddCtx->ftm.pRequestBuf->ftm_hdr.data_len -
                                            sizeof(pHddCtx->ftm.pRequestBuf->ftm_hdr.data_len);
 
     /*Copy the message*/

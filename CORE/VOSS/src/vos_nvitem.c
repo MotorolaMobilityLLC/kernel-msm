@@ -63,6 +63,7 @@
 #include "vos_api.h"
 #include "wlan_hdd_misc.h"
 #include "vos_sched.h"
+#include "wlan_nv_parser.h"
 #include "wlan_hdd_main.h"
 #include <net/cfg80211.h>
 static char crda_alpha2[2] = {0, 0}; /* country code from initial crda req */
@@ -80,6 +81,7 @@ static v_BOOL_t crda_regulatory_run_time_entry_valid = VOS_FALSE;
 #define VOS_HARD_CODED_MAC    {0, 0x0a, 0xf5, 4, 5, 6}
 
 #define DEFAULT_NV_VALIDITY_BITMAP 0xFFFFFFFF
+#define MAGIC_NUMBER            0xCAFEBABE
 
 /*----------------------------------------------------------------------------
  * Type Declarations
@@ -377,6 +379,12 @@ typedef struct nvEFSTable_s
 nvEFSTable_t *gnvEFSTable;
 /* EFS Table  to send the NV structure to HAL*/ 
 static nvEFSTable_t *pnvEFSTable;
+static v_U8_t *pnvEncodedBuf;
+static v_U8_t *pDictFile;
+static v_U8_t *pEncodedBuf;
+static v_SIZE_t nvReadEncodeBufSize;
+static v_SIZE_t nDictionarySize;
+static v_U32_t magicNumber;
 
 const tRfChannelProps rfChannels[NUM_RF_CHANNELS] =
 {
@@ -485,6 +493,64 @@ VOS_STATUS vos_nv_init(void)
    return VOS_STATUS_SUCCESS;
 }
 
+/**------------------------------------------------------------------------
+  \brief vos_nv_get_dictionary_data() - get the dictionary data required for
+  \ tools
+  \return VOS_STATUS_SUCCESS - dictionary data is read successfully
+          otherwise  - not successful
+  \sa
+-------------------------------------------------------------------------*/
+VOS_STATUS vos_nv_get_dictionary_data(void)
+{
+   VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
+
+   if (MAGIC_NUMBER != magicNumber)
+   {
+      return VOS_STATUS_SUCCESS;
+   }
+
+   nDictionarySize = 0;
+
+   vosStatus = vos_get_binary_blob( VOS_BINARY_ID_DICT_CONFIG, NULL,
+                                                &nDictionarySize );
+   if (VOS_STATUS_E_NOMEM != vosStatus)
+   {
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "Error obtaining binary size" );
+/// NOTE:
+/// We can still work without a dictionary file..
+      return VOS_STATUS_SUCCESS;
+   }
+
+   // malloc a buffer to read in the Configuration binary file.
+   pDictFile = vos_mem_malloc( nDictionarySize );
+   if (NULL == pDictFile)
+   {
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+              "Unable to allocate memory for the CFG binary [size= %d bytes]",
+                 nDictionarySize );
+      vosStatus = VOS_STATUS_E_NOMEM;
+      goto fail;
+   }
+
+   /* Get the entire CFG file image... */
+   vosStatus = vos_get_binary_blob( VOS_BINARY_ID_DICT_CONFIG, pDictFile,
+                                                         &nDictionarySize );
+   if (!VOS_IS_STATUS_SUCCESS( vosStatus ))
+   {
+      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+         "Error: Cannot retrieve CFG file image from vOSS. [size= %d bytes]",
+                                                             nDictionarySize );
+      return VOS_STATUS_SUCCESS;
+   }
+
+   VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
+         "Dict file image from vOSS. [size= %d bytes]", nDictionarySize );
+
+fail:
+   return vosStatus;
+}
+
 VOS_STATUS vos_nv_open(void)
 {
     VOS_STATUS status = VOS_STATUS_SUCCESS;
@@ -492,11 +558,13 @@ VOS_STATUS vos_nv_open(void)
     v_SIZE_t bufSize;
     v_SIZE_t nvReadBufSize;
     v_BOOL_t itemIsValid = VOS_FALSE;
-    
+    v_U32_t dataOffset;
+    sHalNv *pnvData = NULL;
+
     /*Get the global context */
     pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
-    
-    if(pVosContext == NULL)
+
+    if (NULL == pVosContext)
     {
         return (eHAL_STATUS_FAILURE);
     }
@@ -504,17 +572,94 @@ VOS_STATUS vos_nv_open(void)
     bufSize = sizeof(nvEFSTable_t);
     status = hdd_request_firmware(WLAN_NV_FILE,
                                   ((VosContextType*)(pVosContext))->pHDDContext,
-                                  (v_VOID_t**)&gnvEFSTable, &nvReadBufSize);
+                                  (v_VOID_t**)&pnvEncodedBuf, &nvReadBufSize);
 
-    if ( (!VOS_IS_STATUS_SUCCESS( status )) || !gnvEFSTable)
+    if ((!VOS_IS_STATUS_SUCCESS( status )) || (!pnvEncodedBuf))
     {
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                    "%s: unable to download NV file %s",
                    __func__, WLAN_NV_FILE);
-         return VOS_STATUS_E_RESOURCES;
+       return VOS_STATUS_E_RESOURCES;
     }
 
-     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+    memcpy(&magicNumber, &pnvEncodedBuf[sizeof(v_U32_t)], sizeof(v_U32_t));
+
+    /// Allocate buffer with maximum length..
+    pEncodedBuf = (v_U8_t *)vos_mem_malloc(nvReadBufSize);
+
+    if (NULL == pEncodedBuf)
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                    "%s : failed to allocate memory for NV", __func__);
+        return VOS_STATUS_E_NOMEM;
+    }
+
+    gnvEFSTable = (nvEFSTable_t*)pnvEncodedBuf;
+
+    if (MAGIC_NUMBER == magicNumber)
+    {
+        pnvData = (sHalNv *)vos_mem_malloc(sizeof(sHalNv));
+
+        if (NULL == pnvData)
+        {
+            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                      "%s : failed to allocate memory for NV", __func__);
+            return VOS_STATUS_E_NOMEM;
+        }
+
+        memset(pnvData, 0, sizeof(sHalNv));
+
+        /// Data starts from offset of validity bit map + magic number..
+        dataOffset = sizeof(v_U32_t) + sizeof(v_U32_t);
+
+        status = nvParser(&pnvEncodedBuf[dataOffset],
+                     (nvReadBufSize-dataOffset), pnvData);
+
+        ///ignore validity bit map
+        nvReadEncodeBufSize = nvReadBufSize - sizeof(v_U32_t);
+
+        vos_mem_copy(pEncodedBuf, &pnvEncodedBuf[sizeof(v_U32_t)],
+            nvReadEncodeBufSize);
+
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   "readEncodeBufSize %d",nvReadEncodeBufSize);
+
+        if (VOS_STATUS_SUCCESS == status) {
+           VOS_TRACE(VOS_MODULE_ID_VOSS,  VOS_TRACE_LEVEL_ERROR,
+                       "Embedded NV parsed success !!productId %d couple Type %d wlan RevId %d",
+                        pnvData->fields.productId,
+                        pnvData->fields.couplerType,
+                        pnvData->fields.wlanNvRevId);
+
+           vos_mem_copy(&gnvEFSTable->halnv, pnvData, sizeof(sHalNv));
+
+           nvReadBufSize = sizeof(sHalNv) + sizeof(v_U32_t);
+        }
+        else
+        {
+           VOS_TRACE(VOS_MODULE_ID_VOSS,  VOS_TRACE_LEVEL_ERROR,
+                       "nvParser failed %d",status);
+
+           nvReadBufSize = 0;
+
+           vos_mem_copy(pEncodedBuf, &nvDefaults, sizeof(sHalNv));
+
+           nvReadEncodeBufSize = sizeof(sHalNv);
+        }
+    }
+    else
+    {
+       dataOffset = sizeof(v_U32_t);
+       nvReadEncodeBufSize = sizeof(sHalNv);
+       memcpy(pEncodedBuf, &pnvEncodedBuf[dataOffset], nvReadEncodeBufSize);
+    }
+
+    if (NULL != pnvData)
+    {
+       vos_mem_free(pnvData);
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
            "INFO: NV binary file version=%d Driver default NV version=%d, continue...\n",
            gnvEFSTable->halnv.fields.nvVersion, WLAN_NV_VERSION);
 
@@ -522,7 +667,7 @@ VOS_STATUS vos_nv_open(void)
     {
         /* Allocate memory to global NV table */
         pnvEFSTable = (nvEFSTable_t *)vos_mem_malloc(sizeof(nvEFSTable_t));
-        if (NULL == pnvEFSTable)
+        if ( NULL == pnvEFSTable )
         {
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                       "%s : failed to allocate memory for NV", __func__);
@@ -530,7 +675,7 @@ VOS_STATUS vos_nv_open(void)
         }
 
         /*Copying the NV defaults */
-        vos_mem_copy(&(pnvEFSTable->halnv),&nvDefaults,sizeof(sHalNv));
+        vos_mem_copy(&(pnvEFSTable->halnv), &nvDefaults, sizeof(sHalNv));
 
         /* Size mismatch */
         if ( nvReadBufSize != bufSize)
@@ -731,6 +876,7 @@ VOS_STATUS vos_nv_open(void)
     return VOS_STATUS_SUCCESS;
 error:
     vos_mem_free(pnvEFSTable);
+    vos_mem_free(pEncodedBuf);
     return eHAL_STATUS_FAILURE ;
 }
 
@@ -748,6 +894,9 @@ VOS_STATUS vos_nv_close(void)
         return VOS_STATUS_E_FAILURE;
     }
     vos_mem_free(pnvEFSTable);
+    vos_mem_free(pEncodedBuf);
+    vos_mem_free(pDictFile);
+
     gnvEFSTable=NULL;
     return VOS_STATUS_SUCCESS;
 }
@@ -1750,12 +1899,67 @@ VOS_STATUS vos_nv_readDefaultCountryTable( uNvTables *tableData )
   -------------------------------------------------------------------------*/
 VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer,v_SIZE_t *pSize)
 {
-
    /* Send the NV structure and size */
    *pNvBuffer = (v_VOID_t *)(&pnvEFSTable->halnv);
    *pSize = sizeof(sHalNv);
 
    return VOS_STATUS_SUCCESS;
+}
+
+/**------------------------------------------------------------------------
+  \brief vos_nv_getBuffer -
+  \param pBuffer  - to return the buffer address
+              pSize     - buffer size.
+  \return status of the NV read operation
+  \sa
+  -------------------------------------------------------------------------*/
+VOS_STATUS vos_nv_getNVEncodedBuffer(v_VOID_t **pNvBuffer,v_SIZE_t *pSize)
+{
+   /* Send the NV structure and size */
+   VOS_STATUS status;
+
+   status = vos_nv_isEmbeddedNV();
+
+   if (VOS_STATUS_SUCCESS == status)
+   {
+      *pNvBuffer = (v_VOID_t *)(pEncodedBuf);
+      *pSize = nvReadEncodeBufSize;
+   }
+   else
+   {
+      *pNvBuffer = (v_VOID_t *)(&pnvEFSTable->halnv);
+      *pSize = sizeof(sHalNv);
+   }
+
+   return VOS_STATUS_SUCCESS;
+}
+
+
+VOS_STATUS vos_nv_getNVDictionary(v_VOID_t **pNvBuffer,v_SIZE_t *pSize)
+{
+    /* Send the NV structure and size */
+   *pNvBuffer = (v_VOID_t *)(pDictFile);
+   *pSize = nDictionarySize;
+
+   return VOS_STATUS_SUCCESS;
+}
+
+VOS_STATUS vos_nv_isEmbeddedNV(v_VOID_t)
+{
+   if (MAGIC_NUMBER == magicNumber)
+   {
+      return VOS_STATUS_SUCCESS;
+   }
+
+   return VOS_STATUS_E_FAILURE;
+}
+
+VOS_STATUS vos_nv_setNVEncodedBuffer(v_U8_t *pNvBuffer, v_SIZE_t size)
+{
+    vos_mem_copy(pEncodedBuf, &pNvBuffer[sizeof(v_U32_t)],
+            (size-sizeof(v_U32_t)));
+
+    return VOS_STATUS_SUCCESS;
 }
 
 /**------------------------------------------------------------------------
