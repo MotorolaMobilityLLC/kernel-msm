@@ -216,12 +216,17 @@
 			<0xff 97>,  /* camss_vfe_mmu_cirpt[1] */
 			<0xff 102>, /* camss_jpeg_mmu_cirpt[1] */
 			<0xff 109>, /* ocmem_dm_nonsec_irq */
+                        <0xff 128>, /* qup_err_intr */
+                        <0xff 129>, /* qup_err_intr */
+                        <0xff 130>, /* qup_err_intr */
 			<0xff 131>, /* blsp1_qup_5_irq */
 			<0xff 141>, /* blsp1_uart_3_irq */
 			<0xff 155>, /* sdc1_irq(0) */
 			<0xff 157>, /* sdc2_irq(0) */
 			<0xff 161>, /* lpass_irq_out_spare[4] */
 			<0xff 162>, /* lpass_irq_out_spare[5]*/
+                        <0xff 166>, /* msm-otg */
+                        <0xff 169>, /* sps */
 			<0xff 170>, /* sdc1_pwr_cmd_irq */
 			<0xff 173>, /* o_wcss_apss_smd_hi */
 			<0xff 174>, /* o_wcss_apss_smd_med */
@@ -236,7 +241,10 @@
 			<0xff 190>, /* lpass_irq_out_apcs(2) */
 			<0xff 191>, /* lpass_irq_out_apcs(3) */
 			<0xff 192>, /* lpass_irq_out_apcs(4) */
-			<0xff 194>, /* lpass_irq_out_apcs(6) */
+			<0xff 194>, /* lpass_irq_out_apcs[6] */
+			<0xff 195>, /* lpass_irq_out_apcs[7] */
+			<0xff 196>, /* lpass_irq_out_apcs[8] */
+                        <0xff 198>, /* coresight-tmc-etr */
 			<0xff 200>, /* rpm_ipc(4) */
 			<0xff 201>, /* rpm_ipc(5) */
 			<0xff 202>, /* rpm_ipc(6) */
@@ -297,7 +305,8 @@
 			<40  110>,
 			<41  115>,
 			<54  111>,
-			<55  113>;
+                        <55  112>,
+			<56  113>;
 	};
 
 	qcom,pm-8x60@fe805664 {
