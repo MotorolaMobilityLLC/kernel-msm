@@ -412,6 +412,9 @@ VOS_STATUS wlan_hdd_get_classAstats(hdd_adapter_t *pAdapter);
 VOS_STATUS wlan_hdd_get_station_stats(hdd_adapter_t *pAdapter);
 
 VOS_STATUS wlan_hdd_get_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
+
+void hdd_wmm_tx_snapshot(hdd_adapter_t *pAdapter);
+
 #ifdef FEATURE_WLAN_TDLS
 VOS_STATUS iw_set_tdls_params(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *extra, int nOffset);
 #endif

@@ -39,6 +39,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
 #if !defined( __VOS_TRACE_H )
 #define __VOS_TRACE_H
 
@@ -49,10 +50,6 @@
   \brief virtual Operating System Servies (vOS)
                
    Trace, logging, and debugging definitions and APIs
-  
-   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
-   
-   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
 
@@ -105,6 +102,7 @@ typedef enum
 // below definition is obsolete and is no longer being used in BMP and WM
 // TODO: remove this once this is not used on Android
 #define VOS_ENABLE_TRACING 
+#define WCONN_TRACE_KMSG_LOG_BUFF
 
 #include  <i_vos_trace.h>   
 
@@ -152,5 +150,23 @@ void vos_trace_setLevel( VOS_MODULE_ID module, VOS_TRACE_LEVEL level );
   \sa vos_trace_setLevel()
   --------------------------------------------------------------------------*/
 v_BOOL_t vos_trace_getLevel( VOS_MODULE_ID module, VOS_TRACE_LEVEL level );
+
+#ifdef WCONN_TRACE_KMSG_LOG_BUFF
+/*--------------------------------------------------------------------------
+ \brief vos_wconn_trace_init(); - Initializing the spinlock,
+  Initialization would be called at the time of hdd_driver_init()
+
+ \return - returns None
+ --------------------------------------------------------------------------*/
+void vos_wconn_trace_init(void);
+
+/*--------------------------------------------------------------------------
+ \brief vos_wconn_trace_exit(); - De-Initializing the spinlock,
+  De-Initialization would be called at the time of hdd_driver_exit()
+
+ \return - returns None
+ --------------------------------------------------------------------------*/
+void vos_wconn_trace_exit(void);
+#endif
 
 #endif

@@ -169,6 +169,7 @@ typedef struct {
 
 extern const sHalNv nvDefaults;
 static int wlan_ftm_register_wext(hdd_adapter_t *pAdapter);
+static int wlan_ftm_stop(hdd_context_t *pHddCtx);
 
 /* for PRIMA: all the available frequency, channal pair i the table are defined for channel frequency @ RF center frequency 
    Since it is associated to agc.channel_freq register for mapping.
@@ -1009,7 +1010,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
     if (NULL == pVosContext)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                    "%s: Trying to open VOSS without a PreOpen",__func__);
+                    "%s: Trying to open VOSS without a PreOpen", __func__);
         VOS_ASSERT(0);
         goto err_vos_status_failure;
     }
@@ -1019,7 +1020,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
 
    if ( !VOS_IS_STATUS_SUCCESS( vStatus ))
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: vos_open failed",__func__);
+      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: vos_open failed", __func__);
       goto err_vos_status_failure;
    }
 
@@ -1031,7 +1032,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
 
     if ( NULL == pHddCtx->hHal )
     {
-       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: HAL context is null",__func__);
+       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: HAL context is null", __func__);
        goto err_sal_close;
     }
 
@@ -1039,20 +1040,20 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
                 wlan_hdd_get_intf_addr(pHddCtx), FALSE);
     if( NULL == pAdapter )
     {
-       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: hdd_open_adapter failed",__func__);
+       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: hdd_open_adapter failed", __func__);
                goto err_adapter_open_failure;
     }
 
     if( wlan_ftm_register_wext(pAdapter)!= 0 )
     {
-       hddLog(VOS_TRACE_LEVEL_ERROR,"%S: hdd_register_wext failed",__func__);
+       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: hdd_register_wext failed", __func__);
        goto err_sal_close;
     }
 
        //Initialize the nlink service
     if(nl_srv_init() != 0)
     {
-       hddLog(VOS_TRACE_LEVEL_ERROR,"%S: nl_srv_init failed",__func__);
+       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: nl_srv_init failed", __func__);
        goto err_ftm_register_wext_close;
     }
 
@@ -1060,7 +1061,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
     //Initialize the PTT service
     if(ptt_sock_activate_svc(pHddCtx) != 0)
     {
-       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: ptt_sock_activate_svc failed",__func__);
+       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: ptt_sock_activate_svc failed", __func__);
        goto err_nl_srv_init;
     }
 #endif
@@ -1085,7 +1086,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
    if(NULL == pHddCtx->ftm.tempNVTableBuffer)
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 "%s: NV Table Buffer Alloc Fail",__func__);
+                 "%s: NV Table Buffer Alloc Fail", __func__);
       VOS_ASSERT(0);
       goto err_nl_srv_init; 
    }
@@ -1096,7 +1097,7 @@ int wlan_hdd_ftm_open(hdd_context_t *pHddCtx)
     if (vos_event_init(&pHddCtx->ftm.ftm_vos_event) != VOS_STATUS_SUCCESS)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                    "%s: Unable to init probeEvent",__func__);
+                    "%s: Unable to init probeEvent", __func__);
         VOS_ASSERT(0);
         vos_mem_free(pHddCtx->ftm.tempNVTableBuffer);
         goto err_nl_srv_init;
@@ -1137,6 +1138,12 @@ int wlan_hdd_ftm_close(hdd_context_t *pHddCtx)
         return VOS_STATUS_E_NOMEM;
     }
 
+    if(WLAN_FTM_STARTED == pHddCtx->ftm.ftm_state)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: Ftm has been started. stopping ftm", __func__);
+        wlan_ftm_stop(pHddCtx);
+    }
 
     //Assert Deep sleep signal now to put Libra HW in lowest power state
     vosStatus = vos_chipAssertDeepSleep( NULL, NULL, NULL );

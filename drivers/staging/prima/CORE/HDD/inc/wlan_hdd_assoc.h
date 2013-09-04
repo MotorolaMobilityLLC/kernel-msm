@@ -45,6 +45,8 @@
 #define HDD_MAX_NUM_IBSS_STA ( 9 )
 #ifdef FEATURE_WLAN_TDLS
 #define HDD_MAX_NUM_TDLS_STA ( HDD_MAX_NUM_IBSS_STA - 1 ) // up to 3 as 1 is assigned to AP
+#define TDLS_STA_INDEX_VALID(staId) \
+                          (((staId) >= 4) && ((staId) < 0xFF))
 #endif
 #define TKIP_COUNTER_MEASURE_STARTED 1
 #define TKIP_COUNTER_MEASURE_STOPED  0 
@@ -110,6 +112,9 @@ typedef struct connection_info_s
    
     /** Remembers authenticated state */
    v_U8_t uIsAuthenticated;
+
+   /** Dot11Mode */
+   tANI_U32 dot11Mode;
    
 }connection_info_t;
 /*Forward declaration of Adapter*/
@@ -134,5 +139,5 @@ int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType );
 int hdd_set_csr_auth_type( hdd_adapter_t *pAdapter, eCsrAuthType RSNAuthType );
 VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
                                     tANI_U8 *peerMac, tANI_U16 staId, tANI_U8 ucastSig);
-
+void hdd_PerformRoamSetKeyComplete(hdd_adapter_t *pAdapter);
 #endif

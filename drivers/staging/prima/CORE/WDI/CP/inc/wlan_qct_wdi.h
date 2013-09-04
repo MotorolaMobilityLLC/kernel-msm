@@ -510,9 +510,11 @@ typedef struct
 typedef struct
 {  
   /* Network that was found with the highest RSSI*/
-  WDI_MacSSid ssId;
+  WDI_MacSSid   ssId;
   /* Indicates the RSSI */
-  wpt_uint8  rssi;
+  wpt_uint8     rssi;
+  wpt_uint16    frameLength;
+  wpt_uint8     *pData;
 } WDI_PrefNetworkFoundInd;
 #endif // FEATURE_WLAN_SCAN_PNO
 
@@ -4084,23 +4086,6 @@ typedef struct
   void*             pUserData;  
 }WDI_TrafficStatsIndType;
 
-#ifdef WLAN_FEATURE_11W
-typedef struct
-{
-
-    wpt_boolean   bExcludeUnencrypt;
-    wpt_macAddr   bssid;
-   /*Request status callback offered by UMAC - it is called if the current
-    req has returned PENDING as status; it delivers the status of sending
-    the message over the BUS */
-    WDI_ReqStatusCb wdiReqStatusCB;
-
-  /*The user data passed in by UMAC, it will be sent back when the above
-    function pointer will be called */
-    void*         pUserData;
-}WDI_ExcludeUnencryptIndType;
-#endif
-
 /*---------------------------------------------------------------------------
   WDI_WlanResumeInfoType
 ---------------------------------------------------------------------------*/
@@ -4259,6 +4244,11 @@ typedef struct
 
 #define WDI_PNO_MAX_PROBE_SIZE    450
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define WDI_ROAM_SCAN_MAX_CHANNELS       80 /* NUM_RF_CHANNELS */
+#define WDI_ROAM_SCAN_MAX_PROBE_SIZE     450
+#define WDI_ROAM_SCAN_RESERVED_BYTES     61
+#endif
 
 /*---------------------------------------------------------------------------
   WDI_AuthType
@@ -4426,6 +4416,88 @@ typedef struct
    void*                      pUserData; 
 } WDI_PNOScanReqParamsType;
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+
+typedef struct
+{
+  /*The SSID of the preferred network*/
+  WDI_MacSSid  ssId;
+  wpt_uint8    currAPbssid[WDI_MAC_ADDR_LEN];
+
+  /*The authentication method of the preferred network*/
+  WDI_AuthType authentication;
+
+  /*The encryption method of the preferred network*/
+  WDI_EdType   encryption;
+  WDI_EdType   mcencryption;
+
+  /*SSID broadcast type, normal, hidden or unknown*/
+  //WDI_SSIDBcastType wdiBcastNetworkType;
+
+  /*channel count - 0 for all channels*/
+  wpt_uint8    ChannelCount;
+
+  /*the actual channels*/
+  wpt_uint8    ChannelCache[WDI_ROAM_SCAN_MAX_CHANNELS];
+
+} WDI_RoamNetworkType;
+
+typedef struct WDIMobilityDomainInfo
+{
+ wpt_uint8 mdiePresent;
+ wpt_uint16 mobilityDomain;
+} WDI_MobilityDomainInfo;
+
+/*---------------------------------------------------------------------------
+  WDI_RoamOffloadScanInfo
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  wpt_boolean RoamScanOffloadEnabled;
+  wpt_uint8   LookupThreshold;
+  wpt_uint8   RoamRssiDiff;
+  wpt_uint8   ChannelCacheType;
+  wpt_uint8   Command;
+  wpt_uint8   StartScanReason;
+  wpt_uint16  NeighborScanTimerPeriod;
+  wpt_uint16  NeighborRoamScanRefreshPeriod;
+  wpt_uint16  NeighborScanChannelMinTime;
+  wpt_uint16  NeighborScanChannelMaxTime;
+  wpt_uint16  EmptyRefreshScanPeriod;
+  wpt_uint8   ValidChannelCount;
+  wpt_uint8   ValidChannelList[WDI_ROAM_SCAN_MAX_CHANNELS];
+  wpt_boolean IsCCXEnabled;
+  /*Probe template for 2.4GHz band*/
+  wpt_uint16  us24GProbeSize;
+  wpt_uint8   a24GProbeTemplate[WDI_ROAM_SCAN_MAX_PROBE_SIZE];
+
+  /*Probe template for 5GHz band*/
+  wpt_uint16  us5GProbeSize;
+  wpt_uint8   a5GProbeTemplate[WDI_ROAM_SCAN_MAX_PROBE_SIZE];
+  /*LFR BG Scan will currently look for only one network to which it is initially connected.
+   * As per requirement, later, the following structure can be used as an array of networks.*/
+  WDI_RoamNetworkType     ConnectedNetwork;
+  WDI_MobilityDomainInfo  MDID;
+  wpt_uint8               nProbes;
+  wpt_uint16              HomeAwayTime;
+  wpt_uint8               ReservedBytes[WDI_ROAM_SCAN_RESERVED_BYTES];
+} WDI_RoamOffloadScanInfo;
+
+typedef struct
+{
+   /* Start Roam Candidate Lookup Offload Back Ground Info Type */
+   WDI_RoamOffloadScanInfo        wdiRoamOffloadScanInfo;
+   /* Request status callback offered by UMAC - it is called if the current req
+   has returned PENDING as status; it delivers the status of sending the message
+   over the BUS */
+   WDI_ReqStatusCb            wdiReqStatusCB;
+   /* The user data passed in by UMAC, it will be sent back when the above
+   function pointer will be called */
+   void*                      pUserData;
+} WDI_RoamScanOffloadReqParamsType;
+
+#endif
+
 /*---------------------------------------------------------------------------
   WDI_SetRssiFilterReqParamsType
   PNO info passed to WDI form WDA
@@ -4516,6 +4588,9 @@ typedef struct
 
   /* Beacon Early Termination Interval */
   wpt_uint32 uBETInterval; 
+
+  /* MAX LI for modulated DTIM */
+  wpt_uint32 uMaxLIModulatedDTIM;
 
 } WDI_SetPowerParamsInfo;
 
@@ -6334,6 +6409,30 @@ typedef void  (*WDI_UpdateScanParamsCb)(WDI_Status  wdiStatus,
                                         void*       pUserData);
 #endif // FEATURE_WLAN_SCAN_PNO
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/*---------------------------------------------------------------------------
+   WDI_RoamOffloadScanCb
+
+   DESCRIPTION
+
+   This callback is invoked by DAL when it has received a Start Roam Candidate Lookup Req
+   response from the underlying device.
+
+   PARAMETERS
+
+    IN
+    wdiStatus:  response status received from HAL
+    pUserData:  user data
+
+
+
+  RETURN VALUE
+    The result code associated with performing the operation
+---------------------------------------------------------------------------*/
+typedef void  (*WDI_RoamOffloadScanCb)(WDI_Status  wdiStatus,
+                                       void*       pUserData);
+
+#endif
 /*---------------------------------------------------------------------------
    WDI_SetTxPerTrackingRspCb
  
@@ -8912,24 +9011,6 @@ WDI_TrafficStatsInd
   WDI_TrafficStatsIndType *pWdiTrafficStatsIndParams
 );
 
-#ifdef WLAN_FEATURE_11W
-/**
- @brief WDI_ExcludeUnencryptedInd
-       Register with HAL to receive/drop unencrypted frames
-
- @param WDI_ExcludeUnencryptIndType
-
- @see
-
- @return Status of the request
-*/
-WDI_Status
-WDI_ExcludeUnencryptedInd
-(
-  WDI_ExcludeUnencryptIndType *pWdiExcUnencParams
-);
-#endif
-
 #ifdef FEATURE_WLAN_SCAN_PNO
 /**
  @brief WDI_SetPreferredNetworkList
@@ -9003,6 +9084,31 @@ WDI_UpdateScanParamsReq
   void*                         pUserData
 );
 #endif // FEATURE_WLAN_SCAN_PNO
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/**
+ @brief WDI_RoamScanOffloadReq
+
+ @param pwdiRoamScanOffloadReqParams: Start Roam Candidate Lookup Req as specified
+        by the Device Interface
+
+        wdiRoamOffloadScanCb: callback for passing back the response
+        of the Start Roam Candidate Lookup operation received from the
+        device
+
+        pUserData: user data will be passed back with the
+        callback
+
+ @return Result of the function call
+*/
+WDI_Status
+WDI_RoamScanOffloadReq
+(
+  WDI_RoamScanOffloadReqParamsType     *pwdiRoamScanOffloadReqParams,
+  WDI_RoamOffloadScanCb                 wdiRoamOffloadScancb,
+  void*                                 pUserData
+);
+#endif
 
 /**
  @brief WDI_SetTxPerTrackingReq will be called when the upper MAC 
@@ -9398,6 +9504,17 @@ WDI_SsrTimerCB
 (
   void *pUserData
 );
+
+/**
+ @brief WDI_SetEnableSSR -
+    This API is called to enable/disable SSR on WDI timeout.
+
+ @param  enableSSR : enable/disable SSR
+
+ @see
+ @return none
+*/
+void WDI_SetEnableSSR(wpt_boolean  enableSSR);
 
 #ifdef __cplusplus
  }

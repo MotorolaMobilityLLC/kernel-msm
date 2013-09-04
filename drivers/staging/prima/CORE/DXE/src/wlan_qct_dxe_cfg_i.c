@@ -386,7 +386,7 @@ wpt_status dxeCommonDefaultConfig
       All the channels must have it's own configurations
 
   @  Parameters
-      WLANDXE_CtrlBlkType     *dxeCtrlBlk,
+      WLANDXE_CtrlBlkType:    *dxeCtrlBlk,
                                DXE host driver main control block
       WLANDXE_ChannelCBType   *channelEntry
                                Channel specific control block
@@ -409,6 +409,7 @@ wpt_status dxeChannelDefaultConfig
    wpt_uint32                  dxeControlWriteEop = 0;
    wpt_uint32                  dxeControlWriteEopInt = 0;
    wpt_uint32                  idx;
+   wpt_uint32                  rxResourceCount = 0;
    WLANDXE_ChannelMappingType *mappedChannel = NULL;
 
    /* Sanity Check */
@@ -621,7 +622,16 @@ wpt_status dxeChannelDefaultConfig
    channelEntry->extraConfig.intMask = channelInterruptMask[mappedChannel->DMAChannel];
 
 
-   channelEntry->numDesc            = mappedChannel->channelConfig->nDescs;
+   wpalGetNumRxRawPacket(&rxResourceCount);
+   if((WDTS_CHANNEL_TX_LOW_PRI == channelEntry->channelType) ||
+      (0 == rxResourceCount))
+   {
+      channelEntry->numDesc         = mappedChannel->channelConfig->nDescs;
+   }
+   else
+   {
+      channelEntry->numDesc         = rxResourceCount / 4;
+   }
    channelEntry->assignedDMAChannel = mappedChannel->DMAChannel;
    channelEntry->numFreeDesc             = 0;
    channelEntry->numRsvdDesc             = 0;

@@ -63,6 +63,7 @@
 #include <vos_timer.h>
 #include <vos_trace.h>
 #include <wlan_hdd_main.h>   
+#include <linux/wcnss_wlan.h>
 
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
@@ -194,9 +195,9 @@ static void vos_pkti_replenish_raw_pool(void)
    mutex_lock(&gpVosPacketContext->mlock);
 
 
-   if ((gpVosPacketContext->rxReplenishListCount < VPKT_RX_REPLENISH_THRESHOLD)
-       &&
-       (!list_empty(&gpVosPacketContext->rxRawFreeList)))
+   if ((gpVosPacketContext->rxReplenishListCount <
+        gpVosPacketContext->numOfRxRawPackets/4) &&
+         (!list_empty(&gpVosPacketContext->rxRawFreeList)))
    {
       mutex_unlock(&gpVosPacketContext->mlock);
       return;
@@ -398,8 +399,10 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
       pVosPacketContext->rxRawFreeListCount = 0;
       INIT_LIST_HEAD(pFreeList);
 
+      pVosPacketContext->numOfRxRawPackets = vos_pkt_get_num_of_rx_raw_pkts();
+
       // fill the rxRaw free list
-      for (idx = 0; idx < VPKT_NUM_RX_RAW_PACKETS; idx++)
+      for (idx = 0; idx < pVosPacketContext->numOfRxRawPackets; idx++)
       {
          pPkt = &pVosPacketContext->vosPktBuffers[freePacketIndex++];
          vosStatus = vos_pkti_packet_init(pPkt, VOS_PKT_TYPE_RX_RAW);
@@ -873,7 +876,7 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
    if (unlikely(VOS_PKT_TYPE_TX_802_3_DATA != pktType))
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                "VPKT [%d]: invalid pktType", __LINE__, pktType);
+                "VPKT [%d]: invalid pktType %d", __LINE__, pktType);
       return VOS_STATUS_E_INVAL;
    }
 
@@ -2950,6 +2953,32 @@ VOS_STATUS vos_pkt_get_available_buffer_pool (VOS_PKT_TYPE  pktType,
    return VOS_STATUS_SUCCESS;
 }
 
+/**
+  @brief vos_pkt_get_num_of_rx_raw_pkts() - Get the number of RX packets
+                                       that should be allocated.
+
+  This function is called by VOS packet module to know how many RX raw
+  packets it should allocate/reserve. This value can be configured thru
+  Kernel device tree to save memory usage.
+
+  @param
+       NONE
+  @return
+       v_SIZE_t the number of packets to allocate
+
+*/
+v_SIZE_t vos_pkt_get_num_of_rx_raw_pkts(void)
+{
+#ifdef HAVE_WCNSS_RX_BUFF_COUNT
+    v_SIZE_t buffCount;
+
+    buffCount = wcnss_get_wlan_rx_buff_count();
+    return (buffCount > VPKT_NUM_RX_RAW_PACKETS ?
+               VPKT_NUM_RX_RAW_PACKETS : buffCount);
+#else
+    return VPKT_NUM_RX_RAW_PACKETS;
+#endif
+}
 
 #ifdef VOS_PACKET_UNIT_TEST
 #include "vos_packet_test.c"

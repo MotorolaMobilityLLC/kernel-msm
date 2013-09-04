@@ -184,13 +184,16 @@ wpt_packet * wpalPacketAlloc(wpt_packet_type pktType, wpt_uint32 nPktSize,
         wpalPacketAvailableCB = rxLowCB;
       }
 #endif /* FEATURE_R33D */
-      vos_pkt_get_packet_length(pVosPkt, &allocLen);
-      if (nPktSize != allocLen)
+      if((NULL != pVosPkt) && (VOS_STATUS_E_RESOURCES != vosStatus))
       {
-         WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                    "RX packet alloc has problem, discard this frame, Len %d", allocLen);
-         vos_pkt_return_packet(pVosPkt);
-         return NULL;
+         vos_pkt_get_packet_length(pVosPkt, &allocLen);
+         if (nPktSize != allocLen)
+         {
+            WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                       "RX packet alloc has problem, discard this frame, Len %d", allocLen);
+            vos_pkt_return_packet(pVosPkt);
+            return NULL;
+         }
       }
       break;
 
@@ -794,7 +797,7 @@ wpt_status wpalIsPacketLocked( wpt_packet *pPacket)
    /* Validate the parameter pointers */
    if (NULL == pPacket)
    {
-      WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+      WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_WARN,
                 "%s : NULL input pointer", __func__);
       return eWLAN_PAL_STATUS_E_INVAL;
    }
@@ -805,3 +808,17 @@ wpt_status wpalIsPacketLocked( wpt_packet *pPacket)
                     eWLAN_PAL_STATUS_SUCCESS;
 }/*wpalIsPacketLocked*/
 
+/*---------------------------------------------------------------------------
+   wpalGetNumRxRawPacket   Query available RX RAW total buffer count
+   param:
+       numRxResource  pointer of queried value
+
+   return:
+       eWLAN_PAL_STATUS_SUCCESS
+---------------------------------------------------------------------------*/
+wpt_status wpalGetNumRxRawPacket(wpt_uint32 *numRxResource)
+{
+   *numRxResource = (wpt_uint32)vos_pkt_get_num_of_rx_raw_pkts();
+
+   return eWLAN_PAL_STATUS_SUCCESS;
+}

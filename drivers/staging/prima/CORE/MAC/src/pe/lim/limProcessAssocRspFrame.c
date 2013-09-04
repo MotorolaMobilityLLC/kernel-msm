@@ -235,12 +235,7 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
            pStaDs->wmeEnabled = 1;
        }
 
-#ifdef WLAN_FEATURE_11W
-       if(psessionEntry->limRmfEnabled)
-       {
-           pStaDs->rmfEnabled = 1;
-       }
-#endif
+
 }
 
 /**
@@ -441,9 +436,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     }
    
    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-             FL("Assoc Resp Frame Received: BSSID %02x:%02x:%02x:%02x:%02x:%02x (Rssi %d)"),
-             pHdr->bssId[0], pHdr->bssId[1], pHdr->bssId[2],
-             pHdr->bssId[3], pHdr->bssId[4], pHdr->bssId[5],
+             FL("Re/Assoc Resp Frame Received: BSSID " MAC_ADDRESS_STR " (RSSI %d)"),
+             MAC_ADDR_ARRAY(pHdr->bssId),
              (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
 
     // Get pointer to Re/Association Response frame body

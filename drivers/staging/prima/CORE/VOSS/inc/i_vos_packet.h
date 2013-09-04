@@ -198,6 +198,10 @@ typedef struct vos_pkt_context_s
    //Add the field for a faster rx path
    v_SIZE_t rxRawFreeListCount;
 
+   // Number of RX Raw packets that will be reserved; this is a configurable
+   // value to the driver to save the memory usage.
+   v_SIZE_t numOfRxRawPackets;
+
    // These are the structs to keep low-resource callback information.
    // There are separate low-resource callback information blocks for
    // RX_RAW, TX_DATA, and TX_MGMT.

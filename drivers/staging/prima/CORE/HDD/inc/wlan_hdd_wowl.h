@@ -180,4 +180,11 @@ v_BOOL_t hdd_exit_wowl (hdd_adapter_t*pAdapter);
   ===========================================================================*/
 v_BOOL_t hdd_init_wowl (hdd_adapter_t* pAdapter);
 
+/**============================================================================
+  @brief hdd_parse_hex() - function returns integer equivalent of hexa decimal
+
+  @return           : integer equivalent of hexa decimal
+  ===========================================================================*/
+int hdd_parse_hex(unsigned char c);
+
 #endif /* #ifndef _WLAN_HDD_WOWL_H */

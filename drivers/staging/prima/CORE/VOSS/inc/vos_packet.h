@@ -1115,4 +1115,20 @@ VOS_STATUS vos_pkt_get_available_buffer_pool
    v_SIZE_t     *vosFreeBuffer
 );
 
+/**
+  @brief vos_pkt_get_num_of_rx_raw_pkts() - Get the number of RX packets
+                                       that should be allocated.
+
+  This function is called by VOS packet module to know how many RX raw
+  packets it should allocate/reserve. This value can be configured thru
+  Kernel device tree to save memory usage.
+
+  @param
+       NONE
+  @return
+       v_SIZE_t the number of packets to allocate
+
+*/
+v_SIZE_t vos_pkt_get_num_of_rx_raw_pkts(void);
+
 #endif  // !defined( __VOS_PKT_H )

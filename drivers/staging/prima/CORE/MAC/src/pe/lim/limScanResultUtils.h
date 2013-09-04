@@ -65,6 +65,14 @@ void    limDeleteCachedScanResults(tpAniSirGlobal);
 void    limRestorePreScanState(tpAniSirGlobal);
 void    limCopyScanResult(tpAniSirGlobal, tANI_U8 *);
 void    limReInitScanResults(tpAniSirGlobal);
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+void    limInitLfrHashTable(tpAniSirGlobal);
+eHalStatus
+   limLookupNaddLfrHashEntry(tpAniSirGlobal, tLimScanResultNode *, tANI_U8, tANI_U8);
+void    limDeleteLfrHashEntry(tLimScanResultNode *);
+void    limDeleteCachedLfrScanResults(tpAniSirGlobal);
+void    limReInitLfrScanResults(tpAniSirGlobal);
+#endif
 tANI_U32 limDeactivateMinChannelTimerDuringScan(tpAniSirGlobal);
 void    limCheckAndAddBssDescription(tpAniSirGlobal, tpSirProbeRespBeacon, tANI_U8 *, tANI_BOOLEAN, tANI_U8);
 #if defined WLAN_FEATURE_VOWIFI

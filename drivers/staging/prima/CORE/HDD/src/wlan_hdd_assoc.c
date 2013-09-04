@@ -109,9 +109,6 @@ v_U8_t ccpRSNOui05[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x05 }; // WEP-104
 #ifdef FEATURE_WLAN_CCX
 v_U8_t ccpRSNOui06[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x40, 0x96, 0x00 }; // CCKM
 #endif /* FEATURE_WLAN_CCX */
-#ifdef WLAN_FEATURE_11W
-v_U8_t ccpRSNOui07[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x06 }; // RSN-PSK-SHA256
-#endif
 
 #if defined(WLAN_FEATURE_VOWIFI_11R) 
 // Offset where the EID-Len-IE, start.
@@ -121,12 +118,11 @@ v_U8_t ccpRSNOui07[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x06 }; // RSN-PSK-
 
 #define BEACON_FRAME_IES_OFFSET 12
 
-#ifdef WLAN_FEATURE_11W
-void hdd_indicateUnprotMgmtFrame(hdd_adapter_t *pAdapter,
-                            tANI_U32 nFrameLength,
-                            tANI_U8* pbFrames,
-                            tANI_U8 frameType );
-#endif
+static eHalStatus hdd_RoamSetKeyCompleteHandler( hdd_adapter_t *pAdapter,
+                                                tCsrRoamInfo *pRoamInfo,
+                                                tANI_U32 roamId,
+                                                eRoamCmdStatus roamStatus,
+                                                eCsrRoamResult roamResult );
 
 v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
                                         eConnectionState connState )
@@ -299,6 +295,9 @@ void hdd_connSaveConnectInfo( hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo, 
 
           // Save the ssid for the connection
           vos_mem_copy( &pHddStaCtx->conn_info.SSID.SSID, &pRoamInfo->u.pConnectedProfile->SSID, sizeof( tSirMacSSid ) );
+
+          // Save  dot11mode in which STA associated to AP
+          pHddStaCtx->conn_info.dot11Mode = pRoamInfo->u.pConnectedProfile->dot11Mode;
       }
    }   
       
@@ -392,7 +391,6 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
     struct cfg80211_ft_event_params ftEvent;
     v_U8_t ftIe[DOT11F_IE_FTINFO_MAX_LEN];
     v_U8_t ricIe[DOT11F_IE_RICDESCRIPTOR_MAX_LEN];
-    v_U8_t target_ap[SIR_MAC_ADDR_LENGTH];
     struct net_device *dev = pAdapter->dev;
 #else
     char *buff;
@@ -426,9 +424,9 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
         return;
     }
 
-    vos_mem_copy(target_ap, ftIe, SIR_MAC_ADDR_LENGTH);
+    sme_SetFTPreAuthState(pHddCtx->hHal, TRUE);
 
-    ftEvent.target_ap = target_ap;
+    ftEvent.target_ap = ftIe;
 
     ftEvent.ies = (u8 *)(ftIe + SIR_MAC_ADDR_LENGTH);
     ftEvent.ies_len = auth_resp_len - SIR_MAC_ADDR_LENGTH;
@@ -809,8 +807,7 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
             // In case of JB, as Change-Iface may or maynot be called for p2p0
             // Enable BMPS/IMPS in case P2P_CLIENT disconnected   
             if(((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
-                (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode)) &&
-                (vos_concurrent_sessions_running()))
+                (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode)))
             {
                //Enable BMPS only of other Session is P2P Client
                hdd_context_t *pHddCtx = NULL;
@@ -826,20 +823,12 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                        if((0 == pHddCtx->no_of_sessions[VOS_STA_SAP_MODE]) &&
                           (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]))
                        {
-                          if (pHddCtx->hdd_wlan_suspended)
-                          {
-                             if(WLAN_HDD_INFRA_STATION == pAdapter->device_mode)
-                             {
-                                hdd_reset_pwrparams(pHddCtx);
-                             }
-                             else
-                             {
-                                hdd_set_pwrparams(pHddCtx);
-                             }
-                          }
-
+                           if (pHddCtx->hdd_wlan_suspended)
+                           {
+                               hdd_set_pwrparams(pHddCtx);
+                           }
                            hdd_enable_bmps_imps(pHddCtx);
-                       }
+                      }
                    }
                }
             }
@@ -1008,35 +997,32 @@ static VOS_STATUS hdd_roamRegisterSTA( hdd_adapter_t *pAdapter,
       return vosStatus;      
    }                                            
 
-   // if ( WPA ), tell TL to go to 'connected' and after keys come to the driver, 
-   // then go to 'authenticated'.  For all other authentication types (those that do 
-   // not require upper layer authentication) we can put TL directly into 'authenticated'
-   // state.
-   
+   // if (WPA), tell TL to go to 'connected' and after keys come to the driver,
+   // then go to 'authenticated'.  For all other authentication types
+   // (those that donot require upper layer authentication) we can put
+   // TL directly into 'authenticated' state.
+
    VOS_ASSERT( fConnected );
-  
+
    if ( !pRoamInfo->fAuthRequired )
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
-                 "open/shared auth StaId= %d.  Changing TL state to AUTHENTICATED at Join time", pHddStaCtx->conn_info.staId[ 0 ] );
-   
       // Connections that do not need Upper layer auth, transition TL directly
-      // to 'Authenticated' state.      
-      vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, staDesc.ucSTAId, 
+      // to 'Authenticated' state.
+      vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, staDesc.ucSTAId,
                                          WLANTL_STA_AUTHENTICATED );
-  
+
       pHddStaCtx->conn_info.uIsAuthenticated = VOS_TRUE;
-   }                                            
+   }
    else
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
-                 "ULA auth StaId= %d.  Changing TL state to CONNECTED at Join time", pHddStaCtx->conn_info.staId[ 0 ] );
-   
-      vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, staDesc.ucSTAId, 
+                 "ULA auth StaId= %d. Changing TL state to CONNECTED at Join time",
+                 pHddStaCtx->conn_info.staId[0] );
+      vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, staDesc.ucSTAId,
                                          WLANTL_STA_CONNECTED );
-
       pHddStaCtx->conn_info.uIsAuthenticated = VOS_FALSE;
-   }      
+   }
+
    return( vosStatus );
 }
 
@@ -1093,8 +1079,33 @@ done:
     kfree(rspRsnIe);
 }
 
-static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo, 
-                                                    tANI_U32 roamId, eRoamCmdStatus roamStatus,                                                
+void hdd_PerformRoamSetKeyComplete(hdd_adapter_t *pAdapter)
+{
+    eHalStatus halStatus = eHAL_STATUS_SUCCESS;
+    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    tCsrRoamInfo roamInfo;
+    roamInfo.fAuthRequired = FALSE;
+    vos_mem_copy(roamInfo.bssid,
+                 pHddStaCtx->roam_info.bssid,
+                 WNI_CFG_BSSID_LEN);
+    vos_mem_copy(roamInfo.peerMac,
+                 pHddStaCtx->roam_info.peerMac,
+                 WNI_CFG_BSSID_LEN);
+
+    halStatus = hdd_RoamSetKeyCompleteHandler(pAdapter,
+                                  &roamInfo,
+                                  pHddStaCtx->roam_info.roamId,
+                                  pHddStaCtx->roam_info.roamStatus,
+                                  eCSR_ROAM_RESULT_AUTHENTICATED);
+    if (halStatus != eHAL_STATUS_SUCCESS)
+    {
+        hddLog(LOGE, "%s: Set Key complete failure", __func__);
+    }
+    pHddStaCtx->roam_info.deferKeyComplete = FALSE;
+}
+
+static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo,
+                                                    tANI_U32 roamId, eRoamCmdStatus roamStatus,
                                                     eCsrRoamResult roamResult )
 {
     struct net_device *dev = pAdapter->dev;
@@ -1257,6 +1268,21 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                     cfg80211_roamed(dev,chan, pRoamInfo->bssid,
                                     pFTAssocReq, assocReqlen, pFTAssocRsp, assocRsplen,
                                     GFP_KERNEL);
+                    if (sme_GetFTPTKState(WLAN_HDD_GET_HAL_CTX(pAdapter)))
+                    {
+                        sme_SetFTPTKState(WLAN_HDD_GET_HAL_CTX(pAdapter), FALSE);
+                        pRoamInfo->fAuthRequired = FALSE;
+
+                        vos_mem_copy(pHddStaCtx->roam_info.bssid,
+                                     pRoamInfo->bssid,
+                                     HDD_MAC_ADDR_LEN);
+                        vos_mem_copy(pHddStaCtx->roam_info.peerMac,
+                                     pRoamInfo->peerMac,
+                                     HDD_MAC_ADDR_LEN);
+                        pHddStaCtx->roam_info.roamId = roamId;
+                        pHddStaCtx->roam_info.roamStatus = roamStatus;
+                        pHddStaCtx->roam_info.deferKeyComplete = TRUE;
+                    }
                 }
                 else
                 {
@@ -1267,7 +1293,6 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                                             pFTAssocRsp, assocRsplen,
                                             WLAN_STATUS_SUCCESS,
                                             GFP_KERNEL);
-                    cfg80211_put_bss(bss);
                 }
             }
             else
@@ -1297,9 +1322,9 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                             WLAN_STATUS_SUCCESS,
                             GFP_KERNEL);
 
-                    cfg80211_put_bss(bss);
                 }
             }
+            cfg80211_put_bss(bss);
             // Register the Station with TL after associated...
             vosStatus = hdd_roamRegisterSTA( pAdapter,
                     pRoamInfo,
@@ -1320,8 +1345,12 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
             //Reassoc successfully
             if( pRoamInfo->fAuthRequired )
             {
-                vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, pHddStaCtx->conn_info.staId[ 0 ], 
-                        WLANTL_STA_CONNECTED );
+                vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext,
+                                               pHddStaCtx->conn_info.staId[ 0 ],
+                                               WLANTL_STA_CONNECTED );
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                         "%s: staId: %d Changing TL state to CONNECTED",
+                         __func__, pHddStaCtx->conn_info.staId[0]);
                 pHddStaCtx->conn_info.uIsAuthenticated = VOS_FALSE;
             }
             else
@@ -1329,8 +1358,9 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                 VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
                           "%s: staId: %d Changing TL state to AUTHENTICATED",
                           __func__, pHddStaCtx->conn_info.staId[ 0 ] );
-                vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, pHddStaCtx->conn_info.staId[ 0 ], 
-                        WLANTL_STA_AUTHENTICATED );
+                vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext,
+                                               pHddStaCtx->conn_info.staId[ 0 ],
+                                               WLANTL_STA_AUTHENTICATED );
                 pHddStaCtx->conn_info.uIsAuthenticated = VOS_TRUE;
             }
         }
@@ -1346,10 +1376,7 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                     "Cannot register STA with TL.  Failed with vosStatus = %d [%08lX]",
                     vosStatus, vosStatus );
         }
-#ifdef WLAN_FEATURE_11W
-        vos_mem_zero( &pAdapter->hdd_stats.hddPmfStats,
-                      sizeof(pAdapter->hdd_stats.hddPmfStats) );
-#endif
+
         // Start the Queue
         netif_tx_wake_all_queues(dev);
     }  
@@ -1398,24 +1425,16 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
                if(NULL != pHddCtx)
                {
-                   //Only P2P Client is there Enable Bmps back
-                   if((0 == pHddCtx->no_of_sessions[VOS_STA_SAP_MODE]) &&
-                      (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]))
-                   {
-                      if (pHddCtx->hdd_wlan_suspended)
-                      {
-                         if(WLAN_HDD_INFRA_STATION == pAdapter->device_mode)
+                    //Only P2P Client is there Enable Bmps back
+                    if((0 == pHddCtx->no_of_sessions[VOS_STA_SAP_MODE]) &&
+                       (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]))
+                    {
+                         if (pHddCtx->hdd_wlan_suspended)
                          {
-                            hdd_reset_pwrparams(pHddCtx);
+                             hdd_set_pwrparams(pHddCtx);
                          }
-                         else
-                         {
-                            hdd_set_pwrparams(pHddCtx);
-                         }
-                      }
-
-                       hdd_enable_bmps_imps(pHddCtx);
-                   }
+                         hdd_enable_bmps_imps(pHddCtx);
+                    }
                }
            }
         }
@@ -1458,7 +1477,6 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
         netif_tx_disable(dev);
         netif_carrier_off(dev);
-        
     }
 
     return eHAL_STATUS_SUCCESS;
@@ -1627,6 +1645,12 @@ static eHalStatus hdd_RoamSetKeyCompleteHandler( hdd_adapter_t *pAdapter, tCsrRo
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
    ENTER();
+
+   if (NULL == pRoamInfo)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "pRoamInfo is NULL");
+       return eHAL_STATUS_FAILURE;
+   }
    // if ( WPA ), tell TL to go to 'authenticated' after the keys are set.
    // then go to 'authenticated'.  For all other authentication types (those that do 
    // not require upper layer authentication) we can put TL directly into 'authenticated'
@@ -1636,27 +1660,32 @@ static eHalStatus hdd_RoamSetKeyCompleteHandler( hdd_adapter_t *pAdapter, tCsrRo
    if( fConnected )
    {
       // TODO: Considering getting a state machine in HDD later.
-      // This routuine is invoked twice. 1)set PTK 2)set GTK. The folloing if statement will be
-      // TRUE when setting GTK. At this time we don't handle the state in detail.
+      // This routuine is invoked twice. 1)set PTK 2)set GTK.
+      // The folloing if statement will be TRUE when setting GTK.
+      // At this time we don't handle the state in detail.
       // Related CR: 174048 - TL not in authenticated state
-      if(( eCSR_ROAM_RESULT_AUTHENTICATED == roamResult ) && (pRoamInfo != NULL) && !pRoamInfo->fAuthRequired)
+
+      if ( ( eCSR_ROAM_RESULT_AUTHENTICATED == roamResult ) &&
+           (pRoamInfo != NULL) && !pRoamInfo->fAuthRequired )
       {
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
-                    "Key set for StaId= %d.  Changing TL state to AUTHENTICATED", pHddStaCtx->conn_info.staId[ 0 ] );
-                    
-         // Connections that do not need Upper layer authentication, transition TL 
-         // to 'Authenticated' state after the keys are set.
-         vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, pHddStaCtx->conn_info.staId[ 0 ], 
+         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED, "Key set "
+                    "for StaId= %d.  Changing TL state to AUTHENTICATED",
+                    pHddStaCtx->conn_info.staId[ 0 ] );
+
+         // Connections that do not need Upper layer authentication,
+         // transition TL to 'Authenticated' state after the keys are set.
+         vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext,
+                                            pHddStaCtx->conn_info.staId[ 0 ],
                                             WLANTL_STA_AUTHENTICATED );
- 
+
          pHddStaCtx->conn_info.uIsAuthenticated = VOS_TRUE;
       }
       else
       {
          vosStatus = WLANTL_STAPtkInstalled( pHddCtx->pvosContext,
-                                             pHddStaCtx->conn_info.staId[ 0 ]);
+                                            pHddStaCtx->conn_info.staId[ 0 ]);
       }
-      
+
       pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_NONE;
    }
    else
@@ -1880,7 +1909,7 @@ VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
         staDesc.ucIsReplayCheckValid = VOS_FALSE;
 #endif
 
-    staDesc.ucInitState = WLANTL_STA_AUTHENTICATED ;
+    staDesc.ucInitState = WLANTL_STA_CONNECTED ;
 
    /* Register the Station with TL...  */    
     vosStatus = WLANTL_RegisterSTAClient( pVosContext, 
@@ -1891,8 +1920,8 @@ VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
     if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-                     "WLANTL_RegisterSTAClient() failed to register.  \
-                            Status= %d [0x%08lX]", vosStatus, vosStatus );
+                     "%s: WLANTL_RegisterSTAClient() failed to register.  \
+                            Status= %d [0x%08lX]", __func__, vosStatus, vosStatus );
          return vosStatus;      
     }                                            
     
@@ -1993,16 +2022,20 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                     }
 
                     (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = pAdapter;
-                    /* store the ucast signature which will be used later when
-                       registering to TL
-                     */
+                    /* store the ucast signature , if required for further reference. */
+
                     wlan_hdd_tdls_set_signature( pAdapter, pRoamInfo->peerMac, pRoamInfo->ucastSig );
+                    /* start TDLS client registration with TL */
+                    status = hdd_roamRegisterTDLSSTA( pAdapter,
+                                                      pRoamInfo->peerMac,
+                                                      pRoamInfo->staId,
+                                                      pRoamInfo->ucastSig);
                 }
                 else
                 {
                     status = eHAL_STATUS_FAILURE;
                     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                    "no availalbe slot in conn_info. staId %d cannot be stored", pRoamInfo->staId);
+                    "%s: no available slot in conn_info. staId %d cannot be stored", __func__, pRoamInfo->staId);
                 }
                 pAdapter->tdlsAddStaStatus = status;
             }
@@ -2098,8 +2131,8 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
 
                     status = eHAL_STATUS_SUCCESS ;
                 }
-                wlan_hdd_tdls_check_bmps(pAdapter);
             }
+            wlan_hdd_tdls_check_bmps(pAdapter);
             break ;
         }
         default:
@@ -2271,11 +2304,13 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
         case eCSR_ROAM_ASSOCIATION_COMPLETION:
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                     "****eCSR_ROAM_ASSOCIATION_COMPLETION****");
-            if (  (roamResult != eCSR_ROAM_RESULT_ASSOCIATED)
-               && (   (pWextState->roamProfile.EncryptionType.encryptionType[0] == eCSR_ENCRYPT_TYPE_WEP40_STATICKEY) 
-                   || (pWextState->roamProfile.EncryptionType.encryptionType[0] == eCSR_ENCRYPT_TYPE_WEP104_STATICKEY)
-                  )
-               && (eCSR_AUTH_TYPE_SHARED_KEY != pWextState->roamProfile.AuthType.authType[0])
+            if (  (roamResult != eCSR_ROAM_RESULT_ASSOCIATED) &&
+                  ( (pWextState->roamProfile.EncryptionType.encryptionType[0] ==
+                        eCSR_ENCRYPT_TYPE_WEP40)  ||
+                    (pWextState->roamProfile.EncryptionType.encryptionType[0] ==
+                        eCSR_ENCRYPT_TYPE_WEP104)
+                  ) &&
+                  (eCSR_AUTH_TYPE_SHARED_KEY != pWextState->roamProfile.AuthType.authType[0])
                )
             {
                 v_U32_t roamId = 0;
@@ -2350,13 +2385,6 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             wlan_hdd_tdls_mgmt_completion_callback(pAdapter, pRoamInfo->reasonCode);
             break;
 #endif
-#ifdef WLAN_FEATURE_11W
-       case eCSR_ROAM_UNPROT_MGMT_FRAME_IND:
-            hdd_indicateUnprotMgmtFrame(pAdapter, pRoamInfo->nFrameLength,
-                                         pRoamInfo->pbFrames,
-                                         pRoamInfo->frameType);
-            break;
-#endif
         default:
             break;
     }
@@ -2392,12 +2420,6 @@ eCsrAuthType hdd_TranslateRSNToCsrAuthType( u_int8_t auth_suite[4])
         auth_type = eCSR_AUTH_TYPE_CCKM_RSN;
     } else
 #endif /* FEATURE_WLAN_CCX */
-#ifdef WLAN_FEATURE_11W
-    if (memcmp(auth_suite , ccpRSNOui07, 4) == 0)
-    {
-        auth_type = eCSR_AUTH_TYPE_RSN_PSK_SHA256;
-    } else
-#endif
     { 
         auth_type = eCSR_AUTH_TYPE_UNKNOWN;
     }
@@ -2513,10 +2535,6 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
                 eCsrEncryptionType *pEncryptType, 
                 eCsrEncryptionType *mcEncryptType, 
                 eCsrAuthType *pAuthType, 
-#ifdef WLAN_FEATURE_11W
-                u_int8_t *pMfpRequired,
-                u_int8_t *pMfpCapable,
-#endif
                 u_int16_t gen_ie_len, 
                 u_int8_t *gen_ie) 
 {
@@ -2569,10 +2587,6 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
         *pEncryptType = hdd_TranslateRSNToCsrEncryptionType(dot11RSNIE.pwise_cipher_suites[0]);                     
         //dot11RSNIE.gp_cipher_suite_count 
         *mcEncryptType = hdd_TranslateRSNToCsrEncryptionType(dot11RSNIE.gp_cipher_suite);                     
-#ifdef WLAN_FEATURE_11W
-        *pMfpRequired = (dot11RSNIE.RSN_Cap[0] >> 6) & 0x1 ;
-        *pMfpCapable = (dot11RSNIE.RSN_Cap[0] >> 7) & 0x1 ;
-#endif
         // Set the PMKSA ID Cache for this interface
         for (i=0; i<dot11RSNIE.pmkid_count; i++) 
         {
@@ -2641,10 +2655,6 @@ int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType)
     v_U32_t status = 0;
     eCsrEncryptionType RSNEncryptType;
     eCsrEncryptionType mcRSNEncryptType;
-#ifdef WLAN_FEATURE_11W
-    u_int8_t RSNMfpRequired;
-    u_int8_t RSNMfpCapable;
-#endif
     struct ether_addr   bSsid;   // MAC address of assoc peer
     // MAC address of assoc peer
     // But, this routine is only called when we are NOT associated.
@@ -2666,10 +2676,6 @@ int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType)
             &RSNEncryptType,
             &mcRSNEncryptType,
             RSNAuthType,
-#ifdef WLAN_FEATURE_11W
-            &RSNMfpRequired,
-            &RSNMfpCapable,
-#endif
             pWextState->WPARSNIE[1]+2,
             pWextState->WPARSNIE);
     if (status == 0)
@@ -2680,11 +2686,6 @@ int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType)
         
         pWextState->roamProfile.EncryptionType.encryptionType[0] = RSNEncryptType; // Use the cipher type in the RSN IE
         pWextState->roamProfile.mcEncryptionType.encryptionType[0] = mcRSNEncryptType;
-
-#ifdef WLAN_FEATURE_11W
-        pWextState->roamProfile.MFPRequired = RSNMfpRequired;
-        pWextState->roamProfile.MFPCapable = RSNMfpCapable;
-#endif
         hddLog( LOG1, "%s: CSR AuthType = %d, EncryptionType = %d mcEncryptionType = %d", __func__, *RSNAuthType, RSNEncryptType, mcRSNEncryptType);
     }
     return 0;
@@ -2759,12 +2760,6 @@ int hdd_set_csr_auth_type ( hdd_adapter_t  *pAdapter, eCsrAuthType RSNAuthType)
                 ((pWextState->authKeyMgmt & IW_AUTH_KEY_MGMT_PSK)
                  == IW_AUTH_KEY_MGMT_PSK)) {
                pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_FT_RSN_PSK;   
-            } else
-#endif
-
-#ifdef WLAN_FEATURE_11W
-            if (RSNAuthType == eCSR_AUTH_TYPE_RSN_PSK_SHA256) {
-                pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_RSN_PSK_SHA256;
             } else
 #endif
 
@@ -3292,9 +3287,6 @@ int iw_get_auth(struct net_device *dev,struct iw_request_info *info,
          case eCSR_AUTH_TYPE_FT_RSN_PSK:
 #endif
          case eCSR_AUTH_TYPE_RSN_PSK:
-#ifdef WLAN_FEATURE_11W
-         case eCSR_AUTH_TYPE_RSN_PSK_SHA256:
-#endif
              hddLog(LOG1,"%s called with unknown auth type", __func__);
              wrqu->param.value = IW_AUTH_ALG_OPEN_SYSTEM;
              return -EIO;
@@ -3423,77 +3415,3 @@ int iw_get_ap_address(struct net_device *dev,
     return 0;
 }
 
-#ifdef WLAN_FEATURE_11W
-/**---------------------------------------------------------------------------
-
-  \brief hdd_indicateUnprotMgmtFrame -
-  This function forwards the unprotected management frame to the supplicant
-  \param  - pAdapter - Pointer to HDD adapter
-          - nFrameLength - Length of the unprotected frame being passed
-          - pbFrames - Pointer to the frame buffer
-          - frameType - 802.11 frame type
-  \return - nothing
-
-  --------------------------------------------------------------------------*/
-void hdd_indicateUnprotMgmtFrame( hdd_adapter_t *pAdapter,
-                            tANI_U32 nFrameLength,
-                            tANI_U8* pbFrames,
-                            tANI_U8 frameType )
-{
-    tANI_U8 type = 0;
-    tANI_U8 subType = 0;
-
-    hddLog(VOS_TRACE_LEVEL_INFO, "%s: Frame Type = %d Frame Length = %d",
-            __func__, frameType, nFrameLength);
-
-    /* Sanity Checks */
-    if (NULL == pAdapter)
-    {
-        hddLog( LOGE, FL("pAdapter is NULL"));
-        return;
-    }
-
-    if (NULL == pAdapter->dev)
-    {
-        hddLog( LOGE, FL("pAdapter->dev is NULL"));
-        return;
-    }
-
-    if (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic)
-    {
-        hddLog( LOGE, FL("pAdapter has invalid magic"));
-        return;
-    }
-
-    if( !nFrameLength )
-    {
-        hddLog( LOGE, FL("Frame Length is Invalid ZERO"));
-        return;
-    }
-
-    if (NULL == pbFrames) {
-        hddLog( LOGE, FL("pbFrames is NULL"));
-        return;
-    }
-
-    type = WLAN_HDD_GET_TYPE_FRM_FC(pbFrames[0]);
-    subType = WLAN_HDD_GET_SUBTYPE_FRM_FC(pbFrames[0]);
-
-    /* Get pAdapter from Destination mac address of the frame */
-    if (type == SIR_MAC_MGMT_FRAME && subType == SIR_MAC_MGMT_DISASSOC)
-    {
-        cfg80211_send_unprot_disassoc(pAdapter->dev, pbFrames, nFrameLength);
-        pAdapter->hdd_stats.hddPmfStats.numUnprotDisassocRx++;
-    }
-    else if (type == SIR_MAC_MGMT_FRAME && subType == SIR_MAC_MGMT_DEAUTH)
-    {
-        cfg80211_send_unprot_deauth(pAdapter->dev, pbFrames, nFrameLength);
-        pAdapter->hdd_stats.hddPmfStats.numUnprotDeauthRx++;
-    }
-    else
-    {
-        hddLog( LOGE, FL("Frame type %d and subtype %d are not valid"), type, subType);
-        return;
-    }
-}
-#endif

@@ -444,7 +444,7 @@ typedef enum
 
   /*WLAN DAL Set Tx Power Request*/
   WDI_SET_TX_POWER_REQ                          = 82,
-
+  WDI_ROAM_SCAN_OFFLOAD_REQ                     = 83,
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -452,9 +452,6 @@ typedef enum
 
   /* Send a traffic stats indication to HAL */
   WDI_TRAFFIC_STATS_IND,
-
-  /* Drop/Receive unencrypted frames indication to HAL */
-  WDI_EXCLUDE_UNENCRYPTED_IND,
 
   /*Keep adding the indications to the max request
     such that we keep them sepparate */
@@ -710,7 +707,7 @@ typedef enum
   WDI_GET_ROAM_RSSI_RESP                        = 80,
 
   WDI_SET_TX_POWER_RESP                         = 81,
-
+  WDI_ROAM_SCAN_OFFLOAD_RESP                    = 82,
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
@@ -1088,6 +1085,9 @@ typedef struct
 
   /*timestamp when we get response timer event*/
   wpt_uint32                  uTimeStampRspTmrExp;
+
+  /* enable/disable SSR on WDI timeout */
+  wpt_boolean                 bEnableSSR;
 }WDI_ControlBlockType; 
 
 
@@ -2729,26 +2729,6 @@ WDI_ProcessTrafficStatsInd
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
-
-#ifdef WLAN_FEATURE_11W
-/**
- @brief Process Exclude Unencrypted Indications function (called
-        when Main FSM allows it)
-
- @param  pWDICtx:         pointer to the WLAN DAL context
-              pEventData:      pointer to the event information structure
-
- @see
- @return Result of the function call
-*/
-WDI_Status
-WDI_ProcessExcludeUnencryptInd
-(
-  WDI_ControlBlockType*  pWDICtx,
-  WDI_EventInfoType*     pEventData
-);
-#endif
-
 /*========================================================================
           Main DAL Control Path Response Processing API 
 ========================================================================*/
@@ -4866,6 +4846,40 @@ WDI_ProcessUpdateScanParamsRsp
 );
 #endif // FEATURE_WLAN_SCAN_PNO
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/**
+ @brief Process Start Roam Candidate Lookup Request function
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessRoamScanOffloadReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+/**
+ @brief Process Start Roam Candidate Lookup Response function (called when a
+        response is being received over the bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessRoamScanOffloadRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+#endif
+
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 /**
  @brief Process 8023 Multicast List Request function
@@ -5117,6 +5131,23 @@ WDI_ProcessUpdateVHTOpModeRsp
 ( 
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
+);
+#endif
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/**
+ *  @brief WDI_wdiEdTypeEncToEdTypeEnc -
+ *  The firmware expects the Encryption type to be in EdType.
+ *  This function converts the WdiEdType encryption to EdType.
+ *  @param tEdType    : EdType to which the encryption needs to be converted.
+ *  @param WDI_EdType : wdiEdType passed from the upper layer.
+ *  @see
+ *  @return none
+ *  */
+void
+WDI_wdiEdTypeEncToEdTypeEnc
+(
+ tEdType *EdType,
+ WDI_EdType wdiEdType
 );
 #endif
 

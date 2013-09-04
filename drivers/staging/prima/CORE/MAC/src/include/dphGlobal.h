@@ -387,7 +387,9 @@ typedef struct sDphHashNode
 
     tANI_U8  fAniCount:1;
 
-    tANI_U8   rmfEnabled:1;
+
+    tANI_U8   rsvd:1;
+
 
 
     /// Fragmentation size

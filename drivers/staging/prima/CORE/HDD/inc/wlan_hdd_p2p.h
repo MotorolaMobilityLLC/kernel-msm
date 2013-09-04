@@ -64,10 +64,6 @@
 #define P2P_WILDCARD_SSID_LEN                    7
 #define P2P_WILDCARD_SSID                        "DIRECT-"
 
-#ifdef WLAN_FEATURE_11W
-#define WLAN_HDD_SET_WEP_FRM_FC(__fc__)     ( (__fc__) = ((__fc__) | 0x40))
-#endif //WLAN_FEATURE_11W
-
 enum hdd_rx_flags {
     HDD_RX_FLAG_DECRYPTED        = 1 << 0,
     HDD_RX_FLAG_MMIC_STRIPPED    = 1 << 1,

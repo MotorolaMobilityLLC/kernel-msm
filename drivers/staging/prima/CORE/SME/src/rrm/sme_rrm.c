@@ -145,7 +145,7 @@ void rrmIndicateNeighborReportResult(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
     /* Stop the timer if it is already running. The timer should be running only in the SUCCESS case. */
     if (VOS_TIMER_STATE_RUNNING == vos_timer_getCurrentState(&pMac->rrm.rrmSmeContext.neighborReqControlInfo.neighborRspWaitTimer))
     {
-        VOS_ASSERT(VOS_STATUS_SUCCESS == vosStatus);
+        smsLog( pMac, LOG1, FL("No entry in neighbor report cache"));
         vos_timer_stop(&pMac->rrm.rrmSmeContext.neighborReqControlInfo.neighborRspWaitTimer);
     }
     callback = pMac->rrm.rrmSmeContext.neighborReqControlInfo.neighborRspCallbackInfo.neighborRspCallback;
@@ -236,6 +236,8 @@ static eHalStatus sme_RrmSendBeaconReportXmitInd( tpAniSirGlobal pMac, tCsrScanR
            pBssDesc = &pCurResult->BssDescriptor;
            ie_len = GET_IE_LEN_IN_BSS( pBssDesc->length );
            pBeaconRep->pBssDescription[msgCounter] = vos_mem_malloc ( ie_len+sizeof(tSirBssDescription) );
+           if (NULL == pBeaconRep->pBssDescription[msgCounter])
+               break;
            vos_mem_copy( pBeaconRep->pBssDescription[msgCounter], pBssDesc, sizeof(tSirBssDescription) );
            vos_mem_copy( &pBeaconRep->pBssDescription[msgCounter]->ieFields[0], pBssDesc->ieFields, ie_len  );
 
@@ -259,9 +261,10 @@ static eHalStatus sme_RrmSendBeaconReportXmitInd( tpAniSirGlobal pMac, tCsrScanR
 
        pBeaconRep->fMeasureDone = (pCurResult)?false:measurementDone;
 
-       status = palSendMBMessage(pMac->hHdd, pBeaconRep);
+       smsLog(pMac, LOGW, "SME Sending BcnRepXmit to PE numBss %d",
+              pBeaconRep->numBssDesc);
 
-       smsLog( pMac, LOGW, "SME Sent BcnRepXmit to PE numBss %d", pBeaconRep->numBssDesc);
+       status = palSendMBMessage(pMac->hHdd, pBeaconRep);
 
    } while (pCurResult);
 
@@ -767,8 +770,16 @@ static void rrmCalculateNeighborAPRoamScore(tpAniSirGlobal pMac, tpRrmNeighborRe
     tpSirNeighborBssDescripton  pNeighborBssDesc;
     tANI_U32    roamScore = 0;
     
-    VOS_ASSERT(pNeighborReportDesc != NULL);
-    VOS_ASSERT(pNeighborReportDesc->pNeighborBssDescription != NULL);
+    if (NULL == pNeighborReportDesc)
+    {
+        VOS_ASSERT(0);
+        return;
+    }
+    if (NULL == pNeighborReportDesc->pNeighborBssDescription)
+    {
+        VOS_ASSERT(0);
+        return;
+    }
 
     pNeighborBssDesc = pNeighborReportDesc->pNeighborBssDescription;
 
@@ -832,8 +843,16 @@ void rrmStoreNeighborRptByRoamScore(tpAniSirGlobal pMac, tpRrmNeighborReportDesc
    tListElem       *pEntry;
    tRrmNeighborReportDesc  *pTempNeighborReportDesc;
 
-   VOS_ASSERT(pNeighborReportDesc != NULL);
-   VOS_ASSERT(pNeighborReportDesc->pNeighborBssDescription != NULL);
+   if (NULL == pNeighborReportDesc)
+   {
+       VOS_ASSERT(0);
+       return;
+   }
+   if (NULL == pNeighborReportDesc->pNeighborBssDescription)
+   {
+       VOS_ASSERT(0);
+       return;
+   }
 
    if (csrLLIsListEmpty(&pSmeRrmContext->neighborReportCache, LL_ACCESS_LOCK))
    {
@@ -911,6 +930,7 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
        if (NULL == pNeighborReportDesc->pNeighborBssDescription)
        {
            smsLog( pMac, LOGE, "Failed to allocate memory for RRM Neighbor report BSS Description");
+           vos_mem_free(pNeighborReportDesc);
            status = eHAL_STATUS_FAILED_ALLOC;
            goto end;
        }

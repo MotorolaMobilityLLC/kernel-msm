@@ -1,8 +1,46 @@
 /*
-* Copyright (c) 2011-2013 Qualcomm Atheros, Inc.
-* All Rights Reserved.
-* Qualcomm Atheros Confidential and Proprietary.
-*/
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+
+
+
 
 /** ------------------------------------------------------------------------- *
     ------------------------------------------------------------------------- *
@@ -50,13 +88,8 @@ tANI_U8 csrRSNOui[][ CSR_RSN_OUI_SIZE ] = {
     { 0x00, 0x0F, 0xAC, 0x03 }, // Reserved
     { 0x00, 0x0F, 0xAC, 0x04 }, // AES-CCMP
     { 0x00, 0x0F, 0xAC, 0x05 }, // WEP-104
-#ifdef WLAN_FEATURE_11W
-    { 0x00, 0x0F, 0xAC, 0x06 },  // BIP(encryption type) or (RSN-PSK-SHA256(authentication type)
-#endif
-#ifdef FEATURE_WLAN_CCX
-    { 0x00, 0x40, 0x96, 0x00 } // CCKM
-#endif /* FEATURE_WLAN_CCX */
-    
+    { 0x00, 0x40, 0x96, 0x00 }, // CCKM
+    { 0x00, 0x0F, 0xAC, 0x06 }  // BIP (encryption type) or RSN-PSK-SHA256 (authentication type)
 };
 
 #ifdef FEATURE_WLAN_WAPI
@@ -2674,9 +2707,6 @@ tANI_BOOLEAN csrIsProfileRSN( tCsrRoamProfile *pProfile )
 #ifdef FEATURE_WLAN_CCX
         case eCSR_AUTH_TYPE_CCKM_RSN:
 #endif 
-#ifdef WLAN_FEATURE_11W
-        case eCSR_AUTH_TYPE_RSN_PSK_SHA256:
-#endif
             fRSNProfile = TRUE;
             break;
 
@@ -3349,23 +3379,13 @@ static tANI_BOOLEAN csrIsAuthRSN( tpAniSirGlobal pMac, tANI_U8 AllSuites[][CSR_R
                                   tANI_U8 cAllSuites,
                                   tANI_U8 Oui[] )
 {
-#ifdef WLAN_FEATURE_11W
-    return( csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[01], Oui ) ||
-            csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[06], Oui ));
-#else
     return( csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[01], Oui ) );
-#endif
 }
 static tANI_BOOLEAN csrIsAuthRSNPsk( tpAniSirGlobal pMac, tANI_U8 AllSuites[][CSR_RSN_OUI_SIZE],
                                       tANI_U8 cAllSuites,
                                       tANI_U8 Oui[] )
 {
-#ifdef WLAN_FEATURE_11W
-    return( csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[02], Oui ) ||
-            csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[06], Oui ) );
-#else
     return( csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[02], Oui ) );
-#endif
 }
 
 #ifdef WLAN_FEATURE_11W
@@ -3373,7 +3393,7 @@ static tANI_BOOLEAN csrIsAuthRSNPskSha256( tpAniSirGlobal pMac, tANI_U8 AllSuite
                                       tANI_U8 cAllSuites,
                                       tANI_U8 Oui[] )
 {
-    return csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[06], Oui );
+    return csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[07], Oui );
 }
 #endif
 
@@ -3586,13 +3606,6 @@ tANI_BOOLEAN csrGetRSNInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eCs
                     if (eCSR_AUTH_TYPE_RSN_PSK == pAuthType->authType[i])
                         negAuthType = eCSR_AUTH_TYPE_RSN_PSK;
                 }
-#ifdef WLAN_FEATURE_11W
-                if ((negAuthType == eCSR_AUTH_TYPE_UNKNOWN) && csrIsAuthRSNPskSha256( pMac, AuthSuites, cAuthSuites, Authentication ) )
-                {
-                    if (eCSR_AUTH_TYPE_RSN_PSK_SHA256 == pAuthType->authType[i])
-                        negAuthType = eCSR_AUTH_TYPE_RSN_PSK_SHA256;
-                }
-#endif
 
                 // The 1st auth type in the APs RSN IE, to match stations connecting
                 // profiles auth type will cause us to exit this loop
@@ -3633,12 +3646,9 @@ tANI_BOOLEAN csrGetRSNInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eCs
             Capabilities->PreAuthSupported = (pRSNIe->RSN_Cap[0] >> 0) & 0x1 ; // Bit 0 PreAuthentication
             Capabilities->NoPairwise = (pRSNIe->RSN_Cap[0] >> 1) & 0x1 ; // Bit 1 No Pairwise
             Capabilities->PTKSAReplayCounter = (pRSNIe->RSN_Cap[0] >> 2) & 0x3 ; // Bit 2, 3 PTKSA Replay Counter
-            Capabilities->GTKSAReplayCounter = (pRSNIe->RSN_Cap[0] >> 4) & 0x3 ; // Bit 4, 5 GTKSA Replay Counter
-#ifdef WLAN_FEATURE_11W
-            Capabilities->MFPRequired = (pRSNIe->RSN_Cap[0] >> 6) & 0x1 ; // Bit 6 MFPR
-            Capabilities->MFPCapable = (pRSNIe->RSN_Cap[0] >> 7) & 0x1 ; // Bit 7 MFPC
-#endif
-            Capabilities->Reserved = pRSNIe->RSN_Cap[1]  & 0xff ; // remaining reserved
+            Capabilities->GTKSAReplayCounter = (pRSNIe->RSN_Cap[0] >> 4) & 0x3 ; // Bit 4,5 GTKSA Replay Counter
+            Capabilities->Reserved = (pRSNIe->RSN_Cap[0] >> 6) & 0x3 ; // remaining reserved
+            Capabilities->Reserved = (Capabilities->Reserved >> 2) | (pRSNIe->RSN_Cap[1]  & 0xff) ; // remaining reserved
         }
     }
     return( fAcceptableCyphers );
@@ -3720,6 +3730,9 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
     tCsrRSNCapabilities RSNCapabilities;
     tCsrRSNPMKIe        *pPMK;
     tANI_U8 PMKId[CSR_RSN_PMKID_SIZE];
+#ifdef WLAN_FEATURE_11W
+    tANI_U8 *pGroupMgmtCipherSuite;
+#endif
     tDot11fBeaconIEs *pIesLocal = pIes;
 
     smsLog(pMac, LOGW, "%s called...", __func__);
@@ -3758,12 +3771,7 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
         // !!REVIEW - What should STA put in RSN capabilities, currently
         // just putting back APs capabilities
         // For one, we shouldn't EVER be sending out "pre-auth supported".  It is an AP only capability
-        // For another, we should use the Management Frame Protection values given by the supplicant
         RSNCapabilities.PreAuthSupported = 0;
-#ifdef WLAN_FEATURE_11W
-        RSNCapabilities.MFPRequired = pProfile->MFPRequired;
-        RSNCapabilities.MFPCapable = pProfile->MFPCapable;
-#endif
         *(tANI_U16 *)( &pAuthSuite->AuthOui[ 1 ] ) = *((tANI_U16 *)(&RSNCapabilities));
 
         pPMK = (tCsrRSNPMKIe *)( ((tANI_U8 *)(&pAuthSuite->AuthOui[ 1 ])) + sizeof(tANI_U16) );
@@ -3779,10 +3787,20 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
             pPMK->cPMKIDs = 0;
         }
 
+#ifdef WLAN_FEATURE_11W
+        if ( pProfile->MFPEnabled )
+        {
+            pGroupMgmtCipherSuite = (tANI_U8 *) pPMK + sizeof ( tANI_U16 ) +
+                ( pPMK->cPMKIDs * CSR_RSN_PMKID_SIZE );
+            palCopyMemory( pMac->hHdd, pGroupMgmtCipherSuite, csrRSNOui[07], CSR_WPA_OUI_SIZE );
+        }
+#endif
+
         // Add in the fixed fields plus 1 Unicast cypher, less the IE Header length
         // Add in the size of the Auth suite (count plus a single OUI)
         // Add in the RSN caps field.
         // Add PMKID count and PMKID (if any)
+        // Add group management cipher suite
         pRSNIe->IeHeader.Length = (tANI_U8) (sizeof( *pRSNIe ) - sizeof ( pRSNIe->IeHeader ) +
                                   sizeof( *pAuthSuite ) +
                                   sizeof( tCsrRSNCapabilities ));
@@ -3791,6 +3809,15 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
             pRSNIe->IeHeader.Length += (tANI_U8)(sizeof( tANI_U16 ) +
                                         (pPMK->cPMKIDs * CSR_RSN_PMKID_SIZE));
         }
+#ifdef WLAN_FEATURE_11W
+        if ( pProfile->MFPEnabled )
+        {
+            if ( 0 == pPMK->cPMKIDs )
+                pRSNIe->IeHeader.Length += sizeof( tANI_U16 );
+            pRSNIe->IeHeader.Length += CSR_WPA_OUI_SIZE;
+        }
+#endif
+
         // return the size of the IE header (total) constructed...
         cbRSNIe = pRSNIe->IeHeader.Length + sizeof( pRSNIe->IeHeader );
 
@@ -4007,8 +4034,10 @@ tANI_U8 csrConstructWapiIe( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamPro
 
         pWapi = (tANI_U8 *) (&pWapiIe->AuthOui[ 1 ]);
 
-        *pWapi = (tANI_U16)1; //cUnicastCyphers
-        pWapi+=2;
+        *pWapi = (tANI_U8)1; //cUnicastCyphers
+        pWapi+=1;
+        *pWapi = (tANI_U8)0; //cUnicastCyphers
+        pWapi+=1;
         palCopyMemory( pMac->hHdd, pWapi, UnicastCypher, sizeof( UnicastCypher ) );
         pWapi += sizeof( UnicastCypher );
 
@@ -4603,6 +4632,7 @@ tAniEdType csrTranslateEncryptTypeToEdType( eCsrEncryptionType EncryptType )
 #ifdef FEATURE_WLAN_WAPI
         case eCSR_ENCRYPT_TYPE_WPI:
             edType = eSIR_ED_WPI;
+            break ;
 #endif
 #ifdef WLAN_FEATURE_11W
         //11w BIP
@@ -5741,10 +5771,6 @@ void csrReleaseProfile(tpAniSirGlobal pMac, tCsrRoamProfile *pProfile)
             palFreeMemory(pMac->hHdd, pProfile->pAddIEAssoc);
             pProfile->pAddIEAssoc = NULL;
         }
-        {
-            palFreeMemory(pMac->hHdd, pProfile->pAddIEAssoc);
-            pProfile->pAddIEAssoc = NULL;
-        }
 
         if(pProfile->ChannelInfo.ChannelList)
         {
@@ -5752,7 +5778,6 @@ void csrReleaseProfile(tpAniSirGlobal pMac, tCsrRoamProfile *pProfile)
             pProfile->ChannelInfo.ChannelList = NULL;
         }
 
-    
         palZeroMemory(pMac->hHdd, pProfile, sizeof(tCsrRoamProfile));
     }
 }

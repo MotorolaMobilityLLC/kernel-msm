@@ -118,6 +118,30 @@ typedef enum
    WDA_INVALID_STA_INDEX,
    WDA_VALID_STA_INDEX
 }WDA_ValidStaIndex;
+typedef enum
+{
+  eWDA_AUTH_TYPE_NONE,    //never used
+  // MAC layer authentication types
+  eWDA_AUTH_TYPE_OPEN_SYSTEM,
+  // Upper layer authentication types
+  eWDA_AUTH_TYPE_WPA,
+  eWDA_AUTH_TYPE_WPA_PSK,
+
+  eWDA_AUTH_TYPE_RSN,
+  eWDA_AUTH_TYPE_RSN_PSK,
+  eWDA_AUTH_TYPE_FT_RSN,
+  eWDA_AUTH_TYPE_FT_RSN_PSK,
+  eWDA_AUTH_TYPE_WAPI_WAI_CERTIFICATE,
+  eWDA_AUTH_TYPE_WAPI_WAI_PSK,
+  eWDA_AUTH_TYPE_CCKM_WPA,
+  eWDA_AUTH_TYPE_CCKM_RSN,
+  eWDA_AUTH_TYPE_WPA_NONE,
+  eWDA_AUTH_TYPE_AUTOSWITCH,
+  eWDA_AUTH_TYPE_SHARED_KEY,
+  eWDA_NUM_OF_SUPPORT_AUTH_TYPE,
+  eWDA_AUTH_TYPE_FAILED = 0xff,
+  eWDA_AUTH_TYPE_UNKNOWN = eCSR_AUTH_TYPE_FAILED,
+}WDA_AuthType;
 
 /*--------------------------------------------------------------------------
   Utilities
@@ -137,6 +161,11 @@ typedef enum
 #define IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE 0
 #endif
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define IS_ROAM_SCAN_OFFLOAD_FEATURE_ENABLE ((WDI_getHostWlanFeatCaps(WLAN_ROAM_SCAN_OFFLOAD)) & (WDA_getFwWlanFeatCaps(WLAN_ROAM_SCAN_OFFLOAD)))
+#else
+#define IS_ROAM_SCAN_OFFLOAD_FEATURE_ENABLE 0
+#endif
 
 /*--------------------------------------------------------------------------
   Definitions for Data path APIs
@@ -499,7 +528,6 @@ tBssSystemRole wdaGetGlobalSystemRole(tpAniSirGlobal pMac);
 // FIXME Temporary value for R33D integaration
 //#define WDA_TL_TX_FRAME_TIMEOUT  20000 /* in msec a very high upper limit */
 
-#define DPU_FEEDBACK_UNPROTECTED_ERROR 0x0F
 
 
 /* ---------------------------------------------------------------------------
@@ -641,7 +669,12 @@ tBssSystemRole wdaGetGlobalSystemRole(tpAniSirGlobal pMac);
 
 /* WDA_IS_RX_IN_SCAN *********************************************************/
 #  define WDA_IS_RX_IN_SCAN(pRxMeta)  (((WDI_DS_RxMetaInfoType*)(pRxMeta))->scan)
-
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/* WDA_GET_OFFLOADSCANLEARN **************************************************/
+#  define WDA_GET_OFFLOADSCANLEARN(pRxMeta) (((WDI_DS_RxMetaInfoType*)(pRxMeta))->offloadScanLearn)
+/* WDA_GET_ROAMCANDIDATEIND **************************************************/
+#  define WDA_GET_ROAMCANDIDATEIND(pRxMeta) (((WDI_DS_RxMetaInfoType*)(pRxMeta))->roamCandidateInd)
+#endif
 /* WDA_GET_RX_RSSI_DB ********************************************************/
 // Volans RF
 #  define WDA_RSSI_OFFSET             100
@@ -696,10 +729,7 @@ tBssSystemRole wdaGetGlobalSystemRole(tpAniSirGlobal pMac);
 /* WDA_GETRSSI1 ***************************************************************/
 #  define WDA_GETRSSI1(pRxMeta) (((WDI_DS_RxMetaInfoType*)(pRxMeta))->rssi1)
 
-/* WDA_GET_RX_RMF *****************************************************/
-#ifdef WLAN_FEATURE_11W
-#  define WDA_GET_RX_RMF(pRxMeta) (((WDI_DS_RxMetaInfoType*)(pRxMeta))->rmf)
-#endif
+
 
 /* --------------------------------------------------------------------*/
 
@@ -890,9 +920,6 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_TIMER_ADC_RSSI_STATS       SIR_HAL_TIMER_ADC_RSSI_STATS
 #define WDA_TIMER_TRAFFIC_STATS_IND    SIR_HAL_TRAFFIC_STATS_IND
 
-#ifdef WLAN_FEATURE_11W
-#define WDA_EXCLUDE_UNENCRYPTED_IND    SIR_HAL_EXCLUDE_UNENCRYPTED_IND
-#endif
 
 #ifdef FEATURE_WLAN_CCX
 #define WDA_TSM_STATS_REQ              SIR_HAL_TSM_STATS_REQ
@@ -1001,6 +1028,10 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_SET_PNO_CHANGED_IND     SIR_HAL_SET_PNO_CHANGED_IND
 #endif // FEATURE_WLAN_SCAN_PNO
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define WDA_ROAM_SCAN_OFFLOAD_REQ   SIR_HAL_ROAM_SCAN_OFFLOAD_REQ
+#endif
+
 #ifdef WLAN_WAKEUP_EVENTS
 #define WDA_WAKE_REASON_IND    SIR_HAL_WAKE_REASON_IND  
 #endif // WLAN_WAKEUP_EVENTS
@@ -1080,6 +1111,9 @@ v_BOOL_t WDA_IsHwFrameTxTranslationCapable(v_PVOID_t pVosGCtx,
 
 #define WDA_UpdateRssiBmps(pvosGCtx,  staId, rssi) \
         WLANTL_UpdateRssiBmps(pvosGCtx, staId, rssi)
+
+#define WDA_UpdateLinkCapacity(pvosGCtx,  staId, linkCapacity) \
+        WLANTL_UpdateLinkCapacity(pvosGCtx, staId, linkCapacity)
 
 #ifdef WLAN_PERF 
 /*==========================================================================
@@ -1800,5 +1834,20 @@ void WDA_TransportChannelDebug
 
 ===========================================================================*/
 void WDA_TrafficStatsTimerActivate(wpt_boolean activate);
+
+/*==========================================================================
+  FUNCTION   WDA_SetEnableSSR
+
+  DESCRIPTION
+    API to enable/disable SSR on WDI timeout
+
+  PARAMETERS
+    enableSSR : enable/disable SSR
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+void WDA_SetEnableSSR(v_BOOL_t enableSSR);
 
 #endif

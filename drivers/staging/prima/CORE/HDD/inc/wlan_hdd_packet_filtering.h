@@ -36,10 +36,20 @@
 
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
-#define HDD_MAX_CMP_PER_PACKET_FILTER     5
 
-#define HDD_WLAN_MAC_ADDR_LEN    6
-#define HDD_MAX_NUM_MULTICAST_ADDRESS   10
+#define HDD_MAX_CMP_PER_PACKET_FILTER     5
+#define HDD_FILTER_IPV6_MC_UC             1
+#define HDD_FILTER_IPV6_MC                0
+#define HDD_FILTER_ID_IPV6_MC             10
+#define HDD_FILTER_ID_IPV6_UC             11
+
+#define HDD_IPV6_MC_CMP_DATA              0x33
+#define HDD_IPV6_UC_CMP_DATA              0x01
+#define HDD_IPV6_CMP_DATA_0               0x86
+#define HDD_IPV6_CMP_DATA_1               0xDD
+
+#define HDD_WLAN_MAC_ADDR_LEN             6
+#define HDD_MAX_NUM_MULTICAST_ADDRESS     10
 
 typedef enum
 {

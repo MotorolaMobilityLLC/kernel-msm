@@ -39,6 +39,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
 #ifndef WLAN_QCT_TLI_H
 #define WLAN_QCT_TLI_H
 
@@ -52,8 +53,6 @@ DESCRIPTION
   This file contains the internal declarations used within wlan transport
   layer module.
 
-  Copyright (c) 2008 QUALCOMM Incorporated. All Rights Reserved.
-  Qualcomm Confidential and Proprietary
 ===========================================================================*/
 
 
@@ -111,7 +110,6 @@ when        who    what, where, why
 
 
 #define STATIC  static
-
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
  * -------------------------------------------------------------------------*/
@@ -277,6 +275,9 @@ typedef enum
 
   /* Serialzie Finish UL Authentication request */
   WLANTL_FINISH_ULA   = 5,
+
+  /* Serialized Snapshot request indication */
+  WLANTL_TX_SNAPSHOT = 6,
 
   WLANTL_TX_MAX
 }WLANTL_TxSignalsType;
@@ -636,6 +637,8 @@ typedef struct
     1 then we have to encrypt the data irrespective of TL
     state (CONNECTED/AUTHENTICATED) */
   v_U8_t ptkInstalled;
+
+  v_U32_t       linkCapacity;
 }WLANTL_STAClientType;
 
 /*---------------------------------------------------------------------------

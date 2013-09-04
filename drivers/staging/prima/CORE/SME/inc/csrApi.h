@@ -81,9 +81,6 @@ typedef enum
     eCSR_AUTH_TYPE_CCKM_WPA,
     eCSR_AUTH_TYPE_CCKM_RSN,
 #endif /* FEATURE_WLAN_CCX */
-#ifdef WLAN_FEATURE_11W
-    eCSR_AUTH_TYPE_RSN_PSK_SHA256,
-#endif
     eCSR_NUM_OF_SUPPORT_AUTH_TYPE,
     eCSR_AUTH_TYPE_FAILED = 0xff,
     eCSR_AUTH_TYPE_UNKNOWN = eCSR_AUTH_TYPE_FAILED,
@@ -265,7 +262,9 @@ typedef struct tagCsrStaParams
     tANI_U8    extn_capability[SIR_MAC_MAX_EXTN_CAP];
     tANI_U8    supported_rates_len;
     tANI_U8    supported_rates[SIR_MAC_MAX_SUPP_RATES];
+    tANI_U8    htcap_present;
     tSirHTCap  HTCap;
+    tANI_U8    vhtcap_present;
     tSirVHTCap VHTCap;
     tANI_U8    uapsd_queues;
     tANI_U8    max_sp;
@@ -463,9 +462,6 @@ typedef enum
     eCSR_ROAM_DISCONNECT_ALL_P2P_CLIENTS, //Disaconnect all the clients
     eCSR_ROAM_SEND_P2P_STOP_BSS, //Stopbss triggered from SME due to different
                                  // beacon interval
-#ifdef WLAN_FEATURE_11W
-    eCSR_ROAM_UNPROT_MGMT_FRAME_IND,
-#endif
 
 }eRoamCmdStatus;
 
@@ -711,8 +707,7 @@ typedef enum
 
 }eCsrWEPStaticKeyID;
 
-// Two extra key indicies are used for the IGTK (which is used by BIP)
-#define CSR_MAX_NUM_KEY     (eCSR_SECURITY_WEP_STATIC_KEY_ID_MAX + 2 + 1)
+#define CSR_MAX_NUM_KEY     (eCSR_SECURITY_WEP_STATIC_KEY_ID_MAX + 1)
 
 typedef enum
 {
@@ -833,13 +828,6 @@ typedef struct tagCsrRoamProfile
     //This field is for output only, not for input
     eCsrEncryptionType negotiatedMCEncryptionType;
 
-#ifdef WLAN_FEATURE_11W
-    // Management Frame Protection
-    tANI_BOOLEAN MFPEnabled;
-    tANI_U8 MFPRequired;
-    tANI_U8 MFPCapable;
-#endif
-
     tCsrKeys Keys;
     eCsrCBChoice CBMode; //up, down or auto
     tCsrChannelInfo ChannelInfo;
@@ -925,6 +913,7 @@ typedef struct tagCsrRoamConnectedProfile
     tCsrCcxCckmInfo ccxCckmInfo;
     tANI_BOOLEAN    isCCXAssoc;
 #endif
+    tANI_U32 dot11Mode;
 }tCsrRoamConnectedProfile;
 
 
@@ -1013,14 +1002,17 @@ typedef struct tagCsrConfigParam
 
     tANI_U32  nActiveMinChnTimeBtc;     //in units of milliseconds
     tANI_U32  nActiveMaxChnTimeBtc;     //in units of milliseconds
+    tANI_U32  disableAggWithBtc;
 #ifdef WLAN_AP_STA_CONCURRENCY
     tANI_U32  nPassiveMinChnTimeConc;    //in units of milliseconds
     tANI_U32  nPassiveMaxChnTimeConc;    //in units of milliseconds
     tANI_U32  nActiveMinChnTimeConc;     //in units of milliseconds
     tANI_U32  nActiveMaxChnTimeConc;     //in units of milliseconds
     tANI_U32  nRestTimeConc;             //in units of milliseconds
-    tANI_U8   nNumChanCombinedConc;      //number of channels combined
-                                         //in each split scan operation
+    tANI_U8   nNumStaChanCombinedConc;   //number of channels combined for
+                                         //STA in each split scan operation
+    tANI_U8   nNumP2PChanCombinedConc;   //number of channels combined for
+                                         //P2P in each split scan operation
 #endif
 
     tANI_BOOLEAN IsIdleScanEnabled;
@@ -1041,9 +1033,10 @@ typedef struct tagCsrConfigParam
 #endif
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-    tANI_U8   isFastTransitionEnabled;
-    tANI_U8   RoamRssiDiff;
-    tANI_U8   nImmediateRoamRssiDiff;
+    tANI_U8        isFastTransitionEnabled;
+    tANI_U8        RoamRssiDiff;
+    tANI_U8        nImmediateRoamRssiDiff;
+    tANI_BOOLEAN   isWESModeEnabled;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
@@ -1084,10 +1077,15 @@ typedef struct tagCsrConfigParam
     */
     tANI_BOOLEAN fFirstScanOnly2GChnl;
 
-    tANI_BOOLEAN fIgnore_chan165;
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     tANI_BOOLEAN nRoamPrefer5GHz;
     tANI_BOOLEAN nRoamIntraBand;
+    tANI_U8      nProbes;
+    tANI_U16     nRoamScanHomeAwayTime;
+#endif
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    tANI_BOOLEAN isRoamOffloadScanEnabled;
 #endif
 
     tANI_U8 scanCfgAgingTime;

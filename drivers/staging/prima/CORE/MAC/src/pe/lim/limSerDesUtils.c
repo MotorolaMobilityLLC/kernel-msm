@@ -88,7 +88,7 @@ limCheckRemainingLength(tpAniSirGlobal pMac, tANI_S16 len)
     else
     {
         limLog(pMac, LOGW,
-           FL("Received SME message with invalid rem length=%d\n"),
+           FL("Received SME message with invalid rem length=%d"),
            len);
         return eSIR_FAILURE;
     }
@@ -237,7 +237,7 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
     pBssDescription->mdie[2] = *pBuf++;
     len --;
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog(pMac, LOG1, FL("mdie=%02x %02x %02x\n"), 
+    PELOGE(limLog(pMac, LOG1, FL("mdie=%02x %02x %02x"),
         pBssDescription->mdie[0],
         pBssDescription->mdie[1],
         pBssDescription->mdie[2]);)
@@ -287,7 +287,7 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
     else
     {
         limLog(pMac, LOGE,
-                     FL("remaining bytes len %d is less than WSCIE_PROBE_RSP_LEN\n"),
+                     FL("remaining bytes len %d is less than WSCIE_PROBE_RSP_LEN"),
                      pBssDescription->WscIeLen);
         return eSIR_FAILURE;
     }
@@ -305,7 +305,7 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
     else if (len < 0)
     {
         limLog(pMac, LOGE, 
-                     FL("remaining length is negative. len = %d, actual length = %d\n"), 
+                     FL("remaining length is negative. len = %d, actual length = %d"),
                      len, pBssDescription->length);
         return eSIR_FAILURE;
     }    
@@ -452,7 +452,7 @@ limGetKeysInfo(tpAniSirGlobal pMac, tpSirKeys pKeyInfo, tANI_U8 *pBuf)
     len  += pKeyInfo->keyLength;
 
    PELOG3(limLog(pMac, LOG3,
-           FL("Extracted keyId=%d, keyLength=%d, Key is :\n"),
+           FL("Extracted keyId=%d, keyLength=%d, Key is :"),
            pKeyInfo->keyId, pKeyInfo->keyLength);
     sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3,
                pKeyInfo->key, pKeyInfo->keyLength);)
@@ -504,7 +504,7 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     len = pStartBssReq->length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_START_BSS_REQ length %d bytes is:\n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_START_BSS_REQ length %d bytes is:"), len);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, len);)
 
     if (len < (tANI_S16) sizeof(tANI_U32))
@@ -565,7 +565,7 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     if (*pBuf > SIR_MAC_MAX_SSID_LENGTH)
     {
         // SSID length is more than max allowed 32 bytes
-        PELOGW(limLog(pMac, LOGW, FL("Invalid SSID length, len=%d\n"), *pBuf);)
+        PELOGW(limLog(pMac, LOGW, FL("Invalid SSID length, len=%d"), *pBuf);)
         return eSIR_FAILURE;
     }
 
@@ -574,7 +574,7 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     if (len < pStartBssReq->ssId.length)
     {
         limLog(pMac, LOGW,
-           FL("SSID length is longer that the remaining length. SSID len=%d, remaining len=%d\n"),
+           FL("SSID length is longer that the remaining length. SSID len=%d, remaining len=%d"),
            pStartBssReq->ssId.length, len);
         return eSIR_FAILURE;
     }
@@ -683,7 +683,7 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     if (pStartBssReq->rsnIE.length > SIR_MAC_MAX_IE_LENGTH + 2)
     {
         limLog(pMac, LOGW,
-               FL("Invalid RSN IE length %d in SME_START_BSS_REQ\n"),
+               FL("Invalid RSN IE length %d in SME_START_BSS_REQ"),
                pStartBssReq->rsnIE.length);
         return eSIR_FAILURE;
     }
@@ -710,7 +710,7 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     if (pStartBssReq->operationalRateSet.numRates >
         SIR_MAC_MAX_NUMBER_OF_RATES)
     {
-        limLog(pMac, LOGW, FL("Invalid numRates %d in SME_START_BSS_REQ\n"),
+        limLog(pMac, LOGW, FL("Invalid numRates %d in SME_START_BSS_REQ"),
                pStartBssReq->operationalRateSet.numRates);
         return eSIR_FAILURE;
     }
@@ -740,7 +740,7 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
 
     if (len)
     {
-        limLog(pMac, LOGW, FL("Extra bytes left in SME_START_BSS_REQ, len=%d\n"), len);
+        limLog(pMac, LOGW, FL("Extra bytes left in SME_START_BSS_REQ, len=%d"), len);
     }
 
     return eSIR_SUCCESS;
@@ -787,7 +787,7 @@ limStopBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStopBssReq pStopBssReq, tANI_U8
     len = pStopBssReq->length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_STOP_BSS_REQ length %d bytes is:\n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_STOP_BSS_REQ length %d bytes is:"), len);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, len);)
 
     if (len < (tANI_S16) sizeof(tANI_U32))
@@ -862,7 +862,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
 
     if (!pJoinReq || !pBuf)
     {
-        PELOGE(limLog(pMac, LOGE, FL("NULL ptr received\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("NULL ptr received"));)
         return eSIR_FAILURE;
     }
 
@@ -875,15 +875,15 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     pBuf += sizeof(tANI_U16);
 
     if (pJoinReq->messageType == eWNI_SME_JOIN_REQ)
-        PELOG1(limLog(pMac, LOG3, FL("SME_JOIN_REQ length %d bytes is:\n"), len);)
+        PELOG1(limLog(pMac, LOG3, FL("SME_JOIN_REQ length %d bytes is:"), len);)
     else
-        PELOG1(limLog(pMac, LOG3, FL("SME_REASSOC_REQ length %d bytes is:\n"), len);)
+        PELOG1(limLog(pMac, LOG3, FL("SME_REASSOC_REQ length %d bytes is:"), len);)
 
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3, pTemp, len);)
 
     if (len < (tANI_S16) sizeof(tANI_U32))
     {
-        PELOGE(limLog(pMac, LOGE, FL("len too short %d\n"), len);)
+        PELOGE(limLog(pMac, LOGE, FL("len too short %d"), len);)
         return eSIR_FAILURE;
     }
 
@@ -988,7 +988,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
              (pJoinReq->rsnIE.length != 2 + *(pBuf + 1)))
         {
             limLog(pMac, LOGW,
-                   FL("Invalid RSN IE length %d in SME_JOIN_REQ\n"),
+                   FL("Invalid RSN IE length %d in SME_JOIN_REQ"),
                    pJoinReq->rsnIE.length);
             return eSIR_FAILURE;
         }
@@ -1012,7 +1012,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
              (pJoinReq->cckmIE.length != (2 + *(pBuf + 1))))
         {
             limLog(pMac, LOGW,
-                   FL("Invalid CCKM IE length %d/%d in SME_JOIN/REASSOC_REQ\n"),
+                   FL("Invalid CCKM IE length %d/%d in SME_JOIN/REASSOC_REQ"),
                    pJoinReq->cckmIE.length, 2 + *(pBuf + 1));
             return eSIR_FAILURE;
         }
@@ -1036,7 +1036,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
         if (pJoinReq->addIEScan.length > SIR_MAC_MAX_IE_LENGTH + 2)
         {
             limLog(pMac, LOGE,
-                   FL("Invalid addIE Scan length %d in SME_JOIN_REQ\n"),
+                   FL("Invalid addIE Scan length %d in SME_JOIN_REQ"),
                    pJoinReq->addIEScan.length);
             return eSIR_FAILURE;
         }
@@ -1060,7 +1060,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
         if (pJoinReq->addIEAssoc.length > SIR_MAC_MAX_IE_LENGTH + 2)
         {
             limLog(pMac, LOGE,
-                   FL("Invalid addIE Assoc length %d in SME_JOIN_REQ\n"),
+                   FL("Invalid addIE Assoc length %d in SME_JOIN_REQ"),
                    pJoinReq->addIEAssoc.length);
             return eSIR_FAILURE;
         }
@@ -1073,26 +1073,18 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
             return eSIR_FAILURE;
     }
 
-    pJoinReq->MCEncryptionType = limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-    len -= sizeof(tANI_U32);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;    
-    
     pJoinReq->UCEncryptionType = limGetU32(pBuf);
     pBuf += sizeof(tANI_U32);
     len -= sizeof(tANI_U32);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;    
     
-#ifdef WLAN_FEATURE_11W
-    pJoinReq->MgmtEncryptionType = limGetU32(pBuf);
+    pJoinReq->MCEncryptionType = limGetU32(pBuf);
     pBuf += sizeof(tANI_U32);
     len -= sizeof(tANI_U32);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-#endif
-
+        return eSIR_FAILURE;    
+    
 #ifdef WLAN_FEATURE_VOWIFI_11R
     //is11Rconnection;
     pJoinReq->is11Rconnection = (tAniBool)limGetU32(pBuf);
@@ -1103,6 +1095,13 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
 #endif
 
 #ifdef FEATURE_WLAN_CCX
+    //CCX version IE
+    pJoinReq->isCCXFeatureIniEnabled = (tAniBool)limGetU32(pBuf);
+    pBuf += sizeof(tAniBool);
+    len -= sizeof(tAniBool);
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+       return eSIR_FAILURE;
+
     //isCCXconnection;
     pJoinReq->isCCXconnection = (tAniBool)limGetU32(pBuf);
     pBuf += sizeof(tAniBool);
@@ -1174,7 +1173,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     pJoinReq->powerCap.minTxPower = *pBuf++;
     pJoinReq->powerCap.maxTxPower = *pBuf++;
     len -=2;
-    limLog(pMac, LOG1, FL("Power Caps: Min power = %d, Max power = %d\n"), pJoinReq->powerCap.minTxPower, pJoinReq->powerCap.maxTxPower);
+    limLog(pMac, LOG1, FL("Power Caps: Min power = %d, Max power = %d"), pJoinReq->powerCap.minTxPower, pJoinReq->powerCap.maxTxPower);
 
     pJoinReq->supportedChannels.numChnl = *pBuf++;
     len--;
@@ -1184,7 +1183,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     len-= pJoinReq->supportedChannels.numChnl;
 
     PELOG2(limLog(pMac, LOG2,
-            FL("spectrumInd ON: minPower %d, maxPower %d , numChnls %d\n"),
+            FL("spectrumInd ON: minPower %d, maxPower %d , numChnls %d"),
             pJoinReq->powerCap.minTxPower,
             pJoinReq->powerCap.maxTxPower,
             pJoinReq->supportedChannels.numChnl);)
@@ -1203,7 +1202,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     if (limGetBssDescription( pMac, &pJoinReq->bssDescription,
                              len, &lenUsed, pBuf) == eSIR_FAILURE)
     {
-        PELOGE(limLog(pMac, LOGE, FL("get bss description failed\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("get bss description failed"));)
         return eSIR_FAILURE;
     }
     PELOG3(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3, (tANI_U8 *) &(pJoinReq->bssDescription), pJoinReq->bssDescription.length + 2);)
@@ -1314,7 +1313,7 @@ limAssocIndSerDes(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd, tANI_U8 *pBuf
      // Fill in length of SME_ASSOC_IND message
     limCopyU16(pLen, mLen);
 
-    PELOG1(limLog(pMac, LOG1, FL("Sending SME_ASSOC_IND length %d bytes:\n"), mLen);)
+    PELOG1(limLog(pMac, LOG1, FL("Sending SME_ASSOC_IND length %d bytes:"), mLen);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, mLen);)
 } /*** end limAssocIndSerDes() ***/
 
@@ -1363,11 +1362,11 @@ limAssocCnfSerDes(tpAniSirGlobal pMac, tpSirSmeAssocCnf pAssocCnf, tANI_U8 *pBuf
 
     if (pAssocCnf->messageType == eWNI_SME_ASSOC_CNF)
     {
-        PELOG1(limLog(pMac, LOG1, FL("SME_ASSOC_CNF length %d bytes is:\n"), pAssocCnf->length);)
+        PELOG1(limLog(pMac, LOG1, FL("SME_ASSOC_CNF length %d bytes is:"), pAssocCnf->length);)
     }
     else
     {
-        PELOG1(limLog(pMac, LOG1, FL("SME_REASSOC_CNF length %d bytes is:\n"), pAssocCnf->length);)
+        PELOG1(limLog(pMac, LOG1, FL("SME_REASSOC_CNF length %d bytes is:"), pAssocCnf->length);)
     }
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, pAssocCnf->length);)
 
@@ -1440,7 +1439,7 @@ limDisassocCnfSerDes(tpAniSirGlobal pMac, tpSirSmeDisassocCnf pDisassocCnf, tANI
     pDisassocCnf->length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_DISASSOC_CNF length %d bytes is:\n"), pDisassocCnf->length);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_DISASSOC_CNF length %d bytes is:"), pDisassocCnf->length);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, pDisassocCnf->length);)
 
     pDisassocCnf->statusCode = (tSirResultCodes) limGetU32(pBuf);
@@ -1573,7 +1572,7 @@ limReassocIndSerDes(tpAniSirGlobal pMac, tpLimMlmReassocInd pReassocInd, tANI_U8
     // Fill in length of SME_REASSOC_IND message
     limCopyU16(pLen, mLen);
 
-    PELOG1(limLog(pMac, LOG1, FL("Sending SME_REASSOC_IND length %d bytes:\n"), mLen);)
+    PELOG1(limLog(pMac, LOG1, FL("Sending SME_REASSOC_IND length %d bytes:"), mLen);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, mLen);)
 } /*** end limReassocIndSerDes() ***/
 
@@ -1631,7 +1630,7 @@ limAuthIndSerDes(tpAniSirGlobal pMac, tpLimMlmAuthInd pAuthInd, tANI_U8 *pBuf)
   
     limCopyU16(pLen, mLen);
 
-    PELOG1(limLog(pMac, LOG1, FL("Sending SME_AUTH_IND length %d bytes:\n"), mLen);)
+    PELOG1(limLog(pMac, LOG1, FL("Sending SME_AUTH_IND length %d bytes:"), mLen);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, mLen);)
 } /*** end limAuthIndSerDes() ***/
 
@@ -1683,7 +1682,7 @@ limSetContextReqSerDes(tpAniSirGlobal pMac, tpSirSmeSetContextReq pSetContextReq
     len = pSetContextReq->length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_SETCONTEXT_REQ length %d bytes is:\n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_SETCONTEXT_REQ length %d bytes is:"), len);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3, pTemp, len);)
 
     if (len < (tANI_S16) sizeof(tANI_U32))
@@ -1816,7 +1815,7 @@ limRemoveKeyReqSerDes(tpAniSirGlobal pMac, tpSirSmeRemoveKeyReq pRemoveKeyReq, t
     len = pRemoveKeyReq->length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_REMOVEKEY_REQ length %d bytes is:\n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_REMOVEKEY_REQ length %d bytes is:"), len);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, len);)
 
     if (len < (tANI_S16) sizeof(tANI_U32))
@@ -1926,7 +1925,7 @@ limDisassocReqSerDes(tpAniSirGlobal pMac, tSirSmeDisassocReq *pDisassocReq, tANI
     len = pDisassocReq->length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_DISASSOC_REQ length %d bytes is:\n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_DISASSOC_REQ length %d bytes is:"), len);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, len);)
 
     if (len < (tANI_S16) sizeof(tANI_U32))
@@ -2023,7 +2022,7 @@ limDeauthReqSerDes(tpAniSirGlobal pMac, tSirSmeDeauthReq *pDeauthReq, tANI_U8 *p
     len = pDeauthReq->length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_DEAUTH_REQ length %d bytes is:\n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_DEAUTH_REQ length %d bytes is:"), len);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, len);)
 
     if (len < (tANI_S16) sizeof(tANI_U32))
@@ -2179,7 +2178,7 @@ limStatSerDes(tpAniSirGlobal pMac, tpAniStaStatStruct pStat, tANI_U8 *pBuf)
     limCopyU32(pBuf, pStat->nXmitBytes);
     pBuf += sizeof(tANI_U32);
 
-    PELOG1(limLog(pMac, LOG1, FL("STAT: length %d bytes is:\n"), sizeof(tAniStaStatStruct));)
+    PELOG1(limLog(pMac, LOG1, FL("STAT: length %d bytes is:"), sizeof(tAniStaStatStruct));)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp,  sizeof(tAniStaStatStruct));)
 
 } /*** end limStatSerDes() ***/
@@ -2287,11 +2286,11 @@ limIsSmeGetAssocSTAsReqValid(tpAniSirGlobal pMac, tpSirSmeGetAssocSTAsReq pGetAs
     pBuf += sizeof(tANI_U32);
     len  -= sizeof(tANI_U32);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_GET_ASSOC_STAS_REQ length consumed %d bytes \n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_GET_ASSOC_STAS_REQ length consumed %d bytes "), len);)
 
     if (len < 0)
     {
-        PELOGE(limLog(pMac, LOGE, FL("SME_GET_ASSOC_STAS_REQ invalid length\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("SME_GET_ASSOC_STAS_REQ invalid length"));)
         return eANI_BOOLEAN_FALSE;
     }
 
@@ -2336,7 +2335,7 @@ limTkipCntrMeasReqSerDes(tpAniSirGlobal pMac, tpSirSmeTkipCntrMeasReq  pTkipCntr
     len = pTkipCntrMeasReq->length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_TKIP_CNTR_MEAS_REQ length %d bytes is:\n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_TKIP_CNTR_MEAS_REQ length %d bytes is:"), len);)
     PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, len);)
 
     if (len < (tANI_S16) sizeof(tANI_U32))
@@ -2370,11 +2369,11 @@ limTkipCntrMeasReqSerDes(tpAniSirGlobal pMac, tpSirSmeTkipCntrMeasReq  pTkipCntr
     pTkipCntrMeasReq->bEnable = *pBuf++;
     len --;
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_TKIP_CNTR_MEAS_REQ length consumed %d bytes \n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_TKIP_CNTR_MEAS_REQ length consumed %d bytes "), len);)
     
     if (len)
     {
-        PELOGE(limLog(pMac, LOGE, FL("SME_TKIP_CNTR_MEAS_REQ invalid \n"));)
+        PELOGE(limLog(pMac, LOGE, FL("SME_TKIP_CNTR_MEAS_REQ invalid "));)
         return eSIR_FAILURE;
     }
     else
@@ -2445,11 +2444,11 @@ limIsSmeGetWPSPBCSessionsReqValid(tpAniSirGlobal pMac, tSirSmeGetWPSPBCSessionsR
     pBuf += sizeof(tSirMacAddr);
     len  -= sizeof(tSirMacAddr);
     
-    PELOG1(limLog(pMac, LOG1, FL("SME_GET_ASSOC_STAS_REQ length consumed %d bytes \n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_GET_ASSOC_STAS_REQ length consumed %d bytes "), len);)
 
     if (len < 0)
     {
-        PELOGE(limLog(pMac, LOGE, FL("SME_GET_WPSPBC_SESSION_REQ invalid length\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("SME_GET_WPSPBC_SESSION_REQ invalid length"));)
         return eSIR_FAILURE;
     }
 
@@ -2477,7 +2476,7 @@ limGetSessionInfo(tpAniSirGlobal pMac, tANI_U8 *pBuf, tANI_U8 *sessionId, tANI_U
 {
     if (!pBuf)
     {
-        limLog(pMac, LOGE, FL("NULL ptr received. \n"));
+        limLog(pMac, LOGE, FL("NULL ptr received. "));
         return;
     }
 
@@ -2565,11 +2564,11 @@ limUpdateAPWPSIEsReqSerDes(tpAniSirGlobal pMac, tpSirUpdateAPWPSIEsReq pUpdateAP
     pBuf += sizeof(tSirAPWPSIEs);
     len  -= sizeof(tSirAPWPSIEs);
 
-    PELOG1(limLog(pMac, LOG1, FL("SME_UPDATE_APWPSIE_REQ length consumed %d bytes \n"), len);)
+    PELOG1(limLog(pMac, LOG1, FL("SME_UPDATE_APWPSIE_REQ length consumed %d bytes "), len);)
 
     if (len < 0)
     {
-        PELOGE(limLog(pMac, LOGE, FL("SME_UPDATE_APWPSIE_REQ invalid length\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("SME_UPDATE_APWPSIE_REQ invalid length"));)
         return eSIR_FAILURE;
     }
 
@@ -2651,7 +2650,7 @@ limUpdateAPWPARSNIEsReqSerDes(tpAniSirGlobal pMac, tpSirUpdateAPWPARSNIEsReq pUp
 
     if (len < 0)
     {
-        PELOGE(limLog(pMac, LOGE, FL("SME_GET_WPSPBC_SESSION_REQ invalid length\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("SME_GET_WPSPBC_SESSION_REQ invalid length"));)
         return eSIR_FAILURE;
     }
 
