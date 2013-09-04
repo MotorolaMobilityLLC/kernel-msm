@@ -3808,6 +3808,7 @@ static void update_heartbeat(struct work_struct *work)
 
 #ifdef CONFIG_PM8921_FLOAT_CHARGE
 	int64_t float_enable = 1;
+	static int64_t temp_enable = 1;
 	struct timespec bootup_time;
 	unsigned long float_timestamp;
 	get_monotonic_boottime(&bootup_time);
@@ -3968,6 +3969,12 @@ static void update_heartbeat(struct work_struct *work)
 		retval = pdata->temp_range_cb(batt_temp, batt_mvolt,
 					      &data, &enable, &btm_state);
 		if (retval == 1) {
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+			if  (enable)
+				temp_enable = 1;
+			else
+				temp_enable = 0;
+#endif
 			pm_chg_vddmax_set(chip, data.max_voltage);
 #ifndef CONFIG_PM8921_FLOAT_CHARGE
 			pm_chg_auto_enable(chip, enable);
@@ -3980,10 +3987,7 @@ static void update_heartbeat(struct work_struct *work)
 	}
 
 #ifdef CONFIG_PM8921_FLOAT_CHARGE
-	if (retval == 1)
-		pm_chg_auto_enable(chip, (enable & float_enable));
-	else
-		pm_chg_auto_enable(chip, float_enable);
+	pm_chg_auto_enable(chip, (temp_enable & float_enable));
 #endif
 
 	if ((chip->step_charge_voltage < chip->max_voltage_mv) &&
