@@ -564,6 +564,8 @@ static int __devinit dwc3_probe(struct platform_device *pdev)
 
 	dwc->needs_fifo_resize = of_property_read_bool(node, "tx-fifo-resize");
 	host_only_mode = of_property_read_bool(node, "host-only-mode");
+	dwc->no_set_vbus_power = of_property_read_bool(node,
+						"no-set-vbus-power");
 
 	pm_runtime_no_callbacks(dev);
 	pm_runtime_set_active(dev);

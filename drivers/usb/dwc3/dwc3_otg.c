@@ -944,7 +944,8 @@ int dwc3_otg_init(struct dwc3 *dwc)
 	dotg->dwc = dwc;
 	dotg->otg.phy->otg = &dotg->otg;
 	dotg->otg.phy->dev = dwc->dev;
-	dotg->otg.phy->set_power = dwc3_otg_set_power;
+	if (!dwc->no_set_vbus_power)
+		dotg->otg.phy->set_power = dwc3_otg_set_power;
 	dotg->otg.phy->set_suspend = dwc3_otg_set_suspend;
 
 	ret = usb_set_transceiver(dotg->otg.phy);
