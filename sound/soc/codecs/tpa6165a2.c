@@ -643,6 +643,7 @@ static void tpa6165_delayed_mono_work(struct work_struct *work)
 static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 {
 	int acc_type;
+	u8 old_val;
 
 	switch (tpa6165->hs_acc_reg & (0x7f)) {
 	case TPA6165_STEREO_MIC_0N_SLEEVE:
@@ -681,12 +682,54 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 			acc_type = SND_JACK_HEADSET;
 
 		break;
+	case TPA6165_MONO_MIC_0N_RING2:
+		/* paypal card reader gets detected incorrectly need to
+		 * verify if its paypal card reader and force it to
+		 * correct type.
+		 */
+		pr_info("tpa6165: force correct type for paypal reader1");
+		tpa6165_reg_read(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
+						&old_val);
+		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
+						0x00, 0xff);
+		/* disable interrupts, clear interrupt mask regs */
+		tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
+			0, 0xff);
+		tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG2,
+			0, 0xff);
+		/* re-run detection */
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
+			0x0, 0x80);
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
+			0x80, 0x80);
+		msleep_interruptible(500);
+		tpa6165_update_device_status(tpa6165);
+		if ((tpa6165->hs_acc_reg & (0x7f)) ==
+						TPA6165_MONO_MIC_0N_RING3) {
+			/* force correct type for paypal reader */
+			pr_info("tpa6165: force correct type for paypal reader");
+			tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+				TPA6165_MONO_MIC_0N_SLEEVE1, 0xff);
+			tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+				TPA6165_FORCE_TYPE |
+				TPA6165_MONO_MIC_0N_SLEEVE1,
+				0xff);
+		}
+		tpa6165_reg_write(tpa6165, TPA6165_JACK_DETECT_TEST_HW1,
+						old_val, 0xff);
+		/* enable interrupts */
+		tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
+			0xc2, 0xff);
+		tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG2,
+			0x4, 0xff);
+		tpa6165->special_hs = 0;
+		acc_type = SND_JACK_HEADSET;
+		break;
 	case TPA6165_STEREO_MIC_0N_RING:
 	case TPA6165_MONO_MIC_0N_SLEEVE1:
 	case TPA6165_MONO_MIC_0N_SLEEVE2:
 	case TPA6165_MONO_MIC_0N_SLEEVE3:
 	case TPA6165_MONO_MIC_0N_RING1:
-	case TPA6165_MONO_MIC_0N_RING2:
 	case TPA6165_MONO_MIC_0N_RING3:
 		tpa6165->special_hs = 0;
 		acc_type = SND_JACK_HEADSET;
