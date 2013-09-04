@@ -391,6 +391,15 @@ typedef enum
    WLAN_HAL_TDLS_IND                        = 202,
    WLAN_HAL_IBSS_PEER_INACTIVITY_IND        = 203,
 
+   /* Scan Offload APIs */
+   WLAN_HAL_START_SCAN_OFFLOAD_REQ          = 204,
+   WLAN_HAL_START_SCAN_OFFLOAD_RSP          = 205,
+   WLAN_HAL_STOP_SCAN_OFFLOAD_REQ           = 206,
+   WLAN_HAL_STOP_SCAN_OFFLOAD_RSP           = 207,
+   WLAN_HAL_UPDATE_CHANNEL_LIST_REQ         = 208,
+   WLAN_HAL_UPDATE_CHANNEL_LIST_RSP         = 209,
+   WLAN_HAL_OFFLOAD_SCAN_EVENT_IND          = 210,
+
    /* APIs to offload TCP/UDP Heartbeat handshakes */
    WLAN_HAL_LPHB_CFG_REQ                    = 211,
    WLAN_HAL_LPHB_CFG_RSP                    = 212,
@@ -399,6 +408,15 @@ typedef enum
    WLAN_HAL_ADD_PERIODIC_TX_PTRN_IND        = 214,
    WLAN_HAL_DEL_PERIODIC_TX_PTRN_IND        = 215,
    WLAN_HAL_PERIODIC_TX_PTRN_FW_IND         = 216,
+
+   // Events to set Per-Band Tx Power Limit
+   WLAN_HAL_SET_MAX_TX_POWER_PER_BAND_REQ   = 217,
+   WLAN_HAL_SET_MAX_TX_POWER_PER_BAND_RSP   = 218,
+
+   /* Reliable Multicast using Leader Based Protocol */
+   WLAN_HAL_LBP_LEADER_REQ                  = 219,
+   WLAN_HAL_LBP_LEADER_RSP                  = 220,
+   WLAN_HAL_LBP_UPDATE_IND                  = 221,
 
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
@@ -6432,6 +6450,118 @@ typedef PACKED_PRE struct PACKED_POST
     tIbssPeerInactivityIndParams ibssPeerInactivityIndParams;
 }tIbssPeerInactivityIndMsg, *tpIbssPeerInactivityIndMsg;
 
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_LBP_LEADER_REQ
+ *-------------------------------------------------------------------------*/
+
+/* Maximum number of RMCAST sessions in each role (transmitter or  Leader) */
+#define HAL_MAX_RMCAST_SESSIONS 2
+
+/* Maximum number of leaders in blacklist or candidate leader list */
+#define HAL_NUM_MAX_LEADERS 8
+
+typedef enum
+{
+   WLAN_HAL_SUGGEST_LEADER,
+   WLAN_HAL_BECOME_LEADER,
+   WLAN_HAL_LEADER_CMD_MAX = WLAN_HAL_MAX_ENUM_SIZE
+}tLeaderReqCmdType, tLeaderRspCmdType;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tLeaderReqCmdType cmd;
+
+   /* MAC address of MCAST Transmitter (source) */
+   tSirMacAddr mcastTransmitter;
+
+   /* MAC Address of Multicast Group (01-00-5E-xx-xx-xx) */
+   tSirMacAddr mcastGroup;
+
+   /* Optional black list for cmd = WLAN_HAL_SUGGEST_LEADER */
+   tSirMacAddr blacklist[HAL_NUM_MAX_LEADERS];
+}  tHalLbpLeaderReqParams, *tpHalLbpLeaderReqParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalLbpLeaderReqParams leaderReqParams;
+}  tHalLbpLeaderReqMsg, *tpHalLbpLeaderReqMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_LBP_LEADER_RSP
+ *-------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+   /* success or failure */
+   tANI_U32 status;
+
+   /*  Command Type */
+   tLeaderRspCmdType cmd;
+
+   /* MAC address of MCAST Transmitter (source) */
+   tSirMacAddr mcastTransmitter;
+
+   /* MAC Address of Multicast Group (01-00-5E-xx-xx-xx) */
+   tSirMacAddr mcastGroup;
+
+   /* List of candidates for cmd = WLAN_HAL_SUGGEST_LEADER*/
+   tSirMacAddr leader[HAL_NUM_MAX_LEADERS];
+
+}  tHalLbpLeaderRspParams, *tpHalLbpLeaderRspParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalLbpLeaderRspParams leaderRspParams;
+}  tHalLbpLeaderRspMsg, *tpHalLbpLeaderRspMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_LBP_UPDATE_IND
+ *-------------------------------------------------------------------------*/
+typedef enum
+{
+   WLAN_HAL_LEADER_ACCEPTED,    //Host-->FW
+   WLAN_HAL_LEADER_CANCELED,    //Host-->FW
+   WLAN_HAL_LEADER_PICK_NEW,    //FW-->Host
+   WLAN_HAL_LEADER_IND_MAX = WLAN_HAL_MAX_ENUM_SIZE
+}tLbpUpdateIndType;
+
+typedef enum
+{
+   WLAN_HAL_LBP_LEADER_ROLE,
+   WLAN_HAL_LBP_TRANSMITTER_ROLE,
+   WLAN_HAL_LBP_ROLE_MAX = WLAN_HAL_MAX_ENUM_SIZE
+}tLbpRoleType;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tLbpUpdateIndType indication;
+
+   /* Role of the entity generating this indication */
+   tLbpRoleType role;
+
+   /* MAC address of MCAST Transmitter (source) */
+   tSirMacAddr mcastTransmitter;
+
+   /* MAC Address of Multicast Group (01-00-5E-xx-xx-xx) */
+   tSirMacAddr mcastGroup;
+
+   /* MAC address of MCAST Receiver Leader */
+   tSirMacAddr mcastLeader;
+
+   /* Candidate list for indication = WLAN_HAL_LEADER_PICK_NEW */
+   tSirMacAddr leader[HAL_NUM_MAX_LEADERS];
+}  tHalLbpUpdateIndParams, *tpHalLbpUpdateIndParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalLbpUpdateIndParams leaderIndParams;
+}  tHalLbpUpdateInd, *tpHalLbpUpdateInd;
+
+/*---------------------------------------------------------------------------
+ *-------------------------------------------------------------------------*/
 
 #if defined(__ANI_COMPILER_PRAGMA_PACK_STACK)
 #pragma pack(pop)
