@@ -177,10 +177,6 @@ void limFillRxHighestSupportedRate(tpAniSirGlobal pMac, tANI_U16 *rxHighestRate,
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 void limSendRetryReassocReqFrame(tpAniSirGlobal pMac, tLimMlmReassocReq *pMlmReassocReq, tpPESession psessionEntry);
 #endif
-#ifdef WLAN_FEATURE_11W
-void limSendSmeUnprotectedMgmtFrameInd(tpAniSirGlobal pMac, tANI_U8 frameType,
-                                       tANI_U8  *frame, tANI_U32 frameLen, tANI_U16 sessionId, tpPESession psessionEntry);
-#endif
 
 
 #endif /* __LIM_ASSOC_UTILS_H */

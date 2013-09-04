@@ -11,6 +11,8 @@ ifeq ($(KERNEL_BUILD),1)
 	# Need to explicitly define for Kernel-based builds
 	MODNAME := wlan
 	WLAN_ROOT := drivers/staging/prima
+	#Flag to enable TDLS feature
+	CONFIG_QCOM_TDLS := y
 endif
 
 ifeq ($(KERNEL_BUILD),0)
@@ -33,7 +35,7 @@ ifeq ($(KERNEL_BUILD),0)
 	CONFIG_QCOM_TDLS := y
 
 	#Flag to enable Fast Transition (11r) feature
-	CONFIG_QCOM_VOWIFI_11R := n
+	CONFIG_QCOM_VOWIFI_11R := y
 
 endif
 
@@ -46,7 +48,7 @@ BUILD_DEBUG_VERSION := 1
 BUILD_DIAG_VERSION := 0
 
 #Do we panic on bug?  default is to warn
-PANIC_ON_BUG := 0
+PANIC_ON_BUG := 1
 
 #Re-enable wifi on WDI timeout
 RE_ENABLE_WIFI_ON_WDI_TIMEOUT := 0
@@ -514,7 +516,8 @@ CDEFINES :=	-DANI_BUS_TYPE_PLATFORM=1 \
 		-DWLANTL_DEBUG\
 		-DWLAN_ACTIVEMODE_OFFLOAD_FEATURE \
         	-DWLAN_FEATURE_HOLD_RX_WAKELOCK \
-		-DWLAN_SOFTAP_VSTA_FEATURE
+		-DWLAN_SOFTAP_VSTA_FEATURE \
+                -DWLAN_FEATURE_ROAM_SCAN_OFFLOAD
 
 ifneq ($(CONFIG_PRONTO_WLAN),)
 CDEFINES += -DWCN_PRONTO
@@ -538,6 +541,10 @@ endif
 ifeq ($(HAVE_CFG80211),1)
 CDEFINES += -DWLAN_FEATURE_P2P
 CDEFINES += -DWLAN_FEATURE_WFD
+ifeq ($(CONFIG_QCOM_VOWIFI_11R),y)
+CDEFINES += -DKERNEL_SUPPORT_11R_CFG80211
+CDEFINES += -DUSE_80211_WMMTSPEC_FOR_RIC
+endif
 endif
 
 ifeq ($(CONFIG_QCOM_CCX),y)
@@ -547,7 +554,9 @@ endif
 #normally, TDLS negative behavior is not needed
 ifeq ($(CONFIG_QCOM_TDLS),y)
 CDEFINES += -DFEATURE_WLAN_TDLS
+ifeq ($(BUILD_DEBUG_VERSION),1)
 CDEFINES += -DWLAN_FEATURE_TDLS_DEBUG
+endif
 CDEFINES += -DCONFIG_TDLS_IMPLICIT
 #CDEFINES += -DFEATURE_WLAN_TDLS_NEGATIVE
 #Code under FEATURE_WLAN_TDLS_INTERNAL is ported from volans, This code

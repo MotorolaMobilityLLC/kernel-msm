@@ -809,7 +809,7 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     tANI_U8             txFlag = 0;
     tpSirMacFrameCtl    pFc = (tpSirMacFrameCtl ) pMbMsg->data;
     tANI_U8             noaLen = 0;
-    tANI_U8             noaStream[SIR_MAX_NOA_ATTR_LEN + SIR_P2P_IE_HEADER_LEN];
+    tANI_U8             noaStream[SIR_MAX_NOA_ATTR_LEN + (2*SIR_P2P_IE_HEADER_LEN)];
     tANI_U8             origLen = 0;
     tANI_U8             sessionId = 0;
     v_U8_t              *pP2PIe = NULL;

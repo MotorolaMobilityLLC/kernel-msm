@@ -1085,26 +1085,25 @@ limIbssStaAdd(
     limPrintMacAddr(pMac, *pPeerAddr, LOGE);
 
     pPeerNode = ibss_peer_find(pMac, *pPeerAddr);
-    if(NULL != pPeerNode)
+    if (NULL != pPeerNode)
     {
-        retCode = ibss_dph_entry_add(pMac, *pPeerAddr, &pStaDs,psessionEntry);
+        retCode = ibss_dph_entry_add(pMac, *pPeerAddr, &pStaDs, psessionEntry);
         if (eSIR_SUCCESS == retCode)
         {
             prevState = pStaDs->mlmStaContext.mlmState;
             pStaDs->erpEnabled = pPeerNode->erpIePresent;
 
-            ibss_sta_info_update(pMac, pStaDs, pPeerNode,psessionEntry);
+            ibss_sta_info_update(pMac, pStaDs, pPeerNode, psessionEntry);
             PELOGW(limLog(pMac, LOGW, FL("initiating ADD STA for the IBSS peer."));)
             retCode = limAddSta(pMac, pStaDs, false, psessionEntry);
-            if(retCode != eSIR_SUCCESS)
+            if (retCode != eSIR_SUCCESS)
             {
-                PELOGE(limLog(pMac, LOGE, FL("ibss-sta-add failed (reason %x)"), retCode);)
+                PELOGE(limLog(pMac, LOGE, FL("ibss-sta-add failed (reason %x)"),
+                              retCode);)
                 limPrintMacAddr(pMac, *pPeerAddr, LOGE);
-                if(NULL != pStaDs)
-                {
-                    pStaDs->mlmStaContext.mlmState = prevState;
-                    dphDeleteHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId, &psessionEntry->dph.dphHashTable);
-                }
+                pStaDs->mlmStaContext.mlmState = prevState;
+                dphDeleteHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId,
+                                   &psessionEntry->dph.dphHashTable);
             }
             else
             {
@@ -1114,7 +1113,8 @@ limIbssStaAdd(
                 if(beaconParams.paramChangeBitmap)
                 {
                     PELOGE(limLog(pMac, LOGE, FL("---> Update Beacon Params "));)
-                    schSetFixedBeaconFields(pMac, psessionEntry);    
+                    schSetFixedBeaconFields(pMac, psessionEntry);
+                    beaconParams.bssIdx = psessionEntry->bssIdx;
                     limSendBeaconParams(pMac, &beaconParams, psessionEntry );
                 }
             }
@@ -1466,7 +1466,8 @@ limIbssCoalesce(
         if(beaconParams.paramChangeBitmap)
         {
             PELOGE(limLog(pMac, LOGE, FL("beaconParams.paramChangeBitmap=1 ---> Update Beacon Params "));)
-            schSetFixedBeaconFields(pMac, psessionEntry);    
+            schSetFixedBeaconFields(pMac, psessionEntry);
+            beaconParams.bssIdx = psessionEntry->bssIdx;
             limSendBeaconParams(pMac, &beaconParams, psessionEntry );
         }
     }

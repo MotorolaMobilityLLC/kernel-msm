@@ -466,7 +466,7 @@ WLANSAP_CleanCB
 
     pSapCtx->sapsMachine= eSAP_DISCONNECTED;
 
-    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: Initializing State: %d, sapContext value = %x",
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: Initializing State: %d, sapContext value = %p",
             __func__, pSapCtx->sapsMachine, pSapCtx);
     pSapCtx->sessionId = 0;
     pSapCtx->channel = 0;
@@ -673,6 +673,82 @@ WLANSAP_StartBss
 
     return vosStatus;
 }// WLANSAP_StartBss
+
+/*==========================================================================
+  FUNCTION    WLANSAP_SetMacACL
+
+  DESCRIPTION
+    This api function provides SAP to set mac list entry in accept list as well
+    as deny list
+
+  DEPENDENCIES
+
+  PARAMETERS
+
+    IN
+    pContext            : Pointer to Sap Context structure
+    pQctCommitConfig    : Pointer to configuration structure passed down from
+                          HDD(HostApd for Android)
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_FAULT: Pointer to SAP cb is NULL ; access would cause a page
+                         fault
+    VOS_STATUS_SUCCESS: Success
+
+  SIDE EFFECTS
+============================================================================*/
+VOS_STATUS
+WLANSAP_SetMacACL
+(
+    v_PVOID_t  pvosGCtx,   //pwextCtx
+    tsap_Config_t *pConfig
+)
+{
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+    ptSapContext  pSapCtx = NULL;
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                 "WLANSAP_SetMacACL");
+
+    if (VOS_STA_SAP_MODE == vos_get_conparam ())
+    {
+        pSapCtx = VOS_GET_SAP_CB(pvosGCtx);
+        if ( NULL == pSapCtx )
+        {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
+            return VOS_STATUS_E_FAULT;
+        }
+
+        // Copy MAC filtering settings to sap context
+        pSapCtx->eSapMacAddrAclMode = pConfig->SapMacaddr_acl;
+
+        if (eSAP_DENY_UNLESS_ACCEPTED == pSapCtx->eSapMacAddrAclMode)
+        {
+            vos_mem_copy(pSapCtx->acceptMacList, pConfig->accept_mac,
+                                                 sizeof(pConfig->accept_mac));
+            pSapCtx->nAcceptMac = pConfig->num_accept_mac;
+            sapSortMacList(pSapCtx->acceptMacList, pSapCtx->nAcceptMac);
+        }
+        else if (eSAP_ACCEPT_UNLESS_DENIED == pSapCtx->eSapMacAddrAclMode)
+        {
+            vos_mem_copy(pSapCtx->denyMacList, pConfig->deny_mac,
+                                               sizeof(pConfig->deny_mac));
+            pSapCtx->nDenyMac = pConfig->num_deny_mac;
+            sapSortMacList(pSapCtx->denyMacList, pSapCtx->nDenyMac);
+        }
+    }
+    else
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                       "%s : SoftAp role has not been enabled", __func__);
+        return VOS_STATUS_E_FAULT;
+    }
+
+    return vosStatus;
+}//WLANSAP_SetMacACL
 
 /*==========================================================================
   FUNCTION    WLANSAP_StopBss
@@ -1011,7 +1087,7 @@ WLANSAP_ModifyACL
             {
                 //error check
                 // if list is already at max, return failure
-                if (pSapCtx->nAcceptMac == MAX_MAC_ADDRESS_ACCEPTED)
+                if (pSapCtx->nAcceptMac == MAX_ACL_MAC_ADDRESS)
                 {
                     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                             "White list is already maxed out. Cannot accept %02x:%02x:%02x:%02x:%02x:%02x",
@@ -1074,7 +1150,7 @@ WLANSAP_ModifyACL
             {
                 //error check
                 // if list is already at max, return failure
-                if (pSapCtx->nDenyMac == MAX_MAC_ADDRESS_ACCEPTED)
+                if (pSapCtx->nDenyMac == MAX_ACL_MAC_ADDRESS)
                 {
                     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                             "Black list is already maxed out. Cannot accept %02x:%02x:%02x:%02x:%02x:%02x",

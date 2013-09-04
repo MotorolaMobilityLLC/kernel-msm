@@ -102,7 +102,7 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
                                                 (void **)&pBeaconStruct, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limExtractApCapability\n") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limExtractApCapability") );
         return;
     }
 
@@ -111,7 +111,7 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
     *propCap = 0;
     *uapsd = 0;
     PELOG3(limLog( pMac, LOG3,
-        FL("In limExtractApCapability: The IE's being received are:\n"));
+        FL("In limExtractApCapability: The IE's being received are:"));
     sirDumpBuf( pMac, SIR_LIM_MODULE_ID, LOG3, pIE, ieLen );)
     if (sirParseBeaconIE(pMac, pBeaconStruct, pIE, (tANI_U32)ieLen) == eSIR_SUCCESS)
     {
@@ -129,9 +129,9 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
 
 #ifdef WLAN_FEATURE_11AC
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
-            "***beacon.VHTCaps.present*****=%d\n",pBeaconStruct->VHTCaps.present);
+            "***beacon.VHTCaps.present*****=%d",pBeaconStruct->VHTCaps.present);
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
-           "***beacon.SU Beamformer Capable*****=%d\n",pBeaconStruct->VHTCaps.suBeamFormerCap);
+           "***beacon.SU Beamformer Capable*****=%d",pBeaconStruct->VHTCaps.suBeamFormerCap);
 
         if ( pBeaconStruct->VHTCaps.present && pBeaconStruct->VHTOperation.present)
         {
@@ -176,7 +176,7 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
 #if !defined WLAN_FEATURE_VOWIFI
         if (cfgSetInt(pMac, WNI_CFG_LOCAL_POWER_CONSTRAINT, localPowerConstraints) != eSIR_SUCCESS)
         {
-            limLog(pMac, LOGP, FL("Could not update local power constraint to cfg.\n"));
+            limLog(pMac, LOGP, FL("Could not update local power constraint to cfg."));
         }
 #endif
     }

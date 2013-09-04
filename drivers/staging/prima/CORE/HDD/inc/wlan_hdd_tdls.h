@@ -51,6 +51,7 @@ should not be more than 2000 */
 #define TDLS_CTX_MAGIC 0x54444c53    // "TDLS"
 
 #define TDLS_MAX_SCAN_SCHEDULE          10
+#define TDLS_MAX_SCAN_REJECT            5
 #define TDLS_DELAY_SCAN_PER_CONNECTION 100
 
 #define TDLS_IS_CONNECTED(peer)  \
@@ -79,6 +80,7 @@ typedef struct
     struct cfg80211_scan_request *scan_request;
     int magic;
     int attempt;
+    int reject;
     struct delayed_work tdls_scan_work;
 } tdls_scan_context_t;
 
@@ -122,19 +124,25 @@ typedef struct {
     tANI_U16    rssi_thres;
 } tdls_rssi_config_t;
 
+struct _hddTdlsPeer_t;
 typedef struct {
     struct list_head peer_list[256];
     hdd_adapter_t   *pAdapter;
+#ifdef TDLS_USE_SEPARATE_DISCOVERY_TIMER
     vos_timer_t     peerDiscoverTimer;
+#endif
     vos_timer_t     peerUpdateTimer;
     vos_timer_t     peerDiscoveryTimeoutTimer;
     tdls_config_params_t threshold_config;
     tANI_S32        discovery_peer_cnt;
     tANI_U32        discovery_sent_cnt;
     tANI_S8         ap_rssi;
+    struct _hddTdlsPeer_t  *curr_candidate;
+    struct work_struct implicit_setup;
+    v_U32_t            magic;
 } tdlsCtx_t;
 
-typedef struct {
+typedef struct _hddTdlsPeer_t {
     struct list_head node;
     tdlsCtx_t   *pHddTdlsCtx;
     tSirMacAddr peerMac;
@@ -149,6 +157,7 @@ typedef struct {
     tANI_U16    tx_pkt;
     tANI_U16    rx_pkt;
     vos_timer_t     peerIdleTimer;
+    vos_timer_t     initiatorWaitTimeoutTimer;
 } hddTdlsPeer_t;
 
 typedef struct {
@@ -173,6 +182,8 @@ int wlan_hdd_tdls_increment_pkt_count(hdd_adapter_t *pAdapter, u8 *mac, u8 tx);
 int wlan_hdd_tdls_set_sta_id(hdd_adapter_t *pAdapter, u8 *mac, u8 staId);
 
 hddTdlsPeer_t *wlan_hdd_tdls_find_peer(hdd_adapter_t *pAdapter, u8 *mac);
+
+hddTdlsPeer_t *wlan_hdd_tdls_find_all_peer(hdd_context_t *pHddCtx, u8 *mac);
 
 hddTdlsPeer_t *wlan_hdd_tdls_get_peer(hdd_adapter_t *pAdapter, u8 *mac);
 
@@ -214,13 +225,11 @@ void wlan_hdd_tdls_check_bmps(hdd_adapter_t *pAdapter);
 
 u8 wlan_hdd_tdls_is_peer_progress(hdd_adapter_t *pAdapter, u8 *mac);
 
-u8 wlan_hdd_tdls_is_progress(hdd_adapter_t *pAdapter, u8* mac, u8 skip_self);
+hddTdlsPeer_t *wlan_hdd_tdls_is_progress(hdd_context_t *pHddCtx, u8* mac, u8 skip_self, tANI_BOOLEAN mutexLock);
 
 void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx,
                             eTDLSSupportMode tdls_mode,
                             v_BOOL_t bUpdateLast);
-
-void wlan_hdd_tdls_pre_setup(tdlsCtx_t *pHddTdlsCtx, hddTdlsPeer_t *curr_peer);
 
 tANI_U32 wlan_hdd_tdls_discovery_sent_cnt(hdd_context_t *pHddCtx);
 

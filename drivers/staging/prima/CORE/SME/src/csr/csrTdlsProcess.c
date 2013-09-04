@@ -47,8 +47,12 @@
   
     Implementation for the TDLS interface to PE.
   
-    Copyright (C) 2010 Qualcomm, Incorporated
-  
+   Copyright (c) 2013 Qualcomm Atheros, Inc.All Rights Reserved.
+   Qualcomm Atheros Confidential and Proprietary.
+    
+   Copyright (c) 2010 Qualcomm Technologies, Inc.All Rights Reserved.
+   Qualcomm Technologies Confidential and Proprietary
+
  
    ========================================================================== */
 
@@ -207,11 +211,19 @@ eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr 
                           pstaParams->extn_capability,
                           sizeof(pstaParams->extn_capability));
 
-            palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->HTCap,
-                          &pstaParams->HTCap, sizeof(pstaParams->HTCap));
+            tdlsAddStaCmdInfo->htcap_present = pstaParams->htcap_present;
+            if(pstaParams->htcap_present)
+                palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->HTCap,
+                              &pstaParams->HTCap, sizeof(pstaParams->HTCap));
+            else
+                palZeroMemory(pMac->hHdd, &tdlsAddStaCmdInfo->HTCap, sizeof(pstaParams->HTCap));
 
-            palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->VHTCap,
-                          &pstaParams->VHTCap, sizeof(pstaParams->VHTCap));
+            tdlsAddStaCmdInfo->vhtcap_present = pstaParams->vhtcap_present;
+            if(pstaParams->vhtcap_present)
+                palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->VHTCap,
+                              &pstaParams->VHTCap, sizeof(pstaParams->VHTCap));
+            else
+                palZeroMemory(pMac->hHdd, &tdlsAddStaCmdInfo->VHTCap, sizeof(pstaParams->VHTCap));
 
 			tdlsAddStaCmdInfo->supportedRatesLen = pstaParams->supported_rates_len;
 
@@ -436,12 +448,23 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, cmd->sessionId );
     eHalStatus status = eHAL_STATUS_FAILURE;
 
+    if (NULL == pSession)
+    {
+        return eHAL_STATUS_FAILURE;
+    }
+
+    if (NULL == pSession->pConnectBssDesc)
+    {
+        smsLog( pMac, LOGE, FL("BSS Description is not present") );
+        return eHAL_STATUS_FAILURE;
+    }
+
     status = palAllocateMemory( pMac->hHdd, (void **)&tdlsSendMgmtReq, 
             (sizeof(tSirTdlsSendMgmtReq) + tdlsSendMgmtCmdInfo->len ) );
 
-    if(!HAL_STATUS_SUCCESS( status ) )
+    if (!HAL_STATUS_SUCCESS( status ) )
     {
-        smsLog( pMac, LOGE, FL("alloc failed ") );
+        smsLog( pMac, LOGE, FL("alloc failed") );
         VOS_ASSERT(0) ;
         return status ;
     }
@@ -452,16 +475,10 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tdlsSendMgmtReq->dialog =  tdlsSendMgmtCmdInfo->dialog ;
     tdlsSendMgmtReq->statusCode =  tdlsSendMgmtCmdInfo->statusCode ;
     tdlsSendMgmtReq->responder =  tdlsSendMgmtCmdInfo->responder;
-    if (pSession->pConnectBssDesc)
-    {
-        palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->bssid, pSession->pConnectBssDesc->bssId,
-                sizeof (tSirMacAddr));
-    }
-    else
-    {
-        smsLog( pMac, LOGE, FL("%s: BSS Description is not present\n"), __func__);
-        return eHAL_STATUS_FAILURE;
-    }
+
+    palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->bssid,
+                  pSession->pConnectBssDesc->bssId, sizeof (tSirMacAddr));
+
     palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->peerMac, 
             tdlsSendMgmtCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
 
@@ -496,12 +513,23 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, cmd->sessionId );
     eHalStatus status = eHAL_STATUS_FAILURE;
 
+    if (NULL == pSession)
+    {
+        return eHAL_STATUS_FAILURE;
+    }
+
+    if (NULL == pSession->pConnectBssDesc)
+    {
+        smsLog( pMac, LOGE, FL("BSS description is not present") );
+        return eHAL_STATUS_FAILURE;
+    }
+
     status = palAllocateMemory( pMac->hHdd, (void **)&tdlsAddStaReq, 
             (sizeof(tSirTdlsAddStaReq) ) );
 
-    if(!HAL_STATUS_SUCCESS( status ) )
+    if (!HAL_STATUS_SUCCESS( status ) )
     {
-        smsLog( pMac, LOGE, FL("alloc failed ") );
+        smsLog( pMac, LOGE, FL("alloc failed") );
         VOS_ASSERT(0) ;
         return status ;
     }
@@ -510,16 +538,8 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
     //Using dialog as transactionId. This can be used to match response with request
     tdlsAddStaReq->transactionId = 0;
 
-    if (pSession->pConnectBssDesc)
-    {
-        palCopyMemory(pMac->hHdd, tdlsAddStaReq->bssid, pSession->pConnectBssDesc->bssId,
-                sizeof (tSirMacAddr));
-    }
-    else
-    {
-        smsLog( pMac, LOGE, FL("%s: BSS description is not present\n"), __func__);
-        return eHAL_STATUS_FAILURE;
-    }
+    palCopyMemory(pMac->hHdd, tdlsAddStaReq->bssid,
+                  pSession->pConnectBssDesc->bssId, sizeof (tSirMacAddr));
 
     palCopyMemory(pMac->hHdd, tdlsAddStaReq->peerMac, 
             tdlsAddStaCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
@@ -531,8 +551,10 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
     palCopyMemory(pMac->hHdd, tdlsAddStaReq->extn_capability,
                               tdlsAddStaCmdInfo->extnCapability,
                               SIR_MAC_MAX_EXTN_CAP);
+    tdlsAddStaReq->htcap_present = tdlsAddStaCmdInfo->htcap_present;
     palCopyMemory(pMac->hHdd, &tdlsAddStaReq->htCap,
                   &tdlsAddStaCmdInfo->HTCap, sizeof(tdlsAddStaCmdInfo->HTCap));
+    tdlsAddStaReq->vhtcap_present = tdlsAddStaCmdInfo->vhtcap_present;
     palCopyMemory(pMac->hHdd, &tdlsAddStaReq->vhtCap,
                   &tdlsAddStaCmdInfo->VHTCap, sizeof(tdlsAddStaCmdInfo->VHTCap));
     tdlsAddStaReq->supported_rates_length = tdlsAddStaCmdInfo->supportedRatesLen;
@@ -557,28 +579,33 @@ eHalStatus csrTdlsProcessDelSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, cmd->sessionId );
     eHalStatus status = eHAL_STATUS_FAILURE;
 
+    if (NULL == pSession)
+    {
+        return eHAL_STATUS_FAILURE;
+    }
+
+    if (NULL == pSession->pConnectBssDesc)
+    {
+        smsLog( pMac, LOGE, FL("BSS description is not present") );
+        return eHAL_STATUS_FAILURE;
+    }
+
     status = palAllocateMemory( pMac->hHdd, (void **)&tdlsDelStaReq, 
             (sizeof(tSirTdlsDelStaReq) ) );
 
-    if(!HAL_STATUS_SUCCESS( status ) )
+    if (!HAL_STATUS_SUCCESS( status ) )
     {
-        smsLog( pMac, LOGE, FL("alloc failed ") );
+        smsLog( pMac, LOGE, FL("alloc failed") );
         VOS_ASSERT(0) ;
         return status ;
     }
     tdlsDelStaReq->sessionId = cmd->sessionId;
     //Using dialog as transactionId. This can be used to match response with request
     tdlsDelStaReq->transactionId = 0;
-    if (pSession->pConnectBssDesc)
-    {
-        palCopyMemory(pMac->hHdd, tdlsDelStaReq->bssid, pSession->pConnectBssDesc->bssId,
-                sizeof (tSirMacAddr));
-    }
-    else
-    {
-        smsLog( pMac, LOGE, FL("%s: BSS description is not present\n"), __func__);
-        return eHAL_STATUS_FAILURE;
-    }
+
+    palCopyMemory(pMac->hHdd, tdlsDelStaReq->bssid,
+                  pSession->pConnectBssDesc->bssId, sizeof (tSirMacAddr));
+
     palCopyMemory(pMac->hHdd, tdlsDelStaReq->peerMac, 
             tdlsDelStaCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
 
@@ -912,12 +939,12 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
              */
             if (addStaRsp->tdlsAddOper == TDLS_OPER_ADD)
                 roamResult = eCSR_ROAM_RESULT_ADD_TDLS_PEER;
-            else if (addStaRsp->tdlsAddOper == TDLS_OPER_UPDATE)
+            else /* addStaRsp->tdlsAddOper must be TDLS_OPER_UPDATE */
                 roamResult = eCSR_ROAM_RESULT_UPDATE_TDLS_PEER;
             csrRoamCallCallback(pMac, addStaRsp->sessionId, &roamInfo, 0, 
-                         eCSR_ROAM_TDLS_STATUS_UPDATE, 
-                               roamResult);
- 
+                                eCSR_ROAM_TDLS_STATUS_UPDATE,
+                                roamResult);
+
             /* remove pending eSmeCommandTdlsDiscovery command */
             csrTdlsRemoveSmeCmd(pMac, eSmeCommandTdlsAddPeer) ;
         }

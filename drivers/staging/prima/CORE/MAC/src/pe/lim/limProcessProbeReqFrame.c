@@ -135,7 +135,7 @@ void limGetWPSPBCSessions(tpAniSirGlobal pMac, tANI_U8 *addr,
          *overlap = eSAP_WPSPBC_ONE_WPSPBC_PROBE_REQ_IN120S;   // One WPS probe request in 120 second
     }
 
-    PELOGE(limLog(pMac, LOGE, FL("overlap = %d\n"), *overlap);)
+    PELOGE(limLog(pMac, LOGE, FL("overlap = %d"), *overlap);)
     PELOGE(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOGE, addr, sizeof(tSirMacAddr));)
     PELOGE(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOGE, uuid_e, SIR_WPS_UUID_LEN);)
 
@@ -169,7 +169,7 @@ static void limRemoveTimeoutPBCsessions(tpAniSirGlobal pMac, tSirWPSPBCSession *
                 prev = pbc;
                 pbc = pbc->next;
 
-        PELOG4(limLog(pMac, LOG4, FL("WPS PBC sessions remove\n"));)
+        PELOG4(limLog(pMac, LOG4, FL("WPS PBC sessions remove"));)
         PELOG4(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG4, prev->addr, sizeof(tSirMacAddr));)
         PELOG4(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG4, prev->uuid_e, SIR_WPS_UUID_LEN);)
         
@@ -231,7 +231,7 @@ static void limUpdatePBCSessionEntry(tpAniSirGlobal pMac,
 
     curTime = (tANI_TIMESTAMP)(palGetTickCount(pMac->hHdd) / PAL_TICKS_PER_SECOND);
             
-    PELOG4(limLog(pMac, LOG4, FL("Receive WPS probe reques curTime=%d\n"), curTime);)
+    PELOG4(limLog(pMac, LOG4, FL("Receive WPS probe reques curTime=%d"), curTime);)
     PELOG4(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG4, addr, sizeof(tSirMacAddr));)
     PELOG4(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG4, uuid_e, SIR_WPS_UUID_LEN);)
 
@@ -254,7 +254,7 @@ static void limUpdatePBCSessionEntry(tpAniSirGlobal pMac,
         if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
             (void **) &pbc, sizeof(tSirWPSPBCSession)))
         {
-            PELOGE(limLog(pMac, LOGE, FL("memory allocate failed!\n"));)
+            PELOGE(limLog(pMac, LOGE, FL("memory allocate failed!"));)
             return;
         }
         palCopyMemory(pMac->hHdd, (tANI_U8 *)pbc->addr, (tANI_U8 *)addr, sizeof(tSirMacAddr));
@@ -309,7 +309,7 @@ void limWPSPBCTimeout(tpAniSirGlobal pMac, tpPESession psessionEntry)
 
     curTime = (tANI_TIMESTAMP)(palGetTickCount(pMac->hHdd) / PAL_TICKS_PER_SECOND);
     
-    PELOG3(limLog(pMac, LOG3, FL("WPS PBC cleanup timeout curTime=%d\n"), curTime);)
+    PELOG3(limLog(pMac, LOG3, FL("WPS PBC cleanup timeout curTime=%d"), curTime);)
 
     prev = psessionEntry->pAPWPSPBCSession; 
     if(prev)
@@ -443,7 +443,7 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                                   || (pMac->lim.gLimHalScanState != eLIM_HAL_IDLE_SCAN_STATE)))
         {
            limLog(pMac, LOG3,
-              FL("While GO is scanning, don't send probe response on diff channel\n"));
+              FL("While GO is scanning, don't send probe response on diff channel"));
            break;
         }
 
@@ -538,7 +538,7 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                 else
                 {
                     if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
-                        limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
+                        limLog(pMac, LOGP,"Failed to cfg get id %d", WNI_CFG_WPS_ENABLE );
 
                     wpsApEnable = tmp & WNI_CFG_WPS_ENABLE_AP;
                     if ((wpsApEnable) &&
@@ -551,7 +551,7 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                         {
                             // Log error
                             limLog(pMac, LOGP,
-                               FL("call to palAllocateMemory failed for eWNI_SME_PROBE_REQ\n"));
+                               FL("call to palAllocateMemory failed for eWNI_SME_PROBE_REQ"));
                             return;
                         }
                         msgQ.type = eWNI_SME_PROBE_REQ;
@@ -796,7 +796,7 @@ limSendSmeProbeReqInd(tpAniSirGlobal pMac,
     {
         // Log error
         limLog(pMac, LOGP,
-            FL("call to palAllocateMemory failed for eWNI_SME_PROBE_REQ\n"));
+            FL("call to palAllocateMemory failed for eWNI_SME_PROBE_REQ"));
             return;
     }
     

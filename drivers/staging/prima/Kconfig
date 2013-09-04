@@ -27,4 +27,8 @@ config PRIMA_WLAN_11AC_HIGH_TP
 	bool "Enable the Prima WLAN 802.11ac High Throughput option (depends upon kernel support)"
 	default n
 
+config QCOM_VOWIFI_11R
+	bool "Enable Fast Transition (11r) feature"
+	default n
+
 endif # PRIMA_WLAN

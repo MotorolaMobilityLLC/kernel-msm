@@ -119,6 +119,14 @@ static void __limInitScanVars(tpAniSirGlobal pMac)
     palZeroMemory(pMac->hHdd, pMac->lim.gLimCachedScanHashTable,
                     sizeof(pMac->lim.gLimCachedScanHashTable));
 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+
+    pMac->lim.gLimMlmLfrScanResultLength = 0;
+    pMac->lim.gLimSmeLfrScanResultLength = 0;
+
+    palZeroMemory(pMac->hHdd, pMac->lim.gLimCachedLfrScanHashTable,
+                    sizeof(pMac->lim.gLimCachedLfrScanHashTable));
+#endif
     pMac->lim.gLimBackgroundScanChannelId = 0;
     pMac->lim.gLimBackgroundScanStarted = 0;
     pMac->lim.gLimRestoreCBNumScanInterval = LIM_RESTORE_CB_NUM_SCAN_INTERVAL_DEFAULT;
@@ -643,6 +651,9 @@ tSirRetStatus limStart(tpAniSirGlobal pMac)
       // By default return unique scan results
       pMac->lim.gLimReturnUniqueResults = true;
       pMac->lim.gLimSmeScanResultLength = 0;
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+      pMac->lim.gLimSmeLfrScanResultLength = 0;
+#endif
    }
    else
    {
@@ -2155,6 +2166,12 @@ tMgmtFrmDropReason limIsPktCandidateForDrop(tpAniSirGlobal pMac, tANI_U8 *pRxPac
         {
             return eMGMT_DROP_NO_DROP;
         }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        else if (WDA_GET_OFFLOADSCANLEARN(pRxPacketInfo) || WDA_GET_ROAMCANDIDATEIND(pRxPacketInfo))
+        {
+            return eMGMT_DROP_NO_DROP;
+        }
+#endif
         else if (WDA_IS_RX_IN_SCAN(pRxPacketInfo))
         {
             return eMGMT_DROP_SCAN_MODE_FRAME;

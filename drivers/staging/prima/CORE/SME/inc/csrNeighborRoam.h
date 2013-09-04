@@ -245,7 +245,29 @@ VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
                       tANI_U8*  pOutputChannelList,
                       int*      pMergedOutputNumOfChannels
                       );
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+#define ROAM_SCAN_OFFLOAD_START                     1
+#define ROAM_SCAN_OFFLOAD_STOP                      2
+#define ROAM_SCAN_OFFLOAD_RESTART                   3
+#define ROAM_SCAN_OFFLOAD_UPDATE_CFG                4
 
+#define REASON_CONNECT                              1
+#define REASON_CHANNEL_LIST_CHANGED                 2
+#define REASON_LOOKUP_THRESH_CHANGED                3
+#define REASON_DISCONNECTED                         4
+#define REASON_RSSI_DIFF_CHANGED                    5
+#define REASON_CCX_INI_CFG_CHANGED                  6
+#define REASON_NEIGHBOR_SCAN_REFRESH_PERIOD_CHANGED 7
+#define REASON_VALID_CHANNEL_LIST_CHANGED           8
+#define REASON_FLUSH_CHANNEL_LIST                   9
+#define REASON_EMPTY_SCAN_REF_PERIOD_CHANGED        10
+#define REASON_PREAUTH_FAILED_FOR_ALL               11
+#define REASON_NO_CAND_FOUND_OR_NOT_ROAMING_NOW     12
+#define REASON_NPROBES_CHANGED                      13
+#define REASON_HOME_AWAY_TIME_CHANGED               14
+eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reason);
+eHalStatus csrNeighborRoamCandidateFoundIndHdlr(tpAniSirGlobal pMac, void* pMsg);
+#endif
 
 
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */

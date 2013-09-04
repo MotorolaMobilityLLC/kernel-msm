@@ -1,9 +1,43 @@
 /*
-* Copyright (c) 2012-2013 Qualcomm Atheros, Inc.
-* All Rights Reserved.
-* Qualcomm Atheros Confidential and Proprietary.
-*/
-
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
 
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
@@ -986,15 +1020,11 @@ typedef struct sSirSmeJoinReq
     tAniEdType          UCEncryptionType;
 
     tAniEdType          MCEncryptionType;
-
-#ifdef WLAN_FEATURE_11W
-    tAniEdType          MgmtEncryptionType;
-#endif
-
 #ifdef WLAN_FEATURE_VOWIFI_11R
     tAniBool            is11Rconnection;
 #endif
 #ifdef FEATURE_WLAN_CCX
+    tAniBool            isCCXFeatureIniEnabled;
     tAniBool            isCCXconnection;
     tCCXTspecInfo       ccxTspecInfo;
 #endif
@@ -3307,6 +3337,8 @@ typedef struct sSirSmeDelStaSelfRsp
 #define SIR_COEX_IND_TYPE_ENABLE_HB_MONITOR (1)
 #define SIR_COEX_IND_TYPE_SCAN_COMPROMISED (2)
 #define SIR_COEX_IND_TYPE_SCAN_NOT_COMPROMISED (3)
+#define SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4 (4)
+#define SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4 (5)
 
 typedef struct sSirSmeCoexInd
 {
@@ -3326,16 +3358,6 @@ typedef struct sSirSmeMgmtFrameInd
     tANI_S8         rxRssi;
     tANI_U8  frameBuf[1]; //variable
 }tSirSmeMgmtFrameInd, *tpSirSmeMgmtFrameInd;
-
-#ifdef WLAN_FEATURE_11W
-typedef struct sSirSmeUnprotMgmtFrameInd
-{
-    tANI_U8         sessionId;
-    tANI_U8         frameType;
-    tANI_U8         frameLen;
-    tANI_U8         frameBuf[1]; //variable
-}tSirSmeUnprotMgmtFrameInd, *tpSirSmeUnprotMgmtFrameInd;
-#endif
 
 #define SIR_IS_FULL_POWER_REASON_DISCONNECTED(eReason) \
     ( ( eSME_LINK_DISCONNECTED_BY_HDD == (eReason) ) || \
@@ -3399,7 +3421,8 @@ typedef struct sSirWlanSetRxpFilters
 #define CHANNEL_LIST_DYNAMIC_UPDATE           4 /* Occupied channel list can be learnt after update */
 #define SIR_ROAM_SCAN_24G_DEFAULT_CH     1
 #define SIR_ROAM_SCAN_5G_DEFAULT_CH      36
-#define SIR_ROAM_SCAN_RESERVED_BYTES     64
+#define SIR_ROAM_SCAN_CHANNEL_SWITCH_TIME 3
+#define SIR_ROAM_SCAN_RESERVED_BYTES     61
 #endif
 
 typedef enum
@@ -3417,7 +3440,7 @@ typedef struct
   tANI_U32    encryption; 
   tANI_U32    bcastNetwType; 
   tANI_U8     ucChannelCount;
-  tANI_U8     aChannels[SIR_PNO_MAX_NETW_CHANNELS]; 
+  tANI_U8     aChannels[SIR_PNO_MAX_NETW_CHANNELS_EX];
   tANI_U8     rssiThreshold;
 } tSirNetworkType; 
 
@@ -3487,9 +3510,18 @@ typedef struct sSirRoamOffloadScanReq
   tANI_U8   p24GProbeTemplate[SIR_ROAM_SCAN_MAX_PB_REQ_SIZE];
   tANI_U16  us5GProbeTemplateLen;
   tANI_U8   p5GProbeTemplate[SIR_ROAM_SCAN_MAX_PB_REQ_SIZE];
-  tANI_U8   ReservedBytes[SIR_ROAM_SCAN_RESERVED_BYTES]; /*This is to add any additional data in future
-                                                           without changing the interface params on Host
-                                                           and firmware.*/
+  tANI_U8     ReservedBytes[SIR_ROAM_SCAN_RESERVED_BYTES];
+  /*ReservedBytes is to add any further params in future
+    without changing the interface params on Host
+    and firmware.The firmware right now checks
+    if the size of this structure matches and then
+    proceeds with the processing of the command.
+    So, in future, if there is any need to add
+    more params, pick the memory from reserved
+    bytes and keep deducting the reserved bytes
+    by the amount of bytes picked.*/
+  tANI_U8   nProbes;
+  tANI_U16  HomeAwayTime;
   tSirRoamNetworkType ConnectedNetwork;
   tSirMobilityDomainInfo MDID;
 } tSirRoamOffloadScanReq, *tpSirRoamOffloadScanReq;
@@ -3517,12 +3549,18 @@ typedef struct {
 // Preferred Network Found Indication
 typedef struct
 {  
-  tANI_U16        mesgType;
-  tANI_U16        mesgLen;
+  tANI_U16      mesgType;
+  tANI_U16      mesgLen;
   /* Network that was found with the highest RSSI*/
-  tSirMacSSid ssId;
+  tSirMacSSid   ssId;
   /* Indicates the RSSI */
-  tANI_U8        rssi;
+  tANI_U8       rssi;
+  /* Length of the beacon or probe response
+   * corresponding to the candidate found by PNO */
+  tANI_U32      frameLength;
+  /* Index to memory location where the contents of
+   * beacon or probe response frame will be copied */
+  tANI_U8       data[1];
 } tSirPrefNetworkFoundInd, *tpSirPrefNetworkFoundInd;
 #endif // FEATURE_WLAN_SCAN_PNO
 
@@ -3558,6 +3596,9 @@ typedef struct
 
   /* Beacon Early Termination Interval */
   tANI_U32 uBETInterval; 
+
+  /* MAX LI for modulated DTIM */
+  tANI_U32 uMaxLIModulatedDTIM;
 
 }tSirSetPowerParamsReq, *tpSirSetPowerParamsReq;
 
@@ -4048,13 +4089,5 @@ typedef struct sSirSmeCandidateFoundInd
     tANI_U16            length;
     tANI_U8             sessionId;  // Session Identifier
 } tSirSmeCandidateFoundInd, *tpSirSmeCandidateFoundInd;
-
-#ifdef WLAN_FEATURE_11W
-typedef struct sSirWlanExcludeUnencryptParam
-{
-    tANI_BOOLEAN    excludeUnencrypt;
-    tSirMacAddr     bssId;
-}tSirWlanExcludeUnencryptParam,*tpSirWlanExcludeUnencryptParam;
-#endif
 
 #endif /* __SIR_API_H */

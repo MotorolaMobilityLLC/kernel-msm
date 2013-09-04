@@ -39,15 +39,15 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
+
+
 /**=========================================================================
   
   \file  rrmApi.c
   
   \brief implementation for PE RRM APIs
   
-   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
-   
-   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
 
@@ -223,16 +223,31 @@ rrmSetMaxTxPowerRsp ( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
    tSirRetStatus  retCode = eSIR_SUCCESS;
    tpMaxTxPowerParams pMaxTxParams = (tpMaxTxPowerParams) limMsgQ->bodyptr;
    tpPESession     pSessionEntry;
-   tANI_U8 sessionId;
+   tANI_U8  sessionId, i;
+   tSirMacAddr bssid = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-   if((pSessionEntry = peFindSessionByBssid(pMac, pMaxTxParams->bssId, &sessionId))==NULL)
+   if( palEqualMemory(pMac->hHdd, bssid, pMaxTxParams->bssId, sizeof(tSirMacAddr)))
    {
-      PELOGE(limLog(pMac, LOGE, FL("Unable to find session:") );)
-      retCode = eSIR_FAILURE;
+      for (i =0;i < pMac->lim.maxBssId;i++)
+      {
+         if ( (pMac->lim.gpSession[i].valid == TRUE ))
+         {
+            pSessionEntry = &pMac->lim.gpSession[i];
+            rrmCacheMgmtTxPower ( pMac, pMaxTxParams->power, pSessionEntry );
+         }
+      }
    }
    else
    {
-      rrmCacheMgmtTxPower ( pMac, pMaxTxParams->power, pSessionEntry );
+      if((pSessionEntry = peFindSessionByBssid(pMac, pMaxTxParams->bssId, &sessionId))==NULL)
+      {
+         PELOGE(limLog(pMac, LOGE, FL("Unable to find session:") );)
+         retCode = eSIR_FAILURE;
+      }
+      else
+      {
+         rrmCacheMgmtTxPower ( pMac, pMaxTxParams->power, pSessionEntry );
+      }
    }
 
    palFreeMemory(pMac->hHdd, (void*)limMsgQ->bodyptr);

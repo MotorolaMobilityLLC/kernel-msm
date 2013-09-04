@@ -820,14 +820,24 @@ static VOS_STATUS btcDeferAclCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
         else
         {
             //There is history on this BD address
-            VOS_ASSERT(pAclEventHist->bNextEventIdx > 0);
+            if ((pAclEventHist->bNextEventIdx <= 0) ||
+                (pAclEventHist->bNextEventIdx > BT_MAX_NUM_EVENT_ACL_DEFERRED))
+            {
+                VOS_ASSERT(0);
+                status = VOS_STATUS_E_FAILURE;
+                break;
+            }
+
             pAclEvent = &pAclEventHist->btAclConnection[pAclEventHist->bNextEventIdx - 1];
             if(BT_EVENT_CREATE_ACL_CONNECTION == pAclEventHist->btEventType[pAclEventHist->bNextEventIdx - 1])
             {
                 //The last cached event is creation, replace it with the new one
-                vos_mem_copy(pAclEvent, 
-                                &pEvent->uEventParam.btAclConnection, 
-                                sizeof(tSmeBtAclConnectionParam));
+                if (pAclEvent)
+                {
+                    vos_mem_copy(pAclEvent,
+                                 &pEvent->uEventParam.btAclConnection,
+                                 sizeof(tSmeBtAclConnectionParam));
+                }
                 //done
                 break;
             }
@@ -978,15 +988,23 @@ static VOS_STATUS btcDeferSyncCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
         else
         {
             //There is history on this BD address
-            VOS_ASSERT(pSyncEventHist->bNextEventIdx > 0);
+            if ((pSyncEventHist->bNextEventIdx <= 0) ||
+                (pSyncEventHist->bNextEventIdx > BT_MAX_NUM_EVENT_SCO_DEFERRED))
+            {
+                VOS_ASSERT(0);
+                return VOS_STATUS_E_FAILURE;
+            }
             pSyncEvent = &pSyncEventHist->btSyncConnection[pSyncEventHist->bNextEventIdx - 1];
             if(BT_EVENT_CREATE_SYNC_CONNECTION == 
                 pSyncEventHist->btEventType[pSyncEventHist->bNextEventIdx - 1])
             {
                 //The last cached event is creation, replace it with the new one
-                vos_mem_copy(pSyncEvent, 
-                                &pEvent->uEventParam.btSyncConnection, 
-                                sizeof(tSmeBtSyncConnectionParam));
+                if(pSyncEvent)
+                {
+                    vos_mem_copy(pSyncEvent,
+                                 &pEvent->uEventParam.btSyncConnection,
+                                 sizeof(tSmeBtSyncConnectionParam));
+                }
                 //done
                 break;
             }
@@ -1923,6 +1941,28 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
          pMac->btc.btcScanCompromise = VOS_FALSE;
          smsLog(pMac, LOGW, "Coex indication in %s(), type - SIR_COEX_IND_TYPE_SCAN_NOT_COMPROMISED",
              __func__);
+     }
+     else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4)
+     {
+         if (pMac->roam.configParam.disableAggWithBtc)
+         {
+             ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC, 1,
+                             NULL, eANI_BOOLEAN_FALSE);
+             smsLog(pMac, LOGW,
+             "Coex indication in %s(), type - SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4",
+                 __func__);
+         }
+     }
+     else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4)
+     {
+         if (pMac->roam.configParam.disableAggWithBtc)
+         {
+             ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC, 0,
+                             NULL, eANI_BOOLEAN_FALSE);
+             smsLog(pMac, LOGW,
+             "Coex indication in %s(), type - SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4",
+                 __func__);
+         }
      }
      // unknown indication type
      else

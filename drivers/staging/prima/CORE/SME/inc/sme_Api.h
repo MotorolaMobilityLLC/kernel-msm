@@ -111,8 +111,9 @@ typedef struct _smeConfigParams
    tP2PConfigParam  p2pConfig;
 #endif
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-    tANI_U8   isFastTransitionEnabled;
-    tANI_U8   RoamRssiDiff;
+    tANI_U8       isFastTransitionEnabled;
+    tANI_U8       RoamRssiDiff;
+    tANI_BOOLEAN  isWESModeEnabled;
 #endif
 } tSmeConfigParams, *tpSmeConfigParams;
 
@@ -2261,12 +2262,50 @@ eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz);
 eHalStatus sme_setRoamIntraBand(tHalHandle hHal, const v_BOOL_t nRoamIntraBand);
 
 /* ---------------------------------------------------------------------------
+    \fn sme_UpdateRoamScanNProbes
+    \brief  function to update roam scan N probes
+            This function is called through dynamic setConfig callback function
+            to update roam scan N probes
+    \param  hHal - HAL handle for device
+    \param  nProbes number of probe requests to be sent out
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_UpdateRoamScanNProbes(tHalHandle hHal, const v_U8_t nProbes);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateRoamScanHomeAwayTime
+    \brief  function to update roam scan Home away time
+            This function is called through dynamic setConfig callback function
+            to update roam scan home away time
+    \param  hHal - HAL handle for device
+    \param  nRoamScanAwayTime Scan home away time
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_UpdateRoamScanHomeAwayTime(tHalHandle hHal, const v_U16_t nRoamScanHomeAwayTime);
+
+/* ---------------------------------------------------------------------------
     \fn sme_getRoamIntraBand
     \brief  get Intra band roaming
     \param  hHal - HAL handle for device
     \- return Success or failure
     -------------------------------------------------------------------------*/
 v_BOOL_t sme_getRoamIntraBand(tHalHandle hHal);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getRoamScanNProbes
+    \brief  get N Probes
+    \param  hHal - HAL handle for device
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+v_U8_t sme_getRoamScanNProbes(tHalHandle hHal);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getRoamScanHomeAwayTime
+    \brief  get Roam scan home away time
+    \param  hHal - HAL handle for device
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+v_U16_t sme_getRoamScanHomeAwayTime(tHalHandle hHal);
 
 /* ---------------------------------------------------------------------------
     \fn sme_UpdateImmediateRoamRssiDiff
@@ -2309,6 +2348,29 @@ eHalStatus sme_UpdateRoamRssiDiff(tHalHandle hHal, v_U8_t RoamRssiDiff);
 
 eHalStatus sme_UpdateFastTransitionEnabled(tHalHandle hHal,
         v_BOOL_t isFastTransitionEnabled);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateWESMode
+    \brief  Update WESMode
+            This function is called through dynamic setConfig callback function
+            to configure isWESModeEnabled
+    \param  hHal - HAL handle for device
+    \param  isWESModeEnabled - Enable/Disable WES Mode
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_UpdateWESMode(tHalHandle hHal, v_BOOL_t isWESModeEnabled);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SetRoamScanControl
+    \brief  Set roam scan control
+            This function is called to set roam scan control
+            if roam scan control is set to 0, roaming scan cache is cleared
+            any value other than 0 is treated as invalid value
+    \param  hHal - HAL handle for device
+    \return eHAL_STATUS_SUCCESS - SME update config successfully.
+          Other status means SME failure to update
+    -------------------------------------------------------------------------*/
+eHalStatus sme_SetRoamScanControl(tHalHandle hHal, v_BOOL_t roamScanControl);
 #endif /* (WLAN_FEATURE_VOWIFI_11R) || (FEATURE_WLAN_CCX) || (FEATURE_WLAN_LFR) */
 
 #ifdef FEATURE_WLAN_LFR
@@ -2564,6 +2626,24 @@ eHalStatus sme_getRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
 eHalStatus sme_GetCountryRevision(tHalHandle hHal, tANI_U8 *pRevision);
 
 /*--------------------------------------------------------------------------
+  \brief sme_getWESMode() - getWES Mode
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return v_U8_t - WES Mode Enabled(1)/Disabled(0)
+  \sa
+  --------------------------------------------------------------------------*/
+v_BOOL_t sme_GetWESMode(tHalHandle hHal);
+
+/*--------------------------------------------------------------------------
+  \brief sme_GetRoamScanControl() - get scan control
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return v_BOOL_t - Enabled(1)/Disabled(0)
+  \sa
+  --------------------------------------------------------------------------*/
+v_BOOL_t sme_GetRoamScanControl(tHalHandle hHal);
+
+/*--------------------------------------------------------------------------
   \brief sme_getIsCcxFeatureEnabled() - get CCX feature enabled or not
   This is a synchronuous call
   \param hHal - The handle returned by macOpen.
@@ -2594,6 +2674,22 @@ tANI_BOOLEAN sme_getIsLfrFeatureEnabled(tHalHandle hHal);
 tANI_BOOLEAN sme_getIsFtFeatureEnabled(tHalHandle hHal);
 
 #endif
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/*--------------------------------------------------------------------------
+  \brief sme_UpdateRoamScanOffloadEnabled() - enable/disable roam scan offload feaure
+  It is used at in the REG_DYNAMIC_VARIABLE macro definition of
+  gRoamScanOffloadEnabled.
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successfully.
+          Other status means SME is failed to update.
+  \sa
+  --------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateRoamScanOffloadEnabled(tHalHandle hHal, v_BOOL_t nRoamScanOffloadEnabled);
+#endif
+
 
 /* ---------------------------------------------------------------------------
     \fn sme_IsFeatureSupportedByFW
@@ -2648,13 +2744,6 @@ VOS_STATUS sme_AddTdlsPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr pe
     -------------------------------------------------------------------------*/
 VOS_STATUS sme_DeleteTdlsPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
 /* ---------------------------------------------------------------------------
-    \fn sme_IsPmcBmps
-    \brief  API to Check if PMC state is BMPS.
-
-    \- return v_BOOL_t
-    -------------------------------------------------------------------------*/
-v_BOOL_t sme_IsPmcBmps(tHalHandle hHal);
-/* ---------------------------------------------------------------------------
     \fn sme_SetTdlsPowerSaveProhibited
     \API to set/reset the isTdlsPowerSaveProhibited.
 
@@ -2662,6 +2751,14 @@ v_BOOL_t sme_IsPmcBmps(tHalHandle hHal);
     -------------------------------------------------------------------------*/
 void sme_SetTdlsPowerSaveProhibited(tHalHandle hHal, v_BOOL_t val);
 #endif
+/* ---------------------------------------------------------------------------
+    \fn sme_IsPmcBmps
+    \brief  API to Check if PMC state is BMPS.
+
+    \- return v_BOOL_t
+    -------------------------------------------------------------------------*/
+v_BOOL_t sme_IsPmcBmps(tHalHandle hHal);
+
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 typedef struct smeTdlsDisResult
 {
@@ -2674,7 +2771,40 @@ v_U8_t sme_GetTdlsDiscoveryResult(tHalHandle hHal,
                                  tSmeTdlsDisResult *disResult, v_U8_t listType);
 VOS_STATUS sme_StartTdlsLinkSetupReq(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
 VOS_STATUS sme_StartTdlsLinkTeardownReq(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
-
 #endif /* FEATURE_WLAN_TDLS */
+eHalStatus sme_UpdateDfsSetting(tHalHandle hHal, tANI_U8 fUpdateEnableDFSChnlScan);
+
+/*
+ * SME API to enable/disable WLAN driver initiated SSR
+ */
+void sme_UpdateEnableSSR(tHalHandle hHal, tANI_BOOLEAN enableSSR);
+
+/* ---------------------------------------------------------------------------
+
+    \fn sme_SetPhyMode
+
+    \brief Changes the PhyMode.
+
+    \param hHal - The handle returned by macOpen.
+
+    \param phyMode new phyMode which is to set
+
+    \return eHalStatus  SUCCESS.
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_SetPhyMode(tHalHandle hHal, eCsrPhyMode phyMode);
+
+/* ---------------------------------------------------------------------------
+
+    \fn sme_GetPhyMode
+
+    \brief gets current PhyMode.
+
+    \param hHal - The handle returned by macOpen.
+
+    \return eHalStatus PhyMode
+
+  -------------------------------------------------------------------------------*/
+eCsrPhyMode sme_GetPhyMode(tHalHandle hHal);
 
 #endif //#if !defined( __SME_API_H )

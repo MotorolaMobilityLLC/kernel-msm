@@ -39,6 +39,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+
 #if !defined( __WLAN_QCT_PAL_PACKET_H )
 #define __WLAN_QCT_PAL_PACKET_H
 
@@ -49,10 +50,6 @@
   \brief define PAL packet. wpt = (Wlan Pal Type)
                
    Definitions for platform independent.
-  
-   Copyright 2010 (c) Qualcomm, Incorporated.  All Rights Reserved.
-   
-   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
 
@@ -328,5 +325,15 @@ wpt_int32 wpalPacketGetFragCount(wpt_packet *pPkt);
         eWLAN_PAL_STATUS_E_INVAL
 ---------------------------------------------------------------------------*/
 wpt_status wpalIsPacketLocked( wpt_packet *pPacket);
+
+/*---------------------------------------------------------------------------
+   wpalGetNumRxRawPacket   Query available RX RAW total buffer count
+   param:
+       numRxResource  pointer of queried value
+
+   return:
+       eWLAN_PAL_STATUS_SUCCESS
+---------------------------------------------------------------------------*/
+wpt_status wpalGetNumRxRawPacket(wpt_uint32 *numRxResource);
 
 #endif // __WLAN_QCT_PAL_PACKET_H

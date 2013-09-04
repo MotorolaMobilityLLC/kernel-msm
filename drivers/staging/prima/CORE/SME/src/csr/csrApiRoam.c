@@ -150,9 +150,6 @@ int diagAuthTypeFromCSRType(eCsrAuthType authType)
         n = AUTH_WPA2_EAP;
         break;
     case eCSR_AUTH_TYPE_RSN_PSK:
-#ifdef WLAN_FEATURE_11W
-    case eCSR_AUTH_TYPE_RSN_PSK_SHA256:
-#endif
         n = AUTH_WPA2_PSK;
         break;
 #ifdef FEATURE_WLAN_WAPI
@@ -945,13 +942,15 @@ static void initConfigParam(tpAniSirGlobal pMac)
     pMac->roam.configParam.nPassiveMinChnTime = CSR_PASSIVE_MIN_CHANNEL_TIME;
     pMac->roam.configParam.nActiveMaxChnTimeBtc = CSR_ACTIVE_MAX_CHANNEL_TIME_BTC;
     pMac->roam.configParam.nActiveMinChnTimeBtc = CSR_ACTIVE_MIN_CHANNEL_TIME_BTC;
+    pMac->roam.configParam.disableAggWithBtc = eANI_BOOLEAN_TRUE;
 #ifdef WLAN_AP_STA_CONCURRENCY
     pMac->roam.configParam.nActiveMaxChnTimeConc = CSR_ACTIVE_MAX_CHANNEL_TIME_CONC;
     pMac->roam.configParam.nActiveMinChnTimeConc = CSR_ACTIVE_MIN_CHANNEL_TIME_CONC;
     pMac->roam.configParam.nPassiveMaxChnTimeConc = CSR_PASSIVE_MAX_CHANNEL_TIME_CONC;
     pMac->roam.configParam.nPassiveMinChnTimeConc = CSR_PASSIVE_MIN_CHANNEL_TIME_CONC;
     pMac->roam.configParam.nRestTimeConc = CSR_REST_TIME_CONC;
-    pMac->roam.configParam.nNumChanCombinedConc = CSR_NUM_CHAN_COMBINED_CONC;
+    pMac->roam.configParam.nNumStaChanCombinedConc = CSR_NUM_STA_CHAN_COMBINED_CONC;
+    pMac->roam.configParam.nNumP2PChanCombinedConc = CSR_NUM_P2P_CHAN_COMBINED_CONC;
 #endif
     pMac->roam.configParam.IsIdleScanEnabled = TRUE; //enable the idle scan by default
     pMac->roam.configParam.nTxPowerCap = CSR_MAX_TX_POWER;
@@ -1030,12 +1029,9 @@ void csr_SetRevision(tpAniSirGlobal pMac, tANI_U8 revision)
 }
 
 /*
- This function flushes the roam scan cache and creates fresh cache
- based on the input channel list
+ This function flushes the roam scan cache
 */
-eHalStatus csrFlushAndCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
-                                                  const tANI_U8 *pChannelList,
-                                                  const tANI_U8 numChannels)
+eHalStatus csrFlushBgScanRoamChannelList(tpAniSirGlobal pMac)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
@@ -1045,7 +1041,24 @@ eHalStatus csrFlushAndCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
     {
         vos_mem_free(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList);
         pNeighborRoamInfo->cfgParams.channelInfo.ChannelList = NULL;
+        pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels = 0;
     }
+    return status;
+}
+
+
+
+/*
+ This function flushes the roam scan cache and creates fresh cache
+ based on the input channel list
+*/
+eHalStatus csrCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
+                                          const tANI_U8 *pChannelList,
+                                          const tANI_U8 numChannels)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+
     pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels = numChannels;
 
     pNeighborRoamInfo->cfgParams.channelInfo.ChannelList =
@@ -1103,7 +1116,8 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
                 ChannelList[outNumChannels++] = inPtr[i];
             }
         }
-        csrFlushAndCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
+        csrFlushBgScanRoamChannelList(pMac);
+        csrCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
     }
     else if (eCSR_BAND_5G == eBand)
     {
@@ -1117,7 +1131,8 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
                ChannelList[outNumChannels++] = inPtr[i];
             }
         }
-        csrFlushAndCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
+        csrFlushBgScanRoamChannelList(pMac);
+        csrCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
     }
     else if (eCSR_BAND_ALL == eBand)
     {
@@ -1129,7 +1144,8 @@ eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
                ChannelList[outNumChannels++] = inPtr[i];
             }
         }
-        csrFlushAndCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
+        csrFlushBgScanRoamChannelList(pMac);
+        csrCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
     }
     else
     {
@@ -1149,7 +1165,7 @@ eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-    tANI_U8 *pOutChannelList = pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
+    tANI_U8 **pOutChannelList = &pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
     tANI_U8 *pNumChannels = &pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels;
     const tANI_U8 *pChannelList = NULL;
 
@@ -1171,24 +1187,19 @@ eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
     else
         return eHAL_STATUS_INVALID_PARAMETER;
 
-    /* Free up the memory first */
-    if (NULL != pOutChannelList)
-    {
-        vos_mem_free(pOutChannelList);
-        pOutChannelList = NULL;
-    }
+    /* Free any existing channel list */
+    vos_mem_free(*pOutChannelList);
 
-    pOutChannelList = vos_mem_malloc(*pNumChannels);
+    *pOutChannelList = vos_mem_malloc(*pNumChannels);
 
-    if (NULL == pOutChannelList)
+    if (NULL == *pOutChannelList)
     {
         smsLog(pMac, LOGE, FL("Memory Allocation for CFG Channel List failed"));
         *pNumChannels = 0;
         return eHAL_STATUS_RESOURCES;
     }
-
     /* Update the roam global structure */
-    palCopyMemory(pMac->hHdd, pOutChannelList, pChannelList, *pNumChannels);
+    palCopyMemory(pMac->hHdd, *pOutChannelList, pChannelList, *pNumChannels);
     return status;
 }
 
@@ -1389,6 +1400,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.bandCapability = pParam->bandCapability;
         pMac->roam.configParam.cbChoice = pParam->cbChoice;
         pMac->roam.configParam.bgScanInterval = pParam->bgScanInterval;
+        pMac->roam.configParam.disableAggWithBtc = pParam->disableAggWithBtc;
         //if HDD passed down non zero values then only update,
         //otherwise keep using the defaults
         if (pParam->nActiveMaxChnTime)
@@ -1436,9 +1448,13 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         {
             pMac->roam.configParam.nRestTimeConc = pParam->nRestTimeConc;
         }
-        if (pParam->nNumChanCombinedConc)
+        if (pParam->nNumStaChanCombinedConc)
         {
-            pMac->roam.configParam.nNumChanCombinedConc = pParam->nNumChanCombinedConc;
+            pMac->roam.configParam.nNumStaChanCombinedConc = pParam->nNumStaChanCombinedConc;
+        }
+        if (pParam->nNumP2PChanCombinedConc)
+        {
+            pMac->roam.configParam.nNumP2PChanCombinedConc = pParam->nNumP2PChanCombinedConc;
         }
 #endif
         //if upper layer wants to disable idle scan altogether set it to 0
@@ -1515,7 +1531,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         }
 
 
-#ifdef WLAN_FEATURE_VOWIFI_11R 
+#ifdef WLAN_FEATURE_VOWIFI_11R
         palCopyMemory( pMac->hHdd, &pMac->roam.configParam.csr11rConfig, &pParam->csr11rConfig, sizeof(tCsr11rConfigParams) );
         smsLog( pMac, LOG1, "IsFTResourceReqSupp = %d", pMac->roam.configParam.csr11rConfig.IsFTResourceReqSupported);
 #endif
@@ -1526,13 +1542,19 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         smsLog( pMac, LOG1, "nImmediateRoamRssiDiff = %d",
                 pMac->roam.configParam.nImmediateRoamRssiDiff );
         pMac->roam.configParam.nRoamPrefer5GHz = pParam->nRoamPrefer5GHz;
+        pMac->roam.configParam.isWESModeEnabled = pParam->isWESModeEnabled;
         pMac->roam.configParam.nRoamIntraBand = pParam->nRoamIntraBand;
+        pMac->roam.configParam.nProbes = pParam->nProbes;
+        pMac->roam.configParam.nRoamScanHomeAwayTime = pParam->nRoamScanHomeAwayTime;
 #endif
-#ifdef FEATURE_WLAN_LFR 
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        pMac->roam.configParam.isRoamOffloadScanEnabled = pParam->isRoamOffloadScanEnabled;
+#endif
+#ifdef FEATURE_WLAN_LFR
         pMac->roam.configParam.isFastRoamIniFeatureEnabled = pParam->isFastRoamIniFeatureEnabled;
 #endif
 
-#ifdef FEATURE_WLAN_CCX 
+#ifdef FEATURE_WLAN_CCX
         pMac->roam.configParam.isCcxIniFeatureEnabled = pParam->isCcxIniFeatureEnabled;
 #endif
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
@@ -1577,7 +1599,6 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.txBFEnable= pParam->enableTxBF;
         pMac->roam.configParam.txBFCsnValue = pParam->txBFCsnValue;
 #endif
-        pMac->scan.fIgnore_chan165 = pParam->fIgnore_chan165;
         pMac->roam.configParam.txLdpcEnable = pParam->enableTxLdpc;
     }
     
@@ -1613,13 +1634,17 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->nActiveMinChnTime = pMac->roam.configParam.nActiveMinChnTime;
         pParam->nPassiveMaxChnTime = pMac->roam.configParam.nPassiveMaxChnTime;
         pParam->nPassiveMinChnTime = pMac->roam.configParam.nPassiveMinChnTime;
+        pParam->nActiveMaxChnTimeBtc = pMac->roam.configParam.nActiveMaxChnTimeBtc;
+        pParam->nActiveMinChnTimeBtc = pMac->roam.configParam.nActiveMinChnTimeBtc;
+        pParam->disableAggWithBtc = pMac->roam.configParam.disableAggWithBtc;
 #ifdef WLAN_AP_STA_CONCURRENCY
         pParam->nActiveMaxChnTimeConc = pMac->roam.configParam.nActiveMaxChnTimeConc;
         pParam->nActiveMinChnTimeConc = pMac->roam.configParam.nActiveMinChnTimeConc;
         pParam->nPassiveMaxChnTimeConc = pMac->roam.configParam.nPassiveMaxChnTimeConc;
         pParam->nPassiveMinChnTimeConc = pMac->roam.configParam.nPassiveMinChnTimeConc;
         pParam->nRestTimeConc = pMac->roam.configParam.nRestTimeConc;
-        pParam->nNumChanCombinedConc = pMac->roam.configParam.nNumChanCombinedConc;
+        pParam->nNumStaChanCombinedConc = pMac->roam.configParam.nNumStaChanCombinedConc;
+        pParam->nNumP2PChanCombinedConc = pMac->roam.configParam.nNumP2PChanCombinedConc;
 #endif
         //Change the unit from microsecond to second
         pParam->impsSleepTime = pMac->roam.configParam.impsSleepTime / PAL_TIMER_TO_SEC_UNIT;
@@ -1645,7 +1670,6 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->fValidateList = pMac->roam.configParam.fValidateList;
         pParam->fEnableBypass11d = pMac->scan.fEnableBypass11d;
         pParam->fEnableDFSChnlScan = pMac->scan.fEnableDFSChnlScan;
-        pParam->fIgnore_chan165= pMac->scan.fIgnore_chan165;
         pParam->fScanTwice = pMac->roam.configParam.fScanTwice;
         pParam->fFirstScanOnly2GChnl = pMac->scan.fFirstScanOnly2GChnl;
         pParam->fEnableMCCMode = pMac->roam.configParam.fenableMCCMode;
@@ -1660,7 +1684,7 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->enableTxBF = pMac->roam.configParam.txBFEnable;
         pParam->txBFCsnValue = pMac->roam.configParam.txBFCsnValue;
 #endif
-
+        pParam->enableTxLdpc = pMac->roam.configParam.txLdpcEnable;
         csrSetChannels(pMac, pParam);
 
         status = eHAL_STATUS_SUCCESS;
@@ -1917,8 +1941,11 @@ eHalStatus csrGet5GChannels(tpAniSirGlobal pMac)
         {
             if(pMac->scan.defaultPowerTable[Index].chanId >= 36 && pMac->scan.defaultPowerTable[Index].chanId <= 165)
             {
-                pMac->scan.base20MHzChannels.channelList[ channelList ] = pMac->scan.defaultPowerTable[Index].chanId;
-                channelList++;
+                if(channelList < WNI_CFG_VALID_CHANNEL_LIST_LEN)
+                {
+                   pMac->scan.base20MHzChannels.channelList[ channelList ] = pMac->scan.defaultPowerTable[Index].chanId;
+                   channelList++;
+                }
             }
         }
 
@@ -1978,8 +2005,11 @@ eHalStatus csrGet24GChannels(tpAniSirGlobal pMac)
         // Restoring the Backed up 5 GHZ channels
         for(channelList = 0;channelList < nuum5GchannelListBackup; channelList++ )
         {
-            pMac->scan.base20MHzChannels.channelList[ Index ] = channelList5GBackup[channelList];
-            Index++;
+            if (Index < WNI_CFG_VALID_CHANNEL_LIST_LEN)
+            {
+                pMac->scan.base20MHzChannels.channelList[ Index ] = channelList5GBackup[channelList];
+                Index++;
+            }
         }
 
         pMac->scan.numChannelsDefault = (num20MHzChannelsFound > Index) ? num20MHzChannelsFound : Index;
@@ -2243,7 +2273,7 @@ eHalStatus csrRoamCallCallback(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoam
     WLAN_VOS_DIAG_EVENT_DEF(connectionStatus, vos_event_wlan_status_payload_type);
 #endif
     tCsrRoamSession *pSession;
-    if( CSR_IS_SESSION_VALID( pMac, sessionId) )
+    if( pMac->roam.roamSession && CSR_IS_SESSION_VALID( pMac, sessionId) )
     {
         pSession = CSR_GET_SESSION( pMac, sessionId );
     }
@@ -2257,7 +2287,7 @@ eHalStatus csrRoamCallCallback(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoam
     {
         smsLog(pMac, LOGW, " Assoc complete result = %d statusCode = %d reasonCode = %d", u2, pRoamInfo->statusCode, pRoamInfo->reasonCode);
     }
-    if ((u1 == eCSR_ROAM_FT_REASSOC_FAILED) && (pSession->bRefAssocStartCnt)) {
+    if (pSession && (u1 == eCSR_ROAM_FT_REASSOC_FAILED) && (pSession->bRefAssocStartCnt)) {
         /*
          * Decrement bRefAssocStartCnt for FT reassoc failure.
          * Reason: For FT reassoc failures, we first call 
@@ -2983,6 +3013,7 @@ void csrSetCfgPrivacy( tpAniSirGlobal pMac, tCsrRoamProfile *pProfile, tANI_BOOL
             break;
             
         case eCSR_ENCRYPT_TYPE_WEP40_STATICKEY:
+        case eCSR_ENCRYPT_TYPE_WEP40:
             
             // Privacy is ON.  NO RSN for Wep40 static key.
             PrivacyEnabled = 1;           
@@ -3036,6 +3067,7 @@ void csrSetCfgPrivacy( tpAniSirGlobal pMac, tCsrRoamProfile *pProfile, tANI_BOOL
             break;
         
         case eCSR_ENCRYPT_TYPE_WEP104_STATICKEY:
+        case eCSR_ENCRYPT_TYPE_WEP104:
             
             // Privacy is ON.  NO RSN for Wep40 static key.
             PrivacyEnabled = 1;           
@@ -3090,8 +3122,6 @@ void csrSetCfgPrivacy( tpAniSirGlobal pMac, tCsrRoamProfile *pProfile, tANI_BOOL
            
             break;
         
-        case eCSR_ENCRYPT_TYPE_WEP40:
-        case eCSR_ENCRYPT_TYPE_WEP104:
         case eCSR_ENCRYPT_TYPE_TKIP:
         case eCSR_ENCRYPT_TYPE_AES:
 #ifdef FEATURE_WLAN_WAPI
@@ -4337,8 +4367,8 @@ eHalStatus csrRoamProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
     switch ( pCommand->u.roamCmd.roamReason )
     {
     case eCsrForcedDisassoc:
-        csrFreeRoamProfile(pMac, sessionId);
         status = csrRoamProcessDisassocDeauth( pMac, pCommand, TRUE, FALSE );
+        csrFreeRoamProfile(pMac, sessionId);
         break;
      case eCsrSmeIssuedDisassocForHandoff:
         //Not to free pMac->roam.pCurRoamProfile (via csrFreeRoamProfile) because it is needed after disconnect
@@ -4350,12 +4380,12 @@ eHalStatus csrRoamProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
 
         break;
     case eCsrForcedDisassocMICFailure:
-        csrFreeRoamProfile(pMac, sessionId);
         status = csrRoamProcessDisassocDeauth( pMac, pCommand, TRUE, TRUE );
+        csrFreeRoamProfile(pMac, sessionId);
         break;
     case eCsrForcedDeauth:
-        csrFreeRoamProfile(pMac, sessionId);
         status = csrRoamProcessDisassocDeauth( pMac, pCommand, FALSE, FALSE );
+        csrFreeRoamProfile(pMac, sessionId);
         break;
     case eCsrHddIssuedReassocToSameAP:
     case eCsrSmeIssuedReassocToSameAP:
@@ -4592,10 +4622,6 @@ static eHalStatus csrRoamSaveSecurityRspIE(tpAniSirGlobal pMac, tANI_U32 session
        (eCSR_AUTH_TYPE_WAPI_WAI_PSK == authType) ||
        (eCSR_AUTH_TYPE_WAPI_WAI_CERTIFICATE == authType)
 #endif /* FEATURE_WLAN_WAPI */
-#ifdef WLAN_FEATURE_11W
-      ||
-       (eCSR_AUTH_TYPE_RSN_PSK_SHA256 == authType)
-#endif /* FEATURE_WLAN_WAPI */
         )
     {
         if( !pIesLocal && (!HAL_STATUS_SUCCESS(csrGetParsedBssDescriptionIEs(pMac, pSirBssDesc, &pIesLocal))) )
@@ -4611,9 +4637,6 @@ static eHalStatus csrRoamSaveSecurityRspIE(tpAniSirGlobal pMac, tANI_U32 session
                 (eCSR_AUTH_TYPE_FT_RSN == authType) ||
                 (eCSR_AUTH_TYPE_FT_RSN_PSK == authType) ||
 #endif /* WLAN_FEATURE_VOWIFI_11R */
-#if defined WLAN_FEATURE_11W
-                (eCSR_AUTH_TYPE_RSN_PSK_SHA256 == authType) ||
-#endif
                 (eCSR_AUTH_TYPE_RSN_PSK == authType))
             {
                 if(pIesLocal->RSN.present)
@@ -4866,6 +4889,13 @@ tANI_BOOLEAN csrRoamIsFastRoamEnabled(tpAniSirGlobal pMac, tANI_U32 sessionId)
     return (pMac->roam.configParam.isFastRoamIniFeatureEnabled &&
             (!csrIsConcurrentSessionRunning(pMac)));
 }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+//Returns whether "FW based BG scan" is currently enabled...or not
+tANI_BOOLEAN csrRoamIsRoamOffloadScanEnabled(tpAniSirGlobal pMac)
+{
+    return (pMac->roam.configParam.isRoamOffloadScanEnabled);
+}
+#endif
 #endif
 
 //Return true means the command can be release, else not
@@ -5129,6 +5159,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                         pSession->connectedProfile.modifyProfileFields.uapsd_mask);
                     pmcStartUapsd( pMac, NULL, NULL );
                 }
+                pSession->connectedProfile.dot11Mode = pSession->bssParams.uCfgDot11Mode;
                 roamInfo.u.pConnectedProfile = &pSession->connectedProfile;
                 if( pSession->bRefAssocStartCnt > 0 )
                 {
@@ -5603,7 +5634,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                 case eCsrForcedDisassocSta:
                 case eCsrForcedDeauthSta:
                    csrRoamStateChange( pMac, eCSR_ROAMING_STATE_JOINED, sessionId);
-                   if( CSR_IS_SESSION_VALID(pMac, sessionId) )
+                   if( pMac->roam.roamSession && CSR_IS_SESSION_VALID(pMac, sessionId) )
                    {                    
                        pSession = CSR_GET_SESSION(pMac, sessionId);
                        if (!pSession)
@@ -5752,11 +5783,6 @@ eHalStatus csrRoamCopyProfile(tpAniSirGlobal pMac, tCsrRoamProfile *pDstProfile,
         pDstProfile->negotiatedUCEncryptionType = pSrcProfile->negotiatedUCEncryptionType;
         pDstProfile->negotiatedMCEncryptionType = pSrcProfile->negotiatedMCEncryptionType;
         pDstProfile->negotiatedAuthType = pSrcProfile->negotiatedAuthType;
-#ifdef WLAN_FEATURE_11W
-        pDstProfile->MFPEnabled = pSrcProfile->MFPEnabled;
-        pDstProfile->MFPRequired = pSrcProfile->MFPRequired;
-        pDstProfile->MFPCapable = pSrcProfile->MFPCapable;
-#endif
         pDstProfile->BSSType = pSrcProfile->BSSType;
         pDstProfile->phyMode = pSrcProfile->phyMode;
         pDstProfile->csrPersona = pSrcProfile->csrPersona;
@@ -6707,6 +6733,11 @@ eHalStatus csrRoamSaveConnectedInfomation(tpAniSirGlobal pMac, tANI_U32 sessionI
     pConnectProfile->beaconInterval = pSirBssDesc->beaconInterval;
 
     palCopyMemory(pMac->hHdd, &pConnectProfile->Keys, &pProfile->Keys, sizeof(tCsrKeys));
+    if(pConnectProfile->pAddIEAssoc)
+    {
+        palFreeMemory(pMac->hHdd, pConnectProfile->pAddIEAssoc);
+        pConnectProfile->pAddIEAssoc = NULL;
+    }
     /* saving the addional IE`s like Hot spot indication element and extended capabilities */
     if(pProfile->nAddIEAssocLength)
     {
@@ -6742,9 +6773,6 @@ eHalStatus csrRoamSaveConnectedInfomation(tpAniSirGlobal pMac, tANI_U32 sessionI
               || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA) 
               || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK) 
               || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN) 
-#ifdef WLAN_FEATURE_11W
-              || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK_SHA256)
-#endif
               || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK))))
         && (pMac->roam.configParam.isCcxIniFeatureEnabled))
     {
@@ -8016,15 +8044,16 @@ static eHalStatus csrRoamIssueSetKeyCommand( tpAniSirGlobal pMac, tANI_U32 sessi
 
 #ifdef WLAN_FEATURE_11W
         //Check for 11w BIP
-        else if (eCSR_ENCRYPT_TYPE_AES_CMAC == pSetKey->encType)
+        else if ( eCSR_ENCRYPT_TYPE_AES_CMAC == pSetKey->encType )
         {
-            if (pSetKey->keyLength < CSR_AES_KEY_LEN)
+            tANI_U16 count = 0;
+            if ( pSetKey->keyLength < CSR_AES_KEY_LEN )
             {
-                smsLog(pMac, LOGW, "Invalid AES/CCMP keylength [= %d] in SetContext call", pSetKey->keyLength);
+                smsLog( pMac, LOGW, "Invalid AES/CCMP keylength [= %d] in SetContext call", pSetKey->keyLength );
                 break;
             }
             pCommand->u.setKeyCmd.keyLength = CSR_AES_KEY_LEN;
-            palCopyMemory(pMac->hHdd, pCommand->u.setKeyCmd.Key, pSetKey->Key, CSR_AES_KEY_LEN);
+            palCopyMemory( pMac->hHdd, pCommand->u.setKeyCmd.Key, pSetKey->Key, CSR_AES_KEY_LEN );
         }
 #endif
         status = eHAL_STATUS_SUCCESS;
@@ -8045,11 +8074,12 @@ static eHalStatus csrRoamIssueSetKeyCommand( tpAniSirGlobal pMac, tANI_U32 sessi
     } while (0);
     // Free the command if there has been a failure, or it is a 
     // "local" operation like the set CCX CCKM KRK key.
-    if( (!HAL_STATUS_SUCCESS( status ) && ( NULL != pCommand )) 
+    if ( ( NULL != pCommand ) &&
+         ( (!HAL_STATUS_SUCCESS( status ) )
 #ifdef FEATURE_WLAN_CCX
             || ( eCSR_ENCRYPT_TYPE_KRK == pSetKey->encType ) 
 #endif /* FEATURE_WLAN_CCX */
-            )
+           ) )
     {
         csrReleaseCommandSetKey( pMac, pCommand );
     }
@@ -8500,16 +8530,16 @@ static void csrUpdateRssi(tpAniSirGlobal pMac, void* pMsg)
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
 void csrRoamRssiRspProcessor(tpAniSirGlobal pMac, void* pMsg)
 {
-    v_S7_t  rssi = 0;
     tAniGetRoamRssiRsp* pRoamRssiRsp = (tAniGetRoamRssiRsp*)pMsg;
 
-    /* Get roam Rssi request is backed up and passed back to the response,
-       Extract the request message to fetch callback */
-    tpAniGetRssiReq reqBkp = (tAniGetRssiReq*)pRoamRssiRsp->rssiReq;
-    if(pRoamRssiRsp)
+    if (NULL != pRoamRssiRsp)
     {
-        rssi = pRoamRssiRsp->rssi;
-        if((reqBkp) && (NULL != reqBkp->rssiCallback))
+        /* Get roam Rssi request is backed up and passed back to the response,
+           Extract the request message to fetch callback */
+        tpAniGetRssiReq reqBkp = (tAniGetRssiReq*)pRoamRssiRsp->rssiReq;
+        v_S7_t rssi = pRoamRssiRsp->rssi;
+
+        if ((NULL != reqBkp) && (NULL != reqBkp->rssiCallback))
         {
             ((tCsrRssiCallback)(reqBkp->rssiCallback))(rssi, pRoamRssiRsp->staId, reqBkp->pDevContext);
             reqBkp->rssiCallback = NULL;
@@ -8846,7 +8876,7 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
             {
                 tSirSmeDeauthRsp* pDeauthRsp = (tSirSmeDeauthRsp *)pSirMsg;
                 sessionId = pDeauthRsp->sessionId;
-                if( CSR_IS_SESSION_VALID(pMac, sessionId) )
+                if( pMac->roam.roamSession && CSR_IS_SESSION_VALID(pMac, sessionId) )
                 {                    
                     pSession = CSR_GET_SESSION(pMac, sessionId);
                     if(!pSession)
@@ -8873,7 +8903,7 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
             {
                 tSirSmeDisassocRsp *pDisassocRsp = (tSirSmeDisassocRsp *)pSirMsg;
                 sessionId = pDisassocRsp->sessionId;
-                if( CSR_IS_SESSION_VALID(pMac, sessionId) )
+                if( pMac->roam.roamSession && CSR_IS_SESSION_VALID(pMac, sessionId) )
                 {                    
                     pSession = CSR_GET_SESSION(pMac, sessionId);
                     if(!pSession)
@@ -9467,6 +9497,12 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
             smsLog( pMac, LOG1, FL("RSSI indication from TL serialized through MC thread"));
             csrRoamRssiIndHdlr( pMac, pSirMsg );
         break;
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        case eWNI_SME_CANDIDATE_FOUND_IND:
+            smsLog( pMac, LOG2, FL("Candidate found indication from PE"));
+            csrNeighborRoamCandidateFoundIndHdlr( pMac, pSirMsg );
+        break;
+#endif
 
         default:
             break;
@@ -12065,19 +12101,6 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         dwTmp = pal_cpu_to_be32( csrTranslateEncryptTypeToEdType( pProfile->negotiatedMCEncryptionType) );
         palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tANI_U32) );
         pBuf += sizeof(tANI_U32);
-#ifdef WLAN_FEATURE_11W
-        //MgmtEncryption
-        if (pProfile->MFPEnabled)
-        {
-            dwTmp = pal_cpu_to_be32(eSIR_ED_AES_128_CMAC);
-        }
-        else
-        {
-            dwTmp = pal_cpu_to_be32(eSIR_ED_NONE);
-        }
-        palCopyMemory(pMac->hHdd, pBuf, &dwTmp, sizeof(tANI_U32));
-        pBuf += sizeof(tANI_U32);
-#endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
         pProfile->MDID.mdiePresent = pBssDescription->mdiePresent;
         if (csrIsProfile11r( pProfile )
@@ -12101,6 +12124,21 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         }
 #endif
 #ifdef FEATURE_WLAN_CCX
+
+        // isCCXFeatureIniEnabled
+        if (TRUE == pMac->roam.configParam.isCcxIniFeatureEnabled)
+        {
+            dwTmp = pal_cpu_to_be32(TRUE);
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);
+        }
+        else
+        {
+            dwTmp = pal_cpu_to_be32(FALSE);
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);
+        }
+
         /* A profile can not be both CCX and 11R. But an 802.11R AP
          * may be advertising support for CCX as well. So if we are
          * associating Open or explicitly CCX then we will get CCX.
@@ -12113,9 +12151,6 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
                        || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)
                        || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK)
                        || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN)
-#ifdef WLAN_FEATURE_11W
-                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK_SHA256)
-#endif
                        || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK))))
                  && (pMac->roam.configParam.isCcxIniFeatureEnabled))
         {
@@ -12149,9 +12184,6 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
                   || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)
                   || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK)
                   || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN)
-#ifdef WLAN_FEATURE_11W
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK_SHA256)
-#endif
                   || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK))))
             && (pMac->roam.configParam.isCcxIniFeatureEnabled))
         {
@@ -12865,8 +12897,8 @@ eHalStatus csrSendMBStartBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, eCs
         {
             wTmp = pal_cpu_to_be16( WNI_CFG_BEACON_INTERVAL_STADEF );
         }
-        if(csrIsconcurrentsessionValid (pMac, sessionId, 
-                                   pParam->bssPersona) 
+        if(csrIsconcurrentsessionValid (pMac, sessionId,
+                                   pParam->bssPersona)
                                    == eHAL_STATUS_SUCCESS )
         {    
            csrValidateMCCBeaconInterval(pMac, pParam->operationChn, &wTmp, sessionId,
@@ -13798,6 +13830,7 @@ void csrRoamStatsRspProcessor(tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg)
    v_PVOID_t  pvosGCtx;
    v_S7_t     rssi = 0;
    tANI_U32   *pRssi = NULL;
+   tANI_U32   linkCapacity;
    pSmeStatsRsp = (tAniGetPEStatsRsp *)pSirMsg;
    if(pSmeStatsRsp->rc)
    {
@@ -13895,13 +13928,27 @@ void csrRoamStatsRspProcessor(tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg)
    {
        pRssi = (tANI_U32*)pStats;
        rssi = (v_S7_t)*pRssi;
+       pStats += sizeof(tANI_U32);
+       length -= sizeof(tANI_U32);
    }
    else
    {
        /* If riva is not sending rssi, continue to use the hack */
        rssi = RSSI_HACK_BMPS;
    }
+
    WDA_UpdateRssiBmps(pvosGCtx, pSmeStatsRsp->staId, rssi);
+
+   if (length != 0)
+   {
+       linkCapacity = *(tANI_U32*)pStats;
+   }
+   else
+   {
+       linkCapacity = 0;
+   }
+
+   WDA_UpdateLinkCapacity(pvosGCtx, pSmeStatsRsp->staId, linkCapacity);
 post_update:   
    //make sure to update the pe stats req list 
    pEntry = csrRoamFindInPeStatsReqList(pMac, pSmeStatsRsp->statsMask);
@@ -14244,8 +14291,8 @@ eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
    status = palSendMBMessage(pMac->hHdd, pMsg );
    if(!HAL_STATUS_SUCCESS(status))
    {
-      smsLog(pMac, LOG1, " csrGetRoamRssi: failed to send down the stats req");
-      palFreeMemory(pMac->hHdd, (void *)pMsg);
+      smsLog(pMac, LOG1, " csrGetRoamRssi: failed to send down the rssi req");
+      //pMsg is freed by palSendMBMessage
       status = eHAL_STATUS_FAILURE;
    }
    return status;
@@ -14520,6 +14567,365 @@ eHalStatus csrGetStatistics(tpAniSirGlobal pMac, eCsrStatsRequesterType requeste
    }
    return eHAL_STATUS_SUCCESS;
 }
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+
+static tSirRetStatus
+csrRoamScanOffloadPopulateMacHeader(tpAniSirGlobal pMac,
+                                    tANI_U8* pBD,
+                                    tANI_U8 type,
+                                    tANI_U8 subType,
+                                    tSirMacAddr peerAddr,
+                                    tSirMacAddr selfMacAddr)
+{
+        tSirRetStatus   statusCode = eSIR_SUCCESS;
+        tpSirMacMgmtHdr pMacHdr;
+
+        /* Prepare MAC management header */
+        pMacHdr = (tpSirMacMgmtHdr) (pBD);
+
+        /* Prepare FC */
+        pMacHdr->fc.protVer = SIR_MAC_PROTOCOL_VERSION;
+        pMacHdr->fc.type    = type;
+        pMacHdr->fc.subType = subType;
+
+        /* Prepare Address 1 */
+        palCopyMemory( pMac->hHdd,
+                        (tANI_U8 *) pMacHdr->da,
+                        (tANI_U8 *) peerAddr,
+                        sizeof( tSirMacAddr ));
+
+        sirCopyMacAddr(pMacHdr->sa,selfMacAddr);
+
+        /* Prepare Address 3 */
+        palCopyMemory( pMac->hHdd,
+                        (tANI_U8 *) pMacHdr->bssId,
+                        (tANI_U8 *) peerAddr,
+                        sizeof( tSirMacAddr ));
+        return statusCode;
+} /*** csrRoamScanOffloadPopulateMacHeader() ***/
+
+static tSirRetStatus
+csrRoamScanOffloadPrepareProbeReqTemplate(tpAniSirGlobal pMac,
+                                          tANI_U8 nChannelNum,
+                                          tANI_U32 dot11mode,
+                                          tSirMacAddr selfMacAddr,
+                                          tANI_U8 *pFrame,
+                                          tANI_U16 *pusLen)
+{
+        tDot11fProbeRequest pr;
+        tANI_U32            nStatus, nBytes, nPayload;
+        tSirRetStatus       nSirStatus;
+        /*Bcast tx*/
+        tSirMacAddr         bssId = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+        /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+
+        palZeroMemory( pMac->hHdd, ( tANI_U8* )&pr, sizeof( pr ) );
+
+        PopulateDot11fSuppRates( pMac, nChannelNum, &pr.SuppRates,NULL);
+
+        if ( WNI_CFG_DOT11_MODE_11B != dot11mode )
+        {
+                PopulateDot11fExtSuppRates1( pMac, nChannelNum, &pr.ExtSuppRates );
+        }
+
+
+        if (IS_DOT11_MODE_HT(dot11mode))
+        {
+                PopulateDot11fHTCaps( pMac, NULL, &pr.HTCaps );
+        }
+
+
+        nStatus = dot11fGetPackedProbeRequestSize( pMac, &pr, &nPayload );
+        if ( DOT11F_FAILED( nStatus ) )
+        {
+                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                                "Failed to calculate the packed size f"
+                                "or a Probe Request (0x%08x).\n", nStatus );
+
+
+                nPayload = sizeof( tDot11fProbeRequest );
+        }
+        else if ( DOT11F_WARNED( nStatus ) )
+        {
+                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                                "There were warnings while calculating"
+                                "the packed size for a Probe Request ("
+                                "0x%08x).\n", nStatus );
+        }
+
+        nBytes = nPayload + sizeof( tSirMacMgmtHdr );
+
+        /* Prepare outgoing frame*/
+        palZeroMemory( pMac->hHdd, pFrame, nBytes );
+
+
+        nSirStatus = csrRoamScanOffloadPopulateMacHeader( pMac, pFrame, SIR_MAC_MGMT_FRAME,
+                        SIR_MAC_MGMT_PROBE_REQ, bssId ,selfMacAddr);
+
+        if ( eSIR_SUCCESS != nSirStatus )
+        {
+                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                                "Failed to populate the buffer descriptor for a Probe Request (%d).\n",
+                                nSirStatus );
+                return nSirStatus;
+        }
+
+
+        nStatus = dot11fPackProbeRequest( pMac, &pr, pFrame +
+                        sizeof( tSirMacMgmtHdr ),
+                        nPayload, &nPayload );
+        if ( DOT11F_FAILED( nStatus ) )
+        {
+                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                                "Failed to pack a Probe Request (0x%08x).\n", nStatus );
+                return eSIR_FAILURE;
+        }
+        else if ( DOT11F_WARNED( nStatus ) )
+        {
+                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                                "There were warnings while packing a Probe Request (0x%08x).\n" );
+        }
+
+        *pusLen = nPayload + sizeof(tSirMacMgmtHdr);
+        return eSIR_SUCCESS;
+}
+
+eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reason)
+{
+   vos_msg_t msg;
+   tSirRoamOffloadScanReq *pRequestBuf;
+   tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+   tCsrRoamSession *pSession;
+   tANI_U8 i,num_channels = 0, ucDot11Mode;
+   tANI_U8 *ChannelList = NULL;
+   tANI_U8  MaxDwellPeriod;
+   tANI_U32 sessionId;
+   eHalStatus status = eHAL_STATUS_SUCCESS;
+   tpCsrChannelInfo    currChannelListInfo;
+   currChannelListInfo = &pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo;
+
+   if (0 == pMac->roam.configParam.isRoamOffloadScanEnabled)
+   {
+      return eHAL_STATUS_FAILURE;
+   }
+   status = csrRoamGetSessionIdFromBSSID(pMac,
+                            (tCsrBssid *)pNeighborRoamInfo->currAPbssid,
+                                        &sessionId);
+   /*The Dynamic Config Items Update may happen even if the state is in INIT.
+    * It is important to ensure that the command is passed down to the FW only
+    * if the Infra Station is in a connected state.A connected station could also be
+    * in a PREAUTH or REASSOC states.So, consider not sending the command down in INIT state.
+    * We also have to ensure that if there is a STOP command we always have to inform Riva,
+    * irrespective of whichever state we are in.*/
+   if ((pMac->roam.neighborRoamInfo.neighborRoamState == eCSR_NEIGHBOR_ROAM_STATE_INIT) &&
+       (command != ROAM_SCAN_OFFLOAD_STOP))
+   {
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "Scan Command not sent to FW with state = %d and cmd = %d\n",
+              pMac->roam.neighborRoamInfo.neighborRoamState, command);
+      return eHAL_STATUS_FAILURE;
+   }
+
+   if ( !HAL_STATUS_SUCCESS( status ) )
+   {
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to find the sessionId for Roam Offload scan request", __func__);
+      return eHAL_STATUS_FAILURE;
+   }
+   pSession = CSR_GET_SESSION( pMac, sessionId );
+   pRequestBuf = vos_mem_malloc(sizeof(tSirRoamOffloadScanReq));
+   if (NULL == pRequestBuf)
+   {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate memory for Roam Offload scan request", __func__);
+           return eHAL_STATUS_FAILED_ALLOC;
+   }
+
+    vos_mem_zero(pRequestBuf,sizeof(tSirRoamOffloadScanReq));
+    /* If command is STOP, then pass down ScanOffloadEnabled as Zero.This will handle the case of
+     * host driver reloads, but Riva still up and running*/
+    if(command == ROAM_SCAN_OFFLOAD_STOP)
+       pRequestBuf->RoamScanOffloadEnabled = 0;
+    else
+       pRequestBuf->RoamScanOffloadEnabled = pMac->roam.configParam.isRoamOffloadScanEnabled;
+    vos_mem_copy(pRequestBuf->ConnectedNetwork.currAPbssid, pNeighborRoamInfo->currAPbssid,
+                 sizeof(tCsrBssid));
+    pRequestBuf->ConnectedNetwork.ssId.length =
+            pMac->roam.roamSession[sessionId].connectedProfile.SSID.length;
+    vos_mem_copy(pRequestBuf->ConnectedNetwork.ssId.ssId,
+                 pMac->roam.roamSession[sessionId].connectedProfile.SSID.ssId,
+                 pRequestBuf->ConnectedNetwork.ssId.length);
+    pRequestBuf->ConnectedNetwork.authentication =
+            pMac->roam.roamSession[sessionId].connectedProfile.AuthType;
+    pRequestBuf->ConnectedNetwork.encryption =
+            pMac->roam.roamSession[sessionId].connectedProfile.EncryptionType;
+    pRequestBuf->ConnectedNetwork.mcencryption =
+            pMac->roam.roamSession[sessionId].connectedProfile.mcEncryptionType;
+    pRequestBuf->LookupThreshold =
+            (v_S7_t)pNeighborRoamInfo->cfgParams.neighborLookupThreshold * (-1);
+    pRequestBuf->RoamRssiDiff =
+            pMac->roam.configParam.RoamRssiDiff;
+    pRequestBuf->Command = command;
+    pRequestBuf->StartScanReason = reason;
+    pRequestBuf->NeighborScanTimerPeriod =
+            pNeighborRoamInfo->cfgParams.neighborScanPeriod;
+    pRequestBuf->NeighborRoamScanRefreshPeriod =
+            pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod;
+    pRequestBuf->NeighborScanChannelMinTime =
+            pNeighborRoamInfo->cfgParams.minChannelScanTime;
+    pRequestBuf->NeighborScanChannelMaxTime =
+            pNeighborRoamInfo->cfgParams.maxChannelScanTime;
+    pRequestBuf->EmptyRefreshScanPeriod =
+            pNeighborRoamInfo->cfgParams.emptyScanRefreshPeriod;
+#ifdef FEATURE_WLAN_CCX
+    pRequestBuf->IsCCXEnabled = pMac->roam.configParam.isCcxIniFeatureEnabled;
+#endif
+    if (
+#ifdef FEATURE_WLAN_CCX
+       ((pNeighborRoamInfo->isCCXAssoc) &&
+        (pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived ==
+         eANI_BOOLEAN_FALSE)) ||
+        (pNeighborRoamInfo->isCCXAssoc == eANI_BOOLEAN_FALSE) ||
+#endif // CCX
+        currChannelListInfo->numOfChannels == 0)
+    {
+
+    /*Retreive the Channel Cache either from ini or from the Occupied Channels list.
+     * Give Preference to INI Channels.*/
+    if (pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels)
+    {
+      ChannelList = pNeighborRoamInfo->cfgParams.channelInfo.ChannelList;
+      for (i=0; i<pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels ;i++)
+          {
+             if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
+               {
+                  pRequestBuf->ConnectedNetwork.ChannelCache[num_channels++] = *ChannelList;
+               }
+                  ChannelList++;
+          }
+          pRequestBuf->ConnectedNetwork.ChannelCount = num_channels;
+          pRequestBuf->ChannelCacheType = CHANNEL_LIST_STATIC;
+    }
+    else{
+          ChannelList = pMac->scan.occupiedChannels.channelList;
+          for(i=0; i<pMac->scan.occupiedChannels.numChannels; i++)
+          {
+              if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
+              {
+                pRequestBuf->ConnectedNetwork.ChannelCache[num_channels++] = *ChannelList;
+              }
+              ChannelList++;
+          }
+          pRequestBuf->ConnectedNetwork.ChannelCount = num_channels;
+          /* If the profile changes as to what it was earlier, inform the FW through
+           * FLUSH as ChannelCacheType in which case, the FW will flush the occupied channels
+           * for the earlier profile and try to learn them afresh.*/
+          if (reason == REASON_FLUSH_CHANNEL_LIST)
+              pRequestBuf->ChannelCacheType = CHANNEL_LIST_DYNAMIC_FLUSH;
+          else {
+                if (csrNeighborRoamIsNewConnectedProfile(pMac))
+                    pRequestBuf->ChannelCacheType = CHANNEL_LIST_DYNAMIC_INIT;
+                else
+                    pRequestBuf->ChannelCacheType = CHANNEL_LIST_DYNAMIC_UPDATE;
+          }
+        }
+    }
+#ifdef FEATURE_WLAN_CCX
+    else
+    {
+      /* If CCX is enabled, and a neighbor Report is received,then
+       * Ignore the INI Channels or the Occupied Channel List. Consider
+       * the channels in the neighbor list sent by the CCX AP.*/
+      if (currChannelListInfo->numOfChannels != 0)
+      {
+         ChannelList = currChannelListInfo->ChannelList;
+         for (i=0;i<currChannelListInfo->numOfChannels;i++)
+         {
+          if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
+          {
+           pRequestBuf->ConnectedNetwork.ChannelCache[num_channels++] = *ChannelList;
+          }
+          ChannelList++;
+         }
+         pRequestBuf->ConnectedNetwork.ChannelCount = num_channels;
+         pRequestBuf->ChannelCacheType = CHANNEL_LIST_STATIC;
+      }
+    }
+#endif
+    num_channels = 0;
+    ChannelList = NULL;
+
+    /* Maintain the Valid Channels List*/
+    if (0 == strncmp(pMac->scan.countryCodeCurrent, "KR", 2))
+    {
+       ChannelList = pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
+       for(i=0; i<pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels; i++)
+          {
+            if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
+              {
+                 pRequestBuf->ValidChannelList[num_channels++] = *ChannelList;
+              }
+                 ChannelList++;
+          }
+          pRequestBuf->ValidChannelCount = num_channels;
+    } else {
+       ChannelList = pMac->roam.validChannelList;
+       for(i=0; i<pMac->roam.numValidChannels; i++)
+          {
+            if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
+              {
+                 pRequestBuf->ValidChannelList[num_channels++] = *ChannelList;
+              }
+                 ChannelList++;
+          }
+          pRequestBuf->ValidChannelCount = num_channels;
+    }
+    pRequestBuf->MDID.mdiePresent =
+            pMac->roam.roamSession[sessionId].connectedProfile.MDID.mdiePresent;
+    pRequestBuf->MDID.mobilityDomain =
+            pMac->roam.roamSession[sessionId].connectedProfile.MDID.mobilityDomain;
+    /*Ensure that the nProbes does not fall below its MIN Value which is 2*/
+    if(pMac->roam.configParam.nProbes < 2)
+       pRequestBuf->nProbes = 2;
+    else
+    pRequestBuf->nProbes = pMac->roam.configParam.nProbes;
+
+    /*Max Dwell Period is calculated here to ensure that,
+     * Home Away Time is atleast equal to (MaxDwellPeriod +
+     * (2*SRF)), where SRF is the RF Switching time.The RF
+     * switching time is considered twice to consider the
+     * time to go off channel and return to the home channel.*/
+    MaxDwellPeriod = pRequestBuf->NeighborScanChannelMaxTime/pRequestBuf->nProbes;
+    if(MaxDwellPeriod < 1)
+       MaxDwellPeriod = 1;
+    if(pMac->roam.configParam.nRoamScanHomeAwayTime <
+            (MaxDwellPeriod + (2 * SIR_ROAM_SCAN_CHANNEL_SWITCH_TIME)))
+    {
+       pRequestBuf->HomeAwayTime = MaxDwellPeriod + (2 * SIR_ROAM_SCAN_CHANNEL_SWITCH_TIME);
+    } else {
+    pRequestBuf->HomeAwayTime = pMac->roam.configParam.nRoamScanHomeAwayTime;
+    }
+   /*Prepare a probe request for 2.4GHz band and one for 5GHz band*/
+    ucDot11Mode = (tANI_U8) csrTranslateToWNICfgDot11Mode(pMac,
+                                                           csrFindBestPhyMode( pMac, pMac->roam.configParam.phyMode ));
+   csrRoamScanOffloadPrepareProbeReqTemplate(pMac,SIR_ROAM_SCAN_24G_DEFAULT_CH, ucDot11Mode, pSession->selfMacAddr,
+                                             pRequestBuf->p24GProbeTemplate, &pRequestBuf->us24GProbeTemplateLen);
+
+   csrRoamScanOffloadPrepareProbeReqTemplate(pMac,SIR_ROAM_SCAN_5G_DEFAULT_CH, ucDot11Mode, pSession->selfMacAddr,
+                                             pRequestBuf->p5GProbeTemplate, &pRequestBuf->us5GProbeTemplateLen);
+   msg.type     = WDA_ROAM_SCAN_OFFLOAD_REQ;
+   msg.reserved = 0;
+   msg.bodyptr  = pRequestBuf;
+   if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
+   {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to post WDA_ROAM_SCAN_OFFLOAD_REQ message to WDA", __func__);
+           vos_mem_free(pRequestBuf);
+           return eHAL_STATUS_FAILURE;
+   }
+
+   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG, "Roam Scan Offload Command %d, Reason %d", command, reason);
+   return status;
+}
+#endif
 
 tCsrPeStatsReqInfo * csrRoamCheckPeStatsReqList(tpAniSirGlobal pMac, tANI_U32  statsMask, 
                                                 tANI_U32 periodicity, tANI_BOOLEAN *pFound, tANI_U8 staId)
@@ -14936,6 +15342,9 @@ eHalStatus csrIsFullPowerNeeded( tpAniSirGlobal pMac, tSmeCmd *pCommand,
         {
             switch( pCommand->u.scanCmd.reason )
             {
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+            case eCsrScanGetLfrResult:
+#endif
             case eCsrScanGetResult:
             case eCsrScanBGScanAbort:
             case eCsrScanBGScanEnable:
@@ -15513,8 +15922,48 @@ eHalStatus csrSetTxPower(tpAniSirGlobal pMac, v_U8_t sessionId, v_U8_t mW)
        if (!HAL_STATUS_SUCCESS(status))
        {
            smsLog(pMac, LOGE, FL(" csr set TX Power Post MSG Fail %d "), status);
-           palFreeMemory(pMac->hHdd, pMsg);
+           //pMsg is freed by palSendMBMessage
        }
    }
    return status;
+}
+
+/* Returns whether a session is in VOS_STA_MODE...or not */
+tANI_BOOLEAN csrRoamIsStaMode(tpAniSirGlobal pMac, tANI_U32 sessionId)
+{
+  tCsrRoamSession *pSession = NULL;
+  pSession = CSR_GET_SESSION ( pMac, sessionId );
+  if(!pSession)
+  {
+    smsLog(pMac, LOGE, FL(" %s: session %d not found "), __func__, sessionId);
+    return eANI_BOOLEAN_FALSE;
+  }
+  if ( !CSR_IS_SESSION_VALID ( pMac, sessionId ) )
+  {
+    smsLog(pMac, LOGE, FL(" %s: Inactive session"), __func__);
+    return eANI_BOOLEAN_FALSE;
+  }
+  if ( eCSR_BSS_TYPE_INFRASTRUCTURE != pSession->connectedProfile.BSSType )
+  {
+     return eANI_BOOLEAN_FALSE;
+  }
+  /* There is a possibility that the above check may fail,because
+   * P2P CLI also uses the same BSSType (eCSR_BSS_TYPE_INFRASTRUCTURE)
+   * when it is connected.So,we may sneak through the above check even
+   * if we are not a STA mode INFRA station. So, if we sneak through
+   * the above condition, we can use the following check if we are
+   * really in STA Mode.*/
+
+  if ( NULL != pSession->pCurRoamProfile )
+  {
+    if ( pSession->pCurRoamProfile->csrPersona == VOS_STA_MODE )
+    {
+      return eANI_BOOLEAN_TRUE;
+    } else {
+            smsLog(pMac, LOGE, FL(" %s: pCurRoamProfile is NULL\n"), __func__);
+            return eANI_BOOLEAN_FALSE;
+           }
+    }
+
+  return eANI_BOOLEAN_FALSE;
 }

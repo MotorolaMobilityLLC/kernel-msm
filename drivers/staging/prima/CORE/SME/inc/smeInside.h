@@ -140,7 +140,9 @@ typedef struct TdlsAddStaInfo
   tANI_U8   extnCapability[SIR_MAC_MAX_EXTN_CAP];
   tANI_U8   supportedRatesLen;
   tANI_U8   supportedRates[SIR_MAC_MAX_SUPP_RATES];
+  tANI_U8    htcap_present;
   tSirHTCap  HTCap;
+  tANI_U8    vhtcap_present;
   tSirVHTCap VHTCap;
   tANI_U8   uapsdQueues;
   tANI_U8   maxSp;
@@ -308,9 +310,10 @@ eHalStatus csrTdlsTeardownReq(tHalHandle hHal, tANI_U8 sessionId,
 #endif /* FEATURE_WLAN_TDLS */
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-eHalStatus csrFlushAndCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
-                                                  const tANI_U8 *pChannelList,
-                                                  const tANI_U8 numChannels);
+eHalStatus csrFlushBgScanRoamChannelList(tpAniSirGlobal pMac);
+eHalStatus csrCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
+                                            const tANI_U8 *pChannelList,
+                                            const tANI_U8 numChannels);
 eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac, eCsrBand eBand);
 eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac, tANI_U8 revision);
 void csr_SetRevision(tpAniSirGlobal pMac, tANI_U8 revision);
