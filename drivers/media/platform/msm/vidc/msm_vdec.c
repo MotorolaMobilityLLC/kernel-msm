@@ -18,10 +18,20 @@
 #include "vidc_hfi_api.h"
 #include "msm_smem.h"
 #include "msm_vidc_debug.h"
+#include <mach/scm.h>
 
 #define MSM_VDEC_DVC_NAME "msm_vdec_8974"
 #define MIN_NUM_OUTPUT_BUFFERS 4
 #define MAX_NUM_OUTPUT_BUFFERS VIDEO_MAX_FRAME
+
+#define TZ_INFO_GET_FEATURE_VERSION_ID 0x3
+#define TZ_DYNAMIC_BUFFER_FEATURE_ID 12
+#define TZ_FEATURE_VERSION(major, minor, patch) \
+	(((major & 0x3FF) << 22) | ((minor & 0x3FF) << 12) | (patch & 0xFFF))
+
+struct tz_get_feature_version {
+	u32 feature_id;
+};
 
 enum msm_vdec_ctrl_cluster {
 	MSM_VDEC_CTRL_CLUSTER_MAX = 1 << 0,
@@ -1305,6 +1315,26 @@ int msm_vdec_inst_init(struct msm_vidc_inst *inst)
 	return rc;
 }
 
+static int check_tz_dynamic_buffer_support(void)
+{
+	int rc = 0;
+	struct tz_get_feature_version tz_feature_id;
+	unsigned int resp = 0;
+
+	tz_feature_id.feature_id = TZ_DYNAMIC_BUFFER_FEATURE_ID;
+	rc = scm_call(SCM_SVC_INFO,
+		TZ_INFO_GET_FEATURE_VERSION_ID, &tz_feature_id,
+		sizeof(tz_feature_id), &resp, sizeof(resp));
+
+	if ((rc) || (resp != TZ_FEATURE_VERSION(1, 1, 0))) {
+		dprintk(VIDC_DBG,
+			"Dyamic buffer mode not supported, failed to get tz feature version id : %u, rc : %d, response : %u\n",
+			tz_feature_id.feature_id, rc, resp);
+		rc = -ENOTSUPP;
+	}
+	return rc;
+}
+
 static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 {
 	int rc = 0;
@@ -1432,12 +1462,18 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 					"Dynamic buffer mode not supported for Capture Port\n");
 				rc = -ENOTSUPP;
 		} else {
-			alloc_mode.buffer_mode = ctrl->val;
-			alloc_mode.buffer_type = HAL_BUFFER_OUTPUT;
-			pdata = &alloc_mode;
-			inst->output_alloc_mode = alloc_mode.buffer_mode;
-			inst->fmts[CAPTURE_PORT]->buf_type =
-				alloc_mode.buffer_mode;
+			if ((inst->flags & VIDC_SECURE) &&
+				check_tz_dynamic_buffer_support()) {
+				rc = -ENOTSUPP;
+			} else {
+				alloc_mode.buffer_mode = ctrl->val;
+				alloc_mode.buffer_type = HAL_BUFFER_OUTPUT;
+				pdata = &alloc_mode;
+				inst->output_alloc_mode =
+					alloc_mode.buffer_mode;
+				inst->fmts[CAPTURE_PORT]->buf_type =
+					alloc_mode.buffer_mode;
+			}
 		}
 		break;
 	default:
