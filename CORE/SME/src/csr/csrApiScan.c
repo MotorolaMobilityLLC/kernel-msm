@@ -2946,7 +2946,7 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
                     cand_Bss_rssi = pBssDescription->Result.BssDescriptor.rssi;
                     // learn country information
                     csrLearnCountryInformation( pMac, &pBssDescription->Result.BssDescriptor, 
-                             pIesLocal, eANI_BOOLEAN_FALSE );
+                             pIesLocal, eANI_BOOLEAN_TRUE );
                 }
 
             }
