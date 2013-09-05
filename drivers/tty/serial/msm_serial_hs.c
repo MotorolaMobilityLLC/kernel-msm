@@ -2055,16 +2055,6 @@ static int msm_hs_startup(struct uart_port *uport)
 	/* Stop remote UART to send data by setting RFR GPIO to LOW. */
 	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_HIGH);
 
-	/*
-	 * Set RX_BREAK_ZERO_CHAR_OFF and RX_ERROR_CHAR_OFF
-	 * so any rx_break and character having parity of framing
-	 * error don't enter inside UART RX FIFO.
-	 */
-	data = msm_hs_read(uport, UARTDM_MR2_ADDR);
-	data |= (UARTDM_MR2_RX_BREAK_ZERO_CHAR_OFF |
-			UARTDM_MR2_RX_ERROR_CHAR_OFF);
-	msm_hs_write(uport, UARTDM_MR2_ADDR, data);
-	mb();
 
 	if (pdata && pdata->config_gpio) {
 		ret = msm_hs_config_uart_gpios(uport);
@@ -2173,16 +2163,6 @@ static int msm_hs_startup(struct uart_port *uport)
 	spin_lock_irqsave(&uport->lock, flags);
 
 	msm_hs_start_rx_locked(uport);
-
-	/*
-	 * Re-enable UART_DM_MR2: 8 and 9 bits
-	 */
-	data = msm_hs_read(uport, UARTDM_MR2_ADDR);
-	data &= ~(UARTDM_MR2_RX_BREAK_ZERO_CHAR_OFF |
-			UARTDM_MR2_RX_ERROR_CHAR_OFF);
-
-	msm_hs_write(uport, UARTDM_MR2_ADDR, data);
-	mb();
 
 	/* Allow remote UART to send data by setting RFR GPIO to HIGH. */
 	msm_hs_write(uport, UARTDM_CR_ADDR, RFR_LOW);
@@ -2339,6 +2319,7 @@ static int __devinit msm_hs_probe(struct platform_device *pdev)
 	int ret;
 	struct uart_port *uport;
 	struct msm_hs_port *msm_uport;
+	unsigned int data;
 	struct resource *resource;
 	struct msm_serial_hs_platform_data *pdata = pdev->dev.platform_data;
 
@@ -2480,16 +2461,27 @@ static int __devinit msm_hs_probe(struct platform_device *pdev)
 	/* configure the CR Protection to Enable */
 	msm_hs_write(uport, UARTDM_CR_ADDR, CR_PROTECTION_EN);
 
-	clk_disable_unprepare(msm_uport->clk);
-	if (msm_uport->pclk)
-		clk_disable_unprepare(msm_uport->pclk);
-
 	/*
 	 * Enable Command register protection before going ahead as this hw
 	 * configuration makes sure that issued cmd to CR register gets complete
 	 * before next issued cmd start. Hence mb() requires here.
 	 */
 	mb();
+
+	/*
+	 * Set RX_BREAK_ZERO_CHAR_OFF and RX_ERROR_CHAR_OFF
+	 * so any rx_break and character having parity of framing
+	 * error don't enter inside UART RX FIFO.
+	 */
+	data = msm_hs_read(uport, UARTDM_MR2_ADDR);
+	data |= (UARTDM_MR2_RX_BREAK_ZERO_CHAR_OFF |
+			UARTDM_MR2_RX_ERROR_CHAR_OFF);
+	msm_hs_write(uport, UARTDM_MR2_ADDR, data);
+	mb();
+
+	clk_disable_unprepare(msm_uport->clk);
+	if (msm_uport->pclk)
+		clk_disable_unprepare(msm_uport->pclk);
 
 	msm_uport->clk_state = MSM_HS_CLK_PORT_OFF;
 	hrtimer_init(&msm_uport->clk_off_timer, CLOCK_MONOTONIC,
