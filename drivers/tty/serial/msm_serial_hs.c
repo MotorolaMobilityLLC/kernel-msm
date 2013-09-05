@@ -879,7 +879,6 @@ static void msm_hs_set_termios(struct uart_port *uport,
 			spin_lock_irqsave(&uport->lock, flags);
 			print_uart_registers(msm_uport);
 			spin_unlock_irqrestore(&uport->lock, flags);
-			BUG_ON(1);
 		}
 
 		spin_lock_irqsave(&uport->lock, flags);
@@ -1186,7 +1185,7 @@ static void msm_hs_start_rx_locked(struct uart_port *uport)
 	if (msm_uport->rx.dma_in_flight) {
 		pr_err("%s(): RX CMD is already queued.\n", __func__);
 		print_uart_registers(msm_uport);
-		BUG_ON(1);
+		return;
 	}
 
 	msm_uport->rx.buffer_pending = 0;
