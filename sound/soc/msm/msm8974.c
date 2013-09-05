@@ -2046,6 +2046,7 @@ static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
 }
 
 static struct snd_pcm_hw_params wm5110_tfa9890_params;
+static struct snd_pcm_hw_params wm5110_acme_params;
 
 /* Use the dai init for the codec to codec dai to
  * enable the tfa speaker boost and clock the i2s
@@ -2132,6 +2133,46 @@ static int wm5110_tfa9890_init(struct snd_soc_pcm_runtime *rtd)
 
 	rtd->codec_dai->driver->ops->hw_params(0, &wm5110_tfa9890_params,
 				   rtd->codec_dai);
+
+	return ret;
+}
+
+static int wm5110_acme_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	int wm5110_dai_fmt =  SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF
+			      | SND_SOC_DAIFMT_CBM_CFM;
+
+	struct snd_interval *rate;
+	struct snd_interval *channels;
+
+	printk(KERN_INFO "wm5110-acme codec-dsp dai init\n");
+
+	channels = hw_param_interval(&wm5110_acme_params,
+					SNDRV_PCM_HW_PARAM_CHANNELS);
+	rate = hw_param_interval(&wm5110_acme_params,
+					SNDRV_PCM_HW_PARAM_RATE);
+
+	/* 2 channels, 16k, 16bit LE */
+	channels->min = channels->max = 2;
+	rate->min = rate->max = 16000;
+	param_set_mask(&wm5110_acme_params, SNDRV_PCM_HW_PARAM_FORMAT,
+	SNDRV_PCM_FORMAT_S16_LE);
+
+	/* wm5110 codec is populate on the first back-end dai being initd */
+	rtd->cpu_dai->codec = wm5110_codec;
+
+	/* wm5110 is master */
+	ret = snd_soc_dai_set_fmt(rtd->cpu_dai, wm5110_dai_fmt);
+
+	if (ret != 0)
+		dev_err(rtd->cpu_dai->codec->dev,
+			"Failed to set format for wm5110 aif1 %d\n",
+			ret);
+
+	/* start generating clocks - the acme chip should already be up */
+	rtd->cpu_dai->driver->ops->hw_params(0, &wm5110_acme_params,
+				 rtd->cpu_dai);
 
 	return ret;
 }
@@ -3088,6 +3129,17 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.codec_name = "tfa9890.0-0034",
 		.codec_dai_name = "tfa9890_codec",
 		.init = &wm5110_tfa9890_init,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+	},
+	/* WM5110 - ACME chip codec-dsp link */
+	{
+		.name = "wm5110-acme",
+		.stream_name = "codec-dsp link",
+		.cpu_dai_name = "wm5110-aif3",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.init = &wm5110_acme_init,
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 	},
