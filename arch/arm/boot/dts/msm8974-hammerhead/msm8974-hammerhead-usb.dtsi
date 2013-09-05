@@ -18,4 +18,8 @@
 	qcom,dwc-usb3-msm-adc-high-threshold = <30>;
 	qcom,dwc-hsphy-init = <0x00D1DDA4>;
 	qcom,dwc-hsphy-host-init = <0x00D191A4>;
+
+	dwc3@f9200000 {
+		no-set-vbus-power;
+	};
 };
