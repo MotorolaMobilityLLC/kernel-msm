@@ -726,6 +726,8 @@ static const struct snd_soc_dapm_widget msm8974_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic6", NULL),
+	SND_SOC_DAPM_OUTPUT("ACME_I2S1_RX"),
+	SND_SOC_DAPM_INPUT("ACME_I2S1_TX"),
 };
 
 #ifdef CONFIG_SND_SOC_TPA6165A2
@@ -2155,7 +2157,7 @@ static int wm5110_acme_init(struct snd_soc_pcm_runtime *rtd)
 
 	/* 2 channels, 16k, 16bit LE */
 	channels->min = channels->max = 2;
-	rate->min = rate->max = 16000;
+	rate->min = rate->max = 48000;
 	param_set_mask(&wm5110_acme_params, SNDRV_PCM_HW_PARAM_FORMAT,
 	SNDRV_PCM_FORMAT_S16_LE);
 
@@ -3108,7 +3110,7 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 	{
 		.name = "wm5110-acme",
 		.stream_name = "codec-dsp link",
-		.cpu_dai_name = "wm5110-aif3",
+		.cpu_dai_name = "wm5110-aif2",
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 		.init = &wm5110_acme_init,
@@ -3143,6 +3145,8 @@ static struct snd_soc_dai_link msm8974_dai_links[
 
 static const struct snd_soc_dapm_route wm5110_tfa9890_routes[] = {
 	{"I2S1", NULL, "AIF1TX1"},
+	{"ACME_I2S1_RX", NULL, "AIF2TX1"},
+	{"AIF2RX1", NULL, "ACME_I2S1_TX"}
 };
 
 int msm8974_late_probe(struct snd_soc_card *card)
