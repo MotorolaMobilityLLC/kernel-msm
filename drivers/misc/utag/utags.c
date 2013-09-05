@@ -128,6 +128,9 @@ enum utag_error {
 	UTAG_ERR_PROTECTED,
 };
 
+static void build_utags_directory(void);
+static void clear_utags_directory(void);
+
 /*
  * Free the memory associated with a list of tags.
  *
@@ -828,6 +831,34 @@ static int dump_all(struct seq_file *file, void *v)
 	return 0;
 }
 
+static int reload_show(struct seq_file *file, void *v)
+{
+	seq_puts(file, "0\n");
+	return 0;
+}
+
+static ssize_t reload_write(struct file *file, const char __user *buffer,
+	   size_t count, loff_t *pos)
+{
+	char c;
+
+	if (1 > count)
+		goto out;
+
+	if (copy_from_user(&c, buffer, 1)) {
+		pr_err("%s user copy error\n", __func__);
+		return -EFAULT;
+	}
+
+	if ('1' == c) {
+		clear_utags_directory();
+		build_utags_directory();
+	}
+
+out:
+	return count;
+}
+
 static int config_read(struct inode *inode, struct file *file)
 {
 	return single_open(file, read_tag, proc_get_parent_data(inode));
@@ -836,6 +867,11 @@ static int config_read(struct inode *inode, struct file *file)
 static int config_dump(struct inode *inode, struct file *file)
 {
 	return single_open(file, dump_all, proc_get_parent_data(inode));
+}
+
+static int reload_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, reload_show, proc_get_parent_data(inode));
 }
 
 static const struct file_operations utag_fops = {
@@ -864,8 +900,16 @@ static const struct file_operations new_fops = {
 	.write = new_utag,
 };
 
+static const struct file_operations reload_fops = {
+	.owner = THIS_MODULE,
+	.open = reload_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+	.write = reload_write,
+};
 
-static int __init config_init(void)
+static void build_utags_directory(void)
 {
 	struct utag *tags, *cur;
 	struct dir_node *dnode;
@@ -876,14 +920,8 @@ static int __init config_init(void)
 	/* try to load utags from primary partition */
 	tags = load_utags(utags_blkdev);
 	if (NULL == tags) {
-		pr_err("%s Can not open utags\n", __func__);
-		return -EIO;
-	}
-	dir_root = proc_mkdir("config", NULL);
-	if (!dir_root) {
-		pr_err("%s Failed to create dir entry\n", __func__);
-		free_tags(tags);
-		return -EIO;
+		pr_warn("%s Can not open utags\n", __func__);
+		return;
 	}
 	/* skip utags head */
 	cur = tags->next;
@@ -895,7 +933,7 @@ static int __init config_init(void)
 		dir = proc_mkdir(utag_name, dir_root);
 		if (!dir) {
 			pr_err("%s Failed to create dir\n", __func__);
-			goto out;
+			break;
 		}
 		dnode = kmalloc(sizeof(struct dir_node), GFP_KERNEL);
 		if (dnode) {
@@ -923,14 +961,11 @@ static int __init config_init(void)
 	utag_file("all", "raw", OUT_RAW, dir, &dump_fops);
 	utag_file("all", "new", OUT_NEW, dir, &new_fops);
 
-out:	free_tags(tags);
-
-	return 0;
+	free_tags(tags);
 }
 
-static void __exit config_exit(void)
+static void clear_utags_directory(void)
 {
-
 	struct proc_node *node, *s = NULL;
 	struct dir_node *dir_node, *c = NULL;
 
@@ -944,6 +979,34 @@ static void __exit config_exit(void)
 		list_del(&dir_node->entry);
 		kfree(dir_node);
 	}
+}
+
+static int __init config_init(void)
+{
+	struct proc_dir_entry *reload_pde;
+
+	dir_root = proc_mkdir("config", NULL);
+	if (!dir_root) {
+		pr_err("%s Failed to create dir entry\n", __func__);
+		return -EIO;
+	}
+
+	reload_pde = proc_create("reload", 0600, dir_root, &reload_fops);
+	if (!reload_pde) {
+		pr_err("%s Failed to create reload entry\n", __func__);
+		remove_proc_entry("config", NULL);
+		return -EIO;
+	}
+
+	build_utags_directory();
+
+	return 0;
+}
+
+static void __exit config_exit(void)
+{
+	clear_utags_directory();
+	remove_proc_entry("reload", dir_root);
 	remove_proc_entry("config", NULL);
 }
 
