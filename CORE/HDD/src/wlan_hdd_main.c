@@ -604,7 +604,6 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
    if ((SIOCDEVPRIVATE + 1) == cmd)
    {
        hdd_context_t *pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
-       struct wiphy *wiphy = pHddCtx->wiphy;
 
        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                   "%s: Received %s cmd from Wi-Fi GUI***", __func__, command);
@@ -648,14 +647,6 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                        "%s: SME Change Country code fail ret=%d\n",__func__, ret);
 
-           }
-           /* If you get a 00 country code it means you are world roaming.
-           In case of world roaming, country code should be updated by
-           DRIVER COUNTRY */
-           if (memcmp(pHddCtx->cfg_ini->crdaDefaultCountryCode,
-                            CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT , 2) == 0)
-           {
-              regulatory_hint(wiphy, "00");
            }
        }
        /*
@@ -5444,7 +5435,7 @@ int hdd_wlan_startup(struct device *dev )
    init_completion(&pHddCtx->req_bmps_comp_var);
    init_completion(&pHddCtx->scan_info.scan_req_completion_event);
    init_completion(&pHddCtx->scan_info.abortscan_event_var);
-   init_completion(&pHddCtx->driver_crda_req);
+   init_completion(&pHddCtx->linux_reg_req);
 
    spin_lock_init(&pHddCtx->schedScan_lock);
 
