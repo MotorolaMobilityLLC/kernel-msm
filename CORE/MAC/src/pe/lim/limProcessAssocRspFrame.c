@@ -159,11 +159,11 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
        {
            pStaDs->mlmStaContext.vhtCapability = pAssocRsp->VHTCaps.present;
        }
-       if (limPopulateOwnRateSet(pMac, &pStaDs->supportedRates, 
+       if (limPopulatePeerRateSet(pMac, &pStaDs->supportedRates,
                                 pAssocRsp->HTCaps.supportedMCSSet,
-                                false,psessionEntry , &pAssocRsp->VHTCaps) != eSIR_SUCCESS) 
+                                false,psessionEntry , &pAssocRsp->VHTCaps) != eSIR_SUCCESS)
 #else
-       if (limPopulateOwnRateSet(pMac, &pStaDs->supportedRates, pAssocRsp->HTCaps.supportedMCSSet, false,psessionEntry) != eSIR_SUCCESS) 
+       if (limPopulatePeerRateSet(pMac, &pStaDs->supportedRates, pAssocRsp->HTCaps.supportedMCSSet, false,psessionEntry) != eSIR_SUCCESS)
 #endif
        {
            limLog(pMac, LOGP, FL("could not get rateset and extended rate set"));
