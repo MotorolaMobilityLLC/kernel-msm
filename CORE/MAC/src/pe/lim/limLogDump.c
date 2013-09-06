@@ -71,6 +71,7 @@ Qualcomm Confidential and Proprietary
 #endif
 #include "smeInside.h"
 #include "wlan_qct_wda.h"
+#include "wlan_qct_wdi_dts.h"
 
 void WDA_TimerTrafficStatsInd(tWDA_CbContext *pWDA);
 #ifdef WLANTL_DEBUG
@@ -2392,6 +2393,19 @@ dump_lim_get_pkts_rcvd_per_rssi_values( tpAniSirGlobal pMac, tANI_U32 arg1, tANI
 }
 #endif
 
+/* API to fill Rate Info based on mac efficiency
+ * arg 1: mac efficiency to be used to calculate mac thorughput for a given rate index
+ * arg 2: starting rateIndex to apply the macEfficiency to
+ * arg 3: ending rateIndex to apply the macEfficiency to
+ */
+static char *
+dump_limRateInfoBasedOnMacEff(tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+    limLog(pMac, LOGE, FL("arg1 %u, arg2 %u, arg3 %u"), arg1, arg2, arg3);
+    WDTS_FillRateInfo((tANI_U8)(arg1), (tANI_U16)(arg2), (tANI_U16)(arg3));
+    return p;
+}
+
 static tDumpFuncEntry limMenuDumpTable[] = {
     {0,     "PE (300-499)",                                          NULL},
     {300,   "LIM: Dump state(s)/statistics <session id>",            dump_lim_info},
@@ -2467,6 +2481,7 @@ static tDumpFuncEntry limMenuDumpTable[] = {
     {369,   "PE.LIM: pkts/rateIdx: iwpriv wlan0 dump 368 <staId> <boolean to flush counter>",    dump_lim_get_pkts_rcvd_per_rate_idx},
     {370,   "PE.LIM: pkts/rssi: : iwpriv wlan0 dump 369 <staId> <boolean to flush counter>",    dump_lim_get_pkts_rcvd_per_rssi_values},
 #endif
+    {373,   "PE.LIM: MAS RX stats MAC eff <MAC eff in percentage>",  dump_limRateInfoBasedOnMacEff},
 };
 
 
