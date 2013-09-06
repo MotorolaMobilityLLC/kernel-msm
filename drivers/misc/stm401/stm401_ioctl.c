@@ -53,6 +53,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	int err = -ENOTTY;
 	unsigned int addr = 0;
 	struct stm401_data *ps_stm401 = file->private_data;
+	unsigned int cmdlen = 0;
 	unsigned char byte;
 	unsigned char bytes[2];
 	unsigned short delay;
@@ -61,7 +62,6 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 
 	mutex_lock(&ps_stm401->lock);
 
-/*
 	switch (cmd) {
 	case STM401_IOCTL_BOOTLOADERMODE:
 		dev_dbg(&ps_stm401->client->dev,
@@ -119,14 +119,11 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			return -EFAULT;
 		}
 	}
-*/
 
 	switch (cmd) {
 	case STM401_IOCTL_GET_VERSION:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_VERSION");
-/*
 		err = stm401_get_version(ps_stm401);
-*/
 		break;
 	case STM401_IOCTL_SET_ACC_DELAY:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_ACC_DELAY");
