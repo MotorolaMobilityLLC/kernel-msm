@@ -157,15 +157,17 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
     ,FEATURE_NOT_SUPPORTED          //19
     ,FEATURE_NOT_SUPPORTED          //20
     ,FEATURE_NOT_SUPPORTED          //21
+    ,WOW                            //22
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-    ,WLAN_ROAM_SCAN_OFFLOAD         //22
+    ,WLAN_ROAM_SCAN_OFFLOAD         //23
 #else
     ,FEATURE_NOT_SUPPORTED
 #endif
-    ,FEATURE_NOT_SUPPORTED          //23
     ,FEATURE_NOT_SUPPORTED          //24
     ,FEATURE_NOT_SUPPORTED          //25
     ,IBSS_HEARTBEAT_OFFLOAD         //26
+    ,FEATURE_NOT_SUPPORTED          //27
+    ,WLAN_PERIODIC_TX_PTRN          //28
    };
 
 /*-------------------------------------------------------------------------- 
