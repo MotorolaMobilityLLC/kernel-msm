@@ -72,7 +72,7 @@ int stm401_load_brightness_table(struct stm401_data *ps_stm401)
 	return err;
 }
 
-static void stm401_reset(struct stm401_platform_data *pdata)
+void stm401_reset(struct stm401_platform_data *pdata)
 {
 	dev_err(&stm401_misc_data->client->dev, "stm401_reset\n");
 	msleep_interruptible(stm401_i2c_retry_delay);
