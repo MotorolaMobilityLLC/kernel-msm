@@ -331,23 +331,25 @@
 			status = "ok";
 
 			qcom,vddmax-mv = <4200>;
-			qcom,vddsafe-mv = <4230>;
+			qcom,vddsafe-mv = <4400>;
 			qcom,vinmin-mv = <4300>;
-			qcom,vbatdet-delta-mv = <100>;
-			qcom,ibatmax-ma = <1500>;
+			qcom,vbatdet-delta-mv = <150>;
+			qcom,ibatmax-ma = <2000>;
 			qcom,ibatterm-ma = <100>;
-			qcom,ibatsafe-ma = <1500>;
+			qcom,ibatsafe-ma = <3250>;
 			qcom,thermal-mitigation = <1500 700 600 325>;
 			qcom,resume-soc = <99>;
 			qcom,tchg-mins = <150>;
 			qcom,chg-vadc = <&pm8226_vadc>;
 			qcom,chg-adc_tm = <&pm8226_adc_tm>;
-			qcom,ibatmax-warm-ma = <350>;
+			qcom,ibatmax-warm-ma = <2000>;
 			qcom,warm-bat-decidegc = <450>;
-			qcom,warm-bat-mv = <4100>;
-			qcom,cool-bat-decidegc = <100>;
-			qcom,cool-bat-mv = <4100>;
-			qcom,ibatmax-cool-ma = <350>;
+			qcom,warm-bat-mv = <4000>;
+			qcom,cool-bat-decidegc = <10>;
+			qcom,cool-bat-mv = <4000>;
+			qcom,ibatmax-cool-ma = <2000>;
+			qcom,batt-hot-percentage = <25>;
+			qcom,batt-cold-percentage = <80>;
 
 			qcom,chgr@1000 {
 				status = "ok";
