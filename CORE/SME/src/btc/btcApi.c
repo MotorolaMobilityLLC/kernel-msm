@@ -83,6 +83,8 @@ VOS_STATUS btcOpen (tHalHandle hHal)
 {
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
    VOS_STATUS vosStatus;
+   int i;
+
    /* Initialize BTC configuartion. */
    pMac->btc.btcConfig.btcExecutionMode = BTC_SMART_COEXISTENCE;
    pMac->btc.btcConfig.btcConsBtSlotsToBlockDuringDhcp = 0;
@@ -109,6 +111,22 @@ VOS_STATUS btcOpen (tHalHandle hHal)
    pMac->btc.btcEventState = 0;
    pMac->btc.btcHBActive = VOS_TRUE;
    pMac->btc.btcScanCompromise = VOS_FALSE;
+
+   for (i = 0; i < MWS_COEX_MAX_VICTIM_TABLE; i++)
+   {
+      pMac->btc.btcConfig.mwsCoexVictimWANFreq[i] = 0;
+      pMac->btc.btcConfig.mwsCoexVictimWLANFreq[i] = 0;
+      pMac->btc.btcConfig.mwsCoexVictimConfig[i] = 0;
+      pMac->btc.btcConfig.mwsCoexVictimConfig2[i] = 0;
+   }
+
+   for (i = 0; i < MWS_COEX_MAX_CONFIG; i++)
+   {
+      pMac->btc.btcConfig.mwsCoexConfig[i] = 0;
+   }
+
+   pMac->btc.btcConfig.mwsCoexModemBackoff = 0;
+   pMac->btc.btcConfig.SARPowerBackoff = 0;
 
    vosStatus = vos_timer_init( &pMac->btc.restoreHBTimer,
                       VOS_TIMER_TYPE_SW,
