@@ -589,10 +589,6 @@ VOS_STATUS hdd_softap_init_tx_rx( hdd_adapter_t *pAdapter )
       }
    }
 
-   /* Update the AC weights suitable for SoftAP mode of operation */
-   WLANTL_SetACWeights((WLAN_HDD_GET_CTX(pAdapter))->pvosContext, pACWeights);
-
-   /* Initialize SAP/P2P-GO traffin monitor */
    pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
    if (NULL == pHddCtx)
    {
@@ -600,6 +596,11 @@ VOS_STATUS hdd_softap_init_tx_rx( hdd_adapter_t *pAdapter )
                  "%s: Invalid HDD cntxt", __func__ );
       return VOS_STATUS_E_INVAL;
    }
+
+   /* Update the AC weights suitable for SoftAP mode of operation */
+   WLANTL_SetACWeights((WLAN_HDD_GET_CTX(pAdapter))->pvosContext, pACWeights);
+
+   /* Initialize SAP/P2P-GO traffin monitor */
    if ((pHddCtx->cfg_ini->enableTrafficMonitor) &&
        (!pHddCtx->traffic_monitor.isInitialized))
    {
