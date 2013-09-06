@@ -1800,6 +1800,148 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
     return eSIR_FAILURE;
 } /*** limPopulateOwnRateSet() ***/
 
+#ifdef WLAN_FEATURE_11AC
+tSirRetStatus
+limPopulatePeerRateSet(tpAniSirGlobal pMac,
+
+                      tpSirSupportedRates pRates,
+                      tANI_U8* pSupportedMCSSet,
+                      tANI_U8 basicOnly,
+                      tpPESession psessionEntry,
+                      tDot11fIEVHTCaps *pVHTCaps)
+#else
+tSirRetStatus
+limPopulatePeerRateSet(tpAniSirGlobal pMac,
+                      tpSirSupportedRates pRates,
+                      tANI_U8* pSupportedMCSSet,
+                      tANI_U8 basicOnly,
+                      tpPESession psessionEntry)
+#endif
+{
+    tSirMacRateSet          tempRateSet;
+    tSirMacRateSet          tempRateSet2;
+    tANI_U32                     i,j,val,min,isArate;
+    isArate = 0;
+
+    /* copy operational rate set from psessionEntry */
+    if ( psessionEntry->rateSet.numRates < SIR_MAC_RATESET_EID_MAX )
+    {
+        palCopyMemory(pMac->hHdd,(tANI_U8 *)tempRateSet.rate,(tANI_U8*)(psessionEntry->rateSet.rate), psessionEntry->rateSet.numRates);
+        tempRateSet.numRates = psessionEntry->rateSet.numRates;
+    }
+    else
+    {
+        limLog(pMac, LOGE, FL("more than SIR_MAC_RATESET_EID_MAX rates\n"));
+        goto error;
+    }
+    if (psessionEntry->dot11mode == WNI_CFG_PHY_MODE_11G)
+    {
+
+        if (psessionEntry->extRateSet.numRates < SIR_MAC_RATESET_EID_MAX)
+        {
+            palCopyMemory(pMac->hHdd,(tANI_U8 *)tempRateSet2.rate, (tANI_U8*)(psessionEntry->extRateSet.rate), psessionEntry->extRateSet.numRates);
+            tempRateSet2.numRates = psessionEntry->extRateSet.numRates;
+        }
+        else {
+           limLog(pMac, LOGE, FL("psessionEntry->extRateSet.numRates more than SIR_MAC_RATESET_EID_MAX rates\n"));
+           goto error;
+        }
+    }
+    else
+        tempRateSet2.numRates = 0;
+    if ((tempRateSet.numRates + tempRateSet2.numRates) > 12)
+    {
+        //we are in big trouble
+        limLog(pMac, LOGP, FL("more than 12 rates in CFG"));
+        goto error;
+    }
+
+
+    //copy all rates in tempRateSet, there are 12 rates max
+    for (i = 0;i < tempRateSet2.numRates; i++)
+      tempRateSet.rate[i + tempRateSet.numRates] = tempRateSet2.rate[i];
+    tempRateSet.numRates += tempRateSet2.numRates;
+    /**
+     * Sort rates in tempRateSet (they are likely to be already sorted)
+     * put the result in pSupportedRates
+     */
+    {
+        tANI_U8 aRateIndex = 0;
+        tANI_U8 bRateIndex = 0;
+        palZeroMemory( pMac->hHdd, (tANI_U8 *) pRates, sizeof(tSirSupportedRates));
+        for(i = 0;i < tempRateSet.numRates; i++)
+        {
+            min = 0;
+            val = 0xff;
+            isArate = 0;
+            for(j = 0; (j < tempRateSet.numRates) && (j < SIR_MAC_RATESET_EID_MAX); j++)
+            {
+                if ((tANI_U32) (tempRateSet.rate[j] & 0x7f) < val)
+                {
+                     val = tempRateSet.rate[j] & 0x7f;
+                     min = j;
+                }
+            }
+            if (sirIsArate(tempRateSet.rate[min] & 0x7f))
+                isArate = 1;
+    /*
+    * HAL needs to know whether the rate is basic rate or not, as it needs to
+    * update the response rate table accordingly. e.g. if one of the 11a rates is
+    * basic rate, then that rate can be used for sending control frames.
+    * HAL updates the response rate table whenever basic rate set is changed.
+    */
+            if (basicOnly)
+            {
+                if (tempRateSet.rate[min] & 0x80)
+                {
+                    if (isArate)
+                        pRates->llaRates[aRateIndex++] = tempRateSet.rate[min];
+                    else
+                        pRates->llbRates[bRateIndex++] = tempRateSet.rate[min];
+                }
+            }
+            else
+            {
+                if (isArate)
+                    pRates->llaRates[aRateIndex++] = tempRateSet.rate[min];
+                else
+                    pRates->llbRates[bRateIndex++] = tempRateSet.rate[min];
+            }
+            tempRateSet.rate[min] = 0xff;
+        }
+    }
+
+
+    if (IS_DOT11_MODE_HT(psessionEntry->dot11mode))
+    {
+        val = SIZE_OF_SUPPORTED_MCS_SET;
+        if (wlan_cfgGetStr(pMac, WNI_CFG_SUPPORTED_MCS_SET,
+                      pRates->supportedMCSSet,
+                      &val) != eSIR_SUCCESS)
+        {
+            /// Could not get rateset from CFG. Log error.
+            PELOGE(limLog(pMac, LOGE, FL("could not retrieve supportedMCSSet"));)
+            goto error;
+        }
+        //if supported MCS Set of the peer is passed in, then do the intersection
+        //else use the MCS set from local CFG.
+        if(pSupportedMCSSet != NULL)
+        {
+            for(i=0; i<SIR_MAC_MAX_SUPPORTED_MCS_SET; i++)
+                    pRates->supportedMCSSet[i] &= pSupportedMCSSet[i];
+        }
+        PELOG2(limLog(pMac, LOG2, FL("MCS Rate Set Bitmap: "));)
+        for(i=0; i<SIR_MAC_MAX_SUPPORTED_MCS_SET; i++)
+            PELOGW(limLog(pMac, LOG2,FL("%x ") , pRates->supportedMCSSet[i]);)
+    }
+#ifdef WLAN_FEATURE_11AC
+    limPopulateVhtMcsSet(pMac, pRates , pVHTCaps,psessionEntry);
+#endif
+    return eSIR_SUCCESS;
+ error:
+    return eSIR_FAILURE;
+} /*** limPopulatePeerRateSet() ***/
+
 /**
  * limPopulateMatchingRateSet
  * FUNCTION:
@@ -3677,11 +3819,11 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
 
         //Update the rates
 #ifdef WLAN_FEATURE_11AC
-        limPopulateOwnRateSet(pMac, &pAddBssParams->staContext.supportedRates, 
+        limPopulatePeerRateSet(pMac, &pAddBssParams->staContext.supportedRates,
                                         pBeaconStruct->HTCaps.supportedMCSSet, false,psessionEntry,
                                         &pBeaconStruct->VHTCaps);
 #else
-        limPopulateOwnRateSet(pMac, &pAddBssParams->staContext.supportedRates, 
+        limPopulatePeerRateSet(pMac, &pAddBssParams->staContext.supportedRates,
                                         pBeaconStruct->HTCaps.supportedMCSSet, false,psessionEntry);
 #endif
         limFillSupportedRatesInfo(pMac, NULL, &pAddBssParams->staContext.supportedRates,psessionEntry);
