@@ -234,7 +234,7 @@ struct synaptics_rmi4_exp_fn {
 
 static struct device_attribute attrs[] = {
 #ifdef CONFIG_PM
-	__ATTR(full_pm_cycle, (S_IRUGO | S_IWUGO),
+	__ATTR(full_pm_cycle, S_IRUGO | S_IWUSR | S_IWGRP,
 			synaptics_rmi4_full_pm_cycle_show,
 			synaptics_rmi4_full_pm_cycle_store),
 #endif
