@@ -108,5 +108,6 @@ int hdd_softap_unpackIE( tHalHandle halHandle,
 VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCallback);
 VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter );
 void hdd_set_ap_ops( struct net_device *pWlanHostapdDev );
-
+int hdd_hostapd_set_mc_rate(hdd_adapter_t *pHostapdAdapter,
+                            int targetRateHkbps);
 #endif    // end #if !defined( WLAN_HDD_HOSTAPD_H )
