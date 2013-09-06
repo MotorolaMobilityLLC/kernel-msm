@@ -103,6 +103,7 @@
 #include "wlan_hal_msg.h"
 
 #include "pttMsgApi.h"
+#include "vos_trace.h"
 
 /*===========================================================================
    WLAN DAL Control Path Internal Data Definitions and Declarations
@@ -20748,6 +20749,7 @@ WDI_RXMsgCTSCB
                WDI_getRespMsgString(pWDICtx->wdiExpectedResponse),
                pWDICtx->wdiExpectedResponse);
     /* WDI_DetectedDeviceError( pWDICtx, WDI_ERR_INVALID_RSP_FMT); */
+    VOS_BUG(0);
     return;
   }
 
