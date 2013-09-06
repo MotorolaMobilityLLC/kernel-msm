@@ -146,6 +146,12 @@
 #define BTC_DHCP_ON_A2DP_DEF               (1)  // ON
 #define BTC_DHCP_ON_SCO_DEF                (0)  // OFF
 
+/*
+ * Number of victim tables and mws coex configurations
+ */
+#define MWS_COEX_MAX_VICTIM_TABLE             10
+#define MWS_COEX_MAX_CONFIG                   6
+
 /** Enumeration of all the different kinds of BT events
 */
 typedef enum eSmeBtEventType
@@ -291,6 +297,14 @@ typedef struct sSmeBtcConfig
    v_U32_t      btcMaxScoBlockPerc;
    v_U32_t      btcDhcpProtOnA2dp;
    v_U32_t      btcDhcpProtOnSco;
+
+   v_U32_t      mwsCoexVictimWANFreq[MWS_COEX_MAX_VICTIM_TABLE];
+   v_U32_t      mwsCoexVictimWLANFreq[MWS_COEX_MAX_VICTIM_TABLE];
+   v_U32_t      mwsCoexVictimConfig[MWS_COEX_MAX_VICTIM_TABLE];
+   v_U32_t      mwsCoexVictimConfig2[MWS_COEX_MAX_VICTIM_TABLE];
+   v_U32_t      mwsCoexModemBackoff;
+   v_U32_t      mwsCoexConfig[MWS_COEX_MAX_CONFIG];
+   v_U32_t      SARPowerBackoff;
 } tSmeBtcConfig, *tpSmeBtcConfig;
 
 
