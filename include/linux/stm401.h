@@ -216,6 +216,33 @@ enum {
 	CAR_DOCK
 };
 
+enum stm_mode {
+	UNINITIALIZED,
+	BOOTMODE,
+	NORMALMODE,
+	FACTORYMODE
+};
+
+enum stm_commands {
+	PASSWORD_RESET,
+	MASS_ERASE,
+	PROGRAM_CODE,
+	END_FIRMWARE,
+	PASSWORD_RESET_DEFAULT,
+	CRC_CHECK
+};
+
+struct stm_response {
+	/* 0x0080 */
+	unsigned short header;
+	unsigned char len_lsb;
+	unsigned char len_msb;
+	unsigned char cmd;
+	unsigned char data;
+	unsigned char crc_lsb;
+	unsigned char crc_msb;
+};
+
 #ifdef __KERNEL__
 
 /* STM401 memory map */
@@ -320,6 +347,8 @@ enum {
 
 #define STM401_RESET_DELAY		400
 
+#define I2C_RESPONSE_LENGTH		8
+
 struct stm401_platform_data {
 	int (*init)(void);
 	void (*exit)(void);
@@ -358,6 +387,7 @@ struct stm401_data {
 	int irq;
 	int irq_wake;
 	unsigned int current_addr;
+	enum stm_mode mode;
 	unsigned char intp_mask;
 	struct early_suspend early_suspend;
 
@@ -410,6 +440,7 @@ void stm401_irq_wake_work_func(struct work_struct *work);
 long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg);
 
+void stm401_reset(struct stm401_platform_data *pdata);
 int stm401_reset_and_init(void);
 
 int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
@@ -433,8 +464,15 @@ int stm401_i2c_write_read(struct stm401_data *ps_stm401, u8 *buf,
 	int writelen, int readlen);
 int stm401_i2c_read(struct stm401_data *ps_stm401, u8 *buf, int len);
 int stm401_i2c_write(struct stm401_data *ps_stm401, u8 *buf, int len);
+int stm401_enable(struct stm401_data *ps_stm401);
 
 int stm401_load_brightness_table(struct stm401_data *ps_stm401);
+
+void stm401_build_command(enum stm_commands cmd,
+	const char *inbuff, unsigned int *length);
+int switch_stm401_mode(enum stm_mode mode);
+int stm401_get_version(struct stm401_data *ps_stm401);
+int stm401_bootloadermode(struct stm401_data *ps_stm401);
 
 extern struct stm401_data *stm401_misc_data;
 
@@ -450,6 +488,7 @@ extern unsigned char stm401_g_control_reg[STM401_CONTROL_REG_SIZE];
 extern unsigned char stm401_g_mag_cal[STM401_MAG_CAL_SIZE];
 
 extern unsigned char stm401_cmdbuff[];
+extern unsigned char read_cmdbuff[];
 
 extern unsigned short stm401_i2c_retry_delay;
 
@@ -467,6 +506,8 @@ extern unsigned char stat_string[];
 
 extern const struct file_operations stm401_as_fops;
 extern const struct file_operations stm401_ms_fops;
+extern const struct file_operations stm401_misc_fops;
+extern struct miscdevice stm401_misc_device;
 
 #endif /* __KERNEL__ */
 
