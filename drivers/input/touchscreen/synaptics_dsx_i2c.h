@@ -100,6 +100,16 @@ struct synaptics_rmi4_resume_info {
 	struct timespec purge_off;
 	int    ignored_events;
 };
+#define MAX_NUMBER_TRACKED_IRQS 150
+/*
+ * struct synaptics_rmi4_irq_info - information about an interrupt
+ * Using structure (instead of 1 variable) in case we want to add
+ * more debugging information.
+ * @irq_time: time when isr starts
+ */
+struct synaptics_rmi4_irq_info {
+	struct timespec irq_time;
+};
 /*
  * struct synaptics_rmi4_fn_desc - function descriptor fields in PDT
  * @query_base_addr: base address for query registers
@@ -217,6 +227,9 @@ struct synaptics_rmi4_device_info {
  * @number_resumes: total number of remembered resumes
  * @last_resume: last resume's number (index of the location of resume)
  * @resume_info:  information about last few resumes
+ * @number_irq: total number of remembered interrupt times
+ * @last_irq: last interrup time's number (index of the location of interrupt)
+ * @irq_info:  information about last few interrupt times
  * @i2c_read: pointer to i2c read function
  * @i2c_write: pointer to i2c write function
  * @irq_enable: pointer to irq enable function
@@ -273,6 +286,9 @@ struct synaptics_rmi4_data {
 	int number_resumes;
 	int last_resume;
 	struct synaptics_rmi4_resume_info *resume_info;
+	int number_irq;
+	int last_irq;
+	struct synaptics_rmi4_irq_info *irq_info;
 };
 
 struct f34_properties {
