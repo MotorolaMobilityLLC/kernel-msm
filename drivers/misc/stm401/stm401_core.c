@@ -49,9 +49,9 @@
 
 #define I2C_RETRIES			5
 #define RESET_RETRIES			2
-#define I2C_RESPONSE_LENGTH		8
 #define STM401_MAXDATA_LENGTH		250
 #define STM401_DELAY_USEC		10
+#define STM401_CRC_RESPONSE_MSG		0x3a
 #define STM401_RESPONSE_MSG		0x3b
 #define STM401_RESPONSE_MSG_SUCCESS	0x00
 #define STM401_CRC_SEED			0xffff
@@ -98,6 +98,8 @@ struct stm401_algo_requst_t stm401_g_algo_requst[STM401_NUM_ALGOS];
 unsigned char stm401_cmdbuff[STM401_HEADER_LENGTH + STM401_CMDLENGTH_BYTES +
 			STM401_CORECOMMAND_LENGTH + STM401_CRC_LENGTH];
 
+unsigned char read_cmdbuff[512];
+
 /* per algo config, request, and event registers */
 const struct stm401_algo_info_t stm401_algo_info[STM401_NUM_ALGOS] = {
 	{ M_ALGO_MODALITY, ALGO_CFG_MODALITY, ALGO_REQ_MODALITY,
@@ -124,6 +126,7 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 			u8 *buf, int writelen, int readlen)
 {
 	int tries, err = 0;
+	struct stm_response *response;
 	struct i2c_msg msgs[] = {
 		{
 			.addr = ps_stm401->client->addr,
@@ -135,7 +138,7 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 			.addr = ps_stm401->client->addr,
 			.flags = ps_stm401->client->flags | I2C_M_RD,
 			.len = readlen,
-			.buf = buf,
+			.buf = read_cmdbuff,
 		},
 	};
 	if (buf == NULL || writelen == 0 || readlen == 0)
@@ -154,7 +157,27 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 		err = 0;
 		dev_dbg(&ps_stm401->client->dev, "Read from STM401: ");
 		for (tries = 0; tries < readlen; tries++)
-			dev_dbg(&ps_stm401->client->dev, "%02x", buf[tries]);
+			dev_dbg(&ps_stm401->client->dev, "%02x",
+				read_cmdbuff[tries]);
+
+		if (ps_stm401->mode == BOOTMODE) {
+			response = (struct stm_response *) read_cmdbuff;
+			if ((response->cmd == STM401_RESPONSE_MSG &&
+				response->data != STM401_RESPONSE_MSG_SUCCESS)
+				) {
+					dev_err(&ps_stm401->client->dev,
+						"i2c cmd returned failure - %x, %x\n",
+						response->cmd, response->data);
+					err = -EIO;
+				} else if (response->cmd != STM401_RESPONSE_MSG
+					&& response->cmd
+					!= STM401_CRC_RESPONSE_MSG) {
+						dev_err(&ps_stm401->client->dev,
+							"i2c cmd returned failure - %x\n",
+							response->cmd);
+						err = -EIO;
+				}
+		}
 	}
 	return err;
 }
@@ -318,6 +341,7 @@ int stm401_i2c_write(struct stm401_data *ps_stm401, u8 *buf, int len)
 	return err;
 }
 
+#if 0
 static ssize_t dock_print_name(struct switch_dev *switch_dev, char *buf)
 {
 	switch (switch_get_state(switch_dev)) {
@@ -331,8 +355,9 @@ static ssize_t dock_print_name(struct switch_dev *switch_dev, char *buf)
 
 	return -EINVAL;
 }
+#endif
 
-static int stm401_enable(struct stm401_data *ps_stm401)
+int stm401_enable(struct stm401_data *ps_stm401)
 {
 	int err = 0;
 
@@ -350,69 +375,13 @@ static int stm401_enable(struct stm401_data *ps_stm401)
 	return err;
 }
 
-static int stm401_misc_open(struct inode *inode, struct file *file)
-{
-	int err = 0;
-	dev_dbg(&stm401_misc_data->client->dev, "stm401_misc_open\n");
-
-	err = nonseekable_open(inode, file);
-	if (err < 0)
-		return err;
-	file->private_data = stm401_misc_data;
-
-	err = stm401_enable(stm401_misc_data);
-
-	return err;
-}
-
-static ssize_t stm401_misc_write(struct file *file, const char __user *buff,
-				 size_t count, loff_t *ppos)
-{
-	int err = 0;
-	struct stm401_data *ps_stm401;
-	unsigned int len = (unsigned int)count;
-
-	ps_stm401 = stm401_misc_data;
-	dev_dbg(&ps_stm401->client->dev, "stm401_misc_write\n");
-	if (len > STM401_MAXDATA_LENGTH || len == 0) {
-		dev_err(&ps_stm401->client->dev,
-			"Packet size >STM401_MAXDATA_LENGTH or 0\n");
-		err = -EINVAL;
-		return err;
-	}
-	dev_dbg(&ps_stm401->client->dev, "Leng = %d", len); /* debug */
-
-	mutex_lock(&ps_stm401->lock);
-
-	dev_dbg(&ps_stm401->client->dev,
-		"stm401_misc_write: normal mode\n");
-	if (copy_from_user(stm401_cmdbuff, buff, count)) {
-		dev_err(&ps_stm401->client->dev,
-			"Copy from user returned error\n");
-		err = -EINVAL;
-	}
-	if (err == 0)
-		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, count);
-	if (err == 0)
-		err = len;
-
-	mutex_unlock(&ps_stm401->lock);
-	return err;
-}
-
-static const struct file_operations stm401_misc_fops = {
-	.owner = THIS_MODULE,
-	.open = stm401_misc_open,
-	.unlocked_ioctl = stm401_misc_ioctl,
-	.write = stm401_misc_write,
-};
-
-static struct miscdevice stm401_misc_device = {
+struct miscdevice stm401_misc_device = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = NAME,
 	.fops = &stm401_misc_fops,
 };
 
+#if 0
 #ifdef CONFIG_OF
 static struct stm401_platform_data *
 stm401_of_init(struct i2c_client *client)
@@ -655,6 +624,7 @@ free_int:
 	gpio_free(pdata->gpio_int);
 	return err;
 }
+#endif
 
 static void stm401_gpio_free(struct stm401_platform_data *pdata)
 {
@@ -669,11 +639,15 @@ static void stm401_gpio_free(struct stm401_platform_data *pdata)
 static int stm401_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
+#if 0
 	struct stm401_platform_data *pdata;
 	struct stm401_data *ps_stm401;
 	int err = -1;
+#endif
 	dev_info(&client->dev, "probe begun\n");
 
+/* TODO - we don't want this driver to do anythign yet */
+#if 0
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "client not i2c capable\n");
 		return -ENODEV;
@@ -892,11 +866,13 @@ static int stm401_probe(struct i2c_client *client,
 	}
 
 	mutex_unlock(&ps_stm401->lock);
+#endif
 
 	dev_info(&client->dev, "probed finished\n");
 
 	return 0;
 
+#if 0
 err9:
 	input_free_device(ps_stm401->input_dev);
 err8:
@@ -924,6 +900,7 @@ err_gpio_init:
 err_regulator:
 	kfree(ps_stm401);
 	return err;
+#endif
 }
 
 static int stm401_remove(struct i2c_client *client)
