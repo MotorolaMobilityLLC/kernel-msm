@@ -30,6 +30,7 @@
 #include <linux/of_gpio.h>
 #include <linux/slimport.h>
 #include <linux/async.h>
+#include <linux/of_platform.h>
 
 #include "slimport_private.h"
 #include "slimport_tx_drv.h"
@@ -49,6 +50,8 @@ struct anx7808_data {
 	const char *avdd33_name;
 	struct regulator *avdd_reg;
 	struct regulator *vdd_reg;
+	struct platform_device *hdmi_pdev;
+	struct msm_hdmi_sp_ops *hdmi_sp_ops;
 };
 
 struct anx7808_data *the_chip;
@@ -202,6 +205,8 @@ void sp_tx_hardware_poweron(void)
 
 void sp_tx_hardware_powerdown(void)
 {
+	int status = 0;
+
 	if (!the_chip)
 		return;
 
@@ -211,6 +216,14 @@ void sp_tx_hardware_powerdown(void)
 	msleep(2);
 	gpio_set_value(the_chip->gpio_p_dwn, 1);
 	msleep(1);
+
+	/* turn off hpd */
+	if (the_chip->hdmi_sp_ops->set_upstream_hpd) {
+		status = the_chip->hdmi_sp_ops->set_upstream_hpd(
+				the_chip->hdmi_pdev, 0);
+		if (status)
+			pr_err("failed to turn off hpd");
+	}
 
 	pr_info("anx7808 power down\n");
 }
@@ -233,6 +246,8 @@ static void sp_tx_power_down_and_init(void)
 
 static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 {
+	int status = 0;
+
 	if (gpio_get_value_cansleep(anx7808->gpio_cbl_det)) {
 		/* Previously, if sp tx is turned on, turn it off to
 		 * avoid the cable detection erorr.
@@ -243,6 +258,13 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 		msleep(50);
 		if (gpio_get_value_cansleep(anx7808->gpio_cbl_det)) {
 			if (sp_tx_pd_mode) {
+				/* first turn on hpd */
+				if (anx7808->hdmi_sp_ops->set_upstream_hpd) {
+					status = anx7808->hdmi_sp_ops->set_upstream_hpd(
+							anx7808->hdmi_pdev, 1);
+					if (status)
+						pr_err("failed to turn on hpd");
+				}
 				sp_tx_pd_mode = 0;
 				sp_tx_hardware_poweron();
 				sp_tx_power_on(SP_TX_PWR_REG);
@@ -540,6 +562,8 @@ static int anx7808_parse_dt(struct device_node *node,
 			   struct anx7808_data *anx7808)
 {
 	int ret = 0;
+	struct platform_device *hdmi_pdev = NULL;
+	struct device_node *hdmi_tx_node = NULL;
 
 	anx7808->gpio_p_dwn =
 		of_get_named_gpio(node, "analogix,p-dwn-gpio", 0);
@@ -587,6 +611,22 @@ static int anx7808_parse_dt(struct device_node *node,
 		goto out;
 	}
 
+	/* parse phandle for hdmi tx handle */
+	hdmi_tx_node = of_parse_phandle(node, "analogix,hdmi-tx-map", 0);
+	if (!hdmi_tx_node) {
+		pr_err("can't find hdmi phandle\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	hdmi_pdev = of_find_device_by_node(hdmi_tx_node);
+	if (!hdmi_pdev) {
+		pr_err("can't find the deivce by node\n");
+		ret = -EINVAL;
+		goto out;
+	}
+	anx7808->hdmi_pdev = hdmi_pdev;
+
 out:
 	return ret;
 }
@@ -597,6 +637,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	struct anx7808_data *anx7808;
 	struct anx7808_platform_data *pdata;
 	struct device_node *dev_node = client->dev.of_node;
+	struct msm_hdmi_sp_ops *hdmi_sp_ops = NULL;
 	int ret = 0;
 
 	if (!i2c_check_functionality(client->adapter,
@@ -636,6 +677,26 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 		anx7808->vdd10_name = pdata->vdd10_name;
 		anx7808->vdd10_name = pdata->avdd33_name;
 	}
+
+	/* initialize hdmi_sp_ops */
+	hdmi_sp_ops = devm_kzalloc(&client->dev,
+				   sizeof(struct msm_hdmi_sp_ops),
+				   GFP_KERNEL);
+	if (!hdmi_sp_ops) {
+		pr_err("alloc hdmi sp ops failed\n");
+		goto err0;
+	}
+
+	if (anx7808->hdmi_pdev) {
+		ret = msm_hdmi_register_sp(anx7808->hdmi_pdev,
+					  hdmi_sp_ops);
+		if (ret) {
+			pr_err("register with hdmi_failed\n");
+			goto err0;
+		}
+	}
+
+	anx7808->hdmi_sp_ops = hdmi_sp_ops;
 
 	the_chip = anx7808;
 

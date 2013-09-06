@@ -21,6 +21,7 @@
 #include <linux/of_platform.h>
 #include <linux/types.h>
 #include <mach/msm_hdmi_audio_codec.h>
+#include <linux/slimport.h>
 
 #define REG_DUMP 0
 
@@ -2130,6 +2131,25 @@ int msm_hdmi_register_mhl(struct platform_device *pdev,
 
 	ops->tmds_enabled = hdmi_tx_tmds_enabled;
 	ops->set_mhl_max_pclk = hdmi_tx_set_mhl_max_pclk;
+	ops->set_upstream_hpd = hdmi_tx_set_mhl_hpd;
+
+	return 0;
+}
+
+int msm_hdmi_register_sp(struct platform_device *pdev,
+			 struct msm_hdmi_sp_ops *ops)
+{
+	struct hdmi_tx_ctrl *hdmi_ctrl = platform_get_drvdata(pdev);
+
+	if (!hdmi_ctrl) {
+		DEV_ERR("%s: invalid pdev\n", __func__);
+		return -ENODEV;
+	}
+
+	if (!ops) {
+		DEV_ERR("%s: invalid ops\n", __func__);
+		return -EINVAL;
+	}
 	ops->set_upstream_hpd = hdmi_tx_set_mhl_hpd;
 
 	return 0;
