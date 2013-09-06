@@ -690,6 +690,9 @@ static ssize_t synaptics_rmi4_0dbutton_store(struct device *dev,
 static ssize_t synaptics_rmi4_resume_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
+static ssize_t synaptics_rmi4_irqtimes_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
 static ssize_t synaptics_rmi4_drv_irq_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
@@ -807,6 +810,9 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_store_error),
 	__ATTR(ic_ver, S_IRUGO,
 			synaptics_rmi4_ic_ver_show,
+			synaptics_rmi4_store_error),
+	__ATTR(irqinfo, S_IRUSR | S_IRGRP,
+			synaptics_rmi4_irqtimes_show,
 			synaptics_rmi4_store_error),
 };
 
@@ -1124,6 +1130,38 @@ static ssize_t synaptics_rmi4_resume_show(struct device *dev,
 
 		if (c_res <= 0)
 			c_res = rmi4_data->number_resumes-1;
+		else
+			c_res--;
+	}
+	return offset;
+}
+
+static ssize_t synaptics_rmi4_irqtimes_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	int i;
+	int c_res;
+	int offset = 0;
+
+	c_res = rmi4_data->last_irq;
+	/* Resume buffer not allocated or there were no irq data collected yet*/
+	if (rmi4_data->number_irq <= 0 || c_res < 0)
+		return scnprintf(buf, PAGE_SIZE,
+				"No resume information found.\n");
+
+	offset += scnprintf(buf + offset, PAGE_SIZE - offset,
+		"Count\tIRQ Start\n");
+
+	for (i = 0; i < rmi4_data->number_irq; i++) {
+		offset += scnprintf(buf + offset, PAGE_SIZE - offset,
+			"%d\t%4ld.%03ld\n",
+		i+1,
+		rmi4_data->irq_info[i].irq_time.tv_sec%1000,
+		rmi4_data->irq_info[i].irq_time.tv_nsec/1000000);
+
+		if (c_res <= 0)
+			c_res = rmi4_data->number_irq-1;
 		else
 			c_res--;
 	}
@@ -1975,6 +2013,16 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 {
 	struct synaptics_rmi4_data *rmi4_data = data;
 	struct synaptics_rmi4_resume_info *tmp_resume_i;
+	struct synaptics_rmi4_irq_info *tmp_q;
+
+	if (rmi4_data->number_irq > 0) {
+		rmi4_data->last_irq++;
+		if (rmi4_data->last_irq >= rmi4_data->number_irq)
+			rmi4_data->last_irq = 0;
+		tmp_q =
+			&(rmi4_data->irq_info[rmi4_data->last_irq]);
+		getnstimeofday(&(tmp_q->irq_time));
+	}
 
 	if (rmi4_data->number_resumes > 0) {
 		tmp_resume_i =
@@ -3044,6 +3092,21 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	} else
 		rmi4_data->number_resumes = MAX_NUMBER_TRACKED_RESUMES;
 	rmi4_data->last_resume = -1;
+
+	/* Initialize some interrupit timing debug information */
+	rmi4_data->irq_info = kzalloc(
+		sizeof(struct synaptics_rmi4_irq_info) *
+			 MAX_NUMBER_TRACKED_IRQS,
+		GFP_KERNEL);
+	if (!rmi4_data->irq_info) {
+		dev_err(&client->dev,
+		"%s: Failed to allocate memory for IRQ debug information\n",
+				__func__);
+		rmi4_data->number_irq = 0;
+	} else
+		rmi4_data->number_irq = MAX_NUMBER_TRACKED_IRQS;
+	rmi4_data->last_irq = -1;
+
 	mutex_init(&(rmi4_data->rmi4_io_ctrl_mutex));
 	mutex_init(&(rmi4_data->state_mutex));
 
