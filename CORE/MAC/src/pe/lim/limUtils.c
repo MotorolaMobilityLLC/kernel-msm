@@ -121,7 +121,12 @@ limAssignDialogueToken(tpAniSirGlobal pMac)
     //assocId and tid of the node will be filled in by caller.
     pCurrNode->next = NULL;
     pCurrNode->token = token++;
-    PELOG4(limLog(pMac, LOG4, FL("token assigned = %d"), token);)
+
+    /* Dialog token should be a non-zero value */
+    if (0 == pCurrNode->token)
+       pCurrNode->token = token;
+
+    PELOG4(limLog(pMac, LOG4, FL("token assigned = %d"), pCurrNode->token);)
     return pCurrNode;
 }
 
