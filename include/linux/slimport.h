@@ -37,8 +37,8 @@ void sp_set_link_bw(unchar link_bw);
 static inline int slimport_read_edid_block(int block, uint8_t *edid_buf) { return -ENOSYS; }
 static inline bool slimport_is_connected(void) { return false; }
 static inline bool is_slimport_dp(void) { return false; }
-static inline unchar sp_get_link_bw(void) { return 0};
-static inline void sp_set_link_bw(unchar link_bw) {};
+static inline unchar sp_get_link_bw(void) { return 0; }
+static inline void sp_set_link_bw(unchar link_bw) {}
 #endif
 
 #endif
