@@ -1776,6 +1776,8 @@ void mipi_dsi_cmd_mdp_busy(void)
 {
 	unsigned long flags;
 	int need_wait = 0;
+	static int timeout_occurred;
+	long ret = 0;
 
 	pr_debug("%s: start pid=%d\n",
 				__func__, current->pid);
@@ -1788,7 +1790,19 @@ void mipi_dsi_cmd_mdp_busy(void)
 		/* wait until DMA finishes the current job */
 		pr_debug("%s: pending pid=%d\n",
 				__func__, current->pid);
-		wait_for_completion(&dsi_mdp_comp);
+		ret = wait_for_completion_timeout(&dsi_mdp_comp,
+			WAIT_TOUT);
+		if (ret == 0) {
+			pr_err("%s: timeout waiting for DSI MDP completion\n",
+				__func__);
+			timeout_occurred = 1;
+			mdp4_timeout_dump(__func__);
+		} else if (ret > 0) {
+			if (timeout_occurred)
+				pr_info("%s: recovered from previous timeout\n",
+					__func__);
+			timeout_occurred = 0;
+		}
 	}
 	pr_debug("%s: done pid=%d\n",
 				__func__, current->pid);
@@ -2247,4 +2261,34 @@ end:
 	pr_debug("%s done!\n", __func__);
 
 	return 0;
+}
+
+static void dsi_reg_range_dump(int offset, int range)
+{
+	uint32 i, addr_start, addr;
+	addr_start = (uint32)MIPI_DSI_BASE + offset;
+	for (i = 0; i < range ;) {
+		addr = addr_start + i;
+		MDP4_TIMEOUT_DUMP("0x%8x:%08x %08x %08x %08x %08x %08x %08x %08x\n",
+			 (uint32)(addr),
+			 (uint32)inpdw(addr), (uint32)inpdw(addr + 4),
+			 (uint32)inpdw(addr + 8), (uint32)inpdw(addr + 12),
+			 (uint32)inpdw(addr + 16), (uint32)inpdw(addr + 20),
+			 (uint32)inpdw(addr + 24), (uint32)inpdw(addr + 28));
+			 i += 32;
+	 }
+}
+
+void mipi_dsi_regs_dump(void)
+{
+	mipi_dsi_clk_cfg(1);
+	MDP4_TIMEOUT_DUMP("------- DSI Regs dump starts ------\n");
+	dsi_reg_range_dump(0, 0xcc);
+	dsi_reg_range_dump(0x108, 0x20);
+	dsi_reg_range_dump(0x190, 0xc8);
+	dsi_reg_range_dump(0x280, 0x10);
+	dsi_reg_range_dump(0x440, 0xb0);
+	dsi_reg_range_dump(0x500, 0x5c);
+	MDP4_TIMEOUT_DUMP("------- DSI Regs dump done ------\n");
+	mipi_dsi_clk_cfg(0);
 }
