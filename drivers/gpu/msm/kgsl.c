@@ -3153,19 +3153,6 @@ static int _register_device(struct kgsl_device *device)
 	return 0;
 }
 
-/*default log levels is error for everything*/
-#define KGSL_LOG_LEVEL_DEFAULT 3
-static void kgsl_device_log_init(struct kgsl_device *device)
-{
-	device->cmd_log = KGSL_LOG_LEVEL_DEFAULT;
-	device->ctxt_log = KGSL_LOG_LEVEL_DEFAULT;
-	device->drv_log = KGSL_LOG_LEVEL_DEFAULT;
-	device->mem_log = KGSL_LOG_LEVEL_DEFAULT;
-	device->pwr_log = KGSL_LOG_LEVEL_DEFAULT;
-	device->ft_log = KGSL_LOG_LEVEL_DEFAULT;
-	device->pm_dump_enable = 0;
-}
-
 int kgsl_device_platform_probe(struct kgsl_device *device)
 {
 	int result;
@@ -3179,7 +3166,6 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 		return status;
 
 	/* Initialize logging first, so that failures below actually print. */
-	kgsl_device_log_init(device);
 	kgsl_device_debugfs_init(device);
 
 	status = kgsl_pwrctrl_init(device);
