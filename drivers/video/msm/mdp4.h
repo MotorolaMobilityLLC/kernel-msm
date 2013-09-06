@@ -996,4 +996,51 @@ static inline void mdp4_unmap_sec_resource(struct msm_fb_data_type *mfd);
 }
 #endif
 
+#define COMMIT_HIST_TBL_SIZE 20
+
+/*having a struct in case further info needs to be added*/
+struct mdp4_commit_hist_tbl {
+	uint32 commit_cnt;
+	int32_t stage_commit;
+};
+
+void mdp4_stats_dump(struct mdp4_statistic stat);
+void mdp4_store_commit_info(void);
+void mdp4_dump_commit_info(void);
+void mdp4_regs_dump(void);
+void mdp4_timeout_dump(const char *timeout_type);
+void mdp4_dump_vsync_ctrl(void);
+
+extern char *mdp4_timeout_data;
+extern u32 mdp4_timeout_data_pos;
+extern void mdp4_timeout_init(void);
+extern u8 mdp4_dmap_timeout_counter[];
+
+#define MDP_DUMP_SIZE (2*PAGE_SIZE)
+#define MDP4_TIMEOUT_DUMP(fmt, args...) \
+	do { \
+		if (mdp4_timeout_data != NULL) { \
+			mdp4_timeout_data_pos += scnprintf( \
+				&mdp4_timeout_data[mdp4_timeout_data_pos], \
+				MDP_DUMP_SIZE-mdp4_timeout_data_pos-1, \
+				fmt, ##args); \
+			if (mdp4_timeout_data_pos > 0 && \
+				mdp4_timeout_data[mdp4_timeout_data_pos-1] != '\n') \
+				mdp4_timeout_data_pos += scnprintf( \
+					&mdp4_timeout_data[mdp4_timeout_data_pos], \
+					MDP_DUMP_SIZE-mdp4_timeout_data_pos-1, \
+					"\n"); \
+		} \
+	} while (0)
+
+#define MDP4_TIMEOUT_LOG(fmt, args...) \
+	do { \
+		pr_err(fmt, ##args); \
+		MDP4_TIMEOUT_DUMP(fmt, ##args); \
+	} while (0)
+
+#define DMAP_TIMEOUT (HZ/10) /* 100 ms */
+#define MAX_DMAP_TIMEOUTS 4
+#define DMAP_TIMEOUT_BUG_COUNT 5
+
 #endif /* MDP_H */
