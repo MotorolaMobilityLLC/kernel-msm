@@ -5852,7 +5852,6 @@ int hdd_wlan_startup(struct device *dev )
    {
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                  "%s: hdd_debugfs_init failed!", __func__);
-      goto err_close_debugfs;
    }
 
    /* Register TM level change handler function to the platform */
@@ -5971,7 +5970,6 @@ err_unregister_pmops:
    hddDevTmUnregisterNotifyCallback(pHddCtx);
    hddDeregisterPmOps(pHddCtx);
 
-err_close_debugfs:
    hdd_debugfs_exit(pHddCtx);
 
 #ifdef WLAN_BTAMP_FEATURE
