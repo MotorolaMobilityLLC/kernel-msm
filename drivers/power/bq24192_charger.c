@@ -342,7 +342,7 @@ static int bq24192_set_input_i_limit(struct bq24192_chip *chip, int ma)
 			INPUT_CURRENT_LIMIT_MASK, temp);
 }
 
-static int mitigate_tbl[] = {3000, 900, 500};
+static int mitigate_tbl[] = {3000, 900, 500, 100};
 static void bq24192_therm_mitigation_work(struct work_struct *work)
 {
 	struct bq24192_chip *chip = container_of(work,
