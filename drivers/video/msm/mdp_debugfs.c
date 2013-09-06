@@ -1339,6 +1339,7 @@ int mdp_debugfs_init(void)
 	}
 #endif
 
+#if defined(CONFIG_FB_MSM_MDDI) || defined(CONFIG_FB_MSM_EXTMDDI)
 	dent = debugfs_create_dir("mddi", NULL);
 
 	if (IS_ERR(dent)) {
@@ -1361,6 +1362,7 @@ int mdp_debugfs_init(void)
 			__FILE__, __LINE__);
 		return -1;
 	}
+#endif
 #endif
 
 	dent = debugfs_create_dir("emdh", NULL);
