@@ -506,8 +506,11 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 	if ((dotg->charger->chg_type == DWC3_CDP_CHARGER) && mA > 0)
 		mA = DWC3_IDEV_CHG_MAX;
 
-	if (slimport_is_connected() && mA)
-		mA = 500;
+	if (slimport_is_connected() && mA) {
+		mA = slimport_get_chg_current();
+		if (mA > DWC3_IDEV_CHG_MIN)
+			dotg->charger->chg_type = DWC3_DCP_CHARGER;
+	}
 
 	if (dotg->charger->max_power == mA)
 		return 0;
