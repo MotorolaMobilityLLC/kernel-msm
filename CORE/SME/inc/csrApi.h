@@ -1102,6 +1102,8 @@ typedef struct tagCsrConfigParam
 
     tANI_U8   enableTxLdpc;
 
+    tANI_U8 isAmsduSupportInAMPDU;
+
 }tCsrConfigParam;
 
 //Tush
