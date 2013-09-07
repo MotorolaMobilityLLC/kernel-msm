@@ -182,6 +182,7 @@
 				qcom,default-state = "off";
 				qcom,id = <3>;
 				linux,default-trigger = "none";
+				qcom,calibrated-max = <111>;
 			};
 
 			qcom,rgb_1 {
@@ -212,6 +213,7 @@
 				qcom,default-state = "off";
 				qcom,id = <4>;
 				linux,default-trigger = "none";
+				qcom,calibrated-max = <239>;
 			};
 
 			qcom,rgb_2 {
