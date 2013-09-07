@@ -22,7 +22,7 @@
 		qcom,num-blocks = <1>;
 		qcom,page0 = <0 0x0 2 0x0 1 20>;
 		qcom,poll0 = <0 0x0 2 0x0 1 20>;
-		qcom,mem0 = <0x800 0x0000 2 0 1 0>;
+		qcom,mem0 = <0x900 0x0000 2 0 1 0>;
 	};
 
 	qcom,camera@20 {
