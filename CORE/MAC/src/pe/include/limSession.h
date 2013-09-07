@@ -357,6 +357,7 @@ typedef struct sPESession           // Added to Support BT-AMP
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM
     tANI_S8 rssi;
 #endif
+    tANI_U8 isAmsduSupportInAMPDU;
 }tPESession, *tpPESession;
 
 #define LIM_MAX_ACTIVE_SESSIONS 4

@@ -658,6 +658,7 @@ typedef struct tagCsrConfig
      * Enable/Disable heartbeat offload
      */
     tANI_BOOLEAN enableHeartBeatOffload;
+    tANI_U8 isAmsduSupportInAMPDU;
 }tCsrConfig;
 
 typedef struct tagCsrChannelPowerInfo
