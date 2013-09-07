@@ -445,6 +445,7 @@ struct rgb_config_data {
 	u32	on_ms;
 	u32	off_ms;
 	u8	start;
+	u32	calibrated_max;
 };
 
 /**
@@ -1291,8 +1292,10 @@ static int rgb_duration_config(struct qpnp_led_data *led)
 
 		for (i = 0; i < num_duty_pcts; i++) {
 			pwm_cfg->duty_cycles->duty_pcts[i] =
-				(led->cdev.brightness * 25 *
-				 (num_duty_pcts-i-1)) / RGB_MAX_LEVEL;
+				(led->cdev.brightness *
+				led->rgb_cfg->calibrated_max *
+				25 * (num_duty_pcts-i-1)) /
+				(RGB_MAX_LEVEL * RGB_MAX_LEVEL);
 		}
 	}
 
@@ -3046,6 +3049,13 @@ static int __devinit qpnp_get_config_rgb(struct qpnp_led_data *led,
 	rc = qpnp_get_config_pwm(led->rgb_cfg->pwm_cfg, led->spmi_dev, node);
 	if (rc < 0)
 		return rc;
+
+	rc = of_property_read_u32(node, "qcom,calibrated-max",
+		                &led->rgb_cfg->calibrated_max);
+	if (rc < 0)
+		led->rgb_cfg->calibrated_max = RGB_MAX_LEVEL;
+	else if (led->rgb_cfg->calibrated_max > RGB_MAX_LEVEL)
+		led->rgb_cfg->calibrated_max = RGB_MAX_LEVEL;
 
 	return 0;
 }
