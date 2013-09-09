@@ -19,14 +19,12 @@ DEFINE_MSM_MUTEX(ar0543_mut);
 static struct msm_sensor_ctrl_t ar0543_s_ctrl;
 
 /*#define DEBUG_OTP_RAW_DUMP*/
-/*#define DEBUG_OTP_LSC_DUMP*/
+#define DEBUG_OTP_LSC_DUMP
 
 #define AR0543_SN_SIZE 4
 #define AR0543_SN_ADDR 0x31f4
 #define AR0543_OTP_SIZE 256
 #define AR0543_OTP_ADDR 0x3800
-#define AR0543_OTP_READ 0x1234
-#define AR0543_OTP_INIT 0x5678
 #define AR0543_LSC_SIZE 106
 #define AR0543_LSC_EN_SIZE 2
 #define AR0543_LSC_EN_ADDR 0x3780
@@ -136,8 +134,6 @@ static struct module_otp_rev_t ar0543_otp_rev = {
 static uint16_t ar0543_otp[AR0543_OTP_SIZE];
 
 static struct otp_info_t ar0543_otp_info;
-
-static uint16_t ar0543_otp_read = AR0543_OTP_INIT;
 
 static uint16_t ar0543_otp_lsc_def[AR0543_LSC_SIZE] = {
 	0x5012,
@@ -425,6 +421,8 @@ static void ar0543_otp_lsc_dump(struct msm_sensor_ctrl_t *s_ctrl)
 	int i = 0;
 	uint16_t data;
 
+	pr_warn("%s - Dumping LSC values from sensor...\n", __func__);
+
 	/* Read and print LSC registers */
 	for (i = 0; i < AR0543_LSC_PX_SIZE/2; i++) {
 		s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
@@ -677,9 +675,10 @@ static int32_t ar0543_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
 	uint16_t cal_ver = 0x0000;
 	uint16_t hw_rev = 0;
 	uint16_t sn[4];
+	static bool ar0543_otp_read_done;
 
 	/* Check OTP has already been read */
-	if (ar0543_otp_read == AR0543_OTP_READ)
+	if (ar0543_otp_read_done == true)
 		return rc;
 
 	/* Set default OTP info */
@@ -760,7 +759,7 @@ static int32_t ar0543_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 
 	/* Indicate OTP has been read */
-	ar0543_otp_read = AR0543_OTP_READ;
+	ar0543_otp_read_done = true;
 
 	return rc;
 }
@@ -783,10 +782,10 @@ static int32_t ar0543_set_lsc(struct msm_sensor_ctrl_t *s_ctrl)
 
 	/* Check Cal Version */
 	if (v == AR0543_OTP_CAL_REV_DEF) {
-		pr_warn("%s: Using default LSC!\n", __func__);
+		pr_warn("%s: Setting default LSC!\n", __func__);
 		lsc_ptr = ar0543_otp_lsc_def + ar0543_otp_rev.n[v].cal_lsc_os;
 	} else {
-		pr_warn("%s: Using module LSC!\n", __func__);
+		pr_warn("%s: Setting module LSC!\n", __func__);
 		lsc_ptr = ar0543_otp + ar0543_otp_rev.n[v].cal_lsc_os;
 	}
 
@@ -867,9 +866,6 @@ static int32_t ar0543_set_lsc(struct msm_sensor_ctrl_t *s_ctrl)
 		return rc;
 	}
 
-	/* Dump LSC */
-	ar0543_otp_lsc_dump(s_ctrl);
-
 	return rc;
 }
 
@@ -888,6 +884,22 @@ static int32_t ar0543_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 	return 0;
 }
 
+static int32_t ar0543_get_lsc(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	static bool ar0543_lsc_read_done;
+
+	/* Check whether LSC has been read */
+	if (ar0543_lsc_read_done == false) {
+		/* Dump LSC */
+		ar0543_otp_lsc_dump(s_ctrl);
+
+		/* Indicate the LSC has been read */
+		ar0543_lsc_read_done = true;
+	}
+
+	return 0;
+}
+
 static struct msm_sensor_fn_t ar0543_func_tbl = {
 	.sensor_config = msm_sensor_config,
 	.sensor_power_up = msm_sensor_power_up,
@@ -895,6 +907,7 @@ static struct msm_sensor_fn_t ar0543_func_tbl = {
 	.sensor_get_module_info = ar0543_get_module_info,
 	.sensor_read_otp_info = ar0543_read_otp_info,
 	.sensor_set_lsc = ar0543_set_lsc,
+	.sensor_get_lsc = ar0543_get_lsc,
 };
 
 static struct msm_sensor_ctrl_t ar0543_s_ctrl = {
