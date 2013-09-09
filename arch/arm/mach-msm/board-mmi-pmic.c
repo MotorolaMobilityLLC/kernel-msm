@@ -369,7 +369,7 @@ void w1_gpio_enable_regulators(int enable)
 	}
 }
 
-#define PM8921_LC_LED_MAX_CURRENT	4	/* I = 4mA */
+#define PM8921_LC_LED_MAX_CURRENT	8	/* I = 8mA */
 #define PM8XXX_LED_PWM_PERIOD		1000
 #define PM8XXX_LED_PWM_DUTY_MS		20
 /**
@@ -442,14 +442,14 @@ static struct pm8xxx_led_config pm8921_led_configs[] = {
 	[1] = {
 		.id = PM8XXX_ID_LED_1,
 		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = 8,
+		.max_current = PM8921_LC_LED_MAX_CURRENT,
 		.pwm_channel = 4,
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 	},
 	[2] = {
 		.id = PM8XXX_ID_LED_2,
 		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = 8,
+		.max_current = PM8921_LC_LED_MAX_CURRENT,
 		.pwm_channel = PM8XXX_PWM_CHANNEL_NONE,
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 	},
