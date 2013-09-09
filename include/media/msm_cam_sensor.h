@@ -481,6 +481,7 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_TARGET_EXPOSURE,
 	CFG_SET_FPS_RANGE,
 	CFG_GET_MODULE_INFO,
+	CFG_GET_LENS_SHADING,
 };
 
 enum msm_actuator_cfg_type_t {
