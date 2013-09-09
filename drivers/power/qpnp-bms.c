@@ -1838,6 +1838,11 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 		return rc;
 	}
 
+	/* Prevent Running if called too Early */
+	/* Report 100% to be safe */
+	if (chip->calculated_soc == -EINVAL)
+		return 100;
+
 	rc = qpnp_vadc_read(chip->vadc_dev, LR_MUX1_BATT_THERM, &result);
 
 	if (rc) {
@@ -4350,11 +4355,11 @@ static int __devinit qpnp_bms_probe(struct spmi_device *spmi)
 		goto error_setup;
 	}
 
+	calculate_soc_work(&(chip->calculate_soc_delayed_work.work));
+
 	battery_insertion_check(chip);
 	batfet_status_check(chip);
 	battery_status_check(chip);
-
-	calculate_soc_work(&(chip->calculate_soc_delayed_work.work));
 
 	/* setup & register the battery power supply */
 	chip->bms_psy.name = "bms";
