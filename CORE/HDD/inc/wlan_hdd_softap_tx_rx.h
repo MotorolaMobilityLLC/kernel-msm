@@ -319,4 +319,14 @@ extern VOS_STATUS hdd_softap_change_STA_state( hdd_adapter_t *pAdapter, v_MACADD
   =========================================================================== */
 extern VOS_STATUS hdd_softap_GetStaId( hdd_adapter_t *pAdapter, v_MACADDR_t *pMacAddress, v_U8_t *staId);
 
+/**============================================================================
+  @brief hdd_softap_GetConnectedStaId - Helper function to get station Id of the connected device
+
+  @param pAdapter : [in] pointer to adapter context
+  @param staId    : [out] station id
+  @return         : VOS_STATUS_E_FAILURE if any errors encountered
+                  : VOS_STATUS_SUCCESS otherwise
+  =========================================================================== */
+extern VOS_STATUS hdd_softap_GetConnectedStaId( hdd_adapter_t *pAdapter, v_U8_t *staId);
+
 #endif    // end #if !defined( WLAN_HDD_SOFTAP_TX_RX_H )
