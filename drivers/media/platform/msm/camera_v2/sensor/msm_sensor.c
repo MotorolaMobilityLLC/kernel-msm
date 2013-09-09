@@ -1832,6 +1832,20 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 
 		break;
 	}
+	case CFG_GET_LENS_SHADING: {
+		if (s_ctrl->func_tbl->sensor_get_lsc == NULL) {
+			pr_err("%s: sensor_get_lsc_info is null!\n",
+					__func__);
+			rc = -EFAULT;
+			break;
+		}
+
+		rc = s_ctrl->func_tbl->sensor_get_lsc(s_ctrl);
+		if (rc < 0)
+			pr_err("%s: Unable to get lsc info!\n", __func__);
+
+		break;
+	}
 	default:
 		rc = -EFAULT;
 		break;
