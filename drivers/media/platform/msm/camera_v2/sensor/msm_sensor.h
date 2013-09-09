@@ -51,6 +51,7 @@ struct msm_sensor_fn_t {
 	int32_t (*sensor_get_module_info)(struct msm_sensor_ctrl_t *);
 	int32_t (*sensor_read_otp_info)(struct msm_sensor_ctrl_t *);
 	int32_t (*sensor_set_lsc)(struct msm_sensor_ctrl_t *);
+	int32_t (*sensor_get_lsc)(struct msm_sensor_ctrl_t *);
 };
 
 struct msm_sensor_ctrl_t {
