@@ -2436,8 +2436,6 @@ static bool wm5110_volatile_register(struct device *dev, unsigned int reg)
 	case ARIZONA_AOD_IRQ2:
 	case ARIZONA_ASRC_STATUS:
 	case ARIZONA_DSP_STATUS:
-	case ARIZONA_DSP1_CONTROL_1:
-	case ARIZONA_DSP1_CLOCKING_1:
 	case ARIZONA_DSP1_STATUS_1:
 	case ARIZONA_DSP1_STATUS_2:
 	case ARIZONA_DSP1_STATUS_3:
