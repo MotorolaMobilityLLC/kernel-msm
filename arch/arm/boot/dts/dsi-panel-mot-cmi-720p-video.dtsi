@@ -117,15 +117,15 @@
 		qcom,mdss-dsi-mdp-trigger = <0>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
-		qcom,panel-en-reset-sequence = <1 10>;
-		qcom,panel-dis-reset-sequence = <0 2>;
+		qcom,panel-en-reset-sequence = <1 11>;
+		qcom,panel-dis-reset-sequence = <0 3>;
 		qcom,platform-supply-entry1 {
 			qcom,supply-name = "vddio_disp";
 			qcom,supply-min-voltage = <1800000>;
 			qcom,supply-max-voltage = <1800000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
-			qcom,supply-post-en-delay-ms = <1>;
+			qcom,supply-post-en-delay-ms = <2>;
 			qcom,supply-post-dis-delay-ms = <0>;
 		};
 		qcom,platform-supply-entry2 {
@@ -134,8 +134,8 @@
 			qcom,supply-max-voltage = <5400000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
-			qcom,supply-post-en-delay-ms = <10>;
-			qcom,supply-post-dis-delay-ms = <1>;
+			qcom,supply-post-en-delay-ms = <11>;
+			qcom,supply-post-dis-delay-ms = <2>;
 		};
 	};
 
@@ -208,15 +208,15 @@
 		qcom,mdss-dsi-mdp-trigger = <0>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
-		qcom,panel-en-reset-sequence = <1 10>;
-		qcom,panel-dis-reset-sequence = <0 2>;
+		qcom,panel-en-reset-sequence = <1 11>;
+		qcom,panel-dis-reset-sequence = <0 3>;
 		qcom,platform-supply-entry1 {
 			qcom,supply-name = "vddio_disp";
 			qcom,supply-min-voltage = <1800000>;
 			qcom,supply-max-voltage = <1800000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
-			qcom,supply-post-en-delay-ms = <1>;
+			qcom,supply-post-en-delay-ms = <2>;
 			qcom,supply-post-dis-delay-ms = <0>;
 		};
 		qcom,platform-supply-entry2 {
@@ -225,8 +225,8 @@
 			qcom,supply-max-voltage = <5400000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
-			qcom,supply-post-en-delay-ms = <10>;
-			qcom,supply-post-dis-delay-ms = <1>;
+			qcom,supply-post-en-delay-ms = <11>;
+			qcom,supply-post-dis-delay-ms = <2>;
 		};
 	};
 };
