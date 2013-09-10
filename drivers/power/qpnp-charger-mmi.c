@@ -2262,6 +2262,7 @@ get_prop_battery_voltage_now(struct qpnp_chg_chip *chip)
 static int
 get_prop_batt_present(struct qpnp_chg_chip *chip)
 {
+#ifdef QCOM_WA
 	u8 batt_present;
 	int rc;
 
@@ -2272,6 +2273,9 @@ get_prop_batt_present(struct qpnp_chg_chip *chip)
 		return 0;
 	};
 	return (batt_present & BATT_PRES_BIT) ? 1 : 0;
+#else
+	return 1;
+#endif
 }
 
 #define BATT_TEMP_HOT	BIT(6)
