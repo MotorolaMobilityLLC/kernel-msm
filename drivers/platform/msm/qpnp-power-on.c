@@ -98,6 +98,10 @@
 
 #define QPNP_PON_SEC_UNLOCK			0xA5
 
+/* spared registers for storing extra reset information */
+#define QPNP_PON_EXTRA_RESET_INFO_1(base)	(base + 0x8D)
+#define QPNP_PON_EXTRA_RESET_INFO_2(base)	(base + 0x8E)
+
 #define QPNP_PON_WARM_RESET_TFT			BIT(4)
 
 #define QPNP_PON_RESIN_PULL_UP			BIT(0)
@@ -489,6 +493,41 @@ static ssize_t qpnp_pon_dbc_store(struct device *dev,
 }
 
 static DEVICE_ATTR(debounce_us, 0664, qpnp_pon_dbc_show, qpnp_pon_dbc_store);
+
+int qpnp_pon_store_extra_reset_info(u16 mask, u16 val)
+{
+	int rc = 0;
+	u16 extra_reset_info_reg;
+	struct qpnp_pon *pon = sys_reset_dev;
+
+	if (!pon)
+		return -ENODEV;
+
+	if (mask & 0xFF) {
+		extra_reset_info_reg = QPNP_PON_EXTRA_RESET_INFO_1(pon->base);
+		rc = qpnp_pon_masked_write(pon, extra_reset_info_reg,
+		    mask & 0xFF, val & 0xFF);
+		if (rc) {
+			pr_err("Failed to store extra reset info to 0x%x\n",
+			    extra_reset_info_reg);
+			return rc;
+		}
+	}
+
+	if (mask & 0xFF00) {
+		extra_reset_info_reg = QPNP_PON_EXTRA_RESET_INFO_2(pon->base);
+		rc = qpnp_pon_masked_write(pon, extra_reset_info_reg,
+		    (mask & 0xFF00) >> 8, (val & 0xFF00) >> 8);
+		if (rc) {
+			pr_err("Failed to store extra reset info to 0x%x\n",
+			    extra_reset_info_reg);
+			return rc;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_pon_store_extra_reset_info);
 
 static int qpnp_pon_reset_config(struct qpnp_pon *pon,
 		enum pon_power_off_type type)
