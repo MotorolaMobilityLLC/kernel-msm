@@ -60,6 +60,8 @@
 #define use_restart_v2()	0
 #endif
 
+#define RESET_EXTRA_PANIC_REASON	BIT(0)
+
 static int restart_mode;
 void *restart_reason;
 
@@ -293,6 +295,7 @@ static void msm_restart_prepare(const char *cmd)
 		}
 	} else if (in_panic == 1) {
 		__raw_writel(0x77665505, restart_reason);
+		qpnp_pon_store_extra_reset_info(RESET_EXTRA_PANIC_REASON, 1);
 	} else {
 		__raw_writel(0x77665501, restart_reason);
 	}
