@@ -2728,7 +2728,7 @@ qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 				&batt_data, result.physical);
 		if (rc) {
 			pr_err("failed to read battery data: %d\n", rc);
-			return rc;
+			return 0;
 		}
 
 		if (batt_data.max_voltage_uv >= 0) {
