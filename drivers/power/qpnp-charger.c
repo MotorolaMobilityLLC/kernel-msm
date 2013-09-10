@@ -32,6 +32,7 @@
 #include <linux/qpnp-revid.h>
 #include <linux/android_alarm.h>
 #include <linux/spinlock.h>
+#include <linux/batterydata-lib.h>
 
 /* Interrupt offsets */
 #define INT_RT_STS(base)			(base + 0x10)
@@ -4492,8 +4493,11 @@ qpnp_chg_load_battery_data(struct qpnp_chg_chip *chip)
 		rc = of_batterydata_read_data(node,
 				&batt_data, result.physical);
 		if (rc) {
-			pr_err("failed to read battery data: %d\n", rc);
-			return rc;
+			pr_err("battery not found, using palladium 1500\n");
+			kfree(chip->pc_temp_ocv_lut);
+			chip->pc_temp_ocv_lut =
+				palladium_1500_data.pc_temp_ocv_lut;
+			return 0;
 		}
 
 		pr_info("batt_id = %d uV, max_voltage = %d uV, term_curr = %d uA\n",
