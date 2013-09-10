@@ -3887,6 +3887,11 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
         if ( domainId != pMac->scan.domainIdCurrent )
         {
             tSirMacChanInfo* pMacChnSet = (tSirMacChanInfo *)(&pIesLocal->Country.triplets[0]);
+            palCopyMemory( pMac->hHdd, pMac->scan.countryCode11d, pIesLocal->Country.country,
+                                        sizeof( pMac->scan.countryCode11d ) );
+            csrSetCfgCountryCode(pMac, pIesLocal->Country.country);
+            WDA_SetRegDomain(pMac, domainId);
+            pMac->scan.domainIdCurrent = domainId;
             // Check whether AP provided the 2.4GHZ list or 5GHZ list
             if(CSR_IS_CHANNEL_24GHZ(pMacChnSet[0].firstChanNum))
             {
@@ -3898,9 +3903,6 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
                 // AP Provided the 5G Channels, Update the 2.4GHZ channel list from nv.bin
                 csrGet24GChannels(pMac );
             }
-            csrSetCfgCountryCode(pMac, pIesLocal->Country.country);
-            WDA_SetRegDomain(pMac, domainId);
-            pMac->scan.domainIdCurrent = domainId;
         }
         // Populate both band channel lists based on what we found in the country information...
         csrSetOppositeBandChannelInfo( pMac );
