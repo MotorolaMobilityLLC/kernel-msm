@@ -666,6 +666,10 @@ VOS_STATUS vos_start( v_CONTEXT_t vosContext )
      }
      VOS_ASSERT(0);
      vos_event_reset( &(gpVosContext->wdaCompleteEvent) );
+     if (vos_is_logp_in_progress(VOS_MODULE_ID_VOSS, NULL))
+     {
+         VOS_BUG(0);
+     }
      WDA_setNeedShutdown(vosContext);
      return VOS_STATUS_E_FAILURE;
   }
