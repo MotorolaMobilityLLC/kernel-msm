@@ -44,6 +44,7 @@
 #define POOL_TYPE_HSIC_WRITE	11
 #define POOL_TYPE_HSIC_2_WRITE	12
 #define POOL_TYPE_ALL		10
+
 #define MODEM_DATA		0
 #define LPASS_DATA		1
 #define WCNSS_DATA		2
@@ -53,7 +54,15 @@
 #define HSIC_2_DATA		6
 #define SMUX_DATA		10
 #define APPS_PROC		1
-#define MSG_MASK_SIZE 10000
+
+#define MAX_SSID_PER_RANGE	200
+/*
+ * Each row contains First (uint32_t), Last (uint32_t), Actual
+ * last (uint32_t) values along with the range of SSIDs
+ * (MAX_SSID_PER_RANGE*uint32_t).
+ * And there are MSG_MASK_TBL_CNT rows.
+ */
+#define MSG_MASK_SIZE		((MAX_SSID_PER_RANGE+3) * 4 * MSG_MASK_TBL_CNT)
 #define LOG_MASK_SIZE 8000
 #define EVENT_MASK_SIZE 1000
 #define USER_SPACE_DATA 8192
