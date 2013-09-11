@@ -1231,6 +1231,33 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-border-color", &tmp);
 	pinfo->lcdc.border_clr = (!rc ? tmp : 0);
 	pinfo->bklt_ctrl = UNKNOWN_CTRL;
+
+	/* lcdc_tune is the same as lcdc by default, but can be overridden */
+	memcpy(&pinfo->lcdc_tune, &pinfo->lcdc,
+		sizeof(struct lcd_panel_info));
+
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-tune-h-front-porch", &tmp);
+	if (!rc)
+		pinfo->lcdc_tune.h_front_porch = tmp;
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-tune-h-back-porch", &tmp);
+	if (!rc)
+		pinfo->lcdc_tune.h_back_porch = tmp;
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-tune-h-pulse-width", &tmp);
+	if (!rc)
+		pinfo->lcdc_tune.h_pulse_width = tmp;
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-tune-h-sync-skew", &tmp);
+	if (!rc)
+		pinfo->lcdc_tune.hsync_skew = tmp;
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-tune-v-back-porch", &tmp);
+	if (!rc)
+		pinfo->lcdc_tune.v_back_porch = tmp;
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-tune-v-front-porch", &tmp);
+	if (!rc)
+		pinfo->lcdc_tune.v_front_porch = tmp;
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-tune-v-pulse-width", &tmp);
+	if (!rc)
+		pinfo->lcdc_tune.v_pulse_width = tmp;
+
 	data = of_get_property(np, "qcom,mdss-dsi-bl-pmic-control-type", NULL);
 	if (data) {
 		if (!strncmp(data, "bl_ctrl_wled", 12)) {
