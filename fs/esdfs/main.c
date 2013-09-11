@@ -3,6 +3,7 @@
  * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2014 Stony Brook University
  * Copyright (c) 2003-2014 The Research Foundation of SUNY
+ * Copyright (C) 2013-2014 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,17 +12,127 @@
 
 #include "esdfs.h"
 #include <linux/module.h>
+#include <linux/parser.h>
+
+/*
+ * Derived from first generation "ANDROID_EMU" glue in modifed F2FS driver.
+ */
+enum {
+	Opt_lower_perms,
+	Opt_upper_perms,
+	Opt_err
+};
+
+static match_table_t esdfs_tokens = {
+	{Opt_lower_perms, "lower=%s"},
+	{Opt_upper_perms, "upper=%s"},
+	{Opt_err, NULL},
+};
+
+static int parse_perms(struct esdfs_perms *perms, char *args)
+{
+	char *sep = args;
+	char *sepres;
+	int ret;
+
+	if (!sep)
+		return -EINVAL;
+
+	sepres = strsep(&sep, ":");
+	if (!sep)
+		return -EINVAL;
+	ret = kstrtou32(sepres, 0, &perms->uid);
+	if (ret)
+		return ret;
+
+	sepres = strsep(&sep, ":");
+	if (!sep)
+		return -EINVAL;
+	ret = kstrtou32(sepres, 0, &perms->gid);
+	if (ret)
+		return ret;
+
+	sepres = strsep(&sep, ":");
+	if (!sep)
+		return -EINVAL;
+	ret = kstrtou16(sepres, 0, &perms->fmask);
+	if (ret)
+		return ret;
+
+	sepres = strsep(&sep, ":");
+	ret = kstrtou16(sepres, 8, &perms->dmask);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int parse_options(struct super_block *sb, char *options)
+{
+	struct esdfs_sb_info *sbi = ESDFS_SB(sb);
+	substring_t args[MAX_OPT_ARGS];
+	char *p;
+
+	if (!options)
+		return 0;
+
+	while ((p = strsep(&options, ",")) != NULL) {
+		int token;
+		if (!*p)
+			continue;
+		/*
+		 * Initialize args struct so we know whether arg was
+		 * found; some options take optional arguments.
+		 */
+		args[0].to = args[0].from = NULL;
+		token = match_token(p, esdfs_tokens, args);
+
+		switch (token) {
+		case Opt_lower_perms:
+			if (args->from) {
+				int ret;
+				char *perms = match_strdup(args);
+
+				ret = parse_perms(&sbi->lower_perms, perms);
+				kfree(perms);
+
+				if (ret)
+					return -EINVAL;
+			} else
+				return -EINVAL;
+			break;
+		case Opt_upper_perms:
+			if (args->from) {
+				int ret;
+				char *perms = match_strdup(args);
+
+				ret = parse_perms(&sbi->upper_perms, perms);
+				kfree(perms);
+
+				if (ret)
+					return -EINVAL;
+			} else
+				return -EINVAL;
+			break;
+		default:
+			printk(KERN_ERR	"Unrecognized mount option \"%s\" or missing value",
+				p);
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
 
 /*
  * There is no need to lock the esdfs_super_info's rwsem as there is no
  * way anyone can have a reference to the superblock at this point in time.
  */
-static int esdfs_read_super(struct super_block *sb, void *raw_data, int silent)
+static int esdfs_read_super(struct super_block *sb, const char *dev_name,
+		void *raw_data, int silent)
 {
 	int err = 0;
 	struct super_block *lower_sb;
 	struct path lower_path;
-	char *dev_name = (char *) raw_data;
 	struct inode *inode;
 
 	if (!dev_name) {
@@ -45,8 +156,21 @@ static int esdfs_read_super(struct super_block *sb, void *raw_data, int silent)
 	if (!ESDFS_SB(sb)) {
 		printk(KERN_CRIT "esdfs: read_super: out of memory\n");
 		err = -ENOMEM;
-		goto out_free;
+		goto out_pput;
 	}
+
+	/* set defaults and then parse the mount options */
+	ESDFS_SB(sb)->lower_perms.uid = ESDFS_DEFAULT_LOWER_UID;
+	ESDFS_SB(sb)->lower_perms.gid = ESDFS_DEFAULT_LOWER_GID;
+	ESDFS_SB(sb)->lower_perms.fmask = ESDFS_DEFAULT_LOWER_FMASK;
+	ESDFS_SB(sb)->lower_perms.dmask = ESDFS_DEFAULT_LOWER_DMASK;
+	ESDFS_SB(sb)->upper_perms.uid = ESDFS_DEFAULT_UPPER_UID;
+	ESDFS_SB(sb)->upper_perms.gid = ESDFS_DEFAULT_UPPER_GID;
+	ESDFS_SB(sb)->upper_perms.fmask = ESDFS_DEFAULT_UPPER_FMASK;
+	ESDFS_SB(sb)->upper_perms.dmask = ESDFS_DEFAULT_UPPER_DMASK;
+	err = parse_options(sb, (char *)raw_data);
+	if (err)
+		goto out_free;
 
 	/* set the lower superblock field of upper superblock */
 	lower_sb = lower_path.dentry->d_sb;
@@ -108,22 +232,38 @@ out_iput:
 out_sput:
 	/* drop refs we took earlier */
 	atomic_dec(&lower_sb->s_active);
+out_free:
 	kfree(ESDFS_SB(sb));
 	sb->s_fs_info = NULL;
-out_free:
+out_pput:
 	path_put(&lower_path);
 
 out:
 	return err;
 }
 
+/*
+ * Based on mount_nodev() in fs/super.c (need to pass mount options).
+ */
 struct dentry *esdfs_mount(struct file_system_type *fs_type, int flags,
 			    const char *dev_name, void *raw_data)
 {
-	void *lower_path_name = (void *) dev_name;
+	int error;
+	struct super_block *s = sget(fs_type, NULL, set_anon_super, flags, NULL);
 
-	return mount_nodev(fs_type, flags, lower_path_name,
-			   esdfs_read_super);
+	if (IS_ERR(s))
+		return ERR_CAST(s);
+
+	s->s_flags = flags;
+
+	error = esdfs_read_super(s, dev_name, raw_data,
+					flags & MS_SILENT ? 1 : 0);
+	if (error) {
+		deactivate_locked_super(s);
+		return ERR_PTR(error);
+	}
+	s->s_flags |= MS_ACTIVE;
+	return dget(s->s_root);
 }
 
 static struct file_system_type esdfs_fs_type = {
@@ -165,9 +305,8 @@ static void __exit exit_esdfs_fs(void)
 }
 
 MODULE_AUTHOR("Erez Zadok, Filesystems and Storage Lab, Stony Brook University"
-	      " (http://www.fsl.cs.sunysb.edu/)");
-MODULE_DESCRIPTION("Wrapfs " ESDFS_VERSION
-		   " (http://esdfs.filesystems.org/)");
+	      " (http://www.fsl.cs.sunysb.edu/), Motorola Mobility, LLC");
+MODULE_DESCRIPTION("Emulated 'SD card' Filesystem");
 MODULE_LICENSE("GPL");
 
 module_init(init_esdfs_fs);
