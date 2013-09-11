@@ -479,7 +479,6 @@ int f2fs_setxattr(struct inode *inode, int name_index, const char *name,
 	void *base_addr;
 	int found, newsize;
 	size_t name_len;
-	int ilock;
 	__u32 new_hsize;
 	int error = -ENOMEM;
 
@@ -495,8 +494,6 @@ int f2fs_setxattr(struct inode *inode, int name_index, const char *name,
 		return -ERANGE;
 
 	f2fs_balance_fs(sbi);
-
-	ilock = mutex_lock_op(sbi);
 
 	base_addr = read_all_xattrs(inode, ipage);
 	if (!base_addr)
@@ -579,7 +576,6 @@ int f2fs_setxattr(struct inode *inode, int name_index, const char *name,
 	else
 		update_inode_page(inode);
 exit:
-	mutex_unlock_op(sbi, ilock);
 	kzfree(base_addr);
 	return error;
 }
