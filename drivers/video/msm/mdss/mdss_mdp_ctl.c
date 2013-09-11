@@ -310,7 +310,8 @@ static u32 mdss_mdp_perf_calc_pipe_prefill_cmd(struct mdss_mdp_prefill_params
  * (MDP clock requirement) based on frame size and scaling requirements.
  */
 int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
-	struct mdss_mdp_perf_params *perf, struct mdss_mdp_img_rect *roi)
+	struct mdss_mdp_perf_params *perf, struct mdss_mdp_img_rect *roi,
+	int tune)
 {
 	struct mdss_mdp_mixer *mixer;
 	int fps = DEFAULT_FRAME_RATE;
@@ -333,7 +334,8 @@ int mdss_mdp_perf_calc_pipe(struct mdss_mdp_pipe *pipe,
 
 		pinfo = &mixer->ctl->panel_data->panel_info;
 		fps = mdss_panel_get_framerate(pinfo);
-		v_total = mdss_panel_get_vtotal(pinfo);
+		v_total = mdss_panel_get_vtotal_lcd(pinfo,
+			tune ? &pinfo->lcdc_tune : &pinfo->lcdc);
 		xres = pinfo->xres;
 		is_fbc = pinfo->fbc.enabled;
 	} else {
@@ -475,7 +477,7 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 		if (pipe == NULL)
 			continue;
 
-		if (mdss_mdp_perf_calc_pipe(pipe, &tmp, &mixer->roi))
+		if (mdss_mdp_perf_calc_pipe(pipe, &tmp, &mixer->roi, 0))
 			continue;
 		prefill_bytes += tmp.prefill_bytes;
 		bw_overlap[i] = tmp.bw_overlap;
