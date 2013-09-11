@@ -3,6 +3,7 @@
  * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2014 Stony Brook University
  * Copyright (c) 2003-2014 The Research Foundation of SUNY
+ * Copyright (C) 2013-2014 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -155,13 +156,40 @@ static void esdfs_umount_begin(struct super_block *sb)
 		lower_sb->s_op->umount_begin(lower_sb);
 }
 
+static int esdfs_show_options(struct seq_file *seq, struct dentry *root)
+{
+	struct esdfs_sb_info *sbi = ESDFS_SB(root->d_sb);
+
+	if (sbi->lower_perms.uid != ESDFS_DEFAULT_LOWER_UID ||
+	    sbi->lower_perms.gid != ESDFS_DEFAULT_LOWER_GID ||
+	    sbi->lower_perms.fmask != ESDFS_DEFAULT_LOWER_FMASK ||
+	    sbi->lower_perms.dmask != ESDFS_DEFAULT_LOWER_DMASK)
+		seq_printf(seq, ",lower=%u:%u:%ho:%ho",
+				sbi->lower_perms.uid,
+				sbi->lower_perms.gid,
+				sbi->lower_perms.fmask,
+				sbi->lower_perms.dmask);
+
+	if (sbi->upper_perms.uid != ESDFS_DEFAULT_UPPER_UID ||
+	    sbi->upper_perms.gid != ESDFS_DEFAULT_UPPER_GID ||
+	    sbi->upper_perms.fmask != ESDFS_DEFAULT_UPPER_FMASK ||
+	    sbi->upper_perms.dmask != ESDFS_DEFAULT_UPPER_DMASK)
+		seq_printf(seq, ",upper=%u:%u:%ho:%ho",
+				sbi->upper_perms.uid,
+				sbi->upper_perms.gid,
+				sbi->upper_perms.fmask,
+				sbi->upper_perms.dmask);
+
+	return 0;
+}
+
 const struct super_operations esdfs_sops = {
 	.put_super	= esdfs_put_super,
 	.statfs		= esdfs_statfs,
 	.remount_fs	= esdfs_remount_fs,
 	.evict_inode	= esdfs_evict_inode,
 	.umount_begin	= esdfs_umount_begin,
-	.show_options	= generic_show_options,
+	.show_options	= esdfs_show_options,
 	.alloc_inode	= esdfs_alloc_inode,
 	.destroy_inode	= esdfs_destroy_inode,
 	.drop_inode	= generic_delete_inode,

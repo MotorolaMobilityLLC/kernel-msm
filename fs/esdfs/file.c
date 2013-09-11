@@ -3,6 +3,7 @@
  * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2014 Stony Brook University
  * Copyright (c) 2003-2014 The Research Foundation of SUNY
+ * Copyright (C) 2013-2014 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -42,8 +43,8 @@ static ssize_t esdfs_write(struct file *file, const char __user *buf,
 	if (err >= 0) {
 		fsstack_copy_inode_size(dentry->d_inode,
 					file_inode(lower_file));
-		fsstack_copy_attr_times(dentry->d_inode,
-					file_inode(lower_file));
+		esdfs_copy_attr(dentry->d_inode,
+				file_inode(lower_file));
 	}
 
 	return err;
@@ -80,8 +81,8 @@ static long esdfs_unlocked_ioctl(struct file *file, unsigned int cmd,
 
 	/* some ioctls can change inode attributes (EXT2_IOC_SETFLAGS) */
 	if (!err)
-		fsstack_copy_attr_all(file_inode(file),
-				      file_inode(lower_file));
+		esdfs_copy_attr(file->f_path.dentry->d_inode,
+				file_inode(lower_file));
 out:
 	return err;
 }
@@ -200,7 +201,7 @@ static int esdfs_open(struct inode *inode, struct file *file)
 	if (err)
 		kfree(ESDFS_F(file));
 	else
-		fsstack_copy_attr_all(inode, esdfs_lower_inode(inode));
+		esdfs_copy_attr(inode, esdfs_lower_inode(inode));
 out_err:
 	return err;
 }
