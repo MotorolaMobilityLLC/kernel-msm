@@ -477,112 +477,115 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) ||
         (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE))
     {
-        // check for VHT capability
-        pStaDs = dphLookupHashEntry(pMac, pMh->sa, &aid,
-                                    &psessionEntry->dph.dphHashTable);
-        if (psessionEntry->vhtCapability && pBeacon->OperatingMode.present)
-        {
-            operMode = pStaDs->vhtSupportedChannelWidthSet ?
-                       eHT_CHANNEL_WIDTH_80MHZ :
-                       pStaDs->htSupportedChannelWidthSet ?
-                       eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
-            if (operMode != pBeacon->OperatingMode.chanWidth)
-            {
+       // check for VHT capability
+       pStaDs = dphLookupHashEntry(pMac, pMh->sa, &aid,
+             &psessionEntry->dph.dphHashTable);
+       if (NULL != pStaDs)
+       {
+          if (psessionEntry->vhtCapability && pBeacon->OperatingMode.present )
+          {
+             operMode = pStaDs->vhtSupportedChannelWidthSet ?
+                eHT_CHANNEL_WIDTH_80MHZ :
+                pStaDs->htSupportedChannelWidthSet ?
+                eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
+             if (operMode != pBeacon->OperatingMode.chanWidth)
+             {
                 PELOG1(limLog(pMac, LOG1,
-                              FL(" received OpMode Chanwidth %d, staIdx = %d"),
-                                          pBeacon->OperatingMode.chanWidth,
-                                          pStaDs->staIndex);)
-                PELOG1(limLog(pMac, LOG1, FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x"),
-                                          pMh->sa[0],
-                                          pMh->sa[1],
-                                          pMh->sa[2],
-                                          pMh->sa[3],
-                                          pMh->sa[4],
-                                          pMh->sa[5]);)
+                         FL(" received OpMode Chanwidth %d, staIdx = %d"),
+                         pBeacon->OperatingMode.chanWidth,
+                         pStaDs->staIndex);)
+                   PELOG1(limLog(pMac, LOG1, FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x"),
+                            pMh->sa[0],
+                            pMh->sa[1],
+                            pMh->sa[2],
+                            pMh->sa[3],
+                            pMh->sa[4],
+                            pMh->sa[5]);)
 
-                if (pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ)
-                {
-                    PELOG1(limLog(pMac, LOG1,
-                                 FL("Updating the CH Width to 80MHz"));)
-                    pStaDs->vhtSupportedChannelWidthSet =
-                                         WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
-                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
-                }
-                else if (pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_40MHZ)
-                {
-                    PELOG1(limLog(pMac, LOG1,
+                   if (pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ)
+                   {
+                      PELOG1(limLog(pMac, LOG1,
+                               FL("Updating the CH Width to 80MHz"));)
+                         pStaDs->vhtSupportedChannelWidthSet =
+                         WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
+                      pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
+                   }
+                   else if (pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_40MHZ)
+                   {
+                      PELOG1(limLog(pMac, LOG1,
+                               FL("Updating the CH Width to 40MHz"));)
+                         pStaDs->vhtSupportedChannelWidthSet =
+                         WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+                      pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
+                   }
+                   else if (pBeacon->OperatingMode.chanWidth ==
+                         eHT_CHANNEL_WIDTH_20MHZ)
+                   {
+                      PELOG1(limLog(pMac, LOG1,
+                               FL("Updating the CH Width to 20MHz"));)
+                         pStaDs->vhtSupportedChannelWidthSet =
+                         WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+                      pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_20MHZ;
+                   }
+                limCheckVHTOpModeChange(pMac, psessionEntry,
+                      pBeacon->OperatingMode.chanWidth,
+                      pStaDs->staIndex);
+             }
+          }
+          else if (psessionEntry->vhtCapability && pBeacon->VHTOperation.present)
+          {
+             operMode = pStaDs->vhtSupportedChannelWidthSet;
+             if (operMode != pBeacon->VHTOperation.chanWidth)
+             {
+                PELOG1(limLog(pMac, LOG1,
+                         FL(" received VHTOP CHWidth %d staIdx = %d"),
+                         pBeacon->VHTOperation.chanWidth,
+                         pStaDs->staIndex);)
+                   PELOG1(limLog(pMac, LOG1, FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x"),
+                            pMh->sa[0],
+                            pMh->sa[1],
+                            pMh->sa[2],
+                            pMh->sa[3],
+                            pMh->sa[4],
+                            pMh->sa[5]);)
+
+                   if (pBeacon->VHTOperation.chanWidth ==
+                         WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ)
+                   {
+                      PELOG1(limLog(pMac, LOG1,
+                               FL("Updating the CH Width to 80MHz"));)
+                         pStaDs->vhtSupportedChannelWidthSet =
+                         WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
+                      pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
+                      chWidth = eHT_CHANNEL_WIDTH_80MHZ;
+                   }
+                   else if (pBeacon->VHTOperation.chanWidth ==
+                         WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ)
+                   {
+                      pStaDs->vhtSupportedChannelWidthSet =
+                         WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+                      if (pBeacon->HTCaps.supportedChannelWidthSet)
+                      {
+                         PELOG1(limLog(pMac, LOG1,
                                   FL("Updating the CH Width to 40MHz"));)
-                    pStaDs->vhtSupportedChannelWidthSet =
-                                             WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
-                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
-                }
-                else if (pBeacon->OperatingMode.chanWidth ==
-                                eHT_CHANNEL_WIDTH_20MHZ)
-                {
-                    PELOG1(limLog(pMac, LOG1,
+                            pStaDs->htSupportedChannelWidthSet =
+                            eHT_CHANNEL_WIDTH_40MHZ;
+                         chWidth = eHT_CHANNEL_WIDTH_40MHZ;
+                      }
+                      else
+                      {
+                         PELOG1(limLog(pMac, LOG1,
                                   FL("Updating the CH Width to 20MHz"));)
-                    pStaDs->vhtSupportedChannelWidthSet =
-                                            WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
-                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_20MHZ;
-                }
+                            pStaDs->htSupportedChannelWidthSet =
+                            eHT_CHANNEL_WIDTH_20MHZ;
+                         chWidth = eHT_CHANNEL_WIDTH_20MHZ;
+                      }
+                   }
                 limCheckVHTOpModeChange(pMac, psessionEntry,
-                                        pBeacon->OperatingMode.chanWidth,
-                                        pStaDs->staIndex);
-            }
-        }
-        else if (psessionEntry->vhtCapability && pBeacon->VHTOperation.present)
-        {
-            operMode = pStaDs->vhtSupportedChannelWidthSet;
-            if (operMode != pBeacon->VHTOperation.chanWidth)
-            {
-                PELOG1(limLog(pMac, LOG1,
-                       FL(" received VHTOP CHWidth %d staIdx = %d"),
-                                          pBeacon->VHTOperation.chanWidth,
-                                          pStaDs->staIndex);)
-                PELOG1(limLog(pMac, LOG1, FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x"),
-                                          pMh->sa[0],
-                                          pMh->sa[1],
-                                          pMh->sa[2],
-                                          pMh->sa[3],
-                                          pMh->sa[4],
-                                          pMh->sa[5]);)
-
-                if (pBeacon->VHTOperation.chanWidth ==
-                                WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ)
-                {
-                    PELOG1(limLog(pMac, LOG1,
-                                  FL("Updating the CH Width to 80MHz"));)
-                    pStaDs->vhtSupportedChannelWidthSet =
-                                                 WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
-                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
-                    chWidth = eHT_CHANNEL_WIDTH_80MHZ;
-                }
-                else if (pBeacon->VHTOperation.chanWidth ==
-                                WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ)
-                {
-                    pStaDs->vhtSupportedChannelWidthSet =
-                            WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
-                    if (pBeacon->HTCaps.supportedChannelWidthSet)
-                    {
-                        PELOG1(limLog(pMac, LOG1,
-                                      FL("Updating the CH Width to 40MHz"));)
-                        pStaDs->htSupportedChannelWidthSet =
-                                                     eHT_CHANNEL_WIDTH_40MHZ;
-                        chWidth = eHT_CHANNEL_WIDTH_40MHZ;
-                    }
-                    else
-                    {
-                        PELOG1(limLog(pMac, LOG1,
-                                      FL("Updating the CH Width to 20MHz"));)
-                        pStaDs->htSupportedChannelWidthSet =
-                                                     eHT_CHANNEL_WIDTH_20MHZ;
-                        chWidth = eHT_CHANNEL_WIDTH_20MHZ;
-                    }
-                }
-                limCheckVHTOpModeChange(pMac, psessionEntry,
-                                chWidth, pStaDs->staIndex);
-            }
-        }
+                      chWidth, pStaDs->staIndex);
+             }
+          }
+       }
     }
 #endif
 
