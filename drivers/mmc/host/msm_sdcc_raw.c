@@ -233,6 +233,8 @@ static void __iomem *raw_mmc_mci_base;
 
 #define RAW_MMC_MCI_CCS_TIMER            RAW_MMC_MCI_REG(0x0058)
 
+#define RAW_MCI_HC_MODE                  RAW_MMC_MCI_REG(0x078)
+
 #define RAW_MMC_MCI_FIFO                 RAW_MMC_MCI_REG(0x080)
 
 /* Card status */
@@ -1918,6 +1920,9 @@ static unsigned int raw_mmc_init(struct raw_mmc_host *host)
 	writel(mmc_pwr, RAW_MMC_MCI_POWER);
 	/* some more time to stabilize voltage */
 	mdelay(2);
+
+	/* Ensure to clean the HC_MODE_EN bit */
+	writel(0, RAW_MCI_HC_MODE);
 
 	return RAW_MMC_E_SUCCESS;
 }
