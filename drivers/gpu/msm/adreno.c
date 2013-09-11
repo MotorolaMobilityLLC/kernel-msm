@@ -228,13 +228,27 @@ static const struct {
  * performance counters will remain active as long as the device is alive.
  */
 
-static void adreno_perfcounter_init(struct kgsl_device *device)
+static int adreno_perfcounter_init(struct kgsl_device *device)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
 	if (adreno_dev->gpudev->perfcounter_init)
-		adreno_dev->gpudev->perfcounter_init(adreno_dev);
+		return adreno_dev->gpudev->perfcounter_init(adreno_dev);
+	return 0;
 };
+
+/**
+ * adreno_perfcounter_close: Release counters initialized by
+ * adreno_perfcounter_init
+ * @device: device to realease counters for
+ *
+ */
+static void adreno_perfcounter_close(struct kgsl_device *device)
+{
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+	if (adreno_dev->gpudev->perfcounter_close)
+		return adreno_dev->gpudev->perfcounter_close(adreno_dev);
+}
 
 /**
  * adreno_perfcounter_start: Enable performance counters
@@ -243,16 +257,18 @@ static void adreno_perfcounter_init(struct kgsl_device *device)
  * Ensure all performance counters are enabled that are allocated.  Since
  * the device was most likely stopped, we can't trust that the counters
  * are still valid so make it so.
+ * Returns 0 on success else error code
  */
 
-static void adreno_perfcounter_start(struct adreno_device *adreno_dev)
+static int adreno_perfcounter_start(struct adreno_device *adreno_dev)
 {
 	struct adreno_perfcounters *counters = adreno_dev->gpudev->perfcounters;
 	struct adreno_perfcount_group *group;
 	unsigned int i, j;
+	int ret = 0;
 
 	if (NULL == counters)
-		return;
+		return 0;
 	/* group id iter */
 	for (i = 0; i < counters->group_count; i++) {
 		group = &(counters->groups[i]);
@@ -266,11 +282,15 @@ static void adreno_perfcounter_start(struct adreno_device *adreno_dev)
 				continue;
 
 			if (adreno_dev->gpudev->perfcounter_enable)
-				adreno_dev->gpudev->perfcounter_enable(
+				ret = adreno_dev->gpudev->perfcounter_enable(
 					adreno_dev, i, j,
 					group->regs[j].countable);
+				if (ret)
+					goto done;
 		}
 	}
+done:
+	return ret;
 }
 
 /**
@@ -292,8 +312,7 @@ int adreno_perfcounter_read_group(struct adreno_device *adreno_dev,
 	unsigned int i, j;
 	int ret = 0;
 
-	/* perfcounter get/put/query/read not allowed on a2xx */
-	if (adreno_is_a2xx(adreno_dev))
+	if (NULL == counters)
 		return -EINVAL;
 
 	/* sanity check for later */
@@ -371,8 +390,7 @@ int adreno_perfcounter_query_group(struct adreno_device *adreno_dev,
 
 	*max_counters = 0;
 
-	/* perfcounter get/put/query not allowed on a2xx */
-	if (adreno_is_a2xx(adreno_dev))
+	if (NULL == counters)
 		return -EINVAL;
 
 	if (groupid >= counters->group_count)
@@ -421,13 +439,13 @@ int adreno_perfcounter_get(struct adreno_device *adreno_dev,
 	struct adreno_perfcounters *counters = adreno_dev->gpudev->perfcounters;
 	struct adreno_perfcount_group *group;
 	unsigned int i, empty = -1;
+	int ret = 0;
 
 	/* always clear return variables */
 	if (offset)
 		*offset = 0;
 
-	/* perfcounter get/put/query not allowed on a2xx */
-	if (adreno_is_a2xx(adreno_dev))
+	if (NULL == counters)
 		return -EINVAL;
 
 	if (groupid >= counters->group_count)
@@ -462,6 +480,11 @@ int adreno_perfcounter_get(struct adreno_device *adreno_dev,
 	if (empty == -1)
 		return -EBUSY;
 
+	/* enable the new counter */
+	ret = adreno_dev->gpudev->perfcounter_enable(adreno_dev, groupid, empty,
+		countable);
+	if (ret)
+		return ret;
 	/* initialize the new counter */
 	group->regs[empty].countable = countable;
 
@@ -474,14 +497,10 @@ int adreno_perfcounter_get(struct adreno_device *adreno_dev,
 		group->regs[empty].usercount = 1;
 	}
 
-	/* enable the new counter */
-	adreno_dev->gpudev->perfcounter_enable(adreno_dev, groupid, empty,
-		countable);
-
 	if (offset)
 		*offset = group->regs[empty].offset;
 
-	return 0;
+	return ret;
 }
 
 
@@ -503,8 +522,7 @@ int adreno_perfcounter_put(struct adreno_device *adreno_dev,
 
 	unsigned int i;
 
-	/* perfcounter get/put/query not allowed on a2xx */
-	if (adreno_is_a2xx(adreno_dev))
+	if (NULL == counters)
 		return -EINVAL;
 
 	if (groupid >= counters->group_count)
@@ -1556,6 +1574,7 @@ static int __devexit adreno_remove(struct platform_device *pdev)
 
 	adreno_dispatcher_close(adreno_dev);
 	adreno_ringbuffer_close(&adreno_dev->ringbuffer);
+	adreno_perfcounter_close(device);
 	kgsl_device_platform_remove(device);
 
 	clear_bit(ADRENO_DEVICE_INITIALIZED, &adreno_dev->priv);
@@ -1568,6 +1587,7 @@ static int adreno_init(struct kgsl_device *device)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 	int i;
+	int ret;
 
 	kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
 	/*
@@ -1631,18 +1651,21 @@ static int adreno_init(struct kgsl_device *device)
 	for (i = 6; i < FT_DETECT_REGS_COUNT; i++)
 		ft_detect_regs[i] = 0;
 
-	adreno_perfcounter_init(device);
+	ret = adreno_perfcounter_init(device);
 
 	/* Power down the device */
 	kgsl_pwrctrl_disable(device);
+
+	if (ret)
+		goto done;
 
 	/* Certain targets need the fixup.  You know who you are */
 	if (adreno_is_a330v2(adreno_dev))
 		adreno_a3xx_pwron_fixup_init(adreno_dev);
 
 	set_bit(ADRENO_DEVICE_INITIALIZED, &adreno_dev->priv);
-
-	return 0;
+done:
+	return ret;
 }
 
 static int adreno_start(struct kgsl_device *device)
@@ -1711,15 +1734,19 @@ static int adreno_start(struct kgsl_device *device)
 	if (status)
 		goto error_irq_off;
 
+	status = adreno_perfcounter_start(adreno_dev);
+	if (status)
+		goto error_rb_stop;
+
 	/* Start the dispatcher */
 	adreno_dispatcher_start(adreno_dev);
-
-	adreno_perfcounter_start(adreno_dev);
 
 	device->reset_counter++;
 
 	return 0;
 
+error_rb_stop:
+	adreno_ringbuffer_stop(&adreno_dev->ringbuffer);
 error_irq_off:
 	kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 
