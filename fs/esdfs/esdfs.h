@@ -3,6 +3,7 @@
  * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2014 Stony Brook University
  * Copyright (c) 2003-2014 The Research Foundation of SUNY
+ * Copyright (C) 2013-2014 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -26,6 +27,7 @@
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
+#include <linux/fs_struct.h>
 
 /* the file system name */
 #define ESDFS_NAME "esdfs"
@@ -35,6 +37,16 @@
 
 /* useful for tracking code reachability */
 #define UDBG printk(KERN_DEFAULT "DBG:%s:%s:%d\n", __FILE__, __func__, __LINE__)
+
+/* default permissions as specified by the Android sdcard service */
+#define ESDFS_DEFAULT_LOWER_UID		1023	/* AID_MEDIA_RW */
+#define ESDFS_DEFAULT_LOWER_GID		1023	/* AID_MEDIA_RW */
+#define ESDFS_DEFAULT_LOWER_FMASK	0664
+#define ESDFS_DEFAULT_LOWER_DMASK	0775
+#define ESDFS_DEFAULT_UPPER_UID		0	/* AID_ROOT */
+#define ESDFS_DEFAULT_UPPER_GID		1015	/* AID_SDCARD_RW */
+#define ESDFS_DEFAULT_UPPER_FMASK	0664
+#define ESDFS_DEFAULT_UPPER_DMASK	0775
 
 /* operations vectors defined in specific files */
 extern const struct file_operations esdfs_main_fops;
@@ -78,9 +90,19 @@ struct esdfs_dentry_info {
 	struct path lower_path;
 };
 
+struct esdfs_perms {
+	uid_t uid;
+	gid_t gid;
+	unsigned short fmask;
+	unsigned short dmask;
+};
+
 /* esdfs super-block data in memory */
 struct esdfs_sb_info {
 	struct super_block *lower_sb;
+	struct esdfs_perms lower_perms;
+	struct esdfs_perms upper_perms;
+	unsigned int options;
 };
 
 /*
@@ -202,4 +224,88 @@ static inline void unlock_dir(struct dentry *dir)
 	mutex_unlock(&dir->d_inode->i_mutex);
 	dput(dir);
 }
+
+static inline void esdfs_set_lower_mode(struct esdfs_sb_info *sbi,
+		umode_t *mode)
+{
+	if (S_ISDIR(*mode))
+		*mode = (*mode & S_IFMT) | sbi->lower_perms.dmask;
+	else
+		*mode = (*mode & S_IFMT) | sbi->lower_perms.fmask;
+}
+
+static inline void esdfs_lower_i_perms(struct inode *inode)
+{
+	struct esdfs_sb_info *sbi = ESDFS_SB(inode->i_sb);
+	
+	i_uid_write(inode, sbi->lower_perms.uid);
+	i_gid_write(inode, sbi->lower_perms.gid);
+	esdfs_set_lower_mode(sbi, &inode->i_mode);
+}
+
+/* file attribute helpers */
+static inline void esdfs_copy_lower_attr(struct inode *dest,
+					 const struct inode *src)
+{
+	dest->i_mode = src->i_mode & S_IFMT;
+	dest->i_rdev = src->i_rdev;
+	dest->i_atime = src->i_atime;
+	dest->i_mtime = src->i_mtime;
+	dest->i_ctime = src->i_ctime;
+	dest->i_blkbits = src->i_blkbits;
+	dest->i_flags = src->i_flags;
+	set_nlink(dest, src->i_nlink);
+}
+
+static inline void esdfs_copy_attr(struct inode *dest, const struct inode *src)
+{
+	struct esdfs_sb_info *sbi = ESDFS_SB(dest->i_sb);
+
+	esdfs_copy_lower_attr(dest, src);
+	i_uid_write(dest, sbi->upper_perms.uid);
+	i_gid_write(dest, sbi->upper_perms.gid);
+	if (S_ISDIR(dest->i_mode))
+		dest->i_mode |= sbi->upper_perms.dmask;
+	else
+		dest->i_mode |= sbi->upper_perms.fmask;
+}
+
+/*
+ * Based on nfs4_save_creds() and nfs4_reset_creds() in nfsd/nfs4recover.c.
+ * Returns NULL if prepare_creds() could not allocate heap, otherwise
+ */
+static inline const struct cred *esdfs_override_creds(
+		struct esdfs_sb_info *sbi, int *mask)
+{
+	struct cred *creds = prepare_creds();
+
+	if (!creds)
+		return NULL;
+
+	/* clear the umask so that the lower mode works for create cases */
+	if (mask) {
+		*mask = 0;
+		*mask = xchg(&current->fs->umask, *mask & S_IRWXUGO);
+	}
+
+	creds->fsuid = make_kuid(&init_user_ns, sbi->lower_perms.uid);
+	creds->fsgid = make_kgid(&init_user_ns, sbi->lower_perms.gid);
+
+	/* this installs the new creds into current, which we must destroy */
+	return override_creds(creds);
+}
+
+static inline void esdfs_revert_creds(const struct cred *creds, int *mask)
+{
+	const struct cred *current_creds = current->cred;
+
+	/* restore the old umask */
+	if (mask)
+		*mask = xchg(&current->fs->umask, *mask & S_IRWXUGO);
+
+	/* restore the old creds into current */
+	revert_creds(creds);
+	put_cred(current_creds);	/* destroy the old temporary creds */
+}
+
 #endif	/* not _ESDFS_H_ */
