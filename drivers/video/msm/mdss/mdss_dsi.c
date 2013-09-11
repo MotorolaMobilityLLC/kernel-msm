@@ -784,8 +784,6 @@ static int mdss_dsi_blank(struct mdss_panel_data *pdata)
 
 int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 {
-	int ret = 0;
-	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
 	pr_info("%s:%d DSI on for continuous splash.\n", __func__, __LINE__);
@@ -794,8 +792,6 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
-
-	mipi = &pdata->panel_info.mipi;
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -817,6 +813,9 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 			return ret;
 		}
 	}
+
+	if (ctrl_pdata->esd)
+		ctrl_pdata->esd(pdata);
 
 	pr_debug("%s-:End\n", __func__);
 	return ret;
@@ -1006,10 +1005,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		}
 		break;
 	case MDSS_EVENT_CONT_SPLASH_BEGIN:
-		if (ctrl_pdata->off_cmds.link_state == DSI_HS_MODE) {
-			/* Panel is Enabled in Bootloader */
-			rc = mdss_dsi_blank(pdata);
-		}
+		/*
+		 * TODO: Stubbed out for now until we can remove whole
+		 * black screen when kernel starts.
+		 */
 		break;
 	case MDSS_EVENT_ENABLE_PARTIAL_UPDATE:
 		rc = mdss_dsi_ctl_partial_update(pdata);
