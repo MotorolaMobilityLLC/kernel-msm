@@ -3,6 +3,7 @@
  * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2014 Stony Brook University
  * Copyright (c) 2003-2014 The Research Foundation of SUNY
+ * Copyright (C) 2013-2014 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -136,7 +137,7 @@ struct inode *esdfs_iget(struct super_block *sb, struct inode *lower_inode)
 				   lower_inode->i_rdev);
 
 	/* all well, copy inode attributes */
-	fsstack_copy_attr_all(inode, lower_inode);
+	esdfs_copy_attr(inode, lower_inode);
 	fsstack_copy_inode_size(inode, lower_inode);
 
 	unlock_new_inode(inode);
@@ -217,8 +218,8 @@ static struct dentry *__esdfs_lookup(struct dentry *dentry,
 	lower_dir_mnt = lower_parent_path->mnt;
 
 	/* Use vfs_path_lookup to check if the dentry exists or not */
-	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name, 0,
-			      &lower_path);
+	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name,
+			      LOOKUP_NOCASE, &lower_path);
 
 	/* no error: handle positive dentries */
 	if (!err) {
@@ -274,6 +275,10 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 	int err;
 	struct dentry *ret, *parent;
 	struct path lower_parent_path;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
+	if (!creds)
+		return NULL;
 
 	parent = dget_parent(dentry);
 
@@ -300,5 +305,6 @@ struct dentry *esdfs_lookup(struct inode *dir, struct dentry *dentry,
 out:
 	esdfs_put_lower_path(parent, &lower_parent_path);
 	dput(parent);
+	esdfs_revert_creds(creds, NULL);
 	return ret;
 }
