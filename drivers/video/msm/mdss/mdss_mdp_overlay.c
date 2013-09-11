@@ -266,7 +266,8 @@ static int __mdp_pipe_tune_perf(struct mdss_mdp_pipe *pipe)
 	int rc;
 
 	for (;;) {
-		rc = mdss_mdp_perf_calc_pipe(pipe, &perf, NULL);
+		rc = mdss_mdp_perf_calc_pipe(pipe, &perf, NULL,
+			pipe->flags & MDP_SECURE_OVERLAY_SESSION);
 
 		if (!rc && (perf.mdp_clk_rate <= mdata->max_mdp_clk_rate))
 			break;
