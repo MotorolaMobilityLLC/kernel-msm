@@ -117,6 +117,7 @@ static int arizona_gpio_probe(struct platform_device *pdev)
 	case WM5102:
 	case WM8280:
 	case WM5110:
+	case WM8997:
 		arizona_gpio->gpio_chip.ngpio = 5;
 		break;
 	default:
