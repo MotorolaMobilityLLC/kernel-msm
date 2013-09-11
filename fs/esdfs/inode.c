@@ -3,6 +3,7 @@
  * Copyright (c) 2009	   Shrikar Archak
  * Copyright (c) 2003-2014 Stony Brook University
  * Copyright (c) 2003-2014 The Research Foundation of SUNY
+ * Copyright (C) 2013-2014 Motorola Mobility, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,10 +19,17 @@ static int esdfs_create(struct inode *dir, struct dentry *dentry,
 	struct dentry *lower_dentry;
 	struct dentry *lower_parent_dentry = NULL;
 	struct path lower_path;
+	int mask;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(dir->i_sb), &mask);
+	if (!creds)
+		return -ENOMEM;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
 	lower_parent_dentry = lock_parent(lower_dentry);
+
+	esdfs_set_lower_mode(ESDFS_SB(dir->i_sb), &mode);
 
 	err = vfs_create(lower_parent_dentry->d_inode, lower_dentry, mode,
 			 want_excl);
@@ -37,43 +45,7 @@ static int esdfs_create(struct inode *dir, struct dentry *dentry,
 out:
 	unlock_dir(lower_parent_dentry);
 	esdfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-
-static int esdfs_link(struct dentry *old_dentry, struct inode *dir,
-		       struct dentry *new_dentry)
-{
-	struct dentry *lower_old_dentry;
-	struct dentry *lower_new_dentry;
-	struct dentry *lower_dir_dentry;
-	u64 file_size_save;
-	int err;
-	struct path lower_old_path, lower_new_path;
-
-	file_size_save = i_size_read(old_dentry->d_inode);
-	esdfs_get_lower_path(old_dentry, &lower_old_path);
-	esdfs_get_lower_path(new_dentry, &lower_new_path);
-	lower_old_dentry = lower_old_path.dentry;
-	lower_new_dentry = lower_new_path.dentry;
-	lower_dir_dentry = lock_parent(lower_new_dentry);
-
-	err = vfs_link(lower_old_dentry, lower_dir_dentry->d_inode,
-		       lower_new_dentry, NULL);
-	if (err || !lower_new_dentry->d_inode)
-		goto out;
-
-	err = esdfs_interpose(new_dentry, dir->i_sb, &lower_new_path);
-	if (err)
-		goto out;
-	fsstack_copy_attr_times(dir, lower_new_dentry->d_inode);
-	fsstack_copy_inode_size(dir, lower_new_dentry->d_inode);
-	set_nlink(old_dentry->d_inode,
-		  esdfs_lower_inode(old_dentry->d_inode)->i_nlink);
-	i_size_write(new_dentry->d_inode, file_size_save);
-out:
-	unlock_dir(lower_dir_dentry);
-	esdfs_put_lower_path(old_dentry, &lower_old_path);
-	esdfs_put_lower_path(new_dentry, &lower_new_path);
+	esdfs_revert_creds(creds, &mask);
 	return err;
 }
 
@@ -84,6 +56,10 @@ static int esdfs_unlink(struct inode *dir, struct dentry *dentry)
 	struct inode *lower_dir_inode = esdfs_lower_inode(dir);
 	struct dentry *lower_dir_dentry;
 	struct path lower_path;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
@@ -113,33 +89,7 @@ out:
 	unlock_dir(lower_dir_dentry);
 	dput(lower_dentry);
 	esdfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-
-static int esdfs_symlink(struct inode *dir, struct dentry *dentry,
-			  const char *symname)
-{
-	int err;
-	struct dentry *lower_dentry;
-	struct dentry *lower_parent_dentry = NULL;
-	struct path lower_path;
-
-	esdfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	lower_parent_dentry = lock_parent(lower_dentry);
-
-	err = vfs_symlink(lower_parent_dentry->d_inode, lower_dentry, symname);
-	if (err)
-		goto out;
-	err = esdfs_interpose(dentry, dir->i_sb, &lower_path);
-	if (err)
-		goto out;
-	fsstack_copy_attr_times(dir, esdfs_lower_inode(dir));
-	fsstack_copy_inode_size(dir, lower_parent_dentry->d_inode);
-
-out:
-	unlock_dir(lower_parent_dentry);
-	esdfs_put_lower_path(dentry, &lower_path);
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -149,10 +99,18 @@ static int esdfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 	struct dentry *lower_dentry;
 	struct dentry *lower_parent_dentry = NULL;
 	struct path lower_path;
+	int mask;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(dir->i_sb), &mask);
+	if (!creds)
+		return -ENOMEM;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
 	lower_parent_dentry = lock_parent(lower_dentry);
+
+	mode |= S_IFDIR;
+	esdfs_set_lower_mode(ESDFS_SB(dir->i_sb), &mode);
 
 	err = vfs_mkdir(lower_parent_dentry->d_inode, lower_dentry, mode);
 	if (err)
@@ -170,6 +128,7 @@ static int esdfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 out:
 	unlock_dir(lower_parent_dentry);
 	esdfs_put_lower_path(dentry, &lower_path);
+	esdfs_revert_creds(creds, &mask);
 	return err;
 }
 
@@ -179,6 +138,10 @@ static int esdfs_rmdir(struct inode *dir, struct dentry *dentry)
 	struct dentry *lower_dir_dentry;
 	int err;
 	struct path lower_path;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(dir->i_sb), NULL);
+	if (!creds)
+		return -ENOMEM;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
@@ -198,34 +161,7 @@ static int esdfs_rmdir(struct inode *dir, struct dentry *dentry)
 out:
 	unlock_dir(lower_dir_dentry);
 	esdfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-
-static int esdfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode,
-			dev_t dev)
-{
-	int err;
-	struct dentry *lower_dentry;
-	struct dentry *lower_parent_dentry = NULL;
-	struct path lower_path;
-
-	esdfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	lower_parent_dentry = lock_parent(lower_dentry);
-
-	err = vfs_mknod(lower_parent_dentry->d_inode, lower_dentry, mode, dev);
-	if (err)
-		goto out;
-
-	err = esdfs_interpose(dentry, dir->i_sb, &lower_path);
-	if (err)
-		goto out;
-	fsstack_copy_attr_times(dir, esdfs_lower_inode(dir));
-	fsstack_copy_inode_size(dir, lower_parent_dentry->d_inode);
-
-out:
-	unlock_dir(lower_parent_dentry);
-	esdfs_put_lower_path(dentry, &lower_path);
+	esdfs_revert_creds(creds, NULL);
 	return err;
 }
 
@@ -234,7 +170,7 @@ out:
  * superblock-level name-space lock for renames and copy-ups.
  */
 static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
-			 struct inode *new_dir, struct dentry *new_dentry)
+			struct inode *new_dir, struct dentry *new_dentry)
 {
 	int err = 0;
 	struct dentry *lower_old_dentry = NULL;
@@ -243,6 +179,11 @@ static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	struct dentry *lower_new_dir_dentry = NULL;
 	struct dentry *trap = NULL;
 	struct path lower_old_path, lower_new_path;
+	int mask;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(old_dir->i_sb), &mask);
+	if (!creds)
+		return -ENOMEM;
 
 	esdfs_get_lower_path(old_dentry, &lower_old_path);
 	esdfs_get_lower_path(new_dentry, &lower_new_path);
@@ -269,11 +210,11 @@ static int esdfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	if (err)
 		goto out;
 
-	fsstack_copy_attr_all(new_dir, lower_new_dir_dentry->d_inode);
+	esdfs_copy_attr(new_dir, lower_new_dir_dentry->d_inode);
 	fsstack_copy_inode_size(new_dir, lower_new_dir_dentry->d_inode);
 	if (new_dir != old_dir) {
-		fsstack_copy_attr_all(old_dir,
-				      lower_old_dir_dentry->d_inode);
+		esdfs_copy_attr(old_dir,
+				lower_old_dir_dentry->d_inode);
 		fsstack_copy_inode_size(old_dir,
 					lower_old_dir_dentry->d_inode);
 	}
@@ -284,70 +225,24 @@ out:
 	dput(lower_new_dir_dentry);
 	esdfs_put_lower_path(old_dentry, &lower_old_path);
 	esdfs_put_lower_path(new_dentry, &lower_new_path);
+	esdfs_revert_creds(creds, &mask);
 	return err;
-}
-
-static int esdfs_readlink(struct dentry *dentry, char __user *buf, int bufsiz)
-{
-	int err;
-	struct dentry *lower_dentry;
-	struct path lower_path;
-
-	esdfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	if (!lower_dentry->d_inode->i_op ||
-	    !lower_dentry->d_inode->i_op->readlink) {
-		err = -EINVAL;
-		goto out;
-	}
-
-	err = lower_dentry->d_inode->i_op->readlink(lower_dentry,
-						    buf, bufsiz);
-	if (err < 0)
-		goto out;
-	fsstack_copy_attr_atime(dentry->d_inode, lower_dentry->d_inode);
-
-out:
-	esdfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-
-static void *esdfs_follow_link(struct dentry *dentry, struct nameidata *nd)
-{
-	char *buf;
-	int len = PAGE_SIZE, err;
-	mm_segment_t old_fs;
-
-	/* This is freed by the put_link method assuming a successful call. */
-	buf = kmalloc(len, GFP_KERNEL);
-	if (!buf) {
-		buf = ERR_PTR(-ENOMEM);
-		goto out;
-	}
-
-	/* read the symlink, and then we will follow it */
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-	err = esdfs_readlink(dentry, buf, len);
-	set_fs(old_fs);
-	if (err < 0) {
-		kfree(buf);
-		buf = ERR_PTR(err);
-	} else {
-		buf[err] = '\0';
-	}
-out:
-	nd_set_link(nd, buf);
-	return NULL;
 }
 
 static int esdfs_permission(struct inode *inode, int mask)
 {
 	struct inode *lower_inode;
 	int err;
+	int oldmask;
+	const struct cred *creds =
+			esdfs_override_creds(ESDFS_SB(inode->i_sb), &oldmask);
+	if (!creds)
+		return -ENOMEM;
 
 	lower_inode = esdfs_lower_inode(inode);
 	err = inode_permission(lower_inode, mask);
+
+	esdfs_revert_creds(creds, &oldmask);
 	return err;
 }
 
@@ -359,6 +254,11 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 	struct inode *lower_inode;
 	struct path lower_path;
 	struct iattr lower_ia;
+
+	/* We don't allow chmod or chown, so skip those */
+	ia->ia_valid &= ~(ATTR_UID | ATTR_GID | ATTR_MODE);
+	if (!ia->ia_valid)
+		return 0;
 
 	inode = dentry->d_inode;
 
@@ -416,7 +316,7 @@ static int esdfs_setattr(struct dentry *dentry, struct iattr *ia)
 		goto out;
 
 	/* get attributes from the lower inode */
-	fsstack_copy_attr_all(inode, lower_inode);
+	esdfs_copy_attr(inode, lower_inode);
 	/*
 	 * Not running fsstack_copy_inode_size(inode, lower_inode), because
 	 * VFS should update our inode size, and notify_change on
@@ -430,151 +330,46 @@ out_err:
 }
 
 static int esdfs_getattr(struct vfsmount *mnt, struct dentry *dentry,
-			  struct kstat *stat)
+			 struct kstat *stat)
 {
-	int err;
-	struct kstat lower_stat;
-	struct path lower_path;
-
-	esdfs_get_lower_path(dentry, &lower_path);
-	err = vfs_getattr(&lower_path, &lower_stat);
-	if (err)
-		goto out;
-	fsstack_copy_attr_all(dentry->d_inode,
-			      lower_path.dentry->d_inode);
-	generic_fillattr(dentry->d_inode, stat);
-	stat->blocks = lower_stat.blocks;
-out:
-	esdfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-
-static int
-esdfs_setxattr(struct dentry *dentry, const char *name, const void *value,
-		size_t size, int flags)
-{
-	int err; struct dentry *lower_dentry;
-	struct path lower_path;
-
-	esdfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	if (!lower_dentry->d_inode->i_op ||
-	    !lower_dentry->d_inode->i_op->setxattr) {
-		err = -EINVAL;
-		goto out;
-	}
-
-	err = lower_dentry->d_inode->i_op->setxattr(lower_dentry,
-						    name, value, size, flags);
-out:
-	esdfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-
-static ssize_t
-esdfs_getxattr(struct dentry *dentry, const char *name, void *buffer,
-		size_t size)
-{
-	int err;
 	struct dentry *lower_dentry;
+	struct inode *inode;
+	struct inode *lower_inode;
 	struct path lower_path;
+
+	inode = dentry->d_inode;
 
 	esdfs_get_lower_path(dentry, &lower_path);
 	lower_dentry = lower_path.dentry;
-	if (!lower_dentry->d_inode->i_op ||
-	    !lower_dentry->d_inode->i_op->getxattr) {
-		err = -EINVAL;
-		goto out;
-	}
+	lower_inode = esdfs_lower_inode(inode);
 
-	err = lower_dentry->d_inode->i_op->getxattr(lower_dentry,
-						    name, buffer, size);
-out:
+	esdfs_copy_attr(inode, lower_inode);
+
+	generic_fillattr(inode, stat);
 	esdfs_put_lower_path(dentry, &lower_path);
-	return err;
+	return 0;
 }
 
-static ssize_t
-esdfs_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
-{
-	int err;
-	struct dentry *lower_dentry;
-	struct path lower_path;
-
-	esdfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	if (!lower_dentry->d_inode->i_op ||
-	    !lower_dentry->d_inode->i_op->listxattr) {
-		err = -EINVAL;
-		goto out;
-	}
-
-	err = lower_dentry->d_inode->i_op->listxattr(lower_dentry,
-						     buffer, buffer_size);
-out:
-	esdfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
-
-static int
-esdfs_removexattr(struct dentry *dentry, const char *name)
-{
-	int err;
-	struct dentry *lower_dentry;
-	struct path lower_path;
-
-	esdfs_get_lower_path(dentry, &lower_path);
-	lower_dentry = lower_path.dentry;
-	if (!lower_dentry->d_inode->i_op ||
-	    !lower_dentry->d_inode->i_op->removexattr) {
-		err = -EINVAL;
-		goto out;
-	}
-
-	err = lower_dentry->d_inode->i_op->removexattr(lower_dentry,
-						       name);
-out:
-	esdfs_put_lower_path(dentry, &lower_path);
-	return err;
-}
 const struct inode_operations esdfs_symlink_iops = {
-	.readlink	= esdfs_readlink,
-	.permission	= esdfs_permission,
-	.follow_link	= esdfs_follow_link,
+	.permission     = esdfs_permission,
 	.setattr	= esdfs_setattr,
 	.getattr	= esdfs_getattr,
-	.put_link	= kfree_put_link,
-	.setxattr	= esdfs_setxattr,
-	.getxattr	= esdfs_getxattr,
-	.listxattr	= esdfs_listxattr,
-	.removexattr	= esdfs_removexattr,
 };
 
 const struct inode_operations esdfs_dir_iops = {
 	.create		= esdfs_create,
 	.lookup		= esdfs_lookup,
-	.link		= esdfs_link,
 	.unlink		= esdfs_unlink,
-	.symlink	= esdfs_symlink,
 	.mkdir		= esdfs_mkdir,
 	.rmdir		= esdfs_rmdir,
-	.mknod		= esdfs_mknod,
 	.rename		= esdfs_rename,
-	.permission	= esdfs_permission,
+	.permission     = esdfs_permission,
 	.setattr	= esdfs_setattr,
 	.getattr	= esdfs_getattr,
-	.setxattr	= esdfs_setxattr,
-	.getxattr	= esdfs_getxattr,
-	.listxattr	= esdfs_listxattr,
-	.removexattr	= esdfs_removexattr,
 };
 
 const struct inode_operations esdfs_main_iops = {
-	.permission	= esdfs_permission,
+	.permission     = esdfs_permission,
 	.setattr	= esdfs_setattr,
 	.getattr	= esdfs_getattr,
-	.setxattr	= esdfs_setxattr,
-	.getxattr	= esdfs_getxattr,
-	.listxattr	= esdfs_listxattr,
-	.removexattr	= esdfs_removexattr,
 };
