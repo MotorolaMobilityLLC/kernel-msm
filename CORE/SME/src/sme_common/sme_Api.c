@@ -5683,6 +5683,75 @@ eHalStatus sme_sendBTAmpEvent(tHalHandle hHal, tSmeBtAmpEvent btAmpEvent)
 }
 
 /* ---------------------------------------------------------------------------
+    \fn     smeIssueFastRoamNeighborAPEvent
+    \brief  API to trigger fast BSS roam independent of RSSI triggers
+    \param  hHal - The handle returned by macOpen.
+    \param  bssid -  Pointer to the BSSID to roam to.
+    \param  fastRoamTrig - Trigger to Scan or roam
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus smeIssueFastRoamNeighborAPEvent (tHalHandle hHal,
+                                            tANI_U8 *bssid,
+                                            tSmeFastRoamTrigger fastRoamTrig)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    tpCsrNeighborRoamControlInfo  pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    VOS_STATUS  vosStatus = VOS_STATUS_SUCCESS;
+    eHalStatus  status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                  "%s: invoked", __func__);
+
+        if (eSME_ROAM_TRIGGER_SCAN == fastRoamTrig)
+        {
+            smsLog(pMac, LOG1, FL("CFG Channel list scan... "));
+            pNeighborRoamInfo->cfgRoamEn = eSME_ROAM_TRIGGER_SCAN;
+            vos_mem_copy((void *)(&pNeighborRoamInfo->cfgRoambssId),
+                       (void *)bssid, sizeof(tSirMacAddr));
+            smsLog(pMac, LOG1, "Calling Roam Look Up down Event BSSID %x %x %x %x %x %x",
+                   pNeighborRoamInfo->cfgRoambssId[0], pNeighborRoamInfo->cfgRoambssId[1],
+                   pNeighborRoamInfo->cfgRoambssId[2], pNeighborRoamInfo->cfgRoambssId[3],
+                   pNeighborRoamInfo->cfgRoambssId[4], pNeighborRoamInfo->cfgRoambssId[5]);
+
+            vosStatus = csrNeighborRoamTransitToCFGChanScan(pMac);
+            if (VOS_STATUS_SUCCESS != vosStatus)
+            {
+                smsLog(pMac, LOGE,
+                       FL("CFG Channel list scan state failed with status %d "),
+                       vosStatus);
+            }
+        }
+        else if (eSME_ROAM_TRIGGER_FAST_ROAM == fastRoamTrig)
+        {
+             vos_mem_copy((void *)(&pNeighborRoamInfo->cfgRoambssId),
+                       (void *)bssid, sizeof(tSirMacAddr));
+             pNeighborRoamInfo->cfgRoamEn = eSME_ROAM_TRIGGER_FAST_ROAM;
+             smsLog(pMac, LOG1, "Roam to BSSID %x-%x-%x-%x-%x-%x",
+                 pNeighborRoamInfo->cfgRoambssId[0], pNeighborRoamInfo->cfgRoambssId[1],
+                 pNeighborRoamInfo->cfgRoambssId[2], pNeighborRoamInfo->cfgRoambssId[3],
+                 pNeighborRoamInfo->cfgRoambssId[4], pNeighborRoamInfo->cfgRoambssId[5]);
+
+             vosStatus = csrNeighborRoamReassocIndCallback(pMac->roam.gVosContext,
+                                                           0,
+                                                           pMac,
+                                                           0);
+
+             if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+             {
+                 smsLog(pMac,
+                        LOGE,
+                        FL(" Call to csrNeighborRoamReassocIndCallback failed, status = %d"),
+                        vosStatus);
+             }
+        }
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+    return vosStatus;
+}
+/* ---------------------------------------------------------------------------
     \fn sme_SetHostOffload
     \brief  API to set the host offload feature.
     \param  hHal - The handle returned by macOpen.
