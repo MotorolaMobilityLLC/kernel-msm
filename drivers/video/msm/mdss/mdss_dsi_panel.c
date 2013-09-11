@@ -515,12 +515,44 @@ end:
 	mdss_dsi_panel_unlock_mutex(&ctrl->panel_data);
 }
 
+static int mdss_dsi_panel_esd(struct mdss_panel_data *pdata)
+{
+	static bool esd_work_queue_init;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	pr_debug("%s is called.\n", __func__);
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+
+	if (ctrl->panel_config.esd_enable &&
+			ctrl->panel_config.esd_detection_run == false &&
+			ctrl->panel_config.esd_recovery_run == false) {
+		if (esd_work_queue_init == false) {
+			INIT_DELAYED_WORK_DEFERRABLE(&ctrl->esd_work,
+							mdss_panel_esd_work);
+			esd_work_queue_init = true;
+		}
+
+		queue_delayed_work(ctrl->panel_config.esd_wq, &ctrl->esd_work,
+						MDSS_PANEL_ESD_CHECK_PERIOD);
+
+		ctrl->panel_config.esd_detection_run = true;
+
+		pr_debug("%s: start the  ESD work queue\n", __func__);
+	}
+
+	return 0;
+}
+
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	u8 pwr_mode = 0;
-	static bool esd_work_queue_init;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -553,23 +585,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		dropbox_queue_event_empty("display_issue");
 	}
 
-	if (ctrl->panel_config.esd_enable &&
-			ctrl->panel_config.esd_detection_run == false &&
-			ctrl->panel_config.esd_recovery_run == false) {
-
-		if (esd_work_queue_init == false) {
-			INIT_DELAYED_WORK_DEFERRABLE(&ctrl->esd_work,
-							mdss_panel_esd_work);
-			esd_work_queue_init = true;
-		}
-
-		queue_delayed_work(ctrl->panel_config.esd_wq, &ctrl->esd_work,
-					MDSS_PANEL_ESD_CHECK_PERIOD);
-
-		ctrl->panel_config.esd_detection_run = true;
-
-		pr_debug("%s: start the  ESD work queue\n", __func__);
-	}
+	mdss_dsi_panel_esd(pdata);
 end:
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
@@ -1486,6 +1502,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->unlock_mutex = mdss_dsi_panel_unlock_mutex;
 	ctrl_pdata->reg_read = mdss_dsi_panel_reg_read;
 	ctrl_pdata->reg_write = mdss_dsi_panel_reg_write;
+	ctrl_pdata->esd = mdss_dsi_panel_esd;
 
 
 	return 0;
