@@ -9,6 +9,7 @@
  * published by the Free Software Foundation.
  */
 #include <linux/fs.h>
+#include <linux/namei.h>
 #include <linux/f2fs_fs.h>
 #include <linux/pagemap.h>
 #include <linux/sched.h>
@@ -198,7 +199,7 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
 	if (dentry->d_name.len > F2FS_NAME_LEN)
 		return ERR_PTR(-ENAMETOOLONG);
 
-	de = f2fs_find_entry(dir, &dentry->d_name, &page);
+	de = f2fs_find_entry(dir, &dentry->d_name, &page, flags);
 	if (de) {
 		nid_t ino = le32_to_cpu(de->ino);
 		kunmap(page);
@@ -226,7 +227,7 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
 	trace_f2fs_unlink_enter(dir, dentry);
 	f2fs_balance_fs(sbi);
 
-	de = f2fs_find_entry(dir, &dentry->d_name, &page);
+	de = f2fs_find_entry(dir, &dentry->d_name, &page, 0);
 	if (!de)
 		goto fail;
 
@@ -391,7 +392,7 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 	f2fs_balance_fs(sbi);
 
-	old_entry = f2fs_find_entry(old_dir, &old_dentry->d_name, &old_page);
+	old_entry = f2fs_find_entry(old_dir, &old_dentry->d_name, &old_page, 0);
 	if (!old_entry)
 		goto out;
 
@@ -412,7 +413,7 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 		err = -ENOENT;
 		new_entry = f2fs_find_entry(new_dir, &new_dentry->d_name,
-						&new_page);
+						&new_page, 0);
 		if (!new_entry)
 			goto out_dir;
 
