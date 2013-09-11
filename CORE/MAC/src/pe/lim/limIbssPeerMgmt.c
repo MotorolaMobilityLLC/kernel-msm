@@ -1370,9 +1370,9 @@ __limIbssSearchAndDeletePeer(tpAniSirGlobal    pMac,
 {
    tLimIbssPeerNode *pTempNode, *pPrevNode;
    tLimIbssPeerNode *pTempNextNode = NULL;
-   tpDphHashNode     pStaDs;
-   tANI_U16          peerIdx;
-   tANI_U16          staIndex;
+   tpDphHashNode     pStaDs=NULL;
+   tANI_U16          peerIdx=0;
+   tANI_U16          staIndex=0;
    tANI_U8           ucUcastSig;
    tANI_U8           ucBcastSig;
 
@@ -1518,14 +1518,18 @@ limIbssCoalesce(
         /* Peer not in the list - Collect BSS description & add to the list */
         tANI_U32      frameLen;
         tSirRetStatus retCode;
-        PELOGW(limLog(pMac, LOGW, FL("IBSS Peer node does not exist, adding it***"));)
 
-#ifndef ANI_SIR_IBSS_PEER_CACHING
         /** Limit the Max number of IBSS Peers allowed as the max number of STA's allowed
          */
-        if (pMac->lim.gLimNumIbssPeers >= pMac->lim.maxStation)
+#ifndef ANI_SIR_IBSS_PEER_CACHINGT
+        if (pMac->lim.gLimNumIbssPeers >
+              (pMac->lim.gLimIbssStaLimit - IBSS_STATIONS_USED_DURING_INIT))
+        {
+            PELOGE(limLog(pMac, LOGE, FL("**** MAX STA LIMIT HAS REACHED ****"));)
             return eSIR_LIM_MAX_STA_REACHED_ERROR;
+        }
 #endif
+        PELOGW(limLog(pMac, LOGW, FL("IBSS Peer node does not exist, adding it***"));)
         frameLen = sizeof(tLimIbssPeerNode) + ieLen - sizeof(tANI_U32);
 
         pPeerNode = vos_mem_malloc((tANI_U16)frameLen);
@@ -1611,12 +1615,12 @@ void limIbssHeartBeatHandle(tpAniSirGlobal pMac,tpPESession psessionEntry)
 {
     tLimIbssPeerNode *pTempNode, *pPrevNode;
     tLimIbssPeerNode *pTempNextNode = NULL;
-    tANI_U16      peerIdx;
-    tpDphHashNode pStaDs;
-    tANI_U32 threshold;
-    tANI_U16 staIndex;
-    tANI_U8 ucUcastSig;
-    tANI_U8 ucBcastSig;
+    tANI_U16      peerIdx=0;
+    tpDphHashNode pStaDs=0;
+    tANI_U32 threshold=0;
+    tANI_U16 staIndex=0;
+    tANI_U8 ucUcastSig=0;
+    tANI_U8 ucBcastSig=0;
 
     /** MLM BSS is started and if PE in scanmode then MLM state will be waiting for probe resp.
      *  If Heart beat timeout triggers during this corner case then we need to reactivate HeartBeat timer 
