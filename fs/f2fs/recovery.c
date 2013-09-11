@@ -71,7 +71,7 @@ static int recover_dentry(struct page *ipage, struct inode *inode)
 		goto out;
 	}
 retry:
-	de = f2fs_find_entry(dir, &name, &page);
+	de = f2fs_find_entry(dir, &name, &page, 0);
 	if (de && inode->i_ino == le32_to_cpu(de->ino))
 		goto out_unmap_put;
 	if (de) {
