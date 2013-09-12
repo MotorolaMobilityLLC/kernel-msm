@@ -816,8 +816,8 @@ static int __init vid_enc_init(void)
 			goto error_vid_enc_cdev_add;
 		}
 	}
-	vid_enc_vcd_init();
-	return 0;
+	rc = vid_enc_vcd_init();
+	return rc;
 
 error_vid_enc_cdev_add:
 	for (j = i-1; j >= 0; j--)
