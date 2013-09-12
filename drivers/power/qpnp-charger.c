@@ -1164,10 +1164,10 @@ qpnp_chg_vbatdet_set(struct qpnp_chg_chip *chip, int vbatdet_mv)
 static void
 qpnp_chg_set_appropriate_vbatdet(struct qpnp_chg_chip *chip)
 {
-	if (chip->bat_is_cool)
+	if (chip->bat_is_cool && !chip->resuming_charging)
 		qpnp_chg_vbatdet_set(chip, chip->cool_bat_mv
 			- chip->resume_delta_mv);
-	else if (chip->bat_is_warm)
+	else if (chip->bat_is_warm && !chip->resuming_charging)
 		qpnp_chg_vbatdet_set(chip, chip->warm_bat_mv
 			- chip->resume_delta_mv);
 	else if (chip->resuming_charging)
@@ -2353,6 +2353,8 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 
 		if (battery_status != POWER_SUPPLY_STATUS_CHARGING
 				&& bms_status != POWER_SUPPLY_STATUS_CHARGING
+				&& !chip->out_of_temp
+				&& !chip->ext_hi_temp
 				&& charger_in
 				&& !chip->bat_is_cool
 				&& !chip->bat_is_warm
