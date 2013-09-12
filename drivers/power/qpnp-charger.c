@@ -1629,7 +1629,9 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 				qpnp_chg_set_appropriate_vddmax(chip);
 			}
 			if ((tv.tv_sec >= chrg_ocv_time) &&
-			    (tv.tv_sec >= (chrg_ocv_try_time + SECS_PER_HR))) {
+			    (tv.tv_sec >= (chrg_ocv_try_time + SECS_PER_HR)) &&
+			    !chip->bat_is_cool &&
+			    !chip->bat_is_warm) {
 				chip->chrg_ocv_cc_bf_uah = 0;
 				chip->chrg_ocv_time = 0;
 				chrg_ocv_try_time = tv.tv_sec;
