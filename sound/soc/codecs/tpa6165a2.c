@@ -1201,6 +1201,12 @@ int tpa6165_hs_detect(struct snd_soc_codec *codec)
 			}
 		}
 		tpa6165->button_jack = &button_jack;
+		ret = snd_jack_set_key(tpa6165->button_jack->jack,
+			       SND_JACK_BTN_0, KEY_MEDIA);
+		if (ret) {
+			pr_err("%s: Failed to set code for btn-0\n", __func__);
+			return ret;
+		}
 
 		/* add controls */
 		snd_soc_add_codec_controls(codec, tpa6165_controls,
