@@ -1,5 +1,8 @@
+#ifndef _LINUX_SEC_EXPORT_H
+#define _LINUX_SEC_EXPORT_H
 /*
  * Copyright (C) 2009 Motorola, Inc.
+ * Copyright (C) 2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,4 +19,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef CONFIG_SEC_DRIVER
 void print_hab_fail_codes(void);
+#else
+static inline void print_hab_fail_codes(void) { }
+#endif
+
+#endif
