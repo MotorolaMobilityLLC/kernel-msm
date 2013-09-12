@@ -463,6 +463,15 @@ config MMC_SDHCI_MSM
 
 	  If unsure, say N.
 
+config MMC_SDHCI_MSM_DISABLE_HPI
+	bool "Qualcomm SDHCI Controller Disable HPI"
+	depends on MMC_SDHCI_MSM
+	help
+	  This disables HPI mode to avoid a timeout due to card specific
+	  issues.
+
+	  If unsure, say N.
+
 config MMC_MSM
 	tristate "Qualcomm SDCC Controller Support"
 	depends on MMC && ARCH_MSM
