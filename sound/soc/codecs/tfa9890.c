@@ -1622,6 +1622,8 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	tfa9890->max_vol_steps = pdata->max_vol_steps;
 	tfa9890->control_data = i2c;
 	tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
+	tfa9890->vol_idx = pdata->max_vol_steps;
+	tfa9890->curr_vol_idx = pdata->max_vol_steps;
 	i2c_set_clientdata(i2c, tfa9890);
 	mutex_init(&tfa9890->dsp_init_lock);
 	mutex_init(&tfa9890->i2c_rw_lock);
