@@ -53,6 +53,10 @@
 	usr_reset_warning {
 		status = "disabled";
 	};
+
+	vddio_disp_vreg: vddio_disp_vreg {
+		regulator-boot-on;
+	};
 };
 
 &pm8226_bms {
@@ -134,6 +138,14 @@
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 					  "CAM_PWREN",
 					  "CAM_PWREN2";
+	};
+};
+
+&i2c_3 {
+	tps65132@3e {
+		tps65132: regulator {
+			regulator-boot-on;
+		};
 	};
 };
 
