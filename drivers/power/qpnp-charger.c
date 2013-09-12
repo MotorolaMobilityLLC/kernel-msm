@@ -3461,6 +3461,7 @@ reschedule:
 }
 #define CONSECUTIVE_COUNT	3
 #define VBATDET_MAX_ERR_MV	50
+#define CV_DELTA 75
 static void
 qpnp_eoc_work(struct work_struct *work)
 {
@@ -3568,10 +3569,12 @@ qpnp_eoc_work(struct work_struct *work)
 			vbat_low_count = 0;
 		}
 #endif
-		if (buck_sts & VDD_LOOP_IRQ)
+		if ((buck_sts & VDD_LOOP_IRQ) &&
+		    (vbat_mv >= (chip->max_voltage_mv - CV_DELTA)))
 			qpnp_chg_adjust_vddmax(chip, vbat_mv);
 
-		if (!(buck_sts & VDD_LOOP_IRQ)) {
+		if (!(buck_sts & VDD_LOOP_IRQ) ||
+		    (vbat_mv < (chip->max_voltage_mv - CV_DELTA))) {
 			pr_debug("Not in CV\n");
 			count = 0;
 		} else if ((ibat_ma * -1) > chip->term_current) {
