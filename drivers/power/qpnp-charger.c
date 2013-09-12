@@ -2514,7 +2514,12 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
-		val->intval = get_prop_batt_status(chip);
+		if ((qpnp_chg_is_usb_chg_plugged_in(chip) ||
+		     qpnp_chg_is_dc_chg_plugged_in(chip)) &&
+		    (chip->bat_is_cool  || chip->bat_is_warm))
+			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		else
+			val->intval = get_prop_batt_status(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		val->intval = get_prop_charge_type(chip);
