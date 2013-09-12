@@ -1632,6 +1632,15 @@ typedef enum
     HAL_MAX_CONCURRENCY_PERSONA=4
 } tHalConcurrencyMode;
 
+// IFACE PERSONA for different Operating modes
+typedef enum
+{
+   HAL_IFACE_UNKNOWN=0,
+   HAL_IFACE_STA_MODE=1,
+   HAL_IFACE_P2P_MODE=2,
+   HAL_IFACE_MAX=0x7FFFFFFF,
+}tHalIfacePersona;
+
 typedef PACKED_PRE struct PACKED_POST
 {
     /* BSSID */
@@ -4551,11 +4560,20 @@ typedef PACKED_PRE struct PACKED_POST
   tANI_U32    status;
 }tAddStaSelfParams, *tpAddStaSelfParams;
 
+typedef PACKED_PRE struct PACKED_POST
+{
+  tSirMacAddr selfMacAddr;
+  tANI_U32    status;
+  tHalIfacePersona iface_persona;
+}tAddStaSelfParams_V1, *tpAddStaSelfParams_V1;
 
 typedef PACKED_PRE struct PACKED_POST
 {
     tHalMsgHeader header;
+    PACKED_PRE union PACKED_POST {
     tAddStaSelfParams addStaSelfParams;
+    tAddStaSelfParams_V1 addStaSelfParams_V1;
+    }uAddStaSelfParams;
 }tAddStaSelfReq, *tpAddStaSelfReq;
 
 /*---------------------------------------------------------------------------
@@ -4923,7 +4941,7 @@ typedef PACKED_PRE struct PACKED_POST
  *PNO Messages
  *-------------------------------------------------------------------------*/
 /*Max number of channels that a network can be found on*/
-#define WLAN_HAL_PNO_MAX_NETW_CHANNELS  60
+#define WLAN_HAL_PNO_MAX_NETW_CHANNELS  26
 
 /*Max number of channels that a network can be found on*/
 #define WLAN_HAL_PNO_MAX_NETW_CHANNELS_EX  60

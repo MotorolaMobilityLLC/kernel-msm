@@ -461,6 +461,7 @@ typedef struct tagAddStaForSessionCmd
 {
    //Session self mac addr
    tSirMacAddr selfMacAddr;
+   tVOS_CON_MODE currDeviceMode;
 }tAddStaForSessionCmd;
 
 typedef struct tagDelStaForSessionCmd

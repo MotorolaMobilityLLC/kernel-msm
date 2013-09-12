@@ -1,53 +1,29 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
- *
- * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
- *
- *
- * Permission to use, copy, modify, and/or distribute this software for
- * any purpose with or without fee is hereby granted, provided that the
- * above copyright notice and this permission notice appear in all
- * copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
- * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
- * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */
-/*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
- *
- * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
- *
- *
- * Permission to use, copy, modify, and/or distribute this software for
- * any purpose with or without fee is hereby granted, provided that the
- * above copyright notice and this permission notice appear in all
- * copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
- * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
- * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */
+  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+  *
+  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+  *
+  *
+  * Permission to use, copy, modify, and/or distribute this software for
+  * any purpose with or without fee is hereby granted, provided that the
+  * above copyright notice and this permission notice appear in all
+  * copies.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+  * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+  * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+  * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+  * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+  * PERFORMANCE OF THIS SOFTWARE.
+*/
 
 /******************************************************************************
 *
 * Name:  pmcApi.c
 *
 * Description: Routines that make up the Power Management Control (PMC) API.
-*
-* Copyright 2008 (c) Qualcomm, Incorporated.  
-* All Rights Reserved.
-* Qualcomm Confidential and Proprietary.
 *
 ******************************************************************************/
 
@@ -124,14 +100,14 @@ eHalStatus pmcOpen (tHalHandle hHal)
 
     /* Allocate a timer used in Full Power State to measure traffic
        levels and determine when to enter BMPS. */
-    if (!VOS_IS_STATUS_SUCCESS(vos_timer_init(&pMac->pmc.hTrafficTimer, 
+    if (!VOS_IS_STATUS_SUCCESS(vos_timer_init(&pMac->pmc.hTrafficTimer,
                                 VOS_TIMER_TYPE_SW, pmcTrafficTimerExpired, hHal)))
     {
         smsLog(pMac, LOGE, FL("Cannot allocate timer for traffic measurement"));
         return eHAL_STATUS_FAILURE;
     }
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
     /* Allocate a timer used to report current PMC state through periodic DIAG event */
     if (palTimerAlloc(pMac->hHdd, &pMac->pmc.hDiagEvtTimer, pmcDiagEvtTimerExpired, hHal) != eHAL_STATUS_SUCCESS)
     {
@@ -140,7 +116,7 @@ eHalStatus pmcOpen (tHalHandle hHal)
     }
 #endif
 
-    //Initialize the default value for Bmps related config. 
+    //Initialize the default value for Bmps related config.
     pMac->pmc.bmpsConfig.trafficMeasurePeriod = BMPS_TRAFFIC_TIMER_DEFAULT;
     pMac->pmc.bmpsConfig.bmpsPeriod = WNI_CFG_LISTEN_INTERVAL_STADEF;
 
@@ -152,7 +128,7 @@ eHalStatus pmcOpen (tHalHandle hHal)
         PMC_ABORT;
         return eHAL_STATUS_FAILURE;
     }
-    
+
     /* Initialize lists for power save check routines and request full power callback routines. */
     if (csrLLOpen(pMac->hHdd, &pMac->pmc.powerSaveCheckList) != eHAL_STATUS_SUCCESS)
     {
@@ -262,12 +238,12 @@ eHalStatus pmcStart (tHalHandle hHal)
     }
     else
         htMimoPowerSaveState = eSIR_HT_MIMO_PS_NO_LIMIT;
-    
+
     if (pmcSendMessage(hHal, eWNI_PMC_SMPS_STATE_IND, &htMimoPowerSaveState,
                        sizeof(tSirMacHTMIMOPowerSaveState)) != eHAL_STATUS_SUCCESS)
         return eHAL_STATUS_FAILURE;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
     if (pmcStartDiagEvtTimer(hHal) != eHAL_STATUS_SUCCESS)
     {
        return eHAL_STATUS_FAILURE;
@@ -313,7 +289,7 @@ eHalStatus pmcStop (tHalHandle hHal)
 
     pmcStopTrafficTimer(hHal);
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
     pmcStopDiagEvtTimer(hHal);
 #endif
 
@@ -376,7 +352,7 @@ eHalStatus pmcClose (tHalHandle hHal)
     {
         smsLog(pMac, LOGE, FL("Cannot deallocate traffic timer"));
     }
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
     if (palTimerFree(pMac->hHdd, pMac->pmc.hDiagEvtTimer) != eHAL_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, FL("Cannot deallocate timer for diag event reporting"));
@@ -388,7 +364,7 @@ eHalStatus pmcClose (tHalHandle hHal)
     }
 
     /*
-        The following list's entries are dynamically allocated so they need their own 
+        The following list's entries are dynamically allocated so they need their own
         cleanup function
     */
     pmcClosePowerSaveCheckList(pMac);
@@ -464,7 +440,7 @@ eHalStatus pmcSignalPowerEvent (tHalHandle hHal, tPmcPowerEvent event)
             if (pMac->pmc.smpsConfig.mode == ePMC_STATIC_SMPS)
                 htMimoPowerSaveState = eSIR_HT_MIMO_PS_STATIC;
             if (pmcSendMessage(hHal, eWNI_PMC_SMPS_STATE_IND, &htMimoPowerSaveState,
-                               sizeof(tSirMacHTMIMOPowerSaveState)) != eHAL_STATUS_SUCCESS)   
+                               sizeof(tSirMacHTMIMOPowerSaveState)) != eHAL_STATUS_SUCCESS)
                 return eHAL_STATUS_FAILURE;
         }
         return eHAL_STATUS_SUCCESS;
@@ -521,7 +497,7 @@ eHalStatus pmcSetConfigPowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode, v
     /* Configure the specified power saving mode. */
     switch (psMode)
     {
-    
+
     case ePMC_IDLE_MODE_POWER_SAVE:
         pMac->pmc.impsConfig = *(tpPmcImpsConfigParams)pConfigParams;
         smsLog(pMac, LOG3, FL("IMPS configuration"));
@@ -555,13 +531,13 @@ eHalStatus pmcSetConfigPowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode, v
         smsLog(pMac, LOG3, "          value of bcnEarlyTermWakeInterval: %d",
                pMac->pmc.bmpsConfig.bcnEarlyTermWakeInterval);
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
         vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
         psRequest.event_subtype = WLAN_BMPS_SET_CONFIG;
         /* possible loss of data due to mismatch but expectation is that
         values can reasonably be expected to fit in target widths */
         psRequest.bmps_auto_timer_duration = (v_U16_t)pMac->pmc.bmpsConfig.trafficMeasurePeriod;
-        psRequest.bmps_period = (v_U16_t)pMac->pmc.bmpsConfig.bmpsPeriod; 
+        psRequest.bmps_period = (v_U16_t)pMac->pmc.bmpsConfig.bmpsPeriod;
 
         WLAN_VOS_DIAG_EVENT_REPORT(&psRequest, EVENT_WLAN_POWERSAVE_GENERIC);
 #endif
@@ -621,7 +597,7 @@ eHalStatus pmcGetConfigPowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode, v
     /* Configure the specified power saving mode. */
     switch (psMode)
     {
-    
+
     case ePMC_IDLE_MODE_POWER_SAVE:
         *(tpPmcImpsConfigParams)pConfigParams = pMac->pmc.impsConfig;
         break;
@@ -662,7 +638,7 @@ eHalStatus pmcEnablePowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode)
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     tSirMacHTMIMOPowerSaveState  htMimoPowerSaveState;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
     WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
     vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
@@ -671,7 +647,7 @@ eHalStatus pmcEnablePowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode)
 
     WLAN_VOS_DIAG_EVENT_REPORT(&psRequest, EVENT_WLAN_POWERSAVE_GENERIC);
 #endif
-    
+
     smsLog(pMac, LOG2, FL("Entering pmcEnablePowerSave, power save mode %d"), psMode);
 
     /* Enable the specified power saving mode. */
@@ -730,13 +706,13 @@ eHalStatus pmcEnablePowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode)
             module for entry into Bmps mode. This timer is started only if BMPS is
             enabled and whenever the device is in full power.
     \param  hHal - The handle returned by macOpen.
-    \return eHalStatus     
+    \return eHalStatus
   ---------------------------------------------------------------------------*/
-eHalStatus pmcStartAutoBmpsTimer (tHalHandle hHal) 
+eHalStatus pmcStartAutoBmpsTimer (tHalHandle hHal)
 {
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
    WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
    vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
@@ -756,7 +732,7 @@ eHalStatus pmcStartAutoBmpsTimer (tHalHandle hHal)
 
    pMac->pmc.autoBmpsEntryEnabled = TRUE;
 
-   /* Check if there is an Infra session. If there is no Infra session, timer will be started 
+   /* Check if there is an Infra session. If there is no Infra session, timer will be started
          when STA associates to AP */
 
    if (pmcShouldBmpsTimerRun(pMac))
@@ -776,13 +752,13 @@ eHalStatus pmcStartAutoBmpsTimer (tHalHandle hHal)
             Stopping the timer does not cause a device state change. Only the timer
             is stopped. If "Full Power" is desired, use the pmcRequestFullPower API
     \param  hHal - The handle returned by macOpen.
-    \return eHalStatus     
+    \return eHalStatus
   ---------------------------------------------------------------------------*/
 eHalStatus pmcStopAutoBmpsTimer (tHalHandle hHal)
 {
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
    WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
    vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
@@ -822,7 +798,7 @@ eHalStatus pmcDisablePowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode)
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     tSirMacHTMIMOPowerSaveState  htMimoPowerSaveState;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
     WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
     vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
@@ -911,7 +887,7 @@ eHalStatus pmcQueryPowerState (tHalHandle hHal, tPmcPowerState *pPowerState,
         /* Return current power state based on PMC state. */
         switch (pMac->pmc.pmcState)
         {
-    
+
         case FULL_POWER:
             *pPowerState = ePMC_FULL_POWER;
             break;
@@ -960,7 +936,7 @@ tANI_BOOLEAN pmcIsPowerSaveEnabled (tHalHandle hHal, tPmcPowerSavingMode psMode)
     /* Check ability to enter based on the specified power saving mode. */
     switch (psMode)
     {
-    
+
     case ePMC_IDLE_MODE_POWER_SAVE:
         return pMac->pmc.impsEnabled && (pMac->pmc.powerSource != AC_POWER || pMac->pmc.impsConfig.enterOnAc);
 
@@ -1021,13 +997,13 @@ eHalStatus pmcRequestFullPower (tHalHandle hHal, void (*callbackRoutine) (void *
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     tpRequestFullPowerEntry pEntry;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
     WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
     vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
     psRequest.event_subtype = WLAN_ENTER_FULL_POWER_REQ;
     psRequest.full_power_request_reason = fullPowerReason;
- 
+
     WLAN_VOS_DIAG_EVENT_REPORT(&psRequest, EVENT_WLAN_POWERSAVE_GENERIC);
 #endif
 
@@ -1125,7 +1101,7 @@ eHalStatus pmcRequestImps (tHalHandle hHal, tANI_U32 impsPeriod,
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     eHalStatus status;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
     WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
     vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
@@ -1455,7 +1431,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
             }
 
          /* Enter UAPSD State if response indicates success. */
-            if (pMsg->statusCode == eSIR_SME_SUCCESS) 
+            if (pMsg->statusCode == eSIR_SME_SUCCESS)
             {
                 pmcEnterUapsdState(pMac);
                 pmcDoStartUapsdCallbacks(pMac, eHAL_STATUS_SUCCESS);
@@ -1730,7 +1706,7 @@ eHalStatus pmcRequestBmps (
    tpRequestBmpsEntry pEntry;
    eHalStatus status;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
    WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
    vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
@@ -1748,7 +1724,7 @@ eHalStatus pmcRequestBmps (
       pMac->pmc.bmpsRequestedByHdd = TRUE;
       return eHAL_STATUS_SUCCESS;
    }
-   
+
    status = pmcEnterBmpsCheck( pMac );
    if(HAL_STATUS_SUCCESS( status ))
    {
@@ -1836,7 +1812,7 @@ eHalStatus pmcStartUapsd (
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
    tpStartUapsdEntry pEntry;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
    WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
    vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
@@ -1925,7 +1901,7 @@ eHalStatus pmcStopUapsd (tHalHandle hHal)
 {
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
    WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
    vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
@@ -1961,7 +1937,7 @@ eHalStatus pmcStopUapsd (tHalHandle hHal)
     \param  hHal - The handle returned by macOpen.
     \param  callbackRoutine - Callback routine invoked in case of success/failure
     \param  callbackContext - value to be passed as parameter to callback
-    \return eHalStatus  
+    \return eHalStatus
       eHAL_STATUS_SUCCESS - device is in Standby mode
       eHAL_STATUS_FAILURE - device cannot be put in standby mode
       eHAL_STATUS_PMC_PENDING - device is being put in standby mode
@@ -1973,7 +1949,7 @@ extern eHalStatus pmcRequestStandby (
 {
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
    WLAN_VOS_DIAG_EVENT_DEF(psRequest, vos_event_wlan_powersave_payload_type);
 
    vos_mem_zero(&psRequest, sizeof(vos_event_wlan_powersave_payload_type));
@@ -2003,10 +1979,10 @@ extern eHalStatus pmcRequestStandby (
    if (pMac->pmc.pmcState == STANDBY)
       return eHAL_STATUS_SUCCESS;
 
-   
+
    if (csrIsIBSSStarted(pMac) || csrIsBTAMPStarted(pMac))
    {
-      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL, 
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL,
           "WLAN: IBSS or BT-AMP session present. Cannot honor standby request");
       return eHAL_STATUS_PMC_NOT_NOW;
    }
@@ -2031,9 +2007,9 @@ extern eHalStatus pmcRequestStandby (
     \param  callbackContext -  Cookie to be passed back during callback
     \return eHalStatus
             eHAL_STATUS_SUCCESS - successfully registered
-            eHAL_STATUS_FAILURE - not successfully registered  
+            eHAL_STATUS_FAILURE - not successfully registered
   ---------------------------------------------------------------------------*/
-extern eHalStatus pmcRegisterDeviceStateUpdateInd (tHalHandle hHal, 
+extern eHalStatus pmcRegisterDeviceStateUpdateInd (tHalHandle hHal,
    void (*callbackRoutine) (void *callbackContext, tPmcState pmcState),
    void *callbackContext)
 {
@@ -2068,9 +2044,9 @@ extern eHalStatus pmcRegisterDeviceStateUpdateInd (tHalHandle hHal,
     \param  callbackRoutine -  Callback routine to be deregistered
     \return eHalStatus
             eHAL_STATUS_SUCCESS - successfully deregistered
-            eHAL_STATUS_FAILURE - not successfully deregistered  
+            eHAL_STATUS_FAILURE - not successfully deregistered
   ---------------------------------------------------------------------------*/
-eHalStatus pmcDeregisterDeviceStateUpdateInd (tHalHandle hHal, 
+eHalStatus pmcDeregisterDeviceStateUpdateInd (tHalHandle hHal,
    void (*callbackRoutine) (void *callbackContext, tPmcState pmcState))
 {
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
@@ -2112,7 +2088,7 @@ eHalStatus pmcDeregisterDeviceStateUpdateInd (tHalHandle hHal,
     \brief  fn to inform PMC that eWNI_SME_SYS_READY_IND has been sent to PE.
             This acts as a trigger to send a message to PE to update the power
             save related conig to FW. Note that if HDD configures any power save
-            related stuff before this API is invoked, PMC will buffer all the 
+            related stuff before this API is invoked, PMC will buffer all the
             configutaion.
     \param  hHal - The handle returned by macOpen.
     \return eHalStatus
@@ -2142,16 +2118,16 @@ eHalStatus pmcReady(tHalHandle hHal)
     \fn pmcWowlAddBcastPattern
     \brief  Add a pattern for Pattern Byte Matching in Wowl mode. Firmware will
             do a pattern match on these patterns when Wowl is enabled during BMPS
-            mode. Note that Firmware performs the pattern matching only on 
+            mode. Note that Firmware performs the pattern matching only on
             broadcast frames and while Libra is in BMPS mode.
     \param  hHal - The handle returned by macOpen.
     \param  pattern -  Pointer to the pattern to be added
     \return eHalStatus
             eHAL_STATUS_FAILURE  Cannot add pattern
-            eHAL_STATUS_SUCCESS  Request accepted. 
+            eHAL_STATUS_SUCCESS  Request accepted.
   ---------------------------------------------------------------------------*/
 eHalStatus pmcWowlAddBcastPattern (
-    tHalHandle hHal, 
+    tHalHandle hHal,
     tpSirWowlAddBcastPtrn pattern,
     tANI_U8 sessionId)
 {
@@ -2211,14 +2187,14 @@ eHalStatus pmcWowlAddBcastPattern (
         eHalStatus status;
         vos_mem_copy(pattern->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
         //Wake up the chip first
-        status = pmcDeferMsg( pMac, eWNI_PMC_WOWL_ADD_BCAST_PTRN, 
+        status = pmcDeferMsg( pMac, eWNI_PMC_WOWL_ADD_BCAST_PTRN,
                                     pattern, sizeof(tSirWowlAddBcastPtrn) );
 
         if( eHAL_STATUS_PMC_PENDING == status )
         {
             return eHAL_STATUS_SUCCESS;
         }
-        else 
+        else
         {
             //either fail or already in full power
             if( !HAL_STATUS_SUCCESS( status ) )
@@ -2246,22 +2222,22 @@ eHalStatus pmcWowlAddBcastPattern (
     \param  pattern -  Pattern to be deleted
     \return eHalStatus
             eHAL_STATUS_FAILURE  Cannot delete pattern
-            eHAL_STATUS_SUCCESS  Request accepted. 
+            eHAL_STATUS_SUCCESS  Request accepted.
   ---------------------------------------------------------------------------*/
 eHalStatus pmcWowlDelBcastPattern (
-    tHalHandle hHal, 
+    tHalHandle hHal,
     tpSirWowlDelBcastPtrn pattern,
     tANI_U8  sessionId)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
     WLAN_VOS_DIAG_EVENT_DEF(wowRequest, vos_event_wlan_powersave_wow_payload_type);
 
     vos_mem_zero(&wowRequest, sizeof(vos_event_wlan_powersave_wow_payload_type));
     wowRequest.event_subtype = WLAN_WOW_DEL_PTRN_REQ;
-    wowRequest.wow_del_ptrn_id = pattern->ucPatternId; 
+    wowRequest.wow_del_ptrn_id = pattern->ucPatternId;
 
     WLAN_VOS_DIAG_EVENT_REPORT(&wowRequest, EVENT_WLAN_POWERSAVE_WOW);
 #endif
@@ -2294,14 +2270,14 @@ eHalStatus pmcWowlDelBcastPattern (
 
         vos_mem_copy(pattern->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
         //Wake up the chip first
-        status = pmcDeferMsg( pMac, eWNI_PMC_WOWL_DEL_BCAST_PTRN, 
+        status = pmcDeferMsg( pMac, eWNI_PMC_WOWL_DEL_BCAST_PTRN,
                                     pattern, sizeof(tSirWowlDelBcastPtrn) );
 
         if( eHAL_STATUS_PMC_PENDING == status )
         {
             return eHAL_STATUS_SUCCESS;
         }
-        else 
+        else
         {
             //either fail or already in full power
             if( !HAL_STATUS_SUCCESS( status ) )
@@ -2328,20 +2304,20 @@ eHalStatus pmcWowlDelBcastPattern (
             Note 1: If "fullPowerReason" specificied in this API is set to
             eSME_FULL_PWR_NEEDED_BY_HDD, PMC will clear any "buffered wowl" requests
             and also clear any "buffered BMPS requests by HDD". Assumption is that since
-            HDD is requesting full power, we need to undo any previous HDD requests for 
+            HDD is requesting full power, we need to undo any previous HDD requests for
             BMPS (using sme_RequestBmps) or WoWL (using sme_EnterWoWL). If the reason is
             specified anything other than above, the buffered requests for BMPS and WoWL
             will not be cleared.
             Note 2: Requesting full power (no matter what the fullPowerReason is) doesn't
             disable the "auto bmps timer" (if it is enabled) or clear any "buffered uapsd
             request".
-            Note 3: When the device finally enters Full Power PMC will start a timer 
+            Note 3: When the device finally enters Full Power PMC will start a timer
             if any of the following holds true:
             - Auto BMPS mode is enabled
             - Uapsd request is pending
             - HDD's request for BMPS is pending
             - HDD's request for WoWL is pending
-            On timer expiry PMC will attempt to put the device in BMPS mode if following 
+            On timer expiry PMC will attempt to put the device in BMPS mode if following
             (in addition to those listed above) holds true:
             - Polling of all modules through the Power Save Check routine passes
             - STA is associated to an access point
@@ -2352,13 +2328,13 @@ eHalStatus pmcWowlDelBcastPattern (
     \param  - wakeReasonIndCBContext -  Cookie to be passed back during callback
     \param  - fullPowerReason - Reason why this API is being invoked. SME needs to
               distinguish between BAP and HDD requests
-    \return eHalStatus - status 
+    \return eHalStatus - status
      eHAL_STATUS_SUCCESS - device brought to full power state
      eHAL_STATUS_FAILURE - device cannot be brought to full power state
      eHAL_STATUS_PMC_PENDING - device is being brought to full power state,
   ---------------------------------------------------------------------------*/
-eHalStatus pmcEnterWowl ( 
-    tHalHandle hHal, 
+eHalStatus pmcEnterWowl (
+    tHalHandle hHal,
     void (*enterWowlCallbackRoutine) (void *callbackContext, eHalStatus status),
     void *enterWowlCallbackContext,
 #ifdef WLAN_WAKEUP_EVENTS
@@ -2370,7 +2346,7 @@ eHalStatus pmcEnterWowl (
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
    WLAN_VOS_DIAG_EVENT_DEF(wowRequest, vos_event_wlan_powersave_wow_payload_type);
 
    vos_mem_zero(&wowRequest, sizeof(vos_event_wlan_powersave_wow_payload_type));
@@ -2398,7 +2374,7 @@ eHalStatus pmcEnterWowl (
        return eHAL_STATUS_FAILURE;
    }
 
-   vos_mem_copy(wowlEnterParams->bssId, pSession->connectedProfile.bssid, 
+   vos_mem_copy(wowlEnterParams->bssId, pSession->connectedProfile.bssid,
                sizeof(tSirMacAddr));
 
    if( !PMC_IS_READY(pMac) )
@@ -2469,19 +2445,19 @@ eHalStatus pmcEnterWowl (
 
 /* ---------------------------------------------------------------------------
     \fn pmcExitWowl
-    \brief  This is the SME API exposed to HDD to request exit from WoWLAN mode. 
-            SME will initiate exit from WoWLAN mode and device will be put in BMPS 
+    \brief  This is the SME API exposed to HDD to request exit from WoWLAN mode.
+            SME will initiate exit from WoWLAN mode and device will be put in BMPS
             mode.
     \param  hHal - The handle returned by macOpen.
     \return eHalStatus
             eHAL_STATUS_FAILURE  Device cannot exit WoWLAN mode.
-            eHAL_STATUS_SUCCESS  Request accepted to exit WoWLAN mode. 
+            eHAL_STATUS_SUCCESS  Request accepted to exit WoWLAN mode.
   ---------------------------------------------------------------------------*/
 eHalStatus pmcExitWowl (tHalHandle hHal)
 {
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT    
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
    WLAN_VOS_DIAG_EVENT_DEF(wowRequest, vos_event_wlan_powersave_wow_payload_type);
 
    vos_mem_zero(&wowRequest, sizeof(vos_event_wlan_powersave_wow_payload_type));
@@ -2515,9 +2491,9 @@ eHalStatus pmcExitWowl (tHalHandle hHal)
     \param  pRequest - Pointer to the offload request.
     \return eHalStatus
             eHAL_STATUS_FAILURE  Cannot set the offload.
-            eHAL_STATUS_SUCCESS  Request accepted. 
+            eHAL_STATUS_SUCCESS  Request accepted.
   ---------------------------------------------------------------------------*/
-eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest, 
+eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
                                    tANI_U8 sessionId)
 {
     tpSirHostOffloadReq pRequestBuf;
@@ -2566,7 +2542,7 @@ eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
     \param  pRequest - Pointer to the Keep Alive.
     \return eHalStatus
             eHAL_STATUS_FAILURE  Cannot set the keepalive.
-            eHAL_STATUS_SUCCESS  Request accepted. 
+            eHAL_STATUS_SUCCESS  Request accepted.
   ---------------------------------------------------------------------------*/
 eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8 sessionId)
 {
@@ -2624,15 +2600,14 @@ eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8
     \param  pRequest - Pointer to the offload request.
     \return eHalStatus
             eHAL_STATUS_FAILURE  Cannot set the offload.
-            eHAL_STATUS_SUCCESS  Request accepted. 
+            eHAL_STATUS_SUCCESS  Request accepted.
   ---------------------------------------------------------------------------*/
-eHalStatus pmcSetNSOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest, 
+eHalStatus pmcSetNSOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
                                  tANI_U8 sessionId)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     tpSirHostOffloadReq pRequestBuf;
     vos_msg_t msg;
-    int i;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
     if( NULL == pSession )
@@ -2641,7 +2616,7 @@ eHalStatus pmcSetNSOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
         return eHAL_STATUS_FAILURE;
     }
 
-    vos_mem_copy(pRequest->bssId, pSession->connectedProfile.bssid, 
+    vos_mem_copy(pRequest->bssId, pSession->connectedProfile.bssid,
                 sizeof(tSirMacAddr));
 
     pRequestBuf = vos_mem_malloc(sizeof(tSirHostOffloadReq));
@@ -2796,7 +2771,7 @@ void pmcCloseDeferredMsgList(tpAniSirGlobal pMac)
 
 #ifdef FEATURE_WLAN_SCAN_PNO
 
-static tSirRetStatus 
+static tSirRetStatus
 pmcPopulateMacHeader( tpAniSirGlobal pMac,
                       tANI_U8* pBD,
                       tANI_U8 type,
@@ -2806,7 +2781,7 @@ pmcPopulateMacHeader( tpAniSirGlobal pMac,
 {
     tSirRetStatus   statusCode = eSIR_SUCCESS;
     tpSirMacMgmtHdr pMacHdr;
-    
+
     /// Prepare MAC management header
     pMacHdr = (tpSirMacMgmtHdr) (pBD);
 
@@ -2859,12 +2834,12 @@ pmcPrepareProbeReqTemplate(tpAniSirGlobal pMac,
         PopulateDot11fExtSuppRates1( pMac, nChannelNum, &pr.ExtSuppRates );
     }
 
-    
+
     if (IS_DOT11_MODE_HT(dot11mode))
     {
        PopulateDot11fHTCaps( pMac, NULL, &pr.HTCaps );
     }
-    
+
     // That's it-- now we pack it.  First, how much space are we going to
     // need?
     nStatus = dot11fGetPackedProbeRequestSize( pMac, &pr, &nPayload );
@@ -2886,7 +2861,7 @@ pmcPrepareProbeReqTemplate(tpAniSirGlobal pMac,
     }
 
     nBytes = nPayload + sizeof( tSirMacMgmtHdr );
-  
+
     /* Prepare outgoing frame*/
     palZeroMemory( pMac->hHdd, pFrame, nBytes );
 
@@ -2914,21 +2889,21 @@ pmcPrepareProbeReqTemplate(tpAniSirGlobal pMac,
     }
     else if ( DOT11F_WARNED( nStatus ) )
     {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
             "There were warnings while packing a Probe Request" );
     }
 
-    *pusLen = nPayload + sizeof(tSirMacMgmtHdr); 
+    *pusLen = nPayload + sizeof(tSirMacMgmtHdr);
     return eSIR_SUCCESS;
 } // End pmcPrepareProbeReqTemplate.
 
 
 eHalStatus pmcSetPreferredNetworkList
 (
-    tHalHandle hHal, 
-    tpSirPNOScanReq pRequest, 
-    tANI_U8 sessionId, 
-    preferredNetworkFoundIndCallback callbackRoutine, 
+    tHalHandle hHal,
+    tpSirPNOScanReq pRequest,
+    tANI_U8 sessionId,
+    preferredNetworkFoundIndCallback callbackRoutine,
     void *callbackContext
 )
 {
@@ -2969,15 +2944,15 @@ eHalStatus pmcSetPreferredNetworkList
     vos_mem_copy(pRequestBuf, pRequest, sizeof(tSirPNOScanReq));
 
     /*Must translate the mode first*/
-    ucDot11Mode = (tANI_U8) csrTranslateToWNICfgDot11Mode(pMac, 
+    ucDot11Mode = (tANI_U8) csrTranslateToWNICfgDot11Mode(pMac,
                                        csrFindBestPhyMode( pMac, pMac->roam.configParam.phyMode ));
 
     /*Prepare a probe request for 2.4GHz band and one for 5GHz band*/
-    pmcPrepareProbeReqTemplate(pMac,SIR_PNO_24G_DEFAULT_CH, ucDot11Mode, pSession->selfMacAddr, 
-                               pRequestBuf->p24GProbeTemplate, &pRequestBuf->us24GProbeTemplateLen); 
+    pmcPrepareProbeReqTemplate(pMac,SIR_PNO_24G_DEFAULT_CH, ucDot11Mode, pSession->selfMacAddr,
+                               pRequestBuf->p24GProbeTemplate, &pRequestBuf->us24GProbeTemplateLen);
 
-    pmcPrepareProbeReqTemplate(pMac,SIR_PNO_5G_DEFAULT_CH, ucDot11Mode, pSession->selfMacAddr, 
-                               pRequestBuf->p5GProbeTemplate, &pRequestBuf->us5GProbeTemplateLen); 
+    pmcPrepareProbeReqTemplate(pMac,SIR_PNO_5G_DEFAULT_CH, ucDot11Mode, pSession->selfMacAddr,
+                               pRequestBuf->p5GProbeTemplate, &pRequestBuf->us5GProbeTemplateLen);
 
 
     msg.type     = WDA_SET_PNO_REQ;
@@ -3013,7 +2988,7 @@ eHalStatus pmcSetRssiFilter(tHalHandle hHal,   v_U8_t        rssiThreshold)
     }
 
 
-    pRequestBuf->rssiThreshold = rssiThreshold; 
+    pRequestBuf->rssiThreshold = rssiThreshold;
 
     msg.type = WDA_SET_RSSI_FILTER_REQ;
     msg.reserved = 0;
@@ -3044,18 +3019,18 @@ eHalStatus pmcUpdateScanParams(tHalHandle hHal, tCsrConfig *pRequest, tCsrChanne
         return eHAL_STATUS_FAILED_ALLOC;
     }
 
-    // 
+    //
     // Fill pRequestBuf structure from pRequest
     //
     pRequestBuf->b11dEnabled    = pRequest->Is11eSupportEnabled;
     pRequestBuf->b11dResolved   = b11dResolved;
-    pRequestBuf->ucChannelCount = 
+    pRequestBuf->ucChannelCount =
         ( pChannelList->numChannels < SIR_PNO_MAX_NETW_CHANNELS_EX )?
         pChannelList->numChannels:SIR_PNO_MAX_NETW_CHANNELS_EX;
 
     for (i=0; i < pRequestBuf->ucChannelCount; i++)
-    {    
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                   "%s: Channel List %d: %d", __FUNCTION__, i, pChannelList->channelList[i] );
 
         pRequestBuf->aChannels[i] = pChannelList->channelList[i];
@@ -3063,7 +3038,7 @@ eHalStatus pmcUpdateScanParams(tHalHandle hHal, tCsrConfig *pRequest, tCsrChanne
     pRequestBuf->usPassiveMinChTime = pRequest->nPassiveMinChnTime;
     pRequestBuf->usPassiveMaxChTime = pRequest->nPassiveMaxChnTime;
     pRequestBuf->usActiveMinChTime  = pRequest->nActiveMinChnTime;
-    pRequestBuf->usActiveMaxChTime  = pRequest->nActiveMaxChnTime; 
+    pRequestBuf->usActiveMaxChTime  = pRequest->nActiveMaxChnTime;
     pRequestBuf->ucCBState          = PHY_SINGLE_CHANNEL_CENTERED;
 
     msg.type = WDA_UPDATE_SCAN_PARAMS_REQ;
@@ -3101,7 +3076,7 @@ eHalStatus pmcSetPowerParams(tHalHandle hHal,   tSirSetPowerParamsReq*  pwParams
     }
 
 
-    vos_mem_copy(pRequestBuf, pwParams, sizeof(*pRequestBuf)); 
+    vos_mem_copy(pRequestBuf, pwParams, sizeof(*pRequestBuf));
 
 
     msg.type = WDA_SET_POWER_PARAMS_REQ;
@@ -3121,8 +3096,8 @@ eHalStatus pmcSetPowerParams(tHalHandle hHal,   tSirSetPowerParamsReq*  pwParams
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 eHalStatus pmcGetFilterMatchCount
 (
-    tHalHandle hHal, 
-    FilterMatchCountCallback callbackRoutine, 
+    tHalHandle hHal,
+    FilterMatchCountCallback callbackRoutine,
     void *callbackContext,
     tANI_U8  sessionId
 )
@@ -3132,7 +3107,7 @@ eHalStatus pmcGetFilterMatchCount
     tpAniSirGlobal          pMac = PMAC_STRUCT(hHal);
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
-    VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
+    VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
         "%s", __func__);
 
     if(NULL == pSession )
@@ -3151,7 +3126,7 @@ eHalStatus pmcGetFilterMatchCount
         return eHAL_STATUS_FAILED_ALLOC;
     }
 
-    vos_mem_copy(pRequestBuf->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr)); 
+    vos_mem_copy(pRequestBuf->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
 
     msg.type = WDA_PACKET_COALESCING_FILTER_MATCH_COUNT_REQ;
     msg.reserved = 0;
@@ -3160,9 +3135,9 @@ eHalStatus pmcGetFilterMatchCount
     /* Cache the Packet Coalescing Filter Match Count callback information */
     if (NULL != pMac->pmc.FilterMatchCountCB)
     {
-        // Do we need to check if the callback is in use? 
+        // Do we need to check if the callback is in use?
         // Because we are not sending the same message again when it is pending,
-        // the only case when the callback is not NULL is that the previous message 
+        // the only case when the callback is not NULL is that the previous message
         //was timed out or failed.
         // So, it will be safe to set the callback in this case.
     }
@@ -3172,7 +3147,7 @@ eHalStatus pmcGetFilterMatchCount
 
     if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MODULE_ID_WDA, &msg))
     {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
             "%s: Not able to post WDA_PACKET_COALESCING_FILTER_MATCH_COUNT_REQ "
             "message to WDA", __func__);
         vos_mem_free(pRequestBuf);
@@ -3191,9 +3166,9 @@ eHalStatus pmcGetFilterMatchCount
     \param  pGtkOffload - Pointer to the GTK offload request.
     \return eHalStatus
             eHAL_STATUS_FAILURE  Cannot set the offload.
-            eHAL_STATUS_SUCCESS  Request accepted. 
+            eHAL_STATUS_SUCCESS  Request accepted.
   ---------------------------------------------------------------------------*/
-eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload, 
+eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload,
                                   tANI_U8 sessionId)
 {
     tpSirGtkOffloadParams pRequestBuf;
@@ -3201,7 +3176,7 @@ eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload,
     tpAniSirGlobal   pMac = PMAC_STRUCT(hHal);
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: KeyReplayCounter: %d", 
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: KeyReplayCounter: %d",
                 __func__, pGtkOffload->ullKeyReplayCounter);
 
     if(NULL == pSession )
@@ -3219,7 +3194,7 @@ eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload,
         return eHAL_STATUS_FAILED_ALLOC;
     }
 
-    vos_mem_copy(pGtkOffload->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr)); 
+    vos_mem_copy(pGtkOffload->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
 
     vos_mem_copy(pRequestBuf, pGtkOffload, sizeof(tSirGtkOffloadParams));
 
@@ -3244,9 +3219,9 @@ eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload,
     \param  callbackRoutine - Pointer to the GTK Offload Get Info response callback routine.
     \return eHalStatus
             eHAL_STATUS_FAILURE  Cannot set the offload.
-            eHAL_STATUS_SUCCESS  Request accepted. 
+            eHAL_STATUS_SUCCESS  Request accepted.
   ---------------------------------------------------------------------------*/
-eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackRoutine, 
+eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackRoutine,
                                   void *callbackContext, tANI_U8 sessionId)
 {
     tpSirGtkOffloadGetInfoRspParams  pRequestBuf;
@@ -3254,12 +3229,12 @@ eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackR
     tpAniSirGlobal          pMac = PMAC_STRUCT(hHal);
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
-    VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s: filterId = %d", 
+    VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s: filterId = %d",
                 __func__);
 
     if(NULL == pSession )
     {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                   "%s: Session not found ", __func__);
         return eHAL_STATUS_FAILURE;
     }
@@ -3273,7 +3248,7 @@ eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackR
         return eHAL_STATUS_FAILED_ALLOC;
     }
 
-    vos_mem_copy(pRequestBuf->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr)); 
+    vos_mem_copy(pRequestBuf->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
 
     msg.type = WDA_GTK_OFFLOAD_GETINFO_REQ;
     msg.reserved = 0;
@@ -3282,7 +3257,7 @@ eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackR
     /* Cache the Get GTK Offload callback information */
     if (NULL != pMac->pmc.GtkOffloadGetInfoCB)
     {
-        // Do we need to check if the callback is in use? 
+        // Do we need to check if the callback is in use?
         // Because we are not sending the same message again when it is pending,
         // the only case when the callback is not NULL is that the previous message was timed out or failed.
         // So, it will be safe to set the callback in this case.
@@ -3293,7 +3268,7 @@ eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackR
 
     if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
     {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to post WDA_GTK_OFFLOAD_GETINFO_REQ message to WDA", 
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to post WDA_GTK_OFFLOAD_GETINFO_REQ message to WDA",
                     __func__);
         vos_mem_free(pRequestBuf);
         return eHAL_STATUS_FAILURE;

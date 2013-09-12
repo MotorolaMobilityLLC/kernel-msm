@@ -225,6 +225,8 @@ typedef struct hdd_tx_rx_stats_s
    __u32    rxDropped;
    __u32    rxDelivered;
    __u32    rxRefused;
+   __u32    pkt_tx_count; //TX pkt Counter used for dynamic splitscan
+   __u32    pkt_rx_count; //RX pkt Counter used for dynamic splitscan
 } hdd_tx_rx_stats_t;
 
 typedef struct hdd_chip_reset_stats_s
@@ -535,6 +537,7 @@ struct hdd_station_ctx
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
    hddGtkOffloadParams gtkOffloadRequestParams;
 #endif
+   v_BOOL_t hdd_ReassocScenario;
 };
 
 #define BSS_STOP    0 
@@ -803,14 +806,6 @@ struct hdd_adapter_s
    v_BOOL_t higherDtimTransition;
 };
 
-typedef struct hdd_dynamic_mcbcfilter_s
-{
-    v_BOOL_t     enableCfg;
-    v_U8_t       mcastBcastFilterSetting;
-    v_BOOL_t     enableSuspend;
-    v_U8_t       mcBcFilterSuspend;
-}hdd_dynamic_mcbcfilter_t;
-
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
 #define WLAN_HDD_GET_AP_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.ap)
 #define WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter)  (&(pAdapter)->sessionCtx.station.WextState)
@@ -949,8 +944,6 @@ struct hdd_context_s
    /* Number of times riva restarted */
    v_U32_t  hddRivaResetStats;
    
-   hdd_dynamic_mcbcfilter_t dynamic_mcbc_filter;
-   
    /* Can we allow AMP connection right now*/
    v_BOOL_t isAmpAllowed;
    
@@ -998,16 +991,30 @@ struct hdd_context_s
 
     hdd_traffic_monitor_t traffic_monitor;
 
+    /* MC/BC Filter state variable
+     * This always contains the value that is currently
+     * configured
+     * */
+    v_U8_t configuredMcastBcastFilter;
+
     /* Use below lock to protect access to isSchedScanUpdatePending
      * since it will be accessed in two different contexts.
      */
     spinlock_t schedScan_lock;
+
+    v_U8_t sus_res_mcastbcast_filter;
 
     // Flag keeps track of wiphy suspend/resume
     v_BOOL_t isWiphySuspended;
 
     // Indicates about pending sched_scan results
     v_BOOL_t isSchedScanUpdatePending;
+    /*
+    * TX_rx_pkt_count_timer
+    */
+    vos_timer_t    tx_rx_trafficTmr;
+    v_U8_t         drvr_miracast;
+    v_U8_t         issplitscan_enabled;
 };
 
 
@@ -1088,4 +1095,6 @@ int wlan_hdd_validate_context(hdd_context_t *pHddCtx);
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 int wlan_hdd_setIPv6Filter(hdd_context_t *pHddCtx, tANI_U8 filterType, tANI_U8 sessionId);
 #endif
+VOS_STATUS hdd_issta_p2p_clientconnected(hdd_context_t *pHddCtx);
+
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

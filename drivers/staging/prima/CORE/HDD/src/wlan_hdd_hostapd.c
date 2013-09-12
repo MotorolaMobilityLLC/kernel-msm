@@ -2950,10 +2950,13 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
 {   
     hdd_hostapd_state_t * phostapdBuf;
     struct net_device *dev = pAdapter->dev;
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     VOS_STATUS status;
     ENTER();
        // Allocate the Wireless Extensions state structure   
     phostapdBuf = WLAN_HDD_GET_HOSTAP_STATE_PTR( pAdapter );
+
+    sme_SetCurrDeviceMode(pHddCtx->hHal, pAdapter->device_mode);
  
     // Zero the memory.  This zeros the profile structure.
     memset(phostapdBuf, 0,sizeof(hdd_hostapd_state_t));

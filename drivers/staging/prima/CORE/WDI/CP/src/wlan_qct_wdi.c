@@ -10015,7 +10015,7 @@ WDI_ProcessAddSTASelfReq
   wpt_uint8*                            pSendBuffer         = NULL;
   wpt_uint16                            usDataOffset        = 0;
   wpt_uint16                            usSendSize          = 0;
-  tAddStaSelfParams                     halAddSTASelfParams;
+  tAddStaSelfParams_V1                  halAddSTASelfParams;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   /*-------------------------------------------------------------------------
@@ -10040,9 +10040,9 @@ WDI_ProcessAddSTASelfReq
   -----------------------------------------------------------------------*/
   if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx,
                         WDI_ADD_STA_SELF_REQ,
-                        sizeof(tAddStaSelfParams),
+                        sizeof(tAddStaSelfParams_V1),
                         &pSendBuffer, &usDataOffset, &usSendSize))||
-      ( usSendSize < (usDataOffset + sizeof(tAddStaSelfParams) )))
+      ( usSendSize < (usDataOffset + sizeof(tAddStaSelfParams_V1) )))
   {
      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
               "Unable to get send buffer in ADD STA SELF REQ %x %x %x",
@@ -10056,10 +10056,22 @@ WDI_ProcessAddSTASelfReq
                  sizeof(pWDICtx->wdiCacheAddSTASelfReq));
 
   wpalMemoryCopy(halAddSTASelfParams.selfMacAddr,
-                   pwdiAddSTASelfReqParams->wdiAddSTASelfInfo.selfMacAddr, 6) ;
+                   pwdiAddSTASelfReqParams->wdiAddSTASelfInfo.selfMacAddr, 6);
+  halAddSTASelfParams.iface_persona = HAL_IFACE_UNKNOWN;
+  if (pwdiAddSTASelfReqParams->wdiAddSTASelfInfo.currDeviceMode == VOS_STA_MODE)
+  {
+      halAddSTASelfParams.iface_persona = HAL_IFACE_STA_MODE;
+  }
+  else if ((pwdiAddSTASelfReqParams->wdiAddSTASelfInfo.currDeviceMode ==
+              VOS_P2P_CLIENT_MODE) ||
+           (pwdiAddSTASelfReqParams->wdiAddSTASelfInfo.currDeviceMode ==
+              VOS_P2P_DEVICE))
+  {
+      halAddSTASelfParams.iface_persona = HAL_IFACE_P2P_MODE;
+  }
 
   wpalMemoryCopy( pSendBuffer+usDataOffset, &halAddSTASelfParams,
-                                         sizeof(tAddStaSelfParams));
+                                         sizeof(tAddStaSelfParams_V1));
 
   pWDICtx->wdiReqStatusCB     = pwdiAddSTASelfReqParams->wdiReqStatusCB;
   pWDICtx->pReqStatusUserData = pwdiAddSTASelfReqParams->pUserData;
@@ -13207,9 +13219,17 @@ WDI_ProcessHostOffloadReq
         wpalMemoryCopy(nsOffloadParams.selfMacAddr,
                         pwdiHostOffloadParams->wdiNsOffloadParams.selfMacAddr,
                         6);
-        nsOffloadParams.srcIPv6AddrValid = pwdiHostOffloadParams->wdiNsOffloadParams.srcIPv6AddrValid;
-        nsOffloadParams.targetIPv6Addr1Valid = pwdiHostOffloadParams->wdiNsOffloadParams.targetIPv6Addr1Valid;
-        nsOffloadParams.targetIPv6Addr2Valid = pwdiHostOffloadParams->wdiNsOffloadParams.targetIPv6Addr2Valid;
+        nsOffloadParams.srcIPv6AddrValid =
+            pwdiHostOffloadParams->wdiNsOffloadParams.srcIPv6AddrValid;
+
+        nsOffloadParams.targetIPv6Addr1Valid =
+            pwdiHostOffloadParams->wdiNsOffloadParams.targetIPv6Addr1Valid;
+
+        nsOffloadParams.targetIPv6Addr2Valid =
+            pwdiHostOffloadParams->wdiNsOffloadParams.targetIPv6Addr2Valid;
+
+        nsOffloadParams.slotIndex =
+            pwdiHostOffloadParams->wdiNsOffloadParams.slotIdx;
 
 #endif // WLAN_NS_OFFLOAD
    }

@@ -68,7 +68,7 @@
 
 #define CSR_RSN_OUI_SIZE              ( 4 )
 #define CSR_RSN_VERSION_SUPPORTED     ( 1 )
-#define CSR_RSN_MAX_AUTH_SUITES       ( 4 )
+#define CSR_RSN_MAX_AUTH_SUITES       ( 16 )
 #define CSR_RSN_MAX_CYPHERS           ( 5 )
 #define CSR_RSN_MAX_UNICAST_CYPHERS   ( 5 )
 #define CSR_RSN_MAX_MULTICAST_CYPHERS ( 1 )
