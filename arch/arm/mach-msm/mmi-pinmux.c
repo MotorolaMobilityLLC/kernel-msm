@@ -67,6 +67,11 @@ static int msm_pinmux_install(struct device_node *node)
 		count++;
 	}
 
+	if (!count) {
+		pr_err("gpio %d badly formatted: no children\n", gpio);
+		return -EINVAL;
+	}
+
 	if (count != GPIOMUX_NSETTINGS) {
 		pr_debug("%s: gpio %d dt entry count %d.\n", __func__, gpio,
 				count);
