@@ -498,8 +498,10 @@
 #define SIR_MAC_OUI_WSM_SCHEDULE_MAX        20
 
 #ifdef WLAN_NS_OFFLOAD
-#define SIR_MAC_NS_OFFLOAD_SIZE        1  //support only one IPv6 offload
+#define SIR_MAC_NS_OFFLOAD_SIZE             1  //support only one IPv6 offload
 #define SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA   2 //Number of target IP in NA frames. It must be at least 2
+#define SIR_MAC_IPV6_ADDR_LEN               16
+#define SIR_IPV6_ADDR_VALID                 1
 #endif //WLAN_NS_OFFLOAD
 #define SIR_MAC_ARP_OFFLOAD_SIZE        1
 
