@@ -11386,6 +11386,39 @@ eHalStatus csrRoamSetPMKIDCache( tpAniSirGlobal pMac, tANI_U32 sessionId,
     return (status);
 }
 
+eHalStatus csrRoamDelPMKIDfromCache( tpAniSirGlobal pMac, tANI_U32 sessionId,
+                                 tANI_U8 *pBSSId )
+{
+    eHalStatus status = eHAL_STATUS_FAILURE;
+    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
+    tANI_BOOLEAN fMatchFound = FALSE;
+    tANI_U32 Index;
+    if(!pSession)
+    {
+        smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
+        return eHAL_STATUS_FAILURE;
+    }
+    do
+    {
+        for( Index=0; Index < pSession->NumPmkidCache; Index++ )
+        {
+            smsLog(pMac, LOGW, "Delete PMKID for %02X-%02X-%02X-%02X-%02X-%02X ",
+                pBSSId[0], pBSSId[1], pBSSId[2], pBSSId[3], pBSSId[4], pBSSId[5]);
+            if( palEqualMemory( pMac->hHdd, pBSSId, pSession->PmkidCacheInfo[Index].BSSID, sizeof(tCsrBssid) ) )
+            {
+                fMatchFound = TRUE;
+                break;
+            }
+        }
+        if( !fMatchFound ) break;
+        palZeroMemory( pMac->hHdd, pSession->PmkidCacheInfo[Index].BSSID, sizeof(tPmkidCacheInfo));
+        status = eHAL_STATUS_SUCCESS;
+    }
+    while( 0 );
+    smsLog(pMac, LOGW, "csrDelPMKID called return match = %d Status = %d",
+        fMatchFound, status);
+    return status;
+}
 tANI_U32 csrRoamGetNumPMKIDCache(tpAniSirGlobal pMac, tANI_U32 sessionId)
 {
     return (pMac->roam.roamSession[sessionId].NumPmkidCache);
