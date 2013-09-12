@@ -64,7 +64,7 @@ adreno_ringbuffer_waitspace(struct adreno_ringbuffer *rb,
 	unsigned long wait_time;
 	unsigned long wait_timeout = msecs_to_jiffies(ADRENO_IDLE_TIMEOUT);
 	unsigned long wait_time_part;
-	unsigned int prev_reg_val[ft_detect_regs_count];
+	unsigned int prev_reg_val[FT_DETECT_REGS_COUNT];
 
 	memset(prev_reg_val, 0, sizeof(prev_reg_val));
 
@@ -1100,8 +1100,9 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	}
 
 done:
-	kgsl_trace_issueibcmds(device, context->id, ibdesc, numibs,
-		*timestamp, flags, ret, drawctxt->type);
+	kgsl_trace_issueibcmds(device, context ? context->id : 0, ibdesc,
+		numibs, *timestamp, flags, ret,
+		drawctxt ? drawctxt->type : 0);
 
 	kfree(link);
 	return ret;
