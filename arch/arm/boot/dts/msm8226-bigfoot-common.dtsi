@@ -14,6 +14,7 @@
 /include/ "msm8226-moto-common.dtsi"
 /include/ "dsi-panel-mot-auo-720p-video.dtsi"
 /include/ "dsi-panel-mot-cmi-720p-video.dtsi"
+/include/ "dsi-panel-mot-lgd-720p-video.dtsi"
 
 / {
 	model = "Motorola QC-MSM8226 Bigfoot";
@@ -46,6 +47,13 @@
 	qcom,dsi-pref-prim-pan = <&mot_auo_720p_vid_v0>;
 	vddio_disp-supply = <&vddio_disp_vreg>;
 	lcdbias-supply = <&tps65132>;
+};
+
+&mot_lgd_720p_vid_v0 {
+	vdd_disp-supply = <&pm8226_l28>;
+	vddio_disp-supply = <&vddio_disp_vreg>;
+	lcdbias-supply = <&tps65132>;
+	qcom,cont-splash-enabled;
 };
 
 &i2c_2 {

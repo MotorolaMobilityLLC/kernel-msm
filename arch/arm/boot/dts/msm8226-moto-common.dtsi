@@ -228,6 +228,7 @@
 &pm8226_l28 {
 	regulator-max-microvolt = <3400000>;
 	qcom,init-voltage = <3100000>;
+	regulator-boot-on;
 };
 
 &pm8226_chg {
