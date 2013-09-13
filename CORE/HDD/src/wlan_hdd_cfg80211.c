@@ -84,6 +84,7 @@
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
 #include "wlan_hdd_wmm.h"
+#include "wlan_qct_wda.h"
 #endif
 #include "wlan_nv.h"
 #include "wlan_hdd_dev_pwr.h"
@@ -7830,26 +7831,30 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                 if (eTDLS_LINK_CONNECTED != pTdlsPeer->link_status)
                 {
                     long ret;
+                    if (IS_ADVANCE_TDLS_ENABLE) {
 
-                    if (0 != wlan_hdd_tdls_get_link_establish_params(pAdapter, peer,&tdlsLinkEstablishParams)) {
-                         return -EINVAL;
-                    }
-                    INIT_COMPLETION(pAdapter->tdls_link_establish_req_comp);
+                        if (0 != wlan_hdd_tdls_get_link_establish_params(
+                                   pAdapter, peer,&tdlsLinkEstablishParams)) {
+                            return -EINVAL;
+                        }
+                        INIT_COMPLETION(pAdapter->tdls_link_establish_req_comp);
 
-                    sme_SendTdlsLinkEstablishParams(WLAN_HDD_GET_HAL_CTX(pAdapter),
-                                                    pAdapter->sessionId, peer, &tdlsLinkEstablishParams);
-                    /* Send TDLS peer UAPSD capabilities to the firmware and
-                     * register with the TL on after the response for this operation
-                     * is received .
-                     */
-                    ret = wait_for_completion_interruptible_timeout(&pAdapter->tdls_link_establish_req_comp,
-                              msecs_to_jiffies(WAIT_TIME_TDLS_LINK_ESTABLISH_REQ));
-                    if (ret <= 0)
-                    {
-                        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                                  "%s: Link Establish Request Faled Status %ld",
-                                  __func__, ret);
-                        return -EINVAL;
+                        sme_SendTdlsLinkEstablishParams(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                            pAdapter->sessionId, peer, &tdlsLinkEstablishParams);
+                        /* Send TDLS peer UAPSD capabilities to the firmware and
+                         * register with the TL on after the response for this operation
+                         * is received .
+                         */
+                        ret = wait_for_completion_interruptible_timeout(
+                                &pAdapter->tdls_link_establish_req_comp,
+                                msecs_to_jiffies(WAIT_TIME_TDLS_LINK_ESTABLISH_REQ));
+                        if (ret <= 0)
+                        {
+                            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                                      "%s: Link Establish Request Faled Status %ld",
+                                      __func__, ret);
+                            return -EINVAL;
+                        }
                     }
                     wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
                     /* Mark TDLS client Authenticated .*/
