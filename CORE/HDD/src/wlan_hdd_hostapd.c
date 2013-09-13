@@ -1607,8 +1607,7 @@ static int hdd_hostapd_set_mc_rate_update
         stasLoop < sapEvent->sapevt.sapAssocStaListEvent.noOfAssocSta;
         stasLoop++)
    {
-      vos_mem_zero((v_U8_t *)legacyRates,
-                   SAP_LEGACY_RATE_COUNT * sizeof(legacyRates));
+      vos_mem_zero((v_U8_t *)legacyRates, sizeof(legacyRates));
       rateArrayOrder = 0;
       mcsTable11n    = 0;
       supportedChannelCount = 0;
