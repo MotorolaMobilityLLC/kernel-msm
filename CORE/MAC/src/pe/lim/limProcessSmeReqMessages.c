@@ -2042,7 +2042,7 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
    if((psessionEntry = peFindSessionByBssid(pMac,pReassocReq->bssDescription.bssId,&sessionId))==NULL)
     {
         limPrintMacAddr(pMac, pReassocReq->bssDescription.bssId, LOGE);
-        limLog(pMac, LOGP, FL("Session does not exist for given bssId"));
+        limLog(pMac, LOGE, FL("Session does not exist for given bssId"));
         retCode = eSIR_SME_INVALID_PARAMETERS;
         goto end;
     }

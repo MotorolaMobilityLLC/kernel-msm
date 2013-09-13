@@ -3941,7 +3941,7 @@ limProcessJoinFailureTimeout(tpAniSirGlobal pMac)
 
     if((psessionEntry = peFindSessionBySessionId(pMac, pMac->lim.limTimers.gLimJoinFailureTimer.sessionId))== NULL) 
     {
-        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
+        limLog(pMac, LOGE, FL("Session Does not exist for given sessionID"));
         return;
     }
 
