@@ -168,6 +168,11 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
     ,IBSS_HEARTBEAT_OFFLOAD         //26
     ,FEATURE_NOT_SUPPORTED          //27
     ,WLAN_PERIODIC_TX_PTRN          //28
+#ifdef FEATURE_WLAN_TDLS
+    ,ADVANCE_TDLS                   //29
+#else
+    ,FEATURE_NOT_SUPPORTED          //29
+#endif
    };
 
 /*-------------------------------------------------------------------------- 

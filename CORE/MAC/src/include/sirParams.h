@@ -100,6 +100,9 @@ typedef enum {
 #endif
    IBSS_HEARTBEAT_OFFLOAD = 26,
    WLAN_PERIODIC_TX_PTRN = 28,
+#ifdef FEATURE_WLAN_TDLS
+   ADVANCE_TDLS = 29,
+#endif
 
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
