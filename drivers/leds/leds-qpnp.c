@@ -577,6 +577,7 @@ static int qpnp_wled_set(struct qpnp_led_data *led)
 {
 	int rc, duty, level;
 	u8 val, i, num_wled_strings, sink_val;
+	static int old_level = -1;
 
 	num_wled_strings = led->wled_cfg->num_strings;
 
@@ -705,6 +706,11 @@ static int qpnp_wled_set(struct qpnp_led_data *led)
 		dev_err(&led->spmi_dev->dev, "WLED sync failed(%d)\n", rc);
 		return rc;
 	}
+
+	if (level != old_level && old_level == 0)
+		dev_info(&led->spmi_dev->dev, "backlight on");
+	old_level = level;
+
 	return 0;
 }
 
