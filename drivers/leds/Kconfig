@@ -40,6 +40,13 @@ config LEDS_ATMEL_PWM
 	  This option enables support for LEDs driven using outputs
 	  of the dedicated PWM controller found on newer Atmel SOCs.
 
+config LEDS_LM2755
+	tristate "LM2755 LED driver support"
+	depends on LEDS_CLASS
+	depends on I2C
+	help
+	  This option enables support for LM2755 RGB LED driver.
+
 config LEDS_LM3530
 	tristate "LCD Backlight driver for LM3530"
 	depends on LEDS_CLASS
