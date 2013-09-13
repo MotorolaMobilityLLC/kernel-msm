@@ -44,7 +44,12 @@ enum utag_flag {
 	UTAG_FLAG_PROTECTED = 1 << 0,
 };
 
+#define UTAG_STATUS_LOADED '0'
+#define UTAG_STATUS_RELOAD '1'
+#define UTAG_STATUS_NOT_READY '2'
+
 static uint32_t csum;
+static char reload_ctrl = UTAG_STATUS_NOT_READY;
 static char payload[MAX_UTAG_SIZE];
 static struct proc_dir_entry *dir_root;
 
@@ -833,24 +838,23 @@ static int dump_all(struct seq_file *file, void *v)
 
 static int reload_show(struct seq_file *file, void *v)
 {
-	seq_puts(file, "0\n");
+	seq_printf(file, "%c\n", reload_ctrl);
 	return 0;
 }
 
 static ssize_t reload_write(struct file *file, const char __user *buffer,
 	   size_t count, loff_t *pos)
 {
-	char c;
 
 	if (1 > count)
 		goto out;
 
-	if (copy_from_user(&c, buffer, 1)) {
+	if (copy_from_user(&reload_ctrl, buffer, 1)) {
 		pr_err("%s user copy error\n", __func__);
 		return -EFAULT;
 	}
 
-	if ('1' == c) {
+	if (UTAG_STATUS_RELOAD == reload_ctrl) {
 		clear_utags_directory();
 		build_utags_directory();
 	}
@@ -962,6 +966,7 @@ static void build_utags_directory(void)
 	utag_file("all", "new", OUT_NEW, dir, &new_fops);
 
 	free_tags(tags);
+	reload_ctrl = UTAG_STATUS_LOADED;
 }
 
 static void clear_utags_directory(void)
