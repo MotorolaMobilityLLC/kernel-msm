@@ -117,12 +117,11 @@
 		vdd-supply = <&pm8110_l19>;
 		kionix,min-interval = <5>;
 		kionix,init-interval = <200>;
-		kionix,axis-map-x = <1>;
-		kionix,axis-map-y = <0>;
+		kionix,axis-map-x = <0>;
+		kionix,axis-map-y = <1>;
 		kionix,axis-map-z = <2>;
 		kionix,g-range = <2>;
 		kionix,negate-x;
-		kionix,negate-y;
 		kionix,negate-z;
 		kionix,res-12bit;
 	};
