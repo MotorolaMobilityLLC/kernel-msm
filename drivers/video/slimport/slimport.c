@@ -52,6 +52,7 @@ struct anx7808_data {
 	struct regulator *vdd_reg;
 	struct platform_device *hdmi_pdev;
 	struct msm_hdmi_sp_ops *hdmi_sp_ops;
+	bool update_chg_type;
 };
 
 struct anx7808_data *the_chip;
@@ -62,7 +63,8 @@ static bool hdcp_enable = 1;
 static bool hdcp_enable;
 #endif
 
-
+struct completion init_aux_ch_completion;
+static uint32_t sp_tx_chg_current_ma = NORMAL_CHG_I_MA;
 
 static int anx7808_avdd_3p3_power(struct anx7808_data *chip, int on)
 {
@@ -249,11 +251,6 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 	int status = 0;
 
 	if (gpio_get_value_cansleep(anx7808->gpio_cbl_det)) {
-		/* Previously, if sp tx is turned on, turn it off to
-		 * avoid the cable detection erorr.
-		 */
-		if (!sp_tx_pd_mode)
-			sp_tx_power_down_and_init();
 		/* debounce time for avoiding glitch */
 		msleep(50);
 		if (gpio_get_value_cansleep(anx7808->gpio_cbl_det)) {
@@ -380,6 +377,24 @@ bool is_slimport_dp(void)
 }
 EXPORT_SYMBOL(is_slimport_dp);
 
+uint32_t slimport_get_chg_current(void)
+{
+	int ret;
+
+	INIT_COMPLETION(init_aux_ch_completion);
+	the_chip->update_chg_type = true;
+
+	ret = wait_for_completion_timeout(&init_aux_ch_completion,
+					msecs_to_jiffies(2000));
+	if (!ret) {
+		pr_err("failed to access charger type\n");
+		return NORMAL_CHG_I_MA;
+	}
+
+	return sp_tx_chg_current_ma;
+}
+EXPORT_SYMBOL(slimport_get_chg_current);
+
 static void slimport_config_output(void)
 {
 	sp_tx_clean_hdcp();
@@ -409,6 +424,12 @@ static void slimport_main_proc(struct anx7808_data *anx7808)
 
 	if (sp_tx_system_state == STATE_PARSE_EDID)
 		slimport_edid_proc();
+
+	if (anx7808->update_chg_type && !sp_tx_pd_mode) {
+		sp_tx_chg_current_ma = sp_tx_get_chg_current();
+		anx7808->update_chg_type = false;
+		complete_all(&init_aux_ch_completion);
+	}
 
 	if (sp_tx_system_state == STATE_CONFIG_HDMI)
 		sp_tx_config_hdmi_input();
@@ -701,7 +722,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	the_chip = anx7808;
 
 	mutex_init(&anx7808->lock);
-
+	init_completion(&init_aux_ch_completion);
 	ret = anx7808_init_gpio(anx7808);
 	if (ret) {
 		pr_err("failed to initialize gpio\n");

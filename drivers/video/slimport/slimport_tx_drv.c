@@ -66,7 +66,6 @@ static struct Packet_SPD sp_tx_packet_spd;
 static struct Packet_MPEG sp_tx_packet_mpeg;
 enum SP_TX_System_State sp_tx_system_state;
 
-
 /* ***************************************************************** */
 
 /* GLOBAL VARIABLES DEFINITION FOR HDMI START */
@@ -2352,6 +2351,44 @@ unchar sp_tx_get_cable_type(bool bdelay)
 	return 0;
 }
 
+uint32_t sp_tx_get_chg_current(void)
+{
+	unchar val = 0;
+	uint32_t chg_current = NORMAL_CHG_I_MA;
+	int ret = 0;
+	int i;
+
+	/*
+	 * Sometimes a normal charger is detected as a fast charger
+	 * erroneously. To minimize detection error, read charger type
+	 * 3 times and set it as fast charger only if all of reading
+	 * show fast charger type.
+	 */
+	for (i = 0; i < 3; i ++) {
+		ret = sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x22, 1, &val);
+
+		if (ret != AUX_OK) {
+			pr_err("failed to get charger type!\n");
+			chg_current = NORMAL_CHG_I_MA;
+			msleep(10);
+			continue;
+		}
+
+		if ((val & 0x01) == 0x00) {
+			chg_current = FAST_CHG_I_MA;
+		} else {
+			chg_current = NORMAL_CHG_I_MA;
+			break;
+		}
+
+		if (i < 2)
+			msleep(10);
+	}
+
+	pr_info("charging current = %d mA\n", chg_current);
+	return chg_current;
+}
+
 bool sp_tx_get_hdmi_connection(void)
 {
 	unchar c;
@@ -3152,10 +3189,8 @@ void sp_tx_hdcp_process(void)
 {
 	unchar c;
 
-
 	if (!sp_tx_hdcp_capable_chk) {
 		sp_tx_hdcp_capable_chk = 1;
-
 		sp_tx_aux_dpcdread_bytes(0x06, 0x80, 0x28, 1, &c);
 		if (!(c & 0x01)) {
 			pr_err("Sink is not capable HDCP");
@@ -3165,6 +3200,7 @@ void sp_tx_hdcp_process(void)
 			return;
 		}
 	}
+
 	/*In case ANX730 video can not get ready*/
 	if ((sp_tx_rx_type == RX_HDMI)
 		&& (!sp_tx_hw_hdcp_en)) {
@@ -3943,7 +3979,6 @@ void sp_tx_config_hdmi_input(void)
 	if ((sys_status&TMDS_DE_DET) && (sys_status&TMDS_CLOCK_DET)
 		&& (hdmi_system_state == HDMI_CLOCK_DET))
 		hdmi_rx_set_sys_state(HDMI_VIDEO_CONFIG);
-
 
 	if (hdmi_rx_is_video_change()) {
 		pr_err("Video Changed , mute video and mute audio");

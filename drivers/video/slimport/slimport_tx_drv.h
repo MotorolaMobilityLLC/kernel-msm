@@ -28,6 +28,9 @@
 #define SP_TX_DS_VID_STB_TH 20
 #define GET_HDMI_CONNECTION_MAX_TRIES 6
 
+#define NORMAL_CHG_I_MA 500
+#define FAST_CHG_I_MA 1200
+
 extern unchar bedid_extblock[128];
 extern unchar bedid_firstblock[128];
 extern unchar slimport_link_bw;
@@ -160,6 +163,7 @@ unchar sp_tx_aux_dpcdwrite_bytes(unchar addrh, unchar addrm,
 	unchar addrl, unchar cCount, unchar *pBuf);
 unchar sp_tx_aux_dpcdread_bytes(unchar addrh, unchar addrm,
 	unchar addrl, unchar cCount, unchar *pBuf);
+uint32_t sp_tx_get_chg_current(void);
 
 /* ***************************************************************** */
 
