@@ -580,13 +580,15 @@ static void adreno_cleanup_pt(struct kgsl_device *device,
 
 	kgsl_mmu_unmap(pagetable, &device->memstore);
 
+	kgsl_mmu_unmap(pagetable, &adreno_dev->pwron_fixup);
+
 	kgsl_mmu_unmap(pagetable, &device->mmu.setstate_memory);
 }
 
 static int adreno_setup_pt(struct kgsl_device *device,
 			struct kgsl_pagetable *pagetable)
 {
-	int result = 0;
+	int result;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 
@@ -601,6 +603,10 @@ static int adreno_setup_pt(struct kgsl_device *device,
 	result = kgsl_mmu_map_global(pagetable, &device->memstore);
 	if (result)
 		goto unmap_memptrs_desc;
+
+	result = kgsl_mmu_map_global(pagetable, &adreno_dev->pwron_fixup);
+	if (result)
+		goto unmap_pwron_fixup_desc;
 
 	result = kgsl_mmu_map_global(pagetable, &device->mmu.setstate_memory);
 	if (result)
@@ -629,6 +635,9 @@ unmap_setstate_desc:
 
 unmap_memstore_desc:
 	kgsl_mmu_unmap(pagetable, &device->memstore);
+
+unmap_pwron_fixup_desc:
+	kgsl_mmu_unmap(pagetable, &adreno_dev->pwron_fixup);
 
 unmap_memptrs_desc:
 	kgsl_mmu_unmap(pagetable, &rb->memptrs_desc);
@@ -1664,6 +1673,15 @@ static int adreno_start(struct kgsl_device *device)
 	kgsl_pwrctrl_enable(device);
 
 	/* Set up a2xx special case */
+
+	/* Certain targets need the fixup.  You know who you are */
+	if (adreno_is_a305(adreno_dev) || adreno_is_a320(adreno_dev))
+		adreno_a3xx_pwron_fixup_init(adreno_dev);
+
+	/* Set the bit to indicate that we've just powered on */
+	set_bit(ADRENO_DEVICE_PWRON, &adreno_dev->priv);
+
+	/* Set up the MMU */
 	if (adreno_is_a2xx(adreno_dev)) {
 		/*
 		 * the MH_CLNT_INTF_CTRL_CONFIG registers aren't present
@@ -3264,6 +3282,9 @@ struct kgsl_memdesc *adreno_find_region(struct kgsl_device *device,
 
 	if (kgsl_gpuaddr_in_memdesc(&device->memstore, gpuaddr, size))
 		return &device->memstore;
+
+	if (kgsl_gpuaddr_in_memdesc(&adreno_dev->pwron_fixup, gpuaddr, size))
+		return &adreno_dev->pwron_fixup;
 
 	if (kgsl_gpuaddr_in_memdesc(&device->mmu.setstate_memory, gpuaddr,
 					size))
