@@ -95,7 +95,7 @@ static struct gpiomux_setting gsbi9_active_cfg = {
 };
 
 static struct gpiomux_setting gsbi9_suspended_cfg = {
-	.func = GPIOMUX_FUNC_2,
+	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };

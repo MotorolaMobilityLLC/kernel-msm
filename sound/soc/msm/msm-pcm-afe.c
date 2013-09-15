@@ -34,8 +34,10 @@
 #include "msm-pcm-afe.h"
 #include "msm-pcm-q6.h"
 
+
 #define MIN_PERIOD_SIZE (128 * 2)
 #define MAX_PERIOD_SIZE (128 * 2 * 2 * 6)
+
 static struct snd_pcm_hardware msm_afe_hardware = {
 	.info =			(SNDRV_PCM_INFO_MMAP |
 				SNDRV_PCM_INFO_BLOCK_TRANSFER |
