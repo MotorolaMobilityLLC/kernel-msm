@@ -32,6 +32,8 @@ void msm_gemini_platform_p2v(struct file  *file,
 				struct ion_handle **ionhandle)
 {
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
+	if(*ionhandle == NULL)
+		return;
 	ion_unmap_iommu(gemini_client, *ionhandle, CAMERA_DOMAIN, GEN_POOL);
 	ion_free(gemini_client, *ionhandle);
 	*ionhandle = NULL;

@@ -289,7 +289,6 @@ struct msm_slim_ctrl {
 	bool			use_rx_msgqs;
 	int			pipe_b;
 	struct completion	reconf;
-	bool			reconf_busy;
 	bool			chan_active;
 	enum msm_ctrl_state	state;
 	int			nsats;
@@ -817,10 +816,6 @@ static int msm_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 	}
 	if (txn->mt == SLIM_MSG_MT_CORE &&
 		mc == SLIM_MSG_MC_BEGIN_RECONFIGURATION) {
-		if (dev->reconf_busy) {
-			wait_for_completion(&dev->reconf);
-			dev->reconf_busy = false;
-		}
 		/* This "get" votes for data channels */
 		if (dev->ctrl.sched.usedslots != 0 &&
 			!dev->chan_active) {
@@ -896,9 +891,6 @@ static int msm_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 		}
 		*(puc) = *(puc) + dev->pipe_b;
 	}
-	if (txn->mt == SLIM_MSG_MT_CORE &&
-		mc == SLIM_MSG_MC_BEGIN_RECONFIGURATION)
-		dev->reconf_busy = true;
 	dev->wr_comp = &done;
 	msm_send_msg_buf(ctrl, pbuf, txn->rl);
 	timeout = wait_for_completion_timeout(&done, HZ);
@@ -909,7 +901,6 @@ static int msm_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 					SLIM_MSG_CLK_PAUSE_SEQ_FLG)) &&
 				timeout) {
 			timeout = wait_for_completion_timeout(&dev->reconf, HZ);
-			dev->reconf_busy = false;
 			if (timeout) {
 				clk_disable_unprepare(dev->rclk);
 				disable_irq(dev->irq);
@@ -918,13 +909,18 @@ static int msm_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 		if ((txn->mc == (SLIM_MSG_MC_RECONFIGURE_NOW |
 					SLIM_MSG_CLK_PAUSE_SEQ_FLG)) &&
 				!timeout) {
-			dev->reconf_busy = false;
 			dev_err(dev->dev, "clock pause failed");
 			mutex_unlock(&dev->tx_lock);
 			return -ETIMEDOUT;
 		}
 		if (txn->mt == SLIM_MSG_MT_CORE &&
 			txn->mc == SLIM_MSG_MC_RECONFIGURE_NOW) {
+			/* Wait for reconf_done interrupt to avoid
+			 * HW synchronization issues.
+			 */
+			if (timeout)
+				timeout =
+				wait_for_completion_timeout(&dev->reconf, HZ);
 			if (dev->ctrl.sched.usedslots == 0 &&
 					dev->chan_active) {
 				dev->chan_active = false;
