@@ -2066,6 +2066,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_VOS_TRACE_ENABLE_MIN,
                 CFG_VOS_TRACE_ENABLE_MAX ),
 
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_PMC_NAME,  WLAN_PARAM_Integer,
+                 hdd_config_t, vosTraceEnablePMC,
+                 VAR_FLAGS_OPTIONAL,
+                 CFG_VOS_TRACE_ENABLE_DEFAULT,
+                 CFG_VOS_TRACE_ENABLE_MIN,
+                 CFG_VOS_TRACE_ENABLE_MAX ),
+
    REG_VARIABLE( CFG_VOS_TRACE_ENABLE_WDA_NAME, WLAN_PARAM_Integer,
                 hdd_config_t, vosTraceEnableWDA,
                 VAR_FLAGS_OPTIONAL,

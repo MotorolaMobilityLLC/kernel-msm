@@ -53,23 +53,23 @@
   
   ========================================================================*/
 
+#include "vos_trace.h"
 #include "pmmDebug.h"
+#define LOG_SIZE 256
 
-void pmmLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString,...) 
-{
-#ifdef WLAN_DEBUG
-    // Verify against current log level
-    if ( loglevel > pMac->utils.gLogDbgLevel[LOG_INDEX_FOR_MODULE( SIR_PMM_MODULE_ID )] )
-        return;
-    else
-    {
-        va_list marker;
+void pmmLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString, ...)
+ {
+       VOS_TRACE_LEVEL  vosDebugLevel;
+       char    logBuffer[LOG_SIZE];
+       va_list marker;
 
-        va_start( marker, pString );     /* Initialize variable arguments. */
+       /*  getting proper Debug level  */
+       vosDebugLevel = getVosDebugLevel(loglevel);
 
-        logDebug(pMac, SIR_PMM_MODULE_ID, loglevel, pString, marker);
-        
-        va_end( marker );              /* Reset variable arguments.      */
-    }
-#endif
-}
+       /* extracting arguments from pstring */
+       va_start( marker, pString );
+       vsnprintf(logBuffer, LOG_SIZE, pString, marker);
+
+       VOS_TRACE(VOS_MODULE_ID_PMC, vosDebugLevel, "%s", logBuffer);
+       va_end( marker );
+ }
