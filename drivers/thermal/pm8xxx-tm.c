@@ -519,11 +519,15 @@ static int pm8xxx_tm_init_reg(struct pm8xxx_tm_chip *chip)
 		return rc;
 
 	/*
-	 * Set the PMIC temperature alarm module to be always off. This
-	 * is necessary due to erroneous behavior of temperature alarm
-	 * module during system shutdown.
+	 * Set the PMIC temperature alarm module to be always on.  This ensures
+	 * that die temperature monitoring is active even if CXO is disabled
+	 * (i.e. when sleep_b is low).  This is necessary since CXO can be
+	 * disabled while the system is still heavily loaded.  Also, using
+	 * the alway-on instead of PWM-enabled configurations ensures that the
+	 * die temperature can be measured by the PMIC ADC without reconfiguring
+	 * the temperature alarm module first.
 	 */
-	rc = pm8xxx_tm_write_pwm(chip, TEMP_ALARM_PWM_EN_NEVER);
+	rc = pm8xxx_tm_write_pwm(chip, TEMP_ALARM_PWM_EN_ALWAYS);
 
 	return rc;
 }
