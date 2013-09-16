@@ -155,6 +155,11 @@
 	};
 };
 
+&usb_otg {
+	qcom,hsusb-otg-phy-init-seq =
+		<0x44 0x80 0x2f 0x81 0x34 0x82 0x34 0x83 0xffffffff>;
+};
+
 &mot_cmi_720p_vid_v0 {
 	vddio_disp-supply = <&vddio_disp_vreg>;
 	lcdbias-supply = <&tps65132>;
