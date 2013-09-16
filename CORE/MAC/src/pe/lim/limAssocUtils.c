@@ -2707,6 +2707,8 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
     tSirRetStatus     retCode = eSIR_SUCCESS;
     tSirMacAddr staMac;
     tANI_U32 listenInterval = WNI_CFG_LISTEN_INTERVAL_STADEF;
+    tANI_U32 shortGi20MhzSupport;
+    tANI_U32 shortGi40MhzSupport;
     /*This self Sta dot 11 mode comes from the cfg and the expectation here is
      * that cfg carries the systemwide capability that device under
      * consideration can support. This capability gets plumbed into the cfg
@@ -2799,10 +2801,61 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
             pAddStaParams->maxAmpduSize       = limGetHTCapability(pMac, eHT_MAX_RX_AMPDU_FACTOR, psessionEntry);
             pAddStaParams->maxAmsduSize       = limGetHTCapability( pMac, eHT_MAX_AMSDU_LENGTH, psessionEntry );
             pAddStaParams->fDsssCckMode40Mhz  = limGetHTCapability( pMac, eHT_DSSS_CCK_MODE_40MHZ, psessionEntry);
-            pAddStaParams->fShortGI20Mhz      = WNI_CFG_SHORT_GI_20MHZ_STAMAX;
-            // pAddStaParams->fShortGI20Mhz   = limGetHTCapability( pMac, eHT_SHORT_GI_20MHZ, psessionEntry);
-            pAddStaParams->fShortGI40Mhz      = WNI_CFG_SHORT_GI_40MHZ_STAMAX;
-            // pAddStaParams->fShortGI40Mhz   = limGetHTCapability( pMac, eHT_SHORT_GI_40MHZ, psessionEntry);
+            /*
+             * We will read the gShortGI20Mhz from ini file, and if it is set
+             * to 1 then we will tell Peer that we support 40Mhz short GI
+             */
+            if (HAL_STATUS_SUCCESS(ccmCfgGetInt
+                                   (pMac, WNI_CFG_SHORT_GI_20MHZ,
+                                   &shortGi20MhzSupport)))
+            {
+                if (VOS_TRUE == shortGi20MhzSupport)
+                {
+                    pAddStaParams->fShortGI20Mhz =
+                       WNI_CFG_SHORT_GI_20MHZ_STAMAX;
+                    //pAddStaParams->fShortGI20Mhz =
+                    //limGetHTCapability(pMac, eHT_SHORT_GI_20MHZ,
+                    //                   psessionEntry);
+                }
+                else
+                {
+                    pAddStaParams->fShortGI20Mhz = VOS_FALSE;
+                }
+            }
+            else
+            {
+                PELOGE(limLog(pMac, LOGE, FL("could not retrieve shortGI 20Mhz"
+                                             "CFG,setting value to default"));)
+                pAddStaParams->fShortGI20Mhz = WNI_CFG_SHORT_GI_20MHZ_STADEF;
+            }
+
+            /*
+             * We will read the gShortGI40Mhz from ini file, and if it is set
+             * to 1 then we will tell Peer that we support 40Mhz short GI
+             */
+            if (HAL_STATUS_SUCCESS(ccmCfgGetInt
+                                   (pMac, WNI_CFG_SHORT_GI_40MHZ,
+                                   &shortGi40MhzSupport)))
+            {
+                if (VOS_TRUE == shortGi40MhzSupport)
+                {
+                    pAddStaParams->fShortGI40Mhz =
+                       WNI_CFG_SHORT_GI_40MHZ_STAMAX;
+                    //pAddStaParams->fShortGI40Mhz =
+                    //limGetHTCapability(pMac, eHT_SHORT_GI_40MHZ,
+                    //                    psessionEntry);
+                }
+                else
+                {
+                    pAddStaParams->fShortGI40Mhz = VOS_FALSE;
+                }
+            }
+            else
+            {
+                PELOGE(limLog(pMac, LOGE, FL("could not retrieve shortGI 40Mhz"
+                                             "CFG,setting value to default"));)
+                pAddStaParams->fShortGI40Mhz = WNI_CFG_SHORT_GI_40MHZ_STADEF;
+            }
        }
     }
 #ifdef WLAN_FEATURE_11AC
@@ -3325,6 +3378,8 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
     tANI_U8 i;
     tpDphHashNode pStaDs = NULL;
     tANI_U8 chanWidthSupp = 0;
+    tANI_U32 shortGi20MhzSupport;
+    tANI_U32 shortGi40MhzSupport;
     // Package SIR_HAL_ADD_BSS_REQ message parameters
     pAddBssParams = vos_mem_malloc(sizeof( tAddBssParams ));
     if (NULL == pAddBssParams)
@@ -3499,8 +3554,56 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
             pAddBssParams->staContext.maxAmsduSize       = ( tANI_U8 )pAssocRsp->HTCaps.maximalAMSDUsize;
             pAddBssParams->staContext.maxAmpduDensity    =            pAssocRsp->HTCaps.mpduDensity;
             pAddBssParams->staContext.fDsssCckMode40Mhz = (tANI_U8)pAssocRsp->HTCaps.dsssCckMode40MHz;
-            pAddBssParams->staContext.fShortGI20Mhz = (tANI_U8)pAssocRsp->HTCaps.shortGI20MHz;
-            pAddBssParams->staContext.fShortGI40Mhz = (tANI_U8)pAssocRsp->HTCaps.shortGI40MHz;
+            /*
+             * We will check gShortGI20Mhz and gShortGI40Mhz from ini file.
+             * if they are set then we will use what ever Assoc response coming
+             * from AP supports. If these values are set as 0 in ini file then
+             * we will hardcode this values to 0.
+             */
+            if (HAL_STATUS_SUCCESS(ccmCfgGetInt
+                                   (pMac, WNI_CFG_SHORT_GI_20MHZ,
+                                   &shortGi20MhzSupport)))
+            {
+                if (VOS_TRUE == shortGi20MhzSupport)
+                {
+                    pAddBssParams->staContext.fShortGI20Mhz =
+                                   (tANI_U8)pAssocRsp->HTCaps.shortGI20MHz;
+                }
+                else
+                {
+                    pAddBssParams->staContext.fShortGI20Mhz = VOS_FALSE;
+                }
+            }
+            else
+            {
+                PELOGE(limLog(pMac, LOGE, FL("could not retrieve shortGI 20Mhz"
+                                             "CFG,setting value to default"));)
+                pAddBssParams->staContext.fShortGI20Mhz =
+                    WNI_CFG_SHORT_GI_20MHZ_STADEF;
+            }
+
+            if (HAL_STATUS_SUCCESS(ccmCfgGetInt
+                                   (pMac, WNI_CFG_SHORT_GI_40MHZ,
+                                   &shortGi40MhzSupport)))
+            {
+                if (VOS_TRUE == shortGi40MhzSupport)
+                {
+                    pAddBssParams->staContext.fShortGI40Mhz =
+                                   (tANI_U8)pAssocRsp->HTCaps.shortGI40MHz;
+                }
+                else
+                {
+                    pAddBssParams->staContext.fShortGI40Mhz = VOS_FALSE;
+                }
+            }
+            else
+            {
+                PELOGE(limLog(pMac, LOGE, FL("could not retrieve shortGI 40Mhz"
+                                             "CFG,setting value to default"));)
+                pAddBssParams->staContext.fShortGI40Mhz =
+                    WNI_CFG_SHORT_GI_40MHZ_STADEF;
+            }
+
             pAddBssParams->staContext.maxAmpduSize= pAssocRsp->HTCaps.maxRxAMPDUFactor;
             if( pAddBssParams->staContext.vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP )
             {
@@ -3626,6 +3729,8 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
     tANI_U8 i;
     tSchBeaconStruct *pBeaconStruct;
     tANI_U8 chanWidthSupp = 0;
+    tANI_U32 shortGi20MhzSupport;
+    tANI_U32 shortGi40MhzSupport;
     tpSirBssDescription bssDescription = &psessionEntry->pLimJoinReq->bssDescription;
 
     pBeaconStruct = vos_mem_malloc(sizeof(tSchBeaconStruct));
@@ -3798,8 +3903,56 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
             pAddBssParams->staContext.maxAmsduSize       = ( tANI_U8 ) pBeaconStruct->HTCaps.maximalAMSDUsize;
             pAddBssParams->staContext.maxAmpduDensity    =             pBeaconStruct->HTCaps.mpduDensity;
             pAddBssParams->staContext.fDsssCckMode40Mhz = (tANI_U8)pBeaconStruct->HTCaps.dsssCckMode40MHz;
-            pAddBssParams->staContext.fShortGI20Mhz = (tANI_U8)pBeaconStruct->HTCaps.shortGI20MHz;
-            pAddBssParams->staContext.fShortGI40Mhz = (tANI_U8)pBeaconStruct->HTCaps.shortGI40MHz;
+            /*
+             * We will check gShortGI20Mhz and gShortGI40Mhz from ini file.
+             * if they are set then we will use what ever Beacon coming from AP
+             * supports. If these values are set as 0 in ini file then
+             * we will hardcode this values to 0.
+             */
+            if (HAL_STATUS_SUCCESS(ccmCfgGetInt
+                                   (pMac, WNI_CFG_SHORT_GI_20MHZ,
+                                   &shortGi20MhzSupport)))
+            {
+                if (VOS_TRUE == shortGi20MhzSupport)
+                {
+                    pAddBssParams->staContext.fShortGI20Mhz =
+                                  (tANI_U8)pBeaconStruct->HTCaps.shortGI20MHz;
+                }
+                else
+                {
+                    pAddBssParams->staContext.fShortGI20Mhz = VOS_FALSE;
+                }
+            }
+            else
+            {
+                PELOGE(limLog(pMac, LOGE, FL("could not retrieve shortGI 20Mhz"
+                                             "CFG,setting value to default"));)
+                pAddBssParams->staContext.fShortGI20Mhz =
+                    WNI_CFG_SHORT_GI_20MHZ_STADEF;
+            }
+
+            if (HAL_STATUS_SUCCESS(ccmCfgGetInt
+                                   (pMac, WNI_CFG_SHORT_GI_40MHZ,
+                                   &shortGi40MhzSupport)))
+            {
+                if (VOS_TRUE == shortGi40MhzSupport)
+                {
+                    pAddBssParams->staContext.fShortGI40Mhz =
+                                  (tANI_U8)pBeaconStruct->HTCaps.shortGI40MHz;
+                }
+                else
+                {
+                    pAddBssParams->staContext.fShortGI40Mhz = VOS_FALSE;
+                }
+            }
+            else
+            {
+                PELOGE(limLog(pMac, LOGE, FL("could not retrieve shortGI 40Mhz"
+                                             "CFG,setting value to default"));)
+                pAddBssParams->staContext.fShortGI40Mhz =
+                    WNI_CFG_SHORT_GI_40MHZ_STADEF;
+            }
+
             pAddBssParams->staContext.maxAmpduSize= pBeaconStruct->HTCaps.maxRxAMPDUFactor;
             if( pAddBssParams->staContext.vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP )
             {
