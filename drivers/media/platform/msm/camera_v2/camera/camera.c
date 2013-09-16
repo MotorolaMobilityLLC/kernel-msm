@@ -69,8 +69,11 @@ static int camera_check_event_status(struct v4l2_event *event)
 				__func__);
 		pr_err("%s : Line %d event_data->status 0X%x\n",
 				__func__, __LINE__, event_data->status);
+		pr_err("%s: Event status = %d for cmd = %d\n", __func__,
+			event_data->status, event_data->command);
 		return -EFAULT;
 	}
+
 	return 0;
 }
 
