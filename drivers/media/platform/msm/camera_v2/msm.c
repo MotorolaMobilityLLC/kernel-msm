@@ -725,11 +725,13 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 
 	if (list_empty_careful(&cmd_ack->command_q.list)) {
 		if (!rc) {
-			pr_err("%s: Timed out\n", __func__);
+			pr_err("%s: Timed out for cmd = %d\n", __func__,
+				event_data->command);
 			rc = -ETIMEDOUT;
 		}
 		if (rc < 0) {
-			pr_err("%s: rc = %d\n", __func__, rc);
+			pr_err("%s: Failed for cmd = %d, rc = %d\n", __func__,
+				event_data->command, rc);
 			mutex_unlock(&session->lock);
 			return rc;
 		}
