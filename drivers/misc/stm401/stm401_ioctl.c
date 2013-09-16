@@ -48,20 +48,26 @@
 long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
+#if 0
 	void __user *argp = (void __user *)arg;
 	static int brightness_table_loaded;
+#endif
 	int err = -ENOTTY;
+#if 0
 	unsigned int addr = 0;
+#endif
 	struct stm401_data *ps_stm401 = file->private_data;
+#if 0
 	unsigned int cmdlen = 0;
 	unsigned char byte;
 	unsigned char bytes[2];
 	unsigned short delay;
 	unsigned long current_posix_time;
 	struct timespec current_time;
+#endif
 
 	mutex_lock(&ps_stm401->lock);
-
+#if 0
 	switch (cmd) {
 	case STM401_IOCTL_BOOTLOADERMODE:
 		dev_dbg(&ps_stm401->client->dev,
@@ -539,6 +545,9 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	/* No default here since previous switch could have
 	   handled the command and cannot over write that */
 	}
+
+#endif
+err = 0;
 
 	mutex_unlock(&ps_stm401->lock);
 	return err;
