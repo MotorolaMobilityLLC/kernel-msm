@@ -1432,6 +1432,7 @@ typedef enum
 #define CFG_VOS_TRACE_ENABLE_HDD_NAME     "vosTraceEnableHDD"
 #define CFG_VOS_TRACE_ENABLE_SME_NAME     "vosTraceEnableSME"
 #define CFG_VOS_TRACE_ENABLE_PE_NAME      "vosTraceEnablePE"
+#define CFG_VOS_TRACE_ENABLE_PMC_NAME     "vosTraceEnablePMC"
 #define CFG_VOS_TRACE_ENABLE_WDA_NAME     "vosTraceEnableWDA"
 #define CFG_VOS_TRACE_ENABLE_SYS_NAME     "vosTraceEnableSYS"
 #define CFG_VOS_TRACE_ENABLE_VOSS_NAME    "vosTraceEnableVOSS"
@@ -2198,6 +2199,7 @@ typedef struct
    v_U16_t                     vosTraceEnableHDD;
    v_U16_t                     vosTraceEnableSME;
    v_U16_t                     vosTraceEnablePE;
+   v_U16_t                     vosTraceEnablePMC;
    v_U16_t                     vosTraceEnableWDA;
    v_U16_t                     vosTraceEnableSYS;
    v_U16_t                     vosTraceEnableVOSS;

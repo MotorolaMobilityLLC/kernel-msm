@@ -61,5 +61,6 @@
 #include "sirDebug.h"
 
 void smsLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString,...); 
+void pmcLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString,...);
 
 #endif // __HAL_DEBUG_H__

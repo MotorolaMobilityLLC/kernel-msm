@@ -65,21 +65,21 @@
 void dump_pmc_callbackRoutine (void *callbackContext, eHalStatus status)
 {
     tpAniSirGlobal pMac = (tpAniSirGlobal)callbackContext;
-    smsLog(pMac, LOGW, "*********Received callback from PMC with status = %d\n*********",status);
+    pmcLog(pMac, LOGW, "*********Received callback from PMC with status = %d\n*********",status);
 }
 
 #ifdef WLAN_WAKEUP_EVENTS
 void dump_pmc_callbackRoutine2 (void *callbackContext, tpSirWakeReasonInd pWakeReasonInd)
 {
     tpAniSirGlobal pMac = (tpAniSirGlobal)callbackContext;
-    smsLog(pMac, LOGW, "*********Received callback from PMC with reason = %d\n*********",pWakeReasonInd->ulReason);
+    pmcLog(pMac, LOGW, "*********Received callback from PMC with reason = %d\n*********",pWakeReasonInd->ulReason);
 }
 #endif // WLAN_WAKEUP_EVENTS
 
 void dump_pmc_deviceUpdateRoutine (void *callbackContext, tPmcState pmcState)
 {
     tpAniSirGlobal pMac = (tpAniSirGlobal)callbackContext;
-    smsLog(pMac, LOGW, "*********Received msg from PMC: Device is in %s state\n*********", pmcGetPmcStateStr(pmcState));
+    pmcLog(pMac, LOGW, "*********Received msg from PMC: Device is in %s state\n*********", pmcGetPmcStateStr(pmcState));
 }
 
 static char *
@@ -103,7 +103,7 @@ dump_pmc_state( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3
     p += log_sprintf( pMac,p, " PMC: UapsdSessionRequired = %d\n", pMac->pmc.uapsdSessionRequired);
     p += log_sprintf( pMac,p, " PMC: wowlModeRequired = %d\n\n", pMac->pmc.wowlModeRequired);
 
-    smsLog(pMac, LOGW, "\n%s", ptr);
+    pmcLog(pMac, LOGW, "\n%s", ptr);
 
     return p;
 }
@@ -240,7 +240,8 @@ dump_pmc_enter_wowl( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32
 
     if (arg1 == 0 && arg2 == 0)
     {
-        smsLog(pMac, LOGE, "Requesting WoWL but neither magic pkt and ptrn byte matching is being enabled\n");
+        pmcLog(pMac, LOGE,
+               "Requesting WoWL but neither magic pkt and ptrn byte matching is being enabled\n");
         return p;
     }
     if(arg1 == 1)
@@ -251,7 +252,8 @@ dump_pmc_enter_wowl( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32
         status = wlan_cfgGetStr(pMac, WNI_CFG_STA_ID, (tANI_U8 *)wowlEnterParams.magicPtrn, &length); 
         if (eSIR_SUCCESS != status)
         {
-            smsLog(pMac, LOGE, "Reading of WNI_CFG_STA_ID from CFG failed. Using hardcoded STA MAC Addr\n");
+            pmcLog(pMac, LOGE,
+                   "Reading of WNI_CFG_STA_ID from CFG failed. Using hardcoded STA MAC Addr\n");
             wowlEnterParams.magicPtrn[0] = 0x00;
             wowlEnterParams.magicPtrn[1] = 0x0a;
             wowlEnterParams.magicPtrn[2] = 0xf5;
@@ -267,7 +269,7 @@ dump_pmc_enter_wowl( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32
 
     if(arg3 == CSR_ROAM_SESSION_MAX )
     {
-        smsLog(pMac, LOGE, "Enter valid sessionId\n");
+        pmcLog(pMac, LOGE, "Enter valid sessionId\n");
         return p;
     }
     pMac->pmc.bmpsEnabled = TRUE;
@@ -306,7 +308,7 @@ dump_pmc_remove_ptrn( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U3
     }
     else
     {
-        smsLog(pMac, LOGE, "dump_pmc_remove_ptrn: Invalid pattern Id %d\n",arg1);
+        pmcLog(pMac, LOGE, "dump_pmc_remove_ptrn: Invalid pattern Id %d\n",arg1);
         return p;
     }
 
@@ -356,7 +358,7 @@ dump_pmc_test_Wowl( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 
 
     if(arg1 == CSR_ROAM_SESSION_MAX)
     {
-        smsLog(pMac, LOGE, "dump_pmc_test_Wowl: Invalid sessionId\n");
+        pmcLog(pMac, LOGE, "dump_pmc_test_Wowl: Invalid sessionId\n");
         return p;
     }
 
