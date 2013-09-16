@@ -446,6 +446,13 @@ static long msm_csid_cmd(struct csid_device *csid_dev, void *arg)
 			rc = -EFAULT;
 			break;
 		}
+		if (csid_params.lut_params.num_cid < 1 ||
+			csid_params.lut_params.num_cid > 16) {
+			pr_err("%s: %d num_cid outside range\n",
+				__func__, __LINE__);
+			rc = -EINVAL;
+			break;
+		}
 		vc_cfg = kzalloc(csid_params.lut_params.num_cid *
 			sizeof(struct msm_camera_csid_vc_cfg),
 			GFP_KERNEL);
