@@ -173,12 +173,12 @@ v_VOID_t * vos_mem_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t lineNum)
                "%s: called with arg > 1024K; passed in %d !!!", __func__,size); 
        return NULL;
    }
+
    if (in_interrupt())
    {
-       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-               "%s is being called in interrupt context, using GPF_ATOMIC.", __func__);
-       return kmalloc(size, GFP_ATOMIC);
-      
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be "
+                 "called from interrupt context!!!", __func__);
+       return NULL;
    }
 
    new_size = size + sizeof(struct s_vos_mem_struct) + 8; 
@@ -212,6 +212,14 @@ v_VOID_t * vos_mem_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t lineNum)
 
 v_VOID_t vos_mem_free( v_VOID_t *ptr )
 {
+
+    if (in_interrupt())
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be "
+                  "called from interrupt context!!!", __func__);
+        return;
+    }
+
     if (ptr != NULL)
     {
         VOS_STATUS vosStatus;
