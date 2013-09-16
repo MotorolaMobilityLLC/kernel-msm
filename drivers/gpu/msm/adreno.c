@@ -77,6 +77,10 @@
 /*default log levels is error for everything*/
 #define KGSL_LOG_LEVEL_DEFAULT 3
 
+#ifndef CONFIG_DEBUG_FS
+unsigned int kgsl_cff_dump_enable;
+#endif
+
 static const struct kgsl_functable adreno_functable;
 
 static struct adreno_device device_3d0 = {
