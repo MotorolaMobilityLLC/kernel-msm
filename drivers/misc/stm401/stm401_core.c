@@ -341,7 +341,6 @@ int stm401_i2c_write(struct stm401_data *ps_stm401, u8 *buf, int len)
 	return err;
 }
 
-#if 0
 static ssize_t dock_print_name(struct switch_dev *switch_dev, char *buf)
 {
 	switch (switch_get_state(switch_dev)) {
@@ -355,7 +354,6 @@ static ssize_t dock_print_name(struct switch_dev *switch_dev, char *buf)
 
 	return -EINVAL;
 }
-#endif
 
 int stm401_enable(struct stm401_data *ps_stm401)
 {
@@ -381,7 +379,6 @@ struct miscdevice stm401_misc_device = {
 	.fops = &stm401_misc_fops,
 };
 
-#if 0
 #ifdef CONFIG_OF
 static struct stm401_platform_data *
 stm401_of_init(struct i2c_client *client)
@@ -405,8 +402,10 @@ stm401_of_init(struct i2c_client *client)
 	pdata->gpio_reset = of_get_gpio(np, 1);
 	pdata->gpio_bslen = of_get_gpio(np, 2);
 	pdata->gpio_wakeirq = of_get_gpio(np, 3);
+#if 0
 	pdata->gpio_mipi_req = of_get_gpio(np, 4);
 	pdata->gpio_mipi_busy = of_get_gpio(np, 5);
+#endif
 
 	if (of_get_property(np, "lux_table", &len) == NULL) {
 		dev_err(&stm401_misc_data->client->dev,
@@ -569,6 +568,7 @@ static int stm401_gpio_init(struct stm401_platform_data *pdata,
 		pr_warn("%s: gpio wake irq not specified\n", __func__);
 	}
 
+#if 0
 	if (gpio_is_valid(pdata->gpio_mipi_req)) {
 		err = gpio_request(pdata->gpio_mipi_req, "mipi_d0_req");
 		if (err) {
@@ -607,13 +607,16 @@ static int stm401_gpio_init(struct stm401_platform_data *pdata,
 		stm401_misc_data->ap_stm401_handoff_ctrl = false;
 		pr_warn("%s: gpio mipi busy not specified\n", __func__);
 	}
+#endif
 
 	return 0;
 
+#if 0
 free_mipi_busy:
 	gpio_free(pdata->gpio_mipi_busy);
 free_mipi_req:
 	gpio_free(pdata->gpio_mipi_req);
+#endif
 free_wakeirq:
 	gpio_free(pdata->gpio_wakeirq);
 free_bslen:
@@ -624,7 +627,6 @@ free_int:
 	gpio_free(pdata->gpio_int);
 	return err;
 }
-#endif
 
 static void stm401_gpio_free(struct stm401_platform_data *pdata)
 {
@@ -632,22 +634,20 @@ static void stm401_gpio_free(struct stm401_platform_data *pdata)
 	gpio_free(pdata->gpio_reset);
 	gpio_free(pdata->gpio_bslen);
 	gpio_free(pdata->gpio_wakeirq);
+#if 0
 	gpio_free(pdata->gpio_mipi_req);
 	gpio_free(pdata->gpio_mipi_busy);
+#endif
 }
 
 static int stm401_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
-#if 0
 	struct stm401_platform_data *pdata;
 	struct stm401_data *ps_stm401;
 	int err = -1;
-#endif
 	dev_info(&client->dev, "probe begun\n");
 
-/* TODO - we don't want this driver to do anythign yet */
-#if 0
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "client not i2c capable\n");
 		return -ENODEV;
@@ -669,6 +669,7 @@ static int stm401_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
+#if 0
 	/* initialize regulators */
 	/* vio must be high before vcc is turned on */
 	ps_stm401->vio_regulator = regulator_get(&client->dev, "vio");
@@ -698,8 +699,11 @@ static int stm401_probe(struct i2c_client *client,
 		regulator_put(ps_stm401->vio_regulator);
 		goto err_regulator;
 	}
+#endif
 
+	ps_stm401->client = client;
 	stm401_misc_data = ps_stm401;
+
 	err = stm401_gpio_init(pdata, client);
 	if (err) {
 		dev_err(&client->dev, "stm401 gpio init failed\n");
@@ -710,9 +714,7 @@ static int stm401_probe(struct i2c_client *client,
 	mutex_lock(&ps_stm401->lock);
 	wake_lock_init(&ps_stm401->wakelock, WAKE_LOCK_SUSPEND, "stm401");
 
-	ps_stm401->client = client;
 	ps_stm401->ap_stm401_handoff_enable = false;
-
 
 	/* Set to passive mode by default */
 	stm401_g_nonwake_sensor_state = 0;
@@ -767,7 +769,7 @@ static int stm401_probe(struct i2c_client *client,
 
 	if (alloc_chrdev_region(&ps_stm401->stm401_dev_num, 0, 2, "stm401")
 		< 0)
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&client->dev,
 			"alloc_chrdev_region failed\n");
 	ps_stm401->stm401_class = class_create(THIS_MODULE, "stm401");
 
@@ -775,7 +777,7 @@ static int stm401_probe(struct i2c_client *client,
 	ps_stm401->as_cdev.owner = THIS_MODULE;
 	err = cdev_add(&ps_stm401->as_cdev, ps_stm401->stm401_dev_num, 1);
 	if (err)
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&client->dev,
 			"cdev_add as failed: %d\n", err);
 
 	device_create(ps_stm401->stm401_class, NULL,
@@ -786,7 +788,7 @@ static int stm401_probe(struct i2c_client *client,
 	ps_stm401->ms_cdev.owner = THIS_MODULE;
 	err = cdev_add(&ps_stm401->ms_cdev, ps_stm401->stm401_dev_num + 1, 1);
 	if (err)
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&client->dev,
 			"cdev_add ms failed: %d\n", err);
 
 	device_create(ps_stm401->stm401_class, NULL,
@@ -830,7 +832,7 @@ static int stm401_probe(struct i2c_client *client,
 	ps_stm401->dsdev.print_name = dock_print_name;
 	err = switch_dev_register(&ps_stm401->dsdev);
 	if (err) {
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&client->dev,
 			"Couldn't register switch (%s) rc=%d\n",
 			ps_stm401->dsdev.name, err);
 		ps_stm401->dsdev.dev = NULL;
@@ -840,7 +842,7 @@ static int stm401_probe(struct i2c_client *client,
 	ps_stm401->edsdev.print_name = dock_print_name;
 	err = switch_dev_register(&ps_stm401->edsdev);
 	if (err) {
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&client->dev,
 			"Couldn't register switch (%s) rc=%d\n",
 			ps_stm401->edsdev.name, err);
 		ps_stm401->edsdev.dev = NULL;
@@ -849,7 +851,7 @@ static int stm401_probe(struct i2c_client *client,
 	ps_stm401->input_dev = input_allocate_device();
 	if (!ps_stm401->input_dev) {
 		err = -ENOMEM;
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&client->dev,
 			"input device allocate failed: %d\n", err);
 		goto err8;
 	}
@@ -859,20 +861,18 @@ static int stm401_probe(struct i2c_client *client,
 
 	err = input_register_device(ps_stm401->input_dev);
 	if (err) {
-		dev_err(&ps_stm401->client->dev,
+		dev_err(&client->dev,
 			"unable to register input polled device %s: %d\n",
 			ps_stm401->input_dev->name, err);
 		goto err9;
 	}
 
 	mutex_unlock(&ps_stm401->lock);
-#endif
 
 	dev_info(&client->dev, "probed finished\n");
 
 	return 0;
 
-#if 0
 err9:
 	input_free_device(ps_stm401->input_dev);
 err8:
@@ -893,14 +893,15 @@ err1:
 	wake_lock_destroy(&ps_stm401->wakelock);
 	stm401_gpio_free(pdata);
 err_gpio_init:
+#if 0
 	regulator_disable(ps_stm401->vcc_regulator);
 	regulator_disable(ps_stm401->vio_regulator);
 	regulator_put(ps_stm401->vcc_regulator);
 	regulator_put(ps_stm401->vio_regulator);
 err_regulator:
+#endif
 	kfree(ps_stm401);
 	return err;
-#endif
 }
 
 static int stm401_remove(struct i2c_client *client)
@@ -1035,7 +1036,7 @@ MODULE_DEVICE_TABLE(i2c, stm401_id);
 
 #ifdef CONFIG_OF
 static struct of_device_id stm401_match_tbl[] = {
-	{ .compatible = "ti,stm401" },
+	{ .compatible = "stm,stm401" },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, stm401_match_tbl);
