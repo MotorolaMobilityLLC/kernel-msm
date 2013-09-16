@@ -905,26 +905,6 @@
 		};
 };
 
-&i2c_1 {
-	msp430@48 {
-		compatible = "ti,msp430";
-		reg = <0x48>;
-		gpios = <&msmgpio 20 0>,	/* IRQ */
-			<&msmgpio 145 0>,	/* RESET */
-			<&msmgpio 33 0>,	/* BSLEN */
-			<&msmgpio 95 0>,	/* WakeIRQ */
-			<&msmgpio 14 0>,	/* MIPI_REQ */
-			<&msmgpio 13 0>;	/* MIPI_BUSY */
-		lux_table = <5 50 100 1500 3000 8000>;
-		brightness_table = <9 14 18 46 67 93 140>;
-		bslen_pin_active_value = <1>;
-		ct406_detect_threshold = <0x006E>;
-		ct406_undetect_threshold = <0x0050>;
-		ct406_recalibrate_threshold = <0x0064>;
-		ct406_pulse_count = <0x04>;
-	};
-};
-
 &i2c_3 {
 	/* TI drv2605 */
 	drv2605@5a {
