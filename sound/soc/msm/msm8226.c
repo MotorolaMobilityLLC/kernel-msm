@@ -178,6 +178,29 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 	}
 }
 
+#define TFA9890_EXT_CLK_RATE 12288000
+static atomic_t pri_mi2s_rsc_ref;
+
+static struct afe_clk_cfg lpass_mi2s_enable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_VALID,
+	0,
+};
+
+static struct afe_clk_cfg lpass_mi2s_disable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	0,
+	0,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_VALID,
+	0,
+};
+
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm)
 {
@@ -1924,6 +1947,220 @@ static struct snd_soc_dai_link msm8226_9302_dai[] = {
 	},
 };
 
+static int msm8226_pri_mi2s_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8226_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_auxpcm_ctrl *auxpcm_ctrl = NULL;
+
+	if (!pdata) {
+		pr_err("%s: no machine data!\n", __func__);
+		return -ENODEV;
+	}
+
+	if (atomic_inc_return(&pri_mi2s_rsc_ref) == 1) {
+
+		auxpcm_ctrl = pdata->auxpcm_ctrl;
+		msm_aux_pcm_get_gpios(auxpcm_ctrl);
+
+		ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX,
+						&lpass_mi2s_enable);
+		if (ret < 0) {
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+			return ret;
+		}
+
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			dev_err(cpu_dai->dev, "set format for CPU dai failed\n");
+
+		ret = snd_soc_dai_set_fmt(codec_dai,
+			SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_I2S);
+		if (ret < 0)
+			dev_err(codec_dai->dev, "set format for codec dai failed\n");
+	}
+
+	return ret;
+}
+
+static void msm8226_pri_mi2s_shutdown(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8226_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_auxpcm_ctrl *auxpcm_ctrl = NULL;
+
+	if (!pdata) {
+		pr_err("%s: no machine data!\n", __func__);
+		return;
+	}
+
+	if (atomic_dec_return(&pri_mi2s_rsc_ref) == 0) {
+
+		ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX,
+				&lpass_mi2s_disable);
+		if (ret < 0)
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+
+		auxpcm_ctrl = pdata->auxpcm_ctrl;
+		msm_aux_pcm_free_gpios(auxpcm_ctrl);
+	}
+}
+
+static int msm8226_pri_mi2s_rx_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	int ret = 0;
+
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, TFA9890_EXT_CLK_RATE,
+			SND_SOC_CLOCK_IN);
+	if (ret < 0)
+		pr_err("can't set rx codec clk configuration\n");
+
+	return ret;
+}
+
+static struct snd_soc_ops msm8226_pri_mi2s_be_ops = {
+	.startup = msm8226_pri_mi2s_startup,
+	.shutdown = msm8226_pri_mi2s_shutdown,
+	.hw_params = msm8226_pri_mi2s_rx_hw_params,
+};
+
+static struct snd_soc_dai_link msm8226_9302_tfa9890_dai[] = {
+	/* Backend DAI Links */
+	{
+		.name = LPASS_BE_SLIMBUS_0_RX,
+		.stream_name = "Slimbus Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16384",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tapan_codec",
+		.codec_dai_name	= "tapan9302_rx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
+		.init = &msm_audrx_init,
+		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
+		.ops = &msm8226_be_ops,
+		.ignore_pmdown_time = 1, /* dai link has playback support */
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_0_TX,
+		.stream_name = "Slimbus Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16385",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tapan_codec",
+		.codec_dai_name	= "tapan9302_tx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_TX,
+		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
+		.ops = &msm8226_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_1_RX,
+		.stream_name = "Slimbus1 Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16386",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tapan_codec",
+		.codec_dai_name	= "tapan9302_rx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_RX,
+		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
+		.ops = &msm8226_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_1_TX,
+		.stream_name = "Slimbus1 Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16387",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tapan_codec",
+		.codec_dai_name	= "tapan9302_tx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX,
+		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
+		.ops = &msm8226_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_3_RX,
+		.stream_name = "Slimbus3 Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16390",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tapan_codec",
+		.codec_dai_name	= "tapan9302_rx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_3_RX,
+		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
+		.ops = &msm8226_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_3_TX,
+		.stream_name = "Slimbus3 Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16391",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tapan_codec",
+		.codec_dai_name	= "tapan9302_tx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_3_TX,
+		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
+		.ops = &msm8226_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_4_RX,
+		.stream_name = "Slimbus4 Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16392",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tapan_codec",
+		.codec_dai_name	= "tapan9302_rx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_RX,
+		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
+		.ops = &msm8226_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_4_TX,
+		.stream_name = "Slimbus4 Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16393",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tapan_codec",
+		.codec_dai_name	= "tapan9302_tx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_TX,
+		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
+		.ops = &msm8226_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_PRI_MI2S_RX,
+		.stream_name = "Primary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.0",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "tfa9890.3-0034",
+		.codec_dai_name = "tfa9890_codec",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_PRI_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8226_pri_mi2s_be_ops,
+	},
+};
+
 static struct snd_soc_dai_link msm8226_9306_dai_links[
 				ARRAY_SIZE(msm8226_common_dai) +
 				ARRAY_SIZE(msm8226_9306_dai)];
@@ -1931,6 +2168,10 @@ static struct snd_soc_dai_link msm8226_9306_dai_links[
 static struct snd_soc_dai_link msm8226_9302_dai_links[
 				ARRAY_SIZE(msm8226_common_dai) +
 				ARRAY_SIZE(msm8226_9302_dai)];
+
+static struct snd_soc_dai_link msm8226_9302_tfa9890_dai_links[
+				ARRAY_SIZE(msm8226_common_dai) +
+				ARRAY_SIZE(msm8226_9302_tfa9890_dai)];
 
 struct snd_soc_card snd_soc_card_msm8226 = {
 	.name		= "msm8226-tapan-snd-card",
@@ -1942,6 +2183,13 @@ struct snd_soc_card snd_soc_card_9302_msm8226 = {
 	.name		= "msm8226-tapan9302-snd-card",
 	.dai_link	= msm8226_9302_dai_links,
 	.num_links	= ARRAY_SIZE(msm8226_9302_dai_links),
+};
+
+struct snd_soc_card snd_soc_card_9302_tfa9890_msm8226 = {
+	.name		= "msm8226-tapan9302-tfa9890-snd-card",
+	.long_name  = "msm8226-tapan9302-snd-card,tfa9890_codec",
+	.dai_link	= msm8226_9302_tfa9890_dai_links,
+	.num_links	= ARRAY_SIZE(msm8226_9302_tfa9890_dai_links),
 };
 
 static int msm8226_dtparse_auxpcm(struct platform_device *pdev,
@@ -2068,6 +2316,16 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	struct snd_soc_card *card;
 
 	if (of_property_read_bool(dev->of_node,
+					"qcom,tapan-codec-9302-tfa9890")) {
+		card = &snd_soc_card_9302_tfa9890_msm8226;
+		memcpy(msm8226_9302_tfa9890_dai_links, msm8226_common_dai,
+				sizeof(msm8226_common_dai));
+		memcpy(msm8226_9302_tfa9890_dai_links
+				+ ARRAY_SIZE(msm8226_common_dai),
+				msm8226_9302_tfa9890_dai,
+				sizeof(msm8226_9302_tfa9890_dai));
+
+	} else if (of_property_read_bool(dev->of_node,
 					"qcom,tapan-codec-9302")) {
 		card = &snd_soc_card_9302_msm8226;
 
@@ -2156,6 +2414,7 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		goto err1;
 
 	mutex_init(&cdc_mclk_mutex);
+	atomic_set(&pri_mi2s_rsc_ref, 0);
 
 	mbhc_cfg.gpio_level_insert = of_property_read_bool(pdev->dev.of_node,
 					"qcom,headset-jack-type-NC");
