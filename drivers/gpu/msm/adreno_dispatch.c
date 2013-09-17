@@ -1378,6 +1378,9 @@ done:
 	mutex_unlock(&device->mutex);
 
 	mutex_unlock(&dispatcher->mutex);
+
+	/* Schedule the event queue */
+	queue_work(device->work_queue, &device->ts_expired_ws);
 }
 
 void adreno_dispatcher_schedule(struct kgsl_device *device)
