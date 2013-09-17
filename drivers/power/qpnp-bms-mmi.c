@@ -1696,9 +1696,12 @@ static int ocv_ops_get(char *buffer, const struct kernel_param *kp)
 {
 	if (*(int *)kp->arg) {
 		struct power_supply *bms_psy = power_supply_get_by_name("bms");
-		struct qpnp_bms_chip *chip = container_of(bms_psy,
-							  struct qpnp_bms_chip,
-							  bms_psy);
+		struct qpnp_bms_chip *chip;
+
+		if (!bms_psy)
+			return param_get_int(buffer, kp);
+
+		chip = container_of(bms_psy, struct qpnp_bms_chip, bms_psy);
 
 		if (chip) {
 			last_ocv_uv = chip->last_ocv_uv;
