@@ -3093,7 +3093,7 @@ config MMI_SOC_INFO
 	help
 	Provide mechanism to annotate SOC info to panic data.
 
-config MMI_8X26_DEVICE_DTBS
+config MMI_DEVICE_DTBS
 	depends on ARCH_MSM
 	default n
 	bool "Motorola Mobility Device DTBs"
