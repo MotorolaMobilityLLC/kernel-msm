@@ -46,6 +46,14 @@
 #define HPD_DISCONNECT_POLARITY 0
 #define HPD_CONNECT_POLARITY    1
 
+/*
+ * Audio engine may take 1 to 3 sec to shutdown
+ * in normal cases. To handle worst cases, making
+ * timeout for audio engine shutdown as 5 sec.
+ */
+#define AUDIO_POLL_SLEEP_US   (5 * 1000)
+#define AUDIO_POLL_TIMEOUT_US (AUDIO_POLL_SLEEP_US * 1000)
+
 #define IFRAME_CHECKSUM_32(d)			\
 	((d & 0xff) + ((d >> 8) & 0xff) +	\
 	((d >> 16) & 0xff) + ((d >> 24) & 0xff))
@@ -87,6 +95,8 @@ static irqreturn_t hdmi_tx_isr(int irq, void *data);
 static void hdmi_tx_hpd_off(struct hdmi_tx_ctrl *hdmi_ctrl);
 static int hdmi_tx_enable_power(struct hdmi_tx_ctrl *hdmi_ctrl,
 	enum hdmi_tx_power_module_type module, int enable);
+static inline void hdmi_tx_set_audio_switch_node(struct hdmi_tx_ctrl *hdmi_ctrl,
+	int val, bool force);
 static int hdmi_tx_audio_setup(struct hdmi_tx_ctrl *hdmi_ctrl);
 
 struct mdss_hw hdmi_tx_hw = {
@@ -286,28 +296,6 @@ static int hdmi_tx_get_vic_from_panel_info(struct hdmi_tx_ctrl *hdmi_ctrl,
 	return new_vic;
 } /* hdmi_tx_get_vic_from_panel_info */
 
-static inline u32 hdmi_tx_is_dvi_mode(struct hdmi_tx_ctrl *hdmi_ctrl)
-{
-	return hdmi_edid_get_sink_mode(
-		hdmi_ctrl->feature_data[HDMI_TX_FEAT_EDID]) ? 0 : 1;
-} /* hdmi_tx_is_dvi_mode */
-
-static inline void hdmi_tx_set_audio_switch_node(struct hdmi_tx_ctrl *hdmi_ctrl,
-	int val, bool force)
-{
-	if (!hdmi_ctrl) {
-		DEV_ERR("%s: invalid input\n", __func__);
-		return;
-	}
-
-	if (!hdmi_tx_is_dvi_mode(hdmi_ctrl) &&
-		(force || (hdmi_ctrl->audio_sdev.state != val))) {
-		switch_set_state(&hdmi_ctrl->audio_sdev, val);
-		DEV_INFO("%s: hdmi_audio state switched to %d\n", __func__,
-			hdmi_ctrl->audio_sdev.state);
-	}
-} /* hdmi_tx_set_audio_switch_node */
-
 static inline void hdmi_tx_send_cable_notification(
 	struct hdmi_tx_ctrl *hdmi_ctrl, int val)
 {
@@ -320,9 +308,15 @@ static inline void hdmi_tx_send_cable_notification(
 		switch_set_state(&hdmi_ctrl->sdev, val);
 } /* hdmi_tx_send_cable_notification */
 
+static inline u32 hdmi_tx_is_dvi_mode(struct hdmi_tx_ctrl *hdmi_ctrl)
+{
+	return hdmi_edid_get_sink_mode(
+		hdmi_ctrl->feature_data[HDMI_TX_FEAT_EDID]) ? 0 : 1;
+} /* hdmi_tx_is_dvi_mode */
+
 static void hdmi_tx_wait_for_audio_engine(struct hdmi_tx_ctrl *hdmi_ctrl)
 {
-	u32 i, timeout_sec = 5, audio_pkt_ctrl, audio_cfg;
+	u32 status = 0;
 	struct dss_io_data *io = NULL;
 
 	if (!hdmi_ctrl) {
@@ -331,27 +325,21 @@ static void hdmi_tx_wait_for_audio_engine(struct hdmi_tx_ctrl *hdmi_ctrl)
 	}
 
 	io = &hdmi_ctrl->pdata.io[HDMI_TX_CORE_IO];
-	audio_pkt_ctrl = DSS_REG_R(io, HDMI_AUDIO_PKT_CTRL);
-	audio_cfg      = DSS_REG_R(io, HDMI_AUDIO_CFG);
-
-	for (i = 0; i < timeout_sec; i++) {
-		u32 j = 200;
-		while ((audio_pkt_ctrl & BIT(0) || audio_cfg & BIT(0)) &&
-				--j) {
-			msleep(50);
-			audio_pkt_ctrl = DSS_REG_R(io, HDMI_AUDIO_PKT_CTRL);
-			audio_cfg      = DSS_REG_R(io, HDMI_AUDIO_CFG);
-		}
-
-		if (!j)
-			DEV_ERR("%s: audio still on after %d sec. try again\n",
-				__func__, i + 1);
-		else
-			break;
+	if (!io->base) {
+		DEV_ERR("%s: core io not inititalized\n", __func__);
+		return;
 	}
 
-	if (i == timeout_sec)
-		DEV_ERR("%s: Error: cannot turn off audio engine\n", __func__);
+	if (readl_poll_timeout(io->base + HDMI_AUDIO_PKT_CTRL, status,
+				(status & BIT(0)) == 0, AUDIO_POLL_SLEEP_US,
+				AUDIO_POLL_TIMEOUT_US))
+		DEV_ERR("%s: Error turning off audio packet transmission.\n",
+			__func__);
+
+	if (readl_poll_timeout(io->base + HDMI_AUDIO_CFG, status,
+				(status & BIT(0)) == 0, AUDIO_POLL_SLEEP_US,
+				AUDIO_POLL_TIMEOUT_US))
+		DEV_ERR("%s: Error turning off audio engine.\n", __func__);
 }
 
 static struct hdmi_tx_ctrl *hdmi_tx_get_drvdata_from_panel_data(
@@ -671,6 +659,22 @@ static void hdmi_tx_sysfs_remove(struct hdmi_tx_ctrl *hdmi_ctrl)
 		sysfs_remove_group(hdmi_ctrl->kobj, &hdmi_tx_fs_attrs_group);
 	hdmi_ctrl->kobj = NULL;
 } /* hdmi_tx_sysfs_remove */
+
+static inline void hdmi_tx_set_audio_switch_node(struct hdmi_tx_ctrl *hdmi_ctrl,
+	int val, bool force)
+{
+	if (!hdmi_ctrl) {
+		DEV_ERR("%s: invalid input\n", __func__);
+		return;
+	}
+
+	if (!hdmi_tx_is_dvi_mode(hdmi_ctrl) &&
+		(force || (hdmi_ctrl->audio_sdev.state != val))) {
+		switch_set_state(&hdmi_ctrl->audio_sdev, val);
+		DEV_INFO("%s: hdmi_audio state switched to %d\n", __func__,
+			hdmi_ctrl->audio_sdev.state);
+	}
+} /* hdmi_tx_set_audio_switch_node */
 
 static int hdmi_tx_config_avmute(struct hdmi_tx_ctrl *hdmi_ctrl, int set)
 {
