@@ -1,0 +1,143 @@
+/* Copyright (c) 2013, Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+
+	sound-9302 {
+		qcom,tapan-codec-9302-tfa9890;
+	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		qcom,msm-dai-q6-mi2s-pri {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <0>;
+			qcom,msm-mi2s-rx-lines = <1>;
+			qcom,msm-mi2s-tx-lines = <0>;
+		};
+	};
+
+	gpiomux {
+		pin@fd51260 {
+			reg = <0xfd51260 0x10>;   /* AUD_AIC_RST */
+			qcom,pin-num = <38>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(38)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(38)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd5113f0 {
+			reg = <0xfd5113f0 0x10>;  /* MI2S_SCK */
+			qcom,pin-num = <63>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* function-1(63)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* function-1(63)         */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd511400 {
+			reg = <0xfd511400 0x10>;  /* MI2S_WS */
+			qcom,pin-num = <64>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* function-1(64)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* function-1(64)         */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd511410 {
+			reg = <0xfd511410 0x10>;  /* MI2S_MSM_DO */
+			qcom,pin-num = <65>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* function-1(65)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* function-1(65)         */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd511420 {
+			reg = <0xfd511420 0x10>;  /* MI2S_MSM_DI */
+			qcom,pin-num = <66>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* function-1(66)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* function-1(66)         */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd511430 {
+			reg = <0xfd511430 0x10>;  /* MSM_CODEC_REF_CLK */
+			qcom,pin-num = <67>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* function-1(67)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <1>;  /* function-1(67)         */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+	};
+};
+
+&i2c_3 {
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&msmgpio 38 0>;     /* RESET */
+		tfa_vdd-supply = <&pm8226_l6>;
+		nxp,tfa_max-vol-steps = <15>;
+	};
+};
+
