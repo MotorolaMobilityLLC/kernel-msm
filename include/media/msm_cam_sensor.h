@@ -428,6 +428,7 @@ struct msm_actuator_move_params_t {
 	int8_t sign_dir;
 	int16_t dest_step_pos;
 	int32_t num_steps;
+	int32_t num_steps_inf_pos;
 	struct damping_params_t *ringing_params;
 };
 

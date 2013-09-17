@@ -365,7 +365,7 @@ static int32_t msm_actuator_set_default_focus(
 	int32_t rc = 0;
 	CDBG("Enter\n");
 
-	if (a_ctrl->curr_step_pos != 0)
+	if (a_ctrl->curr_step_pos != move_params->num_steps_inf_pos)
 		rc = a_ctrl->func_tbl->actuator_move_focus(a_ctrl, move_params);
 	CDBG("Exit\n");
 	return rc;
