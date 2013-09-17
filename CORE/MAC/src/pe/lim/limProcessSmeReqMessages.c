@@ -646,9 +646,6 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->txLdpcIniFeatureEnabled = 
                                     pSmeStartBssReq->txLdpcIniFeatureEnabled;
 
-        psessionEntry->oxygenNwkIniFeatureEnabled =
-                                    pSmeStartBssReq->oxygenNwkIniFeatureEnabled;
-
         vos_mem_copy((void*)&psessionEntry->rateSet,
             (void*)&pSmeStartBssReq->operationalRateSet,
             sizeof(tSirMacRateSet));

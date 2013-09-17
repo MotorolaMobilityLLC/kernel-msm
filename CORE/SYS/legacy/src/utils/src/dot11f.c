@@ -3886,20 +3886,6 @@ tANI_U32 dot11fUnpackIeOperatingMode(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8
 #define SigIeOperatingMode ( 0x004c )
 
 
-tANI_U32 dot11fUnpackIeOxygenNetwork(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEOxygenNetwork *pDst)
-{
-    tANI_U32 status = DOT11F_PARSE_SUCCESS;
-    (void) pBuf; (void)ielen; /* Shutup the compiler */
-    if (pDst->present) status = DOT11F_DUPLICATE_IE;
-    pDst->present = 1;
-    framesntohs(pCtx, &pDst->data, pBuf, 0);
-    (void)pCtx;
-    return status;
-} /* End dot11fUnpackIeOxygenNetwork. */
-
-#define SigIeOxygenNetwork ( 0x004d )
-
-
     static const tTLVDefn TLVS_P2PAssocReq[ ] = {
         {offsetof(tDot11fIEP2PAssocReq, P2PCapability), offsetof(tDot11fTLVP2PCapability, present), "P2PCapability", SigTlvP2PCapability, DOT11F_TLV_P2PCAPABILITY, 0, 5, 5, 1, 1, 2, 0, },
         {offsetof(tDot11fIEP2PAssocReq, ExtendedListenTiming), offsetof(tDot11fTLVExtendedListenTiming, present), "ExtendedListenTiming", SigTlvExtendedListenTiming, DOT11F_TLV_EXTENDEDLISTENTIMING, 0, 7, 7, 0, 1, 2, 0, },
@@ -3916,7 +3902,7 @@ tANI_U32 dot11fUnpackIeP2PAssocReq(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PAssocReq. */
 
-#define SigIeP2PAssocReq ( 0x004e )
+#define SigIeP2PAssocReq ( 0x004d )
 
 
     static const tTLVDefn TLVS_P2PAssocRes[ ] = {
@@ -3934,7 +3920,7 @@ tANI_U32 dot11fUnpackIeP2PAssocRes(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PAssocRes. */
 
-#define SigIeP2PAssocRes ( 0x004f )
+#define SigIeP2PAssocRes ( 0x004e )
 
 
     static const tTLVDefn TLVS_P2PBeacon[ ] = {
@@ -3953,7 +3939,7 @@ tANI_U32 dot11fUnpackIeP2PBeacon(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeP2PBeacon. */
 
-#define SigIeP2PBeacon ( 0x0050 )
+#define SigIeP2PBeacon ( 0x004f )
 
 
     static const tTLVDefn TLVS_P2PBeaconProbeRes[ ] = {
@@ -3975,7 +3961,7 @@ tANI_U32 dot11fUnpackIeP2PBeaconProbeRes(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tAN
     return status;
 } /* End dot11fUnpackIeP2PBeaconProbeRes. */
 
-#define SigIeP2PBeaconProbeRes ( 0x0051 )
+#define SigIeP2PBeaconProbeRes ( 0x0050 )
 
 
     static const tTLVDefn TLVS_P2PDeAuth[ ] = {
@@ -3992,7 +3978,7 @@ tANI_U32 dot11fUnpackIeP2PDeAuth(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeP2PDeAuth. */
 
-#define SigIeP2PDeAuth ( 0x0052 )
+#define SigIeP2PDeAuth ( 0x0051 )
 
 
     static const tTLVDefn TLVS_P2PDeviceDiscoverabilityReq[ ] = {
@@ -4010,7 +3996,7 @@ tANI_U32 dot11fUnpackIeP2PDeviceDiscoverabilityReq(tpAniSirGlobal pCtx, tANI_U8 
     return status;
 } /* End dot11fUnpackIeP2PDeviceDiscoverabilityReq. */
 
-#define SigIeP2PDeviceDiscoverabilityReq ( 0x0053 )
+#define SigIeP2PDeviceDiscoverabilityReq ( 0x0052 )
 
 
     static const tTLVDefn TLVS_P2PDeviceDiscoverabilityRes[ ] = {
@@ -4027,7 +4013,7 @@ tANI_U32 dot11fUnpackIeP2PDeviceDiscoverabilityRes(tpAniSirGlobal pCtx, tANI_U8 
     return status;
 } /* End dot11fUnpackIeP2PDeviceDiscoverabilityRes. */
 
-#define SigIeP2PDeviceDiscoverabilityRes ( 0x0054 )
+#define SigIeP2PDeviceDiscoverabilityRes ( 0x0053 )
 
 
     static const tTLVDefn TLVS_P2PDisAssoc[ ] = {
@@ -4044,7 +4030,7 @@ tANI_U32 dot11fUnpackIeP2PDisAssoc(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PDisAssoc. */
 
-#define SigIeP2PDisAssoc ( 0x0055 )
+#define SigIeP2PDisAssoc ( 0x0054 )
 
 
     static const tTLVDefn TLVS_P2PGONegCnf[ ] = {
@@ -4065,7 +4051,7 @@ tANI_U32 dot11fUnpackIeP2PGONegCnf(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PGONegCnf. */
 
-#define SigIeP2PGONegCnf ( 0x0056 )
+#define SigIeP2PGONegCnf ( 0x0055 )
 
 
     static const tTLVDefn TLVS_P2PGONegReq[ ] = {
@@ -4090,7 +4076,7 @@ tANI_U32 dot11fUnpackIeP2PGONegReq(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PGONegReq. */
 
-#define SigIeP2PGONegReq ( 0x0057 )
+#define SigIeP2PGONegReq ( 0x0056 )
 
 
     static const tTLVDefn TLVS_P2PGONegRes[ ] = {
@@ -4115,7 +4101,7 @@ tANI_U32 dot11fUnpackIeP2PGONegRes(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PGONegRes. */
 
-#define SigIeP2PGONegRes ( 0x0058 )
+#define SigIeP2PGONegRes ( 0x0057 )
 
 
     static const tTLVDefn TLVS_P2PGONegWPS[ ] = {
@@ -4133,7 +4119,7 @@ tANI_U32 dot11fUnpackIeP2PGONegWPS(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PGONegWPS. */
 
-#define SigIeP2PGONegWPS ( 0x0059 )
+#define SigIeP2PGONegWPS ( 0x0058 )
 
 
 tANI_U32 dot11fUnpackIeP2PIEOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEP2PIEOpaque *pDst)
@@ -4153,7 +4139,7 @@ tANI_U32 dot11fUnpackIeP2PIEOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PIEOpaque. */
 
-#define SigIeP2PIEOpaque ( 0x005a )
+#define SigIeP2PIEOpaque ( 0x0059 )
 
 
     static const tTLVDefn TLVS_P2PInvitationReq[ ] = {
@@ -4176,7 +4162,7 @@ tANI_U32 dot11fUnpackIeP2PInvitationReq(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI
     return status;
 } /* End dot11fUnpackIeP2PInvitationReq. */
 
-#define SigIeP2PInvitationReq ( 0x005b )
+#define SigIeP2PInvitationReq ( 0x005a )
 
 
     static const tTLVDefn TLVS_P2PInvitationRes[ ] = {
@@ -4197,7 +4183,7 @@ tANI_U32 dot11fUnpackIeP2PInvitationRes(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI
     return status;
 } /* End dot11fUnpackIeP2PInvitationRes. */
 
-#define SigIeP2PInvitationRes ( 0x005c )
+#define SigIeP2PInvitationRes ( 0x005b )
 
 
     static const tTLVDefn TLVS_P2PNoticeOfAbsence[ ] = {
@@ -4214,7 +4200,7 @@ tANI_U32 dot11fUnpackIeP2PNoticeOfAbsence(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tA
     return status;
 } /* End dot11fUnpackIeP2PNoticeOfAbsence. */
 
-#define SigIeP2PNoticeOfAbsence ( 0x005d )
+#define SigIeP2PNoticeOfAbsence ( 0x005c )
 
 
     static const tTLVDefn TLVS_P2PPresenceResponse[ ] = {
@@ -4232,7 +4218,7 @@ tANI_U32 dot11fUnpackIeP2PPresenceResponse(tpAniSirGlobal pCtx, tANI_U8 *pBuf, t
     return status;
 } /* End dot11fUnpackIeP2PPresenceResponse. */
 
-#define SigIeP2PPresenceResponse ( 0x005e )
+#define SigIeP2PPresenceResponse ( 0x005d )
 
 
     static const tTLVDefn TLVS_P2PProbeReq[ ] = {
@@ -4253,7 +4239,7 @@ tANI_U32 dot11fUnpackIeP2PProbeReq(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PProbeReq. */
 
-#define SigIeP2PProbeReq ( 0x005f )
+#define SigIeP2PProbeReq ( 0x005e )
 
 
     static const tTLVDefn TLVS_P2PProbeRes[ ] = {
@@ -4274,7 +4260,7 @@ tANI_U32 dot11fUnpackIeP2PProbeRes(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeP2PProbeRes. */
 
-#define SigIeP2PProbeRes ( 0x0060 )
+#define SigIeP2PProbeRes ( 0x005f )
 
 
     static const tTLVDefn TLVS_P2PProvisionDiscoveryReq[ ] = {
@@ -4293,7 +4279,7 @@ tANI_U32 dot11fUnpackIeP2PProvisionDiscoveryReq(tpAniSirGlobal pCtx, tANI_U8 *pB
     return status;
 } /* End dot11fUnpackIeP2PProvisionDiscoveryReq. */
 
-#define SigIeP2PProvisionDiscoveryReq ( 0x0061 )
+#define SigIeP2PProvisionDiscoveryReq ( 0x0060 )
 
 
     static const tTLVDefn TLVS_P2PWSCProvisionDiscoveryRes[ ] = {
@@ -4310,7 +4296,7 @@ tANI_U32 dot11fUnpackIeP2PWSCProvisionDiscoveryRes(tpAniSirGlobal pCtx, tANI_U8 
     return status;
 } /* End dot11fUnpackIeP2PWSCProvisionDiscoveryRes. */
 
-#define SigIeP2PWSCProvisionDiscoveryRes ( 0x0062 )
+#define SigIeP2PWSCProvisionDiscoveryRes ( 0x0061 )
 
 
 tANI_U32 dot11fUnpackIePTIControl(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEPTIControl *pDst)
@@ -4327,7 +4313,7 @@ tANI_U32 dot11fUnpackIePTIControl(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ie
     return status;
 } /* End dot11fUnpackIePTIControl. */
 
-#define SigIePTIControl ( 0x0063 )
+#define SigIePTIControl ( 0x0062 )
 
 
 tANI_U32 dot11fUnpackIePUBufferStatus(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEPUBufferStatus *pDst)
@@ -4347,7 +4333,7 @@ tANI_U32 dot11fUnpackIePUBufferStatus(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U
     return status;
 } /* End dot11fUnpackIePUBufferStatus. */
 
-#define SigIePUBufferStatus ( 0x0064 )
+#define SigIePUBufferStatus ( 0x0063 )
 
 
 tANI_U32 dot11fUnpackIePowerCaps(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEPowerCaps *pDst)
@@ -4364,7 +4350,7 @@ tANI_U32 dot11fUnpackIePowerCaps(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIePowerCaps. */
 
-#define SigIePowerCaps ( 0x0065 )
+#define SigIePowerCaps ( 0x0064 )
 
 
 tANI_U32 dot11fUnpackIePowerConstraints(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEPowerConstraints *pDst)
@@ -4378,7 +4364,7 @@ tANI_U32 dot11fUnpackIePowerConstraints(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI
     return status;
 } /* End dot11fUnpackIePowerConstraints. */
 
-#define SigIePowerConstraints ( 0x0066 )
+#define SigIePowerConstraints ( 0x0065 )
 
 
 tANI_U32 dot11fUnpackIeQBSSLoad(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEQBSSLoad *pDst)
@@ -4398,7 +4384,7 @@ tANI_U32 dot11fUnpackIeQBSSLoad(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iele
     return status;
 } /* End dot11fUnpackIeQBSSLoad. */
 
-#define SigIeQBSSLoad ( 0x0067 )
+#define SigIeQBSSLoad ( 0x0066 )
 
 
 tANI_U32 dot11fUnpackIeQOSCapsAp(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEQOSCapsAp *pDst)
@@ -4418,7 +4404,7 @@ tANI_U32 dot11fUnpackIeQOSCapsAp(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeQOSCapsAp. */
 
-#define SigIeQOSCapsAp ( 0x0068 )
+#define SigIeQOSCapsAp ( 0x0067 )
 
 
 tANI_U32 dot11fUnpackIeQOSCapsStation(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEQOSCapsStation *pDst)
@@ -4440,7 +4426,7 @@ tANI_U32 dot11fUnpackIeQOSCapsStation(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U
     return status;
 } /* End dot11fUnpackIeQOSCapsStation. */
 
-#define SigIeQOSCapsStation ( 0x0069 )
+#define SigIeQOSCapsStation ( 0x0068 )
 
 
 tANI_U32 dot11fUnpackIeQuiet(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEQuiet *pDst)
@@ -4463,7 +4449,7 @@ tANI_U32 dot11fUnpackIeQuiet(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, 
     return status;
 } /* End dot11fUnpackIeQuiet. */
 
-#define SigIeQuiet ( 0x006a )
+#define SigIeQuiet ( 0x0069 )
 
 
 tANI_U32 dot11fUnpackIeRCPIIE(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIERCPIIE *pDst)
@@ -4477,7 +4463,7 @@ tANI_U32 dot11fUnpackIeRCPIIE(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen,
     return status;
 } /* End dot11fUnpackIeRCPIIE. */
 
-#define SigIeRCPIIE ( 0x006b )
+#define SigIeRCPIIE ( 0x006a )
 
 
     static const tFFDefn FFS_RICDataDesc[ ] = {
@@ -4517,7 +4503,7 @@ tANI_U32 dot11fUnpackIeRICDataDesc(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeRICDataDesc. */
 
-#define SigIeRICDataDesc ( 0x006c )
+#define SigIeRICDataDesc ( 0x006b )
 
 
 tANI_U32 dot11fUnpackIeRSN(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIERSN *pDst)
@@ -4620,7 +4606,7 @@ tANI_U32 dot11fUnpackIeRSN(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tD
     return status;
 } /* End dot11fUnpackIeRSN. */
 
-#define SigIeRSN ( 0x006d )
+#define SigIeRSN ( 0x006c )
 
 
 tANI_U32 dot11fUnpackIeRSNIIE(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIERSNIIE *pDst)
@@ -4634,7 +4620,7 @@ tANI_U32 dot11fUnpackIeRSNIIE(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen,
     return status;
 } /* End dot11fUnpackIeRSNIIE. */
 
-#define SigIeRSNIIE ( 0x006e )
+#define SigIeRSNIIE ( 0x006d )
 
 
 tANI_U32 dot11fUnpackIeRSNOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIERSNOpaque *pDst)
@@ -4654,7 +4640,7 @@ tANI_U32 dot11fUnpackIeRSNOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeRSNOpaque. */
 
-#define SigIeRSNOpaque ( 0x006f )
+#define SigIeRSNOpaque ( 0x006e )
 
 
 tANI_U32 dot11fUnpackIeSuppChannels(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIESuppChannels *pDst)
@@ -4674,7 +4660,7 @@ tANI_U32 dot11fUnpackIeSuppChannels(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 
     return status;
 } /* End dot11fUnpackIeSuppChannels. */
 
-#define SigIeSuppChannels ( 0x0070 )
+#define SigIeSuppChannels ( 0x006f )
 
 
 tANI_U32 dot11fUnpackIeSuppRates(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIESuppRates *pDst)
@@ -4702,7 +4688,7 @@ tANI_U32 dot11fUnpackIeSuppRates(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeSuppRates. */
 
-#define SigIeSuppRates ( 0x0071 )
+#define SigIeSuppRates ( 0x0070 )
 
 
 tANI_U32 dot11fUnpackIeTIM(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIETIM *pDst)
@@ -4731,7 +4717,7 @@ tANI_U32 dot11fUnpackIeTIM(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tD
     return status;
 } /* End dot11fUnpackIeTIM. */
 
-#define SigIeTIM ( 0x0072 )
+#define SigIeTIM ( 0x0071 )
 
 
 tANI_U32 dot11fUnpackIeTPCReport(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIETPCReport *pDst)
@@ -4748,7 +4734,7 @@ tANI_U32 dot11fUnpackIeTPCReport(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeTPCReport. */
 
-#define SigIeTPCReport ( 0x0073 )
+#define SigIeTPCReport ( 0x0072 )
 
 
 tANI_U32 dot11fUnpackIeTPCRequest(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIETPCRequest *pDst)
@@ -4761,7 +4747,7 @@ tANI_U32 dot11fUnpackIeTPCRequest(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ie
     return status;
 } /* End dot11fUnpackIeTPCRequest. */
 
-#define SigIeTPCRequest ( 0x0074 )
+#define SigIeTPCRequest ( 0x0073 )
 
 
 tANI_U32 dot11fUnpackIeVHTCaps(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEVHTCaps *pDst)
@@ -4814,7 +4800,7 @@ tANI_U32 dot11fUnpackIeVHTCaps(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen
     return status;
 } /* End dot11fUnpackIeVHTCaps. */
 
-#define SigIeVHTCaps ( 0x0075 )
+#define SigIeVHTCaps ( 0x0074 )
 
 
 tANI_U32 dot11fUnpackIeVHTExtBssLoad(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEVHTExtBssLoad *pDst)
@@ -4840,7 +4826,7 @@ tANI_U32 dot11fUnpackIeVHTExtBssLoad(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8
     return status;
 } /* End dot11fUnpackIeVHTExtBssLoad. */
 
-#define SigIeVHTExtBssLoad ( 0x0076 )
+#define SigIeVHTExtBssLoad ( 0x0075 )
 
 
 tANI_U32 dot11fUnpackIeVHTOperation(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEVHTOperation *pDst)
@@ -4863,7 +4849,7 @@ tANI_U32 dot11fUnpackIeVHTOperation(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 
     return status;
 } /* End dot11fUnpackIeVHTOperation. */
 
-#define SigIeVHTOperation ( 0x0077 )
+#define SigIeVHTOperation ( 0x0076 )
 
 
 tANI_U32 dot11fUnpackIeWAPI(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWAPI *pDst)
@@ -4932,7 +4918,7 @@ tANI_U32 dot11fUnpackIeWAPI(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, t
     return status;
 } /* End dot11fUnpackIeWAPI. */
 
-#define SigIeWAPI ( 0x0078 )
+#define SigIeWAPI ( 0x0077 )
 
 
 tANI_U32 dot11fUnpackIeWAPIOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWAPIOpaque *pDst)
@@ -4952,7 +4938,7 @@ tANI_U32 dot11fUnpackIeWAPIOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ie
     return status;
 } /* End dot11fUnpackIeWAPIOpaque. */
 
-#define SigIeWAPIOpaque ( 0x0079 )
+#define SigIeWAPIOpaque ( 0x0078 )
 
 
 tANI_U32 dot11fUnpackIeWFATPC(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWFATPC *pDst)
@@ -4969,7 +4955,7 @@ tANI_U32 dot11fUnpackIeWFATPC(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen,
     return status;
 } /* End dot11fUnpackIeWFATPC. */
 
-#define SigIeWFATPC ( 0x007a )
+#define SigIeWFATPC ( 0x0079 )
 
 
 tANI_U32 dot11fUnpackIeWFDIEOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWFDIEOpaque *pDst)
@@ -4989,7 +4975,7 @@ tANI_U32 dot11fUnpackIeWFDIEOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeWFDIEOpaque. */
 
-#define SigIeWFDIEOpaque ( 0x007b )
+#define SigIeWFDIEOpaque ( 0x007a )
 
 
 tANI_U32 dot11fUnpackIeWMMCaps(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWMMCaps *pDst)
@@ -5017,7 +5003,7 @@ tANI_U32 dot11fUnpackIeWMMCaps(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen
     return status;
 } /* End dot11fUnpackIeWMMCaps. */
 
-#define SigIeWMMCaps ( 0x007c )
+#define SigIeWMMCaps ( 0x007b )
 
 
 tANI_U32 dot11fUnpackIeWMMInfoAp(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWMMInfoAp *pDst)
@@ -5038,7 +5024,7 @@ tANI_U32 dot11fUnpackIeWMMInfoAp(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeWMMInfoAp. */
 
-#define SigIeWMMInfoAp ( 0x007d )
+#define SigIeWMMInfoAp ( 0x007c )
 
 
 tANI_U32 dot11fUnpackIeWMMInfoStation(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWMMInfoStation *pDst)
@@ -5063,7 +5049,7 @@ tANI_U32 dot11fUnpackIeWMMInfoStation(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U
     return status;
 } /* End dot11fUnpackIeWMMInfoStation. */
 
-#define SigIeWMMInfoStation ( 0x007e )
+#define SigIeWMMInfoStation ( 0x007d )
 
 
 tANI_U32 dot11fUnpackIeWMMParams(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWMMParams *pDst)
@@ -5156,7 +5142,7 @@ tANI_U32 dot11fUnpackIeWMMParams(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeWMMParams. */
 
-#define SigIeWMMParams ( 0x007f )
+#define SigIeWMMParams ( 0x007e )
 
 
 tANI_U32 dot11fUnpackIeWPA(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWPA *pDst)
@@ -5238,7 +5224,7 @@ tANI_U32 dot11fUnpackIeWPA(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tD
     return status;
 } /* End dot11fUnpackIeWPA. */
 
-#define SigIeWPA ( 0x0080 )
+#define SigIeWPA ( 0x007f )
 
 
 tANI_U32 dot11fUnpackIeWPAOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWPAOpaque *pDst)
@@ -5258,7 +5244,7 @@ tANI_U32 dot11fUnpackIeWPAOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeWPAOpaque. */
 
-#define SigIeWPAOpaque ( 0x0081 )
+#define SigIeWPAOpaque ( 0x0080 )
 
 
     static const tTLVDefn TLVS_WSC[ ] = {
@@ -5296,7 +5282,7 @@ tANI_U32 dot11fUnpackIeWSC(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tD
     return status;
 } /* End dot11fUnpackIeWSC. */
 
-#define SigIeWSC ( 0x0082 )
+#define SigIeWSC ( 0x0081 )
 
 
 tANI_U32 dot11fUnpackIeWiderBWChanSwitchAnn(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWiderBWChanSwitchAnn *pDst)
@@ -5316,7 +5302,7 @@ tANI_U32 dot11fUnpackIeWiderBWChanSwitchAnn(tpAniSirGlobal pCtx, tANI_U8 *pBuf, 
     return status;
 } /* End dot11fUnpackIeWiderBWChanSwitchAnn. */
 
-#define SigIeWiderBWChanSwitchAnn ( 0x0083 )
+#define SigIeWiderBWChanSwitchAnn ( 0x0082 )
 
 
     static const tTLVDefn TLVS_WscAssocReq[ ] = {
@@ -5335,7 +5321,7 @@ tANI_U32 dot11fUnpackIeWscAssocReq(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeWscAssocReq. */
 
-#define SigIeWscAssocReq ( 0x0084 )
+#define SigIeWscAssocReq ( 0x0083 )
 
 
     static const tTLVDefn TLVS_WscAssocRes[ ] = {
@@ -5354,7 +5340,7 @@ tANI_U32 dot11fUnpackIeWscAssocRes(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeWscAssocRes. */
 
-#define SigIeWscAssocRes ( 0x0085 )
+#define SigIeWscAssocRes ( 0x0084 )
 
 
     static const tTLVDefn TLVS_WscBeacon[ ] = {
@@ -5379,7 +5365,7 @@ tANI_U32 dot11fUnpackIeWscBeacon(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 iel
     return status;
 } /* End dot11fUnpackIeWscBeacon. */
 
-#define SigIeWscBeacon ( 0x0086 )
+#define SigIeWscBeacon ( 0x0085 )
 
 
     static const tTLVDefn TLVS_WscBeaconProbeRes[ ] = {
@@ -5412,7 +5398,7 @@ tANI_U32 dot11fUnpackIeWscBeaconProbeRes(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tAN
     return status;
 } /* End dot11fUnpackIeWscBeaconProbeRes. */
 
-#define SigIeWscBeaconProbeRes ( 0x0087 )
+#define SigIeWscBeaconProbeRes ( 0x0086 )
 
 
 tANI_U32 dot11fUnpackIeWscIEOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 ielen, tDot11fIEWscIEOpaque *pDst)
@@ -5432,7 +5418,7 @@ tANI_U32 dot11fUnpackIeWscIEOpaque(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeWscIEOpaque. */
 
-#define SigIeWscIEOpaque ( 0x0088 )
+#define SigIeWscIEOpaque ( 0x0087 )
 
 
     static const tTLVDefn TLVS_WscProbeReq[ ] = {
@@ -5463,7 +5449,7 @@ tANI_U32 dot11fUnpackIeWscProbeReq(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeWscProbeReq. */
 
-#define SigIeWscProbeReq ( 0x0089 )
+#define SigIeWscProbeReq ( 0x0088 )
 
 
     static const tTLVDefn TLVS_WscProbeRes[ ] = {
@@ -5496,7 +5482,7 @@ tANI_U32 dot11fUnpackIeWscProbeRes(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8 i
     return status;
 } /* End dot11fUnpackIeWscProbeRes. */
 
-#define SigIeWscProbeRes ( 0x008a )
+#define SigIeWscProbeRes ( 0x0089 )
 
 
     static const tTLVDefn TLVS_WscReassocRes[ ] = {
@@ -5515,7 +5501,7 @@ tANI_U32 dot11fUnpackIeWscReassocRes(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U8
     return status;
 } /* End dot11fUnpackIeWscReassocRes. */
 
-#define SigIeWscReassocRes ( 0x008b )
+#define SigIeWscReassocRes ( 0x008a )
 
 
     static const tFFDefn FFS_AddBAReq[] = {
@@ -8427,7 +8413,6 @@ tANI_U32 dot11fUnpackAuthentication(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32
         {offsetof(tDot11fBeacon, ExtCap), offsetof(tDot11fIEExtCap, present), 0, "ExtCap" , 0, 10, 10, SigIeExtCap, {0, 0, 0, 0, 0}, 0, DOT11F_EID_EXTCAP, 0, },
         {offsetof(tDot11fBeacon, OperatingMode), offsetof(tDot11fIEOperatingMode, present), 0, "OperatingMode" , 0, 3, 3, SigIeOperatingMode, {0, 0, 0, 0, 0}, 0, DOT11F_EID_OPERATINGMODE, 0, },
         {offsetof(tDot11fBeacon, WiderBWChanSwitchAnn), offsetof(tDot11fIEWiderBWChanSwitchAnn, present), 0, "WiderBWChanSwitchAnn" , 0, 5, 5, SigIeWiderBWChanSwitchAnn, {0, 0, 0, 0, 0}, 0, DOT11F_EID_WIDERBWCHANSWITCHANN, 0, },
-        {offsetof(tDot11fBeacon, OxygenNetwork), offsetof(tDot11fIEOxygenNetwork, present), 0, "OxygenNetwork" , 0, 7, 7, SigIeOxygenNetwork, {0, 22, 50, 0, 0}, 3, DOT11F_EID_OXYGENNETWORK, 0, },
     {0, 0, 0, NULL, 0, 0, 0, 0, {0, 0, 0, 0, 0}, 0, 0xff, 0, },    };
 
 tANI_U32 dot11fUnpackBeacon(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, tDot11fBeacon *pFrm)
@@ -9512,15 +9497,6 @@ tANI_U32 dot11fUnpackBeacon(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, t
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq0, 1);
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq1, 1);
         }
-        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("OxygenNetwork:\n"));
-        if (!pFrm->OxygenNetwork.present)
-        {
-            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("Not present.\n"));
-        }
-        else
-        {
-            FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->OxygenNetwork.data, 2);
-        }
     }
 #   endif // DOT11F_DUMP_FRAMES
     return status;
@@ -9656,7 +9632,6 @@ tANI_U32 dot11fUnpackBeacon1(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, 
         {offsetof(tDot11fBeacon2, ExtCap), offsetof(tDot11fIEExtCap, present), 0, "ExtCap" , 0, 10, 10, SigIeExtCap, {0, 0, 0, 0, 0}, 0, DOT11F_EID_EXTCAP, 0, },
         {offsetof(tDot11fBeacon2, OperatingMode), offsetof(tDot11fIEOperatingMode, present), 0, "OperatingMode" , 0, 3, 3, SigIeOperatingMode, {0, 0, 0, 0, 0}, 0, DOT11F_EID_OPERATINGMODE, 0, },
         {offsetof(tDot11fBeacon2, WiderBWChanSwitchAnn), offsetof(tDot11fIEWiderBWChanSwitchAnn, present), 0, "WiderBWChanSwitchAnn" , 0, 5, 5, SigIeWiderBWChanSwitchAnn, {0, 0, 0, 0, 0}, 0, DOT11F_EID_WIDERBWCHANSWITCHANN, 0, },
-        {offsetof(tDot11fBeacon2, OxygenNetwork), offsetof(tDot11fIEOxygenNetwork, present), 0, "OxygenNetwork" , 0, 7, 7, SigIeOxygenNetwork, {0, 22, 50, 0, 0}, 3, DOT11F_EID_OXYGENNETWORK, 0, },
     {0, 0, 0, NULL, 0, 0, 0, 0, {0, 0, 0, 0, 0}, 0, 0xff, 0, },    };
 
 tANI_U32 dot11fUnpackBeacon2(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, tDot11fBeacon2 *pFrm)
@@ -10589,15 +10564,6 @@ tANI_U32 dot11fUnpackBeacon2(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, 
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq0, 1);
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq1, 1);
         }
-        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("OxygenNetwork:\n"));
-        if (!pFrm->OxygenNetwork.present)
-        {
-            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("Not present.\n"));
-        }
-        else
-        {
-            FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->OxygenNetwork.data, 2);
-        }
     }
 #   endif // DOT11F_DUMP_FRAMES
     return status;
@@ -10653,7 +10619,6 @@ tANI_U32 dot11fUnpackBeacon2(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, 
         {offsetof(tDot11fBeaconIEs, ExtCap), offsetof(tDot11fIEExtCap, present), 0, "ExtCap" , 0, 10, 10, SigIeExtCap, {0, 0, 0, 0, 0}, 0, DOT11F_EID_EXTCAP, 0, },
         {offsetof(tDot11fBeaconIEs, OperatingMode), offsetof(tDot11fIEOperatingMode, present), 0, "OperatingMode" , 0, 3, 3, SigIeOperatingMode, {0, 0, 0, 0, 0}, 0, DOT11F_EID_OPERATINGMODE, 0, },
         {offsetof(tDot11fBeaconIEs, WiderBWChanSwitchAnn), offsetof(tDot11fIEWiderBWChanSwitchAnn, present), 0, "WiderBWChanSwitchAnn" , 0, 5, 5, SigIeWiderBWChanSwitchAnn, {0, 0, 0, 0, 0}, 0, DOT11F_EID_WIDERBWCHANSWITCHANN, 0, },
-        {offsetof(tDot11fBeaconIEs, OxygenNetwork), offsetof(tDot11fIEOxygenNetwork, present), 0, "OxygenNetwork" , 0, 7, 7, SigIeOxygenNetwork, {0, 22, 50, 0, 0}, 3, DOT11F_EID_OXYGENNETWORK, 0, },
     {0, 0, 0, NULL, 0, 0, 0, 0, {0, 0, 0, 0, 0}, 0, 0xff, 0, },    };
 
 tANI_U32 dot11fUnpackBeaconIEs(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, tDot11fBeaconIEs *pFrm)
@@ -11845,15 +11810,6 @@ tANI_U32 dot11fUnpackBeaconIEs(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newChanWidth, 1);
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq0, 1);
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq1, 1);
-        }
-        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("OxygenNetwork:\n"));
-        if (!pFrm->OxygenNetwork.present)
-        {
-            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("Not present.\n"));
-        }
-        else
-        {
-            FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->OxygenNetwork.data, 2);
         }
     }
 #   endif // DOT11F_DUMP_FRAMES
@@ -14128,7 +14084,6 @@ tANI_U32 dot11fUnpackProbeRequest(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 n
         {offsetof(tDot11fProbeResponse, VHTOperation), offsetof(tDot11fIEVHTOperation, present), 0, "VHTOperation" , 0, 7, 7, SigIeVHTOperation, {0, 0, 0, 0, 0}, 0, DOT11F_EID_VHTOPERATION, 0, },
         {offsetof(tDot11fProbeResponse, VHTExtBssLoad), offsetof(tDot11fIEVHTExtBssLoad, present), 0, "VHTExtBssLoad" , 0, 7, 7, SigIeVHTExtBssLoad, {0, 0, 0, 0, 0}, 0, DOT11F_EID_VHTEXTBSSLOAD, 0, },
         {offsetof(tDot11fProbeResponse, ExtCap), offsetof(tDot11fIEExtCap, present), 0, "ExtCap" , 0, 10, 10, SigIeExtCap, {0, 0, 0, 0, 0}, 0, DOT11F_EID_EXTCAP, 0, },
-        {offsetof(tDot11fProbeResponse, OxygenNetwork), offsetof(tDot11fIEOxygenNetwork, present), 0, "OxygenNetwork" , 0, 7, 7, SigIeOxygenNetwork, {0, 22, 50, 0, 0}, 3, DOT11F_EID_OXYGENNETWORK, 0, },
     {0, 0, 0, NULL, 0, 0, 0, 0, {0, 0, 0, 0, 0}, 0, 0xff, 0, },    };
 
 tANI_U32 dot11fUnpackProbeResponse(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, tDot11fProbeResponse *pFrm)
@@ -15266,15 +15221,6 @@ tANI_U32 dot11fUnpackProbeResponse(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 
             FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("TDLSWiderBW (1): %d\n"), pFrm->ExtCap.TDLSWiderBW);
             FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("operModeNotification (1): %d\n"), pFrm->ExtCap.operModeNotification);
             FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("reserved7 (1): %d\n"), pFrm->ExtCap.reserved7);
-        }
-        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("OxygenNetwork:\n"));
-        if (!pFrm->OxygenNetwork.present)
-        {
-            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("Not present.\n"));
-        }
-        else
-        {
-            FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), ( tANI_U8* )&pFrm->OxygenNetwork.data, 2);
         }
     }
 #   endif // DOT11F_DUMP_FRAMES
@@ -20435,9 +20381,6 @@ static tANI_U32 UnpackCore(tpAniSirGlobal pCtx,
                 case SigIeOperatingMode:
                         status |= dot11fUnpackIeOperatingMode(pCtx, pBufRemaining, len, ( tDot11fIEOperatingMode* )(pFrm + pIe->offset + sizeof(tDot11fIEOperatingMode)*countOffset) );
                             break;
-                case SigIeOxygenNetwork:
-                        status |= dot11fUnpackIeOxygenNetwork(pCtx, pBufRemaining, len, ( tDot11fIEOxygenNetwork* )(pFrm + pIe->offset + sizeof(tDot11fIEOxygenNetwork)*countOffset) );
-                            break;
                 case SigIeP2PAssocReq:
                         status |= dot11fUnpackIeP2PAssocReq(pCtx, pBufRemaining, len, ( tDot11fIEP2PAssocReq* )(pFrm + pIe->offset + sizeof(tDot11fIEP2PAssocReq)*countOffset) );
                             break;
@@ -22618,11 +22561,6 @@ static tANI_U32 GetPackedSizeCore(tpAniSirGlobal pCtx,
                             offset = sizeof(tDot11fIEOperatingMode);
                             byteCount = 1;
                             pIePresent = ( (tDot11fIEOperatingMode* )(pFrm + pIe->offset + offset * i  ))->present;
-                            break;
-                case SigIeOxygenNetwork:
-                            offset = sizeof(tDot11fIEOxygenNetwork);
-                            byteCount = 2;
-                            pIePresent = ( (tDot11fIEOxygenNetwork* )(pFrm + pIe->offset + offset * i  ))->present;
                             break;
                 case SigIeP2PAssocReq:
                             offset = sizeof(tDot11fIEP2PAssocReq);
@@ -28498,42 +28436,6 @@ tANI_U32 dot11fPackIeOperatingMode(tpAniSirGlobal pCtx,
     }
     return DOT11F_PARSE_SUCCESS;
 } /* End dot11fPackIeOperatingMode. */
-
-tANI_U32 dot11fPackIeOxygenNetwork(tpAniSirGlobal pCtx,
-                                   tDot11fIEOxygenNetwork *pSrc,
-                                   tANI_U8 *pBuf,
-                                   tANI_U32 nBuf,
-                                   tANI_U32 *pnConsumed)
-{
-    tANI_U8* pIeLen = 0;
-    tANI_U32 nConsumedOnEntry = *pnConsumed;
-    tANI_U32 nNeeded = 0U;
-    nNeeded  += 2;
-    while ( pSrc->present )
-    {
-        if ( nNeeded > nBuf ) return DOT11F_BUFFER_OVERFLOW;
-        *pBuf = 221;
-        ++pBuf; ++(*pnConsumed);
-        pIeLen = pBuf;
-        ++pBuf; ++(*pnConsumed);
-        *pBuf = 0x0;
-        ++pBuf; ++(*pnConsumed);
-        *pBuf = 0x16;
-        ++pBuf; ++(*pnConsumed);
-        *pBuf = 0x32;
-        ++pBuf; ++(*pnConsumed);
-        frameshtons(pCtx, pBuf, pSrc->data, 0);
-        *pnConsumed += 2;
-        // fieldsEndFlag = 1
-        break;
-    }
-    (void)pCtx;
-    if (pIeLen)
-    {
-        *pIeLen = *pnConsumed - nConsumedOnEntry - 2;
-    }
-    return DOT11F_PARSE_SUCCESS;
-} /* End dot11fPackIeOxygenNetwork. */
 
 tANI_U32 dot11fPackIeP2PAssocReq(tpAniSirGlobal pCtx,
                                  tDot11fIEP2PAssocReq *pSrc,
@@ -35008,15 +34910,6 @@ tANI_U32 dot11fPackBeacon(tpAniSirGlobal pCtx, tDot11fBeacon *pFrm, tANI_U8 *pBu
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq0, 1);
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq1, 1);
         }
-        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("OxygenNetwork:\n"));
-        if (!pFrm->OxygenNetwork.present)
-        {
-            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("Not present.\n"));
-        }
-        else
-        {
-            FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), ( tANI_U8* )&pFrm->OxygenNetwork.data, 2);
-        }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), FRFL("to:\n"));
         FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON), pBuf, nBuf);
     }
@@ -36032,15 +35925,6 @@ tANI_U32 dot11fPackBeacon2(tpAniSirGlobal pCtx, tDot11fBeacon2 *pFrm, tANI_U8 *p
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newChanWidth, 1);
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq0, 1);
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq1, 1);
-        }
-        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("OxygenNetwork:\n"));
-        if (!pFrm->OxygenNetwork.present)
-        {
-            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("Not present.\n"));
-        }
-        else
-        {
-            FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), ( tANI_U8* )&pFrm->OxygenNetwork.data, 2);
         }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), FRFL("to:\n"));
         FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACON2), pBuf, nBuf);
@@ -37238,15 +37122,6 @@ tANI_U32 dot11fPackBeaconIEs(tpAniSirGlobal pCtx, tDot11fBeaconIEs *pFrm, tANI_U
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newChanWidth, 1);
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq0, 1);
             FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->WiderBWChanSwitchAnn.newCenterChanFreq1, 1);
-        }
-        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("OxygenNetwork:\n"));
-        if (!pFrm->OxygenNetwork.present)
-        {
-            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("Not present.\n"));
-        }
-        else
-        {
-            FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), ( tANI_U8* )&pFrm->OxygenNetwork.data, 2);
         }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), FRFL("to:\n"));
         FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_BEACONIES), pBuf, nBuf);
@@ -40341,15 +40216,6 @@ tANI_U32 dot11fPackProbeResponse(tpAniSirGlobal pCtx, tDot11fProbeResponse *pFrm
             FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("TDLSWiderBW (1): %d\n"), pFrm->ExtCap.TDLSWiderBW);
             FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("operModeNotification (1): %d\n"), pFrm->ExtCap.operModeNotification);
             FRAMES_LOG1(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("reserved7 (1): %d\n"), pFrm->ExtCap.reserved7);
-        }
-        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("OxygenNetwork:\n"));
-        if (!pFrm->OxygenNetwork.present)
-        {
-            FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("Not present.\n"));
-        }
-        else
-        {
-            FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), ( tANI_U8* )&pFrm->OxygenNetwork.data, 2);
         }
         FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), FRFL("to:\n"));
         FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_PROBERESPONSE), pBuf, nBuf);
@@ -45107,9 +44973,6 @@ static tANI_U32 PackCore(tpAniSirGlobal pCtx,
                         break;
                     case SigIeOperatingMode:
                         status |= dot11fPackIeOperatingMode(pCtx, ( tDot11fIEOperatingMode* )(pSrc + pIe->offset + sizeof(tDot11fIEOperatingMode) * i ),  pBufRemaining, nBufRemaining, &len);
-                        break;
-                    case SigIeOxygenNetwork:
-                        status |= dot11fPackIeOxygenNetwork(pCtx, ( tDot11fIEOxygenNetwork* )(pSrc + pIe->offset + sizeof(tDot11fIEOxygenNetwork) * i ),  pBufRemaining, nBufRemaining, &len);
                         break;
                     case SigIeP2PAssocReq:
                         status |= dot11fPackIeP2PAssocReq(pCtx, ( tDot11fIEP2PAssocReq* )(pSrc + pIe->offset + sizeof(tDot11fIEP2PAssocReq) * i ),  pBufRemaining, nBufRemaining, &len);
