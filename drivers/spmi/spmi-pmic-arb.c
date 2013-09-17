@@ -502,7 +502,7 @@ periph_interrupt(struct spmi_pmic_arb_dev *pmic_arb, u8 apid, bool show)
 
 	if (!is_apid_valid(pmic_arb, apid)) {
 		dev_err(pmic_arb->dev, "unknown peripheral id 0x%x\n", ppid);
-		/* return IRQ_NONE; */
+		return IRQ_NONE;
 	}
 
 	status = readl_relaxed(intr + SPMI_PIC_ACC_ENABLE(apid));
