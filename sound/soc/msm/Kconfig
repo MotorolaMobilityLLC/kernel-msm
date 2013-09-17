@@ -216,6 +216,7 @@ config SND_SOC_MSM8226
 	select SND_SOC_WCD9306
 	select SND_DYNAMIC_MINORS
 	select SND_SOC_TPA6165A2
+	select SND_SOC_TFA9890
 	help
 	 To add support for SoC audio on MSM8226.
 	 This will enable sound soc drivers which
