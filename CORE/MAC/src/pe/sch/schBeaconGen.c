@@ -363,19 +363,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     }
 #endif
 
-    if (psessionEntry->oxygenNwkIniFeatureEnabled &&
-       (eLIM_STA_IN_IBSS_ROLE == psessionEntry->limSystemRole)) {
-        if ((status = wlan_cfgGetInt(pMac, WNI_CFG_OXYGEN_NETWORK_DATA,
-                                     &tmp)) != eSIR_SUCCESS)
-        {
-            limLog(pMac, LOGW, FL("Unable to get WNI_CFG_OXYGEN_NETWORK_DATA"));
-        }
-        else {
-            pBcn2->OxygenNetwork.present = 1;
-            pBcn2->OxygenNetwork.data = (tmp & 0xffff);
-        }
-    }
-
     PopulateDot11fExtSuppRates( pMac, POPULATE_DOT11F_RATES_OPERATIONAL,
                                 &pBcn2->ExtSuppRates, psessionEntry );
  
