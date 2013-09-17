@@ -101,7 +101,7 @@ endif
    zreladdr-$(CONFIG_ARCH_MSM8226)	:= 0x00008000
 
 # Do not include QC default DTBs if not needed
-ifneq ($(CONFIG_MMI_8X26_DEVICE_DTBS),y)
+ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
 	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-sim.dtb
 	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-fluid.dtb
 	dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-v1-cdp.dtb
@@ -134,20 +134,20 @@ ifneq ($(CONFIG_MMI_8X26_DEVICE_DTBS),y)
 endif
 
 # MSM8226 Motorola Devices
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-bigfoot-p1.dtb
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p1.dtb
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p2.dtb
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p2-v2.dtb
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p2b.dtb
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p2b1.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-bigfoot-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p2.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p2-v2.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p2b.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p2b1.dtb
 
 # MSM8926 Motorola Devices
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8926-peregrine-p1.dtb
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8926-peregrine-p1c.dtb
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8926-peregrine-p2.dtb
-dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8926-peregrine-nii-p2.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-p1.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-p1c.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-p2.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-nii-p2.dtb
 
-ifeq ($(CONFIG_MMI_8X26_DEVICE_DTBS),y)
+ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
 # to be runtime added by the bootloader (i.e. /chosen properties)
 DTC_FLAGS := -p 1024
