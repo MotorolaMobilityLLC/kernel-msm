@@ -489,6 +489,11 @@ void ion_free(struct ion_client *client, struct ion_handle *handle)
 {
 	bool valid_handle;
 
+    if(IS_ERR_OR_NULL(handle)) {
+        pr_err("%s: handle pointer is invalid\n", __func__) ;
+        return;
+    }
+
 	BUG_ON(client != handle->client);
 
 	mutex_lock(&client->lock);
@@ -733,6 +738,15 @@ void ion_unmap_iommu(struct ion_client *client, struct ion_handle *handle,
 	struct ion_iommu_map *iommu_map;
 	struct ion_buffer *buffer;
 
+    if(IS_ERR_OR_NULL(client)) {
+        pr_err("%s: client pointer is invalid\n", __func__) ;
+        return;
+    }
+    if(IS_ERR_OR_NULL(handle)) {
+        pr_err("%s: handle pointer is invalid\n", __func__) ;
+        return;
+    }
+
 	mutex_lock(&client->lock);
 	buffer = handle->buffer;
 
@@ -749,12 +763,13 @@ void ion_unmap_iommu(struct ion_client *client, struct ion_handle *handle,
 	kref_put(&iommu_map->ref, ion_iommu_release);
 
 	buffer->iommu_map_cnt--;
+
 out:
 	mutex_unlock(&buffer->lock);
 
 	mutex_unlock(&client->lock);
-
 }
+
 EXPORT_SYMBOL(ion_unmap_iommu);
 
 void *ion_map_kernel(struct ion_client *client, struct ion_handle *handle)
