@@ -2425,8 +2425,6 @@ static int mdp_on(struct platform_device *pdev)
 	pr_debug("%s:+\n", __func__);
 
 	if (!(mfd->cont_splash_done)) {
-		if(mfd->fbi->node == 0)
-                        mdp_set_dma_pan_info(mfd->fbi, NULL, TRUE);
 		if (mfd->panel.type == MIPI_VIDEO_PANEL)
 			mdp4_dsi_video_splash_done(pdev);
 
