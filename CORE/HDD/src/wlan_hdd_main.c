@@ -5090,7 +5090,12 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    }
 
 free_hdd_ctx:
-   wiphy_unregister(wiphy) ;
+   /* FTM mode, WIPHY did not registered
+      If un-register here, system crash will happen */
+   if (VOS_FTM_MODE != hdd_get_conparam())
+   {
+      wiphy_unregister(wiphy) ;
+   }
    wiphy_free(wiphy) ;
    if (hdd_is_ssr_required())
    {
