@@ -671,6 +671,7 @@ int wlan_hdd_cfg80211_init(struct device *dev,
     wiphy->flags |= WIPHY_FLAG_SUPPORTS_SCHED_SCAN;
     wiphy->max_sched_scan_ssids = SIR_PNO_MAX_SUPP_NETWORKS;
     wiphy->max_match_sets       = SIR_PNO_MAX_SUPP_NETWORKS;
+    wiphy->max_sched_scan_ie_len = SIR_MAC_MAX_IE_LENGTH;
 #endif/*FEATURE_WLAN_SCAN_PNO*/
 
 #ifdef CONFIG_ENABLE_LINUX_REG
@@ -7504,6 +7505,19 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         pPnoRequest->aNetworks[i].ucChannelCount = num_ch;
 
         pPnoRequest->aNetworks[i].rssiThreshold = 0; //Default value
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "request->ie_len = %d", request->ie_len);
+    if ((0 < request->ie_len) && (NULL != request->ie))
+    {
+        pPnoRequest->us24GProbeTemplateLen = request->ie_len;
+        memcpy(&pPnoRequest->p24GProbeTemplate, request->ie,
+                pPnoRequest->us24GProbeTemplateLen);
+
+        pPnoRequest->us5GProbeTemplateLen = request->ie_len;
+        memcpy(&pPnoRequest->p5GProbeTemplate, request->ie,
+                pPnoRequest->us5GProbeTemplateLen);
     }
 
     /* Driver gets only one time interval which is hardcoded in
