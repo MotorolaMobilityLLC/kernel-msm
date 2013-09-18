@@ -395,7 +395,7 @@ struct log_field {
 #define  KGSL_FT_DEFAULT_POLICY (BIT(KGSL_FT_REPLAY) + BIT(KGSL_FT_SKIPIB))
 
 /* This internal bit is used to skip the PM dump on replayed command batches */
-#define  KGSL_FT_SKIP_PMDUMP              BIT(31)
+#define  KGSL_FT_SKIP_PMDUMP              31
 
 /* Pagefault policy flags */
 #define KGSL_FT_PAGEFAULT_INT_ENABLE         BIT(0)
