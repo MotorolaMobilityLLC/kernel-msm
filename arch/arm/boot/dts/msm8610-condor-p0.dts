@@ -20,7 +20,7 @@
 / {
 	model = "Qualcomm MSM 8610v2 MTP";
 	compatible = "qcom,msm8610-mtp", "qcom,msm8610", "qcom,mtp";
-	qcom,msm-id = <147 0x44 0x8100>;
+	qcom,msm-id = <147 0x41 0x8100>;
 };
 
 &soc {
