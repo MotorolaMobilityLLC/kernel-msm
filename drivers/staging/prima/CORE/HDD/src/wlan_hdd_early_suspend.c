@@ -568,9 +568,12 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
     tANI_U8 selfIPv6Addr[SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA][SIR_MAC_IPV6_ADDR_LEN] = {{0,}};
     tANI_BOOLEAN selfIPv6AddrValid[SIR_MAC_NUM_TARGET_IPV6_NS_OFFLOAD_NA] = {0};
     tSirHostOffloadReq offLoadRequest;
+    hdd_context_t *pHddCtx;
 
     int i =0;
     eHalStatus returnStatus;
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
     ENTER();
     if (fenable)
@@ -640,6 +643,20 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
                     offLoadRequest.nsOffloadInfo.targetIPv6AddrValid[0] = SIR_IPV6_ADDR_VALID;
                     offLoadRequest.offloadType =  SIR_IPV6_NS_OFFLOAD;
                     offLoadRequest.enableOrDisable = SIR_OFFLOAD_ENABLE;
+
+                    hddLog (VOS_TRACE_LEVEL_INFO,
+                    "configuredMcastBcastFilter: %d",pHddCtx->configuredMcastBcastFilter);
+
+                    if((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST ==
+                              pHddCtx->configuredMcastBcastFilter) ||
+                        (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
+                        pHddCtx->configuredMcastBcastFilter))
+                    {
+                        hddLog (VOS_TRACE_LEVEL_INFO,
+                        "Set offLoadRequest with SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE \n", __func__);
+                        offLoadRequest.enableOrDisable =
+                         SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE;
+                    }
 
                     vos_mem_copy(&offLoadRequest.params.hostIpv6Addr,
                                 &offLoadRequest.nsOffloadInfo.targetIPv6Addr[0],
