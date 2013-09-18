@@ -26,6 +26,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
 
+#define PM8226_FLASH_LED
+
 #define WLED_MOD_EN_REG(base, n)	(base + 0x60 + n*0x10)
 #define WLED_IDAC_DLY_REG(base, n)	(WLED_MOD_EN_REG(base, n) + 0x01)
 #define WLED_FULL_SCALE_REG(base, n)	(WLED_IDAC_DLY_REG(base, n) + 0x01)
@@ -131,6 +133,9 @@
 #define FLASH_TMR_SAFETY		0x00
 #define FLASH_FAULT_DETECT_MASK		0X80
 #define FLASH_HW_VREG_OK		0x40
+#ifdef PM8226_FLASH_LED
+#define FLASH_SW_VREG_OK		0x80
+#endif
 #define FLASH_VREG_MASK			0xC0
 #define FLASH_STARTUP_DLY_MASK		0x02
 #define FLASH_CURRENT_RAMP_MASK		0xBF
@@ -1148,6 +1153,21 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 				goto error_flash_set;
 		}
 
+#ifdef PM8226_FLASH_LED
+		rc = qpnp_led_masked_write(led,
+			FLASH_ENABLE_CONTROL(led->base),
+			led->flash_cfg->enable_module,
+			FLASH_DISABLE_ALL);
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"Enable reg write failed(%d)\n", rc);
+			if (led->flash_cfg->torch_enable)
+				goto error_torch_set;
+			else
+				goto error_flash_set;
+		}
+#endif
+
 		if (led->flash_cfg->torch_enable) {
 			rc = qpnp_led_masked_write(led,
 				FLASH_LED_UNLOCK_SECURE(led->base),
@@ -1194,6 +1214,7 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 			 */
 			usleep(FLASH_RAMP_DN_DELAY_US);
 
+#ifndef PM8226_FLASH_LED
 			rc = qpnp_led_masked_write(led,
 				FLASH_ENABLE_CONTROL(led->base),
 				led->flash_cfg->enable_module &
@@ -1207,6 +1228,7 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 				else
 					goto error_flash_set;
 			}
+#endif
 
 			rc = qpnp_flash_regulator_operate(led, false);
 			if (rc) {
@@ -2388,7 +2410,11 @@ static int __devinit qpnp_flash_init(struct qpnp_led_data *led)
 
 	/* Set Vreg force */
 	rc = qpnp_led_masked_write(led,	FLASH_VREG_OK_FORCE(led->base),
+#ifdef PM8226_FLASH_LED
+		FLASH_VREG_MASK, FLASH_SW_VREG_OK);
+#else
 		FLASH_VREG_MASK, FLASH_HW_VREG_OK);
+#endif /* PM8226_FLASH_LED */
 	if (rc) {
 		dev_err(&led->spmi_dev->dev,
 			"Vreg OK reg write failed(%d)\n", rc);
