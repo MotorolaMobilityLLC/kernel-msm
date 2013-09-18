@@ -358,6 +358,7 @@ struct kgsl_process_private;
  * @pagefault: flag set if this context caused a pagefault.
  * @pagefault_ts: global timestamp of the pagefault, if KGSL_CONTEXT_PAGEFAULT
  * is set.
+ * @flags: flags from userspace controlling the behavior of this context
  */
 struct kgsl_context {
 	struct kref refcount;
@@ -373,6 +374,7 @@ struct kgsl_context {
 	struct list_head events;
 	struct list_head events_list;
 	unsigned int pagefault_ts;
+	unsigned int flags;
 };
 
 struct kgsl_process_private {
