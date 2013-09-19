@@ -7266,7 +7266,7 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     tpSirPNOScanReq pPnoRequest = NULL;
     hdd_context_t *pHddCtx;
     tHalHandle hHal;
-    v_U32_t i, indx, num_ch;
+    v_U32_t i, indx, num_ch, tempInterval;
     u8 valid_ch[WNI_CFG_VALID_CHANNEL_LIST_LEN];
     u8 channels_allowed[WNI_CFG_VALID_CHANNEL_LIST_LEN];
     v_U32_t num_channels_allowed = WNI_CFG_VALID_CHANNEL_LIST_LEN;
@@ -7380,11 +7380,35 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         pPnoRequest->aNetworks[i].rssiThreshold = 0; //Default value
     }
 
-    /* framework provides interval in ms */
-    pPnoRequest->scanTimers.ucScanTimersCount = 1;
-    pPnoRequest->scanTimers.aTimerValues[0].uTimerValue =
-          (request->interval)/1000;
-    pPnoRequest->scanTimers.aTimerValues[0].uTimerRepeat = 0;
+    /* Driver gets only one time interval which is hardcoded in
+     * supplicant for 10000ms. Taking power consumption into account 6 timers
+     * will be used, Timervalue is increased exponentially i.e 10,20,40,
+     * 80,160,320 secs. And number of scan cycle for each timer
+     * is configurable through INI param gPNOScanTimerRepeatValue.
+     * If it is set to 0 only one timer will be used and PNO scan cycle
+     * will be repeated after each interval specified by supplicant
+     * till PNO is disabled.
+     */
+    if (0 == pHddCtx->cfg_ini->configPNOScanTimerRepeatValue)
+        pPnoRequest->scanTimers.ucScanTimersCount = HDD_PNO_SCAN_TIMERS_SET_ONE;
+    else
+        pPnoRequest->scanTimers.ucScanTimersCount =
+                                               HDD_PNO_SCAN_TIMERS_SET_MULTIPLE;
+
+    tempInterval = (request->interval)/1000;
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "Base scan interval = %d PNOScanTimerRepeatValue = %d",
+              tempInterval, pHddCtx->cfg_ini->configPNOScanTimerRepeatValue);
+    for ( i = 0; i < pPnoRequest->scanTimers.ucScanTimersCount; i++)
+    {
+        pPnoRequest->scanTimers.aTimerValues[i].uTimerRepeat =
+                                 pHddCtx->cfg_ini->configPNOScanTimerRepeatValue;
+        pPnoRequest->scanTimers.aTimerValues[i].uTimerValue = tempInterval;
+        tempInterval *= 2;
+    }
+    //Repeat last timer until pno disabled.
+    pPnoRequest->scanTimers.aTimerValues[i-1].uTimerRepeat = 0;
+
     pPnoRequest->modePNO = SIR_PNO_MODE_ON_SUSPEND;
 
     status = sme_SetPreferredNetworkList(WLAN_HDD_GET_HAL_CTX(pAdapter),
