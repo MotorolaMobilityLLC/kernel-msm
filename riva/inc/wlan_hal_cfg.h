@@ -166,14 +166,61 @@
 #define QWLAN_HAL_CFG_ATH_DISABLE                       113
 #define QWLAN_HAL_CFG_FLEXCONNECT_POWER_FACTOR          114
 #define QWLAN_HAL_CFG_ENABLE_ADAPTIVE_RX_DRAIN_FEATURE  115
-#define QWLAN_HAL_CFG_GO_LINK_MONITOR_TIMEOUT           116
-#define QWLAN_HAL_CFG_MAX_PARAMS                        117
-
-
+#define QWLAN_HAL_CFG_TDLS_OFF_CHANNEL_CAPABLE          116
+#define QWLAN_HAL_CFG_MWS_COEX_V1_WAN_FREQ              117
+#define QWLAN_HAL_CFG_MWS_COEX_V1_WLAN_FREQ             118
+#define QWLAN_HAL_CFG_MWS_COEX_V1_CONFIG                119
+#define QWLAN_HAL_CFG_MWS_COEX_V1_CONFIG2               120
+#define QWLAN_HAL_CFG_MWS_COEX_V2_WAN_FREQ              121
+#define QWLAN_HAL_CFG_MWS_COEX_V2_WLAN_FREQ             122
+#define QWLAN_HAL_CFG_MWS_COEX_V2_CONFIG                123
+#define QWLAN_HAL_CFG_MWS_COEX_V2_CONFIG2               124
+#define QWLAN_HAL_CFG_MWS_COEX_V3_WAN_FREQ              125
+#define QWLAN_HAL_CFG_MWS_COEX_V3_WLAN_FREQ             126
+#define QWLAN_HAL_CFG_MWS_COEX_V3_CONFIG                127
+#define QWLAN_HAL_CFG_MWS_COEX_V3_CONFIG2               128
+#define QWLAN_HAL_CFG_MWS_COEX_V4_WAN_FREQ              129
+#define QWLAN_HAL_CFG_MWS_COEX_V4_WLAN_FREQ             130
+#define QWLAN_HAL_CFG_MWS_COEX_V4_CONFIG                131
+#define QWLAN_HAL_CFG_MWS_COEX_V4_CONFIG2               132
+#define QWLAN_HAL_CFG_MWS_COEX_V5_WAN_FREQ              133
+#define QWLAN_HAL_CFG_MWS_COEX_V5_WLAN_FREQ             134
+#define QWLAN_HAL_CFG_MWS_COEX_V5_CONFIG                135
+#define QWLAN_HAL_CFG_MWS_COEX_V5_CONFIG2               136
+#define QWLAN_HAL_CFG_MWS_COEX_V6_WAN_FREQ              137
+#define QWLAN_HAL_CFG_MWS_COEX_V6_WLAN_FREQ             138
+#define QWLAN_HAL_CFG_MWS_COEX_V6_CONFIG                139
+#define QWLAN_HAL_CFG_MWS_COEX_V6_CONFIG2               140
+#define QWLAN_HAL_CFG_MWS_COEX_V7_WAN_FREQ              141
+#define QWLAN_HAL_CFG_MWS_COEX_V7_WLAN_FREQ             142
+#define QWLAN_HAL_CFG_MWS_COEX_V7_CONFIG                143
+#define QWLAN_HAL_CFG_MWS_COEX_V7_CONFIG2               144
+#define QWLAN_HAL_CFG_MWS_COEX_V8_WAN_FREQ              145
+#define QWLAN_HAL_CFG_MWS_COEX_V8_WLAN_FREQ             146
+#define QWLAN_HAL_CFG_MWS_COEX_V8_CONFIG                147
+#define QWLAN_HAL_CFG_MWS_COEX_V8_CONFIG2               148
+#define QWLAN_HAL_CFG_MWS_COEX_V9_WAN_FREQ              149
+#define QWLAN_HAL_CFG_MWS_COEX_V9_WLAN_FREQ             150
+#define QWLAN_HAL_CFG_MWS_COEX_V9_CONFIG                151
+#define QWLAN_HAL_CFG_MWS_COEX_V9_CONFIG2               152
+#define QWLAN_HAL_CFG_MWS_COEX_V10_WAN_FREQ             153
+#define QWLAN_HAL_CFG_MWS_COEX_V10_WLAN_FREQ            154
+#define QWLAN_HAL_CFG_MWS_COEX_V10_CONFIG               155
+#define QWLAN_HAL_CFG_MWS_COEX_V10_CONFIG2              156
+#define QWLAN_HAL_CFG_MWS_COEX_MODEM_BACKOFF            157
+#define QWLAN_HAL_CFG_MWS_COEX_CONFIG1                  158
+#define QWLAN_HAL_CFG_MWS_COEX_CONFIG2                  159
+#define QWLAN_HAL_CFG_MWS_COEX_CONFIG3                  160
+#define QWLAN_HAL_CFG_MWS_COEX_CONFIG4                  161
+#define QWLAN_HAL_CFG_MWS_COEX_CONFIG5                  162
+#define QWLAN_HAL_CFG_MWS_COEX_CONFIG6                  163
+#define QWLAN_HAL_CFG_SAR_POWER_BACKOFF                 164
+#define QWLAN_HAL_CFG_GO_LINK_MONITOR_TIMEOUT           165
+#define QWLAN_HAL_CFG_MAX_PARAMS                        166
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                      117
+#define QWLAN_HAL_CFG_INTEGER_PARAM                      166
 
 
 /*-------------------------------------------------------------------------
@@ -828,6 +875,17 @@
 #define QWLAN_HAL_CFG_FLEXCONNECT_POWER_FACTOR_MIN  0
 #define QWLAN_HAL_CFG_FLEXCONNECT_POWER_FACTOR_MAX  9
 
+/* QWLAN_HAL_CFG_MWS_COEX_XXXX */
+#define QWLAN_HAL_CFG_MWS_COEX_DEF           0
+#define QWLAN_HAL_CFG_MWS_COEX_MIN           0
+#define QWLAN_HAL_CFG_MWS_COEX_MAX           0xFFFFFFFF
+#define QWLAN_HAL_CFG_MWS_COEX_MAX_VICTIM    10
+#define QWLAN_HAL_CFG_MWS_COEX_MAX_CONFIG    6
+
+/* QWLAN_HAL_CFG_SAR_POWER_BACKOFF */
+#define QWLAN_HAL_CFG_SAR_POWER_BACKOFF_DEF  13
+#define QWLAN_HAL_CFG_SAR_POWER_BACKOFF_MIN  1
+#define QWLAN_HAL_CFG_SAR_POWER_BACKOFF_MAX  21
 #endif //__WLAN_HAL_CFG_H__
 
 
