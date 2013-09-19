@@ -1571,6 +1571,46 @@ static int32_t mt9m114_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
+static int32_t i2c_burst_write_conf_tbl(
+		struct msm_camera_i2c_client *client,
+		struct msm_camera_i2c_reg_conf *tbl,
+		uint16_t size)
+{
+#define MAX_I2C_LEN (64)
+	int rc = 0;
+	int i, j;
+	uint8_t buf[MAX_I2C_LEN];
+	bool burst;
+
+	for (i = 0; i < size;) {
+		uint16_t staddr = tbl->reg_addr;
+		burst = false;
+		for (j = 0; j < MAX_I2C_LEN && i < size; j += 2, i++) {
+			if (!(tbl->dt == 0 || tbl->dt ==
+				MSM_CAMERA_I2C_WORD_DATA))
+				break;
+			if (tbl->reg_addr != (staddr + j))
+				break;
+			burst = true;
+			buf[j+0] = tbl->reg_data >> 8;
+			buf[j+1] = tbl->reg_data & 0xff;
+			tbl++;
+		}
+		if (burst) {
+			rc = client->i2c_func_tbl->i2c_write_seq(client,
+					staddr, buf, j);
+		} else {
+			rc = client->i2c_func_tbl->i2c_write_conf_tbl(client,
+					tbl++, 1, MSM_CAMERA_I2C_WORD_DATA);
+		}
+		if (rc < 0) {
+			pr_err("%s: unable to write data (%d)\n", __func__, rc);
+			break;
+		}
+	}
+	return rc;
+}
+
 int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	void __user *argp)
 {
@@ -1602,11 +1642,11 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	case CFG_SET_INIT_SETTING:
 		/* 1. Write Recommend settings */
 		/* 2. Write change settings */
-		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
-			i2c_write_conf_tbl(
-			s_ctrl->sensor_i2c_client, mt9m114_recommend_settings,
-			ARRAY_SIZE(mt9m114_recommend_settings),
-			MSM_CAMERA_I2C_WORD_DATA);
+		rc = i2c_burst_write_conf_tbl(
+			s_ctrl->sensor_i2c_client,
+			mt9m114_recommend_settings,
+			ARRAY_SIZE(mt9m114_recommend_settings));
+
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
 			i2c_write_conf_tbl(
 			s_ctrl->sensor_i2c_client,
