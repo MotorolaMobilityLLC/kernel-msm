@@ -1908,6 +1908,11 @@ static int mdp3_ctrl_lut_update_locked(struct msm_fb_data_type *mfd,
 		pr_err("Config LUT not defined!\n");
 		return -EINVAL;
 	}
+	if (cmap->start > MDP_LUT_SIZE || cmap->len > MDP_LUT_SIZE ||
+			(cmap->start + cmap->len > MDP_LUT_SIZE)) {
+		pr_err("mdp3_ctrl_lut_update invalid arguments\n");
+		return  -EINVAL;
+	}
 
 	lut_config.lut_enable = 7;
 	lut_config.lut_sel = mdp3_session->lut_sel;
