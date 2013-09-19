@@ -3633,13 +3633,26 @@ int iw_get_softap_linkspeed(struct net_device *dev,
        return valid;
    }
 
-   if ( hdd_string_to_hex ((char *)wrqu->data.pointer, wrqu->data.length, macAddress ) )
+   hddLog(VOS_TRACE_LEVEL_INFO, "%s wrqu->data.length= %d\n", __func__, wrqu->data.length);
+   status = hdd_string_to_hex ((char *)wrqu->data.pointer, wrqu->data.length, macAddress );
+
+   if (!VOS_IS_STATUS_SUCCESS(status ))
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL, FL("ERROR: Command not found"));
-      return -EINVAL;
+      hddLog(VOS_TRACE_LEVEL_ERROR, FL("String to Hex conversion Failed"));
    }
 
-   status = hdd_softap_GetStaId(pHostapdAdapter, (v_MACADDR_t *)macAddress, (void *)(&staId));
+   /* If no mac address is passed and/or its length is less than 18,
+    * link speed for first connected client will be returned.
+    */
+   if (!VOS_IS_STATUS_SUCCESS(status ) || wrqu->data.length < 18)
+   {
+      status = hdd_softap_GetConnectedStaId(pHostapdAdapter, (void *)(&staId));
+   }
+   else
+   {
+      status = hdd_softap_GetStaId(pHostapdAdapter,
+                               (v_MACADDR_t *)macAddress, (void *)(&staId));
+   }
 
    if (!VOS_IS_STATUS_SUCCESS(status))
    {
