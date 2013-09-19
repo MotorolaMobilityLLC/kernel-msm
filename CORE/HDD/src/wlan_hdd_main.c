@@ -3820,6 +3820,12 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          pAdapter->wdev.iftype = NL80211_IFTYPE_STATION;
          pAdapter->device_mode = session_type;
          status = hdd_register_interface( pAdapter, rtnl_held );
+
+         hdd_init_tx_rx( pAdapter );
+
+         //Stop the Interface TX queue.
+         netif_tx_disable(pAdapter->dev);
+         netif_carrier_off(pAdapter->dev);
       }
          break;
       default:
