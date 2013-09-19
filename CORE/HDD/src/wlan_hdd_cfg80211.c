@@ -645,6 +645,9 @@ int wlan_hdd_cfg80211_init(struct device *dev,
     }
     else
     {
+       /* This will disable updating of NL channels from passive to
+        * active if a beacon is received on passive channel. */
+       wiphy->flags |=   WIPHY_FLAG_DISABLE_BEACON_HINTS;
        wiphy->flags |=   WIPHY_FLAG_STRICT_REGULATORY;
     }
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
@@ -844,12 +847,6 @@ void wlan_hdd_cfg80211_update_reg_info(struct wiphy *wiphy)
     }
     if ((defaultCountryCode[0]== 'U') && (defaultCountryCode[1]=='S'))
     {
-       /* This will disable updating of NL channels from passive to
-          active if a beacon is received on passive channel.
-          If this flag is not disabled then nl can change passive channel to
-          active channels.
-       */
-       wiphy->flags |= WIPHY_FLAG_DISABLE_BEACON_HINTS;
        if (NULL == wiphy->bands[IEEE80211_BAND_5GHZ])
        {
           hddLog(VOS_TRACE_LEVEL_ERROR,"%s: wiphy->bands[IEEE80211_BAND_5GHZ] is NULL",__func__ );
