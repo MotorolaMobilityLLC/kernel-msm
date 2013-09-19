@@ -748,10 +748,6 @@ void limSendSmeMgmtTXCompletion(tpAniSirGlobal pMac,
                                 tpPESession psessionEntry,
                                 tANI_U32 txCompleteStatus);
 tSirRetStatus limDeleteTDLSPeers(tpAniSirGlobal pMac, tpPESession psessionEntry);
-#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
-void limTDLSDisappearAPTrickInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psessionEntry);
-int limGetTDLSPeerCount(tpAniSirGlobal pMac, tpPESession psessionEntry);
-#endif
 eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg, tpPESession);
 tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
            tSirMacAddr peerMac, tANI_U16 reason, tANI_U8 responder, tpPESession psessionEntry,

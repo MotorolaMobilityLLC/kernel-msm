@@ -361,13 +361,6 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
                         }
                         else
                         {
-#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
-                            if ((TRUE == pMac->lim.gLimTDLSOxygenSupport) &&
-                                (limGetTDLSPeerCount(pMac, psessionEntry) != 0)) {
-                                    limTDLSDisappearAPTrickInd(pMac, pStaDs, psessionEntry);
-                                    return;
-                            }
-#endif
 
                             limDeleteTDLSPeers(pMac, psessionEntry);
 #endif

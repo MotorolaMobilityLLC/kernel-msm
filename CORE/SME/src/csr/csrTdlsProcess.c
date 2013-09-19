@@ -1059,19 +1059,6 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
                                eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND);
             break ;
         }
-#ifdef FEATURE_WLAN_TDLS_OXYGEN_DISAPPEAR_AP
-        case eWNI_SME_TDLS_AP_DISAPPEAR_IND:
-        {
-            tpSirTdlsDisappearAPInd pSirTdlsDisappearAPInd = (tpSirTdlsDisappearAPInd) pMsgBuf;
-            tCsrRoamInfo roamInfo = {0} ;
-            roamInfo.staId = pSirTdlsDisappearAPInd->staId ;
-            /* Sending the TEARDOWN indication to HDD. */
-            csrRoamCallCallback(pMac, pSirTdlsDisappearAPInd->sessionId, &roamInfo, 0,
-                         eCSR_ROAM_TDLS_STATUS_UPDATE,
-                               eCSR_ROAM_RESULT_TDLS_DISAPPEAR_AP_IND);
-            break ;
-        }
-#endif
         case eWNI_SME_TDLS_DEL_ALL_PEER_IND:
         {
             tpSirTdlsDelAllPeerInd pSirTdlsDelAllPeerInd = (tpSirTdlsDelAllPeerInd) pMsgBuf ;
