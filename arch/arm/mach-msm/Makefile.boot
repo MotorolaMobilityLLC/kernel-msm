@@ -55,6 +55,7 @@ ifeq ($(CONFIG_MACH_LGE),y)
         dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-f.dtb
         dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-10.dtb
         dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-11.dtb
+        dtb-$(CONFIG_MACH_MSM8974_HAMMERHEAD)	+= msm8974-hammerhead-rev-11j.dtb
 else
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-cdp.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-fluid.dtb

@@ -1,0 +1,45 @@
+/* Copyright (c) 2013, LGE Inc. All rights reserved.
+ * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "msm8974-hammerhead.dtsi"
+
+&soc {
+	i2c@f9924000 {
+		synaptics_s3350@70 {
+			status = "ok";
+			synaptics,type = <1>;
+		};
+	};
+
+	vibrator {
+		vdd-supply = <&pm8941_l19>;
+		use-vdd-supply;
+		vibe-warmup-delay = <25>;
+	};
+
+	qcom,mdss_dsi_jdi_command_ors_j1 {
+		status = "ok";
+		qcom,cont-splash-enabled;
+	};
+
+	gpio_keys {
+		cover-switch {
+			label = "cover-switch";
+			gpios = <&msmgpio 144 0x01>;
+			linux,input-type = <5>;
+			linux,code = <0>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
