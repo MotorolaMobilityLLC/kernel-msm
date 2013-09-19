@@ -699,7 +699,7 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
    // then we know we are already in a low-resource condition
    if (unlikely(pLowResourceInfo->callback))
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "VPKT [%d]: Low resource handler already registered",
                 __LINE__);
       return VOS_STATUS_E_ALREADY;
@@ -889,7 +889,7 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
    // then we know we are already in a low-resource condition
    if (unlikely(pLowResourceInfo->callback))
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "VPKT [%d]: Low resource handler already registered",
                 __LINE__);
       return VOS_STATUS_E_ALREADY;
