@@ -55,7 +55,6 @@
 #define WAIT_CANCEL_REM_CHAN    1000
 #define WAIT_REM_CHAN_READY     1000
 #define WAIT_CHANGE_CHANNEL_FOR_OFFCHANNEL_TX 3000
-#define WAIT_TIME_FOR_P2PGO_CONNECTION 10000
 
 #define ACTION_FRAME_DEFAULT_WAIT 200
 
@@ -148,8 +147,6 @@ void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter );
 void hdd_sendActionCnf( hdd_adapter_t *pAdapter, tANI_BOOLEAN actionSendSuccess );
 int wlan_hdd_check_remain_on_channel(hdd_adapter_t *pAdapter);
 void wlan_hdd_cancel_existing_remain_on_channel(hdd_adapter_t *pAdapter);
-void hdd_start_p2p_go_connection_in_progress_timer( hdd_adapter_t *pAdapter );
-v_VOID_t wlan_hdd_p2p_go_connection_in_progresscb (v_PVOID_t userData );
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
 int wlan_hdd_action( struct wiphy *wiphy, struct wireless_dev *wdev,
