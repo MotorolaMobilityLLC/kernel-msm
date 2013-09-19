@@ -334,6 +334,9 @@ found:
 	return order;
 }
 
+static int modem_restarts;
+module_param(modem_restarts, int, 0644);
+
 static int max_restarts;
 module_param(max_restarts, int, 0644);
 
@@ -672,6 +675,8 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 
 	pr_debug("[%p]: Starting restart sequence for %s\n", current,
 			desc->name);
+	if (!strncmp(desc->name, "modem", SUBSYS_NAME_MAX_LENGTH))
+		modem_restarts++;
 	notify_each_subsys_device(list, count, SUBSYS_BEFORE_SHUTDOWN, NULL);
 	for_each_subsys_device(list, count, NULL, subsystem_shutdown);
 	notify_each_subsys_device(list, count, SUBSYS_AFTER_SHUTDOWN, NULL);
