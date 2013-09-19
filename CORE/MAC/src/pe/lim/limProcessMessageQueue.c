@@ -842,13 +842,23 @@ end:
  * @param  pMac      Pointer to Global MAC structure
  * @return eHAL_STATUS_SUCCESS or eHAL_STATUS_FAILURE
  */
-eHalStatus limSendStopScanOffloadReq(tpAniSirGlobal pMac)
+eHalStatus limSendStopScanOffloadReq(tpAniSirGlobal pMac, tANI_U8 SessionId)
 {
     tSirMsgQ msg;
     tSirRetStatus rc = eSIR_SUCCESS;
+    tAbortScanParams *pAbortScanParams;
 
+    if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
+                                                 (void**) &pAbortScanParams,
+                                                 sizeof(tAbortScanParams)))
+    {
+        limLog(pMac, LOGP, FL("Memory allocation failed for AbortScanParams"));
+        return eHAL_STATUS_FAILURE;
+    }
+
+    pAbortScanParams->SessionId = SessionId;
     msg.type = WDA_STOP_SCAN_OFFLOAD_REQ;
-    msg.bodyptr = NULL;
+    msg.bodyptr = pAbortScanParams;
     msg.bodyval = 0;
 
     rc = wdaPostCtrlMsg(pMac, &msg);
@@ -856,6 +866,7 @@ eHalStatus limSendStopScanOffloadReq(tpAniSirGlobal pMac)
     {
         limLog(pMac, LOGE, FL("wdaPostCtrlMsg() return failure"),
                pMac);
+        palFreeMemory(pMac->hHdd, (tANI_U8 *)pAbortScanParams);
         return eHAL_STATUS_FAILURE;
     }
 
@@ -877,7 +888,7 @@ eHalStatus limSendStopScanOffloadReq(tpAniSirGlobal pMac)
  * @return None
  */
 void
-limProcessAbortScanInd(tpAniSirGlobal pMac)
+limProcessAbortScanInd(tpAniSirGlobal pMac, tANI_U8 SessionId)
 {
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
     limDiagEventReport(pMac, WLAN_PE_DIAG_SCAN_ABORT_IND_EVENT, NULL, 0, 0);
@@ -894,7 +905,7 @@ limProcessAbortScanInd(tpAniSirGlobal pMac)
     if (pMac->fScanOffload)
     {
         /* send stop scan cmd to fw if scan offload is enabled. */
-        limSendStopScanOffloadReq(pMac);
+        limSendStopScanOffloadReq(pMac, SessionId);
     }
     else
     {
@@ -1236,11 +1247,13 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             break;
 
         case eWNI_SME_SCAN_ABORT_IND:
+        {
+            tANI_U8 *pSessionId = (tANI_U8 *)limMsg->bodyptr;
+            limProcessAbortScanInd(pMac, *pSessionId);
             vos_mem_free((v_VOID_t *)limMsg->bodyptr);
             limMsg->bodyptr = NULL;
-            limProcessAbortScanInd(pMac);
             break;
-
+        }
         case eWNI_SME_START_REQ:
         case eWNI_SME_SYS_READY_IND:
 #ifndef WNI_ASKEY_NON_SUPPORT_FEATURE

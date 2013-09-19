@@ -1877,7 +1877,7 @@ v_BOOL_t vos_is_apps_power_collapse_allowed(void* pHddCtx)
   return hdd_is_apps_power_collapse_allowed((hdd_context_t*) pHddCtx);
 }
 
-void vos_abort_mac_scan(void)
+void vos_abort_mac_scan(v_U8_t sessionId)
 {
     hdd_context_t *pHddCtx = NULL;
     v_CONTEXT_t pVosContext        = NULL;
@@ -1896,10 +1896,9 @@ void vos_abort_mac_scan(void)
        return;
     }
 
-    hdd_abort_mac_scan(pHddCtx);
+    hdd_abort_mac_scan(pHddCtx, sessionId);
     return;
 }
-
 /*---------------------------------------------------------------------------
 
   \brief vos_shutdown() - shutdown VOS
