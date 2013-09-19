@@ -304,65 +304,8 @@ static struct msm_camera_i2c_reg_conf ov10820_qtr_60fps_settings_rev_a1[] = {
 	{0x4837, 0x10},
 };
 
-static struct msm_camera_i2c_reg_conf ov10820_qtr_30fps_settings_rev_b1[] = {
-	{0x3082, 0x6c},
-	{0x3092, 0x09},
-	{0x300d, 0x11},
-	{0x301b, 0xb4},
-	{0x3033, 0x2d},
-	{0x3034, 0x48},
-	{0x3035, 0x36},
-	{0x3036, 0x51},
-	{0x3037, 0x36},
-	{0x3038, 0x51},
-	{0x3700, 0x22},
-	{0x3701, 0x0e},
-	{0x3702, 0x47},
-	{0x3703, 0x2f},
-	{0x3704, 0x17},
-	{0x3705, 0x11},
-	{0x3706, 0x0b},
-	{0x3707, 0x2e},
-	{0x3708, 0x42},
-	{0x3709, 0x1f},
-	{0x370a, 0x33},
-	{0x370b, 0x19},
-	{0x370c, 0x65},
-	{0x370d, 0x02},
-	{0x370e, 0x05},
-	{0x370f, 0x1b},
-	{0x3710, 0x13},
-	{0x3714, 0x21},
-	{0x3719, 0x0c},
-	{0x3721, 0xf0},
-	{0x374c, 0x68},
-	{0x3802, 0x00},
-	{0x3803, 0x08},
-	{0x3806, 0x09},
-	{0x3807, 0x97},
-	{0x3808, 0x10},
-	{0x3809, 0xf0},
-	{0x380a, 0x04},
-	{0x380b, 0xc4},
-	{0x380c, 0x2b},
-	{0x380d, 0x00},
-	{0x380e, 0x04},
-	{0x380f, 0xf0},
-	{0x3810, 0x00},
-	{0x3811, 0x08},
-	{0x3813, 0x02},
-	{0x3815, 0x22},
-	{0x3820, 0x02},
-	{0x4001, 0x00},
-	{0x4003, 0x1c},
-	{0x402a, 0x0a},
-	{0x402b, 0x06},
-	{0x402e, 0x14},
-	{0x4837, 0x12},
-	{0x5b04, 0xf3},
-};
-
-static struct msm_camera_i2c_reg_conf ov10820_qtr_60fps_settings_rev_b1[] = {
+static struct msm_camera_i2c_reg_conf
+ov10820_qtr_30fps_60fps_settings_rev_b1[] = {
 	{0x3082, 0x6c},
 	{0x3092, 0x03},
 	{0x300d, 0x23},
@@ -770,14 +713,14 @@ static struct msm_camera_i2c_conf_array ov10820_confs_rev_b1[] = {
 	{&ov10820_full_24fps_settings_rev_b1[0],
 		ARRAY_SIZE(ov10820_full_24fps_settings_rev_b1), 0,
 		MSM_CAMERA_I2C_BYTE_DATA},
-	{&ov10820_qtr_30fps_settings_rev_b1[0],
-		ARRAY_SIZE(ov10820_qtr_30fps_settings_rev_b1), 0,
+	{&ov10820_qtr_30fps_60fps_settings_rev_b1[0],
+		ARRAY_SIZE(ov10820_qtr_30fps_60fps_settings_rev_b1), 0,
 		MSM_CAMERA_I2C_BYTE_DATA},
 	{&ov10820_full_15fps_settings_rev_b1[0],
 		ARRAY_SIZE(ov10820_full_15fps_settings_rev_b1), 0,
 		MSM_CAMERA_I2C_BYTE_DATA},
-	{&ov10820_qtr_60fps_settings_rev_b1[0],
-		ARRAY_SIZE(ov10820_qtr_60fps_settings_rev_b1), 0,
+	{&ov10820_qtr_30fps_60fps_settings_rev_b1[0],
+		ARRAY_SIZE(ov10820_qtr_30fps_60fps_settings_rev_b1), 0,
 		MSM_CAMERA_I2C_BYTE_DATA},
 };
 
@@ -835,8 +778,8 @@ static struct msm_sensor_output_info_t ov10820_r1b_dimensions[] = {
 	{	/* 30 FPS QTR */
 		.x_output = 0x870,/*2160*/
 		.y_output = 0x4c0,/*1216*/
-		.line_length_pclk = 0x20f6, /*8438*/
-		.frame_length_lines = 0x4f0, /*1264*/
+		.line_length_pclk = 0x107b, /*4219*/
+		.frame_length_lines = 0x9e0,/*2528*/
 		.vt_pixel_clk = 320000000,
 		.op_pixel_clk = 320000000,
 		.binning_factor = 2,
@@ -953,6 +896,14 @@ static int32_t ov10820_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 		rc = msm_sensor_write_conf_array(
 				s_ctrl->sensor_i2c_client,
 				s_ctrl->msm_sensor_reg->mode_settings, res);
+		if (rc < 0)
+			return rc;
+
+		rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			s_ctrl->sensor_output_reg_addr->frame_length_lines,
+			s_ctrl->msm_sensor_reg->
+			output_settings[res].frame_length_lines,
+			MSM_CAMERA_I2C_WORD_DATA);
 		if (rc < 0)
 			return rc;
 
