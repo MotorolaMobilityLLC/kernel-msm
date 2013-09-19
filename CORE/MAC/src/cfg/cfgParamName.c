@@ -334,6 +334,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"OXYGEN_NETWORK_DATA",
     (unsigned char *)"FLEX_CONNECT_POWER_FACTOR",
     (unsigned char *)"ANTENNA_DIVESITY",
+    (unsigned char *)"GO_LINK_MONITOR_TIMEOUT",
 };
 
 
