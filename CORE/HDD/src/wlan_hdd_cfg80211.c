@@ -642,7 +642,7 @@ int wlan_hdd_cfg80211_init(struct device *dev,
     /* This will disable updating of NL channels from passive to
      * active if a beacon is received on passive channel. */
     wiphy->flags |=   WIPHY_FLAG_DISABLE_BEACON_HINTS;
-    wiphy->flags |=   WIPHY_FLAG_STRICT_REGULATORY;
+
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
     wiphy->flags |= WIPHY_FLAG_HAVE_AP_SME
