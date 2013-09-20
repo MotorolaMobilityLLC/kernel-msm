@@ -1496,6 +1496,19 @@ void adreno_dispatcher_pause(struct adreno_device *adreno_dev)
 }
 
 /**
+ * adreno_dispatcher_resume() - resume the dispatcher
+ * @adreno_dev: pointer to the adreno device structure
+ *
+ * Set the dispatcher active so it can start accepting commands again
+ */
+void adreno_dispatcher_resume(struct adreno_device *adreno_dev)
+{
+	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
+
+	dispatcher->state = ADRENO_DISPATCHER_ACTIVE;
+}
+
+/**
  * adreno_dispatcher_start() - activate the dispatcher
  * @adreno_dev: pointer to the adreno device structure
  *
