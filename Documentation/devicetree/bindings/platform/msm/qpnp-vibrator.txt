@@ -16,6 +16,8 @@ Optional Properties:
  - qcom,vib-haptic-threshold-ms: haptic threshold, in ms.  Default 60 ms
  - qcom,vib-vtg-level-mV-haptic: voltage level for haptic, in mV.
 			Default vib-vtg-level-mV
+ - qcom,vib-boot-up-vibe-ms: boot up vibration, in ms.  Default 0 ms
+
 Example:
 		qcom,vib@c000 {
 			status = "okay";
