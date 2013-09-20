@@ -11,6 +11,8 @@
  * GNU General Public License for more details.
  */
 
+/include/ "msm8610-camera-sensor-condor.dtsi"
+
 &soc {
 	serial@f991e000 {
 		status = "ok";
