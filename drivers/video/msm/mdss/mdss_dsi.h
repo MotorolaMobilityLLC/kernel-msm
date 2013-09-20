@@ -235,6 +235,7 @@ struct mdss_panel_config {
 	bool bare_board;
 	char panel_name[32];
 	u64 panel_ver;
+	bool disallow_panel_pwr_off;
 };
 
 struct dsi_drv_cm_data {

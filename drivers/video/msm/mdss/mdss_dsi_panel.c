@@ -439,6 +439,11 @@ static int mdss_dsi_panel_regulator_on(struct mdss_panel_data *pdata,
 			pr_err("%s(%d): No panel regulators in the list\n",
 							__func__, enable);
 	} else {
+		if (ctrl->panel_config.disallow_panel_pwr_off) {
+			pr_warn("%s - skipping panel regulator off\n",
+				__func__);
+			goto error;
+		}
 
 		if (ctrl->panel_vregs.num_vreg > 0) {
 			ret = msm_dss_enable_vreg(ctrl->panel_vregs.vreg_config,
@@ -1583,6 +1588,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_panel_parse_reset_seq(np, "qcom,panel-dis-reset-sequence",
 				ctrl_pdata->dis_rst_seq,
 				&ctrl_pdata->dis_rst_seq_len);
+
+	ctrl_pdata->panel_config.disallow_panel_pwr_off =
+		of_property_read_bool(np, "qcom,panel-disallow-pwr-off");
 
 	return 0;
 
