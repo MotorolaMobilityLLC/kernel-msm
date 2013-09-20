@@ -15,7 +15,6 @@
 /include/ "msm8610-v2.dtsi"
 /include/ "msm8610-moto-common.dtsi"
 /include/ "dsi-v2-panel-mot-auo-qhd-video.dtsi"
-/include/ "msm8610-camera-sensor-cdp-mtp.dtsi"
 
 / {
 	model = "Qualcomm MSM 8610v2 MTP";
@@ -36,7 +35,7 @@
 	};
 
 	i2c@f9928000 {
-		status = "disabled";
+		status = "ok";
 	};
 
         i2c@f9925000 {
