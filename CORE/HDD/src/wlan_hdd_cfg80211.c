@@ -631,25 +631,18 @@ int wlan_hdd_cfg80211_init(struct device *dev,
                                )
 {
     int i, j;
-    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     ENTER();
 
     /* Now bind the underlying wlan device with wiphy */
     set_wiphy_dev(wiphy, dev);
 
     wiphy->mgmt_stypes = wlan_hdd_txrx_stypes;
-    if (memcmp(pHddCtx->cfg_ini->crdaDefaultCountryCode,
-                      CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT , 2) != 0)
-    {
-       wiphy->flags |=   WIPHY_FLAG_CUSTOM_REGULATORY;
-    }
-    else
-    {
-       /* This will disable updating of NL channels from passive to
-        * active if a beacon is received on passive channel. */
-       wiphy->flags |=   WIPHY_FLAG_DISABLE_BEACON_HINTS;
-       wiphy->flags |=   WIPHY_FLAG_STRICT_REGULATORY;
-    }
+
+    /* This will disable updating of NL channels from passive to
+     * active if a beacon is received on passive channel. */
+    wiphy->flags |=   WIPHY_FLAG_DISABLE_BEACON_HINTS;
+    wiphy->flags |=   WIPHY_FLAG_STRICT_REGULATORY;
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
     wiphy->flags |= WIPHY_FLAG_HAVE_AP_SME
                  |  WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD
@@ -679,12 +672,15 @@ int wlan_hdd_cfg80211_init(struct device *dev,
     wiphy->max_match_sets       = SIR_PNO_MAX_SUPP_NETWORKS;
 #endif/*FEATURE_WLAN_SCAN_PNO*/
 
+#ifdef CONFIG_ENABLE_LINUX_REG
     /* even with WIPHY_FLAG_CUSTOM_REGULATORY,
        driver can still register regulatory callback and
-       it will get CRDA setting in wiphy->band[], but
+       it will get regulatory settings in wiphy->band[], but
        driver need to determine what to do with both
        regulatory settings */
-    wiphy->reg_notifier = wlan_hdd_crda_reg_notifier;
+
+    wiphy->reg_notifier = wlan_hdd_linux_reg_notifier;
+#endif
 
     wiphy->max_scan_ssids = MAX_SCAN_SSID;
 
@@ -794,39 +790,6 @@ int wlan_hdd_cfg80211_register(struct wiphy *wiphy)
 
     EXIT();
     return 0;
-}
-
-/* In this function we will try to get default country code from crda.
-   If the gCrdaDefaultCountryCode is configured in ini file,
-   we will try to call user space crda to get the regulatory settings for
-   that country. We will timeout if we can't get it from crda.
-   It's called by hdd_wlan_startup() after wlan_hdd_cfg80211_init.
-*/
-int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg)
-{
-   hdd_context_t *pHddCtx = wiphy_priv(wiphy);
-   int status;
-
-   if (memcmp(pCfg->crdaDefaultCountryCode,
-              CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT , 2) != 0)
-   {
-      INIT_COMPLETION(pHddCtx->driver_crda_req);
-      regulatory_hint(wiphy, pCfg->crdaDefaultCountryCode);
-      status = wait_for_completion_interruptible_timeout(
-              &pHddCtx->driver_crda_req,
-              msecs_to_jiffies(CRDA_WAIT_TIME));
-      if (!status)
-      {
-          hddLog(VOS_TRACE_LEVEL_ERROR,"%s: timeout waiting for CRDA REQ",
-                  __func__);
-      }
-
-      /* if the country is not found from current regulatory.bin,
-         fall back to world domain */
-      if (is_crda_regulatory_entry_valid() == VOS_FALSE)
-         crda_regulatory_entry_default(pCfg->crdaDefaultCountryCode, NUM_REG_DOMAINS-1);
-   }
-   return 0;
 }
 
 /* In this function we are updating channel list when,

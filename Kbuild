@@ -13,7 +13,7 @@ ifeq ($(KERNEL_BUILD),1)
 	WLAN_ROOT := drivers/staging/prima
 endif
 
-ifeq ($(KERNEL_BUILD),0)
+ifeq ($(KERNEL_BUILD), 0)
 	# These are configurable via Kconfig for kernel-based builds
 	# Need to explicitly configure for Android-based builds
 
@@ -39,6 +39,9 @@ ifeq ($(KERNEL_BUILD),0)
 	ifneq ($(CONFIG_PRONTO_WLAN),)
 	CONFIG_WLAN_FEATURE_11W := y
 	endif
+
+	#Flag to enable new Linux Regulatory implementation
+	CONFIG_ENABLE_LINUX_REG := y
 
 endif
 
@@ -640,6 +643,10 @@ endif
 
 ifeq ($(findstring opensource, $(WLAN_ROOT)), opensource)
 CDEFINES += -DWLAN_OPEN_SOURCE
+endif
+
+ifeq ($(CONFIG_ENABLE_LINUX_REG), y)
+CDEFINES += -DCONFIG_ENABLE_LINUX_REG
 endif
 
 # Fix build for GCC 4.7
