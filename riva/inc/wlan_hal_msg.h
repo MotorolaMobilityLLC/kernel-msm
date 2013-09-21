@@ -5927,6 +5927,7 @@ typedef enum {
     SCAN_SCH            = 25,
     IBSS_HEARTBEAT_OFFLOAD = 26,
     WLAN_PERIODIC_TX_PTRN = 28,
+    ADVANCE_TDLS       = 29,
     MAX_FEATURE_SUPPORTED = 128,
 } placeHolderInCapBitmap;
 
