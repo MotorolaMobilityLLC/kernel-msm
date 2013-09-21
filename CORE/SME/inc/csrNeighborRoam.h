@@ -55,6 +55,7 @@
 #define CSR_NEIGHBOR_ROAM_H
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
+#include "sme_Api.h"
 
 /* Enumeration of various states in neighbor roam algorithm */
 typedef enum
@@ -215,6 +216,8 @@ typedef struct sCsrNeighborRoamControlInfo
                                                    reassoc */
 #endif
 #endif
+    tSmeFastRoamTrigger         cfgRoamEn;
+    tSirMacAddr                 cfgRoambssId;
 } tCsrNeighborRoamControlInfo, *tpCsrNeighborRoamControlInfo;
 
 
@@ -249,6 +252,10 @@ VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
                       tANI_U8*  pOutputChannelList,
                       int*      pMergedOutputNumOfChannels
                       );
+VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
+                                             v_U8_t trafficStatus,
+                                             v_PVOID_t pUserCtxt,
+                                             v_S7_t   avgRssi);
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 #define ROAM_SCAN_OFFLOAD_START                     1
 #define ROAM_SCAN_OFFLOAD_STOP                      2

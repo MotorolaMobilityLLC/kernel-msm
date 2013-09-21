@@ -1771,6 +1771,50 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            pHddCtx->cfg_ini->isFastTransitionEnabled = ft;
            sme_UpdateFastTransitionEnabled((tHalHandle)(pHddCtx->hHal), ft);
        }
+
+       else if (strncmp(command, "FASTREASSOC", 11) == 0)
+       {
+           tANI_U8 *value = command;
+           tSirMacAddr targetApBssid;
+           tANI_U8 trigger = 0;
+           eHalStatus status = eHAL_STATUS_SUCCESS;
+           hdd_station_ctx_t *pHddStaCtx = NULL;
+           pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+           /* if not associated, no need to proceed with reassoc */
+           if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s:Not associated!",__func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           status = hdd_parse_reassoc_command_data(value, targetApBssid, &trigger);
+           if (eHAL_STATUS_SUCCESS != status)
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Failed to parse reassoc command data", __func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           /* if the target bssid is same as currently associated AP,
+              then no need to proceed with reassoc */
+           if (VOS_TRUE == vos_mem_compare(targetApBssid,
+                                           pHddStaCtx->conn_info.bssId, sizeof(tSirMacAddr)))
+           {
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                         "%s:11r Reassoc BSSID is same as currently associated AP bssid",
+                         __func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           /* Proceed with scan/roam */
+           smeIssueFastRoamNeighborAPEvent(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                           &targetApBssid[0],
+                                           (tSmeFastRoamTrigger)(trigger));
+       }
 #endif
 #ifdef FEATURE_WLAN_CCX
        else if (strncmp(command, "SETCCXMODE", 10) == 0)
