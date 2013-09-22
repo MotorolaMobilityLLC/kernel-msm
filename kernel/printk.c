@@ -1418,6 +1418,8 @@ again:
 	raw_spin_lock(&logbuf_lock);
 	if (con_start != log_end)
 		retry = 1;
+	else
+		retry = 0;
 	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
 
 	if (retry && console_trylock())
