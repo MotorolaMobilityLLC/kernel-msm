@@ -65,6 +65,7 @@
 			29 01 00 00 78 00 02 11 00      /* exit sleep */
 			29 01 00 00 00 00 02 51 ff      /* led_pwm1 */
 			29 01 00 00 00 00 02 53 2c      /* led_pwm2 */
+			29 01 00 00 00 00 02 35 00      /* turn on tearing sig */
 			29 01 00 00 00 00 02 55 92      /* led_pwm3 */
 			29 01 00 00 00 00 02 29 00];    /* display on */
 
@@ -89,6 +90,8 @@
 		qcom,mdss-dsi-dma-trigger = <4>;
 		qcom,mdss-dsi-mdp-trigger = <0>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+
+		qcom,mdss-dsi-esd-det-mode = <1>;
 
 		qcom,panel-en-reset-sequence = <1 11>;
 		qcom,panel-dis-reset-sequence = <0 3>;
@@ -203,6 +206,7 @@
 			29 01 00 00 00 00 02 ff 00
 			29 01 00 00 00 00 02 51 ff      /* led_pwm1 */
 			29 01 00 00 00 00 02 53 2c      /* led_pwm2 */
+			29 01 00 00 00 00 02 35 00      /* turn on tearing sig */
 			29 01 00 00 00 00 02 55 92      /* led_pwm3 */
 			29 01 00 00 00 00 02 29 00];    /* display on */
 
@@ -227,6 +231,8 @@
 		qcom,mdss-dsi-dma-trigger = <4>;
 		qcom,mdss-dsi-mdp-trigger = <0>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+
+		qcom,mdss-dsi-esd-det-mode = <1>;
 
 		qcom,panel-en-reset-sequence = <1 11>;
 		qcom,panel-dis-reset-sequence = <0 3>;
@@ -325,6 +331,8 @@
 		qcom,mdss-dsi-dma-trigger = <4>;
 		qcom,mdss-dsi-mdp-trigger = <0>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+
+		qcom,mdss-dsi-esd-det-mode = <1>;
 
 		qcom,panel-en-reset-sequence = <1 11>;
 		qcom,panel-dis-reset-sequence = <0 3>;
