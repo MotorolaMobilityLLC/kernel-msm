@@ -145,6 +145,7 @@ dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8226-falcon-p2b1.dtb
 dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8926-peregrine-p1.dtb
 dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8926-peregrine-p1c.dtb
 dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8926-peregrine-p2.dtb
+dtb-$(CONFIG_MMI_8X26_DEVICE_DTBS)	+= msm8926-peregrine-nii-p2.dtb
 
 ifeq ($(CONFIG_MMI_8X26_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
