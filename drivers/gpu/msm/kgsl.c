@@ -921,13 +921,11 @@ int kgsl_close_device(struct kgsl_device *device)
 	device->open_count--;
 	if (device->open_count == 0) {
 
-		if (atomic_read(&device->active_cnt) > 1) {
-			/* Wait for the active count to go to 1 */
-			kgsl_active_count_wait(device, 1);
+		/* Wait for the active count to go to 1 */
+		kgsl_active_count_wait(device, 1);
 
-			/* Fail if the wait times out */
-			BUG_ON(atomic_read(&device->active_cnt) > 1);
-		}
+		/* Fail if the wait times out */
+		BUG_ON(atomic_read(&device->active_cnt) > 1);
 
 		result = device->ftbl->stop(device);
 		kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
