@@ -190,24 +190,6 @@ static struct gpiomux_setting mhl_active_1_cfg = {
 	.dir = GPIOMUX_OUT_HIGH,
 };
 
-static struct gpiomux_setting hdmi_suspend_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct gpiomux_setting hdmi_active_1_cfg = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting hdmi_active_2_cfg = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_16MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
 static struct msm_gpiomux_config msm_mhl_configs[] __initdata = {
 	{
 		/* mhl-sii8334 pwr */
@@ -227,34 +209,31 @@ static struct msm_gpiomux_config msm_mhl_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting stm401_boot_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
 
-static struct msm_gpiomux_config msm_hdmi_configs[] __initdata = {
-	{
-		.gpio = 31,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &hdmi_active_1_cfg,
-			[GPIOMUX_SUSPENDED] = &hdmi_suspend_cfg,
-		},
-	},
-	{
-		.gpio = 32,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &hdmi_active_1_cfg,
-			[GPIOMUX_SUSPENDED] = &hdmi_suspend_cfg,
-		},
-	},
+static struct gpiomux_setting stm401_reset_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct msm_gpiomux_config stm401_configs[] __initdata = {
 	{
 		.gpio = 33,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &hdmi_active_1_cfg,
-			[GPIOMUX_SUSPENDED] = &hdmi_suspend_cfg,
+			[GPIOMUX_ACTIVE]    = &stm401_boot_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &stm401_boot_gpio_cfg,
 		},
-	},
-	{
-		.gpio = 34,
+		.gpio = 145,
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &hdmi_active_2_cfg,
-			[GPIOMUX_SUSPENDED] = &hdmi_suspend_cfg,
+			[GPIOMUX_ACTIVE]    = &stm401_reset_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &stm401_reset_gpio_cfg,
 		},
 	},
 };
@@ -1064,7 +1043,8 @@ void __init msm_8974_moto_init_gpiomux(void)
 
 	msm_gpiomux_install(msm_taiko_config, ARRAY_SIZE(msm_taiko_config));
 
-	msm_gpiomux_install(msm_hdmi_configs, ARRAY_SIZE(msm_hdmi_configs));
+	msm_gpiomux_install(stm401_configs, ARRAY_SIZE(stm401_configs));
+
 	if (of_board_is_fluid())
 		msm_gpiomux_install(msm_mhl_configs,
 				    ARRAY_SIZE(msm_mhl_configs));
