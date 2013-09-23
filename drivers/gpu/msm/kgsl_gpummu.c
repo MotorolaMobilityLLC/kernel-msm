@@ -478,7 +478,9 @@ static int kgsl_gpummu_default_setstate(struct kgsl_mmu *mmu,
 		return 0;
 
 	if (flags & KGSL_MMUFLAGS_PTUPDATE) {
-		kgsl_idle(mmu->device);
+		int ret = kgsl_idle(mmu->device);
+		if (ret)
+			return ret;
 		gpummu_pt = mmu->hwpagetable->priv;
 		kgsl_regwrite(mmu->device, MH_MMU_PT_BASE,
 			gpummu_pt->base.gpuaddr);

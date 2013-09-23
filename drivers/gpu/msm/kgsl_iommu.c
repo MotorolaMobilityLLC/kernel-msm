@@ -1917,12 +1917,24 @@ static int kgsl_iommu_default_setstate(struct kgsl_mmu *mmu,
 		return ret;
 	}
 
+	/* For v0 SMMU GPU needs to be idle for tlb invalidate as well */
+	/* naming mismatch for iommu */
+	if (msm_soc_version_supports_iommu_v1()) {
+		ret = kgsl_idle(mmu->device);
+		if (ret)
+			return ret;
+	}
+
 	/* Acquire GPU-CPU sync Lock here */
 	msm_iommu_lock();
 
 	if (flags & KGSL_MMUFLAGS_PTUPDATE) {
-		if (!msm_soc_version_supports_iommu_v1())
-			kgsl_idle(mmu->device);
+	/* naming mismatch for iommu */
+		if (!msm_soc_version_supports_iommu_v1()) {
+			ret = kgsl_idle(mmu->device);
+			if (ret)
+				goto unlock;
+		}
 		for (i = 0; i < iommu->unit_count; i++) {
 			/* get the lsb value which should not change when
 			 * changing ttbr0 */
@@ -1984,6 +1996,7 @@ static int kgsl_iommu_default_setstate(struct kgsl_mmu *mmu,
 			}
 		}
 	}
+unlock:
 
 	/* Release GPU-CPU sync Lock here */
 	msm_iommu_unlock();
