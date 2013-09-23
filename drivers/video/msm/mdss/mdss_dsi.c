@@ -1327,17 +1327,13 @@ int dsi_panel_device_register(struct device_node *pan_node,
 		}
 	}
 
-	if (pinfo->type == MIPI_CMD_PANEL) {
-		ctrl_pdata->disp_te_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
+	ctrl_pdata->disp_te_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
 						"qcom,platform-te-gpio", 0);
-		if (!gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
-			pr_err("%s:%d, Disp_te gpio not specified\n",
-						__func__, __LINE__);
-		}
-	}
-
-	if (gpio_is_valid(ctrl_pdata->disp_te_gpio) &&
-					pinfo->type == MIPI_CMD_PANEL) {
+	if (!gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
+		pr_err("%s:%d, Disp_te gpio not specified\n",
+			__func__, __LINE__);
+	} else {
+		int func;
 		rc = gpio_request(ctrl_pdata->disp_te_gpio, "disp_te");
 		if (rc) {
 			pr_err("request TE gpio failed, rc=%d\n",
@@ -1345,8 +1341,14 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			gpio_free(ctrl_pdata->disp_te_gpio);
 			return -ENODEV;
 		}
+
+		if (pinfo->type == MIPI_CMD_PANEL)
+			func = 1;
+		else
+			func = 0;
+
 		rc = gpio_tlmm_config(GPIO_CFG(
-				ctrl_pdata->disp_te_gpio, 1,
+				ctrl_pdata->disp_te_gpio, func,
 				GPIO_CFG_INPUT,
 				GPIO_CFG_PULL_DOWN,
 				GPIO_CFG_2MA),
@@ -1479,9 +1481,9 @@ int dsi_panel_device_register(struct device_node *pan_node,
 
 	if (ctrl_pdata->panel_config.esd_enable) {
 		pr_debug("%s: create ESD worker thread\n", __func__);
-		ctrl_pdata->panel_config.esd_wq =
+		ctrl_pdata->panel_esd_data.esd_wq =
 				create_singlethread_workqueue("mdss_panel_esd");
-		if (ctrl_pdata->panel_config.esd_wq == NULL) {
+		if (ctrl_pdata->panel_esd_data.esd_wq == NULL) {
 			pr_err("%s: failed to create ESD work queue\n",
 								__func__);
 			ctrl_pdata->panel_config.esd_enable = false;

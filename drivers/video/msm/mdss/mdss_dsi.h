@@ -211,14 +211,26 @@ struct dsi_kickoff_action {
 	void *data;
 };
 
-struct mdss_panel_config {
-	bool is_panel_config_loaded;
-	bool esd_enable;
+enum {
+	ESD_TE_DET = 1,
+};
+
+struct mdss_panel_esd_pdata {
+
 	struct workqueue_struct *esd_wq;
 	bool esd_detection_run;
 	bool esd_recovery_run;
-	struct mutex panel_mutex;
 	int esd_pwr_mode_chk;
+
+	int esd_detect_mode;
+	int te_irq;
+	struct completion te_detected;
+};
+
+struct mdss_panel_config {
+	bool is_panel_config_loaded;
+	bool esd_enable;
+	struct mutex panel_mutex;
 	bool esd_disable_bl;
 
 	bool bare_board;
@@ -258,6 +270,7 @@ struct mdss_dsi_ctrl_pdata {
 			int mode, size_t size, u8 *buffer);
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
+	struct mdss_panel_esd_pdata panel_esd_data;
 	struct dss_module_power panel_vregs;
 	void(*lock_mutex) (struct mdss_panel_data *pdata);
 	void(*unlock_mutex) (struct mdss_panel_data *pdata);
