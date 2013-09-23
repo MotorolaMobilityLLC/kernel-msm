@@ -1,0 +1,150 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+/include/ "msm8610-v2.dtsi"
+/include/ "msm8610-moto-common.dtsi"
+/include/ "dsi-v2-panel-mot-auo-qhd-video.dtsi"
+/include/ "msm8610-camera-sensor-cdp-mtp.dtsi"
+
+/ {
+	model = "Qualcomm MSM 8610v2 MTP";
+	compatible = "qcom,msm8610-mtp", "qcom,msm8610", "qcom,mtp";
+	qcom,msm-id = <147 0x41 0x8100>;
+};
+
+&soc {
+	serial@f9922000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf9922000 0x1000>;
+		interrupts = <0 112 0>;
+		status = "ok";
+	};
+
+	serial@f991e000 {
+		status = "disabled";
+	};
+
+	i2c@f9928000 {
+		status = "disabled";
+	};
+
+        i2c@f9925000 {
+		qcom,sda-gpio = <&msmgpio 10 0>;
+		qcom,scl-gpio = <&msmgpio 11 0>;
+	};
+
+	i2c@f9923000 {
+		atmel_mxt_ts@4a {
+			atmel,panel-coords = <0 0 1023 1023>;
+			atmel,display-coords = <0 0 1023 1023>;
+		};
+
+		tps65132@3e {
+			compatible = "ti,tps65132";
+			reg = <0x3e>;
+			gpios = <&msmgpio 5 0x0>, <&msmgpio 6 0x0>;
+			active-dis;
+			bias-delay-us = <2000>;
+			vcc_i2c-supply = <&pm8110_l14>;
+			tps65132: regulator {
+				regulator-name = "tps65132";
+				regulator-min-microvolt = <4000000>;
+				regulator-max-microvolt = <6000000>;
+				startup-delay-us = <10000>;
+				regulator-always-on;
+				regulator-boot-on;
+			};
+		};
+	};
+
+	rpm-regulator-ldoa21 {
+		regulator-l21 {
+			regulator-min-microvolt = <2950000>;
+		};
+	};
+
+	vddio_disp_vreg: vddio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vddio_disp";
+		gpio = <&msmgpio 7 0x0>;
+		parent-supply = <&pm8110_l14>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-always-on;
+	};
+};
+
+&qsecom_mem {
+	linux,contiguous-region;
+	reg = <0 0x600000>;
+	label = "qsecom_mem";
+};
+
+&pm8110_l14 {
+	regulator-always-on;
+};
+
+&i2c_3 {
+	status = "ok";
+
+	tpa6165xx@40 {
+		compatible = "ti,tpa6165";
+		reg = <0x40>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <84 0x2>;
+		gpios = <&msmgpio 84 0x0>;
+		hs_det_vdd-supply = <&pm8110_l6>;
+		hs_det_micvdd-supply = <&pm8110_l21>;
+	};
+
+	kionix@e {
+		compatible = "kionix,kxtj9";
+		reg = <0x0e>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <81 0x2>; /* GPIO # will be converted to GPIO_IRQ # */
+		vio-supply = <&pm8110_l14>;
+		vdd-supply = <&pm8110_l19>;
+		kionix,min-interval = <5>;
+		kionix,init-interval = <200>;
+		kionix,axis-map-x = <0>;
+		kionix,axis-map-y = <1>;
+		kionix,axis-map-z = <2>;
+		kionix,g-range = <2>;
+		kionix,negate-x;
+		kionix,negate-z;
+		kionix,res-12bit;
+	};
+
+	ct406@39 {
+		compatible = "ams,ct406";
+		reg = <0x39>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <80 0x2>;
+		gpios = <&msmgpio 80 0>; /* IRQ */
+		vdd-supply = <&pm8110_l19>;
+		ams,prox-samples-for-noise-floor = <0x05>;
+		ams,prox-covered-offset = <0x0096>;
+		ams,prox-uncovered-offset = <0x006e>;
+		ams,prox-recalibrate-offset = <0x0046>;
+		ams,prox-offset = <0x00>;
+		ams,prox-pulse-count = <0x04>;
+		ams,ink_type = <0x01>;
+	};
+
+	tmp108@48 {
+		compatible = "ti,tmp108";
+		reg = <0x48>;
+		gpios = <&msmgpio 8 0>;
+	};
+};
