@@ -522,6 +522,7 @@ int mdss_mdp_wb_kickoff(struct msm_fb_data_type *mfd)
 
 	if (wb_args.data == NULL) {
 		pr_err("unable to get writeback buf ctl=%d\n", ctl->num);
+		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_DONE);
 		/* drop buffer but don't return error */
 		ret = 0;
 		goto kickoff_fail;
