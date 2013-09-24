@@ -1776,10 +1776,13 @@ static int qup_i2c_resume(struct device *device)
 #endif /* CONFIG_PM */
 
 static const struct dev_pm_ops i2c_qup_dev_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(
-		qup_i2c_suspend,
-		qup_i2c_resume
-	)
+	.resume_noirq = qup_i2c_resume,
+	.suspend_noirq = qup_i2c_suspend,
+	.freeze = qup_i2c_suspend,
+	.thaw = qup_i2c_resume,
+	.poweroff = qup_i2c_suspend,
+	.restore = qup_i2c_resume,
+
 	SET_RUNTIME_PM_OPS(
 		i2c_qup_pm_suspend_runtime,
 		i2c_qup_pm_resume_runtime,
