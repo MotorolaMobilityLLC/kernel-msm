@@ -6443,6 +6443,16 @@ static int wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
         return -EINVAL;
     }
 
+    /* BSSID is provided by upper layers hence no need to AUTO generate */
+    if (NULL != params->bssid) {
+       if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_IBSS_AUTO_BSSID, 0,
+                        NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE) {
+           hddLog (VOS_TRACE_LEVEL_ERROR,
+                  "%s:ccmCfgStInt faild for WNI_CFG_IBSS_AUTO_BSSID", __func__);
+           return -EIO;
+       }
+    }
+
     /* Set Channel */
     if (NULL !=
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
