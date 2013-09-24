@@ -2250,6 +2250,8 @@ static void create_linux_regulatory_entry_driver(struct wiphy *wiphy,
     int bw20_start_channel_index, bw20_end_channel_index;
     int bw40_start_channel_index, bw40_end_channel_index;
 
+    if (NULL == wiphy->regd)
+        return;
 
     for (n = 0; n < NUM_RF_CHANNELS; n++)
         pnvEFSTable->halnv.tables.regDomains[domain_id].channels[n].enabled =
@@ -2872,6 +2874,8 @@ void wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
         driver_callback_called = VOS_TRUE;
         kernel_reg_request_made = VOS_FALSE;
 
+        complete(&pHddCtx->linux_reg_req);
+
     }
     else {
 
@@ -2889,8 +2893,6 @@ void wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
         */
 
     }
-
-    complete(&pHddCtx->linux_reg_req);
 
     return;
 }
