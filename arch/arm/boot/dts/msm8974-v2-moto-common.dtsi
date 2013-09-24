@@ -50,6 +50,23 @@
 			<0x7e40000 0x2000>; /* dhob address */
 	};
 
+       ram_console {
+                compatible = "android,ram-console";
+                status = "ok";
+
+                android,ram-buffer-start = <0x3eae0000>;
+                android,ram-buffer-size = <0x20000>;
+        };
+
+        bootinfo {
+                compatible = "android,bootinfo";
+                status = "ok";
+
+                android,bootinfo-buffer-start = <0x3eb00000>;
+                android,bootinfo-buffer-size = <0x800>;
+        };
+
+
 	i2c_0: i2c@f9967000 {	/* "I2C5" on BLSP11 (BLSP2 QUP4) */
 		status = "ok";
 	};
