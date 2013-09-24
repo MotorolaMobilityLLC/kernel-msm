@@ -11,6 +11,7 @@
  */
 
 /dts-v1/;
+/include/ "msm8974-moto-reserve.dtsi"
 /include/ "msm8974-v2-abbagoochie-common.dtsi"
 
 
