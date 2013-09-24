@@ -21,6 +21,7 @@
 #include <linux/ktime.h>
 #include <linux/pm.h>
 #include <linux/pm_qos.h>
+#include <linux/quickwakeup.h>
 #include <linux/smp.h>
 #include <linux/suspend.h>
 #include <linux/tick.h>
@@ -1017,6 +1018,25 @@ void msm_pm_cpu_enter_lowpower(unsigned int cpu)
 		msm_pm_swfi();
 }
 
+#ifdef CONFIG_QUICK_WAKEUP
+/* returns:
+ *             1  - suspend again
+ *             0  - continue resuming
+ */
+static bool msm_pm_suspend_again(void)
+{
+	int ret = 0;
+
+	if (quickwakeup_check())
+		ret = quickwakeup_execute();
+
+	pr_debug("%s returning %d %s\n", __func__, ret,
+		ret ? "suspend again" : "wakeup");
+
+	return ret;
+}
+#endif
+
 static int msm_pm_enter(suspend_state_t state)
 {
 	bool allow[MSM_PM_SLEEP_MODE_NR];
@@ -1127,6 +1147,9 @@ static struct platform_suspend_ops msm_pm_ops = {
 	.end   = msm_pm_end,
 	.enter = msm_pm_enter,
 	.valid = suspend_valid_only_mem,
+#ifdef CONFIG_QUICK_WAKEUP
+	.suspend_again = msm_pm_suspend_again,
+#endif
 };
 
 /******************************************************************************
