@@ -197,6 +197,9 @@ struct dsi_clk_desc {
 	u32 pre_div_func;
 };
 
+#define DSI_MODE_BIT_HS 0
+#define DSI_MODE_BIT_LP 1
+
 struct dsi_panel_cmds {
 	char *buf;
 	int blen;
