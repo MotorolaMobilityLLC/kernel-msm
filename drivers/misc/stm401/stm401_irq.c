@@ -80,7 +80,7 @@ void stm401_irq_work_func(struct work_struct *work)
 			"Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq_status = (stm401_cmdbuff[1] << 8) | stm401_cmdbuff[0];
+	irq_status = (stm401_readbuff[1] << 8) | stm401_readbuff[0];
 
 	if (irq_status & M_ACCEL) {
 		/* read accelerometer values from STM401 */
@@ -92,9 +92,9 @@ void stm401_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		x = (stm401_cmdbuff[0] << 8) | stm401_cmdbuff[1];
-		y = (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[3];
-		z = (stm401_cmdbuff[4] << 8) | stm401_cmdbuff[5];
+		x = (stm401_readbuff[0] << 8) | stm401_readbuff[1];
+		y = (stm401_readbuff[2] << 8) | stm401_readbuff[3];
+		z = (stm401_readbuff[4] << 8) | stm401_readbuff[5];
 		stm401_as_data_buffer_write(ps_stm401, DT_ACCEL, x, y, z, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
@@ -111,9 +111,9 @@ void stm401_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		x = (stm401_cmdbuff[0] << 8) | stm401_cmdbuff[1];
-		y = (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[3];
-		z = (stm401_cmdbuff[4] << 8) | stm401_cmdbuff[5];
+		x = (stm401_readbuff[0] << 8) | stm401_readbuff[1];
+		y = (stm401_readbuff[2] << 8) | stm401_readbuff[3];
+		z = (stm401_readbuff[4] << 8) | stm401_readbuff[5];
 		stm401_as_data_buffer_write(ps_stm401, DT_LIN_ACCEL,
 			x, y, z, 0);
 
@@ -130,21 +130,22 @@ void stm401_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		x = (stm401_cmdbuff[0] << 8) | stm401_cmdbuff[1];
-		y = (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[3];
-		z = (stm401_cmdbuff[4] << 8) | stm401_cmdbuff[5];
+		x = (stm401_readbuff[0] << 8) | stm401_readbuff[1];
+		y = (stm401_readbuff[2] << 8) | stm401_readbuff[3];
+		z = (stm401_readbuff[4] << 8) | stm401_readbuff[5];
 		stm401_as_data_buffer_write(ps_stm401, DT_MAG, x, y, z,
-			stm401_cmdbuff[12]);
+			stm401_readbuff[12]);
 
 		dev_dbg(&ps_stm401->client->dev,
 			"Sending mag(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, z);
 
-		x = (stm401_cmdbuff[6] << 8) | stm401_cmdbuff[7];
-		y = (stm401_cmdbuff[8] << 8) | stm401_cmdbuff[9];
-		z = (stm401_cmdbuff[10] << 8) | stm401_cmdbuff[11];
+		x = (stm401_readbuff[6] << 8) | stm401_readbuff[7];
+		y = (stm401_readbuff[8] << 8) | stm401_readbuff[9];
+		/* roll value needs to be negated */
+		z = -(stm401_readbuff[10] << 8) | stm401_readbuff[11];
 		stm401_as_data_buffer_write(ps_stm401, DT_ORIENT, x, y, z,
-			stm401_cmdbuff[12]);
+			stm401_readbuff[12]);
 
 		dev_dbg(&ps_stm401->client->dev,
 			"Sending orient(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -158,9 +159,9 @@ void stm401_irq_work_func(struct work_struct *work)
 				"Reading Gyroscope failed\n");
 			goto EXIT;
 		}
-		x = (stm401_cmdbuff[0] << 8) | stm401_cmdbuff[1];
-		y = (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[3];
-		z = (stm401_cmdbuff[4] << 8) | stm401_cmdbuff[5];
+		x = (stm401_readbuff[0] << 8) | stm401_readbuff[1];
+		y = (stm401_readbuff[2] << 8) | stm401_readbuff[3];
+		z = (stm401_readbuff[4] << 8) | stm401_readbuff[5];
 		stm401_as_data_buffer_write(ps_stm401, DT_GYRO, x, y, z, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
@@ -175,7 +176,7 @@ void stm401_irq_work_func(struct work_struct *work)
 				"Reading ALS from stm401 failed\n");
 			goto EXIT;
 		}
-		x = (stm401_cmdbuff[0] << 8) | stm401_cmdbuff[1];
+		x = (stm401_readbuff[0] << 8) | stm401_readbuff[1];
 		stm401_as_data_buffer_write(ps_stm401, DT_ALS, x, 0, 0, 0);
 
 		dev_dbg(&ps_stm401->client->dev, "Sending ALS %d\n", x);
@@ -189,7 +190,7 @@ void stm401_irq_work_func(struct work_struct *work)
 				"Reading Temperature failed\n");
 			goto EXIT;
 		}
-		x = (stm401_cmdbuff[0] << 8) | stm401_cmdbuff[1];
+		x = (stm401_readbuff[0] << 8) | stm401_readbuff[1];
 		stm401_as_data_buffer_write(ps_stm401, DT_TEMP, x, 0, 0, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
@@ -204,8 +205,8 @@ void stm401_irq_work_func(struct work_struct *work)
 				"Reading Pressure failed\n");
 			goto EXIT;
 		}
-		x = (stm401_cmdbuff[0] << 8) | stm401_cmdbuff[1];
-		y = (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[3];
+		x = (stm401_readbuff[0] << 8) | stm401_readbuff[1];
+		y = (stm401_readbuff[2] << 8) | stm401_readbuff[3];
 		stm401_as_data_buffer_write(ps_stm401, DT_PRESSURE, x, y, 0, 0);
 
 		dev_dbg(&ps_stm401->client->dev, "Sending pressure %d\n",
@@ -221,9 +222,9 @@ void stm401_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 
-		x = (stm401_cmdbuff[0] << 8) | stm401_cmdbuff[1];
-		y = (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[3];
-		z = (stm401_cmdbuff[4] << 8) | stm401_cmdbuff[5];
+		x = (stm401_readbuff[0] << 8) | stm401_readbuff[1];
+		y = (stm401_readbuff[2] << 8) | stm401_readbuff[3];
+		z = (stm401_readbuff[4] << 8) | stm401_readbuff[5];
 		stm401_as_data_buffer_write(ps_stm401, DT_GRAVITY,
 			x, y, z, 0);
 
@@ -240,7 +241,7 @@ void stm401_irq_work_func(struct work_struct *work)
 				"Reading disp_rotate failed\n");
 			goto EXIT;
 		}
-		x = stm401_cmdbuff[0];
+		x = stm401_readbuff[0];
 		stm401_as_data_buffer_write(ps_stm401,
 			DT_DISP_ROTATE, x, 0, 0, 0);
 
@@ -255,7 +256,7 @@ void stm401_irq_work_func(struct work_struct *work)
 				"Reading Display Brightness failed\n");
 			goto EXIT;
 		}
-		x = stm401_cmdbuff[0];
+		x = stm401_readbuff[0];
 		stm401_as_data_buffer_write(ps_stm401, DT_DISP_BRIGHT,
 			x, 0, 0, 0);
 
