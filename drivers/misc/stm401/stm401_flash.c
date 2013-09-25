@@ -310,8 +310,8 @@ ssize_t stm401_misc_write(struct file *file, const char __user *buff,
 
 			if (err == 0) {
 				if (datacrc !=
-					((read_cmdbuff[6] << 8)
-					+ read_cmdbuff[5])) {
+					((stm401_readbuff[6] << 8)
+					+ stm401_readbuff[5])) {
 					dev_err(&ps_stm401->client->dev,
 						"CRC validation failed\n");
 					err = -EIO;
@@ -387,9 +387,9 @@ int stm401_get_version(struct stm401_data *ps_stm401)
 	stm401_cmdbuff[0] = REV_ID;
 	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
 	if (err >= 0) {
-		err = (int)read_cmdbuff[0];
+		err = (int)stm401_readbuff[0];
 		dev_err(&ps_stm401->client->dev, "STM401 version %02x",
-			read_cmdbuff[0]);
+			stm401_readbuff[0]);
 	}
 	return err;
 }

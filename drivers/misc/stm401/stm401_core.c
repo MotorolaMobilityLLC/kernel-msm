@@ -98,7 +98,7 @@ struct stm401_algo_requst_t stm401_g_algo_requst[STM401_NUM_ALGOS];
 unsigned char stm401_cmdbuff[STM401_HEADER_LENGTH + STM401_CMDLENGTH_BYTES +
 			STM401_CORECOMMAND_LENGTH + STM401_CRC_LENGTH];
 
-unsigned char read_cmdbuff[512];
+unsigned char stm401_readbuff[512];
 
 /* per algo config, request, and event registers */
 const struct stm401_algo_info_t stm401_algo_info[STM401_NUM_ALGOS] = {
@@ -138,7 +138,7 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 			.addr = ps_stm401->client->addr,
 			.flags = ps_stm401->client->flags | I2C_M_RD,
 			.len = readlen,
-			.buf = read_cmdbuff,
+			.buf = stm401_readbuff,
 		},
 	};
 	if (buf == NULL || writelen == 0 || readlen == 0)
@@ -158,10 +158,10 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 		dev_dbg(&ps_stm401->client->dev, "Read from STM401: ");
 		for (tries = 0; tries < readlen; tries++)
 			dev_dbg(&ps_stm401->client->dev, "%02x",
-				read_cmdbuff[tries]);
+				stm401_readbuff[tries]);
 
 		if (ps_stm401->mode == BOOTMODE) {
-			response = (struct stm_response *) read_cmdbuff;
+			response = (struct stm_response *) stm401_readbuff;
 			if ((response->cmd == STM401_RESPONSE_MSG &&
 				response->data != STM401_RESPONSE_MSG_SUCCESS)
 				) {
