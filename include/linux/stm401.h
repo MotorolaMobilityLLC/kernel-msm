@@ -115,6 +115,7 @@
 #define STM401_STATUS_REG_SIZE 8
 #define STM401_TOUCH_REG_SIZE  8
 #define STM401_MAG_CAL_SIZE 26
+#define STM_AOD_INSTRUMENTATION_REG_SIZE 256
 
 /* Mask values */
 
@@ -141,7 +142,8 @@
 #define M_FLATUP		0x0100
 #define M_FLATDOWN		0x0200
 #define M_STOWED		0x0400
-#define M_CAMERA_ACT	0x0800
+#define M_CAMERA_ACT		0x0800
+#define M_NFC			0x1000
 #define M_LOG_MSG		0x8000
 
 /* algo config mask */
@@ -205,6 +207,7 @@ enum STM401_data_types {
 	DT_MMMOVE,
 	DT_NOMOVE,
 	DT_CAMERA_ACT,
+	DT_NFC,
 	DT_ALGO_EVT,
 	DT_ACCUM_MVMT,
 	DT_RESET
@@ -298,6 +301,9 @@ struct stm_response {
 
 #define DISP_ROTATE_DATA                0x4A
 #define FLAT_DATA                       0x4B
+#define CAMERA                          0x4C
+#define NFC                             0x4D
+
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
 #define ALGO_EVT_ACCUM_MODALITY         0x63
@@ -488,7 +494,7 @@ extern unsigned char stm401_g_control_reg[STM401_CONTROL_REG_SIZE];
 extern unsigned char stm401_g_mag_cal[STM401_MAG_CAL_SIZE];
 
 extern unsigned char stm401_cmdbuff[];
-extern unsigned char read_cmdbuff[];
+extern unsigned char stm401_readbuff[];
 
 extern unsigned short stm401_i2c_retry_delay;
 
