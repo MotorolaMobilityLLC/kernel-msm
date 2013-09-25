@@ -405,6 +405,13 @@ static int ct406_init_registers(struct ct406_data *ct)
 	if (error < 0)
 		return error;
 
+	/* write proximity interrupt persistence */
+	reg_data[0] = CT406_PERS;
+	reg_data[1] = CT406_PERS_PPERS;
+	error = ct406_i2c_write(ct, reg_data, 1);
+	if (error < 0)
+		return error;
+
 	return 0;
 }
 
