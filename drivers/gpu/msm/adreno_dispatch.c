@@ -1480,6 +1480,7 @@ void adreno_dispatcher_resume(struct adreno_device *adreno_dev)
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 
 	dispatcher->state = ADRENO_DISPATCHER_ACTIVE;
+	adreno_dispatcher_schedule(&adreno_dev->dev);
 }
 
 /**
