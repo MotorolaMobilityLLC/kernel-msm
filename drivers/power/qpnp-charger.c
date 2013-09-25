@@ -411,6 +411,7 @@ struct qpnp_chg_chip {
 	int				chrg_ocv_cc_af_uah;
 	int				chrg_ocv_cc_ef_uah;
 	int				chrg_ocv_bv_mv;
+	bool				maint_chrg;
 };
 
 
@@ -1596,6 +1597,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 				chip->delta_vddmax_mv = 0;
 				qpnp_chg_set_appropriate_vddmax(chip);
 				chip->chg_done = false;
+				chip->maint_chrg = false;
 			}
 			qpnp_chg_usb_suspend_enable(chip, 0);
 			qpnp_chg_iusbmax_set(chip, QPNP_CHG_I_MAX_MIN_100);
@@ -1743,6 +1745,7 @@ qpnp_chg_dc_dcin_valid_irq_handler(int irq, void *_chip)
 			chip->delta_vddmax_mv = 0;
 			qpnp_chg_set_appropriate_vddmax(chip);
 			chip->chg_done = false;
+			chip->maint_chrg = false;
 		} else {
 			if (!qpnp_chg_is_usb_chg_plugged_in(chip)) {
 				chip->delta_vddmax_mv = 0;
@@ -2353,6 +2356,9 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 		charger_in = qpnp_chg_is_usb_chg_plugged_in(chip) ||
 			qpnp_chg_is_dc_chg_plugged_in(chip);
 
+		if (ret.intval < chip->soc_resume_limit)
+			chip->maint_chrg = false;
+
 		if (battery_status != POWER_SUPPLY_STATUS_CHARGING
 				&& bms_status != POWER_SUPPLY_STATUS_CHARGING
 				&& !chip->out_of_temp
@@ -2518,6 +2524,10 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		     qpnp_chg_is_dc_chg_plugged_in(chip)) &&
 		    (chip->bat_is_cool  || chip->bat_is_warm))
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
+		else if ((qpnp_chg_is_usb_chg_plugged_in(chip) ||
+			  qpnp_chg_is_dc_chg_plugged_in(chip)) &&
+			 chip->maint_chrg)
+			val->intval = POWER_SUPPLY_STATUS_FULL;
 		else
 			val->intval = get_prop_batt_status(chip);
 		break;
@@ -2556,6 +2566,10 @@ qpnp_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = get_prop_capacity(chip);
+		if ((qpnp_chg_is_usb_chg_plugged_in(chip) ||
+		     qpnp_chg_is_dc_chg_plugged_in(chip)) &&
+		    chip->maint_chrg)
+			val->intval = 100;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_current_now(chip);
@@ -3607,6 +3621,7 @@ qpnp_eoc_work(struct work_struct *work)
 				}
 				chip->delta_vddmax_mv = 0;
 				qpnp_chg_set_appropriate_vddmax(chip);
+				chip->maint_chrg = true;
 				chip->chrg_ocv_cc_ef_uah =
 					get_prop_charge_counter(chip);
 				qpnp_chg_charge_en(chip, 0);
@@ -5037,6 +5052,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	chip->chrg_ocv_cc_af_uah = 0;
 	chip->chrg_ocv_cc_ef_uah = 0;
 	chip->chrg_ocv_bv_mv = 0;
+	chip->maint_chrg = false;
 
 	chip->usb_psy = power_supply_get_by_name("usb");
 	if (!chip->usb_psy) {
