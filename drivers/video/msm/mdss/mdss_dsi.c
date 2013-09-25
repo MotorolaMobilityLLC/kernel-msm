@@ -1161,6 +1161,7 @@ static int mdss_dsi_ioctl_panel_reg_write(struct mdss_panel_data *pdata,
 	int ret = 0;
 	struct msmfb_reg_access reg_access;
 	u8 *reg_access_buf;
+	int mode = DSI_MODE_BIT_LP;
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -1184,7 +1185,10 @@ static int mdss_dsi_ioctl_panel_reg_write(struct mdss_panel_data *pdata,
 		return -EFAULT;
 	}
 
-	ret = ctrl_pdata->reg_write(pdata, reg_access.use_hs_mode,
+	if (reg_access.use_hs_mode)
+		mode = DSI_MODE_BIT_HS;
+
+	ret = ctrl_pdata->reg_write(pdata, mode,
 				reg_access.buffer_size + 1, reg_access_buf);
 
 	kfree(reg_access_buf);
@@ -1198,6 +1202,7 @@ static int mdss_dsi_ioctl_panel_reg_read(struct mdss_panel_data *pdata,
 	int ret = 0;
 	struct msmfb_reg_access reg_access;
 	u8 *reg_access_buf;
+	int mode = DSI_MODE_BIT_LP;
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -1214,8 +1219,11 @@ static int mdss_dsi_ioctl_panel_reg_read(struct mdss_panel_data *pdata,
 	if (reg_access_buf == NULL)
 		return -ENOMEM;
 
+	if (reg_access.use_hs_mode)
+		mode = DSI_MODE_BIT_HS;
+
 	ret = ctrl_pdata->reg_read(pdata, reg_access.address,
-				reg_access.use_hs_mode,
+				mode,
 				reg_access.buffer_size, reg_access_buf);
 
 	if ((ret == 0) &&
