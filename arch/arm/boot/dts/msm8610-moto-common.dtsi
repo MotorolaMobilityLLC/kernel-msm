@@ -14,6 +14,13 @@
 /include/ "msm8610-camera-sensor-condor.dtsi"
 
 &soc {
+	factory_support {
+		compatible = "mmi,factory-support-msm8960";
+
+		gpios = <&msmgpio 77 0x2>; /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
+		gpio-names = "factory_kill_disable";
+	};
+
 	serial@f991e000 {
 		status = "ok";
 	};
