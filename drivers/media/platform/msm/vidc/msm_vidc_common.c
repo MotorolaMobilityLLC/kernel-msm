@@ -467,6 +467,8 @@ static void handle_session_init_done(enum command_response cmd, void *data)
 			inst->capability.frame_rate =
 				session_init_done->frame_rate;
 			inst->capability.hier_p = session_init_done->hier_p;
+			inst->capability.mbs_per_frame =
+				session_init_done->mbs_per_frame;
 			inst->capability.capability_set = true;
 
 			inst->output_alloc_mode_supported =
