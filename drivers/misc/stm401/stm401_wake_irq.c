@@ -79,7 +79,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq_status = (stm401_cmdbuff[1] << 8) | stm401_cmdbuff[0];
+	irq_status = (stm401_readbuff[1] << 8) | stm401_readbuff[0];
 
 	/* read algorithm interrupt status register */
 	stm401_cmdbuff[0] = ALGO_INT_STATUS;
@@ -88,7 +88,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq2_status = (stm401_cmdbuff[1] << 8) | stm401_cmdbuff[0];
+	irq2_status = (stm401_readbuff[1] << 8) | stm401_readbuff[0];
 
 	/* First, check for error messages */
 	if (irq_status & M_LOG_MSG) {
@@ -96,7 +96,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
 			1, ESR_SIZE);
 		if (err >= 0) {
-			memcpy(stat_string, stm401_cmdbuff, ESR_SIZE);
+			memcpy(stat_string, stm401_readbuff, ESR_SIZE);
 			stat_string[ESR_SIZE] = 0;
 			dev_err(&ps_stm401->client->dev,
 				"STM401 Error: %s\n", stat_string);
@@ -132,7 +132,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 				"Reading Dock state failed\n");
 			goto EXIT;
 		}
-		x = stm401_cmdbuff[0];
+		x = stm401_readbuff[0];
 		stm401_as_data_buffer_write(ps_stm401, DT_DOCK, x, 0, 0, 0);
 		if (ps_stm401->dsdev.dev != NULL)
 			switch_set_state(&ps_stm401->dsdev, x);
@@ -149,7 +149,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 				"Reading prox from stm401 failed\n");
 			goto EXIT;
 		}
-		x = stm401_cmdbuff[0];
+		x = stm401_readbuff[0];
 		stm401_as_data_buffer_write(ps_stm401, DT_PROX, x, 0, 0, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
@@ -164,7 +164,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 				"Get status reg failed\n");
 			goto EXIT;
 		}
-		aod_wake_up_reason = (stm401_cmdbuff[1] >> 4) & 0xf;
+		aod_wake_up_reason = (stm401_readbuff[1] >> 4) & 0xf;
 		if (aod_wake_up_reason == AOD_WAKEUP_REASON_ESD) {
 			char *envp[2];
 			envp[0] = "STM401WAKE=ESD";
@@ -195,7 +195,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 				"Reading flat data from stm401 failed\n");
 			goto EXIT;
 		}
-		x = stm401_cmdbuff[0];
+		x = stm401_readbuff[0];
 		stm401_as_data_buffer_write(ps_stm401, DT_FLAT_UP, x, 0, 0, 0);
 
 		dev_dbg(&ps_stm401->client->dev, "Sending Flat up %d\n", x);
@@ -208,7 +208,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 				"Reading flat data from stm401 failed\n");
 			goto EXIT;
 		}
-		x = stm401_cmdbuff[0];
+		x = stm401_readbuff[0];
 		stm401_as_data_buffer_write(ps_stm401,
 			DT_FLAT_DOWN, x, 0, 0, 0);
 
@@ -222,19 +222,51 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 				"Reading stowed from stm401 failed\n");
 			goto EXIT;
 		}
-		x = stm401_cmdbuff[0];
+		x = stm401_readbuff[0];
 		stm401_as_data_buffer_write(ps_stm401, DT_STOWED, x, 0, 0, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
 			"Sending Stowed status %d\n", x);
 	}
 	if (irq_status & M_CAMERA_ACT) {
+		stm401_cmdbuff[0] = CAMERA;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev,
+				"Reading camera data from stm failed\n");
+			goto EXIT;
+		}
 		x = CAMERA_DATA;
+		y = (stm401_readbuff[0] << 8) | stm401_readbuff[1];
+
 		stm401_as_data_buffer_write(ps_stm401, DT_CAMERA_ACT,
+			x, y, 0, 0);
+
+		dev_dbg(&ps_stm401->client->dev,
+			"Sending Camera(x,y,z)values:x=%d,y=%d,z=%d\n",
+			x, y, 0);
+
+		input_report_key(ps_stm401->input_dev, KEY_CAMERA, 1);
+		input_report_key(ps_stm401->input_dev, KEY_CAMERA, 0);
+		input_sync(ps_stm401->input_dev);
+		dev_dbg(&ps_stm401->client->dev,
+			"Report camkey toggle\n");
+	}
+	if (irq_status & M_NFC) {
+		stm401_cmdbuff[0] = NFC;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev,
+				"Reading nfc data from stm failed\n");
+			goto EXIT;
+		}
+		x = stm401_readbuff[0];
+		stm401_as_data_buffer_write(ps_stm401, DT_NFC,
 			x, 0, 0, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
-			"Sending Camera Gesture status %d\n", x);
+			"Sending NFC(x,y,z)values:x=%d,y=%d,z=%d\n",
+		x, 0, 0);
 	}
 	if (irq2_status & M_MMOVEME) {
 		/* Client recieving action will be upper 2 MSB of status */
@@ -263,13 +295,13 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		/* x (data1) msb: algo index, lsb: past, confidence */
-		x = (STM401_IDX_MODALITY << 8) | stm401_cmdbuff[0];
+		x = (STM401_IDX_MODALITY << 8) | stm401_readbuff[0];
 		/* y (data2) old state */
-		y = (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[1];
+		y = (stm401_readbuff[2] << 8) | stm401_readbuff[1];
 		/* z (data3) new state */
-		z = (stm401_cmdbuff[4] << 8) | stm401_cmdbuff[3];
+		z = (stm401_readbuff[4] << 8) | stm401_readbuff[3];
 		/* q (data4) time in state, in seconds */
-		q = (stm401_cmdbuff[6] << 8) | stm401_cmdbuff[5];
+		q = (stm401_readbuff[6] << 8) | stm401_readbuff[5];
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_stm401->client->dev, "Sending modality event\n");
 	}
@@ -284,13 +316,13 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		/* x (data1) msb: algo index, lsb: past, confidence */
-		x = (STM401_IDX_ORIENTATION << 8) | stm401_cmdbuff[0];
+		x = (STM401_IDX_ORIENTATION << 8) | stm401_readbuff[0];
 		/* y (data2) old state */
-		y = (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[1];
+		y = (stm401_readbuff[2] << 8) | stm401_readbuff[1];
 		/* z (data3) new state */
-		z = (stm401_cmdbuff[4] << 8) | stm401_cmdbuff[3];
+		z = (stm401_readbuff[4] << 8) | stm401_readbuff[3];
 		/* q (data4) time in state, in seconds */
-		q = (stm401_cmdbuff[6] << 8) | stm401_cmdbuff[5];
+		q = (stm401_readbuff[6] << 8) | stm401_readbuff[5];
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_stm401->client->dev, "Sending orientation event\n");
 	}
@@ -305,13 +337,13 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		/* x (data1) msb: algo index, lsb: past, confidence */
-		x = (STM401_IDX_STOWED << 8) | stm401_cmdbuff[0];
+		x = (STM401_IDX_STOWED << 8) | stm401_readbuff[0];
 		/* y (data2) old state */
-		y = (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[1];
+		y = (stm401_readbuff[2] << 8) | stm401_readbuff[1];
 		/* z (data3) new state */
-		z = (stm401_cmdbuff[4] << 8) | stm401_cmdbuff[3];
+		z = (stm401_readbuff[4] << 8) | stm401_readbuff[3];
 		/* q (data4) time in state, in seconds */
-		q = (stm401_cmdbuff[6] << 8) | stm401_cmdbuff[5];
+		q = (stm401_readbuff[6] << 8) | stm401_readbuff[5];
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_stm401->client->dev, "Sending stowed event\n");
 	}
@@ -329,7 +361,7 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		/* x (data1) msb: algo index */
 		x = STM401_IDX_ACCUM_MODALITY << 8;
 		/* y (data2) id */
-		y = (stm401_cmdbuff[1] << 8) | stm401_cmdbuff[0];
+		y = (stm401_readbuff[1] << 8) | stm401_readbuff[0];
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT, x, y, 0, 0);
 		dev_dbg(&ps_stm401->client->dev, "Sending accum modality event\n");
 	}
@@ -346,9 +378,9 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		/* x (data1) msb: algo index */
 		x = STM401_IDX_ACCUM_MVMT << 8;
 		/* y (data2) time_s */
-		y = (stm401_cmdbuff[1] << 8) | stm401_cmdbuff[0];
+		y = (stm401_readbuff[1] << 8) | stm401_readbuff[0];
 		/* z (data3) distance */
-		z = (stm401_cmdbuff[3] << 8) | stm401_cmdbuff[2];
+		z = (stm401_readbuff[3] << 8) | stm401_readbuff[2];
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT, x, y, z, 0);
 		dev_dbg(&ps_stm401->client->dev, "Sending accum mvmt event\n");
 	}
