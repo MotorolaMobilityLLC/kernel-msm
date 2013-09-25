@@ -228,8 +228,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 				"Reading get sensors failed\n");
 			break;
 		}
-		bytes[0] = stm401_cmdbuff[0];
-		bytes[1] = stm401_cmdbuff[1];
+		bytes[0] = stm401_readbuff[0];
+		bytes[1] = stm401_readbuff[1];
 		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
@@ -261,8 +261,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 				"Reading get sensors failed\n");
 			break;
 		}
-		bytes[0] = stm401_cmdbuff[0];
-		bytes[1] = stm401_cmdbuff[1];
+		bytes[0] = stm401_readbuff[0];
+		bytes[1] = stm401_readbuff[1];
 		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
@@ -292,8 +292,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 				"Reading get algos failed\n");
 			break;
 		}
-		bytes[0] = stm401_cmdbuff[0];
-		bytes[1] = stm401_cmdbuff[1];
+		bytes[0] = stm401_readbuff[0];
+		bytes[1] = stm401_readbuff[1];
 		dev_info(&ps_stm401->client->dev,
 			"Get algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
 		if (copy_to_user(argp, bytes, sizeof(bytes)))
@@ -309,7 +309,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 				"Reading get mag cal failed\n");
 			break;
 		}
-		if (copy_to_user(argp, &stm401_cmdbuff[0], STM401_MAG_CAL_SIZE))
+		if (copy_to_user(argp, &stm401_readbuff[0],
+				STM401_MAG_CAL_SIZE))
 			err = -EFAULT;
 
 		break;
@@ -360,7 +361,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		dev_dbg(&ps_stm401->client->dev,
 			"STM401_IOCTL_GET_DOCK_STATUS");
 		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
-		byte = stm401_cmdbuff[0];
+		byte = stm401_readbuff[0];
 		if (copy_to_user(argp, &byte, sizeof(byte)))
 			err = -EFAULT;
 		break;
@@ -436,6 +437,21 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			ps_stm401->ap_stm401_handoff_enable = true;
 
 		break;
+	case STM401_IOCTL_GET_AOD_INSTRUMENTATION_REG:
+		dev_dbg(&ps_stm401->client->dev,
+			"STM401_IOCTL_GET_AOD_INTRUMENTATION_REG");
+		stm401_cmdbuff[0] = STM_AOD_INSTRUMENTATION_REG;
+		err = stm401_i2c_write_read(ps_stm401,
+			stm401_cmdbuff, 1, STM_AOD_INSTRUMENTATION_REG_SIZE);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev,
+				"Get AOD instrumentation reg failed\n");
+			break;
+		}
+		if (copy_to_user(argp, stm401_readbuff,
+				STM_AOD_INSTRUMENTATION_REG_SIZE))
+			err = -EFAULT;
+		break;
 	case STM401_IOCTL_GET_STATUS_REG:
 		dev_dbg(&ps_stm401->client->dev,
 			"STM401_IOCTL_GET_STATUS_REG");
@@ -448,7 +464,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 
-		if (copy_to_user(argp, stm401_cmdbuff, STM401_STATUS_REG_SIZE))
+		if (copy_to_user(argp, stm401_readbuff, STM401_STATUS_REG_SIZE))
 			err = -EFAULT;
 		break;
 	case STM401_IOCTL_GET_TOUCH_REG:
@@ -462,7 +478,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 
-		if (copy_to_user(argp, stm401_cmdbuff, STM401_TOUCH_REG_SIZE))
+		if (copy_to_user(argp, stm401_readbuff, STM401_TOUCH_REG_SIZE))
 			err = -EFAULT;
 		break;
 	case STM401_IOCTL_SET_ALGO_REQ:
@@ -537,7 +553,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 				"Get algo evt failed\n");
 			break;
 		}
-		if (copy_to_user(argp + sizeof(bytes), stm401_cmdbuff,
+		if (copy_to_user(argp + sizeof(bytes), stm401_readbuff,
 			stm401_algo_info[addr].evt_size))
 			err = -EFAULT;
 		break;
