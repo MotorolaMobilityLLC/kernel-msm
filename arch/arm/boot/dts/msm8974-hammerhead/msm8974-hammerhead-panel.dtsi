@@ -1080,7 +1080,8 @@
 		qcom,mdss-pan-dsi-stream = <0>;
 		qcom,mdss-pan-dsi-mdp-tr = <0x0>;
 		qcom,mdss-pan-dsi-dma-tr = <0x04>;
-		qcom,mdss-pan-dsi-frame-rate = <64>;
+		qcom,mdss-pan-dsi-frame-rate = <60>;
+		qcom,mdss-pan-clk-rate = <804667392>;
 		qcom,mdss-pan-te-sel = <1>;
 		qcom,mdss-pan-wr-mem-continue = <0x3c>;
 		qcom,mdss-pan-wr-mem-start = <0x2c>;
