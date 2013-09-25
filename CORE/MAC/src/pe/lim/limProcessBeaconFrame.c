@@ -175,7 +175,12 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                 limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, 
                        ((pMac->lim.gLimHalScanState == eLIM_HAL_SCANNING_STATE) ? eANI_BOOLEAN_TRUE : eANI_BOOLEAN_FALSE), 
                        eANI_BOOLEAN_FALSE);
+
             }
+            /* Calling dfsChannelList which will convert DFS channel
+             * to Active channel for x secs if this channel is DFS channel */
+             limSetDFSChannelList(pMac, pBeacon->channelNumber,
+                                    &pMac->lim.dfschannelList);
         }
         else if (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE)
         {
@@ -302,6 +307,10 @@ limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
             {
                 limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_FALSE);
             }
+            /* Calling dfsChannelList which will convert DFS channel
+             * to Active channel for x secs if this channel is DFS channel */
+            limSetDFSChannelList(pMac, pBeacon->channelNumber,
+                                    &pMac->lim.dfschannelList);
         }
         else if (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE)
         {
