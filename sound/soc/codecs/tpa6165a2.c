@@ -836,14 +836,13 @@ static void tpa6165_report_button(struct tpa6165_data *tpa6165)
 					0, tpa6165->button_jack->jack->type);
 
 				tpa6165->button_pressed = 0;
-
+				pr_debug("%s:turn off button det state",
+							__func__);
 				if ((tpa6165->amp_state ==
 						TPA6165_AMP_DISABLED) &&
 						(tpa6165->mic_state ==
 						TPA6165_MIC_DISABLED)) {
 					/* safe to trigger sleep state now */
-					pr_debug("%s:turn off button det state",
-							__func__);
 					if (tpa6165->alwayson_micb ||
 							tpa6165->special_hs)
 						tpa6165_sleep(tpa6165,
@@ -851,8 +850,8 @@ static void tpa6165_report_button(struct tpa6165_data *tpa6165)
 					else
 						tpa6165_sleep(tpa6165,
 							TPA6165_SLEEP);
-					tpa6165_button_detect_state(tpa6165, 0);
 				}
+				tpa6165_button_detect_state(tpa6165, 0);
 			} else if ((tpa6165->dev_status_reg2 & TPA6165_PRESS)
 					&& (!tpa6165->button_pressed)) {
 				pr_debug("%s:report button pressed",
