@@ -3308,6 +3308,7 @@ static struct regulator_ops qpnp_chg_batfet_vreg_ops = {
 static void
 qpnp_chg_adjust_vddmax(struct qpnp_chg_chip *chip, int vbat_mv)
 {
+#ifdef QCOM_WA
 	int delta_mv, closest_delta_mv, sign;
 
 	delta_mv = chip->max_voltage_mv - VDD_MAX_CENTER_OFFSET - vbat_mv;
@@ -3326,6 +3327,9 @@ qpnp_chg_adjust_vddmax(struct qpnp_chg_chip *chip, int vbat_mv)
 			-MAX_DELTA_VDD_MAX_MV, MAX_DELTA_VDD_MAX_MV);
 	pr_debug("using delta_vddmax_mv = %d\n", chip->delta_vddmax_mv);
 	qpnp_chg_set_appropriate_vddmax(chip);
+#else
+	return;
+#endif
 }
 
 static int calculate_pc(struct qpnp_chg_chip *chip, int ocv_uv,
