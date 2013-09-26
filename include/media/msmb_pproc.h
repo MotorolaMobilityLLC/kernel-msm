@@ -221,6 +221,9 @@ struct msm_vpe_frame_info_t {
 #define VIDIOC_MSM_CPP_SEND_BUF_DONE \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_camera_v4l2_ioctl_t)
 
+#define VIDIOC_MSM_CPP_POP_STREAM_BUFFER \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_camera_v4l2_ioctl_t)
+
 #define V4L2_EVENT_CPP_FRAME_DONE  (V4L2_EVENT_PRIVATE_START + 0)
 #define V4L2_EVENT_VPE_FRAME_DONE  (V4L2_EVENT_PRIVATE_START + 1)
 
