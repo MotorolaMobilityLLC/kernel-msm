@@ -171,6 +171,7 @@ struct msp430_platform_data {
 #define M_STOWED		0x0400
 #define M_CAMERA_ACT	0x0800
 #define M_NFC			0x1000
+#define M_SIM			0x2000
 #define M_LOG_MSG		0x8000
 
 /* algo config mask */
@@ -200,6 +201,9 @@ struct msp430_android_sensor_data {
 	signed short data1;
 	signed short data2;
 	signed short data3;
+	signed short data4;
+	signed short data5;
+	signed short data6;
 	unsigned char type;
 	unsigned char status;
 };
@@ -237,6 +241,7 @@ enum MSP430_data_types {
 	DT_NFC,
 	DT_ALGO_EVT,
 	DT_ACCUM_MVMT,
+	DT_SIM,
 	DT_RESET
 };
 
