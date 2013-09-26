@@ -737,15 +737,21 @@ VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
 
            hddLog(VOS_TRACE_LEVEL_INFO, "%s: Enabled \n", __func__);
 
-           if((HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
-              pHddCtx->configuredMcastBcastFilter) ||
-              (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
-              pHddCtx->configuredMcastBcastFilter))
+           if (((HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
+                pHddCtx->sus_res_mcastbcast_filter) ||
+               (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
+                pHddCtx->sus_res_mcastbcast_filter)) &&
+               (VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid))
            {
                offLoadRequest.enableOrDisable =
-               SIR_OFFLOAD_ARP_AND_BCAST_FILTER_ENABLE;
+                   SIR_OFFLOAD_ARP_AND_BCAST_FILTER_ENABLE;
+               hddLog(VOS_TRACE_LEVEL_INFO,
+                      "offload: inside arp offload conditional check");
            }
-           
+
+           hddLog(VOS_TRACE_LEVEL_INFO, "offload: arp filter programmed = %d",
+                  offLoadRequest.enableOrDisable);
+
            //converting u32 to IPV4 address
            for(i = 0 ; i < 4; i++)
            {
@@ -871,8 +877,16 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
     tpSirWlanSuspendParam wlanSuspendParam =
       vos_mem_malloc(sizeof(tSirWlanSuspendParam));
 
-    pHddCtx->sus_res_mcastbcast_filter =
-        pHddCtx->configuredMcastBcastFilter;
+    if (VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid) {
+        pHddCtx->sus_res_mcastbcast_filter =
+            pHddCtx->configuredMcastBcastFilter;
+        pHddCtx->sus_res_mcastbcast_filter_valid = VOS_TRUE;
+        hddLog(VOS_TRACE_LEVEL_INFO, "offload: hdd_conf_suspend_ind");
+        hddLog(VOS_TRACE_LEVEL_INFO, "configuredMCastBcastFilter saved = %d",
+               pHddCtx->configuredMcastBcastFilter);
+
+    }
+
 
     if(NULL == wlanSuspendParam)
     {
@@ -881,7 +895,7 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
         return;
     }
 
-    hddLog(VOS_TRACE_LEVEL_INFO, 
+    hddLog(VOS_TRACE_LEVEL_INFO,
       "%s: send wlan suspend indication", __func__);
 
     if((pHddCtx->cfg_ini->nEnableSuspend == WLAN_MAP_SUSPEND_TO_MCAST_BCAST_FILTER))
@@ -941,6 +955,12 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
 
     pHddCtx->configuredMcastBcastFilter =
       pHddCtx->sus_res_mcastbcast_filter;
+    pHddCtx->sus_res_mcastbcast_filter_valid = VOS_FALSE;
+
+    hddLog(VOS_TRACE_LEVEL_INFO,
+           "offload: in hdd_conf_resume_ind, restoring configuredMcastBcastFilter");
+    hddLog(VOS_TRACE_LEVEL_INFO, "configuredMcastBcastFilter = %d",
+                  pHddCtx->configuredMcastBcastFilter);
 
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
@@ -1066,7 +1086,19 @@ static void hdd_PowerStateChangedCB
    spin_lock(&pHddCtx->filter_lock);
    if((newState == BMPS) &&  pHddCtx->hdd_wlan_suspended) {
       spin_unlock(&pHddCtx->filter_lock);
-      pHddCtx->sus_res_mcastbcast_filter = pHddCtx->configuredMcastBcastFilter;
+      if (VOS_FALSE == pHddCtx->sus_res_mcastbcast_filter_valid) {
+          pHddCtx->sus_res_mcastbcast_filter =
+              pHddCtx->configuredMcastBcastFilter;
+          pHddCtx->sus_res_mcastbcast_filter_valid = VOS_TRUE;
+
+          hddLog(VOS_TRACE_LEVEL_INFO, "offload: callback to associated");
+          hddLog(VOS_TRACE_LEVEL_INFO, "saving configuredMcastBcastFilter = %d",
+                 pHddCtx->configuredMcastBcastFilter);
+          hddLog(VOS_TRACE_LEVEL_INFO,
+                 "offload: calling hdd_conf_mcastbcast_filter");
+
+      }
+
       hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
       if(pHddCtx->hdd_mcastbcast_filter_set != TRUE)
          hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Not able to set mcast/bcast filter ", __func__);
