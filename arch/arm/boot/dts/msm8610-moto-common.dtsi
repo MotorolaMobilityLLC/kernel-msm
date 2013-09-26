@@ -11,7 +11,13 @@
  * GNU General Public License for more details.
  */
 
+/include/ "msm8610-v2.dtsi"
 /include/ "msm8610-camera-sensor-condor.dtsi"
+
+/ {
+	model = "Motorola QC-MSM8226";
+	compatible = "qcom,msm8610-moto", "qcom,msm8610";
+};
 
 &soc {
 	factory_support {
@@ -21,74 +27,21 @@
 		gpio-names = "factory_kill_disable";
 	};
 
-	serial@f991e000 {
+	serial@f9922000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf9922000 0x1000>;
+		interrupts = <0 112 0>;
 		status = "ok";
 	};
 
-	i2c@f9923000{
-		atmel_mxt_ts@4a {
-		compatible = "atmel,mxt-ts";
-		reg = <0x4a>;
-		interrupt-parent = <&msmgpio>;
-		interrupts = <1 0x2>;
-		vdd_ana-supply = <&pm8110_l19>;
-		vcc_i2c-supply = <&pm8110_l14>;
-		atmel,reset-gpio = <&msmgpio 0 0x00>;
-		atmel,irq-gpio = <&msmgpio 1 0x00>;
-		atmel,panel-coords = <0 0 508 880>;
-		atmel,display-coords = <0 0 480 800>;
-		atmel,i2c-pull-up;
-		atmel,no-force-update;
-		atmel,no-lpm-support;
-		atmel,cfg_1 {
-			atmel,family-id = <0x81>;
-			atmel,variant-id = <0x15>;
-			atmel,version = <0x11>;
-			atmel,build = <0xaa>;
-			atmel,config = [
-				/* Object 6, Instance = 0 */
-				00 00 00 00 00 00
-				/* Object 38, Instance = 0 */
-				1D 02 00 0A 06 0D 00 00
-				/* Object 7, Instance = 0 */
-				20 08 32
-				/* Object 8, Instance = 0 */
-				19 00 14 14 FF 00 FF 00 00 00
-				/* Object 9, Instance = 0 */
-				83 00 00 13 0B 00 20 32 01 03
-				00 32 05 30 0A 05 0A 00 70 03
-				FC 01 00 36 2F D8 00 00 40 00
-				00 0A 00 00 02
-				/* Object 18, Instance = 0 */
-				00 00
-				/* Object 19, Instance = 0 */
-				00 00 00 00 00 00
-				/* Object 25, Instance = 0 */
-				03 00 18 79 A8 61
-				/* Object 58, Instance = 0 */
-				00 00 00 00 00 00 00 00 00 00
-				00
-				/* Object 42, Instance = 0 */
-				00 00 00 00 00 00 00 00
-				/* Object 46, Instance = 0 */
-				04 03 08 10 00 00 00 00 00
-				/* Object 47, Instance = 0 */
-				00 00 00 00 00 00 00 00 00 00
-				/* Object 48, Instance = 0 */
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00
-				/* Object 55, Instance = 0 */
-				00 00 00 00
-				];
-			};
-		};
+	serial@f991e000 {
+		status = "disabled";
 	};
 
 	i2c@f9925000 {
+		qcom,sda-gpio = <&msmgpio 10 0>;
+		qcom,scl-gpio = <&msmgpio 11 0>;
+
 		mpu3050@68 {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -123,6 +76,12 @@
 			vio-supply = <&pm8110_l14>;
 			fsl,irq-gpio = <&msmgpio 81 0x00>;
 			fsl,sensors-position = <5>;
+		};
+	};
+
+	rpm-regulator-ldoa21 {
+		regulator-l21 {
+			regulator-min-microvolt = <2950000>;
 		};
 	};
 
@@ -169,6 +128,16 @@
 		};
 	};
 
+	vddio_disp_vreg: vddio_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vddio_disp";
+		gpio = <&msmgpio 7 0x0>;
+		parent-supply = <&pm8110_l14>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-always-on;
+	};
+
     sound {
         qcom,audio-routing =
             "RX_BIAS", "MCLK",
@@ -182,6 +151,12 @@
 	qcom,dsi_v2_truly_wvga_video {
 		qcom,cont-splash-enabled;
 	};
+};
+
+&qsecom_mem {
+	linux,contiguous-region;
+	reg = <0 0x600000>;
+	label = "qsecom_mem";
 };
 
 &i2c_cdc  {
@@ -238,6 +213,74 @@
 	msm8x10_wcd_codec@55{
 		compatible = "qcom,msm8x10-wcd-i2c";
 		reg = <0x55>;
+	};
+};
+
+&i2c_3 {
+	lm2755@18 {
+		compatible = "lm,lm2755";
+		reg = <0x18>;
+		led-class-name ="lm2755-led-class";
+		red-led-name = "red";
+		green-led-name = "green";
+		blue-led-name = "blue";
+		red-group-addr = <0xA9>;	/* offset where D1 register offset */
+		green-group-addr = <0xB9>;	/* offset where D2 register offset */
+		blue-group-addr = <0xC9>;	/* offset where D3 register offset */
+		clock-mode = <0x0>;		/* internal clock | change to 0x40 for internal */
+		charge-pump-mode = <0x1>;	/* enable the charge pump */
+		min-tstep = <0x0>;		/* not sure yet */
+		max-level = <0x1F>;		/* just what it says */
+	};
+
+	tpa6165xx@40 {
+		compatible = "ti,tpa6165";
+		reg = <0x40>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <84 0x2>;
+		gpios = <&msmgpio 84 0x0>;
+		hs_det_vdd-supply = <&pm8110_l6>;
+		hs_det_micvdd-supply = <&pm8110_l21>;
+	};
+
+	kionix@e {
+		compatible = "kionix,kxtj9";
+		reg = <0x0e>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <81 0x2>; /* GPIO # will be converted to GPIO_IRQ # */
+		vio-supply = <&pm8110_l14>;
+		vdd-supply = <&pm8110_l19>;
+		kionix,min-interval = <5>;
+		kionix,init-interval = <200>;
+		kionix,axis-map-x = <0>;
+		kionix,axis-map-y = <1>;
+		kionix,axis-map-z = <2>;
+		kionix,g-range = <2>;
+		kionix,negate-x;
+		kionix,negate-z;
+		kionix,res-12bit;
+	};
+
+	ct406@39 {
+		compatible = "ams,ct406";
+		reg = <0x39>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <80 0x2>;
+		gpios = <&msmgpio 80 0>; /* IRQ */
+		vdd-supply = <&pm8110_l19>;
+		ams,prox-samples-for-noise-floor = <0x05>;
+		ams,prox-covered-offset = <0x0096>;
+		ams,prox-uncovered-offset = <0x006e>;
+		ams,prox-recalibrate-offset = <0x0046>;
+		ams,prox-offset = <0x00>;
+		ams,prox-pulse-count = <0x04>;
+		ams,ink_type = <0x01>;
+	};
+
+	tmp108@48 {
+		compatible = "ti,tmp108";
+		reg = <0x48>;
+		gpios = <&msmgpio 8 0>;
 	};
 };
 
@@ -450,6 +493,10 @@
 	cd-gpios = <&msmgpio 42 0x1>;
 
 	status = "ok";
+};
+
+&pm8110_l14 {
+	regulator-always-on;
 };
 
 &pm8110_chg {
