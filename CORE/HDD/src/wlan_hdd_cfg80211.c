@@ -6868,11 +6868,11 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
         return status;
     }
 
-    wlan_hdd_get_rssi(pAdapter, &sinfo->signal);
-    sinfo->filled |= STATION_INFO_SIGNAL;
-
     wlan_hdd_get_station_stats(pAdapter);
     rate_flags = pAdapter->hdd_stats.ClassA_stat.tx_rate_flags;
+
+    wlan_hdd_get_rssi(pAdapter, &sinfo->signal);
+    sinfo->filled |= STATION_INFO_SIGNAL;
 
     //convert to the UI units of 100kbps
     myRate = pAdapter->hdd_stats.ClassA_stat.tx_rate * 5;
