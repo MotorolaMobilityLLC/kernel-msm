@@ -465,6 +465,11 @@ static ssize_t hdmi_tx_sysfs_wta_hpd(struct device *dev,
 		if (hdmi_ctrl->panel_power_on && hdmi_ctrl->hpd_state) {
 			hdmi_tx_set_audio_switch_node(hdmi_ctrl, 0, false);
 			hdmi_tx_wait_for_audio_engine(hdmi_ctrl);
+
+			if (hdmi_tx_enable_power(hdmi_ctrl, HDMI_TX_DDC_PM,
+				false))
+				DEV_WARN("%s: Failed to disable ddc power\n",
+					__func__);
 		}
 
 		hdmi_tx_send_cable_notification(hdmi_ctrl, 0);
@@ -2360,9 +2365,15 @@ static void hdmi_tx_power_off_work(struct work_struct *work)
 
 	hdmi_tx_core_off(hdmi_ctrl);
 
+	mutex_lock(&hdmi_ctrl->mutex);
 	if (hdmi_ctrl->hpd_off_pending) {
-		hdmi_tx_hpd_off(hdmi_ctrl);
 		hdmi_ctrl->hpd_off_pending = false;
+		mutex_unlock(&hdmi_ctrl->mutex);
+
+		if (!hdmi_ctrl->hpd_state)
+			hdmi_tx_hpd_off(hdmi_ctrl);
+	} else {
+		mutex_unlock(&hdmi_ctrl->mutex);
 	}
 
 	mutex_lock(&hdmi_ctrl->mutex);
@@ -2588,7 +2599,16 @@ static int hdmi_tx_sysfs_enable_hpd(struct hdmi_tx_ctrl *hdmi_ctrl, int on)
 
 	DEV_INFO("%s: %d\n", __func__, on);
 	if (on) {
-		rc = hdmi_tx_hpd_on(hdmi_ctrl);
+		mutex_lock(&hdmi_ctrl->mutex);
+		if (hdmi_ctrl->hpd_off_pending) {
+			hdmi_ctrl->hpd_off_pending = false;
+			mutex_unlock(&hdmi_ctrl->mutex);
+			hdmi_tx_hpd_polarity_setup(hdmi_ctrl,
+				HPD_CONNECT_POLARITY);
+		} else {
+			mutex_unlock(&hdmi_ctrl->mutex);
+			rc = hdmi_tx_hpd_on(hdmi_ctrl);
+		}
 	} else {
 		/* If power down is already underway, wait for it to finish */
 		flush_work_sync(&hdmi_ctrl->power_off_work);
@@ -2941,7 +2961,7 @@ static int hdmi_tx_panel_event_handler(struct mdss_panel_data *panel_data,
 		break;
 
 	case MDSS_EVENT_CLOSE:
-		if (hdmi_ctrl->hpd_feature_on)
+		if (hdmi_ctrl->hpd_feature_on && !hdmi_ctrl->hpd_state)
 			hdmi_tx_hpd_polarity_setup(hdmi_ctrl,
 				HPD_CONNECT_POLARITY);
 		break;
