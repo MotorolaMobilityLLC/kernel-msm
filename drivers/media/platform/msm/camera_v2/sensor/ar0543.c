@@ -42,9 +42,10 @@ static struct msm_sensor_ctrl_t ar0543_s_ctrl;
 enum sensor_otp_cal_rev_t {
 	AR0543_OTP_CAL_REV_1,
 	AR0543_OTP_CAL_REV_2,
+	AR0543_OTP_CAL_REV_3,
 	AR0543_OTP_CAL_REV_DEF,
 	AR0543_OTP_CAL_REV_SIZE,
-	AR0543_OTP_CAL_REV_MAX = AR0543_OTP_CAL_REV_2,
+	AR0543_OTP_CAL_REV_MAX = AR0543_OTP_CAL_REV_DEF - 1,
 };
 
 struct module_otp_t {
@@ -92,6 +93,25 @@ static struct module_otp_rev_t ar0543_otp_rev = {
 		.cal_lsc_q5_os = 0,
 	},
 	.n[AR0543_OTP_CAL_REV_2] = {
+		.size = 133,
+		.max_entries = 3,
+		.mod_size = 18,
+		.mod_os = 0,
+		.mod_record_entry_base = 0x30,
+		.cal_size = 115,
+		.cal_os = 18,
+		.cal_record_entry_base = 0x31,
+		.cal_lsc_en = 1,
+		.cal_lsc_os = 26,
+		.cal_lsc_p0_os = 0,
+		.cal_lsc_p1_os = 20,
+		.cal_lsc_p2_os = 40,
+		.cal_lsc_p3_os = 60,
+		.cal_lsc_p4_os = 80,
+		.cal_lsc_xy_os = 100,
+		.cal_lsc_q5_os = 102,
+	},
+	.n[AR0543_OTP_CAL_REV_3] = {
 		.size = 133,
 		.max_entries = 3,
 		.mod_size = 18,
@@ -586,6 +606,8 @@ static uint16_t ar0543_read_otp_version(struct msm_sensor_ctrl_t *s_ctrl)
 		cal_ver = AR0543_OTP_CAL_REV_1;
 	else if (cal_ver == 0x3031)
 		cal_ver = AR0543_OTP_CAL_REV_2;
+	else if (cal_ver == 0x3032)
+		cal_ver = AR0543_OTP_CAL_REV_3;
 	else
 		cal_ver = AR0543_OTP_CAL_REV_DEF;
 
