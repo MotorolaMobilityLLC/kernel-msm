@@ -506,9 +506,8 @@ static int fwu_reset_device(void)
 {
 	int retval;
 
-	dev_dbg(&fwu->rmi4_data->i2c_client->dev, "Reset device\n");
-
-	retval = fwu->rmi4_data->reset_device(fwu->rmi4_data);
+	retval = fwu->rmi4_data->reset_device(fwu->rmi4_data,
+				&fwu->f01_fd.cmd_base_addr);
 	if (retval < 0) {
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Failed to reset core driver after reflash\n",
@@ -1385,7 +1384,8 @@ static int fwu_start_write_config(void)
 				__func__);
 	}
 
-	fwu->rmi4_data->reset_device(fwu->rmi4_data);
+	fwu->rmi4_data->reset_device(fwu->rmi4_data,
+				&fwu->f01_fd.cmd_base_addr);
 
 	pr_notice("%s: End of write config process\n", __func__);
 
@@ -1488,8 +1488,8 @@ static int fwu_do_read_config(void)
 	}
 
 exit:
-	fwu->rmi4_data->reset_device(fwu->rmi4_data);
-
+	fwu->rmi4_data->reset_device(fwu->rmi4_data,
+				&fwu->f01_fd.cmd_base_addr);
 	return retval;
 }
 
