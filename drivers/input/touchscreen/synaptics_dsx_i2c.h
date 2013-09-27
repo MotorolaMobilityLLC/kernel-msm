@@ -288,7 +288,8 @@ struct synaptics_rmi4_data {
 	void (*set_state)(struct synaptics_rmi4_data *rmi4_data, int state);
 	int (*ready_state)(struct synaptics_rmi4_data *rmi4_data, bool standby);
 	int (*irq_enable)(struct synaptics_rmi4_data *rmi4_data, bool enable);
-	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data);
+	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data,
+			unsigned char *f01_cmd_base_addr);
 	int number_resumes;
 	int last_resume;
 	struct synaptics_rmi4_resume_info *resume_info;
