@@ -104,7 +104,7 @@
 				label = "flash";
 				qcom,id = <2>;
 				linux,name = "led:flash_torch";
-				qcom,current = <200>;
+				qcom,current = <90>;
 				qcom,torch-enable;
 			};
 		};
