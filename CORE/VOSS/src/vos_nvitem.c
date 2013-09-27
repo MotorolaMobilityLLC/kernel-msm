@@ -277,8 +277,13 @@ static CountryInfoTable_t countryInfoTable =
     {
         { REGDOMAIN_FCC,     {'U', 'S'}},  //USA - must be the first country code
         { REGDOMAIN_ETSI,    {'A', 'D'}},  //ANDORRA
+#ifdef FEATURE_CESIUM_PROPRIETARY
+        { REGDOMAIN_WORLD,   {'A', 'E'}}, //UAE
+        { REGDOMAIN_APAC,    {'A', 'F'}},  //AFGHANISTAN
+#else
         { REGDOMAIN_ETSI,    {'A', 'E'}},  //UAE
         { REGDOMAIN_N_AMER_EXC_FCC, {'A', 'F'}},  //AFGHANISTAN
+#endif
         { REGDOMAIN_WORLD,   {'A', 'G'}},  //ANTIGUA AND BARBUDA
         { REGDOMAIN_FCC,     {'A', 'I'}},  //ANGUILLA
         { REGDOMAIN_ETSI,    {'A', 'L'}},  //ALBANIA
@@ -292,7 +297,11 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_WORLD,   {'A', 'U'}},  //AUSTRALIA
         { REGDOMAIN_ETSI,    {'A', 'W'}},  //ARUBA
         { REGDOMAIN_WORLD,   {'A', 'X'}},  //ALAND ISLANDS
+#ifdef FEATURE_CESIUM_PROPRIETARY
+        { REGDOMAIN_WORLD,   {'A', 'Z'}},  //AZERBAIJAN
+#else
         { REGDOMAIN_N_AMER_EXC_FCC, {'A', 'Z'}},  //AZERBAIJAN
+#endif
         { REGDOMAIN_ETSI,    {'B', 'A'}},  //BOSNIA AND HERZEGOVINA
         { REGDOMAIN_APAC,    {'B', 'B'}},  //BARBADOS
         { REGDOMAIN_HI_5GHZ, {'B', 'D'}},  //BANGLADESH
@@ -338,7 +347,11 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_ETSI,    {'D', 'Z'}},  //ALGERIA
         { REGDOMAIN_APAC,    {'E', 'C'}},  //ECUADOR
         { REGDOMAIN_ETSI,    {'E', 'E'}},  //ESTONIA
+#ifdef FEATURE_CESIUM_PROPRIETARY
+        { REGDOMAIN_APAC,    {'E', 'G'}},  //EGYPT
+#else
         { REGDOMAIN_N_AMER_EXC_FCC, {'E', 'G'}},  //EGYPT
+#endif
         { REGDOMAIN_WORLD,   {'E', 'H'}},  //WESTERN SAHARA
         { REGDOMAIN_NO_5GHZ, {'E', 'R'}},  //ERITREA
         { REGDOMAIN_ETSI,    {'E', 'S'}},  //SPAIN
@@ -381,7 +394,11 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_WORLD,   {'I', 'M'}},  //ISLE OF MAN
         { REGDOMAIN_APAC,    {'I', 'N'}},  //INDIA
         { REGDOMAIN_WORLD,   {'I', 'O'}},  //BRITISH INDIAN OCEAN TERRITORY
+#ifdef FEATURE_CESIUM_PROPRIETARY
+        { REGDOMAIN_ETSI,    {'I', 'Q'}},  //IRAQ
+#else
         { REGDOMAIN_NO_5GHZ, {'I', 'Q'}},  //IRAQ
+#endif
         { REGDOMAIN_HI_5GHZ, {'I', 'R'}},  //IRAN, ISLAMIC REPUBLIC OF
         { REGDOMAIN_ETSI,    {'I', 'S'}},  //ICELAND
         { REGDOMAIN_ETSI,    {'I', 'T'}},  //ITALY
@@ -420,7 +437,11 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_ETSI,    {'L', 'U'}},  //LUXEMBOURG
         { REGDOMAIN_ETSI,    {'L', 'V'}},  //LATVIA
         { REGDOMAIN_NO_5GHZ, {'L', 'Y'}},  //LIBYAN ARAB JAMAHIRIYA
+#ifdef FEATURE_CESIUM_PROPRIETARY
+        { REGDOMAIN_N_AMER_EXC_FCC, {'M', 'A'}},  //MOROCCO
+#else
         { REGDOMAIN_APAC,    {'M', 'A'}},  //MOROCCO
+#endif
         { REGDOMAIN_ETSI,    {'M', 'C'}},  //MONACO
         { REGDOMAIN_ETSI,    {'M', 'D'}},  //MOLDOVA, REPUBLIC OF
         { REGDOMAIN_ETSI,    {'M', 'E'}},  //MONTENEGRO
@@ -526,7 +547,11 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_N_AMER_EXC_FCC, {'W', 'S'}},  //SOMOA
         { REGDOMAIN_NO_5GHZ, {'Y', 'E'}},  //YEMEN
         { REGDOMAIN_ETSI,    {'Y', 'T'}},  //MAYOTTE
+#ifdef FEATURE_CESIUM_PROPRIETARY
+        { REGDOMAIN_ETSI,    {'Z', 'A'}},  //SOUTH AFRICA
+#else
         { REGDOMAIN_WORLD,   {'Z', 'A'}},  //SOUTH AFRICA
+#endif
         { REGDOMAIN_APAC,    {'Z', 'M'}},  //ZAMBIA
         { REGDOMAIN_ETSI,    {'Z', 'W'}},  //ZIMBABWE
     }
