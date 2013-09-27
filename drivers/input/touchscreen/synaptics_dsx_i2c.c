@@ -661,7 +661,8 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
 		unsigned short length);
 
-static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data);
+static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
+		unsigned char *f01_cmd_base_addr);
 
 static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data);
 
@@ -1076,7 +1077,7 @@ static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 	if (reset != 1)
 		return -EINVAL;
 
-	retval = synaptics_rmi4_reset_device(rmi4_data);
+	retval = synaptics_rmi4_reset_device(rmi4_data, NULL);
 	if (retval < 0) {
 		dev_err(dev,
 				"%s: Failed to issue reset command, error = %d\n",
@@ -2847,7 +2848,8 @@ static void synaptics_dsx_on_resume(struct synaptics_rmi4_data *rmi4_data)
 	}
 }
 
-static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
+static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
+		unsigned char *f01_cmd_base_addr)
 {
 	int current_state, retval;
 	bool need_to_query = false;
@@ -2872,6 +2874,7 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 		synaptics_dsx_ic_reset(rmi4_data, true);
 	else {
 		retval = synaptics_rmi4_i2c_write(rmi4_data,
+			f01_cmd_base_addr ? *f01_cmd_base_addr :
 			rmi4_data->f01_cmd_base_addr,
 			&command,
 			sizeof(command));
@@ -3590,11 +3593,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 		synaptics_dsx_on_resume(rmi4_data);
 
 		if (rmi4_data->reset_on_resume)
-			synaptics_rmi4_reset_device(rmi4_data);
-		else if (wait4idle) {
-			retval = synaptics_dsx_ic_reset(rmi4_data, false);
-			pr_debug("waited for idle %dms\n", retval);
-		}
+			synaptics_rmi4_reset_device(rmi4_data, NULL);
 	}
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, false);
