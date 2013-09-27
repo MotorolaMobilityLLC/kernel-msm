@@ -715,6 +715,7 @@ typedef struct tagCsrScanStruct
     tANI_U8 countryCode11d[WNI_CFG_COUNTRY_CODE_LEN];
     v_REGDOMAIN_t domainIdDefault;  //default regulatory domain
     v_REGDOMAIN_t domainIdCurrent;  //current regulatory domain
+    tCsrBssid currentCountryBssid;  // Bssid for current country code
     tANI_BOOLEAN f11dInfoApplied;
     tANI_BOOLEAN fCancelIdleScan;
 #ifdef FEATURE_WLAN_WAPI
