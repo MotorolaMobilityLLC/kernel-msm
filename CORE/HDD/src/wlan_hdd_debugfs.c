@@ -147,7 +147,7 @@ static ssize_t wcnss_patterngen_write(struct file *file,
     }
 
     /* Get command from user */
-    if (count <= MAX_USER_COMMAND_SIZE_FRAME)
+    if (count < MAX_USER_COMMAND_SIZE_FRAME)
         cmd = vos_mem_malloc(count);
     else
     {
