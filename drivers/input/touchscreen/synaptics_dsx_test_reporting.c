@@ -1606,7 +1606,7 @@ static int synaptics_rmi4_f54_reset(void)
 
 	rmi4_data->irq_enable(rmi4_data, false);
 
-	retval = rmi4_data->reset_device(rmi4_data);
+	retval = rmi4_data->reset_device(rmi4_data, NULL);
 
 	rmi4_data->irq_enable(rmi4_data, true);
 
