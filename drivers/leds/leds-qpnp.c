@@ -25,6 +25,7 @@
 #include <linux/workqueue.h>
 #include <linux/ctype.h>
 #include <linux/regulator/consumer.h>
+#include <linux/delay.h>
 
 #define WLED_MOD_EN_REG(base, n)	(base + 0x60 + n*0x10)
 #define WLED_IDAC_DLY_REG(base, n)	(WLED_MOD_EN_REG(base, n) + 0x01)
@@ -96,6 +97,7 @@
 #define FLASH_LED_UNLOCK_SECURE(base)	(base + 0xD0)
 #define FLASH_LED_TORCH(base)		(base + 0xE4)
 #define FLASH_FAULT_DETECT(base)	(base + 0x51)
+#define FLASH_RAMP_RATE(base)		(base + 0x54)
 #define FLASH_PERIPHERAL_SUBTYPE(base)	(base + 0x05)
 
 #define FLASH_MAX_LEVEL			0x4F
@@ -115,6 +117,7 @@
 #define FLASH_HW_VREG_OK		0x40
 #define FLASH_VREG_MASK			0xC0
 #define FLASH_STARTUP_DLY_MASK		0x02
+#define FLASH_RAMP_RATE_MASK		0xBF
 
 #define FLASH_ENABLE_ALL		0xE0
 #define FLASH_ENABLE_MODULE		0x80
@@ -124,7 +127,8 @@
 #define FLASH_ENABLE_LED_0		0xC0
 #define FLASH_ENABLE_LED_1		0xA0
 #define FLASH_INIT_MASK			0xE0
-#define	FLASH_SELFCHECK_ENABLE		0x80
+#define FLASH_SELFCHECK_ENABLE		0x80
+#define FLASH_SELFCHECK_DISABLE		0x00
 
 #define FLASH_STROBE_SW			0xC0
 #define FLASH_STROBE_HW			0x04
@@ -952,22 +956,6 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 				goto error_flash_set;
 			}
 
-			/*
-			 * Write 0x80 to MODULE_ENABLE before writing
-			 * 0xE0 in order to avoid a hardware bug caused
-			 * by register value going from 0x00 to 0xE0.
-			 */
-			rc = qpnp_led_masked_write(led,
-				FLASH_ENABLE_CONTROL(led->base),
-				FLASH_ENABLE_MODULE_MASK,
-				FLASH_ENABLE_MODULE);
-			if (rc) {
-				dev_err(&led->spmi_dev->dev,
-					"Enable reg write failed(%d)\n",
-					rc);
-				goto error_flash_set;
-			}
-
 			rc = qpnp_led_masked_write(led,
 				led->flash_cfg->current_addr,
 				FLASH_CURRENT_MASK,
@@ -987,6 +975,8 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 					"Enable reg write failed(%d)\n", rc);
 				goto error_flash_set;
 			}
+
+			usleep(1000);
 
 			if (!led->flash_cfg->strobe_type) {
 				rc = qpnp_led_masked_write(led,
@@ -1027,6 +1017,8 @@ static int qpnp_flash_set(struct qpnp_led_data *led)
 			else
 				goto error_flash_set;
 		}
+
+		usleep(2160);
 
 		if (led->flash_cfg->torch_enable) {
 			rc = qpnp_led_masked_write(led,
@@ -2225,7 +2217,7 @@ static int __devinit qpnp_flash_init(struct qpnp_led_data *led)
 
 	/* Set self fault check */
 	rc = qpnp_led_masked_write(led, FLASH_FAULT_DETECT(led->base),
-		FLASH_FAULT_DETECT_MASK, FLASH_SELFCHECK_ENABLE);
+		FLASH_FAULT_DETECT_MASK, FLASH_SELFCHECK_DISABLE);
 	if (rc) {
 		dev_err(&led->spmi_dev->dev,
 			"Fault detect reg write failed(%d)\n", rc);
@@ -2238,6 +2230,15 @@ static int __devinit qpnp_flash_init(struct qpnp_led_data *led)
 	if (rc) {
 		dev_err(&led->spmi_dev->dev,
 			"Mask enable reg write failed(%d)\n", rc);
+		return rc;
+	}
+
+	/* Set ramp rate */
+	rc = qpnp_led_masked_write(led, FLASH_RAMP_RATE(led->base),
+		FLASH_RAMP_RATE_MASK, 0xBF);
+	if (rc) {
+		dev_err(&led->spmi_dev->dev,
+			"Ramp rate reg write failed(%d)\n", rc);
 		return rc;
 	}
 
