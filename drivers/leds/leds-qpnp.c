@@ -211,16 +211,6 @@
 #define KPDBL_MODULE_DIS		0x00
 #define KPDBL_MODULE_EN_MASK		0x80
 
-#define SMBB_USB_SUSP			0x1347
-#define SMBB_USB_SEC_ACCESS		0x13D0
-#define SMBB_USB_COMP_OVR1		0x13EA
-#define USB_SUSPEND			0x01
-#define USB_SEC_ACCESS			0xA5
-#define USBIN_ULIMIT_LLIMIT_OK		0x2F
-#define USB_DEFAULT			0x00
-
-static bool is_phy_vbus_write = false;
-
 /**
  * enum qpnp_leds - QPNP supported led ids
  * @QPNP_ID_WLED - White led backlight
@@ -689,104 +679,6 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 	return 0;
 }
 
-static int qpnp_flash_usbin_ulimit_on(struct qpnp_led_data *led)
-{
-	u8 buf = 0;
-	int rc = 0;
-
-	/* SMBB_USB_SUSP: USB Suspend */
-	buf = USB_SUSPEND;
-	rc = spmi_ext_register_writel(led->spmi_dev->ctrl, 0, SMBB_USB_SUSP, &buf, 1);
-	if (rc) {
-		dev_err(&led->spmi_dev->dev,
-			"SMBB_USB_SUSP reg write failed(%d)\n",
-			rc);
-		return rc;
-	}
-
-	rc = spmi_ext_register_readl(led->spmi_dev->ctrl, 0, SMBB_USB_COMP_OVR1,
-			&buf, 1);
-	if (rc)
-		pr_err("SPMI read failed base:SMBB_USB_COMP_OVR1 rc=%d\n", rc);
-
-	if (buf != USBIN_ULIMIT_LLIMIT_OK) {
-		is_phy_vbus_write = true;
-
-		/* SMBB_USB_SEC_ACCESS */
-		buf = USB_SEC_ACCESS;
-		rc = spmi_ext_register_writel(led->spmi_dev->ctrl, 0,
-			SMBB_USB_SEC_ACCESS, &buf, 1);
-		if (rc) {
-			dev_err(&led->spmi_dev->dev,
-				"SMBB_USB_SEC_ACCESS reg write failed(%d)\n",
-				rc);
-			return rc;
-		}
-
-		/* SMBB_USB_COMP_OVR1: overrides USBIN_ULIMIT_OK
-		 * and USBIN_LLIMIT_OK to 1 and CHG_GONE comparator to 0.
-		 */
-		buf = USBIN_ULIMIT_LLIMIT_OK;
-		rc = spmi_ext_register_writel(led->spmi_dev->ctrl, 0,
-			SMBB_USB_COMP_OVR1, &buf, 1);
-		if (rc) {
-			dev_err(&led->spmi_dev->dev,
-				"SMBB_USB_COMP_OVR1 reg write failed(%d)\n",
-				rc);
-			return rc;
-		}
-	}
-
-	return 0;
-}
-
-static int qpnp_flash_usbin_ulimit_off(struct qpnp_led_data *led)
-{
-	u8 buf = 0;
-	int rc = 0;
-
-	if (is_phy_vbus_write) {
-		is_phy_vbus_write = false;
-
-		/* SMBB_USB_SEC_ACCESS */
-		buf = USB_SEC_ACCESS;
-		rc = spmi_ext_register_writel(led->spmi_dev->ctrl, 0,
-			SMBB_USB_SEC_ACCESS, &buf, 1);
-		if (rc) {
-			dev_err(&led->spmi_dev->dev,
-				"SMBB_USB_SEC_ACCESS reg write failed(%d)\n",
-				rc);
-			return rc;
-		}
-
-		/* SMBB_USB_COMP_OVR1: overrides USBIN_ULIMIT_OK
-		 * and USBIN_LLIMIT_OK to 1 and CHG_GONE comparator to 0.
-		 */
-		buf = USB_DEFAULT;
-		rc = spmi_ext_register_writel(led->spmi_dev->ctrl, 0,
-			SMBB_USB_COMP_OVR1, &buf, 1);
-		if (rc) {
-			dev_err(&led->spmi_dev->dev,
-				"SMBB_USB_COMP_OVR1 reg write failed(%d)\n",
-				rc);
-			return rc;
-		}
-	}
-
-	/* SMBB_USB_SUSP: USB Suspend */
-	buf = USB_DEFAULT;
-	rc = spmi_ext_register_writel(led->spmi_dev->ctrl, 0,
-		SMBB_USB_SUSP, &buf, 1);
-	if (rc) {
-		dev_err(&led->spmi_dev->dev,
-			"SMBB_USB_SUSP reg write failed(%d)\n",
-			rc);
-		return rc;
-	}
-
-	return 0;
-}
-
 static int qpnp_flash_regulator_operate(struct qpnp_led_data *led, bool on)
 {
 	int rc, i;
@@ -805,8 +697,6 @@ static int qpnp_flash_regulator_operate(struct qpnp_led_data *led, bool on)
 
 	if (!on)
 		goto regulator_turn_off;
-
-	qpnp_flash_usbin_ulimit_on(led);
 
 	if (!regulator_on && !led->flash_cfg->flash_on) {
 		for (i = 0; i < led->num_leds; i++) {
@@ -832,6 +722,16 @@ regulator_turn_off:
 	if (regulator_on && led->flash_cfg->flash_on) {
 		for (i = 0; i < led->num_leds; i++) {
 			if (led_array[i].flash_cfg->flash_reg_get) {
+				rc = qpnp_led_masked_write(led,
+					FLASH_ENABLE_CONTROL(led->base),
+					FLASH_ENABLE_MASK,
+					FLASH_DISABLE_ALL);
+				if (rc) {
+					dev_err(&led->spmi_dev->dev,
+						"Enable reg write failed(%d)\n",
+						rc);
+				}
+
 				rc = regulator_disable(led_array[i].flash_cfg->\
 							flash_boost_reg);
 				if (rc) {
@@ -845,18 +745,6 @@ regulator_turn_off:
 			break;
 		}
 	}
-
-	rc = qpnp_led_masked_write(led,
-		FLASH_ENABLE_CONTROL(led->base),
-		FLASH_ENABLE_MASK,
-		FLASH_DISABLE_ALL);
-	if (rc) {
-		dev_err(&led->spmi_dev->dev,
-			"Enable reg write failed(%d)\n",
-			rc);
-	}
-
-	qpnp_flash_usbin_ulimit_off(led);
 
 	return 0;
 }
