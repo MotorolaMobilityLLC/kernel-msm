@@ -1074,7 +1074,7 @@ static void arizona_micd_set_level(struct arizona *arizona, int index,
 static int arizona_extcon_probe(struct platform_device *pdev)
 {
 	struct arizona *arizona = dev_get_drvdata(pdev->dev.parent);
-	struct arizona_pdata *pdata;
+	struct arizona_pdata *pdata = &arizona->pdata;
 	struct arizona_extcon_info *info;
 	unsigned int val;
 	int jack_irq_fall, jack_irq_rise;
@@ -1082,8 +1082,6 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 
 	if (!arizona->dapm || !arizona->dapm->card)
 		return -EPROBE_DEFER;
-
-	pdata = dev_get_platdata(arizona->dev);
 
 	info = devm_kzalloc(&pdev->dev, sizeof(*info), GFP_KERNEL);
 	if (!info) {
