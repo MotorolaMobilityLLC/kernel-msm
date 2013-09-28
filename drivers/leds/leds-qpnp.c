@@ -99,6 +99,7 @@
 #define FLASH_FAULT_DETECT(base)	(base + 0x51)
 #define FLASH_RAMP_RATE(base)		(base + 0x54)
 #define FLASH_PERIPHERAL_SUBTYPE(base)	(base + 0x05)
+#define FLASH_VPH_PWR_DROOP(base)	(base + 0x5A)
 
 #define FLASH_MAX_LEVEL			0x4F
 #define TORCH_MAX_LEVEL			0x0F
@@ -118,6 +119,7 @@
 #define FLASH_VREG_MASK			0xC0
 #define FLASH_STARTUP_DLY_MASK		0x02
 #define FLASH_RAMP_RATE_MASK		0xBF
+#define FLASH_VPH_PWR_DROOP_MASK	0xF3
 
 #define FLASH_ENABLE_ALL		0xE0
 #define FLASH_ENABLE_MODULE		0x80
@@ -2239,6 +2241,15 @@ static int __devinit qpnp_flash_init(struct qpnp_led_data *led)
 	if (rc) {
 		dev_err(&led->spmi_dev->dev,
 			"Ramp rate reg write failed(%d)\n", rc);
+		return rc;
+	}
+
+	/* Enable VPH_PWR_DROOP and set threshold to 2.9V */
+	rc = qpnp_led_masked_write(led, FLASH_VPH_PWR_DROOP(led->base),
+					FLASH_VPH_PWR_DROOP_MASK, 0xC2);
+	if (rc) {
+		dev_err(&led->spmi_dev->dev,
+			"FLASH_VPH_PWR_DROOP reg write failed(%d)\n", rc);
 		return rc;
 	}
 
