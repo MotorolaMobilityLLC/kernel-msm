@@ -57,7 +57,8 @@
 
   ========================================================================*/
 
-#define SIR_BCN_REPORT_MAX_BSS_DESC                4
+#define SIR_BCN_REPORT_MAX_BSS_DESC_PER_ACTION_FRAME    3
+#define SIR_BCN_REPORT_MAX_BSS_PER_CHANNEL             15
 
 typedef enum eRrmRetStatus
 {
@@ -99,7 +100,7 @@ typedef struct sSirBeaconReportXmitInd
    tANI_U16    duration;
    tANI_U8     regClass;
    tANI_U8     numBssDesc;
-   tpSirBssDescription pBssDescription[SIR_BCN_REPORT_MAX_BSS_DESC];
+   tpSirBssDescription pBssDescription[SIR_BCN_REPORT_MAX_BSS_DESC_PER_ACTION_FRAME];
 } tSirBeaconReportXmitInd, * tpSirBeaconReportXmitInd;
 
 typedef struct sSirNeighborReportReqInd
