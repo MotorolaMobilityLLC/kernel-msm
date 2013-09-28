@@ -172,6 +172,7 @@ typedef struct
    sme_QosWmmTspecInfo          wmmAcTspecInfo;
 
    // current U-APSD parameters
+   v_BOOL_t                     wmmAcIsUapsdEnabled;
    v_U32_t                      wmmAcUapsdServiceInterval;
    v_U32_t                      wmmAcUapsdSuspensionInterval;
    sme_QosWmmDirType            wmmAcUapsdDirection;
