@@ -13,7 +13,7 @@
 /dts-v1/;
 
 /include/ "msm8610-moto-common.dtsi"
-/include/ "dsi-v2-panel-mot-auo-qhd-video.dtsi"
+/include/ "dsi-v2-panel-mot-tianma-qhd-video.dtsi"
 /include/ "msm8610-camera-sensor-cdp-mtp.dtsi"
 
 / {
@@ -21,4 +21,12 @@
 };
 
 &soc {
+	vsp_disp_vreg: vsp_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vsp_disp";
+		gpio = <&msmgpio 5 0x0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-always-on;
+	};
 };
