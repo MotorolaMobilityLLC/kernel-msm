@@ -12,25 +12,38 @@
 
 /dts-v1/;
 /include/ "msm8974-moto-reserve.dtsi"
-/include/ "msm8974-v2-abbagoochie-common.dtsi"
-
+/include/ "msm8974-v2-moto-common.dtsi"
+/include/ "dsi-panel-mot-smd-720p-video.dtsi"
 
 / {
+	model = "Motorola QC-MSM8974 Abbagoochie";
+	compatible = "qcom,msm8974-abbagoochie",
+		     "qcom,msm8974-moto",
+		     "qcom,msm8974";
+
 	qcom,msm-id = <126 0x41 0x8100>;
-};
 
-/ {
+	qcom,mdss_dsi_mot_smd_720p_video {
+		status = "ok";
+	};
+
 	mot_smd_720p_vid: qcom,mdss_dsi_mot_smd_720p_video {
 		qcom,rst-gpio = <&pm8941_gpios 19 0>;
 	};
 };
 
+&mot_smd_720p_vid {
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&vdd_disp_vreg>;
+	vci_disp-supply = <&vci_disp_vreg>;
+};
+
 &soc {
-	i2c_1: i2c@f9923000 {	/* Unused QUP on BLSP1 (BLSP1 UART0) */
+	i2c_1: i2c@f9923000 {   /* Unused QUP on BLSP1 (BLSP1 UART0) */
 		status = "disabled";
 	};
 
-	i2c_6: i2c@f9966000 {	/* "I2C4" on BLSP10 (BLSP2 QUP3) */
+	i2c_6: i2c@f9966000 {   /* "I2C4" on BLSP10 (BLSP2 QUP3) */
 		cell-index = <6>;
 		compatible = "qcom,i2c-qup";
 		reg = <0xf9966000 0x1000>;
@@ -46,10 +59,10 @@
 
 	ti,c55-ctrl {
 		compatible = "ti,c55-ctrl";
-		gpios = <&pm8941_gpios 14 2>,	/* gpio_core */
-			<&pm8941_gpios 16 0>,	/* gpio_reset */
-			<&msmgpio 102 1>,	/* gpio_ap_int */
-			<&msmgpio 61 2>;	/* gpio_c55_int */
+		gpios = <&pm8941_gpios 14 2>,   /* gpio_core */
+			<&pm8941_gpios 16 0>,   /* gpio_reset */
+			<&msmgpio 102 1>,       /* gpio_ap_int */
+			<&msmgpio 61 2>;        /* gpio_c55_int */
 	};
 
 	vbat_disp_vreg: vbat_disp_vreg {
@@ -74,20 +87,20 @@
 
 &pm8941_gpios {
 	gpio@cb00 { /* GPIO 12 */
-		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
-		qcom,out-strength = <1>;	/* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
+		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1 */
 		qcom,master-en = <1>;
 	};
 
 	gpio@d200 { /* GPIO 19 */
-		qcom,out-strength = <3>;	/* QPNP_PIN_OUT_STRENGTH_HIGH */
+		qcom,out-strength = <3>;  /* QPNP_PIN_OUT_STRENGTH_HIGH */
 	};
 
 	gpio@d600 { /* GPIO 23 */
-		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
-		qcom,out-strength = <1>;	/* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
+		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1 */
 		qcom,master-en = <1>;
 	};
 };
@@ -103,7 +116,7 @@
 	drv2605@5a {
 		compatible = "ti,drv2605";
 		reg = <0x5A>;
-		gpios = <&msmgpio 54 0>, /* EN_GPIO */
+		gpios = <&msmgpio 54 0>,    /* EN_GPIO */
 			<&pm8941_gpios 2 0>; /* Trigger */
 		external_trigger = <1>;
 		default_effect = <17>;      /* Strong Click 100% */

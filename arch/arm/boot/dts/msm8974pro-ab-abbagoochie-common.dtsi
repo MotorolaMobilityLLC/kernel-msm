@@ -10,11 +10,11 @@
  * GNU General Public License for more details.
  */
 
-/include/ "msm8974-v2-moto-common.dtsi"
+/include/ "msm8974pro-ab-moto-common.dtsi"
 /include/ "dsi-panel-mot-smd-720p-video.dtsi"
 
 / {
-	model = "Motorola QC-MSM8974 Abbagoochie";
+	model = "Motorola QC-MSM8974 Pro Abbagoochie";
 	compatible = "qcom,msm8974-abbagoochie",
 		     "qcom,msm8974-moto",
 		     "qcom,msm8974";
