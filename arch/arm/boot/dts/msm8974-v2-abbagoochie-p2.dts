@@ -19,6 +19,13 @@
 	qcom,msm-id = <218 0x41 0x8200>;
 };
 
+&soc {
+	qcom,msm-imem@fe805000 {
+		compatible = "qcom,msm-imem";
+		reg = <0xfc428000 0x1000>; /* Address and size of IMEM */
+	};
+};
+
 &i2c_1 {
         stm401@48 {
                 compatible = "stm,stm401";
