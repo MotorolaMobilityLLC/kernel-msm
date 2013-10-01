@@ -7431,6 +7431,7 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         return -ENOMEM;
     }
 
+    memset(pPnoRequest, 0, sizeof (tSirPNOScanReq));
     pPnoRequest->enable = 1; /*Enable PNO */
     pPnoRequest->ucNetworksCount = request->n_match_sets;
 
