@@ -208,6 +208,13 @@
 		gpios = <&pm8941_gpios 36 0x2>; /* GPIOF_OUT_INIT_HIGH */
 		gpio-names = "factory_kill_disable";
 	};
+
+	qcom,msm-dai-q6-mi2s-prim {
+		compatible = "qcom,msm-dai-q6-mi2s";
+		qcom,msm-dai-q6-mi2s-dev-id = <0>;
+		qcom,msm-mi2s-rx-lines = <0>;
+		qcom,msm-mi2s-tx-lines = <1>;
+	};
 };
 
 &spmi_bus {
