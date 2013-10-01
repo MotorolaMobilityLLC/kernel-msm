@@ -806,6 +806,15 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd)
 	mutex_lock(&mdp5_data->ov_lock);
 	mutex_lock(&mfd->lock);
 
+	ret = mdss_mdp_display_wait4pingpong(mdp5_data->ctl);
+	if (ret) {
+		mutex_unlock(&mfd->lock);
+		mutex_unlock(&mdp5_data->ov_lock);
+		if (ctl->shared_lock)
+			mutex_unlock(ctl->shared_lock);
+		return ret;
+	}
+
 	mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_BEGIN);
 
 	list_for_each_entry(pipe, &mdp5_data->pipes_used, used_list) {
