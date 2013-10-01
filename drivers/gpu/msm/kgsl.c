@@ -1325,6 +1325,7 @@ static long kgsl_ioctl_device_getproperty(struct kgsl_device_private *dev_priv,
 			result = -EINVAL;
 			break;
 		}
+
 		/*
 		 * Copy the reset status to value which also serves as
 		 * the out parameter
