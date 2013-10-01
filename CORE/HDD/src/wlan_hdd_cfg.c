@@ -4777,6 +4777,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    if ( !HAL_STATUS_SUCCESS( halStatus ) )
    {
       status = VOS_STATUS_E_FAILURE;
+      hddLog(LOGE, "sme_UpdateConfig() return failure %d", halStatus);
    }
 
 
