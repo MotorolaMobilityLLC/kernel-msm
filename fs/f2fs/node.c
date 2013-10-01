@@ -467,7 +467,12 @@ static void truncate_node(struct dnode_of_data *dn)
 
 	get_node_info(sbi, dn->nid, &ni);
 	if (dn->inode->i_blocks == 0) {
-		f2fs_bug_on(ni.blk_addr != NULL_ADDR);
+		if (ni.blk_addr != NULL_ADDR) {
+			f2fs_msg(sbi->sb, KERN_ERR,
+					"empty node still has block address %u ",
+					ni.blk_addr);
+			f2fs_handle_error(sbi);
+		}
 		goto invalidate;
 	}
 	f2fs_bug_on(ni.blk_addr == NULL_ADDR);
