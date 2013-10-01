@@ -418,6 +418,16 @@ typedef enum
    WLAN_HAL_LBP_LEADER_RSP                  = 220,
    WLAN_HAL_LBP_UPDATE_IND                  = 221,
 
+   /* Batchscan */
+   WLAN_HAL_BATCHSCAN_SET_REQ               = 222,
+   WLAN_HAL_BATCHSCAN_SET_RSP               = 223,
+   WLAN_HAL_BATCHSCAN_TRIGGER_RESULT_IND    = 224,
+   WLAN_HAL_BATCHSCAN_RESULT_IND            = 225,
+   WLAN_HAL_BATCHSCAN_STOP_IND              = 226,
+
+   WLAN_HAL_GET_IBSS_PEER_INFO_REQ          = 227,
+   WLAN_HAL_GET_IBSS_PEER_INFO_RSP          = 228,
+
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -3952,6 +3962,113 @@ typedef PACKED_PRE struct PACKED_POST
 }tHalLowPowerHeartBeatIndMsg, *tpHalLowPowerHeartBeatIndMsg;
 
 #endif
+
+#ifdef FEATURE_WLAN_BATCH_SCAN
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_BATCHSCAN_SET_REQ
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    /* Scan Frerquency - default to 30Sec*/
+    tANI_U32   scanInterval;
+    tANI_U32   numScan2Batch;
+    tANI_U32   bestNetworks;
+    tANI_U8    rfBand;
+    tANI_U8    rtt;
+} tHalBatchScanSetParams, *tpHalBatchScanSetParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalBatchScanSetParams batchScanParams;
+}  tHalBatchScanSetReqMsg, *tpHalBatchScanSetReqMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_BATCHSCAN_SET_RSP
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U32 supportedMscan;
+}  tHalBatchScanSetRspParam, *tpHalBatchScanSetRspParam;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalBatchScanSetRspParam setBatchScanRspParam;
+}  tHalBatchScanSetRspMsg, *tpHalBatchScanSetRspMsg;
+
+/*---------------------------------------------------------------------------
+* WLAN_HAL_BATCHSCAN_STOP_IND
+*--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32 param;
+} tHalBatchScanStopIndParam, *tpHalBatchScanStopIndParam;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader  header;
+   tHalBatchScanStopIndParam param;
+} tHalBatchScanStopIndMsg, *tpHalBatchScanStopIndMsg;
+
+/*---------------------------------------------------------------------------
+* WLAN_HAL_BATCHSCAN_TRIGGER_RESULT_IND
+*--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32 param;
+} tHalBatchScanTriggerResultParam, *tpHalBatchScanTriggerResultParam;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader  header;
+   tHalBatchScanTriggerResultParam param;
+} tHalBatchScanTriggerResultIndMsg, *tpHalBatchScanTriggerResultIndMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_BATCHSCAN_GET_RSP
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U8   bssid[6];     /* BSSID */
+    tANI_U8   ssid[32];     /* SSID */
+    tANI_U8   ch;           /* Channel */
+    tANI_U8   rssi;         /* RSSI or Level */
+    /* Timestamp when Network was found. Used to calculate age based on timestamp in GET_RSP msg header */
+    tANI_U32  timestamp;
+} tHalBatchScanNetworkInfo, *tpHalBatchScanNetworkInfo;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32   scanId;                         /* Scan List ID. */
+    /* No of AP in a Scan Result. Should be same as bestNetwork in SET_REQ msg */
+    tANI_U32   numNetworksInScanList;
+    /* Variable data ptr: Number of AP in Scan List */
+    /* following numNetworkInScanList is data of type tHalBatchScanNetworkInfo
+     * of sizeof(tHalBatchScanNetworkInfo) * numNetworkInScanList */
+    tANI_U8    scanList[1];
+} tHalBatchScanList, *tpHalBatchScanList;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32      timestamp;
+    tANI_U32      numScanLists;
+    boolean       isLastResult;
+    /* Variable Data ptr: Number of Scan Lists*/
+    /* following isLastResult is data of type tHalBatchScanList
+     * of sizeof(tHalBatchScanList) * numScanLists*/
+    tANI_U8       scanResults[1];
+}  tHalBatchScanResultIndParam, *tpHalBatchScanResultIndParam;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tHalBatchScanResultIndParam resultIndMsgParam;
+}  tHalBatchScanResultIndMsg, *tpHalBatchScanResultIndMsg;
+
+#endif
+
 /*---------------------------------------------------------------------------
  * WLAN_HAL_KEEP_ALIVE_REQ
  *--------------------------------------------------------------------------*/
@@ -6560,6 +6677,48 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader header;
    tHalLbpUpdateIndParams leaderIndParams;
 }  tHalLbpUpdateInd, *tpHalLbpUpdateInd;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U8  staIdx;         // Station Idx;
+   tANI_U32 txRate;         // Legacy transmit rate, in units of 500 kbit/sec,
+                            // for the most recently transmitted frame
+   tANI_U32 mcsIndex;       // mcs index for HT20 and HT40 rates
+   tANI_U32 txRateFlags;    //to differentiate between HT20 and
+                            //HT40 rates;  short and long guard interval
+   tANI_S8  rssi;           // RSSI of the last received beacon
+}tHalIbssPeerParams, *tpHalIbssPeerParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U32           status;             // success or failure
+   tANI_U8            numOfPeers;         // Number of Peers for
+                                          // which stats are being reported
+   tHalIbssPeerParams ibssPeerParams[1];  // Stats of peer in IBSS
+}tHalIbssPeerInfoRspParams, *tpHalIbssPeerInfoRspParams;
+
+// WLAN_HAL_GET_IBSS_PEER_INFO_RSP
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalIbssPeerInfoRspParams ibssPeerInfoRspParams;
+}tHalIbssPeerInfoRsp, *tpHalIbssPeerInfoRsp;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U8         bssIdx;           // Bss Index
+   tANI_BOOLEAN    allPeerInfoReqd;  // If set,all IBSS peers stats are reported
+   tANI_U8         staIdx;           // If allPeerInfoReqd is not set,
+                                     // only stats of peer with
+                                     // staIdx is reported
+}tHalIbssPeerInfoReqParams, *tpHalIbssPeerInfoReqParams;
+
+// WLAN_HAL_GET_IBSS_PEER_INFO_REQ
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalIbssPeerInfoReqParams ibssPeerInfoReqParams;
+}tHalIbssPeerInfoReq, *tpHalIbssPeerInfoReq;
 
 /*---------------------------------------------------------------------------
  *-------------------------------------------------------------------------*/
