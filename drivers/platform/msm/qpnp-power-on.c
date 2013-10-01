@@ -36,6 +36,7 @@
 #define QPNP_PON_REASON1(base)			(base + 0x8)
 #define QPNP_PON_WARM_RESET_REASON1(base)	(base + 0xA)
 #define QPNP_PON_WARM_RESET_REASON2(base)	(base + 0xB)
+#define QPNP_POFF_REASON1(base)		(base + 0xC)
 #define QPNP_PON_KPDPWR_S1_TIMER(base)		(base + 0x40)
 #define QPNP_PON_KPDPWR_S2_TIMER(base)		(base + 0x41)
 #define QPNP_PON_KPDPWR_S2_CNTL(base)		(base + 0x42)
@@ -120,6 +121,26 @@ static const char * const qpnp_pon_reason[] = {
 	[5] = "Triggered from PON1 (secondary PMIC)",
 	[6] = "Triggered from CBL (external power supply)",
 	[7] = "Triggered from KPD (power key press)",
+};
+
+static const char * const qpnp_poff_reason[] = {
+	[0] = "Triggered from SOFT (Software)",
+	[1] = "Triggered from PS_HOLD (PS_HOLD/MSM controlled shutdown)",
+	[2] = "Triggered from PMIC_WD (PMIC watchdog)",
+	[3] = "Triggered from GP1 (Keypad_Reset1)",
+	[4] = "Triggered from GP2 (Keypad_Reset2)",
+	[5] = "Triggered from KPDPWR_AND_RESIN"
+		"(Simultaneous power key and reset line)",
+	[6] = "Triggered from RESIN_N (Reset line/Volume Down Key)",
+	[7] = "Triggered from KPDPWR_N (Long Power Key hold)",
+	[8] = "N/A",
+	[9] = "N/A",
+	[10] = "N/A",
+	[11] = "Triggered from CHARGER (Charger ENUM_TIMER, BOOT_DONE)",
+	[12] = "Triggered from TFT (Thermal Fault Tolerance)",
+	[13] = "Triggered from UVLO (Under Voltage Lock Out)",
+	[14] = "Triggered from OTST3 (Overtemp)",
+	[15] = "Triggered from STAGE3 (Stage 3 reset)",
 };
 
 static int
@@ -879,8 +900,9 @@ static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 	struct device_node *itr = NULL;
 	u32 delay = 0;
 	int rc, sys_reset, index;
-	u8 pon_sts = 0;
 	int disable = 0;
+	u8 pon_sts = 0, buf[2];
+	u16 poff_sts = 0;
 
 	pon = devm_kzalloc(&spmi->dev, sizeof(struct qpnp_pon),
 							GFP_KERNEL);
@@ -932,11 +954,30 @@ static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 		dev_err(&pon->spmi->dev, "Unable to read PON_RESASON1 reg\n");
 		return rc;
 	}
+
 	index = ffs(pon_sts);
 	if ((index > PON_REASON_MAX) || (index < 0))
 		index = 0;
 	pr_info("PMIC@SID%d Power-on reason: %s\n", pon->spmi->sid,
 			index ? qpnp_pon_reason[index - 1] : "Unknown");
+
+	/* POFF reason */
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				QPNP_POFF_REASON1(pon->base),
+				buf, 2);
+	if (rc) {
+		dev_err(&pon->spmi->dev, "Unable to read POFF_RESASON regs\n");
+		return rc;
+	}
+	poff_sts = buf[0] | (buf[1] << 8);
+	index = ffs(poff_sts) - 1;
+	if (index >= ARRAY_SIZE(qpnp_poff_reason) || index < 0)
+		pr_info("PMIC@SID%d: Unknown power-off reason\n",
+				pon->spmi->sid);
+	else
+		pr_info("PMIC@SID%d: Power-off reason: %s\n",
+				pon->spmi->sid,
+				qpnp_poff_reason[index]);
 
 	rc = of_property_read_u32(pon->spmi->dev.of_node,
 				"qcom,pon-dbc-delay", &delay);
