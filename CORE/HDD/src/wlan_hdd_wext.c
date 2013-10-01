@@ -1220,14 +1220,15 @@ static int iw_set_mode(struct net_device *dev,
     }
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress) {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                 "%s:LOGP in Progress. Ignore!!!", __func__);
        return 0;
     }
 
     pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     if (pWextState == NULL)
     {
-        hddLog (LOGE, "%s ERROR: Data Storage Corruption", __func__);
+        hddLog(LOGE, "%s ERROR: Data Storage Corruption", __func__);
         return -EINVAL;
     }
 
@@ -1235,12 +1236,12 @@ static int iw_set_mode(struct net_device *dev,
     pRoamProfile = &pWextState->roamProfile;
     LastBSSType = pRoamProfile->BSSType;
 
-    hddLog( LOG1,"%s Old Bss type = %d", __func__, LastBSSType);
+    hddLog(LOG1, "%s Old Bss type = %d", __func__, LastBSSType);
 
     switch (wrqu->mode)
     {
     case IW_MODE_ADHOC:
-        hddLog( LOG1,"%s Setting AP Mode as IW_MODE_ADHOC", __func__);
+        hddLog(LOG1, "%s Setting AP Mode as IW_MODE_ADHOC", __func__);
         pRoamProfile->BSSType = eCSR_BSS_TYPE_START_IBSS;
         // Set the phymode correctly for IBSS.
         pConfig  = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
@@ -1249,16 +1250,16 @@ static int iw_set_mode(struct net_device *dev,
         wdev->iftype = NL80211_IFTYPE_ADHOC;
         break;
     case IW_MODE_INFRA:
-        hddLog( LOG1, "%s Setting AP Mode as IW_MODE_INFRA", __func__);
+        hddLog(LOG1, "%s Setting AP Mode as IW_MODE_INFRA", __func__);
         pRoamProfile->BSSType = eCSR_BSS_TYPE_INFRASTRUCTURE;
         wdev->iftype = NL80211_IFTYPE_STATION;
         break;
     case IW_MODE_AUTO:
-        hddLog(LOG1,"%s Setting AP Mode as IW_MODE_AUTO", __func__);
+        hddLog(LOG1, "%s Setting AP Mode as IW_MODE_AUTO", __func__);
         pRoamProfile->BSSType = eCSR_BSS_TYPE_ANY;
         break;
     default:
-        hddLog(LOG1,"%s Unknown AP Mode value", __func__);
+        hddLog(LOG1, "%s Unknown AP Mode value", __func__);
         return -EOPNOTSUPP;
     }
 
@@ -1281,8 +1282,6 @@ static int iw_set_mode(struct net_device *dev,
         }
     }
 
-
-
     EXIT();
     return 0;
 }
@@ -1290,13 +1289,14 @@ static int iw_set_mode(struct net_device *dev,
 
 static int iw_get_mode(struct net_device *dev,
                              struct iw_request_info *info,
-                             v_U32_t *uwrq, char *extra)
+                             union iwreq_data *wrqu,
+                             char *extra)
 {
 
     hdd_wext_state_t *pWextState;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
 
-    hddLog (LOG1, "In %s",__func__);
+    hddLog(LOG1, "In %s", __func__);
 
     if (NULL == pAdapter)
     {
@@ -1306,14 +1306,15 @@ static int iw_get_mode(struct net_device *dev,
     }
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress) {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                 "%s:LOGP in Progress. Ignore!!!", __func__);
        return 0;
     }
 
     pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     if (pWextState == NULL)
     {
-        hddLog (LOGE, "%s ERROR: Data Storage Corruption", __func__);
+        hddLog(LOGE, "%s ERROR: Data Storage Corruption", __func__);
         return -EINVAL;
     }
 
@@ -1321,21 +1322,22 @@ static int iw_get_mode(struct net_device *dev,
     {
     case eCSR_BSS_TYPE_INFRASTRUCTURE:
         hddLog(LOG1, "%s returns IW_MODE_INFRA\n", __func__);
-        *uwrq = IW_MODE_INFRA ;
+        wrqu->mode = IW_MODE_INFRA;
         break;
     case eCSR_BSS_TYPE_IBSS:
     case eCSR_BSS_TYPE_START_IBSS:
-        hddLog( LOG1,"%s returns IW_MODE_ADHOC\n", __func__);
-        *uwrq= IW_MODE_ADHOC;
+        hddLog(LOG1, "%s returns IW_MODE_ADHOC\n", __func__);
+        wrqu->mode = IW_MODE_ADHOC;
         break;
     case eCSR_BSS_TYPE_ANY:
-        hddLog( LOG1,"%s returns IW_MODE_AUTO\n", __func__);
-        *uwrq= IW_MODE_AUTO;
+        hddLog(LOG1, "%s returns IW_MODE_AUTO\n", __func__);
+        wrqu->mode = IW_MODE_AUTO;
         break;
     default:
-        hddLog( LOG1,"%s returns APMODE_UNKNOWN\n", __func__);
+        hddLog(LOG1, "%s returns APMODE_UNKNOWN\n", __func__);
         break;
     }
+
     return 0;
 }
 
