@@ -5570,6 +5570,8 @@ int hdd_wlan_startup(struct device *dev )
                         pHddCtx->cfg_ini->vosTraceEnableSME);
    hdd_vos_trace_enable(VOS_MODULE_ID_PE,
                         pHddCtx->cfg_ini->vosTraceEnablePE);
+   hdd_vos_trace_enable(VOS_MODULE_ID_PMC,
+                         pHddCtx->cfg_ini->vosTraceEnablePMC);
    hdd_vos_trace_enable(VOS_MODULE_ID_WDA,
                         pHddCtx->cfg_ini->vosTraceEnableWDA);
    hdd_vos_trace_enable(VOS_MODULE_ID_SYS,

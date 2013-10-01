@@ -69,6 +69,8 @@ extern void logDbg(tpAniSirGlobal pMac, tANI_U8 modId, tANI_U32 debugLevel, cons
 
 extern tANI_U32 gPktAllocCnt, gPktFreeCnt;
 
+extern  VOS_TRACE_LEVEL getVosDebugLevel(tANI_U32 debugLevel);
+
 /// Debug dumps
 extern void logPrintf(tpAniSirGlobal, tANI_U32, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4);
 

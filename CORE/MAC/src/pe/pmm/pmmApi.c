@@ -855,7 +855,7 @@ void pmmExitBmpsResponseHandler(tpAniSirGlobal pMac,  tpSirMsgQ limMsg)
 
     if((psessionEntry = peFindSessionBySessionId(pMac,PowersavesessionId))==NULL)
     {
-        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
+        pmmLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
         return;
     }
 
@@ -966,7 +966,7 @@ void pmmMissedBeaconHandler(tpAniSirGlobal pMac)
 
     if((psessionEntry = peFindSessionBySessionId(pMac,pwrSaveSessionId))==NULL)
     {
-        limLog(pMac, LOGE,FL("Session Does not exist for given sessionID"));
+        pmmLog(pMac, LOGE,FL("Session Does not exist for given sessionID"));
         return;
     }
 
@@ -1061,7 +1061,8 @@ void pmmExitBmpsIndicationHandler(tpAniSirGlobal pMac, tANI_U8 mode, eHalStatus 
 
     if(psessionEntry == NULL)
     {
-      PELOGE(limLog(pMac, LOGE,FL("Session does Not exist with given sessionId :%d "),powersavesessionId);)
+      PELOGE(pmmLog(pMac, LOGE,
+             FL("Session does Not exist with given sessionId :%d "),powersavesessionId);)
       return;
     }
 
@@ -1828,7 +1829,7 @@ void pmmEnterUapsdResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
 
     if((psessionEntry = peFindSessionBySessionId(pMac,PowersavesessionId))==NULL)
     {
-        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
+        pmmLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
         return;
     }
 
@@ -1968,7 +1969,7 @@ void pmmExitUapsdResponseHandler(tpAniSirGlobal pMac,  tpSirMsgQ limMsg)
     PowersavesessionId = pMac->pmm.sessionId;
     if((psessionEntry = peFindSessionBySessionId(pMac,PowersavesessionId))==NULL)
     {
-        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
+        pmmLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
         return;
     }
 
@@ -2129,7 +2130,7 @@ void pmmEnterWowlRequestHandler(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     pSmeWowlParams = (tpSirSmeWowlEnterParams)(pMbMsg->data);
     if (NULL == pSmeWowlParams)
     {
-        limLog(pMac, LOGE,
+        pmmLog(pMac, LOGE,
                FL("NULL message received"));
         return;
     }
@@ -2138,7 +2139,7 @@ void pmmEnterWowlRequestHandler(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
                                          &peSessionId);
     if (NULL == pSessionEntry)
     {
-        limLog(pMac, LOGE,
+        pmmLog(pMac, LOGE,
                FL("session does not exist for given BSSId"));
         goto end;
     }
@@ -2188,42 +2189,42 @@ void pmmEnterWowlRequestHandler(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_WOWLAN_UCAST_PATTERN_FILTER_ENABLE, &cfgValue) != eSIR_SUCCESS)
     {
-        limLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_UCAST_PATTERN_FILTER_ENABLE"));
+        pmmLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_UCAST_PATTERN_FILTER_ENABLE"));
         goto end;
     }
     pHalWowlParams->ucUcastPatternFilteringEnable = (tANI_U8)cfgValue;
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_WOWLAN_CHANNEL_SWITCH_ENABLE, &cfgValue) != eSIR_SUCCESS)
     {
-        limLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_CHANNEL_SWITCH_ENABLE"));
+        pmmLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_CHANNEL_SWITCH_ENABLE"));
         goto end;
     }
     pHalWowlParams->ucWowChnlSwitchRcv = (tANI_U8)cfgValue;
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_WOWLAN_DEAUTH_ENABLE, &cfgValue) != eSIR_SUCCESS)
     {
-       limLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_DEAUTH_ENABLE "));
+       pmmLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_DEAUTH_ENABLE "));
        goto end;
     }
     pHalWowlParams->ucWowDeauthRcv = (tANI_U8)cfgValue;
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_WOWLAN_DISASSOC_ENABLE, &cfgValue) != eSIR_SUCCESS)
     {
-        limLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_DEAUTH_ENABLE "));
+        pmmLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_DEAUTH_ENABLE "));
         goto end;
     }
     pHalWowlParams->ucWowDisassocRcv = (tANI_U8)cfgValue;
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_WOWLAN_MAX_MISSED_BEACON, &cfgValue) != eSIR_SUCCESS)
     {
-        limLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_MAX_MISSED_BEACON "));
+        pmmLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_MAX_MISSED_BEACON "));
         goto end;
     }
     pHalWowlParams->ucWowMaxMissedBeacons = (tANI_U8)cfgValue;
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_WOWLAN_MAX_SLEEP_PERIOD, &cfgValue) != eSIR_SUCCESS)
     {
-        limLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_MAX_SLEEP_PERIOD "));
+        pmmLog(pMac, LOGP, FL("cfgGet failed for WNI_CFG_WOWLAN_MAX_SLEEP_PERIOD "));
         goto end;
     }
     pHalWowlParams->ucWowMaxSleepUsec = (tANI_U8)cfgValue;

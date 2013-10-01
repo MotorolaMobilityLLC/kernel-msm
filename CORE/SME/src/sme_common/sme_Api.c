@@ -80,7 +80,7 @@
 #include "csrInternal.h"
 #include "wlan_qct_wda.h"
 #include "halMsgApi.h"
-
+#include "vos_trace.h"
 #include "sapApi.h"
 
 
@@ -88,7 +88,7 @@
 extern tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 
 #include <wlan_qct_pal_api.h>
-
+#define LOG_SIZE 256
 #define READ_MEMORY_DUMP_CMD     9
 #define TL_INIT_STATE            0
 
@@ -5101,6 +5101,24 @@ VOS_STATUS sme_DbgWriteMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_
    sme_ReleaseGlobalLock(&pMac->sme);
     
    return (status);
+}
+
+
+void pmcLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString, ...)
+{
+    VOS_TRACE_LEVEL  vosDebugLevel;
+    char    logBuffer[LOG_SIZE];
+    va_list marker;
+
+    /* getting proper Debug level */
+    vosDebugLevel = getVosDebugLevel(loglevel);
+
+    /* extracting arguments from pstring */
+    va_start( marker, pString );
+    vsnprintf(logBuffer, LOG_SIZE, pString, marker);
+
+    VOS_TRACE(VOS_MODULE_ID_PMC, vosDebugLevel, "%s", logBuffer);
+    va_end( marker );
 }
 
 
