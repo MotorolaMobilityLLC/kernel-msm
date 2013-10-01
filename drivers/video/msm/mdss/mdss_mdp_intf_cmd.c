@@ -485,6 +485,8 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 	if (cancel_work_sync(&ctx->clk_work))
 		pr_debug("no pending clk work\n");
 
+	mdss_mdp_cmd_wait4pingpong(ctl, NULL);
+
 	mdss_mdp_cmd_clk_off(ctx);
 
 	ctx->panel_on = 0;
