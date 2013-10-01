@@ -62,8 +62,8 @@ static ssize_t wcnss_wowpattern_write(struct file *file,
 
         return -EINVAL;
     }
-
-    if (count > MAX_USER_COMMAND_SIZE_WOWL_PATTERN)
+    /*take count as ending  into consideration*/
+    if (count >=  MAX_USER_COMMAND_SIZE_WOWL_PATTERN)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: Command length is larger than %d bytes.",
