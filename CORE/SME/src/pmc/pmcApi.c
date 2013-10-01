@@ -2949,12 +2949,60 @@ eHalStatus pmcSetPreferredNetworkList
                                        csrFindBestPhyMode( pMac, pMac->roam.configParam.phyMode ));
 
     /*Prepare a probe request for 2.4GHz band and one for 5GHz band*/
-    pmcPrepareProbeReqTemplate(pMac,SIR_PNO_24G_DEFAULT_CH, ucDot11Mode, pSession->selfMacAddr,
-                               pRequestBuf->p24GProbeTemplate, &pRequestBuf->us24GProbeTemplateLen);
+    if (eSIR_SUCCESS == pmcPrepareProbeReqTemplate(pMac, SIR_PNO_24G_DEFAULT_CH,
+                              ucDot11Mode, pSession->selfMacAddr,
+                              pRequestBuf->p24GProbeTemplate,
+                              &pRequestBuf->us24GProbeTemplateLen))
+    {
+        /* Append IE passed by supplicant(if any) to probe request */
+        if ((0 < pRequest->us24GProbeTemplateLen) &&
+            ((pRequestBuf->us24GProbeTemplateLen +
+              pRequest->us24GProbeTemplateLen) < SIR_PNO_MAX_PB_REQ_SIZE ))
+        {
+            vos_mem_copy((tANI_U8 *)&pRequestBuf->p24GProbeTemplate +
+                          pRequestBuf->us24GProbeTemplateLen,
+                          (tANI_U8 *)&pRequest->p24GProbeTemplate,
+                          pRequest->us24GProbeTemplateLen);
+            pRequestBuf->us24GProbeTemplateLen +=
+                                                pRequest->us24GProbeTemplateLen;
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                   "%s: pRequest->us24GProbeTemplateLen = %d", __func__,
+                    pRequest->us24GProbeTemplateLen);
+        }
+        else
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                   "%s: Extra ie discarded on 2.4G, IE length = %d", __func__,
+                    pRequest->us24GProbeTemplateLen);
+        }
+    }
 
-    pmcPrepareProbeReqTemplate(pMac,SIR_PNO_5G_DEFAULT_CH, ucDot11Mode, pSession->selfMacAddr,
-                               pRequestBuf->p5GProbeTemplate, &pRequestBuf->us5GProbeTemplateLen);
-
+    if (eSIR_SUCCESS == pmcPrepareProbeReqTemplate(pMac, SIR_PNO_5G_DEFAULT_CH,
+                               ucDot11Mode, pSession->selfMacAddr,
+                               pRequestBuf->p5GProbeTemplate,
+                               &pRequestBuf->us5GProbeTemplateLen))
+    {
+        /* Append IE passed by supplicant(if any) to probe request */
+        if ((0 < pRequest->us5GProbeTemplateLen ) &&
+            ((pRequestBuf->us5GProbeTemplateLen +
+              pRequest->us5GProbeTemplateLen) < SIR_PNO_MAX_PB_REQ_SIZE ))
+        {
+            vos_mem_copy((tANI_U8 *)&pRequestBuf->p5GProbeTemplate +
+                          pRequestBuf->us5GProbeTemplateLen,
+                          (tANI_U8 *)&pRequest->p5GProbeTemplate,
+                          pRequest->us5GProbeTemplateLen);
+            pRequestBuf->us5GProbeTemplateLen += pRequest->us5GProbeTemplateLen;
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                    "%s: pRequestBuf->us5GProbeTemplateLen = %d", __func__,
+                     pRequest->us5GProbeTemplateLen);
+        }
+        else
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                   "%s: Extra IE discarded on 5G, IE length = %d", __func__,
+                    pRequest->us5GProbeTemplateLen);
+        }
+    }
 
     msg.type     = WDA_SET_PNO_REQ;
     msg.reserved = 0;
