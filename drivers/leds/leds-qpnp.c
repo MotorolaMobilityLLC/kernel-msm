@@ -32,6 +32,7 @@
 #define WLED_IDAC_DLY_REG(base, n)	(WLED_MOD_EN_REG(base, n) + 0x01)
 #define WLED_FULL_SCALE_REG(base, n)	(WLED_IDAC_DLY_REG(base, n) + 0x01)
 #define WLED_MOD_SRC_SEL_REG(base, n)	(WLED_FULL_SCALE_REG(base, n) + 0x01)
+#define WLED_CABC_REG(base, n)		(WLED_MOD_SRC_SEL_REG(base, n) + 0x03)
 
 /* wled control registers */
 #define WLED_BRIGHTNESS_CNTL_LSB(base, n)	(base + 0x40 + 2*n)
@@ -46,7 +47,6 @@
 #define WLED_BOOST_LIMIT_REG(base)		(base + 0x4E)
 #define WLED_CURR_SINK_REG(base)		(base + 0x4F)
 #define WLED_HIGH_POLE_CAP_REG(base)		(base + 0x58)
-#define WLED_CABC_REG(base)			(base + 0x66)
 #define WLED_CURR_SINK_MASK		0xE0
 #define WLED_CURR_SINK_SHFT		0x05
 #define WLED_DISABLE_ALL_SINKS		0x00
@@ -375,6 +375,7 @@ struct wled_config_data {
 	bool	cabc_en;
 	bool	dig_mod_gen_en;
 	bool	cs_out_en;
+	bool	cabc_done;
 };
 
 /**
@@ -573,6 +574,27 @@ static int qpnp_wled_sync(struct qpnp_led_data *led)
 	return 0;
 }
 
+static int qpnp_wled_cabc_enable(struct qpnp_led_data *led)
+{
+	int rc, i, num_wled_strings;
+
+	num_wled_strings = led->wled_cfg->num_strings;
+
+	for (i = 0; i < num_wled_strings; i++) {
+		/* program cabc mode */
+			rc = qpnp_led_masked_write(led,
+				WLED_CABC_REG(led->base, i),
+				WLED_CABC_MASK, WLED_CABC_ENABLE);
+			if (rc) {
+				dev_err(&led->spmi_dev->dev,
+					"WLED cabc reg write failed(%d)\n", rc);
+				return rc;
+			}
+	}
+
+	return 0;
+}
+
 static int qpnp_wled_set(struct qpnp_led_data *led)
 {
 	int rc, duty, level;
@@ -667,6 +689,14 @@ static int qpnp_wled_set(struct qpnp_led_data *led)
 		}
 
 	} else {
+
+		/* CABC on 1st set cmd to have 1 brightness step per power up */
+		if (!led->wled_cfg->cabc_done && led->wled_cfg->cabc_en) {
+			qpnp_wled_cabc_enable(led);
+			pr_debug("%s WLED CABC enabled\n", led->cdev.name);
+			led->wled_cfg->cabc_done = 1;
+		}
+
 		val = WLED_BOOST_ON;
 		rc = spmi_ext_register_writel(led->spmi_dev->ctrl,
 			led->spmi_dev->sid, WLED_MOD_CTRL_REG(led->base),
@@ -1654,17 +1684,6 @@ static int __devinit qpnp_wled_init(struct qpnp_led_data *led)
 		}
 	}
 
-	/* program cabc mode */
-	if (led->wled_cfg->cabc_en) {
-		rc = qpnp_led_masked_write(led, WLED_CABC_REG(led->base),
-			WLED_CABC_MASK, WLED_CABC_ENABLE);
-		if (rc) {
-			dev_err(&led->spmi_dev->dev,
-				"WLED cabc reg write failed(%d)\n", rc);
-			return rc;
-		}
-	}
-
 	/* program high pole capacitance */
 	rc = qpnp_led_masked_write(led, WLED_HIGH_POLE_CAP_REG(led->base),
 		WLED_CP_SELECT_MASK, led->wled_cfg->cp_select);
@@ -1674,7 +1693,7 @@ static int __devinit qpnp_wled_init(struct qpnp_led_data *led)
 		return rc;
 	}
 
-	/* program modulator, current mod src and cabc */
+	/* program modulator, current mod src */
 	for (i = 0; i < num_wled_strings; i++) {
 		rc = qpnp_led_masked_write(led, WLED_MOD_EN_REG(led->base, i),
 			WLED_NO_MASK, WLED_EN_MASK);
@@ -2754,6 +2773,7 @@ static int __devinit qpnp_get_config_wled(struct qpnp_led_data *led,
 		of_property_read_bool(node, "qcom,cs-out-en");
 
 	/* Use panel revision check to enable cabc */
+	led->wled_cfg->cabc_done = 0;
 	np = of_find_node_by_path("/chosen");
 	panel_ver = WLED_PANEL_DEFAULT;
 	of_property_read_u64(np, "mmi,panel_ver", &panel_ver);
@@ -2766,7 +2786,7 @@ static int __devinit qpnp_get_config_wled(struct qpnp_led_data *led,
 	} else {
 		led->wled_cfg->cabc_en = 1;
 		dev_info(&led->spmi_dev->dev,
-			"CABC enabled panel rev. %#x\n", (u32)panel_ver);
+			"CABC will be enabled panel: %#x\n", (u32)panel_ver);
 	}
 
 	return 0;
