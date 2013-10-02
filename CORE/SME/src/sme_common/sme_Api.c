@@ -319,7 +319,6 @@ done:
 
 void dumpCsrCommandInfo(tpAniSirGlobal pMac, tSmeCmd *pCmd)
 {
-#ifdef WLAN_DEBUG
     switch( pCmd->command )
     {
     case eSmeCommandScan:
@@ -347,7 +346,6 @@ void dumpCsrCommandInfo(tpAniSirGlobal pMac, tSmeCmd *pCmd)
     default:
         break;
     }
-#endif  //#ifdef WLAN_DEBUG
 }
 
 tSmeCmd *smeGetCommandBuffer( tpAniSirGlobal pMac )
@@ -9095,3 +9093,179 @@ eHalStatus sme_DelPeriodicTxPtrn(tHalHandle hHal, tSirDelPeriodicTxPtrn
     return status;
 }
 
+#if defined WLAN_FEATURE_RELIABLE_MCAST
+/* ---------------------------------------------------------------------------
+    \fn sme_EnableReliableMcast
+    \brief  Used to enable Reliable Multicast using Leader Based Protocol
+    setting will not persist over reboots
+    \param  hHal
+    \param  sessionId
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_EnableReliableMcast(tHalHandle hHal, tANI_U32 sessionId)
+{
+    eHalStatus status = eHAL_STATUS_FAILURE;
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+    smsLog(pMac, LOG1, FL("enable RMC"));
+    status = sme_AcquireGlobalLock(&pMac->sme);
+    if (HAL_STATUS_SUCCESS(status))
+    {
+        status = csrEnableRMC(pMac, sessionId);
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return status;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_DisableReliableMcast
+    \brief  Used to disable Reliable Multicast using Leader Based Protocol
+    setting will not persist over reboots
+    \param  hHal
+    \param  sessionId
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_DisableReliableMcast(tHalHandle hHal, tANI_U32 sessionId)
+{
+   eHalStatus status = eHAL_STATUS_FAILURE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   smsLog(pMac, LOG1, FL("disable RMC"));
+   status = sme_AcquireGlobalLock(&pMac->sme);
+   if (HAL_STATUS_SUCCESS(status))
+   {
+      status = csrDisableRMC(pMac, sessionId);
+      sme_ReleaseGlobalLock(&pMac->sme);
+   }
+   return status;
+}
+#endif /* defined WLAN_FEATURE_RELIABLE_MCAST */
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SendRateUpdateInd
+    \brief  API to Update rate
+    \param  hHal - The handle returned by macOpen
+    \param  rateUpdateParams - Pointer to rate update params
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_SendRateUpdateInd(tHalHandle hHal, tSirRateUpdateInd *rateUpdateParams)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    eHalStatus status;
+    vos_msg_t msg;
+
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme)))
+    {
+        msg.type     = WDA_RATE_UPDATE_IND;
+        msg.bodyptr  = rateUpdateParams;
+
+        if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
+        {
+            VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,"%s: Not able "
+                       "to post WDA_SET_RMC_RATE_IND to WDA!",
+                       __func__);
+
+            sme_ReleaseGlobalLock(&pMac->sme);
+            return eHAL_STATUS_FAILURE;
+        }
+
+        sme_ReleaseGlobalLock(&pMac->sme);
+        return eHAL_STATUS_SUCCESS;
+    }
+
+    return status;
+}
+
+#ifdef FEATURE_CESIUM_PROPRIETARY
+/* ---------------------------------------------------------------------------
+    \fn sme_GetIBSSPeerInfo
+    \brief  Used to disable Reliable Multicast using Leader Based Protocol
+    setting will not persist over reboots
+    \param  hHal
+    \param  ibssPeerInfoReq  multicast Group IP address
+    \- return eHalStatus
+    -------------------------------------------------------------------------*/
+eHalStatus sme_RequestIBSSPeerInfo(tHalHandle hHal, void *pUserData,
+                                            pIbssPeerInfoCb peerInfoCbk,
+                                            tANI_BOOLEAN allPeerInfoReqd,
+                                            tANI_U8 staIdx)
+{
+   eHalStatus status = eHAL_STATUS_FAILURE;
+   VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+   vos_msg_t vosMessage;
+   tSirIbssGetPeerInfoReqParams *pIbssInfoReqParams;
+
+   status = sme_AcquireGlobalLock(&pMac->sme);
+   if ( eHAL_STATUS_SUCCESS == status)
+   {
+       pMac->sme.peerInfoParams.peerInfoCbk = peerInfoCbk;
+       pMac->sme.peerInfoParams.pUserData = pUserData;
+
+       pIbssInfoReqParams = (tSirIbssGetPeerInfoReqParams *)
+                        vos_mem_malloc(sizeof(tSirIbssGetPeerInfoReqParams));
+       if (NULL == pIbssInfoReqParams)
+       {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Not able to allocate memory for dhcp start", __func__);
+           sme_ReleaseGlobalLock( &pMac->sme );
+           return eHAL_STATUS_FAILURE;
+       }
+       pIbssInfoReqParams->allPeerInfoReqd = allPeerInfoReqd;
+       pIbssInfoReqParams->staIdx = staIdx;
+
+       vosMessage.type = WDA_GET_IBSS_PEER_INFO_REQ;
+       vosMessage.bodyptr = pIbssInfoReqParams;
+       vosMessage.reserved = 0;
+
+       vosStatus = vos_mq_post_message( VOS_MQ_ID_WDA, &vosMessage );
+       if ( VOS_STATUS_SUCCESS != vosStatus )
+       {
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                        "%s: Post WDA_GET_IBSS_PEER_INFO_REQ MSG failed", __func__);
+          vos_mem_free(pIbssInfoReqParams);
+          vosStatus = eHAL_STATUS_FAILURE;
+       }
+       sme_ReleaseGlobalLock( &pMac->sme );
+   }
+
+   return (vosStatus);
+}
+#endif /* FEATURE_CESIUM_PROPRIETARY */
+
+void smeGetCommandQStatus( tHalHandle hHal )
+{
+    tSmeCmd *pTempCmd = NULL;
+    tListElem *pEntry;
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+    if (NULL == pMac)
+    {
+        smsLog( pMac, LOGE, "smeGetCommandQStatus: pMac is NULL" );
+        return;
+    }
+
+    pEntry = csrLLPeekHead( &pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK );
+    if( pEntry )
+    {
+        pTempCmd = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+    }
+    smsLog( pMac, LOGE, "Currently smeCmdActiveList has command (0x%X)",
+            (pTempCmd) ? pTempCmd->command : eSmeNoCommand );
+    if(pTempCmd)
+    {
+        if( eSmeCsrCommandMask & pTempCmd->command )
+        {
+            //CSR command is stuck. See what the reason code is for that command
+            dumpCsrCommandInfo(pMac, pTempCmd);
+        }
+    } //if(pTempCmd)
+
+    smsLog( pMac, LOGE, "Currently smeCmdPendingList has %d commands",
+            csrLLCount(&pMac->sme.smeCmdPendingList));
+
+    smsLog( pMac, LOGE, "Currently roamCmdPendingList has %d commands",
+            csrLLCount(&pMac->roam.roamCmdPendingList));
+
+    return;
+}
