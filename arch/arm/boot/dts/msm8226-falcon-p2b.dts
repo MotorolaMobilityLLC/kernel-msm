@@ -41,6 +41,10 @@
 	qcom,use-external-rsense = <1>;
 };
 
+&pm8226_iadc {
+	qcom,rsense = <10000000>;
+};
+
 &spmi_bus {
 	qcom,pm8226@0 {
 		qcom,power-on@800 {
