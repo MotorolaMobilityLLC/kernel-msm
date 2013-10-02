@@ -544,18 +544,7 @@ qpnp_chg_is_batt_temp_ok(struct qpnp_chg_chip *chip)
 static int
 qpnp_chg_is_batt_present(struct qpnp_chg_chip *chip)
 {
-	u8 batt_pres_rt_sts;
-	int rc;
-
-	rc = qpnp_chg_read(chip, &batt_pres_rt_sts,
-				 INT_RT_STS(chip->bat_if_base), 1);
-	if (rc) {
-		pr_err("spmi read failed: addr=%03X, rc=%d\n",
-				INT_RT_STS(chip->bat_if_base), rc);
-		return rc;
-	}
-
-	return (batt_pres_rt_sts & BATT_PRES_IRQ) ? 1 : 0;
+	return 1;
 }
 
 static int
@@ -970,35 +959,6 @@ qpnp_chg_bat_if_batt_temp_irq_handler(int irq, void *_chip)
 	pr_debug("batt-temp triggered: %d\n", batt_temp_good);
 
 	power_supply_changed(&chip->batt_psy);
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t
-qpnp_chg_bat_if_batt_pres_irq_handler(int irq, void *_chip)
-{
-	struct qpnp_chg_chip *chip = _chip;
-	int batt_present;
-
-	batt_present = qpnp_chg_is_batt_present(chip);
-	pr_debug("batt-pres triggered: %d\n", batt_present);
-
-	if (chip->batt_present ^ batt_present) {
-		chip->batt_present = batt_present;
-		power_supply_changed(&chip->batt_psy);
-		power_supply_changed(chip->usb_psy);
-
-		if (chip->cool_bat_decidegc && chip->warm_bat_decidegc
-						&& batt_present) {
-			pr_debug("enabling vadc notifications\n");
-			schedule_work(&chip->adc_measure_work);
-		} else if (chip->cool_bat_decidegc && chip->warm_bat_decidegc
-				&& !batt_present) {
-			qpnp_adc_tm_disable_chan_meas(chip->adc_tm_dev,
-					&chip->adc_param);
-			pr_debug("disabling vadc notifications\n");
-		}
-	}
-
 	return IRQ_HANDLED;
 }
 
@@ -2560,25 +2520,6 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 		case SMBB_BAT_IF_SUBTYPE:
 		case SMBBP_BAT_IF_SUBTYPE:
 		case SMBCL_BAT_IF_SUBTYPE:
-			chip->batt_pres.irq = spmi_get_irq_byname(spmi,
-						spmi_resource, "batt-pres");
-			if (chip->batt_pres.irq < 0) {
-				pr_err("Unable to get batt-pres irq\n");
-				return rc;
-			}
-			rc = devm_request_irq(chip->dev, chip->batt_pres.irq,
-				qpnp_chg_bat_if_batt_pres_irq_handler,
-				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING
-				| IRQF_SHARED | IRQF_ONESHOT,
-				"batt-pres", chip);
-			if (rc < 0) {
-				pr_err("Can't request %d batt-pres irq: %d\n",
-						chip->batt_pres.irq, rc);
-				return rc;
-			}
-
-			enable_irq_wake(chip->batt_pres.irq);
-
 			chip->batt_temp_ok.irq = spmi_get_irq_byname(spmi,
 						spmi_resource, "bat-temp-ok");
 			if (chip->batt_temp_ok.irq < 0) {
