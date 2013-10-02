@@ -1707,6 +1707,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 				chip->chrg_ocv_state = CHRG_OCV_OCV_WAIT;
 				pr_info("Start Chrg OCV calculation\n");
 			}
+			pm_stay_awake(chip->dev);
 			schedule_delayed_work(&chip->chrg_ocv_work,
 				msecs_to_jiffies(0));
 			schedule_delayed_work(&chip->eoc_work,
@@ -1817,6 +1818,7 @@ qpnp_chg_dc_dcin_valid_irq_handler(int irq, void *_chip)
 				chip->delta_vddmax_mv = 0;
 				qpnp_chg_set_appropriate_vddmax(chip);
 			}
+			pm_stay_awake(chip->dev);
 			schedule_delayed_work(&chip->eoc_work,
 				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 			schedule_work(&chip->soc_check_work);
