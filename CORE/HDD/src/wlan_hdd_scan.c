@@ -138,6 +138,7 @@ static eHalStatus hdd_AddIwStreamEvent(int cmd, int length, char* data, hdd_scan
     if(*last_event == *current_event)
     {
             /* no space to add event */
+        hddLog( LOGW, "%s: no space left to add event", __func__);
         return -E2BIG; /* Error code, may be E2BIG */
     }
 
@@ -307,6 +308,7 @@ static eHalStatus hdd_IndicateScanResult(hdd_scan_info_t *scanInfo, tCsrScanResu
 
    if (last_event == current_event)
    { /* no space to add event */
+       hddLog( LOGW, "hdd_IndicateScanResult: no space for SIOCGIWFREQ");
        return -E2BIG;
    }
 
@@ -487,6 +489,7 @@ static eHalStatus hdd_IndicateScanResult(hdd_scan_info_t *scanInfo, tCsrScanResu
       if(last_event == current_event)
       { /* no space to add event
                Error code, may be E2BIG */
+          hddLog( LOGW, "hdd_IndicateScanResult: no space for SIOCGIWENCODE");
           return -E2BIG;
       }
    }
@@ -1060,7 +1063,7 @@ int iw_set_cscan(struct net_device *dev, struct iw_request_info *info,
                 scanRequest.ChannelInfo.ChannelList = vos_mem_malloc(scanRequest.ChannelInfo.numOfChannels * sizeof(v_U8_t));
                 if(NULL == scanRequest.ChannelInfo.ChannelList) 
                 {
-                    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "memory alloc failed for channel list creation");
+                    hddLog(LOGE, "memory alloc failed for channel list creation");
                     status = -ENOMEM;
                     goto exit_point;
                 }
