@@ -494,7 +494,7 @@ void ConvertWMMTSPEC(tpAniSirGlobal     pMac,
     pOld->tsinfo.traffic.psb          = (tANI_U16)pNew->psb;
     pOld->tsinfo.traffic.userPrio     = (tANI_U16)pNew->user_priority;
     pOld->tsinfo.traffic.ackPolicy    = (tANI_U16)pNew->tsinfo_ack_pol;
-    pOld->nomMsduSz                   = pNew->size;
+    pOld->nomMsduSz                   = (pNew->fixed << 15) | pNew->size;
     pOld->maxMsduSz                   = pNew->max_msdu_size;
     pOld->minSvcInterval              = pNew->min_service_int;
     pOld->maxSvcInterval              = pNew->max_service_int;
