@@ -233,6 +233,8 @@ static const struct {
 		512, 0, 2, SZ_1M, NO_VER, NO_VER },
 };
 
+static unsigned int adreno_isidle(struct kgsl_device *device);
+
 /**
  * adreno_perfcounter_init: Reserve kernel performance counters
  * @device: device to configure
@@ -636,6 +638,27 @@ error:
 	return result;
 }
 
+/*
+ * adreno_use_default_setstate() - Use CPU instead of the GPU to manage the mmu?
+ * @adreno_dev: the device
+ *
+ * In many cases it is preferable to poke the iommu or gpummu directly rather
+ * than using the GPU command stream. If we are idle or trying to go to a low
+ * power state, using the command stream will be slower and asynchronous, which
+ * needlessly complicates the power state transitions. Additionally,
+ * the hardware simulators do not support command stream MMU operations so
+ * the command stream can never be used if we are capturing CFF data.
+ *
+ */
+static bool adreno_use_default_setstate(struct adreno_device *adreno_dev)
+{
+	return (adreno_isidle(&adreno_dev->dev) ||
+			adreno_dev->drawctxt_active == NULL ||
+			KGSL_STATE_ACTIVE != adreno_dev->dev.state ||
+			adreno_dev->dev.active_cnt == 0 ||
+			kgsl_cff_dump_enable);
+}
+
 static void adreno_iommu_setstate(struct kgsl_device *device,
 					unsigned int context_id,
 					uint32_t flags)
@@ -654,8 +677,7 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 	 * state, use the CPU instead of the GPU to reprogram the
 	 * iommu for simplicity's sake.
 	 */
-	 if (!adreno_dev->drawctxt_active || device->ftbl->isidle(device) ||
-		 !device->active_cnt)
+	 if (adreno_use_default_setstate(adreno_dev))
 		return kgsl_mmu_device_setstate(&device->mmu, flags);
 
 	num_iommu_units = kgsl_mmu_get_num_iommu_units(&device->mmu);
@@ -814,7 +836,7 @@ static void adreno_gpummu_setstate(struct kgsl_device *device,
 	 * writes For CFF dump we must idle and use the registers so that it is
 	 * easier to filter out the mmu accesses from the dump
 	 */
-	if (!kgsl_cff_dump_enable && adreno_dev->drawctxt_active) {
+	if (!adreno_use_default_setstate(adreno_dev)) {
 		context = kgsl_context_get(device, context_id);
 		if (context == NULL)
 			return;
@@ -3044,11 +3066,10 @@ static int adreno_ringbuffer_drain(struct kgsl_device *device,
 /* Caller must hold the device mutex. */
 int adreno_idle(struct kgsl_device *device)
 {
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	unsigned int rbbm_status;
 	unsigned long wait_time;
 	unsigned long wait_time_part;
 	unsigned int prev_reg_val[FT_DETECT_REGS_COUNT];
+
 
 	memset(prev_reg_val, 0, sizeof(prev_reg_val));
 
@@ -3066,23 +3087,15 @@ retry:
 	wait_time_part = jiffies + msecs_to_jiffies(KGSL_TIMEOUT_PART);
 
 	while (time_before(jiffies, wait_time)) {
-		adreno_regread(device, adreno_dev->gpudev->reg_rbbm_status,
-			&rbbm_status);
-		if (adreno_is_a2xx(adreno_dev)) {
-			if (rbbm_status == 0x110)
-				return 0;
-		} else {
-			if (!(rbbm_status & 0x80000000))
-				return 0;
-		}
+		if (adreno_isidle(device))
+			return 0;
 
-		/* Dont wait for timeout, detect hang faster.
-		 */
+		/* Dont wait for timeout, detect hang faster.  */
 		if (time_after(jiffies, wait_time_part)) {
-				wait_time_part = jiffies +
-					msecs_to_jiffies(KGSL_TIMEOUT_PART);
-				if ((adreno_ft_detect(device, prev_reg_val)))
-					goto err;
+			wait_time_part = jiffies +
+				msecs_to_jiffies(KGSL_TIMEOUT_PART);
+			if ((adreno_ft_detect(device, prev_reg_val)))
+				goto err;
 		}
 
 	}
@@ -3132,9 +3145,8 @@ static unsigned int adreno_isidle(struct kgsl_device *device)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 
-	WARN_ON(device->state == KGSL_STATE_INIT);
 	/* If the device isn't active, don't force it on. */
-	if (device->state == KGSL_STATE_ACTIVE) {
+	if (kgsl_pwrctrl_isenabled(device)) {
 		/* Is the ring buffer is empty? */
 		GSL_RB_GET_READPTR(rb, &rb->rptr);
 		if (rb->rptr == rb->wptr) {
