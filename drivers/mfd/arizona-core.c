@@ -580,7 +580,7 @@ static int arizona_of_get_gpio_defaults(struct arizona *arizona,
 	for (i = 0; i < ARRAY_SIZE(pdata->gpio_defaults); i++) {
 		if (pdata->gpio_defaults[i] > 0xffff)
 			pdata->gpio_defaults[i] = 0;
-		if (pdata->gpio_defaults[i] == 0)
+		else if (pdata->gpio_defaults[i] == 0)
 			pdata->gpio_defaults[i] = 0x10000;
 	}
 
