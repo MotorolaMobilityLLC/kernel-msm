@@ -48,14 +48,12 @@
 long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
-#if 0
 	void __user *argp = (void __user *)arg;
+#if 0
 	static int brightness_table_loaded;
 #endif
 	int err = -ENOTTY;
-#if 0
 	unsigned int addr = 0;
-#endif
 	struct stm401_data *ps_stm401 = file->private_data;
 #if 0
 	unsigned int cmdlen = 0;
@@ -67,12 +65,11 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 #endif
 
 	mutex_lock(&ps_stm401->lock);
-#if 0
 	switch (cmd) {
 	case STM401_IOCTL_BOOTLOADERMODE:
 		dev_dbg(&ps_stm401->client->dev,
 			"STM401_IOCTL_BOOTLOADERMODE");
-		err = stm401_bootloadermode(ps_stm401);
+		err = switch_stm401_mode(BOOTMODE);
 		break;
 	case STM401_IOCTL_NORMALMODE:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_NORMALMODE");
@@ -80,9 +77,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_MASSERASE:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_MASSERASE");
-		stm401_build_command(MASS_ERASE, NULL, &cmdlen);
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff,
-					cmdlen, I2C_RESPONSE_LENGTH);
+		err = stm401_boot_flash_erase();
 		break;
 	case STM401_IOCTL_SETSTARTADDR:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SETSTARTADDR");
@@ -104,7 +99,6 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_TEST_BOOTMODE");
 		err = switch_stm401_mode(BOOTMODE);
 		break;
-
 	case STM401_IOCTL_SET_DEBUG:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_DEBUG");
 		err = 0;
@@ -131,6 +125,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_VERSION");
 		err = stm401_get_version(ps_stm401);
 		break;
+#if 0
 	case STM401_IOCTL_SET_ACC_DELAY:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_ACC_DELAY");
 		delay = 0;
@@ -558,12 +553,10 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 		break;
 
+#endif
 	/* No default here since previous switch could have
 	   handled the command and cannot over write that */
 	}
-
-#endif
-err = 0;
 
 	mutex_unlock(&ps_stm401->lock);
 	return err;
