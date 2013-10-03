@@ -49,21 +49,7 @@
 
 #define I2C_RETRIES			5
 #define RESET_RETRIES			2
-#define STM401_MAXDATA_LENGTH		250
 #define STM401_DELAY_USEC		10
-#define STM401_CRC_RESPONSE_MSG		0x3a
-#define STM401_RESPONSE_MSG		0x3b
-#define STM401_RESPONSE_MSG_SUCCESS	0x00
-#define STM401_CRC_SEED			0xffff
-#define STM401_COMMAND_HEADER		0x80
-#define STM401_CRC_LENGTH		2
-#define STM401_OPCODE_LENGTH		1
-#define STM401_ADDRESS_LENGTH		3
-#define STM401_CORECOMMAND_LENGTH	(STM401_OPCODE_LENGTH +\
-					STM401_MAXDATA_LENGTH +\
-					STM401_ADDRESS_LENGTH)
-#define STM401_HEADER_LENGTH		1
-#define STM401_CMDLENGTH_BYTES		2
 #define G_MAX				0x7FFF
 
 #define STM401_BUSY_SLEEP_USEC    10000
@@ -95,9 +81,7 @@ unsigned char stat_string[ESR_SIZE+1];
 
 struct stm401_algo_requst_t stm401_g_algo_requst[STM401_NUM_ALGOS];
 
-unsigned char stm401_cmdbuff[STM401_HEADER_LENGTH + STM401_CMDLENGTH_BYTES +
-			STM401_CORECOMMAND_LENGTH + STM401_CRC_LENGTH];
-
+unsigned char stm401_cmdbuff[512];
 unsigned char stm401_readbuff[512];
 
 /* per algo config, request, and event registers */
@@ -126,7 +110,6 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 			u8 *buf, int writelen, int readlen)
 {
 	int tries, err = 0;
-	struct stm_response *response;
 	struct i2c_msg msgs[] = {
 		{
 			.addr = ps_stm401->client->addr,
@@ -159,25 +142,6 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 		for (tries = 0; tries < readlen; tries++)
 			dev_dbg(&ps_stm401->client->dev, "%02x",
 				stm401_readbuff[tries]);
-
-		if (ps_stm401->mode == BOOTMODE) {
-			response = (struct stm_response *) stm401_readbuff;
-			if ((response->cmd == STM401_RESPONSE_MSG &&
-				response->data != STM401_RESPONSE_MSG_SUCCESS)
-				) {
-					dev_err(&ps_stm401->client->dev,
-						"i2c cmd returned failure - %x, %x\n",
-						response->cmd, response->data);
-					err = -EIO;
-				} else if (response->cmd != STM401_RESPONSE_MSG
-					&& response->cmd
-					!= STM401_CRC_RESPONSE_MSG) {
-						dev_err(&ps_stm401->client->dev,
-							"i2c cmd returned failure - %x\n",
-							response->cmd);
-						err = -EIO;
-				}
-		}
 	}
 	return err;
 }
@@ -866,6 +830,8 @@ static int stm401_probe(struct i2c_client *client,
 			ps_stm401->input_dev->name, err);
 		goto err9;
 	}
+
+	switch_stm401_mode(NORMALMODE);
 
 	mutex_unlock(&ps_stm401->lock);
 
