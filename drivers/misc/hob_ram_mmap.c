@@ -163,6 +163,7 @@ static struct of_device_id hob_ram_match_table[] = {
 	{ .compatible = HOB_RAM_MISC_DEV_NAME },
 	{ /* NULL */ },
 };
+EXPORT_COMPAT(HOB_RAM_MISC_DEV_NAME);
 
 
 static struct platform_driver hob_driver = {
