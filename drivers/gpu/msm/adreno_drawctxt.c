@@ -310,7 +310,7 @@ int adreno_drawctxt_wait_global(struct adreno_device *adreno_dev,
 	mutex_unlock(&device->mutex);
 
 	if (timeout) {
-		ret = (int) wait_event_interruptible_timeout(drawctxt->waiting,
+		ret = (int) wait_event_timeout(drawctxt->waiting,
 			_check_global_timestamp(device, timestamp),
 			msecs_to_jiffies(timeout));
 
@@ -319,7 +319,7 @@ int adreno_drawctxt_wait_global(struct adreno_device *adreno_dev,
 		else if (ret > 0)
 			ret = 0;
 	} else {
-		ret = (int) wait_event_interruptible(drawctxt->waiting,
+		wait_event(drawctxt->waiting,
 			_check_global_timestamp(device, timestamp));
 	}
 
