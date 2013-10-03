@@ -355,6 +355,8 @@ struct stm_response {
 
 #define I2C_RESPONSE_LENGTH		8
 
+#define STM401_MAXDATA_LENGTH		256
+
 struct stm401_platform_data {
 	int (*init)(void);
 	void (*exit)(void);
@@ -474,10 +476,9 @@ int stm401_enable(struct stm401_data *ps_stm401);
 
 int stm401_load_brightness_table(struct stm401_data *ps_stm401);
 
-void stm401_build_command(enum stm_commands cmd,
-	const char *inbuff, unsigned int *length);
-int switch_stm401_mode(enum stm_mode mode);
+int stm401_boot_flash_erase(void);
 int stm401_get_version(struct stm401_data *ps_stm401);
+int switch_stm401_mode(enum stm_mode mode);
 int stm401_bootloadermode(struct stm401_data *ps_stm401);
 
 extern struct stm401_data *stm401_misc_data;
