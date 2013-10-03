@@ -917,27 +917,27 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
     hddLog(VOS_TRACE_LEVEL_INFO,
       "%s: send wlan resume indication", __func__);
 
-    if (pHddCtx->hdd_mcastbcast_filter_set == TRUE)
+    wlanResumeParam = vos_mem_malloc(sizeof(tSirWlanResumeParam));
+
+    if (NULL == wlanResumeParam)
     {
-        wlanResumeParam = vos_mem_malloc(sizeof(tSirWlanResumeParam));
-
-        if(NULL == wlanResumeParam)
-        {
-            hddLog(VOS_TRACE_LEVEL_FATAL,
-               "%s: vos_mem_alloc failed ", __func__);
-            return;
-        }
-
-        //Disable supported OffLoads
-        hdd_conf_hostoffload(pAdapter, FALSE);
-
-        wlanResumeParam->configuredMcstBcstFilterSetting =
-                                   pHddCtx->configuredMcastBcastFilter;
-        halStatus = sme_ConfigureResumeReq(pHddCtx->hHal, wlanResumeParam);
-        if (eHAL_STATUS_SUCCESS != halStatus)
-            vos_mem_free(wlanResumeParam);
-        pHddCtx->hdd_mcastbcast_filter_set = FALSE;
+        hddLog(VOS_TRACE_LEVEL_FATAL,
+             "%s: memory allocation failed for wlanResumeParam ", __func__);
+        return;
     }
+
+    //Disable supported OffLoads
+    hdd_conf_hostoffload(pAdapter, FALSE);
+
+    wlanResumeParam->configuredMcstBcstFilterSetting =
+                               pHddCtx->configuredMcastBcastFilter;
+    halStatus = sme_ConfigureResumeReq(pHddCtx->hHal, wlanResumeParam);
+    if (eHAL_STATUS_SUCCESS != halStatus)
+    {
+        vos_mem_free(wlanResumeParam);
+    }
+
+    pHddCtx->hdd_mcastbcast_filter_set = FALSE;
 
     pHddCtx->configuredMcastBcastFilter =
       pHddCtx->sus_res_mcastbcast_filter;
