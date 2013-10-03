@@ -151,6 +151,12 @@
 	qcom,dsi_v2_truly_wvga_video {
 		qcom,cont-splash-enabled;
 	};
+	hob_ram@f500000 {
+		compatible = "mmi,hob_ram";
+		reg = <0x0f500000 0x40000>,
+		      <0x0f540000 0x2000>;
+		qcom,memblock-reserve = <0x0f500000 0x42000>;
+	};
 };
 
 &qsecom_mem {
