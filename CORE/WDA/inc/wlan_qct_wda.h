@@ -289,6 +289,7 @@ typedef enum
 #define WDA_DS_TX_START_XMIT  WLANTL_TX_START_XMIT
 #define WDA_DS_FINISH_ULA     WLANTL_FINISH_ULA
 
+#define VOS_TO_WPAL_PKT(_vos_pkt) ((wpt_packet*)_vos_pkt)
 
 #define WDA_TX_PACKET_FREED      0X0
 

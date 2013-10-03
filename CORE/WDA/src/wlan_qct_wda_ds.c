@@ -84,8 +84,6 @@ when        who          what, where, why
 
 #define WDA_DS_DXE_RES_COUNT   (WDA_TLI_MIN_RES_DATA + 20)
 
-#define VOS_TO_WPAL_PKT(_vos_pkt) ((wpt_packet*)_vos_pkt)
-
 /* macro's for acessing TL API/data structures */
 #define WDA_TL_SET_TX_XMIT_PENDING(a) WLANTL_SetTxXmitPending(a)
 #define WDA_TL_IS_TX_XMIT_PENDING(a) WLANTL_IsTxXmitPending(a)

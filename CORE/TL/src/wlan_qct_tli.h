@@ -455,6 +455,8 @@ typedef struct
   WLANTL_TIMER_EXPIER_UDATA_T timerUdata;
 
   WLANTL_REORDER_BUFFER_T     *reorderBuffer;
+
+  v_U16_t            LastSN;
 }WLANTL_BAReorderType;
 
 
