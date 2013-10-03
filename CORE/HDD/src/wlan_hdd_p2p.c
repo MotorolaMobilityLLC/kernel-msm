@@ -752,7 +752,11 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
             }
             goto err_rem_channel;
         }
-
+        /* This will extend timer in LIM when sending Any action frame
+         * It will cover remain on channel timer till next action frame
+         * in rx direction.
+         */
+        extendedWait = (tANI_U16)wait;
         /* Wait for driver to be ready on the requested channel */
         status = wait_for_completion_interruptible_timeout(
                      &pAdapter->offchannel_tx_event,

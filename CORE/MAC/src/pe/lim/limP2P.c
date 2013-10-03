@@ -713,6 +713,11 @@ void limSendSmeMgmtFrameInd(
                 limLog( pMac, LOGE, FL("Unable to active the gLimRemainOnChannelTimer"));
             } 
     }
+    else
+    {
+       if(frameType == SIR_MAC_MGMT_ACTION)
+            limLog( pMac, LOGE, FL("Rx: NO REMAIN ON CHANNEL and recd action frame "));
+    }
 
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
     return;
