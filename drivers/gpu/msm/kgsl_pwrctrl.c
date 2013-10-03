@@ -1188,10 +1188,17 @@ void kgsl_idle_check(struct work_struct *work)
 		 * (active_cnt is zero), then loop with increasing delay,
 		 * waiting for the GPU to become idle.
 		 */
-		while (atomic_read(&device->active_cnt) &&
-				delay < MAX_UDELAY) {
+		while (!atomic_read(&device->active_cnt) &&
+			(delay < MAX_UDELAY)) {
 			requested_state = device->requested_state;
 			if (!kgsl_pwrctrl_sleep(device))
+				break;
+			/*
+			 * If no new commands have been issued since the
+			 * last interrupt, stay in this loop waiting for
+			 * the GPU to become idle.
+			 */
+			if (!device->pwrctrl.irq_last)
 				break;
 			kgsl_pwrctrl_request_state(device, requested_state);
 			mutex_unlock(&device->mutex);
@@ -1216,6 +1223,8 @@ void kgsl_idle_check(struct work_struct *work)
 				kgsl_pwrctrl_busy_time(device, true);
 				device->pwrctrl.clk_stats.no_nap_cnt = 0;
 			}
+		} else {
+			device->pwrctrl.irq_last = 0;
 		}
 	}
 
