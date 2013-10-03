@@ -5022,6 +5022,8 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
       return 0;
    }
 
+   tSpec.ts_info.psb = params[HDD_WLAN_WMM_PARAM_APSD];
+
    // validate the user priority
    if (params[HDD_WLAN_WMM_PARAM_USER_PRIORITY] >= SME_QOS_WMM_UP_MAX)
    {
@@ -5030,30 +5032,6 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
       return 0;
    }
    tSpec.ts_info.up = params[HDD_WLAN_WMM_PARAM_USER_PRIORITY];
-
-   if ((tSpec.ts_info.up == SME_QOS_WMM_UP_VO) ||
-       (tSpec.ts_info.up == SME_QOS_WMM_UP_NC))
-   {
-       tSpec.ts_info.psb = ((WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->UapsdMask &
-                             SME_QOS_UAPSD_VO)? 1 : 0;
-   }
-   else if ((tSpec.ts_info.up == SME_QOS_WMM_UP_VI) ||
-            (tSpec.ts_info.up == SME_QOS_WMM_UP_CL))
-   {
-       tSpec.ts_info.psb = ((WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->UapsdMask &
-                             SME_QOS_UAPSD_VI) ? 1 : 0;
-
-   }
-   else if (tSpec.ts_info.up == SME_QOS_WMM_UP_BE)
-   {
-       tSpec.ts_info.psb = ((WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->UapsdMask &
-                             SME_QOS_UAPSD_BE)? 1 : 0;
-   }
-   else if (tSpec.ts_info.up == SME_QOS_WMM_UP_BK)
-   {
-       tSpec.ts_info.psb = ((WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->UapsdMask &
-                             SME_QOS_UAPSD_BK)? 1 : 0;
-   }
 
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
              "%s:TS_INFO PSB %d UP %d !!!", __func__,

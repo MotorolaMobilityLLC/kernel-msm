@@ -5496,6 +5496,7 @@ eHalStatus sme_QosAggregateParams(
    }
    vos_mem_copy(&TspecInfo, pCurrent_Tspec_Info, 
                 sizeof(sme_QosWmmTspecInfo));
+   TspecInfo.ts_info.psb = pInput_Tspec_Info->ts_info.psb;
    /*-------------------------------------------------------------------------
      APSD preference is only meaningful if service interval was set by app
    -------------------------------------------------------------------------*/
