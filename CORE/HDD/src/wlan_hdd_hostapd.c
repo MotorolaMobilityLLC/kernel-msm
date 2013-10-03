@@ -3994,8 +3994,24 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
     {
        hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_softap_init_tx_rx failed", __func__);
     }
-    
+
+    status = hdd_wmm_adapter_init( pAdapter );
+    if (!VOS_IS_STATUS_SUCCESS(status))
+    {
+       hddLog(VOS_TRACE_LEVEL_ERROR,
+             "hdd_wmm_adapter_init() failed with status code %08d [x%08lx]",
+                             status, status );
+       goto error_wmm_init;
+    }
+
+    set_bit(WMM_INIT_DONE, &pAdapter->event_flags);
+
     wlan_hdd_set_monitor_tx_adapter( WLAN_HDD_GET_CTX(pAdapter), pAdapter );
+
+    return status;
+
+error_wmm_init:
+    hdd_softap_deinit_tx_rx( pAdapter );
     EXIT();
     return status;
 }
