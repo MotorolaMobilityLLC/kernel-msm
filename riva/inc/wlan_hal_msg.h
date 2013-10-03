@@ -4779,6 +4779,52 @@ typedef PACKED_PRE struct PACKED_POST
 }tSetMaxTxPwrRspMsg, *tpSetMaxTxPwrRspMsg;
 
 /*---------------------------------------------------------------------------
+ *WLAN_HAL_SET_MAX_TX_POWER_PER_BAND_REQ
+ *--------------------------------------------------------------------------*/
+
+/* Band types for WLAN_HAL_SET_MAX_TX_POWER_PER_BAND_REQ between WDI and HAL */
+typedef enum
+{
+   WLAN_HAL_SET_MAX_TX_POWER_BAND_ALL = 0,
+   // For 2.4GHz or 5GHz bands
+   WLAN_HAL_SET_MAX_TX_POWER_BAND_2_4_GHZ,
+   WLAN_HAL_SET_MAX_TX_POWER_BAND_5_0_GHZ,
+   // End of valid enums
+   WLAN_HAL_SET_MAX_TX_POWER_BAND_MAX = WLAN_HAL_MAX_ENUM_SIZE,
+}tHalSetMaxTxPwrBandInfo;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalSetMaxTxPwrBandInfo bandInfo;  // 2_4_GHZ or 5_0_GHZ
+    tPowerdBm      power;     // In request, power == MaxTx power to be used.
+}tSetMaxTxPwrPerBandParams, *tpSetMaxTxPwrPerBandParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tSetMaxTxPwrPerBandParams setMaxTxPwrPerBandParams;
+}tSetMaxTxPwrPerBandReq, *tpSetMaxTxPwrPerBandReq;
+
+/*---------------------------------------------------------------------------
+*WLAN_HAL_SET_MAX_TX_POWER_PER_BAND_RSP
+*--------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    //power == tx power used for management frames.
+    tPowerdBm  power;
+
+    /* success or failure */
+    tANI_U32   status;
+}tSetMaxTxPwrPerBandRspParams, *tpSetMaxTxPwrPerBandRspParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tSetMaxTxPwrPerBandRspParams setMaxTxPwrPerBandRspParams;
+}tSetMaxTxPwrPerBandRspMsg, *tpSetMaxTxPwrPerBandRspMsg;
+
+/*---------------------------------------------------------------------------
  *WLAN_HAL_SET_TX_POWER_REQ
  *--------------------------------------------------------------------------*/
 
