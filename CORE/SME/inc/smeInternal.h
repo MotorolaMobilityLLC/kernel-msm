@@ -147,7 +147,7 @@ typedef struct tagSmeStruct
     void *pTxPerHitCbContext;
     tVOS_CON_MODE currDeviceMode;
 #ifdef FEATURE_WLAN_LPHB
-    void (*pLphbWaitTimeoutCb) (void *pAdapter, void *indParam);
+    void (*pLphbIndCb) (void *pAdapter, void *indParam);
 #endif /* FEATURE_WLAN_LPHB */
     //pending scan command list
     tDblLinkList smeScanCmdPendingList;
