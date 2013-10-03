@@ -10939,9 +10939,8 @@ WLANTL_EnableUAPSDForAC
     if( 0 == uServiceInt )
     {
       TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-               "WLAN TL:Invalid input params on WLANTL_EnableUAPSDForAC"
+               "WLAN TL:Input params on WLANTL_EnableUAPSDForAC"
                " SI: %d", uServiceInt ));
-      return VOS_STATUS_E_FAULT;
     }
 
     TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,

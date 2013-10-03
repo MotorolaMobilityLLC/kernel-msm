@@ -146,6 +146,7 @@ static void hdd_wmm_enable_tl_uapsd (hdd_wmm_qos_context_t* pQosContext)
    v_U32_t service_interval;
    v_U32_t suspension_interval;
    sme_QosWmmDirType direction;
+   v_BOOL_t psb;
 
 
    // The TSPEC must be valid
@@ -173,18 +174,20 @@ static void hdd_wmm_enable_tl_uapsd (hdd_wmm_qos_context_t* pQosContext)
       VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
                 "%s: No service interval supplied",
                 __func__);
-      return;
+      service_interval = 0;
    }
 
    // determine the suspension interval & direction
    suspension_interval = pAc->wmmAcTspecInfo.suspension_interval;
    direction = pAc->wmmAcTspecInfo.ts_info.direction;
+   psb = pAc->wmmAcTspecInfo.ts_info.psb;
 
    // if we have previously enabled U-APSD, have any params changed?
    if ((pAc->wmmAcUapsdInfoValid) &&
        (pAc->wmmAcUapsdServiceInterval == service_interval) &&
        (pAc->wmmAcUapsdSuspensionInterval == suspension_interval) &&
-       (pAc->wmmAcUapsdDirection == direction))
+       (pAc->wmmAcUapsdDirection == direction) &&
+       (pAc->wmmAcIsUapsdEnabled == psb))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
                 "%s: No change in U-APSD parameters",
@@ -232,6 +235,7 @@ static void hdd_wmm_enable_tl_uapsd (hdd_wmm_qos_context_t* pQosContext)
    pAc->wmmAcUapsdServiceInterval = service_interval;
    pAc->wmmAcUapsdSuspensionInterval = suspension_interval;
    pAc->wmmAcUapsdDirection = direction;
+   pAc->wmmAcIsUapsdEnabled = psb;
 
    VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
              "%s: Enabled UAPSD in TL srv_int=%ld "

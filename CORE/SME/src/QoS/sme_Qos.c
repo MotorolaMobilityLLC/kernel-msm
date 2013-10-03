@@ -2813,6 +2813,19 @@ sme_QosStatusType sme_QosSetup(tpAniSirGlobal pMac,
                       __func__, __LINE__);
             break;
          }
+
+         if (pTspec_Info->ts_info.psb &&
+             !(pIes->WMMParams.qosInfo & SME_QOS_AP_SUPPORTS_APSD) &&
+             !(pIes->WMMInfoAp.uapsd))
+         {
+            // application is looking for APSD but AP doesn't support it
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                      "%s: %d: On session %d AP doesn't support APSD",
+                      __func__, __LINE__,
+                      sessionId);
+            break;
+         }
+
          if(SME_QOS_MAX_TID == pTspec_Info->ts_info.tid)
          {
             //App didn't set TID, generate one
@@ -5486,7 +5499,10 @@ eHalStatus sme_QosAggregateParams(
    /*-------------------------------------------------------------------------
      APSD preference is only meaningful if service interval was set by app
    -------------------------------------------------------------------------*/
-   if(pCurrent_Tspec_Info->min_service_interval && pInput_Tspec_Info->min_service_interval)
+   if(pCurrent_Tspec_Info->min_service_interval &&
+      pInput_Tspec_Info->min_service_interval &&
+      (pCurrent_Tspec_Info->ts_info.direction !=
+      pInput_Tspec_Info->ts_info.direction))
    {
       TspecInfo.min_service_interval = VOS_MIN(
          pCurrent_Tspec_Info->min_service_interval,
@@ -5496,7 +5512,10 @@ eHalStatus sme_QosAggregateParams(
    {
       TspecInfo.min_service_interval = pInput_Tspec_Info->min_service_interval;
    }
-   if(pCurrent_Tspec_Info->max_service_interval)
+   if(pCurrent_Tspec_Info->max_service_interval &&
+      pInput_Tspec_Info->max_service_interval &&
+      (pCurrent_Tspec_Info->ts_info.direction !=
+      pInput_Tspec_Info->ts_info.direction))
    {
       TspecInfo.max_service_interval = VOS_MIN(
          pCurrent_Tspec_Info->max_service_interval,
