@@ -189,6 +189,22 @@ struct synaptics_rmi4_device_info {
 };
 
 /*
+ * struct palm_data_info -- define the palm parameters
+ * @palm_size_threshold: palm size threshold definition
+ * @x_min_edge: x_min edge that touch IC has problem to report width(x)
+ * @x_max_edge: x_max edge that touch IC has problem to report width(x)
+ * @y_min_edge: y_min edge that touch IC has problem to report width(y)
+ * @y_max_edge: y_max edge that touch IC has problem to report width(y)
+ */
+struct palm_data_info {
+	unsigned int palm_size_threshold;
+	unsigned int x_min_edge;
+	unsigned int x_max_edge;
+	unsigned int y_min_edge;
+	unsigned int y_max_edge;
+};
+
+/*
  * struct synaptics_rmi4_data - rmi4 device instance data
  * @i2c_client: pointer to associated i2c client
  * @input_dev: pointer to associated input device
@@ -262,6 +278,8 @@ struct synaptics_rmi4_data {
 	bool hw_reset;
 	bool display_synced_suspend;
 	bool one_touch_enabled;
+	bool palm_suppression_enabled;
+	struct palm_data_info palm_data;
 	wait_queue_head_t wait;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);

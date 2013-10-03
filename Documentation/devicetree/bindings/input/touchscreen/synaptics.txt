@@ -39,6 +39,8 @@ Required properties:
 	not defined - use mode settings programmed in firmware
  - synaptics,hw-reset:
         flag to perform hard reset in oppose to soft reset
+ - synaptics,palm-data-info:
+        define the palm suppression parameters
 
 Example:
 	i2c@16200000 {
@@ -77,6 +79,7 @@ Example:
 			synaptics,one-touch-enabled;
 			synaptics,display-synced-suspend;
 			synaptics,key-buttons = <139 102 158 0>; /* KEY_MENU, KEY_HOME, KEY_BACK */
+			/* palm-size-threshold, x_min, x_max, y_min, y_max */
+			synaptics,palm-data-info = <20 0 719 0 1279>;
 		};
 	};
-
