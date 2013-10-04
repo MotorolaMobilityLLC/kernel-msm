@@ -100,3 +100,9 @@
 		};
 	};
 };
+
+&i2c_3 {
+	tpa6165xx@40 {
+		hs_det_micvdd-supply = <&pm8110_l21>;
+	};
+};

@@ -79,12 +79,6 @@
 		};
 	};
 
-	rpm-regulator-ldoa21 {
-		regulator-l21 {
-			regulator-min-microvolt = <2950000>;
-		};
-	};
-
 	gen-vkeys {
 		compatible = "qcom,gen-vkeys";
 		label = "atmel_mxt_ts";
@@ -246,7 +240,7 @@
 		interrupts = <84 0x2>;
 		gpios = <&msmgpio 84 0x0>;
 		hs_det_vdd-supply = <&pm8110_l6>;
-		hs_det_micvdd-supply = <&pm8110_l21>;
+		/* hs_det_micvdd-supply should be defined in board dtsi files */
 	};
 
 	kionix@e {
