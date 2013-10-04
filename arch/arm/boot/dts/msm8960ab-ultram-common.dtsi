@@ -134,6 +134,8 @@
 		synaptics,display-synced-suspend;
 		synaptics,hw-reset;
 		synaptics,key-buttons = <59 60 61 0>; /* F1, F2, F3 */
+		/* palm-size-threshold, x_min, x_max, y_min, y_max */
+		synaptics,palm-data-info = <24 0 719 0 1279>;
 	};
 };
 

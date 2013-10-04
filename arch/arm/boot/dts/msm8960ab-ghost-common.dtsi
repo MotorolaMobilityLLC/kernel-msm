@@ -103,6 +103,8 @@
 		synaptics,one-touch-enabled;
 		synaptics,display-synced-suspend;
 		synaptics,hw-reset;
+		/* palm-size-threshold, x_min, x_max, y_min, y_max */
+		synaptics,palm-data-info = <20 100 620 100 1180>;
 	};
 };
 
