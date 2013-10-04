@@ -115,9 +115,6 @@ struct adreno_device {
 	struct ocmem_buf *ocmem_hdl;
 	unsigned int ocmem_base;
 	unsigned int gpu_cycles;
-	struct kgsl_memdesc on_resume_cmd;
-	unsigned int on_resume_ib[3];
-	bool on_resume_issueib;
 	struct kgsl_memdesc pwron_fixup;
 	unsigned int pwron_fixup_dwords;
 };
