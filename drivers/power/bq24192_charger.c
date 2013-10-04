@@ -989,7 +989,8 @@ static void bq24192_external_power_changed(struct power_supply *psy)
 	} else if (chip->ac_online &&
 			bq24192_is_charger_present(chip)) {
 		chip->icl_first = true;
-		bq24192_set_input_vin_limit(chip, chip->vin_limit_mv);
+		bq24192_set_input_vin_limit(chip,
+				chip->icl_vbus_mv - 2 * VIN_LIMIT_STEP_MV);
 		bq24192_set_input_i_limit(chip, adap_tbl[0].input_limit);
 		bq24192_set_ibat_max(chip, adap_tbl[0].chg_limit);
 		wake_lock(&chip->icl_wake_lock);
@@ -1158,6 +1159,7 @@ static void bq24192_input_limit_worker(struct work_struct *work)
 		if (chip->icl_idx > 0 && vbus_mv <= chip->icl_vbus_mv)
 			chip->icl_idx--;
 
+		bq24192_set_input_vin_limit(chip, chip->vin_limit_mv);
 		bq24192_set_input_i_limit(chip,
 				adap_tbl[chip->icl_idx].input_limit);
 		bq24192_set_ibat_max(chip,
