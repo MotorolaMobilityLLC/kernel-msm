@@ -37,7 +37,7 @@
 };
 
 &i2c_1 {
-	stm401@48 {
+	stm401@39 {
 		compatible = "stm,stm401";
 		gpios = <&msmgpio 102 0>;       /* IRQ */
 	};
