@@ -65,7 +65,7 @@ static int del_timer_idx;
 static int set_timer_idx;
 
 /* dump the frame command before writing to the hardware */
-#define  MSM_CPP_DUMP_FRM_CMD 0
+#define  MSM_CPP_DUMP_FRM_CMD 1
 
 #if CONFIG_MSM_CPP_DBG
 #define CPP_DBG(fmt, args...) pr_err(fmt, ##args)
@@ -1158,8 +1158,8 @@ static int msm_cpp_send_frame_to_hardware(struct cpp_device *cpp_dev,
 		set_timer_idx = 1 - set_timer_idx;
 
 		msm_cpp_write(0x6, cpp_dev->base);
-		msm_cpp_dump_frame_cmd(process_frame->cpp_cmd_msg,
-				process_frame->msg_len);
+		/* msm_cpp_dump_frame_cmd(process_frame->cpp_cmd_msg,
+				process_frame->msg_len); */
 		for (i = 0; i < process_frame->msg_len; i++) {
 			if ((induce_error) && (i == 1)) {
 				pr_err("Induce error\n");
