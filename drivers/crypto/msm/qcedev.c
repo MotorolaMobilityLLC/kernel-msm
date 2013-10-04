@@ -1510,7 +1510,7 @@ static int qcedev_vbuf_ablk_cipher_max_xfer(struct qcedev_async_req *areq,
 				areq->cipher_op_req.vbuf.src[0].len))
 		return -EFAULT;
 
-	k_align_src += areq->cipher_op_req.vbuf.src[0].len;
+	k_align_src += byteoffset + areq->cipher_op_req.vbuf.src[0].len;
 
 	for (i = 1; i < areq->cipher_op_req.entries; i++) {
 		user_src =
@@ -1829,6 +1829,13 @@ static int qcedev_check_cipher_params(struct qcedev_cipher_op_req *req,
 		if (!req->in_place_op)
 			goto error;
 	}
+
+	if (req->data_len < req->byteoffset) {
+		pr_err("%s: req data length %u is less than byteoffset %u\n",
+				__func__, req->data_len, req->byteoffset);
+		goto error;
+	}
+
 	/* Ensure zer ivlen for ECB  mode  */
 	if (req->ivlen != 0) {
 		if ((req->mode == QCEDEV_AES_MODE_ECB) ||
