@@ -905,9 +905,6 @@ typedef struct tagCsrRoamSession
     eCsrRoamingReason roamingReason;
     tANI_BOOLEAN fCancelRoaming;
     vos_timer_t hTimerRoaming;
-    vos_timer_t hTimerIbssJoining;
-    tCsrTimerInfo ibssJoinTimerInfo;
-    tANI_BOOLEAN ibss_join_pending;
     eCsrRoamResult roamResult;  //the roamResult that is used when the roaming timer fires
     tCsrRoamJoinStatus joinFailStatusCode;    //This is the reason code for join(assoc) failure
     //The status code returned from PE for deauth or disassoc (in case of lostlink), or our own dynamic roaming
