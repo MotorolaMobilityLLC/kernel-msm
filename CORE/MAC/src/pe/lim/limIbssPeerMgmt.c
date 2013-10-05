@@ -1519,16 +1519,18 @@ limIbssCoalesce(
         tANI_U32      frameLen;
         tSirRetStatus retCode;
 
-        /** Limit the Max number of IBSS Peers allowed as the max number of STA's allowed
+        /*
+         * Limit the Max number of IBSS Peers allowed as the max
+         * number of STA's allowed
+         * pMac->lim.gLimNumIbssPeers will be increamented after exiting
+         * this function. so we will add additional 1 to compare against
+         * pMac->lim.gLimIbssStaLimit
          */
-#ifndef ANI_SIR_IBSS_PEER_CACHINGT
-        if (pMac->lim.gLimNumIbssPeers >
-              (pMac->lim.gLimIbssStaLimit - IBSS_STATIONS_USED_DURING_INIT))
+        if ((pMac->lim.gLimNumIbssPeers+1) >= pMac->lim.gLimIbssStaLimit)
         {
             PELOGE(limLog(pMac, LOGE, FL("**** MAX STA LIMIT HAS REACHED ****"));)
             return eSIR_LIM_MAX_STA_REACHED_ERROR;
         }
-#endif
         PELOGW(limLog(pMac, LOGW, FL("IBSS Peer node does not exist, adding it***"));)
         frameLen = sizeof(tLimIbssPeerNode) + ieLen - sizeof(tANI_U32);
 
