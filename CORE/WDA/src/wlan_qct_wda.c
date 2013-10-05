@@ -10538,6 +10538,240 @@ VOS_STATUS WDA_ProcessDelPeriodicTxPtrnInd(tWDA_CbContext *pWDA,
    return CONVERT_WDI2VOS_STATUS(wdiStatus);
 }
 
+#ifdef FEATURE_WLAN_BATCH_SCAN
+/*
+ * FUNCTION: WDA_ProcessStopBatchScanInd
+ *
+ * DESCRIPTION: This function sends stop batch scan inidcation message to WDI
+ *
+ * PARAM:
+ * pWDA: pointer to WDA context
+ * pReq: pointer to stop batch scan request
+ */
+VOS_STATUS WDA_ProcessStopBatchScanInd(tWDA_CbContext *pWDA,
+                               tSirStopBatchScanInd *pReq)
+{
+   WDI_Status wdiStatus;
+   WDI_StopBatchScanIndType wdiReq;
+
+   wdiReq.param = pReq->param;
+
+   wdiStatus = WDI_StopBatchScanInd(&wdiReq);
+
+   if (WDI_STATUS_SUCCESS_SYNC != wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "Stop batch scan ind failed %s:%d", __func__, wdiStatus);
+   }
+
+   vos_mem_free(pReq);
+
+   return CONVERT_WDI2VOS_STATUS(wdiStatus);
+}
+/*==========================================================================
+  FUNCTION WDA_ProcessTriggerBatchScanResultInd
+
+  DESCRIPTION
+    API to pull batch scan result from FW
+
+  PARAMETERS
+    pWDA: Pointer to WDA context
+    pGetBatchScanReq: Pointer to get batch scan result indication
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+VOS_STATUS WDA_ProcessTriggerBatchScanResultInd(tWDA_CbContext *pWDA,
+       tSirTriggerBatchScanResultInd *pReq)
+{
+   WDI_Status wdiStatus;
+   WDI_TriggerBatchScanResultIndType wdiReq;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO_HIGH,
+                                          "------> %s " ,__func__);
+
+   wdiReq.param = pReq->param;
+
+   wdiStatus = WDI_TriggerBatchScanResultInd(&wdiReq);
+
+   if (WDI_STATUS_SUCCESS_SYNC != wdiStatus)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+          "Trigger batch scan result ind failed %s:%d",
+          __func__, wdiStatus);
+   }
+
+   vos_mem_free(pReq);
+
+   return CONVERT_WDI2VOS_STATUS(wdiStatus);
+}
+
+/*==========================================================================
+  FUNCTION WDA_SetBatchScanRespCallback
+
+  DESCRIPTION
+    API to process set batch scan response from FW
+
+  PARAMETERS
+    pRsp: Pointer to set batch scan response
+    pUserData: Pointer to user data
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+void WDA_SetBatchScanRespCallback
+(
+    WDI_SetBatchScanRspType *pRsp,
+    void* pUserData
+)
+{
+   tSirSetBatchScanRsp *pHddSetBatchScanRsp;
+   tpAniSirGlobal pMac;
+   void *pCallbackContext;
+   tWDA_CbContext *pWDA = NULL ;
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO_HIGH,
+                                          "<------ %s " ,__func__);
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+
+   /*extract WDA context*/
+   pWDA = pWdaParams->pWdaContext;
+   if (NULL == pWDA)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+          "%s:pWDA is NULL can't invole HDD callback",
+           __func__);
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams->wdaMsgParam);
+      vos_mem_free(pWdaParams);
+      VOS_ASSERT(0);
+      return;
+   }
+
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   vos_mem_free(pWdaParams->wdaMsgParam);
+   vos_mem_free(pWdaParams);
+
+   pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
+   if (NULL == pMac)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+          "%s:pMac is NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+
+   pHddSetBatchScanRsp =
+     (tSirSetBatchScanRsp *)vos_mem_malloc(sizeof(tSirSetBatchScanRsp));
+   if (NULL == pHddSetBatchScanRsp)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+          "%s: VOS MEM Alloc Failure can't invoke HDD callback", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+
+   pHddSetBatchScanRsp->nScansToBatch = pRsp->nScansToBatch;
+
+   pCallbackContext = pMac->pmc.setBatchScanReqCallbackContext;
+   /*call hdd callback with set batch scan response data*/
+   if(pMac->pmc.setBatchScanReqCallback)
+   {
+       pMac->pmc.setBatchScanReqCallback(pCallbackContext, pHddSetBatchScanRsp);
+   }
+   else
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+          "%s:HDD callback is null", __func__);
+      VOS_ASSERT(0);
+   }
+
+   vos_mem_free(pHddSetBatchScanRsp);
+   return ;
+}
+
+/*==========================================================================
+  FUNCTION WDA_ProcessSetBatchScanReq
+
+  DESCRIPTION
+    API to send set batch scan request to WDI
+
+  PARAMETERS
+    pWDA: Pointer to WDA context
+    pSetBatchScanReq: Pointer to set batch scan req
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+VOS_STATUS WDA_ProcessSetBatchScanReq(tWDA_CbContext *pWDA,
+       tSirSetBatchScanReq *pSetBatchScanReq)
+{
+   WDI_Status status;
+   tWDA_ReqParams *pWdaParams ;
+   WDI_SetBatchScanReqType *pWdiSetBatchScanReq;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO_HIGH,
+                                          "------> %s " ,__func__);
+
+   pWdiSetBatchScanReq =
+     (WDI_SetBatchScanReqType *)vos_mem_malloc(sizeof(WDI_SetBatchScanReqType));
+   if (NULL == pWdiSetBatchScanReq)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      vos_mem_free(pSetBatchScanReq);
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams));
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(pSetBatchScanReq);
+      vos_mem_free(pWdiSetBatchScanReq);
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   pWdiSetBatchScanReq->scanFrequency = pSetBatchScanReq->scanFrequency;
+   pWdiSetBatchScanReq->numberOfScansToBatch =
+               pSetBatchScanReq->numberOfScansToBatch;
+   pWdiSetBatchScanReq->bestNetwork = pSetBatchScanReq->bestNetwork;
+   pWdiSetBatchScanReq->rfBand = pSetBatchScanReq->rfBand;
+   pWdiSetBatchScanReq->rtt = pSetBatchScanReq->rtt;
+
+   pWdaParams->wdaWdiApiMsgParam = pWdiSetBatchScanReq;
+   pWdaParams->pWdaContext = pWDA;
+   pWdaParams->wdaMsgParam = pSetBatchScanReq;
+
+   status = WDI_SetBatchScanReq(pWdiSetBatchScanReq, pWdaParams,
+                (WDI_SetBatchScanCb)WDA_SetBatchScanRespCallback);
+   if (IS_WDI_STATUS_FAILURE(status))
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "Failure in Set Batch Scan REQ WDI API, free all the memory " );
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams->wdaMsgParam);
+      vos_mem_free(pWdaParams);
+   }
+   return CONVERT_WDI2VOS_STATUS(status);
+}
+
+#endif
+
 /*
  * -------------------------------------------------------------------------
  * DATA interface with WDI for Mgmt Frames
@@ -11559,6 +11793,27 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          break;
       }
 
+#ifdef FEATURE_WLAN_BATCH_SCAN
+      case WDA_SET_BATCH_SCAN_REQ:
+      {
+          WDA_ProcessSetBatchScanReq(pWDA,
+            (tSirSetBatchScanReq *)pMsg->bodyptr);
+          break;
+      }
+      case WDA_TRIGGER_BATCH_SCAN_RESULT_IND:
+      {
+          WDA_ProcessTriggerBatchScanResultInd(pWDA,
+            (tSirTriggerBatchScanResultInd *)pMsg->bodyptr);
+          break;
+      }
+      case WDA_STOP_BATCH_SCAN_IND:
+      {
+          WDA_ProcessStopBatchScanInd(pWDA,
+            (tSirStopBatchScanInd *)pMsg->bodyptr);
+          break;
+      }
+#endif
+
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -12094,6 +12349,62 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
          WDA_SendMsg(pWDA, WDA_IBSS_PEER_INACTIVITY_IND, (void *)pIbssInd, 0) ;
          break;
       }
+
+#ifdef FEATURE_WLAN_BATCH_SCAN
+     case  WDI_BATCH_SCAN_RESULT_IND:
+     {
+         void *pBatchScanResult;
+         void *pCallbackContext;
+         tpAniSirGlobal pMac;
+
+         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO_HIGH,
+                   "Received WDI_BATCHSCAN_RESULT_IND from FW");
+
+         /*sanity check*/
+         if(NULL == pWDA)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s:pWDA is NULL", __func__);
+            VOS_ASSERT(0);
+            return;
+         }
+
+         pBatchScanResult =
+            (void *)wdiLowLevelInd->wdiIndicationData.pBatchScanResult;
+         if (NULL == pBatchScanResult)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s:Batch scan result from FW is null can't invoke HDD callback",
+              __func__);
+            VOS_ASSERT(0);
+            return;
+         }
+
+         pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
+         if (NULL == pMac)
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s:pMac is NULL", __func__);
+            VOS_ASSERT(0);
+            return;
+         }
+
+         pCallbackContext = pMac->pmc.batchScanResultCallbackContext;
+         /*call hdd callback with set batch scan response data*/
+         if(pMac->pmc.batchScanResultCallback)
+         {
+            pMac->pmc.batchScanResultCallback(pCallbackContext,
+               pBatchScanResult);
+         }
+         else
+         {
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "%s:HDD callback is null", __func__);
+            VOS_ASSERT(0);
+         }
+         break;
+     }
+#endif
 
       default:
       {

@@ -2973,4 +2973,60 @@ eHalStatus smeIssueFastRoamNeighborAPEvent (tHalHandle hHal,
 eHalStatus sme_RoamDelPMKIDfromCache( tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *pBSSId );
 
 void smeGetCommandQStatus( tHalHandle hHal );
+
+#ifdef FEATURE_WLAN_BATCH_SCAN
+/* ---------------------------------------------------------------------------
+    \fn sme_SetBatchScanReq
+    \brief  API to set batch scan request in FW
+    \param  hHal - The handle returned by macOpen.
+    \param  pRequest -  Pointer to the batch request.
+    \param  sessionId - session ID
+    \param  callbackRoutine - HDD callback which needs to be invoked after
+            getting set batch scan response from FW
+    \param  callbackContext - pAdapter context
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus
+sme_SetBatchScanReq
+(
+    tHalHandle hHal, tSirSetBatchScanReq *pRequest, tANI_U8 sessionId,
+    void (*callbackRoutine) (void *callbackCtx, tSirSetBatchScanRsp *pRsp),
+    void *callbackContext
+);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_TriggerBatchScanResultInd
+    \brief  API to trigger batch scan result indications from from FW
+    \param  hHal - The handle returned by macOpen.
+    \param  pRequest -  Pointer to get batch request.
+    \param  sessionId - session ID
+    \param  callbackRoutine - HDD callback which needs to be invoked after
+            getting get batch scan response from FW
+    \param  callbackContext - pAdapter context
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus
+sme_TriggerBatchScanResultInd
+(
+    tHalHandle hHal, tSirTriggerBatchScanResultInd *pRequest, tANI_U8 sessionId,
+    void (*callbackRoutine) (void *callbackCtx, void *pRsp),
+    void *callbackContext
+);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_StopBatchScanInd
+    \brief  API to stop batch scan request in FW
+    \param  hHal - The handle returned by macOpen.
+    \param  pRequest -  Pointer to stop batch indication
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus
+sme_StopBatchScanInd
+(
+    tHalHandle hHal, tSirStopBatchScanInd *pInd, tANI_U8 sessionId
+);
+
+#endif
+
+
 #endif //#if !defined( __SME_API_H )

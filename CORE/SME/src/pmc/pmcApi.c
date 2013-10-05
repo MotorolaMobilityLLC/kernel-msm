@@ -3353,3 +3353,151 @@ void pmcResetImpsFailStatus (tHalHandle hHal)
     pMac->pmc.ImpsReqFailed = VOS_FALSE;
     pMac->pmc.ImpsReqTimerFailed = VOS_FALSE;
 }
+
+#ifdef FEATURE_WLAN_BATCH_SCAN
+/* -----------------------------------------------------------------------------
+    \fn pmcSetBatchScanReq
+    \brief  setting batch scan request in FW
+    \param  hHal - The handle returned by macOpen.
+    \param  sessionId - session ID
+    \param  callbackRoutine - Pointer to set batch scan request callback routine
+    \param  callbackContext - Pointer to set batch scan request callback context
+    \return eHalStatus
+             eHAL_STATUS_FAILURE  Cannot set batch scan request
+             eHAL_STATUS_SUCCESS  Request accepted.
+ -----------------------------------------------------------------------------*/
+
+eHalStatus pmcSetBatchScanReq(tHalHandle hHal, tSirSetBatchScanReq *pRequest,
+    tANI_U8 sessionId, hddSetBatchScanReqCallback callbackRoutine,
+    void *callbackContext)
+{
+    tpSirSetBatchScanReq pRequestBuf;
+    vos_msg_t msg;
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+
+    pRequestBuf = vos_mem_malloc(sizeof(tSirSetBatchScanReq));
+    if (NULL == pRequestBuf)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+          "%s: Not able to allocate memory for SET BATCH SCAN req", __func__);
+        return eHAL_STATUS_FAILED_ALLOC;
+    }
+
+    /* Cache HDD callback information*/
+    pMac->pmc.setBatchScanReqCallback = callbackRoutine;
+    pMac->pmc.setBatchScanReqCallbackContext = callbackContext;
+
+    pRequestBuf->scanFrequency = pRequest->scanFrequency;
+    pRequestBuf->numberOfScansToBatch = pRequest->numberOfScansToBatch;
+    pRequestBuf->bestNetwork = pRequest->bestNetwork;
+    pRequestBuf->rfBand = pRequest->rfBand;
+    pRequestBuf->rtt = pRequest->rtt;
+
+    msg.type     = WDA_SET_BATCH_SCAN_REQ;
+    msg.reserved = 0;
+    msg.bodyptr  = pRequestBuf;
+    if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+          "%s: Not able to post WDA_SET_BATCH_SCAN_REQ message to WDA",
+          __func__);
+        vos_mem_free(pRequestBuf);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    return eHAL_STATUS_SUCCESS;
+}
+
+/* -----------------------------------------------------------------------------
+    \fn pmcTriggerBatchScanResultInd
+    \brief  API to trigger batch scan results indications from FW
+    \param  hHal - The handle returned by macOpen.
+    \param  sessionId - session ID
+    \param  callbackRoutine - Pointer to get batch scan request callback routine
+    \param  callbackContext - Pointer to get batch scan request callback context
+    \return eHalStatus
+             eHAL_STATUS_FAILURE  Cannot set batch scan request
+             eHAL_STATUS_SUCCESS  Request accepted.
+ -----------------------------------------------------------------------------*/
+
+eHalStatus pmcTriggerBatchScanResultInd
+(
+    tHalHandle hHal, tSirTriggerBatchScanResultInd *pRequest, tANI_U8 sessionId,
+    hddTriggerBatchScanResultIndCallback callbackRoutine, void *callbackContext
+)
+{
+    tpSirTriggerBatchScanResultInd pRequestBuf;
+    vos_msg_t msg;
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+
+    pRequestBuf = vos_mem_malloc(sizeof(tSirTriggerBatchScanResultInd));
+    if (NULL == pRequestBuf)
+    {
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+        "%s: Not able to allocate memory for WDA_TRIGGER_BATCH_SCAN_RESULT_IND",
+        __func__);
+        return eHAL_STATUS_FAILED_ALLOC;
+    }
+
+    /*HDD callback to be called after getting batch scan result ind from FW*/
+    pMac->pmc.batchScanResultCallback = callbackRoutine;
+    pMac->pmc.batchScanResultCallbackContext = callbackContext;
+
+    pRequestBuf->param = pRequest->param;
+
+    msg.type     = WDA_TRIGGER_BATCH_SCAN_RESULT_IND;
+    msg.reserved = 0;
+    msg.bodyptr  = pRequestBuf;
+    if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+          "%s: Not able to post WDA_TRIGGER_BATCH_SCAN_RESULT_IND message"
+          " to WDA", __func__);
+        vos_mem_free(pRequestBuf);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    return eHAL_STATUS_SUCCESS;
+}
+
+/* -----------------------------------------------------------------------------
+    \fn pmcStopBatchScanInd
+    \brief  Stoping batch scan request in FW
+    \param  hHal - The handle returned by macOpen.
+    \param  callbackRoutine - Pointer to stop batch scan request callback routine
+    \return eHalStatus
+             eHAL_STATUS_FAILURE  Cannot set batch scan request
+             eHAL_STATUS_SUCCESS  Request accepted.
+ -----------------------------------------------------------------------------*/
+
+eHalStatus pmcStopBatchScanInd(tHalHandle hHal, tSirStopBatchScanInd *pRequest,
+    tANI_U8 sessionId)
+{
+    tSirStopBatchScanInd *pRequestBuf;
+    vos_msg_t msg;
+
+    pRequestBuf = vos_mem_malloc(sizeof(tSirStopBatchScanInd));
+    if (NULL == pRequestBuf)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+          "%s: Not able to allocate memory for STOP BATCH SCAN IND", __func__);
+        return eHAL_STATUS_FAILED_ALLOC;
+    }
+
+    pRequestBuf->param = pRequest->param;
+
+    msg.type     = WDA_STOP_BATCH_SCAN_IND;
+    msg.reserved = 0;
+    msg.bodyptr  = pRequestBuf;
+    if (!VOS_IS_STATUS_SUCCESS(vos_mq_post_message(VOS_MODULE_ID_WDA, &msg)))
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+          "%s: Not able to post WDA_TOP_BATCH_SCAN_IND message to WDA", __func__);
+        vos_mem_free(pRequestBuf);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    return eHAL_STATUS_SUCCESS;
+}
+
+#endif

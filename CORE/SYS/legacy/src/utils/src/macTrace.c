@@ -789,6 +789,10 @@ tANI_U8* macTraceGetWdaMsgString( tANI_U16 wdaMsg )
 #ifdef WLAN_FEATURE_11AC
         CASE_RETURN_STRING(WDA_UPDATE_OP_MODE);
 #endif
+#ifdef FEATURE_WLAN_BATCH_SCAN
+        CASE_RETURN_STRING(WDA_SET_BATCH_SCAN_REQ);
+        CASE_RETURN_STRING(WDA_TRIGGER_BATCH_SCAN_RESULT_IND);
+#endif
         default:
             return((tANI_U8*) "UNKNOWN" );
             break;
