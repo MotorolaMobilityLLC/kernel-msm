@@ -5468,7 +5468,12 @@ limValidateDeltsReq(tpAniSirGlobal pMac, tpSirDeltsReq pDeltsReq, tSirMacAddr pe
            psessionEntry->gLimEdcaParams[upToAc(tsinfo->traffic.userPrio)].aci.acm)
       {
         //send message to HAL to delete TS
-        if(eSIR_SUCCESS != limSendHalMsgDelTs(pMac, pSta->staIndex, tspecIdx, pDeltsReq->req, psessionEntry->peSessionId))
+        if(eSIR_SUCCESS != limSendHalMsgDelTs(pMac,
+                                              pSta->staIndex,
+                                              tspecIdx,
+                                              pDeltsReq->req,
+                                              psessionEntry->peSessionId,
+                                              psessionEntry->bssId))
         {
           limLog(pMac, LOGW, FL("DelTs with UP %d failed in limSendHalMsgDelTs - ignoring request"),
                            tsinfo->traffic.userPrio);
