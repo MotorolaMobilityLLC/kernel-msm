@@ -333,6 +333,7 @@ struct msm_otg {
 	enum usb_chg_type chg_type;
 	unsigned dcd_time;
 	struct wake_lock wlock;
+        struct wake_lock cable_lock;
 	struct notifier_block usbdev_nb;
 	unsigned mA_port;
 	struct timer_list id_timer;
