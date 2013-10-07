@@ -4343,7 +4343,7 @@ typedef struct
   wpt_uint8    ucChannelCount;
 
   /*the actual channels*/
-  wpt_uint8    aChannels[WDI_PNO_MAX_NETW_CHANNELS];
+  wpt_uint8    aChannels[WDI_PNO_MAX_NETW_CHANNELS_EX];
 
   /*rssi threshold that a network must meet to be considered, 0 - for any*/
   wpt_uint8    rssiThreshold;
