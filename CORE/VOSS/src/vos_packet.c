@@ -185,21 +185,23 @@ static void vos_pkti_replenish_raw_pool(void)
    vos_pkt_get_packet_callback callback;
 
    // if there are no packets in the replenish pool then we can't do anything
+   mutex_lock(&gpVosPacketContext->rxReplenishListLock);
    if (likely(0 == gpVosPacketContext->rxReplenishListCount))
    {
+      mutex_unlock(&gpVosPacketContext->rxReplenishListLock);
       return;
    }
 
    // we only replenish if the Rx Raw pool is empty or the Replenish pool
    // reaches a high water mark
-   mutex_lock(&gpVosPacketContext->mlock);
-
+   mutex_lock(&gpVosPacketContext->rxRawFreeListLock);
 
    if ((gpVosPacketContext->rxReplenishListCount <
         gpVosPacketContext->numOfRxRawPackets/4) &&
          (!list_empty(&gpVosPacketContext->rxRawFreeList)))
    {
-      mutex_unlock(&gpVosPacketContext->mlock);
+      mutex_unlock(&gpVosPacketContext->rxRawFreeListLock);
+      mutex_unlock(&gpVosPacketContext->rxReplenishListLock);
       return;
    }
 
@@ -266,12 +268,14 @@ static void vos_pkti_replenish_raw_pool(void)
 
       callback = gpVosPacketContext->rxRawLowResourceInfo.callback;
       gpVosPacketContext->rxRawLowResourceInfo.callback = NULL;
-      mutex_unlock(&gpVosPacketContext->mlock);
+      mutex_unlock(&gpVosPacketContext->rxRawFreeListLock);
+      mutex_unlock(&gpVosPacketContext->rxReplenishListLock);
       callback(pVosPacket, gpVosPacketContext->rxRawLowResourceInfo.userData);
    }
    else
    {
-      mutex_unlock(&gpVosPacketContext->mlock);
+      mutex_unlock(&gpVosPacketContext->rxRawFreeListLock);
+      mutex_unlock(&gpVosPacketContext->rxReplenishListLock);
    }
 }
 
@@ -388,6 +392,7 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
       pVosPacketContext->vosContext = pVosContext;
 
       // initialize the rx Replenish pool (initially empty)
+      mutex_init(&gpVosPacketContext->rxReplenishListLock);
       INIT_LIST_HEAD(&pVosPacketContext->rxReplenishList);
       pVosPacketContext->rxReplenishListCount = 0;
 
@@ -395,6 +400,7 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
       freePacketIndex = 0;
 
       // initialize the rxRaw free list pool
+      mutex_init(&gpVosPacketContext->rxRawFreeListLock);
       pFreeList = &pVosPacketContext->rxRawFreeList;
       pVosPacketContext->rxRawFreeListCount = 0;
       INIT_LIST_HEAD(pFreeList);
@@ -429,6 +435,7 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
       }
 
       // initialize the txData free list pool
+      mutex_init(&gpVosPacketContext->txDataFreeListLock);
       pFreeList = &pVosPacketContext->txDataFreeList;
       INIT_LIST_HEAD(pFreeList);
 
@@ -458,10 +465,10 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
       }
 
       // initialize the txMgmt free list pool
+      mutex_init(&gpVosPacketContext->txMgmtFreeListLock);
       pFreeList = &pVosPacketContext->txMgmtFreeList;
       INIT_LIST_HEAD(pFreeList);
 
-      mutex_init(&gpVosPacketContext->mlock);
       // fill the txMgmt free list
       for (idx = 0; idx < VPKT_NUM_TX_MGMT_PACKETS; idx++)
       {
@@ -535,19 +542,27 @@ VOS_STATUS vos_packet_close( v_PVOID_t pVosContext )
       return VOS_STATUS_E_INVAL;
    }
 
-   mutex_lock(&gpVosPacketContext->mlock);
+
+   mutex_lock(&gpVosPacketContext->txMgmtFreeListLock);
    (void) vos_pkti_list_destroy(&gpVosPacketContext->txMgmtFreeList);
+   mutex_unlock(&gpVosPacketContext->txMgmtFreeListLock);
+
+   mutex_lock(&gpVosPacketContext->txDataFreeListLock);
    (void) vos_pkti_list_destroy(&gpVosPacketContext->txDataFreeList);
+   gpVosPacketContext->uctxDataFreeListCount = 0;
+   mutex_unlock(&gpVosPacketContext->txDataFreeListLock);
+
+   mutex_lock(&gpVosPacketContext->rxRawFreeListLock);
    (void) vos_pkti_list_destroy(&gpVosPacketContext->rxRawFreeList);
-   (void) vos_pkti_list_destroy(&gpVosPacketContext->rxReplenishList);
-
    gpVosPacketContext->rxRawFreeListCount    = 0;
+   mutex_unlock(&gpVosPacketContext->rxRawFreeListLock);
+
+   mutex_lock(&gpVosPacketContext->rxReplenishListLock);
+   (void) vos_pkti_list_destroy(&gpVosPacketContext->rxReplenishList);
    gpVosPacketContext->rxReplenishListCount  = 0;
-   gpVosPacketContext->uctxDataFreeListCount = 0;
+   mutex_unlock(&gpVosPacketContext->rxReplenishListLock);
 
-   mutex_unlock(&gpVosPacketContext->mlock);
 
-   gpVosPacketContext->uctxDataFreeListCount = 0;
 
    return VOS_STATUS_SUCCESS;
 }
@@ -642,6 +657,8 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
    vos_pkt_low_resource_info *pLowResourceInfo;
    struct vos_pkt_t *pVosPacket;
    v_SIZE_t *pCount = NULL;
+   struct mutex *mlock;
+
    // Validate the return parameter pointer
    if (unlikely(NULL == ppPacket))
    {
@@ -675,6 +692,7 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
    case VOS_PKT_TYPE_RX_RAW:
       pPktFreeList = &gpVosPacketContext->rxRawFreeList;
       pLowResourceInfo = &gpVosPacketContext->rxRawLowResourceInfo;
+      mlock = &gpVosPacketContext->rxRawFreeListLock;
 
       // see if we need to replenish the Rx Raw pool
       vos_pkti_replenish_raw_pool();
@@ -685,6 +703,7 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
    case VOS_PKT_TYPE_TX_802_11_MGMT:
       pPktFreeList = &gpVosPacketContext->txMgmtFreeList;
       pLowResourceInfo = &gpVosPacketContext->txMgmtLowResourceInfo;
+      mlock = &gpVosPacketContext->txMgmtFreeListLock;
       break;
 
    default:
@@ -705,7 +724,7 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
       return VOS_STATUS_E_ALREADY;
    }
 
-   mutex_lock(&gpVosPacketContext->mlock);
+   mutex_lock(mlock);
    // are there vos packets on the associated free pool?
    if (unlikely(list_empty(pPktFreeList)))
    {
@@ -716,7 +735,7 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                    "VPKT [%d]: Low resource condition and no callback provided",
                    __LINE__);
-         mutex_unlock(&gpVosPacketContext->mlock);
+         mutex_unlock(mlock);
 
          return VOS_STATUS_E_FAILURE;
       }
@@ -728,7 +747,7 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "VPKT [%d]: Low resource condition for packet type %d[%s]",
                 __LINE__, pktType, vos_pkti_packet_type_str(pktType));
-      mutex_unlock(&gpVosPacketContext->mlock);
+      mutex_unlock(mlock);
 
       return VOS_STATUS_E_RESOURCES;
    }
@@ -740,7 +759,7 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
    {
       (*pCount)--;
    }
-   mutex_unlock(&gpVosPacketContext->mlock);
+   mutex_unlock(mlock);
 
    // clear out the User Data pointers in the voss packet..
    memset(&pVosPacket->pvUserData, 0, sizeof(pVosPacket->pvUserData));
@@ -861,6 +880,7 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
    struct list_head *pPktFreeList;
    vos_pkt_low_resource_info *pLowResourceInfo;
    struct vos_pkt_t *pVosPacket;
+   struct mutex *mlock;
 
    // Validate the return parameter pointer
    if (unlikely(NULL == ppPacket))
@@ -883,6 +903,9 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
    // determine which packet pool and low resource block we should use.
    pPktFreeList = &gpVosPacketContext->txDataFreeList;
    pLowResourceInfo = &gpVosPacketContext->txDataLowResourceInfo;
+   mlock = &gpVosPacketContext->txDataFreeListLock;
+
+   mutex_lock(mlock);
 
    // is there already a low resource callback registered for this pool?
    // we only support one callback per pool, so if one is already registered
@@ -892,6 +915,7 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "VPKT [%d]: Low resource handler already registered",
                 __LINE__);
+      mutex_unlock(mlock);
       return VOS_STATUS_E_ALREADY;
    }
 
@@ -905,6 +929,7 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                    "VPKT [%d]: Low resource condition and no callback provided",
                    __LINE__);
+         mutex_unlock(mlock);
          return VOS_STATUS_E_FAILURE;
       }
 
@@ -915,6 +940,7 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                 "VPKT [%d]: Low resource condition for pool %s",
                 __LINE__, vos_pkti_packet_type_str(pktType));
+      mutex_unlock(mlock);
       return VOS_STATUS_E_RESOURCES;
    }
 
@@ -922,6 +948,7 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
    pVosPacket = list_first_entry(pPktFreeList, struct vos_pkt_t, node);
    list_del(&pVosPacket->node);
    gpVosPacketContext->uctxDataFreeListCount --;
+   mutex_unlock(mlock);
 
    // clear out the User Data pointers in the voss packet..
    memset(&pVosPacket->pvUserData, 0, sizeof(pVosPacket->pvUserData));
@@ -1275,6 +1302,7 @@ VOS_STATUS vos_pkt_return_packet( vos_pkt_t *pPacket )
    v_SIZE_t *pCount;
    VOS_PKT_TYPE packetType = VOS_PKT_TYPE_TX_802_3_DATA;
    v_BOOL_t lowResource = VOS_FALSE;
+   struct mutex * mlock;
 
    // Validate the input parameter pointer
    if (unlikely(NULL == pPacket))
@@ -1319,12 +1347,14 @@ VOS_STATUS vos_pkt_return_packet( vos_pkt_t *pPacket )
             pPktFreeList = &gpVosPacketContext->rxRawFreeList;
             pLowResourceInfo = &gpVosPacketContext->rxRawLowResourceInfo;
             pCount = &gpVosPacketContext->rxRawFreeListCount;
+            mlock = &gpVosPacketContext->rxRawFreeListLock;
          }
          else
          {
             pPktFreeList = &gpVosPacketContext->rxReplenishList;
             pLowResourceInfo = NULL;
             pCount = &gpVosPacketContext->rxReplenishListCount;
+            mlock = &gpVosPacketContext->rxReplenishListLock;
          }
          packetType = VOS_PKT_TYPE_RX_RAW;
          break;
@@ -1333,12 +1363,14 @@ VOS_STATUS vos_pkt_return_packet( vos_pkt_t *pPacket )
                 
          pPktFreeList = &gpVosPacketContext->txMgmtFreeList;
          pLowResourceInfo = &gpVosPacketContext->txMgmtLowResourceInfo;
-         
+         mlock = &gpVosPacketContext->txMgmtFreeListLock;
+
          break;
 
       case VOS_PKT_TYPE_TX_802_3_DATA:
          pPktFreeList = &gpVosPacketContext->txDataFreeList;
          pLowResourceInfo = &gpVosPacketContext->txDataLowResourceInfo;
+         mlock = &gpVosPacketContext->txDataFreeListLock;
          gpVosPacketContext->uctxDataFreeListCount ++;
          break;
 
@@ -1358,10 +1390,10 @@ VOS_STATUS vos_pkt_return_packet( vos_pkt_t *pPacket )
          // pLowResourceInfo->callback is modified from threads (different CPU's). 
          // So a mutex is enough to protect is against a race condition.
          // mutex is SMP safe
-         mutex_lock(&gpVosPacketContext->mlock);
+         mutex_lock(mlock);
          callback = pLowResourceInfo->callback;
          pLowResourceInfo->callback = NULL;
-         mutex_unlock(&gpVosPacketContext->mlock);
+         mutex_unlock(mlock);
 
          // only one context can get a valid callback
          if(callback)
@@ -1401,14 +1433,14 @@ VOS_STATUS vos_pkt_return_packet( vos_pkt_t *pPacket )
                    "VPKT [%d]: [%p] Packet returned, type %d[%s]",
                    __LINE__, pPacket, pPacket->packetType,
                    vos_pkti_packet_type_str(pPacket->packetType));
-         mutex_lock(&gpVosPacketContext->mlock);
+         mutex_lock(mlock);
          list_add_tail(&pPacket->node, pPktFreeList);
-         mutex_unlock(&gpVosPacketContext->mlock);
-        
+
          if (pCount)
          {
             (*pCount)++;
          }
+         mutex_unlock(mlock);
       }
 
       // move to next packet in the chain
@@ -2906,6 +2938,8 @@ VOS_STATUS vos_pkt_get_available_buffer_pool (VOS_PKT_TYPE  pktType,
    struct list_head *pList;
    struct list_head *pNode;
    v_SIZE_t count;
+   struct mutex *mlock;
+
    if (NULL == vosFreeBuffer)
    {
       return VOS_STATUS_E_INVAL;
@@ -2915,6 +2949,7 @@ VOS_STATUS vos_pkt_get_available_buffer_pool (VOS_PKT_TYPE  pktType,
    {
    case VOS_PKT_TYPE_TX_802_11_MGMT:
       pList = &gpVosPacketContext->txMgmtFreeList;
+      mlock = &gpVosPacketContext->txMgmtFreeListLock;
       break;
 
    case VOS_PKT_TYPE_TX_802_11_DATA:
@@ -2925,7 +2960,10 @@ VOS_STATUS vos_pkt_get_available_buffer_pool (VOS_PKT_TYPE  pktType,
           return VOS_STATUS_SUCCESS;
       }
       else
-      pList = &gpVosPacketContext->txDataFreeList;
+      {
+         pList = &gpVosPacketContext->txDataFreeList;
+         mlock = &gpVosPacketContext->txDataFreeListLock;
+      }
       break;
 
    case VOS_PKT_TYPE_RX_RAW:
@@ -2943,12 +2981,12 @@ VOS_STATUS vos_pkt_get_available_buffer_pool (VOS_PKT_TYPE  pktType,
    }
 
    count = 0;
-   mutex_lock(&gpVosPacketContext->mlock);
+   mutex_lock(mlock);
    list_for_each(pNode, pList)
    {
       count++;
    }
-   mutex_unlock(&gpVosPacketContext->mlock);
+   mutex_unlock(mlock);
    *vosFreeBuffer = count;
    return VOS_STATUS_SUCCESS;
 }
