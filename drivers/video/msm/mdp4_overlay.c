@@ -990,7 +990,9 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 		real_pipe = mdp4_overlay_ndx2pipe(pipe->pipe_ndx);
 		psize = real_pipe->prev_src_height * real_pipe->prev_src_width;
 		csize = pipe->src_height * pipe->src_width;
-		if (psize && (csize > psize)) {
+		if (psize && (csize > psize) &&
+			(real_pipe->prev_frame_format !=
+				MDP4_FRAME_FORMAT_LINEAR)) {
 			frame_size = (real_pipe->prev_src_height << 16 |
 					real_pipe->prev_src_width);
 		}
@@ -1109,6 +1111,7 @@ int mdp4_overlay_format2type(uint32 format)
 
 int mdp4_overlay_format2pipe(struct mdp4_overlay_pipe *pipe)
 {
+	pipe->prev_frame_format = pipe->frame_format;
 	switch (pipe->src_format) {
 	case MDP_RGB_565:
 		pipe->frame_format = MDP4_FRAME_FORMAT_LINEAR;
