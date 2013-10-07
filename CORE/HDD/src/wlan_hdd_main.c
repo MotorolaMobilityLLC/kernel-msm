@@ -7161,6 +7161,9 @@ int hdd_wlan_startup(struct device *dev )
    }
 
    mutex_init(&pHddCtx->sap_lock);
+#ifdef FEATURE_WLAN_TDLS
+   mutex_init(&pHddCtx->tdls_lock);
+#endif
 
    pHddCtx->isLoadUnloadInProgress = FALSE;
 
