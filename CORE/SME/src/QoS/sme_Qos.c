@@ -64,7 +64,7 @@
 #include "smsDebug.h"
 #include "utilsParser.h"
 #endif
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
 #include <csrCcx.h>
 #endif
 
@@ -2491,7 +2491,7 @@ sme_QosStatusType sme_QosInternalReleaseReq(tpAniSirGlobal pMac,
       {
          // this is the only flow aggregated in this TSPEC
          status = SME_QOS_STATUS_RELEASE_SUCCESS_RSP;
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
          if (ac == SME_QOS_EDCA_AC_VO)
          {
             // Indicate to neighbor roam logic of the new required VO
@@ -5473,7 +5473,7 @@ eHalStatus sme_QosProcessAddTsSuccessRsp(tpAniSirGlobal pMac,
    }
    WLAN_VOS_DIAG_LOG_REPORT(log_ptr);
 #endif //FEATURE_WLAN_DIAG_SUPPORT
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
    if (ac == SME_QOS_EDCA_AC_VO)
    {
       // Indicate to neighbor roam logic of the new required VO

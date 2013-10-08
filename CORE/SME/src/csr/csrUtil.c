@@ -64,10 +64,10 @@
 #include "smeQosInternal.h"
 #include "wlan_qct_wda.h"
 
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
 #include "vos_utils.h"
 #include "csrCcx.h"
-#endif /* FEATURE_WLAN_CCX */
+#endif /* FEATURE_WLAN_CCX && !FEATURE_WLAN_CCX_UPLOAD*/
 
 tANI_U8 csrWpaOui[][ CSR_WPA_OUI_SIZE ] = {
     { 0x00, 0x50, 0xf2, 0x00 },

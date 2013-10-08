@@ -675,7 +675,7 @@ limCreateTimers(tpAniSirGlobal pMac)
     }
 #endif
 
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
     cfgValue = 5000;
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
 
@@ -690,7 +690,7 @@ limCreateTimers(tpAniSirGlobal pMac)
         limLog(pMac, LOGP, FL("could not create Join failure timer"));
         goto err_timer;
     }
-#endif
+#endif /* FEATURE_WLAN_CCX && !FEATURE_WLAN_CCX_UPLOAD */
 
     cfgValue = 1000;
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
@@ -761,9 +761,9 @@ limCreateTimers(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimDeauthAckTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimDisassocAckTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
-    #ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
         tx_timer_delete(&pMac->lim.limTimers.gLimCcxTsmTimer);
-    #endif
+#endif /* FEATURE_WLAN_CCX && !FEATURE_WLAN_CCX_UPLOAD */
         tx_timer_delete(&pMac->lim.limTimers.gLimFTPreAuthRspTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimUpdateOlbcCacheTimer);
         while(((tANI_S32)--i) >= 0)
@@ -1671,7 +1671,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             }
             break;
 #endif
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
          case eLIM_TSM_TIMER:
              if (tx_timer_deactivate(&pMac->lim.limTimers.gLimCcxTsmTimer)
                                                                 != TX_SUCCESS)
@@ -1679,7 +1679,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                  limLog(pMac, LOGE, FL("Unable to deactivate TSM timer"));
              }
              break;
-#endif
+#endif /* FEATURE_WLAN_CCX && !FEATURE_WLAN_CCX_UPLOAD */
         case eLIM_REMAIN_CHN_TIMER:
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimRemainOnChannelTimer) != TX_SUCCESS)
             {

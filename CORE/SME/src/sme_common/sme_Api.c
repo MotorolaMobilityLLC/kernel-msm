@@ -1642,6 +1642,56 @@ eHalStatus sme_UnprotectedMgmtFrmInd( tHalHandle hHal,
 }
 #endif
 
+#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+/*------------------------------------------------------------------
+ *
+ * Handle the tsm ie indication from  LIM and forward it to HDD.
+ *
+ *------------------------------------------------------------------*/
+
+eHalStatus sme_TsmIeInd(tHalHandle hHal, tSirSmeTsmIEInd *pSmeTsmIeInd)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus     status = eHAL_STATUS_SUCCESS;
+    tCsrRoamInfo   pRoamInfo = {0};
+    tANI_U32       SessionId = pSmeTsmIeInd->sessionId;
+
+    pRoamInfo.tsmIe.tsid= pSmeTsmIeInd->tsmIe.tsid;
+    pRoamInfo.tsmIe.state= pSmeTsmIeInd->tsmIe.state;
+    pRoamInfo.tsmIe.msmt_interval= pSmeTsmIeInd->tsmIe.msmt_interval;
+
+    /* forward the tsm ie information to HDD */
+    csrRoamCallCallback(pMac, SessionId, &pRoamInfo, 0, eCSR_ROAM_TSM_IE_IND, 0);
+
+    return status;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_SetCCKMIe
+    \brief  function to store the CCKM IE passed from supplicant and use it while packing
+    reassociation request
+    \param  hHal - HAL handle for device
+    \param  pCckmIe - pointer to CCKM IE data
+    \param  pCckmIeLen - length of the CCKM IE
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_SetCCKMIe(tHalHandle hHal, tANI_U8 sessionId,
+                              tANI_U8 *pCckmIe, tANI_U8 cckmIeLen)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus     status  = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        csrSetCCKMIe(pMac, sessionId, pCckmIe, cckmIeLen);
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+    return status;
+}
+
+#endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
+
 
 /*--------------------------------------------------------------------------
 
@@ -1965,6 +2015,21 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                 }
                 break;
 #endif
+#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+           case eWNI_SME_TSM_IE_IND:
+              {
+                if (pMsg->bodyptr)
+                {
+                    sme_TsmIeInd(pMac, pMsg->bodyptr);
+                    vos_mem_free(pMsg->bodyptr);
+                }
+                else
+                {
+                    smsLog(pMac, LOGE, "Empty rsp message for (eWNI_SME_TSM_IE_IND), nothing to process");
+                }
+                break;
+              }
+#endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
           case eWNI_SME_ROAM_SCAN_OFFLOAD_RSP:
                 status = csrRoamOffloadScanRspHdlr((void *)pMac, pMsg->bodyval);
@@ -4225,6 +4290,37 @@ eHalStatus sme_GetRoamRssi(tHalHandle hHal,
    {
       status = csrGetRoamRssi( pMac, callback,
                                  staId, bssId, pContext, pVosContext);
+      sme_ReleaseGlobalLock( &pMac->sme );
+   }
+   return (status);
+}
+#endif
+
+
+#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+/* ---------------------------------------------------------------------------
+    \fn sme_GetTsmStats
+    \brief a wrapper function that client calls to register a callback to get TSM Stats
+
+    \param callback - SME sends back the requested stats using the callback
+    \param staId - The station ID for which the stats is requested for
+    \param pContext - user context to be passed back along with the callback
+    \param pVosContext - vos context
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_GetTsmStats(tHalHandle hHal,
+                             tCsrTsmStatsCallback callback,
+                             tANI_U8 staId, tCsrBssid bssId,
+                             void *pContext, void* pVosContext, tANI_U8 tid)
+{
+   eHalStatus     status = eHAL_STATUS_FAILURE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   status = sme_AcquireGlobalLock( &pMac->sme );
+   if ( HAL_STATUS_SUCCESS( status ) )
+   {
+      status = csrGetTsmStats( pMac, callback,
+                                 staId, bssId, pContext, pVosContext, tid);
       sme_ReleaseGlobalLock( &pMac->sme );
    }
    return (status);
@@ -7764,7 +7860,7 @@ eHalStatus sme_SetRoamScanControl(tHalHandle hHal, v_BOOL_t roamScanControl)
         {
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
                      "LFR runtime successfully cleared roam scan cache");
-            csrFlushBgScanRoamChannelList(pMac);
+            csrFlushCfgBgScanRoamChannelList(pMac);
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
            if (pMac->roam.configParam.isRoamOffloadScanEnabled)
            {
@@ -8330,7 +8426,7 @@ eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
                 pNeighborRoamInfo->cfgParams.channelInfo.ChannelList[i]);
             }
         }
-        csrFlushBgScanRoamChannelList(pMac);
+        csrFlushCfgBgScanRoamChannelList(pMac);
         csrCreateBgScanRoamChannelList(pMac, pChannelList, numChannels);
         status = csrUpdateBgScanConfigIniChannelList(pMac, csrGetCurrentBand(hHal));
 
@@ -8363,6 +8459,71 @@ eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
 
     return status ;
 }
+
+
+#ifdef FEATURE_WLAN_CCX_UPLOAD
+/*--------------------------------------------------------------------------
+  \brief sme_SetCcxRoamScanChannelList() - set ccx roam scan channel list
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_SetCcxRoamScanChannelList(tHalHandle hHal,
+                                         tANI_U8 *pChannelList,
+                                         tANI_U8 numChannels)
+{
+    tpAniSirGlobal      pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    tpCsrChannelInfo    currChannelListInfo = &pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo;
+    tANI_U8             oldChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN*2] = {0};
+    tANI_U8             newChannelList[128] = {0};
+    tANI_U8             i = 0, j = 0;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        if (NULL != currChannelListInfo->ChannelList)
+        {
+            for (i = 0; i < currChannelListInfo->numOfChannels; i++)
+            {
+                j += snprintf(oldChannelList + j, sizeof(oldChannelList) - j," %d",
+                      currChannelListInfo->ChannelList[i]);
+            }
+        }
+        status = csrCreateRoamScanChannelList(pMac, pChannelList, numChannels, csrGetCurrentBand(hHal));
+
+        if ( HAL_STATUS_SUCCESS( status ))
+        {
+            if (NULL != currChannelListInfo->ChannelList)
+            {
+                j = 0;
+                for (i = 0; i < currChannelListInfo->numOfChannels; i++)
+                {
+                    j += snprintf(newChannelList + j, sizeof(newChannelList) - j," %d",
+                    currChannelListInfo->ChannelList[i]);
+                }
+            }
+
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                        "CCX roam scan channel list successfully set to %s - old value is %s - roam state is %d",
+                        newChannelList, oldChannelList,
+                        pMac->roam.neighborRoamInfo.neighborRoamState);
+        }
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+        {
+           csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_CHANNEL_LIST_CHANGED);
+        }
+#endif
+
+    return status ;
+}
+#endif
 
 /*--------------------------------------------------------------------------
   \brief csrUpdateBgScanConfigIniChannelList() - Update bgscan roam cache
@@ -8431,7 +8592,7 @@ tANI_BOOLEAN sme_getIsCcxFeatureEnabled(tHalHandle hHal)
 {
 #ifdef FEATURE_WLAN_CCX
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    return pMac->roam.configParam.isCcxIniFeatureEnabled;
+    return csrRoamIsCcxIniFeatureEnabled(pMac);
 #else
     return eANI_BOOLEAN_FALSE;
 #endif
