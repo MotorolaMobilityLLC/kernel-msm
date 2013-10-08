@@ -81,8 +81,8 @@ struct external_common_state_type {
 	uint8 pt_scan_info;
 	uint8 it_scan_info;
 	uint8 ce_scan_info;
-	uint8 spd_vendor_name[9];
-	uint8 spd_product_description[17];
+	uint8 spd_vendor_name[8];
+	uint8 spd_product_description[16];
 	boolean present_3d;
 	boolean present_hdcp;
 	uint8 audio_data_block[MAX_AUDIO_DATA_BLOCK_SIZE];
