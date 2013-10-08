@@ -1394,6 +1394,7 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	u32 left_dsi_ctrl = 0;
 	bool left_ctrl_restore = false;
 	int rx_flags = 0;
+	bool long_rd_rsp_chk = false;
 
 	if (ctrl->shared_pdata.broadcast_enable) {
 		if (ctrl->ndx == DSI_CTRL_0) {
@@ -1437,9 +1438,13 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	len = rlen;
 	diff = 0;
 
-	if (len <= 2)
+	if (len < 2)
 		cnt = 4;	/* short read */
-	else {
+	else if (len == 2) {
+		/* Response could be a short or long read */
+		cnt = 8;
+		long_rd_rsp_chk = true;
+	} else {
 		if (len > MDSS_DSI_LEN)
 			len = MDSS_DSI_LEN;	/* 8 bytes at most */
 
@@ -1533,6 +1538,11 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 		rp->data += 2;
 	}
 
+	if (long_rd_rsp_chk &&
+		rp->data[0] != DTYPE_GEN_LREAD_RESP &&
+		rp->data[0] != DTYPE_DCS_LREAD_RESP)
+		rp->data += 4;
+
 	cmd = rp->data[0];
 	switch (cmd) {
 	case DTYPE_ACK_ERR_RESP:
@@ -1549,8 +1559,10 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	case DTYPE_GEN_LREAD_RESP:
 	case DTYPE_DCS_LREAD_RESP:
 		mdss_dsi_long_read_resp(rp);
-		rp->len -= 2; /* extra 2 bytes added */
-		rp->len -= diff; /* align bytes */
+		if (!long_rd_rsp_chk) {
+			rp->len -= 2; /* extra 2 bytes added */
+			rp->len -= diff; /* align bytes */
+		}
 		break;
 	default:
 		pr_warning("%s:Invalid response cmd\n", __func__);
