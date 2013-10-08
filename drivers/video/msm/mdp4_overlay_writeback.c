@@ -392,6 +392,13 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	if (rc != 0) {
 		pr_err("%s: mdp4_wfd_dequeue_update failed !! mfd=%x\n",
 			__func__, (int)mfd);
+		pipe = vp->plist;
+		for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
+			pipe->pipe_used = 0;
+			pr_debug("%s: dequeue update failed, unsetting pipes\n",
+				__func__);
+		}
+		return cnt;
 	}
 	/* free previous committed iommu back to pool */
 	mdp4_overlay_iommu_unmap_freelist(mixer);
@@ -418,10 +425,6 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	mdp4_mixer_stage_commit(mixer);
 
 	pipe = vctrl->base_pipe;
-	if (!pipe->ov_blt_addr) {
-		schedule_work(&vctrl->clk_work);
-		return cnt;
-	}
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	vctrl->ov_koff++;
 	INIT_COMPLETION(vctrl->ov_comp);
