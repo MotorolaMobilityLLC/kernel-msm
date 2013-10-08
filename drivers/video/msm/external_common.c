@@ -537,15 +537,8 @@ static ssize_t hdmi_msm_wta_cec_frame(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	int i;
-	struct hdmi_msm_cec_msg *msg;
-	int retry;
+	int retry = ((struct hdmi_msm_cec_msg *) buf)->retransmit;
 
-	msg = (struct hdmi_msm_cec_msg *) buf;
-	retry = msg->retransmit;
-	if (msg->frame_size > CEC_MAX_OPERAND_SIZE) {
-		pr_err("%s: cec msg too large\n", __func__);
-		return -EINVAL;
-	}
 	for (i = 0; i < RETRANSMIT_MAX_NUM; i++) {
 		hdmi_msm_cec_msg_send((struct hdmi_msm_cec_msg *) buf);
 		if (hdmi_msm_state->cec_frame_wr_status
