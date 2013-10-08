@@ -177,6 +177,8 @@
 
 #define AOD_WAKEUP_REASON_ESD		4
 
+#define MSP_MAX_GENERIC_DATA		512
+
 static long time_delta;
 static unsigned int msp430_irq_disable;
 module_param_named(irq_disable, msp430_irq_disable, uint, 0644);
@@ -212,7 +214,6 @@ static unsigned char msp_cmdbuff[MSP430_HEADER_LENGTH + MSP430_CMDLENGTH_BYTES +
 			MSP430_CORECOMMAND_LENGTH + MSP430_CRC_LENGTH];
 
 static unsigned char read_cmdbuff[512];
-
 
 enum msp_mode {
 	UNINITIALIZED,
@@ -1874,6 +1875,9 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	static int brightness_table_loaded;
 	int err = -ENOTTY;
 	unsigned int addr = 0;
+	unsigned char *write_cmdbuff;
+	unsigned int data_size = 0;
+	unsigned char rw_bytes[4];
 	struct msp430_data *ps_msp430 = file->private_data;
 	unsigned int cmdlen = 0;
 	unsigned char byte;
@@ -2373,7 +2377,97 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			msp_algo_info[addr].evt_size))
 			err = -EFAULT;
 		break;
+	case MSP430_IOCTL_WRITE_REG:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_WRITE_REG");
 
+		/* copy addr and size */
+		if (copy_from_user(&rw_bytes, argp, sizeof(rw_bytes))) {
+			dev_err(&ps_msp430->client->dev,
+				"Write Reg, copy bytes returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		addr = (rw_bytes[0] << 8) | rw_bytes[1];
+		data_size = (rw_bytes[2] << 8) | rw_bytes[3];
+
+		/* fail if the write size is too large */
+		if (data_size > MSP_MAX_GENERIC_DATA - 1) {
+			err = -EFAULT;
+			dev_err(&ps_msp430->client->dev,
+				"Write Reg, data_size > %d\n",
+				MSP_MAX_GENERIC_DATA - 1);
+			break;
+		}
+
+		write_cmdbuff = kmalloc(
+			(data_size + 1) * sizeof(unsigned char), GFP_KERNEL);
+
+		/* check if memory was allocated */
+		if (write_cmdbuff == NULL) {
+			err = -EFAULT;
+			dev_err(&ps_msp430->client->dev,
+				"could not allocate memory for write_cmdbuff\n"
+				);
+			break;
+		}
+
+		/* copy in the data */
+		if (copy_from_user(&write_cmdbuff[1], argp + sizeof(rw_bytes),
+			data_size)) {
+			dev_err(&ps_msp430->client->dev,
+				"Write Reg copy from user returned error\n");
+			err = -EFAULT;
+			kfree(write_cmdbuff);
+			break;
+		}
+
+		/* setup the address */
+		write_cmdbuff[0] = addr;
+
+		/* + 1 for the address in [0] */
+		err = msp430_i2c_write(ps_msp430, write_cmdbuff,
+			data_size + 1);
+
+		if (err < 0)
+			dev_err(&msp430_misc_data->client->dev,
+				"Write Reg unable to write to direct reg %d\n",
+				err);
+		kfree(write_cmdbuff);
+
+		break;
+	case MSP430_IOCTL_READ_REG:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_READ_REG");
+
+		/* copy addr and size */
+		if (copy_from_user(&rw_bytes, argp, sizeof(rw_bytes))) {
+			dev_err(&ps_msp430->client->dev,
+			    "Read Reg, copy bytes returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		addr = (rw_bytes[0] << 8) | rw_bytes[1];
+		data_size = (rw_bytes[2] << 8) | rw_bytes[3];
+
+		/* setup the address */
+		msp_cmdbuff[0] = addr;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1,
+			data_size);
+
+		if (err < 0)
+			dev_err(&msp430_misc_data->client->dev,
+				"Read Reg, unable to read from direct reg %d\n",
+				err);
+
+		if (copy_to_user(argp, read_cmdbuff, data_size)) {
+			dev_err(&ps_msp430->client->dev,
+				"Read Reg error copying to user\n");
+			err = -EFAULT;
+			break;
+		}
+
+		break;
 	/* No default here since previous switch could have
 	   handled the command and cannot over write that */
 	}
