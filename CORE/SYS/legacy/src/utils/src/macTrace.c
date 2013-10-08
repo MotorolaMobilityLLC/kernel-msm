@@ -541,6 +541,9 @@ tANI_U8* macTraceGetSmeMsgString( tANI_U16 smeMsg )
         CASE_RETURN_STRING(eWNI_SME_MSG_TYPES_END);
         CASE_RETURN_STRING(eWNI_SME_GET_ROAM_RSSI_REQ);
         CASE_RETURN_STRING(eWNI_SME_GET_ROAM_RSSI_RSP);
+        CASE_RETURN_STRING(eWNI_SME_GET_TSM_STATS_REQ);
+        CASE_RETURN_STRING(eWNI_SME_GET_TSM_STATS_RSP);
+
         default:
             return( (tANI_U8*)"UNKNOWN" );
             break;

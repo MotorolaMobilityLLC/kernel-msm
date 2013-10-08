@@ -71,7 +71,7 @@
 #endif
 #include "limSessionUtils.h"
 
-#if defined FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
 #include "ccxApi.h"
 #endif
 #include "wlan_qct_wda.h"
@@ -592,7 +592,12 @@ __limProcessAddTsRsp(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession pse
         psessionEntry->ccxContext.tsm.tid = addts.tspec.tsinfo.traffic.userPrio;
         vos_mem_copy(&psessionEntry->ccxContext.tsm.tsmInfo,
                                          &addts.tsmIE,sizeof(tSirMacCCXTSMIE));
+#ifdef FEATURE_WLAN_CCX_UPLOAD
+        limSendSmeTsmIEInd(pMac, psessionEntry, addts.tsmIE.tsid,
+                           addts.tsmIE.state, addts.tsmIE.msmt_interval);
+#else
         limActivateTSMStatsTimer(pMac, psessionEntry);
+#endif /* FEATURE_WLAN_CCX_UPLOAD */
     }
 #endif
     /* Since AddTS response was successful, check for the PSB flag
@@ -851,7 +856,11 @@ __limProcessDelTsReq(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession pse
     PELOG1(limLog(pMac, LOG1, FL("DeleteTS succeeded"));)
 
 #ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_CCX_UPLOAD
+    limSendSmeTsmIEInd(pMac, psessionEntry, 0, 0, 0);
+#else
     limDeactivateAndChangeTimer(pMac,eLIM_TSM_TIMER);
+#endif /* FEATURE_WLAN_CCX_UPLOAD */
 #endif
 
 }

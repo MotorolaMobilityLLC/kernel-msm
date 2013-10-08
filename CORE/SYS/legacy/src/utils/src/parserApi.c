@@ -3834,7 +3834,48 @@ PopulateDot11fWMMTSPEC(tSirMacTspecIE     *pOld,
 
 } // End PopulateDot11fWMMTSPEC.
 
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX)
+
+// Fill the CCX version currently supported
+void PopulateDot11fCCXVersion(tDot11fIECCXVersion *pCCXVersion)
+{
+    pCCXVersion->present = 1;
+    pCCXVersion->version = CCX_VERSION_SUPPORTED;
+}
+
+// Fill the CCX ie for the station.
+// The State is Normal (1)
+// The MBSSID for station is set to 0.
+void PopulateDot11fCCXRadMgmtCap(tDot11fIECCXRadMgmtCap *pCCXRadMgmtCap)
+{
+    pCCXRadMgmtCap->present = 1;
+    pCCXRadMgmtCap->mgmt_state = RM_STATE_NORMAL;
+    pCCXRadMgmtCap->mbssid_mask = 0;
+    pCCXRadMgmtCap->reserved = 0;
+}
+
+tSirRetStatus PopulateDot11fCCXCckmOpaque( tpAniSirGlobal pMac,
+                                           tpSirCCKMie    pCCKMie,
+                                           tDot11fIECCXCckmOpaque *pDot11f )
+{
+    int idx;
+
+    if ( pCCKMie->length )
+    {
+        if( 0 <= ( idx = FindIELocation( pMac, (tpSirRSNie)pCCKMie, DOT11F_EID_CCXCCKMOPAQUE ) ) )
+        {
+            pDot11f->present  = 1;
+            pDot11f->num_data = pCCKMie->cckmIEdata[ idx + 1 ] - 4; // Dont include OUI
+            palCopyMemory( pMac->hHdd, pDot11f->data,
+                           pCCKMie->cckmIEdata + idx + 2 + 4,    // EID, len, OUI
+                           pCCKMie->cckmIEdata[ idx + 1 ] - 4 ); // Skip OUI
+        }
+    }
+
+    return eSIR_SUCCESS;
+
+} // End PopulateDot11fCCXCckmOpaque.
+
 void PopulateDot11TSRSIE(tpAniSirGlobal  pMac,
                                tSirMacCCXTSRSIE     *pOld,
                                tDot11fIECCXTrafStrmRateSet  *pDot11f,

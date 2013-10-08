@@ -244,5 +244,19 @@ typedef struct sBoaCommand
     tANI_U8     cmd[64];
 }tBoaCommand;
 
+
+typedef __ani_attr_pre_packed struct sTrafStrmMetrics
+{
+    tANI_U16      UplinkPktQueueDly;
+    tANI_U16      UplinkPktQueueDlyHist[4];
+    tANI_U32      UplinkPktTxDly;
+    tANI_U16      UplinkPktLoss;
+    tANI_U16      UplinkPktCount;
+    tANI_U8       RoamingCount;
+    tANI_U16      RoamingDly;
+} __ani_attr_packed tTrafStrmMetrics, *tpTrafStrmMetrics;
+
+
+
 #endif /* __ANI_SYSTEM_DEFS_H */
 

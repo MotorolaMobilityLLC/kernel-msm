@@ -708,7 +708,16 @@ void PopulateDot11fWMM(tpAniSirGlobal      pMac,
 
 void PopulateDot11fWMMCaps(tDot11fIEWMMCaps *pCaps);
 
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX)
+// Fill the CCX version IE
+void PopulateDot11fCCXVersion(tDot11fIECCXVersion *pCCXVersion);
+// Fill the Radio Management Capability
+void PopulateDot11fCCXRadMgmtCap(tDot11fIECCXRadMgmtCap *pCCXRadMgmtCap);
+// Fill the CCKM IE
+tSirRetStatus PopulateDot11fCCXCckmOpaque( tpAniSirGlobal pMac,
+                                           tpSirCCKMie    pCCKMie,
+                                           tDot11fIECCXCckmOpaque *pDot11f );
+
 void PopulateDot11TSRSIE(tpAniSirGlobal  pMac,
                                tSirMacCCXTSRSIE     *pOld,
                                tDot11fIECCXTrafStrmRateSet  *pDot11f,

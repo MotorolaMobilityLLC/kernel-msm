@@ -82,7 +82,7 @@
 #include "wlan_qct_tl.h"
 #include "sme_Api.h"
 #include "csrNeighborRoam.h"
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
 #include "csrCcx.h"
 #endif
 
@@ -1119,7 +1119,7 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, tSirRetStatus l
     }
     if ((eSIR_SUCCESS == limStatus) && (NULL != pPreauthRspNode))
     {
-        NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Preauth completed successfully after %d tries"), pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries);
+        NEIGHBOR_ROAM_DEBUG(pMac, LOG1, FL("Preauth completed successfully after %d tries"), pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries);
 
         smsLog(pMac, LOG1, FL("After Pre-Auth: BSSID %02x:%02x:%02x:%02x:%02x:%02x, Ch:%d"),
                pPreauthRspNode->pBssDescription->bssId[0],
@@ -1332,7 +1332,7 @@ eHalStatus csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac, tCsrScan
     pScanFilter->SSIDs.SSIDList->SSID.length =  pCurProfile->SSID.length;
     vos_mem_copy((void *)pScanFilter->SSIDs.SSIDList->SSID.ssId, (void *)pCurProfile->SSID.ssId, pCurProfile->SSID.length); 
 
-    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Filtering for SSID %.*s from scan results,"
+    NEIGHBOR_ROAM_DEBUG(pMac, LOG1, FL("Filtering for SSID %.*s from scan results,"
                                 "length of SSID = %u"),
                                 pScanFilter->SSIDs.SSIDList->SSID.length,
                                 pScanFilter->SSIDs.SSIDList->SSID.ssId,
@@ -2565,7 +2565,7 @@ eHalStatus csrNeighborRoamPerformContiguousBgScan(tpAniSirGlobal pMac, tANI_U32 
 {
     eHalStatus      status = eHAL_STATUS_SUCCESS;
     tCsrBGScanRequest   bgScanParams;
-    int numOfChannels = 0, i = 0;
+    tANI_U8   numOfChannels = 0, i = 0;
     tANI_U8   *channelList = NULL;
     tANI_U8   *pInChannelList = NULL;
     tANI_U8   tmpChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN];
@@ -2843,13 +2843,13 @@ VOS_STATUS csrNeighborRoamIssueNeighborRptRequest(tpAniSirGlobal pMac)
 VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
                       tpAniSirGlobal pMac,
                       tANI_U8*  pInputChannelList,
-                      int       inputNumOfChannels,
+                      tANI_U8   inputNumOfChannels,
                       tANI_U8*  pOutputChannelList,
-                      int*      pMergedOutputNumOfChannels
+                      tANI_U8*  pMergedOutputNumOfChannels
                       )
 {
-    int i = 0;
-    int numChannels = 0;
+    tANI_U8 i = 0;
+    tANI_U8 numChannels = 0;
     tANI_U8   currAPoperationChannel = pMac->roam.neighborRoamInfo.currAPoperationChannel;
     // Check for NULL pointer
     if (!pInputChannelList) return VOS_STATUS_E_INVAL;
@@ -2900,15 +2900,15 @@ VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
 VOS_STATUS csrNeighborRoamMergeChannelLists( 
         tpAniSirGlobal pMac, 
         tANI_U8   *pInputChannelList, 
-        int inputNumOfChannels,
+        tANI_U8  inputNumOfChannels,
         tANI_U8   *pOutputChannelList,
-        int outputNumOfChannels,
-        int *pMergedOutputNumOfChannels 
+        tANI_U8  outputNumOfChannels,
+        tANI_U8  *pMergedOutputNumOfChannels
         )
 {
-    int i = 0;
-    int j = 0;
-    int numChannels = outputNumOfChannels;
+    tANI_U8 i = 0;
+    tANI_U8 j = 0;
+    tANI_U8 numChannels = outputNumOfChannels;
 
     // Check for NULL pointer
     if (!pInputChannelList) return VOS_STATUS_E_INVAL;
@@ -2970,7 +2970,7 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac)
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     tANI_U8         numChannels = 0, i = 0;
     tANI_U8         channelList[MAX_BSS_IN_NEIGHBOR_RPT];
-    int             mergedOutputNumOfChannels = 0;
+    tANI_U8         mergedOutputNumOfChannels = 0;
 #if 0
     eHalStatus  status = eHAL_STATUS_SUCCESS;
 #endif
@@ -3354,13 +3354,13 @@ tANI_BOOLEAN csrNeighborRoamConnectedProfileMatch(
 VOS_STATUS csrNeighborRoamPrepareNonOccupiedChannelList(
         tpAniSirGlobal pMac, 
         tANI_U8   *pInputChannelList, 
-        int numOfChannels,
+        tANI_U8 numOfChannels,
         tANI_U8   *pOutputChannelList,
-        int *pOutputNumOfChannels 
+        tANI_U8 *pOutputNumOfChannels
         )
 {
-    int i = 0;
-    int outputNumOfChannels  = 0; // Clear the output number of channels
+    tANI_U8 i = 0;
+    tANI_U8 outputNumOfChannels  = 0; // Clear the output number of channels
     tANI_U8 numOccupiedChannels = pMac->scan.occupiedChannels.numChannels;
     tANI_U8 *pOccupiedChannelList = pMac->scan.occupiedChannels.channelList;
 
@@ -3403,7 +3403,7 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     eHalStatus  status  = eHAL_STATUS_SUCCESS;
     int i = 0;
-    int numOfChannels = 0;
+    tANI_U8   numOfChannels = 0;
     tANI_U8   channelList[WNI_CFG_VALID_CHANNEL_LIST_LEN];
     tpCsrChannelInfo    currChannelListInfo;
 #ifdef FEATURE_WLAN_LFR

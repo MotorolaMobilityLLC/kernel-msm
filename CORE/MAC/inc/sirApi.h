@@ -58,7 +58,7 @@
 #include "aniSystemDefs.h"
 #include "sirParams.h"
 
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
 #include "ccxGlobal.h"
 #endif
 
@@ -2148,6 +2148,60 @@ typedef struct sAniGetRoamRssiRsp
 } tAniGetRoamRssiRsp, *tpAniGetRoamRssiRsp;
 
 #endif
+
+#if defined(FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_CCX_UPLOAD)
+
+typedef struct sSirTsmIE
+{
+    tANI_U8      tsid;
+    tANI_U8      state;
+    tANI_U16     msmt_interval;
+} tSirTsmIE, *tpSirTsmIE;
+
+typedef struct sSirSmeTsmIEInd
+{
+    tSirTsmIE tsmIe;
+    tANI_U8   sessionId;
+} tSirSmeTsmIEInd, *tpSirSmeTsmIEInd;
+
+
+typedef struct sAniTrafStrmMetrics
+{
+    tANI_U16      UplinkPktQueueDly;
+    tANI_U16      UplinkPktQueueDlyHist[4];
+    tANI_U32      UplinkPktTxDly;
+    tANI_U16      UplinkPktLoss;
+    tANI_U16      UplinkPktCount;
+    tANI_U8       RoamingCount;
+    tANI_U16      RoamingDly;
+} tAniTrafStrmMetrics, *tpAniTrafStrmMetrics;
+
+typedef struct sAniGetTsmStatsReq
+{
+    // Common for all types are requests
+    tANI_U16       msgType;            // message type is same as the request type
+    tANI_U16       msgLen;             // length of the entire request
+    tANI_U8        staId;
+    tANI_U8        tid;                // traffic id
+    tSirMacAddr    bssId;
+    void           *tsmStatsCallback;
+    void           *pDevContext;       //device context
+    void           *pVosContext;       //voss context
+} tAniGetTsmStatsReq, *tpAniGetTsmStatsReq;
+
+typedef struct sAniGetTsmStatsRsp
+{
+    // Common for all types are responses
+    tANI_U16            msgType;      // message type is same as the request type
+    tANI_U16            msgLen;       // length of the entire request, includes the pStatsBuf length too
+    tANI_U8             sessionId;
+    tANI_U32            rc;           //success/failure
+    tANI_U32            staId;        // Per STA stats request must contain valid
+    tAniTrafStrmMetrics tsmMetrics;
+    void               *tsmStatsReq; //tsm stats request backup
+} tAniGetTsmStatsRsp, *tpAniGetTsmStatsRsp;
+#endif /* FEATURE_WLAN_CCX || FEATURE_WLAN_CCX_UPLOAD */
+
 /* Change country code request MSG structure */
 typedef struct sAniChangeCountryCodeReq
 {
@@ -2422,6 +2476,50 @@ typedef __ani_attr_pre_packed struct sSirTclasInfo
     }__ani_attr_packed tclasParams;
 } __ani_attr_packed tSirTclasInfo;
 
+
+#if defined(FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_CCX_UPLOAD)
+#define TSRS_11AG_RATE_6MBPS   0xC
+#define TSRS_11B_RATE_5_5MBPS  0xB
+
+typedef struct sSirMacCCXTSRSIE
+{
+    tANI_U8      tsid;
+    tANI_U8      rates[8];
+} tSirMacCCXTSRSIE;
+
+typedef struct sSirMacCCXTSMIE
+{
+    tANI_U8      tsid;
+    tANI_U8      state;
+    tANI_U16     msmt_interval;
+} tSirMacCCXTSMIE;
+
+typedef struct sTSMStats
+{
+    tANI_U8           tid;
+    tSirMacAddr       bssId;
+    tTrafStrmMetrics  tsmMetrics;
+} tTSMStats, *tpTSMStats;
+
+typedef struct sCcxTSMContext
+{
+   tANI_U8           tid;
+   tSirMacCCXTSMIE   tsmInfo;
+   tTrafStrmMetrics  tsmMetrics;
+} tCcxTSMContext, *tpCcxTSMContext;
+
+typedef struct sCcxPEContext
+{
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
+   tCcxMeasReq       curMeasReq;
+#endif
+   tCcxTSMContext    tsm;
+} tCcxPEContext, *tpCcxPEContext;
+
+
+#endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
+
+
 typedef struct sSirAddtsReqInfo
 {
     tANI_U8               dialogToken;
@@ -2430,7 +2528,7 @@ typedef struct sSirAddtsReqInfo
     tANI_U8               numTclas; // number of Tclas elements
     tSirTclasInfo    tclasInfo[SIR_MAC_TCLASIE_MAXNUM];
     tANI_U8               tclasProc;
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX)
     tSirMacCCXTSRSIE      tsrsIE;
     tANI_U8               tsrsPresent:1;
 #endif
@@ -2451,7 +2549,7 @@ typedef struct sSirAddtsRspInfo
     tSirTclasInfo      tclasInfo[SIR_MAC_TCLASIE_MAXNUM];
     tANI_U8                 tclasProc;
     tSirMacScheduleIE  schedule;
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_CCX_UPLOAD)
     tSirMacCCXTSMIE    tsmIE;
     tANI_U8                 tsmPresent:1;
 #endif

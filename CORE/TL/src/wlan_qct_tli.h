@@ -318,7 +318,8 @@ typedef enum
 ---------------------------------------------------------------------------*/
 typedef VOS_STATUS (*WLANTL_STAFuncType)( v_PVOID_t     pAdapter,
                                           v_U8_t        ucSTAId,
-                                          vos_pkt_t**   pvosDataBuff);
+                                          vos_pkt_t**   pvosDataBuff,
+                                          v_BOOL_t      bForwardIAPPwithLLC);
 
 /*---------------------------------------------------------------------------
   STA FSM Entry type
@@ -331,32 +332,38 @@ typedef struct
 /* Receive in connected state - only EAPOL or WAI*/
 VOS_STATUS WLANTL_STARxConn( v_PVOID_t     pAdapter,
                              v_U8_t        ucSTAId,
-                             vos_pkt_t**   pvosDataBuff );
+                             vos_pkt_t**   pvosDataBuff,
+                             v_BOOL_t      bForwardIAPPwithLLC);
 
 /* Transmit in connected state - only EAPOL or WAI*/
 VOS_STATUS WLANTL_STATxConn( v_PVOID_t     pAdapter,
                              v_U8_t        ucSTAId,
-                             vos_pkt_t**   pvosDataBuff );
+                             vos_pkt_t**   pvosDataBuff,
+                             v_BOOL_t      bForwardIAPPwithLLC);
 
 /* Receive in authenticated state - all data allowed*/
 VOS_STATUS WLANTL_STARxAuth( v_PVOID_t     pAdapter,
                              v_U8_t        ucSTAId,
-                             vos_pkt_t**   pvosDataBuff );
+                             vos_pkt_t**   pvosDataBuff,
+                             v_BOOL_t      bForwardIAPPwithLLC);
 
 /* Transmit in authenticated state - all data allowed*/
 VOS_STATUS WLANTL_STATxAuth( v_PVOID_t     pAdapter,
                              v_U8_t        ucSTAId,
-                             vos_pkt_t**   pvosDataBuff );
+                             vos_pkt_t**   pvosDataBuff,
+                             v_BOOL_t      bForwardIAPPwithLLC);
 
 /* Receive in disconnected state - no data allowed*/
 VOS_STATUS WLANTL_STARxDisc( v_PVOID_t     pAdapter,
                              v_U8_t        ucSTAId,
-                             vos_pkt_t**   pvosDataBuff );
+                             vos_pkt_t**   pvosDataBuff,
+                             v_BOOL_t      bForwardIAPPwithLLC);
 
 /* Transmit in disconnected state - no data allowed*/
 VOS_STATUS WLANTL_STATxDisc( v_PVOID_t     pAdapter,
                              v_U8_t        ucSTAId,
-                             vos_pkt_t**   pvosDataBuff );
+                             vos_pkt_t**   pvosDataBuff,
+                             v_BOOL_t      bForwardIAPPwithLLC);
 
 /* TL State Machine */
 STATIC const WLANTL_STAFsmEntryType tlSTAFsm[WLANTL_STA_MAX_STATE] =
@@ -1343,7 +1350,8 @@ WLANTL_Translate80211To8023Header
   v_U16_t         usActualHLen,
   v_U8_t          ucHeaderLen,
   WLANTL_CbType*  pTLCb,
-  v_U8_t          ucSTAId
+  v_U8_t          ucSTAId,
+  v_BOOL_t	  bForwardIAPPwithLLC
 );
 
 /*==========================================================================
