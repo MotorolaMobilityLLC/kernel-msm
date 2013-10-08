@@ -4505,14 +4505,8 @@ static int hdmi_msm_power_off(struct platform_device *pdev)
 {
 	int ret = 0;
 
-	/*
-	don't check for hpd_initialized here since user space may
-	turn off HPD via hdmi_msm_hpd_feature() before power off is
-	called which leads to HDCP HW lockup on the next power on.
-	*/
-	if (!(MSM_HDMI_BASE && hdmi_msm_state &&
-			hdmi_msm_state->hdmi_app_clk)) {
-		DEV_ERR("%s: HDMI not initialized\n", __func__);
+	if (!hdmi_ready()) {
+		DEV_ERR("%s: HDMI/HPD not initialized\n", __func__);
 		return ret;
 	}
 
