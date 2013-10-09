@@ -83,7 +83,6 @@
 			<&msmgpio 22 0>;     /* Firmware */
 		nxp,pnxxx-discharge-delay = <2000>;
 		nxp,pnxxx-ven-inv-polarity = <0>;
-		vdd-supply = <&pm8226_l22>;
 	};
 
 	lis3dh@18 {
