@@ -253,9 +253,9 @@ static int sendcmd(struct adreno_device *adreno_dev,
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 	int ret;
 
-	dispatcher->inflight++;
-
 	mutex_lock(&device->mutex);
+
+	dispatcher->inflight++;
 
 	if (dispatcher->inflight == 1) {
 		/* Time to make the donuts.  Turn on the GPU */
