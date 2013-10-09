@@ -746,6 +746,7 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     struct net_device *dev = pAdapter->dev;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    v_U8_t sta_id;
 
     // Sanity check
     if(dev == NULL)
@@ -842,20 +843,28 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
         }
     }
 
+    if (eCSR_ROAM_IBSS_LEAVE == roamStatus)
+    {
+        sta_id = IBSS_BROADCAST_STAID;
+    }
+    else
+    {
+        sta_id = pHddStaCtx->conn_info.staId[0];
+    }
      hdd_wmm_adapter_clear(pAdapter);
     //We should clear all sta register with TL, for now, only one.
-    vstatus = hdd_roamDeregisterSTA( pAdapter, pHddStaCtx->conn_info.staId [0] );
+    vstatus = hdd_roamDeregisterSTA( pAdapter, sta_id );
     if ( !VOS_IS_STATUS_SUCCESS(vstatus ) )
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "hdd_roamDeregisterSTA() failed to for staID %d.  "
                   "Status= %d [0x%x]",
-                    pHddStaCtx->conn_info.staId[0], status, status );
+                  sta_id, status, status );
 
         status = eHAL_STATUS_FAILURE;
     }
 
-    pHddCtx->sta_to_adapter[pHddStaCtx->conn_info.staId[0]] = NULL;
+    pHddCtx->sta_to_adapter[sta_id] = NULL;
     // Clear saved connection information in HDD
     hdd_connRemoveConnectInfo( pHddStaCtx );
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
@@ -869,7 +878,10 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
 #endif
 
 #ifdef FEATURE_WLAN_TDLS
-    wlan_hdd_tdls_disconnection_callback(pAdapter);
+    if (eCSR_ROAM_IBSS_LEAVE != roamStatus)
+    {
+        wlan_hdd_tdls_disconnection_callback(pAdapter);
+    }
 #endif
 
     //Unblock anyone waiting for disconnect to complete
