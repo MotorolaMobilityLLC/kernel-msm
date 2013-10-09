@@ -117,7 +117,7 @@ RSSI *cannot* be more than 0xFF or less than 0 for meaningful WLAN operation
 /* Maximum number of channels per country can be ignored */
 #define MAX_CHANNELS_IGNORE 10
 
-#define MAX_COUNTRY_IGNORE 4
+#define MAX_COUNTRY_IGNORE 5
 
 #define THIRTY_PERCENT(x)  (x*30/100);
 
@@ -133,7 +133,8 @@ static tCsrIgnoreChannels countryIgnoreList[MAX_COUNTRY_IGNORE] = {
     { {'U','A'}, { 136, 140}, 2},
     { {'T','W'}, { 36, 40, 44, 48, 52}, 5},
     { {'I','D'}, { 165}, 1 },
-    { {'A','U'}, { 120, 124, 128}, 3 }
+    { {'A','U'}, { 120, 124, 128}, 3 },
+    { {'A','G'}, { 120, 124, 128}, 3 }
     };
 
 //*** This is temporary work around. It need to call CCM api to get to CFG later
