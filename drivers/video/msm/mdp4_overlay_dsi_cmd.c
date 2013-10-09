@@ -595,6 +595,7 @@ void mdp4_dmap_done_dsi_cmd(int cndx)
 		__func__, vctrl->ov_koff, vctrl->ov_done, vctrl->dmap_koff,
 		vctrl->dmap_done, smp_processor_id());
 	complete(&vctrl->dmap_comp);
+	mdp4_overlay_dma_commit(cndx);
 	if (diff <= 0) {
 		if (vctrl->blt_wait)
 			vctrl->blt_wait = 0;
