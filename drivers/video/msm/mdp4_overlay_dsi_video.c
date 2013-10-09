@@ -239,6 +239,16 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 			if (real_pipe && real_pipe->pipe_used) {
 				/* pipe not unset */
 				mdp4_overlay_vsync_commit(pipe);
+				if (pipe->frame_format !=
+						MDP4_FRAME_FORMAT_LINEAR) {
+					spin_lock_irqsave(&vctrl->spin_lock,
+									flags);
+					INIT_COMPLETION(vctrl->dmap_comp);
+					vsync_irq_enable(INTR_DMA_P_DONE,
+								MDP_DMAP_TERM);
+				       spin_unlock_irqrestore(&vctrl->spin_lock,
+								flags);
+				}
 			}
 			/* free previous iommu to freelist
 			* which will be freed at next
