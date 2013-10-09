@@ -15864,7 +15864,8 @@ WDI_ProcessDelBSSRsp
 
 
   /* Delete the BCAST STA entry from the STA table if SAP/GO session is deleted */
-  if(WDI_INFRA_AP_MODE == pBSSSes->wdiBssType)
+  if(WDI_INFRA_AP_MODE == pBSSSes->wdiBssType ||
+     pBSSSes->wdiBssType == WDI_IBSS_MODE)
   {
     (void)WDI_STATableDelSta( pWDICtx, pBSSSes->bcastStaIdx );
   }
