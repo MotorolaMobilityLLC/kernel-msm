@@ -3226,10 +3226,10 @@ int mdp4_overlay_mdp_perf_req(struct msm_fb_data_type *mfd)
 		 ib_quota_port1, perf_req->mdp_ib_port1_bw);
 
 	if (ab_quota_total > mdp_max_bw)
-		pr_warn("%s: req ab bw=%llu is larger than max bw=%llu",
+		pr_debug("%s: req ab bw=%llu is larger than max bw=%llu",
 			__func__, ab_quota_total, mdp_max_bw);
 	if (ib_quota_total > mdp_max_bw)
-		pr_warn("%s: req ib bw=%llu is larger than max bw=%llu",
+		pr_debug("%s: req ib bw=%llu is larger than max bw=%llu",
 			__func__, ib_quota_total, mdp_max_bw);
 
 	pr_debug("%s %d: pid %d cnt %d clk %d ov0_blt %d, ov1_blt %d\n",
