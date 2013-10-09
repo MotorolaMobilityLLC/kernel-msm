@@ -99,7 +99,7 @@ struct sitar_codec_dai_data {
 #define SITAR_HS_DETECT_PLUG_INERVAL_MS 100
 #define NUM_ATTEMPTS_TO_REPORT 5
 #define SITAR_MBHC_STATUS_REL_DETECTION 0x0C
-#define SITAR_MBHC_GPIO_REL_DEBOUNCE_TIME_MS 200
+#define SITAR_MBHC_GPIO_REL_DEBOUNCE_TIME_MS 50
 #define SITAR_MBHC_GND_MIC_SWAP_THRESHOLD 2
 #define SITAR_MIC_GND_SWAP_DELAY_US 5000
 #define SITAR_USLEEP_RANGE_TOLERANCE 100
@@ -1510,7 +1510,6 @@ static int sitar_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 	struct snd_soc_codec *codec = w->codec;
 	u16 tx_dmic_ctl_reg;
 	u8 dmic_clk_sel, dmic_clk_en;
-	u16 dmic_clk_mode;
 	unsigned int dmic;
 	int ret;
 
@@ -1525,13 +1524,11 @@ static int sitar_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 	case 2:
 		dmic_clk_sel = 0x02;
 		dmic_clk_en = 0x01;
-		dmic_clk_mode = SITAR_A_CDC_DMIC_CLK0_MODE;
 		break;
 	case 3:
 	case 4:
 		dmic_clk_sel = 0x08;
 		dmic_clk_en = 0x04;
-		dmic_clk_mode = SITAR_A_CDC_DMIC_CLK1_MODE;
 		break;
 
 		break;
@@ -1547,8 +1544,6 @@ static int sitar_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		/* Configure the TLMM control registers as CORE_CDC_DMIC_CLK */
-		snd_soc_update_bits(codec, dmic_clk_mode, 0x7, 0x0);
 		snd_soc_update_bits(codec, SITAR_A_CDC_CLK_DMIC_CTL,
 				dmic_clk_sel, dmic_clk_sel);
 
@@ -1558,8 +1553,6 @@ static int sitar_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 				dmic_clk_en, dmic_clk_en);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		/* Configure the TLMM control registers as SLIMbus pin control*/
-		snd_soc_update_bits(codec, dmic_clk_mode, 0x7, 0x4);
 		snd_soc_update_bits(codec, SITAR_A_CDC_CLK_DMIC_CTL,
 				dmic_clk_en, 0);
 		break;
@@ -4127,8 +4120,8 @@ void sitar_mbhc_cal(struct snd_soc_codec *codec)
 	dce_wait = (1000 * 512 * 60 * (nmeas + 1)) / (mclk_rate / 1000);
 	sta_wait = (1000 * 128 * (navg + 1)) / (mclk_rate / 1000);
 
-	sitar->mbhc_data.t_dce = DEFAULT_DCE_WAIT;
-	sitar->mbhc_data.t_sta = DEFAULT_STA_WAIT;
+	sitar->mbhc_data.t_dce = dce_wait;
+	sitar->mbhc_data.t_sta = sta_wait;
 
 	/* LDOH and CFILT are already configured during pdata handling.
 	 * Only need to make sure CFILT and bandgap are in Fast mode.
@@ -5206,10 +5199,11 @@ void sitar_get_z(struct snd_soc_codec *codec , s16 *dce_z, s16 *sta_z)
 	/* Connect micbias to ground and disconnect vddio switch */
 	reg0 = snd_soc_read(codec, SITAR_A_MBHC_SCALING_MUX_1);
 	snd_soc_write(codec, SITAR_A_MBHC_SCALING_MUX_1, 0x81);
-	msleep(SITAR_MUX_SWITCH_READY_WAIT_MS);
 	reg1 = snd_soc_read(codec, SITAR_A_MICB_2_MBHC);
 	snd_soc_update_bits(codec, SITAR_A_MICB_2_MBHC, 1 << 7, 0);
 
+	/* delay 1ms for discharge mic voltage */
+	usleep_range(1000, 1000 + 1000);
 	*sta_z = sitar_codec_sta_dce(codec, 0, false);
 	*dce_z = sitar_codec_sta_dce(codec, 1, false);
 
@@ -5899,12 +5893,6 @@ static const struct sitar_reg_mask_val sitar_codec_reg_init_val[] = {
 
 	/*enable External clock select*/
 	{SITAR_A_CDC_CLK_MCLK_CTL, 0x01, 0x01},
-
-	/* config DMIC Pins to GPIO mode */
-	{SITAR_A_CDC_DMIC_CLK0_MODE, 0x07, 0x04},
-	{SITAR_A_CDC_DMIC_CLK1_MODE, 0x07, 0x04},
-	{SITAR_A_PIN_CTL_OE0, 0x90, 0x90},
-	{SITAR_A_PIN_CTL_DATA0, 0x90, 0x90},
 };
 
 static void sitar_i2c_codec_init_reg(struct snd_soc_codec *codec)
