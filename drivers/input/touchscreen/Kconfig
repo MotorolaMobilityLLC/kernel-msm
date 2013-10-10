@@ -568,6 +568,16 @@ config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_MMI
 	  This enables support for firmware update for Synaptics DSX
 	  touchscreens via the MMI design.
 
+config TOUCHSCREEN_APS_TS
+	tristate "APS (Melfas) touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have APS (LG/Melfas) integrated
+	  display/touchscreen panel.
+	  This driver handles the Melfas touch controller.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
 	select SERIO
