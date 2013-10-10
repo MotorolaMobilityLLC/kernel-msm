@@ -109,6 +109,8 @@
 		_IOR(STM401_IOCTL_BASE, 43, char*)
 #define STM401_IOCTL_GET_ALGO_EVT \
 		_IOR(STM401_IOCTL_BASE, 44, char*)
+#define STM401_IOCTL_GET_AOD_INSTRUMENTATION_REG \
+		_IOR(STM401_IOCTL_BASE, 45, char*)
 
 #define FW_VERSION_SIZE 12
 #define STM401_CONTROL_REG_SIZE 200
@@ -253,9 +255,11 @@ struct stm_response {
 #define REV_ID                          0x01
 #define ERROR_STATUS                    0x02
 
-#define STM401_STATUS_REG                  0x0B
-#define STM401_TOUCH_REG                   0x0C
-#define STM401_CONTROL_REG                 0x0D
+#define STM401_STATUS_REG               0x0B
+#define STM401_TOUCH_REG                0x0C
+#define STM401_CONTROL_REG              0x0D
+#define STM_AOD_INSTRUMENTATION_REG     0x0E
+
 #define AP_POSIX_TIME                   0x10
 
 #define ACCEL_UPDATE_RATE               0x16
