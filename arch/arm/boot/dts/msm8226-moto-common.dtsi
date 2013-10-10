@@ -83,6 +83,15 @@
 			vdd-supply = <&pm8226_l19>;
 			vcc_i2c-supply = <&pm8226_lvs1>;
 		};
+
+		aps_ts@34 {
+			compatible = "melfas,aps_ts";
+			reg = <0x34>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <17 0>;
+			gpios = <&msmgpio 17 0>, /* IRQ */
+				<&msmgpio 16 0>; /* RESET */
+		};
 	};
 
 	gpio_keys {
