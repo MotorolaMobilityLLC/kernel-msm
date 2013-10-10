@@ -25,6 +25,10 @@
 		reg = <0xfc428000 0x1000>; /* Address and size of IMEM */
 	};
 
+	i2c_0: i2c@f9967000 {   /* "I2C5" on BLSP11 (BLSP2 QUP4) */
+		status = "ok";
+	};
+
 	i2c_2: i2c@f9924000 {	/* Unused QUP on BLSP2 (BLSP1 QUP1) */
 		status = "disabled";
 	};
@@ -34,6 +38,26 @@
 		gpios = <&msmgpio 6 0>,         /* gpio_reset */
 			<&msmgpio 61 2>;        /* gpio_c55_int */
 	};
+};
+
+&i2c_0 {
+	tpa6165xx@40 {
+		compatible = "ti,tpa6165";
+		reg = <0x40>;
+		interrupts = <&pm8941_gpios 22 0x1>;
+		gpios = <&pm8941_gpios 22 0x1>;
+		hs_det_vdd-supply = <&pm8941_lvs2>;
+		hs_det_micvdd-supply = <&pm8941_l17>;
+		ti,tpa6165-always-on-micbias = <1>;
+		};
+
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&pm8941_gpios 20 0>;   /* RESET */
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
+		};
 };
 
 &i2c_1 {
