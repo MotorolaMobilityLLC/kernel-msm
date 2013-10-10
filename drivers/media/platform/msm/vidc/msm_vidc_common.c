@@ -513,6 +513,7 @@ static void handle_event_change(enum command_response cmd, void *data)
 					"RELEASE REFERENCE EVENT FROM F/W - fd = %d offset = %d\n",
 					ptr[0], ptr[1]);
 
+				mutex_lock(&inst->sync_lock);
 				/* Decrement buffer reference count*/
 				buf_ref_put(inst, binfo);
 
@@ -523,6 +524,7 @@ static void handle_event_change(enum command_response cmd, void *data)
 				if (unmap_and_deregister_buf(inst, binfo))
 					dprintk(VIDC_ERR,
 					"%s: buffer unmap failed\n", __func__);
+				mutex_unlock(&inst->sync_lock);
 
 				/*send event to client*/
 				v4l2_event_queue_fh(&inst->event_handler,
@@ -953,12 +955,12 @@ static void handle_dynamic_buffer(struct msm_vidc_inst *inst,
 		}
 		if (flags & HAL_BUFFERFLAG_READONLY) {
 			dprintk(VIDC_DBG,
-				"_F_B_D_ fd[0] = %d -> Reference with f/w",
-				binfo->fd[0]);
+				"_F_B_D_ fd[0] = %d -> Reference with f/w, addr: 0x%x",
+				binfo->fd[0], device_addr);
 		} else {
 			dprintk(VIDC_DBG,
-				"_F_B_D_ fd[0] = %d -> FBD_ref_released\n",
-				binfo->fd[0]);
+				"_F_B_D_ fd[0] = %d -> FBD_ref_released, addr: 0x%x\n",
+				binfo->fd[0], device_addr);
 			buf_ref_put(inst, binfo);
 		}
 	}
@@ -2608,6 +2610,9 @@ void msm_comm_flush_dynamic_buffers(struct msm_vidc_inst *inst)
 				dprintk(VIDC_DBG,
 					"released buffer held in driver before issuing flush: 0x%x fd[0]: %d\n",
 					binfo->device_addr[0], binfo->fd[0]);
+				/*delete this buffer info from registered list*/
+				list_del(&binfo->list);
+				kfree(binfo);
 				/*send event to client*/
 				v4l2_event_queue_fh(&inst->event_handler,
 					&buf_event);
