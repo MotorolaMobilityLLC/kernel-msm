@@ -1646,6 +1646,7 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->nVhtChannelWidth = pMac->roam.configParam.nVhtChannelWidth;
         pParam->enableTxBF = pMac->roam.configParam.txBFEnable;
         pParam->txBFCsnValue = pMac->roam.configParam.txBFCsnValue;
+        pParam->enableVhtFor24GHz = pMac->roam.configParam.enableVhtFor24GHz;
 #endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
         palCopyMemory( pMac->hHdd, &pMac->roam.configParam.csr11rConfig, &pParam->csr11rConfig, sizeof(tCsr11rConfigParams) );
@@ -10208,8 +10209,20 @@ static eCsrCfgDot11Mode csrRoamGetPhyModeBandForBss( tpAniSirGlobal pMac, tCsrRo
             case eCSR_CFG_DOT11_MODE_11AC:
                 if (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
                 {
-                    cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
-                    eBand = eCSR_BAND_5G;
+                    /* If the operating channel is in 2.4 GHz band, check for
+                     * INI item to disable VHT operation in 2.4 GHz band
+                     */
+                    if (CSR_IS_CHANNEL_24GHZ(operationChn) &&
+                        !pMac->roam.configParam.enableVhtFor24GHz)
+                    {
+                       /* Disable 11AC operation */
+                       cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
+                    }
+                    else
+                    {
+                       cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
+                    }
+                    eBand = CSR_IS_CHANNEL_24GHZ(operationChn) ? eCSR_BAND_24 : eCSR_BAND_5G;
                 }
                 else
                 {
@@ -10220,8 +10233,20 @@ static eCsrCfgDot11Mode csrRoamGetPhyModeBandForBss( tpAniSirGlobal pMac, tCsrRo
             case eCSR_CFG_DOT11_MODE_11AC_ONLY:
                 if (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
                 {
-                    cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC_ONLY;
-                    eBand = eCSR_BAND_5G;
+                   /* If the operating channel is in 2.4 GHz band, check for
+                    * INI item to disable VHT operation in 2.4 GHz band
+                    */
+                   if (CSR_IS_CHANNEL_24GHZ(operationChn) &&
+                       !pMac->roam.configParam.enableVhtFor24GHz)
+                   {
+                      /* Disable 11AC operation */
+                      cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
+                   }
+                   else
+                   {
+                      cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC_ONLY;
+                   }
+                   eBand = CSR_IS_CHANNEL_24GHZ(operationChn) ? eCSR_BAND_24 : eCSR_BAND_5G;
                 }
                 else
                 {
@@ -10255,8 +10280,20 @@ static eCsrCfgDot11Mode csrRoamGetPhyModeBandForBss( tpAniSirGlobal pMac, tCsrRo
 #ifdef WLAN_FEATURE_11AC
                     if (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
                     {
-                        cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
-                        eBand = eCSR_BAND_5G;
+                       /* If the operating channel is in 2.4 GHz band, check for
+                        * INI item to disable VHT operation in 2.4 GHz band
+                        */
+                       if (CSR_IS_CHANNEL_24GHZ(operationChn) &&
+                           !pMac->roam.configParam.enableVhtFor24GHz)
+                       {
+                          /* Disable 11AC operation */
+                          cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
+                       }
+                       else
+                       {
+                          cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
+                       }
+                       eBand = CSR_IS_CHANNEL_24GHZ(operationChn) ? eCSR_BAND_24 : eCSR_BAND_5G;
                     }
                     else
                     {
