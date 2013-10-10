@@ -102,6 +102,10 @@
 
 #define WLAN_HDD_MAX_DSCP 0x3f
 
+// DHCP Port number
+#define DHCP_SOURCE_PORT 0x4400
+#define DHCP_DESTINATION_PORT 0x4300
+
 static sme_QosWmmUpType hddWmmDscpToUpMap[WLAN_HDD_MAX_DSCP+1];
 
 const v_U8_t hddWmmUpToAcMap[] = {
@@ -1587,6 +1591,23 @@ VOS_STATUS hdd_wmm_adapter_close ( hdd_adapter_t* pAdapter )
 }
 
 /**============================================================================
+  @brief is_dhcp_packet() - Function which will check OS packet for
+  DHCP packet
+
+  @param skb      : [in]  pointer to OS packet (sk_buff)
+  @return         : VOS_TRUE if the OS packet is DHCP packet
+                  : otherwise VOS_FALSE
+  ===========================================================================*/
+v_BOOL_t is_dhcp_packet(struct sk_buff *skb)
+{
+   if (*((u16*)((u8*)skb->data+34)) == DHCP_SOURCE_PORT ||
+       *((u16*)((u8*)skb->data+34)) == DHCP_DESTINATION_PORT)
+      return VOS_TRUE;
+
+   return VOS_FALSE;
+}
+
+/**============================================================================
   @brief hdd_wmm_classify_pkt() - Function which will classify an OS packet
   into a WMM AC based on either 802.1Q or DSCP
 
@@ -1816,6 +1837,14 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
    {
       /* Get the user priority from IP header & corresponding AC */
       hdd_wmm_classify_pkt (pAdapter, skb, &ac, &up);
+      //If 3/4th of Tx queue is used then place the DHCP packet in VOICE AC queue
+      if (pAdapter->aStaInfo[STAId].vosLowResource && is_dhcp_packet(skb))
+      {
+         VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_WARN,
+                    "%s: Making priority of DHCP packet as VOICE", __func__);
+         up = SME_QOS_WMM_UP_VO;
+         ac = hddWmmUpToAcMap[up];
+      }
    }
    *pSTAId = STAId;
 
@@ -1868,6 +1897,14 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
    if( hdd_wmm_is_active(pAdapter) ) {
       /* Get the user priority from IP header & corresponding AC */
       hdd_wmm_classify_pkt (pAdapter, skb, &ac, &up);
+      //If 3/4th of BE AC Tx queue is full, then place the DHCP packet in VOICE AC queue
+      if (pAdapter->isVosLowResource && is_dhcp_packet(skb))
+      {
+         VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_WARN,
+                   "%s: Making priority of DHCP packet as VOICE", __func__);
+         up = SME_QOS_WMM_UP_VO;
+         ac = hddWmmUpToAcMap[up];
+      }
    }
 done:
    skb->priority = up;
