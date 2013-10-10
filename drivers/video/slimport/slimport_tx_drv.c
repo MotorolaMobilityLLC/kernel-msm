@@ -66,6 +66,8 @@ static struct Packet_SPD sp_tx_packet_spd;
 static struct Packet_MPEG sp_tx_packet_mpeg;
 enum SP_TX_System_State sp_tx_system_state;
 
+static void hdmi_rx_restart_audio_chk(void);
+
 /* ***************************************************************** */
 
 /* GLOBAL VARIABLES DEFINITION FOR HDMI START */
@@ -1202,45 +1204,51 @@ static void sp_tx_audioinfoframe_setup(void)
 			(sp_tx_audioinfoframe.pb_byte[0] & 0x07) + 1);
 }
 
+static void __sp_tx_enable_audio_output(void)
+{
+	unchar c1;
+
+	if (sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x23, 1, &c1) == AUX_OK) {
+		/* check ANX7730 FW Version */
+		if (c1 < 0x94) {
+			unchar count = 0;
+			unchar pBuf[3] = {0x01, 0xd1, 0x02};
+
+			while (1) {
+				if (sp_tx_aux_dpcdwrite_bytes(
+					0x00, 0x05, 0xf0, 3, pBuf) == AUX_OK)
+					break;
+				count++;
+				if (count > 3) {
+					pr_err("dpcd write error\n");
+					break;
+				}
+			}
+		}
+	}
+}
+
 static void sp_tx_enable_audio_output(unchar benable)
 {
-	unchar c, c1;
-	int count;
-	unchar pBuf[3] = {0x01, 0xd1, 0x02};
+	unchar c;
 
 	sp_read_reg(TX_P0, SP_TX_AUD_CTRL, &c);
 
 	if (benable) {
-		sp_read_reg(TX_P0, SP_TX_AUD_CTRL, &c);
-		if (c&AUD_EN) {
+		/* if it has been enabled, disable first */
+		if (c & AUD_EN) {
 			c &= ~AUD_EN;
 			sp_write_reg(TX_P0, SP_TX_AUD_CTRL, c);
 		}
-		msleep(20);
-		if (sp_tx_rx_type == RX_HDMI) {
-			sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x23, 1, &c1);
-			/* check ANX7730 FW Version */
-			if (c1 < 0x94) {
-				count = 0;
-				while (1) {
-					if (AUX_OK ==
-						sp_tx_aux_dpcdwrite_bytes
-						(0x00, 0x05, 0xf0, 3, pBuf))
-						break;
-					count++;
-					if (count > 3) {
-						pr_err("dpcd write error\n");
-						break;
-					}
-				}
-			}
-		}
-
-		c |= AUD_EN;
-			sp_write_reg(TX_P0, SP_TX_AUD_CTRL, c);
-
 		sp_tx_audioinfoframe_setup();
 		sp_tx_config_packets(AUDIF_PACKETS);
+		msleep(20);
+		/* assuming it is anx7730 */
+		if (sp_tx_rx_type == RX_HDMI)
+			__sp_tx_enable_audio_output();
+
+		c |= AUD_EN;
+		sp_write_reg(TX_P0, SP_TX_AUD_CTRL, c);
 	} else {
 		c &= ~AUD_EN;
 		sp_write_reg(TX_P0, SP_TX_AUD_CTRL, c);
@@ -2089,6 +2097,7 @@ static void hdmi_rx_set_sys_state(enum HDMI_RX_System_State ss)
 			break;
 		case HDMI_AUDIO_CONFIG:
 			pr_notice("HDMI_RX:  HDMI_AUDIO_CONFIG");
+			hdmi_rx_restart_audio_chk();
 			break;
 		case HDMI_PLAYBACK:
 			pr_notice("HDMI_RX:  HDMI_PLAYBACK");
@@ -3529,9 +3538,8 @@ static void hdmi_rx_restart_audio_chk(void)
 	g_audio_got = 0;
 
 	/* when audio infofram change, reconfig the audio */
-		if (hdmi_system_state > HDMI_AUDIO_CONFIG)
-			hdmi_rx_set_sys_state(HDMI_AUDIO_CONFIG);
-
+	if (hdmi_system_state > HDMI_AUDIO_CONFIG)
+		hdmi_rx_set_sys_state(HDMI_AUDIO_CONFIG);
 }
 
 static void hdmi_rx_mute_video(void)
