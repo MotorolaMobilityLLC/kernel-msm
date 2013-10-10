@@ -733,4 +733,13 @@ config INPUT_CT406
 
           If unsure, say N.
 
+config INPUT_VALIDITY_METALLICA
+        tristate "Validity Metallica finger print sensor"
+        default n
+        help
+          Say Y here if you wish to include support for the Validity
+          Metallica finger print sensor.
+
+          If unsure, say N.
+
 endif
