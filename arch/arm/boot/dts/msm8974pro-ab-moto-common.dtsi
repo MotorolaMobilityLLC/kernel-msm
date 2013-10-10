@@ -67,15 +67,15 @@
 	};
 
 
-	i2c_0: i2c@f9967000 {   /* "I2C5" on BLSP11 (BLSP2 QUP4) */
-		status = "ok";
+	i2c_0: i2c@f9967000 {   /* Unused on BLSP11 (BLSP2 QUP4) */
+		status = "disabled";
 	};
 
 	i2c_1: i2c@f9923000 {   /* "I2C4" on BLSP1 (BLSP1 UART0) */
 		status = "ok";
 	};
 
-	i2c_2: i2c@f9924000 {   /* "I2C2" on BLSP2 (BLSP1 QUP1) */
+	i2c_2: i2c@f9924000 {   /* "I2C5" on BLSP2 (BLSP1 QUP1) */
 		status = "ok";
 	};
 
@@ -428,14 +428,6 @@
 };
 
 &sdcc2 {
-	#address-cells = <0>;
-	interrupt-parent = <&sdcc2>;
-	interrupts = <0 1 2>;
-	#interrupt-cells = <1>;
-	interrupt-map-mask = <0xffffffff>;
-	interrupt-map = <0 &intc 0 125 0
-			1 &intc 0 220 0>;
-	interrupt-names = "core_irq", "bam_irq", "status_irq";
 	status = "disabled";
 };
 
@@ -454,7 +446,7 @@
 
 	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
 	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
+	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
 
 	qcom,nonremovable;
@@ -462,49 +454,7 @@
 };
 
 &sdhc_2 {
-	#address-cells = <0>;
-	interrupt-parent = <&sdhc_2>;
-	interrupts = <0 1 2>;
-	#interrupt-cells = <1>;
-	interrupt-map-mask = <0xffffffff>;
-	interrupt-map = <0 &intc 0 125 0
-			1 &intc 0 221 0>;
-	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
-
-	vdd-supply = <&pm8941_l21>;
-	vdd-io-supply = <&pm8941_l13>;
-
-	qcom,vdd-voltage-level = <2950000 2950000>;
-	qcom,vdd-current-level = <9000 800000>;
-
-	qcom,vdd-io-voltage-level = <1800000 2950000>;
-	qcom,vdd-io-current-level = <6 22000>;
-
-	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
-	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
-	status = "ok";
-};
-
-/* Drive strength recommendations for clock line from hardware team is 10 mA.
- * But since the driver has been been using the below values from the start
- * without any problems, continue to use those.
- */
-&sdcc1 {
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
-};
-
-&sdcc2 {
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
-};
-
-&sdhc_1 {
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
-};
-
-&sdhc_2 {
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+	status = "disabled";
 };
 
 &usb_otg {
@@ -901,7 +851,25 @@
 	};
 };
 
-&i2c_0 {
+&i2c_1 {
+	stm401@39 {
+		compatible = "stm,stm401";
+		reg = <0x39>;
+		gpios = <&msmgpio 14 0>,        /* IRQ */
+			<&msmgpio 145 0>,       /* RESET */
+			<&msmgpio 33 0>,        /* BSLEN */
+			<&msmgpio 95 0>;        /* WakeIRQ */
+		lux_table = <5 50 100 1500 3000 8000>;
+		brightness_table = <9 14 18 46 67 93 140>;
+		bslen_pin_active_value = <1>;
+		ct406_detect_threshold = <0x006E>;
+		ct406_undetect_threshold = <0x0050>;
+		ct406_recalibrate_threshold = <0x0064>;
+		ct406_pulse_count = <0x04>;
+	};
+};
+
+&i2c_2 {
 	tpa6165xx@40 {
 		compatible = "ti,tpa6165";
 		reg = <0x40>;
@@ -919,24 +887,6 @@
 		tfa_vdd-supply = <&pm8941_s3>;
 		nxp,tfa_max-vol-steps = <15>;
 		};
-};
-
-&i2c_1 {
-	stm401@39 {
-		compatible = "stm,stm401";
-		reg = <0x39>;
-		gpios = <&msmgpio 14 0>,        /* IRQ */
-			<&msmgpio 145 0>,       /* RESET */
-			<&msmgpio 33 0>,        /* BSLEN */
-			<&msmgpio 95 0>;        /* WakeIRQ */
-		lux_table = <5 50 100 1500 3000 8000>;
-		brightness_table = <9 14 18 46 67 93 140>;
-		bslen_pin_active_value = <1>;
-		ct406_detect_threshold = <0x006E>;
-		ct406_undetect_threshold = <0x0050>;
-		ct406_recalibrate_threshold = <0x0064>;
-		ct406_pulse_count = <0x04>;
-	};
 };
 
 &i2c_3 {
@@ -979,11 +929,15 @@
 	qcom,misc-ref = <&pm8941_misc>;
 };
 
-&pm8941_l22 {
+&pm8941_l13 {
 	regulator-always-on;
 };
 
 &pm8941_l17 {
+	regulator-always-on;
+};
+
+&pm8941_l22 {
 	regulator-always-on;
 };
 
