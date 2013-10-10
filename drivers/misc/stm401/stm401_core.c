@@ -370,7 +370,6 @@ stm401_of_init(struct i2c_client *client)
 	pdata->gpio_mipi_req = of_get_gpio(np, 4);
 	pdata->gpio_mipi_busy = of_get_gpio(np, 5);
 #endif
-
 	if (of_get_property(np, "lux_table", &len) == NULL) {
 		dev_err(&stm401_misc_data->client->dev,
 			"lux_table len access failure\n");
@@ -617,6 +616,15 @@ static int stm401_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
+	ps_stm401 = kzalloc(sizeof(*ps_stm401), GFP_KERNEL);
+	if (ps_stm401 == NULL) {
+		dev_err(&client->dev,
+			"failed to allocate memory for module data: %d\n", err);
+		return -ENOMEM;
+	}
+	ps_stm401->client = client;
+	stm401_misc_data = ps_stm401;
+
 	if (client->dev.of_node)
 		pdata = stm401_of_init(client);
 	else
@@ -624,13 +632,8 @@ static int stm401_probe(struct i2c_client *client,
 
 	if (pdata == NULL) {
 		dev_err(&client->dev, "platform data is NULL, exiting\n");
-		return -ENODEV;
-	}
-	ps_stm401 = kzalloc(sizeof(*ps_stm401), GFP_KERNEL);
-	if (ps_stm401 == NULL) {
-		dev_err(&client->dev,
-			"failed to allocate memory for module data: %d\n", err);
-		return -ENOMEM;
+		err = -ENODEV;
+		goto err_pdata;
 	}
 
 #if 0
@@ -664,9 +667,6 @@ static int stm401_probe(struct i2c_client *client,
 		goto err_regulator;
 	}
 #endif
-
-	ps_stm401->client = client;
-	stm401_misc_data = ps_stm401;
 
 	err = stm401_gpio_init(pdata, client);
 	if (err) {
@@ -866,6 +866,7 @@ err_gpio_init:
 	regulator_put(ps_stm401->vio_regulator);
 err_regulator:
 #endif
+err_pdata:
 	kfree(ps_stm401);
 	return err;
 }
