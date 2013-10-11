@@ -220,17 +220,12 @@
 	lm2755@18 {
 		compatible = "lm,lm2755";
 		reg = <0x18>;
-		led-class-name ="lm2755-led-class";
-		red-led-name = "red";
-		green-led-name = "green";
-		blue-led-name = "blue";
-		red-group-addr = <0xA9>;	/* offset where D1 register offset */
-		green-group-addr = <0xB9>;	/* offset where D2 register offset */
-		blue-group-addr = <0xC9>;	/* offset where D3 register offset */
-		clock-mode = <0x0>;		/* internal clock | change to 0x40 for internal */
+		rgb-class-name ="rgb";
+		d1-led-name = "white";
+		clock-mode = <0x0>;		/* internal clock | change to 0x40 for external */
 		charge-pump-mode = <0x1>;	/* enable the charge pump */
-		min-tstep = <0x0>;		/* not sure yet */
-		max-level = <0x1F>;		/* just what it says */
+		min-tstep = <0>;		/* Sets N for timing control equations. Valid range from 0 to 7 */
+		max-level = <0x1F>;		/* Max. brightness level 0x0..0x1F */
 	};
 
 	tpa6165xx@40 {
