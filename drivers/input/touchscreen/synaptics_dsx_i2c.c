@@ -28,6 +28,7 @@
 #include <linux/delay.h>
 #include <linux/input.h>
 #include <linux/gpio.h>
+#include <linux/ctype.h>
 #include <linux/jiffies.h>
 #include <linux/semaphore.h>
 #include <linux/regulator/consumer.h>
@@ -633,6 +634,24 @@ static inline struct synaptics_dsx_platform_data *
 	return NULL;
 }
 #endif
+
+#define HYPHEN		'-'
+#define letter_i	'i'
+#define letter_s	's'
+#define letter_t	't'
+
+static void synaptics_dsx_darn_product_string(unsigned char *id,
+		unsigned char *hyphen)
+{
+	if (*(hyphen+1) == toupper(letter_t)) {
+		memmove(id+1, id, hyphen-id);
+		hyphen++;
+		*hyphen++ = letter_t;
+	} else if (*(hyphen+1) == toupper(letter_i))
+		*hyphen++ = letter_i;
+	*id = letter_s;
+	*hyphen = 0;
+}
 
 static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
@@ -2511,6 +2530,7 @@ static int synaptics_rmi4_alloc_fh(struct synaptics_rmi4_fn **fhandler,
 static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
+	unsigned char *hyphen;
 	unsigned char page_number;
 	unsigned char intr_count = 0;
 	unsigned char data_sources = 0;
@@ -2704,6 +2724,14 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	memcpy(rmi->serial, &f01_query[4], SYNAPTICS_RMI4_SERIAL_SIZE);
 	memcpy(rmi->product_id_string, &f01_query[11],
 					SYNAPTICS_RMI4_PRODUCT_ID_SIZE);
+	rmi->product_id_string[SYNAPTICS_RMI4_PRODUCT_ID_SIZE] = 0;
+
+	/* handle wrongfully programmed product id strings here */
+	hyphen = strnchr(rmi->product_id_string,
+				SYNAPTICS_RMI4_PRODUCT_ID_SIZE, HYPHEN);
+	if (hyphen != NULL)
+		synaptics_dsx_darn_product_string(
+					rmi->product_id_string, hyphen);
 
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_query_base_addr+PACKAGE_ID_OFFSET,
