@@ -53,7 +53,7 @@
 			lm3630,linear_map = <1>;
 			lm3630,max_current = <0x12>;
 			lm3630,min_brightness = <0x05>;
-			lm3630,default_brightness = <0x57>;
+			lm3630,default_brightness = <0x20>;
 			lm3630,max_brightness = <0xFF>;
 			lm3630,pwm_enable = <0>;
 			lm3630,blmap_size = <0>;
