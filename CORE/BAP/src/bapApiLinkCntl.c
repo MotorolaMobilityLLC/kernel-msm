@@ -1572,7 +1572,7 @@ WLAN_BAPLogicalLinkDisconnect
     /* Derive logical link index from handle */
     log_link_index = ((pBapHCILogLinkDisconnect->log_link_handle) >> 8);
 
-    if( log_link_index > WLANBAP_MAX_LOG_LINKS )
+    if( log_link_index >= WLANBAP_MAX_LOG_LINKS )
     {
        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR, 
                   "Critical error: Invalid input parameter on %s", 

@@ -4389,7 +4389,7 @@ eHalStatus sme_QosProcessReassocReqEv(tpAniSirGlobal pMac, v_U8_t sessionId, voi
 eHalStatus sme_QosProcessReassocSuccessEv(tpAniSirGlobal pMac, v_U8_t sessionId, void * pEvent_info)
 {
 
-   tCsrRoamSession *pCsrRoamSession = CSR_GET_SESSION( pMac, sessionId );
+   tCsrRoamSession *pCsrRoamSession = NULL;
    sme_QosSessionInfo *pSession;
    sme_QosACInfo *pACInfo;
    sme_QosEdcaAcType ac, ac_index;
@@ -4403,6 +4403,17 @@ eHalStatus sme_QosProcessReassocSuccessEv(tpAniSirGlobal pMac, v_U8_t sessionId,
              "%s: %d: invoked on session %d",
              __func__, __LINE__,
              sessionId);
+
+   if (CSR_ROAM_SESSION_MAX <= sessionId) {
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: %d: invoked on session %d",
+                __func__, __LINE__,
+                sessionId);
+       return status;
+   }
+
+   pCsrRoamSession = CSR_GET_SESSION( pMac, sessionId );
+
    pSession = &sme_QosCb.sessionInfo[sessionId];
    // our pending reassociation has completed
    // we can allow powersave

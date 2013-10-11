@@ -3948,21 +3948,20 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
                 return eHAL_STATUS_SUCCESS;
             }
         }
-    }
 
 #ifdef FEATURE_WLAN_CCX
-    {
-      if (pSession->connectedProfile.isCCXAssoc)
-      {
-          vos_mem_copy(&pSession->prevApSSID, &pSession->connectedProfile.SSID, sizeof(tSirMacSSid));
-          vos_mem_copy(pSession->prevApBssid, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
-          pSession->prevOpChannel = pSession->connectedProfile.operationChannel;
-          pSession->isPrevApInfoValid = TRUE;
-          pSession->roamTS1 = vos_timer_get_system_time();
-
-      }
-    }
+        if (pSession->connectedProfile.isCCXAssoc)
+        {
+           vos_mem_copy(&pSession->prevApSSID, &pSession->connectedProfile.SSID,
+                        sizeof(tSirMacSSid));
+           vos_mem_copy(pSession->prevApBssid, pSession->connectedProfile.bssid,
+                        sizeof(tSirMacAddr));
+           pSession->prevOpChannel = pSession->connectedProfile.operationChannel;
+           pSession->isPrevApInfoValid = TRUE;
+           pSession->roamTS1 = vos_timer_get_system_time();
+        }
 #endif
+    } //if (NULL != pSession)
    
 #ifdef RSSI_HACK
     dumpCmdRSSI = -40;
