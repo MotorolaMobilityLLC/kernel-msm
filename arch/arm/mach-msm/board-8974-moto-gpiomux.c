@@ -925,57 +925,6 @@ static struct msm_gpiomux_config c55_configs[] __initdata = {
 	},
 };
 
-static struct gpiomux_setting auxpcm_act_cfg = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct gpiomux_setting auxpcm_sus_cfg = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-/* Quaternary MI2S port port setting used for high audio speaker */
-static struct msm_gpiomux_config msm8974_quat_auxpcm_configs[] __initdata = {
-	{
-		.gpio = 57,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 58,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 59,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 62,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-	{
-		.gpio = 63,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
-			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
-		},
-	},
-};
-
 static struct gpiomux_setting gpio_blsp10_spi_config = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_2MA,
@@ -1050,9 +999,6 @@ void __init msm_8974_moto_init_gpiomux(void)
 				    ARRAY_SIZE(msm_mhl_configs));
 
 	msm_gpiomux_install(c55_i2s_configs, ARRAY_SIZE(c55_i2s_configs));
-
-	msm_gpiomux_install(msm8974_quat_auxpcm_configs,
-				 ARRAY_SIZE(msm8974_quat_auxpcm_configs));
 
 	msm_gpiomux_install(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
