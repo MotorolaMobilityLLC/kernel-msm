@@ -320,16 +320,18 @@ void pmmExitBmpsRequestHandler(tpAniSirGlobal pMac, tpExitBmpsInfo pExitBmpsInfo
 
     tPmmState origState = pMac->pmm.gPmmState;
 
-#ifdef FEATURE_WLAN_DIAG_SUPPORT 
-    limDiagEventReport(pMac, WLAN_PE_DIAG_EXIT_BMPS_REQ_EVENT, peGetValidPowerSaveSession(pMac), 0, (tANI_U16)pExitBmpsInfo->exitBmpsReason);
-#endif //FEATURE_WLAN_DIAG_SUPPORT
-
     if (NULL == pExitBmpsInfo)
     {
         respStatus = eSIR_SME_BMPS_REQ_REJECT;
         PELOGW(pmmLog(pMac, LOGW, FL("pmmBmps: Rcvd EXIT_BMPS with NULL body"));)
         goto failure;
     }
+
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+    limDiagEventReport(pMac, WLAN_PE_DIAG_EXIT_BMPS_REQ_EVENT,
+                       peGetValidPowerSaveSession(pMac), 0,
+                       (tANI_U16)pExitBmpsInfo->exitBmpsReason);
+#endif //FEATURE_WLAN_DIAG_SUPPORT
 
     /* PMC is not aware of Background scan, which is done in
      * BMPS mode while Nth Beacon is delivered. Essentially, PMC

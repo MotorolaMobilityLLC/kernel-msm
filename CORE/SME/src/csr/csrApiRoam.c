@@ -9793,8 +9793,14 @@ void csrRoamWaitForKeyTimeOutHandler(void *pv)
         }
 #endif
         smsLog(pMac, LOGW, " SME pre-auth state timeout. ");
+
         //Change the substate so command queue is unblocked.
-        csrRoamSubstateChange( pMac, eCSR_ROAM_SUBSTATE_NONE, pInfo->sessionId);
+        if (CSR_ROAM_SESSION_MAX > pInfo->sessionId)
+        {
+            csrRoamSubstateChange(pMac, eCSR_ROAM_SUBSTATE_NONE,
+                                  pInfo->sessionId);
+        }
+
         if (pSession)
         {
             if( csrIsConnStateConnectedInfra(pMac, pInfo->sessionId) ) 

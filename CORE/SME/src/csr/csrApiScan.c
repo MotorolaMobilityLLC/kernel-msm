@@ -7915,7 +7915,7 @@ eHalStatus csrScanCreateEntryInScanCache(tpAniSirGlobal pMac, tANI_U32 sessionId
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tDot11fBeaconIEs *pNewIes = NULL;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
-    tSirBssDescription *pNewBssDescriptor;
+    tSirBssDescription *pNewBssDescriptor = NULL;
     tANI_U32 size = 0;
 
     if(NULL == pSession)
