@@ -2113,6 +2113,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                  ("ERROR: HDD vos wait for single_event failed!!\n"));
+        smeGetCommandQStatus(hHal);
         VOS_ASSERT(0);
     }
 
