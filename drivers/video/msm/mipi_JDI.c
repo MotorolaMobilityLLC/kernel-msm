@@ -254,7 +254,7 @@ static void JDI_command_backlight(int level)
 
 	cmdreq_JDI.cmds = backlight_cmd;
 	cmdreq_JDI.cmds_cnt = ARRAY_SIZE(backlight_cmd);
-	cmdreq_JDI.flags = CMD_REQ_COMMIT;
+	cmdreq_JDI.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq_JDI.rlen = 0;
 	cmdreq_JDI.cb = NULL;
 	mipi_dsi_cmdlist_put(&cmdreq_JDI);
@@ -369,7 +369,7 @@ static void mipi_JDI_lcd_shutdown(void)
 	pr_info("%s, JDI display off command+\n", __func__);
 	cmdreq_JDI.cmds = JDI_display_off_cmds;
 	cmdreq_JDI.cmds_cnt = ARRAY_SIZE(JDI_display_off_cmds);
-	cmdreq_JDI.flags = CMD_REQ_COMMIT;
+	cmdreq_JDI.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL;
 	cmdreq_JDI.rlen = 0;
 	cmdreq_JDI.cb = NULL;
 	mipi_dsi_cmdlist_put(&cmdreq_JDI);
