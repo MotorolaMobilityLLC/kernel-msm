@@ -779,6 +779,7 @@ int32_t mi1040_sensor_set_fps(struct msm_sensor_ctrl_t *s_ctrl, int fps)
 			CDBG("--CAMERA--CAMERA_FPS_FIX_15\n");
 			rc = sensor_write_table(s_ctrl, Fix_15_fps,
 				ARRAY_SIZE(Fix_15_fps));
+			break;
 		case CAMERA_FPS_AUTO_30:
 			CDBG("--CAMERA--ERROR CAMERA_FPS_AUTO_30\n");
 			rc = sensor_write_table(s_ctrl, auto_30_fps,
