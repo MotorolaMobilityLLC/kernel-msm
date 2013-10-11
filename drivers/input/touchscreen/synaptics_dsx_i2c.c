@@ -33,7 +33,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
-#include "touchx.h"
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
 #endif
@@ -333,9 +332,6 @@ static unsigned char touch_down;
 
 #define LAST_SUBPACKET_ROW_IND_MASK 0x80
 #define NR_SUBPKT_PRESENCE_BITS 7
-
-struct touchxs touchxp;
-EXPORT_SYMBOL(touchxp);
 
 int synaptics_rmi4_scan_packet_reg_info(
 	struct synaptics_rmi4_data *rmi4_data,
@@ -1610,7 +1606,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wx;
 	int wy;
 	int touch_size;
-	unsigned char number_of_fingers_actually_touching = 0;
 
 	fingers_supported = fhandler->num_of_data_points;
 	data_addr = fhandler->full_addr.data_base;
@@ -1639,17 +1634,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			return 0;
 		}
 	}
-
-	if (touchxp.touchx)
-		mutex_lock(&touchxp.virtual_touch_mutex);
-
-	for (finger = 0; finger < fingers_supported; finger++,
-		index += fhandler->size_of_data_register_block) {
-		if (finger_data[index] == 0)
-			continue;
-		number_of_fingers_actually_touching++;
-	}
-	index = 0;
 
 	for (finger = 0; finger < fingers_supported; finger++,
 			 index += fhandler->size_of_data_register_block) {
@@ -1713,11 +1697,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		if (finger_data[index] == 0)
 			continue;
 
-		touchxp.touch_magic_dev = rmi4_data->input_dev;
-		if (touchxp.touchx)
-			touchxp.touchx(&x, &y, finger,
-					number_of_fingers_actually_touching);
-
 		dev_dbg(&rmi4_data->i2c_client->dev,
 					"%s: Finger %d:\n"
 					"x = %d\n"
@@ -1751,7 +1730,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	if (!touch_count) {
 		touch_down = false;
-		touchxp.finger_down = 0;
 #ifndef TYPE_B_PROTOCOL
 		input_mt_sync(rmi4_data->input_dev);
 #endif
@@ -1761,9 +1739,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		input_sync(rmi4_data->input_dev);
 	else if (!touch_count)
 		is_palm_detect = false;
-
-	if (touchxp.touchx)
-		mutex_unlock(&touchxp.virtual_touch_mutex);
 
 	return touch_count;
 }
