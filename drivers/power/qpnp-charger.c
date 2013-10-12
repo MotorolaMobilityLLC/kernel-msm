@@ -1604,6 +1604,7 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			chip->prev_usb_max_ma = -EINVAL;
 			chip->aicl_settled = false;
 			chip->chrg_ocv_state = CHRG_OCV_NO_CHRG;
+			power_supply_set_online(chip->usb_psy, 0);
 		} else {
 			/* when OVP clamped usbin, and then decrease
 			 * the charger voltage to lower than the OVP
