@@ -389,8 +389,6 @@ static void msm_isp_reset_framedrop(struct vfe_device *vfe_dev,
 void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 	enum msm_vfe_input_src frame_src, struct msm_isp_timestamp *ts) {
 	struct msm_isp_event_data sof_event;
-	struct msm_vfe_axi_stream *stream_info;
-	uint32_t i;
 	switch (frame_src) {
 	case VFE_PIX_0:
 		ISP_DBG("%s: PIX0 frame id: %lu\n", __func__,
@@ -413,14 +411,6 @@ void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 		pr_err("%s: invalid frame src %d received\n",
 			__func__, frame_src);
 		break;
-	}
-
-	for (i = 0; i < MAX_NUM_STREAM; i++) {
-		stream_info = &vfe_dev->axi_data.stream_info[i];
-		if (stream_info->request_frm_num) {
-			stream_info->request_frm_num--;
-			stream_info->request_frame = 1;
-		}
 	}
 
 	sof_event.frame_id = vfe_dev->axi_data.src_info[frame_src].frame_id;
@@ -679,7 +669,7 @@ static int msm_isp_cfg_ping_pong_address(struct vfe_device *vfe_dev,
 	uint32_t bufq_handle = 0;
 	uint32_t stream_idx = HANDLE_TO_IDX(stream_info->stream_handle);
 
-	if (stream_info->bufq_scratch_handle && !stream_info->request_frame)
+	if (stream_info->bufq_scratch_handle && !stream_info->request_frm_num)
 		bufq_handle = stream_info->bufq_scratch_handle;
 	else
 		bufq_handle = stream_info->bufq_handle;
@@ -694,7 +684,7 @@ static int msm_isp_cfg_ping_pong_address(struct vfe_device *vfe_dev,
 
 	if (stream_info->bufq_scratch_handle &&
 			bufq_handle == stream_info->bufq_handle)
-		stream_info->request_frame = 0;
+		stream_info->request_frm_num--;
 
 	if (buf->num_planes != stream_info->num_planes) {
 		pr_err("%s: Invalid buffer\n", __func__);
