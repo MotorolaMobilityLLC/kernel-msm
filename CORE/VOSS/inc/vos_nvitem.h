@@ -706,4 +706,5 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
    v_U32_t    rfChannel
 );
 
+VOS_STATUS vos_init_wiphy_from_nv_bin(void);
 #endif // __VOS_NVITEM_H
