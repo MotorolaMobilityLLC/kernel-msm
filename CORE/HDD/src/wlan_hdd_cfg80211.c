@@ -639,8 +639,12 @@ int wlan_hdd_cfg80211_init(struct device *dev,
 
     wiphy->mgmt_stypes = wlan_hdd_txrx_stypes;
 
-    wiphy->flags |= WIPHY_FLAG_STRICT_REGULATORY;
+    #ifndef CONFIG_ENABLE_LINUX_REG
+    /* the flag for the other case would be initialzed in
+       vos_init_wiphy_from_nv_bin */
 
+    wiphy->flags |= WIPHY_FLAG_STRICT_REGULATORY;
+    #endif
 
     /* This will disable updating of NL channels from passive to
      * active if a beacon is received on passive channel. */

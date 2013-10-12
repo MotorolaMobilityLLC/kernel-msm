@@ -2961,6 +2961,100 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
 #endif
 }
 
+/* initialize wiphy from NV.bin */
+VOS_STATUS vos_init_wiphy_from_nv_bin(void)
+{
+    int i, j, m;
+    int k = 0;
+    v_REGDOMAIN_t reg_domain;
+    v_CONTEXT_t pVosContext = NULL;
+    hdd_context_t *pHddCtx = NULL;
+    struct wiphy *wiphy = NULL;
+
+    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+
+    if (NULL != pVosContext)
+        pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
+    else
+        return VOS_STATUS_E_EXISTS;
+
+    if (NULL == pHddCtx)
+    {
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   ("Invalid pHddCtx pointer") );
+        return VOS_STATUS_E_FAULT;
+    }
+
+    wiphy = pHddCtx->wiphy;
+
+    if  (('0' == pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0])
+         &&
+         ('0' == pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[1]))
+    {
+        /* default country is world roaming */
+
+        reg_domain = REGDOMAIN_WORLD;
+        wiphy->flags |= WIPHY_FLAG_CUSTOM_REGULATORY;
+    }
+    else if (REGDOMAIN_WORLD ==
+	     pnvEFSTable->halnv.tables.defaultCountryTable.regDomain) {
+
+        reg_domain = pnvEFSTable->halnv.tables.defaultCountryTable.regDomain;
+        wiphy->flags |= WIPHY_FLAG_CUSTOM_REGULATORY;
+    }
+    else {
+
+        reg_domain = pnvEFSTable->halnv.tables.defaultCountryTable.regDomain;
+        wiphy->flags |= WIPHY_FLAG_STRICT_REGULATORY;
+    }
+
+    for (i = 0; i < IEEE80211_NUM_BANDS; i++)
+    {
+
+        if (wiphy->bands[i] == NULL)
+        {
+            pr_info("error: wiphy->bands[i] is NULL, i = %d\n", i);
+            return VOS_STATUS_E_FAULT;
+        }
+
+        /* internal channels[] is one continous array for both 2G and 5G bands
+           m is internal starting channel index for each band */
+        if (i == 0)
+            m = 0;
+        else
+            m = wiphy->bands[i-1]->n_channels + m;
+
+        for (j = 0; j < wiphy->bands[i]->n_channels; j++)
+        {
+            /* k = (m + j) is internal current channel index */
+            k = m + j;
+
+            if (pnvEFSTable->halnv.tables.regDomains[reg_domain].channels[k].enabled ==
+                NV_CHANNEL_DISABLE)
+                wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+
+            else if (pnvEFSTable->halnv.tables.regDomains[reg_domain].channels[k].enabled ==
+                     NV_CHANNEL_DFS) {
+
+                wiphy->bands[i]->channels[j].flags |= IEEE80211_CHAN_PASSIVE_SCAN;
+
+                wiphy->bands[i]->channels[j].max_power =
+                    (pnvEFSTable->halnv.tables.regDomains[reg_domain].channels[k].pwrLimit)*100;
+            }
+
+            else if (pnvEFSTable->halnv.tables.regDomains[reg_domain].channels[k].enabled ==
+                     NV_CHANNEL_ENABLE) {
+
+                wiphy->bands[i]->channels[j].max_power =
+                    (pnvEFSTable->halnv.tables.regDomains[reg_domain].channels[k].pwrLimit)*100;
+            }
+        }
+    }
+
+    return VOS_STATUS_SUCCESS;
+}
+
+
 #else
 
 /**------------------------------------------------------------------------
