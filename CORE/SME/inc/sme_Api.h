@@ -1488,6 +1488,27 @@ eHalStatus sme_ChangeCountryCode( tHalHandle hHal,
 
 /* ---------------------------------------------------------------------------
 
+    \fn sme_GenericChangeCountryCode
+
+    \brief Generic API to change country code
+
+    \param hHal - The handle returned by macOpen.
+
+    \param pCountry New Country Code String
+
+    \param reg_domain Regulatory domain for the new country code
+
+    \return eHalStatus  SUCCESS.
+
+                        FAILURE or RESOURCES  The API finished and failed.
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_GenericChangeCountryCode( tHalHandle hHal,
+                                         tANI_U8 *pCountry,
+                                         v_REGDOMAIN_t reg_domain);
+
+/* ---------------------------------------------------------------------------
+
     \fn sme_DHCPStartInd
 
     \brief Indicate FW about DHCP start event.

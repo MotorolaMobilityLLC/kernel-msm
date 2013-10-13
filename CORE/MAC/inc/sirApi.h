@@ -2213,8 +2213,19 @@ typedef struct sAniChangeCountryCodeReq
     void                    *changeCCCallback;
     void                    *pDevContext; //device context
     void                    *pVosContext; //voss context
-    
+
 } tAniChangeCountryCodeReq, *tpAniChangeCountryCodeReq;
+
+/* generic country code change request MSG structure */
+typedef struct sAniGenericChangeCountryCodeReq
+{
+    // Common for all types are requests
+    tANI_U16                msgType;    // message type is same as the request type
+    tANI_U16                msgLen;     // length of the entire request
+    tANI_U8                 countryCode[WNI_CFG_COUNTRY_CODE_LEN];   //3 char country code
+    tANI_U16                domain_index;
+
+} tAniGenericChangeCountryCodeReq, *tpAniGenericChangeCountryCodeReq;
 
 typedef struct sAniDHCPStopInd
 {
