@@ -466,7 +466,85 @@ int wlan_hdd_validate_context(hdd_context_t *pHddCtx)
     }
     return 0;
 }
+#ifdef CONFIG_ENABLE_LINUX_REG
+void hdd_checkandupdate_phymode( hdd_context_t *pHddCtx)
+{
+   hdd_adapter_t *pAdapter = NULL;
+   hdd_station_ctx_t *pHddStaCtx = NULL;
+   eCsrPhyMode phyMode;
+   hdd_config_t *cfg_param = NULL;
 
+   if (NULL == pHddCtx)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+               "HDD Context is null !!");
+       return ;
+   }
+
+   pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_INFRA_STATION);
+   if (NULL == pAdapter)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+               "pAdapter is null !!");
+       return ;
+   }
+
+   pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+   if (NULL == pHddStaCtx)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+               "pHddStaCtx is null !!");
+       return ;
+   }
+
+   cfg_param = pHddCtx->cfg_ini;
+   if (NULL == cfg_param)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+               "cfg_params not available !!");
+       return ;
+   }
+
+   phyMode = sme_GetPhyMode(WLAN_HDD_GET_HAL_CTX(pAdapter));
+
+   if (!pHddCtx->isVHT80Allowed)
+   {
+       if ((eCSR_DOT11_MODE_AUTO == phyMode) ||
+           (eCSR_DOT11_MODE_11ac == phyMode) ||
+           (eCSR_DOT11_MODE_11ac_ONLY == phyMode))
+       {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                    "Setting phymode to 11n!!");
+           sme_SetPhyMode(WLAN_HDD_GET_HAL_CTX(pAdapter), eCSR_DOT11_MODE_11n);
+       }
+   }
+   else
+   {
+       /*New country Supports 11ac as well resetting value back from .ini*/
+       sme_SetPhyMode(WLAN_HDD_GET_HAL_CTX(pAdapter),
+             hdd_cfg_xlate_to_csr_phy_mode(cfg_param->dot11Mode));
+       return ;
+   }
+
+   if ((eConnectionState_Associated == pHddStaCtx->conn_info.connState) &&
+       ((eCSR_CFG_DOT11_MODE_11AC_ONLY == pHddStaCtx->conn_info.dot11Mode) ||
+        (eCSR_CFG_DOT11_MODE_11AC == pHddStaCtx->conn_info.dot11Mode)))
+   {
+       VOS_STATUS vosStatus;
+
+       // need to issue a disconnect to CSR.
+       INIT_COMPLETION(pAdapter->disconnect_comp_var);
+       vosStatus = sme_RoamDisconnect(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                          pAdapter->sessionId,
+                          eCSR_DISCONNECT_REASON_UNSPECIFIED );
+
+       if (VOS_STATUS_SUCCESS == vosStatus)
+           wait_for_completion_interruptible_timeout(&pAdapter->disconnect_comp_var,
+                 msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
+
+   }
+}
+#else
 void hdd_checkandupdate_phymode( hdd_adapter_t *pAdapter, char *country_code)
 {
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
@@ -529,6 +607,7 @@ void hdd_checkandupdate_phymode( hdd_adapter_t *pAdapter, char *country_code)
 
     }
 }
+#endif //CONFIG_ENABLE_LINUX_REG
 
 void hdd_checkandupdate_dfssetting( hdd_adapter_t *pAdapter, char *country_code)
 {
@@ -1600,7 +1679,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
            INIT_COMPLETION(pAdapter->change_country_code);
            hdd_checkandupdate_dfssetting(pAdapter, country_code);
+#ifndef CONFIG_ENABLE_LINUX_REG
            hdd_checkandupdate_phymode(pAdapter, country_code);
+#endif
            ret = (int)sme_ChangeCountryCode(pHddCtx->hHal,
                   (void *)(tSmeChangeCountryCallback)
                     wlan_hdd_change_country_code_callback,

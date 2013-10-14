@@ -2740,11 +2740,33 @@ static int create_linux_regulatory_entry_from_regd(struct wiphy *wiphy,
     int i, j, n, domain_id;
     int bw20_start_channel_index, bw20_end_channel_index;
     int bw40_start_channel_index, bw40_end_channel_index;
+    v_CONTEXT_t pVosContext = NULL;
+    hdd_context_t *pHddCtx = NULL;
 
     if (wiphy->regd == NULL)
     {
         wiphy_dbg(wiphy, "error: wiphy->regd is NULL\n");
         return -1;
+    }
+    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+
+    if (NULL != pVosContext)
+    {
+        pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
+        if (NULL == pHddCtx)
+        {
+           VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                       ("Invalid pHddCtx pointer") );
+        }
+        else
+        {
+           pHddCtx->isVHT80Allowed = 0;
+        }
+    }
+    else
+    {
+       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                  ("Invalid pVosContext pointer") );
     }
 
     domain_id = temp_reg_domain;
@@ -2803,9 +2825,27 @@ static int create_linux_regulatory_entry_from_regd(struct wiphy *wiphy,
 
        /* ignore CRDA max_antenna_gain typical is 3dBi, nv.bin antennaGain is
           real gain which should be provided by the real design */
-       if (wiphy->regd->reg_rules[i].freq_range.max_bandwidth_khz == 40000)
+       if (wiphy->regd->reg_rules[i].freq_range.max_bandwidth_khz >= 40000)
        {
-           wiphy_dbg(wiphy, "info: 40MHz (channel bonding) is allowed\n");
+           if (wiphy->regd->reg_rules[i].freq_range.max_bandwidth_khz >= 80000)
+           {
+              wiphy_dbg(wiphy, "info: 80MHz (channel bonding) is allowed\n");
+              if (NULL == pHddCtx)
+              {
+                  VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                             ("Invalid pHddCtx pointer") );
+              }
+              else
+              {
+                 pHddCtx->isVHT80Allowed = 1;
+              }
+
+
+           }
+           else
+           {
+              wiphy_dbg(wiphy, "info: ONLY 40MHz (channel bonding) is allowed\n");
+           }
            bw40_start_channel_index =
                bw40_start_freq_to_channel_index(wiphy->regd->reg_rules[i].freq_range.start_freq_khz);
            bw40_end_channel_index =
@@ -2857,6 +2897,29 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
     int err;
 #endif
     const struct ieee80211_reg_rule *reg_rule;
+    v_CONTEXT_t pVosContext = NULL;
+    hdd_context_t *pHddCtx = NULL;
+
+    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+
+    if (NULL != pVosContext)
+    {
+        pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
+        if (NULL == pHddCtx)
+        {
+           VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                       ("Invalid pHddCtx pointer") );
+        }
+        else
+        {
+           pHddCtx->isVHT80Allowed = 0;
+        }
+    }
+    else
+    {
+       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                  ("Invalid pVosContext pointer") );
+    }
 
     /* 20MHz channels */
     if (nBandCapability == eCSR_BAND_24)
@@ -2960,6 +3023,18 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
                     pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].pwrLimit =
                         (tANI_S8) (((wiphy->bands[i]->channels[j].max_power)/100)-3);
                 }
+                if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_80MHZ) == 0)
+                {
+                   if (NULL == pHddCtx)
+                   {
+                      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                                  ("Invalid pHddCtx pointer") );
+                   }
+                   else
+                   {
+                      pHddCtx->isVHT80Allowed = 1;
+                   }
+                }
             }
             else /* Enable is only last flag we support */
             {
@@ -2977,6 +3052,19 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
                     pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].pwrLimit =
                         (tANI_S8) (((wiphy->bands[i]->channels[j].max_power)/100)-3);
                 }
+                if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_80MHZ) == 0)
+                {
+                   if (NULL == pHddCtx)
+                   {
+                      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                                  ("Invalid pHddCtx pointer") );
+                   }
+                   else
+                   {
+                      pHddCtx->isVHT80Allowed = 1;
+                   }
+                }
+
             }
 
 
@@ -3009,6 +3097,7 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     tANI_U8 nBandCapability;
     v_COUNTRYCODE_t country_code;
     int i;
+    v_BOOL_t isVHT80Allowed;
 
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                ("cfg80211 reg notifier callback for country"));
@@ -3025,12 +3114,16 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     {
 
         nBandCapability = pHddCtx->cfg_ini->nBandCapability;
-
+        isVHT80Allowed = pHddCtx->isVHT80Allowed;
         if (create_linux_regulatory_entry(wiphy, request, pHddCtx->cfg_ini->nBandCapability) == 0)
         {
 
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                        (" regulatory entry created"));
+        }
+        if (pHddCtx->isVHT80Allowed != isVHT80Allowed)
+        {
+           hdd_checkandupdate_phymode( pHddCtx);
         }
 
         complete(&pHddCtx->linux_reg_req);
@@ -3062,12 +3155,17 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
             temp_reg_domain = REGDOMAIN_WORLD;
 
         nBandCapability = pHddCtx->cfg_ini->nBandCapability;
+        isVHT80Allowed = pHddCtx->isVHT80Allowed;
         if (create_linux_regulatory_entry(wiphy, request,
                                           pHddCtx->cfg_ini->nBandCapability) == 0)
         {
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                       (" regulatory entry created"));
 
+        }
+        if (pHddCtx->isVHT80Allowed != isVHT80Allowed)
+        {
+           hdd_checkandupdate_phymode( pHddCtx);
         }
 
         cur_reg_domain = temp_reg_domain;
