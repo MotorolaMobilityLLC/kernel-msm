@@ -282,17 +282,19 @@
 &spmi_bus {
 	qcom,pm8110@0 {
 		qcom,leds@a100 {
-			status = "okay";
-			qcom,led_mpp_2 {
-				label = "mpp";
-				linux,name = "button-backlight";
-				linux-default-trigger = "hr-trigger";
-				qcom,default-state = "off";
+			status = "disabled";
+		};
+
+		qcom,leds@1000 {
+			status = "ok";
+			reg = <0x1000 0x100>;
+			compatible = "qcom,leds-qpnp";
+			qcom,led_atc {
+				label = "atc";
+				linux,name = "charging";
 				qcom,max-current = <40>;
-				qcom,id = <6>;
-				qcom,source-sel = <1>;
-				qcom,mode-ctrl = <0x60>;
-				qcom,mode = "manual";
+				qcom,id = <8>;
+				qcom,mode = <2>;
 			};
 		};
 
