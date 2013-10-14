@@ -353,6 +353,13 @@ static void msm_vfe40_process_halt_irq(struct vfe_device *vfe_dev,
 		complete(&vfe_dev->halt_complete);
 }
 
+static void msm_vfe40_process_eof_irq(struct vfe_device *vfe_dev,
+	uint32_t irq_status0, uint32_t irq_status1)
+{
+	if (irq_status0 & BIT(1))
+		msm_isp_eof_notify(vfe_dev);
+}
+
 static void msm_vfe40_process_camif_irq(struct vfe_device *vfe_dev,
 	uint32_t irq_status0, uint32_t irq_status1,
 	struct msm_isp_timestamp *ts)
@@ -1338,6 +1345,7 @@ struct msm_vfe_hardware_info vfe40_hw_info = {
 			.process_camif_irq = msm_vfe40_process_camif_irq,
 			.process_reset_irq = msm_vfe40_process_reset_irq,
 			.process_halt_irq = msm_vfe40_process_halt_irq,
+			.process_eof_irq = msm_vfe40_process_eof_irq,
 			.process_reset_irq = msm_vfe40_process_reset_irq,
 			.process_reg_update = msm_vfe40_process_reg_update,
 			.process_axi_irq = msm_isp_process_axi_irq,

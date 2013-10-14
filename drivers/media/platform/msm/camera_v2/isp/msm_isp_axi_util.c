@@ -419,6 +419,20 @@ void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 	msm_isp_send_event(vfe_dev, ISP_EVENT_SOF, &sof_event);
 }
 
+void msm_isp_eof_notify(struct vfe_device *vfe_dev)
+{
+	struct msm_vfe_axi_stream *stream_info;
+	uint32_t i;
+
+	for (i = 0; i < MAX_NUM_STREAM; i++) {
+		stream_info = &vfe_dev->axi_data.stream_info[i];
+		if (stream_info->request_frm_num) {
+			stream_info->request_frm_num--;
+			stream_info->request_frame = 1;
+		}
+	}
+}
+
 void msm_isp_calculate_framedrop(
 	struct msm_vfe_axi_shared_data *axi_data,
 	struct msm_vfe_axi_stream_request_cmd *stream_cfg_cmd)
@@ -669,7 +683,7 @@ static int msm_isp_cfg_ping_pong_address(struct vfe_device *vfe_dev,
 	uint32_t bufq_handle = 0;
 	uint32_t stream_idx = HANDLE_TO_IDX(stream_info->stream_handle);
 
-	if (stream_info->bufq_scratch_handle && !stream_info->request_frm_num)
+	if (stream_info->bufq_scratch_handle && !stream_info->request_frame)
 		bufq_handle = stream_info->bufq_scratch_handle;
 	else
 		bufq_handle = stream_info->bufq_handle;
@@ -679,12 +693,15 @@ static int msm_isp_cfg_ping_pong_address(struct vfe_device *vfe_dev,
 
 	if (rc < 0) {
 		vfe_dev->error_info.stream_framedrop_count[stream_idx]++;
+		if (stream_info->bufq_scratch_handle &&
+				stream_info->request_frame)
+			pr_err("%s: Error: v4l2 buff is missing!\n", __func__);
 		return rc;
 	}
 
 	if (stream_info->bufq_scratch_handle &&
 			bufq_handle == stream_info->bufq_handle)
-		stream_info->request_frm_num--;
+		stream_info->request_frame = 0;
 
 	if (buf->num_planes != stream_info->num_planes) {
 		pr_err("%s: Invalid buffer\n", __func__);

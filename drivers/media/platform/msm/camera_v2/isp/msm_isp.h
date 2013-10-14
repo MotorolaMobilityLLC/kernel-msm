@@ -73,6 +73,8 @@ struct msm_vfe_irq_ops {
 		uint32_t irq_status0, uint32_t irq_status1);
 	void (*process_halt_irq) (struct vfe_device *vfe_dev,
 		uint32_t irq_status0, uint32_t irq_status1);
+	void (*process_eof_irq) (struct vfe_device *vfe_dev,
+		uint32_t irq_status0, uint32_t irq_status1);
 	void (*process_camif_irq) (struct vfe_device *vfe_dev,
 		uint32_t irq_status0, uint32_t irq_status1,
 		struct msm_isp_timestamp *ts);
@@ -243,6 +245,7 @@ struct msm_vfe_axi_stream {
 	uint32_t bufq_scratch_handle;
 	uint32_t stream_handle;
 	uint32_t request_frm_num;
+	uint32_t request_frame;
 	uint8_t buf_divert;
 	enum msm_vfe_axi_stream_type stream_type;
 
