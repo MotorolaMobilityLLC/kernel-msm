@@ -1,0 +1,27 @@
+MMI lm2755 Leds
+
+MMI lm2755 LEDs driver is used for controlling LEDs
+driven by TI LM2755 Controller. The IC is connected
+to Host processor via I2C bus. This driver supports single
+color LED linux devices and RGB tricolor device with configu-
+rable blink profile. RGB interface provides combined control
+for LEDs on D1, D2 and D3 outputs.
+
+Required properties:
+- compatible		: should be "lm,lm2755"
+- reg			: I2C address two possible configurations:
+			: 0x18 if ADDR pin is grounded
+			: 0x67 if ADDR pin is tied high
+- clock-mode		: clock mode 0x0 for internal, 0x40 for external clock
+- charge-pump-mode	: 0x1 enable the charge pump, 0x0 - disable charge pump
+- min-tstep		: Sets N for timing control equations. Valid range from 0 to 7. Defines Tstep:
+			: For internal clock Tstep = 50us*2^N
+			: For external clock Tstep = 2^N*(32 + Fext)
+- max-level 		: max brightness level. LM2755 has 32 brightness levels. Max 0x1F.
+			: At least one of the three led outputs has to be configured:
+- d1-led-name 		: linux name for led connected to D1 output. No property means output is not used.
+- d2-led-name 		: linux name for led connected to D2 output. No property means output is not used.
+- d3-led-name 		: linux name for led connected to D3 output. No property means output is not used.
+
+Optional properties for RGB device:
+- rgb-class-name	: Linux led class name for the combined rgb device. Default "rgb".
