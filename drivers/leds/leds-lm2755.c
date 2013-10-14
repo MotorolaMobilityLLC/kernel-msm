@@ -38,13 +38,18 @@
 
 #define DRIVER_NAME "lm2755"
 
-#define LM2755_GROUP_OFFSET 0xA0
 #define LM2755_ENABLE_BIT 0x01
 #define LM2755_ENABLE_BLINK_BIT 0x08
 #define LM2755_CLOCK_BIT 0x40
 #define LM2755_CHARGE_PUMP_BIT 0x80
 #define LM2755_NTSTEP 8
 #define LM2755_MIN_TSTEP_INT 50 /* 50 us internal step */
+#define LM2755_D1_BASE 0xA0
+#define LM2755_D2_BASE 0xB0
+#define LM2755_D3_BASE 0xC0
+#define LM2755_D1_MASK 0xFF0000
+#define LM2755_D2_MASK 0x00FF00
+#define LM2755_D3_MASK 0x0000FF
 
 #define LM2755_REGISTERS \
 	ENTRY(GENERAL,           0x10) \
@@ -96,6 +101,14 @@ enum {
 
 #define LM2755_NUM_REGS ARRAY_SIZE(lm2755_regs)
 
+#define DEFAULT_LM2755_CLASS_NAME "rgb"
+
+static const char * const names[] = {
+	"d1-led-name",
+	"d2-led-name",
+	"d3-led-name"
+};
+
 /* Trace register writes */
 static unsigned trace_write;
 module_param(trace_write, uint, 0664);
@@ -133,9 +146,10 @@ struct lm2755_data {
 	struct led_classdev	led_cdev;
 	struct work_struct rgb_work;
 	struct i2c_client *client;
-	/* Red, green, blue levels */
+	/* D1, D2, D3 levels */
 	uint8_t rgb[LM2755_NUM_LEDS];
 	uint8_t rgb_group[LM2755_NUM_LEDS];
+	uint32_t rgb_mask[LM2755_NUM_LEDS];
 	unsigned ms_on;    /* Blink rate in ms */
 	unsigned ms_off;
 	unsigned ramp_up;   /* Ramp rate in percent */
@@ -239,13 +253,18 @@ static void lm2755_rgb_brightness_set(struct led_classdev *cdev,
 {
 	struct lm2755_data *data =
 		container_of(cdev, struct lm2755_data, led_cdev);
+	int i;
 
 	pr_access("%s, value = %d\n", cdev->name, brightness);
 	mutex_lock(&data->lock);
 	brightness = lm2755_scale(brightness, data->max_level);
-	data->rgb[LM2755_RED] = brightness;
-	data->rgb[LM2755_GREEN] = brightness;
-	data->rgb[LM2755_BLUE] = brightness;
+	/* from this interface brightness is the same for all components */
+	/* interface not utilized by the HAL at this moment*/
+	for (i = 0; i < LM2755_NUM_LEDS; i++) {
+		if (data->leds[i].id < 0)
+			continue;
+		data->rgb[i] = brightness;
+	}
 	data->ms_on = 0;
 	data->ms_off = 0;
 	data->ramp_up = 0;
@@ -341,8 +360,8 @@ static void lm2755_rgb_work(struct work_struct *work)
 
 	mutex_lock(&data->lock);
 	pr_debug("0x%02X%02X%02X, on/off=%u/%u ms, ramp=%d%%/%d%%\n",
-		data->rgb[LM2755_RED], data->rgb[LM2755_GREEN],
-		data->rgb[LM2755_BLUE], data->ms_on, data->ms_off,
+		data->rgb[LM2755_D1], data->rgb[LM2755_D2],
+		data->rgb[LM2755_D3], data->ms_on, data->ms_off,
 		data->ramp_up, data->ramp_down);
 	/* Turn it off first */
 	lm2755_write(data->client, LM2755_REG_GENERAL, val);
@@ -350,16 +369,14 @@ static void lm2755_rgb_work(struct work_struct *work)
 	for (i = 0; i < LM2755_NUM_LEDS; i++) {
 		if (data->rgb[i] == 0)
 			continue;
-
-		val |= LM2755_ENABLE_BIT << data->rgb_group[i];
+		/* Save position of enabled LEDs in the general reg. mask*/
+		val |= LM2755_ENABLE_BIT << i;
 		/* Low brightness level is 0 */
 		lm2755_write(data->client,
-			(LM2755_GROUP_OFFSET + (data->rgb_group[i]<<4)) |
-			 LM2755_REG_LOW, 0);
+			data->rgb_group[i] | LM2755_REG_LOW, 0);
 		/* High brightness level */
 		lm2755_write(data->client,
-			(LM2755_GROUP_OFFSET + (data->rgb_group[i]<<4)) |
-			 LM2755_REG_HIGH, data->rgb[i]);
+			data->rgb_group[i] | LM2755_REG_HIGH, data->rgb[i]);
 	}
 	if (data->ms_on != 0) { /* Blinking */
 		us_on = data->ms_on * 1000;
@@ -414,30 +431,28 @@ static void lm2755_rgb_work(struct work_struct *work)
 					us_on - time_rise_act - time_fall_act;
 			nhigh = lm2755_calc_nhighlow(data, nstep, time_high);
 
-			pr_debug("LED %d: nrise = %u (0x%x), time = %u ms\n",
-				i, nrise, nrise, time_rise_act/1000);
-			pr_debug("LED %d: nfall = %u (0x%x), time = %u ms\n",
-				i, nfall, nfall, time_fall_act/1000);
-			pr_debug("LED %d: nhigh = %u (0x%x), time = %u ms\n",
-				i, nhigh, nhigh, time_high/1000);
+			pr_debug("LED D%d: nrise = %u (0x%x), time = %u ms\n",
+				(i+1), nrise, nrise, time_rise_act/1000);
+			pr_debug("LED D%d: nfall = %u (0x%x), time = %u ms\n",
+				(i+1), nfall, nfall, time_fall_act/1000);
+			pr_debug("LED D%d: nhigh = %u (0x%x), time = %u ms\n",
+				(i+1), nhigh, nhigh, time_high/1000);
 
 			/* N for low */
-			lm2755_write(data->client,
-				(LM2755_GROUP_OFFSET+(data->rgb_group[i]<<4)) |
-					LM2755_REG_TIME_LOW, nlow);
+			lm2755_write(data->client, data->rgb_group[i]
+				| LM2755_REG_TIME_LOW, nlow);
 			/* N for high */
-			lm2755_write(data->client,
-				(LM2755_GROUP_OFFSET+(data->rgb_group[i]<<4)) |
-				 LM2755_REG_TIME_HIGH, nhigh);
+			lm2755_write(data->client, data->rgb_group[i]
+				| LM2755_REG_TIME_HIGH, nhigh);
 			/* N for ramp up */
-			lm2755_write(data->client,
-				(LM2755_GROUP_OFFSET+(data->rgb_group[i]<<4)) |
-				 LM2755_REG_RAMP_UP_STEP, nrise);
+			lm2755_write(data->client, data->rgb_group[i]
+				| LM2755_REG_RAMP_UP_STEP, nrise);
 			/* N for ramp down */
 			lm2755_write(data->client,
-				(LM2755_GROUP_OFFSET+(data->rgb_group[i]<<4)) |
-				 LM2755_REG_RAMP_DOWN_STEP, nfall);
-			val |= LM2755_ENABLE_BLINK_BIT << data->rgb_group[i];
+				data->rgb_group[i]
+				| LM2755_REG_RAMP_DOWN_STEP, nfall);
+			/* Add any leds enabled by this command */
+			val |= LM2755_ENABLE_BLINK_BIT << i;
 		}
 	}
 	lm2755_write(data->client, LM2755_REG_GENERAL, val);
@@ -472,16 +487,17 @@ static void lm2755_led_work(struct work_struct *work)
 	struct lm2755_led *led =
 		container_of(work, struct lm2755_led, work);
 	struct lm2755_data *data = led_to_lm2755(led);
-	uint8_t group = LM2755_GROUP_OFFSET + (led->id << 4);
+	uint8_t group = data->rgb_group[led->id];
 
 	mutex_lock(&data->lock);
 	/* Write High Level */
-	pr_debug("%s, level = 0x%x\n", led->led_cdev.name, led->level);
+	pr_debug("%s, group %#x led id %#x level = %#x\n",
+		led->led_cdev.name, group, led->id, led->level);
 	lm2755_write(data->client, group | LM2755_REG_HIGH, led->level);
 	/* If LEDs were set via rgb control clear them */
-	if (data->rgb[LM2755_RED] ||
-		data->rgb[LM2755_GREEN] ||
-		data->rgb[LM2755_BLUE]) {
+	if (data->rgb[LM2755_D1] ||
+		data->rgb[LM2755_D2] ||
+		data->rgb[LM2755_D3]) {
 		int i;
 
 		data->ms_on = 0;
@@ -509,8 +525,8 @@ static ssize_t lm2755_show_control(struct device *dev,
 
 	scnprintf(buf, PAGE_SIZE,
 		"RGB=0x%02X%02X%02X, on/off=%d/%d ms, ramp=%d%%/%d%%\n",
-		data->rgb[LM2755_RED], data->rgb[LM2755_GREEN],
-		data->rgb[LM2755_BLUE], data->ms_on, data->ms_off,
+		data->rgb[LM2755_D1], data->rgb[LM2755_D2],
+		data->rgb[LM2755_D3], data->ms_on, data->ms_off,
 		data->ramp_up, data->ramp_down);
 
 	return strlen(buf);
@@ -552,9 +568,12 @@ static ssize_t lm2755_store_control(struct device *dev,
 	if (ms_off > data->max_time)
 		ms_off = data->max_time;
 	mutex_lock(&data->lock);
-	data->rgb[LM2755_RED] = (uint8_t)((rgb & 0xFF0000) >> 16);
-	data->rgb[LM2755_GREEN] = (uint8_t)((rgb & 0x00FF00) >> 8);
-	data->rgb[LM2755_BLUE] = (uint8_t)(rgb & 0x0000FF);
+	for (i = 0; i < LM2755_NUM_LEDS; i++) {
+		if (data->leds[i].id < 0)
+			continue;
+		data->rgb[i] =
+			(uint8_t)((rgb & data->rgb_mask[i]) >> (16 - i*8));
+	}
 	/* If blinking equalize to max, otherwise they will blink out of sync */
 	if (rgb != 0 && ms_on != 0) {
 		uint8_t max = data->rgb[0];
@@ -776,49 +795,25 @@ static int lm2755_register_leds(struct lm2755_data *data, const char **names)
 static int lm2755_parse_dt(struct device *dev,
 		struct lm2755_platform_data *pdata)
 {
-	int rc;
+	int rc, i;
 	u32 temp_val;
 	struct device_node *np = dev->of_node;
 
 	/* read the led class name */
-	rc = of_property_read_string(np, "led-class-name",
+	pdata->rgb_name = DEFAULT_LM2755_CLASS_NAME;
+	rc = of_property_read_string(np, "rgb-class-name",
 		&pdata->rgb_name);
 	if (rc && (rc != -EINVAL))
 		dev_err(dev, "Unable to read rgb-name\n");
 
-	/* read each channel */
-	rc = of_property_read_string(np, "red-led-name",
-		&pdata->led_names[0]);
-	if (rc && (rc != -EINVAL))
-		dev_err(dev, "Unable to red-led-name\n");
-
-	rc = of_property_read_string(np, "green-led-name",
-		&pdata->led_names[1]);
-	if (rc && (rc != -EINVAL))
-		dev_err(dev, "Unable to green-led-name\n");
-
-	rc = of_property_read_string(np, "blue-led-name",
-		&pdata->led_names[2]);
-	if (rc && (rc != -EINVAL))
-		dev_err(dev, "Unable to blue-led-name\n");
-
-	rc = of_property_read_u32(np, "red-group-addr", &temp_val);
-	if (rc && (rc != -EINVAL))
-		dev_err(dev, "Unable to read red-group-addr\n");
-	else if (rc != -EINVAL)
-		pdata->red_group = (u8) temp_val;
-
-	rc = of_property_read_u32(np, "green-group-addr", &temp_val);
-	if (rc && (rc != -EINVAL))
-		dev_err(dev, "Unable to read green-group-addr\n");
-	else if (rc != -EINVAL)
-		pdata->green_group = (u8) temp_val;
-
-	rc = of_property_read_u32(np, "blue-group-addr", &temp_val);
-	if (rc && (rc != -EINVAL))
-		dev_err(dev, "Unable to read blue-group-addr\n");
-	else if (rc != -EINVAL)
-		pdata->blue_group = (u8) temp_val;
+	/* read each channel presence and settings */
+	for (i = 0; i < LM2755_NUM_LEDS; i++) {
+		pdata->led_names[i] = NULL;
+		rc = of_property_read_string(np, names[i],
+			&pdata->led_names[i]);
+		if (rc && (rc != -EINVAL))
+			dev_err(dev, "Unable to read %s\n", names[i]);
+	}
 
 	rc = of_property_read_u32(np, "clock-mode", &temp_val);
 	if (rc && (rc != -EINVAL))
@@ -935,9 +930,13 @@ static int __devinit lm2755_probe(struct i2c_client *client,
 		data->max_level = LM2755_MAX_LEVEL;
 
 	/* Populate groups */
-	data->rgb_group[LM2755_RED] = pdata->red_group;
-	data->rgb_group[LM2755_GREEN] = pdata->green_group;
-	data->rgb_group[LM2755_BLUE] = pdata->blue_group;
+	data->rgb_group[LM2755_D1] = LM2755_D1_BASE;
+	data->rgb_group[LM2755_D2] = LM2755_D2_BASE;
+	data->rgb_group[LM2755_D3] = LM2755_D3_BASE;
+
+	data->rgb_mask[LM2755_D1] = LM2755_D1_MASK;
+	data->rgb_mask[LM2755_D2] = LM2755_D2_MASK;
+	data->rgb_mask[LM2755_D3] = LM2755_D3_MASK;
 
 	mutex_init(&data->lock);
 
@@ -949,11 +948,14 @@ static int __devinit lm2755_probe(struct i2c_client *client,
 		pr_err("unable to write to the chip\n");
 		goto fail1;
 	}
+
+	/* HIGH part of the brightness has power on value 1110b */
+	/* LOW  part of the brightness has power on value 0000b */
 	lm2755_write(data->client, LM2755_REG_D1_HIGH, 0);
 	lm2755_write(data->client, LM2755_REG_D2_HIGH, 0);
 	lm2755_write(data->client, LM2755_REG_D3_HIGH, 0);
 
-	/* Register 3 LEDs */
+	/* Register named LEDs */
 	ret = lm2755_register_leds(data, pdata->led_names);
 	if (ret < 0) {
 		pr_err("unable to register leds\n");
@@ -1006,6 +1008,8 @@ static int lm2755_remove(struct i2c_client *client)
 			&lm2755_attribute_group);
 
 	for (i = 0; i < LM2755_NUM_LEDS; i++) {
+		if (data->leds[i].id < 0)
+			continue;
 		led_classdev_unregister(&data->leds[i].led_cdev);
 		cancel_work_sync(&data->leds[i].work);
 	}
