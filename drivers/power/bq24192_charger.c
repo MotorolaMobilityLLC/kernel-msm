@@ -89,10 +89,12 @@ struct bq24192_chip {
 	struct delayed_work  vbat_work;
 	struct delayed_work  input_limit_work;
 	struct delayed_work  therm_work;
+	struct delayed_work  extra_chg_work;
 	struct dentry  *dent;
 	struct wake_lock  chg_wake_lock;
 	struct wake_lock  icl_wake_lock;
 	struct wake_lock  irq_wake_lock;
+	struct wake_lock  extra_chg_lock;
 	struct power_supply  *usb_psy;
 	struct power_supply  ac_psy;
 	struct power_supply  *wlc_psy;
@@ -627,6 +629,24 @@ static int bq24192_set_vclamp_mv(struct bq24192_chip *chip, int mv)
 			IR_COMP_VCLAMP_MASK, reg_val);
 }
 
+#define EN_CHG_TERM_SHIFT  7
+static int bq24192_enable_chg_term(struct bq24192_chip *chip, bool enable)
+{
+	int ret;
+	u8 val = (u8)(!!enable << EN_CHG_TERM_SHIFT);
+
+	ret = bq24192_masked_write(chip->client, CHARGE_TERM_TIMER_CONT_REG,
+			EN_CHG_TERM_MASK, val);
+	if (ret) {
+		pr_err("failed to %s chg termination\n",
+				enable? "enable":"disable");
+		return ret;
+	}
+
+	return 0;
+}
+
+#define EXTRA_CHG_TIME_MS 600000
 static void bq24192_irq_worker(struct work_struct *work)
 {
 	struct bq24192_chip *chip =
@@ -661,7 +681,11 @@ static void bq24192_irq_worker(struct work_struct *work)
 	if (chg_done) {
 		if (chip->batt_health != POWER_SUPPLY_HEALTH_OVERHEAT &&
 				bq24192_get_soc_from_batt_psy(chip) < 100) {
+			wake_lock(&chip->extra_chg_lock);
+			bq24192_enable_chg_term(chip, false);
 			bq24192_trigger_recharge(chip);
+			schedule_delayed_work(&chip->extra_chg_work,
+					msecs_to_jiffies(EXTRA_CHG_TIME_MS));
 		} else {
 			power_supply_changed(&chip->ac_psy);
 			pr_info("charge done!!\n");
@@ -679,9 +703,12 @@ static void bq24192_irq_worker(struct work_struct *work)
 				ext_pwr, wlc_pwr);
 		if (wake_lock_active(&chip->icl_wake_lock))
 			wake_unlock(&chip->icl_wake_lock);
-
+		if (wake_lock_active(&chip->extra_chg_lock))
+			wake_unlock(&chip->extra_chg_lock);
 		cancel_delayed_work_sync(&chip->input_limit_work);
 		cancel_delayed_work_sync(&chip->therm_work);
+		cancel_delayed_work_sync(&chip->extra_chg_work);
+		bq24192_enable_chg_term(chip, true);
 		bq24192_step_down_detect_disable(chip);
 		chip->saved_ibat_ma = 0;
 		chip->set_chg_current_ma = chip->chg_current_ma;
@@ -707,6 +734,15 @@ static void bq24192_irq_worker(struct work_struct *work)
 
 irq_worker_exit:
 	wake_lock_timeout(&chip->irq_wake_lock, 2*HZ);
+}
+
+static void bq24192_extra_chg_work(struct work_struct *work)
+{
+	struct bq24192_chip *chip =
+		container_of(work, struct bq24192_chip, extra_chg_work.work);
+
+	bq24192_enable_chg_term(chip, true);
+	wake_unlock(&chip->extra_chg_lock);
 }
 
 #ifdef CONFIG_THERMAL_QPNP_ADC_TM
@@ -1648,10 +1684,13 @@ static int bq24192_probe(struct i2c_client *client,
 		       WAKE_LOCK_SUSPEND, "icl_wake_lock");
 	wake_lock_init(&chip->irq_wake_lock,
 			WAKE_LOCK_SUSPEND, BQ24192_NAME "irq");
+	wake_lock_init(&chip->extra_chg_lock,
+			WAKE_LOCK_SUSPEND, "extra_chg_lock");
 
 	INIT_DELAYED_WORK(&chip->vbat_work, bq24192_vbat_work);
 	INIT_DELAYED_WORK(&chip->input_limit_work, bq24192_input_limit_worker);
 	INIT_DELAYED_WORK(&chip->therm_work, bq24192_therm_mitigation_work);
+	INIT_DELAYED_WORK(&chip->extra_chg_work, bq24192_extra_chg_work);
 	INIT_WORK(&chip->irq_work, bq24192_irq_worker);
 	if (chip->irq) {
 		ret = request_irq(chip->irq, bq24192_irq,
@@ -1681,6 +1720,7 @@ err_req_irq:
 	wake_lock_destroy(&chip->chg_wake_lock);
 	wake_lock_destroy(&chip->icl_wake_lock);
 	wake_lock_destroy(&chip->irq_wake_lock);
+	wake_lock_destroy(&chip->extra_chg_lock);
 	if (chip->dent)
 		debugfs_remove_recursive(chip->dent);
 err_debugfs:
@@ -1707,6 +1747,7 @@ static int bq24192_remove(struct i2c_client *client)
 	wake_lock_destroy(&chip->chg_wake_lock);
 	wake_lock_destroy(&chip->icl_wake_lock);
 	wake_lock_destroy(&chip->irq_wake_lock);
+	wake_lock_destroy(&chip->extra_chg_lock);
 
 	if (chip->dent)
 		debugfs_remove_recursive(chip->dent);
