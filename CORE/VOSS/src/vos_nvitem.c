@@ -2543,6 +2543,7 @@ VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId)
   copy of the binary file.
   \param pRegDomain  - pointer to regulatory domain
   \param countryCode - country code
+  \param source      - source of the country code
   \return VOS_STATUS_SUCCESS - regulatory domain is found for the given country
           VOS_STATUS_E_FAULT - invalid pointer error
           VOS_STATUS_E_EMPTY - country code table is empty
@@ -2550,7 +2551,7 @@ VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId)
   \sa
   -------------------------------------------------------------------------*/
 VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
-      const v_COUNTRYCODE_t country_code)
+      const v_COUNTRYCODE_t country_code, v_CountryInfoSource_t source)
 {
 
     v_CONTEXT_t pVosContext = NULL;
@@ -2598,6 +2599,38 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
         return VOS_STATUS_E_FAULT;
     }
 
+    temp_reg_domain = REGDOMAIN_COUNT;
+    /* lookup the country in the local database */
+    for (i = 0; i < countryInfoTable.countryCount &&
+             REGDOMAIN_COUNT == temp_reg_domain; i++)
+    {
+        if (memcmp(country_code, countryInfoTable.countryInfo[i].countryCode,
+                   VOS_COUNTRY_CODE_LEN) == 0)
+        {
+            /* country code is found */
+            /* record the temporary regulatory_domain as well */
+            temp_reg_domain = countryInfoTable.countryInfo[i].regDomain;
+            break;
+        }
+    }
+
+    if (REGDOMAIN_COUNT == temp_reg_domain) {
+
+        /* the country was not found in the driver database */
+        /* so we will return the REGDOMAIN_WORLD to SME/CSR */
+
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   ("Country does not map to any Regulatory domain"));
+
+        temp_reg_domain = REGDOMAIN_WORLD;
+    }
+
+    if (COUNTRY_QUERY == source)
+    {
+        *pRegDomain = temp_reg_domain;
+         return VOS_STATUS_SUCCESS;
+    }
+
     wiphy = pHddCtx->wiphy;
 
     if (false == wiphy->registered)
@@ -2631,72 +2664,66 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
     }
     else {
 
-        /* first lookup the country in the local database */
-
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                       (" new runtime country code"));
-
-        for (i = 0; i < countryInfoTable.countryCount &&
-                 REGDOMAIN_COUNT == temp_reg_domain; i++)
-        {
-            if (memcmp(country_code, countryInfoTable.countryInfo[i].countryCode,
-                       VOS_COUNTRY_CODE_LEN) == 0)
-            {
-                /* country code is found
-                   record the temporary regulatory_domain as well */
-                temp_reg_domain = countryInfoTable.countryInfo[i].regDomain;
-                break;
-            }
-        }
-
-        if (REGDOMAIN_COUNT == temp_reg_domain) {
-            temp_reg_domain = REGDOMAIN_WORLD;
-
-        }
-
         /* get the regulatory information from the kernel
            database */
 
         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
                    (" get country information from kernel db"));
 
-        INIT_COMPLETION(pHddCtx->linux_reg_req);
-        regulatory_hint(wiphy, country_code);
-        wait_result = wait_for_completion_interruptible_timeout(&pHddCtx->linux_reg_req,
-                                                                LINUX_REG_WAIT_TIME);
 
-        /* if the country information does not exist with the kernel,
-           then the driver callback would not be called */
+        if (COUNTRY_NV == source)
+        {
+            INIT_COMPLETION(pHddCtx->linux_reg_req);
+            regulatory_hint(wiphy, country_code);
+            wait_result = wait_for_completion_interruptible_timeout(
+                                                            &pHddCtx->linux_reg_req,
+                                                            LINUX_REG_WAIT_TIME);
 
-        if (wait_result >= 0) {
+            /* if the country information does not exist with the kernel,
+               then the driver callback would not be called */
 
-            /* the driver callback was called. this means the country
-               regulatory information was found in the kernel database.
-               The callback would have updated the internal database. Here
-               update the country and the return value for the regulatory
-               domain */
+            if (wait_result >= 0) {
 
-            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                       ("runtime country code is found in kernel db"));
+                /* the driver callback was called. this means the country
+                   regulatory information was found in the kernel database.
+                   The callback would have updated the internal database. Here
+                   update the country and the return value for the regulatory
+                   domain */
 
+                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                           ("runtime country code is found in kernel db"));
+
+                *pRegDomain = temp_reg_domain;
+                cur_reg_domain = temp_reg_domain;
+                linux_reg_cc[0] = country_code[0];
+                linux_reg_cc[1] = country_code[1];
+
+                return VOS_STATUS_SUCCESS;
+            }
+            else {
+
+                /* the country information has not been found in the kernel
+                   database, return failure */
+
+                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
+                           ("runtime country code is not found in kernel db"));
+
+                return VOS_STATUS_E_EXISTS;
+            }
+        }
+        else if (COUNTRY_IE == source || COUNTRY_USER == source)
+        {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+            regulatory_hint_user(country_code,NL80211_USER_REG_HINT_USER);
+#else
+            regulatory_hint_user(country_code);
+#endif
             *pRegDomain = temp_reg_domain;
-            cur_reg_domain = temp_reg_domain;
-            linux_reg_cc[0] = country_code[0];
-            linux_reg_cc[1] = country_code[1];
-
-            return VOS_STATUS_SUCCESS;
         }
-        else {
 
-            /* the country information has not been found in the kernel
-               database, return failure */
+   }
 
-            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
-                       ("runtime country code is not found in kernel db"));
-
-            return VOS_STATUS_E_EXISTS;
-        }
-    }
+   return VOS_STATUS_SUCCESS;
 }
 
 
@@ -2956,7 +2983,6 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     }
     /* first check if this callback is in response to the driver callback */
 
-
     if (request->initiator == NL80211_REGDOM_SET_BY_DRIVER)
     {
 
@@ -3167,6 +3193,7 @@ VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId)
   copy of the binary file.
   \param pRegDomain  - pointer to regulatory domain
   \param countryCode - country code
+  \param source      - source of the country code
   \return VOS_STATUS_SUCCESS - regulatory domain is found for the given country
           VOS_STATUS_E_FAULT - invalid pointer error
           VOS_STATUS_E_EMPTY - country code table is empty
@@ -3174,7 +3201,7 @@ VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId)
   \sa
   -------------------------------------------------------------------------*/
 VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
-      const v_COUNTRYCODE_t countryCode )
+      const v_COUNTRYCODE_t countryCode, v_CountryInfoSource_t source)
 {
    int i;
    v_CONTEXT_t pVosContext = NULL;
