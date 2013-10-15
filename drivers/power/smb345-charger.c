@@ -104,8 +104,8 @@
 #define WPC_INIT_DET_INTERVAL	(22 * HZ)
 #define WPC_SET_CURT_LIMIT_CNT	6
 #define BAT_Cold_Limit 0
-#define BAT_Hot_Limit 55
-#define BAT_Mid_Temp_Wired 50
+#define BAT_Hot_Limit 45
+#define BAT_Mid_Temp_Wired 45
 #define BAT_Mid_Temp_Wireless 40
 #define FLOAT_VOLT 0x2A
 #define FLOAT_VOLT_LOW 0x1E
@@ -1095,6 +1095,7 @@ int smb345_config_thermal_charging(int temp, int volt, int rule)
 	else if (rule == THERMAL_RULE2)
 		BAT_Mid_Temp = BAT_Mid_Temp_Wireless;
 
+	mdelay(100);
 	smb345_config_thermal_limit();
 
 	SMB_NOTICE("temp=%d, volt=%d\n", temp, volt);
