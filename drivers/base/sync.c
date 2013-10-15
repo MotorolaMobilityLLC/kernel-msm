@@ -94,11 +94,12 @@ void sync_timeline_destroy(struct sync_timeline *obj)
 	obj->destroyed = true;
 
 	/*
-	 * signal any children that their parent is going away.
+	 * If this is not the last reference, signal any children
+	 * that their parent is going away.
 	 */
-	sync_timeline_signal(obj);
 
-	kref_put(&obj->kref, sync_timeline_free);
+	if (!kref_put(&obj->kref, sync_timeline_free))
+		sync_timeline_signal(obj);
 }
 EXPORT_SYMBOL(sync_timeline_destroy);
 
