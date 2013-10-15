@@ -21,6 +21,14 @@
 	};
 };
 
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_cmi_720p_vid_v2>;
+};
+
 &soc {
 	factory_support {
 		compatible = "mmi,factory-support-msm8960";

@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-&soc {
+&mdss_mdp {
 	mot_auo_720p_vid_v0: qcom,mdss_dsi_mot_auo_720p_video_v0 {
 		compatible = "qcom,mdss-dsi-panel";
 		status = "ok";
@@ -86,8 +86,10 @@
 			qcom,supply-max-voltage = <1800000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
-			qcom,supply-post-en-delay-ms = <1>;
-			qcom,supply-post-dis-delay-ms = <0>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
 		};
 		qcom,platform-supply-entry2 {
 			qcom,supply-name = "lcdbias";
@@ -95,8 +97,10 @@
 			qcom,supply-max-voltage = <5400000>;
 			qcom,supply-enable-load = <100000>;
 			qcom,supply-disable-load = <100>;
-			qcom,supply-post-en-delay-ms = <10>;
-			qcom,supply-post-dis-delay-ms = <0>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <10>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
 		};
 	};
 };
