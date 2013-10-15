@@ -623,7 +623,7 @@ static struct cntry_locales_custom wifi_translate_custom_table[] = {
 	{"GB", "GB", 6},
 	{"UY", "UY", 1},
 	{"VI", "VI", 13},
-	{"VA", "VA", 12},	/* changed 2 -> 12 */
+	{"VA", "VA", 2},
 	{"VE", "VE", 3},
 	{"VN", "VN", 4},
 	{"MA", "MA", 1},
