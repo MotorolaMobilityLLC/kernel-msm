@@ -636,37 +636,34 @@ static int stm401_probe(struct i2c_client *client,
 		goto err_pdata;
 	}
 
-#if 0
 	/* initialize regulators */
-	/* vio must be high before vcc is turned on */
-	ps_stm401->vio_regulator = regulator_get(&client->dev, "vio");
-	if (IS_ERR(ps_stm401->vio_regulator)) {
+	ps_stm401->regulator_1 = regulator_get(&client->dev, "sensor1");
+	if (IS_ERR(ps_stm401->regulator_1)) {
 		dev_err(&client->dev, "Failed to get VIO regulator\n");
 		goto err_regulator;
 	}
 
-	ps_stm401->vcc_regulator = regulator_get(&client->dev, "vcc");
-	if (IS_ERR(ps_stm401->vcc_regulator)) {
+	ps_stm401->regulator_2 = regulator_get(&client->dev, "sensor2");
+	if (IS_ERR(ps_stm401->regulator_2)) {
 		dev_err(&client->dev, "Failed to get VCC regulator\n");
-		regulator_put(ps_stm401->vio_regulator);
+		regulator_put(ps_stm401->regulator_1);
 		goto err_regulator;
 	}
 
-	if (regulator_enable(ps_stm401->vio_regulator)) {
-		dev_err(&client->dev, "Failed to enable VIO regulator\n");
-		regulator_put(ps_stm401->vcc_regulator);
-		regulator_put(ps_stm401->vio_regulator);
+	if (regulator_enable(ps_stm401->regulator_1)) {
+		dev_err(&client->dev, "Failed to enable Sensor 1 regulator\n");
+		regulator_put(ps_stm401->regulator_2);
+		regulator_put(ps_stm401->regulator_1);
 		goto err_regulator;
 	}
 
-	if (regulator_enable(ps_stm401->vcc_regulator)) {
-		dev_err(&client->dev, "Failed to enable VCC regulator\n");
-		regulator_disable(ps_stm401->vio_regulator);
-		regulator_put(ps_stm401->vcc_regulator);
-		regulator_put(ps_stm401->vio_regulator);
+	if (regulator_enable(ps_stm401->regulator_2)) {
+		dev_err(&client->dev, "Failed to enable Sensor 2 regulator\n");
+		regulator_disable(ps_stm401->regulator_1);
+		regulator_put(ps_stm401->regulator_2);
+		regulator_put(ps_stm401->regulator_1);
 		goto err_regulator;
 	}
-#endif
 
 	err = stm401_gpio_init(pdata, client);
 	if (err) {
@@ -859,13 +856,11 @@ err1:
 	wake_lock_destroy(&ps_stm401->wakelock);
 	stm401_gpio_free(pdata);
 err_gpio_init:
-#if 0
-	regulator_disable(ps_stm401->vcc_regulator);
-	regulator_disable(ps_stm401->vio_regulator);
-	regulator_put(ps_stm401->vcc_regulator);
-	regulator_put(ps_stm401->vio_regulator);
+	regulator_disable(ps_stm401->regulator_2);
+	regulator_disable(ps_stm401->regulator_1);
+	regulator_put(ps_stm401->regulator_2);
+	regulator_put(ps_stm401->regulator_1);
 err_regulator:
-#endif
 err_pdata:
 	kfree(ps_stm401);
 	return err;
@@ -895,10 +890,10 @@ static int stm401_remove(struct i2c_client *client)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&ps_stm401->early_suspend);
 #endif
-	regulator_disable(ps_stm401->vcc_regulator);
-	regulator_disable(ps_stm401->vio_regulator);
-	regulator_put(ps_stm401->vcc_regulator);
-	regulator_put(ps_stm401->vio_regulator);
+	regulator_disable(ps_stm401->regulator_2);
+	regulator_disable(ps_stm401->regulator_1);
+	regulator_put(ps_stm401->regulator_2);
+	regulator_put(ps_stm401->regulator_1);
 	kfree(ps_stm401);
 
 	return 0;
