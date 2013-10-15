@@ -3433,8 +3433,10 @@ static long kgsl_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 		mutex_lock(&dev_priv->device->mutex);
 		if (use_hw) {
 			ret = kgsl_active_count_get(dev_priv->device);
-			if (ret < 0)
+			if (ret < 0) {
+				use_hw = 0;
 				goto unlock;
+			}
 		}
 	}
 
