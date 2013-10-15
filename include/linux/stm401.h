@@ -425,8 +425,8 @@ struct stm401_data {
 	bool ap_stm401_handoff_ctrl;
 	bool ap_stm401_handoff_enable;
 
-	struct regulator *vio_regulator;
-	struct regulator *vcc_regulator;
+	struct regulator *regulator_1;
+	struct regulator *regulator_2;
 };
 
 /* per algo config, request, and event registers */
