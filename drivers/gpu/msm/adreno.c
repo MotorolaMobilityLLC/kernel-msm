@@ -3121,7 +3121,7 @@ err:
 	KGSL_DRV_ERR(device, "spun too long waiting for RB to idle\n");
 	if (KGSL_STATE_DUMP_AND_FT != device->state &&
 		!adreno_dump_and_exec_ft(device)) {
-		wait_time = jiffies + ADRENO_IDLE_TIMEOUT;
+		wait_time = jiffies + msecs_to_jiffies(ADRENO_IDLE_TIMEOUT);
 		goto retry;
 	}
 	return -ETIMEDOUT;
