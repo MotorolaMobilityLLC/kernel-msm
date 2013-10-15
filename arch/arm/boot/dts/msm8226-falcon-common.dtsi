@@ -56,19 +56,18 @@
 };
 
 &mot_cmi_720p_vid_v0 {
-	vddio_disp-supply = <&vddio_disp_vreg>;
-	lcdbias-supply = <&tps65132>;
 	qcom,cont-splash-enabled;
 };
 
 &mot_cmi_720p_vid_v1 {
-	vddio_disp-supply = <&vddio_disp_vreg>;
-	lcdbias-supply = <&tps65132>;
 	qcom,cont-splash-enabled;
 };
 
 &mot_cmi_720p_vid_v2 {
+	qcom,cont-splash-enabled;
+};
+
+&mdss_dsi0 {
 	vddio_disp-supply = <&vddio_disp_vreg>;
 	lcdbias-supply = <&tps65132>;
-	qcom,cont-splash-enabled;
 };
