@@ -77,7 +77,11 @@ struct tfa9890_priv {
 	int vol_idx;
 	int curr_vol_idx;
 	int ic_version;
+	char const *tfa_dev;
 };
+
+static DEFINE_MUTEX(lr_lock);
+static int stereo_mode;
 
 static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 {
@@ -106,7 +110,7 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 },
 {
 	.reg = TFA9890_SYS_CTL2_REG,
-	.value = 0x38E5,
+	.value = 0x38D2,
 },
 {
 	.reg = TFA9890_PWM_CTL_REG,
@@ -499,6 +503,7 @@ static int tfa9890_put_mode(struct snd_kcontrol *kcontrol,
 	int mode_value = ucontrol->value.integer.value[0];
 	int vol_value = ucontrol->value.integer.value[1];
 
+	mutex_lock(&lr_lock);
 	mutex_lock(&tfa9890->dsp_init_lock);
 	/* check for boundary conditions */
 	if ((vol_value > tfa9890->max_vol_steps || vol_value < 0) ||
@@ -506,6 +511,7 @@ static int tfa9890_put_mode(struct snd_kcontrol *kcontrol,
 			mode_value < 0)) {
 		pr_err("%s: invalid mode or vol index set", __func__);
 		mutex_unlock(&tfa9890->dsp_init_lock);
+		mutex_unlock(&lr_lock);
 		return -EINVAL;
 	}
 
@@ -527,6 +533,7 @@ static int tfa9890_put_mode(struct snd_kcontrol *kcontrol,
 			tfa9890_set_mode(tfa9890);
 	}
 	mutex_unlock(&tfa9890->dsp_init_lock);
+	mutex_unlock(&lr_lock);
 	return 1;
 }
 
@@ -535,30 +542,56 @@ static const struct soc_enum tfa9890_mode_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, tfa9890_mode),
 };
 
-static const struct snd_kcontrol_new tfa9890_snd_controls[] = {
-	SOC_SINGLE_TLV("NXP Volume", TFA9890_VOL_CTL_REG,
+static const struct snd_kcontrol_new tfa9890_left_snd_controls[] = {
+	SOC_SINGLE_TLV("NXP VolumeL", TFA9890_VOL_CTL_REG,
 			8, 0xff, 0, tlv_step_0_5),
-	SOC_SINGLE_MULTI_EXT("NXP Mode", SND_SOC_NOPM, 0, 255,
+	SOC_SINGLE_MULTI_EXT("NXP ModeL", SND_SOC_NOPM, 0, 255,
 				 0, 2, tfa9890_get_mode,
 				 tfa9890_put_mode),
 };
 
 /* bit 6,7 : 01 - DSP bypassed, 10 - DSP used */
-static const struct snd_kcontrol_new tfa9890_mixer_controls[] = {
-	SOC_DAPM_SINGLE("DSP Switch", TFA9890_I2S_CTL_REG, 6, 3, 0),
+static const struct snd_kcontrol_new tfa9890_left_mixer_controls[] = {
+	SOC_DAPM_SINGLE("DSP Switch Left", TFA9890_I2S_CTL_REG, 6, 3, 0),
 };
 
-static const struct snd_soc_dapm_widget tfa9890_dapm_widgets[] = {
-	SND_SOC_DAPM_INPUT("I2S1"),
-	SND_SOC_DAPM_MIXER("NXP Output Mixer", SND_SOC_NOPM, 0, 0,
-			   &tfa9890_mixer_controls[0],
-			   ARRAY_SIZE(tfa9890_mixer_controls)),
-	SND_SOC_DAPM_OUTPUT("NXP Speaker Boost"),
+static const struct snd_soc_dapm_widget tfa9890_left_dapm_widgets[] = {
+	SND_SOC_DAPM_INPUT("I2S1L"),
+	SND_SOC_DAPM_MIXER("NXP Output Mixer Left", SND_SOC_NOPM, 0, 0,
+			   &tfa9890_left_mixer_controls[0],
+			   ARRAY_SIZE(tfa9890_left_mixer_controls)),
+	SND_SOC_DAPM_OUTPUT("NXP Speaker Boost Left"),
 };
 
-static const struct snd_soc_dapm_route tfa9890_dapm_routes[] = {
-	{"NXP Output Mixer", "DSP Switch", "I2S1"},
-	{"NXP Speaker Boost", "Null", "NXP Output Mixer"},
+static const struct snd_soc_dapm_route tfa9890_left_dapm_routes[] = {
+	{"NXP Output Mixer Left", "DSP Switch Left", "I2S1L"},
+	{"NXP Speaker Boost Left", "Null", "NXP Output Mixer Left"},
+};
+
+static const struct snd_kcontrol_new tfa9890_right_snd_controls[] = {
+	SOC_SINGLE_TLV("NXP VolumeR", TFA9890_VOL_CTL_REG,
+			8, 0xff, 0, tlv_step_0_5),
+	SOC_SINGLE_MULTI_EXT("NXP ModeR", SND_SOC_NOPM, 0, 255,
+				 0, 2, tfa9890_get_mode,
+				 tfa9890_put_mode),
+};
+
+/* bit 6,7 : 01 - DSP bypassed, 10 - DSP used */
+static const struct snd_kcontrol_new tfa9890_right_mixer_controls[] = {
+	SOC_DAPM_SINGLE("DSP Switch Right", TFA9890_I2S_CTL_REG, 6, 3, 0),
+};
+
+static const struct snd_soc_dapm_widget tfa9890_right_dapm_widgets[] = {
+	SND_SOC_DAPM_INPUT("I2S1R"),
+	SND_SOC_DAPM_MIXER("NXP Output Mixer Right", SND_SOC_NOPM, 0, 0,
+			   &tfa9890_right_mixer_controls[0],
+			   ARRAY_SIZE(tfa9890_right_mixer_controls)),
+	SND_SOC_DAPM_OUTPUT("NXP Speaker Boost Right"),
+};
+
+static const struct snd_soc_dapm_route tfa9890_right_dapm_routes[] = {
+	{"NXP Output Mixer Right", "DSP Switch Right", "I2S1R"},
+	{"NXP Speaker Boost Right", "Null", "NXP Output Mixer Right"},
 };
 
 /*
@@ -869,9 +902,11 @@ static void tfa9890_work_read_imp(struct work_struct *work)
 			container_of(work, struct tfa9890_priv, calib_work);
 	u16 val;
 
+	mutex_lock(&lr_lock);
 	val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
 	if ((val & TFA9890_STATUS_PLLS) && (val & TFA9890_STATUS_CLKS))
 		tfa9890->speaker_imp = tfa9890_read_spkr_imp(tfa9890);
+	mutex_unlock(&lr_lock);
 }
 
 static void tfa9890_work_mode(struct work_struct *work)
@@ -882,6 +917,7 @@ static void tfa9890_work_mode(struct work_struct *work)
 	int tries = 0;
 	u16 val;
 
+	mutex_lock(&lr_lock);
 	mutex_lock(&tfa9890->dsp_init_lock);
 	/* check if DSP pll is synced, It should be sync'ed at this point */
 	do {
@@ -899,6 +935,7 @@ static void tfa9890_work_mode(struct work_struct *work)
 	tfa9890_set_mode(tfa9890);
 out:
 	mutex_unlock(&tfa9890->dsp_init_lock);
+	mutex_unlock(&lr_lock);
 }
 
 static void tfa9890_load_preset(struct work_struct *work)
@@ -910,10 +947,13 @@ static void tfa9890_load_preset(struct work_struct *work)
 	int i;
 	char *preset_name;
 
+	mutex_lock(&lr_lock);
+	pr_info("%s: loading presets\n", codec->name);
 	preset_name = kzalloc(FIRMWARE_NAME_SIZE, GFP_KERNEL);
 	if (!preset_name) {
 		tfa9890->dsp_init = TFA9890_DSP_INIT_FAIL;
 		pr_err("tfa9890 : Load preset allocation failure\n");
+		mutex_unlock(&lr_lock);
 		return;
 	}
 
@@ -925,13 +965,14 @@ static void tfa9890_load_preset(struct work_struct *work)
 				codec->dev);
 		if (ret || (fw_pst_table[i]->size !=
 				tfa9890->max_vol_steps*TFA9890_PST_FW_SIZE)) {
-			pr_err("tfa9890: Failed to locate DSP preset table %s",
-					preset_name);
+			pr_err("%s: Failed to locate DSP preset table %s",
+					codec->name, preset_name);
 			tfa9890->dsp_init = TFA9890_DSP_INIT_FAIL;
 			break;
 		}
 	}
 	kfree(preset_name);
+	mutex_unlock(&lr_lock);
 }
 
 static void tfa9890_monitor(struct work_struct *work)
@@ -941,6 +982,7 @@ static void tfa9890_monitor(struct work_struct *work)
 				delay_work.work);
 	u16 val;
 
+	mutex_lock(&lr_lock);
 	mutex_lock(&tfa9890->dsp_init_lock);
 	val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
 	pr_debug("%s: status:0x%x", __func__, val);
@@ -958,6 +1000,7 @@ static void tfa9890_monitor(struct work_struct *work)
 	queue_delayed_work(tfa9890->tfa9890_wq, &tfa9890->delay_work,
 				5*HZ);
 	mutex_unlock(&tfa9890->dsp_init_lock);
+	mutex_unlock(&lr_lock);
 }
 
 static void tfa9890_dsp_init(struct work_struct *work)
@@ -969,6 +1012,7 @@ static void tfa9890_dsp_init(struct work_struct *work)
 	int ret;
 	int tries = 0;
 
+	mutex_lock(&lr_lock);
 	mutex_lock(&tfa9890->dsp_init_lock);
 	/* check if DSP pll is synced, It should be sync'ed at this point */
 	do {
@@ -983,7 +1027,8 @@ static void tfa9890_dsp_init(struct work_struct *work)
 		goto out;
 	}
 
-	pr_info("tfa9890: Initializing DSP, status:0x%x", val);
+	pr_info("%s: Initializing DSP, status:0x%x",
+			codec->name, val);
 
 	/* cold boot device before loading firmware and parameters */
 	ret = tfa9890_coldboot(codec);
@@ -1015,10 +1060,12 @@ static void tfa9890_dsp_init(struct work_struct *work)
 
 	tfa9890->dsp_init = TFA9890_DSP_INIT_DONE;
 	mutex_unlock(&tfa9890->dsp_init_lock);
+	mutex_unlock(&lr_lock);
 	return;
 out:
 	tfa9890->dsp_init = TFA9890_DSP_INIT_FAIL;
 	mutex_unlock(&tfa9890->dsp_init_lock);
+	mutex_unlock(&lr_lock);
 }
 
 /*
@@ -1080,9 +1127,7 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_codec *codec = dai->codec;
 	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
 	u16 val;
-	int bclk;
 	int bclk_ws_ratio;
-	int bclk_div;
 
 	/* validate and set params */
 	if (params_format(params) != SNDRV_PCM_FORMAT_S16_LE) {
@@ -1132,11 +1177,26 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 		pr_err("tfa9890: invalid sample rate\n");
 		return -EINVAL;
 	}
-	snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
+
+	if (stereo_mode) {
+		/* select right/left channel input for I2S */
+		if (!strncmp(tfa9890->tfa_dev, "left", 4)) {
+			val = val & (~TFA9890_I2S_CHS12);
+			val = val | TFA9890_I2S_LEFT_IN;
+		} else if (!strncmp(tfa9890->tfa_dev, "right", 5)) {
+			val = val & (~TFA9890_I2S_CHS12);
+			val = val | TFA9890_I2S_RIGHT_IN;
+		}
+		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
+		/* set datao left channel to send gain info */
+		val = snd_soc_read(codec, TFA9890_SYS_CTL2_REG);
+		val = val & (~TFA9890_DOLS_DATAO);
+		val = val | TFA9890_DOLS_GAIN;
+		snd_soc_write(codec, TFA9890_SYS_CTL2_REG, val);
+	}
+
 	/* calc bclk to ws freq ratio, tfa9890 supports only 32, 48, 64 */
-	bclk_div = tfa9890->sysclk/(params_rate(params) * 16 * 2);
-	bclk = tfa9890->sysclk*100/bclk_div;
-	bclk_ws_ratio = bclk*100/params_rate(params);
+	bclk_ws_ratio = tfa9890->sysclk/params_rate(params);
 	if (bclk_ws_ratio != 32 && bclk_ws_ratio != 48
 			&& bclk_ws_ratio != 64) {
 		pr_err("tfa9890: invalid bit clk to ws freq ratio %d:",
@@ -1489,8 +1549,20 @@ static const struct snd_soc_dai_ops tfa9890_ops = {
 	.trigger = tfa9890_trigger,
 };
 
-static struct snd_soc_dai_driver tfa9890_dai = {
-	.name = "tfa9890_codec",
+static struct snd_soc_dai_driver tfa9890_left_dai = {
+	.name = "tfa9890_codec_left",
+	.playback = {
+		     .stream_name = "Playback",
+		     .channels_min = 1,
+		     .channels_max = 2,
+		     .rates = TFA9890_RATES,
+		     .formats = TFA9890_FORMATS,},
+	.ops = &tfa9890_ops,
+	.symmetric_rates = 1,
+};
+
+static struct snd_soc_dai_driver tfa9890_right_dai = {
+	.name = "tfa9890_codec_right",
 	.playback = {
 		     .stream_name = "Playback",
 		     .channels_min = 1,
@@ -1520,21 +1592,34 @@ static int tfa9890_probe(struct snd_soc_codec *codec)
 		snd_soc_write(codec, tfa9890_reg_defaults[i].reg,
 						tfa9890_reg_defaults[i].value);
 	}
-	/* add controls and didgets */
-	snd_soc_add_codec_controls(codec, tfa9890_snd_controls,
-			     ARRAY_SIZE(tfa9890_snd_controls));
-	snd_soc_dapm_new_controls(&codec->dapm, tfa9890_dapm_widgets,
-				  ARRAY_SIZE(tfa9890_dapm_widgets));
+	/* add controls and widgets */
+	if (!strncmp("left", tfa9890->tfa_dev, 4)) {
+		snd_soc_add_codec_controls(codec, tfa9890_left_snd_controls,
+			     ARRAY_SIZE(tfa9890_left_snd_controls));
+		snd_soc_dapm_new_controls(&codec->dapm,
+				tfa9890_left_dapm_widgets,
+				ARRAY_SIZE(tfa9890_left_dapm_widgets));
 
-	snd_soc_dapm_add_routes(&codec->dapm, tfa9890_dapm_routes,
-				ARRAY_SIZE(tfa9890_dapm_routes));
+		snd_soc_dapm_add_routes(&codec->dapm, tfa9890_left_dapm_routes,
+				ARRAY_SIZE(tfa9890_left_dapm_routes));
+	} else if (!strncmp("right", tfa9890->tfa_dev, 5)) {
+		snd_soc_add_codec_controls(codec, tfa9890_right_snd_controls,
+			     ARRAY_SIZE(tfa9890_right_snd_controls));
+		snd_soc_dapm_new_controls(&codec->dapm,
+				tfa9890_right_dapm_widgets,
+				ARRAY_SIZE(tfa9890_right_dapm_widgets));
+		snd_soc_dapm_add_routes(&codec->dapm, tfa9890_right_dapm_routes,
+				ARRAY_SIZE(tfa9890_right_dapm_routes));
+		/* set stereo mode */
+		stereo_mode = 1;
+	}
 
 	snd_soc_dapm_new_widgets(&codec->dapm);
 	snd_soc_dapm_sync(&codec->dapm);
 
 	/* load preset tables */
 	queue_work(tfa9890->tfa9890_wq, &tfa9890->load_preset);
-	pr_info("tfa9890 codec registered");
+	pr_info("%s codec registered", codec->name);
 	return 0;
 }
 
@@ -1579,6 +1664,9 @@ tfa9890_of_init(struct i2c_client *client)
 	of_property_read_u32(np, "nxp,tfa_max-vol-steps",
 				&pdata->max_vol_steps);
 	pdata->reset_gpio = of_get_gpio(np, 0);
+
+	if (of_property_read_string(np, "nxp,tfa-dev", &pdata->tfa_dev))
+		pdata->tfa_dev = "left";
 
 	return pdata;
 }
@@ -1626,25 +1714,10 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
 	tfa9890->vol_idx = pdata->max_vol_steps;
 	tfa9890->curr_vol_idx = pdata->max_vol_steps;
+	tfa9890->tfa_dev = pdata->tfa_dev;
 	i2c_set_clientdata(i2c, tfa9890);
 	mutex_init(&tfa9890->dsp_init_lock);
 	mutex_init(&tfa9890->i2c_rw_lock);
-
-	/* enable regulator */
-	tfa9890->vdd = regulator_get(&i2c->dev, "tfa_vdd");
-	if (IS_ERR(tfa9890->vdd)) {
-		pr_err("%s: Error getting vdd regulator.\n", __func__);
-		ret = PTR_ERR(tfa9890->vdd);
-		goto reg_get_fail;
-	}
-
-	regulator_set_voltage(tfa9890->vdd, 1800000, 1800000);
-
-	ret = regulator_enable(tfa9890->vdd);
-	if (ret < 0) {
-		pr_err("%s: Error enabling vdd regulator %d:", __func__, ret);
-		goto reg_enable_fail;
-	}
 
 	/* register sysfs hooks */
 	ret = sysfs_create_group(&i2c->dev.kobj, &tfa9890_attr_group);
@@ -1673,39 +1746,72 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	INIT_WORK(&tfa9890->load_preset, tfa9890_load_preset);
 	INIT_DELAYED_WORK(&tfa9890->delay_work, tfa9890_monitor);
 
-	ret = gpio_request(tfa9890->rst_gpio, "tfa reset gpio");
-	if (ret < 0) {
-		pr_err("%s: tfa reset gpio_request failed: %d\n",
-			__func__, ret);
-		goto gpio_fail;
-	}
-	/* take IC out of reset, device registers are reset in codec probe
-	 * through register write.
+	/* gpio is optional in devtree, if its not specified dont fail
+	 * Its not specified for right IC if the gpio is same for both
+	 * IC's.
 	 */
-	gpio_direction_output(tfa9890->rst_gpio, 0);
-
-	/* register codec */
-	ret = snd_soc_register_codec(&i2c->dev,
-			&soc_codec_dev_tfa9890, &tfa9890_dai, 1);
-	if (ret < 0) {
-		pr_err("%s: Error registering tfa9890 codec", __func__);
-		goto codec_fail;
+	if (gpio_is_valid(tfa9890->rst_gpio)) {
+		ret = gpio_request(tfa9890->rst_gpio, "tfa reset gpio");
+		if (ret < 0) {
+			pr_err("%s: tfa reset gpio_request failed: %d\n",
+				__func__, ret);
+			goto gpio_fail;
+		}
+		gpio_direction_output(tfa9890->rst_gpio, 0);
 	}
 
-	pr_info("tfa9890 probed successfully!");
+	tfa9890->vdd = regulator_get(&i2c->dev, "tfa_vdd");
+	if (IS_ERR(tfa9890->vdd)) {
+		pr_err("%s: Error getting vdd regulator.\n", __func__);
+		ret = PTR_ERR(tfa9890->vdd);
+		goto reg_get_fail;
+	}
+
+	regulator_set_voltage(tfa9890->vdd, 1800000, 1800000);
+
+	ret = regulator_enable(tfa9890->vdd);
+	if (ret < 0) {
+		pr_err("%s: Error enabling vdd regulator %d:",
+			__func__, ret);
+		goto reg_enable_fail;
+	}
+
+	if (!strncmp("left", tfa9890->tfa_dev, 4)) {
+		/* register codec */
+		ret = snd_soc_register_codec(&i2c->dev,
+				&soc_codec_dev_tfa9890,
+				&tfa9890_left_dai, 1);
+		if (ret < 0) {
+			pr_err("%s: Error registering tfa9890 left codec",
+				__func__);
+			goto codec_fail;
+		}
+	} else if (!strncmp("right", tfa9890->tfa_dev, 5)) {
+		/* register codec */
+		ret = snd_soc_register_codec(&i2c->dev,
+				&soc_codec_dev_tfa9890,
+				&tfa9890_right_dai, 1);
+		if (ret < 0) {
+			pr_err("%s: Error registering tfa9890 right codec",
+				__func__);
+			goto codec_fail;
+		}
+	}
+
+	pr_info("tfa9890 %s probed successfully!", tfa9890->tfa_dev);
 
 	return ret;
 
 codec_fail:
-	gpio_free(tfa9890->rst_gpio);
+	regulator_disable(tfa9890->vdd);
+reg_enable_fail:
+	regulator_put(tfa9890->vdd);
+reg_get_fail:
+	if (gpio_is_valid(tfa9890->rst_gpio))
+		gpio_free(tfa9890->rst_gpio);
 gpio_fail:
 	destroy_workqueue(tfa9890->tfa9890_wq);
 wq_fail:
-	snd_soc_unregister_codec(&i2c->dev);
-reg_enable_fail:
-	regulator_disable(tfa9890->vdd);
-	regulator_put(tfa9890->vdd);
-reg_get_fail:
 
 	return ret;
 }
@@ -1716,7 +1822,8 @@ static __devexit int tfa9890_i2c_remove(struct i2c_client *client)
 
 	snd_soc_unregister_codec(&client->dev);
 	regulator_disable(tfa9890->vdd);
-	gpio_free(tfa9890->rst_gpio);
+	if (gpio_is_valid(tfa9890->rst_gpio))
+		gpio_free(tfa9890->rst_gpio);
 	regulator_put(tfa9890->vdd);
 	destroy_workqueue(tfa9890->tfa9890_wq);
 	return 0;
@@ -1746,7 +1853,6 @@ static struct i2c_driver tfa9890_i2c_driver = {
 	.remove =   __devexit_p(tfa9890_i2c_remove),
 	.id_table = tfa9890_i2c_id,
 };
-
 static int __init tfa9890_modinit(void)
 {
 	int ret;

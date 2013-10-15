@@ -22,6 +22,7 @@
 struct tfa9890_pdata {
 	int reset_gpio;
 	int max_vol_steps;
+	const char *tfa_dev;
 };
 
 #endif

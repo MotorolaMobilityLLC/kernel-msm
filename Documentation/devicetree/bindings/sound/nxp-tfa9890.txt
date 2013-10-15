@@ -13,6 +13,8 @@ Required properties:
 			- RESET GPIO
  - tfa_vd-supply:
 		specify the regulator it uses.
+ - tfa-dev:
+		specifies if its a Left IC or Right IC in stereo configuration
 
 Example:
 		tfa9890@34 {
@@ -20,4 +22,5 @@ Example:
 			reg = <0x34>;
 			gpios = <&pm8921_gpio 18 0>;     /* RESET */
 			tfa_vdd-supply = <&rpm_8921_s4>;
+			nxp,tfa-dev = "left";
 		};
