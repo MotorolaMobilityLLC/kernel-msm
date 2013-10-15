@@ -1332,12 +1332,14 @@ static void adreno_dispatcher_work(struct work_struct *work)
 	 * into suspend even if there are queued command batches
 	 */
 
+	mutex_lock(&device->mutex);
 	if (count && dispatcher->inflight == 0) {
-		mutex_lock(&device->mutex);
 		del_timer_sync(&dispatcher->fault_timer);
 		kgsl_active_count_put(device);
-		mutex_unlock(&device->mutex);
+		/* Queue back up the event processor to catch stragglers */
+		queue_work(device->work_queue, &device->ts_expired_ws);
 	}
+	mutex_unlock(&device->mutex);
 
 	/* Dispatch new commands if we have the room */
 	if (dispatcher->inflight < _dispatcher_inflight)
