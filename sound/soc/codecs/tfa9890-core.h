@@ -149,6 +149,20 @@
 #define TFA9890_PWM_VAL			(0x7 << 1)
 #define TFA9890_POWER_DOWN		(0x1)
 #define TFA9890_MTPOTC			(0x1)
+#define TFA9890_I2S_CHS12		(0x3 << 3)
+#define TFA9890_DOLS_DATAO		(0x7)
+#define TFA9890_DORS_DATAO		(0x7 << 3)
+
+/* enable I2S left channel input */
+#define TFA9890_I2S_LEFT_IN		(0x1 << 3)
+/* enable I2S right channel input */
+#define TFA9890_I2S_RIGHT_IN	(0x2 << 3)
+/* route gain info on datao pin on left channel */
+#define TFA9890_DOLS_GAIN		(0x1)
+/* route gain info on datao pin on right channel */
+#define TFA9890_DORS_GAIN		(0x1 << 3)
+
+
 
 /* Mute States */
 #define TFA9890_MUTE_OFF	0
