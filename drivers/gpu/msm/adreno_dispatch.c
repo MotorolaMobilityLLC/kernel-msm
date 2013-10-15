@@ -1334,6 +1334,7 @@ static void adreno_dispatcher_work(struct work_struct *work)
 
 	if (count && dispatcher->inflight == 0) {
 		mutex_lock(&device->mutex);
+		del_timer_sync(&dispatcher->fault_timer);
 		kgsl_active_count_put(device);
 		mutex_unlock(&device->mutex);
 	}
@@ -1350,9 +1351,6 @@ done:
 
 		/* Update the timeout timer for the next command batch */
 		mod_timer(&dispatcher->timer, cmdbatch->expires);
-	} else {
-		del_timer_sync(&dispatcher->timer);
-		del_timer_sync(&dispatcher->fault_timer);
 	}
 
 	/* Before leaving update the pwrscale information */
@@ -1404,6 +1402,8 @@ void adreno_dispatcher_fault_timer(unsigned long data)
 	struct adreno_device *adreno_dev = (struct adreno_device *) data;
 	struct kgsl_device *device = &adreno_dev->dev;
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
+
+	BUG_ON(atomic_read(&device->active_cnt) == 0);
 
 	/* Leave if the user decided to turn off fast hang detection */
 	if (adreno_dev->fast_hang_detect == 0)
