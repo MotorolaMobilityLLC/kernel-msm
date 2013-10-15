@@ -336,6 +336,10 @@ static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 		step_boundary =
 			a_ctrl->region_params[region_index].
 			step_bound[MOVE_NEAR];
+		if (step_boundary > set_info->af_tuning_params.total_steps - 1) {
+			pr_err("%s: Error af steps mismatch!", __func__);
+			return -EFAULT;
+		}
 		for (; step_index <= step_boundary;
 			step_index++) {
 			cur_code += code_per_step;
