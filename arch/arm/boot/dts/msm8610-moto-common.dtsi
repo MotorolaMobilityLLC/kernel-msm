@@ -304,7 +304,6 @@
 				label = "mpp";
 				linux,name = "wled-backlight";
 				linux,default-trigger = "bkl-trigger";
-				qcom,default-state = "on";
 				qcom,max-current = <40>;
 				qcom,id = <6>;
 				qcom,source-sel = <8>;
@@ -313,7 +312,6 @@
 				qcom,pwm-us = <14>;
 				qcom,vin-ctrl = <0x03>;
 				qcom,mode = "pwm";
-				qcom,min-brightness = <19>;
 			};
 		};
 	};
