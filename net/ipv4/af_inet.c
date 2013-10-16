@@ -160,7 +160,6 @@ void inet_sock_destruct(struct sock *sk)
 	}
 	if (!sock_flag(sk, SOCK_DEAD)) {
 		pr_err("Attempt to release alive inet socket %p\n", sk);
-		BUG();
 		return;
 	}
 
