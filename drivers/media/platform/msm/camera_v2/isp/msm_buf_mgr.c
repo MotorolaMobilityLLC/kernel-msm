@@ -215,8 +215,13 @@ static int msm_isp_buf_prepare(struct msm_isp_buf_mgr *buf_mgr,
 		buf_info->vb2_buf = vb2_buf;
 	} else {
 		buf = &info->buffer;
-		plane =
-			kzalloc(sizeof(struct v4l2_plane) * buf->length,
+
+		if (buf->length > VIDEO_MAX_PLANES) {
+			pr_err("%s: Unsupported length %d!\n", __func__, buf->length);
+			return rc;
+		}
+
+		plane = kzalloc(sizeof(struct v4l2_plane) * buf->length,
 				GFP_KERNEL);
 		if (!plane) {
 			pr_err("%s: Cannot alloc plane: %d\n",

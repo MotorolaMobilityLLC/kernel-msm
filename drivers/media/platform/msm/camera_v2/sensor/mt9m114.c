@@ -1312,6 +1312,15 @@ int32_t mt9m114_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		struct msm_camera_i2c_reg_setting conf_array;
 		struct msm_camera_i2c_reg_array *reg_setting = NULL;
 
+		if (cdata->setting_size !=
+			sizeof(struct msm_camera_i2c_reg_setting)) {
+			pr_err("%s:%d: size %d exp %d\n", __func__, __LINE__,
+				cdata->setting_size,
+				sizeof(struct msm_camera_i2c_reg_setting));
+			rc = -EINVAL;
+			break;
+		}
+
 		if (copy_from_user(&conf_array,
 			(void *)cdata->cfg.setting,
 			sizeof(struct msm_camera_i2c_reg_setting))) {

@@ -543,6 +543,19 @@ int msm_isp_proc_cmd(struct vfe_device *vfe_dev, void *arg)
 	struct msm_vfe_reg_cfg_cmd *reg_cfg_cmd;
 	uint32_t *cfg_data;
 
+	if (proc_cmd->num_cfg > ISP_REG_CFG_NUM_CFG_MAX) {
+		pr_err("%s: Unsupported number of commands %d!\n",
+				__func__, proc_cmd->num_cfg);
+		rc = -EINVAL;
+		goto reg_cfg_failed;
+	}
+	if (proc_cmd->cmd_len > ISP_REG_CFG_CMD_LEN_MAX) {
+		pr_err("%s: Unsupported command length %d!\n",
+				__func__, proc_cmd->cmd_len);
+		rc = -EINVAL;
+		goto reg_cfg_failed;
+	}
+
 	reg_cfg_cmd = kzalloc(sizeof(struct msm_vfe_reg_cfg_cmd)*
 		proc_cmd->num_cfg, GFP_KERNEL);
 	if (!reg_cfg_cmd) {

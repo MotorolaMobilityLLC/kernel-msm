@@ -438,19 +438,36 @@ static long msm_csid_cmd(struct csid_device *csid_dev, void *arg)
 			cdata->cfg.csid_version);
 		break;
 	case CSID_CFG: {
+		struct msm_sensor_csid_cfg_params *u_csid_cfg_params;
 		struct msm_camera_csid_params csid_params;
 		struct msm_camera_csid_vc_cfg *vc_cfg = NULL;
 		int32_t i = 0;
+		u_csid_cfg_params = &cdata->cfg.csid_cfg_params;
+		if (u_csid_cfg_params->csid_params_size !=
+			sizeof(csid_params)) {
+			pr_err("%s:%d invalid csid params size %d exp %d\n",
+				__func__, __LINE__,
+				u_csid_cfg_params->csid_params_size,
+				sizeof(csid_params));
+			rc = -EINVAL;
+			break;
+		}
 		if (copy_from_user(&csid_params,
-			(void *)cdata->cfg.csid_params,
+			(void *)u_csid_cfg_params->csid_params,
 			sizeof(struct msm_camera_csid_params))) {
 			pr_err("%s: %d failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 			break;
 		}
+		if (csid_params.lut_params.num_cid > MAX_CID) {
+			pr_err("%s:%d invalid num_cid %d max %d", __func__,
+				__LINE__, csid_params.lut_params.num_cid,
+				MAX_CID);
+			rc = -EINVAL;
+			break;
+		}
 		for (i = 0; i < csid_params.lut_params.num_cid; i++) {
-			vc_cfg = kzalloc(csid_params.lut_params.num_cid *
-				sizeof(struct msm_camera_csid_vc_cfg),
+			vc_cfg = kzalloc(sizeof(struct msm_camera_csid_vc_cfg),
 				GFP_KERNEL);
 			if (!vc_cfg) {
 				pr_err("%s: %d failed\n", __func__, __LINE__);
@@ -459,10 +476,19 @@ static long msm_csid_cmd(struct csid_device *csid_dev, void *arg)
 				rc = -ENOMEM;
 				break;
 			}
+			if (csid_params.lut_params.vc_cfg_size !=
+				sizeof(struct msm_camera_csid_vc_cfg)) {
+				pr_err("%s:%d: invalid parameter %d\n", __func__, __LINE__,
+					csid_params.lut_params.vc_cfg_size);
+				kfree(vc_cfg);
+				for (i--; i >= 0; i--)
+					kfree(csid_params.lut_params.vc_cfg[i]);
+				rc = -EINVAL;
+				break;
+			}
 			if (copy_from_user(vc_cfg,
 				(void *)csid_params.lut_params.vc_cfg[i],
-				(csid_params.lut_params.num_cid *
-				sizeof(struct msm_camera_csid_vc_cfg)))) {
+				(sizeof(struct msm_camera_csid_vc_cfg)))) {
 				pr_err("%s: %d failed\n", __func__, __LINE__);
 				kfree(vc_cfg);
 				for (i--; i >= 0; i--)
@@ -473,7 +499,7 @@ static long msm_csid_cmd(struct csid_device *csid_dev, void *arg)
 			csid_params.lut_params.vc_cfg[i] = vc_cfg;
 		}
 		rc = msm_csid_config(csid_dev, &csid_params);
-		for (i--; i >= 0; i--)
+		for (i = 0; i < csid_params.lut_params.num_cid; i++)
 			kfree(csid_params.lut_params.vc_cfg[i]);
 		break;
 	}

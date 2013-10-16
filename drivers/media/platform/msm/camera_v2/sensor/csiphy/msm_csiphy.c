@@ -560,6 +560,14 @@ static long msm_csiphy_cmd(struct csiphy_device *csiphy_dev, void *arg)
 		rc = msm_csiphy_init(csiphy_dev);
 		break;
 	case CSIPHY_CFG:
+		if (cdata->cfg_params_size !=
+			sizeof(struct msm_camera_csiphy_params)) {
+			pr_err("%s:%d: size %d exp %d\n", __func__, __LINE__,
+				cdata->cfg_params_size,
+				sizeof(struct msm_camera_csiphy_params));
+			rc = -EINVAL;
+			break;
+		}
 		if (copy_from_user(&csiphy_params,
 			(void *)cdata->cfg.csiphy_params,
 			sizeof(struct msm_camera_csiphy_params))) {
@@ -570,6 +578,14 @@ static long msm_csiphy_cmd(struct csiphy_device *csiphy_dev, void *arg)
 		rc = msm_csiphy_lane_config(csiphy_dev, &csiphy_params);
 		break;
 	case CSIPHY_RELEASE:
+		if (cdata->cfg_params_size !=
+			sizeof(struct msm_camera_csi_lane_params)) {
+			pr_err("%s:%d: size %d exp %d\n", __func__, __LINE__,
+				cdata->cfg_params_size,
+				sizeof(struct msm_camera_csi_lane_params));
+			rc = -EINVAL;
+			break;
+		}
 		if (copy_from_user(&csi_lane_params,
 			(void *)cdata->cfg.csi_lane_params,
 			sizeof(struct msm_camera_csi_lane_params))) {

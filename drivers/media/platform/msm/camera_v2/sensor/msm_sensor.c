@@ -1436,6 +1436,16 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		struct msm_camera_sensor_slave_info sensor_slave_info;
 		struct msm_sensor_power_setting_array *power_setting_array;
 		int slave_index = 0;
+
+		if (cdata->setting_size !=
+			sizeof(struct msm_camera_sensor_slave_info)) {
+			pr_err("%s:%d: size %d exp %d\n", __func__, __LINE__,
+				cdata->setting_size,
+				sizeof(struct msm_camera_sensor_slave_info));
+			rc = -EINVAL;
+			break;
+		}
+
 		if (copy_from_user(&sensor_slave_info,
 			(void *)cdata->cfg.setting,
 			sizeof(struct msm_camera_sensor_slave_info))) {
@@ -1507,6 +1517,15 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			pr_err("%s:%d failed: invalid state %d\n", __func__,
 				__LINE__, s_ctrl->sensor_state);
 			rc = -EFAULT;
+			break;
+		}
+
+		if (cdata->setting_size !=
+			sizeof(struct msm_camera_i2c_reg_setting)) {
+			pr_err("%s: %d size %d exp %d\n", __func__, __LINE__,
+				cdata->setting_size,
+				sizeof(struct msm_camera_i2c_reg_setting));
+			rc = -EINVAL;
 			break;
 		}
 

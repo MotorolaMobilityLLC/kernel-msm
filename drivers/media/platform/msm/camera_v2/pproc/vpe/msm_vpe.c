@@ -1135,8 +1135,15 @@ static int msm_vpe_cfg(struct vpe_device *vpe_dev,
 		return -ENOMEM;
 	}
 
+	if (ioctl_ptr->len != sizeof(struct msm_vpe_frame_info_t)){
+		pr_err("%s:%d: Invalid user argument %d\n",
+			__func__, __LINE__, ioctl_ptr->len);
+		rc = -EINVAL;
+		goto err_free_new_frame;
+	}
+
 	rc = copy_from_user(new_frame, (void __user *)ioctl_ptr->ioctl_ptr,
-			sizeof(struct msm_vpe_frame_info_t));
+		sizeof(struct msm_vpe_frame_info_t));
 	if (rc) {
 		pr_err("%s:%d copy from user\n", __func__, __LINE__);
 		rc = -EINVAL;
@@ -1215,6 +1222,11 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 	struct msm_camera_v4l2_ioctl_t *ioctl_ptr = arg;
 	int rc = 0;
 
+	if (ioctl_ptr == NULL) {
+		pr_err("%s: ioctl_ptr is null\n", __func__);
+		return -EINVAL;
+	}
+
 	mutex_lock(&vpe_dev->mutex);
 	switch (cmd) {
 	case VIDIOC_MSM_VPE_TRANSACTION_SETUP: {
@@ -1284,6 +1296,16 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 
 		k_stream_buff_info.num_buffs = u_stream_buff_info->num_buffs;
 		k_stream_buff_info.identity = u_stream_buff_info->identity;
+
+		if (k_stream_buff_info.num_buffs > MSM_CAMERA_MAX_STREAM_BUF) {
+			pr_err("%s:%d: unexpected large num buff %d requested\n",
+				__func__, __LINE__,
+				k_stream_buff_info.num_buffs);
+			kfree(u_stream_buff_info);
+			mutex_unlock(&vpe_dev->mutex);
+			return -EINVAL;
+		}
+
 		k_stream_buff_info.buffer_info =
 			kzalloc(k_stream_buff_info.num_buffs *
 			sizeof(struct msm_vpe_buffer_info_t), GFP_KERNEL);

@@ -44,6 +44,8 @@
 #define MSM_CPP_DRV_NAME "msm_cpp"
 
 #define MSM_CPP_MAX_BUFF_QUEUE 16
+#define MSM_CPP_MAX_FRAME_LENGTH 1024
+#define MSM_CPP_MAX_FW_NAME_LEN 32
 
 #define CONFIG_MSM_CPP_DBG 0
 
@@ -1209,10 +1211,23 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 		return -ENOMEM;
 	}
 
-	rc = (copy_from_user(new_frame, (void __user *)ioctl_ptr->ioctl_ptr,
-		sizeof(struct msm_cpp_frame_info_t)) ? -EFAULT : 0);
-	if (rc) {
+	if (ioctl_ptr->len != sizeof(struct msm_cpp_frame_info_t)){
+		pr_err("%s:%d: Invalid user argument %d\n",
+			__func__, __LINE__, ioctl_ptr->len);
+		return -EINVAL;
+	}
+
+	if (copy_from_user(new_frame, (void __user *)ioctl_ptr->ioctl_ptr,
+		sizeof(struct msm_cpp_frame_info_t))) {
 		ERR_COPY_FROM_USER();
+		rc = -EINVAL;
+		goto ERROR1;
+	}
+
+	if ((new_frame->msg_len == 0) ||
+		(new_frame->msg_len > MSM_CPP_MAX_FRAME_LENGTH)) {
+		pr_err("%s:%d: Invalid frame len: %d\n", __func__,
+			__LINE__, new_frame->msg_len);
 		rc = -EINVAL;
 		goto ERROR1;
 	}
@@ -1225,10 +1240,9 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 		goto ERROR1;
 	}
 
-	rc = (copy_from_user(cpp_frame_msg,
+	if (copy_from_user(cpp_frame_msg,
 		(void __user *)new_frame->cpp_cmd_msg,
-		sizeof(uint32_t)*new_frame->msg_len) ? -EFAULT : 0);
-	if (rc) {
+		sizeof(uint32_t)*new_frame->msg_len)) {
 		ERR_COPY_FROM_USER();
 		rc = -EINVAL;
 		goto ERROR2;
@@ -1377,7 +1391,10 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		pr_err("ioctl_ptr is null\n");
 		return -EINVAL;
 	}
-
+	if (cpp_dev == NULL) {
+		pr_err("%s: cpp_dev is null\n", __func__);
+		return -EINVAL;
+	}
 	mutex_lock(&cpp_dev->mutex);
 	CPP_DBG("E cmd: %d\n", cmd);
 	switch (cmd) {
@@ -1395,6 +1412,13 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		if (cpp_dev->is_firmware_loaded == 0) {
 			kfree(cpp_dev->fw_name_bin);
 			cpp_dev->fw_name_bin = NULL;
+			if ((ioctl_ptr->len == 0) ||
+				(ioctl_ptr->len > MSM_CPP_MAX_FW_NAME_LEN)) {
+				pr_err("%s:%d: ioctl_ptr->len: %d is invalid\n",
+					__func__, __LINE__, ioctl_ptr->len);
+				mutex_unlock(&cpp_dev->mutex);
+				return -EINVAL;
+			}
 			cpp_dev->fw_name_bin = kzalloc(ioctl_ptr->len+1,
 				GFP_KERNEL);
 			if (!cpp_dev->fw_name_bin) {
@@ -1403,19 +1427,16 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 				mutex_unlock(&cpp_dev->mutex);
 				return -EINVAL;
 			}
-
 			if (ioctl_ptr->ioctl_ptr == NULL) {
 				pr_err("ioctl_ptr->ioctl_ptr=NULL\n");
+				kfree(cpp_dev->fw_name_bin);
+				cpp_dev->fw_name_bin = NULL;
+				mutex_unlock(&cpp_dev->mutex);
 				return -EINVAL;
 			}
-			if (ioctl_ptr->len == 0) {
-				pr_err("ioctl_ptr->len is 0\n");
-				return -EINVAL;
-			}
-			rc = (copy_from_user(cpp_dev->fw_name_bin,
+			if (copy_from_user(cpp_dev->fw_name_bin,
 				(void __user *)ioctl_ptr->ioctl_ptr,
-				ioctl_ptr->len) ? -EFAULT : 0);
-			if (rc) {
+				ioctl_ptr->len)) {
 				ERR_COPY_FROM_USER();
 				kfree(cpp_dev->fw_name_bin);
 				cpp_dev->fw_name_bin = NULL;
@@ -1423,11 +1444,6 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 				return -EINVAL;
 			}
 			*(cpp_dev->fw_name_bin+ioctl_ptr->len) = '\0';
-			if (cpp_dev == NULL) {
-				pr_err("cpp_dev is null\n");
-				return -EINVAL;
-			}
-
 			disable_irq(cpp_dev->irq->start);
 			cpp_load_fw(cpp_dev, cpp_dev->fw_name_bin);
 			enable_irq(cpp_dev->irq->start);
@@ -1458,10 +1474,9 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			return -EINVAL;
 		}
 
-		rc = (copy_from_user(u_stream_buff_info,
-				(void __user *)ioctl_ptr->ioctl_ptr,
-				ioctl_ptr->len) ? -EFAULT : 0);
-		if (rc) {
+		if (copy_from_user(u_stream_buff_info,
+			(void __user *)ioctl_ptr->ioctl_ptr,
+			ioctl_ptr->len)) {
 			ERR_COPY_FROM_USER();
 			kfree(u_stream_buff_info);
 			mutex_unlock(&cpp_dev->mutex);
@@ -1488,12 +1503,10 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 			return -EINVAL;
 		}
 
-		rc = (copy_from_user(k_stream_buff_info.buffer_info,
-				(void __user *)u_stream_buff_info->buffer_info,
-				k_stream_buff_info.num_buffs *
-				sizeof(struct msm_cpp_buffer_info_t)) ?
-				-EFAULT : 0);
-		if (rc) {
+		if (copy_from_user(k_stream_buff_info.buffer_info,
+			(void __user *)u_stream_buff_info->buffer_info,
+			k_stream_buff_info.num_buffs *
+			sizeof(struct msm_cpp_buffer_info_t))) {
 			ERR_COPY_FROM_USER();
 			kfree(k_stream_buff_info.buffer_info);
 			kfree(u_stream_buff_info);
@@ -1520,10 +1533,9 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		    (ioctl_ptr->len > sizeof(uint32_t)))
 			return -EINVAL;
 
-		rc = (copy_from_user(&identity,
-				(void __user *)ioctl_ptr->ioctl_ptr,
-				ioctl_ptr->len) ? -EFAULT : 0);
-		if (rc) {
+		if (copy_from_user(&identity,
+			(void __user *)ioctl_ptr->ioctl_ptr,
+			ioctl_ptr->len)) {
 			ERR_COPY_FROM_USER();
 			mutex_unlock(&cpp_dev->mutex);
 			return -EINVAL;
@@ -1604,12 +1616,11 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 	}
 	case VIDIOC_MSM_CPP_SEND_BUF_DONE: {
 		struct msm_buf_mngr_info buff_mgr_info;
-		rc = (copy_from_user(&buff_mgr_info,
-				(void __user *)ioctl_ptr->ioctl_ptr,
-				sizeof(struct msm_buf_mngr_info)) ?
-				-EFAULT : 0);
-		if (rc) {
+		if (copy_from_user(&buff_mgr_info,
+			(void __user *)ioctl_ptr->ioctl_ptr,
+			sizeof(struct msm_buf_mngr_info))) {
 			ERR_COPY_FROM_USER();
+			rc = -EINVAL;
 			break;
 		}
 
@@ -1626,11 +1637,11 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_CPP_POP_STREAM_BUFFER: {
 		struct msm_buf_mngr_info buff_mgr_info;
 		struct msm_cpp_frame_info_t frame_info;
-		rc = (copy_from_user(&frame_info,
+		if (copy_from_user(&frame_info,
 			(void __user *)ioctl_ptr->ioctl_ptr,
-			sizeof(struct msm_cpp_frame_info_t)) ? -EFAULT : 0);
-		if (rc) {
+			sizeof(struct msm_cpp_frame_info_t))) {
 			ERR_COPY_FROM_USER();
+			rc = -EINVAL;
 			break;
 		}
 		memset(&buff_mgr_info, 0, sizeof(struct msm_buf_mngr_info));
