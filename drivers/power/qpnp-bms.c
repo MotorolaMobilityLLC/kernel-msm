@@ -79,7 +79,7 @@
 #define IADC1_BMS_FAST_AVG_EN		0x5B
 
 /* Configuration for saving of shutdown soc/iavg */
-#define IGNORE_SOC_TEMP_DECIDEG		50
+#define IGNORE_SOC_TEMP_DECIDEG		0
 #define IAVG_STEP_SIZE_MA		10
 #define IAVG_INVALID			0xFF
 #define SOC_INVALID			0x7E
