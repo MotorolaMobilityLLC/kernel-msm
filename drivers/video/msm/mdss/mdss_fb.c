@@ -1103,6 +1103,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	mutex_init(&mfd->no_update.lock);
 	mutex_init(&mfd->mdp_sync_pt_data.sync_mutex);
 	atomic_set(&mfd->mdp_sync_pt_data.commit_cnt, 0);
+	atomic_set(&mfd->commits_pending, 0);
 
 	init_timer(&mfd->no_update.timer);
 	mfd->no_update.timer.function = mdss_fb_no_update_notify_timer_cb;
@@ -1110,9 +1111,9 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	init_completion(&mfd->update.comp);
 	init_completion(&mfd->no_update.comp);
 	init_completion(&mfd->power_off_comp);
-	init_completion(&mfd->commit_comp);
 	init_completion(&mfd->power_set_comp);
 	init_waitqueue_head(&mfd->commit_wait_q);
+	init_waitqueue_head(&mfd->idle_wait_q);
 
 	ret = fb_alloc_cmap(&fbi->cmap, 256, 0);
 	if (ret)
@@ -1260,37 +1261,45 @@ static void mdss_fb_power_setting_idle(struct msm_fb_data_type *mfd)
 
 void mdss_fb_wait_for_fence(struct msm_sync_pt_data *sync_pt_data)
 {
+	struct sync_fence *fences[MDP_MAX_FENCE_FD];
+	int fence_cnt;
 	int i, ret = 0;
 
-	pr_debug("%s: wait for fence\n", sync_pt_data->fence_name);
+	pr_debug("%s: wait for fences\n", sync_pt_data->fence_name);
+
+	mutex_lock(&sync_pt_data->sync_mutex);
+	/*
+	 * Assuming that acq_fen_cnt is sanitized in bufsync ioctl
+	 * to check for sync_pt_data->acq_fen_cnt) <= MDP_MAX_FENCE_FD
+	 */
+	fence_cnt = sync_pt_data->acq_fen_cnt;
+	sync_pt_data->acq_fen_cnt = 0;
+	if (fence_cnt)
+		memcpy(fences, sync_pt_data->acq_fen,
+				fence_cnt * sizeof(struct sync_fence *));
+	mutex_unlock(&sync_pt_data->sync_mutex);
 
 	/* buf sync */
-	for (i = 0; i < sync_pt_data->acq_fen_cnt; i++) {
-		ret = sync_fence_wait(sync_pt_data->acq_fen[i],
+	for (i = 0; i < fence_cnt && !ret; i++) {
+		ret = sync_fence_wait(fences[i],
 				WAIT_FENCE_FIRST_TIMEOUT);
 		if (ret == -ETIME) {
 			pr_warn("%s: sync_fence_wait timed out! ",
 					sync_pt_data->fence_name);
 			pr_cont("Waiting %ld more seconds\n",
 					WAIT_FENCE_FINAL_TIMEOUT/MSEC_PER_SEC);
-			ret = sync_fence_wait(sync_pt_data->acq_fen[i],
+			ret = sync_fence_wait(fences[i],
 					WAIT_FENCE_FINAL_TIMEOUT);
 		}
-		if (ret < 0) {
-			pr_err("%s: sync_fence_wait failed! ret = %x\n",
-				sync_pt_data->fence_name, ret);
-			break;
-		}
-		sync_fence_put(sync_pt_data->acq_fen[i]);
+		sync_fence_put(fences[i]);
 	}
 
 	if (ret < 0) {
-		while (i < sync_pt_data->acq_fen_cnt) {
-			sync_fence_put(sync_pt_data->acq_fen[i]);
-			i++;
-		}
+		pr_err("%s: sync_fence_wait failed! ret = %x\n",
+				sync_pt_data->fence_name, ret);
+		for (; i < fence_cnt; i++)
+			sync_fence_put(fences[i]);
 	}
-	sync_pt_data->acq_fen_cnt = 0;
 }
 
 void mdss_fb_signal_timeline(struct msm_sync_pt_data *sync_pt_data)
@@ -1306,6 +1315,9 @@ void mdss_fb_signal_timeline(struct msm_sync_pt_data *sync_pt_data)
 		pr_debug("%s: buffer signaled! timeline val=%d remaining=%d\n",
 			sync_pt_data->fence_name, sync_pt_data->timeline_value,
 			atomic_read(&sync_pt_data->commit_cnt));
+	} else {
+		pr_warn("%s timeline signaled without commits val=%d\n",
+			sync_pt_data->fence_name, sync_pt_data->timeline_value);
 	}
 	mutex_unlock(&sync_pt_data->sync_mutex);
 }
@@ -1326,31 +1338,17 @@ static void mdss_fb_release_fences(struct msm_fb_data_type *mfd)
 	mutex_unlock(&sync_pt_data->sync_mutex);
 }
 
-static void __mdss_fb_release_busy(struct msm_fb_data_type *mfd)
-{
-	struct msm_sync_pt_data *sync_pt_data = &mfd->mdp_sync_pt_data;
-
-	mutex_lock(&sync_pt_data->sync_mutex);
-	sync_pt_data->busy = false;
-	mfd->is_committing = 0;
-	complete_all(&mfd->commit_comp);
-	mutex_unlock(&sync_pt_data->sync_mutex);
-}
-
 static int __mdss_fb_sync_buf_done_callback(struct notifier_block *p,
 		unsigned long event, void *data)
 {
 	struct msm_sync_pt_data *sync_pt_data;
-	struct msm_fb_data_type *mfd;
 
 	sync_pt_data = container_of(p, struct msm_sync_pt_data, notifier);
 
 	switch (event) {
 	case MDP_NOTIFY_FRAME_FLUSHED:
 		pr_debug("%s: frame flushed\n", sync_pt_data->fence_name);
-		mfd = container_of(sync_pt_data, struct msm_fb_data_type,
-				mdp_sync_pt_data);
-		__mdss_fb_release_busy(mfd);
+		sync_pt_data->flushed = true;
 		break;
 	case MDP_NOTIFY_FRAME_TIMEOUT:
 		pr_err("%s: frame timeout\n", sync_pt_data->fence_name);
@@ -1369,19 +1367,14 @@ static void mdss_fb_pan_idle(struct msm_fb_data_type *mfd)
 {
 	int ret;
 
-	if (mfd->is_committing) {
-		ret = wait_for_completion_timeout(
-				&mfd->commit_comp,
+	ret = wait_event_timeout(mfd->idle_wait_q,
+			!atomic_read(&mfd->commits_pending),
 			msecs_to_jiffies(WAIT_DISP_OP_TIMEOUT));
-		if (ret < 0)
-			ret = -ERESTARTSYS;
-		else if (!ret)
-			pr_err("%s wait for commit_comp timeout %d %d",
-				__func__, ret, mfd->is_committing);
-		if (ret <= 0) {
-			mdss_fb_signal_timeline(&mfd->mdp_sync_pt_data);
-			__mdss_fb_release_busy(mfd);
-		}
+	if (!ret) {
+		pr_err("wait for idle timeout %d pending=%d\n",
+				ret, atomic_read(&mfd->commits_pending));
+
+		mdss_fb_signal_timeline(&mfd->mdp_sync_pt_data);
 	}
 }
 
@@ -1416,10 +1409,9 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 	mfd->msm_fb_backup.info = *info;
 	mfd->msm_fb_backup.disp_commit = *disp_commit;
 
-	INIT_COMPLETION(mfd->commit_comp);
-	mfd->is_committing = 1;
 	atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
-	wake_up(&mfd->commit_wait_q);
+	atomic_inc(&mfd->commits_pending);
+	wake_up_all(&mfd->commit_wait_q);
 	mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
 	if (wait_for_finish)
 		mdss_fb_pan_idle(mfd);
@@ -1488,10 +1480,8 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
 	struct msm_fb_backup_type *fb_backup = &mfd->msm_fb_backup;
 	int ret = -ENOSYS;
 
-	mutex_lock(&sync_pt_data->sync_mutex);
-	sync_pt_data->busy = true;
 	mdss_fb_wait_for_fence(sync_pt_data);
-	mutex_unlock(&sync_pt_data->sync_mutex);
+	sync_pt_data->flushed = false;
 
 	if (fb_backup->disp_commit.flags & MDP_DISPLAY_COMMIT_OVERLAY) {
 		if (mfd->mdp.kickoff_fnc)
@@ -1507,11 +1497,8 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
 					mfd->index);
 	}
 	mdss_fb_update_backlight(mfd);
-	if (IS_ERR_VALUE(ret) || sync_pt_data->busy)
+	if (IS_ERR_VALUE(ret) || !sync_pt_data->flushed)
 		mdss_fb_signal_timeline(sync_pt_data);
-
-	if (sync_pt_data->busy)
-		__mdss_fb_release_busy(mfd);
 
 	return ret;
 }
@@ -1528,9 +1515,12 @@ static int __mdss_fb_display_thread(void *data)
 
 	while (1) {
 		wait_event(mfd->commit_wait_q,
-			atomic_read(&mfd->mdp_sync_pt_data.commit_cnt) > 0);
+				atomic_read(&mfd->commits_pending));
 
 		ret = __mdss_fb_perform_commit(mfd);
+
+		atomic_dec(&mfd->commits_pending);
+		wake_up_all(&mfd->idle_wait_q);
 	}
 
 	return ret;
@@ -1838,7 +1828,6 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 		return ret;
 	}
 
-	mutex_lock(&sync_pt_data->sync_mutex);
 	if (sync_pt_data->acq_fen_cnt) {
 		pr_warn("%s: currently %d fences active. waiting...\n",
 				sync_pt_data->fence_name,
@@ -1846,6 +1835,7 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 		mdss_fb_wait_for_fence(sync_pt_data);
 	}
 
+	mutex_lock(&sync_pt_data->sync_mutex);
 	for (i = 0; i < buf_sync->acq_fen_fd_cnt; i++) {
 		fence = sync_fence_fdget(acq_fen_fd[i]);
 		if (fence == NULL) {
@@ -1861,8 +1851,6 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 	if (ret)
 		goto buf_sync_err_1;
 	sync_pt_data->acq_fen_cnt = fence_cnt;
-	if (buf_sync->flags & MDP_BUF_SYNC_FLAG_WAIT)
-		mdss_fb_wait_for_fence(sync_pt_data);
 
 	val = sync_pt_data->timeline_value + sync_pt_data->threshold +
 			atomic_read(&sync_pt_data->commit_cnt);
@@ -1932,6 +1920,8 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 		goto buf_sync_err_3;
 	}
 	mutex_unlock(&sync_pt_data->sync_mutex);
+	if (buf_sync->flags & MDP_BUF_SYNC_FLAG_WAIT)
+		mdss_fb_wait_for_fence(sync_pt_data);
 
 	return ret;
 buf_sync_err_3:
