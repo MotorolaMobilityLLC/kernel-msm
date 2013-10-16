@@ -2166,7 +2166,7 @@ __vsync_retire_get_fence(struct msm_sync_pt_data *sync_pt_data)
 	struct msm_fb_data_type *mfd;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_ctl *ctl;
-	int rc;
+	int rc, value;
 
 	mfd = container_of(sync_pt_data, typeof(*mfd), mdp_sync_pt_data);
 	mdp5_data = mfd_to_mdp5_data(mfd);
@@ -2191,10 +2191,11 @@ __vsync_retire_get_fence(struct msm_sync_pt_data *sync_pt_data)
 		if (IS_ERR_VALUE(rc))
 			return ERR_PTR(rc);
 	}
+	value = mdp5_data->vsync_timeline->value + 1 + mdp5_data->retire_cnt;
 	mdp5_data->retire_cnt++;
 
-	return mdss_fb_sync_get_fence(mdp5_data->vsync_timeline, "mdp-retire",
-			mdp5_data->vsync_timeline->value + 1);
+	return mdss_fb_sync_get_fence(mdp5_data->vsync_timeline,
+			"mdp-retire", value);
 }
 
 static int __vsync_retire_setup(struct msm_fb_data_type *mfd)
