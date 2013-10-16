@@ -240,6 +240,16 @@
 			<&msmgpio 79 1>,        /* gpio_ap_int */
 			<&msmgpio 124 2>;       /* gpio_c55_int */
 	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		qcom,msm-dai-q6-mi2s-prim {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <0>;
+			qcom,msm-mi2s-rx-lines = <0>;
+			qcom,msm-mi2s-tx-lines = <1>;
+		};
+	};
 };
 
 &spmi_bus {
