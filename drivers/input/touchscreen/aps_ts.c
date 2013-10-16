@@ -54,6 +54,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 #define APS_REG_XY_RESOLUTION_HIGH	0x1002
 #define APS_REG_EVENT_PKT_SZ		0x100F
 #define APS_REG_EVENT_PKT		0x1010
+#define APS_REG_PROD_INFO		0x10E0
 
 #define APS_BOOTMODE_BOOTLOADER		0x11
 #define APS_BOOTMODE_APPLICATION	0x22
@@ -74,12 +75,24 @@ static int fb_notifier_callback(struct notifier_block *self,
 #define ISP_UNLOCK3		{ 0x00, 0x4C, 0x00, 0x00, 0x00, 0x01 }
 #define ISP_LOCK		{ 0x00, 0x04, 0x05, 0xFA, 0x00, 0x00 }
 
+#define ISP_CLK_20MHZ		{ 0x00, 0x4C, 0x05, 0xFA, 0x00, 0x07 }
+
 #define ISP_FULL_ERASE		{ 0x00, 0x10, 0x00, 0x00, 0x10, 0x44 }
 #define ISP_CLEAR_DONE		{ 0x00, 0x0C, 0x00, 0x00, 0x00, 0x20 }
 #define ISP_WRITE_MODE		{ 0x00, 0x10, 0x00, 0x00, 0x10, 0x01 }
 #define ISP_WRITE		{ 0x00, 0x10, 0x00, 0x00, 0x10, 0x41 }
+#define ISP_WRITE_A		{ 0x00, 0x28, 0x00, 0x00, 0x00, 0x00 }
+#define ISP_WRITE_B		{ 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00 }
 #define ISP_READ_MODE		{ 0x00, 0x10, 0x00, 0x00, 0x10, 0x08 }
 #define ISP_READ		{ 0x00, 0x10, 0x00, 0x00, 0x10, 0x48 }
+#define ISP_ADDRESS		{ 0x00, 0x14, 0x00, 0x00, 0x00, 0x00 }
+
+#define ISP_REG_STATUS		0x000C
+#define ISP_REG_READ_A		0x0030
+#define ISP_REG_READ_B		0x0034
+
+#define ISP_MODE_BIT		(1<<12)
+#define ISP_DONE_BIT		(1<<5)
 
 enum {
 	SYS_INTENSITY = 2,
@@ -129,6 +142,10 @@ struct aps_ts_info {
 	struct completion		init_done;
 	struct mutex			lock;
 	bool				enabled;
+	bool				in_bootloader;
+	bool				input_registered;
+	bool				high_speed_isp;
+	u8				product_id[5];
 	u8				version[4];
 	u8				bootmode;
 	char				fw_name[MAX_FW_NAME_LEN];
@@ -258,7 +275,6 @@ static int aps_i2c_read(struct aps_ts_info *info, u16 addr, void *buf, u16 len)
 			.len = len,
 		},
 	};
-	ret = i2c_transfer(client->adapter, msg, 2);
 
 	for (retry = 0; retry < APS_I2C_RETRY_TIMES; ++retry) {
 		ret = i2c_transfer(client->adapter, msg, 2);
@@ -280,28 +296,29 @@ static int aps_i2c_read(struct aps_ts_info *info, u16 addr, void *buf, u16 len)
 	return ret;
 }
 
-static void query_device(struct aps_ts_info *info)
+static int aps_alloc_input(struct aps_ts_info *info)
 {
-	int ret;
-	mutex_lock(&info->lock);
+	info->input_dev = input_allocate_device();
+	if (IS_ERR_OR_NULL(info->input_dev))
+		return PTR_ERR(info->input_dev);
 
-	ret = aps_i2c_read(info, APS_REG_BOOTMODE, &info->bootmode,
-		sizeof(info->bootmode));
+	info->input_dev->name = DRIVER_NAME;
+	info->input_dev->phys = INPUT_PHYS_NAME;
+	info->input_dev->id.bustype = BUS_I2C;
+	info->input_dev->dev.parent = &info->client->dev;
 
-	if (ret <= 0) {
-		pr_err("Failed to read boot mode\n");
-		info->bootmode = 0;
-	}
+	set_bit(EV_ABS, info->input_dev->evbit);
+	set_bit(INPUT_PROP_DIRECT, info->input_dev->propbit);
 
-	ret = aps_i2c_read(info, APS_REG_FW_VER, &info->version,
-		sizeof(info->version));
+	input_mt_init_slots(info->input_dev, MAX_FINGER_NUM);
+	input_set_abs_params(info->input_dev, ABS_MT_TOUCH_MAJOR,
+						0, MAX_WIDTH, 0, 0);
+	input_set_abs_params(info->input_dev, ABS_MT_PRESSURE,
+						0, MAX_PRESSURE, 0, 0);
+	input_set_drvdata(info->input_dev, info);
 
-	if (ret <= 0) {
-		pr_err("Failed to read FW version\n");
-		memset(info->version, 0, sizeof(info->version));
-	}
-
-	mutex_unlock(&info->lock);
+	pr_debug("allocated input device\n");
+	return 0;
 }
 
 static void aps_clear_input_data(struct aps_ts_info *info)
@@ -523,36 +540,159 @@ static int aps_ts_config(struct aps_ts_info *info)
 	}
 
 	disable_irq(client->irq);
-	info->irq = client->irq;
-
 	barrier();
-
 	complete_all(&info->init_done);
 out:
+	return ret;
+}
+
+static void aps_query_device(struct aps_ts_info *info)
+{
+	int ret;
+
+	mutex_lock(&info->lock);
+
+	ret = aps_i2c_read(info, APS_REG_BOOTMODE, &info->bootmode,
+		sizeof(info->bootmode));
+	if (ret <= 0) {
+		pr_err("Failed to read boot mode\n");
+		info->bootmode = 0;
+	}
+
+	if (!info->input_dev) {
+		ret = aps_alloc_input(info);
+		if (ret) {
+			pr_err("Error allocating input device\n");
+			goto out_failure;
+		}
+	}
+
+	info->in_bootloader = info->bootmode != APS_BOOTMODE_APPLICATION;
+	if (info->in_bootloader)
+		goto out_bootloader;
+
+	ret = aps_i2c_read(info, APS_REG_FW_VER, info->version,
+		sizeof(info->version));
+	if (ret <= 0) {
+		pr_err("Failed to read FW version\n");
+		memset(info->version, 0, sizeof(info->version));
+	}
+
+	ret = aps_i2c_read(info, APS_REG_PROD_INFO, info->product_id, 4);
+	if (ret <= 0) {
+		pr_err("Failed to read product id\n");
+		info->product_id[0] = 0;
+	}
+
+	ret = aps_ts_read_resolution(info);
+	if (ret) {
+		pr_err("Failed to read resolution\n");
+		goto out_failure;
+	}
+
+	input_set_abs_params(info->input_dev, ABS_MT_POSITION_X,
+						0, info->max_x, 0, 0);
+	input_set_abs_params(info->input_dev, ABS_MT_POSITION_Y,
+						0, info->max_y, 0, 0);
+
+	if (!info->in_bootloader && !info->input_registered) {
+		ret = input_register_device(info->input_dev);
+		if (ret) {
+			dev_err(&info->client->dev,
+				"failed to register input dev\n");
+			goto out_failure;
+		}
+		info->input_registered = true;
+	}
+
+out_bootloader:
+	if (info->in_bootloader)
+		pr_info("Product: APS in bootloader mode\n");
+	else
+		pr_info("Product: APS-%s, build-id: %x%02x\n",
+			info->product_id, info->version[2], info->version[3]);
+out_failure:
+	mutex_unlock(&info->lock);
+}
+
+static int aps_isp_status(struct aps_ts_info *info, u32 success_mask,
+		const char *func)
+{
+	struct i2c_client *client = info->client;
+	u8 buf[4];
+	u32 result;
+	int i, ret = -EIO;
+
+	for (i = 0; i < APS_I2C_RETRY_TIMES; i++) {
+		ret = aps_i2c_read(info, ISP_REG_STATUS,
+					&buf, sizeof(buf));
+		if (ret != sizeof(buf))
+			goto end;
+
+		result = (buf[0]<<24) | (buf[1]<<16) | (buf[2]<<8) | buf[3];
+		if (result & success_mask) {
+			ret = 0;
+			break;
+		}
+
+		msleep(50);
+	}
+
+	if (ret != 0)
+		dev_warn(&client->dev,
+			"isp [%s] status (0x%x) failed check (0x%x)\n",
+			func, result, success_mask);
+end:
+	return ret;
+}
+
+static int aps_isp_clear(struct aps_ts_info *info)
+{
+	struct i2c_client *client = info->client;
+	u8 cmd[6] =  ISP_CLEAR_DONE;
+	int ret = 0;
+
+	if (i2c_master_send(client, cmd, 6) != 6) {
+		dev_err(&client->dev, "isp clear i2c_master_send failed\n");
+		ret = -EIO;
+	}
+
 	return ret;
 }
 
 static int aps_isp_entry(struct aps_ts_info *info)
 {
 	struct i2c_client *client = info->client;
-	int ret = 0;
 	u8 entry_a[6] = ISP_ENTRY1;
 	u8 entry_b[6] = ISP_ENTRY2;
 	u8 entry_c[6] = ISP_ENTRY3;
+	int ret = 0;
 
-	if (i2c_master_send(client, entry_a, 6) != 6) {
-		ret = -1;
-		return ret;
-	}
+	if (i2c_master_send(client, entry_a, 6) != 6)
+		ret = -EIO;
+	else if (i2c_master_send(client, entry_b, 6) != 6)
+		ret = -EIO;
+	else if (i2c_master_send(client, entry_c, 6) != 6)
+		ret = -EIO;
+	return ret;
+}
 
-	if (i2c_master_send(client, entry_b, 6) != 6) {
-		ret = -1;
-		return ret;
-	}
+static int aps_isp_mode_check(struct aps_ts_info *info)
+{
+	struct i2c_client *client = info->client;
+	int ret = 0;
 
-	if (i2c_master_send(client, entry_c, 6) != 6) {
-		ret = -1;
-		return ret;
+	/* verify if ISP mode is entered */
+	ret = aps_isp_status(info, ISP_MODE_BIT, __func__);
+	if (ret)
+		return -EAGAIN;
+	/* clear command done */
+	aps_isp_clear(info);
+
+	if (info->high_speed_isp) {
+		u8 clock_20mhz[6] = ISP_CLK_20MHZ;
+		if (i2c_master_send(client, clock_20mhz, 6) != 6)
+			ret = -EIO;
 	}
 
 	return ret;
@@ -561,86 +701,17 @@ static int aps_isp_entry(struct aps_ts_info *info)
 static int aps_isp_unlock(struct aps_ts_info *info)
 {
 	struct i2c_client *client = info->client;
-	int ret = 0;
 	u8 unlock_a[6] = ISP_UNLOCK1;
 	u8 unlock_b[6] = ISP_UNLOCK2;
 	u8 unlock_c[6] = ISP_UNLOCK3;
-
-	if (i2c_master_send(client, unlock_a, 6) != 6) {
-		ret = -1;
-		return ret;
-	}
-
-	if (i2c_master_send(client, unlock_b, 6) != 6) {
-		ret = -1;
-		return ret;
-	}
-
-	if (i2c_master_send(client, unlock_c, 6) != 6) {
-		ret = -1;
-		return ret;
-	}
-
-	return ret;
-}
-
-static int aps_isp_write_done(struct aps_ts_info *info)
-{
-	struct i2c_client *client = info->client;
-	u8 cmd[2] = {0x00, 0x0C};
-	u8 rbuf[4];
 	int ret = 0;
-	int i = 0;
-	struct i2c_msg msg[] = {
-		{
-			.addr = client->addr,
-			.flags = 0,
-			.buf = cmd,
-			.len = 2,
-		},
-		{
-			.addr = client->addr,
-			.flags = I2C_M_RD,
-			.buf = rbuf,
-			.len = 4,
-		},
-	};
 
-	while (true) {
-		int sz = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
-		if (sz != ARRAY_SIZE(msg)) {
-			dev_err(&client->dev,
-				"isp write done i2c_transfer failed\n");
-			ret = -1;
-			return ret;
-		}
-
-		if (rbuf[3] & 0x20)
-			break;
-
-		dev_err(&client->dev, "write done while\n");
-
-		if (i++ > 1000) {
-			dev_err(&client->dev, "isp erase wait-done failed\n");
-			ret = -1;
-			return ret;
-		}
-	}
-
-	return ret;
-}
-
-static int aps_isp_clean(struct aps_ts_info *info)
-{
-	struct i2c_client *client = info->client;
-	int ret = 0;
-	u8 clr_done[6] =  ISP_CLEAR_DONE;
-
-	if (i2c_master_send(client, clr_done, 6) != 6) {
-		dev_err(&client->dev, "isp clr_done i2c_master_send failed\n");
-		ret = -1;
-		return ret;
-	}
+	if (i2c_master_send(client, unlock_a, 6) != 6)
+		ret = -EIO;
+	else if (i2c_master_send(client, unlock_b, 6) != 6)
+		ret = -EIO;
+	else if (i2c_master_send(client, unlock_c, 6) != 6)
+		ret = -EIO;
 
 	return ret;
 }
@@ -648,18 +719,16 @@ static int aps_isp_clean(struct aps_ts_info *info)
 static int aps_isp_erase(struct aps_ts_info *info)
 {
 	struct i2c_client *client = info->client;
-	u8 erase[6] = ISP_FULL_ERASE;
-	int ret = 0;
+	u8 cmd[6] = ISP_FULL_ERASE;
+	int ret;
 
-	if (i2c_master_send(client, erase, 6) != 6) {
+	if (i2c_master_send(client, cmd, 6) != 6) {
 		dev_err(&client->dev, "isp erase i2c_transfer failed\n");
-		ret = -1;
-		return ret;
+		return -EIO;
 	}
 
-	ret = aps_isp_write_done(info);
-
-	ret = aps_isp_clean(info);
+	ret = aps_isp_status(info, ISP_DONE_BIT, __func__);
+	aps_isp_clear(info);
 
 	return ret;
 }
@@ -667,12 +736,12 @@ static int aps_isp_erase(struct aps_ts_info *info)
 static int aps_isp_lock(struct aps_ts_info *info)
 {
 	struct i2c_client *client = info->client;
-	u8 buf[6] = ISP_LOCK;
+	u8 cmd[6] = ISP_LOCK;
 	int ret = 0;
-	if (i2c_master_send(client, buf, 6) != 6) {
-		ret = -1;
-		dev_err(&client->dev, "isp fw-addr i2c_master_send failed\n");
-		return ret;
+
+	if (i2c_master_send(client, cmd, 6) != 6) {
+		dev_err(&client->dev, "isp lock i2c_master_send failed\n");
+		ret = -EIO;
 	}
 
 	return ret;
@@ -681,19 +750,17 @@ static int aps_isp_lock(struct aps_ts_info *info)
 static int aps_isp_addr(struct aps_ts_info *info, const size_t addr)
 {
 	struct i2c_client *client = info->client;
+	u8 wbuf_addr[6] = ISP_ADDRESS;
 	int ret = 0;
-	u8 wbuf_addr[6];
-	wbuf_addr[0] = 0x00;
-	wbuf_addr[1] = 0x14;
+
 	wbuf_addr[2] = (addr>>24)&0xFF;
 	wbuf_addr[3] = (addr>>16)&0xFF;
 	wbuf_addr[4] = (addr>>8)&0xFF;
 	wbuf_addr[5] = (addr>>0)&0xFF;
 
 	if (i2c_master_send(client, wbuf_addr, 6) != 6) {
-		ret = -1;
 		dev_err(&client->dev, "isp fw-addr i2c_master_send failed\n");
-		return ret;
+		ret = -EIO;
 	}
 
 	return ret;
@@ -703,18 +770,10 @@ static int aps_flash_data(struct aps_ts_info *info, const u8 *data,
 	const size_t addr)
 {
 	struct i2c_client *client = info->client;
-	int ret = 0;
-	u8 write_mode[6] = ISP_WRITE_MODE;
 	u8 write_cmd[6] = ISP_WRITE;
-	u8 wbuf_a[6] = {0x00, 0x28, };
-	u8 wbuf_b[6] = {0x00, 0x2C, };
-
-	if (i2c_master_send(client, write_mode, 6) != 6) {
-		dev_err(&client->dev,
-			"isp write mode i2c_master_send failed\n");
-		ret = -1;
-		return ret;
-	}
+	u8 wbuf_a[6] = ISP_WRITE_A;
+	u8 wbuf_b[6] = ISP_WRITE_B;
+	int ret = 0;
 
 	wbuf_a[2] = data[3];
 	wbuf_a[3] = data[2];
@@ -722,10 +781,8 @@ static int aps_flash_data(struct aps_ts_info *info, const u8 *data,
 	wbuf_a[5] = data[0];
 
 	if (i2c_master_send(client, wbuf_a, 6) != 6) {
-		ret = -1;
-		dev_err(&client->dev,
-			"isp fw-data(a) i2c_master_send failed\n");
-		return ret;
+		dev_err(&client->dev, "isp data(a) i2c_master_send failed\n");
+		return -EIO;
 	}
 
 	wbuf_b[2] = data[7];
@@ -734,23 +791,20 @@ static int aps_flash_data(struct aps_ts_info *info, const u8 *data,
 	wbuf_b[5] = data[4];
 
 	if (i2c_master_send(client, wbuf_b, 6) != 6) {
-		ret = -1;
-		dev_err(&client->dev,
-			"isp fw-data(b) i2c_master_send failed\n");
-		return ret;
+		dev_err(&client->dev, "isp data(b) i2c_master_send failed\n");
+		return -EIO;
 	}
 
 	ret = aps_isp_addr(info, addr);
 
 	if (i2c_master_send(client, write_cmd, 6) != 6) {
-		dev_err(&client->dev,
-			"isp write cmd i2c_master_send failed\n");
-		ret = -1;
-		return ret;
+		dev_err(&client->dev, "isp write cmd i2c_master_send failed\n");
+		return -EIO;
 	}
 
-	ret = aps_isp_write_done(info);
-	ret = aps_isp_clean(info);
+	ret = aps_isp_status(info, ISP_DONE_BIT, __func__);
+	aps_isp_clear(info);
+
 	return ret;
 }
 
@@ -758,167 +812,164 @@ static int aps_verify_data(struct aps_ts_info *info, const u8 *data,
 	const size_t addr)
 {
 	struct i2c_client *client = info->client;
-	int ret = 0;
-	u8 read_a[2] = {0x00, 0x30};
-	u8 read_b[2] = {0x00, 0x34};
-	u8 rbuf[4];
-	u8 r_cmp[8];
-	u8 read_mode[6] = ISP_READ_MODE;
 	u8 read_cmd[6] = ISP_READ;
-	int sz;
-	struct i2c_msg msg[] = {
-		{
-			.addr = client->addr,
-			.flags = 0,
-			.buf = read_a,
-			.len = 2,
-		},
-		{
-			.addr = client->addr,
-			.flags = I2C_M_RD,
-			.buf = rbuf,
-			.len = 4,
-		},
-	};
-	if (i2c_master_send(client, read_mode, 6) != 6) {
-		ret = -1;
-		dev_err(&client->dev, "isp read mode i2c_master_send failed\n");
-		return ret;
-	}
+	u8 read_b[4], r_cmp[8];
+	int ret = 0;
 
-	ret = aps_isp_addr(info, addr);
+	if (aps_isp_addr(info, addr))
+		return -EIO;
 
 	if (i2c_master_send(client, read_cmd, 6) != 6) {
-		ret = -1;
 		dev_err(&client->dev, "isp read cmd i2c_master_send failed\n");
-		return ret;
+		return -EIO;
 	}
 
-	sz = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
-	if (sz != ARRAY_SIZE(msg)) {
-		ret = -1;
-		dev_err(&client->dev,
-			"isp read data(a) i2c_master_send failed\n");
-		return ret;
-	}
-	r_cmp[0] = rbuf[3];
-	r_cmp[1] = rbuf[2];
-	r_cmp[2] = rbuf[1];
-	r_cmp[3] = rbuf[0];
-
-	msg[0].buf = read_b;
-
-	sz = i2c_transfer(client->adapter, msg, ARRAY_SIZE(msg));
-	if (sz != ARRAY_SIZE(msg)) {
-		ret = -1;
-		dev_err(&client->dev,
-			"isp read data(b) i2c_master_send failed\n");
-		return ret;
+	ret = aps_i2c_read(info, ISP_REG_READ_A, read_b, sizeof(read_b));
+	if (ret != sizeof(read_b)) {
+		dev_err(&client->dev, "isp read data(a) failed\n");
+		return -EIO;
 	}
 
-	r_cmp[4] = rbuf[3];
-	r_cmp[5] = rbuf[2];
-	r_cmp[6] = rbuf[1];
-	r_cmp[7] = rbuf[0];
+	r_cmp[0] = read_b[3];
+	r_cmp[1] = read_b[2];
+	r_cmp[2] = read_b[1];
+	r_cmp[3] = read_b[0];
 
-	ret = aps_isp_write_done(info);
+	ret = aps_i2c_read(info, ISP_REG_READ_B, read_b, sizeof(read_b));
+	if (ret != sizeof(read_b)) {
+		dev_err(&client->dev, "isp read data(b) failed\n");
+		return -EIO;
+	}
+
+	r_cmp[4] = read_b[3];
+	r_cmp[5] = read_b[2];
+	r_cmp[6] = read_b[1];
+	r_cmp[7] = read_b[0];
+
+	ret = aps_isp_status(info, ISP_DONE_BIT, __func__);
+	aps_isp_clear(info);
 
 	if (memcmp(data, r_cmp, 8)) {
-		ret = -1;
-		return ret;
+		dev_err(&client->dev, "isp data check failed @%x\n", addr);
+		ret = -EINVAL;
 	}
 
-	ret = aps_isp_clean(info);
 	return ret;
 }
 
 static int aps_fw_flash(const struct firmware *fw, struct aps_ts_info *info)
 {
-	u8 *fw_data;
+	u8 write_mode[6] = ISP_WRITE_MODE;
+	u8 read_mode[6] = ISP_READ_MODE;
+	int fw_size = (int)fw->size;
+	u8 *fw_data = (u8 *)fw->data;
 	int addr;
 	int ret = 0;
-	int fw_size = (int)fw->size;
-	fw_data = kmalloc(0x10000, GFP_KERNEL);
-	memset(fw_data, 0xff, 0x10000);
-	memcpy(fw_data, fw->data, fw->size);
+
 	if ((fw_size % 8) != 0)
 		fw_size = fw_size + (8 - (fw_size % 8));
 
-	if (aps_isp_entry(info)) {
+	aps_isp_entry(info);
+
+	if (aps_isp_mode_check(info)) {
 		dev_err(&info->client->dev, "isp entry failed\n");
-		ret = -1;
-		goto out;
+		ret = -EAGAIN;
+		goto lock_and_exit;
 	}
 
 	if (aps_isp_unlock(info)) {
 		dev_err(&info->client->dev, "isp unlock failed\n");
-		ret = -1;
-		goto out;
+		ret = -EAGAIN;
+		goto lock_and_exit;
 	}
 
 	if (aps_isp_erase(info)) {
 		dev_err(&info->client->dev, "isp erase failed\n");
-		ret = -1;
-		goto out;
+		ret = -EAGAIN;
+		goto lock_and_exit;
 	}
 
-	for (addr = fw_size - 8; addr >= 0; addr -= 8) {
+	if (i2c_master_send(info->client, write_mode, 6) != 6) {
+		dev_err(&info->client->dev,
+				"isp write mode i2c_master_send failed\n");
+		ret = -EIO;
+		goto lock_and_exit;
+	}
+
+	for (addr = fw_size - 8; addr >= 0; addr -= 8)
 		if (aps_flash_data(info, (u8 *)&fw_data[addr], addr)) {
 			dev_err(&info->client->dev, "isp flash failed\n");
-			ret = -1;
-			goto out;
+			ret = -EFAULT;
+			goto lock_and_exit;
 		}
 
-		if (aps_verify_data(info, (u8 *)&fw_data[addr], addr)) {
-			dev_err(&info->client->dev, "isp verify failed\n");
-			ret = -1;
-			goto out;
-		}
+	if (i2c_master_send(info->client, read_mode, 6) != 6) {
+		dev_err(&info->client->dev,
+				"isp read mode i2c_master_send failed\n");
+		ret = -EIO;
+		goto lock_and_exit;
 	}
 
+	for (addr = fw_size - 8; addr >= 0; addr -= 8)
+		if (aps_verify_data(info, (u8 *)&fw_data[addr], addr)) {
+			dev_err(&info->client->dev, "isp verify failed\n");
+			ret = -EFAULT;
+			goto lock_and_exit;
+		}
+
+lock_and_exit:
 	ret = aps_isp_lock(info);
 
-out:
-	kfree(fw_data);
-	release_firmware(fw);
 	return ret;
 }
 
-static void aps_fw_update_controller(const struct firmware *fw, void *context)
+static void aps_fw_update(struct aps_ts_info *info, const struct firmware *fw)
 {
-	struct aps_ts_info *info = context;
 	int ret;
 
 	ret = aps_fw_flash(fw, info);
 	if (ret)
 		dev_err(&info->client->dev, "firmware flash failed\n");
 	else
-		dev_info(&info->client->dev, "firmware flash succeed\n");
+		dev_info(&info->client->dev, "firmware flash succeeded\n");
 
 	aps_reset(info);
-	query_device(info);
 
-	return;
+	if (info->input_registered) {
+		input_unregister_device(info->input_dev);
+		info->input_dev = NULL;
+		info->input_registered = false;
+		pr_debug("de-allocated input device\n");
+	}
+
+	aps_query_device(info);
 }
 
 static ssize_t aps_start_isp(struct device *dev, struct device_attribute *attr,
-	char *buf)
+	const char *buf, size_t count)
 {
 	struct aps_ts_info *info = dev_get_drvdata(dev);
+	const struct firmware *fw = NULL;
 	int ret = 0;
 
-	dev_info(&info->client->dev, "Requesting FW file: %s\n", FW_NAME);
-
-	ret = request_firmware_nowait(THIS_MODULE, true, FW_NAME,
-		&info->client->dev, GFP_KERNEL, info, aps_fw_update_controller);
-
-	if (ret) {
-		dev_err(&info->client->dev,
-			"Failed to schedule firmware update\n");
-		return -EIO;
+	if (count >= sizeof(info->fw_name)) {
+		dev_err(&info->client->dev, "firmware filename is too long\n");
+		return -EINVAL;
 	}
 
-	return 1;
+	strlcpy(info->fw_name, buf, count);
+	dev_info(&info->client->dev, "firmware filename %s\n", info->fw_name);
+
+	ret = request_firmware(&fw, info->fw_name, &info->client->dev);
+	if (ret || !fw) {
+		dev_err(&info->client->dev, "unable to download firmware\n");
+		return -EINVAL;
+	}
+
+	aps_fw_update(info, fw);
+	release_firmware(fw);
+
+	return count;
 }
 
 static ssize_t aps_version(struct device *dev, struct device_attribute *attr,
@@ -944,11 +995,11 @@ static ssize_t aps_version(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static DEVICE_ATTR(aps_isp, 0440, aps_start_isp, NULL);
+static DEVICE_ATTR(doreflash, 0600, NULL, aps_start_isp);
 static DEVICE_ATTR(buildid, 0444, aps_version, NULL);
 
 static struct attribute *aps_attrs[] = {
-	&dev_attr_aps_isp.attr,
+	&dev_attr_doreflash.attr,
 	&dev_attr_buildid.attr,
 	&dev_attr_aps_perf.attr,
 	NULL,
@@ -984,6 +1035,11 @@ static struct aps_ts_platform_data *aps_ts_of_init(struct i2c_client *client,
 		return NULL;
 	}
 
+	if (of_property_read_bool(np, "melfas,high-speed-isp")) {
+		pr_notice("using 20MHz clock in ISP mode\n");
+		info->high_speed_isp = true;
+	}
+
 	return pdata;
 }
 #else
@@ -1000,18 +1056,10 @@ static int aps_ts_probe(struct i2c_client *client,
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
 	struct aps_ts_info *info = NULL;
-	struct input_dev *input_dev = NULL;
 	int ret = 0;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_I2C))
 		return -EIO;
-
-	input_dev = input_allocate_device();
-	if (!input_dev) {
-		dev_err(&client->dev, "Failed to allocate input_dev\n");
-		ret = -ENOMEM;
-		goto out_free_mem;
-	}
 
 	info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info) {
@@ -1030,7 +1078,6 @@ static int aps_ts_probe(struct i2c_client *client,
 	}
 
 	info->client = client;
-	info->input_dev = input_dev;
 	info->irq = -1;
 	init_completion(&info->init_done);
 	mutex_init(&info->lock);
@@ -1052,53 +1099,25 @@ static int aps_ts_probe(struct i2c_client *client,
 		ret = -EIO;
 		goto out_free_mem;
 	}
-	/* keep reset GPIO low */
-	udelay(RESET_DELAY_USEC);
 
-	/* set reset GPIO high to let touch IC out of reset */
-	gpio_set_value(info->pdata->gpio_reset, 1);
-	msleep(UI_READY_MSEC);
-
-	ret = aps_ts_read_resolution(info);
-	if (ret) {
-		pr_err("Failed to read resolution\n");
-		ret = -EIO;
-		goto out_free_gpio;
-	}
-
-	input_mt_init_slots(input_dev, MAX_FINGER_NUM);
-
-	input_dev->name = DRIVER_NAME;
-	input_dev->phys = INPUT_PHYS_NAME;
-	input_dev->id.bustype = BUS_I2C;
-	input_dev->dev.parent = &client->dev;
-
-	set_bit(EV_ABS, input_dev->evbit);
-	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
-
-	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, MAX_WIDTH, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_PRESSURE, 0, MAX_PRESSURE, 0, 0);
-	input_set_abs_params(input_dev,
-		ABS_MT_POSITION_X, 0, info->max_x, 0, 0);
-	input_set_abs_params(input_dev,
-		ABS_MT_POSITION_Y, 0, info->max_y, 0, 0);
-
-	input_set_drvdata(input_dev, info);
-
-	ret = input_register_device(input_dev);
-	if (ret) {
-		dev_err(&client->dev, "failed to register input dev\n");
-		ret = -EIO;
-		goto out_free_gpio;
-	}
-
+	info->client = client;
+	info->irq = client->irq;
 	i2c_set_clientdata(client, info);
-	if (aps_ts_config(info))
-		goto out_unregister_input_dev;
 
-	query_device(info);
+	init_completion(&info->init_done);
+	mutex_init(&info->lock);
 
-	/* let IC sleep, it will be awoken by frame buffer notificaiton */
+	aps_reset(info);
+
+	aps_query_device(info);
+
+	ret = aps_ts_config(info);
+	if (ret) {
+		ret = -EIO;
+		goto out_free_gpio;
+	}
+
+	/* hold IC in reset, display notification will move it out of reset */
 	aps_set_reset_low(info);
 
 	if (sysfs_create_group(&client->dev.kobj, &aps_attr_group)) {
@@ -1127,15 +1146,16 @@ out_sysfs_remove_group:
 out_free_irq:
 	free_irq(client->irq, info);
 
-out_unregister_input_dev:
-	input_unregister_device(input_dev);
-
 out_free_gpio:
 	gpio_free(info->pdata->gpio_reset);
 	gpio_free(info->pdata->gpio_irq);
 
+	if (info->input_registered)
+		input_unregister_device(info->input_dev);
+	else
+		input_free_device(info->input_dev);
+
 out_free_mem:
-	kfree(input_dev);
 	if (info) {
 		kfree(info->perf_irq_data);
 		kfree(info);
@@ -1148,10 +1168,11 @@ static int aps_ts_remove(struct i2c_client *client)
 {
 	struct aps_ts_info *info = i2c_get_clientdata(client);
 
-	if (info->irq >= 0)
-		free_irq(info->irq, info);
-
-	input_unregister_device(info->input_dev);
+	free_irq(info->irq, info);
+	if (info->input_registered)
+		input_unregister_device(info->input_dev);
+	else
+		input_free_device(info->input_dev);
 	gpio_free(info->pdata->gpio_reset);
 	gpio_free(info->pdata->gpio_irq);
 	kfree(info->perf_irq_data);
@@ -1167,13 +1188,10 @@ static int aps_ts_suspend(struct device *dev)
 	struct aps_ts_info *info = i2c_get_clientdata(client);
 
 	mutex_lock(&info->input_dev->mutex);
-
-	if (info->input_dev->users) {
-		aps_ts_disable(info);
-		aps_clear_input_data(info);
-	}
-
+	aps_ts_disable(info);
+	aps_clear_input_data(info);
 	mutex_unlock(&info->input_dev->mutex);
+
 	return 0;
 
 }
@@ -1184,10 +1202,7 @@ static int aps_ts_resume(struct device *dev)
 	struct aps_ts_info *info = i2c_get_clientdata(client);
 
 	mutex_lock(&info->input_dev->mutex);
-
-	if (info->input_dev->users)
-		aps_ts_enable(info);
-
+	aps_ts_enable(info);
 	mutex_unlock(&info->input_dev->mutex);
 
 	return 0;
