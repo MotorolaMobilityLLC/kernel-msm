@@ -115,6 +115,9 @@ enum mdss_intf_events {
  *
  * @MDP_NOTIFY_FRAME_BEGIN:	Frame update has started, the frame is about to
  *				be programmed into hardware.
+ * @MDP_NOTIFY_FRAME_READY:	Frame ready to be kicked off, this can be used
+ *				as the last point in time to synchronized with
+ *				source buffers before kickoff.
  * @MDP_NOTIFY_FRAME_FLUSHED:	Configuration of frame has been flushed and
  *				DMA transfer has started.
  * @MDP_NOTIFY_FRAME_DONE:	Frame DMA transfer has completed.
@@ -127,6 +130,7 @@ enum mdss_intf_events {
  */
 enum mdp_notify_event {
 	MDP_NOTIFY_FRAME_BEGIN = 1,
+	MDP_NOTIFY_FRAME_READY,
 	MDP_NOTIFY_FRAME_FLUSHED,
 	MDP_NOTIFY_FRAME_DONE,
 	MDP_NOTIFY_FRAME_TIMEOUT,

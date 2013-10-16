@@ -65,6 +65,7 @@ struct msm_sync_pt_data {
 	u32 retire_threshold;
 	atomic_t commit_cnt;
 	bool flushed;
+	bool async_wait_fences;
 
 	struct mutex sync_mutex;
 	struct notifier_block notifier;
