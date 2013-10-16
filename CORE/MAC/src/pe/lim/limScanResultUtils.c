@@ -380,6 +380,8 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
     tANI_U8               rxChannelInBeacon = 0;
     eHalStatus            status;
     tANI_U8               dontUpdateAll = 0;
+    tANI_U8               rfBand = 0;
+    tANI_U8               rxChannelInBD = 0;
 
     tSirMacAddr bssid = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     tANI_BOOLEAN fFound = FALSE;
@@ -454,35 +456,39 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
      * from another channel heard as noise on the current scanning channel
      */
 
-    if (pBPR->dsParamsPresent)
+    if ((pBPR->dsParamsPresent) || (pBPR->HTInfo.present))
     {
        /* This means that we are in 2.4GHz mode or 5GHz 11n mode */
        rxChannelInBeacon = limGetChannelFromBeacon(pMac, pBPR);
-       if (rxChannelInBeacon < 15)
+       rfBand = WDA_GET_RX_RFBAND(pRxPacketInfo);
+       rxChannelInBD = WDA_GET_RX_CH(pRxPacketInfo);
+
+       if ((!rfBand) || IS_5G_BAND(rfBand))
        {
-          /* This means that we are in 2.4GHz mode */
-          if(WDA_GET_RX_CH(pRxPacketInfo) != rxChannelInBeacon)
-          {
-             /* BCAST Frame, if CH do not match, Drop */
-             if(WDA_IS_RX_BCAST(pRxPacketInfo))
-             {
+          rxChannelInBD = limUnmapChannel(rxChannelInBD);
+       }
+
+       if(rxChannelInBD != rxChannelInBeacon)
+       {
+          /* BCAST Frame, if CH do not match, Drop */
+           if(WDA_IS_RX_BCAST(pRxPacketInfo))
+           {
                 limLog(pMac, LOG3, FL("Beacon/Probe Rsp dropped. Channel in BD %d. "
                                       "Channel in beacon" " %d"),
                        WDA_GET_RX_CH(pRxPacketInfo),limGetChannelFromBeacon(pMac, pBPR));
                 return;
-             }
-             /* Unit cast frame, Probe RSP, do not drop */
-             else
-             {
-                dontUpdateAll = 1;
-                limLog(pMac, LOG3, FL("SSID %s, CH in ProbeRsp %d, CH in BD %d, miss-match, Do Not Drop"),
-                                       pBPR->ssId.ssId,
-                                       rxChannelInBeacon,
-                                       WDA_GET_RX_CH(pRxPacketInfo));
-                WDA_GET_RX_CH(pRxPacketInfo) = rxChannelInBeacon;
-             }
-          }
-       }
+           }
+           /* Unit cast frame, Probe RSP, do not drop */
+           else
+           {
+              dontUpdateAll = 1;
+              limLog(pMac, LOG3, FL("SSID %s, CH in ProbeRsp %d, CH in BD %d, miss-match, Do Not Drop"),
+                                     pBPR->ssId.ssId,
+                                     rxChannelInBeacon,
+                                     WDA_GET_RX_CH(pRxPacketInfo));
+              WDA_GET_RX_CH(pRxPacketInfo) = rxChannelInBeacon;
+           }
+        }
     }
 
     /**
