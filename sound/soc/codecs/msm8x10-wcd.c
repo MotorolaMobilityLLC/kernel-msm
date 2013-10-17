@@ -99,7 +99,7 @@ enum {
 
 static const DECLARE_TLV_DB_SCALE(digital_gain, 0, 1, 0);
 static const DECLARE_TLV_DB_SCALE(line_gain, 0, 7, 1);
-static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 25, 1);
+static const DECLARE_TLV_DB_SCALE(analog_gain, 0, 5, 1);
 static struct snd_soc_dai_driver msm8x10_wcd_i2s_dai[];
 static const DECLARE_TLV_DB_SCALE(aux_pga_gain, 0, 2, 0);
 
@@ -1167,6 +1167,15 @@ static const struct snd_kcontrol_new msm8x10_wcd_snd_controls[] = {
 	SOC_SINGLE_S8_TLV("IIR1 INP4 Volume",
 			  MSM8X10_WCD_A_CDC_IIR1_GAIN_B4_CTL,
 			  -84,	40, digital_gain),
+	SOC_SINGLE_TLV("ADC1 Volume",
+			  MSM8X10_WCD_A_TX_1_EN,
+			  2, 19, 0, analog_gain),
+	SOC_SINGLE_TLV("ADC2 Volume",
+			  MSM8X10_WCD_A_TX_2_EN,
+			  2, 19, 0, analog_gain),
+	SOC_SINGLE_TLV("ADC3 Volume",
+			  MSM8X10_WCD_A_TX_3_EN,
+			  2, 19, 0, analog_gain),
 
 	SOC_ENUM("TX1 HPF cut off", cf_dec1_enum),
 	SOC_ENUM("TX2 HPF cut off", cf_dec2_enum),
