@@ -781,3 +781,47 @@ int correct_shift_for_aod(struct msm_fb_data_type *mfd, int x2, int y2)
 	return mipi_mot_exec_cmd_seq(mfd, correct_shift_seq,
 		ARRAY_SIZE(correct_shift_seq));
 }
+
+int mipi_mot_set_partial_window(struct msm_fb_data_type *mfd,
+	int x, int y, int w, int h)
+{
+	struct mipi_mot_panel *mot_panel = mipi_mot_get_mot_panel();
+	struct msm_panel_info *pinfo;
+	char col[] = {0x2a, 0x00, 0x00, 0x00, 0x00};
+	char row[] = {0x2b, 0x00, 0x00, 0x00, 0x00};
+	struct mipi_mot_cmd_seq partial_window_seq[] = {
+		MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, col),
+		MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, row),
+	};
+
+	pr_debug("%s: (%d, %d, %d, %d)\n", __func__, x, y, w, h);
+
+	pinfo = &mot_panel->pinfo;
+	if (x < 0 ||
+	    (x+w) > pinfo->xres ||
+	    y < 0 ||
+	    (y+h) > pinfo->yres) {
+		pr_err("%s: Invalid parameters!\n", __func__);
+		return -EINVAL;
+	}
+
+	if (mot_panel->is_correct_shift_for_aod_needed &&
+		mot_panel->is_correct_shift_for_aod_needed(mfd))
+		correct_shift_for_aod(mfd, x + w - 1, y + h - 1);
+
+	col[1] = x >> 8;
+	col[2] = x & 0xFF;
+	col[3] = (x + w - 1) >> 8;
+	col[4] = (x + w - 1) & 0xFF;
+	row[1] = y >> 8;
+	row[2] = y & 0xFF;
+	row[3] = (y + h - 1) >> 8;
+	row[4] = (y + h - 1) & 0xFF;
+	pr_debug("%s: cmd 2ah[h:0x%X l:0x%X -> h:0x%X l:0x%X]\n", __func__,
+		col[1], col[2], col[3], col[4]);
+	pr_debug("%s: cmd 2bh[h:0x%X l:0x%X -> h:0x%X l:0x%X]\n", __func__,
+		row[1], row[2], row[3], row[4]);
+
+	return mipi_mot_exec_cmd_seq(mfd, partial_window_seq,
+		ARRAY_SIZE(partial_window_seq));
+}

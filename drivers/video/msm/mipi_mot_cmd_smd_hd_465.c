@@ -366,6 +366,12 @@ static void panel_en_from_partial(struct msm_fb_data_type *mfd)
 	}
 }
 
+static int set_full_window(struct msm_fb_data_type *mfd)
+{
+	return mipi_mot_exec_cmd_seq(mfd, set_window_size,
+		ARRAY_SIZE(set_window_size));
+}
+
 static int __init mipi_mot_cmd_smd_hd_465_init(void)
 {
 	int ret;
@@ -450,6 +456,10 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 	mot_panel->panel_en_from_partial = panel_en_from_partial;
 	mot_panel->is_correct_shift_for_aod_needed =
 		is_correct_shift_for_aod_needed;
+
+	/* For Quickdraw Feature */
+	mot_panel->set_full_window = set_full_window;
+	mot_panel->set_partial_window = mipi_mot_set_partial_window;
 
 	/* For ESD detection information */
 	mot_panel->esd_enabled = true;

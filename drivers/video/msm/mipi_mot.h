@@ -207,6 +207,9 @@ struct mipi_mot_panel {
 	int (*prepare_for_resume) (struct msm_fb_data_type *,
 		int full, int in_sleep, int gamma);
 	int (*is_correct_shift_for_aod_needed) (struct msm_fb_data_type *);
+	int (*set_partial_window) (struct msm_fb_data_type *,
+		int x, int y, int w, int h);
+	int (*set_full_window) (struct msm_fb_data_type *);
 };
 
 int mipi_mot_device_register(struct msm_panel_info *pinfo, u32 channel,
@@ -241,6 +244,8 @@ int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
 int is_aod_supported(struct msm_fb_data_type *mfd);
 #define AOD_SUPPORTED is_aod_supported
 int correct_shift_for_aod(struct msm_fb_data_type *mfd, int x2, int y2);
+int mipi_mot_set_partial_window(struct msm_fb_data_type *mfd,
+	int x, int y, int w, int h);
 
 int __init mipi_mot_reconfig_dsiphy_db(struct msm_panel_info *pinfo,
 			     struct mipi_dsi_phy_ctrl *phy_db,
