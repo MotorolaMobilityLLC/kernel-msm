@@ -217,6 +217,8 @@ struct msm_fb_panel_data {
 	int (*clk_func) (int enable);
 	int (*fps_level_change) (struct platform_device *pdev,
 					u32 fps_level);
+	void (*set_mdp_stream_params) (struct platform_device *pdev,
+		int w, int h);
 };
 
 /*===========================================================================
