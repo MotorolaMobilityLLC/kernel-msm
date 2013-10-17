@@ -19,3 +19,30 @@
 	qcom,msm-id = <218 0x41 0x8300>,
 		      <217 0x41 0x83b0>;
 };
+
+&i2c_2 {
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&pm8941_gpios 20 0>;     /* RESET */
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "left";
+	};
+
+	tfa9890@35 {
+		compatible = "nxp,tfa9890";
+		reg = <0x35>;
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "right";
+	};
+};
+
+&soc {
+	sound {
+		qcom,tfa9890-stereo;
+		qcom,tfa9890-left-name = "tfa9890.2-0034";
+		qcom,tfa9890-right-name = "tfa9890.2-0035";
+	};
+};
