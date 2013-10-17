@@ -21,6 +21,42 @@
 };
 
 &soc {
+	gpiomux {
+		pin@fd51000 {
+			reg = <0xfd511000 0x10>;	/* TOUCH_RESET */
+			qcom,pin-num = <0>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(0)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(0)         */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+
+		pin@fd51010 {
+			reg = <0xfd511010 0x10>;	/* TOUCH_IRQ */
+			qcom,pin-num = <1>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(1)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(1)         */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+	};
+
 	i2c@f9923000{
 		synaptics_dsx_i2c@20 {
 			compatible = "synaptics,synaptics_dsx_i2c";
