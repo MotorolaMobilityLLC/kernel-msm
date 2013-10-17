@@ -4257,26 +4257,44 @@ done:
 static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info *info,
                        union iwreq_data *wrqu, char *extra)
 {
-    int sub_cmd = wrqu->data.flags;
-    int ret = 0; /* success */
+    int ret,sub_cmd;
+    unsigned int length;
     VOS_STATUS status;
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
+    hdd_adapter_t *pAdapter;
 
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received length %d", __func__, wrqu->data.length);
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received data %s", __func__, (char*)wrqu->data.pointer);
+    ret =0;
+    length = wrqu->data.length;
+    sub_cmd = wrqu->data.flags;
+    pAdapter = (hdd_adapter_t *)netdev_priv(dev);
+
+    /*we can only accept input falling between 1 and length bytes,
+     *and ensure extra is null delimited string
+     */
+    if (wrqu->data.length>=512)
+        return -EINVAL;
+    vos_mem_zero(extra + length,512 - length);
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "%s: Received length %d", __func__, length);
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "%s: Received data %s", __func__, extra);
 
     switch(sub_cmd)
     {
        case WE_SET_MAC_ADDRESS:
        {
 
-          VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "SET MAC ADDRESS\n");
+          VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                    "SET MAC ADDRESS\n");
 
-          status  = wlan_ftm_priv_set_mac_address(pAdapter,(char*)wrqu->data.pointer);
+          status  = wlan_ftm_priv_set_mac_address(pAdapter,extra);
 
           if(status != VOS_STATUS_SUCCESS)
           {
-             hddLog(VOS_TRACE_LEVEL_FATAL,"wlan_ftm_priv_set_mac_address Failed =%d\n",status);
+             hddLog(VOS_TRACE_LEVEL_FATAL,
+                    "wlan_ftm_priv_set_mac_address Failed =%d\n",status);
+
              ret = -EINVAL;
           }
 
@@ -4284,12 +4302,14 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
        break;
        case WE_SET_TX_RATE:
        {
-            status  = wlan_ftm_priv_set_txrate(pAdapter,(char*)wrqu->data.pointer);
+            status  = wlan_ftm_priv_set_txrate(pAdapter,extra);
 
             if(status != VOS_STATUS_SUCCESS)
             {
-               hddLog(VOS_TRACE_LEVEL_FATAL,"wlan_ftm_priv_set_txrate Failed =%d\n",status);
-               ret = -EINVAL;
+               hddLog(VOS_TRACE_LEVEL_FATAL,
+                      "wlan_ftm_priv_set_txrate Failed =%d\n",status);
+
+                ret = -EINVAL;
             }
 
             break;
