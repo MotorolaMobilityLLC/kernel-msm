@@ -44,6 +44,7 @@ struct mdss_mdp_cmd_ctx {
 	spinlock_t clk_lock;
 	struct work_struct clk_work;
 	struct work_struct pp_done_work;
+	atomic_t pp_done_cnt;
 
 	/* te config */
 	u8 tear_check;
@@ -287,6 +288,7 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 	complete_all(&ctx->pp_comp);
 
 	if (ctx->koff_cnt) {
+		atomic_inc(&ctx->pp_done_cnt);
 		schedule_work(&ctx->pp_done_work);
 		ctx->koff_cnt--;
 		if (ctx->koff_cnt) {
@@ -309,7 +311,8 @@ static void pingpong_done_work(struct work_struct *work)
 		container_of(work, typeof(*ctx), pp_done_work);
 
 	if (ctx->ctl)
-		mdss_mdp_ctl_notify(ctx->ctl, MDP_NOTIFY_FRAME_DONE);
+		while (atomic_add_unless(&ctx->pp_done_cnt, -1, 0))
+			mdss_mdp_ctl_notify(ctx->ctl, MDP_NOTIFY_FRAME_DONE);
 }
 
 static void clk_ctrl_work(struct work_struct *work)
@@ -586,6 +589,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	mutex_init(&ctx->clk_mtx);
 	INIT_WORK(&ctx->clk_work, clk_ctrl_work);
 	INIT_WORK(&ctx->pp_done_work, pingpong_done_work);
+	atomic_set(&ctx->pp_done_cnt, 0);
 	INIT_LIST_HEAD(&ctx->vsync_handlers);
 
 	pr_debug("%s: ctx=%p num=%d mixer=%d\n", __func__,
