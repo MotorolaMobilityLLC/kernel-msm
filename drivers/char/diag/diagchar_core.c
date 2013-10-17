@@ -881,6 +881,7 @@ int diag_switch_logging(unsigned long ioarg)
 		diagfwd_connect();
 		diag_cmp_logging_modes_diagfwd_bridge(temp,
 						driver->logging_mode);
+#ifdef CONFIG_DIAG_OVER_TTY
 	} else if (temp == USB_MODE && driver->logging_mode == TTY_MODE) {
 		usb_diag_close(driver->legacy_ch);
 		driver->legacy_ch = tty_diag_channel_open(DIAG_LEGACY,
@@ -889,6 +890,7 @@ int diag_switch_logging(unsigned long ioarg)
 		tty_diag_channel_close(driver->legacy_ch);
 		driver->legacy_ch = usb_diag_open(DIAG_LEGACY,
 					driver, diag_usb_legacy_notifier);
+#endif
 	}
 	success = 1;
 	return success;
