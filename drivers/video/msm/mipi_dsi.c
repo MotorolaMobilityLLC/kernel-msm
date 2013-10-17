@@ -92,6 +92,39 @@ int mipi_dsi_panel_power_enable(int on)
 		return 0;
 }
 
+
+static void mipi_dsi_set_mdp_stream_params(struct platform_device *pdev,
+	int width, int height)
+{
+	struct msm_fb_data_type *mfd;
+	struct mipi_panel_info *mipi;
+	u32 bpp, data, ystride;
+
+	mfd = platform_get_drvdata(pdev);
+	mipi  = &mfd->panel_info.mipi;
+
+	if (mipi->dst_format == DSI_CMD_DST_FORMAT_RGB888)
+		bpp = 3;
+	else if (mipi->dst_format == DSI_CMD_DST_FORMAT_RGB666)
+		bpp = 3;
+	else if (mipi->dst_format == DSI_CMD_DST_FORMAT_RGB565)
+		bpp = 2;
+	else
+		bpp = 3; /* Default format set to RGB888 */
+
+	ystride = width * bpp + 1;
+
+	/* DSI_COMMAND_MODE_MDP_STREAM_CTRL */
+	data = (ystride << 16) | (mipi->vc << 8) | DTYPE_DCS_LWRITE;
+	MIPI_OUTP(MIPI_DSI_BASE + 0x5c, data);
+	MIPI_OUTP(MIPI_DSI_BASE + 0x54, data);
+
+	/* DSI_COMMAND_MODE_MDP_STREAM_TOTAL */
+	data = height << 16 | width;
+	MIPI_OUTP(MIPI_DSI_BASE + 0x60, data);
+	MIPI_OUTP(MIPI_DSI_BASE + 0x58, data);
+}
+
 static int mipi_dsi_panel_on(struct platform_device *pdev)
 {
 	return panel_next_panel_on(pdev);
@@ -188,7 +221,6 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	struct msm_panel_info *pinfo;
 	struct mipi_panel_info *mipi;
 	u32 hbp, hfp, vbp, vfp, hspw, vspw, width, height;
-	u32 ystride, bpp, data;
 	u32 dummy_xres, dummy_yres;
 	int target_type = 0;
 	int old_nice;
@@ -282,28 +314,8 @@ static int mipi_dsi_on(struct platform_device *pdev)
 		MIPI_OUTP(MIPI_DSI_BASE + 0x30, 0);
 		MIPI_OUTP(MIPI_DSI_BASE + 0x34, (vspw << 16));
 
-	} else {		/* command mode */
-		if (mipi->dst_format == DSI_CMD_DST_FORMAT_RGB888)
-			bpp = 3;
-		else if (mipi->dst_format == DSI_CMD_DST_FORMAT_RGB666)
-			bpp = 3;
-		else if (mipi->dst_format == DSI_CMD_DST_FORMAT_RGB565)
-			bpp = 2;
-		else
-			bpp = 3;	/* Default format set to RGB888 */
-
-		ystride = width * bpp + 1;
-
-		/* DSI_COMMAND_MODE_MDP_STREAM_CTRL */
-		data = (ystride << 16) | (mipi->vc << 8) | DTYPE_DCS_LWRITE;
-		MIPI_OUTP(MIPI_DSI_BASE + 0x5c, data);
-		MIPI_OUTP(MIPI_DSI_BASE + 0x54, data);
-
-		/* DSI_COMMAND_MODE_MDP_STREAM_TOTAL */
-		data = height << 16 | width;
-		MIPI_OUTP(MIPI_DSI_BASE + 0x60, data);
-		MIPI_OUTP(MIPI_DSI_BASE + 0x58, data);
-	}
+	} else /* command mode */
+		mipi_dsi_set_mdp_stream_params(pdev, width, height);
 
 	mipi_dsi_host_init(mipi);
 
@@ -408,7 +420,6 @@ static int mipi_dsi_late_init(struct platform_device *pdev)
 {
 	return panel_next_late_init(pdev);
 }
-
 
 static int mipi_dsi_resource_initialized;
 
@@ -560,6 +571,7 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 	pdata->early_off = mipi_dsi_early_off;
 	pdata->panel_on = mipi_dsi_panel_on;
 	pdata->panel_power_en = mipi_dsi_panel_power_en;
+	pdata->set_mdp_stream_params = mipi_dsi_set_mdp_stream_params;
 
 	pdata->next = pdev;
 
