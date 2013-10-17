@@ -1797,9 +1797,11 @@ void diag_process_hdlc(void *data, unsigned len)
 		driver->debug_flag = 0;
 	}
 
+#ifdef CONFIG_DIAG_OVER_TTY
 	if (!ret && driver->logging_mode == TTY_MODE) {
 		tty_diag_channel_abandon_request();
 	}
+#endif
 
 	/* send error responses from APPS for Central Routing */
 	if (type == 1 && chk_apps_only()) {
