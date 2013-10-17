@@ -555,7 +555,7 @@ static void mdss_panel_esd_work(struct work_struct *work)
 	ctrl = container_of(work, struct mdss_dsi_ctrl_pdata, esd_work.work);
 	if (ctrl == NULL) {
 		pr_err("%s: invalid ctrl\n", __func__);
-		goto end;
+		return;
 	} else
 		pr_debug("%s: ctrl = %p\n", __func__, ctrl);
 
@@ -608,7 +608,7 @@ static void mdss_panel_esd_work(struct work_struct *work)
 			mdss_panel_esd_te_monitor(ctrl);
 		}
 	}
-end:
+
 	if (ctrl->panel_data.panel_info.panel_power_on)
 		queue_delayed_work(esd_data->esd_wq, &ctrl->esd_work,
 						MDSS_PANEL_ESD_CHECK_PERIOD);
