@@ -47,6 +47,7 @@
 #define of_board_is_sbc()	of_machine_is_compatible("qcom,sbc")
 
 #define platform_is_msm8226_moto()	of_machine_is_compatible("qcom,msm8226-moto")
+#define platform_is_msm8610_moto()	of_machine_is_compatible("qcom,msm8610-moto")
 
 #define machine_is_msm8974()	of_machine_is_compatible("qcom,msm8974")
 #define machine_is_msm9625()	of_machine_is_compatible("qcom,msm9625")
