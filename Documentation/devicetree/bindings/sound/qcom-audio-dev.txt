@@ -126,6 +126,9 @@ Optional properties:
 
  - qcom,ext-spk-amp-supply : External speaker amplifier power supply.
  - qcom,ext-spk-amp-gpio : External speaker amplifier enable signal.
+ - qcom,tfa9890-stereo: External stereo smartboost amplifier tfa9890 enable signal.
+ - qcom,tfa9890-left-name: specifies the codec name for left tfa9890 IC.
+ - qcom,tfa9890-right-name: specifies the codec name for right tfa9890 IC.
 
 [Second Level Nodes]
 
