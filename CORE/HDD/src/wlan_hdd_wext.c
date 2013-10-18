@@ -4603,36 +4603,6 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
            break;
        }
 #endif
-#ifdef FEATURE_CESIUM_PROPRIETARY
-        case WE_GET_IBSS_STA_INFO:
-        {
-            hdd_station_ctx_t *pHddStaCtx =
-                WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-            int idx = 0;
-            int length = 0;
-
-            for (idx = 0; idx < HDD_MAX_NUM_IBSS_STA; idx++)
-            {
-               if (0 != pHddStaCtx->conn_info.staId[ idx ])
-               {
-                   length += scnprintf
-                             (
-                             (extra + length), WE_MAX_STR_LEN - length,
-                             "%d .%02x:%02x:%02x:%02x:%02x:%02x\n",
-                             pHddStaCtx->conn_info.staId[ idx ],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[0],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[1],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[2],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[3],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[4],
-                             pHddStaCtx->conn_info.peerMacAddress[idx].bytes[5]
-                             );
-               }
-            }
-            wrqu->data.length = strlen(extra)+1;
-            break;
-        }
-#endif
         default:
         {
             hddLog(LOGE, "Invalid IOCTL command %d  \n",  sub_cmd );
