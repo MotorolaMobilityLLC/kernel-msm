@@ -1027,7 +1027,9 @@ void limSendHalEndScanReq(tpAniSirGlobal pMac, tANI_U8 channelNum, tLimLimHalSca
      */
     if((pMac->lim.gLimHalScanState != eLIM_HAL_END_SCAN_WAIT_STATE)  &&
        (pMac->lim.gLimHalScanState != eLIM_HAL_IDLE_SCAN_STATE)  &&
-            (pMac->lim.gLimHalScanState != eLIM_HAL_START_SCAN_WAIT_STATE))
+       (pMac->lim.gLimHalScanState == eLIM_HAL_SCANNING_STATE)  &&
+       (pMac->lim.gLimHalScanState != eLIM_HAL_FINISH_SCAN_WAIT_STATE)  &&
+       (pMac->lim.gLimHalScanState != eLIM_HAL_START_SCAN_WAIT_STATE))
     {
         pEndScanParam = vos_mem_malloc(sizeof(*pEndScanParam));
         if ( NULL == pEndScanParam )
@@ -3732,6 +3734,9 @@ limProcessMinChannelTimeout(tpAniSirGlobal pMac)
             }
         }
 
+        limLog(pMac, LOGW,
+           FL("Sending End Scan req from MIN_CH_TIMEOUT in state %X ch-%d"),
+           pMac->lim.gLimMlmState,channelNum);
         limSendHalEndScanReq(pMac, channelNum, eLIM_HAL_END_SCAN_WAIT_STATE);
     }
     else
@@ -3800,6 +3805,9 @@ limProcessMaxChannelTimeout(tpAniSirGlobal pMac)
                channelNum = 1;
             }
         }
+        limLog(pMac, LOGW,
+           FL("Sending End Scan req from MAX_CH_TIMEOUT in state %X on ch-%d"),
+           pMac->lim.gLimMlmState,channelNum);
         limSendHalEndScanReq(pMac, channelNum, eLIM_HAL_END_SCAN_WAIT_STATE);
     }
     else
