@@ -187,6 +187,9 @@ struct msp430_platform_data {
 #define M_ALGO_ACCUM_MODALITY   0x0040
 #define M_ALGO_ACCUM_MVMT       0x0080
 
+/* generic interrupt mask */
+#define M_GENERIC_INTRPT        0x0080
+
 /* algo index */
 #define MSP_IDX_MODALITY        0
 #define MSP_IDX_ORIENTATION     1
@@ -246,7 +249,8 @@ enum MSP430_data_types {
 	DT_ALGO_EVT,
 	DT_ACCUM_MVMT,
 	DT_SIM,
-	DT_RESET
+	DT_RESET,
+	DT_GENERIC_INT
 };
 
 enum {

@@ -100,6 +100,7 @@
 
 #define ALGO_CONFIG			0x26
 #define ALGO_INT_STATUS			0x27
+#define GENERIC_INT_STATUS		0x28
 
 #define MOTION_DATA			0x2D
 
@@ -1185,6 +1186,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 {
 	int err;
 	unsigned short irq_status, irq2_status;
+	uint8_t irq3_status;
 	signed short x, y, z, q;
 
 	struct msp430_data *ps_msp430 = container_of(work,
@@ -1213,6 +1215,15 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		goto EXIT;
 	}
 	irq2_status = (read_cmdbuff[1] << 8) | read_cmdbuff[0];
+
+	/* read generic interrupt register */
+	msp_cmdbuff[0] = GENERIC_INT_STATUS;
+	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+	if (err < 0) {
+		dev_err(&ps_msp430->client->dev, "Reading from msp failed\n");
+		goto EXIT;
+	}
+	irq3_status = read_cmdbuff[0];
 
 	/* First, check for error messages */
 	if (irq_status & M_LOG_MSG) {
@@ -1525,6 +1536,13 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		z = (read_cmdbuff[3] << 8) | read_cmdbuff[2];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, 0);
 		dev_dbg(&ps_msp430->client->dev, "Sending accum mvmt event\n");
+	}
+	if (irq3_status & M_GENERIC_INTRPT) {
+		/* x (data1) : irq3_status */
+		msp430_ms_data_buffer_write(ps_msp430, DT_GENERIC_INT,
+			irq3_status, 0, 0, 0);
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending generic interrupt event:%d\n", irq3_status);
 	}
 EXIT:
 	mutex_unlock(&ps_msp430->lock);
