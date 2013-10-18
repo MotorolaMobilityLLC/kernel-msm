@@ -1112,6 +1112,8 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_STOP_BATCH_SCAN_IND           SIR_HAL_STOP_BATCH_SCAN_IND
 #define WDA_TRIGGER_BATCH_SCAN_RESULT_IND SIR_HAL_TRIGGER_BATCH_SCAN_RESULT_IND
 #endif
+#define WDA_RATE_UPDATE_IND         SIR_HAL_RATE_UPDATE_IND
+
 
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
