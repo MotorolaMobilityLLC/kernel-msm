@@ -41,6 +41,7 @@
 			max17048,empty-soc = <10>;
 			max17048,batt-tech = <2>;
 			max17048,fcc-mah = <2300>;
+			max17048,uvlo-thr-mv = <3050>;
 		};
 
 		smb349@2d {
