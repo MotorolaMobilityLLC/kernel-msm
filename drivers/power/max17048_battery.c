@@ -30,6 +30,8 @@
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/debugfs.h>
 #include <linux/suspend.h>
+#include <linux/reboot.h>
+#include <linux/syscalls.h>
 
 #define MODE_REG      0x06
 #define VCELL_REG     0x02
@@ -84,6 +86,8 @@ struct max17048_chip {
 	int batt_temp;
 	int batt_health;
 	int batt_current;
+	int uvlo_thr_mv;
+	int poll_interval_ms;
 };
 
 static struct max17048_chip *ref;
@@ -319,6 +323,34 @@ static int max17048_set_rcomp(struct max17048_chip *chip)
 	return ret;
 }
 
+#define UVLO_COUNT 3
+#define UVLO_FAST_POLL_MS 1000
+#define UVLO_NORMAL_POLL_MS 10000
+#define UVLO_INIT_POLL_MS 25000
+static void max17048_check_low_vbatt(struct max17048_chip *chip)
+{
+	static int uvlo_cnt = 0;
+
+	if (system_state == SYSTEM_BOOTING) {
+		chip->poll_interval_ms = UVLO_INIT_POLL_MS;
+		return;
+	}
+
+	if (chip->voltage < chip->uvlo_thr_mv) {
+		chip->poll_interval_ms = UVLO_FAST_POLL_MS;
+		uvlo_cnt ++;
+	} else {
+		chip->poll_interval_ms = UVLO_NORMAL_POLL_MS;
+		uvlo_cnt = 0;
+	}
+
+	if (uvlo_cnt >= UVLO_COUNT) {
+		pr_info("%s: power down by very low battery\n", __func__);
+		sys_sync();
+		kernel_power_off();
+	}
+}
+
 static void max17048_work(struct work_struct *work)
 {
 	struct max17048_chip *chip =
@@ -353,12 +385,18 @@ static void max17048_work(struct work_struct *work)
 	if (ret < 0)
 		pr_err("%s : error clear alert irq register.\n", __func__);
 
-	pr_info("%s: rsoc=0x%04X rvcell=0x%04X soc=%d v_mv=%d i_ua=%d t=%d\n",
-				__func__, chip->soc, chip->vcell,
+	if (chip->capacity_level == 0) {
+		max17048_check_low_vbatt(chip);
+		schedule_delayed_work(&chip->monitor_work,
+				msecs_to_jiffies(chip->poll_interval_ms));
+	} else {
+		pr_info("%s: rsoc=0x%04X rvcell=0x%04X soc=%d"\
+			" v_mv=%d i_ua=%d t=%d\n", __func__,
+				chip->soc, chip->vcell,
 				chip->capacity_level, chip->voltage,
 				chip->batt_current, chip->batt_temp);
-
-	wake_unlock(&chip->alert_lock);
+		wake_unlock(&chip->alert_lock);
+	}
 }
 
 static irqreturn_t max17048_interrupt_handler(int irq, void *data)
@@ -534,12 +572,19 @@ static int max17048_parse_dt(struct device *dev,
 		goto out;
 	}
 
+	ret = of_property_read_u32(dev_node, "max17048,uvlo-thr-mv",
+				   &chip->uvlo_thr_mv);
+	if (ret) {
+		pr_err("%s: failed to read uvlo threshold\n", __func__);
+		goto out;
+	}
+
 	pr_info("%s: rcomp = %d rcomp_co_hot = %d rcomp_co_cold = %d",
 			__func__, chip->rcomp, chip->rcomp_co_hot,
 			chip->rcomp_co_cold);
-	pr_info("%s: alert_thres = %d full_soc = %d empty_soc = %d",
+	pr_info("%s: alert_thres = %d full_soc = %d empty_soc = %d uvlo=%d\n",
 			__func__, chip->alert_threshold,
-			chip->full_soc, chip->empty_soc);
+			chip->full_soc, chip->empty_soc, chip->uvlo_thr_mv);
 
 out:
 	return ret;
