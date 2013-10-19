@@ -389,6 +389,11 @@ long msm_isp_ioctl(struct v4l2_subdev *sd,
 		rc = msm_isp_update_axi_stream(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
+	case VIDIOC_MSM_ISP_CONFIG_DONE:
+		mutex_lock(&vfe_dev->core_mutex);
+		rc = msm_isp_config_done(vfe_dev, arg);
+		mutex_unlock(&vfe_dev->core_mutex);
+		break;
 	case MSM_SD_SHUTDOWN:
 		while (vfe_dev->vfe_open_cnt != 0)
 			msm_isp_close_node(sd, NULL);
@@ -866,6 +871,17 @@ void msm_isp_set_src_state(struct vfe_device *vfe_dev, void *arg)
 	struct msm_vfe_axi_src_state *src_state = arg;
 	vfe_dev->axi_data.src_info[src_state->input_src].active =
 	src_state->src_active;
+}
+
+int msm_isp_config_done(struct vfe_device *vfe_dev, void *arg)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&vfe_dev->cfg_flag_lock, flags);
+	vfe_dev->config_done_flag = 1;
+	spin_unlock_irqrestore(&vfe_dev->cfg_flag_lock, flags);
+
+	return 0;
 }
 
 int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)

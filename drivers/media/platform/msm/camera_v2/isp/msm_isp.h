@@ -291,6 +291,11 @@ enum msm_wm_ub_cfg_type {
 	MSM_WM_UB_CFG_MAX_NUM
 };
 
+struct msm_vfe_axi_process_done_data {
+	struct msm_isp_buffer *done_buf_arr;
+	int32_t data_for_send;
+};
+
 struct msm_vfe_axi_shared_data {
 	struct msm_vfe_axi_hardware_info *hw_info;
 	struct msm_vfe_axi_stream stream_info[MAX_NUM_STREAM];
@@ -306,7 +311,9 @@ struct msm_vfe_axi_shared_data {
 	enum msm_isp_camif_update_state pipeline_update;
 	struct msm_vfe_src_info src_info[VFE_SRC_MAX];
 	uint16_t stream_handle_cnt;
+	uint16_t created_streams_num;
 	unsigned long event_mask;
+	struct msm_vfe_axi_process_done_data proc_done_data[MAX_NUM_STREAM];
 };
 
 struct msm_vfe_stats_hardware_info {
@@ -404,6 +411,11 @@ struct vfe_device {
 	struct tasklet_struct vfe_tasklet;
 	struct msm_vfe_tasklet_queue_cmd
 		tasklet_queue_cmd[MSM_VFE_TASKLETQ_SIZE];
+
+	uint8_t config_done_flag;
+	uint8_t skip_ping_pong_cfg;
+	uint8_t skip_isp_send_event;
+	spinlock_t  cfg_flag_lock;
 
 	uint32_t vfe_hw_version;
 	struct msm_vfe_hardware_info *hw_info;

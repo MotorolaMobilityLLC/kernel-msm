@@ -413,4 +413,8 @@ struct msm_isp_event_data {
 #define VIDIOC_MSM_ISP_UPDATE_STREAM \
 	_IOWR('V', BASE_VIDIOC_PRIVATE+13, struct msm_vfe_axi_stream_update_cmd)
 
+#define VIDIOC_MSM_ISP_CONFIG_DONE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+14, int)
+
+
 #endif /* __MSMB_ISP__ */
