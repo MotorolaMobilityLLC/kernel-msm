@@ -7708,6 +7708,7 @@ tANI_U8 limGetShortSlotFromPhyMode(tpAniSirGlobal pMac, tpPESession psessionEntr
     else if (phyMode == WNI_CFG_PHY_MODE_11G)
     {
         if ((psessionEntry->pePersona == VOS_STA_SAP_MODE) ||
+            (psessionEntry->pePersona == VOS_IBSS_MODE) ||
             (psessionEntry->pePersona == VOS_P2P_GO_MODE))
         {
             val = true;
