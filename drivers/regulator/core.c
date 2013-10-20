@@ -12,8 +12,6 @@
  *  option) any later version.
  *
  */
-#define DEBUG
-#define CONFIG_REGULATOR_DUMMY
 
 #include <linux/kernel.h>
 #include <linux/init.h>
