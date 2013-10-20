@@ -688,6 +688,9 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                  break;
             case eSIR_IBSS_MODE:
                  psessionEntry->limSystemRole = eLIM_STA_IN_IBSS_ROLE;
+                 psessionEntry->shortSlotTimeSupported =
+                        limGetShortSlotFromPhyMode(pMac, psessionEntry,
+                                                   psessionEntry->gLimPhyMode);
                  break;
 
             case eSIR_BTAMP_AP_MODE:
