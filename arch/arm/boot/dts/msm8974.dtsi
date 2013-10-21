@@ -1629,11 +1629,6 @@
 		      <0xfc4016c0 0x00004>;
 		reg-names = "qdsp6_base", "halt_base", "restart_reg";
 		vdd_cx-supply = <&pm8841_s2_corner>;
-		vdd_mss-supply = <&pm8841_s3>;
-		vdd_mx-supply = <&pm8841_s1>;
-		vdd_pll-supply = <&pm8941_l12>;
-		qcom,vdd_pll = <1800000>;
-
 		interrupts = <0 162 1>;
 
 		qcom,firmware-name = "adsp";
