@@ -169,7 +169,8 @@ void rtac_add_adm_device(u32 port_id, u32 copp_id, u32 path_id, u32 popp_id)
 	/* Check if device already added */
 	if (rtac_adm_data.num_of_dev != 0) {
 		for (; i < rtac_adm_data.num_of_dev; i++) {
-			if (rtac_adm_data.device[i].afe_port == port_id) {
+			if (rtac_adm_data.device[i].afe_port == port_id &&
+			    rtac_adm_data.device[i].copp == copp_id) {
 				add_popp(i, port_id, popp_id);
 				goto done;
 			}
@@ -222,7 +223,7 @@ static void shift_popp(u32 copp_idx, u32 popp_idx)
 	}
 }
 
-void rtac_remove_adm_device(u32 port_id)
+void rtac_remove_adm_device(u32 port_id, u32 copp_id)
 {
 	s32 i;
 	pr_debug("%s: port_id = %d\n", __func__, port_id);
@@ -230,7 +231,8 @@ void rtac_remove_adm_device(u32 port_id)
 	mutex_lock(&rtac_adm_mutex);
 	/* look for device */
 	for (i = 0; i < rtac_adm_data.num_of_dev; i++) {
-		if (rtac_adm_data.device[i].afe_port == port_id) {
+		if (rtac_adm_data.device[i].afe_port == port_id &&
+		    rtac_adm_data.device[i].copp == copp_id) {
 			memset(&rtac_adm_data.device[i], 0,
 				   sizeof(rtac_adm_data.device[i]));
 			rtac_adm_data.num_of_dev--;
@@ -482,6 +484,8 @@ u32 send_adm_apr(void *buf, u32 opcode)
 
 	for (port_index = 0; port_index < AFE_MAX_PORTS; port_index++) {
 		if (adm_get_copp_id(port_index) == copp_id)
+			break;
+		if (adm_get_lowlatency_copp_id(port_index) == copp_id)
 			break;
 	}
 	if (port_index >= AFE_MAX_PORTS) {
