@@ -3694,10 +3694,8 @@ tANI_BOOLEAN csrGetRSNInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eCs
             Capabilities->NoPairwise = (pRSNIe->RSN_Cap[0] >> 1) & 0x1 ; // Bit 1 No Pairwise
             Capabilities->PTKSAReplayCounter = (pRSNIe->RSN_Cap[0] >> 2) & 0x3 ; // Bit 2, 3 PTKSA Replay Counter
             Capabilities->GTKSAReplayCounter = (pRSNIe->RSN_Cap[0] >> 4) & 0x3 ; // Bit 4, 5 GTKSA Replay Counter
-#ifdef WLAN_FEATURE_11W
             Capabilities->MFPRequired = (pRSNIe->RSN_Cap[0] >> 6) & 0x1 ; // Bit 6 MFPR
             Capabilities->MFPCapable = (pRSNIe->RSN_Cap[0] >> 7) & 0x1 ; // Bit 7 MFPC
-#endif
             Capabilities->Reserved = pRSNIe->RSN_Cap[1]  & 0xff ; // remaining reserved
         }
     }
