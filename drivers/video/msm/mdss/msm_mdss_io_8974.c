@@ -25,6 +25,7 @@
 #define SW_RESET BIT(2)
 #define SW_RESET_PLL BIT(0)
 #define PWRDN_B BIT(7)
+#define CLK_PREPARE_RETRY_MAX 4
 
 static struct dsi_clk_desc dsi_pclk;
 
@@ -296,8 +297,21 @@ static int mdss_dsi_clk_prepare(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 	rc = clk_prepare(ctrl_pdata->byte_clk);
 	if (rc) {
-		pr_err("%s: Failed to prepare dsi byte clk\n", __func__);
-		goto byte_clk_err;
+		int i;
+		for (i = 1; i < CLK_PREPARE_RETRY_MAX; i++) {
+			pr_debug("%s(%d): Failed to prepare dsi byte clk\n",
+								__func__, i);
+			rc = clk_prepare(ctrl_pdata->byte_clk);
+			if (!rc)
+				break;
+		}
+
+		if (i >= CLK_PREPARE_RETRY_MAX) {
+			pr_err("%s(%d): Still failed to prepare dsi byte clk\n",
+								__func__, i);
+			goto byte_clk_err;
+		} else
+			pr_warning("%s: byte_clk is locked\n", __func__);
 	}
 
 	rc = clk_prepare(ctrl_pdata->pixel_clk);
