@@ -1998,7 +1998,8 @@ static tANI_U32 csrGetBssCapValue(tpAniSirGlobal pMac, tSirBssDescription *pBssD
         }
     }
 #endif
-    if( pIes )
+    /* if strict select 5GHz is non-zero then ignore the capability checking */
+    if (pIes && !CSR_IS_SELECT_5GHZ_MARGIN(pMac))
     {
         //We only care about 11N capability
         if(pIes->HTCaps.present)
@@ -2119,12 +2120,46 @@ eHalStatus csrScanGetResult(tpAniSirGlobal pMac, tCsrScanResultFilter *pFilter, 
     {
         *phResult = CSR_INVALID_SCANRESULT_HANDLE;
     }
+
+    if (pMac->roam.configParam.nSelect5GHzMargin)
+    {
+        pMac->scan.inScanResultBestAPRssi = -128;
+        csrLLLock(&pMac->scan.scanResultList);
+
+        /* Find out the best AP Rssi going thru the scan results */
+        pEntry = csrLLPeekHead(&pMac->scan.scanResultList, LL_ACCESS_NOLOCK);
+        while ( NULL != pEntry)
+        {
+            pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+            if (pBssDesc->Result.BssDescriptor.rssi > pMac->scan.inScanResultBestAPRssi)
+            {
+                pMac->scan.inScanResultBestAPRssi = pBssDesc->Result.BssDescriptor.rssi;
+            }
+            pEntry = csrLLNext(&pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK);
+        }
+
+        /* Modify Rssi category based on best AP Rssi */
+        csrAssignRssiForCategory(pMac, pMac->scan.inScanResultBestAPRssi, pMac->roam.configParam.bCatRssiOffset);
+        pEntry = csrLLPeekHead(&pMac->scan.scanResultList, LL_ACCESS_NOLOCK);
+        while ( NULL != pEntry)
+        {
+            pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+
+            /* re-assign preference value based on modified rssi bucket */
+            pBssDesc->preferValue = csrGetBssPreferValue(pMac, (int)pBssDesc->Result.BssDescriptor.rssi);
+
+            pEntry = csrLLNext(&pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK);
+        }
+
+        csrLLUnlock(&pMac->scan.scanResultList);
+    }
+
     pRetList = vos_mem_malloc(sizeof(tScanResultList));
     if ( NULL == pRetList )
         status = eHAL_STATUS_FAILURE;
     else
         status = eHAL_STATUS_SUCCESS;
-    if (HAL_STATUS_SUCCESS(status))
+    if(HAL_STATUS_SUCCESS(status))
     {
         vos_mem_set(pRetList, sizeof(tScanResultList), 0);
         csrLLOpen(pMac->hHdd, &pRetList->List);
