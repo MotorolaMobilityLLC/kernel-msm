@@ -973,10 +973,6 @@
 	status = "disabled";
 };
 
-&i2c_2 {
-	status = "disabled";
-};
-
 &mdss_dsi1 {
 	status = "disabled";
 };
