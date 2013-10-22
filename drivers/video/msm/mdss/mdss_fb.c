@@ -1316,7 +1316,7 @@ void mdss_fb_signal_timeline(struct msm_sync_pt_data *sync_pt_data)
 			sync_pt_data->fence_name, sync_pt_data->timeline_value,
 			atomic_read(&sync_pt_data->commit_cnt));
 	} else {
-		pr_warn("%s timeline signaled without commits val=%d\n",
+		pr_debug("%s timeline signaled without commits val=%d\n",
 			sync_pt_data->fence_name, sync_pt_data->timeline_value);
 	}
 	mutex_unlock(&sync_pt_data->sync_mutex);
