@@ -274,8 +274,8 @@ void hdd_tx_rx_pkt_cnt_stat_timer_handler( void *pAdapter);
 /**============================================================================
   @brief hdd_flush_ibss_tx_queues() -
                     Flush tx queues in IBSS mode
-  @param pHddStaCtx : Hdd adapter
-  @param STAId:       Sta index
+  @param pAdapter: Hdd adapter
+  @param STAId:    Sta index
   @return    : VOS_STATUS_SUCCESS/VOS_STATUS_E_FAILURE
   ===========================================================================*/
 void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId);
