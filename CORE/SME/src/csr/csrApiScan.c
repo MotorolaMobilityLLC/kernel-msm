@@ -3739,8 +3739,8 @@ tANI_BOOLEAN csrSave11dCountryString( tpAniSirGlobal pMac, tANI_U8 *pCountryCode
         }
         else
         {
-            pCountryCode[ 0 ] = 'U';
-            pCountryCode[ 1 ] = 'S';
+            pCountryCode[ 0 ] = '0';
+            pCountryCode[ 1 ] = '0';
         }
     }
 
