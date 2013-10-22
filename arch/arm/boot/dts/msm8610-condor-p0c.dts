@@ -86,3 +86,7 @@
 		hs_det_micvdd-supply = <&pm8110_l22>;
 	};
 };
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tianma_qhd>;
+};
