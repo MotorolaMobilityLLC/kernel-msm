@@ -341,6 +341,9 @@ typedef struct _VosContextType
 
    volatile v_U8_t    isLoadUnloadInProgress;
 
+   /* SSR re-init in progress */
+   volatile v_U8_t     isReInitInProgress;
+
 } VosContextType, *pVosContextType;
 
 
