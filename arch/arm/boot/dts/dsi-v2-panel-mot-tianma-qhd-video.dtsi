@@ -10,57 +10,80 @@
  * GNU General Public License for more details.
  */
 
-&soc {
-	qcom,dsi_v2_mot_tianma_qhd_video {
-		compatible = "qcom,dsi-panel-v2";
-		label = "MOT Tianma qHD video mode dsi panel";
-		qcom,dsi-ctrl-phandle = <&mdss_dsi0>;
-		qcom,rst-gpio = <&msmgpio 41 0>;
-		vdda-supply = <&pm8110_l19>;
-		vddio-supply=<&pm8110_l14>;
-		qcom,mdss-pan-res = <540 960>;
-		qcom,mdss-pan-bpp = <24>;
-		qcom,mdss-pan-dest = "display_1";
-		qcom,mdss-pan-porch-values = <32 4 32 16 1 64>;
-		qcom,mdss-pan-underflow-clr = <0xff>;
-		qcom,mdss-pan-bl-levels = <1 255>;
-		qcom,mdss-pan-bl-ctrl = "bl_ctrl_wled";
-		qcom,mdss-pan-dsi-mode = <0>;
-		qcom,mdss-pan-dsi-h-pulse-mode = <0>;
-		qcom,mdss-pan-dsi-h-power-stop = <0 0 0>;
-		qcom,mdss-pan-dsi-bllp-power-stop = <1 1>;
-		qcom,mdss-pan-dsi-traffic-mode = <1>;
-		qcom,mdss-pan-dsi-dst-format = <3>;
-		qcom,mdss-pan-dsi-vc = <0>;
-		qcom,mdss-pan-dsi-rgb-swap = <0>;
-		qcom,mdss-pan-dsi-data-lanes = <1 1 0 0>;
-		qcom,mdss-pan-dsi-dlane-swap = <1>;
-		qcom,mdss-pan-dsi-t-clk = <0x1b 0x04>;
-		qcom,mdss-pan-dsi-stream = <0>;
-		qcom,mdss-pan-dsi-mdp-tr = <0x0>;/*todo*/
-		qcom,mdss-pan-dsi-dma-tr = <0x04>;
-		qcom,mdss-pan-dsi-frame-rate = <60>;
-		qcom,panel-phy-regulatorSettings =[02 08 05 00 20 03];
-		qcom,panel-phy-timingSettings = [87 1C 12 00 42 42
-					18 20 17 03 04 00];
-		qcom,panel-phy-strengthCtrl = [ff 06];
-		qcom,panel-phy-bistCtrl = [03 03 00 00 0f 00];
-		qcom,panel-phy-laneConfig =
-					[80 45 00 00 01 66 /*lane0**/
-					80 45 00 00 01 66 /*lane1*/
-					80 45 00 00 01 66 /*lane2*/
-					80 45 00 00 01 66 /*lane3*/
-					40 67 00 00 01 88]; /*Clk*/
+&mdss_mdp {
+	mot_tianma_qhd: qcom,dsi_v2_mot_tianma_qhd_video {
+		compatible = "qcom,mdss-dsi-panel";
+		status = "ok";
 
-		qcom,on-cmds-dsi-state = "DSI_LP_MODE";
-		qcom,panel-on-cmds = [
-					05 01 00 00 78 02
-						11 00
-					05 01 00 00 0a 02
-						29 00
-					];
-		qcom,panel-off-cmds = [05 01 00 00 01 02 28 00
-					05 01 00 00 78 02 10 00];
-		qcom,off-cmds-dsi-state = "DSI_LP_MODE";
+		mmi,panel_name = "mipi_mot_tianma_qhd";
+		mmi,panel_ver_min = <0x00000000 0x000186c2>;
+		mmi,panel_ver_max = <0xffffffff 0xffffffff>;
+		qcom,panel-esd-power-mode-chk = <0x94>;
+
+		qcom,mdss-dsi-panel-name = "mipi_mot_tianma_qhd";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-type = "dsi_video_mode";
+		qcom,mdss-dsi-panel-destination = "display_1";
+		qcom,mdss-dsi-panel-framerate = <60>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-panel-width = <540>;
+		qcom,mdss-dsi-panel-height = <960>;
+		qcom,mdss-pan-physical-width-dimension = <56>;
+		qcom,mdss-pan-physical-height-dimension = <99>;
+		qcom,mdss-dsi-panel-clock-rate = <797600000>;
+		qcom,mdss-dsi-h-front-porch = <32>;
+		qcom,mdss-dsi-h-back-porch = <4>;
+		qcom,mdss-dsi-h-pulse-width = <32>;
+		qcom,mdss-dsi-h-sync-skew = <0>;
+		qcom,mdss-dsi-v-back-porch = <64>;
+		qcom,mdss-dsi-v-front-porch = <16>;
+		qcom,mdss-dsi-v-pulse-width = <1>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = <0>;
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0>;
+
+		qcom,mdss-dsi-tune-h-front-porch = <62>;
+		qcom,mdss-dsi-tune-h-back-porch = <62>;
+		qcom,mdss-dsi-tune-h-pulse-width = <8>;
+		qcom,mdss-dsi-tune-v-back-porch = <15>;
+		qcom,mdss-dsi-tune-v-front-porch = <15>;
+		qcom,mdss-dsi-tune-v-pulse-width = <1280>;
+
+		qcom,mdss-dsi-on-command = [
+			05 01 00 00 05 00 02 01 00
+			05 01 00 00 78 00 02 11 00
+			05 01 00 00 00 00 02 51 ff
+			05 01 00 00 00 00 02 53 2c
+			05 01 00 00 0a 00 02 29 00];
+
+		qcom,mdss-dsi-off-command = [
+			05 01 00 00 01 00 02 28 00
+			05 01 00 00 78 00 02 10 00];
+
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-h-sync-pulse = <0>;
+		qcom,mdss-dsi-traffic-mode = <1>;
+		qcom,mdss-dsi-lane-map = <1>;
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-lane-1-state;
+		qcom,mdss-dsi-panel-timings = [87 1c 12 00 42 42 18 20 17 03 04 00];
+		qcom,mdss-dsi-t-clk-post = <0x04>;
+		qcom,mdss-dsi-t-clk-pre = <0x1b>;
+		qcom,mdss-dsi-bl-min-level = <1>;
+		qcom,mdss-dsi-bl-max-level = <255>;
+		qcom,mdss-dsi-dma-trigger = <4>;
+		qcom,mdss-dsi-mdp-trigger = <0>;
+		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+
+		qcom,mdss-dsi-esd-det-mode = <1>;
 	};
 };
