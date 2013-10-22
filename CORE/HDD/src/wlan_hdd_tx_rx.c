@@ -223,11 +223,12 @@ static VOS_STATUS hdd_flush_tx_queues( hdd_adapter_t *pAdapter )
 void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
 {
    v_U8_t i;
-   skb_list_node_t *pktNode = NULL;
-   struct sk_buff *skb = NULL;
+   v_SIZE_t size = 0;
    v_U8_t skbStaIdx;
-   hdd_list_node_t *tmp = NULL;
+   skb_list_node_t *pktNode = NULL;
+   hdd_list_node_t *tmp = NULL, *next = NULL;
    struct netdev_queue *txq;
+   struct sk_buff *skb = NULL;
 
    for (i = 0; i < NUM_TX_QUEUES; i++)
    {
@@ -240,10 +241,8 @@ void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
       }
 
       /* Iterate through the queue and identify the data for STAId */
-      list_for_each(tmp, &pAdapter->wmm_tx_queue[i].anchor)
+      list_for_each_safe(tmp, next, &pAdapter->wmm_tx_queue[i].anchor)
       {
-         hdd_list_node_t *tmpNext = NULL;
-
          pktNode = list_entry(tmp, skb_list_node_t, anchor);
          if (pktNode != NULL)
          {
@@ -253,12 +252,9 @@ void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
             skbStaIdx = *(v_U8_t *)(((v_U8_t *)(skb->data)) - 1);
             if (skbStaIdx == STAId)
             {
-               tmpNext = tmp->next;
-
                /* Data for STAId is freed along with the queue node */
                kfree_skb(skb);
                list_del(tmp);
-               tmp = tmpNext;
 
                ++pAdapter->hdd_stats.hddTxRxStats.txFlushed;
                ++pAdapter->hdd_stats.hddTxRxStats.txFlushedAC[i];
@@ -268,12 +264,17 @@ void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
       }
 
       /* Restart the queue only-if suspend and the queue was flushed */
+      hdd_list_size( &pAdapter->wmm_tx_queue[i], &size );
       txq = netdev_get_tx_queue(pAdapter->dev, i);
-      if ( (pAdapter->wmm_tx_queue[i].count <
-            pAdapter->wmm_tx_queue[i].max_size) &&
-           (netif_tx_queue_stopped(txq)))
+
+      if (VOS_TRUE == pAdapter->isTxSuspended[i] &&
+          size <= HDD_TX_QUEUE_LOW_WATER_MARK &&
+          netif_tx_queue_stopped(txq) )
       {
          netif_tx_start_queue(txq);
+         pAdapter->isTxSuspended[i] = VOS_FALSE;
+         ++pAdapter->hdd_stats.hddTxRxStats.txDequeDePressured;
+         ++pAdapter->hdd_stats.hddTxRxStats.txDequeDePressuredAC[i];
       }
 
       spin_unlock_bh(&pAdapter->wmm_tx_queue[i].lock);

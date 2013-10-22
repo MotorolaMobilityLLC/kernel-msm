@@ -300,6 +300,9 @@ typedef struct hdd_tx_rx_stats_s
    // flush stats
    __u32    txFlushed;
    __u32    txFlushedAC[NUM_TX_QUEUES];
+   // Deque depressure stats
+   __u32    txDequeDePressured;
+   __u32    txDequeDePressuredAC[NUM_TX_QUEUES];
    // rx stats
    __u32    rxChains;
    __u32    rxPackets;

@@ -4547,10 +4547,11 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
                      "\nbackpressured BK %u, BE %u, VI %u, VO %u"
                      "\n       queued BK %u, BE %u, VI %u, VO %u"
                      "\nfetched %u, empty %u, lowres %u, deqerr %u"
-                     "\ndequeued %u, depressured %u, completed %u, flushed %u"
+                     "\ndequeued %u, depressured %u, deque-depressured %u, completed %u, flushed %u"
                      "\n      fetched BK %u, BE %u, VI %u, VO %u"
                      "\n     dequeued BK %u, BE %u, VI %u, VO %u"
                      "\n  depressured BK %u, BE %u, VI %u, VO %u"
+                     "\nDeque depressured BK %u, BE %u, VI %u, VO %u"
                      "\n      flushed BK %u, BE %u, VI %u, VO %u"
                      "\n\nReceive"
                      "\nchains %u, packets %u, dropped %u, delivered %u, refused %u"
@@ -4589,6 +4590,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
 
                      pStats->txFetchDequeued,
                      pStats->txFetchDePressured,
+                     pStats->txDequeDePressured,
                      pStats->txCompleted,
                      pStats->txFlushed,
 
@@ -4606,6 +4608,11 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
                      pStats->txFetchDePressuredAC[WLANTL_AC_BE],
                      pStats->txFetchDePressuredAC[WLANTL_AC_VI],
                      pStats->txFetchDePressuredAC[WLANTL_AC_VO],
+
+                     pStats->txDequeDePressuredAC[WLANTL_AC_BK],
+                     pStats->txDequeDePressuredAC[WLANTL_AC_BE],
+                     pStats->txDequeDePressuredAC[WLANTL_AC_VI],
+                     pStats->txDequeDePressuredAC[WLANTL_AC_VO],
 
                      pStats->txFlushedAC[WLANTL_AC_BK],
                      pStats->txFlushedAC[WLANTL_AC_BE],
