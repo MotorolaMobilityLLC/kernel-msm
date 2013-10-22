@@ -18,16 +18,16 @@
 	compatible = "qcom,msm8974-abbagoochie",
 		     "qcom,msm8974-moto",
 		     "qcom,msm8974";
-
-	qcom,mdss_dsi_mot_smd_720p_video {
-		status = "ok";
-	};
 };
 
 &mot_smd_720p_vid {
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vdd_disp-supply = <&vdd_disp_vreg>;
 	vci_disp-supply = <&vci_disp_vreg>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_720p_vid>;
 };
 
 &sdhc_2 {
