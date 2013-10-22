@@ -118,6 +118,7 @@
 			mipi_d0_sel_dis_post_delay_1 = <0>;
 
 			partial_mode_supported = <1>;
+			quickdraw_enabled = <1>;
 		};
 
 		Display@2 {
