@@ -984,6 +984,7 @@ static void hdd_batch_scan_result_ind_callback
 {
     v_BOOL_t                     isLastAp;
     tANI_U32                     numApMetaInfo;
+    tANI_U32                     numNetworkInScanList;
     tANI_U32                     numberScanList;
     tANI_U32                     nextScanListOffset;
     tANI_U32                     nextApMetaInfoOffset;
@@ -1008,6 +1009,7 @@ static void hdd_batch_scan_result_ind_callback
     pBatchScanRsp = (tpSirBatchScanResultIndParam)pRsp;
     isLastAp = FALSE;
     numApMetaInfo = 0;
+    numNetworkInScanList = 0;
     numberScanList = 0;
     nextScanListOffset = 0;
     nextApMetaInfoOffset = 0;
@@ -1036,7 +1038,7 @@ static void hdd_batch_scan_result_ind_callback
 
     while (numberScanList)
     {
-        pScanList = (tpSirBatchScanList)(pBatchScanRsp->scanResults +
+        pScanList = (tpSirBatchScanList)((tANI_U8 *)pBatchScanRsp->scanResults +
                                           nextScanListOffset);
         if (NULL == pScanList)
         {
@@ -1045,9 +1047,10 @@ static void hdd_batch_scan_result_ind_callback
             isLastAp = TRUE;
            goto done;
         }
-        numApMetaInfo = pScanList->numNetworksInScanList;
+        numNetworkInScanList = numApMetaInfo = pScanList->numNetworksInScanList;
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-            "Batch scan rsp: numApMetaInfo %d", numApMetaInfo);
+            "Batch scan rsp: numApMetaInfo %d scanId %d",
+            numApMetaInfo, pScanList->scanId);
 
         if ((!numApMetaInfo) || (numApMetaInfo > pReq->bestNetwork))
         {
@@ -1056,6 +1059,9 @@ static void hdd_batch_scan_result_ind_callback
             isLastAp = TRUE;
            goto done;
         }
+
+        /*Initialize next AP meta info offset for next scan list*/
+        nextApMetaInfoOffset = 0;
 
         while (numApMetaInfo)
         {
@@ -1098,7 +1104,9 @@ static void hdd_batch_scan_result_ind_callback
             numApMetaInfo--;
         }
 
-        nextScanListOffset += (sizeof(tSirBatchScanList) - (sizeof(tANI_U8)));
+        nextScanListOffset +=  ((sizeof(tSirBatchScanList) - sizeof(tANI_U8))
+                                + (sizeof(tSirBatchScanNetworkInfo)
+                                * numNetworkInScanList));
         numberScanList--;
     }
 
