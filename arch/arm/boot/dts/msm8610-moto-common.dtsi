@@ -559,3 +559,7 @@
 &pm8110_bms {
 	status = "ok";
 };
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
