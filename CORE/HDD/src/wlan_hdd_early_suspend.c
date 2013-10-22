@@ -1600,6 +1600,8 @@ VOS_STATUS hdd_wlan_re_init(void)
    }
 #endif
 
+   vos_set_reinit_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+
    /* The driver should always be initialized in STA mode after SSR */
    hdd_set_conparam(0);
 
@@ -1742,6 +1744,7 @@ VOS_STATUS hdd_wlan_re_init(void)
                                         __func__);
       goto err_unregister_pmops;
    }
+   vos_set_reinit_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    goto success;
 
 err_unregister_pmops:
@@ -1794,6 +1797,7 @@ err_vosclose:
 err_re_init:
    /* Allow the phone to go to sleep */
    hdd_allow_suspend();
+   vos_set_reinit_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    VOS_BUG(0);
    return -EPERM;
 

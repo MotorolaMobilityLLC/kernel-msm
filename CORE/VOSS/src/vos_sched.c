@@ -1760,6 +1760,7 @@ VOS_STATUS vos_watchdog_wlan_shutdown(void)
 
     /* Set the flags so that all future CMD53 and Wext commands get blocked right away */
     vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+    vos_set_reinit_in_progress(VOS_MODULE_ID_VOSS, FALSE);
     pHddCtx->isLogpInProgress = TRUE;
 
     /* Release the lock here */
