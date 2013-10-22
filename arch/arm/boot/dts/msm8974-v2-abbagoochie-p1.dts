@@ -22,14 +22,6 @@
 		     "qcom,msm8974";
 
 	qcom,msm-id = <126 0x41 0x8100>;
-
-	qcom,mdss_dsi_mot_smd_720p_video {
-		status = "ok";
-	};
-
-	mot_smd_720p_vid: qcom,mdss_dsi_mot_smd_720p_video {
-		qcom,rst-gpio = <&pm8941_gpios 19 0>;
-	};
 };
 
 &mot_smd_720p_vid {
