@@ -88,6 +88,25 @@ static void cbNotifySetImmediateRoamRssiDiff(hdd_context_t *pHddCtx, unsigned lo
 
 static void cbNotifySetRoamRssiDiff(hdd_context_t *pHddCtx, unsigned long NotifyId)
 {
+    if (pHddCtx->cfg_ini->nSelect5GHzMargin)
+    {
+        /*
+           LFR2.0 firmware posts roam candidates whose RSSI is above the
+           look down threshold and RoamRssiDiff better than current AP Rssi.
+           if gSelect5GHzMargin is non-zero; then the expectation is firmware
+           should post all the roam candidates whose RSSI is above lookdown
+           threshold and don't ignore the APs in RoamRssiDiff zone.
+
+           For ex: RoamRssiDiff=5, Lookdown threshold=-78 and
+           gSelect5GHzMargin=30 then firmware selects APs
+           with Rssi -73 or better as roam candidates.
+           if the 5G AP Rssi is -75 it will be ignored.
+           if 2.4G AP Rssi is -45 and 5G AP with -75 is available,
+           STA should connect to 5G AP, hence RoamRssiDiff is set to 0.
+        */
+        pHddCtx->cfg_ini->RoamRssiDiff = 0;
+    }
+
     sme_UpdateRoamRssiDiff((tHalHandle)(pHddCtx->hHal),
                                     pHddCtx->cfg_ini->RoamRssiDiff);
 }
@@ -2757,6 +2776,13 @@ REG_VARIABLE( CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD, WLAN_PARAM_Integer,
                  CFG_AMSDU_SUPPORT_IN_AMPDU_MIN,
                  CFG_AMSDU_SUPPORT_IN_AMPDU_MAX ),
 
+   REG_VARIABLE( CFG_STRICT_5GHZ_PREF_BY_MARGIN , WLAN_PARAM_Integer,
+                 hdd_config_t, nSelect5GHzMargin,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_STRICT_5GHZ_PREF_BY_MARGIN_DEFAULT,
+                 CFG_STRICT_5GHZ_PREF_BY_MARGIN_MIN,
+                 CFG_STRICT_5GHZ_PREF_BY_MARGIN_MAX ),
+
 };
 
 /*
@@ -3147,6 +3173,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gGoKeepAlivePeriod] Value = [%u]",pHddCtx->cfg_ini->goKeepAlivePeriod);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gApKeepAlivePeriod]Value = [%u]",pHddCtx->cfg_ini->apKeepAlivePeriod);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAmsduSupportInAMPDU] Value = [%lu] ",pHddCtx->cfg_ini->isAmsduSupportInAMPDU);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [nSelect5GHzMargin] Value = [%lu] ",pHddCtx->cfg_ini->nSelect5GHzMargin);
 
 }
 
@@ -4494,6 +4521,10 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #endif
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    smeConfig.csrConfig.isFastTransitionEnabled = pConfig->isFastTransitionEnabled;
+   if (pConfig->nSelect5GHzMargin)
+   {
+       pConfig->RoamRssiDiff = 0;
+   }
    smeConfig.csrConfig.RoamRssiDiff = pConfig->RoamRssiDiff;
    smeConfig.csrConfig.nImmediateRoamRssiDiff = pConfig->nImmediateRoamRssiDiff;
    smeConfig.csrConfig.isWESModeEnabled = pConfig->isWESModeEnabled;
@@ -4536,6 +4567,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.enableTxLdpc = pConfig->enableTxLdpc;
 
    smeConfig.csrConfig.isAmsduSupportInAMPDU = pConfig->isAmsduSupportInAMPDU;
+   smeConfig.csrConfig.nSelect5GHzMargin = pConfig->nSelect5GHzMargin;
 
    /* update SSR config */
    sme_UpdateEnableSSR((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->enableSSR);
