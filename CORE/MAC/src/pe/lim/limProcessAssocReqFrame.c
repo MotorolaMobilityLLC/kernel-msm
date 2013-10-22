@@ -1185,6 +1185,14 @@ if (limPopulateMatchingRateSet(pMac,
                  * STA when UPASD is not supported.
                  */
                 limLog( pMac, LOGE, FL( "AP do not support UPASD REASSOC Failed" ));
+                /* During wlan fuzz tests for softAP when mal-formed assoc req is
+                 * sent to AP due to delSTA is not done in firmnware UMAC is
+                 * stuck in some bad state.if we set this flag delsta will happen
+                 * and UMAC will recover*/
+                if (updateContext)
+                {
+                    pStaDs->mlmStaContext.updateContext = 1;
+                }
                 limRejectAssociation(pMac, pHdr->sa,
                                      subType, true, authType, peerIdx, true,
                                      (tSirResultCodes) eSIR_MAC_WME_REFUSED_STATUS, psessionEntry);
