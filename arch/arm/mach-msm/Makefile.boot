@@ -47,6 +47,8 @@ endif
 
 # MSM8974
    zreladdr-$(CONFIG_ARCH_MSM8974)	:= 0x00008000
+# Do not include QC default DTBs if not needed
+ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-cdp.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-fluid.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v1-liquid.dtb
@@ -75,6 +77,7 @@ endif
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pm8941-liquid.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pm8941-mtp.dtb
         dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ac-pma8084-pm8941-mtp.dtb
+endif
 
 # APQ8084
    zreladdr-$(CONFIG_ARCH_APQ8084)	:= 0x00008000
@@ -189,5 +192,8 @@ dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p0c.dtb
 
 # MSMSAMARIUM
    zreladdr-$(CONFIG_ARCH_MSMSAMARIUM)	:= 0x00008000
+# Do not include QC default DTBs if not needed
+ifneq ($(CONFIG_MMI_DEVICE_DTBS),y)
 	dtb-$(CONFIG_ARCH_MSMSAMARIUM)	+= msmsamarium-sim.dtb
 	dtb-$(CONFIG_ARCH_MSMSAMARIUM)	+= msmsamarium-rumi.dtb
+endif
