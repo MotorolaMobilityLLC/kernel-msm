@@ -3449,7 +3449,6 @@ restart:
 			sk->sk_err = ETIMEDOUT;
 			sk->sk_error_report(sk);
 
-			sock_orphan(sk);
 			tcp_done(sk);
 			bh_unlock_sock(sk);
 			local_bh_enable();
