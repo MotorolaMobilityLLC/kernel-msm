@@ -632,6 +632,9 @@
 #define SIR_MAC_CLEAR_CAPABILITY(u16value, bitname) \
   ((u16value) &= (~(SIR_MAC_SET_##bitname(0))))
 
+#define IS_WES_MODE_ENABLED(x) \
+                    ((x)->roam.configParam.isWESModeEnabled)
+
 #define BA_RECIPIENT       1
 #define BA_INITIATOR       2
 #define BA_BOTH_DIRECTIONS 3

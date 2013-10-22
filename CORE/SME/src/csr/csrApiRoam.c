@@ -1650,6 +1650,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
                 pMac->roam.configParam.nImmediateRoamRssiDiff );
         pMac->roam.configParam.nRoamPrefer5GHz = pParam->nRoamPrefer5GHz;
         pMac->roam.configParam.nRoamIntraBand = pParam->nRoamIntraBand;
+        pMac->roam.configParam.isWESModeEnabled = pParam->isWESModeEnabled;
         pMac->roam.configParam.nProbes = pParam->nProbes;
         pMac->roam.configParam.nRoamScanHomeAwayTime = pParam->nRoamScanHomeAwayTime;
 #endif
@@ -1808,6 +1809,7 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->nImmediateRoamRssiDiff = pMac->roam.configParam.nImmediateRoamRssiDiff;
         pParam->nRoamPrefer5GHz = pMac->roam.configParam.nRoamPrefer5GHz;
         pParam->nRoamIntraBand = pMac->roam.configParam.nRoamIntraBand;
+        pParam->isWESModeEnabled = pMac->roam.configParam.isWESModeEnabled;
         pParam->nProbes = pMac->roam.configParam.nProbes;
         pParam->nRoamScanHomeAwayTime = pMac->roam.configParam.nRoamScanHomeAwayTime;
 #endif
