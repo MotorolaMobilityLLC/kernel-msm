@@ -148,6 +148,7 @@ dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p2.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p2-v2.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p2b.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p2b1.dtb
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-falcon-p3c.dtb
 
 # MSM8926 Motorola Devices
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-p1.dtb
