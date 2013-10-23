@@ -222,7 +222,7 @@ static ssize_t wcnss_patterngen_write(struct file *file,
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: Not in Connected state!", __func__);
-
+        vos_mem_free(cmd);
         return -EINVAL;
     }
 
@@ -289,7 +289,7 @@ static ssize_t wcnss_patterngen_write(struct file *file,
 
 failure:
     vos_mem_free(cmd);
-    return EINVAL;
+    return -EINVAL;
 }
 
 static int wcnss_debugfs_open(struct inode *inode, struct file *file)
