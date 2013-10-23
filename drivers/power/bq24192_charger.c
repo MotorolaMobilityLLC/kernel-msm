@@ -70,6 +70,12 @@
 #define IR_COMP_VCLAMP_MASK        0x1C
 #define THERM_REG_MASK             0x03
 #define BOOST_LIM_MASK             0x01
+#define VRECHG_MASK                0x01
+
+enum rechg_thres{
+	VRECHG_100MV = 0,
+	VRECHG_300MV,
+};
 
 struct bq24192_chip {
 	int  chg_current_ma;
@@ -163,7 +169,7 @@ static struct current_limit_entry adap_tbl[] = {
 
 static int bq24192_step_down_detect_disable(struct bq24192_chip *chip);
 static int bq24192_get_soc_from_batt_psy(struct bq24192_chip *chip);
-static void bq24192_trigger_recharge(struct bq24192_chip *chip);
+static int bq24192_trigger_recharge(struct bq24192_chip *chip);
 
 static int bq24192_read_reg(struct i2c_client *client, int reg, u8 *val)
 {
@@ -505,7 +511,15 @@ static int bq24192_set_vbat_max(struct bq24192_chip *chip, int mv)
 				mv, set_vbat, reg_val);
 
 	return bq24192_masked_write(chip->client, CHARGE_VOLT_CONT_REG,
-			CHG_VOLTAGE_LIMIT_MASK, reg_val);
+			CHG_VOLTAGE_LIMIT_MASK|VRECHG_MASK, reg_val);
+}
+
+static int bq24192_set_rechg_voltage(struct bq24192_chip *chip,
+					enum rechg_thres val)
+{
+	pr_debug("%s\n", val? "300mV":"100mv");
+	return bq24192_masked_write(chip->client, CHARGE_VOLT_CONT_REG,
+				VRECHG_MASK, (u8)val);
 }
 
 #define SYSTEM_VMIN_LOW_MV  3000
@@ -635,6 +649,7 @@ static int bq24192_enable_chg_term(struct bq24192_chip *chip, bool enable)
 	int ret;
 	u8 val = (u8)(!!enable << EN_CHG_TERM_SHIFT);
 
+	pr_debug("%s termination\n", enable? "enable":"disable");
 	ret = bq24192_masked_write(chip->client, CHARGE_TERM_TIMER_CONT_REG,
 			EN_CHG_TERM_MASK, val);
 	if (ret) {
@@ -687,6 +702,8 @@ static void bq24192_irq_worker(struct work_struct *work)
 			schedule_delayed_work(&chip->extra_chg_work,
 					msecs_to_jiffies(EXTRA_CHG_TIME_MS));
 		} else {
+			if (chip->batt_health != POWER_SUPPLY_HEALTH_OVERHEAT)
+				bq24192_set_rechg_voltage(chip, VRECHG_300MV);
 			power_supply_changed(&chip->ac_psy);
 			pr_info("charge done!!\n");
 		}
@@ -949,17 +966,20 @@ static bool bq24192_is_chg_done(struct bq24192_chip *chip)
 	return (temp & CHG_DONE_MASK) == CHG_DONE_MASK;
 }
 
-static void bq24192_trigger_recharge(struct bq24192_chip *chip)
+static int bq24192_trigger_recharge(struct bq24192_chip *chip)
 {
 
 	if (chip->batt_health != POWER_SUPPLY_HEALTH_GOOD)
-		return;
+		return false;
 
 	if (!bq24192_is_chg_done(chip))
-		return;
+		return false;
 
 	bq24192_enable_hiz(chip, true);
 	bq24192_enable_hiz(chip, false);
+	pr_debug("trigger recharge\n");
+
+	return true;
 }
 
 #define WLC_BOUNCE_INTERVAL_MS 15000
@@ -1313,8 +1333,8 @@ static int bq24192_power_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		bq24192_enable_charging(chip, val->intval);
-		if (val->intval)
-			bq24192_trigger_recharge(chip);
+		if (val->intval && bq24192_trigger_recharge(chip))
+			return 0;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		bq24192_set_vbat_max(chip, val->intval / 1000);
