@@ -35,12 +35,6 @@ struct acdb_cal_block {
 	uint32_t		cal_paddr;
 };
 
-struct acdb_atomic_cal_block {
-	atomic_t		cal_size;
-	atomic_t		cal_kvaddr;
-	atomic_t		cal_paddr;
-};
-
 uint32_t get_voice_rx_topology(void);
 uint32_t get_voice_tx_topology(void);
 uint32_t get_adm_rx_topology(void);
