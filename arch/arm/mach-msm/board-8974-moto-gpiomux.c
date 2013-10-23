@@ -342,18 +342,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_func3_cfg,
 		},
 	},
-	{
-		.gpio = 21,		/* BLSP1 QUP3 I2C_DAT */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_func4_cfg,
-		},
-	},
-	{
-		.gpio = 22,		/* BLSP1 QUP3 I2C_CLK */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_func4_cfg,
-		},
-	},
 #ifndef CONFIG_MFD_WM5110
 	{
 		.gpio = 55,		/* BLSP2 QUP3 I2C_DAT */
@@ -507,14 +495,14 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 19, /* CCI_I2C_SDA0 */
+		.gpio = 21, /* CCI_I2C_SDA1 */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
 		},
 	},
 	{
-		.gpio = 20, /* CCI_I2C_SCL0 */
+		.gpio = 22, /* CCI_I2C_SCL1 */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
