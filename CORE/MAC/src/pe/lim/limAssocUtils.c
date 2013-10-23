@@ -517,7 +517,8 @@ limCheckRxRSNIeMatch(tpAniSirGlobal pMac, tDot11fIERSN rxRSNIe,tpPESession pSess
     theyRequirePMF = (rxRSNIe.RSN_Cap[0] >> 6) & 0x1;
     theyArePMFCapable = (rxRSNIe.RSN_Cap[0] >> 7) & 0x1;
 
-    if ((theyRequirePMF && !weArePMFCapable) || (weRequirePMF && !theyArePMFCapable))
+    if ((theyRequirePMF && theyArePMFCapable && !weArePMFCapable) ||
+        (weRequirePMF && !theyArePMFCapable))
     {
         limLog(pMac, LOG1, FL("Association fail, robust management frames policy violation"));
         return eSIR_MAC_ROBUST_MGMT_FRAMES_POLICY_VIOLATION;
