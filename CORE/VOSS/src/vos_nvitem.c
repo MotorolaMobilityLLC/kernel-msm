@@ -2857,6 +2857,12 @@ void wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     wiphy_dbg(wiphy, "info: cfg80211 reg_notifier callback for country"
               " %c%c\n", request->alpha2[0], request->alpha2[1]);
 
+    if (pHddCtx->isLoadUnloadInProgress)
+    {
+        wiphy_dbg(wiphy, "info: %s: Unloading/Loading in Progress. Ignore!!!",
+                  __func__);
+        return;
+    }
     /* first check if this callback is in response to the driver callback */
 
     if (VOS_TRUE == kernel_reg_request_made) {
