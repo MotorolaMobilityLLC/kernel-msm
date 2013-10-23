@@ -2934,7 +2934,7 @@ eHalStatus pmcSetPreferredNetworkList
         }
         else
         {
-            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                    "%s: Extra ie discarded on 2.4G, IE length = %d", __func__,
                     pRequest->us24GProbeTemplateLen);
         }
@@ -2961,7 +2961,7 @@ eHalStatus pmcSetPreferredNetworkList
         }
         else
         {
-            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                    "%s: Extra IE discarded on 5G, IE length = %d", __func__,
                     pRequest->us5GProbeTemplateLen);
         }
