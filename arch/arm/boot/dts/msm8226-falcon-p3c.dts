@@ -1,0 +1,93 @@
+/* Copyright (c) 2013, Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+/include/ "msm8226-moto-reserve.dtsi"
+/include/ "msm8226-v2.dtsi"
+/include/ "msm8226-falcon-common.dtsi"
+
+/ {
+	/* HWREV: 0x0002 0x83c0
+	 *        ^^^^^^ ^^^^^^
+	 *         ESv2    P3C0
+	 */
+	qcom,msm-id = <145 0x42 0x000283C0>;
+};
+
+&soc {
+	gpio_keys {
+		lid-sw {
+			label = "lid-switch";
+			gpios = <&msmgpio 51 0x1>;
+			linux,input-type = <5>;
+			linux,code = <0>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
+
+&pm8226_bms {
+	qcom,use-external-rsense = <1>;
+};
+
+&pm8226_iadc {
+	qcom,rsense = <10000000>;
+};
+
+&spmi_bus {
+	qcom,pm8226@0 {
+		qcom,power-on@800 {
+			interrupts = <0x0 0x8 0x0>,
+				     <0x0 0x8 0x1>,
+				     <0x0 0x8 0x3>,
+				     <0x0 0x8 0x5>;
+			interrupt-names = "kpdpwr", "resin",
+				"kpdpwr-bark", "kpdpwr-resin-bark";
+
+			qcom,pon_1 {
+				qcom,support-reset = <0>;
+				qcom,s1-timer = <6720>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <7>;
+			};
+
+			qcom,pon_2 {
+				qcom,support-reset = <0>;
+			};
+			qcom,pon_3 {
+				qcom,support-reset = <0>;
+			};
+		};
+	};
+};
+
+&i2c_2 {
+	ct406@39 {
+		ams,ink_type = <0x01>;
+	};
+};
+
+&pm8226_vadc {
+	qcom,adc-batt-therm-type = <1>;
+};
+
+&pm8226_adc_tm {
+	qcom,adc-batt-therm-type = <1>;
+};
+
+&i2c_3 {
+	tpa6165xx@40 {
+		ti,tpa6165-jack-detect-config = <0xC0>;
+	};
+};
