@@ -172,6 +172,12 @@ void wlan_hdd_linux_reg_notifier(struct wiphy *wiphy, struct regulatory_request 
 #else
 int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);
 #endif
+#else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+void wlan_hdd_crda_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);
+#else
+int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);
+#endif
 #endif
 
 extern v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
