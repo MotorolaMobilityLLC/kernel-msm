@@ -94,6 +94,7 @@
 #define FREQ_BASE_80211G          (2407)
 #define FREQ_BAND_DIFF_80211G     (5)
 #define MAX_SCAN_SSID 9
+#define MAX_PENDING_LOG 5
 #define GET_IE_LEN_IN_BSS_DESC(lenInBss) ( lenInBss + sizeof(lenInBss) - \
         ((int) OFFSET_OF( tSirBssDescription, ieFields)))
 
@@ -4567,6 +4568,8 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
             "scanID = %d, returned status = %d\n",
             __func__, halHandle, pContext, (int) scanId, (int) status);
 
+    pScanInfo->mScanPendingCounter = 0;
+
     //Block on scan req completion variable. Can't wait forever though.
     ret = wait_for_completion_interruptible_timeout(
                          &pScanInfo->scan_req_completion_event,
@@ -4813,7 +4816,10 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
 
     if (TRUE == pScanInfo->mScanPending)
     {
-        hddLog(VOS_TRACE_LEVEL_INFO, "%s: mScanPending is TRUE", __func__);
+        if ( MAX_PENDING_LOG > pScanInfo->mScanPendingCounter++ )
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR, "%s: mScanPending is TRUE", __func__);
+        }
         return -EBUSY;
     }
 
@@ -4823,7 +4829,7 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
     //If no action frame pending
     if (0 != wlan_hdd_check_remain_on_channel(pAdapter))
     {
-        hddLog(VOS_TRACE_LEVEL_INFO, "%s: Remain On Channel Pending", __func__);
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Remain On Channel Pending", __func__);
         return -EBUSY;
     }
 #ifdef FEATURE_WLAN_TDLS
