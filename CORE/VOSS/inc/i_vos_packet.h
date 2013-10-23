@@ -209,7 +209,11 @@ typedef struct vos_pkt_context_s
    vos_pkt_low_resource_info txDataLowResourceInfo;
    vos_pkt_low_resource_info txMgmtLowResourceInfo;
 
-   struct mutex mlock;
+   struct mutex rxReplenishListLock;
+   struct mutex rxRawFreeListLock;
+   struct mutex txDataFreeListLock;
+   struct mutex txMgmtFreeListLock;
+
    /*Meta Information to be transported with the packet*/
    WDI_DS_TxMetaInfoType txMgmtMetaInfo[VPKT_NUM_TX_MGMT_PACKETS];
    WDI_DS_TxMetaInfoType txDataMetaInfo[VPKT_NUM_TX_DATA_PACKETS];
