@@ -454,7 +454,7 @@ typedef enum
 
 #ifdef FEATURE_WLAN_BATCH_SCAN
   /* WLAN FW set batch scan request */
-  WDI_SET_BATCH_SCAN_REQ                        = 88,
+  WDI_SET_BATCH_SCAN_REQ                        = 86,
 #endif
 
   WDI_MAX_REQ,
