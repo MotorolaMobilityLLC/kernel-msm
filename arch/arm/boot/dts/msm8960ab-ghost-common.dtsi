@@ -118,7 +118,7 @@
 			<&msmgpio 79 0>; /* Trigger */
 
 		external_trigger = <1>;
-		default_effect = <17>;      /* Strong Click 100% */
+		default_effect = <24>;      /* Sharp Tick 100% */
 		rated_voltage = <0x70>;     /* 2.4v */
 		overdrive_voltage = <0x89>; /* 3.0v */
 	};
