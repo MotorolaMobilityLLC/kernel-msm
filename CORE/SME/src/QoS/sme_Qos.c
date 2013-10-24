@@ -3788,6 +3788,15 @@ eHalStatus sme_QosAddTsReq(tpAniSirGlobal pMac,
              "%s: %d: invoked on session %d for AC %d",
              __func__, __LINE__,
              sessionId, ac);
+   if (sessionId >= CSR_ROAM_SESSION_MAX)
+   {
+      //err msg
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: %d: sessionId(%d) is invalid",
+                __func__, __LINE__, sessionId);
+      return eHAL_STATUS_FAILURE;
+   }
+
    pSession = &sme_QosCb.sessionInfo[sessionId];
    pMsg = (tSirAddtsReq *)vos_mem_malloc(sizeof(tSirAddtsReq));
    if (!pMsg)

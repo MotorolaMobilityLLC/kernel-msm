@@ -1957,8 +1957,6 @@ limSendSmeRemoveKeyRsp(tpAniSirGlobal pMac,
     {
         pBuf = pSirSmeRemoveKeyRsp->peerMacAddr;
         vos_mem_copy( pBuf, (tANI_U8 *) peerMacAddr, sizeof(tSirMacAddr));
-        pBuf += sizeof(tSirMacAddr);
-        limCopyU32(pBuf, resultCode);
     }
     
     pSirSmeRemoveKeyRsp->messageType = eWNI_SME_REMOVEKEY_RSP;
