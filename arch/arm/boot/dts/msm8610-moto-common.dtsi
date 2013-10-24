@@ -144,7 +144,7 @@
             "AMIC3", "MIC BIAS External";
     };
 
-	qcom,dsi_v2_truly_wvga_video {
+	qcom,dsi_v2_mot_tianma_qhd_video {
 		qcom,cont-splash-enabled;
 	};
 	hob_ram@f500000 {
