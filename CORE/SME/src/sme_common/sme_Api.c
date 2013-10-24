@@ -6929,6 +6929,16 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
        smsLog( pMac, LOGE, FL("  fail to set regId %d"), domainIdIoctl );
        return status;
    }
+   else
+   {
+       //if 11d has priority, clear currentCountryBssid & countryCode11d to get
+       //set again if we find AP with 11d info during scan
+       if (!pMac->roam.configParam.fSupplicantCountryCodeHasPriority)
+       {
+           vos_mem_zero(&pMac->scan.currentCountryBssid, sizeof(tCsrBssid));
+           vos_mem_zero( pMac->scan.countryCode11d, sizeof( pMac->scan.countryCode11d ) );
+       }
+   }
 #ifndef CONFIG_ENABLE_LINUX_REG
    /* set to default domain ID */
    pMac->scan.domainIdDefault = pMac->scan.domainIdCurrent;
@@ -7011,6 +7021,16 @@ eHalStatus sme_HandleGenericChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBu
     {
         smsLog( pMac, LOGE, FL("  fail to set regId %d"), reg_domain_id );
         return status;
+    }
+    else
+    {
+        //if 11d has priority, clear currentCountryBssid & countryCode11d to get
+        //set again if we find AP with 11d info during scan
+        if (!pMac->roam.configParam.fSupplicantCountryCodeHasPriority)
+        {
+            vos_mem_zero(&pMac->scan.currentCountryBssid, sizeof(tCsrBssid));
+            vos_mem_zero( pMac->scan.countryCode11d, sizeof( pMac->scan.countryCode11d ) );
+        }
     }
 
     /* get the channels based on new cc */
