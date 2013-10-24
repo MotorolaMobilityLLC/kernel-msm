@@ -4910,7 +4910,6 @@ wpt_status WLANDXE_Stop
       {
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                   "WLANDXE_Stop Channel %d Stop Fail", idx);
-         return status;
       }
    }
 
