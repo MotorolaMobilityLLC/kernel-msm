@@ -39,8 +39,8 @@ struct snd_msm {
 	struct snd_pcm *pcm;
 };
 
-#define PLAYBACK_NUM_PERIODS	8
-#define PLAYBACK_PERIOD_SIZE	2048
+#define PLAYBACK_NUM_PERIODS	2
+#define PLAYBACK_PERIOD_SIZE	7680
 #define CAPTURE_NUM_PERIODS	16
 #define CAPTURE_PERIOD_SIZE	320
 
