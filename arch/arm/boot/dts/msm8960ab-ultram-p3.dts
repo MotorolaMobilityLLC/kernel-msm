@@ -63,4 +63,8 @@
 	lp8556@2c {
 		ti,lp8556-dev-ctrl-config = <0x84>;
 	};
+
+	tpa6165xx@40 {
+		ti,tpa6165-jack-detect-config = <0xC0>;
+	};
 };
