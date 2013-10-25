@@ -56,3 +56,7 @@
 		hs_det_micvdd-supply = <&pm8110_l21>;
 	};
 };
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_auo_qhd_video>;
+};
