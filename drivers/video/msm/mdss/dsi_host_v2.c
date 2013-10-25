@@ -339,6 +339,16 @@ void dsi_set_tx_power_mode(int mode)
 	MIPI_OUTP(ctrl_base + DSI_COMMAND_MODE_DMA_CTRL, data);
 }
 
+int dsi_get_tx_power_mode(void)
+{
+	u32 data;
+	unsigned char *ctrl_base = dsi_host_private->dsi_base;
+
+	data = MIPI_INP(ctrl_base + DSI_COMMAND_MODE_DMA_CTRL);
+
+	return !!(data & BIT(26));
+}
+
 void msm_dsi_sw_reset(void)
 {
 	u32 dsi_ctrl;
