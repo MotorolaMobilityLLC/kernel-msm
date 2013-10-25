@@ -17,11 +17,14 @@
 #include <linux/iopoll.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/uaccess.h>
+#include <linux/msm_mdp.h>
 
 #include "dsi_v2.h"
 
 static struct dsi_interface dsi_intf;
 static struct dsi_buf dsi_panel_tx_buf;
+static struct dsi_buf dsi_panel_rx_buf;
 
 static int dsi_off(struct mdss_panel_data *pdata)
 {
@@ -87,6 +90,124 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 	}
 	return rc;
 }
+
+static int dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
+					size_t size, u8 *buffer)
+{
+	int rc;
+	struct dsi_cmd_desc reg_read_cmd = {
+		.dchdr.dtype = DTYPE_DCS_READ,
+		.dchdr.last = 1,
+		.dchdr.vc = 0,
+		.dchdr.ack = 1,
+		.dchdr.wait = 1,
+		.dchdr.dlen = 1,
+		.payload = &reg
+	};
+
+	pr_debug("%s: Reading %d bytes from 0x%0x\n", __func__, size, reg);
+
+	if (size > MDSS_DSI_LEN) {
+		pr_warning("%s: size %d, max rx length is %d.\n", __func__,
+							size, MDSS_DSI_LEN);
+		return -EINVAL;
+	}
+
+	rc = dsi_cmds_rx_v2(pdata, &dsi_panel_tx_buf, &dsi_panel_rx_buf,
+							&reg_read_cmd, size);
+
+	if (rc <= 0) {
+		pr_err("%s: Error reading %d bytes fr reg 0x%02x. rc =0x%x\n",
+				__func__, size, (unsigned int) reg, rc);
+		rc = -EFAULT;
+	} else {
+		memcpy(buffer, dsi_panel_rx_buf.data, size);
+		rc = 0;
+	}
+
+	return rc;
+}
+
+static int dsi_panel_reg_write(struct mdss_panel_data *pdata, size_t size,
+								u8 *buffer)
+{
+	int rc = 0;
+	struct dsi_cmd_desc reg_write_cmd = {
+		.dchdr.dtype = DTYPE_DCS_LWRITE,
+		.dchdr.last = 1,
+		.dchdr.vc = 0,
+		.dchdr.ack = 0,
+		.dchdr.wait = 0,
+		.dchdr.dlen = size,
+		.payload = buffer
+	};
+
+	pr_debug("%s: Writing %d bytes to 0x%02x\n", __func__,
+							size, buffer[0]);
+
+	rc = dsi_cmds_tx_v2(pdata, &dsi_panel_tx_buf, &reg_write_cmd, 1);
+	if (rc)
+		pr_err("%s: Failed writing %d bytes to 0x%02x. rc = 0x%x\n",
+					__func__, size, buffer[0], rc);
+	return rc;
+}
+
+int dsi_panel_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg)
+{
+	int rc = -EINVAL;
+	struct msmfb_reg_access reg_access;
+	u8 *reg_access_buf;
+	int old_tx_mode;
+	int mode = DSI_MODE_BIT_LP;
+
+	if (copy_from_user(&reg_access, arg, sizeof(reg_access)))
+		return -EFAULT;
+
+	reg_access_buf = kmalloc(reg_access.buffer_size + 1, GFP_KERNEL);
+	if (reg_access_buf == NULL)
+		return -ENOMEM;
+
+	if (reg_access.use_hs_mode)
+		mode = DSI_MODE_BIT_HS;
+
+	old_tx_mode = dsi_get_tx_power_mode();
+
+	if (old_tx_mode != mode)
+		dsi_set_tx_power_mode(mode);
+
+	switch (cmd) {
+	case MSMFB_REG_WRITE:
+		reg_access_buf[0] = reg_access.address;
+		if (copy_from_user(&reg_access_buf[1], reg_access.buffer,
+						reg_access.buffer_size))
+			rc = -EFAULT;
+		else
+			rc = dsi_panel_reg_write(pdata,
+						reg_access.buffer_size + 1,
+						reg_access_buf);
+		break;
+	case MSMFB_REG_READ:
+		rc = dsi_panel_reg_read(pdata, reg_access.address,
+				reg_access.buffer_size, reg_access_buf);
+		if ((rc == 0) && (copy_to_user(reg_access.buffer,
+						reg_access_buf,
+						reg_access.buffer_size)))
+			rc = -EFAULT;
+		break;
+	default:
+		pr_err("%s: unsupport ioctl =0x%x\n", __func__, cmd);
+		rc = -EFAULT;
+		break;
+	}
+
+	if (old_tx_mode != mode)
+		dsi_set_tx_power_mode(old_tx_mode);
+
+	kfree(reg_access_buf);
+
+	return rc;
+}
+
 
 static int dsi_splash_on(struct mdss_panel_data *pdata)
 {
@@ -563,6 +684,9 @@ int dsi_panel_device_register_v2(struct platform_device *dev,
 	if (rc)
 		return rc;
 
+	rc = dsi_buf_alloc(&dsi_panel_rx_buf, ALIGN(DSI_BUF_SIZE, SZ_4K));
+	if (rc)
+		return rc;
 	/*
 	 * register in mdp driver
 	 */
@@ -570,6 +694,7 @@ int dsi_panel_device_register_v2(struct platform_device *dev,
 	if (rc) {
 		dev_err(&dev->dev, "unable to register MIPI DSI panel\n");
 		kfree(dsi_panel_tx_buf.start);
+		kfree(dsi_panel_rx_buf.start);
 		return rc;
 	}
 
