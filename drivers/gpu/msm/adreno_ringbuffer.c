@@ -1147,12 +1147,14 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 					cmdbatch->timestamp);
 
 #ifdef CONFIG_MSM_KGSL_CFF_DUMP
+	if (ret)
+		goto done;
 	/*
 	 * insert wait for idle after every IB1
 	 * this is conservative but works reliably and is ok
 	 * even for performance simulations
 	 */
-	adreno_idle(device);
+	ret = adreno_idle(device);
 #endif
 
 done:

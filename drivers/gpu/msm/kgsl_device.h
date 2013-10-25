@@ -685,7 +685,8 @@ void kgsl_cmdbatch_destroy_object(struct kref *kref);
  */
 static inline void kgsl_cmdbatch_put(struct kgsl_cmdbatch *cmdbatch)
 {
-	kref_put(&cmdbatch->refcount, kgsl_cmdbatch_destroy_object);
+	if (cmdbatch)
+		kref_put(&cmdbatch->refcount, kgsl_cmdbatch_destroy_object);
 }
 
 /**
