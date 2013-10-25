@@ -2169,8 +2169,8 @@ int wm_adsp2_init(struct wm_adsp *adsp, bool dvfs)
 }
 EXPORT_SYMBOL_GPL(wm_adsp2_init);
 
-bool wm_adsp_compress_supported(const struct wm_adsp* adsp,
-				const struct snd_compr_stream* stream)
+bool wm_adsp_compress_supported(const struct wm_adsp *adsp,
+				const struct snd_compr_stream *stream)
 {
 	if (adsp->fw >= 0 && adsp->fw < adsp->num_firmwares) {
 		const struct wm_adsp_fw_defs *fw_defs =
@@ -2233,10 +2233,10 @@ void wm_adsp_get_caps(const struct wm_adsp *adsp,
 }
 EXPORT_SYMBOL_GPL(wm_adsp_get_caps);
 
-static int wm_adsp_read_data_block(struct wm_adsp* adsp, int mem_type,
+static int wm_adsp_read_data_block(struct wm_adsp *adsp, int mem_type,
 				   unsigned int mem_addr,
 				   unsigned int num_words,
-				   u32* data)
+				   u32 *data)
 {
 	struct wm_adsp_region const *region = wm_adsp_find_region(adsp,
 								  mem_type);
@@ -2259,13 +2259,13 @@ static int wm_adsp_read_data_block(struct wm_adsp* adsp, int mem_type,
 	return 0;
 }
 
-static int wm_adsp_read_data_word(struct wm_adsp* adsp, int mem_type,
-				  unsigned int mem_addr, u32* data)
+static int wm_adsp_read_data_word(struct wm_adsp *adsp, int mem_type,
+				  unsigned int mem_addr, u32 *data)
 {
 	return wm_adsp_read_data_block(adsp, mem_type, mem_addr, 1, data);
 }
 
-static int wm_adsp_write_data_word(struct wm_adsp* adsp, int mem_type,
+static int wm_adsp_write_data_word(struct wm_adsp *adsp, int mem_type,
 				   unsigned int mem_addr, u32 data)
 {
 	struct wm_adsp_region const *region = wm_adsp_find_region(adsp,
@@ -2304,7 +2304,7 @@ static inline unsigned int wm_adsp_samps_to_words(const struct wm_adsp *adsp,
 }
 
 static inline int wm_adsp_host_buffer_read(struct wm_adsp *adsp,
-					   unsigned int field_offset, u32* data)
+					   unsigned int field_offset, u32 *data)
 {
 	return wm_adsp_read_data_word(adsp, WMFW_ADSP2_XM,
 				      adsp->host_buf_ptr + field_offset, data);
@@ -2358,7 +2358,7 @@ static void wm_adsp_extract_16bit(struct wm_adsp *adsp, int num_samps,
 {
 	int i;
 	int16_t sample;
-	u32* raw_buf = adsp->raw_capt_buf;
+	u32 *raw_buf = adsp->raw_capt_buf;
 	int words_per_group =
 		wm_adsp_sample_group[sizeof(int16_t)].words_per_group;
 
@@ -2448,7 +2448,7 @@ static int wm_adsp_read_samples(struct wm_adsp *adsp, int32_t read_index,
 	return num_samps;
 }
 
-static int wm_adsp_capture_block(struct wm_adsp *adsp, int* avail)
+static int wm_adsp_capture_block(struct wm_adsp *adsp, int *avail)
 {
 	int last_region = adsp->firmwares[adsp->fw].caps->num_host_regions - 1;
 	int host_size_samps =
@@ -2491,15 +2491,15 @@ static int wm_adsp_capture_block(struct wm_adsp *adsp, int* avail)
 		next_read_index = 0;
 
 	ret = wm_adsp_host_buffer_write(adsp,
-				        HOST_BUFFER_FIELD(next_read_index),
-				        next_read_index);
+					HOST_BUFFER_FIELD(next_read_index),
+					next_read_index);
 	if (ret < 0)
 		return ret;
 
 	return num_samps;
 }
 
-int wm_adsp_stream_alloc(struct wm_adsp* adsp,
+int wm_adsp_stream_alloc(struct wm_adsp *adsp,
 			 const struct snd_compr_params *params)
 {
 	int ret;
@@ -2558,7 +2558,7 @@ err_capt_buf:
 }
 EXPORT_SYMBOL_GPL(wm_adsp_stream_alloc);
 
-int wm_adsp_stream_free(struct wm_adsp* adsp)
+int wm_adsp_stream_free(struct wm_adsp *adsp)
 {
 	if (adsp->host_regions) {
 		kfree(adsp->host_regions);
