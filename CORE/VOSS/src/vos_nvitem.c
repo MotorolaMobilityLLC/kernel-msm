@@ -2441,6 +2441,12 @@ static int create_crda_regulatory_entry_from_regd(struct wiphy *wiphy,
              wiphy_dbg(wiphy, "info: CH %d is DFS, max EIRP (mBm) is %d\n", rfChannels[j].channelNum,
                 wiphy->regd->reg_rules[i].power_rule.max_eirp);
          }
+         if (wiphy->regd->reg_rules[i].flags & NL80211_RRF_PASSIVE_SCAN)
+         {
+             pnvEFSTable->halnv.tables.regDomains[domain_id].channels[j].enabled = NV_CHANNEL_DFS;
+             wiphy_dbg(wiphy, "info: CH %d is Passive, max EIRP (mBm) is %d\n", rfChannels[j].channelNum,
+                wiphy->regd->reg_rules[i].power_rule.max_eirp);
+         }
          else
          {
              pnvEFSTable->halnv.tables.regDomains[domain_id].channels[j].enabled = NV_CHANNEL_ENABLE;
@@ -2726,7 +2732,6 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
    return VOS_STATUS_SUCCESS;
 }
 
-
 /* create_crda_regulatory_entry_from_regd should be called during init time */
 static int create_linux_regulatory_entry_from_regd(struct wiphy *wiphy,
                 struct regulatory_request *request,
@@ -2848,6 +2853,10 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
 {
     int i, j, m;
     int k = 0, n = 0;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0))
+    int err;
+#endif
+    const struct ieee80211_reg_rule *reg_rule;
 
     /* 20MHz channels */
     if (nBandCapability == eCSR_BAND_24)
@@ -2891,6 +2900,34 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
             if (n == -1)
                 return -1;
 
+            /* If the regulatory rules for a country do not explicilty
+             * require a passive scan on a frequency, lift the passive
+             * scan restriction
+             */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+            reg_rule = freq_reg_info(wiphy,
+                                     MHZ_TO_KHZ(wiphy->bands[i]->channels[j].center_freq));
+#else
+            err = freq_reg_info(wiphy,
+                                MHZ_TO_KHZ(wiphy->bands[i]->channels[j].center_freq),
+                                0, &reg_rule);
+#endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
+            if (!IS_ERR(reg_rule))
+#else
+            if (0 == err)
+#endif
+            {
+                if (!(reg_rule->flags & NL80211_RRF_PASSIVE_SCAN))
+                {
+                    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                              "%s: Remove passive scan restriction for %u",
+                              __func__, wiphy->bands[i]->channels[j].center_freq);
+                    wiphy->bands[i]->channels[j].flags &= ~IEEE80211_CHAN_PASSIVE_SCAN;
+                }
+            }
+
             if (wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_DISABLED)
             {
                 if (pnvEFSTable == NULL)
@@ -2904,7 +2941,9 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
                 pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].enabled =
                     NV_CHANNEL_DISABLE;
             }
-            else if (wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_RADAR)
+            /* nv cannot distinguish between DFS and passive channels */
+            else if (wiphy->bands[i]->channels[j].flags &
+                    (IEEE80211_CHAN_RADAR | IEEE80211_CHAN_PASSIVE_SCAN))
             {
                 pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].enabled =
                     NV_CHANNEL_DFS;
@@ -2940,8 +2979,7 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
                 }
             }
 
-            /* ignore CRDA max_antenna_gain typical is 3dBi, nv.bin antennaGain
-               is real gain which should be provided by the real design */
+
         }
     }
 
