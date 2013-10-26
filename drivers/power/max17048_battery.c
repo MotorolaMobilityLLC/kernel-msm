@@ -87,6 +87,7 @@ struct max17048_chip {
 };
 
 static struct max17048_chip *ref;
+struct completion monitor_work_done;
 static int max17048_get_prop_current(struct max17048_chip *chip);
 static int max17048_get_prop_temp(struct max17048_chip *chip);
 static int max17048_clear_interrupt(struct max17048_chip *chip);
@@ -338,6 +339,7 @@ static void max17048_work(struct work_struct *work)
 
 	max17048_get_vcell(chip);
 	max17048_get_soc(chip);
+	complete_all(&monitor_work_done);
 
 	if (chip->capacity_level != chip->lasttime_capacity_level ||
 			chip->capacity_level == 0) {
@@ -659,6 +661,21 @@ static int max17048_get_prop_current(struct max17048_chip *chip)
 	return chip->batt_current;
 }
 
+static int max17048_get_prop_capacity(struct max17048_chip *chip)
+{
+	int ret;
+
+	if (chip->capacity_level == -EINVAL)
+		return -EINVAL;
+
+	ret = wait_for_completion_timeout(&monitor_work_done,
+					msecs_to_jiffies(500));
+	if (!ret)
+		pr_err("%s: timeout monitor work done\n", __func__);
+
+	return chip->capacity_level;
+}
+
 static enum power_supply_property max17048_battery_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_HEALTH,
@@ -706,7 +723,7 @@ static int max17048_get_property(struct power_supply *psy,
 		val->intval = max17048_get_prop_temp(chip);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = chip->capacity_level;
+		val->intval = max17048_get_prop_capacity(chip);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = max17048_get_prop_current(chip);
@@ -805,6 +822,7 @@ static int max17048_pm_notifier(struct notifier_block *notifier,
 		cancel_delayed_work_sync(&chip->monitor_work);
 		break;
 	case PM_POST_SUSPEND:
+		INIT_COMPLETION(monitor_work_done);
 		schedule_delayed_work(&chip->monitor_work,
 					msecs_to_jiffies(200));
 		max17048_set_alsc_alert(chip, true);
@@ -865,6 +883,8 @@ static int max17048_probe(struct i2c_client *client,
 		goto error;
 	}
 
+	init_completion(&monitor_work_done);
+	chip->capacity_level = -EINVAL;
 	ref = chip;
 	chip->batt_psy.name = "battery";
 	chip->batt_psy.type = POWER_SUPPLY_TYPE_BATTERY;
