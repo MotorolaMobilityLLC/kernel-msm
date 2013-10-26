@@ -2262,6 +2262,78 @@ static iw_softap_set_tx_power(struct net_device *dev,
     return 0;
 }
 
+/**---------------------------------------------------------------------------
+
+  \brief iw_softap_set_trafficmonitor() -
+   This function dynamically enable/disable traffic monitor functonality
+   the command iwpriv wlanX setTrafficMon <value>.
+
+  \param  - dev - Pointer to the net device.
+              - addr - Pointer to the sockaddr.
+  \return - 0 for success, non zero for failure
+
+  --------------------------------------------------------------------------*/
+
+static int iw_softap_set_trafficmonitor(struct net_device *dev,
+        struct iw_request_info *info,
+        union iwreq_data *wrqu, char *extra)
+{
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    int *isSetTrafficMon = (int *)wrqu->data.pointer;
+    hdd_context_t *pHddCtx;
+    int status;
+
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD adapter is Null", __func__);
+        return -ENODEV;
+    }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+
+    status = wlan_hdd_validate_context(pHddCtx);
+
+    if (0 != status)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: HDD context is not valid", __func__);
+        return status;
+    }
+
+    hddLog(VOS_TRACE_LEVEL_INFO, "%s : ", __func__);
+
+    if (NULL == isSetTrafficMon)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   "%s: Invalid SAP pointer from extra", __func__);
+        return -ENOMEM;
+    }
+
+    if (TRUE == *isSetTrafficMon)
+    {
+        pHddCtx->cfg_ini->enableTrafficMonitor= TRUE;
+        if (VOS_STATUS_SUCCESS != hdd_start_trafficMonitor(pAdapter))
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
+                       "%s: failed to Start Traffic Monitor timer ", __func__ );
+            return -EIO;
+        }
+    }
+    else if (FALSE == *isSetTrafficMon)
+    {
+        pHddCtx->cfg_ini->enableTrafficMonitor= FALSE;
+        if (VOS_STATUS_SUCCESS != hdd_stop_trafficMonitor(pAdapter))
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
+                       "%s: failed to Stop Traffic Monitor timer ", __func__ );
+            return -EIO;
+        }
+
+    }
+    return 0;
+}
+
 #define IS_BROADCAST_MAC(x) (((x[0] & x[1] & x[2] & x[3] & x[4] & x[5]) == 0xff) ? 1 : 0)
 
 int
@@ -3882,8 +3954,17 @@ static const struct iw_priv_args hostapd_private_args[] = {
         IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
         0,
         "setTxMaxPower" },
-    { QCSAP_IOCTL_DATAPATH_SNAP_SHOT,
-      IW_PRIV_TYPE_NONE | IW_PRIV_TYPE_NONE, 0, "dataSnapshot" },
+
+    {   QCSAP_IOCTL_DATAPATH_SNAP_SHOT,
+        IW_PRIV_TYPE_NONE | IW_PRIV_TYPE_NONE,
+        0,
+        "dataSnapshot" },
+
+    /* handlers for main ioctl */
+    {   QCSAP_IOCTL_SET_TRAFFIC_MONITOR,
+        IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "setTrafficMon" },
 };
 
 static const iw_handler hostapd_private[] = {
@@ -3910,6 +3991,7 @@ static const iw_handler hostapd_private[] = {
    [QCSAP_IOCTL_SET_TX_POWER - SIOCIWFIRSTPRIV]   = iw_softap_set_tx_power,
    [QCSAP_IOCTL_SET_MAX_TX_POWER - SIOCIWFIRSTPRIV]   = iw_softap_set_max_tx_power,
    [QCSAP_IOCTL_DATAPATH_SNAP_SHOT - SIOCIWFIRSTPRIV]  =   iw_display_data_path_snapshot,
+   [QCSAP_IOCTL_SET_TRAFFIC_MONITOR - SIOCIWFIRSTPRIV]  =  iw_softap_set_trafficmonitor,
 };
 const struct iw_handler_def hostapd_handler_def = {
    .num_standard     = sizeof(hostapd_handler) / sizeof(hostapd_handler[0]),

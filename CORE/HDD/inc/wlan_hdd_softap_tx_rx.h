@@ -329,4 +329,28 @@ extern VOS_STATUS hdd_softap_GetStaId( hdd_adapter_t *pAdapter, v_MACADDR_t *pMa
   =========================================================================== */
 extern VOS_STATUS hdd_softap_GetConnectedStaId( hdd_adapter_t *pAdapter, v_U8_t *staId);
 
+/**==========================================================================
+
+  \brief hdd_start_trafficMonitor() -
+   This function dynamically enable traffic monitor functonality
+   the command iwpriv wlanX setTrafficMon <value>.
+
+  @param pAdapter : [in] pointer to adapter context
+  @return         : VOS_STATUS_E_FAILURE if any errors encountered
+
+  ========================================================================== */
+VOS_STATUS hdd_start_trafficMonitor( hdd_adapter_t *pAdapter );
+
+/**==========================================================================
+
+  \brief hdd_stop_trafficMonitor() -
+   This function dynamically disable traffic monitor functonality
+   the command iwpriv wlanX setTrafficMon <value>.
+
+  @param pAdapter : [in] pointer to adapter context
+  @return         : VOS_STATUS_E_FAILURE if any errors encountered
+
+  ========================================================================== */
+VOS_STATUS hdd_stop_trafficMonitor( hdd_adapter_t *pAdapter );
+
 #endif    // end #if !defined( WLAN_HDD_SOFTAP_TX_RX_H )
