@@ -79,7 +79,6 @@ struct max17048_chip {
 	int batt_tech;
 	int fcc_mah;
 	int voltage;
-	int lasttime_voltage;
 	int lasttime_capacity_level;
 	int chg_state;
 	int batt_temp;
@@ -91,6 +90,7 @@ static struct max17048_chip *ref;
 static int max17048_get_prop_current(struct max17048_chip *chip);
 static int max17048_get_prop_temp(struct max17048_chip *chip);
 static int max17048_clear_interrupt(struct max17048_chip *chip);
+static int max17048_get_prop_status(struct max17048_chip *chip);
 
 struct debug_reg {
 	char  *name;
@@ -245,15 +245,24 @@ static int max17048_get_vcell(struct max17048_chip *chip)
 	return 0;
 }
 
-static void max17048_check_recharge(struct max17048_chip *chip)
+static int max17048_check_recharge(struct max17048_chip *chip)
 {
 	union power_supply_propval ret = {true,};
+	int chg_status;
 
-	if (chip->capacity_level == 99 &&
-			chip->lasttime_capacity_level == 100)
+	if (chip->batt_health != POWER_SUPPLY_HEALTH_GOOD)
+		return false;
+
+	chg_status = max17048_get_prop_status(chip);
+	if (chip->capacity_level <= 99 &&
+			chg_status == POWER_SUPPLY_STATUS_NOT_CHARGING) {
 		chip->ac_psy->set_property(chip->ac_psy,
 				POWER_SUPPLY_PROP_CHARGING_ENABLED,
 				&ret);
+		return true;
+	}
+
+	return false;
 }
 
 static int max17048_get_soc(struct max17048_chip *chip)
@@ -314,6 +323,7 @@ static void max17048_work(struct work_struct *work)
 	struct max17048_chip *chip =
 		container_of(work, struct max17048_chip, monitor_work.work);
 	int ret = 0;
+	int rechg_now;
 
 	wake_lock(&chip->alert_lock);
 
@@ -329,13 +339,12 @@ static void max17048_work(struct work_struct *work)
 	max17048_get_vcell(chip);
 	max17048_get_soc(chip);
 
-	if (chip->voltage != chip->lasttime_voltage ||
-		chip->capacity_level != chip->lasttime_capacity_level) {
-		chip->lasttime_voltage = chip->voltage;
-		max17048_check_recharge(chip);
+	if (chip->capacity_level != chip->lasttime_capacity_level ||
+			chip->capacity_level == 0) {
+		rechg_now = max17048_check_recharge(chip);
 		chip->lasttime_capacity_level = chip->capacity_level;
-
-		power_supply_changed(&chip->batt_psy);
+		if (!rechg_now)
+			power_supply_changed(&chip->batt_psy);
 	}
 
 	ret = max17048_clear_interrupt(chip);
