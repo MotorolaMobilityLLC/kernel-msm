@@ -1111,6 +1111,13 @@ static void msm_hs_set_termios(struct uart_port *uport,
 	struct msm_hs_rx *rx = &msm_uport->rx;
 	struct sps_pipe *sps_pipe_handle = rx->prod.pipe_handle;
 
+	ret = msm_hs_clock_vote(msm_uport);
+	if (ret) {
+		MSM_HS_ERR("%s(): Error could not turn on UART clk\n",
+				__func__);
+		return;
+	}
+
 	mutex_lock(&msm_uport->clk_mutex);
 	msm_hs_write(uport, UART_DM_IMR, 0);
 
@@ -1266,6 +1273,8 @@ static void msm_hs_set_termios(struct uart_port *uport,
 
 	MSM_HS_DBG("Exit %s\n", __func__);
 	dump_uart_hs_registers(msm_uport);
+
+	msm_hs_clock_unvote(msm_uport);
 }
 
 /*
@@ -1336,6 +1345,9 @@ static void msm_hs_stop_rx_locked(struct uart_port *uport)
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	unsigned int data;
+
+	if (msm_uport->clk_state <= MSM_HS_CLK_OFF)
+		return;
 
 	/* disable dlink */
 	data = msm_hs_read(uport, UART_DM_DMEN);
@@ -1712,6 +1724,9 @@ static void msm_hs_start_tx_locked(struct uart_port *uport )
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 
+	if (msm_uport->clk_state <= MSM_HS_CLK_OFF)
+		return;
+
 	if (msm_uport->tx.tx_ready_int_en == 0) {
 		msm_uport->tx.tx_ready_int_en = 1;
 		if (msm_uport->tx.dma_in_flight == 0)
@@ -1935,6 +1950,9 @@ static void msm_hs_enable_ms_locked(struct uart_port *uport)
 {
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 
+	if (msm_uport->clk_state <= MSM_HS_CLK_OFF)
+		return;
+
 	/* Enable DELTA_CTS Interrupt */
 	msm_uport->imr_reg |= UARTDM_ISR_DELTA_CTS_BMSK;
 	msm_hs_write(uport, UART_DM_IMR, msm_uport->imr_reg);
@@ -1959,11 +1977,22 @@ static void msm_hs_flush_buffer(struct uart_port *uport)
 static void msm_hs_break_ctl(struct uart_port *uport, int ctl)
 {
 	unsigned long flags;
+	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
+	int ret;
+
+	ret = msm_hs_clock_vote(msm_uport);
+	if (ret) {
+		MSM_HS_ERR("%s(): Error could not turn on UART clk\n",
+				__func__);
+		return;
+	}
 
 	spin_lock_irqsave(&uport->lock, flags);
 	msm_hs_write(uport, UART_DM_CR, ctl ? START_BREAK : STOP_BREAK);
 	mb();
 	spin_unlock_irqrestore(&uport->lock, flags);
+
+	msm_hs_clock_unvote(msm_uport);
 }
 
 static void msm_hs_config_port(struct uart_port *uport, int cfg_flags)
