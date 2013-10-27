@@ -56,26 +56,27 @@
   
   ========================================================================*/
 
+#include <linux/types.h>
 
-typedef unsigned long wpt_uint32;
+typedef u32 wpt_uint32;
 
-typedef signed long wpt_int32;
+typedef s32 wpt_int32;
 
-typedef unsigned short wpt_uint16;
+typedef u16 wpt_uint16;
 
-typedef signed short wpt_int16;
+typedef s16 wpt_int16;
 
-typedef unsigned char wpt_uint8;
+typedef u8 wpt_uint8;
 
 typedef wpt_uint8 wpt_byte;
 
-typedef signed char wpt_int8;
+typedef s8 wpt_int8;
 
 typedef wpt_uint8 wpt_boolean; 
 
-typedef unsigned long long wpt_uint64;
+typedef u64 wpt_uint64;
 
-typedef long long wpt_int64;
+typedef s64 wpt_int64;
 
 #define WPT_INLINE __inline__
 #define WPT_STATIC static
