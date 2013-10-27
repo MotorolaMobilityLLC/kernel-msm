@@ -1237,7 +1237,7 @@ hdd_format_batch_scan_rsp
    temp_total_len += temp_len;
 
    /*age*/
-   temp_len = snprintf(pTemp, (sizeof(temp) - temp_total_len), "age=%ld\n",
+   temp_len = snprintf(pTemp, (sizeof(temp) - temp_total_len), "age=%d\n",
                   pApMetaInfo->ApInfo.age);
    pTemp += temp_len;
    temp_total_len += temp_len;
@@ -1434,7 +1434,7 @@ int hdd_return_batch_scan_rsp_to_user
             }
 
             len = snprintf(pDest, HDD_BATCH_SCAN_AP_META_INFO_SIZE,
-                      "scancount=%ld\n", pAdapter->numScanList);
+                      "scancount=%u\n", pAdapter->numScanList);
             pDest += len;
             cur_len += len;
 
@@ -6520,7 +6520,7 @@ void hdd_wlan_initial_scan(hdd_adapter_t *pAdapter)
    tCsrScanRequest scanReq;
    tCsrChannelInfo channelInfo;
    eHalStatus halStatus;
-   unsigned long scanId;
+   tANI_U32 scanId;
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
    vos_mem_zero(&scanReq, sizeof(tCsrScanRequest));
