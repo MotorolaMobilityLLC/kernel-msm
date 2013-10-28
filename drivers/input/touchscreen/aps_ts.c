@@ -13,6 +13,7 @@
 #include <linux/input/mt.h>
 #include <linux/completion.h>
 #include <linux/init.h>
+#include <linux/ktime.h>
 #include "aps_ts.h"
 
 #ifdef CONFIG_OF
@@ -41,6 +42,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 
 /* Firmware file name */
 #define FW_NAME			"aps_ts.fw"
+#define MAX_FW_NAME_LEN		80
 
 #define MAX_FINGER_NUM		10
 #define FINGER_EVENT_SZ		8
@@ -103,6 +105,16 @@ enum {
 	LOG_TYPE_S32,
 };
 
+#define PERF_IRQ_MAX		64
+#define PERF_IRQ_MAX_BITS	0x3F
+#define PERF_DEBUG_SZ		64
+struct aps_irq_perf {
+	struct timespec start;
+	struct timespec end;
+	int finger_count;
+	char debug[PERF_DEBUG_SZ];
+};
+
 struct aps_ts_info {
 	struct i2c_client		*client;
 	struct input_dev		*input_dev;
@@ -119,7 +131,68 @@ struct aps_ts_info {
 	bool				enabled;
 	u8				version[4];
 	u8				bootmode;
+	char				fw_name[MAX_FW_NAME_LEN];
+	int				perf_irq_count;
+	int				perf_irq_first;
+	int				perf_irq_last;
+	struct aps_irq_perf		*perf_irq_data;
 };
+
+static int timeval_sub(
+	struct timespec *result, struct timespec x, struct timespec y)
+{
+	ktime_t kx = timespec_to_ktime(x);
+	ktime_t ky = timespec_to_ktime(y);
+	ktime_t kresult = ktime_sub(kx, ky);
+	*result = ktime_to_timespec(kresult);
+
+	return !(kresult.tv64 > 0);
+}
+
+static ssize_t aps_irq_perf_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct aps_ts_info *info = dev_get_drvdata(dev);
+	struct aps_irq_perf *d = info->perf_irq_data;
+	int offset = 0;
+	int i;
+	int prev_j;
+
+	if (!d)
+		return scnprintf(buf, PAGE_SIZE,
+			"No performance info available.\n");
+
+	offset += scnprintf(buf + offset, PAGE_SIZE - offset,
+		"Prev  Delta  Start  End  Fingers  id x y maj press\n");
+
+	for (i = 0; i < info->perf_irq_count && (PAGE_SIZE - offset) > 0; ++i) {
+		struct timespec delta_prev = {0};
+		struct timespec delta_irq;
+		int j = (i + info->perf_irq_first) & PERF_IRQ_MAX_BITS;
+
+		if (i != 0)
+			timeval_sub(&delta_prev, d[j].start, d[prev_j].start);
+
+		prev_j = j;
+
+		timeval_sub(&delta_irq, d[j].end, d[j].start);
+		offset += scnprintf(buf + offset, PAGE_SIZE - offset,
+			"%4ld.%03ld  %03ld  %4ld.%03ld  %4ld.%03ld  %d %s\n",
+			delta_prev.tv_sec%1000,
+			delta_prev.tv_nsec/1000000,
+			delta_irq.tv_nsec/1000000,
+			d[j].start.tv_sec%1000,
+			d[j].start.tv_nsec/1000000,
+			d[j].end.tv_sec%1000,
+			d[j].end.tv_nsec/1000000,
+			d[j].finger_count,
+			d[j].debug);
+	}
+
+	return offset;
+}
+
+static DEVICE_ATTR(aps_perf, 0440, aps_irq_perf_show, NULL);
 
 static void aps_set_reset_low(struct aps_ts_info *info)
 {
@@ -274,6 +347,7 @@ static void aps_report_input_data(struct aps_ts_info *info, u8 sz, u8 *buf)
 		if (!(tmp[0] & 0x80)) {
 			input_mt_report_slot_state(info->input_dev,
 				MT_TOOL_FINGER, false);
+			dev_dbg(&client->dev, "id = %d, ", id);
 			continue;
 		}
 
@@ -283,8 +357,15 @@ static void aps_report_input_data(struct aps_ts_info *info, u8 sz, u8 *buf)
 		pressure = tmp[5];
 
 		dev_dbg(&client->dev,
-			"id = %d x = %d, y = %d, mjr = %d, press = %d",
+			"id = %d x = %d, y = %d, mjr = %d, pressure = %d",
 			id, x, y, touch_major, pressure);
+
+		if (info->perf_irq_data) {
+			int last = info->perf_irq_last;
+			scnprintf(info->perf_irq_data[last].debug,
+				PERF_DEBUG_SZ, "%04d %04d %04d %03d %03d",
+				id, x, y, touch_major, pressure);
+		}
 
 		input_mt_report_slot_state(info->input_dev, MT_TOOL_FINGER,
 			true);
@@ -307,25 +388,48 @@ static irqreturn_t aps_ts_interrupt(int irq, void *data)
 	struct i2c_client *client = info->client;
 	u8 buf[MAX_FINGER_NUM * FINGER_EVENT_SZ] = {0};
 	int result;
-	u8 packet_size;
+	u8 packet_size = 0;
+	int last;
+
+	if (info->perf_irq_data) {
+		last = ++info->perf_irq_last;
+		if (last >= PERF_IRQ_MAX)
+			last = info->perf_irq_last = 0;
+
+		if (info->perf_irq_count < PERF_IRQ_MAX)
+			++info->perf_irq_count;
+		else
+			info->perf_irq_first = last + 1;
+
+		getnstimeofday(&info->perf_irq_data[last].start);
+	}
 
 	result = aps_i2c_read(info, APS_REG_EVENT_PKT_SZ, &packet_size, 1);
 	if (result <= 0) {
 		dev_err(&client->dev, "Error reading event packet size\n");
-		return IRQ_HANDLED;
+		goto out;
 	}
 
 	if (packet_size == 0)
-		return IRQ_HANDLED;
+		goto out;
 
 	packet_size = packet_size > sizeof(buf) ? sizeof(buf) : packet_size;
 
 	result = aps_i2c_read(info, APS_REG_EVENT_PKT, buf, packet_size);
-	if (result <= 0)
+	if (result <= 0) {
 		dev_err(&client->dev, "Error reading event packet %d bytes\n",
 			packet_size);
-	else
-		aps_report_input_data(info, packet_size, buf);
+		goto out;
+	}
+
+	aps_report_input_data(info, packet_size, buf);
+
+out:
+	if (info->perf_irq_data) {
+		info->perf_irq_data[last].finger_count =
+			packet_size/FINGER_EVENT_SZ;
+		getnstimeofday(&info->perf_irq_data[last].end);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -846,6 +950,7 @@ static DEVICE_ATTR(buildid, 0444, aps_version, NULL);
 static struct attribute *aps_attrs[] = {
 	&dev_attr_aps_isp.attr,
 	&dev_attr_buildid.attr,
+	&dev_attr_aps_perf.attr,
 	NULL,
 };
 
@@ -911,6 +1016,15 @@ static int aps_ts_probe(struct i2c_client *client,
 	info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info) {
 		dev_err(&client->dev, "Failed to allocate info\n");
+		ret = -ENOMEM;
+		goto out_free_mem;
+	}
+
+	info->perf_irq_count = info->perf_irq_first = info->perf_irq_last = 0;
+	info->perf_irq_data = kzalloc(sizeof(struct aps_irq_perf)*PERF_IRQ_MAX,
+		GFP_KERNEL);
+	if (!info->perf_irq_data) {
+		dev_err(&client->dev, "Failed to allocate irq perf\n");
 		ret = -ENOMEM;
 		goto out_free_mem;
 	}
@@ -1021,8 +1135,11 @@ out_free_gpio:
 	gpio_free(info->pdata->gpio_irq);
 
 out_free_mem:
-	kfree(info);
 	kfree(input_dev);
+	if (info) {
+		kfree(info->perf_irq_data);
+		kfree(info);
+	}
 
 	return ret;
 }
@@ -1037,6 +1154,7 @@ static int aps_ts_remove(struct i2c_client *client)
 	input_unregister_device(info->input_dev);
 	gpio_free(info->pdata->gpio_reset);
 	gpio_free(info->pdata->gpio_irq);
+	kfree(info->perf_irq_data);
 	kfree(info);
 
 	return 0;
