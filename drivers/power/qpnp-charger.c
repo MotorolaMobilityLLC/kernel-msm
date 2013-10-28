@@ -5017,6 +5017,18 @@ static bool __devinit qpnp_charger_mmi_factory(void)
 	return factory;
 }
 
+static void __devinit qpnp_charger_mmi_battid(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	const char *battid_buf;
+	int retval;
+	pr_err("Reading Battid at powerup!\n");
+	if (np)
+		retval = of_property_read_string(np, "mmi,battid", &battid_buf);
+	pr_err("Battid = %s\n", battid_buf);
+	of_node_put(np);
+}
+
 static int __devinit
 qpnp_charger_probe(struct spmi_device *spmi)
 {
@@ -5056,7 +5068,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	chip->chrg_ocv_cc_ef_uah = 0;
 	chip->chrg_ocv_bv_mv = 0;
 	chip->maint_chrg = false;
-
+	qpnp_charger_mmi_battid();
 	chip->usb_psy = power_supply_get_by_name("usb");
 	if (!chip->usb_psy) {
 		pr_err("usb supply not found deferring probe\n");
