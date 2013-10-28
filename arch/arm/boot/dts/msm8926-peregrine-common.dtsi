@@ -64,6 +64,18 @@
 	status = "ok";
 };
 
+&pm8226_vadc {
+	qcom,adc-batt-therm-type = <1>;
+};
+
+&pm8226_adc_tm {
+	qcom,adc-batt-therm-type = <1>;
+};
+
+&pm8226_iadc {
+	qcom,rsense = <10000000>;
+};
+
 &i2c_2 {
 	l3g4200d@6a {
 		compatible = "stm,l3g4200d";
