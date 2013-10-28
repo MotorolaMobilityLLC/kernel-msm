@@ -2527,6 +2527,8 @@ limSendSmePECcxTsmRsp(tpAniSirGlobal pMac, tAniGetTsmStatsRsp *pStats)
     }
 
     pPeStats->msgType = eWNI_SME_GET_TSM_STATS_RSP;
+    pPeStats->tsmMetrics.RoamingCount = pPeSessionEntry->ccxContext.tsm.tsmMetrics.RoamingCount;
+    pPeStats->tsmMetrics.RoamingDly = pPeSessionEntry->ccxContext.tsm.tsmMetrics.RoamingDly;
 
     mmhMsg.type = eWNI_SME_GET_TSM_STATS_RSP;
     mmhMsg.bodyptr = pStats;
