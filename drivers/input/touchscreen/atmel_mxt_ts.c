@@ -2253,6 +2253,7 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 
 	set_bit(EV_ABS, input_dev->evbit);
 	input_set_capability(input_dev, EV_KEY, BTN_TOUCH);
+	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
 
 	/* For single touch */
 	input_set_abs_params(input_dev, ABS_X,
@@ -3328,6 +3329,8 @@ static int mxt_initialize_t9_input_device(struct mxt_data *data)
 				  MXT_PIXELS_PER_MM);
 
 		input_dev->name = "Atmel maXTouch Touchpad";
+	} else {
+		__set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
 	}
 
 	/* For single touch */
