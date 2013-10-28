@@ -1287,12 +1287,13 @@ static iw_softap_getassoc_stamacaddr(struct net_device *dev,
                         union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
-    unsigned char *pmaclist;
+    unsigned int maclist_index;
     hdd_station_info_t *pStaInfo = pHostapdAdapter->aStaInfo;
+    char maclist_null = '\0';
     int cnt = 0, len;
 
 
-    pmaclist = wrqu->data.pointer + sizeof(unsigned long int);
+    maclist_index = sizeof(unsigned long int);
     len = wrqu->data.length;
 
     spin_lock_bh( &pHostapdAdapter->staInfo_lock );
@@ -1300,8 +1301,13 @@ static iw_softap_getassoc_stamacaddr(struct net_device *dev,
         if (TRUE == pStaInfo[cnt].isUsed) {
             
             if(!IS_BROADCAST_MAC(pStaInfo[cnt].macAddrSTA.bytes)) {
-                memcpy((void *)pmaclist, (void *)&(pStaInfo[cnt].macAddrSTA), sizeof(v_MACADDR_t));
-                pmaclist += sizeof(v_MACADDR_t);
+                if (copy_to_user((void *)wrqu->data.pointer + maclist_index,
+                    (void *)&(pStaInfo[cnt].macAddrSTA), sizeof(v_MACADDR_t)))
+                {
+                    hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
+                    return -EFAULT;
+                }
+                maclist_index += sizeof(v_MACADDR_t);
                 len -= sizeof(v_MACADDR_t);
             }
         }
@@ -1309,11 +1315,15 @@ static iw_softap_getassoc_stamacaddr(struct net_device *dev,
     } 
     spin_unlock_bh( &pHostapdAdapter->staInfo_lock );
 
-    *pmaclist = '\0';
-
+    if (copy_to_user((void *)wrqu->data.pointer + maclist_index,
+                     (void *)&maclist_null, sizeof(maclist_null)) ||
+        copy_to_user((void *)wrqu->data.pointer,
+                     (void *)&wrqu->data.length, sizeof(wrqu->data.length)))
+    {
+        hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
+        return -EFAULT;
+    }
     wrqu->data.length -= len;
-
-    *(unsigned long int *)(wrqu->data.pointer) = wrqu->data.length;
 
     return 0;
 }
@@ -1373,18 +1383,35 @@ static iw_softap_ap_stats(struct net_device *dev,
 
     WLANSAP_GetStatistics((WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext, &statBuffer, (v_BOOL_t)wrqu->data.flags);
 
-    len = snprintf(pstatbuf, len,
-            "RUF=%d RMF=%d RBF=%d "
-            "RUB=%d RMB=%d RBB=%d "
-            "TUF=%d TMF=%d TBF=%d "
-            "TUB=%d TMB=%d TBB=%d",
-            (int)statBuffer.rxUCFcnt, (int)statBuffer.rxMCFcnt, (int)statBuffer.rxBCFcnt,
-            (int)statBuffer.rxUCBcnt, (int)statBuffer.rxMCBcnt, (int)statBuffer.rxBCBcnt,
-            (int)statBuffer.txUCFcnt, (int)statBuffer.txMCFcnt, (int)statBuffer.txBCFcnt,
-            (int)statBuffer.txUCBcnt, (int)statBuffer.txMCBcnt, (int)statBuffer.txBCBcnt
-            );
+    WLANSAP_GetStatistics((WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext,
+        &statBuffer, (v_BOOL_t)wrqu->data.flags);
 
+    pstatbuf = kmalloc(wrqu->data.length, GFP_KERNEL);
+    if(NULL == pstatbuf) {
+      hddLog(LOG1, "unable to allocate memory");
+      return -ENOMEM;
+    }
+    len = scnprintf(pstatbuf, wrqu->data.length,
+        "RUF=%d RMF=%d RBF=%d "
+        "RUB=%d RMB=%d RBB=%d "
+        "TUF=%d TMF=%d TBF=%d "
+        "TUB=%d TMB=%d TBB=%d",
+        (int)statBuffer.rxUCFcnt, (int)statBuffer.rxMCFcnt,
+        (int)statBuffer.rxBCFcnt, (int)statBuffer.rxUCBcnt,
+        (int)statBuffer.rxMCBcnt, (int)statBuffer.rxBCBcnt,
+        (int)statBuffer.txUCFcnt, (int)statBuffer.txMCFcnt,
+        (int)statBuffer.txBCFcnt, (int)statBuffer.txUCBcnt,
+        (int)statBuffer.txMCBcnt, (int)statBuffer.txBCBcnt);
+
+    if (len > wrqu->data.length ||
+        copy_to_user((void *)wrqu->data.pointer, (void *)pstatbuf, len))
+    {
+      hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
+      kfree(pstatbuf);
+      return -EFAULT;
+    }
     wrqu->data.length -= len;
+    kfree(pstatbuf);
     return 0;
 }
 
@@ -1747,8 +1774,15 @@ int iw_get_genie(struct net_device *dev,
     status = WLANSap_getstationIE_information(pVosContext, 
                                    &length,
                                    genIeBytes);
-    wrqu->data.length = VOS_MIN((u_int16_t) length, DOT11F_IE_RSN_MAX_LEN);
-    vos_mem_copy( wrqu->data.pointer, (v_VOID_t*)genIeBytes, wrqu->data.length);
+    length = VOS_MIN((u_int16_t) length, DOT11F_IE_RSN_MAX_LEN);
+    if (wrqu->data.length < length ||
+        copy_to_user(wrqu->data.pointer,
+                      (v_VOID_t*)genIeBytes, length))
+    {
+        hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
+        return -EFAULT;
+    }
+    wrqu->data.length = length;
     
     hddLog(LOG1,FL(" RSN IE of %d bytes returned\n"), wrqu->data.length ); 
     
@@ -1762,18 +1796,30 @@ int iw_get_WPSPBCProbeReqIEs(struct net_device *dev,
                         union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));    
-    sQcSapreq_WPSPBCProbeReqIES_t *pWPSPBCProbeReqIEs;
+    sQcSapreq_WPSPBCProbeReqIES_t WPSPBCProbeReqIEs;
     hdd_ap_ctx_t *pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter);
     ENTER();
-        
+
     hddLog(LOG1,FL("get_WPSPBCProbeReqIEs ioctl\n"));
-    
-    pWPSPBCProbeReqIEs = (sQcSapreq_WPSPBCProbeReqIES_t *)(wrqu->data.pointer);
-    pWPSPBCProbeReqIEs->probeReqIELen = pHddApCtx->WPSPBCProbeReq.probeReqIELen;
-    vos_mem_copy(pWPSPBCProbeReqIEs->probeReqIE, pHddApCtx->WPSPBCProbeReq.probeReqIE, pWPSPBCProbeReqIEs->probeReqIELen);
-    vos_mem_copy(pWPSPBCProbeReqIEs->macaddr, pHddApCtx->WPSPBCProbeReq.peerMacAddr, sizeof(v_MACADDR_t));
-    wrqu->data.length = 12 + pWPSPBCProbeReqIEs->probeReqIELen;
-    hddLog(LOG1, FL("Macaddress : "MAC_ADDRESS_STR"\n"),  MAC_ADDR_ARRAY(pWPSPBCProbeReqIEs->macaddr));
+    memset((void*)&WPSPBCProbeReqIEs, 0, sizeof(WPSPBCProbeReqIEs));
+
+    WPSPBCProbeReqIEs.probeReqIELen = pHddApCtx->WPSPBCProbeReq.probeReqIELen;
+    vos_mem_copy(&WPSPBCProbeReqIEs.probeReqIE,
+                 pHddApCtx->WPSPBCProbeReq.probeReqIE,
+                 WPSPBCProbeReqIEs.probeReqIELen);
+    vos_mem_copy(&WPSPBCProbeReqIEs.macaddr,
+                 pHddApCtx->WPSPBCProbeReq.peerMacAddr,
+                 sizeof(v_MACADDR_t));
+    if (copy_to_user(wrqu->data.pointer,
+                     (void *)&WPSPBCProbeReqIEs,
+                      sizeof(WPSPBCProbeReqIEs)))
+    {
+         hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
+         return -EFAULT;
+    }
+    wrqu->data.length = 12 + WPSPBCProbeReqIEs.probeReqIELen;
+    hddLog(LOG1, FL("Macaddress : "MAC_ADDRESS_STR"\n"),
+           MAC_ADDR_ARRAY(WPSPBCProbeReqIEs.macaddr));
     up(&pHddApCtx->semWpsPBCOverlapInd);
     EXIT();
     return 0;
@@ -2147,7 +2193,8 @@ static int iw_softap_setwpsie(struct net_device *dev,
    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
    hdd_hostapd_state_t *pHostapdState;
    eHalStatus halStatus= eHAL_STATUS_SUCCESS;
-   u_int8_t *wps_genie =  wrqu->data.pointer;
+   u_int8_t *wps_genie;
+   u_int8_t *fwps_genie;
    u_int8_t *pos;
    tpSap_WPSIE pSap_WPSIe;
    u_int8_t WPSIeType;
@@ -2162,13 +2209,30 @@ static int iw_softap_setwpsie(struct net_device *dev,
      return -EPERM;
    }
 
-   if(!wrqu->data.length)
+   if(!wrqu->data.length || wrqu->data.length <= QCSAP_MAX_WSC_IE)
       return 0;
+
+   wps_genie = kmalloc(wrqu->data.length, GFP_KERNEL);
+
+   if(NULL == wps_genie) {
+       hddLog(LOG1, "unable to allocate memory");
+       kfree(fwps_genie);
+       return -ENOMEM;
+   }
+   fwps_genie = wps_genie;
+   if (copy_from_user((void *)wps_genie,
+       wrqu->data.pointer, wrqu->data.length))
+   {
+       hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
+       kfree(fwps_genie);
+       return -EFAULT;
+   }
 
    pSap_WPSIe = vos_mem_malloc(sizeof(tSap_WPSIE));
    if (NULL == pSap_WPSIe) 
    {
       hddLog(LOGE, "VOS unable to allocate memory\n");
+      kfree(fwps_genie);
       return -ENOMEM;
    }
    vos_mem_zero(pSap_WPSIe, sizeof(tSap_WPSIE));
@@ -2485,6 +2549,7 @@ static int iw_softap_setwpsie(struct net_device *dev,
  
  exit:
     vos_mem_free(pSap_WPSIe);   
+    kfree(fwps_genie);
     EXIT();
     return ret;
 }
@@ -2592,7 +2657,7 @@ static int iw_set_ap_genie(struct net_device *dev,
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
     eHalStatus halStatus= eHAL_STATUS_SUCCESS;
-    u_int8_t *genie = wrqu->data.pointer;
+    u_int8_t *genie = (u_int8_t *)extra;
     
     ENTER();
     
@@ -2601,7 +2666,7 @@ static int iw_set_ap_genie(struct net_device *dev,
         EXIT();
         return 0;
     }
-    
+
     switch (genie[0]) 
     {
         case DOT11F_EID_WPA: 
@@ -2612,7 +2677,7 @@ static int iw_set_ap_genie(struct net_device *dev,
                 hdd_softap_Register_BC_STA(pHostapdAdapter, 1);
             }   
             (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->uPrivacy = 1;
-            halStatus = WLANSAP_Set_WPARSNIes(pVosContext, wrqu->data.pointer, wrqu->data.length);
+            halStatus = WLANSAP_Set_WPARSNIes(pVosContext, genie, wrqu->data.length);
             break;
             
         default:
@@ -2678,6 +2743,7 @@ int iw_get_softap_linkspeed(struct net_device *dev,
    hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
    hdd_context_t *pHddCtx;
    char *pLinkSpeed = (char*)extra;
+   char *pmacAddress;
    v_U32_t link_speed;
    unsigned short staId;
    int len = sizeof(v_U32_t)+1;
@@ -2695,13 +2761,26 @@ int iw_get_softap_linkspeed(struct net_device *dev,
        return valid;
    }
 
-   if ( hdd_string_to_hex ((char *)wrqu->data.pointer, wrqu->data.length, macAddress ) )
+   if (wrqu->data.length != MAC_ADDRESS_STR_LEN)
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL, FL("ERROR: Command not found"));
-      return -EINVAL;
+       hddLog(LOG1, "Invalid length");
+       return -EINVAL;
+   }
+   pmacAddress = kmalloc(MAC_ADDRESS_STR_LEN, GFP_KERNEL);
+   if(NULL == pmacAddress) {
+       hddLog(LOG1, "unable to allocate memory");
+       return -ENOMEM;
+   }
+   if (copy_from_user((void *)pmacAddress,
+         wrqu->data.pointer, wrqu->data.length))
+   {
+       hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
+       kfree(pmacAddress);
+       return -EFAULT;
    }
 
-   status = hdd_softap_GetStaId(pHostapdAdapter, (v_MACADDR_t *)macAddress, (void *)(&staId));
+   status = hdd_string_to_hex (pmacAddress, wrqu->data.length, macAddress );
+   kfree(pmacAddress);
 
    if (!VOS_IS_STATUS_SUCCESS(status))
    {
