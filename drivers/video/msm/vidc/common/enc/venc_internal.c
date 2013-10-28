@@ -1584,7 +1584,12 @@ u32 vid_enc_set_buffer(struct video_client_ctx *client_ctx,
 	enum vcd_buffer_type vcd_buffer_t = VCD_BUFFER_INPUT;
 	enum buffer_dir dir_buffer = BUFFER_TYPE_INPUT;
 	u32 vcd_status = VCD_ERR_FAIL;
-	unsigned long kernel_vaddr, length = 0;
+	unsigned long kernel_vaddr, length, user_vaddr, phy_addr = 0;
+	int pmem_fd = 0;
+	struct ion_handle *buff_handle = NULL;
+	u32 ion_flag = 0;
+	struct file *file = NULL;
+	s32 buffer_index = 0;
 
 	if (!client_ctx || !buffer_info)
 		return false;
@@ -1605,6 +1610,39 @@ u32 vid_enc_set_buffer(struct video_client_ctx *client_ctx,
 		    __func__, buffer_info->pbuffer);
 		return false;
 	}
+
+	/*
+	* Invalidate output buffers explcitly once, during registration
+	* This ensures any pending CPU writes (eg. memset 0 after allocation)
+        * are not flushed _after_the hardware has written bitstream.
+        * rare bug, but can happen
+	*/
+	if (buffer == VEN_BUFFER_TYPE_OUTPUT) {
+		user_vaddr = (unsigned long)buffer_info->pbuffer;
+		if (!vidc_lookup_addr_table(client_ctx, BUFFER_TYPE_OUTPUT,
+					true, &user_vaddr, &kernel_vaddr,
+					&phy_addr, &pmem_fd, &file,
+					&buffer_index)) {
+			ERR("%s(): vidc_lookup_addr_table failed\n",
+			__func__);
+			return false;
+		}
+
+		ion_flag = vidc_get_fd_info(client_ctx, BUFFER_TYPE_OUTPUT,
+				buffer_info->fd, kernel_vaddr, buffer_index,
+				&buff_handle);
+
+		if (ion_flag == ION_FLAG_CACHED && buff_handle &&
+				kernel_vaddr) {
+			msm_ion_do_cache_op(
+					client_ctx->user_ion_client,
+					buff_handle,
+					(unsigned long *) kernel_vaddr,
+					(unsigned long) length,
+					ION_IOC_INV_CACHES);
+		}
+	}
+
 
 	vcd_status = vcd_set_buffer(client_ctx->vcd_handle,
 				    vcd_buffer_t, (u8 *) kernel_vaddr,
