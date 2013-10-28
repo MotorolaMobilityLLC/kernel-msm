@@ -340,5 +340,6 @@ eHalStatus csrCreateRoamScanChannelList(tpAniSirGlobal pMac,
                                                 tANI_U8 numChannels,
                                                 const eCsrBand eBand);
 #endif
+void activeListCmdTimeoutHandle(void *userData);
 
 #endif //#if !defined( __SMEINSIDE_H )

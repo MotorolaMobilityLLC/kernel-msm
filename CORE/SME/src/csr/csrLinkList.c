@@ -55,6 +55,8 @@
 #include "vos_memory.h"
 #include "vos_trace.h"
 
+#include "vos_timer.h"
+
 ANI_INLINE_FUNCTION void csrListInit(tListElem *pList)
 {
     pList->last = pList->next = pList;
@@ -274,7 +276,7 @@ eHalStatus csrLLOpen( tHddHandle hHdd, tDblLinkList *pList )
     if ( LIST_FLAG_OPEN != pList->Flag ) 
     {
         pList->Count = 0;
-
+        pList->cmdTimeoutTimer = NULL;
         vosStatus = vos_lock_init(&pList->Lock);
 
         if(VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -353,6 +355,12 @@ void csrLLInsertHead( tDblLinkList *pList, tListElem *pEntry, tANI_BOOLEAN fInte
         if(fInterlocked)
         {
             csrLLUnlock(pList);
+        }
+        if ( pList->cmdTimeoutTimer && pList->cmdTimeoutDuration )
+        {
+            /* timer to detect pending command in activelist*/
+            vos_timer_start( pList->cmdTimeoutTimer,
+                pList->cmdTimeoutDuration);
         }
     }
 }
@@ -582,6 +590,10 @@ tANI_BOOLEAN csrLLRemoveEntry( tDblLinkList *pList, tListElem *pEntryToRemove, t
         if ( fInterlocked ) 
         {
             csrLLUnlock( pList );
+        }
+        if ( pList->cmdTimeoutTimer )
+        {
+           vos_timer_stop(pList->cmdTimeoutTimer);
         }
     }
 

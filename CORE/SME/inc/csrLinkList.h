@@ -77,6 +77,10 @@ typedef struct tagDblLinkList
   tANI_U32  Count;
   tHddHandle hHdd;
   tListFlag Flag;
+
+  /*command debugging */
+  tANI_U32  cmdTimeoutDuration;  /* command timeout duration */
+  vos_timer_t *cmdTimeoutTimer;  /*command timeout Timer */
 }tDblLinkList;
 
 //To get the address of an object of (type) base on the (address) of one of its (field)
