@@ -327,8 +327,8 @@ static int do_recover_data(struct f2fs_sb_info *sbi, struct inode *inode,
 	wait_on_page_writeback(dn.node_page);
 
 	get_node_info(sbi, dn.nid, &ni);
-	BUG_ON(ni.ino != ino_of_node(page));
-	BUG_ON(ofs_of_node(dn.node_page) != ofs_of_node(page));
+	f2fs_bug_on(ni.ino != ino_of_node(page));
+	f2fs_bug_on(ofs_of_node(dn.node_page) != ofs_of_node(page));
 
 	for (; start < end; start++) {
 		block_t src, dest;
@@ -338,13 +338,13 @@ static int do_recover_data(struct f2fs_sb_info *sbi, struct inode *inode,
 
 		if (src != dest && dest != NEW_ADDR && dest != NULL_ADDR) {
 			if (src == NULL_ADDR) {
-				int err = reserve_new_block(&dn);
+				err = reserve_new_block(&dn);
 				/* We should not get -ENOSPC */
+				f2fs_bug_on(err);
 				if (err)
 					f2fs_msg(sbi->sb, KERN_INFO,
 						"%s: reserve_new_block failed: %d",
 						__func__, err);
-				BUG_ON(err);
 			}
 
 			/* Check the previous node page having this index */
