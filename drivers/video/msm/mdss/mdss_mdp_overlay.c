@@ -881,10 +881,11 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd)
 commit_fail:
 	mdss_mdp_overlay_cleanup(mfd);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-	mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_FLUSHED);
+	if (ctl)
+		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_FLUSHED);
 
 	mutex_unlock(&mdp5_data->ov_lock);
-	if (ctl->shared_lock)
+	if (ctl && ctl->shared_lock)
 		mutex_unlock(ctl->shared_lock);
 
 	return ret;
