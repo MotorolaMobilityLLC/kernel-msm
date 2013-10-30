@@ -289,6 +289,14 @@ got_it:
 	ino = ino_of_node(node_page);
 	f2fs_put_page(node_page, 1);
 
+	/* Skip nodes with circular references */
+	if (ino == dn->inode->i_ino) {
+		f2fs_msg(sbi->sb, KERN_ERR, "%s: node %x has circular inode %x",
+				__func__, ino, nid);
+		f2fs_handle_error(sbi);
+		return -EDEADLK;
+	}
+
 	/* Deallocate previous index in the node page */
 	inode = f2fs_iget(sbi->sb, ino);
 	if (IS_ERR(inode))
