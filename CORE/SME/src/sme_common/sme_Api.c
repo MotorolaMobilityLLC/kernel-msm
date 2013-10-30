@@ -6935,6 +6935,7 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
        //set again if we find AP with 11d info during scan
        if (!pMac->roam.configParam.fSupplicantCountryCodeHasPriority)
        {
+           smsLog( pMac, LOGW, FL("Clearing currentCountryBssid, countryCode11d"));
            vos_mem_zero(&pMac->scan.currentCountryBssid, sizeof(tCsrBssid));
            vos_mem_zero( pMac->scan.countryCode11d, sizeof( pMac->scan.countryCode11d ) );
        }
@@ -6965,7 +6966,7 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
 
 /* ---------------------------------------------------------------------------
 
-    \fn sme_HandleGenericChangeCountryCode
+    \fn sme_HandleChangeCountryCodeByUser
 
     \brief Change Country code, Reg Domain and channel list
 
@@ -6975,20 +6976,19 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
     Country code from Supplicant is set as current country code.
 
     \param pMac - The handle returned by macOpen.
-    \param pMsgBuf - message buffer
+    \param pMsg - Carrying new CC & domain set in kernel by user
 
     \return eHalStatus
 
   -------------------------------------------------------------------------------*/
-
-eHalStatus sme_HandleGenericChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
+eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
+                                             tAniGenericChangeCountryCodeReq *pMsg)
 {
     eHalStatus  status = eHAL_STATUS_SUCCESS;
-    tAniGenericChangeCountryCodeReq *pMsg;
     v_REGDOMAIN_t reg_domain_id;
     v_BOOL_t is11dCountry = VOS_FALSE;
 
-    pMsg = (tAniGenericChangeCountryCodeReq *)pMsgBuf;
+    smsLog(pMac, LOG1, FL(" called"));
     reg_domain_id =  (v_REGDOMAIN_t)pMsg->domain_index;
 
     if (memcmp(pMsg->countryCode, pMac->scan.countryCode11d,
@@ -7026,8 +7026,10 @@ eHalStatus sme_HandleGenericChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBu
     {
         //if 11d has priority, clear currentCountryBssid & countryCode11d to get
         //set again if we find AP with 11d info during scan
-        if (!pMac->roam.configParam.fSupplicantCountryCodeHasPriority)
+        if((!pMac->roam.configParam.fSupplicantCountryCodeHasPriority) &&
+           (VOS_FALSE == is11dCountry ))
         {
+            smsLog( pMac, LOGW, FL("Clearing currentCountryBssid, countryCode11d"));
             vos_mem_zero(&pMac->scan.currentCountryBssid, sizeof(tCsrBssid));
             vos_mem_zero( pMac->scan.countryCode11d, sizeof( pMac->scan.countryCode11d ) );
         }
@@ -7051,6 +7053,77 @@ eHalStatus sme_HandleGenericChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBu
         pMac->scan.f11dInfoReset = eANI_BOOLEAN_FALSE;
     }
 
+    smsLog(pMac, LOG1, FL(" returned"));
+    return eHAL_STATUS_SUCCESS;
+}
+
+/* ---------------------------------------------------------------------------
+
+    \fn sme_HandleChangeCountryCodeByDriver
+
+    \brief Update Country code in the driver if set by kernel as world
+
+    If 11D is enabled, we update the country code after every scan & notify kernel.
+    This is to make sure kernel & driver are in sync in case of CC found in
+    driver but not in kernel database
+
+    \param pMac - The handle returned by macOpen.
+    \param pMsg - Carrying new CC set in kernel
+
+    \return eHalStatus
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_HandleChangeCountryCodeByDriver(tpAniSirGlobal pMac, tAniGenericChangeCountryCodeReq *pMsg)
+{
+    smsLog(pMac, LOG1, FL(" called"));
+
+    //this is to make sure kernel & driver are in sync in case of CC found in
+    //driver but not in kernel database
+    if (('0' == pMsg->countryCode[0]) && ('0' == pMsg->countryCode[1]))
+    {
+        smsLog( pMac, LOGW, FL("Setting countryCode11d to world CC"));
+        palCopyMemory(pMac->hHdd, pMac->scan.countryCode11d, pMsg->countryCode,
+                      WNI_CFG_COUNTRY_CODE_LEN);
+    }
+    smsLog(pMac, LOG1, FL(" returned"));
+    return eHAL_STATUS_SUCCESS;
+}
+
+/* ---------------------------------------------------------------------------
+
+    \fn sme_HandleGenericChangeCountryCode
+
+    \brief Change Country code, Reg Domain and channel list
+
+    If Supplicant country code is priority than 11d is disabled.
+    If 11D is enabled, we update the country code after every scan.
+    Hence when Supplicant country code is priority, we don't need 11D info.
+    Country code from kernel is set as current country code.
+
+    \param pMac - The handle returned by macOpen.
+    \param pMsgBuf - message buffer
+
+    \return eHalStatus
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_HandleGenericChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
+{
+    tAniGenericChangeCountryCodeReq *pMsg;
+    v_REGDOMAIN_t reg_domain_id;
+
+    smsLog(pMac, LOG1, FL(" called"));
+    pMsg = (tAniGenericChangeCountryCodeReq *)pMsgBuf;
+    reg_domain_id =  (v_REGDOMAIN_t)pMsg->domain_index;
+
+    if (REGDOMAIN_COUNT == reg_domain_id)
+    {
+        sme_HandleChangeCountryCodeByDriver(pMac, pMsg);
+    }
+    else
+    {
+        sme_HandleChangeCountryCodeByUser(pMac, pMsg);
+    }
+    smsLog(pMac, LOG1, FL(" returned"));
     return eHAL_STATUS_SUCCESS;
 }
 
