@@ -1186,7 +1186,7 @@ regStaWithTl
     if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
     {
        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR, 
-                  "%s: WLANTL_RegisterSTAClient() failed to register.  Status= %d [0x%08lX]",
+                  "%s: WLANTL_RegisterSTAClient() failed to register.  Status= %d [0x%08X]",
                   __func__, vosStatus, vosStatus );
     }                                            
      
