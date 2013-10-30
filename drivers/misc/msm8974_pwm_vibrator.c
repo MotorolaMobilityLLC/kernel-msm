@@ -325,9 +325,8 @@ static void msm8974_pwm_vibrator_on(struct work_struct *work)
 				work_vibrator_on);
 	int gain = vib->gain;
 	int pwm = vib->pwm;
-	/* suspend /resume logging test */
-	pr_debug("%s: gain = %d pwm = %d\n", __func__, gain, pwm);
 
+	pr_debug("%s: gain = %d pwm = %d\n", __func__, gain, pwm);
 	msm8974_pwm_vibrator_force_set(vib, gain, pwm);
 }
 
@@ -524,10 +523,21 @@ static ssize_t vibrator_amp_store(struct device *dev,
 	struct timed_output_dev *_dev = dev_get_drvdata(dev);
 	struct timed_vibrator_data *vib =
 		container_of(_dev, struct timed_vibrator_data, dev);
-	int gain;
+	long r;
+	int ret;
 
-	sscanf(buf, "%d", &gain);
-	vib->gain = gain;
+	ret = kstrtol(buf, 10, &r);
+	if (ret < 0) {
+		pr_err("%s: failed to store value\n", __func__);
+		return ret;
+	}
+
+	if (r < 0 || r > 100) {
+		pr_err("%s: out of range\n", __func__);
+		return -EINVAL;
+	}
+
+	vib->gain = r;
 
 	return size;
 }
@@ -546,10 +556,21 @@ static ssize_t vibrator_pwm_store(struct device *dev, struct device_attribute *a
 	struct timed_output_dev *_dev = dev_get_drvdata(dev);
 	struct timed_vibrator_data *vib =
 		container_of(_dev, struct timed_vibrator_data, dev);
-	int pwm;
+	long r;
+	int ret;
 
-	sscanf(buf, "%d", &pwm);
-	vib->pwm = pwm;
+	ret = kstrtol(buf, 10, &r);
+	if (ret < 0) {
+		pr_err("%s: failed to store value\n", __func__);
+		return ret;
+	}
+
+	if (r < 0) {
+		pr_err("%s: out of range\n", __func__);
+		return -EINVAL;
+	}
+
+	vib->pwm = r;
 
 	return size;
 }
@@ -659,6 +680,41 @@ static ssize_t vibrator_driving_ms_store(struct device *dev,
 	return size;
 }
 
+static ssize_t vibrator_warmup_ms_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct timed_output_dev *_dev = dev_get_drvdata(dev);
+	struct timed_vibrator_data *vib =
+		container_of(_dev, struct timed_vibrator_data, dev);
+
+	return sprintf(buf, "%d\n", vib->warmup_ms);
+}
+
+static ssize_t vibrator_warmup_ms_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct timed_output_dev *_dev = dev_get_drvdata(dev);
+	struct timed_vibrator_data *vib =
+		container_of(_dev, struct timed_vibrator_data, dev);
+	long r;
+	int ret;
+
+	ret = kstrtol(buf, 10, &r);
+	if (ret < 0) {
+		pr_err("%s: failed to store value\n", __func__);
+		return ret;
+	}
+
+	if (r < 0 || r > vib->max_timeout) {
+		pr_err("%s: out of range\n", __func__);
+		return -EINVAL;
+	}
+
+	vib->warmup_ms = r;
+
+	return size;
+}
+
 static struct device_attribute vibrator_device_attrs[] = {
 	__ATTR(amp, S_IRUGO | S_IWUSR, vibrator_amp_show, vibrator_amp_store),
 	__ATTR(n_val, S_IRUGO | S_IWUSR, vibrator_pwm_show, vibrator_pwm_store),
@@ -668,6 +724,8 @@ static struct device_attribute vibrator_device_attrs[] = {
 		vibrator_braking_ms_show, vibrator_braking_ms_store),
 	__ATTR(driving_ms, S_IRUGO | S_IWUSR,
 		vibrator_driving_ms_show, vibrator_driving_ms_store),
+	__ATTR(warmup_ms, S_IRUGO | S_IWUSR,
+		vibrator_warmup_ms_show, vibrator_warmup_ms_store),
 };
 
 static struct timed_vibrator_data msm8974_pwm_vibrator_data = {
