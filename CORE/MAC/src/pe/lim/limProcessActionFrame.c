@@ -2123,6 +2123,38 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         }
         break;
 
+    case SIR_MAC_ACTION_WNM:
+    {
+#ifdef WLAN_FEATURE_11W
+        if ((psessionEntry->limRmfEnabled) && (pHdr->fc.wep == 0))
+        {
+            PELOGE(limLog(pMac, LOGE, FL
+            ("Dropping unprotected Action category %d frame since RMF is enabled."),
+            pActionHdr->category);)
+            break;
+        }
+#endif
+        PELOGE(limLog(pMac, LOG1, FL("WNM Action category %d action %d."),
+                                pActionHdr->category, pActionHdr->actionID);)
+        switch (pActionHdr->actionID)
+        {
+            case SIR_MAC_WNM_BSS_TM_QUERY:
+            case SIR_MAC_WNM_BSS_TM_REQUEST:
+            case SIR_MAC_WNM_BSS_TM_RESPONSE:
+            case SIR_MAC_WNM_NOTIF_REQUEST:
+            case SIR_MAC_WNM_NOTIF_RESPONSE:
+            {
+               tpSirMacMgmtHdr     pHdr;
+               tANI_S8 rssi = WDA_GET_RX_RSSI_DB(pRxPacketInfo);
+               pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+               /* Forward to the SME to HDD to wpa_supplicant */
+               limSendSmeMgmtFrameInd(pMac, 0, pRxPacketInfo,
+                                       psessionEntry, rssi);
+               break;
+            }
+        }
+        break;
+    }
 #if defined WLAN_FEATURE_VOWIFI
     case SIR_MAC_ACTION_RRM:
 #ifdef WLAN_FEATURE_11W

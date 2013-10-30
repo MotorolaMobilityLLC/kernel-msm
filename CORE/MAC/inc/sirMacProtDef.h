@@ -270,6 +270,13 @@
 #define SIR_MAC_TDLS_DIS_RSP             14
 #endif
 
+/* WNM Action field values; IEEE Std 802.11-2012, 8.5.14.1, Table 8-250 */
+#define SIR_MAC_WNM_BSS_TM_QUERY         6
+#define SIR_MAC_WNM_BSS_TM_REQUEST       7
+#define SIR_MAC_WNM_BSS_TM_RESPONSE      8
+#define SIR_MAC_WNM_NOTIF_REQUEST        26
+#define SIR_MAC_WNM_NOTIF_RESPONSE       27
+
 #define SIR_MAC_MAX_RANDOM_LENGTH   2306
 
 //-----------------------------------------------------------------------------
