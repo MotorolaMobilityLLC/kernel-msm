@@ -4748,6 +4748,13 @@ eHalStatus sme_GenericChangeCountryCode( tHalHandle hHal,
     vos_msg_t                 msg;
     tAniGenericChangeCountryCodeReq *pMsg;
 
+    if (NULL == pMac)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL,
+            "%s: pMac is null", __func__);
+        return status;
+    }
+
     status = sme_AcquireGlobalLock( &pMac->sme );
     if ( HAL_STATUS_SUCCESS( status ) )
     {
@@ -7059,7 +7066,7 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
 
 /* ---------------------------------------------------------------------------
 
-    \fn sme_HandleChangeCountryCodeByDriver
+    \fn sme_HandleChangeCountryCodeByCore
 
     \brief Update Country code in the driver if set by kernel as world
 
@@ -7073,8 +7080,10 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
     \return eHalStatus
 
   -------------------------------------------------------------------------------*/
-eHalStatus sme_HandleChangeCountryCodeByDriver(tpAniSirGlobal pMac, tAniGenericChangeCountryCodeReq *pMsg)
+eHalStatus sme_HandleChangeCountryCodeByCore(tpAniSirGlobal pMac, tAniGenericChangeCountryCodeReq *pMsg)
 {
+    eHalStatus  status;
+
     smsLog(pMac, LOG1, FL(" called"));
 
     //this is to make sure kernel & driver are in sync in case of CC found in
@@ -7084,6 +7093,26 @@ eHalStatus sme_HandleChangeCountryCodeByDriver(tpAniSirGlobal pMac, tAniGenericC
         smsLog( pMac, LOGW, FL("Setting countryCode11d to world CC"));
         palCopyMemory(pMac->hHdd, pMac->scan.countryCode11d, pMsg->countryCode,
                       WNI_CFG_COUNTRY_CODE_LEN);
+    }
+
+    status = WDA_SetRegDomain(pMac, REGDOMAIN_WORLD);
+
+    if ( status != eHAL_STATUS_SUCCESS )
+    {
+        smsLog( pMac, LOGE, FL("  fail to set regId") );
+        return status;
+    }
+    else
+    {
+        status = csrInitGetChannels(pMac);
+        if ( status != eHAL_STATUS_SUCCESS )
+        {
+            smsLog( pMac, LOGE, FL("  fail to get Channels "));
+        }
+        else
+        {
+            csrInitChannelList(pMac);
+        }
     }
     smsLog(pMac, LOG1, FL(" returned"));
     return eHAL_STATUS_SUCCESS;
@@ -7117,7 +7146,7 @@ eHalStatus sme_HandleGenericChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBu
 
     if (REGDOMAIN_COUNT == reg_domain_id)
     {
-        sme_HandleChangeCountryCodeByDriver(pMac, pMsg);
+        sme_HandleChangeCountryCodeByCore(pMac, pMsg);
     }
     else
     {
@@ -9608,8 +9637,8 @@ void smeGetCommandQStatus( tHalHandle hHal )
 
     if (NULL == pMac)
     {
-        VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-                       "smeGetCommandQStatus: pMac is NULL");
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL,
+            "%s: pMac is null", __func__);
         return;
     }
 
