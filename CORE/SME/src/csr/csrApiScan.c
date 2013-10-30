@@ -3119,8 +3119,10 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
             rssi_of_current_country = rssi_of_current_country
                                          - THIRTY_PERCENT(rssi_of_current_country);
         }
-
-        if ((rssi_of_current_country <= cand_Bss_rssi )  || rssi_of_current_country  == -128)
+        //if new candidate AP has 30% better RSSI or this is the first time or
+        //AP aged out of CSR cache or we are in world CC now
+        if ((rssi_of_current_country <= cand_Bss_rssi )  || (rssi_of_current_country  == -128)
+           ||( '0' == pMac->scan.countryCode11d[ 0 ] && '0' == pMac->scan.countryCode11d[ 1 ] ))
         {
             csrLLLock(&pMac->scan.scanResultList);
             pEntryTemp = csrLLPeekHead(&pMac->scan.scanResultList, LL_ACCESS_NOLOCK);
@@ -3134,11 +3136,17 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
                 if (csrIsMacAddressEqual(pMac, (tCsrBssid *)&bssid_temp,
                              (tCsrBssid *) pBssDescription->Result.BssDescriptor.bssId))
                 {
-                    palCopyMemory(pMac->hHdd, pMac->scan.currentCountryBssid,
-                                    bssid_temp, sizeof(tSirMacAddr));
                     // Best AP should be passed to update reg domain.
                     csrLearnCountryInformation( pMac, &pBssDescription->Result.BssDescriptor,
                                  pIesLocal, eANI_BOOLEAN_TRUE );
+                     //this check is to avoid the case of invalid CC set via 11d
+                     //In that case we move to world CC & we are open to any new
+                     //valid CC we can get during scan
+                     if(( '0' != pMac->scan.countryCode11d[ 0 ] && '0' != pMac->scan.countryCode11d[ 1 ] ))
+                     {
+                         palCopyMemory(pMac->hHdd, pMac->scan.currentCountryBssid,
+                                         bssid_temp, sizeof(tSirMacAddr));
+                     }
                     break;
                 }
                 pEntryTemp = pNext;
@@ -3768,6 +3776,14 @@ tANI_BOOLEAN csrSave11dCountryString( tpAniSirGlobal pMac, tANI_U8 *pCountryCode
             pCountryCode[ 0 ] = '0';
             pCountryCode[ 1 ] = '0';
         }
+    }
+    //right now, even if we don't find the CC in driver we set to world. Making
+    //sure countryCode11d doesn't get updated with the invalid CC, instead
+    //reflect the world CC
+    else if (REGDOMAIN_WORLD == regd)
+    {
+        pCountryCode[ 0 ] = '0';
+        pCountryCode[ 1 ] = '0';
     }
 
     // We've seen some of the AP's improperly put a 0 for the third character of the country code.
