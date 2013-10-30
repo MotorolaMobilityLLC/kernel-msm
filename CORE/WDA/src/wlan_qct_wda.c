@@ -13711,7 +13711,7 @@ void WDA_RoamOffloadScanReqCallback(WDI_Status status, void* pUserData)
    {
       /* free the mem and return */
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
-                 "Failed to post the rsp to UMAC" ,__func__);
+                 "%s: Failed to post the rsp to UMAC", __func__);
    }
 
    return ;
