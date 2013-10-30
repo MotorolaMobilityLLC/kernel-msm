@@ -62,6 +62,9 @@
 
 	vibrator {
 		motor-amp = <50>;
+		vibe-braking-gain = <0>;
+		vibe-braking-ms = <0>;
+		vibe-driving-ms = <0>;
 	};
 };
 

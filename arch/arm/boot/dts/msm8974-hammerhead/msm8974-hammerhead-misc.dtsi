@@ -17,6 +17,9 @@
 		motor-pwm-gpio = <&msmgpio 27 0x00>;
 		motor-amp = <63>;
 		n-value = <127>;
+		vibe-braking-gain = <100>;
+		vibe-braking-ms = <15>;
+		vibe-driving-ms = <20>;
 	};
 
 	earjack-debugger {
