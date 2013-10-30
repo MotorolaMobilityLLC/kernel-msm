@@ -2370,29 +2370,9 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 			else
 				return -EINVAL;
 			break;
-		case PR_SET_TIMERSLACK_PID:
-			rcu_read_lock();
-			tsk = find_task_by_pid_ns((pid_t)arg3, &init_pid_ns);
-			if (tsk == NULL) {
-				rcu_read_unlock();
-				return -EINVAL;
-			}
-			get_task_struct(tsk);
-			rcu_read_unlock();
-			if (arg2 <= 0)
-				tsk->timer_slack_ns =
-					tsk->default_timer_slack_ns;
-			else
-				tsk->timer_slack_ns = arg2;
-			put_task_struct(tsk);
-			error = 0;
-			break;
 		default:
 			return -EINVAL;
 		}
-		break;
-	case PR_SET_VMA:
-		error = prctl_set_vma(arg2, arg3, arg4, arg5);
 		break;
 	case PR_SET_TIMERSLACK_PID:
 		rcu_read_lock();
@@ -2443,6 +2423,9 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		if (arg2 || arg3 || arg4 || arg5)
 			return -EINVAL;
 		return task_no_new_privs(current) ? 1 : 0;
+	case PR_SET_VMA:
+		error = prctl_set_vma(arg2, arg3, arg4, arg5);
+		break;
 	default:
 		error = -EINVAL;
 		break;
