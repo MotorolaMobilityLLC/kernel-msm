@@ -38,6 +38,12 @@
 
 #include "../staging/android/timed_output.h"
 
+#define ANDROID_VIBRATOR_USE_WORKQUEUE
+
+#ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
+static struct workqueue_struct *vibrator_workqueue;
+#endif
+
 /* gpio and clock control for vibrator */
 static void __iomem *virt_base;
 
@@ -63,6 +69,7 @@ static DEFINE_MUTEX(vib_lock);
 struct timed_vibrator_data {
 	struct timed_output_dev dev;
 	struct hrtimer timer;
+	spinlock_t spinlock;
 	struct mutex lock;
 	int max_timeout;
 	int ms_time;            /* vibrator duration */
@@ -192,26 +199,14 @@ static int vibrator_pwm_set(int enable, int amp, int n_value)
 }
 
 #ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
-static inline void vibrator_work_on(struct work_struct *work)
+static inline void vibrator_schedule_work(struct work_struct *work)
 {
 	queue_work(vibrator_workqueue, work);
 }
-
-static inline void vibrator_work_off(struct work_struct *work)
-{
-	if (!work_pending(work))
-		queue_work(vibrator_workqueue, work);
-}
 #else
-static inline void vibrator_work_on(struct work_struct *work)
+static inline void vibrator_schedule_work(struct work_struct *work)
 {
 	schedule_work(work);
-}
-
-static inline void vibrator_work_off(struct work_struct *work)
-{
-	if (!work_pending(work))
-		schedule_work(work);
 }
 #endif
 
@@ -294,7 +289,7 @@ static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
 	struct timed_vibrator_data *vib =
 		container_of(timer, struct timed_vibrator_data, timer);
 
-	vibrator_work_off(&vib->work_vibrator_off);
+	vibrator_schedule_work(&vib->work_vibrator_off);
 	return HRTIMER_NORESTART;
 }
 
@@ -314,19 +309,21 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 {
 	struct timed_vibrator_data *vib =
 		container_of(dev, struct timed_vibrator_data, dev);
+	unsigned long flags;
 
-	mutex_lock(&vib->lock);
+	spin_lock_irqsave(&vib->spinlock, flags);
+
 	if (value > 0) {
 		if (value > vib->max_timeout)
 			value = vib->max_timeout;
 
 		vib->ms_time = value;
 
-		vibrator_work_on(&vib->work_vibrator_on);
+		vibrator_schedule_work(&vib->work_vibrator_on);
 	} else {
-		vibrator_work_off(&vib->work_vibrator_off);
+		vibrator_schedule_work(&vib->work_vibrator_off);
 	}
-	mutex_unlock(&vib->lock);
+	spin_unlock_irqrestore(&vib->spinlock, flags);
 }
 
 static int vibrator_gpio_init(struct timed_vibrator_data *vib)
@@ -516,6 +513,7 @@ static int msm8974_pwm_vibrator_probe(struct platform_device *pdev)
 	hrtimer_init(&vib->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	vib->timer.function = vibrator_timer_func;
 	mutex_init(&vib->lock);
+	spin_lock_init(&vib->spinlock);
 
 	ret = timed_output_dev_register(&vib->dev);
 	if (ret < 0) {
