@@ -1584,6 +1584,9 @@ VOS_STATUS hdd_wmm_adapter_close ( hdd_adapter_t* pAdapter )
 #ifdef FEATURE_WLAN_CCX
       hdd_wmm_disable_inactivity_timer(pQosContext);
 #endif
+#ifdef WLAN_OPEN_SOURCE
+      cancel_work_sync(&pQosContext->wmmAcSetupImplicitQos);
+#endif
       hdd_wmm_free_context(pQosContext);
    }
 

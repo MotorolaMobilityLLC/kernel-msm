@@ -4950,11 +4950,20 @@ static eHalStatus hdd_smeCloseSessionCallback(void *pContext)
 
    clear_bit(SME_SESSION_OPENED, &pAdapter->event_flags);
 
+#ifndef WLAN_OPEN_SOURCE
    /* need to make sure all of our scheduled work has completed.
     * This callback is called from MC thread context, so it is safe to
     * to call below flush workqueue API from here.
+    *
+    * Even though this is called from MC thread context, if there is a faulty
+    * work item in the system, that can hang this call forever.  So flushing
+    * this global work queue is not safe; and now we make sure that
+    * individual work queues are stopped correctly. But the cancel work queue
+    * is a GPL only API, so the proprietary  version of the driver would still
+    * rely on the global work queue flush.
     */
    flush_scheduled_work();
+#endif
 
    /* We can be blocked while waiting for scheduled work to be
     * flushed, and the adapter structure can potentially be freed, in
@@ -5888,8 +5897,13 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
          }
          mutex_unlock(&pHddCtx->sap_lock);
          break;
+
       case WLAN_HDD_MONITOR:
+#ifdef WLAN_OPEN_SOURCE
+         cancel_work_sync(&pAdapter->sessionCtx.monitor.pAdapterForTx->monTxWorkQueue);
+#endif
          break;
+
       default:
          break;
    }
