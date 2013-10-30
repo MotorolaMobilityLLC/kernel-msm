@@ -482,8 +482,9 @@ int hdd_wlan_get_rts_threshold(hdd_adapter_t *pAdapter, union iwreq_data *wrqu)
 
     ENTER();
 
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress) {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                                   "%s:LOGP in Progress. Ignore!!!",__func__);
       return status;
     }
@@ -510,7 +511,8 @@ int hdd_wlan_get_frag_threshold(hdd_adapter_t *pAdapter, union iwreq_data *wrqu)
 
     ENTER();
 
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress) {
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                                   "%s:LOGP in Progress. Ignore!!!",__func__);
       return status;
@@ -1343,7 +1345,7 @@ static int iw_set_mode(struct net_device *dev,
         pRoamProfile->BSSType = eCSR_BSS_TYPE_ANY;
         break;
     default:
-        hddLog(LOG1, "%s Unknown AP Mode value", __func__);
+        hddLog(LOGE, "%s Unknown AP Mode value %d ", __func__, wrqu->mode);
         return -EOPNOTSUPP;
     }
 
@@ -2902,7 +2904,7 @@ VOS_STATUS wlan_hdd_enter_lowpower(hdd_context_t *pHddCtx)
 
    if (NULL == pHddCtx)
    {
-        hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "HDD context NULL");
+        hddLog(VOS_TRACE_LEVEL_ERROR, "HDD context NULL");
         return VOS_STATUS_E_FAULT;
    }
 
@@ -3593,7 +3595,8 @@ static int iw_set_encodeext(struct net_device *dev,
     {
        if(IW_AUTH_KEY_MGMT_802_1X == pWextState->authKeyMgmt) {
 
-          VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,("Invalid Configuration:%s"),__func__);
+          VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           ("Invalid Configuration:%s"),__func__);
           return -EINVAL;
        }
        else {
@@ -7111,7 +7114,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
          (band == eCSR_BAND_5G && pHddCtx->cfg_ini->nBandCapability==1) ||
          (band == eCSR_BAND_ALL && pHddCtx->cfg_ini->nBandCapability!=0))
     {
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
              "%s: band value %u violate INI settings %u", __func__,
              band, pHddCtx->cfg_ini->nBandCapability);
          return -EIO;

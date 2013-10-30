@@ -1870,7 +1870,7 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
    /*Get the Station ID*/
    if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &STAId))
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
+      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
             "%s: Failed to find right station", __func__);
       *pSTAId = HDD_WLAN_INVALID_STA_ID;
       goto done;
@@ -1936,7 +1936,7 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
             hdd_Ibss_GetStaId(&pAdapter->sessionCtx.station,
                                pDestMacAddress, pSTAId))
        {
-          VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+          VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                      "%s: Failed to find right station pDestMacAddress: "
                      MAC_ADDRESS_STR , __func__,
                      MAC_ADDR_ARRAY(pDestMacAddress->bytes));
