@@ -211,24 +211,24 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
       {
          case PTT_MSG_READ_REGISTER:
             reg_addr = *(v_U32_t*) ((char*)wmsg + 8);
-            PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_READ_REGISTER [0x%08lX]\n",
+            PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_READ_REGISTER [0x%08X]\n",
                __func__, reg_addr);
             vosStatus = sme_DbgReadRegister(pAdapterHandle->hHal, reg_addr, &reg_val);
             *(v_U32_t*) ((char*)wmsg + 12) = reg_val;
             if(vosStatus != VOS_STATUS_SUCCESS)
-               PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Read Register [0x%08lX] failed!!\n",
+               PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Read Register [0x%08X] failed!!\n",
                __func__, reg_addr);
             ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, wnl->nlh.nlmsg_pid);
             break;
          case PTT_MSG_WRITE_REGISTER:
             reg_addr = *(v_U32_t*) ((const unsigned char*)wmsg + 8);
             reg_val = *(v_U32_t*)((const unsigned char*)wmsg + 12);
-            PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_WRITE_REGISTER Addr [0x%08lX] value [0x%08lX]\n",
+            PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_WRITE_REGISTER Addr [0x%08X] value [0x%08X]\n",
                __func__, reg_addr, reg_val);
             vosStatus = sme_DbgWriteRegister(pAdapterHandle->hHal, reg_addr, reg_val);
             if(vosStatus != VOS_STATUS_SUCCESS)
             {
-               PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Write Register [0x%08lX] value [0x%08lX] failed!!\n",
+               PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Write Register [0x%08X] value [0x%08X] failed!!\n",
                   __func__, reg_addr, reg_val);
             }
             //send message to the app
@@ -237,12 +237,12 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
          case PTT_MSG_READ_MEMORY:
             reg_addr = *(v_U32_t*) ((char*)wmsg + 8);
             len_payload = *(v_U32_t*) ((char*)wmsg + 12);
-            PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_READ_MEMORY addr [0x%08lX] bytes [0x%08lX]\n",
+            PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_READ_MEMORY addr [0x%08X] bytes [0x%08X]\n",
                __func__, reg_addr, len_payload);
             buf = (v_U8_t*)wmsg + 16;
             vosStatus = sme_DbgReadMemory(pAdapterHandle->hHal, reg_addr, buf, len_payload);
             if(vosStatus != VOS_STATUS_SUCCESS) {
-               PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Memory read failed for [0x%08lX]!!\n",
+               PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Memory read failed for [0x%08X]!!\n",
                   __func__, reg_addr);
             }
             ptt_sock_swap_32(buf, len_payload);
@@ -252,14 +252,14 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
          case PTT_MSG_WRITE_MEMORY:
             reg_addr = *(v_U32_t*) ((char*)wmsg + 8);
             len_payload = *(v_U32_t*) ((char*)wmsg + 12);
-            PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_DBG_WRITE_MEMORY addr [0x%08lX] bytes [0x%08lX]\n",
+            PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_DBG_WRITE_MEMORY addr [0x%08X] bytes [0x%08X]\n",
                __func__, reg_addr, len_payload);
             buf = (v_U8_t*)wmsg + 16;
             ptt_sock_swap_32(buf, len_payload);
             vosStatus = sme_DbgWriteMemory(pAdapterHandle->hHal, reg_addr, buf, len_payload);
             if(vosStatus != VOS_STATUS_SUCCESS)
             {
-               PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Memory write failed for addr [0x%08lX]!!\n",
+               PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Memory write failed for addr [0x%08X]!!\n",
                   __func__, reg_addr);
             }
             //send message to the app
