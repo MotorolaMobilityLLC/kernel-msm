@@ -242,8 +242,8 @@ static void hdd_wmm_enable_tl_uapsd (hdd_wmm_qos_context_t* pQosContext)
    pAc->wmmAcIsUapsdEnabled = psb;
 
    VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
-             "%s: Enabled UAPSD in TL srv_int=%ld "
-             "susp_int=%ld dir=%d AC=%d",
+             "%s: Enabled UAPSD in TL srv_int=%d "
+             "susp_int=%d dir=%d AC=%d",
              __func__,
              service_interval,
              suspension_interval,
