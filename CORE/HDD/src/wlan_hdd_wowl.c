@@ -98,7 +98,7 @@ static inline int find_ptrn_len(const char* ptrn)
 static void hdd_wowl_callback( void *pContext, eHalStatus halStatus )
 {
   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-      "%s: Return code = (%ld)\n", __func__, halStatus );
+      "%s: Return code = (%d)\n", __func__, halStatus );
 }
 
 #ifdef WLAN_WAKEUP_EVENTS
@@ -280,7 +280,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
     {
       // Add failed, so invalidate the local storage
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "sme_WowlAddBcastPattern failed with error code (%ld)", halStatus );
+          "sme_WowlAddBcastPattern failed with error code (%d)", halStatus );
       kfree(g_hdd_wowl_ptrns[first_empty_slot]);
       g_hdd_wowl_ptrns[first_empty_slot] = NULL;
     }
@@ -431,7 +431,7 @@ v_BOOL_t hdd_add_wowl_ptrn_debugfs(hdd_adapter_t *pAdapter, v_U8_t pattern_idx,
   if (!HAL_STATUS_SUCCESS(halStatus))
   {
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "%s: sme_WowlAddBcastPattern failed with error code (%ld).",
+               "%s: sme_WowlAddBcastPattern failed with error code (%d).",
                __func__, halStatus);
 
     return VOS_FALSE;
@@ -499,7 +499,7 @@ v_BOOL_t hdd_del_wowl_ptrn_debugfs(hdd_adapter_t *pAdapter, v_U8_t pattern_idx)
   if (!HAL_STATUS_SUCCESS(halStatus))
   {
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "%s: sme_WowlDelBcastPattern failed with error code (%ld).",
+               "%s: sme_WowlDelBcastPattern failed with error code (%d).",
                __func__, halStatus);
 
     return VOS_FALSE;
@@ -561,7 +561,7 @@ v_BOOL_t hdd_enter_wowl (hdd_adapter_t *pAdapter, v_BOOL_t enable_mp, v_BOOL_t e
     {
       // We failed to enter WoWL
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "sme_EnterWowl failed with error code (%ld)", halStatus );
+          "sme_EnterWowl failed with error code (%d)", halStatus );
       return VOS_FALSE;
     }
   }
@@ -583,7 +583,7 @@ v_BOOL_t hdd_exit_wowl (hdd_adapter_t*pAdapter)
   if ( !HAL_STATUS_SUCCESS( halStatus ) )
   {
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-      "sme_ExitWowl failed with error code (%ld)", halStatus );
+      "sme_ExitWowl failed with error code (%d)", halStatus );
     return VOS_FALSE;
   }
 
