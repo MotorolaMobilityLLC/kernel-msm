@@ -234,6 +234,7 @@ struct msm_vidc_inst {
 	u32 output_alloc_mode;
 	struct list_head registered_bufs;
 	bool map_output_buffer;
+	atomic_t get_seq_hdr_cnt;
 };
 
 extern struct msm_vidc_drv *vidc_driver;
