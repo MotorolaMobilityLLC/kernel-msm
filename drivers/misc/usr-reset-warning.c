@@ -27,6 +27,9 @@
 #include <linux/gpio.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <linux/qpnp/power-on.h>
+
+#define RESET_EXTRA_HW_RESET_REASON	BIT(1)
 
 struct usr_reset_warning_data {
 	struct work_struct work;
@@ -45,6 +48,9 @@ static irqreturn_t usr_reset_warning_isr(int irq, void *dev)
 	disable_irq_nosync(irq);
 	pr_warn("HFF: User initiated HW reset warning.\n");
 	pr_warn("     2 sec to reset.Halt the kernel.\n");
+	/* set HW reset power up reason */
+	qpnp_pon_store_extra_reset_info(RESET_EXTRA_HW_RESET_REASON,
+		RESET_EXTRA_HW_RESET_REASON);
 	schedule_work(&data->work);
 
 	return IRQ_HANDLED;
