@@ -275,7 +275,7 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
     if (NULL == pAdapter)
     {
        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-          "%s: HDD adapter context is Null", __func__);
+          "%s: pAdapter is Null", __func__);
        ret = -ENODEV;
        goto exit;
     }
@@ -896,7 +896,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             wrqu.data.pointer = unknownSTAEvent;
             wrqu.data.length = strlen(unknownSTAEvent);
             we_custom_event_generic = (v_BYTE_t *)unknownSTAEvent;
-            hddLog(LOG1,"%s", unknownSTAEvent);
+            hddLog(LOGE,"%s", unknownSTAEvent);
             break;
 
         case eSAP_MAX_ASSOC_EXCEEDED:
@@ -2174,7 +2174,7 @@ int iw_softap_get_channel_list(struct net_device *dev,
 
     if(eHAL_STATUS_SUCCESS != sme_getSoftApDomain(hHal,(v_REGDOMAIN_t *) &domainIdCurrentSoftap))
     {
-        hddLog(LOG1,FL("Failed to get Domain ID, %d"),domainIdCurrentSoftap);
+        hddLog(LOGE,FL("Failed to get Domain ID, %d"),domainIdCurrentSoftap);
         return -EIO;
     }
 
@@ -3117,7 +3117,7 @@ static VOS_STATUS  wlan_hdd_get_classAstats_for_station(hdd_adapter_t *pAdapter,
 
    if (NULL == pAdapter)
    {
-      hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Padapter is NULL", __func__);
+      hddLog(VOS_TRACE_LEVEL_ERROR,"%s: pAdapter is NULL", __func__);
       return VOS_STATUS_E_FAULT;
    }
 
