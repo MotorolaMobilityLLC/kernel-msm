@@ -353,7 +353,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
             /* Handling for this message is not needed now so adding 
              *debug print and VOS_ASSERT*/
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       " Received SYS_MSG_ID_MC_START message msgType= %d [0x%08lx]",
+                       " Received SYS_MSG_ID_MC_START message msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             VOS_ASSERT(0);
             break;
@@ -391,7 +391,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          case SYS_MSG_ID_MC_THR_PROBE:
          {
             VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       " Received SYS_MSG_ID_MC_THR_PROBE message msgType = %d [0x%08lx]",
+                       " Received SYS_MSG_ID_MC_THR_PROBE message msgType = %d [0x%08x]",
                        pMsg->type, pMsg->type);
             break;
          }
@@ -419,7 +419,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          default:
          {
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       "Unknown message type in sysMcProcessMsg() msgType= %d [0x%08lx]",
+                       "Unknown message type in sysMcProcessMsg() msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             break;
         }
@@ -439,7 +439,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                        "Received SYS message cookie with unidentified "
-                       "MC message type= %d [0x%08lX]", pMsg->type, pMsg->type );
+                       "MC message type= %d [0x%08X]", pMsg->type, pMsg->type );
 
             vosStatus = VOS_STATUS_E_BADMSG;
             if (pMsg->bodyptr) 
@@ -478,7 +478,7 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
            /* Handling for this message is not needed now so adding 
             * debug print and VOS_ASSERT*/
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       " Received SYS_MSG_ID_TX_THR_PROBE message msgType= %d [0x%08lx]",
+                       " Received SYS_MSG_ID_TX_THR_PROBE message msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             VOS_ASSERT(0);
 
@@ -504,7 +504,7 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          default:
          {
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       "Unknown message type in sysTxProcessMsg() msgType= %d [0x%08lx]",
+                       "Unknown message type in sysTxProcessMsg() msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             break;
         }
@@ -517,7 +517,7 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 
       VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                  "Received SYS message cookie with unidentified TX message "
-                 " type= %d [0x%08lX]", pMsg->type, pMsg->type );
+                 " type= %d [0x%08X]", pMsg->type, pMsg->type );
 
       vosStatus = VOS_STATUS_E_BADMSG;
    }   // end else
@@ -561,7 +561,7 @@ VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          default:
          {
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                       "Unknown message type in sysRxProcessMsg() msgType= %d [0x%08lx]",
+                       "Unknown message type in sysRxProcessMsg() msgType= %d [0x%08x]",
                        pMsg->type, pMsg->type );
             break;
         }
@@ -574,7 +574,7 @@ VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 
       VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                  "Received SYS message cookie with unidentified RX message "
-                 " type= %d [0x%08lX]", pMsg->type, pMsg->type );
+                 " type= %d [0x%08X]", pMsg->type, pMsg->type );
 
       vosStatus = VOS_STATUS_E_BADMSG;
    }   // end else
