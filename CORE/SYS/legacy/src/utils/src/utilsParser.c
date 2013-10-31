@@ -686,11 +686,25 @@ void CreateScanCtsFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tSirMac
     return;
 }
 
-
-
-
-
-
+void ConvertQosMapsetFrame(tpAniSirGlobal pMac, tSirQosMapSet* Qos, tDot11fIEQosMapSet* dot11fIE)
+{
+    tANI_U8 i,j=0;
+    Qos->num_dscp_exceptions = (dot11fIE->num_dscp_exceptions - 16)/2;
+    for (i=0;i<Qos->num_dscp_exceptions;i++)
+    {
+        Qos->dscp_exceptions[i][0] = dot11fIE->dscp_exceptions[j];
+        j++;
+        Qos->dscp_exceptions[i][1] = dot11fIE->dscp_exceptions[j];
+        j++;
+    }
+    for (i=0;i<8;i++)
+    {
+        Qos->dscp_range[i][0] = dot11fIE->dscp_exceptions[j];
+        j++;
+        Qos->dscp_range[i][1] = dot11fIE->dscp_exceptions[j];
+        j++;
+    }
+}
 
 /**
     @brief    :    This functions creates a DATA_NULL/CTS2SELF frame in Big endian format 

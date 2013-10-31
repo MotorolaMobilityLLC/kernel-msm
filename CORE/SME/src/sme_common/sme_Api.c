@@ -10422,3 +10422,54 @@ eHalStatus sme_UpdateConnectDebug(tHalHandle hHal, tANI_U32 set_value)
     return (status);
 }
 
+VOS_STATUS sme_UpdateDSCPtoUPMapping( tHalHandle hHal,
+                                      sme_QosWmmUpType  *dscpmapping)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus status    = eHAL_STATUS_SUCCESS;
+    v_U8_t i, j;
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        if ( !pMac->QosMapSet.present )
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: QOS Mapping IE not present", __func__);
+            sme_ReleaseGlobalLock( &pMac->sme);
+            return eHAL_STATUS_FAILURE;
+        }
+        else
+        {
+            for (i=0; i < 8; i++)
+            {
+                for (j = pMac->QosMapSet.dscp_range[i][0];
+                               j <= pMac->QosMapSet.dscp_range[i][1]; j++)
+                {
+                   if ((pMac->QosMapSet.dscp_range[i][0] == 255) &&
+                                (pMac->QosMapSet.dscp_range[i][1] == 255))
+                   {
+                       dscpmapping[j]= 0;
+                       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                       "%s: User Priority %d is not used in mapping",
+                                                             __func__, i);
+                       break;
+                   }
+                   else
+                   {
+                       dscpmapping[j]= i;
+                   }
+                }
+            }
+            for (i=0; i< pMac->QosMapSet.num_dscp_exceptions; i++)
+            {
+                if (pMac->QosMapSet.dscp_exceptions[i][0] != 255)
+                {
+                    dscpmapping[pMac->QosMapSet.dscp_exceptions[i][0] ] =
+                                         pMac->QosMapSet.dscp_exceptions[i][1];
+                }
+            }
+        }
+    }
+    sme_ReleaseGlobalLock( &pMac->sme);
+    return status;
+}

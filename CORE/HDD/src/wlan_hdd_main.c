@@ -8354,7 +8354,8 @@ int hdd_wlan_startup(struct device *dev )
    }
 
    //Initialize the WMM module
-   status = hdd_wmm_init(pHddCtx);
+   status = hdd_wmm_init(pHddCtx, hddWmmDscpToUpMapInfra);
+   status = hdd_wmm_init(pHddCtx, hddWmmDscpToUpMapP2p);
    if (!VOS_IS_STATUS_SUCCESS(status))
    {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_wmm_init failed", __func__);

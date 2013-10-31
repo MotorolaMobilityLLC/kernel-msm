@@ -184,6 +184,7 @@
 #define SIR_MAC_QOS_ADD_TS_RSP      1
 #define SIR_MAC_QOS_DEL_TS_REQ      2
 #define SIR_MAC_QOS_SCHEDULE        3
+#define SIR_MAC_QOS_MAP_CONFIGURE   4
 // and these are proprietary
 #define SIR_MAC_QOS_DEF_BA_REQ      4
 #define SIR_MAC_QOS_DEF_BA_RSP      5

@@ -190,6 +190,8 @@
 #define HDD_WAKE_LOCK_DURATION 50 //in msecs
 #endif
 
+#define WLAN_HDD_QOS_ACTION_FRAME 1
+#define WLAN_HDD_QOS_MAP_CONFIGURE 4
 #define HDD_SAP_WAKE_LOCK_DURATION 10000 //in msecs
 
 #define HDD_MOD_EXIT_SSR_MAX_RETRIES 30
@@ -228,7 +230,6 @@ typedef v_U8_t tWlanHddMacAddr[HDD_MAC_ADDR_LEN];
 #define MIN(a, b) (a > b ? b : a)
 
 #endif
-
 /*
  * Generic asynchronous request/response support
  *
@@ -260,6 +261,7 @@ typedef v_U8_t tWlanHddMacAddr[HDD_MAC_ADDR_LEN];
  * API timeout coincides with its callback, the operations of the two
  * threads will be serialized.
  */
+
 struct statsContext
 {
    struct completion completion;
