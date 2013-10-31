@@ -144,7 +144,7 @@ static void cbNotifySetRoamScanHomeAwayTime(hdd_context_t *pHddCtx, unsigned lon
      if (pHddCtx->cfg_ini->nRoamScanHomeAwayTime < (scanChannelMaxTime + (2 * HDD_ROAM_SCAN_CHANNEL_SWITCH_TIME)))
      {
          VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-                "%s: Invalid config, Home away time(%d) is less than (twice RF switching time + channel max time)(%d)",
+                "%s: Invalid config, Home away time(%d) is less than (twice RF switching time + channel max time)(%d)"
                 " Hence enforcing home away time to disable (0)",
                 __func__, pHddCtx->cfg_ini->nRoamScanHomeAwayTime, (scanChannelMaxTime + (2 * HDD_ROAM_SCAN_CHANNEL_SWITCH_TIME)));
          pHddCtx->cfg_ini->nRoamScanHomeAwayTime = 0;
@@ -225,7 +225,7 @@ static void cbNotifySetNeighborScanMaxChanTime(hdd_context_t *pHddCtx, unsigned 
     if (homeAwayTime < (pHddCtx->cfg_ini->nNeighborScanMaxChanTime + (2 * HDD_ROAM_SCAN_CHANNEL_SWITCH_TIME)))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-               "%s: Invalid config, Home away time(%d) is less than (twice RF switching time + channel max time)(%d)",
+               "%s: Invalid config, Home away time(%d) is less than (twice RF switching time + channel max time)(%d)"
                " Hence enforcing home away time to disable (0)",
                __func__, homeAwayTime, (pHddCtx->cfg_ini->nNeighborScanMaxChanTime + (2 * HDD_ROAM_SCAN_CHANNEL_SWITCH_TIME)));
         homeAwayTime = 0;
