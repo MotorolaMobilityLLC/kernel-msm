@@ -119,6 +119,7 @@ enum sdc_mpm_pin_state {
 
 #define CORE_VENDOR_SPEC_ADMA_ERR_ADDR0	0x114
 #define CORE_VENDOR_SPEC_ADMA_ERR_ADDR1	0x118
+#define CORE_VENDOR_SPEC_CAPABILITIES1	0x120
 
 #define CORE_CSR_CDC_CTLR_CFG0		0x130
 #define CORE_SW_TRIG_FULL_CALIB		(1 << 16)
@@ -1736,7 +1737,26 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 		else if (!strncmp(name, "DDR_1p2v", sizeof("DDR_1p2v")))
 			pdata->caps |= MMC_CAP_1_2V_DDR
 						| MMC_CAP_UHS_DDR50;
+		else if (!strncmp(name, "SDR104_1p8v", sizeof("SDR104_1p8v")))
+			pdata->caps |= MMC_CAP_1_8V_DDR
+						| MMC_CAP_UHS_SDR104;
+		else if (!strncmp(name, "SDR50_1p8v", sizeof("SDR50_1p8v")))
+			pdata->caps |= MMC_CAP_1_8V_DDR
+						| MMC_CAP_UHS_SDR50;
+		else if (!strncmp(name, "SDR25_1p8v", sizeof("SDR25_1p8v")))
+			pdata->caps |= MMC_CAP_1_8V_DDR
+						| MMC_CAP_UHS_SDR25;
+		else if (!strncmp(name, "SDR12_1p8v", sizeof("SDR12_1p8v")))
+			pdata->caps |= MMC_CAP_1_8V_DDR
+						| MMC_CAP_UHS_SDR12;
 	}
+
+	if (pdata->caps & MMC_CAP_UHS_SDR104)
+		pdata->caps |= MMC_CAP_UHS_SDR50;
+	if (pdata->caps & MMC_CAP_UHS_SDR50)
+		pdata->caps |= MMC_CAP_UHS_SDR25;
+	if (pdata->caps & MMC_CAP_UHS_SDR25)
+		pdata->caps |= MMC_CAP_UHS_SDR12;
 
 	if (of_get_property(np, "qcom,nonremovable", NULL))
 		pdata->nonremovable = true;
@@ -3318,6 +3338,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	u16 host_version;
 	u32 pwr, irq_status, irq_ctl;
 	unsigned long flags;
+	u32 sdhci_caps;
 
 	pr_debug("%s: Enter %s\n", dev_name(&pdev->dev), __func__);
 	msm_host = devm_kzalloc(&pdev->dev, sizeof(struct sdhci_msm_host),
@@ -3601,6 +3622,25 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 
 	if (msm_host->pdata->nonhotplug)
 		msm_host->mmc->caps2 |= MMC_CAP2_NONHOTPLUG;
+
+	if (mmc_host_uhs(msm_host->mmc)) {
+		sdhci_caps = readl_relaxed(host->ioaddr + SDHCI_CAPABILITIES_1);
+
+		if ((sdhci_caps & SDHCI_SUPPORT_SDR104) &&
+			!(host->mmc->caps & MMC_CAP_UHS_SDR104))
+			sdhci_caps &= ~SDHCI_SUPPORT_SDR104;
+
+		if ((sdhci_caps & SDHCI_SUPPORT_DDR50) &&
+			!(host->mmc->caps & MMC_CAP_UHS_DDR50))
+			sdhci_caps &= ~SDHCI_SUPPORT_DDR50;
+
+		if ((sdhci_caps & SDHCI_SUPPORT_SDR50) &&
+			!(host->mmc->caps & MMC_CAP_UHS_SDR50))
+			sdhci_caps &= ~SDHCI_SUPPORT_SDR50;
+
+		sdhci_caps |= ((host_version & 0xFF) << 24);
+		sdhci_writel(host, sdhci_caps, CORE_VENDOR_SPEC_CAPABILITIES1);
+	}
 
 	host->cpu_dma_latency_us = msm_host->pdata->cpu_dma_latency_us;
 	host->cpu_dma_latency_tbl_sz = msm_host->pdata->cpu_dma_latency_tbl_sz;
