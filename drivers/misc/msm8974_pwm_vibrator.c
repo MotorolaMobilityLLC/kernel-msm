@@ -361,6 +361,8 @@ static int vibrator_get_time(struct timed_output_dev *dev)
 	if (hrtimer_active(&vib->timer)) {
 		ktime_t r = hrtimer_get_remaining(&vib->timer);
 		ms = ktime_to_ms(r);
+		if (ms < 0)
+			ms = 0;
 		return min(ms, vib->ms_time);
 	}
 	return 0;
@@ -375,7 +377,7 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 
 	spin_lock_irqsave(&vib->spinlock, flags);
 
-	now = ktime_get();
+	now = ktime_get_boottime();
 	if (value > 0) {
 		int delay = 0;
 		if (value > vib->max_timeout)
@@ -388,6 +390,8 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 			if (hrtimer_active(&vib->timer)) {
 				ktime_t r = hrtimer_get_remaining(&vib->timer);
 				delay = ktime_to_ms(r);
+				if (delay < 0)
+					delay = 0;
 			}
 		}
 
