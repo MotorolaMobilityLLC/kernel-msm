@@ -296,6 +296,14 @@ static int msm8974_pwm_vibrator_force_set(struct timed_vibrator_data *vib,
 
 		if (delayed_work_pending(&vib->work_vibrator_off))
 			cancel_delayed_work_sync(&vib->work_vibrator_off);
+
+		/* if the vibrator already is in the driving state,
+		 * just keep going
+		 */
+		if (vib->status == VIB_STAT_DRIVING &&
+				hrtimer_active(&vib->timer))
+				return 0;
+
 		hrtimer_cancel(&vib->timer);
 
 		vibrator_set_power(1, vib);
