@@ -2295,9 +2295,9 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
         staAdapter = hdd_get_adapter(pAdapter->pHddCtx, WLAN_HDD_P2P_CLIENT);
         if (NULL == staAdapter)
         {
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                    "%s: HDD adapter context is Null", __func__);
-            return -ENODEV;
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+                      "%s: HDD adapter context for STA/P2P-CLI is Null",
+                      __func__);
         }
     }
 
@@ -2306,7 +2306,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d\n",
                               __func__,pAdapter->device_mode);
 
-    if ((pScanInfo != NULL) && pScanInfo->mScanPending)
+    if ((pScanInfo != NULL) && pScanInfo->mScanPending && staAdapter)
     {
         INIT_COMPLETION(pScanInfo->abortscan_event_var);
         hdd_abort_mac_scan(staAdapter->pHddCtx, pAdapter->sessionId);
@@ -2315,11 +2315,10 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
                            msecs_to_jiffies(WLAN_WAIT_TIME_ABORTSCAN));
         if (!status)
         {
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                          "%s: Timeout occurred while waiting for abortscan" ,
                          __func__);
             VOS_ASSERT(pScanInfo->mScanPending);
-            return 0;
         }
     }
 
