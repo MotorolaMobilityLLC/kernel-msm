@@ -243,12 +243,14 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 	struct mdss_mdp_pipe *pipe;
 	struct mdss_panel_info *pinfo = NULL;
 	int fps = DEFAULT_FRAME_RATE;
-	u32 v_total;
+	u32 v_total = 0;
 	int i;
 	u32 max_clk_rate = 0, ab_total = 0;
-	u32 ib_max = 0, ib_max_smp = 0;
+	u32 ib_max = 0;
 	u32 ib_quota[MDSS_MDP_MAX_STAGE];
 	u32 v_region[MDSS_MDP_MAX_STAGE * 2];
+	u32 smp_bytes = 0;
+	u64 smp_bw = 0;
 
 	memset(perf, 0, sizeof(*perf));
 
@@ -286,6 +288,8 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 
 		if (mdss_mdp_perf_calc_pipe(pipe, &tmp))
 			continue;
+
+		smp_bytes += mdss_mdp_smp_get_size(pipe);
 
 		ab_total += tmp.ab_quota >> MDSS_MDP_BUS_FACTOR_SHIFT;
 		ib_quota[i] = tmp.ib_quota >> MDSS_MDP_BUS_FACTOR_SHIFT;
@@ -326,34 +330,32 @@ static void mdss_mdp_perf_calc_mixer(struct mdss_mdp_mixer *mixer,
 		ib_max = max(ib_max, ib_max_region);
 	}
 
-	/*
-	 * bw due to the smp concurrent fetching. Since this is the
-	 * time that all pipes fetching lines, scaling is not a factor.
-	 */
-	for (i = 0; i < MDSS_MDP_MAX_STAGE; i++) {
-		u32 src_h, dst_h;
-		u32 ib_smp = 0;
-		if (!ib_quota[i])
-			continue;
-		pipe = mixer->stage_pipe[i];
-		src_h = pipe->src.h >> pipe->vert_deci;
-		dst_h = pipe->dst.h;
-		ib_smp = (src_h && src_h > dst_h) ?
-			mult_frac(ib_quota[i], dst_h, src_h) : ib_quota[i];
-		ib_max_smp += ib_smp;
-		pr_debug("src_h=%d dst_h=%d ib_q=%d ib_s=%d ib_max_smp=%d\n",
-			src_h, dst_h, ib_quota[i], ib_smp, ib_max_smp);
-	}
-	pr_debug("ib_max_region=%d ib_max_smp=%d\n", ib_max, ib_max_smp);
-	ib_max = max(ib_max, ib_max_smp);
-
 	perf->ab_quota += ab_total << MDSS_MDP_BUS_FACTOR_SHIFT;
 	perf->ib_quota += ib_max << MDSS_MDP_BUS_FACTOR_SHIFT;
 	if (max_clk_rate > perf->mdp_clk_rate)
 		perf->mdp_clk_rate = max_clk_rate;
 
-	pr_debug("final mixer=%d clk_rate=%u bus ab=%llu ib=%llu\n", mixer->num,
-		 perf->mdp_clk_rate, perf->ab_quota, perf->ib_quota);
+	if (pinfo) {
+		int vbp;
+
+		/*
+		 * need to be able to at least fill the shared memory pool
+		 * during blanking period
+		 */
+		vbp = pinfo->lcdc.v_back_porch + pinfo->lcdc.v_pulse_width;
+		smp_bw = smp_bytes * v_total * fps;
+		do_div(smp_bw, vbp);
+
+		if (smp_bw > perf->ib_quota) {
+			pr_debug("replacing ib_quota=%llu with smp_bw=%llu\n",
+					perf->ib_quota, smp_bw);
+			perf->ib_quota = smp_bw;
+		}
+	}
+
+	pr_debug("final mixer=%d clk_rate=%u bus ab=%llu ib=%llu smp=%llu\n",
+			mixer->num, perf->mdp_clk_rate,
+			perf->ab_quota, perf->ib_quota, smp_bw);
 }
 
 static void mdss_mdp_perf_calc_ctl(struct mdss_mdp_ctl *ctl,
