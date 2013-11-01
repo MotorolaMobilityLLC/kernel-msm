@@ -835,7 +835,11 @@ int remove_inode_page(struct inode *inode)
 	}
 
 	/* 0 is possible, after f2fs_new_inode() is failed */
-	f2fs_bug_on(inode->i_blocks != 0 && inode->i_blocks != 1);
+	if (inode->i_blocks != 0 && inode->i_blocks != 1) {
+		f2fs_msg(sbi->sb, KERN_ERR, "inode %u still has %llu blocks",
+				ino, inode->i_blocks);
+		f2fs_handle_error(sbi);
+	}
 	set_new_dnode(&dn, inode, page, page, ino);
 	truncate_node(&dn);
 	return 0;
