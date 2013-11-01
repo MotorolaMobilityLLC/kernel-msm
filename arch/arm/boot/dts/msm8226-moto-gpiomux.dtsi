@@ -222,13 +222,13 @@
 		};
 
 		pin@fd51100 {
-			reg = <0xfd511100 0x10>;	/* CTP_RST_N */
+			reg = <0xfd511100 0x10>;	/* TOUCH_RESET */
 			qcom,pin-num = <16>;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(16)        */
-				qcom,pull = <0>;  /* none                   */
+				qcom,pull = <3>;  /* up                     */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
+				qcom,dir = <1>;   /* output high            */
 			};
 			qcom,suspend@1 {
 				qcom,func = <0>;  /* gpio_in_out(16)        */
@@ -239,7 +239,7 @@
 		};
 
 		pin@fd51110 {
-			reg = <0xfd511110 0x10>;	/* CTP_INT */
+			reg = <0xfd511110 0x10>;	/* TOUCH_INT */
 			qcom,pin-num = <17>;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(17)        */
