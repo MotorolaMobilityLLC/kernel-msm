@@ -2007,9 +2007,9 @@
 				<88 618 0 800>;
         };
 
-	qseecom: qcom,qseecom@7b00000 {
+	qseecom: qcom,qseecom@7200000 {
 		compatible = "qcom,qseecom";
-		reg = <0x7b00000 0x500000>;
+		reg = <0x7200000 0x500000>;
 		reg-names = "secapp-region";
 		qcom,disk-encrypt-pipe-pair = <2>;
 		qcom,hlos-ce-hw-instance = <1>;
