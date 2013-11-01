@@ -3594,6 +3594,10 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 		if (rmi4_data->reset_on_resume)
 			synaptics_rmi4_reset_device(rmi4_data, NULL);
+		else if (wait4idle) {
+			retval = synaptics_dsx_ic_reset(rmi4_data, false);
+			pr_debug("waited for idle %dms\n", retval);
+		}
 	}
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, false);
