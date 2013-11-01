@@ -33,6 +33,16 @@
 };
 
 &soc {
+	qcom,ion {
+		qcom,ion-heap@23 { /* OTHER PIL HEAP */
+			qcom,memory-fixed = <0x04b00000 0x2700000>;
+		};
+
+		qcom,ion-heap@26 { /* MODEM HEAP */
+			qcom,memory-fixed = <0x07700000 0x5a00000>;
+		};
+	};
+
 	serial@f991d000 {       /* "UART_AP_*_SP" on BLSP1 (BLSP1 UART0) */
 		compatible = "qcom,msm-lsuart-v14";
 		reg = <0xf991d000 0x1000>;
@@ -975,4 +985,8 @@
 
 &mdss_dsi1 {
 	status = "disabled";
+};
+
+&memory_hole {
+	qcom,memblock-remove = <0x04b00000 0xb400000>; /* Address and size of the hole */
 };
