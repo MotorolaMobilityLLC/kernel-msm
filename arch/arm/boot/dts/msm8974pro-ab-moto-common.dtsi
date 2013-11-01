@@ -264,6 +264,25 @@
 
 &spmi_bus {
 	qcom,pm8941@1 {
+
+		qcom,leds@d000 {
+			compatible = "qcom,leds-qpnp-rgb";
+			qcom,rgb_0 {
+				/delete-property/ qcom,default-state;
+				/delete-property/ linux,default-trigger;
+			};
+
+			qcom,rgb_1 {
+				qcom,blink-en = <1>;
+				/delete-property/ qcom,default-state;
+				/delete-property/ linux,default-trigger;
+			};
+
+			qcom,rgb_2 {
+				status = "ok";
+			};
+		};
+
 		qcom,leds@d800 {
 			status = "okay";
 			qcom,wled_0 {
