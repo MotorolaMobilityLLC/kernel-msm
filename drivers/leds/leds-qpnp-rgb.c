@@ -188,6 +188,7 @@ struct blink_led_data {
 };
 
 static int qpnp_mpp_set(struct qpnp_led_data *);
+static int qpnp_rgb_set(struct qpnp_led_data *);
 static int qpnp_led_masked_write(struct qpnp_led_data *, u16, u8, u8);
 
 static int flags = QPNP_LED_PWM_FLAGS;
@@ -225,7 +226,8 @@ static void qpnp_blink_enable_leds(void)
 		led = blink_array[i].led;
 		if (!led->cdev.brightness)
 			continue;
-		pwm = led->mpp_cfg->pwm_cfg;
+		pwm = (led->id == QPNP_ID_LED_MPP) ?
+			led->mpp_cfg->pwm_cfg : led->rgb_cfg->pwm_cfg;
 		ret = pwm_enable_lut_no_ramp(pwm->pwm_dev);
 		if (ret < 0)
 			dev_err(&led->spmi_dev->dev,
@@ -262,7 +264,8 @@ static void qpnp_blink_config_luts(void)
 		led = blink_array[i].led;
 		if (!led->cdev.brightness)
 			continue;
-		pwm = led->mpp_cfg->pwm_cfg;
+		pwm = (led->id == QPNP_ID_LED_MPP) ?
+			led->mpp_cfg->pwm_cfg : led->rgb_cfg->pwm_cfg;
 		pwm_disable(pwm->pwm_dev);
 		pwm->lut_params.start_idx = start_idx;
 		pwm->duty_cycles->start_idx = start_idx;
@@ -305,13 +308,17 @@ static int qpnp_blink_set(unsigned on)
 		pr_debug("%s: Turning blinking off\n", __func__);
 		for (i = 0; i < blink_cnt; i++) {
 			led = blink_array[i].led;
-			pwm = led->mpp_cfg->pwm_cfg;
+			pwm = (led->id == QPNP_ID_LED_MPP) ?
+				led->mpp_cfg->pwm_cfg : led->rgb_cfg->pwm_cfg;
 			ret = pwm_change_mode(pwm->pwm_dev, PWM_MODE);
 			if (ret < 0)
 				dev_err(&led->spmi_dev->dev,
 					"Change to PWM err (%d)\n", ret);
 			pwm->blinking = 0;
-			ret = qpnp_mpp_set(led);
+			if (led->id == QPNP_ID_LED_MPP)
+				ret = qpnp_mpp_set(led);
+			else
+				ret = qpnp_rgb_set(led);
 			if (ret < 0)
 				dev_err(&led->spmi_dev->dev,
 					"MPP set failed (%d)\n", ret);
@@ -328,7 +335,8 @@ static int qpnp_blink_set(unsigned on)
 			led = blink_array[i].led;
 			if (!led->cdev.brightness)
 				continue;
-			pwm = led->mpp_cfg->pwm_cfg;
+			pwm = (led->id == QPNP_ID_LED_MPP) ?
+				led->mpp_cfg->pwm_cfg : led->rgb_cfg->pwm_cfg;
 			pwm_disable(pwm->pwm_dev);
 			ret = pwm_change_mode(pwm->pwm_dev, PWM_MODE);
 			if (ret < 0)
@@ -621,6 +629,14 @@ static int qpnp_rgb_set(struct qpnp_led_data *led)
 		}
 	} else {
 		pwm_disable(led->rgb_cfg->pwm_cfg->pwm_dev);
+		/* disable blink switch back to PWM mode */
+		if (led->rgb_cfg->pwm_cfg->blinking) {
+			pwm_change_mode(led->rgb_cfg->pwm_cfg->pwm_dev,
+				PWM_MODE);
+			led->rgb_cfg->pwm_cfg->blinking = 0;
+			blinking_leds--;
+		}
+
 		rc = qpnp_led_masked_write(led,
 			RGB_LED_EN_CTL(led->base),
 			led->rgb_cfg->enable, RGB_LED_DISABLE);
