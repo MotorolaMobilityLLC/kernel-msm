@@ -2152,7 +2152,7 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 
 	up(&msm_fb_pan_sem);
 
-	if (!bl_updated)
+	if (unset_bl_level != -1 && !bl_updated)
 		schedule_delayed_work(&mfd->backlight_worker,
 					backlight_duration);
 
@@ -2185,7 +2185,7 @@ static void msm_fb_commit_wq_handler(struct work_struct *work)
 	complete_all(&mfd->commit_comp);
 	mutex_unlock(&mfd->sync_mutex);
 
-	if (unset_bl_level && !bl_updated)
+	if (unset_bl_level != -1 && !bl_updated)
 		schedule_delayed_work(&mfd->backlight_worker,
 					backlight_duration);
 }
