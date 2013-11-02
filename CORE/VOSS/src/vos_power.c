@@ -98,22 +98,6 @@ when       who     what, where, why
 #include <mach/vreg.h>
 #include <linux/err.h>
 #include <linux/delay.h>
-
-#ifdef MSM_PLATFORM_7x30
-#include <mach/irqs-7x30.h>
-#include <linux/mfd/pmic8058.h>
-#include <mach/rpc_pmapp.h>
-#include <mach/pmic.h>
-#endif
-
-#ifdef MSM_PLATFORM_8660
-#include <qcomwlan_pwrif.h>
-#endif
-
-#ifdef MSM_PLATFORM_7x27A
-#include <linux/qcomwlan7x27a_pwrif.h>
-#endif
-
 #endif //MSM_PLATFORM
 
 #include <vos_sched.h>
@@ -137,391 +121,6 @@ when       who     what, where, why
 
 // SDIO Config Cycle Clock Frequency
 #define WLAN_LOW_SD_CONFIG_CLOCK_FREQ 400000
-
-#ifdef MSM_PLATFORM_7x30
-
-#define PM8058_GPIO_PM_TO_SYS(pm_gpio)  (pm_gpio + NR_GPIO_IRQS)
-
-static const char* id = "WLAN";
-
-struct wlan_pm8058_gpio {
-    int gpio_num;
-    struct pm_gpio gpio_cfg;
-};
-
-
-//PMIC8058 GPIO COnfiguration for MSM7x30 //ON
-static struct wlan_pm8058_gpio wlan_gpios_reset[] = {
-    {PM8058_GPIO_PM_TO_SYS(22),{PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 0, PM_GPIO_PULL_NO, 2, PM_GPIO_STRENGTH_LOW, PM_GPIO_FUNC_NORMAL, 0}},
-};
-
-//OFF
-static struct wlan_pm8058_gpio wlan_gpios_reset_out[] = {
-    {PM8058_GPIO_PM_TO_SYS(22),{PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 1, PM_GPIO_PULL_NO, 2, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_NORMAL, 0}},
-};
-
-
-/* Routine to power on/off Volans chip */
-int vos_chip_power_qrf8600(int on)
-{
-    struct vreg *vreg_wlan = NULL;
-    struct vreg *vreg_gp16 = NULL;
-    struct vreg *vreg_gp15 = NULL;
-    struct vreg *vreg_s2 = NULL;
-    int rc = 0;
-
-VOS_PWR_SLEEP(100);
-    //2.9v PA from LDO13
-    vreg_wlan = vreg_get(NULL, "wlan");
-    if (IS_ERR(vreg_wlan)) {
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg get failed (%ld)\n",
-                             __func__, PTR_ERR(vreg_wlan));
-        return PTR_ERR(vreg_wlan);
-    }
-
-    //1.2V AON from LDO24
-    vreg_gp16 = vreg_get(NULL, "gp16");
-    if (IS_ERR(vreg_gp16))  {
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp16 vreg get failed (%ld)\n",
-                             __func__, PTR_ERR(vreg_gp16));
-        return PTR_ERR(vreg_gp16);
-    }
-
-    //1.2V sw from LDO22
-    vreg_gp15 = vreg_get(NULL, "gp15");
-    if (IS_ERR(vreg_gp15))  {
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp15 vreg get failed (%ld)\n",
-                             __func__, PTR_ERR(vreg_gp15));
-        return PTR_ERR(vreg_gp15);
-    }
-
-    //1.3V sw from S2
-    vreg_s2 = vreg_get(NULL, "s2");
-    if (IS_ERR(vreg_s2)) {
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: s2 vreg get failed (%ld)\n",
-                             __func__, PTR_ERR(vreg_s2));
-        return PTR_ERR(vreg_s2);
-    }
-
-    if (on) {
-        /* Program GPIO 23 to de-assert (drive 1) external_por_n (default 0x00865a05 */
-        rc = pm8xxx_gpio_config(wlan_gpios_reset[0].gpio_num, &wlan_gpios_reset[0].gpio_cfg);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: pmic gpio %d config failed (%d)\n",
-                            __func__, wlan_gpios_reset[0].gpio_num, rc);
-            return -EIO;
-        }
-        VOS_PWR_SLEEP(300);
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "WLAN put in reset mode \n");
-#if 0
-        rc = pmapp_clock_vote("wlan", PMAPP_CLOCK_ID_A0, PMAPP_CLOCK_VOTE_ON);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Voting TCXO to ON failed. (%d)\n",__func__, rc);
-            return -EIO;
-        }
-#endif
-        /* Configure TCXO to be slave to WLAN_CLK_PWR_REQ */
-        rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_A0, PMAPP_CLOCK_VOTE_PIN_CTRL);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Configuring TCXO to Pin controllable failed. (%d)\n",__func__, rc);
-            return -EIO;
-        }
-
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "TCXO configured to be slave to WLAN_CLK_PWR-REQ \n");
-        printk(KERN_ERR "TCXO is now slave to clk_pwr_req \n");
-
-        //Wait 10msec
-        msleep(10);
-
-        /* Enable L13 to output 2.9V (default 2.9V) */
-        rc = vreg_set_level(vreg_wlan, 3050);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg set level failed (%d)\n", __func__, rc);
-            return -EIO;
-        }
-
-        rc = vreg_enable(vreg_wlan);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg enable failed. (%d)\n",__func__, rc);
-            return -EIO;
-        }
-
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "2.9V Power Supply Enabled \n");
-        printk(KERN_ERR "3.05V Supply Enabled \n");
-
-        /* Enable L24 to output 1.2V AON(default 1.3V) */
-        rc = vreg_set_level(vreg_gp16, 1200);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp16 vreg set level failed (%d)\n", __func__, rc);
-            return -EIO;
-        }
-
-        rc = vreg_enable(vreg_gp16);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp16 vreg enable failed. (%d)\n",__func__, rc);
-            return -EIO;
-        }
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "1.2V AON Power Supply Enabled \n");
-        printk(KERN_ERR "1.2V AON Supply Enabled \n");
-
-        //Wait 300usec
-        msleep(1);
-
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "1.2V AON Power Supply Enabled \n");
-
-        rc = pm8xxx_gpio_config(wlan_gpios_reset_out[0].gpio_num, &wlan_gpios_reset_out[0].gpio_cfg);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: pmic gpio %d config failed (%d)\n",
-                            __func__, wlan_gpios_reset_out[0].gpio_num, rc);
-            return -EIO;
-        }
-
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "WLAN is out of reset now \n");
-        printk(KERN_ERR "WLAN is out of reset \n");
-
-        /* Wait 500usec */
-        msleep(1);
-
-        /* TODO: Replace the code to enable 1.2V sw and 1.3V sw once we have the API to set these power supplies Pin controllable */
-
-        /* Enable 1.2 switcheable power supply */
-        rc = vreg_set_level(vreg_gp15, 1200);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp15 vreg set level failed (%d)\n", __func__, rc);
-            return -EIO;
-        }
-
-#ifdef WLAN_FEATURE_VOS_POWER_VOTED_SUPPLY
-        rc = vreg_enable(vreg_gp15);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp15 vreg enable failed. (%d)\n",__func__, rc);
-            return -EIO;
-        }
-#else        
-        /* 1.2v switchable supply is following the clk_pwr_req signal */
-        rc = pmapp_vreg_pincntrl_vote(id, PMAPP_VREG_LDO22, PMAPP_CLOCK_ID_A0, VOS_TRUE);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp15 vreg enable failed. (%d)\n",__func__, rc);
-            return -EIO;
-        }
-        vos_sleep(5);
-#endif
-
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "1.2V sw Power Supply is enabled \n");
-        printk(KERN_ERR "1.2V sw is enabled \n");
-
-        /* Enable 1.3 switcheable power supply */
-        rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 1300);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: s2 vreg set level failed (%d)\n", __func__, rc);
-            return -EIO;
-        }
-        VOS_PWR_SLEEP(300);
-
-#ifdef WLAN_FEATURE_VOS_POWER_VOTED_SUPPLY
-        rc = vreg_enable(vreg_s2);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: s2 vreg enable failed. .(%d)\n",__func__, rc);
-            return -EIO;
-        }
-        msleep(1);
-#else        
-        /* 1.3v switchable supply is following the clk_pwr_req signal */
-        rc = pmapp_vreg_pincntrl_vote(id, PMAPP_VREG_S2, PMAPP_CLOCK_ID_A0, VOS_TRUE);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: s2 vreg enable failed. (%d)\n",__func__, rc);
-            return -EIO;
-        }
-        vos_sleep(5);
-#endif
-
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "1.3V sw Power Supply is enabled \n");
-        printk(KERN_ERR "1.3V sw is enabled \n");
-
-    } else {
-
-        /**
-        Assert the external POR to keep the chip in reset state. When the chip is turned
-        on the next time, it won't be detected by the bus driver until we deassert it.
-        This is to work-around the issue where it fails sometimes when turning WIFI off and on
-        though GUI. The theory is that, even though we vote off 1.2V AON, it may still on because
-        it is shared by other components. When the next time to turn on WIFI, polling is turned on
-        first and when librasdioif.ko is loaded, the card is detected right away before wlan driver loads. 
-        The bus driver may have finished configuration of the device. When WLAN driver loads, 
-        it resets the device that causes issues when the bus driver tries to assess the chip later.
-        This setting draws more power after the driver is unloaded.
-
-        The load sequence is
-        1. Enable polling
-        2. insmod librasdioif.ko (if card detected, stop polling)
-        3. insmod libra.ko (reset the chip)
-        4. stop polling
-        **/
-        /* Program GPIO 23 to de-assert (drive 1) external_por_n to prevent chip detection
-           until it is asserted.
-        */
-        rc = pm8xxx_gpio_config(wlan_gpios_reset[0].gpio_num, &wlan_gpios_reset[0].gpio_cfg);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: pmic gpio %d config failed (%d)\n",
-                            __func__, wlan_gpios_reset[0].gpio_num, rc);
-            return -EIO;
-        }
-
-#ifdef WLAN_FEATURE_VOS_POWER_VOTED_SUPPLY
-        /* TODO: Remove the code to disable 1.2V sw and 1.3V sw once we have the API to set these power supplies Pin controllable */
-        printk(KERN_ERR "power down switchable\n");
-        rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 0);
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: s2 vreg set level failed (%d)\n", __func__, rc);
-            return -EIO;
-        }
-        
-        /* 1.3V sw */    
-        rc = vreg_disable(vreg_s2); 
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: s2 vreg disable failed (%d)\n", __func__, rc);
-            return -EIO;
-        }
-
-       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "1.3V sw is disabled \n");
-
-        /* 1.2V sw */
-        rc = vreg_disable(vreg_gp15); 
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp15 vreg disable failed (%d)\n", __func__, rc);
-            return -EIO;
-        }
-
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "1.2V sw is disabled \n");
-#endif //#ifdef WLAN_FEATURE_VOS_POWER_VOTED_SUPPLY
-
-        /* 1.2V AON */
-        rc = vreg_disable(vreg_gp16); 
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp16 vreg disable failed (%d)\n", __func__, rc);
-            return -EIO;
-        }
-
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "1.2V AON is disabled \n");
-
-#ifdef VOLANS_2_0
-        /* Cannot turn off 2.9V due to the PAD issue on Volans */
-
-        /* 2.9V */
-        rc = vreg_disable(vreg_wlan); 
-        if (rc) {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg disable failed (%d)\n", __func__, rc);
-            return -EIO;
-        }
-
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "2.9V is disabled \n");
-#endif
-    }
-
-    return rc;
-}
-#endif
-
-#ifdef MSM_PLATFORM_7x27_FFA
-
-#define MPP_4_CHIP_PWD_L 3 //MPP4 is hooked to Deep Sleep Signal 
-
-//Helper routine to power up Libra keypad on the 7x27 FFA
-int vos_chip_power_7x27_keypad( int on )
-{
-   struct vreg *vreg_wlan, *vreg_bt = NULL;
-   int rc = 0;
-
-   vreg_wlan = vreg_get(NULL, "wlan");
-   if (IS_ERR(vreg_wlan)) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg get failed (%ld)",
-         __func__, PTR_ERR(vreg_wlan));
-      return PTR_ERR(vreg_wlan);
-   }
-
-   vreg_bt = vreg_get(NULL, "gp6");
-   if (IS_ERR(vreg_bt)) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: gp6 vreg get failed (%ld)",
-                __func__, PTR_ERR(vreg_bt));
-      return PTR_ERR(vreg_bt);
-   }
-
-   if(on) {
-
-      /* units of mV, steps of 50 mV */
-      rc = vreg_set_level(vreg_bt, 2600);
-      if (rc) {
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: vreg set level failed (%d)",__func__, rc);
-         return -EIO;
-      }
-      rc = vreg_enable(vreg_bt);
-      if (rc) {
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: vreg enable failed (%d)",__func__, rc);
-         return -EIO;
-      }
-
-      //Set TCXO to 1.8v.
-      rc = vreg_set_level(vreg_wlan, 1800);
-      if (rc) {
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: vreg set level failed (%d)", __func__, rc);
-         return -EIO;
-      }
-
-      rc = vreg_enable(vreg_wlan);
-      if (rc) {
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg enable failed (%d)",__func__, rc);
-         return -EIO;
-      }
-
-      msleep(100);
-
-      // Pull MPP4 high to turn on various supply voltages.
-      rc = mpp_config_digital_out(MPP_4_CHIP_PWD_L, 
-         MPP_CFG(MPP_DLOGIC_LVL_MSMP, MPP_DLOGIC_OUT_CTRL_HIGH));
-      if (rc) {
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: MPP_4 pull high failed (%d)",__func__, rc);
-         return -EIO;
-      }
-
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Enabled power supply for WLAN", __func__);
- 
-      msleep(500);
-   }
-   else 
-   {
-
-       // Pull MPP4 low to place the chip in reset.
-       rc = mpp_config_digital_out(MPP_4_CHIP_PWD_L, 
-          MPP_CFG(MPP_DLOGIC_LVL_MSMP, MPP_DLOGIC_OUT_CTRL_LOW));
-       if (rc) {
-          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: MPP_4 pull low failed (%d)",__func__, rc);
-          return -EIO;
-       }
-
-       msleep(100);
-
-      /* Turn off 2.6V */
-      rc = vreg_disable(vreg_bt);
-      if (rc) {
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: vreg disable failed (%d)",__func__, rc);
-         return -EIO;
-      }
-
-      /* Turn off 1.8V */
-      rc = vreg_disable(vreg_wlan);
-      if (rc) {
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg disable failed (%d)",__func__, rc);
-         return -EIO;
-      }
-
-      msleep(100);
-
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Disabled power supply for WLAN", __func__);
-   }
-
-   return 0;
-}
-#endif
 
 /*===========================================================================
 
@@ -563,27 +162,6 @@ VOS_STATUS vos_chipPowerUp
   v_PVOID_t             user_data
 )
 {
-
-#ifdef MSM_PLATFORM_8660
-   if(vos_chip_power_qrf8615(CHIP_POWER_ON))
-      return VOS_STATUS_E_FAILURE;
-#endif
-
-#ifdef MSM_PLATFORM_7x30
-   if(vos_chip_power_qrf8600(CHIP_POWER_ON))
-      return VOS_STATUS_E_FAILURE;
-#endif
-
-#ifdef MSM_PLATFORM_7x27_FFA
-   if(vos_chip_power_7x27_keypad(CHIP_POWER_ON))
-      return VOS_STATUS_E_FAILURE;
-#endif
-
-#ifdef MSM_PLATFORM_7x27A
-   if(chip_power_qrf6285(CHIP_POWER_ON))
-      return VOS_STATUS_E_FAILURE;
-#endif
-
    return VOS_STATUS_SUCCESS;
 }
 
@@ -618,29 +196,6 @@ VOS_STATUS vos_chipPowerDown
   v_PVOID_t             user_data
 )
 {
-
-#ifdef MSM_PLATFORM_8660
-   if(vos_chip_power_qrf8615(CHIP_POWER_OFF))
-      return VOS_STATUS_E_FAILURE;
-#endif
-
-#ifdef MSM_PLATFORM_7x30
-///#ifndef VOS_PWR_WIFI_ON_OFF_HACK
-   if(vos_chip_power_qrf8600(CHIP_POWER_OFF))
-      return VOS_STATUS_E_FAILURE;
-///#endif
-#endif
-
-#ifdef MSM_PLATFORM_7x27_FFA
-   if(vos_chip_power_7x27_keypad(CHIP_POWER_OFF))
-      return VOS_STATUS_E_FAILURE;
-#endif
-
-#ifdef MSM_PLATFORM_7x27A
-   if(chip_power_qrf6285(CHIP_POWER_OFF))
-      return VOS_STATUS_E_FAILURE;
-#endif
-
    return VOS_STATUS_SUCCESS;
 }
 
@@ -797,29 +352,6 @@ VOS_STATUS vos_chipAssertDeepSleep
   v_PVOID_t             user_data
 )
 {
-#ifdef FIXME_VOLANS
-#ifdef MSM_PLATFORM_7x27_FFA
-   int rc = mpp_config_digital_out(MPP_4_CHIP_PWD_L, 
-      MPP_CFG(MPP_DLOGIC_LVL_MSMP, MPP_DLOGIC_OUT_CTRL_LOW));
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Failed to pull high MPP_4_CHIP_PWD_L (%d)",
-                __func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-#endif
-
-#ifdef MSM_PLATFORM_7x30
-   // Configure GPIO 23 for Deep Sleep
-   int rc = pm8xxx_gpio_config(wlan_gpios_reset_out[0].gpio_num, &wlan_gpios_reset_out[0].gpio_cfg);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: pmic GPIO %d config failed (%d)",
-         __func__, wlan_gpios_reset_out[0].gpio_num, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-#endif
-#endif //FIXME_VOLANS
-
    return VOS_STATUS_SUCCESS;
 }
 
@@ -856,29 +388,6 @@ VOS_STATUS vos_chipDeAssertDeepSleep
   v_PVOID_t             user_data
 )
 {
-#ifdef FIXME_VOLANS
-#ifdef MSM_PLATFORM_7x27_FFA
-   int rc = mpp_config_digital_out(MPP_4_CHIP_PWD_L, 
-      MPP_CFG(MPP_DLOGIC_LVL_MSMP, MPP_DLOGIC_OUT_CTRL_HIGH));
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Failed to pull high MPP_4_CHIP_PWD_L (%d)",
-         __func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-
-#endif
-
-#ifdef MSM_PLATFORM_7x30
-   // Configure GPIO 23 for Deep Sleep
-   int rc = pm8xxx_gpio_config(wlan_gpios_reset[2].gpio_num, &wlan_gpios_reset[2].gpio_cfg);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: pmic GPIO %d config failed (%d)",
-                __func__, wlan_gpios_reset[2].gpio_num, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-#endif
-#endif //FIXME_VOLANS
    return VOS_STATUS_SUCCESS;
 }
 
@@ -914,57 +423,6 @@ VOS_STATUS vos_chipExitDeepSleepVREGHandler
    v_PVOID_t             user_data
 )
 {
-#ifdef FIXME_VOLANS
-#ifdef MSM_PLATFORM_7x27_FFA
-   struct vreg *vreg_wlan;
-   int rc;
-
-   vreg_wlan = vreg_get(NULL, "wlan");
-   if (IS_ERR(vreg_wlan)) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg get failed (%ld)",
-            __func__, PTR_ERR(vreg_wlan));
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = vreg_set_level(vreg_wlan, 1800);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg set level failed (%d)",
-            __func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = vreg_enable(vreg_wlan);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg enable failed (%d)",
-            __func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   msleep(500);
-
-   rc = vreg_set_level(vreg_wlan, 2600);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: wlan vreg set level failed (%d)",
-            __func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   msleep(500);
-
-   *status = VOS_CALL_SYNC;
-
-#endif
-
-#ifdef MSM_PLATFORM_7x30
-   VOS_STATUS vosStatus;
-   vos_call_status_type callType;
-
-   vosStatus = vos_chipVoteOnBBAnalogSupply(&callType, NULL, NULL);
-   VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-   msleep(500);
-
-#endif
-#endif //FIXME_VOLANS
    return VOS_STATUS_SUCCESS;
 }
 
@@ -999,58 +457,6 @@ VOS_STATUS vos_chipVoteOnRFSupply
   v_PVOID_t             user_data
 )
 {
-#ifdef FIXME_VOLANS
-#ifdef MSM_PLATFORM_7x30
-   int rc;
-   struct vreg *vreg_s2 = NULL;
-   struct vreg *vreg_s4 = NULL;
-
-   //1.3v RF;
-   vreg_s2 = vreg_get(NULL, "s2");
-   if (IS_ERR(vreg_s2)) {
-      printk(KERN_ERR "%s: s2 vreg get failed (%ld)\n",
-         __func__, PTR_ERR(vreg_s2));
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   //2.2v RF
-   vreg_s4 = vreg_get(NULL, "s4");
-   if (IS_ERR(vreg_s4)) {
-      printk(KERN_ERR "%s: s4 vreg get failed (%ld)\n",
-         __func__, PTR_ERR(vreg_s4));
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 1300);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, "%s: s2 vreg vote "
-          "level failed (%d)",__func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = vreg_enable(vreg_s2);
-   if (rc) {
-      printk(KERN_ERR "%s: s2 vreg enable failed (%d)\n", __func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S4, 2200);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, "%s: s4 vreg vote "
-          "level failed (%d)",__func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = vreg_enable(vreg_s4);
-   if (rc) {
-      printk(KERN_ERR "%s: s4 vreg enable failed (%d)\n", __func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   return VOS_STATUS_SUCCESS;
-
-#endif //MSM_PLATFORM_7x30
-#endif //FIXME_VOLANS
    return VOS_STATUS_SUCCESS;
 }
 
@@ -1088,55 +494,6 @@ VOS_STATUS vos_chipVoteOffRFSupply
   v_PVOID_t             user_data
 )
 {
-#ifdef FIXME_VOLANS
-#ifdef MSM_PLATFORM_7x30
-
-   int rc;
-   struct vreg *vreg_s2;
-   struct vreg *vreg_s4;
-
-   //1.3v RF
-   vreg_s2 = vreg_get(NULL, "s2");
-   if (IS_ERR(vreg_s2)) {
-      printk(KERN_ERR "%s: s2 vreg get failed (%ld)\n",
-         __func__, PTR_ERR(vreg_s2));
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   //2.2v RF
-   vreg_s4 = vreg_get(NULL, "s4");
-   if (IS_ERR(vreg_s4)) {
-      printk(KERN_ERR "%s: s4 vreg get failed (%ld)\n",
-         __func__, PTR_ERR(vreg_s4));
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 0);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN, "%s: s2 vreg vote "
-          "level failed (%d)",__func__, rc);
-   }
-
-   rc = vreg_disable(vreg_s2);
-   if (rc) {
-      printk(KERN_ERR "%s: s2 vreg disable failed (%d)\n", __func__, rc);
-   }
-
-   rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S4, 0);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN, "%s: s4 vreg vote "
-          "level failed (%d)",__func__, rc);
-   }
-
-   rc = vreg_disable(vreg_s4); 
-   if (rc) {
-      printk(KERN_ERR "%s: s4 vreg disable failed (%d)\n", __func__, rc);
-   }
-
-   return VOS_STATUS_SUCCESS;
-
-#endif //MSM_PLATFORM_7x30
-#endif //FIXME_VOLANS
    return VOS_STATUS_SUCCESS;
 }
 
@@ -1172,34 +529,6 @@ VOS_STATUS vos_chipVoteOnBBAnalogSupply
   v_PVOID_t             user_data
 )
 {
-#ifdef FIXME_VOLANS
-#ifdef MSM_PLATFORM_7x30
-   struct vreg *vreg_wlan2 = NULL;
-   int rc;
-
-   //2.5v Analog from LDO19
-   vreg_wlan2 = vreg_get(NULL, "wlan2");
-   if (IS_ERR(vreg_wlan2)) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, "%s: wlan2 vreg get "
-          "failed (%ld)", __func__, PTR_ERR(vreg_wlan2));
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = vreg_set_level(vreg_wlan2, 2500);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, "%s: wlan2 vreg set "
-          "level failed (%d)",__func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = vreg_enable(vreg_wlan2);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, "%s: wlan2 vreg enable "
-          "failed (%d)", __func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-#endif
-#endif //FIXME_VOLANS
    return VOS_STATUS_SUCCESS;
 }
 
@@ -1235,27 +564,6 @@ VOS_STATUS vos_chipVoteOffBBAnalogSupply
   v_PVOID_t             user_data
 )
 {
-#ifdef FIXME_VOLANS
-#ifdef MSM_PLATFORM_7x30
-   struct vreg *vreg_wlan2 = NULL;
-   int rc;
-
-   //2.5v Analog from LDO19
-   vreg_wlan2 = vreg_get(NULL, "wlan2");
-   if (IS_ERR(vreg_wlan2)) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, "%s: wlan2 vreg get "
-          "failed (%ld)", __func__, PTR_ERR(vreg_wlan2));
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   rc = vreg_disable(vreg_wlan2);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, "%s: wlan2 vreg disable "
-          "failed (%d)", __func__, rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-#endif
-#endif //FIXME_VOLANS
    return VOS_STATUS_SUCCESS;
 }
 
@@ -1406,20 +714,5 @@ VOS_STATUS vos_chipVoteFreqFor1p3VSupply
   v_U32_t               freq
 )
 {
-
-
-#ifdef MSM_PLATFORM_8660
-    if(freq == VOS_NV_FREQUENCY_FOR_1_3V_SUPPLY_3P2MH)
-        {
-            if(qcomwlan_freq_change_1p3v_supply(RPM_VREG_FREQ_3p20))
-                return VOS_STATUS_E_FAILURE;
-        }
-    else
-        {
-            if(qcomwlan_freq_change_1p3v_supply(RPM_VREG_FREQ_1p60))
-                return VOS_STATUS_E_FAILURE;
-        }
-#endif
-
     return VOS_STATUS_SUCCESS;
 }
