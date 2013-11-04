@@ -864,8 +864,7 @@ eHalStatus limSendStopScanOffloadReq(tpAniSirGlobal pMac, tANI_U8 SessionId)
     rc = wdaPostCtrlMsg(pMac, &msg);
     if (rc != eSIR_SUCCESS)
     {
-        limLog(pMac, LOGE, FL("wdaPostCtrlMsg() return failure"),
-               pMac);
+        limLog(pMac, LOGE, FL("wdaPostCtrlMsg() return failure"));
         palFreeMemory(pMac->hHdd, (tANI_U8 *)pAbortScanParams);
         return eHAL_STATUS_FAILURE;
     }

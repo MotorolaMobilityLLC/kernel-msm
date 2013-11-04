@@ -496,7 +496,8 @@ tSirRetStatus limSetLinkState(tpAniSirGlobal pMac, tSirLinkState state,tSirMacAd
     if (retCode != eSIR_SUCCESS)
     {
         vos_mem_free(pLinkStateParams);
-        limLog(pMac, LOGP, FL("Posting link state %d failed, reason = %x "), retCode);
+        limLog(pMac, LOGP, FL("Posting link state %d failed, reason = %x "),
+               state, retCode);
     }
     return retCode;
 }
@@ -541,7 +542,8 @@ state,tSirMacAddr bssId, tSirMacAddr selfMacAddr, int ft, tpPESession psessionEn
     if (retCode != eSIR_SUCCESS)
     {
         vos_mem_free(pLinkStateParams);
-        limLog(pMac, LOGP, FL("Posting link state %d failed, reason = %x "), retCode);
+        limLog(pMac, LOGP, FL("Posting link state %d failed, reason = %x "),
+               state, retCode);
     }
     return retCode;
 }

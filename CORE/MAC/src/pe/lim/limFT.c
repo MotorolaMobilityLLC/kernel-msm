@@ -324,13 +324,17 @@ void limPerformFTPreAuth(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data,
         // Only 11r assoc has FT IEs.
         if (pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies == NULL) 
         {
-            PELOGE(limLog( pMac, LOGE, "%s: FTIEs for Auth Req Seq 1 is absent");)
+            PELOGE(limLog( pMac, LOGE,
+                           "%s: FTIEs for Auth Req Seq 1 is absent",
+                           __func__);)
             return;
         }
     }
     if (status != eHAL_STATUS_SUCCESS) 
     {
-        PELOGE(limLog( pMac, LOGE, "%s: Change channel not successful for FT pre-auth");)
+        PELOGE(limLog( pMac, LOGE,
+                       "%s: Change channel not successful for FT pre-auth",
+                       __func__);)
         return;
     }
     pMac->ft.ftPEContext.psavedsessionEntry = psessionEntry;
@@ -925,7 +929,7 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
     }
     vos_mem_zero( pFTPreAuthRsp, rspLen);
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog( pMac, LOG1, "%s: Auth Rsp = %p", pFTPreAuthRsp);)
+    PELOGE(limLog( pMac, LOG1, FL("Auth Rsp = %p"), pFTPreAuthRsp);)
 #endif
          
     vos_mem_set((tANI_U8*)pFTPreAuthRsp, rspLen, 0);

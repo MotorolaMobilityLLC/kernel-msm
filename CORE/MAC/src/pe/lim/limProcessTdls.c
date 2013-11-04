@@ -295,7 +295,7 @@ void limTdlsSetNegativeBehavior(tpAniSirGlobal pMac, tANI_U8 value, tANI_BOOLEAN
         else
             pMac->lim.gLimTdlsNegativeBehavior &= ~(1 << (value-1));
     }
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,("%d %d -> gLimTdlsNegativeBehavior= 0x%lx"), \
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,("%d %d -> gLimTdlsNegativeBehavior= 0x%lx"),
         value, on, pMac->lim.gLimTdlsNegativeBehavior));
 }
 #endif
@@ -341,10 +341,10 @@ static void limPreparesActionFrameHdr(tpAniSirGlobal pMac, tANI_U8 *pFrame,
     vos_mem_copy( (tANI_U8 *) pMacHdr->bssId,
                                 bssid, sizeof( tSirMacAddr ));
    
-   LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN, ("Preparing TDLS action frame\n%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x"), \
-       pMacHdr->da[0], pMacHdr->da[1], pMacHdr->da[2], pMacHdr->da[3], pMacHdr->da[4], pMacHdr->da[5], \
-       pMacHdr->sa[0], pMacHdr->sa[1], pMacHdr->sa[2], pMacHdr->sa[3], pMacHdr->sa[4], pMacHdr->sa[5], \
-       pMacHdr->bssId[0], pMacHdr->bssId[1], pMacHdr->bssId[2], \
+   LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN, ("Preparing TDLS action frame\n%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x"),
+       pMacHdr->da[0], pMacHdr->da[1], pMacHdr->da[2], pMacHdr->da[3], pMacHdr->da[4], pMacHdr->da[5],
+       pMacHdr->sa[0], pMacHdr->sa[1], pMacHdr->sa[2], pMacHdr->sa[3], pMacHdr->sa[4], pMacHdr->sa[5],
+       pMacHdr->bssId[0], pMacHdr->bssId[1], pMacHdr->bssId[2],
        pMacHdr->bssId[3], pMacHdr->bssId[4], pMacHdr->bssId[5]));
 
     return ; 
@@ -408,10 +408,10 @@ static tANI_U32 limPrepareTdlsFrameHeader(tpAniSirGlobal pMac, tANI_U8* pFrame,
                   (tANI_U8 *) (addr3),
                   sizeof( tSirMacAddr ));
 
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN, ("Preparing TDLS frame header to %s\n%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x"), \
-       (tdlsLinkType == TDLS_LINK_AP) ? "AP" : "TD", \
-        pMacHdr->addr1[0], pMacHdr->addr1[1], pMacHdr->addr1[2], pMacHdr->addr1[3], pMacHdr->addr1[4], pMacHdr->addr1[5], \
-        pMacHdr->addr2[0], pMacHdr->addr2[1], pMacHdr->addr2[2], pMacHdr->addr2[3], pMacHdr->addr2[4], pMacHdr->addr2[5], \
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN, ("Preparing TDLS frame header to %s\n%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x/%02x:%02x:%02x:%02x:%02x:%02x"),
+       (tdlsLinkType == TDLS_LINK_AP) ? "AP" : "TD",
+        pMacHdr->addr1[0], pMacHdr->addr1[1], pMacHdr->addr1[2], pMacHdr->addr1[3], pMacHdr->addr1[4], pMacHdr->addr1[5],
+        pMacHdr->addr2[0], pMacHdr->addr2[1], pMacHdr->addr2[2], pMacHdr->addr2[3], pMacHdr->addr2[4], pMacHdr->addr2[5],
         pMacHdr->addr3[0], pMacHdr->addr3[1], pMacHdr->addr3[2], pMacHdr->addr3[3], pMacHdr->addr3[4], pMacHdr->addr3[5]));
 
     //printMacAddr(pMacHdr->bssId) ;
@@ -517,7 +517,7 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while calculating"
+        limLog( pMac, LOGW, FL("There were warnings while calculating "
                                "the packed size for a discovery Request ("
                                "0x%08x)."), status );
     }
@@ -582,7 +582,7 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
         tdlsDisReq.LinkIdentifier.bssid[4] = 0xde;
         tdlsDisReq.LinkIdentifier.bssid[5] = 0xad; 
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-        ("TDLS negative running: wrong BSSID %02x:%02x:%02x:%02x:%02x:%02x in TDLS Discovery Req"), \
+        ("TDLS negative running: wrong BSSID %02x:%02x:%02x:%02x:%02x:%02x in TDLS Discovery Req"),
         tdlsDisReq.LinkIdentifier.bssid[0], 
         tdlsDisReq.LinkIdentifier.bssid[1], 
         tdlsDisReq.LinkIdentifier.bssid[2], 
@@ -596,16 +596,16 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req \
-                                               (0x%08x)."), status );
+        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req "
+                               "(0x%08x)."), status );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, 
                                    ( void* ) pFrame, ( void* ) pPacket );
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while packing TDLS"
-                               "Discovery Request (0x%08x).") );
+        limLog( pMac, LOGW, FL("There were warnings while packing TDLS "
+                               "Discovery Request (0x%08x)."), status );
     }
 
 #ifndef NO_PAD_TDLS_MIN_8023_SIZE
@@ -1042,7 +1042,7 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while calculating"
+        limLog( pMac, LOGW, FL("There were warnings while calculating "
                                "the packed size for a discovery Request ("
                                "0x%08x)."), status );
     }
@@ -1100,7 +1100,7 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
         tdlsDisRsp.LinkIdentifier.bssid[4] = 0xde;
         tdlsDisRsp.LinkIdentifier.bssid[5] = 0xad; 
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-        ("TDLS negative running: wrong BSSID %02x:%02x:%02x:%02x:%02x:%02x in TDLS Discovery Rsp"), \
+        ("TDLS negative running: wrong BSSID %02x:%02x:%02x:%02x:%02x:%02x in TDLS Discovery Rsp"),
         tdlsDisRsp.LinkIdentifier.bssid[0], 
         tdlsDisRsp.LinkIdentifier.bssid[1], 
         tdlsDisRsp.LinkIdentifier.bssid[2], 
@@ -1115,16 +1115,16 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req \
-                                               (0x%08x)."), status );
+        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req "
+                               "(0x%08x)."), status );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, 
                                    ( void* ) pFrame, ( void* ) pPacket );
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while packing TDLS"
-                               "Discovery Request (0x%08x).") );
+        limLog( pMac, LOGW, FL("There were warnings while packing TDLS "
+                               "Discovery Request (0x%08x)."), status );
     }
 
 #if 0
@@ -1330,7 +1330,7 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while calculating"
+        limLog( pMac, LOGW, FL("There were warnings while calculating "
                                "the packed size for a discovery Request ("
                                "0x%08x)."), status );
     }
@@ -1380,7 +1380,7 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
         tdlsSetupReq.LinkIdentifier.bssid[4] = 0xde;
         tdlsSetupReq.LinkIdentifier.bssid[5] = 0xad;
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
-        ("TDLS negative running: wrong BSSID %02x:%02x:%02x:%02x:%02x:%02x in TDLS Setup Req"), \
+        ("TDLS negative running: wrong BSSID %02x:%02x:%02x:%02x:%02x:%02x in TDLS Setup Req"),
         tdlsSetupReq.LinkIdentifier.bssid[0],
         tdlsSetupReq.LinkIdentifier.bssid[1],
         tdlsSetupReq.LinkIdentifier.bssid[2],
@@ -1398,16 +1398,16 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req \
-                                               (0x%08x)."), status );
+        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req "
+                               "(0x%08x)."), status );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, 
                                    ( void* ) pFrame, ( void* ) pPacket );
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while packing TDLS"
-                               "Discovery Request (0x%08x).") );
+        limLog( pMac, LOGW, FL("There were warnings while packing TDLS "
+                               "Discovery Request (0x%08x)."), status );
     }
 
     //Copy the additional IE.
@@ -1489,7 +1489,7 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while calculating"
+        limLog( pMac, LOGW, FL("There were warnings while calculating "
                                "the packed size for a discovery Request ("
                                "0x%08x)."), status );
     }
@@ -1559,16 +1559,16 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack a TDLS Teardown req \
-                                               (0x%08x)."), status );
+        limLog( pMac, LOGE, FL("Failed to pack a TDLS Teardown req (0x%08x)."),
+                status );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
                                    ( void* ) pFrame, ( void* ) pPacket );
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while packing TDLS"
-                               "Teardown Request (0x%08x).") );
+        limLog( pMac, LOGW, FL("There were warnings while packing TDLS "
+                               "Teardown Request (0x%08x)."), status );
     }
 #if 0
     if(pMac->hal.pCBackFnTxComp == NULL)
@@ -1797,7 +1797,7 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while calculating"
+        limLog( pMac, LOGW, FL("There were warnings while calculating "
                                "the packed size for a discovery Request ("
                                "0x%08x)."), status );
     }
@@ -1848,7 +1848,7 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
         tdlsSetupRsp.LinkIdentifier.bssid[4] = 0xde;
         tdlsSetupRsp.LinkIdentifier.bssid[5] = 0xad; 
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-        ("TDLS negative running: wrong BSSID %02x:%02x:%02x:%02x:%02x:%02x in TDLS Setup Rsp"), \
+        ("TDLS negative running: wrong BSSID %02x:%02x:%02x:%02x:%02x:%02x in TDLS Setup Rsp"),
         tdlsSetupRsp.LinkIdentifier.bssid[0], 
         tdlsSetupRsp.LinkIdentifier.bssid[1], 
         tdlsSetupRsp.LinkIdentifier.bssid[2], 
@@ -1865,16 +1865,16 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req \
-                                               (0x%08x)."), status );
+        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req "
+                               "(0x%08x)."), status );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, 
                                    ( void* ) pFrame, ( void* ) pPacket );
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while packing TDLS"
-                               "Discovery Request (0x%08x).") );
+        limLog( pMac, LOGW, FL("There were warnings while packing TDLS "
+                               "Discovery Request (0x%08x)."), status );
     }
 
     //Copy the additional IE. 
@@ -1982,7 +1982,7 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while calculating"
+        limLog( pMac, LOGW, FL("There were warnings while calculating "
                                "the packed size for a discovery Request ("
                                "0x%08x)."), status );
     }
@@ -2056,16 +2056,16 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req \
-                                               (0x%08x)."), status );
+        limLog( pMac, LOGE, FL("Failed to pack a TDLS discovery req "
+                               "(0x%08x)."), status );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, 
                                    ( void* ) pFrame, ( void* ) pPacket );
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while packing TDLS"
-                               "Discovery Request (0x%08x).") );
+        limLog( pMac, LOGW, FL("There were warnings while packing TDLS "
+                               "Discovery Request (0x%08x)."), status );
     }
 #if 0
     if(pMac->hal.pCBackFnTxComp == NULL) 
@@ -2231,10 +2231,10 @@ void limTdlsUpdateLinkReqPeerInfo(tpAniSirGlobal pMac,
     {
        ConvertQOSCapsStation(pMac->hHdd, &setupPeer->qosCaps, 
                    &setupReq->QOSCapsStation) ;
-       LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,("setupReq->SPLen=%d (be %d %d %d %d vo) more %d qack %d."), \
-         setupReq->QOSCapsStation.max_sp_length, setupReq->QOSCapsStation.acbe_uapsd, \
-         setupReq->QOSCapsStation.acbk_uapsd, setupReq->QOSCapsStation.acvi_uapsd, \
-         setupReq->QOSCapsStation.acvo_uapsd, setupReq->QOSCapsStation.more_data_ack, \
+       LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,("setupReq->SPLen=%d (be %d %d %d %d vo) more %d qack %d."),
+         setupReq->QOSCapsStation.max_sp_length, setupReq->QOSCapsStation.acbe_uapsd,
+         setupReq->QOSCapsStation.acbk_uapsd, setupReq->QOSCapsStation.acvi_uapsd,
+         setupReq->QOSCapsStation.acvo_uapsd, setupReq->QOSCapsStation.more_data_ack,
          setupReq->QOSCapsStation.qack));
     }
     
@@ -2282,10 +2282,10 @@ void limTdlsUpdateLinkRspPeerInfo(tpAniSirGlobal pMac,
     {
        ConvertQOSCapsStation(pMac->hHdd, &setupPeer->qosCaps, 
                    &setupRsp->QOSCapsStation) ;
-       LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("setupRsp->SPLen=%d (be %d %d %d %d vo) more %d qack %d."), \
-         setupRsp->QOSCapsStation.max_sp_length, setupRsp->QOSCapsStation.acbe_uapsd, \
-         setupRsp->QOSCapsStation.acbk_uapsd, setupRsp->QOSCapsStation.acvi_uapsd, \
-         setupRsp->QOSCapsStation.acvo_uapsd, setupRsp->QOSCapsStation.more_data_ack, \
+       LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("setupRsp->SPLen=%d (be %d %d %d %d vo) more %d qack %d."),
+         setupRsp->QOSCapsStation.max_sp_length, setupRsp->QOSCapsStation.acbe_uapsd,
+         setupRsp->QOSCapsStation.acbk_uapsd, setupRsp->QOSCapsStation.acvi_uapsd,
+         setupRsp->QOSCapsStation.acvo_uapsd, setupRsp->QOSCapsStation.more_data_ack,
          setupRsp->QOSCapsStation.qack));
     }
     
@@ -3024,15 +3024,15 @@ static tSirRetStatus limProcessTdlsDisReqFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog(pMac, LOGE, FL("Failed to parse TDLS discovery Request \
-                              frame (0x%08x, %d bytes):"),status, frmLen);
+        limLog(pMac, LOGE, FL("Failed to parse TDLS discovery Request "
+                              "frame (0x%08x, %d bytes):"),status, frmLen);
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while unpacking an\
-                      TDLS discovery Request frame (0x%08x," "%d bytes):"),
+        limLog( pMac, LOGW, FL("There were warnings while unpacking a TDLS "
+                               "discovery Request frame (0x%08x, %d bytes):"),
                    status, frmLen );
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
     }
@@ -3046,8 +3046,8 @@ static tSirRetStatus limProcessTdlsDisReqFrame(tpAniSirGlobal pMac,
                          &tdlsDisReq.LinkIdentifier.bssid[0], &sessionId) ;
     if(NULL == psessionEntry)
     {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, \
-        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"), \
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"),
         tdlsDisReq.LinkIdentifier.bssid[0],    
         tdlsDisReq.LinkIdentifier.bssid[1],    
         tdlsDisReq.LinkIdentifier.bssid[2],    
@@ -3124,8 +3124,8 @@ static tSirRetStatus limProcessTdlsDisReqFrame(tpAniSirGlobal pMac,
         tdlsDisResult = vos_mem_malloc(sizeof(tLimDisResultList));
         if ( NULL == tdlsDisResult )
         {
-            limLog(pMac, LOGP, FL("alloc fail for TDLS discovery \
-                                                    reponse info")) ;
+            limLog(pMac, LOGP, FL("alloc fail for TDLS discovery "
+                                  "reponse info")) ;
             return eSIR_FAILURE ;
         }
 
@@ -3246,16 +3246,16 @@ static tSirRetStatus limProcessTdlsSetupReqFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog(pMac, LOGE, FL("Failed to parse TDLS discovery Request \
-                              frame (0x%08x, %d bytes):"),status, frmLen);
+        limLog(pMac, LOGE, FL("Failed to parse TDLS discovery Request "
+                              "frame (0x%08x, %d bytes):"),status, frmLen);
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while unpacking an\
-                      TDLS setup Request frame (0x%08x," "%d bytes):"),
-                   status, pBody );
+        limLog( pMac, LOGW, FL("There were warnings while unpacking a TDLS "
+                      "setup Request frame (0x%08x, %d bytes):"),
+                   status, frmLen );
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
     }
     /*
@@ -3267,8 +3267,8 @@ static tSirRetStatus limProcessTdlsSetupReqFrame(tpAniSirGlobal pMac,
                          &tdlsSetupReq.LinkIdentifier.bssid[0], &sessionId) ;
     if(NULL == psessionEntry)
     {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, \
-        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"), \
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"),
         tdlsSetupReq.LinkIdentifier.bssid[0],    
         tdlsSetupReq.LinkIdentifier.bssid[1],    
         tdlsSetupReq.LinkIdentifier.bssid[2],    
@@ -3553,15 +3553,15 @@ static tSirRetStatus limProcessTdlsSetupRspFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog(pMac, LOGE, FL("Failed to parse TDLS discovery Request \
-                              frame (0x%08x, %d bytes):"),status, frmLen);
+        limLog(pMac, LOGE, FL("Failed to parse TDLS discovery Request "
+                              "frame (0x%08x, %d bytes):"),status, frmLen);
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while unpacking an\
-                      TDLS discovery Request frame (0x%08x," "%d bytes):"),
+        limLog( pMac, LOGW, FL("There were warnings while unpacking a TDLS "
+                               "discovery Request frame (0x%08x, %d bytes):"),
                    status, frmLen );
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
     }
@@ -3575,8 +3575,8 @@ static tSirRetStatus limProcessTdlsSetupRspFrame(tpAniSirGlobal pMac,
                          &tdlsSetupRsp.LinkIdentifier.bssid[0], &sessionId) ;
     if(NULL == psessionEntry)
     {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, \
-        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"), \
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"),
         tdlsSetupRsp.LinkIdentifier.bssid[0],    
         tdlsSetupRsp.LinkIdentifier.bssid[1],    
         tdlsSetupRsp.LinkIdentifier.bssid[2],    
@@ -3616,8 +3616,7 @@ static tSirRetStatus limProcessTdlsSetupRspFrame(tpAniSirGlobal pMac,
 
     if(NULL == setupPeer)
     {
-        limLog( pMac, LOGE, FL(" unknown setup Response frame \
-                                                        other BSS")) ;
+        limLog( pMac, LOGE, FL("unknown setup Response frame other BSS")) ;
         return eSIR_FAILURE ;
     }
                                                 
@@ -3692,15 +3691,15 @@ static tSirRetStatus limProcessTdlsSetupCnfFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog(pMac, LOGE, FL("Failed to parse an TDLS discovery Response \
-                              frame (0x%08x, %d bytes):"),status, frmLen);
+        limLog(pMac, LOGE, FL("Failed to parse an TDLS discovery Response "
+                              "frame (0x%08x, %d bytes):"),status, frmLen);
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while unpacking an\
-                      TDLS discovery Response frame (0x%08x," "%d bytes):"),
+        limLog( pMac, LOGW, FL("There were warnings while unpacking a TDLS "
+                               "discovery Response frame (0x%08x, %d bytes):"),
                    status, frmLen );
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
     }
@@ -3713,8 +3712,8 @@ static tSirRetStatus limProcessTdlsSetupCnfFrame(tpAniSirGlobal pMac,
                          &tdlsSetupCnf.LinkIdentifier.bssid[0], &sessionId) ;
     if(NULL == psessionEntry)
     {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, \
-        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"), \
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"),
         tdlsSetupCnf.LinkIdentifier.bssid[0],    
         tdlsSetupCnf.LinkIdentifier.bssid[1],    
         tdlsSetupCnf.LinkIdentifier.bssid[2],    
@@ -3815,15 +3814,15 @@ static tSirRetStatus limProcessTdlsDisRspFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog(pMac, LOGE, FL("Failed to parse an TDLS discovery Response \
-                              frame (0x%08x, %d bytes):"),status, frmLen);
+        limLog(pMac, LOGE, FL("Failed to parse an TDLS discovery Response "
+                              "frame (0x%08x, %d bytes):"),status, frmLen);
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while unpacking an\
-                      TDLS discovery Response frame (0x%08x," "%d bytes):"),
+        limLog( pMac, LOGW, FL("There were warnings while unpacking a TDLS "
+                               "discovery Response frame (0x%08x, %d bytes):"),
                    status, frmLen );
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pFrame, nFrame);)
     }
@@ -3929,15 +3928,15 @@ static tSirRetStatus limProcessTdlsTeardownFrame(tpAniSirGlobal pMac,
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog(pMac, LOGE, FL("Failed to parse an TDLS discovery Response \
-                              frame (0x%08x, %d bytes):"),status, frmLen);
+        limLog(pMac, LOGE, FL("Failed to parse an TDLS discovery Response "
+                              "frame (0x%08x, %d bytes):"),status, frmLen);
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while unpacking an\
-                      TDLS discovery Response frame (0x%08x," "%d bytes):"),
+        limLog( pMac, LOGW, FL("There were warnings while unpacking a TDLS "
+                               "discovery Response frame (0x%08x, %d bytes):"),
                    status, frmLen );
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frmLen);)
     }
@@ -3951,8 +3950,8 @@ static tSirRetStatus limProcessTdlsTeardownFrame(tpAniSirGlobal pMac,
                          &tdlsTeardown.LinkIdentifier.bssid[0], &sessionId) ;
     if(NULL == psessionEntry)
     {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, \
-        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"), \
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+        ("no Seesion entry for TDLS session (bssid %02x:%02x:%02x:%02x:%02x:%02x)"),
         tdlsTeardown.LinkIdentifier.bssid[0],    
         tdlsTeardown.LinkIdentifier.bssid[1],    
         tdlsTeardown.LinkIdentifier.bssid[2],    
@@ -4075,7 +4074,7 @@ void limProcessTdlsFrame(tpAniSirGlobal pMac, tANI_U32 *pBd)
     }
 
     frameLen -= (pOffset + PAYLOAD_TYPE_TDLS_SIZE) ;
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("Received TDLS action %d (%s)"), \
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("Received TDLS action %d (%s)"),
         action, limTraceTdlsActionString(action) ));
 
     switch(action)
@@ -4384,8 +4383,8 @@ static tSirRetStatus limTdlsLinkEstablish(tpAniSirGlobal pMac, tSirMacAddr peerM
     limTdlsFindLinkPeer(pMac, peerMac, &setupPeer) ;
     if(NULL == setupPeer) {
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-            ("limTdlsLinkEstablish: cannot find peer mac in tdls linksetup list: %02X %02X %02X %02X %02X %02X"), \
-        peerMac[0], peerMac[1], peerMac[2], \
+            ("limTdlsLinkEstablish: cannot find peer mac in tdls linksetup list: %02X %02X %02X %02X %02X %02X"),
+        peerMac[0], peerMac[1], peerMac[2],
         peerMac[3], peerMac[4], peerMac[5]);
         return eSIR_FAILURE;
     }
@@ -4405,8 +4404,8 @@ static tSirRetStatus limTdlsLinkEstablish(tpAniSirGlobal pMac, tSirMacAddr peerM
     pStaDs = dphLookupHashEntry(pMac, peerMac, &aid, &psessionEntry->dph.dphHashTable) ;
     if(pStaDs == NULL) {
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-            ("limTdlsLinkEstablish: cannot find peer mac in hash table: %02X %02X %02X %02X %02X %02X"), \
-            peerMac[0], peerMac[1], peerMac[2], \
+            ("limTdlsLinkEstablish: cannot find peer mac in hash table: %02X %02X %02X %02X %02X %02X"),
+            peerMac[0], peerMac[1], peerMac[2],
             peerMac[3], peerMac[4], peerMac[5]);
         return eSIR_FAILURE;
     }
@@ -4478,17 +4477,17 @@ static tSirRetStatus limTdlsLinkEstablish(tpAniSirGlobal pMac, tSirMacAddr peerM
 
     if ( DOT11F_FAILED( status ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack a PTI template \
-                            (0x%08x)."), status );
+        limLog( pMac, LOGE, FL("Failed to pack a PTI template (0x%08x)."),
+                status );
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while packing TDLS"
-            "Peer Traffic Indication (0x%08x).") );
+        limLog( pMac, LOGW, FL("There were warnings while packing TDLS "
+                               "Peer Traffic Indication (0x%08x)."), status );
     }
 
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("bIsResponder=%d, header_offset=%ld, linkIdenOffset=%d, ptiBufStatusOffset=%d "), \
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("bIsResponder=%d, header_offset=%ld, linkIdenOffset=%d, ptiBufStatusOffset=%d "),
         setupPeer->tdls_bIsResponder, header_offset, PTI_LINK_IDEN_OFFSET, PTI_BUF_STATUS_OFFSET));
 
     limSendTdlsLinkEstablish(pMac, setupPeer->tdls_bIsResponder, 
@@ -4513,8 +4512,8 @@ static tSirRetStatus limTdlsLinkTeardown(tpAniSirGlobal pMac, tSirMacAddr peerMa
     limTdlsFindLinkPeer(pMac, peerMac, &setupPeer) ;
     if(NULL == setupPeer) {
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-            ("limTdlsLinkTeardown: cannot find peer mac in tdls linksetup list: %02X %02X %02X %02X %02X %02X"), \
-        peerMac[0], peerMac[1], peerMac[2], \
+            ("limTdlsLinkTeardown: cannot find peer mac in tdls linksetup list: %02X %02X %02X %02X %02X %02X"),
+        peerMac[0], peerMac[1], peerMac[2],
         peerMac[3], peerMac[4], peerMac[5]);
         return eSIR_FAILURE;
     }
@@ -4536,8 +4535,8 @@ static tSirRetStatus limTdlsLinkTeardown(tpAniSirGlobal pMac, tSirMacAddr peerMa
 
     if(pStaDs == NULL) {
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-            ("limTdlsLinkTeardown: cannot find peer mac in hash table: %02X %02X %02X %02X %02X %02X"), \
-            peerMac[0], peerMac[1], peerMac[2], \
+            ("limTdlsLinkTeardown: cannot find peer mac in hash table: %02X %02X %02X %02X %02X %02X"),
+            peerMac[0], peerMac[1], peerMac[2],
             peerMac[3], peerMac[4], peerMac[5]);
         return eSIR_FAILURE;
     }
@@ -4604,8 +4603,8 @@ static tSirTdlsDisRsp *tdlsPrepareTdlsDisRsp(tpAniSirGlobal pMac,
             if(((!disStaCount) && (tdlsDisRspList)) 
                             || ((!tdlsDisRspList) && disStaCount))
             {
-                limLog(pMac, LOG1, FL("mismatch in dis sta count and\
-                                        and number of nodes in list")) ;
+                limLog(pMac, LOG1, FL("mismatch in dis sta count and "
+                                      "number of nodes in list")) ;
                 VOS_ASSERT(0) ;
                 return NULL ;
             } 
@@ -4967,7 +4966,7 @@ eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg,
 
     SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
     VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL,
-            ("limTdlsAddStaRsp: staIdx=%d, staMac=%02x:%02x:%02x:%02x:%02x:%02x"), pAddStaParams->staIdx, \
+            ("limTdlsAddStaRsp: staIdx=%d, staMac=%02x:%02x:%02x:%02x:%02x:%02x"), pAddStaParams->staIdx,
                             pAddStaParams->staMac[0], 
                             pAddStaParams->staMac[1], 
                             pAddStaParams->staMac[2], 
@@ -5201,8 +5200,8 @@ tSirRetStatus limProcessSmeTdlsMgmtSendReq(tpAniSirGlobal pMac,
             (psessionEntry->limSmeState != eLIM_SME_LINK_EST_STATE))
     {
 
-        limLog(pMac, LOGE, "send mgmt received in invalid LIMsme \
-                state (%d)", psessionEntry->limSmeState);
+        limLog(pMac, LOGE, "send mgmt received in invalid LIMsme "
+                "state (%d)", psessionEntry->limSmeState);
         goto lim_tdls_send_mgmt_error;
     }
 
@@ -5398,8 +5397,8 @@ tSirRetStatus limProcessSmeTdlsAddStaReq(tpAniSirGlobal pMac,
                 (psessionEntry->limSmeState != eLIM_SME_LINK_EST_STATE))
      {
      
-         limLog(pMac, LOGE, "send mgmt received in invalid LIMsme \
-                               state (%d)", psessionEntry->limSmeState);
+         limLog(pMac, LOGE, "send mgmt received in invalid LIMsme "
+                "state (%d)", psessionEntry->limSmeState);
          goto lim_tdls_add_sta_error;
      }
 
@@ -5462,8 +5461,8 @@ tSirRetStatus limProcessSmeTdlsDelStaReq(tpAniSirGlobal pMac,
             (psessionEntry->limSmeState != eLIM_SME_LINK_EST_STATE))
     {
 
-        limLog(pMac, LOGE, "Del Sta received in invalid LIMsme \
-                state (%d)", psessionEntry->limSmeState);
+        limLog(pMac, LOGE, "Del Sta received in invalid LIMsme state (%d)",
+               psessionEntry->limSmeState);
         goto lim_tdls_del_sta_error;
     }
 
@@ -5509,13 +5508,13 @@ tSirRetStatus limProcesSmeTdlsLinkEstablishReq(tpAniSirGlobal pMac,
     tpDphHashNode pStaDs = NULL ;
 
     VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
-            ("Send Mgmt Recieved\n")) ;
+            ("Send Mgmt Recieved")) ;
 
     if((psessionEntry = peFindSessionByBssid(pMac, pTdlsLinkEstablishReq->bssid, &sessionId))
             == NULL)
     {
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
-                "PE Session does not exist for given sme sessionId %d\n",
+                "PE Session does not exist for given sme sessionId %d",
                 pTdlsLinkEstablishReq->sessionId);
         limSendSmeTdlsLinkEstablishReqRsp(pMac, pTdlsLinkEstablishReq->sessionId, pTdlsLinkEstablishReq->peerMac,
              NULL, eSIR_FAILURE) ;
@@ -5526,7 +5525,7 @@ tSirRetStatus limProcesSmeTdlsLinkEstablishReq(tpAniSirGlobal pMac,
     if (psessionEntry->limSystemRole != eLIM_STA_ROLE)
     {
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
-                "TDLS Link Establish Request received in wrong system Role %d\n",
+                "TDLS Link Establish Request received in wrong system Role %d",
                 psessionEntry->limSystemRole);
         goto lim_tdls_link_establish_error;
     }
@@ -5539,8 +5538,8 @@ tSirRetStatus limProcesSmeTdlsLinkEstablishReq(tpAniSirGlobal pMac,
             (psessionEntry->limSmeState != eLIM_SME_LINK_EST_STATE))
     {
 
-        limLog(pMac, LOGE, "TDLS Link Establish Request received in invalid LIMsme \
-                state (%d)\n", psessionEntry->limSmeState);
+        limLog(pMac, LOGE, "TDLS Link Establish Request received in "
+               "invalid LIMsme state (%d)", psessionEntry->limSmeState);
         goto lim_tdls_link_establish_error;
     }
     /*TODO Sunil , TDLSPeer Entry has the STA ID , Use it */
@@ -5548,7 +5547,7 @@ tSirRetStatus limProcesSmeTdlsLinkEstablishReq(tpAniSirGlobal pMac,
                                 &psessionEntry->dph.dphHashTable) ;
     if ( NULL == pStaDs )
     {
-        limLog( pMac, LOGE, FL( "pStaDs is NULL \n" ));
+        limLog( pMac, LOGE, FL( "pStaDs is NULL" ));
         goto lim_tdls_link_establish_error;
 
     }
@@ -5556,7 +5555,7 @@ tSirRetStatus limProcesSmeTdlsLinkEstablishReq(tpAniSirGlobal pMac,
     if ( NULL == pMsgTdlsLinkEstablishReq )
     {
         limLog( pMac, LOGE,
-                     FL( "Unable to allocate memory TDLS Link Establish Request \n" ));
+                     FL( "Unable to allocate memory TDLS Link Establish Request" ));
         return eSIR_MEM_ALLOC_FAILED;
     }
 
@@ -5573,7 +5572,7 @@ tSirRetStatus limProcesSmeTdlsLinkEstablishReq(tpAniSirGlobal pMac,
     msg.bodyval = 0;
     if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
     {
-        limLog(pMac, LOGE, FL("halPostMsgApi failed\n"));
+        limLog(pMac, LOGE, FL("halPostMsgApi failed"));
         goto lim_tdls_link_establish_error;
     }
     return eSIR_SUCCESS;

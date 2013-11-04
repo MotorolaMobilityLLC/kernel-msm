@@ -286,7 +286,7 @@ rrmProcessLinkMeasurementRequest( tpAniSirGlobal pMac,
 #endif
    if( pRxPacketInfo == NULL || pLinkReq == NULL || pSessionEntry == NULL )
    {
-      PELOGE(limLog( pMac, LOGE, "%s:%d: Invalid parameters - Ignoring the request");)
+      PELOGE(limLog( pMac, LOGE, FL("Invalid parameters - Ignoring the request"));)
       return eSIR_FAILURE;
    }
    pHdr = WDA_GET_RX_MAC_HEADER( pRxPacketInfo );
