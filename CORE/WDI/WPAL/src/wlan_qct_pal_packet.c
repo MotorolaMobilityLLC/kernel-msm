@@ -504,7 +504,7 @@ wpt_status wpalIteratorInit(wpt_iterator *pIter, wpt_packet *pPacket)
    if (unlikely((NULL == pPacket)||(NULL==pIter)))
    {
       WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                "%s : NULL input pointers %x %x", __func__, pPacket, pIter);
+                "%s : NULL input pointers %p %p", __func__, pPacket, pIter);
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
