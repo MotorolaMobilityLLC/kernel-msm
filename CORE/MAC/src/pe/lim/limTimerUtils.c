@@ -1420,7 +1420,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             }
             else
             {
-                limLog(pMac, LOGW, FL("HeartBeat timer value is changed = %lu"), val);
+                limLog(pMac, LOGW, FL("HeartBeat timer value is changed = %u"), val);
             }
             break;
 
@@ -1462,7 +1462,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             }
             else
             {
-                limLog(pMac, LOGW, FL("Probe after HB timer value is changed = %lu"), val);
+                limLog(pMac, LOGW, FL("Probe after HB timer value is changed = %u"), val);
             }
 
             break;

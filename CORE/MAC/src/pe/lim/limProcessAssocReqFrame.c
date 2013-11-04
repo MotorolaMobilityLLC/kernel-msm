@@ -322,7 +322,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
                         pHdr->sa,
                         subType, 0,psessionEntry);
 
-        limLog(pMac, LOGW, FL("local caps 0x%x received 0x%x"), localCapabilities, pAssocReq->capabilityInfo);
+        limLog(pMac, LOGW, FL("local caps mismatch received caps"));
 
         // Log error
         if (subType == LIM_ASSOC)

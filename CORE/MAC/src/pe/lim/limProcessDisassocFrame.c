@@ -228,8 +228,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
                 {
                     limLog(pMac, LOGW,
                         FL("Ignoring disassoc frame due to upcoming "
-                           "channel switch, from"),
-                        reasonCode);
+                           "channel switch, from"));
                     limPrintMacAddr(pMac, pHdr->sa, LOGW);
                     return;
                 }
