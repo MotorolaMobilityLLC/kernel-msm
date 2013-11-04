@@ -1226,7 +1226,7 @@ hdd_format_batch_scan_rsp
 
    /*freq*/
    temp_len = snprintf(pTemp, (sizeof(temp) - temp_total_len), "freq=%d\n",
-                 pApMetaInfo->ApInfo.ch);
+                 sme_ChnToFreq(pApMetaInfo->ApInfo.ch));
    pTemp += temp_len;
    temp_total_len += temp_len;
 
