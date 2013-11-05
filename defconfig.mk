@@ -10,7 +10,7 @@ endif
 
 # build eng kernel for eng and userdebug Android variants
 ifneq ($(TARGET_BUILD_VARIANT), user)
-ifneq ($(wildcard $(DEBUG_CONFIG)),)
+ifneq ($(wildcard $(KERNEL_DEBUG_DEFCONFIG)),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(KERNEL_DEBUG_DEFCONFIG)
 endif
 
