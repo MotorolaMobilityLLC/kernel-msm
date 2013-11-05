@@ -948,6 +948,12 @@ static u32 vid_dec_set_meta_buffers(struct video_client_ctx *client_ctx,
 	vcd_meta_buffer->offset = meta_buffers->offset;
 	vcd_meta_buffer->pmem_fd_iommu = meta_buffers->pmem_fd_iommu;
 
+	if (meta_buffers->count > MAX_META_BUFFERS) {
+		ERR("meta buffers maximum count reached, count = %d",
+			meta_buffers->count);
+		return false;
+	}
+
 	if (!vcd_get_ion_status()) {
 		if (get_pmem_file(vcd_meta_buffer->pmem_fd,
 				(unsigned long *) (&(vcd_meta_buffer->
