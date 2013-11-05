@@ -114,7 +114,7 @@ typedef tANI_U8 tHalIpv4Addr[4];
 
 #define WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE     450
 #define WLAN_HAL_ROAM_SCAN_MAX_CHANNELS       NUM_RF_CHANNELS
-#define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     61
+#define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     57
 
 /* Message types for messages exchanged between WDI and HAL */
 typedef enum 
@@ -5602,6 +5602,7 @@ typedef PACKED_PRE struct PACKED_POST {
    /* Add Reserved bytes */
    tANI_U8           nProbes;
    tANI_U16          HomeAwayTime;
+   eAniBoolean       MAWCEnabled;
    tANI_U8           ReservedBytes[WLAN_HAL_ROAM_SCAN_RESERVED_BYTES];
    tRoamNetworkType  ConnectedNetwork;
    tMobilityDomainInfo MDID;
