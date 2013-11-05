@@ -716,13 +716,15 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 	}
 
 	/* should wait on session based condition */
-	wait_count = 2;
+	wait_count = 5;
 	do {
 		rc = wait_event_interruptible_timeout(cmd_ack->wait,
 			!list_empty_careful(&cmd_ack->command_q.list),
 			msecs_to_jiffies(timeout));
 		if (rc != -ERESTARTSYS)
 			break;
+		else
+			pr_info("%s: signal interruption, retry", __func__);
 		wait_count--;
 	} while (wait_count > 0);
 
