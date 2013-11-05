@@ -21,6 +21,7 @@
 #include "msm_gemini_platform.h"
 #include "msm_gemini_common.h"
 
+#  define UINT32_MAX    (4294967295U)
 static int release_buf;
 
 /*************** queue helper ****************/
@@ -639,7 +640,7 @@ int msm_gemini_ioctl_hw_cmds(struct msm_gemini_device *pgmn_dev,
 	void * __user arg)
 {
 	int is_copy_to_user;
-	int len;
+	uint32_t len;
 	uint32_t m,n;
 	struct msm_gemini_hw_cmds *hw_cmds_p;
 	struct msm_gemini_hw_cmd *hw_cmd_p;
@@ -648,6 +649,13 @@ int msm_gemini_ioctl_hw_cmds(struct msm_gemini_device *pgmn_dev,
 		GMN_PR_ERR("%s:%d] failed\n", __func__, __LINE__);
 		return -EFAULT;
 	}
+
+    if ((m == 0) || (m > ((UINT32_MAX-sizeof(struct msm_gemini_hw_cmds))/
+           sizeof(struct msm_gemini_hw_cmd)))) {
+           GMN_PR_ERR("%s:%d] outof range of hwcmds\n",
+            __func__, __LINE__);
+           return -EINVAL;
+    }
 
 	len = sizeof(struct msm_gemini_hw_cmds) +
 		sizeof(struct msm_gemini_hw_cmd) * (m - 1);
