@@ -544,6 +544,7 @@
 			2 &msmgpio 42 0x3>;
 	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
 	cd-gpios = <&msmgpio 42 0x1>;
+	qcom,bus-speed-mode = "SDR25_1p8v", "SDR12_1p8v";
 
 	status = "ok";
 };
