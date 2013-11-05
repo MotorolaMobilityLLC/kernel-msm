@@ -220,17 +220,17 @@ int sapSetPreferredChannel(tANI_U8* ptr)
     if (sscanf(param, "%d ", &tempInt) != 1)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "Cannot get number of channels from input", __func__);
+                   "%s: Cannot get number of channels from input", __func__);
         return -EINVAL;
     }
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-               "Number of channel added are: %d", tempInt);
+               "%s: Number of channel added are: %d", __func__, tempInt);
 
     if (tempInt <= 0 || tempInt > 255)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "Invalid Number of channel received", __func__);
+                   "%s: Invalid Number of channel received", __func__);
         return -EINVAL;
     }
 
@@ -272,14 +272,14 @@ int sapSetPreferredChannel(tANI_U8* ptr)
         if (sscanf(param, "%d ", &tempInt) != 1)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "Cannot read channel number", __func__);
+                       "%s: Cannot read channel number", __func__);
             sapCleanupChannelList();
             return -EINVAL;
         }
         if (tempInt < 0 || tempInt > 255)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "Invalid channel number received", __func__);
+                       "%s: Invalid channel number received", __func__);
             sapCleanupChannelList();
             return -EINVAL;
         }
@@ -287,8 +287,8 @@ int sapSetPreferredChannel(tANI_U8* ptr)
         pSapCtx->SapChnlList.channelList[j] = tempInt;
 
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-                   "Channel %d added to preferred channel list",
-                   pSapCtx->SapChnlList.channelList[j] );
+                   "%s: Channel %d added to preferred channel list",
+                   __func__, pSapCtx->SapChnlList.channelList[j] );
 
     }
 
