@@ -2887,10 +2887,26 @@ static int tabla_codec_reset_interpolator(struct snd_soc_dapm_widget *w,
 static int tabla_codec_enable_ldo_h(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
+	struct snd_soc_codec *codec = w->codec;
+	struct tabla_priv *tabla = NULL;
+
+	if (codec != NULL)
+		tabla = snd_soc_codec_get_drvdata(codec);
+
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-	case SND_SOC_DAPM_POST_PMD:
 		usleep_range(1000, 1000);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		/*
+		 * Don't disable LDO_H while headset is inserted.
+		 * Headset need LDO_H always on.
+		 */
+		if (tabla->h2w_state == H2W_HEADSET) {
+			snd_soc_update_bits(codec, TABLA_A_LDO_H_MODE_1,
+					0x80, 0x80);
+		} else
+			usleep_range(1000, 1000);
 		break;
 	}
 	return 0;
@@ -5164,7 +5180,8 @@ static const struct snd_soc_dapm_widget tabla_dapm_widgets[] = {
 		0),
 
 	SND_SOC_DAPM_SUPPLY("LDO_H", TABLA_A_LDO_H_MODE_1, 7, 0,
-		tabla_codec_enable_ldo_h, SND_SOC_DAPM_POST_PMU),
+		tabla_codec_enable_ldo_h, SND_SOC_DAPM_POST_PMU |
+		SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_SUPPLY("COMP1_CLK", SND_SOC_NOPM, 0, 0,
 		tabla_config_compander, SND_SOC_DAPM_PRE_PMU |
