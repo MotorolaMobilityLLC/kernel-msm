@@ -342,25 +342,23 @@ static int vfsspi_xfer(struct vfsspi_device_data *vfsspi_device,
 static int vfsspi_rw_spi_message(struct vfsspi_device_data *vfsspi_device,
 				 unsigned long arg)
 {
-	struct vfsspi_ioctl_transfer   *dup = NULL;
-	dup = kmalloc(sizeof(struct vfsspi_ioctl_transfer), GFP_KERNEL);
-	if (dup == NULL)
-		return -ENOMEM;
-
-	if (copy_from_user(dup, (void *)arg,
+	int err;
+	struct vfsspi_ioctl_transfer transfer_request;
+	if (copy_from_user(&transfer_request, (void *)arg,
 			   sizeof(struct vfsspi_ioctl_transfer)) != 0) {
+		pr_err("%s: Failed to copy from user\n", __func__);
 		return -EFAULT;
-	} else {
-		int err = vfsspi_xfer(vfsspi_device, dup);
-		if (err != 0) {
-			kfree(dup);
-			return err;
-		}
 	}
-	if (copy_to_user((void *)arg, dup,
-			 sizeof(struct vfsspi_ioctl_transfer)) != 0)
+	err = vfsspi_xfer(vfsspi_device, &transfer_request);
+	if (err != 0) {
+		pr_err("%s: Failed xfer %d\n", __func__, err);
+		return err;
+	}
+	if (copy_to_user((void *)arg, &transfer_request,
+			 sizeof(struct vfsspi_ioctl_transfer)) != 0) {
+		pr_err("%s: Failed to copy to user\n", __func__);
 		return -EFAULT;
-	kfree(dup);
+	}
 	return 0;
 }
 
