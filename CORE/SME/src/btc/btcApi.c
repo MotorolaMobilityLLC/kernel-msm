@@ -1966,9 +1966,19 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
          {
              ccmCfgSetInt(pMac, WNI_CFG_DEL_ALL_RX_BA_SESSIONS_2_4_G_BTC, 1,
                              NULL, eANI_BOOLEAN_FALSE);
+             pMac->btc.btcBssfordisableaggr[0] = pSmeCoexInd->coexIndData[0] & 0xFF;
+             pMac->btc.btcBssfordisableaggr[1] = pSmeCoexInd->coexIndData[0] >> 8;
+             pMac->btc.btcBssfordisableaggr[2] = pSmeCoexInd->coexIndData[1] & 0xFF;
+             pMac->btc.btcBssfordisableaggr[3] = pSmeCoexInd->coexIndData[1]  >> 8;
+             pMac->btc.btcBssfordisableaggr[4] = pSmeCoexInd->coexIndData[2] & 0xFF;
+             pMac->btc.btcBssfordisableaggr[5] = pSmeCoexInd->coexIndData[2] >> 8;
              smsLog(pMac, LOGW,
-             "Coex indication in %s(), type - SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4",
-                 __func__);
+             "Coex indication in %s(), \
+              type - SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4 \
+              for BSSID %02x:%02x:%02x:%02x:%02x:%02x",__func__,
+              pMac->btc.btcBssfordisableaggr[0],pMac->btc.btcBssfordisableaggr[1],
+              pMac->btc.btcBssfordisableaggr[2],pMac->btc.btcBssfordisableaggr[3],
+              pMac->btc.btcBssfordisableaggr[4],pMac->btc.btcBssfordisableaggr[5]);
          }
      }
      else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4)

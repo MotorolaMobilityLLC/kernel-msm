@@ -5739,22 +5739,17 @@ void limDelAllBASessions(tpAniSirGlobal pMac)
 \return None
 -------------------------------------------------------------*/
 
-void limDelAllBASessionsBtc(tpAniSirGlobal pMac)
+void limDelPerBssBASessionsBtc(tpAniSirGlobal pMac)
 {
-    tANI_U32 i;
+    tANI_U8 sessionId;
     tpPESession pSessionEntry;
-
-    for (i = 0; i < pMac->lim.maxBssId; i++)
+    pSessionEntry = peFindSessionByBssid(pMac,pMac->btc.btcBssfordisableaggr,
+                                                                &sessionId);
+    if (pSessionEntry)
     {
-        pSessionEntry = peFindSessionBySessionId(pMac, i);
-        if (pSessionEntry)
-        {
-            if (SIR_BAND_2_4_GHZ ==
-                limGetRFBand(pSessionEntry->currentOperChannel))
-            {
-                limDeleteBASessions(pMac, pSessionEntry, BA_RECIPIENT);
-            }
-        }
+        PELOGW(limLog(pMac, LOGW,
+        "Deleting the BA for session %d as host got BTC event", sessionId);)
+        limDeleteBASessions(pMac, pSessionEntry, BA_RECIPIENT);
     }
 }
 

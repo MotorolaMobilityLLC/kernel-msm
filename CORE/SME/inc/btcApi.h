@@ -55,6 +55,7 @@
 
 #include "vos_types.h"
 #include "vos_timer.h"
+#include "vos_nvitem.h"
 
 #define BT_INVALID_CONN_HANDLE (0xFFFF)  /**< Invalid connection handle */
 
@@ -383,6 +384,7 @@ typedef struct sSmeBtcInfo
    v_U16_t       btcScoHandles[BT_MAX_SCO_SUPPORT];  /* Handles for SCO, if any*/
    v_BOOL_t      fA2DPUp;        /*remember whether A2DP is in session*/
    v_BOOL_t      btcScanCompromise;
+   v_U8_t        btcBssfordisableaggr[VOS_MAC_ADDRESS_LEN];
 } tSmeBtcInfo, *tpSmeBtcInfo;
 
 
