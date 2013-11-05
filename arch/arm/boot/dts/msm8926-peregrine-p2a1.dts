@@ -15,7 +15,6 @@
 /include/ "msm8226-moto-reserve.dtsi"
 /include/ "msm8926.dtsi"
 /include/ "msm8926-peregrine-common.dtsi"
-/include/ "msm8926-peregrine-nii-common.dtsi"
 
 / {
 	qcom,msm-id = <145 0x44 0x82a1>;
