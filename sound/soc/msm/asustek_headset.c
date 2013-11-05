@@ -33,6 +33,7 @@
 #include <linux/input.h>
 #include <linux/slab.h>
 #include <sound/soc.h>
+#include <sound/soc-dapm.h>
 #include <asm/gpio.h>
 #include <asm/uaccess.h>
 #include <asm/string.h>
@@ -104,10 +105,15 @@ struct work_struct lineout_work;
 
 static void set_hs_micbias(int status)
 {
+	struct snd_soc_dapm_widget *w = NULL;
+
 	if (wcd9310_codec == NULL) {
 		printk(KERN_INFO "%s: wcd9310_codec = NULL\n", __func__);
 		return;
 	}
+
+	 w = snd_soc_get_codec_widget(wcd9310_codec->card,
+					wcd9310_codec, "LDO_H");
 
 	if (status) {
 		snd_soc_update_bits(wcd9310_codec, TABLA_A_MICB_CFILT_2_VAL,
@@ -127,8 +133,14 @@ static void set_hs_micbias(int status)
 	} else {
 		snd_soc_update_bits(wcd9310_codec, TABLA_A_MICB_2_CTL,
 				0xC0, 0x00);
-		snd_soc_update_bits(wcd9310_codec, TABLA_A_LDO_H_MODE_1,
-				0xff, 0x6d);
+		/* Keep LDO_H power on while using */
+		if (w != NULL && w->power)
+			printk(KERN_INFO "%s widget LDO_H power on. Keep it\n",
+			__func__);
+		else
+			snd_soc_update_bits(wcd9310_codec,
+				TABLA_A_LDO_H_MODE_1, 0xff, 0x6d);
+
 		if (tabla_check_bandgap_status(wcd9310_codec) == 0) {
 			/* Disable Bandgap Reference power */
 			printk(KERN_INFO "%s badgap status: OFF power down bandgap\n",
