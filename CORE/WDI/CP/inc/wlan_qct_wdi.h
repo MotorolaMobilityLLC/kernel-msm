@@ -4830,6 +4830,7 @@ typedef struct WDIMobilityDomainInfo
 typedef struct
 {
   wpt_boolean RoamScanOffloadEnabled;
+  wpt_boolean MAWCEnabled;
   wpt_uint8   LookupThreshold;
   wpt_uint8   RoamRssiDiff;
   wpt_uint8   ChannelCacheType;
