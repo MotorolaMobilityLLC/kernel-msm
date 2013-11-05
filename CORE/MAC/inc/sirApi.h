@@ -3671,6 +3671,7 @@ typedef struct SirMobilityDomainInfo
 typedef struct sSirRoamOffloadScanReq
 {
   eAniBoolean RoamScanOffloadEnabled;
+  eAniBoolean MAWCEnabled;
   tANI_S8     LookupThreshold;
   tANI_U8     RoamRssiDiff;
   tANI_U8     ChannelCacheType;

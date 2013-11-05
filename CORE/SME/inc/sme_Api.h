@@ -105,6 +105,7 @@ typedef struct _smeConfigParams
 #endif
 #if defined FEATURE_WLAN_LFR
     tANI_U8   isFastRoamIniFeatureEnabled;
+    tANI_U8   MAWCEnabled;
 #endif
 #if defined FEATURE_WLAN_CCX
     tANI_U8   isCcxIniFeatureEnabled;
@@ -2498,6 +2499,20 @@ eHalStatus sme_SetRoamScanControl(tHalHandle hHal, v_BOOL_t roamScanControl);
 
 eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal,
         const v_BOOL_t isFastRoamIniFeatureEnabled);
+
+/*--------------------------------------------------------------------------
+  \brief sme_UpdateIsMAWCIniFeatureEnabled() -
+  Enable/disable LFR MAWC support at runtime
+  It is used at in the REG_DYNAMIC_VARIABLE macro definition of
+  isMAWCIniFeatureEnabled.
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update MAWCEnabled config successfully.
+          Other status means SME is failed to update MAWCEnabled.
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_UpdateIsMAWCIniFeatureEnabled(tHalHandle hHal,
+        const v_BOOL_t MAWCEnabled);
 
 
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD

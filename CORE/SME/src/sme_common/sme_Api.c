@@ -7939,6 +7939,38 @@ eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal,
   return eHAL_STATUS_SUCCESS;
 }
 
+/*--------------------------------------------------------------------------
+  \brief sme_UpdateIsMAWCIniFeatureEnabled() -
+  Enable/disable LFR MAWC support at runtime
+  It is used at in the REG_DYNAMIC_VARIABLE macro definition of
+  isMAWCIniFeatureEnabled.
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update MAWCEnabled config successfully.
+          Other status means SME is failed to update MAWCEnabled.
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_UpdateIsMAWCIniFeatureEnabled(tHalHandle hHal,
+        const v_BOOL_t MAWCEnabled)
+{
+  tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+  eHalStatus status = eHAL_STATUS_SUCCESS;
+
+  status = sme_AcquireGlobalLock( &pMac->sme );
+  if ( HAL_STATUS_SUCCESS( status ) )
+  {
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                "%s: MAWCEnabled is changed from %d to %d", __func__,
+                pMac->roam.configParam.MAWCEnabled,
+                MAWCEnabled);
+      pMac->roam.configParam.MAWCEnabled = MAWCEnabled;
+      sme_ReleaseGlobalLock( &pMac->sme );
+  }
+
+  return status ;
+
+}
+
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 /*--------------------------------------------------------------------------
   \brief sme_UpdateEnableFastRoamInConcurrency() - enable/disable LFR if Concurrent session exists
