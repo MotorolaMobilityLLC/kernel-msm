@@ -23,8 +23,17 @@
 
 /* truncate at 1k */
 #define MDSS_MDP_BUS_FACTOR_SHIFT 10
-/* 1.5 bus fudge factor */
-#define MDSS_MDP_BUS_FUDGE_FACTOR_AB(val) mult_frac(val, 5, 4)
+
+
+/*
+ * 2x factor on AB because bus driver will divide by 2
+ * due to 2x ports to BIMC
+ */
+#define MDSS_MDP_BUS_FUDGE_FACTOR_AB(val) ((val) << 1)
+
+/* 1.5 factor to account for DDR inefficiency */
+#define MDSS_MDP_BUS_FUDGE_FACTOR_IB(val) mult_frac((val), 3, 2)
+
 #define MDSS_MDP_BUS_FLOOR_BW (1600000000ULL)
 
 /* 1.25 clock fudge factor */
@@ -106,6 +115,8 @@ static void __mdss_mdp_ctrl_perf_ovrd(struct mdss_data_type *mdata,
 		ovrd |= __mdss_mdp_ctrl_perf_ovrd_helper(
 				ctl->mixer_right, &npipe);
 	}
+
+	*ib_quota = MDSS_MDP_BUS_FUDGE_FACTOR_IB(*ib_quota);
 	*ab_quota = MDSS_MDP_BUS_FUDGE_FACTOR_AB(*ab_quota);
 	if (ovrd && (*ib_quota < MDSS_MDP_BUS_FLOOR_BW)) {
 		*ib_quota = MDSS_MDP_BUS_FLOOR_BW;
