@@ -19,3 +19,7 @@
 / {
 	qcom,msm-id = <145 0x44 0x82a0>;
 };
+
+&pn544 {
+	status = "ok";
+};

@@ -86,7 +86,7 @@
 		gpios = <&msmgpio 35 0>; /* DRDY/INT2 */
 	};
 
-	pnxxx@28 {
+	pn544: pnxxx@28 {
 		compatible = "nxp,pn544";
 		reg = <0x28>;
 		interrupt-parent = <&msmgpio>;
@@ -96,6 +96,7 @@
 			<&msmgpio 22 0>;     /* Firmware */
 		nxp,pnxxx-discharge-delay = <2000>;
 		nxp,pnxxx-ven-inv-polarity = <0>;
+		status = "disabled";
 	};
 
 	lis3dh@18 {
