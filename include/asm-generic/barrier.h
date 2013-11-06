@@ -43,6 +43,21 @@
 #define set_mb(var, value)  do { var = value;  mb(); } while (0)
 #define set_wmb(var, value) do { var = value; wmb(); } while (0)
 
+#define smp_store_release(p, v)						\
+do {									\
+	compiletime_assert_atomic_type(*p);				\
+	smp_mb();							\
+	ACCESS_ONCE(*p) = (v);						\
+} while (0)
+
+#define smp_load_acquire(p)						\
+({									\
+	typeof(*p) ___p1 = ACCESS_ONCE(*p);				\
+	compiletime_assert_atomic_type(*p);				\
+	smp_mb();							\
+	___p1;								\
+})
+
 #define read_barrier_depends()		do {} while (0)
 #define smp_read_barrier_depends()	do {} while (0)
 
