@@ -761,7 +761,7 @@ static int stm401_probe(struct i2c_client *client,
 	atomic_set(&ps_stm401->enabled, 0);
 
 	err = request_irq(ps_stm401->irq, stm401_isr,
-				(IRQF_TRIGGER_RISING | IRQF_TRIGGER_HIGH),
+				IRQF_TRIGGER_RISING,
 				NAME, ps_stm401);
 	if (err < 0) {
 		dev_err(&client->dev, "request irq failed: %d\n", err);
@@ -770,7 +770,7 @@ static int stm401_probe(struct i2c_client *client,
 
 	if (ps_stm401->irq_wake != -1) {
 		err = request_irq(ps_stm401->irq_wake, stm401_wake_isr,
-				(IRQF_TRIGGER_RISING | IRQF_TRIGGER_HIGH),
+				IRQF_TRIGGER_RISING,
 				NAME, ps_stm401);
 		if (err < 0) {
 			dev_err(&client->dev, "request wake irq failed: %d\n",
