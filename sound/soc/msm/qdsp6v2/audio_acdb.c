@@ -766,9 +766,20 @@ int store_voice_col_data(uint32_t vocproc_type, uint32_t cal_size,
 	int result = 0;
 	pr_debug("%s,\n", __func__);
 
+	if (cal_block == NULL) {
+		pr_err("ACDB=> NULL pointer sent to %s\n", __func__);
+		result = -EINVAL;
+		goto done;
+	}
 	if (cal_size > MAX_COL_SIZE) {
 		pr_err("%s: col size is to big %d\n", __func__,
 				cal_size);
+		result = -EINVAL;
+		goto done;
+	}
+	if (acdb_data.col_data[vocproc_type] == NULL) {
+		pr_err("%s: vocproc_type %d data not allocated!\n",
+			__func__, vocproc_type);
 		result = -EINVAL;
 		goto done;
 	}
@@ -794,6 +805,12 @@ int get_voice_col_data(uint32_t vocproc_type,
 
 	if (cal_block == NULL) {
 		pr_err("ACDB=> NULL pointer sent to %s\n", __func__);
+		result = -EINVAL;
+		goto done;
+	}
+	if (acdb_data.col_data[vocproc_type] == NULL) {
+		pr_err("%s: vocproc_type %d data not allocated!\n",
+			__func__, vocproc_type);
 		result = -EINVAL;
 		goto done;
 	}
@@ -1235,6 +1252,14 @@ static int register_memory(void)
 	allocate_hw_delay_entries();
 	for (i = 0; i < MAX_VOCPROC_TYPES; i++) {
 		acdb_data.col_data[i] = kmalloc(MAX_COL_SIZE, GFP_KERNEL);
+		if (acdb_data.col_data[i] == NULL) {
+			pr_err("%s: kmalloc column data failed, type = %d\n",
+				__func__, i);
+			for (i--; i >= 0; i--)
+				kfree(acdb_data.col_data[i]);
+			result = -ENOMEM;
+			goto err_done;
+		}
 		atomic_set(&acdb_data.vocproc_col_cal[i].cal_kvaddr,
 			(uint32_t)acdb_data.col_data[i]);
 	}
@@ -1249,7 +1274,7 @@ static int register_memory(void)
 		pr_err("%s: audio ION alloc failed, rc = %d\n",
 			__func__, result);
 		result = PTR_ERR(acdb_data.ion_client);
-		goto err_ion_handle;
+		goto err_done;
 	}
 	kvaddr = (unsigned long)kvptr;
 	atomic64_set(&acdb_data.paddr, paddr);
@@ -1264,7 +1289,7 @@ static int register_memory(void)
 		(long)atomic64_read(&acdb_data.mem_len));
 
 	return result;
-err_ion_handle:
+err_done:
 	atomic64_set(&acdb_data.mem_len, 0);
 	mutex_unlock(&acdb_data.acdb_mutex);
 	return result;
