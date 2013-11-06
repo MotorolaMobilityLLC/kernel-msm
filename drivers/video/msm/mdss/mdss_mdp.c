@@ -782,7 +782,7 @@ int mdss_iommu_attach(struct mdss_data_type *mdata)
 	}
 
 	mdata->iommu_attached = true;
-	complete_all(&mdata->iommu_attach_done);
+
 	return 0;
 }
 
@@ -940,7 +940,7 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 	}
 
 	rc = mdss_iommu_init(mdata);
-	init_completion(&mdata->iommu_attach_done);
+
 	return rc;
 }
 
