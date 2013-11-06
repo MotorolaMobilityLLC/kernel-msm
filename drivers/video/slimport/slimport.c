@@ -73,6 +73,7 @@ static bool hdcp_enable;
 
 struct completion init_aux_ch_completion;
 static uint32_t sp_tx_chg_current_ma = NORMAL_CHG_I_MA;
+static bool irq_enabled = 0;
 
 /* Link integrity check is sometimes failed without external the power.
  * This is a workaround for this failure. Enabling the USB clk help
@@ -303,7 +304,6 @@ void sp_tx_hardware_powerdown(void)
 		if (status)
 			pr_err("failed to turn off hpd");
 	}
-
 	pr_info("anx7808 power down\n");
 }
 
@@ -658,6 +658,33 @@ static void anx7808_work_func(struct work_struct *work)
 #endif
 }
 
+static int anx7808_enable_irq(const char *val, const struct kernel_param *kp)
+{
+	int ret;
+
+	if (!the_chip)
+		return -ENODEV;
+
+	ret = param_set_bool(val, kp);
+	if (ret) {
+		pr_err("failed to enable slimpot\n");
+		return ret;
+	}
+
+	if (irq_enabled) {
+		anx7808_cbl_det_isr(the_chip->client->irq, the_chip);
+		enable_irq(the_chip->client->irq);
+	}
+
+	return 0;
+}
+
+static struct kernel_param_ops enable_irq_ops = {
+	.set = anx7808_enable_irq,
+	.get = param_get_bool,
+};
+module_param_cb(enable_irq, &enable_irq_ops, &irq_enabled, 0644);
+
 static int anx7808_parse_dt(struct device_node *node,
 			   struct anx7808_data *anx7808)
 {
@@ -869,6 +896,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 		goto err5;
 	}
 
+	disable_irq(client->irq);
 	ret = enable_irq_wake(client->irq);
 	if (ret  < 0) {
 		pr_err("interrupt wake enable fail\n");
