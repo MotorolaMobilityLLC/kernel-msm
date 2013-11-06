@@ -178,7 +178,6 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 	}
 }
 
-#define TFA9890_EXT_CLK_RATE 12288000
 static atomic_t pri_mi2s_rsc_ref;
 
 static struct afe_clk_cfg lpass_mi2s_enable = {
@@ -2019,7 +2018,8 @@ static int msm8226_pri_mi2s_rx_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	int ret = 0;
 
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, TFA9890_EXT_CLK_RATE,
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0,
+			Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
 			SND_SOC_CLOCK_IN);
 	if (ret < 0)
 		pr_err("can't set rx codec clk configuration\n");
@@ -2153,7 +2153,7 @@ static struct snd_soc_dai_link msm8226_9302_tfa9890_dai[] = {
 		.cpu_dai_name = "msm-dai-q6-mi2s.0",
 		.platform_name = "msm-pcm-routing",
 		.codec_name     = "tfa9890.3-0034",
-		.codec_dai_name = "tfa9890_codec",
+		.codec_dai_name = "tfa9890_codec_left",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_PRI_MI2S_RX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
@@ -2187,7 +2187,7 @@ struct snd_soc_card snd_soc_card_9302_msm8226 = {
 
 struct snd_soc_card snd_soc_card_9302_tfa9890_msm8226 = {
 	.name		= "msm8226-tapan9302-tfa9890-snd-card",
-	.long_name  = "msm8226-tapan9302-snd-card,tfa9890_codec",
+	.long_name  = "msm8226-tapan9302-snd-card,tfa9890_codec_left",
 	.dai_link	= msm8226_9302_tfa9890_dai_links,
 	.num_links	= ARRAY_SIZE(msm8226_9302_tfa9890_dai_links),
 };
