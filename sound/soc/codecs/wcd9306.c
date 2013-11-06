@@ -1098,8 +1098,15 @@ static int tapan_hph_impedance_get(struct snd_kcontrol *kcontrol,
 	mc = (struct soc_multi_mixer_control *)(kcontrol->private_value);
 
 	hphr = mc->shift;
+
+	pr_debug("%s: tapan_priv: %p\n", __func__, priv);
+
+#ifndef CONFIG_SND_SOC_TPA6165A2
 	wcd9xxx_mbhc_get_impedance(&priv->mbhc, &zl, &zr);
 	pr_debug("%s: zl %u, zr %u\n", __func__, zl, zr);
+#else
+	zr = zl = 0;
+#endif
 	ucontrol->value.integer.value[0] = hphr ? zr : zl;
 
 	return 0;
