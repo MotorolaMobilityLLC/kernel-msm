@@ -116,6 +116,7 @@
 #define WLAN_WAIT_TIME_STATS       800
 #define WLAN_WAIT_TIME_POWER       800
 #define WLAN_WAIT_TIME_COUNTRY     1000
+#define WLAN_WAIT_TIME_CHANNEL_UPDATE   600
 /* Amount of time to wait for sme close session callback.
    This value should be larger than the timeout used by WDI to wait for
    a response from WCNSS */
@@ -1059,6 +1060,11 @@ struct hdd_context_s
 #else
    struct completion driver_crda_req;
 #endif
+
+   /* Completion variable to indicate updation of channel */
+   struct completion wiphy_channel_update_event;
+
+   v_BOOL_t nEnableStrictRegulatoryForFCC;
 
    v_BOOL_t isWlanSuspended;
 

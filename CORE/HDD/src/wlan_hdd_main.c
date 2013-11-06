@@ -7299,6 +7299,7 @@ int hdd_wlan_startup(struct device *dev )
    init_completion(&pHddCtx->req_bmps_comp_var);
    init_completion(&pHddCtx->scan_info.scan_req_completion_event);
    init_completion(&pHddCtx->scan_info.abortscan_event_var);
+   init_completion(&pHddCtx->wiphy_channel_update_event);
 
 #ifdef CONFIG_ENABLE_LINUX_REG
    init_completion(&pHddCtx->linux_reg_req);
@@ -7318,6 +7319,7 @@ int hdd_wlan_startup(struct device *dev )
    mutex_init(&pHddCtx->tdls_lock);
 #endif
 
+   pHddCtx->nEnableStrictRegulatoryForFCC = TRUE;
    // Load all config first as TL config is needed during vos_open
    pHddCtx->cfg_ini = (hdd_config_t*) kmalloc(sizeof(hdd_config_t), GFP_KERNEL);
    if(pHddCtx->cfg_ini == NULL)
