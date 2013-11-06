@@ -1640,6 +1640,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wx;
 	int wy;
 	int z;
+	struct timespec hw_time = ktime_to_timespec(ktime_get());
 
 	/*
 	 * The number of finger status registers is determined by the
@@ -1661,6 +1662,11 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	if (atomic_read(&rmi4_data->panel_off_flag))
 		return 0;
+
+	input_event(rmi4_data->input_dev, EV_SYN,
+			SYN_TIME_SEC, hw_time.tv_sec);
+	input_event(rmi4_data->input_dev, EV_SYN,
+			SYN_TIME_NSEC, hw_time.tv_nsec);
 
 	for (finger = 0; finger < fingers_supported; finger++) {
 		reg_index = finger / 4;
@@ -1689,7 +1695,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					data,
 					data_reg_blk_size);
 			if (retval < 0)
-				return 0;
+				goto end;
 
 			x = (data[0] << 4) | (data[2] & MASK_4BIT);
 			y = (data[1] << 4) | ((data[2] >> 4) & MASK_4BIT);
@@ -1734,6 +1740,7 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
+end:
 #ifndef TYPE_B_PROTOCOL
 	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
