@@ -272,18 +272,23 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 				struct bms_battery_data *batt_data,
 				int batt_id_uv)
 {
-	struct device_node *node, *best_node;
+	struct device_node *node, *best_node, *df_node;
 	struct batt_id_rng id_range;
 	size_t sz = sizeof(struct batt_id_rng) / sizeof(int);
 	struct batt_ids batt_ids;
 	int delta, best_delta, batt_id_kohm, rpull_up_kohm,
 		vadc_vdd_uv, best_id_kohm, i, rc = 0;
+	int default_kohm;
 
 	node = batterydata_container_node;
 	OF_PROP_READ(rpull_up_kohm, "rpull-up-kohm", node, rc, false);
 	OF_PROP_READ(vadc_vdd_uv, "vref-batt-therm-uv", node, rc, false);
+
 	if (rc)
 		return rc;
+
+	OF_PROP_READ(default_kohm, "default-kohm", node, rc, true);
+	df_node = NULL;
 
 	batt_id_kohm = of_batterydata_convert_battery_id_kohm(batt_id_uv,
 					rpull_up_kohm, vadc_vdd_uv);
@@ -307,6 +312,9 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 				best_delta = delta;
 				best_id_kohm = batt_ids.kohm[i];
 			}
+			if ((default_kohm != -EINVAL)
+			    && (batt_ids.kohm[i] == default_kohm))
+				df_node = node;
 		}
 	}
 
@@ -325,8 +333,14 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 	}
 
 	if (best_node == NULL) {
-		pr_err("No battery data found\n");
-		return -ENODATA;
+		if ((default_kohm != -EINVAL) && df_node) {
+			pr_err("No battery data found using Default\n");
+			best_node = df_node;
+			best_id_kohm = default_kohm;
+		} else {
+			pr_err("No battery data found\n");
+			return -ENODATA;
+		}
 	}
 
 	pr_info("BMS Table Found using %s", best_node->name);
