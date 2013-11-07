@@ -742,7 +742,7 @@ static struct msm_sensor_output_info_t ov10820_r1a_dimensions[] = {
 		.frame_length_lines = 0x51c, /*1308*/
 		.vt_pixel_clk = 211200000,
 		.op_pixel_clk = 264000000,
-		.binning_factor = 2,
+		.binning_factor = 1,
 	},
 	{	/* 15 FPS FULL */
 		.x_output = 0x10E0,/*4320*/
@@ -760,7 +760,7 @@ static struct msm_sensor_output_info_t ov10820_r1a_dimensions[] = {
 		.frame_length_lines = 0x51c, /*1308*/
 		.vt_pixel_clk = 211200000,
 		.op_pixel_clk = 264000000,
-		.binning_factor = 2,
+		.binning_factor = 1,
 	},
 };
 
@@ -782,7 +782,7 @@ static struct msm_sensor_output_info_t ov10820_r1b_dimensions[] = {
 		.frame_length_lines = 0x9e0,/*2528*/
 		.vt_pixel_clk = 320000000,
 		.op_pixel_clk = 320000000,
-		.binning_factor = 2,
+		.binning_factor = 1,
 	},
 	{	/* 15 FPS Full */
 		.x_output = 0x10E0,/*4320*/
@@ -800,7 +800,7 @@ static struct msm_sensor_output_info_t ov10820_r1b_dimensions[] = {
 		.frame_length_lines = 0x4f0, /*1264*/
 		.vt_pixel_clk = 320000000,
 		.op_pixel_clk = 320000000,
-		.binning_factor = 2,
+		.binning_factor = 1,
 	},
 };
 
