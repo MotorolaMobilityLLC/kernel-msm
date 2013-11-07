@@ -44,6 +44,13 @@
 		qcom,memory-reservation-size = <0x1000>; /* 4kb from EBI1 buffer */
 	};
 
+	usb@f9a55000 {
+		otg,id_flt_gpio = <&msmgpio 75 0x0>;
+		otg,id_gnd_gpio = <&msmgpio 76 0x0>;
+		id_flt_active_high = <1>;
+		id_gnd_active_high = <1>;
+	};
+
 	i2c@f9925000 {
 		qcom,sda-gpio = <&msmgpio 10 0>;
 		qcom,scl-gpio = <&msmgpio 11 0>;
