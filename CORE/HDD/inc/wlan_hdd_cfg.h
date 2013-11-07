@@ -1943,6 +1943,11 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_COALESING_IN_IBSS_MAX                 (1)
 #define CFG_COALESING_IN_IBSS_DEFAULT             (0) //disabled
 
+#define CFG_DISABLE_ATH_NAME                       "gAthDisable"
+#define CFG_DISABLE_ATH_MIN                        (0)
+#define CFG_DISABLE_ATH_MAX                        (1)
+#define CFG_DISABLE_ATH_DEFAULT                    (0)
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2347,6 +2352,7 @@ typedef struct
    v_U8_t                      isAmsduSupportInAMPDU;
    v_U8_t                      nSelect5GHzMargin;
    v_U8_t                      isCoalesingInIBSSAllowed;
+   v_BOOL_t                    cfgAthDisable;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
