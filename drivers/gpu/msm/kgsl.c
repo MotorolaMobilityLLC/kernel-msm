@@ -1448,6 +1448,7 @@ static long kgsl_ioctl_device_waittimestamp_ctxtid(struct kgsl_device_private
  * @timestamp: Pending timestamp for the event
  * @handle: Pointer to a sync fence handle
  * @device: Pointer to the KGSL device
+ * @lock: Spin lock to protect the sync event list
  */
 struct kgsl_cmdbatch_sync_event {
 	int type;
@@ -1478,6 +1479,10 @@ void kgsl_cmdbatch_destroy_object(struct kref *kref)
 }
 EXPORT_SYMBOL(kgsl_cmdbatch_destroy_object);
 
+/*
+ * a generic function to retire a pending sync event and (possibly)
+ * kick the dispatcher
+ */
 static void kgsl_cmdbatch_sync_expire(struct kgsl_device *device,
 	struct kgsl_cmdbatch_sync_event *event)
 {
@@ -1525,50 +1530,35 @@ static void kgsl_cmdbatch_sync_func(struct kgsl_device *device, void *priv,
 void kgsl_cmdbatch_destroy(struct kgsl_cmdbatch *cmdbatch)
 {
 	struct kgsl_cmdbatch_sync_event *event, *tmp;
-	int canceled = 0;
 
 	spin_lock(&cmdbatch->lock);
 
 	/* Delete any pending sync points for this command batch */
 	list_for_each_entry_safe(event, tmp, &cmdbatch->synclist, node) {
 
-		switch (event->type) {
-		case KGSL_CMD_SYNCPOINT_TYPE_TIMESTAMP: {
+		if (event->type == KGSL_CMD_SYNCPOINT_TYPE_TIMESTAMP) {
 			/* Cancel the event if it still exists */
-			mutex_lock(&cmdbatch->device->mutex);
 			kgsl_cancel_event(cmdbatch->device, event->context,
 				event->timestamp, kgsl_cmdbatch_sync_func,
 				event);
-			canceled = 1;
-			mutex_unlock(&cmdbatch->device->mutex);
-			kgsl_context_put(event->context);
-			break;
-		}
-		case KGSL_CMD_SYNCPOINT_TYPE_FENCE:
-			canceled = kgsl_sync_fence_async_cancel(event->handle);
-			break;
-		default:
-			break;
-		}
-
-		if(canceled) {
-			list_del(&event->node);
-			kfree(event);
-
-			/*
-			 * Put back a instance of the cmdbatch for each pending event
-			 * that we canceled
-			 */
-
-			kgsl_cmdbatch_put(cmdbatch);
+		} else if (event->type == KGSL_CMD_SYNCPOINT_TYPE_FENCE) {
+			if (kgsl_sync_fence_async_cancel(event->handle)) {
+				list_del(&event->node);
+				kfree(event);
+				kgsl_cmdbatch_put(cmdbatch);
+			}
 		}
 	}
-	spin_unlock(&cmdbatch->lock);
 
+	spin_unlock(&cmdbatch->lock);
 	kgsl_cmdbatch_put(cmdbatch);
 }
 EXPORT_SYMBOL(kgsl_cmdbatch_destroy);
 
+/*
+ * A callback that gets registered with kgsl_sync_fence_async_wait and is fired
+ * when a fence is expired
+ */
 static void kgsl_cmdbatch_sync_fence_func(void *priv)
 {
 	struct kgsl_cmdbatch_sync_event *event = priv;
