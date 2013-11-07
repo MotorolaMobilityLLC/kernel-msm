@@ -2274,6 +2274,7 @@ static int ctrl_cmd_tag(const char *input)
 	tag_t acct_tag = make_atag_from_value(0);
 	tag_t full_tag;
 	struct socket *el_socket;
+	struct sock *el_sk;
 	int res, argc;
 	struct sock_tag *sock_tag_entry;
 	struct tag_ref *tag_ref_entry;
@@ -2297,6 +2298,10 @@ static int ctrl_cmd_tag(const char *input)
 			current_fsuid());
 		goto err;
 	}
+
+	el_sk = el_socket->sk;
+	lock_sock(el_sk);
+
 	CT_DEBUG("qtaguid: ctrl_tag(%s): socket->...->f_count=%ld ->sk=%p\n",
 		 input, atomic_long_read(&el_socket->file->f_count),
 		 el_socket->sk);
@@ -2401,6 +2406,8 @@ static int ctrl_cmd_tag(const char *input)
 	CT_DEBUG("qtaguid: ctrl_tag(%s): done st@%p ...->f_count=%ld\n",
 		 input, sock_tag_entry,
 		 atomic_long_read(&el_socket->file->f_count));
+
+	release_sock(el_sk);
 	return 0;
 
 err_tag_unref_put:
@@ -2411,6 +2418,7 @@ err_put:
 	CT_DEBUG("qtaguid: ctrl_tag(%s): done. ...->f_count=%ld\n",
 		 input, atomic_long_read(&el_socket->file->f_count) - 1);
 	/* Release the sock_fd that was grabbed by sockfd_lookup(). */
+	release_sock(el_sk);
 	sockfd_put(el_socket);
 	return res;
 
