@@ -589,13 +589,6 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 		goto out;
 	} else if (!ret) {
 		dev_dbg(arizona->dev, "Ignoring HPDET for removed cable\n");
-
-		/* Reset back to starting range */
-		regmap_update_bits(arizona->regmap,
-				   ARIZONA_HEADPHONE_DETECT_1,
-				   ARIZONA_HP_IMPEDANCE_RANGE_MASK | ARIZONA_HP_POLL,
-				   0);
-
 		goto done;
 	}
 
@@ -632,6 +625,12 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 			ret);
 
 done:
+	/* Reset back to starting range */
+	regmap_update_bits(arizona->regmap,
+			   ARIZONA_HEADPHONE_DETECT_1,
+			   ARIZONA_HP_IMPEDANCE_RANGE_MASK | ARIZONA_HP_POLL,
+			   0);
+
 	arizona_extcon_do_magic(info, 0);
 
 	if (id_gpio)
