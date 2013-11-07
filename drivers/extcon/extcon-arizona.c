@@ -808,6 +808,19 @@ static void arizona_micd_detect(struct work_struct *work)
 
 	mutex_lock(&info->lock);
 
+	/* If the cable was removed while measuring ignore the result */
+	ret = extcon_get_cable_state_(&info->edev, ARIZONA_CABLE_MECHANICAL);
+	if (ret < 0) {
+		dev_err(arizona->dev, "Failed to check cable state: %d\n",
+				ret);
+		mutex_unlock(&info->lock);
+		return;
+	} else if (!ret) {
+		dev_dbg(arizona->dev, "Ignoring MICDET for removed cable\n");
+		mutex_unlock(&info->lock);
+		return;
+	}
+
 	if (info->detecting && arizona->pdata.micd_software_compare) {
 		/* Must disable MICD before we read the ADCVAL */
 		regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
