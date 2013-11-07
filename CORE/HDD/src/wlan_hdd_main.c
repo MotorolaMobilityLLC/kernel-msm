@@ -1730,7 +1730,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            ret = (int)sme_ChangeCountryCode(pHddCtx->hHal,
                   (void *)(tSmeChangeCountryCallback)
                     wlan_hdd_change_country_code_callback,
-                     country_code, pAdapter, pHddCtx->pvosContext, eSIR_TRUE);
+                     country_code, pAdapter, pHddCtx->pvosContext, eSIR_TRUE, eSIR_TRUE);
            if (eHAL_STATUS_SUCCESS == ret)
            {
                ret = wait_for_completion_interruptible_timeout(
@@ -8018,7 +8018,7 @@ int hdd_wlan_startup(struct device *dev )
       ret = sme_ChangeCountryCode(pHddCtx->hHal, NULL,
                                   country_code,
                                   pAdapter, pHddCtx->pvosContext,
-                                  eSIR_TRUE);
+                                  eSIR_TRUE, eSIR_TRUE);
       if (eHAL_STATUS_SUCCESS == ret)
       {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
@@ -8178,7 +8178,13 @@ int hdd_wlan_startup(struct device *dev )
 
    vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    hdd_allow_suspend();
-
+#ifndef CONFIG_ENABLE_LINUX_REG
+   /*updating wiphy so that regulatory user hints can be processed*/
+   if (wiphy)
+   {
+       regulatory_hint(wiphy, "00");
+   }
+#endif
    // Initialize the restart logic
    wlan_hdd_restart_init(pHddCtx);
 

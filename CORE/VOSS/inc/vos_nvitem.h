@@ -700,10 +700,12 @@ VOS_STATUS vos_nv_get_dictionary_data(void);
   \brief vos_nv_setRegDomain -
   \param clientCtxt  - Client Context, Not used for PRIMA
               regId  - Regulatory Domain ID
+              sendRegHint - send hint to cfg80211
   \return status set REG domain operation
   \sa
   -------------------------------------------------------------------------*/
-VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId);
+VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
+                                                  v_BOOL_t sendRegHint);
 
 /**------------------------------------------------------------------------
   \brief vos_nv_getChannelEnabledState -

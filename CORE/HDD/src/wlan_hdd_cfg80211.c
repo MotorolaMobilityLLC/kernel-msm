@@ -2811,7 +2811,8 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                                       wlan_hdd_change_country_code_cb,
                                       pConfig->apCntryCode, pAdapter,
                                       pHddCtx->pvosContext,
-                                      VOS_FALSE);
+                                      eSIR_FALSE,
+                                      eSIR_TRUE);
                     if (eHAL_STATUS_SUCCESS == status)
                     {
                         /* Wait for completion */

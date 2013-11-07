@@ -13212,9 +13212,10 @@ void WDA_ProcessTxCompleteTimeOutInd(tWDA_CbContext* pWDA)
 /*
  * WDA Set REG Domain to VOS NV
  */
-eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId)
+eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId,
+                                                tAniBool sendRegHint)
 {
-   if(VOS_STATUS_SUCCESS != vos_nv_setRegDomain(clientCtxt, regId))
+   if(VOS_STATUS_SUCCESS != vos_nv_setRegDomain(clientCtxt, regId, sendRegHint))
    {
       return eHAL_STATUS_INVALID_PARAMETER;
    }
