@@ -103,7 +103,7 @@ PBCMSDH_SDMMC_INSTANCE gInstance;
 extern int bcmsdh_probe(struct device *dev);
 extern int bcmsdh_remove(struct device *dev);
 extern volatile bool dhd_mmc_suspend;
-
+extern bool bsuspend;
 static int bcmsdh_sdmmc_probe(struct sdio_func *func,
                               const struct sdio_device_id *id)
 {
@@ -219,6 +219,7 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	bcmsdh_oob_intr_set(0);
 #endif 
 	dhd_mmc_suspend = TRUE;
+	bsuspend = TRUE;
 	smp_mb();
 
 	return 0;

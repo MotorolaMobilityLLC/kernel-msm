@@ -19,7 +19,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER               \
 	-DESCAN_RESULT_PATCH -DSDIO_CRC_ERROR_FIX \
 	-DDHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT -DRXFRAME_THREAD	        \
 	-DSUPPORT_PM2_ONLY -DWLTDLS     \
-	-DMIRACAST_AMPDU_SIZE=8		\
+	-DMIRACAST_AMPDU_SIZE=8 -DDHD_RX_DUMP	\
 	-Idrivers/net/wireless/bcmdhd	-Idrivers/net/wireless/bcmdhd/include   \
 	-Idrivers/net/wireless/bcmdhd/common/include
 
