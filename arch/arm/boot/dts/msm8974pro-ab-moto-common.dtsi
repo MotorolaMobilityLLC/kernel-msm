@@ -952,10 +952,10 @@
 		compatible = "stm,stm401";
 		status = "disabled";
 		reg = <0x39>;
-		gpios = <&msmgpio 14 0>,        /* IRQ */
+		gpios = <&msmgpio 95 0>,        /* IRQ */
 			<&msmgpio 145 0>,       /* RESET */
 			<&msmgpio 33 0>,        /* BSLEN */
-			<&msmgpio 95 0>;        /* WakeIRQ */
+			<&msmgpio 20 0>;        /* WakeIRQ */
 		lux_table = <5 50 100 1500 3000 8000>;
 		brightness_table = <9 14 18 46 67 93 140>;
 		bslen_pin_active_value = <1>;
