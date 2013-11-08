@@ -116,7 +116,7 @@
 		gpio = <&msmgpio 5 0x0>;
 		startup-delay-us = <300>;
 		enable-active-high;
-		regulator-always-on;
+		regulator-boot-on;
 	};
 
 	vddio_disp_vreg: vddio_disp_vreg {
@@ -126,6 +126,7 @@
 		parent-supply = <&pm8110_l14>;
 		startup-delay-us = <300>;
 		enable-active-high;
+		regulator-boot-on;
 	};
 
 	sound {
@@ -670,4 +671,8 @@
 	lcd_vci-supply = <&lcd_vci_vreg>;
 	/delete-property/ vdd-supply;
 	/delete-node/ qcom,platform-supply-entry1;
+};
+
+&mot_tianma_qhd {
+	qcom,cont-splash-enabled;
 };
