@@ -648,10 +648,11 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
                     hddLog (VOS_TRACE_LEVEL_INFO,
                     "configuredMcastBcastFilter: %d",pHddCtx->configuredMcastBcastFilter);
 
-                    if((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST ==
-                              pHddCtx->configuredMcastBcastFilter) ||
-                        (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
-                        pHddCtx->configuredMcastBcastFilter))
+                    if ((VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid)
+                       && ((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST ==
+                          pHddCtx->sus_res_mcastbcast_filter) ||
+                          (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
+                          pHddCtx->sus_res_mcastbcast_filter)))
                     {
                         hddLog (VOS_TRACE_LEVEL_INFO,
                         "Set offLoadRequest with SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE \n", __func__);
