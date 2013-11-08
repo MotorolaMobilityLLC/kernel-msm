@@ -83,6 +83,7 @@ enum qpnp_leds {
 	QPNP_ID_LED_MPP,
 	QPNP_ID_KPDBL,
 	QPNP_ID_ATC,
+	QPNP_ID_COMBO,
 	QPNP_ID_MAX,
 };
 
@@ -179,16 +180,20 @@ struct qpnp_led_data {
 
 #define BLINK_LEDS_ARRAY_SIZE 3
 
+#define WHITE_LED_MASK	0xFF0000
+#define RED_LED_MASK	0xFF0000
+#define GREEN_LED_MASK	0x00FF00
+#define BLUE_LED_MASK	0x0000FF
+
 /**
  *  blink_led_data - blink configuration data
  */
 
 struct blink_led_data {
 	struct qpnp_led_data  *led;
+	unsigned	mask;
 };
 
-static int qpnp_mpp_set(struct qpnp_led_data *);
-static int qpnp_rgb_set(struct qpnp_led_data *);
 static int qpnp_led_masked_write(struct qpnp_led_data *, u16, u8, u8);
 
 static int flags = QPNP_LED_PWM_FLAGS;
@@ -201,6 +206,7 @@ static int num_idx = ARRAY_SIZE(duty_pcts_ramp);
 static int blinking_leds;
 static int ramp_up, ramp_down;
 static int delay_on, delay_off;
+static unsigned rgb;
 static struct blink_led_data blink_array[BLINK_LEDS_ARRAY_SIZE];
 static int blink_cnt;
 
@@ -232,9 +238,14 @@ static void qpnp_blink_enable_leds(void)
 		if (ret < 0)
 			dev_err(&led->spmi_dev->dev,
 				"%s lut config err (%d)\n", __func__, ret);
-		ret = qpnp_led_masked_write(led,
-			LED_MPP_EN_CTRL(led->base), LED_MPP_EN_MASK,
-			LED_MPP_EN_ENABLE);
+		if (led->id == QPNP_ID_LED_MPP)
+			ret = qpnp_led_masked_write(led,
+				LED_MPP_EN_CTRL(led->base), LED_MPP_EN_MASK,
+				LED_MPP_EN_ENABLE);
+		else
+			ret = qpnp_led_masked_write(led,
+				RGB_LED_EN_CTL(led->base),
+				led->rgb_cfg->enable, led->rgb_cfg->enable);
 		if (ret)
 			dev_err(&led->spmi_dev->dev,
 				"%s Enable led error (%d)\n", __func__, ret);
@@ -302,8 +313,6 @@ static int qpnp_blink_set(unsigned on)
 	struct pwm_config_data *pwm;
 	struct qpnp_led_data *led;
 
-	blinking_leds = 0;
-
 	if (!on) {
 		pr_debug("%s: Turning blinking off\n", __func__);
 		for (i = 0; i < blink_cnt; i++) {
@@ -315,10 +324,16 @@ static int qpnp_blink_set(unsigned on)
 				dev_err(&led->spmi_dev->dev,
 					"Change to PWM err (%d)\n", ret);
 			pwm->blinking = 0;
+			blinking_leds--;
 			if (led->id == QPNP_ID_LED_MPP)
-				ret = qpnp_mpp_set(led);
+				ret = qpnp_led_masked_write(led,
+					LED_MPP_EN_CTRL(led->base),
+					LED_MPP_EN_MASK,
+					LED_MPP_EN_DISABLE);
 			else
-				ret = qpnp_rgb_set(led);
+				ret = qpnp_led_masked_write(led,
+					RGB_LED_EN_CTL(led->base),
+					led->rgb_cfg->enable, RGB_LED_DISABLE);
 			if (ret < 0)
 				dev_err(&led->spmi_dev->dev,
 					"MPP set failed (%d)\n", ret);
@@ -424,63 +439,83 @@ static int qpnp_blink_set(unsigned on)
 	return ret;
 }
 
-static ssize_t qpnp_blink_store(struct device *dev,
-			struct device_attribute *attr,
-			const char *buf, size_t count)
+static ssize_t combo_show_control(struct device *dev,
+			    struct device_attribute *attr,
+			    char *buf)
 {
-	unsigned long tab[] = {0, 0, 0, 0};
-	char *ptr = (char *)buf, *tokn;
-	int i;
-	unsigned long val;
 
-	/* Parse 4 space separated parameters */
-	for (i = 0; i < ARRAY_SIZE(tab); i++) {
-		tokn = strsep(&ptr, " ,	");
-		if (tokn) {
-			if (kstrtoul(tokn, 10, &val))
-				pr_err("%s invalid token %d\n", __func__, i);
-			else
-				tab[i] = val;
-		}
+	return scnprintf(buf, PAGE_SIZE,
+		"RGB=%#x, on/off=%d/%d ms, ramp=%d/%d\n",
+		rgb, delay_on, delay_off,
+		ramp_up, ramp_down);
+}
+
+static ssize_t combo_store_control(struct device *dev,
+			     struct device_attribute *attr,
+			     const char *buf, size_t len)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct qpnp_led_data *led =
+		container_of(led_cdev, struct qpnp_led_data, cdev);
+	int i;
+
+	if (len == 0)
+		return 0;
+
+	spin_lock(&led->lock);
+	/* Clear pulse parameters in case of incomplete input */
+	rgb = 0;
+	delay_on = 0;
+	delay_off = 0;
+	ramp_up = 0;
+	ramp_down = 0;
+
+	sscanf(buf, "%x %u %u %u %u", &rgb, &delay_on, &delay_off,
+		&ramp_up, &ramp_down);
+	pr_debug("0x%X, on/off=%u/%u ms, ramp=%u%%/%u%%\n",
+		rgb, delay_on, delay_off, ramp_up, ramp_down);
+
+	/* Set to always ramping until non ramping mode is fixed */
+
+	ramp_up = 1;
+	ramp_down = 1;
+
+	/* LED that is off is not blinking */
+	if (rgb == 0) {
+		delay_on = 0;
+		delay_off = 0;
 	}
 
-	pr_debug("%s: on/off=%d/%d, rup=%d, rdown=%d\n", __func__,
-		(unsigned)tab[0], (unsigned)tab[1],
-		(unsigned)tab[2], (unsigned)tab[3]);
+	/* If delay_on is not 0 but delay_off is 0 we won't blink */
+	if (delay_off == 0)
+		delay_on = 0;
 
-	delay_on = tab[0];
-	delay_off = tab[1];
-	ramp_up = tab[2];
-	ramp_down = tab[3];
+	for (i = 0; i < blink_cnt; i++) {
+		blink_array[i].led->cdev.brightness =
+			(rgb & blink_array[i].mask) >> (16 - i*8);
+	}
 
 	/* If we are already blinking - reset the pwm */
-	if (tab[0] && tab[1] && blinking_leds)
+	if (delay_on && delay_off && blinking_leds)
 		qpnp_blink_set(0);
-	qpnp_blink_set(tab[0] && tab[1]);
-	return count;
+	qpnp_blink_set(delay_on && delay_off);
+
+	spin_unlock(&led->lock);
+
+	return len;
 }
 
-static ssize_t qpnp_blink_show(struct device *dev,
-			struct device_attribute *attr,
-			char *buf)
-{
-	snprintf(buf, 100,
-		"on/off=%d/%d ms, rup/rdown=%d/%d, blinking=%d\n",
-		delay_on, delay_off, ramp_up, ramp_down,
-		blinking_leds);
+/* LED class device attributes */
+static DEVICE_ATTR(control, S_IRUGO | S_IWUSR,
+	combo_show_control, combo_store_control);
 
-	return strnlen(buf, 100);
-}
-
-static DEVICE_ATTR(blink, 0664, qpnp_blink_show, qpnp_blink_store);
-
-static struct attribute *mpp_attributes[] = {
-	&dev_attr_blink.attr,
-	NULL
+static struct attribute *combo_led_attributes[] = {
+	&dev_attr_control.attr,
+	NULL,
 };
 
-static const struct attribute_group mpp_attr_group = {
-	.attrs = mpp_attributes,
+static struct attribute_group combo_attribute_group = {
+	.attrs = combo_led_attributes
 };
 
 static int
@@ -530,11 +565,6 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 	int duty_us;
 
 	if (led->cdev.brightness) {
-		if (blinking_leds) {
-			/* if blinking already in use add this new color too */
-			qpnp_blink_set(1);
-			return 0;
-		}
 
 		if (led->mpp_cfg->pwm_mode == PWM_MODE) {
 			pwm_disable(led->mpp_cfg->pwm_cfg->pwm_dev);
@@ -571,13 +601,8 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 
 		if (led->mpp_cfg->pwm_mode != MANUAL_MODE) {
 			pwm_disable(led->mpp_cfg->pwm_cfg->pwm_dev);
-			/* disable blink switch back to PWM mode */
-			if (led->mpp_cfg->pwm_cfg->blinking) {
-				pwm_change_mode(led->mpp_cfg->pwm_cfg->pwm_dev,
-					PWM_MODE);
-				led->mpp_cfg->pwm_cfg->blinking = 0;
-				blinking_leds--;
-			}
+			pwm_change_mode(led->mpp_cfg->pwm_cfg->pwm_dev,
+				PWM_MODE);
 		}
 
 		rc = qpnp_led_masked_write(led,
@@ -629,13 +654,8 @@ static int qpnp_rgb_set(struct qpnp_led_data *led)
 		}
 	} else {
 		pwm_disable(led->rgb_cfg->pwm_cfg->pwm_dev);
-		/* disable blink switch back to PWM mode */
-		if (led->rgb_cfg->pwm_cfg->blinking) {
-			pwm_change_mode(led->rgb_cfg->pwm_cfg->pwm_dev,
-				PWM_MODE);
-			led->rgb_cfg->pwm_cfg->blinking = 0;
-			blinking_leds--;
-		}
+		pwm_change_mode(led->rgb_cfg->pwm_cfg->pwm_dev,
+			PWM_MODE);
 
 		rc = qpnp_led_masked_write(led,
 			RGB_LED_EN_CTL(led->base),
@@ -682,8 +702,11 @@ static void qpnp_led_set(struct led_classdev *led_cdev,
 			dev_err(&led->spmi_dev->dev,
 					"MPP set brightness failed (%d)\n", rc);
 		break;
+	case QPNP_ID_COMBO:
+		break;
 	default:
-		dev_err(&led->spmi_dev->dev, "Invalid LED(%d)\n", led->id);
+		dev_err(&led->spmi_dev->dev, "%s Invalid LED(%d)\n",
+			__func__, led->id);
 		break;
 	}
 	spin_unlock(&led->lock);
@@ -700,8 +723,11 @@ static int qpnp_led_set_max_brightness(struct qpnp_led_data *led)
 	case QPNP_ID_LED_MPP:
 		led->cdev.max_brightness = MPP_MAX_LEVEL;
 		break;
+	case QPNP_ID_COMBO:
+		break;
 	default:
-		dev_err(&led->spmi_dev->dev, "Invalid LED(%d)\n", led->id);
+		dev_err(&led->spmi_dev->dev, "%s Invalid LED(%d)\n",
+			__func__, led->id);
 		return -EINVAL;
 	}
 
@@ -878,8 +904,11 @@ static int qpnp_led_initialize(struct qpnp_led_data *led)
 			dev_err(&led->spmi_dev->dev,
 				"MPP initialize failed(%d)\n", rc);
 		break;
+	case QPNP_ID_COMBO:
+		break;
 	default:
-		dev_err(&led->spmi_dev->dev, "Invalid LED(%d)\n", led->id);
+		dev_err(&led->spmi_dev->dev, "%s Invalid LED(%d)\n",
+			__func__, led->id);
 		return -EINVAL;
 	}
 
@@ -975,8 +1004,35 @@ static int qpnp_led_get_mode(const char *mode)
 		return -EINVAL;
 };
 
+static int qpnp_led_arrange(const char *label, struct qpnp_led_data *led)
+{
+	if (blink_cnt < BLINK_LEDS_ARRAY_SIZE) {
+		if (strncmp(label, "white", strlen(label)) == 0) {
+			blink_array[0].led = led;
+			blink_array[0].mask = WHITE_LED_MASK;
+		} else if (strncmp(label, "red", strlen(label)) == 0) {
+			blink_array[0].led = led;
+			blink_array[0].mask = RED_LED_MASK;
+		} else if (strncmp(label, "green", strlen(label)) == 0) {
+			blink_array[1].led = led;
+			blink_array[1].mask = GREEN_LED_MASK;
+		} else if (strncmp(label, "blue", strlen(label)) == 0) {
+			blink_array[2].led = led;
+			blink_array[2].mask = BLUE_LED_MASK;
+		} else {
+			pr_err("%s Unexpected label %s\n", __func__, label);
+			return -EINVAL;
+		}
+	} else {
+		dev_err(&led->spmi_dev->dev, "Too many blink leds\n");
+			return -EINVAL;
+	}
+	blink_cnt++;
+	return 0;
+};
+
 static int qpnp_get_config_rgb(struct qpnp_led_data *led,
-				struct device_node *node)
+		struct device_node *node)
 {
 	int rc;
 	u8 led_mode;
@@ -1098,7 +1154,6 @@ static int qpnp_leds_rgb_probe(struct spmi_device *spmi)
 	struct device_node *node, *temp;
 	int rc, i, num_leds = 0, parsed_leds = 0;
 	const char *led_label;
-	int blink;
 
 	node = spmi->dev.of_node;
 	if (node == NULL)
@@ -1186,7 +1241,7 @@ static int qpnp_leds_rgb_probe(struct spmi_device *spmi)
 						"Unable to read mpp config data\n");
 				goto fail_id_check;
 			}
-		} else if (strncmp(led_label, "atc", sizeof("atc")) == 0) {
+		} else if (strncmp(led_label, "combo", sizeof("combo")) == 0) {
 			/* Do nothing. Needed to have valid id check */
 		} else {
 			dev_err(&led->spmi_dev->dev, "No LED matching label\n");
@@ -1211,25 +1266,20 @@ static int qpnp_leds_rgb_probe(struct spmi_device *spmi)
 			goto fail_id_check;
 		}
 
-		/* this led will be controlled by blink interface */
-		if (blink_cnt < BLINK_LEDS_ARRAY_SIZE) {
-			blink_array[blink_cnt].led = led;
-		} else {
-			dev_err(&led->spmi_dev->dev, "Too many blink leds\n");
-				goto fail_id_check;
-		}
-		blink_cnt++;
+		if (QPNP_ID_COMBO == led->id) {
 
-		rc = of_property_read_u32(temp, "qcom,blink-en", &blink);
-		if (!rc) {
-			/* this led will have blink interface in sysfs */
 			rc = sysfs_create_group(&led->cdev.dev->kobj,
-				&mpp_attr_group);
-			if (rc) {
-				dev_err(&led->spmi_dev->dev,
-					"Error %d creating attributes\n", rc);
+				&combo_attribute_group);
+			if (rc < 0) {
+				pr_err("couldn't register attribute sysfs group\n");
 				goto fail_id_check;
 			}
+
+		} else {
+			/* Because of the RGB mask now we care about
+				place of a LED in the array */
+			if (qpnp_led_arrange(led->cdev.name, led))
+				goto fail_id_check;
 		}
 
 		/* configure default state */
