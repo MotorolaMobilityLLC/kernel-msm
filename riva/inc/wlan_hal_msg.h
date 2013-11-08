@@ -425,6 +425,8 @@ typedef enum
    WLAN_HAL_GET_IBSS_PEER_INFO_REQ          = 227,
    WLAN_HAL_GET_IBSS_PEER_INFO_RSP          = 228,
 
+   WLAN_HAL_RATE_UPDATE_IND                 = 229,
+
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -2559,8 +2561,13 @@ typedef enum eTxRateInfo
    eHAL_TX_RATE_HT20   = 0x2,    /* HT20 rates */
    eHAL_TX_RATE_HT40   = 0x4,    /* HT40 rates */
    eHAL_TX_RATE_SGI    = 0x8,    /* Rate with Short guard interval */
-   eHAL_TX_RATE_LGI    = 0x10    /* Rate with Long guard interval */
-} tTxrateinfoflags;
+   eHAL_TX_RATE_LGI    = 0x10,   /* Rate with Long guard interval */
+   eHAL_TX_RATE_VHT20  = 0x20,   /* VHT 20 rates */
+   eHAL_TX_RATE_VHT40  = 0x40,   /* VHT 20 rates */
+   eHAL_TX_RATE_VHT80  = 0x80,   /* VHT 20 rates */
+   eHAL_TX_RATE_VIRT   = 0x100,  /* Virtual Rate */
+   eHAL_TX_RATE_MAX    = WLAN_HAL_MAX_ENUM_SIZE
+} tTxrateinfoflags, tTxRateInfoFlags;
 
 
 typedef PACKED_PRE struct PACKED_POST
@@ -6849,6 +6856,47 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader header;
    tWlanIpForwardTableUpdateIndParam ipForwardTableParams;
 } tWlanIpForwardTableUpdateInd;
+
+/*---------------------------------------------------------------------------
+ WLAN_HAL_RATE_UPDATE_IND
+ *-------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    /* 0 implies UCAST RA, positive value implies fixed rate, -1 implies ignore this param */
+    tANI_S32 ucastDataRate; //unit Mbpsx10
+
+    /* TX flag to differentiate between HT20, HT40 etc */
+    tTxRateInfoFlags ucastDataRateTxFlag;
+
+    /* BSSID - Optional. 00-00-00-00-00-00 implies apply to all BCAST STAs */
+    tSirMacAddr bssid;
+
+    /* 0 implies MCAST RA, positive value implies fixed rate, -1 implies ignore */
+    tANI_S32 reliableMcastDataRate; //unit Mbpsx10
+
+    /* TX flag to differentiate between HT20, HT40 etc */
+    tTxRateInfoFlags reliableMcastDataRateTxFlag;
+
+    /* Default (non-reliable) MCAST(or BCAST)  fixed rate in 2.4 GHz, 0 implies ignore */
+    tANI_U32 mcastDataRate24GHz; //unit Mbpsx10
+
+    /* TX flag to differentiate between HT20, HT40 etc */
+    tTxRateInfoFlags mcastDataRate24GHzTxFlag;
+
+    /*  Default (non-reliable) MCAST(or BCAST) fixed rate in 5 GHz, 0 implies ignore */
+    tANI_U32 mcastDataRate5GHz; //unit Mbpsx10
+
+    /* TX flag to differentiate between HT20, HT40 etc */
+    tTxRateInfoFlags mcastDataRate5GHzTxFlag;
+
+} tHalRateUpdateParams, *tpHalRateUpdateParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tHalRateUpdateParams halRateUpdateParams;
+}  tHalRateUpdateInd, * tpHalRateUpdateInd;
 
 /*---------------------------------------------------------------------------
  *-------------------------------------------------------------------------*/
