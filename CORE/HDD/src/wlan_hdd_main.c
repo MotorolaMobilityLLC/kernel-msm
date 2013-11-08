@@ -1310,6 +1310,7 @@ tANI_U32 hdd_populate_user_batch_scan_rsp
          len = hdd_format_batch_scan_rsp(pDest, cur_len, rem_len, pHead,
                    pAdapter);
          pDest += len;
+         pDest--;
          cur_len += len;
          if(TRUE == pAdapter->isTruncated)
          {
@@ -3268,6 +3269,8 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        }
        else if (strncmp(command, "WLS_BATCHING GET", 16) == 0)
        {
+          tANI_U32 remain_len;
+
           if (FALSE == sme_IsFeatureSupportedByFW(BATCH_SCAN))
           {
               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -3289,6 +3292,21 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
           }
 
           priv_data.used_len = 16;
+          remain_len = priv_data.total_len - priv_data.used_len;
+          if (remain_len < priv_data.total_len)
+          {
+              /*Clear previous batch scan response data if any*/
+              vos_mem_zero((tANI_U8 *)(command + priv_data.used_len), remain_len);
+          }
+          else
+          {
+              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "Invalid total length from user space can't fetch batch"
+                " scan response total_len %ld used_len %ld remain len %ld",
+                priv_data.total_len, priv_data.used_len, remain_len);
+              ret = -EINVAL;
+              goto exit;
+          }
           ret = hdd_return_batch_scan_rsp_to_user(pAdapter, &priv_data, command);
        }
 #endif
