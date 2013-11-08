@@ -110,9 +110,9 @@
 		};
 	};
 
-	vsp_disp_vreg: vsp_disp_vreg {
+	lcd_vci_vreg: lcd_vci_vreg {
 		compatible = "regulator-fixed";
-		regulator-name = "vsp_disp";
+		regulator-name = "lcd_vci";
 		gpio = <&msmgpio 5 0x0>;
 		startup-delay-us = <300>;
 		enable-active-high;
@@ -126,7 +126,6 @@
 		parent-supply = <&pm8110_l14>;
 		startup-delay-us = <300>;
 		enable-active-high;
-		regulator-always-on;
 	};
 
 	sound {
@@ -667,4 +666,8 @@
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_tianma_qhd>;
+	vddio_disp-supply = <&vddio_disp_vreg>;
+	lcd_vci-supply = <&lcd_vci_vreg>;
+	/delete-property/ vdd-supply;
+	/delete-node/ qcom,platform-supply-entry1;
 };
