@@ -283,7 +283,6 @@
 			};
 
 			qcom,rgb_1 {
-				qcom,blink-en = <1>;
 				/delete-property/ qcom,default-state;
 				/delete-property/ linux,default-trigger;
 			};
@@ -291,6 +290,14 @@
 			qcom,rgb_2 {
 				status = "ok";
 			};
+
+			qcom,rgb_3 {
+				label = "combo";
+				linux,name = "rgb";
+				qcom,max-current = <12>;
+				qcom,id = <9>;
+			};
+
 		};
 
 		qcom,leds@d800 {
