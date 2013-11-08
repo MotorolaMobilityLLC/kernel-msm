@@ -1302,8 +1302,7 @@ get_eCsrRoamResult_str(eCsrRoamResult val)
 
 tANI_BOOLEAN csrGetBssIdBssDesc( tHalHandle hHal, tSirBssDescription *pSirBssDesc, tCsrBssid *pBssId )
 {
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    palCopyMemory( pMac->hHdd, pBssId, &pSirBssDesc->bssId[ 0 ], sizeof(tCsrBssid) );
+    vos_mem_copy(pBssId, &pSirBssDesc->bssId[ 0 ], sizeof(tCsrBssid));
     return( TRUE );
 }
 
@@ -1870,19 +1869,19 @@ tANI_BOOLEAN csrIsSsidEqual( tHalHandle hHal, tSirBssDescription *pSirBssDesc1,
         }
         if( ( !pIes1->SSID.present ) || ( !pIesLocal->SSID.present ) ) break;
         if ( pIes1->SSID.num_ssid != pIesLocal->SSID.num_ssid ) break;
-        palCopyMemory(pMac->hHdd, Ssid1.ssId, pIes1->SSID.ssid, pIes1->SSID.num_ssid);
-        palCopyMemory(pMac->hHdd, Ssid2.ssId, pIesLocal->SSID.ssid, pIesLocal->SSID.num_ssid);
+        vos_mem_copy(Ssid1.ssId, pIes1->SSID.ssid, pIes1->SSID.num_ssid);
+        vos_mem_copy(Ssid2.ssId, pIesLocal->SSID.ssid, pIesLocal->SSID.num_ssid);
 
-        fEqual = palEqualMemory(pMac->hHdd, Ssid1.ssId, Ssid2.ssId, pIesLocal->SSID.num_ssid );
+        fEqual = vos_mem_compare(Ssid1.ssId, Ssid2.ssId, pIesLocal->SSID.num_ssid);
 
     } while( 0 );
     if(pIes1)
     {
-        palFreeMemory(pMac->hHdd, pIes1);
+        vos_mem_free(pIes1);
     }
     if( pIesLocal && !pIes2 )
     {
-        palFreeMemory(pMac->hHdd, pIesLocal);
+        vos_mem_free(pIesLocal);
     }
 
     return( fEqual );
@@ -1938,7 +1937,7 @@ tANI_BOOLEAN csrIsBssDescriptionWme( tHalHandle hHal, tSirBssDescription *pSirBs
     if( ( pIes == NULL ) && ( NULL != pIesTemp ) )
     {
         //we allocate memory here so free it before returning
-        palFreeMemory(pMac->hHdd, pIesTemp);
+        vos_mem_free(pIesTemp);
     }
 
     return( fWme );
@@ -2032,14 +2031,14 @@ eHalStatus csrGetParsedBssDescriptionIEs(tHalHandle hHal, tSirBssDescription *pB
 
     if(pBssDesc && ppIEStruct)
     {
-        status = palAllocateMemory(pMac->hHdd, (void **)ppIEStruct, sizeof(tDot11fBeaconIEs));
-        if(HAL_STATUS_SUCCESS(status))
+        *ppIEStruct = vos_mem_malloc(sizeof(tDot11fBeaconIEs));
+        if ( (*ppIEStruct) != NULL)
         {
-            palZeroMemory(pMac->hHdd, (void *)*ppIEStruct, sizeof(tDot11fBeaconIEs));
+            vos_mem_set((void *)*ppIEStruct, sizeof(tDot11fBeaconIEs), 0);
             status = csrParseBssDescriptionIEs(hHal, pBssDesc, *ppIEStruct);
             if(!HAL_STATUS_SUCCESS(status))
             {
-                palFreeMemory(pMac->hHdd, *ppIEStruct);
+                vos_mem_free(*ppIEStruct);
                 *ppIEStruct = NULL;
             }
         }
@@ -2047,7 +2046,8 @@ eHalStatus csrGetParsedBssDescriptionIEs(tHalHandle hHal, tSirBssDescription *pB
         {
             smsLog( pMac, LOGE, FL(" failed to allocate memory") );
             VOS_ASSERT( 0 );
-    }
+            return eHAL_STATUS_FAILURE;
+        }
     }
 
     return (status);
@@ -3208,7 +3208,7 @@ tANI_BOOLEAN csrIsProfileWapi( tCsrRoamProfile *pProfile )
 
 static tANI_BOOLEAN csrIsWapiOuiEqual( tpAniSirGlobal pMac, tANI_U8 *Oui1, tANI_U8 *Oui2 )
 {
-    return( palEqualMemory(pMac->hHdd, Oui1, Oui2, CSR_WAPI_OUI_SIZE ) );
+    return (vos_mem_compare(Oui1, Oui2, CSR_WAPI_OUI_SIZE));
 }
 
 static tANI_BOOLEAN csrIsWapiOuiMatch( tpAniSirGlobal pMac, tANI_U8 AllCyphers[][CSR_WAPI_OUI_SIZE],
@@ -3230,7 +3230,7 @@ static tANI_BOOLEAN csrIsWapiOuiMatch( tpAniSirGlobal pMac, tANI_U8 AllCyphers[]
 
     if ( fYes && Oui )
     {
-        palCopyMemory( pMac->hHdd, Oui, AllCyphers[ idx ], CSR_WAPI_OUI_SIZE );
+        vos_mem_copy(Oui, AllCyphers[ idx ], CSR_WAPI_OUI_SIZE);
     }
 
     return( fYes );
@@ -3239,7 +3239,7 @@ static tANI_BOOLEAN csrIsWapiOuiMatch( tpAniSirGlobal pMac, tANI_U8 AllCyphers[]
 
 static tANI_BOOLEAN csrIsWpaOuiEqual( tpAniSirGlobal pMac, tANI_U8 *Oui1, tANI_U8 *Oui2 )
 {
-    return( palEqualMemory(pMac->hHdd, Oui1, Oui2, CSR_WPA_OUI_SIZE ) );
+    return(vos_mem_compare(Oui1, Oui2, CSR_WPA_OUI_SIZE));
 }
 
 static tANI_BOOLEAN csrIsOuiMatch( tpAniSirGlobal pMac, tANI_U8 AllCyphers[][CSR_WPA_OUI_SIZE],
@@ -3261,7 +3261,7 @@ static tANI_BOOLEAN csrIsOuiMatch( tpAniSirGlobal pMac, tANI_U8 AllCyphers[][CSR
 
     if ( fYes && Oui )
     {
-        palCopyMemory( pMac->hHdd, Oui, AllCyphers[ idx ], CSR_WPA_OUI_SIZE );
+        vos_mem_copy(Oui, AllCyphers[ idx ], CSR_WPA_OUI_SIZE);
     }
 
     return( fYes );
@@ -3579,13 +3579,14 @@ tANI_BOOLEAN csrGetRSNInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eCs
         if ( pRSNIe->present )
         {
             cMulticastCyphers++;
-            palCopyMemory(pMac->hHdd, MulticastCyphers, pRSNIe->gp_cipher_suite, CSR_RSN_OUI_SIZE);
+            vos_mem_copy(MulticastCyphers, pRSNIe->gp_cipher_suite, CSR_RSN_OUI_SIZE);
             cUnicastCyphers = (tANI_U8)(pRSNIe->pwise_cipher_suite_count);
             cAuthSuites = (tANI_U8)(pRSNIe->akm_suite_count);
             for(i = 0; i < cAuthSuites && i < CSR_RSN_MAX_AUTH_SUITES; i++)
             {
-                palCopyMemory(pMac->hHdd, (void *)&AuthSuites[i],
-                        (void *)&pRSNIe->akm_suites[i], CSR_RSN_OUI_SIZE);
+                vos_mem_copy((void *)&AuthSuites[i],
+                             (void *)&pRSNIe->akm_suites[i],
+                             CSR_RSN_OUI_SIZE);
             }
 
             //Check - Is requested Unicast Cipher supported by the BSS.
@@ -3671,17 +3672,17 @@ tANI_BOOLEAN csrGetRSNInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eCs
     {
         if ( MulticastCypher )
         {
-            palCopyMemory( pMac->hHdd, MulticastCypher, Multicast, CSR_RSN_OUI_SIZE );
+            vos_mem_copy(MulticastCypher, Multicast, CSR_RSN_OUI_SIZE);
         }
 
         if ( UnicastCypher )
         {
-            palCopyMemory( pMac->hHdd, UnicastCypher, Unicast, CSR_RSN_OUI_SIZE );
+            vos_mem_copy(UnicastCypher, Unicast, CSR_RSN_OUI_SIZE);
         }
 
         if ( AuthSuite )
         {
-            palCopyMemory( pMac->hHdd, AuthSuite, Authentication, CSR_RSN_OUI_SIZE );
+            vos_mem_copy(AuthSuite, Authentication, CSR_RSN_OUI_SIZE);
         }
 
         if ( pNegotiatedAuthtype )
@@ -3743,7 +3744,7 @@ tANI_BOOLEAN csrLookupPMKID( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U8 *p
         {
             smsLog(pMac, LOGW, "match PMKID %02X-%02X-%02X-%02X-%02X-%02X to ",
                 pBSSId[0], pBSSId[1], pBSSId[2], pBSSId[3], pBSSId[4], pBSSId[5]);
-            if( palEqualMemory( pMac->hHdd, pBSSId, pSession->PmkidCacheInfo[Index].BSSID, sizeof(tCsrBssid) ) )
+            if( vos_mem_compare(pBSSId, pSession->PmkidCacheInfo[Index].BSSID, sizeof(tCsrBssid)) )
             {
                 // match found
                 fMatchFound = TRUE;
@@ -3753,7 +3754,7 @@ tANI_BOOLEAN csrLookupPMKID( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U8 *p
 
         if( !fMatchFound ) break;
 
-        palCopyMemory( pMac->hHdd, pPMKId, pSession->PmkidCacheInfo[Index].PMKID, CSR_RSN_PMKID_SIZE );
+        vos_mem_copy(pPMKId, pSession->PmkidCacheInfo[Index].PMKID, CSR_RSN_PMKID_SIZE);
 
         fRC = TRUE;
     }
@@ -3804,16 +3805,16 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
 
         pRSNIe->Version = CSR_RSN_VERSION_SUPPORTED;
 
-        palCopyMemory( pMac->hHdd, pRSNIe->MulticastOui, MulticastCypher, sizeof( MulticastCypher ) );
+        vos_mem_copy(pRSNIe->MulticastOui, MulticastCypher, sizeof( MulticastCypher ));
 
         pRSNIe->cUnicastCyphers = 1;
 
-        palCopyMemory( pMac->hHdd, &pRSNIe->UnicastOui[ 0 ], UnicastCypher, sizeof( UnicastCypher ) );
+        vos_mem_copy(&pRSNIe->UnicastOui[ 0 ], UnicastCypher, sizeof( UnicastCypher ));
 
         pAuthSuite = (tCsrRSNAuthIe *)( &pRSNIe->UnicastOui[ pRSNIe->cUnicastCyphers ] );
 
         pAuthSuite->cAuthenticationSuites = 1;
-        palCopyMemory( pMac->hHdd, &pAuthSuite->AuthOui[ 0 ], AuthSuite, sizeof( AuthSuite ) );
+        vos_mem_copy(&pAuthSuite->AuthOui[ 0 ], AuthSuite, sizeof( AuthSuite ));
 
         // RSN capabilities follows the Auth Suite (two octects)
         // !!REVIEW - What should STA put in RSN capabilities, currently
@@ -3833,7 +3834,7 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
         {
             pPMK->cPMKIDs = 1;
 
-            palCopyMemory( pMac->hHdd, pPMK->PMKIDList[0].PMKID, PMKId, CSR_RSN_PMKID_SIZE );
+            vos_mem_copy(pPMK->PMKIDList[0].PMKID, PMKId, CSR_RSN_PMKID_SIZE);
         }
         else
         {
@@ -3845,7 +3846,7 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
         {
             pGroupMgmtCipherSuite = (tANI_U8 *) pPMK + sizeof ( tANI_U16 ) +
                 ( pPMK->cPMKIDs * CSR_RSN_PMKID_SIZE );
-            palCopyMemory( pMac->hHdd, pGroupMgmtCipherSuite, csrRSNOui[07], CSR_WPA_OUI_SIZE );
+            vos_mem_copy(pGroupMgmtCipherSuite, csrRSNOui[07], CSR_WPA_OUI_SIZE);
         }
 #endif
 
@@ -3879,7 +3880,7 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
     if( !pIes && pIesLocal )
     {
         //locally allocated
-        palFreeMemory(pMac->hHdd, pIesLocal);
+        vos_mem_free(pIesLocal);
     }
 
     return( cbRSNIe );
@@ -3911,13 +3912,14 @@ tANI_BOOLEAN csrGetWapiInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eC
         if ( pWapiIe->present )
         {
             cMulticastCyphers++;
-            palCopyMemory(pMac->hHdd, MulticastCyphers, pWapiIe->multicast_cipher_suite, CSR_WAPI_OUI_SIZE);
+            vos_mem_copy(MulticastCyphers, pWapiIe->multicast_cipher_suite,
+                         CSR_WAPI_OUI_SIZE);
             cUnicastCyphers = (tANI_U8)(pWapiIe->unicast_cipher_suite_count);
             cAuthSuites = (tANI_U8)(pWapiIe->akm_suite_count);
             for(i = 0; i < cAuthSuites && i < CSR_WAPI_MAX_AUTH_SUITES; i++)
             {
-                palCopyMemory(pMac->hHdd, (void *)&AuthSuites[i],
-                        (void *)&pWapiIe->akm_suites[i], CSR_WAPI_OUI_SIZE);
+                vos_mem_copy((void *)&AuthSuites[i], (void *)&pWapiIe->akm_suites[i],
+                             CSR_WAPI_OUI_SIZE);
             }
 
             //Check - Is requested Unicast Cipher supported by the BSS.
@@ -3977,17 +3979,17 @@ tANI_BOOLEAN csrGetWapiInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eC
     {
         if ( MulticastCypher )
         {
-            palCopyMemory( pMac->hHdd, MulticastCypher, Multicast, CSR_WAPI_OUI_SIZE );
+           vos_mem_copy(MulticastCypher, Multicast, CSR_WAPI_OUI_SIZE);
         }
 
         if ( UnicastCypher )
         {
-            palCopyMemory( pMac->hHdd, UnicastCypher, Unicast, CSR_WAPI_OUI_SIZE );
+            vos_mem_copy(UnicastCypher, Unicast, CSR_WAPI_OUI_SIZE);
         }
 
         if ( AuthSuite )
         {
-            palCopyMemory( pMac->hHdd, AuthSuite, Authentication, CSR_WAPI_OUI_SIZE );
+            vos_mem_copy(AuthSuite, Authentication, CSR_WAPI_OUI_SIZE);
         }
 
         if ( pNegotiatedAuthtype )
@@ -4028,7 +4030,7 @@ tANI_BOOLEAN csrLookupBKID( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U8 *pB
         {
             smsLog(pMac, LOGW, "match BKID %02X-%02X-%02X-%02X-%02X-%02X to ",
                 pBSSId[0], pBSSId[1], pBSSId[2], pBSSId[3], pBSSId[4], pBSSId[5]);
-            if( palEqualMemory( pMac->hHdd, pBSSId, pSession->BkidCacheInfo[Index].BSSID, sizeof(tCsrBssid) ) )
+            if (vos_mem_compare(pBSSId, pSession->BkidCacheInfo[Index].BSSID, sizeof(tCsrBssid) ) )
             {
                 // match found
                 fMatchFound = TRUE;
@@ -4038,7 +4040,7 @@ tANI_BOOLEAN csrLookupBKID( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U8 *pB
 
         if( !fMatchFound ) break;
 
-        palCopyMemory( pMac->hHdd, pBKId, pSession->BkidCacheInfo[Index].BKID, CSR_WAPI_BKID_SIZE );
+        vos_mem_copy(pBKId, pSession->BkidCacheInfo[Index].BKID, CSR_WAPI_BKID_SIZE);
 
         fRC = TRUE;
     }
@@ -4076,23 +4078,23 @@ tANI_U8 csrConstructWapiIe( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamPro
                                             UnicastCypher, MulticastCypher, AuthSuite, NULL, NULL );
         if ( !fWapiMatch ) break;
 
-        palZeroMemory(pMac->hHdd, pWapiIe, sizeof(tCsrWapiIe));
+        vos_mem_set(pWapiIe, sizeof(tCsrWapiIe), 0);
 
         pWapiIe->IeHeader.ElementID = DOT11F_EID_WAPI;
 
         pWapiIe->Version = CSR_WAPI_VERSION_SUPPORTED;
 
         pWapiIe->cAuthenticationSuites = 1;
-        palCopyMemory( pMac->hHdd, &pWapiIe->AuthOui[ 0 ], AuthSuite, sizeof( AuthSuite ) );
+        vos_mem_copy(&pWapiIe->AuthOui[ 0 ], AuthSuite, sizeof( AuthSuite ));
 
         pWapi = (tANI_U8 *) (&pWapiIe->AuthOui[ 1 ]);
 
         *pWapi = (tANI_U16)1; //cUnicastCyphers
         pWapi+=2;
-        palCopyMemory( pMac->hHdd, pWapi, UnicastCypher, sizeof( UnicastCypher ) );
+        vos_mem_copy(pWapi, UnicastCypher, sizeof( UnicastCypher ));
         pWapi += sizeof( UnicastCypher );
 
-        palCopyMemory( pMac->hHdd, pWapi, MulticastCypher, sizeof( MulticastCypher ) );
+        vos_mem_copy(pWapi, MulticastCypher, sizeof( MulticastCypher ));
         pWapi += sizeof( MulticastCypher );
 
 
@@ -4109,7 +4111,7 @@ tANI_U8 csrConstructWapiIe( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamPro
             /* Do we need to change the endianness here */
             *pWapi = (tANI_U16)1; //cBKIDs
             pWapi+=2;
-            palCopyMemory( pMac->hHdd, pWapi, BKId, CSR_WAPI_BKID_SIZE );
+            vos_mem_copy(pWapi, BKId, CSR_WAPI_BKID_SIZE);
         }
         else
         {
@@ -4138,7 +4140,7 @@ tANI_U8 csrConstructWapiIe( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamPro
     if( !pIes && pIesLocal )
     {
         //locally allocated
-        palFreeMemory(pMac->hHdd, pIesLocal);
+        vos_mem_free(pIesLocal);
     }
 
     return( cbWapiIe );
@@ -4169,7 +4171,7 @@ tANI_BOOLEAN csrGetWpaCyphers( tpAniSirGlobal pMac, tCsrAuthList *pAuthType, eCs
         if ( pWpaIe->present )
         {
             cMulticastCyphers = 1;
-            palCopyMemory(pMac->hHdd, MulticastCyphers, pWpaIe->multicast_cipher, CSR_WPA_OUI_SIZE);
+            vos_mem_copy(MulticastCyphers, pWpaIe->multicast_cipher, CSR_WPA_OUI_SIZE);
             cUnicastCyphers = (tANI_U8)(pWpaIe->unicast_cipher_count);
             cAuthSuites = (tANI_U8)(pWpaIe->auth_suite_count);
 
@@ -4234,17 +4236,17 @@ tANI_BOOLEAN csrGetWpaCyphers( tpAniSirGlobal pMac, tCsrAuthList *pAuthType, eCs
     {
         if ( MulticastCypher )
         {
-            palCopyMemory( pMac->hHdd, (tANI_U8 **)MulticastCypher, Multicast, CSR_WPA_OUI_SIZE );
+            vos_mem_copy((tANI_U8 **)MulticastCypher, Multicast, CSR_WPA_OUI_SIZE);
         }
 
         if ( UnicastCypher )
         {
-            palCopyMemory( pMac->hHdd, (tANI_U8 **)UnicastCypher, Unicast, CSR_WPA_OUI_SIZE );
+            vos_mem_copy((tANI_U8 **)UnicastCypher, Unicast, CSR_WPA_OUI_SIZE);
         }
 
         if ( AuthSuite )
         {
-            palCopyMemory( pMac->hHdd, (tANI_U8 **)AuthSuite, Authentication, CSR_WPA_OUI_SIZE );
+            vos_mem_copy((tANI_U8 **)AuthSuite, Authentication, CSR_WPA_OUI_SIZE);
         }
 
         if( pNegotiatedAuthtype )
@@ -4297,20 +4299,20 @@ tANI_U8 csrConstructWpaIe( tHalHandle hHal, tCsrRoamProfile *pProfile, tSirBssDe
 
         pWpaIe->IeHeader.ElementID = SIR_MAC_WPA_EID;
 
-        palCopyMemory( pMac->hHdd, pWpaIe->Oui, csrWpaOui[01], sizeof( pWpaIe->Oui ) );
+        vos_mem_copy(pWpaIe->Oui, csrWpaOui[01], sizeof( pWpaIe->Oui ));
 
         pWpaIe->Version = CSR_WPA_VERSION_SUPPORTED;
 
-        palCopyMemory( pMac->hHdd, pWpaIe->MulticastOui, MulticastCypher, sizeof( MulticastCypher ) );
+        vos_mem_copy(pWpaIe->MulticastOui, MulticastCypher, sizeof( MulticastCypher ));
 
         pWpaIe->cUnicastCyphers = 1;
 
-        palCopyMemory( pMac->hHdd, &pWpaIe->UnicastOui[ 0 ], UnicastCypher, sizeof( UnicastCypher ) );
+        vos_mem_copy(&pWpaIe->UnicastOui[ 0 ], UnicastCypher, sizeof( UnicastCypher ));
 
         pAuthSuite = (tCsrWpaAuthIe *)( &pWpaIe->UnicastOui[ pWpaIe->cUnicastCyphers ] );
 
         pAuthSuite->cAuthenticationSuites = 1;
-        palCopyMemory( pMac->hHdd, &pAuthSuite->AuthOui[ 0 ], AuthSuite, sizeof( AuthSuite ) );
+        vos_mem_copy(&pAuthSuite->AuthOui[ 0 ], AuthSuite, sizeof( AuthSuite ));
 
         // The WPA capabilities follows the Auth Suite (two octects)--
         // this field is optional, and we always "send" zero, so just
@@ -4331,7 +4333,7 @@ tANI_U8 csrConstructWpaIe( tHalHandle hHal, tCsrRoamProfile *pProfile, tSirBssDe
     if( !pIes && pIesLocal )
     {
         //locally allocated
-        palFreeMemory(pMac->hHdd, pIesLocal);
+        vos_mem_free(pIesLocal);
     }
 
     return( cbWpaIe );
@@ -4341,7 +4343,6 @@ tANI_U8 csrConstructWpaIe( tHalHandle hHal, tCsrRoamProfile *pProfile, tSirBssDe
 tANI_BOOLEAN csrGetWpaRsnIe( tHalHandle hHal, tANI_U8 *pIes, tANI_U32 len,
                              tANI_U8 *pWpaIe, tANI_U8 *pcbWpaIe, tANI_U8 *pRSNIe, tANI_U8 *pcbRSNIe)
 {
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     tDot11IEHeader *pIEHeader;
     tSirMacPropIE *pSirMacPropIE;
     tANI_U32 cbParsed;
@@ -4400,10 +4401,12 @@ tANI_BOOLEAN csrGetWpaRsnIe( tHalHandle hHal, tANI_U8 *pIes, tANI_U32 len,
                         // Check if this is a valid WPA IE.  Then check that the
                         // WPA OUI is in place and the version is one that we support.
                         if ( ( pIe->IeHeader.Length >= SIR_MAC_WPA_IE_MIN_LENGTH )   &&
-                             ( palEqualMemory(pMac->hHdd, pIe->Oui, (void *)csrWpaOui[1], sizeof( pIe->Oui ) ) ) &&
+                             ( vos_mem_compare( pIe->Oui, (void *)csrWpaOui[1],
+                                                sizeof( pIe->Oui ) ) ) &&
                              ( pIe->Version <= CSR_WPA_VERSION_SUPPORTED ) )
                         {
-                            palCopyMemory(pMac->hHdd, pWpaIe, pIe, pIe->IeHeader.Length + sizeof( pIe->IeHeader ) );
+                            vos_mem_copy(pWpaIe, pIe,
+                                  pIe->IeHeader.Length + sizeof( pIe->IeHeader ));
                             *pcbWpaIe = pIe->IeHeader.Length + sizeof( pIe->IeHeader );
                             cFoundIEs++;
 
@@ -4432,7 +4435,8 @@ tANI_BOOLEAN csrGetWpaRsnIe( tHalHandle hHal, tANI_U8 *pIes, tANI_U32 len,
                     // if there is enough room in the WpaIE passed in, then copy the Wpa IE into
                     // the buffer passed in.
                     if ( *pcbRSNIe < pIe->IeHeader.Length + sizeof( pIe->IeHeader ) ) break;
-                    palCopyMemory(pMac->hHdd, pRSNIe, pIe, pIe->IeHeader.Length + sizeof( pIe->IeHeader ) );
+                    vos_mem_copy(pRSNIe, pIe,
+                                 pIe->IeHeader.Length + sizeof( pIe->IeHeader ));
                     *pcbRSNIe = pIe->IeHeader.Length + sizeof( pIe->IeHeader );
 
                     break;
@@ -4471,7 +4475,7 @@ tANI_U8 csrRetrieveWpaIe( tHalHandle hHal, tCsrRoamProfile *pProfile, tSirBssDes
             if(SIR_MAC_WPA_IE_MAX_LENGTH >= pProfile->nWPAReqIELength)
             {
                 cbWpaIe = (tANI_U8)pProfile->nWPAReqIELength;
-                palCopyMemory(pMac->hHdd, pWpaIe, pProfile->pWPAReqIE, cbWpaIe);
+                vos_mem_copy(pWpaIe, pProfile->pWPAReqIE, cbWpaIe);
             }
             else
             {
@@ -4514,7 +4518,7 @@ tANI_U8 csrRetrieveRsnIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile *
             if(SIR_MAC_WPA_IE_MAX_LENGTH >= pProfile->nRSNReqIELength)
             {
                 cbRsnIe = (tANI_U8)pProfile->nRSNReqIELength;
-                palCopyMemory(pMac->hHdd, pRsnIe, pProfile->pRSNReqIE, cbRsnIe);
+                vos_mem_copy(pRsnIe, pProfile->pRSNReqIE, cbRsnIe);
             }
             else
             {
@@ -4549,7 +4553,7 @@ tANI_U8 csrRetrieveWapiIe( tHalHandle hHal, tANI_U32 sessionId,
             if(DOT11F_IE_WAPI_MAX_LEN >= pProfile->nWAPIReqIELength)
             {
                 cbWapiIe = (tANI_U8)pProfile->nWAPIReqIELength;
-                palCopyMemory(pMac->hHdd, pWapiIe, pProfile->pWAPIReqIE, cbWapiIe);
+                vos_mem_copy(pWapiIe, pProfile->pWAPIReqIE, cbWapiIe);
             }
             else
             {
@@ -4592,7 +4596,7 @@ tANI_BOOLEAN csrSearchChannelListForTxPower(tHalHandle hHal, tSirBssDescription 
 
         if ( found )
         {
-            palCopyMemory(pMac->hHdd, returnChannelGroup, pChannelGroup, sizeof(tCsrChannelSet));
+            vos_mem_copy(returnChannelGroup, pChannelGroup, sizeof(tCsrChannelSet));
             break;
         }
         else
@@ -4770,16 +4774,18 @@ tANI_BOOLEAN csrValidateWep( tpAniSirGlobal pMac, eCsrEncryptionType ucEncryptio
                 ucEncryptionType = eCSR_ENCRYPT_TYPE_WEP104;
             }
             //else we can use the encryption type directly
-            if( pIes->WPA.present )
+            if ( pIes->WPA.present )
             {
-                fMatch = palEqualMemory(pMac->hHdd, pIes->WPA.multicast_cipher, 
-                            csrWpaOui[csrGetOUIIndexFromCipher( ucEncryptionType )], CSR_WPA_OUI_SIZE );
+                fMatch = vos_mem_compare(pIes->WPA.multicast_cipher,
+                                         csrWpaOui[csrGetOUIIndexFromCipher( ucEncryptionType )],
+                                         CSR_WPA_OUI_SIZE);
                 if( fMatch ) break;
             }
-            if( pIes->RSN.present )
+            if ( pIes->RSN.present )
             {
-                fMatch = palEqualMemory(pMac->hHdd, pIes->RSN.gp_cipher_suite, 
-                            csrRSNOui[csrGetOUIIndexFromCipher( ucEncryptionType )], CSR_RSN_OUI_SIZE );
+                fMatch = vos_mem_compare(pIes->RSN.gp_cipher_suite,
+                                         csrRSNOui[csrGetOUIIndexFromCipher( ucEncryptionType )],
+                                         CSR_RSN_OUI_SIZE);
             }
         }
 
@@ -5024,7 +5030,7 @@ tANI_BOOLEAN csrIsSsidMatch( tpAniSirGlobal pMac, tANI_U8 *ssid1, tANI_U8 ssid1L
         }
 
         if(ssid1Len != bssSsidLen) break;
-        if(palEqualMemory(pMac->hHdd, bssSsid, ssid1, bssSsidLen))
+        if (vos_mem_compare(bssSsid, ssid1, bssSsidLen))
         {
             fMatch = TRUE;
             break;
@@ -5039,7 +5045,6 @@ tANI_BOOLEAN csrIsSsidMatch( tpAniSirGlobal pMac, tANI_U8 *ssid1, tANI_U8 ssid1L
 //Null ssid means match
 tANI_BOOLEAN csrIsSsidInList( tHalHandle hHal, tSirMacSSid *pSsid, tCsrSSIDs *pSsidList )
 {
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     tANI_BOOLEAN fMatch = FALSE;
     tANI_U32 i;
 
@@ -5048,8 +5053,8 @@ tANI_BOOLEAN csrIsSsidInList( tHalHandle hHal, tSirMacSSid *pSsid, tCsrSSIDs *pS
         for(i = 0; i < pSsidList->numOfSSIDs; i++)
         {
             if(csrIsNULLSSID(pSsidList->SSIDList[i].SSID.ssId, pSsidList->SSIDList[i].SSID.length) ||
-                ((pSsidList->SSIDList[i].SSID.length == pSsid->length) &&
-                    palEqualMemory(pMac->hHdd, pSsid->ssId, pSsidList->SSIDList[i].SSID.ssId, pSsid->length)))
+              ((pSsidList->SSIDList[i].SSID.length == pSsid->length) &&
+               vos_mem_compare(pSsid->ssId, pSsidList->SSIDList[i].SSID.ssId, pSsid->length)))
             {
                 fMatch = TRUE;
                 break;
@@ -5065,7 +5070,7 @@ tANI_BOOLEAN csrIsMacAddressZero( tpAniSirGlobal pMac, tCsrBssid *pMacAddr )
 {
     tANI_U8 bssid[WNI_CFG_BSSID_LEN] = {0, 0, 0, 0, 0, 0};
 
-    return( palEqualMemory(pMac->hHdd, bssid, pMacAddr, WNI_CFG_BSSID_LEN));
+    return (vos_mem_compare(bssid, pMacAddr, WNI_CFG_BSSID_LEN));
 }
 
 //like to use sirCompareMacAddr
@@ -5073,14 +5078,14 @@ tANI_BOOLEAN csrIsMacAddressBroadcast( tpAniSirGlobal pMac, tCsrBssid *pMacAddr 
 {
     tANI_U8 bssid[WNI_CFG_BSSID_LEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
-    return( palEqualMemory(pMac->hHdd, bssid, pMacAddr, WNI_CFG_BSSID_LEN));
+    return(vos_mem_compare(bssid, pMacAddr, WNI_CFG_BSSID_LEN));
 }
 
 
 //like to use sirCompareMacAddr
 tANI_BOOLEAN csrIsMacAddressEqual( tpAniSirGlobal pMac, tCsrBssid *pMacAddr1, tCsrBssid *pMacAddr2 )
 {
-    return( palEqualMemory(pMac->hHdd, pMacAddr1, pMacAddr2, sizeof(tCsrBssid)) );
+    return(vos_mem_compare(pMacAddr1, pMacAddr2, sizeof(tCsrBssid)));
 }
 
 
@@ -5092,7 +5097,7 @@ tANI_BOOLEAN csrIsBssidMatch( tHalHandle hHal, tCsrBssid *pProfBssid, tCsrBssid 
 
     // for efficiency of the MAC_ADDRESS functions, move the
     // Bssid's into MAC_ADDRESS structs.
-    palCopyMemory( pMac->hHdd, &ProfileBssid, pProfBssid, sizeof(tCsrBssid) );
+    vos_mem_copy(&ProfileBssid, pProfBssid, sizeof(tCsrBssid));
 
     do {
 
@@ -5571,7 +5576,7 @@ tANI_BOOLEAN csrMatchBSS( tHalHandle hHal, tSirBssDescription *pBssDesc, tCsrSca
     }
     else if( pIes )
     {
-        palFreeMemory(pMac->hHdd, pIes);
+        vos_mem_free(pIes);
     }
 
     return( fRC );
@@ -5638,7 +5643,7 @@ tANI_BOOLEAN csrMatchBSSToConnectProfile( tHalHandle hHal, tCsrRoamConnectedProf
     if( !pIes && pIesLocal )
     {
         //locally allocated
-        palFreeMemory(pMac->hHdd, pIesLocal);
+        vos_mem_free(pIesLocal);
     }
 
     return( fRC );
@@ -5785,51 +5790,49 @@ void csrReleaseProfile(tpAniSirGlobal pMac, tCsrRoamProfile *pProfile)
     {
         if(pProfile->BSSIDs.bssid)
         {
-            palFreeMemory(pMac->hHdd, pProfile->BSSIDs.bssid);
+            vos_mem_free(pProfile->BSSIDs.bssid);
             pProfile->BSSIDs.bssid = NULL;
         }
         if(pProfile->SSIDs.SSIDList)
         {
-            palFreeMemory(pMac->hHdd, pProfile->SSIDs.SSIDList);
+            vos_mem_free(pProfile->SSIDs.SSIDList);
             pProfile->SSIDs.SSIDList = NULL;
         }
         if(pProfile->pWPAReqIE)
         {
-            palFreeMemory(pMac->hHdd, pProfile->pWPAReqIE);
+            vos_mem_free(pProfile->pWPAReqIE);
             pProfile->pWPAReqIE = NULL;
         }
         if(pProfile->pRSNReqIE)
         {
-            palFreeMemory(pMac->hHdd, pProfile->pRSNReqIE);
+            vos_mem_free(pProfile->pRSNReqIE);
             pProfile->pRSNReqIE = NULL;
         }
 #ifdef FEATURE_WLAN_WAPI
         if(pProfile->pWAPIReqIE)
         {
-            palFreeMemory(pMac->hHdd, pProfile->pWAPIReqIE);
+            vos_mem_free(pProfile->pWAPIReqIE);
             pProfile->pWAPIReqIE = NULL;
         }
 #endif /* FEATURE_WLAN_WAPI */
 
         if(pProfile->pAddIEScan)
         {
-            palFreeMemory(pMac->hHdd, pProfile->pAddIEScan);
+            vos_mem_free(pProfile->pAddIEScan);
             pProfile->pAddIEScan = NULL;
         }
 
         if(pProfile->pAddIEAssoc)
         {
-            palFreeMemory(pMac->hHdd, pProfile->pAddIEAssoc);
+            vos_mem_free(pProfile->pAddIEAssoc);
             pProfile->pAddIEAssoc = NULL;
         }
-
         if(pProfile->ChannelInfo.ChannelList)
         {
-            palFreeMemory(pMac->hHdd, pProfile->ChannelInfo.ChannelList);
+            vos_mem_free(pProfile->ChannelInfo.ChannelList);
             pProfile->ChannelInfo.ChannelList = NULL;
         }
-
-        palZeroMemory(pMac->hHdd, pProfile, sizeof(tCsrRoamProfile));
+        vos_mem_set(pProfile, sizeof(tCsrRoamProfile), 0);
     }
 }
 
@@ -5837,17 +5840,17 @@ void csrFreeScanFilter(tpAniSirGlobal pMac, tCsrScanResultFilter *pScanFilter)
 {
     if(pScanFilter->BSSIDs.bssid)
     {
-        palFreeMemory(pMac->hHdd, pScanFilter->BSSIDs.bssid);
+        vos_mem_free(pScanFilter->BSSIDs.bssid);
         pScanFilter->BSSIDs.bssid = NULL;
     }
     if(pScanFilter->ChannelInfo.ChannelList)
     {
-        palFreeMemory(pMac->hHdd, pScanFilter->ChannelInfo.ChannelList);
+        vos_mem_free(pScanFilter->ChannelInfo.ChannelList);
         pScanFilter->ChannelInfo.ChannelList = NULL;
     }
     if(pScanFilter->SSIDs.SSIDList)
     {
-        palFreeMemory(pMac->hHdd, pScanFilter->SSIDs.SSIDList);
+        vos_mem_free(pScanFilter->SSIDs.SSIDList);
         pScanFilter->SSIDs.SSIDList = NULL;
     }
 }
@@ -5860,7 +5863,7 @@ void csrFreeRoamProfile(tpAniSirGlobal pMac, tANI_U32 sessionId)
     if(pSession->pCurRoamProfile)
     {
         csrReleaseProfile(pMac, pSession->pCurRoamProfile);
-        palFreeMemory(pMac->hHdd, pSession->pCurRoamProfile);
+        vos_mem_free(pSession->pCurRoamProfile);
         pSession->pCurRoamProfile = NULL;
     }
 }
@@ -5872,7 +5875,7 @@ void csrFreeConnectBssDesc(tpAniSirGlobal pMac, tANI_U32 sessionId)
 
     if(pSession->pConnectBssDesc)
     {
-        palFreeMemory(pMac->hHdd, pSession->pConnectBssDesc);
+        vos_mem_free(pSession->pConnectBssDesc);
         pSession->pConnectBssDesc = NULL;
     }
 }
@@ -6206,7 +6209,8 @@ tANI_BOOLEAN csrMatchCountryCode( tpAniSirGlobal pMac, tANI_U8 *pCountry, tDot11
             {
                 pCountry[i] = csrToUpper( pCountry[i] );
             }
-            if( !palEqualMemory(pMac->hHdd, pIes->Country.country, pCountry, WNI_CFG_COUNTRY_CODE_LEN - 1) )
+            if (!vos_mem_compare(pIes->Country.country, pCountry,
+                                WNI_CFG_COUNTRY_CODE_LEN - 1))
             {
                 fRet = eANI_BOOLEAN_FALSE;
                 break;
@@ -6236,16 +6240,18 @@ eHalStatus csrSetCountryDomainMapping(tpAniSirGlobal pMac, tCsrCountryDomainMapp
             {
                 for(j = 0; j < eCSR_NUM_COUNTRY_INDEX; j++)
                 {
-                    if(palEqualMemory(pMac->hHdd, gCsrCountryInfo[j].countryCode, 
-                                    pCountryDomainMapping->pCountryInfo[i].countryCode, 2))
+                    if (vos_mem_compare(gCsrCountryInfo[j].countryCode,
+                                        pCountryDomainMapping->pCountryInfo[i].countryCode,
+                                        2))
                     {
                         if(gCsrCountryInfo[j].domainId != pCountryDomainMapping->pCountryInfo[i].domainId)
                         {
                             gCsrCountryInfo[j].domainId = pCountryDomainMapping->pCountryInfo[i].domainId;
                             //Check whether it matches the currently used country code
                             //If matching, need to update base on the new domain setting.
-                            if(palEqualMemory(pMac->hHdd, countryCode, 
-                                        pCountryDomainMapping->pCountryInfo[i].countryCode, 2))
+                            if (vos_mem_compare(countryCode,
+                                                pCountryDomainMapping->pCountryInfo[i].countryCode,
+                                                2))
                             {
                                 fDomainChanged = eANI_BOOLEAN_TRUE;
                             }
@@ -6330,9 +6336,9 @@ eHalStatus csrGetModifyProfileFields(tpAniSirGlobal pMac, tANI_U32 sessionId,
       return eHAL_STATUS_FAILURE;
    }
 
-   palCopyMemory( pMac->hHdd, pModifyProfileFields, 
-                  &pMac->roam.roamSession[sessionId].connectedProfile.modifyProfileFields, 
-                  sizeof(tCsrRoamModifyProfileFields) );
+   vos_mem_copy(pModifyProfileFields,
+                &pMac->roam.roamSession[sessionId].connectedProfile.modifyProfileFields,
+                sizeof(tCsrRoamModifyProfileFields));
 
    return eHAL_STATUS_SUCCESS;
 }
@@ -6342,9 +6348,9 @@ eHalStatus csrSetModifyProfileFields(tpAniSirGlobal pMac, tANI_U32 sessionId,
 {
    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
-   palCopyMemory( pMac->hHdd, &pSession->connectedProfile.modifyProfileFields,
-                  pModifyProfileFields,
-                  sizeof(tCsrRoamModifyProfileFields) );
+   vos_mem_copy(&pSession->connectedProfile.modifyProfileFields,
+                 pModifyProfileFields,
+                 sizeof(tCsrRoamModifyProfileFields));
 
    return eHAL_STATUS_SUCCESS;
 }
@@ -6379,10 +6385,11 @@ eHalStatus csrGetSupportedCountryCode(tpAniSirGlobal pMac, tANI_U8 *pBuf, tANI_U
             //We may need to alter the data structure and find a way to make this faster.
             tANI_U32 i;
 
-            for( i = 0; i < numOfCountry; i++ )
+            for ( i = 0; i < numOfCountry; i++ )
             {
-                palCopyMemory( pMac->hHdd, pBuf + ( i * WNI_CFG_COUNTRY_CODE_LEN ),
-                    gCsrCountryInfo[i].countryCode, WNI_CFG_COUNTRY_CODE_LEN );
+                vos_mem_copy(pBuf + ( i * WNI_CFG_COUNTRY_CODE_LEN ),
+                             gCsrCountryInfo[i].countryCode,
+                             WNI_CFG_COUNTRY_CODE_LEN);
             }
         }
     }
@@ -6446,19 +6453,15 @@ eHalStatus csrScanGetBaseChannels( tpAniSirGlobal pMac, tCsrChannelInfo * pChann
        {
           break;
        }
-       status = palAllocateMemory( pMac->hHdd, (void **)&pChannelInfo->ChannelList, 
-                                   pMac->scan.baseChannels.numChannels );
-       if( !HAL_STATUS_SUCCESS( status ) )
+       pChannelInfo->ChannelList = vos_mem_malloc(pMac->scan.baseChannels.numChannels);
+       if ( NULL == pChannelInfo->ChannelList )
        {
           smsLog( pMac, LOGE, FL("csrScanGetBaseChannels: fail to allocate memory") );
-          break;
+          return eHAL_STATUS_FAILURE;
        }
-       status = palCopyMemory( pMac->hHdd, pChannelInfo->ChannelList, pMac->scan.baseChannels.channelList, 
-                               pMac->scan.baseChannels.numChannels );
-       if( !HAL_STATUS_SUCCESS( status ) )
-       {
-          break;
-       }
+       vos_mem_copy(pChannelInfo->ChannelList,
+                    pMac->scan.baseChannels.channelList,
+                    pMac->scan.baseChannels.numChannels);
        pChannelInfo->numOfChannels = pMac->scan.baseChannels.numChannels;
 
     }while(0);
