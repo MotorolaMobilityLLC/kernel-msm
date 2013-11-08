@@ -9026,15 +9026,30 @@ void csrSendCcxAdjacentApRepInd(tpAniSirGlobal pMac, tCsrRoamSession *pSession)
 {
     tANI_U32 roamTS2 = 0;
     tCsrRoamInfo roamInfo;
+    tpPESession pSessionEntry = NULL;
+    tANI_U8 sessionId = CSR_SESSION_ID_INVALID;
 
     if (NULL == pSession)
     {
+        smsLog(pMac, LOGE, FL("pSession is NULL"));
         return;
     }
 
     roamTS2 = vos_timer_get_system_time();
     roamInfo.tsmRoamDelay = roamTS2 - pSession->roamTS1;
+    smsLog(pMac, LOG1, "Bssid(%02X:%02X:%02X:%02X:%02X:%02X) Roaming Delay(%u ms)",
+           pSession->connectedProfile.bssid[0], pSession->connectedProfile.bssid[1],
+           pSession->connectedProfile.bssid[2], pSession->connectedProfile.bssid[3],
+           pSession->connectedProfile.bssid[4], pSession->connectedProfile.bssid[5],
+           roamInfo.tsmRoamDelay);
 
+    pSessionEntry = peFindSessionByBssid(pMac, pSession->connectedProfile.bssid, &sessionId);
+    if (NULL == pSessionEntry)
+    {
+        smsLog(pMac, LOGE, FL("session %d not found"), sessionId);
+        return;
+    }
+    pSessionEntry->ccxContext.tsm.tsmMetrics.RoamingDly = roamInfo.tsmRoamDelay;
     csrRoamCallCallback(pMac, pSession->sessionId, &roamInfo,
                         0, eCSR_ROAM_CCX_ADJ_AP_REPORT_IND, 0);
 }
