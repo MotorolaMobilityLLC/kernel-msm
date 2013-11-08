@@ -33,7 +33,10 @@
 #include <linux/sec_export.h>
 #include <mach/scm.h>
 #include <linux/memory_alloc.h>
+#include <linux/platform_device.h>
 #include "sec_core.h"
+
+#define EFUSE_COMPAT_STR	"qcom,msm-efuse"
 
 static ssize_t sec_read(struct file *filp, char *buf,
 		size_t count, loff_t *f_pos);
@@ -41,8 +44,6 @@ static int sec_open(struct inode *inode, struct file *filp);
 static int sec_release(struct inode *inode, struct file *filp);
 static long sec_ioctl(struct file *file, unsigned int ioctl_num,
 		unsigned long ioctl_param);
-static int sec_init(void);
-static void sec_exit(void);
 static bool sec_buf_prepare(void);
 static bool sec_buf_updated(void);
 
@@ -70,10 +71,6 @@ struct sec_cmd {
 	int parm3;
 };
 
-/* Mapping of the module init and exit functions */
-module_init(sec_init);
-module_exit(sec_exit);
-
 static struct miscdevice sec_dev = {
 	MISC_DYNAMIC_MINOR,
 	"sec",
@@ -85,29 +82,6 @@ static DEFINE_MUTEX(sec_core_lock);
 /****************************************************************************/
 /*   KERNEL DRIVER APIs, ONLY IOCTL RESPONDS BACK TO USER SPACE REQUESTS    */
 /****************************************************************************/
-int sec_init(void)
-{
-	int result;
-
-	result = misc_register(&sec_dev);
-
-	if (result) {
-		printk(KERN_ERR "sec: cannot obtain major number\n");
-		return result;
-	}
-
-	printk(KERN_INFO "Inserting sec module\n");
-
-	sec_phy_mem = SEC_NO_BUFFER;
-	sec_failures = 0;
-	return 0;
-}
-
-void sec_exit(void)
-{
-	/* Freeing the major number */
-	misc_deregister(&sec_dev);
-}
 
 int sec_open(struct inode *inode, struct file *filp)
 {
@@ -170,9 +144,7 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 	u32 ctr;
 
 	mutex_lock(&sec_core_lock);
-
-	if (sec_buf_prepare() == false)
-		ioctl_num = 0;
+	memset(sec_shared_mem, 0xff, SEC_BUF_SIZE);
 
 	switch (ioctl_num) {
 
@@ -321,6 +293,60 @@ void print_hab_fail_codes(void)
 }
 EXPORT_SYMBOL(print_hab_fail_codes);
 
+static int msm_efuse_probe(struct platform_device *pdev)
+{
+	int result;
+
+	result = misc_register(&sec_dev);
+
+	if (result) {
+		printk(KERN_ERR "sec: cannot obtain major number\n");
+		return result;
+	}
+
+	if (sec_buf_prepare() == false) {
+		printk(KERN_ERR "sec: cannot get memory for fuse operation\n");
+		return  -ENOMEM;
+	}
+	return 0;
+
+}
+
+static struct of_device_id msm_match_table[] = {
+	{.compatible = EFUSE_COMPAT_STR},
+	{},
+};
+EXPORT_COMPAT(EFUSE_COMPAT_STR);
+
+static int __devexit msm_efuse_remove(struct platform_device *pdev)
+{
+	/* Freeing the major number */
+	misc_deregister(&sec_dev);
+	return 0;
+}
+
+static struct platform_driver msm_efuse_driver = {
+	.probe = msm_efuse_probe,
+	.remove = msm_efuse_remove,
+	.driver         = {
+		.name = "msm_efuse",
+		.owner = THIS_MODULE,
+		.of_match_table = msm_match_table
+	},
+};
+
+static int __init msm_efuse_init(void)
+{
+	return platform_driver_register(&msm_efuse_driver);
+}
+
+static void __exit msm_efuse_exit(void)
+{
+	platform_driver_unregister(&msm_efuse_driver);
+}
+
+module_init(msm_efuse_init)
+module_exit(msm_efuse_exit)
 /****************************************************************************/
 /*Kernel Module License Information                                         */
 /****************************************************************************/
