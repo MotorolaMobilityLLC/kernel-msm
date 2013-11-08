@@ -355,6 +355,10 @@
 		qcom,leds@e100 {
 			status = "disabled";
 		};
+
+		qcom,leds@e200 {
+			status = "disabled";
+		};
 	};
 
 	qcom,pm8941@0 {
