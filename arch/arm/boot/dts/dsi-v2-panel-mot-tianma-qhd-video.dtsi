@@ -29,8 +29,8 @@
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <540>;
 		qcom,mdss-dsi-panel-height = <960>;
-		qcom,mdss-pan-physical-width-dimension = <56>;
-		qcom,mdss-pan-physical-height-dimension = <99>;
+		qcom,mdss-pan-physical-width-dimension = <54>;
+		qcom,mdss-pan-physical-height-dimension = <95>;
 		qcom,mdss-dsi-panel-clock-rate = <797600000>;
 		qcom,mdss-dsi-h-front-porch = <32>;
 		qcom,mdss-dsi-h-back-porch = <4>;
@@ -56,15 +56,12 @@
 		qcom,mdss-dsi-tune-v-pulse-width = <1280>;
 
 		qcom,mdss-dsi-on-command = [
-			05 01 00 00 05 00 02 01 00
 			05 01 00 00 78 00 02 11 00
-			05 01 00 00 00 00 02 51 ff
-			05 01 00 00 00 00 02 53 2c
-			05 01 00 00 0a 00 02 29 00];
+			05 01 00 00 00 00 02 29 00];
 
 		qcom,mdss-dsi-off-command = [
-			05 01 00 00 01 00 02 28 00
-			05 01 00 00 78 00 02 10 00];
+			05 01 00 00 78 00 02 10 00
+			05 01 00 00 0a 00 02 28 00];
 
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
@@ -84,6 +81,31 @@
 		qcom,mdss-dsi-mdp-trigger = <0>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
-		qcom,mdss-dsi-esd-det-mode = <1>;
+		qcom,panel-en-reset-sequence = <1 2>, <0 1>, <1 6> ;
+		qcom,panel-dis-reset-sequence = <0 1>;
+
+		qcom,platform-supply-entry1 {
+			qcom,supply-name = "vddio_disp";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <1>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+
+		qcom,platform-supply-entry2 {
+			qcom,supply-name = "lcd_vci";
+			qcom,supply-min-voltage = <3000000>;
+			qcom,supply-max-voltage = <3000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <1>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
 	};
 };
