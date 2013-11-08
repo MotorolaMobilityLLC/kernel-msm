@@ -7752,6 +7752,10 @@ int hdd_wlan_startup(struct device *dev )
       goto err_reg_netdev;
    }
 
+#ifdef WLAN_KD_READY_NOTIFIER
+   pHddCtx->kd_nl_init = 1;
+#endif /* WLAN_KD_READY_NOTIFIER */
+
    //Initialize the BTC service
    if(btc_activate_service(pHddCtx) != 0)
    {
