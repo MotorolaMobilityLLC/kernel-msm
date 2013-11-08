@@ -12,13 +12,17 @@
 
 /dts-v1/;
 
-/include/ "msm8610-v1.dtsi"
+/include/ "msm8610-v2.dtsi"
 /include/ "msm8610-moto-common.dtsi"
 /include/ "dsi-v2-panel-mot-tianma-qhd-video.dtsi"
 /include/ "msm8610-camera-sensor-cdp-mtp.dtsi"
 
 / {
-	qcom,msm-id = <147 0x41 0x8100>;
+	/* HWREV: 0x0101 0x8100
+	 *        ^^^^^^ ^^^^^^
+	 *        Rev1.1 P1(P0C)
+	 */
+	qcom,msm-id = <147 0x41 0x01018100>;
 };
 
 &soc {
@@ -90,8 +94,4 @@
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_tianma_qhd>;
-};
-
-&pm8110_l20 {
-	/delete-property/ regulator-always-on;
 };
