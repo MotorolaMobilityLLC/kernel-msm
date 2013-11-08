@@ -195,6 +195,7 @@ endif
 # MSM8610 Motorola Devices
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p0c.dtb
+dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p0c-v2.dtb
 
 # MSMSAMARIUM
    zreladdr-$(CONFIG_ARCH_MSMSAMARIUM)	:= 0x00008000
