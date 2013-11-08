@@ -67,7 +67,7 @@
 #include "limStaHashApi.h"
 #include "limSendMessages.h"
 
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
 #include "ccxApi.h"
 #endif
 
@@ -672,7 +672,15 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
                             psessionEntry->ccxContext.tsm.tid = pAssocRsp->TSPECInfo[cnt].user_priority;
                             vos_mem_copy(&psessionEntry->ccxContext.tsm.tsmInfo,
                                     &pAssocRsp->tsmIE, sizeof(tSirMacCCXTSMIE));
+#ifdef FEATURE_WLAN_CCX_UPLOAD
+                            limSendSmeTsmIEInd(pMac,
+                                               psessionEntry,
+                                               pAssocRsp->tsmIE.tsid,
+                                               pAssocRsp->tsmIE.state,
+                                               pAssocRsp->tsmIE.msmt_interval);
+#else
                             limActivateTSMStatsTimer(pMac, psessionEntry);
+#endif /* FEATURE_WLAN_CCX_UPLOAD */
                             if(psessionEntry->ccxContext.tsm.tsmInfo.state) {
                                 psessionEntry->ccxContext.tsm.tsmMetrics.RoamingCount++;
                             }

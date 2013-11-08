@@ -8094,3 +8094,15 @@ eHalStatus csrScanCreateEntryInScanCache(tpAniSirGlobal pMac, tANI_U32 sessionId
     }
     return status;
 }
+
+#ifdef FEATURE_WLAN_CCX
+//  Update the TSF with the difference in system time
+void UpdateCCKMTSF(tANI_U32 *timeStamp0, tANI_U32 *timeStamp1, tANI_U32 *incr)
+{
+    tANI_U64 timeStamp64 = ((tANI_U64)*timeStamp1 << 32) | (*timeStamp0);
+
+    timeStamp64 = (tANI_U64)(timeStamp64 + (tANI_U64)*incr);
+    *timeStamp0 = (tANI_U32)(timeStamp64 & 0xffffffff);
+    *timeStamp1 = (tANI_U32)((timeStamp64 >> 32) & 0xffffffff);
+}
+#endif

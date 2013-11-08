@@ -45,6 +45,10 @@ ifeq ($(KERNEL_BUILD), 0)
 
 endif
 
+# To enable CCX upload, dependent config
+# CONFIG_QCOM_CCX must be enabled.
+CONFIG_QCOM_CCX_UPLOAD := n
+
 # Feature flags which are not (currently) configurable via Kconfig
 
 #Whether to build debug version
@@ -207,7 +211,9 @@ MAC_LIM_OBJS := $(MAC_SRC_DIR)/pe/lim/limAIDmgmt.o \
 		$(MAC_SRC_DIR)/pe/lim/limUtils.o
 
 ifeq ($(CONFIG_QCOM_CCX),y)
+ifneq ($(CONFIG_QCOM_CCX_UPLOAD),y)
 MAC_LIM_OBJS += $(MAC_SRC_DIR)/pe/lim/limProcessCcxFrame.o
+endif
 endif
 
 ifeq ($(CONFIG_QCOM_TDLS),y)
@@ -266,7 +272,9 @@ SME_CSR_OBJS := $(SME_SRC_DIR)/csr/csrApiRoam.o \
 		$(SME_SRC_DIR)/csr/csrUtil.o
 
 ifeq ($(CONFIG_QCOM_CCX),y)
+ifneq ($(CONFIG_QCOM_CCX_UPLOAD),y)
 SME_CSR_OBJS += $(SME_SRC_DIR)/csr/csrCcx.o
+endif
 endif
 
 ifeq ($(CONFIG_QCOM_TDLS),y)
@@ -345,10 +353,6 @@ SYS_OBJS :=	$(SYS_COMMON_SRC_DIR)/wlan_qct_sys.o \
 		$(SYS_LEGACY_SRC_DIR)/utils/src/parserApi.o \
 		$(SYS_LEGACY_SRC_DIR)/utils/src/utilsApi.o \
 		$(SYS_LEGACY_SRC_DIR)/utils/src/utilsParser.o
-
-ifeq ($(CONFIG_QCOM_CCX),y)
-SYS_OBJS += $(SYS_LEGACY_SRC_DIR)/utils/src/limCcxparserApi.o
-endif
 
 ############ TL ############
 TL_DIR :=	CORE/TL
@@ -566,6 +570,9 @@ endif
 
 ifeq ($(CONFIG_QCOM_CCX),y)
 CDEFINES += -DFEATURE_WLAN_CCX
+ifeq ($(CONFIG_QCOM_CCX_UPLOAD),y)
+CDEFINES += -DFEATURE_WLAN_CCX_UPLOAD
+endif
 endif
 
 #normally, TDLS negative behavior is not needed

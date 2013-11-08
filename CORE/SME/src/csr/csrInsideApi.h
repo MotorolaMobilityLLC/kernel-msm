@@ -85,6 +85,7 @@
 #define CSR_MAX_2_4_GHZ_SUPPORTED_CHANNELS 14
 
 #define CSR_MAX_BSS_SUPPORT            250
+#define SYSTEM_TIME_MSEC_TO_USEC      1000
 
 //This number minus 1 means the number of times a channel is scanned before a BSS is remvoed from
 //cache scan result
@@ -957,8 +958,12 @@ eHalStatus csrRoamStopJoinRetryTimer(tpAniSirGlobal pMac, tANI_U32 sessionId);
 void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuthRsp );
 #endif
 
-#ifdef FEATURE_WLAN_CCX
+#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
 void csrCcxSendAdjacentApRepMsg(tpAniSirGlobal pMac, tCsrRoamSession *pSession);
+#endif
+
+#if defined(FEATURE_WLAN_CCX)
+void UpdateCCKMTSF(tANI_U32 *timeStamp0, tANI_U32 *timeStamp1, tANI_U32 *incr);
 #endif
 
 eHalStatus csrGetDefaultCountryCodeFrmNv(tpAniSirGlobal pMac, tANI_U8 *pCountry);

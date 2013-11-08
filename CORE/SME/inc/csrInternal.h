@@ -930,6 +930,9 @@ typedef struct tagCsrRoamSession
     tANI_U8 prevOpChannel;
     tANI_U16 clientDissSecs;
     tANI_U32 roamTS1;
+#if defined(FEATURE_WLAN_CCX_UPLOAD)
+    tCsrCcxCckmIe suppCckmIeInfo;
+#endif
 #endif
     tANI_U8 bRefAssocStartCnt;   //Tracking assoc start indication
    /* to force the AP initiate fresh 802.1x authentication after re-association need to clear
@@ -1245,6 +1248,13 @@ eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
                           void * pContext,
                           void * pVosContext);
 #endif
+
+#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+eHalStatus csrGetTsmStats(tpAniSirGlobal pMac, tCsrTsmStatsCallback callback, tANI_U8 staId,
+                              tCsrBssid bssId, void *pContext, void* pVosContext,
+                              tANI_U8 tid);
+#endif  /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
+
 eHalStatus csrRoamRegisterCallback(tpAniSirGlobal pMac, csrRoamCompleteCallback callback, void *pContext);
 /* ---------------------------------------------------------------------------
     \fn csrGetConfigParam
@@ -1363,6 +1373,8 @@ tANI_BOOLEAN csrRoamIs11rAssoc(tpAniSirGlobal pMac);
 #ifdef FEATURE_WLAN_CCX
 //Returns whether the current association is a CCX assoc or not
 tANI_BOOLEAN csrRoamIsCCXAssoc(tpAniSirGlobal pMac);
+tANI_BOOLEAN csrRoamIsCcxIniFeatureEnabled(tpAniSirGlobal pMac);
+tANI_BOOLEAN csrNeighborRoamIsCCXAssoc(tpAniSirGlobal pMac);
 #endif
 
 //Remove this code once SLM_Sessionization is supported

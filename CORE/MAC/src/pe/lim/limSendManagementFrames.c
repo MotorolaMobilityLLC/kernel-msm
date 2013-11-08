@@ -67,9 +67,6 @@
 #include "rrmApi.h"
 #endif
 
-#ifdef FEATURE_WLAN_CCX
-#include <limCcxparserApi.h>
-#endif
 #include "wlan_qct_wda.h"
 #ifdef WLAN_FEATURE_11W
 #include "dot11fdefs.h"
