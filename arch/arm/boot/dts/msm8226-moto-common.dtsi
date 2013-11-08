@@ -41,6 +41,12 @@
 		status = "ok";
 	};
 
+	qcom,msm-efuse {
+		compatible = "qcom,msm-efuse";
+		qcom,memory-reservation-type = "EBI1";
+		qcom,memory-reservation-size = <0x1000>; /* 4kb from EBI1 buffer */
+	};
+
 	ram_console {
 		compatible = "android,ram-console";
 		status = "ok";
