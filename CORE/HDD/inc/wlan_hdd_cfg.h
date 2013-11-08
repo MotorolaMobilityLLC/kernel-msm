@@ -825,6 +825,12 @@ typedef enum
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_MAX                    (125)
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_DEFAULT                (0)
 
+/*This parameter is used to set Wireless Extended Security Mode.*/
+#define CFG_ENABLE_WES_MODE_NAME                            "gWESModeEnabled"
+#define CFG_ENABLE_WES_MODE_NAME_MIN                        (0)
+#define CFG_ENABLE_WES_MODE_NAME_MAX                        (1)
+#define CFG_ENABLE_WES_MODE_NAME_DEFAULT                    (0)
+
 #define CFG_ROAM_SCAN_N_PROBES                             "gRoamScanNProbes"
 #define CFG_ROAM_SCAN_N_PROBES_MIN                          (1)
 #define CFG_ROAM_SCAN_N_PROBES_MAX                          (10)
@@ -2116,6 +2122,7 @@ typedef struct
    v_BOOL_t                     isFastTransitionEnabled;
    v_U8_t                       RoamRssiDiff;
    v_U8_t                       nImmediateRoamRssiDiff;
+   v_BOOL_t                     isWESModeEnabled;
 #endif
 #ifdef FEATURE_WLAN_OKC
    v_BOOL_t                     isOkcIniFeatureEnabled;
