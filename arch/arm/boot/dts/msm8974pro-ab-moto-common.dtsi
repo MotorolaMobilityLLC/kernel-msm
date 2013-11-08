@@ -246,6 +246,16 @@
 			qcom,msm-mi2s-tx-lines = <1>;
 		};
 	};
+
+	mmi_batterydata: qcom,battery-data {
+		qcom,rpull-up-kohm = <100>;
+		qcom,vref-batt-therm-uv = <1800000>;
+		qcom,default-kohm = <10>;
+
+		/include/ "batterydata-ed30-temp.dtsi"
+		/include/ "batterydata-ed30-lishen.dtsi"
+		/include/ "batterydata-ed30-lg.dtsi"
+	};
 };
 
 &mdss_mdp {
@@ -505,19 +515,55 @@
 };
 
 &pm8941_bms {
-	qcom,enable-fcc-learning;
+	qcom,r-sense-uohm = <10000>;
+	qcom,v-cutoff-uv = <3200000>;
+	qcom,max-voltage-uv = <4350000>;
+	qcom,r-conn-mohm = <0>;
+	qcom,shutdown-soc-valid-limit = <100>;
+	qcom,adjust-soc-low-threshold = <15>;
+	qcom,use-ocv-thresholds = <0>;
+	qcom,low-soc-calculate-soc-threshold = <15>;
+	qcom,low-soc-calculate-soc-ms = <5000>;
+	qcom,calculate-soc-ms = <20000>;
+	qcom,chg-term-ua = <100000>;
+	qcom,batt-type = <0>;
+	qcom,tm-temp-margin = <5000>;
+	qcom,low-ocv-correction-limit-uv = <100>;
+	qcom,high-ocv-correction-limit-uv = <50>;
+	qcom,hold-soc-est = <3>;
+	qcom,low-voltage-threshold = <3220000>;
+	qcom,enable-fcc-learning = <1>;
 	qcom,min-fcc-learning-soc = <20>;
-	qcom,min-fcc-ocv-pc = <30>;
-	qcom,min-fcc-learning-samples = <5>;
+	qcom,fcc-resolution = <10>;
+	qcom,min-fcc-ocv-pc = <20>;
+	qcom,min-fcc-learning-samples = <4>;
+	qcom,battery-data = <&mmi_batterydata>;
+
 	status = "ok";
 };
 
 &pm8941_chg {
 	status = "ok";
-	qcom,charging-disabled;
 
-	qcom,ibatmax-ma = <2500>;
-	qcom,ibatsafe-ma = <2500>;
+	qcom,vddmax-mv = <4200>;
+	qcom,vddsafe-mv = <4400>;
+	qcom,vinmin-mv = <4300>;
+	qcom,vbatdet-delta-mv = <150>;
+	qcom,ibatmax-ma = <2000>;
+	qcom,ibatterm-ma = <100>;
+	qcom,ibatsafe-ma = <3250>;
+	qcom,thermal-mitigation = <1500 700 600 325>;
+	qcom,tchg-mins = <512>;
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-decidegc = <0>;
+	qcom,warm-bat-mv = <4000>;
+	qcom,cool-bat-mv = <4000>;
+	qcom,ibatmax-warm-ma = <2000>;
+	qcom,ibatmax-cool-ma = <2000>;
+	qcom,batt-hot-percentage = <25>;
+	qcom,batt-cold-percentage = <80>;
+	qcom,step-charge-voltage = <4200>;
+	qcom,step-charge-current = <1130>;
 
 	qcom,chgr@1000 {
 		status = "ok";
