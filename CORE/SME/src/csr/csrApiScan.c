@@ -132,6 +132,7 @@ typedef struct sCsrIgnoreChannels
     tANI_U16 channelCount;
 }tCsrIgnoreChannels;
 
+#ifndef CONFIG_ENABLE_LINUX_REG
 static tCsrIgnoreChannels countryIgnoreList[MAX_COUNTRY_IGNORE] = {
     { {'U','A'}, { 136, 140}, 2},
     { {'T','W'}, { 36, 40, 44, 48, 52}, 5},
@@ -139,6 +140,9 @@ static tCsrIgnoreChannels countryIgnoreList[MAX_COUNTRY_IGNORE] = {
     { {'A','U'}, { 120, 124, 128}, 3 },
     { {'A','R'}, { 120, 124, 128}, 3 }
     };
+#else
+static tCsrIgnoreChannels countryIgnoreList[MAX_COUNTRY_IGNORE] = { };
+#endif //CONFIG_ENABLE_LINUX_REG
 
 //*** This is temporary work around. It need to call CCM api to get to CFG later
 /// Get string parameter value
@@ -3749,6 +3753,7 @@ tANI_BOOLEAN csrSave11dCountryString( tpAniSirGlobal pMac, tANI_U8 *pCountryCode
     tANI_BOOLEAN fCountryStringChanged = FALSE, fUnknownCountryCode = FALSE;
     tANI_U32 i;
     v_REGDOMAIN_t regd;
+    tANI_BOOLEAN fCountryNotPresentInDriver = FALSE;
 
     // convert to UPPER here so we are assured the strings are always in upper case.
     for( i = 0; i < 3; i++ )
@@ -3773,8 +3778,7 @@ tANI_BOOLEAN csrSave11dCountryString( tpAniSirGlobal pMac, tANI_U8 *pCountryCode
         }
         else
         {
-            pCountryCode[ 0 ] = '0';
-            pCountryCode[ 1 ] = '0';
+            fCountryNotPresentInDriver = TRUE;
         }
     }
     //right now, even if we don't find the CC in driver we set to world. Making
@@ -3782,8 +3786,7 @@ tANI_BOOLEAN csrSave11dCountryString( tpAniSirGlobal pMac, tANI_U8 *pCountryCode
     //reflect the world CC
     else if (REGDOMAIN_WORLD == regd)
     {
-        pCountryCode[ 0 ] = '0';
-        pCountryCode[ 1 ] = '0';
+        fCountryNotPresentInDriver = TRUE;
     }
 
     // We've seen some of the AP's improperly put a 0 for the third character of the country code.
@@ -3802,9 +3805,18 @@ tANI_BOOLEAN csrSave11dCountryString( tpAniSirGlobal pMac, tANI_U8 *pCountryCode
         if(( 0 == pMac->scan.countryCode11d[ 0 ] && 0 == pMac->scan.countryCode11d[ 1 ] )
              || (fForce))
         {
-            // this is the first .11d information
-            vos_mem_copy(pMac->scan.countryCode11d, pCountryCode,
+            if (!fCountryNotPresentInDriver)
+            {
+                // this is the first .11d information
+                vos_mem_copy(pMac->scan.countryCode11d, pCountryCode,
                          sizeof( pMac->scan.countryCode11d ));
+
+            }
+            else
+            {
+                pMac->scan.countryCode11d[0] = '0';
+                pMac->scan.countryCode11d[1] = '0';
+            }
         }
     }
 
