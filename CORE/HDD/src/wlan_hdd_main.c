@@ -3162,25 +3162,29 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
               goto exit;
           }
 
+
           if ((WLAN_HDD_INFRA_STATION != pAdapter->device_mode) &&
               (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode))
           {
              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "Received WLS_BATCHING_SET command in invalid mode %d "
+                "Received WLS_BATCHING SET command in invalid mode %d "
                 "WLS_BATCHING_SET is only allowed in infra STA/P2P client mode",
                 pAdapter->device_mode);
              ret = -EINVAL;
              goto exit;
           }
 
+
           status = hdd_parse_set_batchscan_command(value, pReq);
           if (status)
           {
              VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "Invalid WLS_BATCHING_SET command");
+                "Invalid WLS_BATCHING SET command");
              ret = -EINVAL;
              goto exit;
           }
+
+
           pAdapter->hdd_wait_for_set_batch_scan_rsp = TRUE;
           halStatus = sme_SetBatchScanReq(WLAN_HDD_GET_HAL_CTX(pAdapter), pReq,
                           pAdapter->sessionId, hdd_set_batch_scan_req_callback,
@@ -3218,6 +3222,8 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                either MSCAN or the max # of scans firmware can cache*/
              ret = MIN(pReq->numberOfScansToBatch , pRsp->nScansToBatch);
 
+             pAdapter->batchScanState = eHDD_BATCH_SCAN_STATE_STARTED;
+
              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s: request MSCAN %d response MSCAN %d ret %d",
                 __func__, pReq->numberOfScansToBatch, pRsp->nScansToBatch, ret);
@@ -3245,17 +3251,16 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
               goto exit;
           }
 
-          if ((WLAN_HDD_INFRA_STATION != pAdapter->device_mode) &&
-              (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode))
+          if (eHDD_BATCH_SCAN_STATE_STARTED !=  pAdapter->batchScanState)
           {
               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "Received WLS_BATCHING_STOP command in invalid mode %d "
-                "WLS_BATCHING_STOP is only allowed in infra STA/P2P client"
-                " mode",
-                pAdapter->device_mode);
+                "Batch scan is not yet enabled batch scan state %d",
+                pAdapter->batchScanState);
               ret = -EINVAL;
               goto exit;
           }
+
+          pAdapter->batchScanState = eHDD_BATCH_SCAN_STATE_STOPPED;
 
           halStatus = sme_StopBatchScanInd(WLAN_HDD_GET_HAL_CTX(pAdapter), pInd,
                           pAdapter->sessionId);
@@ -3287,14 +3292,12 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
               goto exit;
           }
 
-          if ((WLAN_HDD_INFRA_STATION != pAdapter->device_mode) &&
-              (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode))
+          if (eHDD_BATCH_SCAN_STATE_STARTED !=  pAdapter->batchScanState)
           {
               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "Received WLS_BATCHING_GET command in invalid mode %d "
-                "WLS_BATCHING_GET is only allowed in infra STA/P2P client"
-                " mode",
-                pAdapter->device_mode);
+                "Batch scan is not yet enabled could not return results"
+                "Batch Scan state %d",
+                pAdapter->batchScanState);
               ret = -EINVAL;
               goto exit;
           }
@@ -4429,6 +4432,7 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
       init_completion(&pAdapter->hdd_get_batch_scan_req_var);
       pAdapter->pBatchScanRsp = NULL;
       pAdapter->numScanList = 0;
+      pAdapter->batchScanState = eHDD_BATCH_SCAN_STATE_STOPPED;
       mutex_init(&pAdapter->hdd_batch_scan_lock);
 #endif
 
