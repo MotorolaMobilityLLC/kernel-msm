@@ -333,7 +333,7 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
 #endif
     pRemainChanCtx->duration = duration;
     pRemainChanCtx->dev = dev;
-    *cookie = (tANI_U32) pRemainChanCtx;
+    *cookie = (uintptr_t) pRemainChanCtx;
     pRemainChanCtx->cookie = *cookie;
     pRemainChanCtx->rem_on_chan_request = request_type;
     cfgState->remain_on_chan_ctx = pRemainChanCtx;
@@ -440,7 +440,7 @@ void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter )
 #else
                                pAdapter->dev,
 #endif
-                               (tANI_U32)pRemainChanCtx,
+                               (uintptr_t)pRemainChanCtx,
                                &pRemainChanCtx->chan,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
                                pRemainChanCtx->chan_type,
@@ -799,7 +799,7 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
         else
         {
 #endif
-            *cookie = (tANI_U32) cfgState->buf;
+            *cookie = (uintptr_t) cfgState->buf;
             cfgState->action_cookie = *cookie;
             /*There is race between expiration of remain on channel
               in driver and also sending an action frame in wlan_hdd_action.
@@ -881,7 +881,7 @@ err:
     }
     return 0;
 err_rem_channel:
-    *cookie = (tANI_U32)cfgState;
+    *cookie = (uintptr_t)cfgState;
     cfg80211_mgmt_tx_status(
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
                             pAdapter->dev->ieee80211_ptr,
