@@ -39,6 +39,7 @@
 #define F2FS_MOUNT_POSIX_ACL		0x00000020
 #define F2FS_MOUNT_DISABLE_EXT_IDENTIFY	0x00000040
 #define F2FS_MOUNT_INLINE_XATTR		0x00000080
+#define F2FS_MOUNT_INLINE_DATA		0x00000100
 #define F2FS_MOUNT_ANDROID_EMU		0x00001000
 #define F2FS_MOUNT_ERRORS_PANIC		0x00002000
 #define F2FS_MOUNT_ERRORS_RECOVER	0x00004000
@@ -950,6 +951,7 @@ enum {
 	FI_DELAY_IPUT,		/* used for the recovery */
 	FI_NO_EXTENT,		/* not to use the extent cache */
 	FI_INLINE_XATTR,	/* used for inline xattr */
+	FI_INLINE_DATA,		/* used for inline data*/
 };
 
 static inline void set_inode_flag(struct f2fs_inode_info *fi, int flag)
@@ -995,6 +997,8 @@ static inline void get_inline_info(struct f2fs_inode_info *fi,
 {
 	if (ri->i_inline & F2FS_INLINE_XATTR)
 		set_inode_flag(fi, FI_INLINE_XATTR);
+	if (ri->i_inline & F2FS_INLINE_DATA)
+		set_inode_flag(fi, FI_INLINE_DATA);
 }
 
 static inline void set_raw_inline(struct f2fs_inode_info *fi,
@@ -1004,6 +1008,8 @@ static inline void set_raw_inline(struct f2fs_inode_info *fi,
 
 	if (is_inode_flag_set(fi, FI_INLINE_XATTR))
 		ri->i_inline |= F2FS_INLINE_XATTR;
+	if (is_inode_flag_set(fi, FI_INLINE_DATA))
+		ri->i_inline |= F2FS_INLINE_DATA;
 }
 
 static inline unsigned int addrs_per_inode(struct f2fs_inode_info *fi)
@@ -1027,6 +1033,13 @@ static inline int inline_xattr_size(struct inode *inode)
 		return F2FS_INLINE_XATTR_ADDRS << 2;
 	else
 		return 0;
+}
+
+static inline void *inline_data_addr(struct page *page)
+{
+	struct f2fs_inode *ri;
+	ri = (struct f2fs_inode *)page_address(page);
+	return (void *)&(ri->i_addr[1]);
 }
 
 static inline int f2fs_readonly(struct super_block *sb)
@@ -1324,4 +1337,5 @@ extern const struct address_space_operations f2fs_meta_aops;
 extern const struct inode_operations f2fs_dir_inode_operations;
 extern const struct inode_operations f2fs_symlink_inode_operations;
 extern const struct inode_operations f2fs_special_inode_operations;
+
 #endif
