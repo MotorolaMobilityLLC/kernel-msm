@@ -50,6 +50,7 @@ enum {
 	Opt_active_logs,
 	Opt_disable_ext_identify,
 	Opt_inline_xattr,
+	Opt_inline_data,
 	Opt_android_emu,
 	Opt_err_continue,
 	Opt_err_panic,
@@ -69,6 +70,7 @@ static match_table_t f2fs_tokens = {
 	{Opt_active_logs, "active_logs=%u"},
 	{Opt_disable_ext_identify, "disable_ext_identify"},
 	{Opt_inline_xattr, "inline_xattr"},
+	{Opt_inline_data, "inline_data"},
 	{Opt_android_emu, "android_emu=%s"},
 	{Opt_err_continue, "errors=continue"},
 	{Opt_err_panic, "errors=panic"},
@@ -355,6 +357,9 @@ static int parse_options(struct super_block *sb, char *options)
 		case Opt_disable_ext_identify:
 			set_opt(sbi, DISABLE_EXT_IDENTIFY);
 			break;
+		case Opt_inline_data:
+			set_opt(sbi, INLINE_DATA);
+			break;
 		case Opt_err_continue:
 			clear_opt(sbi, ERRORS_RECOVER);
 			clear_opt(sbi, ERRORS_PANIC);
@@ -570,7 +575,8 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 		seq_puts(seq, ",errors=continue");
 	if (test_opt(sbi, DISABLE_EXT_IDENTIFY))
 		seq_puts(seq, ",disable_ext_identify");
-
+	if (test_opt(sbi, INLINE_DATA))
+		seq_puts(seq, ",inline_data");
 	if (test_opt(sbi, ANDROID_EMU))
 		seq_printf(seq, ",android_emu=%u:%u:%ho%s",
 				sbi->android_emu_uid,
