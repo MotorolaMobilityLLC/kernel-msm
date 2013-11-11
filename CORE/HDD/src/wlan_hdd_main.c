@@ -1410,7 +1410,7 @@ int hdd_return_batch_scan_rsp_to_user
 
     /*enough scan result available in cache to return to user space or
       scan result needs to be fetched 1st from fw and then return*/
-    if (len < rem_len)
+    if (len == cur_len)
     {
         pAdapter->hdd_wait_for_get_batch_scan_rsp = TRUE;
         halStatus = sme_TriggerBatchScanResultInd(
@@ -1448,7 +1448,7 @@ int hdd_return_batch_scan_rsp_to_user
             len = (len - pPrivData->used_len);
             pDest = (command + pPrivData->used_len);
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "BATCH SCAN RESULT:");
+               "NEW BATCH SCAN RESULT:");
             while(count < len)
             {
                 printk("%c", *(pDest + count));
@@ -1473,34 +1473,23 @@ int hdd_return_batch_scan_rsp_to_user
     }
     else
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-           "%s: copy %d data to user buffer", __func__, len);
         count = 0;
         len = (len - pPrivData->used_len);
         pDest = (command + pPrivData->used_len);
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-            "BATCH SCAN RESULT:");
+            "REMAINING TRUNCATED BATCH SCAN RESULT:");
         while(count < len)
         {
             printk("%c", *(pDest + count));
             count++;
         }
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+           "%s: copy %d data to user buffer", __func__, len);
         if (copy_to_user(pPrivData->buf, pDest, len))
         {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                "%s: failed to copy data to user buffer", __func__);
             return -EFAULT;
-        }
-        pAdapter->hdd_wait_for_get_batch_scan_rsp = FALSE;
-        halStatus = sme_TriggerBatchScanResultInd(
-                        WLAN_HDD_GET_HAL_CTX(pAdapter), pReq,
-                        pAdapter->sessionId, hdd_batch_scan_result_ind_callback,
-                        pAdapter);
-        if ( eHAL_STATUS_SUCCESS != halStatus )
-        {
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "sme_GetBatchScanScan  returned failure halStatus %d",
-                halStatus);
         }
     }
 
