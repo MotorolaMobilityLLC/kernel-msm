@@ -257,6 +257,20 @@ typedef __ani_attr_pre_packed struct sTrafStrmMetrics
 } __ani_attr_packed tTrafStrmMetrics, *tpTrafStrmMetrics;
 
 
+typedef __ani_attr_pre_packed struct sBcnReportFields
+{
+    tANI_U8       ChanNum;
+    tANI_U8       Spare;
+    tANI_U16      MeasDuration;
+    tANI_U8       PhyType;
+    tANI_U8       RecvSigPower;
+    tSirMacAddr   Bssid;
+    tANI_U32      ParentTsf;
+    tANI_U32      TargetTsf[2];
+    tANI_U16      BcnInterval;
+    tANI_U16      CapabilityInfo;
+} __ani_attr_packed tBcnReportFields, *tpBcnReportFields;
+
 
 #endif /* __ANI_SYSTEM_DEFS_H */
 

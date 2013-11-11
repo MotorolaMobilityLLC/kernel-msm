@@ -278,6 +278,29 @@ typedef struct sSirAssocRsp
 #endif
 } tSirAssocRsp, *tpSirAssocRsp;
 
+#if defined(FEATURE_WLAN_CCX_UPLOAD)
+// Structure to hold CCX Beacon report mandatory IEs
+typedef struct sSirCcxBcnReportMandatoryIe
+{
+    tSirMacSSid           ssId;
+    tSirMacRateSet        supportedRates;
+    tSirMacFHParamSet     fhParamSet;
+    tSirMacDsParamSetIE   dsParamSet;
+    tSirMacCfParamSet     cfParamSet;
+    tSirMacIBSSParams     ibssParamSet;
+    tSirMacTim            tim;
+    tSirMacRRMEnabledCap  rmEnabledCapabilities;
+
+    tANI_U8               ssidPresent;
+    tANI_U8               suppRatesPresent;
+    tANI_U8               fhParamPresent;
+    tANI_U8               dsParamsPresent;
+    tANI_U8               cfPresent;
+    tANI_U8               ibssParamPresent;
+    tANI_U8               timPresent;
+} tSirCcxBcnReportMandatoryIe, *tpSirCcxBcnReportMandatoryIe;
+#endif /* FEATURE_WLAN_CCX_UPLOAD */
+
 tANI_U8
 sirIsPropCapabilityEnabled(struct sAniSirGlobal *pMac, tANI_U32 bitnum);
 
@@ -372,6 +395,15 @@ sirParseBeaconIE(struct sAniSirGlobal *pMac,
                  tpSirProbeRespBeacon   pBeaconStruct,
                  tANI_U8                    *pPayload,
                  tANI_U32                    payloadLength);
+
+#if defined(FEATURE_WLAN_CCX_UPLOAD)
+tSirRetStatus
+sirFillBeaconMandatoryIEforCcxBcnReport(tpAniSirGlobal    pMac,
+                                        tANI_U8          *pPayload,
+                                        const tANI_U32    payloadLength,
+                                        tANI_U8         **outIeBuf,
+                                        tANI_U32         *pOutIeLen);
+#endif /* FEATURE_WLAN_CCX_UPLOAD */
 
 tSirRetStatus
 sirConvertBeaconFrame2Struct(struct sAniSirGlobal *pMac,

@@ -63,6 +63,7 @@
 #define SIR_MAX_NUM_CHANNELS    64
 #define SIR_MAX_NUM_STA_IN_IBSS 16
 #define SIR_MAX_NUM_STA_IN_BSS  256
+#define SIR_CCX_MAX_MEAS_IE_REQS   8
 
 typedef enum
 {

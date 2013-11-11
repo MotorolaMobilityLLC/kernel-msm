@@ -112,12 +112,16 @@ typedef struct sRrmSMEContext
    tAniSSID ssId;  //SSID used in the measuring beacon report.
    tSirMacAddr bssId; //bssid used for beacon report measurement.
    tANI_U16 randnIntvl; //Randomization interval to be used in subsequent measurements.
-   tANI_U16 duration;
-   tANI_U16 measMode;
+   tANI_U16 duration[SIR_CCX_MAX_MEAS_IE_REQS];
+   tANI_U8 measMode[SIR_CCX_MAX_MEAS_IE_REQS];
    tRrmConfigParam rrmConfig;
    vos_timer_t IterMeasTimer;
    tDblLinkList neighborReportCache;
    tRrmNeighborRequestControlInfo neighborReqControlInfo;
+
+#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+   tCsrCcxBeaconReq  ccxBcnReqInfo;
+#endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
 }tRrmSMEContext, *tpRrmSMEContext; 
 
 typedef struct sRrmNeighborReq

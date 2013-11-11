@@ -1692,6 +1692,57 @@ eHalStatus sme_SetCCKMIe(tHalHandle hHal, tANI_U8 sessionId,
     return status;
 }
 
+/* ---------------------------------------------------------------------------
+    \fn sme_SetCcxBeaconRequest
+    \brief  function to set CCX beacon request parameters
+    \param  hHal       - HAL handle for device
+    \param  sessionId  - Session id
+    \param  pCcxBcnReq - pointer to CCX beacon request
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_SetCcxBeaconRequest(tHalHandle hHal, const tANI_U8 sessionId,
+                                   const tCsrCcxBeaconReq* pCcxBcnReq)
+{
+   eHalStatus               status           = eSIR_SUCCESS;
+   tpAniSirGlobal           pMac             = PMAC_STRUCT( hHal );
+   tpSirBeaconReportReqInd  pSmeBcnReportReq = NULL;
+   tCsrCcxBeaconReqParams  *pBeaconReq       = NULL;
+   tANI_U8                  counter          = 0;
+   tCsrRoamSession         *pSession         = CSR_GET_SESSION(pMac, sessionId);
+   tpRrmSMEContext          pSmeRrmContext   = &pMac->rrm.rrmSmeContext;
+
+   /* Store the info in RRM context */
+   vos_mem_copy(&pSmeRrmContext->ccxBcnReqInfo, pCcxBcnReq, sizeof(tCsrCcxBeaconReq));
+
+   //Prepare the request to send to SME.
+   pSmeBcnReportReq = vos_mem_malloc(sizeof( tSirBeaconReportReqInd ));
+   if(NULL == pSmeBcnReportReq)
+   {
+      smsLog(pMac, LOGP, "Memory Allocation Failure!!! CCX  BcnReq Ind to SME");
+      return eSIR_FAILURE;
+   }
+
+   smsLog(pMac, LOGE, "Sending Beacon Report Req to SME");
+   vos_mem_zero( pSmeBcnReportReq, sizeof( tSirBeaconReportReqInd ));
+
+   pSmeBcnReportReq->messageType = eWNI_SME_BEACON_REPORT_REQ_IND;
+   pSmeBcnReportReq->length = sizeof( tSirBeaconReportReqInd );
+   vos_mem_copy( pSmeBcnReportReq->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr) );
+   pSmeBcnReportReq->channelInfo.channelNum = 255;
+   pSmeBcnReportReq->channelList.numChannels = pCcxBcnReq->numBcnReqIe;
+
+   for (counter = 0; counter < pCcxBcnReq->numBcnReqIe; counter++)
+   {
+        pBeaconReq = (tCsrCcxBeaconReqParams *)&pCcxBcnReq->bcnReq[counter];
+        pSmeBcnReportReq->fMeasurementtype[counter] = pBeaconReq->scanMode;
+        pSmeBcnReportReq->measurementDuration[counter] = SYS_TU_TO_MS(pBeaconReq->measurementDuration);
+        pSmeBcnReportReq->channelList.channelNumber[counter] = pBeaconReq->channel;
+   }
+
+   sme_RrmProcessBeaconReportReqInd(pMac, pSmeBcnReportReq);
+   return status;
+}
+
 #endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
 
 
