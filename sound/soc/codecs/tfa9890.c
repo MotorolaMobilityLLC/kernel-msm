@@ -1153,31 +1153,24 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 
 	switch (params_rate(params)) {
 	case 8000:
-		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 		break;
 	case 11025:
 		val = val | TFA9890_SAMPLE_RATE_11k;
-		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 		break;
 	case 12000:
 		val = val | TFA9890_SAMPLE_RATE_12k;
-		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 		break;
 	case 16000:
 		val = val | TFA9890_SAMPLE_RATE_16k;
-		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 		break;
 	case 22050:
 		val = val | TFA9890_SAMPLE_RATE_22k;
-		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 		break;
 	case 24000:
 		val = val | TFA9890_SAMPLE_RATE_24k;
-		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 		break;
 	case 32000:
 		val = val | TFA9890_SAMPLE_RATE_32k;
-		snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 		break;
 	case 44100:
 		val = val | TFA9890_SAMPLE_RATE_44k;
@@ -1189,6 +1182,8 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 		pr_err("tfa9890: invalid sample rate\n");
 		return -EINVAL;
 	}
+
+	snd_soc_write(codec, TFA9890_I2S_CTL_REG, val);
 
 	if (stereo_mode) {
 		/* select right/left channel input for I2S */
