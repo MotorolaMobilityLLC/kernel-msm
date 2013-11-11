@@ -1009,7 +1009,7 @@ WLANTL_StartForwarding
   vos_mem_zero( &sMessage, sizeof(vos_msg_t) );
 
   uData = ucSTAId | (ucUcastSig << 8 ) | (ucBcastSig << 16); 
-  sMessage.bodyptr = (v_PVOID_t)uData;
+  sMessage.bodyval = uData;
   sMessage.type    = WLANTL_TX_FWD_CACHED;
 
   return vos_tx_mq_serialize(VOS_MQ_ID_TL, &sMessage);
@@ -8674,7 +8674,7 @@ WLANTL_TxProcessMsg
        | 00 | ucBcastSignature | ucUcastSignature | ucSTAID |
        each field above is one byte
     ---------------------------------------------------------------------*/
-    uData       = (v_U32_t)message->bodyptr; 
+    uData       = message->bodyval;
     ucSTAId     = ( uData & 0x000000FF); 
     ucUcastSig  = ( uData & 0x0000FF00)>>8; 
     ucBcastSig  = (v_U8_t)(( uData & 0x00FF0000)>>16); 
