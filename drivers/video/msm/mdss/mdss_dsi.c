@@ -814,8 +814,8 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 		}
 	}
 
-	if (ctrl_pdata->esd)
-		ctrl_pdata->esd(pdata);
+	if (ctrl_pdata->cont_splash_on)
+		ctrl_pdata->cont_splash_on(pdata);
 
 	pr_debug("%s-:End\n", __func__);
 	return ret;
