@@ -3982,7 +3982,10 @@ limProcessJoinFailureTimeout(tpAniSirGlobal pMac)
         /**
          * Issue MLM join confirm with timeout reason code
          */
-        PELOGE(limLog(pMac, LOGE,  FL(" Join Failure Timeout occurred."));)
+        PELOGE(limLog(pMac, LOGE,  FL(" In state eLIM_MLM_WT_JOIN_BEACON_STATE."));)
+        PELOGE(limLog(pMac, LOGE,  FL(" Join Failure Timeout occurred for session %d with BSS "),
+                                        psessionEntry->peSessionId);
+                                        limPrintMacAddr(pMac, psessionEntry->bssId, LOGE);)
 
         mlmJoinCnf.resultCode = eSIR_SME_JOIN_TIMEOUT_RESULT_CODE;
         mlmJoinCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
@@ -4047,7 +4050,8 @@ static void limProcessPeriodicJoinProbeReqTimer(tpAniSirGlobal pMac)
 
     if((psessionEntry = peFindSessionBySessionId(pMac, pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer.sessionId))== NULL)
     {
-        limLog(pMac, LOGE,FL("session does not exist for given SessionId"));
+        limLog(pMac, LOGE,FL("session does not exist for given SessionId : %d"),
+                              pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer.sessionId);
         return;
     }
 

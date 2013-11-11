@@ -3931,8 +3931,9 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
 #endif
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId);
 
-    smsLog(pMac, LOGE, FL("Disconnect indication on session %d in state %d"),
-           sessionId, pNeighborRoamInfo->neighborRoamState);
+    smsLog(pMac, LOGE, FL("Disconnect indication on session %d in state %d from BSSID : "
+                          MAC_ADDRESS_STR), sessionId, pNeighborRoamInfo->neighborRoamState,
+                          MAC_ADDR_ARRAY(pSession->connectedProfile.bssid));
  
 #ifdef FEATURE_WLAN_LFR
     /*Free the current previous profile and move the current profile to prev profile.*/
