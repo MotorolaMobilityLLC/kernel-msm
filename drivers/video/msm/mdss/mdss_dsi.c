@@ -228,8 +228,7 @@ int mdss_dsi_get_dt_vreg_data(struct device *dev,
 			}
 			mp->vreg_config[i].post_off_sleep = (!rc ? tmp : 0);
 
-			mp->vreg_config[i].boot_on = of_property_read_bool(of_node,
-					"qcom,cont-splash-enabled");
+			mp->vreg_config[i].boot_on = mp->boot_on;
 
 			pr_debug("%s: %s min=%d, max=%d, enable=%d, disable=%d, preonsleep=%d, postonsleep=%d, preoffsleep=%d, postoffsleep=%d\n",
 				__func__,
@@ -1316,15 +1315,6 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		goto error_no_mem;
 	}
 
-	/* Parse the regulator information */
-	rc = mdss_dsi_get_dt_vreg_data(&pdev->dev,
-			        &ctrl_pdata->power_data, NULL);
-	if (rc) {
-		pr_err("%s: failed to get vreg data from dt. rc=%d\n",
-		       __func__, rc);
-		goto error_vreg;
-	}
-
 	/* DSI panels can be different between controllers */
 	rc = mdss_dsi_get_panel_cfg(panel_cfg);
 	if (!rc)
@@ -1344,6 +1334,17 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	dsi_pan_node = mdss_dsi_find_panel_of_node(pdev, panel_cfg, ctrl_pdata);
 	if (!dsi_pan_node) {
 		pr_err("%s: can't find panel node %s\n", __func__, panel_cfg);
+		goto error_pan_node;
+	}
+
+	mdss_panel_set_reg_boot_on(dsi_pan_node, ctrl_pdata);
+
+	/* Parse the regulator information */
+	rc = mdss_dsi_get_dt_vreg_data(&pdev->dev,
+						&ctrl_pdata->power_data, NULL);
+	if (rc) {
+		pr_err("%s: failed to get vreg data from dt. rc=%d\n",
+								__func__, rc);
 		goto error_pan_node;
 	}
 
