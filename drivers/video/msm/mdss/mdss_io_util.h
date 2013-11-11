@@ -87,6 +87,7 @@ struct dss_module_power {
 	struct dss_gpio *gpio_config;
 	unsigned num_clk;
 	struct dss_clk *clk_config;
+	int boot_on;
 };
 
 int msm_dss_ioremap_byname(struct platform_device *pdev,

@@ -1539,6 +1539,8 @@ static int __devinit msm_dsi_probe(struct platform_device *pdev)
 		goto error_pan_node;
 	}
 
+	mdss_panel_set_reg_boot_on(dsi_pan_node, ctrl_pdata);
+
 	cmd_cfg_cont_splash = mdp3_panel_get_boot_cfg() ? true : false;
 
 	rc = mdss_dsi_panel_init(dsi_pan_node, ctrl_pdata, cmd_cfg_cont_splash);
