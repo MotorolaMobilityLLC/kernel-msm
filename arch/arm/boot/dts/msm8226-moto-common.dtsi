@@ -471,7 +471,13 @@
 				qcom,mode-ctrl = <0x60>;
 				qcom,pwm-channel = <5>;
 				qcom,pwm-us = <1000>;
-				qcom,blink-en = <1>;
+			};
+
+		qcom,led_rgb {
+				label = "combo";
+				linux,name = "rgb";
+				qcom,max-current = <12>;
+				qcom,id = <9>;
 			};
 		};
 
