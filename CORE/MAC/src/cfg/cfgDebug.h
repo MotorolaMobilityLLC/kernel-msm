@@ -57,7 +57,11 @@
 #include "utilsApi.h"
 #include "limTrace.h"
 
+#if !defined(__printf)
+#define __printf(a,b)
+#endif
 
-void cfgLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString,...) ;
+void __printf(3,4) cfgLog(tpAniSirGlobal pMac, tANI_U32 loglevel,
+                          const char *pString, ...);
 
 #endif
