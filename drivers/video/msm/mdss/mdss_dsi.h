@@ -347,7 +347,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*on) (struct mdss_panel_data *pdata);
 	int (*off) (struct mdss_panel_data *pdata);
 	int (*partial_update_fnc) (struct mdss_panel_data *pdata);
-	int (*esd) (struct mdss_panel_data *pdata);
+	int (*cont_splash_on) (struct mdss_panel_data *pdata);
 	int (*reg_read) (struct mdss_panel_data *pdata, u8 reg,
 			int mode, size_t size, u8 *buffer);
 	int (*reg_write) (struct mdss_panel_data *pdata,

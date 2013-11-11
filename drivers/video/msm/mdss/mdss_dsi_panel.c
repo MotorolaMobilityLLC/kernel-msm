@@ -25,6 +25,7 @@
 
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
+#include <mach/mmi_panel_notifier.h>
 
 #include "mdss_dsi.h"
 
@@ -682,6 +683,13 @@ static int mdss_dsi_panel_esd(struct mdss_panel_data *pdata)
 	return 0;
 }
 
+static int mdss_dsi_panel_cont_splash_on(struct mdss_panel_data *pdata)
+{
+	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
+	mdss_dsi_panel_esd(pdata);
+	return 0;
+}
+
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mipi_panel_info *mipi;
@@ -704,12 +712,18 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mdss_dsi_panel_reset(pdata, 1);
 
 	if (ctrl->panel_config.bare_board == true) {
+		mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
 		pr_warning("%s: This is bare_board configuration\n", __func__);
 		goto end;
 	}
 
 	if (ctrl->on_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
+
+	/* Send display on notification.  This will need to be revisited once
+	   we implement command mode support the way we want, since display
+	   may not be made visible to user until a point later than this */
+	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
 
 	mdss_dsi_get_pwr_mode(pdata, &pwr_mode);
 	/* validate screen is actually on */
@@ -742,6 +756,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	mipi  = &pdata->panel_info.mipi;
+	mmi_panel_notify(MMI_PANEL_EVENT_PRE_DISPLAY_OFF, NULL);
 
 	if (ctrl->panel_config.bare_board == true)
 		goto disable_regs;
@@ -1650,7 +1665,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->unlock_mutex = mdss_dsi_panel_unlock_mutex;
 	ctrl_pdata->reg_read = mdss_dsi_panel_reg_read;
 	ctrl_pdata->reg_write = mdss_dsi_panel_reg_write;
-	ctrl_pdata->esd = mdss_dsi_panel_esd;
+	ctrl_pdata->cont_splash_on = mdss_dsi_panel_cont_splash_on;
 
 
 	return 0;

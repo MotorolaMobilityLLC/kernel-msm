@@ -26,3 +26,9 @@ config FB_MSM_MDSS_TIMEOUT_DUMP
 	default n
 	---help---
 	  MDSS Timeout Debugging
+
+config MMI_PANEL_NOTIFICATIONS
+	bool 'MMI panel notifications'
+	default n
+	---help---
+	MMI panel notifications framework
