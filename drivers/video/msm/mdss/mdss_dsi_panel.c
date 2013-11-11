@@ -1083,6 +1083,15 @@ static int mdss_dsi_parse_reset_seq(struct device_node *np,
 	return 0;
 }
 
+void mdss_panel_set_reg_boot_on(struct device_node *node,
+				struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	if (of_property_read_bool(node, "qcom,cont-splash-enabled")) {
+		ctrl_pdata->panel_vregs.boot_on = true;
+		ctrl_pdata->power_data.boot_on = true;
+	}
+}
+
 int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	struct device_node *np;

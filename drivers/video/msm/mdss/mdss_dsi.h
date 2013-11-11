@@ -484,6 +484,8 @@ void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 		bool cmd_cfg_cont_splash);
+void mdss_panel_set_reg_boot_on(struct device_node *node,
+					struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 bool mdss_dsi_match_chosen_panel(struct device_node *np,
 				struct mdss_panel_config *pconfig);

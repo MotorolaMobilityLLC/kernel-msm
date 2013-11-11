@@ -515,6 +515,7 @@ int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp,
 					__func__, rc);
 			}
 			mp->vreg_config[i].post_off_sleep = (!rc ? tmp : 0);
+			mp->vreg_config[i].boot_on = mp->boot_on;
 
 			pr_debug("%s: %s min=%d, max=%d, enable=%d, disable=%d, preonsleep=%d, postonsleep=%d, preoffsleep=%d, postoffsleep=%d\n",
 				__func__,
@@ -701,6 +702,20 @@ int dsi_panel_device_register_v2(struct platform_device *dev,
 		kfree(dsi_panel_rx_buf.start);
 		return rc;
 	}
+
+	if (ctrl_pdata->panel_config.esd_enable) {
+		pr_debug("%s: create ESD worker thread\n", __func__);
+		ctrl_pdata->panel_esd_data.esd_wq =
+			create_singlethread_workqueue("mdss_panel_esd");
+		if (ctrl_pdata->panel_esd_data.esd_wq == NULL) {
+			pr_err("%s: failed to create ESD work queue\n",
+								__func__);
+			ctrl_pdata->panel_config.esd_enable = false;
+		}
+	} else
+		pr_info("MDSS PANEL: ESD detection is disable\n");
+
+	mutex_init(&ctrl_pdata->panel_config.panel_mutex);
 
 	pr_debug("%s: Panal data initialized\n", __func__);
 	return 0;
