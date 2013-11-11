@@ -268,6 +268,16 @@ void ConvertCFParams(tpAniSirGlobal     pMac,
     pOld->cfpDurRemaining = pNew->cfp_durremaining;
 }
 
+void ConvertFHParams (tpAniSirGlobal        pMac,
+                      tSirMacFHParamSet    *pOld,
+                      tDot11fIEFHParamSet  *pNew)
+{
+    pOld->dwellTime   = pNew->dwell_time;
+    pOld->hopSet      = pNew->hop_set;
+    pOld->hopPattern  = pNew->hop_pattern;
+    pOld->hopIndex    = pNew->hop_index;
+}
+
 void ConvertTIM(tpAniSirGlobal pMac,
                       tSirMacTim    *pOld,
                       tDot11fIETIM     *pNew)

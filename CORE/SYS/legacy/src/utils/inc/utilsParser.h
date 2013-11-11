@@ -60,6 +60,7 @@
 
 void          ConvertSSID           (tpAniSirGlobal, tSirMacSSid*,               tDot11fIESSID*);
 void          ConvertSuppRates      (tpAniSirGlobal, tSirMacRateSet*,            tDot11fIESuppRates*);
+void          ConvertFHParams       (tpAniSirGlobal, tSirMacFHParamSet*,         tDot11fIEFHParamSet*);
 void          ConvertExtSuppRates   (tpAniSirGlobal, tSirMacRateSet*,            tDot11fIEExtSuppRates*);
 void          ConvertQOSCaps        (tpAniSirGlobal, tSirMacQosCapabilityIE*,    tDot11fIEQOSCapsAp*);
 void          ConvertQOSCapsStation (tpAniSirGlobal, tSirMacQosCapabilityStaIE*, tDot11fIEQOSCapsStation*);

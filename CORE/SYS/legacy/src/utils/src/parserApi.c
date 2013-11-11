@@ -2628,6 +2628,202 @@ sirConvertReassocReqFrame2Struct(tpAniSirGlobal pMac,
 
 } // End sirConvertReassocReqFrame2Struct.
 
+
+#if defined(FEATURE_WLAN_CCX_UPLOAD)
+tSirRetStatus
+sirFillBeaconMandatoryIEforCcxBcnReport(tpAniSirGlobal   pMac,
+                                        tANI_U8         *pPayload,
+                                        const tANI_U32   nPayload,
+                                        tANI_U8        **outIeBuf,
+                                        tANI_U32        *pOutIeLen)
+{
+    tDot11fBeaconIEs            *pBies = NULL;
+    tANI_U32                    status = eHAL_STATUS_SUCCESS;
+    tSirCcxBcnReportMandatoryIe ccxBcnReportMandatoryIe;
+
+    /* To store how many bytes are required to be allocated
+           for Bcn report mandatory Ies */
+    tANI_U16 numBytes = 0;
+    tANI_U8  *pos = NULL;
+
+    // Zero-init our [out] parameter,
+    vos_mem_set( (tANI_U8*)&ccxBcnReportMandatoryIe, sizeof(ccxBcnReportMandatoryIe), 0 );
+    pBies = vos_mem_malloc(sizeof(tDot11fBeaconIEs));
+    if ( NULL == pBies )
+        status = eHAL_STATUS_FAILURE;
+    else
+        status = eHAL_STATUS_SUCCESS;
+    if (!HAL_STATUS_SUCCESS(status))
+    {
+        limLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+        return eSIR_FAILURE;
+    }
+    // delegate to the framesc-generated code,
+    status = dot11fUnpackBeaconIEs( pMac, pPayload, nPayload, pBies );
+
+    if ( DOT11F_FAILED( status ) )
+    {
+        limLog(pMac, LOGE, FL("Failed to parse Beacon IEs (0x%08x, %d bytes):\n"),
+                  status, nPayload);
+        vos_mem_free(pBies);
+        return eSIR_FAILURE;
+    }
+    else if ( DOT11F_WARNED( status ) )
+    {
+      limLog( pMac, LOGW, FL("There were warnings while unpacking Beacon IEs (0x%08x, %d bytes):\n"),
+                 status, nPayload );
+        PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pPayload, nPayload);)
+    }
+
+    // & "transliterate" from a 'tDot11fBeaconIEs' to a 'ccxBcnReportMandatoryIe'...
+    if ( !pBies->SSID.present )
+    {
+        PELOGW(limLog(pMac, LOGW, FL("Mandatory IE SSID not present!\n"));)
+    }
+    else
+    {
+        ccxBcnReportMandatoryIe.ssidPresent = 1;
+        ConvertSSID( pMac, &ccxBcnReportMandatoryIe.ssId, &pBies->SSID );
+        /* 1 for EID, 1 for length and length bytes */
+        numBytes += 1 + 1 + ccxBcnReportMandatoryIe.ssId.length;
+    }
+
+    if ( !pBies->SuppRates.present )
+    {
+        PELOGW(limLog(pMac, LOGW, FL("Mandatory IE Supported Rates not present!\n"));)
+    }
+    else
+    {
+        ccxBcnReportMandatoryIe.suppRatesPresent = 1;
+        ConvertSuppRates( pMac, &ccxBcnReportMandatoryIe.supportedRates, &pBies->SuppRates );
+        numBytes += 1 + 1 + ccxBcnReportMandatoryIe.supportedRates.numRates;
+    }
+
+    if ( pBies->FHParamSet.present)
+    {
+        ccxBcnReportMandatoryIe.fhParamPresent = 1;
+        ConvertFHParams( pMac, &ccxBcnReportMandatoryIe.fhParamSet, &pBies->FHParamSet );
+        numBytes += 1 + 1 + SIR_MAC_FH_PARAM_SET_EID_MAX;
+    }
+
+    if ( pBies->DSParams.present )
+    {
+        ccxBcnReportMandatoryIe.dsParamsPresent = 1;
+        ccxBcnReportMandatoryIe.dsParamSet.channelNumber = pBies->DSParams.curr_channel;
+        numBytes += 1 + 1 + SIR_MAC_DS_PARAM_SET_EID_MAX;
+    }
+
+    if ( pBies->CFParams.present )
+    {
+        ccxBcnReportMandatoryIe.cfPresent = 1;
+        ConvertCFParams( pMac, &ccxBcnReportMandatoryIe.cfParamSet, &pBies->CFParams );
+        numBytes += 1 + 1 + SIR_MAC_CF_PARAM_SET_EID_MAX;
+    }
+
+    if ( pBies->IBSSParams.present )
+    {
+        ccxBcnReportMandatoryIe.ibssParamPresent = 1;
+        ccxBcnReportMandatoryIe.ibssParamSet.atim = pBies->IBSSParams.atim;
+        numBytes += 1 + 1 + SIR_MAC_IBSS_PARAM_SET_EID_MAX;
+    }
+
+    if ( pBies->TIM.present )
+    {
+        ccxBcnReportMandatoryIe.timPresent = 1;
+        ccxBcnReportMandatoryIe.tim.dtimCount     = pBies->TIM.dtim_count;
+        ccxBcnReportMandatoryIe.tim.dtimPeriod    = pBies->TIM.dtim_period;
+        ccxBcnReportMandatoryIe.tim.bitmapControl = pBies->TIM.bmpctl;
+        /* As per the CCX spec, May truncate and report first 4 octets only */
+        numBytes += 1 + 1 + SIR_MAC_TIM_EID_MIN;
+    }
+
+    if ( pBies->RRMEnabledCap.present )
+    {
+        vos_mem_copy( &ccxBcnReportMandatoryIe.rmEnabledCapabilities, &pBies->RRMEnabledCap, sizeof( tDot11fIERRMEnabledCap ) );
+        numBytes += 1 + 1 + SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX;
+    }
+
+    *outIeBuf = vos_mem_malloc(numBytes);
+    if (NULL == *outIeBuf)
+    {
+        limLog(pMac, LOGP, FL("Memory Allocation failure"));
+        vos_mem_free(pBies);
+        return eSIR_FAILURE;
+    }
+    pos = *outIeBuf;
+    *pOutIeLen = numBytes;
+
+    /* Start filling the output Ie with Mandatory IE information */
+    /* Fill SSID IE */
+    *pos = SIR_MAC_SSID_EID;
+    pos++;
+    *pos = ccxBcnReportMandatoryIe.ssId.length;
+    pos++;
+    vos_mem_copy(pos, (tANI_U8*)ccxBcnReportMandatoryIe.ssId.ssId, ccxBcnReportMandatoryIe.ssId.length);
+    pos += ccxBcnReportMandatoryIe.ssId.length;
+
+    /* Fill Supported Rates IE */
+    *pos = SIR_MAC_RATESET_EID;
+    pos++;
+    *pos = ccxBcnReportMandatoryIe.supportedRates.numRates;
+    pos++;
+    vos_mem_copy(pos, (tANI_U8*)ccxBcnReportMandatoryIe.supportedRates.rate,
+                      ccxBcnReportMandatoryIe.supportedRates.numRates);
+    pos += ccxBcnReportMandatoryIe.supportedRates.numRates;
+
+    /* Fill FH Parameter set IE */
+    *pos = SIR_MAC_FH_PARAM_SET_EID;
+    pos++;
+    *pos = SIR_MAC_FH_PARAM_SET_EID_MAX;
+    pos++;
+    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.fhParamSet, SIR_MAC_FH_PARAM_SET_EID_MAX);
+    pos += SIR_MAC_FH_PARAM_SET_EID_MAX;
+
+    /* Fill DS Parameter set IE */
+    *pos = SIR_MAC_DS_PARAM_SET_EID;
+    pos++;
+    *pos = SIR_MAC_DS_PARAM_SET_EID_MAX;
+    pos++;
+    *pos = ccxBcnReportMandatoryIe.dsParamSet.channelNumber;
+    pos += SIR_MAC_DS_PARAM_SET_EID_MAX;
+
+    /* Fill CF Parameter set */
+    *pos = SIR_MAC_CF_PARAM_SET_EID;
+    pos++;
+    *pos = SIR_MAC_CF_PARAM_SET_EID_MAX;
+    pos++;
+    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.cfParamSet, SIR_MAC_CF_PARAM_SET_EID_MAX);
+    pos += SIR_MAC_CF_PARAM_SET_EID_MAX;
+
+    /* Fill IBSS Parameter set IE */
+    *pos = SIR_MAC_IBSS_PARAM_SET_EID;
+    pos++;
+    *pos = SIR_MAC_IBSS_PARAM_SET_EID_MAX;
+    pos++;
+    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.ibssParamSet.atim, SIR_MAC_IBSS_PARAM_SET_EID_MAX);
+    pos += SIR_MAC_IBSS_PARAM_SET_EID_MAX;
+
+    /* Fill TIM IE */
+    *pos = SIR_MAC_TIM_EID;
+    pos++;
+    *pos = SIR_MAC_TIM_EID_MIN;
+    pos++;
+    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.tim, SIR_MAC_TIM_EID_MIN);
+    pos += SIR_MAC_TIM_EID_MIN;
+
+    /* Fill RM Capability IE */
+    *pos = SIR_MAC_RM_ENABLED_CAPABILITY_EID;
+    pos++;
+    *pos = SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX;
+    pos++;
+    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.rmEnabledCapabilities, SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX);
+
+    vos_mem_free(pBies);
+    return eSIR_SUCCESS;
+}
+
+#endif /* FEATURE_WLAN_CCX_UPLOAD */
+
 tSirRetStatus
 sirParseBeaconIE(tpAniSirGlobal        pMac,
                  tpSirProbeRespBeacon  pBeaconStruct,
