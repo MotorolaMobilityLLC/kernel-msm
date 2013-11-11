@@ -85,4 +85,9 @@ int mdp3_panel_get_boot_cfg(void);
 
 int dsi_panel_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg);
 
+int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp,
+						struct device_node *node);
+
+int dsi_cmdlist_put_v2(struct mdss_dsi_ctrl_pdata *ctrl,
+				struct dcs_cmd_req *cmdreq);
 #endif /* DSI_V2_H */

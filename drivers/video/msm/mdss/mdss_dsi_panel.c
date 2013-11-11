@@ -155,10 +155,11 @@ static struct dsi_cmd_desc dcs_read_cmd = {
 	dcs_cmd
 };
 
-u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
+static int mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 		char cmd1, void (*fxn)(int), char *rbuf, int len)
 {
 	struct dcs_cmd_req cmdreq;
+	int rc;
 
 	dcs_cmd[0] = cmd0;
 	dcs_cmd[1] = cmd1;
@@ -169,18 +170,24 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	cmdreq.rlen = len;
 	cmdreq.rbuf = rbuf;
 	cmdreq.cb = fxn; /* call back */
-	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if (ctrl->dsi_cmdlist_put)
+		rc = ctrl->dsi_cmdlist_put(ctrl, &cmdreq);
+	else {
+		pr_err("%s: dsi_cmdlist_put is not defined\n", __func__);
+		rc = -EINVAL;
+	}
 	/*
 	 * blocked here, until call back called
 	 */
 
-	return 0;
+	return rc;
 }
 
-static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+static int mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds)
 {
 	struct dcs_cmd_req cmdreq;
+	int rc;
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = pcmds->cmds;
@@ -189,7 +196,14 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
-	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if (ctrl->dsi_cmdlist_put)
+		rc = ctrl->dsi_cmdlist_put(ctrl, &cmdreq);
+	else {
+		pr_err("%s: dsi_cmdlist_put is not defined\n", __func__);
+		rc = -EINVAL;
+	}
+
+	return rc;
 }
 
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
@@ -734,6 +748,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	mdss_dsi_panel_esd(pdata);
+
 end:
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
@@ -869,20 +884,21 @@ static int mdss_panel_parse_panel_reg_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 
 	pr_debug("%s is called\n", __func__);
 
-	/* Parse the regulator information */
-	rc = mdss_dsi_get_dt_vreg_data(&ctrl_pdata->pdev->dev,
-				&ctrl_pdata->panel_vregs, node);
-	if (rc) {
-		pr_err("%s: failed to get vreg data from dt. rc=%d\n",
-								__func__, rc);
-		goto error_vreg;
+	if (!ctrl_pdata->pdev) {
+		pr_err("%s: invalid pdev\n", __func__);
+		return -EINVAL;
 	}
-
-	return 0;
-
-error_vreg:
-	mdss_dsi_put_dt_vreg_data(&ctrl_pdata->pdev->dev,
-				&ctrl_pdata->panel_vregs);
+	/* Parse the regulator information */
+	if (ctrl_pdata->get_dt_vreg_data) {
+		rc = ctrl_pdata->get_dt_vreg_data(&ctrl_pdata->pdev->dev,
+						&ctrl_pdata->panel_vregs, node);
+		if (rc)
+			pr_err("%s: failed to get vreg data from dt. rc=%d\n",
+								__func__, rc);
+	} else {
+		pr_err("%s: get_dt_vreg_data is not defined\n", __func__);
+		rc = -EINVAL;
+	}
 
 	return rc;
 }

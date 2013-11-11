@@ -87,7 +87,7 @@ error:
 	return ret;
 }
 
-void mdss_dsi_put_dt_vreg_data(struct device *dev,
+static void mdss_dsi_put_dt_vreg_data(struct device *dev,
 	struct dss_module_power *module_power)
 {
 	if (!module_power) {
@@ -102,7 +102,7 @@ void mdss_dsi_put_dt_vreg_data(struct device *dev,
 	module_power->num_vreg = 0;
 }
 
-int mdss_dsi_get_dt_vreg_data(struct device *dev,
+static int mdss_dsi_get_dt_vreg_data(struct device *dev,
 			struct dss_module_power *mp, struct device_node *node)
 {
 	int i = 0, rc = 0;
@@ -230,8 +230,8 @@ int mdss_dsi_get_dt_vreg_data(struct device *dev,
 			}
 			mp->vreg_config[i].post_off_sleep = (!rc ? tmp : 0);
 
-			mp->vreg_config[i].boot_on = of_property_read_bool(of_node,
-					"qcom,cont-splash-enabled");
+			mp->vreg_config[i].boot_on = of_property_read_bool(node,
+						"qcom,cont-splash-enabled");
 
 			pr_debug("%s: %s min=%d, max=%d, enable=%d, disable=%d, preonsleep=%d, postonsleep=%d, preoffsleep=%d, postoffsleep=%d\n",
 				__func__,
@@ -1091,6 +1091,8 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 	cmd_cfg_cont_splash = mdss_panel_get_boot_cfg() ? true : false;
 
 	ctrl_pdata->pdev = pdev;
+	ctrl_pdata->get_dt_vreg_data = mdss_dsi_get_dt_vreg_data;
+	ctrl_pdata->dsi_cmdlist_put = mdss_dsi_cmdlist_put;
 	rc = mdss_dsi_panel_init(dsi_pan_node, ctrl_pdata, cmd_cfg_cont_splash);
 	if (rc) {
 		pr_err("%s: dsi panel init failed\n", __func__);

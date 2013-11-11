@@ -1172,6 +1172,9 @@ static int __devinit msm_dsi_probe(struct platform_device *pdev)
 
 	cmd_cfg_cont_splash = mdp3_panel_get_boot_cfg() ? true : false;
 
+	ctrl_pdata->pdev = pdev;
+	ctrl_pdata->get_dt_vreg_data = dsi_parse_vreg;
+	ctrl_pdata->dsi_cmdlist_put = dsi_cmdlist_put_v2;
 	rc = mdss_dsi_panel_init(dsi_pan_node, ctrl_pdata, cmd_cfg_cont_splash);
 	if (rc) {
 		pr_err("%s: dsi panel init failed\n", __func__);
