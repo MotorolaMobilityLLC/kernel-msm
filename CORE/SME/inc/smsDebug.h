@@ -62,9 +62,9 @@
 #endif
 
 void __printf(3,4)
-void smsLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString, ...);
+smsLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString, ...);
 
 void __printf(3,4)
-void pmcLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString, ...);
+pmcLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString, ...);
 
 #endif // __SMS_DEBUG_H__
