@@ -274,6 +274,7 @@ struct mdss_dsi_ctrl_pdata {
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	int (*esd) (struct mdss_panel_data *pdata);
+	int (*cont_splash_on) (struct mdss_panel_data *pdata);
 	int (*reg_read) (struct mdss_panel_data *pdata, u8 reg,
 			int mode, size_t size, u8 *buffer);
 	int (*reg_write) (struct mdss_panel_data *pdata,
