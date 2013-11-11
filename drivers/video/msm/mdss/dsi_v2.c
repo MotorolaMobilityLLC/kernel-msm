@@ -64,29 +64,29 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 	pr_debug("dsi_panel_handler enable=%d\n", enable);
 	if (!pdata)
 		return -ENODEV;
+
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
 	if (enable) {
-		dsi_ctrl_gpio_request(ctrl_pdata);
-		mdss_dsi_panel_reset(pdata, 1);
-
-		rc = dsi_cmds_tx_v2(pdata, &dsi_panel_tx_buf,
-					ctrl_pdata->on_cmds.cmds,
-					ctrl_pdata->on_cmds.cmd_cnt);
-
-		if (rc)
-			pr_err("dsi_panel_handler panel on failed %d\n", rc);
+		if (ctrl_pdata->on)
+			ctrl_pdata->on(pdata);
+		else {
+			pr_err("%s: ctrl_pdata->on() is not defined\n",
+								__func__);
+			rc = -EINVAL;
+		}
 	} else {
 		if (dsi_intf.op_mode_config)
 			dsi_intf.op_mode_config(DSI_CMD_MODE, pdata);
 
-		dsi_cmds_tx_v2(pdata, &dsi_panel_tx_buf,
-					ctrl_pdata->off_cmds.cmds,
-					ctrl_pdata->off_cmds.cmd_cnt);
-
-		mdss_dsi_panel_reset(pdata, 0);
-		dsi_ctrl_gpio_free(ctrl_pdata);
+		if (ctrl_pdata->off)
+			ctrl_pdata->off(pdata);
+		else {
+			pr_err("%s: ctrl_pdata->off() is not defined\n",
+								__func__);
+			rc = -EINVAL;
+		}
 	}
 	return rc;
 }
@@ -108,7 +108,7 @@ static int dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
 	pr_debug("%s: Reading %d bytes from 0x%0x\n", __func__, size, reg);
 
 	if (size > MDSS_DSI_LEN) {
-		pr_warning("%s: size %d, max rx length is %d.\n", __func__,
+		pr_warn("%s: size %d, max rx length is %d.\n", __func__,
 							size, MDSS_DSI_LEN);
 		return -EINVAL;
 	}
@@ -388,7 +388,8 @@ void dsi_ctrl_gpio_free(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	}
 }
 
-static int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp)
+int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp,
+						struct device_node *node)
 {
 	int i = 0, rc = 0;
 	u32 tmp = 0;
@@ -401,7 +402,10 @@ static int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp)
 		goto error;
 	}
 
-	np = dev->of_node;
+	if (node)
+		np = node;
+	else
+		np = dev->of_node;
 
 	mp->num_vreg = 0;
 	for_each_child_of_node(np, supply_node) {
@@ -594,7 +598,7 @@ int dsi_ctrl_config_init(struct platform_device *pdev,
 {
 	int rc;
 
-	rc = dsi_parse_vreg(&pdev->dev, &ctrl_pdata->power_data);
+	rc = dsi_parse_vreg(&pdev->dev, &ctrl_pdata->power_data, NULL);
 	if (rc) {
 		pr_err("%s:%d unable to get the regulator resources",
 			__func__, __LINE__);
@@ -735,6 +739,47 @@ int dsi_cmds_rx_v2(struct mdss_panel_data *pdata,
 		return -EINVAL;
 
 	rc = dsi_intf.rx(pdata, tp, rp, cmds, rlen);
+	return rc;
+}
+
+static int dsi_cmdlist_rx_v2(struct mdss_dsi_ctrl_pdata *ctrl,
+					struct dcs_cmd_req *cmdreq)
+{
+	int len;
+	struct mdss_panel_data *pdata = &ctrl->panel_data;
+
+	len = dsi_cmds_rx_v2(pdata, &dsi_panel_tx_buf, &dsi_panel_rx_buf,
+					cmdreq->cmds, cmdreq->rlen);
+	if (len > MDSS_DSI_LEN)
+		pr_warn("%s: rx buffer overflow. len:%d.\n", __func__, len);
+	else if (cmdreq->rbuf && len > 0)
+		memcpy(cmdreq->rbuf, dsi_panel_rx_buf.data, len);
+
+	if (cmdreq->cb)
+		cmdreq->cb(len);
+
+	return (len == 0) ? -EFAULT : len;
+}
+
+static int dsi_cmdlist_tx_v2(struct mdss_dsi_ctrl_pdata *ctrl,
+					struct dcs_cmd_req *cmdreq)
+{
+	struct mdss_panel_data *pdata = &ctrl->panel_data;
+
+	return dsi_cmds_tx_v2(pdata, &dsi_panel_tx_buf,
+					cmdreq->cmds, cmdreq->cmds_cnt);
+}
+
+int dsi_cmdlist_put_v2(struct mdss_dsi_ctrl_pdata *ctrl,
+						struct dcs_cmd_req *cmdreq)
+{
+	int rc;
+
+	if (cmdreq->flags & CMD_REQ_RX)
+		rc = dsi_cmdlist_rx_v2(ctrl, cmdreq);
+	else
+		rc = dsi_cmdlist_tx_v2(ctrl, cmdreq);
+
 	return rc;
 }
 

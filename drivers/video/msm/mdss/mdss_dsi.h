@@ -352,6 +352,10 @@ struct mdss_dsi_ctrl_pdata {
 			int mode, size_t size, u8 *buffer);
 	int (*reg_write) (struct mdss_panel_data *pdata,
 			int mode, size_t size, u8 *buffer);
+	int (*get_dt_vreg_data) (struct device *dev,
+			struct dss_module_power *mp, struct device_node *node);
+	int (*dsi_cmdlist_put) (struct mdss_dsi_ctrl_pdata *ctrl,
+					 struct dcs_cmd_req *cmdreq);
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
 	struct mdss_panel_esd_pdata panel_esd_data;
@@ -420,11 +424,6 @@ struct mdss_dsi_ctrl_pdata {
 
 int dsi_panel_device_register(struct device_node *pan_node,
 				struct mdss_dsi_ctrl_pdata *ctrl_pdata);
-
-int mdss_dsi_get_dt_vreg_data(struct device *dev,
-			struct dss_module_power *mp, struct device_node *node);
-void mdss_dsi_put_dt_vreg_data(struct device *dev,
-				struct dss_module_power *module_power);
 char *mdss_dsi_buf_reserve_hdr(struct dsi_buf *dp, int hlen);
 char *mdss_dsi_buf_init(struct dsi_buf *dp);
 void mdss_dsi_init(void);
