@@ -43,7 +43,7 @@
     ------------------------------------------------------------------------- *  
 
   
-    \file cssDebug.h
+    \file smsDebug.h
   
     Define debug log interface for SMS.
   
@@ -54,13 +54,17 @@
 #ifndef SMS_DEBUG_H__
 #define SMS_DEBUG_H__
 
-//#include <stdio.h>
-//#include <stdarg.h>
-
 #include "utilsApi.h"
 #include "sirDebug.h"
 
-void smsLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString,...); 
-void pmcLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString,...);
+#if !defined(__printf)
+#define __printf(a,b)
+#endif
 
-#endif // __HAL_DEBUG_H__
+void __printf(3,4)
+void smsLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString, ...);
+
+void __printf(3,4)
+void pmcLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString, ...);
+
+#endif // __SMS_DEBUG_H__
