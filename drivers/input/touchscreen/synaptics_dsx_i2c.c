@@ -680,7 +680,7 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 		int state);
 
-#ifdef CONFIG_FB
+#if defined(CONFIG_FB) && !defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
 static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 		unsigned long event, void *data);
 #endif
@@ -723,6 +723,9 @@ static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
 static ssize_t synaptics_rmi4_ic_ver_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
 struct synaptics_rmi4_f01_device_status {
@@ -833,6 +836,9 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_store_error),
 	__ATTR(irqinfo, S_IRUSR | S_IRGRP,
 			synaptics_rmi4_irqtimes_show,
+			synaptics_rmi4_store_error),
+	__ATTR(poweron, S_IRUSR | S_IRGRP,
+			synaptics_rmi4_poweron_show,
 			synaptics_rmi4_store_error),
 };
 
@@ -1340,6 +1346,13 @@ static ssize_t synaptics_rmi4_ic_ver_show(struct device *dev,
 			"Product ID: ", rmi->product_id_string,
 			"Build ID: ", build_id,
 			"Config ID: ", config_id);
+}
+
+static ssize_t synaptics_rmi4_poweron_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", rmi4_data->poweron);
 }
 
  /**
@@ -3204,10 +3217,24 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 
 	init_waitqueue_head(&rmi4_data->wait);
 
-#ifdef CONFIG_FB
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	rmi4_data->panel_nb.suspend = synaptics_rmi4_suspend;
+	rmi4_data->panel_nb.resume = synaptics_rmi4_resume;
+	rmi4_data->panel_nb.dev = &client->dev;
+	if (!mmi_panel_register_notifier(&rmi4_data->panel_nb))
+		pr_info("registered MMI panel notifier\n");
+	else
+		dev_err(&client->dev,
+				"%s: Unable to register MMI notifier\n",
+				__func__);
+#elif defined(CONFIG_FB)
 	rmi4_data->panel_nb.notifier_call = synaptics_dsx_panel_cb;
 	if (!fb_register_client(&rmi4_data->panel_nb))
-		pr_debug("registered panel notifier\n");
+		pr_debug("registered FB notifier\n");
+	else
+		dev_err(&client->dev,
+				"%s: Unable to register FB notifier\n",
+				__func__);
 #endif
 	mutex_lock(&exp_fn_ctrl_mutex);
 	if (!exp_fn_ctrl.inited) {
@@ -3248,7 +3275,9 @@ err_sysfs:
 				&attrs[attr_count].attr);
 	}
 
-#ifdef CONFIG_FB
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	mmi_panel_unregister_notifier(&rmi4_data->panel_nb);
+#elif defined(CONFIG_FB)
 	fb_unregister_client(&rmi4_data->panel_nb);
 #endif
 
@@ -3318,7 +3347,9 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 		regulator_put(rmi4_data->regulator);
 	}
 
-#ifdef CONFIG_FB
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	mmi_panel_unregister_notifier(&rmi4_data->panel_nb);
+#elif defined(CONFIG_FB)
 	fb_unregister_client(&rmi4_data->panel_nb);
 #endif
 	synaptics_rmi4_cleanup(rmi4_data);
@@ -3494,7 +3525,7 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 	return;
 }
 
-#ifdef CONFIG_FB
+#if defined(CONFIG_FB) && !defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
 static int synaptics_dsx_panel_cb(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
@@ -3540,6 +3571,8 @@ static int synaptics_rmi4_suspend(struct device *dev)
 			rmi4_data->board;
 
 	synaptics_dsx_sensor_state(rmi4_data, STATE_SUSPEND);
+	rmi4_data->poweron = false;
+
 	if (!rmi4_data->touch_stopped) {
 		if (platform_data->regulator_en) {
 			regulator_disable(rmi4_data->regulator);
@@ -3608,6 +3641,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, false);
+	rmi4_data->poweron = true;
 
 	return 0;
 }
