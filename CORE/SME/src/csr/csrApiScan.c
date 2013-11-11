@@ -3514,12 +3514,6 @@ void csrResetCountryInformation( tpAniSirGlobal pMac, tANI_BOOLEAN fForce, tANI_
     }
 #endif //#ifdef FEATURE_WLAN_DIAG_SUPPORT_CSR
 
-        // switch to passive scans only when 11d is enabled
-        if( csrIs11dSupported( pMac ) )
-        {
-            pMac->scan.curScanType = eSIR_PASSIVE_SCAN;
-        }
-
         csrPruneChannelListForMode(pMac, &pMac->scan.baseChannels);
         csrPruneChannelListForMode(pMac, &pMac->scan.base20MHzChannels);
 
