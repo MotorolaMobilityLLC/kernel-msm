@@ -60,3 +60,7 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_auo_qhd_video>;
 };
+
+&pm8110_l20 {
+	/delete-property/ regulator-always-on;
+};
