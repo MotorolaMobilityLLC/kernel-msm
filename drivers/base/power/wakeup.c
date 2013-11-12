@@ -652,6 +652,74 @@ void pm_wakeup_event(struct device *dev, unsigned int msec)
 EXPORT_SYMBOL_GPL(pm_wakeup_event);
 
 /**
+ * print_active_wakeup_source_stats - Print active wakeup source statistics
+ * information. Caller must acquire the list_lock spinlock.
+ * @ws: Wakeup source object to print the statistics for.
+ */
+static void print_active_wakeup_source_stats(struct wakeup_source *ws)
+{
+	unsigned long flags;
+	ktime_t total_time;
+	ktime_t max_time;
+	unsigned long active_count;
+	ktime_t active_time;
+	ktime_t prevent_sleep_time;
+	bool need_print = false;
+
+	spin_lock_irqsave(&ws->lock, flags);
+
+	total_time = ws->total_time;
+	max_time = ws->max_time;
+	prevent_sleep_time = ws->prevent_sleep_time;
+	active_count = ws->active_count;
+	if (ws->active) {
+		ktime_t now = ktime_get();
+
+		active_time = ktime_sub(now, ws->last_time);
+		total_time = ktime_add(total_time, active_time);
+		if (active_time.tv64 > max_time.tv64)
+			max_time = active_time;
+
+		if (ws->autosleep_enabled)
+			prevent_sleep_time = ktime_add(prevent_sleep_time,
+				ktime_sub(now, ws->start_prevent_time));
+
+		need_print = true;
+	}
+
+	spin_unlock_irqrestore(&ws->lock, flags);
+
+	if (need_print)
+		pr_info("%s %lld %lld %lld %lld\n",
+			ws->name, ktime_to_ms(active_time),
+			ktime_to_ms(total_time),
+			ktime_to_ms(max_time),
+			ktime_to_ms(prevent_sleep_time));
+
+	return;
+
+}
+
+/**
+ * active_wakeup_sources_stats_show - Print active wakeup sources statistics
+ * information.
+ */
+void active_wakeup_sources_stats_show(void)
+{
+	struct wakeup_source *ws;
+
+	pr_info("name active(ms) total(ms) max_time(ms) prevent_suspend(ms)");
+
+	rcu_read_lock();
+	list_for_each_entry_rcu(ws, &wakeup_sources, entry)
+		print_active_wakeup_source_stats(ws);
+	rcu_read_unlock();
+
+	return;
+}
+EXPORT_SYMBOL_GPL(active_wakeup_sources_stats_show);
+
+/**
  * pm_wakeup_pending - Check if power transition in progress should be aborted.
  *
  * Compare the current number of registered wakeup events with its preserved
