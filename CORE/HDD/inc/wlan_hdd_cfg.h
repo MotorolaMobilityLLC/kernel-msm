@@ -2330,7 +2330,7 @@ typedef struct
    v_U32_t                     antennaDiversity;
    v_BOOL_t                    fEnableSNRMonitoring;
    /*PNO related parameters */
-#if FEATURE_WLAN_SCAN_PNO
+#ifdef FEATURE_WLAN_SCAN_PNO
    v_U32_t                     configPNOScanTimerRepeatValue;
 #endif
    v_U8_t                      isAmsduSupportInAMPDU;
