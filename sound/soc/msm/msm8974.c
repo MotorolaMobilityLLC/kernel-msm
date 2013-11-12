@@ -3568,6 +3568,45 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 		card->dai_link	= msm8974_common_dai_links;
 		card->num_links	= ARRAY_SIZE(msm8974_common_dai_links);
 	}
+
+#ifdef CONFIG_SND_SOC_TFA9890
+	if (of_property_read_string(pdev->dev.of_node, "qcom,tfa9890-left-name",
+			&msm8974_tfa9890_dai_link[0].codec_name))
+		dev_info(&pdev->dev, "property %s not detected in node %s",
+			"qcom,tfa9890-left-name",
+			pdev->dev.of_node->full_name);
+
+	memcpy(msm8974_dai_tfa9890_links, card->dai_link,
+			card->num_links*sizeof(struct snd_soc_dai_link));
+
+	memcpy((msm8974_dai_tfa9890_links + card->num_links),
+			&msm8974_tfa9890_dai_link[0],
+			sizeof(msm8974_tfa9890_dai_link[0]));
+
+	card->dai_link = msm8974_dai_tfa9890_links;
+	card->num_links++;
+
+	/* add right IC if stereo mode is enabled */
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,tfa9890-stereo")) {
+		dev_info(&pdev->dev, "%s(): tfa9890 stereo support present\n",
+				__func__);
+		tfa9890_stereo = 1;
+
+		if (of_property_read_string(pdev->dev.of_node,
+				"qcom,tfa9890-right-name",
+				&msm8974_tfa9890_dai_link[1].codec_name))
+			dev_info(&pdev->dev, "property %s not detected in node %s",
+				"qcom,tfa9890-right-name",
+				pdev->dev.of_node->full_name);
+
+		memcpy((msm8974_dai_tfa9890_links + card->num_links),
+			&msm8974_tfa9890_dai_link[1],
+			sizeof(msm8974_tfa9890_dai_link[1]));
+
+		card->num_links++;
+	}
+#endif
+
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&prim_auxpcm_rsc_ref, 0);
 	atomic_set(&sec_auxpcm_rsc_ref, 0);
@@ -3633,44 +3672,6 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 
-
-#ifdef CONFIG_SND_SOC_TFA9890
-	if (of_property_read_string(pdev->dev.of_node, "qcom,tfa9890-left-name",
-			&msm8974_tfa9890_dai_link[0].codec_name))
-		dev_info(&pdev->dev, "property %s not detected in node %s",
-			"qcom,tfa9890-left-name",
-			pdev->dev.of_node->full_name);
-
-	memcpy(msm8974_dai_tfa9890_links, card->dai_link,
-			card->num_links*sizeof(struct snd_soc_dai_link));
-
-	memcpy((msm8974_dai_tfa9890_links + card->num_links),
-			&msm8974_tfa9890_dai_link[0],
-			sizeof(msm8974_tfa9890_dai_link[0]));
-
-	card->dai_link = msm8974_dai_tfa9890_links;
-	card->num_links++;
-
-	/* add right IC if stereo mode is enabled */
-	if (of_property_read_bool(pdev->dev.of_node, "qcom,tfa9890-stereo")) {
-		dev_info(&pdev->dev, "%s(): tfa9890 stereo support present\n",
-				__func__);
-		tfa9890_stereo = 1;
-
-		if (of_property_read_string(pdev->dev.of_node,
-				"qcom,tfa9890-right-name",
-				&msm8974_tfa9890_dai_link[1].codec_name))
-			dev_info(&pdev->dev, "property %s not detected in node %s",
-				"qcom,tfa9890-right-name",
-				pdev->dev.of_node->full_name);
-
-		memcpy((msm8974_dai_tfa9890_links + card->num_links),
-			&msm8974_tfa9890_dai_link[1],
-			sizeof(msm8974_tfa9890_dai_link[1]));
-
-		card->num_links++;
-	}
-#endif
 
 	pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,us-euro-gpios", 0);
