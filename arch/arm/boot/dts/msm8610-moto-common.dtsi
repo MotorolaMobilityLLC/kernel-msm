@@ -522,6 +522,10 @@
 	regulator-always-on;
 };
 
+&pm8110_l20 {
+	regulator-always-on;
+};
+
 &pm8110_chg {
 	status = "ok";
 
