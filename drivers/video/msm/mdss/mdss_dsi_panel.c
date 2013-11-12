@@ -1101,10 +1101,11 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	np = of_find_node_by_path("/chosen");
 	ctrl_pdata->panel_config.esd_disable_bl =
 				of_property_read_bool(np, "mmi,esd");
+	if (ctrl_pdata->panel_config.esd_disable_bl)
+		pr_warn("%s: ESD detection is disabled by UTAGS\n", __func__);
 
-	if (of_property_read_bool(np, "mmi,bare_board") == true &&
-		of_property_read_bool(np, "mmi,factory-cable") == true)
-			ctrl_pdata->panel_config.bare_board = true;
+	if (of_property_read_bool(np, "mmi,bare_board") == true)
+		ctrl_pdata->panel_config.bare_board = true;
 
 	ctrl_pdata->panel_config.panel_ver = MDSS_PANEL_DEFAULT_VER;
 	of_property_read_u64(np, "mmi,panel_ver",
@@ -1120,10 +1121,12 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		strlcpy(ctrl_pdata->panel_config.panel_name, pname,
 			sizeof(ctrl_pdata->panel_config.panel_name));
 
-	pr_debug("%s: esd_disable_bl=%d bare_board_bl=%d, factory_cable=%d bare_board=%d\n",
+	pr_debug("%s: esd_disable_bl=%d bare_board_bl=%d, " \
+		" factory_cable=%d panel_name=%s bare_board=%d\n",
 		__func__, ctrl_pdata->panel_config.esd_disable_bl,
 		of_property_read_bool(np, "mmi,bare_board"),
 		of_property_read_bool(np, "mmi,factory-cable"),
+		ctrl_pdata->panel_config.panel_name,
 		ctrl_pdata->panel_config.bare_board);
 
 	panel_ver = (u32)ctrl_pdata->panel_config.panel_ver;
