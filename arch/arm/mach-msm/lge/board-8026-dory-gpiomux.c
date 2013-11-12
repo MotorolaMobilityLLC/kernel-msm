@@ -233,6 +233,20 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		},
 	},
 	{
+		.gpio      = 6,         /* BLSP1 QUP2 I2C_SDA */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config
+		},
+	},
+	{
+		.gpio      = 7,         /* BLSP1 QUP2 I2C_SCL */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
+			[GPIOMUX_SUSPENDED] = &gpio_i2c_config
+		},
+	},
+	{
 		.gpio      = 14,	/* BLSP1 QUP4 I2C_SDA */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
@@ -330,6 +344,27 @@ static struct gpiomux_setting goodix_reset_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting lis3dsh_gpio_int_high_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir  = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting lis3dsh_gpio_int_high_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir  = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting mpu9250_gpio_int_low_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir  = GPIOMUX_IN,
 };
 
 static struct msm_gpiomux_config msm_skuf_blsp_configs[] __initdata = {
@@ -560,6 +595,27 @@ static struct gpiomux_setting cam_settings[] = {
 
 static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	{
+		.gpio      = 33,        /* ACCEL_INT1 */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &lis3dsh_gpio_int_high_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lis3dsh_gpio_int_high_sus_cfg,
+		},
+	},
+	{
+		.gpio      = 37,        /* ACCEL_INT2 */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &lis3dsh_gpio_int_high_act_cfg,
+			[GPIOMUX_SUSPENDED] = &lis3dsh_gpio_int_high_sus_cfg,
+		},
+	},
+	{
+		.gpio      = 35,        /* COMPASS_INT */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &mpu9250_gpio_int_low_act_cfg,
+			[GPIOMUX_SUSPENDED] = &mpu9250_gpio_int_low_act_cfg,
+		},
+	},
+	{
 		.gpio = 26, /* CAM_MCLK0 */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
@@ -590,20 +646,6 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	},
 	{
 		.gpio = 36, /* CAM1_STANDBY_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-	{
-		.gpio = 37, /* CAM1_RST_N */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[3],
-			[GPIOMUX_SUSPENDED] = &cam_settings[4],
-		},
-	},
-	{
-		.gpio = 35, /* CAM2_STANDBY_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &cam_settings[4],

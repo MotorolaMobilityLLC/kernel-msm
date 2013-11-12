@@ -11,5 +11,66 @@
  */
 
 &soc {
+	i2c@f9924000 { /* BLSP-1 QUP-2 */
+		lis3dsh_acc@1e {
+			compatible = "st,lis3dsh";
+			reg = <0x1e>;
+			lis,fs_range = <0x00>;  /* 2G scale */
+			vdd_io-supply = <&pm8226_l6>;
+			vcc_i2c-supply = <&pm8226_l6>;
+			vdd-supply = <&pm8226_l15>;
+			google,dsp_int1_gpio = <&msmgpio 68 0x00>;
+			lis,int1_gpio = <&msmgpio 33 0x00>;
+			lis,int2_gpio = <&msmgpio 37 0x00>;
+			lis,negate_y;
 
+			/* Map sensor axes to device axes. Use in conjunction
+			 * with 'inv,negate_*' to correct for chip mounting
+			 * position
+			 */
+			lis,axis_map_x = <0x01>;
+			lis,axis_map_y = <0x00>;
+			lis,axis_map_z = <0x02>;
+
+			lis,min_interval = <10>;
+			lis,poll_interval = <200>;
+		};
+
+		inv_dev@68 {
+			compatible = "mpu9250";
+			reg = <0x68>;
+			interrupt-parent = <&msmgpio>;
+			inven,int_config = <0x00>;
+			inven,level_shifter = <0x00>;
+			vdd_io-supply = <&pm8226_l6>;
+			vcc_i2c-supply = <&pm8226_l6>;
+			vdd-supply = <&pm8226_l19>;
+			interrupts = <35 0x2>;
+
+			axis_map_x = <1>;
+			axis_map_y = <0>;
+			axis_map_z = <2>;
+			negate_x = <0>;
+			negate_y = <0>;
+			negate_z = <1>;
+
+			/* If no compass sensor,
+			 * replace "compass" with "none"
+			 */
+			inven,secondary_type = "compass";
+			inven,secondary_name = "ak8963";
+			inven,secondary_reg  = <0x0c>;
+			inven,secondary_axis_map_x = <1>;
+			inven,secondary_axis_map_y = <0>;
+			inven,secondary_axis_map_z = <2>;
+			inven,secondary_negate_x = <0>;
+			inven,secondary_negate_y = <0>;
+			inven,secondary_negate_z = <1>;
+
+			/* If pressure sensor,
+			 * replace "none" with "pressure"
+			 */
+			inven,aux_type = "none";
+		};
+	};
 };
