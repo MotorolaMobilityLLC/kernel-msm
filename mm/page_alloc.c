@@ -1134,9 +1134,8 @@ __rmqueue_fallback(struct zone *zone, int order, int start_migratetype)
 			 */
 			set_freepage_migratetype(page, new_type);
 
-			trace_mm_page_alloc_extfrag(page, order,
-				current_order, start_migratetype, migratetype,
-				new_type == start_migratetype);
+			trace_mm_page_alloc_extfrag(page, order, current_order,
+				start_migratetype, migratetype, new_type);
 
 			return page;
 		}
