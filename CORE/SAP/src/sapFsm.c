@@ -208,6 +208,9 @@ sapGotoChannelSel
         { /*if a valid channel is returned then use concurrent channel.
                   Else take whatever comes from configuartion*/
             sapContext->channel = channel;
+            sme_SelectCBMode(hHal,
+                             sapConvertSapPhyModeToCsrPhyMode(sapContext->csrRoamProfile.phyMode),
+                             channel);
         }
     }
 
