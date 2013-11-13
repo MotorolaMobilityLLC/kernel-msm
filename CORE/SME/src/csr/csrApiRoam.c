@@ -5001,14 +5001,16 @@ static eHalStatus csrRoamSaveSecurityRspIE(tpAniSirGlobal pMac, tANI_U32 session
                       vos_mem_copy(pIeBuf,
                                    pIesLocal->WAPI.multicast_cipher_suite,
                                    4);
+                      pIeBuf += 4;
                       //preauth + reserved
                       vos_mem_copy(pIeBuf,
                                    pIesLocal->WAPI.multicast_cipher_suite + 4,
                                    2);
+                      pIeBuf += 2;
                       //bkid_count
                       vos_mem_copy(pIeBuf, &pIesLocal->WAPI.bkid_count, 2);
 
-                      pIeBuf += 8;
+                      pIeBuf += 2;
                       if( pIesLocal->WAPI.bkid_count )
                       {
                          //copy akm_suites
@@ -15707,6 +15709,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
               "%s:Failed to get the valid channel list", __func__);
+        vos_mem_free(pRequestBuf);
         return eHAL_STATUS_FAILURE;
     }
     for(i=0; i<pMac->roam.numValidChannels; i++)
