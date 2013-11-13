@@ -307,7 +307,7 @@ static int max17048_set_rcomp(struct max17048_chip *chip)
 	rcomp = chip->rcomp * 1000 - (temp-20) * scale_coeff;
 	rcomp = bound_check(255, 0, rcomp / 1000);
 
-	pr_info("%s: new RCOMP = 0x%02X\n", __func__, rcomp);
+	pr_debug("%s: new RCOMP = 0x%02X\n", __func__, rcomp);
 
 	rcomp = rcomp << CFG_RCOMP_SHIFT;
 
@@ -353,12 +353,10 @@ static void max17048_work(struct work_struct *work)
 	if (ret < 0)
 		pr_err("%s : error clear alert irq register.\n", __func__);
 
-	pr_info("%s: raw soc = 0x%04X raw vcell = 0x%04X\n",
-			__func__, chip->soc, chip->vcell);
-	pr_info("%s: SOC = %d vbatt_mv = %d\n",
-			__func__, chip->capacity_level, chip->voltage);
-	pr_info("%s: ibatt_ua = %d batt_temp = %d\n",
-			__func__, chip->batt_current, chip->batt_temp);
+	pr_info("%s: rsoc=0x%04X rvcell=0x%04X soc=%d v_mv=%d i_ua=%d t=%d\n",
+				__func__, chip->soc, chip->vcell,
+				chip->capacity_level, chip->voltage,
+				chip->batt_current, chip->batt_temp);
 
 	wake_unlock(&chip->alert_lock);
 }
