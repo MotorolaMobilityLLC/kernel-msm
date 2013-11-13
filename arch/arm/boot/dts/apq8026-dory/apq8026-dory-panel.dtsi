@@ -1,0 +1,114 @@
+/* Copyright (c) 2013, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2013, LGE Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+	mdss_dsi_lgd_nano_240_cmd: qcom,mdss_dsi_lgd_nano_240_cmd {
+		qcom,mdss-dsi-panel-name = "Nano 240p command mode dsi panel";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
+		qcom,mdss-dsi-panel-destination = "display_1";
+		qcom,mdss-dsi-panel-framerate = <60>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-panel-width = <240>;
+		qcom,mdss-dsi-panel-height = <240>;
+		qcom,mdss-dsi-h-front-porch = <164>;
+		qcom,mdss-dsi-h-back-porch = <140>;
+		qcom,mdss-dsi-h-pulse-width = <8>;
+		qcom,mdss-dsi-h-sync-skew = <0>;
+		qcom,mdss-dsi-v-back-porch = <1>;
+		qcom,mdss-dsi-v-front-porch = <6>;
+		qcom,mdss-dsi-v-pulse-width = <1>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-pan-physical-width-dimension = < 58 >;
+		qcom,mdss-pan-physical-height-dimension = < 103 >;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = <0>;
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-on-command = [05 01 00 00 FF 00 01 11
+					15 01 00 00 00 00 02 36 D8
+					05 01 00 00 A0 00 01 29];
+		qcom,mdss-dsi-off-command = [05 01 00 00 32 00 01 28
+					29 01 00 00 10 00 03 F1 5A 5A
+					29 01 00 00 20 00 0F F4 07 00 00 00 21 4F 01 0E 2A 66 02 2A 00 02
+					29 01 00 00 10 00 03 F1 A5 A5
+					05 01 00 00 A0 00 01 10];
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-h-sync-pulse = <1>;
+		qcom,mdss-dsi-traffic-mode = <2>;
+		qcom,mdss-dsi-lane-map = <0>;
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-te-pin-select = <1>;
+		qcom,mdss-dsi-te-v-sync-rd-ptr-irq-line = <0x2c>;
+		qcom,mdss-dsi-te-dcs-command = <1>;
+		qcom,mdss-dsi-te-check-enable;
+		qcom,mdss-dsi-te-using-te-pin;
+		qcom,mdss-dsi-panel-timings = [3A 11 0C 00 1E 1D 10 13 12 03 04 00];
+		qcom,mdss-dsi-t-clk-post = <0x1f>;
+		qcom,mdss-dsi-t-clk-pre = <0x2c>;
+		qcom,mdss-dsi-bl-min-level = <1>;
+		qcom,mdss-dsi-bl-max-level = <255>;
+		qcom,mdss-dsi-dma-trigger = <4>;
+		qcom,mdss-dsi-mdp-trigger = <0>;
+		qcom,mdss-dsi-reset-sequence = <1 20>, <0 1>, <1 20>;
+		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+
+		qcom,cont-splash-enabled;
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mdss_dsi_lgd_nano_240_cmd>;
+	vdd-supply = <&pm8226_l18>;
+	qcom,platform-supply-entry1 {
+		qcom,supply-name = "vdd";
+		qcom,supply-min-voltage = <3000000>;
+		qcom,supply-max-voltage = <3300000>;
+	};
+};
+
+&soc {
+	i2c@f9925000 { /* BLSP1 QUP2 */
+		lm3530@38 {
+			compatible = "backlight,lm3530";
+			status = "ok";
+			reg = <0x38>;
+			lm3530,lcd_bl_en = <&msmgpio 57 0x00>;
+			lm3530,max_current = <0x17>;
+			lm3530,min_brightness = <0x0F>;
+			lm3530,default_brightness = <0x79>;
+			lm3530,max_brightness = <0x8B>;
+			lm3530,enable_pwm = <0>;
+			lm3530,blmap_size = <146>;
+			lm3530,blmap = <
+				1 1 1 1 1 1 1 1 1 1 1 1 2 2 2
+				2 2 2 2 2 2 2 2 3 3 3 3 3 3 3
+				4 4 4 4 4 4 5 5 5 6 6 6 7 7 7
+				8 8 8 9 9 9 10 10 11 11	11 12 12 13 13
+				14 14 15 15 16 16 16 17 17 18 18 19 19 19 20
+				20 21 22 22 23 24 24 25 26 26 27 28 29 30 30
+				31 32 33 34 34 35 36 37 38 39 40 41 41 42 43
+				44 45 46 47 48 49 50 51 52 53 54 56 57 58 59
+				60 61 62 63 65 66 67 69	70 71 72 73 74 76 78
+				79 80 82 83 85 87 88 90	91 92 104>;
+		};
+	};
+};

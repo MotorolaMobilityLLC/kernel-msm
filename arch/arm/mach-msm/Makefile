@@ -142,7 +142,10 @@ obj-$(CONFIG_ARCH_MSMSAMARIUM) += board-samarium.o board-samarium-gpiomux.o
 obj-$(CONFIG_ARCH_MSMSAMARIUM) += clock-local2.o clock-pll.o clock-rpm.o clock-samarium.o clock-krait-8974.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MPQ8092) += board-8092.o board-8092-gpiomux.o
 obj-$(CONFIG_ARCH_MPQ8092) += clock-local2.o clock-pll.o clock-rpm.o clock-voter.o clock-8092.o
+obj-$(CONFIG_MACH_LGE) += lge/
+ifndef CONFIG_MACH_LGE
 obj-$(CONFIG_ARCH_MSM8226) += board-8226.o board-8226-gpiomux.o
+endif
 obj-$(CONFIG_ARCH_MSM8226) += clock-local2.o clock-pll.o clock-8226.o clock-rpm.o clock-voter.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MSM8226) += acpuclock-8226.o acpuclock-cortex.o
 obj-$(CONFIG_ARCH_MSM8610) += board-8610.o board-8610-gpiomux.o

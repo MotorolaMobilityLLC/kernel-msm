@@ -1,0 +1,94 @@
+/* Copyright (c) 2013, LGE Electronics. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+		/*
+		in key PCB, gpio is...
+			top = 106
+			middle = 107
+			bottom = 108
+		*/
+
+		home {
+			label = "home";
+			linux,input-type = <1>;
+			linux,code = <172>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			gpios = <&msmgpio 106 0x1>;
+		};
+
+		back {
+			label = "back";
+			linux,input-type = <1>;
+			linux,code = <158>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			gpios = <&msmgpio 107 0x1>;
+		};
+
+		vol_down {
+			label = "volume_down";
+			linux,input-type = <1>;
+			linux,code = <114>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			gpios = <&msmgpio 108 0x1>;
+		};
+
+	};
+
+	i2c@f9927000 { /* BLSP1 QUP5 */
+		synaptics@20 {
+			compatible = "synaptics,rmi4";
+			reg = <0x20>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <17 0x2008>;
+			vdd-supply = <&pm8226_l19>;
+			vcc_i2c-supply = <&pm8226_lvs1>;
+			synaptics,reset-gpio = <&msmgpio 16 0x00>;
+			synaptics,irq-gpio = <&msmgpio 17 0x2008>;
+			synaptics,panel-x = <1080>;
+			synaptics,panel-y = <1920>;
+			synaptics,button-map = <158 139>;
+			synaptics,i2c-pull-up;
+			synaptics,reg-en;
+			synaptics,fw-image-name = "synaptics/PR1237618-DS4.3.5.0.16.img";
+			status = "disable";
+		};
+
+		melfas_mms136@48 {
+			compatible = "melfas,mms136";
+			reg = <0x48>;
+			interrupt-parent = <&msmgpio>;
+			revision = "rev_0...";
+			interrupts = <17 0x0>;
+			vdd-supply = <&pm8226_l19>;
+			vcc_i2c-supply = <&pm8226_lvs1>;
+			melfas,i2c_int_gpio = <&msmgpio 17 0x00>;
+			melfas,i2c_sda_gpio = <18>;
+			melfas,i2c_scl_gpio = <19>;
+			melfas,panel-x = <240>;
+			melfas,panel-y = <240>;
+			melfas,i2c-pull-up = <1>;
+			melfas,auto_fw_update = <0>;
+			melfas,button-map = <158 139>;
+			melfas,product = "LUNCHBOX";
+			melfas,fw-image-name = "melfas/M42_CoreV32_ConfigV01.mfsb";
+			status = "ok";
+		};
+	};
+
+};

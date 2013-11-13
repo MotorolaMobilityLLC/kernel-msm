@@ -1,0 +1,370 @@
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License version 2 and
+* only version 2 as published by the Free Software Foundation.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*/
+
+&soc {
+	i2c@f9923000 { /* BLSP1 QUP1 */
+		max17050@36 {
+			compatible = "maxim,max17050";
+			status = "okay";
+			interrupt-parent = <&msmgpio>;
+			interrupts = <31 0x0>;
+			reg = <0x36>;
+		};
+	};
+};
+
+&spmi_bus {
+	qcom,pm8226@0 {
+		qcom,power-on@800 {
+			qcom,pon_2 {
+				qcom,disable = <1>;
+			};
+		};
+
+		qcom,currentnow@3800 {
+			compatible ="lge,currentnow_device";
+			reg = <0x3800 0x100>;
+			qcom,cn-iadc = <&pm8226_iadc>;
+			status = "okay";
+		};
+	};
+
+	qcom,pm8226@1 {
+		qcom,vibrator@c000 {
+                        status = "okay";
+                        qcom,vib-timeout-ms = <15000>;
+                        qcom,vib-vtg-level-mV = <1500>;
+		};
+		qcom,leds@d300 {
+			status = "okay";
+			pm8226_flash0: qcom,flash_0 {
+				qcom,max-current = <1000>;
+				qcom,default-state = "off";
+				qcom,headroom = <3>;
+				qcom,duration = <1280>;
+				qcom,clamp-curr = <200>;
+				qcom,startup-dly = <3>;
+				qcom,safety-timer;
+				label = "flash";
+				linux,default-trigger =
+					"flash0_trigger";
+				qcom,id = <1>;
+				linux,name = "led:flash_0";
+				qcom,current = <1000>;
+			};
+			pm8226_torch: qcom,flash_torch {
+				qcom,max-current = <200>;
+				qcom,default-state = "off";
+				qcom,headroom = <3>;
+				qcom,startup-dly = <3>;
+				linux,default-trigger =
+						"torch_trigger";
+				label = "flash";
+				qcom,id = <1>;
+				linux,name = "led:flash_torch";
+				qcom,current = <200>;
+				qcom,torch-enable;
+			};
+		};
+
+		qcom,leds@d800 {
+			status = "okay";
+			qcom,wled_0 {
+				label = "wled";
+				linux,name = "wled:backlight";
+				linux,default-trigger = "bkl-trigger";
+				qcom,cs-out-en;
+				qcom,op-fdbck = <1>;
+				qcom,default-state = "off";
+				qcom,max-current = <17>;
+				qcom,ctrl-delay-us = <0>;
+				qcom,boost-curr-lim = <3>;
+				qcom,cp-sel = <0>;
+				qcom,switch-freq = <11>;
+				qcom,ovp-val = <0>;
+				qcom,num-strings = <1>;
+				qcom,id = <0>;
+			};
+		};
+	};
+};
+
+&pm8226_gpios {
+	gpio@c000 { /* GPIO 1 */    /* PMIC_AUDIO_REF_CLK */
+		/* XO_PMIC_CDC_MCLK enable for tapan codec */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;	/* CMOS logic */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO*/
+		qcom,vin-sel = <3>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <3>;/* QPNP_PIN_OUT_STRENGTH_HIGH */
+		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
+		qcom,master-en = <1>;	/* Enable GPIO */
+	};
+
+	gpio@c100 { /* GPIO 2 */		/* EXT_OVP_CTRL */
+	};
+
+	gpio@c200 { /* GPIO 3 */		/* NFC_CLK_REQ */
+		qcom,mode = <0>;			/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <4>;			/* QPNP_PIN_PULL_DN - Not Fixed */
+		qcom,vin-sel = <3>;			/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <2>;			/* QPNP_PIN_SEL_FUNC_1 */
+	};
+
+	gpio@c300 { /* GPIO 4 */		/* BATT_UIM_ALARM - TBD */
+	};
+
+	gpio@c400 { /* GPIO 5 */		/* FLASH_STROBE_TRIG */
+	};
+
+	gpio@c500 { /* GPIO 6 */		/* CABC_WLED_PM */
+	};
+
+	gpio@c600 { /* GPIO 7 */		/* TX_GTR_THRES */
+	};
+
+	gpio@c700 { /* GPIO 8 */		/* BOOST_BYP_BYP */
+		qcom,mode = <1>;			/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;			/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <3>;			/* QPNP_PIN_VIN2 */
+		qcom,invert = <1>;			/* QPNP_PIN_INVERT_ENABLE */
+		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;		/* Enable GPIO */
+	};
+};
+
+&pm8226_mpps {
+	mpp@a000 { /* MPP 1 */			/* VREF_MSM_PX */
+		qcom,mode = <5>;			/* QPNP_PIN_MODE_AOUT */
+		qcom,aout-ref = <0>;		/* QPNP_PIN_AOUT_1V25 - Not Fixed */
+		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,master-en = <1>;		/* Enable MPP */
+	};
+
+	mpp@a100 { /* MPP 2 */			/* HR_LED_SINK */
+		qcom,mode = <6>;			/* QPNP_PIN_MODE_SINK */
+		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,cs-out = <7>;			/* QPNP_PIN_CS_OUT_40MA */
+		qcom,master-en = <1>;		/* Enable MPP */
+	};
+
+	mpp@a200 { /* MPP 3 */			/* VREF_LDO */
+		qcom,mode = <5>;			/* QPNP_PIN_MODE_AOUT */
+		qcom,aout-ref = <0>;		/* QPNP_PIN_AOUT_1V25 */
+		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,master-en = <1>;		/* Enable MPP */
+	};
+
+	mpp@a300 { /* MPP 4 */			/* LED1_SINK */
+		qcom,mode = <6>;			/* QPNP_PIN_MODE_SINK */
+		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,cs-out = <2>;			/* QPNP_PIN_CS_OUT_15MA */
+		qcom,master-en = <1>;		/* Enable MPP */
+	};
+
+	mpp@a400 { /* MPP 5 */			/* PA_THERM0 */
+		/* PA_THERM0 config */
+		qcom,mode = <4>; /* AIN input */
+		qcom,invert = <1>; /* Enable MPP */
+		qcom,ain-route = <0>; /* AMUX 5 */
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */
+	};
+
+	mpp@a500 { /* MPP 6 */			/* LED2_SINK */
+		qcom,mode = <6>;			/* QPNP_PIN_MODE_SINK */
+		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT - QCT TBD */
+		qcom,cs-out = <2>;			/* QPNP_PIN_CS_OUT_15MA */
+		qcom,master-en = <1>;		/* Enable MPP */
+	};
+
+	mpp@a600 { /* MPP 7 */			/* BOARD_ID */
+		qcom,mode = <4>;			/* AIN input */
+		qcom,ain-route = <2>;		/* QPNP_PIN_AIN_AMUX_CH7 */
+		qcom,src-sel = <0>;			/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;		/* Enable MPP */
+	};
+
+	mpp@a700 { /* MPP 8 */
+		/* PA_THERM1 config */
+		qcom,mode = <4>; /* AIN input */
+		qcom,invert = <1>; /* Enable MPP */
+		qcom,ain-route = <3>; /* AMUX 8 */
+		qcom,master-en = <1>;
+		qcom,src-sel = <0>; /* Function constant */
+	};
+};
+
+&pm8226_vadc {
+	chan@14 {
+		label = "pa_therm0";
+		reg = <0x14>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@17 {
+		label = "pa_therm1";
+		reg = <0x17>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@39 {
+		label = "usb_id_lv";
+		reg = <0x39>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+};
+
+&soc {
+	/* Cable type definition.
+	* Modify the USB cable and move to SoC
+	* to get each table for different USB Pull up resistor via HW Rev
+	* This must have the compatible property "lge,usb-id".
+	* If you don't want to use revision you can remove status & revision property.
+	* If this node is not exist, the charger driver would not be probed.
+	* Each cable type has 3 values
+	* that we can configure the threshold of ADC value and TA/USB IUSB max current value.
+	* ex)
+	*    cable type = <adc_threshold, TA_MA, USB_MA>.
+	*/
+
+	lge,usb_cable@0 {
+		compatible = "lge,usb-id";
+		usb_adc_table@665{
+			status = "okay";
+			revision = "...rev_a";
+			lge,no-init-cable = <100000 500 500>;
+			lge,cable-56k = <200000 1500 1500>;
+			lge,cable-100k = <239000 500 500>;
+			lge,cable-130k = <340000 1500 1500>;
+			lge,cable-180k = <400000 1100 500>;
+			lge,cable-200k = <430000 1100 500>;
+			lge,cable-220k = <485000 1100 500>;
+			lge,cable-270k = <560000 1100 500>;
+			lge,cable-330k = <735000 500 500>;
+			lge,cable-620k = <955000 500 500>;
+			lge,cable-910k = <1140000 1500 1500>;
+			lge,cable-none = <1900000 1100 500>;
+		};
+
+		usb_adc_table@200{
+			status = "okay";
+			revision = "rev_b...";
+			lge,no-init-cable = <197000 500 500>;
+			lge,cable-56k = <496875 1500 1500>;
+			lge,cable-100k = <654545 500 500>;
+			lge,cable-130k = <780861 1500 1500>;
+			lge,cable-180k = <876316 1100 500>;
+			lge,cable-200k = <921429 1100 500>;
+			lge,cable-220k = <988450 1100 500>;
+			lge,cable-270k = <1077399 1100 500>;
+			lge,cable-330k = <1240865 500 500>;
+			lge,cable-620k = <1418326 500 500>;
+			lge,cable-910k = <1637838 1500 1500>;
+			lge,cable-none = <1900000 1100 500>;
+		};
+	};
+};
+
+&pm8226_chg {
+	qcom,vddmax-mv = <4270>;
+	qcom,vddsafe-mv = <4300>;
+	qcom,vinmin-mv = <4270>;
+	qcom,ibatmax-ma= <200>;
+	qcom,ibatterm-ma = <100>;
+	qcom,ibatsafe-ma = <200>;
+	qcom,vbatdet-delta-mv = <100>;
+	qcom,tchg-mins = <480>;
+};
+
+&pm8226_bms{
+	status = "disabled";
+	qcom,r-sense-uohm = <10000>;
+	qcom,v-cutoff-uv = <3400000>;
+	qcom,max-voltage-uv = <4350000>;
+	qcom,r-conn-mohm = <18>;
+	qcom,shutdown-soc-valid-limit = <20>;
+	qcom,adjust-soc-low-threshold = <25>;
+	qcom,adjust-soc-high-threshold = <45>;
+	qcom,ocv-voltage-high-threshold-uv = <3900000>;
+	qcom,ocv-voltage-low-threshold-uv = <3650000>;
+	qcom,low-soc-calculate-soc-threshold = <15>;
+	qcom,low-soc-calculate-soc-ms = <5000>;
+	qcom,calculate-soc-ms = <20000>;
+	qcom,chg-term-ua = <100000>;
+	qcom,batt-type = <0>;
+	qcom,low-voltage-threshold = <3420000>;
+	qcom,use-external-rsense = <1>;
+};
+
+&pm8226_iadc {
+       qcom,rsense = <10000000>;
+};
+
+&rpm_bus {
+	rpm-regulator-smpa3 {
+		status = "okay";
+		pm8226_s3: regulator-s3 {
+			regulator-max-microvolt = <1350000>;
+			qcom,init-voltage = <1350000>;
+			status = "okay";
+		};
+	};
+	rpm-regulator-ldoa5 {
+		status = "okay";
+		pm8226_l5: regulator-l5 {
+			qcom,init-enable = <0>;
+			status = "okay";
+		};
+	};
+	rpm-regulator-ldoa19 {
+		status = "okay";
+		pm8226_l19: regulator-l19 {
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+			regulator-always-on;
+			status = "okay";
+		};
+	};
+	rpm-regulator-ldoa26 {
+		status = "okay";
+		pm8226_l26: regulator-l26 {
+			qcom,init-enable = <0>;
+			status = "okay";
+		};
+	};
+	rpm-regulator-ldoa27 {
+		status = "okay";
+		pm8226_l27: regulator-l27 {
+			qcom,init-enable = <0>;
+			status = "okay";
+		};
+	};
+};

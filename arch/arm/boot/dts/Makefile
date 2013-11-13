@@ -124,6 +124,9 @@ dtb-$(CONFIG_ARCH_MSM9625) += msm9625-v1-cdp.dtb \
 	msm9625-v2-mtp.dtb \
 	msm9625-v2.1-mtp.dtb \
 	msm9625-v2.1-cdp.dtb
+ifeq ($(CONFIG_MACH_LGE),y)
+dtb-$(CONFIG_MACH_DORY) += apq8026-dory-lunchbox.dtb
+else
 dtb-$(CONFIG_ARCH_MSM8226) += msm8226-sim.dtb \
 	msm8226-fluid.dtb \
 	msm8226-v1-cdp.dtb \
@@ -146,6 +149,7 @@ dtb-$(CONFIG_ARCH_MSM8226) += msm8226-sim.dtb \
 	apq8026-v2-xpm.dtb \
 	apq8026-v2-cdp.dtb \
 	apq8026-v2-mtp.dtb
+endif
 dtb-$(CONFIG_ARCH_MSM8610) += msm8610-rumi.dtb \
 	msm8610-v1-cdp.dtb \
 	msm8610-v2-cdp.dtb \

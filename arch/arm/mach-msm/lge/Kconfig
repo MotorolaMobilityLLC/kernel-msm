@@ -1,0 +1,13 @@
+config MACH_LGE
+	bool
+
+menu "LGE Board Selection"
+
+config MACH_DORY
+	depends on ARCH_MSM8226
+	select MACH_LGE
+	bool "APQ8026 DORY"
+	help
+	  Support for the LGE APQ8026 DORY.
+
+endmenu

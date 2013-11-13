@@ -357,6 +357,7 @@ config MSM_REMOTE_SPINLOCK_LDREX
 	bool
 config MSM_REMOTE_SPINLOCK_SFPB
 	bool
+source "arch/arm/mach-msm/lge/Kconfig"
 
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"
