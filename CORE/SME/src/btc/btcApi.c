@@ -1779,15 +1779,15 @@ void btcUapsdCheck( tpAniSirGlobal pMac, tpSmeBtEvent pBtEvent )
            if( !fMoreSCO && !pMac->btc.fA2DPUp )
            {
                //All SCO is disconnected
-               pMac->btc.btcUapsdOk = VOS_TRUE;
                smsLog( pMac, LOGE, "BT event (DISCONNECTION) happens, UAPSD-allowed flag (%d) change to TRUE",
-                        pBtEvent->btEventType, pMac->btc.btcUapsdOk );
+                        pMac->btc.btcUapsdOk );
+               pMac->btc.btcUapsdOk = VOS_TRUE;
            }
        }
        break;
    case BT_EVENT_DEVICE_SWITCHED_OFF:
        smsLog( pMac, LOGE, "BT event (DEVICE_OFF) happens, UAPSD-allowed flag (%d) change to TRUE",
-                        pBtEvent->btEventType, pMac->btc.btcUapsdOk );
+                        pMac->btc.btcUapsdOk );
        //Clean up SCO
        for(i=0; i < BT_MAX_SCO_SUPPORT; i++)
        {

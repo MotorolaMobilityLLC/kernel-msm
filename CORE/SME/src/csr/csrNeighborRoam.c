@@ -1457,7 +1457,7 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
     while (NULL != (pScanResult = csrScanResultGetNext(pMac, *pScanResultList)))
     {
             VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-            FL("Scan result: BSSID %02x:%02x:%02x:%02x:%02x:%02x (Rssi %d, Ch:%d)"),
+            FL("Scan result: BSSID %02x:%02x:%02x:%02x:%02x:%02x (Rssi %ld, Ch:%d)"),
             pScanResult->BssDescriptor.bssId[0],
             pScanResult->BssDescriptor.bssId[1],
             pScanResult->BssDescriptor.bssId[2],
@@ -1677,7 +1677,7 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
         )
         {
             VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                       "%s: [INFOLOG] potential candidate to roam immediately (diff=%d, expected=%d)", 
+                       "%s: [INFOLOG] potential candidate to roam immediately (diff=%ld, expected=%d)",
                        __func__, abs(abs(CurrAPRssi) - abs(pScanResult->BssDescriptor.rssi)),
                        immediateRoamRssiDiff);
             roamNow = eANI_BOOLEAN_TRUE;
@@ -1885,7 +1885,7 @@ static VOS_STATUS csrNeighborRoamHandleEmptyScanResult(tpAniSirGlobal pMac)
             }
             else
             {
-                smsLog(pMac, LOGE, FL("Empty scan refresh timer started (%ld ms)"),
+                smsLog(pMac, LOGE, FL("Empty scan refresh timer started (%d ms)"),
                         (pNeighborRoamInfo->cfgParams.emptyScanRefreshPeriod));
             }
         }
@@ -1905,7 +1905,7 @@ static VOS_STATUS csrNeighborRoamHandleEmptyScanResult(tpAniSirGlobal pMac)
             }
             else
             {
-                smsLog(pMac, LOG2, FL("Neighbor results refresh timer started (%ld ms)"),
+                smsLog(pMac, LOG2, FL("Neighbor results refresh timer started (%d ms)"),
                         (pNeighborRoamInfo->cfgParams.neighborResultsRefreshPeriod * PAL_TIMER_TO_MS_UNIT));
             }
         }
@@ -2445,7 +2445,7 @@ eHalStatus csrNeighborRoamIssueBgScanRequest(tpAniSirGlobal pMac,
 
     vos_mem_free(scanReq.SSIDs.SSIDList);
     if (1 == pBgScanParams->ChannelInfo.numOfChannels)
-        NEIGHBOR_ROAM_DEBUG(pMac, LOG1, FL("Channel List Address = %08x, Actual index = %d"),
+        NEIGHBOR_ROAM_DEBUG(pMac, LOG1, FL("Channel List Address = %p, Actual index = %d"),
                 &pMac->roam.neighborRoamInfo.roamChannelInfo.currentChannelListInfo.ChannelList[0], 
                 pMac->roam.neighborRoamInfo.roamChannelInfo.currentChanIndex);
 
@@ -2491,7 +2491,7 @@ eHalStatus csrNeighborRoamPerformBgScan(tpAniSirGlobal pMac, tANI_U32 sessionId)
 
     if (pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList)
     {
-        NEIGHBOR_ROAM_DEBUG(pMac, LOG1, FL("Channel List Address = %08x"), &pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList[0]);
+        NEIGHBOR_ROAM_DEBUG(pMac, LOG1, FL("Channel List Address = %p"), &pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList[0]);
     }
     else 
     {
