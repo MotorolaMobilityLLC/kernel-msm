@@ -407,8 +407,10 @@ void msm_delete_command_ack_q(unsigned int session_id, unsigned int stream_id)
 	cmd_ack = msm_queue_find(&session->command_ack_q,
 		struct msm_command_ack,	list, __msm_queue_find_command_ack_q,
 		&stream_id);
-	if (!cmd_ack)
+	if (!cmd_ack) {
+		mutex_unlock(&session->lock);
 		return;
+	}
 
 	msm_queue_drain(&cmd_ack->command_q, struct msm_command, list);
 
