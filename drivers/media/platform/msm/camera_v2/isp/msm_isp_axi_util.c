@@ -755,6 +755,25 @@ buf_error:
 	return rc;
 }
 
+static void msm_isp_process_frame_drop(struct vfe_device *vfe_dev,
+	struct msm_vfe_axi_stream *stream_info,
+	struct msm_isp_timestamp *ts)
+{
+	struct msm_isp_event_data buf_event;
+	uint32_t frame_id = vfe_dev->axi_data.
+		src_info[SRC_TO_INTF(stream_info->stream_src)].frame_id;
+
+	buf_event.frame_id = frame_id;
+	buf_event.timestamp = ts->buf_time;
+	buf_event.u.buf_done.session_id =
+		stream_info->session_id;
+	buf_event.u.buf_done.stream_id =
+		stream_info->stream_id;
+	buf_event.u.buf_done.handle = 0;
+	buf_event.u.buf_done.buf_idx = 0;
+	msm_isp_send_event(vfe_dev, ISP_EVENT_FRAME_DROP, &buf_event);
+}
+
 static void msm_isp_process_done_buf(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info, struct msm_isp_buffer *buf,
 	struct msm_isp_timestamp *ts)
@@ -1277,6 +1296,10 @@ void msm_isp_process_axi_irq(struct vfe_device *vfe_dev,
 				if (done_buf && !rc)
 					msm_isp_process_done_buf(vfe_dev,
 					stream_info, done_buf, ts);
+				if (done_buf && rc)
+					/* Propagate frame drop */
+					msm_isp_process_frame_drop(vfe_dev,
+					stream_info, ts);
 			}
 		}
 		wm_mask &= ~(comp_info->stream_composite_mask);
@@ -1322,6 +1345,10 @@ void msm_isp_process_axi_irq(struct vfe_device *vfe_dev,
 				if (done_buf && !rc)
 					msm_isp_process_done_buf(vfe_dev,
 					stream_info, done_buf, ts);
+				if (done_buf && rc)
+					/* Propagate frame drop */
+					msm_isp_process_frame_drop(vfe_dev,
+					stream_info, ts);
 			}
 		}
 	}
