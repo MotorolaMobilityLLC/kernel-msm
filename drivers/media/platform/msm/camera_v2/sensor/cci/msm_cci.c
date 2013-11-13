@@ -150,17 +150,20 @@ static int32_t msm_cci_validate_queue(struct cci_device *cci_dev,
 			__func__, __LINE__);
 		rc = wait_for_completion_interruptible_timeout(&cci_dev->
 			cci_master_info[master].reset_complete, CCI_TIMEOUT);
-		if (rc <= 0) {
+		if (rc == -ERESTARTSYS) {
+			pr_err("%s:%d failed: rc %d", __func__, __LINE__, rc);
+		} else if (rc <= 0) {
 			pr_err("%s: wait_for_completion_interruptible_timeout %d\n",
 				 __func__, __LINE__);
 			if (rc == 0)
 				rc = -ETIMEDOUT;
 			msm_cci_flush_queue(cci_dev, master);
 			return rc;
+		} else {
+			rc = cci_dev->cci_master_info[master].status;
+			if (rc < 0)
+				pr_err("%s failed rc %d\n", __func__, rc);
 		}
-		rc = cci_dev->cci_master_info[master].status;
-		if (rc < 0)
-			pr_err("%s failed rc %d\n", __func__, rc);
 	}
 	return rc;
 }
@@ -330,7 +333,10 @@ static int32_t msm_cci_i2c_read(struct v4l2_subdev *sd,
 		__LINE__);
 	rc = wait_for_completion_interruptible_timeout(&cci_dev->
 		cci_master_info[master].reset_complete, CCI_TIMEOUT);
-	if (rc <= 0) {
+	if (rc == -ERESTARTSYS) {
+		pr_err("%s:%d failed: rc %d", __func__, __LINE__, rc);
+		goto ERROR;
+	} else if (rc <= 0) {
 		pr_err("%s: wait_for_completion_interruptible_timeout %d\n",
 			 __func__, __LINE__);
 		if (rc == 0)
@@ -500,7 +506,9 @@ static int32_t msm_cci_i2c_write(struct v4l2_subdev *sd,
 		__func__, __LINE__);
 	rc = wait_for_completion_interruptible_timeout(&cci_dev->
 		cci_master_info[master].reset_complete, CCI_TIMEOUT);
-	if (rc <= 0) {
+	if (rc == -ERESTARTSYS) {
+		pr_err("%s:%d failed: rc %d", __func__, __LINE__, rc);
+	} else if (rc <= 0) {
 		pr_err("%s: wait_for_completion_interruptible_timeout %d\n",
 			 __func__, __LINE__);
 		if (rc == 0)
