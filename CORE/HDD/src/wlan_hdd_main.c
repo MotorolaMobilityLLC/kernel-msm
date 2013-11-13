@@ -2732,7 +2732,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            char extra[32];
            tANI_U8 len = 0;
 
-           len = snprintf(extra, sizeof(extra), "%s %d", command, wesMode);
+           len = scnprintf(extra, sizeof(extra), "%s %d", command, wesMode);
            if (copy_to_user(priv_data.buf, &extra, len + 1))
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -3220,7 +3220,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
               goto exit;
            }
 
-           len = snprintf(extra, sizeof(extra), "WLS_BATCHING_VERSION %d",
+           len = scnprintf(extra, sizeof(extra), "WLS_BATCHING_VERSION %d",
                    version);
            if (copy_to_user(priv_data.buf, &extra, len + 1))
            {
