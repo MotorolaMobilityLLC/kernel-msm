@@ -381,7 +381,7 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         status = limPostMsgApi(pMac, &msg);
 
         if (status != TX_SUCCESS)
-            PELOGE(limLog(pMac, LOGE, FL("Failed limPostMsgApi"), status);)
+            PELOGE(limLog(pMac, LOGE, FL("Failed limPostMsgApi %u"), status);)
         break;
     }
     case WNI_CFG_GREENFIELD_CAPABILITY:

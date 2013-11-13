@@ -4460,7 +4460,7 @@ tpLimMlmAddBACnf pMlmAddBACnf;
     if ( NULL == pMlmAddBACnf )
     {
       limLog( pMac, LOGP,
-          FL("AllocateMemory failed with error code %d"));
+          FL("AllocateMemory failed"));
       vos_mem_free(pMsgBuf);
       return;
     }
