@@ -1055,6 +1055,18 @@ config TOUCHSCREEN_GT9XX
 
           If unsure, say N.
 
+config TOUCHSCREEN_MELFAS_MMS136
+	tristate "MELFAS MMS136 touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have the MELFAS MMS136 touchscreen controller
+	  chip in your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called melfas-ts.
+
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 
 endif
