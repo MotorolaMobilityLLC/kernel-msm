@@ -29,12 +29,15 @@
 #include <linux/tps65132.h>
 #include <linux/lp8556.h>
 #include <sound/tfa9890.h>
+#include <linux/ct406.h>
 
 #define SY32xx_TOUCH_SCL_GPIO       37
 #define SY32xx_TOUCH_SDA_GPIO       36
 
 #define SY32xx_TOUCH_INT_GPIO       70
 #define SY32xx_TOUCH_RESET_GPIO     34
+
+extern int __init ct406_init(struct i2c_board_info *info, struct device_node *child);
 
 struct touch_platform_data sy3200_touch_pdata = {
 	.flags          = TS_FLIP_X | TS_FLIP_Y,
@@ -816,6 +819,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x002B0000, sy3200_init_i2c_device},   /* Synaptics 32xx */
 	{0x002B0001, sy3400_init_i2c_device},   /* Synaptics 34xx */
 	{0x00190002, tfa9890_init_i2c_device}, /* NXP Audio Codec Driver */
+        {0x00250001, ct406_init}, 	       /*CT406 driver*/
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
@@ -858,7 +862,6 @@ __init void mmi_register_i2c_devices_from_dt(void)
 			if (!of_property_read_string(dev_node,
 							"i2c,type", &name))
 				strlcpy(info.type, name, I2C_NAME_SIZE);
-
 			if (!of_property_read_u32(dev_node,
 							"i2c,address", &value))
 				info.addr = value;
@@ -866,7 +869,6 @@ __init void mmi_register_i2c_devices_from_dt(void)
 			if (!of_property_read_u32(dev_node,
 							"irq,gpio", &value))
 				info.irq = gpio_to_irq(value);
-
 			if (!of_property_read_u32(dev_node,
 							"type", &value)) {
 				I2C_INIT_FUNC init_func =

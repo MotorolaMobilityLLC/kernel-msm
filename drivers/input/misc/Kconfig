@@ -674,4 +674,13 @@ config BMP18X_I2C
          To compile this driver as a module, choose M here: the
          module will be called bmp18x-i2c.
 
+config INPUT_CT406
+	tristate "CT406 ALS & IR Sensor"
+	default n
+	help
+	  Say Y here if you wish to include support for the CT406 ALS
+	  and IR sensor.
+
+	  If unsure, say N.
+
 endif
