@@ -246,6 +246,12 @@ static int check_index_in_prev_nodes(struct f2fs_sb_info *sbi,
 	block_t bidx;
 	int i;
 
+	if (segno >= TOTAL_SEGS(sbi)) {
+		f2fs_msg(sbi->sb, KERN_ERR, "invalid segment number %u", segno);
+		if (f2fs_handle_error(sbi))
+			return -EIO;
+	}
+
 	sentry = get_seg_entry(sbi, segno);
 	if (!f2fs_test_bit(blkoff, sentry->cur_valid_map))
 		return 0;
