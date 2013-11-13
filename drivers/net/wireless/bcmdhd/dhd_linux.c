@@ -138,7 +138,6 @@ static struct notifier_block dhd_notifier_ipv6 = {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP)
 #include <linux/suspend.h>
 volatile bool dhd_mmc_suspend = FALSE;
-bool bsuspend = FALSE;
 DECLARE_WAIT_QUEUE_HEAD(dhd_dpc_wait);
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && defined(CONFIG_PM_SLEEP) */
 
@@ -1778,10 +1777,6 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #endif /* DHD_RX_FULL_DUMP */
 	char *dump_data;
 	uint16 protocol;
-	int unicast = 0;
-	int broadcast = 0;
-	int multicast = 0;
-	int brcm = 0;
 #endif /* DHD_RX_DUMP */
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
@@ -1842,7 +1837,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #ifdef DHD_RX_DUMP
 		dump_data = skb->data;
 		protocol = (dump_data[12] << 8) | dump_data[13];
-		DHD_INFO(("RX DUMP - %s\n", _get_packet_type_str(protocol)));
+		DHD_ERROR(("RX DUMP - %s\n", _get_packet_type_str(protocol)));
 
 #ifdef DHD_RX_FULL_DUMP
 		if (protocol != ETHER_TYPE_BRCM) {
@@ -1857,29 +1852,24 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 
 		if (protocol != ETHER_TYPE_BRCM) {
 			if (dump_data[0] == 0xFF) {
-				DHD_INFO(("%s: BROADCAST\n", __FUNCTION__));
-				broadcast++;
+				DHD_ERROR(("%s: BROADCAST\n", __FUNCTION__));
+
 				if ((dump_data[12] == 8) &&
 					(dump_data[13] == 6)) {
-					DHD_INFO(("%s: ARP %d\n",
+					DHD_ERROR(("%s: ARP %d\n",
 						__FUNCTION__, dump_data[0x15]));
 				}
 			} else if (dump_data[0] & 1) {
-				DHD_INFO(("%s: MULTICAST: " MACDBG "\n",
+				DHD_ERROR(("%s: MULTICAST: " MACDBG "\n",
 					__FUNCTION__, MAC2STRDBG(dump_data)));
-				multicast++;
-			} else {
-				unicast++;
 			}
 
 			if (protocol == ETHER_TYPE_802_1X) {
-				DHD_INFO(("ETHER_TYPE_802_1X: "
+				DHD_ERROR(("ETHER_TYPE_802_1X: "
 					"ver %d, type %d, replay %d\n",
 					dump_data[14], dump_data[15],
 					dump_data[30]));
 			}
-		} else {
-			brcm++;
 		}
 
 #endif /* DHD_RX_DUMP */
@@ -1982,15 +1972,6 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 #endif
 	DHD_OS_WAKE_LOCK_RX_TIMEOUT_ENABLE(dhdp, tout_rx);
 	DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(dhdp, tout_ctrl);
-	/* print once after waking up host */
-#ifdef DHD_RX_DUMP
-	if (bsuspend && tout_rx) {
-		/*flip the value */
-		bsuspend = FALSE;
-		DHD_ERROR(("DHD rx frame stats : unicast : %d, broadcast : %d, multicast : %d, brcm : %d",
-			unicast, broadcast, multicast, brcm));
-	}
-#endif
 }
 
 void
