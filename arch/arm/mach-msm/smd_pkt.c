@@ -41,6 +41,8 @@
 #include "smd_private.h"
 #ifdef CONFIG_ARCH_FSM9XXX
 #define DEFAULT_NUM_SMD_PKT_PORTS 4
+#elif defined(CONFIG_MACH_DORY)
+#define DEFAULT_NUM_SMD_PKT_PORTS 8
 #else
 #define DEFAULT_NUM_SMD_PKT_PORTS 31
 #endif
@@ -793,6 +795,39 @@ static uint32_t smd_ch_edge[] = {
 	SMD_APPS_QDSP,
 	SMD_APPS_QDSP,
 	SMD_APPS_QDSP
+};
+#elif defined(CONFIG_MACH_DORY)
+static char *smd_pkt_dev_name[] = {
+	"smd_sns_dsps",
+	"apr_apps2",
+	"smd_sns_adsp",
+	"smd_cxm_qmi",
+	"smd_test_framework",
+	"smd_logging_0",
+	"smd_data_0",
+	"apr",
+};
+
+static char *smd_ch_name[] = {
+	"SENSOR",
+	"apr_apps2",
+	"SENSOR",
+	"CXM_QMI_PORT_8064",
+	"TESTFRAMEWORK",
+	"LOGGING",
+	"DATA",
+	"apr",
+};
+
+static uint32_t smd_ch_edge[] = {
+	SMD_APPS_DSPS,
+	SMD_APPS_QDSP,
+	SMD_APPS_QDSP,
+	SMD_APPS_WCNSS,
+	SMD_APPS_QDSP,
+	SMD_APPS_QDSP,
+	SMD_APPS_QDSP,
+	SMD_APPS_QDSP,
 };
 #else
 static char *smd_pkt_dev_name[] = {
