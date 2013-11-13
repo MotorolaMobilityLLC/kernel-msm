@@ -678,10 +678,13 @@ int wlan_hdd_cfg80211_init(struct device *dev,
                  |  WIPHY_FLAG_TDLS_EXTERNAL_SETUP;
 #endif
 #ifdef FEATURE_WLAN_SCAN_PNO
-    wiphy->flags |= WIPHY_FLAG_SUPPORTS_SCHED_SCAN;
-    wiphy->max_sched_scan_ssids = SIR_PNO_MAX_SUPP_NETWORKS;
-    wiphy->max_match_sets       = SIR_PNO_MAX_SUPP_NETWORKS;
-    wiphy->max_sched_scan_ie_len = SIR_MAC_MAX_IE_LENGTH;
+    if (pCfg->configPNOScanSupport)
+    {
+        wiphy->flags |= WIPHY_FLAG_SUPPORTS_SCHED_SCAN;
+        wiphy->max_sched_scan_ssids = SIR_PNO_MAX_SUPP_NETWORKS;
+        wiphy->max_match_sets       = SIR_PNO_MAX_SUPP_NETWORKS;
+        wiphy->max_sched_scan_ie_len = SIR_MAC_MAX_IE_LENGTH;
+    }
 #endif/*FEATURE_WLAN_SCAN_PNO*/
 
 #ifdef CONFIG_ENABLE_LINUX_REG
