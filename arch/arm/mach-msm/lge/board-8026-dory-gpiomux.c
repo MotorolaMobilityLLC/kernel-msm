@@ -151,13 +151,6 @@ static struct msm_gpiomux_config msm_keypad_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
 		},
 	},
-	{
-		.gpio = 108,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &gpio_keys_active,
-			[GPIOMUX_SUSPENDED] = &gpio_keys_suspend,
-		},
-	},
 };
 
 static struct gpiomux_setting lcd_rst_act_cfg = {

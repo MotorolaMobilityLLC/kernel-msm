@@ -14,7 +14,7 @@
 	qcom,pm8226@0 {
 		qcom,power-on@800 {
 			qcom,pon_2 {
-				qcom,disable = <1>;
+				status = "disabled";
 			};
 		};
 
