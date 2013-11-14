@@ -11,10 +11,11 @@
  * GNU General Public License for more details.
  */
 
-/include/ "msm8610-camera-sensor-condor.dtsi"
+/include/ "msm8610-camera-sensor-moto.dtsi"
+/include/ "dsi-v2-panel-mot-tianma-qhd-video.dtsi"
 
 / {
-	model = "Motorola QC-MSM8226";
+	model = "Motorola QC-MSM8610";
 	compatible = "qcom,msm8610-moto", "qcom,msm8610";
 };
 
@@ -37,6 +38,22 @@
 		status = "disabled";
 	};
 
+	i2c@f9923000 {
+		qcom,i2c-bus-freq = <400000>;
+
+		synaptics_dsx_i2c@20 {
+			compatible = "synaptics,synaptics_dsx_i2c";
+			reg = <0x20>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <1 0>;
+			gpios = <&msmgpio 1 0>, /* IRQ */
+				<&msmgpio 0 0>; /* RESET */
+			touch_vdd-supply = <&pm8110_l19>;
+			synaptics,normal-mode = <1>;
+			synaptics,gpio-config;
+		};
+	};
+
 	qcom,msm-efuse {
 		compatible = "qcom,msm-efuse";
 		qcom,memory-reservation-type = "EBI1";
@@ -48,56 +65,6 @@
 		otg,id_gnd_gpio = <&msmgpio 76 0x0>;
 		id_flt_active_high = <1>;
 		id_gnd_active_high = <1>;
-	};
-
-	i2c@f9923000 { /* Touch */
-		qcom,i2c-bus-freq = <400000>;
-	};
-
-	i2c@f9925000 { /* Sensors */
-		qcom,i2c-bus-freq = <400000>;
-		qcom,sda-gpio = <&msmgpio 10 0>;
-		qcom,scl-gpio = <&msmgpio 11 0>;
-
-		mpu3050@68 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			status = "okay";
-			reg = <0x68>;
-			compatible = "invn,mpu3050";
-			interrupt-parent = <&msmgpio>;
-			interrupts = <84 0x2>;
-			vlogic-supply = <&pm8110_l14>;
-			vdd-supply = <&pm8110_l19>;
-			invn,gpio-int = <&msmgpio 84 0x2>;
-			invn,gpio-en = <&pm8110_gpios 2 0x2>;
-			invn,poll-interval = <200>;
-		};
-
-		bmp180@77 {
-			reg = <0x77>;
-			compatible = "bosch,bmp18x";
-			vdd-supply = <&pm8110_l19>;
-			vddio-supply = <&pm8110_l14>;
-			bosch,chip-id = <0x55>;
-			bosch,oversample = <3>;
-			bosch,period = <1000>;
-		};
-
-		mma8x5x@1d {
-			reg = <0x1d>;
-			compatible = "fsl,mma8x5x";
-			interrupt-parent = <&msmgpio>;
-			interrupts = <81 0x2>;
-			vdd-supply = <&pm8110_l19>;
-			vio-supply = <&pm8110_l14>;
-			fsl,irq-gpio = <&msmgpio 81 0x00>;
-			fsl,sensors-position = <5>;
-		};
-	};
-
-	i2c@f9928000 { /* Camera */
-		qcom,i2c-bus-freq = <400000>;
 	};
 
 	gen-vkeys {
@@ -143,6 +110,15 @@
 		};
 	};
 
+	vsp_disp_vreg: vsp_disp_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vsp_disp";
+		gpio = <&msmgpio 5 0x0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-always-on;
+	};
+
 	vddio_disp_vreg: vddio_disp_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "vddio_disp";
@@ -153,21 +129,18 @@
 		regulator-always-on;
 	};
 
-    sound {
-        qcom,audio-routing =
-            "RX_BIAS", "MCLK",
-            "INT_LDO_H", "MCLK",
-            "MIC BIAS External", "Handset Mic",
-            "MIC BIAS Internal2", "Headset Mic",
-            "MIC BIAS External", "Secondary Mic",
-            "AMIC1", "MIC BIAS External",
-            "AMIC2", "MIC BIAS Internal2",
-            "AMIC3", "MIC BIAS External";
-    };
-
-	qcom,dsi_v2_mot_tianma_qhd_video {
-		qcom,cont-splash-enabled;
+	sound {
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS External", "Handset Mic",
+			"MIC BIAS Internal2", "Headset Mic",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
+			"AMIC2", "MIC BIAS Internal2",
+			"AMIC3", "MIC BIAS External";
 	};
+
 	hob_ram@f500000 {
 		compatible = "mmi,hob_ram";
 		reg = <0x0f500000 0x40000>,
@@ -251,6 +224,10 @@
 };
 
 &i2c_3 {
+	qcom,i2c-bus-freq = <400000>;
+	qcom,sda-gpio = <&msmgpio 10 0>;
+	qcom,scl-gpio = <&msmgpio 11 0>;
+
 	lm2755@18 {
 		compatible = "lm,lm2755";
 		reg = <0x18>;
@@ -269,7 +246,7 @@
 		interrupts = <84 0x2>;
 		gpios = <&msmgpio 84 0x0>;
 		hs_det_vdd-supply = <&pm8110_l6>;
-		/* hs_det_micvdd-supply should be defined in board dtsi files */
+		hs_det_micvdd-supply = <&pm8110_l22>;
 	};
 
 	kionix@e {
@@ -311,14 +288,50 @@
 		reg = <0x48>;
 		gpios = <&msmgpio 8 0>;
 	};
+
+	mpu3050@68 {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "okay";
+		reg = <0x68>;
+		compatible = "invn,mpu3050";
+		interrupt-parent = <&msmgpio>;
+		interrupts = <84 0x2>;
+		vlogic-supply = <&pm8110_l14>;
+		vdd-supply = <&pm8110_l19>;
+		invn,gpio-int = <&msmgpio 84 0x2>;
+		invn,gpio-en = <&pm8110_gpios 2 0x2>;
+		invn,poll-interval = <200>;
+	};
+
+	bmp180@77 {
+		reg = <0x77>;
+		compatible = "bosch,bmp18x";
+		vdd-supply = <&pm8110_l19>;
+		vddio-supply = <&pm8110_l14>;
+		bosch,chip-id = <0x55>;
+		bosch,oversample = <3>;
+		bosch,period = <1000>;
+	};
+
+	mma8x5x@1d {
+		reg = <0x1d>;
+		compatible = "fsl,mma8x5x";
+		interrupt-parent = <&msmgpio>;
+		interrupts = <81 0x2>;
+		vdd-supply = <&pm8110_l19>;
+		vio-supply = <&pm8110_l14>;
+		fsl,irq-gpio = <&msmgpio 81 0x00>;
+		fsl,sensors-position = <5>;
+	};
+};
+
+&i2c {
+	qcom,i2c-bus-freq = <400000>;
 };
 
 &spmi_bus {
 	qcom,pm8110@0 {
-		qcom,leds@a100 {
-			status = "disabled";
-		};
-
 		qcom,leds@1000 {
 			status = "ok";
 			reg = <0x1000 0x100>;
@@ -330,6 +343,10 @@
 				qcom,id = <8>;
 				qcom,mode = <2>;
 			};
+		};
+
+		qcom,leds@a100 {
+			status = "disabled";
 		};
 
 		qcom,leds@a200 {
@@ -348,21 +365,7 @@
 				qcom,mode = "pwm";
 			};
 		};
-	};
-};
 
-&spmi_bus {
-	qcom,pm8110@1 {
-		qcom,vibrator@c000 {
-			status = "okay";
-			qcom,vib-timeout-ms = <30000>;
-			qcom,vib-vtg-level-mV = <1300>;
-			qcom,vib-vtg-level-mV-haptic = <2500>;
-			qcom,vib-boot-up-vibe-ms = <200>;
-		};
-	};
-
-    qcom,pm8110@0 {
 		pm8110_chg_fac: qcom,chargerfac {
 			spmi-dev-container;
 			compatible = "qcom,qpnp-charger-factory";
@@ -468,7 +471,17 @@
 				reg = <0x1600 0x100>;
 			};
 		};
-    };
+	};
+
+	qcom,pm8110@1 {
+		qcom,vibrator@c000 {
+			status = "okay";
+			qcom,vib-timeout-ms = <30000>;
+			qcom,vib-vtg-level-mV = <1300>;
+			qcom,vib-vtg-level-mV-haptic = <2500>;
+			qcom,vib-boot-up-vibe-ms = <200>;
+		};
+	};
 };
 
 &sdhc_1 {
@@ -644,4 +657,8 @@
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_tianma_qhd>;
 };
