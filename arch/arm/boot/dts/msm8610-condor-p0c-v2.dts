@@ -14,8 +14,6 @@
 
 /include/ "msm8610-v2.dtsi"
 /include/ "msm8610-moto-common.dtsi"
-/include/ "dsi-v2-panel-mot-tianma-qhd-video.dtsi"
-/include/ "msm8610-camera-sensor-cdp-mtp.dtsi"
 
 / {
 	/* HWREV: 0x0101 0x8100
@@ -25,73 +23,6 @@
 	qcom,msm-id = <147 0x41 0x01018100>;
 };
 
-&soc {
-	gpiomux {
-		pin@fd51000 {
-			reg = <0xfd511000 0x10>;	/* TOUCH_RESET */
-			qcom,pin-num = <0>;
-			qcom,active@0 {
-				qcom,func = <0>;  /* gpio_in_out(0)         */
-				qcom,pull = <3>;  /* up                     */
-				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <1>;   /* output high            */
-			};
-			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out(0)         */
-				qcom,pull = <1>;  /* down                   */
-				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
-			};
-		};
-
-		pin@fd51010 {
-			reg = <0xfd511010 0x10>;	/* TOUCH_IRQ */
-			qcom,pin-num = <1>;
-			qcom,active@0 {
-				qcom,func = <0>;  /* gpio_in_out(1)         */
-				qcom,pull = <3>;  /* up                     */
-				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
-			};
-			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out(1)         */
-				qcom,pull = <1>;  /* down                   */
-				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <0>;   /* input                  */
-			};
-		};
-	};
-
-	i2c@f9923000{
-		synaptics_dsx_i2c@20 {
-			compatible = "synaptics,synaptics_dsx_i2c";
-			reg = <0x20>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <1 0>;
-			gpios = <&msmgpio 1 0>, /* IRQ */
-				<&msmgpio 0 0>; /* RESET */
-			touch_vdd-supply = <&pm8110_l19>;
-			synaptics,normal-mode = <1>;
-			synaptics,gpio-config;
-		};
-	};
-
-	vsp_disp_vreg: vsp_disp_vreg {
-		compatible = "regulator-fixed";
-		regulator-name = "vsp_disp";
-		gpio = <&msmgpio 5 0x0>;
-		startup-delay-us = <300>;
-		enable-active-high;
-		regulator-always-on;
-	};
-};
-
-&i2c_3 {
-	tpa6165xx@40 {
-		hs_det_micvdd-supply = <&pm8110_l22>;
-	};
-};
-
-&mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tianma_qhd>;
+&pm8110_l20 {
+	/delete-property/ regulator-always-on;
 };
