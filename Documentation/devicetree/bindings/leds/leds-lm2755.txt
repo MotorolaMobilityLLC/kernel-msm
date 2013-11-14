@@ -13,7 +13,9 @@ Required properties:
 			: 0x18 if ADDR pin is grounded
 			: 0x67 if ADDR pin is tied high
 - clock-mode		: clock mode 0x0 for internal, 0x40 for external clock
-- charge-pump-mode	: 0x1 enable the charge pump, 0x0 - disable charge pump
+- charge-pump-mode	: charge pump mode parameter should be 0x0 or 0x80. In mode 0x80 waveform can
+			: be enabled before the charge pump. With mode 0x0 charge pump is powered on
+			: before waveform generator
 - min-tstep		: Sets N for timing control equations. Valid range from 0 to 7. Defines Tstep:
 			: For internal clock Tstep = 50us*2^N
 			: For external clock Tstep = 2^N*(32 + Fext)
