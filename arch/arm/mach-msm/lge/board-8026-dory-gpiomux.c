@@ -701,6 +701,50 @@ static void msm_gpiomux_sdc3_install(void)
 static void msm_gpiomux_sdc3_install(void) {}
 #endif /* CONFIG_MMC_MSM_SDC3_SUPPORT */
 
+#ifdef CONFIG_BATTERY_MAX17050
+static struct gpiomux_setting max17050_i2c_sda_config = {
+	.func = GPIOMUX_FUNC_3,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting max17050_i2c_scl_config = {
+	.func = GPIOMUX_FUNC_3,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting max17050_int_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_6MA,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config msm_fuel_gauge_configs[] __initdata = {
+	{
+		.gpio      = 2,			/* BLSP1 QUP1 I2C_DAT */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &max17050_i2c_sda_config,
+			[GPIOMUX_SUSPENDED] = &max17050_i2c_sda_config,
+		},
+	},
+	{
+		.gpio      = 3,			/* BLSP1 QUP1 I2C_CLK */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &max17050_i2c_scl_config,
+			[GPIOMUX_SUSPENDED] = &max17050_i2c_scl_config,
+		},
+	},
+	{
+		.gpio      = 31,		/* FUEL_GAUGE_INT_N */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &max17050_int_config,
+			[GPIOMUX_SUSPENDED] = &max17050_int_config,
+		},
+	},
+};
+#endif
+
 void __init msm8226_init_gpiomux(void)
 {
 	int rc;
@@ -757,5 +801,10 @@ void __init msm8226_init_gpiomux(void)
 		msm_hsic_configs[1].gpio = 120; /* DATA */
 	}
 	msm_gpiomux_install(msm_hsic_configs, ARRAY_SIZE(msm_hsic_configs));
+#endif
+
+#ifdef CONFIG_BATTERY_MAX17050
+	msm_gpiomux_install(msm_fuel_gauge_configs,
+			ARRAY_SIZE(msm_fuel_gauge_configs));
 #endif
 }
