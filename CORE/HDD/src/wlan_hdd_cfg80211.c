@@ -8384,15 +8384,6 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     int status;
-#ifdef WLAN_FEATURE_TDLS_DEBUG
-    const char *tdls_oper_str[]= {
-        "NL80211_TDLS_DISCOVERY_REQ",
-        "NL80211_TDLS_SETUP",
-        "NL80211_TDLS_TEARDOWN",
-        "NL80211_TDLS_ENABLE_LINK",
-        "NL80211_TDLS_DISABLE_LINK",
-        "NL80211_TDLS_UNKNOWN_OPER"};
-#endif
     hddTdlsPeer_t *pTdlsPeer;
 
     if ( NULL == peer )
@@ -8411,23 +8402,6 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         return status;
     }
 
-    pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer, TRUE);
-
-    if ( NULL == pTdlsPeer ) {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: " MAC_ADDRESS_STR " (oper %d) not exsting. ignored",
-               __func__, MAC_ADDR_ARRAY(peer), (int)oper);
-        return -EINVAL;
-    }
-
-#ifdef WLAN_FEATURE_TDLS_DEBUG
-    if((int)oper > 4)
-        oper = 5;
-
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "%s: " MAC_ADDRESS_STR " link_status %d (%s) ", "tdls_oper",
-               MAC_ADDR_ARRAY(peer), pTdlsPeer->link_status,
-               tdls_oper_str[(int)oper]);
-#endif
 
     if( FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
         FALSE == sme_IsFeatureSupportedByFW(TDLS))
@@ -8443,6 +8417,20 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             {
                 VOS_STATUS status;
                 tCsrTdlsLinkEstablishParams tdlsLinkEstablishParams;
+
+                pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer, TRUE);
+
+                if ( NULL == pTdlsPeer ) {
+                    hddLog(VOS_TRACE_LEVEL_ERROR, "%s: " MAC_ADDRESS_STR
+                           " (oper %d) not exsting. ignored",
+                           __func__, MAC_ADDR_ARRAY(peer), (int)oper);
+                    return -EINVAL;
+                }
+
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           "%s: " MAC_ADDRESS_STR " link_status %d (%s) ", "tdls_oper",
+                           MAC_ADDR_ARRAY(peer), pTdlsPeer->link_status,
+                           "NL80211_TDLS_ENABLE_LINK");
 
                 if (!TDLS_STA_INDEX_VALID(pTdlsPeer->staId))
                 {
@@ -8527,6 +8515,20 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             break;
         case NL80211_TDLS_DISABLE_LINK:
             {
+                pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer, TRUE);
+
+                if ( NULL == pTdlsPeer ) {
+                    hddLog(VOS_TRACE_LEVEL_ERROR, "%s: " MAC_ADDRESS_STR
+                           " (oper %d) not exsting. ignored",
+                           __func__, MAC_ADDR_ARRAY(peer), (int)oper);
+                    return -EINVAL;
+                }
+
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           "%s: " MAC_ADDRESS_STR " link_status %d (%s) ", "tdls_oper",
+                           MAC_ADDR_ARRAY(peer), pTdlsPeer->link_status,
+                           "NL80211_TDLS_DISABLE_LINK");
+
                 if(TDLS_STA_INDEX_VALID(pTdlsPeer->staId))
                 {
                     long status;
@@ -8556,7 +8558,53 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             }
             break;
         case NL80211_TDLS_TEARDOWN:
+            {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          " %s : NL80211_TDLS_TEARDOWN for " MAC_ADDRESS_STR,
+                          __func__, MAC_ADDR_ARRAY(peer));
+
+                if ( (FALSE == pHddCtx->cfg_ini->fTDLSExternalControl) ||
+                     (FALSE == pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger) ) {
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          " %s TDLS External control and Implicit Trigger not enabled ",
+                          __func__);
+                    return -ENOTSUPP;
+                }
+
+                if ( 0 != wlan_hdd_tdls_remove_force_peer(pAdapter, peer) )
+                    return -EINVAL;
+
+                pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer, TRUE);
+
+                if ( NULL == pTdlsPeer ) {
+                    hddLog(VOS_TRACE_LEVEL_INFO, "%s: " MAC_ADDRESS_STR
+                           " peer not exsting",
+                           __func__, MAC_ADDR_ARRAY(peer));
+                }
+                else {
+                    wlan_hdd_tdls_indicate_teardown(pAdapter, pTdlsPeer,
+                                       eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+                }
+                break;
+            }
         case NL80211_TDLS_SETUP:
+            {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          " %s : NL80211_TDLS_SETUP for " MAC_ADDRESS_STR,
+                          __func__, MAC_ADDR_ARRAY(peer));
+
+                if ( (FALSE == pHddCtx->cfg_ini->fTDLSExternalControl) ||
+                     (FALSE == pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger) ) {
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          " %s TDLS External control and Implicit Trigger not enabled ",
+                          __func__);
+                    return -ENOTSUPP;
+                }
+
+                return wlan_hdd_tdls_add_force_peer(pAdapter, peer);
+            }
         case NL80211_TDLS_DISCOVERY_REQ:
             /* We don't support in-driver setup/teardown/discovery */
             return -ENOTSUPP;
