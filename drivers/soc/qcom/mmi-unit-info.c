@@ -73,6 +73,8 @@ int __init setup_androidboot_radio_init(char *s)
 }
 __setup("androidboot.radio=", setup_androidboot_radio_init);
 
+static char msm_hw[MSMHW_MAX_LEN+1];
+
 void mach_cpuinfo_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "Device\t\t: %s\n", androidboot_device);
@@ -81,6 +83,8 @@ void mach_cpuinfo_show(struct seq_file *m, void *v)
 	/*	look for radio in "Revision"       */
 	if (androidboot_radio)
 		seq_printf(m, "Radio\t\t: %x\n", androidboot_radio);
+
+	seq_printf(m, "MSM Hardware\t: %s\n", msm_hw);
 }
 
 static char extended_baseband[BASEBAND_MAX_LEN+1] = "\0";
@@ -103,6 +107,7 @@ static void __init mmi_of_populate_setup(void)
 	struct device_node *n = of_find_node_by_path("/chosen");
 	struct mmi_of_lookup *tbl = mmi_of_setup;
 	const char *baseband;
+	const char *temp;
 
 	while (tbl->data) {
 		of_property_read_u32(n, tbl->compatible, tbl->data);
@@ -111,6 +116,9 @@ static void __init mmi_of_populate_setup(void)
 
 	if (0 == of_property_read_string(n, "mmi,baseband", &baseband))
 		strlcpy(extended_baseband, baseband, sizeof(extended_baseband));
+
+	if (0 == of_property_read_string(n, "mmi,msm_hw", &temp))
+		strlcpy(msm_hw, temp, sizeof(msm_hw));
 
 	of_node_put(n);
 }
