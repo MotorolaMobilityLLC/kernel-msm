@@ -154,7 +154,7 @@ static ssize_t wcnss_patterngen_write(struct file *file,
     else
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Command length is larger than d% bytes.",
+                   "%s: Command length is larger than %d bytes.",
                    __func__, MAX_USER_COMMAND_SIZE_FRAME);
 
         return -EINVAL;
