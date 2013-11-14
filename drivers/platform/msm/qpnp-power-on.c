@@ -879,6 +879,8 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 
 	/* iterate through the list of pon configs */
 	while ((pp = of_get_next_child(pon->spmi->dev.of_node, pp))) {
+		if (!of_device_is_available(pp))
+			continue;
 
 		cfg = &pon->pon_cfg[i++];
 
@@ -1175,7 +1177,8 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 
 	/* get the total number of pon configurations */
 	while ((itr = of_get_next_child(spmi->dev.of_node, itr)))
-		pon->num_pon_config++;
+		if (of_device_is_available(itr))
+			pon->num_pon_config++;
 
 	if (!pon->num_pon_config) {
 		/* No PON config., do not register the driver */
