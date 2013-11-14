@@ -204,6 +204,14 @@ config BATTERY_MAX17042
 	  with MAX17042. This driver also supports max17047/50 chips which are
 	  improved version of max17042.
 
+config BATTERY_MAX17050
+	tristate "Maxim MAX17050 Fuel Gauge"
+	depends on I2C
+	help
+	  MAX17050 is a fuel-gauge IC for lithium-ion (Li+) batteries
+	  in handheld and portable equipment. The MAX17050 is configured
+	  to operate with a single lithium cell.
+
 config BATTERY_ANDROID
 	tristate "Battery driver for Android"
 	help
