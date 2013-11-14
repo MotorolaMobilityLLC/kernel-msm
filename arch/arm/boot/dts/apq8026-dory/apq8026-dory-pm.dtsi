@@ -10,18 +10,6 @@
 * GNU General Public License for more details.
 */
 
-&soc {
-	i2c@f9923000 { /* BLSP1 QUP1 */
-		max17050@36 {
-			compatible = "maxim,max17050";
-			status = "okay";
-			interrupt-parent = <&msmgpio>;
-			interrupts = <31 0x0>;
-			reg = <0x36>;
-		};
-	};
-};
-
 &spmi_bus {
 	qcom,pm8226@0 {
 		qcom,power-on@800 {
@@ -289,6 +277,52 @@
 			lge,cable-620k = <1418326 500 500>;
 			lge,cable-910k = <1637838 1500 1500>;
 			lge,cable-none = <1900000 1100 500>;
+		};
+	};
+
+	i2c@f9923000 {
+		max17050@36 {
+			compatible = "maxim,max17050";
+			reg = <0x36>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <31 2>;
+
+			maxim,rsns-microohm = <10000>;
+
+			maxim,model = [9F B0 B5 E0 B8 00 BA 00
+					BB 10 BC 30 BC 90 BD 00
+					BD A0 BE 40 BF A0 C2 50
+					C4 C0 C7 B0 CB 70 CD D0
+					01 00 0F 10 10 00 13 00
+					12 00 3C E0 34 70 1B F0
+					1B 90 18 00 0C 60 0D E0
+					0C 80 0B F0 04 50 04 50
+					01 80 01 80 01 80 01 80
+					01 80 01 80 01 80 01 80
+					01 80 01 80 01 80 01 80
+					01 80 01 80 01 80 01 80];
+
+			maxim,relaxcfg = <0x506B>;
+			maxim,config = <0x2100>;
+			maxim,filtercfg = <0x87A4>;
+			maxim,learncfg = <0x2606>;
+			maxim,misccfg = <0x0870>;
+			maxim,fullsocthr = <0x5F00>;
+			maxim,rcomp0 = <0x0051>;
+			maxim,tempco = <0x242E>;
+			maxim,tempnom = <0x1400>;
+			maxim,tgain = <0xE932>;
+			maxim,toff = <0x2381>;
+			maxim,ichgterm = <0x0280>;
+			maxim,vempty = <0xA2DA>;
+			maxim,qrtable00 = <0x1804>;
+			maxim,qrtable10 = <0x0B00>;
+			maxim,qrtable20 = <0x0700>;
+			maxim,qrtable30 = <0x0600>;
+			maxim,capacity = <0x0267>;
+			maxim,vf_fullcap = <0x0267>;
+			maxim,temperature = <0x1400>;
+			maxim,dpacc = <0x0C80>;
 		};
 	};
 };
