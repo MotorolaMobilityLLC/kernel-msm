@@ -476,6 +476,9 @@ int bq27541_battery_callback(unsigned usb_cable_state)
 
 	bq27541_check_cabe_type();
 
+	if(!cancel_delayed_work(&bq27541_device->status_poll_work))
+		flush_workqueue(bq27541_battery_work_queue);
+
 	if(!bq27541_battery_cable_status) {
 		if (old_cable_status == USB_AC_Adapter) {
 			power_supply_changed(&bq27541_supply[Charger_Type_AC]);
@@ -506,6 +509,9 @@ int bq27541_wireless_callback(unsigned wireless_state)
 	printk(KERN_NOTICE "========================================================\n");
 	printk(KERN_NOTICE "bq27541_wireless_callback  wireless_state = %x\n", wireless_state) ;
 	printk(KERN_NOTICE "========================================================\n");
+
+	if(!cancel_delayed_work(&bq27541_device->status_poll_work))
+		flush_workqueue(bq27541_battery_work_queue);
 
 	power_supply_changed(&bq27541_supply[Charger_Type_WIRELESS]);
 
