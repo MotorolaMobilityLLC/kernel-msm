@@ -950,7 +950,6 @@
 &i2c_1 {
 	stm401@39 {
 		compatible = "stm,stm401";
-		status = "disabled";
 		reg = <0x39>;
 		gpios = <&msmgpio 95 0>,        /* IRQ */
 			<&msmgpio 145 0>,       /* RESET */
