@@ -34,16 +34,19 @@
 		gpios = <&msmgpio 13 0>,
 				<&msmgpio 21 0>,
 				<&msmgpio 20 0>,
-				<&msmgpio 14 0>;
+				<&msmgpio 14 0>,
+				<&msmgpio 15 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
 		qcom,gpio-pwren = <3>;
-		qcom,gpio-req-tbl-num = <0 1 2 3>;
-		qcom,gpio-req-tbl-flags = <1 0 0 0>;
+		qcom,gpio-pwren2 = <4>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4>;
+		qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
 				"CAM_RESET1",
 				"CAM_STANDBY",
-				"CAM_PWREN";
+				"CAM_PWREN",
+				"CAM_PWREN2";
 		qcom,csi-lane-assign = <0xe4>;
 		qcom,csi-lane-mask = <0x3>;
 		qcom,sensor-position = <0>;
