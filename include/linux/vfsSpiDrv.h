@@ -37,6 +37,8 @@
 #define BITS_PER_WORD       8
 #define DRDY_IRQ_FLAG       IRQF_TRIGGER_RISING
 #define DEFAULT_BUFFER_SIZE (4096 * 6)
+#define DRDY_IRQ_ENABLE     1
+#define DRDY_IRQ_DISABLE    0
 
 /* IOCTL commands definitions */
 
