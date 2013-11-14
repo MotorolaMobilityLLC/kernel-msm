@@ -111,6 +111,7 @@ struct vfsspi_device_data {
 	int user_pid;
 	int signal_id;
 	unsigned int current_spi_speed;
+	unsigned int is_drdy_irq_enabled;
 	struct mutex kernel_lock;
 };
 
@@ -450,6 +451,36 @@ static irqreturn_t vfsspi_irq(int irq, void *context)
 	return IRQ_HANDLED;
 }
 
+static int vfsspi_enableIrq(struct vfsspi_device_data *vfsspi_device)
+{
+	pr_debug("vfsspi_enableIrq\n");
+
+	if (vfsspi_device->is_drdy_irq_enabled == DRDY_IRQ_ENABLE) {
+		pr_debug("DRDY irq already enabled\n");
+		return -EINVAL;
+	}
+
+	enable_irq(gpio_irq);
+	vfsspi_device->is_drdy_irq_enabled = DRDY_IRQ_ENABLE;
+
+	return 0;
+}
+
+static int vfsspi_disableIrq(struct vfsspi_device_data *vfsspi_device)
+{
+	pr_debug("vfsspi_disableIrq\n");
+
+	if (vfsspi_device->is_drdy_irq_enabled == DRDY_IRQ_DISABLE) {
+		pr_debug("DRDY irq already disabled\n");
+		return -EINVAL;
+	}
+
+	disable_irq_nosync(gpio_irq);
+	vfsspi_device->is_drdy_irq_enabled = DRDY_IRQ_DISABLE;
+
+	return 0;
+}
+
 static int vfsspi_set_drdy_int(struct vfsspi_device_data *vfsspi_device,
 			       unsigned long arg)
 {
@@ -459,22 +490,25 @@ static int vfsspi_set_drdy_int(struct vfsspi_device_data *vfsspi_device,
 		pr_err("Failed copy from user.\n");
 		return -EFAULT;
 	}
-	if (drdy_enable_flag == 0) {
-		free_irq(gpio_irq, vfsspi_device);
-	} else {
-		if (request_irq(gpio_irq, vfsspi_irq,
-				DRDY_IRQ_FLAG, "vfsspi_irq",
-				vfsspi_device) < 0) {
-			pr_err(" Unable set DRDY INT.\n");
-			return -EBUSY;
+	if (drdy_enable_flag == 0)
+		vfsspi_disableIrq(vfsspi_device);
+	else {
+		vfsspi_enableIrq(vfsspi_device);
+		/* Workaround the issue where the system
+		   misses DRDY notification to host when
+		   DRDY pin was asserted before enabling
+		   device.*/
+		if (gpio_get_value(vfsspi_device->drdy_pin) ==
+		    DRDY_ACTIVE_STATUS) {
+			vfsspi_send_drdy_signal(vfsspi_device);
 		}
 	}
 	return 0;
 }
 
-static void vfsspi_hardReset(struct vfsspi_device_data *vfsspi_device)
+static void vfsspi_hard_reset(struct vfsspi_device_data *vfsspi_device)
 {
-	pr_debug("vfsspi_hardReset\n");
+	pr_debug("vfsspi_hard_reset\n");
 
 	if (vfsspi_device != NULL) {
 		data_to_read = 0;
@@ -482,6 +516,18 @@ static void vfsspi_hardReset(struct vfsspi_device_data *vfsspi_device)
 		usleep(1000);
 		gpio_set_value(vfsspi_device->sleep_pin, 1);
 		usleep(5000);
+	}
+}
+
+static void vfsspi_suspend(struct vfsspi_device_data *vfsspi_device)
+{
+	pr_debug("vfsspi_suspend\n");
+
+	if (vfsspi_device != NULL) {
+		spin_lock(&vfsspi_device->vfs_spi_lock);
+		data_to_read = 0;
+		gpio_set_value(vfsspi_device->sleep_pin, 0);
+		spin_unlock(&vfsspi_device->vfs_spi_lock);
 	}
 }
 
@@ -504,7 +550,11 @@ static long vfsspi_ioctl(struct file *filp, unsigned int cmd,
 	switch (cmd) {
 	case VFSSPI_IOCTL_DEVICE_RESET:
 		pr_debug("VFSSPI_IOCTL_DEVICE_RESET:\n");
-		vfsspi_hardReset(vfsspi_device);
+		vfsspi_hard_reset(vfsspi_device);
+		break;
+	case VFSSPI_IOCTL_DEVICE_SUSPEND:
+		pr_debug("VFSSPI_IOCTL_DEVICE_SUSPEND:\n");
+		vfsspi_suspend(vfsspi_device);
 		break;
 	case VFSSPI_IOCTL_RW_SPI_MESSAGE:
 		pr_debug("VFSSPI_IOCTL_RW_SPI_MESSAGE");
