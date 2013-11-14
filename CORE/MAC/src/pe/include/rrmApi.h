@@ -61,6 +61,9 @@
 #define RRM_MIN_TX_PWR_CAP    13
 #define RRM_MAX_TX_PWR_CAP    19
 
+#define RRM_BCN_RPT_NO_BSS_INFO    0
+#define RRM_BCN_RPT_MIN_RPT        1
+
 tANI_U8 rrmGetMinOfMaxTxPower(tPowerdBm regMax, tPowerdBm apTxPower);
 
 extern tSirRetStatus rrmInitialize(tpAniSirGlobal pMac);

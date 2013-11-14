@@ -817,6 +817,9 @@ rrmProcessBeaconReportXmit( tpAniSirGlobal pMac,
       return eSIR_FAILURE;
    }
 
+   pBcnReport->numBssDesc = (pBcnReport->numBssDesc == RRM_BCN_RPT_NO_BSS_INFO)?
+                            RRM_BCN_RPT_MIN_RPT : pBcnReport->numBssDesc;
+
    if (NULL == pCurrentReq)
    {
       PELOGE(limLog( pMac, LOGE,
@@ -939,8 +942,12 @@ rrmProcessBeaconReportXmit( tpAniSirGlobal pMac,
 #if defined WLAN_VOWIFI_DEBUG
    PELOGE(limLog( pMac, LOGE, "Sending Action frame ");)
 #endif
-   limSendRadioMeasureReportActionFrame( pMac, pCurrentReq->dialog_token, bssDescCnt,
-            pReport, pBcnReport->bssId, pSessionEntry );
+   limSendRadioMeasureReportActionFrame( pMac,
+                                         pCurrentReq->dialog_token,
+                                         bssDescCnt,
+                                         pReport,
+                                         pBcnReport->bssId,
+                                         pSessionEntry );
 
 
    if( pBcnReport->fMeasureDone )
