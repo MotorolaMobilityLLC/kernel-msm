@@ -19,6 +19,7 @@
 #define MACHINE_MAX_LEN 33
 #define CARRIER_MAX_LEN 65
 #define BASEBAND_MAX_LEN 97
+#define MSMHW_MAX_LEN 32
 #define DEVICE_MAX_LEN 33
 struct mmi_unit_info {
 	uint32_t version;
