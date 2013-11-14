@@ -234,7 +234,7 @@
 		rgb-class-name ="rgb";
 		d1-led-name = "white";
 		clock-mode = <0x0>;		/* internal clock | change to 0x40 for external */
-		charge-pump-mode = <0x1>;	/* enable the charge pump */
+		charge-pump-mode = <0x0>;	/* Charge pump mode bit configuration: 0x0 or 0x80.*/
 		min-tstep = <0>;		/* Sets N for timing control equations. Valid range from 0 to 7 */
 		max-level = <0x1F>;		/* Max. brightness level 0x0..0x1F */
 	};
