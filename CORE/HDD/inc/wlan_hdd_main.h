@@ -83,8 +83,6 @@
 #define LIBRA_CARD_REMOVE_DETECT_MAX_COUNT      5
 /** Number of Tx Queues */  
 #define NUM_TX_QUEUES 4
-/** Queue length specified to OS in the net_device */
-#define NET_DEV_TX_QUEUE_LEN 100
 /** HDD's internal Tx Queue Length. Needs to be a power of 2 */
 #define HDD_TX_QUEUE_MAX_LEN 128
 /** HDD internal Tx Queue Low Watermark. Net Device TX queue is disabled
