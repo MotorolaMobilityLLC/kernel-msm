@@ -52,6 +52,7 @@
 #include <mach/iommu_domains.h>
 #include <mach/msm_memtypes.h>
 
+#include "mdss_dsi.h"
 #include "mdss_fb.h"
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
@@ -372,7 +373,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	pm_runtime_enable(mfd->fbi->dev);
 
 	/* android supports only one lcd-backlight/lcd for now */
-	if (!lcd_backlight_registered) {
+	if (!lcd_backlight_registered &&
+			mfd->panel_info->bklt_ctrl != BL_EXTERNAL &&
+			mfd->panel_info->bklt_ctrl != UNKNOWN_CTRL) {
 		if (led_classdev_register(&pdev->dev, &backlight_led))
 			pr_err("led_classdev_register failed\n");
 		else

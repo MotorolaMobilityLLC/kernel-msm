@@ -78,10 +78,11 @@ enum dsi_trigger_type {
 };
 
 enum dsi_panel_bl_ctrl {
+	UNKNOWN_CTRL,
 	BL_PWM,
 	BL_WLED,
 	BL_DCS_CMD,
-	UNKNOWN_CTRL,
+	BL_EXTERNAL,
 };
 
 enum dsi_ctrl_op_mode {
