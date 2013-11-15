@@ -3412,7 +3412,9 @@ static void msm_otg_set_vbus_state(int online)
 	if (!pmic_vbus_init.done) {
 		complete(&pmic_vbus_init);
 		pr_debug("PMIC: BSV init complete\n");
-		return;
+		/* fallthrough and schedule state machine work
+		 * to handle vbus change incase no current work
+		 */
 	}
 
 	if (test_bit(MHL, &motg->inputs) ||
@@ -3744,7 +3746,9 @@ static int otg_power_set_property_usb(struct power_supply *psy,
 	switch (psp) {
 	/* Process PMIC notification in PRESENT prop */
 	case POWER_SUPPLY_PROP_PRESENT:
-		msm_otg_set_vbus_state(val->intval);
+		/* Pre-check to eliminate redundancy */
+		if(!!test_bit(B_SESS_VLD, &motg->inputs) != val->intval)
+			msm_otg_set_vbus_state(val->intval);
 		break;
 	/* The ONLINE property reflects if usb has enumerated */
 	case POWER_SUPPLY_PROP_ONLINE:
