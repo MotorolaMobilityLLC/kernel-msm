@@ -233,13 +233,8 @@ static eHalStatus hdd_IndicateScanResult(hdd_scan_info_t *scanInfo, tCsrScanResu
    char custom[MAX_CUSTOM_LEN];
    char *p;
 
-   hddLog( LOG1, "hdd_IndicateScanResult %02x:%02x:%02x:%02x:%02x:%02x",
-          descriptor->bssId[0],
-          descriptor->bssId[1],
-          descriptor->bssId[2],
-          descriptor->bssId[3],
-          descriptor->bssId[4],
-          descriptor->bssId[5]);
+   hddLog( LOG1, "hdd_IndicateScanResult " MAC_ADDRESS_STR,
+          MAC_ADDR_ARRAY(descriptor->bssId));
 
    error = 0;
    last_event = current_event;
