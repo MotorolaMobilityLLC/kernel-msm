@@ -173,6 +173,19 @@ static struct gpiomux_setting lcd_rst_sus_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+static struct gpiomux_setting backlight_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting backlight_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 	{
 		.gpio = 25,
@@ -180,7 +193,14 @@ static struct msm_gpiomux_config msm_lcd_configs[] __initdata = {
 			[GPIOMUX_ACTIVE]    = &lcd_rst_act_cfg,
 			[GPIOMUX_SUSPENDED] = &lcd_rst_sus_cfg,
 		},
-	}
+	},
+	{
+		.gpio = 57,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &backlight_act_cfg,
+			[GPIOMUX_SUSPENDED] = &backlight_sus_cfg,
+		},
+	},
 };
 
 static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
