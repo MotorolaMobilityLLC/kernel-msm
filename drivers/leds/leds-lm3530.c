@@ -87,6 +87,7 @@
 
 /* 7 bits are used for the brightness : LM3530_BRT_CTRL_REG */
 #define MAX_BRIGHTNESS			(127)
+#define MAX_USER_BRIGHTNESS		(255)
 
 struct lm3530_mode_map {
 	const char *mode;
@@ -279,8 +280,8 @@ static int lm3530_init_registers(struct lm3530_data *drvdata)
 	else
 		brightness = drvdata->brightness = pdata->brt_val;
 
-	if (brightness > drvdata->led_dev.max_brightness)
-		brightness = drvdata->led_dev.max_brightness;
+	if (brightness > pdata->max_brt)
+		brightness = pdata->max_brt;
 
 	reg_val[0] = gen_config;	/* LM3530_GEN_CONFIG */
 	reg_val[1] = brt_ramp;		/* LM3530_BRT_RAMP_RATE */
@@ -310,7 +311,7 @@ static int lm3530_init_registers(struct lm3530_data *drvdata)
 		    drvdata->mode == LM3530_BL_MODE_PWM) {
 			if (pwm->pwm_set_intensity)
 				pwm->pwm_set_intensity(reg_val[i],
-					drvdata->led_dev.max_brightness);
+					pdata->max_brt);
 			continue;
 		}
 
@@ -323,6 +324,13 @@ static int lm3530_init_registers(struct lm3530_data *drvdata)
 	return ret;
 }
 
+/* macro for maps android backlight level 0 to 255 into
+   driver backlight level 0 to max_bright with rounding */
+static int inline lm3530_map_user_lvl_to_bl(int v, int bl_max, int max_bright)
+{
+	return (2 * v * bl_max + max_bright) / (2 * max_bright);
+}
+
 static void lm3530_brightness_set(struct led_classdev *led_cdev,
 				     enum led_brightness brt_val)
 {
@@ -331,7 +339,12 @@ static void lm3530_brightness_set(struct led_classdev *led_cdev,
 	    container_of(led_cdev, struct lm3530_data, led_dev);
 	struct lm3530_platform_data *pdata = drvdata->pdata;
 	struct lm3530_pwm_data *pwm = &pdata->pwm_data;
-	u8 max_brightness = led_cdev->max_brightness;
+	u8 max_brightness = pdata->max_brt;
+	u8 bklt_lvl;
+
+	bklt_lvl = lm3530_map_user_lvl_to_bl(brt_val, max_brightness,
+			MAX_USER_BRIGHTNESS);
+	pr_debug("%s: user_lvl=%d bl_lvl = %d\n", __func__, brt_val, bklt_lvl);
 
 	switch (drvdata->mode) {
 	case LM3530_BL_MODE_MANUAL:
@@ -347,12 +360,12 @@ static void lm3530_brightness_set(struct led_classdev *led_cdev,
 
 		/* set the brightness in brightness control register*/
 		err = i2c_smbus_write_byte_data(drvdata->client,
-				LM3530_BRT_CTRL_REG, brt_val);
+				LM3530_BRT_CTRL_REG, bklt_lvl);
 		if (err)
 			dev_err(&drvdata->client->dev,
 				"Unable to set brightness: %d\n", err);
 		else
-			drvdata->brightness = brt_val;
+			drvdata->brightness = bklt_lvl;
 
 		if (brt_val == 0)
 			lm3530_led_disable(drvdata);
@@ -361,7 +374,7 @@ static void lm3530_brightness_set(struct led_classdev *led_cdev,
 		break;
 	case LM3530_BL_MODE_PWM:
 		if (pwm->pwm_set_intensity)
-			pwm->pwm_set_intensity(brt_val, max_brightness);
+			pwm->pwm_set_intensity(bklt_lvl, max_brightness);
 		break;
 	default:
 		break;
@@ -398,7 +411,7 @@ static ssize_t lm3530_mode_set(struct device *dev, struct device_attribute
 
 	drvdata = container_of(led_cdev, struct lm3530_data, led_dev);
 	pwm = &drvdata->pdata->pwm_data;
-	max_brightness = led_cdev->max_brightness;
+	max_brightness = drvdata->pdata->max_brt;
 	mode = lm3530_get_mode_from_str(buf);
 	if (mode < 0) {
 		dev_err(dev, "Invalid mode\n");
@@ -543,7 +556,7 @@ static int lm3530_probe(struct i2c_client *client,
 	drvdata->enable = false;
 	drvdata->led_dev.name = LM3530_LED_DEV;
 	drvdata->led_dev.brightness_set = lm3530_brightness_set;
-	drvdata->led_dev.max_brightness = MAX_BRIGHTNESS;
+	drvdata->led_dev.max_brightness = MAX_USER_BRIGHTNESS;
 	drvdata->en_gpio = pdata->en_gpio;
 
 	i2c_set_clientdata(client, drvdata);
