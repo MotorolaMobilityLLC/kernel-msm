@@ -532,7 +532,7 @@ eHalStatus csrStart(tpAniSirGlobal pMac)
     return (status);
 }
 
-eHalStatus csrStop(tpAniSirGlobal pMac)
+eHalStatus csrStop(tpAniSirGlobal pMac, tHalStopType stopType)
 {
     tANI_U32 sessionId;
     tANI_U32 i;
@@ -562,6 +562,18 @@ eHalStatus csrStop(tpAniSirGlobal pMac)
        csrRoamStateChange( pMac, eCSR_ROAMING_STATE_STOP, i );
        pMac->roam.curSubState[i] = eCSR_ROAM_SUBSTATE_NONE;
     }
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    /* When HAL resets all the context information
+     * in HAL is lost, so we might need to send the
+     * scan offload request again when it comes
+     * out of reset for scan offload to be functional
+     */
+    if (HAL_STOP_TYPE_SYS_RESET == stopType)
+    {
+       bRoamScanOffloadStarted = VOS_FALSE;
+    }
+#endif
 
     return (eHAL_STATUS_SUCCESS);
 }

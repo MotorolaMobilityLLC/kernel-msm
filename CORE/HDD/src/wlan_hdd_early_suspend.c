@@ -1527,7 +1527,7 @@ VOS_STATUS hdd_wlan_shutdown(void)
    /* Stop SME - Cannot invoke vos_stop as vos_stop relies
     * on threads being running to process the SYS Stop
     */
-   vosStatus = sme_Stop(pHddCtx->hHal, TRUE);
+   vosStatus = sme_Stop(pHddCtx->hHal, HAL_STOP_TYPE_SYS_RESET);
    VOS_ASSERT(VOS_IS_STATUS_SUCCESS(vosStatus));
 
    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Doing MAC STOP",__func__);

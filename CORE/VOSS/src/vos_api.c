@@ -736,7 +736,7 @@ VOS_STATUS vos_start( v_CONTEXT_t vosContext )
 
 
 err_sme_stop:
-  sme_Stop(pVosContext->pMACContext, TRUE);
+  sme_Stop(pVosContext->pMACContext, HAL_STOP_TYPE_SYS_RESET);
     
 err_mac_stop:
   macStop( pVosContext->pMACContext, HAL_STOP_TYPE_SYS_RESET );

@@ -987,13 +987,6 @@ typedef struct sMacOpenParameters
     tDriverType  driverType;
 } tMacOpenParameters;
 
-typedef enum
-{
-    HAL_STOP_TYPE_SYS_RESET,
-    HAL_STOP_TYPE_SYS_DEEP_SLEEP,
-    HAL_STOP_TYPE_RF_KILL   
-}tHalStopType;
-
 typedef struct sHalMacStartParameters
 {
     // parametes for the Firmware

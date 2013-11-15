@@ -202,7 +202,7 @@ eHalStatus sme_Start(tHalHandle hHal);
   
   \param hHal - The handle returned by macOpen.
 
-  \param pmcFlag - The flag tells SME if we want to stop PMC or not
+  \param tHalStopType - reason for stopping
   
   \return eHAL_STATUS_SUCCESS - SME is stopped.
   
@@ -211,7 +211,7 @@ eHalStatus sme_Start(tHalHandle hHal);
   \sa
   
   --------------------------------------------------------------------------*/
-eHalStatus sme_Stop(tHalHandle hHal, tANI_BOOLEAN pmcFlag);
+eHalStatus sme_Stop(tHalHandle hHal, tHalStopType stopType);
 
 
 /*--------------------------------------------------------------------------
