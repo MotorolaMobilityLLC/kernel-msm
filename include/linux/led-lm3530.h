@@ -93,6 +93,9 @@ struct lm3530_pwm_data {
  * @als_vmin: als input voltage calibrated for max brightness in mV
  * @als_vmax: als input voltage calibrated for min brightness in mV
  * @brt_val: brightness value (0-127)
+ * @max_brt: limit of brightness
+ * @en_gpio: gpio number to enable device
+ * @no_regulator : existence of regulator
  * @pwm_data: PWM control functions (only valid when the mode is PWM)
  */
 struct lm3530_platform_data {
@@ -114,6 +117,9 @@ struct lm3530_platform_data {
 	u32 als_vmax;
 
 	u8 brt_val;
+	u8 max_brt;
+	u32 en_gpio;
+	bool no_regulator;
 
 	struct lm3530_pwm_data pwm_data;
 };
