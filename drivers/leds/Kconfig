@@ -535,6 +535,15 @@ config LEDS_OT200
 	  This option enables support for the LEDs on the Bachmann OT200.
 	  Say Y to enable LEDs on the Bachmann OT200.
 
+config LEDS_FAN5646
+	tristate "Fairchild FAN5646 LED Driver"
+	depends on LEDS_CLASS
+	help
+	  Fairchild Semiconductor International FAN5646 LED Driver.
+	  Driver uses gpio line for bit bang control protocol.
+	  Blink and brightness interfaces are supported.
+	  Fixed power supply is supported.
+
 config LEDS_TRIGGERS
 	bool "LED Trigger support"
 	depends on LEDS_CLASS
