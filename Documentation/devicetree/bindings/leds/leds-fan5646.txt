@@ -1,0 +1,19 @@
+MMI fan5646 Leds
+
+MMI fan5646 LEDs driver is used for controlling LEDs
+driven by FSI FAN5646 Controller. The IC is connected
+to host processor via dedicated GPIO line.
+TinyWire protocol is used to communicate with the chip.
+
+Required properties:
+- compatible		: should be "fsi,leds-fan5646"
+- gpios			: gpio cell to describe pin used to control the IC
+- tsleep		: bit duration for TinyWire protocol in us. Max 40us, Min 500 ns.
+- full-current		: full-scale LED current setting for Iset bits in control register
+			: CONTROL[6:7]:
+			: 0 - 5 mA, 1 - 10 mA, 2 - 15 mA, 3 - 20 mA
+			: This assumed that Rset resistor is not used as well.
+			: Which is always true for for WLCSP packages.
+- fan5646-supply	: Phandle of the supply node used to power the IC.
+- linux-name 		: Linux led class device name for led connected to the IC.
+- rgb-class-name	: Linux led class name for the rgb device.
