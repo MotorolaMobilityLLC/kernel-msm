@@ -677,10 +677,9 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
                 memcpy(&dstMac, &buf[WLAN_HDD_80211_FRM_DA_OFFSET], ETH_ALEN);
                 hddLog(VOS_TRACE_LEVEL_INFO,
                         "%s: Deauth/Disassoc received for STA:"
-                        "%02x:%02x:%02x:%02x:%02x:%02x",
+                        MAC_ADDRESS_STR,
                         __func__,
-                        dstMac[0], dstMac[1], dstMac[2],
-                        dstMac[3], dstMac[4], dstMac[5]);
+                        MAC_ADDR_ARRAY(dstMac));
                 goto err_rem_channel;
             }
         }

@@ -1972,13 +1972,10 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
              pMac->btc.btcBssfordisableaggr[3] = pSmeCoexInd->coexIndData[1]  >> 8;
              pMac->btc.btcBssfordisableaggr[4] = pSmeCoexInd->coexIndData[2] & 0xFF;
              pMac->btc.btcBssfordisableaggr[5] = pSmeCoexInd->coexIndData[2] >> 8;
-             smsLog(pMac, LOGW,
-             "Coex indication in %s(), \
-              type - SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4 \
-              for BSSID %02x:%02x:%02x:%02x:%02x:%02x",__func__,
-              pMac->btc.btcBssfordisableaggr[0],pMac->btc.btcBssfordisableaggr[1],
-              pMac->btc.btcBssfordisableaggr[2],pMac->btc.btcBssfordisableaggr[3],
-              pMac->btc.btcBssfordisableaggr[4],pMac->btc.btcBssfordisableaggr[5]);
+             smsLog(pMac, LOGW, "Coex indication in %s(), "
+                    "type - SIR_COEX_IND_TYPE_DISABLE_AGGREGATION_IN_2p4 "
+                    "for BSSID "MAC_ADDRESS_STR,__func__,
+                    MAC_ADDR_ARRAY(pMac->btc.btcBssfordisableaggr));
          }
      }
      else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_ENABLE_AGGREGATION_IN_2p4)

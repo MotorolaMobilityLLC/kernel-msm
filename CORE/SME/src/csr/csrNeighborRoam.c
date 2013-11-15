@@ -909,8 +909,8 @@ eHalStatus csrNeighborRoamAddBssIdToPreauthFailList(tpAniSirGlobal pMac, tSirMac
 {
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
 
-    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL(" Added BSSID %02x:%02x:%02x:%02x:%02x:%02x to Preauth failed list"),
-                        bssId[0], bssId[1], bssId[2], bssId[3], bssId[4], bssId[5]);
+    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL(" Added BSSID "MAC_ADDRESS_STR" to Preauth failed list"),
+                        MAC_ADDR_ARRAY(bssId));
 
 
     if ((pNeighborRoamInfo->FTRoamInfo.preAuthFailList.numMACAddress + 1) >
@@ -959,8 +959,8 @@ tANI_BOOLEAN csrNeighborRoamIsPreauthCandidate(tpAniSirGlobal pMac, tSirMacAddr 
         if (VOS_TRUE == vos_mem_compare(pNeighborRoamInfo->FTRoamInfo.preAuthFailList.macAddress[i],
                                                                         bssId, sizeof(tSirMacAddr)))
         {
-            NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("BSSID %02x:%02x:%02x:%02x:%02x:%02x already present in preauth fail list"),
-                                                bssId[0], bssId[1], bssId[2], bssId[3], bssId[4], bssId[5]);
+            NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("BSSID "MAC_ADDRESS_STR" already present in preauth fail list"),
+                                                MAC_ADDR_ARRAY(bssId));
             return eANI_BOOLEAN_FALSE;
         }
     }
@@ -1028,13 +1028,8 @@ static eHalStatus csrNeighborRoamIssuePreauthReq(tpAniSirGlobal pMac)
         status = csrRoamEnqueuePreauth(pMac, pNeighborRoamInfo->csrSessionId, pNeighborBssNode->pBssDescription,
                 eCsrPerformPreauth, eANI_BOOLEAN_TRUE);
 
-        smsLog(pMac, LOG1, FL("Before Pre-Auth: BSSID %02x:%02x:%02x:%02x:%02x:%02x, Ch:%d"),
-               pNeighborBssNode->pBssDescription->bssId[0],
-               pNeighborBssNode->pBssDescription->bssId[1],
-               pNeighborBssNode->pBssDescription->bssId[2],
-               pNeighborBssNode->pBssDescription->bssId[3],
-               pNeighborBssNode->pBssDescription->bssId[4],
-               pNeighborBssNode->pBssDescription->bssId[5],
+        smsLog(pMac, LOG1, FL("Before Pre-Auth: BSSID "MAC_ADDRESS_STR", Ch:%d"),
+               MAC_ADDR_ARRAY(pNeighborBssNode->pBssDescription->bssId),
                (int)pNeighborBssNode->pBssDescription->channelId);
 
         if (eHAL_STATUS_SUCCESS != status)
@@ -1121,13 +1116,8 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, tSirRetStatus l
     {
         NEIGHBOR_ROAM_DEBUG(pMac, LOG1, FL("Preauth completed successfully after %d tries"), pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries);
 
-        smsLog(pMac, LOG1, FL("After Pre-Auth: BSSID %02x:%02x:%02x:%02x:%02x:%02x, Ch:%d"),
-               pPreauthRspNode->pBssDescription->bssId[0],
-               pPreauthRspNode->pBssDescription->bssId[1],
-               pPreauthRspNode->pBssDescription->bssId[2],
-               pPreauthRspNode->pBssDescription->bssId[3],
-               pPreauthRspNode->pBssDescription->bssId[4],
-               pPreauthRspNode->pBssDescription->bssId[5],
+        smsLog(pMac, LOG1, FL("After Pre-Auth: BSSID "MAC_ADDRESS_STR", Ch:%d"),
+               MAC_ADDR_ARRAY(pPreauthRspNode->pBssDescription->bssId),
                (int)pPreauthRspNode->pBssDescription->channelId);
 
 #ifdef FEATURE_WLAN_LFR_METRICS
@@ -1457,13 +1447,8 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
     while (NULL != (pScanResult = csrScanResultGetNext(pMac, *pScanResultList)))
     {
             VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-            FL("Scan result: BSSID %02x:%02x:%02x:%02x:%02x:%02x (Rssi %ld, Ch:%d)"),
-            pScanResult->BssDescriptor.bssId[0],
-            pScanResult->BssDescriptor.bssId[1],
-            pScanResult->BssDescriptor.bssId[2],
-            pScanResult->BssDescriptor.bssId[3],
-            pScanResult->BssDescriptor.bssId[4],
-            pScanResult->BssDescriptor.bssId[5],
+            FL("Scan result: BSSID "MAC_ADDRESS_STR" (Rssi %ld, Ch:%d)"),
+            MAC_ADDR_ARRAY(pScanResult->BssDescriptor.bssId),
             abs(pScanResult->BssDescriptor.rssi),
             pScanResult->BssDescriptor.channelId);
 
@@ -1582,13 +1567,8 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
                   if (pScanResult->BssDescriptor.QBSSLoad_avail < pNeighborRoamInfo->MinQBssLoadRequired)
                   {
                       VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                          "[INFOLOG]BSSID : %02x:%02x:%02x:%02x:%02x:%02x has no bandwidth ignoring..not adding to roam list",
-                          pScanResult->BssDescriptor.bssId[0],
-                          pScanResult->BssDescriptor.bssId[1],
-                          pScanResult->BssDescriptor.bssId[2],
-                          pScanResult->BssDescriptor.bssId[3],
-                          pScanResult->BssDescriptor.bssId[4],
-                          pScanResult->BssDescriptor.bssId[5]);
+                          "[INFOLOG]BSSID : "MAC_ADDRESS_STR" has no bandwidth ignoring..not adding to roam list",
+                          MAC_ADDR_ARRAY(pScanResult->BssDescriptor.bssId));
                       continue;
                   }
               }
@@ -1599,13 +1579,8 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
               if (pNeighborRoamInfo->isVOAdmitted)
               {
                   VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                      "[INFOLOG]BSSID : %02x:%02x:%02x:%02x:%02x:%02x has no QBSSLoad IE, ignoring..not adding to roam list",
-                      pScanResult->BssDescriptor.bssId[0],
-                      pScanResult->BssDescriptor.bssId[1],
-                      pScanResult->BssDescriptor.bssId[2],
-                      pScanResult->BssDescriptor.bssId[3],
-                      pScanResult->BssDescriptor.bssId[4],
-                      pScanResult->BssDescriptor.bssId[5]);
+                      "[INFOLOG]BSSID : "MAC_ADDRESS_STR" has no QBSSLoad IE, ignoring..not adding to roam list",
+                      MAC_ADDR_ARRAY(pScanResult->BssDescriptor.bssId));
                   continue;
               }
           }
@@ -4568,13 +4543,8 @@ void csrNeighborRoamRequestHandoff(tpAniSirGlobal pMac)
     
     csrNeighborRoamGetHandoffAPInfo(pMac, &handoffNode);
     VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-               FL("HANDOFF CANDIDATE BSSID %02x:%02x:%02x:%02x:%02x:%02x"),
-                                                handoffNode.pBssDescription->bssId[0], 
-                                                handoffNode.pBssDescription->bssId[1], 
-                                                handoffNode.pBssDescription->bssId[2], 
-                                                handoffNode.pBssDescription->bssId[3], 
-                                                handoffNode.pBssDescription->bssId[4], 
-                                                handoffNode.pBssDescription->bssId[5]);
+               FL("HANDOFF CANDIDATE BSSID "MAC_ADDRESS_STR),
+                                            MAC_ADDR_ARRAY(handoffNode.pBssDescription->bssId));
 
 #ifdef FEATURE_WLAN_LFR_METRICS
     /* LFR metrics - pre-auth completion metric.

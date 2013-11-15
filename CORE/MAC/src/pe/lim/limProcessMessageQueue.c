@@ -1446,13 +1446,9 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                         vos_mem_copy(&psessionEntry->p2pGoPsUpdate, limMsg->bodyptr,
                                      sizeof(tSirP2PNoaAttr));
 
-                        limLog(pMac, LOG2, FL(" &psessionEntry->bssId%02x:%02x:%02x:%02x:%02x:%02x ctWin=%d oppPsFlag=%d"),
-                                     psessionEntry->bssId[0],
-                                     psessionEntry->bssId[1],
-                                     psessionEntry->bssId[2],
-                                     psessionEntry->bssId[3],
-                                     psessionEntry->bssId[4],
-                                     psessionEntry->bssId[5],                                     
+                        limLog(pMac, LOG2, FL(" &psessionEntry->bssId "
+                                     MAC_ADDRESS_STR " ctWin=%d oppPsFlag=%d"),
+                                     MAC_ADDR_ARRAY(psessionEntry->bssId),
                                      psessionEntry->p2pGoPsUpdate.ctWin,
                                      psessionEntry->p2pGoPsUpdate.oppPsFlag);
 
