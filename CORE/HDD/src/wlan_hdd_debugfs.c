@@ -160,6 +160,14 @@ static ssize_t wcnss_patterngen_write(struct file *file,
         return -EINVAL;
     }
 
+    if (!cmd)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Memory allocation for cmd failed!", __func__);
+
+        return -EFAULT;
+    }
+
     if (copy_from_user(cmd, buf, count))
     {
         vos_mem_free(cmd);
@@ -191,11 +199,20 @@ static ssize_t wcnss_patterngen_write(struct file *file,
     if (kstrtou8(token, 0, &pattern_duration))
         goto failure;
 
-    /* Delete pattern using index if duration is 0*/
+    /* Delete pattern using index if duration is 0 */
     if (!pattern_duration)
     {
         delPeriodicTxPtrnParams =
             vos_mem_malloc(sizeof(tSirDelPeriodicTxPtrn));
+        if (!delPeriodicTxPtrnParams)
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: Memory allocation for delPeriodicTxPtrnParams "
+                      "failed!", __func__);
+
+            vos_mem_free(cmd);
+            return -EFAULT;
+        }
 
         delPeriodicTxPtrnParams->ucPatternIdBitmap = 1 << pattern_idx;
         vos_mem_copy(delPeriodicTxPtrnParams->macAddress,
@@ -222,8 +239,8 @@ static ssize_t wcnss_patterngen_write(struct file *file,
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: Not in Connected state!", __func__);
-        vos_mem_free(cmd);
-        return -EINVAL;
+
+        goto failure;
     }
 
     /* Get pattern */
@@ -255,6 +272,15 @@ static ssize_t wcnss_patterngen_write(struct file *file,
     }
 
     addPeriodicTxPtrnParams = vos_mem_malloc(sizeof(tSirAddPeriodicTxPtrn));
+    if (!addPeriodicTxPtrnParams)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Memory allocation for addPeriodicTxPtrnParams "
+                  "failed!", __func__);
+
+        vos_mem_free(cmd);
+        return -EFAULT;
+    }
 
     addPeriodicTxPtrnParams->ucPtrnId = pattern_idx;
     addPeriodicTxPtrnParams->usPtrnIntervalMs = pattern_duration * 500;
