@@ -1832,7 +1832,9 @@ limPopulatePeerRateSet(tpAniSirGlobal pMac,
     /* copy operational rate set from psessionEntry */
     if ( psessionEntry->rateSet.numRates <= SIR_MAC_RATESET_EID_MAX )
     {
-        palCopyMemory(pMac->hHdd,(tANI_U8 *)tempRateSet.rate,(tANI_U8*)(psessionEntry->rateSet.rate), psessionEntry->rateSet.numRates);
+        vos_mem_copy((tANI_U8 *)tempRateSet.rate,
+                     (tANI_U8*)(psessionEntry->rateSet.rate),
+                     psessionEntry->rateSet.numRates);
         tempRateSet.numRates = psessionEntry->rateSet.numRates;
     }
     else
@@ -1845,7 +1847,9 @@ limPopulatePeerRateSet(tpAniSirGlobal pMac,
 
         if (psessionEntry->extRateSet.numRates <= SIR_MAC_RATESET_EID_MAX)
         {
-            palCopyMemory(pMac->hHdd,(tANI_U8 *)tempRateSet2.rate, (tANI_U8*)(psessionEntry->extRateSet.rate), psessionEntry->extRateSet.numRates);
+            vos_mem_copy((tANI_U8 *)tempRateSet2.rate,
+                         (tANI_U8*)(psessionEntry->extRateSet.rate),
+                         psessionEntry->extRateSet.numRates);
             tempRateSet2.numRates = psessionEntry->extRateSet.numRates;
         }
         else {
@@ -1874,7 +1878,7 @@ limPopulatePeerRateSet(tpAniSirGlobal pMac,
     {
         tANI_U8 aRateIndex = 0;
         tANI_U8 bRateIndex = 0;
-        palZeroMemory( pMac->hHdd, (tANI_U8 *) pRates, sizeof(tSirSupportedRates));
+        vos_mem_set((tANI_U8 *) pRates, sizeof(tSirSupportedRates), 0);
         for(i = 0;i < tempRateSet.numRates; i++)
         {
             min = 0;

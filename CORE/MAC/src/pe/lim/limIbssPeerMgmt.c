@@ -1387,7 +1387,7 @@ __limIbssSearchAndDeletePeer(tpAniSirGlobal    pMac,
       pTempNextNode = pTempNode->next;
 
       /* Delete the STA with MAC address */
-      if (palEqualMemory( pMac->hHdd, (tANI_U8 *) macAddr,
+      if (vos_mem_compare( (tANI_U8 *) macAddr,
                (tANI_U8 *) &pTempNode->peerMacAddr,
                sizeof(tSirMacAddr)) )
       {
@@ -1416,7 +1416,7 @@ __limIbssSearchAndDeletePeer(tpAniSirGlobal    pMac,
             else
                pPrevNode->next = pTempNode->next;
 
-            palFreeMemory(pMac->hHdd, pTempNode);
+            vos_mem_free(pTempNode);
             pMac->lim.gLimNumIbssPeers--;
 
             pTempNode = pTempNextNode;

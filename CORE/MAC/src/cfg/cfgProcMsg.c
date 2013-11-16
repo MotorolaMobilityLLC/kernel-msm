@@ -111,7 +111,7 @@ cfgProcessMbMsg(tpAniSirGlobal pMac, tSirMbMsg *pMsg)
 
     if (index >= (sizeof(gCfgFunc) / sizeof(gCfgFunc[0])))
     {
-        palFreeMemory( pMac->hHdd, (void*)pMsg);
+        vos_mem_free(pMsg);
         return;
     }
     len    = pMsg->msgLen - WNI_CFG_MB_HDR_LEN;
