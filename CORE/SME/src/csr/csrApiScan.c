@@ -2182,7 +2182,7 @@ eHalStatus csrScanGetResult(tpAniSirGlobal pMac, tCsrScanResultFilter *pFilter, 
                     fMatch = csrIsSecurityMatch( pMac, &pFilter->authType, &pFilter->EncryptionType, &pFilter->mcEncryptionType,
                                  &pBssDesc->Result.BssDescriptor, pIes, NULL, NULL, NULL );
                     if ((pBssDesc->Result.pvIes == NULL) && pIes)
-                        palFreeMemory(pMac->hHdd, pIes);
+                        vos_mem_free(pIes);
 
                     if (fMatch)
                         smsLog(pMac, LOG1, FL(" Security Matched"));
@@ -3107,7 +3107,7 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
                                     pBssDescription->Result.BssDescriptor.rssi * (-1),
                                     pIesLocal->Country.country[0],pIesLocal->Country.country[1] );
                    //Getting BSSID for best AP in scan result.
-                    palCopyMemory(pMac->hHdd, bssid_temp,
+                    vos_mem_copy(bssid_temp,
                             pBssDescription->Result.BssDescriptor.bssId, sizeof(tSirMacAddr));
 
                 }
@@ -3199,7 +3199,7 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
                      //valid CC we can get during scan
                      if(( '0' != pMac->scan.countryCode11d[ 0 ] && '0' != pMac->scan.countryCode11d[ 1 ] ))
                      {
-                         palCopyMemory(pMac->hHdd, pMac->scan.currentCountryBssid,
+                         vos_mem_copy(pMac->scan.currentCountryBssid,
                                          bssid_temp, sizeof(tSirMacAddr));
                      }
                     break;

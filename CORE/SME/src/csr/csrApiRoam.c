@@ -1305,8 +1305,8 @@ eHalStatus csrCreateRoamScanChannelList(tpAniSirGlobal pMac,
                              outNumChannels,
                              tmpChannelList,
                              &outNumChannels);
-        palCopyMemory(pMac->hHdd, ChannelList,
-                      tmpChannelList, outNumChannels);
+        vos_mem_copy(ChannelList,
+                     tmpChannelList, outNumChannels);
     }
 
     /* Prepare final roam scan channel list */
@@ -1328,8 +1328,8 @@ eHalStatus csrCreateRoamScanChannelList(tpAniSirGlobal pMac,
             currChannelListInfo->numOfChannels = 0;
             return VOS_STATUS_E_RESOURCES;
         }
-        palCopyMemory(pMac->hHdd, currChannelListInfo->ChannelList,
-                      ChannelList, outNumChannels);
+        vos_mem_copy(currChannelListInfo->ChannelList,
+                     ChannelList, outNumChannels);
     }
     return status;
 }
@@ -3726,7 +3726,7 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
             {
                 //Let's also update the below to make sure we don't update CC while
                 //connected to an AP which is advertising some CC
-                palCopyMemory(pMac->hHdd, pMac->scan.currentCountryBssid,
+                vos_mem_copy(pMac->scan.currentCountryBssid,
                               pBssDesc->bssId, sizeof(tSirMacAddr));
             }
         }
@@ -9373,7 +9373,7 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                 status = csrRoamGetSessionIdFromBSSID( pMac, (tCsrBssid *)pMicInd->bssId, &sessionId );
                 if( HAL_STATUS_SUCCESS( status ) )
                 {
-                    palZeroMemory(pMac->hHdd, &roamInfo, sizeof(tCsrRoamInfo));
+                    vos_mem_set(&roamInfo, sizeof(tCsrRoamInfo), 0);
                     roamInfo.u.pMICFailureInfo = &pMicInd->info;
                     pRoamInfo = &roamInfo;
                     if(pMicInd->info.multicast)
@@ -11417,7 +11417,7 @@ static void csrRoamGetBssStartParmsFromBssDesc( tpAniSirGlobal pMac, tSirBssDesc
                                          pIes->ExtSuppRates.num_rates);
                    pIes->ExtSuppRates.num_rates = SIR_MAC_EXTENDED_RATE_EID_MAX;
                 }
-                palCopyMemory(pMac->hHdd, pParam->extendedRateSet.rate,
+                vos_mem_copy(pParam->extendedRateSet.rate,
                               pIes->ExtSuppRates.rates,
                               sizeof(*pIes->ExtSuppRates.rates) * pIes->ExtSuppRates.num_rates);
             }
@@ -11818,14 +11818,14 @@ eHalStatus csrRoamDelPMKIDfromCache( tpAniSirGlobal pMac, tANI_U32 sessionId,
         {
             smsLog(pMac, LOGW, "Delete PMKID for "
                    MAC_ADDRESS_STR, MAC_ADDR_ARRAY(pBSSId));
-            if( palEqualMemory( pMac->hHdd, pBSSId, pSession->PmkidCacheInfo[Index].BSSID, sizeof(tCsrBssid) ) )
+            if( vos_mem_compare( pBSSId, pSession->PmkidCacheInfo[Index].BSSID, sizeof(tCsrBssid) ) )
             {
                 fMatchFound = TRUE;
                 break;
             }
         }
         if( !fMatchFound ) break;
-        palZeroMemory( pMac->hHdd, pSession->PmkidCacheInfo[Index].BSSID, sizeof(tPmkidCacheInfo));
+        vos_mem_set(pSession->PmkidCacheInfo[Index].BSSID, sizeof(tPmkidCacheInfo), 0);
         status = eHAL_STATUS_SUCCESS;
     }
     while( 0 );
@@ -16820,7 +16820,7 @@ VOS_STATUS csrSetCCKMIe(tpAniSirGlobal pMac, const tANI_U8 sessionId,
         smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
         return eHAL_STATUS_FAILURE;
     }
-    palCopyMemory(pMac->hHdd, pSession->suppCckmIeInfo.cckmIe, pCckmIe, ccKmIeLen);
+    vos_mem_copy(pSession->suppCckmIeInfo.cckmIe, pCckmIe, ccKmIeLen);
     pSession->suppCckmIeInfo.cckmIeLen = ccKmIeLen;
     return status;
 }
@@ -16854,7 +16854,7 @@ VOS_STATUS csrRoamReadTSF(tpAniSirGlobal pMac, tANI_U8 *pTimestamp)
 
     UpdateCCKMTSF(&(timeStamp[0]), &(timeStamp[1]), &timer_diff);
 
-    palCopyMemory(pMac->hHdd, pTimestamp, (void *) &timeStamp[0],
+    vos_mem_copy(pTimestamp, (void *) &timeStamp[0],
                     sizeof (tANI_U32) * 2);
     return status;
 }
