@@ -3897,9 +3897,9 @@ static int wlan_hdd_cfg80211_set_default_key( struct wiphy *wiphy,
        )
     {
         if ( (eCSR_ENCRYPT_TYPE_TKIP !=
-                pWextState->roamProfile.EncryptionType.encryptionType[0]) &&
+                pHddStaCtx->conn_info.ucEncryptionType) &&
              (eCSR_ENCRYPT_TYPE_AES !=
-                pWextState->roamProfile.EncryptionType.encryptionType[0])
+                pHddStaCtx->conn_info.ucEncryptionType)
            )
         {
             /* if default key index is not same as previous one,
