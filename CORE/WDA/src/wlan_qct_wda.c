@@ -12224,6 +12224,14 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
             VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                        "Memory allocation failure, "
                        "WDI_PREF_NETWORK_FOUND_IND not forwarded");
+            if (NULL !=
+                wdiLowLevelInd->wdiIndicationData.wdiPrefNetworkFoundInd.pData)
+            {
+                wpalMemoryFree(
+                 wdiLowLevelInd->wdiIndicationData.wdiPrefNetworkFoundInd.pData
+                );
+                wdiLowLevelInd->wdiIndicationData.wdiPrefNetworkFoundInd.pData = NULL;
+            }
             break;
          }
          /* Message Header */
