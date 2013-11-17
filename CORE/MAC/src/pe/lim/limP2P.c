@@ -748,8 +748,8 @@ void limSetHtCaps(tpAniSirGlobal pMac, tpPESession psessionEntry, tANI_U8 *pIeSt
     PopulateDot11fHTCaps(pMac, psessionEntry, &dot11HtCap);
     pIe = limGetIEPtr(pMac,pIeStartPtr, nBytes,
                                        DOT11F_EID_HTCAPS,ONE_BYTE);
-   limLog( pMac, LOG2, FL("pIe 0x%x dot11HtCap.supportedMCSSet[0]=0x%x"),
-        (tANI_U32)pIe,dot11HtCap.supportedMCSSet[0]);
+    limLog( pMac, LOG2, FL("pIe %p dot11HtCap.supportedMCSSet[0]=0x%x"),
+            pIe, dot11HtCap.supportedMCSSet[0]);
     if(pIe)
     {
         tHtCaps *pHtcap = (tHtCaps *)&pIe[2]; //convert from unpacked to packed structure

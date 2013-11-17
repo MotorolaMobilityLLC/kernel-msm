@@ -875,8 +875,9 @@ void csrAbortCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand, tANI_BOOLEAN fStop
         {
         case eSmeCommandScan:
             // We need to inform the requester before dropping the scan command
-            smsLog( pMac, LOGW, "%s: Drop scan reason %d callback 0x%X",
-                __func__, pCommand->u.scanCmd.reason, (unsigned int)pCommand->u.scanCmd.callback);
+            smsLog( pMac, LOGW, "%s: Drop scan reason %d callback %p",
+                    __func__, pCommand->u.scanCmd.reason,
+                    pCommand->u.scanCmd.callback);
             if (NULL != pCommand->u.scanCmd.callback)
             {
                 smsLog( pMac, LOGW, "%s callback scan requester", __func__);
