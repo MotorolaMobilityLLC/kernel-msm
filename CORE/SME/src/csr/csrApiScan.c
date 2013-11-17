@@ -67,6 +67,9 @@
 #include "wlan_qct_wda.h"
 
 #define CSR_VALIDATE_LIST  //This portion of code need to be removed once the issue is resolved.
+#define MIN_CHN_TIME_TO_FIND_GO 100
+#define MAX_CHN_TIME_TO_FIND_GO 100
+#define DIRECT_SSID_LEN 7
 
 #ifdef CSR_VALIDATE_LIST
 tDblLinkList *g_pchannelPowerInfoList24 = NULL, * g_pchannelPowerInfoList5 = NULL;
@@ -724,6 +727,23 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
     {
         smsLog( pMac, LOGE, FL(" pScanRequest is NULL"));
         VOS_ASSERT(0);
+    }
+
+    /* During group formation, the P2P client scans for GO with the specific SSID.
+     * There will be chances of GO switching to other channels because of scan or
+     * to STA channel in case of STA+GO MCC scenario. So to increase the possibility
+     * of client to find the GO, the dwell time of scan is increased to 100ms.
+     */
+    if(pScanRequest->p2pSearch)
+    {
+        //If the scan request is for specific SSId the length of SSID will be
+        //greater than 7 as SSID for p2p search contains "DIRECT-")
+        if(pScanRequest->SSIDs.SSIDList->SSID.length > DIRECT_SSID_LEN)
+        {
+            smsLog( pMac, LOG1, FL(" Increase the Dwell time to 100ms."));
+            pScanRequest->maxChnTime = MAX_CHN_TIME_TO_FIND_GO;
+            pScanRequest->minChnTime = MIN_CHN_TIME_TO_FIND_GO;
+        }
     }
 
     do
