@@ -1489,7 +1489,7 @@ VOS_STATUS hdd_softap_DeregisterSTA( hdd_adapter_t *pAdapter, tANI_U8 staId )
     {
         VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR, 
                     "WLANTL_ClearSTAClient() failed to for staID %d.  "
-                    "Status= %d [0x%08lX]",
+                    "Status= %d [0x%08X]",
                     staId, vosStatus, vosStatus );
     }
 
@@ -1498,7 +1498,7 @@ VOS_STATUS hdd_softap_DeregisterSTA( hdd_adapter_t *pAdapter, tANI_U8 staId )
     {
         VOS_TRACE ( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
                     "hdd_softap_deinit_tx_rx_sta() failed for staID %d. "
-                    "Status = %d [0x%08lX]",
+                    "Status = %d [0x%08X]",
                     staId, vosStatus, vosStatus );
         return( vosStatus );
     }
@@ -1608,7 +1608,7 @@ VOS_STATUS hdd_softap_RegisterSTA( hdd_adapter_t *pAdapter,
    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
    {
       VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR, 
-                 "SOFTAP WLANTL_RegisterSTAClient() failed to register.  Status= %d [0x%08lX]",
+                 "SOFTAP WLANTL_RegisterSTAClient() failed to register.  Status= %d [0x%08X]",
                  vosStatus, vosStatus );
       return vosStatus;      
    }

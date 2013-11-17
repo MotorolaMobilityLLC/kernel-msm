@@ -739,7 +739,7 @@ static VOS_STATUS hdd_roamDeregisterSTA( hdd_adapter_t *pAdapter, tANI_U8 staId 
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: WLANTL_ClearSTAClient() failed to for staID %d.  "
-                   "Status= %d [0x%08lX]",
+                   "Status= %d [0x%08X]",
                    __func__, staId, vosStatus, vosStatus );
     }
     return( vosStatus );
@@ -1025,7 +1025,7 @@ static VOS_STATUS hdd_roamRegisterSTA( hdd_adapter_t *pAdapter,
    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-                 "WLANTL_RegisterSTAClient() failed to register.  Status= %d [0x%08lX]",
+                 "WLANTL_RegisterSTAClient() failed to register.  Status= %d [0x%08X]",
                  vosStatus, vosStatus );
       return vosStatus;
    }
@@ -1413,7 +1413,7 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         else
         {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-                    "Cannot register STA with TL.  Failed with vosStatus = %d [%08lX]",
+                    "Cannot register STA with TL.  Failed with vosStatus = %d [%08X]",
                     vosStatus, vosStatus );
         }
 #ifdef WLAN_FEATURE_11W
@@ -1953,7 +1953,7 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
          if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
          {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "Cannot register STA with TL for IBSS.  Failed with vosStatus = %d [%08lX]",
+               "Cannot register STA with TL for IBSS.  Failed with vosStatus = %d [%08X]",
                vosStatus, vosStatus );
          }
          pHddStaCtx->ibss_sta_generation++;
@@ -2134,8 +2134,8 @@ VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
     if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                     "%s: WLANTL_RegisterSTAClient() failed to register.  \
-                            Status= %d [0x%08lX]", __func__, vosStatus, vosStatus );
+                   "%s: WLANTL_RegisterSTAClient() failed to register.  "
+                   "Status= %d [0x%08X]", __func__, vosStatus, vosStatus );
          return vosStatus;
     }
 
@@ -2157,7 +2157,7 @@ static VOS_STATUS hdd_roamDeregisterTDLSSTA( hdd_adapter_t *pAdapter, tANI_U8 st
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                    "%s: WLANTL_ClearSTAClient() failed to for staID %d.  "
-                   "Status= %d [0x%08lX]",
+                   "Status= %d [0x%08X]",
                    __func__, staId, vosStatus, vosStatus );
     }
     return( vosStatus );
@@ -2388,7 +2388,7 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
     hdd_context_t *pHddCtx = NULL;
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
-            "CSR Callback: status= %d result= %d roamID=%ld",
+            "CSR Callback: status= %d result= %d roamID=%d",
                     roamStatus, roamResult, roamId );
 
     /*Sanity check*/
@@ -2964,7 +2964,7 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
         if (updatePMKCache)
         {
             // Calling csrRoamSetPMKIDCache to configure the PMKIDs into the cache
-            hddLog(LOG1, FL("%s: Calling csrRoamSetPMKIDCache with cache entry %ld."),
+            hddLog(LOG1, FL("%s: Calling csrRoamSetPMKIDCache with cache entry %d."),
                                                                             __func__, i );
             // Finally set the PMKSA ID Cache in CSR
             result = sme_RoamSetPMKIDCache(halHandle,pAdapter->sessionId,
