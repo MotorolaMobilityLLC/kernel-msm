@@ -24740,6 +24740,7 @@ WDI_PackRoamScanOffloadParams
    pRoamCandidateListParams->ChannelCacheType = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ChannelCacheType ;
    pRoamCandidateListParams->LookupThreshold = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.LookupThreshold;
    pRoamCandidateListParams->RoamRssiDiff = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.RoamRssiDiff ;
+   pRoamCandidateListParams->MAWCEnabled = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.MAWCEnabled ;
    pRoamCandidateListParams->Command = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.Command ;
    pRoamCandidateListParams->StartScanReason = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.StartScanReason ;
    pRoamCandidateListParams->NeighborScanTimerPeriod = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.NeighborScanTimerPeriod ;

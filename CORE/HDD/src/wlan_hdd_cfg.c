@@ -167,6 +167,12 @@ static void NotifyIsFastRoamIniFeatureEnabled(hdd_context_t *pHddCtx, unsigned l
     // at the point this routine is called, the value in the cfg_ini table has already been updated
     sme_UpdateIsFastRoamIniFeatureEnabled((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->isFastRoamIniFeatureEnabled );
 }
+
+static void NotifyIsMAWCIniFeatureEnabled(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    /* at the point this routine is called, the value in the cfg_ini table has already been updated */
+    sme_UpdateIsMAWCIniFeatureEnabled((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->MAWCEnabled );
+}
 #endif
 
 #ifdef FEATURE_WLAN_CCX
@@ -1115,6 +1121,16 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_LFR_FEATURE_ENABLED_MIN,
                  CFG_LFR_FEATURE_ENABLED_MAX,
                  NotifyIsFastRoamIniFeatureEnabled, 0 ),
+
+   /* flag to turn ON/OFF Motion assistance for Legacy Fast Roaming */
+   REG_DYNAMIC_VARIABLE( CFG_LFR_MAWC_FEATURE_ENABLED_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, MAWCEnabled,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_LFR_MAWC_FEATURE_ENABLED_DEFAULT,
+                 CFG_LFR_MAWC_FEATURE_ENABLED_MIN,
+                 CFG_LFR_MAWC_FEATURE_ENABLED_MAX,
+                 NotifyIsMAWCIniFeatureEnabled, 0 ),
+
 #endif // FEATURE_WLAN_LFR
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
@@ -3071,6 +3087,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
 #endif
 #ifdef FEATURE_WLAN_LFR
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [FastRoamEnabled] Value = [%lu] ",pHddCtx->cfg_ini->isFastRoamIniFeatureEnabled);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [MAWCEnabled] Value = [%u] ",pHddCtx->cfg_ini->MAWCEnabled);
 #endif
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [RoamRssiDiff] Value = [%lu] ",pHddCtx->cfg_ini->RoamRssiDiff);
@@ -4511,6 +4528,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #endif
 #ifdef FEATURE_WLAN_LFR
    smeConfig.csrConfig.isFastRoamIniFeatureEnabled = pConfig->isFastRoamIniFeatureEnabled;
+   smeConfig.csrConfig.MAWCEnabled = pConfig->MAWCEnabled;
 #endif
 #ifdef FEATURE_WLAN_CCX
    smeConfig.csrConfig.isCcxIniFeatureEnabled = pConfig->isCcxIniFeatureEnabled;
