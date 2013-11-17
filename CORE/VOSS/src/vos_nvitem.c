@@ -3300,12 +3300,12 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
          {
              for (j=0; j<wiphy->bands[IEEE80211_BAND_5GHZ]->n_channels; j++)
              {
-                 // p2p UNII-1 band channels are passive when domain is FCC.
+                 // UNII-1 band channels are passive when domain is FCC.
                  if ((wiphy->bands[IEEE80211_BAND_5GHZ ]->channels[j].center_freq == 5180 ||
                       wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5200 ||
                       wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5220 ||
                       wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5240) &&
-                     (ccode[0]== 'U'&& ccode[1]=='S'))
+                     ((ccode[0]== 'U'&& ccode[1]=='S') && pHddCtx->nEnableStrictRegulatoryForFCC))
                  {
                      wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].flags |= IEEE80211_CHAN_PASSIVE_SCAN;
                  }
@@ -3313,7 +3313,7 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
                            wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5200 ||
                            wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5220 ||
                            wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].center_freq == 5240) &&
-                          (ccode[0]!= 'U'&& ccode[1]!='S'))
+                          ((ccode[0]!= 'U'&& ccode[1]!='S') || !pHddCtx->nEnableStrictRegulatoryForFCC))
                  {
                      wiphy->bands[IEEE80211_BAND_5GHZ]->channels[j].flags &= ~IEEE80211_CHAN_PASSIVE_SCAN;
                  }
@@ -3325,6 +3325,8 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
              request->processed = 1;
          }
     }
+
+    complete(&pHddCtx->wiphy_channel_update_event);
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
     return;
