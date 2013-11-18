@@ -659,7 +659,7 @@ WCTS_OpenTransport
     * the SMD port was never closed during SSR*/
    if (gwctsHandle) {
        WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
-               "WCTS_OpenTransport port is already open\n");
+               "WCTS_OpenTransport port is already open");
 
        pWCTSCb = gwctsHandle;
        if (WCTS_CB_MAGIC != pWCTSCb->wctsMagic) {
