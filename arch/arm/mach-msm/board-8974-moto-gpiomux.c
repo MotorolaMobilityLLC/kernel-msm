@@ -137,27 +137,6 @@ static struct gpiomux_setting taiko_int = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
-static struct gpiomux_setting hap_lvl_shft_suspended_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct gpiomux_setting hap_lvl_shft_active_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
-	{
-		.gpio = 86,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &hap_lvl_shft_suspended_config,
-			[GPIOMUX_ACTIVE] = &hap_lvl_shft_active_config,
-		},
-	},
-};
 
 static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 	{
@@ -175,6 +154,81 @@ static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 		},
 	},
 
+};
+static struct gpiomux_setting gpio_blsp12_fps_spi_sck_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_blsp12_fps_spi_mosi_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_blsp12_fps_spi_miso_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting gpio_blsp12_fps_spi_cs_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting gpio_fps_spi_sleep = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting gpio_fps_spi_drdy = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct msm_gpiomux_config msm_blsp12_fps_spi_configs[] __initdata = {
+	{
+		.gpio      = 85,                /* FPS SPI MOSI */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp12_fps_spi_mosi_config,
+		},
+	},
+	{
+		.gpio      = 86,                /* FPS SPI MISO */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp12_fps_spi_miso_config,
+		},
+	},
+	{
+		.gpio      = 87,                /* FPS SPI CS */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp12_fps_spi_cs_config,
+		},
+	},
+	{
+		.gpio      = 88,                /* FPS SPI SCK */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp12_fps_spi_sck_config,
+		},
+	},
+	{
+		.gpio      = 76,                /* FPS SLEEP */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_fps_spi_sleep,
+		},
+	},
+	{
+		.gpio      = 74,                /* FPS DRDY */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_fps_spi_drdy,
+		},
+	},
 };
 
 static struct gpiomux_setting mhl_suspend_config = {
@@ -970,8 +1024,9 @@ void __init msm_8974_moto_init_gpiomux(void)
 			ARRAY_SIZE(msm8974_slimbus_config));
 
 	msm_gpiomux_install(msm_touch_configs, ARRAY_SIZE(msm_touch_configs));
-	msm_gpiomux_install(hap_lvl_shft_config,
-				ARRAY_SIZE(hap_lvl_shft_config));
+
+	msm_gpiomux_install(msm_blsp12_fps_spi_configs,
+			    ARRAY_SIZE(msm_blsp12_fps_spi_configs));
 
 	msm_gpiomux_install(msm_sensor_configs, ARRAY_SIZE(msm_sensor_configs));
 
