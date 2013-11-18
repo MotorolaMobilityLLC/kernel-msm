@@ -12,6 +12,7 @@
 
 /dts-v1/;
 
+/include/ "msm8610-moto-reserve.dtsi"
 /include/ "msm8610-v1.dtsi"
 /include/ "msm8610-moto-common.dtsi"
 /include/ "dsi-v2-panel-mot-auo-qhd-video.dtsi"
