@@ -38,6 +38,14 @@
 		status = "disabled";
 	};
 
+	ram_console {
+		compatible = "android,ram-console";
+		status = "ok";
+
+		android,ram-buffer-start = <0x3eae0000>;
+		android,ram-buffer-size = <0x20000>;
+	};
+
 	i2c@f9923000 {
 		qcom,i2c-bus-freq = <400000>;
 
