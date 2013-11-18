@@ -889,6 +889,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	struct inode *root;
 	long err = -EINVAL;
 	const char *descr = "";
+	int i;
 
 	f2fs_msg(sb, KERN_INFO, "mounting..");
 	/* allocate memory for f2fs-specific super block info */
@@ -946,7 +947,10 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	mutex_init(&sbi->node_write);
 	sbi->por_doing = false;
 	spin_lock_init(&sbi->stat_lock);
-	init_rwsem(&sbi->bio_sem);
+
+	for (i = 0; i < NR_PAGE_TYPE; i++)
+		mutex_init(&sbi->write_mutex[i]);
+
 	init_rwsem(&sbi->cp_rwsem);
 	init_waitqueue_head(&sbi->cp_wait);
 	init_sb_info(sbi);
