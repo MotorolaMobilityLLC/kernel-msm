@@ -111,6 +111,7 @@ static DEFINE_SPINLOCK(ssr_lock);
 static unsigned int mdm_debug_mask;
 int vddmin_gpios_sent;
 static struct mdm_ops *mdm_ops;
+static struct mutex restart_lock;
 
 static void mdm_device_list_add(struct mdm_device *mdev)
 {
@@ -361,6 +362,32 @@ static void mdm_update_gpio_configs(struct mdm_device *mdev,
 	}
 }
 
+static int reset_mdm(struct mdm_modem_drv *mdm_drv)
+{
+	int value;
+
+	pr_info("%s++\n", __func__);
+
+	if (!mutex_trylock(&restart_lock))
+		return -EINVAL;
+
+	value = gpio_get_value(mdm_drv->mdm2ap_status_gpio);
+	if (value == 0 || atomic_read(&mdm_drv->mdm_ready) == 0) {
+		pr_err("%s: mdm_status = %d, mdm_ready = %d, return\n",
+			__func__, value, atomic_read(&mdm_drv->mdm_ready));
+		mutex_unlock(&restart_lock);
+		return -EINVAL;
+	}
+
+	atomic_set(&mdm_drv->mdm_ready, 0);
+	mutex_unlock(&restart_lock);
+
+	subsystem_restart(EXTERNAL_MODEM);
+
+	pr_info("%s--\n", __func__);
+	return 0;
+}
+
 static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 				unsigned long arg)
 {
@@ -382,6 +409,10 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 		pr_info("%s: Powering on mdm id %d\n",
 				__func__, mdev->mdm_data.device_id);
 		mdm_ops->power_on_mdm_cb(mdm_drv);
+		break;
+	case RESET_CHARM:
+		pr_info("RESET_CHARM");
+		ret = reset_mdm(mdm_drv);
 		break;
 	case CHECK_FOR_BOOT:
 		if (gpio_get_value(mdm_drv->mdm2ap_status_gpio) == 0)
@@ -1089,6 +1120,8 @@ static int __devinit mdm_modem_probe(struct platform_device *pdev)
 			mdm_ops->power_on_mdm_cb(&mdev->mdm_data);
 	}
 
+	mutex_init(&restart_lock);
+
 	return ret;
 
 init_err:
@@ -1107,6 +1140,8 @@ static int __devexit mdm_modem_remove(struct platform_device *pdev)
 	ret = misc_deregister(&mdev->misc_device);
 	mdm_device_list_remove(mdev);
 	kfree(mdev);
+	mutex_destroy(&restart_lock);
+
 	return ret;
 }
 
