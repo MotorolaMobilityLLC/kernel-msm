@@ -1023,7 +1023,7 @@ int iw_set_cscan(struct net_device *dev, struct iw_request_info *info,
                 /* get the ssid length */
                 SsidInfo->SSID.length = str_ptr[ssid_start++];
                 vos_mem_copy(SsidInfo->SSID.ssId, &str_ptr[ssid_start], SsidInfo->SSID.length);
-                hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "SSID number %d:  %s\n", j, SsidInfo->SSID.ssId);
+                hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "SSID number %d:  %s", j, SsidInfo->SSID.ssId);
              }
                 /* skipping length */
              ssid_start += str_ptr[ssid_start - 1] + 1;

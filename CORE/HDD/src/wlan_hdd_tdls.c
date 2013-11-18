@@ -429,7 +429,7 @@ static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
 
 
     VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-              "%s: Tx/Rx Idle " MAC_ADDRESS_STR " tx_pkt: %d, rx_pkt: %d, idle_packet_n: %d\n",
+              "%s: Tx/Rx Idle " MAC_ADDRESS_STR " tx_pkt: %d, rx_pkt: %d, idle_packet_n: %d",
               __func__, MAC_ADDR_ARRAY(curr_peer->peerMac),
               curr_peer->tx_pkt,
               curr_peer->rx_pkt,
@@ -1861,7 +1861,7 @@ static void wlan_hdd_tdls_pre_setup(struct work_struct *work)
     temp_peer = wlan_hdd_tdls_is_progress(pHddCtx, NULL, 0);
     if (NULL != temp_peer)
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "%s: " MAC_ADDRESS_STR " ongoing. pre_setup ignored\n",
+        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "%s: " MAC_ADDRESS_STR " ongoing. pre_setup ignored",
             __func__, MAC_ADDR_ARRAY(temp_peer->peerMac));
         goto done;
     }
@@ -1875,7 +1875,7 @@ static void wlan_hdd_tdls_pre_setup(struct work_struct *work)
 
     if (0 != status)
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "%s: " MAC_ADDRESS_STR " discovery could not sent\n",
+        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "%s: " MAC_ADDRESS_STR " discovery could not sent",
             __func__, MAC_ADDR_ARRAY(curr_peer->peerMac));
         if (eTDLS_CAP_UNKNOWN != curr_peer->tdls_support)
             curr_peer->link_status = eTDLS_LINK_IDLE;
