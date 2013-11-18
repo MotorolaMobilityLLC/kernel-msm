@@ -351,10 +351,15 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                         goto next_peer;
                     }
 
-                    if ((curr_peer->tx_pkt <
+                    /* Only teardown based on non zero idle packet threshold, to address a use
+                     * case where this threshold does not get consider for TEAR DOWN.
+                     */
+
+                    if (( 0 != pHddTdlsCtx->threshold_config.idle_packet_n ) &&
+                        ((curr_peer->tx_pkt <
                             pHddTdlsCtx->threshold_config.idle_packet_n) &&
                         (curr_peer->rx_pkt <
-                            pHddTdlsCtx->threshold_config.idle_packet_n)) {
+                            pHddTdlsCtx->threshold_config.idle_packet_n))) {
                         if (VOS_TIMER_STATE_RUNNING !=
                                 vos_timer_getCurrentState(&curr_peer->peerIdleTimer)) {
                             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
