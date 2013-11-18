@@ -760,10 +760,17 @@ static int mdss_dsi_short_read2_resp(struct dsi_buf *rp)
 
 static int mdss_dsi_long_read_resp(struct dsi_buf *rp)
 {
+	short len;
+
+	len = rp->data[2];
+	len <<= 8;
+	len |= rp->data[1];
 	/* strip out dcs header */
 	rp->data += 4;
 	rp->len -= 4;
-	return rp->len;
+	/* strip out 2 bytes of checksum */
+	rp->len -= 2;
+	return len;
 }
 
 void mdss_dsi_cmd_test_pattern(struct mdss_panel_data *pdata)
@@ -1363,30 +1370,30 @@ static struct dsi_cmd_desc pkt_size_cmd = {
 };
 
 /*
- * mdss_dsi_cmds_rx() - dcs read from panel
- * @ctrl: dsi controller
- * @cmds: read command descriptor
- * @len: number of bytes to read back
+ * DSI panel reply with  MAX_RETURN_PACKET_SIZE bytes of data
+ * plus DCS header, ECC and CRC for DCS long read response
+ * mdss_dsi_controller only have 4x32 bits register ( 16 bytes) to
+ * hold data per transaction.
+ * MIPI_DSI_LEN equal to 8
+ * len should be either 4 or 8
+ * any return data more than MIPI_DSI_LEN need to be break down
+ * to multiple transactions.
  *
- * controller have 4 registers can hold 16 bytes of rxed data
- * dcs packet: 4 bytes header + payload + 2 bytes crc
- * 2 padding bytes add to payload to have payload length is mutipled by 4
- * 1st read: 4 bytes header + 8 bytes payload + 2 padding + 2 crc
- * 2nd read: 12 bytes payload + 2 padding + 2 crc
- * 3rd read: 12 bytes payload + 2 padding + 2 crc
- *
+ * ov_mutex need to be acquired before call this function.
  */
+
 int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_cmd_desc *cmds, int rlen)
 {
-	int data_byte, rx_byte, dlen, end;
-	int short_response, diff, pkt_size, ret = 0;
+	int cnt, len, diff, pkt_size, ret = 0;
 	struct dsi_buf *tp, *rp;
+	int no_max_pkt_size;
 	char cmd;
 	u32 dsi_ctrl, data;
 	int video_mode;
 	u32 left_dsi_ctrl = 0;
 	bool left_ctrl_restore = false;
+	int rx_flags = 0;
 
 	if (ctrl->shared_pdata.broadcast_enable) {
 		if (ctrl->ndx == DSI_CTRL_0) {
@@ -1423,109 +1430,109 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 		MIPI_OUTP((ctrl->ctrl_base) + 0x0004, data);
 	}
 
-	if (rlen == 0) {
-		short_response = 1;
-		rx_byte = 4;
-	} else {
-		short_response = 0;
-		data_byte = 8;	/* first read */
+	no_max_pkt_size = rx_flags & CMD_REQ_NO_MAX_PKT_SIZE;
+	if (no_max_pkt_size)
+		rlen = ALIGN(rlen, 4); /* Only support rlen = 4*n */
+
+	len = rlen;
+	diff = 0;
+
+	if (len <= 2)
+		cnt = 4;	/* short read */
+	else {
+		if (len > MDSS_DSI_LEN)
+			len = MDSS_DSI_LEN;	/* 8 bytes at most */
+
+		len = ALIGN(len, 4); /* len 4 bytes align */
+		diff = len - rlen;
 		/*
-		 * add extra 2 padding bytes to have overall
+		 * add extra 2 bytes to len to have overall
 		 * packet size is multipe by 4. This also make
 		 * sure 4 bytes dcs headerlocates within a
 		 * 32 bits register after shift in.
+		 * after all, len should be either 6 or 10.
 		 */
-		pkt_size = data_byte + 2;
-		rx_byte = data_byte + 8; /* 4 header + 2 crc  + 2 padding*/
+		len += 2;
+		cnt = len + 6; /* 4 bytes header + 2 bytes crc */
 	}
-
 
 	tp = &ctrl->tx_buf;
 	rp = &ctrl->rx_buf;
 
-	end = 0;
-	mdss_dsi_buf_init(rp);
-	while (!end) {
-		pr_debug("%s:  rlen=%d pkt_size=%d rx_byte=%d\n",
-				__func__, rlen, pkt_size, rx_byte);
-		 if (!short_response) {
-			max_pktsize[0] = pkt_size;
-			mdss_dsi_buf_init(tp);
-			ret = mdss_dsi_cmd_dma_add(tp, &pkt_size_cmd);
-			if (!ret) {
-				pr_err("%s: failed to add max_pkt_size\n",
-					__func__);
-				rp->len = 0;
-				goto end;
-			}
-
-			mdss_dsi_wait4video_eng_busy(ctrl);
-
-			mdss_dsi_enable_irq(ctrl, DSI_CMD_TERM);
-			ret = mdss_dsi_cmd_dma_tx(ctrl, tp);
-			if (IS_ERR_VALUE(ret)) {
-				mdss_dsi_disable_irq(ctrl, DSI_CMD_TERM);
-				pr_err("%s: failed to tx max_pkt_size\n",
-					__func__);
-				rp->len = 0;
-				goto end;
-			}
-			pr_debug("%s: max_pkt_size=%d sent\n",
-						__func__, pkt_size);
-		}
-
+	if (!no_max_pkt_size) {
+		/* packet size need to be set at every read */
+		pkt_size = len;
+		max_pktsize[0] = pkt_size;
 		mdss_dsi_buf_init(tp);
-		ret = mdss_dsi_cmd_dma_add(tp, cmds);
+		ret = mdss_dsi_cmd_dma_add(tp, &pkt_size_cmd);
 		if (!ret) {
-			pr_err("%s: failed to add cmd = 0x%x\n",
-				__func__,  cmds->payload[0]);
+			pr_err("%s: failed to call\n",
+				__func__);
 			rp->len = 0;
 			goto end;
 		}
 
-		mdss_dsi_wait4video_eng_busy(ctrl);	/* video mode only */
+		mdss_dsi_wait4video_eng_busy(ctrl);
+
 		mdss_dsi_enable_irq(ctrl, DSI_CMD_TERM);
-		/* transmit read comamnd to client */
 		ret = mdss_dsi_cmd_dma_tx(ctrl, tp);
 		if (IS_ERR_VALUE(ret)) {
 			mdss_dsi_disable_irq(ctrl, DSI_CMD_TERM);
-			pr_err("%s: failed to tx cmd = 0x%x\n",
-				__func__,  cmds->payload[0]);
+			pr_err("%s: failed to call\n",
+				__func__);
 			rp->len = 0;
 			goto end;
 		}
-		/*
-		 * once cmd_dma_done interrupt received,
-		 * return data from client is ready and stored
-		 * at RDBK_DATA register already
-		 * since rx fifo is 16 bytes, dcs header is kept at first loop,
-		 * after that dcs header lost during shift into registers
-		 */
-		dlen = mdss_dsi_cmd_dma_rx(ctrl, rp, rx_byte);
-
-		if (short_response)
-			break;
-
-		if (rlen <= data_byte) {
-			diff = data_byte - rlen;
-			end = 1;
-		} else {
-			diff = 0;
-			rlen -= data_byte;
-		}
-
-		dlen -= 2; /* 2 padding bytes */
-		dlen -= 2; /* 2 crc */
-		dlen -= diff;
-		rp->data += dlen;	/* next start position */
-		rp->len += dlen;
-		data_byte = 12;	/* NOT first read */
-		pkt_size += data_byte;
-		pr_debug("%s: rp data=%x len=%d dlen=%d diff=%d\n",
-			__func__, (int)rp->data, rp->len, dlen, diff);
+		pr_debug("%s: Max packet size sent\n", __func__);
+	}
+	mdss_dsi_buf_init(tp);
+	ret = mdss_dsi_cmd_dma_add(tp, cmds);
+	if (!ret) {
+		pr_err("%s: failed to call cmd_dma_add for cmd = 0x%x\n",
+			__func__,  cmds->payload[0]);
+		rp->len = 0;
+		goto end;
 	}
 
-	rp->data = rp->start;	/* move back to start position */
+	mdss_dsi_wait4video_eng_busy(ctrl);
+
+	mdss_dsi_enable_irq(ctrl, DSI_CMD_TERM);
+	/* transmit read comamnd to client */
+	ret = mdss_dsi_cmd_dma_tx(ctrl, tp);
+	if (IS_ERR_VALUE(ret)) {
+		mdss_dsi_disable_irq(ctrl, DSI_CMD_TERM);
+		pr_err("%s: failed to call\n",
+			__func__);
+		rp->len = 0;
+		goto end;
+	}
+	/*
+	 * once cmd_dma_done interrupt received,
+	 * return data from client is ready and stored
+	 * at RDBK_DATA register already
+	 */
+	mdss_dsi_buf_init(rp);
+	if (no_max_pkt_size) {
+		/*
+		 * expect rlen = n * 4
+		 * short alignement for start addr
+		 */
+		rp->data += 2;
+	}
+
+	mdss_dsi_cmd_dma_rx(ctrl, rp, cnt);
+
+	if (no_max_pkt_size) {
+		/*
+		 * remove extra 2 bytes from previous
+		 * rx transaction at shift register
+		 * which was inserted during copy
+		 * shift registers to rx buffer
+		 * rx payload start from long alignment addr
+		 */
+		rp->data += 2;
+	}
+
 	cmd = rp->data[0];
 	switch (cmd) {
 	case DTYPE_ACK_ERR_RESP:
@@ -1542,6 +1549,8 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	case DTYPE_GEN_LREAD_RESP:
 	case DTYPE_DCS_LREAD_RESP:
 		mdss_dsi_long_read_resp(rp);
+		rp->len -= 2; /* extra 2 bytes added */
+		rp->len -= diff; /* align bytes */
 		break;
 	default:
 		pr_warning("%s:Invalid response cmd\n", __func__);
@@ -1646,8 +1655,8 @@ static int mdss_dsi_cmd_dma_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 		pr_debug("%s: data = 0x%x and ntohl(data) = 0x%x\n",
 					 __func__, data, ntohl(data));
 		off -= 4;
+		rp->len += sizeof(*lp);
 	}
-
 	return rx_byte;
 }
 
