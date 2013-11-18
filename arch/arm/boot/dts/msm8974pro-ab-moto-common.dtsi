@@ -17,6 +17,7 @@
 / {
 	aliases {
 		uart3 = &uart3;
+                spi12 = &spi_12;
 	};
 
 	cycapsense_prog {
@@ -137,6 +138,38 @@
 
 	spi_0: spi@f9923000 {
 		status = "disabled";
+	};
+
+        /* BLSP12 (BLSP2 QUP5) VALIDITY CHANGE */
+        spi_12: spi@f9968000 {
+		compatible = "qcom,spi-qup-v2";
+		cell-index = <12>;
+
+		reg = <0xf9968000 0x1000>, <0xf9944000 0x19000>;
+		reg-names = "spi_physical", "spi_bam_physical";
+
+		interrupts = <0 106 0>, <0 239 0>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+
+		spi-max-frequency = <48000000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		gpios = <&msmgpio 88 0>,
+			<&msmgpio 86 0>,
+			<&msmgpio 85 0>;
+		cs-gpios = <&msmgpio 87 0>;
+		qcom,master-id = <84>;
+
+		qcom,use-bam;
+		qcom,bam-consumer-pipe-index = <22>;
+		qcom,bam-producer-pipe-index = <23>;
+		qcom,ver-reg-exists;
+
+		validity-metallica@0{
+			compatible = "validity,metallica";
+			reg = <0>;
+			spi-max-frequency = <17143000>;
+		};
 	};
 
 	uart3: uart@f991f000 {  /* "UART_AP_*_C55" on BLSP3 (BLSP1 UART2) */
@@ -916,6 +949,10 @@
 	};
 };
 */
+
+&spi_epm {
+	status = "disabled";
+};
 
 &spi_7 {
 	wm5110@0 {
