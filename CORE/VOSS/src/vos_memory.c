@@ -202,7 +202,7 @@ v_VOID_t * vos_mem_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t lineNum)
       if(VOS_STATUS_SUCCESS != vosStatus)
       {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-             "%s: Unable to insert node into List vosStatus %d\n", __func__, vosStatus);
+             "%s: Unable to insert node into List vosStatus %d", __func__, vosStatus);
       }
 
       memPtr = (v_VOID_t*)(memStruct + 1); 
@@ -456,7 +456,7 @@ v_VOID_t * vos_mem_dma_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t line
       if(VOS_STATUS_SUCCESS != vosStatus)
       {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-             "%s: Unable to insert node into List vosStatus %d\n", __func__, vosStatus);
+             "%s: Unable to insert node into List vosStatus %d", __func__, vosStatus);
       }
 
       memPtr = (v_VOID_t*)(memStruct + 1); 
