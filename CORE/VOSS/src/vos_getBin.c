@@ -124,7 +124,7 @@ VOS_STATUS vos_get_binary_blob( VOS_BINARY_ID binaryId,
        if ( !VOS_IS_STATUS_SUCCESS( VosSts ))
        {
           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                                    "%s : vos_open failed\n",__func__);
+                                    "%s : vos_open failed",__func__);
 
           return VOS_STATUS_E_FAILURE;
        }
