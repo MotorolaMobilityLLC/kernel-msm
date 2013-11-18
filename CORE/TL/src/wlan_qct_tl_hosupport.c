@@ -626,7 +626,7 @@ VOS_STATUS WLANTL_StatHandleRXFrame
      tlCtxt->atlSTAClients[STAid]->trafficStatistics.pktCounterRssi[(v_U16_t)((WDA_GET_RX_RSSI_DB(pBDHeader)) * (-1))]++;
 #endif
    TLLOG1(VOS_TRACE (VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_MED,
-                  "****Received rate Index = %d type=%d subtype=%d****\n",
+                  "****Received rate Index = %d type=%d subtype=%d****",
                   statistics->rxRate,WDA_GET_RX_TYPE(pBDHeader),WDA_GET_RX_SUBTYPE(pBDHeader)));
 
    statistics->rxBcnt += (packetSize - WLANHAL_RX_BD_HEADER_SIZE);
