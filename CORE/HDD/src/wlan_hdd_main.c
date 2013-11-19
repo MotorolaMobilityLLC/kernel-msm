@@ -804,12 +804,17 @@ hdd_parse_set_batchscan_command
     tANI_U8 *inPtr = pValue;
     tANI_U8 val = 0;
     tANI_U8 lastArg = 0;
+    tANI_U32 nScanFreq;
+    tANI_U32 nMscan;
+    tANI_U32 nBestN;
+    tANI_U8  ucRfBand;
+    tANI_U32 nRtt;
 
     /*initialize default values*/
-    pHddSetBatchScanReq->scanFrequency = HDD_SET_BATCH_SCAN_DEFAULT_FREQ;
-    pHddSetBatchScanReq->rfBand = HDD_SET_BATCH_SCAN_DEFAULT_BAND;
-    pHddSetBatchScanReq->rtt = 0;
-    pHddSetBatchScanReq->bestNetwork = HDD_SET_BATCH_SCAN_BEST_NETWORK;
+    nScanFreq = HDD_SET_BATCH_SCAN_DEFAULT_FREQ;
+    ucRfBand = HDD_SET_BATCH_SCAN_DEFAULT_BAND;
+    nRtt = 0;
+    nBestN = HDD_SET_BATCH_SCAN_BEST_NETWORK;
 
     /*go to space after WLS_BATCHING_SET command*/
     inPtr = strnchr(pValue, strlen(pValue), SPACE_ASCII_VALUE);
@@ -838,7 +843,13 @@ hdd_parse_set_batchscan_command
     if ((strncmp(inPtr, "SCANFREQ", 8) == 0))
     {
         inPtr = hdd_extract_assigned_int_from_str(inPtr, 10,
-                    &pHddSetBatchScanReq->scanFrequency, &lastArg);
+                    &nScanFreq, &lastArg);
+
+        if (0 == nScanFreq)
+        {
+           nScanFreq = HDD_SET_BATCH_SCAN_DEFAULT_FREQ;
+        }
+
         if ( (NULL == inPtr) || (TRUE == lastArg))
         {
             return -EINVAL;
@@ -849,7 +860,15 @@ hdd_parse_set_batchscan_command
     if ((strncmp(inPtr, "MSCAN", 5) == 0))
     {
         inPtr = hdd_extract_assigned_int_from_str(inPtr, 10,
-                    &pHddSetBatchScanReq->numberOfScansToBatch, &lastArg);
+                    &nMscan, &lastArg);
+
+        if (0 == nMscan)
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "invalid MSCAN=%d", nMscan);
+            return -EINVAL;
+        }
+
         if (TRUE == lastArg)
         {
             goto done;
@@ -868,7 +887,13 @@ hdd_parse_set_batchscan_command
     if ((strncmp(inPtr, "BESTN", 5) == 0))
     {
         inPtr = hdd_extract_assigned_int_from_str(inPtr, 10,
-                    &pHddSetBatchScanReq->bestNetwork, &lastArg);
+                    &nBestN, &lastArg);
+
+        if (0 == nBestN)
+        {
+           nBestN = HDD_SET_BATCH_SCAN_BEST_NETWORK;
+        }
+
         if (TRUE == lastArg)
         {
             goto done;
@@ -893,11 +918,11 @@ hdd_parse_set_batchscan_command
         }
         if (('A' == val) || ('a' == val))
         {
-            pHddSetBatchScanReq->rfBand = HDD_SET_BATCH_SCAN_24GHz_BAND_ONLY;
+            ucRfBand = HDD_SET_BATCH_SCAN_24GHz_BAND_ONLY;
         }
         else if (('B' == val) || ('b' == val))
         {
-            pHddSetBatchScanReq->rfBand = HDD_SET_BATCH_SCAN_5GHz_BAND_ONLY;
+            ucRfBand = HDD_SET_BATCH_SCAN_5GHz_BAND_ONLY;
         }
         else
         {
@@ -909,7 +934,7 @@ hdd_parse_set_batchscan_command
     if ((strncmp(inPtr, "RTT", 3) == 0))
     {
         inPtr = hdd_extract_assigned_int_from_str(inPtr, 10,
-                    &pHddSetBatchScanReq->rtt, &lastArg);
+                    &nRtt, &lastArg);
         if (TRUE == lastArg)
         {
             goto done;
@@ -922,6 +947,12 @@ hdd_parse_set_batchscan_command
 
 
 done:
+
+    pHddSetBatchScanReq->scanFrequency = nScanFreq;
+    pHddSetBatchScanReq->numberOfScansToBatch = nMscan;
+    pHddSetBatchScanReq->bestNetwork = nBestN;
+    pHddSetBatchScanReq->rfBand = ucRfBand;
+    pHddSetBatchScanReq->rtt = nRtt;
 
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
       "Received WLS_BATCHING_SET with SCANFREQ=%d "
