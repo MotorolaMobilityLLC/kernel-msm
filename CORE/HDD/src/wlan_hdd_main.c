@@ -1381,6 +1381,8 @@ hdd_format_batch_scan_rsp
        temp_len = snprintf(pTemp, (sizeof(temp) - temp_total_len), "----\n");
        pTemp += temp_len;
        temp_total_len += temp_len;
+
+       pAdapter->prev_batch_id = 0;
    }
 
    if (temp_total_len < rem_len)
@@ -1394,7 +1396,7 @@ hdd_format_batch_scan_rsp
       pAdapter->isTruncated = TRUE;
       if (rem_len >= strlen("%%%%"))
       {
-          ret = snprintf(pDest, strlen("%%%%"), "%%%%");
+          ret = snprintf(pDest, strlen("%%%%"), "%%%%%%%%");
       }
       {
           ret = 0;
@@ -1431,7 +1433,6 @@ tANI_U32 hdd_populate_user_batch_scan_rsp
     tHddBatchScanRsp *pPrev;
     tANI_U32 len;
 
-    pAdapter->prev_batch_id = 0;
     pAdapter->isTruncated = FALSE;
 
     /*head of hdd batch scan response queue*/
@@ -5152,6 +5153,7 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
       pAdapter->pBatchScanRsp = NULL;
       pAdapter->numScanList = 0;
       pAdapter->batchScanState = eHDD_BATCH_SCAN_STATE_STOPPED;
+      pAdapter->prev_batch_id = 0;
       mutex_init(&pAdapter->hdd_batch_scan_lock);
 #endif
 
