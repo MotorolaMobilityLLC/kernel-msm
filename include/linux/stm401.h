@@ -427,6 +427,9 @@ struct stm401_data {
 
 	struct regulator *regulator_1;
 	struct regulator *regulator_2;
+
+	unsigned int stm401_i2c_fail_count;
+	unsigned int stm401_hub_fail;
 };
 
 /* per algo config, request, and event registers */
