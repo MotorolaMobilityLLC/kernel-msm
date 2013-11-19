@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -429,7 +429,8 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 		KGSL_CONTEXT_PER_CONTEXT_TS |
 		KGSL_CONTEXT_USER_GENERATED_TS |
 		KGSL_CONTEXT_NO_FAULT_TOLERANCE |
-		KGSL_CONTEXT_TYPE_MASK);
+		KGSL_CONTEXT_TYPE_MASK |
+		KGSL_CONTEXT_PWR_CONSTRAINT);
 
 	/* Always enable per-context timestamps */
 	*flags |= KGSL_CONTEXT_PER_CONTEXT_TS;
@@ -443,6 +444,9 @@ adreno_drawctxt_create(struct kgsl_device_private *dev_priv,
 
 	if (*flags & KGSL_CONTEXT_USER_GENERATED_TS)
 		drawctxt->flags |= CTXT_FLAGS_USER_GENERATED_TS;
+
+	if (*flags & KGSL_CONTEXT_PWR_CONSTRAINT)
+		drawctxt->flags |= CTXT_FLAGS_PWR_CONSTRAINT;
 
 	mutex_init(&drawctxt->mutex);
 	init_waitqueue_head(&drawctxt->wq);

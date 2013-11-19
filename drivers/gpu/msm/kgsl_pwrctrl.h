@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,6 +27,18 @@
 
 #define KGSL_MAX_CLKS 6
 
+/* Only two supported levels, min & max */
+#define KGSL_CONSTRAINT_PWR_MAXLEVELS 2
+
+/* Symbolic table for the constraint type */
+#define KGSL_CONSTRAINT_TYPES \
+	{ KGSL_CONSTRAINT_NONE, "None" }, \
+	{ KGSL_CONSTRAINT_PWRLEVEL, "Pwrlevel" }
+/* Symbolic table for the constraint sub type */
+#define KGSL_CONSTRAINT_PWRLEVEL_SUBTYPES \
+	{ KGSL_CONSTRAINT_PWR_MIN, "Min" }, \
+	{ KGSL_CONSTRAINT_PWR_MAX, "Max" }
+
 struct platform_device;
 
 struct kgsl_clk_stats {
@@ -38,6 +50,16 @@ struct kgsl_clk_stats {
 	unsigned int no_nap_cnt;
 	unsigned int elapsed;
 	unsigned int elapsed_old;
+};
+
+struct kgsl_pwr_constraint {
+	unsigned int type;
+	unsigned int sub_type;
+	union {
+		struct {
+			unsigned int level;
+		} pwrlevel;
+	} hint;
 };
 
 /**
@@ -65,6 +87,7 @@ struct kgsl_clk_stats {
  * @pm_qos_req_dma - the power management quality of service structure
  * @pm_qos_latency - allowed CPU latency in microseconds
  * @step_mul - multiplier for moving between power levels
+ * @constraint - currently active power constraint
  */
 
 struct kgsl_pwrctrl {
@@ -94,6 +117,7 @@ struct kgsl_pwrctrl {
 	unsigned int pm_qos_latency;
 	unsigned int step_mul;
 	unsigned int irq_last;
+	struct kgsl_pwr_constraint constraint;
 };
 
 void kgsl_pwrctrl_irq(struct kgsl_device *device, int state);
