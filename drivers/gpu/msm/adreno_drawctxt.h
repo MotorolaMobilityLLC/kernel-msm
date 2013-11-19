@@ -54,6 +54,8 @@
 #define CTXT_FLAGS_NO_FAULT_TOLERANCE  BIT(16)
 /* Force the preamble for the next submission */
 #define CTXT_FLAGS_FORCE_PREAMBLE      BIT(17)
+/* power constraints enabled */
+#define CTXT_FLAGS_PWR_CONSTRAINT      BIT(18)
 
 /* Symbolic table for the adreno draw context type */
 #define ADRENO_DRAWCTXT_TYPES \
