@@ -40,14 +40,19 @@
 		qcom,mdss-dsi-color-order = <0>;
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
-		qcom,mdss-dsi-on-command = [05 01 00 00 FF 00 01 11
-					15 01 00 00 00 00 02 36 D8
-					05 01 00 00 A0 00 01 29];
-		qcom,mdss-dsi-off-command = [05 01 00 00 32 00 01 28
-					29 01 00 00 10 00 03 F1 5A 5A
-					29 01 00 00 20 00 0F F4 07 00 00 00 21 4F 01 0E 2A 66 02 2A 00 02
-					29 01 00 00 10 00 03 F1 A5 A5
-					05 01 00 00 A0 00 01 10];
+		qcom,mdss-dsi-on-command = [
+			05 01 00 00 A0 00 01 11
+			15 01 00 00 00 00 02 36 D8
+			05 01 00 00 00 00 01 29];
+		qcom,mdss-dsi-off-command = [
+			05 01 00 00 05 00 01 28
+			29 01 00 00 00 00 03 F1 5A 5A
+			29 01 00 00 00 00 0F F4
+			07 00 00 00 21 4F
+			01 0E 2A 66 02 2A
+			00 02
+			29 01 00 00 00 00 03 F1 A5 A5
+			05 01 00 00 A0 00 01 10];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,mdss-dsi-idle-on-command = [05 01 00 00 01 00 01 39];
