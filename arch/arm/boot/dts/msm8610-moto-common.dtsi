@@ -14,6 +14,7 @@
 /include/ "msm8610-camera-sensor-moto.dtsi"
 /include/ "dsi-panel-mot-tianma-qhd-video.dtsi"
 /include/ "dsi-panel-mot-inx-qhd-video.dtsi"
+/include/ "dsi-panel-mot-dummy-qhd-video.dtsi"
 
 
 / {
