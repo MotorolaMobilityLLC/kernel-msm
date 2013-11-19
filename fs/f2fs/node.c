@@ -515,7 +515,7 @@ static void truncate_node(struct dnode_of_data *dn)
 
 	/* Deallocate node address */
 	invalidate_blocks(sbi, ni.blk_addr);
-	dec_valid_node_count(sbi, dn->inode, 1);
+	dec_valid_node_count(sbi, dn->inode);
 	set_node_addr(sbi, &ni, NULL_ADDR);
 
 	if (dn->nid == dn->inode->i_ino) {
@@ -868,7 +868,7 @@ struct page *new_node_page(struct dnode_of_data *dn,
 	if (!page)
 		return ERR_PTR(-ENOMEM);
 
-	if (!inc_valid_node_count(sbi, dn->inode, 1)) {
+	if (!inc_valid_node_count(sbi, dn->inode)) {
 		err = -ENOSPC;
 		goto fail;
 	}
@@ -1585,7 +1585,7 @@ int recover_inode_page(struct f2fs_sb_info *sbi, struct page *page)
 
 	err = set_node_addr(sbi, &new_ni, NEW_ADDR);
 	if (!err)
-		if (!inc_valid_node_count(sbi, NULL, 1))
+		if (!inc_valid_node_count(sbi, NULL))
 			err = -ENOSPC;
 	if (!err)
 		inc_valid_inode_count(sbi);
