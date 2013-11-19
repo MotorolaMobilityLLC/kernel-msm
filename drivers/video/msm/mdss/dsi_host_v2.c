@@ -1072,8 +1072,8 @@ static struct device_node *dsi_find_panel_of_node(
 		dsi_pan_node = of_find_node_by_name(mdss_node,
 						    panel_name);
 		if (!dsi_pan_node) {
-			pr_err("%s: invalid pan node\n",
-			       __func__);
+			pr_err("%s: invalid pan node. panel_name=%s\n",
+							__func__, panel_name);
 			return NULL;
 		}
 	}

@@ -498,12 +498,12 @@ static int mdss_panel_esd_recovery_start(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 
-	pr_warning("MDSS PANEL: ESD recovering is started\n");
+	pr_warn("MDSS PANEL: ESD recovering is started\n");
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 
 	if (!pdata->panel_info.panel_power_on) {
-		pr_warning("%s:%d Panel already off.\n", __func__, __LINE__);
+		pr_warn("%s:%d Panel already off.\n", __func__, __LINE__);
 		 mdss_dsi_panel_unlock_mutex(pdata);
 		goto end;
 	}
@@ -513,7 +513,7 @@ static int mdss_panel_esd_recovery_start(struct mdss_panel_data *pdata)
 	mdss_dsi_panel_on(pdata);
 	ctrl->panel_esd_data.esd_recovery_run = false;
 end:
-	pr_warning("MDSS PANEL: ESD recovering is done\n");
+	pr_warn("MDSS PANEL: ESD recovering is done\n");
 
 	return 0;
 }
@@ -530,7 +530,7 @@ static void mdss_panel_esd_te_monitor(struct mdss_dsi_ctrl_pdata *ctrl)
 	ret = wait_for_completion_timeout(&ctrl->panel_esd_data.te_detected,
 					msecs_to_jiffies(TE_MONITOR_TO));
 	if (ret == 0) {
-		pr_warning("%s: No TE sig for %d usec. Trigger ESD recovery\n",
+		pr_warn("%s: No TE sig for %d usec. Trigger ESD recovery\n",
 				__func__, TE_MONITOR_TO);
 		mdss_panel_esd_recovery_start(&ctrl->panel_data);
 		if (!dropbox_sent) {
@@ -606,7 +606,7 @@ static void mdss_panel_esd_work(struct work_struct *work)
 #endif
 	if ((pwr_mode & esd_data->esd_pwr_mode_chk) !=
 					esd_data->esd_pwr_mode_chk) {
-		pr_warning("%s: ESD detected pwr_mode =0x%x expected = 0x%x\n",
+		pr_warn("%s: ESD detected pwr_mode =0x%x expected = 0x%x\n",
 					__func__, pwr_mode,
 					esd_data->esd_pwr_mode_chk);
 		mdss_panel_esd_recovery_start(&ctrl->panel_data);
@@ -623,7 +623,7 @@ static void mdss_panel_esd_work(struct work_struct *work)
 			(esd_data->esd_pwr_mode_chk & PWR_MODE_DISON)) {
 #ifdef MDSS_PANEL_ESD_SELF_TRIGGER
 			if (esd_count == MDSS_PANEL_ESD_TE_TRIGGER) {
-				pr_warning("%s(%d): start to ESD test. "
+				pr_warn("%s(%d): start to ESD test. "
 					"turn off display\n", __func__,
 					esd_trigger_cnt++);
 				mdss_dsi_panel_dispoff_dcs(ctrl);
@@ -727,7 +727,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 
 	if (ctrl->panel_config.bare_board == true) {
 		mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
-		pr_warning("%s: This is bare_board configuration\n", __func__);
+		pr_warn("%s: This is bare_board configuration\n", __func__);
 		goto end;
 	}
 
@@ -1113,7 +1113,7 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 
 	pname = of_get_property(np, "mmi,panel_name", NULL);
 	if (!pname || strlen(pname) == 0) {
-		pr_warning("Failed to get mmi,panel_name\n");
+		pr_warn("Failed to get mmi,panel_name\n");
 		strlcpy(ctrl_pdata->panel_config.panel_name,
 			MDSS_PANEL_UNKNOWN_NAME,
 			sizeof(ctrl_pdata->panel_config.panel_name));
@@ -1166,7 +1166,7 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
 				panel_data);
 
 	if (size > MDSS_DSI_LEN) {
-		pr_warning("%s: size %d, max rx length is %d.\n", __func__,
+		pr_warn("%s: size %d, max rx length is %d.\n", __func__,
 				size, MDSS_DSI_LEN);
 		return -EINVAL;
 	}
@@ -1548,24 +1548,28 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-off-command", "qcom,mdss-dsi-off-command-state");
 
 	if (ctrl_pdata->panel_config.bare_board == true ||
-				ctrl_pdata->panel_config.esd_disable_bl == true)
+			ctrl_pdata->panel_config.esd_disable_bl == true) {
 		ctrl_pdata->panel_config.esd_enable = false;
-	else
+
+		pr_info("%s: bare_board=%d esd_disable_bl=%d\n", __func__,
+			ctrl_pdata->panel_config.bare_board,
+			ctrl_pdata->panel_config.esd_disable_bl);
+
+	} else {
 		ctrl_pdata->panel_config.esd_enable = !of_property_read_bool(np,
 					"qcom,panel-esd-detect-disable");
-
-	of_property_read_u32(np, "qcom,panel-esd-power-mode-chk",
+		if (!(ctrl_pdata->panel_config.esd_enable))
+			pr_warn("%s: ESD detetion is disabled by DTS\n",
+								__func__);
+		else {
+			of_property_read_u32(np,
+				"qcom,panel-esd-power-mode-chk",
 				&ctrl_pdata->panel_esd_data.esd_pwr_mode_chk);
 
-	of_property_read_u32(np, "qcom,mdss-dsi-esd-det-mode",
+			of_property_read_u32(np, "qcom,mdss-dsi-esd-det-mode",
 				&ctrl_pdata->panel_esd_data.esd_detect_mode);
-
-	pr_debug("%s: esd_enable=%d esd-detect-disable=%d "
-		"esd_pwr_mode_chk=0x%x esd_detect_mode=%d\n", __func__,
-		ctrl_pdata->panel_config.esd_enable,
-		of_property_read_bool(np, "qcom,panel-esd-detect-disable"),
-		ctrl_pdata->panel_esd_data.esd_pwr_mode_chk,
-		ctrl_pdata->panel_esd_data.esd_detect_mode);
+		}
+	}
 
 	mdss_panel_parse_reset_seq(np, "qcom,panel-en-reset-sequence",
 				ctrl_pdata->rst_seq,
@@ -1609,7 +1613,7 @@ bool mdss_dsi_match_chosen_panel(struct device_node *np,
 		!strcmp(pconfig->panel_name,
 			MDSS_PANEL_UNKNOWN_NAME)) &&
 		panel_ver_max == MDSS_PANEL_DEFAULT_VER)
-		pr_warning("%s: In bare board mode, using panel %s [0x%016llx, 0x%016llx]\n",
+		pr_warn("%s: In bare board mode, using panel %s [0x%016llx, 0x%016llx]\n",
 			__func__, panel_name, panel_ver_min, panel_ver_max);
 	else if (!strcmp(panel_name, pconfig->panel_name) &&
 			pconfig->panel_ver >= panel_ver_min &&
@@ -1645,8 +1649,21 @@ int mdss_dsi_panel_init(struct device_node *node,
 	if (!panel_name)
 		pr_info("%s:%d, Panel name not specified\n",
 						__func__, __LINE__);
-	else
+	else {
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
+
+		/*
+		 * When BL can not read from panel, and if factory cable is
+		 * detected, then BL will pass
+		 * "qcom,mdss_dsi_mot_dummy_qhd_video" to kernel boot arg, and
+		 * this panel "miPI_mot_video_dummy_qhd" node will be
+		 * used then this will be a bare_board configuration.
+		 */
+		if (strncmp(panel_name, "mipi_mot_video_dummy_qhd", 24) == 0) {
+			ctrl_pdata->panel_config.bare_board = true;
+			pr_warn("%s: This is bare_board config.", __func__);
+		}
+	}
 
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
