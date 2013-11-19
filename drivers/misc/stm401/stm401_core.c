@@ -54,8 +54,8 @@
 
 #define STM401_BUSY_SLEEP_USEC    10000
 #define STM401_BUSY_RESUME_COUNT  14
-#define ST401_BUSY_SUSPEND_COUNT  6
-
+#define STM401_BUSY_SUSPEND_COUNT 6
+#define STM401_I2C_FAIL_LIMIT     10
 
 long stm401_time_delta;
 unsigned int stm401_irq_disable;
@@ -136,13 +136,18 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 	if (err != 2) {
 		dev_err(&ps_stm401->client->dev, "Read transfer error\n");
 		err = -EIO;
+		ps_stm401->stm401_i2c_fail_count++;
+		if (ps_stm401->stm401_i2c_fail_count > STM401_I2C_FAIL_LIMIT)
+			ps_stm401->stm401_hub_fail = 1;
 	} else {
 		err = 0;
 		dev_dbg(&ps_stm401->client->dev, "Read from STM401: ");
 		for (tries = 0; tries < readlen; tries++)
 			dev_dbg(&ps_stm401->client->dev, "%02x",
 				stm401_readbuff[tries]);
+		ps_stm401->stm401_i2c_fail_count = 0;
 	}
+
 	return err;
 }
 
@@ -162,11 +167,16 @@ int stm401_i2c_read_no_reset(struct stm401_data *ps_stm401,
 	if (err < 0) {
 		dev_err(&ps_stm401->client->dev, "i2c read transfer error\n");
 		err = -EIO;
+		ps_stm401->stm401_i2c_fail_count++;
+		if (ps_stm401->stm401_i2c_fail_count > STM401_I2C_FAIL_LIMIT)
+			ps_stm401->stm401_hub_fail = 1;
 	} else {
 		dev_dbg(&ps_stm401->client->dev, "i2c read was successsful:\n");
 		for (tries = 0; tries < err ; tries++)
 			dev_dbg(&ps_stm401->client->dev, "%02x", buf[tries]);
+		ps_stm401->stm401_i2c_fail_count = 0;
 	}
+
 	return err;
 }
 
@@ -186,11 +196,16 @@ int stm401_i2c_write_no_reset(struct stm401_data *ps_stm401,
 	if (err < 0) {
 		dev_err(&ps_stm401->client->dev, "i2c write error\n");
 		err = -EIO;
+		ps_stm401->stm401_i2c_fail_count++;
+		if (ps_stm401->stm401_i2c_fail_count > STM401_I2C_FAIL_LIMIT)
+			ps_stm401->stm401_hub_fail = 1;
 	} else {
 		dev_dbg(&ps_stm401->client->dev,
 			"i2c write successful\n");
 		err = 0;
+		ps_stm401->stm401_i2c_fail_count = 0;
 	}
+
 	return err;
 }
 
@@ -960,9 +975,9 @@ static int stm401_suspend(struct i2c_client *client, pm_message_t mesg)
 				STM401_BUSY_SLEEP_USEC);
 			level = gpio_get_value(stm401_busy);
 			count++;
-		} while ((!level) && (count < ST401_BUSY_SUSPEND_COUNT));
+		} while ((!level) && (count < STM401_BUSY_SUSPEND_COUNT));
 
-		if (count == ST401_BUSY_SUSPEND_COUNT)
+		if (count == STM401_BUSY_SUSPEND_COUNT)
 			dev_err(&ps_stm401->client->dev,
 				"timedout while waiting for STM401 BUSY HIGH\n");
 	}
