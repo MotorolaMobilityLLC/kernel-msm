@@ -194,6 +194,9 @@ struct blink_led_data {
 	unsigned	mask;
 };
 
+
+static int qpnp_mpp_set(struct qpnp_led_data *);
+static int qpnp_rgb_set(struct qpnp_led_data *);
 static int qpnp_led_masked_write(struct qpnp_led_data *, u16, u8, u8);
 
 static int flags = QPNP_LED_PWM_FLAGS;
@@ -326,17 +329,13 @@ static int qpnp_blink_set(unsigned on)
 			pwm->blinking = 0;
 			blinking_leds--;
 			if (led->id == QPNP_ID_LED_MPP)
-				ret = qpnp_led_masked_write(led,
-					LED_MPP_EN_CTRL(led->base),
-					LED_MPP_EN_MASK,
-					LED_MPP_EN_DISABLE);
+				ret = qpnp_mpp_set(led);
 			else
-				ret = qpnp_led_masked_write(led,
-					RGB_LED_EN_CTL(led->base),
-					led->rgb_cfg->enable, RGB_LED_DISABLE);
+				ret = qpnp_rgb_set(led);
+
 			if (ret < 0)
 				dev_err(&led->spmi_dev->dev,
-					"MPP set failed (%d)\n", ret);
+					"MPP/RGB set failed (%d)\n", ret);
 		}
 		return ret;
 	}
