@@ -525,8 +525,8 @@ void add_dirty_dir_inode(struct inode *inode)
 void remove_dirty_dir_inode(struct inode *inode)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
-	struct list_head *head = &sbi->dir_inode_list;
-	struct list_head *this;
+
+	struct list_head *this, *head;
 
 	if (!S_ISDIR(inode->i_mode))
 		return;
@@ -537,6 +537,7 @@ void remove_dirty_dir_inode(struct inode *inode)
 		return;
 	}
 
+	head = &sbi->dir_inode_list;
 	list_for_each(this, head) {
 		struct dir_inode_entry *entry;
 		entry = list_entry(this, struct dir_inode_entry, list);
@@ -558,11 +559,13 @@ void remove_dirty_dir_inode(struct inode *inode)
 
 struct inode *check_dirty_dir_inode(struct f2fs_sb_info *sbi, nid_t ino)
 {
-	struct list_head *head = &sbi->dir_inode_list;
-	struct list_head *this;
+
+	struct list_head *this, *head;
 	struct inode *inode = NULL;
 
 	spin_lock(&sbi->dir_inode_lock);
+
+	head = &sbi->dir_inode_list;
 	list_for_each(this, head) {
 		struct dir_inode_entry *entry;
 		entry = list_entry(this, struct dir_inode_entry, list);
@@ -577,11 +580,13 @@ struct inode *check_dirty_dir_inode(struct f2fs_sb_info *sbi, nid_t ino)
 
 void sync_dirty_dir_inodes(struct f2fs_sb_info *sbi)
 {
-	struct list_head *head = &sbi->dir_inode_list;
+	struct list_head *head;
 	struct dir_inode_entry *entry;
 	struct inode *inode;
 retry:
 	spin_lock(&sbi->dir_inode_lock);
+
+	head = &sbi->dir_inode_list;
 	if (list_empty(head)) {
 		spin_unlock(&sbi->dir_inode_lock);
 		return;
