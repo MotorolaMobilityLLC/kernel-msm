@@ -85,8 +85,8 @@
 #include <vos_trace.h>
 #include <vos_event.h>
 #include <vos_lock.h>
-#include <vos_mq.h>
 #include <vos_nvitem.h>
+#include <vos_mq.h>
 #include <vos_packet.h>
 #include <vos_threads.h>
 #include <vos_timer.h>

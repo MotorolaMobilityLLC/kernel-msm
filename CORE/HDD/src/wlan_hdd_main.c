@@ -207,6 +207,7 @@ void hdd_wlan_initial_scan(hdd_adapter_t *pAdapter);
 int isWDresetInProgress(void);
 
 extern int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr);
+
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 void hdd_getBand_helper(hdd_context_t *pHddCtx, int *pBand);
 static VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8 *pNumChannels);
@@ -7452,11 +7453,34 @@ int hdd_wlan_startup(struct device *dev )
    }
 
 #ifdef CONFIG_ENABLE_LINUX_REG
+   /* initialize the NV module. This is required so that
+      we can initialize the channel information in wiphy
+      from the NV.bin data. The channel information in
+      wiphy needs to be initialized before wiphy registration */
+
+   status = vos_nv_open();
+   if (!VOS_IS_STATUS_SUCCESS(status))
+   {
+       /* NV module cannot be initialized */
+       hddLog( VOS_TRACE_LEVEL_FATAL,
+                "%s: vos_nv_open failed", __func__);
+       goto err_clkvote;
+   }
+
+   status = vos_init_wiphy_from_nv_bin();
+   if (!VOS_IS_STATUS_SUCCESS(status))
+   {
+       /* NV module cannot be initialized */
+       hddLog( VOS_TRACE_LEVEL_FATAL,
+               "%s: vos_init_wiphy failed", __func__);
+       goto err_vos_nv_close;
+   }
+
    /* registration of wiphy dev with cfg80211 */
    if (0 > wlan_hdd_cfg80211_register(wiphy))
    {
        hddLog(VOS_TRACE_LEVEL_ERROR,"%s: wiphy register failed", __func__);
-       goto err_clkvote;
+       goto err_vos_nv_close;
    }
 #endif
 
@@ -7885,6 +7909,10 @@ err_wiphy_unregister:
 
 #ifdef CONFIG_ENABLE_LINUX_REG
    wiphy_unregister(wiphy);
+
+err_vos_nv_close:
+
+   vos_nv_close();
 
 err_clkvote:
 #endif
