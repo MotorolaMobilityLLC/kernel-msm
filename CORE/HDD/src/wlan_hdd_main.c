@@ -814,6 +814,7 @@ hdd_parse_set_batchscan_command
     tANI_U32 nBestN;
     tANI_U8  ucRfBand;
     tANI_U32 nRtt;
+    tANI_U32 temp;
 
     /*initialize default values*/
     nScanFreq = HDD_SET_BATCH_SCAN_DEFAULT_FREQ;
@@ -848,11 +849,11 @@ hdd_parse_set_batchscan_command
     if ((strncmp(inPtr, "SCANFREQ", 8) == 0))
     {
         inPtr = hdd_extract_assigned_int_from_str(inPtr, 10,
-                    &nScanFreq, &lastArg);
+                    &temp, &lastArg);
 
-        if (0 == nScanFreq)
+        if (0 != temp)
         {
-           nScanFreq = HDD_SET_BATCH_SCAN_DEFAULT_FREQ;
+           nScanFreq = temp;
         }
 
         if ( (NULL == inPtr) || (TRUE == lastArg))
@@ -892,11 +893,11 @@ hdd_parse_set_batchscan_command
     if ((strncmp(inPtr, "BESTN", 5) == 0))
     {
         inPtr = hdd_extract_assigned_int_from_str(inPtr, 10,
-                    &nBestN, &lastArg);
+                    &temp, &lastArg);
 
-        if (0 == nBestN)
+        if (0 != temp)
         {
-           nBestN = HDD_SET_BATCH_SCAN_BEST_NETWORK;
+           nBestN = temp;
         }
 
         if (TRUE == lastArg)
@@ -913,14 +914,7 @@ hdd_parse_set_batchscan_command
     if ((strncmp(inPtr, "CHANNEL", 7) == 0))
     {
         inPtr = hdd_extract_assigned_char_from_str(inPtr, &val, &lastArg);
-        if (TRUE == lastArg)
-        {
-            goto done;
-        }
-        else if (NULL == inPtr)
-        {
-            return -EINVAL;
-        }
+
         if (('A' == val) || ('a' == val))
         {
             ucRfBand = HDD_SET_BATCH_SCAN_24GHz_BAND_ONLY;
@@ -930,6 +924,15 @@ hdd_parse_set_batchscan_command
             ucRfBand = HDD_SET_BATCH_SCAN_5GHz_BAND_ONLY;
         }
         else
+        {
+            ucRfBand = HDD_SET_BATCH_SCAN_DEFAULT_BAND;
+        }
+
+        if (TRUE == lastArg)
+        {
+            goto done;
+        }
+        else if (NULL == inPtr)
         {
             return -EINVAL;
         }
@@ -1399,8 +1402,9 @@ hdd_format_batch_scan_rsp
       pAdapter->isTruncated = TRUE;
       if (rem_len >= strlen("%%%%"))
       {
-          ret = snprintf(pDest, strlen("%%%%"), "%%%%%%%%");
+          ret = snprintf(pDest, sizeof(temp), "%%%%");
       }
+      else
       {
           ret = 0;
       }
