@@ -12,7 +12,9 @@
  */
 
 /include/ "msm8610-camera-sensor-moto.dtsi"
-/include/ "dsi-v2-panel-mot-tianma-qhd-video.dtsi"
+/include/ "dsi-panel-mot-tianma-qhd-video.dtsi"
+/include/ "dsi-panel-mot-inx-qhd-video.dtsi"
+
 
 / {
 	model = "Motorola QC-MSM8610";
@@ -675,13 +677,17 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_tianma_qhd>;
+	qcom,dsi-pref-prim-pan = <&mot_tianma_qhd_vid_v0>;
 	vddio_disp-supply = <&vddio_disp_vreg>;
 	lcd_vci-supply = <&lcd_vci_vreg>;
 	/delete-property/ vdd-supply;
 	/delete-node/ qcom,platform-supply-entry1;
 };
 
-&mot_tianma_qhd {
+&mot_tianma_qhd_vid_v0 {
 	qcom,cont-splash-enabled;
+};
+
+&mot_inx_qhd_vid_v0 {
+        qcom,cont-splash-enabled;
 };

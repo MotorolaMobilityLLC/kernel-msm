@@ -11,16 +11,13 @@
  */
 
 &mdss_mdp {
-	mot_tianma_qhd: qcom,dsi_v2_mot_tianma_qhd_video {
+	mot_inx_qhd_vid_v0: qcom,mdss_dsi_mot_inx_qhd_video_v0 {
 		compatible = "qcom,mdss-dsi-panel";
 		status = "ok";
 
-		mmi,panel_name = "mipi_mot_tianma_qhd";
-		mmi,panel_ver_min = <0x00000000 0x000186c2>;
-		mmi,panel_ver_max = <0xffffffff 0xffffffff>;
 		qcom,panel-esd-power-mode-chk = <0x94>;
 
-		qcom,mdss-dsi-panel-name = "mipi_mot_tianma_qhd";
+		qcom,mdss-dsi-panel-name = "mipi_mot_video_inx_qhd_430_v0";
 		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 		qcom,mdss-dsi-panel-destination = "display_1";
@@ -31,7 +28,6 @@
 		qcom,mdss-dsi-panel-height = <960>;
 		qcom,mdss-pan-physical-width-dimension = <54>;
 		qcom,mdss-pan-physical-height-dimension = <95>;
-		qcom,mdss-dsi-panel-clock-rate = <797600000>;
 		qcom,mdss-dsi-h-front-porch = <32>;
 		qcom,mdss-dsi-h-back-porch = <4>;
 		qcom,mdss-dsi-h-pulse-width = <32>;
@@ -47,13 +43,6 @@
 		qcom,mdss-dsi-color-order = <0>;
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
-
-		qcom,mdss-dsi-tune-h-front-porch = <62>;
-		qcom,mdss-dsi-tune-h-back-porch = <62>;
-		qcom,mdss-dsi-tune-h-pulse-width = <8>;
-		qcom,mdss-dsi-tune-v-back-porch = <15>;
-		qcom,mdss-dsi-tune-v-front-porch = <15>;
-		qcom,mdss-dsi-tune-v-pulse-width = <1280>;
 
 		qcom,mdss-dsi-on-command = [
 			05 01 00 00 78 00 02 11 00
