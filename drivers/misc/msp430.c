@@ -36,6 +36,7 @@
 #include <linux/module.h>
 #include <linux/msp430.h>
 #include <linux/poll.h>
+#include <linux/quickwakeup.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/switch.h>
@@ -375,6 +376,8 @@ static const unsigned short crc_table[256] = {
 };
 
 struct msp430_data *msp430_misc_data;
+
+static struct quickwakeup_ops msp430_quickwakeup_ops;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void msp430_early_suspend(struct early_suspend *handler);
@@ -3175,6 +3178,10 @@ static int msp430_probe(struct i2c_client *client,
 		goto err9;
 	}
 
+
+	msp430_quickwakeup_ops.data = ps_msp430;
+	quickwakeup_register(&msp430_quickwakeup_ops);
+
 	mutex_unlock(&ps_msp430->lock);
 
 	dev_info(&client->dev, "probed finished\n");
@@ -3349,6 +3356,35 @@ static struct of_device_id msp430_match_tbl[] = {
 };
 MODULE_DEVICE_TABLE(of, msp430_match_tbl);
 #endif
+
+
+static int msp430_qw_check(void *data)
+{
+	struct msp430_data *ps_msp430 = (struct msp430_data *)data;
+
+	dev_dbg(&ps_msp430->client->dev, "msp430_qw_check\n");
+
+	/* TODO: define and implement quickwake condition checks here */
+
+	return 0;
+}
+
+static int msp430_qw_execute(void *data)
+{
+	struct msp430_data *ps_msp430 = (struct msp430_data *)data;
+
+	dev_dbg(&ps_msp430->client->dev, "msp430_qw_execute\n");
+
+	/* TODO: define and implement quickwake behavior here */
+
+	return 0;
+}
+
+static struct quickwakeup_ops msp430_quickwakeup_ops = {
+	.name = NAME,
+	.qw_execute = msp430_qw_execute,
+	.qw_check   = msp430_qw_check,
+};
 
 static struct i2c_driver msp430_driver = {
 	.driver = {
