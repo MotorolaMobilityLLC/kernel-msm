@@ -32,6 +32,8 @@ static size_t bootinfo_size;
 static const char *bootinfo_label =
 	"\n\n#############\nCurrent Boot info:\nPOWERUPREASON: 0x%08x\n";
 static size_t bootinfo_label_size;
+static const char *bootreason_label =
+	"\n\nBoot info:\nLast boot reason: %s\n";
 
 static void
 ram_console_write(struct console *console, const char *s, unsigned int count)
@@ -213,6 +215,20 @@ static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 		count = min(len, (size_t)(bootinfo_size -
 					bootinfo_label_size - pos));
 		if (copy_to_user(buf, bootinfo + pos, count))
+			return -EFAULT;
+		goto out;
+	}
+	pos -= bootinfo_size - bootinfo_label_size;
+	count = 1 + snprintf(NULL, 0, bootreason_label, bi_bootreason());
+	if (pos < count) {
+		str = kmalloc(count, GFP_KERNEL);
+		if (!str)
+			return -ENOMEM;
+		snprintf(str, count, bootreason_label, bi_bootreason());
+		count = min(len, (size_t)(count - pos));
+		ret = copy_to_user(buf, str + pos, count);
+		kfree(str);
+		if (ret)
 			return -EFAULT;
 		goto out;
 	}
