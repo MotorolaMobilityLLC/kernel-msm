@@ -11,6 +11,7 @@
  */
 
 /include/ "msm8974pro-ab-moto-common.dtsi"
+/include/ "dsi-panel-mot-smd-720p-cmd.dtsi"
 /include/ "dsi-panel-mot-smd-720p-video.dtsi"
 
 / {
@@ -20,6 +21,12 @@
 		     "qcom,msm8974";
 };
 
+&mot_smd_720p_cmd_v0 {
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&vdd_disp_vreg>;
+	vci_disp-supply = <&vci_disp_vreg>;
+};
+
 &mot_smd_720p_vid {
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vdd_disp-supply = <&vdd_disp_vreg>;
@@ -27,7 +34,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_smd_720p_vid>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_720p_cmd_v0>;
 };
 
 &sdhc_2 {
