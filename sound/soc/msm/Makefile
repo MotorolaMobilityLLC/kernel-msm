@@ -96,6 +96,10 @@ obj-$(CONFIG_SND_SOC_MDM9625) += snd-soc-mdm9625.o
 snd-soc-msm8226-objs := msm8226.o
 obj-$(CONFIG_SND_SOC_MSM8226) += snd-soc-msm8226.o
 
+# for dory-mi2s sound card driver
+snd-soc-dory-mi2s-objs := dory-mi2s.o
+obj-$(CONFIG_SND_SOC_DORY_MI2S) += snd-soc-dory-mi2s.o
+
 # for MSM 8x10 sound card driver
 obj-$(CONFIG_SND_SOC_MSM_QDSP6V2_INTF) += qdsp6v2/
 snd-soc-msm8x10-objs := msm8x10.o

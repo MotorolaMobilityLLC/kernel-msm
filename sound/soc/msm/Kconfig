@@ -223,6 +223,18 @@ config SND_SOC_MSM8226
 	 the machine drivers and the corresponding
 	 DAI-links.
 
+config SND_SOC_DORY_MI2S
+	tristate "MI2S machine driver for dory boards"
+	depends on ARCH_MSM8226
+	select SND_SOC_QDSP6V2
+	select SND_SOC_MSM_STUB
+	select SND_SOC_MSM_HOSTLESS_PCM
+	select SND_DYNAMIC_MINORS
+	help
+	 To add support for mi2s audio on dory, which
+	 uses a single i2s microphone and has no output
+	 support.
+
 config SND_SOC_MDM9615
 	tristate "SoC Machine driver for MDM9615 boards"
 	depends on ARCH_MSM9615
