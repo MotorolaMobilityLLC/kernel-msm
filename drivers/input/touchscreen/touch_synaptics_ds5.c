@@ -995,22 +995,20 @@ static int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info
 		"%s - %d", ts->fw_info.product_id, ts->fw_info.manufacturer_id);
 
 	if (ts->pdata->type == 0) {
-		TOUCH_INFO_MSG("TYPE = %d product id[%s] : syna product id[%s]\n",
-			ts->pdata->type,
-			ts->fw_info.product_id,
-			&SynaFirmware_ds5_0[FW_OFFSET_PRODUCT_ID]);
-
 		ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5_0;
 		ts->fw_info.fw_size = sizeof(SynaFirmware_ds5_0);
-	} else {
-		TOUCH_INFO_MSG("TYPE = %d product id[%s] : syna product id[%s]\n",
-			ts->pdata->type,
-			ts->fw_info.product_id,
-			&SynaFirmware_ds5_1[FW_OFFSET_PRODUCT_ID]);
-
+	} else if (ts->pdata->type == 1) {
 		ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5_1;
 		ts->fw_info.fw_size = sizeof(SynaFirmware_ds5_1);
+	} else {
+                ts->fw_info.fw_start = (unsigned char*)SynaFirmware_ds5_2;
+                ts->fw_info.fw_size = sizeof(SynaFirmware_ds5_2);
 	}
+
+	TOUCH_INFO_MSG("TYPE = %d product id[%s] : syna product id[%s]\n",
+                        ts->pdata->type,
+                        ts->fw_info.product_id,
+                        &ts->fw_info.fw_start[FW_OFFSET_PRODUCT_ID]);
 
 	TOUCH_DEBUG_BASE_INFO("IC identifier[%s] fw_version[%s]\n",
 			ts->fw_info.ic_fw_identifier, ts->fw_info.config_id);
