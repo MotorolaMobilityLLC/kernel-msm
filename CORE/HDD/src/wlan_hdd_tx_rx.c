@@ -95,6 +95,14 @@ static void transport_thread(hdd_adapter_t *pAdapter)
    WLANTL_RxMetaInfoType pktRxMetaInfo;
    VOS_STATUS status = VOS_STATUS_E_FAILURE;
 
+   if (NULL == pAdapter)
+   {
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              FL("pAdapter is NULL"));
+       VOS_ASSERT(0);
+       return;
+   }
+
    status = hdd_tx_fetch_packet_cbk( pAdapter->pvosContext,
                                      &staId,
                                      &ac,
@@ -194,6 +202,14 @@ void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
    struct netdev_queue *txq;
    struct sk_buff *skb = NULL;
 
+   if (NULL == pAdapter)
+   {
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              FL("pAdapter is NULL %u"), STAId);
+       VOS_ASSERT(0);
+       return;
+   }
+
    for (i = 0; i < NUM_TX_QUEUES; i++)
    {
       spin_lock_bh(&pAdapter->wmm_tx_queue[i].lock);
@@ -254,12 +270,6 @@ static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter)
    VOS_STATUS status = VOS_STATUS_E_FAILURE;
    hdd_list_node_t *anchor = NULL;
 
-   if( NULL == pAdapter )
-   {
-      VOS_ASSERT(0);
-      return NULL;
-   }
-
    // do we have any packets pending in this AC?
    hdd_list_size( &pAdapter->wmm_tx_queue[ac], &size ); 
    if( size == 0 )
@@ -313,7 +323,8 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
    if (pAdapter == NULL )
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-       "%s: pAdapter is NULL", __func__);
+       FL("pAdapter is NULL"));
+      VOS_ASSERT(0);
       return;
    }
 
@@ -823,6 +834,14 @@ void hdd_tx_timeout(struct net_device *dev)
    struct netdev_queue *txq;
    int i = 0;
 
+   if ( NULL == pAdapter )
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              FL("pAdapter is NULL"));
+      VOS_ASSERT(0);
+      return;
+   }
+
    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
       "%s: Transmission timeout occurred", __func__);
    //Getting here implies we disabled the TX queues for too long. Queues are 
@@ -867,6 +886,14 @@ void hdd_tx_timeout(struct net_device *dev)
 struct net_device_stats* hdd_stats(struct net_device *dev)
 {
    hdd_adapter_t *pAdapter =  WLAN_HDD_GET_PRIV_PTR(dev);
+
+   if ( NULL == pAdapter )
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              FL("pAdapter is NULL"));
+      VOS_ASSERT(0);
+      return NULL;
+   }
    
    return &pAdapter->stats;
 }
@@ -884,6 +911,14 @@ VOS_STATUS hdd_init_tx_rx( hdd_adapter_t *pAdapter )
 {
    VOS_STATUS status = VOS_STATUS_SUCCESS;
    v_SINT_t i = -1;
+
+   if ( NULL == pAdapter )
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              FL("pAdapter is NULL"));
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_FAILURE;
+   }
 
    pAdapter->isVosOutOfResource = VOS_FALSE;
    pAdapter->isVosLowResource = VOS_FALSE;
@@ -914,7 +949,19 @@ VOS_STATUS hdd_deinit_tx_rx( hdd_adapter_t *pAdapter )
    VOS_STATUS status = VOS_STATUS_SUCCESS;
    v_SINT_t i = -1;
 
+   if ( NULL == pAdapter )
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              FL("pAdapter is NULL"));
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_FAILURE;
+   }
+
    status = hdd_flush_tx_queues(pAdapter);
+   if (VOS_STATUS_SUCCESS != status)
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+          FL("failed to flush tx queues"));
+
    while (++i != NUM_TX_QUEUES) 
    {
       //Free up actual list elements in the Tx queue
@@ -1122,6 +1169,8 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    pAdapter = pHddCtx->sta_to_adapter[*pStaId];
    if ((NULL == pAdapter) || (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic))
    {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              FL("pAdapter is NULL %u"), *pStaId);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAILURE;
    }
@@ -1689,6 +1738,14 @@ void hdd_tx_rx_pkt_cnt_stat_timer_handler( void *phddctx)
     VOS_STATUS status;
     v_U8_t staId = 0;
     v_U8_t fconnected = 0;
+
+   if (NULL == phddctx)
+   {
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+              FL("phddctx is NULL"));
+       VOS_ASSERT(0);
+       return;
+   }
 
     if (!cfg_param->dynSplitscan)
     {
