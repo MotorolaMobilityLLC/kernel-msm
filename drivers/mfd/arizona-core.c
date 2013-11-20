@@ -361,10 +361,14 @@ static int arizona_runtime_resume(struct device *dev)
 
 	regcache_cache_only(arizona->regmap, false);
 
-	if (arizona->rev == 3 && arizona->type == WM5110) {
-		ret = arizona_soft_reset(arizona);
-		if (ret != 0)
-			goto err;
+	switch (arizona->type) {
+	case WM5110:
+		if (arizona->rev == 3) {
+			ret = arizona_soft_reset(arizona);
+			if (ret != 0)
+				goto err;
+		}
+		break;
 	}
 
 	switch (arizona->type) {
@@ -777,13 +781,13 @@ static struct mfd_cell wm5102_devs[] = {
 	{ .name = "wm5102-codec" },
 };
 
-static struct mfd_cell wm5110_devs[] = {
+static struct mfd_cell florida_devs[] = {
 	{ .name = "arizona-micsupp" },
 	{ .name = "arizona-extcon" },
 	{ .name = "arizona-gpio" },
 	{ .name = "arizona-haptics" },
 	{ .name = "arizona-pwm" },
-	{ .name = "wm5110-codec" },
+	{ .name = "florida-codec" },
 };
 
 int arizona_dev_init(struct arizona *arizona)
@@ -953,15 +957,20 @@ int arizona_dev_init(struct arizona *arizona)
 		arizona->rev &= 0x7;
 		break;
 #endif
-#ifdef CONFIG_MFD_WM5110
+#ifdef CONFIG_MFD_FLORIDA
 	case 0x5110:
-		type_name = "WM5110";
-		if (arizona->type != WM5110) {
-			dev_err(arizona->dev, "WM5110 registered as %d\n",
+		switch (arizona->type) {
+		case WM5110:
+			type_name = "WM5110";
+			break;
+
+		default:
+			dev_err(arizona->dev, "Florida codec registered as %d\n",
 				arizona->type);
 			arizona->type = WM5110;
+			break;
 		}
-		apply_patch = wm5110_patch;
+		apply_patch = florida_patch;
 		break;
 #endif
 	default:
@@ -1127,8 +1136,8 @@ int arizona_dev_init(struct arizona *arizona)
 				      ARRAY_SIZE(wm5102_devs), NULL, 0, NULL);
 		break;
 	case WM5110:
-		ret = mfd_add_devices(arizona->dev, -1, wm5110_devs,
-				      ARRAY_SIZE(wm5110_devs), NULL, 0, NULL);
+		ret = mfd_add_devices(arizona->dev, -1, florida_devs,
+				      ARRAY_SIZE(florida_devs), NULL, 0, NULL);
 		break;
 	}
 
