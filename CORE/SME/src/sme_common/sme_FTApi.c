@@ -345,9 +345,8 @@ eHalStatus sme_FTSendUpdateKeyInd(tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo)
                   &pFTKeyInfo->peerMac[ 0 ],
                   sizeof(tCsrBssid) );
 
-    smsLog(pMac, LOG1, "BSSID = %02X-%02X-%02X-%02X-%02X-%02X",
-           pMsg->bssId[0], pMsg->bssId[1], pMsg->bssId[2],
-           pMsg->bssId[3], pMsg->bssId[4], pMsg->bssId[5]);
+    smsLog(pMac, LOG1, "BSSID = "MAC_ADDRESS_STR,
+           MAC_ADDR_ARRAY(pMsg->bssId));
 
     status = palSendMBMessage(pMac->hHdd, pMsg);
 

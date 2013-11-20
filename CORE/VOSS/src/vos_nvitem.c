@@ -1170,9 +1170,9 @@ VOS_STATUS vos_nv_readMacAddress( v_MAC_ADDRESS_t pMacAddress )
       //This part of the code can be removed when NV is programmed
       const v_U8_t macAddr[VOS_MAC_ADDRESS_LEN] = VOS_HARD_CODED_MAC;
       memcpy( pMacAddress, macAddr, VOS_MAC_ADDRESS_LEN );
-      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
-          " fail to get MAC address from NV, hardcoded to %02X-%02X-%02X-%02X-%02X%02X",
-          macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
+                "fail to get MAC address from NV, hardcoded to "MAC_ADDRESS_STR,
+                MAC_ADDR_ARRAY(macAddr));
       status = VOS_STATUS_SUCCESS;
    }
    return status;
