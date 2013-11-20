@@ -82,6 +82,7 @@
 extern struct proc_dir_entry proc_root;
 
 u32  bi_powerup_reason(void);
+const char *bi_bootreason(void);
 u32  bi_mbm_version(void);
 
 void bi_add_bl_build_sig(char *bld_sig);
