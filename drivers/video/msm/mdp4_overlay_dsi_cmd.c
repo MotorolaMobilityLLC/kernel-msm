@@ -1193,8 +1193,17 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 
 	cnt = 0;
 	if (need_wait) {
+		int poll_period = 20;
+		if (mfd->quickdraw_in_progress) {
+			spin_lock_irqsave(&vctrl->spin_lock, flags);
+			/* We need to be quick, dont wait for expire_tick */
+			vctrl->clk_control = 1;
+			schedule_work(&vctrl->clk_work);
+			spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+			poll_period = 2;
+		}
 		while (vctrl->clk_enabled) {
-			msleep(20);
+			msleep(poll_period);
 			cnt++;
 			if (cnt > 10)
 				break;
