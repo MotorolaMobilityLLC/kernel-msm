@@ -1328,10 +1328,14 @@ struct arizona_fll_cfg {
 
 static inline int arizona_fratio_ref(struct arizona *arizona, int i)
 {
-	if (arizona->rev >= 3 && arizona->type == WM5110)
-		return fll_fratios[i].fratio[1];
-	else
-		return fll_fratios[i].fratio[0];
+	switch (arizona->type) {
+	case WM5110:
+		if (arizona->rev >= 3)
+			return fll_fratios[i].fratio[1];
+		else
+			return fll_fratios[i].fratio[0];
+		break;
+	}
 }
 
 static inline int arizona_fratio_sync(struct arizona *arizona, int i)
