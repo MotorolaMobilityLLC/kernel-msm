@@ -661,6 +661,7 @@ static int panel_reset_enable(int enable)
 	struct mmi_disp_gpio_config *en;
 	static bool reset_init;
 	static bool first_boot = true;
+	static int save_enable = -1;
 
 	pr_debug("%s(%d) is called\n", __func__, enable);
 	if (!reset_init) {
@@ -675,6 +676,10 @@ static int panel_reset_enable(int enable)
 
 		reset_init = true;
 	}
+
+	if (save_enable == enable)
+		goto end;
+	save_enable = enable;
 
 	for (i = 0; i < mmi_disp_info.num_disp_reset; i++) {
 		en = &mmi_disp_info.disp_gpio[i];
