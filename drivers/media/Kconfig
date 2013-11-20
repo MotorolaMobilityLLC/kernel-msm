@@ -199,4 +199,10 @@ source "drivers/media/i2c/Kconfig"
 source "drivers/media/tuners/Kconfig"
 source "drivers/media/dvb-frontends/Kconfig"
 
+config ISDBT_NMI
+	bool "ISDB-T NMI Driver"
+	default n
+	---help---
+	  This is a ISDB-T for NMI Driver.
+
 endif # MEDIA_SUPPORT
