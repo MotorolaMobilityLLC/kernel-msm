@@ -82,6 +82,7 @@
 extern struct proc_dir_entry proc_root;
 
 u32  bi_powerup_reason(void);
+const char *bi_bootreason(void);
 u32  bi_mbm_version(void);
 
 void bi_add_bl_build_sig(char *bld_sig);
@@ -89,6 +90,7 @@ void bi_add_bl_build_sig(char *bld_sig);
 #else /* defined(CONFIG_BOOTINFO) */
 
 static inline u32 bi_powerup_reason(void) { return 0xFFFFFFFF; }
+static inline const char *bi_bootreason(void) { return "NOTSUPPORTED"; }
 static inline u32 bi_mbm_version(void) { return 0xFFFFFFFF; }
 
 #endif /* !defined(CONFIG_BOOTINFO) */
