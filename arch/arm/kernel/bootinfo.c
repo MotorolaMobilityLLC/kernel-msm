@@ -477,6 +477,21 @@ static u64 bi_serial(void)
 #define EMIT_SERIAL() \
 		EMIT_BOOTINFO("SERIAL", "0x%llx", serial)
 
+#define BOOTREASON_MAX_LEN 64
+static char bootreason[BOOTREASON_MAX_LEN];
+int __init bootinfo_bootreason_init(char *s)
+{
+	strlcpy(bootreason, s, BOOTREASON_MAX_LEN);
+	return 1;
+}
+__setup("bootreason=", bootinfo_bootreason_init);
+
+const char *bi_bootreason(void)
+{
+	return bootreason;
+}
+EXPORT_SYMBOL(bi_bootreason);
+
 /* get_bootinfo fills in the /proc/bootinfo information.
  * We currently only have the powerup reason, mbm_version, serial
  * and hwrevision.
@@ -493,6 +508,7 @@ static int get_bootinfo(char *buf, char **start,
 	EMIT_POWERUPREASON();
 	EMIT_MBM_VERSION();
 	EMIT_BL_BUILD_SIG();
+	EMIT_BOOTINFO("Last boot reason", "%s", bootreason);
 
 	return len;
 }
