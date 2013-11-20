@@ -807,6 +807,42 @@ static struct msm_gpiomux_config msm_fuel_gauge_configs[] __initdata = {
 };
 #endif
 
+static struct gpiomux_setting mi2s_act_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting mi2s_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm_mi2s_configs[] __initdata = {
+	{
+		.gpio	= 63,		/*  MIC_I2S_SCK */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+			[GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+		},
+	},
+	{
+		.gpio	= 64,		/*  MIC_I2S_WS */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+			[GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+		},
+	},
+	{
+		.gpio	= 65,		/*  MIC_I2S_DIN */
+			.settings = {
+			[GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+			[GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+		},
+	},
+};
+
 void __init msm8226_init_gpiomux(void)
 {
 	int rc;
@@ -869,4 +905,6 @@ void __init msm8226_init_gpiomux(void)
 	msm_gpiomux_install(msm_fuel_gauge_configs,
 			ARRAY_SIZE(msm_fuel_gauge_configs));
 #endif
+
+	msm_gpiomux_install(msm_mi2s_configs, ARRAY_SIZE(msm_mi2s_configs));
 }
