@@ -4422,8 +4422,20 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 
    smeConfig.csrConfig.phyMode                  = hdd_cfg_xlate_to_csr_phy_mode ( pConfig->dot11Mode );
 
-   smeConfig.csrConfig.channelBondingMode24GHz  = pConfig->nChannelBondingMode24GHz;
-   smeConfig.csrConfig.channelBondingMode5GHz   = pConfig->nChannelBondingMode5GHz;
+   if( (pConfig->dot11Mode == eHDD_DOT11_MODE_abg) ||
+       (pConfig->dot11Mode == eHDD_DOT11_MODE_11b) ||
+       (pConfig->dot11Mode == eHDD_DOT11_MODE_11g) ||
+       (pConfig->dot11Mode == eHDD_DOT11_MODE_11b_ONLY) ||
+       (pConfig->dot11Mode == eHDD_DOT11_MODE_11g_ONLY))
+   {
+       smeConfig.csrConfig.channelBondingMode24GHz  = 0;
+       smeConfig.csrConfig.channelBondingMode5GHz  = 0;
+   }
+   else
+   {
+       smeConfig.csrConfig.channelBondingMode24GHz   = pConfig->nChannelBondingMode24GHz;
+       smeConfig.csrConfig.channelBondingMode5GHz   = pConfig->nChannelBondingMode5GHz;
+   }
    smeConfig.csrConfig.TxRate                   = pConfig->TxRate;
    smeConfig.csrConfig.nScanResultAgeCount      = pConfig->ScanResultAgeCount;
    smeConfig.csrConfig.scanAgeTimeNCNPS         = pConfig->nScanAgeTimeNCNPS;
