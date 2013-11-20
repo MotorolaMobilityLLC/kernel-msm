@@ -1,0 +1,32 @@
+NMI326 ISBT-T DTV
+
+Required properties:
+- compatible:		must be "nmi,nmi326".
+- reg:			spi CS of the device
+- irq-gpio:		IRQ gpio
+
+Optional properties:
+- spi-max-frequency:	maximum SPI frequency to use
+- reset-gpio:		reset gpio
+- ce-gpio:		CE (chip enable) gpio
+- enable-gpio:		enable gpio, typically used for antenna switch
+- enable-active-high:	if present, treats enable-gpio as active-high
+- isdbt_vdd-supply:	regulator that supplies analog voltage
+
+This node must be located inside the spi node this device is connected to.
+
+Example:
+
+/ {
+	nmi326@0 {
+		compatible = "nmi,nmi326";
+		reg = <0>;
+		spi-max-frequency = <9600000>;
+		irq-gpio = <&msmgpio 90 0>;
+		reset-gpio = <&msmgpio 91 0>;
+		ce-gpio = <&msmgpio 94 0>;
+		enable-gpio = <&msmgpio 85 0>;
+		enable-active-high;
+		isdbt_vdd-supply = <&pm8110_l2>;
+	};
+};
