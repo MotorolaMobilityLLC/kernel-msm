@@ -2353,9 +2353,8 @@ eCsrPhyMode hdd_cfg_xlate_to_csr_phy_mode( eHddDot11Mode dot11Mode );
 VOS_STATUS hdd_execute_config_command(hdd_context_t *pHddCtx, char *command);
 tANI_BOOLEAN hdd_is_okc_mode_enabled(hdd_context_t *pHddCtx);
 
-#define FIELD_OFFSET(__type, __field) ((unsigned int)(&((__type *)0)->__field))
-#define VAR_OFFSET( _Struct, _Var ) ( (unsigned int) FIELD_OFFSET(_Struct, _Var ) )
-#define VAR_SIZE( _Struct, _Var ) sizeof( ((_Struct *)0)->_Var )
+#define VAR_OFFSET( _Struct, _Var ) (offsetof(_Struct, _Var))
+#define VAR_SIZE( _Struct, _Var ) (sizeof(((_Struct *)0)->_Var))
 
 #define VAR_FLAGS_NONE         (      0 )
 #define VAR_FLAGS_REQUIRED     ( 1 << 0 )   // bit 0 is Required or Optional
