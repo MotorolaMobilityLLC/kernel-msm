@@ -390,9 +390,8 @@ static eHalStatus sme_CcxSendBeaconReqScanResults(tpAniSirGlobal pMac,
                                            &(pBcnReport->bcnRepBssInfo[msgCounter].pBuf), &outIeLen);
                pBcnReport->bcnRepBssInfo[msgCounter].ieLen = outIeLen;
 
-               smsLog( pMac, LOG1,"Bssid(%02X:%02X:%02X:%02X:%02X:%02X) Channel=%d Rssi=%d",
-                       pBssDesc->bssId[0], pBssDesc->bssId[1], pBssDesc->bssId[2],
-                       pBssDesc->bssId[3], pBssDesc->bssId[4], pBssDesc->bssId[5],
+               smsLog( pMac, LOG1,"Bssid("MAC_ADDRESS_STR") Channel=%d Rssi=%d",
+                       MAC_ADDR_ARRAY(pBssDesc->bssId),
                        pBssDesc->channelId, (-1) * pBssDesc->rssi);
 
                pBcnReport->numBss++;

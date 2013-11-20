@@ -4209,8 +4209,9 @@ static tSirRetStatus limTdlsLinkEstablish(tpAniSirGlobal pMac, tSirMacAddr peerM
 
     limTdlsFindLinkPeer(pMac, peerMac, &setupPeer) ;
     if(NULL == setupPeer) {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-            ("limTdlsLinkEstablish: cannot find peer mac in tdls linksetup list: "MAC_ADDRESS_STR),
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+            ("limTdlsLinkEstablish: cannot find peer mac "
+             "in tdls linksetup list: "MAC_ADDRESS_STR),
              MAC_ADDR_ARRAY(peerMac));
         return eSIR_FAILURE;
     }
@@ -4229,10 +4230,10 @@ static tSirRetStatus limTdlsLinkEstablish(tpAniSirGlobal pMac, tSirMacAddr peerM
     /* */
     pStaDs = dphLookupHashEntry(pMac, peerMac, &aid, &psessionEntry->dph.dphHashTable) ;
     if(pStaDs == NULL) {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-            ("limTdlsLinkEstablish: cannot find peer mac in hash table: %02X %02X %02X %02X %02X %02X"),
-            peerMac[0], peerMac[1], peerMac[2],
-            peerMac[3], peerMac[4], peerMac[5]);
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                  ("limTdlsLinkEstablish: cannot find peer mac "
+                   "in tdls linksetup list: "MAC_ADDRESS_STR),
+                   MAC_ADDR_ARRAY(peerMac));
         return eSIR_FAILURE;
     }
 
@@ -4337,10 +4338,10 @@ static tSirRetStatus limTdlsLinkTeardown(tpAniSirGlobal pMac, tSirMacAddr peerMa
 
     limTdlsFindLinkPeer(pMac, peerMac, &setupPeer) ;
     if(NULL == setupPeer) {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-            ("limTdlsLinkTeardown: cannot find peer mac in tdls linksetup list: %02X %02X %02X %02X %02X %02X"),
-        peerMac[0], peerMac[1], peerMac[2],
-        peerMac[3], peerMac[4], peerMac[5]);
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                  ("limTdlsLinkTeardown: cannot find peer mac "
+                   "in tdls linksetup list: "
+                   MAC_ADDRESS_STR), MAC_ADDR_ARRAY(peerMac));
         return eSIR_FAILURE;
     }
 
@@ -4360,10 +4361,10 @@ static tSirRetStatus limTdlsLinkTeardown(tpAniSirGlobal pMac, tSirMacAddr peerMa
     pStaDs = dphLookupHashEntry(pMac, peerMac, &aid, &psessionEntry->dph.dphHashTable);
 
     if(pStaDs == NULL) {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-            ("limTdlsLinkTeardown: cannot find peer mac in hash table: %02X %02X %02X %02X %02X %02X"),
-            peerMac[0], peerMac[1], peerMac[2],
-            peerMac[3], peerMac[4], peerMac[5]);
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                  ("limTdlsLinkTeardown: cannot find peer mac "
+                   "in hash table: "
+                   MAC_ADDRESS_STR), MAC_ADDR_ARRAY(peerMac));
         return eSIR_FAILURE;
     }
 
