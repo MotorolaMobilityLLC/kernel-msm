@@ -11,20 +11,18 @@
  */
 
 &soc {
-	sound-9302 {
-		qcom,audio-routing =
-			"RX_BIAS", "MCLK",
-			"LDO_H", "MCLK",
-			"SPK_OUT", "MCLK",
-			"SPK_OUT", "EXT_VDD_SPKR",
-			"AMIC1", "MIC BIAS1 External",
-			"MIC BIAS1 External", "Handset Mic",
-			"AMIC2", "MIC BIAS2 External",
-			"MIC BIAS2 External", "Headset Mic",
-			"AMIC3", "MIC BIAS1 External",
-			"MIC BIAS1 External", "Handset SubMic";
+	sound {
+		compatible = "dory,dory-mi2s-audio";
+		dory,model = "dory-mi2s-snd-card";
 
-		qcom,cdc-mclk-gpios = <&pm8226_gpios 1 0>;
-		qcom,cdc-vdd-spkr-gpios = <&pm8226_gpios 2 0>;
+		dory,mic-sck-gpio = <&msmgpio 63 0x00>;
+		dory,mic-ws-gpio = <&msmgpio 64 0x00>;
+		dory,mic-din-gpio = <&msmgpio 65 0x00>;
+		dory,mic-supply = <&pm8226_l23>;
+	};
+
+	slim@fe12f000 {
+		compatible = "qcom,slim-ngd";
+		status = "disabled";
 	};
 };

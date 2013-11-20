@@ -387,6 +387,12 @@
 			status = "okay";
 		};
 	};
+	/* admp441 i2s microphone */
+	rpm-regulator-ldoa23 {
+		pm8226_l23: regulator-l23 {
+			qcom,init-voltage = <2050000>;
+		};
+	};
 	rpm-regulator-ldoa26 {
 		status = "okay";
 		pm8226_l26: regulator-l26 {
