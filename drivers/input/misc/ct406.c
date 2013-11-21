@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 Motorola Mobility, Inc.
+ * Copyright (C) 2011-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,7 +16,6 @@
  * 02111-1307, USA
  */
 
-#define DEBUG
 #include <linux/ct406.h>
 
 #include <linux/delay.h>
@@ -25,8 +24,12 @@
 #include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/gpio.h>
 #include <linux/miscdevice.h>
 #include <linux/mutex.h>
+#include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
@@ -35,9 +38,6 @@
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
-#include <linux/moduleparam.h>
-#include <linux/export.h>
-#include <linux/module.h>
 
 #define CT406_I2C_RETRIES	2
 #define CT406_I2C_RETRY_DELAY	10
@@ -80,7 +80,6 @@
 #define CT406_PERS_PPERS_MASK		0xF0
 #define CT406_PERS_APERS_MASK		0x0F
 #define CT406_PERS_PPERS		0x10
-#define CT406_PERS_APERS_SATURATED	0x03
 
 #define CT406_CONFIG			0x0D
 #define CT406_CONFIG_AGL		(1<<2)
@@ -116,7 +115,6 @@
 #define CT406_POFFSET			0x1E
 
 #define CT406_C0DATA_MAX		0xFFFF
-#define CT405_PDATA_MAX			0x03FF
 #define CT406_PDATA_MAX			0x07FF
 
 #define CT406_PROXIMITY_NEAR		30	/* 30 mm */
@@ -127,35 +125,24 @@
 
 #define CT406_ALS_IRQ_DELTA_PERCENT	5
 
-#define CT40X_REV_ID_CT405		0x02
-#define CT40X_REV_ID_CT406a		0x03
-#define CT40X_REV_ID_CT406b		0x04
-
 enum ct406_prox_mode {
-	CT406_PROX_MODE_SATURATED,
+	CT406_PROX_MODE_UNKNOWN,
 	CT406_PROX_MODE_UNCOVERED,
 	CT406_PROX_MODE_COVERED,
 	CT406_PROX_MODE_STARTUP,
 };
 
 enum ct406_als_mode {
-	CT406_ALS_MODE_SUNLIGHT,
 	CT406_ALS_MODE_LOW_LUX,
 	CT406_ALS_MODE_HIGH_LUX,
 };
-
-enum ct40x_hardware_type {
-	CT405_HW_TYPE,
-	CT406_HW_TYPE,
-};
-
-static struct notifier_block ct406_pm_notifier;
 
 struct ct406_data {
 	struct input_dev *dev;
 	struct i2c_client *client;
 	struct regulator *regulator;
 	struct work_struct work;
+	struct work_struct work_prox_start;
 	struct workqueue_struct *workqueue;
 	struct ct406_platform_data *pdata;
 	struct miscdevice miscdevice;
@@ -167,6 +154,7 @@ struct ct406_data {
 	unsigned int regs_initialized;
 	unsigned int oscillator_enabled;
 	unsigned int prox_requested;
+	unsigned int prox_starting;
 	unsigned int prox_enabled;
 	enum ct406_prox_mode prox_mode;
 	unsigned int als_requested;
@@ -181,14 +169,16 @@ struct ct406_data {
 	unsigned int prox_high_threshold;
 	unsigned int als_low_threshold;
 	unsigned int als_high_threshold;
-	u16 prox_saturation_threshold;
 	u16 prox_covered_offset;
 	u16 prox_uncovered_offset;
 	u16 prox_recalibrate_offset;
 	u8 prox_pulse_count;
 	u8 prox_offset;
 	u16 pdata_max;
-	enum ct40x_hardware_type hw_type;
+	u8 ink_type;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct early_suspend ct406_early_suspend;
+#endif
 };
 
 static struct ct406_data *ct406_misc_data;
@@ -388,10 +378,7 @@ static int ct406_init_registers(struct ct406_data *ct)
 	/* write prox integration time = ~3 ms */
 	reg_data[0] = (CT406_ATIME | CT406_COMMAND_AUTO_INCREMENT);
 	reg_data[1] = CT406_ATIME_NOT_SATURATED;
-	if (ct->hw_type == CT405_HW_TYPE)
-		reg_data[2] = 0xFF; /* 2.73 ms */
-	else
-		reg_data[2] = 0xFE; /* 5.46 ms */
+	reg_data[2] = 0xFE; /* 5.46 ms */
 	error = ct406_i2c_write(ct, reg_data, 2);
 	if (error < 0)
 		return error;
@@ -405,12 +392,8 @@ static int ct406_init_registers(struct ct406_data *ct)
 
 	/* write proximity diode = ch1, proximity gain = 1/2, ALS gain = 1 */
 	reg_data[0] = (CT406_CONTROL | CT406_COMMAND_AUTO_INCREMENT);
-	if (ct->hw_type == CT405_HW_TYPE)
-		reg_data[1] = CT406_CONTROL_PDIODE_CH1
-			| CT406_CONTROL_PGAIN_2X | CT406_CONTROL_AGAIN_1X;
-	else
-		reg_data[1] = CT406_CONTROL_PDIODE_CH1
-			| CT406_CONTROL_PGAIN_1X | CT406_CONTROL_AGAIN_1X;
+	reg_data[1] = CT406_CONTROL_PDIODE_CH1
+		| CT406_CONTROL_PGAIN_1X | CT406_CONTROL_AGAIN_1X;
 	error = ct406_i2c_write(ct, reg_data, 1);
 	if (error < 0)
 		return error;
@@ -418,6 +401,13 @@ static int ct406_init_registers(struct ct406_data *ct)
 	/* write proximity offset */
 	reg_data[0] = (CT406_POFFSET | CT406_COMMAND_AUTO_INCREMENT);
 	reg_data[1] = ct->prox_offset;
+	error = ct406_i2c_write(ct, reg_data, 1);
+	if (error < 0)
+		return error;
+
+	/* write proximity interrupt persistence */
+	reg_data[0] = CT406_PERS;
+	reg_data[1] = CT406_PERS_PPERS;
 	error = ct406_i2c_write(ct, reg_data, 1);
 	if (error < 0)
 		return error;
@@ -444,49 +434,6 @@ static void ct406_write_als_thresholds(struct ct406_data *ct)
 			__func__, error);
 }
 
-static void ct406_als_mode_sunlight(struct ct406_data *ct)
-{
-	int error;
-	u8 reg_data[2] = {0};
-
-	/* set AGL to reduce ALS gain by 1/6 */
-	reg_data[0] = CT406_CONFIG;
-	reg_data[1] = CT406_CONFIG_AGL;
-	error = ct406_i2c_write(ct, reg_data, 1);
-	if (error < 0) {
-		pr_err("%s: error writing CONFIG: %d\n", __func__, error);
-		return;
-	}
-
-	/* write ALS gain = 1 */
-	reg_data[0] = CT406_CONTROL;
-	if (ct->hw_type == CT405_HW_TYPE)
-		reg_data[1] = CT406_CONTROL_PDIODE_CH1
-			| CT406_CONTROL_PGAIN_2X | CT406_CONTROL_AGAIN_1X;
-	else
-		reg_data[1] = CT406_CONTROL_PDIODE_CH1
-			| CT406_CONTROL_PGAIN_1X | CT406_CONTROL_AGAIN_1X;
-	error = ct406_i2c_write(ct, reg_data, 1);
-	if (error < 0) {
-		pr_err("%s: error writing ALS gain: %d\n", __func__, error);
-		return;
-	}
-
-	/* write ALS integration time = ~3 ms */
-	reg_data[0] = CT406_ATIME;
-	reg_data[1] = CT406_ATIME_SATURATED;
-	error = ct406_i2c_write(ct, reg_data, 1);
-	if (error < 0) {
-		pr_err("%s: error writing ATIME: %d\n", __func__, error);
-		return;
-	}
-
-	ct->als_mode = CT406_ALS_MODE_SUNLIGHT;
-	ct->als_low_threshold = ct->prox_saturation_threshold;
-	ct->als_high_threshold = CT406_C0DATA_MAX;
-	ct406_write_als_thresholds(ct);
-}
-
 static void ct406_als_mode_low_lux(struct ct406_data *ct)
 {
 	int error;
@@ -503,12 +450,8 @@ static void ct406_als_mode_low_lux(struct ct406_data *ct)
 
 	/* write ALS gain = 8 */
 	reg_data[0] = CT406_CONTROL;
-	if (ct->hw_type == CT405_HW_TYPE)
-		reg_data[1] = CT406_CONTROL_PDIODE_CH1
-			| CT406_CONTROL_PGAIN_2X | CT406_CONTROL_AGAIN_8X;
-	else
-		reg_data[1] = CT406_CONTROL_PDIODE_CH1
-			| CT406_CONTROL_PGAIN_1X | CT406_CONTROL_AGAIN_8X;
+	reg_data[1] = CT406_CONTROL_PDIODE_CH1
+		| CT406_CONTROL_PGAIN_1X | CT406_CONTROL_AGAIN_8X;
 	error = ct406_i2c_write(ct, reg_data, 1);
 	if (error < 0) {
 		pr_err("%s: error writing ALS gain: %d\n", __func__, error);
@@ -546,12 +489,8 @@ static void ct406_als_mode_high_lux(struct ct406_data *ct)
 
 	/* write ALS gain = 1 */
 	reg_data[0] = CT406_CONTROL;
-	if (ct->hw_type == CT405_HW_TYPE)
-		reg_data[1] = CT406_CONTROL_PDIODE_CH1
-			| CT406_CONTROL_PGAIN_2X | CT406_CONTROL_AGAIN_1X;
-	else
-		reg_data[1] = CT406_CONTROL_PDIODE_CH1
-			| CT406_CONTROL_PGAIN_1X | CT406_CONTROL_AGAIN_1X;
+	reg_data[1] = CT406_CONTROL_PDIODE_CH1
+		| CT406_CONTROL_PGAIN_1X | CT406_CONTROL_AGAIN_1X;
 	error = ct406_i2c_write(ct, reg_data, 1);
 	if (error < 0) {
 		pr_err("%s: error writing ALS gain: %d\n", __func__, error);
@@ -590,12 +529,6 @@ static void ct406_write_prox_thresholds(struct ct406_data *ct)
 	if (error < 0)
 		pr_err("%s: Error writing new prox thresholds: %d\n",
 			__func__, error);
-}
-
-static void ct406_prox_mode_saturated(struct ct406_data *ct)
-{
-	ct->prox_mode = CT406_PROX_MODE_SATURATED;
-	pr_info("%s: Prox mode saturated\n", __func__);
 }
 
 static void ct406_prox_mode_uncovered(struct ct406_data *ct)
@@ -693,7 +626,7 @@ static int ct406_device_init(struct ct406_data *ct)
 		}
 		ct->oscillator_enabled = 0;
 		ct->prox_enabled = 0;
-		ct->prox_mode = CT406_PROX_MODE_SATURATED;
+		ct->prox_mode = CT406_PROX_MODE_UNKNOWN;
 		ct->als_enabled = 0;
 		ct->als_mode = CT406_ALS_MODE_LOW_LUX;
 
@@ -724,49 +657,47 @@ static int ct406_enable_als(struct ct406_data *ct)
 	if (ct->suspended && !ct->prox_enabled)
 		return 0;
 
-	if (ct->als_mode != CT406_ALS_MODE_SUNLIGHT) {
-		error = ct406_set_als_enable(ct, 0);
-		if (error) {
-			pr_err("%s: Unable to turn off ALS: %d\n",
-				__func__, error);
-			return error;
-		}
+	error = ct406_set_als_enable(ct, 0);
+	if (error) {
+		pr_err("%s: Unable to turn off ALS: %d\n",
+			__func__, error);
+		return error;
+	}
 
-		ct406_als_mode_low_lux(ct);
+	ct406_als_mode_low_lux(ct);
 
-		/* write wait time = ALS on value */
-		reg_data[0] = CT406_WTIME;
-		reg_data[1] = CT406_WTIME_ALS_ON;
-		error = ct406_i2c_write(ct, reg_data, 1);
-		if (error < 0) {
-			pr_err("%s: Error  %d\n", __func__, error);
-			return error;
-		}
-		error = ct406_set_wait_enable(ct, 0);
-		if (error) {
-			pr_err("%s: Unable to set wait enable: %d\n",
-				__func__, error);
-			return error;
-		}
+	/* write wait time = ALS on value */
+	reg_data[0] = CT406_WTIME;
+	reg_data[1] = CT406_WTIME_ALS_ON;
+	error = ct406_i2c_write(ct, reg_data, 1);
+	if (error < 0) {
+		pr_err("%s: Error  %d\n", __func__, error);
+		return error;
+	}
+	error = ct406_set_wait_enable(ct, 0);
+	if (error) {
+		pr_err("%s: Unable to set wait enable: %d\n",
+			__func__, error);
+		return error;
+	}
 
-		/* write ALS interrupt persistence */
-		reg_data[0] = CT406_PERS;
-		reg_data[1] = CT406_PERS_PPERS;
-		error = ct406_i2c_write(ct, reg_data, 1);
-		if (error < 0) {
-			pr_err("%s: Error  %d\n", __func__, error);
-			return error;
-		}
-		ct->als_first_report = 0;
+	/* write ALS interrupt persistence */
+	reg_data[0] = CT406_PERS;
+	reg_data[1] = CT406_PERS_PPERS;
+	error = ct406_i2c_write(ct, reg_data, 1);
+	if (error < 0) {
+		pr_err("%s: Error  %d\n", __func__, error);
+		return error;
+	}
+	ct->als_first_report = 0;
 
-		ct406_clear_als_flag(ct);
+	ct406_clear_als_flag(ct);
 
-		error = ct406_set_als_enable(ct, 1);
-		if (error) {
-			pr_err("%s: Unable to turn on ALS: %d\n",
-				__func__, error);
-			return error;
-		}
+	error = ct406_set_als_enable(ct, 1);
+	if (error) {
+		pr_err("%s: Unable to turn on ALS: %d\n",
+			__func__, error);
+		return error;
 	}
 
 	return 0;
@@ -777,26 +708,24 @@ static int ct406_disable_als(struct ct406_data *ct)
 	int error;
 	u8 reg_data[2] = {0};
 
-	if (ct->als_enabled && ct->als_mode != CT406_ALS_MODE_SUNLIGHT) {
-		ct406_set_als_enable(ct, 0);
+	ct406_set_als_enable(ct, 0);
 
-		/* write wait time = ALS off value */
-		reg_data[0] = CT406_WTIME;
-		reg_data[1] = CT406_WTIME_ALS_OFF;
-		error = ct406_i2c_write(ct, reg_data, 1);
-		if (error < 0) {
-			pr_err("%s: Error  %d\n", __func__, error);
-			return error;
-		}
-		error = ct406_set_wait_enable(ct, 1);
-		if (error) {
-			pr_err("%s: Unable to set wait enable: %d\n",
-				__func__, error);
-			return error;
-		}
-
-		ct406_clear_als_flag(ct);
+	/* write wait time = ALS off value */
+	reg_data[0] = CT406_WTIME;
+	reg_data[1] = CT406_WTIME_ALS_OFF;
+	error = ct406_i2c_write(ct, reg_data, 1);
+	if (error < 0) {
+		pr_err("%s: Error  %d\n", __func__, error);
+		return error;
 	}
+	error = ct406_set_wait_enable(ct, 1);
+	if (error) {
+		pr_err("%s: Unable to set wait enable: %d\n",
+			__func__, error);
+		return error;
+	}
+
+	ct406_clear_als_flag(ct);
 
 	return 0;
 }
@@ -809,27 +738,6 @@ static void ct406_measure_noise_floor(struct ct406_data *ct)
 	unsigned int max = ct->pdata_max - 1 - ct->prox_covered_offset;
 	u8 reg_data[2] = {0};
 
-	/* disable ALS temporarily */
-	error = ct406_set_als_enable(ct, 0);
-	if (error < 0)
-		pr_err("%s: error disabling ALS: %d\n",
-			__func__, error);
-
-	/* clear AGL for regular ALS gain behavior */
-	reg_data[0] = CT406_CONFIG;
-	reg_data[1] = 0;
-	error = ct406_i2c_write(ct, reg_data, 1);
-	if (error < 0)
-		pr_err("%s: error writing CONFIG: %d\n",
-			__func__, error);
-
-	/* disable wait */
-	error = ct406_set_wait_enable(ct, 0);
-	if (error) {
-		pr_err("%s: Unable to set wait enable: %d\n",
-			__func__, error);
-	}
-
 	for (i = 0; i < num_samples; i++) {
 		/* enable prox sensor and wait */
 		error = ct406_set_prox_enable(ct, 1);
@@ -838,7 +746,7 @@ static void ct406_measure_noise_floor(struct ct406_data *ct)
 				__func__, error);
 			break;
 		}
-		usleep_range(12000, 13000);
+		usleep_range(12000, 12100);
 
 		reg_data[0] = (CT406_PDATA | CT406_COMMAND_AUTO_INCREMENT);
 		error = ct406_i2c_read(ct, reg_data, 2);
@@ -880,58 +788,6 @@ static void ct406_measure_noise_floor(struct ct406_data *ct)
 	if (error)
 		pr_err("%s: Error enabling proximity sensor: %d\n",
 			__func__, error);
-
-	/* re-enable ALS if necessary */
-	ct406_als_mode_low_lux(ct);
-	if (ct->als_requested && !ct->suspended)
-		ct406_enable_als(ct);
-}
-
-static int ct406_check_saturation(struct ct406_data *ct)
-{
-	int error = 0;
-	u8 reg_data[2] = {0};
-	unsigned int c0data;
-
-	/* disable prox */
-	ct406_set_prox_enable(ct, 0);
-	ct->prox_low_threshold = 0;
-	ct->prox_high_threshold = ct->pdata_max;
-	ct406_write_prox_thresholds(ct);
-
-	ct406_als_mode_sunlight(ct);
-	ct406_set_als_enable(ct, 1);
-
-	/* write ALS interrupt persistence = saturated value */
-	reg_data[0] = CT406_PERS;
-	reg_data[1] = CT406_PERS_PPERS | CT406_PERS_APERS_SATURATED;
-	error = ct406_i2c_write(ct, reg_data, 1);
-	if (error < 0)
-		return 0;
-
-	/* write wait time = saturated value */
-	reg_data[0] = CT406_WTIME;
-	reg_data[1] = CT406_WTIME_SATURATED;
-	error = ct406_i2c_write(ct, reg_data, 1);
-	if (error < 0)
-		return 0;
-	error = ct406_set_wait_enable(ct, 1);
-	if (error) {
-		pr_err("%s: Unable to set wait enable: %d\n",
-			__func__, error);
-		return error;
-	}
-
-	usleep_range(12000, 13000);
-
-	/* read C0DATA */
-	reg_data[0] = (CT406_C0DATA | CT406_COMMAND_AUTO_INCREMENT);
-	error = ct406_i2c_read(ct, reg_data, 2);
-	if (error < 0)
-		return 0;
-	c0data = (reg_data[1] << 8) | reg_data[0];
-
-	return (c0data > ct->als_low_threshold);
 }
 
 static int ct406_enable_prox(struct ct406_data *ct)
@@ -949,10 +805,7 @@ static int ct406_enable_prox(struct ct406_data *ct)
 			return error;
 	}
 
-	if (ct406_check_saturation(ct))
-		ct406_prox_mode_saturated(ct);
-	else
-		ct406_measure_noise_floor(ct);
+	ct406_measure_noise_floor(ct);
 
 	return 0;
 }
@@ -962,15 +815,7 @@ static int ct406_disable_prox(struct ct406_data *ct)
 	if (ct->prox_enabled) {
 		ct406_set_prox_enable(ct, 0);
 		ct406_clear_prox_flag(ct);
-		ct406_prox_mode_saturated(ct);
-
-		if (ct->als_requested) {
-			if (ct->als_mode == CT406_ALS_MODE_SUNLIGHT) {
-				ct406_als_mode_low_lux(ct);
-				if (!ct->suspended)
-					ct406_enable_als(ct);
-			}
-		}
+		ct->prox_mode = CT406_PROX_MODE_UNKNOWN;
 	}
 
 	if (ct->suspended && ct->regs_initialized) {
@@ -1001,8 +846,8 @@ static void ct406_report_prox(struct ct406_data *ct)
 		pr_info("%s: PDATA = %d\n", __func__, pdata);
 
 	switch (ct->prox_mode) {
-	case CT406_PROX_MODE_SATURATED:
-		pr_warn("%s: prox interrupted in saturated mode!\n", __func__);
+	case CT406_PROX_MODE_UNKNOWN:
+		pr_warn("%s: prox in invalid state!\n", __func__);
 		wake_unlock(&ct->wl);
 		break;
 	case CT406_PROX_MODE_UNCOVERED:
@@ -1048,10 +893,11 @@ static void ct406_report_als(struct ct406_data *ct)
 {
 	int error;
 	u8 reg_data[4] = {0};
-	unsigned int c0data;
-	unsigned int c1data;
+	int c0data;
+	int c1data;
 	unsigned int ratio;
-	unsigned int lux = 0;
+	int lux1 = 0;
+	int lux2 = 0;
 	unsigned int threshold_delta;
 
 	reg_data[0] = (CT406_C0DATA | CT406_COMMAND_AUTO_INCREMENT);
@@ -1077,49 +923,77 @@ static void ct406_report_als(struct ct406_data *ct)
 		ct->als_high_threshold = CT406_C0DATA_MAX;
 	ct406_write_als_thresholds(ct);
 
-	/* calculate lux using piecewise function from TAOS */
-	if (c0data == 0)
-		c0data = 1;
-	ratio = ((100 * c1data) + c0data - 1) / c0data;
-	switch (ct->als_mode) {
-	case CT406_ALS_MODE_SUNLIGHT:
-		if (c0data == 0x0400 || c1data == 0x0400)
-			lux = 0xFFFF;
-		else if (ratio <= 51)
-			lux = (1041*c0data - 1963*c1data);
-		else if (ratio <= 58)
-			lux = (342*c0data - 587*c1data);
-		else
-			lux = 0;
-		break;
-	case CT406_ALS_MODE_LOW_LUX:
-		if (c0data == 0x4800 || c1data == 0x4800)
-			lux = CT406_ALS_LOW_TO_HIGH_THRESHOLD;
-		else if (ratio <= 51)
-			lux = (121*c0data - 227*c1data) / 100;
-		else if (ratio <= 58)
-			lux = (40*c0data - 68*c1data) / 100;
-		else
-			lux = 0;
-		break;
-	case CT406_ALS_MODE_HIGH_LUX:
-		if (c0data == 0x4800 || c1data == 0x4800)
-			lux = 0xFFFF;
-		else if (ratio <= 51)
-			lux = (964*c0data - 1818*c1data) / 100;
-		else if (ratio <= 58)
-			lux = (317*c0data - 544*c1data) / 100;
-		else
-			lux = 0;
-		break;
-	default:
-		pr_err("%s: ALS mode is %d!\n", __func__, ct->als_mode);
+
+	if (ct->ink_type == 0) {
+		/* calculate lux using piecewise function from TAOS */
+		if (c0data == 0)
+			c0data = 1;
+		ratio = ((100 * c1data) + c0data - 1) / c0data;
+		switch (ct->als_mode) {
+		case CT406_ALS_MODE_LOW_LUX:
+			if (c0data == 0x4800 || c1data == 0x4800)
+				lux1 = CT406_ALS_LOW_TO_HIGH_THRESHOLD;
+			else if (ratio <= 51)
+				lux1 = (121*c0data - 227*c1data) / 100;
+			else if (ratio <= 58)
+				lux1 = (40*c0data - 68*c1data) / 100;
+			else
+				lux1 = 0;
+			break;
+		case CT406_ALS_MODE_HIGH_LUX:
+			if (c0data == 0x4800 || c1data == 0x4800)
+				lux1 = 0xFFFF;
+			else if (ratio <= 51)
+				lux1 = (964*c0data - 1818*c1data) / 100;
+			else if (ratio <= 58)
+				lux1 = (317*c0data - 544*c1data) / 100;
+			else
+				lux1 = 0;
+			break;
+		default:
+			pr_err("%s: ALS mode is %d!\n", __func__, ct->als_mode);
+		}
+	} else {
+		switch (ct->als_mode) {
+		case CT406_ALS_MODE_LOW_LUX:
+			if (c0data == 0x4800 || c1data == 0x4800)
+				lux1 = CT406_ALS_LOW_TO_HIGH_THRESHOLD;
+			else {
+				lux1 = ((1000 * c0data) - (2005 * c1data))
+					/ (71 * 8);
+				if (lux1 < 0)
+					lux1 = 0;
+				lux2 = ((604 * c0data) - (1090 * c1data))
+					/ (71 * 8);
+				if (lux2 < 0)
+					lux2 = 0;
+				if (lux1 < lux2)
+					lux1 = lux2;
+			}
+			break;
+		case CT406_ALS_MODE_HIGH_LUX:
+			if (c0data == 0x4800 || c1data == 0x4800)
+				lux1 = 0xFFFF;
+			else {
+				lux1 = ((1000 * c0data) - (2005 * c1data)) / 71;
+				if (lux1 < 0)
+					lux1 = 0;
+				lux2 = ((604 * c0data) - (1090 * c1data)) / 71;
+				if (lux2 < 0)
+					lux2 = 0;
+				if (lux1 < lux2)
+					lux1 = lux2;
+			}
+			break;
+		default:
+			pr_err("%s: ALS mode is %d!\n", __func__, ct->als_mode);
+		}
 	}
 
 	/* input.c filters consecutive LED_MISC values <=1. */
-	lux = (lux >= 2) ? lux : 2;
+	lux1 = (lux1 >= 2) ? lux1 : 2;
 
-	input_event(ct->dev, EV_LED, LED_MISC, lux);
+	input_event(ct->dev, EV_LED, LED_MISC, lux1);
 	input_sync(ct->dev);
 
 	if (ct->als_first_report == 0) {
@@ -1133,13 +1007,9 @@ static void ct406_report_als(struct ct406_data *ct)
 		ct->als_first_report = 1;
 	}
 
-	if (ct->als_mode != CT406_ALS_MODE_SUNLIGHT)
-		ct406_check_als_range(ct, lux);
+	ct406_check_als_range(ct, lux1);
 
 	ct406_clear_als_flag(ct);
-
-	if (ct->als_mode == CT406_ALS_MODE_SUNLIGHT)
-		ct406_enable_prox(ct); /* re-check saturation */
 }
 
 static int ct406_misc_open(struct inode *inode, struct file *file)
@@ -1239,10 +1109,15 @@ static int ct406_set_prox_enable_param(const char *char_value,
 	if (ct406_debug & CT406_DBG_INPUT)
 		pr_info("%s: prox enable = %d\n", __func__,
 			ct406_misc_data->prox_requested);
-	if (ct406_misc_data->prox_requested)
-		ret = ct406_enable_prox(ct406_misc_data);
-	else
+
+	if (ct406_misc_data->prox_requested) {
+		ct406_misc_data->prox_starting = 1;
+		queue_work(ct406_misc_data->workqueue,
+			&ct406_misc_data->work_prox_start);
+	} else {
+		ct406_misc_data->prox_starting = 0;
 		ret = ct406_disable_prox(ct406_misc_data);
+	}
 
 	mutex_unlock(&ct406_misc_data->mutex);
 
@@ -1312,8 +1187,7 @@ static int ct406_set_als_delay_param(const char *char_value,
 	else
 		ct406_misc_data->als_apers = 0x01;
 
-	if (ct406_misc_data->als_enabled
-		&& (ct406_misc_data->als_mode != CT406_ALS_MODE_SUNLIGHT)) {
+	if (ct406_misc_data->als_enabled) {
 		ct406_disable_als(ct406_misc_data);
 		ct406_enable_als(ct406_misc_data);
 	}
@@ -1470,7 +1344,20 @@ static void ct406_work_func(struct work_struct *work)
 	enable_irq(ct->client->irq);
 }
 
-static int ct406_suspend(void)
+static void ct406_work_prox_start(struct work_struct *work)
+{
+	struct ct406_data *ct =
+		container_of(work, struct ct406_data, work_prox_start);
+
+	mutex_lock(&ct->mutex);
+	if (ct->prox_starting)
+		ct406_enable_prox(ct406_misc_data);
+	ct->prox_starting = 0;
+	mutex_unlock(&ct->mutex);
+}
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void ct406_suspend(struct early_suspend *handler)
 {
 	if (ct406_debug & CT406_DBG_SUSPEND_RESUME)
 		pr_info("%s\n", __func__);
@@ -1485,11 +1372,9 @@ static int ct406_suspend(void)
 	ct406_misc_data->suspended = 1;
 
 	mutex_unlock(&ct406_misc_data->mutex);
-
-	return 0;
 }
 
-static int ct406_resume(void)
+static void ct406_resume(struct early_suspend *handler)
 {
 	if (ct406_debug & CT406_DBG_SUSPEND_RESUME)
 		pr_info("%s\n", __func__);
@@ -1505,34 +1390,74 @@ static int ct406_resume(void)
 		ct406_enable_als(ct406_misc_data);
 
 	mutex_unlock(&ct406_misc_data->mutex);
-
-	return 0;
 }
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 
-static int ct406_pm_event(struct notifier_block *this, unsigned long event,
-	void *ptr)
+#ifdef CONFIG_OF
+static struct ct406_platform_data *
+ct406_of_init(struct i2c_client *client)
 {
-	switch (event) {
-	case PM_SUSPEND_PREPARE:
-		ct406_suspend();
-		break;
-	case PM_POST_SUSPEND:
-		ct406_resume();
-	}
-	return NOTIFY_DONE;
-}
+	struct ct406_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	u32 val;
 
-static struct notifier_block ct406_pm_notifier = {
-	.notifier_call = ct406_pm_event,
-};
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	pdata->gpio_irq = of_get_gpio(np, 0);
+	if (!gpio_is_valid(pdata->gpio_irq)) {
+		dev_err(&client->dev, "ct406 irq gpio invalid\n");
+		return NULL;
+	}
+	if (gpio_request(pdata->gpio_irq, "ct406_irq")) {
+		dev_err(&client->dev, "failed to export ct406 irq gpio\n");
+		return NULL;
+	}
+
+	gpio_export(pdata->gpio_irq, 1);
+	gpio_export_link(&client->dev, "ct406_irq", pdata->gpio_irq);
+
+	pdata->irq = gpio_to_irq(pdata->gpio_irq);
+
+	if (!of_property_read_u32(np, "ams,prox-samples-for-noise-floor", &val))
+		pdata->prox_samples_for_noise_floor = (u8)val;
+	if (!of_property_read_u32(np, "ams,prox-covered-offset", &val))
+		pdata->ct406_prox_covered_offset = (u16)val;
+	if (!of_property_read_u32(np, "ams,prox-uncovered-offset", &val))
+		pdata->ct406_prox_uncovered_offset = (u16)val;
+	if (!of_property_read_u32(np, "ams,prox-recalibrate-offset", &val))
+		pdata->ct406_prox_recalibrate_offset = (u16)val;
+	if (!of_property_read_u32(np, "ams,prox-offset", &val))
+		pdata->ct406_prox_offset = (u8)val;
+	if (!of_property_read_u32(np, "ams,prox-pulse-count", &val))
+		pdata->ct406_prox_pulse_count = (u8)val;
+	if (!of_property_read_u32(np, "ams,ink_type", &val))
+		pdata->ink_type = (u8)val;
+
+	return pdata;
+}
+#else
+static inline struct ct406_platform_data *
+ct406_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
 
 static int ct406_probe(struct i2c_client *client,
 		       const struct i2c_device_id *id)
 {
-	struct ct406_platform_data *pdata = client->dev.platform_data;
+	struct ct406_platform_data *pdata;
 	struct ct406_data *ct;
-	u8 reg_data[1] = {0};
 	int error = 0;
+
+	if (client->dev.of_node)
+		pdata = ct406_of_init(client);
+	else
+		pdata = client->dev.platform_data;
 
 	if (pdata == NULL) {
 		pr_err("%s: platform data required\n", __func__);
@@ -1542,7 +1467,7 @@ static int ct406_probe(struct i2c_client *client,
 	client->irq = pdata->irq;
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("%s:I2C_FUNC_I2C not supported\n", __func__);
-		return -ENODEV;
+		goto i2c_check_fail;
 	}
 
 	ct = kzalloc(sizeof(struct ct406_data), GFP_KERNEL);
@@ -1554,15 +1479,10 @@ static int ct406_probe(struct i2c_client *client,
 	ct->client = client;
 	ct->pdata = pdata;
 
-	if (ct->pdata->regulator_name[0] != '\0') {
-		ct->regulator = regulator_get(NULL,
-			ct->pdata->regulator_name);
-		if (IS_ERR(ct->regulator)) {
-			pr_err("%s: cannot acquire regulator [%s]\n",
-				__func__, ct->pdata->regulator_name);
-			error = PTR_ERR(ct->regulator);
-			goto error_regulator_get_failed;
-		}
+	ct->regulator = regulator_get(&client->dev, "vdd");
+	if (IS_ERR(ct->regulator)) {
+		dev_info(&client->dev, "Cannot acquire regulator\n");
+		ct->regulator = NULL;
 	}
 
 	ct->dev = input_allocate_device();
@@ -1592,8 +1512,9 @@ static int ct406_probe(struct i2c_client *client,
 
 	ct->oscillator_enabled = 0;
 	ct->prox_requested = 0;
+	ct->prox_starting = 0;
 	ct->prox_enabled = 0;
-	ct->prox_mode = CT406_PROX_MODE_SATURATED;
+	ct->prox_mode = CT406_PROX_MODE_UNKNOWN;
 	ct->als_requested = 0;
 	ct->als_enabled = 0;
 	ct->als_apers = 0x4;
@@ -1608,6 +1529,11 @@ static int ct406_probe(struct i2c_client *client,
 	}
 
 	INIT_WORK(&ct->work, ct406_work_func);
+	INIT_WORK(&ct->work_prox_start, ct406_work_prox_start);
+
+	mutex_init(&ct->mutex);
+
+	wake_lock_init(&ct->wl, WAKE_LOCK_SUSPEND, "ct406_wake");
 
 	error = request_irq(client->irq, ct406_irq_handler,
 		IRQF_TRIGGER_LOW, LD_CT406_NAME, ct);
@@ -1620,10 +1546,6 @@ static int ct406_probe(struct i2c_client *client,
 	disable_irq(client->irq);
 
 	i2c_set_clientdata(client, ct);
-
-	mutex_init(&ct->mutex);
-
-	wake_lock_init(&ct->wl, WAKE_LOCK_SUSPEND, "ct406_wake");
 
 	error = input_register_device(ct->dev);
 	if (error) {
@@ -1645,39 +1567,15 @@ static int ct406_probe(struct i2c_client *client,
 		goto error_power_on_failed;
 	}
 
-	reg_data[0] = CT406_REV_ID;
-	error = ct406_i2c_read(ct, reg_data, 1);
-	if (error < 0) {
-		pr_err("%s: revision read failed: %d\n", __func__, error);
-		goto error_revision_read_failed;
-	}
-	if (reg_data[0] == CT40X_REV_ID_CT405) {
-		pr_info("%s: CT405 part detected\n", __func__);
-		ct->prox_saturation_threshold
-			= ct->pdata->ct405_prox_saturation_threshold;
-		ct->prox_covered_offset = ct->pdata->ct405_prox_covered_offset;
-		ct->prox_uncovered_offset
-			= ct->pdata->ct405_prox_uncovered_offset;
-		ct->prox_recalibrate_offset
-			= ct->pdata->ct405_prox_recalibrate_offset;
-		ct->prox_pulse_count = ct->pdata->ct405_prox_pulse_count;
-		ct->prox_offset = ct->pdata->ct405_prox_offset;
-		ct->pdata_max = CT405_PDATA_MAX;
-		ct->hw_type = CT405_HW_TYPE;
-	} else {
-		pr_info("%s: CT406 part detected\n", __func__);
-		ct->prox_saturation_threshold
-			= ct->pdata->ct406_prox_saturation_threshold;
-		ct->prox_covered_offset = ct->pdata->ct406_prox_covered_offset;
-		ct->prox_uncovered_offset
-			= ct->pdata->ct406_prox_uncovered_offset;
-		ct->prox_recalibrate_offset
-			= ct->pdata->ct406_prox_recalibrate_offset;
-		ct->prox_pulse_count = ct->pdata->ct406_prox_pulse_count;
-		ct->prox_offset = ct->pdata->ct406_prox_offset;
-		ct->pdata_max = CT406_PDATA_MAX;
-		ct->hw_type = CT406_HW_TYPE;
-	}
+	ct->prox_covered_offset = ct->pdata->ct406_prox_covered_offset;
+	ct->prox_uncovered_offset
+		= ct->pdata->ct406_prox_uncovered_offset;
+	ct->prox_recalibrate_offset
+		= ct->pdata->ct406_prox_recalibrate_offset;
+	ct->prox_pulse_count = ct->pdata->ct406_prox_pulse_count;
+	ct->prox_offset = ct->pdata->ct406_prox_offset;
+	ct->pdata_max = CT406_PDATA_MAX;
+	ct->ink_type = ct->pdata->ink_type;
 
 	error = ct406_device_init(ct);
 	if (error) {
@@ -1685,7 +1583,11 @@ static int ct406_probe(struct i2c_client *client,
 		goto error_revision_read_failed;
 	}
 
-	register_pm_notifier(&ct406_pm_notifier);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	ct->ct406_early_suspend.suspend = ct406_suspend;
+	ct->ct406_early_suspend.resume = ct406_resume;
+	register_early_suspend(&ct->ct406_early_suspend);
+#endif
 
 	return 0;
 
@@ -1697,10 +1599,11 @@ error_create_registers_file_failed:
 	input_unregister_device(ct->dev);
 	ct->dev = NULL;
 error_input_register_failed:
-	mutex_destroy(&ct->mutex);
 	i2c_set_clientdata(client, NULL);
 	free_irq(ct->client->irq, ct);
 error_req_irq_failed:
+	mutex_destroy(&ct->mutex);
+	wake_lock_destroy(&ct->wl);
 	destroy_workqueue(ct->workqueue);
 error_create_wq_failed:
 	misc_deregister(&ct->miscdevice);
@@ -1708,10 +1611,12 @@ error_misc_register_failed:
 	ct406_misc_data = NULL;
 	input_free_device(ct->dev);
 error_input_allocate_failed:
-	regulator_put(ct->regulator);
-error_regulator_get_failed:
+	if (ct->regulator)
+		regulator_put(ct->regulator);
 	kfree(ct);
 error_alloc_data_failed:
+i2c_check_fail:
+	gpio_free(pdata->gpio_irq);
 	return error;
 }
 
@@ -1733,13 +1638,22 @@ static int ct406_remove(struct i2c_client *client)
 	destroy_workqueue(ct->workqueue);
 
 	misc_deregister(&ct->miscdevice);
+	if (ct->regulator)
+		regulator_put(ct->regulator);
 
-	regulator_put(ct->regulator);
-
+	gpio_free(ct->pdata->gpio_irq);
 	kfree(ct);
 
 	return 0;
 }
+
+#ifdef CONFIG_OF
+static struct of_device_id ct406_match_tbl[] = {
+	{ .compatible = "ams,ct406" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, ct406_match_tbl);
+#endif
 
 static const struct i2c_device_id ct406_id[] = {
 	{LD_CT406_NAME, 0},
@@ -1753,6 +1667,7 @@ static struct i2c_driver ct406_i2c_driver = {
 	.driver = {
 		.name = LD_CT406_NAME,
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(ct406_match_tbl),
 	},
 };
 
