@@ -231,6 +231,7 @@ int arizona_init_gpio(struct snd_soc_codec *codec)
 	int i;
 
 	switch (arizona->type) {
+	case WM8280:
 	case WM5110:
 		snd_soc_dapm_disable_pin(&codec->dapm, "DRC2 Signal Activity");
 		break;
@@ -1329,6 +1330,7 @@ struct arizona_fll_cfg {
 static inline int arizona_fratio_ref(struct arizona *arizona, int i)
 {
 	switch (arizona->type) {
+	case WM8280:
 	case WM5110:
 		if (arizona->rev >= 3)
 			return fll_fratios[i].fratio[1];
