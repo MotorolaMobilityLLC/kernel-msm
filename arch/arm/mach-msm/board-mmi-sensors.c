@@ -53,19 +53,11 @@ static struct msm_gpiomux_config ct406_irq_gpio_config = {
 struct ct406_platform_data mp_ct406_pdata = {
 	.regulator_name = "",
 	.prox_samples_for_noise_floor = 0x05,
-	.ct405_prox_saturation_threshold = 0x0208,
-	.ct405_prox_covered_offset = 0x008c,
-	.ct405_prox_uncovered_offset = 0x0046,
-	.ct405_prox_recalibrate_offset = 0x0046,
-	.ct405_prox_pulse_count = 0x02,
-	.ct405_prox_offset = 0x00,
-	.ct406_prox_saturation_threshold = 0x0208,
 	.ct406_prox_covered_offset = 0x008c,
 	.ct406_prox_uncovered_offset = 0x0046,
 	.ct406_prox_recalibrate_offset = 0x0046,
 	.ct406_prox_pulse_count = 0x02,
 	.ct406_prox_offset = 0x00,
-	.als_lens_transmissivity = 20,
 };
 
 int __init ct406_init(struct i2c_board_info *info, struct device_node *child)
@@ -97,18 +89,6 @@ int __init ct406_init(struct i2c_board_info *info, struct device_node *child)
 
 	if(!of_property_read_u32(child, "prox_samples_for_noise_floor", &value))
 		mp_ct406_pdata.prox_samples_for_noise_floor = (u8 )value;
-	if(! of_property_read_u32(child, "ct405_prox_saturation_threshold", &value))
-		mp_ct406_pdata.ct405_prox_saturation_threshold = (u16 )value;
-	if(!of_property_read_u32(child, "ct405_prox_covered_offset", &value))
-		mp_ct406_pdata.ct405_prox_covered_offset = (u16 )value;
-	if(!of_property_read_u32(child, "ct405_prox_uncovered_offset", &value))
-		mp_ct406_pdata.ct405_prox_uncovered_offset = (u16 )value;
-	if(!of_property_read_u32(child, "ct405_prox_recalibrate_offset", &value))
-		mp_ct406_pdata.ct405_prox_recalibrate_offset = (u16 )value;
-	if(!of_property_read_u32(child, "ct405_prox_offset", &value))
-		mp_ct406_pdata.ct405_prox_offset = (u8 )value;
-	if(!of_property_read_u32(child, "ct406_prox_saturation_threshold", &value))
-		mp_ct406_pdata.ct406_prox_saturation_threshold = (u16 )value;
 	if(!of_property_read_u32(child, "ct406_prox_covered_offset", &value))
 		mp_ct406_pdata.ct406_prox_covered_offset = (u16 )value;
 	if(!of_property_read_u32(child, "ct406_prox_uncovered_offset", &value))
