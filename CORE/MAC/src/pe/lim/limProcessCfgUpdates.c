@@ -623,7 +623,7 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         {
             limLog(pMac, LOGW,
                 FL("BTC requested to disable all RX BA sessions"));
-            limDelAllBASessionsBtc(pMac);
+            limDelPerBssBASessionsBtc(pMac);
         }
         else
         {
