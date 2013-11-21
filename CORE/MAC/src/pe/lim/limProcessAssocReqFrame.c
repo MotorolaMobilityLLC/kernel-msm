@@ -654,8 +654,8 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
             && psessionEntry->pLimStartBssReq->rsnIE.length)
         {
             limLog(pMac, LOGE,
-                   FL("AP supports RSN enabled authentication"));
-
+                   FL("RSN enabled auth, Re/Assoc req from STA: "MAC_ADDRESS_STR),
+                       MAC_ADDR_ARRAY(pHdr->sa));
             if(pAssocReq->rsnPresent)
             {
                 if(pAssocReq->rsn.length)
