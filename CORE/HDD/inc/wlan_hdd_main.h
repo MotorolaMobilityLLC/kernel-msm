@@ -685,13 +685,6 @@ struct hdd_ap_ctx_s
    tCsrRoamSetKey wepKey[CSR_MAX_NUM_KEY];
 
    beacon_data_t *beacon;
-
-   //Elements for setting MC rate with SAP mode
-   v_U32_t targetMCRate;
-   v_U32_t getStasCookie;
-   tSap_Event getStasEventBuffer;
-   tSap_AssocMacAddr *assocStasBuffer;
-   struct completion sap_get_associated_stas_complete;
 };
 
 struct hdd_mon_ctx_s
