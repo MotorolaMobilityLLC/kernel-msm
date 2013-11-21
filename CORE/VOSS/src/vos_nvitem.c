@@ -3071,21 +3071,18 @@ VOS_STATUS vos_init_wiphy_from_nv_bin(void)
         wiphy->flags |= WIPHY_FLAG_STRICT_REGULATORY;
     }
 
+    m = 0;
     for (i = 0; i < IEEE80211_NUM_BANDS; i++)
     {
 
         if (wiphy->bands[i] == NULL)
         {
             pr_info("error: wiphy->bands[i] is NULL, i = %d\n", i);
-            return VOS_STATUS_E_FAULT;
+            continue;
         }
 
         /* internal channels[] is one continous array for both 2G and 5G bands
            m is internal starting channel index for each band */
-        if (i == 0)
-            m = 0;
-        else
-            m = wiphy->bands[i-1]->n_channels + m;
 
         for (j = 0; j < wiphy->bands[i]->n_channels; j++)
         {
@@ -3112,6 +3109,8 @@ VOS_STATUS vos_init_wiphy_from_nv_bin(void)
                     (pnvEFSTable->halnv.tables.regDomains[reg_domain].channels[k].pwrLimit)*100;
             }
         }
+
+	m += wiphy->bands[i]->n_channels;
     }
 
     return VOS_STATUS_SUCCESS;
