@@ -8804,19 +8804,19 @@ void wlan_hdd_cfg80211_lphb_ind_handler
       return;
    }
 
-   if(!nla_put_u32(skb, WLAN_HDD_TM_ATTR_CMD, WLAN_HDD_TM_CMD_WLAN_HB))
+   if(nla_put_u32(skb, WLAN_HDD_TM_ATTR_CMD, WLAN_HDD_TM_CMD_WLAN_HB))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "WLAN_HDD_TM_ATTR_CMD put fail");
       goto nla_put_failure;
    }
-   if(!nla_put_u32(skb, WLAN_HDD_TM_ATTR_TYPE, lphbInd->protocolType))
+   if(nla_put_u32(skb, WLAN_HDD_TM_ATTR_TYPE, lphbInd->protocolType))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "WLAN_HDD_TM_ATTR_TYPE put fail");
       goto nla_put_failure;
    }
-   if(!nla_put(skb, WLAN_HDD_TM_ATTR_DATA,
+   if(nla_put(skb, WLAN_HDD_TM_ATTR_DATA,
            sizeof(tSirLPHBInd), lphbInd))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
