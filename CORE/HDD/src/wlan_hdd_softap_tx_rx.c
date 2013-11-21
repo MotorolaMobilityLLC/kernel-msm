@@ -187,7 +187,7 @@ VOS_STATUS hdd_stop_trafficMonitor( hdd_adapter_t *pAdapter )
 
     status = wlan_hdd_validate_context(pHddCtx);
 
-    if (0 != status)
+    if (-ENODEV == status)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: HDD context is not valid", __func__);
@@ -209,7 +209,7 @@ VOS_STATUS hdd_stop_trafficMonitor( hdd_adapter_t *pAdapter )
         vos_lock_destroy(&pHddCtx->traffic_monitor.trafficLock);
         pHddCtx->traffic_monitor.isInitialized = 0;
     }
-    return status;
+    return VOS_STATUS_SUCCESS;
 }
 
 /**============================================================================
