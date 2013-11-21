@@ -383,6 +383,7 @@ struct qpnp_chg_chip {
 	struct delayed_work		aicl_check_work;
 	struct work_struct		insertion_ocv_work;
 	struct work_struct		ocp_clear_work;
+	struct delayed_work		update_heartbeat_work;
 	struct qpnp_chg_regulator	otg_vreg;
 	struct qpnp_chg_regulator	boost_vreg;
 	struct qpnp_chg_regulator	batfet_vreg;
@@ -3976,6 +3977,34 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 		pr_err("request ADC error\n");
 }
 
+/**
+ * update_heartbeat - internal function to update userspace
+ *              per update_time minutes
+ *
+ */
+#define UPDATE_HEARTBEAT_MS		60000
+static void update_heartbeat(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct qpnp_chg_chip *chip = container_of(dwork,
+				struct qpnp_chg_chip, update_heartbeat_work);
+	int temp = 0;
+
+	/*
+	 * In pm8110/pm8226 there is automated BTM which takes care of
+	 * cool and warm updates of comparators
+	 */
+	temp = get_prop_batt_temp(chip);
+
+	if (temp >= MAX_TOLERABLE_BATT_TEMP_DDC) {
+		pr_err("BATT_TEMP= %d >= 68degC, device will be shut-down\n",
+		       temp);
+		power_supply_changed(&chip->batt_psy);
+	}
+	schedule_delayed_work(&chip->update_heartbeat_work,
+		msecs_to_jiffies(UPDATE_HEARTBEAT_MS));
+}
+
 #define MIN_COOL_TEMP	-300
 #define MAX_WARM_TEMP	1000
 
@@ -5454,6 +5483,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 			qpnp_usbin_health_check_work);
 	INIT_WORK(&chip->soc_check_work, qpnp_chg_soc_check_work);
 	INIT_DELAYED_WORK(&chip->aicl_check_work, qpnp_aicl_check_work);
+	INIT_DELAYED_WORK(&chip->update_heartbeat_work, update_heartbeat);
 
 	if (chip->dc_chgpth_base) {
 		chip->dc_psy.name = "qpnp-dc";
@@ -5546,6 +5576,8 @@ qpnp_charger_probe(struct spmi_device *spmi)
 
 	schedule_delayed_work(&chip->aicl_check_work,
 		msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
+	schedule_delayed_work(&chip->update_heartbeat_work,
+		msecs_to_jiffies(UPDATE_HEARTBEAT_MS));
 	pr_info("success chg_dis = %d, bpd = %d, usb = %d, dc = %d b_health = %d batt_present = %d\n",
 			chip->charging_disabled,
 			chip->bpd_detection,
@@ -5595,6 +5627,7 @@ qpnp_charger_remove(struct spmi_device *spmi)
 	mutex_destroy(&chip->jeita_configure_lock);
 
 	cancel_delayed_work_sync(&chip->chrg_ocv_work);
+	cancel_delayed_work_sync(&chip->update_heartbeat_work);
 	regulator_unregister(chip->otg_vreg.rdev);
 	regulator_unregister(chip->boost_vreg.rdev);
 
@@ -5607,6 +5640,8 @@ static int qpnp_chg_resume(struct device *dev)
 	struct qpnp_chg_chip *chip = dev_get_drvdata(dev);
 	int rc = 0;
 
+	cancel_delayed_work_sync(&chip->update_heartbeat_work);
+
 	if (chip->bat_if_base) {
 		rc = qpnp_chg_masked_write(chip,
 			chip->bat_if_base + BAT_IF_VREF_BAT_THM_CTRL,
@@ -5614,6 +5649,8 @@ static int qpnp_chg_resume(struct device *dev)
 			VREF_BATT_THERM_FORCE_ON, 1);
 		if (rc)
 			pr_debug("failed to force on VREF_BAT_THM rc=%d\n", rc);
+
+		schedule_delayed_work(&chip->update_heartbeat_work, 0);
 	}
 
 	return rc;
