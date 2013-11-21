@@ -1192,9 +1192,9 @@ int mmc_set_clock_bus_speed(struct mmc_card *card, unsigned long freq)
 		mmc_set_timing(card->host, MMC_TIMING_LEGACY);
 		mmc_set_clock(card->host, MMC_HIGH_26_MAX_DTR);
 
-		err = mmc_select_hs(card, &card->cached_ext_csd);
+		err = mmc_select_hs(card, (u8 *)&card->cached_ext_csd);
 	} else {
-		err = mmc_select_hs400(card, &card->cached_ext_csd);
+		err = mmc_select_hs400(card, (u8 *)&card->cached_ext_csd);
 	}
 
 	return err;
