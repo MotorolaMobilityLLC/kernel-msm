@@ -63,6 +63,7 @@
 #include "vos_api.h"
 #include "wlan_hdd_misc.h"
 #include "vos_sched.h"
+#include "sme_Api.h"
 #include "wlan_nv_parser.h"
 #include "wlan_hdd_main.h"
 #include <net/cfg80211.h>
@@ -72,7 +73,6 @@
 
 static v_REGDOMAIN_t cur_reg_domain = REGDOMAIN_COUNT;
 static char linux_reg_cc[2] = {0, 0};
-static v_BOOL_t linux_regulatory_init = VOS_FALSE;
 static v_REGDOMAIN_t temp_reg_domain = REGDOMAIN_COUNT;
 
 #endif
@@ -2239,6 +2239,8 @@ static int create_crda_regulatory_entry(struct wiphy *wiphy,
    crda_regulatory_entry_post_processing(wiphy, request, nBandCapability, NUM_REG_DOMAINS-2);
 return 0;
 }
+
+
 v_BOOL_t is_crda_regulatory_entry_valid(void)
 {
 return crda_regulatory_entry_valid;
@@ -2608,21 +2610,36 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
     /* We need to query the kernel to get the regulatory information
        for this country */
 
-    if (VOS_FALSE == linux_regulatory_init) {
+
+    /* First compare the country code with the existing current country code
+       . If both are same there is no need to query any database */
+
+    VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                   ("regdomain request"));
+
+    if ((country_code[0] == linux_reg_cc[0]) &&
+        (country_code[1] == linux_reg_cc[1])) {
+
+        /* country code already exists */
 
         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                   ("init time regdomain request") );
+                   (" country code already exists"));
 
-        /* linux regulatory has not been initialized yet; so the country
-           information stored with us would not be correct */
+        *pRegDomain = cur_reg_domain;
 
-        /* lookup the country in the local database */
+        return VOS_STATUS_SUCCESS;
+    }
+    else {
 
-        temp_reg_domain = REGDOMAIN_COUNT;
+        /* first lookup the country in the local database */
+
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                       (" new runtime country code"));
+
         for (i = 0; i < countryInfoTable.countryCount &&
                  REGDOMAIN_COUNT == temp_reg_domain; i++)
         {
-            if (memcmp(country_code,countryInfoTable.countryInfo[i].countryCode,
+            if (memcmp(country_code, countryInfoTable.countryInfo[i].countryCode,
                        VOS_COUNTRY_CODE_LEN) == 0)
             {
                 /* country code is found
@@ -2633,163 +2650,51 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
         }
 
         if (REGDOMAIN_COUNT == temp_reg_domain) {
+            temp_reg_domain = REGDOMAIN_WORLD;
 
-            /* the country was not found in the driver database
-               therefore return failure to the SME/CSR */
-
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                      ("init time regdomain request"));
-
-            return VOS_STATUS_E_EXISTS;
         }
 
-        else {
+        /* get the regulatory information from the kernel
+           database */
 
-            /* the country code was found in the driver database
-               now get the regulatory information from the kernel
-               database */
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
+                   (" get country information from kernel db"));
 
-            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                       ("country code found in driver db"));
+        INIT_COMPLETION(pHddCtx->linux_reg_req);
+        regulatory_hint(wiphy, country_code);
+        wait_result = wait_for_completion_interruptible_timeout(&pHddCtx->linux_reg_req,
+                                                                LINUX_REG_WAIT_TIME);
 
-            INIT_COMPLETION(pHddCtx->linux_reg_req);
-            regulatory_hint(wiphy, country_code);
-            wait_result = wait_for_completion_interruptible_timeout(&pHddCtx->linux_reg_req,
-								    LINUX_REG_WAIT_TIME);
+        /* if the country information does not exist with the kernel,
+           then the driver callback would not be called */
 
-            /* if the country information does not exist with the kernel, then
-               the driver callback would not be called */
+        if (wait_result >= 0) {
 
-            if (0 == wait_result) {
-
-                /* the driver callback was called. this means the country
-                   regulatory information was found in the kernel database.
-                   The callback would have updated the internal database. Here
-                   update the country and the return value for the regulatory
-                   domain */
-
-                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                           ("country code is found in kernel db"));
-
-                *pRegDomain = temp_reg_domain;
-                cur_reg_domain = temp_reg_domain;
-                linux_reg_cc[0] = country_code[0];
-                linux_reg_cc[1] = country_code[1];
-                pnvEFSTable->halnv.tables.defaultCountryTable.regDomain =
-                    *pRegDomain;
-
-                linux_regulatory_init = VOS_TRUE;
-                return VOS_STATUS_SUCCESS;
-            }
-            else {
-
-                /* the country information has not been found in the kernel
-                   database, return failure */
-
-                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                           ("country code is not found in kernel db"));
-                return VOS_STATUS_E_EXISTS;
-            }
-        }
-    }
-    else {
-
-        /* it is not the init time query but a runtime query. So first
-           compare the country code with the existing current country code
-           . If both are same there is no need to query any database */
-
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                   ("run time regdomain request"));
-
-        if ((country_code[0] == linux_reg_cc[0]) &&
-            (country_code[1] == linux_reg_cc[1])) {
-
-            /* country code already exists */
+            /* the driver callback was called. this means the country
+               regulatory information was found in the kernel database.
+               The callback would have updated the internal database. Here
+               update the country and the return value for the regulatory
+               domain */
 
             VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                       (" country code already exists"));
+                       ("runtime country code is found in kernel db"));
 
-            *pRegDomain = cur_reg_domain;
+            *pRegDomain = temp_reg_domain;
+            cur_reg_domain = temp_reg_domain;
+            linux_reg_cc[0] = country_code[0];
+            linux_reg_cc[1] = country_code[1];
 
             return VOS_STATUS_SUCCESS;
         }
         else {
 
-            /* first lookup the country in the local database */
+            /* the country information has not been found in the kernel
+               database, return failure */
 
-            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                       (" new runtime country code"));
+            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
+                       ("runtime country code is not found in kernel db"));
 
-            for (i = 0; i < countryInfoTable.countryCount &&
-                     REGDOMAIN_COUNT == temp_reg_domain; i++)
-            {
-                if (memcmp(country_code, countryInfoTable.countryInfo[i].countryCode,
-                           VOS_COUNTRY_CODE_LEN) == 0)
-                {
-                    /* country code is found
-                       record the temporary regulatory_domain as well */
-                    temp_reg_domain = countryInfoTable.countryInfo[i].regDomain;
-                    break;
-                }
-            }
-
-            if (REGDOMAIN_COUNT == temp_reg_domain) {
-
-                /* the country was not found in the driver database
-                   return failure */
-
-                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
-                           ("runtime country code is not found in driver db"));
-
-                return VOS_STATUS_E_EXISTS;
-            }
-
-            else {
-
-                /* the country code was found in the driver database
-                   now get the regulatory information from the kernel
-                   database */
-
-                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
-                           ("runtime country code found in driver db"));
-
-                INIT_COMPLETION(pHddCtx->linux_reg_req);
-                regulatory_hint(wiphy, country_code);
-                wait_result = wait_for_completion_interruptible_timeout(&pHddCtx->linux_reg_req,
-                                                                        LINUX_REG_WAIT_TIME);
-
-                /* if the country information does not exist with the kernel,
-                   then the driver callback would not be called */
-
-                if (0 == wait_result) {
-
-                /* the driver callback was called. this means the country
-                   regulatory information was found in the kernel database.
-                   The callback would have updated the internal database. Here
-                   update the country and the return value for the regulatory
-                   domain */
-
-                    VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                               ("runtime country code is found in kernel db"));
-
-                    *pRegDomain = temp_reg_domain;
-                    cur_reg_domain = temp_reg_domain;
-                    linux_reg_cc[0] = country_code[0];
-                    linux_reg_cc[1] = country_code[1];
-
-                    return VOS_STATUS_SUCCESS;
-                }
-                else {
-
-                    /* the country information has not been found in the kernel
-                       database, return failure */
-
-                    VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
-                               ("runtime country code is not found in kernel db"));
-
-                    return VOS_STATUS_E_EXISTS;
-                }
-            }
+            return VOS_STATUS_E_EXISTS;
         }
     }
 }
@@ -2909,6 +2814,117 @@ static int create_linux_regulatory_entry_from_regd(struct wiphy *wiphy,
     return 0;
 }
 
+/* create_linux_regulatory_entry to populate internal structures from wiphy */
+static int create_linux_regulatory_entry(struct wiphy *wiphy,
+                struct regulatory_request *request,
+                v_U8_t nBandCapability)
+{
+    int i, j, m;
+    int k = 0, n = 0;
+
+    /* 20MHz channels */
+    if (nBandCapability == eCSR_BAND_24)
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                  "BandCapability is set to 2G only\n");
+
+    for (i = 0, m = 0; i<IEEE80211_NUM_BANDS; i++)
+    {
+        /* 5G only */
+        if (i == IEEE80211_BAND_2GHZ && nBandCapability == eCSR_BAND_5G)
+            continue;
+
+        /* 2G only */
+        else if (i == IEEE80211_BAND_5GHZ && nBandCapability == eCSR_BAND_24)
+            continue;
+
+        if (wiphy->bands[i] == NULL)
+        {
+
+            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                      "error: wiphy->bands is NULL, i = %d\n", i);
+            return -1;
+        }
+
+        /* internal channels[] is one continous array for both 2G and 5G bands
+           m is internal starting channel index for each band */
+
+        if (i == 0)
+            m = 0;
+        else
+            m = wiphy->bands[i-1]->n_channels + m;
+
+        for (j = 0; j < wiphy->bands[i]->n_channels; j++)
+        {
+            /* k = (m + j) is internal current channel index for 20MHz channel
+              n is internal channel index for corresponding 40MHz channel */
+
+            k = m + j;
+            n = bw20_ch_index_to_bw40_ch_index(k);
+
+            if (n == -1)
+                return -1;
+
+            if (wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_DISABLED)
+            {
+                if (pnvEFSTable == NULL)
+                {
+                    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                              "error: pnvEFSTable is NULL, probably not parsed nv.bin yet\n");
+                    return -1;
+                }
+                pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].enabled =
+                    NV_CHANNEL_DISABLE;
+                pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].enabled =
+                    NV_CHANNEL_DISABLE;
+            }
+            else if (wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_RADAR)
+            {
+                pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].enabled =
+                    NV_CHANNEL_DFS;
+
+                /* max_power is in mBm = 100 * dBm */
+                pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].pwrLimit =
+                    (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)/100);
+                if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_HT40) == 0)
+                {
+                    pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].enabled =
+                        NV_CHANNEL_DFS;
+
+                    /* 40MHz channel power is half of 20MHz (-3dB) ?? */
+                    pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].pwrLimit =
+                        (tANI_S8) (((wiphy->bands[i]->channels[j].max_power)/100)-3);
+                }
+            }
+            else /* Enable is only last flag we support */
+            {
+                pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].enabled =
+                    NV_CHANNEL_ENABLE;
+
+                /* max_power is in dBm */
+                pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].pwrLimit =
+                    (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)/100);
+                if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_HT40) == 0)
+                {
+                    pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].enabled =
+                        NV_CHANNEL_ENABLE;
+                    /* 40MHz channel power is half of 20MHz (-3dB) */
+                    pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].pwrLimit =
+                        (tANI_S8) (((wiphy->bands[i]->channels[j].max_power)/100)-3);
+                }
+            }
+
+            /* ignore CRDA max_antenna_gain typical is 3dBi, nv.bin antennaGain
+               is real gain which should be provided by the real design */
+        }
+    }
+
+    if (k == 0)
+       return -1;
+
+    return 0;
+}
+
+
 /*
  * Function: wlan_hdd_linux_reg_notifier
  * This function is called from cfg80211 core to provide regulatory settings
@@ -2926,6 +2942,8 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
 {
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     tANI_U8 nBandCapability;
+    v_COUNTRYCODE_t country_code;
+    int i;
 
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                ("cfg80211 reg notifier callback for country"));
@@ -2942,16 +2960,60 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     if (request->initiator == NL80211_REGDOM_SET_BY_DRIVER)
     {
 
-         nBandCapability = pHddCtx->cfg_ini->nBandCapability;
+        nBandCapability = pHddCtx->cfg_ini->nBandCapability;
 
-         if (create_linux_regulatory_entry_from_regd(wiphy, request, pHddCtx->cfg_ini->nBandCapability) == 0)
-         {
+        if (create_linux_regulatory_entry(wiphy, request, pHddCtx->cfg_ini->nBandCapability) == 0)
+        {
 
-             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                        (" regulatory entry created"));
-         }
+        }
 
-         complete(&pHddCtx->linux_reg_req);
+        complete(&pHddCtx->linux_reg_req);
+    }
+
+    else if (request->initiator == NL80211_REGDOM_SET_BY_USER)
+    {
+
+        /* first lookup the country in the local database */
+
+        country_code[0] = request->alpha2[0];
+        country_code[1] = request->alpha2[1];
+
+        temp_reg_domain = REGDOMAIN_COUNT;
+        for (i = 0; i < countryInfoTable.countryCount &&
+                 REGDOMAIN_COUNT == temp_reg_domain; i++)
+        {
+            if (memcmp(country_code, countryInfoTable.countryInfo[i].countryCode,
+                       VOS_COUNTRY_CODE_LEN) == 0)
+            {
+                /* country code is found */
+                /* record the temporary regulatory_domain as well */
+                temp_reg_domain = countryInfoTable.countryInfo[i].regDomain;
+                break;
+            }
+        }
+
+        if  (REGDOMAIN_COUNT == temp_reg_domain)
+            temp_reg_domain = REGDOMAIN_WORLD;
+
+        nBandCapability = pHddCtx->cfg_ini->nBandCapability;
+        if (create_linux_regulatory_entry(wiphy, request,
+                                          pHddCtx->cfg_ini->nBandCapability) == 0)
+        {
+            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                      (" regulatory entry created"));
+
+        }
+
+        cur_reg_domain = temp_reg_domain;
+        linux_reg_cc[0] = country_code[0];
+        linux_reg_cc[1] = country_code[1];
+
+        /* now pass the new country information to sme */
+        sme_GenericChangeCountryCode(pHddCtx->hHal, country_code,
+                                     temp_reg_domain);
+
     }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
@@ -2960,6 +3022,7 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     return 0;
 #endif
 }
+
 
 /* initialize wiphy from NV.bin */
 VOS_STATUS vos_init_wiphy_from_nv_bin(void)
@@ -3119,6 +3182,7 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
    hdd_context_t *pHddCtx = NULL;
    struct wiphy *wiphy = NULL;
    int status;
+
    // sanity checks
    if (NULL == pRegDomain)
    {
