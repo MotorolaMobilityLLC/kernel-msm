@@ -130,6 +130,10 @@ void vos_mem_clean()
        VOS_STATUS vosStatus;
 
        struct s_vos_mem_struct* memStruct;
+       char* prev_mleak_file = "";
+       unsigned int prev_mleak_lineNum = 0;
+       unsigned int prev_mleak_sz = 0;
+       unsigned int mleak_cnt = 0;
  
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
              "%s: List is not Empty. listSize %d ", __func__, (int)listSize);
@@ -142,12 +146,40 @@ void vos_mem_clean()
           if(VOS_STATUS_SUCCESS == vosStatus)
           {
              memStruct = (struct s_vos_mem_struct*)pNode;
-             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                   "Memory Leak@ File %s, @Line %d, size %d", 
-                   memStruct->fileName, (int)memStruct->lineNum, memStruct->size);
+
+             /* Take care to log only once multiple memory leaks from
+              * the same place */
+             if(strcmp(prev_mleak_file, memStruct->fileName) ||
+                (prev_mleak_lineNum != memStruct->lineNum) ||
+                (prev_mleak_sz !=  memStruct->size))
+             {
+                if(mleak_cnt != 0)
+                {
+                   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                      "%d Time Memory Leak@ File %s, @Line %d, size %d",
+                      mleak_cnt, prev_mleak_file, prev_mleak_lineNum,
+                      prev_mleak_sz);
+                }
+                prev_mleak_file = memStruct->fileName;
+                prev_mleak_lineNum = memStruct->lineNum;
+                prev_mleak_sz =  memStruct->size;
+                mleak_cnt = 0;
+             }
+             mleak_cnt++;
+
              kfree((v_VOID_t*)memStruct);
           }
        }while(vosStatus == VOS_STATUS_SUCCESS);
+
+       /* Print last memory leak from the module */
+       if(mleak_cnt)
+       {
+          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                      "%d Time memory Leak@ File %s, @Line %d, size %d",
+                      mleak_cnt, prev_mleak_file, prev_mleak_lineNum,
+                      prev_mleak_sz);
+       }
+
 
 #ifdef CONFIG_HALT_KMEMLEAK
        BUG_ON(0);
