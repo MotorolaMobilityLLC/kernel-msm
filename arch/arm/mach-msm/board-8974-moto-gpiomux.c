@@ -292,6 +292,47 @@ static struct msm_gpiomux_config stm401_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting bcm2079x_active_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting bcm2079x_suspended_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting bcm2079x_irq_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config bcm2079x_configs[] __initdata = {
+	{
+		.gpio = 31, /* NFC_WAKE */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bcm2079x_active_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &bcm2079x_suspended_gpio_cfg,
+		},
+		.gpio = 32, /* REG_PU*/
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bcm2079x_active_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &bcm2079x_suspended_gpio_cfg,
+		},
+		.gpio = 34, /* NFC_IRQ*/
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bcm2079x_irq_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &bcm2079x_irq_gpio_cfg,
+		},
+	},
+};
+
 static struct gpiomux_setting gpio_uart7_active_cfg = {
 	.func = GPIOMUX_FUNC_3,
 	.drv = GPIOMUX_DRV_8MA,
@@ -1036,6 +1077,8 @@ void __init msm_8974_moto_init_gpiomux(void)
 	msm_gpiomux_install(msm_taiko_config, ARRAY_SIZE(msm_taiko_config));
 
 	msm_gpiomux_install(stm401_configs, ARRAY_SIZE(stm401_configs));
+
+	msm_gpiomux_install(bcm2079x_configs, ARRAY_SIZE(bcm2079x_configs));
 
 	if (of_board_is_fluid())
 		msm_gpiomux_install(msm_mhl_configs,
