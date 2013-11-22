@@ -55,10 +55,10 @@
 		status = "ok";
 	};
 
-	hob_ram@7e00000 {
+	hob_ram@0fbe0000 {
 		compatible = "mmi,hob_ram";
-		reg = <0x7e00000 0x40000>,  /* hob address */
-			<0x7e40000 0x2000>; /* dhob address */
+		reg = <0x0fbe0000 0x1e000>,  /* hob address */
+			<0x0fbfe000 0x2000>; /* dhob address */
 	};
 
 	ram_console {
