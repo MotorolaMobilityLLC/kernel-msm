@@ -2700,6 +2700,9 @@ static void msm_otg_sm_work(struct work_struct *w)
 						OTG_STATE_B_PERIPHERAL;
 					break;
 				case USB_SDP_CHARGER:
+					if (motg->pdata->no_set_vbus_power)
+						msm_otg_notify_charger(motg,
+								IDEV_CHG_MIN);
 					msm_otg_start_peripheral(otg, 1);
 					otg->phy->state =
 						OTG_STATE_B_PERIPHERAL;
@@ -4285,6 +4288,8 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 
 	pdata->rw_during_lpm_workaround = of_property_read_bool(node,
 				"qcom,hsusb-otg-rw-during-lpm-workaround");
+	pdata->no_set_vbus_power = of_property_read_bool(node,
+				"qcom,no-set-vbus-power");
 
 	return pdata;
 }
@@ -4624,7 +4629,8 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		msm_mpm_enable_pin(pdata->mpm_dmshv_int, 1);
 
 	phy->init = msm_otg_reset;
-	phy->set_power = msm_otg_set_power;
+	if (!pdata->no_set_vbus_power)
+		phy->set_power = msm_otg_set_power;
 	phy->set_suspend = msm_otg_set_suspend;
 
 	phy->io_ops = &msm_otg_io_ops;

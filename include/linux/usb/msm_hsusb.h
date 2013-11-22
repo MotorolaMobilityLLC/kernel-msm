@@ -266,6 +266,7 @@ struct msm_otg_platform_data {
 	bool dpdm_pulldown_added;
 	int vddmin_gpio;
 	bool rw_during_lpm_workaround;
+	bool no_set_vbus_power;
 };
 
 /* phy related flags */
