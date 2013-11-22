@@ -13,4 +13,5 @@
 
 &usb_otg {
 	qcom,hsusb-otg-mode = <1>;
+	qcom,no-set-vbus-power;
 };
