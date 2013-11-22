@@ -16,8 +16,8 @@
 			compatible = "st,lis3dsh";
 			reg = <0x1e>;
 			lis,fs_range = <0x00>;  /* 2G scale */
-			vdd_io-supply = <&pm8226_l6>;
-			vcc_i2c-supply = <&pm8226_l6>;
+			vdd_io-supply = <&pm8226_lvs1>;
+			vcc_i2c-supply = <&pm8226_lvs1>;
 			vdd-supply = <&pm8226_l15>;
 			google,dsp_int1_gpio = <&msmgpio 68 0x00>;
 			lis,int1_gpio = <&msmgpio 33 0x00>;
@@ -42,8 +42,8 @@
 			interrupt-parent = <&msmgpio>;
 			inven,int_config = <0x00>;
 			inven,level_shifter = <0x00>;
-			vdd_io-supply = <&pm8226_l6>;
-			vcc_i2c-supply = <&pm8226_l6>;
+			vdd_io-supply = <&pm8226_lvs1>;
+			vcc_i2c-supply = <&pm8226_lvs1>;
 			vdd-supply = <&pm8226_l19>;
 			interrupts = <35 0x2>;
 
