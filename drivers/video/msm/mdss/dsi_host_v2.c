@@ -790,6 +790,16 @@ static int msm_dsi_on(struct mdss_panel_data *pdata)
 
 	pr_debug("msm_dsi_on\n");
 
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	if (pdata->panel_info.panel_power_on) {
+		pr_warn("%s:%d Panel already on.\n", __func__, __LINE__);
+		return 0;
+	}
+
 	pinfo = &pdata->panel_info;
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -886,6 +896,7 @@ static int msm_dsi_on(struct mdss_panel_data *pdata)
 
 	msm_dsi_op_mode_config(mipi->mode, pdata);
 
+	pdata->panel_info.panel_power_on = 1;
 	return ret;
 }
 
@@ -899,6 +910,13 @@ static int msm_dsi_off(struct mdss_panel_data *pdata)
 		ret = -EINVAL;
 		return ret;
 	}
+
+	if (!pdata->panel_info.panel_power_on) {
+		pr_warn("%s:%d Panel already off.\n", __func__, __LINE__);
+		return 0;
+	}
+
+	pdata->panel_info.panel_power_on = 0;
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -934,7 +952,6 @@ static int msm_dsi_cont_on(struct mdss_panel_data *pdata)
 		return ret;
 	}
 
-
 	pr_debug("%s:\n", __func__);
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
@@ -952,6 +969,7 @@ static int msm_dsi_cont_on(struct mdss_panel_data *pdata)
 	msm_dsi_ahb_ctrl(1);
 	msm_dsi_prepare_clocks();
 	msm_dsi_clk_enable();
+	pdata->panel_info.panel_power_on = 1;
 	return 0;
 }
 

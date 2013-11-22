@@ -91,6 +91,32 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 	return rc;
 }
 
+static void dsi_lock_panel_mutex(struct mdss_panel_data *pdata)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	if (!pdata)
+		return;
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+								panel_data);
+	if (ctrl_pdata->lock_mutex)
+		ctrl_pdata->lock_mutex(pdata);
+}
+
+static void dsi_unlock_panel_mutex(struct mdss_panel_data *pdata)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	if (!pdata)
+		return;
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+								panel_data);
+	if (ctrl_pdata->unlock_mutex)
+		ctrl_pdata->unlock_mutex(pdata);
+}
+
 static int dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
 					size_t size, u8 *buffer)
 {
@@ -251,6 +277,11 @@ static int dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_CONT_SPLASH_BEGIN:
 		rc = dsi_splash_on(pdata);
 		break;
+	case MDSS_EVENT_LOCK_PANEL_MUTEX:
+		dsi_lock_panel_mutex(pdata);
+		break;
+	case MDSS_EVENT_UNLOCK_PANEL_MUTEX:
+		dsi_unlock_panel_mutex(pdata);
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
