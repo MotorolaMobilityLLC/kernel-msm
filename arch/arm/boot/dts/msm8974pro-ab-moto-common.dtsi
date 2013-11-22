@@ -1029,6 +1029,16 @@
 		tfa_vdd-supply = <&pm8941_s3>;
 		nxp,tfa_max-vol-steps = <15>;
 		};
+
+	bcm2079x@76 {
+		compatible = "brcm,bcm2079x";
+		reg = <0x76>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <34 0x0>; /* NFC_IRQ */
+		gpios = <&msmgpio 31 0x0>, /* NFC_WAKE */
+			<&msmgpio 34 0x0>, /* NFC_IRQ */
+			<&msmgpio 32 0x0>; /* REG_PU */
+	};
 };
 
 &i2c_3 {
