@@ -6927,7 +6927,7 @@ eHalStatus sme_PreferredNetworkFoundInd (tHalHandle hHal, void* pMsg)
          }
          else
          {
-            smsLog(pMac, LOGE, FL(" not enough data length %d needed %d"),
+            smsLog(pMac, LOGE, FL(" not enough data length %u needed %zu"),
                pPrefNetworkFoundInd->mesgLen, sizeof(tSirPrefNetworkFoundInd));
          }
 
