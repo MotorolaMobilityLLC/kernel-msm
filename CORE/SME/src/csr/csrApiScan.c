@@ -2213,7 +2213,7 @@ eHalStatus csrScanGetResult(tpAniSirGlobal pMac, tCsrScanResultFilter *pFilter, 
                 pBssDesc->preferValue = csrGetBssPreferValue(pMac, (int)pBssDesc->Result.BssDescriptor.rssi);
 
                 smsLog(pMac, LOG2, FL("BSSID("MAC_ADDRESS_STR
-                       ") Rssi(%d) Chnl(%d) PrefVal(%lu) SSID=%.*s"),
+                       ") Rssi(%d) Chnl(%d) PrefVal(%u) SSID=%.*s"),
                        MAC_ADDR_ARRAY(pBssDesc->Result.BssDescriptor.bssId),
                        pBssDesc->Result.BssDescriptor.rssi,
                        pBssDesc->Result.BssDescriptor.channelId,
