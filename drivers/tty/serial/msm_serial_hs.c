@@ -3199,11 +3199,6 @@ static int msm_hs_probe(struct platform_device *pdev)
 		msm_uport->wakeup.inject_rx = pdata->inject_rx_on_wakeup;
 		msm_uport->wakeup.rx_to_inject = pdata->rx_to_inject;
 
-		if (unlikely(msm_uport->wakeup.irq < 0)) {
-			ret = -ENXIO;
-			goto deregister_bus_client;
-		}
-
 		if (is_blsp_uart(msm_uport)) {
 			msm_uport->bam_tx_ep_pipe_index =
 					pdata->bam_tx_ep_pipe_index;
