@@ -375,7 +375,7 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
       if (sizeof(vos_pkt_context_t) != vosPacketContextSize)
       {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                   "VPKT [%d]: invalid vosPacketContextSize, %d vs %d",
+                   "VPKT [%d]: invalid vosPacketContextSize, %zu vs %d",
                    __LINE__, sizeof(vos_pkt_context_t), vosPacketContextSize);
          vosStatus = VOS_STATUS_E_INVAL;
          break;
