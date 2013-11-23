@@ -261,11 +261,11 @@ int csrCheckValidateLists(void * dest, const void *src, v_SIZE_t num, int idx)
                 }
                 else
                 {
-                    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL, 
-                         " %d Detect 1 list(0x%X) error Head(0x%X) next(0x%X) Count %d, dest(0x%X) src(0x%X) numBytes(%d)",
-                         idx, (unsigned int)g_pchannelPowerInfoList24, (unsigned int)pHead, 
-                        (unsigned int)(pHead->next), (int)g_pchannelPowerInfoList24->Count, 
-                        (unsigned int)dest, (unsigned int)src, (int)num);
+                    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL,
+                         " %d Detect 1 list(%p) error Head(%p) next(%p) Count %d, dest(%p) src(%p) numBytes(%d)",
+                         idx, g_pchannelPowerInfoList24, pHead,
+                        (pHead->next), (int)g_pchannelPowerInfoList24->Count,
+                        dest, src, (int)num);
                     VOS_ASSERT(0);
                     ii = 0;
                     break;
@@ -275,10 +275,10 @@ int csrCheckValidateLists(void * dest, const void *src, v_SIZE_t num, int idx)
         else
         {
             //Bad list
-            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL, " %d Detect list(0x%X) error Head(0x%X) next(0x%X) Count %d, dest(0x%X) src(0x%X) numBytes(%d)", 
-                idx, (unsigned int)g_pchannelPowerInfoList24, (unsigned int)pHead, 
-                (unsigned int)(pHead->next), (int)g_pchannelPowerInfoList24->Count, 
-                (unsigned int)dest, (unsigned int)src, (int)num);
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL, " %d Detect list(%p) error Head(%p) next(%p) Count %d, dest(%p) src(%p) numBytes(%d)",
+                idx, g_pchannelPowerInfoList24, pHead,
+                (pHead->next), (int)g_pchannelPowerInfoList24->Count,
+                dest, src, (int)num);
             VOS_ASSERT(0);
             ii = 0;
         }
@@ -4151,7 +4151,7 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
                 }
             }
         }
-        smsLog(pMac, LOG3, FL("  %d sets each one is %d"), pIesLocal->Country.num_triplets, sizeof(tSirMacChanInfo));
+        smsLog(pMac, LOG3, FL("  %d sets each one is %zu"), pIesLocal->Country.num_triplets, sizeof(tSirMacChanInfo));
 
         // set the indicator of the channel where the country IE was found...
         pMac->scan.channelOf11dInfo = pSirBssDesc->channelId;
