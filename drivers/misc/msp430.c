@@ -112,6 +112,8 @@
 #define LUX_TABLE_VALUES                0x34
 #define BRIGHTNESS_TABLE_VALUES         0x35
 
+#define STEP_COUNTER_UPDATE_RATE        0x36
+
 #define INTERRUPT_MASK			0x37
 #define WAKESENSOR_STATUS		0x39
 #define INTERRUPT_STATUS		0x3A
@@ -120,11 +122,15 @@
 #define LIN_ACCEL_X			0x3C
 #define GRAVITY_X			0x3D
 
+#define STEP_COUNTER			0X3E
+
 #define DOCK_DATA			0x3F
 
 #define TEMPERATURE_DATA		0x41
 
 #define GYRO_X				0x43
+
+#define STEP_DETECTOR			0X47
 
 #define MAG_CAL				0x48
 #define MAG_HX				0x49
@@ -209,6 +215,7 @@ static unsigned short g_acc_delay;
 static unsigned short g_mag_delay;
 static unsigned short g_gyro_delay;
 static unsigned short g_baro_delay;
+static unsigned short g_step_counter_delay;
 static unsigned short g_nonwake_sensor_state;
 static unsigned short g_wake_sensor_state;
 static unsigned short g_algo_state;
@@ -675,6 +682,13 @@ static int msp430_reset_and_init(void)
 	if (err < 0)
 		ret_err = err;
 
+	rst_cmdbuff[0] = STEP_COUNTER_UPDATE_RATE;
+	rst_cmdbuff[1] = (g_step_counter_delay>>8);
+	rst_cmdbuff[2] = g_step_counter_delay;
+	err = msp430_i2c_write_no_reset(msp430_misc_data, rst_cmdbuff, 3);
+	if (err < 0)
+		ret_err = err;
+
 	rst_cmdbuff[0] = PROX_SETTINGS;
 	rst_cmdbuff[1]
 		= (pdata->ct406_detect_threshold >> 8) & 0xff;
@@ -886,7 +900,8 @@ static ssize_t dock_print_name(struct switch_dev *switch_dev, char *buf)
 
 static int msp430_as_data_buffer_write(struct msp430_data *ps_msp430,
 	unsigned char type, signed short data1, signed short data2,
-	signed short data3, unsigned char status)
+	signed short data3, signed short data4, signed short data5,
+	signed short data6, unsigned char status)
 {
 	int new_head;
 	struct timespec ts;
@@ -907,6 +922,10 @@ static int msp430_as_data_buffer_write(struct msp430_data *ps_msp430,
 	ps_msp430->msp430_as_data_buffer[new_head].data1 = data1;
 	ps_msp430->msp430_as_data_buffer[new_head].data2 = data2;
 	ps_msp430->msp430_as_data_buffer[new_head].data3 = data3;
+	ps_msp430->msp430_as_data_buffer[new_head].data4 = data4;
+	ps_msp430->msp430_as_data_buffer[new_head].data5 = data5;
+	ps_msp430->msp430_as_data_buffer[new_head].data6 = data6;
+
 	ps_msp430->msp430_as_data_buffer[new_head].status = status;
 
 	ktime_get_ts(&ts);
@@ -1042,7 +1061,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 {
 	int err;
 	unsigned short irq_status;
-	signed short x, y, z;
+	signed short x, y, z, x_uncalib;
 	struct msp430_data *ps_msp430 = container_of(work,
 			struct msp430_data, irq_work);
 
@@ -1070,7 +1089,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
 		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
 		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
-		msp430_as_data_buffer_write(ps_msp430, DT_ACCEL, x, y, z, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_ACCEL,
+			x, y, z, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending acc(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -1090,7 +1110,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
 		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_LIN_ACCEL,
-			x, y, z, 0);
+			x, y, z, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -1108,7 +1128,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
 		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
 		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
-		msp430_as_data_buffer_write(ps_msp430, DT_MAG, x, y, z,
+		msp430_as_data_buffer_write(ps_msp430, DT_MAG, x, y, z, 0, 0, 0,
 			read_cmdbuff[12]);
 
 		dev_dbg(&ps_msp430->client->dev,
@@ -1119,7 +1139,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		y = (read_cmdbuff[8] << 8) | read_cmdbuff[9];
 		/* roll value needs to be negated */
 		z = -((read_cmdbuff[10] << 8) | read_cmdbuff[11]);
-		msp430_as_data_buffer_write(ps_msp430, DT_ORIENT, x, y, z,
+		msp430_as_data_buffer_write(ps_msp430, DT_ORIENT,
+			x, y, z, 0, 0, 0,
 			read_cmdbuff[12]);
 
 		dev_dbg(&ps_msp430->client->dev,
@@ -1137,11 +1158,48 @@ static void msp430_irq_work_func(struct work_struct *work)
 		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
 		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
 		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
-		msp430_as_data_buffer_write(ps_msp430, DT_GYRO, x, y, z, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_GYRO,
+			x, y, z, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending gyro(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, z);
+	}
+	if (irq_status & M_STEP_COUNTER) {
+		msp_cmdbuff[0] = STEP_COUNTER;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 8);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Reading step counter failed\n");
+			goto EXIT;
+		}
+		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
+		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
+		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
+		x_uncalib = (read_cmdbuff[6] << 8) | read_cmdbuff[7];
+		msp430_as_data_buffer_write(ps_msp430, DT_STEP_COUNTER,
+			x, y, z, x_uncalib, 0, 0, 0);
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending step counter %X %X %X %X\n",
+			x_uncalib, z, y, x);
+	}
+	if (irq_status & M_STEP_DETECTOR) {
+		unsigned short detected_steps = 0;
+		msp_cmdbuff[0] = STEP_DETECTOR;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Reading step detector  failed\n");
+			goto EXIT;
+		}
+		detected_steps = read_cmdbuff[0];
+		while(detected_steps-- != 0) {
+			msp430_as_data_buffer_write(ps_msp430, DT_STEP_DETECTOR,
+				1, 0, 0, 0, 0, 0, 0);
+
+			dev_dbg(&ps_msp430->client->dev,
+				"Sending step detector\n");
+		}
 	}
 	if (irq_status & M_ALS) {
 		msp_cmdbuff[0] = ALS_LUX;
@@ -1152,7 +1210,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
-		msp430_as_data_buffer_write(ps_msp430, DT_ALS, x, 0, 0, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_ALS,
+			x, 0, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev, "Sending ALS %d\n", x);
 	}
@@ -1166,7 +1225,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
-		msp430_as_data_buffer_write(ps_msp430, DT_TEMP, x, 0, 0, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_TEMP,
+			x, 0, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending temp(x)value: %d\n", x);
@@ -1182,7 +1242,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		}
 		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
 		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
-		msp430_as_data_buffer_write(ps_msp430, DT_PRESSURE, x, y, 0, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_PRESSURE,
+			x, y, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev, "Sending pressure %d\n",
 			(x << 16) | (y & 0xFFFF));
@@ -1201,7 +1262,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		y = (read_cmdbuff[2] << 8) | read_cmdbuff[3];
 		z = (read_cmdbuff[4] << 8) | read_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_GRAVITY,
-			x, y, z, 0);
+			x, y, z, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending gravity(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -1218,7 +1279,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		}
 		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430,
-			DT_DISP_ROTATE, x, 0, 0, 0);
+			DT_DISP_ROTATE, x, 0, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending disp_rotate(x)value: %d\n", x);
@@ -1233,7 +1294,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		}
 		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_DISP_BRIGHT,
-			x, 0, 0, 0);
+			x, 0, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending Display Brightness %d\n", x);
@@ -1521,7 +1582,8 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		else
 			x = 0x04;
 
-		msp430_as_data_buffer_write(ps_msp430, DT_RESET, x, 0, 0, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_RESET,
+			x, 0, 0,  0, 0, 0, 0);
 
 		msp430_reset_and_init();
 		dev_err(&ps_msp430->client->dev, "MSP430 requested a reset\n");
@@ -1538,7 +1600,8 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		x = read_cmdbuff[0];
-		msp430_as_data_buffer_write(ps_msp430, DT_DOCK, x, 0, 0, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_DOCK,
+			x, 0, 0, 0, 0, 0, 0);
 		if (ps_msp430->dsdev.dev != NULL)
 			switch_set_state(&ps_msp430->dsdev, x);
 		if (ps_msp430->edsdev.dev != NULL)
@@ -1555,7 +1618,8 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		x = read_cmdbuff[0];
-		msp430_as_data_buffer_write(ps_msp430, DT_PROX, x, 0, 0, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_PROX,
+			x, 0, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending Proximity distance %d\n", x);
@@ -1600,7 +1664,8 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		x = read_cmdbuff[0];
-		msp430_as_data_buffer_write(ps_msp430, DT_FLAT_UP, x, 0, 0, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_FLAT_UP,
+			x, 0, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev, "Sending Flat up %d\n", x);
 	}
@@ -1614,7 +1679,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		}
 		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430,
-			DT_FLAT_DOWN, x, 0, 0, 0);
+			DT_FLAT_DOWN, x, 0, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev, "Sending Flat down %d\n", x);
 	}
@@ -1627,7 +1692,8 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		x = read_cmdbuff[0];
-		msp430_as_data_buffer_write(ps_msp430, DT_STOWED, x, 0, 0, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_STOWED,
+			x, 0, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending Stowed status %d\n", x);
@@ -1644,7 +1710,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		y = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
 
 		msp430_as_data_buffer_write(ps_msp430, DT_CAMERA_ACT,
-					x, y, 0, 0);
+					x, y, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 				"Sending Camera(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -1667,7 +1733,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		}
 		x = read_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_NFC,
-			x, 0, 0, 0);
+			x, 0, 0, 0, 0, 0, 0);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending NFC(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -1685,7 +1751,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		x = (read_cmdbuff[0] << 8) | read_cmdbuff[1];
 
 		msp430_as_data_buffer_write(ps_msp430, DT_SIM,
-					x, 0, 0, 0);
+					x, 0, 0, 0, 0, 0, 0);
 
 		/* This is one shot sensor */
 		g_wake_sensor_state &= (~M_SIM);
@@ -2401,6 +2467,20 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		msp_cmdbuff[1] = delay;
 		g_gyro_delay = delay;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
+		break;
+	case MSP430_IOCTL_SET_STEP_COUNTER_DELAY:
+		delay = 0;
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			dev_dbg(&ps_msp430->client->dev,
+				"Copy step counter delay returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		msp_cmdbuff[0] = STEP_COUNTER_UPDATE_RATE;
+		msp_cmdbuff[1] = (delay>>8);
+		msp_cmdbuff[2] = delay;
+		g_step_counter_delay = delay;
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
 		break;
 	case MSP430_IOCTL_SET_PRES_DELAY:
 		dev_dbg(&ps_msp430->client->dev,
