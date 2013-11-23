@@ -382,6 +382,7 @@
 			interrupts = <31 2>;
 
 			maxim,rsns-microohm = <10000>;
+			maxim,ext_batt_psy;
 
 			maxim,model = [9F B0 B5 E0 B8 00 BA 00
 					BB 10 BC 30 BC 90 BD 00
