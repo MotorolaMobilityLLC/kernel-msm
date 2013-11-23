@@ -582,6 +582,8 @@ max17050_get_pdata(struct device *dev)
 		pdata->r_sns = MAX17050_DEFAULT_SNS_RESISTOR;
 	}
 
+	pdata->ext_batt_psy = of_property_read_bool(np, "maxim,ext_batt_psy");
+
 	if (of_property_read_u32(np, "maxim,relaxcfg", &prop) == 0)
 		pdata->relaxcfg = prop;
 	if (of_property_read_u32(np, "maxim,config", &prop) == 0)
@@ -664,8 +666,19 @@ static int max17050_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
-	chip->battery.name = "max17050_battery";
-	chip->battery.type = POWER_SUPPLY_TYPE_BATTERY;
+	/*
+	 * If ext_batt_psy is true, then an external device publishes
+	 * a POWER_SUPPLY_TYPE_BATTERY, so this driver will publish its
+	 * data via the POWER_SUPPLY_TYPE_BMS type.
+	 */
+	if (chip->pdata->ext_batt_psy) {
+		chip->battery.name = "max17050_bms";
+		chip->battery.type = POWER_SUPPLY_TYPE_BMS;
+	} else {
+		chip->battery.name = "max17050_battery";
+		chip->battery.type = POWER_SUPPLY_TYPE_BATTERY;
+	}
+
 	chip->battery.get_property = max17050_get_property;
 	chip->battery.properties = max17050_battery_props;
 	chip->battery.num_properties = ARRAY_SIZE(max17050_battery_props);
