@@ -6410,6 +6410,7 @@ static int wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
     hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     tCsrRoamProfile          *pRoamProfile;
     int status;
+    bool alloc_bssid = VOS_FALSE;
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
@@ -6451,6 +6452,27 @@ static int wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
                   "%s:ccmCfgStInt faild for WNI_CFG_IBSS_AUTO_BSSID", __func__);
            return -EIO;
        }
+    }
+    else if(pHddCtx->cfg_ini->isCoalesingInIBSSAllowed == 0)
+    {
+        if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_IBSS_AUTO_BSSID, 0,
+                         NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+        {
+            hddLog (VOS_TRACE_LEVEL_ERROR,
+                    "%s:ccmCfgStInt faild for WNI_CFG_IBSS_AUTO_BSSID", __func__);
+            return -EIO;
+        }
+        params->bssid = vos_mem_malloc(sizeof(VOS_MAC_ADDR_SIZE));
+        if (!params->bssid)
+        {
+            hddLog (VOS_TRACE_LEVEL_ERROR,
+                    "%s:Failed memory allocation", __func__);
+            return -EIO;
+        }
+        vos_mem_copy((v_U8_t *)params->bssid,
+                     (v_U8_t *)&pHddCtx->cfg_ini->IbssBssid.bytes[0],
+                     VOS_MAC_ADDR_SIZE);
+        alloc_bssid = VOS_TRUE;
     }
 
     /* Set Channel */
@@ -6526,6 +6548,12 @@ static int wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
         return status;
     }
 
+    if (NULL != params->bssid &&
+        pHddCtx->cfg_ini->isCoalesingInIBSSAllowed == 0 &&
+        alloc_bssid == VOS_TRUE)
+    {
+        vos_mem_free(params->bssid);
+    }
     return 0;
 }
 

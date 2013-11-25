@@ -2799,6 +2799,12 @@ REG_VARIABLE( CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD, WLAN_PARAM_Integer,
                  CFG_STRICT_5GHZ_PREF_BY_MARGIN_MIN,
                  CFG_STRICT_5GHZ_PREF_BY_MARGIN_MAX ),
 
+   REG_VARIABLE( CFG_COALESING_IN_IBSS_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, isCoalesingInIBSSAllowed,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_COALESING_IN_IBSS_DEFAULT,
+                 CFG_COALESING_IN_IBSS_MIN,
+                 CFG_COALESING_IN_IBSS_MAX ),
 };
 
 /*
@@ -3191,6 +3197,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gApKeepAlivePeriod]Value = [%u]",pHddCtx->cfg_ini->apKeepAlivePeriod);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAmsduSupportInAMPDU] Value = [%u] ",pHddCtx->cfg_ini->isAmsduSupportInAMPDU);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [nSelect5GHzMargin] Value = [%u] ",pHddCtx->cfg_ini->nSelect5GHzMargin);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gCoalesingInIBSS] Value = [%lu] ",pHddCtx->cfg_ini->isCoalesingInIBSSAllowed);
 
 }
 
@@ -4585,6 +4592,10 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 
    smeConfig.csrConfig.isAmsduSupportInAMPDU = pConfig->isAmsduSupportInAMPDU;
    smeConfig.csrConfig.nSelect5GHzMargin = pConfig->nSelect5GHzMargin;
+
+   smeConfig.csrConfig.isCoalesingInIBSSAllowed =
+                       pHddCtx->cfg_ini->isCoalesingInIBSSAllowed;
+
 
    /* update SSR config */
    sme_UpdateEnableSSR((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->enableSSR);

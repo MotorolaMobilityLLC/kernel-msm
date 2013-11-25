@@ -1071,6 +1071,7 @@ typedef struct sAniSirGlobal
     v_BOOL_t isTdlsPowerSaveProhibited;
 #endif
     tANI_U8 fScanOffload;
+    tANI_U8 isCoalesingInIBSSAllowed;
 } tAniSirGlobal;
 
 #ifdef FEATURE_WLAN_TDLS
