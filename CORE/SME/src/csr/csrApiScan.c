@@ -124,6 +124,8 @@ RSSI *cannot* be more than 0xFF or less than 0 for meaningful WLAN operation
 
 #define THIRTY_PERCENT(x)  (x*30/100);
 
+#define MANDATORY_BG_CHANNEL 11
+
 /*struct to hold the ignored channel list based on country */
 typedef struct sCsrIgnoreChannels
 {
@@ -911,6 +913,8 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
 
                         if (HAL_STATUS_SUCCESS(status))
                         {
+                             pMac->scan.scanProfile.numOfChannels =
+                               p11dScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels;
                             //Start process the command
 #ifdef WLAN_AP_STA_CONCURRENCY
                             if (!pMac->fScanOffload)
@@ -951,6 +955,9 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
                 status = csrScanCopyRequest(pMac, &pScanCmd->u.scanCmd.u.scanRequest, pScanRequest);
                 if(HAL_STATUS_SUCCESS(status))
                 {
+                    pMac->scan.scanProfile.numOfChannels =
+                      pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels;
+
                     //Start process the command
 #ifdef WLAN_AP_STA_CONCURRENCY
                     if (!pMac->fScanOffload)
@@ -3173,8 +3180,12 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
         }
         //if new candidate AP has 30% better RSSI or this is the first time or
         //AP aged out of CSR cache or we are in world CC now
-        if ((rssi_of_current_country <= cand_Bss_rssi )  || (rssi_of_current_country  == -128)
-           ||( '0' == pMac->scan.countryCode11d[ 0 ] && '0' == pMac->scan.countryCode11d[ 1 ] ))
+        if ((rssi_of_current_country <= cand_Bss_rssi &&
+             rssi_of_current_country  != -128) ||
+            (rssi_of_current_country  == -128 &&
+             pMac->scan.scanProfile.numOfChannels >= MANDATORY_BG_CHANNEL) ||
+            ('0' == pMac->scan.countryCode11d[ 0 ] &&
+             '0' == pMac->scan.countryCode11d[ 1 ]))
         {
             csrLLLock(&pMac->scan.scanResultList);
             pEntryTemp = csrLLPeekHead(&pMac->scan.scanResultList, LL_ACCESS_NOLOCK);
