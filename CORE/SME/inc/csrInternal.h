@@ -667,6 +667,7 @@ typedef struct tagCsrConfig
     tANI_BOOLEAN enableHeartBeatOffload;
     tANI_U8 isAmsduSupportInAMPDU;
     tANI_U8 nSelect5GHzMargin;
+    tANI_U8 isCoalesingInIBSSAllowed;
 }tCsrConfig;
 
 typedef struct tagCsrChannelPowerInfo
