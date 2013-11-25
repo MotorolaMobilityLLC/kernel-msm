@@ -4,13 +4,13 @@
 WLAN_CHIPSET :=
 
 # Build/Package options for 8960 target
-ifeq ($(call is-board-platform,msm8960),true)
+ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
 WLAN_CHIPSET := prima
 WLAN_SELECT := CONFIG_PRIMA_WLAN=m
 endif
 
 # Build/Package options for 8974, 8226, 8610 targets
-ifeq ($(call is-board-platform-in-list,msm8974 msm8226 msm8610),true)
+ifneq (,$(filter msm8974 msm8226 msm8610,$(TARGET_BOARD_PLATFORM)))
 WLAN_CHIPSET := pronto
 WLAN_SELECT := CONFIG_PRONTO_WLAN=m
 endif
@@ -37,7 +37,7 @@ else
 endif
 
 # DLKM_DIR was moved for JELLY_BEAN (PLATFORM_SDK 16)
-ifeq ($(call is-platform-sdk-version-at-least,16),true)
+ifeq (1,$(filter 1,$(shell echo "$$(( $(PLATFORM_SDK_VERSION) >= 16 ))" )))
        DLKM_DIR := $(TOP)/device/qcom/common/dlkm
 else
        DLKM_DIR := build/dlkm
