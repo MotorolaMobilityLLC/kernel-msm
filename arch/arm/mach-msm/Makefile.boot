@@ -84,3 +84,7 @@ dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultra-maxx-p0.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultra-maxx-p1.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultra-maxx-p2.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultra-maxx-p3.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-vanquish-p1.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-vanquish-p2.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-vanquish-p1b2.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-vanquish-p3.dtb

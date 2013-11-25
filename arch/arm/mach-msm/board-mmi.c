@@ -771,20 +771,24 @@ static void __init mmi_msm8960_dt_init(void)
 	struct of_dev_auxdata *adata = mmi_auxdata;
 
 	mmi_of_populate_setup();
-	of_platform_populate(NULL, of_default_bus_match_table, adata, NULL);
+	/* Register extra devices which are not part of GSBISetup@0 */
+	if (cpu_is_msm8960ab())
+		of_platform_populate(NULL,
+			of_default_bus_match_table, adata, NULL);
 	msm8960_cdp_init();
 }
 
 MACHINE_START(VANQUISH, "Vanquish")
 	.map_io = msm8960_map_io,
 	.reserve = mmi_msm8960_reserve,
-	.init_irq = msm8960_init_irq,
+	.init_irq = mmi_msm8960_init_irq,
 	.handle_irq = gic_handle_irq,
 	.timer = &msm_timer,
-	.init_machine = msm8960_cdp_init,
+	.init_machine = mmi_msm8960_dt_init,
 	.init_early = mmi_msm8960_init_early,
 	.init_very_early = msm8960_early_memory,
 	.restart = msm_restart,
+	.dt_compat = mmi_dt_match,
 MACHINE_END
 
 MACHINE_START(MSM8960DT, "msm8960dt")
