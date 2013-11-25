@@ -1,0 +1,452 @@
+/ {
+
+	Chosen@0 {
+		batt_eprom_gpio = <0x5d>;
+		disable_headset_gpio = <0x01>;
+		emu_id_activehigh = <0x01>;
+		emu_id_flt_activehigh = <0x01>;
+		emu_id_flt_gpio = <0xaa>;
+		emu_id_mpp_gpio = <0xcd>;
+		formfactor = <0x00000003>;
+		last_compat_version = <0x01330684>;
+		product = <0x000016ff>;
+		use_mdp_vsync = <0x00>;
+		version = <0x0133068b>;
+	};
+
+	System@0 {
+
+		ClockTree@0 {
+			class = [436c6f636b5472656500];
+			type = <0x001e0014>;
+
+			Clock@0 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x000c>;
+				clockname = [636f72655f636c6b00];
+				deviceid = [6d736d5f73657269616c5f68736c2e3500];
+				type = <0x001e0015>;
+			};
+
+			Clock@1 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x000e>;
+				clockname = [69666163655f636c6b00];
+				deviceid = [6d736d5f73657269616c5f68736c2e3500];
+				type = <0x001e0015>;
+			};
+
+			Clock@2 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x0025>;
+				clockname = [63616d5f636c6b00];
+				deviceid = [342d3030333600];
+				type = <0x001e0015>;
+			};
+		};
+
+		Display@0 {
+			class = [446973706c617900];
+			disp_intf = <0x06>;
+			num_disp_reg = <0x03>;
+			panel_name = [6d6970695f6d6f745f766964656f5f736d645f68645f34363500];
+			reg_gpio_en_1 = <0x0d>;
+			reg_gpio_en_2 = <0x00>;
+			reg_gpio_en_delay_2 = <0x0012>;
+			reg_gpio_en_init_state_1 = <0x01>;
+			reg_gpio_en_init_state_2 = <0x01>;
+			reg_gpio_en_state_1 = <0x01>;
+			reg_gpio_en_state_2 = <0x01>;
+			reg_gpio_en_type_1 = <0x00>;
+			reg_gpio_en_type_2 = <0x00>;
+			reg_gpio_name_1 = [444953505f5644445f454e00];
+			reg_gpio_name_2 = [444953505f564444494f5f454e00];
+			reg_id_1 = <0x00>;
+			reg_id_2 = <0x00>;
+			reg_id_3 = [646973705f76636900];
+			reg_max_mv_3 = <0x002f4d60>;
+			reg_min_mv_3 = <0x002f4d60>;
+			reg_name_1 = [444953505f5644445f434f4e4e3300];
+			reg_name_2 = [444953505f564444494f5f3256323500];
+			reg_name_3 = [444953505f5643495f33563100];
+			rst_dis_post_delay_1 = <0x000a>;
+			rst_en_post_delay_1 = <0x0014>;
+			rst_en_pre_delay_1 = <0x001e>;
+			rst_en_state_1 = <0x01>;
+			rst_gpio_1 = <0x25>;
+			rst_gpio_type_1 = <0x01>;
+			rst_init_state_1 = <0x01>;
+			type = <0x001e001b>;
+		};
+
+		EMUDetection@0 {
+			accy-support = <0x00>;
+			class = [5175616c636f6d6d5f454d555f446574656374696f6e00];
+			ic-type = <0x00>;
+			type = <0x0000001d>;
+			uart-gsbi = <0x0c>;
+			usb-otg-vreg = [383932315f7573625f6f746700];
+			vdd-vreg = [454d555f504f57455200];
+			vdd-vreg-mv = <0x00286f90>;
+
+			Gpio-alt-mode@0 {
+				class = [4750494f00];
+				gpio-info = <0x0211>;
+				pin-name = [53454d555f414c545f4d4f44455f454e5f4750494f00];
+				pmic-gpio-cfg = [010000050603000001];
+				pmic-gpio-cfg-alt = [010001050601000000];
+				type = <0x001e0010>;
+			};
+
+			Gpio-dminus@0 {
+				class = [4750494f00];
+				gpio-info = <0x0215>;
+				pin-name = [444d494e55535f4750494f00];
+				pmic-gpio-cfg = [010000010602010000];
+				pmic-gpio-cfg-alt = [020000040603000000];
+				type = <0x001e0010>;
+			};
+
+			Gpio-dplus@0 {
+				class = [4750494f00];
+				gpio-info = <0x0229>;
+				pin-name = [44504c55535f4750494f00];
+				pmic-gpio-cfg = [020000010602010000];
+				pmic-gpio-cfg-alt = [020000000603000000];
+				type = <0x001e0010>;
+			};
+
+			Gpio-id-en@0 {
+				class = [4750494f00];
+				gpio-info = <0x0309>;
+				pin-name = [454d555f49445f454e5f4750494f00];
+				pmic-mpp-cfg = <0x000400>;
+				pmic-mpp-cfg-alt = <0x010400>;
+				type = <0x001e0010>;
+			};
+
+			Gpio-id@0 {
+				class = [4750494f00];
+				gpio-info = <0x030a>;
+				pin-name = [454d555f49445f4750494f00];
+				pmic-mpp-cfg = <0x030200>;
+				type = <0x001e0010>;
+			};
+
+			Gpio-mux-ctrl0@0 {
+				class = [4750494f00];
+				gpio-info = <0x016b>;
+				msm-gpio-cfg = <0x00030300>;
+				pin-name = [454d555f4d55585f4354524c305f4750494f00];
+				type = <0x001e0010>;
+			};
+
+			Gpio-mux-ctrl1@0 {
+				class = [4750494f00];
+				gpio-info = <0x0160>;
+				msm-gpio-cfg = <0x00030100>;
+				pin-name = [454d555f4d55585f4354524c315f4750494f00];
+				type = <0x001e0010>;
+			};
+
+			Gpio-ppd-det@0 {
+				class = [4750494f00];
+				gpio-info = <0x0223>;
+				pin-name = [53454d555f5050445f4445545f4750494f00];
+				pmic-gpio-cfg = [020000050603000000];
+				type = <0x001e0010>;
+			};
+
+			Gpio-sci-out@0 {
+				class = [4750494f00];
+				gpio-info = <0x015a>;
+				msm-gpio-cfg = <0x00030000>;
+				pin-name = [454d555f5343495f4f55545f4750494f00];
+				type = <0x001e0010>;
+			};
+
+			Gpio-uart-rx-pair@0 {
+				class = [4750494f00];
+				gpio-info = <0x022a>;
+				pin-name = [52585f504149525f4750494f00];
+				pmic-gpio-cfg = [010000010202010000];
+				pmic-gpio-cfg-alt = [020000050202000001];
+				type = <0x001e0010>;
+			};
+
+			Gpio-uart-tx-pair@0 {
+				class = [4750494f00];
+				gpio-info = <0x0216>;
+				pin-name = [54585f504149525f4750494f00];
+				pmic-gpio-cfg = [020000010202010000];
+				pmic-gpio-cfg-alt = [020000050202000001];
+				type = <0x001e0010>;
+			};
+
+			Gpio-whisper-rx@0 {
+				class = [4750494f00];
+				gpio-info = <0x012b>;
+				msm-gpio-cfg = <0x01030000>;
+				msm-gpio-cfg-alt = <0x00030000>;
+				pin-name = [574849535045525f554152545f52585f4750494f00];
+				type = <0x001e0010>;
+			};
+
+			Gpio-whisper-tx@0 {
+				class = [4750494f00];
+				gpio-info = <0x012a>;
+				msm-gpio-cfg = <0x01030000>;
+				msm-gpio-cfg-alt = <0x00030002>;
+				pin-name = [574849535045525f554152545f54585f4750494f00];
+				type = <0x001e0010>;
+			};
+		};
+
+		GSBISetup@0 {
+			class = [47534249536574757000];
+			type = <0x001e0012>;
+
+			GSBI@1 {
+				class = [5175616c636f6d6d47534249504f525400];
+				gsbi_type = <0x03>;
+				max_clock_speed = <0x00e5cc20>;
+				type = <0x001e0013>;
+			};
+
+			GSBI@10 {
+				class = [5175616c636f6d6d47534249504f525400];
+				clk_freq = <0x00061a80>;
+				gsbi_type = <0x01>;
+				src_clk_rate = <0x016e3600>;
+				type = <0x001e0013>;
+			};
+
+			GSBI@12 {
+				class = [5175616c636f6d6d47534249504f525400];
+				clk_freq = <0x00061a80>;
+				gsbi_type = <0x02>;
+				src_clk_rate = <0x016e3600>;
+				type = <0x001e0013>;
+			};
+
+			GSBI@3 {
+				class = [5175616c636f6d6d47534249504f525400];
+				clk_freq = <0x00061a80>;
+				gsbi_type = <0x02>;
+				src_clk_rate = <0x016e3600>;
+				type = <0x001e0013>;
+			};
+
+			GSBI@4 {
+				class = [5175616c636f6d6d47534249504f525400];
+				clk_freq = <0x00061a80>;
+				gsbi_type = <0x06>;
+				shared_mode = <0x01>;
+				src_clk_rate = <0x016e3600>;
+				type = <0x001e0013>;
+			};
+
+			GSBI@5 {
+				class = [5175616c636f6d6d47534249504f525400];
+				gsbi_type = <0x06>;
+				shared_mode = <0x00>;
+				type = <0x001e0013>;
+				uart_line = <0x00>;
+			};
+		};
+
+		I2C@10 {
+			class = <0x49324300>;
+			type = <0x001e0003>;
+
+			I2C,Board@0 {
+				class = [435434303600];
+				ct406_prox_covered_offset = <0x0096>;
+				ct406_prox_pulse_count = <0x04>;
+				ct406_prox_uncovered_offset = <0x006e>;
+				i2c,address = <0x00000039>;
+				i2c,type = [637434303600];
+				irq,gpio = <0x31>;
+				type = <0x00250001>;
+			};
+
+			I2C,Board@4 {
+				class = [504e35343400];
+				i2c,address = <0x00000028>;
+				i2c,type = [706e35343400];
+				irq,gpio = <0x6a>;
+				platform_data = [0000006a000000440000003300000000];
+				type = <0x00190001>;
+			};
+
+			I2C,Board@5 {
+				class = [544d5031303500];
+				i2c,address = <0x00000048>;
+				i2c,type = [746d7031303500];
+				irq,gpio = <0x43>;
+				type = <0x00030014>;
+			};
+		};
+
+		I2C@3 {
+			class = <0x49324300>;
+			type = <0x001e0003>;
+
+			I2C,Board@1 {
+				class = [4d4d5331303000];
+				i2c,address = <0x00000048>;
+				i2c,type = [6d656c6661732d747300];
+				irq,gpio = <0x2e>;
+				type = <0x00270000>;
+			};
+		};
+
+		I2C@4 {
+			class = <0x49324300>;
+			type = <0x001e0003>;
+
+			I2C,Board@1 {
+				1p8_via_gpio = <0x01>;
+				class = [4f563838323000];
+				gpio_avdd_en = <0x00000036>;
+				gpio_dig_en = <0x0000003a>;
+				gpio_pwd = <0x0000005f>;
+				gpio_reset = <0x00000061>;
+				i2c,address = <0x00000036>;
+				i2c,type = [6f763838323000];
+				type = <0x00290000>;
+			};
+
+			I2C,Board@2 {
+				class = [4d54394d31313400];
+				i2c,address = <0x00000048>;
+				i2c,type = [6d74396d31313400];
+				type = <0x00280000>;
+			};
+
+			I2C,Board@3 {
+				class = [4c4d3335353600];
+				current_cntrl_reg_val = <0x2b>;
+				enable_gpio = <0x00000002>;
+				i2c,address = <0x00000063>;
+				i2c,type = [6c6d333535365f6c656400];
+				type = <0x000b0006>;
+			};
+		};
+
+		IOMUX@0 {
+			class = [494f4d555800];
+			settings = [0000010001000100000000010002000500010303000005010101030000140001030001001401010300010015000103000100150101030001005d0000000000005d0100000000];
+			type = <0x001e000f>;
+		};
+
+		PowerIC@0 {
+			chg-hot-temp = <0x37>;
+			chg-hot-temp-offset = <0x05>;
+			class = [506f776572494300];
+			type = <0x001e0004>;
+
+			GPIO@0 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				gpio = <0x0006>;
+				type = <0x001e0006>;
+			};
+
+			GPIO@1 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				gpio = <0x0007>;
+				type = <0x001e0006>;
+			};
+
+			GPIO@10 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				gpio = <0x002a>;
+				type = <0x001e000c>;
+				vin = <0x02>;
+			};
+
+			GPIO@11 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				gpio = <0x0025>;
+				type = <0x001e0007>;
+				value = <0x0001>;
+			};
+
+			GPIO@2 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				gpio = <0x0010>;
+				pull = <0x00>;
+				type = <0x001e0008>;
+			};
+
+			GPIO@3 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				gpio = <0x0015>;
+				type = <0x001e000c>;
+				vin = <0x06>;
+			};
+
+			GPIO@4 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				gpio = <0x0016>;
+				type = <0x001e000b>;
+				vin = <0x02>;
+			};
+
+			GPIO@5 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				func = <0x03>;
+				gpio = <0x0018>;
+				type = <0x001e0009>;
+				value = <0x0000>;
+			};
+
+			GPIO@6 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				func = <0x03>;
+				gpio = <0x0019>;
+				type = <0x001e0009>;
+				value = <0x0000>;
+			};
+
+			GPIO@7 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				func = <0x03>;
+				gpio = <0x001a>;
+				type = <0x001e0009>;
+				value = <0x0000>;
+			};
+
+			GPIO@8 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				gpio = <0x0014>;
+				pull = <0x00>;
+				type = <0x001e0008>;
+			};
+
+			GPIO@9 {
+				class = [5175616c636f6d6d504d383932314750494f00];
+				gpio = <0x0029>;
+				type = <0x001e000b>;
+				vin = <0x06>;
+			};
+
+			RGBLED@0 {
+				class = [5175616c636f6d6d504d383932315247424c454400];
+				max_brightness = <0x00000080>;
+				type = <0x001e0011>;
+			};
+		};
+
+		Vibrator@0 {
+			class = [5669627261746f7200];
+			max = <0x01c9c380>;
+			min = <0x00003a98>;
+			pwm = [00004e1f000000010000000100000001000061a7000080e8000080e800004e20000080e700009c4000009c40000061a800009c3f0000cb200000cb20000080e80000ea600000ea600000ea6000009c4001ba814100009c4000009a4c00009c4001ba852900002710000027100000138801c9c38000009c4000009a4c00000000];
+			regulator = [383932315f6c313600];
+			type = <0x00000017>;
+			vib_dir = [0000001f00000001ffffffff0000004f];
+			vib_en = [0000001f00000001ffffffff0000002f];
+		};
+	};
+};
