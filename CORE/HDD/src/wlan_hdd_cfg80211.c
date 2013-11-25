@@ -1793,7 +1793,15 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     {
         pIe = wlan_hdd_cfg80211_get_ie_ptr(pBeacon->tail, pBeacon->tail_len,
                                        WLAN_EID_COUNTRY);
-        if(pIe)
+        if(memcmp(pHddCtx->cfg_ini->apCntryCode, CFG_AP_COUNTRY_CODE_DEFAULT, 3) != 0)
+        {
+           tANI_BOOLEAN restartNeeded;
+           pConfig->ieee80211d = 1;
+           vos_mem_copy(pConfig->countryCode, pHddCtx->cfg_ini->apCntryCode, 3);
+           sme_setRegInfo(hHal, pConfig->countryCode);
+           sme_ResetCountryCodeInformation(hHal, &restartNeeded);
+        }
+        else if(pIe)
         {
             tANI_BOOLEAN restartNeeded;
             pConfig->ieee80211d = 1;
