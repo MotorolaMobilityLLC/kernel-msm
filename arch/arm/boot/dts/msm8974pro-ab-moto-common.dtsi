@@ -950,10 +950,6 @@
 };
 */
 
-&spi_epm {
-	status = "disabled";
-};
-
 &spi_7 {
 	wm5110@0 {
 		compatible = "wlf,wm5110";
