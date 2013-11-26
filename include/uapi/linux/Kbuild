@@ -359,7 +359,6 @@ header-y += qcedev.h
 header-y += qcota.h
 header-y += qnx4_fs.h
 header-y += qnxtypes.h
-header-y += qrng.h
 header-y += qseecom.h
 header-y += quota.h
 header-y += radeonfb.h
