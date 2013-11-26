@@ -22,6 +22,9 @@
 };
 
 &soc {
+	/delete-node/ fan5646_vreg;
+	/delete-node/ fan5646;
+
 	i2c@f9923000{
 		/delete-node/ synaptics_dsx_i2c@20;
 
@@ -60,6 +63,10 @@
 &i2c_3 {
 	tpa6165xx@40 {
 		hs_det_micvdd-supply = <&pm8110_l21>;
+	};
+
+	lm2755@18 {
+		status = "ok";
 	};
 };
 

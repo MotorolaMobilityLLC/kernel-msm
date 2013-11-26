@@ -49,6 +49,25 @@
 		android,ram-buffer-size = <0x20000>;
 	};
 
+        fan5646_vreg: fan5646_vreg {
+		status = "ok";
+		compatible = "regulator-fixed";
+		regulator-name = "fan5646_vreg";
+		gpio = <&msmgpio 58 0x0>;
+		enable-active-high;
+        };
+
+	fan5646 {
+		status = "ok";
+		compatible = "fsi,leds-fan5646";
+		linux-name = "white";
+		rgb-name = "rgb";
+		gpios = <&msmgpio 66 0x2>; /* COMM GPIO, GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
+		full-current = <0>; /* Default current 5 mA */
+		tsleep = <7>;
+		fan5646-supply = <&fan5646_vreg>; /* phandle of our regulator node */
+	};
+
 	i2c@f9923000 {
 		qcom,i2c-bus-freq = <400000>;
 
@@ -241,6 +260,7 @@
 	qcom,scl-gpio = <&msmgpio 11 0>;
 
 	lm2755@18 {
+		status = "disabled";
 		compatible = "lm,lm2755";
 		reg = <0x18>;
 		rgb-class-name ="rgb";
