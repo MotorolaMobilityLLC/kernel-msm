@@ -17,6 +17,7 @@
 #define __MACH_CLK_PROVIDER_H
 
 #include <linux/types.h>
+#include <linux/err.h>
 #include <linux/list.h>
 #include <linux/clkdev.h>
 #include <linux/spinlock.h>
@@ -90,6 +91,14 @@ struct clk_vdd_class {
 		.level_votes = (int [_num_levels]) {}, \
 		.num_levels = _num_levels, \
 		.cur_level = _num_levels, \
+		.lock = __MUTEX_INITIALIZER(_name.lock) \
+	}
+
+#define DEFINE_VDD_REGS_INIT(_name, _num_regulators) \
+	struct clk_vdd_class _name = { \
+		.class_name = #_name, \
+		.regulator = (struct regulator * [_num_regulators]) {}, \
+		.num_regulators = _num_regulators, \
 		.lock = __MUTEX_INITIALIZER(_name.lock) \
 	}
 
@@ -187,5 +196,14 @@ extern struct clk_ops clk_ops_dummy;
 	};
 
 #define CLK_LOOKUP(con, c, dev) { .con_id = con, .clk = &c, .dev_id = dev }
+
+static inline bool is_better_rate(unsigned long req, unsigned long best,
+				  unsigned long new)
+{
+	if (IS_ERR_VALUE(new))
+		return false;
+
+	return (req <= new && new < best) || (best < req && best < new);
+}
 
 #endif

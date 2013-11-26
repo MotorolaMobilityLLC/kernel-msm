@@ -17,6 +17,16 @@ configurations.
 Required properties for Ion heaps
 
 - reg: The ID of the ION heap.
+- qcom,ion-heap-type: The heap type to use for this heap. Should be one of
+  the following:
+    - "SYSTEM"
+    - "SYSTEM_CONTIG"
+    - "CARVEOUT"
+    - "CHUNK"
+    - "CP"
+    - "DMA"
+    - "SECURE_DMA"
+    - "REMOVED"
 
 Optional properties for Ion heaps
 
@@ -34,16 +44,17 @@ Example:
                  #address-cells = <1>;
                  #size-cells = <0>;
 
-                 qcom,ion-heap@30 { /* SYSTEM HEAP */
-                         reg = <30>;
+                 qcom,ion-heap@25 {
+                         reg = <25>;
+                         qcom,ion-heap-type = "SYSTEM";
                  };
 
                  qcom,ion-heap@8 { /* CP_MM HEAP */
                          compatible = "qcom,msm-ion-reserve";
                          reg = <8>;
                          qcom,heap-align = <0x1000>;
-                         qcom,memory-reservation-type = "EBI1"; /* reserve EBI memory */
-                         qcom,memory-reservation-size = <0x7800000>;
+                         linux,contiguous-region = <&secure_mem>;
+                         qcom,ion-heap-type = "SECURE_DMA";
                  };
 
                  qcom,ion-heap@29 { /* FIRMWARE HEAP */
@@ -53,5 +64,6 @@ Example:
                          qcom,heap-adjacent = <8>;
                          qcom,memory-reservation-type = "EBI1"; /* reserve EBI memory */
                          qcom,memory-reservation-size = <0xA00000>;
-
+                         qcom,ion-heap-type = "CARVEOUT";
+                 };
 	};

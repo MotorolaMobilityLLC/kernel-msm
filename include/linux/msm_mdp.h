@@ -156,6 +156,7 @@ enum {
 
 #define MDSS_MDP_ROT_ONLY		0x80
 #define MDSS_MDP_RIGHT_MIXER		0x100
+#define MDSS_MDP_DUAL_PIPE		0x200
 
 /* mdp_blit_req flag values */
 #define MDP_ROT_NOP 0
@@ -168,6 +169,7 @@ enum {
 #define MDP_BLUR 0x10
 #define MDP_BLEND_FG_PREMULT 0x20000
 #define MDP_IS_FG 0x40000
+#define MDP_SOLID_FILL 0x0000100
 #define MDP_DEINTERLACE 0x80000000
 #define MDP_SHARPENING  0x40000000
 #define MDP_NO_DMA_BARRIER_START	0x20000000
@@ -253,11 +255,19 @@ struct mdp_csc {
 
 #define MDP_BLIT_REQ_VERSION 2
 
+struct color {
+	uint32_t r;
+	uint32_t g;
+	uint32_t b;
+	uint32_t alpha;
+};
+
 struct mdp_blit_req {
 	struct mdp_img src;
 	struct mdp_img dst;
 	struct mdp_rect src_rect;
 	struct mdp_rect dst_rect;
+	struct color const_color;
 	uint32_t alpha;
 	uint32_t transp_mask;
 	uint32_t flags;
@@ -442,6 +452,33 @@ enum mdss_mdp_blend_op {
 	BLEND_OP_MAX,
 };
 
+#define MAX_PLANES	4
+struct mdp_scale_data {
+	uint8_t enable_pxl_ext;
+
+	int init_phase_x[MAX_PLANES];
+	int phase_step_x[MAX_PLANES];
+	int init_phase_y[MAX_PLANES];
+	int phase_step_y[MAX_PLANES];
+
+	int num_ext_pxls_left[MAX_PLANES];
+	int num_ext_pxls_right[MAX_PLANES];
+	int num_ext_pxls_top[MAX_PLANES];
+	int num_ext_pxls_btm[MAX_PLANES];
+
+	int left_ftch[MAX_PLANES];
+	int left_rpt[MAX_PLANES];
+	int right_ftch[MAX_PLANES];
+	int right_rpt[MAX_PLANES];
+
+	int top_rpt[MAX_PLANES];
+	int btm_rpt[MAX_PLANES];
+	int top_ftch[MAX_PLANES];
+	int btm_ftch[MAX_PLANES];
+
+	uint32_t roi_w[MAX_PLANES];
+};
+
 struct mdp_overlay {
 	struct msmfb_img src;
 	struct mdp_rect src_rect;
@@ -457,6 +494,7 @@ struct mdp_overlay {
 	uint8_t horz_deci;
 	uint8_t vert_deci;
 	struct mdp_overlay_pp_params overlay_pp_cfg;
+	struct mdp_scale_data scale;
 };
 
 struct msmfb_overlay_3d {
@@ -798,6 +836,7 @@ enum {
 	metadata_op_frame_rate,
 	metadata_op_vic,
 	metadata_op_wb_format,
+	metadata_op_wb_secure,
 	metadata_op_get_caps,
 	metadata_op_crc,
 	metadata_op_max
@@ -830,6 +869,7 @@ struct msmfb_metadata {
 		uint32_t panel_frame_rate;
 		uint32_t video_info_code;
 		struct mdss_hw_caps caps;
+		uint8_t secure_en;
 	} data;
 };
 

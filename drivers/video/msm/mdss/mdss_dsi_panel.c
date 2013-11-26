@@ -293,6 +293,15 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
+	/*
+	 * Some backlight controllers specify a minimum duty cycle
+	 * for the backlight brightness. If the brightness is less
+	 * than it, the controller can malfunction.
+	 */
+
+	if ((bl_level < pdata->panel_info.bl_min) && (bl_level != 0))
+		bl_level = pdata->panel_info.bl_min;
+
 	switch (ctrl_pdata->bklt_ctrl) {
 	case BL_WLED:
 		led_trigger_event(bl_led_trigger, bl_level);
@@ -837,6 +846,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	}
 	for (i = 0; i < len; i++)
 		pinfo->mipi.dsi_phy_db.timing[i] = data[i];
+
+	pinfo->mipi.lp11_init = of_property_read_bool(np,
+					"qcom,mdss-dsi-lp11-init");
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-init-delay-us", &tmp);
+	pinfo->mipi.init_delay = (!rc ? tmp : 0);
 
 	mdss_dsi_parse_fbc_params(np, pinfo);
 
