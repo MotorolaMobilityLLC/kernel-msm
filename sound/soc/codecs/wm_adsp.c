@@ -262,8 +262,6 @@ struct wm_adsp_host_buffer {
 #define WM_ADSP_MAX_READ_SIZE          256
 #define WM_ADSP_ALG_XM_STRUCT_MAGIC    0x49aec7
 
-#define SND_AUDIOCODEC_SHORTEN         ((__u32) 0x00000020)
-
 #define ADSP2_SYSTEM_CONFIG_XM_PTR \
 	(offsetof(struct wmfw_adsp2_id_hdr, xm) / sizeof(__be32))
 
@@ -296,7 +294,7 @@ struct wm_adsp_buffer_region_def ez2control_regions[] = {
 
 static const struct wm_adsp_fw_caps ez2control_caps[] = {
 	{
-		.id = SND_AUDIOCODEC_SHORTEN,
+		.id = SND_AUDIOCODEC_PCM,
 		.desc = {
 			.max_ch = 1,
 			.sample_rates = SNDRV_PCM_RATE_16000,
