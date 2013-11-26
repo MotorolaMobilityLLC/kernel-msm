@@ -409,7 +409,7 @@ static int qcrypto_count_sg(struct scatterlist *sg, int nbytes)
 {
 	int i;
 
-	for (i = 0; nbytes > 0; i++, sg = scatterwalk_sg_next(sg))
+	for (i = 0; nbytes > 0 && sg != NULL; i++, sg = scatterwalk_sg_next(sg))
 		nbytes -= sg->length;
 
 	return i;
@@ -628,98 +628,98 @@ static int _disp_stats(int id)
 	int len = 0;
 
 	pstat = &_qcrypto_stat;
-	len = snprintf(_debug_read_buf, DEBUG_MAX_RW_BUF - 1,
+	len = scnprintf(_debug_read_buf, DEBUG_MAX_RW_BUF - 1,
 			"\nQualcomm crypto accelerator %d Statistics:\n",
 				id + 1);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   ABLK AES CIPHER encryption   : %d\n",
 					pstat->ablk_cipher_aes_enc);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   ABLK AES CIPHER decryption   : %d\n",
 					pstat->ablk_cipher_aes_dec);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   ABLK DES CIPHER encryption   : %d\n",
 					pstat->ablk_cipher_des_enc);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   ABLK DES CIPHER decryption   : %d\n",
 					pstat->ablk_cipher_des_dec);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   ABLK 3DES CIPHER encryption  : %d\n",
 					pstat->ablk_cipher_3des_enc);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   ABLK 3DES CIPHER decryption  : %d\n",
 					pstat->ablk_cipher_3des_dec);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   ABLK CIPHER operation success: %d\n",
 					pstat->ablk_cipher_op_success);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   ABLK CIPHER operation fail   : %d\n",
 					pstat->ablk_cipher_op_fail);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD SHA1-AES encryption      : %d\n",
 					pstat->aead_sha1_aes_enc);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD SHA1-AES decryption      : %d\n",
 					pstat->aead_sha1_aes_dec);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD SHA1-DES encryption      : %d\n",
 					pstat->aead_sha1_des_enc);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD SHA1-DES decryption      : %d\n",
 					pstat->aead_sha1_des_dec);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD SHA1-3DES encryption     : %d\n",
 					pstat->aead_sha1_3des_enc);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD SHA1-3DES decryption     : %d\n",
 					pstat->aead_sha1_3des_dec);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD CCM-AES encryption     : %d\n",
 					pstat->aead_ccm_aes_enc);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD CCM-AES decryption     : %d\n",
 					pstat->aead_ccm_aes_dec);
 
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD operation success       : %d\n",
 					pstat->aead_op_success);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD operation fail          : %d\n",
 					pstat->aead_op_fail);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   AEAD bad message             : %d\n",
 					pstat->aead_bad_msg);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   SHA1 digest			 : %d\n",
 					pstat->sha1_digest);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   SHA256 digest		 : %d\n",
 					pstat->sha256_digest);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   SHA  operation fail          : %d\n",
 					pstat->sha_op_fail);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   SHA  operation success          : %d\n",
 					pstat->sha_op_success);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   SHA1 HMAC digest			 : %d\n",
 					pstat->sha1_hmac_digest);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   SHA256 HMAC digest		 : %d\n",
 					pstat->sha256_hmac_digest);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   SHA HMAC operation fail          : %d\n",
 					pstat->sha_hmac_op_fail);
-	len += snprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
+	len += scnprintf(_debug_read_buf + len, DEBUG_MAX_RW_BUF - len - 1,
 			"   SHA HMAC operation success          : %d\n",
 					pstat->sha_hmac_op_success);
 	return len;
@@ -1423,8 +1423,20 @@ static int _qcrypto_process_aead(struct crypto_priv *cp,
 
 			rctx->orig_src = req->src;
 			rctx->orig_dst = req->dst;
+
+			if ((MAX_ALIGN_SIZE*2 > ULONG_MAX - req->assoclen) ||
+				((MAX_ALIGN_SIZE*2 + req->assoclen) >
+						ULONG_MAX - qreq.authsize) ||
+				((MAX_ALIGN_SIZE*2 + req->assoclen +
+						qreq.authsize) >
+						ULONG_MAX - req->cryptlen)) {
+				pr_err("Integer overflow on aead req length.\n");
+				return -EINVAL;
+			}
+
 			rctx->data = kzalloc((req->cryptlen + qreq.assoclen +
-					qreq.authsize + 64*2), GFP_ATOMIC);
+					qreq.authsize + MAX_ALIGN_SIZE*2),
+					GFP_ATOMIC);
 			if (rctx->data == NULL) {
 				pr_err("Mem Alloc fail rctx->data, err %ld\n",
 							PTR_ERR(rctx->data));
@@ -1486,6 +1498,16 @@ static int _qcrypto_process_aead(struct crypto_priv *cp,
 			 * include  assoicated data, ciphering data stream,
 			 * generated MAC, and CCM padding.
 			 */
+			if ((MAX_ALIGN_SIZE * 2 > ULONG_MAX - req->assoclen) ||
+				((MAX_ALIGN_SIZE * 2 + req->assoclen) >
+						ULONG_MAX - qreq.ivsize) ||
+				((MAX_ALIGN_SIZE * 2 + req->assoclen
+					+ qreq.ivsize)
+						> ULONG_MAX - req->cryptlen)) {
+				pr_err("Integer overflow on aead req length.\n");
+				return -EINVAL;
+			}
+
 			rctx->data = kzalloc(
 					(req->cryptlen +
 						req->assoclen +

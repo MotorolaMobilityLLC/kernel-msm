@@ -25,6 +25,7 @@
 
 #include <mach/clk.h>
 #include <mach/clk-provider.h>
+#include <mach/clock-generic.h>
 
 #include "clock-local2.h"
 
@@ -796,153 +797,65 @@ out:
 }
 
 
-#define ENABLE_REG(x)	(*(x)->base + (x)->enable_reg)
-#define SELECT_REG(x)	(*(x)->base + (x)->select_reg)
+static DEFINE_SPINLOCK(mux_reg_lock);
 
-/*
- * mux clock functions
- */
-static void cam_mux_clk_halt_check(void)
+static int mux_reg_enable(struct mux_clk *clk)
 {
-	/* Ensure that the delay starts after the mux disable/enable. */
-	mb();
-	udelay(HALT_CHECK_DELAY_US);
-}
-
-static int cam_mux_clk_enable(struct clk *c)
-{
-	unsigned long flags;
 	u32 regval;
-	struct cam_mux_clk *mux = to_cam_mux_clk(c);
+	unsigned long flags;
+	u32 offset = clk->en_reg ? clk->en_offset : clk->offset;
 
-	spin_lock_irqsave(&local_clock_reg_lock, flags);
-	regval = readl_relaxed(ENABLE_REG(mux));
-	regval |= mux->enable_mask;
-	writel_relaxed(regval, ENABLE_REG(mux));
-	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
-
-	/* Wait for clock to enable before continuing. */
-	cam_mux_clk_halt_check();
+	spin_lock_irqsave(&mux_reg_lock, flags);
+	regval = readl_relaxed(*clk->base + offset);
+	regval |= clk->en_mask;
+	writel_relaxed(regval, *clk->base + offset);
+	/* Ensure enable request goes through before returning */
+	mb();
+	spin_unlock_irqrestore(&mux_reg_lock, flags);
 
 	return 0;
 }
 
-static void cam_mux_clk_disable(struct clk *c)
+static void mux_reg_disable(struct mux_clk *clk)
 {
-	unsigned long flags;
-	struct cam_mux_clk *mux = to_cam_mux_clk(c);
 	u32 regval;
+	unsigned long flags;
+	u32 offset = clk->en_reg ? clk->en_offset : clk->offset;
 
-	spin_lock_irqsave(&local_clock_reg_lock, flags);
-	regval = readl_relaxed(ENABLE_REG(mux));
-	regval &= ~mux->enable_mask;
-	writel_relaxed(regval, ENABLE_REG(mux));
-	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
-
-	/* Wait for clock to disable before continuing. */
-	cam_mux_clk_halt_check();
+	spin_lock_irqsave(&mux_reg_lock, flags);
+	regval = readl_relaxed(*clk->base + offset);
+	regval &= ~clk->en_mask;
+	writel_relaxed(regval, *clk->base + offset);
+	spin_unlock_irqrestore(&mux_reg_lock, flags);
 }
 
-static int mux_source_switch(struct cam_mux_clk *mux, struct mux_source *dest)
+static int mux_reg_set_mux_sel(struct mux_clk *clk, int sel)
 {
-	unsigned long flags;
 	u32 regval;
-	int ret = 0;
+	unsigned long flags;
 
-	ret = __clk_pre_reparent(&mux->c, dest->clk, &flags);
-	if (ret)
-		goto out;
-
-	regval = readl_relaxed(SELECT_REG(mux));
-	regval &= ~mux->select_mask;
-	regval |= dest->select_val;
-	writel_relaxed(regval, SELECT_REG(mux));
-
-	/* Make sure switch request goes through before proceeding. */
+	spin_lock_irqsave(&mux_reg_lock, flags);
+	regval = readl_relaxed(*clk->base + clk->offset);
+	regval &= ~(clk->mask << clk->shift);
+	regval |= (sel & clk->mask) << clk->shift;
+	writel_relaxed(regval, *clk->base + clk->offset);
+	/* Ensure switch request goes through before returning */
 	mb();
-
-	__clk_post_reparent(&mux->c, mux->c.parent, &flags);
-out:
-	return ret;
-}
-
-static int cam_mux_clk_set_parent(struct clk *c, struct clk *parent)
-{
-	struct cam_mux_clk *mux = to_cam_mux_clk(c);
-	struct mux_source *dest = NULL;
-	int ret;
-
-	if (!mux->sources || !parent)
-		return -EPERM;
-
-	dest = mux->sources;
-
-	while (dest->clk) {
-		if (dest->clk == parent)
-			break;
-		dest++;
-	}
-
-	if (!dest->clk)
-		return -EPERM;
-
-	ret = mux_source_switch(mux, dest);
-	if (ret)
-		return ret;
-
-	mux->c.rate = clk_get_rate(dest->clk);
+	spin_unlock_irqrestore(&mux_reg_lock, flags);
 
 	return 0;
 }
 
-static enum handoff cam_mux_clk_handoff(struct clk *c)
+static int mux_reg_get_mux_sel(struct mux_clk *clk)
 {
-	struct cam_mux_clk *mux = to_cam_mux_clk(c);
-	u32 mask = mux->enable_mask;
-	u32 regval = readl_relaxed(ENABLE_REG(mux));
-
-	c->rate = clk_get_rate(c->parent);
-
-	if (mask == (regval & mask))
-		return HANDOFF_ENABLED_CLK;
-
-	return HANDOFF_DISABLED_CLK;
+	u32 regval = readl_relaxed(*clk->base + clk->offset);
+	return !!((regval >> clk->shift) & clk->mask);
 }
 
-static struct clk *cam_mux_clk_get_parent(struct clk *c)
+static bool mux_reg_is_enabled(struct mux_clk *clk)
 {
-	struct cam_mux_clk *mux = to_cam_mux_clk(c);
-	struct mux_source *parent = NULL;
-	u32 regval = readl_relaxed(SELECT_REG(mux));
-
-	if (!mux->sources)
-		return ERR_PTR(-EPERM);
-
-	parent = mux->sources;
-
-	while (parent->clk) {
-		if ((regval & mux->select_mask) == parent->select_val)
-			return parent->clk;
-
-		parent++;
-	}
-
-	return ERR_PTR(-EPERM);
-}
-
-static long cam_mux_clk_list_rate(struct clk *c, unsigned n)
-{
-	struct cam_mux_clk *mux = to_cam_mux_clk(c);
-	int i;
-
-	for (i = 0; i < n; i++)
-		if (!mux->sources[i].clk)
-			break;
-
-	if (!mux->sources[i].clk)
-		return -ENXIO;
-
-	return clk_get_rate(mux->sources[i].clk);
+	u32 regval = readl_relaxed(*clk->base + clk->offset);
+	return !!(regval & clk->en_mask);
 }
 
 struct clk_ops clk_ops_empty;
@@ -1009,13 +922,10 @@ struct clk_ops clk_ops_vote = {
 	.handoff = local_vote_clk_handoff,
 };
 
-struct clk_ops clk_ops_cam_mux = {
-	.enable = cam_mux_clk_enable,
-	.disable = cam_mux_clk_disable,
-	.set_parent = cam_mux_clk_set_parent,
-	.get_parent = cam_mux_clk_get_parent,
-	.handoff = cam_mux_clk_handoff,
-	.list_rate = cam_mux_clk_list_rate,
+struct clk_mux_ops mux_reg_ops = {
+	.enable = mux_reg_enable,
+	.disable = mux_reg_disable,
+	.set_mux_sel = mux_reg_set_mux_sel,
+	.get_mux_sel = mux_reg_get_mux_sel,
+	.is_enabled = mux_reg_is_enabled,
 };
-
-

@@ -727,7 +727,7 @@ int div_prepare(struct clk *c)
 {
 	struct div_clk *div = to_div_clk(c);
 	/* Restore the divider's value */
-	return div->ops->set_div(div, div->div);
+	return div->ops->set_div(div, div->data.div);
 }
 
 int mux_prepare(struct clk *c)
@@ -1492,8 +1492,10 @@ struct dsi_pll_vco_clk dsi_vco_clk_8226 = {
 };
 
 struct div_clk analog_postdiv_clk_8226 = {
-	.max_div = 255,
-	.min_div = 1,
+	.data = {
+		.max_div = 255,
+		.min_div = 1,
+	},
 	.ops = &analog_postdiv_ops,
 	.c = {
 		.parent = &dsi_vco_clk_8226.c,
@@ -1506,7 +1508,11 @@ struct div_clk analog_postdiv_clk_8226 = {
 
 struct div_clk indirect_path_div2_clk_8226 = {
 	.ops = &fixed_2div_ops,
-	.div = 2,
+	.data = {
+		.div = 2,
+		.min_div = 2,
+		.max_div = 2,
+	},
 	.c = {
 		.parent = &analog_postdiv_clk_8226.c,
 		.dbg_name = "indirect_path_div2_clk",
@@ -1517,8 +1523,10 @@ struct div_clk indirect_path_div2_clk_8226 = {
 };
 
 struct div_clk pixel_clk_src_8226 = {
-	.max_div = 255,
-	.min_div = 1,
+	.data = {
+		.max_div = 255,
+		.min_div = 1,
+	},
 	.ops = &digital_postdiv_ops,
 	.c = {
 		.parent = &dsi_vco_clk_8226.c,
@@ -1546,8 +1554,10 @@ struct mux_clk byte_mux_8226 = {
 
 struct div_clk byte_clk_src_8226 = {
 	.ops = &fixed_4div_ops,
-	.min_div = 4,
-	.max_div = 4,
+	.data = {
+		.min_div = 4,
+		.max_div = 4,
+	},
 	.c = {
 		.parent = &byte_mux_8226.c,
 		.dbg_name = "byte_clk_src",
@@ -1585,8 +1595,10 @@ struct dsi_pll_vco_clk dsi_vco_clk_8974 = {
 };
 
 struct div_clk analog_postdiv_clk_8974 = {
-	.max_div = 255,
-	.min_div = 1,
+	.data = {
+		.max_div = 255,
+		.min_div = 1,
+	},
 	.ops = &analog_postdiv_ops,
 	.c = {
 		.parent = &dsi_vco_clk_8974.c,
@@ -1599,7 +1611,11 @@ struct div_clk analog_postdiv_clk_8974 = {
 
 struct div_clk indirect_path_div2_clk_8974 = {
 	.ops = &fixed_2div_ops,
-	.div = 2,
+	.data = {
+		.div = 2,
+		.min_div = 2,
+		.max_div = 2,
+	},
 	.c = {
 		.parent = &analog_postdiv_clk_8974.c,
 		.dbg_name = "indirect_path_div2_clk",
@@ -1610,8 +1626,10 @@ struct div_clk indirect_path_div2_clk_8974 = {
 };
 
 struct div_clk pixel_clk_src_8974 = {
-	.max_div = 255,
-	.min_div = 1,
+	.data = {
+		.max_div = 255,
+		.min_div = 1,
+	},
 	.ops = &digital_postdiv_ops,
 	.c = {
 		.parent = &dsi_vco_clk_8974.c,
@@ -1639,8 +1657,10 @@ struct mux_clk byte_mux_8974 = {
 
 struct div_clk byte_clk_src_8974 = {
 	.ops = &fixed_4div_ops,
-	.min_div = 4,
-	.max_div = 4,
+	.data = {
+		.min_div = 4,
+		.max_div = 4,
+	},
 	.c = {
 		.parent = &byte_mux_8974.c,
 		.dbg_name = "byte_clk_src",
