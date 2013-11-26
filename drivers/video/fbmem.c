@@ -1427,7 +1427,11 @@ __releases(&info->lock)
 		goto out;
 	}
 	file->private_data = info;
-	if (info->fbops->fb_open) {
+	if (info->fbops->fb_open2) {
+		res = info->fbops->fb_open2(info, file, 1);
+		if (res)
+			module_put(info->fbops->owner);
+	} else if (info->fbops->fb_open) {
 		res = info->fbops->fb_open(info,1);
 		if (res)
 			module_put(info->fbops->owner);
@@ -1451,7 +1455,9 @@ __releases(&info->lock)
 	struct fb_info * const info = file->private_data;
 
 	mutex_lock(&info->lock);
-	if (info->fbops->fb_release)
+	if (info->fbops->fb_release2)
+		info->fbops->fb_release2(info, file, 1);
+	else if (info->fbops->fb_release)
 		info->fbops->fb_release(info,1);
 	module_put(info->fbops->owner);
 	mutex_unlock(&info->lock);
