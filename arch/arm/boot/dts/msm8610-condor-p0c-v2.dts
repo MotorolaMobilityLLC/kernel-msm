@@ -24,6 +24,11 @@
 	qcom,msm-id = <147 0x41 0x01018100>;
 };
 
+&soc {
+	/delete-node/ fan5646_vreg;
+	/delete-node/ fan5646;
+};
+
 &i2c {
 	qcom,camera@6c {
 		gpios = <&msmgpio 13 0>,
@@ -37,6 +42,12 @@
 			 "CAM_RESET1",
 			 "CAM_STANDBY",
 			 "CAM_PWREN";
+	};
+};
+
+&i2c_3 {
+	lm2755@18 {
+		status = "ok";
 	};
 };
 
