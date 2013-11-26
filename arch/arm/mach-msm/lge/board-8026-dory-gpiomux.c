@@ -233,34 +233,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio      = 6,         /* BLSP1 QUP2 I2C_SDA */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config
-		},
-	},
-	{
-		.gpio      = 7,         /* BLSP1 QUP2 I2C_SCL */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config
-		},
-	},
-	{
-		.gpio      = 14,	/* BLSP1 QUP4 I2C_SDA */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 15,	/* BLSP1 QUP4 I2C_SCL */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
 		.gpio      = 18,		/* BLSP1 QUP5 I2C_SDA */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
@@ -308,18 +280,6 @@ static struct gpiomux_setting gpio_nc_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct gpiomux_setting goodix_ldo_en_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting goodix_ldo_en_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
 };
 
 static struct gpiomux_setting goodix_int_act_cfg = {
@@ -386,22 +346,9 @@ static struct msm_gpiomux_config msm_skuf_blsp_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
 		},
 	},
-	{
-		.gpio      = 14,	/* NC */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_nc_cfg,
-		},
-	},
 };
 
 static struct msm_gpiomux_config msm_skuf_goodix_configs[] __initdata = {
-	{
-		.gpio = 15,		/* LDO EN */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &goodix_ldo_en_act_cfg,
-			[GPIOMUX_SUSPENDED] = &goodix_ldo_en_sus_cfg,
-		},
-	},
 	{
 		.gpio = 16,		/* RESET */
 		.settings = {
@@ -843,6 +790,200 @@ static struct msm_gpiomux_config msm_mi2s_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting bt_gpio_uart_active_config = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE, /* Should be PULL NONE */
+};
+
+static struct gpiomux_setting bt_gpio_uart_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE, /* PULL Configuration */
+};
+
+static struct gpiomux_setting bt_rfkill_active_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_rfkill_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_host_wakeup_active_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting bt_host_wakeup_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting bt_wakeup_active_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_wakeup_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_pcm_active_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_pcm_suspend_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting bt_rst_active_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_rst_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config bt_msm_blsp_configs[] __initdata = {
+	{
+		.gpio = 12, /* BLSP1 UART4 TX */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &bt_gpio_uart_active_config ,
+			[GPIOMUX_SUSPENDED] = &bt_gpio_uart_suspend_config ,
+		},
+	},
+	{
+		.gpio = 13, /* BLSP1 UART4 RX */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &bt_gpio_uart_active_config ,
+			[GPIOMUX_SUSPENDED] = &bt_gpio_uart_suspend_config ,
+		},
+	},
+	{
+		.gpio = 14, /* BLSP1 UART4 CTS */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &bt_gpio_uart_active_config ,
+			[GPIOMUX_SUSPENDED] = &bt_gpio_uart_suspend_config ,
+		},
+	},
+	{
+		.gpio = 15, /* BLSP1 UART4 RFR */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &bt_gpio_uart_active_config ,
+			[GPIOMUX_SUSPENDED] = &bt_gpio_uart_suspend_config ,
+		},
+	},
+};
+
+static struct msm_gpiomux_config bt_rfkill_configs[] = {
+	{
+		.gpio = 45,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bt_rfkill_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_rfkill_suspend_config,
+		},
+	},
+};
+
+static struct msm_gpiomux_config bt_wakeup_configs[] __initdata = {
+	{
+		.gpio = 47,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bt_wakeup_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_wakeup_suspend_config,
+		},
+	},
+};
+
+static struct msm_gpiomux_config bt_host_wakeup_configs[] __initdata = {
+	{
+		.gpio = 48,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bt_host_wakeup_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_host_wakeup_suspend_config,
+		},
+	},
+};
+
+static struct msm_gpiomux_config bt_pcm_configs[] __initdata = {
+	{
+		.gpio = 49,	/* BT_PCM_CLK */
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &bt_pcm_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_pcm_suspend_config,
+		},
+	},
+	{
+		.gpio = 50,	/* BT_PCM_SYNC */
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &bt_pcm_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_pcm_suspend_config,
+		},
+	},
+	{
+		.gpio = 51,	/* BT_PCM_DIN */
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &bt_pcm_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_pcm_suspend_config,
+		},
+	},
+	{
+		.gpio = 52,	/* BT_PCM_DOUT */
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &bt_pcm_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_pcm_suspend_config,
+		},
+	}
+};
+
+static struct msm_gpiomux_config bt_rst_configs[] = {
+	{
+		.gpio = 20,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bt_rst_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_rst_suspend_config,
+		},
+	},
+};
+
+static void bluetooth_msm_gpiomux_install(void)
+{
+	/* UART */
+	msm_gpiomux_install(bt_msm_blsp_configs,
+			ARRAY_SIZE(bt_msm_blsp_configs));
+	/* RFKILL */
+	msm_gpiomux_install(bt_rfkill_configs, ARRAY_SIZE(bt_rfkill_configs));
+	/* HOST WAKE-UP */
+	msm_gpiomux_install(bt_host_wakeup_configs,
+			ARRAY_SIZE(bt_host_wakeup_configs));
+	/* BT WAKE-UP */
+	msm_gpiomux_install(bt_wakeup_configs, ARRAY_SIZE(bt_wakeup_configs));
+	/* PCM I/F */
+	msm_gpiomux_install(bt_pcm_configs, ARRAY_SIZE(bt_pcm_configs));
+	/* RST_N */
+	msm_gpiomux_install(bt_rst_configs, ARRAY_SIZE(bt_rst_configs));
+}
+
 void __init msm8226_init_gpiomux(void)
 {
 	int rc;
@@ -907,4 +1048,5 @@ void __init msm8226_init_gpiomux(void)
 #endif
 
 	msm_gpiomux_install(msm_mi2s_configs, ARRAY_SIZE(msm_mi2s_configs));
+	bluetooth_msm_gpiomux_install();
 }

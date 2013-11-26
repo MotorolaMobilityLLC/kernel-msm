@@ -43,6 +43,13 @@
 				<86 512 500 800>;
 	};
 
+	bt_rfkill {
+		compatible = "lge,bluetooth_rfkill";
+		gpio-bt-reset = <&msmgpio 20 0>;
+		gpio-bt-on = <&msmgpio 45 0>;
+	};
+
+
 	/* To register BT wake-up devices for BT sleep */
 	bt_sleep {
 		compatible = "lge,bcm_bluesleep";

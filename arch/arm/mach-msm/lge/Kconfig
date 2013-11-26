@@ -10,4 +10,9 @@ config MACH_DORY
 	help
 	  Support for the LGE APQ8026 DORY.
 
+config LGE_BLUETOOTH
+	bool "Support LGE Bluetooth"
+	depends on BT
+	help
+	  Support for the LGE Bluetooth
 endmenu
