@@ -127,10 +127,6 @@ typedef struct {
 struct _hddTdlsPeer_t;
 
 typedef struct {
-    tSirMacAddr macAddr;
-} hddTdlsForcePeer_t;
-
-typedef struct {
     struct list_head peer_list[256];
     hdd_adapter_t   *pAdapter;
 #ifdef TDLS_USE_SEPARATE_DISCOVERY_TIMER
@@ -145,8 +141,6 @@ typedef struct {
     struct _hddTdlsPeer_t  *curr_candidate;
     struct work_struct implicit_setup;
     v_U32_t            magic;
-    hddTdlsForcePeer_t forcePeer[HDD_MAX_NUM_TDLS_STA];
-    tANI_U8            forcePeerCnt;
 } tdlsCtx_t;
 
 typedef struct _hddTdlsPeer_t {
@@ -168,6 +162,7 @@ typedef struct _hddTdlsPeer_t {
     tANI_U8     isBufSta;
     vos_timer_t     peerIdleTimer;
     vos_timer_t     initiatorWaitTimeoutTimer;
+    tANI_BOOLEAN isForcedPeer;
 } hddTdlsPeer_t;
 
 typedef struct {
@@ -278,8 +273,7 @@ void wlan_hdd_tdls_indicate_teardown(hdd_adapter_t *pAdapter,
                                            hddTdlsPeer_t *curr_peer,
                                            tANI_U16 reason);
 
-int wlan_hdd_tdls_add_force_peer(hdd_adapter_t *pAdapter, u8 *mac);
-
-int wlan_hdd_tdls_remove_force_peer(hdd_adapter_t *pAdapter, u8 *mac);
+int wlan_hdd_tdls_set_force_peer(hdd_adapter_t *pAdapter, u8 *mac,
+                                 tANI_BOOLEAN forcePeer);
 
 #endif // __HDD_TDSL_H
