@@ -1629,6 +1629,33 @@ static int florida_codec_probe(struct snd_soc_codec *codec)
 
 	priv->core.arizona->dapm = &codec->dapm;
 
+	ret = arizona_request_irq(arizona, ARIZONA_IRQ_DSP_IRQ1,
+				  "ADSP2 interrupt 1", adsp2_irq, priv);
+	if (ret != 0) {
+		dev_err(arizona->dev, "Failed to request DSP IRQ: %d\n", ret);
+		return ret;
+	}
+
+	ret = irq_set_irq_wake(arizona->irq, 1);
+	if (ret) {
+		dev_err(arizona->dev,
+			"Failed to set DSP IRQ to wake source: %d\n",
+			ret);
+		arizona_free_irq(arizona, ARIZONA_IRQ_DSP_IRQ1, priv);
+		return ret;
+	}
+
+	snd_soc_dapm_enable_pin(&codec->dapm, "DRC2 Signal Activity");
+	ret = regmap_update_bits(arizona->regmap, ARIZONA_IRQ2_STATUS_3_MASK,
+				 ARIZONA_IM_DRC2_SIG_DET_EINT2,
+				 ARIZONA_IM_DRC2_SIG_DET_EINT2);
+	if (ret != 0) {
+		dev_err(arizona->dev,
+			"Failed to unmask DRC2 IRQ for DSP: %d\n",
+			ret);
+		return ret;
+	}
+
 	return 0;
 }
 
