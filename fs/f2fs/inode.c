@@ -276,6 +276,7 @@ void f2fs_evict_inode(struct inode *inode)
 
 	f2fs_lock_op(sbi);
 	remove_inode_page(inode);
+	stat_dec_inline_inode(inode);
 	f2fs_unlock_op(sbi);
 
 no_delete:
