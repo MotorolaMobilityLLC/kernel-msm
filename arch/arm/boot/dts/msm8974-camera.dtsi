@@ -188,6 +188,32 @@
 		qcom,cci-master = <0>;
 	};
 
+	cci_master0: qcom,cci_master_0 {
+		qcom,hw-thigh = <20>;
+		qcom,hw-tlow = <28>;
+		qcom,hw-tsu-sto = <21>;
+		qcom,hw-tsu-sta = <21>;
+		qcom,hw-thd-dat = <13>;
+		qcom,hw-thd-sta = <18>;
+		qcom,hw-tbuf = <25>;
+		qcom,hw-scl-stretch-en = <0>;
+		qcom,hw-trdhld = <6>;
+		qcom,hw-tsp = <3>;
+	};
+
+	cci_master1: qcom,cci_master_1 {
+		qcom,hw-thigh = <20>;
+		qcom,hw-tlow = <28>;
+		qcom,hw-tsu-sto = <21>;
+		qcom,hw-tsu-sta = <21>;
+		qcom,hw-thd-dat = <13>;
+		qcom,hw-thd-sta = <18>;
+		qcom,hw-tbuf = <25>;
+		qcom,hw-scl-stretch-en = <0>;
+		qcom,hw-trdhld = <6>;
+		qcom,hw-tsp = <3>;
+	};
+
 	cci: qcom,cci@fda0C000 {
 		cell-index = <0>;
 		compatible = "qcom,cci";
@@ -204,18 +230,10 @@
 		qcom,gpio-tbl-num = <0 1 2 3>;
 		qcom,gpio-tbl-flags = <1 1 1 1>;
 		qcom,gpio-tbl-label = "CCI_I2C_DATA0",
-					"CCI_I2C_CLK0",
-					"CCI_I2C_DATA1",
-					"CCI_I2C_CLK1";
-		qcom,hw-thigh = <20>;
-		qcom,hw-tlow = <28>;
-		qcom,hw-tsu-sto = <21>;
-		qcom,hw-tsu-sta = <21>;
-		qcom,hw-thd-dat = <13>;
-		qcom,hw-thd-sta = <18>;
-		qcom,hw-tbuf = <25>;
-		qcom,hw-scl-stretch-en = <0>;
-		qcom,hw-trdhld = <6>;
-		qcom,hw-tsp = <3>;
+				      "CCI_I2C_CLK0",
+				      "CCI_I2C_DATA1",
+				      "CCI_I2C_CLK1";
+		qcom,cci-master0 = <&cci_master0>;
+		qcom,cci-master1 = <&cci_master1>;
 	};
 };
