@@ -631,6 +631,9 @@ struct fb_ops {
 	int (*fb_open)(struct fb_info *info, int user);
 	int (*fb_release)(struct fb_info *info, int user);
 
+	int (*fb_open2)(struct fb_info *info, struct file *file, int user);
+	int (*fb_release2)(struct fb_info *info, struct file *file, int user);
+
 	/* For framebuffers with strange non linear layouts or that do not
 	 * work with normal memory mapped access
 	 */
