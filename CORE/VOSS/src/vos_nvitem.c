@@ -564,6 +564,16 @@ static v_SIZE_t nvReadEncodeBufSize;
 static v_SIZE_t nDictionarySize;
 static v_U32_t magicNumber;
 
+/* NV2 specific, No CH 144 support
+ * For NV_FTM operation, NV2 structure should be maintained
+ * This will be used only for the NV_FTM operation */
+typedef struct nvEFSTableV2_s
+{
+   v_U32_t    nvValidityBitmap;
+   sHalNvV2   halnvV2;
+} nvEFSTableV2_t;
+nvEFSTableV2_t *gnvEFSTableV2;
+
 const tRfChannelProps rfChannels[NUM_RF_CHANNELS] =
 {
     //RF_SUBBAND_2_4_GHZ
@@ -608,6 +618,9 @@ const tRfChannelProps rfChannels[NUM_RF_CHANNELS] =
     { 5660, 132, RF_SUBBAND_5_MID_GHZ},      //RF_CHAN_132,
     { 5680, 136, RF_SUBBAND_5_MID_GHZ},      //RF_CHAN_136,
     { 5700, 140, RF_SUBBAND_5_MID_GHZ},      //RF_CHAN_140,
+#ifdef FEATURE_WLAN_CH144
+    { 5720, 144, RF_SUBBAND_5_MID_GHZ},      //RF_CHAN_144,
+#endif /* FEATURE_WLAN_CH144 */
     { 5745, 149, RF_SUBBAND_5_HIGH_GHZ},     //RF_CHAN_149,
     { 5765, 153, RF_SUBBAND_5_HIGH_GHZ},     //RF_CHAN_153,
     { 5785, 157, RF_SUBBAND_5_HIGH_GHZ},     //RF_CHAN_157,
@@ -644,6 +657,9 @@ const tRfChannelProps rfChannels[NUM_RF_CHANNELS] =
     { 5650, 130, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_130,
     { 5670, 134, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_134,
     { 5690, 138, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_138,
+#ifdef FEATURE_WLAN_CH144
+    { 5730, 142, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_142,
+#endif /* FEATURE_WLAN_CH144 */
     { 5755, 151, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_151,
     { 5775, 155, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_155,
     { 5795, 159, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_159,
@@ -729,6 +745,347 @@ fail:
    return vosStatus;
 }
 
+/**------------------------------------------------------------------------
+  \brief vos_nv_parseV2bin() - Parse NV2 binary
+         Parse NV2 BIN, and assign contents to common NV structure.
+  \param pnvEncodedBuf
+         NV Bin read buffer
+  \param nvReadBufSize
+         NV Bin read size
+  \param halNv
+         common NV structure storage pointer
+  \return VOS_STATUS_SUCCESS - module is initialized successfully
+          otherwise  - module is not initialized
+  \sa
+  -------------------------------------------------------------------------*/
+VOS_STATUS vos_nv_parseV2bin(tANI_U8 *pnvEncodedBuf, tANI_U32 nvReadBufSize,
+   sHalNv *halNv)
+{
+   sHalNvV2 *nv2Table;
+   tANI_U16 copyLoop;
+   tANI_U16 channelLoop;
+   void *targetPtr;
+   void *sourcePtr;
+
+   v_U32_t structSize = 0;
+
+   nv2Table = (sHalNvV2 *)pnvEncodedBuf;
+   /* NV Field Default Copy */
+   vos_mem_copy((char *)&halNv->fields,
+                (char *)&nv2Table->fields,
+                sizeof(sNvFields));
+   structSize += sizeof(sNvFields);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(sNvFields) %zu, structSize %d",
+              __func__, sizeof(sNvFields), structSize);
+
+   /* NV Table, tRateGroupPwr, NOT depends on channel count */
+   vos_mem_copy((char *)halNv->tables.pwrOptimum,
+                (char *)nv2Table->tables.pwrOptimum,
+                sizeof(halNv->tables.pwrOptimum));
+   structSize += sizeof(halNv->tables.pwrOptimum);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.pwrOptimum) %zu, structSize %d",
+              __func__, sizeof(halNv->tables.pwrOptimum), structSize);
+
+   /* NV Table, regDomains, edepends on channel count */
+   for (copyLoop = 0; copyLoop < NUM_REG_DOMAINS; copyLoop++)
+   {
+      vos_mem_copy((char *)halNv->tables.regDomains[copyLoop].antennaGain,
+             (char *)nv2Table->tables.regDomains[copyLoop].antennaGain,
+             sizeof(halNv->tables.regDomains[copyLoop].antennaGain));
+      structSize += sizeof(halNv->tables.regDomains[copyLoop].antennaGain);
+
+      vos_mem_copy((char *)halNv->tables.regDomains[copyLoop].bRatePowerOffset,
+             (char *)nv2Table->tables.regDomains[copyLoop].bRatePowerOffset,
+             sizeof(halNv->tables.regDomains[copyLoop].bRatePowerOffset));
+      structSize += sizeof(halNv->tables.regDomains[copyLoop].bRatePowerOffset);
+   }
+
+   for (copyLoop = 0; copyLoop < NUM_REG_DOMAINS; copyLoop++)
+   {
+      targetPtr = (char *)&(halNv->tables.regDomains[copyLoop].channels[0]);
+      sourcePtr = (char *)&(nv2Table->tables.regDomains[copyLoop].channels[0]);
+      /* Cannot blindly copy
+       * Each single CH should be assigned */
+      for (channelLoop = 0; channelLoop < NUM_RF_CHANNELS; channelLoop++)
+      {
+#ifdef FEATURE_WLAN_CH144
+         if ((RF_CHAN_144 == channelLoop) || (RF_CHAN_BOND_142 == channelLoop))
+         {
+            /* NV2 CH144 is disabled */
+            halNv->tables.regDomains[copyLoop].channels[channelLoop].enabled =
+                                    NV_CHANNEL_DISABLE;
+            targetPtr = targetPtr + sizeof(sRegulatoryChannel);
+         }
+         else
+#endif /* FEATURE_WLAN_CH144 */
+         {
+
+            vos_mem_copy(targetPtr, sourcePtr, sizeof(sRegulatoryChannel));
+            targetPtr = targetPtr + sizeof(sRegulatoryChannel);
+            sourcePtr = sourcePtr + sizeof(sRegulatoryChannel);
+            structSize += sizeof(halNv->tables.regDomains[copyLoop].antennaGain);
+         }
+      }
+   }
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.regDomains[copyLoop].antennaGain) %zu, structSize %d",
+              __func__, sizeof(halNv->tables.regDomains[copyLoop].antennaGain), structSize);
+
+   for (copyLoop = 0; copyLoop < NUM_REG_DOMAINS; copyLoop++)
+   {
+      targetPtr = (char *)&(halNv->tables.regDomains[copyLoop].gnRatePowerOffset[0]);
+      sourcePtr = (char *)&(nv2Table->tables.regDomains[copyLoop].gnRatePowerOffset[0]);
+      /* Cannot blindly copy
+       * Each single CH should be assigned */
+      for (channelLoop = 0; channelLoop < NUM_RF_CHANNELS; channelLoop++)
+      {
+#ifdef FEATURE_WLAN_CH144
+         if ((RF_CHAN_144 == channelLoop) || (RF_CHAN_BOND_142 == channelLoop))
+         {
+            targetPtr = targetPtr + sizeof(uAbsPwrPrecision);
+         }
+         else
+#endif /* FEATURE_WLAN_CH144 */
+         {
+            vos_mem_copy(targetPtr, sourcePtr, sizeof(uAbsPwrPrecision));
+            targetPtr = targetPtr + sizeof(uAbsPwrPrecision);
+            sourcePtr = sourcePtr + sizeof(uAbsPwrPrecision);
+            structSize += sizeof(sizeof(uAbsPwrPrecision));
+         }
+      }
+   }
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(uAbsPwrPrecision) %zu, structSize %d",
+              __func__, sizeof(uAbsPwrPrecision), structSize);
+
+   /* nvTable, defaultCountryTable, NOT depends on channel counts */
+   vos_mem_copy((char *)&halNv->tables.defaultCountryTable,
+          (char *)&nv2Table->tables.defaultCountryTable,
+          sizeof(halNv->tables.defaultCountryTable));
+   structSize += sizeof(halNv->tables.defaultCountryTable);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.defaultCountryTable) %zu, structSize %d",
+              __func__, sizeof(halNv->tables.defaultCountryTable), structSize);
+
+   /* NV Table, plutCharacterized, depends on channel count
+    * Cannot blindly copy
+    * Each single CH should be assigned */
+   targetPtr = (char *)&(halNv->tables.plutCharacterized[0]);
+   sourcePtr = (char *)&(nv2Table->tables.plutCharacterized[0]);
+   for (channelLoop = 0; channelLoop < NUM_RF_CHANNELS; channelLoop++)
+   {
+#ifdef FEATURE_WLAN_CH144
+      if ((RF_CHAN_144 == channelLoop) || (RF_CHAN_BOND_142 == channelLoop))
+      {
+         targetPtr = targetPtr + sizeof(tTpcPowerTable);
+      }
+      else
+#endif /* FEATURE_WLAN_CH144 */
+      {
+         vos_mem_copy(targetPtr, sourcePtr, sizeof(tTpcPowerTable));
+         targetPtr = targetPtr + sizeof(tTpcPowerTable);
+         sourcePtr = sourcePtr + sizeof(tTpcPowerTable);
+         structSize += sizeof(tTpcPowerTable);
+      }
+   }
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(tTpcPowerTable) %zu, structSize %d",
+              __func__, sizeof(tTpcPowerTable), structSize);
+
+   /* NV Table, plutPdadcOffset, depends on channel count
+    * Cannot blindly copy
+    * Each single CH should be assigned */
+   targetPtr = (char *)&(halNv->tables.plutPdadcOffset[0]);
+   sourcePtr = (char *)&(nv2Table->tables.plutPdadcOffset[0]);
+   for (channelLoop = 0; channelLoop < NUM_RF_CHANNELS; channelLoop++)
+   {
+#ifdef FEATURE_WLAN_CH144
+      if ((RF_CHAN_144 == channelLoop) || (RF_CHAN_BOND_142 == channelLoop))
+      {
+         targetPtr = targetPtr + sizeof(int16);
+      }
+      else
+#endif /* FEATURE_WLAN_CH144 */
+      {
+         vos_mem_copy(targetPtr, sourcePtr, sizeof(int16));
+         targetPtr = targetPtr + sizeof(int16);
+         sourcePtr = sourcePtr + sizeof(int16);
+         structSize += sizeof(int16);
+      }
+   }
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.plutPdadcOffset) %zu, structSize %d",
+              __func__, sizeof(int16), structSize);
+
+   /* NV Table, pwrOptimum_virtualRate, NOT depends on channel count */
+   vos_mem_copy((char *)halNv->tables.pwrOptimum_virtualRate,
+          (char *)nv2Table->tables.pwrOptimum_virtualRate,
+          sizeof(halNv->tables.pwrOptimum_virtualRate));
+   structSize += sizeof(halNv->tables.pwrOptimum_virtualRate);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.pwrOptimum_virtualRate) %zu, structSize %d",
+              __func__, sizeof(halNv->tables.pwrOptimum_virtualRate), structSize);
+
+   /* NV Table, fwConfig, NOT depends on channel count */
+   vos_mem_copy((char *)&halNv->tables.fwConfig,
+          (char *)&nv2Table->tables.fwConfig,
+          sizeof(halNv->tables.fwConfig));
+   structSize += sizeof(halNv->tables.fwConfig);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.fwConfig) %zu, structSize %d",
+              __func__, sizeof(halNv->tables.fwConfig), structSize);
+
+   /* NV Table, rssiChanOffsets, depends on channel count
+    * Cannot blindly copy
+    * Each single CH should be assigned */
+   for (copyLoop = 0; copyLoop < 2; copyLoop++)
+   {
+      targetPtr = (char *)&(halNv->tables.rssiChanOffsets[copyLoop].bRssiOffset[0]);
+      sourcePtr = (char *)&(nv2Table->tables.rssiChanOffsets[copyLoop].bRssiOffset[0]);
+      /* Cannot blindly copy
+       * Each single CH should be assigned */
+      for (channelLoop = 0; channelLoop < NUM_RF_CHANNELS; channelLoop++)
+      {
+#ifdef FEATURE_WLAN_CH144
+         if ((RF_CHAN_144 == channelLoop) || (RF_CHAN_BOND_142 == channelLoop))
+         {
+            targetPtr = targetPtr + sizeof(int16);
+         }
+         else
+#endif /* FEATURE_WLAN_CH144 */
+         {
+            vos_mem_copy(targetPtr, sourcePtr, sizeof(int16));
+            targetPtr = targetPtr + sizeof(int16);
+            sourcePtr = sourcePtr + sizeof(int16);
+            structSize += sizeof(int16);
+         }
+      }
+   }
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(tables.rssiChanOffsets) %zu, structSize %d",
+              __func__, sizeof(int16), structSize);
+
+   for (copyLoop = 0; copyLoop < 2; copyLoop++)
+   {
+      targetPtr = (char *)&(halNv->tables.rssiChanOffsets[copyLoop].gnRssiOffset[0]);
+      sourcePtr = (char *)&(nv2Table->tables.rssiChanOffsets[copyLoop].gnRssiOffset[0]);
+      /* Cannot blindly copy
+       * Each single CH should be assigned */
+      for (channelLoop = 0; channelLoop < NUM_RF_CHANNELS; channelLoop++)
+      {
+#ifdef FEATURE_WLAN_CH144
+         if ((RF_CHAN_144 == channelLoop) || (RF_CHAN_BOND_142 == channelLoop))
+         {
+            targetPtr = targetPtr + sizeof(int16);
+         }
+         else
+#endif /* FEATURE_WLAN_CH144 */
+         {
+            vos_mem_copy(targetPtr, sourcePtr, sizeof(int16));
+            targetPtr = targetPtr + sizeof(int16);
+            sourcePtr = sourcePtr + sizeof(int16);
+            structSize += sizeof(int16);
+         }
+      }
+   }
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(tables.rssiChanOffsets) %zu, structSize %d",
+              __func__, sizeof(int16), structSize);
+
+   /* NV Table, hwCalValues, NOT depends on channel count */
+   vos_mem_copy((char *)&halNv->tables.hwCalValues,
+          (char *)&nv2Table->tables.hwCalValues,
+          sizeof(halNv->tables.hwCalValues));
+   structSize += sizeof(halNv->tables.fwConfig);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.hwCalValues) %zu, structSize %d",
+              __func__, sizeof(halNv->tables.hwCalValues), structSize);
+
+   /* NV Table, antennaPathLoss, depends on channel count
+    * Cannot blindly copy
+    * Each single CH should be assigned */
+   targetPtr = (char *)&(halNv->tables.antennaPathLoss[0]);
+   sourcePtr = (char *)&(nv2Table->tables.antennaPathLoss[0]);
+   for (channelLoop = 0; channelLoop < NUM_RF_CHANNELS; channelLoop++)
+   {
+#ifdef FEATURE_WLAN_CH144
+      if ((RF_CHAN_144 == channelLoop) || (RF_CHAN_BOND_142 == channelLoop))
+      {
+         targetPtr = targetPtr + sizeof(int16);
+      }
+      else
+#endif /* FEATURE_WLAN_CH144 */
+      {
+         vos_mem_copy(targetPtr, sourcePtr, sizeof(int16));
+         targetPtr = targetPtr + sizeof(int16);
+         sourcePtr = sourcePtr + sizeof(int16);
+         structSize += sizeof(int16);
+      }
+   }
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.antennaPathLoss) %zu, structSize %d",
+              __func__, sizeof(int16), structSize);
+
+   /* NV Table, pktTypePwrLimits, depends on channel count
+    * Cannot blindly copy
+    * Each single CH should be assigned */
+   for (copyLoop = 0; copyLoop < NUM_802_11_MODES; copyLoop++)
+   {
+      targetPtr = (char *)&(halNv->tables.pktTypePwrLimits[copyLoop][0]);
+      sourcePtr = (char *)&(nv2Table->tables.pktTypePwrLimits[copyLoop][0]);
+      /* Cannot blindly copy
+       * Each single CH should be assigned */
+      for (channelLoop = 0; channelLoop < NUM_RF_CHANNELS; channelLoop++)
+      {
+#ifdef FEATURE_WLAN_CH144
+         if ((RF_CHAN_144 == channelLoop) || (RF_CHAN_BOND_142 == channelLoop))
+         {
+            targetPtr = targetPtr + sizeof(int16);
+         }
+         else
+#endif /* FEATURE_WLAN_CH144 */
+         {
+            vos_mem_copy(targetPtr, sourcePtr, sizeof(int16));
+            targetPtr = targetPtr + sizeof(int16);
+            sourcePtr = sourcePtr + sizeof(int16);
+            structSize += sizeof(int16);
+         }
+      }
+   }
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.pktTypePwrLimits) %zu, structSize %d",
+              __func__, sizeof(int16), structSize);
+
+   /* NV Table, ofdmCmdPwrOffset, NOT depends on channel count */
+   vos_mem_copy((char *)&halNv->tables.ofdmCmdPwrOffset,
+          (char *)&nv2Table->tables.ofdmCmdPwrOffset,
+          sizeof(halNv->tables.ofdmCmdPwrOffset));
+   structSize += sizeof(halNv->tables.ofdmCmdPwrOffset);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.ofdmCmdPwrOffset) %zu, structSize %d",
+              __func__, sizeof(halNv->tables.ofdmCmdPwrOffset), structSize);
+
+   /* NV Table, txbbFilterMode, NOT depends on channel count */
+   vos_mem_copy((char *)&halNv->tables.txbbFilterMode,
+          (char *)&nv2Table->tables.txbbFilterMode,
+          sizeof(halNv->tables.txbbFilterMode));
+   structSize += sizeof(halNv->tables.ofdmCmdPwrOffset);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+             "%s: sizeof(halNv->tables.txbbFilterMode) %zu, structSize %d",
+              __func__, sizeof(halNv->tables.txbbFilterMode), structSize);
+
+   return VOS_STATUS_SUCCESS;
+}
+
+/**------------------------------------------------------------------------
+  \brief vos_nv_open() - Open NV operation
+         Read NV bin file and prepare NV common structure
+  \return VOS_STATUS_SUCCESS - module is initialized successfully
+          otherwise  - module is not initialized
+  \sa
+  -------------------------------------------------------------------------*/
 VOS_STATUS vos_nv_open(void)
 {
     VOS_STATUS status = VOS_STATUS_SUCCESS;
@@ -747,7 +1104,6 @@ VOS_STATUS vos_nv_open(void)
         return (eHAL_STATUS_FAILURE);
     }
 
-    bufSize = sizeof(nvEFSTable_t);
     status = hdd_request_firmware(WLAN_NV_FILE,
                                   ((VosContextType*)(pVosContext))->pHDDContext,
                                   (v_VOID_t**)&pnvEncodedBuf, &nvReadBufSize);
@@ -772,10 +1128,24 @@ VOS_STATUS vos_nv_open(void)
         return VOS_STATUS_E_NOMEM;
     }
 
-    gnvEFSTable = (nvEFSTable_t*)pnvEncodedBuf;
+    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+              "NV Table Size %zu", sizeof(nvEFSTable_t));
 
+    pnvEFSTable = (nvEFSTable_t *)vos_mem_malloc(sizeof(nvEFSTable_t));
+    if (NULL == pnvEFSTable)
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                  "%s : failed to allocate memory for NV", __func__);
+        return VOS_STATUS_E_NOMEM;
+    }
+    vos_mem_zero((void *)pnvEFSTable, sizeof(nvEFSTable_t));
+
+    // Default NV version, NOT_VALID
+    ((VosContextType*)(pVosContext))->nvVersion = E_NV_INVALID;
     if (MAGIC_NUMBER == magicNumber)
     {
+        bufSize = sizeof(nvEFSTable_t);
+        gnvEFSTable = (nvEFSTable_t*)pnvEncodedBuf;
         pnvData = (sHalNv *)vos_mem_malloc(sizeof(sHalNv));
 
         if (NULL == pnvData)
@@ -799,7 +1169,7 @@ VOS_STATUS vos_nv_open(void)
         vos_mem_copy(pEncodedBuf, &pnvEncodedBuf[sizeof(v_U32_t)],
             nvReadEncodeBufSize);
 
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                    "readEncodeBufSize %d",nvReadEncodeBufSize);
 
         if (VOS_STATUS_SUCCESS == status) {
@@ -824,12 +1194,71 @@ VOS_STATUS vos_nv_open(void)
 
            nvReadEncodeBufSize = sizeof(sHalNv);
         }
+        vos_mem_copy(&(pnvEFSTable->halnv), &nvDefaults, sizeof(sHalNv));
+
+        /* NV verion is NV3 */
+        ((VosContextType*)(pVosContext))->nvVersion = E_NV_V3;
     }
     else
     {
-       dataOffset = sizeof(v_U32_t);
-       nvReadEncodeBufSize = sizeof(sHalNv);
-       memcpy(pEncodedBuf, &pnvEncodedBuf[dataOffset], nvReadEncodeBufSize);
+        bufSize = sizeof(nvEFSTableV2_t);
+
+        /*Copying the NV defaults */
+        vos_mem_copy(&(pnvEFSTable->halnv), &nvDefaults, sizeof(sHalNv));
+        /* NV2 structure should be maintained to support NV_FTM */
+        gnvEFSTableV2 = (nvEFSTableV2_t * )pnvEncodedBuf;
+
+        /* Size mismatch
+         * NV 1 case, use default NV table */
+        if (nvReadBufSize != bufSize)
+        {
+            pnvEFSTable->nvValidityBitmap = DEFAULT_NV_VALIDITY_BITMAP;
+            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                      "!!!WARNING: INVALID NV FILE, DRIVER IS USING DEFAULT CAL VALUES %d %d!!!",
+                      nvReadBufSize, bufSize);
+            return VOS_STATUS_SUCCESS;
+        }
+
+        VOS_TRACE(VOS_MODULE_ID_VOSS,  VOS_TRACE_LEVEL_INFO,
+                  "NV_2: readBufferSize %zu, EFSV2DefaultSize %zu",
+                  nvReadBufSize, sizeof(nvEFSTableV2_t));
+
+        /* From here, NV2 will be stored into NV3 structure */
+        dataOffset = sizeof(v_U32_t);
+        nvReadEncodeBufSize = sizeof(sHalNvV2);
+        vos_mem_copy(pEncodedBuf,
+                     &pnvEncodedBuf[dataOffset],
+                     nvReadBufSize - dataOffset);
+
+#ifdef FEATURE_WLAN_CH144
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+           "Default NV2 size %zu", sizeof(nvDefaultsV2));
+#else
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+           "Default NV2 size %zu", sizeof(nvDefaults));
+#endif /* FEATURE_WLAN_CH144 */
+        /* First assign value with NV default */
+#ifdef FEATURE_WLAN_CH144
+        vos_nv_parseV2bin((tANI_U8 *)&nvDefaultsV2,
+                          sizeof(sHalNvV2),
+                          &pnvEFSTable->halnv);
+#else
+        vos_nv_parseV2bin((tANI_U8 *)&nvDefaults,
+                          sizeof(sHalNvV2),
+                          &pnvEFSTable->halnv);
+#endif /* FEATURE_WLAN_CH144 */
+
+        /* Actual update from NV.bin */
+        vos_nv_parseV2bin(pEncodedBuf,
+                          nvReadEncodeBufSize,
+                          &pnvEFSTable->halnv);
+
+        vos_mem_copy((void *)&pnvEFSTable->nvValidityBitmap,
+                     pnvEncodedBuf, sizeof(v_U32_t));
+        gnvEFSTable = pnvEFSTable;
+
+        /* NV verion is NV2 */
+        ((VosContextType*)(pVosContext))->nvVersion = E_NV_V2;
     }
 
     if (NULL != pnvData)
@@ -843,28 +1272,6 @@ VOS_STATUS vos_nv_open(void)
 
      /* Copying the read nv data to the globa NV EFS table */
     {
-        /* Allocate memory to global NV table */
-        pnvEFSTable = (nvEFSTable_t *)vos_mem_malloc(sizeof(nvEFSTable_t));
-        if ( NULL == pnvEFSTable )
-        {
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                      "%s : failed to allocate memory for NV", __func__);
-            return VOS_STATUS_E_NOMEM;
-        }
-
-        /*Copying the NV defaults */
-        vos_mem_copy(&(pnvEFSTable->halnv), &nvDefaults, sizeof(sHalNv));
-
-        /* Size mismatch */
-        if ( nvReadBufSize != bufSize)
-        {
-            pnvEFSTable->nvValidityBitmap = DEFAULT_NV_VALIDITY_BITMAP;
-            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                      "!!!WARNING: INVALID NV FILE, DRIVER IS USING DEFAULT CAL VALUES %d %d!!!",
-                      nvReadBufSize, bufSize);
-            return VOS_STATUS_SUCCESS;
-        }
-
        /* Version mismatch */
        if (gnvEFSTable->halnv.fields.nvVersion != WLAN_NV_VERSION)
        {
@@ -875,6 +1282,15 @@ VOS_STATUS vos_nv_open(void)
                      "!!!WARNING: Using Coupler Type field instead of Fw Config table,\n"
                      "Make sure that this is intended or may impact performance!!!");
            }
+#ifdef FEATURE_WLAN_CH144
+           else if ((WLAN_NV_VERSION == NV_VERSION_CH144_CONFIG) &&
+                    (((VosContextType*)(pVosContext))->nvVersion == E_NV_V2))
+           {
+               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                     "!!!WARNING: Default NV is NV3 CH144 "
+                     "BIN is NV2, NV2 contents will be used!!!");
+           }
+#endif /* FEATURE_WLAN_CH144 */
            else
            {
                VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
@@ -1558,6 +1974,7 @@ VOS_STATUS vos_nv_read( VNV_TYPE type, v_VOID_t *outputVoidBuffer,
   \brief vos_nv_write() - write to a NV item from an input buffer
   The \a vos_nv_write() writes to a NV item from an input buffer. This would
   validate the NV item if the write operation is successful.
+  NV2 dedicated operation
   \param type - NV item type
   \param inputBuffer - input buffer
   \param inputBufferSize - input buffer size
@@ -1568,8 +1985,8 @@ VOS_STATUS vos_nv_read( VNV_TYPE type, v_VOID_t *outputVoidBuffer,
           VOS_STATUS_E_FAILURE   - unknown error
   \sa
   -------------------------------------------------------------------------*/
-VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
-      v_SIZE_t bufferSize )
+VOS_STATUS vos_nv_write(VNV_TYPE type, v_VOID_t *inputVoidBuffer,
+      v_SIZE_t bufferSize)
 {
     VOS_STATUS status = VOS_STATUS_SUCCESS;
     v_SIZE_t itemSize;
@@ -1577,225 +1994,287 @@ VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
     // sanity check
     if (VNV_TYPE_COUNT <= type)
     {
-       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                  ("%s: invalid type=%d"), __func__, type );
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "%s: invalid type=%d", __func__, type);
        return VOS_STATUS_E_INVAL;
     }
     if (NULL == inputVoidBuffer)
     {
-       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-             ("Buffer provided is NULL") );
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "Buffer provided is NULL");
        return VOS_STATUS_E_FAULT;
     }
     if (0 == bufferSize)
     {
-       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-             ("NV type=%d is invalid"), type );
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "NV type=%d is invalid", type);
        return VOS_STATUS_E_INVAL;
     }
-    switch(type)
+
+    switch (type)
     {
         case VNV_FIELD_IMAGE:
-            itemSize = sizeof(gnvEFSTable->halnv.fields);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.fields);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                     "type = %d buffer size=%d is less than data size=%d",
+                     type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.fields,inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.fields,
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
+
         case VNV_RATE_TO_POWER_TABLE:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.pwrOptimum);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.pwrOptimum);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize,itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.pwrOptimum[0],inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.pwrOptimum[0],
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
+
         case VNV_REGULARTORY_DOMAIN_TABLE:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.regDomains);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.regDomains);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.regDomains[0],inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.regDomains[0],
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
+
         case VNV_DEFAULT_LOCATION:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.defaultCountryTable);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.defaultCountryTable);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.defaultCountryTable,inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.defaultCountryTable,
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
+
         case VNV_TPC_POWER_TABLE:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.plutCharacterized);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.plutCharacterized);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.plutCharacterized[0],inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.plutCharacterized[0],
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
+
         case VNV_TPC_PDADC_OFFSETS:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.plutPdadcOffset);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.plutPdadcOffset);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.plutPdadcOffset[0],inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.plutPdadcOffset[0],
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
+
          case VNV_RSSI_CHANNEL_OFFSETS:
-
-            itemSize = sizeof(gnvEFSTable->halnv.tables.rssiChanOffsets);
-
-            if(bufferSize != itemSize) {
-
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.rssiChanOffsets);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.rssiChanOffsets[0],inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.rssiChanOffsets[0],
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
+
          case VNV_HW_CAL_VALUES:
-
-            itemSize = sizeof(gnvEFSTable->halnv.tables.hwCalValues);
-
-            if(bufferSize != itemSize) {
-
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.hwCalValues);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.hwCalValues,inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.hwCalValues,
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
+
         case VNV_FW_CONFIG:
-
-           itemSize = sizeof(gnvEFSTable->halnv.tables.fwConfig);
-
-           if(bufferSize != itemSize) {
-
+           itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.fwConfig);
+           if (bufferSize != itemSize)
+           {
                VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                 itemSize);
+                   "type = %d buffer size=%d is less than data size=%d",
+                   type, bufferSize, itemSize);
                status = VOS_STATUS_E_INVAL;
            }
-           else {
-               memcpy(&gnvEFSTable->halnv.tables.fwConfig,inputVoidBuffer,bufferSize);
+           else
+           {
+               memcpy(&gnvEFSTableV2->halnvV2.tables.fwConfig,
+                      inputVoidBuffer,
+                      bufferSize);
            }
            break;
+
         case VNV_ANTENNA_PATH_LOSS:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.antennaPathLoss);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.antennaPathLoss);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.antennaPathLoss[0],inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.antennaPathLoss[0],
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
 
         case VNV_PACKET_TYPE_POWER_LIMITS:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.pktTypePwrLimits);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.pktTypePwrLimits);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(gnvEFSTable->halnv.tables.pktTypePwrLimits,inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(gnvEFSTableV2->halnvV2.tables.pktTypePwrLimits,
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
 
         case VNV_OFDM_CMD_PWR_OFFSET:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.ofdmCmdPwrOffset);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.ofdmCmdPwrOffset);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.ofdmCmdPwrOffset,inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.ofdmCmdPwrOffset,
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
 
         case VNV_TX_BB_FILTER_MODE:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.txbbFilterMode);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.txbbFilterMode);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.txbbFilterMode,inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.txbbFilterMode,
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
 
-
         case VNV_TABLE_VIRTUAL_RATE:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.pwrOptimum_virtualRate);
-            if(bufferSize != itemSize) {
+            itemSize = sizeof(gnvEFSTableV2->halnvV2.tables.pwrOptimum_virtualRate);
+            if (bufferSize != itemSize)
+            {
                 VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d"),type, bufferSize,
-                  itemSize);
+                    "type = %d buffer size=%d is less than data size=%d",
+                    type, bufferSize, itemSize);
                 status = VOS_STATUS_E_INVAL;
             }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.pwrOptimum_virtualRate,inputVoidBuffer,bufferSize);
+            else
+            {
+                memcpy(&gnvEFSTableV2->halnvV2.tables.pwrOptimum_virtualRate,
+                       inputVoidBuffer,
+                       bufferSize);
             }
             break;
 
         default:
           break;
     }
+
    if (VOS_STATUS_SUCCESS == status)
    {
       // set NV item to have valid data
-      status = vos_nv_setValidity( type, VOS_TRUE );
-      if (! VOS_IS_STATUS_SUCCESS(status)) {
-          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, ("vos_nv_setValidity failed!!!"));
+      status = vos_nv_setValidity(type, VOS_TRUE);
+      if (! VOS_IS_STATUS_SUCCESS(status))
+      {
+          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                    "vos_nv_setValidity failed!!!");
           status = VOS_STATUS_E_FAULT;
       }
-      status = wlan_write_to_efs((v_U8_t*)gnvEFSTable,sizeof(nvEFSTable_t));
 
-      if (! VOS_IS_STATUS_SUCCESS(status)) {
-          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, ("vos_nv_write_to_efs failed!!!"));
+      status = wlan_write_to_efs((v_U8_t*)gnvEFSTableV2, sizeof(nvEFSTable_t));
+      if (!VOS_IS_STATUS_SUCCESS(status))
+      {
+          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                    "vos_nv_write_to_efs failed!!!");
           status = VOS_STATUS_E_FAULT;
       }
    }
+
    return status;
 }
 
@@ -1946,9 +2425,28 @@ VOS_STATUS vos_nv_readDefaultCountryTable( uNvTables *tableData )
   -------------------------------------------------------------------------*/
 VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer,v_SIZE_t *pSize)
 {
-   /* Send the NV structure and size */
-   *pNvBuffer = (v_VOID_t *)(&pnvEFSTable->halnv);
-   *pSize = sizeof(sHalNv);
+   eNvVersionType nvVersion;
+
+   nvVersion = vos_nv_getNvVersion();
+
+   if (E_NV_V3 == nvVersion)
+   {
+      /* Send the NV V3 structure and size */
+      *pNvBuffer = (v_VOID_t *)(&pnvEFSTable->halnv);
+      *pSize = sizeof(sHalNv);
+   }
+   else if (E_NV_V2 == nvVersion)
+   {
+      /* Send the NV V2 structure and size */
+      *pNvBuffer = (v_VOID_t *)(&gnvEFSTableV2->halnvV2);
+      *pSize = sizeof(sHalNvV2);
+   }
+   else
+   {
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                "%s : Invalid NV version %d", __func__, nvVersion);
+      return VOS_STATUS_E_INVAL;
+   }
 
    return VOS_STATUS_SUCCESS;
 }
@@ -2045,6 +2543,31 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
    return regChannels[channelEnum].enabled;
 }
 
+/**------------------------------------------------------------------------
+  \brief vos_nv_getNvVersion -
+  \param NONE
+  \return eNvVersionType NV.bin version
+             * E_NV_V2
+             * E_NV_V3
+             * E_NV_INVALID
+  \sa
+  -------------------------------------------------------------------------*/
+eNvVersionType vos_nv_getNvVersion
+(
+   void
+)
+{
+   VosContextType  *vosCtxt = NULL;
+
+   vosCtxt = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+   if (vosCtxt)
+   {
+      return vosCtxt->nvVersion;
+   }
+
+   return E_NV_INVALID;
+}
+
 /******************************************************************
  Add CRDA regulatory support
 *******************************************************************/
@@ -2070,11 +2593,20 @@ static int bw20_ch_index_to_bw40_ch_index(int k)
       if (m > RF_CHAN_BOND_62)
          m = RF_CHAN_BOND_62;
    }
+#ifdef FEATURE_WLAN_CH144
+   else if (k >= RF_CHAN_100 && k <= RF_CHAN_144)
+#else
    else if (k >= RF_CHAN_100 && k <= RF_CHAN_140)
+#endif /* FEATURE_WLAN_CH144 */
    {
       m = k - RF_CHAN_100 + RF_CHAN_BOND_102;
+#ifdef FEATURE_WLAN_CH144
+      if (m > RF_CHAN_BOND_142)
+         m = RF_CHAN_BOND_142;
+#else
       if (m > RF_CHAN_BOND_138)
          m = RF_CHAN_BOND_138;
+#endif /* FEATURE_WLAN_CH144 */
    }
    else if (k >= RF_CHAN_149 && k <= RF_CHAN_165)
    {
@@ -2261,8 +2793,9 @@ end freq - 20000 = center freq of the 40MHz end channel
 */
 static int bw20_start_freq_to_channel_index(u32 freq_khz)
 {
-int i;
-u32 center_freq = freq_khz + 10000;
+  int i;
+  u32 center_freq = freq_khz + 10000;
+
   //Has to compare from low freq to high freq
   //RF_SUBBAND_2_4_GHZ
   for (i=RF_CHAN_1;i<=RF_CHAN_14;i++)
@@ -2277,7 +2810,11 @@ u32 center_freq = freq_khz + 10000;
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
   //RF_SUBBAND_5_MID_GHZ
+#ifdef FEATURE_WLAN_CH144
+  for (i=RF_CHAN_100;i<=RF_CHAN_144;i++)
+#else
   for (i=RF_CHAN_100;i<=RF_CHAN_140;i++)
+#endif /* FEATURE_WLAN_CH144 */
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
   //RF_SUBBAND_5_HIGH_GHZ
@@ -2289,15 +2826,20 @@ return -1;
 
 static int bw20_end_freq_to_channel_index(u32 freq_khz)
 {
-int i;
-u32 center_freq = freq_khz - 10000;
+  int i;
+  u32 center_freq = freq_khz - 10000;
+
   //Has to compare from high freq to low freq
   //RF_SUBBAND_5_HIGH_GHZ
   for (i=RF_CHAN_165;i>=RF_CHAN_149;i--)
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
   //RF_SUBBAND_5_MID_GHZ
+#ifdef FEATURE_WLAN_CH144
+  for (i=RF_CHAN_144;i>=RF_CHAN_100;i--)
+#else
   for (i=RF_CHAN_140;i>=RF_CHAN_100;i--)
+#endif /* FEATURE_WLAN_CH144 */
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
   //RF_SUBBAND_5_LOW_GHZ
@@ -2312,13 +2854,14 @@ u32 center_freq = freq_khz - 10000;
   for (i=RF_CHAN_14;i>=RF_CHAN_1;i--)
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
-return -1;
+  return -1;
 }
 
 static int bw40_start_freq_to_channel_index(u32 freq_khz)
 {
-int i;
-u32 center_freq = freq_khz + 20000;
+  int i;
+  u32 center_freq = freq_khz + 20000;
+
   //Has to compare from low freq to high freq
   //RF_SUBBAND_2_4_GHZ
   for (i=RF_CHAN_BOND_3;i<=RF_CHAN_BOND_11;i++)
@@ -2333,7 +2876,11 @@ u32 center_freq = freq_khz + 20000;
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
   //RF_SUBBAND_5_MID_GHZ
+#ifdef FEATURE_WLAN_CH144
+  for (i=RF_CHAN_BOND_102;i<=RF_CHAN_BOND_142;i++)
+#else
   for (i=RF_CHAN_BOND_102;i<=RF_CHAN_BOND_138;i++)
+#endif /* RF_CHAN_BOND_142 */
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
   //RF_SUBBAND_5_HIGH_GHZ
@@ -2345,15 +2892,20 @@ return -1;
 
 static int bw40_end_freq_to_channel_index(u32 freq_khz)
 {
-int i;
-u32 center_freq = freq_khz - 20000;
+  int i;
+  u32 center_freq = freq_khz - 20000;
+
   //Has to compare from high freq to low freq
   //RF_SUBBAND_5_HIGH_GHZ
   for (i=RF_CHAN_BOND_163;i>=RF_CHAN_BOND_151;i--)
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
   //RF_SUBBAND_5_MID_GHZ
+#ifdef FEATURE_WLAN_CH144
+  for (i=RF_CHAN_BOND_142;i>=RF_CHAN_BOND_102;i--)
+#else
   for (i=RF_CHAN_BOND_138;i>=RF_CHAN_BOND_102;i--)
+#endif /* FEATURE_WLAN_CH144 */
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
   //RF_SUBBAND_5_LOW_GHZ
