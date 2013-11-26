@@ -62,6 +62,7 @@
 #include "vos_types.h"
 #include "vos_status.h"
 #include "wlan_nv.h"
+#include "wlan_nv2.h"
 
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
@@ -195,6 +196,14 @@ typedef enum
    COUNTRY_MAX = COUNTRY_QUERY
 }
 v_CountryInfoSource_t;
+
+//enum of NV version
+typedef enum
+{
+   E_NV_V2,
+   E_NV_V3,
+   E_NV_INVALID
+} eNvVersionType;
 
 // enum of supported NV items in VOSS
 typedef enum
@@ -723,4 +732,19 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
 );
 
 VOS_STATUS vos_init_wiphy_from_nv_bin(void);
+
+/**------------------------------------------------------------------------
+  \brief vos_nv_getNvVersion -
+  \param NONE
+  \return eNvVersionType NV.bin version
+             * E_NV_V2
+             * E_NV_V3
+             * E_NV_INVALID
+  \sa
+  -------------------------------------------------------------------------*/
+eNvVersionType vos_nv_getNvVersion
+(
+   void
+);
+
 #endif // __VOS_NVITEM_H
