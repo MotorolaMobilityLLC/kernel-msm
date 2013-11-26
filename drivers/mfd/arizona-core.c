@@ -795,7 +795,7 @@ static struct mfd_cell florida_devs[] = {
 int arizona_dev_init(struct arizona *arizona)
 {
 	struct device *dev = arizona->dev;
-	const char *type_name;
+	const char *type_name = "Unknown";
 	unsigned int reg, val;
 	int (*apply_patch)(struct arizona *) = NULL;
 	int ret, i;
@@ -979,6 +979,8 @@ int arizona_dev_init(struct arizona *arizona)
 			dev_err(arizona->dev, "Florida codec registered as %d\n",
 				arizona->type);
 			arizona->type = WM8280;
+			type_name = "Florida";
+			revision_char = arizona->rev + 61;
 			break;
 		}
 		apply_patch = florida_patch;
