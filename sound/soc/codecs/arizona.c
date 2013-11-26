@@ -1337,6 +1337,9 @@ static inline int arizona_fratio_ref(struct arizona *arizona, int i)
 		else
 			return fll_fratios[i].fratio[0];
 		break;
+
+	default:
+		return fll_fratios[i].fratio[0];
 	}
 }
 
