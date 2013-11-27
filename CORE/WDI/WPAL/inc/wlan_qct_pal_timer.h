@@ -131,6 +131,14 @@ WPAL_TIMER_STATE wpalTimerGetCurStatus(wpt_timer * pTimer);
 wpt_uint32 wpalGetSystemTime(void);
 
 /*---------------------------------------------------------------------------
+    wpalGetArchCounterTime - Get time from physical counter
+
+    return
+        MPM counter value
+---------------------------------------------------------------------------*/
+wpt_uint64 wpalGetArchCounterTime(void);
+
+/*---------------------------------------------------------------------------
     wpalSleep - sleep for a specified interval
     Param:
         timeout - amount of time to sleep. In unit of milli-seconds.

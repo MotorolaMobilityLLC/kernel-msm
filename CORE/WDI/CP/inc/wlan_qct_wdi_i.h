@@ -1150,6 +1150,13 @@ typedef struct
 
   /* enable/disable SSR on WDI timeout */
   wpt_boolean                 bEnableSSR;
+
+  /* timestamp derived from msm arch counter. */
+  /*timestamp when we start response timer*/
+  wpt_uint64                  uArchTimeStampRspTmrStart;
+
+  /*timestamp when we get response timer event*/
+  wpt_uint64                  uArchTimeStampRspTmrExp;
 }WDI_ControlBlockType; 
 
 
