@@ -51,74 +51,56 @@ struct ion_heap_desc {
 static struct ion_heap_desc ion_heap_meta[] = {
 	{
 		.id	= ION_SYSTEM_HEAP_ID,
-		.type	= ION_HEAP_TYPE_SYSTEM,
-		.name	= ION_VMALLOC_HEAP_NAME,
+		.name	= ION_SYSTEM_HEAP_NAME,
 	},
 	{
 		.id	= ION_SYSTEM_CONTIG_HEAP_ID,
-		.type	= ION_HEAP_TYPE_SYSTEM_CONTIG,
 		.name	= ION_KMALLOC_HEAP_NAME,
 	},
 	{
 		.id	= ION_CP_MM_HEAP_ID,
-		.type	= ION_HEAP_TYPE_SECURE_DMA,
 		.name	= ION_MM_HEAP_NAME,
 		.permission_type = IPT_TYPE_MM_CARVEOUT,
 	},
 	{
 		.id	= ION_MM_FIRMWARE_HEAP_ID,
-		.type	= ION_HEAP_TYPE_CARVEOUT,
 		.name	= ION_MM_FIRMWARE_HEAP_NAME,
 	},
 	{
 		.id	= ION_CP_MFC_HEAP_ID,
-		.type	= ION_HEAP_TYPE_CP,
 		.name	= ION_MFC_HEAP_NAME,
 		.permission_type = IPT_TYPE_MFC_SHAREDMEM,
 	},
 	{
 		.id	= ION_SF_HEAP_ID,
-		.type	= ION_HEAP_TYPE_CARVEOUT,
 		.name	= ION_SF_HEAP_NAME,
 	},
 	{
-		.id	= ION_IOMMU_HEAP_ID,
-		.type	= ION_HEAP_TYPE_IOMMU,
-		.name	= ION_IOMMU_HEAP_NAME,
-	},
-	{
 		.id	= ION_QSECOM_HEAP_ID,
-		.type	= ION_HEAP_TYPE_DMA,
 		.name	= ION_QSECOM_HEAP_NAME,
 	},
 	{
 		.id	= ION_AUDIO_HEAP_ID,
-		.type	= ION_HEAP_TYPE_CARVEOUT,
 		.name	= ION_AUDIO_HEAP_NAME,
 	},
 	{
 		.id	= ION_PIL1_HEAP_ID,
-		.type	= ION_HEAP_TYPE_CARVEOUT,
 		.name	= ION_PIL1_HEAP_NAME,
 	},
 	{
 		.id	= ION_PIL2_HEAP_ID,
-		.type	= ION_HEAP_TYPE_CARVEOUT,
 		.name	= ION_PIL2_HEAP_NAME,
 	},
 	{
 		.id	= ION_CP_WB_HEAP_ID,
-		.type	= ION_HEAP_TYPE_CP,
 		.name	= ION_WB_HEAP_NAME,
 	},
 	{
 		.id	= ION_CAMERA_HEAP_ID,
-		.type	= ION_HEAP_TYPE_CARVEOUT,
 		.name	= ION_CAMERA_HEAP_NAME,
 	},
 	{
 		.id	= ION_ADSP_HEAP_ID,
-		.type	= ION_HEAP_TYPE_DMA,
 		.name	= ION_ADSP_HEAP_NAME,
 	}
 };
@@ -127,6 +109,16 @@ static struct ion_heap_desc ion_heap_meta[] = {
 struct ion_client *msm_ion_client_create(unsigned int heap_mask,
 					const char *name)
 {
+	/*
+	 * The assumption is that if there is a NULL device, the ion
+	 * driver has not yet probed.
+	 */
+	if (idev == NULL)
+		return ERR_PTR(-EPROBE_DEFER);
+
+	if (IS_ERR(idev))
+		return (struct ion_client *)idev;
+
 	return ion_client_create(idev, name);
 }
 EXPORT_SYMBOL(msm_ion_client_create);
@@ -593,15 +585,58 @@ static int msm_init_extra_data(struct ion_platform_heap *heap,
 	return ret;
 }
 
-static int msm_ion_populate_heap(struct ion_platform_heap *heap)
+#define MAKE_HEAP_TYPE_MAPPING(h) { .name = #h, \
+			.heap_type = ION_HEAP_TYPE_##h, }
+
+static struct heap_types_info {
+	const char *name;
+	int heap_type;
+} heap_types_info[] = {
+	MAKE_HEAP_TYPE_MAPPING(SYSTEM),
+	MAKE_HEAP_TYPE_MAPPING(SYSTEM_CONTIG),
+	MAKE_HEAP_TYPE_MAPPING(CARVEOUT),
+	MAKE_HEAP_TYPE_MAPPING(CHUNK),
+	MAKE_HEAP_TYPE_MAPPING(DMA),
+	MAKE_HEAP_TYPE_MAPPING(CP),
+	MAKE_HEAP_TYPE_MAPPING(SECURE_DMA),
+	MAKE_HEAP_TYPE_MAPPING(REMOVED),
+};
+
+static int msm_ion_get_heap_type_from_dt_node(struct device_node *node,
+					int *heap_type)
+{
+	const char *name;
+	int i, ret = -EINVAL;
+	ret = of_property_read_string(node, "qcom,ion-heap-type", &name);
+	if (ret)
+		goto out;
+	for (i = 0; i < ARRAY_SIZE(heap_types_info); ++i) {
+		if (!strcmp(heap_types_info[i].name, name)) {
+			*heap_type = heap_types_info[i].heap_type;
+			ret = 0;
+			goto out;
+		}
+	}
+	WARN(1, "Unknown heap type: %s. You might need to update heap_types_info in %s",
+		name, __FILE__);
+out:
+	return ret;
+}
+
+static int msm_ion_populate_heap(struct device_node *node,
+				struct ion_platform_heap *heap)
 {
 	unsigned int i;
-	int ret = -EINVAL;
+	int ret = -EINVAL, heap_type = -1;
 	unsigned int len = ARRAY_SIZE(ion_heap_meta);
 	for (i = 0; i < len; ++i) {
 		if (ion_heap_meta[i].id == heap->id) {
 			heap->name = ion_heap_meta[i].name;
-			heap->type = ion_heap_meta[i].type;
+			ret = msm_ion_get_heap_type_from_dt_node(node,
+								&heap_type);
+			if (ret)
+				break;
+			heap->type = heap_type;
 			ret = msm_init_extra_data(heap, &ion_heap_meta[i]);
 			break;
 		}
@@ -793,7 +828,7 @@ static struct ion_platform_data *msm_ion_parse_dt(struct platform_device *pdev)
 		}
 		pdata->heaps[idx].id = val;
 
-		ret = msm_ion_populate_heap(&pdata->heaps[idx]);
+		ret = msm_ion_populate_heap(node, &pdata->heaps[idx]);
 		if (ret)
 			goto free_heaps;
 
@@ -933,9 +968,6 @@ static struct ion_heap *msm_ion_heap_create(struct ion_platform_heap *heap_data)
 	struct ion_heap *heap = NULL;
 
 	switch ((int)heap_data->type) {
-	case ION_HEAP_TYPE_IOMMU:
-		heap = ion_iommu_heap_create(heap_data);
-		break;
 	case ION_HEAP_TYPE_CP:
 		heap = ion_cp_heap_create(heap_data);
 		break;
@@ -975,9 +1007,6 @@ static void msm_ion_heap_destroy(struct ion_heap *heap)
 		return;
 
 	switch ((int)heap->type) {
-	case ION_HEAP_TYPE_IOMMU:
-		ion_iommu_heap_destroy(heap);
-		break;
 	case ION_HEAP_TYPE_CP:
 		ion_cp_heap_destroy(heap);
 		break;
@@ -999,6 +1028,7 @@ static void msm_ion_heap_destroy(struct ion_heap *heap)
 
 static int msm_ion_probe(struct platform_device *pdev)
 {
+	static struct ion_device *new_dev;
 	struct ion_platform_data *pdata;
 	unsigned int pdata_needs_to_be_freed;
 	int err = -1;
@@ -1024,9 +1054,14 @@ static int msm_ion_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	idev = ion_device_create(msm_ion_custom_ioctl);
-	if (IS_ERR_OR_NULL(idev)) {
-		err = PTR_ERR(idev);
+	new_dev = ion_device_create(msm_ion_custom_ioctl);
+	if (IS_ERR_OR_NULL(new_dev)) {
+		/*
+		 * set this to the ERR to indicate to the clients
+		 * that Ion failed to probe.
+		 */
+		idev = new_dev;
+		err = PTR_ERR(new_dev);
 		goto freeheaps;
 	}
 
@@ -1053,13 +1088,18 @@ static int msm_ion_probe(struct platform_device *pdev)
 							  heap_data->name);
 		}
 
-		ion_device_add_heap(idev, heaps[i]);
+		ion_device_add_heap(new_dev, heaps[i]);
 	}
 	check_for_heap_overlap(pdata->heaps, num_heaps);
 	if (pdata_needs_to_be_freed)
 		free_pdata(pdata);
 
-	platform_set_drvdata(pdev, idev);
+	platform_set_drvdata(pdev, new_dev);
+	/*
+	 * intentionally set this at the very end to allow probes to be deferred
+	 * completely until Ion is setup
+	 */
+	idev = new_dev;
 	return 0;
 
 freeheaps:
