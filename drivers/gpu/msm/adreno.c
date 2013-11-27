@@ -78,9 +78,7 @@
 #define KGSL_LOG_LEVEL_DEFAULT 3
 
 static const struct kgsl_functable adreno_functable;
-#ifndef CONFIG_DEBUG_FS
-unsigned int kgsl_cff_dump_enable;
-#endif
+
 static struct adreno_device device_3d0 = {
 	.dev = {
 		KGSL_DEVICE_COMMON_INIT(device_3d0.dev),
@@ -1550,9 +1548,7 @@ adreno_probe(struct platform_device *pdev)
 	if (status)
 		goto error_close_rb;
 
-#ifdef CONFIG_DEBUG_FS
 	adreno_debugfs_init(device);
-#endif
 	adreno_dev->on_resume_issueib = false;
 
 	adreno_ft_init_sysfs(device);
