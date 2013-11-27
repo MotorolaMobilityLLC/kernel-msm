@@ -1399,7 +1399,7 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
                     "%s: WDA_NVDownload_Start reporting  other error \n",__func__);
        }
        VOS_ASSERT(0);
-       goto err_wda_stop;
+       goto err_status_failure;
     }
 
     vStatus = WDA_start(pVosContext);
