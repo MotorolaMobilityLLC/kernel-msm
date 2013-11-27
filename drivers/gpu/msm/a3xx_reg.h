@@ -775,6 +775,9 @@
 #define SP0_ICL1_MISSES                0x1A
 #define SP_FS_CFLOW_INSTRUCTIONS       0x0C
 
+/* COUNTABLE FOR TSE PERFCOUNTER */
+#define TSE_INPUT_PRIM_NUM             0x0
+
 /* VBIF PERFCOUNTER ENA/CLR values */
 #define VBIF_PERF_CNT_0 BIT(0)
 #define VBIF_PERF_CNT_1 BIT(1)
@@ -789,6 +792,7 @@
 #define VBIF_PERF_CNT_1_SEL_MASK 0x7f00
 
 /* VBIF countables */
+#define VBIF_AXI_TOTAL_BEATS 85
 #define VBIF_DDR_TOTAL_CYCLES 110
 
 #endif

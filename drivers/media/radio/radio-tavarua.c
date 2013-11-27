@@ -3051,7 +3051,7 @@ static int tavarua_vidioc_s_ext_ctrls(struct file *file, void *priv,
 	int retval = 0;
 	int bytes_to_copy;
 	int bytes_copied = 0;
-	int bytes_left = 0;
+	__u32 bytes_left = 0;
 	int chunk_index = 0;
 	char tx_data[XFR_REG_NUM];
 	struct tavarua_device *radio = video_get_drvdata(video_devdata(file));
@@ -3066,15 +3066,15 @@ static int tavarua_vidioc_s_ext_ctrls(struct file *file, void *priv,
 
 		chunk_index = 0;
 		bytes_copied = 0;
-		bytes_left = min((int)(ctrl->controls[0]).size,
-			MAX_PS_LENGTH);
+		bytes_left = min((ctrl->controls[0]).size,
+			(__u32)MAX_PS_LENGTH);
 		data = (ctrl->controls[0]).string;
 
 		/* send payload to FM hardware */
 		while (bytes_left) {
 			chunk_index++;
 			FMDBG("chunk is %d", chunk_index);
-			bytes_to_copy = min(bytes_left, XFR_REG_NUM);
+			bytes_to_copy = min(bytes_left, (__u32)XFR_REG_NUM);
 			/*Clear the tx_data */
 			memset(tx_data, 0, XFR_REG_NUM);
 			if (copy_from_user(tx_data,
@@ -3116,12 +3116,12 @@ static int tavarua_vidioc_s_ext_ctrls(struct file *file, void *priv,
 		FMDBG("Passed RT String : %s\n",
 			(ctrl->controls[0]).string);
 		bytes_left =
-		    min((int)(ctrl->controls[0]).size, MAX_RT_LENGTH);
+		    min((ctrl->controls[0]).size, (__u32)MAX_RT_LENGTH);
 		data = (ctrl->controls[0]).string;
 		/* send payload to FM hardware */
 		while (bytes_left) {
 			chunk_index++;
-			bytes_to_copy = min(bytes_left, XFR_REG_NUM);
+			bytes_to_copy = min(bytes_left, (__u32)XFR_REG_NUM);
 			memset(tx_data, 0, XFR_REG_NUM);
 			if (copy_from_user(tx_data,
 				    data + bytes_copied, bytes_to_copy))
@@ -4466,8 +4466,8 @@ static int  __init tavarua_probe(struct platform_device *pdev)
 
 	struct marimba_fm_platform_data *tavarua_pdata;
 	struct tavarua_device *radio;
-	int retval;
-	int i;
+	int retval = 0;
+	int i = 0, j = 0;
 	FMDBG("%s: probe called\n", __func__);
 	/* private data allocation */
 	radio = kzalloc(sizeof(struct tavarua_device), GFP_KERNEL);
@@ -4480,6 +4480,7 @@ static int  __init tavarua_probe(struct platform_device *pdev)
 	tavarua_pdata = pdev->dev.platform_data;
 	radio->pdata = tavarua_pdata;
 	radio->dev = &pdev->dev;
+	radio->wqueue = NULL;
 	platform_set_drvdata(pdev, radio);
 
 	/* video device allocation */
@@ -4509,15 +4510,16 @@ static int  __init tavarua_probe(struct platform_device *pdev)
 		if (kfifo_alloc_rc!=0) {
 			printk(KERN_ERR "%s: failed allocating buffers %d\n",
 				__func__, kfifo_alloc_rc);
-			goto err_bufs;
+		        retval = -ENOMEM;
+		        goto err_all;
 		}
 	}
 	/* initializing the device count  */
 	atomic_set(&radio->users, 1);
 	radio->xfr_in_progress = 0;
 	radio->xfr_bytes_left = 0;
-	for (i = 0; i < TAVARUA_XFR_MAX; i++)
-		radio->pending_xfrs[i] = 0;
+	for (j = 0; j < TAVARUA_XFR_MAX; j++)
+		radio->pending_xfrs[j] = 0;
 
 	/* init transmit data */
 	radio->tx_mode = TAVARUA_TX_RT;
@@ -4548,11 +4550,14 @@ static int  __init tavarua_probe(struct platform_device *pdev)
     /*Start the worker thread for event handling and register read_int_stat
 	as worker function*/
 	radio->wqueue  = create_singlethread_workqueue("kfmradio");
-	if (!radio->wqueue)
-		return -ENOMEM;
+	if (!radio->wqueue) {
+	        retval = -ENOMEM;
+		goto err_all;
+        }
 
 	/* register video device */
-	if (video_register_device(radio->videodev, VFL_TYPE_RADIO, radio_nr)) {
+	retval = video_register_device(radio->videodev, VFL_TYPE_RADIO, radio_nr);
+	if (retval != 0) {
 		printk(KERN_WARNING DRIVER_NAME
 				": Could not register video device\n");
 		goto err_all;
@@ -4562,9 +4567,11 @@ static int  __init tavarua_probe(struct platform_device *pdev)
 
 err_all:
 	video_device_release(radio->videodev);
-err_bufs:
-	for (; i > -1; i--)
+	if (radio->wqueue)
+		destroy_workqueue(radio->wqueue);
+	for (i--; i >= 0; i--) {
 		kfifo_free(&radio->data_buf[i]);
+        }
 err_radio:
 	kfree(radio);
 err_initial:

@@ -222,6 +222,7 @@ struct krait_power_vreg {
 	int				ldo_threshold_uV;
 	int				ldo_delta_uV;
 	int				cpu_num;
+	bool				ldo_disable;
 	int				coeff1;
 	int				coeff2;
 	bool				reg_en;
@@ -656,6 +657,9 @@ static void __switch_to_using_ldo(void *info)
 {
 	struct krait_power_vreg *kvreg = info;
 
+	if (kvreg->ldo_disable)
+		return;
+
 	/*
 	 * if the krait is in ldo mode and a voltage change is requested on the
 	 * ldo switch to using hs before changing ldo voltage
@@ -1052,6 +1056,7 @@ static int krait_regulator_cpu_callback(struct notifier_block *nfb,
 			(int)action, cpu, cpu_online(cpu));
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPU_UP_PREPARE:
+	case CPU_UP_CANCELED:
 		mutex_lock(&pvreg->krait_power_vregs_lock);
 		kvreg->force_bhs = true;
 		/*
@@ -1062,7 +1067,6 @@ static int krait_regulator_cpu_callback(struct notifier_block *nfb,
 		__switch_to_using_bhs(kvreg);
 		mutex_unlock(&pvreg->krait_power_vregs_lock);
 		break;
-	case CPU_UP_CANCELED:
 	case CPU_ONLINE:
 		mutex_lock(&pvreg->krait_power_vregs_lock);
 		kvreg->force_bhs = false;
@@ -1173,6 +1177,9 @@ static void online_at_probe(struct krait_power_vreg *kvreg)
 			& readl_relaxed(kvreg->reg_base + CPU_PWR_CTL);
 	kvreg->online_at_probe
 		= online ? (WAIT_FOR_LOAD | WAIT_FOR_VOLTAGE) : 0x0;
+
+	if (online)
+		kvreg->force_bhs = false;
 }
 
 static void glb_init(void __iomem *apcs_gcc_base)
@@ -1197,6 +1204,7 @@ static int __devinit krait_power_probe(struct platform_device *pdev)
 	int headroom_uV, retention_uV, ldo_default_uV, ldo_threshold_uV;
 	int ldo_delta_uV;
 	int cpu_num;
+	bool ldo_disable = false;
 
 	if (pdev->dev.of_node) {
 		/* Get init_data from device tree. */
@@ -1280,6 +1288,9 @@ static int __devinit krait_power_probe(struct platform_device *pdev)
 			pr_err("bad cpu-num= %d specified\n", cpu_num);
 			return -EINVAL;
 		}
+
+		ldo_disable = of_property_read_bool(pdev->dev.of_node,
+					"qcom,ldo-disable");
 	}
 
 	if (!init_data) {
@@ -1333,6 +1344,8 @@ static int __devinit krait_power_probe(struct platform_device *pdev)
 	kvreg->ldo_threshold_uV = ldo_threshold_uV;
 	kvreg->ldo_delta_uV	= ldo_delta_uV;
 	kvreg->cpu_num		= cpu_num;
+	kvreg->ldo_disable	= ldo_disable;
+	kvreg->force_bhs	= true;
 
 	platform_set_drvdata(pdev, kvreg);
 
@@ -1623,6 +1636,12 @@ void secondary_cpu_hs_init(void *base_ptr, int cpu)
 	void *mdd_base;
 	struct krait_power_vreg *kvreg;
 
+	if (version == 0) {
+		gcc_base_ptr = ioremap_nocache(GCC_BASE, SZ_4K);
+		version = readl_relaxed(gcc_base_ptr + VERSION);
+		iounmap(gcc_base_ptr);
+	}
+
 	/* Turn on the BHS, turn off LDO Bypass and power down LDO */
 	reg_val =  BHS_CNT_DEFAULT << BHS_CNT_BIT_POS
 		| LDO_PWR_DWN_MASK
@@ -1630,23 +1649,14 @@ void secondary_cpu_hs_init(void *base_ptr, int cpu)
 		| BHS_EN_MASK;
 	writel_relaxed(reg_val, base_ptr + APC_PWR_GATE_CTL);
 
-	if (version == 0) {
-		gcc_base_ptr = ioremap_nocache(GCC_BASE, SZ_4K);
-		version = readl_relaxed(gcc_base_ptr + VERSION);
-		iounmap(gcc_base_ptr);
-	}
+	/* complete the above write before the delay */
+	mb();
+	/* wait for the bhs to settle */
+	udelay(BHS_SETTLING_DELAY_US);
 
-	/* Turn on the BHS segments only for version < 2 */
-	if (version <= KPSS_VERSION_2P0) {
-		/* complete the above write before the delay */
-		mb();
-		/* wait for the bhs to settle */
-		udelay(BHS_SETTLING_DELAY_US);
-
-		/* Turn on BHS segments */
-		reg_val |= BHS_SEG_EN_DEFAULT << BHS_SEG_EN_BIT_POS;
-		writel_relaxed(reg_val, base_ptr + APC_PWR_GATE_CTL);
-	}
+	/* Turn on BHS segments */
+	reg_val |= BHS_SEG_EN_DEFAULT << BHS_SEG_EN_BIT_POS;
+	writel_relaxed(reg_val, base_ptr + APC_PWR_GATE_CTL);
 
 	/* complete the above write before the delay */
 	mb();

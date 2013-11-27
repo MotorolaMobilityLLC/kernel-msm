@@ -20,15 +20,18 @@
 extern struct clk_mux_ops clk_mux_ops_kpss;
 extern struct clk_div_ops clk_div_ops_kpss_div2;
 
-#define DEFINE_KPSS_DIV2_CLK(clk_name, _parent, _offset) \
+#define DEFINE_KPSS_DIV2_CLK(clk_name, _parent, _offset, _lf_tree) \
 static struct div_clk clk_name = {		\
-	.div = 2,				\
-	.min_div = 2,				\
-	.max_div = 2,				\
+	.data = {				\
+		.div = 2,			\
+		.min_div = 2,			\
+		.max_div = 2,			\
+	},					\
 	.ops = &clk_div_ops_kpss_div2,		\
 	.offset = _offset,			\
 	.mask = 0x3,				\
 	.shift = 6,				\
+	.priv = (void *) _lf_tree,		\
 	.c = {					\
 		.parent = _parent,		\
 		.dbg_name = #clk_name,		\
@@ -49,9 +52,9 @@ struct hfpll_data {
 	const u32 status_offset;
 
 	const u32 droop_val;
-	const u32 config_val;
+	u32 config_val;
 	const u32 user_val;
-	const u32 user_vco_mask;
+	u32 user_vco_mask;
 	unsigned long low_vco_max_rate;
 
 	unsigned long min_rate;

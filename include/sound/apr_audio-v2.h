@@ -3676,6 +3676,7 @@ struct asm_session_cmd_run_v2 {
 } __packed;
 
 #define ASM_SESSION_CMD_PAUSE 0x00010BD3
+#define ASM_SESSION_CMD_SUSPEND 0x00010DEC
 #define ASM_SESSION_CMD_GET_SESSIONTIME_V3 0x00010D9D
 #define ASM_SESSION_CMD_REGISTER_FOR_RX_UNDERFLOW_EVENTS 0x00010BD5
 
@@ -4696,6 +4697,25 @@ struct asm_stream_cmd_open_write_compressed {
  * IEC 61937 packetization is not performed by the aDSP.
  */
 
+} __packed;
+
+
+/*
+    Indicates the number of samples per channel to be removed from the
+    beginning of the stream.
+*/
+#define ASM_DATA_CMD_REMOVE_INITIAL_SILENCE 0x00010D67
+/*
+    Indicates the number of samples per channel to be removed from
+    the end of the stream.
+*/
+#define ASM_DATA_CMD_REMOVE_TRAILING_SILENCE 0x00010D68
+struct asm_data_cmd_remove_silence {
+	struct apr_hdr hdr;
+	u32	num_samples_to_remove;
+	/**< Number of samples per channel to be removed.
+
+	   @values 0 to (2@sscr{32}-1) */
 } __packed;
 
 #define ASM_STREAM_CMD_OPEN_READ_COMPRESSED                        0x00010D95
