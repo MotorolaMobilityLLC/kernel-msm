@@ -7824,6 +7824,40 @@ void hdd_cfg80211_sched_scan_done_callback(void *callbackContext,
 }
 
 /*
+ * FUNCTION: wlan_hdd_is_pno_allowed
+ * To check is there any P2P GO/SAP or P2P Client/STA
+ * session is active
+ */
+static eHalStatus wlan_hdd_is_pno_allowed(hdd_adapter_t *pAdapter)
+{
+   hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
+   hdd_adapter_t *pTempAdapter = NULL;
+   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   int status = 0;
+   status = hdd_get_front_adapter(pHddCtx, &pAdapterNode);
+
+   while ((NULL != pAdapterNode) && (VOS_STATUS_SUCCESS == status))
+   {
+        pTempAdapter = pAdapterNode->pAdapter;
+
+        if (pTempAdapter != pAdapter)
+        {
+            if (((WLAN_HDD_INFRA_STATION == pTempAdapter->device_mode) &&
+                 (eConnectionState_NotConnected != (WLAN_HDD_GET_STATION_CTX_PTR(pTempAdapter))->conn_info.connState)) ||
+                 (WLAN_HDD_P2P_CLIENT == pTempAdapter->device_mode) ||
+                 (WLAN_HDD_P2P_GO == pTempAdapter->device_mode) ||
+                 (WLAN_HDD_SOFTAP == pTempAdapter->device_mode))
+            {
+                return eHAL_STATUS_SUCCESS;
+            }
+        }
+        status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+        pAdapterNode = pNext;
+   }
+   return eHAL_STATUS_FAILURE;
+}
+
+/*
  * FUNCTION: wlan_hdd_cfg80211_sched_scan_start
  * NL interface to enable PNO
  */
@@ -7864,6 +7898,17 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                   "%s: HAL context  is Null!!!", __func__);
         return -EINVAL;
+    }
+    /* The current firmware design for PNO does not consider concurrent
+     * active sessions.Hence , determine the concurrent active sessions
+     * and return a failure to the framework on a request for schedule
+     * scan.
+     */
+    if (eHAL_STATUS_SUCCESS == wlan_hdd_is_pno_allowed(pAdapter))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Cannot handle sched_scan as p2p session is active", __func__);
+        return -EBUSY;
     }
 
     pPnoRequest = (tpSirPNOScanReq) vos_mem_malloc(sizeof (tSirPNOScanReq));
