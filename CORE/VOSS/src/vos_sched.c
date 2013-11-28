@@ -1184,7 +1184,7 @@ VOS_STATUS vos_sched_close ( v_PVOID_t pVosContext )
     set_bit(MC_POST_EVENT_MASK, &gpVosSchedContext->mcEventFlag);
     wake_up_interruptible(&gpVosSchedContext->mcWaitQueue);
     //Wait for MC to exit
-    wait_for_completion_interruptible(&gpVosSchedContext->McShutdown);
+    wait_for_completion(&gpVosSchedContext->McShutdown);
     gpVosSchedContext->McThread = 0;
 
     // shut down TX Thread
@@ -1192,7 +1192,7 @@ VOS_STATUS vos_sched_close ( v_PVOID_t pVosContext )
     set_bit(TX_POST_EVENT_MASK, &gpVosSchedContext->txEventFlag);
     wake_up_interruptible(&gpVosSchedContext->txWaitQueue);
     //Wait for TX to exit
-    wait_for_completion_interruptible(&gpVosSchedContext->TxShutdown);
+    wait_for_completion(&gpVosSchedContext->TxShutdown);
     gpVosSchedContext->TxThread = 0;
 
     // shut down RX Thread
@@ -1200,7 +1200,7 @@ VOS_STATUS vos_sched_close ( v_PVOID_t pVosContext )
     set_bit(RX_POST_EVENT_MASK, &gpVosSchedContext->rxEventFlag);
     wake_up_interruptible(&gpVosSchedContext->rxWaitQueue);
     //Wait for RX to exit
-    wait_for_completion_interruptible(&gpVosSchedContext->RxShutdown);
+    wait_for_completion(&gpVosSchedContext->RxShutdown);
     gpVosSchedContext->RxThread = 0;
 
     //Clean up message queues of TX and MC thread
@@ -1228,7 +1228,7 @@ VOS_STATUS vos_watchdog_close ( v_PVOID_t pVosContext )
     set_bit(WD_POST_EVENT_MASK, &gpVosWatchdogContext->wdEventFlag);
     wake_up_interruptible(&gpVosWatchdogContext->wdWaitQueue);
     //Wait for Watchdog thread to exit
-    wait_for_completion_interruptible(&gpVosWatchdogContext->WdShutdown);
+    wait_for_completion(&gpVosWatchdogContext->WdShutdown);
     return VOS_STATUS_SUCCESS;
 } /* vos_watchdog_close() */
 
