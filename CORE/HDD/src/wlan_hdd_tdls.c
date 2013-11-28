@@ -287,10 +287,6 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                        "%s: " MAC_ADDRESS_STR " link_status %d"
                        " tdls_support %d", __func__, MAC_ADDR_ARRAY(curr_peer->peerMac),
                        curr_peer->link_status, curr_peer->tdls_support);
-            if (pHddCtx->cfg_ini->fTDLSExternalControl &&
-                (FALSE == curr_peer->isForcedPeer)) {
-                continue;
-            }
 
             if (eTDLS_CAP_SUPPORTED == curr_peer->tdls_support) {
                 VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
@@ -305,6 +301,12 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
 
                 if ((eTDLS_LINK_IDLE == curr_peer->link_status) ||
                     (eTDLS_LINK_DISCOVERING == curr_peer->link_status)){
+
+                    if (pHddCtx->cfg_ini->fTDLSExternalControl &&
+                        (FALSE == curr_peer->isForcedPeer)) {
+                        continue;
+                    }
+
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
 
@@ -382,6 +384,11 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
 //                    }
                 }
             } else if (eTDLS_CAP_UNKNOWN == curr_peer->tdls_support) {
+
+                if (pHddCtx->cfg_ini->fTDLSExternalControl &&
+                    (FALSE == curr_peer->isForcedPeer)) {
+                    continue;
+                }
                 if (!TDLS_IS_CONNECTED(curr_peer)) {
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
