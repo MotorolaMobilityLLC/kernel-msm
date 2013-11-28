@@ -135,13 +135,13 @@
 #define LIM_MIN_MEM_ASSOC       4
 
 /// Verifies whether given mac addr matches the CURRENT Bssid
-#define IS_CURRENT_BSSID(pMac, addr,psessionEntry)  (palEqualMemory(pMac->hHdd, addr, \
-                                                                                                psessionEntry->bssId, \
-                                                                                                sizeof(psessionEntry->bssId)))
+#define IS_CURRENT_BSSID(pMac, addr,psessionEntry)  (vos_mem_compare( addr, \
+                                                                      psessionEntry->bssId, \
+                                                                      sizeof(psessionEntry->bssId)))
 /// Verifies whether given addr matches the REASSOC Bssid
-#define IS_REASSOC_BSSID(pMac, addr,psessionEntry)  (palEqualMemory(pMac->hHdd, addr, \
-                                                                                                psessionEntry->limReAssocbssId, \
-                                                                                                sizeof(psessionEntry->limReAssocbssId)))
+#define IS_REASSOC_BSSID(pMac, addr,psessionEntry)  (vos_mem_compare( addr, \
+                                                                      psessionEntry->limReAssocbssId, \
+                                                                      sizeof(psessionEntry->limReAssocbssId)))
 
 #define REQ_TYPE_REGISTRAR                   (0x2)
 #define REQ_TYPE_WLAN_MANAGER_REGISTRAR      (0x3)
