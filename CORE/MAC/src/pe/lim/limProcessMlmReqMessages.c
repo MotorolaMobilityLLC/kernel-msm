@@ -3723,8 +3723,10 @@ limProcessMinChannelTimeout(tpAniSirGlobal pMac)
     }
 #endif
 
-    
-    if (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE)
+    /*do not process if we are in finish scan wait state i.e.
+    scan is aborted or finished*/
+    if (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE &&
+        pMac->lim.gLimHalScanState != eLIM_HAL_FINISH_SCAN_WAIT_STATE)
     {
         PELOG1(limLog(pMac, LOG1, FL("Scanning : min channel timeout occurred"));)
 
@@ -3764,8 +3766,8 @@ limProcessMinChannelTimeout(tpAniSirGlobal pMac)
          * Log error.
          */
         limLog(pMac, LOGW,
-           FL("received unexpected MIN channel timeout in state %X"),
-           pMac->lim.gLimMlmState);
+           FL("received unexpected MIN channel timeout in mlme state %X and hal scan State %X"),
+           pMac->lim.gLimMlmState,pMac->lim.gLimHalScanState);
         limPrintMlmState(pMac, LOGE, pMac->lim.gLimMlmState);
     }
 } /*** limProcessMinChannelTimeout() ***/
@@ -3794,9 +3796,11 @@ limProcessMaxChannelTimeout(tpAniSirGlobal pMac)
 {
     tANI_U8 channelNum;
 
-    
-    if (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE ||
-        pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE)
+    /*do not process if we are in finish scan wait state i.e.
+     scan is aborted or finished*/
+    if ((pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE ||
+        pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE) &&
+        pMac->lim.gLimHalScanState != eLIM_HAL_FINISH_SCAN_WAIT_STATE)
     {
         PELOG1(limLog(pMac, LOG1, FL("Scanning : Max channel timed out"));)
         /**
@@ -3835,8 +3839,8 @@ limProcessMaxChannelTimeout(tpAniSirGlobal pMac)
          * Log error.
          */
         limLog(pMac, LOGW,
-           FL("received unexpected MAX channel timeout in state %X"),
-           pMac->lim.gLimMlmState);
+           FL("received unexpected MAX channel timeout in mlme state %X and hal scan state %X"),
+           pMac->lim.gLimMlmState, pMac->lim.gLimHalScanState);
         limPrintMlmState(pMac, LOGW, pMac->lim.gLimMlmState);
     }
 } /*** limProcessMaxChannelTimeout() ***/
