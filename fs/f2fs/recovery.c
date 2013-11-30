@@ -146,7 +146,7 @@ static int find_fsync_dnodes(struct f2fs_sb_info *sbi, struct list_head *head)
 	while (1) {
 		struct fsync_inode_entry *entry;
 
-		err = f2fs_readpage(sbi, page, blkaddr, READ_SYNC);
+		err = f2fs_submit_page_bio(sbi, page, blkaddr, READ_SYNC);
 		if (err)
 			goto out;
 
@@ -420,7 +420,7 @@ static int recover_data(struct f2fs_sb_info *sbi,
 	while (1) {
 		struct fsync_inode_entry *entry;
 
-		err = f2fs_readpage(sbi, page, blkaddr, READ_SYNC);
+		err = f2fs_submit_page_bio(sbi, page, blkaddr, READ_SYNC);
 		if (err) {
 			f2fs_msg(sbi->sb, KERN_INFO,
 				"%s: f2fs_readpage failed: %d",
