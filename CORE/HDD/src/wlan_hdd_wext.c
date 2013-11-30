@@ -5843,8 +5843,9 @@ static int iw_set_keepalive_params(struct net_device *dev, struct iw_request_inf
     }
 
     /* Debug display of request components. */
-    hddLog(VOS_TRACE_LEVEL_INFO, "%s: Set Keep Alive Request : TimePeriod %d size %d",
-           __func__,pRequest->timePeriod, sizeof(tKeepAliveRequest));
+    hddLog(VOS_TRACE_LEVEL_INFO,
+           "%s: Set Keep Alive Request : TimePeriod %d size %zu",
+           __func__, pRequest->timePeriod, sizeof(tKeepAliveRequest));
 
       switch (pRequest->packetType)
       {
