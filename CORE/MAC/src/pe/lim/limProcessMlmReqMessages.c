@@ -2885,10 +2885,27 @@ limProcessMlmDisassocReqNtf(tpAniSirGlobal pMac, eHalStatus suspendStatus, tANI_
          */
         pStaDs->mlmStaContext.mlmState   = eLIM_MLM_WT_DEL_STA_RSP_STATE;
 
-        limSendDisassocMgmtFrame(pMac,
+        /* If the reason for disassociation is inactivity of STA, then
+           dont wait for acknowledgement */
+        if ((pMlmDisassocReq->reasonCode == eSIR_MAC_DISASSOC_DUE_TO_INACTIVITY_REASON) &&
+            (psessionEntry->limSystemRole == eLIM_AP_ROLE))
+        {
+
+             limSendDisassocMgmtFrame(pMac,
+                                 pMlmDisassocReq->reasonCode,
+                                 pMlmDisassocReq->peerMacAddr,
+                                 psessionEntry, FALSE);
+
+             /* Send Disassoc CNF and receive path cleanup */
+             limSendDisassocCnf(pMac);
+        }
+        else
+        {
+             limSendDisassocMgmtFrame(pMac,
                                  pMlmDisassocReq->reasonCode,
                                  pMlmDisassocReq->peerMacAddr,
                                  psessionEntry, TRUE);
+        }
     }
     else
     {
