@@ -13,19 +13,13 @@
 /dts-v1/;
 
 /include/ "msm8610-moto-reserve.dtsi"
-/include/ "msm8610-v1.dtsi"
+/include/ "msm8610-v2.dtsi"
 /include/ "msm8610-moto-common.dtsi"
 
 / {
-	qcom,msm-id = <147 0x41 0x81c0>;
-};
-
-/* Support Gipper factory IC */
-&mmi_factory {
-	gpios = <&msmgpio 77 0x2>; /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
-};
-
-/* limit clock speed by 25MHz due to signal integrity issues in HS mode */
-&sdhc_2 {
-	qcom,clk-rates = <400000 25000000>;
+	/* HWREV: 0x0101 0x81d0
+	 *        ^^^^^^ ^^^^^^
+	 *        Rev1.1 P1(P1d)
+	 */
+	qcom,msm-id = <147 0x41 0x010181d0>;
 };

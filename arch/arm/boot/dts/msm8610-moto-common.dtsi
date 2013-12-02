@@ -23,10 +23,10 @@
 };
 
 &soc {
-	factory_support {
+	mmi_factory: factory_support {
 		compatible = "mmi,factory-support-msm8960";
 
-		gpios = <&msmgpio 77 0x2>; /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
+		gpios = <&msmgpio 77 0x0>; /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
 		gpio-names = "factory_kill_disable";
 	};
 
