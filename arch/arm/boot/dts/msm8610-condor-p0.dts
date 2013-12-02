@@ -70,6 +70,11 @@
 	};
 };
 
+/* Support Gipper factory IC */
+&mmi_factory {
+	gpios = <&msmgpio 77 0x2>; /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_auo_qhd_video>;
 };
