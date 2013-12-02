@@ -1366,7 +1366,8 @@ eHalStatus csrSetBand(tHalHandle hHal, eCsrBand eBand)
     pMac->roam.configParam.bandCapability = eBand;
     csrScanGetSupportedChannels( pMac );
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-    csrUpdateBgScanConfigIniChannelList( pMac, eBand );
+    if (!csrRoamIsRoamOffloadScanEnabled(pMac))
+        csrUpdateBgScanConfigIniChannelList( pMac, eBand );
 #endif
     status = csrInitGetChannels( pMac );
     if (eHAL_STATUS_SUCCESS == status)
@@ -15482,6 +15483,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
    tpCsrChannelInfo    currChannelListInfo;
    tANI_U32 host_channels = 0;
    tANI_U8 ChannelCacheStr[128] = {0};
+   eCsrBand eBand;
    currChannelListInfo = &pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo;
 
    if (0 == csrRoamIsRoamOffloadScanEnabled(pMac))
@@ -15578,31 +15580,50 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
         currChannelListInfo->numOfChannels == 0)
     {
 
-    /*Retreive the Channel Cache either from ini or from the Occupied Channels list.
-     * Give Preference to INI Channels.*/
-    if (pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels)
-    {
-      ChannelList = pNeighborRoamInfo->cfgParams.channelInfo.ChannelList;
-      for (i=0; i<pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels ;i++)
+      /*Retrieve the Channel Cache either from ini or from the Occupied Channels list.
+       * Give Preference to INI Channels.*/
+       if (pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels)
+       {
+          ChannelList = pNeighborRoamInfo->cfgParams.channelInfo.ChannelList;
+          /*The INI channels need to be filtered with respect to the current
+           * band that is supported.*/
+          eBand = pMac->roam.configParam.bandCapability;
+          if ((eCSR_BAND_24 != eBand) && (eCSR_BAND_5G != eBand) && (eCSR_BAND_ALL != eBand))
           {
-             if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
-               {
-                  pRequestBuf->ConnectedNetwork.ChannelCache[num_channels++] = *ChannelList;
-               }
-                  ChannelList++;
+             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                       "Invalid band, No operation carried out (Band %d)", eBand);
+             vos_mem_free(pRequestBuf);
+             return eHAL_STATUS_FAILURE;
+          }
+          for (i=0; i<pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels; i++)
+          {
+            if(((eCSR_BAND_24 == eBand) && CSR_IS_CHANNEL_24GHZ(*ChannelList)) ||
+              ((eCSR_BAND_5G == eBand) && CSR_IS_CHANNEL_5GHZ(*ChannelList)) ||
+              (eCSR_BAND_ALL == eBand))
+            {
+              if(!CSR_IS_CHANNEL_DFS(*ChannelList) &&
+                 csrRoamIsChannelValid(pMac, *ChannelList) &&
+                 *ChannelList && (num_channels < SIR_ROAM_MAX_CHANNELS))
+              {
+                 pRequestBuf->ConnectedNetwork.ChannelCache[num_channels++] = *ChannelList;
+              }
+            }
+            ChannelList++;
           }
           pRequestBuf->ConnectedNetwork.ChannelCount = num_channels;
           pRequestBuf->ChannelCacheType = CHANNEL_LIST_STATIC;
-    }
-    else{
+       }
+       else
+       {
           ChannelList = pMac->scan.occupiedChannels.channelList;
           for(i=0; i<pMac->scan.occupiedChannels.numChannels; i++)
           {
-              if(!CSR_IS_CHANNEL_DFS(*ChannelList) && *ChannelList)
-              {
+             if(!CSR_IS_CHANNEL_DFS(*ChannelList) &&
+                *ChannelList && (num_channels < SIR_ROAM_MAX_CHANNELS))
+             {
                 pRequestBuf->ConnectedNetwork.ChannelCache[num_channels++] = *ChannelList;
-              }
-              ChannelList++;
+             }
+             ChannelList++;
           }
           pRequestBuf->ConnectedNetwork.ChannelCount = num_channels;
           /* If the profile changes as to what it was earlier, inform the FW through
@@ -15611,12 +15632,12 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
           if (reason == REASON_FLUSH_CHANNEL_LIST)
               pRequestBuf->ChannelCacheType = CHANNEL_LIST_DYNAMIC_FLUSH;
           else {
-                if (csrNeighborRoamIsNewConnectedProfile(pMac))
-                    pRequestBuf->ChannelCacheType = CHANNEL_LIST_DYNAMIC_INIT;
-                else
-                    pRequestBuf->ChannelCacheType = CHANNEL_LIST_DYNAMIC_UPDATE;
+                 if (csrNeighborRoamIsNewConnectedProfile(pMac))
+                     pRequestBuf->ChannelCacheType = CHANNEL_LIST_DYNAMIC_INIT;
+                 else
+                     pRequestBuf->ChannelCacheType = CHANNEL_LIST_DYNAMIC_UPDATE;
           }
-        }
+       }
     }
 #ifdef FEATURE_WLAN_CCX
     else
@@ -15684,6 +15705,19 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
     pRequestBuf->nProbes = pMac->roam.configParam.nProbes;
 
     pRequestBuf->HomeAwayTime = pMac->roam.configParam.nRoamScanHomeAwayTime;
+    /* Home Away Time should be at least equal to (MaxDwell time + (2*RFS)),
+     * where RFS is the RF Switching time. It is twice RFS to consider the
+     * time to go off channel and return to the home channel. */
+    if (pRequestBuf->HomeAwayTime < (pRequestBuf->NeighborScanChannelMaxTime + (2 * CSR_ROAM_SCAN_CHANNEL_SWITCH_TIME)))
+    {
+        VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN,
+                  "%s: Invalid config, Home away time(%d) is less than (twice RF switching time + channel max time)(%d)"
+                  " Hence enforcing home away time to disable (0)",
+                  __func__, pRequestBuf->HomeAwayTime,
+                  (pRequestBuf->NeighborScanChannelMaxTime + (2 * CSR_ROAM_SCAN_CHANNEL_SWITCH_TIME)));
+        pRequestBuf->HomeAwayTime = 0;
+    }
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,"HomeAwayTime:%d",pRequestBuf->HomeAwayTime);
 
    /*Prepare a probe request for 2.4GHz band and one for 5GHz band*/
     ucDot11Mode = (tANI_U8) csrTranslateToWNICfgDot11Mode(pMac,

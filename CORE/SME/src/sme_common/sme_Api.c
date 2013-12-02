@@ -9080,26 +9080,21 @@ eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
         }
         csrFlushCfgBgScanRoamChannelList(pMac);
         csrCreateBgScanRoamChannelList(pMac, pChannelList, numChannels);
-        status = csrUpdateBgScanConfigIniChannelList(pMac, csrGetCurrentBand(hHal));
-
-        if ( HAL_STATUS_SUCCESS( status ))
+        sme_SetRoamScanControl(hHal, 1);
+        if (NULL != pNeighborRoamInfo->cfgParams.channelInfo.ChannelList)
         {
-            sme_SetRoamScanControl(hHal, 1);
-            if (NULL != pNeighborRoamInfo->cfgParams.channelInfo.ChannelList)
+            j = 0;
+            for (i = 0; i < pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels; i++)
             {
-                j = 0;
-                for (i = 0; i < pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels; i++)
-                {
-                    j += snprintf(newChannelList + j, sizeof(newChannelList) - j," %d",
-                    pNeighborRoamInfo->cfgParams.channelInfo.ChannelList[i]);
-                }
+                j += snprintf(newChannelList + j, sizeof(newChannelList) - j," %d",
+                pNeighborRoamInfo->cfgParams.channelInfo.ChannelList[i]);
             }
-
-            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-                        "LFR runtime successfully set roam scan channels to %s - old value is %s - roam state is %d",
-                        newChannelList, oldChannelList,
-                        pMac->roam.neighborRoamInfo.neighborRoamState);
         }
+
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                  "LFR runtime successfully set roam scan channels to %s - old value is %s - roam state is %d",
+                   newChannelList, oldChannelList,
+                   pMac->roam.neighborRoamInfo.neighborRoamState);
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
@@ -9176,21 +9171,6 @@ eHalStatus sme_SetCcxRoamScanChannelList(tHalHandle hHal,
     return status ;
 }
 #endif
-
-/*--------------------------------------------------------------------------
-  \brief csrUpdateBgScanConfigIniChannelList() - Update bgscan roam cache
-  This is a synchronous call
-  \param hHal - The handle returned by macOpen.
-  \return eHAL_STATUS_SUCCESS - SME update config successful.
-          Other status means SME is failed to update
-  \sa
-  --------------------------------------------------------------------------*/
-eHalStatus sme_UpdateBgScanConfigIniChannelList(tHalHandle hHal,
-                                               eCsrBand eBand)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    return csrUpdateBgScanConfigIniChannelList(pMac, eBand);
-}
 
 /*--------------------------------------------------------------------------
   \brief sme_getRoamScanChannelList() - get roam scan channel list
