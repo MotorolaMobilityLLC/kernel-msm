@@ -45,7 +45,7 @@
 #define DMP_PRECISION                   1000
 #define DMP_MAX_DIVIDER                 4
 #define DMP_MAX_MIN_TAPS                4
-#define DMP_IMAGE_CRC_VALUE             0xa139df62
+#define DMP_IMAGE_CRC_VALUE             0x972aae92
 
 /*--- Test parameters defaults --- */
 #define DEF_OLDEST_SUPP_PROD_REV        8
@@ -59,7 +59,7 @@
 #define DEF_SELFTEST_GYRO_SENS          (32768 / 250)
 /* wait time before collecting data */
 #define DEF_GYRO_WAIT_TIME              10
-#define DEF_ST_STABLE_TIME              200
+#define DEF_ST_STABLE_TIME              20
 #define DEF_ST_6500_STABLE_TIME         20
 #define DEF_GYRO_SCALE                  131
 #define DEF_ST_PRECISION                1000
@@ -82,8 +82,8 @@
 #define DEF_ACCEL_ST_SHIFT_MIN          300
 #define DEF_ACCEL_ST_SHIFT_MAX          950
 
-#define DEF_ACCEL_ST_SHIFT_DELTA        140
-#define DEF_GYRO_CT_SHIFT_DELTA         140
+#define DEF_ACCEL_ST_SHIFT_DELTA        500
+#define DEF_GYRO_CT_SHIFT_DELTA         500
 /* gyroscope Coriolis self test min and max bias shift (dps) */
 #define DEF_GYRO_CT_SHIFT_MIN           10
 #define DEF_GYRO_CT_SHIFT_MAX           105
@@ -604,7 +604,7 @@ static int read_accel_hw_self_test_prod_shift(struct inv_mpu_state *st,
 */
 static int inv_check_accel_self_test(struct inv_mpu_state *st,
 						int *reg_avg, int *st_avg){
-	int gravity, reg_z_avg, g_z_sign, j, ret_val;
+	int gravity, j, ret_val;
 	int tmp;
 	int st_shift_prod[THREE_AXIS], st_shift_cust[THREE_AXIS];
 	int st_shift_ratio[THREE_AXIS];
@@ -613,7 +613,6 @@ static int inv_check_accel_self_test(struct inv_mpu_state *st,
 	if (st->chip_info.software_revision < DEF_OLDEST_SUPP_SW_REV &&
 	    st->chip_info.product_revision < DEF_OLDEST_SUPP_PROD_REV)
 		return 0;
-	g_z_sign = 1;
 	ret_val = 0;
 	tmp = DEF_ST_SCALE * DEF_ST_PRECISION / DEF_ST_ACCEL_FS_MG;
 	for (j = 0; j < 3; j++)
@@ -631,7 +630,6 @@ static int inv_check_accel_self_test(struct inv_mpu_state *st,
 		accel_sens[Z] /= st->chip_info.multi;
 	}
 	gravity = accel_sens[Z];
-	reg_z_avg = reg_avg[Z] - g_z_sign * gravity * DEF_ST_PRECISION;
 	ret_val = read_accel_hw_self_test_prod_shift(st, st_shift_prod,
 							accel_sens);
 	if (ret_val)
@@ -904,7 +902,7 @@ static int inv_check_6500_accel_self_test(struct inv_mpu_state *st,
 /*
  *  inv_do_test() - do the actual test of self testing
  */
-int inv_do_test(struct inv_mpu_state *st, int self_test_flag,
+static int inv_do_test(struct inv_mpu_state *st, int self_test_flag,
 		int *gyro_result, int *accel_result)
 {
 	struct inv_reg_map_s *reg;
@@ -1058,7 +1056,7 @@ int inv_do_test(struct inv_mpu_state *st, int self_test_flag,
 /*
  *  inv_recover_setting() recover the old settings after everything is done
  */
-void inv_recover_setting(struct inv_mpu_state *st)
+static void inv_recover_setting(struct inv_mpu_state *st)
 {
 	struct inv_reg_map_s *reg;
 	int data;
@@ -1067,7 +1065,7 @@ void inv_recover_setting(struct inv_mpu_state *st)
 	inv_i2c_single_write(st, reg->gyro_config,
 			     st->chip_config.fsr << GYRO_CONFIG_FSR_SHIFT);
 	inv_i2c_single_write(st, reg->lpf, st->chip_config.lpf);
-	data = ONE_K_HZ/st->chip_config.new_fifo_rate - 1;
+	data = ONE_K_HZ/st->chip_config.fifo_rate - 1;
 	inv_i2c_single_write(st, reg->sample_rate_div, data);
 	/* wait for the sampling rate change to stabilize */
 	mdelay(INV_MPU_SAMPLE_RATE_CHANGE_STABLE);
@@ -1083,7 +1081,7 @@ void inv_recover_setting(struct inv_mpu_state *st)
 }
 
 
-int inv_power_up_self_test(struct inv_mpu_state *st)
+static int inv_power_up_self_test(struct inv_mpu_state *st)
 {
 	int result;
 
@@ -1197,12 +1195,11 @@ static int inv_load_firmware(struct inv_mpu_state *st,
 
 	/* first bank start at MPU_DMP_LOAD_START */
 	write_size = MPU_MEM_BANK_SIZE - MPU_DMP_LOAD_START;
-	memaddr = ((0 << 8) | MPU_DMP_LOAD_START);
-	data += MPU_DMP_LOAD_START;
+	memaddr = MPU_DMP_LOAD_START;
 	result = mem_w(memaddr, write_size, data);
 	if (result)
 		return result;
-	size -= MPU_MEM_BANK_SIZE;
+	size -= write_size;
 	data += write_size;
 
 	/* Write and verify memory */
@@ -1231,8 +1228,9 @@ static int inv_verify_firmware(struct inv_mpu_state *st,
 	u8 firmware[MPU_MEM_BANK_SIZE];
 
 	/* Write and verify memory */
-	size -= MPU_MEM_BANK_SIZE;
-	data += MPU_MEM_BANK_SIZE;
+	write_size = MPU_MEM_BANK_SIZE - MPU_DMP_LOAD_START;
+	size -= write_size;
+	data += write_size;
 	for (bank = 1; size > 0; bank++,
 		size -= write_size,
 		data += write_size) {
@@ -1268,6 +1266,31 @@ int inv_enable_pedometer_interrupt(struct inv_mpu_state *st, bool en)
 	}
 
 	return mem_w_key(KEY_CFG_PED_INT, ARRAY_SIZE(reg), reg);
+}
+
+int inv_read_pedometer_counter(struct inv_mpu_state *st)
+{
+	int result;
+	u8 d[4];
+	u32 last_step_counter, curr_counter;
+
+	result = mpu_memory_read(st, st->i2c_addr,
+			inv_dmp_get_address(KEY_D_STPDET_TIMESTAMP), 4, d);
+	if (result)
+		return result;
+	last_step_counter = (u32)be32_to_cpup((__be32 *)(d));
+
+	result = mpu_memory_read(st, st->i2c_addr,
+			inv_dmp_get_address(KEY_DMP_RUN_CNTR), 4, d);
+	if (result)
+		return result;
+	curr_counter = (u32)be32_to_cpup((__be32 *)(d));
+	if (0 != last_step_counter)
+		st->ped.last_step_time = get_time_ns() -
+			((u64)(curr_counter - last_step_counter)) *
+			DMP_INTERVAL_INIT;
+
+	return 0;
 }
 
 int inv_enable_pedometer(struct inv_mpu_state *st, bool en)
@@ -1799,11 +1822,12 @@ static void inv_test_reset(struct inv_mpu_state *st)
 	int result, ii;
 	u8 d[0x80];
 
-	for (ii = 0; ii < 0x80; ii++) {
+	if (INV_MPU6500 != st->chip_type)
+		return;
+
+	for (ii = 3; ii < 0x80; ii++) {
 		/* don't read fifo r/w register */
-		if (ii == st->reg.fifo_r_w)
-			d[0] = 0;
-		else
+		if (ii != st->reg.fifo_r_w)
 			inv_i2c_read(st, ii, 1, &d[ii]);
 	}
 	result = inv_i2c_single_write(st, st->reg.pwr_mgmt_1, BIT_H_RESET);
@@ -1811,11 +1835,13 @@ static void inv_test_reset(struct inv_mpu_state *st)
 		return;
 	msleep(POWER_UP_TIME);
 
-	for (ii = 0; ii < 0x80; ii++) {
-		/* don't read fifo r/w register */
-		if (ii == st->reg.fifo_r_w)
-			d[0] = 0;
-		else
+	for (ii = 3; ii < 0x80; ii++) {
+		/* don't write certain registers */
+		if ((ii != st->reg.fifo_r_w) &&
+		    (ii != st->reg.mem_r_w) &&
+		    (ii != st->reg.mem_start_addr) &&
+		    (ii != st->reg.fifo_count_h) &&
+		    ii != (st->reg.fifo_count_h + 1))
 			result = inv_i2c_single_write(st, ii, d[ii]);
 	}
 }

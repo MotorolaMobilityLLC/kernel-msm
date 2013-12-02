@@ -19,8 +19,9 @@
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
 #include <linux/mpu.h>
-#include <linux/iio/iio.h>
-#include <linux/iio/buffer.h>
+
+#include "iio.h"
+#include "buffer.h"
 
 #include "dmpKey.h"
 
@@ -187,7 +188,7 @@
 #define BYTES_PER_SENSOR         6
 #define MPU3050_FOOTER_SIZE      2
 #define FIFO_COUNT_BYTE          2
-#define FIFO_THRESHOLD           500
+#define FIFO_THRESHOLD           800
 #define FIFO_SIZE                800
 #define HARDWARE_FIFO_SIZE       1024
 #define MAX_READ_SIZE            64
@@ -242,6 +243,8 @@
 #define INIT_ST_SAMPLES          200
 #define INIT_ST_MPU6050_SAMPLES  600
 #define INIT_ST_THRESHOLD        50
+#define INIT_PED_INT_THRESH      2
+#define INIT_PED_THRESH          7
 #define ST_THRESHOLD_MULTIPLIER  10
 #define ST_MAX_SAMPLES           500
 #define ST_MAX_THRESHOLD         100
@@ -272,7 +275,7 @@
 #define CRC_FIRMWARE_SEED        0
 #define SELF_TEST_SUCCESS        1
 #define MS_PER_DMP_TICK          20
-#define DMP_IMAGE_SIZE           2639
+#define DMP_IMAGE_SIZE           2463
 
 /* init parameters */
 #define INIT_FIFO_RATE           50
@@ -284,7 +287,7 @@
 #define INIT_SAMPLE_DIVIDER      4
 #define MPU_INIT_SMD_DELAY_THLD  3
 #define MPU_INIT_SMD_DELAY2_THLD 1
-#define MPU_INIT_SMD_THLD        3000
+#define MPU_INIT_SMD_THLD        1500
 #define MPU_DEFAULT_DMP_FREQ     200
 #define MPL_PROD_KEY(ver, rev)  (ver * 100 + rev)
 #define NUM_OF_PROD_REVS (ARRAY_SIZE(prod_rev_map))
@@ -305,6 +308,8 @@
 #define MIN_FIFO_RATE                         4
 #define ONE_K_HZ                              1000
 #define NS_PER_MS_SHIFT                       20
+#define END_MARKER                            0x0010
+#define EMPTY_MARKER                          0x0020
 
 /*tap related defines */
 #define INV_TAP                               0x08
@@ -458,19 +463,17 @@ struct inv_sensor {
  *  @on: derived variable for batch mode.
  *  @overflow_on: overflow mode for batchmode.
  *  @wake_fifo_on: overflow for suspend mode.
- *  @step_only: mean only step detector data is batched.
- *  @post_isr_run: mean post isr has runned once.
  *  @counter: counter for batch mode.
  *  @timeout: nominal timeout value for batchmode in milliseconds.
+ *  @min_rate: minimum sensor rate that is turned on.
  */
 struct inv_batch {
 	bool on;
 	bool overflow_on;
 	bool wake_fifo_on;
-	bool step_only;
-	bool post_isr_run;
 	u32 counter;
 	u32 timeout;
+	u32 min_rate;
 };
 
 /**
@@ -491,19 +494,15 @@ struct inv_batch {
  *  @dmp_event_int_on:  dmp event interrupt on/off.
  *  @firmware_loaded:	flag indicate firmware loaded or not.
  *  @lpa_mod:		low power mode.
- *  @tap_on:		tap on/off.
  *  @display_orient_on:	display orientation on/off.
  *  @normal_compass_measure: discard first compass data after reset.
  *  @normal_pressure_measure: discard first pressure data after reset.
  *  @smd_enable: disable/enable SMD function.
- *  @ped_int_on:   pedometer interrupt enable/disable.
- *  @ped_on:  pedometer on/off.
  *  @adjust_time: flag to indicate whether adjust chip clock or not.
  *  @smd_triggered: smd is triggered.
  *  @lpa_freq:		low power frequency
  *  @prog_start_addr:	firmware program start address.
  *  @fifo_rate:		current FIFO update rate.
- *  @new_fifo_rate:	set FIFO update rate
  *  @bytes_per_datum: number of bytes for 1 sample data.
  */
 struct inv_chip_config_s {
@@ -523,19 +522,15 @@ struct inv_chip_config_s {
 	u32 step_indicator_on:1;
 	u32 firmware_loaded:1;
 	u32 lpa_mode:1;
-	u32 tap_on:1;
 	u32 display_orient_on:1;
 	u32 normal_compass_measure:1;
 	u32 normal_pressure_measure:1;
 	u32 smd_enable:1;
-	u32 ped_int_on:1;
-	u32 ped_on:1;
 	u32 adjust_time:1;
 	u32 smd_triggered:1;
 	u16 lpa_freq;
 	u16 prog_start_addr;
 	u16 fifo_rate;
-	u16 new_fifo_rate;
 	u16 bytes_per_datum;
 };
 
@@ -566,11 +561,13 @@ struct inv_chip_info_s {
  *  @min_count:  minimum taps counted.
  *  @thresh:    tap threshold.
  *  @time:	tap time.
+ *  @on: tap on/off.
  */
 struct inv_tap {
 	u16 min_count;
 	u16 thresh;
 	u16 time;
+	bool on;
 };
 
 /**
@@ -599,9 +596,9 @@ struct self_test_setting {
 
 /**
  * struct inv_smd significant motion detection structure.
- * threshold: accel threshold for motion detection.
- * delay: delay time to confirm 2nd motion.
- * delay2: delay window parameter.
+ * @threshold: accel threshold for motion detection.
+ * @delay: delay time to confirm 2nd motion.
+ * @delay2: delay window parameter.
  */
 struct inv_smd {
 	u32 threshold;
@@ -609,9 +606,24 @@ struct inv_smd {
 	u32 delay2;
 };
 
+/**
+ * struct inv_ped pedometer related data structure.
+ * @step: steps taken.
+ * @time: time taken during the period.
+ * @last_step_time: last time the step is taken.
+ * @step_thresh: step threshold to show steps.
+ * @int_thresh: step threshold to generate interrupt.
+ * @int_on:   pedometer interrupt enable/disable.
+ * @on:  pedometer on/off.
+ */
 struct inv_ped {
-	u64 steps;
-	u32 time;
+	u64 step;
+	u64 time;
+	u64 last_step_time;
+	u16 step_thresh;
+	u16 int_thresh;
+	bool int_on;
+	bool on;
 };
 
 struct inv_mpu_slave;
@@ -629,6 +641,7 @@ struct inv_mpu_slave;
  *  @hw:		Other hardware-specific information.
  *  @chip_type:		chip type.
  *  @time_stamp_lock:	spin lock to time stamp.
+ *  @suspend_resume_lock: mutex lock for suspend/resume.
  *  @client:		i2c client handle.
  *  @plat_data:		platform data.
  *  @slave_accel:       mpu slave handle for accelerometer(MPU3050 only).
@@ -674,7 +687,6 @@ struct inv_mpu_slave;
  *  @pedometer_step:    pedometer steps stored in driver.
  *  @pedometer_time:    pedometer time stored in driver.
  *  @last_run_time: last time the post ISR runs.
- *  @work: work only for batchmode when only step is batched.
  *  @name: name for distiguish MPU6050 and MPU6500 in MPU6XXX.
  *  @secondary_name: name for the slave device in the secondary I2C.
  */
@@ -683,7 +695,7 @@ struct inv_mpu_state {
 	struct inv_chip_config_s chip_config;
 	struct inv_chip_info_s chip_info;
 	struct iio_trigger  *trig;
-	struct inv_tap   tap;
+	struct inv_tap tap;
 	struct inv_smd smd;
 	struct inv_ped ped;
 	struct inv_batch batch;
@@ -692,6 +704,7 @@ struct inv_mpu_state {
 	const struct inv_hw_s *hw;
 	enum   inv_devices chip_type;
 	spinlock_t time_stamp_lock;
+	struct mutex suspend_resume_lock;
 	struct i2c_client *client;
 	struct mpu_platform_data plat_data;
 	struct inv_mpu_slave *slave_accel;
@@ -735,17 +748,9 @@ struct inv_mpu_state {
 	u64 last_ts;
 	u64 step_detector_base_ts;
 	u64 prev_ts;
-	u64 pedometer_step;
-	u64 pedometer_time;
 	u64 last_run_time;
-	struct delayed_work work;
 	u8 name[20];
 	u8 secondary_name[20];
-
-	bool powered;
-	struct regulator *vdd_io_regulator;
-	struct regulator *vcc_i2c_regulator;
-	struct regulator *vdd_regulator;
 };
 
 /* produces an unique identifier for each device based on the
@@ -859,6 +864,8 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_DMP_ACCEL_Y_DMP_BIAS,
 	ATTR_DMP_ACCEL_Z_DMP_BIAS,
 	ATTR_DMP_PED_INT_ON,
+	ATTR_DMP_PED_STEP_THRESH,
+	ATTR_DMP_PED_INT_THRESH,
 	ATTR_DMP_PED_ON,
 	ATTR_DMP_SMD_ENABLE,
 	ATTR_DMP_SMD_THLD,
@@ -866,6 +873,7 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_DMP_SMD_DELAY_THLD2,
 	ATTR_DMP_PEDOMETER_STEPS,
 	ATTR_DMP_PEDOMETER_TIME,
+	ATTR_DMP_PEDOMETER_COUNTER,
 	ATTR_DMP_TAP_ON,
 	ATTR_DMP_TAP_THRESHOLD,
 	ATTR_DMP_TAP_MIN_COUNT,
@@ -900,7 +908,6 @@ enum MPU_IIO_ATTR_ADDR {
 	ATTR_ACCEL_Z_OFFSET,
 	ATTR_MOTION_LPA_ON,
 	ATTR_MOTION_LPA_FREQ,
-	ATTR_MOTION_LPA_DURATION,
 	ATTR_MOTION_LPA_THRESHOLD,
 /*  *****above this line, it is non-DMP, power needs on/off */
 /*  *****below this line, it is non-DMP, no needs to on/off power */
@@ -1008,11 +1015,7 @@ int inv_i2c_read_base(struct inv_mpu_state *st, u16 i2c_addr,
 	u8 reg, u16 length, u8 *data);
 int inv_i2c_single_write_base(struct inv_mpu_state *st,
 	u16 i2c_addr, u8 reg, u8 data);
-int inv_do_test(struct inv_mpu_state *st, int self_test_flag,
-		int *gyro_result, int *accel_result);
 int inv_hw_self_test(struct inv_mpu_state *st);
-void inv_recover_setting(struct inv_mpu_state *st);
-int inv_power_up_self_test(struct inv_mpu_state *st);
 s64 get_time_ns(void);
 int write_be32_key_to_mem(struct inv_mpu_state *st,
 					u32 data, int key);
@@ -1028,6 +1031,7 @@ int mpu_memory_write_unaligned(struct inv_mpu_state *st, u16 key, int len,
 int inv_quaternion_on(struct inv_mpu_state *st,
 				 struct iio_buffer *ring, bool en);
 int inv_enable_pedometer_interrupt(struct inv_mpu_state *st, bool en);
+int inv_read_pedometer_counter(struct inv_mpu_state *st);
 int inv_enable_pedometer(struct inv_mpu_state *st, bool en);
 int inv_get_pedometer_steps(struct inv_mpu_state *st, u32 *steps);
 int inv_get_pedometer_time(struct inv_mpu_state *st, u32 *time);
@@ -1035,7 +1039,6 @@ int inv_reset_fifo(struct iio_dev *indio_dev);
 int inv_reset_offset_reg(struct inv_mpu_state *st, bool en);
 int inv_batchmode_setup(struct inv_mpu_state *st);
 void inv_init_sensor_struct(struct inv_mpu_state *st);
-void batch_step_only_work(struct work_struct *work);
 int inv_read_time_and_ticks(struct inv_mpu_state *st, bool resume);
 int inv_flush_batch_data(struct iio_dev *indio_dev, bool *has_data);
 int set_inv_enable(struct iio_dev *indio_dev, bool enable);

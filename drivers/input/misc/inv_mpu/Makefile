@@ -29,3 +29,9 @@ inv-mpu-iio-objs += inv_slave_bma250.o
 CFLAGS_inv_slave_bma250.o   += -Idrivers/staging/iio
 endif
 
+# compile Invensense MPU IIO driver as DTS
+ifeq ($(CONFIG_DTS_INV_MPU_IIO), y)
+inv-mpu-iio-objs += inv_mpu_dts.o
+CFLAGS_inv_mpu_dts.o   += -Idrivers/staging/iio
+endif
+

@@ -229,7 +229,6 @@
 #define KEY_DMP_TAP_SHAKE_TIMEOUT_MAX (KEY_DMP_TAP_SHAKE_COUNT_MAX + 1)
 #define KEY_DMP_TAP_DIRECTION         (KEY_DMP_TAP_SHAKE_TIMEOUT_MAX + 1)
 #define KEY_DMP_TAP_COUNT             (KEY_DMP_TAP_DIRECTION + 1)
-
 /* Gesture Keys */
 #define KEY_DMP_SH_TH_Y             (KEY_DMP_TAP_COUNT + 1)
 #define KEY_DMP_SH_TH_X             (KEY_DMP_SH_TH_Y + 1)
@@ -240,20 +239,9 @@
 #define KEY_D_ACSY                  (KEY_D_ACSX + 1)
 #define KEY_D_ACSZ                  (KEY_D_ACSY + 1)
 
-#define KEY_X_GRT_Y_TMP             (KEY_D_ACSZ + 1)
-#define KEY_SKIP_X_GRT_Y_TMP        (KEY_X_GRT_Y_TMP + 1)
-#define KEY_SKIP_END_COMPARE        (KEY_SKIP_X_GRT_Y_TMP + 1)
-#define KEY_END_COMPARE_Y_X_TMP2    (KEY_SKIP_END_COMPARE + 1)
-#define KEY_CFG_DISPLAY_ORIENT_INT  (KEY_END_COMPARE_Y_X_TMP2 + 1)
+#define KEY_CFG_DISPLAY_ORIENT_INT  (KEY_D_ACSZ + 1)
 #define KEY_NO_ORIENT_INTERRUPT     (KEY_CFG_DISPLAY_ORIENT_INT + 1)
-#define KEY_END_COMPARE_Y_X_TMP     (KEY_NO_ORIENT_INTERRUPT + 1)
-#define KEY_END_ORIENT_1            (KEY_END_COMPARE_Y_X_TMP + 1)
-#define KEY_END_COMPARE_Y_X         (KEY_END_ORIENT_1 + 1)
-#define KEY_END_ORIENT              (KEY_END_COMPARE_Y_X + 1)
-#define KEY_X_GRT_Y                 (KEY_END_ORIENT + 1)
-#define KEY_NOT_TIME_MINUS_1        (KEY_X_GRT_Y + 1)
-#define KEY_END_COMPARE_Y_X_TMP3    (KEY_NOT_TIME_MINUS_1 + 1)
-#define KEY_X_GRT_Y_TMP2            (KEY_END_COMPARE_Y_X_TMP3 + 1)
+#define KEY_X_GRT_Y_TMP2            (KEY_NO_ORIENT_INTERRUPT + 1)
 
 /*Shake Keys */
 #define KEY_D_0_64                  (KEY_X_GRT_Y_TMP2 + 1)
@@ -298,13 +286,17 @@
 #define KEY_D_PEDSTD_PEAK           (KEY_D_PEDSTD_TIMH + 1)
 #define KEY_D_PEDSTD_TIMECTR        (KEY_D_PEDSTD_PEAK + 1)
 #define KEY_D_PEDSTD_STEPCTR        (KEY_D_PEDSTD_TIMECTR + 1)
-#define KEY_D_PEDSTD_WALKTIME       (KEY_D_PEDSTD_STEPCTR + 1)
+#define KEY_D_PEDSTD_STEPCTR2		(KEY_D_PEDSTD_STEPCTR + 1)
+#define KEY_D_PEDSTD_WALKTIME       (KEY_D_PEDSTD_STEPCTR2 + 1)
 #define KEY_D_PEDSTD_DECI           (KEY_D_PEDSTD_WALKTIME + 1)
-#define KEY_CFG_PED_INT             (KEY_D_PEDSTD_DECI + 1)
+#define KEY_D_PEDSTD_SB2			(KEY_D_PEDSTD_DECI + 1)
+#define KEY_D_PEDSTD_DRIVE_STATE    (KEY_D_PEDSTD_SB2 + 1)
+#define KEY_CFG_PED_INT             (KEY_D_PEDSTD_DRIVE_STATE + 1)
 #define KEY_CFG_PED_ENABLE          (KEY_CFG_PED_INT + 1)
+#define KEY_D_STPDET_TIMESTAMP      (KEY_CFG_PED_ENABLE + 1)
 
 /*Host Based No Motion*/
-#define KEY_D_HOST_NO_MOT           (KEY_CFG_PED_ENABLE + 1)
+#define KEY_D_HOST_NO_MOT           (KEY_D_STPDET_TIMESTAMP + 1)
 
 /*Host Based Accel Bias*/
 #define KEY_D_ACCEL_BIAS            (KEY_D_HOST_NO_MOT + 1)
@@ -320,18 +312,7 @@
 #define KEY_D_TILT3_H               (KEY_D_TILT2_L + 1)
 #define KEY_D_TILT3_L               (KEY_D_TILT3_H + 1)
 
-/* Stream keys */
-#define KEY_STREAM_P_GYRO_Z         (KEY_D_TILT3_L + 1)
-#define KEY_STREAM_P_GYRO_Y         (KEY_STREAM_P_GYRO_Z + 1)
-#define KEY_STREAM_P_GYRO_X         (KEY_STREAM_P_GYRO_Y + 1)
-#define KEY_STREAM_P_TEMP           (KEY_STREAM_P_GYRO_X + 1)
-#define KEY_STREAM_P_AUX_Y          (KEY_STREAM_P_TEMP + 1)
-#define KEY_STREAM_P_AUX_X          (KEY_STREAM_P_AUX_Y + 1)
-#define KEY_STREAM_P_AUX_Z          (KEY_STREAM_P_AUX_X + 1)
-#define KEY_STREAM_P_ACCEL_Y        (KEY_STREAM_P_AUX_Z + 1)
-#define KEY_STREAM_P_ACCEL_X        (KEY_STREAM_P_ACCEL_Y + 1)
-#define KEY_STREAM_P_FOOTER         (KEY_STREAM_P_ACCEL_X + 1)
-#define KEY_STREAM_P_ACCEL_Z        (KEY_STREAM_P_FOOTER + 1)
+#define KEY_STREAM_P_ACCEL_Z        (KEY_D_TILT3_L + 1)
 
 /* Batch mode */
 #define KEY_BM_ENABLE               (KEY_STREAM_P_ACCEL_Z + 1)
@@ -347,9 +328,11 @@
 #define KEY_CFG_OUT_ACCL            (KEY_CFG_WATERMARK_L + 1)
 #define KEY_CFG_OUT_GYRO            (KEY_CFG_OUT_ACCL + 1)
 #define KEY_CFG_OUT_3QUAT           (KEY_CFG_OUT_GYRO + 1)
-#define KEY_CFG_OUT_QUAT            (KEY_CFG_OUT_3QUAT + 1)
-#define KEY_CFG_OUT_PQUAT           (KEY_CFG_OUT_QUAT + 1)
-#define KEY_CFG_OUT_CPASS           (KEY_CFG_OUT_PQUAT + 1)
+#define KEY_CFG_OUT_6QUAT           (KEY_CFG_OUT_3QUAT + 1)
+#define KEY_CFG_OUT_9QUAT           (KEY_CFG_OUT_6QUAT + 1)
+#define KEY_CFG_OUT_PQUAT           (KEY_CFG_OUT_9QUAT + 1)
+#define KEY_CFG_OUT_PQUAT9          (KEY_CFG_OUT_PQUAT + 1)
+#define KEY_CFG_OUT_CPASS           (KEY_CFG_OUT_PQUAT9 + 1)
 #define KEY_CFG_OUT_PRESS           (KEY_CFG_OUT_CPASS + 1)
 #define KEY_CFG_OUT_STEPDET         (KEY_CFG_OUT_PRESS + 1)
 #define KEY_CFG_FIFO_INT            (KEY_CFG_OUT_STEPDET + 1)
@@ -369,17 +352,21 @@
 
 /* Sensor's ODR */
 #define KEY_CFG_3QUAT_ODR           (KEY_DMP_RUN_CNTR + 1)
-#define KEY_CFG_QUAT_ODR            (KEY_CFG_3QUAT_ODR + 1)
-#define KEY_CFG_PQUAT_ODR           (KEY_CFG_QUAT_ODR + 1)
-#define KEY_CFG_ACCL_ODR            (KEY_CFG_PQUAT_ODR + 1)
+#define KEY_CFG_6QUAT_ODR           (KEY_CFG_3QUAT_ODR + 1)
+#define KEY_CFG_9QUAT_ODR           (KEY_CFG_6QUAT_ODR + 1)
+#define KEY_CFG_PQUAT6_ODR          (KEY_CFG_9QUAT_ODR + 1)
+#define KEY_CFG_PQUAT9_ODR          (KEY_CFG_PQUAT6_ODR + 1)
+#define KEY_CFG_ACCL_ODR            (KEY_CFG_PQUAT9_ODR + 1)
 #define KEY_CFG_GYRO_ODR            (KEY_CFG_ACCL_ODR + 1)
 #define KEY_CFG_CPASS_ODR           (KEY_CFG_GYRO_ODR + 1)
 #define KEY_CFG_PRESS_ODR           (KEY_CFG_CPASS_ODR + 1)
 
 #define KEY_ODR_CNTR_3QUAT          (KEY_CFG_PRESS_ODR + 1)
-#define KEY_ODR_CNTR_QUAT           (KEY_ODR_CNTR_3QUAT + 1)
-#define KEY_ODR_CNTR_PQUAT          (KEY_ODR_CNTR_QUAT + 1)
-#define KEY_ODR_CNTR_ACCL           (KEY_ODR_CNTR_PQUAT + 1)
+#define KEY_ODR_CNTR_6QUAT          (KEY_ODR_CNTR_3QUAT + 1)
+#define KEY_ODR_CNTR_9QUAT          (KEY_ODR_CNTR_6QUAT + 1)
+#define KEY_ODR_CNTR_PQUAT          (KEY_ODR_CNTR_9QUAT + 1)
+#define KEY_ODR_CNTR_PQUAT9         (KEY_ODR_CNTR_PQUAT + 1)
+#define KEY_ODR_CNTR_ACCL           (KEY_ODR_CNTR_PQUAT9 + 1)
 #define KEY_ODR_CNTR_GYRO           (KEY_ODR_CNTR_ACCL + 1)
 #define KEY_ODR_CNTR_CPASS          (KEY_ODR_CNTR_GYRO + 1)
 #define KEY_ODR_CNTR_PRESS          (KEY_ODR_CNTR_CPASS + 1)
@@ -399,6 +386,10 @@
 /* 9-axis fusion */
 #define KEY_CPASS_VALID             (KEY_DMP_Q3 + 1)
 #define KEY_9AXIS_ACCURACY          (KEY_CPASS_VALID + 1)
+#define KEY_DMP_9Q0                 (KEY_9AXIS_ACCURACY + 1)
+#define KEY_DMP_9Q1                 (KEY_DMP_9Q0 + 1)
+#define KEY_DMP_9Q2                 (KEY_DMP_9Q1 + 1)
+#define KEY_DMP_9Q3                 (KEY_DMP_9Q2 + 1)
 
 /* Test key */
 #define KEY_TEST_01                 (KEY_9AXIS_ACCURACY + 1)

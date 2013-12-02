@@ -27,16 +27,14 @@
 #include <linux/poll.h>
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
-#include <linux/of.h>
-#include <linux/of_gpio.h>
-#include <linux/regulator/consumer.h>
 
-#include <linux/iio/sysfs.h>
 #include "inv_mpu_iio.h"
+#include "sysfs.h"
 #include "inv_test/inv_counters.h"
 
-/* Local Prototypes */
-static int inv_regulator_enable_l(struct inv_mpu_state *st, bool enable);
+#ifdef CONFIG_DTS_INV_MPU_IIO
+#include "inv_mpu_dts.h"
+#endif
 
 s64 get_time_ns(void)
 {
@@ -259,8 +257,6 @@ static int inv_lpa_freq(struct inv_mpu_state *st, int lpa_freq)
 {
 	unsigned long result;
 	u8 d;
-	struct inv_reg_map_s *reg;
-	/* this mapping makes 6500 and 6050 setting close */
 	/* 2, 4, 6, 7 corresponds to 0.98, 3.91, 15.63, 31.25 */
 	const u8 mpu6500_lpa_mapping[] = {2, 4, 6, 7};
 
@@ -270,16 +266,6 @@ static int inv_lpa_freq(struct inv_mpu_state *st, int lpa_freq)
 	if (INV_MPU6500 == st->chip_type) {
 		d = mpu6500_lpa_mapping[lpa_freq];
 		result = inv_i2c_single_write(st, REG_6500_LP_ACCEL_ODR, d);
-		if (result)
-			return result;
-	} else {
-		reg = &st->reg;
-		result = inv_i2c_read(st, reg->pwr_mgmt_2, 1, &d);
-		if (result)
-			return result;
-		d &= ~BIT_LPA_FREQ;
-		d |= (u8)(lpa_freq << LPA_FREQ_SHIFT);
-		result = inv_i2c_single_write(st, reg->pwr_mgmt_2, d);
 		if (result)
 			return result;
 	}
@@ -296,14 +282,6 @@ static int set_power_itg(struct inv_mpu_state *st, bool power_on)
 
 	if ((!power_on) == st->chip_config.is_asleep)
 		return 0;
-
-	/* If powering ON, must power regulators on first */
-	if (power_on) {
-		result = inv_regulator_enable_l(st, true);
-		if (result)
-			return result;
-	}
-
 	reg = &st->reg;
 	if (power_on)
 		data = 0;
@@ -313,16 +291,11 @@ static int set_power_itg(struct inv_mpu_state *st, bool power_on)
 	if (result)
 		return result;
 
-	if (power_on) {
-		if (INV_MPU6500 == st->chip_type)
-			msleep(POWER_UP_TIME);
-		else
-			msleep(REG_UP_TIME);
-	} else {
-		inv_regulator_enable_l(st, false);
-	}
+	if (power_on)
+		msleep(REG_UP_TIME);
 
 	st->chip_config.is_asleep = !power_on;
+
 	return 0;
 }
 
@@ -361,7 +334,6 @@ static int inv_init_config(struct iio_dev *indio_dev)
 	if (result)
 		return result;
 	st->chip_config.fifo_rate = INIT_FIFO_RATE;
-	st->chip_config.new_fifo_rate = INIT_FIFO_RATE;
 	st->irq_dur_ns            = INIT_DUR_TIME;
 	st->chip_config.prog_start_addr = DMP_START_ADDR;
 	if (INV_MPU6050 == st->chip_type)
@@ -383,6 +355,9 @@ static int inv_init_config(struct iio_dev *indio_dev)
 		st->smd.threshold = MPU_INIT_SMD_THLD;
 		st->smd.delay     = MPU_INIT_SMD_DELAY_THLD;
 		st->smd.delay2    = MPU_INIT_SMD_DELAY2_THLD;
+		st->ped.int_thresh = INIT_PED_INT_THRESH;
+		st->ped.step_thresh = INIT_PED_THRESH;
+		st->sensor[SENSOR_STEP].rate = MAX_DMP_OUTPUT_RATE;
 
 		result = inv_i2c_single_write(st, REG_ACCEL_MOT_DUR,
 						INIT_MOT_DUR);
@@ -418,8 +393,8 @@ static int inv_init_config(struct iio_dev *indio_dev)
 			st->input_accel_offset[i] = 0;
 			st->input_accel_dmp_bias[i] = 0;
 		}
-		st->pedometer_step = 0;
-		st->pedometer_time = 0;
+		st->ped.step = 0;
+		st->ped.time = 0;
 	}
 
 	return 0;
@@ -541,7 +516,7 @@ static int inv_fifo_rate_store(struct inv_mpu_state *st, int fifo_rate)
 		return 0;
 
 	st->irq_dur_ns = NSEC_PER_SEC / fifo_rate;
-	st->chip_config.new_fifo_rate = fifo_rate;
+	st->chip_config.fifo_rate = fifo_rate;
 
 	return 0;
 }
@@ -708,14 +683,30 @@ static ssize_t _dmp_attr_store(struct device *dev,
 		result = inv_enable_pedometer_interrupt(st, !!data);
 		if (result)
 			goto dmp_attr_store_fail;
-		st->chip_config.ped_int_on = !!data;
+		st->ped.int_on = !!data;
 		break;
 	case ATTR_DMP_PED_ON:
 	{
 		result = inv_enable_pedometer(st, !!data);
 		if (result)
 			goto dmp_attr_store_fail;
-		st->chip_config.ped_on = !!data;
+		st->ped.on = !!data;
+		break;
+	}
+	case ATTR_DMP_PED_STEP_THRESH:
+	{
+		result = inv_write_2bytes(st, KEY_D_PEDSTD_SB, data);
+		if (result)
+			goto dmp_attr_store_fail;
+		st->ped.step_thresh = data;
+		break;
+	}
+	case ATTR_DMP_PED_INT_THRESH:
+	{
+		result = inv_write_2bytes(st, KEY_D_PEDSTD_SB2, data);
+		if (result)
+			goto dmp_attr_store_fail;
+		st->ped.int_thresh = data;
 		break;
 	}
 	case ATTR_DMP_SMD_ENABLE:
@@ -755,7 +746,7 @@ static ssize_t _dmp_attr_store(struct device *dev,
 		result = inv_enable_tap_dmp(st, !!data);
 		if (result)
 			goto dmp_attr_store_fail;
-		st->chip_config.tap_on = !!data;
+		st->tap.on = !!data;
 		break;
 	case ATTR_DMP_TAP_THRESHOLD:
 		if (data < 0 || data > USHRT_MAX) {
@@ -926,15 +917,19 @@ static ssize_t inv_attr64_show(struct device *dev,
 		mutex_unlock(&indio_dev->mlock);
 		return -EINVAL;
 	}
-
+	result = 0;
 	switch (this_attr->address) {
 	case ATTR_DMP_PEDOMETER_STEPS:
 		result = inv_get_pedometer_steps(st, &ped);
-		tmp = st->pedometer_step + ped;
+		result |= inv_read_pedometer_counter(st);
+		tmp = st->ped.step + ped;
 		break;
 	case ATTR_DMP_PEDOMETER_TIME:
 		result = inv_get_pedometer_time(st, &ped);
-		tmp = st->pedometer_time + ped;
+		tmp = st->ped.time + ped;
+		break;
+	case ATTR_DMP_PEDOMETER_COUNTER:
+		tmp = st->ped.last_step_time;
 		break;
 	default:
 		result = -EINVAL;
@@ -973,13 +968,13 @@ static ssize_t inv_attr64_store(struct device *dev,
 		result = write_be32_key_to_mem(st, 0, KEY_D_PEDSTD_STEPCTR);
 		if (result)
 			goto attr64_store_fail;
-		st->pedometer_step = data;
+		st->ped.step = data;
 		break;
 	case ATTR_DMP_PEDOMETER_TIME:
 		result = write_be32_key_to_mem(st, 0, KEY_D_PEDSTD_TIMECTR);
 		if (result)
 			goto attr64_store_fail;
-		st->pedometer_time = data;
+		st->ped.time = data;
 		break;
 	default:
 		result = -EINVAL;
@@ -1065,9 +1060,13 @@ static ssize_t inv_attr_show(struct device *dev,
 	case ATTR_DMP_GYRO_Z_DMP_BIAS:
 		return sprintf(buf, "%d\n", st->input_gyro_dmp_bias[2]);
 	case ATTR_DMP_PED_INT_ON:
-		return sprintf(buf, "%d\n", st->chip_config.ped_int_on);
+		return sprintf(buf, "%d\n", st->ped.int_on);
 	case ATTR_DMP_PED_ON:
-		return sprintf(buf, "%d\n", st->chip_config.ped_on);
+		return sprintf(buf, "%d\n", st->ped.on);
+	case ATTR_DMP_PED_STEP_THRESH:
+		return sprintf(buf, "%d\n", st->ped.step_thresh);
+	case ATTR_DMP_PED_INT_THRESH:
+		return sprintf(buf, "%d\n", st->ped.int_thresh);
 	case ATTR_DMP_SMD_ENABLE:
 		return sprintf(buf, "%d\n", st->chip_config.smd_enable);
 	case ATTR_DMP_SMD_THLD:
@@ -1077,7 +1076,7 @@ static ssize_t inv_attr_show(struct device *dev,
 	case ATTR_DMP_SMD_DELAY_THLD2:
 		return sprintf(buf, "%d\n", st->smd.delay2);
 	case ATTR_DMP_TAP_ON:
-		return sprintf(buf, "%d\n", st->chip_config.tap_on);
+		return sprintf(buf, "%d\n", st->tap.on);
 	case ATTR_DMP_TAP_THRESHOLD:
 		return sprintf(buf, "%d\n", st->tap.thresh);
 	case ATTR_DMP_TAP_MIN_COUNT:
@@ -1121,8 +1120,6 @@ static ssize_t inv_attr_show(struct device *dev,
 		const char *f[] = {"1.25", "5", "20", "40"};
 		return sprintf(buf, "%s\n", f[st->chip_config.lpa_freq]);
 	}
-	case ATTR_MOTION_LPA_DURATION:
-		return sprintf(buf, "%d\n", st->mot_int.mot_dur);
 	case ATTR_MOTION_LPA_THRESHOLD:
 		return sprintf(buf, "%d\n", st->mot_int.mot_thr);
 
@@ -1155,7 +1152,7 @@ static ssize_t inv_attr_show(struct device *dev,
 	case ATTR_FIRMWARE_LOADED:
 		return sprintf(buf, "%d\n", st->chip_config.firmware_loaded);
 	case ATTR_SAMPLING_FREQ:
-		return sprintf(buf, "%d\n", st->chip_config.new_fifo_rate);
+		return sprintf(buf, "%d\n", st->chip_config.fifo_rate);
 	case ATTR_SELF_TEST:
 		mutex_lock(&indio_dev->mlock);
 		if (st->chip_config.enable) {
@@ -1193,7 +1190,7 @@ static ssize_t inv_attr_show(struct device *dev,
 	case ATTR_SECONDARY_NAME:
 	{
 		const char *n[] = {"NULL", "AK8975", "AK8972", "AK8963",
-					"BMA250", "MLX90399"};
+					"BMA250", "MLX90399", "AK09911"};
 		switch (st->plat_data.sec_slave_id) {
 		case COMPASS_ID_AK8975:
 			return sprintf(buf, "%s\n", n[1]);
@@ -1205,6 +1202,8 @@ static ssize_t inv_attr_show(struct device *dev,
 			return sprintf(buf, "%s\n", n[4]);
 		case COMPASS_ID_MLX90399:
 			return sprintf(buf, "%s\n", n[5]);
+		case COMPASS_ID_AK09911:
+			return sprintf(buf, "%s\n", n[6]);
 		default:
 			return sprintf(buf, "%s\n", n[0]);
 		}
@@ -1389,7 +1388,6 @@ static int inv_firmware_loaded(struct inv_mpu_state *st, int data)
 	if (data)
 		return -EINVAL;
 	st->chip_config.firmware_loaded = 0;
-	st->chip_config.dmp_on = 0;
 
 	return 0;
 }
@@ -1505,15 +1503,6 @@ static ssize_t _attr_store(struct device *dev,
 		break;
 	case ATTR_MOTION_LPA_FREQ:
 		result = inv_lpa_freq(st, data);
-		break;
-	case ATTR_MOTION_LPA_DURATION:
-		if (INV_MPU6500 != st->chip_type) {
-			result = inv_i2c_single_write(st, REG_ACCEL_MOT_DUR,
-					      MPU6050_MOTION_DUR_DEFAULT);
-			if (result)
-				goto attr_store_fail;
-		}
-		st->mot_int.mot_dur = data;
 		break;
 	case ATTR_MOTION_LPA_THRESHOLD:
 		if ((data > MPU6XXX_MAX_MOTION_THRESH) || (data < 0)) {
@@ -1785,7 +1774,6 @@ static ssize_t inv_test_suspend_resume_show(struct device *dev,
 	return sprintf(buf, "%d\n", suspend_state);
 }
 
-
 /*
  * inv_reg_write_store() - register write command for testing.
  *                         Format: WSRRDD, where RR is the register in hex,
@@ -2017,6 +2005,10 @@ static IIO_DEVICE_ATTR(pedometer_int_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_PED_INT_ON);
 static IIO_DEVICE_ATTR(pedometer_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_PED_ON);
+static IIO_DEVICE_ATTR(pedometer_step_thresh, S_IRUGO | S_IWUSR,
+	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_PED_STEP_THRESH);
+static IIO_DEVICE_ATTR(pedometer_int_thresh, S_IRUGO | S_IWUSR,
+	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_PED_INT_THRESH);
 
 static IIO_DEVICE_ATTR(smd_enable, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_SMD_ENABLE);
@@ -2031,6 +2023,8 @@ static IIO_DEVICE_ATTR(pedometer_steps, S_IRUGO | S_IWUSR, inv_attr64_show,
 	inv_attr64_store, ATTR_DMP_PEDOMETER_STEPS);
 static IIO_DEVICE_ATTR(pedometer_time, S_IRUGO | S_IWUSR, inv_attr64_show,
 	inv_attr64_store, ATTR_DMP_PEDOMETER_TIME);
+static IIO_DEVICE_ATTR(pedometer_counter, S_IRUGO | S_IWUSR, inv_attr64_show,
+	NULL, ATTR_DMP_PEDOMETER_COUNTER);
 
 static IIO_DEVICE_ATTR(tap_on, S_IRUGO | S_IWUSR,
 	inv_attr_show, inv_dmp_attr_store, ATTR_DMP_TAP_ON);
@@ -2080,8 +2074,6 @@ static IIO_DEVICE_ATTR(motion_lpa_on, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_MOTION_LPA_ON);
 static IIO_DEVICE_ATTR(motion_lpa_freq, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_MOTION_LPA_FREQ);
-static IIO_DEVICE_ATTR(motion_lpa_duration, S_IRUGO | S_IWUSR, inv_attr_show,
-	inv_attr_store, ATTR_MOTION_LPA_DURATION);
 static IIO_DEVICE_ATTR(motion_lpa_threshold, S_IRUGO | S_IWUSR, inv_attr_show,
 	inv_attr_store, ATTR_MOTION_LPA_THRESHOLD);
 
@@ -2277,6 +2269,9 @@ static const struct attribute *inv_mpu6xxx_attributes[] = {
 	&iio_dev_attr_pedometer_on.dev_attr.attr,
 	&iio_dev_attr_pedometer_steps.dev_attr.attr,
 	&iio_dev_attr_pedometer_time.dev_attr.attr,
+	&iio_dev_attr_pedometer_counter.dev_attr.attr,
+	&iio_dev_attr_pedometer_step_thresh.dev_attr.attr,
+	&iio_dev_attr_pedometer_int_thresh.dev_attr.attr,
 	&iio_dev_attr_smd_enable.dev_attr.attr,
 	&iio_dev_attr_smd_threshold.dev_attr.attr,
 	&iio_dev_attr_smd_delay_threshold.dev_attr.attr,
@@ -2294,9 +2289,6 @@ static const struct attribute *inv_mpu6xxx_attributes[] = {
 	&iio_dev_attr_ped_q_on.dev_attr.attr,
 	&iio_dev_attr_ped_q_rate.dev_attr.attr,
 	&iio_dev_attr_step_detector_on.dev_attr.attr,
-	&iio_dev_attr_motion_lpa_on.dev_attr.attr,
-	&iio_dev_attr_motion_lpa_freq.dev_attr.attr,
-	&iio_dev_attr_motion_lpa_threshold.dev_attr.attr,
 	&iio_dev_attr_accel_enable.dev_attr.attr,
 	&iio_dev_attr_accel_fifo_enable.dev_attr.attr,
 	&iio_dev_attr_accel_rate.dev_attr.attr,
@@ -2304,8 +2296,10 @@ static const struct attribute *inv_mpu6xxx_attributes[] = {
 	&iio_dev_attr_accel_matrix.dev_attr.attr,
 };
 
-static const struct attribute *inv_mpu6050_attributes[] = {
-	&iio_dev_attr_motion_lpa_duration.dev_attr.attr,
+static const struct attribute *inv_mpu6500_attributes[] = {
+	&iio_dev_attr_motion_lpa_on.dev_attr.attr,
+	&iio_dev_attr_motion_lpa_freq.dev_attr.attr,
+	&iio_dev_attr_motion_lpa_threshold.dev_attr.attr,
 };
 
 static const struct attribute *inv_tap_attributes[] = {
@@ -2340,6 +2334,7 @@ static const struct attribute *inv_pressure_attributes[] = {
 };
 
 static const struct attribute *inv_mpu3050_attributes[] = {
+	&iio_dev_attr_in_accel_scale.dev_attr.attr,
 	&iio_dev_attr_accel_enable.dev_attr.attr,
 	&iio_dev_attr_accel_fifo_enable.dev_attr.attr,
 	&iio_dev_attr_accel_matrix.dev_attr.attr,
@@ -2348,7 +2343,7 @@ static const struct attribute *inv_mpu3050_attributes[] = {
 static struct attribute *inv_attributes[
 	ARRAY_SIZE(inv_gyro_attributes) +
 	ARRAY_SIZE(inv_mpu6xxx_attributes) +
-	ARRAY_SIZE(inv_mpu6050_attributes) +
+	ARRAY_SIZE(inv_mpu6500_attributes) +
 	ARRAY_SIZE(inv_compass_attributes) +
 	ARRAY_SIZE(inv_akxxxx_attributes) +
 	ARRAY_SIZE(inv_pressure_attributes) +
@@ -2472,12 +2467,6 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 	st->hw  = &hw_info[st->chip_type];
 	reg = &st->reg;
 	st->setup_reg(reg);
-
-	/* Power on chip */
-	result = st->set_power_state(st, true);
-	if (result)
-		return result;
-
 	/* reset to make sure previous state are not there */
 	result = inv_i2c_single_write(st, reg->pwr_mgmt_1, BIT_H_RESET);
 	if (result)
@@ -2597,16 +2586,13 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 		memcpy(&inv_attributes[t_ind], inv_mpu6xxx_attributes,
 		       sizeof(inv_mpu6xxx_attributes));
 		t_ind += ARRAY_SIZE(inv_mpu6xxx_attributes);
-		memcpy(&inv_attributes[t_ind], inv_tap_attributes,
-		       sizeof(inv_tap_attributes));
-		t_ind += ARRAY_SIZE(inv_tap_attributes);
 	}
 
-	/* MPU6050 only */
-	if (INV_MPU6050 == st->chip_type) {
-		memcpy(&inv_attributes[t_ind], inv_mpu6050_attributes,
-		       sizeof(inv_mpu6050_attributes));
-		t_ind += ARRAY_SIZE(inv_mpu6050_attributes);
+	/* MPU6500 only */
+	if (INV_MPU6500 == st->chip_type) {
+		memcpy(&inv_attributes[t_ind], inv_mpu6500_attributes,
+		       sizeof(inv_mpu6500_attributes));
+		t_ind += ARRAY_SIZE(inv_mpu6500_attributes);
 	}
 
 	if (conf->has_compass) {
@@ -2617,6 +2603,7 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 		/* AKM only */
 		if (st->plat_data.sec_slave_id == COMPASS_ID_AK8975 ||
 		    st->plat_data.sec_slave_id == COMPASS_ID_AK8972 ||
+		    st->plat_data.sec_slave_id == COMPASS_ID_AK09911 ||
 		    st->plat_data.sec_slave_id == COMPASS_ID_AK8963) {
 			memcpy(&inv_attributes[t_ind], inv_akxxxx_attributes,
 			       sizeof(inv_akxxxx_attributes));
@@ -2643,7 +2630,7 @@ static const struct bin_attribute dmp_firmware = {
 		.name = "dmp_firmware",
 		.mode = S_IRUGO | S_IWUSR
 	},
-	.size = DMP_IMAGE_SIZE,
+	.size = DMP_IMAGE_SIZE + 32,
 	.read = inv_dmp_firmware_read,
 	.write = inv_dmp_firmware_write,
 };
@@ -2670,395 +2657,26 @@ static int inv_create_dmp_sysfs(struct iio_dev *ind)
 	return result;
 }
 
-
-static int inv_regulator_enable_l(struct inv_mpu_state *st, bool enable)
-{
-	int err = 0;
-	int reg_err = 0;
-
-	if (enable && !st->powered) {
-		if (st->vdd_regulator) {
-			err = regulator_enable(st->vdd_regulator);
-			if (err) {
-				pr_err("enable vdd_regulator failed");
-				goto err_exit_2;
-			}
-		}
-		if (st->vdd_io_regulator) {
-			err = regulator_enable(st->vdd_io_regulator);
-			if (err) {
-				pr_err("enable vdd_io_regulator failed");
-				goto err_exit_1;
-			}
-		}
-		if (st->vcc_i2c_regulator) {
-			err = regulator_enable(st->vcc_i2c_regulator);
-			if (err) {
-				pr_err("enable vcc_i2c_regulator failed");
-				goto err_exit;
-			}
-		}
-		st->powered = true;
-
-		/* LIS3DSH takes 5mS for internal power on boot sequence */
-		msleep(10);
-
-	} else if (!enable && st->powered) {
-		if (st->vcc_i2c_regulator) {
-			err = regulator_disable(st->vcc_i2c_regulator);
-			if (err) {
-				pr_err("disable vcc_i2c_regulator failed");
-				reg_err = err;
-			}
-		}
-		if (st->vdd_io_regulator) {
-			err = regulator_disable(st->vdd_io_regulator);
-			if (err) {
-				pr_err("disable vdd_io_regulator failed");
-				reg_err = err;
-			}
-		}
-		if (st->vdd_regulator) {
-			err = regulator_disable(st->vdd_regulator);
-			if (err) {
-				pr_err("disable vdd_regulator failed");
-				reg_err = err;
-			}
-		}
-		st->powered = false;
-		err = reg_err;
-	}
-	return err;
-
-err_exit:
-	if (st->vdd_io_regulator)
-		regulator_disable(st->vdd_io_regulator);
-err_exit_1:
-	if (st->vdd_regulator)
-		regulator_disable(st->vdd_regulator);
-err_exit_2:
-	return err;
-}
-
-static int inv_mpu_validate_pdata(struct inv_mpu_state *st)
-{
-	struct mpu_platform_data *pdata = &st->plat_data;
-	int i;
-	int val;
-
-	/* verify orientation values are either 0, 1, or -1 */
-	for (i = 0; i < ARRAY_SIZE(pdata->orientation); i++) {
-		val = pdata->orientation[i];
-		if ((val > 1) || (val < -1)) {
-			pr_err("invalid orientation value %d (i=%d)\n",
-								val, i);
-			return -EINVAL;
-		}
-		val = pdata->secondary_orientation[i];
-		if ((val > 1) || (val < -1)) {
-			pr_err("invalid secondary_orientation value"
-						" %d (i=%d)\n", val, i);
-			return -EINVAL;
-		}
-	}
-
-	if (pdata->sec_slave_type >= SECONDARY_SLAVE_TYPE_TYPES) {
-		pr_err("invalid sec_slave_type\n");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int inv_parse_orientation_matrix(struct device *dev, s8 *orient)
-{
-	int rc, i;
-	struct device_node *np = dev->of_node;
-	u32 temp_val, temp_val2;
-
-	for (i = 0; i < 9; i++)
-		orient[i] = 0;
-
-	/* parsing axis x orientation matrix*/
-	rc = of_property_read_u32(np, "axis_map_x", &temp_val);
-	if (rc) {
-		dev_err(dev, "Unable to read axis_map_x\n");
-		return rc;
-	}
-	rc = of_property_read_u32(np, "negate_x", &temp_val2);
-	if (rc) {
-		dev_err(dev, "Unable to read negate_x\n");
-		return rc;
-	}
-	if (temp_val2)
-		orient[temp_val] = -1;
-	else
-		orient[temp_val] = 1;
-
-	/* parsing axis y orientation matrix*/
-	rc = of_property_read_u32(np, "axis_map_y", &temp_val);
-	if (rc) {
-		dev_err(dev, "Unable to read axis_map_y\n");
-		return rc;
-	}
-	rc = of_property_read_u32(np, "negate_y", &temp_val2);
-	if (rc) {
-		dev_err(dev, "Unable to read negate_y\n");
-		return rc;
-	}
-	if (temp_val2)
-		orient[3 + temp_val] = -1;
-	else
-		orient[3 + temp_val] = 1;
-
-	/* parsing axis z orientation matrix*/
-	rc = of_property_read_u32(np, "axis_map_z", &temp_val);
-	if (rc) {
-		dev_err(dev, "Unable to read axis_map_z\n");
-		return rc;
-	}
-	rc = of_property_read_u32(np, "negate_z", &temp_val2);
-	if (rc) {
-		dev_err(dev, "Unable to read negate_z\n");
-		return rc;
-	}
-	if (temp_val2)
-		orient[6 + temp_val] = -1;
-	else
-		orient[6 + temp_val] = 1;
-
-	return 0;
-}
-
-static int inv_parse_secondary_orientation_matrix(struct device *dev,
-							s8 *orient)
-{
-	int rc, i;
-	struct device_node *np = dev->of_node;
-	u32 temp_val, temp_val2;
-
-	for (i = 0; i < 9; i++)
-		orient[i] = 0;
-
-	/* parsing axis x orientation matrix*/
-	rc = of_property_read_u32(np, "inven,secondary_axis_map_x", &temp_val);
-	if (rc) {
-		dev_err(dev, "Unable to read secondary axis_map_x\n");
-		return rc;
-	}
-	rc = of_property_read_u32(np, "inven,secondary_negate_x", &temp_val2);
-	if (rc) {
-		dev_err(dev, "Unable to read secondary negate_x\n");
-		return rc;
-	}
-	if (temp_val2)
-		orient[temp_val] = -1;
-	else
-		orient[temp_val] = 1;
-
-	/* parsing axis y orientation matrix*/
-	rc = of_property_read_u32(np, "inven,secondary_axis_map_y", &temp_val);
-	if (rc) {
-		dev_err(dev, "Unable to read secondary axis_map_y\n");
-		return rc;
-	}
-	rc = of_property_read_u32(np, "inven,secondary_negate_y", &temp_val2);
-	if (rc) {
-		dev_err(dev, "Unable to read secondary negate_y\n");
-		return rc;
-	}
-	if (temp_val2)
-		orient[3 + temp_val] = -1;
-	else
-		orient[3 + temp_val] = 1;
-
-	/* parsing axis z orientation matrix*/
-	rc = of_property_read_u32(np, "inven,secondary_axis_map_z", &temp_val);
-	if (rc) {
-		dev_err(dev, "Unable to read secondary axis_map_z\n");
-		return rc;
-	}
-	rc = of_property_read_u32(np, "inven,secondary_negate_z", &temp_val2);
-	if (rc) {
-		dev_err(dev, "Unable to read secondary negate_z\n");
-		return rc;
-	}
-	if (temp_val2)
-		orient[6 + temp_val] = -1;
-	else
-		orient[6 + temp_val] = 1;
-
-	return 0;
-}
-
-static int inv_parse_secondary(struct device *dev,
-				struct mpu_platform_data *pdata)
-{
-	int rc;
-	struct device_node *np = dev->of_node;
-	u32 temp_val;
-	const char *name;
-
-	if (of_property_read_string(np, "inven,secondary_type", &name)) {
-		dev_err(dev, "Missing secondary type.\n");
-		return -EINVAL;
-	}
-	if (!strcmp(name, "compass")) {
-		pdata->sec_slave_type = SECONDARY_SLAVE_TYPE_COMPASS;
-	} else if (!strcmp(name, "none")) {
-		pdata->sec_slave_type = SECONDARY_SLAVE_TYPE_NONE;
-		return 0;
-	} else {
-		return -EINVAL;
-	}
-
-	if (of_property_read_string(np, "inven,secondary_name", &name)) {
-		dev_err(dev, "Missing secondary name.\n");
-		return -EINVAL;
-	}
-	if (!strcmp(name, "ak8963"))
-		pdata->sec_slave_id = COMPASS_ID_AK8963;
-	else if (!strcmp(name, "ak8975"))
-		pdata->sec_slave_id = COMPASS_ID_AK8975;
-	else if (!strcmp(name, "ak8972"))
-		pdata->sec_slave_id = COMPASS_ID_AK8972;
-	else
-		return -EINVAL;
-	rc = of_property_read_u32(np, "inven,secondary_reg", &temp_val);
-	if (rc) {
-		dev_err(dev, "Unable to read secondary register\n");
-		return rc;
-	}
-	pdata->secondary_i2c_addr = temp_val;
-	rc = inv_parse_secondary_orientation_matrix(dev,
-						pdata->secondary_orientation);
-
-	return rc;
-}
-
-static int inv_parse_aux(struct device *dev, struct mpu_platform_data *pdata)
-{
-	int rc;
-	struct device_node *np = dev->of_node;
-	u32 temp_val;
-	const char *name;
-
-	if (of_property_read_string(np, "inven,aux_type", &name)) {
-		dev_err(dev, "Missing aux type.\n");
-		return -EINVAL;
-	}
-	if (!strcmp(name, "pressure")) {
-		pdata->aux_slave_type = SECONDARY_SLAVE_TYPE_PRESSURE;
-	} else if (!strcmp(name, "none")) {
-		pdata->aux_slave_type = SECONDARY_SLAVE_TYPE_NONE;
-		return 0;
-	} else {
-		return -EINVAL;
-	}
-
-	if (of_property_read_string(np, "inven,aux_name", &name)) {
-		dev_err(dev, "Missing aux name.\n");
-		return -EINVAL;
-	}
-	if (!strcmp(name, "bmp280"))
-		pdata->aux_slave_id = PRESSURE_ID_BMP280;
-	else
-		return -EINVAL;
-
-	rc = of_property_read_u32(np, "inven,aux_reg", &temp_val);
-	if (rc) {
-		dev_err(dev, "Unable to read aux register\n");
-		return rc;
-	}
-	pdata->aux_i2c_addr = temp_val;
-
-	return 0;
-}
-
-/* This function collects device tree data that gets range-checked later */
-static int inv_parse_dt(struct inv_mpu_state *st)
-{
-	struct i2c_client *client = st->client;
-	struct device_node *np = client->dev.of_node;
-	struct mpu_platform_data *pdata = &st->plat_data;
-	int rc;
-
-	rc = inv_parse_orientation_matrix(&client->dev, pdata->orientation);
-	if (rc)
-		return rc;
-
-	rc = inv_parse_secondary(&client->dev, pdata);
-	if (rc)
-		return rc;
-
-	inv_parse_aux(&client->dev, pdata);
-
-	pdata->int_config = of_get_named_gpio(np, "inven,int_config", 0);
-	if (pdata->int_config < 0) {
-		pr_err("FAILED to get int_config");
-		return pdata->int_config;
-	}
-
-	pdata->level_shifter = of_get_named_gpio(np, "inven,level_shifter", 0);
-	if (pdata->level_shifter < 0) {
-		pr_err("FAILED to get level_shifter");
-		return pdata->level_shifter;
-	}
-
-	st->vdd_io_regulator = regulator_get(&client->dev, "vdd_io");
-	if (IS_ERR_OR_NULL(st->vdd_io_regulator)) {
-		st->vdd_io_regulator = NULL;
-		pr_err("FAILED to get vdd_io_regulator");
-		return -EIO;
-	}
-
-	st->vdd_regulator = regulator_get(&client->dev, "vdd");
-	if (IS_ERR_OR_NULL(st->vdd_regulator)) {
-		st->vdd_regulator = NULL;
-		pr_err("FAILED to get vdd_regulator");
-		return -EIO;
-	}
-
-	st->vcc_i2c_regulator = regulator_get(&client->dev, "vcc_i2c");
-	if (IS_ERR_OR_NULL(st->vcc_i2c_regulator)) {
-		st->vcc_i2c_regulator = NULL;
-		pr_err("FAILED to get vcc_i2c_regulator");
-		return -EIO;
-	}
-
-	return 0;
-}
-
-static void clear_mpu_interrupts(struct inv_mpu_state *st)
-{
-	char status;
-	inv_i2c_read(st, REG_INT_STATUS, 1, &status);
-}
-
 /*
  *  inv_mpu_probe() - probe function.
  */
 static int inv_mpu_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
+	struct inv_mpu_state *st;
 	struct iio_dev *indio_dev;
 	int result;
-	struct inv_mpu_state *st;
 
-	if (!client->dev.of_node) {
-		dev_err(&client->dev,
-			"device tree data not found, aborting driver\n");
-		result = -ENOSYS;
-		goto out_no_free;
-	}
+#ifdef CONFIG_DTS_INV_MPU_IIO
+	enable_irq_wake(client->irq);
+#endif
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		result = -ENOSYS;
 		pr_err("I2c function error\n");
 		goto out_no_free;
 	}
-
-	indio_dev = iio_device_alloc(sizeof(*st));
+	indio_dev = iio_allocate_device(sizeof(*st));
 	if (indio_dev == NULL) {
 		pr_err("memory allocation failed\n");
 		result =  -ENOMEM;
@@ -3068,24 +2686,27 @@ static int inv_mpu_probe(struct i2c_client *client,
 	st->client = client;
 	st->sl_handle = client->adapter;
 	st->i2c_addr = client->addr;
-	st->chip_config.is_asleep = true;
-
-	memset(&st->plat_data, 0, sizeof(st->plat_data));
-
-	/* parse device tree and fill out our plat_data structure */
-	result = inv_parse_dt(st);
-	if (result < 0) {
-		dev_err(&client->dev, "failed parsing device tree data\n");
+#ifdef CONFIG_DTS_INV_MPU_IIO
+	result = invensense_mpu_parse_dt(&client->dev, &st->plat_data);
+	if (result)
 		goto out_free;
+
+	/*Power on device.*/
+	if (st->plat_data.power_on) {
+		result = st->plat_data.power_on(&st->plat_data);
+		if (result < 0) {
+			dev_err(&client->dev,
+					"power_on failed: %d\n", result);
+			return result;
+		}
 	}
 
-	result = inv_mpu_validate_pdata(st);
-	if (result < 0) {
-		dev_err(&client->dev, "failed to validate platform data\n");
-		goto out_free;
-	}
-
-	/* power is turned on inside check chip type*/
+msleep(100);
+#else
+	/* power is turned on inside check chip type */
+	st->plat_data =
+	*(struct mpu_platform_data *)dev_get_platdata(&client->dev);
+#endif
 	result = inv_check_chip_type(st, id);
 	if (result)
 		goto out_free;
@@ -3109,8 +2730,6 @@ static int inv_mpu_probe(struct i2c_client *client,
 	indio_dev->info = &mpu_info;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->currentmode = INDIO_DIRECT_MODE;
-
-	clear_mpu_interrupts(st);
 
 	result = inv_mpu_configure_ring(indio_dev);
 	if (result) {
@@ -3140,7 +2759,7 @@ static int inv_mpu_probe(struct i2c_client *client,
 	}
 
 	if (INV_MPU6050 == st->chip_type ||
-	    INV_MPU6500 == st->chip_type) {
+		INV_MPU6500 == st->chip_type) {
 		result = inv_create_dmp_sysfs(indio_dev);
 		if (result) {
 			pr_err("create dmp sysfs failed\n");
@@ -3149,14 +2768,7 @@ static int inv_mpu_probe(struct i2c_client *client,
 	}
 	INIT_KFIFO(st->timestamps);
 	spin_lock_init(&st->time_stamp_lock);
-
-	result = inv_power_up_self_test(st);
-	if (result)
-		goto out_unreg_iio;
-	result = inv_do_test(st, 0,  st->gyro_bias, st->accel_bias);
-	if (result)
-		goto out_unreg_iio;
-	inv_recover_setting(st);
+	mutex_init(&st->suspend_resume_lock);
 	result = st->set_power_state(st, false);
 	if (result) {
 		dev_err(&client->adapter->dev,
@@ -3164,8 +2776,8 @@ static int inv_mpu_probe(struct i2c_client *client,
 		goto out_unreg_iio;
 	}
 	inv_init_sensor_struct(st);
-	INIT_DELAYED_WORK(&st->work, batch_step_only_work);
-	dev_info(&client->dev, "%s is ready to go!\n", indio_dev->name);
+	dev_info(&client->dev, "%s is ready to go!\n",
+					indio_dev->name);
 
 	return 0;
 out_unreg_iio:
@@ -3178,10 +2790,9 @@ out_remove_ring:
 out_unreg_ring:
 	inv_mpu_unconfigure_ring(indio_dev);
 out_free:
-	iio_device_free(indio_dev);
+	iio_free_device(indio_dev);
 out_no_free:
 	dev_err(&client->adapter->dev, "%s failed %d\n", __func__, result);
-
 	return -EIO;
 }
 
@@ -3218,14 +2829,13 @@ static int inv_mpu_remove(struct i2c_client *client)
 	struct iio_dev *indio_dev = i2c_get_clientdata(client);
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 
-	cancel_delayed_work_sync(&st->work);
 	kfifo_free(&st->timestamps);
 	iio_device_unregister(indio_dev);
 	if (indio_dev->modes & INDIO_BUFFER_TRIGGERED)
 		inv_mpu_remove_trigger(indio_dev);
 	iio_buffer_unregister(indio_dev);
 	inv_mpu_unconfigure_ring(indio_dev);
-	iio_device_free(indio_dev);
+	iio_free_device(indio_dev);
 
 	dev_info(&client->adapter->dev, "inv-mpu-iio module removed.\n");
 
@@ -3277,20 +2887,18 @@ static int inv_mpu_resume(struct device *dev)
 	if (st->chip_config.dmp_on && st->chip_config.enable) {
 		result = st->set_power_state(st, true);
 		result |= inv_read_time_and_ticks(st, true);
-		if (st->chip_config.ped_int_on)
+		if (st->ped.int_on)
 			result |= inv_enable_pedometer_interrupt(st, true);
 		if (st->chip_config.display_orient_on)
 			result |= inv_set_display_orient_interrupt_dmp(st,
 								true);
 		result |= inv_setup_suspend_batchmode(indio_dev, false);
-		if (st->batch.step_only)
-			schedule_delayed_work(&st->work,
-				msecs_to_jiffies(st->batch.timeout));
 	} else if (st->chip_config.enable) {
 		result = st->set_power_state(st, true);
 	}
 
 	mutex_unlock(&indio_dev->mlock);
+	mutex_unlock(&st->suspend_resume_lock);
 
 	return result;
 }
@@ -3307,7 +2915,7 @@ static int inv_mpu_suspend(struct device *dev)
 	result = 0;
 	if (st->chip_config.dmp_on && st->chip_config.enable) {
 		/* turn off pedometer interrupt during suspend */
-		if (st->chip_config.ped_int_on)
+		if (st->ped.int_on)
 			result |= inv_enable_pedometer_interrupt(st, false);
 		/* turn off orientation interrupt during suspend */
 		if (st->chip_config.display_orient_on)
@@ -3315,10 +2923,9 @@ static int inv_mpu_suspend(struct device *dev)
 								false);
 		/* setup batch mode related during suspend */
 		result = inv_setup_suspend_batchmode(indio_dev, true);
-		if (st->batch.step_only)
-			cancel_delayed_work_sync(&st->work);
 		/* only in DMP non-batch data mode, turn off the power */
-		if ((!st->batch.on) && (!st->chip_config.dmp_event_int_on))
+		if ((!st->batch.on) && (!st->chip_config.smd_enable) &&
+					(!st->ped.on))
 			result |= st->set_power_state(st, false);
 	} else if (st->chip_config.enable) {
 		/* in non DMP case, just turn off the power */
@@ -3326,6 +2933,7 @@ static int inv_mpu_suspend(struct device *dev)
 	}
 
 	mutex_unlock(&indio_dev->mlock);
+	mutex_lock(&st->suspend_resume_lock);
 
 	return result;
 }

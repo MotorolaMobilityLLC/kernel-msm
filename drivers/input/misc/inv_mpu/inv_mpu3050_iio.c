@@ -190,6 +190,7 @@ int inv_init_config_mpu3050(struct iio_dev *indio_dev)
 		return result;
 	st->chip_config.fsr = INV_FSR_2000DPS;
 	st->chip_config.lpf = INV_FILTER_42HZ;
+	st->chip_info.multi = 1;
 	result = inv_i2c_single_write(st, reg->sample_rate_div,
 					ONE_K_HZ/INIT_FIFO_RATE - 1);
 	if (result)

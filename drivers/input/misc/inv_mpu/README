@@ -32,6 +32,7 @@ Table of Contents:
     > MPU-9250
     > MPU-3050 + BMA250 on the secondary I2C interface
 - Suspend and Resume
+- Wake up CPU using event interrupt
 - DMP Event
 - Motion Event
 - Streaming Data to an Userspace Application
@@ -154,6 +155,22 @@ static struct mpu_platform_data gyro_platform_data = {
         .sec_slave_type = SECONDARY_SLAVE_TYPE_COMPASS,
         .sec_slave_id   = COMPASS_ID_AK8963,
         .secondary_i2c_addr = 0x0E,
+        .secondary_orientation = { 0,  1, 0,
+                                   1,  0,  0,
+                                   0,  0, -1 },
+};
+
+MPU-6500 + AK09911 on the secondary I2C interface
+-------------------------------------------------
+static struct mpu_platform_data gyro_platform_data = {
+        .int_config  = 0x00,
+        .level_shifter = 0,
+        .orientation = {  -1,  0,  0,
+                           0,  1,  0,
+                           0,  0, -1 },
+        .sec_slave_type = SECONDARY_SLAVE_TYPE_COMPASS,
+        .sec_slave_id   = COMPASS_ID_AK09911,
+        .secondary_i2c_addr = 0x0D,
         .secondary_orientation = { 0,  1, 0,
                                    1,  0,  0,
                                    0,  0, -1 },
@@ -472,10 +489,6 @@ Low power accel motion interrupt related settings.
 if motion_lpa_on is set, this will disable all engines except accel. Accel will
 enter low power mode and the whole chip will be turned on/off at specific frequency.
 -----------------------------------------------------------------------------
-motion_lpa_duration
---set motion duration. in ms. This means filtered out all the motino interrupts
-  during this period.
-
 motion_lpa_threshold
 --set motion threshold. in mg. The maximum is 1020mg and resolution is 32mg.
 
@@ -518,6 +531,21 @@ However, it is possible for the driver to do more complex things;
 for example, leaving pedometers running when system is off. This can save whole
 system power while letting pedometer working. Other behaviors are possible
 too.
+
+Wake up CPU using event interrupt
+====================================================
+It is common practice in current mobile device to save power as much as
+possible. Ususally the device can sleep when not use and only be wake up when in use.
+Invensense MPU series provides an efficient way of waking up CPU by events.
+The events could be pedometer steps, tap action, SMD(significant Motion Detection),
+or any customer defined actions. CPU can sleep to save power, when event happens,
+DMP will calculate the motion data to detemine whether a pre-defined event happens
+or not. If an pre-defined happens, an interrupt is generated to wake up the CPU
+to do further processing. 
+The requirements of doing event wake is the following:
+1. Add enable_irq_wake() either in the driver or in the board file.
+2. Connect the interrupt pin to the CPU wake up pin.
+3. Configure CPU to be woken up by wake up pin.
 
 DMP Event
 =========

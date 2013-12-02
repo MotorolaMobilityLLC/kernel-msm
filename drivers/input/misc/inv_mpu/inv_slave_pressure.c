@@ -171,8 +171,8 @@
 #define BMP280_TEMPERATURE_XLSB_REG_DATA__LEN      4
 #define BMP280_TEMPERATURE_XLSB_REG_DATA__REG      BMP280_TEMPERATURE_XLSB_REG
 
-#define BMP280_RATE_SCALE  100
-#define DATA_BMP280_MIN_READ_TIME            (97 * NSEC_PER_MSEC)
+#define BMP280_RATE_SCALE  34
+#define DATA_BMP280_MIN_READ_TIME            (32 * NSEC_PER_MSEC)
 #define BMP280_DATA_BYTES  6
 #define FAKE_DATA_NUM_BYTES 10
 
@@ -268,7 +268,7 @@ static int inv_setup_bmp280(struct inv_mpu_state *st)
 
 	/* set IIR filter as 4 */
 	r = inv_aux_write(BMP280_CONFIG_REG_FILTER__REG,
-			BMP280_FILTERCOEFF_4 << SHIFT_LEFT_2_POSITION);
+			BMP280_FILTERCOEFF_16 << SHIFT_LEFT_2_POSITION);
 	if (r)
 		return r;
 	r = bmp280_get_calib_param(st);
@@ -384,17 +384,17 @@ static int inv_suspend_bmp280(struct inv_mpu_state *st)
 	return r;
 }
 
-static s32 bmp280_compensate_T_int32(s32 adc_T)
+static s32 bmp280_compensate_T_int32(s32 adc_t)
 {
 	s32 v_x1_u32r = 0;
 	s32 v_x2_u32r = 0;
 	s32 temperature = 0;
 
-	v_x1_u32r  = ((((adc_T >> 3) - ((s32)
+	v_x1_u32r  = ((((adc_t >> 3) - ((s32)
 		bmp280.cal_param.dig_T1 << 1))) *
 		((s32)bmp280.cal_param.dig_T2)) >> 11;
-	v_x2_u32r  = (((((adc_T >> 4) -
-		((s32)bmp280.cal_param.dig_T1)) * ((adc_T >> 4) -
+	v_x2_u32r  = (((((adc_t >> 4) -
+		((s32)bmp280.cal_param.dig_T1)) * ((adc_t >> 4) -
 		((s32)bmp280.cal_param.dig_T1))) >> 12) *
 		((s32)bmp280.cal_param.dig_T3)) >> 14;
 	bmp280.cal_param.t_fine = v_x1_u32r + v_x2_u32r;
@@ -404,7 +404,7 @@ static s32 bmp280_compensate_T_int32(s32 adc_T)
 }
 
 
-static u32 bmp280_compensate_P_int32(s32 adc_P)
+static u32 bmp280_compensate_P_int32(s32 adc_p)
 {
 	s32 v_x1_u32r = 0;
 	s32 v_x2_u32r = 0;
@@ -427,7 +427,7 @@ static u32 bmp280_compensate_P_int32(s32 adc_P)
 	/* Avoid exception caused by division by zero */
 	if (v_x1_u32r == 0)
 		return 0;
-	pressure = (((u32)(((s32)1048576) - adc_P) -
+	pressure = (((u32)(((s32)1048576) - adc_p) -
 		(v_x2_u32r >> 12))) * 3125;
 	if (pressure < 0x80000000)
 		pressure = (pressure << 1) / ((u32)v_x1_u32r);
@@ -480,7 +480,7 @@ static int inv_bmp280_read_data(struct inv_mpu_state *st, short *o)
 	o[1] = (r >> 16);
 	o[2] = (r & 0xffff);
 
-	return r;
+	return 0;
 }
 
 static struct inv_mpu_slave slave_bmp280 = {
