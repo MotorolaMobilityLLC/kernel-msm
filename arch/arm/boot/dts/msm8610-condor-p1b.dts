@@ -20,6 +20,11 @@
 	qcom,msm-id = <147 0x41 0x81b0>;
 };
 
+/* Support Gipper factory IC */
+&mmi_factory {
+	gpios = <&msmgpio 77 0x2>; /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
+};
+
 /* limit clock speed by 25MHz due to signal integrity issues in HS mode */
 &sdhc_2 {
 	qcom,clk-rates = <400000 25000000>;

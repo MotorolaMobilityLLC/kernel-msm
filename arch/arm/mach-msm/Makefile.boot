@@ -193,6 +193,8 @@ dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1b.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1b-v2.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1c.dtb
 dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1c-v2.dtb
+dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1d.dtb
+dtb-$(CONFIG_ARCH_MSM8610)	+= msm8610-condor-p1d-v2.dtb
 
 # MSMSAMARIUM
    zreladdr-$(CONFIG_ARCH_MSMSAMARIUM)	:= 0x00008000
