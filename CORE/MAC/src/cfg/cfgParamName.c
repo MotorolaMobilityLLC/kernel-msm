@@ -336,6 +336,10 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"ANTENNA_DIVESITY",
     (unsigned char *)"GO_LINK_MONITOR_TIMEOUT",
     (unsigned char *)"ATH_DISABLE",
+    (unsigned char *)"BTC_ACTIVE_WLAN_LEN",
+    (unsigned char *)"BTC_ACTIVE_BT_LEN",
+    (unsigned char *)"BTC_SAP_ACTIVE_WLAN_LEN",
+    (unsigned char *)"BTC_SAP_ACTIVE_BT_LEN",
 };
 
 

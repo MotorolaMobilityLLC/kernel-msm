@@ -4602,3 +4602,50 @@ NONE
 V    RW    NP
 NONE
 0   1    0
+* BTC Active WLAN Len
+*
+WNI_CFG_BTC_ACTIVE_WLAN_LEN    I    4    7
+V    RW    NP
+HAL
+0    250000    60000
+V    RW    NP
+HAL
+0    250000    60000
+*
+*
+
+* BTC Active BT Len
+*
+WNI_CFG_BTC_ACTIVE_BT_LEN    I    4    7
+V    RW    NP
+HAL
+0    250000    90000
+V    RW    NP
+HAL
+0    250000    90000
+*
+*
+
+* BTC SAP Active WLAN Len
+*
+WNI_CFG_BTC_SAP_ACTIVE_WLAN_LEN    I    4    7
+V    RW    NP
+HAL
+0    250000    60000
+V    RW    NP
+HAL
+0    250000    60000
+*
+*
+
+* BTC SAP Active BT Len
+*
+WNI_CFG_BTC_SAP_ACTIVE_BT_LEN    I    4    7
+V    RW    NP
+HAL
+0    250000    90000
+V    RW    NP
+HAL
+0    250000    90000
+*
+*
