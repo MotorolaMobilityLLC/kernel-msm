@@ -32,8 +32,12 @@
 #include <linux/async.h>
 #include <linux/of_platform.h>
 
+#include "../msm/mdss/mdss_hdmi_util.h"
+
 #include "slimport_private.h"
 #include "slimport_tx_drv.h"
+
+#define ANX7808_MAX_ACTIVE_H	1920
 
 struct anx7808_data {
 	struct i2c_client *client;
@@ -652,6 +656,25 @@ out:
 	return ret;
 }
 
+static void anx7808_setup_video_mode_lut(void)
+{
+	int i;
+	struct msm_hdmi_mode_timing_info *temp_timing;
+
+	for (i = 0; i < HDMI_VFRMT_MAX; i++) {
+		temp_timing = (struct msm_hdmi_mode_timing_info *)
+				hdmi_get_supported_mode(i);
+		if (!temp_timing)
+			continue;
+
+		/* formats that exceed max active_h */
+		if (temp_timing->active_h > ANX7808_MAX_ACTIVE_H) {
+			pr_debug("disabled mode (%d)\n", temp_timing->active_h);
+			hdmi_del_supported_mode(i);
+		}
+	}
+}
+
 static int anx7808_i2c_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -777,7 +800,9 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 		goto err6;
 	}
 
-	goto exit;
+	anx7808_setup_video_mode_lut();
+
+	return 0;
 
 err6:
 	free_irq(client->irq, anx7808);
