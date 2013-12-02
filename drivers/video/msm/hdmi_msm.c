@@ -4872,13 +4872,6 @@ static int __init hdmi_msm_init(void)
 {
 	int rc;
 
-#ifdef CONFIG_MACH_MSM8960_MMI
-	/* FIXME: HDMI can be re-enabled once the U6500 chip initialization
-	 *   is implemented.  The chip in the uninitialized state is driving
-	 *   HDMI_HPD High which reflects HDMI device attached.
-	 */
-	return 0;
-#endif
 	if (msm_fb_detect_client("hdmi_msm"))
 		return 0;
 
