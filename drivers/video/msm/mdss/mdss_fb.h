@@ -83,7 +83,7 @@ struct msm_mdp_interface {
 	int (*on_fnc)(struct msm_fb_data_type *mfd);
 	int (*off_fnc)(struct msm_fb_data_type *mfd);
 	/* called to release resources associated to the process */
-	int (*release_fnc)(struct msm_fb_data_type *mfd);
+	int (*release_fnc)(struct msm_fb_data_type *mfd, bool release_all);
 	int (*kickoff_fnc)(struct msm_fb_data_type *mfd);
 	int (*ioctl_handler)(struct msm_fb_data_type *mfd, u32 cmd, void *arg);
 	void (*dma_fnc)(struct msm_fb_data_type *mfd);
@@ -170,9 +170,11 @@ struct msm_fb_data_type {
 	struct msm_sync_pt_data mdp_sync_pt_data;
 
 	/* for non-blocking */
+	struct task_struct *disp_thread;
 	atomic_t commits_pending;
 	wait_queue_head_t commit_wait_q;
 	wait_queue_head_t idle_wait_q;
+	bool shutdown_pending;
 
 	struct msm_fb_backup_type msm_fb_backup;
 	struct completion power_set_comp;
