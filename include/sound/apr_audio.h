@@ -304,6 +304,14 @@ struct afe_port_rtproxy_cfg {
 #define AFE_PORT_MULTI_CHAN_HDMI_AUDIO_IF_CONFIG	0x000100D9
 #define AFE_PORT_CMD_I2S_CONFIG	0x000100E7
 
+#define AFE_PARAM_ID_DEVICE_HW_DELAY     0x00010243
+#define AFE_API_VERSION_DEVICE_HW_DELAY  0x1
+
+struct afe_param_id_device_hw_delay_cfg {
+	uint32_t    device_hw_delay_minor_version;
+	uint32_t    delay_in_us;
+} __packed;
+
 union afe_port_config {
 	struct afe_port_pcm_cfg           pcm;
 	struct afe_port_mi2s_cfg          mi2s;
@@ -417,6 +425,7 @@ struct afe_param_payload {
 		struct afe_param_channels      channels;
 		struct afe_param_loopback_gain loopback_gain;
 		struct afe_param_loopback_cfg loopback_cfg;
+		struct afe_param_id_device_hw_delay_cfg hw_delay;
 	} __attribute__((packed)) param;
 } __attribute__ ((packed));
 
