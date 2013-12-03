@@ -26,9 +26,9 @@
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
 
-#include "iio.h"
-#include "sysfs.h"
-#include "trigger.h"
+#include <linux/iio/iio.h>
+#include <linux/sysfs.h>
+#include <linux/iio/trigger.h>
 
 #include "inv_mpu_iio.h"
 
@@ -51,18 +51,16 @@ int inv_mpu_probe_trigger(struct iio_dev *indio_dev)
 	int ret;
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 
-	st->trig = iio_allocate_trigger("%s-dev%d",
-					indio_dev->name,
+	st->trig = iio_trigger_alloc("%s-dev%d", indio_dev->name,
 					indio_dev->id);
 	if (st->trig == NULL)
 		return -ENOMEM;
 	st->trig->dev.parent = &st->client->dev;
-	st->trig->private_data = indio_dev;
 	st->trig->ops = &inv_mpu_trigger_ops;
 	ret = iio_trigger_register(st->trig);
 
 	if (ret) {
-		iio_free_trigger(st->trig);
+		iio_trigger_free(st->trig);
 		return -EPERM;
 	}
 	indio_dev->trig = st->trig;
@@ -75,6 +73,6 @@ void inv_mpu_remove_trigger(struct iio_dev *indio_dev)
 	struct inv_mpu_state *st = iio_priv(indio_dev);
 
 	iio_trigger_unregister(st->trig);
-	iio_free_trigger(st->trig);
+	iio_trigger_free(st->trig);
 }
 

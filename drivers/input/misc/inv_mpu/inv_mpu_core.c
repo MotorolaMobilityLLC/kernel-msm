@@ -29,7 +29,7 @@
 #include <linux/spinlock.h>
 
 #include "inv_mpu_iio.h"
-#include "sysfs.h"
+#include <linux/iio/sysfs.h>
 #include "inv_test/inv_counters.h"
 
 #ifdef CONFIG_DTS_INV_MPU_IIO
@@ -2676,7 +2676,7 @@ static int inv_mpu_probe(struct i2c_client *client,
 		pr_err("I2c function error\n");
 		goto out_no_free;
 	}
-	indio_dev = iio_allocate_device(sizeof(*st));
+	indio_dev = iio_device_alloc(sizeof(*st));
 	if (indio_dev == NULL) {
 		pr_err("memory allocation failed\n");
 		result =  -ENOMEM;
@@ -2790,7 +2790,7 @@ out_remove_ring:
 out_unreg_ring:
 	inv_mpu_unconfigure_ring(indio_dev);
 out_free:
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 out_no_free:
 	dev_err(&client->adapter->dev, "%s failed %d\n", __func__, result);
 	return -EIO;
@@ -2835,7 +2835,7 @@ static int inv_mpu_remove(struct i2c_client *client)
 		inv_mpu_remove_trigger(indio_dev);
 	iio_buffer_unregister(indio_dev);
 	inv_mpu_unconfigure_ring(indio_dev);
-	iio_free_device(indio_dev);
+	iio_device_free(indio_dev);
 
 	dev_info(&client->adapter->dev, "inv-mpu-iio module removed.\n");
 

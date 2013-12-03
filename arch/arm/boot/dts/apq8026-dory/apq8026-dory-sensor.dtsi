@@ -42,9 +42,8 @@
 			interrupt-parent = <&msmgpio>;
 			inven,int_config = <0x00>;
 			inven,level_shifter = <0x00>;
-			vdd_io-supply = <&pm8226_lvs1>;
-			vcc_i2c-supply = <&pm8226_lvs1>;
-			vdd-supply = <&pm8226_l19>;
+			inven,vcc_i2c-supply = <&pm8226_lvs1>;
+			inven,vdd_ana-supply = <&pm8226_l19>;
 			interrupts = <35 0x2>;
 
 			axis_map_x = <1>;
