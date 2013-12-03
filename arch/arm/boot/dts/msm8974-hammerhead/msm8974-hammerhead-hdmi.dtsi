@@ -28,6 +28,7 @@
 			analogix,vdd10-name = "vdd-1p0";
 			analogix,avdd33-name = "avdd-3p3";
 			analogix,hdmi-tx-map = <&mdss_hdmi_tx>;
+			analogix,usb = <&usb3>;
 		};
 	};
 };
