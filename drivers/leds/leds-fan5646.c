@@ -167,6 +167,7 @@ static inline void fan5646_power_off(struct fan5646_data *cb)
 {
 	int rc = 0;
 
+	tinywire_send_reset(cb->com_gpio);
 	mutex_lock(&cb->mlock);
 	if (cb->power) {
 		rc = regulator_disable(cb->vreg);
