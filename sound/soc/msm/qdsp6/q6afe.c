@@ -422,6 +422,83 @@ done:
 	return;
 }
 
+static int afe_send_hw_delay(u16 port_id, u32 rate)
+{
+	struct hw_delay_entry delay_entry;
+	struct afe_port_cmd_set_param config;
+	int index = 0;
+	int ret = -EINVAL;
+
+	pr_debug("%s\n", __func__);
+
+	delay_entry.sample_rate = rate;
+	if (afe_get_port_type(port_id) == MSM_AFE_PORT_TYPE_TX)
+		ret = get_hw_delay(TX_CAL, &delay_entry);
+	else if (afe_get_port_type(port_id) == MSM_AFE_PORT_TYPE_RX)
+		ret = get_hw_delay(RX_CAL, &delay_entry);
+
+	if (ret != 0) {
+		pr_debug("%s: Failed to get hw delay info\n", __func__);
+		goto done;
+	}
+	index = port_id;
+	if (index < 0) {
+		pr_debug("%s: AFE port index invalid!\n", __func__);
+		goto done;
+	}
+
+	config.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+				APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+	config.hdr.pkt_size = sizeof(config);
+	config.hdr.src_port = 0;
+	config.hdr.dest_port = 0;
+	config.hdr.token = index;
+	config.hdr.opcode = AFE_PORT_CMD_SET_PARAM;
+
+	config.port_id = port_id;
+	config.payload_size = sizeof(struct afe_param_payload_base)+
+				sizeof(struct afe_param_id_device_hw_delay_cfg);
+	config.payload_address = 0;
+
+	config.payload.base.module_id = AFE_MODULE_ID_PORT_INFO ;
+	config.payload.base.param_id = AFE_PARAM_ID_DEVICE_HW_DELAY;
+	config.payload.base.param_size = sizeof(struct afe_param_id_device_hw_delay_cfg);
+	config.payload.base.reserved = 0;
+
+	config.payload.param.hw_delay.delay_in_us = delay_entry.delay_usec;
+	config.payload.param.hw_delay.device_hw_delay_minor_version =
+				AFE_API_VERSION_DEVICE_HW_DELAY;
+
+	atomic_set(&this_afe.state, 1);
+	ret = apr_send_pkt(this_afe.apr, (uint32_t *) &config);
+	if (ret < 0) {
+		pr_err("%s: AFE enable for port %d failed\n", __func__,
+			port_id);
+		ret = -EINVAL;
+		goto done;
+	}
+
+	ret = wait_event_timeout(this_afe.wait,
+				(atomic_read(&this_afe.state) == 0),
+				msecs_to_jiffies(TIMEOUT_MS));
+
+	if (!ret) {
+		pr_err("%s: wait_event timeout IF CONFIG\n", __func__);
+		ret = -EINVAL;
+		goto done;
+	}
+	if (atomic_read(&this_afe.status) != 0) {
+		pr_err("%s: config cmd failed\n", __func__);
+		ret = -EINVAL;
+		goto done;
+	}
+
+done:
+	pr_debug("%s port_id %u rate %u delay_usec %d status %d\n",
+		__func__, port_id, rate, delay_entry.delay_usec, ret);
+	return ret;
+}
+
 void afe_send_cal(u16 port_id)
 {
 	pr_debug("%s\n", __func__);
@@ -570,6 +647,7 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 
 	/* send AFE cal */
 	afe_send_cal(port_id);
+	afe_send_hw_delay(port_id, rate);
 
 	start.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
 				APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
