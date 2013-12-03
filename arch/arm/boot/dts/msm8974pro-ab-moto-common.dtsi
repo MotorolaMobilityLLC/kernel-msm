@@ -270,6 +270,12 @@
 			<&msmgpio 124 2>;       /* gpio_c55_int */
 	};
 
+	factory_support {
+		compatible = "mmi,factory-support-msm8960";
+		gpios = <&pm8941_gpios 36 0x2>; /* GPIOF_OUT_INIT_HIGH */
+		gpio-names = "factory_kill_disable";
+	};
+
 	qcom,msm-dai-mi2s {
 		compatible = "qcom,msm-dai-mi2s";
 		qcom,msm-dai-q6-mi2s-prim {
@@ -879,6 +885,11 @@
 	};
 
 	gpio@e300 { /* GPIO 36 */
+		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
+		qcom,vin-sel = <2>;       /* S3 */
+		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
+		qcom,src-sel = <0>;       /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 };
 
