@@ -19,3 +19,13 @@
 / {
 	qcom,msm-id = <145 0x44 0x82a1>;
 };
+
+&i2c_3 {
+	tpa6165xx@40 {
+		hs_det_micvdd-supply = <&pm8226_l21>;
+	};
+};
+
+&sdcc2 {
+	status = "disabled";
+};
