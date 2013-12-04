@@ -4057,7 +4057,7 @@ qpnp_chg_hwinit(struct qpnp_chg_chip *chip, u8 subtype,
 			pr_debug("failed setting ibatmax rc=%d\n", rc);
 			return rc;
 		}
-		if (chip->term_current) {
+		if (chip->term_current > QPNP_CHG_ITERM_MIN_MA) {
 			rc = qpnp_chg_ibatterm_set(chip, chip->term_current);
 			if (rc) {
 				pr_debug("failed setting ibatterm rc=%d\n", rc);
