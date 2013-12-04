@@ -101,6 +101,7 @@ when           who        what, where, why
 #define WLANDXE_CCU_DXE_INT_SELECT       0xfb2050dc
 #define WLANDXE_CCU_DXE_INT_SELECT_STAT  0xfb2050e0
 #define WLANDXE_CCU_ASIC_INT_ENABLE      0xfb2050e4
+#define WLANDXE_CCU_SOFT_RESET           0xfb204010
 #else
 #define WLANDXE_CCU_DXE_INT_SELECT       0x03200b10
 #define WLANDXE_CCU_DXE_INT_SELECT_STAT  0x03200b14
@@ -184,6 +185,37 @@ when           who        what, where, why
 #define WLANDXE_DMA_CH_TSTMP_REG         0x003C
 
 /* Common CSR Register Contorol mask and offset */
+#ifdef WCN_PRONTO
+#define WLANDXE_DMA_CSR_RESERVED_MASK         0xFFFF0000
+#define WLANDXE_DMA_CSR_RESERVED_OFFSET       0x10
+#define WLANDXE_DMA_CSR_RESERVED_DEFAULT      0x0
+
+#define WLANDXE_DMA_CSR_H2H_SYNC_EN_MASK      0x8000
+#define WLANDXE_DMA_CSR_H2H_SYNC_EN_OFFSET    0x0F
+#define WLANDXE_DMA_CSR_H2H_SYNC_EN_DEFAULT   0x0
+
+#define WLANDXE_DMA_CSR_PAUSED_MASK           0x4000
+#define WLANDXE_DMA_CSR_PAUSED_OFFSET         0x0E
+#define WLANDXE_DMA_CSR_PAUSED_DEFAULT        0x0
+
+#define WLANDXE_DMA_CSR_ECTR_EN_MASK          0x2000
+#define WLANDXE_DMA_CSR_ECTR_EN_OFFSET        0x0D
+#define WLANDXE_DMA_CSR_ECTR_EN_DEFAULT       0x2000
+
+#define WLANDXE_DMA_CSR_B2H_TSTMP_OFF_MASK    0x1F00
+#define WLANDXE_DMA_CSR_B2H_TSTMP_OFF_OFFSET  0x08
+#define WLANDXE_DMA_CSR_B2H_TSTMP_OFF_DEFAULT 0x0F00
+
+#define WLANDXE_DMA_CSR_H2B_TSTMP_OFF_MASK    0xF8
+#define WLANDXE_DMA_CSR_H2B_TSTMP_OFF_OFFSET  0x03
+#define WLANDXE_DMA_CSR_H2B_TSTMP_OFF_DEFAULT 0x28
+
+#define WLANDXE_DMA_CSR_TSTMP_EN_MASK         0x04
+#define WLANDXE_DMA_CSR_TSTMP_EN_OFFSET       0x02
+#define WLANDXE_DMA_CSR_TSTMP_EN_DEFAULT      0x0
+
+#define WLANDXE_DMA_CCU_DXE_RESET_MASK        0x4
+#else
 #define WLANDXE_DMA_CSR_RESERVED_MASK         0xFFFE0000
 #define WLANDXE_DMA_CSR_RESERVED_OFFSET       0x11
 #define WLANDXE_DMA_CSR_RESERVED_DEFAULT      0x0
@@ -215,6 +247,7 @@ when           who        what, where, why
 #define WLANDXE_DMA_CSR_RESET_MASK            0x4
 #define WLANDXE_DMA_CSR_RESET_OFFSET          0x2
 #define WLANDXE_DMA_CSR_RESET_DEFAULT         0x0
+#endif /* WCN_PRONTO */
 
 #define WLANDXE_DMA_CSR_PAUSE_MASK            0x2
 #define WLANDXE_DMA_CSR_PAUSE_OFFSET          0x1
@@ -223,7 +256,11 @@ when           who        what, where, why
 #define WLANDXE_DMA_CSR_EN_MASK               0x1
 #define WLANDXE_DMA_CSR_EN_OFFSET             0x0
 #define WLANDXE_DMA_CSR_EN_DEFAULT            0x0
-#define WLANDXE_DMA_CSR_DEFAULT               0x4E50
+
+/* DXE CSR Master enable register value */
+#define WLANDXE_CSR_DEFAULT_ENABLE            (WLANDXE_DMA_CSR_H2H_SYNC_EN_MASK | \
+                                               WLANDXE_DMA_CSR_ECTR_EN_MASK | \
+                                               WLANDXE_DMA_CSR_EN_MASK)
 
 /* Channel CTRL Register Control mask and offset */
 #define WLANDXE_CH_CTRL_RSVD_MASK             0x80000000
