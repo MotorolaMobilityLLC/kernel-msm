@@ -477,6 +477,31 @@ static void max17050_update(struct max17050_chip *chip)
 	chip->next_update_time.tv_sec++;
 }
 
+static int max17050_scale_clamp_soc(struct max17050_chip *chip)
+{
+	int adj_soc;
+
+	if (chip->pdata->full_soc <= chip->pdata->empty_soc) {
+		pr_err("%s: Invalid soc range for scaling\n", __func__);
+		return chip->repsoc >> 8;
+	}
+
+	/*
+	 * Scale repsoc to the range between full_soc and empty_soc. Use an
+	 * additional 3 bits of repsoc (0.125% units) for more accuracy.
+	 */
+	adj_soc = chip->repsoc >> 5;
+	adj_soc = (adj_soc - chip->pdata->empty_soc * 8) * 100 /
+			((chip->pdata->full_soc - chip->pdata->empty_soc) * 8);
+
+	if (adj_soc > 100)
+		adj_soc = 100;
+	else if (adj_soc < 0)
+		adj_soc = 0;
+
+	return adj_soc;
+}
+
 static enum power_supply_property max17050_battery_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
@@ -520,7 +545,7 @@ static int max17050_get_property(struct power_supply *psy,
 		val->intval = chip->vcell * 625 / 8;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = chip->repsoc >> 8;
+		val->intval = max17050_scale_clamp_soc(chip);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		if (chip->use_ext_temp && chip->ext_battery) {
@@ -682,6 +707,14 @@ max17050_get_pdata(struct device *dev)
 		pdata->temperature = prop;
 	if (of_property_read_u32(np, "maxim,dpacc", &prop) == 0)
 		pdata->dpacc = prop;
+	if (of_property_read_u32(np, "maxim,empty-soc", &prop) == 0)
+		pdata->empty_soc = prop;
+	else
+		pdata->empty_soc = 0;
+	if (of_property_read_u32(np, "maxim,full-soc", &prop) == 0)
+		pdata->full_soc = prop;
+	else
+		pdata->full_soc = 100;
 
 	model = of_get_property(np, "maxim,model", &len);
 	if (model && ((len / 2) == MODEL_SIZE)) {
