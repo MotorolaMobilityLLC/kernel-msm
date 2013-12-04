@@ -348,6 +348,11 @@ static void lm3530_brightness_set(struct led_classdev *led_cdev,
 
 	switch (drvdata->mode) {
 	case LM3530_BL_MODE_MANUAL:
+		if (brt_val == 0) {
+			lm3530_led_disable(drvdata);
+			drvdata->brightness = bklt_lvl;
+			break;
+		}
 
 		if (!drvdata->enable) {
 			err = lm3530_init_registers(drvdata);
@@ -367,8 +372,6 @@ static void lm3530_brightness_set(struct led_classdev *led_cdev,
 		else
 			drvdata->brightness = bklt_lvl;
 
-		if (brt_val == 0)
-			lm3530_led_disable(drvdata);
 		break;
 	case LM3530_BL_MODE_ALS:
 		break;
