@@ -232,10 +232,10 @@ void kmsgwconnBuffWrite(const char *wconnlogstrRead)
    const char *pwconnlogstr = wconnlogstrRead;
    static const char num[16] = {'0','1','2','3','4','5','6','7','8','9','A',
                                 'B','C','D','E','F'};
-   unsigned int timetick;
+   v_TIME_t timetick;
    int bits; /*timetick for now returns 32 bit number*/
 
-   timetick = ( jiffies_to_msecs(jiffies) / 10 );
+   timetick = vos_timer_get_system_time();
    bits = sizeof(timetick) * 8/*number of bits in a byte*/;
 
    kmsgwconnstrlogchar('[');
