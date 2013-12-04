@@ -843,6 +843,23 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 	return dsi_pan_node;
 }
 
+static ssize_t mdss_dsi_idle_mode_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = platform_get_drvdata(pdev);
+	int ret, enable;
+
+	ret = sscanf(buf, "%d", &enable);
+	if (ret != 1)
+		return -EINVAL;
+
+	mdss_dsi_panel_idle_mode(ctrl_pdata, enable);
+	return count;
+}
+DEVICE_ATTR(idle_mode, 0200, NULL, mdss_dsi_idle_mode_store);
+
 static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -957,15 +974,23 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		goto error_pan_node;
 	}
 
+	rc = device_create_file(&pdev->dev, &dev_attr_idle_mode);
+	if (rc) {
+		pr_err("%s: failed to create idle mode attr\n", __func__);
+		goto error_pan_node;
+	}
+
 	rc = dsi_panel_device_register(dsi_pan_node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s: dsi panel dev reg failed\n", __func__);
-		goto error_pan_node;
+		goto error_register;
 	}
 
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
 	return 0;
 
+error_register:
+	device_remove_file(&pdev->dev, &dev_attr_idle_mode);
 error_pan_node:
 	of_node_put(dsi_pan_node);
 error_vreg:
@@ -992,6 +1017,7 @@ static int mdss_dsi_ctrl_remove(struct platform_device *pdev)
 			ctrl_pdata->power_data.vreg_config,
 			ctrl_pdata->power_data.num_vreg, 1) < 0)
 		pr_err("%s: failed to de-init vregs\n", __func__);
+	device_remove_file(&pdev->dev, &dev_attr_idle_mode);
 	mdss_dsi_put_dt_vreg_data(&pdev->dev, &ctrl_pdata->power_data);
 	mfd = platform_get_drvdata(pdev);
 	iounmap(mdss_dsi_base);
