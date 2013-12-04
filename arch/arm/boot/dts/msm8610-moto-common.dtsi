@@ -365,6 +365,17 @@
 	qcom,i2c-bus-freq = <400000>;
 };
 
+&spi_4 {
+	nmi326@0 {
+		compatible = "nmi,nmi326";
+		reg = <0>;
+		spi-max-frequency = <9600000>;
+		irq-gpio = <&msmgpio 90 0>;
+		reset-gpio = <&msmgpio 91 0>;
+		enable-gpio = <&msmgpio 85 0>;
+	};
+};
+
 &spmi_bus {
 	qcom,pm8110@0 {
 		qcom,leds@1000 {
