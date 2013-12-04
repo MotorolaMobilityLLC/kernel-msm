@@ -25,6 +25,11 @@
 	/delete-node/ fan5646_vreg;
 	/delete-node/ fan5646;
 
+	sound {
+		/delete-property/ qcom,ext-spk-amp-gpio;
+		/delete-property/ qcom,ext-spk-boost-gpio;
+	};
+
 	i2c@f9923000{
 		/delete-node/ synaptics_dsx_i2c@20;
 
