@@ -2046,6 +2046,9 @@ get_prop_current_now(struct qpnp_chg_chip *chip)
 {
 	union power_supply_propval ret = {0,};
 
+	if (!chip->bms_psy)
+		chip->bms_psy = power_supply_get_by_name("bms");
+
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
 			  POWER_SUPPLY_PROP_CURRENT_NOW, &ret);
@@ -2062,6 +2065,9 @@ get_prop_full_design(struct qpnp_chg_chip *chip)
 {
 	union power_supply_propval ret = {0,};
 
+	if (!chip->bms_psy)
+		chip->bms_psy = power_supply_get_by_name("bms");
+
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
 			  POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &ret);
@@ -2077,6 +2083,9 @@ static int
 get_prop_charge_full(struct qpnp_chg_chip *chip)
 {
 	union power_supply_propval ret = {0,};
+
+	if (!chip->bms_psy)
+		chip->bms_psy = power_supply_get_by_name("bms");
 
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
@@ -2101,6 +2110,9 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 
 	if (chip->use_default_batt_values || !get_prop_batt_present(chip))
 		return DEFAULT_CAPACITY;
+
+	if (!chip->bms_psy)
+		chip->bms_psy = power_supply_get_by_name("bms");
 
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
@@ -2167,6 +2179,9 @@ get_prop_batt_temp(struct qpnp_chg_chip *chip)
 static int get_prop_cycle_count(struct qpnp_chg_chip *chip)
 {
 	union power_supply_propval ret = {0,};
+
+	if (!chip->bms_psy)
+		chip->bms_psy = power_supply_get_by_name("bms");
 
 	if (chip->bms_psy)
 		chip->bms_psy->get_property(chip->bms_psy,
