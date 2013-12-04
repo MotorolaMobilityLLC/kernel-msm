@@ -40,6 +40,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/nfc/bcm2079x.h>
+#include <linux/wakelock.h>
 
 /* do not change below */
 #define MAX_BUFFER_SIZE		780
@@ -63,6 +64,7 @@ struct bcm2079x_dev {
 	bool irq_enabled;
 	spinlock_t irq_enabled_lock;
 	unsigned int count_irq;
+	struct wake_lock wakelock;
 };
 
 static void bcm2079x_init_stat(struct bcm2079x_dev *bcm2079x_dev)
@@ -154,6 +156,7 @@ static irqreturn_t bcm2079x_dev_irq_handler(int irq, void *dev_id)
 	spin_lock_irqsave(&bcm2079x_dev->irq_enabled_lock, flags);
 	bcm2079x_dev->count_irq++;
 	spin_unlock_irqrestore(&bcm2079x_dev->irq_enabled_lock, flags);
+	wake_lock_timeout(&bcm2079x_dev->wakelock, HZ);
 	wake_up(&bcm2079x_dev->read_wq);
 
 	return IRQ_HANDLED;
@@ -420,6 +423,8 @@ static int bcm2079x_probe(struct i2c_client *client,
 		}
 	}
 
+	wake_lock_init(&bcm2079x_dev->wakelock, WAKE_LOCK_SUSPEND, "bcm2079x");
+
 	/* init mutex and queues */
 	init_waitqueue_head(&bcm2079x_dev->read_wq);
 	mutex_init(&bcm2079x_dev->read_mutex);
@@ -446,6 +451,9 @@ static int bcm2079x_probe(struct i2c_client *client,
 		dev_err(&client->dev, "request_irq failed\n");
 		goto err_request_irq_failed;
 	}
+	if (unlikely(irq_set_irq_wake(client->irq, 1)))
+		dev_err(&client->dev, "%s : unable to make irq %d wakeup\n",
+			__func__, client->irq);
 	bcm2079x_disable_irq(bcm2079x_dev);
 	i2c_set_clientdata(client, bcm2079x_dev);
 	dev_info(&client->dev,
@@ -457,12 +465,14 @@ err_request_irq_failed:
 	misc_deregister(&bcm2079x_dev->bcm2079x_device);
 err_misc_register:
 	mutex_destroy(&bcm2079x_dev->read_mutex);
-	kfree(bcm2079x_dev);
+	wake_unlock(&bcm2079x_dev->wakelock);
+	wake_lock_destroy(&bcm2079x_dev->wakelock);
 	if (bcm2079x_dev->vdd_swp != NULL)
 		regulator_disable(bcm2079x_dev->vdd_swp);
 err_en_regulator_swp:
 	if (bcm2079x_dev->vdd_swp != NULL)
 		regulator_put(bcm2079x_dev->vdd_swp);
+	kfree(bcm2079x_dev);
 err_exit:
 	gpio_free(platform_data->wake_gpio);
 err_firm:
@@ -487,6 +497,8 @@ static int bcm2079x_remove(struct i2c_client *client)
 	gpio_free(bcm2079x_dev->irq_gpio);
 	gpio_free(bcm2079x_dev->en_gpio);
 	gpio_free(bcm2079x_dev->wake_gpio);
+	wake_unlock(&bcm2079x_dev->wakelock);
+	wake_lock_destroy(&bcm2079x_dev->wakelock);
 	kfree(bcm2079x_dev);
 
 	return 0;
