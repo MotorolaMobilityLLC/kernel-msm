@@ -313,7 +313,7 @@
 			maxim,tempnom = <0x1400>;
 			maxim,tgain = <0xE932>;
 			maxim,toff = <0x2381>;
-			maxim,ichgterm = <0x0280>;
+			maxim,ichgterm = <0x0140>;
 			maxim,vempty = <0xA2DA>;
 			maxim,qrtable00 = <0x1804>;
 			maxim,qrtable10 = <0x0B00>;
@@ -332,7 +332,7 @@
 	qcom,vddsafe-mv = <4230>;
 	qcom,vinmin-mv = <4300>;
 	qcom,ibatmax-ma= <300>;
-	qcom,ibatterm-ma = <100>;
+	qcom,ibatterm-ma = <50>;
 	qcom,ibatsafe-ma = <300>;
 	qcom,vbatdet-delta-mv = <100>;
 	qcom,tchg-mins = <480>;
