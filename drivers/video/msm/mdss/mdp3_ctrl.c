@@ -441,18 +441,17 @@ static int mdp3_ctrl_on(struct msm_fb_data_type *mfd)
 
 	panel = mdp3_session->panel;
 	if (panel->event_handler) {
-		panel->event_handler(panel, MDSS_EVENT_LOCK_PANEL_MUTEX, NULL);
 		rc = panel->event_handler(panel, MDSS_EVENT_UNBLANK, NULL);
 		rc |= panel->event_handler(panel, MDSS_EVENT_PANEL_ON, NULL);
 	}
 	if (rc) {
 		pr_err("fail to turn on the panel\n");
-		goto on_error_1;
+		goto on_error;
 	}
 	rc = mdp3_ctrl_res_req_clk(mfd, 1);
 	if (rc) {
 		pr_err("fail to request mdp clk resource\n");
-		goto on_error_1;
+		goto on_error;
 	}
 
 	mdp3_irq_register();
@@ -460,19 +459,19 @@ static int mdp3_ctrl_on(struct msm_fb_data_type *mfd)
 	rc = mdp3_ctrl_dma_init(mfd, mdp3_session->dma);
 	if (rc) {
 		pr_err("dma init failed\n");
-		goto on_error_1;
+		goto on_error;
 	}
 
 	rc = mdp3_ppp_init();
 	if (rc) {
 		pr_err("ppp init failed\n");
-		goto on_error_1;
+		goto on_error;
 	}
 
 	rc = mdp3_ctrl_intf_init(mfd, mdp3_session->intf);
 	if (rc) {
 		pr_err("display interface init failed\n");
-		goto on_error_1;
+		goto on_error;
 	}
 
 	pr_debug("mdp3_ctrl_on dma start\n");
@@ -481,20 +480,15 @@ static int mdp3_ctrl_on(struct msm_fb_data_type *mfd)
 						mdp3_session->intf);
 		if (rc) {
 			pr_err("fail to start the MDP display interface\n");
-			goto on_error_1;
+			goto on_error;
 		}
 	} else {
 		mdp3_session->first_commit = true;
 	}
 
-on_error_1:
-	if (panel->event_handler)
-		panel->event_handler(panel, MDSS_EVENT_UNLOCK_PANEL_MUTEX,
-									NULL);
 on_error:
 	if (!rc)
 		mdp3_session->status = 1;
-
 	mutex_unlock(&mdp3_session->lock);
 	return rc;
 }
@@ -520,9 +514,6 @@ static int mdp3_ctrl_off(struct msm_fb_data_type *mfd)
 		pr_debug("fb%d is off already", mfd->index);
 		goto off_error;
 	}
-
-	if (panel->event_handler)
-		panel->event_handler(panel, MDSS_EVENT_LOCK_PANEL_MUTEX, NULL);
 
 	mdp3_histogram_stop(mdp3_session, MDP_BLOCK_DMA_P);
 
@@ -565,11 +556,6 @@ off_error:
 	mutex_unlock(&mdp3_session->lock);
 	if (mdp3_session->overlay.id != MSMFB_NEW_REQUEST)
 		mdp3_overlay_unset(mfd, mdp3_session->overlay.id);
-
-	if (panel->event_handler)
-		panel->event_handler(panel, MDSS_EVENT_UNLOCK_PANEL_MUTEX,
-									NULL);
-
 	return 0;
 }
 

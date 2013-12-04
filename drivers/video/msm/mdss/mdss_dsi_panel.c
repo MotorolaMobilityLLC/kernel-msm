@@ -28,7 +28,6 @@
 #include <mach/mmi_panel_notifier.h>
 
 #include "mdss_dsi.h"
-#include "dsi_v2.h"
 
 #define DT_CMD_HDR 6
 #define ESD_DROPBOX_MSG "ESD event detected"
@@ -591,8 +590,6 @@ static void mdss_panel_esd_work(struct work_struct *work)
 		mdss_dsi_panel_unlock_mutex(&ctrl->panel_data);
 		return;
 	}
-
-	dsi_set_tx_power_mode(0);
 	mdss_dsi_get_pwr_mode(&ctrl->panel_data, &pwr_mode);
 
 	pr_debug("%s: is called. pwr_mode = 0x%x\n", __func__, pwr_mode);
