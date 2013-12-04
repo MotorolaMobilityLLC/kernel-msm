@@ -117,23 +117,6 @@ static struct mipi_mot_cmd_seq aid_workaround_seq[] = {
 
 static char undo_partial_rows[] = {0x30, 0x00, 0x00, 0x04, 0xff};
 
-/* Settings for correct 2Ch shift issue */
-static char small_col[] = {0x2a, 0x02, 0xc8, 0x02, 0xcf};
-static char small_row[] = {0x2b, 0x04, 0xfe, 0x04, 0xff};
-static char frame[] = {
-	0x2c,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-static struct mipi_mot_cmd_seq correct_shift_seq[] = {
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_col),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_row),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, frame),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, normal_col),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, normal_row),
-};
-
 static struct mipi_mot_cmd_seq smd_hd_497_cfg_seq[] = {
 	MIPI_MOT_EXEC_SEQ(NULL, unlock_mtp_seq),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, enable_te),
@@ -172,11 +155,6 @@ static struct dsi_cmd_desc set_mtp_read_off[] = {
 
 static struct dsi_cmd_desc mtp_read_cmd = {
 	DTYPE_DCS_READ, 1, 0, 1, 0, sizeof(mtp_read), mtp_read};
-
-static struct mipi_mot_cmd_seq smd_hd_497_en_from_partial_seq[] = {
-	MIPI_MOT_EXEC_SEQ(NULL, smd_hd_497_cfg_seq),
-	MIPI_MOT_EXEC_SEQ(is_correct_shift_for_aod_needed, correct_shift_seq),
-};
 
 static void enable_acl(struct msm_fb_data_type *mfd)
 {
@@ -324,8 +302,17 @@ static int is_correct_shift_for_aod_needed(struct msm_fb_data_type *mfd)
 
 static void panel_en_from_partial(struct msm_fb_data_type *mfd)
 {
-	mipi_mot_exec_cmd_seq(mfd, smd_hd_497_en_from_partial_seq,
-			ARRAY_SIZE(smd_hd_497_en_from_partial_seq));
+	struct msm_panel_info *pinfo = &mot_panel->pinfo;
+
+	mipi_mot_exec_cmd_seq(mfd, smd_hd_497_cfg_seq,
+			ARRAY_SIZE(smd_hd_497_cfg_seq));
+
+	if (is_correct_shift_for_aod_needed(mfd)) {
+		correct_shift_for_aod(mfd, pinfo->xres-1, pinfo->yres-1);
+
+		mipi_mot_exec_cmd_seq(mfd, set_window_size,
+			ARRAY_SIZE(set_window_size));
+	}
 }
 
 static int __init mipi_mot_cmd_smd_hd_497_init(void)
@@ -410,6 +397,8 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 	mot_panel->enable_acl = enable_acl;
 	mot_panel->enable_te = mipi_mot_set_tear;
 	mot_panel->panel_en_from_partial = panel_en_from_partial;
+	mot_panel->is_correct_shift_for_aod_needed =
+		is_correct_shift_for_aod_needed;
 
 	/* For ESD detection information */
 	mot_panel->esd_enabled = true;
