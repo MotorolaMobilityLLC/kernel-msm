@@ -734,3 +734,50 @@ int is_aod_supported(struct msm_fb_data_type *mfd)
 	return mfd && mfd->is_partial_mode_supported &&
 		mfd->is_partial_mode_supported();
 }
+
+int correct_shift_for_aod(struct msm_fb_data_type *mfd, int x2, int y2)
+{
+	/* Workaround window size is a product of testing and verification */
+	struct mipi_mot_panel *mot_panel = mipi_mot_get_mot_panel();
+	struct msm_panel_info *pinfo = &mot_panel->pinfo;
+	int x1 = x2 - 7;
+	int y1 = y2 - 1;
+	char col[] = {0x2a, 0x00, 0x00, 0x00, 0x00};
+	char row[] = {0x2b, 0x00, 0x00, 0x00, 0x00};
+	char frame[] = {
+		0x2c,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00
+	};
+	struct mipi_mot_cmd_seq correct_shift_seq[] = {
+		MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, col),
+		MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, row),
+		MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, frame),
+	};
+
+	if (x1 < 0 || y1 < 0 || x2 >= pinfo->xres || y2 >= pinfo->yres) {
+		pr_warn("%s: Invalid x,y coordinates (%d, %d)\n",
+			__func__, x2, y2);
+		return -EINVAL;
+	}
+
+	col[1] = x1 >> 8;
+	col[2] = x1 & 0xFF;
+	col[3] = x2 >> 8;
+	col[4] = x2 & 0xFF;
+	row[1] = y1 >> 8;
+	row[2] = y1 & 0xFF;
+	row[3] = y2 >> 8;
+	row[4] = y2 & 0xFF;
+
+	pr_debug("%s: cmd 2ah[h:0x%X l:0x%X -> h:0x%X l:0x%X]\n", __func__,
+		col[1], col[2], col[3], col[4]);
+	pr_debug("%s: cmd 2bh[h:0x%X l:0x%X -> h:0x%X l:0x%X]\n", __func__,
+		row[1], row[2], row[3], row[4]);
+
+	return mipi_mot_exec_cmd_seq(mfd, correct_shift_seq,
+		ARRAY_SIZE(correct_shift_seq));
+}
