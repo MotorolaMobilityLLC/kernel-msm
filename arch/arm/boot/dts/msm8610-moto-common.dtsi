@@ -169,6 +169,9 @@
 			"AMIC1", "MIC BIAS External",
 			"AMIC2", "MIC BIAS Internal2",
 			"AMIC3", "MIC BIAS External";
+
+		qcom,ext-spk-amp-gpio = <&msmgpio 4 0x0>;
+		qcom,ext-spk-boost-gpio = <&msmgpio 58 0x0>;
 	};
 
 	hob_ram@f500000 {
