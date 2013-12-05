@@ -6,7 +6,7 @@
 
 / {
 	model = "Motorola MSM8960 Vanquish";
-	compatible = "mmi,msm8960";
+	compatible = "mmi,msm8960-old";
 
 	mmi,product = "mmi,msm8960-vanquish";
 

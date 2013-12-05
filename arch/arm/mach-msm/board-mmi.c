@@ -711,6 +711,11 @@ static const char *mmi_dt_match[] __initdata = {
 	NULL
 };
 
+static const char *mmi_dt_match_8960[] __initdata = {
+	"mmi,msm8960-old",
+	NULL
+};
+
 static const struct of_device_id mmi_msm8960_dt_gic_match[] __initconst = {
 	{ .compatible = "qcom,msm-qgic2", .data = gic_of_init },
 	{ .compatible = "qcom,msm-gpio", .data = msm_gpio_of_init_legacy, },
@@ -788,7 +793,7 @@ MACHINE_START(VANQUISH, "Vanquish")
 	.init_early = mmi_msm8960_init_early,
 	.init_very_early = msm8960_early_memory,
 	.restart = msm_restart,
-	.dt_compat = mmi_dt_match,
+	.dt_compat = mmi_dt_match_8960,
 MACHINE_END
 
 MACHINE_START(MSM8960DT, "msm8960dt")
