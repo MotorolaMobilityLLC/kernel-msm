@@ -1132,6 +1132,15 @@ poll:
 	mutex_unlock(&tpa6165->lock);
 
 }
+static int tpa6165_get_poll_acc_state(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct tpa6165_data *tpa6165 = i2c_get_clientdata(tpa6165_client);
+
+	ucontrol->value.integer.value[0] = tpa6165->polling_state;
+
+	return 0;
+}
 
 static int tpa6165_poll_acc_state(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
@@ -1208,7 +1217,7 @@ static const struct snd_kcontrol_new tpa6165_controls[] = {
 		       tpa6165_get_mode, tpa6165_set_mode
 		       ),
 	SOC_SINGLE_EXT("TPA6165 POLL ACC DET", 0,
-	0, 1, 0, NULL,
+	0, 1, 0, tpa6165_get_poll_acc_state,
 	 tpa6165_poll_acc_state),
 };
 
