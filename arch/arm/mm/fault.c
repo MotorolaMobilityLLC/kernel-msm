@@ -149,6 +149,7 @@ __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
 	/*
 	 * No handler, we'll have to terminate things with extreme prejudice.
 	 */
+	preempt_disable();
 	bust_spinlocks(1);
 	printk(KERN_ALERT
 		"Unable to handle kernel %s at virtual address %08lx\n",
