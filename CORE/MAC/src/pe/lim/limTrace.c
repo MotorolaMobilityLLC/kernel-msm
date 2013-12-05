@@ -207,8 +207,8 @@ void limTraceDump(tpAniSirGlobal pMac, tpvosTraceRecord pRecord, tANI_U16 recInd
             break;
 
         case TRACE_CODE_TX_COMPLETE:
-            limLog(pMac, LOGE, "%04d    %012u  S%d    %-14s  ", recIndex, pRecord->time, pRecord->session,
-                                            "TX Complete" );
+            limLog(pMac, LOGE, "%04d    %012u  S%d    %-14s  %d", recIndex, pRecord->time, pRecord->session,
+                                            "TX Complete", pRecord->data );
             break;
 
         case TRACE_CODE_TX_SME_MSG:
