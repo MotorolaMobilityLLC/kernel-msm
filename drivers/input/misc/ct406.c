@@ -103,6 +103,7 @@
 #define CT406_ID			0x12
 
 #define CT406_STATUS			0x13
+#define CT406_STATUS_PVALID		(1<<1)
 #define CT406_STATUS_PINT		(1<<5)
 #define CT406_STATUS_AINT		(1<<4)
 
@@ -124,6 +125,8 @@
 #define CT406_ALS_HIGH_TO_LOW_THRESHOLD	100	/* 100 lux */
 
 #define CT406_ALS_IRQ_DELTA_PERCENT	5
+
+#define CT406_MAX_PROX_WAIT		20
 
 enum ct406_prox_mode {
 	CT406_PROX_MODE_UNKNOWN,
@@ -294,6 +297,9 @@ static int ct406_write_enable(struct ct406_data *ct)
 {
 	int error = 0;
 	u8 reg_data[2] = {0x00, 0x00};
+	u8 status = 0;
+	int prox_count = 0;
+
 	reg_data[0] = CT406_ENABLE;
 	if (ct->oscillator_enabled || ct->als_enabled || ct->prox_enabled) {
 		reg_data[1] |= CT406_ENABLE_PON;
@@ -314,7 +320,30 @@ static int ct406_write_enable(struct ct406_data *ct)
 	if (ct406_debug & CT406_DBG_ENABLE_DISABLE)
 		pr_info("%s: writing ENABLE=0x%02x\n", __func__, reg_data[1]);
 
-	return ct406_i2c_write(ct, reg_data, 1);
+	error = ct406_i2c_write(ct, reg_data, 1);
+	if (error < 0)
+		return error;
+
+	if (ct->prox_enabled) {
+		do {
+			reg_data[0] = CT406_STATUS;
+			error = ct406_i2c_read(ct, reg_data, 1);
+			if (error < 0)
+				return error;
+			status = reg_data[0];
+			if (!(status & CT406_STATUS_PVALID)) {
+				prox_count++;
+				if (prox_count >= CT406_MAX_PROX_WAIT) {
+					pr_err("%s: Prox valid timeout.\n"
+						, __func__);
+					break;
+				}
+				usleep_range(5000, 6000);
+			}
+		} while (!(status & CT406_STATUS_PVALID));
+	}
+
+	return error;
 }
 
 static int ct406_set_als_enable(struct ct406_data *ct,
@@ -738,14 +767,15 @@ static void ct406_measure_noise_floor(struct ct406_data *ct)
 	unsigned int max = ct->pdata_max - 1 - ct->prox_covered_offset;
 	u8 reg_data[2] = {0};
 
+	/* enable prox sensor and wait */
+	error = ct406_set_prox_enable(ct, 1);
+	if (error) {
+		pr_err("%s: Error enabling proximity sensor: %d\n",
+			__func__, error);
+		return;
+	}
+
 	for (i = 0; i < num_samples; i++) {
-		/* enable prox sensor and wait */
-		error = ct406_set_prox_enable(ct, 1);
-		if (error) {
-			pr_err("%s: Error enabling proximity sensor: %d\n",
-				__func__, error);
-			break;
-		}
 		usleep_range(12000, 12100);
 
 		reg_data[0] = (CT406_PDATA | CT406_COMMAND_AUTO_INCREMENT);
@@ -756,15 +786,13 @@ static void ct406_measure_noise_floor(struct ct406_data *ct)
 			break;
 		}
 		sum += (reg_data[1] << 8) | reg_data[0];
-
-		/* disable prox sensor */
-		error = ct406_set_prox_enable(ct, 0);
-		if (error) {
-			pr_err("%s: Error disabling proximity sensor: %d\n",
-				__func__, error);
-			break;
-		}
 	}
+
+	/* disable prox sensor */
+	error = ct406_set_prox_enable(ct, 0);
+	if (error)
+		pr_err("%s: Error disabling proximity sensor: %d\n",
+			__func__, error);
 
 	if (!error)
 		avg = sum / num_samples;
