@@ -1,0 +1,27 @@
+/*
+ * arch/arm/mach-msm/include/mach/board_lge.h
+ *
+ * Copyright (C) 2012,2013 LGE Inc.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+#ifndef __ARCH_MSM_BOARD_LGE_H
+#define __ARCH_MSM_BOARD_LGE_H
+
+enum {
+	HW_REV_UNKNOWN = 0,
+	HW_REV_EVB1,
+	HW_REV_A,
+	HW_REV_B,
+};
+
+int lge_get_board_revno(void);
+
+#endif
