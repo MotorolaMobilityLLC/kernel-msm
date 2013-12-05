@@ -25,6 +25,7 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
+#include <linux/reboot.h>
 
 #define LM3530_LED_DEV "lcd-backlight"
 #define LM3530_NAME "lm3530-led"
@@ -120,6 +121,7 @@ struct lm3530_data {
 	u8 brightness;
 	bool enable;
 	int en_gpio;
+	struct notifier_block nb_reboot;
 };
 
 /*
@@ -506,6 +508,20 @@ static int lm3530_parse_dt(struct device *dev,
 	return 0;
 }
 
+static int lm3530_notify_reboot(struct notifier_block *this,
+		unsigned long code, void *x)
+{
+	struct lm3530_data *drvdata =
+		container_of(this, struct lm3530_data, nb_reboot);
+
+	if (!drvdata)
+		return 0;
+
+	lm3530_led_disable(drvdata);
+
+	return NOTIFY_DONE;
+}
+
 static int lm3530_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
@@ -561,6 +577,7 @@ static int lm3530_probe(struct i2c_client *client,
 	drvdata->led_dev.brightness_set = lm3530_brightness_set;
 	drvdata->led_dev.max_brightness = MAX_USER_BRIGHTNESS;
 	drvdata->en_gpio = pdata->en_gpio;
+	drvdata->nb_reboot.notifier_call = lm3530_notify_reboot;
 
 	i2c_set_clientdata(client, drvdata);
 
@@ -604,6 +621,8 @@ static int lm3530_probe(struct i2c_client *client,
 		goto err_create_file;
 	}
 
+	register_reboot_notifier(&drvdata->nb_reboot);
+
 	return 0;
 
 err_create_file:
@@ -615,6 +634,7 @@ static int lm3530_remove(struct i2c_client *client)
 {
 	struct lm3530_data *drvdata = i2c_get_clientdata(client);
 
+	unregister_reboot_notifier(&drvdata->nb_reboot);
 	device_remove_file(drvdata->led_dev.dev, &dev_attr_mode);
 
 	lm3530_led_disable(drvdata);
