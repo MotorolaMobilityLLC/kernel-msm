@@ -708,7 +708,7 @@
 
 &mdss_fb0 {
 	qcom,memory-reservation-type = "EBI1";
-	qcom,memory-reservation-size = <0x800000>;
+	qcom,memory-reservation-size = <0x400000>;
 };
 
 &mdss_dsi0 {
