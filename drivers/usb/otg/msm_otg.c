@@ -2646,14 +2646,17 @@ static void msm_otg_sm_work(struct work_struct *w)
 							&motg->ext_chg_wait);
 						motg->ext_chg_active = true;
 					}
-					/* fall through */
+					msm_otg_notify_charger(motg,
+							       IDEV_CHG_DCP);
+					pm_runtime_put_sync(otg->phy->dev);
+					break;
 				case USB_PROPRIETARY_CHARGER:
 					if (ta_charger_detected)
 						msm_otg_notify_charger(motg,
 								IDEV_CHG_TA);
 					else
 						msm_otg_notify_charger(motg,
-								IDEV_CHG_MAX);
+								IDEV_CHG_PROP);
 					pm_runtime_put_sync(otg->phy->dev);
 					break;
 				case USB_FLOATED_CHARGER:
