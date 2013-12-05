@@ -49,7 +49,14 @@
 		android,ram-buffer-size = <0x20000>;
 	};
 
-        fan5646_vreg: fan5646_vreg {
+	bootinfo {
+		compatible = "android,bootinfo";
+
+		android,bootinfo-buffer-start = <0x3eb00000>;
+		android,bootinfo-buffer-size = <0x800>;
+	};
+
+	fan5646_vreg: fan5646_vreg {
 		status = "ok";
 		compatible = "regulator-fixed";
 		regulator-name = "fan5646_vreg";
