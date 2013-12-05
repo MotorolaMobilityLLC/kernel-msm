@@ -266,7 +266,7 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
     if ((SIOCDEVPRIVATE + 1) == cmd)
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
            "***HOSTAPD*** : Received %s cmd from Wi-Fi GUI***", command);
 
         if(strncmp(command, "P2P_SET_NOA", 11) == 0 )   
