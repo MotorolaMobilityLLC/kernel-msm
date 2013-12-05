@@ -7613,6 +7613,13 @@ int hdd_wlan_startup(struct device *dev )
              __func__, WLAN_INI_FILE);
       goto err_config;
    }
+#ifdef MEMORY_DEBUG
+   if (pHddCtx->cfg_ini->IsMemoryDebugSupportEnabled)
+      vos_mem_init();
+
+   hddLog(VOS_TRACE_LEVEL_INFO, "%s: gEnableMemoryDebug=%d",
+          __func__, pHddCtx->cfg_ini->IsMemoryDebugSupportEnabled);
+#endif
 
    /* INI has been read, initialise the configuredMcastBcastFilter with
     * INI value as this will serve as the default value
@@ -8344,10 +8351,6 @@ static int hdd_driver_init( void)
          ret_status = -1;
          break;
    }
-
-#ifdef MEMORY_DEBUG
-      vos_mem_init();
-#endif
 
 #ifdef TIMER_MANAGER
       vos_timer_manager_init();
