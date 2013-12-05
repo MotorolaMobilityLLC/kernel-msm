@@ -2814,6 +2814,15 @@ REG_VARIABLE( CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD, WLAN_PARAM_Integer,
                 CFG_BTC_SAP_ACTIVE_BT_LEN_DEFAULT,
                 CFG_BTC_SAP_ACTIVE_BT_LEN_MIN,
                 CFG_BTC_SAP_ACTIVE_BT_LEN_MAX ),
+
+#ifdef MEMORY_DEBUG
+   REG_VARIABLE(CFG_ENABLE_MEMORY_DEBUG_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, IsMemoryDebugSupportEnabled,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_ENABLE_MEMORY_DEBUG_DEFAULT,
+                CFG_ENABLE_MEMORY_DEBUG_MIN,
+                CFG_ENABLE_MEMORY_DEBUG_MAX ),
+#endif
 };
 
 /*
