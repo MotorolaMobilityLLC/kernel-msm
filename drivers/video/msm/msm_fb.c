@@ -53,6 +53,8 @@
 #include "mdp.h"
 #include "mdp4.h"
 
+#include "msm_fb_quickdraw.h"
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MSM_FB_NUM	3
 #endif
@@ -622,7 +624,7 @@ static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd)
 
 	mfd->suspend.op_suspend = true;
 
-	if (mfd->op_enable) {
+	if (mfd->op_enable || mfd->quickdraw_in_progress) {
 		ret =
 		     msm_fb_blank_sub(FB_BLANK_POWERDOWN, mfd->fbi,
 				      mfd->suspend.op_enable);
@@ -681,7 +683,7 @@ static int msm_fb_resume_sub(struct msm_fb_data_type *mfd)
 	mfd->sw_refreshing_enable = mfd->suspend.sw_refreshing_enable;
 	mfd->op_enable = mfd->suspend.op_enable;
 
-	if (mfd->suspend.panel_power_on) {
+	if (mfd->suspend.panel_power_on || mfd->quickdraw_in_progress) {
 		if (mfd->panel_driver_on == FALSE)
 			msm_fb_blank_sub(FB_BLANK_POWERDOWN, mfd->fbi,
 				      mfd->op_enable);
@@ -1793,6 +1795,13 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	}
 #endif /* MSM_FB_ENABLE_DBGFS */
 
+	if (mfd->is_quickdraw_enabled && mfd->is_quickdraw_enabled() &&
+	    mfd->index == 0) {
+		msm_fb_quickdraw_register_notifier(mfd);
+		mfd->quickdraw_fb_resume = msm_fb_resume_sub;
+		mfd->quickdraw_fb_suspend = msm_fb_suspend_sub;
+	}
+
 	return ret;
 }
 
@@ -1963,7 +1972,8 @@ static int msm_fb_pan_idle(struct msm_fb_data_type *mfd)
 	}
 	return ret;
 }
-static int msm_fb_pan_display_ex(struct fb_info *info,
+
+int msm_fb_pan_display_ex(struct fb_info *info,
 		struct mdp_display_commit *disp_commit)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
@@ -3328,6 +3338,18 @@ static int msmfb_overlay_play_wait(struct fb_info *info, unsigned long *argp)
 	return ret;
 }
 
+int msmfb_overlay_play_sub(struct fb_info *info, struct msmfb_overlay_data *req)
+{
+	int ret;
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+
+	lock_panel_mutex(mfd);
+	ret = mdp4_overlay_play(info, req);
+	unlock_panel_mutex(mfd);
+
+	return ret;
+}
+
 static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 {
 	int	ret;
@@ -3364,9 +3386,7 @@ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 	add_timer(&mfd->msmfb_no_update_notify_timer);
 	mutex_unlock(&msm_fb_notify_update_sem);
 
-	lock_panel_mutex(mfd);
-	ret = mdp4_overlay_play(info, &req);
-	unlock_panel_mutex(mfd);
+	ret = msmfb_overlay_play_sub(info, &req);
 
 	if (info->node == 0 && (mfd->cont_splash_done)) /* primary */
 		mdp_free_splash_buffer(mfd);
@@ -4313,6 +4333,66 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 				mfd->resume_cfg.panel_state,
 				mfd->resume_cfg.keep_hidden);
 		}
+		break;
+
+	case MSMFB_QUICKDRAW_INIT:
+		if (msm_fb_pdata
+			&& msm_fb_pdata->is_quickdraw_enabled
+			&& msm_fb_pdata->is_quickdraw_enabled()) {
+			ret = msm_fb_quickdraw_init();
+			if (ret)
+				pr_err("%s: MSMFB_QUICKDRAW_INIT failed (ret=%d)\n",
+					__func__, ret);
+		} else
+			return -EINVAL;
+		break;
+
+	case MSMFB_QUICKDRAW_ADD_BUFFER:
+		if (msm_fb_pdata
+			&& msm_fb_pdata->is_quickdraw_enabled
+			&& msm_fb_pdata->is_quickdraw_enabled()) {
+			struct msmfb_quickdraw_buffer_data data;
+			if (copy_from_user(&data, (void __user *)arg,
+				sizeof(struct msmfb_quickdraw_buffer_data))) {
+				pr_err("%s: MSMFB_QUICKDRAW_ADD_BUFFER copy_from_user failed\n",
+					__func__);
+				return -EFAULT;
+			}
+			ret = msm_fb_quickdraw_create_buffer(&data);
+			if (ret)
+				pr_err("%s: MSMFB_QUICKDRAW_ADD_BUFFER failed (ret=%d)\n",
+					__func__, ret);
+		} else
+			return -EINVAL;
+		break;
+
+	case MSMFB_QUICKDRAW_REMOVE_BUFFER:
+	case MSMFB_QUICKDRAW_LOCK_BUFFER:
+	case MSMFB_QUICKDRAW_UNLOCK_BUFFER:
+		if (msm_fb_pdata
+			&& msm_fb_pdata->is_quickdraw_enabled
+			&& msm_fb_pdata->is_quickdraw_enabled()) {
+			int buffer_id;
+			if (copy_from_user(&buffer_id, (void __user *)arg,
+				sizeof(int))) {
+				pr_err("%s: MSMFB_QUICKDRAW (cmd: 0x%x) copy_from_user failed\n",
+					__func__, cmd);
+				return -EFAULT;
+			}
+
+			if (cmd == MSMFB_QUICKDRAW_REMOVE_BUFFER)
+				ret = msm_fb_quickdraw_destroy_buffer(
+					buffer_id);
+			else if (cmd == MSMFB_QUICKDRAW_LOCK_BUFFER)
+				ret = msm_fb_quickdraw_lock_buffer(buffer_id);
+			else if (cmd == MSMFB_QUICKDRAW_UNLOCK_BUFFER)
+				ret = msm_fb_quickdraw_unlock_buffer(buffer_id);
+
+			if (ret)
+				pr_err("%s: MSMFB_QUICKDRAW (cmd: 0x%x) failed (ret=%d)\n",
+					__func__, cmd, ret);
+		} else
+			return -EINVAL;
 		break;
 
 	default:

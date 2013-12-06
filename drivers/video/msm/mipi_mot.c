@@ -439,9 +439,14 @@ static void panel_enable_from_partial(struct msm_fb_data_type *mfd)
 
 	if (panel_state == MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN)
 		mipi_mot_panel_exit_sleep();
-	else if (panel_state != MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_OUT)
+	else if (mfd->quickdraw_in_progress) {
+		pr_debug("%s: in quickdraw, SH configured the panel already\n",
+			__func__);
+		return;
+	} else if (panel_state == MSMFB_RESUME_CFG_STATE_DISP_ON_SLEEP_OUT) {
 		/* Display is on, turn it off for init sequence */
 		mipi_mot_panel_off(mfd);
+	}
 
 	if (mot_panel.panel_en_from_partial)
 		mot_panel.panel_en_from_partial(mfd);

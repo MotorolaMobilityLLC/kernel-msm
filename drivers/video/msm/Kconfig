@@ -1028,4 +1028,12 @@ config FB_MSM_EBI2_PANEL_DETECT
 if FB_MSM_MDSS
 	source "drivers/video/msm/mdss/Kconfig"
 endif
+
+config FB_MSM_QUICKDRAW
+	bool "Framebuffer quickdraw"
+	default n
+	---help---
+	  Allow userspace to register offscreen buffers with the
+	  fb quickdraw driver to be drawn to the panel on demand
+
 endif

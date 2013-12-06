@@ -31,5 +31,9 @@ void mmi_panel_notify(unsigned int state, void *data)
 {
 	struct mipi_mot_panel *mot_panel = mipi_mot_get_mot_panel();
 	pr_debug("%s (%d) is called\n", __func__, state);
-	srcu_notifier_call_chain(&mot_panel->panel_notifier_list, state, data);
+	if (!mot_panel->mfd->quickdraw_in_progress)
+		srcu_notifier_call_chain(&mot_panel->panel_notifier_list, state,
+			data);
+	else
+		pr_debug("%s: skip notifications!\n", __func__);
 }
