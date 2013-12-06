@@ -420,8 +420,6 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait)
 	return cnt;
 }
 
-static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd);
-
 void mdp4_dsi_cmd_vsync_ctrl(struct fb_info *info, int enable)
 {
 	struct vsycn_ctrl *vctrl;
@@ -947,7 +945,7 @@ static void mdp4_overlay_setup_pipe_addr(struct msm_fb_data_type *mfd,
 	pipe->srcp0_addr = (uint32)src;
 }
 
-static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
+void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 {
 	int ptype;
 	struct mdp4_overlay_pipe *pipe;
@@ -959,6 +957,8 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 	if (mfd->key != MFD_KEY)
 		return;
 
+	mdp_clk_ctrl(1);
+
 	vctrl = &vsync_ctrl_db[cndx];
 
 	if (vctrl->base_pipe == NULL) {
@@ -968,7 +968,7 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 		pipe = mdp4_overlay_pipe_alloc(ptype, MDP4_MIXER0);
 		if (pipe == NULL) {
 			printk(KERN_INFO "%s: pipe_alloc failed\n", __func__);
-			return;
+			goto exit;
 		}
 		pipe->pipe_used++;
 		pipe->mixer_stage  = MDP4_MIXER_STAGE_BASE;
@@ -990,9 +990,6 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 	/* TE enabled */
 	mdp4_mipi_vsync_enable(mfd, pipe, 0);
 
-	mdp4_overlay_mdp_pipe_req(pipe, mfd);
-	mdp4_calc_blt_mdp_bw(mfd, pipe);
-
 	MDP_OUTP(MDP_BASE + 0x021c, mfd->fbi->var.yres + 1); /* read pointer */
 
 	/*
@@ -1007,6 +1004,9 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 
 	mdp4_overlay_setup_pipe_addr(mfd, pipe);
 
+	mdp4_overlay_mdp_pipe_req(pipe, mfd);
+	mdp4_calc_blt_mdp_bw(mfd, pipe);
+
 	mdp4_overlay_rgb_setup(pipe);
 
 	mdp4_overlay_reg_flush(pipe, 1);
@@ -1020,6 +1020,8 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 	mdp4_overlay_dmap_cfg(mfd, 0);
 
 	wmb();
+exit:
+	mdp_clk_ctrl(0);
 }
 
 /* 3D side by side */
@@ -1136,9 +1138,7 @@ int mdp4_dsi_cmd_on(struct platform_device *pdev)
 	vctrl->dev = mfd->fbi->dev;
 	vctrl->vsync_enabled = 0;
 
-	mdp_clk_ctrl(1);
 	mdp4_overlay_update_dsi_cmd(mfd);
-	mdp_clk_ctrl(0);
 
 	mdp4_iommu_attach();
 
