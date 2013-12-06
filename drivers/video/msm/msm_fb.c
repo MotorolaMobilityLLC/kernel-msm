@@ -1592,6 +1592,8 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 
 	mfd->is_partial_mode_supported =
 		msm_fb_pdata->is_partial_mode_supported;
+	mfd->is_quickdraw_enabled =
+		msm_fb_pdata->is_quickdraw_enabled;
 
 	/* cursor memory allocation */
 	if (mfd->cursor_update) {
