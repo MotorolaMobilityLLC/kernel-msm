@@ -2813,6 +2813,25 @@ static int mdp_irq_clk_setup(struct platform_device *pdev,
 	return 0;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void mdp_early_suspend(struct early_suspend *h);
+static void mdp_early_resume(struct early_suspend *h);
+#endif
+
+static void mdp_quickdraw_suspend(void)
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	mdp_early_suspend(NULL);
+#endif
+}
+
+static void mdp_quickdraw_resume(void)
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	mdp_early_resume(NULL);
+#endif
+}
+
 static int mdp_probe(struct platform_device *pdev)
 {
 	struct platform_device *msm_fb_dev = NULL;
@@ -3156,6 +3175,10 @@ static int mdp_probe(struct platform_device *pdev)
 		mfd->reg_read = mipi_reg_read;
 
 		mdp_config_vsync(mdp_init_pdev, mfd);
+
+		mfd->quickdraw_mdp_suspend = mdp_quickdraw_suspend;
+		mfd->quickdraw_mdp_resume = mdp_quickdraw_resume;
+
 		break;
 #endif
 

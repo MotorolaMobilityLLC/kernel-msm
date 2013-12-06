@@ -813,6 +813,7 @@ void mdp4_dsi_cmd_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe);
 void mdp4_dsi_video_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe);
 void mdp4_dsi_cmd_vsync_ctrl(struct fb_info *info, int enable);
 void mdp4_dsi_video_vsync_ctrl(struct fb_info *info, int enable);
+void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd);
 #ifdef CONFIG_FB_MSM_MDP303
 static inline void mdp4_dsi_cmd_del_timer(void)
 {
@@ -866,6 +867,9 @@ static inline void mdp4_dsi_cmd_vsync_ctrl(struct fb_info *info,
 }
 static inline void mdp4_dsi_video_vsync_ctrl(struct fb_info *info,
 				int enable)
+{
+}
+static inline void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 {
 }
 
