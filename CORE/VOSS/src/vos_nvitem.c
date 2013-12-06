@@ -2741,160 +2741,6 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
    return VOS_STATUS_SUCCESS;
 }
 
-/* create_crda_regulatory_entry_from_regd should be called during init time */
-static int create_linux_regulatory_entry_from_regd(struct wiphy *wiphy,
-                struct regulatory_request *request,
-                v_U8_t nBandCapability)
-{
-    int i, j, n, domain_id;
-    int bw20_start_channel_index, bw20_end_channel_index;
-    int bw40_start_channel_index, bw40_end_channel_index;
-    v_CONTEXT_t pVosContext = NULL;
-    hdd_context_t *pHddCtx = NULL;
-
-    if (wiphy->regd == NULL)
-    {
-        wiphy_dbg(wiphy, "error: wiphy->regd is NULL\n");
-        return -1;
-    }
-    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
-
-    if (NULL != pVosContext)
-    {
-        pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
-        if (NULL == pHddCtx)
-        {
-           VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                       ("Invalid pHddCtx pointer") );
-        }
-        else
-        {
-           pHddCtx->isVHT80Allowed = 0;
-        }
-    }
-    else
-    {
-       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                  ("Invalid pVosContext pointer") );
-    }
-
-    domain_id = temp_reg_domain;
-
-    for (n = 0; n < NUM_RF_CHANNELS; n++)
-        pnvEFSTable->halnv.tables.regDomains[domain_id].channels[n].enabled = NV_CHANNEL_DISABLE;
-
-    for (i = 0; i < wiphy->regd->n_reg_rules; i++)
-    {
-
-       wiphy_dbg(wiphy, "info: crda rule %d --------------------------------------------\n", i);
-       bw20_start_channel_index =
-           bw20_start_freq_to_channel_index(wiphy->regd->reg_rules[i].freq_range.start_freq_khz);
-       bw20_end_channel_index =
-           bw20_end_freq_to_channel_index(wiphy->regd->reg_rules[i].freq_range.end_freq_khz);
-
-       if (bw20_start_channel_index == -1 || bw20_end_channel_index == -1)
-       {
-           wiphy_dbg(wiphy, "error: crda freq not supported, start freq (KHz) %d end freq %d\n",
-                     wiphy->regd->reg_rules[i].freq_range.start_freq_khz,
-                     wiphy->regd->reg_rules[i].freq_range.end_freq_khz);
-           continue; // skip this rull, but continue to next rule
-       }
-
-       wiphy_dbg(wiphy, "20MHz start freq (KHz) %d end freq %d start ch index %d end ch index %d\n",
-                 wiphy->regd->reg_rules[i].freq_range.start_freq_khz,
-                 wiphy->regd->reg_rules[i].freq_range.end_freq_khz,
-                 bw20_start_channel_index, bw20_end_channel_index);
-
-       for (j=bw20_start_channel_index;j<=bw20_end_channel_index;j++)
-       {
-           if (channel_in_capable_band(j, nBandCapability) == VOS_FALSE)
-           {
-               wiphy_dbg(wiphy, "info: CH %d is not in capable band\n",
-                         rfChannels[j].channelNum);
-               continue; // skip  this channel, continue to next
-           }
-
-           if (wiphy->regd->reg_rules[i].flags & NL80211_RRF_DFS)
-           {
-               pnvEFSTable->halnv.tables.regDomains[domain_id].channels[j].enabled = NV_CHANNEL_DFS;
-               wiphy_dbg(wiphy, "info: CH %d is DFS, max EIRP (mBm) is %d\n", rfChannels[j].channelNum,
-                         wiphy->regd->reg_rules[i].power_rule.max_eirp);
-           }
-           else
-           {
-               pnvEFSTable->halnv.tables.regDomains[domain_id].channels[j].enabled = NV_CHANNEL_ENABLE;
-               wiphy_dbg(wiphy, "info: CH %d is enabled, no DFS, max EIRP (mBm) is %d\n", rfChannels[j].channelNum,
-                         wiphy->regd->reg_rules[i].power_rule.max_eirp);
-           }
-
-           /* max_eirp is in mBm (= 100 * dBm) unit */
-           pnvEFSTable->halnv.tables.regDomains[domain_id].channels[j].pwrLimit =
-               (tANI_S8) ((wiphy->regd->reg_rules[i].power_rule.max_eirp)/100);
-       }
-
-       /* ignore CRDA max_antenna_gain typical is 3dBi, nv.bin antennaGain is
-          real gain which should be provided by the real design */
-       if (wiphy->regd->reg_rules[i].freq_range.max_bandwidth_khz >= 40000)
-       {
-           if (wiphy->regd->reg_rules[i].freq_range.max_bandwidth_khz >= 80000)
-           {
-              wiphy_dbg(wiphy, "info: 80MHz (channel bonding) is allowed\n");
-              if (NULL == pHddCtx)
-              {
-                  VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                             ("Invalid pHddCtx pointer") );
-              }
-              else
-              {
-                 pHddCtx->isVHT80Allowed = 1;
-              }
-
-
-           }
-           else
-           {
-              wiphy_dbg(wiphy, "info: ONLY 40MHz (channel bonding) is allowed\n");
-           }
-           bw40_start_channel_index =
-               bw40_start_freq_to_channel_index(wiphy->regd->reg_rules[i].freq_range.start_freq_khz);
-           bw40_end_channel_index =
-               bw40_end_freq_to_channel_index(wiphy->regd->reg_rules[i].freq_range.end_freq_khz);
-           if (bw40_start_channel_index == -1 || bw40_end_channel_index == -1)
-           {
-               wiphy_dbg(wiphy, "error: crda freq not supported, start_freq_khz %d end_freq_khz %d\n",
-                         wiphy->regd->reg_rules[i].freq_range.start_freq_khz,
-                         wiphy->regd->reg_rules[i].freq_range.end_freq_khz);
-               continue; // skip this rull, but continue to next rule
-           }
-
-           wiphy_dbg(wiphy, "40MHz start freq (KHz) %d end freq %d start ch index %d end ch index %d\n",
-                     wiphy->regd->reg_rules[i].freq_range.start_freq_khz,
-                     wiphy->regd->reg_rules[i].freq_range.end_freq_khz,
-                     bw40_start_channel_index, bw40_end_channel_index);
-           for (j=bw40_start_channel_index;j<=bw40_end_channel_index;j++)
-           {
-               if (channel_in_capable_band(j, nBandCapability) == VOS_FALSE)
-                   continue; // skip  this channel, continue to next
-               if (wiphy->regd->reg_rules[i].flags & NL80211_RRF_DFS)
-               {
-                   pnvEFSTable->halnv.tables.regDomains[domain_id].channels[j].enabled = NV_CHANNEL_DFS;
-                   wiphy_dbg(wiphy, "info: 40MHz centered on CH %d is DFS\n", rfChannels[j].channelNum);
-               }
-               else
-               {
-                   pnvEFSTable->halnv.tables.regDomains[domain_id].channels[j].enabled = NV_CHANNEL_ENABLE;
-                   wiphy_dbg(wiphy, "info: 40MHz centered on CH %d is enabled, no DFS\n", rfChannels[j].channelNum);
-               }
-               /* set 40MHz channel power as half (- 3 dB) of 20MHz */
-               pnvEFSTable->halnv.tables.regDomains[domain_id].channels[j].pwrLimit =
-                   (tANI_S8) (((wiphy->regd->reg_rules[i].power_rule.max_eirp)/100)-3);
-           }
-       }
-    }
-
-    return 0;
-}
-
 /* create_linux_regulatory_entry to populate internal structures from wiphy */
 static int create_linux_regulatory_entry(struct wiphy *wiphy,
                 struct regulatory_request *request,
@@ -3022,7 +2868,7 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
 
                 /* max_power is in mBm = 100 * dBm */
                 pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].pwrLimit =
-                    (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)/100);
+                    (tANI_S8) ((wiphy->bands[i]->channels[j].max_power));
                 if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_HT40) == 0)
                 {
                     pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].enabled =
@@ -3030,7 +2876,7 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
 
                     /* 40MHz channel power is half of 20MHz (-3dB) ?? */
                     pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].pwrLimit =
-                        (tANI_S8) (((wiphy->bands[i]->channels[j].max_power)/100)-3);
+                        (tANI_S8) (((wiphy->bands[i]->channels[j].max_power))-3);
                 }
                 if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_80MHZ) == 0)
                 {
@@ -3052,14 +2898,14 @@ static int create_linux_regulatory_entry(struct wiphy *wiphy,
 
                 /* max_power is in dBm */
                 pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[k].pwrLimit =
-                    (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)/100);
+                    (tANI_S8) ((wiphy->bands[i]->channels[j].max_power));
                 if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_HT40) == 0)
                 {
                     pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].enabled =
                         NV_CHANNEL_ENABLE;
                     /* 40MHz channel power is half of 20MHz (-3dB) */
                     pnvEFSTable->halnv.tables.regDomains[temp_reg_domain].channels[n].pwrLimit =
-                        (tANI_S8) (((wiphy->bands[i]->channels[j].max_power)/100)-3);
+                        (tANI_S8) (((wiphy->bands[i]->channels[j].max_power))-3);
                 }
                 if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_80MHZ) == 0)
                 {
