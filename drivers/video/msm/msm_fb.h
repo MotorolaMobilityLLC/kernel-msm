@@ -226,6 +226,11 @@ struct msm_fb_data_type {
 	uint32 sec_active;
 	bool (*is_partial_mode_supported)(void);
 	bool (*is_quickdraw_enabled)(void);
+	void (*quickdraw_mdp_resume)(void);
+	void (*quickdraw_mdp_suspend)(void);
+	int (*quickdraw_fb_resume)(struct msm_fb_data_type *mfd);
+	int (*quickdraw_fb_suspend)(struct msm_fb_data_type *mfd);
+	boolean quickdraw_in_progress;
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
@@ -264,5 +269,10 @@ int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd,
 #define INIT_IMAGE_FILE "/initlogo.rle"
 int load_565rle_image(char *filename, bool bf_supported);
 #endif
+
+int msm_fb_pan_display_ex(struct fb_info *info,
+	struct mdp_display_commit *disp_commit);
+int msmfb_overlay_play_sub(struct fb_info *info,
+	struct msmfb_overlay_data *req);
 
 #endif /* MSM_FB_H */

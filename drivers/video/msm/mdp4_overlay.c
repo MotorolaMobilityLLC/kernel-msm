@@ -3979,7 +3979,7 @@ int mdp4_overlay_commit(struct fb_info *info)
 		break;
 	}
 
-	if (mfd->index == 0)
+	if (mfd->index == 0 && !mfd->quickdraw_in_progress)
 		mdp4_dsi_panel_on(mfd);
 
 	msm_fb_signal_timeline(mfd);
