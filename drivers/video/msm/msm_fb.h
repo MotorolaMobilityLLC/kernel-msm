@@ -225,6 +225,7 @@ struct msm_fb_data_type {
 	uint32 sec_mapped;
 	uint32 sec_active;
 	bool (*is_partial_mode_supported)(void);
+	bool (*is_quickdraw_enabled)(void);
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
