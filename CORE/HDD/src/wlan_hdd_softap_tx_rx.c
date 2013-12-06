@@ -1002,13 +1002,28 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
       return VOS_STATUS_E_FAILURE;
    }
 
-   pAdapter = pHddCtx->sta_to_adapter[*pStaId];
-   if( NULL == pAdapter )
+   STAId = *pStaId;
+   if (STAId >= WLAN_MAX_STA_COUNT)
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
+                 "%s: Invalid STAId %d passed by TL", __func__, STAId);
+      return VOS_STATUS_E_FAILURE;
+   }
+
+   pAdapter = pHddCtx->sta_to_adapter[STAId];
+   if ((NULL == pAdapter) || (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic))
    {
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAILURE;
    }
  
+   if (FALSE == pAdapter->aStaInfo[STAId].isUsed )
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
+                 "%s: Unregistered STAId %d passed by TL", __func__, STAId);
+      return VOS_STATUS_E_FAILURE;
+   }
+
    /* Monitor traffic */
    if ( pHddCtx->cfg_ini->enableTrafficMonitor )
    {
@@ -1030,21 +1045,6 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    }
 
    ++pAdapter->hdd_stats.hddTxRxStats.txFetched;
-
-   STAId = *pStaId;
-   if (STAId >= WLAN_MAX_STA_COUNT)
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
-                 "%s: Invalid STAId %d passed by TL", __func__, STAId);
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   if (FALSE == pAdapter->aStaInfo[STAId].isUsed )
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
-                 "%s: Unregistered STAId %d passed by TL", __func__, STAId);
-      return VOS_STATUS_E_FAILURE;
-   }
 
    *ppVosPacket = NULL;
 
