@@ -1565,7 +1565,7 @@ static int __devinit cpr_voltage_plan_init(struct platform_device *pdev,
 	struct device_node *of_node = pdev->dev.of_node;
 	int rc, i;
 
-	bool fuse_blown;
+	bool fuse_blown = false;
 	bool check_cpr_fuse;
 
 	check_cpr_fuse = of_property_read_bool(pdev->dev.of_node,
