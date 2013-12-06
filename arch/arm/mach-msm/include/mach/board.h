@@ -506,6 +506,7 @@ struct msm_fb_platform_data {
 	char prim_panel_name[PANEL_NAME_MAX_LEN];
 	char ext_panel_name[PANEL_NAME_MAX_LEN];
 	bool (*is_partial_mode_supported)(void);
+	bool (*is_quickdraw_enabled)(void);
 };
 
 struct msm_hdmi_platform_data {
