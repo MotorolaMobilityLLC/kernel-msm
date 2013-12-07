@@ -173,6 +173,7 @@ struct msp430_platform_data {
 #define M_DOCK			0x0001
 #define M_PROXIMITY		0x0002
 #define M_TOUCH			0x0004
+#define M_QUICKPEEK		0x0010
 #define M_HUB_RESET		0x0080
 
 #define M_FLATUP		0x0100
@@ -265,6 +266,17 @@ enum {
 	DESK_DOCK,
 	CAR_DOCK
 };
+
+struct msp430_quickdraw_ops {
+	int (*prepare)(void *data, unsigned char panel_state);
+	int (*execute)(void *data, int buffer_id, int x, int y);
+	int (*erase)(void *data, int x1, int y1, int x2, int y2);
+	int (*cleanup)(void *data);
+	void *data; /* arbitrary data passed back to user */
+};
+
+void msp430_register_quickdraw(struct msp430_quickdraw_ops *handler);
+void msp430_unregister_quickdraw(struct msp430_quickdraw_ops *handler);
 
 #endif  /* __MSP430_H__ */
 
