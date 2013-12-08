@@ -267,6 +267,8 @@ enum {
 	CAR_DOCK
 };
 
+#ifdef __KERNEL__
+
 #define QUICKDRAW_ESD_RECOVERED -1337
 
 struct msp430_quickdraw_ops {
@@ -279,6 +281,8 @@ struct msp430_quickdraw_ops {
 
 void msp430_register_quickdraw(struct msp430_quickdraw_ops *handler);
 void msp430_unregister_quickdraw(struct msp430_quickdraw_ops *handler);
+
+#endif
 
 #endif  /* __MSP430_H__ */
 
