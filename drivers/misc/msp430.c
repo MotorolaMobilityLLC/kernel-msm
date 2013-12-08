@@ -202,6 +202,10 @@
 #define AOD_QP_DRAW_NO_OVERRIDE		0xFFFF
 #define AOD_QP_TIMEOUT			2*HZ
 
+#define AOD_QP_ENABLED_VOTE_KERN		0x01
+#define AOD_QP_ENABLED_VOTE_USER		0x02
+#define AOD_QP_ENABLED_VOTE_MASK		0x03
+
 #define MSP_MAX_GENERIC_DATA		512
 
 static long time_delta;
@@ -265,6 +269,12 @@ struct msp430_quickpeek_message {
 	struct list_head list;
 };
 
+struct msp430_aod_enabled_vote {
+	struct mutex vote_lock;
+	unsigned int vote;
+	unsigned int resolved_vote;
+};
+
 struct msp430_data {
 	struct i2c_client *client;
 	struct msp430_platform_data *pdata;
@@ -319,6 +329,7 @@ struct msp430_data {
 	struct list_head quickpeek_command_list;
 	atomic_t qp_enabled;
 	unsigned short qw_irq_status;
+	struct msp430_aod_enabled_vote aod_enabled;
 };
 
 enum msp_commands {
@@ -423,6 +434,9 @@ struct msp430_data *msp430_misc_data;
 static struct quickwakeup_ops msp430_quickwakeup_ops;
 static struct msp430_quickdraw_ops *msp430_quickdraw_ops;
 static void msp430_quickpeek_reset_locked(struct msp430_data *ps_msp430);
+static void msp430_vote_aod_enabled(struct msp430_data *ps_msp430, int voter,
+				    bool enable);
+static int msp430_resolve_aod_enabled_locked(struct msp430_data *ps_msp430);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void msp430_early_suspend(struct early_suspend *handler);
@@ -2949,6 +2963,21 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 
 		break;
+	case MSP430_IOCTL_ENABLE_BREATHING:
+		if (copy_from_user(&byte, argp, sizeof(byte))) {
+			dev_err(&ps_msp430->client->dev,
+			    "Enable Breathing, copy byte returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		if (byte)
+			msp430_vote_aod_enabled(ps_msp430,
+				AOD_QP_ENABLED_VOTE_USER, true);
+		else
+			msp430_vote_aod_enabled(ps_msp430,
+				AOD_QP_ENABLED_VOTE_USER, false);
+		msp430_resolve_aod_enabled_locked(ps_msp430);
+		break;
 	/* No default here since previous switch could have
 	   handled the command and cannot over write that */
 	}
@@ -3401,6 +3430,8 @@ static int msp430_probe(struct i2c_client *client,
 	mutex_lock(&ps_msp430->lock);
 	wake_lock_init(&ps_msp430->wakelock, WAKE_LOCK_SUSPEND, "msp430");
 
+	mutex_init(&ps_msp430->aod_enabled.vote_lock);
+
 	ps_msp430->client = client;
 	ps_msp430->mode = UNINITIALIZED;
 
@@ -3650,15 +3681,12 @@ static int msp430_remove(struct i2c_client *client)
 	return 0;
 }
 
-static int msp430_resume(struct i2c_client *client)
+static int msp430_takeback_locked(struct msp430_data *ps_msp430)
 {
-	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
 	int count = 0;
 	int msp_req = ps_msp430->pdata->gpio_mipi_req;
-	dev_dbg(&msp430_misc_data->client->dev, "msp430_resume\n");
-	atomic_set(&ps_msp430->qp_enabled, 0);
 
-	mutex_lock(&ps_msp430->lock);
+	dev_dbg(&msp430_misc_data->client->dev, "%s\n", __func__);
 
 	if (ps_msp430->mode == NORMALMODE) {
 		if (ps_msp430->ap_msp_handoff_gpio_ctrl) {
@@ -3702,20 +3730,32 @@ static int msp430_resume(struct i2c_client *client)
 EXIT:
 	msp430_quickpeek_reset_locked(ps_msp430);
 
-	mutex_unlock(&ps_msp430->lock);
-
 	return 0;
 }
 
-static int msp430_suspend(struct i2c_client *client, pm_message_t mesg)
+static int msp430_resume(struct i2c_client *client)
 {
 	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
-	int ret = 0, msp_req = ps_msp430->pdata->gpio_mipi_req;
-	dev_dbg(&ps_msp430->client->dev, "msp430_suspend\n");
+	int ret;
 
-	atomic_set(&ps_msp430->qp_enabled, 1);
+	dev_dbg(&msp430_misc_data->client->dev, "%s\n", __func__);
+
+	msp430_vote_aod_enabled(ps_msp430, AOD_QP_ENABLED_VOTE_KERN, false);
 
 	mutex_lock(&ps_msp430->lock);
+
+	ret = msp430_resolve_aod_enabled_locked(ps_msp430);
+
+	mutex_unlock(&ps_msp430->lock);
+
+	return ret;
+}
+
+static int msp430_handover_locked(struct msp430_data *ps_msp430)
+{
+	int ret = 0, msp_req = ps_msp430->pdata->gpio_mipi_req;
+
+	dev_dbg(&msp430_misc_data->client->dev, "%s\n", __func__);
 
 	if (ps_msp430->mode == NORMALMODE) {
 		if (ps_msp430->ap_msp_handoff_gpio_ctrl) {
@@ -3734,6 +3774,22 @@ static int msp430_suspend(struct i2c_client *client, pm_message_t mesg)
 		dev_dbg(&ps_msp430->client->dev, "MSP REQ is set %d\n",
 			 gpio_get_value(msp_req));
 	}
+
+	return ret;
+}
+
+static int msp430_suspend(struct i2c_client *client, pm_message_t mesg)
+{
+	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
+	int ret;
+
+	dev_dbg(&msp430_misc_data->client->dev, "%s\n", __func__);
+
+	msp430_vote_aod_enabled(ps_msp430, AOD_QP_ENABLED_VOTE_KERN, true);
+
+	mutex_lock(&ps_msp430->lock);
+
+	ret = msp430_resolve_aod_enabled_locked(ps_msp430);
 
 	mutex_unlock(&ps_msp430->lock);
 
@@ -3757,6 +3813,55 @@ static void msp430_late_resume(struct early_suspend *handler)
 	msp430_resume(ps_msp430->client);
 }
 #endif
+
+static int msp430_resolve_aod_enabled_locked(struct msp430_data *ps_msp430)
+{
+	int ret = 0;
+
+	dev_dbg(&ps_msp430->client->dev, "%s\n", __func__);
+
+	mutex_lock(&ps_msp430->aod_enabled.vote_lock);
+
+	if ((ps_msp430->aod_enabled.resolved_vote == AOD_QP_ENABLED_VOTE_MASK)
+	   != (ps_msp430->aod_enabled.vote == AOD_QP_ENABLED_VOTE_MASK)) {
+
+		ps_msp430->aod_enabled.resolved_vote =
+			ps_msp430->aod_enabled.vote;
+
+		if (atomic_read(&ps_msp430->qp_enabled))
+			ret = msp430_handover_locked(ps_msp430);
+		else
+			ret = msp430_takeback_locked(ps_msp430);
+	}
+
+	mutex_unlock(&ps_msp430->aod_enabled.vote_lock);
+
+	return ret;
+}
+
+static void msp430_vote_aod_enabled(struct msp430_data *ps_msp430, int voter,
+				    bool enable)
+{
+	dev_dbg(&ps_msp430->client->dev, "%s\n", __func__);
+
+	mutex_lock(&ps_msp430->aod_enabled.vote_lock);
+
+	voter &= AOD_QP_ENABLED_VOTE_MASK;
+	if (enable)
+		ps_msp430->aod_enabled.vote |= voter;
+	else
+		ps_msp430->aod_enabled.vote &= ~voter;
+
+	dev_dbg(&ps_msp430->client->dev, "%s (vote: 0x%x)\n", __func__,
+			ps_msp430->aod_enabled.vote);
+
+	if (ps_msp430->aod_enabled.vote == AOD_QP_ENABLED_VOTE_MASK)
+		atomic_set(&ps_msp430->qp_enabled, 1);
+	else
+		atomic_set(&ps_msp430->qp_enabled, 0);
+
+	mutex_unlock(&ps_msp430->aod_enabled.vote_lock);
+}
 
 static const struct i2c_device_id msp430_id[] = {
 	{NAME, 0},
