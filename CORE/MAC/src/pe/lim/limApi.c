@@ -585,7 +585,7 @@ static tSirRetStatus __limInitConfig( tpAniSirGlobal pMac )
       limHandleCFGparamUpdate do we want to update this? */
    if(wlan_cfgGetInt(pMac, WNI_CFG_SHORT_PREAMBLE, &val1) != eSIR_SUCCESS)
    {
-      limLog(pMac, LOGP, FL("cfg get short preamble failed"));
+      limLog(pMac, LOGE, FL("cfg get short preamble failed"));
       return eSIR_FAILURE;
    }
 
@@ -1646,7 +1646,7 @@ limUpdateOverlapStaParam(tpAniSirGlobal pMac, tSirMacAddr bssId, tpLimProtStaPar
 
     if (i == LIM_PROT_STA_OVERLAP_CACHE_SIZE)
     {
-        PELOG1(limLog(pMac, LOG1, FL("Overlap cache is full"));)
+        PELOG1(limLog(pMac, LOGW, FL("Overlap cache is full"));)
     }
     else
     {
