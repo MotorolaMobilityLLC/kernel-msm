@@ -19,3 +19,10 @@
 / {
 	qcom,msm-id = <147 0x41 0x81d0>;
 };
+
+&soc {
+	usr_reset_warning {
+		compatible = "mmi,usr-reset-warning";
+		gpios = <&msmgpio 76 0x0>;
+	};
+};
