@@ -214,8 +214,9 @@ static void vos_linux_timer_callback (unsigned long data)
          
       //Serialize to the Tx thread
       sysBuildMessageHeader( SYS_MSG_ID_TX_TIMER, &msg );
-      msg.bodyptr  = callback;
-      msg.bodyval  = (v_U32_t)userData; 
+      msg.callback = callback;
+      msg.bodyptr  = userData;
+      msg.bodyval  = 0;
        
       if(vos_tx_mq_serialize( VOS_MQ_ID_SYS, &msg ) == VOS_STATUS_SUCCESS)
          return;
@@ -227,8 +228,9 @@ static void vos_linux_timer_callback (unsigned long data)
          
       //Serialize to the Rx thread
       sysBuildMessageHeader( SYS_MSG_ID_RX_TIMER, &msg );
-      msg.bodyptr  = callback;
-      msg.bodyval  = (v_U32_t)userData; 
+      msg.callback = callback;
+      msg.bodyptr  = userData;
+      msg.bodyval  = 0;
        
       if(vos_rx_mq_serialize( VOS_MQ_ID_SYS, &msg ) == VOS_STATUS_SUCCESS)
          return;
@@ -240,8 +242,9 @@ static void vos_linux_timer_callback (unsigned long data)
                     
       // Serialize to the MC thread
       sysBuildMessageHeader( SYS_MSG_ID_MC_TIMER, &msg );
-      msg.bodyptr  = callback;
-      msg.bodyval  = (v_U32_t)userData; 
+      msg.callback = callback;
+      msg.bodyptr  = userData;
+      msg.bodyval  = 0;
        
       if(vos_mq_post_message( VOS_MQ_ID_SYS, &msg ) == VOS_STATUS_SUCCESS)
         return;
