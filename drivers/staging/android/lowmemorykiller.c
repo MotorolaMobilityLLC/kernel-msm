@@ -372,7 +372,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		}
 		if (fatal_signal_pending(p) ||
 				((p->flags & PF_EXITING) &&
-					test_task_flag(p, TIF_MEMDIE))) {
+					test_tsk_thread_flag(p, TIF_MEMDIE))) {
 			lowmem_print(2, "skip slow dying process %d\n", p->pid);
 			task_unlock(p);
 			continue;
