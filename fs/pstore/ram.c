@@ -157,6 +157,8 @@ static ssize_t ramoops_pstore_read(u64 *id, enum pstore_type_id *type,
 	time->tv_nsec = 0;
 
 	size = persistent_ram_old_size(prz);
+	if (!size)
+		return 0;
 
 	/* ECC correction notice */
 	ecc_notice_size = persistent_ram_ecc_string(prz, NULL, 0);
