@@ -29,9 +29,21 @@
 #endif
 
 #ifdef CONFIG_PSTORE_RAM
+static char bootreason[128] = {0,};
+
+int __init lge_boot_reason(char *s)
+{
+	snprintf(bootreason, sizeof(bootreason),
+			"Boot info:\n"
+			"Last boot reason: %s\n", s);
+	return 1;
+}
+__setup("bootreason=", lge_boot_reason);
+
 static struct ramoops_platform_data lge_ramoops_data = {
 	.mem_size     = LGE_PERSISTENT_RAM_SIZE,
 	.console_size = LGE_RAM_CONSOLE_SIZE,
+	.bootinfo     = bootreason,
 };
 
 static struct platform_device lge_ramoops_dev = {
