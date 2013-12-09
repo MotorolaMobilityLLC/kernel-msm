@@ -81,6 +81,7 @@ struct ramoops_platform_data {
 	unsigned long	ftrace_size;
 	int		dump_oops;
 	struct persistent_ram_ecc_info ecc_info;
+	const char *bootinfo;
 };
 
 #endif
