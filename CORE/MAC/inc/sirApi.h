@@ -2224,7 +2224,6 @@ typedef struct sAniGenericChangeCountryCodeReq
     tANI_U16                msgLen;     // length of the entire request
     tANI_U8                 countryCode[WNI_CFG_COUNTRY_CODE_LEN];   //3 char country code
     tANI_U16                domain_index;
-
 } tAniGenericChangeCountryCodeReq, *tpAniGenericChangeCountryCodeReq;
 
 typedef struct sAniDHCPStopInd
