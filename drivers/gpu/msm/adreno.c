@@ -3537,6 +3537,9 @@ unsigned int adreno_ft_detect(struct kgsl_device *device,
 				(kgsl_readtimestamp(device, context,
 				KGSL_TIMESTAMP_RETIRED) + 1),
 				curr_global_ts + 1);
+			kgsl_context_put(context);
+			context = NULL;
+			curr_context = NULL;
 			return 1;
 		}
 
@@ -3575,6 +3578,8 @@ unsigned int adreno_ft_detect(struct kgsl_device *device,
 						curr_context->ib_gpu_time_used =
 								0;
 						kgsl_context_put(context);
+						context = NULL;
+						curr_context = NULL;
 						return 1;
 					}
 				}
