@@ -700,6 +700,10 @@ typedef struct hdd_scaninfo_s
    /* The scan pending  */
    v_U32_t mScanPending;
 
+  /* Counter for mScanPending so that the scan pending
+     error log is not printed for more than 5 times    */
+   v_U32_t mScanPendingCounter;
+
    /* Client Wait Scan Result */
    v_U32_t waitScanResult;
 
