@@ -3088,6 +3088,31 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
         }
     }
 
+    //we don't need to update CC while connected to an AP which is advertising CC already
+    if (csrIs11dSupported(pMac))
+    {
+        tANI_U32 i;
+        tCsrRoamSession *pSession;
+
+        for (i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
+        {
+            if (CSR_IS_SESSION_VALID( pMac, i ) )
+            {
+                pSession = CSR_GET_SESSION( pMac, i );
+                if (csrIsConnStateConnected(pMac, i))
+                {
+                    if (csrIsBssidMatch(pMac, (tCsrBssid *)&pMac->scan.currentCountryBssid,
+                                        &pSession->connectedProfile.bssid))
+                    {
+                        smsLog(pMac, LOGW, FL("No need for updating CC, we will"
+                                              "continue with current AP's CC"));
+                        goto end;
+                    }
+                }
+            }
+        }
+    }
+
     // Calculating 30% of current rssi is an idea for not to change
     // country code so freq.
     if (rssi_of_current_country != -128)
@@ -3114,7 +3139,7 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
                                 bssid_temp, sizeof(tSirMacAddr));
                 // Best AP should be passed to update reg domain.
                  csrLearnCountryInformation( pMac, &pBssDescription->Result.BssDescriptor,
-                              pIesLocal, eANI_BOOLEAN_FALSE );
+                              pIesLocal, eANI_BOOLEAN_TRUE );
                  break;
             }
             pEntryTemp = pNext;
@@ -3123,7 +3148,8 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
     }
 
 
-    //Tush: If we can find the current 11d info in any of the scan results, or
+end:
+    //If we can find the current 11d info in any of the scan results, or
     // a good enough AP with the 11d info from the scan results then no need to
     // get into ambiguous state
     if(pMac->scan.fAmbiguous11dInfoFound) 
