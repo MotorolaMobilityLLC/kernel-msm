@@ -540,14 +540,7 @@ static int panel_disable(struct platform_device *pdev)
 	if (need_deinit) {
 		if (mot_panel.panel_disable) {
 			mmi_panel_notify(MMI_PANEL_EVENT_PRE_DEINIT, NULL);
-			if (mfd->is_partial_mode_supported &&
-			    mfd->is_partial_mode_supported()) {
-				pr_info("%s: skipping full panel_disable\n",
-					__func__);
-				mipi_mot_panel_off(mfd);
-				mipi_mot_exit_sleep_wait();
-			} else
-				mot_panel.panel_disable(mfd);
+			mot_panel.panel_disable(mfd);
 		} else {
 			pr_err("%s: no panel support\n", __func__);
 			ret = -ENODEV;
