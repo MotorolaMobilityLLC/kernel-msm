@@ -2139,6 +2139,7 @@ eHalStatus csrScanGetResult(tpAniSirGlobal pMac, tCsrScanResultFilter *pFilter, 
     eCsrAuthType auth = eCSR_AUTH_TYPE_OPEN_SYSTEM;
     tDot11fBeaconIEs *pIes, *pNewIes;
     tANI_BOOLEAN fMatch;
+    tANI_U16 i = 0;
     
     if(phResult)
     {
@@ -2155,24 +2156,73 @@ eHalStatus csrScanGetResult(tpAniSirGlobal pMac, tCsrScanResultFilter *pFilter, 
         while ( NULL != pEntry)
         {
             pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
-            if (pBssDesc->Result.BssDescriptor.rssi > pMac->scan.inScanResultBestAPRssi)
+            fMatch = FALSE;
+
+            if (pFilter)
+            for(i = 0; i < pFilter->SSIDs.numOfSSIDs; i++)
             {
+                fMatch = csrIsSsidMatch( pMac, pFilter->SSIDs.SSIDList[i].SSID.ssId, pFilter->SSIDs.SSIDList[i].SSID.length,
+                                        pBssDesc->Result.ssId.ssId,
+                                        pBssDesc->Result.ssId.length, eANI_BOOLEAN_TRUE );
+                if (fMatch)
+                {
+                    pIes = (tDot11fBeaconIEs *)( pBssDesc->Result.pvIes );
+
+                    //At this time, pBssDescription->Result.pvIes may be NULL
+                    if( !pIes && (!HAL_STATUS_SUCCESS(csrGetParsedBssDescriptionIEs(pMac,
+                                  &pBssDesc->Result.BssDescriptor, &pIes))) )
+                    {
+                        continue;
+                    }
+
+                    smsLog(pMac, LOG1, FL("SSID Matched"));
+                    fMatch = csrIsSecurityMatch( pMac, &pFilter->authType, &pFilter->EncryptionType, &pFilter->mcEncryptionType,
+                                 &pBssDesc->Result.BssDescriptor, pIes, NULL, NULL, NULL );
+                    if ((pBssDesc->Result.pvIes == NULL) && pIes)
+                        palFreeMemory(pMac->hHdd, pIes);
+
+                    if (fMatch)
+                        smsLog(pMac, LOG1, FL(" Security Matched"));
+                }
+            }
+
+            if (fMatch && (pBssDesc->Result.BssDescriptor.rssi > pMac->scan.inScanResultBestAPRssi))
+            {
+                smsLog(pMac, LOG1, FL("Best AP Rssi changed from %d to %d"),
+                                       pMac->scan.inScanResultBestAPRssi,
+                                       pBssDesc->Result.BssDescriptor.rssi);
                 pMac->scan.inScanResultBestAPRssi = pBssDesc->Result.BssDescriptor.rssi;
             }
             pEntry = csrLLNext(&pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK);
         }
 
-        /* Modify Rssi category based on best AP Rssi */
-        csrAssignRssiForCategory(pMac, pMac->scan.inScanResultBestAPRssi, pMac->roam.configParam.bCatRssiOffset);
-        pEntry = csrLLPeekHead(&pMac->scan.scanResultList, LL_ACCESS_NOLOCK);
-        while ( NULL != pEntry)
+        if ( -128 != pMac->scan.inScanResultBestAPRssi)
         {
-            pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+            smsLog(pMac, LOG1, FL("Best AP Rssi is %d"), pMac->scan.inScanResultBestAPRssi);
+            /* Modify Rssi category based on best AP Rssi */
+            csrAssignRssiForCategory(pMac, pMac->scan.inScanResultBestAPRssi, pMac->roam.configParam.bCatRssiOffset);
+            pEntry = csrLLPeekHead(&pMac->scan.scanResultList, LL_ACCESS_NOLOCK);
+            while ( NULL != pEntry)
+            {
+                pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
 
-            /* re-assign preference value based on modified rssi bucket */
-            pBssDesc->preferValue = csrGetBssPreferValue(pMac, (int)pBssDesc->Result.BssDescriptor.rssi);
+                /* re-assign preference value based on modified rssi bucket */
+                pBssDesc->preferValue = csrGetBssPreferValue(pMac, (int)pBssDesc->Result.BssDescriptor.rssi);
 
-            pEntry = csrLLNext(&pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK);
+                smsLog(pMac, LOG2, FL("BSSID(%02X:%02X:%02X:%02X:%02X:%02X) Rssi(%d) Chnl(%d) PrefVal(%lu) SSID=%.*s"),
+                 pBssDesc->Result.BssDescriptor.bssId[0],
+                 pBssDesc->Result.BssDescriptor.bssId[1],
+                 pBssDesc->Result.BssDescriptor.bssId[2],
+                 pBssDesc->Result.BssDescriptor.bssId[3],
+                 pBssDesc->Result.BssDescriptor.bssId[4],
+                 pBssDesc->Result.BssDescriptor.bssId[5],
+                 pBssDesc->Result.BssDescriptor.rssi,
+                 pBssDesc->Result.BssDescriptor.channelId,
+                 pBssDesc->preferValue,
+                 pBssDesc->Result.ssId.length, pBssDesc->Result.ssId.ssId);
+
+                pEntry = csrLLNext(&pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK);
+            }
         }
 
         csrLLUnlock(&pMac->scan.scanResultList);
