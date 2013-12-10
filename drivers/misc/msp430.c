@@ -200,6 +200,7 @@
 
 #define AOD_QP_DRAW_MAX_BUFFER_ID	63
 #define AOD_QP_DRAW_NO_OVERRIDE		0xFFFF
+#define AOD_QP_TIMEOUT			2*HZ
 
 #define MSP_MAX_GENERIC_DATA		512
 
@@ -3817,12 +3818,19 @@ EXIT:
 static int msp430_qw_execute(void *data)
 {
 	struct msp430_data *ps_msp430 = (struct msp430_data *)data;
+	int ret = 1;
 
 	dev_dbg(&ps_msp430->client->dev, "msp430_qw_execute\n");
 
-	wait_for_completion(&ps_msp430->quickpeek_done);
+	if(!wait_for_completion_timeout(&ps_msp430->quickpeek_done,
+							AOD_QP_TIMEOUT)) {
+		dev_err(&ps_msp430->client->dev,
+			"timed out waiting for complete message, reset msp430\n");
+		msp430_reset_and_init();
+		ret = 0;
+	}
 
-	return 1;
+	return ret;
 }
 
 static struct quickwakeup_ops msp430_quickwakeup_ops = {
