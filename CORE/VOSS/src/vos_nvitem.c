@@ -68,6 +68,9 @@
 #include "wlan_hdd_main.h"
 #include <net/cfg80211.h>
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0))
+#define IEEE80211_CHAN_NO_80MHZ		1<<7
+#endif
 
 #ifdef CONFIG_ENABLE_LINUX_REG
 
@@ -3100,7 +3103,7 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     v_BOOL_t isVHT80Allowed;
 
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-               ("cfg80211 reg notifier callback for country"));
+               "cfg80211 reg notifier callback for country for initiator %d", request->initiator);
 
     if (pHddCtx->isLoadUnloadInProgress)
     {
@@ -3176,6 +3179,39 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
         sme_GenericChangeCountryCode(pHddCtx->hHal, country_code,
                                      temp_reg_domain);
 
+    }
+    else if (request->initiator ==  NL80211_REGDOM_SET_BY_CORE)
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                   "CC from kernel %c %c", request->alpha2[0], request->alpha2[1]);
+
+        /* now pass the country information to sme to make sure driver is in
+           sync in case we are back to world mode*/
+        if (request->alpha2[0] == '0' && request->alpha2[1] == '0')
+        {
+           nBandCapability = pHddCtx->cfg_ini->nBandCapability;
+           isVHT80Allowed = pHddCtx->isVHT80Allowed;
+           if (create_linux_regulatory_entry(wiphy, request,
+                                             pHddCtx->cfg_ini->nBandCapability) == 0)
+           {
+               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                         (" regulatory entry created"));
+
+           }
+           if (pHddCtx->isVHT80Allowed != isVHT80Allowed)
+           {
+              hdd_checkandupdate_phymode( pHddCtx);
+           }
+
+           cur_reg_domain = REGDOMAIN_WORLD;
+           linux_reg_cc[0] = country_code[0];
+           linux_reg_cc[1] = country_code[1];
+
+           country_code[0] = request->alpha2[0];
+           country_code[1] = request->alpha2[1];
+           sme_GenericChangeCountryCode(pHddCtx->hHal, country_code,
+                                        REGDOMAIN_COUNT);
+        }
     }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
