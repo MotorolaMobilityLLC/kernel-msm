@@ -7063,10 +7063,12 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
     csrResetCountryInformation(pMac, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_TRUE);
     if (VOS_TRUE == is11dCountry)
     {
-        pMac->scan.curScanType = eSIR_ACTIVE_SCAN;
         pMac->scan.f11dInfoApplied = eANI_BOOLEAN_TRUE;
         pMac->scan.f11dInfoReset = eANI_BOOLEAN_FALSE;
     }
+
+    // Do active scans after the country is set by User hints or Country IE
+    pMac->scan.curScanType = eSIR_ACTIVE_SCAN;
 
     smsLog(pMac, LOG1, FL(" returned"));
     return eHAL_STATUS_SUCCESS;
