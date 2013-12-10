@@ -7098,8 +7098,10 @@ eHalStatus sme_HandleChangeCountryCodeByCore(tpAniSirGlobal pMac, tAniGenericCha
     //driver but not in kernel database
     if (('0' == pMsg->countryCode[0]) && ('0' == pMsg->countryCode[1]))
     {
-        smsLog( pMac, LOGW, FL("Setting countryCode11d to world CC"));
+        smsLog( pMac, LOGW, FL("Setting countryCode11d & countryCodeCurrent to world CC"));
         palCopyMemory(pMac->hHdd, pMac->scan.countryCode11d, pMsg->countryCode,
+                      WNI_CFG_COUNTRY_CODE_LEN);
+        palCopyMemory(pMac->hHdd, pMac->scan.countryCodeCurrent, pMsg->countryCode,
                       WNI_CFG_COUNTRY_CODE_LEN);
     }
 
