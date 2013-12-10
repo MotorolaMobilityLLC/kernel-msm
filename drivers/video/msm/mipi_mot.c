@@ -405,21 +405,29 @@ static void panel_enable_from_partial(struct msm_fb_data_type *mfd)
 {
 	u8 pwr_mode = 0;
 	int force_full_enable = 0;
-	unsigned int panel_state, actual_panel_state = 0;
+	unsigned int panel_state = 0;
 
-	panel_state = mfd->resume_cfg.panel_state;
-
-	if (panel_state == MSMFB_RESUME_CFG_STATE_INVALID) {
-		pr_warn("%s: userspace requests full reinitialization\n",
-			__func__);
-		force_full_enable = 1;
-	} else if (mipi_mot_get_pwr_mode(mfd, &pwr_mode) <= 0) {
+	if (mipi_mot_get_pwr_mode(mfd, &pwr_mode) <= 0) {
 		pr_err("%s: failed to read pwr mode\n", __func__);
 		force_full_enable = 1;
 	} else {
-		actual_panel_state = detect_panel_state(pwr_mode);
-		if (actual_panel_state == MSMFB_RESUME_CFG_STATE_INVALID) {
+		panel_state = detect_panel_state(pwr_mode);
+		if (panel_state == MSMFB_RESUME_CFG_STATE_INVALID) {
 			pr_warn("%s: detected invalid panel state\n", __func__);
+			force_full_enable = 1;
+		}
+	}
+
+	if (!force_full_enable && mfd->quickdraw_in_progress) {
+		if (mfd->quickdraw_panel_state ==
+			MSMFB_RESUME_CFG_STATE_INVALID) {
+			pr_warn("%s: quickdraw requests full reinitialization\n",
+				__func__);
+			force_full_enable = 1;
+		} else if (mfd->quickdraw_panel_state != panel_state) {
+			pr_warn("%s: panel state is %d while %d expected\n",
+				__func__, panel_state,
+				mfd->quickdraw_panel_state);
 			force_full_enable = 1;
 		}
 	}
@@ -431,12 +439,6 @@ static void panel_enable_from_partial(struct msm_fb_data_type *mfd)
 			__func__);
 		panel_full_reinit(mfd);
 		return;
-	}
-
-	if (actual_panel_state != panel_state) {
-		pr_warn("%s: panel state is %d while %d expected\n",
-			__func__, actual_panel_state, panel_state);
-		mfd->resume_cfg.panel_state = panel_state = actual_panel_state;
 	}
 
 	if (panel_state == MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN)
@@ -471,9 +473,10 @@ static int panel_enable(struct platform_device *pdev)
 		pr_err("%s: no panel support\n", __func__);
 		ret = -ENODEV;
 		goto err;
-	} else if (mfd->resume_cfg.partial) {
+	} else if (mfd->is_partial_mode_supported &&
+		   mfd->is_partial_mode_supported()) {
 		panel_enable_from_partial(mfd);
-	} else if (!mfd->resume_cfg.partial)
+	} else
 		mot_panel.panel_enable(mfd);
 
 	if (mot_panel.panel_enable_wa)
@@ -537,7 +540,8 @@ static int panel_disable(struct platform_device *pdev)
 	if (need_deinit) {
 		if (mot_panel.panel_disable) {
 			mmi_panel_notify(MMI_PANEL_EVENT_PRE_DEINIT, NULL);
-			if (mfd->suspend_cfg.partial) {
+			if (mfd->is_partial_mode_supported &&
+			    mfd->is_partial_mode_supported()) {
 				pr_info("%s: skipping full panel_disable\n",
 					__func__);
 				mipi_mot_panel_off(mfd);
@@ -801,18 +805,6 @@ int mipi_mot_device_register(struct msm_panel_info *pinfo,
 		mot_panel_data.set_backlight_curve =
 						mot_panel.set_backlight_curve;
 
-	if (mot_panel.hide_img)
-		mot_panel_data.hide_img = mot_panel.hide_img;
-
-	if (mot_panel.prepare_for_resume)
-		mot_panel_data.prepare_for_resume =
-			mot_panel.prepare_for_resume;
-
-	if (mot_panel.prepare_for_suspend)
-		mot_panel_data.prepare_for_suspend =
-			mot_panel.prepare_for_suspend;
-
-
 #ifdef MIPI_MOT_PANEL_PLATF_BRINGUP
 	mot_panel.esd_enabled = false;
 #endif
@@ -882,7 +874,6 @@ static int __init mipi_mot_lcd_init(void)
 
 	init_timer(&mot_panel.exit_sleep_panel_on_timer);
 
-	mot_panel.hide_img = mipi_mot_hide_img;
 	moto_panel_debug_init();
 
 	return platform_driver_register(&this_driver);

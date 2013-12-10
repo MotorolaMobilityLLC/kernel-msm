@@ -190,7 +190,8 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	mipi_dsi_unprepare_ahb_clocks();
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save) {
-		if (mfd->suspend_cfg.partial)
+		if (mfd->is_partial_mode_supported &&
+		    mfd->is_partial_mode_supported())
 			mipi_dsi_pdata->panel_power_save(
 				MSM_DISP_POWER_OFF_PARTIAL);
 		else

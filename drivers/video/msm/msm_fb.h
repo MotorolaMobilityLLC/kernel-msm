@@ -112,8 +112,6 @@ struct msm_fb_data_type {
 	struct hrtimer dma_hrtimer;
 
 	boolean panel_power_on;
-	struct msmfb_suspend_cfg suspend_cfg;
-	struct msmfb_resume_cfg resume_cfg;
 	struct work_struct dma_update_worker;
 	struct semaphore sem;
 
@@ -232,6 +230,7 @@ struct msm_fb_data_type {
 	int (*quickdraw_fb_suspend)(struct msm_fb_data_type *mfd);
 	boolean quickdraw_in_progress;
 	boolean quickdraw_esd_recovered;
+	uint32 quickdraw_panel_state;
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
