@@ -3111,40 +3111,40 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
                 }
             }
         }
-    }
 
-    // Calculating 30% of current rssi is an idea for not to change
-    // country code so freq.
-    if (rssi_of_current_country != -128)
-    {
-        rssi_of_current_country = rssi_of_current_country
-                                     - THIRTY_PERCENT(rssi_of_current_country);
-    }
-
-    if ((rssi_of_current_country <= cand_Bss_rssi )  || rssi_of_current_country  == -128)
-    {
-        csrLLLock(&pMac->scan.scanResultList);
-        pEntryTemp = csrLLPeekHead(&pMac->scan.scanResultList, LL_ACCESS_NOLOCK);
-        while ( NULL != pEntryTemp)
+        // Calculating 30% of current rssi is an idea for not to change
+        // country code so freq.
+        if (rssi_of_current_country != -128)
         {
-            pNext = csrLLNext(&pMac->scan.scanResultList, pEntryTemp,
-                                          LL_ACCESS_NOLOCK);
-            pBssDescription = GET_BASE_ADDR( pEntryTemp, tCsrScanResult, Link );
-            pIesLocal = (tDot11fBeaconIEs *)( pBssDescription->Result.pvIes );
-            // Need to traverse whole scan list to get description for best 11d AP.
-            if (csrIsMacAddressEqual(pMac, (tCsrBssid *)&bssid_temp,
-                         (tCsrBssid *) pBssDescription->Result.BssDescriptor.bssId))
-            {
-                palCopyMemory(pMac->hHdd, pMac->scan.currentCountryBssid,
-                                bssid_temp, sizeof(tSirMacAddr));
-                // Best AP should be passed to update reg domain.
-                 csrLearnCountryInformation( pMac, &pBssDescription->Result.BssDescriptor,
-                              pIesLocal, eANI_BOOLEAN_TRUE );
-                 break;
-            }
-            pEntryTemp = pNext;
+            rssi_of_current_country = rssi_of_current_country
+                                         - THIRTY_PERCENT(rssi_of_current_country);
         }
-        csrLLUnlock(&pMac->scan.scanResultList);
+
+        if ((rssi_of_current_country <= cand_Bss_rssi )  || rssi_of_current_country  == -128)
+        {
+            csrLLLock(&pMac->scan.scanResultList);
+            pEntryTemp = csrLLPeekHead(&pMac->scan.scanResultList, LL_ACCESS_NOLOCK);
+            while ( NULL != pEntryTemp)
+            {
+                pNext = csrLLNext(&pMac->scan.scanResultList, pEntryTemp,
+                                              LL_ACCESS_NOLOCK);
+                pBssDescription = GET_BASE_ADDR( pEntryTemp, tCsrScanResult, Link );
+                pIesLocal = (tDot11fBeaconIEs *)( pBssDescription->Result.pvIes );
+                // Need to traverse whole scan list to get description for best 11d AP.
+                if (csrIsMacAddressEqual(pMac, (tCsrBssid *)&bssid_temp,
+                             (tCsrBssid *) pBssDescription->Result.BssDescriptor.bssId))
+                {
+                    palCopyMemory(pMac->hHdd, pMac->scan.currentCountryBssid,
+                                    bssid_temp, sizeof(tSirMacAddr));
+                    // Best AP should be passed to update reg domain.
+                    csrLearnCountryInformation( pMac, &pBssDescription->Result.BssDescriptor,
+                                 pIesLocal, eANI_BOOLEAN_TRUE );
+                    break;
+                }
+                pEntryTemp = pNext;
+            }
+            csrLLUnlock(&pMac->scan.scanResultList);
+        }
     }
 
 
