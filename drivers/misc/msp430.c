@@ -1323,7 +1323,8 @@ static void msp430_quickpeek_reset_locked(struct msp430_data *ps_msp430)
 			ret = msp430_quickdraw_ops->cleanup(
 				msp430_quickdraw_ops->data);
 			if (ret)
-				pr_err("%s: Failed to cleanup (ret: %d)\n",
+				dev_err(&ps_msp430->client->dev,
+					"%s: Failed to cleanup (ret: %d)\n",
 					__func__, ret);
 		}
 
@@ -1353,7 +1354,8 @@ static int msp430_quickpeek_status_ack(struct msp430_data *ps_msp430,
 		ret = -EIO;
 	}
 
-	pr_debug("%s: message: %d | ack_return: %d |  buffer_id: %d | ret: %d\n",
+	dev_dbg(&ps_msp430->client->dev,
+		"%s: message: %d | ack_return: %d |  buffer_id: %d | ret: %d\n",
 		__func__, qp_message ? qp_message->message : 0, ack_return,
 		qp_message ? qp_message->buffer_id : 0, ret);
 
@@ -1391,7 +1393,8 @@ static void msp430_quickpeek_work_func(struct work_struct *work)
 		switch (qp_message->message) {
 		case AOD_WAKEUP_REASON_QP_PREPARE:
 			if (ps_msp430->quickpeek_state != QP_AWAKE) {
-				pr_err("%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
+				dev_err(&ps_msp430->client->dev,
+					"%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
 					__func__, ps_msp430->quickpeek_state,
 					qp_message->message);
 				ack_return = AOD_QP_ACK_BAD_MSG_ORDER;
@@ -1401,7 +1404,8 @@ static void msp430_quickpeek_work_func(struct work_struct *work)
 				msp430_quickdraw_ops->data,
 				qp_message->panel_state);
 			if (ret) {
-				pr_err("%s: Prepare Error: %d\n", __func__,
+				dev_err(&ps_msp430->client->dev,
+					"%s: Prepare Error: %d\n", __func__,
 					ret);
 				ack_return = AOD_QP_ACK_INVALID;
 			} else
@@ -1409,14 +1413,16 @@ static void msp430_quickpeek_work_func(struct work_struct *work)
 			break;
 		case AOD_WAKEUP_REASON_QP_DRAW:
 			if (!(ps_msp430->quickpeek_state == QP_PREPARED)) {
-				pr_err("%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
+				dev_err(&ps_msp430->client->dev,
+					"%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
 					__func__, ps_msp430->quickpeek_state,
 					qp_message->message);
 				ack_return = AOD_QP_ACK_BAD_MSG_ORDER;
 				break;
 			}
 			if (qp_message->buffer_id > AOD_QP_DRAW_MAX_BUFFER_ID) {
-				pr_err("%s: ILLEGAL buffer_id: %d\n", __func__,
+				dev_err(&ps_msp430->client->dev,
+					"%s: ILLEGAL buffer_id: %d\n", __func__,
 					qp_message->buffer_id);
 				ack_return = AOD_QP_ACK_INVALID;
 				break;
@@ -1429,14 +1435,16 @@ static void msp430_quickpeek_work_func(struct work_struct *work)
 				msp430_quickdraw_ops->data,
 				qp_message->buffer_id, x, y);
 			if (ret) {
-				pr_err("%s: Failed to execute (ret: %d)\n",
+				dev_err(&ps_msp430->client->dev,
+					"%s: Failed to execute (ret: %d)\n",
 					__func__, ret);
 				ack_return = AOD_QP_ACK_INVALID;
 			}
 			break;
 		case AOD_WAKEUP_REASON_QP_ERASE:
 			if (!(ps_msp430->quickpeek_state == QP_PREPARED)) {
-				pr_err("%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
+				dev_err(&ps_msp430->client->dev,
+					"%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
 					__func__, ps_msp430->quickpeek_state,
 					qp_message->message);
 				ack_return = AOD_QP_ACK_BAD_MSG_ORDER;
@@ -1444,7 +1452,8 @@ static void msp430_quickpeek_work_func(struct work_struct *work)
 			}
 			if (qp_message->x2 <= qp_message->x1 ||
 			    qp_message->y2 <= qp_message->y1) {
-				pr_err("%s: ILLEGAL coordinates\n", __func__);
+				dev_err(&ps_msp430->client->dev,
+					"%s: ILLEGAL coordinates\n", __func__);
 				ack_return = AOD_QP_ACK_INVALID;
 				break;
 			}
@@ -1453,14 +1462,16 @@ static void msp430_quickpeek_work_func(struct work_struct *work)
 				qp_message->x1, qp_message->y1,
 				qp_message->x2, qp_message->y2);
 			if (ret) {
-				pr_err("%s: Failed to erase (ret: %d)\n",
+				dev_err(&ps_msp430->client->dev,
+					"%s: Failed to erase (ret: %d)\n",
 					__func__, ret);
 				ack_return = AOD_QP_ACK_INVALID;
 			}
 			break;
 		case AOD_WAKEUP_REASON_QP_COMPLETE:
 			if (!(ps_msp430->quickpeek_state == QP_PREPARED)) {
-				pr_err("%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
+				dev_err(&ps_msp430->client->dev,
+					"%s: ILLEGAL STATE TRANSITION (%d during %d)\n",
 					__func__, ps_msp430->quickpeek_state,
 					qp_message->message);
 				ack_return = AOD_QP_ACK_BAD_MSG_ORDER;
@@ -1470,13 +1481,15 @@ static void msp430_quickpeek_work_func(struct work_struct *work)
 			ret = msp430_quickdraw_ops->cleanup(
 				msp430_quickdraw_ops->data);
 			if (ret) {
-				pr_err("%s: Failed to cleanup (ret: %d)\n",
+				dev_err(&ps_msp430->client->dev,
+					"%s: Failed to cleanup (ret: %d)\n",
 					__func__, ret);
 				ack_return = AOD_QP_ACK_INVALID;
 			}
 			break;
 		default:
-			pr_err("%s: Unknown quickpeek message: %d\n", __func__,
+			dev_err(&ps_msp430->client->dev,
+				"%s: Unknown quickpeek message: %d\n", __func__,
 				qp_message->message);
 			break;
 		}
@@ -1776,7 +1789,8 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 
 		qp_message = kzalloc(sizeof(*qp_message), GFP_KERNEL);
 		if (!qp_message) {
-			pr_err("%s: kzalloc failed!\n", __func__);
+			dev_err(&ps_msp430->client->dev,
+				"%s: kzalloc failed!\n", __func__);
 			msp430_quickpeek_status_ack(ps_msp430, NULL,
 				AOD_QP_ACK_INVALID);
 			goto EXIT;
