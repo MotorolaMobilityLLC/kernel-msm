@@ -300,7 +300,6 @@ struct msp430_data {
 	int msp430_ms_data_buffer_head;
 	int msp430_ms_data_buffer_tail;
 	wait_queue_head_t msp430_ms_data_wq;
-	bool ap_msp_handoff_enable;
 	bool ap_msp_handoff_gpio_ctrl;
 
 	struct regulator *vio_regulator;
@@ -2660,8 +2659,6 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		if (err < 0)
 			dev_err(&msp430_misc_data->client->dev,
 				"unable to write control reg %d\n", err);
-		else
-			ps_msp430->ap_msp_handoff_enable = true;
 
 		break;
 	case MSP430_IOCTL_GET_AOD_INSTRUMENTATION_REG:
@@ -3343,8 +3340,6 @@ static int msp430_probe(struct i2c_client *client,
 
 	ps_msp430->client = client;
 	ps_msp430->mode = UNINITIALIZED;
-	ps_msp430->ap_msp_handoff_enable = false;
-
 
 	/* Set to passive mode by default */
 	g_nonwake_sensor_state = 0;
@@ -3659,7 +3654,7 @@ static int msp430_suspend(struct i2c_client *client, pm_message_t mesg)
 
 	mutex_lock(&ps_msp430->lock);
 
-	if (ps_msp430->mode == NORMALMODE && ps_msp430->ap_msp_handoff_enable) {
+	if (ps_msp430->mode == NORMALMODE) {
 		if (ps_msp430->ap_msp_handoff_gpio_ctrl) {
 			/* Legacy GPIO Usage */
 			gpio_set_value(msp_req, 1);
