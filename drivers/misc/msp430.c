@@ -432,6 +432,9 @@ static const unsigned short crc_table[256] = {
 
 struct msp430_data *msp430_misc_data;
 
+static int msp430_ms_data_buffer_write(struct msp430_data *ps_msp430,
+	unsigned char type, signed short data1, signed short data2,
+	signed short data3, signed short data4);
 static struct quickwakeup_ops msp430_quickwakeup_ops;
 static struct msp430_quickdraw_ops *msp430_quickdraw_ops;
 static void msp430_quickpeek_reset_locked(struct msp430_data *ps_msp430);
@@ -815,6 +818,10 @@ static int msp430_reset_and_init(void)
 	msp430_i2c_write_read_no_reset(msp430_misc_data, rst_cmdbuff, 1, 2);
 
 	kfree(rst_cmdbuff);
+
+	/* sending reset to slpc hal */
+	msp430_ms_data_buffer_write(msp430_misc_data, DT_RESET,
+		0, 0, 0, 0);
 
 	mutex_locked = mutex_trylock(&msp430_misc_data->lock);
 	msp430_quickpeek_reset_locked(msp430_misc_data);
