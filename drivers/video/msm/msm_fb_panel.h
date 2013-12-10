@@ -199,11 +199,6 @@ struct msm_fb_panel_data {
 	int (*get_backlight_on_status) (void);
 	void (*set_backlight_curve) (struct msm_fb_data_type *);
 
-	int (*hide_img)(struct msm_fb_data_type *, int hide);
-	int (*prepare_for_suspend) (struct msm_fb_data_type *, int partial);
-	int (*prepare_for_resume) (struct msm_fb_data_type *, int partial,
-		int panel_state, int gamma);
-
 	/* function entry chain */
 	int (*on) (struct platform_device *pdev);
 	int (*off) (struct platform_device *pdev);

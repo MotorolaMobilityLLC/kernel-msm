@@ -412,9 +412,7 @@ static int msm_fb_quickdraw_prepare(void *data, unsigned char panel_state)
 
 	pr_debug("%s+\n", __func__);
 
-	mfd->resume_cfg.partial = 1;
-	mfd->resume_cfg.keep_hidden = 0;
-	mfd->resume_cfg.panel_state = panel_state;
+	mfd->quickdraw_panel_state = panel_state;
 	mfd->quickdraw_in_progress = 1;
 	mfd->quickdraw_esd_recovered = 0;
 
@@ -598,8 +596,6 @@ static int msm_fb_quickdraw_cleanup(void *data)
 		mfd->panel_info.yres);
 
 	mot_panel->set_full_window(mfd);
-
-	mfd->suspend_cfg.partial = 1;
 
 	mfd->quickdraw_fb_suspend(mfd);
 	mfd->quickdraw_mdp_suspend();
