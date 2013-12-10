@@ -24,7 +24,6 @@
 #include <linux/wakelock.h>
 #include <linux/platform_device.h>
 #include <linux/sched.h>
-#include <linux/pm_qos.h>
 
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
@@ -99,19 +98,10 @@ static struct smd_config smd_configs[] = {
 
 static struct delayed_work loopback_work;
 static struct smd_tty_info smd_tty[MAX_SMD_TTYS];
-static struct pm_qos_request smd_tty_qos_req;
-static struct work_struct pm_qos_set_work;
 
 static int is_in_reset(struct smd_tty_info *info)
 {
 	return info->in_reset;
-}
-
-static void pm_qos_set_worker(struct work_struct *work)
-{
-	/* keep the request for 500ms */
-	pm_qos_update_request_timeout(&smd_tty_qos_req,
-			0, jiffies_to_usecs(HZ / 2));
 }
 
 static void buf_req_retry(unsigned long param)
@@ -174,9 +164,6 @@ static void smd_tty_read(unsigned long param)
 			printk(KERN_ERR "OOPS - smd_tty_buffer mismatch?!");
 		}
 
-#ifdef CONFIG_HAS_WAKELOCK
-		pr_debug("%s: lock wakelock %s\n", __func__, info->wake_lock.name);
-#endif
 		wake_lock_timeout(&info->wake_lock, HZ / 2);
 		tty_flip_buffer_push(tty);
 	}
@@ -206,14 +193,8 @@ static void smd_tty_notify(void *priv, unsigned event)
 		 */
 		if (smd_write_avail(info->ch)) {
 			smd_disable_read_intr(info->ch);
-			if (info->tty) {
-				unsigned int n = info->tty->index;
+			if (info->tty)
 				wake_up_interruptible(&info->tty->write_wait);
-
-				/* use pm_qos for BT performance */
-				if (n == BT_ACL_IDX || n == BT_CMD_IDX)
-					schedule_work(&pm_qos_set_work);
-			}
 		}
 		tasklet_hi_schedule(&info->tty_tsklt);
 		break;
@@ -617,10 +598,7 @@ static int __init smd_tty_init(void)
 		}
 		smd_tty[idx].smd = &smd_configs[n];
 	}
-	INIT_WORK(&pm_qos_set_work, pm_qos_set_worker);
 	INIT_DELAYED_WORK(&loopback_work, loopback_probe_worker);
-	pm_qos_add_request(&smd_tty_qos_req, PM_QOS_CPU_DMA_LATENCY,
-			PM_QOS_DEFAULT_VALUE);
 	return 0;
 
 out:
