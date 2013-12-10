@@ -3508,15 +3508,9 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
                 &pAddBssParams->staContext.assocId, &psessionEntry->dph.dphHashTable);
         if (pStaDs == NULL)
         {
-            PELOGE(limLog(pMac, LOGE, FL("Couldn't get assoc id for"
-                       "MAC ADDR: %02x:%02x:%02x:%02x:%02x:%02x"),
-                       pAddBssParams->staContext.staMac[0],
-                       pAddBssParams->staContext.staMac[1],
-                       pAddBssParams->staContext.staMac[2],
-                       pAddBssParams->staContext.staMac[3],
-                       pAddBssParams->staContext.staMac[4],
-                       pAddBssParams->staContext.staMac[5]
-                       );)
+            PELOGE(limLog(pMac, LOGE, FL("Couldn't get assoc id for "
+                       "MAC ADDR: " MAC_ADDRESS_STR),
+                       MAC_ADDR_ARRAY(pAddBssParams->staContext.staMac));)
         }
         pAddBssParams->staContext.uAPSD = 0;
         pAddBssParams->staContext.maxSPLen = 0;

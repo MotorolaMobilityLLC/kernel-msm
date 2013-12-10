@@ -867,13 +867,8 @@ tSirRetStatus limFTFillRICBlockAckInfo(tpAniSirGlobal pMac, tANI_U8 *ric_ies, tA
     if( NULL == pSta )
     {
         PELOGE(limLog( pMac, LOGE,
-            FL( "STA context not found for saved session's BSSID %02x:%02x:%02x:%02x:%02x:%02x" ),
-            pMac->ft.ftPEContext.pFTPreAuthReq->currbssId[0],
-            pMac->ft.ftPEContext.pFTPreAuthReq->currbssId[1],
-            pMac->ft.ftPEContext.pFTPreAuthReq->currbssId[2],
-            pMac->ft.ftPEContext.pFTPreAuthReq->currbssId[3],
-            pMac->ft.ftPEContext.pFTPreAuthReq->currbssId[4],
-            pMac->ft.ftPEContext.pFTPreAuthReq->currbssId[5] );)
+            FL( "STA context not found for saved session's BSSID " MAC_ADDRESS_STR ),
+            MAC_ADDR_ARRAY(pMac->ft.ftPEContext.pFTPreAuthReq->currbssId));)
         return eSIR_FAILURE;
     }
 

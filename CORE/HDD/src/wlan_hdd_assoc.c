@@ -645,13 +645,8 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
              }
         }
 #endif
-        pr_info("wlan: connected to %02x:%02x:%02x:%02x:%02x:%02x\n",
-                      wrqu.ap_addr.sa_data[0],
-                      wrqu.ap_addr.sa_data[1],
-                      wrqu.ap_addr.sa_data[2],
-                      wrqu.ap_addr.sa_data[3],
-                      wrqu.ap_addr.sa_data[4],
-                      wrqu.ap_addr.sa_data[5]);
+        pr_info("wlan: connected to " MAC_ADDRESS_STR"\n",
+                MAC_ADDR_ARRAY(wrqu.ap_addr.sa_data));
         hdd_SendUpdateBeaconIEsEvent(pAdapter, pCsrRoamInfo);
 
         /* Send IWEVASSOCRESPIE Event if WLAN_FEATURE_CIQ_METRICS is Enabled Or
@@ -675,13 +670,8 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
     {
         memcpy(wrqu.ap_addr.sa_data, pHddStaCtx->conn_info.bssId, ETH_ALEN);
         type = WLAN_STA_ASSOC_DONE_IND;
-        pr_info("wlan: new IBSS connection to %02x:%02x:%02x:%02x:%02x:%02x",
-                      pHddStaCtx->conn_info.bssId[0],
-                      pHddStaCtx->conn_info.bssId[1],
-                      pHddStaCtx->conn_info.bssId[2],
-                      pHddStaCtx->conn_info.bssId[3],
-                      pHddStaCtx->conn_info.bssId[4],
-                      pHddStaCtx->conn_info.bssId[5]);
+        pr_info("wlan: new IBSS connection to " MAC_ADDRESS_STR"\n",
+                MAC_ADDR_ARRAY(pHddStaCtx->conn_info.bssId));
     }
     else /* Not Associated */
     {
@@ -1429,17 +1419,15 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
         hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
         if (pRoamInfo)
-            pr_info("wlan: connection failed with %02x:%02x:%02x:%02x:%02x:%02x"
-                " reason:%d and Status:%d\n", pRoamInfo->bssid[0],
-                pRoamInfo->bssid[1], pRoamInfo->bssid[2],
-                pRoamInfo->bssid[3], pRoamInfo->bssid[4],
-                pRoamInfo->bssid[5], roamResult, roamStatus);
+            pr_info("wlan: connection failed with " MAC_ADDRESS_STR
+                    " reason:%d and Status:%d\n",
+                    MAC_ADDR_ARRAY(pRoamInfo->bssid),
+                    roamResult, roamStatus);
         else
-            pr_info("wlan: connection failed with %02x:%02x:%02x:%02x:%02x:%02x"
-                " reason:%d and Status:%d\n", pWextState->req_bssId[0],
-                pWextState->req_bssId[1], pWextState->req_bssId[2],
-                pWextState->req_bssId[3], pWextState->req_bssId[4],
-                pWextState->req_bssId[5], roamResult, roamStatus);
+            pr_info("wlan: connection failed with " MAC_ADDRESS_STR
+                    " reason:%d and Status:%d\n",
+                    MAC_ADDR_ARRAY(pWextState->req_bssId),
+                    roamResult, roamStatus);
 
         /*Handle all failure conditions*/
         hdd_connSetConnectionState( pHddStaCtx, eConnectionState_NotConnected);
@@ -1875,13 +1863,8 @@ static eHalStatus hdd_RoamMicErrorIndicationHandler( hdd_adapter_t *pAdapter, tC
       memset(&msg, '\0', sizeof(msg));
       msg.src_addr.sa_family = ARPHRD_ETHER;
       memcpy(msg.src_addr.sa_data, pRoamInfo->u.pMICFailureInfo->taMacAddr, sizeof(pRoamInfo->u.pMICFailureInfo->taMacAddr));
-      hddLog(LOG1, "MIC MAC %02x:%02x:%02x:%02x:%02x:%02x",
-                                    msg.src_addr.sa_data[0],
-                                    msg.src_addr.sa_data[1],
-                                    msg.src_addr.sa_data[2],
-                                    msg.src_addr.sa_data[3],
-                                    msg.src_addr.sa_data[4],
-                                    msg.src_addr.sa_data[5]);
+      hddLog(LOG1, "MIC MAC " MAC_ADDRESS_STR,
+             MAC_ADDR_ARRAY(msg.src_addr.sa_data));
 
       if(pRoamInfo->u.pMICFailureInfo->multicast == eSIR_TRUE)
          msg.flags = IW_MICFAILURE_GROUP;
@@ -2182,21 +2165,20 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
 
 #ifdef WLAN_FEATURE_TDLS_DEBUG
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-    ("hdd_tdlsStatusUpdate: %s staIdx %d %02x:%02x:%02x:%02x:%02x:%02x \n"),
-      roamResult == eCSR_ROAM_RESULT_ADD_TDLS_PEER ? "ADD_TDLS_PEER" :
-      roamResult == eCSR_ROAM_RESULT_DELETE_TDLS_PEER ? "DEL_TDLS_PEER" :
-      roamResult == eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND ? "DEL_TDLS_PEER_IND" :
-      roamResult == eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND? "DEL_ALL_TDLS_PEER_IND" :
-      roamResult == eCSR_ROAM_RESULT_UPDATE_TDLS_PEER? "UPDATE_TDLS_PEER" :
-      roamResult == eCSR_ROAM_RESULT_LINK_ESTABLISH_REQ_RSP? "LINK_ESTABLISH_REQ_RSP" :
-      "UNKNOWN",
-       pRoamInfo->staId,
-       pRoamInfo->peerMac[0],
-       pRoamInfo->peerMac[1],
-       pRoamInfo->peerMac[2],
-       pRoamInfo->peerMac[3],
-       pRoamInfo->peerMac[4],
-       pRoamInfo->peerMac[5]) ;
+              ("hdd_tdlsStatusUpdate: %s staIdx %d " MAC_ADDRESS_STR),
+              roamResult == eCSR_ROAM_RESULT_ADD_TDLS_PEER ?
+              "ADD_TDLS_PEER" :
+              roamResult == eCSR_ROAM_RESULT_DELETE_TDLS_PEER ?
+              "DEL_TDLS_PEER" :
+              roamResult == eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND ?
+              "DEL_TDLS_PEER_IND" :
+              roamResult == eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND ?
+              "DEL_ALL_TDLS_PEER_IND" :
+              roamResult == eCSR_ROAM_RESULT_UPDATE_TDLS_PEER ?
+              "UPDATE_TDLS_PEER" :
+              roamResult == eCSR_ROAM_RESULT_LINK_ESTABLISH_REQ_RSP ?
+              "LINK_ESTABLISH_REQ_RSP" : "UNKNOWN",
+              pRoamInfo->staId, MAC_ADDR_ARRAY(pRoamInfo->peerMac));
 #endif
     switch( roamResult )
     {
@@ -2219,15 +2201,10 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                         pHddCtx->tdlsConnInfo[staIdx].staId = pRoamInfo->staId;
 
                         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-                         ("TDLS: STA IDX at %d is %d "
-                                  "of mac %02x:%02x:%02x:%02x:%02x:%02x"),
+                                  ("TDLS: STA IDX at %d is %d "
+                                  "of mac " MAC_ADDRESS_STR),
                                   staIdx, pHddCtx->tdlsConnInfo[staIdx].staId,
-                                          pRoamInfo->peerMac[0],
-                                          pRoamInfo->peerMac[1],
-                                          pRoamInfo->peerMac[2],
-                                          pRoamInfo->peerMac[3],
-                                          pRoamInfo->peerMac[4],
-                                          pRoamInfo->peerMac[5]) ;
+                                  MAC_ADDR_ARRAY(pRoamInfo->peerMac));
 
                         vos_copy_macaddr(&pHddCtx->tdlsConnInfo[staIdx].peerMac,
                                          (v_MACADDR_t *)pRoamInfo->peerMac) ;
@@ -2343,14 +2320,9 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                     pHddCtx->tdlsConnInfo[staIdx].staId)
                 {
                     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-                              ("hdd_tdlsStatusUpdate: staIdx %d %02x:%02x:%02x:%02x:%02x:%02x"),
+                              ("hdd_tdlsStatusUpdate: staIdx %d " MAC_ADDRESS_STR),
                                 pHddCtx->tdlsConnInfo[staIdx].staId,
-                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[0],
-                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[1],
-                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[2],
-                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[3],
-                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[4],
-                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[5]) ;
+                                MAC_ADDR_ARRAY(pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes));
                     wlan_hdd_tdls_reset_peer(pAdapter, pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes);
                     hdd_roamDeregisterTDLSSTA ( pAdapter,  pHddCtx->tdlsConnInfo[staIdx].staId );
                     wlan_hdd_tdls_decrement_peer_count(pAdapter);
@@ -3778,8 +3750,8 @@ int iw_set_ap_address(struct net_device *dev,
     v_U8_t  *pMacAddress=NULL;
     ENTER();
     pMacAddress = (v_U8_t*) wrqu->ap_addr.sa_data;
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%02x:%02x:%02x:%02x:%02x:%02x",pMacAddress[0],pMacAddress[1],
-          pMacAddress[2],pMacAddress[3],pMacAddress[4],pMacAddress[5]);
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s "MAC_ADDRESS_STR,
+              __func__, MAC_ADDR_ARRAY(pMacAddress));
     vos_mem_copy( pHddStaCtx->conn_info.bssId, pMacAddress, sizeof( tCsrBssid ));
     EXIT();
 
@@ -3934,10 +3906,9 @@ void hdd_indicateCckmPreAuth(hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo)
     memset(buf, '\0', sizeof(buf));
 
     /* Timestamp0 is lower 32 bits and Timestamp1 is upper 32 bits */
-    hddLog(VOS_TRACE_LEVEL_INFO, "CCXPREAUTHNOTIFY=%02x:%02x:%02x:%02x:%02x:%02x %lu:%lu",
-        pRoamInfo->bssid[0], pRoamInfo->bssid[1], pRoamInfo->bssid[2],
-        pRoamInfo->bssid[3], pRoamInfo->bssid[4], pRoamInfo->bssid[5],
-        pRoamInfo->timestamp[0], pRoamInfo->timestamp[1]);
+    hddLog(VOS_TRACE_LEVEL_ERROR, "CCXPREAUTHNOTIFY=" MAC_ADDRESS_STR " %lu:%lu",
+           MAC_ADDR_ARRAY(pRoamInfo->bssid),
+    pRoamInfo->timestamp[0], pRoamInfo->timestamp[1]);
 
     nBytes = snprintf(pos, freeBytes, "CCXPREAUTHNOTIFY=");
     pos += nBytes;

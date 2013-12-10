@@ -250,13 +250,8 @@ static eHalStatus sme_RrmSendBeaconReportXmitInd( tpAniSirGlobal pMac,
                vos_mem_copy( &pBeaconRep->pBssDescription[msgCounter]->ieFields[0],
                              pBssDesc->ieFields, ie_len  );
                smsLog( pMac, LOG1,
-                   "...RRM Result Bssid = %02x-%02x-%02x-%02x-%02x-%02x chan= %d, rssi = -%d",
-                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 0 ],
-                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 1 ],
-                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 2 ],
-                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 3 ],
-                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 4 ],
-                   pBeaconRep->pBssDescription[msgCounter]->bssId[ 5 ],
+                   "...RRM Result Bssid = "MAC_ADDRESS_STR" chan= %d, rssi = -%d",
+                   MAC_ADDR_ARRAY(pBeaconRep->pBssDescription[msgCounter]->bssId),
                    pBeaconRep->pBssDescription[msgCounter]->channelId,
                    pBeaconRep->pBssDescription[msgCounter]->rssi * (-1));
 
@@ -978,13 +973,8 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
                                                 sizeof(tSirNeighborBssDescription));
 
 #if defined WLAN_VOWIFI_DEBUG
-       smsLog( pMac, LOGE, "Received neighbor report with Neighbor BSSID: %02x:%02x:%02x:%02x:%02x:%02x ",
-                    pNeighborRpt->sNeighborBssDescription[i].bssId[0], 
-                    pNeighborRpt->sNeighborBssDescription[i].bssId[1], 
-                    pNeighborRpt->sNeighborBssDescription[i].bssId[2], 
-                    pNeighborRpt->sNeighborBssDescription[i].bssId[3], 
-                    pNeighborRpt->sNeighborBssDescription[i].bssId[4], 
-                    pNeighborRpt->sNeighborBssDescription[i].bssId[5]);
+       smsLog( pMac, LOGE, "Received neighbor report with Neighbor BSSID: "MAC_ADDRESS_STR,
+                            MAC_ADDR_ARRAY(pNeighborRpt->sNeighborBssDescription[i].bssId));
 #endif
 
        /* Calculate the roam score based on the BSS Capability in the BSSID Information and store it in Neighbor report Desc */
@@ -997,13 +987,8 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
        }
        else
        {
-           smsLog(pMac, LOGE, FL("Roam score of BSSID  %02x:%02x:%02x:%02x:%02x:%02x is 0, Ignoring.."),
-                        pNeighborRpt->sNeighborBssDescription[i].bssId[0],
-                        pNeighborRpt->sNeighborBssDescription[i].bssId[1],
-                        pNeighborRpt->sNeighborBssDescription[i].bssId[2],
-                        pNeighborRpt->sNeighborBssDescription[i].bssId[3],
-                        pNeighborRpt->sNeighborBssDescription[i].bssId[4],
-                        pNeighborRpt->sNeighborBssDescription[i].bssId[5]);
+           smsLog(pMac, LOGE, FL("Roam score of BSSID  "MAC_ADDRESS_STR" is 0, Ignoring.."),
+                        MAC_ADDR_ARRAY(pNeighborRpt->sNeighborBssDescription[i].bssId));
 
            vos_mem_free(pNeighborReportDesc->pNeighborBssDescription);
            vos_mem_free(pNeighborReportDesc);
