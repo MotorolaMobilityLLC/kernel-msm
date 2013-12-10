@@ -202,10 +202,6 @@ struct mipi_mot_panel {
 	int (*is_valid_manufacture_id)(struct msm_fb_data_type *mfd, u8 id);
 	int (*is_valid_power_mode)(struct msm_fb_data_type *mfd);
 
-	int (*hide_img)(struct msm_fb_data_type *, int hide);
-	int (*prepare_for_suspend) (struct msm_fb_data_type *, int full);
-	int (*prepare_for_resume) (struct msm_fb_data_type *,
-		int full, int in_sleep, int gamma);
 	int (*is_correct_shift_for_aod_needed) (struct msm_fb_data_type *);
 	int (*set_partial_window) (struct msm_fb_data_type *,
 		int x, int y, int w, int h);
@@ -236,7 +232,6 @@ int mipi_mot_get_pwr_mode(struct msm_fb_data_type *mfd, u8 *pwr_mode);
 void mipi_mot_esd_work(void);
 int mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt);
 int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen);
-int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide);
 void mipi_mot_set_tear(struct msm_fb_data_type *mfd, int on);
 int __init moto_panel_debug_init(void);
 int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,

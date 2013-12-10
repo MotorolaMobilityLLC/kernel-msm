@@ -54,12 +54,6 @@ static struct dsi_cmd_desc mot_display_off_cmd = {
 static struct dsi_cmd_desc mot_get_pwr_mode_cmd = {
 	DTYPE_DCS_READ,  1, 0, 1, 0, sizeof(get_power_mode), get_power_mode};
 
-static struct dsi_cmd_desc mot_hide_img_cmd = {
-	DTYPE_DCS_WRITE, 1, 0, 0, 10, sizeof(display_off), display_off};
-
-static struct dsi_cmd_desc mot_unhide_img_cmd = {
-	DTYPE_DCS_WRITE, 1, 0, 0, 10, sizeof(display_on), display_on};
-
 static struct dsi_cmd_desc mot_get_raw_mtp_cmd = {
 	DTYPE_DCS_READ,  1, 0, 1, 0, sizeof(get_raw_mtp), get_raw_mtp};
 
@@ -142,45 +136,37 @@ int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 	int ret = 0;
 	u8 attempts = 1;
 	u8 failures = 0;
-	int keep_hidden = mfd->resume_cfg.keep_hidden;
-	mfd->resume_cfg.keep_hidden = 0;
 
-	if (keep_hidden) {
-		pr_info("%s: skipping display on\n", __func__);
-		mot_panel->esd_expected_pwr_mode = 0x90;
-	} else {
-		mipi_mot_exit_sleep_wait();
+	mipi_mot_exit_sleep_wait();
 
-		mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
-		pr_info("%s: sending display on\n", __func__);
-		do {
-			mipi_mot_tx_cmds(&mot_display_on_cmds[0],
-				ARRAY_SIZE(mot_display_on_cmds));
-			mot_panel->esd_expected_pwr_mode = 0x94;
+	mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
+	pr_info("%s: sending display on\n", __func__);
+	do {
+		mipi_mot_tx_cmds(&mot_display_on_cmds[0],
+			ARRAY_SIZE(mot_display_on_cmds));
+		mot_panel->esd_expected_pwr_mode = 0x94;
 
-			ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
-			if (ret > 0) {
-				pr_info("%s: Power_mode =0x%x\n", __func__,
-					pwr_mode);
-				/* validate screen is actually on */
-				if ((pwr_mode & 0x04) != 0x04) {
-					pr_err("%s: display on fail! [0x%x]\n",
-						__func__, pwr_mode);
-					ret = -1;
-					failures = attempts;
-				}
-			} else
-				pr_err("%s: Failed to get power_mode. [%d]\n",
-					__func__, ret);
-		} while (ret <= 0 && attempts++ < 5);
+		ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
+		if (ret > 0) {
+			pr_info("%s: Power_mode =0x%x\n", __func__,
+				pwr_mode);
+			/* validate screen is actually on */
+			if ((pwr_mode & 0x04) != 0x04) {
+				pr_err("%s: display on fail! [0x%x]\n",
+					__func__, pwr_mode);
+				ret = -1;
+				failures = attempts;
+			}
+		} else
+			pr_err("%s: Failed to get power_mode. [%d]\n",
+				__func__, ret);
+	} while (ret <= 0 && attempts++ < 5);
 
-		if (failures > 0) {
-			pr_err("%s: Display failure: DISON (0x04) bit not set"
-				" | fail count: %d, display %s\n",
-				__func__, failures,
-				(ret > 0) ? "recovered" : "did not recover");
-			dropbox_queue_event_empty("display_issue");
-		}
+	if (failures > 0) {
+		pr_err("%s: Display failure: DISON (0x04) bit not set | fail count: %d, display %s\n",
+			__func__, failures,
+			(ret > 0) ? "recovered" : "did not recover");
+		dropbox_queue_event_empty("display_issue");
 	}
 
 	return 0;
@@ -519,8 +505,6 @@ static int esd_recovery_start(struct msm_fb_data_type *mfd)
 		mot_panel->panel_enable(mfd);
 	atomic_set(&mot_panel->state, MOT_PANEL_ON);
 	mdp4_dsi_cmd_pipe_commit(0, 1);
-	mfd->resume_cfg.keep_hidden =
-			!(mot_panel->esd_expected_pwr_mode & 0x04);
 	mipi_mot_panel_on(mfd);
 	ret = MOT_ESD_OK;
 end:
@@ -602,28 +586,6 @@ void mipi_mot_esd_work(void)
 end:
 	return;
 }
-
-int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide)
-{
-	int ret = 0;
-	pr_info("%s(%d)\n", __func__, hide);
-	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
-		mmi_panel_notify(MMI_PANEL_EVENT_HIDE_IMAGE, NULL);
-		mutex_lock(&mfd->dma->ov_mutex);
-		mipi_set_tx_power_mode(0);
-		if (mipi_mot_tx_cmds(
-			hide ? &mot_hide_img_cmd : &mot_unhide_img_cmd, 1) == 1)
-			mot_panel->esd_expected_pwr_mode = hide ? 0x90 : 0x94;
-		else {
-			pr_err("%s(%d) error sending mipi cmd\n",
-				__func__, hide);
-			ret = -1;
-		}
-		mutex_unlock(&mfd->dma->ov_mutex);
-	}
-	return ret;
-}
-
 
 void mipi_mot_set_tear(struct msm_fb_data_type *mfd, int on)
 {
@@ -798,9 +760,9 @@ int mipi_mot_set_partial_window(struct msm_fb_data_type *mfd,
 
 	pinfo = &mot_panel->pinfo;
 	if (x < 0 ||
-	    (x+w) > pinfo->xres ||
+	    (x + w) > pinfo->xres ||
 	    y < 0 ||
-	    (y+h) > pinfo->yres) {
+	    (y + h) > pinfo->yres) {
 		pr_err("%s: Invalid parameters!\n", __func__);
 		return -EINVAL;
 	}
