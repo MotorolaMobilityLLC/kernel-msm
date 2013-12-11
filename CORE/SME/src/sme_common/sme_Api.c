@@ -3283,8 +3283,14 @@ eHalStatus sme_RoamDelPMKIDfromCache( tHalHandle hHal, tANI_U8 sessionId, tANI_U
       }
       sme_ReleaseGlobalLock( &pMac->sme );
    }
+   if ( status >0 )
+   {
+      status = -1;
+   }
+
    return (status);
 }
+
 /* ---------------------------------------------------------------------------
     \fn sme_RoamGetSecurityReqIE
     \brief a wrapper function to request CSR to return the WPA or RSN or WAPI IE CSR
