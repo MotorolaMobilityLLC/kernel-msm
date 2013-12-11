@@ -1405,7 +1405,13 @@ static void msp430_quickpeek_work_func(struct work_struct *work)
 			ret = msp430_quickdraw_ops->prepare(
 				msp430_quickdraw_ops->data,
 				qp_message->panel_state);
-			if (ret) {
+			if (ret == QUICKDRAW_ESD_RECOVERED) {
+				dev_info(&ps_msp430->client->dev,
+					"%s: ESD Recovered: %d\n", __func__,
+					ret);
+				ack_return = AOD_QP_ACK_ESD_RECOVERED;
+				ps_msp430->quickpeek_state = QP_PREPARED;
+			} else if (ret) {
 				dev_err(&ps_msp430->client->dev,
 					"%s: Prepare Error: %d\n", __func__,
 					ret);
