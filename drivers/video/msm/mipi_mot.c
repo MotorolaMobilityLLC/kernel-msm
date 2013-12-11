@@ -425,6 +425,8 @@ static void panel_enable_from_partial(struct msm_fb_data_type *mfd)
 	}
 
 	if (force_full_enable) {
+		if (mfd->quickdraw_in_progress)
+			mfd->quickdraw_esd_recovered = 1;
 		pr_warn("%s: full re-initialization\n",
 			__func__);
 		panel_full_reinit(mfd);
