@@ -267,6 +267,8 @@ enum {
 	CAR_DOCK
 };
 
+#define QUICKDRAW_ESD_RECOVERED -1337
+
 struct msp430_quickdraw_ops {
 	int (*prepare)(void *data, unsigned char panel_state);
 	int (*execute)(void *data, int buffer_id, int x, int y);
