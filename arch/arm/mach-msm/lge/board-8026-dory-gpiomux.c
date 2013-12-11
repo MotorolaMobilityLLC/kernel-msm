@@ -19,20 +19,6 @@
 #include <mach/gpiomux.h>
 #include <mach/socinfo.h>
 
-static struct gpiomux_setting melfas_int_act_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-	.dir = GPIOMUX_IN,
-};
-
-static struct gpiomux_setting melfas_int_sus_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-	.dir = GPIOMUX_OUT_HIGH,
-};
-
 static struct gpiomux_setting gpio_keys_active = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -156,12 +142,47 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	},
 };
 
-static struct msm_gpiomux_config msm_melfas_configs[] __initdata = {
+static struct gpiomux_setting touch_gpio_reset_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting touch_gpio_reset_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting touch_gpio_int_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir  = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting touch_gpio_int_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir  = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 	{
-		.gpio = 16,
+		.gpio = 16,           /* TOUCH_RESET */
 		.settings = {
-			[GPIOMUX_ACTIVE] = &melfas_int_act_cfg,
-			[GPIOMUX_SUSPENDED] = &melfas_int_sus_cfg,
+			[GPIOMUX_ACTIVE] = &touch_gpio_reset_act_cfg,
+			[GPIOMUX_SUSPENDED] = &touch_gpio_reset_sus_cfg,
+		},
+	},
+	{
+		.gpio = 17,           /* TOUCH_INT */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &touch_gpio_int_act_cfg,
+			[GPIOMUX_SUSPENDED] = &touch_gpio_int_sus_cfg,
 		},
 	},
 };
@@ -586,8 +607,8 @@ void __init msm8226_init_gpiomux(void)
 	msm_gpiomux_install(msm_blsp_configs,
 			ARRAY_SIZE(msm_blsp_configs));
 
-	msm_gpiomux_install(msm_melfas_configs,
-			ARRAY_SIZE(msm_melfas_configs));
+	msm_gpiomux_install(msm_touch_configs,
+			ARRAY_SIZE(msm_touch_configs));
 
 	msm_gpiomux_install_nowrite(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
