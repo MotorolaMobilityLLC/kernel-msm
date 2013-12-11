@@ -271,7 +271,7 @@ int msm_fb_quickdraw_init(void)
 	list_for_each_safe(entry, temp, &msm_fb_quickdraw_buffer_list_head) {
 		buffer = list_entry(entry, struct msmfb_quickdraw_buffer, list);
 		list_del(&buffer->list);
-		delete_buffer(&buffer->kref);
+		kref_put(&buffer->kref, delete_buffer);
 	}
 
 	mutex_unlock(&list_lock);
