@@ -1340,13 +1340,14 @@ static int msp430_quickpeek_status_ack(struct msp430_data *ps_msp430,
 {
 	int ret = 0;
 	unsigned char payload = ack_return & 0x03;
+	unsigned int req_bit = atomic_read(&ps_msp430->qp_enabled) & 0x01;
 
 	if (qp_message && qp_message->message == AOD_WAKEUP_REASON_QP_DRAW)
 		payload |= (qp_message->buffer_id &
 			AOD_QP_ACK_BUFFER_ID_MASK) << 2;
 
 	msp_cmdbuff[0] = MSP_PEEKSTATUS_REG;
-	msp_cmdbuff[1] = 0x00;
+	msp_cmdbuff[1] = req_bit;
 	msp_cmdbuff[2] = qp_message ? qp_message->message : 0x00;
 	msp_cmdbuff[3] = payload;
 	if (msp430_i2c_write(ps_msp430, msp_cmdbuff, 4) < 0) {
@@ -1355,9 +1356,9 @@ static int msp430_quickpeek_status_ack(struct msp430_data *ps_msp430,
 		ret = -EIO;
 	}
 
-	dev_dbg(&ps_msp430->client->dev,
-		"%s: message: %d | ack_return: %d |  buffer_id: %d | ret: %d\n",
-		__func__, qp_message ? qp_message->message : 0, ack_return,
+	dev_dbg(&ps_msp430->client->dev, "%s: message: %d | req_bit: %d"
+		" | ack_return: %d |  buffer_id: %d | ret: %d\n", __func__,
+		qp_message ? qp_message->message : 0, req_bit, ack_return,
 		qp_message ? qp_message->buffer_id : 0, ret);
 
 	return ret;
