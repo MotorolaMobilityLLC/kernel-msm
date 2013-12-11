@@ -443,7 +443,8 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                                   || (pMac->lim.gLimHalScanState != eLIM_HAL_IDLE_SCAN_STATE)))
         {
            limLog(pMac, LOG3,
-              FL("While GO is scanning, don't send probe response on diff channel"));
+              FL("While GO is scanning, don't send probe response"
+                 " on diff channel"));
            break;
         }
 
@@ -466,8 +467,9 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             // Parse Probe Request frame
             if (sirConvertProbeReqFrame2Struct(pMac, pBody, frameLen, &probeReq)==eSIR_FAILURE)
             {
-                PELOGW(limLog(pMac, LOGW, FL("Parse error ProbeRequest, length=%d, SA is:"), frameLen);)
-                limPrintMacAddr(pMac, pHdr->sa, LOGW);
+                PELOGW(limLog(pMac, LOGE, FL("Parse error ProbeRequest,"
+                " length=%d, SA is:" MAC_ADDRESS_STR),
+                 frameLen,MAC_ADDR_ARRAY(pHdr->sa));)
                 pMac->sys.probeError++;
                 break;
             }
