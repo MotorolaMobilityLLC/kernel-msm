@@ -288,8 +288,7 @@ SME_PMC_OBJS := $(SME_SRC_DIR)/pmc/pmcApi.o \
 SME_QOS_OBJS := $(SME_SRC_DIR)/QoS/sme_Qos.o
 
 SME_CMN_OBJS := $(SME_SRC_DIR)/sme_common/sme_Api.o \
-		$(SME_SRC_DIR)/sme_common/sme_FTApi.o \
-		$(SME_SRC_DIR)/sme_common/sme_Trace.o
+		$(SME_SRC_DIR)/sme_common/sme_FTApi.o
 
 SME_BTC_OBJS := $(SME_SRC_DIR)/btc/btcApi.o
 
@@ -552,7 +551,6 @@ ifeq ($(BUILD_DEBUG_VERSION),1)
 CDEFINES +=	-DWLAN_DEBUG \
 		-DTRACE_RECORD \
 		-DLIM_TRACE_RECORD \
-		-DSME_TRACE_RECORD \
 		-DPE_DEBUG_LOGW \
 		-DPE_DEBUG_LOGE \
 		-DDEBUG
