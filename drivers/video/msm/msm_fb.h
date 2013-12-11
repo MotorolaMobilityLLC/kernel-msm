@@ -231,6 +231,7 @@ struct msm_fb_data_type {
 	int (*quickdraw_fb_resume)(struct msm_fb_data_type *mfd);
 	int (*quickdraw_fb_suspend)(struct msm_fb_data_type *mfd);
 	boolean quickdraw_in_progress;
+	boolean quickdraw_esd_recovered;
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
