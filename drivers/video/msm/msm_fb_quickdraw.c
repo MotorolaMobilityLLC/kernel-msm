@@ -416,12 +416,16 @@ static int msm_fb_quickdraw_prepare(void *data, unsigned char panel_state)
 	mfd->resume_cfg.keep_hidden = 0;
 	mfd->resume_cfg.panel_state = panel_state;
 	mfd->quickdraw_in_progress = 1;
+	mfd->quickdraw_esd_recovered = 0;
 
 	saved_panel_xres = mfd->panel_info.xres;
 	saved_panel_yres = mfd->panel_info.yres;
 
 	mfd->quickdraw_mdp_resume();
 	mfd->quickdraw_fb_resume(mfd);
+
+	if (mfd->quickdraw_esd_recovered)
+		ret = QUICKDRAW_ESD_RECOVERED;
 
 	pr_debug("%s- (ret: %d)\n", __func__, ret);
 
