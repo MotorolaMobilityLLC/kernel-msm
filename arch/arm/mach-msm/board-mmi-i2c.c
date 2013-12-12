@@ -394,6 +394,36 @@ static int __init ar0834_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
+static struct oem_camera_sensor_data mt9m114_oem_data;
+
+static int __init mt9m114_init_i2c_device(struct i2c_board_info *info,
+				struct device_node *node)
+{
+	int ret = -EINVAL;
+
+	/* get reset gpio */
+	of_property_read_u32(node, "gpio_reset",
+			&msm_camera_sensor_mt9m114_mmi_data.sensor_reset);
+
+	ret = of_property_read_u32(node, "mclk_freq",
+		&mt9m114_oem_data.mclk_freq);
+	if (ret)
+		mt9m114_oem_data.mclk_freq = 24000000;
+
+	/* get digital supply enable gpio */
+	of_property_read_u32(node, "gpio_dig_en",
+			&mt9m114_oem_data.sensor_dig_en);
+
+	/* get avdd_en gpio */
+	of_property_read_u32(node, "gpio_avdd_en",
+		&mt9m114_oem_data.sensor_avdd_en);
+
+	msm_camera_sensor_mt9m114_mmi_data.oem_data = &mt9m114_oem_data;
+	info->platform_data = &msm_camera_sensor_mt9m114_mmi_data;
+
+	return 0;
+}
+
 static int __init ov660_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *node)
 {
@@ -807,6 +837,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00190001, pn544_init_i2c_device}, /* NXP PN544 */
 	{0x00290002, ov8835_init_i2c_device},  /* Omnivision 8MP Bayer */
 	{0x00280001, ar0834_init_i2c_device},  /* Aptina 8MP */
+	{0x00280000, mt9m114_init_i2c_device}, /* MT9M114 Front YUV Sensor */
 	{0x00290004, ov660_init_i2c_device},  /* Omnivision OV660 ASIC IC */
 	{0x00290003, ov10820_init_i2c_device},  /* Omnivision 8MP RGBC */
 	{0x00030017, drv2605_init_i2c_device}, /* TI DRV2605 Haptic driver */

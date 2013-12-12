@@ -92,5 +92,6 @@ extern struct msm_camera_device_platform_data msm_camera_csi_device_data[];
 
 extern struct lm3556_platform_data cam_flash_3556;
 extern struct msm_camera_sensor_flash_data camera_flash_lm3556;
+extern struct msm_camera_sensor_info msm_camera_sensor_mt9m114_mmi_data;
 
 #endif
