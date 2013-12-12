@@ -333,7 +333,24 @@ limResumeLink(tpAniSirGlobal pMac, SUSPEND_RESUME_LINK_CALLBACK callback, tANI_U
 
    pMac->lim.gpLimResumeCallback = callback;
    pMac->lim.gpLimResumeData = data;
-   limSendHalFinishScanReq(pMac, eLIM_HAL_RESUME_LINK_WAIT_STATE );
+
+   /* eLIM_HAL_IDLE_SCAN_STATE state indicate limSendHalInitScanReq failed.
+    * In case limSendHalInitScanReq is success, Scanstate would be
+    * eLIM_HAL_SUSPEND_LINK_STATE
+    */
+   if( eLIM_HAL_IDLE_SCAN_STATE != pMac->lim.gLimHalScanState )
+   {
+      limSendHalFinishScanReq(pMac, eLIM_HAL_RESUME_LINK_WAIT_STATE );
+   }
+   else
+   {
+      limLog(pMac, LOGW, FL("Init Scan failed, we will not call finish scan."
+                   " calling the callback with failure status"));
+      pMac->lim.gpLimResumeCallback( pMac, eSIR_FAILURE, pMac->lim.gpLimResumeData);
+      pMac->lim.gpLimResumeCallback = NULL;
+      pMac->lim.gpLimResumeData = NULL;
+      pMac->lim.gLimSystemInScanLearnMode = 0;
+   }
 
    if(limIsInMCC(pMac))
    {
