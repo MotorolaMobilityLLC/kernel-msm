@@ -460,6 +460,7 @@ static int panel_enable(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
 	int ret = 0;
+	static int first_boot = 1;
 
 	pr_info("%s is called\n", __func__);
 
@@ -473,11 +474,13 @@ static int panel_enable(struct platform_device *pdev)
 		pr_err("%s: no panel support\n", __func__);
 		ret = -ENODEV;
 		goto err;
-	} else if (mfd->is_partial_mode_supported &&
+	} else if (!first_boot && mfd->is_partial_mode_supported &&
 		   mfd->is_partial_mode_supported()) {
 		panel_enable_from_partial(mfd);
-	} else
+	} else {
+		first_boot = 0;
 		mot_panel.panel_enable(mfd);
+	}
 
 	if (mot_panel.panel_enable_wa)
 		mot_panel.panel_enable_wa(mfd);
