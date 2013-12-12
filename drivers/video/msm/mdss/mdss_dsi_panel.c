@@ -1614,6 +1614,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		}
 	}
 
+	pinfo->cont_splash_skip_ov_handoff = of_property_read_bool(np,
+		"qcom,mdss-dsi-cont-splash-skip-ov-handoff");
+
 	mdss_panel_parse_reset_seq(np, "qcom,panel-en-reset-sequence",
 				ctrl_pdata->rst_seq,
 				&ctrl_pdata->rst_seq_len);
