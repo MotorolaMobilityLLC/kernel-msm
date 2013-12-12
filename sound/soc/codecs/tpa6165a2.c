@@ -963,8 +963,9 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 	 * putting the device the sleep to minimize pops.
 	 */
 	if (tpa6165->dev_status_reg1 & TPA6165_VOL_SLEW_DONE) {
-		if (tpa6165->amp_state == TPA6165_AMP_DISABLED &&
-				tpa6165->mic_state == TPA6165_MIC_DISABLED) {
+		if ((tpa6165->amp_state == TPA6165_AMP_DISABLED) &&
+				(tpa6165->mic_state == TPA6165_MIC_DISABLED)
+				&& (!tpa6165->button_detect_state)) {
 			/* put the IC in sleep mode */
 			if ((tpa6165->alwayson_micb || tpa6165->special_hs)
 				&& tpa6165->inserted)
