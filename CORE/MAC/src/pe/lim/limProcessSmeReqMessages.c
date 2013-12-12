@@ -4035,6 +4035,7 @@ __limProcessSmeStatsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     {
         limLog(pMac, LOGE, FL("session does not exist for given bssId"));
         vos_mem_free( pMsgBuf );
+        pMsgBuf = NULL;
         return;
     }
 
@@ -4060,6 +4061,7 @@ __limProcessSmeStatsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         default: //Unknown request.
             PELOGE(limLog(pMac, LOGE, "Unknown Statistics request");)
             vos_mem_free( pMsgBuf );
+            pMsgBuf = NULL;
             return;
     }
 
@@ -4077,6 +4079,7 @@ __limProcessSmeStatsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     if( eSIR_SUCCESS != (wdaPostCtrlMsg( pMac, &msgQ ))){
         limLog(pMac, LOGP, "Unable to forward request");
         vos_mem_free( pMsgBuf );
+        pMsgBuf = NULL;
         return;
     }
 
@@ -4115,6 +4118,7 @@ __limProcessSmeGetStatisticsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     if( eSIR_SUCCESS != (wdaPostCtrlMsg( pMac, &msgQ ))){
         vos_mem_free( pMsgBuf );
+        pMsgBuf = NULL;
         limLog(pMac, LOGP, "Unable to forward request");
         return;
     }
@@ -4145,6 +4149,7 @@ __limProcessSmeGetTsmStatsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     if( eSIR_SUCCESS != (wdaPostCtrlMsg( pMac, &msgQ ))){
         vos_mem_free( pMsgBuf );
+        pMsgBuf = NULL;
         limLog(pMac, LOGP, "Unable to forward request");
         return;
     }
@@ -4182,6 +4187,7 @@ __limProcessSmeGetRoamRssiRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     if( eSIR_SUCCESS != (wdaPostCtrlMsg( pMac, &msgQ ))){
         vos_mem_free( pMsgBuf );
+        pMsgBuf = NULL;
         limLog(pMac, LOGP, "Unable to forward request");
         return;
     }
