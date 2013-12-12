@@ -24,4 +24,12 @@ enum {
 
 int lge_get_board_revno(void);
 
+#ifdef CONFIG_PSTORE_RAM
+#define LGE_RAM_CONSOLE_SIZE (128 * SZ_1K * 2)
+#define LGE_PERSISTENT_RAM_SIZE (SZ_1M)
+
+void __init lge_reserve(void);
+void __init lge_add_persistent_device(void);
+#endif
+
 #endif

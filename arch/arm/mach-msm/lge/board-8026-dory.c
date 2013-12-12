@@ -46,6 +46,7 @@
 #include "../platsmp.h"
 #include "../spm.h"
 #include "../pm.h"
+#include <mach/board_lge.h>
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -73,6 +74,9 @@ static void __init msm8226_early_memory(void)
 static void __init msm8226_reserve(void)
 {
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
+#ifdef CONFIG_PSTORE_RAM
+	lge_reserve();
+#endif
 }
 /*
  * Used to satisfy dependencies for devices that need to be
@@ -91,6 +95,9 @@ void __init msm8226_add_drivers(void)
 	msm_clock_init(&msm8226_clock_init_data);
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
+#ifdef CONFIG_PSTORE_RAM
+	lge_add_persistent_device();
+#endif
 }
 
 void __init msm8226_init(void)

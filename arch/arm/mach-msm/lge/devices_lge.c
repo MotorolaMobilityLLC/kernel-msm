@@ -16,9 +16,72 @@
 #include <linux/kernel.h>
 #include <linux/bug.h>
 #include <linux/string.h>
+#include <linux/platform_device.h>
+#include <linux/memblock.h>
 #include <asm/setup.h>
 #include <asm/system_info.h>
 #include <mach/board_lge.h>
+#ifdef CONFIG_PSTORE_RAM
+#include <linux/pstore_ram.h>
+#endif
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <mach/lge_handle_panic.h>
+#endif
+
+#ifdef CONFIG_PSTORE_RAM
+static struct ramoops_platform_data lge_ramoops_data = {
+	.mem_size     = LGE_PERSISTENT_RAM_SIZE,
+	.console_size = LGE_RAM_CONSOLE_SIZE,
+};
+
+static struct platform_device lge_ramoops_dev = {
+	.name = "ramoops",
+	.dev = {
+		.platform_data = &lge_ramoops_data,
+	}
+};
+
+static void __init lge_add_persist_ram_devices(void)
+{
+	int ret;
+	struct membank *bank;
+
+	if (meminfo.nr_banks < 2) {
+		pr_err("%s: not enough membank\n", __func__);
+		return;
+	}
+
+	bank = &meminfo.bank[1];
+	/* first 1MB is used by bootloader */
+	lge_ramoops_data.mem_address = bank->start + SZ_1M;
+	ret = memblock_reserve(lge_ramoops_data.mem_address,
+			lge_ramoops_data.mem_size);
+
+	if (ret)
+		pr_err("%s: failed to initialize persistent ram\n", __func__);
+}
+
+
+void __init lge_reserve(void)
+{
+	lge_add_persist_ram_devices();
+}
+
+void __init lge_add_persistent_device(void)
+{
+	int ret;
+	ret = platform_device_register(&lge_ramoops_dev);
+	if (ret){
+		printk(KERN_ERR "unable to register platform device\n");
+		return;
+	}
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	/* write ram console addr to imem */
+	lge_set_ram_console_addr(lge_ramoops_data.mem_address,
+			lge_ramoops_data.console_size);
+#endif
+}
+#endif
 
 /* See include/mach/board_lge.h. CAUTION: These strings come from LK. */
 static char *rev_str[] = {"unknown", "evb1", "rev_a", "rev_b"};

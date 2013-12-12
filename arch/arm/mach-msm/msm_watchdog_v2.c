@@ -28,6 +28,9 @@
 #include <mach/scm.h>
 #include <mach/msm_memory_dump.h>
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <mach/lge_handle_panic.h>
+#endif
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
 #define TCSR_WDT_CFG	0x30
@@ -81,6 +84,19 @@ module_param(enable, int, 0);
  */
 static long WDT_HZ = 32765;
 module_param(WDT_HZ, long, 0);
+#ifdef CONFIG_LGE_HANDLE_PANIC
+static void __iomem *msm_timer0_base;
+
+void __iomem *wdt_timer_get_timer0_base(void)
+{
+	return msm_timer0_base;
+}
+
+static void wdt_timer_set_timer0_base(void __iomem * iomem)
+{
+	msm_timer0_base = iomem;
+}
+#endif
 
 static void pet_watchdog_work(struct work_struct *work);
 static void init_watchdog_work(struct work_struct *work);
@@ -334,6 +350,9 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 	if (wdog_dd->do_ipi_ping)
 		dump_cpu_alive_mask(wdog_dd);
 	printk(KERN_INFO "Causing a watchdog bite!");
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	lge_set_restart_reason(LGE_RB_MAGIC | LGE_ERR_TZ | LGE_ERR_TZ_WDT_BARK);
+#endif
 	__raw_writel(1, wdog_dd->base + WDT0_BITE_TIME);
 	mb();
 	__raw_writel(1, wdog_dd->base + WDT0_RST);
@@ -491,7 +510,9 @@ static int msm_wdog_dt_to_pdata(struct platform_device *pdev,
 				__func__);
 		return -ENXIO;
 	}
-
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	wdt_timer_set_timer0_base(pdata->base);
+#endif
 	pdata->bark_irq = platform_get_irq(pdev, 0);
 	pdata->bite_irq = platform_get_irq(pdev, 1);
 	ret = of_property_read_u32(node, "qcom,bark-time", &pdata->bark_time);

@@ -55,6 +55,10 @@
 #include "mdss_dsi.h"
 #include "mdss_fb.h"
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <mach/lge_handle_panic.h>
+#endif
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
 #else
@@ -970,6 +974,13 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 
 	pr_debug("alloc 0x%xB @ (%pa phys) (0x%x virt) (%pa iova) for fb%d\n",
 		 size, &phys, (unsigned int)virt, &mfd->iova, mfd->index);
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	/* save fb1 address for lge crash handler display buffer */
+	lge_set_fb1_addr((unsigned int)(phys +
+				(mfd->fbi->fix.line_length *
+				 mfd->fbi->var.yres)));
+#endif
 
 	mfd->fbi->screen_base = virt;
 	mfd->fbi->fix.smem_start = phys;
