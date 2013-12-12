@@ -19,6 +19,7 @@
 #include <linux/memory_alloc.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/of_address.h>
 #include <linux/mm.h>
 #include <linux/mm_types.h>
 #include <linux/sched.h>
@@ -26,6 +27,7 @@
 #include <linux/uaccess.h>
 #include <linux/memblock.h>
 #include <linux/dma-mapping.h>
+#include <linux/dma-contiguous.h>
 #include <mach/ion.h>
 #include <mach/msm_memtypes.h>
 #include <asm/cacheflush.h>
@@ -552,7 +554,8 @@ static void check_for_heap_overlap(const struct ion_platform_heap heap_list[],
 }
 
 #ifdef CONFIG_OF
-static int msm_init_extra_data(struct ion_platform_heap *heap,
+static int msm_init_extra_data(struct device_node *node,
+			       struct ion_platform_heap *heap,
 			       const struct ion_heap_desc *heap_desc)
 {
 	int ret = 0;
@@ -576,6 +579,28 @@ static int msm_init_extra_data(struct ion_platform_heap *heap,
 					   GFP_KERNEL);
 		if (!heap->extra_data)
 			ret = -ENOMEM;
+		break;
+	}
+	case ION_HEAP_TYPE_SECURE_DMA:
+	{
+		unsigned int val;
+
+		ret = of_property_read_u32(node,
+					"qcom,default-prefetch-size", &val);
+
+		if (!ret) {
+			heap->extra_data = kzalloc(sizeof(struct ion_cma_pdata),
+					   GFP_KERNEL);
+
+			if (!heap->extra_data) {
+				ret = -ENOMEM;
+			} else {
+				struct ion_cma_pdata *extra = heap->extra_data;
+				extra->default_prefetch_size = val;
+			}
+		} else {
+			ret = 0;
+		}
 		break;
 	}
 	default:
@@ -637,7 +662,8 @@ static int msm_ion_populate_heap(struct device_node *node,
 			if (ret)
 				break;
 			heap->type = heap_type;
-			ret = msm_init_extra_data(heap, &ion_heap_meta[i]);
+			ret = msm_init_extra_data(node, heap,
+						&ion_heap_meta[i]);
 			break;
 		}
 	}
@@ -699,6 +725,7 @@ static int msm_ion_get_heap_size(struct device_node *node,
 	int ret = 0;
 	u32 out_values[2];
 	const char *memory_name_prop;
+	struct device_node *pnode;
 
 	ret = of_property_read_u32(node, "qcom,memory-reservation-size", &val);
 	if (!ret) {
@@ -720,14 +747,33 @@ static int msm_ion_get_heap_size(struct device_node *node,
 				__func__);
 			ret = -EINVAL;
 		}
-	} else {
-		ret = of_property_read_u32_array(node, "qcom,memory-fixed",
-								out_values, 2);
-		if (!ret)
-			heap->size = out_values[1];
-		else
-			ret = 0;
+		goto out;
 	}
+
+	ret = of_property_read_u32_array(node, "qcom,memory-fixed",
+								out_values, 2);
+	if (!ret) {
+		heap->size = out_values[1];
+		goto out;
+	}
+
+	pnode = of_parse_phandle(node, "linux,contiguous-region", 0);
+	if (pnode != NULL) {
+		const u32 *addr;
+		u64 size;
+
+		addr = of_get_address(pnode, 0, &size, NULL);
+		if (!addr) {
+			of_node_put(pnode);
+			ret = -EINVAL;
+			goto out;
+		}
+		heap->size = (u32) size;
+		ret = 0;
+		of_node_put(pnode);
+	}
+
+	ret = 0;
 out:
 	return ret;
 }
@@ -737,11 +783,19 @@ static void msm_ion_get_heap_base(struct device_node *node,
 {
 	u32 out_values[2];
 	int ret = 0;
+	struct device_node *pnode;
 
 	ret = of_property_read_u32_array(node, "qcom,memory-fixed",
 							out_values, 2);
 	if (!ret)
 		heap->base = out_values[0];
+
+	pnode = of_parse_phandle(node, "linux,contiguous-region", 0);
+	if (pnode != NULL) {
+		heap->base = cma_get_base(heap->priv);
+		of_node_put(pnode);
+	}
+
 	return;
 }
 
@@ -957,6 +1011,31 @@ static long msm_ion_custom_ioctl(struct ion_client *client,
 		break;
 
 	}
+	case ION_IOC_PREFETCH:
+	{
+		struct ion_prefetch_data data;
+
+		if (copy_from_user(&data, (void __user *)arg,
+					sizeof(struct ion_prefetch_data)))
+			return -EFAULT;
+
+		ion_walk_heaps(client, data.heap_id, (void *)data.len,
+						ion_secure_cma_prefetch);
+		break;
+	}
+	case ION_IOC_DRAIN:
+	{
+		struct ion_prefetch_data data;
+
+		if (copy_from_user(&data, (void __user *)arg,
+					sizeof(struct ion_prefetch_data)))
+			return -EFAULT;
+
+		ion_walk_heaps(client, data.heap_id, (void *)data.len,
+						ion_secure_cma_drain_pool);
+		break;
+	}
+
 	default:
 		return -ENOTTY;
 	}

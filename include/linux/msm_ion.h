@@ -197,6 +197,14 @@ struct ion_co_heap_pdata {
 	enum ion_memory_types memory_type;
 };
 
+/*
+ * struct ion_cma_pdata - extra data for CMA regions
+ * @default_prefetch_size - default size to use for prefetching
+ */
+struct ion_cma_pdata {
+	unsigned long default_prefetch_size;
+};
+
 #ifdef CONFIG_ION
 /**
  *  msm_ion_client_create - allocate a client using the ion_device specified in
@@ -504,6 +512,11 @@ struct ion_flush_data {
 	unsigned int length;
 };
 
+struct ion_prefetch_data {
+       int heap_id;
+       unsigned long len;
+};
+
 #define ION_IOC_MSM_MAGIC 'M'
 
 /**
@@ -527,5 +540,11 @@ struct ion_flush_data {
  */
 #define ION_IOC_CLEAN_INV_CACHES	_IOWR(ION_IOC_MSM_MAGIC, 2, \
 						struct ion_flush_data)
+
+#define ION_IOC_PREFETCH               _IOWR(ION_IOC_MSM_MAGIC, 3, \
+                                               struct ion_prefetch_data)
+
+#define ION_IOC_DRAIN                  _IOWR(ION_IOC_MSM_MAGIC, 4, \
+                                               struct ion_prefetch_data)
 
 #endif
