@@ -2063,11 +2063,11 @@ static void very_low_voltage_check(struct qpnp_bms_chip *chip, int vbat_uv)
 	 */
 	if (vbat_uv <= chip->low_voltage_threshold
 			&& !wake_lock_active(&chip->low_voltage_wake_lock)) {
-		pr_debug("voltage = %d low holding wakelock\n", vbat_uv);
+		pr_info("voltage = %d low holding wakelock\n", vbat_uv);
 		wake_lock(&chip->low_voltage_wake_lock);
 	} else if (vbat_uv > chip->low_voltage_threshold
 			&& wake_lock_active(&chip->low_voltage_wake_lock)) {
-		pr_debug("voltage = %d releasing wakelock\n", vbat_uv);
+		pr_info("voltage = %d releasing wakelock\n", vbat_uv);
 		wake_unlock(&chip->low_voltage_wake_lock);
 	}
 }
@@ -2693,7 +2693,7 @@ static void configure_vbat_monitor_low(struct qpnp_bms_chip *chip)
 		 */
 		pr_debug("battery entered cutoff range\n");
 		if (!wake_lock_active(&chip->low_voltage_wake_lock)) {
-			pr_debug("voltage low, holding wakelock\n");
+			pr_info("voltage low, holding wakelock\n");
 			wake_lock(&chip->low_voltage_wake_lock);
 			cancel_delayed_work_sync(
 					&chip->calculate_soc_delayed_work);
@@ -2765,7 +2765,7 @@ static void configure_vbat_monitor_high(struct qpnp_bms_chip *chip)
 		 */
 		pr_debug("battery entered normal range\n");
 		if (wake_lock_active(&chip->low_voltage_wake_lock)) {
-			pr_debug("voltage high, releasing wakelock\n");
+			pr_info("voltage high, releasing wakelock\n");
 			wake_unlock(&chip->low_voltage_wake_lock);
 		}
 		chip->vbat_monitor_params.state_request =
@@ -2789,12 +2789,22 @@ static void btm_notify_vbat(enum qpnp_tm_state state, void *ctx)
 	int vbat_uv;
 	struct qpnp_vadc_result result;
 	int rc;
+	u8 btm_lsb, btm_msb;
 
 	rc = qpnp_vadc_read(chip->vadc_dev, VBAT_SNS, &result);
 	pr_debug("vbat = %lld, raw = 0x%x\n", result.physical, result.adc_code);
 
 	get_battery_voltage(chip, &vbat_uv);
-	pr_debug("vbat is at %d, state is at %d\n", vbat_uv, state);
+	pr_info("vbat is at %d, state is at %d\n", vbat_uv, state);
+
+	/* Read the BTM Output for M2 spot which vbatt monitoring uses */
+	rc = qpnp_read_wrapper(chip, &btm_lsb, 0x34A2, 1);
+	rc |= qpnp_read_wrapper(chip, &btm_msb, 0x34A3, 1);
+	if (rc) {
+		pr_err("Unable to read data\n");
+	} else {
+		pr_info("BTM MSB 0x%X, BTM LSB 0x%X\n", btm_msb, btm_lsb);
+	}
 
 	if (state == ADC_TM_LOW_STATE) {
 		pr_debug("low voltage btm notification triggered\n");
@@ -2836,11 +2846,11 @@ static int reset_vbat_monitoring(struct qpnp_bms_chip *chip)
 		return rc;
 	}
 	if (wake_lock_active(&chip->low_voltage_wake_lock)) {
-		pr_debug("battery removed, releasing wakelock\n");
+		pr_info("battery removed, releasing wakelock\n");
 		wake_unlock(&chip->low_voltage_wake_lock);
 	}
 	if (chip->in_cv_range) {
-		pr_debug("battery removed, removing in_cv_range state\n");
+		pr_info("battery removed, removing in_cv_range state\n");
 		chip->in_cv_range = false;
 	}
 	return 0;
