@@ -399,6 +399,7 @@ WDI_FillTxBd
     wpt_uint8              ucTxFlag, 
     wpt_uint8              ucProtMgmtFrame,
     wpt_uint32             uTimeStamp,
+    wpt_uint8              isEapol,
     wpt_uint8*             staIndex
 )
 {
@@ -922,7 +923,7 @@ WDI_FillTxBd
 #ifdef FEATURE_WLAN_TDLS
                   (ucSTAType == WDI_STA_ENTRY_TDLS_PEER ) &&
 #endif
-                  (ucTxFlag & WDI_TRIGGER_ENABLED_AC_MASK)))
+                  (ucTxFlag & WDI_TRIGGER_ENABLED_AC_MASK)) || isEapol)
        {
            pBd->dpuRF = BMUWQ_FW_DPU_TX;
        }
