@@ -23,6 +23,7 @@
 
 static struct of_device_id msm_pinmux_dt_match[] = {
 	{	.compatible = "qcom,msm8x26-pinmux" },
+	{	.compatible = "qcom,msm8x10-pinmux" },
 	{ }
 };
 
