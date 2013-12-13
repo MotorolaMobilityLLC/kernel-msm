@@ -640,17 +640,26 @@ static inline struct synaptics_dsx_platform_data *
 #define letter_s	's'
 #define letter_t	't'
 
-static void synaptics_dsx_darn_product_string(unsigned char *id,
-		unsigned char *hyphen)
+static void synaptics_dsx_darn_product_string(unsigned char *id, size_t len)
 {
-	if (*(hyphen+1) == toupper(letter_t)) {
-		memmove(id+1, id, hyphen-id);
-		hyphen++;
-		*hyphen++ = letter_t;
-	} else if (*(hyphen+1) == toupper(letter_i))
-		*hyphen++ = letter_i;
-	*id = letter_s;
-	*hyphen = 0;
+	unsigned char *hyphen;
+
+	hyphen = strnchr(id, len, HYPHEN);
+	if (hyphen) {
+		if (*(hyphen+1) == toupper(letter_t)) {
+			memmove(id+1, id, hyphen-id);
+			hyphen++;
+			*hyphen++ = letter_t;
+		} else if (*(hyphen+1) == toupper(letter_i))
+			*hyphen++ = letter_i;
+		*id = letter_s;
+		*hyphen = 0;
+	} else {
+		int i;
+		for (i = 0; *(id+i) != 0; i++)
+			if (isupper(*(id+i)))
+				*(id+i) = tolower(*(id+i));
+	}
 }
 
 static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
@@ -2551,7 +2560,6 @@ static int synaptics_rmi4_alloc_fh(struct synaptics_rmi4_fn **fhandler,
 static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
-	unsigned char *hyphen;
 	unsigned char page_number;
 	unsigned char intr_count = 0;
 	unsigned char data_sources = 0;
@@ -2748,11 +2756,8 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	rmi->product_id_string[SYNAPTICS_RMI4_PRODUCT_ID_SIZE] = 0;
 
 	/* handle wrongfully programmed product id strings here */
-	hyphen = strnchr(rmi->product_id_string,
-				SYNAPTICS_RMI4_PRODUCT_ID_SIZE, HYPHEN);
-	if (hyphen != NULL)
-		synaptics_dsx_darn_product_string(
-					rmi->product_id_string, hyphen);
+	synaptics_dsx_darn_product_string(rmi->product_id_string,
+					SYNAPTICS_RMI4_PRODUCT_ID_SIZE);
 
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_query_base_addr+PACKAGE_ID_OFFSET,
