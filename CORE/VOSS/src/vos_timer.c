@@ -454,7 +454,7 @@ VOS_STATUS vos_timer_init_debug( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
     if(VOS_STATUS_SUCCESS != vosStatus)
     {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-             "%s: Unable to insert node into List vosStatus %d\n", __func__, vosStatus);
+             "%s: Unable to insert node into List vosStatus %d", __func__, vosStatus);
     }
    
    // set the various members of the timer structure 
