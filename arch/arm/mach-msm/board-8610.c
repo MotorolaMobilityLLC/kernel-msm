@@ -126,6 +126,13 @@ void __init msm8610_init(void)
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
+	/* TODO: add the rest of MMI specific gpiomux into
+	   msm8610-moto-gpiomux.dtsi to avoid calling
+	   msm8610_init_gpiomux() for MMI platform
+
+		if (!platform_is_msm8610_moto())
+			msm8610_init_gpiomux();
+	 */
 	msm8610_init_gpiomux();
 	board_dt_populate(adata);
 	msm8610_add_drivers();
