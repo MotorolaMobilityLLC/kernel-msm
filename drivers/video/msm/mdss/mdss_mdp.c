@@ -646,6 +646,7 @@ void mdss_bus_bandwidth_ctrl(int enable)
 		if (!enable) {
 			msm_bus_scale_client_update_request(
 				mdata->bus_hdl, 0);
+			mdss_iommu_dettach(mdata);
 			pm_runtime_put(&mdata->pdev->dev);
 		} else {
 			pm_runtime_get_sync(&mdata->pdev->dev);
@@ -994,6 +995,9 @@ int mdss_hw_init(struct mdss_data_type *mdata)
 		/* swap */
 		writel_relaxed(1, offset + 16);
 	}
+
+	mdata->nmax_concurrent_ad_hw = (mdata->mdp_rev <= MDSS_MDP_HW_REV_102) ?
+									1 : 2;
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 	pr_debug("MDP hw init done\n");
 
@@ -1017,6 +1021,11 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 	rc = mdss_mdp_irq_clk_setup(mdata);
 	if (rc)
 		return rc;
+
+	mdata->hist_intr.req = 0;
+	mdata->hist_intr.curr = 0;
+	mdata->hist_intr.state = 0;
+	spin_lock_init(&mdata->hist_intr.lock);
 
 	mdata->iclient = msm_ion_client_create(-1, mdata->pdev->name);
 	if (IS_ERR_OR_NULL(mdata->iclient)) {
@@ -1057,15 +1066,20 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 #define SPRINT(fmt, ...) \
 		(cnt += scnprintf(buf + cnt, len - cnt, fmt, ##__VA_ARGS__))
 
-	SPRINT("mdp_version=5 hw_rev=%d\n", mdata->mdp_rev);
+	SPRINT("mdp_version=5\n");
+	SPRINT("hw_rev=%d\n", mdata->mdp_rev);
 	SPRINT("rgb_pipes=%d\n", mdata->nrgb_pipes);
 	SPRINT("vig_pipes=%d\n", mdata->nvig_pipes);
 	SPRINT("dma_pipes=%d\n", mdata->ndma_pipes);
 	SPRINT("smp_count=%d\n", mdata->smp_mb_cnt);
 	SPRINT("smp_size=%d\n", mdata->smp_mb_size);
-	SPRINT("max downscale ratio=%d\n", MAX_DOWNSCALE_RATIO);
-	SPRINT("max upscale ratio=%d\n", MAX_UPSCALE_RATIO);
-	SPRINT("features:");
+	SPRINT("max_downscale_ratio=%d\n", MAX_DOWNSCALE_RATIO);
+	SPRINT("max_upscale_ratio=%d\n", MAX_UPSCALE_RATIO);
+	if (mdata->max_bw_low)
+		SPRINT("max_bandwidth_low=%u\n", mdata->max_bw_low);
+	if (mdata->max_bw_high)
+		SPRINT("max_bandwidth_high=%u\n", mdata->max_bw_high);
+	SPRINT("features=");
 	if (mdata->has_bwc)
 		SPRINT(" bwc");
 	if (mdata->has_decimation)
@@ -1962,6 +1976,16 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 	prop = of_find_property(pdev->dev.of_node, "batfet-supply", NULL);
 	mdata->batfet_required = prop ? true : false;
 
+	rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,max-bandwidth-low-kbps", &mdata->max_bw_low);
+	if (rc)
+		pr_debug("max bandwidth (low) property not specified\n");
+
+	rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,max-bandwidth-high-kbps", &mdata->max_bw_high);
+	if (rc)
+		pr_debug("max bandwidth (high) property not specified\n");
+
 	return 0;
 }
 
@@ -1977,8 +2001,10 @@ static int mdss_mdp_parse_dt_ad_cfg(struct platform_device *pdev)
 		mdata->ad_cfgs = NULL;
 		return 0;
 	}
+
 	if (mdata->nad_cfgs > mdata->nmixers_intf)
 		return -EINVAL;
+
 
 	mdata->has_wb_ad = of_property_read_bool(pdev->dev.of_node,
 		"qcom,mdss-has-wb-ad");
