@@ -80,6 +80,14 @@
 #define HDD_DEST_ADDR_OFFSET      6
 
 #define HDD_MAC_HDR_SIZE          6
+
+#define HDD_PSB_CFG_INVALID                   0xFF
+#define HDD_PSB_CHANGED                       0xFF
+#define SME_QOS_UAPSD_CFG_BK_CHANGED_MASK     0xF1
+#define SME_QOS_UAPSD_CFG_BE_CHANGED_MASK     0xF2
+#define SME_QOS_UAPSD_CFG_VI_CHANGED_MASK     0xF4
+#define SME_QOS_UAPSD_CFG_VO_CHANGED_MASK     0xF8
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -272,4 +280,13 @@ void hdd_tx_rx_pkt_cnt_stat_timer_handler( void *pAdapter);
   ===========================================================================*/
 void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId);
 
+/**=========================================================================
+  @brief hdd_wmm_acquire_access_required()-
+                   Determine whether wmm ac acquire access is required
+  @param pAdapter  : pointer to Adapter context
+  @param acType    : AC
+  @return          : void
+   ========================================================================*/
+void hdd_wmm_acquire_access_required(hdd_adapter_t *pAdapter,
+                                     WLANTL_ACEnumType acType);
 #endif    // end #if !defined( WLAN_HDD_TX_RX_H )
