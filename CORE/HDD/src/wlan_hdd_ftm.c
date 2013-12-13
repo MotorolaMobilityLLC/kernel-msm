@@ -3041,6 +3041,41 @@ static VOS_STATUS validate_channel(unsigned int channel,unsigned int cb)
 }
 
 
+static unsigned int get_primary_channel(unsigned int center_channel,unsigned int cb)
+{
+    unsigned int primary_channel = center_channel;
+
+        if (center_channel <= 14)
+                return primary_channel ;
+
+    switch (cb)
+    {
+        case PHY_DOUBLE_CHANNEL_LOW_PRIMARY:
+                case PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_CENTERED:
+                case PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW:
+            primary_channel -= 2;
+            break;
+
+
+        case PHY_DOUBLE_CHANNEL_HIGH_PRIMARY:
+                case PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_CENTERED:
+                case PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH:
+                        primary_channel += 2;
+                        break;
+
+                case PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW:
+                        primary_channel -= 6;
+                        break;
+
+                case PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH:
+                        primary_channel += 6;
+                        break;
+        }
+
+        return primary_channel;
+
+}
+
 /**---------------------------------------------------------------------------
 
   \brief wlan_ftm_priv_set_channel() -
@@ -3081,7 +3116,7 @@ static VOS_STATUS wlan_ftm_priv_set_channel(hdd_adapter_t *pAdapter,v_U16_t chan
 
     pMsgBody = &pMsgBuf->msgBody;
 
-    pMsgBody->SetChannel.chId = channel;
+    pMsgBody->SetChannel.chId = get_primary_channel(channel, ftm_status.cbmode);
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Channel =%d\n",pMsgBody->SetChannel.chId);
     pMsgBody->SetChannel.cbState = ftm_status.cbmode ;
