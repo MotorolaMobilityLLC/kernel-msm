@@ -123,6 +123,8 @@ enum wcd9xxx_mbhc_clk_freq {
 enum wcd9xxx_mbhc_event_state {
 	MBHC_EVENT_PA_HPHL,
 	MBHC_EVENT_PA_HPHR,
+	MBHC_EVENT_PRE_TX_3_ON,
+	MBHC_EVENT_POST_TX_3_OFF,
 };
 
 struct wcd9xxx_mbhc_general_cfg {
@@ -228,6 +230,8 @@ struct wcd9xxx_mbhc_config {
 	bool (*swap_gnd_mic) (struct snd_soc_codec *);
 	unsigned long cs_enable_flags;
 	bool use_int_rbias;
+	bool do_recalibration;
+	bool use_vddio_meas;
 };
 
 struct wcd9xxx_cfilt_mode {

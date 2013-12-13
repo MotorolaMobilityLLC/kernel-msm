@@ -277,14 +277,17 @@ static void handle_sys_init_done(enum command_response cmd, void *data)
 		dprintk(VIDC_ERR, "Wrong device_id received\n");
 		return;
 	}
-	dprintk(VIDC_DBG, "index = %d\n", index);
-	dprintk(VIDC_DBG, "ptr = %p\n", &(core->completions[index]));
-	complete(&(core->completions[index]));
 	sys_init_msg = response->data;
 	if (!sys_init_msg) {
 		dprintk(VIDC_ERR, "sys_init_done message not proper\n");
 		return;
 	}
+	core->enc_codec_supported = sys_init_msg->enc_codec_supported;
+	core->dec_codec_supported = sys_init_msg->dec_codec_supported;
+	dprintk(VIDC_DBG, "supported_codecs: enc = 0x%x, dec = 0x%x\n",
+		core->enc_codec_supported, core->dec_codec_supported);
+	dprintk(VIDC_DBG, "ptr[%d] = %p\n", index, &(core->completions[index]));
+	complete(&(core->completions[index]));
 }
 
 static void handle_session_release_buf_done(enum command_response cmd,
@@ -1598,7 +1601,7 @@ static enum hal_domain get_hal_domain(int session_type)
 	return domain;
 }
 
-static enum hal_video_codec get_hal_codec_type(int fourcc)
+enum hal_video_codec get_hal_codec_type(int fourcc)
 {
 	enum hal_video_codec codec;
 	dprintk(VIDC_DBG, "codec is 0x%x", fourcc);
@@ -1998,7 +2001,7 @@ static int set_output_buffers(struct msm_vidc_inst *inst,
 	if (output_buf->buffer_size) {
 		for (i = 0; i < output_buf->buffer_count_actual;
 				i++) {
-			handle = msm_smem_alloc(inst->mem_client,
+			handle = msm_comm_smem_alloc(inst,
 					buffer_size, 1, smem_flags,
 					buffer_type, 0);
 			if (!handle) {
@@ -2007,7 +2010,7 @@ static int set_output_buffers(struct msm_vidc_inst *inst,
 				rc = -ENOMEM;
 				goto err_no_mem;
 			}
-			rc = msm_smem_cache_operations(inst->mem_client,
+			rc = msm_comm_smem_cache_operations(inst,
 					handle, SMEM_CACHE_CLEAN);
 			if (rc) {
 				dprintk(VIDC_WARN,
@@ -2052,7 +2055,7 @@ static int set_output_buffers(struct msm_vidc_inst *inst,
 fail_set_buffers:
 	kfree(binfo);
 fail_kzalloc:
-	msm_smem_free(inst->mem_client, handle);
+	msm_comm_smem_free(inst, handle);
 err_no_mem:
 	return rc;
 }
@@ -2089,7 +2092,7 @@ static int set_scratch_buffers(struct msm_vidc_inst *inst,
 	if (scratch_buf->buffer_size) {
 		for (i = 0; i < scratch_buf->buffer_count_actual;
 				i++) {
-			handle = msm_smem_alloc(inst->mem_client,
+			handle = msm_comm_smem_alloc(inst,
 				scratch_buf->buffer_size, 1, smem_flags,
 				buffer_type, 0);
 			if (!handle) {
@@ -2098,7 +2101,7 @@ static int set_scratch_buffers(struct msm_vidc_inst *inst,
 				rc = -ENOMEM;
 				goto err_no_mem;
 			}
-			rc = msm_smem_cache_operations(inst->mem_client,
+			rc = msm_comm_smem_cache_operations(inst,
 					handle, SMEM_CACHE_CLEAN);
 			if (rc) {
 				dprintk(VIDC_WARN,
@@ -2134,7 +2137,7 @@ static int set_scratch_buffers(struct msm_vidc_inst *inst,
 fail_set_buffers:
 	kfree(binfo);
 fail_kzalloc:
-	msm_smem_free(inst->mem_client, handle);
+	msm_comm_smem_free(inst, handle);
 err_no_mem:
 	return rc;
 }
@@ -2176,7 +2179,7 @@ static int set_persist_buffers(struct msm_vidc_inst *inst,
 
 	if (persist_buf->buffer_size) {
 		for (i = 0; i < persist_buf->buffer_count_actual; i++) {
-			handle = msm_smem_alloc(inst->mem_client,
+			handle = msm_comm_smem_alloc(inst,
 				persist_buf->buffer_size, 1, smem_flags,
 				buffer_type, 0);
 			if (!handle) {
@@ -2185,7 +2188,7 @@ static int set_persist_buffers(struct msm_vidc_inst *inst,
 				rc = -ENOMEM;
 				goto err_no_mem;
 			}
-			rc = msm_smem_cache_operations(inst->mem_client,
+			rc = msm_comm_smem_cache_operations(inst,
 					handle, SMEM_CACHE_CLEAN);
 			if (rc) {
 				dprintk(VIDC_WARN,
@@ -2221,7 +2224,7 @@ static int set_persist_buffers(struct msm_vidc_inst *inst,
 fail_set_buffers:
 	kfree(binfo);
 fail_kzalloc:
-	msm_smem_free(inst->mem_client, handle);
+	msm_comm_smem_free(inst, handle);
 err_no_mem:
 	return rc;
 }
@@ -2593,7 +2596,7 @@ int msm_comm_release_output_buffers(struct msm_vidc_inst *inst)
 			}
 			list_del(&buf->list);
 			mutex_unlock(&inst->lock);
-			msm_smem_free(inst->mem_client, buf->handle);
+			msm_comm_smem_free(inst, buf->handle);
 			kfree(buf);
 			mutex_lock(&inst->lock);
 		}
@@ -2664,7 +2667,7 @@ int msm_comm_release_scratch_buffers(struct msm_vidc_inst *inst)
 			}
 			list_del(&buf->list);
 			mutex_unlock(&inst->lock);
-			msm_smem_free(inst->mem_client, buf->handle);
+			msm_comm_smem_free(inst, buf->handle);
 			kfree(buf);
 			mutex_lock(&inst->lock);
 		}
@@ -2735,7 +2738,7 @@ int msm_comm_release_persist_buffers(struct msm_vidc_inst *inst)
 			}
 			list_del(&buf->list);
 			mutex_unlock(&inst->lock);
-			msm_smem_free(inst->mem_client, buf->handle);
+			msm_comm_smem_free(inst, buf->handle);
 			kfree(buf);
 			mutex_lock(&inst->lock);
 		}
@@ -3342,4 +3345,86 @@ int msm_comm_recover_from_session_error(struct msm_vidc_inst *inst)
 	} else
 		change_inst_state(inst, MSM_VIDC_CLOSE_DONE);
 	return rc;
+}
+
+static inline int power_on_for_smem(struct msm_vidc_inst *inst)
+{
+	struct hfi_device *hdev = NULL;
+	int rc = 0;
+
+	if (!inst || !inst->core || !inst->core->device) {
+		dprintk(VIDC_ERR, "%s: invalid inst handle\n", __func__);
+		return -EINVAL;
+	}
+	hdev = inst->core->device;
+	rc = call_hfi_op(hdev, power_enable, hdev->hfi_device_data);
+	if (rc)
+		dprintk(VIDC_ERR, "%s: failed to power on fw\n", __func__);
+	return rc;
+}
+
+struct msm_smem *msm_comm_smem_alloc(struct msm_vidc_inst *inst,
+			size_t size, u32 align, u32 flags,
+			enum hal_buffer buffer_type, int map_kernel)
+{
+	if (!inst) {
+		dprintk(VIDC_ERR, "%s: invalid inst: %p\n", __func__, inst);
+		return NULL;
+	}
+	if (power_on_for_smem(inst))
+		return NULL;
+
+	return msm_smem_alloc(inst->mem_client, size, align,
+				flags, buffer_type, map_kernel);
+}
+
+void msm_comm_smem_free(struct msm_vidc_inst *inst, struct msm_smem *mem)
+{
+	if (!inst || !mem) {
+		dprintk(VIDC_ERR,
+			"%s: invalid params: %p %p\n", __func__, inst, mem);
+		return;
+	}
+	if (power_on_for_smem(inst))
+		return;
+
+	return msm_smem_free(inst->mem_client, mem);
+}
+
+int msm_comm_smem_cache_operations(struct msm_vidc_inst *inst,
+		struct msm_smem *mem, enum smem_cache_ops cache_ops)
+{
+	if (!inst || !mem) {
+		dprintk(VIDC_ERR,
+			"%s: invalid params: %p %p\n", __func__, inst, mem);
+		return -EINVAL;
+	}
+	return msm_smem_cache_operations(inst->mem_client, mem, cache_ops);
+}
+
+struct msm_smem *msm_comm_smem_user_to_kernel(struct msm_vidc_inst *inst,
+			int fd, u32 offset, enum hal_buffer buffer_type)
+{
+	if (!inst) {
+		dprintk(VIDC_ERR, "%s: invalid inst: %p\n", __func__, inst);
+		return NULL;
+	}
+	if (power_on_for_smem(inst))
+		return NULL;
+
+	return msm_smem_user_to_kernel(inst->mem_client,
+			fd, offset, buffer_type);
+}
+
+int msm_comm_smem_get_domain_partition(struct msm_vidc_inst *inst,
+			u32 flags, enum hal_buffer buffer_type,
+			int *domain_num, int *partition_num)
+{
+	if (!inst || !domain_num || !partition_num) {
+		dprintk(VIDC_ERR, "%s: invalid params: %p %p %p\n",
+			__func__, inst, domain_num, partition_num);
+		return -EINVAL;
+	}
+	return msm_smem_get_domain_partition(inst->mem_client, flags,
+			buffer_type, domain_num, partition_num);
 }
