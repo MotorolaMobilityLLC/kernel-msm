@@ -1,0 +1,53 @@
+/* Copyright (c) 2013, Motorola Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	gpiomux {
+		compatible = "qcom,msm8x10-pinmux";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		pin@fd51000 {
+			reg = <0xfd511000 0x10>;	/* TOUCH_RST */
+			qcom,pin-num = <0>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(0)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* output high            */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(0)         */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <3>;   /* output low             */
+			};
+		};
+
+		pin@fd51010 {
+			reg = <0xfd511010 0x10>;	/* TOUCH_INT */
+			qcom,pin-num = <1>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(1)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(1)         */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
+	};
+};
