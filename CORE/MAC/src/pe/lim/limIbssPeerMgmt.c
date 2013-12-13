@@ -1426,6 +1426,16 @@ __limIbssSearchAndDeletePeer(tpAniSirGlobal    pMac,
       pPrevNode = pTempNode;
       pTempNode = pTempNextNode;
    }
+   /*
+    * if it is the last peer walking out, we better
+    * we set IBSS state to inactive.
+    */
+   if (0 == pMac->lim.gLimNumIbssPeers)
+   {
+       VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+            "Last STA from IBSS walked out");
+       psessionEntry->limIbssActive = false;
+   }
 }
 
 /**
