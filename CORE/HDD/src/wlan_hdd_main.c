@@ -151,6 +151,11 @@ static struct kparam_string fwpath = {
    .string = fwpath_buffer,
    .maxlen = BUF_LEN,
 };
+
+static char *country_code;
+static int   enable_11d = -1;
+static int   enable_dfs_chan_scan = -1;
+
 #ifndef MODULE
 static int wlan_hdd_inited;
 #endif
@@ -7817,6 +7822,19 @@ int hdd_wlan_startup(struct device *dev )
       the INI file and from NV before vOSS has been started so that
       the final contents are available to send down to the cCPU   */
 
+   if (0 == enable_dfs_chan_scan || 1 == enable_dfs_chan_scan)
+   {
+      pHddCtx->cfg_ini->enableDFSChnlScan = enable_dfs_chan_scan;
+      hddLog(VOS_TRACE_LEVEL_INFO, "%s: module enable_dfs_chan_scan set to %d",
+             __func__, enable_dfs_chan_scan);
+   }
+   if (0 == enable_11d || 1 == enable_11d)
+   {
+      pHddCtx->cfg_ini->Is11dSupportEnabled = enable_11d;
+      hddLog(VOS_TRACE_LEVEL_INFO, "%s: module enable_11d set to %d",
+             __func__, enable_11d);
+   }
+
    // Apply the cfg.ini to cfg.dat
    if (FALSE == hdd_update_config_dat(pHddCtx))
    {
@@ -7984,6 +8002,30 @@ int hdd_wlan_startup(struct device *dev )
    {
       hddLog(VOS_TRACE_LEVEL_ERROR, "%s: hdd_open_adapter failed", __func__);
       goto err_close_adapter;
+   }
+
+   if (country_code)
+   {
+      eHalStatus ret;
+      hdd_checkandupdate_dfssetting(pAdapter, country_code);
+#ifndef CONFIG_ENABLE_LINUX_REG
+      hdd_checkandupdate_phymode(pAdapter, country_code);
+#endif
+      ret = sme_ChangeCountryCode(pHddCtx->hHal, NULL,
+                                  country_code,
+                                  pAdapter, pHddCtx->pvosContext,
+                                  eSIR_TRUE);
+      if (eHAL_STATUS_SUCCESS == ret)
+      {
+         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   "%s: SME Change Country code from module param fail ret=%d",
+                   __func__, ret);
+      }
+      else
+      {
+         hddLog(VOS_TRACE_LEVEL_INFO, "%s: module country code set to %c%c",
+                __func__, country_code[0], country_code[1]);
+      }
    }
 
 #ifdef WLAN_BTAMP_FEATURE
@@ -9043,3 +9085,12 @@ module_param_call(con_mode, con_mode_handler, param_get_int, &con_mode,
 
 module_param_call(fwpath, fwpath_changed_handler, param_get_string, &fwpath,
                     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+module_param(enable_dfs_chan_scan, int,
+             S_IRUSR | S_IRGRP | S_IROTH);
+
+module_param(enable_11d, int,
+             S_IRUSR | S_IRGRP | S_IROTH);
+
+module_param(country_code, charp,
+             S_IRUSR | S_IRGRP | S_IROTH);
