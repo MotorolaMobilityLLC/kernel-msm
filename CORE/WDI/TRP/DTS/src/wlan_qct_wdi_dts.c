@@ -302,7 +302,7 @@ void WDTS_FillRateInfo(wpt_uint8 macEff, wpt_int16 startRateIndex, wpt_int16 end
 {
     int i;
 
-    DTI_TRACE( DTI_TRACE_LEVEL_ERROR, "Change only 11ac rates\n");
+    DTI_TRACE( DTI_TRACE_LEVEL_ERROR, "Change only 11ac rates");
 
     for (i=startRateIndex; i<=endRateIndex; i++)
     {
