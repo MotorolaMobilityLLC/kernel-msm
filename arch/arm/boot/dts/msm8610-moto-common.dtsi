@@ -86,7 +86,7 @@
 			interrupts = <1 0>;
 			gpios = <&msmgpio 1 0>, /* IRQ */
 				<&msmgpio 0 0>; /* RESET */
-			touch_vdd-supply = <&pm8110_l19>;
+			touch_vdd-supply = <&pm8110_l14>;
 			synaptics,normal-mode = <1>;
 			synaptics,gpio-config;
 		};
