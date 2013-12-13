@@ -4831,6 +4831,18 @@ eHalStatus sme_ChangeCountryCode( tHalHandle hHal,
    if ( HAL_STATUS_SUCCESS( status ) )
    {
       smsLog(pMac, LOG1, FL(" called"));
+
+      if ((csrGetInfraSessionId(pMac) != -1) &&
+          (!pMac->roam.configParam.fSupplicantCountryCodeHasPriority))
+      {
+
+          smsLog(pMac, LOGW, "Set Country Code Fail since the STA is associated and userspace does not have priority ");
+
+	  sme_ReleaseGlobalLock( &pMac->sme );
+          status = eHAL_STATUS_FAILURE;
+          return status;
+      }
+
       pMsg = vos_mem_malloc(sizeof(tAniChangeCountryCodeReq));
       if ( NULL == pMsg )
       {
@@ -7203,6 +7215,22 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
                VOS_COUNTRY_CODE_LEN) == 0)
     {
         is11dCountry = VOS_TRUE;
+    }
+
+    if ((!is11dCountry) && (!pMac->roam.configParam.fSupplicantCountryCodeHasPriority) &&
+        (csrGetInfraSessionId(pMac) != -1 ))
+    {
+
+        smsLog( pMac, LOGW, FL(" incorrect country being set, nullify this request"));
+
+        /* we have got a request for a country that should not have been added since the
+           STA is associated; nullify this request */
+        status = csrGetRegulatoryDomainForCountry(pMac,
+                                                  pMac->scan.countryCode11d,
+                                                  (v_REGDOMAIN_t *) &reg_domain_id,
+                                                  COUNTRY_IE);
+
+        return eHAL_STATUS_FAILURE;
     }
 
     /* if Supplicant country code has priority, disable 11d */
