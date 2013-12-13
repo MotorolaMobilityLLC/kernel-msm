@@ -247,8 +247,8 @@ static void nl_srv_rcv_skb (struct sk_buff *skb)
 
       if (nlh->nlmsg_len < sizeof(*nlh) || skb->len < nlh->nlmsg_len) {
          VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "NLINK: Invalid "
-            "Netlink message: skb[0x%X], len[%d], nlhdr[0x%X], nlmsg_len[%d]",
-            (u32)skb, skb->len, (u32)nlh, nlh->nlmsg_len);
+            "Netlink message: skb[%p], len[%d], nlhdr[%p], nlmsg_len[%d]",
+            skb, skb->len, nlh, nlh->nlmsg_len);
          return;
       }
 
