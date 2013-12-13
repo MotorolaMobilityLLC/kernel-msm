@@ -637,7 +637,7 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
    }
 
    //Prepare the request to send to SME.
-   pSmeBcnReportReq = vos_mem_malloc(sizeof( tSirBeaconReportReqInd ) + num_channels);
+   pSmeBcnReportReq = vos_mem_malloc(sizeof( tSirBeaconReportReqInd ));
    if ( NULL == pSmeBcnReportReq )
    {
       limLog( pMac, LOGP,
@@ -647,19 +647,16 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
 
    }
 
-   vos_mem_set(pSmeBcnReportReq,sizeof( tSirBeaconReportReqInd ) + num_channels,0);
+   vos_mem_set(pSmeBcnReportReq,sizeof( tSirBeaconReportReqInd ),0);
 
 #if defined WLAN_VOWIFI_DEBUG
    PELOGE(limLog( pMac, LOGE, FL(" Allocated memory for pSmeBcnReportReq....will be freed by other module") );)
 #endif
    vos_mem_copy(pSmeBcnReportReq->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr));
    pSmeBcnReportReq->messageType = eWNI_SME_BEACON_REPORT_REQ_IND;
-   pSmeBcnReportReq->length = sizeof( tSirBeaconReportReqInd ) + num_channels;
+   pSmeBcnReportReq->length = sizeof( tSirBeaconReportReqInd );
    pSmeBcnReportReq->uDialogToken = pBeaconReq->measurement_token;
-   //pSmeBcnReportReq->measurementDuration = SYS_TU_TO_MS(pBeaconReq->measurement_request.Beacon.meas_duration);
-   pSmeBcnReportReq->measurementDuration = SYS_TU_TO_MS(measDuration /*pBeaconReq->measurement_request.Beacon.meas_duration*/);
    pSmeBcnReportReq->randomizationInterval = SYS_TU_TO_MS (pBeaconReq->measurement_request.Beacon.randomization);
-   pSmeBcnReportReq->fMeasurementtype = pBeaconReq->measurement_request.Beacon.meas_mode;
    pSmeBcnReportReq->channelInfo.regulatoryClass = pBeaconReq->measurement_request.Beacon.regClass;
    pSmeBcnReportReq->channelInfo.channelNum = pBeaconReq->measurement_request.Beacon.channel;
    vos_mem_copy(pSmeBcnReportReq->macaddrBssid, pBeaconReq->measurement_request.Beacon.BSSID,
@@ -686,6 +683,8 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
           pBeaconReq->measurement_request.Beacon.APChannelReport[num_APChanReport].num_channelList);
 
          pChanList += pBeaconReq->measurement_request.Beacon.APChannelReport[num_APChanReport].num_channelList;
+         pSmeBcnReportReq->measurementDuration[num_APChanReport] = SYS_TU_TO_MS(measDuration /*pBeaconReq->measurement_request.Beacon.meas_duration*/);
+         pSmeBcnReportReq->fMeasurementtype[num_APChanReport] = pBeaconReq->measurement_request.Beacon.meas_mode;
       }
    }
 

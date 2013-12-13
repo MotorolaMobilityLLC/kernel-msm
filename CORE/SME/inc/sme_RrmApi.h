@@ -83,6 +83,6 @@ VOS_STATUS sme_RrmNeighborReportRequest(tpAniSirGlobal pMac, tANI_U8 sessionId, 
 
 tRrmNeighborReportDesc* smeRrmGetFirstBssEntryFromNeighborCache( tpAniSirGlobal pMac);
 tRrmNeighborReportDesc* smeRrmGetNextBssEntryFromNeighborCache( tpAniSirGlobal pMac, tpRrmNeighborReportDesc pBssEntry);
-
+void sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf);
 
 #endif
