@@ -93,6 +93,9 @@
 #define CHGCYL_RESOLUTION			20
 #define FCC_DEFAULT_TEMP			250
 
+/* Interrupt status reg offset */
+#define BMS1_INT_RT_STS				0x10
+#define CHG_BEGIN_INT_RT_STS			BIT(3)
 #define QPNP_BMS_DEV_NAME "qcom,qpnp-bms"
 
 enum {
@@ -1829,6 +1832,7 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	struct qpnp_vadc_result result;
 	int batt_temp;
 	int rc;
+	u8 chg_sts = 0;
 	bool charging, charging_since_last_report;
 
 	rc = wait_event_interruptible_timeout(chip->bms_wait_queue,
@@ -1942,6 +1946,21 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	pr_debug("last_soc = %d, calculated_soc = %d, soc = %d, time since last change = %d\n",
 			chip->last_soc, chip->calculated_soc,
 			soc, time_since_last_change_sec);
+
+	/* if last_soc < soc then report last soc as current soc */
+	rc = qpnp_read_wrapper(chip, &chg_sts,
+				(chip->base + BMS1_INT_RT_STS), 1);
+	if (rc)
+		pr_err("failed to read BMS interrupt sts %d\n", rc);
+	else if ((0 == (chg_sts & CHG_BEGIN_INT_RT_STS))
+		&& (!is_battery_full(chip))
+		&& (chip->last_soc != -EINVAL)
+		&& (chip->last_soc < soc)) {
+			pr_err("calculated soc = %d ,last soc = %d\n", soc,
+				 chip->last_soc);
+			soc = chip->last_soc;
+	}
+
 	chip->last_soc = bound_soc(soc);
 	soc_sanity_check(chip, batt_temp, chip->last_soc);
 	backup_soc_and_iavg(chip, batt_temp, chip->last_soc);
