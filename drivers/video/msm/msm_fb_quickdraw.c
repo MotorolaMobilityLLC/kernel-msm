@@ -35,24 +35,23 @@ static DEFINE_MUTEX(list_lock);
    were allocated in the app context. */
 static int setup_fd(struct msmfb_quickdraw_buffer *buffer)
 {
-	int ret = 0;
-
 	pr_debug("%s+: (buffer: %p)\n", __func__, buffer);
 
 	if (buffer->file && buffer->mem_fd == -1) {
-		ret = get_unused_fd();
-		if (ret < 0)
+		int fd = get_unused_fd();
+		if (fd < 0)
 			pr_err("%s: unable to get fd (ret: %d)\n",
-				__func__, ret);
+				__func__, fd);
 		else {
-			buffer->mem_fd = ret;
+			buffer->mem_fd = fd;
 			fd_install(buffer->mem_fd, buffer->file);
 		}
 	}
 
-	pr_debug("%s-: (buffer: %p) (ret: %d)\n", __func__, buffer, ret);
+	pr_debug("%s-: (buffer: %p) (fd: %d)\n", __func__, buffer,
+		buffer->mem_fd);
 
-	return ret;
+	return buffer->mem_fd;
 }
 
 static int set_overlay(struct msm_fb_data_type *mfd,
@@ -489,7 +488,7 @@ static int msm_fb_quickdraw_execute(void *data, int buffer_id, int x, int y)
 
 		if (!ret) {
 			ret = setup_fd(buffer);
-			if (ret)
+			if (ret < 0)
 				unset_overlay(mfd, buffer);
 			else
 				ret = play_overlay(mfd, buffer);
