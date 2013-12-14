@@ -1910,14 +1910,9 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                psessionEntry->ssId.ssId[3],
                psessionEntry->ssId.ssId[4],
                psessionEntry->ssId.ssId[5]);
-        limLog(pMac, LOG1, FL("Channel %d, BSSID %x:%x:%x:%x:%x:%x"),
+        limLog(pMac, LOG1, FL("Channel %d, BSSID "MAC_ADDRESS_STR),
                psessionEntry->currentOperChannel,
-               psessionEntry->bssId[0],
-               psessionEntry->bssId[1],
-               psessionEntry->bssId[2],
-               psessionEntry->bssId[3],
-               psessionEntry->bssId[4],
-               psessionEntry->bssId[5]);)
+               MAC_ADDR_ARRAY(psessionEntry->bssId));)
 
         /* Indicate whether spectrum management is enabled*/
         psessionEntry->spectrumMgtEnabled = 
@@ -3900,9 +3895,9 @@ __limProcessSmeDeltsReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
 
-    PELOG1(limLog(pMac, LOG1, FL("Sent DELTS request to station with assocId = %d MacAddr = %x:%x:%x:%x:%x:%x"),
-              pDeltsReq->aid, peerMacAddr[0], peerMacAddr[1], peerMacAddr[2],
-              peerMacAddr[3], peerMacAddr[4], peerMacAddr[5]);)
+    PELOG1(limLog(pMac, LOG1, FL("Sent DELTS request to station with "
+           "assocId = %d MacAddr = "MAC_ADDRESS_STR),
+           pDeltsReq->aid, MAC_ADDR_ARRAY(peerMacAddr));)
 
     limSendDeltsReqActionFrame(pMac, peerMacAddr, pDeltsReq->req.wmeTspecPresent, &pDeltsReq->req.tsinfo, &pDeltsReq->req.tspec,
               psessionEntry);
