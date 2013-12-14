@@ -23,10 +23,6 @@
 
 #include <vos_trace.h>
 
-#if !defined(__printf)
-#define __printf(a,b)
-#endif
-
 #ifdef WLAN_DEBUG
 
 /**----------------------------------------------------------------------------
@@ -52,8 +48,7 @@
    \return  nothing
     
   --------------------------------------------------------------------------*/
-void __printf(3,4) wpalTrace( wpt_moduleid module, wpt_tracelevel level,
-                              char *strFormat, ... );
+void wpalTrace( wpt_moduleid module, wpt_tracelevel level, char *strFormat, ... );
 
 /**----------------------------------------------------------------------------
   
