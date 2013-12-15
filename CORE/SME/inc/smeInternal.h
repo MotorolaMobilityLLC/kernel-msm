@@ -153,6 +153,9 @@ typedef struct tagSmeStruct
     tDblLinkList smeScanCmdPendingList;
     //active scan command list
     tDblLinkList smeScanCmdActiveList;
+#ifdef FEATURE_WLAN_CH_AVOID
+    void (*pChAvoidNotificationCb) (void *pAdapter, void *indParam);
+#endif /* FEATURE_WLAN_CH_AVOID */
 } tSmeStruct, *tpSmeStruct;
 
 
