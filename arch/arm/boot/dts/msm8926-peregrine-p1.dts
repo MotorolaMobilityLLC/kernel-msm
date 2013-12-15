@@ -110,6 +110,10 @@
 	};
 };
 
+&sdcc2 {
+	status = "disabled";
+};
+
 &i2c_2 {
 	lis3dh@18 {
 		compatible = "stm,lis3dh";
@@ -132,6 +136,12 @@
 	ak8963@0c {
 		interrupts = <15 0x2>;
 		akm,gpio-irq = <&msmgpio 15 0>;
+	};
+};
+
+&i2c_3 {
+	tpa6165xx@40 {
+		hs_det_micvdd-supply = <&pm8226_l21>;
 	};
 };
 

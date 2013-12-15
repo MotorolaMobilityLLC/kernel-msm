@@ -25,6 +25,11 @@
 };
 
 /* Support Gipper factory IC */
+&soc {
+	usb@f9a55000 {
+		otg,id_gnd_gpio = <&msmgpio 76 0x0>;
+	};
+};
 &mmi_factory {
 	gpios = <&msmgpio 77 0x2>; /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
 };

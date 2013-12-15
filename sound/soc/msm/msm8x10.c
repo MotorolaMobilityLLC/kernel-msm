@@ -53,6 +53,7 @@ static int msm_btsco_ch = 1;
 static int msm_proxy_rx_ch = 2;
 static struct platform_device *spdev;
 static int ext_spk_amp_gpio = -1;
+static int ext_spk_boost_gpio = -1;
 
 /* pointers for digital codec register mappings */
 static void __iomem *pcbcr;
@@ -167,6 +168,9 @@ static const struct snd_soc_dapm_widget msm8x10_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("Secondary Mic", NULL),
 };
+static const struct snd_soc_dapm_route msm8x10_spk_map[] = {
+	{"Lineout amp", NULL, "SPK_OUT"},
+};
 #ifdef CONFIG_SND_SOC_TPA6165A2
 static int msm_ext_hp_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
@@ -198,6 +202,31 @@ static const struct snd_soc_dapm_route tpa6165_hp_map[] = {
 	{"MIC BIAS Internal2", NULL, "TPA6165 Headset Mic"},
 };
 #endif
+static int msm8x10_ext_spk_power_boost_init(void)
+{
+	int ret = 0;
+
+	ext_spk_boost_gpio = of_get_named_gpio(spdev->dev.of_node,
+		"qcom,ext-spk-boost-gpio", 0);
+	if (ext_spk_boost_gpio >= 0) {
+		if (!gpio_is_valid(ext_spk_boost_gpio)) {
+			pr_err("%s: Couldn't find ext_spk_boost_gpio in dev.\n",
+				__func__);
+			return -EINVAL;
+		} else {
+			ret = gpio_request(ext_spk_boost_gpio,
+				"ext_spk_boost_gpio");
+			if (ret) {
+				pr_err("%s: gpio_request failed for boost gpio\n",
+					__func__);
+				return -EINVAL;
+			}
+			gpio_direction_output(ext_spk_boost_gpio, 0);
+		}
+	}
+	return 0;
+}
+
 static int msm8x10_ext_spk_power_amp_init(void)
 {
 	int ret = 0;
@@ -234,12 +263,18 @@ static int msm_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 static void msm8x10_enable_ext_spk_power_amp(u32 on)
 {
 	if (on) {
+		if (ext_spk_boost_gpio >= 0) {
+			gpio_direction_output(ext_spk_boost_gpio, on);
+			msleep_interruptible(20);
+		}
 		gpio_direction_output(ext_spk_amp_gpio, on);
 		/*time takes enable the external power amplifier*/
 		usleep_range(EXT_CLASS_D_EN_DELAY,
 			     EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
 	} else {
 		gpio_direction_output(ext_spk_amp_gpio, on);
+		if (ext_spk_boost_gpio >= 0)
+			gpio_direction_output(ext_spk_boost_gpio, on);
 		/*time takes disable the external power amplifier*/
 		usleep_range(EXT_CLASS_D_DIS_DELAY,
 			     EXT_CLASS_D_DIS_DELAY + EXT_CLASS_D_DELAY_DELTA);
@@ -556,6 +591,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	int ret = 0;
 
 	pr_debug("%s(),dev_name%s\n", __func__, dev_name(cpu_dai->dev));
+	msm8x10_ext_spk_power_boost_init();
 	msm8x10_ext_spk_power_amp_init();
 
 #ifndef CONFIG_SND_SOC_TPA6165A2
@@ -574,6 +610,9 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_new_controls(dapm, msm8x10_dapm_widgets,
 				ARRAY_SIZE(msm8x10_dapm_widgets));
+
+	snd_soc_dapm_add_routes(dapm, msm8x10_spk_map,
+				ARRAY_SIZE(msm8x10_spk_map));
 
 	snd_soc_dapm_enable_pin(dapm, "Lineout amp");
 	snd_soc_dapm_sync(dapm);

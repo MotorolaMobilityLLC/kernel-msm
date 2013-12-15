@@ -17,19 +17,5 @@
 /include/ "msm8926-peregrine-common.dtsi"
 
 / {
-	qcom,msm-id = <145 0x44 0x82a0>;
-};
-
-&pn544 {
-	status = "ok";
-};
-
-&i2c_3 {
-	tpa6165xx@40 {
-		hs_det_micvdd-supply = <&pm8226_l21>;
-	};
-};
-
-&sdcc2 {
-	status = "disabled";
+	qcom,msm-id = <145 0x44 0x82d0>;
 };

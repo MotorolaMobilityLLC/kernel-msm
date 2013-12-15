@@ -128,4 +128,10 @@ source "drivers/media/radio/Kconfig"
 
 source "drivers/media/dvb/Kconfig"
 
+config ISDBT_NMI
+	bool "ISDB-T NMI Driver"
+	default n
+	---help---
+	  This is a ISDB-T for NMI Driver.
+
 endif # MEDIA_SUPPORT

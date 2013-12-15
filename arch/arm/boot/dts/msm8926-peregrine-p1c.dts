@@ -23,3 +23,13 @@
 &pn544 {
 	status = "ok";
 };
+
+&i2c_3 {
+	tpa6165xx@40 {
+		hs_det_micvdd-supply = <&pm8226_l21>;
+	};
+};
+
+&sdcc2 {
+	status = "disabled";
+};

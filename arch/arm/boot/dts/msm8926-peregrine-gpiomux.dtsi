@@ -215,6 +215,23 @@
 				qcom,dir = <0>;   /* input                  */
 			};
 		};
+
+		pin@fd511730 {
+			reg = <0xfd511730 0x10>;  /* SD_CARD_DET_N */
+			qcom,pin-num = <115>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(115)       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+			qcom,suspend@1 {
+				qcom,func = <0>;  /* gpio_in_out(115)       */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* input                  */
+			};
+		};
 	};
 };
 

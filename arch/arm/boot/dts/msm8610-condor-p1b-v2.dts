@@ -37,6 +37,15 @@
 &soc {
 	/delete-node/ fan5646_vreg;
 	/delete-node/ fan5646;
+
+	sound {
+		/delete-property/ qcom,ext-spk-amp-gpio;
+		/delete-property/ qcom,ext-spk-boost-gpio;
+	};
+
+	usb@f9a55000 {
+		otg,id_gnd_gpio = <&msmgpio 76 0x0>;
+	};
 };
 
 &i2c_3 {

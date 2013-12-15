@@ -49,7 +49,14 @@
 		android,ram-buffer-size = <0x20000>;
 	};
 
-        fan5646_vreg: fan5646_vreg {
+	bootinfo {
+		compatible = "android,bootinfo";
+
+		android,bootinfo-buffer-start = <0x3eb00000>;
+		android,bootinfo-buffer-size = <0x800>;
+	};
+
+	fan5646_vreg: fan5646_vreg {
 		status = "ok";
 		compatible = "regulator-fixed";
 		regulator-name = "fan5646_vreg";
@@ -92,7 +99,6 @@
 
 	usb@f9a55000 {
 		otg,id_flt_gpio = <&msmgpio 75 0x0>;
-		otg,id_gnd_gpio = <&msmgpio 76 0x0>;
 		id_flt_active_high = <1>;
 		id_gnd_active_high = <1>;
 	};
@@ -169,6 +175,9 @@
 			"AMIC1", "MIC BIAS External",
 			"AMIC2", "MIC BIAS Internal2",
 			"AMIC3", "MIC BIAS External";
+
+		qcom,ext-spk-amp-gpio = <&msmgpio 4 0x0>;
+		qcom,ext-spk-boost-gpio = <&msmgpio 58 0x0>;
 	};
 
 	hob_ram@f500000 {
@@ -186,6 +195,10 @@
 		/include/ "batterydata-el40-lishen.dtsi"
 		/include/ "batterydata-el40-sony.dtsi"
 		/include/ "batterydata-el40-atl.dtsi"
+	};
+
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
 	};
 };
 
@@ -360,6 +373,17 @@
 
 &i2c {
 	qcom,i2c-bus-freq = <400000>;
+};
+
+&spi_4 {
+	nmi326@0 {
+		compatible = "nmi,nmi326";
+		reg = <0>;
+		spi-max-frequency = <9600000>;
+		irq-gpio = <&msmgpio 90 0>;
+		reset-gpio = <&msmgpio 91 0>;
+		enable-gpio = <&msmgpio 85 0>;
+	};
 };
 
 &spmi_bus {
@@ -587,7 +611,7 @@
 	qcom,vddsafe-mv = <4400>;
 	qcom,vinmin-mv = <4300>;
 	qcom,vbatdet-delta-mv = <150>;
-	qcom,ibatmax-ma = <2000>;
+	qcom,ibatmax-ma = <1500>;
 	qcom,ibatterm-ma = <100>;
 	qcom,ibatsafe-ma = <3250>;
 	qcom,thermal-mitigation = <1500 700 600 325>;
@@ -694,7 +718,7 @@
 
 &mdss_fb0 {
 	qcom,memory-reservation-type = "EBI1";
-	qcom,memory-reservation-size = <0x800000>;
+	qcom,memory-reservation-size = <0x400000>;
 };
 
 &mdss_dsi0 {
