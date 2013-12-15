@@ -12690,6 +12690,45 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
      }
 #endif
 
+#ifdef FEATURE_WLAN_CH_AVOID
+      case WDI_CH_AVOID_IND:
+      {
+         vos_msg_t            vosMsg;
+         tSirChAvoidIndType  *chAvoidInd;
+
+         chAvoidInd =
+           (tSirChAvoidIndType *)vos_mem_malloc(sizeof(tSirChAvoidIndType));
+         if (NULL == chAvoidInd)
+         {
+            VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: CH_AVOID IND buffer alloc Fail", __func__);
+            return ;
+         }
+
+         chAvoidInd->avoidRangeCount =
+              wdiLowLevelInd->wdiIndicationData.wdiChAvoidInd.avoidRangeCount;
+         wpalMemoryCopy((void *)chAvoidInd->avoidFreqRange,
+             (void *)wdiLowLevelInd->wdiIndicationData.wdiChAvoidInd.avoidFreqRange,
+             chAvoidInd->avoidRangeCount * sizeof(tSirChAvoidFreqType));
+
+         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                   "%s : WDA CH avoid notification", __func__);
+
+         vosMsg.type    = eWNI_SME_CH_AVOID_IND;
+         vosMsg.bodyptr = chAvoidInd;
+         vosMsg.bodyval = 0;
+         /* Send message to SME */
+         if (VOS_STATUS_SUCCESS !=
+             vos_mq_post_message(VOS_MQ_ID_SME, (vos_msg_t*)&vosMsg))
+         {
+            VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                      "post eWNI_SME_CH_AVOID_IND to SME Failed");
+            vos_mem_free(chAvoidInd);
+         }
+         break;
+      }
+#endif /* FEATURE_WLAN_CH_AVOID */
+
       default:
       {
          /* TODO error */
