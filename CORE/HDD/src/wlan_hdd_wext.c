@@ -2903,6 +2903,7 @@ static int iw_set_priv(struct net_device *dev,
                                             country_code,
                                             pAdapter,
                                             pHddCtx->pvosContext,
+                                            eSIR_TRUE,
                                             eSIR_TRUE);
 
         /* Wait for completion */
