@@ -478,7 +478,8 @@ wpt_status wpalWriteRegister
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  "%s: Register address 0x%0x out of range 0x%0x - 0x%0x",
                  __func__, address,
-                 gpEnv->wcnss_memory->start, gpEnv->wcnss_memory->end);
+                 (u32) gpEnv->wcnss_memory->start,
+                 (u32) gpEnv->wcnss_memory->end);
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
@@ -526,7 +527,8 @@ wpt_status wpalReadRegister
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  "%s: Register address 0x%0x out of range 0x%0x - 0x%0x",
                  __func__, address,
-                 gpEnv->wcnss_memory->start, gpEnv->wcnss_memory->end);
+                 (u32) gpEnv->wcnss_memory->start,
+                 (u32) gpEnv->wcnss_memory->end);
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
@@ -577,7 +579,8 @@ wpt_status wpalWriteDeviceMemory
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  "%s: Memory address 0x%0x len %d out of range 0x%0x - 0x%0x",
                  __func__, address, len,
-                 gpEnv->wcnss_memory->start, gpEnv->wcnss_memory->end);
+                 (u32) gpEnv->wcnss_memory->start,
+                 (u32) gpEnv->wcnss_memory->end);
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
@@ -621,7 +624,8 @@ wpt_status wpalReadDeviceMemory
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  "%s: Memory address 0x%0x len %d out of range 0x%0x - 0x%0x",
                  __func__, address, len,
-                 gpEnv->wcnss_memory->start, gpEnv->wcnss_memory->end);
+                 (u32) gpEnv->wcnss_memory->start,
+                 (u32) gpEnv->wcnss_memory->end);
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
