@@ -7236,7 +7236,15 @@ void csrRoamReissueRoamCommand(tpAniSirGlobal pMac)
                 smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
                 return;
             }
-            
+            /* While switching between two AP, csr will reissue roam command again
+               to the nextbss if it was interrupted by the dissconnect req for the
+               previous bss.During this csr is incrementing bRefAssocStartCnt twice.
+               so reset the bRefAssocStartCnt.
+            */
+            if(pSession->bRefAssocStartCnt > 0)
+            {
+                pSession->bRefAssocStartCnt--;
+            }
             if( pCommand->u.roamCmd.fStopWds )
             {
                 vos_mem_set(&roamInfo, sizeof(tCsrRoamInfo), 0);
