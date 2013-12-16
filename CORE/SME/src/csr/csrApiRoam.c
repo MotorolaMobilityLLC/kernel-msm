@@ -12720,7 +12720,7 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         else
         {
             dwTmp = pal_cpu_to_be32(FALSE);
-            vos_mem_copy(pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool));
+            vos_mem_copy(pBuf, &dwTmp, sizeof(tAniBool));
             pBuf += sizeof(tAniBool);
         }
 
