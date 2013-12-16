@@ -350,6 +350,11 @@ static struct voice_data *voice_get_session_by_idx(int idx)
 				NULL : &common.voice[idx]);
 }
 
+static bool is_voice_session(u32 session_id)
+{
+	return (session_id == common.voice[VOC_PATH_PASSIVE].session_id);
+}
+
 static bool is_voip_session(u32 session_id)
 {
 	return (session_id == common.voice[VOC_PATH_FULL].session_id);
@@ -1861,10 +1866,18 @@ static int voice_send_set_device_cmd(struct voice_data *v)
 
 	cvp_setdev_cmd.cvp_set_device_v2.tx_port_id = v->dev_tx.port_id;
 	cvp_setdev_cmd.cvp_set_device_v2.rx_port_id = v->dev_rx.port_id;
-	cvp_setdev_cmd.cvp_set_device_v2.vocproc_mode =
+
+	if (common.ec_ref_ext) {
+		cvp_setdev_cmd.cvp_set_device_v2.vocproc_mode =
+				VSS_IVOCPROC_VOCPROC_MODE_EC_EXT_MIXING;
+		cvp_setdev_cmd.cvp_set_device_v2.ec_ref_port_id =
+				common.ec_port_id;
+	} else {
+		cvp_setdev_cmd.cvp_set_device_v2.vocproc_mode =
 				    VSS_IVOCPROC_VOCPROC_MODE_EC_INT_MIXING;
-	cvp_setdev_cmd.cvp_set_device_v2.ec_ref_port_id =
+		cvp_setdev_cmd.cvp_set_device_v2.ec_ref_port_id =
 				    VSS_IVOCPROC_PORT_ID_NONE;
+	}
 	pr_debug("topology=%d , tx_port_id=%d, rx_port_id=%d\n",
 		cvp_setdev_cmd.cvp_set_device_v2.tx_topology_id,
 		cvp_setdev_cmd.cvp_set_device_v2.tx_port_id,
@@ -3026,10 +3039,17 @@ static int voice_setup_vocproc(struct voice_data *v)
 	cvp_session_cmd.cvp_session.rx_port_id = v->dev_rx.port_id;
 	cvp_session_cmd.cvp_session.profile_id =
 					 VSS_ICOMMON_CAL_NETWORK_ID_NONE;
-	cvp_session_cmd.cvp_session.vocproc_mode =
+	if (common.ec_ref_ext) {
+		cvp_session_cmd.cvp_session.vocproc_mode =
+				VSS_IVOCPROC_VOCPROC_MODE_EC_EXT_MIXING;
+		cvp_session_cmd.cvp_session.ec_ref_port_id =
+					common.ec_port_id;
+	} else {
+		cvp_session_cmd.cvp_session.vocproc_mode =
 				 VSS_IVOCPROC_VOCPROC_MODE_EC_INT_MIXING;
-	cvp_session_cmd.cvp_session.ec_ref_port_id =
+		cvp_session_cmd.cvp_session.ec_ref_port_id =
 						 VSS_IVOCPROC_PORT_ID_NONE;
+	}
 
 	pr_debug("tx_topology: %d tx_port_id=%d, rx_port_id=%d, mode: 0x%x\n",
 		cvp_session_cmd.cvp_session.tx_topology_id,
@@ -4257,8 +4277,10 @@ int voc_start_playback(uint32_t set, uint16_t port_id)
 		v = voice_get_session(voc_get_session_id(VOICE_SESSION_NAME));
 	else if (port_id == VOICE2_PLAYBACK_TX)
 		v = voice_get_session(voc_get_session_id(VOICE2_SESSION_NAME));
+	else
+		pr_err("%s: Invalid port_id 0x%x", __func__, port_id);
 
-	if (v != NULL) {
+	while (v != NULL) {
 		mutex_lock(&v->lock);
 		v->music_info.port_id = port_id;
 		v->music_info.play_enable = set;
@@ -4278,8 +4300,17 @@ int voc_start_playback(uint32_t set, uint16_t port_id)
 		}
 
 		mutex_unlock(&v->lock);
-	} else {
-		pr_err("%s: Invalid port_id 0x%x", __func__, port_id);
+
+		/* Voice and VoLTE call use the same pseudo port and hence
+		 * use the same mixer control. So enable incall delivery
+		 * for VoLTE as well with Voice.
+		 */
+		if (is_voice_session(v->session_id)) {
+			v = voice_get_session(voc_get_session_id(
+							VOLTE_SESSION_NAME));
+		} else {
+			break;
+		}
 	}
 
 	return ret;
@@ -4313,7 +4344,8 @@ int voc_disable_cvp(uint32_t session_id)
 
 		v->voc_state = VOC_CHANGE;
 	}
-
+	if (common.ec_ref_ext)
+		voc_set_ext_ec_ref(AFE_PORT_INVALID, false);
 fail:	mutex_unlock(&v->lock);
 
 	return ret;
@@ -4756,6 +4788,8 @@ int voc_end_voice_call(uint32_t session_id)
 
 		ret = -EINVAL;
 	}
+	if (common.ec_ref_ext)
+		voc_set_ext_ec_ref(AFE_PORT_INVALID, false);
 
 	mutex_unlock(&v->lock);
 	return ret;
@@ -4970,6 +5004,28 @@ int voc_start_voice_call(uint32_t session_id)
 	}
 fail:
 	mutex_unlock(&v->lock);
+	return ret;
+}
+
+int voc_set_ext_ec_ref(uint16_t port_id, bool state)
+{
+	int ret = 0;
+
+	mutex_lock(&common.common_lock);
+	if (state == true) {
+		if (port_id == AFE_PORT_INVALID) {
+			pr_err("%s: Invalid port id", __func__);
+			ret = -EINVAL;
+			goto exit;
+		}
+		common.ec_port_id = port_id;
+		common.ec_ref_ext = true;
+	} else {
+		common.ec_ref_ext = false;
+		common.ec_port_id = port_id;
+	}
+exit:
+	mutex_unlock(&common.common_lock);
 	return ret;
 }
 
@@ -5807,7 +5863,7 @@ static int __init voice_init(void)
 	common.default_vol_step_val = 0;
 	common.default_vol_ramp_duration_ms = DEFAULT_VOLUME_RAMP_DURATION;
 	common.default_mute_ramp_duration_ms = DEFAULT_MUTE_RAMP_DURATION;
-
+	common.ec_ref_ext = false;
 	/* Initialize MVS info. */
 	common.mvs_info.network_type = VSS_NETWORK_ID_DEFAULT;
 
