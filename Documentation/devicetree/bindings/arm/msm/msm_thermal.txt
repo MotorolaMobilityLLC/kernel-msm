@@ -43,6 +43,29 @@ Optional properties
 - qcpm,cpu-sensors:     List of type names in thermal zone device struct which maps
 			to cpu0, cpu1, cpu2, cpu3 in sequence depending on how many
 			cpus there are.
+- qcom,freq-mitigation-temp: Threshold temperature to mitigate
+			the CPU max frequency in degC. This will be
+			used when polling based frequency control is disabled.
+			The difference between freq-mitigation-temp
+			and limit-temp is that limit-temp is used during
+			early boot prior to thermal_sys being available for registering
+			temperature thresholds. Also, this emergency frequency
+			mitigation is a single step frequency mitigation to a predefined value
+			as opposed to the step by step frequency mitigation during boot-up.
+- qcom,freq-mitigation-temp-hysteresis: Degrees C below which thermal will not mitigate the
+			cpu max frequency.
+- qcom,freq-mitigation-value: The frequency value (in kHz) to which the thermal
+			should mitigate the CPU, when the freq-mitigation-temp
+			threshold is reached.
+- qcom,freq-mitigation-control-mask: The frequency mitigation bitmask that will be
+			used to determine if KTM should do emergency frequency
+			mitigation for a core or not. A mask of 0x00 indicates the
+			mitigation is disabled for all the cores and a mask of 0x05
+			indicates this mitigation is enabled for cpu-0 and cpu-2.
+			Note: For KTM's frequency mitigation to work, the data for all the
+			above four properties (qcom,freq-mitigation-temp; qcom,
+			freq-mitigation-temp-hysteresis; qcom,freq-mitigation-value and
+			qcom,freq-mitigation-control-mask) should be populated.
 - qcom,vdd-restriction-temp: When temperature is below this threshold, will
 			enable vdd restriction which will set higher voltage on
 			key voltage rails, in degC.
@@ -67,6 +90,20 @@ Optional properties
 			phandle_of_regulator is defined by reuglator device tree.
 
 Optional child nodes
+- qti,pmic-opt-curr-temp: Threshold temperature for requesting optimum current (request
+			dual phase) for rails with PMIC, in degC. If this property exists,
+			then the properties, qti,pmic-opt-curr-temp-hysteresis and
+			qti,pmic-opt-curr-regs should also be defined to enable this
+			feature.
+- qti,pmic-opt-curr-temp-hysteresis: Degree below the threshold to disable the optimum
+			current request for a rail, in degC. If this property exists,
+			then the properties, qti,pmic-opt-curr-temp and
+			qti,pmic-opt-curr-regs should also be defined to enable
+			this feature.
+- qti,pmic-opt-curr-regs: Name of the rails for which the optimum current should be
+			requested. If this property exists, then the properties,
+			qti,pmic-opt-curr-temp and qti,pmic-opt-curr-temp-hysteresis
+			should also be defined to enable this feature.
 - qcom,<vdd restriction child node name>: Define the name of the child node.
 			If this property exisits, qcom,vdd-rstr-reg, qcom,levels
 			need to exist. qcom,min-level is optional if qcom,freq-req
@@ -97,11 +134,18 @@ Example:
 		qcom,hotplug-temp-hysteresis = <20>;
 		qcom,cpu-sensors = "tsens_tz_sensor5", "tsens_tz_sensor6",
 				"tsens_tz_sensor7", "tsens_tz_sensor8";
+		qcom,freq-mitigation-temp = <110>;
+		qcom,freq-mitigation-temp-hysteresis = <20>;
+		qcom,freq-mitigation-value = <960000>;
+		qcom,freq-mitigation-control-mask = <0x01>;
 		qcom,pmic-sw-mode-temp = <90>;
 		qcom,pmic-sw-mode-temp-hysteresis = <80>;
 		qcom,pmic-sw-mode-regs = "vdd-dig";
 		qcom,vdd-restriction-temp = <5>;
 		qcom,vdd-restriction-temp-hysteresis = <10>;
+		qti,pmic-opt-curr-temp = <85>;
+		qti,pmic-opt-curr-temp-hysteresis = <10>;
+		qti,pmic-opt-curr-regs = "vdd-dig";
 		vdd-dig-supply=<&pm8841_s2_floor_corner>
 
 		qcom,vdd-dig-rstr{
