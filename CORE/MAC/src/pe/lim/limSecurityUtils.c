@@ -1299,7 +1299,7 @@ tSirRetStatus      retCode;
 end:
   if (pRemoveStaKeyParams)
   {
-    palFreeMemory(pMac->hHdd, pRemoveStaKeyParams);
+    vos_mem_free(pRemoveStaKeyParams);
   }
   limPostSmeRemoveKeyCnf( pMac,
       psessionEntry,
