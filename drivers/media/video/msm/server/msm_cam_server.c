@@ -2760,6 +2760,12 @@ int msm_server_send_ctrl(struct msm_ctrl_cmd *out,
 		ctrlcmd->length <= out->length)
 		memcpy(value, ctrlcmd->value, ctrlcmd->length);
 
+	else if (ctrlcmd->length > 0){
+		pr_err("%s: Error - command length mismatch out=%d/cmd=%d\n",
+			__func__, out->length, ctrlcmd->length);
+		free_qcmd(rcmd);
+		return -EINVAL;
+	}
 	memcpy(out, ctrlcmd, sizeof(struct msm_ctrl_cmd));
 	out->value = value;
 
