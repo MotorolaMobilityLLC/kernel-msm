@@ -3629,10 +3629,12 @@ qpnp_eoc_work(struct work_struct *work)
 				chip->chrg_ocv_cc_ef_uah =
 					get_prop_charge_counter(chip);
 				qpnp_chg_charge_en(chip, 0);
+#ifdef QCOM_WA
 				/* sleep for a second before enabling */
 				msleep(2000);
 				qpnp_chg_charge_en(chip,
 						!chip->charging_disabled);
+#endif
 				pr_debug("psy changed batt_psy\n");
 				power_supply_changed(&chip->batt_psy);
 				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
