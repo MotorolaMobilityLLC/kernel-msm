@@ -848,9 +848,8 @@ eHalStatus limSendStopScanOffloadReq(tpAniSirGlobal pMac, tANI_U8 SessionId)
     tSirRetStatus rc = eSIR_SUCCESS;
     tAbortScanParams *pAbortScanParams;
 
-    if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
-                                                 (void**) &pAbortScanParams,
-                                                 sizeof(tAbortScanParams)))
+    pAbortScanParams = vos_mem_malloc(sizeof(tAbortScanParams));
+    if (NULL == pAbortScanParams)
     {
         limLog(pMac, LOGP, FL("Memory allocation failed for AbortScanParams"));
         return eHAL_STATUS_FAILURE;
@@ -865,7 +864,7 @@ eHalStatus limSendStopScanOffloadReq(tpAniSirGlobal pMac, tANI_U8 SessionId)
     if (rc != eSIR_SUCCESS)
     {
         limLog(pMac, LOGE, FL("wdaPostCtrlMsg() return failure"));
-        palFreeMemory(pMac->hHdd, (tANI_U8 *)pAbortScanParams);
+        vos_mem_free(pAbortScanParams);
         return eHAL_STATUS_FAILURE;
     }
 
