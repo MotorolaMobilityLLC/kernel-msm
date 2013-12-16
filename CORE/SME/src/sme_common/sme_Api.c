@@ -4916,19 +4916,17 @@ eHalStatus sme_GenericChangeCountryCode( tHalHandle hHal,
     if ( HAL_STATUS_SUCCESS( status ) )
     {
         smsLog(pMac, LOG1, FL(" called"));
-        status = palAllocateMemory(pMac->hHdd, (void **)&pMsg,
-                                   sizeof(tAniGenericChangeCountryCodeReq));
-
-        if (!HAL_STATUS_SUCCESS(status))
+        pMsg = vos_mem_malloc(sizeof(tAniGenericChangeCountryCodeReq));
+        if (NULL == pMsg)
         {
             smsLog(pMac, LOGE, " sme_GenericChangeCountryCode: failed to allocate mem for req");
             sme_ReleaseGlobalLock( &pMac->sme );
-            return status;
+            return eHAL_STATUS_FAILURE;
         }
 
         pMsg->msgType = pal_cpu_to_be16((tANI_U16)eWNI_SME_GENERIC_CHANGE_COUNTRY_CODE);
         pMsg->msgLen = (tANI_U16)sizeof(tAniGenericChangeCountryCodeReq);
-        palCopyMemory(pMac->hHdd, pMsg->countryCode, pCountry, 3);
+        vos_mem_copy(pMsg->countryCode, pCountry, 3);
         pMsg->domain_index = reg_domain;
 
         msg.type = eWNI_SME_GENERIC_CHANGE_COUNTRY_CODE;
@@ -4938,7 +4936,7 @@ eHalStatus sme_GenericChangeCountryCode( tHalHandle hHal,
         if (VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MQ_ID_SME, &msg))
         {
             smsLog(pMac, LOGE, "sme_GenericChangeCountryCode failed to post msg to self");
-            palFreeMemory(pMac->hHdd, (void *)pMsg);
+            vos_mem_free(pMsg);
             status = eHAL_STATUS_FAILURE;
         }
         smsLog(pMac, LOG1, FL(" returned"));
@@ -7237,7 +7235,7 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
         pMac->roam.configParam.Is11dSupportEnabled = eANI_BOOLEAN_FALSE;
     }
 
-    palCopyMemory(pMac->hHdd, pMac->scan.countryCodeCurrent, pMsg->countryCode,
+    vos_mem_copy(pMac->scan.countryCodeCurrent, pMsg->countryCode,
                   WNI_CFG_COUNTRY_CODE_LEN);
 
     status = WDA_SetRegDomain(pMac, reg_domain_id, eSIR_TRUE);
@@ -7245,7 +7243,7 @@ eHalStatus sme_HandleChangeCountryCodeByUser(tpAniSirGlobal pMac,
     if (VOS_FALSE == is11dCountry )
     {
         /* overwrite the defualt country code */
-        palCopyMemory(pMac->hHdd, pMac->scan.countryCodeDefault,
+        vos_mem_copy(pMac->scan.countryCodeDefault,
                       pMac->scan.countryCodeCurrent, WNI_CFG_COUNTRY_CODE_LEN);
         /* set to default domain ID */
         pMac->scan.domainIdDefault = pMac->scan.domainIdCurrent;
@@ -7320,9 +7318,9 @@ eHalStatus sme_HandleChangeCountryCodeByCore(tpAniSirGlobal pMac, tAniGenericCha
     if (('0' == pMsg->countryCode[0]) && ('0' == pMsg->countryCode[1]))
     {
         smsLog( pMac, LOGW, FL("Setting countryCode11d & countryCodeCurrent to world CC"));
-        palCopyMemory(pMac->hHdd, pMac->scan.countryCode11d, pMsg->countryCode,
+        vos_mem_copy(pMac->scan.countryCode11d, pMsg->countryCode,
                       WNI_CFG_COUNTRY_CODE_LEN);
-        palCopyMemory(pMac->hHdd, pMac->scan.countryCodeCurrent, pMsg->countryCode,
+        vos_mem_copy(pMac->scan.countryCodeCurrent, pMsg->countryCode,
                       WNI_CFG_COUNTRY_CODE_LEN);
     }
 
