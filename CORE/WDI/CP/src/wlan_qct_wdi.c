@@ -14276,10 +14276,11 @@ WDI_ProcessKeepAliveReq
                    sizeof(keepAliveReq));
 
    WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
-               "Process keep alive req %d",sizeof(keepAliveReq));
+               "Process keep alive req %zu", sizeof(keepAliveReq));
 
    WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
-               "Process keep alive req time period %d",keepAliveReq.timePeriod);
+               "Process keep alive req time period %d",
+               keepAliveReq.timePeriod);
 
    pWDICtx->wdiReqStatusCB     = pwdiKeepAliveParams->wdiReqStatusCB;
    pWDICtx->pReqStatusUserData = pwdiKeepAliveParams->pUserData;
@@ -15096,7 +15097,7 @@ WDI_ProcessStartRsp
   {
      // not enough data was received
      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
-                 "Invalid response length in Start Resp Expect %x Rcvd %x",
+                 "Invalid response length in Start Resp Expect %zx Rcvd %x",
                  sizeof(tHalMacStartRspParams), pEventData->uEventDataSize);
      WDI_ASSERT(0);
      return WDI_STATUS_E_FAILURE;
