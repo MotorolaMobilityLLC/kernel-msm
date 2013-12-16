@@ -2701,8 +2701,7 @@ VOS_STATUS hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int bu
     {
         if(pAdapter->aStaInfo[i].isUsed)
         {
-            len = scnprintf(pBuf, buf_len, "%*d .%02x:%02x:%02x:%02x:%02x:%02x\n",
-                                       strlen("staId"),
+            len = scnprintf(pBuf, buf_len, "%5d .%02x:%02x:%02x:%02x:%02x:%02x\n",
                                        pAdapter->aStaInfo[i].ucSTAId,
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[0],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[1],

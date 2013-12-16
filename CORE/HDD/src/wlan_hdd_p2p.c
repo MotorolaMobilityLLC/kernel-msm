@@ -1693,7 +1693,7 @@ static void hdd_wlan_tx_complete( hdd_adapter_t* pAdapter,
 
     if (data == NULL)
     {
-        hddLog( LOGE, FL("Not Able to Push %d byte to skb"), cfgState->len);
+        hddLog( LOGE, FL("Not Able to Push %zu byte to skb"), cfgState->len);
         kfree_skb( cfgState->skb );
         return;
     }

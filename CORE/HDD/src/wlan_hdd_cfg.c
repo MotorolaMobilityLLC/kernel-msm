@@ -2974,7 +2974,7 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
       goto config_exit;
    }
 
-   hddLog(LOG1, "%s: qcom_cfg.ini Size %d\n",__func__, fw->size);
+   hddLog(LOG1, "%s: qcom_cfg.ini Size %zu", __func__, fw->size);
 
    buffer = (char*)vos_mem_malloc(fw->size);
 
@@ -4877,7 +4877,7 @@ VOS_STATUS hdd_execute_config_command(hdd_context_t *pHddCtx, char *command)
          // too big
          hddLog(LOGE,
                 "%s: invalid command, string [%s] length "
-                "%u exceeds maximum length %u",
+                "%zu exceeds maximum length %u",
                 __func__, value_str,
                 len_value_str, (pRegEntry->VarSize - 1));
          goto done;
@@ -4893,7 +4893,7 @@ VOS_STATUS hdd_execute_config_command(hdd_context_t *pHddCtx, char *command)
          // out of range
          hddLog(LOGE,
                 "%s: invalid command, MAC address [%s] length "
-                "%u is not expected length %u",
+                "%zu is not expected length %u",
                 __func__, value_str,
                 len_value_str, (VOS_MAC_ADDR_SIZE * 2));
          goto done;
