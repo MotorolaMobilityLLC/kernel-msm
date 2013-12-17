@@ -538,7 +538,7 @@ typedef struct
    void                            *nextCtrlBlk;
    wpt_packet                      *xfrFrame;  
    WLANDXE_DescType                *linkedDesc;
-   unsigned int                    linkedDescPhyAddr;
+   wpt_uint32                       linkedDescPhyAddr;
    wpt_uint32                       ctrlBlkOrder;
 #ifdef FEATURE_R33D
    wpt_uint32                       shadowBufferVa;
@@ -625,7 +625,7 @@ typedef struct
    WLANDXE_DescType               *descriptorAllocation;
 #endif
    WLANDXE_DescType               *DescBottomLoc;
-   unsigned int                    descBottomLocPhyAddr;
+   wpt_uint32                      descBottomLocPhyAddr;
    wpt_uint32                      numDesc;
    wpt_uint32                      numFreeDesc;
    wpt_uint32                      numRsvdDesc;
