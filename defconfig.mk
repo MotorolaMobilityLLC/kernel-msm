@@ -6,8 +6,10 @@ KERNEL_DEBUG_DEFCONFIG          := $(LJAPDEFCONFIGSRC)/debug-$(subst _defconfig,
 
 # add debug config file for non-user build
 ifneq ($(TARGET_BUILD_VARIANT), user)
+ifneq ($(TARGET_NO_KERNEL_DEBUG), true)
 ifneq ($(wildcard $(KERNEL_DEBUG_DEFCONFIG)),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(KERNEL_DEBUG_DEFCONFIG)
+endif
 endif
 endif
 
