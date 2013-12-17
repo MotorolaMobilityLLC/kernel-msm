@@ -30,3 +30,10 @@
 		gpios = <&msmgpio 76 0x0>;
 	};
 };
+
+&spi_4 {
+	nmi326@0 {
+		/delete-property/ enable-active-high;
+	};
+};
+
