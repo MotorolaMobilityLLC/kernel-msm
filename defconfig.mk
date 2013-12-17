@@ -10,12 +10,14 @@ endif
 
 # build eng kernel for eng and userdebug Android variants
 ifneq ($(TARGET_BUILD_VARIANT), user)
+ifneq ($(TARGET_NO_KERNEL_DEBUG), true)
 ifneq ($(wildcard $(KERNEL_DEBUG_DEFCONFIG)),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(KERNEL_DEBUG_DEFCONFIG)
 endif
 
 ifneq ($(KERNEL_EXTRA_CONFIG),)
 PRODUCT_SPECIFIC_DEFCONFIGS += $(LJAPDEFCONFIGSRC)/debug-$(KERNEL_EXTRA_CONFIG).config
+endif
 endif
 endif
 
