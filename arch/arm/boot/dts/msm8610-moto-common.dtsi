@@ -384,6 +384,7 @@
 		irq-gpio = <&msmgpio 90 0>;
 		reset-gpio = <&msmgpio 91 0>;
 		enable-gpio = <&msmgpio 85 0>;
+		enable-active-high;
 	};
 };
 
