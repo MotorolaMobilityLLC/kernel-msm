@@ -49,9 +49,6 @@
 
 #ifdef TRACE_RECORD
 
-#define CASE_RETURN_STRING( str )           \
-    case ( ( str ) ): return( (tANI_U8*)(#str) ); break \
-
 #define MAC_TRACE_GET_MODULE_ID(data) ((data >> 8) & 0xff)
 #define MAC_TRACE_GET_MSG_ID(data)       (data & 0xffff)
 

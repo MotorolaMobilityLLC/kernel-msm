@@ -881,9 +881,6 @@ WDI_SetPowerStateCb
    void      *pContext
 );
 
-#define CASE_RETURN_STRING( str )           \
-    case ( ( str ) ): return( #str ); break \
-
 /**
  @brief WDI_getReqMsgString prints the WDI request message in string.
 
