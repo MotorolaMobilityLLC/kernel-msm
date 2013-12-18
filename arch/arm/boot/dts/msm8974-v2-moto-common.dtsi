@@ -217,6 +217,16 @@
 		qcom,msm-mi2s-rx-lines = <0>;
 		qcom,msm-mi2s-tx-lines = <1>;
 	};
+
+	cci: qcom,cci@fda0C000 {
+		gpios = <&msmgpio 21 0>,
+			<&msmgpio 22 0>;
+		qcom,gpio-tbl-num = <0 1>;
+		qcom,gpio-tbl-flags = <1 1>;
+		qcom,gpio-tbl-label = "CCI_I2C_DATA1",
+			"CCI_I2C_CLK1";
+	};
+
 };
 
 &spmi_bus {
@@ -601,6 +611,7 @@
 	gpio@c600 { /* GPIO 7 */
 		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
 		qcom,pull = <0>;        /* QPNP_PIN_PULL_UP_30  */
+		qcom,vin-sel = <2>;     /* QPNP_PIN_VIN2  */
 		qcom,master-en = <1>;
 	};
 
@@ -642,6 +653,7 @@
 		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1  */
+		qcom,vin-sel = <2>;       /* QPNP_PIN_VIN2 */
 		qcom,master-en = <1>;
 	};
 
@@ -728,6 +740,7 @@
 		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1  */
+		qcom,vin-sel = <2>;       /* QPNP_PIN_VIN2  */
 		qcom,master-en = <1>;
 	};
 
