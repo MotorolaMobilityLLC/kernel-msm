@@ -512,6 +512,7 @@
 	qcom,min-fcc-learning-soc = <20>;
 	qcom,min-fcc-ocv-pc = <30>;
 	qcom,min-fcc-learning-samples = <5>;
+	qcom,use-external-rsense = <1>;
 	status = "ok";
 };
 
@@ -548,6 +549,10 @@
 	qcom,chg-misc@1600 {
 		status = "ok";
 	};
+};
+
+&pm8941_iadc {
+	qcom,rsense = <10000000>;
 };
 
 &pm8941_gpios {
