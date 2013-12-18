@@ -236,6 +236,22 @@ config AR0261
 		supports 1080P preview at 60 fps
 		This sensor driver does not support auto focus.
 
+config OV10820
+	bool "Sensor OV10820"
+	depends on OV660
+	---help---
+		Omnivision RGBC sensor
+		OV10820 10 MP Bayer Sensor, supports 4 mipi lanes,
+		supports 1080P preview at 60 fps.
+		This sensor driver does support auto focus.
+
+config OV660
+	bool "Sensor OV660 (ASIC)"
+	depends on MSMB_CAMERA && ARCH_MSM8974
+	default n
+	--- help ---
+		Omnivision ASIC for 8MP and 10MP Sensor.
+
 config AR0543
 	bool "Sensor AR0543 (BAYER 5M)"
 	depends on MSMB_CAMERA
