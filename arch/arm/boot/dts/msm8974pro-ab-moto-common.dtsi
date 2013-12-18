@@ -595,6 +595,7 @@
 	qcom,fcc-resolution = <10>;
 	qcom,min-fcc-ocv-pc = <20>;
 	qcom,min-fcc-learning-samples = <4>;
+	qcom,use-external-rsense = <1>;
 	qcom,battery-data = <&mmi_batterydata>;
 
 	status = "ok";
@@ -650,6 +651,10 @@
 	qcom,chg-misc@1600 {
 		status = "ok";
 	};
+};
+
+&pm8941_iadc {
+	qcom,rsense = <10000000>;
 };
 
 &pm8941_gpios {
