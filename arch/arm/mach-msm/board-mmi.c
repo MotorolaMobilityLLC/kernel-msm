@@ -393,7 +393,7 @@ bool check_factory_kill_gpio(void)
  * TXPREEMPAMPTUNE[5:4] = 11 (3x preemphasis current)
  * TXVREFTUNE[3:0] = 1111 increasing the DC level
  */
-static int mmi_phy_settings[] = {0x34, 0x82, 0x3f, 0x81, -1};
+static int mmi_phy_settings[] = {0x34, 0x82, 0x38, 0x81, -1};
 
 static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
 			void *pdata)
