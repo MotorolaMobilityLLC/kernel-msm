@@ -10986,7 +10986,16 @@ tANI_BOOLEAN csrRoamIsValid40MhzChannel(tpAniSirGlobal pMac, tANI_U8 channel)
     {
         if(pIes->HTCaps.present && (eHT_CHANNEL_WIDTH_40MHZ == pIes->HTCaps.supportedChannelWidthSet))
         {
-            if(pIes->HTInfo.present)
+            // Check set as TKIP or not.
+            if (NULL != &(pIes->RSN.pwise_cipher_suites[0][0]) &&
+               !memcmp( &(pIes->RSN.pwise_cipher_suites[0][0]),
+                                        "\x00\x0f\xac\x02" ,4))
+            {
+                smsLog(pMac, LOGW, " No channel bonding in TKIP mode ");
+                eRet = PHY_SINGLE_CHANNEL_CENTERED;
+            }
+
+            else if(pIes->HTInfo.present)
             {
                 /* This is called during INFRA STA/CLIENT and should use the merged value of 
                  * supported channel width and recommended tx width as per standard
