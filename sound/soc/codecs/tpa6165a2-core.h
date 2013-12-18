@@ -57,6 +57,9 @@
 /* jack sense mask */
 #define TPA6165_JACK_SENSE  0x04
 
+/* device reset */
+#define TPA6165_DEVICE_RESET 0x08
+
 /* jack detect config */
 #define TPA6165_JACK_SHORT_Z  0x80
 #define TPA6165_JACK_HP_LO_TH  0x40
