@@ -703,6 +703,7 @@
 	gpio@c600 { /* GPIO 7 */
 		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
 		qcom,pull = <0>;        /* QPNP_PIN_PULL_UP_30  */
+		qcom,vin-sel = <2>;
 		qcom,master-en = <1>;
 	};
 
@@ -747,6 +748,7 @@
 		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1  */
+		qcom,vin-sel = <2>;
 		qcom,master-en = <1>;
 	};
 
@@ -836,6 +838,7 @@
 		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
 		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1  */
+		qcom,vin-sel = <2>;
 		qcom,master-en = <1>;
 	};
 
