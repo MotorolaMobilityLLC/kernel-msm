@@ -957,6 +957,12 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 		tpa6165_sleep(tpa6165, TPA6165_SLEEP);
 	} else if ((tpa6165->dev_status_reg1 & TPA6165_JACK_DETECT) &&
 			tpa6165->inserted) {
+		/* in some case there is a hardware reset when display off with
+		 * with headset inserted.
+		 */
+		if (tpa6165->dev_status_reg3 & TPA6165_DEVICE_RESET)
+			schedule_work(&tpa6165->work);
+
 		/* no change in jack detect state, check for Button press*/
 		tpa6165_report_button(tpa6165);
 
