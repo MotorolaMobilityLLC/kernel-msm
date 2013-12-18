@@ -16,7 +16,7 @@
 		formfactor = <0x00000003>;
 		last_compat_version = <0x01330684>;
 		product = <0x000026ff>;
-		ulpi_phy_init_seq = <0x34822f81>;
+		ulpi_phy_init_seq = <0x34822881>;
 		version = <0x0133068b>;
 	};
 
