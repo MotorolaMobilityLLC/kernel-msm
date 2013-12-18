@@ -1921,7 +1921,7 @@ int wm_adsp2_event(struct snd_soc_dapm_widget *w,
 	dsp->card = codec->card;
 
 	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
+	case SND_SOC_DAPM_PRE_PMU:
 		/*
 		 * For simplicity set the DSP clock rate to be the
 		 * SYSCLK rate rather than making it configurable.
