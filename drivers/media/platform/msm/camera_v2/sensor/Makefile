@@ -22,3 +22,5 @@ obj-$(CONFIG_SP1628) += sp1628.o
 obj-$(CONFIG_GC0339) += gc0339.o
 obj-$(CONFIG_OV5693) += ov5693.o
 obj-$(CONFIG_AR0261) += ar0261.o
+obj-$(CONFIG_OV660) += ov660.o
+obj-$(CONFIG_OV10820) += ov10820.o
