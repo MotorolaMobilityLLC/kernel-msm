@@ -2781,18 +2781,6 @@ eHalStatus sme_SetCcxRoamScanChannelList(tHalHandle hHal,
 #endif
 
 /*--------------------------------------------------------------------------
-  \brief csrUpdateBgScanConfigIniChannelList() - Update bgscan roam cache
-  This is a synchronuous call
-  \param hHal - The handle returned by macOpen.
-  \return eHAL_STATUS_SUCCESS - SME update config successful.
-          Other status means SME is failed to update
-  \sa
-  --------------------------------------------------------------------------*/
-eHalStatus sme_UpdateBgScanConfigIniChannelList(tHalHandle hHal,
-                                               eCsrBand eBand);
-
-
-/*--------------------------------------------------------------------------
   \brief sme_getRoamScanChannelList() - get roam scan channel list
   This is a synchronuous call
   \param hHal - The handle returned by macOpen.

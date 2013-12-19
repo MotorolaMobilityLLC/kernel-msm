@@ -2442,7 +2442,6 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        {
            tANI_U8 *value = command;
            tANI_U16 maxTime = CFG_NEIGHBOR_SCAN_MAX_CHAN_TIME_DEFAULT;
-           tANI_U16 homeAwayTime = 0;
 
            /* Move pointer to ahead of SETSCANCHANNELTIME<delimiter> */
            value = value + 19;
@@ -2476,21 +2475,6 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                       "%s: Received Command to change channel max time = %d", __func__, maxTime);
 
            pHddCtx->cfg_ini->nNeighborScanMaxChanTime = maxTime;
-
-           /* Home Away Time should be atleast equal to (MaxDwell time + (2*RFS)),
-           *  where RFS is the RF Switching time. It is twice RFS to consider the
-           *  time to go off channel and return to the home channel. */
-           homeAwayTime = sme_getRoamScanHomeAwayTime((tHalHandle)(pHddCtx->hHal));
-           if (homeAwayTime < (maxTime + (2 * HDD_ROAM_SCAN_CHANNEL_SWITCH_TIME)))
-           {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-                      "%s: Invalid config, Home away time(%d) is less than (twice RF switching time + channel max time)(%d)"
-                      " Hence enforcing home away time to disable (0)",
-                      __func__, homeAwayTime, (maxTime + (2 * HDD_ROAM_SCAN_CHANNEL_SWITCH_TIME)));
-               homeAwayTime = 0;
-               pHddCtx->cfg_ini->nRoamScanHomeAwayTime = homeAwayTime;
-               sme_UpdateRoamScanHomeAwayTime((tHalHandle)(pHddCtx->hHal), homeAwayTime, eANI_BOOLEAN_FALSE);
-           }
            sme_setNeighborScanMaxChanTime((tHalHandle)(pHddCtx->hHal), maxTime);
        }
        else if (strncmp(command, "GETSCANCHANNELTIME", 18) == 0)
@@ -2679,7 +2663,6 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        {
            tANI_U8 *value = command;
            tANI_U16 homeAwayTime = CFG_ROAM_SCAN_HOME_AWAY_TIME_DEFAULT;
-           tANI_U16 scanChannelMaxTime = 0;
 
            /* Move pointer to ahead of SETSCANHOMEAWAYTIME<delimiter> */
            /* input value is in units of msec */
@@ -2712,20 +2695,6 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                       "%s: Received Command to Set scan away time = %d", __func__, homeAwayTime);
-
-           /* Home Away Time should be atleast equal to (MaxDwell time + (2*RFS)),
-           *  where RFS is the RF Switching time. It is twice RFS to consider the
-           *  time to go off channel and return to the home channel. */
-           scanChannelMaxTime = sme_getNeighborScanMaxChanTime((tHalHandle)(pHddCtx->hHal));
-           if (homeAwayTime < (scanChannelMaxTime + (2 * HDD_ROAM_SCAN_CHANNEL_SWITCH_TIME)))
-           {
-               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-                      "%s: Invalid config, Home away time(%d) is less than (twice RF switching time + channel max time)(%d)"
-                      " Hence enforcing home away time to disable (0)",
-                      __func__, homeAwayTime, (scanChannelMaxTime + (2 * HDD_ROAM_SCAN_CHANNEL_SWITCH_TIME)));
-               homeAwayTime = 0;
-           }
-
            if (pHddCtx->cfg_ini->nRoamScanHomeAwayTime != homeAwayTime)
            {
                pHddCtx->cfg_ini->nRoamScanHomeAwayTime = homeAwayTime;
