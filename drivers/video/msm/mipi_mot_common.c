@@ -478,7 +478,8 @@ static const struct file_operations panel_gamma_debug_fops = {
 static int esd_recovery_start(struct msm_fb_data_type *mfd)
 {
 	struct msm_fb_panel_data *pdata;
-	int ret;
+	int uret_val = 0, ret = MOT_ESD_OK;
+	char *envp[2] = {"PANEL_ALIVE=0", NULL};
 
 	pr_info("MIPI MOT: ESD recovering is started\n");
 
@@ -493,20 +494,14 @@ static int esd_recovery_start(struct msm_fb_data_type *mfd)
 		ret = MOT_ESD_PANEL_OFF;
 		goto end;
 	}
-
-	atomic_set(&mot_panel->state, MOT_PANEL_OFF);
-	if (mot_panel->panel_disable)
-		mot_panel->panel_disable(mfd);
-	mipi_dsi_panel_power_enable(0);
-	msleep(200);
-
-	mipi_dsi_panel_power_enable(1);
-	if (mot_panel->panel_enable)
-		mot_panel->panel_enable(mfd);
-	atomic_set(&mot_panel->state, MOT_PANEL_ON);
-	mdp4_dsi_cmd_pipe_commit(0, 1);
-	mipi_mot_panel_on(mfd);
-	ret = MOT_ESD_OK;
+	pr_warn("%s: Panel comm. failure, possible ESD... sending uevent - %s\n",
+							__func__, envp[0]);
+	uret_val = kobject_uevent_env(
+		&mfd->fbi->dev->kobj,
+		KOBJ_CHANGE, envp);
+	if (uret_val)
+		pr_err("%s: Trigerring uevent PANEL_ALIVE=0 failed\n",
+								__func__);
 end:
 	pr_info("MIPI MOT: ESD recovering is done\n");
 
