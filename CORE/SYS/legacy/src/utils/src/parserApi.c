@@ -2639,11 +2639,12 @@ sirFillBeaconMandatoryIEforCcxBcnReport(tpAniSirGlobal   pMac,
 {
     tDot11fBeaconIEs            *pBies = NULL;
     tANI_U32                    status = eHAL_STATUS_SUCCESS;
+    tSirRetStatus               retStatus = eSIR_SUCCESS;
     tSirCcxBcnReportMandatoryIe ccxBcnReportMandatoryIe;
 
     /* To store how many bytes are required to be allocated
            for Bcn report mandatory Ies */
-    tANI_U16 numBytes = 0;
+    tANI_U16 numBytes = 0, freeBytes = 0;
     tANI_U8  *pos = NULL;
 
     // Zero-init our [out] parameter,
@@ -2739,6 +2740,7 @@ sirFillBeaconMandatoryIEforCcxBcnReport(tpAniSirGlobal   pMac,
 
     if ( pBies->RRMEnabledCap.present )
     {
+        ccxBcnReportMandatoryIe.rrmPresent = 1;
         vos_mem_copy( &ccxBcnReportMandatoryIe.rmEnabledCapabilities, &pBies->RRMEnabledCap, sizeof( tDot11fIERRMEnabledCap ) );
         numBytes += 1 + 1 + SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX;
     }
@@ -2752,74 +2754,179 @@ sirFillBeaconMandatoryIEforCcxBcnReport(tpAniSirGlobal   pMac,
     }
     pos = *outIeBuf;
     *pOutIeLen = numBytes;
+    freeBytes = numBytes;
 
     /* Start filling the output Ie with Mandatory IE information */
     /* Fill SSID IE */
-    *pos = SIR_MAC_SSID_EID;
-    pos++;
-    *pos = ccxBcnReportMandatoryIe.ssId.length;
-    pos++;
-    vos_mem_copy(pos, (tANI_U8*)ccxBcnReportMandatoryIe.ssId.ssId, ccxBcnReportMandatoryIe.ssId.length);
-    pos += ccxBcnReportMandatoryIe.ssId.length;
+    if (ccxBcnReportMandatoryIe.ssidPresent)
+    {
+       if (freeBytes < (1 + 1 + ccxBcnReportMandatoryIe.ssId.length))
+       {
+           limLog(pMac, LOGP, FL("Insufficient memory to copy SSID"));
+           retStatus = eSIR_FAILURE;
+           goto err_bcnrep;
+       }
+       *pos = SIR_MAC_SSID_EID;
+       pos++;
+       *pos = ccxBcnReportMandatoryIe.ssId.length;
+       pos++;
+       vos_mem_copy(pos, (tANI_U8*)ccxBcnReportMandatoryIe.ssId.ssId,
+                    ccxBcnReportMandatoryIe.ssId.length);
+       pos += ccxBcnReportMandatoryIe.ssId.length;
+       freeBytes -= (1 + 1 + ccxBcnReportMandatoryIe.ssId.length);
+    }
 
     /* Fill Supported Rates IE */
-    *pos = SIR_MAC_RATESET_EID;
-    pos++;
-    *pos = ccxBcnReportMandatoryIe.supportedRates.numRates;
-    pos++;
-    vos_mem_copy(pos, (tANI_U8*)ccxBcnReportMandatoryIe.supportedRates.rate,
-                      ccxBcnReportMandatoryIe.supportedRates.numRates);
-    pos += ccxBcnReportMandatoryIe.supportedRates.numRates;
+    if (ccxBcnReportMandatoryIe.suppRatesPresent)
+    {
+       if (freeBytes < (1 + 1 + ccxBcnReportMandatoryIe.supportedRates.numRates))
+       {
+           limLog(pMac, LOGP, FL("Insufficient memory to copy Rates IE"));
+           retStatus = eSIR_FAILURE;
+           goto err_bcnrep;
+       }
+       *pos = SIR_MAC_RATESET_EID;
+       pos++;
+       *pos = ccxBcnReportMandatoryIe.supportedRates.numRates;
+       pos++;
+       vos_mem_copy(pos, (tANI_U8*)ccxBcnReportMandatoryIe.supportedRates.rate,
+                    ccxBcnReportMandatoryIe.supportedRates.numRates);
+       pos += ccxBcnReportMandatoryIe.supportedRates.numRates;
+       freeBytes -= (1 + 1 + ccxBcnReportMandatoryIe.supportedRates.numRates);
+    }
 
     /* Fill FH Parameter set IE */
-    *pos = SIR_MAC_FH_PARAM_SET_EID;
-    pos++;
-    *pos = SIR_MAC_FH_PARAM_SET_EID_MAX;
-    pos++;
-    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.fhParamSet, SIR_MAC_FH_PARAM_SET_EID_MAX);
-    pos += SIR_MAC_FH_PARAM_SET_EID_MAX;
+    if (ccxBcnReportMandatoryIe.fhParamPresent)
+    {
+       if (freeBytes < (1 + 1 + SIR_MAC_FH_PARAM_SET_EID_MAX))
+       {
+           limLog(pMac, LOGP, FL("Insufficient memory to copy FHIE"));
+           retStatus = eSIR_FAILURE;
+           goto err_bcnrep;
+       }
+       *pos = SIR_MAC_FH_PARAM_SET_EID;
+       pos++;
+       *pos = SIR_MAC_FH_PARAM_SET_EID_MAX;
+       pos++;
+       vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.fhParamSet,
+                    SIR_MAC_FH_PARAM_SET_EID_MAX);
+       pos += SIR_MAC_FH_PARAM_SET_EID_MAX;
+       freeBytes -= (1 + 1 + SIR_MAC_FH_PARAM_SET_EID_MAX);
+    }
 
     /* Fill DS Parameter set IE */
-    *pos = SIR_MAC_DS_PARAM_SET_EID;
-    pos++;
-    *pos = SIR_MAC_DS_PARAM_SET_EID_MAX;
-    pos++;
-    *pos = ccxBcnReportMandatoryIe.dsParamSet.channelNumber;
-    pos += SIR_MAC_DS_PARAM_SET_EID_MAX;
+    if (ccxBcnReportMandatoryIe.dsParamsPresent)
+    {
+       if (freeBytes < (1 + 1 + SIR_MAC_DS_PARAM_SET_EID_MAX))
+       {
+           limLog(pMac, LOGP, FL("Insufficient memory to copy DS IE"));
+           retStatus = eSIR_FAILURE;
+           goto err_bcnrep;
+       }
+       *pos = SIR_MAC_DS_PARAM_SET_EID;
+       pos++;
+       *pos = SIR_MAC_DS_PARAM_SET_EID_MAX;
+       pos++;
+       *pos = ccxBcnReportMandatoryIe.dsParamSet.channelNumber;
+       pos += SIR_MAC_DS_PARAM_SET_EID_MAX;
+       freeBytes -= (1 + 1 + SIR_MAC_DS_PARAM_SET_EID_MAX);
+    }
 
     /* Fill CF Parameter set */
-    *pos = SIR_MAC_CF_PARAM_SET_EID;
-    pos++;
-    *pos = SIR_MAC_CF_PARAM_SET_EID_MAX;
-    pos++;
-    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.cfParamSet, SIR_MAC_CF_PARAM_SET_EID_MAX);
-    pos += SIR_MAC_CF_PARAM_SET_EID_MAX;
+    if (ccxBcnReportMandatoryIe.cfPresent)
+    {
+       if (freeBytes < (1 + 1 + SIR_MAC_CF_PARAM_SET_EID_MAX))
+       {
+           limLog(pMac, LOGP, FL("Insufficient memory to copy CF IE"));
+           retStatus = eSIR_FAILURE;
+           goto err_bcnrep;
+       }
+       *pos = SIR_MAC_CF_PARAM_SET_EID;
+       pos++;
+       *pos = SIR_MAC_CF_PARAM_SET_EID_MAX;
+       pos++;
+       vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.cfParamSet,
+                    SIR_MAC_CF_PARAM_SET_EID_MAX);
+       pos += SIR_MAC_CF_PARAM_SET_EID_MAX;
+       freeBytes -= (1 + 1 + SIR_MAC_CF_PARAM_SET_EID_MAX);
+    }
 
     /* Fill IBSS Parameter set IE */
-    *pos = SIR_MAC_IBSS_PARAM_SET_EID;
-    pos++;
-    *pos = SIR_MAC_IBSS_PARAM_SET_EID_MAX;
-    pos++;
-    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.ibssParamSet.atim, SIR_MAC_IBSS_PARAM_SET_EID_MAX);
-    pos += SIR_MAC_IBSS_PARAM_SET_EID_MAX;
+    if (ccxBcnReportMandatoryIe.ibssParamPresent)
+    {
+       if (freeBytes < (1 + 1 + SIR_MAC_IBSS_PARAM_SET_EID_MAX))
+       {
+           limLog(pMac, LOGP, FL("Insufficient memory to copy IBSS IE"));
+           retStatus = eSIR_FAILURE;
+           goto err_bcnrep;
+       }
+       *pos = SIR_MAC_IBSS_PARAM_SET_EID;
+       pos++;
+       *pos = SIR_MAC_IBSS_PARAM_SET_EID_MAX;
+       pos++;
+       vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.ibssParamSet.atim,
+                    SIR_MAC_IBSS_PARAM_SET_EID_MAX);
+       pos += SIR_MAC_IBSS_PARAM_SET_EID_MAX;
+       freeBytes -= (1 + 1 + SIR_MAC_IBSS_PARAM_SET_EID_MAX);
+    }
 
     /* Fill TIM IE */
-    *pos = SIR_MAC_TIM_EID;
-    pos++;
-    *pos = SIR_MAC_TIM_EID_MIN;
-    pos++;
-    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.tim, SIR_MAC_TIM_EID_MIN);
-    pos += SIR_MAC_TIM_EID_MIN;
+    if (ccxBcnReportMandatoryIe.timPresent)
+    {
+       if (freeBytes < (1 + 1 + SIR_MAC_TIM_EID_MIN))
+       {
+           limLog(pMac, LOGP, FL("Insufficient memory to copy TIM IE"));
+           retStatus = eSIR_FAILURE;
+           goto err_bcnrep;
+       }
+       *pos = SIR_MAC_TIM_EID;
+       pos++;
+       *pos = SIR_MAC_TIM_EID_MIN;
+       pos++;
+       vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.tim,
+                    SIR_MAC_TIM_EID_MIN);
+       pos += SIR_MAC_TIM_EID_MIN;
+       freeBytes -= (1 + 1 + SIR_MAC_TIM_EID_MIN);
+    }
 
     /* Fill RM Capability IE */
-    *pos = SIR_MAC_RM_ENABLED_CAPABILITY_EID;
-    pos++;
-    *pos = SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX;
-    pos++;
-    vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.rmEnabledCapabilities, SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX);
+    if (ccxBcnReportMandatoryIe.rrmPresent)
+    {
+       if (freeBytes < (1 + 1 + SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX))
+       {
+           limLog(pMac, LOGP, FL("Insufficient memory to copy RRM IE"));
+           retStatus = eSIR_FAILURE;
+           goto err_bcnrep;
+       }
+       *pos = SIR_MAC_RM_ENABLED_CAPABILITY_EID;
+       pos++;
+       *pos = SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX;
+       pos++;
+       vos_mem_copy(pos, (tANI_U8*)&ccxBcnReportMandatoryIe.rmEnabledCapabilities,
+                    SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX);
+       freeBytes -= (1 + 1 + SIR_MAC_RM_ENABLED_CAPABILITY_EID_MAX);
+    }
 
+    if (freeBytes != 0)
+    {
+       limLog(pMac, LOGP, FL("Mismatch in allocation and copying of IE in Bcn Rep"));
+       retStatus = eSIR_FAILURE;
+    }
+
+err_bcnrep:
+    /* The message counter would not be incremented in case of
+     * returning failure and hence next time, this function gets
+     * called, it would be using the same msg ctr for a different
+     * BSS.So, it is good to clear the memory allocated for a BSS
+     * that is returning failure.On success, the caller would take
+     * care of freeing up the memory*/
+    if (retStatus == eSIR_FAILURE)
+    {
+       vos_mem_free(*outIeBuf);
+       *outIeBuf = NULL;
+    }
     vos_mem_free(pBies);
-    return eSIR_SUCCESS;
+    return retStatus;
 }
 
 #endif /* FEATURE_WLAN_CCX_UPLOAD */
