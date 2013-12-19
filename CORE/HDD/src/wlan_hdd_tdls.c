@@ -580,6 +580,16 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
     int i;
     v_U8_t staIdx;
 
+    if (NULL == pHddCtx)
+        return -1;
+
+    if (mutex_lock_interruptible(&pHddCtx->tdls_lock))
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: unable to lock list", __func__);
+       return -1;
+    }
+
     if ((FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport) ||
         (FALSE == sme_IsFeatureSupportedByFW(TDLS)))
     {
@@ -588,6 +598,7 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s TDLS not enabled (%d) or FW doesn't support (%d)!",
         __func__, pHddCtx->cfg_ini->fEnableTDLSSupport,
         sme_IsFeatureSupportedByFW(TDLS));
+        mutex_unlock(&pHddCtx->tdls_lock);
         return 0;
     }
     /* TDLS is supported only in STA / P2P Client modes,
@@ -602,6 +613,7 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
      */
     if (0 == WLAN_HDD_IS_TDLS_SUPPORTED_ADAPTER(pAdapter))
     {
+        mutex_unlock(&pHddCtx->tdls_lock);
         return 0;
     }
     /* Check for the valid pHddTdlsCtx. If valid do not further
@@ -617,6 +629,7 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
         if (NULL == pHddTdlsCtx) {
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s malloc failed!", __func__);
             pAdapter->sessionCtx.station.pHddTdlsCtx = NULL;
+            mutex_unlock(&pHddCtx->tdls_lock);
             return -1;
         }
         /* initialize TDLS pAdater context */
@@ -691,6 +704,7 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
     }
     INIT_WORK(&pHddTdlsCtx->implicit_setup, wlan_hdd_tdls_pre_setup);
     INIT_DELAYED_WORK(&pHddCtx->tdls_scan_ctxt.tdls_scan_work, wlan_hdd_tdls_schedule_scan);
+    mutex_unlock(&pHddCtx->tdls_lock);
 
     return 0;
 }
