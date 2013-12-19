@@ -592,7 +592,12 @@ static int panel_on(struct platform_device *pdev)
 		else
 			queue_delayed_work(mot_panel.esd_wq,
 						&mot_panel.esd_work,
-						msecs_to_jiffies(20000));
+#ifdef MIPI_MOT_PANEL_ESD_TEST
+						MOT_PANEL_ESD_CHECK_PERIOD
+#else
+						msecs_to_jiffies(20000)
+#endif
+						);
 		mot_panel.esd_detection_run = true;
 	}
 	return 0;

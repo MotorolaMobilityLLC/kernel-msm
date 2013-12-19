@@ -557,7 +557,7 @@ static int __init mipi_video_mot_hd_pt_init(void)
 	mot_panel->enable_acl = enable_acl;
 
 	/* For ESD detection information */
-	mot_panel->esd_enabled = false;
+	mot_panel->esd_enabled = true;
 
 	ret = mipi_mot_device_register(pinfo, MIPI_DSI_PRIM, MIPI_DSI_PANEL_HD);
 	if (ret)
