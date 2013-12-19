@@ -6,7 +6,7 @@ menu "Character devices"
 
 config MISC_DYNAMIC_MINORS
 	int "misc device dynamic minors"
-	default "64"
+	default "70"
 	help
 	  Set the misc device dynamic minors which will be used by the MISC
 	  char device drivers.
