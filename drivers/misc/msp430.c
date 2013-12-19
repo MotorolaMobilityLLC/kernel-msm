@@ -227,6 +227,7 @@ static unsigned char g_motion_dur;
 static unsigned char g_zmotion_dur;
 static unsigned char g_control_reg[MSP_CONTROL_REG_SIZE];
 static unsigned char g_mag_cal[MSP_MAG_CAL_SIZE];
+static unsigned short g_control_reg_restore;
 
 /* Store error message */
 unsigned char stat_string[ESR_SIZE+1];
@@ -742,12 +743,16 @@ static int msp430_reset_and_init(void)
 
 	if (msp_req_value)
 	{
-		rst_cmdbuff[0] = MSP_CONTROL_REG;
-		memcpy(&rst_cmdbuff[1], g_control_reg, MSP_CONTROL_REG_SIZE);
-		err = msp430_i2c_write_no_reset(msp430_misc_data, rst_cmdbuff,
-			MSP_CONTROL_REG_SIZE);
-		if (err < 0)
-			ret_err = err;
+		if (g_control_reg_restore) {
+			rst_cmdbuff[0] = MSP_CONTROL_REG;
+			memcpy(&rst_cmdbuff[1], g_control_reg,
+				MSP_CONTROL_REG_SIZE);
+			err = msp430_i2c_write_no_reset(msp430_misc_data,
+				rst_cmdbuff,
+				MSP_CONTROL_REG_SIZE);
+			if (err < 0)
+				ret_err = err;
+		}
 
 		gpio_set_value(msp_req_gpio, 1);
 	}
@@ -2744,6 +2749,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
+		g_control_reg_restore = 1;
 		memcpy(g_control_reg, &msp_cmdbuff[1], MSP_CONTROL_REG_SIZE);
 
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
