@@ -3903,6 +3903,7 @@ void hdd_indicateTsmIe(hdd_adapter_t *pAdapter, tANI_U8 tid,
 {
     union iwreq_data wrqu;
     char buf[IW_CUSTOM_MAX + 1];
+    int nBytes = 0;
 
     if (NULL == pAdapter)
         return;
@@ -3914,10 +3915,10 @@ void hdd_indicateTsmIe(hdd_adapter_t *pAdapter, tANI_U8 tid,
     hddLog(VOS_TRACE_LEVEL_INFO, "TSM Ind tid(%d) state(%d) MeasInt(%d)",
                         tid, state, measInterval);
 
-    snprintf(buf, IW_CUSTOM_MAX, "TSMIE=%d:%d:%d",tid,state,measInterval);
+    nBytes = snprintf(buf, IW_CUSTOM_MAX, "TSMIE=%d:%d:%d",tid,state,measInterval);
 
     wrqu.data.pointer = buf;
-    wrqu.data.length = strlen(buf);
+    wrqu.data.length = nBytes;
     // send the event
     wireless_send_event(pAdapter->dev, IWEVCUSTOM, &wrqu, buf);
 }
@@ -3949,10 +3950,11 @@ void hdd_indicateCckmPreAuth(hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo)
     pos += WNI_CFG_BSSID_LEN;
     freeBytes -= WNI_CFG_BSSID_LEN;
 
-    snprintf(pos, freeBytes, " %u:%u", pRoamInfo->timestamp[0], pRoamInfo->timestamp[1]);
+    nBytes = snprintf(pos, freeBytes, " %u:%u", pRoamInfo->timestamp[0], pRoamInfo->timestamp[1]);
+    freeBytes -= nBytes;
 
     wrqu.data.pointer = buf;
-    wrqu.data.length = strlen(buf);
+    wrqu.data.length = (IW_CUSTOM_MAX - freeBytes);
 
     // send the event
     wireless_send_event(pAdapter->dev, IWEVCUSTOM, &wrqu, buf);
@@ -3962,6 +3964,7 @@ void hdd_indicateCcxAdjApRepInd(hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo
 {
     union iwreq_data wrqu;
     char buf[IW_CUSTOM_MAX + 1];
+    int nBytes = 0;
 
     if ((NULL == pAdapter) || (NULL == pRoamInfo))
         return;
@@ -3972,10 +3975,10 @@ void hdd_indicateCcxAdjApRepInd(hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo
 
     hddLog(VOS_TRACE_LEVEL_INFO, "CCXADJAPREP=%u", pRoamInfo->tsmRoamDelay);
 
-    snprintf(buf, IW_CUSTOM_MAX, "CCXADJAPREP=%u", pRoamInfo->tsmRoamDelay);
+    nBytes = snprintf(buf, IW_CUSTOM_MAX, "CCXADJAPREP=%u", pRoamInfo->tsmRoamDelay);
 
     wrqu.data.pointer = buf;
-    wrqu.data.length = strlen(buf);
+    wrqu.data.length = nBytes;
 
     // send the event
     wireless_send_event(pAdapter->dev, IWEVCUSTOM, &wrqu, buf);
@@ -4022,7 +4025,7 @@ void hdd_indicateCcxBcnReportInd(const hdd_adapter_t *pAdapter,
             pRoamInfo->pCcxBcnReportRsp->numBss);
 
         wrqu.data.pointer = buf;
-        wrqu.data.length = strlen(buf);
+        wrqu.data.length = nBytes;
         // send the event
         wireless_send_event(pAdapter->dev, IWEVCUSTOM, &wrqu, buf);
     }
