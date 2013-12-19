@@ -1850,7 +1850,6 @@ VOS_STATUS hdd_wlan_shutdown(void)
    v_CONTEXT_t      pVosContext = NULL;
    hdd_context_t    *pHddCtx = NULL;
    pVosSchedContext vosSchedContext = NULL;
-   long ret;
 
    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: WLAN driver shutting down! ",__func__);
 
@@ -1926,24 +1925,14 @@ VOS_STATUS hdd_wlan_shutdown(void)
    set_bit(MC_SHUTDOWN_EVENT_MASK, &vosSchedContext->mcEventFlag);
    set_bit(MC_POST_EVENT_MASK, &vosSchedContext->mcEventFlag);
    wake_up_interruptible(&vosSchedContext->mcWaitQueue);
-   ret = wait_for_completion_interruptible(&vosSchedContext->McShutdown);
-   if (0 >= ret)
-   {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "%s:wait on McShutdown failed %ld",
-           __func__, ret);
-   }
+   wait_for_completion(&vosSchedContext->McShutdown);
 
    /* Wait for TX to exit */
    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Shutting down TX thread",__func__);
    set_bit(TX_SHUTDOWN_EVENT_MASK, &vosSchedContext->txEventFlag);
    set_bit(TX_POST_EVENT_MASK, &vosSchedContext->txEventFlag);
    wake_up_interruptible(&vosSchedContext->txWaitQueue);
-   ret = wait_for_completion_interruptible(&vosSchedContext->TxShutdown);
-   if (0 >= ret)
-   {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "%s:wait on TxShutdown failed %ld",
-           __func__, ret);
-   }
+   wait_for_completion(&vosSchedContext->TxShutdown);
 
    /* Wait for RX to exit */
    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Shutting down RX thread",__func__);
@@ -1951,12 +1940,7 @@ VOS_STATUS hdd_wlan_shutdown(void)
    set_bit(RX_POST_EVENT_MASK, &vosSchedContext->rxEventFlag);
    wake_up_interruptible(&vosSchedContext->rxWaitQueue);
 
-   ret = wait_for_completion_interruptible(&vosSchedContext->RxShutdown);
-   if (0 >= ret)
-   {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "%s:wait on RxShutdown failed %ld",
-           __func__, ret);
-   }
+   wait_for_completion(&vosSchedContext->RxShutdown);
 
 #ifdef WLAN_BTAMP_FEATURE
    vosStatus = WLANBAP_Stop(pVosContext);
