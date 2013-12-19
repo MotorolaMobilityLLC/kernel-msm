@@ -105,6 +105,8 @@ struct wm_adsp {
 
 	int num_firmwares;
 	struct wm_adsp_fw_defs *firmwares;
+
+	struct work_struct boot_work;
 };
 
 #define WM_ADSP1(wname, num) \
