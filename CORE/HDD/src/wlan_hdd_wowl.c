@@ -98,7 +98,7 @@ static inline int find_ptrn_len(const char* ptrn)
 static void hdd_wowl_callback( void *pContext, eHalStatus halStatus )
 {
   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-      "%s: Return code = (%d)\n", __func__, halStatus );
+      "%s: Return code = (%d)", __func__, halStatus );
 }
 
 #ifdef WLAN_WAKEUP_EVENTS
@@ -195,7 +195,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
        ptrn[5] != WOWL_INTRA_PTRN_TOKENIZER)
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Malformed pattern string. Skip!\n", __func__);
+          "%s: Malformed pattern string. Skip!", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -212,7 +212,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
        localPattern.ucPatternMaskSize > WOWL_PTRN_MASK_MAX_SIZE)
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Invalid length specified. Skip!\n", __func__);
+          "%s: Invalid length specified. Skip!", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -222,7 +222,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
     if(offset >= len || ptrn[offset] != WOWL_INTRA_PTRN_TOKENIZER) 
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Malformed pattern string..skip!\n", __func__);
+          "%s: Malformed pattern string..skip!", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -232,7 +232,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
     if(offset+1 != len) //offset begins with 0
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Malformed pattern string...skip!\n", __func__);
+          "%s: Malformed pattern string...skip!", __func__);
       ptrn += len; 
       goto next_ptrn;
     }

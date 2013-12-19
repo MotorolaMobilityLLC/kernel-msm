@@ -712,7 +712,7 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
                           pHddCtx->sus_res_mcastbcast_filter)))
                     {
                         hddLog (VOS_TRACE_LEVEL_INFO,
-                        "Set offLoadRequest with SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE \n");
+                        "Set offLoadRequest with SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE");
                         offLoadRequest.enableOrDisable =
                          SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE;
                     }
@@ -786,7 +786,7 @@ VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
    tSirHostOffloadReq  offLoadRequest;
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
-   hddLog(VOS_TRACE_LEVEL_ERROR, "%s: \n", __func__);
+   hddLog(VOS_TRACE_LEVEL_ERROR, "%s:", __func__);
 
    if(fenable)
    {
@@ -806,7 +806,7 @@ VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
            offLoadRequest.offloadType =  SIR_IPV4_ARP_REPLY_OFFLOAD;
            offLoadRequest.enableOrDisable = SIR_OFFLOAD_ENABLE;
 
-           hddLog(VOS_TRACE_LEVEL_INFO, "%s: Enabled \n", __func__);
+           hddLog(VOS_TRACE_LEVEL_INFO, "%s: Enabled", __func__);
 
            if (((HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
                 pHddCtx->sus_res_mcastbcast_filter) ||
@@ -840,14 +840,14 @@ VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
                     pAdapter->sessionId, &offLoadRequest))
           {
               hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Failed to enable HostOffload "
-                      "feature\n", __func__);
+                      "feature", __func__);
               return VOS_STATUS_E_FAILURE;
           }
           return VOS_STATUS_SUCCESS;
        }
        else
        {
-           hddLog(VOS_TRACE_LEVEL_INFO, "%s:IP Address is not assigned \n", __func__);
+           hddLog(VOS_TRACE_LEVEL_INFO, "%s:IP Address is not assigned", __func__);
            return VOS_STATUS_E_AGAIN;
        }
    }
@@ -862,7 +862,7 @@ VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
                  pAdapter->sessionId, &offLoadRequest))
        {
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Failure to disable host "
-                             "offload feature\n", __func__);
+                             "offload feature", __func__);
             return VOS_STATUS_E_FAILURE;
        }
        return VOS_STATUS_SUCCESS;
@@ -1388,7 +1388,7 @@ void hdd_resume_wlan(void)
                           NULL, eANI_BOOLEAN_FALSE);
 
          VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
-                        "Switch to DTIM%d \n",powerRequest.uListenInterval);
+                        "Switch to DTIM%d",powerRequest.uListenInterval);
          sme_SetPowerParams( WLAN_HDD_GET_HAL_CTX(pAdapter), &powerRequest, FALSE);
 
          if (BMPS == pmcGetPmcState(pHddCtx->hHal))
