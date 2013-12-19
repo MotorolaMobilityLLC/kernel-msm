@@ -1,0 +1,102 @@
+/* Copyright (c) 2013 Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "msm8974pro-ab-moto-common.dtsi"
+/include/ "dsi-panel-mot-smd-720p-cmd.dtsi"
+/include/ "dsi-panel-mot-smd-720p-video.dtsi"
+
+/ {
+	model = "Motorola QC-MSM8974 Pro Victara";
+	compatible = "qcom,msm8974-victara",
+		     "qcom,msm8974-moto",
+		     "qcom,msm8974";
+};
+
+&mot_smd_720p_cmd_v0 {
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&vdd_disp_vreg>;
+	vci_disp-supply = <&vci_disp_vreg>;
+};
+
+&mot_smd_720p_vid {
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&vdd_disp_vreg>;
+	vci_disp-supply = <&vci_disp_vreg>;
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_720p_cmd_v0>;
+};
+
+&sdhc_2 {
+	#address-cells = <0>;
+	interrupt-parent = <&sdhc_2>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 125 0
+			1 &intc 0 221 0>;
+	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
+
+	vdd-supply = <&pm8941_l20>;
+	vdd-io-supply = <&pm8941_s3>;
+
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <9000 800000>;
+
+	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-current-level = <6 22000>;
+
+	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
+	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
+	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+	status = "ok";
+};
+
+&cci {
+
+	qcom,camera@6e {
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
+		qcom,cam-vreg-type = <0 1 0>;
+		qcom,cam-vreg-min-voltage = <1225000 1800000 2850000>;
+		qcom,cam-vreg-max-voltage = <1225000 1800000 2850000>;
+		qcom,cam-vreg-op-mode = <105000 0 80000>;
+	};
+};
+
+&i2c_0 {
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&pm8941_gpios 20 0>;     /* RESET */
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "left";
+	};
+
+	tfa9890@35 {
+		compatible = "nxp,tfa9890";
+		reg = <0x35>;
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "right";
+	};
+};
+
+&soc {
+	sound {
+		qcom,tfa9890-stereo;
+		qcom,tfa9890-left-name = "tfa9890.0-0034";
+		qcom,tfa9890-right-name = "tfa9890.0-0035";
+	};
+};
