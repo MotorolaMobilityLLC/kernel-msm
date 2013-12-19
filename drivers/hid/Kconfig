@@ -357,6 +357,13 @@ config HID_MONTEREY
 	---help---
 	Support for Monterey Genius KB29E.
 
+config HID_MOTOROLA
+	tristate "Motorola" if EMBEDDED
+	depends on (USB_HID || BT_HIDP)
+	default !EMBEDDED
+	---help---
+	Support for Motorola HID devices
+
 config HID_MULTITOUCH
 	tristate "HID Multitouch panels"
 	depends on USB_HID
