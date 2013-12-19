@@ -35,6 +35,7 @@
 #ifdef CONFIG_SND_SOC_TPA6165A2
 #include "../codecs/tpa6165a2-core.h"
 #endif
+#include <linux/emu-accy.h>
 
 /* 8960 machine driver */
 
@@ -71,7 +72,13 @@
 #define JACK_DETECT_INT PM8921_GPIO_IRQ(PM8921_IRQ_BASE, JACK_DETECT_GPIO)
 
 #define JACK_US_EURO_SEL_GPIO 35
+static int emu_state = NO_DEVICE;
 
+static int emu_audio_accy_notify(struct notifier_block *,
+				 unsigned long, void *);
+static struct notifier_block emu_accy_notifier = {
+	.notifier_call = emu_audio_accy_notify,
+};
 struct msm8960_asoc_mach_data {
 	struct gpio *pri_i2s_gpios;
 	unsigned int num_pri_i2s_gpios;
@@ -86,6 +93,7 @@ static int msm8960_ext_bottom_spk_pamp;
 static int msm8960_ext_top_spk_pamp;
 static int msm8960_slim_0_rx_ch = 1;
 static int msm8960_slim_0_tx_ch = 1;
+static int msm8960_mic_on;
 
 static int msm8960_btsco_rate = SAMPLE_RATE_8KHZ;
 static int msm8960_btsco_ch = 1;
@@ -350,21 +358,61 @@ static int msm8960_set_spk(struct snd_kcontrol *kcontrol,
 	msm8960_ext_control(codec);
 	return 1;
 }
-static int msm8960_spkramp_event(struct snd_soc_dapm_widget *w,
-	struct snd_kcontrol *k, int event)
+
+static int emu_audio_accy_notify(struct notifier_block *nb,
+		unsigned long status, void *unused)
+{
+	pr_debug("%s(), status = %d\n", __func__, (int)status);
+	emu_state = status;
+
+	if (emu_state == EMU_OUT) {
+		set_mux_ctrl_mode_for_audio(MUXMODE_AUDIO);
+		pr_debug("%s SET EMU TO MUXMODE_AUDIO\n", __func__);
+	}
+
+	return 0;
+}
+
+static int msm8960_check_for_emu_audio(void)
+{
+	pr_debug("%s(), state = %d\n", __func__, emu_state);
+	if (emu_state == EMU_OUT)
+		return 1;
+	else
+		return 0;
+}
+
+static int msm8960_mic_event(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *k, int event)
 {
 	pr_debug("%s() %x\n", __func__, SND_SOC_DAPM_EVENT_ON(event));
 
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		msm8960_mic_on = 1;
+	else
+		msm8960_mic_on = 0;
+
+	return 0;
+}
+
+static int msm8960_spkramp_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *k, int event)
+{
+	static int emu_on;
+	pr_debug("%s() %x\n", __func__, SND_SOC_DAPM_EVENT_ON(event));
+
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
-		if (!strncmp(w->name, "Ext Spk Bottom Pos", 18))
+		if (!strncmp(w->name, "Ext Spk Bottom Pos", 18)) {
 			msm8960_ext_spk_power_amp_on(BOTTOM_SPK_AMP_POS);
-		else if (!strncmp(w->name, "Ext Spk Bottom Neg", 18))
+			emu_on += 1;
+		} else if (!strncmp(w->name, "Ext Spk Bottom Neg", 18)) {
 			msm8960_ext_spk_power_amp_on(BOTTOM_SPK_AMP_NEG);
-		else if (!strncmp(w->name, "Ext Spk Top Pos", 15))
+		} else if (!strncmp(w->name, "Ext Spk Top Pos", 15)) {
+			emu_on += 1;
 			msm8960_ext_spk_power_amp_on(TOP_SPK_AMP_POS);
-		else if  (!strncmp(w->name, "Ext Spk Top Neg", 15))
+		} else if  (!strncmp(w->name, "Ext Spk Top Neg", 15)) {
 			msm8960_ext_spk_power_amp_on(TOP_SPK_AMP_NEG);
-		else if  (!strncmp(w->name, "Ext Spk Top", 12))
+		} else if  (!strncmp(w->name, "Ext Spk Top", 12))
 			msm8960_ext_spk_power_amp_on(TOP_SPK_AMP);
 		else {
 			pr_err("%s() Invalid Speaker Widget = %s\n",
@@ -372,22 +420,31 @@ static int msm8960_spkramp_event(struct snd_soc_dapm_widget *w,
 			return -EINVAL;
 		}
 
+		pr_debug("emu_on = %d\n", emu_on);
+		if ((emu_on == 2) && msm8960_check_for_emu_audio())
+			pr_debug("EMU dock connected, route to dock\n");
+
 	} else {
-		if (!strncmp(w->name, "Ext Spk Bottom Pos", 18))
+		if (!strncmp(w->name, "Ext Spk Bottom Pos", 18)) {
 			msm8960_ext_spk_power_amp_off(BOTTOM_SPK_AMP_POS);
-		else if (!strncmp(w->name, "Ext Spk Bottom Neg", 18))
+			emu_on -= 1;
+		} else if (!strncmp(w->name, "Ext Spk Bottom Neg", 18)) {
 			msm8960_ext_spk_power_amp_off(BOTTOM_SPK_AMP_NEG);
-		else if (!strncmp(w->name, "Ext Spk Top Pos", 15))
+		} else if (!strncmp(w->name, "Ext Spk Top Pos", 15)) {
+			emu_on -= 1;
 			msm8960_ext_spk_power_amp_off(TOP_SPK_AMP_POS);
-		else if  (!strncmp(w->name, "Ext Spk Top Neg", 15))
+		} else if  (!strncmp(w->name, "Ext Spk Top Neg", 15)) {
 			msm8960_ext_spk_power_amp_off(TOP_SPK_AMP_NEG);
-		else if  (!strncmp(w->name, "Ext Spk Top", 12))
+		} else if  (!strncmp(w->name, "Ext Spk Top", 12))
 			msm8960_ext_spk_power_amp_off(TOP_SPK_AMP);
 		else {
 			pr_err("%s() Invalid Speaker Widget = %s\n",
 					__func__, w->name);
 			return -EINVAL;
 		}
+
+		if ((emu_on == 0) && msm8960_check_for_emu_audio())
+			pr_debug("Don't route audio to EMU anymore\n");
 	}
 	return 0;
 }
@@ -467,10 +524,10 @@ static const struct snd_soc_dapm_widget msm8960_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("Ext Spk Top Pos", msm8960_spkramp_event),
 	SND_SOC_DAPM_SPK("Ext Spk Top Neg", msm8960_spkramp_event),
 	SND_SOC_DAPM_SPK("Ext Spk Top", msm8960_spkramp_event),
-	SND_SOC_DAPM_MIC("Primary Mic", NULL),
-	SND_SOC_DAPM_MIC("Secondary Mic", NULL),
-	SND_SOC_DAPM_MIC("Tertiary Mic", NULL),
-	SND_SOC_DAPM_MIC("Headset Mic", NULL),
+	SND_SOC_DAPM_MIC("Primary Mic", msm8960_mic_event),
+	SND_SOC_DAPM_MIC("Secondary Mic", msm8960_mic_event),
+	SND_SOC_DAPM_MIC("Tertiary Mic", msm8960_mic_event),
+	SND_SOC_DAPM_MIC("Headset Mic", msm8960_mic_event),
 	SND_SOC_DAPM_MIC("ANCRight Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("ANCLeft Headset Mic", NULL),
 };
@@ -2397,6 +2454,7 @@ static int __init msm8960_audio_init(void)
 								__func__);
 	}
 
+	semu_audio_register_notify(&emu_accy_notifier);
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&auxpcm_rsc_ref, 0);
 	atomic_set(&mi2s_rsc_ref, 0);
