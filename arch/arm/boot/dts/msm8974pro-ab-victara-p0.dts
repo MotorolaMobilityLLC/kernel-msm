@@ -1,0 +1,47 @@
+/* Copyright (c) 2013 Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+/include/ "msm8974-moto-reserve.dtsi"
+/include/ "msm8974pro-ab-victara-common.dtsi"
+
+
+/ {
+	qcom,msm-id = <217 0x4D 0x8000>;
+};
+
+&i2c_2 {
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&pm8941_gpios 20 0>;     /* RESET */
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "left";
+	};
+
+	tfa9890@35 {
+		compatible = "nxp,tfa9890";
+		reg = <0x35>;
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "right";
+	};
+};
+
+&soc {
+	sound {
+		qcom,tfa9890-stereo;
+		qcom,tfa9890-left-name = "tfa9890.2-0034";
+		qcom,tfa9890-right-name = "tfa9890.2-0035";
+	};
+};
