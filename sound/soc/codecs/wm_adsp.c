@@ -2003,6 +2003,30 @@ err:
 			   ADSP2_SYS_ENA | ADSP2_CORE_ENA | ADSP2_START, 0);
 }
 
+int wm_adsp2_early_event(struct snd_soc_dapm_widget *w,
+		   struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct wm_adsp *dsps = snd_soc_codec_get_drvdata(codec);
+	struct wm_adsp *dsp = &dsps[w->shift];
+
+	/* Always default to version 0 to ensure backwards
+	 * compatibility with older firmware images */
+	dsp->fw_ver = 0;
+	dsp->card = codec->card;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		queue_work(system_unbound_wq, &dsp->boot_work);
+		break;
+	default:
+		break;
+	};
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(wm_adsp2_early_event);
+
 int wm_adsp2_event(struct snd_soc_dapm_widget *w,
 		   struct snd_kcontrol *kcontrol, int event)
 {
@@ -2013,14 +2037,8 @@ int wm_adsp2_event(struct snd_soc_dapm_widget *w,
 	struct wm_coeff_ctl *ctl;
 	int ret;
 
-	/* Always default to version 0 to ensure backwards
-	 * compatibility with older firmware images */
-	dsp->fw_ver = 0;
-	dsp->card = codec->card;
-
 	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		queue_work(system_unbound_wq, &dsp->boot_work);
+	case SND_SOC_DAPM_POST_PMU:
 		flush_work(&dsp->boot_work);
 
 		if (!dsp->running)
