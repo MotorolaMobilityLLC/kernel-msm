@@ -1054,6 +1054,15 @@ config WCD9320_CODEC
 	  The WCD9320 codec support either I2C/I2S or Slimbus for
 	  control and data exchnage with master processor.
 
+config EMU_DETECTION
+	bool "Support for EMU accessory detection on Qualcomm MSM8960"
+	depends on MACH_MSM8960_MMI
+	select HWMON
+	select SENSORS_PM8921_ADC
+	default y
+	help
+	  This driver implements EMU accessory detection on Qualcomm
+	  MSM8960 platform with PM8921 PMIC chip.
 
 config MFD_RC5T583
 	bool "Ricoh RC5T583 Power Management system device"
