@@ -2990,6 +2990,8 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			msp430_vote_aod_enabled(ps_msp430,
 				AOD_QP_ENABLED_VOTE_USER, false);
 		msp430_resolve_aod_enabled_locked(ps_msp430);
+		/* the user's vote can not fail */
+		err = 0;
 		break;
 	/* No default here since previous switch could have
 	   handled the command and cannot over write that */
