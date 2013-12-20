@@ -950,8 +950,7 @@ void write_meta_page(struct f2fs_sb_info *sbi, struct page *page)
 {
 	struct f2fs_io_info fio = {
 		.type = META,
-		.rw = WRITE_SYNC,
-		.rw_flag = REQ_META | REQ_PRIO
+		.rw = WRITE_SYNC | REQ_META | REQ_PRIO
 	};
 
 	set_page_writeback(page);
@@ -965,7 +964,6 @@ void write_node_page(struct f2fs_sb_info *sbi, struct page *page,
 	struct f2fs_io_info fio = {
 		.type = NODE,
 		.rw = WRITE_SYNC,
-		.rw_flag = 0
 	};
 
 	set_summary(&sum, nid, 0, 0);
@@ -1052,7 +1050,6 @@ void rewrite_node_page(struct f2fs_sb_info *sbi,
 	struct f2fs_io_info fio = {
 		.type = NODE,
 		.rw = WRITE_SYNC,
-		.rw_flag = 0
 	};
 
 	curseg = CURSEG_I(sbi, type);
@@ -1632,8 +1629,7 @@ static int ra_sit_pages(struct f2fs_sb_info *sbi, int start, int nrpages)
 	int blkno = start;
 	struct f2fs_io_info fio = {
 		.type = META,
-		.rw = READ_SYNC,
-		.rw_flag = REQ_META | REQ_PRIO
+		.rw = READ_SYNC | REQ_META | REQ_PRIO
 	};
 
 	for (; blkno < start + nrpages && blkno < sit_blk_cnt; blkno++) {
