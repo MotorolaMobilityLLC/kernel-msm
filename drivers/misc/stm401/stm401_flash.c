@@ -53,6 +53,7 @@
 #define ERASE_DELAY 200
 #define ERASE_TIMEOUT 50
 
+#define RESTART_DELAY 1000
 #define WRITE_DELAY 20
 #define WRITE_TIMEOUT 20
 
@@ -65,6 +66,7 @@ enum stm_command {
 	NO_WAIT_WRITE_MEMORY = 0x32,
 	ERASE = 0x44,
 	NO_WAIT_ERASE = 0x45,
+	WRITE_UNPROTECT = 0x73,
 };
 
 
@@ -197,6 +199,40 @@ int stm401_boot_flash_erase(void)
 			goto EXIT;
 		}
 	}
+
+	dev_dbg(&stm401_misc_data->client->dev,
+		"Sending Write Unprotect command\n");
+
+	err = stm401_boot_cmd_write(stm401_misc_data, WRITE_UNPROTECT);
+	if (err < 0)
+		goto EXIT;
+
+	err = stm401_boot_i2c_read(stm401_misc_data,
+		stm401_readbuff, 1);
+	if (err < 0)
+		goto EXIT;
+	if (stm401_readbuff[0] != ACK_BYTE) {
+		dev_err(&stm401_misc_data->client->dev,
+			"Error sending WRITE UNPROTECT command 0x%02x\n",
+			stm401_readbuff[0]);
+		err = -EIO;
+		goto EXIT;
+	}
+
+	err = stm401_boot_i2c_read(stm401_misc_data,
+		stm401_readbuff, 1);
+	if (err < 0)
+		goto EXIT;
+	if (stm401_readbuff[0] != ACK_BYTE) {
+		dev_err(&stm401_misc_data->client->dev,
+			"Error executing WRITE UNPROTECT command 0x%02x\n",
+			stm401_readbuff[0]);
+		err = -EIO;
+		goto EXIT;
+	}
+
+	/* The STM401 needs time to reboot after the unprotect command */
+	msleep(RESTART_DELAY);
 
 	dev_dbg(&stm401_misc_data->client->dev,
 		"Starting flash erase\n");
