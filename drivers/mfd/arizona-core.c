@@ -469,15 +469,6 @@ static int arizona_runtime_suspend(struct device *dev)
 		}
 	}
 
-	switch (arizona->type) {
-	case WM5110:
-	case WM8280:
-		regmap_write(arizona->regmap, 0x221, 0x000);
-		break;
-	default:
-		break;
-	}
-
 	regcache_cache_only(arizona->regmap, true);
 	regcache_mark_dirty(arizona->regmap);
 	regulator_disable(arizona->dcvdd);
