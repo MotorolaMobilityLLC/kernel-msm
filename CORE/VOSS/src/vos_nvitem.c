@@ -1366,7 +1366,6 @@ VOS_STATUS vos_nv_open(void)
                 VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                            ("Invalid pHddCtx pointer") );
             }
-
         }
 
         if (vos_nv_getValidity(VNV_TPC_POWER_TABLE, &itemIsValid) ==
