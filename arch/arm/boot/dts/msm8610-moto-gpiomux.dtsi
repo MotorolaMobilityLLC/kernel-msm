@@ -27,9 +27,9 @@
 			};
 			qcom,suspend@1 {
 				qcom,func = <0>;  /* gpio_in_out(0)         */
-				qcom,pull = <0>;  /* none                   */
+				qcom,pull = <3>;  /* up                     */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <3>;   /* output low             */
+				qcom,dir = <1>;   /* output high            */
 			};
 		};
 
