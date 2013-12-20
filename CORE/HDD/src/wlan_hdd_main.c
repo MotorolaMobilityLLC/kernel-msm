@@ -8002,6 +8002,7 @@ int hdd_wlan_startup(struct device *dev )
    if (country_code)
    {
       eHalStatus ret;
+      INIT_COMPLETION(pAdapter->change_country_code);
       hdd_checkandupdate_dfssetting(pAdapter, country_code);
 #ifndef CONFIG_ENABLE_LINUX_REG
       hdd_checkandupdate_phymode(pAdapter, country_code);
@@ -8012,14 +8013,21 @@ int hdd_wlan_startup(struct device *dev )
                                   eSIR_TRUE, eSIR_TRUE);
       if (eHAL_STATUS_SUCCESS == ret)
       {
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                   "%s: SME Change Country code from module param fail ret=%d",
-                   __func__, ret);
+         ret = wait_for_completion_interruptible_timeout(
+                       &pAdapter->change_country_code,
+                       msecs_to_jiffies(WLAN_WAIT_TIME_COUNTRY));
+
+         if (0 >= ret)
+         {
+            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                      "%s: SME while setting country code timed out", __func__);
+         }
       }
       else
       {
-         hddLog(VOS_TRACE_LEVEL_INFO, "%s: module country code set to %c%c",
-                __func__, country_code[0], country_code[1]);
+         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   "%s: SME Change Country code from module param fail ret=%d",
+                   __func__, ret);
       }
    }
 
