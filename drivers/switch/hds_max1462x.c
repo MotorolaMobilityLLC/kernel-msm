@@ -239,7 +239,7 @@ static void max1462x_button_released(struct work_struct *work)
 	int table_size = ARRAY_SIZE(max1462x_ear_3button_type_data);
 	int i;
 
-	if (gpio_get_value(hi->gpio_detect)){
+	if (gpio_get_value(hi->gpio_detect) && !atomic_read(&hi->btn_state)) {
 		pr_warn("%s: hs_released but jack plugged out already! "
 			"ignore event\n",
 			__func__);
