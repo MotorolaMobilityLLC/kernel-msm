@@ -709,6 +709,13 @@ limProcessMlmAuthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                 caps &= (~LIM_SPECTRUM_MANAGEMENT_BIT_MASK);
             }
 
+            /* Clear rrm bit if AP doesn't support it */
+            if(!(psessionEntry->pLimJoinReq->bssDescription.capabilityInfo
+                 & LIM_RRM_BIT_MASK))
+            {
+               caps &= (~LIM_RRM_BIT_MASK);
+            }
+
             pMlmAssocReq->capabilityInfo = caps;
            PELOG3(limLog(pMac, LOG3,
                FL("Capabilities to be used in AssocReq=0x%X, privacy bit=%x shortSlotTime %x"),
