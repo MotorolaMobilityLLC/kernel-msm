@@ -6023,7 +6023,6 @@ VOS_STATUS hdd_close_all_adapters( hdd_context_t *pHddCtx )
       {
          hdd_cleanup_adapter( pHddCtx, pHddAdapterNode->pAdapter, FALSE );
          vos_mem_free( pHddAdapterNode );
-         pHddAdapterNode = NULL;
       }
    }while( NULL != pHddAdapterNode && VOS_STATUS_E_EMPTY != status );
    
