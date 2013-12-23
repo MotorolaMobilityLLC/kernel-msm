@@ -925,6 +925,8 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
     tSirDFSChannelList    dfschannelList;
     tANI_U8 deauthMsgCnt;
     tANI_U8 gLimIbssStaLimit;
+    tANI_U8 probeCounter;
+    tANI_U8 maxProbe;
 } tAniSirLim, *tpAniSirLim;
 
 typedef struct sLimMgmtFrameRegistration

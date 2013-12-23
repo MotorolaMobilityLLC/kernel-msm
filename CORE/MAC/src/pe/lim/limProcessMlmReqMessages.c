@@ -440,6 +440,7 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
         TX_TIMER *periodicScanTimer;
         PELOG2(limLog(pMac, LOG2, FL("ACTIVE Scan chan %d, sending probe"), channelNum);)
 
+        pMac->lim.probeCounter++;
         do
         {
             /* Prepare and send Probe Request frame for all the SSIDs present in the saved MLM 
@@ -3751,6 +3752,7 @@ limProcessMinChannelTimeout(tpAniSirGlobal pMac)
         pMac->lim.limTimers.gLimPeriodicProbeReqTimer.sessionId = 0xff;
         limDeactivateAndChangeTimer(pMac, eLIM_MIN_CHANNEL_TIMER);
         limDeactivateAndChangeTimer(pMac, eLIM_PERIODIC_PROBE_REQ_TIMER);
+        pMac->lim.probeCounter = 0;
         if (pMac->lim.gLimCurrentScanChannelId <=
                 (tANI_U32)(pMac->lim.gpLimMlmScanReq->channelList.numChannels - 1))
         {
@@ -3827,6 +3829,8 @@ limProcessMaxChannelTimeout(tpAniSirGlobal pMac)
         limDeactivateAndChangeTimer(pMac, eLIM_MAX_CHANNEL_TIMER);
         limDeactivateAndChangeTimer(pMac, eLIM_PERIODIC_PROBE_REQ_TIMER);
         pMac->lim.limTimers.gLimPeriodicProbeReqTimer.sessionId = 0xff;
+        pMac->lim.probeCounter = 0;
+
         if (pMac->lim.gLimCurrentScanChannelId <=
                 (tANI_U32)(pMac->lim.gpLimMlmScanReq->channelList.numChannels - 1))
         {
@@ -3896,10 +3900,11 @@ limProcessPeriodicProbeReqTimer(tpAniSirGlobal pMac)
     }
 
     if ((pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) &&
-        (pPeriodicProbeReqTimer->sessionId != 0xff))
+        (pPeriodicProbeReqTimer->sessionId != 0xff) && (pMac->lim.probeCounter < pMac->lim.maxProbe))
     {
         tLimMlmScanReq *pLimMlmScanReq = pMac->lim.gpLimMlmScanReq;
         PELOG1(limLog(pMac, LOG1, FL("Scanning : Periodic scanning"));)
+        pMac->lim.probeCounter++;
         /**
          * Periodic channel timer timed out
          * to send probe request.
