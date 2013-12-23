@@ -20,7 +20,7 @@
 
 / {
 	model = "Motorola MSM8960 SMQ";
-	compatible = "mmi,msm8960-old";
+	compatible = "mmi,msm8960";
 
 	mmi,product = "mmi,msm8960-smq";
 
