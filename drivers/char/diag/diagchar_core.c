@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -50,6 +50,7 @@ MODULE_DESCRIPTION("Diag Char Driver");
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION("1.0");
 
+#define MIN_SIZ_ALLOW 4
 #define INIT	1
 #define EXIT	-1
 
@@ -1426,6 +1427,10 @@ static int diagchar_write(struct file *file, const char __user *buf,
 	index = 0;
 	/* Get the packet type F3/log/event/Pkt response */
 	err = copy_from_user((&pkt_type), buf, 4);
+	if (err) {
+		pr_alert("diag: copy failed for pkt_type\n");
+		return -EAGAIN;
+	}
 	/* First 4 bytes indicate the type of payload - ignore these */
 	if (count < 4) {
 		pr_err("diag: Client sending short data\n");
@@ -1468,8 +1473,9 @@ static int diagchar_write(struct file *file, const char __user *buf,
 		return err;
 	}
 	if (pkt_type == CALLBACK_DATA_TYPE) {
-		if (payload_size > itemsize) {
-			pr_err("diag: Dropping packet, packet payload size crosses 4KB limit. Current payload size %d\n",
+		if (payload_size > itemsize ||
+				payload_size <= MIN_SIZ_ALLOW) {
+			pr_err("diag: Dropping packet, invalid packet size. Current payload size %d\n",
 				payload_size);
 			driver->dropped_count++;
 			return -EBADMSG;
@@ -1614,6 +1620,11 @@ static int diagchar_write(struct file *file, const char __user *buf,
 		remote_proc = diag_get_remote(*(int *)user_space_data);
 
 		if (remote_proc) {
+			if (payload_size <= MIN_SIZ_ALLOW) {
+				pr_err("diag: Integer underflow in %s, payload size: %d",
+							__func__, payload_size);
+				return -EBADMSG;
+			}
 			token_offset = 4;
 			payload_size -= 4;
 			buf += 4;
