@@ -331,7 +331,6 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"TDLS_PUAPSD_INACT_TIME",
     (unsigned char *)"TDLS_RX_FRAME_THRESHOLD",
     (unsigned char *)"ENABLE_ADAPT_RX_DRAIN",
-    (unsigned char *)"OXYGEN_NETWORK_DATA",
     (unsigned char *)"FLEX_CONNECT_POWER_FACTOR",
     (unsigned char *)"ANTENNA_DIVESITY",
     (unsigned char *)"GO_LINK_MONITOR_TIMEOUT",
@@ -345,6 +344,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"ASD_TRIGGER_THRESHOLD",
     (unsigned char *)"ASD_RTT_RSSI_HYST_THRESHOLD",
     (unsigned char *)"DEBUG_P2P_REMAIN_ON_CHANNEL",
+    (unsigned char *)"BTC_CTS2S_DURING_SCO",
 };
 
 
