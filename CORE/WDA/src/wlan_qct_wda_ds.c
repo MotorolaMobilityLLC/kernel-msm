@@ -514,7 +514,8 @@ WDA_DS_BuildTxPacketInfo
                     WLANTL_MAC_ADDR_ALIGN( ucDisableFrmXtl ),
                     (v_PVOID_t)pvDestMacAddr,
                     &usMacAddrSize );
-  if ( VOS_STATUS_SUCCESS != vosStatus )
+  if ((VOS_STATUS_SUCCESS != vosStatus) ||
+          (usMacAddrSize != VOS_MAC_ADDR_SIZE))
   {
     VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                "WDA:Failed while attempting to extract MAC Addr %d",
@@ -522,8 +523,6 @@ WDA_DS_BuildTxPacketInfo
     VOS_ASSERT( 0 );
     return VOS_STATUS_E_FAULT;
   }
-
-  VOS_ASSERT(usMacAddrSize == VOS_MAC_ADDR_SIZE);
 
   vos_copy_macaddr( (v_MACADDR_t*)pTxMetaInfo->fSTAMACAddress, pvDestMacAddr );
 

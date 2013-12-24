@@ -204,7 +204,14 @@ static void vos_linux_timer_callback (unsigned long data)
 
    tryAllowingSleep( type );
 
-   VOS_ASSERT( callback ); 
+   if (callback == NULL)
+   {
+       VOS_ASSERT(0);
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                 "%s: No TIMER callback, Could not enqueue timer to any queue",
+                 __func__);
+       return;
+   }
 
    // If timer has expired then call vos_client specific callback 
    if ( vos_sched_is_tx_thread( threadId ) )

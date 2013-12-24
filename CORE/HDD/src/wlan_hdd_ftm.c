@@ -1203,8 +1203,13 @@ VOS_STATUS vos_ftm_preStart( v_CONTEXT_t vosContext )
    VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
              "vos prestart");
 
-
-   VOS_ASSERT( NULL != pVosContext->pWDAContext);
+   if (NULL == pVosContext->pWDAContext)
+   {
+      VOS_ASSERT(0);
+      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
+            "%s: WDA NULL context", __func__);
+      return VOS_STATUS_E_FAILURE;
+   }
 
    /* call macPreStart */
    vStatus = macPreStart(pVosContext->pMACContext);
