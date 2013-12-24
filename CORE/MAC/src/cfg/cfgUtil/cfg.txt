@@ -4697,3 +4697,25 @@ HAL
 0    100    0
 *
 *
+
+* Debug p2p remain on channel
+*
+WNI_CFG_DEBUG_P2P_REMAIN_ON_CHANNEL    I    4    7
+V    RW    NP
+NONE
+0    1    0
+V    RW    NP
+NONE
+0    1    0
+
+* BTC CTS2S during SCO
+*
+WNI_CFG_BTC_CTS2S_DURING_SCO    I    4    7
+V    RW    NP
+HAL
+0    1     0
+V    RW    NP
+HAL
+0    1     0
+*
+*

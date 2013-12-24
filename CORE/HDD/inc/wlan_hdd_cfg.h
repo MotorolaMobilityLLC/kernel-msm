@@ -2026,6 +2026,16 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MIN              (0)
 #define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MAX              (100)
 
+//Enable debug for remain on channel issues
+#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_NAME    "gDebugP2pRemainOnChannel"
+#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_DEFAULT ( 0 )
+#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_MIN     ( 0 )
+#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_MAX     ( 1 )
+
+#define CFG_CTS2S_DURING_BTC_SCO_NAME           "btcCTS2SduringSCO"
+#define CFG_CTS2S_DURING_BTC_SCO_DEFAULT        WNI_CFG_BTC_CTS2S_DURING_SCO_STADEF
+#define CFG_CTS2S_DURING_BTC_SCO_MIN            WNI_CFG_BTC_CTS2S_DURING_SCO_STAMIN
+#define CFG_CTS2S_DURING_BTC_SCO_MAX            WNI_CFG_BTC_CTS2S_DURING_SCO_STAMAX
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -2447,6 +2457,8 @@ typedef struct
    v_U32_t                     gAsdProbeInterval;
    v_U32_t                     gAsdTriggerThreshold;
    v_U32_t                     gAsdRTTRssiHystThreshold;
+   v_BOOL_t                    debugP2pRemainOnChannel;
+   v_U32_t                     cfgBtcCTS2SduringSCO;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
