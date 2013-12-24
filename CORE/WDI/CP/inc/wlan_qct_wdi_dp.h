@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -54,8 +54,6 @@ DESCRIPTION
   module to be used by the DAL Data Path Core. 
   
       
-  Copyright (c) 2010 QUALCOMM Incorporated. All Rights Reserved.
-  Qualcomm Confidential and Proprietary
 ===========================================================================*/
 
 
@@ -129,6 +127,8 @@ when        who    what, where, why
 
 #define WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME 0x40 // Bit 6 will be used to control BD rate for Management frames
 
+
+#define WDI_USE_FW_IN_TX_PATH             0x200 //bit 9 used to route the frames to Work Queue 5
 
 /*Macro for getting the size of the TX BD*/
 #define WDI_TX_BD_HEADER_SIZE        sizeof(WDI_TxBdType)
@@ -235,7 +235,6 @@ when        who    what, where, why
 #define WDI_RX_BD_GET_MPDU_LEN( _pvBDHeader )        (((WDI_RxBdType*)_pvBDHeader)->mpduLength)
 
 #define WDI_RX_BD_GET_MPDU_H_LEN( _pvBDHeader )      (((WDI_RxBdType*)_pvBDHeader)->mpduHeaderLength)
-
 
 #define WDI_RX_BD_GET_FT( _pvBDHeader )         (((WDI_RxBdType*)_pvBDHeader)->ft)
 
