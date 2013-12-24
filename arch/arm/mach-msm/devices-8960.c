@@ -1768,6 +1768,29 @@ struct platform_device msm8960_device_dmov = {
 		.platform_data = &msm_dmov_pdata,
 	},
 };
+#define MSM_UIO_RMTFS_BASE	0x8FB00000
+#define MSM_UIO_RMTFS_END	(MSM_UIO_RMTFS_BASE + 0x300000)
+
+static struct resource msm_device_uio_rmtfs_rsc[] = {
+	{
+		.name	= "rmtfs",
+		.flags	= IORESOURCE_MEM,
+		.start	= MSM_UIO_RMTFS_BASE,
+		.end	= MSM_UIO_RMTFS_END - 1,
+	},
+};
+
+struct platform_device msm_device_uio_rmtfs = {
+	.name		= "msm_sharedmem",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(msm_device_uio_rmtfs_rsc),
+	.resource	= msm_device_uio_rmtfs_rsc,
+};
+
+int __init msm_add_uio()
+{
+	return platform_device_register(&msm_device_uio_rmtfs);
+}
 
 static struct platform_device *msm_sdcc_devices[] __initdata = {
 	&msm_device_sdc1,

@@ -380,6 +380,7 @@ void __init msm8960_init_mmc(void)
 	/* SDC1 : eMMC card connected */
 	if (!disable)
 		msm_add_sdcc(1, &msm8960_sdc1_data);
+		msm_add_uio();
 #endif
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
 	if (msm8960_oem_funcs.msm_mmc_init)
