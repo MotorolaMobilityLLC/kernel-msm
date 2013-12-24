@@ -5469,7 +5469,6 @@ void hdd_cleanup_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_
       tHddBatchScanRsp *pPrev;
       if (pAdapter)
       {
-          mutex_lock(&pAdapter->hdd_batch_scan_lock);
           pNode = pAdapter->pBatchScanRsp;
           while (pNode)
           {
@@ -5478,7 +5477,6 @@ void hdd_cleanup_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_
               vos_mem_free((v_VOID_t * )pPrev);
           }
           pAdapter->pBatchScanRsp = NULL;
-          mutex_unlock(&pAdapter->hdd_batch_scan_lock);
       }
 #endif
 
