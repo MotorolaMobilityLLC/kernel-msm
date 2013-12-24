@@ -40,7 +40,6 @@
  */
 
 /*
- * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limProcessMlmMessages.cc contains the code
  * for processing MLM request messages.
  * Author:        Chandra Modumudi
@@ -2904,9 +2903,11 @@ limProcessMlmDisassocReqNtf(tpAniSirGlobal pMac, eHalStatus suspendStatus, tANI_
         pStaDs->mlmStaContext.mlmState   = eLIM_MLM_WT_DEL_STA_RSP_STATE;
 
         /* If the reason for disassociation is inactivity of STA, then
-           dont wait for acknowledgement */
-        if ((pMlmDisassocReq->reasonCode == eSIR_MAC_DISASSOC_DUE_TO_INACTIVITY_REASON) &&
-            (psessionEntry->limSystemRole == eLIM_AP_ROLE))
+           dont wait for acknowledgement. Also, if FW_IN_TX_PATH feature
+           is enabled do not wait for ACK */
+        if (((pMlmDisassocReq->reasonCode == eSIR_MAC_DISASSOC_DUE_TO_INACTIVITY_REASON) &&
+            (psessionEntry->limSystemRole == eLIM_AP_ROLE)) ||
+            IS_FW_IN_TX_PATH_FEATURE_ENABLE )
         {
 
              limSendDisassocMgmtFrame(pMac,
@@ -3302,9 +3303,23 @@ limProcessMlmDeauthReqNtf(tpAniSirGlobal pMac, eHalStatus suspendStatus, tANI_U3
     pStaDs->mlmStaContext.mlmState   = eLIM_MLM_WT_DEL_STA_RSP_STATE;
 
     /// Send Deauthentication frame to peer entity
-    limSendDeauthMgmtFrame(pMac, pMlmDeauthReq->reasonCode,
-                           pMlmDeauthReq->peerMacAddr,
-                           psessionEntry, TRUE);
+    /* If FW_IN_TX_PATH feature is enabled
+       do not wait for ACK */
+    if( IS_FW_IN_TX_PATH_FEATURE_ENABLE )
+    {
+        limSendDeauthMgmtFrame(pMac, pMlmDeauthReq->reasonCode,
+                               pMlmDeauthReq->peerMacAddr,
+                               psessionEntry, FALSE);
+
+        /* Send Deauth CNF and receive path cleanup */
+        limSendDeauthCnf(pMac);
+    }
+    else
+    {
+        limSendDeauthMgmtFrame(pMac, pMlmDeauthReq->reasonCode,
+                               pMlmDeauthReq->peerMacAddr,
+                               psessionEntry, TRUE);
+    }
 
     return;
 
