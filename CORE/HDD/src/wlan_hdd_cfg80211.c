@@ -8590,6 +8590,7 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             }
         case NL80211_TDLS_SETUP:
             {
+                hddTdlsPeer_t *pTdlsPeer;
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                           " %s : NL80211_TDLS_SETUP for " MAC_ADDRESS_STR,
                           __func__, MAC_ADDR_ARRAY(peer));
@@ -8603,7 +8604,24 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                     return -ENOTSUPP;
                 }
 
-                return wlan_hdd_tdls_add_force_peer(pAdapter, peer);
+                if ( 0 != wlan_hdd_tdls_add_force_peer(pAdapter, peer) ) {
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                          " %s TDLS Add Force Peer Failed",
+                          __func__);
+                    return -EINVAL;
+                }
+                /* To cater the requirement of establishing the TDLS link
+                 * irrespective of the data traffic , get an entry of TDLS peer.
+                 */
+                pTdlsPeer = wlan_hdd_tdls_get_peer(pAdapter, peer);
+                if (pTdlsPeer == NULL) {
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s: peer " MAC_ADDRESS_STR " not existing",
+                              __func__, MAC_ADDR_ARRAY(peer));
+                    return -EINVAL;
+                }
+                break;
             }
         case NL80211_TDLS_DISCOVERY_REQ:
             /* We don't support in-driver setup/teardown/discovery */
