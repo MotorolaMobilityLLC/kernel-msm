@@ -5763,11 +5763,11 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
                                   NL80211_IFTYPE_STATION;
 
          pAdapter->device_mode = session_type;
-
-         status = hdd_init_station_mode( pAdapter );
 #ifdef FEATURE_WLAN_TDLS
          mutex_unlock(&pHddCtx->tdls_lock);
 #endif
+
+         status = hdd_init_station_mode( pAdapter );
          if( VOS_STATUS_SUCCESS != status )
             goto err_free_netdev;
 

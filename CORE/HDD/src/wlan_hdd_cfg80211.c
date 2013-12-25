@@ -2903,10 +2903,10 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 pHddCtx->change_iface = type;
                 memset(&pAdapter->sessionCtx, 0, sizeof(pAdapter->sessionCtx));
                 hdd_set_station_ops( pAdapter->dev );
-                status = hdd_init_station_mode( pAdapter );
 #ifdef FEATURE_WLAN_TDLS
                 mutex_unlock(&pHddCtx->tdls_lock);
 #endif
+                status = hdd_init_station_mode( pAdapter );
                 if( VOS_STATUS_SUCCESS != status )
                     return -EOPNOTSUPP;
                 /* In case of JB, for P2P-GO, only change interface will be called,
