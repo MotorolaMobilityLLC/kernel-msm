@@ -212,7 +212,6 @@ static int lpm_set_l2_mode(struct lpm_system_state *system_state,
 
 	switch (sleep_mode) {
 	case MSM_SPM_L2_MODE_POWER_COLLAPSE:
-		pr_info("Configuring for L2 power collapse\n");
 		msm_pm_set_l2_flush_flag(MSM_SCM_L2_OFF);
 		break;
 	case MSM_SPM_L2_MODE_GDHS:
@@ -291,7 +290,7 @@ static int lpm_system_mode_select(
 			system_level->num_cpu_votes != num_powered_cores)
 			continue;
 
-		if (latency_us < pwr_param->latency_us)
+		if (latency_us < pwr_param->latency_us && from_idle)
 			continue;
 
 		if (sleep_us < pwr_param->time_overhead_us)

@@ -429,19 +429,20 @@
 		qcom,tapan-codec-9302;
 	};
 
-	qcom,msm-pcm {
-		compatible = "qcom,msm-pcm-dsp";
-		qcom,msm-pcm-dsp-id = <0>;
+	qti,msm-pcm {
+		compatible = "qti,msm-pcm-dsp";
+		qti,msm-pcm-dsp-id = <0>;
 	};
 
 	qcom,msm-pcm-routing {
 		compatible = "qcom,msm-pcm-routing";
 	};
 
-	qcom,msm-pcm-low-latency {
-		compatible = "qcom,msm-pcm-dsp";
-		qcom,msm-pcm-dsp-id = <1>;
-		qcom,msm-pcm-low-latency;
+	qti,msm-pcm-low-latency {
+		compatible = "qti,msm-pcm-dsp";
+		qti,msm-pcm-dsp-id = <1>;
+		qti,msm-pcm-low-latency;
+		qti,latency-level = "regular";
 	};
 
 	qcom,msm-pcm-lpa {
@@ -1024,8 +1025,8 @@
 		qcom,cpufreq-table =
 			<  300000 1600 /* 200 MHz */ >,
 			<  384000 1600 /* 200 MHz */ >,
-			<  600000 3200 /* 320 MHz */ >,
-			<  787200 4264 /* 533 MHz */ >,
+			<  600000 1600 /* 200 MHz */ >,
+			<  787200 3200 /* 400 MHz */ >,
 			<  998400 4264 /* 533 MHz */ >,
 			< 1094400 4264 /* 533 MHz */ >,
 			< 1190400 4264 /* 533 MHz */ >,
