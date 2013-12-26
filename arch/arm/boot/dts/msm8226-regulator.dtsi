@@ -36,7 +36,7 @@
 		interrupts = <0 15 0>;
 		regulator-name = "apc_corner";
 		regulator-min-microvolt = <1>;
-		regulator-max-microvolt = <3>;
+		regulator-max-microvolt = <12>;
 
 		qti,pvs-fuse-redun-sel = <22 24 3 2 0>;
 		qti,pvs-fuse = <22 6 5 0>;
@@ -91,13 +91,15 @@
 		qti,cpr-uplift-max-volt = <1350000>;
 		qti,cpr-uplift-speed-bin = <1>;
 		qti,speed-bin-fuse-sel = <22 0 3 0>;
-		qti,cpr-quot-adjust-table = <1 300000 0 1>,
-				<1 384000 0 1>, <1 600000 0 2>,
-				<1 787200 0 2>, <1 998400 450 3>,
-				<1 1094400 375 3>, <1 1190400 300 3>,
-				<1 1305600 225 3>, <1 1344000 187 3>,
-				<1 1401600 150 3>, <1 1497600 75 3>,
-				<1 1593600 0 3>;
+		qti,cpr-corner-map = <1 1 2 2 3 3 3 3 3 3 3 3>;
+		qti,cpr-quot-adjust-table =
+					<1 5 450>,
+					<1 6 375>,
+					<1 7 300>,
+					<1 8 225>,
+					<1 9 187>,
+					<1 10 150>,
+					<1 11 75>;
 	};
 };
 
