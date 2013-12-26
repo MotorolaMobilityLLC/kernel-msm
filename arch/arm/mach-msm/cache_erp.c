@@ -464,6 +464,18 @@ static struct notifier_block cache_erp_cpu_notifier = {
 	.notifier_call = cache_erp_cpu_callback,
 };
 
+void enable_msm_l2_erp_irq(void)
+{
+	pr_alert("enabling l2 erp interrupt\n");
+	enable_irq(l2_erp_irq);
+}
+
+void disable_msm_l2_erp_irq(void)
+{
+	pr_alert("disabling l2 erp interrupt\n");
+	disable_irq_nosync(l2_erp_irq);
+}
+
 static int msm_cache_erp_probe(struct platform_device *pdev)
 {
 	struct resource *r;

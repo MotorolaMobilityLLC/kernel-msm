@@ -55,6 +55,9 @@ extern void mmi_audio_dsp_init(void);
 /* from board-mmi-regulator.c */
 extern void mmi_regulator_init(struct msm8960_oem_init_ptrs *);
 
+/* from board-mmi-emu.c */
+extern void mmi_init_emu_detection(struct msm_otg_platform_data *ctrl_data);
+
 /* from board-mmi-vibrator.c */
 #ifdef CONFIG_VIB_TIMED
 void __init mmi_vibrator_init(void);

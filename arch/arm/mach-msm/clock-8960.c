@@ -6309,6 +6309,29 @@ static struct clk_lookup msm_clocks_8930[] = {
 	CLK_LOOKUP("vcodec_iommu1_clk", vcodec_axi_b_clk.c, "mdp.0"),
 	CLK_LOOKUP("smmu_iface_clk", smmu_p_clk.c,	"mdp.0"),
 };
+
+/*
+ * Support Functionality for the EMU
+ */
+int __init msm_clocks_8960_v1_info(struct clk_lookup **ptr, int *num_lookups)
+{
+	*ptr = msm_clocks_8960_common;
+	*num_lookups = ARRAY_SIZE(msm_clocks_8960_common);
+	return 0;
+}
+
+int __init msm_gsbi12_uart_clk_ptr(struct clk **ptr)
+{
+	*ptr = &gsbi12_uart_clk.c;
+	return 0;
+}
+
+int __init msm_gsbi4_uart_clk_ptr(struct clk **ptr)
+{
+	*ptr = &gsbi4_uart_clk.c;
+	return 0;
+}
+
 /*
  * Miscellaneous clock register initializations
  */
