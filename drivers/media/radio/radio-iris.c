@@ -88,7 +88,7 @@ struct iris_device {
 
 	struct radio_hci_dev *fm_hdev;
 
-	struct v4l2_capability *g_cap;
+	struct v4l2_capability g_cap;
 	struct v4l2_control *g_ctl;
 
 	struct hci_fm_mute_mode_req mute_mode;
@@ -1825,7 +1825,7 @@ static void hci_cc_feature_list_rsp(struct radio_hci_dev *hdev,
 		return;
 	}
 
-	v4l_cap = radio->g_cap;
+	v4l_cap = &radio->g_cap;
 
 	if (rsp->status)
 		return;
@@ -3159,7 +3159,7 @@ static int iris_vidioc_s_ext_ctrls(struct file *file, void *priv,
 			struct v4l2_ext_controls *ctrl)
 {
 	int retval = 0;
-	int bytes_to_copy;
+	size_t bytes_to_copy;
 	struct hci_fm_tx_ps tx_ps;
 	struct hci_fm_tx_rt tx_rt;
 	struct hci_fm_def_data_wr_req default_data;
@@ -3168,18 +3168,20 @@ static int iris_vidioc_s_ext_ctrls(struct file *file, void *priv,
 	struct iris_device *radio = video_get_drvdata(video_devdata(file));
 	char *data = NULL;
 
-	if (radio == NULL) {
-		FMDERR(":radio is null");
-		return -EINVAL;
+	if ((ctrl == NULL) || (ctrl->controls == NULL)
+		|| (ctrl->count == 0)) {
+		retval = -EINVAL;
+		return retval;
 	}
+
 	switch ((ctrl->controls[0]).id) {
 	case V4L2_CID_RDS_TX_PS_NAME:
 		FMDBG("In V4L2_CID_RDS_TX_PS_NAME\n");
 		/*Pass a sample PS string */
 
 		memset(tx_ps.ps_data, 0, MAX_PS_LENGTH);
-		bytes_to_copy = min((int)(ctrl->controls[0]).size,
-			MAX_PS_LENGTH);
+		bytes_to_copy = min(ctrl->controls[0].size,
+			(size_t)MAX_PS_LENGTH);
 		data = (ctrl->controls[0]).string;
 
 		if (copy_from_user(tx_ps.ps_data,
@@ -3196,7 +3198,7 @@ static int iris_vidioc_s_ext_ctrls(struct file *file, void *priv,
 		break;
 	case V4L2_CID_RDS_TX_RADIO_TEXT:
 		bytes_to_copy =
-		    min((int)(ctrl->controls[0]).size, MAX_RT_LENGTH);
+		    min((ctrl->controls[0]).size, (size_t)MAX_RT_LENGTH);
 		data = (ctrl->controls[0]).string;
 
 		memset(tx_rt.rt_data, 0, MAX_RT_LENGTH);
@@ -4298,8 +4300,12 @@ static int iris_vidioc_querycap(struct file *file, void *priv,
 	}
 	strlcpy(capability->driver, DRIVER_NAME, sizeof(capability->driver));
 	strlcpy(capability->card, DRIVER_CARD, sizeof(capability->card));
-	capability->capabilities = V4L2_CAP_TUNER | V4L2_CAP_RADIO;
-	radio->g_cap = capability;
+
+	strlcpy(radio->g_cap.driver, DRIVER_NAME, sizeof(radio->g_cap.driver));
+	strlcpy(radio->g_cap.card, DRIVER_CARD, sizeof(radio->g_cap.card));
+
+	radio->g_cap.capabilities = V4L2_CAP_TUNER | V4L2_CAP_RADIO;
+	capability->capabilities = radio->g_cap.capabilities;
 	return 0;
 }
 
@@ -4470,11 +4476,11 @@ static int __init iris_probe(struct platform_device *pdev)
 		if (kfifo_alloc_rc != 0) {
 			FMDERR("failed allocating buffers %d\n",
 				   kfifo_alloc_rc);
-			for (; i > -1; i--) {
+			for (; i > -1; i--)
 				kfifo_free(&radio->data_buf[i]);
-				kfree(radio);
-				return -ENOMEM;
-			}
+			video_device_release(radio->videodev);
+			kfree(radio);
+			return -ENOMEM;
 		}
 	}
 
@@ -4502,8 +4508,17 @@ static int __init iris_probe(struct platform_device *pdev)
 	} else {
 		priv_videodev = kzalloc(sizeof(struct video_device),
 			GFP_KERNEL);
-		memcpy(priv_videodev, radio->videodev,
-			sizeof(struct video_device));
+		if (priv_videodev != NULL) {
+			memcpy(priv_videodev, radio->videodev,
+				sizeof(struct video_device));
+		} else {
+			video_unregister_device(radio->videodev);
+			video_device_release(radio->videodev);
+			for (; i > -1; i--)
+				kfifo_free(&radio->data_buf[i]);
+			kfree(radio);
+			return -ENOMEM;
+		}
 	}
 	return 0;
 }
