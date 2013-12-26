@@ -199,6 +199,9 @@ static struct platform_device *mmi_devices[] __initdata = {
 	&mmi_pm8xxx_rgb_leds_device,
 	&mmi_alsa_to_h2w_hs_device,
 	&mmi_bq5101xb_device,
+#ifdef CONFIG_EMU_DETECTION
+	&msm8960_device_uart_gsbi,
+#endif
 };
 
 #define SERIALNO_MAX_LEN 64
@@ -466,6 +469,10 @@ static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
 				__func__, val ? "high" : "low");
 		otg_pdata->pmic_id_flt_gpio_active_high = val;
 	}
+
+#ifdef CONFIG_EMU_DETECTION
+	mmi_init_emu_detection(otg_pdata);
+#endif
 
 put_node:
 	of_node_put(chosen);

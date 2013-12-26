@@ -71,6 +71,7 @@ enum otg_control_type {
 	OTG_PHY_CONTROL,
 	OTG_PMIC_CONTROL,
 	OTG_USER_CONTROL,
+	OTG_ACCY_CONTROL,
 };
 
 /**
@@ -218,6 +219,7 @@ struct msm_otg_platform_data {
 	int pmic_id_flt_gpio;
 	bool pmic_id_flt_gpio_active_high;
 	unsigned int mpm_otgsessvld_int;
+	struct platform_device *accy_pdev;
 	bool mhl_enable;
 	bool disable_reset_on_disconnect;
 	bool enable_lpm_on_dev_suspend;
@@ -342,6 +344,7 @@ struct msm_otg {
 	unsigned dcd_time;
 	struct wake_lock wlock;
 	struct notifier_block usbdev_nb;
+	struct notifier_block accy_nb;
 	unsigned mA_port;
 	struct timer_list id_timer;
 	unsigned long caps;

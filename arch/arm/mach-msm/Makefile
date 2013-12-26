@@ -331,6 +331,8 @@ obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-regulator.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-dsp.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += mmi-bms-batterydata.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += mmi-pinmux.o
+obj-$(CONFIG_EMU_DETECTION)    += board-mmi-emu.o
+
 
 obj-$(CONFIG_VIB_TIMED) += board-mmi-vibrator.o
 
