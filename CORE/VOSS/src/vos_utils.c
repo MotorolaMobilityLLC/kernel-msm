@@ -139,7 +139,7 @@ VOS_STATUS vos_crypto_init( v_U32_t *phCryptProv )
     VOS_STATUS uResult = VOS_STATUS_E_FAILURE;
 
     // This implementation doesn't require a crypto context
-    *phCryptProv  = (v_U32_t)NULL;
+    *phCryptProv  = 0;
     uResult = VOS_STATUS_SUCCESS;
     return ( uResult );
 }
