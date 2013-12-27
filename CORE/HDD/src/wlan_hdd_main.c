@@ -5487,23 +5487,36 @@ void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
 
 void hdd_cleanup_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_U8 rtnl_held )
 {
-   struct net_device *pWlanDev = pAdapter->dev;
+   struct net_device *pWlanDev;
+
+   ENTER();
+   if (NULL == pAdapter)
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: HDD adapter is Null", __func__);
+      return;
+   }
+
+   pWlanDev = pAdapter->dev;
 
 #ifdef FEATURE_WLAN_BATCH_SCAN
+   if ((pAdapter->device_mode == WLAN_HDD_INFRA_STATION)
+     || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
+     || (pAdapter->device_mode == WLAN_HDD_P2P_DEVICE)
+     )
+   {
       tHddBatchScanRsp *pNode;
       tHddBatchScanRsp *pPrev;
-      if (pAdapter)
+      pNode = pAdapter->pBatchScanRsp;
+      while (pNode)
       {
-          pNode = pAdapter->pBatchScanRsp;
-          while (pNode)
-          {
-              pPrev = pNode;
-              pNode = pNode->pNext;
-              vos_mem_free((v_VOID_t * )pPrev);
-              pPrev = NULL;
-          }
-          pAdapter->pBatchScanRsp = NULL;
+          pPrev = pNode;
+          pNode = pNode->pNext;
+          vos_mem_free((v_VOID_t * )pPrev);
+          pPrev = NULL;
       }
+      pAdapter->pBatchScanRsp = NULL;
+    }
 #endif
 
    if(test_bit(NET_DEVICE_REGISTERED, &pAdapter->event_flags)) {
@@ -5519,6 +5532,7 @@ void hdd_cleanup_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_
       // since the memory has been reclaimed
    }
 
+   EXIT();
 }
 
 void hdd_set_pwrparams(hdd_context_t *pHddCtx)
