@@ -394,17 +394,6 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
 #else
   NULL,
 #endif /* FEATURE_WLAN_LPHB */
-#if defined WLAN_FEATURE_RELIABLE_MCAST
-  WDI_ProcessLBPLeaderReq,              /* WDI_LBP_LEADER_REQ */
-#else
-  NULL,
-#endif /* WLAN_FEATURE_RELIABLE_MCAST */
-
-#ifdef FEATURE_CESIUM_PROPRIETARY
-  WDI_ProcessIbssPeerInfoReq,           /* WDI_HAL_IBSS_PEER_INFO_REQ */
-#else
-  NULL,
-#endif /* FEATURE_CESIUM_PROPRIETARY */
 
 #ifdef FEATURE_WLAN_BATCH_SCAN
   WDI_ProcessSetBatchScanReq,               /* WDI_SET_BATCH_SCAN_REQ */
