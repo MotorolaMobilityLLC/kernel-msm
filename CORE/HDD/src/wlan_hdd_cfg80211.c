@@ -5476,6 +5476,8 @@ void hdd_select_cbmode( hdd_adapter_t *pAdapter,v_U8_t operationChannel)
                (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->dot11Mode;
     eHddDot11Mode   hddDot11Mode = iniDot11Mode;
 
+    hddLog(LOG1, FL("Channel Bonding Mode Selected is %u"),
+           iniDot11Mode);
     switch ( iniDot11Mode )
     {
        case eHDD_DOT11_MODE_AUTO:
@@ -5568,6 +5570,8 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
             vos_mem_zero((void *)(pRoamProfile->BSSIDs.bssid),WNI_CFG_BSSID_LEN);
         }
 
+        hddLog(LOG1, FL("Connect to SSID: %s opertating Channel: %u"),
+               pRoamProfile->SSIDs.SSIDList->SSID.ssId, operatingChannel);
         if ((IW_AUTH_WPA_VERSION_WPA == pWextState->wpaVersion) ||
                 (IW_AUTH_WPA_VERSION_WPA2 == pWextState->wpaVersion))
         {
@@ -5635,6 +5639,7 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
         {
             hdd_select_cbmode(pAdapter,operatingChannel);
         }
+
         /* change conn_state to connecting before sme_RoamConnect(), because sme_RoamConnect()
          * has a direct path to call hdd_smeRoamCallback(), which will change the conn_state
          * If direct path, conn_state will be accordingly changed to NotConnected or Associated
@@ -6575,6 +6580,7 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
     INIT_COMPLETION(pAdapter->disconnect_comp_var);
 
     /*issue disconnect*/
+
     status = sme_RoamDisconnect( WLAN_HDD_GET_HAL_CTX(pAdapter),
                                  pAdapter->sessionId, reason);
 
@@ -6706,6 +6712,7 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                 }
             }
 #endif
+           hddLog(LOG1, FL("Disconnecting with reasoncode:%u"), reasonCode);
             status = wlan_hdd_disconnect(pAdapter, reasonCode);
             if ( 0 != status )
             {
