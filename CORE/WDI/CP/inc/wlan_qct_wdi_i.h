@@ -456,7 +456,7 @@ typedef enum
   WDI_SET_BATCH_SCAN_REQ                        = 86,
 
   /*WLAN DAL Set Max Tx Power Per band Request*/
-  WDI_SET_MAX_TX_POWER_PER_BAND_REQ             = 89,
+  WDI_SET_MAX_TX_POWER_PER_BAND_REQ             = 87,
 
   WDI_MAX_REQ,
 
@@ -753,7 +753,7 @@ typedef enum
 
   WDI_SET_BATCH_SCAN_RESP                       = 85,
 
-  WDI_SET_MAX_TX_POWER_PER_BAND_RSP             = 88,
+  WDI_SET_MAX_TX_POWER_PER_BAND_RSP             = 86,
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
