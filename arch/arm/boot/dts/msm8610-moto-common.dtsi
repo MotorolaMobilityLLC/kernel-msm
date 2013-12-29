@@ -291,8 +291,8 @@
 		interrupt-parent = <&msmgpio>;
 		interrupts = <84 0x2>;
 		gpios = <&msmgpio 84 0x0>;
-		hs_det_vdd-supply = <&pm8110_l6>;
-		hs_det_micvdd-supply = <&pm8110_l22>;
+		hs_det_vdd-supply = <&pm8110_l14>;
+		hs_det_micvdd-supply = <&pm8110_l20>;
 	};
 
 	kionix@e {
