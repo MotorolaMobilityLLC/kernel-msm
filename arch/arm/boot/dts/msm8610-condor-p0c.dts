@@ -54,6 +54,11 @@
 	lm2755@18 {
 		status = "ok";
 	};
+
+	tpa6165xx@40 {
+		hs_det_vdd-supply = <&pm8110_l6>;
+		hs_det_micvdd-supply = <&pm8110_l22>;
+	};
 };
 
 /* Support Gipper factory IC */
