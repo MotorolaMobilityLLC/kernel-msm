@@ -7213,7 +7213,7 @@ eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
             {
                 pScanCmd->u.scanCmd.u.scanRequest.p2pSearch = 1;
             }
-            if(pProfile->pAddIEScan)
+            if(pProfile->nAddIEScanLength)
             {
                 pScanCmd->u.scanCmd.u.scanRequest.pIEField = vos_mem_malloc(
                                                     pProfile->nAddIEScanLength);
@@ -7226,7 +7226,7 @@ eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
                 if (HAL_STATUS_SUCCESS(status))
                 {
                     vos_mem_copy(pScanCmd->u.scanCmd.u.scanRequest.pIEField,
-                                 pProfile->pAddIEScan, pProfile->nAddIEScanLength);
+                                 pProfile->addIEScan, pProfile->nAddIEScanLength);
                     pScanCmd->u.scanCmd.u.scanRequest.uIEFieldLen = pProfile->nAddIEScanLength;
                 }
                 else
