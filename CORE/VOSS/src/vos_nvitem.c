@@ -2478,21 +2478,8 @@ VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer,v_SIZE_t *pSize)
 VOS_STATUS vos_nv_getNVEncodedBuffer(v_VOID_t **pNvBuffer,v_SIZE_t *pSize)
 {
    /* Send the NV structure and size */
-   VOS_STATUS status;
-
-   status = vos_nv_isEmbeddedNV();
-
-   if (VOS_STATUS_SUCCESS == status)
-   {
-      *pNvBuffer = (v_VOID_t *)(pEncodedBuf);
-      *pSize = nvReadEncodeBufSize;
-   }
-   else
-   {
-      *pNvBuffer = (v_VOID_t *)(&pnvEFSTable->halnv);
-      *pSize = sizeof(sHalNv);
-   }
-
+   *pNvBuffer = (v_VOID_t *)(pEncodedBuf);
+   *pSize = nvReadEncodeBufSize;
    return VOS_STATUS_SUCCESS;
 }
 
