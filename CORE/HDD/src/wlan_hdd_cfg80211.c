@@ -4692,6 +4692,13 @@ v_BOOL_t hdd_isScanAllowed( hdd_context_t *pHddCtx )
     v_U8_t staId = 0;
     v_U8_t *staMac = NULL;
 
+    if (TRUE == pHddCtx->btCoexModeSet)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+           FL("BTCoex Mode operation in progress, Do not allow scan"));
+        return VOS_FALSE;
+    }
+
     status = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
 
     while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
