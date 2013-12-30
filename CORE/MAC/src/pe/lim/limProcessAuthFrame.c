@@ -194,17 +194,18 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
     {
         // Received Auth frame from a BC/MC address
         // Log error and ignore it
-        PELOG1(limLog(pMac, LOG1,
+        PELOGE(limLog(pMac, LOGE,
                FL("received Auth frame from a BC/MC address - "));)
        PELOG1( limPrintMacAddr(pMac, pHdr->sa, LOG1);)
 
         return;
     }
-
-    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-              FL("Auth Frame Received: BSSID " MAC_ADDRESS_STR " (RSSI %d)"),
-              MAC_ADDR_ARRAY(pHdr->bssId),
-              (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
+    limLog(pMac, LOG1,
+               FL("Sessionid: %d System role : %d limMlmState: %d :Auth "
+               "Frame Received: BSSID: "MAC_ADDRESS_STR " (RSSI %d)"),
+               psessionEntry->peSessionId, psessionEntry->limSystemRole,
+               psessionEntry->limMlmState, MAC_ADDR_ARRAY(pHdr->bssId),
+               (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
 
     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
 
@@ -213,6 +214,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
     //Restore default failure timeout
     if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona && psessionEntry->defaultAuthFailureTimeout)
     {
+        limLog(pMac, LOG1, FL("Restore default failure timeout"));
         ccmCfgSetInt(pMac,WNI_CFG_AUTHENTICATE_FAILURE_TIMEOUT ,
                           psessionEntry->defaultAuthFailureTimeout, NULL, eANI_BOOLEAN_FALSE);
     }
@@ -520,12 +522,12 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                         return;
                     }
                     if ( ( sirConvertAuthFrame2Struct(pMac, plainBody, frameLen-8,
-                         &rxAuthFrame)!=eSIR_SUCCESS ) ||
+                           &rxAuthFrame)!=eSIR_SUCCESS ) ||
                         ( !isAuthValid(pMac, &rxAuthFrame, psessionEntry) ) )
-                     {
-                        PELOGE(limLog(pMac, LOGE,
+                    {
+                        limLog(pMac, LOGE,
                                FL("failed to convert Auth Frame to structure "
-                               "or Auth is not valid "));)
+                               "or Auth is not valid "));
                         return;
                     }
             } // End of check for Key Mapping/Default key presence
@@ -1427,8 +1429,8 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                 {
                     // Log error
                     limLog(pMac, LOGW,
-                           FL("auth response timer timedout for peer "));
-                    limPrintMacAddr(pMac, pHdr->sa, LOGW);
+                           FL("auth response timer timedout for peer "
+                           MAC_ADDRESS_STR),MAC_ADDR_ARRAY(pHdr->sa));
                     /**
                      * Received Auth Frame3 after Auth Response timeout.
                      * Reject by sending Auth Frame4 with
@@ -1557,8 +1559,8 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                 // Log error
                 PELOG1(limLog(pMac, LOG1,
                        FL("received unexpected Auth frame4 from peer in state "
-                       "%d, addr "), psessionEntry->limMlmState);)
-               PELOG1( limPrintMacAddr(pMac, pHdr->sa, LOG1);)
+                       "%d, addr "MAC_ADDRESS_STR), psessionEntry->limMlmState,
+                       MAC_ADDR_ARRAY(pHdr->sa));)
 
                 return;
             }
@@ -1712,11 +1714,9 @@ tSirRetStatus limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, vo
     pBody = WDA_GET_RX_MPDU_DATA(pBd);
     frameLen = WDA_GET_RX_PAYLOAD_LEN(pBd);
 
-    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-              FL("Auth Frame Received: BSSID " MAC_ADDRESS_STR " (RSSI %d)"),
-              MAC_ADDR_ARRAY(pHdr->bssId),
-              (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pBd)));
-
+    limLog(pMac, LOG1, FL("Auth Frame Received: BSSID " MAC_ADDRESS_STR
+    " (RSSI %d)"),MAC_ADDR_ARRAY(pHdr->bssId),
+    (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pBd)));
     // Check for the operating channel and see what needs to be done next.
     psessionEntry = pMac->ft.ftPEContext.psavedsessionEntry;
     if (psessionEntry == NULL) 
@@ -1751,7 +1751,7 @@ tSirRetStatus limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, vo
     if (!vos_mem_compare(pMac->ft.ftPEContext.pFTPreAuthReq->preAuthbssId,
                          pHdr->bssId, sizeof( tSirMacAddr )))
     {
-        limLog(pMac, LOGE, FL("Error: Same bssid as preauth BSSID"));
+        limLog(pMac, LOGE, FL("Error: NOT same bssid as preauth BSSID"));
         // In this case SME if indeed has triggered a 
         // pre auth it will time out.
         return eSIR_FAILURE;
@@ -1803,6 +1803,7 @@ tSirRetStatus limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, vo
     // Save off the auth resp.
     if ((sirConvertAuthFrame2Struct(pMac, pBody, frameLen, &rxAuthFrame) != eSIR_SUCCESS))
     {
+        limLog(pMac, LOGE, FL("failed to convert Auth frame to struct"));
         limHandleFTPreAuthRsp(pMac, eSIR_FAILURE, NULL, 0, psessionEntry);
         return eSIR_FAILURE;
     }
