@@ -3151,16 +3151,38 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        else if (strncmp(command, "BTCOEXMODE", 10) == 0 )
        {
            char *dhcpPhase;
-           dhcpPhase = command + 12;
+           dhcpPhase = command + 11;
            if ('1' == *dhcpPhase)
            {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                         FL("BTCOEXMODE %d"), *dhcpPhase);
+
+               pHddCtx->btCoexModeSet = TRUE;
+
+              /* Firmware failing to process DHCP START/STOP indications.
+               * So, for now commentig below code, once issue is resolved,
+               * follwing will be uncommented.
+               */
+               #if 0
                sme_DHCPStartInd(pHddCtx->hHal, pAdapter->device_mode,
                                 pAdapter->macAddressCurrent.bytes);
+               #endif
            }
            else if ('2' == *dhcpPhase)
            {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                         FL("BTCOEXMODE %d"), *dhcpPhase);
+
+               pHddCtx->btCoexModeSet = FALSE;
+
+               /* Firmware failing to process DHCP START/STOP indications.
+                * So, for now commentig below code, once issue is resolved,
+                * follwing will be uncommented.
+                */
+               #if 0
                sme_DHCPStopInd(pHddCtx->hHal, pAdapter->device_mode,
                                pAdapter->macAddressCurrent.bytes);
+               #endif
            }
        }
        else if (strncmp(command, "SCAN-ACTIVE", 11) == 0)
