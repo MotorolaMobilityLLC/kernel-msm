@@ -201,10 +201,10 @@ static struct gpiomux_setting lis3dsh_gpio_int_high_sus_cfg = {
 	.dir  = GPIOMUX_IN,
 };
 
-static struct gpiomux_setting mpu9250_gpio_int_low_act_cfg = {
+static struct gpiomux_setting mpu9250_gpio_int_high_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv  = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
+	.pull = GPIOMUX_PULL_DOWN,
 	.dir  = GPIOMUX_IN,
 };
 
@@ -226,8 +226,8 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	{
 		.gpio      = 35,        /* COMPASS_INT */
 		.settings = {
-			[GPIOMUX_ACTIVE] = &mpu9250_gpio_int_low_act_cfg,
-			[GPIOMUX_SUSPENDED] = &mpu9250_gpio_int_low_act_cfg,
+			[GPIOMUX_ACTIVE] = &mpu9250_gpio_int_high_act_cfg,
+			[GPIOMUX_SUSPENDED] = &mpu9250_gpio_int_high_act_cfg,
 		},
 	},
 };
