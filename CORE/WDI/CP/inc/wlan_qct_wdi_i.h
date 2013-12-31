@@ -452,10 +452,9 @@ typedef enum
   /* WLAN FW LPHB config request */
   WDI_LPHB_CFG_REQ                              = 85,
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
   /* WLAN FW set batch scan request */
   WDI_SET_BATCH_SCAN_REQ                        = 86,
-#endif
+
   /*WLAN DAL Set Max Tx Power Per band Request*/
   WDI_SET_MAX_TX_POWER_PER_BAND_REQ             = 87,
 
@@ -485,15 +484,14 @@ typedef enum
   /* Send Rate Update Indication */
   WDI_RATE_UPDATE_IND,
 
-  /*Keep adding the indications to the max request
-    such that we keep them sepparate */
-
-#ifdef FEATURE_WLAN_BATCH_SCAN
   /*Send stop batch scan indication to FW*/
   WDI_STOP_BATCH_SCAN_IND,
+
   /*Send stop batch scan indication to FW*/
   WDI_TRIGGER_BATCH_SCAN_RESULT_IND,
-#endif
+
+  /*Keep adding the indications to the max request
+    such that we keep them sepparate */
 
   WDI_MAX_UMAC_IND
 }WDI_RequestEnumType; 
@@ -753,9 +751,7 @@ typedef enum
   /* WLAN FW LPHB Config response */
   WDI_LPHB_CFG_RESP                             = 84,
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
-  WDI_SET_BATCH_SCAN_RESP                        = 85,
-#endif
+  WDI_SET_BATCH_SCAN_RESP                       = 85,
 
   WDI_SET_MAX_TX_POWER_PER_BAND_RSP             = 86,
   /*-------------------------------------------------------------------------
@@ -818,10 +814,7 @@ typedef enum
   WDI_HAL_PERIODIC_TX_PTRN_FW_IND     = WDI_HAL_IND_MIN + 16,
 
 
-#ifdef FEATURE_WLAN_BATCH_SCAN
   WDI_BATCHSCAN_RESULT_IND           =  WDI_HAL_IND_MIN + 17,
-#endif
-
 
   WDI_HAL_CH_AVOID_IND                 = WDI_HAL_IND_MIN + 18,
   WDI_MAX_RESP
