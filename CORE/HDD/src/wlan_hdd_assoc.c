@@ -1495,11 +1495,8 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         }
 
         /* CR465478: Only send up a connection failure result when CSR has
-         * completed operation - with a ASSOCIATION_FAILURE status.
-         * or an ASSOCIATION_COMPLETION with RESULT_NOT_ASSOCIATED */
-        if (( eCSR_ROAM_ASSOCIATION_FAILURE == roamStatus ) ||
-                (( eCSR_ROAM_ASSOCIATION_COMPLETION == roamStatus )
-                 && ( eCSR_ROAM_RESULT_NOT_ASSOCIATED == roamResult )))
+         * completed operation - with a ASSOCIATION_FAILURE status.*/
+        if ( eCSR_ROAM_ASSOCIATION_FAILURE == roamStatus )
         {
             /* inform association failure event to nl80211 */
             if ( eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL == roamResult )
