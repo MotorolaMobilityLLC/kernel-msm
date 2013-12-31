@@ -95,6 +95,10 @@
    ((extRssi < rssi)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
 )
 
+#ifdef FEATURE_WLAN_CH_AVOID
+extern safeChannelType safeChannels[];
+#endif /* FEATURE_WLAN_CH_AVOID */
+
 /*==========================================================================
   FUNCTION    sapCleanupChannelList
 
@@ -399,6 +403,10 @@ v_BOOL_t sapChanSelInit(tHalHandle halHandle, tSapChSelSpectInfo *pSpectInfoPara
     v_U8_t *pChans = NULL;
     v_U16_t channelnum = 0;
     tpAniSirGlobal pMac = PMAC_STRUCT(halHandle);
+#ifdef FEATURE_WLAN_CH_AVOID
+    v_U16_t i;
+    v_BOOL_t chSafe = VOS_TRUE;
+#endif /* FEATURE_WLAN_CH_AVOID */
 
     VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s", __func__);
 
@@ -423,14 +431,40 @@ v_BOOL_t sapChanSelInit(tHalHandle halHandle, tSapChSelSpectInfo *pSpectInfoPara
 
     // Fill the channel number in the spectrum in the operating freq band
     for (channelnum = 0; channelnum < pSpectInfoParams->numSpectChans; channelnum++) {
+#ifdef FEATURE_WLAN_CH_AVOID
+        chSafe = VOS_TRUE;
+        for(i = 0; i < NUM_20MHZ_RF_CHANNELS; i++)
+        {
+            if((safeChannels[i].channelNumber == *pChans) &&
+               (VOS_FALSE == safeChannels[i].isSafe))
+            {
+               VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                         "%s : CH %d is not safe", __func__, *pChans);
+               chSafe = VOS_FALSE;
+               break;
+            }
+        }
+#endif /* FEATURE_WLAN_CH_AVOID */
 
         if(*pChans == 14 ) //OFDM rates are not supported on channel 14
             continue;
-        pSpectCh->chNum = *pChans;
-        pSpectCh->valid = eSAP_TRUE;
-        pSpectCh->rssiAgr = SOFTAP_MIN_RSSI;// Initialise for all channels
-        pSpectCh->channelWidth = SOFTAP_HT20_CHANNELWIDTH; // Initialise 20MHz for all the Channels 
-        pSpectCh++;
+#ifdef FEATURE_WLAN_CH_AVOID
+        if (VOS_TRUE == chSafe)
+        {
+#endif /* FEATURE_WLAN_CH_AVOID */
+           VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_DEBUG,
+                     "%s : Available Ch %d",
+                     __func__, *pChans);
+           pSpectCh->chNum = *pChans;
+           pSpectCh->valid = eSAP_TRUE;
+           // Initialise for all channels
+           pSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+           // Initialise 20MHz for all the Channels
+           pSpectCh->channelWidth = SOFTAP_HT20_CHANNELWIDTH;
+           pSpectCh++;
+#ifdef FEATURE_WLAN_CH_AVOID
+        }
+#endif /* FEATURE_WLAN_CH_AVOID */
         pChans++;
     }
     return eSAP_TRUE;

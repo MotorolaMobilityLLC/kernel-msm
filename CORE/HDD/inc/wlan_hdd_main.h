@@ -1240,6 +1240,11 @@ struct hdd_context_s
     /* VHT80 allowed*/
     v_BOOL_t isVHT80Allowed;
 
+#ifdef FEATURE_WLAN_CH_AVOID
+   v_U16_t unsafeChannelCount;
+   v_U16_t unsafeChannelList[NUM_20MHZ_RF_CHANNELS];
+   v_U16_t safeChannelList[NUM_20MHZ_RF_CHANNELS];
+#endif /* FEATURE_WLAN_CH_AVOID */
 };
 
 

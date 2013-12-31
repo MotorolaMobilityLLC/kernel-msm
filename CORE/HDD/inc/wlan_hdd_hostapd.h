@@ -49,13 +49,6 @@
   \brief Linux HDD HOSTAPD include file
          Copyright 2008-2013 (c) Qualcomm, Incorporated.
          All Rights Reserved.
-<<<<<<< HEAD:CORE/HDD/inc/wlan_hdd_hostapd.h
-         Qualcomm Confidential and Proprietary.
-  
-=======
-         Qualcomm Technologies Confidential and Proprietary.
-
->>>>>>> 009551c... wlan: hdd: remove obsolete "WLAN_SOFTAP_FEATURE" featurization:prima/CORE/HDD/inc/wlan_hdd_hostapd.h
   ==========================================================================*/
 
 /*---------------------------------------------------------------------------
@@ -108,4 +101,7 @@ int hdd_softap_unpackIE( tHalHandle halHandle,
 VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCallback);
 VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter );
 void hdd_set_ap_ops( struct net_device *pWlanHostapdDev );
+#ifdef FEATURE_WLAN_CH_AVOID
+void hdd_hostapd_ch_avoid_cb(void *pAdapter, void *indParam);
+#endif /* FEATURE_WLAN_CH_AVOID */
 #endif    // end #if !defined( WLAN_HDD_HOSTAPD_H )

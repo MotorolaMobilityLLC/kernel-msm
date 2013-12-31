@@ -94,6 +94,10 @@
 #include "cfgApi.h"
 #include "wniCfgAp.h"
 
+#ifdef FEATURE_WLAN_CH_AVOID
+#include "wcnss_wlan.h"
+#endif /* FEATURE_WLAN_CH_AVOID */
+
 #define    IS_UP(_dev) \
     (((_dev)->flags & (IFF_RUNNING|IFF_UP)) == (IFF_RUNNING|IFF_UP))
 #define    IS_UP_AUTO(_ic) \
@@ -106,6 +110,60 @@
 #define WE_SAP_MAX_STA_INFO 0x7FF
 
 #define SAP_24GHZ_CH_COUNT (14) 
+
+#ifdef FEATURE_WLAN_CH_AVOID
+/* Channle/Freqency table */
+extern const tRfChannelProps rfChannels[NUM_RF_CHANNELS];
+safeChannelType safeChannels[NUM_20MHZ_RF_CHANNELS] =
+{
+  /*CH  , SAFE, default safe */
+    {1  , VOS_TRUE},      //RF_CHAN_1,
+    {2  , VOS_TRUE},      //RF_CHAN_2,
+    {3  , VOS_TRUE},      //RF_CHAN_3,
+    {4  , VOS_TRUE},      //RF_CHAN_4,
+    {5  , VOS_TRUE},      //RF_CHAN_5,
+    {6  , VOS_TRUE},      //RF_CHAN_6,
+    {7  , VOS_TRUE},      //RF_CHAN_7,
+    {8  , VOS_TRUE},      //RF_CHAN_8,
+    {9  , VOS_TRUE},      //RF_CHAN_9,
+    {10 , VOS_TRUE},      //RF_CHAN_10,
+    {11 , VOS_TRUE},      //RF_CHAN_11,
+    {12 , VOS_TRUE},      //RF_CHAN_12,
+    {13 , VOS_TRUE},      //RF_CHAN_13,
+    {14 , VOS_TRUE},      //RF_CHAN_14,
+    {240, VOS_TRUE},      //RF_CHAN_240,
+    {244, VOS_TRUE},      //RF_CHAN_244,
+    {248, VOS_TRUE},      //RF_CHAN_248,
+    {252, VOS_TRUE},      //RF_CHAN_252,
+    {208, VOS_TRUE},      //RF_CHAN_208,
+    {212, VOS_TRUE},      //RF_CHAN_212,
+    {216, VOS_TRUE},      //RF_CHAN_216,
+    {36 , VOS_TRUE},      //RF_CHAN_36,
+    {40 , VOS_TRUE},      //RF_CHAN_40,
+    {44 , VOS_TRUE},      //RF_CHAN_44,
+    {48 , VOS_TRUE},      //RF_CHAN_48,
+    {52 , VOS_TRUE},      //RF_CHAN_52,
+    {56 , VOS_TRUE},      //RF_CHAN_56,
+    {60 , VOS_TRUE},      //RF_CHAN_60,
+    {64 , VOS_TRUE},      //RF_CHAN_64,
+    {100, VOS_TRUE},      //RF_CHAN_100,
+    {104, VOS_TRUE},      //RF_CHAN_104,
+    {108, VOS_TRUE},      //RF_CHAN_108,
+    {112, VOS_TRUE},      //RF_CHAN_112,
+    {116, VOS_TRUE},      //RF_CHAN_116,
+    {120, VOS_TRUE},      //RF_CHAN_120,
+    {124, VOS_TRUE},      //RF_CHAN_124,
+    {128, VOS_TRUE},      //RF_CHAN_128,
+    {132, VOS_TRUE},      //RF_CHAN_132,
+    {136, VOS_TRUE},      //RF_CHAN_136,
+    {140, VOS_TRUE},      //RF_CHAN_140,
+    {149, VOS_TRUE},      //RF_CHAN_149,
+    {153, VOS_TRUE},      //RF_CHAN_153,
+    {157, VOS_TRUE},      //RF_CHAN_157,
+    {161, VOS_TRUE},      //RF_CHAN_161,
+    {165, VOS_TRUE},      //RF_CHAN_165,
+};
+#endif /* FEATURE_WLAN_CH_AVOID */
 
 /*--------------------------------------------------------------------------- 
  *   Function definitions
@@ -1000,6 +1058,237 @@ int hdd_softap_unpackIE(
     }
     return VOS_STATUS_SUCCESS;
 }
+
+#ifdef FEATURE_WLAN_CH_AVOID
+/**---------------------------------------------------------------------------
+
+  \brief hdd_hostapd_freq_to_chn() -
+
+  Input frequency translated into channel number
+
+  \param  - freq input frequency with order of kHz
+
+  \return - corresponding channel number.
+            incannot find correct channel number, return 0
+
+  --------------------------------------------------------------------------*/
+v_U16_t hdd_hostapd_freq_to_chn
+(
+   v_U16_t   freq
+)
+{
+   int   loop;
+
+   for (loop = 0; loop < NUM_20MHZ_RF_CHANNELS; loop++)
+   {
+      if (rfChannels[loop].targetFreq == freq)
+      {
+         return rfChannels[loop].channelNum;
+      }
+   }
+
+   return (0);
+}
+
+/*==========================================================================
+  FUNCTION    sapUpdateUnsafeChannelList
+
+  DESCRIPTION
+    Function  Undate unsafe channel list table
+
+  DEPENDENCIES
+    NA.
+
+  PARAMETERS
+
+    IN
+    pSapCtx : SAP context pointer, include unsafe channel list
+
+  RETURN VALUE
+    NONE
+============================================================================*/
+void hdd_hostapd_update_unsafe_channel_list(hdd_context_t *pHddCtx,
+                        v_U16_t *unsafeChannelList, v_U16_t unsafeChannelCount)
+{
+   v_U16_t   i, j;
+
+   vos_mem_zero((void *)pHddCtx->unsafeChannelList,
+                sizeof(pHddCtx->unsafeChannelList));
+   if (0 == unsafeChannelCount)
+   {
+      pHddCtx->unsafeChannelCount = 0;
+   }
+   else
+   {
+      vos_mem_copy((void *)pHddCtx->unsafeChannelList,
+                   unsafeChannelList,
+                   unsafeChannelCount * sizeof(tANI_U16));
+      pHddCtx->unsafeChannelCount = unsafeChannelCount;
+   }
+
+   /* Flush, default set all channel safe */
+   for (i = 0; i < NUM_20MHZ_RF_CHANNELS; i++)
+   {
+      safeChannels[i].isSafe = VOS_TRUE;
+   }
+
+   /* Try to find unsafe channel */
+   for (i = 0; i < pHddCtx->unsafeChannelCount; i++)
+   {
+      for (j = 0; j < NUM_20MHZ_RF_CHANNELS; j++)
+      {
+         if(safeChannels[j].channelNumber == pHddCtx->unsafeChannelList[i])
+         {
+            /* Found unsafe channel, update it */
+            safeChannels[j].isSafe = VOS_FALSE;
+            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
+                      "%s : CH %d is not safe",
+                      __func__, pHddCtx->unsafeChannelList[i]);
+            break;
+         }
+      }
+   }
+
+   return;
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief hdd_hostapd_ch_avoid_cb() -
+
+  Avoid channel notification from FW handler.
+  FW will send un-safe channle list to avoid overwrapping.
+  hostapd should not use notified channel
+
+  \param  - pAdapter HDD adapter pointer
+            indParam channel avoid notification parameter
+
+  \return - None
+
+  --------------------------------------------------------------------------*/
+void hdd_hostapd_ch_avoid_cb
+(
+   void *pAdapter,
+   void *indParam
+)
+{
+   hdd_adapter_t      *pHostapdAdapter = NULL;
+   hdd_context_t      *hddCtxt;
+   tSirChAvoidIndType *chAvoidInd;
+   v_U8_t              rangeLoop;
+   v_U16_t             channelLoop;
+   v_U16_t             dupCheck;
+   v_U16_t             startChannel;
+   v_U16_t             endChannel;
+   v_U16_t             unsafeChannelCount = 0;
+   v_U16_t             unsafeChannelList[NUM_20MHZ_RF_CHANNELS];
+   v_CONTEXT_t         pVosContext;
+
+   /* Basic sanity */
+   if ((NULL == pAdapter) || (NULL == indParam))
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s : Invalid arguments", __func__);
+      return;
+   }
+
+   hddCtxt     = (hdd_context_t *)pAdapter;
+   chAvoidInd  = (tSirChAvoidIndType *)indParam;
+   pVosContext = hddCtxt->pvosContext;
+
+   /* Make unsafe channel list */
+   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+             "%s : band count %d",
+             __func__, chAvoidInd->avoidRangeCount);
+   vos_mem_zero((void *)unsafeChannelList,
+                NUM_20MHZ_RF_CHANNELS * sizeof(v_U16_t));
+   for (rangeLoop = 0; rangeLoop < chAvoidInd->avoidRangeCount; rangeLoop++)
+   {
+      startChannel = hdd_hostapd_freq_to_chn(
+                      chAvoidInd->avoidFreqRange[rangeLoop].startFreq);
+      endChannel   = hdd_hostapd_freq_to_chn(
+                      chAvoidInd->avoidFreqRange[rangeLoop].endFreq);
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s : start %d : %d, end %d : %d",
+                __func__,
+                chAvoidInd->avoidFreqRange[rangeLoop].startFreq,
+                startChannel,
+                chAvoidInd->avoidFreqRange[rangeLoop].endFreq,
+                endChannel);
+      for (channelLoop = startChannel;
+           channelLoop < (endChannel + 1);
+           channelLoop++)
+      {
+         /* Channel duplicate check routine */
+         for (dupCheck = 0; dupCheck < unsafeChannelCount; dupCheck++)
+         {
+            if (unsafeChannelList[dupCheck] == channelLoop)
+            {
+               /* This channel is duplicated */
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      "%s : found duplicated channel %d",
+                      __func__, channelLoop);
+               break;
+            }
+         }
+         if (dupCheck == unsafeChannelCount)
+         {
+            unsafeChannelList[unsafeChannelCount] = channelLoop;
+            unsafeChannelCount++;
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      "%s : unsafe channel %d, count %d",
+                      __func__,
+                      channelLoop, unsafeChannelCount);
+         }
+         else
+         {
+            /* DUP, do nothing */
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      "%s : duplicated channel %d",
+                      __func__, channelLoop);
+         }
+      }
+   }
+   /* Update unsafe channel cache
+    * WCN Platform Driver cache */
+   wcnss_set_wlan_unsafe_channel(unsafeChannelList,
+                                 unsafeChannelCount);
+
+   /* Store into local cache
+    * Start with STA and later start SAP
+    * in this scenario, local cache will be used */
+   hdd_hostapd_update_unsafe_channel_list(hddCtxt,
+                                          unsafeChannelList,
+                                          unsafeChannelCount);
+
+   /* Get SAP context first
+    * SAP and P2PGO would not concurrent */
+   pHostapdAdapter = hdd_get_adapter(hddCtxt, WLAN_HDD_SOFTAP);
+   if ((pHostapdAdapter) && (unsafeChannelCount))
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s : Current operation channel %d",
+                __func__,
+                pHostapdAdapter->sessionCtx.ap.operatingChannel);
+      for (channelLoop = 0; channelLoop < unsafeChannelCount; channelLoop++)
+      {
+         if (((unsafeChannelList[channelLoop] ==
+               pHostapdAdapter->sessionCtx.ap.operatingChannel)) &&
+             (AUTO_CHANNEL_SELECT ==
+               pHostapdAdapter->sessionCtx.ap.sapConfig.channel))
+         {
+            /* current operating channel is un-safe channel
+             * restart driver */
+            hdd_hostapd_stop(pHostapdAdapter->dev);
+            break;
+         }
+      }
+   }
+
+   return;
+}
+
+#endif /* FEATURE_WLAN_CH_AVOID */
 
 int
 static iw_softap_setparam(struct net_device *dev, 
@@ -3218,11 +3507,30 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
     struct net_device *dev = pAdapter->dev;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     VOS_STATUS status;
+#ifdef FEATURE_WLAN_CH_AVOID
+    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
+    v_U16_t unsafeChannelList[NUM_20MHZ_RF_CHANNELS];
+    v_U16_t unsafeChannelCount;
+#endif /* FEATURE_WLAN_CH_AVOID */
+
     ENTER();
        // Allocate the Wireless Extensions state structure   
     phostapdBuf = WLAN_HDD_GET_HOSTAP_STATE_PTR( pAdapter );
  
     sme_SetCurrDeviceMode(pHddCtx->hHal, pAdapter->device_mode);
+
+#ifdef FEATURE_WLAN_CH_AVOID
+    /* Get unsafe cahnnel list from cached location */
+    wcnss_get_wlan_unsafe_channel(unsafeChannelList,
+                                  sizeof(unsafeChannelList),
+                                  &unsafeChannelCount);
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "%s : Unsafe Channel count %d",
+              __func__, unsafeChannelCount);
+    hdd_hostapd_update_unsafe_channel_list(pVosContext,
+                                  unsafeChannelList,
+                                  unsafeChannelCount);
+#endif /* FEATURE_WLAN_CH_AVOID */
 
     // Zero the memory.  This zeros the profile structure.
     memset(phostapdBuf, 0,sizeof(hdd_hostapd_state_t));

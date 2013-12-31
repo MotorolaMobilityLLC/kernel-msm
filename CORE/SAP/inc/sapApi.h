@@ -580,6 +580,14 @@ typedef struct sap_SoftapStats_s {
 #endif
 } tSap_SoftapStats, *tpSap_SoftapStats;
 
+#ifdef FEATURE_WLAN_CH_AVOID
+/* Store channel safty information */
+typedef struct
+{
+   v_U16_t   channelNumber;
+   v_BOOL_t  isSafe;
+} safeChannelType;
+#endif /* FEATURE_WLAN_CH_AVOID */
 
 int sapSetPreferredChannel(tANI_U8* ptr);
 void sapCleanupChannelList(void);
