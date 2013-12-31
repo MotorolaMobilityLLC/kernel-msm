@@ -87,8 +87,8 @@
 #ifdef FEATURE_WLAN_CCX
 /* These are the min/max tx power (non virtual rates) range
    supported by prima hardware */
-#define MIN_TX_PWR_CAP    12
-#define MAX_TX_PWR_CAP    19
+#define MIN_TX_PWR_CAP    8
+#define MAX_TX_PWR_CAP    22
 
 #endif
 
