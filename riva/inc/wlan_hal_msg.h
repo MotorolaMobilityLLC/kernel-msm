@@ -427,6 +427,14 @@ typedef enum
 
    WLAN_HAL_RATE_UPDATE_IND                 = 229,
 
+   /* Tx Fail for weak link notification */
+   WLAN_HAL_TX_FAIL_MONITOR_IND             = 230,
+   WLAN_HAL_TX_FAIL_IND                     = 231,
+
+   /* Multi-hop IP routing offload */
+   WLAN_HAL_IP_FORWARD_TABLE_UPDATE_IND     = 232,
+
+   WLAN_HAL_AVOID_FREQ_RANGE_IND            = 233,
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -6898,6 +6906,30 @@ typedef PACKED_PRE struct PACKED_POST
     tHalMsgHeader header;
     tHalRateUpdateParams halRateUpdateParams;
 }  tHalRateUpdateInd, * tpHalRateUpdateInd;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_AVOID_FREQ_RANGE_IND
+ *-------------------------------------------------------------------------*/
+
+#define WLAN_HAL_MAX_AVOID_FREQ_RANGE           4
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U32     startFreq;
+   tANI_U32     endFreq;
+}  tHalFreqRange, *tpHalFreqRange;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U32         avoidCnt;
+   tHalFreqRange    avoidRange[WLAN_HAL_MAX_AVOID_FREQ_RANGE];
+}  tHalAvoidFreqRangeIndParams, *tpHalAvoidFreqRangeIndParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalAvoidFreqRangeIndParams freqRangeIndParams;
+}  tHalAvoidFreqRangeInd, *tpHalAvoidFreqRangeInd;
 
 /*---------------------------------------------------------------------------
  *-------------------------------------------------------------------------*/
