@@ -1339,7 +1339,11 @@ static VOS_STATUS sapGetChannelList(ptSapContext sapContext,
 
         case RF_SUBBAND_5_MID_GHZ:
            bandStartChannel = RF_CHAN_100;
+#ifndef FEATURE_WLAN_CH144
            bandEndChannel = RF_CHAN_140;
+#else
+           bandEndChannel = RF_CHAN_144;
+#endif /* FEATURE_WLAN_CH144 */
            break;
 
         case RF_SUBBAND_5_HIGH_GHZ:

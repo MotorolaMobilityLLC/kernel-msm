@@ -344,6 +344,9 @@ typedef struct _VosContextType
    /* SSR re-init in progress */
    volatile v_U8_t     isReInitInProgress;
 
+   /* NV BIN Version */
+   eNvVersionType     nvVersion;
+
 } VosContextType, *pVosContextType;
 
 

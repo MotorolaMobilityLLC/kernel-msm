@@ -134,7 +134,7 @@
 
 
 static int enumNoOfFieldArray[INDEX_ENUM_BUILTIN_MAX] =
-     {7,1,9,5,80,14,3,55};
+     {7,1,9,5,40,14,3,55};
 
 _NV_TEMPLATE_ENUM NvEnumsBuiltIn[/*INDEX_ENUM_MAX*/][ENUM_ENTRIES_MAX] = {
    { // INDEX_ENUM_ALL
@@ -216,6 +216,9 @@ _NV_TEMPLATE_ENUM NvEnumsBuiltIn[/*INDEX_ENUM_MAX*/][ENUM_ENTRIES_MAX] = {
       {"ck",RF_CHAN_132,0,{nul}},
       {"cl",RF_CHAN_136,0,{nul}},
       {"cm",RF_CHAN_140,0,{nul}},
+#ifdef FEATURE_WLAN_CH144
+      {"kt",RF_CHAN_144,0,{nul}},
+#endif /* FEATURE_WLAN_CH144 */
       {"cn",RF_CHAN_149,0,{nul}},
       {"co",RF_CHAN_153,0,{nul}},
       {"cp",RF_CHAN_157,0,{nul}},
@@ -252,6 +255,9 @@ _NV_TEMPLATE_ENUM NvEnumsBuiltIn[/*INDEX_ENUM_MAX*/][ENUM_ENTRIES_MAX] = {
       {"dk",RF_CHAN_BOND_130,0,{nul}},
       {"dl",RF_CHAN_BOND_134,0,{nul}},
       {"dm",RF_CHAN_BOND_138,0,{nul}},
+#ifdef FEATURE_WLAN_CH144
+      {"ku",RF_CHAN_BOND_142,0,{nul}},
+#endif /* FEATURE_WLAN_CH144 */
       {"dn",RF_CHAN_BOND_151,0,{nul}},
       {"do",RF_CHAN_BOND_155,0,{nul}},
       {"dp",RF_CHAN_BOND_159,0,{nul}},
@@ -424,6 +430,13 @@ _NV_TEMPLATE_ENUM NvEnumsBuiltIn[/*INDEX_ENUM_MAX*/][ENUM_ENTRIES_MAX] = {
 
 
 int getEnumNoOfFields(int enumIdx){
+#ifdef FEATURE_WLAN_CH144
+   enumNoOfFieldArray[4] = enumNoOfFieldArray[4] + 1;
+#endif
+   enumNoOfFieldArray[4] = enumNoOfFieldArray[4] + 36;
+#ifdef FEATURE_WLAN_CH144
+   enumNoOfFieldArray[4] = enumNoOfFieldArray[4] + 1;
+#endif
 #ifdef WLAN_FEATURE_11AC
    enumNoOfFieldArray[7] = enumNoOfFieldArray[7] + 17;
 #ifdef WCN_PRONTO
@@ -653,8 +666,9 @@ _NV_TEMPLATE_TABLE NvTablesBuiltIn[/*TABLES_MAX*/][TABLE_ENTRIES_MAX] = {
           - (int)&nvDefaults.tables.fwConfig),"tpcMode2G"},
       {"ij",_ID_U8,SINGULAR,0,0,0,((int)&(nvDefaults.tables.fwConfig.tpcMode5G)
           - (int)&nvDefaults.tables.fwConfig),"tpcMode5G"},
-      {"ik",_ID_U8,SINGULAR,0,0,0,((int)&(nvDefaults.tables.fwConfig.configItem1)
-          - (int)&nvDefaults.tables.fwConfig),"configItem1"},
+      {"ik",_ID_U8,SINGULAR,0,0,0,
+         ((int)&(nvDefaults.tables.fwConfig.configItem1) -
+          (int)&nvDefaults.tables.fwConfig),"configItem1"},
       {"il",_ID_U8,SINGULAR,0,0,0,((int)&(nvDefaults.tables.fwConfig.xPA2G) -
           (int)&nvDefaults.tables.fwConfig),"xPA2G"},
       {"im",_ID_U8,SINGULAR,0,0,0,((int)&(nvDefaults.tables.fwConfig.xPA5G) -
@@ -695,12 +709,15 @@ _NV_TEMPLATE_TABLE NvTablesBuiltIn[/*TABLES_MAX*/][TABLE_ENTRIES_MAX] = {
       {"i0",_ID_U8,SINGULAR,0,0,0,
          ((int)&(nvDefaults.tables.fwConfig.pdadcSelect5GHigh) -
           (int)&nvDefaults.tables.fwConfig),"pdadcSelect5GHigh"},
-      {"i1",_ID_U32,SINGULAR,0,0,0,((int)&(nvDefaults.tables.fwConfig.configItem2)
-          - (int)&nvDefaults.tables.fwConfig),"configItem2"},
-      {"i2",_ID_U32,SINGULAR,0,0,0,((int)&(nvDefaults.tables.fwConfig.configItem3)
-          - (int)&nvDefaults.tables.fwConfig),"configItem3"},
-      {"i3",_ID_U32,SINGULAR,0,0,0,((int)&(nvDefaults.tables.fwConfig.configItem4)
-          - (int)&nvDefaults.tables.fwConfig),"configItem4"},
+      {"i1",_ID_U32,SINGULAR,0,0,0,
+         ((int)&(nvDefaults.tables.fwConfig.configItem2) -
+          (int)&nvDefaults.tables.fwConfig),"configItem2"},
+      {"i2",_ID_U32,SINGULAR,0,0,0,
+         ((int)&(nvDefaults.tables.fwConfig.configItem3) -
+          (int)&nvDefaults.tables.fwConfig),"configItem3"},
+      {"i3",_ID_U32,SINGULAR,0,0,0,
+         ((int)&(nvDefaults.tables.fwConfig.configItem4) -
+          (int)&nvDefaults.tables.fwConfig),"configItem4"},
       {{nul}, 0, 0, 0, 0, 0, 0,{nul}},
    }, // TABLE_sFwConfig
 
@@ -729,6 +746,7 @@ _NV_TEMPLATE_TABLE NvTablesBuiltIn[/*TABLES_MAX*/][TABLE_ENTRIES_MAX] = {
          (FIELD_SIZE_VALUE_BITS(NUM_RF_VR_RATE))),0,0,
          ((int)&(nvDefaults.tables.pwrOptimum_virtualRate[0]) -
           (int)&nvDefaults.tables.pwrOptimum_virtualRate[0]),"tRateGroupPwrVR"},
+
       {{nul}, 0, 0, 0, 0, 0, 0,{nul}},
    }, // TABLE_tRateGroupPwrVR
 
