@@ -100,3 +100,9 @@
 		qcom,tfa9890-right-name = "tfa9890.0-0035";
 	};
 };
+
+&spi_7 {
+	wm5110@0 {
+		status = "disabled";
+	};
+};
