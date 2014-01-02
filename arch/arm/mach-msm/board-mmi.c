@@ -723,6 +723,11 @@ static const char *mmi_dt_match_8960[] __initdata = {
 	NULL
 };
 
+static const char *mmi_dt_match_dinara[] __initdata = {
+	"mmi,msm8960-qinara",
+	NULL
+};
+
 static const struct of_device_id mmi_msm8960_dt_gic_match[] __initconst = {
 	{ .compatible = "qcom,msm-qgic2", .data = gic_of_init },
 	{ .compatible = "qcom,msm-gpio", .data = msm_gpio_of_init_legacy, },
@@ -789,6 +794,19 @@ static void __init mmi_msm8960_dt_init(void)
 			of_default_bus_match_table, adata, NULL);
 	msm8960_cdp_init();
 }
+
+MACHINE_START(DINARA, "Qinara")
+	.map_io = msm8960_map_io,
+	.reserve = mmi_msm8960_reserve,
+	.init_irq = mmi_msm8960_init_irq,
+	.handle_irq = gic_handle_irq,
+	.timer = &msm_timer,
+	.init_machine = mmi_msm8960_dt_init,
+	.init_early = mmi_msm8960_init_early,
+	.init_very_early = msm8960_early_memory,
+	.restart = msm_restart,
+	.dt_compat = mmi_dt_match_dinara,
+MACHINE_END
 
 MACHINE_START(VANQUISH, "Vanquish")
 	.map_io = msm8960_map_io,
