@@ -790,7 +790,7 @@ int mem_cgroup_count_swap_user(swp_entry_t ent, struct page **pagep)
 	p = swap_info_get(ent);
 	if (p) {
 		count += swap_count(p->swap_map[swp_offset(ent)]);
-		spin_unlock(&swap_lock);
+		spin_unlock(&p->lock);
 	}
 
 	*pagep = page;
