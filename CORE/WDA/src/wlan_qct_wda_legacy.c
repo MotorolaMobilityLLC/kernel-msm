@@ -208,6 +208,9 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb)
       break;
 
    case SIR_PTT_MSG_TYPES_BEGIN:
+      WDALOGW( wdaLog(pMac, LOGW, FL("%s:%d: message type = 0x%X"),
+               __func__, __LINE__, msg.type));
+      vos_mem_free(msg.bodyptr);
       break;
 
 
