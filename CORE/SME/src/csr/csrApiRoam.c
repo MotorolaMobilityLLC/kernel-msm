@@ -11846,7 +11846,7 @@ eHalStatus csrRoamDelPMKIDfromCache( tpAniSirGlobal pMac, tANI_U32 sessionId,
             }
         }
         if( !fMatchFound ) break;
-        vos_mem_set(pSession->PmkidCacheInfo[Index].BSSID, sizeof(tPmkidCacheInfo), 0);
+        vos_mem_set(pSession->PmkidCacheInfo[Index].BSSID, sizeof(tCsrBssid), 0);
         status = eHAL_STATUS_SUCCESS;
     }
     while( 0 );
