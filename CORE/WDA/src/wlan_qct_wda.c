@@ -5331,10 +5331,10 @@ VOS_STATUS WDA_ProcessGetRoamRssiReq(tWDA_CbContext *pWDA,
           VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                            "%s: VOS MEM Alloc Failure", __func__);
           VOS_ASSERT(0);
+          vos_mem_free(pGetRoamRssiParams);
+          vos_mem_free(pWdaParams);
           return VOS_STATUS_E_NOMEM;
       }
-      vos_mem_free(pGetRoamRssiParams);
-      vos_mem_free(pWdaParams);
       pGetRoamRssiRspParams->staId = pGetRoamRssiParams->staId;
       pGetRoamRssiRspParams->rc    = eSIR_FAILURE;
       pGetRoamRssiRspParams->rssi    = 0;
