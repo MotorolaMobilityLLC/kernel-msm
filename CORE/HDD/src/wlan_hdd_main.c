@@ -711,6 +711,10 @@ hdd_extract_assigned_int_from_str
     {
         return NULL;
     }
+    if (tempInt < 0)
+    {
+        tempInt = 0;
+    }
     *pOutPtr = tempInt;
 
     pInPtr = strnchr(pInPtr, strlen(pInPtr), SPACE_ASCII_VALUE);
