@@ -56,12 +56,20 @@
 		status = "ok";
 	};
 
+	actuator0: qcom,actuator@18 {
+		cell-index = <6>;
+		reg = <0x18>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <1>;
+	};
+
 	qcom,camera@6c {
 		compatible = "qcom,ov10820";
 		reg = <0x6c>;
 		qcom,slave-id = <0x6c 0x300a 0xa820>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
+		qcom,actuator-src = <&actuator0>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "ov10820";
 		qcom,vdd-cx-supply = <&pm8841_s2>;
