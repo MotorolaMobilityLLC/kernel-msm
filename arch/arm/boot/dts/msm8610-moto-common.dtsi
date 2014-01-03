@@ -418,7 +418,7 @@
 				qcom,source-sel = <8>;
 				qcom,mode-ctrl = <0x10>;
 				qcom,pwm-channel = <0>;
-				qcom,pwm-us = <14>;
+				qcom,pwm-us = <50>;
 				qcom,vin-ctrl = <0x03>;
 				qcom,mode = "pwm";
 			};
