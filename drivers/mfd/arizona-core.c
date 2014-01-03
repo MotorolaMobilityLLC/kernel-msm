@@ -503,7 +503,16 @@ EXPORT_SYMBOL_GPL(arizona_of_get_type);
 
 static int arizona_of_get_core_pdata(struct arizona *arizona)
 {
+	const char *status = NULL;
 	int ret, i;
+
+	ret = of_property_read_string(arizona->dev->of_node,
+						 "status", &status);
+	if (!ret && status &&
+		!strncmp(status, "disabled", strlen(status))) {
+		dev_err(arizona->dev, "arizona is disabled in DTS\n");
+		return -EINVAL;
+	}
 
 	arizona->pdata.reset = of_get_named_gpio(arizona->dev->of_node,
 						 "reset", 0);
@@ -585,7 +594,12 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 	dev_set_drvdata(arizona->dev, arizona);
 	mutex_init(&arizona->clk_lock);
 
-	arizona_of_get_core_pdata(arizona);
+	ret = arizona_of_get_core_pdata(arizona);
+	if (ret) {
+		dev_err(arizona->dev, "%s: device %s is disabled\n", __func__,
+			arizona->type == WM5110 ? "wm5110" : "wm5102");
+		return -EINVAL;
+	}
 
 	if (dev_get_platdata(arizona->dev))
 		memcpy(&arizona->pdata, dev_get_platdata(arizona->dev),
