@@ -645,6 +645,14 @@ endif
 
 CDEFINES += -DFEATURE_WLAN_CH_AVOID
 
+ifeq ($(EXISTS_MSM_SMD),1)
+CDEFINES += -DEXISTS_MSM_SMD
+endif
+
+ifeq ($(EXISTS_MSM_SMSM),1)
+CDEFINES += -DEXISTS_MSM_SMSM
+endif
+
 # Fix build for GCC 4.7
 EXTRA_CFLAGS += -Wno-maybe-uninitialized -Wno-unused-function
 

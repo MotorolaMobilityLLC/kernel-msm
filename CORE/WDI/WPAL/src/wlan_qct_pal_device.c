@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -77,7 +77,11 @@
 #include <linux/irqreturn.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
+#ifdef EXISTS_MSM_SMSM
 #include <mach/msm_smsm.h>
+#else
+#include <soc/qcom/smsm.h>
+#endif
 #include "wlan_qct_pal_api.h"
 #include "wlan_qct_pal_device.h"
 #include "wlan_hdd_main.h"
