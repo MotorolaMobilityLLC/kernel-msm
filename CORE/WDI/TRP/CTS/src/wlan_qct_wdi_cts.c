@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -99,7 +99,11 @@
 #include "wlan_qct_wdi.h"
 #include "wlan_qct_wdi_i.h"
 #ifdef CONFIG_ANDROID
+#ifdef EXISTS_MSM_SMD
 #include <mach/msm_smd.h>
+#else
+#include <soc/qcom/smd.h>
+#endif
 #include <linux/delay.h>
 #else
 #include "msm_smd.h"
