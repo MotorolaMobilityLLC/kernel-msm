@@ -322,6 +322,9 @@ typedef struct
 
   /* Min Threshold for Processing Frames in TL */
   v_U8_t   uMinFramesProcThres;
+
+  /* Re-order Aging Time */
+  v_U16_t  ucReorderAgingTime[WLANTL_MAX_AC];
 }WLANTL_ConfigInfoType;
 
 /*---------------------------------------------------------------------------

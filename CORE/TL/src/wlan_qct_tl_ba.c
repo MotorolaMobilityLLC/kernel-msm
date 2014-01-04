@@ -102,6 +102,14 @@
 #define CSN_WRAP_AROUND_THRESHOLD          3000 /* CSN wrap around threshold */
 
 
+const v_U8_t  WLANTL_TID_2_AC[WLAN_MAX_TID] = {   WLANTL_AC_BE,
+                                                  WLANTL_AC_BK,
+                                                  WLANTL_AC_BK,
+                                                  WLANTL_AC_BE,
+                                                  WLANTL_AC_VI,
+                                                  WLANTL_AC_VI,
+                                                  WLANTL_AC_VO,
+                                                  WLANTL_AC_VO };
 
 /*==========================================================================
 
@@ -1101,6 +1109,8 @@ VOS_STATUS WLANTL_MSDUReorder
    VOS_TIMER_STATE      timerState;
    v_SIZE_t             rxFree;
    v_U64_t              ullreplayCounter = 0; /* 48-bit replay counter */
+   v_U8_t               ac;
+   v_U16_t              reorderTime;
    if((NULL == pTLCb) || (*vosDataBuff == NULL))
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Invalid ARG pTLCb 0x%p, vosDataBuff 0x%p",
@@ -1635,8 +1645,19 @@ VOS_STATUS WLANTL_MSDUReorder
       {
          TLLOG4(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,"There is a new HOLE, Pending Frames Count %d",
                     currentReorderInfo->pendingFramesCount));
+         ac = WLANTL_TID_2_AC[ucTid];
+         if (WLANTL_AC_INVALID(ac))
+         {
+             reorderTime = WLANTL_BA_REORDERING_AGING_TIMER;
+             TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Invalid AC %d using default reorder time %d",
+                              ac, reorderTime));
+         }
+         else
+         {
+             reorderTime = pTLCb->tlConfigInfo.ucReorderAgingTime[ac];
+         }
          timerStatus = vos_timer_start(&currentReorderInfo->agingTimer,
-                                       WLANTL_BA_REORDERING_AGING_TIMER);
+                                       reorderTime);
          if(!VOS_IS_STATUS_SUCCESS(timerStatus))
          {
             TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Timer start fail: %d", timerStatus));
