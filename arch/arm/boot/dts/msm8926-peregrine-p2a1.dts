@@ -26,6 +26,6 @@
 	};
 };
 
-&sdcc2 {
+&sdhc_2 {
 	status = "disabled";
 };
