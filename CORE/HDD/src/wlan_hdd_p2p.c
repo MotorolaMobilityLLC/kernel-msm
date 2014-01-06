@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -44,7 +44,6 @@
 #include "wlan_hdd_p2p.h"
 #include "sapApi.h"
 #include "wlan_hdd_main.h"
-
 #include <linux/netdevice.h>
 #include <linux/skbuff.h>
 #include <linux/etherdevice.h>
@@ -52,7 +51,9 @@
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
 #endif
-
+#include "wlan_hdd_trace.h"
+#include "vos_types.h"
+#include "vos_trace.h"
 //Ms to Micro Sec
 #define MS_TO_MUS(x)   ((x)*1000);
 
@@ -455,6 +456,11 @@ int wlan_hdd_cfg80211_remain_on_channel( struct wiphy *wiphy,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
     struct net_device *dev = wdev->netdev;
 #endif
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
+
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                     TRACE_CODE_HDD_REMAIN_ON_CHANNEL,
+                     pAdapter->sessionId, REMAIN_ON_CHANNEL_REQUEST));
     return wlan_hdd_request_remain_on_channel(wiphy, dev,
                                         chan,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
@@ -469,6 +475,10 @@ void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter )
     hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
     hdd_remain_on_chan_ctx_t* pRemainChanCtx = cfgState->remain_on_chan_ctx;
 
+    hddLog( LOG1, "Ready on chan ind");
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                     TRACE_CODE_HDD_REMAINCHANREADYHANDLER,
+                     pAdapter->sessionId, pRemainChanCtx->duration));
     if( pRemainChanCtx != NULL )
     {
         // Removing READY_EVENT_PROPOGATE_TIME from current time which gives
@@ -523,6 +533,12 @@ int wlan_hdd_cfg80211_cancel_remain_on_channel( struct wiphy *wiphy,
     hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
     int status;
+    u64 cookie_dummy;
+    cookie_dummy = cookie << 32;
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                     TRACE_CODE_HDD_CFG80211_CANCEL_REMAIN_ON_CHANNEL,
+                     pAdapter->sessionId, cookie_dummy));
+    hddLog( LOG1, "Cancel remain on channel req");
 
     status = wlan_hdd_validate_context(pHddCtx);
 
@@ -652,6 +668,9 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
 #endif
     u64 old_cookie = 0;
 
+     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                      TRACE_CODE_HDD_ACTION, pAdapter->sessionId,
+                      pAdapter->device_mode ));
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)
@@ -996,6 +1015,10 @@ int wlan_hdd_cfg80211_mgmt_tx_cancel_wait(struct wiphy *wiphy,
                                           struct wireless_dev *wdev,
                                           u64 cookie)
 {
+    u64 cookie_dummy;
+    cookie_dummy = cookie << 32;
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                     TRACE_CODE_HDD_MGMT_TX_CANCEL_WAIT, NO_SESSION, cookie_dummy));
     return wlan_hdd_cfg80211_cancel_remain_on_channel( wiphy, wdev, cookie );
 }
 #else
@@ -1003,6 +1026,12 @@ int wlan_hdd_cfg80211_mgmt_tx_cancel_wait(struct wiphy *wiphy,
                                           struct net_device *dev,
                                           u64 cookie)
 {
+    u64 cookie_dummy;
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
+    cookie_dummy = cookie << 32;
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                     TRACE_CODE_HDD_MGMT_TX_CANCEL_WAIT,
+                     pAdapter->sessionId, cookie_dummy));
     return wlan_hdd_cfg80211_cancel_remain_on_channel( wiphy, dev, cookie );
 }
 #endif
@@ -1350,10 +1379,11 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
 #endif
 {
     hdd_context_t *pHddCtx = (hdd_context_t*) wiphy_priv(wiphy);
-    hdd_adapter_t* pAdapter = NULL;
-
+    hdd_adapter_t *pAdapter = NULL;
     ENTER();
 
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                     TRACE_CODE_HDD_ADD_VIRTUAL_INTF, NO_SESSION, type));
     if(hdd_get_adapter(pHddCtx, wlan_hdd_get_session_type(type)) != NULL)
     {
        hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Interface type %d already exists. Two"
@@ -1420,10 +1450,14 @@ int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev )
     struct net_device *dev = wdev->netdev;
 #endif
     hdd_context_t *pHddCtx = (hdd_context_t*) wiphy_priv(wiphy);
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
     hdd_adapter_t *pVirtAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     int status;
     ENTER();
 
+    MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                     TRACE_CODE_HDD_DEL_VIRTUAL_INTF,
+                     pAdapter->sessionId, pAdapter->device_mode));
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d",
            __func__,pVirtAdapter->device_mode);
 
