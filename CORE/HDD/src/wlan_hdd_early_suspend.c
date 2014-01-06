@@ -1273,7 +1273,25 @@ static void hdd_PowerStateChangedCB
          hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Not able to set mcast/bcast filter ", __func__);
    }
    else
+   {
+      /* Android framework can send resume request when the WCN chip is
+       * in IMPS mode. When the chip exits IMPS mode the firmware will
+       * restore all the registers to the state they were before the chip
+       * entered IMPS and so our hardware filter settings confgured by the
+       * resume request will be lost. So reconfigure the filters on detecting
+       * a change in the power state of the WCN chip.
+       */
+      if (IMPS != newState)
+      {
+           if (FALSE == pHddCtx->hdd_wlan_suspended)
+           {
+                hddLog(VOS_TRACE_LEVEL_INFO,
+                          "Not in IMPS/BMPS and suspended state");
+                hdd_conf_mcastbcast_filter(pHddCtx, FALSE);
+           }
+      }
       spin_unlock(&pHddCtx->filter_lock);
+   }
 }
 
 
