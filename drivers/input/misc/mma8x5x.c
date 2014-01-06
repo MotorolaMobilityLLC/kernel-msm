@@ -2,7 +2,7 @@
  *  mma8x5x.c - Linux kernel modules for 3-Axis Orientation/Motion
  *  Detection Sensor MMA8451/MMA8452/MMA8453
  *
- *  Copyright (c) 2013, The Linux Foundation. All Rights Reserved.
+ *  Copyright (c) 2013-2014, The Linux Foundation. All Rights Reserved.
  *  Linux Foundation chooses to take subject only to the GPLv2 license
  *  terms, and distributes only under these terms.
  *  Copyright (C) 2010-2011 Freescale Semiconductor, Inc. All Rights Reserved.
@@ -38,10 +38,10 @@
 #define MMA8652_ID			0x4A
 #define MMA8653_ID			0x5A
 
-
+/* Polling delay in msecs */
 #define POLL_INTERVAL_MIN	1
-#define POLL_INTERVAL_MAX	500
-#define POLL_INTERVAL		100 /* msecs */
+#define POLL_INTERVAL_MAX	10000
+#define POLL_INTERVAL		100
 
 /* if sensor is standby ,set POLL_STOP_TIME to slow down the poll */
 #define POLL_STOP_TIME		10000
@@ -68,6 +68,10 @@ static struct sensors_classdev sensors_cdev = {
 	.min_delay = 2000,
 	.fifo_reserved_event_count = 0,
 	.fifo_max_event_count = 0,
+	.enabled = 0,
+	.delay_msec = POLL_INTERVAL,
+	.sensors_enable = NULL,
+	.sensors_poll_delay = NULL,
 };
 
 struct sensor_regulator {
@@ -162,12 +166,14 @@ struct mma8x5x_data {
 	struct i2c_client *client;
 	struct input_polled_dev *poll_dev;
 	struct mutex data_lock;
+	struct sensors_classdev cdev;
 	int active;
 	int position;
 	u8 chip_id;
 	int mode;
 	int int_pin;
 	u32 int_flags;
+	int poll_delay;
 };
 /* Addresses scanned */
 static const unsigned short normal_i2c[] = {0x1c, 0x1d, I2C_CLIENT_END};
@@ -371,7 +377,7 @@ static void mma8x5x_report_data(struct mma8x5x_data *pdata)
 		goto out;
 	} else {
 		if (poll_dev->poll_interval == POLL_STOP_TIME)
-			poll_dev->poll_interval = POLL_INTERVAL;
+			poll_dev->poll_interval = pdata->poll_delay;
 	}
 	if (mma8x5x_read_data(pdata->client, &data) != 0)
 		goto out;
@@ -388,6 +394,79 @@ static void mma8x5x_dev_poll(struct input_polled_dev *dev)
 {
 	struct mma8x5x_data *pdata = (struct mma8x5x_data *)dev->private;
 	mma8x5x_report_data(pdata);
+}
+
+static int mma8x5x_enable_set(struct sensors_classdev *sensors_cdev,
+		unsigned int enable)
+{
+	struct mma8x5x_data *pdata = container_of(sensors_cdev,
+			struct mma8x5x_data, cdev);
+	struct i2c_client *client = pdata->client;
+	int ret;
+	u8 val = 0;
+
+	mutex_lock(&pdata->data_lock);
+	if (enable) {
+		if (pdata->active & MMA_SHUTTEDDOWN) {
+			ret = mma8x5x_config_regulator(client, 1);
+			if (ret)
+				goto err_failed;
+
+			ret = mma8x5x_device_start(client);
+			if (ret)
+				goto err_failed;
+
+			pdata->active &= ~MMA_SHUTTEDDOWN;
+		}
+		if (pdata->active == MMA_STANDBY) {
+			val = i2c_smbus_read_byte_data(client,
+					MMA8X5X_CTRL_REG1);
+			if (val < 0) {
+				dev_err(&client->dev, "read device state failed!");
+				ret = val;
+				goto err_failed;
+			}
+
+			ret = i2c_smbus_write_byte_data(client,
+					MMA8X5X_CTRL_REG1, val | 0x01);
+			if (ret) {
+				dev_err(&client->dev, "change device state failed!");
+				goto err_failed;
+			}
+			pdata->active = MMA_ACTIVED;
+			dev_dbg(&client->dev, "%s:mma enable setting active.\n",
+					__func__);
+		}
+	} else if (enable == 0) {
+		if (pdata->active == MMA_ACTIVED) {
+			val = i2c_smbus_read_byte_data(client,
+					MMA8X5X_CTRL_REG1);
+			if (val < 0) {
+				dev_err(&client->dev, "read device state failed!");
+				ret = val;
+				goto err_failed;
+			}
+
+			ret = i2c_smbus_write_byte_data(client,
+				MMA8X5X_CTRL_REG1, val & 0xFE);
+			if (ret) {
+				dev_err(&client->dev, "change device state failed!");
+				goto err_failed;
+			}
+
+			pdata->active = MMA_STANDBY;
+			dev_dbg(&client->dev, "%s:mma enable setting inactive.\n",
+					__func__);
+		}
+		if (!mma8x5x_config_regulator(client, 0))
+			pdata->active |= MMA_SHUTTEDDOWN;
+	}
+	mutex_unlock(&pdata->data_lock);
+	return 0;
+
+err_failed:
+	mutex_unlock(&pdata->data_lock);
+	return ret;
 }
 
 static ssize_t mma8x5x_enable_show(struct device *dev,
@@ -415,77 +494,17 @@ static ssize_t mma8x5x_enable_store(struct device *dev,
 {
 	struct input_polled_dev *poll_dev = dev_get_drvdata(dev);
 	struct mma8x5x_data *pdata = (struct mma8x5x_data *)(poll_dev->private);
-	struct i2c_client *client = pdata->client;
 	int ret;
 	unsigned long enable;
-	u8 val = 0;
 
 	ret = kstrtoul(buf, 10, &enable);
 	if (ret)
 		return ret;
-	mutex_lock(&pdata->data_lock);
 	enable = (enable > 0) ? 1 : 0;
-	if (enable) {
-		if (pdata->active & MMA_SHUTTEDDOWN) {
-			ret = mma8x5x_config_regulator(client, 1);
-			if (ret)
-				goto err_failed;
-
-			ret = mma8x5x_device_start(client);
-			if (ret)
-				goto err_failed;
-
-			pdata->active &= ~MMA_SHUTTEDDOWN;
-		}
-		if (pdata->active == MMA_STANDBY) {
-			val = i2c_smbus_read_byte_data(client,
-					MMA8X5X_CTRL_REG1);
-			if (val < 0) {
-				dev_err(dev, "read device state failed!");
-				ret = val;
-				goto err_failed;
-			}
-
-			ret = i2c_smbus_write_byte_data(client,
-					MMA8X5X_CTRL_REG1, val | 0x01);
-			if (ret) {
-				dev_err(dev, "change device state failed!");
-				goto err_failed;
-			}
-			pdata->active = MMA_ACTIVED;
-			dev_dbg(dev, "%s:mma enable setting active.\n",
-					__func__);
-		}
-	} else if (enable == 0) {
-		if (pdata->active == MMA_ACTIVED) {
-			val = i2c_smbus_read_byte_data(client,
-					MMA8X5X_CTRL_REG1);
-			if (val < 0) {
-				dev_err(dev, "read device state failed!");
-				ret = val;
-				goto err_failed;
-			}
-
-			ret = i2c_smbus_write_byte_data(client,
-				MMA8X5X_CTRL_REG1, val & 0xFE);
-			if (ret) {
-				dev_err(dev, "change device state failed!");
-				goto err_failed;
-			}
-
-			pdata->active = MMA_STANDBY;
-			dev_dbg(dev, "%s:mma enable setting inactive.\n",
-					__func__);
-		}
-		if (!mma8x5x_config_regulator(client, 0))
-			pdata->active |= MMA_SHUTTEDDOWN;
-	}
-	mutex_unlock(&pdata->data_lock);
+	ret = mma8x5x_enable_set(&pdata->cdev, enable);
+	if (ret < 0)
+		return ret;
 	return count;
-
-err_failed:
-	mutex_unlock(&pdata->data_lock);
-	return ret;
 }
 static ssize_t mma8x5x_position_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
@@ -516,14 +535,60 @@ static ssize_t mma8x5x_position_store(struct device *dev,
 	return count;
 }
 
+static int mma8x5x_poll_delay_set(struct sensors_classdev *sensors_cdev,
+		unsigned int delay_ms)
+{
+	struct mma8x5x_data *pdata = container_of(sensors_cdev,
+			struct mma8x5x_data, cdev);
+
+	mutex_lock(&pdata->data_lock);
+	pdata->poll_delay = delay_ms;
+	pdata->poll_dev->poll_interval = pdata->poll_delay;
+	mutex_unlock(&pdata->data_lock);
+
+	return 0;
+}
+
+static ssize_t mma8x5x_poll_delay_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct input_polled_dev *poll_dev = dev_get_drvdata(dev);
+	struct mma8x5x_data *pdata = (struct mma8x5x_data *)(poll_dev->private);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pdata->poll_delay);
+}
+
+static ssize_t mma8x5x_poll_delay_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct input_polled_dev *poll_dev = dev_get_drvdata(dev);
+	struct mma8x5x_data *pdata = (struct mma8x5x_data *)(poll_dev->private);
+	int interval;
+	int ret;
+	ret = kstrtoint(buf, 10, &interval);
+	if (ret)
+		return ret;
+	if (interval <= POLL_INTERVAL_MIN)
+		interval = POLL_INTERVAL_MIN;
+	if (interval > POLL_INTERVAL_MAX)
+		interval = POLL_INTERVAL_MAX;
+
+	mma8x5x_poll_delay_set(&pdata->cdev, interval);
+
+	return count;
+}
+
 static DEVICE_ATTR(enable, S_IWUSR | S_IRUGO,
 		   mma8x5x_enable_show, mma8x5x_enable_store);
 static DEVICE_ATTR(position, S_IWUSR | S_IRUGO,
 		   mma8x5x_position_show, mma8x5x_position_store);
+static DEVICE_ATTR(poll_delay, S_IWUSR | S_IRUGO,
+		   mma8x5x_poll_delay_show, mma8x5x_poll_delay_store);
 
 static struct attribute *mma8x5x_attributes[] = {
 	&dev_attr_enable.attr,
 	&dev_attr_position.attr,
+	&dev_attr_poll_delay.attr,
 	NULL
 };
 
@@ -622,6 +687,7 @@ static int __devinit mma8x5x_probe(struct i2c_client *client,
 	pdata->client = client;
 	pdata->chip_id = chip_id;
 	pdata->mode = MODE_2G;
+	pdata->poll_delay = POLL_INTERVAL;
 
 	mutex_init(&pdata->data_lock);
 	i2c_set_clientdata(client, pdata);
@@ -659,7 +725,12 @@ static int __devinit mma8x5x_probe(struct i2c_client *client,
 		result = -EINVAL;
 		goto err_create_sysfs;
 	}
-	result = sensors_classdev_register(&client->dev, &sensors_cdev);
+	pdata->cdev = sensors_cdev;
+	pdata->cdev.min_delay = POLL_INTERVAL_MIN * 1000;
+	pdata->cdev.delay_msec = poll_dev->poll_interval;
+	pdata->cdev.sensors_enable = mma8x5x_enable_set;
+	pdata->cdev.sensors_poll_delay = mma8x5x_poll_delay_set;
+	result = sensors_classdev_register(&client->dev, &pdata->cdev);
 	if (result) {
 		dev_err(&client->dev, "create class device file failed!\n");
 		result = -EINVAL;
