@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -839,7 +839,10 @@ static void cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin)
 
 		/*Start firmware loading*/
 		msm_cpp_write(MSM_CPP_CMD_FW_LOAD, cpp_dev->base);
-		msm_cpp_write(fw->size, cpp_dev->base);
+		if (fw)
+			msm_cpp_write(fw->size, cpp_dev->base);
+		else
+			msm_cpp_write(MSM_CPP_END_ADDRESS, cpp_dev->base);
 		msm_cpp_write(MSM_CPP_START_ADDRESS, cpp_dev->base);
 
 		if (ptr_bin) {
@@ -1611,18 +1614,23 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		struct msm_queue_cmd *event_qcmd;
 		struct msm_cpp_frame_info_t *process_frame;
 		event_qcmd = msm_dequeue(queue, list_eventdata);
-		process_frame = event_qcmd->command;
-		CPP_DBG("fid %d\n", process_frame->frame_id);
-		if (copy_to_user((void __user *)ioctl_ptr->ioctl_ptr,
-				process_frame,
-				sizeof(struct msm_cpp_frame_info_t))) {
-					mutex_unlock(&cpp_dev->mutex);
-					return -EINVAL;
-		}
+		if (event_qcmd) {
+			process_frame = event_qcmd->command;
+			CPP_DBG("fid %d\n", process_frame->frame_id);
+			if (copy_to_user((void __user *)ioctl_ptr->ioctl_ptr,
+					process_frame,
+					sizeof(struct msm_cpp_frame_info_t))) {
+						mutex_unlock(&cpp_dev->mutex);
+						return -EINVAL;
+			}
 
-		kfree(process_frame->cpp_cmd_msg);
-		kfree(process_frame);
-		kfree(event_qcmd);
+			kfree(process_frame->cpp_cmd_msg);
+			kfree(process_frame);
+			kfree(event_qcmd);
+		} else {
+			pr_err("Empty command list\n");
+			return -EFAULT;
+		}
 		break;
 	}
 	case MSM_SD_SHUTDOWN: {
@@ -1898,6 +1906,7 @@ static int __devinit cpp_probe(struct platform_device *pdev)
 		rc = -ENOMEM;
 		goto ERROR3;
 	}
+
 	INIT_WORK((struct work_struct *)cpp_dev->work, msm_cpp_do_timeout_work);
 	cpp_dev->cpp_open_cnt = 0;
 	cpp_dev->is_firmware_loaded = 0;
