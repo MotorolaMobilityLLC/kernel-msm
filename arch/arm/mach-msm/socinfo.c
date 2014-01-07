@@ -23,11 +23,13 @@
 #include <linux/stat.h>
 #include <linux/sysdev.h>
 #include <linux/types.h>
+#include <linux/io.h>
 
 #include <asm/mach-types.h>
 
 #include <mach/socinfo.h>
 #include <mach/msm_smem.h>
+#include <mach/msm_iomap.h>
 
 #include "boot_stats.h"
 
@@ -1418,6 +1420,9 @@ const int get_core_count(void)
 
 	if (read_cpuid_mpidr() & BIT(30))
 		return 1;
+
+	if ((read_cpuid_id() & 0xFF0FFFF0) == 0x410FC070)
+		return (__raw_readl(MSM_APCS_GCC_BASE + 0x30)) & 0xF;
 
 	/* 1 + the PART[1:0] field of MIDR */
 	return ((read_cpuid_id() >> 4) & 3) + 1;
