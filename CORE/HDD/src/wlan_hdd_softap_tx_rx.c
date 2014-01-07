@@ -439,6 +439,7 @@ int hdd_softap_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
    ++pAdapter->hdd_stats.hddTxRxStats.txXmitQueued;
    ++pAdapter->hdd_stats.hddTxRxStats.txXmitQueuedAC[ac];
+   ++pAdapter->hdd_stats.hddTxRxStats.pkt_tx_count;
 
    if (1 == pktListSize)
    {
