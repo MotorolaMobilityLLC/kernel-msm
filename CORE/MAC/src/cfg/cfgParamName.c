@@ -340,7 +340,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"BTC_ACTIVE_BT_LEN",
     (unsigned char *)"BTC_SAP_ACTIVE_WLAN_LEN",
     (unsigned char *)"BTC_SAP_ACTIVE_BT_LEN",
+    (unsigned char *)"DEBUG_P2P_REMAIN_ON_CHANNEL",
 };
-
 
 
