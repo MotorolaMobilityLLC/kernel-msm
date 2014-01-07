@@ -1119,7 +1119,14 @@ static void trace_save_cmdline(struct task_struct *tsk)
 		cmdline_idx = idx;
 	}
 
-	memcpy(&saved_cmdlines[idx], tsk->comm, TASK_COMM_LEN);
+	/* we don't hold the task lock to protect comm, so it may be
+	 * incomplete yet and save a non-terminating string in the
+	 * saved_cmdlines array which is not safe for string read.
+	 *
+	 * Only read the first 15 bytes in order to keep a trailing
+	 * '\0' in the saved_cmdlines array.
+	 */
+	memcpy(&saved_cmdlines[idx], tsk->comm, TASK_COMM_LEN - 1);
 
 	arch_spin_unlock(&trace_cmdline_lock);
 }
@@ -1147,7 +1154,7 @@ void trace_find_cmdline(int pid, char comm[])
 	arch_spin_lock(&trace_cmdline_lock);
 	map = map_pid_to_cmdline[pid];
 	if (map != NO_CMDLINE_MAP)
-		strcpy(comm, saved_cmdlines[map]);
+		strlcpy(comm, saved_cmdlines[map], TASK_COMM_LEN);
 	else
 		strcpy(comm, "<...>");
 
