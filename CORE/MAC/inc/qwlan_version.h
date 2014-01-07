@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -59,10 +59,10 @@ BRIEF DESCRIPTION:
 #define QWLAN_VERSION_MAJOR            3
 #define QWLAN_VERSION_MINOR            2
 #define QWLAN_VERSION_PATCH            3
-#define QWLAN_VERSION_EXTRA            "a"
-#define QWLAN_VERSION_BUILD            210
+#define QWLAN_VERSION_EXTRA            ""
+#define QWLAN_VERSION_BUILD            211
 
-#define QWLAN_VERSIONSTR               "3.2.3.210a"
+#define QWLAN_VERSIONSTR               "3.2.3.211"
 
 #endif /* QWLAN_VERSION_H */
 
