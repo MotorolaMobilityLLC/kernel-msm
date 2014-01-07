@@ -59,34 +59,25 @@ static struct dsi_cmd_desc mot_display_off_cmds[] = {
 
 static int panel_enable(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
 
 	if (mot_panel == NULL) {
 		pr_err("%s: Invalid mot_panel\n", __func__);
 		return -1;
 	}
 
-	dsi_tx_buf = mot_panel->mot_tx_buf;
-	mipi_dsi_cmds_tx(mfd, dsi_tx_buf, mot_cmd_on_cmds,
-					ARRAY_SIZE(mot_cmd_on_cmds));
-
+	mipi_mot_tx_cmds(mot_cmd_on_cmds, ARRAY_SIZE(mot_cmd_on_cmds));
 	return 0;
 }
 
 static int panel_disable(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
 
 	if (mot_panel == NULL) {
 		pr_err("%s: Invalid mot_panel\n", __func__);
 		return -1;
 	}
 
-	dsi_tx_buf =  mot_panel->mot_tx_buf;
-
-	mipi_dsi_cmds_tx(mfd, dsi_tx_buf, mot_display_off_cmds,
-					ARRAY_SIZE(mot_display_off_cmds));
-
+	mipi_mot_tx_cmds(mot_display_off_cmds, ARRAY_SIZE(mot_display_off_cmds));
 	return 0;
 }
 
@@ -98,7 +89,7 @@ static int is_valid_manufacture_id(struct msm_fb_data_type *mfd, u8 id)
 static int is_valid_power_mode(struct msm_fb_data_type *mfd)
 {
 	u8 pwr_mod;
-	pwr_mod = mipi_mode_get_pwr_mode(mfd);
+	mipi_mot_get_pwr_mode(mfd, &pwr_mod);
 	/*Bit7: Booster on ;Bit4: Sleep Out ;Bit2: Display On*/
 	return (pwr_mod & 0x94) == 0x94;
 }
