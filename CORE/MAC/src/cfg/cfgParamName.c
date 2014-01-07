@@ -344,6 +344,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"ASD_PROBE_INTERVAL",
     (unsigned char *)"ASD_TRIGGER_THRESHOLD",
     (unsigned char *)"ASD_RTT_RSSI_HYST_THRESHOLD",
+    (unsigned char *)"DEBUG_P2P_REMAIN_ON_CHANNEL",
 };
 
 
