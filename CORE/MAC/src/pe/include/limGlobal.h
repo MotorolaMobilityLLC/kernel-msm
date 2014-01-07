@@ -668,7 +668,7 @@ typedef struct sLimWscIeInfo
 } tLimWscIeInfo, *tpLimWscIeInfo;
 
 // maximum number of tspec's supported
-#define LIM_NUM_TSPEC_MAX      4
+#define LIM_NUM_TSPEC_MAX      15
 
 
 //structure to hold all 11h specific data
