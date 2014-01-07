@@ -188,7 +188,7 @@ __limFreshScanReqd(tpAniSirGlobal pMac, tANI_U8 returnFreshResults)
             
         }
     }
-    PELOG1(limLog(pMac, LOG1, FL("FreshScanReqd: %d "), validState);)
+    limLog(pMac, LOG1, FL("FreshScanReqd: %d "), validState);
 
    if( (validState) && (returnFreshResults & SIR_BG_SCAN_RETURN_FRESH_RESULTS))
     return TRUE;
@@ -1150,6 +1150,7 @@ static eHalStatus limSendHalStartScanOffloadReq(tpAniSirGlobal pMac,
         vos_mem_free(pScanOffloadReq);
         return eHAL_STATUS_FAILURE;
     }
+    limLog(pMac, LOG1, FL("Processed Offload Scan Request Successfully"));
 
     return eHAL_STATUS_SUCCESS;
 }
@@ -1187,7 +1188,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 #endif //FEATURE_WLAN_DIAG_SUPPORT
     
     pScanReq = (tpSirSmeScanReq) pMsgBuf;   
-    PELOG1(limLog(pMac, LOG1, FL("SME SCAN REQ numChan %d min %d max %d IELen %d first %d fresh %d unique %d type %d mode %d rsp %d"),
+    limLog(pMac, LOG1, FL("SME SCAN REQ numChan %d min %d max %d IELen %d first %d fresh %d unique %d type %d mode %d rsp %d"),
            pScanReq->channelList.numChannels,
            pScanReq->minChannelTime,
            pScanReq->maxChannelTime,
@@ -1197,7 +1198,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
            pScanReq->returnUniqueResults,
            pScanReq->scanType,
            pScanReq->backgroundScanMode,
-           pMac->lim.gLimRspReqd ? 1 : 0);)
+           pMac->lim.gLimRspReqd ? 1 : 0);
 
     /* Since scan req always requires a response, we will overwrite response required here.
      * This is added esp to take care of the condition where in p2p go case, we hold the scan req and
@@ -1218,7 +1219,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
        
     if (!limIsSmeScanReqValid(pMac, pScanReq))
     {
-        PELOGW(limLog(pMac, LOGW, FL("Received SME_SCAN_REQ with invalid parameters"));)
+        limLog(pMac, LOGE, FL("Received SME_SCAN_REQ with invalid parameters"));
 
         if (pMac->lim.gLimRspReqd)
         {
@@ -1235,6 +1236,8 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     //if scan in power save is disabled, and system is in power save mode, then ignore scan request.
     if( (pMac->lim.fScanDisabled) || (!pMac->lim.gScanInPowersave && !limIsSystemInActiveState(pMac))  )
     {
+        limLog(pMac, LOGE, FL("SCAN is disabled or SCAN in power save"
+                              " is disabled and system is in power save."));
         limSendSmeScanRsp(pMac, offsetof(tSirSmeScanRsp,bssDescription[0]), eSIR_SME_INVALID_PARAMETERS, pScanReq->sessionId, pScanReq->transactionId);
         return;
     }
@@ -1289,6 +1292,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
           if (eHAL_STATUS_SUCCESS !=
                   limSendHalStartScanOffloadReq(pMac, pScanReq))
           {
+              limLog(pMac, LOGE, FL("Couldn't send Offload scan request"));
               limSendSmeScanRsp(pMac,
                       offsetof(tSirSmeScanRsp, bssDescription[0]),
                       eSIR_SME_INVALID_PARAMETERS,
@@ -1302,6 +1306,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
           /*Change Global SME state  */
           /* Store the previous SME state */
+          limLog(pMac, LOG1, FL("Non Offload SCAN request "));
           pMac->lim.gLimPrevSmeState = pMac->lim.gLimSmeState;
           pMac->lim.gLimSmeState = eLIM_SME_WT_SCAN_STATE;
           MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, pScanReq->sessionId, pMac->lim.gLimSmeState));
@@ -1309,6 +1314,9 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
           if (pScanReq->channelList.numChannels == 0)
           {
               tANI_U32            cfg_len;
+
+              limLog(pMac, LOG1,
+                     FL("Scan all channels as Number of channels is 0"));
               // Scan all channels
               len = sizeof(tLimMlmScanReq) +
                   (sizeof( pScanReq->channelList.channelNumber ) * (WNI_CFG_VALID_CHANNEL_LIST_LEN - 1)) +
@@ -1406,6 +1414,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
           pMac->lim.gTransactionId = pScanReq->transactionId;
 
           // Issue LIM_MLM_SCAN_REQ to MLM
+          limLog(pMac, LOG1, FL("Issue Scan request command to MLM "));
           limPostMlmMessage(pMac, LIM_MLM_SCAN_REQ, (tANI_U32 *) pMlmScanReq);
       }
   } // if ((pMac->lim.gLimSmeState == eLIM_SME_IDLE_STATE) || ...
@@ -1457,6 +1466,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
             }
 #endif
+            limLog(pMac, LOG1, FL("Cached scan results are returned "));
 
             if (pScanReq->returnFreshResults & SIR_BG_SCAN_PURGE_RESUTLS)
             {
@@ -5365,7 +5375,6 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
              */
             if (pMac->lim.fScanDisabled)
             {
-                PELOGE(limLog(pMac, LOGE, FL("Error: Scan Disabled"));)
                 if (pMsg->type == eWNI_SME_SCAN_REQ)
                 {
                    limSendSmeScanRsp(pMac,
@@ -5388,6 +5397,11 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
                      */
                     bufConsumed = FALSE;
                 }
+
+                limLog(pMac, LOGE,
+                       FL("Error: Scan Disabled."
+                          " Return with error status for SME Message %s(%d)"),
+                       limMsgStr(pMsg->type), pMsg->type);
 
                 return bufConsumed;
             }
