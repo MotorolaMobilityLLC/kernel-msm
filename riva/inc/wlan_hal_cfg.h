@@ -220,7 +220,11 @@
 #define QWLAN_HAL_CFG_BTC_STATIC_OPP_WLAN_ACTIVE_BT_LEN          167
 #define QWLAN_HAL_CFG_BTC_SAP_STATIC_OPP_WLAN_ACTIVE_WLAN_LEN    168
 #define QWLAN_HAL_CFG_BTC_SAP_STATIC_OPP_WLAN_ACTIVE_BT_LEN      169
-#define QWLAN_HAL_CFG_MAX_PARAMS                        170
+#define QWLAN_HAL_CFG_RMCAST_FIXED_RATE                 170
+#define QWLAN_HAL_CFG_ASD_PROBE_INTERVAL                171
+#define QWLAN_HAL_CFG_ASD_TRIGGER_THRESHOLD             172
+#define QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD       173
+#define QWLAN_HAL_CFG_MAX_PARAMS                        174
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
@@ -919,4 +923,19 @@
 
 #endif //__WLAN_HAL_CFG_H__
 
+/*Once the period expires the RSSI will be compared with Threshold
+ * and if needed trigger events will be raised
+ */
+#define QWLAN_HAL_CFG_ASD_PROBE_INTERVAL_DEF     50
+#define QWLAN_HAL_CFG_ASD_PROBE_INTERVAL_MIN     10
+#define QWLAN_HAL_CFG_ASD_PROBE_INTERVAL_MAX     100
 
+/* RSSI Threshold used to trigger probing activity/selection process*/
+#define QWLAN_HAL_CFG_ASD_TRIGGER_THRESHOLD_DEF     -75
+#define QWLAN_HAL_CFG_ASD_TRIGGER_THRESHOLD_MIN     -120
+#define QWLAN_HAL_CFG_ASD_TRIGGER_THRESHOLD_MAX     0
+
+/*RSSI Hysteresis Threshold for RSSI-RTT*/
+#define QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD_DEF     50
+#define QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MIN     50
+#define QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MAX     100

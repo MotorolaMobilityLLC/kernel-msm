@@ -1984,11 +1984,25 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_OVERRIDE_COUNTRY_CODE                "gStaCountryCode"
 #define CFG_OVERRIDE_COUNTRY_CODE_DEFAULT        "000"
 
-//Enable debug for remain on channel issues
-#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_NAME    "gDebugP2pRemainOnChannel"
-#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_DEFAULT ( 0 )
-#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_MIN     ( 0 )
-#define CFG_DEBUG_P2P_REMAIN_ON_CHANNEL_MAX     ( 1 )
+/*Once the period expires the RSSI will be compared with Threshold
+ * and if needed trigger events will be raised
+ */
+#define CFG_ASD_PROBE_INTERVAL_NAME                     "gAsdProbeInterval"
+#define CFG_ASD_PROBE_INTERVAL_DEFAULT                  (50)
+#define CFG_ASD_PROBE_INTERVAL_MIN                      (10)
+#define CFG_ASD_PROBE_INTERVAL_MAX                      (100)
+
+/* RSSI Threshold used to trigger probing activity/selection process*/
+#define CFG_ASD_TRIGGER_THRESHOLD_NAME                  "gAsdTriggerThreshold"
+#define CFG_ASD_TRIGGER_THRESHOLD_DEFAULT               (-75)
+#define CFG_ASD_TRIGGER_THRESHOLD_MIN                   (-120)
+#define CFG_ASD_TRIGGER_THRESHOLD_MAX                   (0)
+
+/*RSSI Hysteresis Threshold for RSSI-RTT*/
+#define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_NAME             "gAsdRTTRssiHystThreshold"
+#define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_DEFAULT          (50)
+#define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MIN              (0)
+#define CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MAX              (100)
 
 /*--------------------------------------------------------------------------- 
   Type declarations
@@ -2404,7 +2418,9 @@ typedef struct
    v_BOOL_t                    IsMemoryDebugSupportEnabled;
 #endif
    char                        overrideCountryCode[4];
-   v_BOOL_t                    debugP2pRemainOnChannel;
+   v_U32_t                     gAsdProbeInterval;
+   v_U32_t                     gAsdTriggerThreshold;
+   v_U32_t                     gAsdRTTRssiHystThreshold;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
