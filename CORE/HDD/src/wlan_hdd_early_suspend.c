@@ -771,20 +771,12 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
         {
             offLoadRequest.nsOffloadInfo.slotIdx = i;
             if (eHAL_STATUS_SUCCESS !=
-                 sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),     
-                 pAdapter->sessionId, &offLoadRequest))         
+                 sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                 pAdapter->sessionId, &offLoadRequest))
             {
                 hddLog(VOS_TRACE_LEVEL_ERROR, FL("Failed to disable NSOflload"
                              " on slot %d"), i);
             }
-        }
-
-        if (eHAL_STATUS_SUCCESS !=
-                 sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
-                 pAdapter->sessionId, &offLoadRequest))
-        {
-            hddLog(VOS_TRACE_LEVEL_ERROR, FL("Failure to disable"
-                             "NSOffload feature"));
         }
     }
     return;
