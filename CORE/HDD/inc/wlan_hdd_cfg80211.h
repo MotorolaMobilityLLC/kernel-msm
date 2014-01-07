@@ -123,6 +123,33 @@ typedef struct {
 }__attribute__((packed)) qcom_ie_age ;
 #endif
 
+/* Vendor id to be used in vendor specific command and events
+ * to user space. Use QCA OUI 00:13:74 to match with define in
+ * supplicant code.
+ */
+#define QCOM_NL80211_VENDOR_ID                0x001374
+
+/* Vendor speicific sub-command id and their index */
+#ifdef FEATURE_WLAN_CH_AVOID
+#define QCOM_NL80211_VENDOR_SUBCMD_AVOID_FREQUENCY         10
+#define QCOM_NL80211_VENDOR_SUBCMD_AVOID_FREQUENCY_INDEX   0
+#endif /* FEATURE_WLAN_CH_AVOID */
+
+#ifdef FEATURE_WLAN_CH_AVOID
+#define HDD_MAX_AVOID_FREQ_RANGES   4
+typedef struct sHddAvoidFreqRange
+{
+   u32 startFreq;
+   u32 endFreq;
+} tHddAvoidFreqRange;
+
+typedef struct sHddAvoidFreqList
+{
+   u32 avoidFreqRangeCount;
+   tHddAvoidFreqRange avoidFreqRange[HDD_MAX_AVOID_FREQ_RANGES];
+} tHddAvoidFreqList;
+#endif /* FEATURE_WLAN_CH_AVOID */
+
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,
                                       tCsrRoamInfo *pRoamInfo
                                       );
@@ -194,5 +221,8 @@ extern void wlan_hdd_cfg80211_update_replayCounterCallback(void *callbackContext
 void* wlan_hdd_change_country_code_cb(void *pAdapter);
 void hdd_select_cbmode( hdd_adapter_t *pAdapter,v_U8_t operationChannel);
 
+
+int wlan_hdd_send_avoid_freq_event(hdd_context_t *pHddCtx,
+                                   tHddAvoidFreqList *pAvoidFreqList);
 
 #endif

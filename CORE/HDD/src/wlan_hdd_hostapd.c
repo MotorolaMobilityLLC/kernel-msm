@@ -1216,6 +1216,8 @@ void hdd_hostapd_ch_avoid_cb
    v_U16_t             unsafeChannelCount = 0;
    v_U16_t             unsafeChannelList[NUM_20MHZ_RF_CHANNELS];
    v_CONTEXT_t         pVosContext;
+   tHddAvoidFreqList   hddAvoidFreqList;
+   tANI_U32            i;
 
    /* Basic sanity */
    if ((NULL == pAdapter) || (NULL == indParam))
@@ -1293,6 +1295,19 @@ void hdd_hostapd_ch_avoid_cb
    hdd_hostapd_update_unsafe_channel_list(hddCtxt,
                                           unsafeChannelList,
                                           unsafeChannelCount);
+
+   /* generate vendor specific event */
+   vos_mem_zero((void *)&hddAvoidFreqList, sizeof(tHddAvoidFreqList));
+   for (i = 0; i < chAvoidInd->avoidRangeCount; i++)
+   {
+      hddAvoidFreqList.avoidFreqRange[i].startFreq =
+            chAvoidInd->avoidFreqRange[i].startFreq;
+      hddAvoidFreqList.avoidFreqRange[i].endFreq =
+            chAvoidInd->avoidFreqRange[i].endFreq;
+   }
+   hddAvoidFreqList.avoidFreqRangeCount = chAvoidInd->avoidRangeCount;
+
+   wlan_hdd_send_avoid_freq_event(hddCtxt, &hddAvoidFreqList);
 
    /* Get SAP context first
     * SAP and P2PGO would not concurrent */
