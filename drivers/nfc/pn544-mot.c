@@ -236,7 +236,7 @@ static int pn544_dev_ioctl(struct pn544_dev *pn544_dev,
 			if (delay != 0)
 				msleep(delay);
 			else
-				msleep(10);
+				msleep(2000);
 			gpio_set_value(pn544_dev->ven_gpio, ven_logic_high);
 		} else if (arg == 1) {
 			/* power on */
@@ -253,7 +253,7 @@ static int pn544_dev_ioctl(struct pn544_dev *pn544_dev,
 			if (delay != 0)
 				msleep(delay);
 			else
-				msleep(10);
+				msleep(2000);
 		} else {
 			pr_err("%s : bad arg %lu\n", __func__, arg);
 			return -EINVAL;
