@@ -93,3 +93,6 @@ dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-smq-p1a.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-smq-p2.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-smq-p2a.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-smq-p20a.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-dinara-p2.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-dinara-p3.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960-dinara-p4.dtb
