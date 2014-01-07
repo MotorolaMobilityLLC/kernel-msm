@@ -97,6 +97,7 @@ dtb-$(CONFIG_ARCH_MPQ8092) += mpq8092-sim.dtb \
 	mpq8092-dtv.dtb \
 	mpq8092-dma.dtb
 dtb-$(CONFIG_ARCH_APQ8084) += apq8084-v1.0-old-pwr-grid-liquid.dtb \
+	apq8084-lexington.dtb \
 	apq8084-v1.1-old-pwr-grid-liquid.dtb \
 	apq8084-v1.1-liquid.dtb \
 	apq8084-v1.0-old-pwr-grid-smb1357-cdp.dtb \
