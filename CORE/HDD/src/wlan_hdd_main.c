@@ -189,6 +189,8 @@ static VOS_STATUS hdd_parse_ccx_beacon_req(tANI_U8 *pValue,
                                      tCsrCcxBeaconReq *pCcxBcnReq);
 #endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
 
+#define WLAN_PRIV_DATA_MAX_LEN 4096
+
 /*
  * Driver miracast parameters 0-Disabled
  * 1-Source, 2-Sink
@@ -1663,7 +1665,8 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        goto exit;
    }
 
-   if (priv_data.total_len <= 0)
+   if (priv_data.total_len <= 0 ||
+	    priv_data.total_len > WLAN_PRIV_DATA_MAX_LEN)
    {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                  "%s:invalid priv_data.total_len(%d)!!!", __func__,
@@ -3769,7 +3772,7 @@ static VOS_STATUS hdd_parse_ccx_beacon_req(tANI_U8 *pValue,
     if ('\0' == *inPtr) return -EINVAL;
 
     /*getting the first argument ie measurement token*/
-    v = sscanf(inPtr, "%32s ", buf);
+    v = sscanf(inPtr, "%31s ", buf);
     if (1 != v) return -EINVAL;
 
     v = kstrtos32(buf, 10, &tempInt);
@@ -3795,7 +3798,7 @@ static VOS_STATUS hdd_parse_ccx_beacon_req(tANI_U8 *pValue,
             /*no ie data after the number of ie fields argument and spaces*/
             if ( '\0' == *inPtr ) return -EINVAL;
 
-            v = sscanf(inPtr, "%32s ", buf);
+            v = sscanf(inPtr, "%31s ", buf);
             if (1 != v) return -EINVAL;
 
             v = kstrtos32(buf, 10, &tempInt);
@@ -4055,8 +4058,8 @@ VOS_STATUS hdd_parse_send_action_frame_data(tANI_U8 *pValue, tANI_U8 *pTargetApB
     int v = 0;
     tANI_U8 tempBuf[32];
     tANI_U8 tempByte = 0;
-    /* 12 hexa decimal digits and 5 ':' */
-    tANI_U8 macAddress[17];
+    /* 12 hexa decimal digits, 5 ':' and '\0' */
+    tANI_U8 macAddress[18];
 
     inPtr = strnchr(pValue, strlen(pValue), SPACE_ASCII_VALUE);
     /*no argument after the command*/
@@ -4110,7 +4113,7 @@ VOS_STATUS hdd_parse_send_action_frame_data(tANI_U8 *pValue, tANI_U8 *pTargetApB
     }
 
     /*getting the next argument ie the channel number */
-    v = sscanf(inPtr, "%32s ", tempBuf);
+    v = sscanf(inPtr, "%31s ", tempBuf);
     if (1 != v) return -EINVAL;
 
     v = kstrtos32(tempBuf, 10, &tempInt);
@@ -4133,7 +4136,7 @@ VOS_STATUS hdd_parse_send_action_frame_data(tANI_U8 *pValue, tANI_U8 *pTargetApB
     }
 
     /*getting the next argument ie the dwell time */
-    v = sscanf(inPtr, "%32s ", tempBuf);
+    v = sscanf(inPtr, "%31s ", tempBuf);
     if (1 != v) return -EINVAL;
 
     v = kstrtos32(tempBuf, 10, &tempInt);
@@ -4248,7 +4251,7 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
     }
 
     /*getting the first argument ie the number of channels*/
-    v = sscanf(inPtr, "%32s ", buf);
+    v = sscanf(inPtr, "%31s ", buf);
     if (1 != v) return -EINVAL;
 
     v = kstrtos32(buf, 10, &tempInt);
@@ -4299,7 +4302,7 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
             }
         }
 
-        v = sscanf(inPtr, "%32s ", buf);
+        v = sscanf(inPtr, "%31s ", buf);
         if (1 != v) return -EINVAL;
 
         v = kstrtos32(buf, 10, &tempInt);
@@ -4341,8 +4344,8 @@ VOS_STATUS hdd_parse_reassoc_command_data(tANI_U8 *pValue,
     int tempInt;
     int v = 0;
     tANI_U8 tempBuf[32];
-    /* 12 hexa decimal digits and 5 ':' */
-    tANI_U8 macAddress[17];
+    /* 12 hexa decimal digits, 5 ':' and '\0'  */
+    tANI_U8 macAddress[18];
 
     inPtr = strnchr(pValue, strlen(pValue), SPACE_ASCII_VALUE);
     /*no argument after the command*/
@@ -4396,7 +4399,7 @@ VOS_STATUS hdd_parse_reassoc_command_data(tANI_U8 *pValue,
     }
 
     /*getting the next argument ie the channel number */
-    v = sscanf(inPtr, "%32s ", tempBuf);
+    v = sscanf(inPtr, "%31s ", tempBuf);
     if (1 != v) return -EINVAL;
 
     v = kstrtos32(tempBuf, 10, &tempInt);
