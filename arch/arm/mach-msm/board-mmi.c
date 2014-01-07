@@ -155,6 +155,49 @@ static void __init mmi_gpiomux_init(struct msm8960_oem_init_ptrs *oem_ptr)
 
 	of_node_put(node);
 }
+/* This sysfs allows sensor TCMD to switch the control of I2C-12
+ *  from DSPS to Krait at runtime by issuing the following command:
+ *	echo 1 > /sys/kernel/factory_gsbi12_mode/install
+ * Upon phone reboot, everything will be back to normal.
+ */
+static ssize_t factory_gsbi12_mode_install_set(struct kobject *kobj,
+					struct kobj_attribute *attr,
+					const char *buf, size_t count)
+{
+	int Error;
+
+	Error = platform_device_register(&msm8960_device_qup_i2c_gsbi12);
+
+	if (Error)
+		printk(KERN_ERR "%s: failed to register gsbi12\n", __func__);
+
+	/* We must return # of bytes used from buffer
+	(do not return 0,it will throw an error) */
+	return count;
+}
+
+static struct kobj_attribute factory_gsbi12_mode_install_attribute =
+	__ATTR(install, S_IRUGO|S_IWUSR, NULL, factory_gsbi12_mode_install_set);
+static struct kobject *factory_gsbi12_mode_kobj;
+
+static int sysfs_factory_gsbi12_mode_init(void)
+{
+	int retval;
+
+	/* creates a new folder(node) factory_gsbi12_mode under /sys/kernel */
+	factory_gsbi12_mode_kobj = kobject_create_and_add("factory_gsbi12_mode",
+			kernel_kobj);
+	if (!factory_gsbi12_mode_kobj)
+		return -ENOMEM;
+
+	/* creates a file named install under /sys/kernel/factory_gsbi12_mode */
+	retval = sysfs_create_file(factory_gsbi12_mode_kobj,
+				&factory_gsbi12_mode_install_attribute.attr);
+	if (retval)
+		kobject_put(factory_gsbi12_mode_kobj);
+
+	return retval;
+}
 
 static void __init mmi_gsbi_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
@@ -336,6 +379,64 @@ static void __init mmi_unit_info_init(void){
 		mui->baseband, mui->carrier);
 }
 
+static int mot_tcmd_export_gpio(void)
+{
+	int rc;
+
+	rc = gpio_request(1, "USB_HOST_EN");
+	if (!rc) {
+		gpio_direction_output(1, 0);
+		rc = gpio_export(1, 0);
+		if (rc) {
+			pr_err("%s: GPIO USB_HOST_EN export failure\n",
+					__func__);
+			gpio_free(1);
+		}
+	}
+
+	rc = gpio_request(PM8921_GPIO_PM_TO_SYS(36), "SIM_DET");
+	if (!rc) {
+		gpio_direction_input(PM8921_GPIO_PM_TO_SYS(36));
+		rc = gpio_export(PM8921_GPIO_PM_TO_SYS(36), 0);
+		if (rc) {
+			pr_err("%s: GPIO SIM_DET export failure\n", __func__);
+			gpio_free(PM8921_GPIO_PM_TO_SYS(36));
+		}
+	}
+
+	/* RF connection detect GPIOs */
+	rc = gpio_request(24, "RF_CONN_DET_2G3G");
+	if (!rc) {
+		gpio_direction_input(24);
+		rc = gpio_export(24, 0);
+		if (rc) {
+			pr_err("%s: GPIO 24 export failure\n", __func__);
+			gpio_free(24);
+		}
+	}
+
+	rc = gpio_request(25, "RF_CONN_DET_LTE_1");
+	if (!rc) {
+		gpio_direction_input(25);
+		rc = gpio_export(25, 0);
+		if (rc) {
+			pr_err("%s: GPIO 25 export failure\n", __func__);
+			gpio_free(25);
+		}
+	}
+
+	rc = gpio_request(81, "RF_CONN_DET_LTE_2");
+	if (!rc) {
+		gpio_direction_input(81);
+		rc = gpio_export(81, 0);
+		if (rc) {
+			pr_err("%s: GPIO 81 export failure\n", __func__);
+			gpio_free(81);
+		}
+	}
+	return 0;
+}
+
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
@@ -343,6 +444,10 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 
 	mmi_vibrator_init();
 	mmi_unit_info_init();
+
+	/* Factory gsbi12 sysfs entry and tcmd gpio exports */
+	sysfs_factory_gsbi12_mode_init();
+	mot_tcmd_export_gpio();
 
 	if (mbmprotocol == 0) {
 		/* do not reboot - version was not reported */
@@ -365,23 +470,58 @@ static int mmi_factory_kill_gpio;
 
 static void __init mmi_get_factory_kill_gpio(void)
 {
-	struct device_node *n = NULL;
-	int i, gpio_count;
-	struct gpio gpio;
+	struct device_node *chosen;
+	int len = 0, enable = 1, rc;
+	u32 gpio = 0;
+	const void *prop;
 
-	n = of_find_compatible_node(n, NULL, "mmi,factory-support-msm8960");
-	if (!n)
-		return;
-	gpio_count = of_gpio_count(n);
-	for (i = 0; i < gpio_count; i++) {
-		gpio.gpio = of_get_gpio(n, i);
-		of_property_read_string_index(n, "gpio-names", i, &gpio.label);
-		if (!strcmp(gpio.label, "factory_kill_disable")) {
-			mmi_factory_kill_gpio = gpio.gpio;
-			break;
-		}
+	chosen = of_find_node_by_path("/Chosen@0");
+	if (!chosen)
+		goto out;
+
+	prop = of_get_property(chosen, "factory_kill_disable", &len);
+	if (prop && (len == sizeof(u8)) && *(u8 *)prop)
+		enable = 0;
+
+	rc = of_property_read_u32(chosen, "factory_kill_gpio", &gpio);
+	if (rc) {
+		pr_err("%s: factory_kill_gpio not present\n", __func__);
+		goto putnode;
 	}
-	of_node_put(n);
+
+	/*Write gpio number in mmi_factory_kill_gpio*/
+	mmi_factory_kill_gpio = gpio;
+
+	rc = gpio_request(gpio, "Factory Kill Disable");
+	if (rc) {
+		pr_err("%s: GPIO request failure\n", __func__);
+		goto putnode;
+	}
+
+	rc = gpio_direction_output(gpio, enable);
+	if (rc) {
+		pr_err("%s: GPIO configuration failure\n", __func__);
+		goto gpiofree;
+	}
+
+	rc = gpio_export(gpio, 0);
+
+	if (rc) {
+		pr_err("%s: GPIO export failure\n", __func__);
+		goto gpiofree;
+	}
+
+	pr_info("%s: Factory Kill Circuit: %s\n", __func__,
+		(enable ? "enabled" : "disabled"));
+
+	return;
+
+gpiofree:
+	gpio_free(gpio);
+putnode:
+	of_node_put(chosen);
+out:
+	return;
 }
 
 bool check_factory_kill_gpio(void)
