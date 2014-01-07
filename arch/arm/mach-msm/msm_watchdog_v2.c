@@ -947,6 +947,8 @@ no_reservation:
 	return;
 }
 
+EXPORT_COMPAT("qcom,msm-watchdog");
+
 #else /* CONFIG_MSM_WATCHDOG_CTX_PRINT undefined below */
 
 #define MSM_WDT_CTX_SIZE	PAGE_SIZE
