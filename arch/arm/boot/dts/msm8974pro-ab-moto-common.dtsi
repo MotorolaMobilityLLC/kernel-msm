@@ -23,12 +23,12 @@
 
 	cycapsense_prog {
 			compatible = "cypress,cycapsense_prog";
-			label = "cy8c20237_24lkxi";
-			silicon_id = <0x0142>;
+			label = "cy8c20247_24lkxi";
+			silicon_id = <0x0143>;
 			block_size = <128>;
-			num_of_blocks = <64>;
+			num_of_blocks = <128>;
 			secure_bytes = <16>;
-			gpios = <&msmgpio 73 0>, /* RESET */
+			gpios = <&msmgpio 63 0>, /* RESET */
 					<&msmgpio 111 0>, /* programming SCLK */
 					<&msmgpio 110 0>; /* programming SDAT */
 	};
