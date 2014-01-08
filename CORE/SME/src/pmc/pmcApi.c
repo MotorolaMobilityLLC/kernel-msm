@@ -1653,6 +1653,13 @@ tANI_BOOLEAN pmcValidateConnectState( tHalHandle hHal )
       pmcLog(pMac, LOGW, "PMC: Multiple active sessions exists. BMPS cannot be entered");
       return eANI_BOOLEAN_FALSE;
    }
+#ifdef FEATURE_WLAN_TDLS
+   if (pMac->isTdlsPowerSaveProhibited)
+   {
+      pmcLog(pMac, LOGE, FL("TDLS peer(s) connected/discovery sent. Dont enter BMPS"));
+      return eANI_BOOLEAN_FALSE;
+   }
+#endif
    return eANI_BOOLEAN_TRUE;
 }
 
