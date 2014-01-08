@@ -50,6 +50,9 @@
 #define SCM_SET_REGSAVE_CMD	0x2
 #define SCM_SVC_SEC_WDOG_DIS	0x7
 
+#define SCM_SVC_OEM		0xfe
+#define SCM_OEM_GET_CORE_COUNT	0xfff0
+
 static struct workqueue_struct *wdog_wq;
 static struct msm_watchdog_data *g_wdog_dd;
 
@@ -415,6 +418,7 @@ static irqreturn_t wdog_ppi_bark(int irq, void *dev_id)
 #define TZBSP_SC_STATUS_WDT		0x02
 #define TZBSP_SC_STATUS_SGI		0x04
 #define TZBSP_SC_STATUS_WARM_BOOT	0x08
+#define TZBSP_SC_STATUS_DBI		0x10
 
 #define TZBSP_DUMP_CTX_MAGIC		0x44434151
 #define TZBSP_DUMP_CTX_VERSION2		2
@@ -580,9 +584,18 @@ struct msm_wdt_ctx_info {
 	u32 sig;
 } __packed __aligned(4);
 
+struct scm_buf {
+	u32 mot_cmd;
+	u32 ret_addr_phys;
+	u32 ret;
+	u32 unused;
+};
+
 struct msm_wdt_page1 {
 	union tzbsp_dump_buf_s tzbsp;
+	struct scm_buf scm_buf;
 	u8 spare[PAGE_SIZE - sizeof(union tzbsp_dump_buf_s)
+			- sizeof(struct scm_buf)
 			- sizeof(struct msm_wdt_ctx_info)];
 	struct msm_wdt_ctx_info cinfo;
 } __packed __aligned(PAGE_SIZE);
@@ -785,6 +798,23 @@ static void msm_wdt_unwind_backtrace(struct tzbsp_mon_cpu_ctx_s *regs,
 	}
 }
 
+static int get_tzbsp_core_count(struct msm_wdt_ctx *ctx)
+{
+	int ret = get_core_count();
+
+	if (cpu_is_msm8610()) {
+		struct scm_buf *scm_buf = &ctx->p1.scm_buf;
+
+		scm_buf->mot_cmd = SCM_OEM_GET_CORE_COUNT;
+		if (!scm_call(SCM_SVC_OEM, 1, scm_buf,
+				sizeof(*scm_buf), NULL, 0))
+			ret = scm_buf->ret;
+		else
+			pr_err("Failed to get tzbsp cpu count for msm8610.\n");
+	}
+	return ret;
+}
+
 static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 {
 	int i;
@@ -794,10 +824,11 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 	char label[64];
 	u8 (*stack)[THREAD_SIZE];
 	const int cpu_count = get_core_count();
+	const int tzbsp_cpu_count = get_tzbsp_core_count(ctx);
 	struct msm_wdt_pcp *pcp;
 	struct task_struct *task;
 
-	switch (cpu_count) {
+	switch (tzbsp_cpu_count) {
 	case NR_CPUS_2:
 		/* Common between v2 and v4. Same for NR_CPUS_4. */
 		sc_status = ctx->p1.tzbsp.s2v2.sc_status;
@@ -810,10 +841,11 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 		wdt_sts = ctx->p1.tzbsp.s4v2.wdt_sts;
 		break;
 	default:
-		MSMWDTD("msm_wdt_ctx: unsupported cpu_count %d\n", cpu_count);
+		MSMWDTD("msm_wdt_ctx: unsupported cpu_count %d\n",
+				tzbsp_cpu_count);
 		return;
 	}
-	for (i = 0; i < cpu_count; i++) {
+	for (i = 0; i < tzbsp_cpu_count; i++) {
 		orr |= wdt_sts[i];
 		orr |= sc_ns[i].saved_ctx.mon_lr;
 	}
@@ -836,10 +868,14 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 	if ((ctx->p1.tzbsp.s0.magic != TZBSP_DUMP_CTX_MAGIC)
 		|| ((ctx->p1.tzbsp.s0.version != TZBSP_DUMP_CTX_VERSION2) &&
 			(ctx->p1.tzbsp.s0.version != TZBSP_DUMP_CTX_VERSION4))
-		|| (ctx->p1.tzbsp.s0.cpu_count != cpu_count)) {
+		|| ((ctx->p1.tzbsp.s0.cpu_count != tzbsp_cpu_count) &&
+			(sc_status[0] & TZBSP_SC_STATUS_DBI) &&
+			(ctx->p1.tzbsp.s0.cpu_count != cpu_count))) {
 		MSMWDTD("msm_wdt_ctx: tzbsp dump buffer mismatch.\n");
 		MSMWDTD("Expected: magic 0x%08x, cpu_count %d, ",
-				TZBSP_DUMP_CTX_MAGIC, cpu_count);
+				TZBSP_DUMP_CTX_MAGIC,
+				(sc_status[0] & TZBSP_SC_STATUS_DBI) ?
+					cpu_count : tzbsp_cpu_count);
 		MSMWDTD("version %d or %d\n", TZBSP_DUMP_CTX_VERSION2,
 				TZBSP_DUMP_CTX_VERSION4);
 		MSMWDTD("Found:    magic 0x%08x, cpu_count %d, version %d\n",
@@ -947,7 +983,7 @@ static void msm_watchdog_alloc_buf(struct msm_watchdog_data *wdog_dd)
 	unsigned long phys;
 	struct msm_wdt_ctx *ctx;
 
-	BUILD_BUG_ON((sizeof(union tzbsp_dump_buf_s)
+	BUILD_BUG_ON((sizeof(union tzbsp_dump_buf_s) + sizeof(struct scm_buf)
 		+ sizeof(struct msm_wdt_ctx_info)) > PAGE_SIZE);
 	BUILD_BUG_ON(CONFIG_NR_CPUS > NR_CPUS_MAX);
 
@@ -981,6 +1017,8 @@ static void msm_watchdog_alloc_buf(struct msm_watchdog_data *wdog_dd)
 		dev_err(wdog_dd->dev, "cannot remap buffer: %08lX\n", phys);
 		return;
 	}
+	ctx->p1.scm_buf.ret_addr_phys = phys +
+			offsetof(struct msm_wdt_ctx, p1.scm_buf.ret);
 	msm_wdt_ctx_print(ctx);
 	msm_wdt_ctx_reset(ctx);
 	iounmap(ctx);
