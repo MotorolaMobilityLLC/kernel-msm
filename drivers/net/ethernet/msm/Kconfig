@@ -26,20 +26,6 @@ config MSM_EMAC
 
 endif # NET_VENDOR_MSM
 
-config MSM_RMNET
-	tristate "MSM RMNET Virtual Network Device"
-	depends on ARCH_MSM
-	default y
-	help
-	  Virtual ethernet interface for MSM RMNET transport.
-
-config MSM_RMNET_SDIO
-	bool "RMNET SDIO Driver"
-	depends on MSM_SDIO_DMUX
-	default n
-	help
-	  Implements RMNET over SDIO interface.
-
 config MSM_RMNET_BAM
 	bool "RMNET BAM Driver"
 	depends on (MSM_BAM_DMUX && NET_SCHED && NET_SCH_HTB && NET_SCH_PRIO && NET_CLS_FW)
@@ -76,17 +62,17 @@ config MSM_RMNET_WWAN
 	  applications to send and receive
 	  the data to/from A2
 
-config QFEC
-	tristate "QFEC ethernet driver"
-	select MII
-	depends on ARM
-	help
-	  This driver supports Ethernet in the FSM9xxx.
-	  To compile this driver as a module, choose M here: the
-	  module will be called qfec.
-
 config ECM_IPA
 	tristate "STD ECM LAN Driver support"
 	depends on IPA
 	help
 	  Allows LAN between Apps and tethered HOST on STD ECM
+
+config RNDIS_IPA
+	tristate "RNDIS_IPA Network Interface Driver support"
+	depends on IPA
+	help
+	  Enables LAN between applications processor and a tethered
+	  host using the RNDIS protocol.
+	  This Network interface is aimed to allow data path go through
+	  IPA core while using RNDIS protocol.

@@ -1,0 +1,81 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/*
+ * As a general rule, only chipset-specific property overrides should be placed
+ * inside this file. However, device definitions should be placed inside the
+ * msm8974.dtsi / msm8974pro.dtsi file(s).
+ */
+
+/include/ "msm8974pro.dtsi"
+
+/include/ "msm-pm8x41-rpm-regulator.dtsi"
+/include/ "msm-pm8841.dtsi"
+&spmi_bus {
+	pm8941_lsid0: qcom,pm8941@0 {
+		reg = <0x0>;
+	};
+	pm8941_lsid1: qcom,pm8941@1 {
+		reg = <0x1>;
+	};
+};
+/include/ "msm-pm8941.dtsi"
+/include/ "msm8974-regulator.dtsi"
+/include/ "msm8974-clock.dtsi"
+
+&krait_pdn {
+	qcom,use-phase-switching;
+};
+
+&krait0_vreg {
+		regulator-max-microvolt = <1120000>;
+		qcom,ldo-delta-voltage = <12500>;
+};
+
+&krait1_vreg {
+		regulator-max-microvolt = <1120000>;
+		qcom,ldo-delta-voltage = <12500>;
+};
+
+&krait2_vreg {
+		regulator-max-microvolt = <1120000>;
+		qcom,ldo-delta-voltage = <12500>;
+};
+
+&krait3_vreg {
+		regulator-max-microvolt = <1120000>;
+		qcom,ldo-delta-voltage = <12500>;
+};
+
+&tspp {
+	vdd_cx-supply = <&pm8841_s2_corner>;
+};
+
+&pm8841_s2_corner {
+	qcom,init-smps-mode = <0>;	/* Allow AUTO mode for VDD_CX. */
+};
+
+&krait_regulator_pmic {
+	status = "ok";
+
+	qcom,ctl@2000 {
+		status = "ok";
+	};
+
+	qcom,ps@2100 {
+		status = "ok";
+	};
+
+	qcom,freq@2200 {
+		status = "ok";
+	};
+};

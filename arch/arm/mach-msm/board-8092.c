@@ -18,61 +18,38 @@
 #include <linux/of_platform.h>
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
+#include <linux/msm_tsens.h>
+#include <linux/msm_thermal.h>
+#include <linux/clk/msm-clk-provider.h>
+#include <linux/regulator/rpm-smd-regulator.h>
 #include <asm/mach/arch.h>
 #include <mach/socinfo.h>
 #include <mach/board.h>
 #include <mach/msm_memtypes.h>
-#include <mach/qpnp-int.h>
-#include <mach/clk-provider.h>
-#include <mach/msm_smem.h>
+#include <soc/qcom/smem.h>
 #include <mach/msm_smd.h>
 #include <mach/restart.h>
 #include <mach/rpm-smd.h>
-#include <mach/rpm-regulator-smd.h>
 
 #include <linux/io.h>
 #include <linux/gpio.h>
 #include <linux/irq.h>
 #include <linux/irqdomain.h>
 #include <linux/regulator/qpnp-regulator.h>
+#include <linux/regulator/krait-regulator.h>
 
 #include "board-dt.h"
 #include "clock.h"
 #include "platsmp.h"
-#include "modem_notifier.h"
-
-static struct memtype_reserve mpq8092_reserve_table[] __initdata = {
-	[MEMTYPE_SMI] = {
-	},
-	[MEMTYPE_EBI0] = {
-		.flags  =       MEMTYPE_FLAGS_1M_ALIGN,
-		},
-	[MEMTYPE_EBI1] = {
-		.flags  =       MEMTYPE_FLAGS_1M_ALIGN,
-		},
-};
-
-static int mpq8092_paddr_to_memtype(unsigned int paddr)
-{
-	return MEMTYPE_EBI1;
-}
-
-static struct reserve_info mpq8092_reserve_info __initdata = {
-	.memtype_reserve_table = mpq8092_reserve_table,
-	.paddr_to_memtype = mpq8092_paddr_to_memtype,
-};
 
 static void __init mpq8092_early_memory(void)
 {
-	reserve_info = &mpq8092_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_hole, mpq8092_reserve_table);
+	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
 }
 
 static void __init mpq8092_dt_reserve(void)
 {
-	reserve_info = &mpq8092_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_reserve, mpq8092_reserve_table);
-	msm_reserve();
+	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 }
 
 static void __init mpq8092_map_io(void)
@@ -81,10 +58,11 @@ static void __init mpq8092_map_io(void)
 }
 
 static struct of_dev_auxdata mpq8092_auxdata_lookup[] __initdata = {
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
-			"msm_sdcc.1", NULL),
-	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, \
-			"msm_sdcc.2", NULL),
+	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, "msm_sdcc.1", NULL),
+	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, "msm_sdcc.2", NULL),
+	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, "msm_sdcc.1", NULL),
+	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, "msm_sdcc.2", NULL),
+	OF_DEV_AUXDATA("qcom,msm_pcie", 0xFC520000, "msm_pcie", NULL),
 	{}
 };
 
@@ -96,16 +74,17 @@ static struct of_dev_auxdata mpq8092_auxdata_lookup[] __initdata = {
  */
 void __init mpq8092_add_drivers(void)
 {
-	msm_smem_init();
-	msm_init_modem_notifier_list();
 	msm_smd_init();
 	msm_rpm_driver_init();
-	rpm_regulator_smd_driver_init();
+	rpm_smd_regulator_driver_init();
 	qpnp_regulator_init();
+	krait_power_init();
 	if (of_board_is_rumi())
 		msm_clock_init(&mpq8092_rumi_clock_init_data);
 	else
 		msm_clock_init(&mpq8092_clock_init_data);
+	tsens_tm_init_driver();
+	msm_thermal_device_init();
 }
 
 
@@ -113,11 +92,19 @@ static void __init mpq8092_init(void)
 {
 	struct of_dev_auxdata *adata = mpq8092_auxdata_lookup;
 
+	/*
+	 * populate devices from DT first so smem probe will get called as part
+	 * of msm_smem_init.  socinfo_init needs smem support so call
+	 * msm_smem_init before it.
+	 */
+	board_dt_populate(adata);
+
+	msm_smem_init();
+
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
 	mpq8092_init_gpiomux();
-	board_dt_populate(adata);
 	mpq8092_add_drivers();
 }
 

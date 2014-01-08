@@ -15,11 +15,11 @@
 #include <linux/module.h>
 #include <linux/pm_qos.h>
 #include <linux/clk.h>
-#include <mach/clk.h>
 #include <linux/io.h>
+#include <linux/clk/msm-clk.h>
 
 #include <mach/camera.h>
-#include <mach/iommu_domains.h>
+#include <linux/msm_iommu_domains.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
 
@@ -31,14 +31,19 @@
 int msm_jpeg_platform_set_clk_rate(struct msm_jpeg_device *pgmn_dev,
 		long clk_rate)
 {
-	struct msm_cam_clk_info jpeg_core_clk_info[] = {
-		{"core_clk", JPEG_CLK_RATE, 0}
-	};
+	int rc = 0;
+	struct clk *jpeg_clk;
 
-	jpeg_core_clk_info[0].clk_rate = clk_rate;
+	jpeg_clk = clk_get(&pgmn_dev->pdev->dev, "core_clk");
+	if (IS_ERR(jpeg_clk)) {
+		JPEG_PR_ERR("%s get failed\n", "core_clk");
+		rc = PTR_ERR(jpeg_clk);
+		return rc;
+	}
 
-	return msm_cam_clk_enable(&pgmn_dev->pdev->dev, jpeg_core_clk_info,
-			pgmn_dev->jpeg_clk, ARRAY_SIZE(jpeg_core_clk_info), 1);
+	rc = clk_set_rate(jpeg_clk, clk_rate);
+
+	return rc;
 }
 
 void msm_jpeg_platform_p2v(struct msm_jpeg_device *pgmn_dev, struct file  *file,
@@ -170,6 +175,50 @@ static struct msm_bus_scale_pdata msm_jpeg_bus_client_pdata = {
 	.name = "msm_jpeg",
 };
 
+#ifdef CONFIG_MSM_IOMMU
+static int msm_jpeg_attach_iommu(struct msm_jpeg_device *pgmn_dev)
+{
+	int i;
+
+	for (i = 0; i < pgmn_dev->iommu_cnt; i++) {
+		int rc = iommu_attach_device(pgmn_dev->domain,
+				pgmn_dev->iommu_ctx_arr[i]);
+		if (rc < 0) {
+			JPEG_PR_ERR("%s: Device attach failed\n", __func__);
+			return -ENODEV;
+		}
+		JPEG_DBG("%s:%d] dom 0x%lx ctx 0x%lx", __func__, __LINE__,
+				(unsigned long)pgmn_dev->domain,
+				(unsigned long)pgmn_dev->iommu_ctx_arr[i]);
+	}
+	return 0;
+}
+static int msm_jpeg_detach_iommu(struct msm_jpeg_device *pgmn_dev)
+{
+	int i;
+
+	for (i = 0; i < pgmn_dev->iommu_cnt; i++) {
+		JPEG_DBG("%s:%d] dom 0x%lx ctx 0x%lx", __func__, __LINE__,
+				(unsigned long)pgmn_dev->domain,
+				(unsigned long)pgmn_dev->iommu_ctx_arr[i]);
+		iommu_detach_device(pgmn_dev->domain,
+				pgmn_dev->iommu_ctx_arr[i]);
+	}
+	return 0;
+}
+#else
+static int msm_jpeg_attach_iommu(struct msm_jpeg_device *pgmn_dev)
+{
+	return 0;
+}
+static int msm_jpeg_detach_iommu(struct msm_jpeg_device *pgmn_dev)
+{
+	return 0;
+}
+#endif
+
+
+
 int msm_jpeg_platform_init(struct platform_device *pdev,
 	struct resource **mem,
 	void **base,
@@ -178,7 +227,6 @@ int msm_jpeg_platform_init(struct platform_device *pdev,
 	void *context)
 {
 	int rc = -1;
-	int i = 0;
 	int jpeg_irq;
 	struct resource *jpeg_mem, *jpeg_io, *jpeg_irq_res;
 	void *jpeg_base;
@@ -255,20 +303,10 @@ int msm_jpeg_platform_init(struct platform_device *pdev,
 	JPEG_DBG("%s:%d] jpeg_vbif 0x%x", __func__, __LINE__,
 		(uint32_t)pgmn_dev->jpeg_vbif);
 
-#ifdef CONFIG_MSM_IOMMU
-	for (i = 0; i < pgmn_dev->iommu_cnt; i++) {
-		rc = iommu_attach_device(pgmn_dev->domain,
-				pgmn_dev->iommu_ctx_arr[i]);
-		if (rc < 0) {
-			rc = -ENODEV;
-			JPEG_PR_ERR("%s: Device attach failed\n", __func__);
-			goto fail_iommu;
-		}
-		JPEG_DBG("%s:%d] dom 0x%x ctx 0x%x", __func__, __LINE__,
-					(uint32_t)pgmn_dev->domain,
-					(uint32_t)pgmn_dev->iommu_ctx_arr[i]);
-	}
-#endif
+	rc = msm_jpeg_attach_iommu(pgmn_dev);
+	if (rc < 0)
+		goto fail_iommu;
+
 	set_vbif_params(pgmn_dev, pgmn_dev->jpeg_vbif);
 
 	rc = request_irq(jpeg_irq, handler, IRQF_TRIGGER_RISING, "jpeg",
@@ -290,18 +328,11 @@ int msm_jpeg_platform_init(struct platform_device *pdev,
 	return rc;
 
 fail_request_irq:
-#ifdef CONFIG_MSM_IOMMU
-	for (i = 0; i < pgmn_dev->iommu_cnt; i++) {
-		JPEG_PR_ERR("%s:%d] dom 0x%x ctx 0x%x", __func__, __LINE__,
-					(uint32_t)pgmn_dev->domain,
-					(uint32_t)pgmn_dev->iommu_ctx_arr[i]);
-		iommu_detach_device(pgmn_dev->domain,
-					pgmn_dev->iommu_ctx_arr[i]);
-	}
-#endif
+	msm_jpeg_detach_iommu(pgmn_dev);
 
 fail_iommu:
 	iounmap(pgmn_dev->jpeg_vbif);
+
 
 fail_vbif:
 	msm_cam_clk_enable(&pgmn_dev->pdev->dev, jpeg_8x_clk_info,
@@ -329,19 +360,13 @@ int msm_jpeg_platform_release(struct resource *mem, void *base, int irq,
 	void *context)
 {
 	int result = 0;
-	int i = 0;
+
 	struct msm_jpeg_device *pgmn_dev =
 		(struct msm_jpeg_device *) context;
 
 	free_irq(irq, context);
 
-#ifdef CONFIG_MSM_IOMMU
-	for (i = 0; i < pgmn_dev->iommu_cnt; i++) {
-		iommu_detach_device(pgmn_dev->domain,
-				pgmn_dev->iommu_ctx_arr[i]);
-		JPEG_DBG("%s:%d]", __func__, __LINE__);
-	}
-#endif
+	msm_jpeg_detach_iommu(pgmn_dev);
 
 	msm_bus_scale_unregister_client(pgmn_dev->jpeg_bus_client);
 	msm_cam_clk_enable(&pgmn_dev->pdev->dev, jpeg_8x_clk_info,

@@ -47,6 +47,8 @@
 #include <linux/slab.h>
 #include <linux/pm_qos.h>
 #include <linux/iopoll.h>
+#include <linux/clk/msm-clk.h>
+#include <linux/irqchip/msm-mpm-irq.h>
 
 #include <asm/cacheflush.h>
 #include <asm/div64.h>
@@ -54,10 +56,8 @@
 
 #include <asm/mach/mmc.h>
 #include <mach/msm_iomap.h>
-#include <mach/clk.h>
 #include <mach/dma.h>
 #include <mach/sdio_al.h>
-#include <mach/mpm.h>
 #include <mach/msm_bus.h>
 
 #include "msm_sdcc.h"
@@ -6905,7 +6905,7 @@ static const struct dev_pm_ops msmsdcc_dev_pm_ops = {
 
 static const struct of_device_id msmsdcc_dt_match[] = {
 	{.compatible = "qcom,msm-sdcc"},
-
+	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, msmsdcc_dt_match);
 

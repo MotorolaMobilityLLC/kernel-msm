@@ -41,6 +41,7 @@ enum {
 #define HAVE_WCNSS_RESET_INTR 1
 #define HAVE_WCNSS_CAL_DOWNLOAD 1
 #define HAVE_WCNSS_RX_BUFF_COUNT 1
+#define WLAN_MAC_ADDR_SIZE (6)
 
 struct device *wcnss_wlan_get_device(void);
 struct resource *wcnss_wlan_get_memory_map(struct device *dev);
@@ -64,6 +65,7 @@ int wcnss_wlan_power(struct device *dev,
 int wcnss_req_power_on_lock(char *driver_name);
 int wcnss_free_power_on_lock(char *driver_name);
 unsigned int wcnss_get_serial_number(void);
+int wcnss_get_wlan_mac_address(char mac_addr[WLAN_MAC_ADDR_SIZE]);
 void wcnss_allow_suspend(void);
 void wcnss_prevent_suspend(void);
 int wcnss_hardware_type(void);
@@ -86,7 +88,11 @@ static inline void wcnss_log_debug_regs_on_bite(void)
 {
 }
 #endif
-
+int wcnss_set_wlan_unsafe_channel(
+				u16 *unsafe_ch_list, u16 ch_count);
+int wcnss_get_wlan_unsafe_channel(
+				u16 *unsafe_ch_list, u16 buffer_size,
+				u16 *ch_count);
 #define wcnss_wlan_get_drvdata(dev) dev_get_drvdata(dev)
 #define wcnss_wlan_set_drvdata(dev, data) dev_set_drvdata((dev), (data))
 /* WLAN driver uses these names */

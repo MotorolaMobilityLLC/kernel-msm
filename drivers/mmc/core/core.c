@@ -60,6 +60,7 @@ static void mmc_clk_scaling(struct mmc_host *host, bool from_wq);
 
 /* Flushing a large amount of cached data may take a long time. */
 #define MMC_FLUSH_REQ_TIMEOUT_MS 90000 /* msec */
+#define MMC_CACHE_DISBALE_TIMEOUT_MS 180000 /* msec */
 
 static struct workqueue_struct *workqueue;
 static const unsigned freqs[] = { 400000, 300000, 200000, 100000 };
@@ -1123,6 +1124,30 @@ int mmc_wait_for_cmd(struct mmc_host *host, struct mmc_command *cmd, int retries
 
 EXPORT_SYMBOL(mmc_wait_for_cmd);
 
+#ifdef CONFIG_PM_RUNTIME
+static int mmc_get_bkops_status(struct mmc_card *card)
+{
+	int err = 0;
+
+	if (!mmc_use_core_runtime_pm(card->host) && mmc_card_doing_bkops(card)
+	    && (card->host->parent->power.runtime_status == RPM_SUSPENDING)
+	    && mmc_card_is_prog_state(card))
+		err = -EBUSY;
+
+	return err;
+}
+#else
+static int mmc_get_bkops_status(struct mmc_card *card)
+{
+	int err = 0;
+
+	if (!mmc_use_core_runtime_pm(card->host) && mmc_card_doing_bkops(card)
+	    && mmc_card_is_prog_state(card))
+		err = -EBUSY;
+
+	return err;
+}
+#endif
 /**
  *	mmc_stop_bkops - stop ongoing BKOPS
  *	@card: MMC card to check BKOPS
@@ -1154,9 +1179,7 @@ int mmc_stop_bkops(struct mmc_card *card)
 	 * If idle time bkops is running on the card, let's not get into
 	 * suspend.
 	 */
-	if (!mmc_use_core_runtime_pm(card->host) && mmc_card_doing_bkops(card)
-	    && (card->host->parent->power.runtime_status == RPM_SUSPENDING)
-	    && mmc_card_is_prog_state(card)) {
+	if (mmc_get_bkops_status(card)) {
 		err = -EBUSY;
 		goto out;
 	}
@@ -1317,6 +1340,11 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 	if (card->quirks & MMC_QUIRK_INAND_DATA_TIMEOUT) {
 		data->timeout_ns = 4000000000u; /* 4s */
 		data->timeout_clks = 0;
+	}
+	/* Some emmc cards require a longer read/write time */
+	if (card->quirks & MMC_QUIRK_BROKEN_DATA_TIMEOUT) {
+		if (data->timeout_ns <  4000000000u)
+			data->timeout_ns = 4000000000u;	/* 4s */
 	}
 }
 EXPORT_SYMBOL(mmc_set_data_timeout);
@@ -3555,14 +3583,14 @@ int mmc_cache_ctrl(struct mmc_host *host, u8 enable)
 
 		if (card->ext_csd.cache_ctrl ^ enable) {
 			if (!enable)
-				timeout = MMC_FLUSH_REQ_TIMEOUT_MS;
+				timeout = MMC_CACHE_DISBALE_TIMEOUT_MS;
 
 			err = mmc_switch_ignore_timeout(card,
 					EXT_CSD_CMD_SET_NORMAL,
 					EXT_CSD_CACHE_CTRL, enable, timeout);
 
 			if (err == -ETIMEDOUT && !enable) {
-				pr_debug("%s:cache disable operation timeout\n",
+				pr_err("%s:cache disable operation timeout\n",
 						mmc_hostname(card->host));
 				rc = mmc_interrupt_hpi(card);
 				if (rc)
@@ -3592,6 +3620,7 @@ EXPORT_SYMBOL(mmc_cache_ctrl);
 int mmc_suspend_host(struct mmc_host *host)
 {
 	int err = 0;
+	ktime_t start = ktime_get();
 
 	if (mmc_bus_needs_resume(host))
 		return 0;
@@ -3616,11 +3645,14 @@ int mmc_suspend_host(struct mmc_host *host)
 
 		if (!err) {
 			if (host->bus_ops->suspend) {
-				err = mmc_stop_bkops(host->card);
-				if (err)
-					goto out;
+				if (host->card) {
+					err = mmc_stop_bkops(host->card);
+					if (err)
+						goto out;
+				}
 				err = host->bus_ops->suspend(host);
-				MMC_UPDATE_BKOPS_STATS_SUSPEND(host->
+				if (host->card)
+					MMC_UPDATE_BKOPS_STATS_SUSPEND(host->
 						card->bkops_info.bkops_stats);
 			}
 			if (!(host->card && mmc_card_sdio(host->card)))
@@ -3649,6 +3681,8 @@ int mmc_suspend_host(struct mmc_host *host)
 	if (!err && !mmc_card_keep_power(host))
 		mmc_power_off(host);
 
+	trace_mmc_suspend_host(mmc_hostname(host), err,
+			ktime_to_us(ktime_sub(ktime_get(), start)));
 	return err;
 out:
 	if (!(host->card && mmc_card_sdio(host->card)))
@@ -3666,6 +3700,7 @@ EXPORT_SYMBOL(mmc_suspend_host);
 int mmc_resume_host(struct mmc_host *host)
 {
 	int err = 0;
+	ktime_t start = ktime_get();
 
 	mmc_bus_get(host);
 	if (mmc_bus_manual_resume(host)) {
@@ -3703,6 +3738,8 @@ int mmc_resume_host(struct mmc_host *host)
 	host->pm_flags &= ~MMC_PM_KEEP_POWER;
 	mmc_bus_put(host);
 
+	trace_mmc_resume_host(mmc_hostname(host), err,
+			ktime_to_us(ktime_sub(ktime_get(), start)));
 	return err;
 }
 EXPORT_SYMBOL(mmc_resume_host);

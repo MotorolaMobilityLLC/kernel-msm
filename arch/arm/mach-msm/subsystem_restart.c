@@ -30,17 +30,16 @@
 #include <linux/device.h>
 #include <linux/idr.h>
 #include <linux/debugfs.h>
-#include <linux/miscdevice.h>
 #include <linux/interrupt.h>
 #include <linux/of_gpio.h>
+#include <linux/cdev.h>
+#include <linux/platform_device.h>
 
 #include <asm/current.h>
 
 #include <mach/socinfo.h>
 #include <mach/subsystem_notif.h>
 #include <mach/subsystem_restart.h>
-
-#include "smd_private.h"
 
 static int enable_debug;
 module_param(enable_debug, int, S_IRUGO | S_IWUSR);
@@ -108,11 +107,12 @@ struct subsys_tracking {
  * @subsys_ptrs: pointers to subsystems in this restart order
  */
 struct subsys_soc_restart_order {
-	const char * const *subsystem_list;
+	struct device_node **device_ptrs;
 	int count;
 
 	struct subsys_tracking track;
-	struct subsys_device *subsys_ptrs[];
+	struct subsys_device **subsys_ptrs;
+	struct list_head list;
 };
 
 struct restart_log {
@@ -159,10 +159,11 @@ struct subsys_device {
 	struct dentry *dentry;
 #endif
 	bool do_ramdump_on_put;
-	struct miscdevice misc_dev;
-	char miscdevice_name[32];
+	struct cdev char_dev;
+	dev_t dev_no;
 	struct completion err_ready;
 	bool crashed;
+	struct list_head list;
 };
 
 static struct subsys_device *to_subsys(struct device *d)
@@ -262,65 +263,28 @@ static int enable_ramdumps;
 module_param(enable_ramdumps, int, S_IRUGO | S_IWUSR);
 
 struct workqueue_struct *ssr_wq;
+static struct class *char_class;
 
 static LIST_HEAD(restart_log_list);
+static LIST_HEAD(subsys_list);
+static LIST_HEAD(ssr_order_list);
 static DEFINE_MUTEX(soc_order_reg_lock);
 static DEFINE_MUTEX(restart_log_mutex);
-
-/* SOC specific restart orders go here */
-
-#define DEFINE_SINGLE_RESTART_ORDER(name, order)		\
-	static struct subsys_soc_restart_order __##name = {	\
-		.subsystem_list = order,			\
-		.count = ARRAY_SIZE(order),			\
-		.subsys_ptrs = {[ARRAY_SIZE(order)] = NULL}	\
-	};							\
-	static struct subsys_soc_restart_order *name[] = {      \
-		&__##name,					\
-	}
-
-/* MSM 8x60 restart ordering info */
-static const char * const _order_8x60_all[] = {
-	"external_modem",  "modem", "adsp"
-};
-DEFINE_SINGLE_RESTART_ORDER(orders_8x60_all, _order_8x60_all);
-
-static const char * const _order_8x60_modems[] = {"external_modem", "modem"};
-DEFINE_SINGLE_RESTART_ORDER(orders_8x60_modems, _order_8x60_modems);
-
-/*SGLTE restart ordering info*/
-static const char * const order_8960_sglte[] = {"external_modem",
-						"modem"};
-
-static struct subsys_soc_restart_order restart_orders_8960_fusion_sglte = {
-	.subsystem_list = order_8960_sglte,
-	.count = ARRAY_SIZE(order_8960_sglte),
-	.subsys_ptrs = {[ARRAY_SIZE(order_8960_sglte)] = NULL}
-	};
-
-static struct subsys_soc_restart_order *restart_orders_8960_sglte[] = {
-	&restart_orders_8960_fusion_sglte,
-	};
-
-/* These will be assigned to one of the sets above after
- * runtime SoC identification.
- */
-static struct subsys_soc_restart_order **restart_orders;
-static int n_restart_orders;
+static DEFINE_MUTEX(subsys_list_lock);
+static DEFINE_MUTEX(char_device_lock);
+static DEFINE_MUTEX(ssr_order_mutex);
 
 static struct subsys_soc_restart_order *
 update_restart_order(struct subsys_device *dev)
 {
-	int i, j;
+	int i;
 	struct subsys_soc_restart_order *order;
-	const char *name = dev->desc->name;
-	int len = SUBSYS_NAME_MAX_LENGTH;
+	struct device_node *device = dev->desc->dev->of_node;
 
 	mutex_lock(&soc_order_reg_lock);
-	for (j = 0; j < n_restart_orders; j++) {
-		order = restart_orders[j];
+	list_for_each_entry(order, &ssr_order_list, list) {
 		for (i = 0; i < order->count; i++) {
-			if (!strncmp(order->subsystem_list[i], name, len)) {
+			if (order->device_ptrs[i] == device) {
 				order->subsys_ptrs[i] = dev;
 				goto found;
 			}
@@ -496,15 +460,22 @@ static void subsystem_powerup(struct subsys_device *dev, void *data)
 	pr_info("[%p]: Powering up %s\n", current, name);
 	init_completion(&dev->err_ready);
 
-	if (dev->desc->powerup(dev->desc) < 0)
+	if (dev->desc->powerup(dev->desc) < 0) {
+		notify_each_subsys_device(&dev, 1, SUBSYS_POWERUP_FAILURE,
+								NULL);
 		panic("[%p]: Powerup error: %s!", current, name);
+	}
 	enable_all_irqs(dev);
 
 	ret = wait_for_err_ready(dev);
-	if (ret)
+	if (ret) {
+		notify_each_subsys_device(&dev, 1, SUBSYS_POWERUP_FAILURE,
+								NULL);
 		panic("[%p]: Timed out waiting for error ready: %s!",
 			current, name);
+	}
 	subsys_set_state(dev, SUBSYS_ONLINE);
+	subsys_set_crash_status(dev, false);
 }
 
 static int __find_subsys(struct device *dev, void *data)
@@ -686,6 +657,7 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	struct subsys_tracking *track;
 	unsigned count;
 	unsigned long flags;
+	bool force_stop = true;
 
 	/*
 	 * It's OK to not take the registration lock at this point.
@@ -714,9 +686,11 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 
 	pr_debug("[%p]: Starting restart sequence for %s\n", current,
 			desc->name);
-	notify_each_subsys_device(list, count, SUBSYS_BEFORE_SHUTDOWN, NULL);
+	notify_each_subsys_device(list, count, SUBSYS_BEFORE_SHUTDOWN,
+							(void *)force_stop);
 	for_each_subsys_device(list, count, NULL, subsystem_shutdown);
-	notify_each_subsys_device(list, count, SUBSYS_AFTER_SHUTDOWN, NULL);
+	notify_each_subsys_device(list, count, SUBSYS_AFTER_SHUTDOWN,
+							(void *)force_stop);
 
 	notify_each_subsys_device(list, count, SUBSYS_RAMDUMP_NOTIFICATION,
 							  &enable_ramdumps);
@@ -863,7 +837,7 @@ EXPORT_SYMBOL(subsystem_crashed);
 
 void subsys_set_crash_status(struct subsys_device *dev, bool crashed)
 {
-	dev->crashed = true;
+	dev->crashed = crashed;
 }
 
 bool subsys_get_crash_status(struct subsys_device *dev)
@@ -953,11 +927,16 @@ static void subsys_debugfs_remove(struct subsys_device *subsys) { }
 
 static int subsys_device_open(struct inode *inode, struct file *file)
 {
+	struct subsys_device *device, *subsys_dev = 0;
 	void *retval;
-	struct subsys_device *subsys_dev = container_of(file->private_data,
-		struct subsys_device, misc_dev);
 
-	if (!file->private_data)
+	mutex_lock(&subsys_list_lock);
+	list_for_each_entry(device, &subsys_list, list)
+		if (MINOR(device->dev_no) == iminor(inode))
+			subsys_dev = device;
+	mutex_unlock(&subsys_list_lock);
+
+	if (!subsys_dev)
 		return -EINVAL;
 
 	retval = subsystem_get(subsys_dev->desc->name);
@@ -969,14 +948,18 @@ static int subsys_device_open(struct inode *inode, struct file *file)
 
 static int subsys_device_close(struct inode *inode, struct file *file)
 {
-	struct subsys_device *subsys_dev = container_of(file->private_data,
-		struct subsys_device, misc_dev);
+	struct subsys_device *device, *subsys_dev = 0;
 
-	if (!file->private_data)
+	mutex_lock(&subsys_list_lock);
+	list_for_each_entry(device, &subsys_list, list)
+		if (MINOR(device->dev_no) == iminor(inode))
+			subsys_dev = device;
+	mutex_unlock(&subsys_list_lock);
+
+	if (!subsys_dev)
 		return -EINVAL;
 
 	subsystem_put(subsys_dev);
-
 	return 0;
 }
 
@@ -1008,31 +991,132 @@ static irqreturn_t subsys_err_ready_intr_handler(int irq, void *subsys)
 	return IRQ_HANDLED;
 }
 
-static int subsys_misc_device_add(struct subsys_device *subsys_dev)
+static int subsys_char_device_add(struct subsys_device *subsys_dev)
 {
-	int ret;
-	memset(subsys_dev->miscdevice_name, 0,
-			ARRAY_SIZE(subsys_dev->miscdevice_name));
-	snprintf(subsys_dev->miscdevice_name,
-			 ARRAY_SIZE(subsys_dev->miscdevice_name), "subsys_%s",
-			 subsys_dev->desc->name);
+	int ret = 0;
+	static int major, minor;
+	dev_t dev_no;
 
-	subsys_dev->misc_dev.minor = MISC_DYNAMIC_MINOR;
-	subsys_dev->misc_dev.name = subsys_dev->miscdevice_name;
-	subsys_dev->misc_dev.fops = &subsys_device_fops;
-	subsys_dev->misc_dev.parent = &subsys_dev->dev;
+	mutex_lock(&char_device_lock);
+	if (!major) {
+		ret = alloc_chrdev_region(&dev_no, 0, 4, "subsys");
+		if (ret < 0) {
+			pr_err("Failed to alloc subsys_dev region, err %d\n",
+									ret);
+			goto fail;
+		}
+		major = MAJOR(dev_no);
+		minor = MINOR(dev_no);
+	} else
+		dev_no = MKDEV(major, minor);
 
-	ret = misc_register(&subsys_dev->misc_dev);
-	if (ret) {
-		pr_err("%s: misc_register() failed for %s (%d)", __func__,
-				subsys_dev->miscdevice_name, ret);
+	if (!device_create(char_class, subsys_dev->desc->dev, dev_no,
+			NULL, "subsys_%s", subsys_dev->desc->name)) {
+		pr_err("Failed to create subsys_%s device\n",
+						subsys_dev->desc->name);
+		goto fail_unregister_cdev_region;
 	}
+
+	cdev_init(&subsys_dev->char_dev, &subsys_device_fops);
+	subsys_dev->char_dev.owner = THIS_MODULE;
+	ret = cdev_add(&subsys_dev->char_dev, dev_no, 1);
+	if (ret < 0)
+		goto fail_destroy_device;
+
+	subsys_dev->dev_no = dev_no;
+	minor++;
+	mutex_unlock(&char_device_lock);
+
+	return 0;
+
+fail_destroy_device:
+	device_destroy(char_class, dev_no);
+fail_unregister_cdev_region:
+	unregister_chrdev_region(dev_no, 1);
+fail:
+	mutex_unlock(&char_device_lock);
 	return ret;
 }
 
-static void subsys_misc_device_remove(struct subsys_device *subsys_dev)
+static void subsys_char_device_remove(struct subsys_device *subsys_dev)
 {
-	misc_deregister(&subsys_dev->misc_dev);
+	cdev_del(&subsys_dev->char_dev);
+	device_destroy(char_class, subsys_dev->dev_no);
+	unregister_chrdev_region(subsys_dev->dev_no, 1);
+}
+
+static struct subsys_soc_restart_order *ssr_parse_restart_orders(struct
+							subsys_desc * desc)
+{
+	int i, j, count, num = 0;
+	struct subsys_soc_restart_order *order, *tmp;
+	struct device *dev = desc->dev;
+	struct device_node *ssr_node;
+	uint32_t len;
+
+	if (!of_get_property(dev->of_node, "qcom,restart-group", &len))
+		return NULL;
+
+	count = len/sizeof(uint32_t);
+
+	order = devm_kzalloc(dev, sizeof(*order), GFP_KERNEL);
+	if (!order)
+		return ERR_PTR(-ENOMEM);
+
+	order->subsys_ptrs = devm_kzalloc(dev,
+				count * sizeof(struct subsys_device *),
+				GFP_KERNEL);
+	if (!order->subsys_ptrs)
+		return ERR_PTR(-ENOMEM);
+
+	order->device_ptrs = devm_kzalloc(dev,
+				count * sizeof(struct device_node *),
+				GFP_KERNEL);
+	if (!order->device_ptrs)
+		return ERR_PTR(-ENOMEM);
+
+	for (i = 0; i < count; i++) {
+		ssr_node = of_parse_phandle(dev->of_node,
+						"qcom,restart-group", i);
+		if (!ssr_node)
+			return ERR_PTR(-ENXIO);
+		of_node_put(ssr_node);
+		pr_info("%s device has been added to %s's restart group\n",
+						ssr_node->name, desc->name);
+		order->device_ptrs[i] = ssr_node;
+	}
+
+	/*
+	 * Check for similar restart groups. If found, return
+	 * without adding the new group to the ssr_order_list.
+	 */
+	mutex_lock(&ssr_order_mutex);
+	list_for_each_entry(tmp, &ssr_order_list, list) {
+		for (i = 0; i < count; i++) {
+			for (j = 0; j < count; j++) {
+				if (order->device_ptrs[j] !=
+					tmp->device_ptrs[i])
+					continue;
+				else
+					num++;
+			}
+		}
+
+		if (num == count && tmp->count == count)
+			return tmp;
+		else if (num)
+			return ERR_PTR(-EINVAL);
+	}
+
+	order->count = count;
+	mutex_init(&order->track.lock);
+	spin_lock_init(&order->track.s_lock);
+
+	INIT_LIST_HEAD(&order->list);
+	list_add_tail(&order->list, &ssr_order_list);
+	mutex_unlock(&ssr_order_mutex);
+
+	return order;
 }
 
 static int __get_gpio(struct subsys_desc *desc, const char *prop,
@@ -1076,7 +1160,9 @@ static int __get_irq(struct subsys_desc *desc, const char *prop,
 
 static int subsys_parse_devicetree(struct subsys_desc *desc)
 {
+	struct subsys_soc_restart_order *order;
 	int ret;
+
 	struct platform_device *pdev = container_of(desc->dev,
 					struct platform_device, dev);
 
@@ -1096,9 +1182,16 @@ static int subsys_parse_devicetree(struct subsys_desc *desc)
 	if (ret && ret != -ENOENT)
 		return ret;
 
-	desc->wdog_bite_irq = platform_get_irq(pdev, 0);
-	if (desc->wdog_bite_irq < 0)
-		return desc->wdog_bite_irq;
+	ret = platform_get_irq(pdev, 0);
+	if (ret > 0)
+		desc->wdog_bite_irq = ret;
+
+	order = ssr_parse_restart_orders(desc);
+	if (IS_ERR(order)) {
+		pr_err("Could not initialize SSR restart order, err = %ld\n",
+							PTR_ERR(order));
+		return PTR_ERR(order);
+	}
 
 	return 0;
 }
@@ -1178,7 +1271,6 @@ struct subsys_device *subsys_register(struct subsys_desc *desc)
 	subsys->dev.release = subsys_device_release;
 
 	subsys->notify = subsys_notif_add_subsys(desc->name);
-	subsys->restart_order = update_restart_order(subsys);
 
 	snprintf(subsys->wlname, sizeof(subsys->wlname), "ssr(%s)", desc->name);
 	wake_lock_init(&subsys->wake_lock, WAKE_LOCK_SUSPEND, subsys->wlname);
@@ -1204,27 +1296,31 @@ struct subsys_device *subsys_register(struct subsys_desc *desc)
 		goto err_register;
 	}
 
-	ret = subsys_misc_device_add(subsys);
+	ret = subsys_char_device_add(subsys);
 	if (ret) {
 		put_device(&subsys->dev);
 		goto err_register;
 	}
 
-	if (!desc->dev->of_node)
-		return subsys;
+	if (desc->dev->of_node) {
+		ret = subsys_parse_devicetree(desc);
+		if (ret)
+			goto err_register;
 
-	ret = subsys_parse_devicetree(desc);
-	if (ret)
-		goto err_misc_device;
+		subsys->restart_order = update_restart_order(subsys);
 
-	ret = subsys_setup_irqs(subsys);
-	if (ret < 0)
-		goto err_misc_device;
+		ret = subsys_setup_irqs(subsys);
+		if (ret < 0)
+			goto err_register;
+	}
+
+	mutex_lock(&subsys_list_lock);
+	INIT_LIST_HEAD(&subsys->list);
+	list_add_tail(&subsys->list, &subsys_list);
+	mutex_unlock(&subsys_list_lock);
 
 	return subsys;
 
-err_misc_device:
-	subsys_misc_device_remove(subsys);
 err_register:
 	subsys_debugfs_remove(subsys);
 err_debugfs:
@@ -1248,7 +1344,7 @@ void subsys_unregister(struct subsys_device *subsys)
 		device_unregister(&subsys->dev);
 		mutex_unlock(&subsys->track.lock);
 		subsys_debugfs_remove(subsys);
-		subsys_misc_device_remove(subsys);
+		subsys_char_device_remove(subsys);
 		put_device(&subsys->dev);
 	}
 }
@@ -1274,41 +1370,6 @@ static struct notifier_block panic_nb = {
 	.notifier_call  = ssr_panic_handler,
 };
 
-static int __init ssr_init_soc_restart_orders(void)
-{
-	int i;
-
-	atomic_notifier_chain_register(&panic_notifier_list,
-			&panic_nb);
-
-	if (cpu_is_msm8x60()) {
-		for (i = 0; i < ARRAY_SIZE(orders_8x60_all); i++) {
-			mutex_init(&orders_8x60_all[i]->track.lock);
-			spin_lock_init(&orders_8x60_all[i]->track.s_lock);
-		}
-
-		for (i = 0; i < ARRAY_SIZE(orders_8x60_modems); i++) {
-			mutex_init(&orders_8x60_modems[i]->track.lock);
-			spin_lock_init(&orders_8x60_modems[i]->track.s_lock);
-		}
-
-		restart_orders = orders_8x60_all;
-		n_restart_orders = ARRAY_SIZE(orders_8x60_all);
-	}
-
-	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
-		restart_orders = restart_orders_8960_sglte;
-		n_restart_orders = ARRAY_SIZE(restart_orders_8960_sglte);
-	}
-
-	for (i = 0; i < n_restart_orders; i++) {
-		mutex_init(&restart_orders[i]->track.lock);
-		spin_lock_init(&restart_orders[i]->track.s_lock);
-	}
-
-	return 0;
-}
-
 static int __init subsys_restart_init(void)
 {
 	int ret;
@@ -1322,12 +1383,24 @@ static int __init subsys_restart_init(void)
 	ret = subsys_debugfs_init();
 	if (ret)
 		goto err_debugfs;
-	ret = ssr_init_soc_restart_orders();
+
+	char_class = class_create(THIS_MODULE, "subsys");
+	if (IS_ERR(char_class)) {
+		ret = -ENOMEM;
+		pr_err("Failed to create subsys_dev class\n");
+		goto err_class;
+	}
+
+	ret = atomic_notifier_chain_register(&panic_notifier_list,
+			&panic_nb);
 	if (ret)
 		goto err_soc;
+
 	return 0;
 
 err_soc:
+	class_destroy(char_class);
+err_class:
 	subsys_debugfs_exit();
 err_debugfs:
 	bus_unregister(&subsys_bus_type);

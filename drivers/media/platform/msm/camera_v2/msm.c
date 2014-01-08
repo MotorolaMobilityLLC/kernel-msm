@@ -341,17 +341,26 @@ int msm_create_session(unsigned int session_id, struct video_device *vdev)
 {
 	struct msm_session *session = NULL;
 
-	if (!msm_session_q)
+	if (!msm_session_q) {
+		pr_err("%s : session queue not available Line %d\n",
+				__func__, __LINE__);
 		return -ENODEV;
+	}
 
 	session = msm_queue_find(msm_session_q, struct msm_session,
 		list, __msm_queue_find_session, &session_id);
-	if (session)
+	if (session) {
+		pr_err("%s : Session not found Line %d\n",
+				__func__, __LINE__);
 		return -EINVAL;
+	}
 
 	session = kzalloc(sizeof(*session), GFP_KERNEL);
-	if (!session)
+	if (!session) {
+		pr_err("%s : Memory not available Line %d\n",
+				__func__, __LINE__);
 		return -ENOMEM;
+	}
 
 	session->session_id = session_id;
 	session->event_q.vdev = vdev;
@@ -367,17 +376,25 @@ int msm_create_command_ack_q(unsigned int session_id, unsigned int stream_id)
 	struct msm_session *session;
 	struct msm_command_ack *cmd_ack;
 
-	if (!msm_session_q)
+	if (!msm_session_q) {
+		pr_err("%s : Session queue not available Line %d\n",
+				__func__, __LINE__);
 		return -ENODEV;
+	}
 
 	session = msm_queue_find(msm_session_q, struct msm_session,
 		list, __msm_queue_find_session, &session_id);
-	if (!session)
+	if (!session) {
+		pr_err("%s : Session not found Line %d\n",
+				__func__, __LINE__);
 		return -EINVAL;
+	}
 	mutex_lock(&session->lock);
 	cmd_ack = kzalloc(sizeof(*cmd_ack), GFP_KERNEL);
 	if (!cmd_ack) {
 		mutex_unlock(&session->lock);
+		pr_err("%s : memory not available Line %d\n",
+				__func__, __LINE__);
 		return -ENOMEM;
 	}
 
@@ -438,7 +455,7 @@ static inline int __msm_sd_close_subdevs(struct msm_sd_subdev *msm_sd,
 static inline int __msm_destroy_session_streams(void *d1, void *d2)
 {
 	struct msm_stream *stream = d1;
-
+	pr_err("%s: Error: Destroyed list is not empty\n", __func__);
 	INIT_LIST_HEAD(&stream->queued_list);
 	return 0;
 }
@@ -631,6 +648,18 @@ static unsigned int msm_poll(struct file *f,
 	return rc;
 }
 
+static void msm_print_event_error(struct v4l2_event *event)
+{
+	struct msm_v4l2_event_data *event_data =
+		(struct msm_v4l2_event_data *)&event->u.data[0];
+
+	pr_err("Evt_type=%x Evt_id=%d Evt_cmd=%x\n", event->type,
+		event->id, event_data->command);
+	pr_err("Evt_session_id=%d Evt_stream_id=%d Evt_arg=%d\n",
+		event_data->session_id, event_data->stream_id,
+		event_data->arg_value);
+}
+
 /* something seriously wrong if msm_close is triggered
  *   !!! user space imaging server is shutdown !!!
  */
@@ -652,6 +681,8 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 	spin_lock_irqsave(&msm_eventq_lock, flags);
 	if (!msm_eventq) {
 		spin_unlock_irqrestore(&msm_eventq_lock, flags);
+		pr_err("%s : msm event queue not available Line %d\n",
+				__func__, __LINE__);
 		return -ENODEV;
 	}
 	spin_unlock_irqrestore(&msm_eventq_lock, flags);
@@ -661,14 +692,19 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 	/* send to imaging server and wait for ACK */
 	session = msm_queue_find(msm_session_q, struct msm_session,
 		list, __msm_queue_find_session, &session_id);
-	if (WARN_ON(!session))
+	if (WARN_ON(!session)) {
+		pr_err("%s : session not found Line %d\n",
+				__func__, __LINE__);
 		return -EIO;
+	}
 	mutex_lock(&session->lock);
 	cmd_ack = msm_queue_find(&session->command_ack_q,
 		struct msm_command_ack, list,
 		__msm_queue_find_command_ack_q, &stream_id);
 	if (WARN_ON(!cmd_ack)) {
 		mutex_unlock(&session->lock);
+		pr_err("%s : cmd_ack not found Line %d\n",
+				__func__, __LINE__);
 		return -EIO;
 	}
 
@@ -676,6 +712,8 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 
 	if (timeout < 0) {
 		mutex_unlock(&session->lock);
+		pr_err("%s : timeout cannot be negative Line %d\n",
+				__func__, __LINE__);
 		return rc;
 	}
 
@@ -691,10 +729,12 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 	if (list_empty_careful(&cmd_ack->command_q.list)) {
 		if (!rc) {
 			pr_err("%s: Timed out\n", __func__);
+			msm_print_event_error(event);
 			rc = -ETIMEDOUT;
 		}
 		if (rc < 0) {
 			pr_err("%s: rc = %d\n", __func__, rc);
+			msm_print_event_error(event);
 			mutex_unlock(&session->lock);
 			return rc;
 		}
@@ -704,6 +744,8 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 		struct msm_command, list);
 	if (!cmd) {
 		mutex_unlock(&session->lock);
+		pr_err("%s : cmd dequeue failed Line %d\n",
+				__func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -711,8 +753,15 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 
 	/* compare cmd_ret and event */
 	if (WARN_ON(event->type != cmd->event.type) ||
-			WARN_ON(event->id != cmd->event.id))
+			WARN_ON(event->id != cmd->event.id)) {
+		pr_err("%s : Either event type or id didnot match Line %d\n",
+				__func__, __LINE__);
+		pr_err("%s : event->type %d event->id %d\n", __func__,
+				event->type, event->id);
+		pr_err("%s : cmd->event.type %d cmd->event.id %d\n", __func__,
+				cmd->event.type, cmd->event.id);
 		rc = -EINVAL;
+	}
 
 	*event = cmd->event;
 
@@ -1032,6 +1081,7 @@ probe_end:
 
 static const struct of_device_id msm_dt_match[] = {
 	{.compatible = "qcom,msm-cam"},
+	{}
 }
 
 MODULE_DEVICE_TABLE(of, msm_dt_match);

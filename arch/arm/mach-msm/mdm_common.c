@@ -31,7 +31,6 @@
 #include <linux/clk.h>
 #include <linux/mfd/pmic8058.h>
 #include <linux/msm_charm.h>
-#include <asm/mach-types.h>
 #include <asm/uaccess.h>
 #include <mach/mdm2.h>
 #include <mach/restart.h>
@@ -46,7 +45,6 @@
 #include <linux/of_platform.h>
 #include "msm_watchdog.h"
 #include "mdm_private.h"
-#include "sysmon.h"
 
 #define MDM_MODEM_TIMEOUT	6000
 #define MDM_MODEM_DELTA	100

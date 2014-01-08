@@ -14,6 +14,8 @@
 #include <linux/genalloc.h>	/* gen_pool_alloc() */
 #include <linux/io.h>
 #include <linux/ratelimit.h>
+#include <mach/msm_bus.h>
+#include <mach/msm_bus_board.h>
 #include "ipa_i.h"
 
 #define IPA_V1_CLK_RATE (92.31 * 1000 * 1000UL)
@@ -109,6 +111,112 @@ static const int ep_mapping[2][IPA_CLIENT_MAX] = {
 	[IPA_2_0][IPA_CLIENT_APPS_WAN_CONS]      =  5,
 	[IPA_2_0][IPA_CLIENT_Q6_LAN_CONS]        =  8,
 	[IPA_2_0][IPA_CLIENT_Q6_WAN_CONS]        =  9,
+};
+
+static struct msm_bus_vectors ipa_init_vectors_v1_1[]  = {
+	{
+		.src = MSM_BUS_MASTER_IPA,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 0,
+		.ib = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_BAM_DMA,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 0,
+		.ib = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_BAM_DMA,
+		.dst = MSM_BUS_SLAVE_OCIMEM,
+		.ab = 0,
+		.ib = 0,
+	},
+};
+
+static struct msm_bus_vectors ipa_init_vectors_v2_0[]  = {
+	{
+		.src = MSM_BUS_MASTER_IPA,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 0,
+		.ib = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_IPA,
+		.dst = MSM_BUS_SLAVE_OCIMEM,
+		.ab = 0,
+		.ib = 0,
+	},
+};
+
+static struct msm_bus_vectors ipa_max_perf_vectors_v1_1[]  = {
+	{
+		.src = MSM_BUS_MASTER_IPA,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 50000000,
+		.ib = 960000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_BAM_DMA,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 50000000,
+		.ib = 960000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_BAM_DMA,
+		.dst = MSM_BUS_SLAVE_OCIMEM,
+		.ab = 50000000,
+		.ib = 960000000,
+	},
+};
+
+static struct msm_bus_vectors ipa_nominal_perf_vectors_v2_0[]  = {
+	{
+		.src = MSM_BUS_MASTER_IPA,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 100000000,
+		.ib = 1300000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_IPA,
+		.dst = MSM_BUS_SLAVE_OCIMEM,
+		.ab = 100000000,
+		.ib = 1300000000,
+	},
+};
+
+static struct msm_bus_paths ipa_usecases_v1_1[]  = {
+	{
+		ARRAY_SIZE(ipa_init_vectors_v1_1),
+		ipa_init_vectors_v1_1,
+	},
+	{
+		ARRAY_SIZE(ipa_max_perf_vectors_v1_1),
+		ipa_max_perf_vectors_v1_1,
+	},
+};
+
+static struct msm_bus_paths ipa_usecases_v2_0[]  = {
+	{
+		ARRAY_SIZE(ipa_init_vectors_v2_0),
+		ipa_init_vectors_v2_0,
+	},
+	{
+		ARRAY_SIZE(ipa_nominal_perf_vectors_v2_0),
+		ipa_nominal_perf_vectors_v2_0,
+	},
+};
+
+static struct msm_bus_scale_pdata ipa_bus_client_pdata_v1_1 = {
+	ipa_usecases_v1_1,
+	ARRAY_SIZE(ipa_usecases_v1_1),
+	.name = "ipa",
+};
+
+static struct msm_bus_scale_pdata ipa_bus_client_pdata_v2_0 = {
+	ipa_usecases_v2_0,
+	ARRAY_SIZE(ipa_usecases_v2_0),
+	.name = "ipa",
 };
 
 /* read how much SRAM is available for SW use
@@ -2412,6 +2520,95 @@ int ipa_cfg_ep_deaggr(u32 clnt_hdl,
 }
 EXPORT_SYMBOL(ipa_cfg_ep_deaggr);
 
+static void _ipa_cfg_ep_metadata_v1_1(u32 pipe_number,
+					const struct ipa_ep_cfg_metadata *meta)
+{
+	IPADBG("Not supported for version 1.1\n");
+}
+
+static void _ipa_cfg_ep_metadata_v2_0(u32 pipe_number,
+					const struct ipa_ep_cfg_metadata *meta)
+{
+	u32 reg_val = 0;
+
+	IPA_SETFIELD_IN_REG(reg_val, meta->qmap_id,
+			IPA_ENDP_INIT_HDR_METADATA_n_MUX_ID_SHFT,
+			IPA_ENDP_INIT_HDR_METADATA_n_MUX_ID_BMASK);
+
+	ipa_write_reg(ipa_ctx->mmio,
+			IPA_ENDP_INIT_HDR_METADATA_n_OFST(pipe_number),
+			reg_val);
+}
+
+/**
+ * ipa_cfg_ep_metadata() - IPA end-point metadata configuration
+ * @clnt_hdl:	[in] opaque client handle assigned by IPA to client
+ * @ipa_ep_cfg:	[in] IPA end-point configuration params
+ *
+ * Returns:	0 on success, negative on failure
+ *
+ * Note:	Should not be called from atomic context
+ */
+int ipa_cfg_ep_metadata(u32 clnt_hdl, const struct ipa_ep_cfg_metadata *ep_md)
+{
+	if (clnt_hdl >= IPA_NUM_PIPES || ipa_ctx->ep[clnt_hdl].valid == 0 ||
+			ep_md == NULL) {
+		IPAERR("bad parm, clnt_hdl = %d , ep_valid = %d\n",
+					clnt_hdl, ipa_ctx->ep[clnt_hdl].valid);
+		return -EINVAL;
+	}
+
+	IPADBG("pipe=%d, mux id=%d\n", clnt_hdl, ep_md->qmap_id);
+
+	/* copy over EP cfg */
+	ipa_ctx->ep[clnt_hdl].cfg.meta = *ep_md;
+
+	ipa_inc_client_enable_clks();
+
+	ipa_ctx->ctrl->ipa_cfg_ep_metadata(clnt_hdl, ep_md);
+
+	ipa_dec_client_disable_clks();
+
+	return 0;
+}
+EXPORT_SYMBOL(ipa_cfg_ep_metadata);
+
+int ipa_write_qmap_id(struct ipa_ioc_write_qmapid *param_in)
+{
+	struct ipa_ep_cfg_metadata meta;
+	struct ipa_ep_context *ep;
+	int ipa_ep_idx;
+	int result = -EINVAL;
+
+	if (param_in->client  >= IPA_CLIENT_MAX) {
+		IPAERR("bad parm client:%d\n", param_in->client);
+		goto fail;
+	}
+
+	ipa_ep_idx = ipa_get_ep_mapping(param_in->client);
+	if (ipa_ep_idx == -1) {
+		IPAERR("Invalid client.\n");
+		goto fail;
+	}
+
+	ep = &ipa_ctx->ep[ipa_ep_idx];
+	if (!ep->valid) {
+		IPAERR("EP not allocated.\n");
+		goto fail;
+	}
+
+	meta.qmap_id = param_in->qmap_id;
+	if (param_in->client == IPA_CLIENT_USB_PROD) {
+		result = ipa_cfg_ep_metadata(ipa_ep_idx, &meta);
+	} else if (param_in->client == IPA_CLIENT_WLAN1_PROD) {
+		ipa_ctx->ep[ipa_ep_idx].cfg.meta = meta;
+		result = 0;
+	}
+
+fail:
+	return result;
+}
+
 /**
  * ipa_dump_buff_internal() - dumps buffer for debug purposes
  * @base: buffer base address
@@ -2783,7 +2980,7 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_cfg_ep_status = _ipa_cfg_ep_status_v1_1;
 		ctrl->ipa_cfg_ep_cfg = _ipa_cfg_ep_cfg_v1_1;
 		ctrl->ipa_cfg_ep_metadata_mask = _ipa_cfg_ep_metadata_mask_v1_1;
-		ctrl->ipa_src_clk_rate = IPA_V1_CLK_RATE;
+		ctrl->ipa_clk_rate = IPA_V1_CLK_RATE;
 		ctrl->ipa_read_gen_reg = _ipa_read_gen_reg_v1_0;
 		ctrl->ipa_read_ep_reg = _ipa_read_ep_reg_v1_0;
 		ctrl->ipa_write_dbg_cnt = _ipa_write_dbg_cnt_v1;
@@ -2791,6 +2988,10 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_commit_flt = __ipa_commit_flt_v1;
 		ctrl->ipa_commit_rt = __ipa_commit_rt_v1;
 		ctrl->ipa_commit_hdr = __ipa_commit_hdr_v1;
+		ctrl->ipa_enable_clks = _ipa_enable_clks_v1;
+		ctrl->ipa_disable_clks = _ipa_disable_clks_v1;
+		ctrl->msm_bus_data_ptr = &ipa_bus_client_pdata_v1_1;
+		ctrl->ipa_cfg_ep_metadata = _ipa_cfg_ep_metadata_v1_1;
 		break;
 	case (IPA_HW_v1_1):
 		ctrl->ipa_sram_read_settings = _ipa_sram_settings_read_v1_1;
@@ -2806,7 +3007,7 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_cfg_ep_status = _ipa_cfg_ep_status_v1_1;
 		ctrl->ipa_cfg_ep_cfg = _ipa_cfg_ep_cfg_v1_1;
 		ctrl->ipa_cfg_ep_metadata_mask = _ipa_cfg_ep_metadata_mask_v1_1;
-		ctrl->ipa_src_clk_rate = IPA_V1_1_CLK_RATE;
+		ctrl->ipa_clk_rate = IPA_V1_1_CLK_RATE;
 		ctrl->ipa_read_gen_reg = _ipa_read_gen_reg_v1_1;
 		ctrl->ipa_read_ep_reg = _ipa_read_ep_reg_v1_1;
 		ctrl->ipa_write_dbg_cnt = _ipa_write_dbg_cnt_v1;
@@ -2814,6 +3015,10 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_commit_flt = __ipa_commit_flt_v1;
 		ctrl->ipa_commit_rt = __ipa_commit_rt_v1;
 		ctrl->ipa_commit_hdr = __ipa_commit_hdr_v1;
+		ctrl->ipa_enable_clks = _ipa_enable_clks_v1;
+		ctrl->ipa_disable_clks = _ipa_disable_clks_v1;
+		ctrl->msm_bus_data_ptr = &ipa_bus_client_pdata_v1_1;
+		ctrl->ipa_cfg_ep_metadata = _ipa_cfg_ep_metadata_v1_1;
 		break;
 	case (IPA_HW_v2_0):
 		ctrl->ipa_sram_read_settings = _ipa_sram_settings_read_v2_0;
@@ -2829,7 +3034,7 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_cfg_ep_status = _ipa_cfg_ep_status_v2_0;
 		ctrl->ipa_cfg_ep_cfg = _ipa_cfg_ep_cfg_v2_0;
 		ctrl->ipa_cfg_ep_metadata_mask = _ipa_cfg_ep_metadata_mask_v2_0;
-		ctrl->ipa_src_clk_rate = IPA_V2_0_CLK_RATE;
+		ctrl->ipa_clk_rate = IPA_V2_0_CLK_RATE;
 		ctrl->ipa_read_gen_reg = _ipa_read_gen_reg_v2_0;
 		ctrl->ipa_read_ep_reg = _ipa_read_ep_reg_v2_0;
 		ctrl->ipa_write_dbg_cnt = _ipa_write_dbg_cnt_v2_0;
@@ -2837,6 +3042,10 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_commit_flt = __ipa_commit_flt_v2;
 		ctrl->ipa_commit_rt = __ipa_commit_rt_v2;
 		ctrl->ipa_commit_hdr = __ipa_commit_hdr_v2;
+		ctrl->ipa_enable_clks = _ipa_enable_clks_v2_0;
+		ctrl->ipa_disable_clks = _ipa_disable_clks_v2_0;
+		ctrl->msm_bus_data_ptr = &ipa_bus_client_pdata_v2_0;
+		ctrl->ipa_cfg_ep_metadata = _ipa_cfg_ep_metadata_v2_0;
 		break;
 	default:
 		return -EPERM;

@@ -11,8 +11,6 @@
  *
  */
 #include <linux/slab.h>
-#include <media/msm_smem.h>
-
 #include "msm_vidc_internal.h"
 #include "msm_vidc_common.h"
 #include "vidc_hfi_api.h"
@@ -128,6 +126,14 @@ static const char *const perf_level[] = {
 	"Nominal",
 	"Performance",
 	"Turbo"
+};
+
+static const char *const intra_refresh_modes[] = {
+	"None",
+	"Cyclic",
+	"Adaptive",
+	"Cyclic Adaptive",
+	"Random"
 };
 
 enum msm_venc_ctrl_cluster {
@@ -472,6 +478,26 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.cluster = MSM_VENC_CTRL_CLUSTER_QP,
 	},
 	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_VP8_MIN_QP,
+		.name = "VP8 Minimum QP",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 1,
+		.maximum = 128,
+		.default_value = 1,
+		.step = 1,
+		.cluster = MSM_VENC_CTRL_CLUSTER_QP,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_VP8_MAX_QP,
+		.name = "VP8 Maximum QP",
+		.type = V4L2_CTRL_TYPE_INTEGER,
+		.minimum = 1,
+		.maximum = 128,
+		.default_value = 128,
+		.step = 1,
+		.cluster = MSM_VENC_CTRL_CLUSTER_QP,
+	},
+	{
 		.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE,
 		.name = "Slice Mode",
 		.type = V4L2_CTRL_TYPE_MENU,
@@ -550,6 +576,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		(1 << V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_CYCLIC_ADAPTIVE) |
 		(1 << V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_RANDOM)
 		),
+		.qmenu = intra_refresh_modes,
 		.cluster = MSM_VENC_CTRL_CLUSTER_INTRA_REFRESH,
 	},
 	{
@@ -770,6 +797,18 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.menu_skip_mask = 0,
 		.qmenu = NULL,
 		.cluster = 0,
+	},
+	{
+		.id = V4L2_CID_MPEG_VIDC_VIDEO_REQUEST_SEQ_HEADER,
+		.name = "Request Seq Header",
+		.type = V4L2_CTRL_TYPE_BUTTON,
+		.minimum = 0,
+		.maximum = 0,
+		.default_value = 0,
+		.step = 0,
+		.menu_skip_mask = 0,
+		.qmenu = NULL,
+		.cluster = 0,
 	}
 };
 
@@ -856,7 +895,9 @@ static int msm_venc_queue_setup(struct vb2_queue *q,
 	struct hfi_device *hdev;
 	struct hal_buffer_requirements *buff_req;
 	struct v4l2_ctrl *ctrl = NULL;
-	u32 extradata = 0;
+	u32 extradata = 0, extra_idx = 0;
+	struct hal_buffer_requirements *buff_req_buffer = NULL;
+
 	if (!q || !q->drv_priv) {
 		dprintk(VIDC_ERR, "Invalid input\n");
 		return -EINVAL;
@@ -864,7 +905,7 @@ static int msm_venc_queue_setup(struct vb2_queue *q,
 	inst = q->drv_priv;
 
 	if (!inst || !inst->core || !inst->core->device) {
-		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
 		return -EINVAL;
 	}
 	hdev = inst->core->device;
@@ -891,7 +932,7 @@ static int msm_venc_queue_setup(struct vb2_queue *q,
 				V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA);
 		if (ctrl)
 			extradata = v4l2_ctrl_g_ctrl(ctrl);
-		if (extradata)
+		if (extradata == V4L2_MPEG_VIDC_EXTRADATA_MULTISLICE_INFO)
 			*num_planes = *num_planes + 1;
 		inst->fmts[CAPTURE_PORT]->num_planes = *num_planes;
 		for (i = 0; i < *num_planes; i++) {
@@ -926,16 +967,30 @@ static int msm_venc_queue_setup(struct vb2_queue *q,
 		property_id = HAL_PARAM_BUFFER_COUNT_ACTUAL;
 		new_buf_count.buffer_type = HAL_BUFFER_INPUT;
 		new_buf_count.buffer_count_actual = *num_buffers;
+		ctrl = v4l2_ctrl_find(&inst->ctrl_handler,
+			V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA);
+		if (ctrl)
+			extradata = v4l2_ctrl_g_ctrl(ctrl);
+		if (extradata == V4L2_MPEG_VIDC_INDEX_EXTRADATA_INPUT_CROP)
+			*num_planes = *num_planes + 1;
+		inst->fmts[OUTPUT_PORT]->num_planes = *num_planes;
 		rc = call_hfi_op(hdev, session_set_property, inst->session,
 					property_id, &new_buf_count);
 		dprintk(VIDC_DBG, "size = %d, alignment = %d, count = %d\n",
 				inst->buff_req.buffer[0].buffer_size,
 				inst->buff_req.buffer[0].buffer_alignment,
 				inst->buff_req.buffer[0].buffer_count_actual);
-		for (i = 0; i < *num_planes; i++) {
-			sizes[i] = inst->fmts[OUTPUT_PORT]->get_frame_size(
-					i, inst->prop.height[OUTPUT_PORT],
-					inst->prop.width[OUTPUT_PORT]);
+		sizes[0] = inst->fmts[OUTPUT_PORT]->get_frame_size(
+				0, inst->prop.height[OUTPUT_PORT],
+				inst->prop.width[OUTPUT_PORT]);
+		extra_idx =
+			EXTRADATA_IDX(inst->fmts[OUTPUT_PORT]->num_planes);
+		if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
+			buff_req_buffer = get_buff_req_buffer(inst,
+				HAL_BUFFER_EXTRADATA_INPUT);
+			sizes[extra_idx] =
+				buff_req_buffer ?
+				buff_req_buffer->buffer_size : 0;
 		}
 		break;
 	default:
@@ -955,7 +1010,7 @@ static inline int start_streaming(struct msm_vidc_inst *inst)
 		HAL_VIDEO_ENCODER_SCALING_CAPABILITY)
 		rc = msm_vidc_check_scaling_supported(inst);
 	if (rc) {
-		dprintk(VIDC_ERR, "H/w scaling is not in valid range");
+		dprintk(VIDC_ERR, "H/w scaling is not in valid range\n");
 		return -EINVAL;
 	}
 	rc = msm_comm_try_get_bufreqs(inst);
@@ -1288,7 +1343,7 @@ static inline int venc_v4l2_to_hal(int id, int value)
 	}
 
 unknown_value:
-	dprintk(VIDC_WARN, "Unknown control (%x, %d)", id, value);
+	dprintk(VIDC_WARN, "Unknown control (%x, %d)\n", id, value);
 	return -EINVAL;
 }
 
@@ -1319,7 +1374,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	struct hal_mpeg4_time_resolution time_res;
 
 	if (!inst || !inst->core || !inst->core->device) {
-		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
 		return -EINVAL;
 	}
 	hdev = inst->core->device;
@@ -1331,7 +1386,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 			__ctrl_id, \
 			ctrl->cluster, ctrl->ncontrols); \
 		if (!__temp) { \
-			dprintk(VIDC_ERR, "Can't find %s (%x) in cluster", \
+			dprintk(VIDC_ERR, "Can't find %s (%x) in cluster\n", \
 				#__ctrl_id, __ctrl_id); \
 			/* Clusters are hardcoded, if we can't find */ \
 			/* something then things are massively screwed up */ \
@@ -1358,7 +1413,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 			inst->fmts[CAPTURE_PORT]->fourcc != V4L2_PIX_FMT_H264 &&
 			inst->fmts[CAPTURE_PORT]->fourcc !=
 				V4L2_PIX_FMT_H264_NO_SC) {
-			dprintk(VIDC_ERR, "Control 0x%x only valid for H264",
+			dprintk(VIDC_ERR, "Control 0x%x only valid for H264\n",
 					ctrl->id);
 			rc = -ENOTSUPP;
 			break;
@@ -1403,7 +1458,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 				(void *)inst->session, property_id, pdata);
 			if (rc) {
 				dprintk(VIDC_ERR,
-					"Failed : Setprop MAX_NUM_B_FRAMES %d",
+					"Failed : Setprop MAX_NUM_B_FRAMES %d\n",
 					rc);
 				break;
 			}
@@ -1487,13 +1542,13 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 
 		if (ctrl->val < avg_bitrate->val) {
 			dprintk(VIDC_ERR,
-				"Peak bitrate (%d) is lower than average bitrate (%d)",
+				"Peak bitrate (%d) is lower than average bitrate (%d)\n",
 				ctrl->val, avg_bitrate->val);
 			rc = -EINVAL;
 			break;
 		} else if (ctrl->val < avg_bitrate->val * 2) {
 			dprintk(VIDC_WARN,
-				"Peak bitrate (%d) ideally should be twice the average bitrate (%d)",
+				"Peak bitrate (%d) ideally should be twice the average bitrate (%d)\n",
 				ctrl->val, avg_bitrate->val);
 		}
 
@@ -1618,7 +1673,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		struct v4l2_ctrl *deinterlace = NULL;
 		if (!(inst->capability.pixelprocess_capabilities &
 			HAL_VIDEO_ENCODER_ROTATION_CAPABILITY)) {
-			dprintk(VIDC_ERR, "Rotation not supported: 0x%x",
+			dprintk(VIDC_ERR, "Rotation not supported: 0x%x\n",
 				ctrl->id);
 			rc = -ENOTSUPP;
 			break;
@@ -1628,7 +1683,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		if (ctrl->val && deinterlace && deinterlace->val !=
 				V4L2_CID_MPEG_VIDC_VIDEO_DEINTERLACE_DISABLED) {
 			dprintk(VIDC_ERR,
-				"Rotation not supported with deinterlacing");
+				"Rotation not supported with deinterlacing\n");
 			rc = -EINVAL;
 			break;
 		}
@@ -1694,7 +1749,8 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 
 		qp_max = TRY_GET_CTRL(V4L2_CID_MPEG_VIDEO_H264_MAX_QP);
 		if (ctrl->val >= qp_max->val) {
-			dprintk(VIDC_ERR, "Bad range: Min QP (%d) > Max QP(%d)",
+			dprintk(VIDC_ERR,
+					"Bad range: Min QP (%d) > Max QP(%d)\n",
 					ctrl->val, qp_max->val);
 			rc = -ERANGE;
 			break;
@@ -1713,7 +1769,8 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 
 		qp_min = TRY_GET_CTRL(V4L2_CID_MPEG_VIDEO_H264_MIN_QP);
 		if (ctrl->val <= qp_min->val) {
-			dprintk(VIDC_ERR, "Bad range: Max QP (%d) < Min QP(%d)",
+			dprintk(VIDC_ERR,
+					"Bad range: Max QP (%d) < Min QP(%d)\n",
 					ctrl->val, qp_min->val);
 			rc = -ERANGE;
 			break;
@@ -1724,6 +1781,26 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		qp_range.max_qp = ctrl->val;
 		qp_range.min_qp = qp_min->val;
 
+		pdata = &qp_range;
+		break;
+	}
+	case V4L2_CID_MPEG_VIDC_VIDEO_VP8_MIN_QP: {
+		struct v4l2_ctrl *qp_max;
+		qp_max = TRY_GET_CTRL(V4L2_CID_MPEG_VIDC_VIDEO_VP8_MAX_QP);
+		property_id = HAL_PARAM_VENC_SESSION_QP_RANGE;
+		qp_range.layer_id = 0;
+		qp_range.max_qp = qp_max->val;
+		qp_range.min_qp = ctrl->val;
+		pdata = &qp_range;
+		break;
+	}
+	case V4L2_CID_MPEG_VIDC_VIDEO_VP8_MAX_QP: {
+		struct v4l2_ctrl *qp_min;
+		qp_min = TRY_GET_CTRL(V4L2_CID_MPEG_VIDC_VIDEO_VP8_MIN_QP);
+		property_id = HAL_PARAM_VENC_SESSION_QP_RANGE;
+		qp_range.layer_id = 0;
+		qp_range.max_qp = ctrl->val;
+		qp_range.min_qp = qp_min->val;
 		pdata = &qp_range;
 		break;
 	}
@@ -1781,7 +1858,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		} else {
 			dprintk(VIDC_WARN,
 				"Failed : slice delivery mode is valid "\
-				"only for H264 encoder and MB based slicing");
+				"only for H264 encoder and MB based slicing\n");
 			enable.enable = false;
 		}
 		pdata = &enable;
@@ -1976,7 +2053,7 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 			inst->flags |= VIDC_TURBO;
 			break;
 		default:
-			dprintk(VIDC_ERR, "Perf mode %x not supported",
+			dprintk(VIDC_ERR, "Perf mode %x not supported\n",
 					ctrl->val);
 			rc = -ENOTSUPP;
 			break;
@@ -1998,15 +2075,13 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		time_res.time_increment_resolution = ctrl->val;
 		pdata = &time_res;
 		break;
-	default:
-		rc = -ENOTSUPP;
-		break;
+
 	case V4L2_CID_MPEG_VIDC_VIDEO_DEINTERLACE:
 	{
 		struct v4l2_ctrl *rotation = NULL;
 		if (!(inst->capability.pixelprocess_capabilities &
 			HAL_VIDEO_ENCODER_DEINTERLACE_CAPABILITY)) {
-			dprintk(VIDC_ERR, "Deinterlace not supported: 0x%x",
+			dprintk(VIDC_ERR, "Deinterlace not supported: 0x%x\n",
 					ctrl->id);
 			rc = -ENOTSUPP;
 			break;
@@ -2032,6 +2107,12 @@ static int try_set_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		pdata = &enable;
 		break;
 	}
+	case V4L2_CID_MPEG_VIDC_VIDEO_REQUEST_SEQ_HEADER:
+		atomic_inc(&inst->get_seq_hdr_cnt);
+		break;
+	default:
+		rc = -ENOTSUPP;
+		break;
 	}
 #undef TRY_GET_CTRL
 
@@ -2055,7 +2136,7 @@ static int msm_venc_op_s_ctrl(struct v4l2_ctrl *ctrl)
 					struct msm_vidc_inst, ctrl_handler);
 
 	if (!inst) {
-		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
 		return -EINVAL;
 	}
 
@@ -2073,7 +2154,7 @@ static int msm_venc_op_s_ctrl(struct v4l2_ctrl *ctrl)
 
 			rc = try_set_ctrl(inst, temp);
 			if (rc) {
-				dprintk(VIDC_ERR, "Failed setting %s (%x)",
+				dprintk(VIDC_ERR, "Failed setting %s (%x)\n",
 						v4l2_ctrl_get_name(temp->id),
 						temp->id);
 				break;
@@ -2082,7 +2163,8 @@ static int msm_venc_op_s_ctrl(struct v4l2_ctrl *ctrl)
 	}
 failed_open_done:
 	if (rc)
-		dprintk(VIDC_ERR, "Failed to set hal property\n");
+		dprintk(VIDC_ERR, "Failed setting control: %x (%s)",
+				ctrl->id, v4l2_ctrl_get_name(ctrl->id));
 	return rc;
 }
 
@@ -2225,7 +2307,7 @@ int msm_venc_s_parm(struct msm_vidc_inst *inst, struct v4l2_streamparm *a)
 	struct hfi_device *hdev;
 
 	if (!inst || !inst->core || !inst->core->device) {
-		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
 		return -EINVAL;
 	}
 
@@ -2298,7 +2380,7 @@ int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 	}
 
 	if (!inst->core || !inst->core->device) {
-		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
 		return -EINVAL;
 	}
 	hdev = inst->core->device;
@@ -2415,6 +2497,18 @@ int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 					"Failed to set OUTPUT framesize\n");
 				goto exit;
 			}
+		} else if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+			struct hal_buffer_requirements *buff_req_buffer = NULL;
+			int extra_idx = 0;
+			extra_idx = EXTRADATA_IDX(fmt->num_planes);
+			if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
+				buff_req_buffer =
+					get_buff_req_buffer(inst,
+						HAL_BUFFER_EXTRADATA_INPUT);
+				f->fmt.pix_mp.plane_fmt[extra_idx].sizeimage =
+					buff_req_buffer ?
+					buff_req_buffer->buffer_size : 0;
+			}
 		}
 	} else {
 		dprintk(VIDC_ERR, "Buf type not recognized, type = %d\n",
@@ -2432,7 +2526,7 @@ int msm_venc_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 	int i;
 	u32 height, width;
 	int extra_idx = 0;
-	struct hal_buffer_requirements *buff_req_buffer;
+	struct hal_buffer_requirements *buff_req_buffer = NULL;
 
 	if (!inst || !f) {
 		dprintk(VIDC_ERR,
@@ -2460,9 +2554,15 @@ int msm_venc_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 		}
 		extra_idx = EXTRADATA_IDX(fmt->num_planes);
 		if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
-			buff_req_buffer =
-				get_buff_req_buffer(inst,
-					HAL_BUFFER_EXTRADATA_OUTPUT);
+			if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+				buff_req_buffer =
+					get_buff_req_buffer(inst,
+						HAL_BUFFER_EXTRADATA_OUTPUT);
+			else if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
+				buff_req_buffer =
+					get_buff_req_buffer(inst,
+						HAL_BUFFER_EXTRADATA_INPUT);
+
 			f->fmt.pix_mp.plane_fmt[extra_idx].sizeimage =
 				buff_req_buffer ?
 				buff_req_buffer->buffer_size : 0;
@@ -2513,7 +2613,7 @@ int msm_venc_prepare_buf(struct msm_vidc_inst *inst,
 	int extra_idx = 0;
 
 	if (!inst || !inst->core || !inst->core->device) {
-		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
 		return -EINVAL;
 	}
 
@@ -2557,7 +2657,7 @@ int msm_venc_prepare_buf(struct msm_vidc_inst *inst,
 				(void *)inst->session, &buffer_info);
 		if (rc)
 			dprintk(VIDC_ERR,
-					"vidc_hal_session_set_buffers failed");
+					"vidc_hal_session_set_buffers failed\n");
 		break;
 	default:
 		dprintk(VIDC_ERR,
@@ -2575,7 +2675,7 @@ int msm_venc_release_buf(struct msm_vidc_inst *inst,
 	struct hfi_device *hdev;
 
 	if (!inst || !inst->core || !inst->core->device) {
-		dprintk(VIDC_ERR, "%s invalid parameters", __func__);
+		dprintk(VIDC_ERR, "%s invalid parameters\n", __func__);
 		return -EINVAL;
 	}
 
@@ -2730,7 +2830,7 @@ int msm_venc_ctrl_init(struct msm_vidc_inst *inst)
 {
 
 	int idx = 0;
-	struct v4l2_ctrl_config ctrl_cfg;
+	struct v4l2_ctrl_config ctrl_cfg = {0};
 	int ret_val = 0;
 	ret_val = v4l2_ctrl_handler_init(&inst->ctrl_handler, NUM_CTRLS);
 	if (ret_val) {
@@ -2797,7 +2897,8 @@ int msm_venc_ctrl_init(struct msm_vidc_inst *inst)
 
 		cluster = get_cluster(idx, &cluster_size);
 		if (!cluster || !cluster_size) {
-			dprintk(VIDC_WARN, "Failed to setup cluster of type %d",
+			dprintk(VIDC_WARN,
+					"Failed to setup cluster of type %d\n",
 					idx);
 			continue;
 		}

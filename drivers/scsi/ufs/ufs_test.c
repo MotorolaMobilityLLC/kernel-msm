@@ -28,7 +28,7 @@
 
 #define MODULE_NAME "ufs_test"
 
-#define TEST_MAX_BIOS_PER_REQ		16
+#define TEST_MAX_BIOS_PER_REQ		128
 #define TEST_MAX_SECTOR_RANGE		(10*1024*1024) /* 5GB */
 #define LARGE_PRIME_1	1103515367
 #define LARGE_PRIME_2	35757
@@ -201,9 +201,9 @@ static struct test_scenario test_scenario[SCEN_RANDOM_MAX] = {
 		{NULL, WRITE, 0, 50, true, 5}, /* SCEN_RANDOM_WRITE_50 */
 
 		/* SCEN_RANDOM_READ_32_NO_FLUSH */
-		{NULL, READ, 1, 32, true, 64},
+		{NULL, READ, 0, 32, true, 64},
 		/* SCEN_RANDOM_WRITE_32_NO_FLUSH */
-		{NULL, WRITE, 1, 32, true, 64},
+		{NULL, WRITE, 0, 32, true, 64},
 };
 
 static
@@ -601,16 +601,33 @@ static bool ufs_test_multi_thread_completion(void)
 			utd->test_stage != UFS_TEST_LUN_DEPTH_TEST_RUNNING;
 }
 
+static bool long_seq_test_check_completion(void)
+{
+	if (utd->completed_req_count > LONG_SEQ_TEST_NUM_REQS) {
+		pr_err("%s: Error: Completed more requests than total test requests"
+		       , __func__);
+		pr_err("%s: Terminating test.", __func__);
+		return true;
+	}
+	return (utd->completed_req_count == LONG_SEQ_TEST_NUM_REQS);
+}
+
 /**
- * ufs_test_do_toggling() - decides whether toggling is needed
- * toggle_factor - iteration to toggle
- * iteration - what is the current iteration
+ * ufs_test_toggle_direction() - decides whether toggling is
+ * needed. Toggle factor zero means no toggling.
+ *
+ * toggle_factor - iteration to toggle = toggling frequency
+ * iteration - the current request iteration
+ *
+ * Returns nonzero if toggling is needed, and 0 when toggling is
+ * not needed.
  */
 static inline int ufs_test_toggle_direction(int toggle_factor, int iteration)
 {
-	if (toggle_factor)
-		return 1;
-	return iteration % toggle_factor;
+	if (!toggle_factor)
+		return 0;
+
+	return !(iteration % toggle_factor);
 }
 
 static void ufs_test_run_scenario(void *data, async_cookie_t cookie)
@@ -647,7 +664,8 @@ static void ufs_test_run_scenario(void *data, async_cookie_t cookie)
 		 * We want to run the queue every run_q requests, or,
 		 * when the requests pool is exhausted
 		 */
-		if (ts->td->test_count >= QUEUE_MAX_REQUESTS ||
+
+		if (ts->td->dispatched_count >= QUEUE_MAX_REQUESTS ||
 				(ts->run_q && !(i % ts->run_q)))
 			blk_run_queue(ts->td->req_q);
 	}
@@ -704,7 +722,7 @@ static int ufs_test_run_parallel_read_and_write_test(struct test_data *td)
 	utd->fail_threads = 0;
 	init_completion(&utd->outstanding_complete);
 
-	for (i = 0; i < (RANDOM_REQUEST_THREADS % 2); i++) {
+	for (i = 0; i < (RANDOM_REQUEST_THREADS / 2); i++) {
 		async_schedule(ufs_test_run_scenario, read_data);
 		async_schedule(ufs_test_run_scenario, write_data);
 		atomic_add(2, &utd->outstanding_threads);
@@ -742,15 +760,12 @@ static int ufs_test_run_lun_depth_test(struct test_data *td)
 	struct scsi_device *sdev;
 	bool changed_seed = false;
 	int i = 0, num_req[LUN_DEPTH_TEST_SIZE];
-	int lun_qdepth, nutrs;
+	int lun_qdepth, nutrs, num_scenarios;
 
 	BUG_ON(!td || !td->req_q || !td->req_q->queuedata);
 	sdev = (struct scsi_device *)td->req_q->queuedata;
 	lun_qdepth = sdev->max_queue_depth;
 	nutrs = sdev->host->can_queue;
-	/* in case there is no specific queue size per LU */
-	if (lun_qdepth == nutrs)
-		lun_qdepth = lun_qdepth >> 2;
 
 	/* allow randomness even if user forgot */
 	if (utd->random_test_seed <= 0) {
@@ -764,22 +779,29 @@ static int ufs_test_run_lun_depth_test(struct test_data *td)
 	num_req[i++] = lun_qdepth - 1;
 	num_req[i++] = lun_qdepth;
 	num_req[i++] = lun_qdepth + 1;
-	num_req[i++] = lun_qdepth + 1 + ufs_test_pseudo_random_seed(
+	/* if (nutrs-lun_qdepth-2 <= 0), do not run this scenario */
+	if (nutrs - lun_qdepth - 2 > 0)
+		num_req[i++] = lun_qdepth + 1 + ufs_test_pseudo_random_seed(
 			&utd->random_test_seed, 1, nutrs - lun_qdepth - 2);
-	num_req[i++] = nutrs - 1;
-	num_req[i++] = nutrs;
-	num_req[i++] = nutrs + 1;
+
+	/* if nutrs == lun_qdepth, do not run these three scenarios */
+	if (nutrs != lun_qdepth) {
+		num_req[i++] = nutrs - 1;
+		num_req[i++] = nutrs;
+		num_req[i++] = nutrs + 1;
+	}
+
 	/* a random number up to 10, not to cause overflow or timeout */
 	num_req[i++] = nutrs + 1 + ufs_test_pseudo_random_seed(
 			&utd->random_test_seed, 1, 10);
 
-
+	num_scenarios = i;
 	utd->test_stage = UFS_TEST_LUN_DEPTH_TEST_RUNNING;
 	utd->fail_threads = 0;
 	read_data = get_scenario(td, SCEN_RANDOM_READ_32_NO_FLUSH);
-	write_data = get_scenario(td, SCEN_RANDOM_READ_32_NO_FLUSH);
+	write_data = get_scenario(td, SCEN_RANDOM_WRITE_32_NO_FLUSH);
 
-	for (i = 0; i < LUN_DEPTH_TEST_SIZE; i++) {
+	for (i = 0; i < num_scenarios; i++) {
 		int reqs = num_req[i];
 
 		read_data->total_req = reqs;
@@ -912,9 +934,6 @@ static int run_long_seq_test(struct test_data *td)
 		/* NUM_OF_BLOCK * (BLOCK_SIZE / SECTOR_SIZE) */
 		sector += TEST_MAX_BIOS_PER_REQ * (PAGE_SIZE /
 				td->req_q->limits.logical_block_size);
-		td->test_info.test_byte_count +=
-			(TEST_MAX_BIOS_PER_REQ * sizeof(unsigned int) *
-			BIO_U32_SIZE);
 
 	} while (inserted_requests < LONG_SEQ_TEST_NUM_REQS);
 
@@ -1013,6 +1032,8 @@ static ssize_t ufs_test_write(struct file *file, const char __user *buf,
 		utd->test_info.run_test_fn = run_long_seq_test;
 		utd->test_info.post_test_fn = long_seq_test_calc_throughput;
 		utd->test_info.check_test_result_fn = ufs_test_check_result;
+		utd->test_info.check_test_completion_fn =
+			long_seq_test_check_completion;
 		break;
 	case UFS_TEST_LONG_SEQUENTIAL_MIXED:
 		utd->test_info.timeout_msec = LONG_SEQUENTIAL_MIXED_TIMOUT_MS;

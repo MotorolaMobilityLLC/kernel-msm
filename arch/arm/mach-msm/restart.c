@@ -25,8 +25,8 @@
 #include <linux/mfd/pmic8901.h>
 #include <linux/mfd/pm8xxx/misc.h>
 #include <linux/qpnp/power-on.h>
+#include <linux/of_address.h>
 
-#include <asm/mach-types.h>
 #include <asm/cacheflush.h>
 
 #include <mach/msm_iomap.h>
@@ -54,12 +54,6 @@
 
 #define SCM_IO_DISABLE_PMIC_ARBITER	1
 
-#ifdef CONFIG_MSM_RESTART_V2
-#define use_restart_v2()	1
-#else
-#define use_restart_v2()	0
-#endif
-
 static int restart_mode;
 void *restart_reason;
 
@@ -67,6 +61,9 @@ int pmic_reset_irq;
 static void __iomem *msm_tmr0_base;
 
 #ifdef CONFIG_MSM_DLOAD_MODE
+#define EDL_MODE_PROP "qcom,msm-imem-emergency_download_mode"
+#define DL_MODE_PROP "qcom,msm-imem-download_mode"
+
 static int in_panic;
 static void *dload_mode_addr;
 static bool dload_mode_enabled;
@@ -115,6 +112,10 @@ static void enable_emergency_dload_mode(void)
 		__raw_writel(EMERGENCY_DLOAD_MAGIC3,
 				emergency_dload_mode_addr +
 				(2 * sizeof(unsigned int)));
+
+		/* Need disable the pmic wdt, then the emergency dload mode
+		 * will not auto reset. */
+		qpnp_pon_wd_config(0);
 		mb();
 	}
 }
@@ -184,12 +185,8 @@ static void __msm_power_off(int lower_pshold)
 	qpnp_pon_system_pwr_off(PON_POWER_OFF_SHUTDOWN);
 
 	if (lower_pshold) {
-		if (!use_restart_v2()) {
-			__raw_writel(0, PSHOLD_CTL_SU);
-		} else {
-			halt_spmi_pmic_arbiter();
-			__raw_writel(0, MSM_MPM2_PSHOLD_BASE);
-		}
+		halt_spmi_pmic_arbiter();
+		__raw_writel(0, MSM_MPM2_PSHOLD_BASE);
 
 		mdelay(10000);
 		printk(KERN_ERR "Powering off has failed\n");
@@ -201,47 +198,6 @@ static void msm_power_off(void)
 {
 	/* MSM initiated power off, lower ps_hold */
 	__msm_power_off(1);
-}
-
-static void cpu_power_off(void *data)
-{
-	int rc;
-
-	pr_err("PMIC Initiated shutdown %s cpu=%d\n", __func__,
-						smp_processor_id());
-	if (smp_processor_id() == 0) {
-		/*
-		 * PMIC initiated power off, do not lower ps_hold, pmic will
-		 * shut msm down
-		 */
-		__msm_power_off(0);
-
-		pet_watchdog();
-		pr_err("Calling scm to disable arbiter\n");
-		/* call secure manager to disable arbiter and never return */
-		rc = scm_call_atomic1(SCM_SVC_PWR,
-						SCM_IO_DISABLE_PMIC_ARBITER, 1);
-
-		pr_err("SCM returned even when asked to busy loop rc=%d\n", rc);
-		pr_err("waiting on pmic to shut msm down\n");
-	}
-
-	preempt_disable();
-	while (1)
-		;
-}
-
-static irqreturn_t resout_irq_handler(int irq, void *dev_id)
-{
-	pr_warn("%s PMIC Initiated shutdown\n", __func__);
-	oops_in_progress = 1;
-	smp_call_function_many(cpu_online_mask, cpu_power_off, NULL, 0);
-	if (smp_processor_id() == 0)
-		cpu_power_off(NULL);
-	preempt_disable();
-	while (1)
-		;
-	return IRQ_HANDLED;
 }
 
 static void msm_restart_prepare(const char *cmd)
@@ -276,6 +232,8 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665500, restart_reason);
 		} else if (!strncmp(cmd, "recovery", 8)) {
 			__raw_writel(0x77665502, restart_reason);
+		} else if (!strcmp(cmd, "rtc")) {
+			__raw_writel(0x77665503, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;
@@ -297,70 +255,77 @@ void msm_restart(char mode, const char *cmd)
 
 	msm_restart_prepare(cmd);
 
-	if (!use_restart_v2()) {
-		__raw_writel(0, msm_tmr0_base + WDT0_EN);
-		if (!(machine_is_msm8x60_fusion() ||
-		      machine_is_msm8x60_fusn_ffa())) {
-			mb();
-			 /* Actually reset the chip */
-			__raw_writel(0, PSHOLD_CTL_SU);
-			mdelay(5000);
-			pr_notice("PS_HOLD didn't work, falling back to watchdog\n");
-		}
-
-		__raw_writel(1, msm_tmr0_base + WDT0_RST);
-		__raw_writel(5*0x31F3, msm_tmr0_base + WDT0_BARK_TIME);
-		__raw_writel(0x31F3, msm_tmr0_base + WDT0_BITE_TIME);
-		__raw_writel(1, msm_tmr0_base + WDT0_EN);
-	} else {
-		/* Needed to bypass debug image on some chips */
-		msm_disable_wdog_debug();
-		halt_spmi_pmic_arbiter();
-		__raw_writel(0, MSM_MPM2_PSHOLD_BASE);
-	}
+	/* Needed to bypass debug image on some chips */
+	msm_disable_wdog_debug();
+	halt_spmi_pmic_arbiter();
+	__raw_writel(0, MSM_MPM2_PSHOLD_BASE);
 
 	mdelay(10000);
 	printk(KERN_ERR "Restarting has failed\n");
 }
 
-static int __init msm_pmic_restart_init(void)
-{
-	int rc;
-
-	if (use_restart_v2())
-		return 0;
-
-	if (pmic_reset_irq != 0) {
-		rc = request_any_context_irq(pmic_reset_irq,
-					resout_irq_handler, IRQF_TRIGGER_HIGH,
-					"restart_from_pmic", NULL);
-		if (rc < 0)
-			pr_err("pmic restart irq fail rc = %d\n", rc);
-	} else {
-		pr_warn("no pmic restart interrupt specified\n");
-	}
-
-	return 0;
-}
-
-late_initcall(msm_pmic_restart_init);
-
 static int __init msm_restart_init(void)
 {
+	struct device_node *np;
+	int ret = 0;
+
 #ifdef CONFIG_MSM_DLOAD_MODE
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
-	dload_mode_addr = MSM_IMEM_BASE + DLOAD_MODE_ADDR;
-	emergency_dload_mode_addr = MSM_IMEM_BASE +
-		EMERGENCY_DLOAD_MODE_ADDR;
+	np = of_find_compatible_node(NULL, NULL, DL_MODE_PROP);
+	if (!np) {
+		pr_err("unable to find DT imem download mode node\n");
+		ret = -ENODEV;
+		goto err_dl_mode;
+	}
+	dload_mode_addr = of_iomap(np, 0);
+	if (!dload_mode_addr) {
+		pr_err("unable to map imem download model offset\n");
+		ret = -ENOMEM;
+		goto err_dl_mode;
+	}
+
+	np = of_find_compatible_node(NULL, NULL, EDL_MODE_PROP);
+	if (!np) {
+		pr_err("unable to find DT imem emergency download mode node\n");
+		ret = -ENODEV;
+		goto err_edl_mode;
+	}
+	emergency_dload_mode_addr = of_iomap(np, 0);
+	if (!emergency_dload_mode_addr) {
+		pr_err("unable to map imem emergency download model offset\n");
+		ret = -ENOMEM;
+		goto err_edl_mode;
+	}
+
 	set_dload_mode(download_mode);
 #endif
 	msm_tmr0_base = msm_timer_get_timer0_base();
-	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
+	np = of_find_compatible_node(NULL, NULL, "qcom,msm-imem-restart_reason");
+	if (!np) {
+		pr_err("unable to find DT imem restart reason node\n");
+		ret = -ENODEV;
+		goto err_restart_reason;
+	}
+	restart_reason = of_iomap(np, 0);
+	if (!restart_reason) {
+		pr_err("unable to map imem restart reason offset\n");
+		ret = -ENOMEM;
+		goto err_restart_reason;
+	}
 	pm_power_off = msm_power_off;
 
 	if (scm_is_call_available(SCM_SVC_PWR, SCM_IO_DISABLE_PMIC_ARBITER) > 0)
 		scm_pmic_arbiter_disable_supported = true;
 
 	return 0;
+
+err_restart_reason:
+#ifdef CONFIG_MSM_DLOAD_MODE
+	iounmap(emergency_dload_mode_addr);
+err_edl_mode:
+	iounmap(dload_mode_addr);
+err_dl_mode:
+#endif
+	return ret;
 }
 early_initcall(msm_restart_init);

@@ -26,7 +26,8 @@
 #define FORMAT_USPS_EPOS	0x00000000
 #define FORMAT_USRAW		0x00000001
 #define FORMAT_USPROX		0x00000002
-#define FORMAT_USRAW_SYNC	0x00000003
+#define FORMAT_USGES_SYNC	0x00000003
+#define FORMAT_USRAW_SYNC	0x00000004
 #define INVALID_FORMAT		0xffffffff
 
 #define IN			0x000
@@ -62,6 +63,10 @@ struct us_port_data {
 	/* read or write locks */
 	struct mutex	lock;
 	spinlock_t	dsp_lock;
+	/* ION memory handle */
+	struct      ion_handle *handle;
+	/* ION memory client */
+	struct      ion_client *client;
 	/* extended parameters, related to q6 variants */
 	void		*ext;
 };

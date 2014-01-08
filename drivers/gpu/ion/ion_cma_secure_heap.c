@@ -23,7 +23,6 @@
 #include <linux/err.h>
 #include <linux/dma-mapping.h>
 #include <linux/msm_ion.h>
-#include <mach/iommu_domains.h>
 
 #include <asm/cacheflush.h>
 
@@ -88,6 +87,7 @@ struct ion_cma_secure_heap {
 	atomic_t total_allocated;
 	atomic_t total_pool_size;
 	unsigned long heap_size;
+	unsigned long default_prefetch_size;
 };
 
 static void ion_secure_pool_pages(struct work_struct *work);
@@ -219,6 +219,9 @@ int ion_secure_cma_prefetch(struct ion_heap *heap, void *data)
 
 	if ((int) heap->type != ION_HEAP_TYPE_SECURE_DMA)
 		return -EINVAL;
+
+	if (len == 0)
+		len = sheap->default_prefetch_size;
 
 	/*
 	 * Only prefetch as much space as there is left in the pool so
@@ -353,7 +356,14 @@ static int ion_secure_cma_shrinker(struct shrinker *shrinker,
 	if (!(sc->gfp_mask & __GFP_MOVABLE))
 		return atomic_read(&sheap->total_pool_size);
 
-	mutex_lock(&sheap->chunk_lock);
+	/*
+	 * Allocation path may invoke the shrinker. Proceeding any further
+	 * would cause a deadlock in several places so don't shrink if that
+	 * happens.
+	 */
+	if (!mutex_trylock(&sheap->chunk_lock))
+		return -1;
+
 	list_for_each_safe(entry, _n, &sheap->chunks) {
 		struct ion_cma_alloc_chunk *chunk = container_of(entry,
 					struct ion_cma_alloc_chunk, entry);
@@ -492,7 +502,13 @@ static int ion_secure_cma_allocate(struct ion_heap *heap,
 	if (buf) {
 		int ret;
 
-		ret = msm_ion_secure_table(buf->table, 0, 0);
+		if (!msm_secure_v2_is_supported()) {
+			pr_debug("%s: securing buffers is not supported on this platform\n",
+				__func__);
+			ret = 1;
+		} else {
+			ret = msm_ion_secure_table(buf->table, 0, 0);
+		}
 		if (ret) {
 			/*
 			 * Don't treat the secure buffer failing here as an
@@ -516,7 +532,8 @@ static void ion_secure_cma_free(struct ion_buffer *buffer)
 	struct ion_secure_cma_buffer_info *info = buffer->priv_virt;
 
 	dev_dbg(sheap->dev, "Release buffer %p\n", buffer);
-	msm_ion_unsecure_table(info->table);
+	if (msm_secure_v2_is_supported())
+		msm_ion_unsecure_table(info->table);
 	atomic_sub(buffer->size, &sheap->total_allocated);
 	BUG_ON(atomic_read(&sheap->total_allocated) < 0);
 	/* release memory */
@@ -581,22 +598,20 @@ static void ion_secure_cma_unmap_kernel(struct ion_heap *heap,
 }
 
 static int ion_secure_cma_print_debug(struct ion_heap *heap, struct seq_file *s,
-			const struct rb_root *mem_map)
+			const struct list_head *mem_map)
 {
 	struct ion_cma_secure_heap *sheap =
 		container_of(heap, struct ion_cma_secure_heap, heap);
 
 	if (mem_map) {
-		struct rb_node *n;
+		struct mem_map_data *data;
 
 		seq_printf(s, "\nMemory Map\n");
 		seq_printf(s, "%16.s %14.s %14.s %14.s\n",
 			   "client", "start address", "end address",
 			   "size (hex)");
 
-		for (n = rb_first(mem_map); n; n = rb_next(n)) {
-			struct mem_map_data *data =
-					rb_entry(n, struct mem_map_data, node);
+		list_for_each_entry(data, mem_map, node) {
 			const char *client_name = "(null)";
 
 
@@ -651,12 +666,17 @@ struct ion_heap *ion_secure_cma_heap_create(struct ion_platform_heap *data)
 	sheap->shrinker.seeks = DEFAULT_SEEKS;
 	sheap->shrinker.batch = 0;
 	sheap->shrinker.shrink = ion_secure_cma_shrinker;
+	sheap->default_prefetch_size = sheap->heap_size;
 	register_shrinker(&sheap->shrinker);
-
 
 	if (!sheap->bitmap) {
 		kfree(sheap);
 		return ERR_PTR(-ENOMEM);
+	}
+
+	if (data->extra_data) {
+		struct ion_cma_pdata *extra = data->extra_data;
+		sheap->default_prefetch_size = extra->default_prefetch_size;
 	}
 
 	/*

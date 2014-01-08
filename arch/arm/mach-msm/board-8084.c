@@ -17,8 +17,10 @@
 #include <linux/of_platform.h>
 #include <linux/memory.h>
 #include <linux/regulator/krait-regulator.h>
+#include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/msm_tsens.h>
 #include <linux/msm_thermal.h>
+#include <linux/clk/msm-clk-provider.h>
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <mach/board.h>
@@ -28,63 +30,35 @@
 #include <mach/msm_smd.h>
 #include <mach/restart.h>
 #include <mach/socinfo.h>
-#include <mach/clk-provider.h>
-#include <mach/msm_smem.h>
 #include <mach/rpm-smd.h>
-#include <mach/rpm-regulator-smd.h>
+#include <soc/qcom/smem.h>
 #include "spm.h"
 #include "board-dt.h"
 #include "clock.h"
-#include "devices.h"
 #include "platsmp.h"
-#include "modem_notifier.h"
 #include "pm.h"
-
-static struct memtype_reserve apq8084_reserve_table[] __initdata = {
-	[MEMTYPE_SMI] = {
-	},
-	[MEMTYPE_EBI0] = {
-		.flags  =       MEMTYPE_FLAGS_1M_ALIGN,
-	},
-	[MEMTYPE_EBI1] = {
-		.flags  =       MEMTYPE_FLAGS_1M_ALIGN,
-	},
-};
-
-static int apq8084_paddr_to_memtype(phys_addr_t paddr)
-{
-	return MEMTYPE_EBI1;
-}
-
-static struct reserve_info apq8084_reserve_info __initdata = {
-	.memtype_reserve_table = apq8084_reserve_table,
-	.paddr_to_memtype = apq8084_paddr_to_memtype,
-};
 
 static struct of_dev_auxdata apq8084_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, "msm_sdcc.1", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF9824900, "msm_sdcc.1", NULL),
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF98A4000, "msm_sdcc.2", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, "msm_sdcc.2", NULL),
-	OF_DEV_AUXDATA("qcom,qca1530", 0x00000000, "qca1530.1", NULL),
+	OF_DEV_AUXDATA("qca,qca1530", 0x00000000, "qca1530.1", NULL),
 	OF_DEV_AUXDATA("qcom,ufshc", 0xFC594000, "msm_ufs.1", NULL),
 	OF_DEV_AUXDATA("qcom,xhci-msm-hsic", 0xf9c00000, "msm_hsic_host", NULL),
-	OF_DEV_AUXDATA("qcom,msm_pcie", 0xFC520000, "msm_pcie", NULL),
-	OF_DEV_AUXDATA("qcom,msm_pcie", 0xFC528000, "msm_pcie", NULL),
+	OF_DEV_AUXDATA("qcom,msm_pcie", 0xFC520000, "msm_pcie.1", NULL),
+	OF_DEV_AUXDATA("qcom,msm_pcie", 0xFC528000, "msm_pcie.2", NULL),
 	{}
 };
 
 void __init apq8084_reserve(void)
 {
-	reserve_info = &apq8084_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_reserve, apq8084_reserve_table);
-	msm_reserve();
+	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 }
 
 static void __init apq8084_early_memory(void)
 {
-	reserve_info = &apq8084_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_hole, apq8084_reserve_table);
+	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
 }
 
 /*
@@ -95,12 +69,10 @@ static void __init apq8084_early_memory(void)
  */
 void __init apq8084_add_drivers(void)
 {
-	msm_smem_init();
-	msm_init_modem_notifier_list();
 	msm_smd_init();
 	msm_rpm_driver_init();
 	msm_pm_sleep_status_init();
-	rpm_regulator_smd_driver_init();
+	rpm_smd_regulator_driver_init();
 	msm_spm_device_init();
 	krait_power_init();
 	if (of_board_is_rumi())
@@ -120,11 +92,20 @@ void __init apq8084_init(void)
 {
 	struct of_dev_auxdata *adata = apq8084_auxdata_lookup;
 
+	/*
+	 * populate devices from DT first so smem probe will get called as part
+	 * of msm_smem_init.  socinfo_init needs smem support so call
+	 * msm_smem_init before it.  apq8084_init_gpiomux needs socinfo so
+	 * call socinfo_init before it.
+	 */
+	board_dt_populate(adata);
+
+	msm_smem_init();
+
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
 	apq8084_init_gpiomux();
-	board_dt_populate(adata);
 	apq8084_add_drivers();
 }
 

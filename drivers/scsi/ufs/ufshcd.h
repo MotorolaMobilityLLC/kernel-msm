@@ -102,10 +102,12 @@ struct uic_command {
 enum ufs_pm_op {
 	UFS_RUNTIME_PM,
 	UFS_SYSTEM_PM,
+	UFS_SHUTDOWN_PM,
 };
 
 #define ufshcd_is_runtime_pm(op) ((op) == UFS_RUNTIME_PM)
 #define ufshcd_is_system_pm(op) ((op) == UFS_SYSTEM_PM)
+#define ufshcd_is_shutdown_pm(op) ((op) == UFS_SHUTDOWN_PM)
 
 /* Host <-> Device UniPro Link state */
 enum uic_link_state {
@@ -213,6 +215,7 @@ struct debugfs_files {
 	struct dentry *tag_stats;
 	struct dentry *show_hba;
 	struct dentry *host_regs;
+	struct dentry *dump_dev_desc;
 #ifdef CONFIG_UFS_FAULT_INJECTION
 	struct fault_attr fail_attr;
 #endif
@@ -278,6 +281,38 @@ struct ufs_hba_variant_ops {
 					struct ufs_pa_layer_attr *);
 	int     (*suspend)(struct ufs_hba *, enum ufs_pm_op);
 	int     (*resume)(struct ufs_hba *, enum ufs_pm_op);
+};
+
+/* clock gating state  */
+enum clk_gating_state {
+	CLKS_OFF,
+	CLKS_ON,
+	REQ_CLKS_OFF,
+	REQ_CLKS_ON,
+};
+
+/**
+ * struct ufs_clk_gating - UFS clock gating related info
+ * @gate_work: worker to turn off clocks after some delay as specified in
+ * delay_ms
+ * @ungate_work: worker to turn on clocks that will be used in case of
+ * interrupt context
+ * @state: the current clocks state
+ * @delay_ms: gating delay in ms
+ * @is_suspended: clk gating is suspended when set to 1 which can be used
+ * during suspend/resume
+ * @delay_attr: sysfs attribute to control delay_attr
+ * @active_reqs: number of requests that are pending and should be waited for
+ * completion before gating clocks.
+ */
+struct ufs_clk_gating {
+	struct delayed_work gate_work;
+	struct work_struct ungate_work;
+	enum clk_gating_state state;
+	unsigned long delay_ms;
+	bool is_suspended;
+	struct device_attribute delay_attr;
+	int active_reqs;
 };
 
 /**
@@ -407,6 +442,8 @@ struct ufs_hba {
 	 */
 	#define UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS        (1 << 7)
 
+	#define UFSHCD_QUIRK_BROKEN_2_TX_LANES            (1 << 8)
+
 	wait_queue_head_t tm_wq;
 	wait_queue_head_t tm_tag_wq;
 	unsigned long tm_condition;
@@ -435,9 +472,20 @@ struct ufs_hba {
 	/* Device management request data */
 	struct ufs_dev_cmd dev_cmd;
 
+	/* Keeps information of the UFS device connected to this host */
+	struct ufs_dev_info dev_info;
 	bool auto_bkops_enabled;
 	struct ufs_vreg_info vreg_info;
 	struct list_head clk_list_head;
+
+	struct ufs_pa_layer_attr pwr_info;
+	struct ufs_clk_gating clk_gating;
+	/* Control to enable/disable host capabilities */
+	u32 caps;
+	/* Allow dynamic clk gating */
+#define UFSHCD_CAP_CLK_GATING	(1 << 0)
+	/* Allow hiberb8 with clk gating */
+#define UFSHCD_CAP_HIBERN8_WITH_CLK_GATING (1 << 1)
 
 #ifdef CONFIG_DEBUG_FS
 	struct ufs_stats ufs_stats;
@@ -445,6 +493,18 @@ struct ufs_hba {
 #endif
 };
 
+/* Returns true if clocks can be gated. Otherwise false */
+static inline bool ufshcd_is_clkgating_allowed(struct ufs_hba *hba)
+{
+	return hba->caps & UFSHCD_CAP_CLK_GATING;
+}
+static inline bool ufshcd_can_hibern8_during_gating(struct ufs_hba *hba)
+{
+	if (!(hba->quirks & UFSHCD_QUIRK_BROKEN_HIBERN8))
+		return hba->caps & UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
+	else
+		return false;
+}
 #define ufshcd_writel(hba, val, reg)	\
 	writel((val), (hba)->mmio_base + (reg))
 #define ufshcd_readl(hba, reg)	\
@@ -501,6 +561,7 @@ extern int ufshcd_runtime_resume(struct ufs_hba *hba);
 extern int ufshcd_runtime_idle(struct ufs_hba *hba);
 extern int ufshcd_system_suspend(struct ufs_hba *hba);
 extern int ufshcd_system_resume(struct ufs_hba *hba);
+extern int ufshcd_shutdown(struct ufs_hba *hba);
 extern int ufshcd_dme_set_attr(struct ufs_hba *hba, u32 attr_sel,
 			       u8 attr_set, u32 mib_val, u8 peer);
 extern int ufshcd_dme_get_attr(struct ufs_hba *hba, u32 attr_sel,
@@ -552,6 +613,8 @@ static inline int ufshcd_dme_peer_get(struct ufs_hba *hba,
 	return ufshcd_dme_get_attr(hba, attr_sel, mib_val, DME_PEER);
 }
 
+int ufshcd_read_device_desc(struct ufs_hba *hba, u8 *buf, u32 size);
+
 /* variant specific ops structures */
 #ifdef CONFIG_SCSI_UFS_MSM
 extern const struct ufs_hba_variant_ops ufs_hba_msm_vops;
@@ -569,4 +632,6 @@ int ufshcd_query_attr(struct ufs_hba *hba, enum query_opcode opcode,
 int ufshcd_query_descriptor(struct ufs_hba *hba, enum query_opcode opcode,
 	enum attr_idn idn, u8 index, u8 selector, u8 *desc_buf, int *buf_len);
 
+int ufshcd_hold(struct ufs_hba *hba, bool async);
+void ufshcd_release(struct ufs_hba *hba);
 #endif /* End of Header */

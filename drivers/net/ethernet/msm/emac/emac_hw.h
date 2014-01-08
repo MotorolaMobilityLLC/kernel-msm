@@ -33,8 +33,10 @@ extern int emac_hw_read_phy_reg(struct emac_hw *hw, bool ext, u8 dev,
 				bool fast, u16 reg_addr, u16 *phy_data);
 extern int emac_hw_write_phy_reg(struct emac_hw *hw, bool ext, u8 dev,
 				 bool fast, u16 reg_addr, u16 phy_data);
-extern int emac_read_phy_reg(struct emac_hw *hw, u16 reg_addr, u16 *phy_data);
-extern int emac_write_phy_reg(struct emac_hw *hw, u16 reg_addr, u16 phy_data);
+extern int emac_read_phy_reg(struct emac_hw *hw, u16 phy_addr,
+			     u16 reg_addr, u16 *phy_data);
+extern int emac_write_phy_reg(struct emac_hw *hw, u16 phy_addr,
+			      u16 reg_addr, u16 phy_data);
 extern int emac_setup_phy_link(struct emac_hw *hw, u32 speed,
 			       bool autoneg, bool fc);
 extern int emac_setup_phy_link_speed(struct emac_hw *hw, u32 speed,
@@ -46,6 +48,7 @@ extern int emac_hw_init_phy(struct emac_hw *hw);
 extern int emac_hw_reset_phy(struct emac_hw *hw);
 extern int emac_hw_init_sgmii(struct emac_hw *hw);
 extern int emac_hw_reset_sgmii(struct emac_hw *hw);
+extern int emac_check_sgmii_link(struct emac_hw *hw, u32 *speed, bool *linkup);
 extern int emac_check_sgmii_autoneg(struct emac_hw *hw, u32 *speed,
 				    bool *linkup);
 extern int emac_hw_clear_sgmii_intr_status(struct emac_hw *hw, u32 irq_bits);
@@ -161,17 +164,19 @@ extern void emac_hw_set_mac_addr(struct emac_hw *hw, u8 *addr);
 #define QSERDES_TX_EMP_POST1_LVL           1
 #define QSERDES_TX_LANE_MODE            0x08
 
+#define SGMII_PHY_IRQ_CLR_WAIT_TIME     10
+
 #define SGMII_PHY_INTERRUPT_ERR (\
 	DECODE_CODE_ERR         |\
-	DECODE_DISP_ERR         |\
-	PLL_UNLOCK              |\
-	SYNC_FAIL)
+	DECODE_DISP_ERR)
 
 #define SGMII_ISR_AN_MASK       (\
 	AN_REQUEST              |\
 	AN_START                |\
 	AN_END                  |\
-	AN_ILLEGAL_TERM)
+	AN_ILLEGAL_TERM         |\
+	PLL_UNLOCK              |\
+	SYNC_FAIL)
 
 #define SGMII_ISR_MASK          (\
 	SGMII_PHY_INTERRUPT_ERR |\

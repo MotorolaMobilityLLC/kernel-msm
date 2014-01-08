@@ -34,6 +34,7 @@
 #include <linux/firmware.h>
 #include <linux/freezer.h>
 #include <linux/scatterlist.h>
+#include <linux/delay.h>
 #include <mach/board.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
@@ -102,7 +103,7 @@ static DEFINE_MUTEX(clk_access_lock);
 struct qseecom_registered_listener_list {
 	struct list_head                 list;
 	struct qseecom_register_listener_req svc;
-	u8  *sb_reg_req;
+	uint32_t user_virt_sb_base;
 	u8 *sb_virt;
 	s32 sb_phys;
 	size_t sb_length;
@@ -156,6 +157,7 @@ struct qseecom_control {
 	uint32_t          qsee_version;
 	struct device *pdev;
 	bool  commonlib_loaded;
+	struct ion_handle *cmnlib_ion_handle;
 	struct ce_hw_usage_info ce_info;
 
 	int qsee_bw_count;
@@ -203,23 +205,13 @@ struct qseecom_dev_handle {
 	enum qseecom_bandwidth_request_mode mode;
 };
 
-enum qseecom_set_clear_key_flag {
-	QSEECOM_CLEAR_CE_KEY_CMD = 0,
-	QSEECOM_SET_CE_KEY_CMD,
-};
-
-struct qseecom_set_key_parameter {
-	uint32_t ce_hw;
-	uint32_t pipe;
-	uint32_t flags;
-	uint8_t key_id[QSEECOM_KEY_ID_SIZE];
-	unsigned char hash32[QSEECOM_HASH_SIZE];
-	enum qseecom_set_clear_key_flag set_clear_key_flag;
-};
-
 struct qseecom_sg_entry {
 	uint32_t phys_addr;
 	uint32_t len;
+};
+
+uint8_t *key_id_array[QSEECOM_KEY_ID_SIZE] = {
+	"Disk Encryption"
 };
 
 /* Function proto types */
@@ -261,6 +253,12 @@ static struct qseecom_registered_listener_list *__qseecom_find_svc(
 			break;
 	}
 	spin_unlock_irqrestore(&qseecom.registered_listener_list_lock, flags);
+
+	if ((entry != NULL) && (entry->svc.listener_id != listener_id)) {
+		pr_err("Service id: %u is not found\n", listener_id);
+		return NULL;
+	}
+
 	return entry;
 }
 
@@ -323,6 +321,10 @@ static int qseecom_register_listener(struct qseecom_dev_handle *data,
 		pr_err("copy_from_user failed\n");
 		return ret;
 	}
+	if (!access_ok(VERIFY_WRITE, (void __user *)rcvd_lstnr.virt_sb_base,
+			rcvd_lstnr.sb_size))
+		return -EFAULT;
+
 	data->listener.id = 0;
 	data->type = QSEECOM_LISTENER_SERVICE;
 	if (!__qseecom_is_svc_unique(data, &rcvd_lstnr)) {
@@ -341,6 +343,7 @@ static int qseecom_register_listener(struct qseecom_dev_handle *data,
 
 	new_entry->svc.listener_id = rcvd_lstnr.listener_id;
 	new_entry->sb_length = rcvd_lstnr.sb_size;
+	new_entry->user_virt_sb_base = rcvd_lstnr.virt_sb_base;
 	if (__qseecom_set_sb_memory(new_entry, data, &rcvd_lstnr)) {
 		pr_err("qseecom_set_sb_memoryfailed\n");
 		kzfree(new_entry);
@@ -602,6 +605,10 @@ static int qseecom_set_client_mem_param(struct qseecom_dev_handle *data,
 			req.ifd_data_fd, req.sb_len, req.virt_sb_base);
 		return -EFAULT;
 	}
+	if (!access_ok(VERIFY_WRITE, (void __user *)req.virt_sb_base,
+			req.sb_len))
+		return -EFAULT;
+
 	/* Get the handle of the shared fd */
 	data->client.ihandle = ion_import_dma_buf(qseecom.ion_clnt,
 						req.ifd_data_fd);
@@ -1022,6 +1029,13 @@ static uint32_t __qseecom_uvirt_to_kphys(struct qseecom_dev_handle *data,
 	return data->client.sb_phys + (virt - data->client.user_virt_sb_base);
 }
 
+static uint32_t __qseecom_uvirt_to_kvirt(struct qseecom_dev_handle *data,
+						uint32_t virt)
+{
+	return (uint32_t)data->client.sb_virt +
+				(virt - data->client.user_virt_sb_base);
+}
+
 int __qseecom_process_rpmb_svc_cmd(struct qseecom_dev_handle *data_ptr,
 		struct qseecom_send_svc_cmd_req *req_ptr,
 		struct qseecom_client_send_service_ireq *send_svc_ireq_ptr)
@@ -1032,6 +1046,11 @@ int __qseecom_process_rpmb_svc_cmd(struct qseecom_dev_handle *data_ptr,
 	if ((req_ptr == NULL) || (send_svc_ireq_ptr == NULL)) {
 		pr_err("Error with pointer: req_ptr = %p, send_svc_ptr = %p\n",
 			req_ptr, send_svc_ireq_ptr);
+		return -EINVAL;
+	}
+
+	if ((!req_ptr->cmd_req_buf) || (!req_ptr->resp_buf)) {
+		pr_err("Invalid req/resp buffer, exiting\n");
 		return -EINVAL;
 	}
 
@@ -1407,6 +1426,24 @@ static int qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 		pr_err("copy_from_user failed\n");
 		return ret;
 	}
+
+	if (req.cmd_req_buf == NULL || req.resp_buf == NULL) {
+		pr_err("cmd buffer or response buffer is null\n");
+		return -EINVAL;
+	}
+	if (((uint32_t)req.cmd_req_buf < data->client.user_virt_sb_base) ||
+		((uint32_t)req.cmd_req_buf >= (data->client.user_virt_sb_base +
+					data->client.sb_length))) {
+		pr_err("cmd buffer address not within shared bufffer\n");
+		return -EINVAL;
+	}
+
+	if (((uint32_t)req.resp_buf < data->client.user_virt_sb_base)  ||
+		((uint32_t)req.resp_buf >= (data->client.user_virt_sb_base +
+					data->client.sb_length))){
+		pr_err("response buffer address not within shared bufffer\n");
+		return -EINVAL;
+	}
 	send_cmd_req.cmd_req_buf = req.cmd_req_buf;
 	send_cmd_req.cmd_req_len = req.cmd_req_len;
 	send_cmd_req.resp_buf = req.resp_buf;
@@ -1420,6 +1457,11 @@ static int qseecom_send_modfd_cmd(struct qseecom_dev_handle *data,
 			return -EINVAL;
 		}
 	}
+	req.cmd_req_buf = (void *)__qseecom_uvirt_to_kvirt(data,
+						(uint32_t)req.cmd_req_buf);
+	req.resp_buf = (void *)__qseecom_uvirt_to_kvirt(data,
+						(uint32_t)req.resp_buf);
+
 	ret = __qseecom_update_cmd_buf(&req, false, data, false);
 	if (ret)
 		return ret;
@@ -1447,11 +1489,16 @@ static int qseecom_receive_req(struct qseecom_dev_handle *data)
 	struct qseecom_registered_listener_list *this_lstnr;
 
 	this_lstnr = __qseecom_find_svc(data->listener.id);
+	if (!this_lstnr) {
+		pr_err("Invalid listener ID\n");
+		return -ENODATA;
+	}
+
 	while (1) {
 		if (wait_event_freezable(this_lstnr->rcv_req_wq,
 				__qseecom_listener_has_rcvd_req(data,
 				this_lstnr))) {
-			pr_warning("Interrupted: exiting Listener Service = %d\n",
+			pr_debug("Interrupted: exiting Listener Service = %d\n",
 						(uint32_t)data->listener.id);
 			/* woken up for different reason */
 			return -ERESTARTSYS;
@@ -1653,32 +1700,52 @@ static int __qseecom_load_fw(struct qseecom_dev_handle *data, char *appname)
 
 static int qseecom_load_commonlib_image(struct qseecom_dev_handle *data)
 {
-	int32_t ret = 0;
+	int ret = 0;
+	int len = 0;
 	uint32_t fw_size = 0;
 	struct qseecom_load_app_ireq load_req = {0, 0, 0, 0};
 	struct qseecom_command_scm_resp resp;
 	u8 *img_data = NULL;
+	ion_phys_addr_t pa;
 
 	if (__qseecom_get_fw_size("cmnlib", &fw_size))
 		return -EIO;
 
-	img_data = kzalloc(fw_size, GFP_KERNEL);
-	if (!img_data) {
-		pr_err("Mem allocation for lib image data failed\n");
+	qseecom.cmnlib_ion_handle = ion_alloc(qseecom.ion_clnt, fw_size,
+					SZ_4K, ION_HEAP(ION_QSECOM_HEAP_ID), 0);
+	if (IS_ERR_OR_NULL(qseecom.cmnlib_ion_handle)) {
+		pr_err("ION alloc failed\n");
 		return -ENOMEM;
+	}
+
+	img_data = (u8 *)ion_map_kernel(qseecom.ion_clnt,
+					qseecom.cmnlib_ion_handle);
+	if (IS_ERR_OR_NULL(img_data)) {
+		pr_err("ION memory mapping for cmnlib failed\n");
+		ret = -ENOMEM;
+		goto exit_ion_free;
 	}
 	ret = __qseecom_get_fw_data("cmnlib", img_data, &load_req);
 	if (ret) {
-		kzfree(img_data);
-		return -EIO;
+		ret = -EIO;
+		goto exit_ion_unmap_kernel;
+	}
+	/* Get the physical address of the ION BUF */
+	ret = ion_phys(qseecom.ion_clnt, qseecom.cmnlib_ion_handle,
+					&pa, &len);
+	load_req.phy_addr = (s32)pa;
+	if (ret) {
+		pr_err("physical memory retrieval failure\n");
+		ret = -EIO;
+		goto exit_ion_unmap_kernel;
 	}
 	/* Populate the remaining parameters */
 	load_req.qsee_cmd_id = QSEOS_LOAD_SERV_IMAGE_COMMAND;
 	/* Vote for the SFPB clock */
 	ret = __qseecom_enable_clk_scale_up(data);
 	if (ret) {
-		kzfree(img_data);
-		return -EIO;
+		ret = -EIO;
+		goto exit_ion_unmap_kernel;
 	}
 
 	__cpuc_flush_dcache_area((void *)img_data, fw_size);
@@ -1689,30 +1756,40 @@ static int qseecom_load_commonlib_image(struct qseecom_dev_handle *data)
 	if (ret) {
 		pr_err("scm_call to load failed : ret %d\n", ret);
 		ret = -EIO;
-	} else {
-		switch (resp.result) {
-		case QSEOS_RESULT_SUCCESS:
-			break;
-		case QSEOS_RESULT_FAILURE:
-			pr_err("scm call failed w/response result%d\n",
-						resp.result);
-			ret = -EINVAL;
-			break;
-		case  QSEOS_RESULT_INCOMPLETE:
-			ret = __qseecom_process_incomplete_cmd(data, &resp);
-			if (ret)
-				pr_err("process_incomplete_cmd failed err: %d\n",
-					ret);
-			break;
-		default:
-			pr_err("scm call return unknown response %d\n",
-						resp.result);
-			ret = -EINVAL;
-			break;
-		}
+		goto exit_disable_clk_vote;
 	}
-	kzfree(img_data);
+
+	switch (resp.result) {
+	case QSEOS_RESULT_SUCCESS:
+		break;
+	case QSEOS_RESULT_FAILURE:
+		pr_err("scm call failed w/response result%d\n", resp.result);
+		ret = -EINVAL;
+		goto exit_disable_clk_vote;
+	case  QSEOS_RESULT_INCOMPLETE:
+		ret = __qseecom_process_incomplete_cmd(data, &resp);
+		if (ret) {
+			pr_err("process_incomplete_cmd failed err: %d\n", ret);
+			goto exit_disable_clk_vote;
+		}
+		break;
+	default:
+		pr_err("scm call return unknown response %d\n",	resp.result);
+		ret = -EINVAL;
+		goto exit_disable_clk_vote;
+	}
 	__qseecom_disable_clk_scale_down(data);
+	return ret;
+
+exit_disable_clk_vote:
+	__qseecom_disable_clk_scale_down(data);
+
+exit_ion_unmap_kernel:
+	ion_unmap_kernel(qseecom.ion_clnt, qseecom.cmnlib_ion_handle);
+
+exit_ion_free:
+	ion_free(qseecom.ion_clnt, qseecom.cmnlib_ion_handle);
+	qseecom.cmnlib_ion_handle = NULL;
 	return ret;
 }
 
@@ -1745,6 +1822,11 @@ static int qseecom_unload_commonlib_image(void)
 			break;
 		}
 	}
+
+	ion_unmap_kernel(qseecom.ion_clnt, qseecom.cmnlib_ion_handle);
+	ion_free(qseecom.ion_clnt, qseecom.cmnlib_ion_handle);
+	qseecom.cmnlib_ion_handle = NULL;
+
 	return ret;
 }
 
@@ -2037,9 +2119,18 @@ static int qseecom_send_modfd_resp(struct qseecom_dev_handle *data,
 {
 	struct qseecom_send_modfd_listener_resp resp;
 	int i;
+	struct qseecom_registered_listener_list *this_lstnr = NULL;
 
 	if (copy_from_user(&resp, argp, sizeof(resp))) {
 		pr_err("copy_from_user failed");
+		return -EINVAL;
+	}
+	this_lstnr = __qseecom_find_svc(data->listener.id);
+	if (this_lstnr == NULL)
+		return -EINVAL;
+
+	if (resp.resp_buf_ptr == NULL) {
+		pr_err("Invalid resp_buf_ptr\n");
 		return -EINVAL;
 	}
 	/* validate offsets */
@@ -2050,6 +2141,17 @@ static int qseecom_send_modfd_resp(struct qseecom_dev_handle *data,
 			return -EINVAL;
 		}
 	}
+
+	if (((uint32_t)resp.resp_buf_ptr <
+			this_lstnr->user_virt_sb_base)
+			|| ((uint32_t)resp.resp_buf_ptr >=
+			(this_lstnr->user_virt_sb_base +
+			this_lstnr->sb_length))) {
+		pr_err("resp_buf_ptr address not within shared buffer\n");
+		return -EINVAL;
+	}
+	resp.resp_buf_ptr = (uint32_t)this_lstnr->sb_virt +
+		(resp.resp_buf_ptr - this_lstnr->user_virt_sb_base);
 	__qseecom_update_cmd_buf(&resp, false, data, true);
 	qseecom.send_resp_flag = 1;
 	wake_up_interruptible(&qseecom.send_resp_wq);
@@ -2559,25 +2661,20 @@ static int __qseecom_get_ce_pipe_info(
 
 static int __qseecom_generate_and_save_key(struct qseecom_dev_handle *data,
 			enum qseecom_key_management_usage_type usage,
-			uint8_t *key_id, uint32_t flags)
+			struct qseecom_key_generate_ireq *ireq)
 {
-	struct qseecom_key_generate_ireq ireq;
 	struct qseecom_command_scm_resp resp;
 	int ret;
 
-	if (usage != QSEOS_KM_USAGE_DISK_ENCRYPTION) {
+	if (usage < QSEOS_KM_USAGE_DISK_ENCRYPTION ||
+		usage >= QSEOS_KM_USAGE_MAX) {
 		pr_err("Error:: unsupported usage %d\n", usage);
 		return -EFAULT;
 	}
-
-	memcpy(ireq.key_id, key_id, QSEECOM_KEY_ID_SIZE);
-	ireq.flags = flags;
-	ireq.qsee_command_id = QSEOS_GENERATE_KEY;
-
 	__qseecom_enable_clk(CLK_QSEE);
 
 	ret = scm_call(SCM_SVC_TZSCHEDULER, 1,
-				&ireq, sizeof(struct qseecom_key_generate_ireq),
+				ireq, sizeof(struct qseecom_key_generate_ireq),
 				&resp, sizeof(resp));
 	if (ret) {
 		pr_err("scm call to generate key failed : %d\n", ret);
@@ -2615,25 +2712,20 @@ static int __qseecom_generate_and_save_key(struct qseecom_dev_handle *data,
 
 static int __qseecom_delete_saved_key(struct qseecom_dev_handle *data,
 			enum qseecom_key_management_usage_type usage,
-			uint8_t *key_id, uint32_t flags)
+			struct qseecom_key_delete_ireq *ireq)
 {
-	struct qseecom_key_delete_ireq ireq;
 	struct qseecom_command_scm_resp resp;
 	int ret;
 
-	if (usage != QSEOS_KM_USAGE_DISK_ENCRYPTION) {
+	if (usage < QSEOS_KM_USAGE_DISK_ENCRYPTION ||
+		usage >= QSEOS_KM_USAGE_MAX) {
 		pr_err("Error:: unsupported usage %d\n", usage);
 		return -EFAULT;
 	}
-
-	memcpy(ireq.key_id, key_id, QSEECOM_KEY_ID_SIZE);
-	ireq.flags = flags;
-	ireq.qsee_command_id = QSEOS_DELETE_KEY;
-
 	__qseecom_enable_clk(CLK_QSEE);
 
 	ret = scm_call(SCM_SVC_TZSCHEDULER, 1,
-				&ireq, sizeof(struct qseecom_key_delete_ireq),
+				ireq, sizeof(struct qseecom_key_delete_ireq),
 				&resp, sizeof(struct qseecom_command_scm_resp));
 	if (ret) {
 		pr_err("scm call to delete key failed : %d\n", ret);
@@ -2663,39 +2755,23 @@ static int __qseecom_delete_saved_key(struct qseecom_dev_handle *data,
 
 static int __qseecom_set_clear_ce_key(struct qseecom_dev_handle *data,
 			enum qseecom_key_management_usage_type usage,
-			struct qseecom_set_key_parameter *set_key_para)
+			struct qseecom_key_select_ireq *ireq)
 {
-	struct qseecom_key_select_ireq ireq;
 	struct qseecom_command_scm_resp resp;
 	int ret;
 
-	if (usage != QSEOS_KM_USAGE_DISK_ENCRYPTION) {
-			pr_err("Error:: unsupported usage %d\n", usage);
-			return -EFAULT;
+	if (usage < QSEOS_KM_USAGE_DISK_ENCRYPTION ||
+		usage >= QSEOS_KM_USAGE_MAX) {
+		pr_err("Error:: unsupported usage %d\n", usage);
+		return -EFAULT;
 	}
 
 	__qseecom_enable_clk(CLK_QSEE);
 	if (qseecom.qsee.instance != qseecom.ce_drv.instance)
 		__qseecom_enable_clk(CLK_CE_DRV);
 
-	memcpy(ireq.key_id, set_key_para->key_id, QSEECOM_KEY_ID_SIZE);
-	ireq.qsee_command_id = QSEOS_SET_KEY;
-	ireq.ce = set_key_para->ce_hw;
-	ireq.pipe = set_key_para->pipe;
-	ireq.flags = set_key_para->flags;
-
-	/* set both PIPE_ENC and PIPE_ENC_XTS*/
-	ireq.pipe_type = QSEOS_PIPE_ENC|QSEOS_PIPE_ENC_XTS;
-
-	if (set_key_para->set_clear_key_flag ==
-			QSEECOM_SET_CE_KEY_CMD)
-		memcpy((void *)ireq.hash, (void *)set_key_para->hash32,
-				QSEECOM_HASH_SIZE);
-	else
-		memset((void *)ireq.hash, 0, QSEECOM_HASH_SIZE);
-
 	ret = scm_call(SCM_SVC_TZSCHEDULER, 1,
-				&ireq, sizeof(struct qseecom_key_select_ireq),
+				ireq, sizeof(struct qseecom_key_select_ireq),
 				&resp, sizeof(struct qseecom_command_scm_resp));
 	if (ret) {
 		pr_err("scm call to set QSEOS_PIPE_ENC key failed : %d\n", ret);
@@ -2728,16 +2804,63 @@ static int __qseecom_set_clear_ce_key(struct qseecom_dev_handle *data,
 	return ret;
 }
 
+static int __qseecom_update_current_key_user_info(
+			struct qseecom_dev_handle *data,
+			enum qseecom_key_management_usage_type usage,
+			struct qseecom_key_userinfo_update_ireq *ireq)
+{
+	struct qseecom_command_scm_resp resp;
+	int ret;
+
+	if (usage < QSEOS_KM_USAGE_DISK_ENCRYPTION ||
+		usage >= QSEOS_KM_USAGE_MAX) {
+			pr_err("Error:: unsupported usage %d\n", usage);
+			return -EFAULT;
+	}
+
+	__qseecom_enable_clk(CLK_QSEE);
+
+	ret = scm_call(SCM_SVC_TZSCHEDULER, 1,
+		ireq, sizeof(struct qseecom_key_userinfo_update_ireq),
+		&resp, sizeof(struct qseecom_command_scm_resp));
+	if (ret) {
+		pr_err("scm call to update key userinfo failed : %d\n", ret);
+		__qseecom_disable_clk(CLK_QSEE);
+		if (qseecom.qsee.instance != qseecom.ce_drv.instance)
+			__qseecom_disable_clk(CLK_CE_DRV);
+		return ret;
+	}
+
+	switch (resp.result) {
+	case QSEOS_RESULT_SUCCESS:
+		break;
+	case QSEOS_RESULT_INCOMPLETE:
+		ret = __qseecom_process_incomplete_cmd(data, &resp);
+		if (ret)
+			pr_err("process_incomplete_cmd FAILED, resp.result %d\n",
+					resp.result);
+		break;
+	case QSEOS_RESULT_FAILURE:
+	default:
+		pr_err("Set key scm call failed resp.result %d\n", resp.result);
+		ret = -EINVAL;
+		break;
+	}
+
+	__qseecom_disable_clk(CLK_QSEE);
+	return ret;
+}
+
 static int qseecom_create_key(struct qseecom_dev_handle *data,
 			void __user *argp)
 {
 	uint32_t ce_hw = 0;
 	uint32_t pipe = 0;
-	uint8_t key_id[QSEECOM_KEY_ID_SIZE] = {0};
 	int ret = 0;
 	uint32_t flags = 0;
-	struct qseecom_set_key_parameter set_key_para;
 	struct qseecom_create_key_req create_key_req;
+	struct qseecom_key_generate_ireq generate_key_ireq;
+	struct qseecom_key_select_ireq set_key_ireq;
 
 	ret = copy_from_user(&create_key_req, argp, sizeof(create_key_req));
 	if (ret) {
@@ -2745,7 +2868,8 @@ static int qseecom_create_key(struct qseecom_dev_handle *data,
 		return ret;
 	}
 
-	if (create_key_req.usage != QSEOS_KM_USAGE_DISK_ENCRYPTION) {
+	if (create_key_req.usage < QSEOS_KM_USAGE_DISK_ENCRYPTION ||
+		create_key_req.usage >= QSEOS_KM_USAGE_MAX) {
 		pr_err("Error:: unsupported usage %d\n", create_key_req.usage);
 		return -EFAULT;
 	}
@@ -2756,23 +2880,41 @@ static int qseecom_create_key(struct qseecom_dev_handle *data,
 		return -EINVAL;
 	}
 
+	generate_key_ireq.flags = flags;
+	generate_key_ireq.qsee_command_id = QSEOS_GENERATE_KEY;
+	memset((void *)generate_key_ireq.key_id, 0, QSEECOM_KEY_ID_SIZE);
+	memset((void *)generate_key_ireq.hash32, 0, QSEECOM_HASH_SIZE);
+	memcpy((void *)generate_key_ireq.key_id,
+			(void *)key_id_array[create_key_req.usage - 1],
+			QSEECOM_KEY_ID_SIZE);
+	memcpy((void *)generate_key_ireq.hash32,
+			(void *)create_key_req.hash32, QSEECOM_HASH_SIZE);
+
 	ret = __qseecom_generate_and_save_key(data, create_key_req.usage,
-								key_id, flags);
+					&generate_key_ireq);
 	if (ret) {
 		pr_err("Failed to generate key on storage: %d\n", ret);
 		return -EFAULT;
 	}
 
-	set_key_para.ce_hw = ce_hw;
-	set_key_para.pipe = pipe;
-	memcpy(set_key_para.key_id, key_id, QSEECOM_KEY_ID_SIZE);
-	set_key_para.flags = flags;
-	set_key_para.set_clear_key_flag = QSEECOM_SET_CE_KEY_CMD;
-	memcpy((void *)set_key_para.hash32, (void *)create_key_req.hash32,
+	set_key_ireq.qsee_command_id = QSEOS_SET_KEY;
+	set_key_ireq.ce = ce_hw;
+	set_key_ireq.pipe = pipe;
+	set_key_ireq.flags = flags;
+
+	/* set both PIPE_ENC and PIPE_ENC_XTS*/
+	set_key_ireq.pipe_type = QSEOS_PIPE_ENC|QSEOS_PIPE_ENC_XTS;
+	memset((void *)set_key_ireq.key_id, 0, QSEECOM_KEY_ID_SIZE);
+	memset((void *)set_key_ireq.hash32, 0, QSEECOM_HASH_SIZE);
+	memcpy((void *)set_key_ireq.key_id,
+			(void *)key_id_array[create_key_req.usage - 1],
+				QSEECOM_KEY_ID_SIZE);
+	memcpy((void *)set_key_ireq.hash32, (void *)create_key_req.hash32,
 				QSEECOM_HASH_SIZE);
 
 	ret = __qseecom_set_clear_ce_key(data, create_key_req.usage,
-								&set_key_para);
+								&set_key_ireq);
+	msleep(2000);
 	if (ret) {
 		pr_err("Failed to create key: pipe %d, ce %d: %d\n",
 			pipe, ce_hw, ret);
@@ -2787,12 +2929,12 @@ static int qseecom_wipe_key(struct qseecom_dev_handle *data,
 {
 	uint32_t ce_hw = 0;
 	uint32_t pipe = 0;
-	uint8_t key_id[QSEECOM_KEY_ID_SIZE] = {0};
 	int ret = 0;
 	uint32_t flags = 0;
 	int i;
 	struct qseecom_wipe_key_req wipe_key_req;
-	struct qseecom_set_key_parameter clear_key_para;
+	struct qseecom_key_delete_ireq delete_key_ireq;
+	struct qseecom_key_select_ireq clear_key_ireq;
 
 	ret = copy_from_user(&wipe_key_req, argp, sizeof(wipe_key_req));
 	if (ret) {
@@ -2800,7 +2942,8 @@ static int qseecom_wipe_key(struct qseecom_dev_handle *data,
 		return ret;
 	}
 
-	if (wipe_key_req.usage != QSEOS_KM_USAGE_DISK_ENCRYPTION) {
+	if (wipe_key_req.usage < QSEOS_KM_USAGE_DISK_ENCRYPTION ||
+		wipe_key_req.usage >= QSEOS_KM_USAGE_MAX) {
 		pr_err("Error:: unsupported usage %d\n", wipe_key_req.usage);
 		return -EFAULT;
 	}
@@ -2811,22 +2954,32 @@ static int qseecom_wipe_key(struct qseecom_dev_handle *data,
 		return -EINVAL;
 	}
 
-	ret = __qseecom_delete_saved_key(data, wipe_key_req.usage, key_id,
-									flags);
+	delete_key_ireq.flags = flags;
+	delete_key_ireq.qsee_command_id = QSEOS_DELETE_KEY;
+	memset((void *)delete_key_ireq.key_id, 0, QSEECOM_KEY_ID_SIZE);
+	memcpy((void *)delete_key_ireq.key_id,
+			(void *)key_id_array[wipe_key_req.usage - 1],
+			QSEECOM_KEY_ID_SIZE);
+	memset((void *)delete_key_ireq.hash32, 0, QSEECOM_HASH_SIZE);
+
+	ret = __qseecom_delete_saved_key(data, wipe_key_req.usage,
+					&delete_key_ireq);
 	if (ret) {
 		pr_err("Failed to delete key from ssd storage: %d\n", ret);
 		return -EFAULT;
 	}
 
-	/* an invalid key_id 0xff is used to indicate clear key*/
+	clear_key_ireq.qsee_command_id = QSEOS_SET_KEY;
+	clear_key_ireq.ce = ce_hw;
+	clear_key_ireq.pipe = pipe;
+	clear_key_ireq.flags = flags;
+	clear_key_ireq.pipe_type = QSEOS_PIPE_ENC|QSEOS_PIPE_ENC_XTS;
 	for (i = 0; i < QSEECOM_KEY_ID_SIZE; i++)
-		clear_key_para.key_id[i] = 0xff;
-	clear_key_para.ce_hw = ce_hw;
-	clear_key_para.pipe = pipe;
-	clear_key_para.flags = flags;
-	clear_key_para.set_clear_key_flag = QSEECOM_CLEAR_CE_KEY_CMD;
+			clear_key_ireq.key_id[i] = 0xff;
+	memset((void *)clear_key_ireq.hash32, 0, QSEECOM_HASH_SIZE);
+
 	ret = __qseecom_set_clear_ce_key(data, wipe_key_req.usage,
-							&clear_key_para);
+							&clear_key_ireq);
 	if (ret) {
 		pr_err("Failed to wipe key: pipe %d, ce %d: %d\n",
 			pipe, ce_hw, ret);
@@ -2836,6 +2989,48 @@ static int qseecom_wipe_key(struct qseecom_dev_handle *data,
 	return ret;
 }
 
+static int qseecom_update_key_user_info(struct qseecom_dev_handle *data,
+			void __user *argp)
+{
+	int ret = 0;
+	uint32_t flags = 0;
+	struct qseecom_update_key_userinfo_req update_key_req;
+	struct qseecom_key_userinfo_update_ireq ireq;
+
+	ret = copy_from_user(&update_key_req, argp, sizeof(update_key_req));
+	if (ret) {
+		pr_err("copy_from_user failed\n");
+		return ret;
+	}
+
+	if (update_key_req.usage < QSEOS_KM_USAGE_DISK_ENCRYPTION ||
+		update_key_req.usage >= QSEOS_KM_USAGE_MAX) {
+		pr_err("Error:: unsupported usage %d\n", update_key_req.usage);
+		return -EFAULT;
+	}
+
+	ireq.qsee_command_id = QSEOS_UPDATE_KEY_USERINFO;
+	ireq.flags = flags;
+	memset(ireq.key_id, 0, QSEECOM_KEY_ID_SIZE);
+	memset((void *)ireq.current_hash32, 0, QSEECOM_HASH_SIZE);
+	memset((void *)ireq.new_hash32, 0, QSEECOM_HASH_SIZE);
+	memcpy(ireq.key_id, key_id_array[update_key_req.usage - 1],
+						QSEECOM_KEY_ID_SIZE);
+	memcpy((void *)ireq.current_hash32,
+		(void *)update_key_req.current_hash32, QSEECOM_HASH_SIZE);
+	memcpy((void *)ireq.new_hash32,
+		(void *)update_key_req.new_hash32, QSEECOM_HASH_SIZE);
+
+	ret = __qseecom_update_current_key_user_info(data, update_key_req.usage,
+						&ireq);
+	msleep(2000);
+	if (ret) {
+		pr_err("Failed to update key info: %d\n", ret);
+		return -EFAULT;
+	}
+	return ret;
+
+}
 static int qseecom_is_es_activated(void __user *argp)
 {
 	struct qseecom_is_es_activated_req req;
@@ -3008,7 +3203,7 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		ret = qseecom_receive_req(data);
 		atomic_dec(&data->ioctl_count);
 		wake_up_all(&data->abort_wq);
-		if (ret)
+		if (ret && (ret != -ERESTARTSYS))
 			pr_err("failed qseecom_receive_req: %d\n", ret);
 		break;
 	}
@@ -3243,14 +3438,12 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 			return -EINVAL;
 		}
 		data->released = true;
-		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_create_key(data, argp);
 		if (ret)
 			pr_err("failed to create encryption key: %d\n", ret);
 
 		atomic_dec(&data->ioctl_count);
-		mutex_unlock(&app_access_lock);
 		break;
 	}
 	case QSEECOM_IOCTL_WIPE_KEY_REQ: {
@@ -3266,13 +3459,31 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 			return -EINVAL;
 		}
 		data->released = true;
-		mutex_lock(&app_access_lock);
 		atomic_inc(&data->ioctl_count);
 		ret = qseecom_wipe_key(data, argp);
 		if (ret)
 			pr_err("failed to wipe encryption key: %d\n", ret);
 		atomic_dec(&data->ioctl_count);
-		mutex_unlock(&app_access_lock);
+		break;
+	}
+	case QSEECOM_IOCTL_UPDATE_KEY_USER_INFO_REQ: {
+		if (data->type != QSEECOM_GENERIC) {
+			pr_err("update key req: invalid handle (%d)\n",
+								data->type);
+			ret = -EINVAL;
+			break;
+		}
+		if (qseecom.qsee_version < QSEE_VERSION_05) {
+			pr_err("Update Key feature unsupported in qsee ver %u\n",
+				qseecom.qsee_version);
+			return -EINVAL;
+		}
+		data->released = true;
+		atomic_inc(&data->ioctl_count);
+		ret = qseecom_update_key_user_info(data, argp);
+		if (ret)
+			pr_err("failed to update key user info: %d\n", ret);
+		atomic_dec(&data->ioctl_count);
 		break;
 	}
 	case QSEECOM_IOCTL_SAVE_PARTITION_HASH_REQ: {

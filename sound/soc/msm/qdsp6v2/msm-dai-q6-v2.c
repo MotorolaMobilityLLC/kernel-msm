@@ -19,6 +19,7 @@
 #include <linux/slab.h>
 #include <linux/clk.h>
 #include <linux/of_device.h>
+#include <linux/clk/msm-clk.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
@@ -26,7 +27,6 @@
 #include <sound/q6afe-v2.h>
 #include <sound/msm-dai-q6-v2.h>
 #include <sound/pcm_params.h>
-#include <mach/clk.h>
 
 #define MSM_DAI_PRI_AUXPCM_DT_DEV_ID 1
 #define MSM_DAI_SEC_AUXPCM_DT_DEV_ID 2
@@ -501,30 +501,30 @@ static struct snd_soc_dai_driver msm_dai_q6_aux_pcm_dai[] = {
 		.remove = msm_dai_q6_dai_auxpcm_remove,
 	},
 	{
-	 .playback = {
-		 .stream_name = "AUX PCM Sec Playback",
-		 .aif_name = "SEC_AUX_PCM_RX",
-		 .rates = (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000),
-		 .formats = SNDRV_PCM_FMTBIT_S16_LE,
-		 .channels_min = 1,
-		 .channels_max = 1,
-		 .rate_max = 16000,
-		 .rate_min = 8000,
-	 },
-	 .capture = {
-		 .stream_name = "AUX PCM Sec Capture",
-		 .aif_name = "SEC_AUX_PCM_TX",
-		 .rates = (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000),
-		 .formats = SNDRV_PCM_FMTBIT_S16_LE,
-		 .channels_min = 1,
-		 .channels_max = 1,
-		 .rate_max = 16000,
-		 .rate_min = 8000,
-	 },
-	 .ops = &msm_dai_q6_auxpcm_ops,
-	 .probe = msm_dai_q6_aux_pcm_probe,
-	 .remove = msm_dai_q6_dai_auxpcm_remove,
- }
+		.playback = {
+			.stream_name = "Sec AUX PCM Playback",
+			.aif_name = "SEC_AUX_PCM_RX",
+			.rates = (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000),
+			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			.channels_min = 1,
+			.channels_max = 1,
+			.rate_max = 16000,
+			.rate_min = 8000,
+		},
+		.capture = {
+			.stream_name = "Sec AUX PCM Capture",
+			.aif_name = "SEC_AUX_PCM_TX",
+			.rates = (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000),
+			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			.channels_min = 1,
+			.channels_max = 1,
+			.rate_max = 16000,
+			.rate_min = 8000,
+		},
+		.ops = &msm_dai_q6_auxpcm_ops,
+		.probe = msm_dai_q6_aux_pcm_probe,
+		.remove = msm_dai_q6_dai_auxpcm_remove,
+	}
 };
 
 static int msm_dai_q6_prepare(struct snd_pcm_substream *substream,
@@ -778,12 +778,14 @@ static int msm_dai_q6_hw_params(struct snd_pcm_substream *substream,
 	case SLIMBUS_2_RX:
 	case SLIMBUS_3_RX:
 	case SLIMBUS_4_RX:
+	case SLIMBUS_6_RX:
 	case SLIMBUS_0_TX:
 	case SLIMBUS_1_TX:
 	case SLIMBUS_2_TX:
 	case SLIMBUS_3_TX:
 	case SLIMBUS_4_TX:
 	case SLIMBUS_5_TX:
+	case SLIMBUS_6_TX:
 		rc = msm_dai_q6_slim_bus_hw_params(params, dai,
 				substream->stream);
 		break;
@@ -889,6 +891,7 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 	case SLIMBUS_2_RX:
 	case SLIMBUS_3_RX:
 	case SLIMBUS_4_RX:
+	case SLIMBUS_6_RX:
 		/*
 		 * channel number to be between 128 and 255.
 		 * For RX port use channel numbers
@@ -916,6 +919,7 @@ static int msm_dai_q6_set_channel_map(struct snd_soc_dai *dai,
 	case SLIMBUS_3_TX:
 	case SLIMBUS_4_TX:
 	case SLIMBUS_5_TX:
+	case SLIMBUS_6_TX:
 		/*
 		 * channel number to be between 128 and 255.
 		 * For TX port use channel numbers
@@ -1016,7 +1020,7 @@ static struct snd_soc_dai_driver msm_dai_q6_afe_rx_dai[] = {
 	},
 	{
 		.playback = {
-			 .stream_name = "AFE Proxy Rx",
+			 .stream_name = "AFE-PROXY RX",
 			 .rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			 SNDRV_PCM_RATE_16000,
 			 .formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
@@ -1050,7 +1054,7 @@ static struct snd_soc_dai_driver msm_dai_q6_afe_tx_dai[] = {
 	},
 	{
 		.capture = {
-			.stream_name = "AFE Proxy Tx",
+			.stream_name = "AFE-PROXY TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -1067,7 +1071,7 @@ static struct snd_soc_dai_driver msm_dai_q6_afe_tx_dai[] = {
 
 static struct snd_soc_dai_driver msm_dai_q6_bt_sco_rx_dai = {
 	.playback = {
-		.stream_name = "BT-SCO Playback",
+		.stream_name = "Internal BT-SCO Playback",
 		.aif_name = "INT_BT_SCO_RX",
 		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -1083,7 +1087,7 @@ static struct snd_soc_dai_driver msm_dai_q6_bt_sco_rx_dai = {
 
 static struct snd_soc_dai_driver msm_dai_q6_bt_sco_tx_dai = {
 	.capture = {
-		.stream_name = "BT-SCO Capture",
+		.stream_name = "Internal BT-SCO Capture",
 		.aif_name = "INT_BT_SCO_TX",
 		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -1099,7 +1103,7 @@ static struct snd_soc_dai_driver msm_dai_q6_bt_sco_tx_dai = {
 
 static struct snd_soc_dai_driver msm_dai_q6_fm_rx_dai = {
 	.playback = {
-		.stream_name = "FM Playback",
+		.stream_name = "Internal FM Playback",
 		.aif_name = "INT_FM_RX",
 		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 		SNDRV_PCM_RATE_16000,
@@ -1116,7 +1120,7 @@ static struct snd_soc_dai_driver msm_dai_q6_fm_rx_dai = {
 
 static struct snd_soc_dai_driver msm_dai_q6_fm_tx_dai = {
 	.capture = {
-		.stream_name = "FM Capture",
+		.stream_name = "Internal FM Capture",
 		.aif_name = "INT_FM_TX",
 		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 		SNDRV_PCM_RATE_16000,
@@ -1374,7 +1378,7 @@ static struct platform_driver msm_auxpcm_dev_driver = {
 static struct snd_soc_dai_driver msm_dai_q6_slimbus_rx_dai[] = {
 	{
 		.playback = {
-			.stream_name = "SLIM0_RX Playback",
+			.stream_name = "Slimbus Playback",
 			.aif_name = "SLIMBUS_0_RX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_96000 |
@@ -1391,7 +1395,7 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_rx_dai[] = {
 	},
 	{
 		.playback = {
-			.stream_name = "SLIM1_RX Playback",
+			.stream_name = "Slimbus1 Playback",
 			.aif_name = "SLIMBUS_1_RX",
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
 			SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |
@@ -1408,7 +1412,7 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_rx_dai[] = {
 	},
 	{
 		.playback = {
-			.stream_name = "SLIM2_RX Playback",
+			.stream_name = "Slimbus2 Playback",
 			.aif_name = "SLIMBUS_2_RX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_96000 |
@@ -1425,7 +1429,7 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_rx_dai[] = {
 	},
 	{
 		.playback = {
-			.stream_name = "SLIM3_RX Playback",
+			.stream_name = "Slimbus3 Playback",
 			.aif_name = "SLIMBUS_3_RX",
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
 			SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |
@@ -1442,7 +1446,7 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_rx_dai[] = {
 	},
 	{
 		.playback = {
-			.stream_name = "SLIM4_RX Playback",
+			.stream_name = "Slimbus4 Playback",
 			.aif_name = "SLIMBUS_4_RX",
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
 			SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |
@@ -1457,12 +1461,30 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_rx_dai[] = {
 		.probe = msm_dai_q6_dai_probe,
 		.remove = msm_dai_q6_dai_remove,
 	},
+	{
+		.playback = {
+			.stream_name = "Slimbus6 Playback",
+			.aif_name = "SLIMBUS_6_RX",
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
+			SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |
+			SNDRV_PCM_RATE_192000,
+			.formats = SNDRV_PCM_FMTBIT_S16_LE |
+			 SNDRV_PCM_FMTBIT_S24_LE,
+			.channels_min = 1,
+			.channels_max = 2,
+			.rate_min = 8000,
+			.rate_max = 192000,
+		},
+		.ops = &msm_dai_q6_ops,
+		.probe = msm_dai_q6_dai_probe,
+		.remove = msm_dai_q6_dai_remove,
+	},
 };
 
 static struct snd_soc_dai_driver msm_dai_q6_slimbus_tx_dai[] = {
 	{
 		.capture = {
-			.stream_name = "SLIM0_TX Capture",
+			.stream_name = "Slimbus Capture",
 			.aif_name = "SLIMBUS_0_TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_96000 |
@@ -1479,7 +1501,7 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_tx_dai[] = {
 	},
 	{
 		.capture = {
-			.stream_name = "SLIM1_TX Capture",
+			.stream_name = "Slimbus1 Capture",
 			.aif_name = "SLIMBUS_1_TX",
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
 			SNDRV_PCM_RATE_48000,
@@ -1495,7 +1517,7 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_tx_dai[] = {
 	},
 	{
 		.capture = {
-			.stream_name = "SLIM2_TX Capture",
+			.stream_name = "Slimbus2 Capture",
 			.aif_name = "SLIMBUS_2_TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_96000 |
@@ -1512,7 +1534,7 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_tx_dai[] = {
 	},
 	{
 		.capture = {
-			.stream_name = "SLIM3_TX Capture",
+			.stream_name = "Slimbus3 Capture",
 			.aif_name = "SLIMBUS_3_TX",
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
 			SNDRV_PCM_RATE_48000,
@@ -1528,7 +1550,7 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_tx_dai[] = {
 	},
 	{
 		.capture = {
-			.stream_name = "SLIM4_TX Capture",
+			.stream_name = "Slimbus4 Capture",
 			.aif_name = "SLIMBUS_4_TX",
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
 			SNDRV_PCM_RATE_48000,
@@ -1544,7 +1566,7 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_tx_dai[] = {
 	},
 	{
 		.capture = {
-			.stream_name = "SLIM5_TX Capture",
+			.stream_name = "Slimbus5 Capture",
 			.aif_name = "SLIMBUS_5_TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_96000 |
@@ -1554,6 +1576,22 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_tx_dai[] = {
 			.channels_max = 8,
 			.rate_min = 8000,
 			.rate_max = 192000,
+		},
+		.ops = &msm_dai_q6_ops,
+		.probe = msm_dai_q6_dai_probe,
+		.remove = msm_dai_q6_dai_remove,
+	},
+	{
+		.capture = {
+			.stream_name = "Slimbus6 Capture",
+			.aif_name = "SLIMBUS_6_TX",
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
+			SNDRV_PCM_RATE_48000,
+			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			.channels_min = 1,
+			.channels_max = 2,
+			.rate_min = 8000,
+			.rate_max = 48000,
 		},
 		.ops = &msm_dai_q6_ops,
 		.probe = msm_dai_q6_dai_probe,
@@ -2354,19 +2392,22 @@ static int msm_dai_q6_dev_probe(struct platform_device *pdev)
 
 	switch (id) {
 	case SLIMBUS_0_RX:
-		strlcpy(stream_name, "SLIM0_RX Playback", 80);
+		strlcpy(stream_name, "Slimbus Playback", 80);
 		goto register_slim_playback;
 	case SLIMBUS_2_RX:
-		strlcpy(stream_name, "SLIM2_RX Playback", 80);
+		strlcpy(stream_name, "Slimbus2 Playback", 80);
 		goto register_slim_playback;
 	case SLIMBUS_1_RX:
-		strlcpy(stream_name, "SLIM1_RX Playback", 80);
+		strlcpy(stream_name, "Slimbus1 Playback", 80);
 		goto register_slim_playback;
 	case SLIMBUS_3_RX:
-		strlcpy(stream_name, "SLIM3_RX Playback", 80);
+		strlcpy(stream_name, "Slimbus3 Playback", 80);
 		goto register_slim_playback;
 	case SLIMBUS_4_RX:
-		strlcpy(stream_name, "SLIM4_RX Playback", 80);
+		strlcpy(stream_name, "Slimbus4 Playback", 80);
+		goto register_slim_playback;
+	case SLIMBUS_6_RX:
+		strlcpy(stream_name, "Slimbus6 Playback", 80);
 register_slim_playback:
 		rc = -ENODEV;
 		len = strnlen(stream_name , 80);
@@ -2386,22 +2427,25 @@ register_slim_playback:
 				__func__, stream_name);
 		break;
 	case SLIMBUS_0_TX:
-		strlcpy(stream_name, "SLIM0_TX Capture", 80);
+		strlcpy(stream_name, "Slimbus Capture", 80);
 		goto register_slim_capture;
 	case SLIMBUS_1_TX:
-		strlcpy(stream_name, "SLIM1_TX Capture", 80);
+		strlcpy(stream_name, "Slimbus1 Capture", 80);
 		goto register_slim_capture;
 	case SLIMBUS_2_TX:
-		strlcpy(stream_name, "SLIM2_TX Capture", 80);
+		strlcpy(stream_name, "Slimbus2 Capture", 80);
 		goto register_slim_capture;
 	case SLIMBUS_3_TX:
-		strlcpy(stream_name, "SLIM3_TX Capture", 80);
+		strlcpy(stream_name, "Slimbus3 Capture", 80);
 		goto register_slim_capture;
 	case SLIMBUS_4_TX:
-		strlcpy(stream_name, "SLIM4_TX Capture", 80);
+		strlcpy(stream_name, "Slimbus4 Capture", 80);
 		goto register_slim_capture;
 	case SLIMBUS_5_TX:
-		strlcpy(stream_name, "SLIM5_TX Capture", 80);
+		strlcpy(stream_name, "Slimbus5 Capture", 80);
+		goto register_slim_capture;
+	case SLIMBUS_6_TX:
+		strlcpy(stream_name, "Slimbus6 Capture", 80);
 register_slim_capture:
 		rc = -ENODEV;
 		len = strnlen(stream_name , 80);
@@ -2440,7 +2484,7 @@ register_slim_capture:
 		strlcpy(stream_name, "AFE Playback", 80);
 		goto register_afe_playback;
 	case RT_PROXY_DAI_002_RX:
-		strlcpy(stream_name, "AFE Proxy Rx", 80);
+		strlcpy(stream_name, "AFE-PROXY RX", 80);
 register_afe_playback:
 		rc = -ENODEV;
 		len = strnlen(stream_name , 80);
@@ -2462,7 +2506,7 @@ register_afe_playback:
 		strlcpy(stream_name, "AFE Capture", 80);
 		goto register_afe_capture;
 	case RT_PROXY_DAI_002_TX:
-		strlcpy(stream_name, "AFE Proxy Tx", 80);
+		strlcpy(stream_name, "AFE-PROXY TX", 80);
 register_afe_capture:
 		rc = -ENODEV;
 		len = strnlen(stream_name , 80);

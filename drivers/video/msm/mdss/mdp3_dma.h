@@ -14,6 +14,7 @@
 #ifndef MDP3_DMA_H
 #define MDP3_DMA_H
 
+#include <linux/notifier.h>
 #include <linux/sched.h>
 
 #define MDP_HISTOGRAM_BL_SCALE_MAX 1024
@@ -227,7 +228,7 @@ struct mdp3_dma_histogram_data {
 	u32 extra[2];
 };
 
-struct mdp3_vsync_notification {
+struct mdp3_notification {
 	void (*handler)(void *arg);
 	void *arg;
 };
@@ -245,7 +246,8 @@ struct mdp3_dma {
 	struct completion vsync_comp;
 	struct completion dma_comp;
 	struct completion histo_comp;
-	struct mdp3_vsync_notification vsync_client;
+	struct mdp3_notification vsync_client;
+	struct mdp3_notification dma_notifier_client;
 
 	struct mdp3_dma_output_config output_config;
 	struct mdp3_dma_source source_config;
@@ -256,10 +258,13 @@ struct mdp3_dma {
 	struct mdp3_dma_histogram_config histogram_config;
 	int histo_state;
 	struct mdp3_dma_histogram_data histo_data;
+	unsigned int vsync_status;
 
 	int (*dma_config)(struct mdp3_dma *dma,
 			struct mdp3_dma_source *source_config,
 			struct mdp3_dma_output_config *output_config);
+
+	void (*dma_config_source)(struct mdp3_dma *dma);
 
 	int (*start)(struct mdp3_dma *dma, struct mdp3_intf *intf);
 
@@ -288,7 +293,10 @@ struct mdp3_dma {
 	int (*histo_op)(struct mdp3_dma *dma, u32 op);
 
 	void (*vsync_enable)(struct mdp3_dma *dma,
-			struct mdp3_vsync_notification *vsync_client);
+			struct mdp3_notification *vsync_client);
+
+	void (*dma_done_notifier)(struct mdp3_dma *dma,
+			struct mdp3_notification *dma_client);
 };
 
 struct mdp3_video_intf_cfg {

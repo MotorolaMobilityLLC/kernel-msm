@@ -52,7 +52,6 @@
 #include <mach/board.h>
 #include <mach/msm_serial_hs_lite.h>
 #include <mach/msm_bus.h>
-#include <asm/mach-types.h>
 #include "msm_serial_hs_hwreg.h"
 
 /*
@@ -523,6 +522,10 @@ static void msm_hsl_start_tx(struct uart_port *port)
 {
 	struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
 
+	if (port->suspended) {
+		pr_err("%s: System is in Suspend state\n", __func__);
+		return;
+	}
 	msm_hsl_port->imr |= UARTDM_ISR_TXLEV_BMSK;
 	msm_hsl_write(port, msm_hsl_port->imr,
 		regmap[msm_hsl_port->ver_id][UARTDM_IMR]);
@@ -1408,8 +1411,13 @@ static void wait_for_xmitr(struct uart_port *port)
 			touch_nmi_watchdog();
 			cpu_relax();
 			if (++count == msm_hsl_port->tx_timeout) {
+				pr_info("%s: UART TX Stuck, Resetting TX\n",
+								 __func__);
+				msm_hsl_write(port, RESET_TX,
+					regmap[vid][UARTDM_CR]);
+				mb();
 				dump_hsl_regs(port);
-				panic("MSM HSL wait_for_xmitr is stuck!");
+				break;
 			}
 		}
 		msm_hsl_write(port, CLEAR_TX_READY, regmap[vid][UARTDM_CR]);

@@ -23,11 +23,12 @@
 #include <linux/err.h>
 #include <linux/sched.h>
 #include <linux/poll.h>
-#include <linux/wakelock.h>
+#include <linux/pm.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <linux/rwsem.h>
+#include <linux/ipc_logging.h>
 
 #include <asm/uaccess.h>
 #include <asm/byteorder.h>
@@ -35,10 +36,8 @@
 #include <mach/smem_log.h>
 #include <mach/subsystem_notif.h>
 #include <mach/msm_ipc_router.h>
-#include <mach/msm_ipc_logging.h>
 
 #include "ipc_router.h"
-#include "modem_notifier.h"
 #include "msm_ipc_router_security.h"
 
 enum {
@@ -158,7 +157,7 @@ struct msm_ipc_router_xprt_info {
 	uint32_t remote_node_id;
 	uint32_t initialized;
 	struct list_head pkt_list;
-	struct wake_lock wakelock;
+	struct wakeup_source ws;
 	struct mutex rx_lock_lhb2;
 	struct mutex tx_lock_lhb2;
 	uint32_t need_len;
@@ -282,7 +281,7 @@ struct rr_packet *rr_read(struct msm_ipc_router_xprt_info *xprt_info)
 				    struct rr_packet, list);
 	list_del(&temp_pkt->list);
 	if (list_empty(&xprt_info->pkt_list))
-		wake_unlock(&xprt_info->wakelock);
+		__pm_relax(&xprt_info->ws);
 	mutex_unlock(&xprt_info->rx_lock_lhb2);
 	return temp_pkt;
 }
@@ -819,7 +818,8 @@ static int post_pkt_to_port(struct msm_ipc_port *port_ptr,
 			    struct rr_packet *pkt, int clone)
 {
 	struct rr_packet *temp_pkt = pkt;
-	void (*notify)(unsigned event, void *priv);
+	void (*notify)(unsigned event, void *oob_data,
+		       size_t oob_data_len, void *priv);
 
 	if (unlikely(!port_ptr || !pkt))
 		return -EINVAL;
@@ -835,13 +835,13 @@ static int post_pkt_to_port(struct msm_ipc_port *port_ptr,
 	}
 
 	mutex_lock(&port_ptr->port_rx_q_lock_lhb3);
-	wake_lock(&port_ptr->port_rx_wake_lock);
+	__pm_stay_awake(&port_ptr->port_rx_ws);
 	list_add_tail(&temp_pkt->list, &port_ptr->port_rx_q);
 	wake_up(&port_ptr->port_rx_wait_q);
 	notify = port_ptr->notify;
 	mutex_unlock(&port_ptr->port_rx_q_lock_lhb3);
 	if (notify)
-		notify(MSM_IPC_ROUTER_READ_CB, port_ptr->priv);
+		notify(pkt->hdr.type, NULL, 0, port_ptr->priv);
 	return 0;
 }
 
@@ -908,9 +908,25 @@ void msm_ipc_router_add_local_port(struct msm_ipc_port *port_ptr)
 	up_write(&local_ports_lock_lha2);
 }
 
+/**
+ * msm_ipc_router_create_raw_port() - Create an IPC Router port
+ * @endpoint: User-space space socket information to be cached.
+ * @notify: Function to notify incoming events on the port.
+ *   @event: Event ID to be handled.
+ *   @oob_data: Any out-of-band data associated with the event.
+ *   @oob_data_len: Size of the out-of-band data, if valid.
+ *   @priv: Private data registered during the port creation.
+ * @priv: Private Data to be passed during the event notification.
+ *
+ * @return: Valid pointer to port on success, NULL on failure.
+ *
+ * This function is used to create an IPC Router port. The port is used for
+ * communication locally or outside the subsystem.
+ */
 struct msm_ipc_port *msm_ipc_router_create_raw_port(void *endpoint,
-		void (*notify)(unsigned event, void *priv),
-		void *priv)
+	void (*notify)(unsigned event, void *oob_data,
+		       size_t oob_data_len, void *priv),
+	void *priv)
 {
 	struct msm_ipc_port *port_ptr;
 
@@ -930,12 +946,11 @@ struct msm_ipc_port *msm_ipc_router_create_raw_port(void *endpoint,
 	INIT_LIST_HEAD(&port_ptr->port_rx_q);
 	mutex_init(&port_ptr->port_rx_q_lock_lhb3);
 	init_waitqueue_head(&port_ptr->port_rx_wait_q);
-	snprintf(port_ptr->rx_wakelock_name, MAX_WAKELOCK_NAME_SZ,
+	snprintf(port_ptr->rx_ws_name, MAX_WS_NAME_SZ,
 		 "ipc%08x_%s",
 		 port_ptr->this_port.port_id,
 		 current->comm);
-	wake_lock_init(&port_ptr->port_rx_wake_lock,
-			WAKE_LOCK_SUSPEND, port_ptr->rx_wakelock_name);
+	wakeup_source_init(&port_ptr->port_rx_ws, port_ptr->rx_ws_name);
 
 	port_ptr->endpoint = endpoint;
 	port_ptr->notify = notify;
@@ -1071,6 +1086,7 @@ static int msm_ipc_router_lookup_resume_tx_port(
  * post_resume_tx() - Post the resume_tx event
  * @rport_ptr: Pointer to the remote port
  * @pkt : The data packet that is received on a resume_tx event
+ * @msg: Out of band data to be passed to kernel drivers
  *
  * This function informs about the reception of the resume_tx message from a
  * remote port pointed by rport_ptr to all the local ports that are in the
@@ -1081,7 +1097,7 @@ static int msm_ipc_router_lookup_resume_tx_port(
  * Must be called with rport_ptr->quota_lock_lhb2 locked.
  */
 static void post_resume_tx(struct msm_ipc_router_remote_port *rport_ptr,
-						   struct rr_packet *pkt)
+			   struct rr_packet *pkt, union rr_control_msg *msg)
 {
 	struct msm_ipc_resume_tx_port *rtx_port, *tmp_rtx_port;
 	struct msm_ipc_port *local_port;
@@ -1091,8 +1107,8 @@ static void post_resume_tx(struct msm_ipc_router_remote_port *rport_ptr,
 		local_port =
 			msm_ipc_router_lookup_local_port(rtx_port->port_id);
 		if (local_port && local_port->notify)
-			local_port->notify(MSM_IPC_ROUTER_RESUME_TX,
-						local_port->priv);
+			local_port->notify(IPC_ROUTER_CTRL_CMD_RESUME_TX, msg,
+					   sizeof(*msg), local_port->priv);
 		else if (local_port)
 			post_pkt_to_port(local_port, pkt, 1);
 		else
@@ -1417,8 +1433,6 @@ static char *type_to_str(int i)
 		return "rmv_clnt";
 	case IPC_ROUTER_CTRL_CMD_RESUME_TX:
 		return "resum_tx";
-	case IPC_ROUTER_CTRL_CMD_EXIT:
-		return "cmd_exit";
 	default:
 		return "invalid";
 	}
@@ -1901,7 +1915,7 @@ static int process_resume_tx_msg(union rr_control_msg *msg,
 	}
 	mutex_lock(&rport_ptr->quota_lock_lhb2);
 	rport_ptr->tx_quota_cnt = 0;
-	post_resume_tx(rport_ptr, pkt);
+	post_resume_tx(rport_ptr, pkt, msg);
 	mutex_unlock(&rport_ptr->quota_lock_lhb2);
 prtm_out:
 	up_read(&routing_table_lock_lha3);
@@ -2074,10 +2088,6 @@ static int process_control_msg(struct msm_ipc_router_xprt_info *xprt_info,
 		break;
 	case IPC_ROUTER_CTRL_CMD_REMOVE_CLIENT:
 		rc = process_rmv_client_msg(xprt_info, msg, pkt);
-		break;
-	case IPC_ROUTER_CTRL_CMD_PING:
-		/* No action needed for ping messages received */
-		RR("o PING\n");
 		break;
 	default:
 		RR("o UNKNOWN(%08x)\n", msg->cmd);
@@ -2627,7 +2637,7 @@ int msm_ipc_router_read(struct msm_ipc_port *port_ptr,
 	}
 	list_del(&pkt->list);
 	if (list_empty(&port_ptr->port_rx_q))
-		wake_unlock(&port_ptr->port_rx_wake_lock);
+		__pm_relax(&port_ptr->port_rx_ws);
 	*read_pkt = pkt;
 	mutex_unlock(&port_ptr->port_rx_q_lock_lhb3);
 	if (pkt->hdr.control_flag & CONTROL_FLAG_CONFIRM_RX)
@@ -2766,8 +2776,20 @@ int msm_ipc_router_read_msg(struct msm_ipc_port *port_ptr,
 	return 0;
 }
 
+/**
+ * msm_ipc_router_create_port() - Create a IPC Router port/endpoint
+ * @notify: Callback function to notify any event on the port.
+ *   @event: Event ID to be handled.
+ *   @oob_data: Any out-of-band data associated with the event.
+ *   @oob_data_len: Size of the out-of-band data, if valid.
+ *   @priv: Private data registered during the port creation.
+ * @priv: Private info to be passed while the notification is generated.
+ *
+ * @return: Pointer to the port on success, NULL on error.
+ */
 struct msm_ipc_port *msm_ipc_router_create_port(
-	void (*notify)(unsigned event, void *priv),
+	void (*notify)(unsigned event, void *oob_data,
+		       size_t oob_data_len, void *priv),
 	void *priv)
 {
 	struct msm_ipc_port *port_ptr;
@@ -2855,7 +2877,7 @@ int msm_ipc_router_close_port(struct msm_ipc_port *port_ptr)
 		up_write(&server_list_lock_lha2);
 	}
 
-	wake_lock_destroy(&port_ptr->port_rx_wake_lock);
+	wakeup_source_trash(&port_ptr->port_rx_ws);
 	kfree(port_ptr);
 	return 0;
 }
@@ -3198,8 +3220,7 @@ static int msm_ipc_router_add_xprt(struct msm_ipc_router_xprt *xprt)
 	INIT_LIST_HEAD(&xprt_info->pkt_list);
 	mutex_init(&xprt_info->rx_lock_lhb2);
 	mutex_init(&xprt_info->tx_lock_lhb2);
-	wake_lock_init(&xprt_info->wakelock,
-			WAKE_LOCK_SUSPEND, xprt->name);
+	wakeup_source_init(&xprt_info->ws, xprt->name);
 	xprt_info->need_len = 0;
 	xprt_info->abort_data_read = 0;
 	INIT_WORK(&xprt_info->read_data, do_read_data);
@@ -3251,7 +3272,7 @@ static void msm_ipc_router_remove_xprt(struct msm_ipc_router_xprt *xprt)
 
 		flush_workqueue(xprt_info->workqueue);
 		destroy_workqueue(xprt_info->workqueue);
-		wake_lock_destroy(&xprt_info->wakelock);
+		wakeup_source_trash(&xprt_info->ws);
 
 		xprt->priv = 0;
 		kfree(xprt_info);
@@ -3346,7 +3367,7 @@ void msm_ipc_router_xprt_notify(struct msm_ipc_router_xprt *xprt,
 
 	mutex_lock(&xprt_info->rx_lock_lhb2);
 	list_add_tail(&pkt->list, &xprt_info->pkt_list);
-	wake_lock(&xprt_info->wakelock);
+	__pm_stay_awake(&xprt_info->ws);
 	mutex_unlock(&xprt_info->rx_lock_lhb2);
 	queue_work(xprt_info->workqueue, &xprt_info->read_data);
 }

@@ -81,6 +81,8 @@ qcom,mas-hw-id:		A unique hardware ID agreed upon by processors across
 qcom,slv-hw-id:		A unique hardware ID agreed upon by processors across
 			the system. This ID is assigned to every slave. It can
 			be used to send slave specific data from
+qcom,slaveclk-dual:	Dual set (active/sleep) slave clock name
+qcom,slaveclk-active:	Active set slave clock name
 			Apps/Modem/LPASS to RPM.
 qcom,gateway:		Flag indicating whether a particular node is a gateway.
 qcom,slavep:		Hardware slave port number(s).
@@ -102,7 +104,7 @@ qcom,bimc,bw:		Bandwidth limit for a BIMC master using dual modes.
 			other parameters used in Limiter and Regular mode
 			for static BKE configuration. It is defined in KBps.
 qcom,bimc,gp:		Grant Period for configuring a master in limiter
-			mode. This is an integer value in micro-seconds.
+			mode. This is an integer value in nano-seconds.
 qcom,bimc,thmp:		Medium threshold percentage for BIMC masters.
 			This percentage is used to calculate medium threshold
 			value for BIMC Masters in Limiter mode for static

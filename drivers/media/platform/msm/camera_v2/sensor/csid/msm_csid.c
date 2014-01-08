@@ -285,56 +285,16 @@ static int msm_csid_release(struct csid_device *csid_dev)
 
 	disable_irq(csid_dev->irq->start);
 
-	if (csid_dev->hw_version == CSID_VERSION_V20) {
-		msm_cam_clk_enable(&csid_dev->pdev->dev, csid_clk_info,
-			csid_dev->csid_clk, ARRAY_SIZE(csid_clk_info), 0);
+	msm_cam_clk_enable(&csid_dev->pdev->dev, csid_clk_info,
+		csid_dev->csid_clk, ARRAY_SIZE(csid_clk_info), 0);
 
-		msm_camera_enable_vreg(&csid_dev->pdev->dev,
-			csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
-			NULL, 0, &csid_dev->csi_vdd, 0);
+	msm_camera_enable_vreg(&csid_dev->pdev->dev,
+		csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
+		NULL, 0, &csid_dev->csi_vdd, 0);
 
-		msm_camera_config_vreg(&csid_dev->pdev->dev,
-			csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
-			NULL, 0, &csid_dev->csi_vdd, 0);
-	} else if (csid_dev->hw_version == CSID_VERSION_V22) {
-		msm_cam_clk_enable(&csid_dev->pdev->dev,
-			csid_clk_info,
-			csid_dev->csid_clk,
-			ARRAY_SIZE(csid_clk_info), 0);
-
-		msm_camera_enable_vreg(&csid_dev->pdev->dev,
-			csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
-			NULL, 0, &csid_dev->csi_vdd, 0);
-
-		msm_camera_config_vreg(&csid_dev->pdev->dev,
-			csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
-			NULL, 0, &csid_dev->csi_vdd, 0);
-	} else if ((csid_dev->hw_version >= CSID_VERSION_V30 &&
-		csid_dev->hw_version < CSID_VERSION_V31) ||
-		csid_dev->hw_version == CSID_VERSION_V40) {
-		msm_cam_clk_enable(&csid_dev->pdev->dev, csid_clk_info,
-			csid_dev->csid_clk, ARRAY_SIZE(csid_clk_info), 0);
-		msm_camera_enable_vreg(&csid_dev->pdev->dev,
-			csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
-			NULL, 0, &csid_dev->csi_vdd, 0);
-		msm_camera_config_vreg(&csid_dev->pdev->dev,
-			csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
-			NULL, 0, &csid_dev->csi_vdd, 0);
-	} else if (csid_dev->hw_version == CSID_VERSION_V31) {
-		msm_cam_clk_enable(&csid_dev->pdev->dev, csid_clk_info,
-			csid_dev->csid_clk, ARRAY_SIZE(csid_clk_info), 0);
-		msm_camera_enable_vreg(&csid_dev->pdev->dev,
-			csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
-			NULL, 0, &csid_dev->csi_vdd, 0);
-
-		msm_camera_config_vreg(&csid_dev->pdev->dev,
-			csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
-			NULL, 0, &csid_dev->csi_vdd, 0);
-	} else {
-		pr_err("%s:%d, invalid hw version : 0x%x", __func__, __LINE__,
-		csid_dev->hw_version);
-		return -EINVAL;
-	}
+	msm_camera_config_vreg(&csid_dev->pdev->dev,
+		csid_vreg_info, ARRAY_SIZE(csid_vreg_info),
+		NULL, 0, &csid_dev->csi_vdd, 0);
 
 	iounmap(csid_dev->base);
 	csid_dev->base = NULL;
@@ -448,7 +408,7 @@ static long msm_csid_subdev_ioctl(struct v4l2_subdev *sd,
 		rc = msm_csid_release(csid_dev);
 		break;
 	default:
-		pr_err("%s: command not found\n", __func__);
+		pr_err_ratelimited("%s: command not found\n", __func__);
 	}
 	CDBG("%s:%d\n", __func__, __LINE__);
 	mutex_unlock(&csid_dev->mutex);

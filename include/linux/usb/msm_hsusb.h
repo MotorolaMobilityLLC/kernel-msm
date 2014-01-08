@@ -236,6 +236,10 @@ enum usb_vdd_value {
  * @rw_during_lpm_workaround: Determines whether remote-wakeup
  *		during low-power mode workaround will be
  *		applied.
+ * @enable_ahb2ahb_bypass: Indicates whether enable AHB2AHB BYPASS
+ *		mode with controller in device mode.
+ * @bool disable_retention_with_vdd_min: Indicates whether to enable
+		allowing VDDmin without putting PHY into retention.
  */
 struct msm_otg_platform_data {
 	int *phy_init_seq;
@@ -266,6 +270,8 @@ struct msm_otg_platform_data {
 	bool dpdm_pulldown_added;
 	int vddmin_gpio;
 	bool rw_during_lpm_workaround;
+	bool enable_ahb2ahb_bypass;
+	bool disable_retention_with_vdd_min;
 	bool no_set_vbus_power;
 };
 
@@ -441,6 +447,11 @@ struct msm_otg {
 	 * voltage regulator(VDDCX) during host mode.
 	 */
 #define ALLOW_HOST_PHY_RETENTION	BIT(4)
+	/*
+	* Allow VDD minimization without putting PHY into retention
+	* for fixing PHY current leakage issue when LDOs ar turned off.
+	*/
+#define ALLOW_VDD_MIN_WITH_RETENTION_DISABLED BIT(5)
 	unsigned long lpm_flags;
 #define PHY_PWR_COLLAPSED		BIT(0)
 #define PHY_RETENTIONED			BIT(1)
@@ -479,6 +490,7 @@ struct ci13xxx_platform_data {
 	int log2_itc;
 	void *prv_data;
 	bool l1_supported;
+	bool enable_ahb2ahb_bypass;
 };
 
 /**
@@ -532,6 +544,7 @@ struct msm_usb_host_platform_data {
 	bool use_sec_phy;
 	bool no_selective_suspend;
 	int resume_gpio;
+	int ext_hub_reset_gpio;
 };
 
 /**
@@ -565,19 +578,27 @@ struct usb_ext_notification {
 	void *ctxt;
 };
 #ifdef CONFIG_USB_BAM
-bool msm_bam_lpm_ok(void);
+bool msm_bam_usb_lpm_ok(void);
 void msm_bam_notify_lpm_resume(void);
+void msm_bam_set_usb_host_dev(struct device *dev);
 void msm_bam_set_hsic_host_dev(struct device *dev);
-void msm_bam_wait_for_hsic_prod_granted(void);
+void msm_bam_set_usb_dev(struct device *dev);
+void msm_bam_wait_for_usb_host_prod_granted(void);
+void msm_bam_wait_for_hsic_host_prod_granted(void);
 bool msm_bam_hsic_lpm_ok(void);
-void msm_bam_hsic_notify_on_resume(void);
+void msm_bam_usb_host_notify_on_resume(void);
+void msm_bam_hsic_host_notify_on_resume(void);
 #else
-static inline bool msm_bam_lpm_ok(void) { return true; }
+static inline bool msm_bam_usb_lpm_ok(void) { return true; }
 static inline void msm_bam_notify_lpm_resume(void) {}
+static inline void msm_bam_set_usb_host_dev(struct device *dev) {}
 static inline void msm_bam_set_hsic_host_dev(struct device *dev) {}
-static inline void msm_bam_wait_for_hsic_prod_granted(void) {}
+static inline void msm_bam_set_usb_dev(struct device *dev) {}
+static inline void msm_bam_wait_for_usb_host_prod_granted(void) {}
+static inline void msm_bam_wait_for_hsic_host_prod_granted(void) {}
 static inline bool msm_bam_hsic_lpm_ok(void) { return true; }
-static inline void msm_bam_hsic_notify_on_resume(void) {}
+static inline void msm_bam_hsic_host_notify_on_resume(void) {}
+static inline void msm_bam_usb_host_notify_on_resume(void) {}
 #endif
 #ifdef CONFIG_USB_CI13XXX_MSM
 void msm_hw_bam_disable(bool bam_disable);

@@ -98,13 +98,13 @@ config SATA_AHCI_PLATFORM
 	  If unsure, say N.
 
 config SATA_AHCI_MSM
-	tristate "Qualcomm MSM AHCI SATA support"
-	depends on ARCH_MSM
+	tristate "MSM AHCI SATA support"
+	depends on OF && ARCH_MSM
 	select SATA_AHCI_PLATFORM
 	help
 	  This option enables support for AHCI SATA controller
-	  integrated into Qualcomm MSM chipsets. For more
-	  information please refer to http://www.qualcomm.com/chipsets.
+	  integrated into MSM chipsets. For more information
+	  please refer to http://www.qualcomm.com/chipsets.
 
 	  If unsure, say N.
 

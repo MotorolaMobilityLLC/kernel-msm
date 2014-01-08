@@ -64,13 +64,12 @@
 #include "rndis.c"
 #include "f_qc_ecm.c"
 #include "f_mbim.c"
+#include "f_qc_rndis.c"
 #include "u_bam_data.c"
 #include "f_ecm.c"
-#include "f_qc_rndis.c"
 #include "u_ether.c"
 #include "u_qc_ether.c"
 #ifdef CONFIG_TARGET_CORE
-#include "f_tcm.c"
 #endif
 #ifdef CONFIG_SND_PCM
 #include "u_uac1.c"
@@ -445,12 +444,23 @@ static void ffs_function_enable(struct android_usb_function *f)
 {
 	struct android_dev *dev = f->android_dev;
 	struct functionfs_config *config = f->config;
+	int ret = 0;
 
 	config->enabled = true;
 
 	/* Disable the gadget until the function is ready */
-	if (!config->opened)
+	if (!config->opened) {
 		android_disable(dev);
+	} else {
+		/*
+		 * Call functionfs_bind to handle the case where userspace
+		 * passed descriptors before updating enabled functions list
+		 */
+		ret = functionfs_bind(config->data, dev->cdev);
+		if (ret)
+			pr_err("%s: functionfs_bind failed (%d)\n", __func__,
+									ret);
+	}
 }
 
 static void ffs_function_disable(struct android_usb_function *f)
@@ -1650,6 +1660,8 @@ static struct android_usb_function ptp_function = {
 	.bind_config	= ptp_function_bind_config,
 };
 
+/* rndis transport string */
+static char rndis_transports[MAX_XPORT_STR_LEN];
 
 struct rndis_function_config {
 	u8      ethaddr[ETH_ALEN];
@@ -1742,6 +1754,7 @@ static int rndis_qc_function_bind_config(struct android_usb_function *f,
 					struct usb_configuration *c)
 {
 	int ret;
+	char *trans;
 	struct rndis_function_config *rndis = f->config;
 
 	if (!rndis) {
@@ -1753,10 +1766,16 @@ static int rndis_qc_function_bind_config(struct android_usb_function *f,
 		rndis->ethaddr[0], rndis->ethaddr[1], rndis->ethaddr[2],
 		rndis->ethaddr[3], rndis->ethaddr[4], rndis->ethaddr[5]);
 
-	ret = gether_qc_setup_name(c->cdev->gadget, rndis->ethaddr, "rndis");
-	if (ret) {
-		pr_err("%s: gether_setup failed\n", __func__);
-		return ret;
+	pr_debug("%s: rndis_transport is %s", __func__, rndis_transports);
+
+	trans = strim(rndis_transports);
+	if (strcmp("BAM2BAM_IPA", trans)) {
+		ret = gether_qc_setup_name(c->cdev->gadget,
+					rndis->ethaddr, "rndis");
+		if (ret) {
+			pr_err("%s: gether_setup failed\n", __func__);
+			return ret;
+		}
 	}
 
 	if (rndis->wceis) {
@@ -1773,7 +1792,7 @@ static int rndis_qc_function_bind_config(struct android_usb_function *f,
 
 	return rndis_qc_bind_config_vendor(c, rndis->ethaddr, rndis->vendorID,
 				    rndis->manufacturer,
-					rndis->max_pkt_per_xfer);
+					rndis->max_pkt_per_xfer, trans);
 }
 
 static void rndis_function_unbind_config(struct android_usb_function *f,
@@ -1786,7 +1805,10 @@ static void rndis_function_unbind_config(struct android_usb_function *f,
 static void rndis_qc_function_unbind_config(struct android_usb_function *f,
 						struct usb_configuration *c)
 {
-	gether_qc_cleanup_name("rndis0");
+	char *trans = strim(rndis_transports);
+
+	if (strcmp("BAM2BAM_IPA", trans))
+		gether_qc_cleanup_name("rndis0");
 }
 
 static ssize_t rndis_manufacturer_show(struct device *dev,
@@ -1920,6 +1942,21 @@ static ssize_t rndis_max_pkt_per_xfer_store(struct device *dev,
 static DEVICE_ATTR(max_pkt_per_xfer, S_IRUGO | S_IWUSR,
 				   rndis_max_pkt_per_xfer_show,
 				   rndis_max_pkt_per_xfer_store);
+static ssize_t rndis_transports_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%s\n", rndis_transports);
+}
+
+static ssize_t rndis_transports_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	strlcpy(rndis_transports, buf, sizeof(rndis_transports));
+	return size;
+}
+
+static DEVICE_ATTR(rndis_transports, S_IRUGO | S_IWUSR, rndis_transports_show,
+					       rndis_transports_store);
 
 static ssize_t rndis_rx_trigger_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
@@ -1942,6 +1979,7 @@ static struct device_attribute *rndis_function_attributes[] = {
 	&dev_attr_ethaddr,
 	&dev_attr_vendorID,
 	&dev_attr_max_pkt_per_xfer,
+	&dev_attr_rndis_transports,
 	&dev_attr_rx_trigger,
 	NULL
 };
@@ -2541,7 +2579,20 @@ android_unbind_enabled_functions(struct android_dev *dev,
 			f_holder->f->unbind_config(f_holder->f, c);
 	}
 }
+static inline void check_streaming_func(struct usb_gadget *gadget,
+		struct android_usb_platform_data *pdata,
+		char *name)
+{
+	int i;
 
+	for (i = 0; i < pdata->streaming_func_count; i++) {
+		if (!strcmp(name, pdata->streaming_func[i])) {
+			pr_debug("set streaming_enabled to true\n");
+			gadget->streaming_enabled = true;
+			break;
+		}
+	}
+}
 static int android_enable_function(struct android_dev *dev,
 				   struct android_configuration *conf,
 				   char *name)
@@ -2549,6 +2600,9 @@ static int android_enable_function(struct android_dev *dev,
 	struct android_usb_function **functions = dev->functions;
 	struct android_usb_function *f;
 	struct android_usb_function_holder *f_holder;
+	struct android_usb_platform_data *pdata = dev->pdata;
+	struct usb_gadget *gadget = dev->cdev->gadget;
+
 	while ((f = *functions++)) {
 		if (!strcmp(name, f->name)) {
 			if (f->android_dev && f->android_dev != dev)
@@ -2566,6 +2620,13 @@ static int android_enable_function(struct android_dev *dev,
 				f_holder->f = f;
 				list_add_tail(&f_holder->enabled_list,
 					      &conf->enabled_functions);
+				pr_debug("func:%s is enabled.\n", f->name);
+				/*
+				 * compare enable function with streaming func
+				 * list and based on the same request streaming.
+				 */
+				check_streaming_func(gadget, pdata, f->name);
+
 				return 0;
 			}
 		}
@@ -2962,6 +3023,10 @@ static void android_unbind_config(struct usb_configuration *c)
 {
 	struct android_dev *dev = cdev_to_android_dev(c->cdev);
 
+	if (c->cdev->gadget->streaming_enabled) {
+		c->cdev->gadget->streaming_enabled = false;
+		pr_debug("setting streaming_enabled to false.\n");
+	}
 	android_unbind_enabled_functions(dev, c);
 }
 
@@ -3052,6 +3117,7 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 	struct android_configuration	*conf;
 	int value = -EOPNOTSUPP;
 	unsigned long flags;
+	bool do_work = false;
 
 	req->zero = 0;
 	req->length = 0;
@@ -3081,13 +3147,14 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (!dev->connected) {
 		dev->connected = 1;
-		schedule_work(&dev->work);
+		do_work = true;
 	} else if (c->bRequest == USB_REQ_SET_CONFIGURATION &&
 						cdev->config) {
-		schedule_work(&dev->work);
+		do_work = true;
 	}
 	spin_unlock_irqrestore(&cdev->lock, flags);
-
+	if (do_work)
+		schedule_work(&dev->work);
 	return value;
 }
 
@@ -3122,8 +3189,10 @@ static void android_suspend(struct usb_gadget *gadget)
 	unsigned long flags;
 
 	spin_lock_irqsave(&cdev->lock, flags);
-	dev->suspended = 1;
-	schedule_work(&dev->work);
+	if (!dev->suspended) {
+		dev->suspended = 1;
+		schedule_work(&dev->work);
+	}
 	spin_unlock_irqrestore(&cdev->lock, flags);
 
 	composite_suspend_func(gadget);
@@ -3136,8 +3205,10 @@ static void android_resume(struct usb_gadget *gadget)
 	unsigned long flags;
 
 	spin_lock_irqsave(&cdev->lock, flags);
-	dev->suspended = 0;
-	schedule_work(&dev->work);
+	if (dev->suspended) {
+		dev->suspended = 0;
+		schedule_work(&dev->work);
+	}
 	spin_unlock_irqrestore(&cdev->lock, flags);
 
 	composite_resume_func(gadget);
@@ -3271,7 +3342,7 @@ static int android_probe(struct platform_device *pdev)
 	struct android_usb_platform_data *pdata;
 	struct android_dev *android_dev;
 	struct resource *res;
-	int ret = 0;
+	int ret = 0, i, len = 0;
 
 	if (pdev->dev.of_node) {
 		dev_dbg(&pdev->dev, "device tree enabled\n");
@@ -3284,6 +3355,35 @@ static int android_probe(struct platform_device *pdev)
 		of_property_read_u32(pdev->dev.of_node,
 				"qcom,android-usb-swfi-latency",
 				&pdata->swfi_latency);
+
+		len = of_property_count_strings(pdev->dev.of_node,
+				"qcom,streaming-func");
+		if (len > MAX_STREAMING_FUNCS) {
+			pr_err("Invalid number of functions used.\n");
+			return -EINVAL;
+		}
+
+		for (i = 0; i < len; i++) {
+			const char *name = NULL;
+
+			of_property_read_string_index(pdev->dev.of_node,
+				"qcom,streaming-func", i, &name);
+
+			if (!name)
+				continue;
+
+			if (sizeof(name) > FUNC_NAME_LEN) {
+				pr_err("Function name is bigger than allowed.\n");
+				continue;
+			}
+
+			strlcpy(pdata->streaming_func[i], name,
+				sizeof(pdata->streaming_func[i]));
+			pr_debug("name of streaming function:%s\n",
+				pdata->streaming_func[i]);
+		}
+
+		pdata->streaming_func_count = len;
 	} else {
 		pdata = pdev->dev.platform_data;
 	}

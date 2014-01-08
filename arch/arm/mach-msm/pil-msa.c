@@ -18,6 +18,7 @@
 #include <linux/sched.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/of.h>
 #include <linux/regulator/consumer.h>
 #include <linux/dma-mapping.h>
 
@@ -46,8 +47,6 @@
 #define RMB_PMI_META_DATA		0x10
 #define RMB_PMI_CODE_START		0x14
 #define RMB_PMI_CODE_LENGTH		0x18
-
-#define MAX_VDD_MX_UV			1150000
 
 #define POLL_INTERVAL_US		50
 
@@ -241,18 +240,18 @@ static int pil_msa_pbl_reset(struct pil_desc *pil)
 	if (drv->self_auth) {
 		ret = pil_msa_wait_for_mba_ready(drv);
 		if (ret)
-			goto err_auth;
+			goto err_q6v5_reset;
 	}
 
 	drv->is_booted = true;
 
 	return 0;
 
-err_auth:
-	pil_q6v5_shutdown(pil);
 err_q6v5_reset:
 	pil_msa_pbl_disable_clks(drv);
 err_clks:
+	if (drv->restart_reg)
+		writel_relaxed(1, drv->restart_reg);
 	pil_msa_pbl_power_down(drv);
 err_power:
 	return ret;
@@ -262,8 +261,15 @@ static int pil_msa_pbl_make_proxy_votes(struct pil_desc *pil)
 {
 	int ret;
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
+	int uv = 0;
 
-	ret = regulator_set_voltage(drv->vreg_mx, VDD_MSS_UV, MAX_VDD_MX_UV);
+	ret = of_property_read_u32(pil->dev->of_node, "vdd_mx-uV", &uv);
+	if (ret) {
+		dev_err(pil->dev, "missing vdd_mx-uV property\n");
+		return ret;
+	}
+
+	ret = regulator_set_voltage(drv->vreg_mx, uv, INT_MAX);
 	if (ret) {
 		dev_err(pil->dev, "Failed to request vreg_mx voltage\n");
 		return ret;
@@ -272,14 +278,14 @@ static int pil_msa_pbl_make_proxy_votes(struct pil_desc *pil)
 	ret = regulator_enable(drv->vreg_mx);
 	if (ret) {
 		dev_err(pil->dev, "Failed to enable vreg_mx\n");
-		regulator_set_voltage(drv->vreg_mx, 0, MAX_VDD_MX_UV);
+		regulator_set_voltage(drv->vreg_mx, 0, INT_MAX);
 		return ret;
 	}
 
 	ret = pil_q6v5_make_proxy_votes(pil);
 	if (ret) {
 		regulator_disable(drv->vreg_mx);
-		regulator_set_voltage(drv->vreg_mx, 0, MAX_VDD_MX_UV);
+		regulator_set_voltage(drv->vreg_mx, 0, INT_MAX);
 	}
 
 	return ret;
@@ -290,7 +296,7 @@ static void pil_msa_pbl_remove_proxy_votes(struct pil_desc *pil)
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
 	pil_q6v5_remove_proxy_votes(pil);
 	regulator_disable(drv->vreg_mx);
-	regulator_set_voltage(drv->vreg_mx, 0, MAX_VDD_MX_UV);
+	regulator_set_voltage(drv->vreg_mx, 0, INT_MAX);
 }
 
 struct pil_reset_ops pil_msa_pbl_ops = {

@@ -30,7 +30,7 @@
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
-#include <linux/memory_alloc.h>
+#include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
@@ -38,17 +38,16 @@
 #include <linux/spinlock.h>
 #include <linux/semaphore.h>
 #include <linux/uaccess.h>
+#include <linux/clk/msm-clk.h>
 
 #include <mach/board.h>
-#include <mach/clk.h>
 #include <mach/hardware.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
 #include <mach/iommu.h>
-#include <mach/iommu_domains.h>
+#include <linux/msm_iommu_domains.h>
 #include <mach/memory.h>
 #include <mach/msm_memtypes.h>
-#include <mach/rpm-regulator-smd.h>
 
 #include "mdss.h"
 #include "mdss_fb.h"
@@ -537,6 +536,8 @@ static int mdss_mdp_clk_update(u32 clk_idx, u32 enable)
 	if (clk) {
 		pr_debug("clk=%d en=%d\n", clk_idx, enable);
 		if (enable) {
+			if (clk_idx == MDSS_CLK_MDP_VSYNC)
+				clk_set_rate(clk, 19200000);
 			ret = clk_prepare_enable(clk);
 		} else {
 			clk_disable_unprepare(clk);
@@ -637,6 +638,7 @@ void mdss_bus_bandwidth_ctrl(int enable)
 		if (!enable) {
 			msm_bus_scale_client_update_request(
 				mdata->bus_hdl, 0);
+			mdss_iommu_dettach(mdata);
 			pm_runtime_put(&mdata->pdev->dev);
 		} else {
 			pm_runtime_get_sync(&mdata->pdev->dev);
@@ -986,6 +988,9 @@ int mdss_hw_init(struct mdss_data_type *mdata)
 		/* swap */
 		writel_relaxed(1, offset + 16);
 	}
+
+	mdata->nmax_concurrent_ad_hw = (mdata->mdp_rev <= MDSS_MDP_HW_REV_102) ?
+									1 : 2;
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
 	pr_debug("MDP hw init done\n");
 
@@ -1009,6 +1014,11 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 	rc = mdss_mdp_irq_clk_setup(mdata);
 	if (rc)
 		return rc;
+
+	mdata->hist_intr.req = 0;
+	mdata->hist_intr.curr = 0;
+	mdata->hist_intr.state = 0;
+	spin_lock_init(&mdata->hist_intr.lock);
 
 	mdata->iclient = msm_ion_client_create(-1, mdata->pdev->name);
 	if (IS_ERR_OR_NULL(mdata->iclient)) {
@@ -1061,6 +1071,10 @@ static ssize_t mdss_mdp_show_capabilities(struct device *dev,
 	SPRINT("smp_size=%d\n", mdata->smp_mb_size);
 	SPRINT("max_downscale_ratio=%d\n", MAX_DOWNSCALE_RATIO);
 	SPRINT("max_upscale_ratio=%d\n", MAX_UPSCALE_RATIO);
+	if (mdata->max_bw_low)
+		SPRINT("max_bandwidth_low=%u\n", mdata->max_bw_low);
+	if (mdata->max_bw_high)
+		SPRINT("max_bandwidth_high=%u\n", mdata->max_bw_high);
 	SPRINT("features=");
 	if (mdata->has_bwc)
 		SPRINT(" bwc");
@@ -1299,7 +1313,7 @@ static int mdss_mdp_get_pan_cfg(struct mdss_panel_cfg *pan_cfg)
 {
 	char *t = NULL;
 	char pan_intf_str[MDSS_MAX_PANEL_LEN];
-	int rc, i;
+	int rc, i, panel_len;
 	char pan_name[MDSS_MAX_PANEL_LEN];
 
 	if (!pan_cfg)
@@ -1336,6 +1350,14 @@ static int mdss_mdp_get_pan_cfg(struct mdss_panel_cfg *pan_cfg)
 	strlcpy(&pan_cfg->arg_cfg[0], t, sizeof(pan_cfg->arg_cfg));
 	pr_debug("%s:%d: t=[%s] panel name=[%s]\n", __func__, __LINE__,
 		t, pan_cfg->arg_cfg);
+
+	panel_len = strlen(pan_cfg->arg_cfg);
+	if (!panel_len) {
+		pr_err("%s: Panel name is invalid\n", __func__);
+		pan_cfg->pan_intf = MDSS_PANEL_INTF_INVALID;
+		return -EINVAL;
+	}
+
 	rc = mdss_mdp_get_pan_intf(pan_intf_str);
 	pan_cfg->pan_intf = (rc < 0) ?  MDSS_PANEL_INTF_INVALID : rc;
 	return 0;
@@ -1440,10 +1462,10 @@ static int mdss_mdp_parse_bootarg(struct platform_device *pdev)
 	of_node_put(chosen_node);
 
 	rc = mdss_mdp_get_pan_cfg(pan_cfg);
-	if (!rc)
+	if (!rc) {
 		pan_cfg->init_done = true;
-
-	return rc;
+		return rc;
+	}
 
 get_dt_pan:
 	rc = mdss_mdp_parse_dt_pan_intf(pdev);
@@ -1996,6 +2018,16 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 	mdss_mdp_parse_dt_fudge_factors(pdev, "qcom,mdss-clk-factor",
 		&mdata->clk_factor);
 
+	rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,max-bandwidth-low-kbps", &mdata->max_bw_low);
+	if (rc)
+		pr_debug("max bandwidth (low) property not specified\n");
+
+	rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,max-bandwidth-high-kbps", &mdata->max_bw_high);
+	if (rc)
+		pr_debug("max bandwidth (high) property not specified\n");
+
 	return 0;
 }
 
@@ -2011,8 +2043,10 @@ static int mdss_mdp_parse_dt_ad_cfg(struct platform_device *pdev)
 		mdata->ad_cfgs = NULL;
 		return 0;
 	}
+
 	if (mdata->nad_cfgs > mdata->nmixers_intf)
 		return -EINVAL;
+
 
 	mdata->has_wb_ad = of_property_read_bool(pdev->dev.of_node,
 		"qcom,mdss-has-wb-ad");
@@ -2173,7 +2207,7 @@ int mdss_panel_get_boot_cfg(void)
 	int rc;
 
 	if (!mdss_res || !mdss_res->pan_cfg.init_done)
-		rc = -EPROBE_DEFER;
+		return -EPROBE_DEFER;
 	if (mdss_res->pan_cfg.lk_cfg)
 		rc = 1;
 	else

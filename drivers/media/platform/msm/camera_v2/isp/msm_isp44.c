@@ -193,14 +193,6 @@ static int msm_vfe44_init_hardware(struct vfe_device *vfe_dev)
 		goto vbif_remap_failed;
 	}
 
-	vfe_dev->tcsr_base = ioremap(vfe_dev->tcsr_mem->start,
-		resource_size(vfe_dev->tcsr_mem));
-	if (!vfe_dev->tcsr_base) {
-		rc = -ENOMEM;
-		pr_err("%s: tcsr ioremap failed\n", __func__);
-		goto tcsr_remap_failed;
-	}
-
 	rc = request_irq(vfe_dev->vfe_irq->start, msm_isp_process_irq,
 		IRQF_TRIGGER_RISING, "vfe", vfe_dev);
 	if (rc < 0) {
@@ -209,8 +201,6 @@ static int msm_vfe44_init_hardware(struct vfe_device *vfe_dev)
 	}
 	return rc;
 irq_req_failed:
-	iounmap(vfe_dev->tcsr_base);
-tcsr_remap_failed:
 	iounmap(vfe_dev->vfe_vbif_base);
 vbif_remap_failed:
 	iounmap(vfe_dev->vfe_base);
@@ -229,7 +219,6 @@ static void msm_vfe44_release_hardware(struct vfe_device *vfe_dev)
 {
 	free_irq(vfe_dev->vfe_irq->start, vfe_dev);
 	tasklet_kill(&vfe_dev->vfe_tasklet);
-	iounmap(vfe_dev->tcsr_base);
 	iounmap(vfe_dev->vfe_vbif_base);
 	iounmap(vfe_dev->vfe_base);
 	msm_cam_clk_enable(&vfe_dev->pdev->dev, msm_vfe44_clk_info,
@@ -592,13 +581,18 @@ static void msm_vfe44_clear_framedrop(struct vfe_device *vfe_dev,
 			VFE44_WM_BASE(stream_info->wm[i]) + 0x1C);
 }
 
-static void msm_vfe44_cfg_io_format(struct vfe_device *vfe_dev,
+static int32_t msm_vfe44_cfg_io_format(struct vfe_device *vfe_dev,
 	enum msm_vfe_axi_stream_src stream_src, uint32_t io_format)
 {
 	int bpp, bpp_reg = 0, pack_reg = 0;
 	enum msm_isp_pack_fmt pack_fmt = 0;
 	uint32_t io_format_reg; /*io format register bit*/
 	bpp = msm_isp_get_bit_per_pixel(io_format);
+	if (bpp < 0) {
+		pr_err("%s:%d invalid io_format %d bpp %d", __func__, __LINE__,
+			io_format, bpp);
+		return -EINVAL;
+	}
 
 	switch (bpp) {
 	case 8:
@@ -610,6 +604,9 @@ static void msm_vfe44_cfg_io_format(struct vfe_device *vfe_dev,
 	case 12:
 		bpp_reg = 1 << 1;
 		break;
+	default:
+		pr_err("%s:%d invalid bpp %d", __func__, __LINE__, bpp);
+		return -EINVAL;
 	}
 
 	if (stream_src == IDEAL_RAW) {
@@ -636,7 +633,7 @@ static void msm_vfe44_cfg_io_format(struct vfe_device *vfe_dev,
 			break;
 		default:
 			pr_err("%s: invalid pack fmt!\n", __func__);
-			return;
+			return -EINVAL;
 		}
 	}
 
@@ -657,9 +654,10 @@ static void msm_vfe44_cfg_io_format(struct vfe_device *vfe_dev,
 	case RDI_INTF_2:
 	default:
 		pr_err("%s: Invalid stream source\n", __func__);
-		return;
+		return -EINVAL;
 	}
 	msm_camera_io_w(io_format_reg, vfe_dev->vfe_base + 0x54);
+	return 0;
 }
 
 static void msm_vfe44_cfg_camif(struct vfe_device *vfe_dev,
@@ -1229,14 +1227,6 @@ static int msm_vfe44_get_platform_data(struct vfe_device *vfe_dev)
 		vfe_dev->pdev,
 		IORESOURCE_MEM, "vfe_vbif");
 	if (!vfe_dev->vfe_vbif_mem) {
-		pr_err("%s: no mem resource?\n", __func__);
-		rc = -ENODEV;
-		goto vfe_no_resource;
-	}
-
-	vfe_dev->tcsr_mem = platform_get_resource_byname(vfe_dev->pdev,
-		IORESOURCE_MEM, "tcsr");
-	if (!vfe_dev->tcsr_mem) {
 		pr_err("%s: no mem resource?\n", __func__);
 		rc = -ENODEV;
 		goto vfe_no_resource;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -43,7 +43,8 @@ static int qpnp_usbdetect_probe(struct platform_device *pdev)
 {
 	struct qpnp_usbdetect *usb;
 	struct power_supply *usb_psy;
-	int rc;
+	int rc, vbus;
+	unsigned long flags;
 
 	usb_psy = power_supply_get_by_name("usb");
 	if (!usb_psy) {
@@ -91,6 +92,13 @@ static int qpnp_usbdetect_probe(struct platform_device *pdev)
 	enable_irq_wake(usb->vbus_det_irq);
 	dev_set_drvdata(&pdev->dev, usb);
 
+	/* Read and report initial VBUS state */
+	local_irq_save(flags);
+	vbus = !!irq_read_line(usb->vbus_det_irq);
+	local_irq_restore(flags);
+
+	power_supply_set_present(usb->usb_psy, vbus);
+
 	return 0;
 }
 
@@ -106,8 +114,8 @@ static int qpnp_usbdetect_remove(struct platform_device *pdev)
 }
 
 static struct of_device_id of_match_table[] = {
-	{	.compatible = "qcom,qpnp-usbdetect",
-	}
+	{ .compatible = "qcom,qpnp-usbdetect", },
+	{}
 };
 
 static struct platform_driver qpnp_usbdetect_driver = {

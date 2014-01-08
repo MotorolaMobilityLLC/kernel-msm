@@ -22,6 +22,8 @@
 
 struct kgsl_power_stats {
 	u64 busy_time;
+	u64 ram_time;
+	u64 ram_wait;
 };
 
 struct kgsl_pwrscale {
@@ -46,7 +48,6 @@ void kgsl_pwrscale_close(struct kgsl_device *device);
 
 void kgsl_pwrscale_update(struct kgsl_device *device);
 void kgsl_pwrscale_busy(struct kgsl_device *device);
-void kgsl_pwrscale_idle(struct kgsl_device *device);
 void kgsl_pwrscale_sleep(struct kgsl_device *device);
 void kgsl_pwrscale_wake(struct kgsl_device *device);
 

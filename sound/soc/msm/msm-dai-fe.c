@@ -234,6 +234,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.rate_max =	48000,
 		},
 		.ops = &msm_fe_Multimedia_dai_ops,
+		.compress_dai = 1,
 		.name = "MultiMedia4",
 		.probe = fe_dai_probe,
 	},
@@ -322,6 +323,17 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.channels_max = 8,
 			.rate_min =	8000,
 			.rate_max = 192000,
+		},
+		.capture = {
+			.stream_name = "MultiMedia8 Capture",
+			.aif_name = "MM_UL8",
+			.rates = (SNDRV_PCM_RATE_8000_48000|
+					SNDRV_PCM_RATE_KNOT),
+			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			.channels_min = 1,
+			.channels_max = 8,
+			.rate_min =     8000,
+			.rate_max =	48000,
 		},
 		.ops = &msm_fe_Multimedia_dai_ops,
 		.name = "MultiMedia8",
@@ -456,6 +468,30 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 		.ops = &msm_fe_dai_ops,
 		.name = "INT_FM_HOSTLESS",
 		.probe = fe_dai_probe,
+	},
+	{
+		.playback = {
+			.stream_name = "INT_HFP_BT Hostless Playback",
+			.aif_name = "INTHFP_DL_HL",
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
+			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			.channels_min = 1,
+			.channels_max = 2,
+			.rate_min =     8000,
+			.rate_max =     16000,
+		},
+		.capture = {
+			.stream_name = "INT_HFP_BT Hostless Capture",
+			.aif_name = "INTHFP_UL_HL",
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
+			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			.channels_min = 1,
+			.channels_max = 2,
+			.rate_min =     8000,
+			.rate_max =     16000,
+		},
+		.ops = &msm_fe_dai_ops,
+		.name = "INT_HFP_BT_HOSTLESS",
 	},
 	{
 		.playback = {
@@ -828,33 +864,6 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 		},
 		.ops = &msm_fe_dai_ops,
 		.name = "QCHAT",
-	},
-	{
-		.playback = {
-			.stream_name = "VoIP2 Playback",
-			.aif_name = "VOIP2_DL",
-			.rates = SNDRV_PCM_RATE_8000_48000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE |
-				   SNDRV_PCM_FMTBIT_SPECIAL,
-			.channels_min = 1,
-			.channels_max = 2,
-			.rate_min = 8000,
-			.rate_max = 48000,
-		},
-		.capture = {
-			.stream_name = "VoIP2 Capture",
-			.aif_name = "VOIP2_UL",
-			.rates = SNDRV_PCM_RATE_8000_48000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE |
-				   SNDRV_PCM_FMTBIT_SPECIAL,
-			.channels_min = 1,
-			.channels_max = 2,
-			.rate_min = 8000,
-			.rate_max = 48000,
-		},
-		.ops = &msm_fe_dai_ops,
-		.name = "VoIP2",
-		.probe = fe_dai_probe,
 	},
 };
 

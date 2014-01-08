@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,6 +25,7 @@
 
 #include <mach/usb_gadget_xport.h>
 #include <linux/usb/msm_hsusb.h>
+#include <linux/usb/rmnet_ctrl_qti.h>
 #include <mach/usb_bam.h>
 
 #include "u_rmnet.h"
@@ -144,6 +145,12 @@ static struct bam_portmaster {
 	struct gbam_port *port;
 	struct platform_driver pdrv;
 } bam_ports[BAM_N_PORTS];
+
+struct  u_bam_data_connect_info {
+	u32 usb_bam_pipe_idx;
+	u32 peer_pipe_idx;
+	u32 usb_bam_handle;
+};
 
 struct gbam_port *bam2bam_ports[BAM2BAM_N_PORTS];
 static void gbam_start_rx(struct gbam_port *port);
@@ -799,9 +806,33 @@ static void gbam_connect_work(struct work_struct *w)
 	pr_debug("%s: done\n", __func__);
 }
 
+/*
+ * This function configured data fifo based on index passed to get bam2bam
+ * configuration.
+ */
+static void configure_data_fifo(u8 idx, struct usb_ep *ep)
+{
+	struct u_bam_data_connect_info bam_info;
+	struct sps_mem_buffer data_fifo = {0};
+
+	get_bam2bam_connection_info(idx,
+				&bam_info.usb_bam_handle,
+				&bam_info.usb_bam_pipe_idx,
+				&bam_info.peer_pipe_idx,
+				NULL, &data_fifo);
+
+	msm_data_fifo_config(ep,
+				data_fifo.phys_base,
+				data_fifo.size,
+				bam_info.usb_bam_pipe_idx);
+
+}
+
 static void gbam2bam_connect_work(struct work_struct *w)
 {
 	struct gbam_port *port = container_of(w, struct gbam_port, connect_w);
+	struct f_rmnet *dev = NULL;
+	struct usb_gadget *gadget = NULL;
 	struct teth_bridge_connect_params connect_params;
 	struct bam_ch_info *d = &port->data_ch;
 	u32 sps_params;
@@ -809,6 +840,12 @@ static void gbam2bam_connect_work(struct work_struct *w)
 	void *priv;
 	int ret;
 	unsigned long flags;
+
+	if (port)
+		dev = port_to_rmnet(port->gr);
+
+	if (dev && dev->cdev)
+		gadget = dev->cdev->gadget;
 
 	if (d->trans == USB_GADGET_XPORT_BAM2BAM) {
 		usb_bam_reset_complete();
@@ -841,6 +878,22 @@ static void gbam2bam_connect_work(struct work_struct *w)
 				__func__, ret);
 			return;
 		}
+
+		if (gadget && gadget_is_dwc3(gadget)) {
+			u8 idx;
+			idx = usb_bam_get_connection_idx(gadget->name,
+				IPA_P_BAM, USB_TO_PEER_PERIPHERAL,
+				USB_BAM_DEVICE, 0);
+			if (idx < 0) {
+				pr_err("%s: get_connection_idx failed\n",
+					__func__);
+				return;
+			}
+
+			configure_data_fifo(idx, port->port_usb->out);
+		}
+
+
 		d->ipa_params.dir = PEER_PERIPHERAL_TO_USB;
 		ret = usb_bam_connect_ipa(&d->ipa_params);
 		if (ret) {
@@ -848,6 +901,25 @@ static void gbam2bam_connect_work(struct work_struct *w)
 				__func__, ret);
 			return;
 		}
+
+		if (gadget && gadget_is_dwc3(gadget)) {
+			u8 idx;
+
+			idx = usb_bam_get_connection_idx(gadget->name,
+				IPA_P_BAM, PEER_PERIPHERAL_TO_USB,
+				USB_BAM_DEVICE, 0);
+			if (idx < 0) {
+				pr_err("%s: get_connection_idx failed\n",
+					__func__);
+				return;
+			}
+
+			configure_data_fifo(idx, port->port_usb->in);
+		}
+
+		gqti_ctrl_update_ipa_pipes(port->port_usb, port->port_num,
+			d->ipa_params.ipa_prod_ep_idx ,
+			d->ipa_params.ipa_cons_ep_idx);
 
 		connect_params.ipa_usb_pipe_hdl = d->ipa_params.prod_clnt_hdl;
 		connect_params.usb_ipa_pipe_hdl = d->ipa_params.cons_clnt_hdl;
@@ -880,8 +952,15 @@ static void gbam2bam_connect_work(struct work_struct *w)
 	d->rx_req->complete = gbam_endless_rx_complete;
 	d->rx_req->length = 0;
 	d->rx_req->no_interrupt = 1;
-	sps_params = (MSM_SPS_MODE | d->src_pipe_idx |
-				 MSM_VENDOR_ID) & ~MSM_IS_FINITE_TRANSFER;
+
+	if (gadget && gadget_is_dwc3(gadget)) {
+		sps_params = MSM_SPS_MODE | MSM_DISABLE_WB | MSM_PRODUCER |
+			d->src_pipe_idx;
+		d->rx_req->length = 32*1024;
+	} else
+		sps_params = (MSM_SPS_MODE | d->src_pipe_idx |
+				MSM_VENDOR_ID) & ~MSM_IS_FINITE_TRANSFER;
+
 	d->rx_req->udc_priv = sps_params;
 
 	d->tx_req = usb_ep_alloc_request(port->port_usb->in, GFP_ATOMIC);
@@ -896,8 +975,14 @@ static void gbam2bam_connect_work(struct work_struct *w)
 	d->tx_req->complete = gbam_endless_tx_complete;
 	d->tx_req->length = 0;
 	d->tx_req->no_interrupt = 1;
-	sps_params = (MSM_SPS_MODE | d->dst_pipe_idx |
-				 MSM_VENDOR_ID) & ~MSM_IS_FINITE_TRANSFER;
+
+	if (gadget && gadget_is_dwc3(gadget)) {
+		sps_params = MSM_SPS_MODE | MSM_DISABLE_WB | d->dst_pipe_idx;
+		d->tx_req->length = 32*1024;
+	} else
+		sps_params = (MSM_SPS_MODE | d->dst_pipe_idx |
+				MSM_VENDOR_ID) & ~MSM_IS_FINITE_TRANSFER;
+
 	d->tx_req->udc_priv = sps_params;
 
 	/* queue in & out requests */

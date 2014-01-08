@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,10 +11,6 @@
  * GNU General Public License for more details.
  */
 
-/*
- * SATA init module.
- * To be used with SATA interface on MSM targets.
- */
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -25,754 +21,508 @@
 #include <linux/dma-mapping.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
-#include <linux/iopoll.h>
-#include <linux/regulator/consumer.h>
 #include <linux/ahci_platform.h>
-#include <mach/clk.h>
+#include <linux/phy/phy.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 
-/* PHY registers */
-#define UNIPHY_PLL_REFCLK_CFG		0x000
-#define UNIPHY_PLL_POSTDIV1_CFG		0x004
-#define UNIPHY_PLL_CHGPUMP_CFG		0x008
-#define UNIPHY_PLL_VCOLPF_CFG		0x00C
-#define UNIPHY_PLL_VREG_CFG		0x010
-#define UNIPHY_PLL_PWRGEN_CFG		0x014
-#define UNIPHY_PLL_DMUX_CFG		0x018
-#define UNIPHY_PLL_AMUX_CFG		0x01C
-#define UNIPHY_PLL_GLB_CFG		0x020
-#define UNIPHY_PLL_POSTDIV2_CFG		0x024
-#define UNIPHY_PLL_POSTDIV3_CFG		0x028
-#define UNIPHY_PLL_LPFR_CFG		0x02C
-#define UNIPHY_PLL_LPFC1_CFG		0x030
-#define UNIPHY_PLL_LPFC2_CFG		0x034
-#define UNIPHY_PLL_SDM_CFG0		0x038
-#define UNIPHY_PLL_SDM_CFG1		0x03C
-#define UNIPHY_PLL_SDM_CFG2		0x040
-#define UNIPHY_PLL_SDM_CFG3		0x044
-#define UNIPHY_PLL_SDM_CFG4		0x048
-#define UNIPHY_PLL_SSC_CFG0		0x04C
-#define UNIPHY_PLL_SSC_CFG1		0x050
-#define UNIPHY_PLL_SSC_CFG2		0x054
-#define UNIPHY_PLL_SSC_CFG3		0x058
-#define UNIPHY_PLL_LKDET_CFG0		0x05C
-#define UNIPHY_PLL_LKDET_CFG1		0x060
-#define UNIPHY_PLL_LKDET_CFG2		0x064
-#define UNIPHY_PLL_TEST_CFG		0x068
-#define UNIPHY_PLL_CAL_CFG0		0x06C
-#define UNIPHY_PLL_CAL_CFG1		0x070
-#define UNIPHY_PLL_CAL_CFG2		0x074
-#define UNIPHY_PLL_CAL_CFG3		0x078
-#define UNIPHY_PLL_CAL_CFG4		0x07C
-#define UNIPHY_PLL_CAL_CFG5		0x080
-#define UNIPHY_PLL_CAL_CFG6		0x084
-#define UNIPHY_PLL_CAL_CFG7		0x088
-#define UNIPHY_PLL_CAL_CFG8		0x08C
-#define UNIPHY_PLL_CAL_CFG9		0x090
-#define UNIPHY_PLL_CAL_CFG10		0x094
-#define UNIPHY_PLL_CAL_CFG11		0x098
-#define UNIPHY_PLL_EFUSE_CFG		0x09C
-#define UNIPHY_PLL_DEBUG_BUS_SEL	0x0A0
-#define UNIPHY_PLL_CTRL_42		0x0A4
-#define UNIPHY_PLL_CTRL_43		0x0A8
-#define UNIPHY_PLL_CTRL_44		0x0AC
-#define UNIPHY_PLL_CTRL_45		0x0B0
-#define UNIPHY_PLL_CTRL_46		0x0B4
-#define UNIPHY_PLL_CTRL_47		0x0B8
-#define UNIPHY_PLL_CTRL_48		0x0BC
-#define UNIPHY_PLL_STATUS		0x0C0
-#define UNIPHY_PLL_DEBUG_BUS0		0x0C4
-#define UNIPHY_PLL_DEBUG_BUS1		0x0C8
-#define UNIPHY_PLL_DEBUG_BUS2		0x0CC
-#define UNIPHY_PLL_DEBUG_BUS3		0x0D0
-#define UNIPHY_PLL_CTRL_54		0x0D4
-
-#define SATA_PHY_SER_CTRL		0x100
-#define SATA_PHY_TX_DRIV_CTRL0		0x104
-#define SATA_PHY_TX_DRIV_CTRL1		0x108
-#define SATA_PHY_TX_DRIV_CTRL2		0x10C
-#define SATA_PHY_TX_DRIV_CTRL3		0x110
-#define SATA_PHY_TX_RESV0		0x114
-#define SATA_PHY_TX_RESV1		0x118
-#define SATA_PHY_TX_IMCAL0		0x11C
-#define SATA_PHY_TX_IMCAL1		0x120
-#define SATA_PHY_TX_IMCAL2		0x124
-#define SATA_PHY_RX_IMCAL0		0x128
-#define SATA_PHY_RX_IMCAL1		0x12C
-#define SATA_PHY_RX_IMCAL2		0x130
-#define SATA_PHY_RX_TERM		0x134
-#define SATA_PHY_RX_TERM_RESV		0x138
-#define SATA_PHY_EQUAL			0x13C
-#define SATA_PHY_EQUAL_RESV		0x140
-#define SATA_PHY_OOB_TERM		0x144
-#define SATA_PHY_CDR_CTRL0		0x148
-#define SATA_PHY_CDR_CTRL1		0x14C
-#define SATA_PHY_CDR_CTRL2		0x150
-#define SATA_PHY_CDR_CTRL3		0x154
-#define SATA_PHY_CDR_CTRL4		0x158
-#define SATA_PHY_FA_LOAD0		0x15C
-#define SATA_PHY_FA_LOAD1		0x160
-#define SATA_PHY_CDR_CTRL_RESV		0x164
-#define SATA_PHY_PI_CTRL0		0x168
-#define SATA_PHY_PI_CTRL1		0x16C
-#define SATA_PHY_DESER_RESV		0x170
-#define SATA_PHY_RX_RESV0		0x174
-#define SATA_PHY_AD_TPA_CTRL		0x178
-#define SATA_PHY_REFCLK_CTRL		0x17C
-#define SATA_PHY_POW_DWN_CTRL0		0x180
-#define SATA_PHY_POW_DWN_CTRL1		0x184
-#define SATA_PHY_TX_DATA_CTRL		0x188
-#define SATA_PHY_BIST_GEN0		0x18C
-#define SATA_PHY_BIST_GEN1		0x190
-#define SATA_PHY_BIST_GEN2		0x194
-#define SATA_PHY_BIST_GEN3		0x198
-#define SATA_PHY_LBK_CTRL		0x19C
-#define SATA_PHY_TEST_DEBUG_CTRL	0x1A0
-#define SATA_PHY_ALIGNP			0x1A4
-#define SATA_PHY_PRBS_CFG0		0x1A8
-#define SATA_PHY_PRBS_CFG1		0x1AC
-#define SATA_PHY_PRBS_CFG2		0x1B0
-#define SATA_PHY_PRBS_CFG3		0x1B4
-#define SATA_PHY_CHAN_COMP_CHK_CNT	0x1B8
-#define SATA_PHY_RESET_CTRL		0x1BC
-#define SATA_PHY_RX_CLR			0x1C0
-#define SATA_PHY_RX_EBUF_CTRL		0x1C4
-#define SATA_PHY_ID0			0x1C8
-#define SATA_PHY_ID1			0x1CC
-#define SATA_PHY_ID2			0x1D0
-#define SATA_PHY_ID3			0x1D4
-#define SATA_PHY_RX_CHK_ERR_CNT0	0x1D8
-#define SATA_PHY_RX_CHK_ERR_CNT1	0x1DC
-#define SATA_PHY_RX_CHK_STAT		0x1E0
-#define SATA_PHY_TX_IMCAL_STAT		0x1E4
-#define SATA_PHY_RX_IMCAL_STAT		0x1E8
-#define SATA_PHY_RX_EBUF_STAT		0x1EC
-#define SATA_PHY_DEBUG_BUS_STAT0	0x1F0
-#define SATA_PHY_DEBUG_BUS_STAT1	0x1F4
-#define SATA_PHY_DEBUG_BUS_STAT2	0x1F8
-#define SATA_PHY_DEBUG_BUS_STAT3	0x1FC
-
-#define AHCI_HOST_CAP		0x00
-#define AHCI_HOST_CAP_MASK	0x1F
-#define AHCI_HOST_CAP_PMP	(1 << 17)
-
-struct msm_sata_hba {
-	struct platform_device *ahci_pdev;
-	struct clk *slave_iface_clk;
-	struct clk *bus_clk;
-	struct clk *iface_clk;
-	struct clk *src_clk;
-	struct clk *rxoob_clk;
-	struct clk *pmalive_clk;
-	struct clk *cfg_clk;
-	struct regulator *clk_pwr;
-	struct regulator *pmp_pwr;
-	void __iomem *phy_base;
-	void __iomem *ahci_base;
+struct msm_ahci_clk_info {
+	struct list_head list;
+	struct clk *clk;
+	const char *name;
+	u32 max_freq;
+	bool enabled;
 };
 
-static inline void msm_sata_delay_us(unsigned int delay)
-{
-	/* sleep for max. 50us more to combine processor wakeups */
-	usleep_range(delay, delay + 50);
-}
+struct msm_ahci_host {
+	struct platform_device *ahci_pdev;
+	struct list_head clk_list_head;
+	void __iomem *ahci_base;
+	struct phy *phy;
+	bool phy_powered_on;
+};
 
-static int msm_sata_clk_get_prepare_enable_set_rate(struct device *dev,
-		const char *name, struct clk **out_clk, int rate)
+static int msm_ahci_enable_clk(struct device *dev,
+		struct msm_ahci_clk_info *clki)
 {
 	int ret = 0;
-	struct clk *clk;
 
-	clk = devm_clk_get(dev, name);
-	if (IS_ERR(clk)) {
-		ret = PTR_ERR(clk);
-		dev_err(dev, "failed to get clk: %s err = %d\n", name, ret);
+	if (clki->enabled)
 		goto out;
-	}
 
-	if (rate >= 0) {
-		ret = clk_set_rate(clk, rate);
-		if (ret) {
-			dev_err(dev, "failed to set rate: %d clk: %s err = %d\n",
-					rate, name, ret);
-			goto out;
-		}
-	}
-
-	ret = clk_prepare_enable(clk);
-	if (ret)
-		dev_err(dev, "failed to enable clk: %s err = %d\n", name, ret);
-out:
-	if (!ret)
-		*out_clk = clk;
-
-	return ret;
-}
-
-static int msm_sata_clk_get_prepare_enable(struct device *dev,
-		const char *name, struct clk **out_clk)
-{
-	return msm_sata_clk_get_prepare_enable_set_rate(dev, name, out_clk, -1);
-}
-
-static void msm_sata_clk_put_unprepare_disable(struct clk **clk)
-{
-	if (*clk) {
-		clk_disable_unprepare(*clk);
-		clk_put(*clk);
-		*clk = NULL;
-	}
-}
-
-static int msm_sata_hard_reset(struct device *dev)
-{
-	int ret;
-	struct msm_sata_hba *hba = dev_get_drvdata(dev);
-
-	ret = clk_reset(hba->iface_clk, CLK_RESET_ASSERT);
+	ret = clk_prepare_enable(clki->clk);
 	if (ret) {
-		dev_err(dev, "iface_clk assert failed %d\n", ret);
-		goto out;
-	}
-
-	ret = clk_reset(hba->iface_clk, CLK_RESET_DEASSERT);
-	if (ret) {
-		dev_err(dev, "iface_clk de-assert failed %d\n", ret);
-		goto out;
+		dev_err(dev, "%s: %s prepare enable failed, %d\n",
+				__func__, clki->name, ret);
+	} else {
+		clki->enabled = true;
+		dev_dbg(dev, "%s: clk: %s enabled\n",
+				__func__, clki->name);
 	}
 out:
 	return ret;
 }
 
-static int msm_sata_clk_init(struct device *dev)
+static void msm_ahci_disable_clk(struct device *dev,
+		struct msm_ahci_clk_info *clki)
+{
+	if (!clki->enabled)
+		return;
+
+	clk_disable_unprepare(clki->clk);
+	clki->enabled = false;
+	dev_dbg(dev, "%s: clk: %s disabled\n",
+				__func__, clki->name);
+}
+
+static int msm_ahci_setup_asic_rbc_clks(struct msm_ahci_host *host, bool on)
 {
 	int ret = 0;
-	struct msm_sata_hba *hba = dev_get_drvdata(dev);
+	struct device *dev = host->ahci_pdev->dev.parent;
+	struct msm_ahci_clk_info *clki;
+	struct list_head *head = &host->clk_list_head;
 
-	/* Enable AHB clock for system fabric slave port connected to SATA */
-	ret = msm_sata_clk_get_prepare_enable(dev,
-			"slave_iface_clk", &hba->slave_iface_clk);
-	if (ret)
+	if (!head || list_empty(head))
 		goto out;
-
-	/* Enable AHB clock for system fabric and SATA core interface */
-	ret = msm_sata_clk_get_prepare_enable(dev,
-			"iface_clk", &hba->iface_clk);
-	if (ret)
-		goto put_dis_slave_iface_clk;
-
-	/* Enable AXI clock for SATA AXI master and slave interfaces */
-	ret = msm_sata_clk_get_prepare_enable(dev,
-			"bus_clk", &hba->bus_clk);
-	if (ret)
-		goto put_dis_iface_clk;
-
-	/* Enable the source clock for pmalive, rxoob and phy ref clocks */
-	ret = msm_sata_clk_get_prepare_enable_set_rate(dev,
-			"src_clk", &hba->src_clk, 100000000);
-	if (ret)
-		goto put_dis_bus_clk;
 
 	/*
-	 * Enable RX OOB detection clock. The clock rate is
-	 * same as PHY reference clock (100MHz).
+	 * asic0_clk and rbc0_clk should be enabled/disabled
+	 * only when PHY is powered on.
 	 */
-	ret = msm_sata_clk_get_prepare_enable(dev,
-			"core_rxoob_clk", &hba->rxoob_clk);
-	if (ret)
-		goto put_dis_src_clk;
-
-	/*
-	 * Enable power management always-on clock. The clock rate
-	 * is same as PHY reference clock (100MHz).
-	 */
-	ret = msm_sata_clk_get_prepare_enable(dev,
-			"core_pmalive_clk", &hba->pmalive_clk);
-	if (ret)
-		goto put_dis_rxoob_clk;
-
-	/* Enable PHY configuration AHB clock, fixed 64MHz clock */
-	ret = msm_sata_clk_get_prepare_enable(dev,
-			"cfg_clk", &hba->cfg_clk);
-	if (ret)
-		goto put_dis_pmalive_clk;
-
-	return ret;
-
-put_dis_pmalive_clk:
-	msm_sata_clk_put_unprepare_disable(&hba->pmalive_clk);
-put_dis_rxoob_clk:
-	msm_sata_clk_put_unprepare_disable(&hba->rxoob_clk);
-put_dis_src_clk:
-	msm_sata_clk_put_unprepare_disable(&hba->src_clk);
-put_dis_bus_clk:
-	msm_sata_clk_put_unprepare_disable(&hba->bus_clk);
-put_dis_iface_clk:
-	msm_sata_clk_put_unprepare_disable(&hba->iface_clk);
-put_dis_slave_iface_clk:
-	msm_sata_clk_put_unprepare_disable(&hba->slave_iface_clk);
-out:
-	return ret;
-}
-
-static void msm_sata_clk_deinit(struct device *dev)
-{
-	struct msm_sata_hba *hba = dev_get_drvdata(dev);
-
-	msm_sata_clk_put_unprepare_disable(&hba->cfg_clk);
-	msm_sata_clk_put_unprepare_disable(&hba->pmalive_clk);
-	msm_sata_clk_put_unprepare_disable(&hba->rxoob_clk);
-	msm_sata_clk_put_unprepare_disable(&hba->src_clk);
-	msm_sata_clk_put_unprepare_disable(&hba->bus_clk);
-	msm_sata_clk_put_unprepare_disable(&hba->iface_clk);
-	msm_sata_clk_put_unprepare_disable(&hba->slave_iface_clk);
-}
-
-static int msm_sata_vreg_get_enable_set_vdd(struct device *dev,
-			const char *name, struct regulator **out_vreg,
-			int min_uV, int max_uV, int hpm_uA)
-{
-	int ret = 0;
-	struct regulator *vreg;
-
-	vreg = devm_regulator_get(dev, name);
-	if (IS_ERR(vreg)) {
-		ret = PTR_ERR(vreg);
-		dev_err(dev, "Regulator: %s get failed, err=%d\n", name, ret);
+	if (!host->phy_powered_on)
 		goto out;
-	}
 
-	if (regulator_count_voltages(vreg) > 0) {
-		ret = regulator_set_voltage(vreg, min_uV, max_uV);
-		if (ret) {
-			dev_err(dev, "Regulator: %s set voltage failed, err=%d\n",
-					name, ret);
-			goto err;
-		}
+gate_ungate:
+	list_for_each_entry(clki, head, list) {
+		if (IS_ERR_OR_NULL(clki->clk))
+			continue;
 
-		ret = regulator_set_optimum_mode(vreg, hpm_uA);
-		if (ret < 0) {
-			dev_err(dev, "Regulator: %s set optimum mode(uA_load=%d) failed, err=%d\n",
-					name, hpm_uA, ret);
-			goto err;
-		} else {
-			/*
-			 * regulator_set_optimum_mode() can return non zero
-			 * value even for success case.
-			 */
-			ret = 0;
+		if (!strcmp(clki->name, "asic0_clk") ||
+				!strcmp(clki->name, "rbc0_clk")) {
+			if (on)
+				ret = msm_ahci_enable_clk(dev, clki);
+			else
+				msm_ahci_disable_clk(dev, clki);
 		}
 	}
-
-	ret = regulator_enable(vreg);
-	if (ret)
-		dev_err(dev, "Regulator: %s enable failed, err=%d\n",
-				name, ret);
-err:
-	if (!ret)
-		*out_vreg = vreg;
-	else
-		devm_regulator_put(vreg);
 out:
-	return ret;
-}
-
-static int msm_sata_vreg_put_disable(struct device *dev,
-		struct regulator *reg, const char *name, int max_uV)
-{
-	int ret;
-
-	if (!reg)
-		return 0;
-
-	ret = regulator_disable(reg);
 	if (ret) {
-		dev_err(dev, "Regulator: %s disable failed err=%d\n",
-				name, ret);
-		goto err;
+		on = false;
+		goto gate_ungate;
 	}
 
-	if (regulator_count_voltages(reg) > 0) {
-		ret = regulator_set_voltage(reg, 0, max_uV);
-		if (ret < 0) {
-			dev_err(dev, "Regulator: %s set voltage to 0 failed, err=%d\n",
-					name, ret);
-			goto err;
-		}
-
-		ret = regulator_set_optimum_mode(reg, 0);
-		if (ret < 0) {
-			dev_err(dev, "Regulator: %s set optimum mode(uA_load = 0) failed, err=%d\n",
-					name, ret);
-			goto err;
-		} else {
-			/*
-			 * regulator_set_optimum_mode() can return non zero
-			 * value even for success case.
-			 */
-			ret = 0;
-		}
-	}
-
-err:
-	devm_regulator_put(reg);
 	return ret;
 }
 
-static int msm_sata_vreg_init(struct device *dev)
+static int msm_ahci_setup_clocks(struct msm_ahci_host *host, bool on)
 {
 	int ret = 0;
-	struct msm_sata_hba *hba = dev_get_drvdata(dev);
+	struct device *dev = host->ahci_pdev->dev.parent;
+	struct msm_ahci_clk_info *clki;
+	struct list_head *head = &host->clk_list_head;
 
-	/*
-	 * The SATA clock generator needs 3.3V supply and can consume
-	 * max. 850mA during functional mode.
-	 */
-	ret = msm_sata_vreg_get_enable_set_vdd(dev, "sata_ext_3p3v",
-				&hba->clk_pwr, 3300000, 3300000, 850000);
-	if (ret)
+	if (!head || list_empty(head))
 		goto out;
 
-	/* Add 1ms regulator ramp-up delay */
-	msm_sata_delay_us(1000);
+gate_ungate:
+	list_for_each_entry(clki, head, list) {
+		if (IS_ERR_OR_NULL(clki->clk))
+			continue;
 
-	/* Read AHCI capability register to check if PMP is supported.*/
-	if (readl_relaxed(hba->ahci_base +
-				AHCI_HOST_CAP) & AHCI_HOST_CAP_PMP) {
-		/* Power up port-multiplier */
-		ret = msm_sata_vreg_get_enable_set_vdd(dev, "sata_pmp_pwr",
-				&hba->pmp_pwr, 1800000, 1800000, 200000);
-		if (ret) {
-			msm_sata_vreg_put_disable(dev, hba->clk_pwr,
-					"sata_ext_3p3v", 3300000);
+		/*
+		 * asic0_clk and rbc0_clk are handled separately
+		 * see msm_ahci_setup_asic_rbc_clks().
+		 */
+		if (!strcmp(clki->name, "asic0_clk") ||
+				!strcmp(clki->name, "rbc0_clk"))
+				continue;
+		if (on)
+			ret = msm_ahci_enable_clk(dev, clki);
+		else
+			msm_ahci_disable_clk(dev, clki);
+	}
+out:
+	if (ret) {
+		on = false;
+		goto gate_ungate;
+	}
+
+	return ret;
+}
+
+static int msm_ahci_get_clocks(struct msm_ahci_host *host)
+{
+	int ret = 0;
+	struct msm_ahci_clk_info *clki;
+	struct device *dev = host->ahci_pdev->dev.parent;
+	struct list_head *head = &host->clk_list_head;
+
+	if (!head || list_empty(head))
+		goto out;
+
+	list_for_each_entry(clki, head, list) {
+		if (!clki->name)
+			continue;
+
+		clki->clk = devm_clk_get(dev, clki->name);
+		if (IS_ERR(clki->clk)) {
+			ret = PTR_ERR(clki->clk);
+			dev_err(dev, "%s: %s clk get failed, %d\n",
+					__func__, clki->name, ret);
 			goto out;
 		}
 
-		/* Add 1ms regulator ramp-up delay */
-		msm_sata_delay_us(1000);
+		if (clki->max_freq) {
+			ret = clk_set_rate(clki->clk, clki->max_freq);
+			if (ret) {
+				dev_err(dev, "%s: %s clk set rate(%dHz) failed, %d\n",
+					__func__, clki->name,
+					clki->max_freq, ret);
+				goto out;
+			}
+		}
+		dev_dbg(dev, "%s: clk: %s, rate: %lu\n", __func__,
+				clki->name, clk_get_rate(clki->clk));
 	}
-
 out:
 	return ret;
 }
 
-static void msm_sata_vreg_deinit(struct device *dev)
-{
-	struct msm_sata_hba *hba = dev_get_drvdata(dev);
-
-	msm_sata_vreg_put_disable(dev, hba->clk_pwr,
-			"sata_ext_3p3v", 3300000);
-
-	if (hba->pmp_pwr)
-		msm_sata_vreg_put_disable(dev, hba->pmp_pwr,
-				"sata_pmp_pwr", 1800000);
-}
-
-static void msm_sata_phy_deinit(struct device *dev)
-{
-	struct msm_sata_hba *hba = dev_get_drvdata(dev);
-
-	/* Power down PHY */
-	writel_relaxed(0xF8, hba->phy_base + SATA_PHY_POW_DWN_CTRL0);
-	writel_relaxed(0xFE, hba->phy_base + SATA_PHY_POW_DWN_CTRL1);
-
-	/* Power down PLL block */
-	writel_relaxed(0x00, hba->phy_base + UNIPHY_PLL_GLB_CFG);
-	mb();
-
-	devm_iounmap(dev, hba->phy_base);
-}
-
-static int msm_sata_phy_init(struct device *dev)
+static int msm_ahci_parse_clock_info(struct msm_ahci_host *host)
 {
 	int ret = 0;
-	u32 reg = 0;
-	struct platform_device *pdev = to_platform_device(dev);
-	struct msm_sata_hba *hba = dev_get_drvdata(dev);
-	struct resource *mem;
+	int cnt;
+	int i;
+	struct device *dev = host->ahci_pdev->dev.parent;
+	struct device_node *np = dev->of_node;
+	char *name;
+	u32 *clkfreq = NULL;
+	struct msm_ahci_clk_info *clki;
 
-	mem = platform_get_resource_byname(pdev, IORESOURCE_MEM, "phy_mem");
-	if (!mem) {
-		dev_err(dev, "no mmio space\n");
-		return -EINVAL;
+	if (!np)
+		goto out;
+
+	INIT_LIST_HEAD(&host->clk_list_head);
+
+	cnt = of_property_count_strings(np, "clock-names");
+	if (!cnt || (cnt == -EINVAL)) {
+		dev_info(dev, "%s: Unable to find clocks, assuming enabled\n",
+				__func__);
+	} else if (cnt < 0) {
+		dev_err(dev, "%s: count clock strings failed, err %d\n",
+				__func__, cnt);
+		ret = cnt;
 	}
 
-	hba->phy_base = devm_ioremap(dev, mem->start, resource_size(mem));
-	if (!hba->phy_base) {
-		dev_err(dev, "failed to allocate memory for SATA PHY\n");
-		return -ENOMEM;
-	}
+	if (cnt <= 0)
+		goto out;
 
-	/* SATA phy initialization */
-
-	writel_relaxed(0x01, hba->phy_base + SATA_PHY_SER_CTRL);
-
-	writel_relaxed(0xB1, hba->phy_base + SATA_PHY_POW_DWN_CTRL0);
-	mb();
-	msm_sata_delay_us(10);
-
-	writel_relaxed(0x01, hba->phy_base + SATA_PHY_POW_DWN_CTRL0);
-	writel_relaxed(0x3E, hba->phy_base + SATA_PHY_POW_DWN_CTRL1);
-	writel_relaxed(0x01, hba->phy_base + SATA_PHY_RX_IMCAL0);
-	writel_relaxed(0x01, hba->phy_base + SATA_PHY_TX_IMCAL0);
-	writel_relaxed(0x02, hba->phy_base + SATA_PHY_TX_IMCAL2);
-
-	/* Write UNIPHYPLL registers to configure PLL */
-	writel_relaxed(0x04, hba->phy_base + UNIPHY_PLL_REFCLK_CFG);
-	writel_relaxed(0x00, hba->phy_base + UNIPHY_PLL_PWRGEN_CFG);
-
-	writel_relaxed(0x0A, hba->phy_base + UNIPHY_PLL_CAL_CFG0);
-	writel_relaxed(0xF3, hba->phy_base + UNIPHY_PLL_CAL_CFG8);
-	writel_relaxed(0x01, hba->phy_base + UNIPHY_PLL_CAL_CFG9);
-	writel_relaxed(0xED, hba->phy_base + UNIPHY_PLL_CAL_CFG10);
-	writel_relaxed(0x02, hba->phy_base + UNIPHY_PLL_CAL_CFG11);
-
-	writel_relaxed(0x36, hba->phy_base + UNIPHY_PLL_SDM_CFG0);
-	writel_relaxed(0x0D, hba->phy_base + UNIPHY_PLL_SDM_CFG1);
-	writel_relaxed(0xA3, hba->phy_base + UNIPHY_PLL_SDM_CFG2);
-	writel_relaxed(0xF0, hba->phy_base + UNIPHY_PLL_SDM_CFG3);
-	writel_relaxed(0x00, hba->phy_base + UNIPHY_PLL_SDM_CFG4);
-
-	writel_relaxed(0x19, hba->phy_base + UNIPHY_PLL_SSC_CFG0);
-	writel_relaxed(0xE1, hba->phy_base + UNIPHY_PLL_SSC_CFG1);
-	writel_relaxed(0x00, hba->phy_base + UNIPHY_PLL_SSC_CFG2);
-	writel_relaxed(0x11, hba->phy_base + UNIPHY_PLL_SSC_CFG3);
-
-	writel_relaxed(0x04, hba->phy_base + UNIPHY_PLL_LKDET_CFG0);
-	writel_relaxed(0xFF, hba->phy_base + UNIPHY_PLL_LKDET_CFG1);
-
-	writel_relaxed(0x02, hba->phy_base + UNIPHY_PLL_GLB_CFG);
-	mb();
-	msm_sata_delay_us(40);
-
-	writel_relaxed(0x03, hba->phy_base + UNIPHY_PLL_GLB_CFG);
-	mb();
-	msm_sata_delay_us(400);
-
-	writel_relaxed(0x05, hba->phy_base + UNIPHY_PLL_LKDET_CFG2);
-	mb();
-
-	/* poll for ready status, timeout after 1 sec */
-	ret = readl_poll_timeout(hba->phy_base + UNIPHY_PLL_STATUS, reg,
-			(reg & 1 << 0), 100, 1000000);
-	if (ret) {
-		dev_err(dev, "poll timeout UNIPHY_PLL_STATUS\n");
+	clkfreq = kzalloc(cnt * sizeof(*clkfreq), GFP_KERNEL);
+	if (!clkfreq) {
+		ret = -ENOMEM;
+		dev_err(dev, "%s: memory alloc failed\n", __func__);
 		goto out;
 	}
 
-	ret = readl_poll_timeout(hba->phy_base + SATA_PHY_TX_IMCAL_STAT, reg,
-			(reg & 1 << 0), 100, 1000000);
-	if (ret) {
-		dev_err(dev, "poll timeout SATA_PHY_TX_IMCAL_STAT\n");
+	ret = of_property_read_u32_array(np,
+			"max-clock-frequency-hz", clkfreq, cnt);
+	if (ret && (ret != -EINVAL)) {
+		dev_err(dev, "%s: invalid max-clock-frequency-hz property, %d\n",
+				__func__, ret);
 		goto out;
 	}
 
-	ret = readl_poll_timeout(hba->phy_base + SATA_PHY_RX_IMCAL_STAT, reg,
-			(reg & 1 << 0), 100, 1000000);
-	if (ret) {
-		dev_err(dev, "poll timeout SATA_PHY_RX_IMCAL_STAT\n");
-		goto out;
+	for (i = 0; i < cnt; i++) {
+		ret = of_property_read_string_index(np,
+				"clock-names", i, (const char **)&name);
+		if (ret)
+			goto out;
+
+		clki = devm_kzalloc(dev, sizeof(*clki), GFP_KERNEL);
+		if (!clki) {
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		clki->max_freq = clkfreq[i];
+		clki->name = kstrdup(name, GFP_KERNEL);
+		list_add_tail(&clki->list, &host->clk_list_head);
 	}
-
-	/* SATA phy calibrated succesfully, power up to functional mode */
-	writel_relaxed(0x3E, hba->phy_base + SATA_PHY_POW_DWN_CTRL1);
-	writel_relaxed(0x01, hba->phy_base + SATA_PHY_RX_IMCAL0);
-	writel_relaxed(0x01, hba->phy_base + SATA_PHY_TX_IMCAL0);
-
-	writel_relaxed(0x00, hba->phy_base + SATA_PHY_POW_DWN_CTRL1);
-	writel_relaxed(0x59, hba->phy_base + SATA_PHY_CDR_CTRL0);
-	writel_relaxed(0x04, hba->phy_base + SATA_PHY_CDR_CTRL1);
-	writel_relaxed(0x00, hba->phy_base + SATA_PHY_CDR_CTRL2);
-	writel_relaxed(0x00, hba->phy_base + SATA_PHY_PI_CTRL0);
-	writel_relaxed(0x00, hba->phy_base + SATA_PHY_CDR_CTRL3);
-	writel_relaxed(0x01, hba->phy_base + SATA_PHY_POW_DWN_CTRL0);
-
-	writel_relaxed(0x11, hba->phy_base + SATA_PHY_TX_DATA_CTRL);
-	writel_relaxed(0x43, hba->phy_base + SATA_PHY_ALIGNP);
-	writel_relaxed(0x04, hba->phy_base + SATA_PHY_OOB_TERM);
-
-	writel_relaxed(0x01, hba->phy_base + SATA_PHY_EQUAL);
-	writel_relaxed(0x09, hba->phy_base + SATA_PHY_TX_DRIV_CTRL0);
-	writel_relaxed(0x09, hba->phy_base + SATA_PHY_TX_DRIV_CTRL1);
-	mb();
-
-	dev_dbg(dev, "SATA PHY powered up in functional mode\n");
-
 out:
-	/* power down PHY in case of failure */
-	if (ret)
-		msm_sata_phy_deinit(dev);
-
+	kfree(clkfreq);
 	return ret;
 }
 
-int msm_sata_init(struct device *ahci_dev, void __iomem *mmio)
+static int msm_ahci_init_clocks(struct msm_ahci_host *host)
+{
+	int ret = 0;
+
+	ret = msm_ahci_parse_clock_info(host);
+	if (ret)
+		goto out;
+
+	ret = msm_ahci_get_clocks(host);
+	if (ret)
+		goto out;
+
+	ret = msm_ahci_setup_clocks(host, true);
+	if (ret)
+		goto out;
+out:
+	return ret;
+}
+
+static void msm_ahci_exit_clocks(struct msm_ahci_host *host)
+{
+	msm_ahci_setup_clocks(host, false);
+}
+
+static int msm_ahci_init_phy(struct msm_ahci_host *host)
+{
+	int ret = 0;
+	struct device *dev = host->ahci_pdev->dev.parent;
+
+	host->phy = devm_phy_get(dev, "sata-6g");
+	if (IS_ERR(host->phy)) {
+		ret = PTR_ERR(host->phy);
+		dev_err(dev, "PHY get failed %d\n", ret);
+		goto out;
+	}
+
+	ret = phy_init(host->phy);
+	if (ret) {
+		dev_err(dev, "PHY initialization failed %d\n", ret);
+		goto out;
+	}
+
+	ret = phy_power_on(host->phy);
+	if (ret) {
+		dev_err(dev, "PHY power on failed %d\n", ret);
+		goto out;
+	}
+
+	host->phy_powered_on = true;
+
+	/* asic0 and rbc0 clks needs to be ungated only after phy power on */
+	ret = msm_ahci_setup_asic_rbc_clks(host, true);
+	if (ret) {
+		dev_err(dev, "failed to enable asic0/rbc0 clks %d", ret);
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static void msm_ahci_exit_phy(struct msm_ahci_host *host)
+{
+	msm_ahci_setup_asic_rbc_clks(host, false);
+	phy_power_off(host->phy);
+	host->phy_powered_on = false;
+}
+
+static int msm_ahci_init(struct device *ahci_dev, void __iomem *addr)
 {
 	int ret;
 	struct device *dev = ahci_dev->parent;
-	struct msm_sata_hba *hba = dev_get_drvdata(dev);
+	struct msm_ahci_host *host = dev_get_drvdata(dev);
 
 	/* Save ahci mmio to access vendor specific registers */
-	hba->ahci_base = mmio;
+	host->ahci_base = addr;
 
-	ret = msm_sata_clk_init(dev);
+	ret = msm_ahci_init_clocks(host);
 	if (ret) {
-		dev_err(dev, "SATA clk init failed with err=%d\n", ret);
+		dev_err(dev, "AHCI clk init failed with err=%d\n", ret);
 		goto out;
 	}
 
-	ret = msm_sata_vreg_init(dev);
-	if (ret) {
-		dev_err(dev, "SATA vreg init failed with err=%d\n", ret);
-		msm_sata_clk_deinit(dev);
-		goto out;
-	}
-
-	ret = msm_sata_phy_init(dev);
+	ret = msm_ahci_init_phy(host);
 	if (ret) {
 		dev_err(dev, "SATA PHY init failed with err=%d\n", ret);
-		msm_sata_vreg_deinit(dev);
-		msm_sata_clk_deinit(dev);
-		goto out;
+		goto out_exit_clks;
 	}
 
+	return 0;
+
+out_exit_clks:
+	msm_ahci_exit_clocks(host);
 out:
 	return ret;
 }
 
-void msm_sata_deinit(struct device *ahci_dev)
+static void msm_ahci_exit(struct device *ahci_dev)
 {
 	struct device *dev = ahci_dev->parent;
+	struct msm_ahci_host *host = dev_get_drvdata(dev);
 
-	msm_sata_phy_deinit(dev);
-	msm_sata_vreg_deinit(dev);
-	msm_sata_clk_deinit(dev);
+
+	msm_ahci_exit_phy(host);
+	msm_ahci_exit_clocks(host);
 }
 
-static int msm_sata_suspend(struct device *ahci_dev)
-{
-	msm_sata_deinit(ahci_dev);
-
-	return 0;
-}
-
-static int msm_sata_resume(struct device *ahci_dev)
+static int msm_ahci_suspend(struct device *ahci_dev)
 {
 	int ret;
 	struct device *dev = ahci_dev->parent;
+	struct msm_ahci_host *host = dev_get_drvdata(dev);
 
-	ret = msm_sata_clk_init(dev);
+	msm_ahci_setup_asic_rbc_clks(host, false);
+	ret = phy_power_off(host->phy);
 	if (ret) {
-		dev_err(dev, "SATA clk init failed with err=%d\n", ret);
-		/*
-		 * If clock initialization failed, that means ahci driver
-		 * cannot access any register going further. Since there is
-		 * no check within ahci driver to check for clock failures,
-		 * panic here instead of making an unclocked register access.
-		 */
-		BUG();
+		dev_err(dev, "%s: PHY power off failed %d\n", __func__, ret);
+		goto out;
+	} else {
+		host->phy_powered_on = false;
 	}
 
-	/* Issue asynchronous reset to reset PHY */
-	ret = msm_sata_hard_reset(dev);
+	msm_ahci_setup_clocks(host, false);
+out:
+	return ret;
+}
+
+static int msm_ahci_resume(struct device *ahci_dev)
+{
+	int ret;
+	struct device *dev = ahci_dev->parent;
+	struct msm_ahci_host *host = dev_get_drvdata(dev);
+
+	ret = msm_ahci_setup_clocks(host, true);
 	if (ret)
 		goto out;
 
-	ret = msm_sata_vreg_init(dev);
+	ret = phy_power_on(host->phy);
 	if (ret) {
-		dev_err(dev, "SATA vreg init failed with err=%d\n", ret);
-		/* Do not turn off clks, AHCI driver might do register access */
+		dev_err(dev, "%s: PHY power on failed %d\n", __func__, ret);
 		goto out;
+	} else {
+		host->phy_powered_on = true;
 	}
 
-	ret = msm_sata_phy_init(dev);
-	if (ret) {
-		dev_err(dev, "SATA PHY init failed with err=%d\n", ret);
-		/* Do not turn off clks, AHCI driver might do register access */
-		msm_sata_vreg_deinit(dev);
-		goto out;
-	}
+	/* asic0 and rbc0 clks needs to be ungated only after phy power on */
+	ret = msm_ahci_setup_asic_rbc_clks(host, true);
 out:
 	return ret;
 }
 
 static struct ahci_platform_data msm_ahci_pdata = {
-	.init = msm_sata_init,
-	.exit = msm_sata_deinit,
-	.suspend = msm_sata_suspend,
-	.resume = msm_sata_resume,
+	.init = msm_ahci_init,
+	.exit = msm_ahci_exit,
+	.suspend = msm_ahci_suspend,
+	.resume = msm_ahci_resume,
 };
 
-static int msm_sata_probe(struct platform_device *pdev)
+static const struct of_device_id msm_ahci_of_match[] = {
+	{ .compatible = "qcom,msm-ahci", .data = &msm_ahci_pdata },
+	{ /* sentinel */ },
+};
+MODULE_DEVICE_TABLE(of, msm_ahci_of_match);
+
+static int msm_ahci_probe(struct platform_device *pdev)
 {
-	struct platform_device *ahci;
-	struct msm_sata_hba *hba;
+	int err;
+	struct msm_ahci_host *host;
+	struct device *dev = &pdev->dev;
+	const struct of_device_id *of_id;
+	const struct ahci_platform_data *pdata = NULL;
+	struct platform_device *ahci_pdev;
+	struct device *ahci_dev;
 	int ret = 0;
 
-	hba = devm_kzalloc(&pdev->dev, sizeof(struct msm_sata_hba), GFP_KERNEL);
-	if (!hba) {
-		dev_err(&pdev->dev, "no memory\n");
+	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
+	if (!host) {
+		dev_err(dev, "failed to allocate memory for msm host\n");
 		ret = -ENOMEM;
 		goto err;
 	}
 
-	platform_set_drvdata(pdev, hba);
-
-	ahci = platform_device_alloc("ahci", pdev->id);
-	if (!ahci) {
-		dev_err(&pdev->dev, "couldn't allocate ahci device\n");
-		ret = -ENOMEM;
-		goto err_free;
+	ahci_pdev = platform_device_alloc("ahci", -1);
+	if (!ahci_pdev) {
+		dev_err(dev, "failed to allocate ahci platform device\n");
+		ret = -ENODEV;
+		goto err;
 	}
 
-	dma_set_coherent_mask(&ahci->dev, pdev->dev.coherent_dma_mask);
+	ahci_dev = &ahci_pdev->dev;
+	ahci_dev->parent = dev;
 
-	ahci->dev.parent = &pdev->dev;
-	ahci->dev.dma_mask = pdev->dev.dma_mask;
-	ahci->dev.dma_parms = pdev->dev.dma_parms;
-	hba->ahci_pdev = ahci;
+	if (!dev->dma_mask)
+		dev->dma_mask = &dev->coherent_dma_mask;
 
-	ret = platform_device_add_resources(ahci, pdev->resource,
-			pdev->num_resources);
-	if (ret) {
-		dev_err(&pdev->dev, "couldn't add resources to ahci device\n");
+	if (!dma_set_mask(dev, DMA_BIT_MASK(64))) {
+		dma_set_coherent_mask(dev, DMA_BIT_MASK(64));
+	} else if (!dma_set_mask(dev, DMA_BIT_MASK(32))) {
+		dma_set_coherent_mask(dev, DMA_BIT_MASK(32));
+	} else {
+		err = -EIO;
+		dev_err(dev, "unable to set dma mask\n");
 		goto err_put_device;
 	}
 
-	ahci->dev.platform_data = &msm_ahci_pdata;
-	ret = platform_device_add(ahci);
+	ahci_dev->dma_mask = dev->dma_mask;
+	ahci_dev->dma_parms = dev->dma_parms;
+	dma_set_coherent_mask(ahci_dev, dev->coherent_dma_mask);
+
+	host->ahci_pdev = ahci_pdev;
+
+	platform_set_drvdata(pdev, host);
+
+	of_id = of_match_device(msm_ahci_of_match, dev);
+	if (of_id) {
+		pdata = of_id->data;
+	} else {
+		ret = -EINVAL;
+		dev_err(dev, "pdata is required to initialze ahci %d\n", ret);
+		goto err;
+	}
+
+	ahci_dev->of_node = dev->of_node;
+
+	ret = platform_device_add_resources(ahci_pdev,
+			pdev->resource, pdev->num_resources);
 	if (ret) {
-		dev_err(&pdev->dev, "failed to register ahci device\n");
+		dev_err(dev, "failed to add resources %d\n", ret);
+		goto err_put_device;
+	}
+
+	ret = platform_device_add_data(ahci_pdev, pdata, sizeof(*pdata));
+	if (ret) {
+		dev_err(dev, "failed to add pdata %d\n", ret);
+		goto err_put_device;
+	}
+
+	ret = platform_device_add(ahci_pdev);
+	if (ret) {
+		dev_err(dev, "failed to register ahci device %d\n", ret);
 		goto err_put_device;
 	}
 
 	return 0;
 
 err_put_device:
-	platform_device_put(ahci);
-err_free:
-	devm_kfree(&pdev->dev, hba);
+	platform_device_put(ahci_pdev);
 err:
 	return ret;
 }
 
-static int msm_sata_remove(struct platform_device *pdev)
+static int msm_ahci_remove(struct platform_device *pdev)
 {
-	struct msm_sata_hba *hba = platform_get_drvdata(pdev);
+	struct msm_ahci_host *host = platform_get_drvdata(pdev);
 
-	platform_device_unregister(hba->ahci_pdev);
+	platform_device_unregister(host->ahci_pdev);
 
 	return 0;
 }
 
-static struct platform_driver msm_sata_driver = {
-	.probe		= msm_sata_probe,
-	.remove		= msm_sata_remove,
+static struct platform_driver msm_ahci_driver = {
+	.probe		= msm_ahci_probe,
+	.remove		= msm_ahci_remove,
 	.driver		= {
-		.name	= "msm_sata",
+		.name	= "ahci-msm",
+		.owner = THIS_MODULE,
+		.of_match_table = msm_ahci_of_match,
 	},
 };
-
-module_platform_driver(msm_sata_driver);
+module_platform_driver(msm_ahci_driver);
 
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("AHCI platform MSM Glue Layer");

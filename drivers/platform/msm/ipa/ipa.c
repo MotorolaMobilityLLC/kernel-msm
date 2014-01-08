@@ -67,65 +67,6 @@ static struct clk *sys_noc_ipa_axi_clk;
 static struct clk *ipa_cnoc_clk;
 static struct clk *ipa_inactivity_clk;
 
-static struct msm_bus_vectors ipa_init_vectors[]  = {
-	{
-		.src = MSM_BUS_MASTER_IPA,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 0,
-		.ib = 0,
-	},
-	{
-		.src = MSM_BUS_MASTER_BAM_DMA,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 0,
-		.ib = 0,
-	},
-	{
-		.src = MSM_BUS_MASTER_BAM_DMA,
-		.dst = MSM_BUS_SLAVE_OCIMEM,
-		.ab = 0,
-		.ib = 0,
-	},
-};
-
-static struct msm_bus_vectors ipa_max_perf_vectors[]  = {
-	{
-		.src = MSM_BUS_MASTER_IPA,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 50000000,
-		.ib = 960000000,
-	},
-	{
-		.src = MSM_BUS_MASTER_BAM_DMA,
-		.dst = MSM_BUS_SLAVE_EBI_CH0,
-		.ab = 50000000,
-		.ib = 960000000,
-	},
-	{
-		.src = MSM_BUS_MASTER_BAM_DMA,
-		.dst = MSM_BUS_SLAVE_OCIMEM,
-		.ab = 50000000,
-		.ib = 960000000,
-	},
-};
-
-static struct msm_bus_paths ipa_usecases[]  = {
-	{
-		ARRAY_SIZE(ipa_init_vectors),
-		ipa_init_vectors,
-	},
-	{
-		ARRAY_SIZE(ipa_max_perf_vectors),
-		ipa_max_perf_vectors,
-	},
-};
-
-static struct msm_bus_scale_pdata ipa_bus_client_pdata = {
-	ipa_usecases,
-	ARRAY_SIZE(ipa_usecases),
-	.name = "ipa",
-};
-
 struct ipa_context *ipa_ctx;
 
 static int ipa_load_pipe_connection(struct platform_device *pdev,
@@ -174,6 +115,8 @@ static long ipa_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			retval = -EFAULT;
 			break;
 		}
+		/* null terminate the string */
+		nat_mem.dev_name[IPA_RESOURCE_NAME_MAX - 1] = '\0';
 
 		if (allocate_nat_device(&nat_mem)) {
 			retval = -EFAULT;
@@ -679,6 +622,39 @@ static long ipa_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			retval = ipa_get_ep_mapping(arg);
 			break;
 		}
+	case IPA_IOC_QUERY_RT_TBL_INDEX:
+		if (copy_from_user(header, (u8 *)arg,
+				sizeof(struct ipa_ioc_get_rt_tbl_indx))) {
+			retval = -EFAULT;
+			break;
+		}
+		if (ipa_query_rt_index(
+			 (struct ipa_ioc_get_rt_tbl_indx *)header)) {
+			retval = -EFAULT;
+			break;
+		}
+		if (copy_to_user((u8 *)arg, header,
+				sizeof(struct ipa_ioc_get_rt_tbl_indx))) {
+			retval = -EFAULT;
+			break;
+		}
+		break;
+	case IPA_IOC_WRITE_QMAPID:
+		if (copy_from_user(header, (u8 *)arg,
+					sizeof(struct ipa_ioc_write_qmapid))) {
+			retval = -EFAULT;
+			break;
+		}
+		if (ipa_write_qmap_id((struct ipa_ioc_write_qmapid *)header)) {
+			retval = -EFAULT;
+			break;
+		}
+		if (copy_to_user((u8 *)arg, header,
+					sizeof(struct ipa_ioc_write_qmapid))) {
+			retval = -EFAULT;
+			break;
+		}
+		break;
 
 	default:        /* redundant, as cmd was checked against MAXNR */
 		ipa_dec_client_disable_clks();
@@ -1216,11 +1192,13 @@ static int ipa_load_pipe_connection(struct platform_device *pdev,
 				    enum a2_mux_pipe_direction  pipe_dir,
 				    struct a2_mux_pipe_connection *pdata)
 {
-	struct device_node *node = pdev->dev.of_node;
+	struct device_node *node;
 	int rc = 0;
 
 	if (!pdata || !pdev)
 		goto err;
+
+	node = pdev->dev.of_node;
 
 	/* retrieve device tree parameters */
 	for_each_child_of_node(pdev->dev.of_node, node)
@@ -1261,8 +1239,8 @@ err:
 static int ipa_update_connections_info(struct device_node *node,
 		struct a2_mux_pipe_connection     *pipe_connection)
 {
-	u32      rc;
-	char     *key;
+	u32      rc = 0;
+	char     *key = NULL;
 	uint32_t val;
 	enum ipa_pipe_mem_type mem_type;
 
@@ -1326,7 +1304,8 @@ static int ipa_update_connections_info(struct device_node *node,
 
 	return 0;
 err:
-	IPAERR("%s: Error in name %s key %s\n", __func__, node->full_name, key);
+	IPAERR("%s: Error in name %s key %s\n", __func__,
+		node->full_name, (key != NULL) ? key : "Null");
 
 	return rc;
 }
@@ -1403,20 +1382,6 @@ static int ipa_get_clks(struct device *dev)
 	if (ipa_ctx->ipa_hw_mode != IPA_HW_MODE_NORMAL)
 		return 0;
 
-	ipa_cnoc_clk = clk_get(dev, "iface_clk");
-	if (IS_ERR(ipa_cnoc_clk)) {
-		ipa_cnoc_clk = NULL;
-		IPAERR("fail to get cnoc clk\n");
-		return -ENODEV;
-	}
-
-	ipa_clk_src = clk_get(dev, "core_src_clk");
-	if (IS_ERR(ipa_clk_src)) {
-		ipa_clk_src = NULL;
-		IPAERR("fail to get ipa clk src\n");
-		return -ENODEV;
-	}
-
 	ipa_clk = clk_get(dev, "core_clk");
 	if (IS_ERR(ipa_clk)) {
 		ipa_clk = NULL;
@@ -1424,35 +1389,53 @@ static int ipa_get_clks(struct device *dev)
 		return -ENODEV;
 	}
 
-	sys_noc_ipa_axi_clk = clk_get(dev, "bus_clk");
-	if (IS_ERR(sys_noc_ipa_axi_clk)) {
-		sys_noc_ipa_axi_clk = NULL;
-		IPAERR("fail to get sys_noc_ipa_axi clk\n");
-		return -ENODEV;
-	}
+	if (ipa_ctx->ipa_hw_type != IPA_HW_v2_0) {
+		ipa_cnoc_clk = clk_get(dev, "iface_clk");
+		if (IS_ERR(ipa_cnoc_clk)) {
+			ipa_cnoc_clk = NULL;
+			IPAERR("fail to get cnoc clk\n");
+			return -ENODEV;
+		}
 
-	ipa_inactivity_clk = clk_get(dev, "inactivity_clk");
-	if (IS_ERR(ipa_inactivity_clk)) {
-		ipa_inactivity_clk = NULL;
-		IPAERR("fail to get inactivity clk\n");
-		return -ENODEV;
+		ipa_clk_src = clk_get(dev, "core_src_clk");
+		if (IS_ERR(ipa_clk_src)) {
+			ipa_clk_src = NULL;
+			IPAERR("fail to get ipa clk src\n");
+			return -ENODEV;
+		}
+
+		sys_noc_ipa_axi_clk = clk_get(dev, "bus_clk");
+		if (IS_ERR(sys_noc_ipa_axi_clk)) {
+			sys_noc_ipa_axi_clk = NULL;
+			IPAERR("fail to get sys_noc_ipa_axi clk\n");
+			return -ENODEV;
+		}
+
+		ipa_inactivity_clk = clk_get(dev, "inactivity_clk");
+		if (IS_ERR(ipa_inactivity_clk)) {
+			ipa_inactivity_clk = NULL;
+			IPAERR("fail to get inactivity clk\n");
+			return -ENODEV;
+		}
 	}
 
 	return 0;
 }
 
-/**
-* ipa_enable_clks() - Turn on IPA clocks
-*
-* Return codes:
-* None
-*/
-void ipa_enable_clks(void)
+void _ipa_enable_clks_v2_0(void)
 {
-	IPADBG("enabling IPA clocks and bus voting\n");
+	IPADBG("enabling gcc_ipa_clk\n");
+	if (ipa_clk) {
+		clk_prepare(ipa_clk);
+		clk_enable(ipa_clk);
+		clk_set_rate(ipa_clk, ipa_ctx->ctrl->ipa_clk_rate);
+	} else {
+		WARN_ON(1);
+	}
+}
 
-	if (ipa_ctx->ipa_hw_mode != IPA_HW_MODE_NORMAL)
-		return;
+void _ipa_enable_clks_v1(void)
+{
 
 	if (ipa_cnoc_clk) {
 		clk_prepare(ipa_cnoc_clk);
@@ -1464,7 +1447,7 @@ void ipa_enable_clks(void)
 
 	if (ipa_clk_src)
 		clk_set_rate(ipa_clk_src,
-				ipa_ctx->ctrl->ipa_src_clk_rate);
+				ipa_ctx->ctrl->ipa_clk_rate);
 	else
 		WARN_ON(1);
 
@@ -1498,22 +1481,29 @@ void ipa_enable_clks(void)
 	else
 		WARN_ON(1);
 
-	if (msm_bus_scale_client_update_request(ipa_ctx->ipa_bus_hdl, 1))
-		WARN_ON(1);
 }
 
 /**
-* ipa_disable_clks() - Turn off IPA clocks
+* ipa_enable_clks() - Turn on IPA clocks
 *
 * Return codes:
 * None
 */
-void ipa_disable_clks(void)
+void ipa_enable_clks(void)
 {
-	IPADBG("disabling IPA clocks and bus voting\n");
+	IPADBG("enabling IPA clocks and bus voting\n");
 
 	if (ipa_ctx->ipa_hw_mode != IPA_HW_MODE_NORMAL)
-			return;
+		return;
+
+	ipa_ctx->ctrl->ipa_enable_clks();
+
+	if (msm_bus_scale_client_update_request(ipa_ctx->ipa_bus_hdl, 1))
+		WARN_ON(1);
+}
+
+void _ipa_disable_clks_v1(void)
+{
 
 	if (ipa_inactivity_clk)
 		clk_disable_unprepare(ipa_inactivity_clk);
@@ -1535,10 +1525,35 @@ void ipa_disable_clks(void)
 	else
 		WARN_ON(1);
 
-	if (msm_bus_scale_client_update_request(ipa_ctx->ipa_bus_hdl, 0))
+}
+
+void _ipa_disable_clks_v2_0(void)
+{
+	IPADBG("disabling gcc_ipa_clk\n");
+	if (ipa_clk)
+		clk_disable_unprepare(ipa_clk);
+	else
 		WARN_ON(1);
 }
 
+/**
+* ipa_disable_clks() - Turn off IPA clocks
+*
+* Return codes:
+* None
+*/
+void ipa_disable_clks(void)
+{
+	IPADBG("disabling IPA clocks and bus voting\n");
+
+	if (ipa_ctx->ipa_hw_mode != IPA_HW_MODE_NORMAL)
+			return;
+
+	ipa_ctx->ctrl->ipa_disable_clks();
+
+	if (msm_bus_scale_client_update_request(ipa_ctx->ipa_bus_hdl, 0))
+		WARN_ON(1);
+}
 /**
 * ipa_inc_client_enable_clks() - Increase active clients counter, and
 * enable ipa clocks if necessary
@@ -1762,7 +1777,7 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 
 	/* get BUS handle */
 	ipa_ctx->ipa_bus_hdl =
-		msm_bus_scale_register_client(&ipa_bus_client_pdata);
+		msm_bus_scale_register_client(ipa_ctx->ctrl->msm_bus_data_ptr);
 	if (!ipa_ctx->ipa_bus_hdl) {
 		IPAERR("fail to register with bus mgr!\n");
 		result = -ENODEV;
@@ -1817,6 +1832,7 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 	bam_props.summing_threshold = IPA_SUMMING_THRESHOLD;
 	bam_props.event_threshold = IPA_EVENT_THRESHOLD;
 	bam_props.options |= SPS_BAM_NO_LOCAL_CLK_GATING;
+	bam_props.ee = resource_p->ee;
 
 	result = sps_register_bam_device(&bam_props, &ipa_ctx->bam_handle);
 	if (result) {
@@ -2066,7 +2082,7 @@ static int ipa_init(const struct ipa_plat_drv_res *resource_p,
 
 	if (ipa_ctx->use_ipa_teth_bridge) {
 		/* Initialize the tethering bridge driver */
-		result = teth_bridge_driver_init();
+		result = teth_bridge_driver_init(ipa_ctx->ipa_hw_type);
 		if (result) {
 			IPAERR(":teth_bridge init failed (%d)\n", -result);
 			result = -ENODEV;
@@ -2300,6 +2316,11 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 		if (result)
 			return -ENODEV;
 	}
+
+	result = of_property_read_u32(pdev->dev.of_node, "qcom,ee",
+			&ipa_drv_res->ee);
+	if (result)
+		ipa_drv_res->ee = 0;
 
 	return 0;
 }

@@ -61,6 +61,15 @@ static bool sdhci_check_state(struct sdhci_host *);
 #ifdef CONFIG_PM_RUNTIME
 static int sdhci_runtime_pm_get(struct sdhci_host *host);
 static int sdhci_runtime_pm_put(struct sdhci_host *host);
+static void sdhci_dump_rpm_info(struct sdhci_host *host)
+{
+	struct mmc_host *mmc = host->mmc;
+
+	pr_info("%s: rpmstatus[pltfm](runtime-suspend:usage_count:disable_depth)(%d:%d:%d)\n",
+		mmc_hostname(mmc), mmc->parent->power.runtime_status,
+		atomic_read(&mmc->parent->power.usage_count),
+		mmc->parent->power.disable_depth);
+}
 #else
 static inline int sdhci_runtime_pm_get(struct sdhci_host *host)
 {
@@ -70,11 +79,14 @@ static inline int sdhci_runtime_pm_put(struct sdhci_host *host)
 {
 	return 0;
 }
+static void sdhci_dump_rpm_info(struct sdhci_host *host)
+{
+}
 #endif
 
 static inline int sdhci_get_async_int_status(struct sdhci_host *host)
 {
-	return (sdhci_readl(host, SDHCI_HOST_CONTROL2) &
+	return (sdhci_readw(host, SDHCI_HOST_CONTROL2) &
 		 SDHCI_CTRL_ASYNC_INT_ENABLE) >> 14;
 }
 
@@ -85,10 +97,7 @@ static void sdhci_dump_state(struct sdhci_host *host)
 	pr_info("%s: clk: %d clk-gated: %d claimer: %s pwr: %d\n",
 		mmc_hostname(mmc), host->clock, mmc->clk_gated,
 		mmc->claimer->comm, host->pwr);
-	pr_info("%s: rpmstatus[pltfm](runtime-suspend:usage_count:disable_depth)(%d:%d:%d)\n",
-		mmc_hostname(mmc), mmc->parent->power.runtime_status,
-		atomic_read(&mmc->parent->power.usage_count),
-		mmc->parent->power.disable_depth);
+	sdhci_dump_rpm_info(host);
 }
 
 static void sdhci_dumpregs(struct sdhci_host *host)
@@ -802,12 +811,6 @@ static u8 sdhci_calc_timeout(struct sdhci_host *host, struct mmc_command *cmd)
 	 */
 	if (host->quirks & SDHCI_QUIRK_BROKEN_TIMEOUT_VAL)
 		return 0xE;
-
-	/* During initialization, don't use max timeout as the clock is slow */
-	if ((host->quirks2 & SDHCI_QUIRK2_USE_RESERVED_MAX_TIMEOUT) &&
-		(host->clock > 400000)) {
-		return 0xF;
-	}
 
 	/* Unspecified timeout, assume max */
 	if (!data && !cmd->cmd_timeout_ms)
@@ -1715,7 +1718,10 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		 * is no on-going data transfer. If so, we need to execute
 		 * tuning procedure before sending command.
 		 */
-		if ((host->flags & SDHCI_NEEDS_RETUNING) &&
+		if ((mrq->cmd->opcode != MMC_SEND_TUNING_BLOCK) &&
+		    (mrq->cmd->opcode != MMC_SEND_TUNING_BLOCK_HS400) &&
+		    (mrq->cmd->opcode != MMC_SEND_TUNING_BLOCK_HS200) &&
+		    (host->flags & SDHCI_NEEDS_RETUNING) &&
 		    !(present_state & (SDHCI_DOING_WRITE | SDHCI_DOING_READ))) {
 			if (mmc->card) {
 				/* eMMC uses cmd21 but sd and sdio use cmd19 */
@@ -1723,6 +1729,7 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 					mmc->card->type == MMC_TYPE_MMC ?
 					MMC_SEND_TUNING_BLOCK_HS200 :
 					MMC_SEND_TUNING_BLOCK;
+				host->mrq = NULL;
 				spin_unlock_irqrestore(&host->lock, flags);
 				sdhci_execute_tuning(mmc, tuning_opcode);
 				spin_lock_irqsave(&host->lock, flags);
@@ -1757,12 +1764,12 @@ static void sdhci_cfg_async_intr(struct sdhci_host *host, bool enable)
 		return;
 
 	if (enable)
-		sdhci_writel(host,
-			     sdhci_readl(host, SDHCI_HOST_CONTROL2) |
+		sdhci_writew(host,
+			     sdhci_readw(host, SDHCI_HOST_CONTROL2) |
 			     SDHCI_CTRL_ASYNC_INT_ENABLE,
 			     SDHCI_HOST_CONTROL2);
 	else
-		sdhci_writel(host, sdhci_readl(host, SDHCI_HOST_CONTROL2) &
+		sdhci_writew(host, sdhci_readw(host, SDHCI_HOST_CONTROL2) &
 			     ~SDHCI_CTRL_ASYNC_INT_ENABLE,
 			     SDHCI_HOST_CONTROL2);
 }
@@ -1783,6 +1790,7 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 	unsigned long flags;
 	int vdd_bit = -1;
 	u8 ctrl;
+	int ret;
 
 	mutex_lock(&host->ios_mutex);
 	if (host->flags & SDHCI_DEVICE_DEAD) {
@@ -1812,6 +1820,29 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 				 mmc_hostname(host->mmc), __func__);
 		}
 	}
+	/*
+	 * The controller clocks may be off during power-up and we may end up
+	 * enabling card clock before giving power to the card. Hence, during
+	 * MMC_POWER_UP enable the controller clock and turn-on the regulators.
+	 * The mmc_power_up would provide the necessary delay before turning on
+	 * the clocks to the card.
+	 */
+	if (ios->power_mode & MMC_POWER_UP) {
+		if (host->ops->enable_controller_clock) {
+			ret = host->ops->enable_controller_clock(host);
+			if (ret) {
+				pr_err("%s: enabling controller clock: failed: %d\n",
+				       mmc_hostname(host->mmc), ret);
+			} else {
+				vdd_bit = sdhci_set_power(host, ios->vdd);
+
+				if (host->vmmc && vdd_bit != -1)
+					mmc_regulator_set_ocr(host->mmc,
+							      host->vmmc,
+							      vdd_bit);
+			}
+		}
+	}
 	spin_lock_irqsave(&host->lock, flags);
 	if (!host->clock) {
 		sdhci_cfg_irq(host, true);
@@ -1825,14 +1856,16 @@ static void sdhci_do_set_ios(struct sdhci_host *host, struct mmc_ios *ios)
 		(ios->power_mode == MMC_POWER_UP))
 		sdhci_enable_preset_value(host, false);
 
-	if (ios->power_mode & (MMC_POWER_UP | MMC_POWER_ON))
+	if (!host->ops->enable_controller_clock && (ios->power_mode &
+						    (MMC_POWER_UP |
+						     MMC_POWER_ON))) {
 		vdd_bit = sdhci_set_power(host, ios->vdd);
 
-	if (host->vmmc && vdd_bit != -1)
-		mmc_regulator_set_ocr(host->mmc, host->vmmc, vdd_bit);
+		if (host->vmmc && vdd_bit != -1)
+			mmc_regulator_set_ocr(host->mmc, host->vmmc, vdd_bit);
+	}
 
 	spin_lock_irqsave(&host->lock, flags);
-
 	if (host->ops->platform_send_init_74_clocks)
 		host->ops->platform_send_init_74_clocks(host, ios->power_mode);
 
@@ -2773,6 +2806,8 @@ static void sdhci_cmd_irq(struct sdhci_host *host, u32 intmask)
 	}
 
 	if (host->cmd->error) {
+		if (host->cmd->error == -EILSEQ)
+			host->flags |= SDHCI_NEEDS_RETUNING;
 		tasklet_schedule(&host->finish_tasklet);
 		return;
 	}
@@ -2910,8 +2945,11 @@ static void sdhci_data_irq(struct sdhci_host *host, u32 intmask)
 							    SDHCI_COMMAND));
 			if ((command != MMC_SEND_TUNING_BLOCK_HS400) &&
 			    (command != MMC_SEND_TUNING_BLOCK_HS200) &&
-			    (command != MMC_SEND_TUNING_BLOCK))
+			    (command != MMC_SEND_TUNING_BLOCK)) {
 				pr_msg = true;
+				if (intmask & SDHCI_INT_DATA_CRC)
+					host->flags |= SDHCI_NEEDS_RETUNING;
+			}
 		} else {
 			pr_msg = true;
 		}

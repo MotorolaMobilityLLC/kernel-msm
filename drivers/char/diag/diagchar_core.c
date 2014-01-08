@@ -71,7 +71,7 @@ static unsigned int poolsize_user = 8;  /*Number of items in the mempool */
 static unsigned int itemsize_write_struct = 20; /*Size of item in the mempool */
 static unsigned int poolsize_write_struct = 10;/* Num of items in the mempool */
 /* For the dci memory pool */
-static unsigned int itemsize_dci = 8192; /*Size of item in the mempool */
+static unsigned int itemsize_dci = IN_BUF_SIZE; /*Size of item in the mempool */
 static unsigned int poolsize_dci = 10;  /*Number of items in the mempool */
 /* This is the max number of user-space clients supported at initialization*/
 static unsigned int max_clients = 15;
@@ -129,8 +129,6 @@ static void drain_timer_func(unsigned long data)
 void diag_drain_work_fn(struct work_struct *work)
 {
 	int err = 0;
-	struct list_head *start, *temp;
-	struct diag_dci_client_tbl *entry = NULL;
 	timer_in_progress = 0;
 
 	mutex_lock(&driver->diagchar_mutex);
@@ -148,34 +146,6 @@ void diag_drain_work_fn(struct work_struct *work)
 
 	mutex_unlock(&driver->diagchar_mutex);
 
-	if (!(driver->num_dci_client > 0))
-		return;
-
-	list_for_each_safe(start, temp, &driver->dci_client_list) {
-		entry = list_entry(start, struct diag_dci_client_tbl, track);
-		if (entry->client == NULL)
-			continue;
-		mutex_lock(&entry->data_mutex);
-		if (entry->apps_data_len > 0) {
-			err = dci_apps_write(entry);
-			entry->dci_apps_data = NULL;
-			entry->apps_data_len = 0;
-			if (entry->apps_in_busy_1 == 0) {
-				entry->dci_apps_data =
-				   entry->dci_apps_buffer;
-				entry->apps_in_busy_1 = 1;
-			} else {
-				entry->dci_apps_data =
-				   diagmem_alloc(driver, driver->itemsize_dci,
-								POOL_TYPE_DCI);
-			}
-
-			if (!entry->dci_apps_data)
-				pr_err_ratelimited("diag: In %s, Not able to acquire a buffer. Reduce data rate.\n",
-								__func__);
-		}
-		mutex_unlock(&entry->data_mutex);
-	}
 }
 
 void check_drain_timer(void)
@@ -598,46 +568,60 @@ static int diag_copy_dci(char __user *buf, size_t count,
 	int total_data_len = 0;
 	int ret = 0;
 	int exit_stat = 1;
-	int i;
+	struct diag_dci_buffer_t *buf_entry, *temp;
+	struct diag_smd_info *smd_info = NULL;
 
 	if (!buf || !entry || !pret)
 		return exit_stat;
 
 	ret = *pret;
 
-	/* Place holder for total data length */
 	ret += 4;
 
-	mutex_lock(&entry->data_mutex);
-	/* Copy the apps data */
-	for (i = 0; i < entry->dci_apps_tbl_size; i++) {
-		if (entry->dci_apps_tbl[i].buf != NULL) {
-			if (copy_to_user(buf+ret,
-				(void *)(entry->dci_apps_tbl[i].buf),
-				entry->dci_apps_tbl[i].length)) {
-					goto drop;
-			}
-			ret += entry->dci_apps_tbl[i].length;
-			total_data_len += entry->dci_apps_tbl[i].length;
+	mutex_lock(&entry->write_buf_mutex);
+	list_for_each_entry_safe(buf_entry, temp, &entry->list_write_buf,
+								buf_track) {
+		list_del(&buf_entry->buf_track);
+		mutex_lock(&buf_entry->data_mutex);
+		if ((buf_entry->data_len > 0) &&
+		    (buf_entry->in_busy) &&
+		    (buf_entry->data)) {
+			if (copy_to_user(buf+ret, (void *)buf_entry->data,
+					 buf_entry->data_len))
+				goto drop;
+			ret += buf_entry->data_len;
+			total_data_len += buf_entry->data_len;
 drop:
-			if (entry->dci_apps_tbl[i].buf ==
-						entry->dci_apps_buffer) {
-				entry->apps_in_busy_1 = 0;
-			} else {
-				diagmem_free(driver, entry->dci_apps_tbl[i].buf,
-								POOL_TYPE_DCI);
+			buf_entry->in_busy = 0;
+			buf_entry->data_len = 0;
+			buf_entry->in_list = 0;
+			if (buf_entry->buf_type == DCI_BUF_CMD) {
+				if (buf_entry->data_source == APPS_DATA) {
+					mutex_unlock(&buf_entry->data_mutex);
+					continue;
+				}
+				if (driver->separate_cmdrsp[
+						buf_entry->data_source]) {
+					smd_info = &driver->smd_dci_cmd[
+						buf_entry->data_source];
+				} else {
+					smd_info = &driver->smd_dci[
+						buf_entry->data_source];
+				}
+				smd_info->in_busy_1 = 0;
+				mutex_unlock(&buf_entry->data_mutex);
+				continue;
+			} else if (buf_entry->buf_type == DCI_BUF_SECONDARY) {
+				diagmem_free(driver, buf_entry->data,
+					     POOL_TYPE_DCI);
+				buf_entry->data = NULL;
+				mutex_unlock(&buf_entry->data_mutex);
+				kfree(buf_entry);
+				continue;
 			}
-			entry->dci_apps_tbl[i].buf = NULL;
-			entry->dci_apps_tbl[i].length = 0;
-		}
-	}
 
-	/* Copy the smd data */
-	if (entry->data_len > 0) {
-		COPY_USER_SPACE_OR_EXIT(buf+ret, *(entry->dci_data),
-							entry->data_len);
-		total_data_len += entry->data_len;
-		entry->data_len = 0;
+		}
+		mutex_unlock(&buf_entry->data_mutex);
 	}
 
 	if (total_data_len > 0) {
@@ -649,10 +633,12 @@ drop:
 			__func__, total_data_len);
 	}
 
+	entry->in_service = 0;
+	mutex_unlock(&entry->write_buf_mutex);
+
 	exit_stat = 0;
 exit:
 	*pret = ret;
-	mutex_unlock(&entry->data_mutex);
 
 	return exit_stat;
 }
@@ -982,8 +968,8 @@ long diagchar_ioctl(struct file *filp,
 	int i, result = -EINVAL, interim_size = 0, client_id = 0, real_time = 0;
 	int retry_count = 0, timer = 0;
 	uint16_t support_list = 0, interim_rsp_id, remote_dev;
-	struct diag_dci_client_tbl *dci_params;
-	struct diag_dci_health_stats stats;
+	struct diag_dci_reg_tbl_t *dci_reg_params;
+	struct diag_dci_health_stats_proc stats;
 	struct diag_log_event_stats le_stats;
 	struct diagpkt_delay_params delay_params;
 	struct real_time_vote_t rt_vote;
@@ -1012,20 +998,19 @@ long diagchar_ioctl(struct file *filp,
 		}
 		break;
 	case DIAG_IOCTL_DCI_REG:
-		dci_params = kzalloc(sizeof(struct diag_dci_client_tbl),
+		dci_reg_params = kzalloc(sizeof(struct diag_dci_reg_tbl_t),
 								 GFP_KERNEL);
-		if (dci_params == NULL) {
+		if (dci_reg_params == NULL) {
 			pr_err("diag: unable to alloc memory\n");
 			return -ENOMEM;
 		}
-		if (copy_from_user(dci_params, (void *)ioarg,
-				 sizeof(struct diag_dci_client_tbl))) {
-			kfree(dci_params);
+		if (copy_from_user(dci_reg_params, (void *)ioarg,
+				 sizeof(struct diag_dci_reg_tbl_t))) {
+			kfree(dci_reg_params);
 			return -EFAULT;
 		}
-		result = diag_dci_register_client(dci_params->list,
-						  dci_params->signal_type);
-		kfree(dci_params);
+		result = diag_dci_register_client(dci_reg_params);
+		kfree(dci_reg_params);
 		break;
 	case DIAG_IOCTL_DCI_DEINIT:
 		result = diag_dci_deinit_client();
@@ -1044,28 +1029,16 @@ long diagchar_ioctl(struct file *filp,
 		break;
 	case DIAG_IOCTL_DCI_HEALTH_STATS:
 		if (copy_from_user(&stats, (void *)ioarg,
-				 sizeof(struct diag_dci_health_stats)))
+				 sizeof(struct diag_dci_health_stats_proc)))
 			return -EFAULT;
 
-		dci_params = diag_dci_get_client_entry();
-		if (!dci_params) {
-			result = DIAG_DCI_NOT_SUPPORTED;
+		result = diag_dci_copy_health_stats(stats.health,
+						    stats.proc);
+		if (result != DIAG_DCI_NO_ERROR)
 			break;
-		}
-		stats.dropped_logs = dci_params->dropped_logs;
-		stats.dropped_events = dci_params->dropped_events;
-		stats.received_logs = dci_params->received_logs;
-		stats.received_events = dci_params->received_events;
-		if (stats.reset_status) {
-			mutex_lock(&dci_health_mutex);
-			dci_params->dropped_logs = 0;
-			dci_params->dropped_events = 0;
-			dci_params->received_logs = 0;
-			dci_params->received_events = 0;
-			mutex_unlock(&dci_health_mutex);
-		}
+
 		if (copy_to_user((void *)ioarg, &stats,
-				   sizeof(struct diag_dci_health_stats)))
+				   sizeof(struct diag_dci_health_stats_proc)))
 			return -EFAULT;
 		result = DIAG_DCI_NO_ERROR;
 		break;
@@ -1124,7 +1097,7 @@ long diagchar_ioctl(struct file *filp,
 	case DIAG_IOCTL_VOTE_REAL_TIME:
 		if (copy_from_user(&rt_vote, (void *)ioarg, sizeof(struct
 							real_time_vote_t)))
-			result = -EFAULT;
+			return -EFAULT;
 		driver->real_time_update_busy++;
 		if (rt_vote.proc == DIAG_PROC_DCI) {
 			diag_dci_set_real_time(rt_vote.real_time_vote);
@@ -1162,7 +1135,7 @@ long diagchar_ioctl(struct file *filp,
 	return result;
 }
 
-static int diagchar_read(struct file *file, char __user *buf, size_t count,
+static ssize_t diagchar_read(struct file *file, char __user *buf, size_t count,
 			  loff_t *ppos)
 {
 	struct diag_dci_client_tbl *entry;
@@ -1171,6 +1144,7 @@ static int diagchar_read(struct file *file, char __user *buf, size_t count,
 	int remote_token;
 	int exit_stat;
 	int clear_read_wakelock;
+	unsigned long flags;
 
 	for (i = 0; i < driver->num_clients; i++)
 		if (driver->client_map[i].pid == current->tgid)
@@ -1255,7 +1229,10 @@ drop:
 					process_lock_on_copy(&data->nrt_lock);
 					clear_read_wakelock++;
 				}
+				spin_lock_irqsave(&data->in_busy_lock, flags);
 				data->in_busy_1 = 0;
+				spin_unlock_irqrestore(&data->in_busy_lock,
+						       flags);
 			}
 			if (data->in_busy_2 == 1) {
 				num_data++;
@@ -1270,7 +1247,10 @@ drop:
 					process_lock_on_copy(&data->nrt_lock);
 					clear_read_wakelock++;
 				}
+				spin_lock_irqsave(&data->in_busy_lock, flags);
 				data->in_busy_2 = 0;
+				spin_unlock_irqrestore(&data->in_busy_lock,
+						       flags);
 			}
 		}
 		if (driver->supports_separate_cmdrsp) {
@@ -1413,19 +1393,18 @@ drop:
 		/* Copy the type of data being passed */
 		data_type = driver->data_ready[index] & DCI_DATA_TYPE;
 		driver->data_ready[index] ^= DCI_DATA_TYPE;
-		COPY_USER_SPACE_OR_EXIT(buf, data_type, 4);
 		/* check the current client and copy its data */
 		entry = diag_dci_get_client_entry();
 		if (entry) {
+			if (!entry->in_service)
+				goto exit;
+			COPY_USER_SPACE_OR_EXIT(buf, data_type, 4);
 			exit_stat = diag_copy_dci(buf, count, entry, &ret);
 			if (exit_stat == 1)
 				goto exit;
 		}
 		for (i = 0; i < NUM_SMD_DCI_CHANNELS; i++) {
-			driver->smd_dci[i].in_busy_1 = 0;
 			if (driver->smd_dci[i].ch) {
-				diag_dci_try_deactivate_wakeup_source(
-						driver->smd_dci[i].ch);
 				queue_work(driver->diag_dci_wq,
 				&(driver->smd_dci[i].diag_read_smd_work));
 			}
@@ -1434,10 +1413,7 @@ drop:
 			for (i = 0; i < NUM_SMD_DCI_CMD_CHANNELS; i++) {
 				if (!driver->separate_cmdrsp[i])
 					continue;
-				driver->smd_dci_cmd[i].in_busy_1 = 0;
 				if (driver->smd_dci_cmd[i].ch) {
-					diag_dci_try_deactivate_wakeup_source(
-						driver->smd_dci_cmd[i].ch);
 					queue_work(driver->diag_dci_wq,
 						&(driver->smd_dci_cmd[i].
 							diag_read_smd_work));
@@ -1456,7 +1432,7 @@ exit:
 	return ret;
 }
 
-static int diagchar_write(struct file *file, const char __user *buf,
+static ssize_t diagchar_write(struct file *file, const char __user *buf,
 				size_t count, loff_t *ppos)
 {
 	int err, ret = 0, pkt_type, token_offset = 0;
@@ -1488,10 +1464,10 @@ static int diagchar_write(struct file *file, const char __user *buf,
 	}
 #ifdef CONFIG_DIAG_OVER_USB
 	if (driver->logging_mode == NO_LOGGING_MODE ||
-		(((pkt_type != DCI_DATA_TYPE) ||
-		((pkt_type & (DATA_TYPE_DCI_LOG | DATA_TYPE_DCI_EVENT)) == 0))
+	    (!((pkt_type == DCI_DATA_TYPE) ||
+	       ((pkt_type & (DATA_TYPE_DCI_LOG | DATA_TYPE_DCI_EVENT)) == 0))
 		&& (driver->logging_mode == USB_MODE) &&
-			(!driver->usb_connected))) {
+		(!driver->usb_connected))) {
 		/*Drop the diag payload */
 		return -EIO;
 	}
@@ -1517,26 +1493,25 @@ static int diagchar_write(struct file *file, const char __user *buf,
 		return err;
 	}
 	if (pkt_type == CALLBACK_DATA_TYPE) {
-		if (payload_size > itemsize) {
+		if (payload_size > driver->itemsize) {
 			pr_err("diag: Dropping packet, packet payload size crosses 4KB limit. Current payload size %d\n",
 				payload_size);
 			driver->dropped_count++;
 			return -EBADMSG;
 		}
 
-		mutex_lock(&driver->diagchar_mutex);
 		buf_copy = diagmem_alloc(driver, payload_size, POOL_TYPE_COPY);
 		if (!buf_copy) {
 			driver->dropped_count++;
-			mutex_unlock(&driver->diagchar_mutex);
 			return -ENOMEM;
 		}
 
 		err = copy_from_user(buf_copy, buf + 4, payload_size);
 		if (err) {
 			pr_err("diag: copy failed for user space data\n");
-			ret = -EIO;
-			goto fail_free_copy;
+			diagmem_free(driver, buf_copy, POOL_TYPE_COPY);
+			buf_copy = NULL;
+			return -EIO;
 		}
 		/* Check for proc_type */
 		remote_proc = diag_get_remote(*(int *)buf_copy);
@@ -1545,7 +1520,9 @@ static int diagchar_write(struct file *file, const char __user *buf,
 			wait_event_interruptible(driver->wait_q,
 				 (driver->in_busy_pktdata == 0));
 			ret = diag_process_apps_pkt(buf_copy, payload_size);
-			goto fail_free_copy;
+			diagmem_free(driver, buf_copy, POOL_TYPE_COPY);
+			buf_copy = NULL;
+			return ret;
 		}
 		/* The packet is for the remote processor */
 		token_offset = 4;
@@ -1558,7 +1535,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 							1 + payload_size);
 		send.terminate = 1;
 
-
+		mutex_lock(&driver->diagchar_mutex);
 		if (!buf_hdlc)
 			buf_hdlc = diagmem_alloc(driver, HDLC_OUT_BUF_SIZE,
 							POOL_TYPE_HDLC);
@@ -1640,22 +1617,15 @@ static int diagchar_write(struct file *file, const char __user *buf,
 		goto fail_free_hdlc;
 	}
 	if (pkt_type == USER_SPACE_DATA_TYPE) {
-		user_space_data = diagmem_alloc(driver, payload_size,
-								POOL_TYPE_USER);
-		if (!user_space_data) {
-			driver->dropped_count++;
-			return -ENOMEM;
-		}
-		err = copy_from_user(user_space_data, buf + 4,
+		err = copy_from_user(driver->user_space_data_buf, buf + 4,
 							 payload_size);
 		if (err) {
 			pr_err("diag: copy failed for user space data\n");
-			diagmem_free(driver, user_space_data, POOL_TYPE_USER);
-			user_space_data = NULL;
 			return -EIO;
 		}
 		/* Check for proc_type */
-		remote_proc = diag_get_remote(*(int *)user_space_data);
+		remote_proc =
+			diag_get_remote(*(int *)driver->user_space_data_buf);
 
 		if (remote_proc) {
 			token_offset = 4;
@@ -1665,12 +1635,9 @@ static int diagchar_write(struct file *file, const char __user *buf,
 
 		/* Check masks for On-Device logging */
 		if (driver->mask_check) {
-			if (!mask_request_validate(user_space_data +
+			if (!mask_request_validate(driver->user_space_data_buf +
 							 token_offset)) {
 				pr_alert("diag: mask request Invalid\n");
-				diagmem_free(driver, user_space_data,
-							POOL_TYPE_USER);
-				user_space_data = NULL;
 				return -EFAULT;
 			}
 		}
@@ -1678,7 +1645,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 #ifdef DIAG_DEBUG
 		pr_debug("diag: user space data %d\n", payload_size);
 		for (i = 0; i < payload_size; i++)
-			pr_debug("\t %x", *((user_space_data
+			pr_debug("\t %x", *((driver->user_space_data_buf
 						+ token_offset)+i));
 #endif
 #ifdef CONFIG_DIAG_SDIO_PIPE
@@ -1689,7 +1656,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 					 payload_size));
 			if (driver->sdio_ch && (payload_size > 0)) {
 				sdio_write(driver->sdio_ch, (void *)
-				   (user_space_data + token_offset),
+				   (driver->user_space_data_buf + token_offset),
 				   payload_size);
 			}
 		}
@@ -1720,8 +1687,8 @@ static int diagchar_write(struct file *file, const char __user *buf,
 				diag_hsic[index].in_busy_hsic_read_on_device =
 									0;
 				err = diag_bridge_write(index,
-						user_space_data + token_offset,
-						payload_size);
+						driver->user_space_data_buf +
+						token_offset, payload_size);
 				if (err) {
 					pr_err("diag: err sending mask to MDM: %d\n",
 					       err);
@@ -1742,14 +1709,12 @@ static int diagchar_write(struct file *file, const char __user *buf,
 						&& driver->lcid) {
 			if (payload_size > 0) {
 				err = msm_smux_write(driver->lcid, NULL,
-					user_space_data + token_offset,
-					payload_size);
+					driver->user_space_data_buf +
+						token_offset,
+						payload_size);
 				if (err) {
 					pr_err("diag:send mask to MDM err %d",
 							err);
-					diagmem_free(driver, user_space_data,
-								POOL_TYPE_USER);
-					user_space_data = NULL;
 					return err;
 				}
 			}
@@ -1758,9 +1723,8 @@ static int diagchar_write(struct file *file, const char __user *buf,
 		/* send masks to 8k now */
 		if (!remote_proc)
 			diag_process_hdlc((void *)
-				(user_space_data + token_offset), payload_size);
-		diagmem_free(driver, user_space_data, POOL_TYPE_USER);
-		user_space_data = NULL;
+				(driver->user_space_data_buf + token_offset),
+					payload_size);
 		return 0;
 	}
 
@@ -1882,8 +1846,8 @@ static int diagchar_write(struct file *file, const char __user *buf,
 	/* This is to check if after HDLC encoding, we are still within the
 	 limits of aggregation buffer. If not, we write out the current buffer
 	and start aggregation in a newly allocated buffer */
-	if ((unsigned int) enc.dest >=
-		 (unsigned int)(buf_hdlc + HDLC_OUT_BUF_SIZE)) {
+	if ((uintptr_t)enc.dest >=
+		 (uintptr_t)(buf_hdlc + HDLC_OUT_BUF_SIZE)) {
 		err = diag_device_write(buf_hdlc, APPS_DATA, NULL);
 		if (err) {
 			ret = -EIO;
@@ -1903,7 +1867,10 @@ static int diagchar_write(struct file *file, const char __user *buf,
 		diag_hdlc_encode(&send, &enc);
 	}
 
-	driver->used = (uint32_t) enc.dest - (uint32_t) buf_hdlc;
+	driver->used = ((uintptr_t)enc.dest - (uintptr_t)buf_hdlc <
+						HDLC_OUT_BUF_SIZE) ?
+			((uintptr_t)enc.dest - (uintptr_t)buf_hdlc) :
+						HDLC_OUT_BUF_SIZE;
 	if (pkt_type == DATA_TYPE_RESPONSE) {
 		err = diag_device_write(buf_hdlc, APPS_DATA, NULL);
 		if (err) {
@@ -2051,9 +2018,13 @@ static int diagchar_setup_cdev(dev_t devno)
 		return -1;
 	}
 
-	device_create(driver->diagchar_class, NULL, devno,
-				  (void *)driver, "diag");
+	driver->diag_dev = device_create(driver->diagchar_class, NULL, devno,
+					 (void *)driver, "diag");
 
+	if (!driver->diag_dev)
+		return -EIO;
+
+	driver->diag_dev->power.wakeup = wakeup_source_register("DIAG_WS");
 	return 0;
 
 }

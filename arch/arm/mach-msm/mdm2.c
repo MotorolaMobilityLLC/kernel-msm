@@ -29,14 +29,12 @@
 #include <linux/completion.h>
 #include <linux/workqueue.h>
 #include <linux/clk.h>
-#include <asm/mach-types.h>
 #include <mach/mdm2.h>
 #include <mach/restart.h>
 #include <mach/subsystem_notif.h>
 #include <mach/subsystem_restart.h>
 #include <linux/msm_charm.h>
 #include "msm_watchdog.h"
-#include "devices.h"
 #include "clock.h"
 #include "mdm_private.h"
 #define MDM_PBLRDY_CNT		20
@@ -156,7 +154,11 @@ static void mdm_do_first_power_on(struct mdm_modem_drv *mdm_drv)
 	 */
 	if (!mdm_drv->pdata->no_reset_on_first_powerup)
 		mdm_toggle_soft_reset(mdm_drv);
-
+	/*
+	 * In the first power up, the PMIC pon sequence can take upto
+	 * 50msecs to be ready for ipc communications.
+	 */
+	msleep(50);
 	/* If the device has a kpd pwr gpio then toggle it. */
 	if (GPIO_IS_VALID(MDM_GPIO(AP2MDM_KPDPWR))) {
 		/* Pull AP2MDM_KPDPWR gpio high and wait for PS_HOLD to settle,

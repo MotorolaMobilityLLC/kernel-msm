@@ -202,7 +202,7 @@ static int mdss_mdp_rotator_queue_sub(struct mdss_mdp_rotator_session *rot,
 			   struct mdss_mdp_data *dst_data)
 {
 	struct mdss_mdp_pipe *rot_pipe = NULL;
-	struct mdss_mdp_ctl *ctl;
+	struct mdss_mdp_ctl *orig_ctl, *rot_ctl;
 	int ret;
 
 	if (!rot || !rot->ref_cnt)
@@ -218,20 +218,20 @@ static int mdss_mdp_rotator_queue_sub(struct mdss_mdp_rotator_session *rot,
 
 	pr_debug("queue rotator pnum=%d\n", rot_pipe->num);
 
-	ctl = rot_pipe->mixer->ctl;
-	if (ctl->shared_lock)
-		mutex_lock(ctl->shared_lock);
+	orig_ctl = rot_pipe->mixer->ctl;
+	if (orig_ctl->shared_lock)
+		mutex_lock(orig_ctl->shared_lock);
 
-	ctl = mdss_mdp_ctl_mixer_switch(ctl,
+	rot_ctl = mdss_mdp_ctl_mixer_switch(orig_ctl,
 			MDSS_MDP_WB_CTL_TYPE_BLOCK);
-	if (!ctl) {
+	if (!rot_ctl) {
 		ret = -EINVAL;
 		goto error;
 	} else {
-		rot->pipe->mixer = ctl->mixer_left;
+		rot->pipe->mixer = rot_ctl->mixer_left;
 	}
 
-	if (rot->params_changed || ctl->mdata->mixer_switched) {
+	if (rot->params_changed || rot_ctl->mdata->mixer_switched) {
 		rot->params_changed = 0;
 		rot_pipe->flags = rot->flags;
 		rot_pipe->src_fmt = mdss_mdp_get_format_params(rot->format);
@@ -257,12 +257,12 @@ static int mdss_mdp_rotator_queue_sub(struct mdss_mdp_rotator_session *rot,
 		goto error;
 	}
 
-	ret = mdss_mdp_rotator_kickoff(ctl, rot, dst_data);
+	ret = mdss_mdp_rotator_kickoff(rot_ctl, rot, dst_data);
 
 	return ret;
 error:
-	if (ctl->shared_lock)
-		mutex_unlock(ctl->shared_lock);
+	if (orig_ctl->shared_lock)
+		mutex_unlock(orig_ctl->shared_lock);
 	return ret;
 }
 
@@ -274,9 +274,6 @@ static void mdss_mdp_rotator_commit_wq_handler(struct work_struct *work)
 	rot = container_of(work, struct mdss_mdp_rotator_session, commit_work);
 
 	mutex_lock(&rotator_lock);
-	ret = mdss_mdp_rotator_queue_helper(rot);
-
-	atomic_inc(&rot->rot_sync_pt_data->commit_cnt);
 
 	ret = mdss_mdp_rotator_queue_helper(rot);
 	if (ret) {
@@ -284,6 +281,8 @@ static void mdss_mdp_rotator_commit_wq_handler(struct work_struct *work)
 		mutex_unlock(&rotator_lock);
 		return;
 	}
+
+	atomic_inc(&rot->rot_sync_pt_data->commit_cnt);
 
 	if (rot->rot_sync_pt_data)
 		mdss_fb_signal_timeline(rot->rot_sync_pt_data);
@@ -442,6 +441,7 @@ int mdss_mdp_rotator_setup(struct msm_fb_data_type *mfd,
 		rot->flags |= MDP_DEINTERLACE;
 		rot->src_rect.h /= 2;
 		rot->src_rect.y = DIV_ROUND_UP(rot->src_rect.y, 2);
+		rot->src_rect.y &= ~1;
 	}
 
 	rot->dst = rot->src_rect;

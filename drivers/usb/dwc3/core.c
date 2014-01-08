@@ -75,22 +75,32 @@ void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
 	 * if it failed previously to operate in SS mode.
 	 */
 	reg |= DWC3_GCTL_U2RSTECN;
-	if (mode == DWC3_GCTL_PRTCAP_HOST) {
+	reg &= ~(DWC3_GCTL_SOFITPSYNC);
+	reg &= ~(DWC3_GCTL_PWRDNSCALEMASK);
+	reg |= DWC3_GCTL_PWRDNSCALE(2);
+	reg |= DWC3_GCTL_U2EXIT_LFPS;
+	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+
+	if (mode == DWC3_GCTL_PRTCAP_OTG || mode == DWC3_GCTL_PRTCAP_HOST) {
 		/*
 		 * Allow ITP generated off of ref clk based counter instead
 		 * of UTMI/ULPI clk based counter, when superspeed only is
 		 * active so that UTMI/ULPI PHY can be suspened.
+		 *
+		 * Starting with revision 2.50A, GFLADJ_REFCLK_LPM_SEL is used
+		 * instead.
 		 */
-		reg |= DWC3_GCTL_SOFITPSYNC;
-		reg &= ~(DWC3_GCTL_PWRDNSCALEMASK);
-		reg |= DWC3_GCTL_PWRDNSCALE(2);
-	} else if (mode == DWC3_GCTL_PRTCAP_DEVICE) {
-		reg &= ~(DWC3_GCTL_PWRDNSCALEMASK);
-		reg |= DWC3_GCTL_PWRDNSCALE(2);
-		reg &= ~(DWC3_GCTL_SOFITPSYNC);
+		if (dwc->revision < DWC3_REVISION_250A) {
+			reg = dwc3_readl(dwc->regs, DWC3_GCTL);
+			reg |= DWC3_GCTL_SOFITPSYNC;
+			dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+		} else {
+			reg = dwc3_readl(dwc->regs, DWC3_GFLADJ);
+			reg |= DWC3_GFLADJ_REFCLK_LPM_SEL;
+			dwc3_writel(dwc->regs, DWC3_GFLADJ, reg);
+		}
 	}
-	reg |= DWC3_GCTL_U2EXIT_LFPS;
-	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+
 	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
 	reg |= DWC3_GUSB3PIPECTL_SUSPHY;
 	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
@@ -100,12 +110,53 @@ void dwc3_set_mode(struct dwc3 *dwc, u32 mode)
 }
 
 /**
+ * dwc3_core_soft_reset_after_phy_init - Issues core soft reset
+ * and PHY reset for HW versions which require core reset after
+ * PHY initialization and reset
+ * @dwc: pointer to our context structure
+ */
+static void dwc3_core_soft_reset_after_phy_init(struct dwc3 *dwc)
+{
+	u32		reg;
+
+	/* Reset PHYs */
+	usb_phy_reset(dwc->usb3_phy);
+	usb_phy_reset(dwc->usb2_phy);
+
+	msleep(100);
+
+	/* Bring up PHYs */
+	usb_phy_init(dwc->usb2_phy);
+	usb_phy_init(dwc->usb3_phy);
+	msleep(100);
+
+	/* Put Core in Reset */
+	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
+	reg |= DWC3_GCTL_CORESOFTRESET;
+	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+
+	dwc3_notify_event(dwc, DWC3_CONTROLLER_RESET_EVENT);
+
+	msleep(100);
+
+	/* Take Core out of reset state */
+	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
+	reg &= ~DWC3_GCTL_CORESOFTRESET;
+	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
+
+	dwc3_notify_event(dwc, DWC3_CONTROLLER_POST_RESET_EVENT);
+}
+
+/**
  * dwc3_core_soft_reset - Issues core soft reset and PHY reset
  * @dwc: pointer to our context structure
  */
 static void dwc3_core_soft_reset(struct dwc3 *dwc)
 {
 	u32		reg;
+
+	if (dwc->core_reset_after_phy_init)
+		return dwc3_core_soft_reset_after_phy_init(dwc);
 
 	/* Before Resetting PHY, put Core in Reset */
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
@@ -432,9 +483,11 @@ static int dwc3_core_init(struct dwc3 *dwc)
 	 * it results in high link errors and could cause SS mode transfer
 	 * failure.
 	 */
-	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
-	reg &= ~DWC3_GUSB3PIPECTL_ELASTIC_BUF_MODE;
-	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
+	if (!dwc->nominal_elastic_buffer) {
+		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
+		reg &= ~DWC3_GUSB3PIPECTL_ELASTIC_BUF_MODE;
+		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
+	}
 
 	return 0;
 
@@ -541,31 +594,19 @@ static int dwc3_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	dwc->core_reset_after_phy_init =
+		of_property_read_bool(node, "core_reset_after_phy_init");
+
 	dwc->needs_fifo_resize = of_property_read_bool(node, "tx-fifo-resize");
 	host_only_mode = of_property_read_bool(node, "host-only-mode");
 	dwc->maximum_speed = of_usb_get_maximum_speed(node);
 
-	/* host only mode doesnt use PHY xcvr; define nop ones */
-	if (host_only_mode) {
-		dwc->usb2_phy = devm_kzalloc(&pdev->dev, sizeof(struct usb_phy),
-								GFP_KERNEL);
-		if (!dwc->usb2_phy) {
-			dev_err(&pdev->dev, "unable to allocate dwc3nop phy\n");
-			return -ENOMEM;
-		}
-		dwc->usb3_phy = dwc->usb2_phy;
+	if (node) {
+		dwc->usb2_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 0);
+		dwc->usb3_phy = devm_usb_get_phy_by_phandle(dev, "usb-phy", 1);
 	} else {
-		if (node) {
-			dwc->usb2_phy =
-				devm_usb_get_phy_by_phandle(dev, "usb-phy", 0);
-			dwc->usb3_phy =
-				devm_usb_get_phy_by_phandle(dev, "usb-phy", 1);
-		} else {
-			dwc->usb2_phy =
-				devm_usb_get_phy(dev, USB_PHY_TYPE_USB2);
-			dwc->usb3_phy =
-				devm_usb_get_phy(dev, USB_PHY_TYPE_USB3);
-		}
+		dwc->usb2_phy = devm_usb_get_phy(dev, USB_PHY_TYPE_USB2);
+		dwc->usb3_phy = devm_usb_get_phy(dev, USB_PHY_TYPE_USB3);
 	}
 
 	/* default to superspeed if no maximum_speed passed */
@@ -630,6 +671,9 @@ static int dwc3_probe(struct platform_device *pdev)
 			goto err0;
 		}
 	}
+
+	dwc->nominal_elastic_buffer = of_property_read_bool(node,
+			"nominal-elastic-buffer");
 
 	ret = dwc3_core_init(dwc);
 	if (ret) {

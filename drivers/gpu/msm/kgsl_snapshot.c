@@ -128,10 +128,10 @@ static int snapshot_context_info(int id, void *ptr, void *data)
 	 * return the global timestamp for all contexts
 	 */
 
-	header->timestamp_queued = kgsl_readtimestamp(device, context,
-						      KGSL_TIMESTAMP_QUEUED);
-	header->timestamp_retired = kgsl_readtimestamp(device, context,
-						       KGSL_TIMESTAMP_RETIRED);
+	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_QUEUED,
+		&header->timestamp_queued);
+	kgsl_readtimestamp(device, context, KGSL_TIMESTAMP_RETIRED,
+		&header->timestamp_retired);
 
 	_ctxtptr += sizeof(struct kgsl_snapshot_linux_context);
 
@@ -187,7 +187,6 @@ static int snapshot_os(struct kgsl_device *device,
 	header->power_level = pwr->active_pwrlevel;
 	header->power_interval_timeout = pwr->interval_timeout;
 	header->grpclk = kgsl_get_clkrate(pwr->grp_clks[0]);
-	header->busclk = kgsl_get_clkrate(pwr->ebi1_clk);
 
 	/* Save the last active context */
 	kgsl_sharedmem_readl(&device->memstore, &header->current_context,
@@ -229,7 +228,7 @@ static int snapshot_os(struct kgsl_device *device,
  * @priv - A pointer to the kgsl_snapshot_indexed_registers data
  *
  * Given a indexed register cmd/data pair and a count, dump each indexed
- * register
+ * register. Used for both a3xx and a4xx snapshot
  */
 
 static int kgsl_snapshot_dump_indexed_regs(struct kgsl_device *device,
@@ -323,32 +322,6 @@ static void kgsl_snapshot_put_object(struct kgsl_device *device,
 	kgsl_mem_entry_put(obj->entry);
 
 	kfree(obj);
-}
-
-/*
- * ksgl_snapshot_find_object() - Return the snapshot object pointer
- * for given address range
- * @device: the device that is being snapshotted
- * @ptbase: the pagetable base of the object to search
- * @gpuaddr: The gpu address of the object to search
- * @size: the size of the object (may not always be the size of the region)
- *
- * Return the object pointer if found else NULL
- */
-struct kgsl_snapshot_object *kgsl_snapshot_find_object(
-			struct kgsl_device *device,
-			phys_addr_t ptbase, unsigned int gpuaddr,
-			unsigned int size)
-{
-	struct kgsl_snapshot_object *obj = NULL;
-	list_for_each_entry(obj, &device->snapshot_obj_list, node) {
-		if (obj->ptbase != ptbase)
-			continue;
-		if ((gpuaddr >= obj->gpuaddr) &&
-			((gpuaddr + size) <= (obj->gpuaddr + obj->size)))
-			return obj;
-	}
-	return NULL;
 }
 
 /* ksgl_snapshot_have_object - Return 1 if the object has been processed
@@ -568,10 +541,28 @@ int kgsl_snapshot_dump_regs(struct kgsl_device *device, void *snapshot,
 
 	for (i = 0; i < list->count; i++) {
 		regs = &(list->registers[i]);
+		/*
+		 * If we do not need to dump the registers here then
+		 * just save the location where they can be dumped later
+		 */
+		if (!regs->dump)
+			regs->snap_addr = data;
+
 		for (j = 0; j < regs->count; j++) {
 			unsigned int start = regs->regs[j * 2];
 			unsigned int end = regs->regs[j * 2 + 1];
 
+			/*
+			 * If registers are not required to be dumped now,
+			 * then just skip over the space where they would have
+			 * been dumped. The registers will be dumped at the
+			 * this skipped location later by calling
+			 * kgsl_snapshot_dump_skipped_regs
+			 */
+			if (!regs->dump) {
+				data += (2 * (end - start + 1));
+				continue;
+			}
 			for (k = start; k <= end; k++) {
 				unsigned int val;
 
@@ -589,9 +580,37 @@ int kgsl_snapshot_dump_regs(struct kgsl_device *device, void *snapshot,
 }
 EXPORT_SYMBOL(kgsl_snapshot_dump_regs);
 
+void kgsl_snapshot_dump_skipped_regs(struct kgsl_device *device,
+				struct kgsl_snapshot_registers_list *list)
+{
+	struct kgsl_snapshot_registers *regs;
+	unsigned int *data;
+	int i, j, k;
+
+	for (i = 0; i < list->count; i++) {
+		regs = &(list->registers[i]);
+		if (!regs->snap_addr)
+			continue;
+		data = regs->snap_addr;
+		for (j = 0; j < regs->count; j++) {
+			unsigned int start = regs->regs[j * 2];
+			unsigned int end = regs->regs[j * 2 + 1];
+
+			for (k = start; k <= end; k++) {
+				unsigned int val;
+
+				kgsl_regread(device, k, &val);
+				*data++ = k;
+				*data++ = val;
+			}
+		}
+	}
+}
+
 void *kgsl_snapshot_indexed_registers(struct kgsl_device *device,
 		void *snapshot, int *remain,
-		unsigned int index, unsigned int data, unsigned int start,
+		unsigned int index, unsigned int data,
+		unsigned int start,
 		unsigned int count)
 {
 	struct kgsl_snapshot_indexed_registers iregs;
@@ -872,9 +891,9 @@ struct kgsl_snapshot_attribute attr_##_name = { \
 	.store = _store, \
 }
 
-SNAPSHOT_ATTR(trigger, 0600, NULL, trigger_store);
-SNAPSHOT_ATTR(timestamp, 0444, timestamp_show, NULL);
-SNAPSHOT_ATTR(faultcount, 0644, faultcount_show, faultcount_store);
+static SNAPSHOT_ATTR(trigger, 0600, NULL, trigger_store);
+static SNAPSHOT_ATTR(timestamp, 0444, timestamp_show, NULL);
+static SNAPSHOT_ATTR(faultcount, 0644, faultcount_show, faultcount_store);
 
 static void snapshot_sysfs_release(struct kobject *kobj)
 {
@@ -931,14 +950,18 @@ static struct kobj_type ktype_snapshot = {
 int kgsl_device_snapshot_init(struct kgsl_device *device)
 {
 	int ret;
+	unsigned int size;
+
+	if (kgsl_property_read_u32(device, "qcom,snapshot-size", &size))
+		size = KGSL_SNAPSHOT_MEMSIZE;
 
 	if (device->snapshot == NULL)
-		device->snapshot = kzalloc(KGSL_SNAPSHOT_MEMSIZE, GFP_KERNEL);
+		device->snapshot = kzalloc(size, GFP_KERNEL);
 
 	if (device->snapshot == NULL)
 		return -ENOMEM;
 
-	device->snapshot_maxsize = KGSL_SNAPSHOT_MEMSIZE;
+	device->snapshot_maxsize = size;
 	device->snapshot_timestamp = 0;
 	device->snapshot_faultcount = 0;
 

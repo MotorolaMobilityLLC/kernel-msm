@@ -43,7 +43,6 @@
 #include <linux/completion.h>
 #include <linux/pm_runtime.h>
 #include <linux/errno.h>
-#include <asm/system.h>
 #include <linux/atomic.h>
 #endif
 
@@ -111,7 +110,6 @@ enum mxt_device_state { INIT, APPMODE, BOOTLOADER };
 #define MXT_TOUCH_PROXKEY_T52		52
 #define MXT_PROCI_GRIPFACE_T20		20
 #define MXT_PROCG_NOISE_T22		22
-#define MXT_PROCG_NOISE_T62		62
 #define MXT_PROCI_ONETOUCH_T24		24
 #define MXT_PROCI_TWOTOUCH_T27		27
 #define MXT_PROCI_GRIP_T40		40
@@ -122,6 +120,10 @@ enum mxt_device_state { INIT, APPMODE, BOOTLOADER };
 #define MXT_PROCI_SHIELDLESS_T56	56
 #define MXT_PROCI_EXTRATSDATA_T57	57
 #define MXT_PROCG_NOISESUPPRESSION_T48	48
+#define MXT_PROCG_NOISE_T62		62
+#define MXT_PROCI_ACTIVESTYLUS_T63	63
+#define MXT_PROCI_LENSBENDING_T65	65
+#define MXT_PROCI_ZONEINDICATION_T73	73
 #define MXT_SPT_COMMSCONFIG_T18		18
 #define MXT_SPT_GPIOPWM_T19		19
 #define MXT_SPT_SELFTEST_T25		25
@@ -132,6 +134,11 @@ enum mxt_device_state { INIT, APPMODE, BOOTLOADER };
 #define MXT_SPT_CTECONFIG_T46		46
 #define MXT_SPT_EXTRANOISESUPCTRLS_T58	58
 #define MXT_SPT_TIMER_T61		61
+#define MXT_SPT_GOLDENREFERENCES_T66	66
+#define MXT_SPT_DYNAMICCONFIGURATIONCONTROLLER_T70	70
+#define MXT_SPT_DYNAMICCONFIGURATIONCONTAINER_T71	71
+#define MXT_SPT_CTESCANCONFIG_T77	77
+#define MXT_SPT_TOUCHEVENTTRIGGER_T79	79
 
 /* MXT_GEN_COMMAND_T6 field */
 #define MXT_COMMAND_RESET	0
@@ -422,16 +429,20 @@ static bool mxt_object_readable(unsigned int type)
 	case MXT_TOUCH_PROXKEY_T52:
 	case MXT_PROCI_GRIPFACE_T20:
 	case MXT_PROCG_NOISE_T22:
-	case MXT_PROCG_NOISE_T62:
 	case MXT_PROCI_ONETOUCH_T24:
 	case MXT_PROCI_TWOTOUCH_T27:
 	case MXT_PROCI_GRIP_T40:
 	case MXT_PROCI_PALM_T41:
 	case MXT_PROCI_TOUCHSUPPRESSION_T42:
 	case MXT_PROCI_STYLUS_T47:
+	case MXT_PROCG_NOISESUPPRESSION_T48:
+	case MXT_PROCI_ADAPTIVETHRESHOLD_T55:
 	case MXT_PROCI_SHIELDLESS_T56:
 	case MXT_PROCI_EXTRATSDATA_T57:
-	case MXT_PROCG_NOISESUPPRESSION_T48:
+	case MXT_PROCG_NOISE_T62:
+	case MXT_PROCI_ACTIVESTYLUS_T63:
+	case MXT_PROCI_LENSBENDING_T65:
+	case MXT_PROCI_ZONEINDICATION_T73:
 	case MXT_SPT_COMMSCONFIG_T18:
 	case MXT_SPT_GPIOPWM_T19:
 	case MXT_SPT_SELFTEST_T25:
@@ -441,7 +452,11 @@ static bool mxt_object_readable(unsigned int type)
 	case MXT_SPT_CTECONFIG_T46:
 	case MXT_SPT_EXTRANOISESUPCTRLS_T58:
 	case MXT_SPT_TIMER_T61:
-	case MXT_PROCI_ADAPTIVETHRESHOLD_T55:
+	case MXT_SPT_GOLDENREFERENCES_T66:
+	case MXT_SPT_DYNAMICCONFIGURATIONCONTROLLER_T70:
+	case MXT_SPT_DYNAMICCONFIGURATIONCONTAINER_T71:
+	case MXT_SPT_CTESCANCONFIG_T77:
+	case MXT_SPT_TOUCHEVENTTRIGGER_T79:
 		return true;
 	default:
 		return false;
@@ -460,16 +475,20 @@ static bool mxt_object_writable(unsigned int type)
 	case MXT_TOUCH_PROXKEY_T52:
 	case MXT_PROCI_GRIPFACE_T20:
 	case MXT_PROCG_NOISE_T22:
-	case MXT_PROCG_NOISE_T62:
 	case MXT_PROCI_ONETOUCH_T24:
 	case MXT_PROCI_TWOTOUCH_T27:
 	case MXT_PROCI_GRIP_T40:
 	case MXT_PROCI_PALM_T41:
 	case MXT_PROCI_TOUCHSUPPRESSION_T42:
 	case MXT_PROCI_STYLUS_T47:
+	case MXT_PROCG_NOISESUPPRESSION_T48:
+	case MXT_PROCI_ADAPTIVETHRESHOLD_T55:
 	case MXT_PROCI_SHIELDLESS_T56:
 	case MXT_PROCI_EXTRATSDATA_T57:
-	case MXT_PROCG_NOISESUPPRESSION_T48:
+	case MXT_PROCG_NOISE_T62:
+	case MXT_PROCI_ACTIVESTYLUS_T63:
+	case MXT_PROCI_LENSBENDING_T65:
+	case MXT_PROCI_ZONEINDICATION_T73:
 	case MXT_SPT_COMMSCONFIG_T18:
 	case MXT_SPT_GPIOPWM_T19:
 	case MXT_SPT_SELFTEST_T25:
@@ -479,7 +498,11 @@ static bool mxt_object_writable(unsigned int type)
 	case MXT_SPT_CTECONFIG_T46:
 	case MXT_SPT_EXTRANOISESUPCTRLS_T58:
 	case MXT_SPT_TIMER_T61:
-	case MXT_PROCI_ADAPTIVETHRESHOLD_T55:
+	case MXT_SPT_GOLDENREFERENCES_T66:
+	case MXT_SPT_DYNAMICCONFIGURATIONCONTROLLER_T70:
+	case MXT_SPT_DYNAMICCONFIGURATIONCONTAINER_T71:
+	case MXT_SPT_CTESCANCONFIG_T77:
+	case MXT_SPT_TOUCHEVENTTRIGGER_T79:
 		return true;
 	default:
 		return false;
@@ -1103,6 +1126,11 @@ static int mxt_check_reg_init(struct mxt_data *data)
 					 config_info->config[config_offset]);
 		}
 		index += object->size + 1;
+	}
+
+	if (index != config_info->config_length) {
+		dev_err(dev, "Config length does not match fw\n");
+		return -EINVAL;
 	}
 
 	return 0;
@@ -2093,15 +2121,17 @@ static ssize_t mxt_secure_touch_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%u", val);
 }
 
-static DEVICE_ATTR(secure_touch_enable, 0666, mxt_secure_touch_enable_show,
-	mxt_secure_touch_enable_store);
-static DEVICE_ATTR(secure_touch, 0444, mxt_secure_touch_show, NULL);
+static DEVICE_ATTR(secure_touch_enable, S_IRUGO | S_IWUSR | S_IWGRP ,
+			 mxt_secure_touch_enable_show,
+			 mxt_secure_touch_enable_store);
+static DEVICE_ATTR(secure_touch, S_IRUGO, mxt_secure_touch_show, NULL);
 #endif
 
-static DEVICE_ATTR(object, 0444, mxt_object_show, NULL);
-static DEVICE_ATTR(update_fw, 0664, NULL, mxt_update_fw_store);
-static DEVICE_ATTR(force_cfg_update, 0664, NULL, mxt_force_cfg_update_store);
-static DEVICE_ATTR(update_object_byte, 0664, NULL,
+static DEVICE_ATTR(object, S_IRUGO, mxt_object_show, NULL);
+static DEVICE_ATTR(update_fw, S_IWUSR | S_IWGRP , NULL, mxt_update_fw_store);
+static DEVICE_ATTR(force_cfg_update, S_IWUSR | S_IWGRP ,
+			 NULL, mxt_force_cfg_update_store);
+static DEVICE_ATTR(update_object_byte, S_IWUSR | S_IWGRP, NULL,
 					mxt_update_single_byte_store);
 
 static struct attribute *mxt_attrs[] = {

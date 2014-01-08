@@ -22,7 +22,7 @@
 #include <linux/slab.h>
 #include <mach/board.h>
 #include <mach/iommu.h>
-#include <mach/iommu_domains.h>
+#include <linux/msm_iommu_domains.h>
 #include <media/msm_vidc.h>
 #include "msm_vidc_internal.h"
 #include "msm_vidc_debug.h"
@@ -35,7 +35,7 @@
 
 struct msm_vidc_drv *vidc_driver;
 
-uint32_t msm_vidc_pwr_collapse_delay = 10000;
+uint32_t msm_vidc_pwr_collapse_delay = 2000;
 
 static inline struct msm_vidc_inst *get_vidc_inst(struct file *filp, void *fh)
 {
@@ -389,16 +389,16 @@ static int msm_vidc_probe(struct platform_device *pdev)
 	rc = msm_vidc_initialize_core(pdev, core);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to init core\n");
-		goto err_v4l2_register;
+		goto err_core_init;
 	}
 	rc = device_create_file(&pdev->dev, &dev_attr_pwr_collapse_delay);
 	if (rc) {
 		dprintk(VIDC_ERR,
 				"Failed to create pwr_collapse_delay sysfs node");
-		goto err_v4l2_register;
+		goto err_core_init;
 	}
 	if (core->hfi_type == VIDC_HFI_Q6) {
-		dprintk(VIDC_ERR, "Q6 hfi device probe called\n");
+		dprintk(VIDC_DBG, "Q6 hfi device probe called\n");
 		nr += MSM_VIDC_MAX_DEVICES;
 	}
 	rc = v4l2_device_register(&pdev->dev, &core->v4l2_dev);
@@ -460,11 +460,15 @@ static int msm_vidc_probe(struct platform_device *pdev)
 
 	core->device = vidc_hfi_initialize(core->hfi_type, core->id,
 				&core->resources, &handle_cmd_response);
-	if (!core->device) {
-		dprintk(VIDC_ERR, "Failed to create HFI device\n");
+	if (IS_ERR_OR_NULL(core->device)) {
 		mutex_lock(&vidc_driver->lock);
 		vidc_driver->num_cores--;
 		mutex_unlock(&vidc_driver->lock);
+		rc = PTR_ERR(core->device);
+		if (rc != -EPROBE_DEFER)
+			dprintk(VIDC_ERR, "Failed to create HFI device\n");
+		else
+			dprintk(VIDC_DBG, "msm_vidc: request probe defer\n");
 		goto err_cores_exceeded;
 	}
 
@@ -489,6 +493,8 @@ err_dec_attr_link_name:
 err_dec_register:
 	v4l2_device_unregister(&core->v4l2_dev);
 err_v4l2_register:
+	device_remove_file(&pdev->dev, &dev_attr_pwr_collapse_delay);
+err_core_init:
 	kfree(core);
 err_no_mem:
 	return rc;
@@ -552,7 +558,7 @@ static int __init msm_vidc_init(void)
 
 	INIT_LIST_HEAD(&vidc_driver->cores);
 	mutex_init(&vidc_driver->lock);
-	vidc_driver->debugfs_root = debugfs_create_dir("msm_vidc", NULL);
+	vidc_driver->debugfs_root = msm_vidc_debugfs_init_drv();
 	if (!vidc_driver->debugfs_root)
 		dprintk(VIDC_ERR,
 			"Failed to create debugfs for msm_vidc\n");

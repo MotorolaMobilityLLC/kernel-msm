@@ -696,9 +696,9 @@ static int mbim_bam_connect(struct f_mbim *dev)
 	pr_info("dev:%p portno:%d\n", dev, dev->port_num);
 
 	src_connection_idx = usb_bam_get_connection_idx(gadget->name, bam_name,
-					USB_TO_PEER_PERIPHERAL, dev->port_num);
+		USB_TO_PEER_PERIPHERAL, USB_BAM_DEVICE, dev->port_num);
 	dst_connection_idx = usb_bam_get_connection_idx(gadget->name, bam_name,
-					PEER_PERIPHERAL_TO_USB, dev->port_num);
+		PEER_PERIPHERAL_TO_USB, USB_BAM_DEVICE, dev->port_num);
 	if (src_connection_idx < 0 || dst_connection_idx < 0) {
 		pr_err("%s: usb_bam_get_connection_idx failed\n", __func__);
 		return ret;
@@ -1695,8 +1695,10 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 		return -EIO;
 	}
 
+	spin_lock(&dev->lock);
 	while (list_empty(&dev->cpkt_req_q)) {
 		pr_debug("Requests list is empty. Wait.\n");
+		spin_unlock(&dev->lock);
 		ret = wait_event_interruptible(dev->read_wq,
 			!list_empty(&dev->cpkt_req_q));
 		if (ret < 0) {
@@ -1705,11 +1707,13 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 			return -ERESTARTSYS;
 		}
 		pr_debug("Received request packet\n");
+		spin_lock(&dev->lock);
 	}
 
 	cpkt = list_first_entry(&dev->cpkt_req_q, struct ctrl_pkt,
 							list);
 	if (cpkt->len > count) {
+		spin_unlock(&dev->lock);
 		mbim_unlock(&dev->read_excl);
 		pr_err("cpkt size too big:%d > buf size:%d\n",
 				cpkt->len, count);
@@ -1719,6 +1723,7 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 	pr_debug("cpkt size:%d\n", cpkt->len);
 
 	list_del(&cpkt->list);
+	spin_unlock(&dev->lock);
 	mbim_unlock(&dev->read_excl);
 
 	ret = copy_to_user(buf, cpkt->buf, cpkt->len);

@@ -106,7 +106,7 @@ struct msm_vfe_axi_ops {
 		uint32_t reload_mask);
 	void (*enable_wm) (struct vfe_device *vfe_dev,
 		uint8_t wm_idx, uint8_t enable);
-	void (*cfg_io_format) (struct vfe_device *vfe_dev,
+	int32_t (*cfg_io_format) (struct vfe_device *vfe_dev,
 		enum msm_vfe_axi_stream_src stream_src,
 		uint32_t io_format);
 	void (*cfg_framedrop) (struct vfe_device *vfe_dev,
@@ -268,7 +268,9 @@ struct msm_vfe_axi_stream {
 	uint32_t session_id;
 	uint32_t stream_id;
 	uint32_t bufq_handle;
+	uint32_t bufq_scratch_handle;
 	uint32_t stream_handle;
+	uint32_t request_frm_num;
 	uint8_t buf_divert;
 	enum msm_vfe_axi_stream_type stream_type;
 	uint32_t vt_enable;
@@ -404,12 +406,10 @@ struct vfe_device {
 	struct resource *vfe_irq;
 	struct resource *vfe_mem;
 	struct resource *vfe_vbif_mem;
-	struct resource *tcsr_mem;
 	struct resource *vfe_io;
 	struct resource *vfe_vbif_io;
 	void __iomem *vfe_base;
 	void __iomem *vfe_vbif_base;
-	void __iomem *tcsr_base;
 
 	struct device *iommu_ctx[MAX_IOMMU_CTX];
 
@@ -434,7 +434,6 @@ struct vfe_device {
 	struct msm_vfe_tasklet_queue_cmd
 		tasklet_queue_cmd[MSM_VFE_TASKLETQ_SIZE];
 
-	uint32_t soc_hw_version;
 	uint32_t vfe_hw_version;
 	struct msm_vfe_hardware_info *hw_info;
 	struct msm_vfe_axi_shared_data axi_data;

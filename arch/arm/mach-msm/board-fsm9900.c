@@ -19,6 +19,7 @@
 #include <linux/memory.h>
 #include <linux/msm_tsens.h>
 #include <linux/msm_thermal.h>
+#include <linux/clk/msm-clk-provider.h>
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <mach/board.h>
@@ -27,10 +28,8 @@
 #include <mach/msm_smd.h>
 #include <mach/restart.h>
 #include <mach/socinfo.h>
-#include <mach/clk-provider.h>
 #include "board-dt.h"
 #include "clock.h"
-#include "devices.h"
 #include "platsmp.h"
 
 #define FSM9900_MAC0_FUSE_PHYS	0xFC4B8440
@@ -156,11 +155,19 @@ void __init fsm9900_init(void)
 {
 	struct of_dev_auxdata *adata = fsm9900_auxdata_lookup;
 
+	/*
+	 * populate devices from DT first so smem probe will get called as part
+	 * of msm_smem_init.  socinfo_init needs smem support so call
+	 * msm_smem_init before it.
+	 */
+	board_dt_populate(adata);
+
+	msm_smem_init();
+
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
 	fsm9900_init_gpiomux();
-	board_dt_populate(adata);
 	fsm9900_emac_dt_update();
 
 	fsm9900_add_drivers();

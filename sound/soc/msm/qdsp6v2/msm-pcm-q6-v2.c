@@ -25,6 +25,7 @@
 #include <sound/pcm.h>
 #include <sound/initval.h>
 #include <sound/control.h>
+#include <sound/q6audio-v2.h>
 #include <asm/dma.h>
 #include <linux/dma-mapping.h>
 #include <linux/msm_audio_ion.h>
@@ -109,6 +110,25 @@ static struct snd_pcm_hw_constraint_list constraints_sample_rates = {
 	.mask = 0,
 };
 
+static void msm_pcm_route_event_handler(enum msm_pcm_routing_event event,
+					void *priv_data)
+{
+	struct msm_audio *prtd = priv_data;
+
+	BUG_ON(!prtd);
+
+	pr_debug("%s: event %x\n", __func__, event);
+
+	switch (event) {
+	case MSM_PCM_RT_EVT_BUF_RECFG:
+		q6asm_cmd(prtd->audio_client, CMD_PAUSE);
+		q6asm_cmd(prtd->audio_client, CMD_FLUSH);
+		q6asm_run(prtd->audio_client, 0, 0, 0);
+	default:
+		break;
+	}
+}
+
 static void event_handler(uint32_t opcode,
 		uint32_t token, uint32_t *payload, void *priv)
 {
@@ -151,19 +171,34 @@ static void event_handler(uint32_t opcode,
 		pr_debug("token = 0x%08x\n", token);
 		in_frame_info[token][0] = payload[4];
 		in_frame_info[token][1] = payload[5];
-		prtd->pcm_irq_pos += in_frame_info[token][0];
-		pr_debug("pcm_irq_pos=%d\n", prtd->pcm_irq_pos);
-		if (atomic_read(&prtd->start))
-			snd_pcm_period_elapsed(substream);
-		if (atomic_read(&prtd->in_count) <= prtd->periods)
-			atomic_inc(&prtd->in_count);
-		wake_up(&the_locks.read_wait);
-		if (prtd->mmap_flag &&
-		    q6asm_is_cpu_buf_avail_nolock(OUT, prtd->audio_client,
+		/* assume data size = 0 during flushing */
+		if (in_frame_info[token][0]) {
+			prtd->pcm_irq_pos += in_frame_info[token][0];
+			pr_debug("pcm_irq_pos=%d\n", prtd->pcm_irq_pos);
+			if (atomic_read(&prtd->start))
+				snd_pcm_period_elapsed(substream);
+			if (atomic_read(&prtd->in_count) <= prtd->periods)
+				atomic_inc(&prtd->in_count);
+			wake_up(&the_locks.read_wait);
+			if (prtd->mmap_flag &&
+			    q6asm_is_cpu_buf_avail_nolock(OUT,
+				prtd->audio_client,
 				&size, &idx) &&
-		    (substream->runtime->status->state ==
-		     SNDRV_PCM_STATE_RUNNING))
-			q6asm_read_nolock(prtd->audio_client);
+			    (substream->runtime->status->state ==
+			     SNDRV_PCM_STATE_RUNNING))
+				q6asm_read_nolock(prtd->audio_client);
+		} else {
+			pr_debug("%s: reclaim flushed buf in_count %x\n",
+				__func__, atomic_read(&prtd->in_count));
+			prtd->pcm_irq_pos += prtd->pcm_count;
+			atomic_inc(&prtd->in_count);
+			if (atomic_read(&prtd->in_count) == prtd->periods) {
+				pr_info("%s: reclaimed all bufs\n", __func__);
+				if (atomic_read(&prtd->start))
+					snd_pcm_period_elapsed(substream);
+				wake_up(&the_locks.read_wait);
+			}
+		}
 		break;
 	}
 	case APR_BASIC_RSP_RESULT: {
@@ -397,6 +432,18 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 									ret);
 		}
 	}
+	ret = snd_pcm_hw_constraint_step(runtime, 0,
+		SNDRV_PCM_HW_PARAM_PERIOD_BYTES, 32);
+	if (ret < 0) {
+		pr_err("constraint for period bytes step ret = %d\n",
+								ret);
+	}
+	ret = snd_pcm_hw_constraint_step(runtime, 0,
+		SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 32);
+	if (ret < 0) {
+		pr_err("constraint for buffer bytes step ret = %d\n",
+								ret);
+	}
 
 	prtd->dsp_cnt = 0;
 	prtd->set_channel_map = false;
@@ -436,10 +483,7 @@ static int msm_pcm_playback_copy(struct snd_pcm_substream *substream, int a,
 
 	data = q6asm_is_cpu_buf_avail(IN, prtd->audio_client, &size, &idx);
 	if (size < fbytes) {
-		pr_err("%s: size mismatch error size %d fbytes %d\n",
-		__func__ , size , fbytes);
-		ret = -EFAULT;
-		goto fail;
+		fbytes = size;
 	}
 	bufptr = data;
 	if (bufptr) {
@@ -673,6 +717,7 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 	int dir, ret;
 	struct msm_plat_data *pdata;
 	uint16_t bits_per_sample = 16;
+	struct msm_pcm_routing_evt event;
 
 	pdata = (struct msm_plat_data *)
 				dev_get_drvdata(soc_prtd->platform->dev);
@@ -729,9 +774,12 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 		pr_debug("%s: session ID %d\n",
 				__func__, prtd->audio_client->session);
 		prtd->session_id = prtd->audio_client->session;
-		msm_pcm_routing_reg_phy_stream(soc_prtd->dai_link->be_id,
+		event.event_func = msm_pcm_route_event_handler;
+		event.priv_data = (void *) prtd;
+		msm_pcm_routing_reg_phy_stream_v2(soc_prtd->dai_link->be_id,
 				prtd->audio_client->perf_mode,
-				prtd->session_id, substream->stream);
+				prtd->session_id, substream->stream,
+				event);
 	}
 
 	ret = q6asm_audio_client_buf_alloc_contiguous(dir,
@@ -872,6 +920,7 @@ static int msm_pcm_probe(struct platform_device *pdev)
 	int rc;
 	int id;
 	struct msm_plat_data *pdata;
+	const char *latency_level;
 
 	rc = of_property_read_u32(pdev->dev.of_node,
 				"qcom,msm-pcm-dsp-id", &id);
@@ -888,10 +937,18 @@ static int msm_pcm_probe(struct platform_device *pdev)
 	}
 
 	if (of_property_read_bool(pdev->dev.of_node,
-				"qcom,msm-pcm-low-latency"))
-		pdata->perf_mode = 1;
+				"qcom,msm-pcm-low-latency")) {
+
+		pdata->perf_mode = LOW_LATENCY_PCM_MODE;
+		rc = of_property_read_string(pdev->dev.of_node,
+			"qcom,latency-level", &latency_level);
+		if (!rc) {
+			if (!strcmp(latency_level, "ultra"))
+				pdata->perf_mode = ULTRA_LOW_LATENCY_PCM_MODE;
+		}
+	}
 	else
-		pdata->perf_mode = 0;
+		pdata->perf_mode = LEGACY_PCM_MODE;
 
 	dev_set_drvdata(&pdev->dev, pdata);
 

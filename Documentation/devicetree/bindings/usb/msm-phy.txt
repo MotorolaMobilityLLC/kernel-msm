@@ -29,6 +29,9 @@ Optional properties:
  - qcom,vbus-valid-override: If present, indicates VBUS pin is not connected to
    the USB PHY and the controller must rely on external VBUS notification in
    order to manually enable the D+ pull-up resistor.
+ - qcom,primary-phy: If present, indicates this is a secondary PHY and is
+   dependent on the primary PHY referenced by this phandle.
+ - qcom,set-pllbtune: If present, PLL tune is required in PHY initialization.
 
 Example:
 	hsphy@f9200000 {
@@ -60,6 +63,8 @@ Optional properties:
    order to manually relay the notification to the SSPHY.
  - qcom,deemphasis-value: This property if present represents ss phy
    deemphasis value to be used for overriding into SSPHY register.
+ - qcom,primary-phy: If present, indicates this is a secondary PHY and is
+   dependent on the primary PHY referenced by this phandle.
 
 Example:
 	ssphy@f9200000 {
@@ -69,4 +74,32 @@ Example:
 		vdda18-supply = <&pm8941_l6>;
 		qcom,vdd-voltage-level = <1 5 7>;
 		qcom,deemphasis-value = <26>;
+	};
+
+SSUSB-QMP PHY
+
+Required properties:
+ - compatible: Should be "qcom,usb-ssphy-qmp"
+ - reg: Address and length of the register set for the device
+ - <supply-name>-supply: phandle to the regulator device tree node
+   Required "supply-name" examples are:
+	"vdd" : vdd supply for SSPHY digital circuit operation
+	"vdda18" : 1.8v high-voltage analog supply for SSPHY
+ - qcom,vdd-voltage-level: This property must be a list of three integer
+   values (no, min, max) where each value represents either a voltage in
+   microvolts or a value corresponding to voltage corner
+
+Optional properties:
+ - qcom,vbus-valid-override: If present, indicates VBUS pin is not connected to
+   the USB PHY and the controller must rely on external VBUS notification in
+   order to manually relay the notification to the SSPHY.
+
+Example:
+	ssphy0: ssphy@f9b38000 {
+		compatible = "qcom,usb-ssphy-qmp";
+		reg = <0xf9b38000 0x16c>;
+		vdd-supply = <&pmd9635_l4>;
+		vdda18-supply = <&pmd9635_l8>;
+		qcom,vdd-voltage-level = <0 900000 1050000>;
+		qcom,vbus-valid-override;
 	};

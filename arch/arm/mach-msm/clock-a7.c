@@ -23,8 +23,8 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/of.h>
+#include <linux/clk/msm-clock-generic.h>
 
-#include <mach/clock-generic.h>
 #include "clock-local2.h"
 
 #define UPDATE_CHECK_MAX_LOOPS 200
@@ -193,7 +193,8 @@ static int of_get_fmax_vdd_class(struct platform_device *pdev, struct clk *c,
 	if (!c->fmax)
 		return -ENOMEM;
 
-	array = devm_kzalloc(&pdev->dev, prop_len * sizeof(u32), GFP_KERNEL);
+	array = devm_kzalloc(&pdev->dev,
+			prop_len * sizeof(u32) * 2, GFP_KERNEL);
 	if (!array)
 		return -ENOMEM;
 
@@ -293,7 +294,7 @@ static int of_get_clk_src(struct platform_device *pdev, struct clk_src *parents)
 static int clock_a7_probe(struct platform_device *pdev)
 {
 	struct resource *res;
-	int speed_bin = 0, version = 0, rc, cpu;
+	int speed_bin = 0, version = 0, rc;
 	unsigned long rate, aux_rate;
 	struct clk *aux_clk, *main_pll;
 	char prop_name[] = "qcom,speedX-bin-vX";
@@ -362,10 +363,8 @@ static int clock_a7_probe(struct platform_device *pdev)
 	 * that the clocks have already been prepared and enabled by the time
 	 * they take over.
 	 */
-	for_each_online_cpu(cpu) {
-		WARN(clk_prepare_enable(&a7ssmux.c),
-			"Unable to turn on CPU%d clock", cpu);
-	}
+	WARN(clk_prepare_enable(&a7ssmux.c),
+		"Unable to turn on CPU clock");
 	return 0;
 }
 
@@ -387,4 +386,4 @@ static int __init clock_a7_init(void)
 {
 	return platform_driver_probe(&clock_a7_driver, clock_a7_probe);
 }
-device_initcall(clock_a7_init);
+subsys_initcall(clock_a7_init);

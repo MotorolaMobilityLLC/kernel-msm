@@ -30,8 +30,9 @@
 #include <mach/subsystem_restart.h>
 #include <mach/msm_smsm.h>
 #include <mach/ramdump.h>
-#include <mach/msm_smem.h>
 #include <mach/msm_bus_board.h>
+
+#include <soc/qcom/smem.h>
 
 #include "peripheral-loader.h"
 #include "scm-pas.h"
@@ -289,7 +290,9 @@ static void log_wcnss_sfr(void)
 	unsigned smem_reset_size;
 
 	smem_reset_reason = smem_get_entry(SMEM_SSR_REASON_WCNSS0,
-					   &smem_reset_size);
+					   &smem_reset_size,
+					   0,
+					   SMEM_ANY_HOST_FLAG);
 
 	if (!smem_reset_reason || !smem_reset_size) {
 		pr_err("wcnss subsystem failure reason:\n"

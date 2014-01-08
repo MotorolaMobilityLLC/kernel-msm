@@ -6,7 +6,7 @@ to be reset.
 
 Required Properties:
 - compatible:	The bus devices need to be compatible with
-		"qcom,mdm2-modem".
+		"qcom,mdm2-modem", "qcom,ext-mdm9x25".
 
 Required named gpio properties:
 - qcom,mdm2ap-errfatal-gpio: gpio for the external modem to indicate to the apps processor
@@ -100,6 +100,7 @@ Optional driver parameters:
 		This value is passed to RPM and is used by the RPM module to determine the
 		gpio mux function. The only currently supported modes string is "normal" and
 		corresponds to the value 0x03 that is passed to RPM.
+- qcom,restart-group: List of subsystems that will need to restart together.
 
 Example:
 	mdm0: qcom,mdm0 {

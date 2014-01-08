@@ -23,8 +23,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/mm.h>
 
-#include <mach/kgsl.h>
-
 #define KGSL_NAME "kgsl"
 
 /* The number of memstore arrays limits the number of contexts allowed.
@@ -171,7 +169,7 @@ struct kgsl_memdesc {
 	unsigned long useraddr; /* userspace address */
 	unsigned int gpuaddr;
 	phys_addr_t physaddr;
-	unsigned int size;
+	size_t size;
 	unsigned int priv; /* Internal flags and settings */
 	struct scatterlist *sg;
 	unsigned int sglen; /* Active entries in the sglist */
@@ -212,8 +210,62 @@ struct kgsl_mem_entry {
 #define MMU_CONFIG 1
 #endif
 
+long kgsl_ioctl_device_getproperty(struct kgsl_device_private *dev_priv,
+					  unsigned int cmd, void *data);
+long kgsl_ioctl_device_setproperty(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_device_waittimestamp(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_device_waittimestamp_ctxtid(struct kgsl_device_private
+				*dev_priv, unsigned int cmd, void *data);
+long kgsl_ioctl_submit_commands(struct kgsl_device_private *dev_priv,
+				unsigned int cmd, void *data);
+long kgsl_ioctl_cmdstream_readtimestamp(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_cmdstream_readtimestamp_ctxtid(struct kgsl_device_private
+					*dev_priv, unsigned int cmd,
+					void *data);
+long kgsl_ioctl_cmdstream_freememontimestamp(struct kgsl_device_private
+					*dev_priv, unsigned int cmd,
+					void *data);
+long kgsl_ioctl_cmdstream_freememontimestamp_ctxtid(
+						struct kgsl_device_private
+						*dev_priv, unsigned int cmd,
+						void *data);
+long kgsl_ioctl_drawctxt_create(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_drawctxt_destroy(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_sharedmem_free(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_gpumem_free_id(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_gpumem_sync_cache(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_gpumem_sync_cache_bulk(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_sharedmem_flush_cache(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_gpumem_alloc(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_gpumem_alloc_id(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_gpumem_get_info(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_cff_syncmem(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_cff_user_event(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+long kgsl_ioctl_timestamp_event(struct kgsl_device_private *dev_priv,
+					unsigned int cmd, void *data);
+
+int kgsl_cmdbatch_add_sync(struct kgsl_device *device,
+			struct kgsl_cmdbatch *cmdbatch,
+			struct kgsl_cmd_syncpoint *sync);
+
 void kgsl_mem_entry_destroy(struct kref *kref);
-int kgsl_postmortem_dump(struct kgsl_device *device, int manual);
 
 struct kgsl_mem_entry *kgsl_get_mem_entry(struct kgsl_device *device,
 		phys_addr_t ptbase, unsigned int gpuaddr, unsigned int size);
@@ -239,18 +291,6 @@ extern const struct dev_pm_ops kgsl_pm_ops;
 int kgsl_suspend_driver(struct platform_device *pdev, pm_message_t state);
 int kgsl_resume_driver(struct platform_device *pdev);
 
-void kgsl_trace_regwrite(struct kgsl_device *device, unsigned int offset,
-		unsigned int value);
-
-void kgsl_trace_issueibcmds(struct kgsl_device *device, int id,
-		struct kgsl_cmdbatch *cmdbatch,
-		unsigned int timestamp, unsigned int flags,
-		int result, unsigned int type);
-
-int kgsl_open_device(struct kgsl_device *device);
-
-int kgsl_close_device(struct kgsl_device *device);
-
 #ifdef CONFIG_MSM_KGSL_DRM
 extern int kgsl_drm_init(struct platform_device *dev);
 extern void kgsl_drm_exit(void);
@@ -266,7 +306,7 @@ static inline void kgsl_drm_exit(void)
 #endif
 
 static inline int kgsl_gpuaddr_in_memdesc(const struct kgsl_memdesc *memdesc,
-				unsigned int gpuaddr, unsigned int size)
+				unsigned int gpuaddr, size_t size)
 {
 	/* set a minimum size to search for */
 	if (!size)
@@ -297,7 +337,7 @@ static inline void kgsl_memdesc_unmap(struct kgsl_memdesc *memdesc)
 		memdesc->ops->unmap_kernel(memdesc);
 }
 
-static inline uint8_t *kgsl_gpuaddr_to_vaddr(struct kgsl_memdesc *memdesc,
+static inline void *kgsl_gpuaddr_to_vaddr(struct kgsl_memdesc *memdesc,
 					     unsigned int gpuaddr)
 {
 	void *hostptr = NULL;

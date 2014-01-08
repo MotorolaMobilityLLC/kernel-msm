@@ -125,6 +125,7 @@ int ipa_rm_inactivity_timer_init(enum ipa_rm_resource_name resource_name,
 
 	return 0;
 }
+EXPORT_SYMBOL(ipa_rm_inactivity_timer_init);
 
 /**
 * ipa_rm_inactivity_timer_destroy() - De-Init function for IPA
@@ -138,7 +139,6 @@ int ipa_rm_inactivity_timer_init(enum ipa_rm_resource_name resource_name,
 */
 int ipa_rm_inactivity_timer_destroy(enum ipa_rm_resource_name resource_name)
 {
-	unsigned long flags;
 	IPADBG("%s: resource %d\n", __func__, resource_name);
 
 	if (resource_name < 0 ||
@@ -153,15 +153,14 @@ int ipa_rm_inactivity_timer_destroy(enum ipa_rm_resource_name resource_name)
 		return -EINVAL;
 	}
 
-	spin_lock_irqsave(&ipa_rm_it_handles[resource_name].lock, flags);
-	cancel_delayed_work(&ipa_rm_it_handles[resource_name].work);
-	spin_unlock_irqrestore(&ipa_rm_it_handles[resource_name].lock, flags);
+	cancel_delayed_work_sync(&ipa_rm_it_handles[resource_name].work);
 
 	memset(&ipa_rm_it_handles[resource_name], 0,
 	       sizeof(struct ipa_rm_it_private));
 
 	return 0;
 }
+EXPORT_SYMBOL(ipa_rm_inactivity_timer_destroy);
 
 /**
 * ipa_rm_inactivity_timer_request_resource() - Same as
@@ -201,6 +200,7 @@ int ipa_rm_inactivity_timer_request_resource(
 	IPADBG("%s: resource %d: returning %d\n", __func__, resource_name, ret);
 	return ret;
 }
+EXPORT_SYMBOL(ipa_rm_inactivity_timer_request_resource);
 
 /**
 * ipa_rm_inactivity_timer_release_resource() - Sets the
@@ -251,4 +251,5 @@ int ipa_rm_inactivity_timer_release_resource(
 
 	return 0;
 }
+EXPORT_SYMBOL(ipa_rm_inactivity_timer_release_resource);
 

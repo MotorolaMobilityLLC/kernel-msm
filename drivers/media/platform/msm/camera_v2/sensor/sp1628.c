@@ -149,7 +149,7 @@ static struct msm_camera_i2c_reg_conf sp1628_recommend_settings[] = {
 	{0x75, 0x18,},
 	{0x77, 0x16,},	/* 18*/
 	{0x7f, 0x19,},
-	{0x31, 0x71,},	/*70 mirror/flip 720P*/
+	{0x31, 0x11,},	/* 720P, no mirror/flip */
 	{0xfd, 0x01,},
 	{0x5d, 0x11,},	/* position*/
 	{0x5f, 0x00,},
@@ -870,6 +870,42 @@ int32_t sp1628_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			rc = -EFAULT;
 			break;
 		}
+		break;
+	}
+	case CFG_SET_SATURATION: {
+
+		break;
+	}
+	case CFG_SET_CONTRAST: {
+
+		break;
+	}
+	case CFG_SET_SHARPNESS: {
+
+		break;
+	}
+	case CFG_SET_ISO: {
+
+		break;
+	}
+	case CFG_SET_EXPOSURE_COMPENSATION: {
+
+		break;
+	}
+	case CFG_SET_EFFECT: {
+
+		break;
+	}
+	case CFG_SET_ANTIBANDING: {
+
+		break;
+	}
+	case CFG_SET_BESTSHOT_MODE: {
+
+		break;
+	}
+	case CFG_SET_WHITE_BALANCE: {
+
 		break;
 	}
 	default:

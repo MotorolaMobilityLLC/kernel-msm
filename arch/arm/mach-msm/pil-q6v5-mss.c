@@ -26,17 +26,18 @@
 #include <linux/interrupt.h>
 #include <linux/dma-mapping.h>
 #include <linux/of_gpio.h>
+#include <linux/clk/msm-clk.h>
 
 #include <mach/subsystem_restart.h>
-#include <mach/clk.h>
 #include <mach/msm_smsm.h>
 #include <mach/ramdump.h>
-#include <mach/msm_smem.h>
+#include <mach/sysmon.h>
+
+#include <soc/qcom/smem.h>
 
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
 #include "pil-msa.h"
-#include "sysmon.h"
 
 #define MAX_VDD_MSS_UV		1150000
 #define PROXY_TIMEOUT_MS	10000
@@ -62,7 +63,8 @@ static void log_modem_sfr(void)
 	u32 size;
 	char *smem_reason, reason[MAX_SSR_REASON_LEN];
 
-	smem_reason = smem_get_entry_no_rlock(SMEM_SSR_REASON_MSS0, &size);
+	smem_reason = smem_get_entry_no_rlock(SMEM_SSR_REASON_MSS0, &size, 0,
+							SMEM_ANY_HOST_FLAG);
 	if (!smem_reason || !size) {
 		pr_err("modem subsystem failure reason: (unknown, smem_get_entry_no_rlock failed).\n");
 		return;
@@ -324,6 +326,11 @@ static int pil_mss_loadable_init(struct modem_data *drv,
 	q6->vreg_mx = devm_regulator_get(&pdev->dev, "vdd_mx");
 	if (IS_ERR(q6->vreg_mx))
 		return PTR_ERR(q6->vreg_mx);
+	prop = of_find_property(pdev->dev.of_node, "vdd_mx-uV", NULL);
+	if (!prop) {
+		dev_err(&pdev->dev, "Missing vdd_mx-uV property\n");
+		return -EINVAL;
+	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 		"cxrail_bhs_reg");

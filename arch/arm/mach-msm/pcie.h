@@ -18,10 +18,11 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/types.h>
+#include <linux/pm_wakeup.h>
 #include <mach/msm_pcie.h>
 
 #define MSM_PCIE_MAX_VREG 3
-#define MSM_PCIE_MAX_CLK  6
+#define MSM_PCIE_MAX_CLK 6
 #define MSM_PCIE_MAX_PIPE_CLK 1
 
 #define MAX_RC_NUM 2
@@ -49,6 +50,7 @@ enum msm_pcie_res {
 	MSM_PCIE_RES_DM_CORE,
 	MSM_PCIE_RES_ELBI,
 	MSM_PCIE_RES_CONF,
+	MSM_PCIE_RES_IO,
 	MSM_PCIE_RES_BARS,
 	MSM_PCIE_MAX_RES,
 };
@@ -78,6 +80,12 @@ enum msm_pcie_gpio {
 	MSM_PCIE_MAX_GPIO
 };
 
+enum msm_pcie_link_status {
+	MSM_PCIE_LINK_DEINIT,
+	MSM_PCIE_LINK_ENABLED,
+	MSM_PCIE_LINK_DISABLED
+};
+
 /* gpio info structure */
 struct msm_pcie_gpio_info_t {
 	char      *name;
@@ -94,6 +102,7 @@ struct msm_pcie_vreg_info_t {
 	uint32_t           max_v;
 	uint32_t           min_v;
 	uint32_t           opt_mode;
+	bool               required;
 };
 
 /* clock info structure */
@@ -101,6 +110,7 @@ struct msm_pcie_clk_info_t {
 	struct clk  *hdl;
 	char        *name;
 	u32         freq;
+	bool        required;
 };
 
 /* resource info structure */
@@ -119,7 +129,7 @@ struct msm_pcie_irq_info_t {
 /* msm pcie device structure */
 struct msm_pcie_dev_t {
 	struct platform_device       *pdev;
-
+	struct pci_dev *dev;
 	struct regulator *gdsc;
 	struct msm_pcie_vreg_info_t  vreg[MSM_PCIE_MAX_VREG];
 	struct msm_pcie_gpio_info_t  gpio[MSM_PCIE_MAX_GPIO];
@@ -139,6 +149,7 @@ struct msm_pcie_dev_t {
 	uint32_t                      axi_bar_end;
 
 	struct resource               *dev_mem_res;
+	struct resource               *dev_io_res;
 
 	uint32_t                      wake_n;
 	uint32_t                      vreg_n;
@@ -152,8 +163,24 @@ struct msm_pcie_dev_t {
 
 	struct irq_domain            *irq_domain;
 	DECLARE_BITMAP(msi_irq_in_use, PCIE_MSI_NR_IRQS);
+	uint32_t                     msi_gicm_addr;
+	uint32_t                     msi_gicm_base;
+
+	enum msm_pcie_link_status    link_status;
+	bool                         user_suspend;
+	struct pci_saved_state	     *saved_state;
+
+	struct wakeup_source	     ws;
+
+	bool                         l1ss_supported;
+	bool                         aux_clk_sync;
+
+	uint32_t                     rc_idx;
+	bool                         enumerated;
+	struct work_struct	     handle_wake_work;
 };
 
+extern int msm_pcie_enumerate(u32 rc_idx);
 extern void msm_pcie_config_msi_controller(struct msm_pcie_dev_t *dev);
 extern int32_t msm_pcie_irq_init(struct msm_pcie_dev_t *dev);
 extern void msm_pcie_irq_deinit(struct msm_pcie_dev_t *dev);

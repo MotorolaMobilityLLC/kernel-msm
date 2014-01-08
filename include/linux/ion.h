@@ -20,7 +20,6 @@
 
 #include <linux/err.h>
 #include <uapi/linux/ion.h>
-#include <mach/ion.h>
 
 struct ion_device;
 struct ion_heap;
@@ -43,7 +42,6 @@ struct ion_buffer;
  * @name:	used for debug purposes
  * @base:	base address of heap in physical memory if applicable
  * @size:	size of the heap in bytes if applicable
- * @memory_type:Memory type used for the heap
  * @has_outer_cache:    set to 1 if outer cache is used, 0 otherwise.
  * @extra_data:	Extra data specific to each heap type
  * @priv:	heap private data
@@ -58,7 +56,6 @@ struct ion_platform_heap {
 	const char *name;
 	ion_phys_addr_t base;
 	size_t size;
-	enum ion_memory_types memory_type;
 	unsigned int has_outer_cache;
 	void *extra_data;
 	ion_phys_addr_t align;

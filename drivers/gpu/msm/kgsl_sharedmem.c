@@ -13,7 +13,6 @@
 
 #include <linux/export.h>
 #include <linux/vmalloc.h>
-#include <linux/memory_alloc.h>
 #include <asm/cacheflush.h>
 #include <linux/slab.h>
 #include <linux/kmemleak.h>
@@ -24,7 +23,7 @@
 #include "kgsl_cffdump.h"
 #include "kgsl_device.h"
 
-DEFINE_MUTEX(kernel_map_global_lock);
+static DEFINE_MUTEX(kernel_map_global_lock);
 
 /* An attribute for showing per-process memory statistics */
 struct kgsl_mem_entry_attribute {
@@ -257,13 +256,13 @@ static ssize_t kgsl_drv_full_cache_threshold_store(struct device *dev,
 					 const char *buf, size_t count)
 {
 	int ret;
-	unsigned int thresh;
-	ret = sscanf(buf, "%d", &thresh);
-	if (ret != 1)
-		return count;
+	unsigned int thresh = 0;
+
+	ret = kgsl_sysfs_store(buf, count, &thresh);
+	if (ret != count)
+		return ret;
 
 	kgsl_driver.full_cache_threshold = thresh;
-
 	return count;
 }
 
@@ -275,16 +274,16 @@ static ssize_t kgsl_drv_full_cache_threshold_show(struct device *dev,
 			kgsl_driver.full_cache_threshold);
 }
 
-DEVICE_ATTR(vmalloc, 0444, kgsl_drv_memstat_show, NULL);
-DEVICE_ATTR(vmalloc_max, 0444, kgsl_drv_memstat_show, NULL);
-DEVICE_ATTR(page_alloc, 0444, kgsl_drv_memstat_show, NULL);
-DEVICE_ATTR(page_alloc_max, 0444, kgsl_drv_memstat_show, NULL);
-DEVICE_ATTR(coherent, 0444, kgsl_drv_memstat_show, NULL);
-DEVICE_ATTR(coherent_max, 0444, kgsl_drv_memstat_show, NULL);
-DEVICE_ATTR(mapped, 0444, kgsl_drv_memstat_show, NULL);
-DEVICE_ATTR(mapped_max, 0444, kgsl_drv_memstat_show, NULL);
-DEVICE_ATTR(histogram, 0444, kgsl_drv_histogram_show, NULL);
-DEVICE_ATTR(full_cache_threshold, 0644,
+static DEVICE_ATTR(vmalloc, 0444, kgsl_drv_memstat_show, NULL);
+static DEVICE_ATTR(vmalloc_max, 0444, kgsl_drv_memstat_show, NULL);
+static DEVICE_ATTR(page_alloc, 0444, kgsl_drv_memstat_show, NULL);
+static DEVICE_ATTR(page_alloc_max, 0444, kgsl_drv_memstat_show, NULL);
+static DEVICE_ATTR(coherent, 0444, kgsl_drv_memstat_show, NULL);
+static DEVICE_ATTR(coherent_max, 0444, kgsl_drv_memstat_show, NULL);
+static DEVICE_ATTR(mapped, 0444, kgsl_drv_memstat_show, NULL);
+static DEVICE_ATTR(mapped_max, 0444, kgsl_drv_memstat_show, NULL);
+static DEVICE_ATTR(histogram, 0444, kgsl_drv_histogram_show, NULL);
+static DEVICE_ATTR(full_cache_threshold, 0644,
 		kgsl_drv_full_cache_threshold_show,
 		kgsl_drv_full_cache_threshold_store);
 
@@ -533,14 +532,13 @@ static void kgsl_cma_coherent_free(struct kgsl_memdesc *memdesc)
 }
 
 /* Global - also used by kgsl_drm.c */
-struct kgsl_memdesc_ops kgsl_page_alloc_ops = {
+static struct kgsl_memdesc_ops kgsl_page_alloc_ops = {
 	.free = kgsl_page_alloc_free,
 	.vmflags = kgsl_page_alloc_vmflags,
 	.vmfault = kgsl_page_alloc_vmfault,
 	.map_kernel = kgsl_page_alloc_map_kernel,
 	.unmap_kernel = kgsl_page_alloc_unmap_kernel,
 };
-EXPORT_SYMBOL(kgsl_page_alloc_ops);
 
 /* CMA ops - used during NOMMU mode */
 static struct kgsl_memdesc_ops kgsl_cma_ops = {
@@ -902,36 +900,6 @@ kgsl_sharedmem_set(struct kgsl_device *device,
 	return 0;
 }
 EXPORT_SYMBOL(kgsl_sharedmem_set);
-
-/*
- * kgsl_sharedmem_map_vma - Map a user vma to physical memory
- *
- * @vma - The user vma to map
- * @memdesc - The memory descriptor which contains information about the
- * physical memory
- *
- * Return: 0 on success else error code
- */
-int
-kgsl_sharedmem_map_vma(struct vm_area_struct *vma,
-			const struct kgsl_memdesc *memdesc)
-{
-	unsigned long addr = vma->vm_start;
-	unsigned long size = vma->vm_end - vma->vm_start;
-	int ret, i = 0;
-
-	if (!memdesc->sg || (size != memdesc->size) ||
-		(memdesc->sglen != (size / PAGE_SIZE)))
-		return -EINVAL;
-
-	for (; addr < vma->vm_end; addr += PAGE_SIZE, i++) {
-		ret = vm_insert_page(vma, addr, sg_page(&memdesc->sg[i]));
-		if (ret)
-			return ret;
-	}
-	return 0;
-}
-EXPORT_SYMBOL(kgsl_sharedmem_map_vma);
 
 static const char * const memtype_str[] = {
 	[KGSL_MEMTYPE_OBJECTANY] = "any(0)",

@@ -20,330 +20,31 @@
 #include <linux/of.h>
 #include <linux/iopoll.h>
 #include <linux/platform_device.h>
+
+#include <mach/msm_bus.h>
+
 #include "ufshcd.h"
 #include "unipro.h"
+#include "ufs-msm.h"
 
-#define MAX_U32                 (~(u32)0)
-#define MPHY_TX_FSM_STATE       0x41
-#define TX_FSM_HIBERN8          0x1
-#define HBRN8_POLL_TOUT_MS      100
-#define DEFAULT_CLK_RATE_HZ     1000000
+/* vendor specific pre-defined parameters */
+#define SLOW 1
+#define FAST 2
 
-static unsigned long
-msm_ufs_cfg_timers(struct ufs_hba *hba, u32 gear, u32 hs);
+#define UFS_MSM_LIMIT_NUM_LANES_RX	2
+#define UFS_MSM_LIMIT_NUM_LANES_TX	2
+#define UFS_MSM_LIMIT_HSGEAR_RX	UFS_HS_G2
+#define UFS_MSM_LIMIT_HSGEAR_TX	UFS_HS_G2
+#define UFS_MSM_LIMIT_PWMGEAR_RX	UFS_PWM_G4
+#define UFS_MSM_LIMIT_PWMGEAR_TX	UFS_PWM_G4
+#define UFS_MSM_LIMIT_RX_PWR_PWM	SLOW_MODE
+#define UFS_MSM_LIMIT_TX_PWR_PWM	SLOW_MODE
+#define UFS_MSM_LIMIT_RX_PWR_HS	FAST_MODE
+#define UFS_MSM_LIMIT_TX_PWR_HS	FAST_MODE
+#define UFS_MSM_LIMIT_HS_RATE		PA_HS_MODE_B
+#define UFS_MSM_LIMIT_DESIRED_MODE	FAST
 
-/* MSM UFS host controller vendor specific registers */
-enum {
-	REG_UFS_SYS1CLK_1US                 = 0xC0,
-	REG_UFS_TX_SYMBOL_CLK_NS_US         = 0xC4,
-	REG_UFS_LOCAL_PORT_ID_REG           = 0xC8,
-	REG_UFS_PA_ERR_CODE                 = 0xCC,
-	REG_UFS_RETRY_TIMER_REG             = 0xD0,
-	REG_UFS_PA_LINK_STARTUP_TIMER       = 0xD8,
-	REG_UFS_CFG1                        = 0xDC,
-	REG_UFS_CFG2                        = 0xE0,
-	REG_UFS_HW_VERSION                  = 0xE4,
-};
-
-/* bit offset */
-enum {
-	OFFSET_UFS_PHY_SOFT_RESET           = 1,
-	OFFSET_CLK_NS_REG                   = 10,
-};
-
-/* bit masks */
-enum {
-	MASK_UFS_PHY_SOFT_RESET             = 0x2,
-	MASK_TX_SYMBOL_CLK_1US_REG          = 0x3FF,
-	MASK_CLK_NS_REG                     = 0xFFFC00,
-};
-
-/* MSM UFS PHY control registers */
-
-#define COM_OFF(x)     (0x000 + x)
-#define PHY_OFF(x)     (0x700 + x)
-#define TX_OFF(n, x)   (0x100 + (0x400 * n) + x)
-#define RX_OFF(n, x)   (0x200 + (0x400 * n) + x)
-
-/* UFS PHY PLL block registers */
-#define QSERDES_COM_SYS_CLK_CTRL                            COM_OFF(0x00)
-#define QSERDES_COM_PLL_VCOTAIL_EN                          COM_OFF(0x04)
-#define QSERDES_COM_CMN_MODE                                COM_OFF(0x08)
-#define QSERDES_COM_IE_TRIM                                 COM_OFF(0x0C)
-#define QSERDES_COM_IP_TRIM                                 COM_OFF(0x10)
-#define QSERDES_COM_PLL_CNTRL                               COM_OFF(0x14)
-#define QSERDES_COM_PLL_IP_SETI                             COM_OFF(0x18)
-#define QSERDES_COM_CORE_CLK_IN_SYNC_SEL                    COM_OFF(0x1C)
-#define QSERDES_COM_BIAS_EN_CLKBUFLR_EN                     COM_OFF(0x20)
-#define QSERDES_COM_PLL_CP_SETI                             COM_OFF(0x24)
-#define QSERDES_COM_PLL_IP_SETP                             COM_OFF(0x28)
-#define QSERDES_COM_PLL_CP_SETP                             COM_OFF(0x2C)
-#define QSERDES_COM_ATB_SEL1                                COM_OFF(0x30)
-#define QSERDES_COM_ATB_SEL2                                COM_OFF(0x34)
-#define QSERDES_COM_SYSCLK_EN_SEL                           COM_OFF(0x38)
-#define QSERDES_COM_RES_CODE_TXBAND                         COM_OFF(0x3C)
-#define QSERDES_COM_RESETSM_CNTRL                           COM_OFF(0x40)
-#define QSERDES_COM_PLLLOCK_CMP1                            COM_OFF(0x44)
-#define QSERDES_COM_PLLLOCK_CMP2                            COM_OFF(0x48)
-#define QSERDES_COM_PLLLOCK_CMP3                            COM_OFF(0x4C)
-#define QSERDES_COM_PLLLOCK_CMP_EN                          COM_OFF(0x50)
-#define QSERDES_COM_RES_TRIM_OFFSET                         COM_OFF(0x54)
-#define QSERDES_COM_BGTC                                    COM_OFF(0x58)
-#define QSERDES_COM_PLL_TEST_UPDN_RESTRIMSTEP               COM_OFF(0x5C)
-#define QSERDES_COM_PLL_VCO_TUNE                            COM_OFF(0x60)
-#define QSERDES_COM_DEC_START1                              COM_OFF(0x64)
-#define QSERDES_COM_PLL_AMP_OS                              COM_OFF(0x68)
-#define QSERDES_COM_SSC_EN_CENTER                           COM_OFF(0x6C)
-#define QSERDES_COM_SSC_ADJ_PER1                            COM_OFF(0x70)
-#define QSERDES_COM_SSC_ADJ_PER2                            COM_OFF(0x74)
-#define QSERDES_COM_SSC_PER1                                COM_OFF(0x78)
-#define QSERDES_COM_SSC_PER2                                COM_OFF(0x7C)
-#define QSERDES_COM_SSC_STEP_SIZE1                          COM_OFF(0x80)
-#define QSERDES_COM_SSC_STEP_SIZE2                          COM_OFF(0x84)
-#define QSERDES_COM_RES_TRIM_SEARCH                         COM_OFF(0x88)
-#define QSERDES_COM_RES_TRIM_FREEZE                         COM_OFF(0x8C)
-#define QSERDES_COM_RES_TRIM_EN_VCOCALDONE                  COM_OFF(0x90)
-#define QSERDES_COM_FAUX_EN                                 COM_OFF(0x94)
-#define QSERDES_COM_DIV_FRAC_START1                         COM_OFF(0x98)
-#define QSERDES_COM_DIV_FRAC_START2                         COM_OFF(0x9C)
-#define QSERDES_COM_DIV_FRAC_START3                         COM_OFF(0xA0)
-#define QSERDES_COM_DEC_START2                              COM_OFF(0xA4)
-#define QSERDES_COM_PLL_RXTXEPCLK_EN                        COM_OFF(0xA8)
-#define QSERDES_COM_PLL_CRCTRL                              COM_OFF(0xAC)
-#define QSERDES_COM_PLL_CLKEPDIV                            COM_OFF(0xB0)
-#define QSERDES_COM_PLL_FREQUPDATE                          COM_OFF(0xB4)
-#define QSERDES_COM_PLL_VCO_HIGH                            COM_OFF(0xB8)
-#define QSERDES_COM_RESET_SM                                COM_OFF(0xBC)
-
-/* UFS PHY registers */
-#define UFS_PHY_PHY_START                                   PHY_OFF(0x00)
-#define UFS_PHY_POWER_DOWN_CONTROL                          PHY_OFF(0x04)
-#define UFS_PHY_PWM_G1_CLK_DIVIDER                          PHY_OFF(0x08)
-#define UFS_PHY_PWM_G2_CLK_DIVIDER                          PHY_OFF(0x0C)
-#define UFS_PHY_PWM_G3_CLK_DIVIDER                          PHY_OFF(0x10)
-#define UFS_PHY_PWM_G4_CLK_DIVIDER                          PHY_OFF(0x14)
-#define UFS_PHY_TIMER_100US_SYSCLK_STEPS_MSB                PHY_OFF(0x18)
-#define UFS_PHY_TIMER_100US_SYSCLK_STEPS_LSB                PHY_OFF(0x1C)
-#define UFS_PHY_TIMER_20US_CORECLK_STEPS_MSB                PHY_OFF(0x20)
-#define UFS_PHY_TIMER_20US_CORECLK_STEPS_LSB                PHY_OFF(0x24)
-#define UFS_PHY_LINE_RESET_TIME                             PHY_OFF(0x28)
-#define UFS_PHY_LINE_RESET_GRANULARITY                      PHY_OFF(0x2C)
-#define UFS_PHY_CONTROLSYM_ONE_HOT_DISABLE                  PHY_OFF(0x30)
-#define UFS_PHY_CORECLK_PWM_G1_CLK_DIVIDER                  PHY_OFF(0x34)
-#define UFS_PHY_CORECLK_PWM_G2_CLK_DIVIDER                  PHY_OFF(0x38)
-#define UFS_PHY_CORECLK_PWM_G3_CLK_DIVIDER                  PHY_OFF(0x3C)
-#define UFS_PHY_CORECLK_PWM_G4_CLK_DIVIDER                  PHY_OFF(0x40)
-#define UFS_PHY_TX_LANE_ENABLE                              PHY_OFF(0x44)
-#define UFS_PHY_TSYNC_RSYNC_CNTL                            PHY_OFF(0x48)
-#define UFS_PHY_RETIME_BUFFER_EN                            PHY_OFF(0x4C)
-#define UFS_PHY_PLL_CNTL                                    PHY_OFF(0x50)
-#define UFS_PHY_TX_LARGE_AMP_DRV_LVL                        PHY_OFF(0x54)
-#define UFS_PHY_TX_LARGE_AMP_POST_EMP_LVL                   PHY_OFF(0x58)
-#define UFS_PHY_TX_SMALL_AMP_DRV_LVL                        PHY_OFF(0x5C)
-#define UFS_PHY_TX_SMALL_AMP_POST_EMP_LVL                   PHY_OFF(0x60)
-#define UFS_PHY_CFG_CHANGE_CNT_VAL                          PHY_OFF(0x64)
-#define UFS_PHY_OMC_STATUS_RDVAL                            PHY_OFF(0x68)
-#define UFS_PHY_RX_SYNC_WAIT_TIME                           PHY_OFF(0x6C)
-#define UFS_PHY_L0_BIST_CTRL                                PHY_OFF(0x70)
-#define UFS_PHY_L1_BIST_CTRL                                PHY_OFF(0x74)
-#define UFS_PHY_BIST_PRBS_POLY0                             PHY_OFF(0x78)
-#define UFS_PHY_BIST_PRBS_POLY1                             PHY_OFF(0x7C)
-#define UFS_PHY_BIST_PRBS_SEED0                             PHY_OFF(0x80)
-#define UFS_PHY_BIST_PRBS_SEED1                             PHY_OFF(0x84)
-#define UFS_PHY_BIST_FIXED_PAT_CTRL                         PHY_OFF(0x88)
-#define UFS_PHY_BIST_FIXED_PAT0_DATA                        PHY_OFF(0x8C)
-#define UFS_PHY_BIST_FIXED_PAT1_DATA                        PHY_OFF(0x90)
-#define UFS_PHY_BIST_FIXED_PAT2_DATA                        PHY_OFF(0x94)
-#define UFS_PHY_BIST_FIXED_PAT3_DATA                        PHY_OFF(0x98)
-#define UFS_PHY_TX_HSGEAR_CAPABILITY                        PHY_OFF(0x9C)
-#define UFS_PHY_TX_PWMGEAR_CAPABILITY                       PHY_OFF(0xA0)
-#define UFS_PHY_TX_AMPLITUDE_CAPABILITY                     PHY_OFF(0xA4)
-#define UFS_PHY_TX_EXTERNALSYNC_CAPABILITY                  PHY_OFF(0xA8)
-#define UFS_PHY_TX_HS_UNTERMINATED_LINE_DRIVE_CAPABILITY    PHY_OFF(0xAC)
-#define UFS_PHY_TX_LS_TERMINATED_LINE_DRIVE_CAPABILITY      PHY_OFF(0xB0)
-#define UFS_PHY_TX_MIN_SLEEP_NOCONFIG_TIME_CAPABILITY       PHY_OFF(0xB4)
-#define UFS_PHY_TX_MIN_STALL_NOCONFIG_TIME_CAPABILITY       PHY_OFF(0xB8)
-#define UFS_PHY_TX_MIN_SAVE_CONFIG_TIME_CAPABILITY          PHY_OFF(0xBC)
-#define UFS_PHY_TX_REF_CLOCK_SHARED_CAPABILITY              PHY_OFF(0xC0)
-#define UFS_PHY_TX_PHY_MAJORMINOR_RELEASE_CAPABILITY        PHY_OFF(0xC4)
-#define UFS_PHY_TX_PHY_EDITORIAL_RELEASE_CAPABILITY         PHY_OFF(0xC8)
-#define UFS_PHY_TX_HIBERN8TIME_CAPABILITY                   PHY_OFF(0xCC)
-#define UFS_PHY_RX_HSGEAR_CAPABILITY                        PHY_OFF(0xD0)
-#define UFS_PHY_RX_PWMGEAR_CAPABILITY                       PHY_OFF(0xD4)
-#define UFS_PHY_RX_HS_UNTERMINATED_CAPABILITY               PHY_OFF(0xD8)
-#define UFS_PHY_RX_LS_TERMINATED_CAPABILITY                 PHY_OFF(0xDC)
-#define UFS_PHY_RX_MIN_SLEEP_NOCONFIG_TIME_CAPABILITY       PHY_OFF(0xE0)
-#define UFS_PHY_RX_MIN_STALL_NOCONFIG_TIME_CAPABILITY       PHY_OFF(0xE4)
-#define UFS_PHY_RX_MIN_SAVE_CONFIG_TIME_CAPABILITY          PHY_OFF(0xE8)
-#define UFS_PHY_RX_REF_CLOCK_SHARED_CAPABILITY              PHY_OFF(0xEC)
-#define UFS_PHY_RX_HS_G1_SYNC_LENGTH_CAPABILITY             PHY_OFF(0xF0)
-#define UFS_PHY_RX_HS_G1_PREPARE_LENGTH_CAPABILITY          PHY_OFF(0xF4)
-#define UFS_PHY_RX_LS_PREPARE_LENGTH_CAPABILITY             PHY_OFF(0xF8)
-#define UFS_PHY_RX_PWM_BURST_CLOSURE_LENGTH_CAPABILITY      PHY_OFF(0xFC)
-#define UFS_PHY_RX_MIN_ACTIVATETIME_CAPABILITY              PHY_OFF(0x100)
-#define UFS_PHY_RX_PHY_MAJORMINOR_RELEASE_CAPABILITY        PHY_OFF(0x104)
-#define UFS_PHY_RX_PHY_EDITORIAL_RELEASE_CAPABILITY         PHY_OFF(0x108)
-#define UFS_PHY_RX_HIBERN8TIME_CAPABILITY                   PHY_OFF(0x10C)
-#define UFS_PHY_RX_HS_G2_SYNC_LENGTH_CAPABILITY             PHY_OFF(0x110)
-#define UFS_PHY_RX_HS_G3_SYNC_LENGTH_CAPABILITY             PHY_OFF(0x114)
-#define UFS_PHY_RX_HS_G2_PREPARE_LENGTH_CAPABILITY          PHY_OFF(0x118)
-#define UFS_PHY_RX_HS_G3_PREPARE_LENGTH_CAPABILITY          PHY_OFF(0x11C)
-#define UFS_PHY_DEBUG_BUS_SEL                               PHY_OFF(0x120)
-#define UFS_PHY_DEBUG_BUS_0_STATUS_CHK                      PHY_OFF(0x124)
-#define UFS_PHY_DEBUG_BUS_1_STATUS_CHK                      PHY_OFF(0x128)
-#define UFS_PHY_DEBUG_BUS_2_STATUS_CHK                      PHY_OFF(0x12C)
-#define UFS_PHY_DEBUG_BUS_3_STATUS_CHK                      PHY_OFF(0x130)
-#define UFS_PHY_PCS_READY_STATUS                            PHY_OFF(0x134)
-#define UFS_PHY_L0_BIST_CHK_ERR_CNT_L_STATUS                PHY_OFF(0x138)
-#define UFS_PHY_L0_BIST_CHK_ERR_CNT_H_STATUS                PHY_OFF(0x13C)
-#define UFS_PHY_L1_BIST_CHK_ERR_CNT_L_STATUS                PHY_OFF(0x140)
-#define UFS_PHY_L1_BIST_CHK_ERR_CNT_H_STATUS                PHY_OFF(0x144)
-#define UFS_PHY_L0_BIST_CHK_STATUS                          PHY_OFF(0x148)
-#define UFS_PHY_L1_BIST_CHK_STATUS                          PHY_OFF(0x14C)
-#define UFS_PHY_DEBUG_BUS_0_STATUS                          PHY_OFF(0x150)
-#define UFS_PHY_DEBUG_BUS_1_STATUS                          PHY_OFF(0x154)
-#define UFS_PHY_DEBUG_BUS_2_STATUS                          PHY_OFF(0x158)
-#define UFS_PHY_DEBUG_BUS_3_STATUS                          PHY_OFF(0x15C)
-
-/* TX LANE n (0, 1) registers */
-#define QSERDES_TX_BIST_MODE_LANENO(n)                      TX_OFF(n, 0x00)
-#define QSERDES_TX_CLKBUF_ENABLE(n)                         TX_OFF(n, 0x04)
-#define QSERDES_TX_TX_EMP_POST1_LVL(n)                      TX_OFF(n, 0x08)
-#define QSERDES_TX_TX_DRV_LVL(n)                            TX_OFF(n, 0x0C)
-#define QSERDES_TX_RESET_TSYNC_EN(n)                        TX_OFF(n, 0x10)
-#define QSERDES_TX_LPB_EN(n)                                TX_OFF(n, 0x14)
-#define QSERDES_TX_RES_CODE(n)                              TX_OFF(n, 0x18)
-#define QSERDES_TX_PERL_LENGTH1(n)                          TX_OFF(n, 0x1C)
-#define QSERDES_TX_PERL_LENGTH2(n)                          TX_OFF(n, 0x20)
-#define QSERDES_TX_SERDES_BYP_EN_OUT(n)                     TX_OFF(n, 0x24)
-#define QSERDES_TX_HIGHZ_TRANSCEIVEREN_BIAS_EN(n)           TX_OFF(n, 0x28)
-#define QSERDES_TX_PARRATE_REC_DETECT_IDLE_EN(n)            TX_OFF(n, 0x2C)
-#define QSERDES_TX_BIST_PATTERN1(n)                         TX_OFF(n, 0x30)
-#define QSERDES_TX_BIST_PATTERN2(n)                         TX_OFF(n, 0x34)
-#define QSERDES_TX_BIST_PATTERN3(n)                         TX_OFF(n, 0x38)
-#define QSERDES_TX_BIST_PATTERN4(n)                         TX_OFF(n, 0x3C)
-#define QSERDES_TX_BIST_PATTERN5(n)                         TX_OFF(n, 0x40)
-#define QSERDES_TX_BIST_PATTERN6(n)                         TX_OFF(n, 0x44)
-#define QSERDES_TX_BIST_PATTERN7(n)                         TX_OFF(n, 0x48)
-#define QSERDES_TX_BIST_PATTERN8(n)                         TX_OFF(n, 0x4C)
-#define QSERDES_TX_LANE_MODE(n)                             TX_OFF(n, 0x50)
-#define QSERDES_TX_ATB_SEL(n)                               TX_OFF(n, 0x54)
-#define QSERDES_TX_REC_DETECT_LVL(n)                        TX_OFF(n, 0x58)
-#define QSERDES_TX_PRBS_SEED1(n)                            TX_OFF(n, 0x5C)
-#define QSERDES_TX_PRBS_SEED2(n)                            TX_OFF(n, 0x60)
-#define QSERDES_TX_PRBS_SEED3(n)                            TX_OFF(n, 0x64)
-#define QSERDES_TX_PRBS_SEED4(n)                            TX_OFF(n, 0x68)
-#define QSERDES_TX_RESET_GEN(n)                             TX_OFF(n, 0x6C)
-#define QSERDES_TX_TRAN_DRVR_EMP_EN(n)                      TX_OFF(n, 0x70)
-#define QSERDES_TX_TX_INTERFACE_MODE(n)                     TX_OFF(n, 0x74)
-#define QSERDES_TX_BIST_STATUS(n)                           TX_OFF(n, 0x78)
-#define QSERDES_TX_BIST_ERROR_COUNT1(n)                     TX_OFF(n, 0x7C)
-#define QSERDES_TX_BIST_ERROR_COUNT2(n)                     TX_OFF(n, 0x80)
-
-/* RX LANE n (0, 1) registers */
-#define QSERDES_RX_CDR_CONTROL(n)                           RX_OFF(n, 0x00)
-#define QSERDES_RX_AUX_CONTROL(n)                           RX_OFF(n, 0x04)
-#define QSERDES_RX_AUX_DATA_TCODE(n)                        RX_OFF(n, 0x08)
-#define QSERDES_RX_RCLK_AUXDATA_SEL(n)                      RX_OFF(n, 0x0C)
-#define QSERDES_RX_EQ_CONTROL(n)                            RX_OFF(n, 0x10)
-#define QSERDES_RX_RX_EQ_GAIN2(n)                           RX_OFF(n, 0x14)
-#define QSERDES_RX_AC_JTAG_INIT(n)                          RX_OFF(n, 0x18)
-#define QSERDES_RX_AC_JTAG_LVL_EN(n)                        RX_OFF(n, 0x1C)
-#define QSERDES_RX_AC_JTAG_MODE(n)                          RX_OFF(n, 0x20)
-#define QSERDES_RX_AC_JTAG_RESET(n)                         RX_OFF(n, 0x24)
-#define QSERDES_RX_RX_IQ_RXDET_EN(n)                        RX_OFF(n, 0x28)
-#define QSERDES_RX_RX_TERM_HIGHZ_CM_AC_COUPLE(n)            RX_OFF(n, 0x2C)
-#define QSERDES_RX_RX_EQ_GAIN1(n)                           RX_OFF(n, 0x30)
-#define QSERDES_RX_SIGDET_CNTRL(n)                          RX_OFF(n, 0x34)
-#define QSERDES_RX_RX_BAND(n)                               RX_OFF(n, 0x38)
-#define QSERDES_RX_CDR_FREEZE_UP_DN(n)                      RX_OFF(n, 0x3C)
-#define QSERDES_RX_RX_INTERFACE_MODE(n)                     RX_OFF(n, 0x40)
-#define QSERDES_RX_JITTER_GEN_MODE(n)                       RX_OFF(n, 0x44)
-#define QSERDES_RX_BUJ_AMP(n)                               RX_OFF(n, 0x48)
-#define QSERDES_RX_SJ_AMP1(n)                               RX_OFF(n, 0x4C)
-#define QSERDES_RX_SJ_AMP2(n)                               RX_OFF(n, 0x50)
-#define QSERDES_RX_SJ_PER1(n)                               RX_OFF(n, 0x54)
-#define QSERDES_RX_SJ_PER2(n)                               RX_OFF(n, 0x58)
-#define QSERDES_RX_BUJ_STEP_FREQ1(n)                        RX_OFF(n, 0x5C)
-#define QSERDES_RX_BUJ_STEP_FREQ2(n)                        RX_OFF(n, 0x60)
-#define QSERDES_RX_PPM_OFFSET1(n)                           RX_OFF(n, 0x64)
-#define QSERDES_RX_PPM_OFFSET2(n)                           RX_OFF(n, 0x68)
-#define QSERDES_RX_SIGN_PPM_PERIOD1(n)                      RX_OFF(n, 0x6C)
-#define QSERDES_RX_SIGN_PPM_PERIOD2(n)                      RX_OFF(n, 0x70)
-#define QSERDES_RX_SSC_CTRL(n)                              RX_OFF(n, 0x74)
-#define QSERDES_RX_SSC_COUNT1(n)                            RX_OFF(n, 0x78)
-#define QSERDES_RX_SSC_COUNT2(n)                            RX_OFF(n, 0x7C)
-#define QSERDES_RX_PWM_CNTRL1(n)                            RX_OFF(n, 0x80)
-#define QSERDES_RX_PWM_CNTRL2(n)                            RX_OFF(n, 0x84)
-#define QSERDES_RX_PWM_NDIV(n)                              RX_OFF(n, 0x88)
-#define QSERDES_RX_SIGDET_CNTRL2(n)                         RX_OFF(n, 0x8C)
-#define QSERDES_RX_UFS_CNTRL(n)                             RX_OFF(n, 0x90)
-#define QSERDES_RX_CDR_CONTROL3(n)                          RX_OFF(n, 0x94)
-#define QSERDES_RX_CDR_CONTROL_HALF(n)                      RX_OFF(n, 0x98)
-#define QSERDES_RX_CDR_CONTROL_QUARTER(n)                   RX_OFF(n, 0x9C)
-#define QSERDES_RX_CDR_CONTROL_EIGHTH(n)                    RX_OFF(n, 0xA0)
-#define QSERDES_RX_UCDR_FO_GAIN(n)                          RX_OFF(n, 0xA4)
-#define QSERDES_RX_UCDR_SO_GAIN(n)                          RX_OFF(n, 0xA8)
-#define QSERDES_RX_UCDR_SO_SATURATION_AND_ENABLE(n)         RX_OFF(n, 0xAC)
-#define QSERDES_RX_UCDR_FO_TO_SO_DELAY(n)                   RX_OFF(n, 0xB0)
-#define QSERDES_RX_PI_CTRL1(n)                              RX_OFF(n, 0xB4)
-#define QSERDES_RX_PI_CTRL2(n)                              RX_OFF(n, 0xB8)
-#define QSERDES_RX_PI_QUAD(n)                               RX_OFF(n, 0xBC)
-#define QSERDES_RX_IDATA1(n)                                RX_OFF(n, 0xC0)
-#define QSERDES_RX_IDATA2(n)                                RX_OFF(n, 0xC4)
-#define QSERDES_RX_AUX_DATA1(n)                             RX_OFF(n, 0xC8)
-#define QSERDES_RX_AUX_DATA2(n)                             RX_OFF(n, 0xCC)
-#define QSERDES_RX_AC_JTAG_OUTP(n)                          RX_OFF(n, 0xD0)
-#define QSERDES_RX_AC_JTAG_OUTN(n)                          RX_OFF(n, 0xD4)
-#define QSERDES_RX_RX_SIGDET_PWMDECSTATUS(n)                RX_OFF(n, 0xD8)
-
-enum {
-	MASK_SERDES_START       = 0x1,
-	MASK_PCS_READY          = 0x1,
-};
-
-enum {
-	OFFSET_SERDES_START     = 0x0,
-};
-
-#define MAX_PROP_NAME              32
-#define VDDA_PHY_MIN_UV            1000000
-#define VDDA_PHY_MAX_UV            1000000
-#define VDDA_PLL_MIN_UV            1800000
-#define VDDA_PLL_MAX_UV            1800000
-
-static LIST_HEAD(phy_list);
-
-struct msm_ufs_phy_calibration {
-	u32 reg_offset;
-	u32 cfg_value;
-};
-
-struct msm_ufs_phy_vreg {
-	const char *name;
-	struct regulator *reg;
-	int max_uA;
-	int min_uV;
-	int max_uV;
-	bool enabled;
-};
-
-struct msm_ufs_phy {
-	struct list_head list;
-	struct device *dev;
-	void __iomem *mmio;
-	struct clk *tx_iface_clk;
-	struct clk *rx_iface_clk;
-	bool is_iface_clk_enabled;
-	struct clk *ref_clk_src;
-	struct clk *ref_clk_parent;
-	struct clk *ref_clk;
-	bool is_ref_clk_enabled;
-	struct msm_ufs_phy_vreg vdda_pll;
-	struct msm_ufs_phy_vreg vdda_phy;
-};
-
-static struct msm_ufs_phy_calibration phy_cal_table[] = {
+static struct msm_ufs_phy_calibration phy_cal_table_rate_A[] = {
 	{
 		.cfg_value = 0x01,
 		.reg_offset = UFS_PHY_POWER_DOWN_CONTROL,
@@ -950,6 +651,49 @@ static struct msm_ufs_phy_calibration phy_cal_table[] = {
 	},
 };
 
+static struct msm_ufs_phy_calibration phy_cal_table_rate_B[] = {
+	{
+		.cfg_value = 0x03,
+		.reg_offset = QSERDES_COM_PLL_CLKEPDIV,
+	},
+	{
+		.cfg_value = 0x98,
+		.reg_offset = QSERDES_COM_DEC_START1,
+	},
+	{
+		.cfg_value = 0x03,
+		.reg_offset = QSERDES_COM_DEC_START2,
+	},
+	{
+		.cfg_value = 0x80,
+		.reg_offset = QSERDES_COM_DIV_FRAC_START1,
+	},
+	{
+		.cfg_value = 0x80,
+		.reg_offset = QSERDES_COM_DIV_FRAC_START2,
+	},
+	{
+		.cfg_value = 0x10,
+		.reg_offset = QSERDES_COM_DIV_FRAC_START3,
+	},
+	{
+		.cfg_value = 0x65,
+		.reg_offset = QSERDES_COM_PLLLOCK_CMP1,
+	},
+	{
+		.cfg_value = 0x1E,
+		.reg_offset = QSERDES_COM_PLLLOCK_CMP2,
+	},
+	{
+		.cfg_value = 0x00,
+		.reg_offset = QSERDES_COM_PLLLOCK_CMP3,
+	},
+	{
+		.cfg_value = 0x03,
+		.reg_offset = QSERDES_COM_PLLLOCK_CMP_EN,
+	},
+};
+
 static struct msm_ufs_phy *msm_get_ufs_phy(struct device *dev)
 {
 	int err  = -EPROBE_DEFER;
@@ -1155,15 +899,134 @@ out:
 
 static void msm_ufs_phy_calibrate(struct msm_ufs_phy *phy)
 {
-	struct msm_ufs_phy_calibration *tbl = phy_cal_table;
-	int tbl_size = ARRAY_SIZE(phy_cal_table);
+	struct msm_ufs_phy_calibration *tbl = phy_cal_table_rate_A;
+	int tbl_size = ARRAY_SIZE(phy_cal_table_rate_A);
 	int i;
 
 	for (i = 0; i < tbl_size; i++)
 		writel_relaxed(tbl[i].cfg_value, phy->mmio + tbl[i].reg_offset);
 
+	if (UFS_MSM_LIMIT_HS_RATE == PA_HS_MODE_B) {
+		tbl = phy_cal_table_rate_B;
+		tbl_size = ARRAY_SIZE(phy_cal_table_rate_B);
+
+		for (i = 0; i < tbl_size; i++)
+			writel_relaxed(tbl[i].cfg_value,
+					phy->mmio + tbl[i].reg_offset);
+	}
+
 	/* flush buffered writes */
 	mb();
+}
+
+static int msm_ufs_host_clk_get(struct device *dev,
+		const char *name, struct clk **clk_out)
+{
+	struct clk *clk;
+	int err = 0;
+
+	clk = devm_clk_get(dev, name);
+	if (IS_ERR(clk)) {
+		err = PTR_ERR(clk);
+		dev_err(dev, "%s: failed to get %s err %d",
+				__func__, name, err);
+	} else {
+		*clk_out = clk;
+	}
+
+	return err;
+}
+
+static int msm_ufs_host_clk_enable(struct device *dev,
+		const char *name, struct clk *clk)
+{
+	int err = 0;
+
+	err = clk_prepare_enable(clk);
+	if (err)
+		dev_err(dev, "%s: %s enable failed %d\n", __func__, name, err);
+
+	return err;
+}
+
+static void msm_ufs_disable_lane_clks(struct msm_ufs_host *host)
+{
+	if (!host->is_lane_clks_enabled)
+		return;
+
+	clk_disable_unprepare(host->tx_l1_sync_clk);
+	clk_disable_unprepare(host->tx_l0_sync_clk);
+	clk_disable_unprepare(host->rx_l1_sync_clk);
+	clk_disable_unprepare(host->rx_l0_sync_clk);
+
+	host->is_lane_clks_enabled = false;
+}
+
+static int msm_ufs_enable_lane_clks(struct msm_ufs_host *host)
+{
+	int err = 0;
+	struct device *dev = host->hba->dev;
+
+	if (host->is_lane_clks_enabled)
+		return 0;
+
+	err = msm_ufs_host_clk_enable(dev,
+			"rx_lane0_sync_clk", host->rx_l0_sync_clk);
+	if (err)
+		goto out;
+
+	err = msm_ufs_host_clk_enable(dev,
+			"rx_lane1_sync_clk", host->rx_l1_sync_clk);
+	if (err)
+		goto disable_rx_l0;
+
+	err = msm_ufs_host_clk_enable(dev,
+			"tx_lane0_sync_clk", host->tx_l0_sync_clk);
+	if (err)
+		goto disable_rx_l1;
+
+	err = msm_ufs_host_clk_enable(dev,
+			"tx_lane1_sync_clk", host->tx_l1_sync_clk);
+	if (err)
+		goto disable_tx_l0;
+
+	host->is_lane_clks_enabled = true;
+	goto out;
+
+disable_tx_l0:
+	clk_disable_unprepare(host->tx_l0_sync_clk);
+disable_rx_l1:
+	clk_disable_unprepare(host->rx_l1_sync_clk);
+disable_rx_l0:
+	clk_disable_unprepare(host->rx_l0_sync_clk);
+out:
+	return err;
+}
+
+static int msm_ufs_init_lane_clks(struct msm_ufs_host *host)
+{
+	int err = 0;
+	struct device *dev = host->hba->dev;
+
+	err = msm_ufs_host_clk_get(dev,
+			"rx_lane0_sync_clk", &host->rx_l0_sync_clk);
+	if (err)
+		goto out;
+
+	err = msm_ufs_host_clk_get(dev,
+			"rx_lane1_sync_clk", &host->rx_l1_sync_clk);
+	if (err)
+		goto out;
+
+	err = msm_ufs_host_clk_get(dev,
+			"tx_lane0_sync_clk", &host->tx_l0_sync_clk);
+	if (err)
+		goto out;
+
+	err = msm_ufs_host_clk_get(dev,
+			"tx_lane1_sync_clk", &host->tx_l1_sync_clk);
+out:
+	return err;
 }
 
 static int msm_ufs_enable_tx_lanes(struct ufs_hba *hba)
@@ -1171,7 +1034,8 @@ static int msm_ufs_enable_tx_lanes(struct ufs_hba *hba)
 	int err;
 	u32 tx_lanes;
 	u32 val;
-	struct msm_ufs_phy *phy = hba->priv;
+	struct msm_ufs_host *host = hba->priv;
+	struct msm_ufs_phy *phy = host->phy;
 
 	err = ufshcd_dme_get(hba,
 			UIC_ARG_MIB(PA_CONNECTEDTXDATALANES), &tx_lanes);
@@ -1252,14 +1116,8 @@ static int msm_ufs_phy_power_on(struct msm_ufs_phy *phy)
 	if (err)
 		goto out_disable_pll;
 
-	err = msm_ufs_enable_phy_iface_clk(phy);
-	if (err)
-		goto out_disable_ref;
-
 	goto out;
 
-out_disable_ref:
-	msm_ufs_disable_phy_ref_clk(phy);
 out_disable_pll:
 	msm_ufs_phy_disable_vreg(phy, &phy->vdda_pll);
 out_disable_phy:
@@ -1273,7 +1131,6 @@ static int msm_ufs_phy_power_off(struct msm_ufs_phy *phy)
 	writel_relaxed(0x0, phy->mmio + UFS_PHY_POWER_DOWN_CONTROL);
 	mb();
 
-	msm_ufs_disable_phy_iface_clk(phy);
 	msm_ufs_disable_phy_ref_clk(phy);
 
 	msm_ufs_phy_disable_vreg(phy, &phy->vdda_pll);
@@ -1298,7 +1155,8 @@ static inline void msm_ufs_deassert_reset(struct ufs_hba *hba)
 
 static int msm_ufs_hce_enable_notify(struct ufs_hba *hba, bool status)
 {
-	struct msm_ufs_phy *phy = hba->priv;
+	struct msm_ufs_host *host = hba->priv;
+	struct msm_ufs_phy *phy = host->phy;
 	u32 val;
 	int err = -EINVAL;
 
@@ -1326,9 +1184,16 @@ static int msm_ufs_hce_enable_notify(struct ufs_hba *hba, bool status)
 		/* poll for PCS_READY for max. 1sec */
 		err = readl_poll_timeout(phy->mmio + UFS_PHY_PCS_READY_STATUS,
 				val, (val & MASK_PCS_READY), 10, 1000000);
-		if (err)
+		if (err) {
 			dev_err(phy->dev, "%s: phy init failed, %d\n",
 					__func__, err);
+			break;
+		}
+		/*
+		 * The PHY PLL output is the source of tx/rx lane symbol clocks.
+		 * Hence, enable the lane clocks only after PHY is initialized.
+		 */
+		err = msm_ufs_enable_lane_clks(host);
 		break;
 	case POST_CHANGE:
 		/* check if UFS PHY moved from DISABLED to HIBERN8 */
@@ -1340,6 +1205,108 @@ static int msm_ufs_hce_enable_notify(struct ufs_hba *hba, bool status)
 	return err;
 }
 
+/**
+ * Returns non-zero for success (which rate of core_clk) and 0
+ * in case of a failure
+ */
+static unsigned long
+msm_ufs_cfg_timers(struct ufs_hba *hba, u32 gear, u32 hs, u32 rate)
+{
+	struct ufs_clk_info *clki;
+	u32 core_clk_period_in_ns;
+	u32 tx_clk_cycles_per_us = 0;
+	unsigned long core_clk_rate = 0;
+
+	static u32 pwm_fr_table[][2] = {
+		{UFS_PWM_G1, 0x1},
+		{UFS_PWM_G2, 0x1},
+		{UFS_PWM_G3, 0x1},
+		{UFS_PWM_G4, 0x1},
+	};
+
+	static u32 hs_fr_table_rA[][2] = {
+		{UFS_HS_G1, 0x1F},
+		{UFS_HS_G2, 0x3e},
+	};
+
+	static u32 hs_fr_table_rB[][2] = {
+		{UFS_HS_G1, 0x24},
+		{UFS_HS_G2, 0x49},
+	};
+
+	if (gear == 0) {
+		dev_err(hba->dev, "%s: invalid gear = %d\n", __func__, gear);
+		goto out_error;
+	}
+
+	list_for_each_entry(clki, &hba->clk_list_head, list) {
+		if (!strcmp(clki->name, "core_clk"))
+			core_clk_rate = clk_get_rate(clki->clk);
+	}
+
+	/* If frequency is smaller than 1MHz, set to 1MHz */
+	if (core_clk_rate < DEFAULT_CLK_RATE_HZ)
+		core_clk_rate = DEFAULT_CLK_RATE_HZ;
+
+	core_clk_period_in_ns = NSEC_PER_SEC / core_clk_rate;
+	core_clk_period_in_ns <<= OFFSET_CLK_NS_REG;
+	core_clk_period_in_ns &= MASK_CLK_NS_REG;
+
+	switch (hs) {
+	case FASTAUTO_MODE:
+	case FAST_MODE:
+		if (rate == PA_HS_MODE_A) {
+			if (gear >= ARRAY_SIZE(hs_fr_table_rA)) {
+				dev_err(hba->dev,
+					"%s: index %d exceeds table size %d\n",
+					__func__, gear,
+					ARRAY_SIZE(hs_fr_table_rA));
+				goto out_error;
+			}
+			tx_clk_cycles_per_us = hs_fr_table_rA[gear-1][1];
+		} else if (rate == PA_HS_MODE_B) {
+			if (gear >= ARRAY_SIZE(hs_fr_table_rB)) {
+				dev_err(hba->dev,
+					"%s: index %d exceeds table size %d\n",
+					__func__, gear,
+					ARRAY_SIZE(hs_fr_table_rB));
+				goto out_error;
+			}
+			tx_clk_cycles_per_us = hs_fr_table_rB[gear-1][1];
+		} else {
+			dev_err(hba->dev, "%s: invalid rate = %d\n",
+				__func__, rate);
+			goto out_error;
+		}
+		break;
+	case SLOWAUTO_MODE:
+	case SLOW_MODE:
+		if (gear >= ARRAY_SIZE(pwm_fr_table)) {
+			dev_err(hba->dev,
+					"%s: index %d exceeds table size %d\n",
+					__func__, gear,
+					ARRAY_SIZE(pwm_fr_table));
+			goto out_error;
+		}
+		tx_clk_cycles_per_us = pwm_fr_table[gear-1][1];
+		break;
+	case UNCHANGED:
+	default:
+		dev_err(hba->dev, "%s: invalid mode = %d\n", __func__, hs);
+		goto out_error;
+	}
+
+	/* this register 2 fields shall be written at once */
+	ufshcd_writel(hba, core_clk_period_in_ns | tx_clk_cycles_per_us,
+						REG_UFS_TX_SYMBOL_CLK_NS_US);
+	goto out;
+
+out_error:
+	core_clk_rate = 0;
+out:
+	return core_clk_rate;
+}
+
 static int msm_ufs_link_startup_notify(struct ufs_hba *hba, bool status)
 {
 	unsigned long core_clk_rate = 0;
@@ -1347,7 +1314,13 @@ static int msm_ufs_link_startup_notify(struct ufs_hba *hba, bool status)
 
 	switch (status) {
 	case PRE_CHANGE:
-		core_clk_rate = msm_ufs_cfg_timers(hba, 0, 0);
+		core_clk_rate = msm_ufs_cfg_timers(hba, UFS_PWM_G1,
+						   SLOWAUTO_MODE, 0);
+		if (!core_clk_rate) {
+			dev_err(hba->dev, "%s: msm_ufs_cfg_timers() failed\n",
+				__func__);
+			return -EINVAL;
+		}
 		core_clk_cycles_per_100ms =
 			(core_clk_rate / MSEC_PER_SEC) * 100;
 		ufshcd_writel(hba, core_clk_cycles_per_100ms,
@@ -1365,31 +1338,32 @@ static int msm_ufs_link_startup_notify(struct ufs_hba *hba, bool status)
 
 static int msm_ufs_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
-	struct msm_ufs_phy *phy = hba->priv;
+	struct msm_ufs_host *host = hba->priv;
+	struct msm_ufs_phy *phy = host->phy;
 	int ret = 0;
 
 	if (!phy)
 		return 0;
 
 	if (ufshcd_is_link_off(hba)) {
+		/*
+		 * Disable the tx/rx lane symbol clocks before PHY is
+		 * powered down as the PLL source should be disabled
+		 * after downstream clocks are disabled.
+		 */
+		msm_ufs_disable_lane_clks(host);
 		msm_ufs_phy_power_off(phy);
 		goto out;
 	}
 
-	/* M-PHY RMMI interface clocks can be turned off */
-	msm_ufs_disable_phy_iface_clk(phy);
-
 	/*
-	 * If UniPro link is not active, PHY ref_clk and main PHY analog power
-	 * can be switched off.
+	 * If UniPro link is not active, PHY ref_clk, main PHY analog power
+	 * rail and low noise analog power rail for PLL can be switched off.
 	 */
 	if (!ufshcd_is_link_active(hba)) {
 		msm_ufs_disable_phy_ref_clk(phy);
-		ret = msm_ufs_phy_disable_vreg(phy, &phy->vdda_phy);
-		/*
-		 * TODO: Check if "vdda_pll" can voted off when link is hibern8
-		 * or power off state?
-		 */
+		msm_ufs_phy_disable_vreg(phy, &phy->vdda_phy);
+		msm_ufs_phy_disable_vreg(phy, &phy->vdda_pll);
 	}
 
 out:
@@ -1398,30 +1372,14 @@ out:
 
 static int msm_ufs_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
-	struct msm_ufs_phy *phy = hba->priv;
+	struct msm_ufs_host *host = hba->priv;
+	struct msm_ufs_phy *phy = host->phy;
 
 	if (!phy)
 		return 0;
 
 	return msm_ufs_phy_power_on(phy);
 }
-
-/* vendor specific pre-defined parameters */
-#define	SLOW 1
-#define FAST 2
-
-#define UFS_MSM_LIMIT_NUM_LANES_RX	1
-#define UFS_MSM_LIMIT_NUM_LANES_TX	1
-#define UFS_MSM_LIMIT_HSGEAR_RX		UFS_HS_G1
-#define UFS_MSM_LIMIT_HSGEAR_TX		UFS_HS_G1
-#define UFS_MSM_LIMIT_PWMGEAR_RX	UFS_PWM_G4
-#define UFS_MSM_LIMIT_PWMGEAR_TX	UFS_PWM_G4
-#define UFS_MSM_LIMIT_RX_PWR_PWM	SLOW_MODE
-#define UFS_MSM_LIMIT_TX_PWR_PWM	SLOW_MODE
-#define UFS_MSM_LIMIT_RX_PWR_HS		FAST_MODE
-#define UFS_MSM_LIMIT_TX_PWR_HS		FAST_MODE
-#define UFS_MSM_LIMIT_HS_RATE		PA_HS_MODE_A
-#define UFS_MSM_LIMIT_DESIRED_MODE	FAST
 
 struct ufs_msm_dev_params {
 	u32 pwm_rx_gear;	/* pwm rx gear to work in */
@@ -1436,24 +1394,6 @@ struct ufs_msm_dev_params {
 	u32 tx_pwr_hs;		/* tx hs working pwr */
 	u32 hs_rate;		/* rate A/B to work in HS */
 	u32 desired_working_mode;
-};
-
-enum ufs_pwm_gear_tag {
-	UFS_PWM_DONT_CHANGE,	/* Don't change Gear */
-	UFS_PWM_G1,		/* PWM Gear 1 (default for reset) */
-	UFS_PWM_G2,		/* PWM Gear 2 */
-	UFS_PWM_G3,		/* PWM Gear 3 */
-	UFS_PWM_G4,		/* PWM Gear 4 */
-	UFS_PWM_G5,		/* PWM Gear 5 */
-	UFS_PWM_G6,		/* PWM Gear 6 */
-	UFS_PWM_G7,		/* PWM Gear 7 */
-};
-
-enum ufs_hs_gear_tag {
-	UFS_HS_DONT_CHANGE,	/* Don't change Gear */
-	UFS_HS_G1,		/* HS Gear 1 (default for reset) */
-	UFS_HS_G2,		/* HS Gear 2 */
-	UFS_HS_G3,		/* HS Gear 3 */
 };
 
 /**
@@ -1610,72 +1550,14 @@ static int get_pwr_dev_param(struct ufs_msm_dev_params *msm_param,
 	return 0;
 }
 
-static unsigned long
-msm_ufs_cfg_timers(struct ufs_hba *hba, u32 gear, u32 hs)
-{
-	struct ufs_clk_info *clki;
-	u32 core_clk_period_in_ns;
-	u32 tx_clk_cycles_per_us = 0;
-	unsigned long core_clk_rate = 0;
-
-	static u32 pwm_fr_table[][2] = {
-		{UFS_PWM_G1, 0x1},
-		{UFS_PWM_G2, 0x1},
-		{UFS_PWM_G3, 0x1},
-		{UFS_PWM_G4, 0x1},
-	};
-
-	static u32 hs_fr_table_rA[][2] = {
-		{UFS_HS_G1, 0x1F},
-		{UFS_HS_G2, 0x3e},
-	};
-
-	if (gear == 0 && hs == 0) {
-		gear = UFS_PWM_G1;
-		hs = SLOWAUTO_MODE;
-	}
-
-	list_for_each_entry(clki, &hba->clk_list_head, list) {
-		if (!strcmp(clki->name, "core_clk"))
-			core_clk_rate = clk_get_rate(clki->clk);
-	}
-
-	/* If frequency is smaller than 1MHz, set to 1MHz */
-	if (core_clk_rate < DEFAULT_CLK_RATE_HZ)
-		core_clk_rate = DEFAULT_CLK_RATE_HZ;
-
-	core_clk_period_in_ns = NSEC_PER_SEC / core_clk_rate;
-	core_clk_period_in_ns <<= OFFSET_CLK_NS_REG;
-	core_clk_period_in_ns &= MASK_CLK_NS_REG;
-
-	switch (hs) {
-	case FASTAUTO_MODE:
-	case FAST_MODE:
-		tx_clk_cycles_per_us = hs_fr_table_rA[gear-1][1];
-		break;
-	case SLOWAUTO_MODE:
-	case SLOW_MODE:
-		tx_clk_cycles_per_us = pwm_fr_table[gear-1][1];
-		break;
-	case UNCHANGED:
-	default:
-		pr_err("%s: power parameter not valid\n", __func__);
-		return core_clk_rate;
-	}
-
-	/* this register 2 fields shall be written at once */
-	ufshcd_writel(hba, core_clk_period_in_ns | tx_clk_cycles_per_us,
-						REG_UFS_TX_SYMBOL_CLK_NS_US);
-	return core_clk_rate;
-}
-
 static int msm_ufs_pwr_change_notify(struct ufs_hba *hba,
 				     bool status,
 				     struct ufs_pa_layer_attr *dev_max_params,
 				     struct ufs_pa_layer_attr *dev_req_params)
 {
 	int val;
-	struct msm_ufs_phy *phy = hba->priv;
+	struct msm_ufs_host *host = hba->priv;
+	struct msm_ufs_phy *phy = host->phy;
 	struct ufs_msm_dev_params ufs_msm_cap;
 	int ret = 0;
 
@@ -1687,8 +1569,12 @@ static int msm_ufs_pwr_change_notify(struct ufs_hba *hba,
 
 	switch (status) {
 	case PRE_CHANGE:
+		if (hba->quirks & UFSHCD_QUIRK_BROKEN_2_TX_LANES)
+			ufs_msm_cap.tx_lanes = 1;
+		else
+			ufs_msm_cap.tx_lanes = UFS_MSM_LIMIT_NUM_LANES_TX;
+
 		ufs_msm_cap.rx_lanes = UFS_MSM_LIMIT_NUM_LANES_RX;
-		ufs_msm_cap.tx_lanes = UFS_MSM_LIMIT_NUM_LANES_TX;
 		ufs_msm_cap.hs_rx_gear = UFS_MSM_LIMIT_HSGEAR_RX;
 		ufs_msm_cap.hs_tx_gear = UFS_MSM_LIMIT_HSGEAR_TX;
 		ufs_msm_cap.pwm_rx_gear = UFS_MSM_LIMIT_PWMGEAR_RX;
@@ -1711,12 +1597,27 @@ static int msm_ufs_pwr_change_notify(struct ufs_hba *hba,
 
 		break;
 	case POST_CHANGE:
-		msm_ufs_cfg_timers(hba, dev_req_params->gear_rx,
-							dev_req_params->pwr_rx);
+		if (!msm_ufs_cfg_timers(hba, dev_req_params->gear_rx,
+					dev_req_params->pwr_rx,
+					dev_req_params->hs_rate)) {
+			dev_err(hba->dev, "%s: msm_ufs_cfg_timers() failed\n",
+				__func__);
+			/*
+			 * we return error code at the end of the routine,
+			 * but continue to configure UFS_PHY_TX_LANE_ENABLE
+			 * and bus voting as usual
+			 */
+			ret = -EINVAL;
+		}
 
 		val = ~(MAX_U32 << dev_req_params->lane_tx);
 		writel_relaxed(val, phy->mmio + UFS_PHY_TX_LANE_ENABLE);
 		mb();
+
+		/* cache the power mode parameters to use internally */
+		memcpy(&host->dev_req_params,
+				dev_req_params, sizeof(*dev_req_params));
+		msm_ufs_update_bus_bw_vote(host);
 		break;
 	default:
 		ret = -EINVAL;
@@ -1761,10 +1662,223 @@ static void msm_ufs_advertise_quirks(struct ufs_hba *hba)
 			      | UFSHCD_QUIRK_BROKEN_HIBERN8
 			      | UFSHCD_QUIRK_BROKEN_VER_REG_1_1
 			      | UFSHCD_QUIRK_BROKEN_CAP_64_BIT_0
-			      | UFSHCD_QUIRK_BROKEN_DEVICE_Q_CMND
-			      | UFSHCD_QUIRK_BROKEN_PWR_MODE_CHANGE
 			      | UFSHCD_QUIRK_DELAY_BEFORE_DME_CMDS
+			      | UFSHCD_QUIRK_BROKEN_2_TX_LANES
 			      | UFSHCD_QUIRK_BROKEN_SUSPEND);
+}
+
+static int msm_ufs_get_bus_vote(struct msm_ufs_host *host,
+		const char *speed_mode)
+{
+	struct device *dev = host->hba->dev;
+	struct device_node *np = dev->of_node;
+	int err;
+	const char *key = "qcom,bus-vector-names";
+
+	if (!speed_mode) {
+		err = -EINVAL;
+		goto out;
+	}
+
+	if (host->bus_vote.is_max_bw_needed && !!strcmp(speed_mode, "MIN"))
+		err = of_property_match_string(np, key, "MAX");
+	else
+		err = of_property_match_string(np, key, speed_mode);
+
+out:
+	if (err < 0)
+		dev_err(dev, "%s: Invalid %s mode %d\n",
+				__func__, speed_mode, err);
+	return err;
+}
+
+static int msm_ufs_set_bus_vote(struct msm_ufs_host *host, int vote)
+{
+	int err = 0;
+
+	if (vote != host->bus_vote.curr_vote) {
+		err = msm_bus_scale_client_update_request(
+				host->bus_vote.client_handle, vote);
+		if (err) {
+			dev_err(host->hba->dev,
+				"%s: msm_bus_scale_client_update_request() failed: bus_client_handle=0x%x, vote=%d, err=%d\n",
+				__func__, host->bus_vote.client_handle,
+				vote, err);
+			goto out;
+		}
+
+		host->bus_vote.curr_vote = vote;
+	}
+out:
+	return err;
+}
+
+static int msm_ufs_get_speed_mode(struct ufs_pa_layer_attr *p, char *result)
+{
+	int err = 0;
+	int gear = max_t(u32, p->gear_rx, p->gear_tx);
+	int lanes = max_t(u32, p->lane_rx, p->lane_tx);
+	int pwr = max_t(u32, map_unmap_pwr_mode(p->pwr_rx, true),
+			map_unmap_pwr_mode(p->pwr_tx, true));
+
+	/* default to PWM Gear 1, Lane 1 if power mode is not initialized */
+	if (!gear)
+		gear = 1;
+
+	if (!lanes)
+		lanes = 1;
+
+	if (!p->pwr_rx && !p->pwr_tx)
+		pwr = 0;
+
+	pwr = map_unmap_pwr_mode(pwr, false);
+	if (pwr < 0) {
+		err = pwr;
+		goto out;
+	}
+
+	if (pwr == FAST_MODE || pwr == FASTAUTO_MODE)
+		snprintf(result, BUS_VECTOR_NAME_LEN, "%s_R%s_G%d_L%d", "HS",
+				p->hs_rate == PA_HS_MODE_B ? "B" : "A",
+				gear, lanes);
+	else
+		snprintf(result, BUS_VECTOR_NAME_LEN, "%s_G%d_L%d",
+				"PWM", gear, lanes);
+out:
+	return err;
+}
+
+static int msm_ufs_update_bus_bw_vote(struct msm_ufs_host *host)
+{
+	int vote;
+	int err = 0;
+	char mode[BUS_VECTOR_NAME_LEN];
+
+	err = msm_ufs_get_speed_mode(&host->dev_req_params, mode);
+	if (err)
+		goto out;
+
+	vote = msm_ufs_get_bus_vote(host, mode);
+	if (vote >= 0)
+		err = msm_ufs_set_bus_vote(host, vote);
+	else
+		err = vote;
+
+out:
+	if (err)
+		dev_err(host->hba->dev, "%s: failed %d\n", __func__, err);
+	else
+		host->bus_vote.saved_vote = vote;
+	return err;
+}
+
+static int msm_ufs_setup_clocks(struct ufs_hba *hba, bool on)
+{
+	struct msm_ufs_host *host = hba->priv;
+	int err;
+	int vote;
+
+	/*
+	 * In case msm_ufs_init() is not yet done, simply ignore.
+	 * This msm_ufs_setup_clocks() shall be called from
+	 * msm_ufs_init() after init is done.
+	 */
+	if (!host)
+		return 0;
+
+	if (on) {
+		err = msm_ufs_enable_phy_iface_clk(host->phy);
+		if (err)
+			goto out;
+
+		vote = host->bus_vote.saved_vote;
+		if (vote == host->bus_vote.min_bw_vote)
+			msm_ufs_update_bus_bw_vote(host);
+	} else {
+		/* M-PHY RMMI interface clocks can be turned off */
+		msm_ufs_disable_phy_iface_clk(host->phy);
+
+		vote = host->bus_vote.min_bw_vote;
+	}
+
+	err = msm_ufs_set_bus_vote(host, vote);
+	if (err)
+		dev_err(hba->dev, "%s: set bus vote failed %d\n",
+				__func__, err);
+
+out:
+	return err;
+}
+
+static ssize_t
+show_ufs_to_mem_max_bus_bw(struct device *dev, struct device_attribute *attr,
+			char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct msm_ufs_host *host = hba->priv;
+
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+			host->bus_vote.is_max_bw_needed);
+}
+
+static ssize_t
+store_ufs_to_mem_max_bus_bw(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct msm_ufs_host *host = hba->priv;
+	uint32_t value;
+
+	if (!kstrtou32(buf, 0, &value)) {
+		host->bus_vote.is_max_bw_needed = !!value;
+		msm_ufs_update_bus_bw_vote(host);
+	}
+
+	return count;
+}
+
+static int msm_ufs_bus_register(struct msm_ufs_host *host)
+{
+	int err;
+	struct msm_bus_scale_pdata *bus_pdata;
+	struct device *dev = host->hba->dev;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct device_node *np = dev->of_node;
+
+	bus_pdata = msm_bus_cl_get_pdata(pdev);
+	if (!bus_pdata) {
+		dev_err(dev, "%s: failed to get bus vectors\n", __func__);
+		err = -ENODATA;
+		goto out;
+	}
+
+	err = of_property_count_strings(np, "qcom,bus-vector-names");
+	if (err < 0 || err != bus_pdata->num_usecases) {
+		dev_err(dev, "%s: qcom,bus-vector-names not specified correctly %d\n",
+				__func__, err);
+		goto out;
+	}
+
+	host->bus_vote.client_handle = msm_bus_scale_register_client(bus_pdata);
+	if (!host->bus_vote.client_handle) {
+		dev_err(dev, "%s: msm_bus_scale_register_client failed\n",
+				__func__);
+		err = -EFAULT;
+		goto out;
+	}
+
+	/* cache the vote index for minimum and maximum bandwidth */
+	host->bus_vote.min_bw_vote = msm_ufs_get_bus_vote(host, "MIN");
+	host->bus_vote.max_bw_vote = msm_ufs_get_bus_vote(host, "MAX");
+
+	host->bus_vote.max_bus_bw.show = show_ufs_to_mem_max_bus_bw;
+	host->bus_vote.max_bus_bw.store = store_ufs_to_mem_max_bus_bw;
+	sysfs_attr_init(&host->bus_vote.max_bus_bw.attr);
+	host->bus_vote.max_bus_bw.attr.name = "max_bus_bw";
+	host->bus_vote.max_bus_bw.attr.mode = S_IRUGO | S_IWUSR;
+	err = device_create_file(dev, &host->bus_vote.max_bus_bw);
+out:
+	return err;
 }
 
 /**
@@ -1780,28 +1894,46 @@ static void msm_ufs_advertise_quirks(struct ufs_hba *hba)
 static int msm_ufs_init(struct ufs_hba *hba)
 {
 	int err;
+	struct device *dev = hba->dev;
 	struct msm_ufs_phy *phy = msm_get_ufs_phy(hba->dev);
+	struct msm_ufs_host *host;
 
 	if (IS_ERR(phy)) {
 		err = PTR_ERR(phy);
 		goto out;
 	}
 
-	hba->priv = (void *)phy;
+	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
+	if (!host) {
+		err = -ENOMEM;
+		dev_err(dev, "%s: no memory for msm ufs host\n", __func__);
+		goto out;
+	}
+
+	host->phy = phy;
+	host->hba = hba;
+	hba->priv = (void *)host;
+
+	err = msm_ufs_bus_register(host);
+	if (err)
+		goto out_host_free;
 
 	err = msm_ufs_phy_power_on(phy);
 	if (err)
-		hba->priv = NULL;
+		goto out_unregister_bus;
+
+	err = msm_ufs_init_lane_clks(host);
+	if (err)
+		goto out_disable_phy;
 
 	msm_ufs_advertise_quirks(hba);
 	if (hba->quirks & UFSHCD_QUIRK_BROKEN_SUSPEND) {
 		/*
-		 * During runtime suspend keep the device and the link active
-		 * but shut-off the system clocks. During system suspend power
-		 * off both link and device.
+		 * During suspend keep the device and the link active
+		 * but shut-off the system clocks.
 		 */
 		hba->rpm_lvl = UFS_PM_LVL_0;
-		hba->spm_lvl = UFS_PM_LVL_4;
+		hba->spm_lvl = UFS_PM_LVL_0;
 
 	} else if (hba->quirks & UFSHCD_QUIRK_BROKEN_HIBERN8) {
 		/*
@@ -1819,14 +1951,30 @@ static int msm_ufs_init(struct ufs_hba *hba)
 		hba->rpm_lvl = UFS_PM_LVL_3;
 		hba->spm_lvl = UFS_PM_LVL_3;
 	}
+
+	hba->caps |= UFSHCD_CAP_CLK_GATING |
+			UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
+	msm_ufs_setup_clocks(hba, true);
+	goto out;
+
+out_disable_phy:
+	msm_ufs_phy_power_off(phy);
+out_unregister_bus:
+	msm_bus_scale_unregister_client(host->bus_vote.client_handle);
+out_host_free:
+	devm_kfree(dev, host);
+	hba->priv = NULL;
 out:
 	return err;
 }
 
 static void msm_ufs_exit(struct ufs_hba *hba)
 {
-	struct msm_ufs_phy *phy = hba->priv;
+	struct msm_ufs_host *host = hba->priv;
+	struct msm_ufs_phy *phy = host->phy;
 
+	msm_bus_scale_unregister_client(host->bus_vote.client_handle);
+	msm_ufs_disable_lane_clks(host);
 	msm_ufs_phy_power_off(phy);
 }
 
@@ -1977,6 +2125,7 @@ const struct ufs_hba_variant_ops ufs_hba_msm_vops = {
 	.name                   = "msm",
 	.init                   = msm_ufs_init,
 	.exit                   = msm_ufs_exit,
+	.setup_clocks           = msm_ufs_setup_clocks,
 	.hce_enable_notify      = msm_ufs_hce_enable_notify,
 	.link_startup_notify    = msm_ufs_link_startup_notify,
 	.pwr_change_notify	= msm_ufs_pwr_change_notify,

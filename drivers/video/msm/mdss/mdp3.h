@@ -19,10 +19,13 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 
-#include <mach/iommu_domains.h>
+#include <linux/msm_iommu_domains.h>
 
 #include "mdp3_dma.h"
 #include "mdss_fb.h"
+
+#define MDP_VSYNC_CLK_RATE	19200000
+#define KOFF_TIMEOUT msecs_to_jiffies(84)
 
 enum  {
 	MDP3_CLK_AHB,
@@ -152,6 +155,10 @@ struct mdp3_hw_resource {
 	struct mdss_panel_cfg pan_cfg;
 
 	int clk_prepare_count;
+	int cont_splash_en;
+
+	bool batfet_required;
+	struct regulator *batfet;
 };
 
 struct mdp3_img_data {
@@ -189,6 +196,13 @@ void mdp3_free(void);
 int mdp3_parse_dt_splash(struct msm_fb_data_type *mfd);
 void mdp3_release_splash_memory(void);
 int mdp3_create_sysfs_link(struct device *dev);
+int mdp3_get_cont_spash_en(void);
+int mdp3_get_mdp_dsi_clk(void);
+int mdp3_put_mdp_dsi_clk(void);
+
+int mdp3_misr_set(struct mdp_misr *misr_req);
+int mdp3_misr_get(struct mdp_misr *misr_resp);
+void mdp3_batfet_ctrl(int enable);
 
 #define MDP3_REG_WRITE(addr, val) writel_relaxed(val, mdp3_res->mdp_base + addr)
 #define MDP3_REG_READ(addr) readl_relaxed(mdp3_res->mdp_base + addr)

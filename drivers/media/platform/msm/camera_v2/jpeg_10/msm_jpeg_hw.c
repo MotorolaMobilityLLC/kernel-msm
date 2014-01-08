@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -216,15 +216,15 @@ void msm_jpeg_hw_we_buffer_update(struct msm_jpeg_hw_buf *p_input,
 	if (pingpong_index == 0) {
 		hw_cmd_p = &hw_cmd_we_ping_update[0];
 		hw_cmd_p->data = p_input->y_buffer_addr;
-		JPEG_PR_ERR("%s Output pln0 buffer address is %x\n", __func__,
+		JPEG_DBG_HIGH("%s Output pln0 buffer address is %x\n", __func__,
 			p_input->y_buffer_addr);
 		msm_jpeg_hw_write(hw_cmd_p++, base);
 		hw_cmd_p->data = p_input->cbcr_buffer_addr;
-		JPEG_PR_ERR("%s Output pln1 buffer address is %x\n", __func__,
+		JPEG_DBG_HIGH("%s Output pln1 buffer address is %x\n", __func__,
 			p_input->cbcr_buffer_addr);
 		msm_jpeg_hw_write(hw_cmd_p++, base);
 		hw_cmd_p->data = p_input->pln2_addr;
-		JPEG_PR_ERR("%s Output pln2 buffer address is %x\n", __func__,
+		JPEG_DBG_HIGH("%s Output pln2 buffer address is %x\n", __func__,
 			p_input->pln2_addr);
 		msm_jpeg_hw_write(hw_cmd_p++, base);
 	}
@@ -337,6 +337,11 @@ int msm_jpeg_hw_exec_cmds(struct msm_jpeg_hw_cmd *hw_cmd_p, uint32_t m_cmds,
 				__LINE__, hw_cmd_p->offset, max_size);
 			return -EFAULT;
 		}
+		if (hw_cmd_p->offset & 0x3) {
+			JPEG_PR_ERR("%s:%d] %d Invalid alignment\n", __func__,
+					__LINE__, hw_cmd_p->offset);
+			return -EFAULT;
+		}
 
 		switch (hw_cmd_p->type) {
 		case MSM_JPEG_HW_CMD_TYPE_READ:
@@ -393,7 +398,7 @@ void msm_jpeg_io_dump(void *base, int size)
 	p_str = line_str;
 	for (i = 0; i < size/4; i++) {
 		if (i % 4 == 0) {
-			snprintf(p_str, 12, "%08x: ", (u32) p);
+			snprintf(p_str, 12, "%08lx: ", (unsigned long)p);
 			p_str += 10;
 		}
 		data = readl_relaxed(p++);

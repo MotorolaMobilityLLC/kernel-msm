@@ -20,6 +20,17 @@
 #include <linux/random.h>
 #include "debugfs.h"
 
+enum field_width {
+	BYTE	= 1,
+	WORD	= 2,
+};
+
+struct desc_field_offset {
+	char *name;
+	int offset;
+	enum field_width width_byte;
+};
+
 #ifdef CONFIG_UFS_FAULT_INJECTION
 
 #define INJECT_COMMAND_HANG (0x0)
@@ -238,7 +249,7 @@ static ssize_t ufsdbg_tag_stats_write(struct file *filp,
 		pr_debug("%s: Enabling & Resetting UFS tag statistics",
 			 __func__);
 		memset(ufs_stats->tag_stats, 0,
-		       sizeof(unsigned int) * hba->nutrs);
+		       sizeof(*ufs_stats->tag_stats) * hba->nutrs);
 	}
 
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
@@ -291,8 +302,10 @@ static int ufsdbg_host_regs_show(struct seq_file *file, void *data)
 {
 	struct ufs_hba *hba = (struct ufs_hba *)file->private;
 
+	ufshcd_hold(hba, false);
 	ufsdbg_pr_buf_to_std(file, hba->mmio_base, UFSHCI_REG_SPACE_SIZE,
 			"host regs");
+	ufshcd_release(hba);
 	return 0;
 }
 
@@ -305,6 +318,79 @@ static const struct file_operations ufsdbg_host_regs_fops = {
 	.open		= ufsdbg_host_regs_open,
 	.read		= seq_read,
 };
+
+static int ufsdbg_dump_device_desc_show(struct seq_file *file, void *data)
+{
+	int err = 0;
+	int buff_len = QUERY_DESC_DEVICE_MAX_SIZE;
+	u8 desc_buf[QUERY_DESC_DEVICE_MAX_SIZE];
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+
+	struct desc_field_offset device_desc_field_name[] = {
+		{"bLength",		0x00, BYTE},
+		{"bDescriptorType",	0x01, BYTE},
+		{"bDevice",		0x02, BYTE},
+		{"bDeviceClass",	0x03, BYTE},
+		{"bDeviceSubClass",	0x04, BYTE},
+		{"bProtocol",		0x05, BYTE},
+		{"bNumberLU",		0x06, BYTE},
+		{"bNumberWLU",		0x07, BYTE},
+		{"bBootEnable",		0x08, BYTE},
+		{"bDescrAccessEn",	0x09, BYTE},
+		{"bInitPowerMode",	0x0A, BYTE},
+		{"bHighPriorityLUN",	0x0B, BYTE},
+		{"bSecureRemovalType",	0x0C, BYTE},
+		{"bSecurityLU",		0x0D, BYTE},
+		{"Reserved",		0x0E, BYTE},
+		{"bInitActiveICCLevel",	0x0F, BYTE},
+		{"wSpecVersion",	0x10, WORD},
+		{"wManufactureDate",	0x12, WORD},
+		{"iManufactureName",	0x14, BYTE},
+		{"iProductName",	0x15, BYTE},
+		{"iSerialNumber",	0x16, BYTE},
+		{"iOemID",		0x17, BYTE},
+		{"wManufactureID",	0x18, WORD},
+		{"bUD0BaseOffset",	0x1A, BYTE},
+		{"bUDConfigPLength",	0x1B, BYTE},
+		{"bDeviceRTTCap",	0x1C, BYTE},
+		{"wPeriodicRTCUpdate",	0x1D, WORD}
+	};
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_device_desc(hba, desc_buf, buff_len);
+	pm_runtime_put_sync(hba->dev);
+
+	if (!err) {
+		int i;
+		struct desc_field_offset *tmp;
+		for (i = 0; i < ARRAY_SIZE(device_desc_field_name); ++i) {
+			tmp = &device_desc_field_name[i];
+
+			if (tmp->width_byte == BYTE) {
+				seq_printf(file,
+					   "Device Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					   tmp->offset,
+					   tmp->name,
+					   (u8)desc_buf[tmp->offset]);
+			} else if (tmp->width_byte == WORD) {
+				seq_printf(file,
+					   "Device Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					   tmp->offset,
+					   tmp->name,
+					   *(u16 *)&desc_buf[tmp->offset]);
+			} else {
+				seq_printf(file,
+				"Device Descriptor[offset 0x%x]: %s. Wrong Width = %d",
+				tmp->offset, tmp->name, tmp->width_byte);
+			}
+		}
+	} else {
+		seq_printf(file, "Reading Device Descriptor failed. err = %d\n",
+			   err);
+	}
+
+	return err;
+}
 
 static int ufsdbg_show_hba_show(struct seq_file *file, void *data)
 {
@@ -324,6 +410,8 @@ static int ufsdbg_show_hba_show(struct seq_file *file, void *data)
 			hba->auto_bkops_enabled);
 
 	seq_printf(file, "hba->ufshcd_state = 0x%x\n", hba->ufshcd_state);
+	seq_printf(file, "hba->clk_gating.state = 0x%x\n",
+			hba->clk_gating.state);
 	seq_printf(file, "hba->eh_flags = 0x%x\n", hba->eh_flags);
 	seq_printf(file, "hba->intr_mask = 0x%x\n", hba->intr_mask);
 	seq_printf(file, "hba->ee_ctrl_mask = 0x%x\n", hba->ee_ctrl_mask);
@@ -344,6 +432,17 @@ static int ufsdbg_show_hba_open(struct inode *inode, struct file *file)
 
 static const struct file_operations ufsdbg_show_hba_fops = {
 	.open		= ufsdbg_show_hba_open,
+	.read		= seq_read,
+};
+
+static int ufsdbg_dump_device_desc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			   ufsdbg_dump_device_desc_show, inode->i_private);
+}
+
+static const struct file_operations ufsdbg_dump_device_desc = {
+	.open		= ufsdbg_dump_device_desc_open,
 	.read		= seq_read,
 };
 
@@ -397,6 +496,16 @@ void ufsdbg_add_debugfs(struct ufs_hba *hba)
 				&ufsdbg_show_hba_fops);
 	if (!hba->debugfs_files.show_hba) {
 		dev_err(hba->dev, "%s:  NULL hba file, exiting", __func__);
+		goto err;
+	}
+
+	hba->debugfs_files.dump_dev_desc =
+		debugfs_create_file("dump_device_desc", S_IRUSR,
+				    hba->debugfs_files.debugfs_root, hba,
+				    &ufsdbg_dump_device_desc);
+	if (!hba->debugfs_files.dump_dev_desc) {
+		dev_err(hba->dev,
+			"%s:  NULL dump_device_desc file, exiting", __func__);
 		goto err;
 	}
 

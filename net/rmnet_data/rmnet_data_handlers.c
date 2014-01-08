@@ -23,6 +23,9 @@
 #include "rmnet_data_vnd.h"
 #include "rmnet_map.h"
 
+RMNET_LOG_MODULE(RMNET_DATA_LOGMASK_HANDLER);
+
+
 void rmnet_egress_handler(struct sk_buff *skb,
 			  struct rmnet_logical_ep_conf_s *ep);
 
@@ -357,6 +360,8 @@ static int rmnet_map_egress_handler(struct sk_buff *skb,
 		else
 			map_header->mux_id = ep->mux_id;
 	}
+
+	skb->protocol = htons(ETH_P_MAP);
 
 	if (config->egress_data_format & RMNET_EGRESS_FORMAT_AGGREGATION) {
 		rmnet_map_aggregate(skb, config);

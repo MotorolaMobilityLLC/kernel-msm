@@ -37,9 +37,9 @@
 #include <linux/pm_runtime.h>
 #include <linux/mmc/slot-gpio.h>
 #include <linux/dma-mapping.h>
+#include <linux/irqchip/msm-mpm-irq.h>
 #include <mach/gpio.h>
 #include <mach/msm_bus.h>
-#include <mach/mpm.h>
 #include <linux/iopoll.h>
 
 #include "sdhci-pltfm.h"
@@ -104,6 +104,10 @@ enum sdc_mpm_pin_state {
 #define CORE_HC_SELECT_IN_MASK	(7 << 19)
 
 #define CORE_VENDOR_SPEC_CAPABILITIES0	0x11C
+#define CORE_8_BIT_SUPPORT		(1 << 18)
+#define CORE_3_3V_SUPPORT		(1 << 24)
+#define CORE_3_0V_SUPPORT		(1 << 25)
+#define CORE_1_8V_SUPPORT		(1 << 26)
 #define CORE_SYS_BUS_SUPPORT_64_BIT	28
 
 #define CORE_VENDOR_SPEC_ADMA_ERR_ADDR0	0x114
@@ -154,6 +158,7 @@ enum sdc_mpm_pin_state {
 #define CORE_VERSION_MINOR_SHIFT	16
 #define CORE_VERSION_MAJOR_MASK		0xF0000000
 #define CORE_VERSION_MAJOR_SHIFT	28
+#define CORE_VERSION_TARGET_MASK	0x000000FF
 
 /*
  * Waiting until end of potential AHB access for data:
@@ -350,6 +355,7 @@ struct sdhci_msm_host {
 	bool en_auto_cmd21;
 	struct device_attribute auto_cmd21_attr;
 	bool is_sdiowakeup_enabled;
+	atomic_t controller_clock;
 };
 
 enum vdd_io_level {
@@ -2386,6 +2392,50 @@ static unsigned int sdhci_msm_get_sup_clk_rate(struct sdhci_host *host,
 	return sel_clk;
 }
 
+static int sdhci_msm_enable_controller_clock(struct sdhci_host *host)
+{
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+	int rc = 0;
+
+	if (atomic_read(&msm_host->controller_clock))
+		return 0;
+
+	sdhci_msm_bus_voting(host, 1);
+
+	if (!IS_ERR(msm_host->pclk)) {
+		rc = clk_prepare_enable(msm_host->pclk);
+		if (rc) {
+			pr_err("%s: %s: failed to enable the pclk with error %d\n",
+			       mmc_hostname(host->mmc), __func__, rc);
+			goto remove_vote;
+		}
+	}
+
+	rc = clk_prepare_enable(msm_host->clk);
+	if (rc) {
+		pr_err("%s: %s: failed to enable the host-clk with error %d\n",
+		       mmc_hostname(host->mmc), __func__, rc);
+		goto disable_pclk;
+	}
+
+	atomic_set(&msm_host->controller_clock, 1);
+	pr_debug("%s: %s: enabled controller clock\n",
+			mmc_hostname(host->mmc), __func__);
+	goto out;
+
+disable_pclk:
+	if (!IS_ERR(msm_host->pclk))
+		clk_disable_unprepare(msm_host->pclk);
+remove_vote:
+	if (msm_host->msm_bus_vote.client_handle)
+		sdhci_msm_bus_cancel_work_and_set_vote(host, 0);
+out:
+	return rc;
+}
+
+
+
 static int sdhci_msm_prepare_clocks(struct sdhci_host *host, bool enable)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -2396,36 +2446,32 @@ static int sdhci_msm_prepare_clocks(struct sdhci_host *host, bool enable)
 		pr_debug("%s: request to enable clocks\n",
 				mmc_hostname(host->mmc));
 
-		sdhci_msm_bus_voting(host, 1);
+		/*
+		 * The bus-width or the clock rate might have changed
+		 * after controller clocks are enbaled, update bus vote
+		 * in such case.
+		 */
+		if (atomic_read(&msm_host->controller_clock))
+			sdhci_msm_bus_voting(host, 1);
+
+		rc = sdhci_msm_enable_controller_clock(host);
+		if (rc)
+			goto remove_vote;
 
 		if (!IS_ERR_OR_NULL(msm_host->bus_clk)) {
 			rc = clk_prepare_enable(msm_host->bus_clk);
 			if (rc) {
 				pr_err("%s: %s: failed to enable the bus-clock with error %d\n",
 					mmc_hostname(host->mmc), __func__, rc);
-				goto remove_vote;
+				goto disable_controller_clk;
 			}
-		}
-		if (!IS_ERR(msm_host->pclk)) {
-			rc = clk_prepare_enable(msm_host->pclk);
-			if (rc) {
-				pr_err("%s: %s: failed to enable the pclk with error %d\n",
-					mmc_hostname(host->mmc), __func__, rc);
-				goto disable_bus_clk;
-			}
-		}
-		rc = clk_prepare_enable(msm_host->clk);
-		if (rc) {
-			pr_err("%s: %s: failed to enable the host-clk with error %d\n",
-				mmc_hostname(host->mmc), __func__, rc);
-			goto disable_pclk;
 		}
 		if (!IS_ERR(msm_host->ff_clk)) {
 			rc = clk_prepare_enable(msm_host->ff_clk);
 			if (rc) {
 				pr_err("%s: %s: failed to enable the ff_clk with error %d\n",
 					mmc_hostname(host->mmc), __func__, rc);
-				goto disable_clk;
+				goto disable_bus_clk;
 			}
 		}
 		if (!IS_ERR(msm_host->sleep_clk)) {
@@ -2461,6 +2507,7 @@ static int sdhci_msm_prepare_clocks(struct sdhci_host *host, bool enable)
 		if (!IS_ERR_OR_NULL(msm_host->bus_clk))
 			clk_disable_unprepare(msm_host->bus_clk);
 
+		atomic_set(&msm_host->controller_clock, 0);
 		sdhci_msm_bus_voting(host, 0);
 	}
 	atomic_set(&msm_host->clks_on, enable);
@@ -2468,15 +2515,15 @@ static int sdhci_msm_prepare_clocks(struct sdhci_host *host, bool enable)
 disable_ff_clk:
 	if (!IS_ERR_OR_NULL(msm_host->ff_clk))
 		clk_disable_unprepare(msm_host->ff_clk);
-disable_clk:
-	if (!IS_ERR_OR_NULL(msm_host->clk))
-		clk_disable_unprepare(msm_host->clk);
-disable_pclk:
-	if (!IS_ERR_OR_NULL(msm_host->pclk))
-		clk_disable_unprepare(msm_host->pclk);
 disable_bus_clk:
 	if (!IS_ERR_OR_NULL(msm_host->bus_clk))
 		clk_disable_unprepare(msm_host->bus_clk);
+disable_controller_clk:
+	if (!IS_ERR_OR_NULL(msm_host->clk))
+		clk_disable_unprepare(msm_host->clk);
+	if (!IS_ERR_OR_NULL(msm_host->pclk))
+		clk_disable_unprepare(msm_host->pclk);
+	atomic_set(&msm_host->controller_clock, 0);
 remove_vote:
 	if (msm_host->msm_bus_vote.client_handle)
 		sdhci_msm_bus_cancel_work_and_set_vote(host, 0);
@@ -2801,6 +2848,7 @@ static struct sdhci_ops sdhci_msm_ops = {
 	.disable_data_xfer = sdhci_msm_disable_data_xfer,
 	.dump_vendor_regs = sdhci_msm_dump_vendor_regs,
 	.config_auto_tuning_cmd = sdhci_msm_config_auto_tuning_cmd,
+	.enable_controller_clock = sdhci_msm_enable_controller_clock,
 };
 
 static int sdhci_msm_cfg_mpm_pin_wakeup(struct sdhci_host *host, unsigned mode)
@@ -2833,6 +2881,33 @@ static int sdhci_msm_cfg_mpm_pin_wakeup(struct sdhci_host *host, unsigned mode)
 		break;
 	}
 	return ret;
+}
+
+static void sdhci_set_default_hw_caps(struct sdhci_msm_host *msm_host,
+		struct sdhci_host *host)
+{
+	u32 version, caps;
+	u16 minor;
+	u8 major;
+
+	version = readl_relaxed(msm_host->core_mem + CORE_MCI_VERSION);
+	major = (version & CORE_VERSION_MAJOR_MASK) >>
+			CORE_VERSION_MAJOR_SHIFT;
+	minor = version & CORE_VERSION_TARGET_MASK;
+
+	/*
+	 * Starting with SDCC 5 controller (core major version = 1)
+	 * controller won't advertise 3.0v and 8-bit features except for
+	 * some targets.
+	 */
+	if (major >= 1 && minor != 0x11 && minor != 0x12) {
+		caps = CORE_3_0V_SUPPORT;
+		if (msm_host->pdata->mmc_bus_width == MMC_CAP_8_BIT_DATA)
+			caps |= CORE_8_BIT_SUPPORT;
+		writel_relaxed(
+			(readl_relaxed(host->ioaddr + SDHCI_CAPABILITIES) |
+			caps), host->ioaddr + CORE_VENDOR_SPEC_CAPABILITIES0);
+	}
 }
 
 static int sdhci_msm_probe(struct platform_device *pdev)
@@ -2912,6 +2987,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		if (ret)
 			goto bus_clk_disable;
 	}
+	atomic_set(&msm_host->controller_clock, 1);
 
 	/* Setup SDC MMC clock */
 	msm_host->clk = devm_clk_get(&pdev->dev, "core_clk");
@@ -3005,6 +3081,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	writel_relaxed(readl_relaxed(msm_host->core_mem + CORE_HC_MODE) |
 			FF_CLK_SW_RST_DIS, msm_host->core_mem + CORE_HC_MODE);
 
+	sdhci_set_default_hw_caps(msm_host, host);
 	/*
 	 * CORE_SW_RST above may trigger power irq if previous status of PWRCTL
 	 * was either BUS_ON or IO_HIGH_V. So before we enable the power irq
@@ -3286,6 +3363,7 @@ static int sdhci_msm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_RUNTIME
 static int sdhci_msm_cfg_sdio_wakeup(struct sdhci_host *host, bool enable)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -3388,6 +3466,7 @@ skip_enable_host_irq:
 
 	return 0;
 }
+#endif
 
 #ifdef CONFIG_PM_SLEEP
 
@@ -3470,10 +3549,11 @@ static const struct dev_pm_ops sdhci_msm_pmops = {
 #define SDHCI_MSM_PMOPS (&sdhci_msm_pmops)
 
 #else
-#define SDHCI_PM_OPS NULL
+#define SDHCI_MSM_PMOPS NULL
 #endif
 static const struct of_device_id sdhci_msm_dt_match[] = {
 	{.compatible = "qcom,sdhci-msm"},
+	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sdhci_msm_dt_match);
 

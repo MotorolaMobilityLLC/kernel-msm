@@ -16,7 +16,6 @@
 #include <linux/msm_ion.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-#include <linux/memory_alloc.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/of_address.h>
@@ -28,7 +27,6 @@
 #include <linux/memblock.h>
 #include <linux/dma-mapping.h>
 #include <linux/dma-contiguous.h>
-#include <mach/ion.h>
 #include <mach/msm_memtypes.h>
 #include <asm/cacheflush.h>
 #include "../ion_priv.h"
@@ -366,135 +364,12 @@ int ion_do_cache_op(struct ion_client *client, struct ion_handle *handle,
 
 }
 
-static ion_phys_addr_t msm_ion_get_base(unsigned long size, int memory_type,
-				    unsigned int align)
-{
-	switch (memory_type) {
-	case ION_EBI_TYPE:
-		return allocate_contiguous_ebi_nomap(size, align);
-		break;
-	case ION_SMI_TYPE:
-		return allocate_contiguous_memory_nomap(size, MEMTYPE_SMI,
-							align);
-		break;
-	default:
-		pr_err("%s: Unknown memory type %d\n", __func__, memory_type);
-		return 0;
-	}
-}
-
-static struct ion_platform_heap *find_heap(const struct ion_platform_heap
-					   heap_data[],
-					   unsigned int nr_heaps,
-					   int heap_id)
-{
-	unsigned int i;
-	for (i = 0; i < nr_heaps; ++i) {
-		const struct ion_platform_heap *heap = &heap_data[i];
-		if (heap->id == heap_id)
-			return (struct ion_platform_heap *) heap;
-	}
-	return 0;
-}
-
-static void ion_set_base_address(struct ion_platform_heap *heap,
-			    struct ion_platform_heap *shared_heap,
-			    struct ion_co_heap_pdata *co_heap_data,
-			    struct ion_cp_heap_pdata *cp_data)
-{
-	heap->base = msm_ion_get_base(heap->size + shared_heap->size,
-					shared_heap->memory_type,
-					co_heap_data->align);
-	if (heap->base) {
-		shared_heap->base = heap->base + heap->size;
-		cp_data->secure_base = heap->base;
-		cp_data->secure_size = heap->size + shared_heap->size;
-	} else {
-		pr_err("%s: could not get memory for heap %s (id %x)\n",
-			__func__, heap->name, heap->id);
-	}
-}
-
-static void allocate_co_memory(struct ion_platform_heap *heap,
-			       struct ion_platform_heap heap_data[],
-			       unsigned int nr_heaps)
-{
-	struct ion_co_heap_pdata *co_heap_data =
-		(struct ion_co_heap_pdata *) heap->extra_data;
-
-	if (co_heap_data->adjacent_mem_id != INVALID_HEAP_ID) {
-		struct ion_platform_heap *shared_heap =
-			find_heap(heap_data, nr_heaps,
-				  co_heap_data->adjacent_mem_id);
-		if (shared_heap) {
-			struct ion_cp_heap_pdata *cp_data =
-			   (struct ion_cp_heap_pdata *) shared_heap->extra_data;
-			if (cp_data->fixed_position == FIXED_MIDDLE) {
-				if (!cp_data->secure_base) {
-					cp_data->secure_base = heap->base;
-					cp_data->secure_size =
-						heap->size + shared_heap->size;
-				}
-			} else if (!heap->base) {
-				ion_set_base_address(heap, shared_heap,
-					co_heap_data, cp_data);
-			}
-		}
-	}
-}
-
-/* Fixup heaps in board file to support two heaps being adjacent to each other.
- * A flag (adjacent_mem_id) in the platform data tells us that the heap phy
- * memory location must be adjacent to the specified heap. We do this by
- * carving out memory for both heaps and then splitting up the memory to the
- * two heaps. The heap specifying the "adjacent_mem_id" get the base of the
- * memory while heap specified in "adjacent_mem_id" get base+size as its
- * base address.
- * Note: Modifies platform data and allocates memory.
- */
-static void msm_ion_heap_fixup(struct ion_platform_heap heap_data[],
-			       unsigned int nr_heaps)
-{
-	unsigned int i;
-
-	for (i = 0; i < nr_heaps; i++) {
-		struct ion_platform_heap *heap = &heap_data[i];
-		if (heap->type == ION_HEAP_TYPE_CARVEOUT) {
-			if (heap->extra_data)
-				allocate_co_memory(heap, heap_data, nr_heaps);
-		}
-	}
-}
-
 static void msm_ion_allocate(struct ion_platform_heap *heap)
 {
 
 	if (!heap->base && heap->extra_data) {
-		unsigned int align = 0;
-		switch ((int) heap->type) {
-		case ION_HEAP_TYPE_CARVEOUT:
-			align =
-			((struct ion_co_heap_pdata *) heap->extra_data)->align;
-			break;
-		case ION_HEAP_TYPE_CP:
-		{
-			struct ion_cp_heap_pdata *data =
-				(struct ion_cp_heap_pdata *)
-				heap->extra_data;
-			align = data->align;
-			break;
-		}
-		default:
-			break;
-		}
-		if (align && !heap->base) {
-			heap->base = msm_ion_get_base(heap->size,
-						      heap->memory_type,
-						      align);
-			if (!heap->base)
-				pr_err("%s: could not get memory for heap %s "
-				   "(id %x)\n", __func__, heap->name, heap->id);
-		}
+		WARN(1, "Specifying carveout heaps without a base is deprecated. Convert to the DMA heap type instead");
+		return;
 	}
 }
 
@@ -538,7 +413,8 @@ static void check_for_heap_overlap(const struct ion_platform_heap heap_list[],
 }
 
 #ifdef CONFIG_OF
-static int msm_init_extra_data(struct ion_platform_heap *heap,
+static int msm_init_extra_data(struct device_node *node,
+			       struct ion_platform_heap *heap,
 			       const struct ion_heap_desc *heap_desc)
 {
 	int ret = 0;
@@ -562,6 +438,28 @@ static int msm_init_extra_data(struct ion_platform_heap *heap,
 					   GFP_KERNEL);
 		if (!heap->extra_data)
 			ret = -ENOMEM;
+		break;
+	}
+	case ION_HEAP_TYPE_SECURE_DMA:
+	{
+		unsigned int val;
+
+		ret = of_property_read_u32(node,
+					"qcom,default-prefetch-size", &val);
+
+		if (!ret) {
+			heap->extra_data = kzalloc(sizeof(struct ion_cma_pdata),
+					   GFP_KERNEL);
+
+			if (!heap->extra_data) {
+				ret = -ENOMEM;
+			} else {
+				struct ion_cma_pdata *extra = heap->extra_data;
+				extra->default_prefetch_size = val;
+			}
+		} else {
+			ret = 0;
+		}
 		break;
 	}
 	default:
@@ -623,7 +521,8 @@ static int msm_ion_populate_heap(struct device_node *node,
 			if (ret)
 				break;
 			heap->type = heap_type;
-			ret = msm_init_extra_data(heap, &ion_heap_meta[i]);
+			ret = msm_init_extra_data(node, heap,
+						&ion_heap_meta[i]);
 			break;
 		}
 	}
@@ -640,13 +539,6 @@ static void free_pdata(const struct ion_platform_data *pdata)
 	kfree(pdata->heaps);
 	kfree(pdata);
 }
-
-static int memtype_to_ion_memtype[] = {
-	[MEMTYPE_SMI_KERNEL] = ION_SMI_TYPE,
-	[MEMTYPE_SMI]	= ION_SMI_TYPE,
-	[MEMTYPE_EBI0] = ION_EBI_TYPE,
-	[MEMTYPE_EBI1] = ION_EBI_TYPE,
-};
 
 static void msm_ion_get_heap_align(struct device_node *node,
 				   struct ion_platform_heap *heap)
@@ -684,31 +576,11 @@ static int msm_ion_get_heap_size(struct device_node *node,
 	unsigned int val;
 	int ret = 0;
 	u32 out_values[2];
-	const char *memory_name_prop;
 	struct device_node *pnode;
 
 	ret = of_property_read_u32(node, "qcom,memory-reservation-size", &val);
-	if (!ret) {
+	if (!ret)
 		heap->size = val;
-		ret = of_property_read_string(node,
-					      "qcom,memory-reservation-type",
-					      &memory_name_prop);
-
-		if (!ret && memory_name_prop) {
-			val = msm_get_memory_type_from_name(memory_name_prop);
-			if (val < 0) {
-				ret = -EINVAL;
-				goto out;
-			}
-			heap->memory_type = memtype_to_ion_memtype[val];
-		}
-		if (heap->size && (ret || !memory_name_prop)) {
-			pr_err("%s: Need to specify reservation type\n",
-				__func__);
-			ret = -EINVAL;
-		}
-		goto out;
-	}
 
 	ret = of_property_read_u32_array(node, "qcom,memory-fixed",
 								out_values, 2);
@@ -933,11 +805,18 @@ static long msm_ion_custom_ioctl(struct ion_client *client,
 					sizeof(struct ion_flush_data)))
 			return -EFAULT;
 
-		if (!data.handle) {
+		if (data.handle > 0) {
+			handle = ion_handle_get_by_id(client, (int)data.handle);
+			if (IS_ERR(handle)) {
+				pr_info("%s: Could not find handle: %d\n",
+					__func__, (int)data.handle);
+				return PTR_ERR(handle);
+			}
+		} else {
 			handle = ion_import_dma_buf(client, data.fd);
 			if (IS_ERR(handle)) {
-				pr_info("%s: Could not import handle: %d\n",
-					__func__, (int)handle);
+				pr_info("%s: Could not import handle: %p\n",
+					__func__, handle);
 				return -EINVAL;
 			}
 		}
@@ -948,28 +827,20 @@ static long msm_ion_custom_ioctl(struct ion_client *client,
 		end = (unsigned long) data.vaddr + data.length;
 
 		if (start && check_vaddr_bounds(start, end)) {
-			up_read(&mm->mmap_sem);
 			pr_err("%s: virtual address %p is out of bounds\n",
 				__func__, data.vaddr);
-			if (!data.handle)
-				ion_free(client, handle);
-			return -EINVAL;
+			ret = -EINVAL;
+		} else {
+			ret = ion_do_cache_op(client, handle, data.vaddr,
+					data.offset, data.length, cmd);
 		}
-
-		ret = ion_do_cache_op(client,
-				data.handle ? data.handle : handle,
-				data.vaddr, data.offset, data.length,
-				cmd);
-
 		up_read(&mm->mmap_sem);
 
-		if (!data.handle)
-			ion_free(client, handle);
+		ion_free(client, handle);
 
 		if (ret < 0)
 			return ret;
 		break;
-
 	}
 	case ION_IOC_PREFETCH:
 	{
@@ -1028,7 +899,7 @@ static struct ion_heap *msm_ion_heap_create(struct ion_platform_heap *heap_data)
 	}
 
 	if (IS_ERR_OR_NULL(heap)) {
-		pr_err("%s: error creating heap %s type %d base %pa size %u\n",
+		pr_err("%s: error creating heap %s type %d base %pa size %zu\n",
 		       __func__, heap_data->name, heap_data->type,
 		       &heap_data->base, heap_data->size);
 		return ERR_PTR(-EINVAL);
@@ -1104,8 +975,6 @@ static int msm_ion_probe(struct platform_device *pdev)
 		goto freeheaps;
 	}
 
-	msm_ion_heap_fixup(pdata->heaps, num_heaps);
-
 	/* create the heaps as specified in the board file */
 	for (i = 0; i < num_heaps; i++) {
 		struct ion_platform_heap *heap_data = &pdata->heaps[i];
@@ -1118,8 +987,8 @@ static int msm_ion_probe(struct platform_device *pdev)
 			continue;
 		} else {
 			if (heap_data->size)
-				pr_info("ION heap %s created at %pa "
-					"with size %x\n", heap_data->name,
+				pr_info("ION heap %s created at %pa with size %zx\n",
+							heap_data->name,
 							  &heap_data->base,
 							  heap_data->size);
 			else

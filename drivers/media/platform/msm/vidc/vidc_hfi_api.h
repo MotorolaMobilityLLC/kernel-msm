@@ -17,7 +17,6 @@
 #include <linux/platform_device.h>
 #include <linux/types.h>
 #include <media/msm_vidc.h>
-#include <media/msm_smem.h>
 #include "msm_vidc_resources.h"
 
 #define CONTAINS(__a, __sz, __t) ({\
@@ -44,6 +43,7 @@
 #define HAL_BUFFERFLAG_READONLY         0x00000200
 #define HAL_BUFFERFLAG_ENDOFSUBFRAME    0x00000400
 #define HAL_BUFFERFLAG_EOSEQ            0x00200000
+#define HAL_BUFFERFLAG_YUV_601_709_CSC_CLAMP   0x10000000
 #define HAL_BUFFERFLAG_DROP_FRAME       0x20000000
 #define HAL_BUFFERFLAG_TS_DISCONTINUITY	0x40000000
 #define HAL_BUFFERFLAG_TS_ERROR		0x80000000
@@ -101,6 +101,10 @@ enum hal_extradata_id {
 	HAL_EXTRADATA_ASPECT_RATIO,
 	HAL_EXTRADATA_MPEG2_SEQDISP,
 	HAL_EXTRADATA_STREAM_USERDATA,
+	HAL_EXTRADATA_FRAME_QP,
+	HAL_EXTRADATA_FRAME_BITS_INFO,
+	HAL_EXTRADATA_INPUT_CROP,
+	HAL_EXTRADATA_DIGITAL_ZOOM,
 };
 
 enum hal_property {
@@ -184,6 +188,7 @@ enum hal_property {
 	HAL_PARAM_VDEC_CONCEAL_COLOR,
 	HAL_PARAM_VDEC_SCS_THRESHOLD,
 	HAL_PARAM_GET_BUFFER_REQUIREMENTS,
+	HAL_PARAM_MVC_BUFFER_LAYOUT,
 };
 
 enum hal_domain {
@@ -390,8 +395,7 @@ enum hal_divx_profile {
 };
 
 enum hal_mvc_profile {
-	HAL_MVC_PROFILE_STEREO_HIGH  = 0x00000001,
-	HAL_MVC_PROFILE_MV_HIGH      = 0x00000002,
+	HAL_MVC_PROFILE_STEREO_HIGH  = 0x00001000,
 	HAL_UNUSED_MVC_PROFILE = 0x10000000,
 };
 
@@ -787,6 +791,18 @@ struct hal_multi_view_format {
 	u32 rg_view_order[1];
 };
 
+enum hal_buffer_layout_type {
+	HAL_BUFFER_LAYOUT_TOP_BOTTOM,
+	HAL_BUFFER_LAYOUT_SEQ,
+	HAL_UNUSED_BUFFER_LAYOUT = 0x10000000,
+};
+
+struct hal_mvc_buffer_layout {
+	enum hal_buffer_layout_type layout_type;
+	u32 bright_view_first;
+	u32 ngap;
+};
+
 struct hal_seq_header_info {
 	u32 nax_header_len;
 };
@@ -871,6 +887,7 @@ struct vidc_frame_data {
 	u32 mark_target;
 	u32 mark_data;
 	u32 clnt_data;
+	u32 extradata_size;
 };
 
 struct vidc_seq_hdr {
@@ -1190,6 +1207,7 @@ struct hfi_device {
 		u32 *max_width, u32 *max_height);
 	int (*session_clean)(void *sess);
 	int (*get_core_capabilities)(void);
+	int (*power_enable)(void *dev);
 };
 
 typedef void (*hfi_cmd_response_callback) (enum command_response cmd,

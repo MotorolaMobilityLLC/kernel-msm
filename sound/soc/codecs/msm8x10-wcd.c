@@ -33,7 +33,7 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/tlv.h>
-#include <mach/qdsp6v2/apr.h>
+#include <linux/qdsp6v2/apr.h>
 #include <mach/subsystem_notif.h>
 #include "msm8x10-wcd.h"
 #include "wcd9xxx-resmgr.h"
@@ -1271,6 +1271,10 @@ static const char * const rx_rdac4_text[] = {
 	"ZERO", "RX3", "RX2"
 };
 
+static const char * const rx_rdac3_text[] = {
+	"RX1", "RX2"
+};
+
 static const struct soc_enum rx_mix1_inp1_chain_enum =
 	SOC_ENUM_SINGLE(MSM8X10_WCD_A_CDC_CONN_RX1_B1_CTL, 0, 6, rx_mix1_text);
 
@@ -1312,6 +1316,10 @@ static const struct soc_enum rx_rdac4_enum  =
 	SOC_ENUM_SINGLE(MSM8X10_WCD_A_CDC_CONN_LO_DAC_CTL, 0, 3,
 	rx_rdac4_text);
 
+static const struct soc_enum rx_rdac3_enum  =
+	SOC_ENUM_SINGLE(MSM8X10_WCD_A_CDC_CONN_HPHR_DAC_CTL, 0, 2,
+	rx_rdac3_text);
+
 static const struct soc_enum adc2_enum =
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(adc2_mux_text), adc2_mux_text);
 
@@ -1344,6 +1352,9 @@ static const struct snd_kcontrol_new rx2_mix2_inp1_mux =
 
 static const struct snd_kcontrol_new rx_dac4_mux =
 	SOC_DAPM_ENUM("RDAC4 MUX Mux", rx_rdac4_enum);
+
+static const struct snd_kcontrol_new rx_dac3_mux =
+	SOC_DAPM_ENUM("RDAC3 MUX Mux", rx_rdac3_enum);
 
 static const struct snd_kcontrol_new tx_adc2_mux =
 	SOC_DAPM_ENUM("ADC2 MUX Mux", adc2_enum);
@@ -1969,7 +1980,10 @@ static const struct snd_soc_dapm_route audio_map[] = {
 
 	{"DAC1", "Switch", "RX1 CHAIN"},
 	{"HPHL DAC", "Switch", "RX1 CHAIN"},
-	{"HPHR DAC", NULL, "RX2 CHAIN"},
+	{"HPHR DAC", NULL, "RDAC3 MUX"},
+
+	{"RDAC3 MUX", "RX1", "RX1 CHAIN"},
+	{"RDAC3 MUX", "RX2", "RX2 CHAIN"},
 
 	{"LINEOUT", NULL, "LINEOUT PA"},
 	{"SPK_OUT", NULL, "SPK PA"},
@@ -2411,6 +2425,8 @@ static const struct snd_soc_dapm_widget msm8x10_wcd_dapm_widgets[] = {
 		&rx2_mix2_inp1_mux),
 	SND_SOC_DAPM_MUX("RDAC4 MUX", SND_SOC_NOPM, 0, 0,
 		&rx_dac4_mux),
+	SND_SOC_DAPM_MUX("RDAC3 MUX", SND_SOC_NOPM, 0, 0,
+		&rx_dac3_mux),
 
 	SND_SOC_DAPM_SUPPLY("MICBIAS_REGULATOR", SND_SOC_NOPM,
 		ON_DEMAND_MICBIAS, 0,
@@ -2582,6 +2598,8 @@ static const struct msm8x10_wcd_reg_mask_val
 	 */
 	{MSM8X10_WCD_A_RX_HPH_OCP_CTL, 0xE1, 0x61},
 	{MSM8X10_WCD_A_RX_COM_OCP_COUNT, 0xFF, 0xFF},
+	{MSM8X10_WCD_A_RX_HPH_L_TEST, 0x01, 0x01},
+	{MSM8X10_WCD_A_RX_HPH_R_TEST, 0x01, 0x01},
 
 	/* Initialize gain registers to use register gain */
 	{MSM8X10_WCD_A_RX_HPH_L_GAIN, 0x20, 0x20},
@@ -3007,10 +3025,21 @@ static struct regulator *wcd8x10_wcd_codec_find_regulator(
 
 	return NULL;
 }
+static int msm8x10_wcd_device_down(struct snd_soc_codec *codec)
+{
+	dev_dbg(codec->dev, "%s: device down!\n", __func__);
+
+	snd_soc_card_change_online_state(codec->card, 0);
+	return 0;
+}
 
 static int msm8x10_wcd_device_up(struct snd_soc_codec *codec)
 {
-	pr_debug("%s: device up!\n", __func__);
+	dev_dbg(codec->dev, "%s: device up!\n", __func__);
+
+	snd_soc_card_change_online_state(codec->card, 1);
+	/* delay is required to make sure sound card state updated */
+	usleep_range(5000, 5100);
 
 	mutex_lock(&codec->mutex);
 
@@ -3030,7 +3059,9 @@ static int adsp_state_callback(struct notifier_block *nb, unsigned long value,
 	unsigned long timeout;
 	static bool booted_once;
 
-	if (value == SUBSYS_AFTER_POWERUP) {
+	if (value == SUBSYS_BEFORE_SHUTDOWN)
+		msm8x10_wcd_device_down(registered_codec);
+	else if (value == SUBSYS_AFTER_POWERUP) {
 
 		if (!booted_once) {
 			booted_once = true;

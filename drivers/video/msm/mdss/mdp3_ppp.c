@@ -36,6 +36,8 @@
 #define MDP_PPP_MAX_BPP 4
 #define MDP_PPP_DYNAMIC_FACTOR 3
 #define MDP_PPP_MAX_READ_WRITE 3
+#define ENABLE_SOLID_FILL	0x2
+#define DISABLE_SOLID_FILL	0x0
 
 static const bool valid_fmt[MDP_IMGTYPE_LIMIT] = {
 	[MDP_RGB_565] = true,
@@ -390,15 +392,67 @@ void mdp3_start_ppp(struct ppp_blit_op *blit_op)
 	/* Wait for the pipe to clear */
 	do { } while (mdp3_ppp_pipe_wait() <= 0);
 	config_ppp_op_mode(blit_op);
+	if (blit_op->solid_fill) {
+		MDP3_REG_WRITE(0x10138, 0x10000000);
+		MDP3_REG_WRITE(0x1014c, 0xffffffff);
+		MDP3_REG_WRITE(0x101b8, 0);
+		MDP3_REG_WRITE(0x101bc, 0);
+		MDP3_REG_WRITE(0x1013c, 0);
+		MDP3_REG_WRITE(0x10140, 0);
+		MDP3_REG_WRITE(0x10144, 0);
+		MDP3_REG_WRITE(0x10148, 0);
+		MDP3_REG_WRITE(MDP3_TFETCH_FILL_COLOR,
+					blit_op->solid_fill_color);
+		MDP3_REG_WRITE(MDP3_TFETCH_SOLID_FILL,
+					ENABLE_SOLID_FILL);
+	} else {
+		MDP3_REG_WRITE(MDP3_TFETCH_SOLID_FILL,
+					DISABLE_SOLID_FILL);
+	}
 	mdp3_ppp_kickoff();
 }
 
-static void mdp3_ppp_process_req(struct ppp_blit_op *blit_op,
+static int solid_fill_workaround(struct mdp_blit_req *req,
+						struct ppp_blit_op *blit_op)
+{
+	/* Make width 2 when there is a solid fill of width 1, and make
+	sure width does not become zero while trying to avoid odd width */
+	if (blit_op->dst.roi.width == 1) {
+		if (req->dst_rect.x + 2 > req->dst.width) {
+			pr_err("%s: Unable to handle solid fill of width 1",
+								__func__);
+			return -EINVAL;
+		}
+		blit_op->dst.roi.width = 2;
+	}
+	if (blit_op->src.roi.width == 1) {
+		if (req->src_rect.x + 2 > req->src.width) {
+			pr_err("%s: Unable to handle solid fill of width 1",
+								__func__);
+			return -EINVAL;
+		}
+		blit_op->src.roi.width = 2;
+	}
+
+	/* Avoid odd width, as it could hang ppp during solid fill */
+	blit_op->dst.roi.width = (blit_op->dst.roi.width / 2) * 2;
+	blit_op->src.roi.width = (blit_op->src.roi.width / 2) * 2;
+
+	/* Avoid RGBA format, as it could hang ppp during solid fill */
+	if (blit_op->src.color_fmt == MDP_RGBA_8888)
+		blit_op->src.color_fmt = MDP_RGBX_8888;
+	if (blit_op->dst.color_fmt == MDP_RGBA_8888)
+		blit_op->dst.color_fmt = MDP_RGBX_8888;
+	return 0;
+}
+
+static int mdp3_ppp_process_req(struct ppp_blit_op *blit_op,
 	struct mdp_blit_req *req, struct mdp3_img_data *src_data,
 	struct mdp3_img_data *dst_data)
 {
 	unsigned long srcp0_start, srcp0_len, dst_start, dst_len;
 	uint32_t dst_width, dst_height;
+	int ret = 0;
 
 	srcp0_start = (unsigned long) src_data->addr;
 	srcp0_len = (unsigned long) src_data->len;
@@ -489,6 +543,21 @@ static void mdp3_ppp_process_req(struct ppp_blit_op *blit_op,
 
 	if (req->flags & MDP_BLUR)
 		blit_op->mdp_op |= MDPOP_ASCALE | MDPOP_BLUR;
+
+	if (req->flags & MDP_SOLID_FILL) {
+		ret = solid_fill_workaround(req, blit_op);
+		if (ret)
+			return ret;
+
+		blit_op->solid_fill_color = (req->const_color.g & 0xFF)|
+				(req->const_color.r & 0xFF) << 8 |
+				(req->const_color.b & 0xFF)  << 16 |
+				(req->const_color.alpha & 0xFF) << 24;
+		blit_op->solid_fill = true;
+	} else {
+		blit_op->solid_fill = false;
+	}
+	return ret;
 }
 
 static void mdp3_ppp_tile_workaround(struct ppp_blit_op *blit_op,
@@ -587,6 +656,7 @@ static int mdp3_ppp_blit(struct msm_fb_data_type *mfd,
 	struct mdp3_img_data *dst_data)
 {
 	struct ppp_blit_op blit_op;
+	int ret = 0;
 
 	memset(&blit_op, 0, sizeof(blit_op));
 
@@ -600,7 +670,11 @@ static int mdp3_ppp_blit(struct msm_fb_data_type *mfd,
 		return -EINVAL;
 	}
 
-	mdp3_ppp_process_req(&blit_op, req, src_data, dst_data);
+	ret = mdp3_ppp_process_req(&blit_op, req, src_data, dst_data);
+	if (ret) {
+		pr_err("%s: Failed to process the blit request", __func__);
+		return ret;
+	}
 
 	if (((blit_op.mdp_op & (MDPOP_TRANSP | MDPOP_ALPHAB)) ||
 	     (req->src.format == MDP_ARGB_8888) ||
@@ -791,9 +865,10 @@ int mdp3_ppp_start_blit(struct msm_fb_data_type *mfd,
 	}
 	is_bpp_4 = (ret == 4) ? 1 : 0;
 
-	if ((is_bpp_4 && (remainder == 6 || remainder == 14)))
+	if ((is_bpp_4 && (remainder == 6 || remainder == 14)) &&
+						!(req->flags & MDP_SOLID_FILL))
 		ret = mdp3_ppp_blit_workaround(mfd, req, remainder,
-				src_data, dst_data);
+							src_data, dst_data);
 	else
 		ret = mdp3_ppp_blit(mfd, req, src_data, dst_data);
 	return ret;

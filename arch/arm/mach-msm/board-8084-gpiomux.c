@@ -76,6 +76,13 @@ static struct gpiomux_setting hap_lvl_shft_suspended_config = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+static struct gpiomux_setting gpio_epm_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
 static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
 	{
 		.gpio = 48,
@@ -294,6 +301,12 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
 		},
+	},
+	{
+		.gpio      = 116,		/* BLSP1 QUP1 SPI_CS1 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
+		},
 	}
 };
 
@@ -312,16 +325,10 @@ static struct msm_gpiomux_config msm_eth_configs[] __initdata = {
 		}
 	},
 	{
-		.gpio	  = 116,		/* CS */
+		.gpio	  = 117,		/* CS */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_eth_config,
 		}
-	},
-	{
-		.gpio      = 117,		/* BLSP1 QUP1 SPI_CS2 */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
-		},
 	},
 };
 #endif
@@ -851,6 +858,21 @@ static struct gpiomux_setting gpio_qca1530_config_mpp7 = {
 	.pull = GPIOMUX_PULL_UP,
 };
 
+static struct gpiomux_setting gpio_pcie_clkreq_config = {
+	.func = GPIOMUX_FUNC_2,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct msm_gpiomux_config msm_pcie_configs[] __initdata = {
+	{
+		.gpio = 68,    /* qca1530 reset */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_pcie_clkreq_config,
+		},
+	},
+};
+
 static struct msm_gpiomux_config msm_qca1530_cdp_configs[] __initdata = {
 	{
 		.gpio = 133,    /* qca1530 reset */
@@ -871,6 +893,15 @@ static struct msm_gpiomux_config msm_qca1530_liquid_configs[] __initdata = {
 		.gpio = 66,     /* qca1530 power extra */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_qca1530_config_mpp7,
+		},
+	},
+};
+
+static struct msm_gpiomux_config msm_epm_configs[] __initdata = {
+	{
+		.gpio      = 92,		/* EPM enable */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_epm_config,
 		},
 	},
 };
@@ -918,6 +949,8 @@ void __init apq8084_init_gpiomux(void)
 	if (of_board_is_cdp())
 		msm_gpiomux_install(eth_pwr, ARRAY_SIZE(eth_pwr));
 	msm_gpiomux_install(msm_sensor_configs, ARRAY_SIZE(msm_sensor_configs));
+	msm_gpiomux_install(msm_pcie_configs, ARRAY_SIZE(msm_pcie_configs));
+	msm_gpiomux_install(msm_epm_configs, ARRAY_SIZE(msm_epm_configs));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())

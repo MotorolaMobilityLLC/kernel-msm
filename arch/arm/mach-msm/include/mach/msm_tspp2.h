@@ -32,6 +32,8 @@
  *
  * @tspp2_ahb_clk:		TSPP2 device AHB clock name.
  * @tspp2_core_clk:		TSPP2 device core clock name.
+ * @tspp2_vbif_clk:		TSPP2 VBIF clock name.
+ * @tspp2_klm_ahb_clk:		TSPP2 key ladder AHB clock name.
  * @tsif_ref_clk:		TSIF device reference clock name.
  * @hlos_group:			IOMMU HLOS group name.
  * @cpz_group:			IOMMU CPZ group name.
@@ -41,6 +43,8 @@
 struct msm_tspp2_platform_data {
 	const char *tspp2_ahb_clk;
 	const char *tspp2_core_clk;
+	const char *tspp2_vbif_clk;
+	const char *tspp2_klm_ahb_clk;
 	const char *tsif_ref_clk;
 	const char *hlos_group;
 	const char *cpz_group;
@@ -612,6 +616,11 @@ struct tspp2_operation {
 	} params;
 };
 
+/* TSPP2 device open / close API */
+int tspp2_device_open(u32 dev_id);
+
+int tspp2_device_close(u32 dev_id);
+
 /* Global configuration API */
 int tspp2_config_set(u32 dev_id, const struct tspp2_config *cfg);
 
@@ -747,6 +756,14 @@ int tspp2_filter_event_notification_register(u32 filter_handle,
 			u32 filter_event_bitmask,
 			void (*callback)(void *cookie, u32 event_bitmask),
 			void *cookie);
+
+int tspp2_get_reserved_hw_index(u32 src_handle);
+
+int tspp2_get_filter_hw_index(u32 filter_handle);
+
+int tspp2_get_ops_array(u32 filter_handle,
+		struct tspp2_operation ops_array[TSPP2_MAX_OPS_PER_FILTER],
+		u8 *num_of_ops);
 
 #endif /* _MSM_TSPP2_H_ */
 

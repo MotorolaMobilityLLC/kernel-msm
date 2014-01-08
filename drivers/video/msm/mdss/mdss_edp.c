@@ -23,12 +23,10 @@
 #include <linux/gpio.h>
 #include <linux/err.h>
 #include <linux/regulator/consumer.h>
-#include <linux/pwm.h>
+#include <linux/qpnp/pwm.h>
 #include <linux/clk.h>
 #include <linux/spinlock_types.h>
 #include <linux/kthread.h>
-#include <asm/system.h>
-#include <asm/mach-types.h>
 #include <mach/hardware.h>
 #include <mach/dma.h>
 
@@ -208,11 +206,11 @@ void mdss_edp_set_backlight(struct mdss_panel_data *pdata, u32 bl_level)
 		if (bl_level > bl_max)
 			bl_level = bl_max;
 
-		ret = pwm_config(edp_drv->bl_pwm,
+		ret = pwm_config_us(edp_drv->bl_pwm,
 				bl_level * edp_drv->pwm_period / bl_max,
 				edp_drv->pwm_period);
 		if (ret) {
-			pr_err("%s: pwm_config() failed err=%d.\n", __func__,
+			pr_err("%s: pwm_config_us() failed err=%d.\n", __func__,
 					ret);
 			return;
 		}
@@ -593,6 +591,8 @@ int mdss_edp_off(struct mdss_panel_data *pdata)
 	}
 	pr_debug("%s:+, cont_splash=%d\n", __func__, edp_drv->cont_splash);
 
+	/* wait until link training is completed */
+	mutex_lock(&edp_drv->train_mutex);
 
 	INIT_COMPLETION(edp_drv->idle_comp);
 	mdss_edp_state_ctrl(edp_drv, ST_PUSH_IDLE);
@@ -626,6 +626,8 @@ int mdss_edp_off(struct mdss_panel_data *pdata)
 
 	pr_debug("%s-: state_ctrl=%x\n", __func__,
 				edp_read(edp_drv->base + 0x8));
+
+	mutex_unlock(&edp_drv->train_mutex);
 	return 0;
 }
 
@@ -712,10 +714,16 @@ static int mdss_edp_remove(struct platform_device *pdev)
 static int mdss_edp_device_register(struct mdss_edp_drv_pdata *edp_drv)
 {
 	int ret;
+	u32 tmp;
 
 	mdss_edp_edid2pinfo(edp_drv);
 	edp_drv->panel_data.panel_info.bl_min = 1;
 	edp_drv->panel_data.panel_info.bl_max = 255;
+	ret = of_property_read_u32(edp_drv->pdev->dev.of_node,
+		"qcom,mdss-brightness-max-level", &tmp);
+	edp_drv->panel_data.panel_info.brightness_max =
+		(!ret ? tmp : MDSS_MAX_BL_BRIGHTNESS);
+
 	edp_drv->panel_data.panel_info.edp.frame_rate =
 				DEFAULT_FRAME_RATE;/* 60 fps */
 
@@ -804,7 +812,6 @@ static void mdss_edp_do_link_train(struct mdss_edp_drv_pdata *ep)
 	if (ep->cont_splash)
 		return;
 
-	INIT_COMPLETION(ep->train_comp);
 	mdss_edp_link_train(ep);
 }
 

@@ -349,10 +349,19 @@ void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 	int wr_size = -ENOMEM, retry_count = 0, timer;
 	struct diag_smd_info *data = NULL;
 
-	/* For now only allow the modem to receive the message */
-	if (!smd_info || smd_info->type != SMD_CNTL_TYPE ||
-		(smd_info->peripheral != MODEM_DATA))
+	if (!smd_info || smd_info->type != SMD_CNTL_TYPE) {
+		pr_err("diag: In %s, invalid channel info, smd_info: %p type: %d\n",
+					__func__, smd_info,
+					((smd_info) ? smd_info->type : -1));
 		return;
+	}
+
+	if (smd_info->peripheral < MODEM_DATA ||
+					smd_info->peripheral > WCNSS_DATA) {
+		pr_err("diag: In %s, invalid peripheral %d\n", __func__,
+							smd_info->peripheral);
+		return;
+	}
 
 	data = &driver->smd_data[smd_info->peripheral];
 	if (!data)
@@ -474,12 +483,10 @@ static int diag_smd_cntl_probe(struct platform_device *pdev)
 			index = MODEM_DATA;
 			channel_name = "DIAG_CNTL";
 		}
-#if defined(CONFIG_MSM_N_WAY_SMD)
 		else if (pdev->id == SMD_APPS_QDSP) {
 			index = LPASS_DATA;
 			channel_name = "DIAG_CNTL";
 		}
-#endif
 		else if (pdev->id == SMD_APPS_WCNSS) {
 			index = WCNSS_DATA;
 			channel_name = "APPS_RIVA_CTRL";

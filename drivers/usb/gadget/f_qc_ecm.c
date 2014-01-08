@@ -395,9 +395,9 @@ static int ecm_qc_bam_connect(struct f_ecm_qc *dev)
 
 	/* currently we use the first connection */
 	src_connection_idx = usb_bam_get_connection_idx(gadget->name, peer_bam,
-		USB_TO_PEER_PERIPHERAL, 0);
+		USB_TO_PEER_PERIPHERAL, USB_BAM_DEVICE, 0);
 	dst_connection_idx = usb_bam_get_connection_idx(gadget->name, peer_bam,
-		PEER_PERIPHERAL_TO_USB, 0);
+		PEER_PERIPHERAL_TO_USB, USB_BAM_DEVICE, 0);
 	if (src_connection_idx < 0 || dst_connection_idx < 0) {
 		pr_err("usb_bam_get_connection_idx failed\n");
 		return ret;
@@ -608,6 +608,16 @@ static int ecm_qc_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 					return PTR_ERR(net);
 			}
 
+			if (ecm->xport == USB_GADGET_XPORT_BAM2BAM_IPA &&
+			    gadget_is_dwc3(cdev->gadget)) {
+				if (msm_ep_config(ecm->port.in_ep) ||
+				    msm_ep_config(ecm->port.out_ep)) {
+					pr_err("%s: ep_config failed\n",
+						__func__);
+					goto fail;
+				}
+			}
+
 			if (ecm_qc_bam_connect(ecm))
 				goto fail;
 		}
@@ -650,6 +660,12 @@ static void ecm_qc_disable(struct usb_function *f)
 		ecm_qc_bam_disconnect(ecm);
 		if (ecm->xport != USB_GADGET_XPORT_BAM2BAM_IPA)
 			gether_qc_disconnect_name(&ecm->port, "ecm0");
+	}
+
+	if (ecm->xport == USB_GADGET_XPORT_BAM2BAM_IPA &&
+			gadget_is_dwc3(cdev->gadget)) {
+		msm_ep_unconfig(ecm->port.out_ep);
+		msm_ep_unconfig(ecm->port.in_ep);
 	}
 
 	if (ecm->notify->driver_data) {

@@ -18,6 +18,8 @@
 #include <linux/memory.h>
 #include <linux/msm_tsens.h>
 #include <linux/msm_thermal.h>
+#include <linux/clk/msm-clk-provider.h>
+#include <linux/regulator/rpm-smd-regulator.h>
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <mach/board.h>
@@ -26,35 +28,16 @@
 #include <mach/msm_memtypes.h>
 #include <mach/msm_smd.h>
 #include <mach/rpm-smd.h>
-#include <mach/rpm-regulator-smd.h>
 #include <mach/restart.h>
 #include <mach/socinfo.h>
-#include <mach/clk-provider.h>
-#include <mach/msm_smem.h>
+#include <soc/qcom/smem.h>
 #include "board-dt.h"
 #include "clock.h"
-#include "devices.h"
-#include "modem_notifier.h"
 #include "spm.h"
-
-static struct memtype_reserve msmkrypton_reserve_table[] __initdata = {
-	[MEMTYPE_EBI1] = {
-		.flags = MEMTYPE_FLAGS_1M_ALIGN,
-	},
-};
-
-static int msmkrypton_paddr_to_memtype(unsigned int paddr)
-{
-	return MEMTYPE_EBI1;
-}
-
-static struct reserve_info msmkrypton_reserve_info __initdata = {
-	.memtype_reserve_table = msmkrypton_reserve_table,
-	.paddr_to_memtype = msmkrypton_paddr_to_memtype,
-};
 
 static struct of_dev_auxdata msmkrypton_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900, "msm_sdcc.2", NULL),
+	OF_DEV_AUXDATA("qcom,msm_pcie", 0xFC520000, "msm_pcie", NULL),
 	{}
 };
 
@@ -66,11 +49,9 @@ static struct of_dev_auxdata msmkrypton_auxdata_lookup[] __initdata = {
  */
 void __init msmkrypton_add_drivers(void)
 {
-	msm_smem_init();
-	msm_init_modem_notifier_list();
 	msm_smd_init();
 	msm_rpm_driver_init();
-	rpm_regulator_smd_driver_init();
+	rpm_smd_regulator_driver_init();
 	msm_spm_device_init();
 	msm_clock_init(&msmkrypton_clock_init_data);
 	tsens_tm_init_driver();
@@ -79,14 +60,11 @@ void __init msmkrypton_add_drivers(void)
 
 void __init msmkrypton_reserve(void)
 {
-	reserve_info = &msmkrypton_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_reserve, msmkrypton_reserve_table);
-	msm_reserve();
+	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 }
 static void __init msmkrypton_early_memory(void)
 {
-	reserve_info = &msmkrypton_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_hole, msmkrypton_reserve_table);
+	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
 }
 static void __init msmkrypton_map_io(void)
 {
@@ -95,11 +73,19 @@ static void __init msmkrypton_map_io(void)
 
 void __init msmkrypton_init(void)
 {
+	/*
+	 * populate devices from DT first so smem probe will get called as part
+	 * of msm_smem_init.  socinfo_init needs smem support so call
+	 * msm_smem_init before it.
+	 */
+	board_dt_populate(msmkrypton_auxdata_lookup);
+
+	msm_smem_init();
+
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
 	msmkrypton_init_gpiomux();
-	board_dt_populate(msmkrypton_auxdata_lookup);
 	msmkrypton_add_drivers();
 }
 

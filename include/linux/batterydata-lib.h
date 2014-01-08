@@ -27,6 +27,7 @@
 #define MAX_SINGLE_LUT_COLS	20
 
 #define MAX_BATT_ID_NUM		4
+#define DEGC_SCALE		10
 
 struct single_row_lut {
 	int x[MAX_SINGLE_LUT_COLS];
@@ -124,6 +125,7 @@ struct bms_battery_data {
 	int			cutoff_uv;
 	int			iterm_ua;
 	int			batt_id_kohm;
+	const char		*battery_type;
 };
 
 #if defined(CONFIG_PM8921_BMS) || \

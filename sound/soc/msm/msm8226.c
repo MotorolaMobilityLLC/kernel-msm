@@ -24,7 +24,6 @@
 #include <sound/pcm.h>
 #include <sound/jack.h>
 #include <sound/q6afe-v2.h>
-#include <asm/mach-types.h>
 #include <mach/socinfo.h>
 #include <mach/subsystem_notif.h>
 #include "qdsp6v2/msm-pcm-routing-v2.h"
@@ -94,6 +93,8 @@ static struct wcd9xxx_mbhc_config mbhc_cfg = {
 	.cs_enable_flags = (1 << MBHC_CS_ENABLE_POLLING |
 			    1 << MBHC_CS_ENABLE_INSERTION |
 			    1 << MBHC_CS_ENABLE_REMOVAL),
+	.do_recalibration = true,
+	.use_vddio_meas = true,
 };
 
 struct msm_auxpcm_gpio {
@@ -1188,7 +1189,7 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.name = "MSM8226 Compr",
 		.stream_name = "COMPR",
 		.cpu_dai_name	= "MultiMedia4",
-		.platform_name  = "msm-compr-dsp",
+		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			 SND_SOC_DPCM_TRIGGER_POST},
@@ -1333,18 +1334,36 @@ static struct snd_soc_dai_link msm8226_common_dai[] = {
 		.codec_name = "snd-soc-dummy",
 		.be_id = MSM_FRONTEND_DAI_QCHAT,
 	},
+	/* LSM FE */
 	{/* hw:x,19 */
-		.name = "VoIP2",
-		.stream_name = "VoIP2",
-		.cpu_dai_name   = "VoIP2",
-		.platform_name  = "msm-voip-dsp",
+		.name = "Listen Audio Service",
+		.stream_name = "Listen Audio Service",
+		.cpu_dai_name = "LSM",
+		.platform_name = "msm-lsm-client",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
+			    SND_SOC_DPCM_TRIGGER_POST },
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
+		.be_id = MSM_FRONTEND_DAI_LSM1,
+	},
+	{/* hw:x,20 */
+		.name = "MSM8226 Compr8",
+		.stream_name = "COMPR8",
+		.cpu_dai_name   = "MultiMedia8",
+		.platform_name  = "msm-compr-dsp",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		/* this dainlink has playback support */
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA8,
 	},
 	/* Backend BT/FM DAI Links */
 	{

@@ -413,7 +413,7 @@ void kgsl_cffdump_user_event(struct kgsl_device *device,
 
 void kgsl_cffdump_syncmem(struct kgsl_device *device,
 			  struct kgsl_memdesc *memdesc, uint gpuaddr,
-			  uint sizebytes, bool clean_cache)
+			  size_t sizebytes, bool clean_cache)
 {
 	const void *src;
 
@@ -424,7 +424,7 @@ void kgsl_cffdump_syncmem(struct kgsl_device *device,
 
 	total_syncmem += sizebytes;
 
-	src = (uint *)kgsl_gpuaddr_to_vaddr(memdesc, gpuaddr);
+	src = kgsl_gpuaddr_to_vaddr(memdesc, gpuaddr);
 	if (memdesc->hostptr == NULL) {
 		KGSL_CORE_ERR(
 		"no kernel map for gpuaddr: 0x%08x, m->host: 0x%p, phys: %pa\n",
@@ -515,10 +515,11 @@ int kgsl_cffdump_waitirq(struct kgsl_device *device)
 EXPORT_SYMBOL(kgsl_cffdump_waitirq);
 
 static int subbuf_start_handler(struct rchan_buf *buf,
-	void *subbuf, void *prev_subbuf, uint prev_padding)
+	void *subbuf, void *prev_subbuf, size_t prev_padding)
 {
 	pr_debug("kgsl: cffdump: subbuf_start_handler(subbuf=%p, prev_subbuf"
-		"=%p, prev_padding=%08x)\n", subbuf, prev_subbuf, prev_padding);
+		"=%p, prev_padding=%08zx)\n", subbuf, prev_subbuf,
+		 prev_padding);
 
 	if (relay_buf_full(buf)) {
 		if (!suspended) {
@@ -725,7 +726,7 @@ int kgsl_cffdump_capture_ib_desc(struct kgsl_device *device,
 			ibdesc[i].sizedwords);
 		if (ret) {
 			KGSL_DRV_ERR(device,
-			"Fail cff capture, IB %x, size %x\n",
+			"Fail cff capture, IB %lx, size %zx\n",
 			ibdesc[i].gpuaddr,
 			ibdesc[i].sizedwords << 2);
 			break;

@@ -19,8 +19,8 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
-#include <mach/msm_smem.h>
-#include <mach/msm_ipc_logging.h>
+#include <linux/ipc_logging.h>
+#include <soc/qcom/smem.h>
 #include "smp2p_private_api.h"
 #include "smp2p_private.h"
 
@@ -352,12 +352,12 @@ static void *smp2p_get_local_smem_item(int remote_pid)
 		/* lookup or allocate SMEM item */
 		smem_id = smp2p_get_smem_item_id(SMP2P_APPS_PROC, remote_pid);
 		if (smem_id >= 0) {
-			item_ptr = smem_get_entry_to_proc(smem_id, &size,
+			item_ptr = smem_get_entry(smem_id, &size,
 								remote_pid, 0);
 
 			if (!item_ptr) {
 				size = sizeof(struct smp2p_smem_item);
-				item_ptr = smem_alloc2_to_proc(smem_id, size,
+				item_ptr = smem_alloc(smem_id, size,
 								remote_pid, 0);
 			}
 		}
@@ -403,7 +403,7 @@ static void *smp2p_get_remote_smem_item(int remote_pid,
 
 		smem_id = smp2p_get_smem_item_id(remote_pid, SMP2P_APPS_PROC);
 		if (smem_id >= 0)
-			item_ptr = smem_get_entry_to_proc(smem_id, &size,
+			item_ptr = smem_get_entry(smem_id, &size,
 								remote_pid, 0);
 	} else if (remote_pid == SMP2P_REMOTE_MOCK_PROC) {
 		item_ptr = msm_smp2p_get_remote_mock_smem_item(&size);

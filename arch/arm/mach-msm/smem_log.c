@@ -32,14 +32,13 @@
 
 #include <mach/msm_iomap.h>
 #include <mach/smem_log.h>
-#include <mach/msm_smem.h>
+
+#include <soc/qcom/smem.h>
 
 #include <asm/arch_timer.h>
 
-#include "smd_private.h"
 #include "smd_rpc_sym.h"
-#include "modem_notifier.h"
-#include "smem_private.h"
+#include "../../../drivers/soc/qcom/smem_private.h"
 
 #define DEBUG
 #undef DEBUG
@@ -166,7 +165,6 @@ struct sym base_syms[] = {
 };
 
 struct sym event_syms[] = {
-#if defined(CONFIG_MSM_N_WAY_SMSM)
 	{ DEM_SMSM_ISR, "SMSM_ISR" },
 	{ DEM_STATE_CHANGE, "STATE_CHANGE" },
 	{ DEM_STATE_MACHINE_ENTER, "STATE_MACHINE_ENTER" },
@@ -204,51 +202,6 @@ struct sym event_syms[] = {
 	{ DEM_TIME_SYNC_POLL, "TIME_SYNC_POLL" },
 	{ DEM_TIME_SYNC_INIT, "TIME_SYNC_INIT" },
 	{ DEM_INIT, "INIT" },
-#else
-
-	{ DEM_NO_SLEEP, "NO_SLEEP" },
-	{ DEM_INSUF_TIME, "INSUF_TIME" },
-	{ DEMAPPS_ENTER_SLEEP, "APPS_ENTER_SLEEP" },
-	{ DEMAPPS_DETECT_WAKEUP, "APPS_DETECT_WAKEUP" },
-	{ DEMAPPS_END_APPS_TCXO, "APPS_END_APPS_TCXO" },
-	{ DEMAPPS_ENTER_SLEEPEXIT, "APPS_ENTER_SLEEPEXIT" },
-	{ DEMAPPS_END_APPS_SLEEP, "APPS_END_APPS_SLEEP" },
-	{ DEMAPPS_SETUP_APPS_PWRCLPS, "APPS_SETUP_APPS_PWRCLPS" },
-	{ DEMAPPS_PWRCLPS_EARLY_EXIT, "APPS_PWRCLPS_EARLY_EXIT" },
-	{ DEMMOD_SEND_WAKEUP, "MOD_SEND_WAKEUP" },
-	{ DEMMOD_NO_APPS_VOTE, "MOD_NO_APPS_VOTE" },
-	{ DEMMOD_NO_TCXO_SLEEP, "MOD_NO_TCXO_SLEEP" },
-	{ DEMMOD_BT_CLOCK, "MOD_BT_CLOCK" },
-	{ DEMMOD_UART_CLOCK, "MOD_UART_CLOCK" },
-	{ DEMMOD_OKTS, "MOD_OKTS" },
-	{ DEM_SLEEP_INFO, "SLEEP_INFO" },
-	{ DEMMOD_TCXO_END, "MOD_TCXO_END" },
-	{ DEMMOD_END_SLEEP_SIG, "MOD_END_SLEEP_SIG" },
-	{ DEMMOD_SETUP_APPSSLEEP, "MOD_SETUP_APPSSLEEP" },
-	{ DEMMOD_ENTER_TCXO, "MOD_ENTER_TCXO" },
-	{ DEMMOD_WAKE_APPS, "MOD_WAKE_APPS" },
-	{ DEMMOD_POWER_COLLAPSE_APPS, "MOD_POWER_COLLAPSE_APPS" },
-	{ DEMMOD_RESTORE_APPS_PWR, "MOD_RESTORE_APPS_PWR" },
-	{ DEMAPPS_ASSERT_OKTS, "APPS_ASSERT_OKTS" },
-	{ DEMAPPS_RESTART_START_TIMER, "APPS_RESTART_START_TIMER" },
-	{ DEMAPPS_ENTER_RUN, "APPS_ENTER_RUN" },
-	{ DEMMOD_MAO_INTS, "MOD_MAO_INTS" },
-	{ DEMMOD_POWERUP_APPS_CALLED, "MOD_POWERUP_APPS_CALLED" },
-	{ DEMMOD_PC_TIMER_EXPIRED, "MOD_PC_TIMER_EXPIRED" },
-	{ DEM_DETECT_SLEEPEXIT, "_DETECT_SLEEPEXIT" },
-	{ DEM_DETECT_RUN, "DETECT_RUN" },
-	{ DEM_SET_APPS_TIMER, "SET_APPS_TIMER" },
-	{ DEM_NEGATE_OKTS, "NEGATE_OKTS" },
-	{ DEMMOD_APPS_WAKEUP_INT, "MOD_APPS_WAKEUP_INT" },
-	{ DEMMOD_APPS_SWFI, "MOD_APPS_SWFI" },
-	{ DEM_SEND_BATTERY_INFO, "SEND_BATTERY_INFO" },
-	{ DEM_SMI_CLK_DISABLED, "SMI_CLK_DISABLED" },
-	{ DEM_SMI_CLK_ENABLED, "SMI_CLK_ENABLED" },
-	{ DEMAPPS_SETUP_APPS_SUSPEND, "APPS_SETUP_APPS_SUSPEND" },
-	{ DEM_RPC_EARLY_EXIT, "RPC_EARLY_EXIT" },
-	{ DEMAPPS_WAKEUP_REASON, "APPS_WAKEUP_REASON" },
-	{ DEM_INIT, "INIT" },
-#endif
 	{ DEMMOD_UMTS_BASE, "MOD_UMTS_BASE" },
 	{ DEMMOD_GL1_GO_TO_SLEEP, "GL1_GO_TO_SLEEP" },
 	{ DEMMOD_GL1_SLEEP_START, "GL1_SLEEP_START" },
@@ -584,7 +537,7 @@ static void find_voters(void)
 	unsigned size;
 	int i = 0, j = 0;
 
-	x = smem_get_entry(SMEM_SLEEP_STATIC, &size);
+	x = smem_get_entry(SMEM_SLEEP_STATIC, &size, 0,	SMEM_ANY_HOST_FLAG);
 	next = x;
 	while (next && (next < (x + size)) &&
 	       ((i + j) < (ARRAY_SIZE(voter_d3_syms) +
@@ -851,10 +804,14 @@ static int _smem_log_init(void)
 
 	inst[GEN].which_log = GEN;
 	inst[GEN].events =
-		(struct smem_log_item *)smem_alloc2(SMEM_SMEM_LOG_EVENTS,
-						  SMEM_LOG_EVENTS_SIZE);
-	inst[GEN].idx = (uint32_t *)smem_alloc2(SMEM_SMEM_LOG_IDX,
-					     sizeof(uint32_t));
+		(struct smem_log_item *)smem_alloc(SMEM_SMEM_LOG_EVENTS,
+						  SMEM_LOG_EVENTS_SIZE,
+						  0,
+						  SMEM_ANY_HOST_FLAG);
+	inst[GEN].idx = (uint32_t *)smem_alloc(SMEM_SMEM_LOG_IDX,
+					     sizeof(uint32_t),
+					     0,
+					     SMEM_ANY_HOST_FLAG);
 	if (!inst[GEN].events || !inst[GEN].idx)
 		pr_info("%s: no log or log_idx allocated\n", __func__);
 
@@ -867,10 +824,14 @@ static int _smem_log_init(void)
 	inst[STA].which_log = STA;
 	inst[STA].events =
 		(struct smem_log_item *)
-		smem_alloc2(SMEM_SMEM_STATIC_LOG_EVENTS,
-			   SMEM_STATIC_LOG_EVENTS_SIZE);
-	inst[STA].idx = (uint32_t *)smem_alloc2(SMEM_SMEM_STATIC_LOG_IDX,
-						     sizeof(uint32_t));
+		smem_alloc(SMEM_SMEM_STATIC_LOG_EVENTS,
+			   SMEM_STATIC_LOG_EVENTS_SIZE,
+			   0,
+			   SMEM_ANY_HOST_FLAG);
+	inst[STA].idx = (uint32_t *)smem_alloc(SMEM_SMEM_STATIC_LOG_IDX,
+						     sizeof(uint32_t),
+						     0,
+						     SMEM_ANY_HOST_FLAG);
 	if (!inst[STA].events || !inst[STA].idx)
 		pr_info("%s: no static log or log_idx allocated\n", __func__);
 
@@ -883,10 +844,14 @@ static int _smem_log_init(void)
 	inst[POW].which_log = POW;
 	inst[POW].events =
 		(struct smem_log_item *)
-		smem_alloc2(SMEM_SMEM_LOG_POWER_EVENTS,
-			   SMEM_POWER_LOG_EVENTS_SIZE);
-	inst[POW].idx = (uint32_t *)smem_alloc2(SMEM_SMEM_LOG_POWER_IDX,
-						     sizeof(uint32_t));
+		smem_alloc(SMEM_SMEM_LOG_POWER_EVENTS,
+			   SMEM_POWER_LOG_EVENTS_SIZE,
+			   0,
+			   SMEM_ANY_HOST_FLAG);
+	inst[POW].idx = (uint32_t *)smem_alloc(SMEM_SMEM_LOG_POWER_IDX,
+						     sizeof(uint32_t),
+						     0,
+						     SMEM_ANY_HOST_FLAG);
 	if (!inst[POW].events || !inst[POW].idx)
 		pr_info("%s: no power log or log_idx allocated\n", __func__);
 
@@ -1455,7 +1420,6 @@ static int _debug_dump_sym(int log, char *buf, int max, uint32_t cont)
 					i += scnprintf(buf + i, max - i,
 						       "xid:%4i %08x proc:%3i",
 						       data1, data2, data3);
-#if defined(CONFIG_MSM_N_WAY_SMSM)
 			} else if (id_val == DEM_STATE_CHANGE) {
 				if (data1 == 1) {
 					i += scnprintf(buf + i, max - i,
@@ -1588,86 +1552,6 @@ static int _debug_dump_sym(int log, char *buf, int max, uint32_t cont)
 					}
 					i += scnprintf(buf + i, max - i, "] ");
 				}
-#else
-			} else if (id_val == DEMAPPS_WAKEUP_REASON) {
-				unsigned mask = 0x80000000;
-				unsigned tmp = 0;
-				while (mask) {
-					tmp = data1 & mask;
-					mask >>= 1;
-					if (!tmp)
-						continue;
-					sym = find_sym(WAKEUP_SYM, tmp);
-					if (sym)
-						i += scnprintf(buf + i,
-							       max - i,
-							       "%s ",
-							       sym);
-					else
-						i += scnprintf(buf + i,
-							       max - i,
-							       "%08x ",
-							       tmp);
-				}
-				i += scnprintf(buf + i, max - i,
-					       "%08x %08x", data2, data3);
-			} else if (id_val == DEMMOD_APPS_WAKEUP_INT) {
-				sym = find_sym(WAKEUP_INT_SYM, data1);
-
-				if (sym)
-					i += scnprintf(buf + i, max - i,
-						       "%s %08x %08x",
-						       sym, data2, data3);
-				else
-					i += scnprintf(buf + i, max - i,
-						       "%08x %08x %08x",
-						       data1, data2, data3);
-			} else if (id_val == DEM_NO_SLEEP ||
-				   id_val == NO_SLEEP_NEW) {
-				unsigned vals[] = {data3, data2};
-				unsigned j;
-				unsigned mask;
-				unsigned tmp;
-				unsigned once;
-				i += scnprintf(buf + i, max - i, "%08x ",
-					       data1);
-				i += scnprintf(buf + i, max - i, "[");
-				once = 0;
-				for (j = 0; j < ARRAY_SIZE(vals); ++j) {
-					mask = 0x00000001;
-					while (mask) {
-						tmp = vals[j] & mask;
-						mask <<= 1;
-						if (!tmp)
-							continue;
-						if (j == 0)
-							sym = find_sym(
-								VOTER_D3_SYM,
-								tmp);
-						else
-							sym = find_sym(
-								VOTER_D2_SYM,
-								tmp);
-
-						if (once)
-							i += scnprintf(buf + i,
-								       max - i,
-								       " ");
-						if (sym)
-							i += scnprintf(buf + i,
-								       max - i,
-								       "%s",
-								       sym);
-						else
-							i += scnprintf(buf + i,
-								       max - i,
-								       "%08x",
-								       tmp);
-						once = 1;
-					}
-				}
-				i += scnprintf(buf + i, max - i, "] ");
-#endif
 			} else if (id_val == SMEM_LOG_EVENT_CB) {
 				unsigned vals[] = {data2, data3};
 				unsigned j;

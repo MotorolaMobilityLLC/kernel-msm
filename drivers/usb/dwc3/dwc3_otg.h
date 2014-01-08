@@ -49,7 +49,6 @@ struct dwc3_otg {
 	unsigned long inputs;
 	struct power_supply	*psy;
 	struct completion	dwc3_xcvr_vbus_init;
-	int			host_bus_suspend;
 	int			charger_retry_count;
 	int			vbus_retry_count;
 };
@@ -123,8 +122,4 @@ struct dwc3_ext_xceiv {
 extern int dwc3_set_ext_xceiv(struct usb_otg *otg,
 				struct dwc3_ext_xceiv *ext_xceiv);
 
-/* for registering USB3, USB2 PHYs */
-int dwc3_otg_register_phys(struct platform_device *pdev);
-
-void dwc3_otg_deregister_phys(struct platform_device *pdev);
 #endif /* __LINUX_USB_DWC3_OTG_H */

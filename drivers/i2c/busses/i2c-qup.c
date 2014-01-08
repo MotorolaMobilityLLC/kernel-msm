@@ -1618,6 +1618,9 @@ blsp_core_init:
 	 */
 	if (dev->pdata->keep_ahb_clk_on)
 		clk_prepare_enable(dev->pclk);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, MSEC_PER_SEC);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 
 	ret = i2c_add_numbered_adapter(&dev->adapter);
 	if (ret) {
@@ -1633,9 +1636,6 @@ blsp_core_init:
 			of_i2c_register_devices(&dev->adapter);
 		}
 
-		pm_runtime_set_autosuspend_delay(&pdev->dev, MSEC_PER_SEC);
-		pm_runtime_use_autosuspend(&pdev->dev);
-		pm_runtime_enable(&pdev->dev);
 		return 0;
 	}
 
@@ -1662,7 +1662,7 @@ err_res_failed:
 	release_mem_region(qup_mem->start, resource_size(qup_mem));
 get_res_failed:
 	if (pdev->dev.of_node)
-		kfree(pdata);
+		devm_kfree(&pdev->dev, pdata);
 	return ret;
 }
 

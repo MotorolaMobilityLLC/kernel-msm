@@ -17,6 +17,12 @@
 #include "mdss_mdp_rotator.h"
 #include "mdss_panel.h"
 
+/*
+ * if BWC enabled and format is H1V2 or 420, do not use site C or I.
+ * Hence, set the bits 29:26 in format register, as zero.
+ */
+#define BWC_FMT_MASK	0xC3FFFFFF
+
 enum mdss_mdp_writeback_type {
 	MDSS_MDP_WRITEBACK_TYPE_ROTATOR,
 	MDSS_MDP_WRITEBACK_TYPE_LINE,
@@ -169,6 +175,8 @@ static int mdss_mdp_writeback_format_setup(struct mdss_mdp_writeback_ctx *ctx,
 		     (fmt->bits[C1_B_Cb] << 2) |
 		     (fmt->bits[C0_G_Y] << 0);
 
+	dst_format &= BWC_FMT_MASK;
+
 	if (fmt->bits[C3_ALPHA] || fmt->alpha_enable) {
 		dst_format |= BIT(8); /* DSTC3_EN */
 		if (!fmt->alpha_enable)
@@ -296,9 +304,11 @@ static int mdss_mdp_writeback_prepare_rot(struct mdss_mdp_ctl *ctl, void *arg)
 	if (ctx->bwc_mode || (ctx->rot90 &&
 			((mdata->mdp_rev < MDSS_MDP_HW_REV_102)
 			|| !fmt->is_yuv)))
-		format = mdss_mdp_get_rotator_dst_format(rot->format, 1);
+		format = mdss_mdp_get_rotator_dst_format(rot->format, 1,
+			ctx->bwc_mode);
 	else
-		format = mdss_mdp_get_rotator_dst_format(rot->format, 0);
+		format = mdss_mdp_get_rotator_dst_format(rot->format, 0,
+			ctx->bwc_mode);
 
 	if (ctx->rot90) {
 		ctx->opmode |= BIT(5); /* ROT 90 */

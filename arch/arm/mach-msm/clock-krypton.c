@@ -19,10 +19,10 @@
 #include <linux/delay.h>
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/iopoll.h>
+#include <linux/clk/msm-clk.h>
 
-#include <mach/clk.h>
-#include <mach/rpm-regulator-smd.h>
 #include <mach/socinfo.h>
 
 #include "clock-local2.h"
@@ -98,6 +98,13 @@ static void __iomem *virt_bases[N_BASES];
 		[VDD_DIG_##l1] = (f1),		\
 		[VDD_DIG_##l2] = (f2),		\
 		[VDD_DIG_##l3] = (f3),		\
+	},					\
+	.num_fmax = VDD_DIG_NUM
+#define VDD_DIG_FMAX_MAP2_AO(l1, f1, l2, f2) \
+	.vdd_class = &vdd_dig_ao,		\
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+		[VDD_DIG_##l2] = (f2),		\
 	},					\
 	.num_fmax = VDD_DIG_NUM
 
@@ -179,6 +186,7 @@ static DEFINE_VDD_REGULATORS(vdd_dig, VDD_DIG_NUM, 1, vdd_corner, NULL);
 #define USB_HS_AHB_CBCR                                    (0x0488)
 #define USB_HS_SYSTEM_CMD_RCGR                             (0x0490)
 #define USB2A_PHY_SLEEP_CBCR                               (0x04AC)
+#define USB2B_PHY_BCR                                      (0x04B0)
 #define USB2B_PHY_SLEEP_CBCR                               (0x04B4)
 #define SDCC2_APPS_CMD_RCGR                                (0x0510)
 #define SDCC2_APPS_CBCR                                    (0x0504)
@@ -243,6 +251,7 @@ static DEFINE_VDD_REGULATORS(vdd_dig, VDD_DIG_NUM, 1, vdd_corner, NULL);
 #define CLOCK_FRQ_MEASURE_CTL                              (0x1884)
 #define CLOCK_FRQ_MEASURE_STATUS                           (0x1888)
 #define PLLTEST_PAD_CFG                                    (0x188C)
+#define USB3PHY_PHY_BCR                                    (0x1B8C)
 #define PCIE_CFG_AHB_CBCR                                  (0x1C04)
 #define PCIE_PIPE_CBCR                                     (0x1C08)
 #define PCIE_AXI_CBCR                                      (0x1C0C)
@@ -526,6 +535,7 @@ static struct clk_freq_tbl ftbl_gcc_blsp1_uart1_6_apps_clk[] = {
 	F(  56000000,      gpll0,    1,    7,    75),
 	F(  58982400,      gpll0,    1, 1536, 15625),
 	F(  60000000,      gpll0,   10,    0,     0),
+	F(  63160000,      gpll0,  9.5,    0,     0),
 	F_END
 };
 
@@ -657,7 +667,7 @@ static struct rcg_clk pcie_aux_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_pcie_pipe_clk[] = {
-	F_EXT_SRC(  62500000, pcie_pipe_clk,    2,    0,     0),
+	F_EXT_SRC(  62500000, pcie_pipe_clk,    1,    0,     0),
 	F_EXT_SRC( 125000000, pcie_pipe_clk,    1,    0,     0),
 	F_END
 };
@@ -1242,6 +1252,7 @@ static struct local_vote_clk gcc_ce1_clk = {
 	.en_mask = BIT(5),
 	.base = &virt_bases[GCC_BASE],
 	.c = {
+		.parent = &ce1_clk_src.c,
 		.dbg_name = "gcc_ce1_clk",
 		.ops = &clk_ops_vote,
 		CLK_INIT(gcc_ce1_clk.c),
@@ -1445,6 +1456,7 @@ static struct branch_clk gcc_usb2a_phy_sleep_clk = {
 
 static struct branch_clk gcc_usb2b_phy_sleep_clk = {
 	.cbcr_reg = USB2B_PHY_SLEEP_CBCR,
+	.bcr_reg = USB2B_PHY_BCR,
 	.has_sibling = 1,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
@@ -1479,6 +1491,7 @@ static struct branch_clk gcc_usb3_aux_clk = {
 
 static struct branch_clk gcc_usb3_pipe_clk = {
 	.cbcr_reg = USB3_PIPE_CBCR,
+	.bcr_reg = USB3PHY_PHY_BCR,
 	.has_sibling = 0,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
@@ -1641,6 +1654,7 @@ static DEFINE_CLK_VOTER(pnoc_sps_clk, &pnoc_clk.c, LONG_MAX);
 static DEFINE_CLK_BRANCH_VOTER(cxo_pil_mss_clk, &xo.c);
 static DEFINE_CLK_BRANCH_VOTER(cxo_dwc3_clk, &xo.c);
 static DEFINE_CLK_BRANCH_VOTER(cxo_lpm_clk, &xo.c);
+static DEFINE_CLK_BRANCH_VOTER(cxo_otg_clk, &xo.c);
 
 static DEFINE_CLK_VOTER(qseecom_ce1_clk_src, &ce1_clk_src.c, 171430000);
 static DEFINE_CLK_VOTER(scm_ce1_clk_src, &ce1_clk_src.c, 171430000);
@@ -1663,6 +1677,8 @@ static struct alpha_pll_vco_tbl alpha_pll_vco_20nm_p[] = {
 	VCO(0, 1500000000, 2000000000),
 };
 
+static DEFINE_VDD_REGULATORS(vdd_dig_ao, VDD_DIG_NUM, 1, vdd_corner, NULL);
+
 static struct alpha_pll_clk a7sspll = {
 	.masks = &alpha_pll_masks_20nm_p,
 	.base = &virt_bases[APCS_ACC_BASE],
@@ -1672,7 +1688,7 @@ static struct alpha_pll_clk a7sspll = {
 		.parent = &xo_a_clk.c,
 		.dbg_name = "a7sspll",
 		.ops = &clk_ops_alpha_pll,
-		VDD_DIG_FMAX_MAP2(LOW, 1000000000, NOMINAL, 2000000000),
+		VDD_DIG_FMAX_MAP2_AO(LOW, 1000000000, NOMINAL, 2000000000),
 		CLK_INIT(a7sspll.c),
 	},
 };
@@ -1955,6 +1971,9 @@ static struct clk_lookup msm_clocks_krypton[] = {
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9928000.spi"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup6_spi_apps_clk.c, "f9928000.spi"),
 
+	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9924000.spi"),
+	CLK_LOOKUP("core_clk", gcc_blsp1_qup2_spi_apps_clk.c, "f9924000.spi"),
+
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c, "f9925000.i2c"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"),
 
@@ -1968,6 +1987,11 @@ static struct clk_lookup msm_clocks_krypton[] = {
 	CLK_DUMMY("iface_clk",  gcc_ipa_cnoc_clk.c, "fd4c0000.qcom,ipa", OFF),
 	CLK_DUMMY("inactivity_clk",  gcc_ipa_sleep_clk.c, "fd4c0000.qcom,ipa", OFF),
 
+	/* HSUSB-OTG Clocks */
+	CLK_LOOKUP("xo",                 cxo_otg_clk.c, "f9a55000.usb"),
+	CLK_LOOKUP("iface_clk",   gcc_usb_hs_ahb_clk.c, "f9a55000.usb"),
+	CLK_LOOKUP("core_clk", gcc_usb_hs_system_clk.c, "f9a55000.usb"),
+	CLK_LOOKUP("sleep_clk", gcc_usb2a_phy_sleep_clk.c, "f9a55000.usb"),
 
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup1_i2c_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup1_spi_apps_clk.c, ""),
@@ -1998,8 +2022,6 @@ static struct clk_lookup msm_clocks_krypton[] = {
 	CLK_LOOKUP("core_clk", gcc_sdcc3_apps_clk.c, "msm_sdcc.3"),
 	CLK_LOOKUP("bus_clk", pnoc_sdcc3_clk.c, "msm_sdcc.3"),
 
-	CLK_LOOKUP("iface_clk", gcc_usb_hs_ahb_clk.c,     "f9a55000.usb"),
-	CLK_LOOKUP("core_clk", gcc_usb_hs_system_clk.c,   "f9a55000.usb"),
 	CLK_LOOKUP("iface_clk", gcc_usb_hsic_ahb_clk.c,	  "msm_hsic_host"),
 	CLK_LOOKUP("phy_clk", gcc_usb_hsic_clk.c,	  "msm_hsic_host"),
 	CLK_LOOKUP("cal_clk", gcc_usb_hsic_io_cal_clk.c,  "msm_hsic_host"),
@@ -2044,6 +2066,7 @@ static struct clk_lookup msm_clocks_krypton[] = {
 	CLK_LOOKUP("bus_a_clk",	pnoc_msmbus_a_clk.c,	"msm_periph_noc"),
 	CLK_LOOKUP("mem_clk",	bimc_msmbus_clk.c,	"msm_bimc"),
 	CLK_LOOKUP("mem_a_clk",	bimc_msmbus_a_clk.c,	"msm_bimc"),
+	CLK_LOOKUP("iface_clk", ipa_clk.c,              "msm_ipa"),
 
 	CLK_LOOKUP("a7_m_clk", a7_m_clk, ""),
 
@@ -2132,20 +2155,20 @@ static struct clk_lookup msm_clocks_krypton[] = {
 	CLK_LOOKUP("",	usb_hsic_system_clk_src.c,	""),
 	CLK_LOOKUP("",	usb_hsic_xcvr_fs_clk_src.c,	""),
 
-	CLK_LOOKUP("",	gcc_pcie_axi_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_axi_mstr_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_cfg_ahb_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_pipe_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_sleep_clk.c,	""),
-	CLK_LOOKUP("iface_clk",	gcc_sys_noc_usb3_axi_clk.c,
-		   "f9200000.qcom,ssusb"),
-	CLK_LOOKUP("",	gcc_usb3_aux_clk.c,	""),
-	CLK_LOOKUP("",	gcc_usb3_pipe_clk.c,	""),
-	CLK_LOOKUP("core_clk",	gcc_usb30_master_clk.c,
-		   "f9200000.qcom,ssusb"),
-	CLK_LOOKUP("utmi_clk",	gcc_usb30_mock_utmi_clk.c,
-		   "f9200000.qcom,ssusb"),
-	CLK_LOOKUP("sleep_clk",	gcc_usb30_sleep_clk.c,	"f9200000.qcom,ssusb"),
+	CLK_LOOKUP("pcie_0_slv_axi_clk", gcc_pcie_axi_clk.c, "msm_pcie"),
+	CLK_LOOKUP("pcie_0_mstr_axi_clk", gcc_pcie_axi_mstr_clk.c, "msm_pcie"),
+	CLK_LOOKUP("pcie_0_cfg_ahb_clk", gcc_pcie_cfg_ahb_clk.c, "msm_pcie"),
+	CLK_LOOKUP("pcie_0_pipe_clk", gcc_pcie_pipe_clk.c, "msm_pcie"),
+	CLK_LOOKUP("pcie_0_aux_clk", gcc_pcie_sleep_clk.c, "msm_pcie"),
+	CLK_LOOKUP("iface_clk",	gcc_sys_noc_usb3_axi_clk.c, "f9200000.ssusb"),
+	CLK_LOOKUP("iface_clk",	gcc_sys_noc_usb3_axi_clk.c, "msm_usb3"),
+	CLK_LOOKUP("aux_clk",	gcc_usb3_aux_clk.c,
+		   "f9b38000.ssphy"),
+	CLK_LOOKUP("pipe_clk",	gcc_usb3_pipe_clk.c,
+		   "f9b38000.ssphy"),
+	CLK_LOOKUP("core_clk",	gcc_usb30_master_clk.c, "f9200000.ssusb"),
+	CLK_LOOKUP("utmi_clk",	gcc_usb30_mock_utmi_clk.c, "f9200000.ssusb"),
+	CLK_LOOKUP("sleep_clk",	gcc_usb30_sleep_clk.c,	"f9200000.ssusb"),
 	CLK_LOOKUP("cfg_ahb_clk", gcc_usb_phy_cfg_ahb_clk.c,
 						"f9b38000.ssphy"),
 
@@ -2154,20 +2177,19 @@ static struct clk_lookup msm_clocks_krypton[] = {
 	CLK_LOOKUP("mem_clk",   gcc_usb30_master_clk.c, "f9304000.qcom,usbbam"),
 
 	CLK_LOOKUP("",	ce1_clk_src.c,	""),
-	CLK_LOOKUP("",  gcc_usb3_phy_com_reset.c,       ""),
-	CLK_LOOKUP("",  gcc_usb3_phy_reset.c,   ""),
-	CLK_LOOKUP("",  gcc_pcie_gpio_ldo.c,   ""),
+	CLK_LOOKUP("phy_com_reset",  gcc_usb3_phy_com_reset.c,
+		   "f9b38000.ssphy"),
+	CLK_LOOKUP("phy_reset",  gcc_usb3_phy_reset.c,   "f9b38000.ssphy"),
+	CLK_LOOKUP("pcie_0_ldo",  gcc_pcie_gpio_ldo.c,   "msm_pcie"),
 	CLK_LOOKUP("",  gcc_usb_ss_ldo.c,   ""),
 
-	CLK_LOOKUP("ref_clk", lnbbclk_clk.c, "f9200000.qcom,ssusb"),
+	CLK_LOOKUP("ref_clk", lnbbclk_clk.c, "f9200000.ssusb"),
 	CLK_LOOKUP("", lnbbclk_a_clk.c, ""),
-	CLK_LOOKUP("xo", cxo_dwc3_clk.c, "f9200000.qcom,ssusb"),
-	CLK_LOOKUP("sleep_a_clk", gcc_usb2a_phy_sleep_clk.c,
-		   "f9200000.qcom,ssusb"),
-	CLK_LOOKUP("sleep_b_clk", gcc_usb2b_phy_sleep_clk.c,
-		   "f9200000.qcom,ssusb"),
+	CLK_LOOKUP("xo", cxo_dwc3_clk.c, "f9200000.ssusb"),
+	CLK_LOOKUP("phy_sleep_clk", gcc_usb2b_phy_sleep_clk.c,
+		   "f9200000.ssusb"),
 
-	CLK_LOOKUP("", qpic_clk.c, ""),
+	CLK_LOOKUP("core_clk", qpic_clk.c, "f9ac0000.qcom,nand"),
 	CLK_LOOKUP("", qpic_a_clk.c, ""),
 };
 
@@ -2179,6 +2201,10 @@ static void __init reg_init(void)
 	regval = readl_relaxed(GCC_REG_BASE(APCS_GPLL_ENA_VOTE));
 	regval |= BIT(0);
 	writel_relaxed(regval, GCC_REG_BASE(APCS_GPLL_ENA_VOTE));
+
+	regval = readl_relaxed(GCC_REG_BASE(APCS_CLOCK_BRANCH_ENA_VOTE));
+	regval |= BIT(26);
+	writel_relaxed(regval, GCC_REG_BASE(APCS_CLOCK_BRANCH_ENA_VOTE));
 }
 
 static void __init msmkrypton_clock_post_init(void)
@@ -2236,6 +2262,10 @@ static void __init msmkrypton_clock_pre_init(void)
 	vdd_dig.regulator[0] = regulator_get(NULL, "vdd_dig");
 	if (IS_ERR(vdd_dig.regulator[0]))
 		panic("clock-krypton: Unable to get the vdd_dig regulator!");
+
+	vdd_dig_ao.regulator[0] = regulator_get(NULL, "vdd_dig_ao");
+	if (IS_ERR(vdd_dig_ao.regulator[0]))
+		panic("clock-krypton: Unable to get the vdd_dig_ao regulator!");
 
 	enable_rpm_scaling();
 

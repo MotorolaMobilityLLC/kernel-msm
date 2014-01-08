@@ -184,6 +184,11 @@ static ssize_t sps_set_info(struct file *file, const char __user *buf,
 		return -EFAULT;
 	}
 
+	if (buf_size_kb > (INT_MAX/SZ_1K)) {
+		pr_err("sps:debugfs: buffer size is too large\n");
+		return -EFAULT;
+	}
+
 	new_buf_size = buf_size_kb * SZ_1K;
 
 	if (debugfs_record_enabled) {
@@ -2529,21 +2534,8 @@ static int msm_sps_probe(struct platform_device *pdev)
 		goto device_create_err;
 	}
 
-	sps->dfab_clk = clk_get(sps->dev, "dfab_clk");
-	if (IS_ERR(sps->dfab_clk)) {
-		if (PTR_ERR(sps->dfab_clk) == -EPROBE_DEFER)
-			ret = -EPROBE_DEFER;
-		else
-			SPS_ERR("sps:fail to get dfab_clk.");
-		goto clk_err;
-	} else {
-		ret = clk_set_rate(sps->dfab_clk, 64000000);
-		if (ret) {
-			SPS_ERR("sps:failed to set dfab_clk rate.");
-			clk_put(sps->dfab_clk);
-			goto clk_err;
-		}
-	}
+	if (pdev->dev.of_node)
+		sps->dev->of_node = pdev->dev.of_node;
 
 	if (!d_type) {
 		sps->pmem_clk = clk_get(sps->dev, "mem_clk");
@@ -2552,36 +2544,58 @@ static int msm_sps_probe(struct platform_device *pdev)
 				ret = -EPROBE_DEFER;
 			else
 				SPS_ERR("sps:fail to get pmem_clk.");
-			goto clk_err;
+			goto pmem_clk_err;
 		} else {
 			ret = clk_prepare_enable(sps->pmem_clk);
 			if (ret) {
 				SPS_ERR("sps:failed to enable pmem_clk.");
-				goto clk_err;
+				goto pmem_clk_en_err;
 			}
 		}
 	}
 
 #ifdef CONFIG_SPS_SUPPORT_BAMDMA
+	sps->dfab_clk = clk_get(sps->dev, "dfab_clk");
+	if (IS_ERR(sps->dfab_clk)) {
+		if (PTR_ERR(sps->dfab_clk) == -EPROBE_DEFER)
+			ret = -EPROBE_DEFER;
+		else
+			SPS_ERR("sps:fail to get dfab_clk.");
+		goto dfab_clk_err;
+	} else {
+		ret = clk_set_rate(sps->dfab_clk, 64000000);
+		if (ret) {
+			SPS_ERR("sps:failed to set dfab_clk rate.");
+			clk_put(sps->dfab_clk);
+			goto dfab_clk_err;
+		}
+	}
+
 	sps->bamdma_clk = clk_get(sps->dev, "dma_bam_pclk");
 	if (IS_ERR(sps->bamdma_clk)) {
 		if (PTR_ERR(sps->bamdma_clk) == -EPROBE_DEFER)
 			ret = -EPROBE_DEFER;
 		else
 			SPS_ERR("sps:fail to get bamdma_clk.");
-		goto clk_err;
+		clk_put(sps->dfab_clk);
+		goto dfab_clk_err;
 	} else {
 		ret = clk_prepare_enable(sps->bamdma_clk);
 		if (ret) {
 			SPS_ERR("sps:failed to enable bamdma_clk. ret=%d", ret);
-			goto clk_err;
+			clk_put(sps->bamdma_clk);
+			clk_put(sps->dfab_clk);
+			goto dfab_clk_err;
 		}
 	}
 
 	ret = clk_prepare_enable(sps->dfab_clk);
 	if (ret) {
 		SPS_ERR("sps:failed to enable dfab_clk. ret=%d", ret);
-		goto clk_err;
+		clk_disable_unprepare(sps->bamdma_clk);
+		clk_put(sps->bamdma_clk);
+		clk_put(sps->dfab_clk);
+		goto dfab_clk_err;
 	}
 #endif
 	ret = sps_device_init();
@@ -2590,8 +2604,10 @@ static int msm_sps_probe(struct platform_device *pdev)
 #ifdef CONFIG_SPS_SUPPORT_BAMDMA
 		clk_disable_unprepare(sps->dfab_clk);
 		clk_disable_unprepare(sps->bamdma_clk);
+		clk_put(sps->bamdma_clk);
+		clk_put(sps->dfab_clk);
 #endif
-		goto sps_device_init_err;
+		goto dfab_clk_err;
 	}
 #ifdef CONFIG_SPS_SUPPORT_BAMDMA
 	clk_disable_unprepare(sps->dfab_clk);
@@ -2602,8 +2618,13 @@ static int msm_sps_probe(struct platform_device *pdev)
 	SPS_INFO("sps:sps is ready.");
 
 	return 0;
-clk_err:
-sps_device_init_err:
+dfab_clk_err:
+	if (!d_type)
+		clk_disable_unprepare(sps->pmem_clk);
+pmem_clk_en_err:
+	if (!d_type)
+		clk_put(sps->pmem_clk);
+pmem_clk_err:
 	device_destroy(sps->dev_class, sps->dev_num);
 device_create_err:
 	unregister_chrdev_region(sps->dev_num, 1);

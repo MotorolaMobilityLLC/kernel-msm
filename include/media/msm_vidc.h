@@ -1,10 +1,70 @@
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
 #ifndef _MSM_VIDC_H_
 #define _MSM_VIDC_H_
 
-#ifdef __KERNEL__
-
 #include <linux/poll.h>
 #include <linux/videodev2.h>
+#include <linux/types.h>
+#include <linux/msm_ion.h>
+#include <uapi/media/msm_vidc.h>
+
+#define HAL_BUFFER_MAX 0xb
+
+enum smem_type {
+	SMEM_ION,
+};
+
+enum smem_prop {
+	SMEM_CACHED = ION_FLAG_CACHED,
+	SMEM_SECURE = ION_FLAG_SECURE,
+};
+
+/* NOTE: if you change this enum you MUST update the
+ * "buffer-type-tz-usage-table" for any affected target
+ * in arch/arm/boot/dts/<arch>.dtsi
+ */
+enum hal_buffer {
+	HAL_BUFFER_INPUT = 0x1,
+	HAL_BUFFER_OUTPUT = 0x2,
+	HAL_BUFFER_OUTPUT2 = 0x4,
+	HAL_BUFFER_EXTRADATA_INPUT = 0x8,
+	HAL_BUFFER_EXTRADATA_OUTPUT = 0x10,
+	HAL_BUFFER_EXTRADATA_OUTPUT2 = 0x20,
+	HAL_BUFFER_INTERNAL_SCRATCH = 0x40,
+	HAL_BUFFER_INTERNAL_SCRATCH_1 = 0x80,
+	HAL_BUFFER_INTERNAL_SCRATCH_2 = 0x100,
+	HAL_BUFFER_INTERNAL_PERSIST = 0x200,
+	HAL_BUFFER_INTERNAL_PERSIST_1 = 0x400,
+	HAL_BUFFER_INTERNAL_CMD_QUEUE = 0x800,
+};
+
+struct msm_smem {
+	int mem_type;
+	size_t size;
+	void *kvaddr;
+	unsigned long device_addr;
+	u32 flags;
+	void *smem_priv;
+	enum hal_buffer buffer_type;
+};
+
+enum smem_cache_ops {
+	SMEM_CACHE_CLEAN,
+	SMEM_CACHE_INVALIDATE,
+	SMEM_CACHE_CLEAN_INVALIDATE,
+};
 
 enum core_id {
 	MSM_VIDC_CORE_0 = 0,
@@ -37,7 +97,6 @@ int msm_vidc_poll(void *instance, struct file *filp,
 		struct poll_table_struct *pt);
 int msm_vidc_get_iommu_domain_partition(void *instance, u32 flags,
 		enum v4l2_buf_type, int *domain, int *partition);
-void *msm_vidc_get_resources(void *instance);
 int msm_vidc_subscribe_event(void *instance,
 		const struct v4l2_event_subscription *sub);
 int msm_vidc_unsubscribe_event(void *instance,
@@ -46,95 +105,16 @@ int msm_vidc_dqevent(void *instance, struct v4l2_event *event);
 int msm_vidc_wait(void *instance);
 int msm_vidc_s_parm(void *instance, struct v4l2_streamparm *a);
 int msm_vidc_enum_framesizes(void *instance, struct v4l2_frmsizeenum *fsize);
-#endif
-struct msm_vidc_extradata_header {
-	unsigned int size;
-	unsigned int:32; /** Keeping binary compatibility */
-	unsigned int:32; /* with firmware and OpenMAX IL **/
-	unsigned int type; /* msm_vidc_extradata_type */
-	unsigned int data_size;
-	unsigned char data[1];
-};
-struct msm_vidc_interlace_payload {
-	unsigned int format;
-};
-struct msm_vidc_framerate_payload {
-	unsigned int frame_rate;
-};
-struct msm_vidc_ts_payload {
-	unsigned int timestamp_lo;
-	unsigned int timestamp_hi;
-};
-struct msm_vidc_concealmb_payload {
-	unsigned int num_mbs;
-};
-struct msm_vidc_recoverysei_payload {
-	unsigned int flags;
-};
-struct msm_vidc_aspect_ratio_payload {
-	unsigned int size;
-	unsigned int version;
-	unsigned int port_index;
-	unsigned int aspect_width;
-	unsigned int aspect_height;
-};
-struct msm_vidc_mpeg2_seqdisp_payload {
-	unsigned int video_format;
-	unsigned int color_descp;
-	unsigned int color_primaries;
-	unsigned int transfer_char;
-	unsigned int matrix_coeffs;
-	unsigned int disp_width;
-	unsigned int disp_height;
-};
-struct msm_vidc_panscan_window {
-	unsigned int panscan_height_offset;
-	unsigned int panscan_width_offset;
-	unsigned int panscan_window_width;
-	unsigned int panscan_window_height;
-};
-struct msm_vidc_panscan_window_payload {
-	unsigned int num_panscan_windows;
-	struct msm_vidc_panscan_window wnd[1];
-};
-struct msm_vidc_stream_userdata_payload {
-	unsigned int type;
-	unsigned int data[1];
-};
-enum msm_vidc_extradata_type {
-	MSM_VIDC_EXTRADATA_NONE = 0x00000000,
-	MSM_VIDC_EXTRADATA_MB_QUANTIZATION = 0x00000001,
-	MSM_VIDC_EXTRADATA_INTERLACE_VIDEO = 0x00000002,
-	MSM_VIDC_EXTRADATA_VC1_FRAMEDISP = 0x00000003,
-	MSM_VIDC_EXTRADATA_VC1_SEQDISP = 0x00000004,
-	MSM_VIDC_EXTRADATA_TIMESTAMP = 0x00000005,
-	MSM_VIDC_EXTRADATA_S3D_FRAME_PACKING = 0x00000006,
-	MSM_VIDC_EXTRADATA_FRAME_RATE = 0x00000007,
-	MSM_VIDC_EXTRADATA_PANSCAN_WINDOW = 0x00000008,
-	MSM_VIDC_EXTRADATA_RECOVERY_POINT_SEI = 0x00000009,
-	MSM_VIDC_EXTRADATA_MPEG2_SEQDISP = 0x0000000D,
-	MSM_VIDC_EXTRADATA_STREAM_USERDATA = 0x0000000E,
-	MSM_VIDC_EXTRADATA_MULTISLICE_INFO = 0x7F100000,
-	MSM_VIDC_EXTRADATA_NUM_CONCEALED_MB = 0x7F100001,
-	MSM_VIDC_EXTRADATA_INDEX = 0x7F100002,
-	MSM_VIDC_EXTRADATA_ASPECT_RATIO = 0x7F100003,
-	MSM_VIDC_EXTRADATA_METADATA_FILLER = 0x7FE00002,
-};
-enum msm_vidc_interlace_type {
-	MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE = 0x01,
-	MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST = 0x02,
-	MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST = 0x04,
-	MSM_VIDC_INTERLACE_FRAME_TOPFIELDFIRST = 0x08,
-	MSM_VIDC_INTERLACE_FRAME_BOTTOMFIELDFIRST = 0x10,
-};
-enum msm_vidc_recovery_sei {
-	MSM_VIDC_FRAME_RECONSTRUCTION_INCORRECT = 0x0,
-	MSM_VIDC_FRAME_RECONSTRUCTION_CORRECT = 0x01,
-	MSM_VIDC_FRAME_RECONSTRUCTION_APPROXIMATELY_CORRECT = 0x02,
-};
-enum msm_vidc_userdata_type {
-	MSM_VIDC_USERDATA_TYPE_FRAME = 0x1,
-	MSM_VIDC_USERDATA_TYPE_TOP_FIELD = 0x2,
-	MSM_VIDC_USERDATA_TYPE_BOTTOM_FIELD = 0x3,
-};
+struct msm_smem *msm_vidc_smem_alloc(void *instance,
+			size_t size, u32 align, u32 flags,
+			enum hal_buffer buffer_type, int map_kernel);
+void msm_vidc_smem_free(void *instance, struct msm_smem *mem);
+int msm_vidc_smem_cache_operations(void *instance,
+		struct msm_smem *mem, enum smem_cache_ops);
+struct msm_smem *msm_vidc_smem_user_to_kernel(void *instance,
+			int fd, u32 offset, enum hal_buffer buffer_type);
+int msm_vidc_smem_get_domain_partition(void *instance,
+		u32 flags, enum hal_buffer buffer_type,
+		int *domain_num, int *partition_num);
+void *msm_vidc_smem_get_client(void *instance);
 #endif

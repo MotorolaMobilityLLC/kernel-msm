@@ -37,13 +37,13 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/irq.h>
+#include <linux/clk/msm-clk.h>
 
 #include <linux/usb/ulpi.h>
 #include <linux/usb/msm_hsusb_hw.h>
 #include <linux/usb/msm_hsusb.h>
 #include <linux/of.h>
 
-#include <mach/clk.h>
 #include <mach/msm_xo.h>
 #include <mach/msm_iomap.h>
 #include <linux/debugfs.h>
@@ -66,6 +66,7 @@ struct msm_hcd {
 	struct clk				*xo_clk;
 	struct clk				*iface_clk;
 	struct clk				*core_clk;
+	long                                    core_clk_rate;
 	struct clk				*alt_core_clk;
 	struct clk				*phy_sleep_clk;
 	struct regulator			*hsusb_vddcx;
@@ -550,8 +551,8 @@ static int msm_ehci_link_clk_reset(struct msm_hcd *mhcd, bool assert)
 			ret = clk_reset(mhcd->alt_core_clk, CLK_RESET_ASSERT);
 		} else {
 			/* Using asynchronous block reset to the hardware */
-			clk_disable(mhcd->iface_clk);
-			clk_disable(mhcd->core_clk);
+			clk_disable_unprepare(mhcd->iface_clk);
+			clk_disable_unprepare(mhcd->core_clk);
 			ret = clk_reset(mhcd->core_clk, CLK_RESET_ASSERT);
 		}
 		if (ret)
@@ -562,8 +563,8 @@ static int msm_ehci_link_clk_reset(struct msm_hcd *mhcd, bool assert)
 		} else {
 			ret = clk_reset(mhcd->core_clk, CLK_RESET_DEASSERT);
 			ndelay(200);
-			clk_enable(mhcd->core_clk);
-			clk_enable(mhcd->iface_clk);
+			clk_prepare_enable(mhcd->core_clk);
+			clk_prepare_enable(mhcd->iface_clk);
 		}
 		if (ret)
 			dev_err(mhcd->dev, "usb clk deassert failed\n");
@@ -603,7 +604,7 @@ static int msm_ehci_phy_reset(struct msm_hcd *mhcd)
 	return 0;
 }
 
-static void usb_phy_reset(struct msm_hcd *mhcd)
+static void msm_usb_phy_reset(struct msm_hcd *mhcd)
 {
 	u32 val;
 
@@ -661,7 +662,7 @@ static int msm_hsusb_reset(struct msm_hcd *mhcd)
 								USB_PHY_CTRL2);
 
 	/* Reset USB PHY after performing USB Link RESET */
-	usb_phy_reset(mhcd);
+	msm_usb_phy_reset(mhcd);
 
 	msleep(100);
 
@@ -690,11 +691,16 @@ static void msm_ehci_phy_susp_fail_work(struct work_struct *w)
 					phy_susp_fail_work);
 	struct usb_hcd *hcd = mhcd_to_hcd(mhcd);
 
+	pm_runtime_disable(mhcd->dev);
+
 	msm_ehci_vbus_power(mhcd, 0);
 	usb_remove_hcd(hcd);
 	msm_hsusb_reset(mhcd);
 	usb_add_hcd(hcd, hcd->irq, IRQF_SHARED);
 	msm_ehci_vbus_power(mhcd, 1);
+
+	pm_runtime_set_active(mhcd->dev);
+	pm_runtime_enable(mhcd->dev);
 }
 
 #define PHY_SUSP_TIMEOUT_MSEC	500
@@ -999,6 +1005,10 @@ static int msm_ehci_reset(struct usb_hcd *hcd)
 		writel_relaxed(readl_relaxed(USB_PHY_CTRL2) | (1<<16),
 								USB_PHY_CTRL2);
 
+	/* Disable ULPI_TX_PKT_EN_CLR_FIX which is valid only for HSIC */
+	writel_relaxed(readl_relaxed(USB_GENCONFIG2) & ~(1<<19),
+					USB_GENCONFIG2);
+
 	return 0;
 }
 
@@ -1237,7 +1247,22 @@ static int msm_ehci_init_clocks(struct msm_hcd *mhcd, u32 init)
 			dev_err(mhcd->dev, "failed to get core_clk\n");
 		goto put_iface_clk;
 	}
-	clk_set_rate(mhcd->core_clk, INT_MAX);
+
+	/*
+	 * Get Max supported clk frequency for USB Core CLK and request
+	 * to set the same.
+	 */
+	mhcd->core_clk_rate = clk_round_rate(mhcd->core_clk, LONG_MAX);
+	if (IS_ERR_VALUE(mhcd->core_clk_rate)) {
+		dev_err(mhcd->dev, "fail to get core clk max freq\n");
+		goto put_core_clk;
+	} else {
+		ret = clk_set_rate(mhcd->core_clk, mhcd->core_clk_rate);
+		if (ret) {
+			dev_err(mhcd->dev, "fail to set core_clk: %d\n", ret);
+			goto put_core_clk;
+		}
+	}
 
 	mhcd->phy_sleep_clk = clk_get(mhcd->dev, "sleep_clk");
 	if (IS_ERR(mhcd->phy_sleep_clk)) {
@@ -1296,8 +1321,9 @@ struct msm_usb_host_platform_data *ehci_msm2_dt_to_pdata(
 	pdata->no_selective_suspend = of_property_read_bool(node,
 					"qcom,no-selective-suspend");
 	pdata->resume_gpio = of_get_named_gpio(node, "qcom,resume-gpio", 0);
-	if (pdata->resume_gpio < 0)
-		pdata->resume_gpio = 0;
+
+	pdata->ext_hub_reset_gpio = of_get_named_gpio(node,
+					"qcom,ext-hub-reset-gpio", 0);
 
 	return pdata;
 }
@@ -1414,19 +1440,40 @@ static int ehci_msm2_probe(struct platform_device *pdev)
 		goto free_xo_handle;
 	}
 
-	if (pdata && pdata->resume_gpio) {
+	if (pdata && gpio_is_valid(pdata->resume_gpio)) {
 		mhcd->resume_gpio = pdata->resume_gpio;
-		ret = gpio_request(mhcd->resume_gpio, "hsusb_resume");
+		ret = devm_gpio_request(&pdev->dev, mhcd->resume_gpio,
+							"hsusb_resume");
 		if (ret) {
 			dev_err(&pdev->dev,
 				"resume gpio(%d) request failed:%d\n",
 				mhcd->resume_gpio, ret);
-			mhcd->resume_gpio = 0;
+			mhcd->resume_gpio = -EINVAL;
 		} else {
 			/* to override ehci_bus_resume from ehci-hcd library */
 			ehci_bus_resume_func = ehci_msm2_hc_driver.bus_resume;
 			ehci_msm2_hc_driver.bus_resume =
 				msm_ehci_bus_resume_with_gpio;
+		}
+	}
+
+	if (pdata && gpio_is_valid(pdata->ext_hub_reset_gpio)) {
+		ret = devm_gpio_request(&pdev->dev, pdata->ext_hub_reset_gpio,
+							"hsusb_reset");
+		if (ret) {
+			dev_err(&pdev->dev,
+				"reset gpio(%d) request failed:%d\n",
+				pdata->ext_hub_reset_gpio, ret);
+			goto devote_xo_handle;
+		} else {
+			/* reset external hub */
+			gpio_direction_output(pdata->ext_hub_reset_gpio, 0);
+			/*
+			 * Hub reset should be asserted for minimum 5microsec
+			 * before deasserting.
+			 */
+			usleep_range(5, 1000);
+			gpio_direction_output(pdata->ext_hub_reset_gpio, 1);
 		}
 	}
 
@@ -1551,8 +1598,6 @@ deinit_ldo:
 deinit_vddcx:
 	msm_ehci_init_vddcx(mhcd, 0);
 devote_xo_handle:
-	if (mhcd->resume_gpio)
-		gpio_free(mhcd->resume_gpio);
 	if (mhcd->xo_clk)
 		clk_disable_unprepare(mhcd->xo_clk);
 	else
@@ -1601,9 +1646,6 @@ static int ehci_msm2_remove(struct platform_device *pdev)
 			disable_irq_wake(mhcd->wakeup_irq);
 		free_irq(mhcd->wakeup_irq, mhcd);
 	}
-
-	if (mhcd->resume_gpio)
-		gpio_free(mhcd->resume_gpio);
 
 	device_init_wakeup(&pdev->dev, 0);
 	pm_runtime_set_suspended(&pdev->dev);

@@ -123,7 +123,7 @@ struct ion_heap_ops {
 			 struct vm_area_struct *vma);
 	void (*unmap_user) (struct ion_heap *mapper, struct ion_buffer *buffer);
 	int (*print_debug)(struct ion_heap *heap, struct seq_file *s,
-			   const struct rb_root *mem_map);
+			   const struct list_head *mem_map);
 	int (*secure_heap)(struct ion_heap *heap, int version, void *data);
 	int (*unsecure_heap)(struct ion_heap *heap, int version, void *data);
 };
@@ -395,5 +395,10 @@ int ion_page_pool_shrink(struct ion_page_pool *pool, gfp_t gfp_mask,
 
 int ion_walk_heaps(struct ion_client *client, int heap_id, void *data,
 			int (*f)(struct ion_heap *heap, void *data));
+
+struct ion_handle *ion_handle_get_by_id(struct ion_client *client,
+					int id);
+
+int ion_handle_put(struct ion_handle *handle);
 
 #endif /* _ION_PRIV_H */

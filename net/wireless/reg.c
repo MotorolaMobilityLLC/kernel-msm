@@ -856,6 +856,18 @@ static void handle_channel(struct wiphy *wiphy,
 
 		REG_DBG_PRINT("Disabling freq %d MHz\n", chan->center_freq);
 		chan->flags |= IEEE80211_CHAN_DISABLED;
+		if (lr->initiator == NL80211_REGDOM_SET_BY_DRIVER &&
+		    request_wiphy && request_wiphy == wiphy &&
+		    request_wiphy->flags & WIPHY_FLAG_STRICT_REGULATORY) {
+			REG_DBG_PRINT("Disabling freq %d MHz for good\n",
+				      chan->center_freq);
+			chan->orig_flags |= IEEE80211_CHAN_DISABLED;
+			chan->flags = chan->orig_flags;
+		} else {
+			REG_DBG_PRINT("Disabling freq %d MHz\n",
+				      chan->center_freq);
+			chan->flags |= IEEE80211_CHAN_DISABLED;
+			}
 		return;
 	}
 
@@ -899,13 +911,11 @@ static void handle_channel(struct wiphy *wiphy,
 	chan->max_reg_power = (int) MBM_TO_DBM(power_rule->max_eirp);
 	if (chan->orig_mpwr) {
 		/*
-		 * Devices that have their own custom regulatory domain
-		 * but also use WIPHY_FLAG_STRICT_REGULATORY will follow the
-		 * passed country IE power settings.
+		 * Devices that use NL80211_COUNTRY_IE_FOLLOW_POWER will always
+		 * follow the passed country IE power settings.
 		 */
 		if (initiator == NL80211_REGDOM_SET_BY_COUNTRY_IE &&
-		    wiphy->flags & WIPHY_FLAG_CUSTOM_REGULATORY &&
-		    wiphy->flags & WIPHY_FLAG_STRICT_REGULATORY)
+		    wiphy->country_ie_pref & NL80211_COUNTRY_IE_FOLLOW_POWER)
 			chan->max_power = chan->max_reg_power;
 		else
 			chan->max_power = min(chan->orig_mpwr,
@@ -1257,7 +1267,9 @@ static void handle_channel_custom(struct wiphy *wiphy,
 	if (IS_ERR(reg_rule)) {
 		REG_DBG_PRINT("Disabling freq %d MHz as custom regd has no rule that fits it\n",
 			      chan->center_freq);
-		chan->flags = IEEE80211_CHAN_DISABLED;
+		chan->orig_flags |= IEEE80211_CHAN_DISABLED;
+		chan->flags = chan->orig_flags;
+
 		return;
 	}
 
@@ -1331,6 +1343,9 @@ get_reg_request_treatment(struct wiphy *wiphy,
 	case NL80211_REGDOM_SET_BY_CORE:
 		return REG_REQ_OK;
 	case NL80211_REGDOM_SET_BY_COUNTRY_IE:
+		if (wiphy->country_ie_pref & NL80211_COUNTRY_IE_IGNORE_CORE)
+			return REG_REQ_IGNORE;
+
 		if (reg_request_cell_base(lr)) {
 			/* Trust a Cell base station over the AP's country IE */
 			if (regdom_changes(pending_request->alpha2))
@@ -1542,7 +1557,8 @@ static void reg_process_hint(struct regulatory_request *reg_request,
 	if (reg_request->wiphy_idx != WIPHY_IDX_INVALID)
 		wiphy = wiphy_idx_to_wiphy(reg_request->wiphy_idx);
 
-	if (reg_initiator == NL80211_REGDOM_SET_BY_DRIVER && !wiphy) {
+	if ((reg_initiator == NL80211_REGDOM_SET_BY_DRIVER ||
+	     reg_initiator == NL80211_REGDOM_SET_BY_COUNTRY_IE) && !wiphy) {
 		kfree(reg_request);
 		return;
 	}

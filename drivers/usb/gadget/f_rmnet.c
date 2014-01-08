@@ -388,7 +388,7 @@ static int rmnet_gport_setup(void)
 	return 0;
 }
 
-static int gport_rmnet_connect(struct f_rmnet *dev)
+static int gport_rmnet_connect(struct f_rmnet *dev, unsigned intf)
 {
 	int			ret;
 	unsigned		port_num;
@@ -413,7 +413,7 @@ static int gport_rmnet_connect(struct f_rmnet *dev)
 		}
 		break;
 	case USB_GADGET_XPORT_QTI:
-		ret = gqti_ctrl_connect(&dev->port, port_num);
+		ret = gqti_ctrl_connect(&dev->port, port_num, intf);
 		if (ret) {
 			pr_err("%s: gqti_ctrl_connect failed: err:%d\n",
 					__func__, ret);
@@ -449,9 +449,11 @@ static int gport_rmnet_connect(struct f_rmnet *dev)
 	switch (dxport) {
 	case USB_GADGET_XPORT_BAM2BAM:
 		src_connection_idx = usb_bam_get_connection_idx(gadget->name,
-			A2_P_BAM, USB_TO_PEER_PERIPHERAL, port_num);
+			A2_P_BAM, USB_TO_PEER_PERIPHERAL, USB_BAM_DEVICE,
+			port_num);
 		dst_connection_idx = usb_bam_get_connection_idx(gadget->name,
-			A2_P_BAM, PEER_PERIPHERAL_TO_USB, port_num);
+			A2_P_BAM, PEER_PERIPHERAL_TO_USB, USB_BAM_DEVICE,
+			port_num);
 		if (dst_connection_idx < 0 || src_connection_idx < 0) {
 			pr_err("%s: usb_bam_get_connection_idx failed\n",
 				__func__);
@@ -470,9 +472,11 @@ static int gport_rmnet_connect(struct f_rmnet *dev)
 		break;
 	case USB_GADGET_XPORT_BAM2BAM_IPA:
 		src_connection_idx = usb_bam_get_connection_idx(gadget->name,
-			IPA_P_BAM, USB_TO_PEER_PERIPHERAL, port_num);
+			IPA_P_BAM, USB_TO_PEER_PERIPHERAL, USB_BAM_DEVICE,
+			port_num);
 		dst_connection_idx = usb_bam_get_connection_idx(gadget->name,
-			IPA_P_BAM, PEER_PERIPHERAL_TO_USB, port_num);
+			IPA_P_BAM, PEER_PERIPHERAL_TO_USB, USB_BAM_DEVICE,
+			port_num);
 		if (dst_connection_idx < 0 || src_connection_idx < 0) {
 			pr_err("%s: usb_bam_get_connection_idx failed\n",
 				__func__);
@@ -696,6 +700,8 @@ static void frmnet_resume(struct usb_function *f)
 static void frmnet_disable(struct usb_function *f)
 {
 	struct f_rmnet *dev = func_to_rmnet(f);
+	enum transport_type	dxport = rmnet_ports[dev->port_num].data_xport;
+	struct usb_composite_dev	*cdev = dev->cdev;
 
 	pr_debug("%s: port#%d\n", __func__, dev->port_num);
 
@@ -706,6 +712,11 @@ static void frmnet_disable(struct usb_function *f)
 
 	frmnet_purge_responses(dev);
 
+	if (dxport == USB_GADGET_XPORT_BAM2BAM_IPA &&
+	    gadget_is_dwc3(cdev->gadget)) {
+		msm_ep_unconfig(dev->port.out);
+		msm_ep_unconfig(dev->port.in);
+	}
 	gport_rmnet_disconnect(dev);
 }
 
@@ -713,6 +724,7 @@ static int
 frmnet_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 {
 	struct f_rmnet			*dev = func_to_rmnet(f);
+	enum transport_type	dxport = rmnet_ports[dev->port_num].data_xport;
 	struct usb_composite_dev	*cdev = dev->cdev;
 	int				ret;
 	struct list_head *cpkt;
@@ -747,8 +759,19 @@ frmnet_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 				dev->port.out->desc = NULL;
 				return -EINVAL;
 		}
-		ret = gport_rmnet_connect(dev);
+		ret = gport_rmnet_connect(dev, intf);
 	}
+
+	if (dxport == USB_GADGET_XPORT_BAM2BAM_IPA &&
+	    gadget_is_dwc3(cdev->gadget)) {
+		if (msm_ep_config(dev->port.in) ||
+		    msm_ep_config(dev->port.out)) {
+			pr_err("%s: msm_ep_config failed\n", __func__);
+			return -EINVAL;
+		}
+	} else
+		pr_debug("Rmnet is being used with non DWC3 core\n");
+
 
 	atomic_set(&dev->online, 1);
 

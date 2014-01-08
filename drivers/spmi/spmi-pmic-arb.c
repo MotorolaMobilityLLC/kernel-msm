@@ -25,7 +25,7 @@
 #include <linux/module.h>
 #include <linux/seq_file.h>
 #include <linux/syscore_ops.h>
-#include <mach/qpnp-int.h>
+#include <linux/irqchip/qpnp-int.h>
 #include "spmi-dbgfs.h"
 
 #define SPMI_PMIC_ARB_NAME		"spmi_pmic_arb"
@@ -33,6 +33,9 @@
 /* PMIC Arbiter configuration registers */
 #define PMIC_ARB_VERSION		0x0000
 #define PMIC_ARB_INT_EN			0x0004
+#define PMIC_ARB_GENI_CTRL		0x0024
+#define PMIC_ARB_GENI_STATUS		0x0028
+#define PMIC_ARB_PROTOCOL_IRQ_STATUS	(0x700 + 0x820)
 
 /* PMIC Arbiter channel registers */
 #define PMIC_ARB_CMD(N)			(0x0800 + (0x80 * (N)))
@@ -209,6 +212,17 @@ pa_write_data(struct spmi_pmic_arb_dev *dev, u8 *buf, u32 reg, u8 bc)
 	pmic_arb_write(dev, reg, data);
 }
 
+static void pmic_arb_dbg_dump_regs(struct spmi_pmic_arb_dev *pmic_arb, int ret,
+								const char *msg)
+{
+	u32 irq = readl_relaxed(pmic_arb->cnfg + PMIC_ARB_PROTOCOL_IRQ_STATUS);
+	u32 geni_stat = readl_relaxed(pmic_arb->cnfg + PMIC_ARB_GENI_STATUS);
+	u32 geni_ctrl = readl_relaxed(pmic_arb->cnfg + PMIC_ARB_GENI_CTRL);
+	dev_err(pmic_arb->dev,
+	"err:%d on %s PROTOCOL_IRQ_STATUS:0x%x GENI_STATUS:0x%x GENI_CTRL:0x%x\n",
+		ret, msg, irq, geni_stat, geni_ctrl);
+}
+
 /* Non-data command */
 static int pmic_arb_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid)
 {
@@ -223,13 +237,17 @@ static int pmic_arb_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid)
 	if (opc < SPMI_CMD_RESET || opc > SPMI_CMD_WAKEUP)
 		return -EINVAL;
 
-	cmd = ((opc | 0x40) << 27) | ((sid & 0xf) << 20);
+	opc -= SPMI_CMD_RESET - PMIC_ARB_OP_RESET;
+
+	cmd = (opc << 27) | ((sid & 0xf) << 20);
 
 	spin_lock_irqsave(&pmic_arb->lock, flags);
 	pmic_arb_write(pmic_arb, PMIC_ARB_CMD(pmic_arb->channel), cmd);
 	rc = pmic_arb_wait_for_done(pmic_arb);
 	spin_unlock_irqrestore(&pmic_arb->lock, flags);
 
+	if (rc)
+		pmic_arb_dbg_dump_regs(pmic_arb, rc, "cmd");
 	return rc;
 }
 
@@ -277,6 +295,8 @@ static int pmic_arb_read_cmd(struct spmi_controller *ctrl,
 
 done:
 	spin_unlock_irqrestore(&pmic_arb->lock, flags);
+	if (rc)
+		pmic_arb_dbg_dump_regs(pmic_arb, rc, "read_cmd");
 	return rc;
 }
 
@@ -323,6 +343,8 @@ static int pmic_arb_write_cmd(struct spmi_controller *ctrl,
 	rc = pmic_arb_wait_for_done(pmic_arb);
 	spin_unlock_irqrestore(&pmic_arb->lock, flags);
 
+	if (rc)
+		pmic_arb_dbg_dump_regs(pmic_arb, rc, "write_cmd");
 	return rc;
 }
 

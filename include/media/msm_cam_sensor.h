@@ -97,6 +97,8 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_VANA,
 	SENSOR_GPIO_VDIG,
 	SENSOR_GPIO_VAF,
+	SENSOR_GPIO_FL_EN,
+	SENSOR_GPIO_FL_NOW,
 	SENSOR_GPIO_MAX,
 };
 
@@ -224,6 +226,8 @@ struct msm_sensor_power_setting {
 struct msm_sensor_power_setting_array {
 	struct msm_sensor_power_setting *power_setting;
 	uint16_t size;
+	struct msm_sensor_power_setting *power_down_setting;
+	uint16_t size_down;
 };
 
 struct msm_sensor_id_info_t {
@@ -247,6 +251,8 @@ enum cci_i2c_master_t {
 
 struct msm_camera_sensor_slave_info {
 	char sensor_name[32];
+	char eeprom_name[32];
+	char actuator_name[32];
 	enum msm_sensor_camera_id_t camera_id;
 	uint16_t slave_addr;
 	enum msm_camera_i2c_reg_addr_type addr_type;

@@ -25,6 +25,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <linux/mutex.h>
 
 /* Config/Control registers */
 #define CHG_CURRENT_CTRL_REG		0x0
@@ -40,6 +41,9 @@
 /* Command registers */
 #define CMD_A_REG			0x30
 #define CMD_B_REG			0x31
+
+/* Revision register */
+#define CHG_REVISION_REG		0x34
 
 /* IRQ status registers */
 #define IRQ_A_REG			0x35
@@ -102,15 +106,20 @@
 #define THERM_A_THERM_MONITOR_EN_BIT		0x0
 #define THERM_A_THERM_MONITOR_EN_MASK		BIT(4)
 #define VFLOAT_MASK				0x3F
+#define SMB349_REV_MASK				0x0F
+#define SMB349_REV_A4				0x4
 
 /* IRQ status bits */
-#define IRQ_A_TEMP_HARD_LIMIT			(BIT(6) | BIT(4))
-#define IRQ_A_TEMP_SOFT_LIMIT			(BIT(2) | BIT(0))
+#define IRQ_A_HOT_HARD_BIT			BIT(6)
+#define IRQ_A_COLD_HARD_BIT			BIT(4)
+#define IRQ_A_HOT_SOFT_BIT			BIT(2)
+#define IRQ_A_COLD_SOFT_BIT			BIT(0)
 #define IRQ_B_BATT_MISSING_BIT			BIT(4)
 #define IRQ_B_BATT_LOW_BIT			BIT(2)
 #define IRQ_B_BATT_OV_BIT			BIT(6)
 #define IRQ_B_PRE_FAST_CHG_BIT			BIT(0)
-#define IRQ_C_TERM_TAPER_CHG_BIT		(BIT(0) | BIT(2))
+#define IRQ_C_TAPER_CHG_BIT			BIT(2)
+#define IRQ_C_TERM_BIT				BIT(0)
 #define IRQ_C_INT_OVER_TEMP_BIT			BIT(6)
 #define IRQ_D_CHG_TIMEOUT_BIT			(BIT(0) | BIT(2))
 #define IRQ_D_AICL_DONE_BIT			BIT(4)
@@ -130,6 +139,7 @@
 #define STATUS_C_TAPER_CHARGING			(BIT(2) | BIT(1))
 #define STATUS_C_CHG_ERR_STATUS_BIT		BIT(6)
 #define STATUS_C_CHG_ENABLE_STATUS_BIT		BIT(0)
+#define STATUS_C_CHG_HOLD_OFF_BIT		BIT(3)
 #define STATUS_D_PORT_OTHER			BIT(0)
 #define STATUS_D_PORT_SDP			BIT(1)
 #define STATUS_D_PORT_DCP			BIT(2)
@@ -152,6 +162,10 @@
 #define SMB_FAST_CHG_CURRENT_MASK	0xF0
 #define SMB349_DEFAULT_BATT_CAPACITY	50
 
+enum {
+	WRKARND_APSD_FAIL = BIT(0),
+};
+
 struct smb349_regulator {
 	struct regulator_desc	rdesc;
 	struct regulator_dev	*rdev;
@@ -169,32 +183,51 @@ struct smb349_charger {
 	int			chg_valid_gpio;
 	int			chg_valid_act_low;
 	int			chg_present;
+	int			fake_battery_soc;
 	bool			chg_autonomous_mode;
 	bool			disable_apsd;
 	bool			battery_missing;
-	bool			supply_update;
 	const char		*bms_psy_name;
+	struct completion	resumed;
+	bool			resume_completed;
+	bool			irq_waiting;
+
+	/* status tracking */
+	bool			batt_full;
+	bool			batt_hot;
+	bool			batt_cold;
+	bool			batt_warm;
+	bool			batt_cool;
 
 	int			charging_disabled;
 	int			fastchg_current_max_ma;
+	int			workaround_flags;
 
 	struct power_supply	*usb_psy;
 	struct power_supply	*bms_psy;
 	struct power_supply	batt_psy;
 
 	struct smb349_regulator	otg_vreg;
+	struct mutex		irq_complete;
 
 	struct dentry		*debug_root;
+	u32			peek_poke_address;
+};
+
+struct smb_irq_info {
+	const char		*name;
+	int			(*smb_irq)(struct smb349_charger *chip,
+							u8 rt_stat);
+	int			high;
+	int			low;
 };
 
 struct irq_handler_info {
 	u8			stat_reg;
-	u8			prev_val;
 	u8			val;
-	int (*smb_irq[4])(struct smb349_charger *smb, u8 status);
+	u8			prev_val;
+	struct smb_irq_info	irq_info[4];
 };
-
-static struct irq_handler_info handlers[SMB349_IRQ_REG_COUNT];
 
 struct chg_current_map {
 	int	chg_current_ma;
@@ -420,6 +453,23 @@ static int smb349_hw_init(struct smb349_charger *chip)
 		return 0;
 	}
 
+	rc = smb349_read_reg(chip, CHG_REVISION_REG, &reg);
+	if (rc) {
+		dev_err(chip->dev, "Couldn't read CHG_REVISION_REG rc=%d\n",
+									rc);
+		return rc;
+	}
+	/*
+	 * A4 silicon revision of SMB349 fails charger type detection
+	 * (apsd) due to interference on the D+/- lines by the USB phy.
+	 * Set the workaround flag to disable charger type reporting
+	 * for this revision.
+	 */
+	if ((reg & SMB349_REV_MASK) == SMB349_REV_A4)
+		chip->workaround_flags |= WRKARND_APSD_FAIL;
+
+	pr_debug("workaround_flags = %x\n", chip->workaround_flags);
+
 	rc = smb349_enable_volatile_writes(chip);
 	if (rc) {
 		dev_err(chip->dev, "Couldn't configure volatile writes rc=%d\n",
@@ -603,6 +653,7 @@ static enum power_supply_property smb349_battery_properties[] = {
 	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_MODEL_NAME,
 };
@@ -610,8 +661,10 @@ static enum power_supply_property smb349_battery_properties[] = {
 static int smb349_get_prop_batt_status(struct smb349_charger *chip)
 {
 	int rc;
-	int status = POWER_SUPPLY_STATUS_DISCHARGING;
 	u8 reg = 0;
+
+	if (chip->batt_full)
+		return POWER_SUPPLY_STATUS_FULL;
 
 	rc = smb349_read_reg(chip, STATUS_C_REG, &reg);
 	if (rc) {
@@ -619,14 +672,16 @@ static int smb349_get_prop_batt_status(struct smb349_charger *chip)
 		return POWER_SUPPLY_STATUS_UNKNOWN;
 	}
 
-	if ((reg & (STATUS_C_CHARGING_MASK |
-			STATUS_C_CHG_ENABLE_STATUS_BIT)) &&
-			!(reg & STATUS_C_CHG_ERR_STATUS_BIT))
-		status = POWER_SUPPLY_STATUS_CHARGING;
-
 	dev_dbg(chip->dev, "%s: STATUS_C_REG=%x\n", __func__, reg);
 
-	return status;
+	if (reg & STATUS_C_CHG_HOLD_OFF_BIT)
+		return POWER_SUPPLY_STATUS_NOT_CHARGING;
+
+	if ((reg & STATUS_C_CHARGING_MASK) &&
+			!(reg & STATUS_C_CHG_ERR_STATUS_BIT))
+		return POWER_SUPPLY_STATUS_CHARGING;
+
+	return POWER_SUPPLY_STATUS_DISCHARGING;
 }
 
 static int smb349_get_prop_batt_present(struct smb349_charger *chip)
@@ -637,6 +692,9 @@ static int smb349_get_prop_batt_present(struct smb349_charger *chip)
 static int smb349_get_prop_batt_capacity(struct smb349_charger *chip)
 {
 	union power_supply_propval ret = {0, };
+
+	if (chip->fake_battery_soc >= 0)
+		return chip->fake_battery_soc;
 
 	if (chip->bms_psy) {
 		chip->bms_psy->get_property(chip->bms_psy,
@@ -668,6 +726,24 @@ static int smb349_get_prop_charge_type(struct smb349_charger *chip)
 		return POWER_SUPPLY_CHARGE_TYPE_TRICKLE;
 	else
 		return POWER_SUPPLY_CHARGE_TYPE_NONE;
+}
+
+static int smb349_get_prop_batt_health(struct smb349_charger *chip)
+{
+	union power_supply_propval ret = {0, };
+
+	if (chip->batt_hot)
+		ret.intval = POWER_SUPPLY_HEALTH_OVERHEAT;
+	else if (chip->batt_cold)
+		ret.intval = POWER_SUPPLY_HEALTH_COLD;
+	else if (chip->batt_warm)
+		ret.intval = POWER_SUPPLY_HEALTH_WARM;
+	else if (chip->batt_cool)
+		ret.intval = POWER_SUPPLY_HEALTH_COOL;
+	else
+		ret.intval = POWER_SUPPLY_HEALTH_GOOD;
+
+	return ret.intval;
 }
 
 static int smb349_get_charging_status(struct smb349_charger *chip)
@@ -783,6 +859,7 @@ smb349_batt_property_is_writeable(struct power_supply *psy,
 {
 	switch (psp) {
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+	case POWER_SUPPLY_PROP_CAPACITY:
 		return 1;
 	default:
 		break;
@@ -801,6 +878,10 @@ static int smb349_battery_set_property(struct power_supply *psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		smb349_charging(chip, val->intval);
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY:
+		chip->fake_battery_soc = val->intval;
+		power_supply_changed(&chip->batt_psy);
 		break;
 	default:
 		return -EINVAL;
@@ -832,6 +913,9 @@ static int smb349_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		val->intval = smb349_get_prop_charge_type(chip);
 		break;
+	case POWER_SUPPLY_PROP_HEALTH:
+		val->intval = smb349_get_prop_batt_health(chip);
+		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
@@ -842,6 +926,411 @@ static int smb349_battery_get_property(struct power_supply *psy,
 		return -EINVAL;
 	}
 	return 0;
+}
+
+static int apsd_complete(struct smb349_charger *chip, u8 status)
+{
+	int rc;
+	u8 reg = 0;
+	enum power_supply_type type = POWER_SUPPLY_TYPE_UNKNOWN;
+
+	/*
+	 * If apsd is disabled, charger detection is done by
+	 * DCIN UV irq.
+	 * status = ZERO - indicates charger removed, handled
+	 * by DCIN UV irq
+	 */
+	if (chip->disable_apsd || status == 0) {
+		dev_dbg(chip->dev, "APSD %s, status = %d\n",
+			chip->disable_apsd ? "disabled" : "enabled", !!status);
+		return 0;
+	}
+
+	rc = smb349_read_reg(chip, STATUS_D_REG, &reg);
+	if (rc) {
+		dev_err(chip->dev, "Couldn't read STATUS D rc = %d\n", rc);
+		return rc;
+	}
+
+	dev_dbg(chip->dev, "%s: STATUS_D_REG=%x\n", __func__, reg);
+
+	switch (reg) {
+	case STATUS_D_PORT_ACA_DOCK:
+	case STATUS_D_PORT_ACA_C:
+	case STATUS_D_PORT_ACA_B:
+	case STATUS_D_PORT_ACA_A:
+		type = POWER_SUPPLY_TYPE_USB_ACA;
+		break;
+	case STATUS_D_PORT_CDP:
+		type = POWER_SUPPLY_TYPE_USB_CDP;
+		break;
+	case STATUS_D_PORT_DCP:
+		type = POWER_SUPPLY_TYPE_USB_DCP;
+		break;
+	case STATUS_D_PORT_SDP:
+		type = POWER_SUPPLY_TYPE_USB;
+		break;
+	case STATUS_D_PORT_OTHER:
+		type = POWER_SUPPLY_TYPE_USB_DCP;
+		break;
+	default:
+		type = POWER_SUPPLY_TYPE_USB;
+		break;
+	}
+
+	chip->chg_present = !!status;
+
+	/*
+	 * Report the charger type as UNKNOWN if the
+	 * apsd-fail flag is set. This nofifies the USB driver
+	 * to initiate a s/w based charger type detection.
+	 */
+	if (chip->workaround_flags & WRKARND_APSD_FAIL)
+		type = POWER_SUPPLY_TYPE_UNKNOWN;
+
+	dev_dbg(chip->dev, "APSD complete. USB type detected=%d chg_present=%d",
+						type, chip->chg_present);
+
+	power_supply_set_supply_type(chip->usb_psy, type);
+
+	 /* SMB is now done sampling the D+/D- lines, indicate USB driver */
+	dev_dbg(chip->dev, "%s updating usb_psy present=%d", __func__,
+			chip->chg_present);
+	power_supply_set_present(chip->usb_psy, chip->chg_present);
+
+	return 0;
+}
+
+static int chg_uv(struct smb349_charger *chip, u8 status)
+{
+	/* use this to detect USB insertion only if !apsd */
+	if (chip->disable_apsd && status == 0) {
+		chip->chg_present = true;
+		dev_dbg(chip->dev, "%s updating usb_psy present=%d",
+				__func__, chip->chg_present);
+		power_supply_set_supply_type(chip->usb_psy,
+						POWER_SUPPLY_TYPE_USB);
+		power_supply_set_present(chip->usb_psy, chip->chg_present);
+	}
+
+	if (status != 0) {
+		chip->chg_present = false;
+		dev_dbg(chip->dev, "%s updating usb_psy present=%d",
+				__func__, chip->chg_present);
+		power_supply_set_supply_type(chip->usb_psy,
+						POWER_SUPPLY_TYPE_UNKNOWN);
+		power_supply_set_present(chip->usb_psy, chip->chg_present);
+	}
+
+	dev_dbg(chip->dev, "chip->chg_present = %d\n", chip->chg_present);
+
+	return 0;
+}
+
+static int fast_chg(struct smb349_charger *chip, u8 status)
+{
+	dev_dbg(chip->dev, "%s\n", __func__);
+	return 0;
+}
+
+static int chg_term(struct smb349_charger *chip, u8 status)
+{
+	dev_dbg(chip->dev, "%s\n", __func__);
+	chip->batt_full = !!status;
+	return 0;
+}
+
+static int hot_hard_handler(struct smb349_charger *chip, u8 status)
+{
+	pr_debug("status = 0x%02x\n", status);
+	chip->batt_hot = !!status;
+	return 0;
+}
+static int cold_hard_handler(struct smb349_charger *chip, u8 status)
+{
+	pr_debug("status = 0x%02x\n", status);
+	chip->batt_cold = !!status;
+	return 0;
+}
+static int hot_soft_handler(struct smb349_charger *chip, u8 status)
+{
+	pr_debug("status = 0x%02x\n", status);
+	chip->batt_warm = !!status;
+	return 0;
+}
+static int cold_soft_handler(struct smb349_charger *chip, u8 status)
+{
+	pr_debug("status = 0x%02x\n", status);
+	chip->batt_cool = !!status;
+	return 0;
+}
+
+static int battery_missing(struct smb349_charger *chip, u8 status)
+{
+	if (status)
+		chip->battery_missing = true;
+	else
+		chip->battery_missing = false;
+
+	return 0;
+}
+
+static struct irq_handler_info handlers[] = {
+	[0] = {
+		.stat_reg	= IRQ_A_REG,
+		.val		= 0,
+		.prev_val	= 0,
+		.irq_info	= {
+			{
+				.name		= "cold_soft",
+				.smb_irq	= cold_soft_handler,
+			},
+			{
+				.name		= "hot_soft",
+				.smb_irq	= hot_soft_handler,
+			},
+			{
+				.name		= "cold_hard",
+				.smb_irq	= cold_hard_handler,
+			},
+			{
+				.name		= "hot_hard",
+				.smb_irq	= hot_hard_handler,
+			},
+		},
+	},
+	[1] = {
+		.stat_reg	= IRQ_B_REG,
+		.val		= 0,
+		.prev_val	= 0,
+		.irq_info	= {
+			{
+				.name		= "fast_chg",
+				.smb_irq	= fast_chg,
+			},
+			{
+				.name		= "vbat_low",
+			},
+			{
+				.name		= "battery_missing",
+				.smb_irq	= battery_missing
+			},
+			{
+				.name		= "battery_ov",
+			},
+		},
+	},
+	[2] = {
+		.stat_reg	= IRQ_C_REG,
+		.val		= 0,
+		.prev_val	= 0,
+		.irq_info	= {
+			{
+				.name		= "chg_term",
+				.smb_irq	= chg_term,
+			},
+			{
+				.name		= "taper",
+			},
+			{
+				.name		= "recharge",
+			},
+			{
+				.name		= "chg_hot",
+			},
+		},
+	},
+	[3] = {
+		.stat_reg	= IRQ_D_REG,
+		.val		= 0,
+		.prev_val	= 0,
+		.irq_info	= {
+			{
+				.name		= "prechg_timeout",
+			},
+			{
+				.name		= "safety_timeout",
+			},
+			{
+				.name		= "aicl_complete",
+			},
+			{
+				.name		= "src_detect",
+				.smb_irq	= apsd_complete,
+			},
+		},
+	},
+	[4] = {
+		.stat_reg	= IRQ_E_REG,
+		.val		= 0,
+		.prev_val	= 0,
+		.irq_info	= {
+			{
+				.name		= "dcin_uv",
+				.smb_irq	= chg_uv,
+			},
+			{
+				.name		= "dcin_ov",
+			},
+			{
+				.name		= "afvc_active",
+			},
+			{
+				.name		= "unknown",
+			},
+		},
+	},
+	[5] = {
+		.stat_reg	= IRQ_F_REG,
+		.val		= 0,
+		.prev_val	= 0,
+		.irq_info	= {
+			{
+				.name		= "power_ok",
+			},
+			{
+				.name		= "otg_det",
+			},
+			{
+				.name		= "otg_batt_uv",
+			},
+			{
+				.name		= "otg_oc",
+			},
+		},
+	},
+};
+
+#define IRQ_LATCHED_MASK	0x02
+#define IRQ_STATUS_MASK		0x01
+#define BITS_PER_IRQ		2
+static irqreturn_t smb349_chg_stat_handler(int irq, void *dev_id)
+{
+	struct smb349_charger *chip = dev_id;
+	int i, j;
+	u8 triggered;
+	u8 changed;
+	u8 rt_stat, prev_rt_stat;
+	int rc;
+	int handler_count = 0;
+
+	mutex_lock(&chip->irq_complete);
+
+	init_completion(&chip->resumed);
+	chip->irq_waiting = true;
+	if (!chip->resume_completed) {
+		dev_dbg(chip->dev, "IRQ triggered before device-resume\n");
+		wait_for_completion_interruptible(&chip->resumed);
+	}
+	chip->irq_waiting = false;
+
+	for (i = 0; i < ARRAY_SIZE(handlers); i++) {
+		rc = smb349_read_reg(chip, handlers[i].stat_reg,
+						&handlers[i].val);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't read %d rc = %d\n",
+					handlers[i].stat_reg, rc);
+			continue;
+		}
+
+		for (j = 0; j < ARRAY_SIZE(handlers[i].irq_info); j++) {
+			triggered = handlers[i].val
+			       & (IRQ_LATCHED_MASK << (j * BITS_PER_IRQ));
+			rt_stat = handlers[i].val
+				& (IRQ_STATUS_MASK << (j * BITS_PER_IRQ));
+			prev_rt_stat = handlers[i].prev_val
+				& (IRQ_STATUS_MASK << (j * BITS_PER_IRQ));
+			changed = prev_rt_stat ^ rt_stat;
+
+			if (triggered || changed)
+				rt_stat ? handlers[i].irq_info[j].high++ :
+						handlers[i].irq_info[j].low++;
+
+			if ((triggered || changed)
+				&& handlers[i].irq_info[j].smb_irq != NULL) {
+				handler_count++;
+				rc = handlers[i].irq_info[j].smb_irq(chip,
+								rt_stat);
+				if (rc < 0)
+					dev_err(chip->dev,
+						"Couldn't handle %d irq for reg 0x%02x rc = %d\n",
+						j, handlers[i].stat_reg, rc);
+			}
+		}
+		handlers[i].prev_val = handlers[i].val;
+	}
+
+	pr_debug("handler count = %d\n", handler_count);
+	if (handler_count) {
+		pr_debug("batt psy changed\n");
+		power_supply_changed(&chip->batt_psy);
+	}
+
+	mutex_unlock(&chip->irq_complete);
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t smb349_chg_valid_handler(int irq, void *dev_id)
+{
+	struct smb349_charger *chip = dev_id;
+	int present;
+
+	present = gpio_get_value_cansleep(chip->chg_valid_gpio);
+	if (present < 0) {
+		dev_err(chip->dev, "Couldn't read chg_valid gpio=%d\n",
+						chip->chg_valid_gpio);
+		return IRQ_HANDLED;
+	}
+	present ^= chip->chg_valid_act_low;
+
+	dev_dbg(chip->dev, "%s: chg_present = %d\n", __func__, present);
+
+	if (present != chip->chg_present) {
+		chip->chg_present = present;
+		dev_dbg(chip->dev, "%s updating usb_psy present=%d",
+				__func__, chip->chg_present);
+		power_supply_set_present(chip->usb_psy, chip->chg_present);
+	}
+
+	return IRQ_HANDLED;
+}
+
+static void smb349_external_power_changed(struct power_supply *psy)
+{
+	struct smb349_charger *chip = container_of(psy,
+				struct smb349_charger, batt_psy);
+	union power_supply_propval prop = {0,};
+	int rc, current_limit = 0, online = 0;
+
+	if (chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
+	rc = chip->usb_psy->get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_ONLINE, &prop);
+	if (rc)
+		dev_err(chip->dev,
+			"Couldn't read USB online property, rc=%d\n", rc);
+	else
+		online = prop.intval;
+
+	rc = chip->usb_psy->get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
+	if (rc)
+		dev_err(chip->dev,
+			"Couldn't read USB current_max property, rc=%d\n", rc);
+	else
+		current_limit = prop.intval / 1000;
+
+	dev_dbg(chip->dev, "online = %d, current_limit = %d\n",
+						online, current_limit);
+
+	smb349_enable_volatile_writes(chip);
+	smb349_set_usb_chg_current(chip, current_limit);
+
+	dev_dbg(chip->dev, "%s updating batt psy\n", __func__);
+	power_supply_changed(&chip->batt_psy);
 }
 
 #define LAST_CNFG_REG	0x13
@@ -942,6 +1431,86 @@ static const struct file_operations status_debugfs_ops = {
 	.release	= single_release,
 };
 
+static int show_irq_count(struct seq_file *m, void *data)
+{
+	int i, j, total = 0;
+
+	for (i = 0; i < ARRAY_SIZE(handlers); i++)
+		for (j = 0; j < 4; j++) {
+			seq_printf(m, "%s=%d\t(high=%d low=%d)\n",
+						handlers[i].irq_info[j].name,
+						handlers[i].irq_info[j].high
+						+ handlers[i].irq_info[j].low,
+						handlers[i].irq_info[j].high,
+						handlers[i].irq_info[j].low);
+			total += (handlers[i].irq_info[j].high
+					+ handlers[i].irq_info[j].low);
+		}
+
+	seq_printf(m, "\n\tTotal = %d\n", total);
+
+	return 0;
+}
+
+static int irq_count_debugfs_open(struct inode *inode, struct file *file)
+{
+	struct smb349_charger *chip = inode->i_private;
+
+	return single_open(file, show_irq_count, chip);
+}
+
+static const struct file_operations irq_count_debugfs_ops = {
+	.owner		= THIS_MODULE,
+	.open		= irq_count_debugfs_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static int get_reg(void *data, u64 *val)
+{
+	struct smb349_charger *chip = data;
+	int rc;
+	u8 temp;
+
+	rc = smb349_read_reg(chip, chip->peek_poke_address, &temp);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"Couldn't read reg %x rc = %d\n",
+			chip->peek_poke_address, rc);
+		return -EAGAIN;
+	}
+	*val = temp;
+	return 0;
+}
+
+static int set_reg(void *data, u64 val)
+{
+	struct smb349_charger *chip = data;
+	int rc;
+	u8 temp;
+
+	temp = (u8) val;
+	rc = smb349_write_reg(chip, chip->peek_poke_address, temp);
+	if (rc < 0) {
+		dev_err(chip->dev,
+			"Couldn't write 0x%02x to 0x%02x rc= %d\n",
+			chip->peek_poke_address, temp, rc);
+		return -EAGAIN;
+	}
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(poke_poke_debug_ops, get_reg, set_reg, "0x%02llx\n");
+
+static int force_irq_set(void *data, u64 val)
+{
+	struct smb349_charger *chip = data;
+
+	smb349_chg_stat_handler(chip->client->irq, data);
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(force_irq_ops, NULL, force_irq_set, "0x%02llx\n");
+
 #ifdef DEBUG
 static void dump_regs(struct smb349_charger *chip)
 {
@@ -981,263 +1550,6 @@ static void dump_regs(struct smb349_charger *chip)
 {
 }
 #endif
-
-static int apsd_complete(struct smb349_charger *chip, u8 status)
-{
-	int rc;
-	u8 reg = 0;
-	enum power_supply_type type = POWER_SUPPLY_TYPE_UNKNOWN;
-
-	/*
-	 * If apsd is disabled, charger detection is done by
-	 * DCIN UV irq.
-	 * status = ZERO - indicates charger removed, handled
-	 * by DCIN UV irq
-	 */
-	if (chip->disable_apsd || status == 0) {
-		dev_dbg(chip->dev, "APSD %s, status = %d\n",
-			chip->disable_apsd ? "disabled" : "enabled", !!status);
-		return 0;
-	}
-
-	rc = smb349_read_reg(chip, STATUS_D_REG, &reg);
-	if (rc) {
-		dev_err(chip->dev, "Couldn't read STATUS D rc = %d\n", rc);
-		return rc;
-	}
-
-	dev_dbg(chip->dev, "%s: STATUS_D_REG=%x\n", __func__, reg);
-
-	switch (reg) {
-	case STATUS_D_PORT_ACA_DOCK:
-	case STATUS_D_PORT_ACA_C:
-	case STATUS_D_PORT_ACA_B:
-	case STATUS_D_PORT_ACA_A:
-		type = POWER_SUPPLY_TYPE_USB_ACA;
-		break;
-	case STATUS_D_PORT_CDP:
-		type = POWER_SUPPLY_TYPE_USB_CDP;
-		break;
-	case STATUS_D_PORT_DCP:
-		type = POWER_SUPPLY_TYPE_USB_DCP;
-		break;
-	case STATUS_D_PORT_SDP:
-		type = POWER_SUPPLY_TYPE_USB;
-		break;
-	case STATUS_D_PORT_OTHER:
-		type = POWER_SUPPLY_TYPE_USB_DCP;
-		break;
-	default:
-		type = POWER_SUPPLY_TYPE_USB;
-		break;
-	}
-
-	chip->chg_present = !!status;
-
-	dev_dbg(chip->dev, "APSD complete. USB type detected=%d chg_present=%d",
-						type, chip->chg_present);
-
-	power_supply_set_supply_type(chip->usb_psy, type);
-
-	 /* SMB is now done sampling the D+/D- lines, indicate USB driver */
-	dev_dbg(chip->dev, "%s updating usb_psy present=%d", __func__,
-			chip->chg_present);
-	power_supply_set_present(chip->usb_psy, chip->chg_present);
-
-	return 0;
-}
-
-static int chg_uv(struct smb349_charger *chip, u8 status)
-{
-	/* use this to detect USB insertion only if !apsd */
-	if (chip->disable_apsd && status == 0) {
-		chip->chg_present = true;
-		dev_dbg(chip->dev, "%s updating usb_psy present=%d",
-				__func__, chip->chg_present);
-		power_supply_set_supply_type(chip->usb_psy,
-						POWER_SUPPLY_TYPE_USB);
-		power_supply_set_present(chip->usb_psy, chip->chg_present);
-	}
-
-	if (status != 0) {
-		chip->chg_present = false;
-		dev_dbg(chip->dev, "%s updating usb_psy present=%d",
-				__func__, chip->chg_present);
-		power_supply_set_supply_type(chip->usb_psy,
-						POWER_SUPPLY_TYPE_UNKNOWN);
-		power_supply_set_present(chip->usb_psy, chip->chg_present);
-	}
-
-	dev_dbg(chip->dev, "chip->chg_present = %d\n", chip->chg_present);
-
-	return 0;
-}
-
-static int fast_chg(struct smb349_charger *chip, u8 status)
-{
-	chip->supply_update = true;
-
-	return 0;
-}
-
-static int chg_term(struct smb349_charger *chip, u8 status)
-{
-	chip->supply_update = true;
-
-	return 0;
-}
-
-static int battery_missing(struct smb349_charger *chip, u8 status)
-{
-	if (status)
-		chip->battery_missing = true;
-	else
-		chip->battery_missing = false;
-
-	chip->supply_update = true;
-
-	return 0;
-}
-
-static struct irq_handler_info handlers[] = {
-	{IRQ_A_REG, 0, 0,
-		{NULL, NULL, NULL, NULL},
-	},
-	{IRQ_B_REG, 0, 0,
-		{fast_chg, NULL, battery_missing, NULL},
-	},
-	{IRQ_C_REG, 0, 0,
-		{chg_term, NULL, NULL, NULL},
-	},
-	{IRQ_D_REG, 0, 0,
-		{NULL, NULL, NULL, apsd_complete},
-	},
-	{IRQ_E_REG, 0, 0,
-		{chg_uv, NULL, NULL, NULL},
-	},
-	{IRQ_F_REG, 0, 0,
-		{NULL, NULL, NULL, NULL},
-	},
-};
-
-#define IRQ_LATCHED_MASK	0x02
-#define IRQ_STATUS_MASK		0x01
-#define BITS_PER_IRQ		2
-
-static irqreturn_t smb349_chg_stat_handler(int irq, void *dev_id)
-{
-	struct smb349_charger *chip = dev_id;
-	int rc, i, j;
-	u8 triggered;
-	u8 changed;
-	u8 rt_stat;
-
-	chip->supply_update = false;
-
-	for (i = 0; i < ARRAY_SIZE(handlers); i++) {
-		rc = smb349_read_reg(chip, handlers[i].stat_reg,
-						&handlers[i].val);
-		if (rc < 0) {
-			dev_err(chip->dev, "Couldn't read %d rc = %d\n",
-					handlers[i].stat_reg, rc);
-			continue;
-		}
-
-		dev_dbg(chip->dev, "stat_reg=%x, prev_val=%x, val=%x\n",
-			handlers[i].stat_reg,
-			handlers[i].prev_val, handlers[i].val);
-
-		for (j = 0; j < ARRAY_SIZE(handlers[i].smb_irq); j++) {
-			triggered = handlers[i].val
-			       & (IRQ_LATCHED_MASK << (j * BITS_PER_IRQ));
-			rt_stat = handlers[i].val
-				& (IRQ_STATUS_MASK << (j * BITS_PER_IRQ));
-			changed = handlers[i].prev_val
-				& (IRQ_STATUS_MASK << (j * BITS_PER_IRQ));
-			changed = changed ^ rt_stat;
-
-			if ((triggered || changed)
-				&& handlers[i].smb_irq[j] != NULL) {
-				rc = handlers[i].smb_irq[j](chip, rt_stat);
-				if (rc < 0)
-					dev_err(chip->dev,
-						"Couldn't handle %d irq for reg 0x%02x rc = %d\n",
-						j, handlers[i].stat_reg, rc);
-			}
-		}
-		handlers[i].prev_val = handlers[i].val;
-	}
-
-	if (chip->supply_update) {
-		dev_dbg(chip->dev, "%s updating batt psy\n", __func__);
-		power_supply_changed(&chip->batt_psy);
-	}
-
-	dump_regs(chip);
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t smb349_chg_valid_handler(int irq, void *dev_id)
-{
-	struct smb349_charger *chip = dev_id;
-	int present;
-
-	present = gpio_get_value_cansleep(chip->chg_valid_gpio);
-	if (present < 0) {
-		dev_err(chip->dev, "Couldn't read chg_valid gpio=%d\n",
-						chip->chg_valid_gpio);
-		return IRQ_HANDLED;
-	}
-	present ^= chip->chg_valid_act_low;
-
-	dev_dbg(chip->dev, "%s: chg_present = %d\n", __func__, present);
-
-	if (present != chip->chg_present) {
-		chip->chg_present = present;
-		dev_dbg(chip->dev, "%s updating usb_psy present=%d",
-				__func__, chip->chg_present);
-		power_supply_set_present(chip->usb_psy, chip->chg_present);
-	}
-
-	return IRQ_HANDLED;
-}
-
-static void smb349_external_power_changed(struct power_supply *psy)
-{
-	struct smb349_charger *chip = container_of(psy,
-				struct smb349_charger, batt_psy);
-	union power_supply_propval prop = {0,};
-	int rc, current_limit = 0, online = 0;
-
-	if (chip->bms_psy_name)
-		chip->bms_psy =
-			power_supply_get_by_name((char *)chip->bms_psy_name);
-
-	rc = chip->usb_psy->get_property(chip->usb_psy,
-				POWER_SUPPLY_PROP_ONLINE, &prop);
-	if (rc)
-		dev_err(chip->dev,
-			"Couldn't read USB online property, rc=%d\n", rc);
-	else
-		online = prop.intval;
-
-	rc = chip->usb_psy->get_property(chip->usb_psy,
-				POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
-	if (rc)
-		dev_err(chip->dev,
-			"Couldn't read USB current_max property, rc=%d\n", rc);
-	else
-		current_limit = prop.intval / 1000;
-
-	dev_dbg(chip->dev, "online = %d, current_limit = %d\n",
-						online, current_limit);
-
-	smb349_enable_volatile_writes(chip);
-	smb349_set_usb_chg_current(chip, current_limit);
-
-	dev_dbg(chip->dev, "%s updating batt psy\n", __func__);
-	power_supply_changed(&chip->batt_psy);
-}
 
 static int smb_parse_dt(struct smb349_charger *chip)
 {
@@ -1311,6 +1623,28 @@ static int determine_initial_state(struct smb349_charger *chip)
 
 	chip->battery_missing = (reg & IRQ_B_BATT_MISSING_BIT) ? true : false;
 
+	rc = smb349_read_reg(chip, IRQ_C_REG, &reg);
+	if (rc) {
+		dev_err(chip->dev, "Couldn't read IRQ_C rc = %d\n", rc);
+		goto fail_init_status;
+	}
+	chip->batt_full = (reg & IRQ_C_TERM_BIT) ? true : false;
+
+	rc = smb349_read_reg(chip, IRQ_A_REG, &reg);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't read irq A rc = %d\n", rc);
+		return rc;
+	}
+
+	if (reg & IRQ_A_HOT_HARD_BIT)
+		chip->batt_hot = true;
+	if (reg & IRQ_A_COLD_HARD_BIT)
+		chip->batt_cold = true;
+	if (reg & IRQ_A_HOT_SOFT_BIT)
+		chip->batt_warm = true;
+	if (reg & IRQ_A_COLD_SOFT_BIT)
+		chip->batt_cool = true;
+
 	rc = smb349_read_reg(chip, IRQ_E_REG, &reg);
 	if (rc) {
 		dev_err(chip->dev, "Couldn't read IRQ_E rc = %d\n", rc);
@@ -1354,6 +1688,7 @@ static int smb349_charger_probe(struct i2c_client *client,
 	chip->client = client;
 	chip->dev = &client->dev;
 	chip->usb_psy = usb_psy;
+	chip->fake_battery_soc = -EINVAL;
 
 	/* probe the device to check if its actually connected */
 	rc = smb349_read_reg(chip, CHG_OTH_CURRENT_CTRL_REG, &reg);
@@ -1379,6 +1714,10 @@ static int smb349_charger_probe(struct i2c_client *client,
 	chip->batt_psy.properties	= smb349_battery_properties;
 	chip->batt_psy.num_properties	= ARRAY_SIZE(smb349_battery_properties);
 	chip->batt_psy.external_power_changed = smb349_external_power_changed;
+
+	chip->resume_completed = true;
+	init_completion(&chip->resumed);
+	mutex_init(&chip->irq_complete);
 
 	rc = power_supply_register(chip->dev, &chip->batt_psy);
 	if (rc < 0) {
@@ -1483,6 +1822,39 @@ static int smb349_charger_probe(struct i2c_client *client,
 			dev_err(chip->dev,
 				"Couldn't create cmd debug file rc = %d\n",
 				rc);
+
+		ent = debugfs_create_x32("address", S_IFREG | S_IWUSR | S_IRUGO,
+					  chip->debug_root,
+					  &(chip->peek_poke_address));
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create address debug file rc = %d\n",
+				rc);
+
+		ent = debugfs_create_file("data", S_IFREG | S_IWUSR | S_IRUGO,
+					  chip->debug_root, chip,
+					  &poke_poke_debug_ops);
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create data debug file rc = %d\n",
+				rc);
+
+		ent = debugfs_create_file("force_irq",
+					  S_IFREG | S_IWUSR | S_IRUGO,
+					  chip->debug_root, chip,
+					  &force_irq_ops);
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create data debug file rc = %d\n",
+				rc);
+
+		ent = debugfs_create_file("irq_count", S_IFREG | S_IRUGO,
+					  chip->debug_root, chip,
+					  &irq_count_debugfs_ops);
+		if (!ent)
+			dev_err(chip->dev,
+				"Couldn't create count debug file rc = %d\n",
+				rc);
 	}
 
 	dump_regs(chip);
@@ -1508,9 +1880,50 @@ static int smb349_charger_remove(struct i2c_client *client)
 	if (gpio_is_valid(chip->chg_valid_gpio))
 		gpio_free(chip->chg_valid_gpio);
 
+	mutex_destroy(&chip->irq_complete);
 	debugfs_remove_recursive(chip->debug_root);
 	return 0;
 }
+
+static int smb349_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct smb349_charger *chip = i2c_get_clientdata(client);
+
+	mutex_lock(&chip->irq_complete);
+	chip->resume_completed = false;
+	mutex_unlock(&chip->irq_complete);
+
+	return 0;
+}
+
+static int smb349_suspend_noirq(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct smb349_charger *chip = i2c_get_clientdata(client);
+
+	if (chip->irq_waiting) {
+		pr_err_ratelimited("Aborting suspend, an interrupt was detected while suspending\n");
+		return -EBUSY;
+	}
+	return 0;
+}
+
+static int smb349_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct smb349_charger *chip = i2c_get_clientdata(client);
+
+	chip->resume_completed = true;
+	complete(&chip->resumed);
+	return 0;
+}
+
+static const struct dev_pm_ops smb349_pm_ops = {
+	.suspend	= smb349_suspend,
+	.suspend_noirq	= smb349_suspend_noirq,
+	.resume		= smb349_resume,
+};
 
 static struct of_device_id smb349_match_table[] = {
 	{ .compatible = "qcom,smb349-charger",},
@@ -1528,6 +1941,7 @@ static struct i2c_driver smb349_charger_driver = {
 		.name		= "smb349-charger",
 		.owner		= THIS_MODULE,
 		.of_match_table	= smb349_match_table,
+		.pm		= &smb349_pm_ops,
 	},
 	.probe		= smb349_charger_probe,
 	.remove		= smb349_charger_remove,

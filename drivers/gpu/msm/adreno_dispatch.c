@@ -60,8 +60,8 @@ static void fault_detect_read(struct kgsl_device *device)
 {
 	int i;
 
-	fault_detect_ts = kgsl_readtimestamp(device, NULL,
-		KGSL_TIMESTAMP_RETIRED);
+	kgsl_readtimestamp(device, NULL, KGSL_TIMESTAMP_RETIRED,
+		&fault_detect_ts);
 
 	for (i = 0; i < FT_DETECT_REGS_COUNT; i++) {
 		if (ft_detect_regs[i] == 0)
@@ -80,7 +80,7 @@ static inline bool _isidle(struct kgsl_device *device)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	unsigned int ts;
 
-	ts = kgsl_readtimestamp(device, NULL, KGSL_TIMESTAMP_RETIRED);
+	kgsl_readtimestamp(device, NULL, KGSL_TIMESTAMP_RETIRED, &ts);
 
 	if (adreno_isidle(device) == true &&
 		(ts >= adreno_dev->ringbuffer.global_ts))
@@ -117,7 +117,7 @@ static int fault_detect_read_compare(struct kgsl_device *device)
 		fault_detect_regs[i] = val;
 	}
 
-	ts = kgsl_readtimestamp(device, NULL, KGSL_TIMESTAMP_RETIRED);
+	kgsl_readtimestamp(device, NULL, KGSL_TIMESTAMP_RETIRED, &ts);
 	if (ts != fault_detect_ts)
 		ret = 1;
 
@@ -507,7 +507,7 @@ static int _adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
  *
  * Lock the dispatcher and call _adreno_dispatcher_issueibcmds
  */
-int adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
+static int adreno_dispatcher_issuecmds(struct adreno_device *adreno_dev)
 {
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 	int ret;
@@ -598,11 +598,20 @@ int adreno_dispatcher_queue_cmd(struct adreno_device *adreno_dev,
 	}
 
 	/*
-	 * After skipping to the end of the frame we need to force the preamble
-	 * to run (if it exists) regardless of the context state.
+	 * Force the preamble for this submission only - this is usually
+	 * requested by the dispatcher as part of fault recovery
 	 */
 
 	if (test_and_clear_bit(ADRENO_CONTEXT_FORCE_PREAMBLE, &drawctxt->priv))
+		set_bit(CMDBATCH_FLAG_FORCE_PREAMBLE, &cmdbatch->priv);
+
+	/*
+	 * Force the premable if set from userspace in the context or cmdbatch
+	 * flags
+	 */
+
+	if ((drawctxt->base.flags & KGSL_CONTEXT_CTX_SWITCH) ||
+		(cmdbatch->flags & KGSL_CONTEXT_CTX_SWITCH))
 		set_bit(CMDBATCH_FLAG_FORCE_PREAMBLE, &cmdbatch->priv);
 
 	/*
@@ -965,16 +974,12 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 	adreno_readreg(adreno_dev, ADRENO_REG_CP_IB1_BASE, &base);
 
 	/*
-	 * Dump the postmortem and snapshot information if this is the first
+	 * Dump the snapshot information if this is the first
 	 * detected fault for the oldest active command batch
 	 */
 
 	if (!test_bit(KGSL_FT_SKIP_PMDUMP, &cmdbatch->fault_policy)) {
 		adreno_fault_header(device, cmdbatch);
-
-		if (device->pm_dump_enable)
-			kgsl_postmortem_dump(device, 0);
-
 		kgsl_device_snapshot(device, 1);
 	}
 
@@ -1271,8 +1276,8 @@ static void adreno_dispatcher_work(struct work_struct *work)
 		 * pointers and continue processing the queue
 		 */
 
-		retired = kgsl_readtimestamp(device, cmdbatch->context,
-				KGSL_TIMESTAMP_RETIRED);
+		kgsl_readtimestamp(device, cmdbatch->context,
+			KGSL_TIMESTAMP_RETIRED, &retired);
 
 		if ((timestamp_cmp(cmdbatch->timestamp, retired) <= 0)) {
 
@@ -1330,8 +1335,8 @@ static void adreno_dispatcher_work(struct work_struct *work)
 		fault_handled = 1;
 
 		/* Get the last consumed timestamp */
-		consumed = kgsl_readtimestamp(device, cmdbatch->context,
-			KGSL_TIMESTAMP_CONSUMED);
+		kgsl_readtimestamp(device, cmdbatch->context,
+			KGSL_TIMESTAMP_CONSUMED, &consumed);
 
 		/*
 		 * Break here if fault detection is disabled for the context or
@@ -1456,7 +1461,7 @@ void adreno_dispatcher_queue_context(struct kgsl_device *device,
  * subsequent calls then the GPU may have faulted
  */
 
-void adreno_dispatcher_fault_timer(unsigned long data)
+static void adreno_dispatcher_fault_timer(unsigned long data)
 {
 	struct adreno_device *adreno_dev = (struct adreno_device *) data;
 	struct kgsl_device *device = &adreno_dev->dev;
@@ -1489,7 +1494,7 @@ void adreno_dispatcher_fault_timer(unsigned long data)
  * This is called when the timer expires - it either means the GPU is hung or
  * the IB is taking too long to execute
  */
-void adreno_dispatcher_timer(unsigned long data)
+static void adreno_dispatcher_timer(unsigned long data)
 {
 	struct adreno_device *adreno_dev = (struct adreno_device *) data;
 	struct kgsl_device *device = &adreno_dev->dev;
@@ -1589,10 +1594,11 @@ static ssize_t _store_uint(struct adreno_dispatcher *dispatcher,
 		struct dispatcher_attribute *attr,
 		const char *buf, size_t size)
 {
-	unsigned long val;
-	int ret = kstrtoul(buf, 0, &val);
+	unsigned int val = 0;
+	int ret;
 
-	if (ret)
+	ret = kgsl_sysfs_store(buf, size, &val);
+	if (ret != size)
 		return ret;
 
 	if (!val || (attr->max && (val > attr->max)))
@@ -1606,7 +1612,7 @@ static ssize_t _show_uint(struct adreno_dispatcher *dispatcher,
 		struct dispatcher_attribute *attr,
 		char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%d\n",
+	return snprintf(buf, PAGE_SIZE, "%u\n",
 		*((unsigned int *) attr->value));
 }
 

@@ -16,7 +16,6 @@
 
 #include "adreno.h"
 #include "adreno_pm4types.h"
-#include "a2xx_reg.h"
 #include "a3xx_reg.h"
 #include "adreno_cp_parser.h"
 
@@ -198,7 +197,7 @@ static int ib_save_mip_addresses(struct kgsl_device *device, unsigned int *pkt,
 		if (!ent)
 			return -EINVAL;
 
-		hostptr = (unsigned int *)kgsl_gpuaddr_to_vaddr(&ent->memdesc,
+		hostptr = kgsl_gpuaddr_to_vaddr(&ent->memdesc,
 				pkt[2] & 0xFFFFFFFC);
 		if (!hostptr) {
 			kgsl_mem_entry_put(ent);
@@ -564,7 +563,7 @@ static void ib_parse_type0(struct kgsl_device *device, unsigned int *ptr,
 					adreno_dev, offset,
 					ADRENO_CP_ADDR_VSC_PIPE_DATA_ADDRESS_0,
 					ADRENO_CP_ADDR_VSC_PIPE_DATA_LENGTH_7);
-			if (reg_index > 0)
+			if (reg_index >= 0)
 				ib_parse_vars->cp_addr_regs[reg_index] =
 								ptr[i + 1];
 			continue;
@@ -576,7 +575,7 @@ static void ib_parse_type0(struct kgsl_device *device, unsigned int *ptr,
 					offset,
 					ADRENO_CP_ADDR_VFD_FETCH_INSTR_1_0,
 					ADRENO_CP_ADDR_VFD_FETCH_INSTR_1_15);
-			if (reg_index > 0)
+			if (reg_index >= 0)
 				ib_parse_vars->cp_addr_regs[reg_index] =
 								ptr[i + 1];
 			continue;
@@ -588,7 +587,7 @@ static void ib_parse_type0(struct kgsl_device *device, unsigned int *ptr,
 					offset,
 					ADRENO_CP_ADDR_VFD_FETCH_INSTR_1_16,
 					ADRENO_CP_ADDR_VFD_FETCH_INSTR_1_31);
-			if (reg_index > 0)
+			if (reg_index >= 0)
 				ib_parse_vars->cp_addr_regs[reg_index] =
 								ptr[i + 1];
 			continue;
@@ -619,6 +618,14 @@ static void ib_parse_type0(struct kgsl_device *device, unsigned int *ptr,
 				ib_parse_vars->cp_addr_regs[
 					ADRENO_CP_ADDR_SP_FS_OBJ_START_REG] =
 						ptr[i + 1];
+			else if ((offset == adreno_cp_parser_getreg(adreno_dev,
+					ADRENO_CP_UCHE_INVALIDATE0)) ||
+				(offset == adreno_cp_parser_getreg(adreno_dev,
+					ADRENO_CP_UCHE_INVALIDATE1)))
+					adreno_ib_add_range(device, ptbase,
+					ptr[i + 1] & 0xFFFFFFC0, 0,
+					SNAPSHOT_GPU_OBJECT_GENERIC,
+					ib_obj_list);
 		}
 	}
 	ib_add_type0_entries(device, ptbase, ib_obj_list,
@@ -728,7 +735,7 @@ static int adreno_ib_find_objs(struct kgsl_device *device,
 	if (!entry)
 		return -EINVAL;
 
-	src = (unsigned int *)kgsl_gpuaddr_to_vaddr(&entry->memdesc, gpuaddr);
+	src = kgsl_gpuaddr_to_vaddr(&entry->memdesc, gpuaddr);
 	if (!src) {
 		kgsl_mem_entry_put(entry);
 		return -EINVAL;

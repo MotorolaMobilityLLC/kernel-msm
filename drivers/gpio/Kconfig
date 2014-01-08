@@ -155,22 +155,6 @@ config GPIO_MPC8XXX
 	  Say Y here if you're going to use hardware that connects to the
 	  MPC512x/831x/834x/837x/8572/8610 GPIOs.
 
-config GPIO_MSM_V1
-	tristate "Qualcomm MSM GPIO v1"
-	depends on GPIOLIB && ARCH_MSM && (ARCH_MSM7X00A || ARCH_MSM7X30 || ARCH_QSD8X50)
-	help
-	  Say yes here to support the GPIO interface on ARM v6 based
-	  Qualcomm MSM chips.  Most of the pins on the MSM can be
-	  selected for GPIO, and are controlled by this driver.
-
-config GPIO_MSM_V2
-	tristate "Qualcomm MSM GPIO v2"
-	depends on GPIOLIB && ARCH_MSM
-	help
-	  Say yes here to support the GPIO interface on ARM v7 based
-	  Qualcomm MSM chips.  Most of the pins on the MSM can be
-	  selected for GPIO, and are controlled by this driver.
-
 config GPIO_MSM_V3
 	tristate "Qualcomm MSM GPIO v3"
 	depends on GPIOLIB && ARCH_MSM
@@ -178,14 +162,6 @@ config GPIO_MSM_V3
 	  Say yes here to support the GPIO interface on ARM v7 based
 	  Qualcomm MSM chips for v3 version of the interface. Most of
 	  the pins on the MSM can be selected for GPIO, and are
-	  controlled by this driver.
-
-config GPIO_FSM9XXX
-	tristate "Qualcomm FSM GPIO"
-	depends on GPIOLIB && ARCH_MSM
-	help
-	  Say yes here to support the GPIO interface on Qualcomm FSM chips.
-	  Most of the pins on the MSM can be selected for GPIO, and are
 	  controlled by this driver.
 
 config GPIO_MVEBU
@@ -713,29 +689,6 @@ config GPIO_TPS65910
 	help
 	  Select this option to enable GPIO driver for the TPS65910
 	  chip family.
-
-config GPIO_PM8XXX
-	tristate "Qualcomm PM8xxx GPIO support"
-	depends on MFD_PM8XXX
-	default y if MFD_PM8XXX
-	help
-	  This option enables support for on-chip GPIO found on Qualcomm PM8xxx
-	  PMICs.
-
-config GPIO_PM8XXX_MPP
-	tristate "Support for Qualcomm PM8xxx MPP features"
-	depends on MFD_PM8XXX
-	default y if MFD_PM8XXX
-	help
-	  This is the multi-purpose pin (MPP) driver for Qualcomm PM 8xxx PMIC
-	  chips.
-
-config GPIO_PM8XXX_RPC
-	tristate "Qualcomm PM8xxx RPC based GPIO support"
-	depends on MSM_SMD
-	help
-	  This option enables support for on-chip GPIO found on Qualcomm PM8xxx
-	  PMICs through RPC.
 
 config GPIO_MSIC
 	bool "Intel MSIC mixed signal gpio support"

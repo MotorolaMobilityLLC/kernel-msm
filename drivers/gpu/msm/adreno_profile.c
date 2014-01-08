@@ -146,7 +146,7 @@ static void _build_pre_ib_cmds(struct adreno_profile *profile,
 				entry->offset, data_offset);
 		IB_CMD(ibcmds, CP_REG_TO_MEM, entry->offset,
 				gpuaddr + data_offset, data_offset);
-		IB_CMD(ibcmds, CP_REG_TO_MEM, entry->offset + 1,
+		IB_CMD(ibcmds, CP_REG_TO_MEM, entry->offset_hi,
 				gpuaddr + data_offset, data_offset);
 
 		/* skip over post_ib counter data */
@@ -185,7 +185,7 @@ static void _build_post_ib_cmds(struct adreno_profile *profile,
 
 		IB_CMD(ibcmds, CP_REG_TO_MEM, entry->offset,
 				gpuaddr + data_offset, data_offset);
-		IB_CMD(ibcmds, CP_REG_TO_MEM, entry->offset + 1,
+		IB_CMD(ibcmds, CP_REG_TO_MEM, entry->offset_hi,
 				gpuaddr + data_offset, data_offset);
 	}
 
@@ -281,7 +281,7 @@ static bool _in_assignments_list(struct adreno_profile *profile,
 
 static bool _add_to_assignments_list(struct adreno_profile *profile,
 		const char *str, unsigned int groupid, unsigned int countable,
-		unsigned int offset)
+		unsigned int offset, unsigned int offset_hi)
 {
 	struct adreno_profile_assigns_list *entry;
 
@@ -295,6 +295,7 @@ static bool _add_to_assignments_list(struct adreno_profile *profile,
 	entry->countable = countable;
 	entry->groupid = groupid;
 	entry->offset = offset;
+	entry->offset_hi = offset_hi;
 
 	strlcpy(entry->name, str, sizeof(entry->name));
 
@@ -337,7 +338,7 @@ static bool results_available(struct kgsl_device *device,
 	if (shared_buf_empty(profile))
 		return false;
 
-	global_eop = kgsl_readtimestamp(device, NULL, KGSL_TIMESTAMP_RETIRED);
+	kgsl_readtimestamp(device, NULL, KGSL_TIMESTAMP_RETIRED, &global_eop);
 	do {
 		cnt = *(shared_ptr + off + 1);
 		if (cnt == 0)
@@ -442,6 +443,11 @@ static void transfer_results(struct kgsl_device *device,
 					profile, *(ptr + buf_off++));
 			if (assigns_list == NULL) {
 				*log_ptr = (unsigned int) -1;
+
+				shared_buf_inc(profile->shared_size,
+					&profile->shared_tail,
+					SIZE_SHARED_ENTRY(cnt));
+
 				goto err;
 			} else {
 				*log_ptr = assigns_list->groupid << 16 |
@@ -490,11 +496,6 @@ static int profile_enable_set(void *data, u64 val)
 
 	mutex_lock(&device->mutex);
 
-	if (adreno_is_a2xx(adreno_dev)) {
-		mutex_unlock(&device->mutex);
-		return 0;
-	}
-
 	profile->enabled = val;
 
 	check_close_profile(profile);
@@ -514,9 +515,6 @@ static ssize_t profile_assignments_read(struct file *filep,
 	int len = 0, max_size = PAGE_SIZE;
 	char *buf, *pos;
 	ssize_t size = 0;
-
-	if (adreno_is_a2xx(adreno_dev))
-		return -EINVAL;
 
 	mutex_lock(&device->mutex);
 
@@ -572,7 +570,7 @@ static void _add_assignment(struct adreno_device *adreno_dev,
 		unsigned int groupid, unsigned int countable)
 {
 	struct adreno_profile *profile = &adreno_dev->profile;
-	unsigned int offset;
+	unsigned int offset, offset_hi;
 	const char *name = NULL;
 
 	name = adreno_perfcounter_get_name(adreno_dev, groupid);
@@ -584,13 +582,13 @@ static void _add_assignment(struct adreno_device *adreno_dev,
 		return;
 
 	/* add to perf counter allocation, if fail skip it */
-	if (adreno_perfcounter_get(adreno_dev, groupid,
-				countable, &offset, PERFCOUNTER_FLAG_NONE))
+	if (adreno_perfcounter_get(adreno_dev, groupid, countable,
+				&offset, &offset_hi, PERFCOUNTER_FLAG_NONE))
 		return;
 
 	/* add to assignments list, put counter back if error */
 	if (!_add_to_assignments_list(profile, name, groupid,
-				countable, offset))
+				countable, offset, offset_hi))
 		adreno_perfcounter_put(adreno_dev, groupid,
 				countable, PERFCOUNTER_FLAG_KERNEL);
 }
@@ -671,9 +669,6 @@ static ssize_t profile_assignments_write(struct file *filep,
 
 	if (len >= PAGE_SIZE || len == 0)
 		return -EINVAL;
-
-	if (adreno_is_a2xx(adreno_dev))
-		return -ENOSPC;
 
 	mutex_lock(&device->mutex);
 
@@ -867,9 +862,6 @@ static ssize_t profile_pipe_print(struct file *filep, char __user *ubuf,
 	char *usr_buf = ubuf;
 	int status = 0;
 
-	if (adreno_is_a2xx(adreno_dev))
-		return 0;
-
 	/*
 	 * this file not seekable since it only supports streaming, ignore
 	 * ppos <> 0
@@ -925,10 +917,6 @@ static int profile_groups_print(struct seq_file *s, void *unused)
 	struct adreno_perfcounters *counters = adreno_dev->gpudev->perfcounters;
 	struct adreno_perfcount_group *group;
 	int i, j, used;
-
-	/* perfcounter list not allowed on a2xx */
-	if (adreno_is_a2xx(adreno_dev))
-		return -EINVAL;
 
 	mutex_lock(&device->mutex);
 

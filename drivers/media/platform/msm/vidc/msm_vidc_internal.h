@@ -205,6 +205,8 @@ struct msm_vidc_core {
 	struct completion completions[SYS_MSG_END - SYS_MSG_START + 1];
 	enum msm_vidc_hfi_type hfi_type;
 	struct msm_vidc_platform_resources resources;
+	u32 enc_codec_supported;
+	u32 dec_codec_supported;
 };
 
 struct msm_vidc_inst {
@@ -244,6 +246,7 @@ struct msm_vidc_inst {
 	enum buffer_mode_type buffer_mode_set[MAX_PORT_NUM];
 	struct list_head registered_bufs;
 	bool map_output_buffer;
+	atomic_t get_seq_hdr_cnt;
 };
 
 extern struct msm_vidc_drv *vidc_driver;
@@ -306,4 +309,17 @@ int qbuf_dynamic_buf(struct msm_vidc_inst *inst,
 			struct buffer_info *binfo);
 int unmap_and_deregister_buf(struct msm_vidc_inst *inst,
 			struct buffer_info *binfo);
+
+void *msm_smem_new_client(enum smem_type mtype,
+				void *platform_resources);
+struct msm_smem *msm_smem_alloc(void *clt, size_t size, u32 align, u32 flags,
+		enum hal_buffer buffer_type, int map_kernel);
+void msm_smem_free(void *clt, struct msm_smem *mem);
+void msm_smem_delete_client(void *clt);
+int msm_smem_cache_operations(void *clt, struct msm_smem *mem,
+		enum smem_cache_ops);
+struct msm_smem *msm_smem_user_to_kernel(void *clt, int fd, u32 offset,
+				enum hal_buffer buffer_type);
+int msm_smem_get_domain_partition(void *clt, u32 flags, enum hal_buffer
+		buffer_type, int *domain_num, int *partition_num);
 #endif

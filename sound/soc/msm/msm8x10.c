@@ -24,7 +24,6 @@
 #include <sound/soc-dapm.h>
 #include <sound/pcm.h>
 #include <sound/jack.h>
-#include <asm/mach-types.h>
 #include <mach/socinfo.h>
 #include <qdsp6v2/msm-pcm-routing-v2.h>
 #include <sound/q6afe-v2.h>
@@ -77,6 +76,8 @@ static struct wcd9xxx_mbhc_config mbhc_cfg = {
 	.cs_enable_flags = (1 << MBHC_CS_ENABLE_POLLING |
 			    1 << MBHC_CS_ENABLE_INSERTION |
 			    1 << MBHC_CS_ENABLE_REMOVAL),
+	.do_recalibration = false,
+	.use_vddio_meas = false,
 };
 
 /*
@@ -771,7 +772,7 @@ static struct snd_soc_dai_link msm8x10_dai[] = {
 		.name = "MSM8X10 Compr",
 		.stream_name = "COMPR",
 		.cpu_dai_name	= "MultiMedia4",
-		.platform_name  = "msm-compr-dsp",
+		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			 SND_SOC_DPCM_TRIGGER_POST},
@@ -872,19 +873,6 @@ static struct snd_soc_dai_link msm8x10_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 		.be_id = MSM_FRONTEND_DAI_QCHAT,
-	},
-	{/* hw:x,16 */
-		.name = "VoIP2",
-		.stream_name = "VoIP2",
-		.cpu_dai_name   = "VoIP2",
-		.platform_name  = "msm-voip-dsp",
-		.dynamic = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
 	},
 	/* Backend I2S DAI Links */
 	{

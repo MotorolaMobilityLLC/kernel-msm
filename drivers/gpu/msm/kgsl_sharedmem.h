@@ -30,8 +30,6 @@ struct kgsl_process_private;
 #define KGSL_CACHE_OP_FLUSH     0x02
 #define KGSL_CACHE_OP_CLEAN     0x03
 
-extern struct kgsl_memdesc_ops kgsl_page_alloc_ops;
-
 int kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 			   struct kgsl_pagetable *pagetable, size_t size);
 
@@ -124,10 +122,6 @@ static inline unsigned int kgsl_get_sg_pa(struct scatterlist *sg)
 	return pa;
 }
 
-int
-kgsl_sharedmem_map_vma(struct vm_area_struct *vma,
-			const struct kgsl_memdesc *memdesc);
-
 /*
  * For relatively small sglists, it is preferable to use kzalloc
  * rather than going down the vmalloc rat hole.  If the size of
@@ -137,6 +131,9 @@ kgsl_sharedmem_map_vma(struct vm_area_struct *vma,
 
 static inline void *kgsl_sg_alloc(unsigned int sglen)
 {
+	if ((sglen == 0) || (sglen >= ULONG_MAX / sizeof(struct scatterlist)))
+		return NULL;
+
 	if ((sglen * sizeof(struct scatterlist)) <  PAGE_SIZE)
 		return kzalloc(sglen * sizeof(struct scatterlist), GFP_KERNEL);
 	else
@@ -153,7 +150,7 @@ static inline void kgsl_sg_free(void *ptr, unsigned int sglen)
 
 static inline int
 memdesc_sg_phys(struct kgsl_memdesc *memdesc,
-		phys_addr_t physaddr, unsigned int size)
+		phys_addr_t physaddr, size_t size)
 {
 	memdesc->sg = kgsl_sg_alloc(1);
 	if (memdesc->sg == NULL)
@@ -235,10 +232,10 @@ kgsl_memdesc_use_cpu_map(const struct kgsl_memdesc *memdesc)
  * for the guard page to be mapped so that the address spaces
  * match up.
  */
-static inline unsigned int
+static inline size_t
 kgsl_memdesc_mmapsize(const struct kgsl_memdesc *memdesc)
 {
-	unsigned int size = memdesc->size;
+	size_t size = memdesc->size;
 	if (kgsl_memdesc_use_cpu_map(memdesc) &&
 		kgsl_memdesc_has_guard_page(memdesc))
 		size += SZ_4K;

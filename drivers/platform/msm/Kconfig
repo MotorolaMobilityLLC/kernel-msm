@@ -48,7 +48,7 @@ config SPS_SUPPORT_NDP_BAM
 
 config QPNP_POWER_ON
 	tristate "QPNP PMIC POWER-ON Driver"
-	depends on OF_SPMI && SPMI && MSM_QPNP_INT
+	depends on OF_SPMI && SPMI && MSM_QPNP_INT && INPUT
 	help
 	  This driver supports the power-on functionality on Qualcomm
 	  PNP PMIC. It currently supports reporting the change in status of
@@ -113,6 +113,16 @@ config IPA
 	  for the IPA core.
 	  Kernel and user-space processes can call the IPA driver
 	  to configure IPA core.
+
+config RMNET_IPA
+	tristate "IPA RMNET WWAN Network Device"
+	depends on IPA && MSM_QMI_INTERFACE
+	help
+	  This WWAN Network Driver implements network stack class device.
+	  It supports Embedded data transfer from A7 to Q6. Configures IPA HW
+	  for RmNet Data Driver and also exchange of QMI messages between
+	  A7 and Q6 IPA-driver.
+
 config MSM_AVTIMER
 	tristate "Avtimer Driver"
 	depends on MSM_QDSP6_APRV2
@@ -129,5 +139,19 @@ config SSM
 	  and modem for key exchange and mode change.
 	  This driver uses Secure Channel Manager interface for trustzone
 	  communication and communicates with modem over SMD channel.
+
+config QCA1530
+	tristate "QCA1530 SoC GNSS Driver"
+	depends on REGULATOR && OF
+	depends on GPIOLIB && OF_GPIO
+	depends on CLKDEV_LOOKUP
+	help
+	  Say Y here to include support for QCA1530 SOC chip.
+
+	  QCA1530 chip enables support for GPS- and GLONASS-based position
+	  determination.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called qca1530.
 
 endmenu

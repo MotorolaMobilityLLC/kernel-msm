@@ -1,0 +1,34 @@
+QCA1530 SoC
+
+QCA1530 is a SoC for position determination using navigation satellites.
+Typical scenario includes usage of GPS and GLONASS satellite navigation
+systems.
+
+Required properties
+
+- compatible: "qca,qca1530"
+
+Optional properties
+- qca,pwr-supply: handle to the regulator device tree node
+- qca,pwr2-supply: handle to additional regulator device tree node
+- qca,pwr-gpio: handle the power control using GPIO interface
+- qca,reset-gpio: GPIO for reset control
+- qca,reset-supply: handle to the regulator for reset control
+- qca,clk-gpio: handle the clock control using GPIO interface
+- qca,xlna-supply: handle to the regulator for xLNA
+- qca,xlna-gpio: handle to xLNA power control using GPIO interface
+- qca,xlna-voltage-level: list containing minimum and maximum voltage
+                          levels for xlna regulator
+- qca,xlna-current-level: list containing current values for active
+                          operation and sleep modes
+
+Example:
+	 gnss_qca1530: qca,qca1530{
+		compatible = "qca,qca1530";
+		qca,pwr-supply = <&pma8084_l26>;
+		qca,reset-gpio = <&msmgpio 128 0>;
+		qca,xlna-supply = <&pma8084_l22>;
+		qca,xlna-voltage-level = <3000000 3000000>;
+		qca,xlna-current-level = <90000 100>;
+	};
+

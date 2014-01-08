@@ -44,6 +44,22 @@
 
 #define WLAN_AMPDU_TX_EP 15
 #define WLAN_PROD_TX_EP  19
+#define WLAN1_CONS_RX_EP  14
+#define WLAN2_CONS_RX_EP  16
+#define WLAN3_CONS_RX_EP  17
+#define WLAN4_CONS_RX_EP  18
+
+#define IPA_WLAN_GENERIC_AGGR_BYTE_LIMIT 32
+#define IPA_WLAN_GENERIC_RX_POOL_SZ 4
+
+#define IPA_WLAN_HDR_SIZE 26
+#define IPA_WLAN_PADDING_BYTES 2
+#define IPA_IP_PKT_SIZE 1500
+
+#define IPA_WLAN_GENERIC_AGGR_RX_SIZE  \
+				((IPA_WLAN_GENERIC_AGGR_BYTE_LIMIT * 1024) - \
+				IPA_PKT_STATUS_SIZE - IPA_WLAN_HDR_SIZE - \
+				IPA_WLAN_PADDING_BYTES - IPA_IP_PKT_SIZE)
 
 #define MAX_NUM_EXCP     8
 #define MAX_NUM_IMM_CMD 20
@@ -112,6 +128,13 @@
 #define IPA_HDR_BIN_MAX 5
 
 #define IPA_EVENT_THRESHOLD 0x10
+
+/*
+ * Due to ZLT issue with USB 3.0 core, IPA BAM threashold need to be set
+ * to max packet size + 1. After setting the threshold, USB core
+ * will not be notified on ZLTs
+ */
+#define IPA_USB_EVENT_THRESHOLD 0x4001
 
 #define IPA_RX_POOL_CEIL 32
 #define IPA_RX_SKB_SIZE 1792
@@ -338,6 +361,7 @@ struct ipa_ep_context {
 	bool data_fifo_client_allocated;
 	bool suspended;
 	struct ipa_sys_context *sys;
+	u32 avail_fifo_desc;
 };
 
 enum ipa_sys_pipe_policy {
@@ -534,6 +558,10 @@ enum ipa_hw_mode {
 	IPA_HW_MODE_PCIE    = 2
 };
 
+enum ipa_config_this_ep {
+	IPA_CONFIGURE_THIS_EP,
+	IPA_DO_NOT_CONFIGURE_THIS_EP,
+};
 
 struct ipa_stats {
 	u32 imm_cmds[MAX_NUM_IMM_CMD];
@@ -554,6 +582,9 @@ struct ipa_stats {
 	u32 a2_power_off_reqs_out;
 	u32 a2_power_modem_acks;
 	u32 a2_power_apps_acks;
+	u32 wlan_rx_pkts;
+	u32 wlan_rx_comp;
+	u32 wlan_tx_pkts;
 };
 
 struct ipa_controller;
@@ -770,10 +801,11 @@ struct ipa_plat_drv_res {
 	enum ipa_hw_mode ipa_hw_mode;
 	struct a2_mux_pipe_connection a2_to_ipa_pipe;
 	struct a2_mux_pipe_connection ipa_to_a2_pipe;
+	u32 ee;
 };
 
 struct ipa_controller {
-	u32 ipa_src_clk_rate;
+	u32 ipa_clk_rate;
 	void (*ipa_sram_read_settings)(void);
 	void (*ipa_cfg_ep_hdr)(u32 pipe_number,
 			const struct ipa_ep_cfg_hdr *ipa_ep_hdr_cfg);
@@ -804,6 +836,12 @@ struct ipa_controller {
 			const struct ipa_ep_cfg_cfg *cfg);
 	void (*ipa_cfg_ep_metadata_mask)(u32 clnt_hdl,
 			const struct ipa_ep_cfg_metadata_mask *metadata_mask);
+	void (*ipa_enable_clks)(void);
+	void (*ipa_disable_clks)(void);
+	struct msm_bus_scale_pdata *msm_bus_data_ptr;
+
+	void (*ipa_cfg_ep_metadata)(u32 pipe_number,
+			const struct ipa_ep_cfg_metadata *);
 };
 
 extern struct ipa_context *ipa_ctx;
@@ -871,6 +909,10 @@ void _ipa_write_dbg_cnt_v1(int option);
 void _ipa_write_dbg_cnt_v2_0(int option);
 int _ipa_read_dbg_cnt_v1(char *buf, int max_len);
 int _ipa_read_dbg_cnt_v2_0(char *buf, int max_len);
+void _ipa_enable_clks_v1(void);
+void _ipa_enable_clks_v2_0(void);
+void _ipa_disable_clks_v1(void);
+void _ipa_disable_clks_v2_0(void);
 
 static inline u32 ipa_read_reg(void *base, u32 offset)
 {
@@ -904,7 +946,7 @@ int a2_mux_exit(void);
 
 void wwan_cleanup(void);
 
-int teth_bridge_driver_init(void);
+int teth_bridge_driver_init(enum ipa_hw_type ipa_hw_type);
 void ipa_lan_rx_cb(void *priv, enum ipa_dp_evt_type evt, unsigned long data);
 
 int __ipa_commit_flt_v1(enum ipa_ip_type ip);
@@ -916,5 +958,7 @@ int __ipa_commit_hdr_v2(void);
 int ipa_generate_flt_eq(enum ipa_ip_type ip,
 		const struct ipa_rule_attrib *attrib,
 		struct ipa_ipfltri_rule_eq *eq_attrib);
+
+
 
 #endif /* _IPA_I_H_ */

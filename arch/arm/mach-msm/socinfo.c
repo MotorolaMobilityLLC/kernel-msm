@@ -25,10 +25,9 @@
 #include <linux/stat.h>
 #include <linux/types.h>
 
-#include <asm/mach-types.h>
-
 #include <mach/socinfo.h>
-#include <mach/msm_smem.h>
+
+#include <soc/qcom/smem.h>
 
 #include "boot_stats.h"
 
@@ -37,7 +36,6 @@
 #define SMEM_IMAGE_VERSION_SINGLE_BLOCK_SIZE 128
 #define SMEM_IMAGE_VERSION_SIZE 4096
 #define SMEM_IMAGE_VERSION_NAME_SIZE 75
-#define SMEM_IMAGE_VERSION_NAME_OFFSET 3
 #define SMEM_IMAGE_VERSION_VARIANT_SIZE 20
 #define SMEM_IMAGE_VERSION_VARIANT_OFFSET 75
 #define SMEM_IMAGE_VERSION_OEM_SIZE 32
@@ -59,6 +57,7 @@ enum {
 	HW_PLATFORM_HRD	= 13,
 	HW_PLATFORM_DTV	= 14,
 	HW_PLATFORM_STP = 23,
+	HW_PLATFORM_SBC = 24,
 	HW_PLATFORM_INVALID
 };
 
@@ -76,6 +75,7 @@ const char *hw_platform[] = {
 	[HW_PLATFORM_HRD] = "HRD",
 	[HW_PLATFORM_DTV] = "DTV",
 	[HW_PLATFORM_STP] = "STP",
+	[HW_PLATFORM_SBC] = "SBC",
 };
 
 enum {
@@ -423,9 +423,19 @@ static enum msm_cpu cpu_of_id[] = {
 
 	/* krypton IDs */
 	[187] = MSM_CPU_KRYPTON,
+	[227] = MSM_CPU_KRYPTON,
+	[228] = MSM_CPU_KRYPTON,
+	[229] = MSM_CPU_KRYPTON,
+	[230] = MSM_CPU_KRYPTON,
+	[231] = MSM_CPU_KRYPTON,
 
 	/* FSM9900 ID */
 	[188] = FSM_CPU_9900,
+	[189] = FSM_CPU_9900,
+	[190] = FSM_CPU_9900,
+	[191] = FSM_CPU_9900,
+	[192] = FSM_CPU_9900,
+	[193] = FSM_CPU_9900,
 
 	/* Samarium IDs */
 	[195] = MSM_CPU_SAMARIUM,
@@ -523,7 +533,8 @@ uint32_t socinfo_get_pmic_die_revision(void)
 
 static char *socinfo_get_image_version_base_address(void)
 {
-	return smem_alloc(SMEM_IMAGE_VERSION_TABLE, SMEM_IMAGE_VERSION_SIZE);
+	return smem_find(SMEM_IMAGE_VERSION_TABLE,
+				SMEM_IMAGE_VERSION_SIZE, 0, SMEM_ANY_HOST_FLAG);
 }
 
 static uint32_t socinfo_get_format(void)
@@ -666,8 +677,7 @@ msm_get_image_version(struct device *dev,
 		return snprintf(buf, SMEM_IMAGE_VERSION_NAME_SIZE, "Unknown");
 	}
 	string_address += current_image * SMEM_IMAGE_VERSION_SINGLE_BLOCK_SIZE;
-	string_address += SMEM_IMAGE_VERSION_NAME_OFFSET;
-	return snprintf(buf, SMEM_IMAGE_VERSION_NAME_SIZE, "%-.72s\n",
+	return snprintf(buf, SMEM_IMAGE_VERSION_NAME_SIZE, "%-.75s\n",
 			string_address);
 }
 
@@ -1060,35 +1070,52 @@ static void socinfo_print(void)
 
 int __init socinfo_init(void)
 {
-	socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID, sizeof(struct socinfo_v8));
+	socinfo = smem_find(SMEM_HW_SW_BUILD_ID,
+				sizeof(struct socinfo_v8),
+				0,
+				SMEM_ANY_HOST_FLAG);
 
 	if (!socinfo)
-		socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID,
-				sizeof(struct socinfo_v7));
+		socinfo = smem_find(SMEM_HW_SW_BUILD_ID,
+				sizeof(struct socinfo_v7),
+				0,
+				SMEM_ANY_HOST_FLAG);
 
 	if (!socinfo)
-		socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID,
-				sizeof(struct socinfo_v6));
+		socinfo = smem_find(SMEM_HW_SW_BUILD_ID,
+				sizeof(struct socinfo_v6),
+				0,
+				SMEM_ANY_HOST_FLAG);
 
 	if (!socinfo)
-		socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID,
-				sizeof(struct socinfo_v5));
+		socinfo = smem_find(SMEM_HW_SW_BUILD_ID,
+				sizeof(struct socinfo_v5),
+				0,
+				SMEM_ANY_HOST_FLAG);
 
 	if (!socinfo)
-		socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID,
-				sizeof(struct socinfo_v4));
+		socinfo = smem_find(SMEM_HW_SW_BUILD_ID,
+				sizeof(struct socinfo_v4),
+				0,
+				SMEM_ANY_HOST_FLAG);
 
 	if (!socinfo)
-		socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID,
-				sizeof(struct socinfo_v3));
+		socinfo = smem_find(SMEM_HW_SW_BUILD_ID,
+				sizeof(struct socinfo_v3),
+				0,
+				SMEM_ANY_HOST_FLAG);
 
 	if (!socinfo)
-		socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID,
-				sizeof(struct socinfo_v2));
+		socinfo = smem_find(SMEM_HW_SW_BUILD_ID,
+				sizeof(struct socinfo_v2),
+				0,
+				SMEM_ANY_HOST_FLAG);
 
 	if (!socinfo)
-		socinfo = smem_alloc(SMEM_HW_SW_BUILD_ID,
-				sizeof(struct socinfo_v1));
+		socinfo = smem_find(SMEM_HW_SW_BUILD_ID,
+				sizeof(struct socinfo_v1),
+				0,
+				SMEM_ANY_HOST_FLAG);
 
 	if (!socinfo) {
 		pr_warn("%s: Can't find SMEM_HW_SW_BUILD_ID; falling back on dummy values.\n",

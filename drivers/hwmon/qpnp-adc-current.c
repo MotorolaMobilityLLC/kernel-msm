@@ -147,7 +147,6 @@ struct qpnp_iadc_chip {
 	struct list_head			list;
 	int64_t					die_temp;
 	struct delayed_work			iadc_work;
-	struct mutex				iadc_vadc_lock;
 	bool					iadc_mode_sel;
 	struct qpnp_iadc_comp			iadc_comp;
 	struct qpnp_vadc_chip			*vadc_dev;
@@ -355,6 +354,8 @@ static int32_t qpnp_iadc_read_conversion_result(struct qpnp_iadc_chip *iadc,
 #define QPNP_COEFF_24					84
 #define QPNP_COEFF_25					33
 #define QPNP_COEFF_26					22
+#define QPNP_COEFF_27					53
+#define QPNP_COEFF_28					48
 
 static int32_t qpnp_iadc_comp(int64_t *result, struct qpnp_iadc_chip *iadc,
 							int64_t die_temp)
@@ -552,6 +553,39 @@ static int32_t qpnp_iadc_comp(int64_t *result, struct qpnp_iadc_chip *iadc,
 			break;
 		}
 		break;
+	case QPNP_REV_ID_8110_2_0:
+		die_temp -= 25000;
+		/* pm8110 rev 2.0 */
+		switch (iadc->iadc_comp.id) {
+		case COMP_ID_GF:
+			if (!iadc->iadc_comp.ext_rsense) {
+				/* internal rsense */
+				if (*result < 0) {
+					/* charge */
+					coeff_a = 0;
+					coeff_b = 0;
+				} else {
+					coeff_a = QPNP_COEFF_27;
+					coeff_b = 0;
+				}
+			}
+			break;
+		case COMP_ID_SMIC:
+		default:
+			if (!iadc->iadc_comp.ext_rsense) {
+				/* internal rsense */
+				if (*result < 0) {
+					/* charge */
+					coeff_a = 0;
+					coeff_b = 0;
+				} else {
+					coeff_a = QPNP_COEFF_28;
+					coeff_b = 0;
+				}
+			}
+			break;
+		}
+		break;
 	default:
 	case QPNP_REV_ID_8026_2_0:
 		/* pm8026 rev 1.0 */
@@ -576,7 +610,8 @@ static int32_t qpnp_iadc_comp(int64_t *result, struct qpnp_iadc_chip *iadc,
 		temp_var = div64_s64(temp_var * sys_gain_coeff, 1000000);
 		*result = div64_s64(*result * 1000, temp_var);
 	}
-	pr_debug("%lld compensated into %lld\n", old, *result);
+	pr_debug("%lld compensated into %lld, a: %d, b: %d, sys_gain: %lld\n",
+			old, *result, coeff_a, coeff_b, sys_gain_coeff);
 
 	return 0;
 }
@@ -1025,12 +1060,15 @@ int32_t qpnp_iadc_read(struct qpnp_iadc_chip *iadc,
 	if (qpnp_iadc_is_valid(iadc) < 0)
 		return -EPROBE_DEFER;
 
-	if (!iadc->iadc_mode_sel) {
-		rc = qpnp_check_pmic_temp(iadc);
-		if (rc) {
-			pr_err("Error checking pmic therm temp\n");
-			return rc;
-		}
+	if ((iadc->adc->calib.gain_raw - iadc->adc->calib.offset_raw) == 0) {
+		pr_err("raw offset errors! run iadc calibration again\n");
+		return -EINVAL;
+	}
+
+	rc = qpnp_check_pmic_temp(iadc);
+	if (rc) {
+		pr_err("Error checking pmic therm temp\n");
+		return rc;
 	}
 
 	mutex_lock(&iadc->adc->adc_lock);
@@ -1067,10 +1105,12 @@ int32_t qpnp_iadc_read(struct qpnp_iadc_chip *iadc,
 		result->result_uv = -result->result_uv;
 		result_current = -result_current;
 	}
+	result_current *= -1;
 	rc = qpnp_iadc_comp_result(iadc, &result_current);
 	if (rc < 0)
 		pr_err("Error during compensating the IADC\n");
 	rc = 0;
+	result_current *= -1;
 
 	result->result_ua = (int32_t) result_current;
 fail:
@@ -1134,22 +1174,19 @@ int32_t qpnp_iadc_vadc_sync_read(struct qpnp_iadc_chip *iadc,
 	enum qpnp_iadc_channels i_channel, struct qpnp_iadc_result *i_result,
 	enum qpnp_vadc_channels v_channel, struct qpnp_vadc_result *v_result)
 {
-	int rc = 0;
+	int rc = 0, mode_sel = 0, num = 0, rsense_n_ohms = 0, sign = 0;
+	uint16_t raw_data;
+	int32_t rsense_u_ohms = 0;
+	int64_t result_current;
 
 	if (qpnp_iadc_is_valid(iadc) < 0)
 		return -EPROBE_DEFER;
 
-	mutex_lock(&iadc->iadc_vadc_lock);
+	mutex_lock(&iadc->adc->adc_lock);
 
 	if (iadc->iadc_poll_eoc) {
 		pr_debug("acquiring iadc eoc wakelock\n");
 		pm_stay_awake(iadc->dev);
-	}
-
-	rc = qpnp_check_pmic_temp(iadc);
-	if (rc) {
-		pr_err("PMIC die temp check failed\n");
-		goto fail;
 	}
 
 	iadc->iadc_mode_sel = true;
@@ -1160,11 +1197,43 @@ int32_t qpnp_iadc_vadc_sync_read(struct qpnp_iadc_chip *iadc,
 		goto fail;
 	}
 
-	rc = qpnp_iadc_read(iadc, i_channel, i_result);
-	if (rc)
-		pr_err("Configuring IADC failed\n");
-	/* Intentional fall through to release VADC */
+	rc = qpnp_iadc_configure(iadc, i_channel, &raw_data, mode_sel);
+	if (rc < 0) {
+		pr_err("qpnp adc result read failed with %d\n", rc);
+		goto fail_release_vadc;
+	}
 
+	rc = qpnp_iadc_get_rsense(iadc, &rsense_n_ohms);
+	pr_debug("current raw:0%x and rsense:%d\n",
+			raw_data, rsense_n_ohms);
+	rsense_u_ohms = rsense_n_ohms/1000;
+	num = raw_data - iadc->adc->calib.offset_raw;
+	if (num < 0) {
+		sign = 1;
+		num = -num;
+	}
+
+	i_result->result_uv = (num * QPNP_ADC_GAIN_NV)/
+		(iadc->adc->calib.gain_raw - iadc->adc->calib.offset_raw);
+	result_current = i_result->result_uv;
+	result_current *= QPNP_IADC_NANO_VOLTS_FACTOR;
+	/* Intentional fall through. Process the result w/o comp */
+	do_div(result_current, rsense_u_ohms);
+
+	if (sign) {
+		i_result->result_uv = -i_result->result_uv;
+		result_current = -result_current;
+	}
+	result_current *= -1;
+	rc = qpnp_iadc_comp_result(iadc, &result_current);
+	if (rc < 0)
+		pr_err("Error during compensating the IADC\n");
+	rc = 0;
+	result_current *= -1;
+
+	i_result->result_ua = (int32_t) result_current;
+
+fail_release_vadc:
 	rc = qpnp_vadc_iadc_sync_complete_request(iadc->vadc_dev, v_channel,
 							v_result);
 	if (rc)
@@ -1176,7 +1245,7 @@ fail:
 		pr_debug("releasing iadc eoc wakelock\n");
 		pm_relax(iadc->dev);
 	}
-	mutex_unlock(&iadc->iadc_vadc_lock);
+	mutex_unlock(&iadc->adc->adc_lock);
 
 	return rc;
 }
@@ -1319,7 +1388,6 @@ static int qpnp_iadc_probe(struct spmi_device *spmi)
 		goto fail;
 	}
 
-	mutex_init(&iadc->iadc_vadc_lock);
 	INIT_WORK(&iadc->trigger_completion_work, qpnp_iadc_trigger_completion);
 	INIT_DELAYED_WORK(&iadc->iadc_work, qpnp_iadc_work);
 	rc = qpnp_iadc_comp_info(iadc);
@@ -1360,7 +1428,6 @@ static int qpnp_iadc_remove(struct spmi_device *spmi)
 	int i = 0;
 
 	cancel_delayed_work(&iadc->iadc_work);
-	mutex_destroy(&iadc->iadc_vadc_lock);
 	for_each_child_of_node(node, child) {
 		device_remove_file(&spmi->dev,
 			&iadc->sens_attr[i].dev_attr);

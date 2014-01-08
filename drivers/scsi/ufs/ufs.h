@@ -143,7 +143,7 @@ enum desc_header_offset {
 };
 
 enum ufs_desc_max_size {
-	QUERY_DESC_DEVICE_MAX_SIZE		= 0x1F,
+	QUERY_DESC_DEVICE_MAX_SIZE		= 0x40,
 	QUERY_DESC_CONFIGURAION_MAX_SIZE	= 0x90,
 	QUERY_DESC_UNIT_MAX_SIZE		= 0x23,
 	QUERY_DESC_INTERCONNECT_MAX_SIZE	= 0x06,
@@ -175,6 +175,18 @@ enum unit_desc_param {
 	UNIT_DESC_PARAM_PHY_MEM_RSRC_CNT	= 0x18,
 	UNIT_DESC_PARAM_CTX_CAPABILITIES	= 0x20,
 	UNIT_DESC_PARAM_LARGE_UNIT_SIZE_M1	= 0x22,
+};
+
+/*
+ * Logical Unit Write Protect
+ * 00h: LU not write protected
+ * 01h: LU write protected when fPowerOnWPEn =1
+ * 02h: LU permanently write protected when fPermanentWPEn =1
+ */
+enum ufs_lu_wp_type {
+	UFS_LU_NO_WP		= 0x00,
+	UFS_LU_POWER_ON_WP	= 0x01,
+	UFS_LU_PERM_WP		= 0x02,
 };
 
 /* bActiveICCLevel parameter current units */
@@ -415,6 +427,12 @@ struct ufs_query_res {
 #define UFS_VREG_VCCQ2_MIN_UV	   1650000 /* uV */
 #define UFS_VREG_VCCQ2_MAX_UV	   1950000 /* uV */
 
+/*
+ * VCCQ & VCCQ2 current requirement when UFS device is in sleep state
+ * and link is in Hibern8 state.
+ */
+#define UFS_VREG_LPM_LOAD_UA	1000 /* uA */
+
 struct ufs_vreg {
 	struct regulator *reg;
 	const char *name;
@@ -429,6 +447,12 @@ struct ufs_vreg_info {
 	struct ufs_vreg *vcc;
 	struct ufs_vreg *vccq;
 	struct ufs_vreg *vccq2;
+};
+
+struct ufs_dev_info {
+	bool f_power_on_wp_en;
+	/* Keeps information if any of the LU is power on write protected */
+	bool is_lu_power_on_wp;
 };
 
 #endif /* End of Header */

@@ -19,7 +19,7 @@
 #include <linux/mutex.h>
 #include <linux/cpu.h>
 #include <linux/of.h>
-#include <mach/mpm.h>
+#include <linux/irqchip/msm-mpm-irq.h>
 #include "pm.h"
 #include "rpm-notifier.h"
 #include "spm.h"
@@ -28,12 +28,6 @@
 enum {
 	MSM_LPM_LVL_DBG_SUSPEND_LIMITS = BIT(0),
 	MSM_LPM_LVL_DBG_IDLE_LIMITS = BIT(1),
-};
-
-enum {
-	MSM_SCM_L2_ON = 0,
-	MSM_SCM_L2_OFF = 1,
-	MSM_SCM_L2_GDHS = 3,
 };
 
 struct msm_rpmrs_level {

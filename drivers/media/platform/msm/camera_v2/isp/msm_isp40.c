@@ -39,7 +39,7 @@
 #define VFE40_BURST_LEN 3
 #define VFE40_STATS_BURST_LEN 2
 #define VFE40_UB_SIZE 1536
-#define VFE40_EQUAL_SLICE_UB 228
+#define VFE40_EQUAL_SLICE_UB 190
 #define VFE40_WM_BASE(idx) (0x6C + 0x24 * idx)
 #define VFE40_RDI_BASE(idx) (0x2E8 + 0x4 * idx)
 #define VFE40_XBAR_BASE(idx) (0x58 + 0x4 * (idx / 2))
@@ -290,14 +290,6 @@ static int msm_vfe40_init_hardware(struct vfe_device *vfe_dev)
 		goto vbif_remap_failed;
 	}
 
-	vfe_dev->tcsr_base = ioremap(vfe_dev->tcsr_mem->start,
-		resource_size(vfe_dev->tcsr_mem));
-	if (!vfe_dev->tcsr_base) {
-		rc = -ENOMEM;
-		pr_err("%s: tcsr ioremap failed\n", __func__);
-		goto tcsr_remap_failed;
-	}
-
 	rc = request_irq(vfe_dev->vfe_irq->start, msm_isp_process_irq,
 		IRQF_TRIGGER_RISING, "vfe", vfe_dev);
 	if (rc < 0) {
@@ -306,8 +298,6 @@ static int msm_vfe40_init_hardware(struct vfe_device *vfe_dev)
 	}
 	return rc;
 irq_req_failed:
-	iounmap(vfe_dev->tcsr_base);
-tcsr_remap_failed:
 	iounmap(vfe_dev->vfe_vbif_base);
 vbif_remap_failed:
 	iounmap(vfe_dev->vfe_base);
@@ -326,7 +316,6 @@ static void msm_vfe40_release_hardware(struct vfe_device *vfe_dev)
 {
 	free_irq(vfe_dev->vfe_irq->start, vfe_dev);
 	tasklet_kill(&vfe_dev->vfe_tasklet);
-	iounmap(vfe_dev->tcsr_base);
 	iounmap(vfe_dev->vfe_vbif_base);
 	iounmap(vfe_dev->vfe_base);
 	msm_cam_clk_enable(&vfe_dev->pdev->dev, msm_vfe40_clk_info,
@@ -460,54 +449,62 @@ static void msm_vfe40_process_error_status(struct vfe_device *vfe_dev)
 {
 	uint32_t error_status1 = vfe_dev->error_info.error_mask1;
 	if (error_status1 & (1 << 0))
-		pr_err("%s: camif error status: 0x%x\n",
+		pr_err_ratelimited("%s: camif error status: 0x%x\n",
 			__func__, vfe_dev->error_info.camif_status);
 	if (error_status1 & (1 << 1))
-		pr_err("%s: stats bhist overwrite\n", __func__);
+		pr_err_ratelimited("%s: stats bhist overwrite\n", __func__);
 	if (error_status1 & (1 << 2))
-		pr_err("%s: stats cs overwrite\n", __func__);
+		pr_err_ratelimited("%s: stats cs overwrite\n", __func__);
 	if (error_status1 & (1 << 3))
-		pr_err("%s: stats ihist overwrite\n", __func__);
+		pr_err_ratelimited("%s: stats ihist overwrite\n", __func__);
 	if (error_status1 & (1 << 4))
-		pr_err("%s: realign buf y overflow\n", __func__);
+		pr_err_ratelimited("%s: realign buf y overflow\n", __func__);
 	if (error_status1 & (1 << 5))
-		pr_err("%s: realign buf cb overflow\n", __func__);
+		pr_err_ratelimited("%s: realign buf cb overflow\n", __func__);
 	if (error_status1 & (1 << 6))
-		pr_err("%s: realign buf cr overflow\n", __func__);
+		pr_err_ratelimited("%s: realign buf cr overflow\n", __func__);
 	if (error_status1 & (1 << 7)) {
-		pr_err("%s: violation\n", __func__);
+		pr_err_ratelimited("%s: violation\n", __func__);
 		msm_vfe40_process_violation_status(vfe_dev);
 	}
 	if (error_status1 & (1 << 9))
-		pr_err("%s: image master 0 bus overflow\n", __func__);
+		pr_err_ratelimited("%s: image master 0 bus overflow\n",
+			__func__);
 	if (error_status1 & (1 << 10))
-		pr_err("%s: image master 1 bus overflow\n", __func__);
+		pr_err_ratelimited("%s: image master 1 bus overflow\n",
+			__func__);
 	if (error_status1 & (1 << 11))
-		pr_err("%s: image master 2 bus overflow\n", __func__);
+		pr_err_ratelimited("%s: image master 2 bus overflow\n",
+			__func__);
 	if (error_status1 & (1 << 12))
-		pr_err("%s: image master 3 bus overflow\n", __func__);
+		pr_err_ratelimited("%s: image master 3 bus overflow\n",
+			__func__);
 	if (error_status1 & (1 << 13))
-		pr_err("%s: image master 4 bus overflow\n", __func__);
+		pr_err_ratelimited("%s: image master 4 bus overflow\n",
+			__func__);
 	if (error_status1 & (1 << 14))
-		pr_err("%s: image master 5 bus overflow\n", __func__);
+		pr_err_ratelimited("%s: image master 5 bus overflow\n",
+			__func__);
 	if (error_status1 & (1 << 15))
-		pr_err("%s: image master 6 bus overflow\n", __func__);
+		pr_err_ratelimited("%s: image master 6 bus overflow\n",
+			__func__);
 	if (error_status1 & (1 << 16))
-		pr_err("%s: status be bus overflow\n", __func__);
+		pr_err_ratelimited("%s: status be bus overflow\n", __func__);
 	if (error_status1 & (1 << 17))
-		pr_err("%s: status bg bus overflow\n", __func__);
+		pr_err_ratelimited("%s: status bg bus overflow\n", __func__);
 	if (error_status1 & (1 << 18))
-		pr_err("%s: status bf bus overflow\n", __func__);
+		pr_err_ratelimited("%s: status bf bus overflow\n", __func__);
 	if (error_status1 & (1 << 19))
-		pr_err("%s: status awb bus overflow\n", __func__);
+		pr_err_ratelimited("%s: status awb bus overflow\n", __func__);
 	if (error_status1 & (1 << 20))
-		pr_err("%s: status rs bus overflow\n", __func__);
+		pr_err_ratelimited("%s: status rs bus overflow\n", __func__);
 	if (error_status1 & (1 << 21))
-		pr_err("%s: status cs bus overflow\n", __func__);
+		pr_err_ratelimited("%s: status cs bus overflow\n", __func__);
 	if (error_status1 & (1 << 22))
-		pr_err("%s: status ihist bus overflow\n", __func__);
+		pr_err_ratelimited("%s: status ihist bus overflow\n", __func__);
 	if (error_status1 & (1 << 23))
-		pr_err("%s: status skin bhist bus overflow\n", __func__);
+		pr_err_ratelimited("%s: status skin bhist bus overflow\n",
+			__func__);
 }
 
 static void msm_vfe40_read_irq_status(struct vfe_device *vfe_dev,
@@ -725,13 +722,18 @@ static void msm_vfe40_clear_framedrop(struct vfe_device *vfe_dev,
 			VFE40_WM_BASE(stream_info->wm[i]) + 0x1C);
 }
 
-static void msm_vfe40_cfg_io_format(struct vfe_device *vfe_dev,
+static int32_t msm_vfe40_cfg_io_format(struct vfe_device *vfe_dev,
 	enum msm_vfe_axi_stream_src stream_src, uint32_t io_format)
 {
 	int bpp, bpp_reg = 0, pack_reg = 0;
 	enum msm_isp_pack_fmt pack_fmt = 0;
 	uint32_t io_format_reg; /*io format register bit*/
 	bpp = msm_isp_get_bit_per_pixel(io_format);
+	if (bpp < 0) {
+		pr_err("%s:%d invalid io_format %d bpp %d", __func__, __LINE__,
+			io_format, bpp);
+		return -EINVAL;
+	}
 
 	switch (bpp) {
 	case 8:
@@ -743,6 +745,9 @@ static void msm_vfe40_cfg_io_format(struct vfe_device *vfe_dev,
 	case 12:
 		bpp_reg = 1 << 1;
 		break;
+	default:
+		pr_err("%s:%d invalid bpp %d", __func__, __LINE__, bpp);
+		return -EINVAL;
 	}
 
 	if (stream_src == IDEAL_RAW) {
@@ -769,7 +774,7 @@ static void msm_vfe40_cfg_io_format(struct vfe_device *vfe_dev,
 			break;
 		default:
 			pr_err("%s: invalid pack fmt!\n", __func__);
-			return;
+			return -EINVAL;
 		}
 	}
 
@@ -790,9 +795,10 @@ static void msm_vfe40_cfg_io_format(struct vfe_device *vfe_dev,
 	case RDI_INTF_2:
 	default:
 		pr_err("%s: Invalid stream source\n", __func__);
-		return;
+		return -EINVAL;
 	}
 	msm_camera_io_w(io_format_reg, vfe_dev->vfe_base + 0x54);
+	return 0;
 }
 
 static void msm_vfe40_cfg_camif(struct vfe_device *vfe_dev,
@@ -867,7 +873,10 @@ static void msm_vfe40_update_camif_state(struct vfe_device *vfe_dev,
 		msm_camera_io_w_mb(0x0, vfe_dev->vfe_base + 0x2F4);
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 0;
 	} else if (update_state == DISABLE_CAMIF_IMMEDIATELY) {
-		msm_camera_io_w_mb(0x2, vfe_dev->vfe_base + 0x2F4);
+		msm_camera_io_w_mb(0x6, vfe_dev->vfe_base + 0x2F4);
+		vfe_dev->hw_info->vfe_ops.axi_ops.halt(vfe_dev);
+		vfe_dev->hw_info->vfe_ops.core_ops.reset_hw(vfe_dev);
+		vfe_dev->hw_info->vfe_ops.core_ops.init_hw_reg(vfe_dev);
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 0;
 	}
 }
@@ -1336,14 +1345,6 @@ static int msm_vfe40_get_platform_data(struct vfe_device *vfe_dev)
 		goto vfe_no_resource;
 	}
 
-	vfe_dev->tcsr_mem = platform_get_resource_byname(vfe_dev->pdev,
-		IORESOURCE_MEM, "tcsr");
-	if (!vfe_dev->tcsr_mem) {
-		pr_err("%s: no mem resource?\n", __func__);
-		rc = -ENODEV;
-		goto vfe_no_resource;
-	}
-
 	vfe_dev->vfe_irq = platform_get_resource_byname(vfe_dev->pdev,
 		IORESOURCE_IRQ, "vfe");
 	if (!vfe_dev->vfe_irq) {
@@ -1381,8 +1382,8 @@ static void msm_vfe40_get_error_mask(
 }
 
 static struct msm_vfe_axi_hardware_info msm_vfe40_axi_hw_info = {
-	.num_wm = 5,
-	.num_comp_mask = 2,
+	.num_wm = 6,
+	.num_comp_mask = 3,
 	.num_rdi = 3,
 	.num_rdi_master = 3,
 	.min_wm_ub = 64,

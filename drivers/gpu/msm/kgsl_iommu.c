@@ -21,7 +21,7 @@
 #include <mach/socinfo.h>
 #include <mach/msm_iomap.h>
 #include <mach/board.h>
-#include <mach/iommu_domains.h>
+#include <linux/msm_iommu_domains.h>
 #include <stddef.h>
 
 #include "kgsl.h"
@@ -32,7 +32,6 @@
 #include "adreno_pm4types.h"
 #include "adreno.h"
 #include "kgsl_trace.h"
-#include "z180.h"
 #include "kgsl_cffdump.h"
 
 
@@ -669,7 +668,7 @@ static void kgsl_iommu_destroy_pagetable(struct kgsl_pagetable *pt)
  * domain which is the actual IOMMU pagetable
  * Return - void
  */
-void *kgsl_iommu_create_pagetable(void)
+static void *kgsl_iommu_create_pagetable(void)
 {
 	int domain_num;
 	struct kgsl_iommu_pt *iommu_pt;
@@ -943,17 +942,6 @@ static int kgsl_iommu_init_sync_lock(struct kgsl_mmu *mmu)
 		!kgsl_mmu_is_perprocess(mmu))
 		return status;
 
-	/*
-	 * For 2D devices cpu side sync lock is required. For 3D device,
-	 * since we only have a single 3D core and we always ensure that
-	 * 3D core is idle while writing to IOMMU register using CPU this
-	 * lock is not required
-	 */
-	if (KGSL_DEVICE_2D0 == mmu->device->id ||
-		KGSL_DEVICE_2D1 == mmu->device->id) {
-		return status;
-	}
-
 	/* Return if already initialized */
 	if (iommu->sync_lock_initialized)
 		return status;
@@ -1007,7 +995,7 @@ static int kgsl_iommu_init_sync_lock(struct kgsl_mmu *mmu)
  *
  * Return - int - number of commands.
  */
-inline unsigned int kgsl_iommu_sync_lock(struct kgsl_mmu *mmu,
+static unsigned int kgsl_iommu_sync_lock(struct kgsl_mmu *mmu,
 						unsigned int *cmds)
 {
 	struct kgsl_device *device = mmu->device;
@@ -1059,13 +1047,13 @@ inline unsigned int kgsl_iommu_sync_lock(struct kgsl_mmu *mmu,
 }
 
 /*
- * kgsl_iommu_sync_lock - Release Sync Lock between GPU and CPU
+ * kgsl_iommu_sync_unlock - Release Sync Lock between GPU and CPU
  * @mmu - Pointer to mmu device
  * @cmds - Pointer to array of commands
  *
  * Return - int - number of commands.
  */
-inline unsigned int kgsl_iommu_sync_unlock(struct kgsl_mmu *mmu,
+static unsigned int kgsl_iommu_sync_unlock(struct kgsl_mmu *mmu,
 					unsigned int *cmds)
 {
 	struct kgsl_device *device = mmu->device;
@@ -1697,7 +1685,7 @@ static int kgsl_iommu_start(struct kgsl_mmu *mmu)
 			}
 			if (sizeof(phys_addr_t) > sizeof(unsigned long)) {
 				iommu_unit->dev[j].default_ttbr0 =
-						KGSL_IOMMU_GET_CTX_REG_LL(iommu,
+						KGSL_IOMMU_GET_CTX_REG_Q(iommu,
 						iommu_unit,
 						iommu_unit->dev[j].ctx_id,
 						TTBR0);
@@ -1805,7 +1793,7 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 	return ret;
 }
 
-void kgsl_iommu_pagefault_resume(struct kgsl_mmu *mmu)
+static void kgsl_iommu_pagefault_resume(struct kgsl_mmu *mmu)
 {
 	struct kgsl_iommu *iommu = mmu->priv;
 	int i, j;
@@ -1969,7 +1957,7 @@ static int kgsl_iommu_default_setstate(struct kgsl_mmu *mmu,
 			pt_val &= ~KGSL_IOMMU_CTX_TTBR0_ADDR_MASK;
 			pt_val |= pt_base;
 			if (sizeof(phys_addr_t) > sizeof(unsigned long)) {
-				KGSL_IOMMU_SET_CTX_REG_LL(iommu,
+				KGSL_IOMMU_SET_CTX_REG_Q(iommu,
 					(&iommu->iommu_units[i]),
 					KGSL_IOMMU_CONTEXT_USER, TTBR0, pt_val);
 			} else {

@@ -21,8 +21,8 @@
 #include <linux/iopoll.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/machine.h>
+#include <linux/regulator/rpm-smd-regulator.h>
 
-#include <mach/rpm-regulator-smd.h>
 #include <mach/socinfo.h>
 #include <mach/rpm-smd.h>
 
@@ -474,7 +474,7 @@ static struct pll_vote_clk gpll4_clk_src = {
 	.base = &virt_bases[GCC_BASE],
 	.c = {
 		.parent = &xo_clk_src.c,
-		.rate = 800000000,
+		.rate = 288000000,
 		.dbg_name = "gpll4_clk_src",
 		.ops = &clk_ops_pll_vote,
 		CLK_INIT(gpll4_clk_src.c),
@@ -1113,7 +1113,7 @@ static struct rcg_clk pcie_0_aux_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_pcie_0_1_pipe_clk[] = {
-	F_EXT(125000000, pcie_pipe,    2, 0, 0),
+	F_EXT(125000000, pcie_pipe,    1, 0, 0),
 	F_EXT(250000000, pcie_pipe,    1, 0, 0),
 	F_END
 };
@@ -1183,7 +1183,6 @@ static struct clk_freq_tbl ftbl_gcc_sdcc1_4_apps_clk[] = {
 	F( 50000000,      gpll0,   12, 0, 0),
 	F(100000000,      gpll0,    6, 0, 0),
 	F(200000000,      gpll0,    3, 0, 0),
-	F(400000000,      gpll4,    2, 0, 0),
 	F_END
 };
 
@@ -1743,6 +1742,7 @@ static struct local_vote_clk gcc_ce1_clk = {
 	.en_mask = BIT(5),
 	.base = &virt_bases[GCC_BASE],
 	.c = {
+		.parent = &ce1_clk_src.c,
 		.dbg_name = "gcc_ce1_clk",
 		.ops = &clk_ops_vote,
 		CLK_INIT(gcc_ce1_clk.c),
@@ -1779,6 +1779,7 @@ static struct local_vote_clk gcc_ce2_clk = {
 	.en_mask = BIT(2),
 	.base = &virt_bases[GCC_BASE],
 	.c = {
+		.parent = &ce2_clk_src.c,
 		.dbg_name = "gcc_ce2_clk",
 		.ops = &clk_ops_vote,
 		CLK_INIT(gcc_ce2_clk.c),
@@ -2082,6 +2083,28 @@ static struct branch_clk gcc_usb_hs_system_clk = {
 		.dbg_name = "gcc_usb_hs_system_clk",
 		.ops = &clk_ops_branch,
 		CLK_INIT(gcc_usb_hs_system_clk.c),
+	},
+};
+
+static struct gate_clk pcie_0_phy_ldo = {
+	.en_reg = PCIE_0_PHY_LDO_EN,
+	.en_mask = BIT(0),
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "pcie_0_phy_ldo",
+		.ops = &clk_ops_gate,
+		CLK_INIT(pcie_0_phy_ldo.c),
+	},
+};
+
+static struct gate_clk pcie_1_phy_ldo = {
+	.en_reg = PCIE_1_PHY_LDO_EN,
+	.en_mask = BIT(0),
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "pcie_1_phy_ldo",
+		.ops = &clk_ops_gate,
+		CLK_INIT(pcie_1_phy_ldo.c),
 	},
 };
 
@@ -2597,9 +2620,9 @@ static struct clk_lookup fsm_clocks_9900[] = {
 	CLK_LOOKUP("core_clk",	gcc_sdcc2_apps_clk.c,	   "msm_sdcc.2"),
 
 	/* USB clocks */
-	CLK_LOOKUP("iface_clk", gcc_usb_hs_ahb_clk.c,      "msm_otg"),
-	CLK_LOOKUP("core_clk",  gcc_usb_hs_system_clk.c,   "msm_otg"),
-	CLK_LOOKUP("xo",        xo_usb_hs_host_clk.c,      "msm_otg"),
+	CLK_LOOKUP("iface_clk", gcc_usb_hs_ahb_clk.c,      "f9a55000.usb"),
+	CLK_LOOKUP("core_clk",  gcc_usb_hs_system_clk.c,   "f9a55000.usb"),
+	CLK_LOOKUP("xo",        xo_usb_hs_host_clk.c,      "f9a55000.usb"),
 
 	CLK_LOOKUP("iface_clk",	gcc_usb_hs_ahb_clk.c,	   "msm_ehci_host"),
 	CLK_LOOKUP("core_clk",	gcc_usb_hs_system_clk.c,   "msm_ehci_host"),
@@ -2615,16 +2638,30 @@ static struct clk_lookup fsm_clocks_9900[] = {
 	CLK_LOOKUP("tx_clk",	emac1_tx_clk_src.c,	 "feb00000.qcom,emac"),
 
 	/* PCIE clocks */
-	CLK_LOOKUP("",	gcc_pcie_0_aux_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_0_cfg_ahb_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_0_mstr_axi_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_0_pipe_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_0_slv_axi_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_1_aux_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_1_cfg_ahb_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_1_mstr_axi_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_1_pipe_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pcie_1_slv_axi_clk.c,	""),
+
+	CLK_LOOKUP("pcie_0_aux_clk", gcc_pcie_0_aux_clk.c,
+						"fc520000.qcom,pcie"),
+	CLK_LOOKUP("pcie_0_cfg_ahb_clk", gcc_pcie_0_cfg_ahb_clk.c,
+						"fc520000.qcom,pcie"),
+	CLK_LOOKUP("pcie_0_mstr_axi_clk", gcc_pcie_0_mstr_axi_clk.c,
+						"fc520000.qcom,pcie"),
+	CLK_LOOKUP("pcie_0_pipe_clk", gcc_pcie_0_pipe_clk.c,
+						"fc520000.qcom,pcie"),
+	CLK_LOOKUP("pcie_0_slv_axi_clk", gcc_pcie_0_slv_axi_clk.c,
+						"fc520000.qcom,pcie"),
+	CLK_DUMMY("pcie_0_ref_clk_src", NULL, "fc520000.qcom,pcie", OFF),
+
+	CLK_LOOKUP("pcie_1_aux_clk", gcc_pcie_1_aux_clk.c,
+						"fc528000.qcom,pcie"),
+	CLK_LOOKUP("pcie_1_cfg_ahb_clk", gcc_pcie_1_cfg_ahb_clk.c,
+						"fc528000.qcom,pcie"),
+	CLK_LOOKUP("pcie_1_mstr_axi_clk", gcc_pcie_1_mstr_axi_clk.c,
+						"fc528000.qcom,pcie"),
+	CLK_LOOKUP("pcie_1_pipe_clk", gcc_pcie_1_pipe_clk.c,
+						"fc528000.qcom,pcie"),
+	CLK_LOOKUP("pcie_1_slv_axi_clk", gcc_pcie_1_slv_axi_clk.c,
+						"fc528000.qcom,pcie"),
+	CLK_DUMMY("pcie_1_ref_clk_src", NULL, "fc528000.qcom,pcie", OFF),
 
 	CLK_LOOKUP("hfpll_src", xo_a_clk_src.c,
 					"f9016000.qcom,clock-krait"),
@@ -2634,6 +2671,10 @@ static struct clk_lookup fsm_clocks_9900[] = {
 
 	/* MPM */
 	CLK_LOOKUP("xo", xo_clk_src.c, "fc4281d0.qcom,mpm"),
+
+	/* LDO */
+	CLK_LOOKUP("pcie_0_ldo",        pcie_0_phy_ldo.c, "fc520000.qcom,pcie"),
+	CLK_LOOKUP("pcie_1_ldo",        pcie_1_phy_ldo.c, "fc528000.qcom,pcie"),
 };
 
 static struct pll_config_regs gpll4_regs __initdata = {
@@ -2645,16 +2686,16 @@ static struct pll_config_regs gpll4_regs __initdata = {
 	.base = &virt_bases[GCC_BASE],
 };
 
-/* PLL4 at 800 MHz, main output enabled. LJ mode. */
+/* PLL4 at 288 MHz, main output enabled. LJ mode. */
 static struct pll_config gpll4_config __initdata = {
-	.l = 0x29,
-	.m = 0x2,
-	.n = 0x3,
+	.l = 0x1e,
+	.m = 0x0,
+	.n = 0x1,
 	.vco_val = 0x1,
 	.vco_mask = BM(21, 20),
 	.pre_div_val = 0x0,
 	.pre_div_mask = BM(14, 12),
-	.post_div_val = 0x0,
+	.post_div_val = BIT(8),
 	.post_div_mask = BM(9, 8),
 	.mn_ena_val = BIT(24),
 	.mn_ena_mask = BIT(24),

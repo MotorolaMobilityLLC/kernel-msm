@@ -20,11 +20,11 @@
 #include <linux/clk.h>
 #include <linux/iopoll.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regulator/rpm-smd-regulator.h>
+#include <linux/clk/msm-clock-generic.h>
 
-#include <mach/rpm-regulator-smd.h>
 #include <mach/socinfo.h>
 #include <mach/rpm-smd.h>
-#include <mach/clock-generic.h>
 
 #include "clock-local2.h"
 #include "clock-pll.h"
@@ -677,6 +677,7 @@ static struct clk_freq_tbl ftbl_gcc_blsp1_qup1_6_spi_apps_clk[] = {
 	F(  960000, gcc_xo, 10, 1, 2),
 	F( 4800000, gcc_xo,  4, 0, 0),
 	F( 9600000, gcc_xo,  2, 0, 0),
+	F(12000000,  gpll0, 10, 1, 5),
 	F(15000000,  gpll0, 10, 1, 4),
 	F(19200000, gcc_xo,  1, 0, 0),
 	F(25000000,  gpll0, 12, 1, 2),
@@ -783,6 +784,7 @@ static struct clk_freq_tbl ftbl_gcc_blsp1_uart1_6_apps_clk[] = {
 	F(56000000,  gpll0,    1,    7,    75),
 	F(58982400,  gpll0,    1, 1536, 15625),
 	F(60000000,  gpll0,   10,    0,     0),
+	F(63160000,  gpll0,  9.5,    0,     0),
 	F_END,
 };
 
@@ -1284,6 +1286,7 @@ static struct local_vote_clk gcc_ce1_clk = {
 	.en_mask = BIT(5),
 	.base = &virt_bases[GCC_BASE],
 	.c = {
+		.parent = &ce1_clk_src.c,
 		.dbg_name = "gcc_ce1_clk",
 		.ops = &clk_ops_vote,
 		CLK_INIT(gcc_ce1_clk.c),
@@ -2894,12 +2897,13 @@ static struct clk_lookup msm_clocks_8610[] = {
 	CLK_LOOKUP("core_clk_src",          sdcc2_apps_clk_src.c, ""),
 	CLK_LOOKUP("core_clk_src",       usb_hs_system_clk_src.c, ""),
 	CLK_LOOKUP("iface_clk",           gcc_blsp1_ahb_clk.c, "f9923000.i2c"),
+	CLK_LOOKUP("iface_clk",           gcc_blsp1_ahb_clk.c, "f9924000.i2c"),
 	CLK_LOOKUP("iface_clk",           gcc_blsp1_ahb_clk.c, "f9925000.i2c"),
 	CLK_LOOKUP("iface_clk",           gcc_blsp1_ahb_clk.c, "f9927000.i2c"),
 	CLK_LOOKUP("iface_clk",           gcc_blsp1_ahb_clk.c, "f9926000.spi"),
 	CLK_LOOKUP("core_clk",  gcc_blsp1_qup1_i2c_apps_clk.c, "f9923000.i2c"),
 	CLK_LOOKUP("core_clk",  gcc_blsp1_qup1_spi_apps_clk.c, ""),
-	CLK_LOOKUP("core_clk",  gcc_blsp1_qup2_i2c_apps_clk.c, ""),
+	CLK_LOOKUP("core_clk",  gcc_blsp1_qup2_i2c_apps_clk.c, "f9924000.i2c"),
 	CLK_LOOKUP("core_clk",  gcc_blsp1_qup2_spi_apps_clk.c, ""),
 	CLK_LOOKUP("core_clk",  gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"),
 	CLK_LOOKUP("core_clk",  gcc_blsp1_qup3_spi_apps_clk.c, ""),
@@ -2924,6 +2928,7 @@ static struct clk_lookup msm_clocks_8610[] = {
 	CLK_LOOKUP("iface_clk",       gcc_copss_smmu_ahb_clk.c, ""),
 	CLK_LOOKUP("iface_clk",        gcc_lpss_smmu_ahb_clk.c, ""),
 	CLK_LOOKUP("core_clk",                  gcc_gp1_clk.c, "0-000e"),
+	CLK_LOOKUP("core_clk_pvt",              gcc_gp1_clk.c, "2-000e"),
 	CLK_LOOKUP("core_clk",                  gcc_gp2_clk.c, ""),
 	CLK_LOOKUP("core_clk",                  gcc_gp3_clk.c, ""),
 	CLK_LOOKUP("core_clk",         gcc_lpass_q6_axi_clk.c, ""),
@@ -3023,15 +3028,19 @@ static struct clk_lookup msm_clocks_8610[] = {
 	/* MM sensor clocks */
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006f"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-0034"),
+	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-0001"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-007d"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006d"),
+	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "6-0002"),
 	CLK_LOOKUP("cam_src_clk", mclk1_clk_src.c, "6-0078"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-0020"),
 	CLK_LOOKUP("cam_src_clk", mclk0_clk_src.c, "6-006a"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006f"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0034"),
+	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0001"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-007d"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006d"),
+	CLK_LOOKUP("cam_clk", mclk1_clk.c, "6-0002"),
 	CLK_LOOKUP("cam_clk", mclk1_clk.c, "6-0078"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-0020"),
 	CLK_LOOKUP("cam_clk", mclk0_clk.c, "6-006a"),
@@ -3042,10 +3051,12 @@ static struct clk_lookup msm_clocks_8610[] = {
 		"fda00c00.qcom,csiphy"),
 	CLK_LOOKUP("csiphy_timer_clk", csi0phytimer_clk.c,
 		"fda00c00.qcom,csiphy"),
+	CLK_LOOKUP("csi_ahb_clk", csi_ahb_clk.c, "fda00c00.qcom,csiphy"),
 	CLK_LOOKUP("csiphy_timer_src_clk", csi1phytimer_clk_src.c,
 		"fda01000.qcom,csiphy"),
 	CLK_LOOKUP("csiphy_timer_clk", csi1phytimer_clk.c,
 		"fda01000.qcom,csiphy"),
+	CLK_LOOKUP("csi_ahb_clk", csi_ahb_clk.c,  "fda01000.qcom,csiphy"),
 
 	/* CSID clocks */
 	CLK_LOOKUP("csi_clk", csi0_clk.c, "fda00000.qcom,csid"),
@@ -3105,6 +3116,8 @@ static struct clk_lookup msm_clocks_8610[] = {
 	CLK_LOOKUP("xo",        cxo_acpu_clk.c, "f9011050.qcom,acpuclk"),
 	CLK_LOOKUP("gpll0", gpll0_ao_clk_src.c, "f9011050.qcom,acpuclk"),
 	CLK_LOOKUP("a7sspll",        a7sspll.c, "f9011050.qcom,acpuclk"),
+	CLK_LOOKUP("clk-4",  gpll0_ao_clk_src.c, "f9011050.qcom,clock-a7"),
+	CLK_LOOKUP("clk-5", a7sspll.c, "f9011050.qcom,clock-a7"),
 
 	CLK_LOOKUP("measure_clk", apc0_m_clk, ""),
 	CLK_LOOKUP("measure_clk", apc1_m_clk, ""),

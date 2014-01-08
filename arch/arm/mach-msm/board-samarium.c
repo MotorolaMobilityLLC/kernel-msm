@@ -18,6 +18,8 @@
 #include <linux/memory.h>
 #include <linux/msm_tsens.h>
 #include <linux/msm_thermal.h>
+#include <linux/clk/msm-clk-provider.h>
+#include <linux/regulator/rpm-smd-regulator.h>
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <mach/board.h>
@@ -26,17 +28,13 @@
 #include <mach/msm_memtypes.h>
 #include <mach/restart.h>
 #include <mach/socinfo.h>
-#include <mach/clk-provider.h>
-#include <mach/msm_smem.h>
+#include <soc/qcom/smem.h>
 #include <mach/msm_smd.h>
 #include <mach/rpm-smd.h>
-#include <mach/rpm-regulator-smd.h>
 #include "spm.h"
 #include "board-dt.h"
 #include "clock.h"
-#include "devices.h"
 #include "platsmp.h"
-#include "modem_notifier.h"
 #include "pm.h"
 
 static struct of_dev_auxdata msmsamarium_auxdata_lookup[] __initdata = {
@@ -48,45 +46,20 @@ static struct of_dev_auxdata msmsamarium_auxdata_lookup[] __initdata = {
 			"msm_sdcc.2", NULL),
 	OF_DEV_AUXDATA("qcom,sdhci-msm", 0xF98A4900,
 			"msm_sdcc.2", NULL),
-	OF_DEV_AUXDATA("qcom,hsusb-otg", 0xF9A55000, \
-			"msm_otg", NULL),
+	OF_DEV_AUXDATA("qcom,hsusb-otg", 0xF9A55000, "msm_otg", NULL),
 	OF_DEV_AUXDATA("qcom,spi-qup-v2", 0xF9923000, \
 			"spi_qsd.1", NULL),
 	{},
 };
 
-static struct memtype_reserve msmsamarium_reserve_table[] __initdata = {
-	[MEMTYPE_SMI] = {
-	},
-	[MEMTYPE_EBI0] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
-	},
-	[MEMTYPE_EBI1] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
-	},
-};
-
-static int msmsamarium_paddr_to_memtype(phys_addr_t paddr)
-{
-	return MEMTYPE_EBI1;
-}
-
-static struct reserve_info msmsamarium_reserve_info __initdata = {
-	.memtype_reserve_table = msmsamarium_reserve_table,
-	.paddr_to_memtype = msmsamarium_paddr_to_memtype,
-};
-
 void __init msmsamarium_reserve(void)
 {
-	reserve_info = &msmsamarium_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_reserve, msmsamarium_reserve_table);
-	msm_reserve();
+	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 }
 
 static void __init msmsamarium_early_memory(void)
 {
-	reserve_info = &msmsamarium_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_hole, msmsamarium_reserve_table);
+	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
 }
 
 /*
@@ -97,12 +70,10 @@ static void __init msmsamarium_early_memory(void)
  */
 void __init msmsamarium_add_drivers(void)
 {
-	msm_smem_init();
-	msm_init_modem_notifier_list();
 	msm_smd_init();
 	msm_rpm_driver_init();
 	msm_pm_sleep_status_init();
-	rpm_regulator_smd_driver_init();
+	rpm_smd_regulator_driver_init();
 	msm_spm_device_init();
 	if (of_board_is_rumi())
 		msm_clock_init(&msmsamarium_rumi_clock_init_data);
@@ -121,11 +92,19 @@ void __init msmsamarium_init(void)
 {
 	struct of_dev_auxdata *adata = msmsamarium_auxdata_lookup;
 
+	/*
+	 * populate devices from DT first so smem probe will get called as part
+	 * of msm_smem_init.  socinfo_init needs smem support so call
+	 * msm_smem_init before it.
+	 */
+	board_dt_populate(adata);
+
+	msm_smem_init();
+
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
 	msmsamarium_init_gpiomux();
-	board_dt_populate(adata);
 	msmsamarium_add_drivers();
 }
 

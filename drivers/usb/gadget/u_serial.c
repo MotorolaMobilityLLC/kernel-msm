@@ -375,11 +375,19 @@ __releases(&port->port_lock)
 __acquires(&port->port_lock)
 */
 {
-	struct list_head	*pool = &port->write_pool;
-	struct usb_ep		*in = port->port_usb->in;
+	struct list_head	*pool;
+	struct usb_ep		*in;
 	int			status = 0;
 	static long 		prev_len;
 	bool			do_tty_wake = false;
+
+	if (!port || !port->port_usb) {
+		pr_err("Error - port or port->usb is NULL.");
+		return -EIO;
+	}
+
+	pool = &port->write_pool;
+	in   = port->port_usb->in;
 
 	while (!list_empty(pool)) {
 		struct usb_request	*req;
@@ -470,9 +478,17 @@ __releases(&port->port_lock)
 __acquires(&port->port_lock)
 */
 {
-	struct list_head	*pool = &port->read_pool;
-	struct usb_ep		*out = port->port_usb->out;
+	struct list_head	*pool;
+	struct usb_ep		*out;
 	unsigned		started = 0;
+
+	if (!port || !port->port_usb) {
+		pr_err("Error - port or port->usb is NULL.");
+		return -EIO;
+	}
+
+	pool = &port->read_pool;
+	out  = port->port_usb->out;
 
 	while (!list_empty(pool)) {
 		struct usb_request	*req;
@@ -689,18 +705,20 @@ static void gs_free_requests(struct usb_ep *ep, struct list_head *head,
 }
 
 static int gs_alloc_requests(struct usb_ep *ep, struct list_head *head,
-		int num, int size, void (*fn)(struct usb_ep *, struct usb_request *),
+		int queue_size, int req_size,
+		void (*fn)(struct usb_ep *, struct usb_request *),
 		int *allocated)
 {
 	int			i;
 	struct usb_request	*req;
+	int n = allocated ? queue_size - *allocated : queue_size;
 
 	/* Pre-allocate up to QUEUE_SIZE transfers, but if we can't
 	 * do quite that many this time, don't fail ... we just won't
 	 * be as speedy as we might otherwise be.
 	 */
-	for (i = 0; i < num; i++) {
-		req = gs_alloc_req(ep, size, GFP_ATOMIC);
+	for (i = 0; i < n; i++) {
+		req = gs_alloc_req(ep, req_size, GFP_ATOMIC);
 		if (!req)
 			return list_empty(head) ? -ENOMEM : 0;
 		req->complete = fn;
@@ -722,14 +740,17 @@ static int gs_alloc_requests(struct usb_ep *ep, struct list_head *head,
  */
 static int gs_start_io(struct gs_port *port)
 {
-	struct list_head	*head = &port->read_pool;
+	struct list_head	*head;
 	struct usb_ep		*ep;
 	int			status;
 	unsigned		started;
 
-	if (!port->port_usb)
+	if (!port || !port->port_usb) {
+		pr_err("Error - port or port->usb is NULL.");
 		return -EIO;
+	}
 
+	head = &port->read_pool;
 	ep = port->port_usb->out;
 
 	/* Allocate RX and TX I/O buffers.  We can't easily do this much
@@ -944,22 +965,6 @@ static void gs_close(struct tty_struct *tty, struct file *file)
 			port->port_num, tty, file);
 
 	wake_up(&port->port.close_wait);
-
-	/*
-	 * Freeing the previously queued requests as they are
-	 * allocated again as a part of gs_open()
-	 */
-	if (port->port_usb) {
-		spin_unlock_irq(&port->port_lock);
-		usb_ep_fifo_flush(gser->out);
-		usb_ep_fifo_flush(gser->in);
-		spin_lock_irq(&port->port_lock);
-		gs_free_requests(gser->out, &port->read_queue, NULL);
-		gs_free_requests(gser->out, &port->read_pool, NULL);
-		gs_free_requests(gser->in, &port->write_pool, NULL);
-	}
-	port->read_allocated = port->read_started =
-		port->write_allocated = port->write_started = 0;
 exit:
 	spin_unlock_irq(&port->port_lock);
 }

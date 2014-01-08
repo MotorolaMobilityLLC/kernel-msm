@@ -216,8 +216,6 @@ struct spi_dmov_cmd {
 	dma_addr_t cmd_ptr;
 };
 
-static struct pm_qos_request qos_req_list;
-
 #ifdef CONFIG_DEBUG_FS
 /* Used to create debugfs entries */
 static const struct {
@@ -291,6 +289,10 @@ struct msm_spi_bam {
 	struct msm_spi_bam_pipe  prod;
 	struct msm_spi_bam_pipe  cons;
 	bool                     deregister_required;
+	u32			 curr_rx_bytes_recvd;
+	u32			 curr_tx_bytes_sent;
+	u32			 bam_rx_len;
+	u32			 bam_tx_len;
 };
 
 struct msm_spi {
@@ -369,10 +371,6 @@ struct msm_spi {
 	struct dentry *debugfs_spi_regs[ARRAY_SIZE(debugfs_spi_regs)];
 #endif
 	struct msm_spi_platform_data *pdata; /* Platform data */
-	/* Remote Spinlock Data */
-	bool                     use_rlock;
-	remote_mutex_t           r_lock;
-	uint32_t                 pm_lat;
 	/* When set indicates multiple transfers in a single message */
 	bool                     multi_xfr;
 	bool                     done;
@@ -388,6 +386,8 @@ struct msm_spi {
 	struct spi_cs_gpio       cs_gpios[ARRAY_SIZE(spi_cs_rsrcs)];
 	enum msm_spi_qup_version qup_ver;
 	int			 max_trfr_len;
+	int			 num_xfrs_grped;
+	u16			 xfrs_delay_usec;
 };
 
 /* Forward declaration */

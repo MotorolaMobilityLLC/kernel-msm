@@ -22,10 +22,10 @@
 #include <linux/dma-mapping.h>
 #include <linux/bitops.h>
 #include <linux/workqueue.h>
+#include <linux/clk/msm-clk.h>
 
 #include <mach/msm_bus.h>
 #include <mach/rpm-regulator.h>
-#include <mach/clk.h>
 #include <mach/msm_iomap.h>
 
 #include "xhci.h"
@@ -43,6 +43,7 @@
 #define TLMM_GPIO_HSIC_STROBE_PAD_CTL	(MSM_TLMM_BASE + 0x2050)
 #define TLMM_GPIO_HSIC_DATA_PAD_CTL	(MSM_TLMM_BASE + 0x2054)
 
+#define GCTL_DSBLCLKGTNG	BIT(0)
 #define GCTL_CORESOFTRESET	BIT(11)
 
 /* Global USB2 PHY Configuration Register */
@@ -229,6 +230,9 @@ static int mxhci_hsic_init_clocks(struct mxhci_hsic_hcd *mxhci, u32 init)
 		dev_err(mxhci->dev, "failed to enable system_clk\n");
 		goto out;
 	}
+
+	/* enable force-on mode for periph_on */
+	clk_set_flags(mxhci->system_clk, CLKFLAG_RETAIN_PERIPH);
 
 	ret = clk_prepare_enable(mxhci->core_clk);
 	if (ret) {
@@ -463,6 +467,13 @@ static void mxhci_hsic_plat_quirks(struct device *dev, struct xhci_hcd *xhci)
 	if (mxhci->wakeup_irq)
 		xhci->quirks |= XHCI_NO_SELECTIVE_SUSPEND;
 
+	/*
+	 * Observing hw tr deq pointer getting stuck to a noop trb
+	 * when aborting transfer during suspend. Reset tr deq pointer
+	 * to start of the first seg of the xfer ring.
+	 */
+	xhci->quirks |= XHCI_TR_DEQ_RESET_QUIRK;
+
 	if (!pdata)
 		return;
 	if (pdata->vendor == SYNOPSIS_DWC3_VENDOR &&
@@ -543,7 +554,9 @@ static int mxhci_hsic_bus_suspend(struct usb_hcd *hcd)
 	/* don't miss connect bus state from peripheral for USB 2.0 root hub */
 	if (usb_hcd_is_primary_hcd(hcd) &&
 			!(readl_relaxed(MSM_HSIC_PORTSC) & PORT_PE)) {
-		dev_err(mxhci->dev, "%s: port is not enabled; skip suspend\n",
+		xhci_dbg_log_event(&dbg_hsic, NULL,
+				"port is not enabled; skip suspend", 0);
+		dev_dbg(mxhci->dev, "%s: port is not enabled; skip suspend\n",
 				__func__);
 		return -EAGAIN;
 	}
@@ -588,11 +601,15 @@ static int mxhci_hsic_suspend(struct mxhci_hsic_hcd *mxhci)
 
 	init_completion(&mxhci->phy_in_lpm);
 
-	clk_disable_unprepare(mxhci->system_clk);
+	/* Don't poll the roothubs after bus suspend. */
+	clear_bit(HCD_FLAG_POLL_RH, &hcd->flags);
+	del_timer_sync(&hcd->rh_timer);
+
 	clk_disable_unprepare(mxhci->core_clk);
 	clk_disable_unprepare(mxhci->utmi_clk);
 	clk_disable_unprepare(mxhci->hsic_clk);
 	clk_disable_unprepare(mxhci->cal_clk);
+	clk_disable_unprepare(mxhci->system_clk);
 
 	ret = regulator_set_voltage(mxhci->hsic_vddcx, mxhci->vdd_no_vol_level,
 			mxhci->vdd_high_vol_level);
@@ -614,6 +631,9 @@ static int mxhci_hsic_suspend(struct mxhci_hsic_hcd *mxhci)
 		enable_irq(mxhci->wakeup_irq);
 	}
 
+	/* disable force-on mode for periph_on */
+	clk_set_flags(mxhci->system_clk, CLKFLAG_NORETAIN_PERIPH);
+
 	pm_relax(mxhci->dev);
 
 	dev_dbg(mxhci->dev, "HSIC-USB in low power mode\n");
@@ -634,6 +654,9 @@ static int mxhci_hsic_resume(struct mxhci_hsic_hcd *mxhci)
 	}
 
 	pm_stay_awake(mxhci->dev);
+
+	/* enable force-on mode for periph_on */
+	clk_set_flags(mxhci->system_clk, CLKFLAG_RETAIN_PERIPH);
 
 	if (mxhci->bus_perf_client) {
 		mxhci->bus_vote = true;
@@ -660,11 +683,16 @@ static int mxhci_hsic_resume(struct mxhci_hsic_hcd *mxhci)
 		dev_err(mxhci->dev,
 			"unable to set nominal vddcx voltage (no VDD MIN)\n");
 
+
 	clk_prepare_enable(mxhci->system_clk);
-	clk_prepare_enable(mxhci->core_clk);
-	clk_prepare_enable(mxhci->utmi_clk);
-	clk_prepare_enable(mxhci->hsic_clk);
 	clk_prepare_enable(mxhci->cal_clk);
+	clk_prepare_enable(mxhci->hsic_clk);
+	clk_prepare_enable(mxhci->utmi_clk);
+	clk_prepare_enable(mxhci->core_clk);
+
+	/* Re-enable port polling. */
+	set_bit(HCD_FLAG_POLL_RH, &hcd->flags);
+	usb_hcd_poll_rh_status(hcd);
 
 	if (mxhci->wakeup_irq)
 		usb_hcd_resume_root_hub(hcd);
@@ -738,6 +766,61 @@ static struct hc_driver mxhci_hsic_hc_driver = {
 
 	.set_autosuspend_delay = mxhci_hsic_set_autosuspend_delay,
 };
+
+static ssize_t config_imod_store(struct device *pdev,
+		struct device_attribute *attr, const char *buff, size_t size)
+{
+	struct usb_hcd *hcd = dev_get_drvdata(pdev);
+	struct xhci_hcd *xhci;
+	struct mxhci_hsic_hcd *mxhci;
+	u32 temp;
+	u32 imod;
+	unsigned long flags;
+
+	sscanf(buff, "%u", &imod);
+	imod &= ER_IRQ_INTERVAL_MASK;
+
+	mxhci = hcd_to_hsic(hcd);
+	xhci = hcd_to_xhci(hcd);
+
+	if (mxhci->in_lpm)
+		return -EACCES;
+
+	spin_lock_irqsave(&xhci->lock, flags);
+	temp = xhci_readl(xhci, &xhci->ir_set->irq_control);
+	temp &= ~ER_IRQ_INTERVAL_MASK;
+	temp |= imod;
+	xhci_writel(xhci, temp, &xhci->ir_set->irq_control);
+	spin_unlock_irqrestore(&xhci->lock, flags);
+
+	return size;
+}
+
+static ssize_t config_imod_show(struct device *pdev,
+		struct device_attribute *attr, char *buff)
+{
+	struct usb_hcd *hcd = dev_get_drvdata(pdev);
+	struct xhci_hcd *xhci;
+	struct mxhci_hsic_hcd *mxhci;
+	u32 temp;
+	unsigned long flags;
+
+	mxhci = hcd_to_hsic(hcd);
+	xhci = hcd_to_xhci(hcd);
+
+	if (mxhci->in_lpm)
+		return -EACCES;
+
+	spin_lock_irqsave(&xhci->lock, flags);
+	temp = xhci_readl(xhci, &xhci->ir_set->irq_control) &
+			ER_IRQ_INTERVAL_MASK;
+	spin_unlock_irqrestore(&xhci->lock, flags);
+
+	return snprintf(buff, PAGE_SIZE, "%08x\n", temp);
+}
+
+static DEVICE_ATTR(config_imod, S_IRUGO | S_IWUSR,
+		config_imod_show, config_imod_store);
 
 static int mxhci_hsic_probe(struct platform_device *pdev)
 {
@@ -870,6 +953,11 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 	reg |= CTRLREG_PLL_CTRL_SLEEP | CTRLREG_PLL_CTRL_SUSP;
 	writel_relaxed(reg, MSM_HSIC_CTRL_REG);
 
+	if (of_property_read_bool(node, "qcom,disable-hw-clk-gating")) {
+		reg = readl_relaxed(MSM_HSIC_GCTL);
+		writel_relaxed((reg | GCTL_DSBLCLKGTNG), MSM_HSIC_GCTL);
+	}
+
 	/* enable pwr event irq for LPM_IN_L2_IRQ */
 	writel_relaxed(LPM_IN_L2_IRQ_MASK, MSM_HSIC_PWR_EVNT_IRQ_MASK);
 
@@ -965,6 +1053,11 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 		}
 	}
 
+	ret = device_create_file(&pdev->dev, &dev_attr_config_imod);
+	if (ret)
+		dev_dbg(&pdev->dev, "%s: unable to create imod sysfs entry\n",
+					__func__);
+
 	/* Enable HSIC PHY */
 	mxhci_hsic_ulpi_write(mxhci, 0x01, MSM_HSIC_CFG_SET);
 
@@ -1011,6 +1104,8 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 	writel_relaxed(reg & 0xfdffffff, TLMM_GPIO_HSIC_DATA_PAD_CTL);
 
 	mb();
+
+	device_remove_file(&pdev->dev, &dev_attr_config_imod);
 
 	/* If the device was removed no need to call pm_runtime_disable */
 	if (pdev->dev.power.power_state.event != PM_EVENT_INVALID)

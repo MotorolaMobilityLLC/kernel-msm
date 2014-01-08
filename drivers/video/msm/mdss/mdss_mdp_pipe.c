@@ -166,7 +166,7 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 	struct mdss_mdp_plane_sizes ps;
 	int i;
 	int rc = 0, rot_mode = 0;
-	u32 nlines;
+	u32 nlines, format, seg_w;
 	u16 width;
 
 	width = pipe->src.w >> pipe->horz_deci;
@@ -176,29 +176,60 @@ int mdss_mdp_smp_reserve(struct mdss_mdp_pipe *pipe)
 			pipe->src_fmt, &ps);
 		if (rc)
 			return rc;
+		/*
+		 * Override fetch strides with SMP buffer size for both the
+		 * planes. BWC line buffer needs to be divided into 16
+		 * segments and every segment is aligned to format
+		 * specific RAU size
+		 */
+		seg_w = DIV_ROUND_UP(pipe->src.w, 16);
+		if (pipe->src_fmt->fetch_planes == MDSS_MDP_PLANE_INTERLEAVED) {
+			ps.ystride[0] = ALIGN(seg_w, 32) * 16 * ps.rau_h[0] *
+					pipe->src_fmt->bpp;
+			ps.ystride[1] = 0;
+		} else {
+			u32 bwc_width = ALIGN(seg_w, 64) * 16;
+			ps.ystride[0] = bwc_width * ps.rau_h[0];
+			ps.ystride[1] = bwc_width * ps.rau_h[1];
+			/*
+			 * Since chroma for H1V2 is not subsampled it needs
+			 * to be accounted for with bpp factor
+			 */
+			if (pipe->src_fmt->chroma_sample ==
+				MDSS_MDP_CHROMA_H1V2)
+				ps.ystride[1] *= 2;
+		}
 		pr_debug("BWC SMP strides ystride0=%x ystride1=%x\n",
 			ps.ystride[0], ps.ystride[1]);
 	} else {
-		rc = mdss_mdp_get_plane_sizes(pipe->src_fmt->format,
-			width, pipe->src.h, &ps, 0);
+		format = pipe->src_fmt->format;
+		/*
+		 * when decimation block is present, all chroma planes
+		 * are fetched on a single SMP plane for chroma pixels
+		 */
+		if (mdata->has_decimation) {
+			switch (pipe->src_fmt->chroma_sample) {
+			case MDSS_MDP_CHROMA_H2V1:
+				format = MDP_Y_CRCB_H2V1;
+				break;
+			case MDSS_MDP_CHROMA_420:
+				format = MDP_Y_CBCR_H2V2;
+				break;
+			default:
+				break;
+			}
+		}
+		rc = mdss_mdp_get_plane_sizes(format, width, pipe->src.h,
+			&ps, 0);
 		if (rc)
 			return rc;
 
 		if (pipe->mixer && pipe->mixer->rotator_mode) {
 			rot_mode = 1;
-		} else if (ps.num_planes == 1) {
+		} else if (pipe->mixer && (ps.num_planes == 1)) {
 			ps.ystride[0] = MAX_BPP *
 				max(pipe->mixer->width, width);
 		} else if (mdata->has_decimation) {
-			/*
-			 * when decimation block is used, all chroma planes
-			 * are fetched on a single SMP plane for chroma pixels
-			 */
-			if (ps.num_planes == 3) {
-				ps.num_planes = 2;
-				ps.ystride[1] += ps.ystride[2];
-			}
-
 			/*
 			 * To avoid quailty loss, MDP does one less decimation
 			 * on chroma components if they are subsampled.
@@ -671,25 +702,7 @@ error:
 	return rc;
 }
 
-void mdss_mdp_crop_rect(struct mdss_mdp_img_rect *src_rect,
-	struct mdss_mdp_img_rect *dst_rect,
-	const struct mdss_mdp_img_rect *sci_rect)
-{
-	struct mdss_mdp_img_rect res;
-	mdss_mdp_intersect_rect(&res, dst_rect, sci_rect);
 
-	if (res.w && res.h) {
-		if ((res.w != dst_rect->w) || (res.h != dst_rect->h)) {
-			src_rect->x = src_rect->x + (res.x - dst_rect->x);
-			src_rect->y = src_rect->y + (res.y - dst_rect->y);
-			src_rect->w = res.w;
-			src_rect->h = res.h;
-		}
-		*dst_rect = (struct mdss_mdp_img_rect)
-			{(res.x - sci_rect->x), (res.y - sci_rect->y),
-			res.w, res.h};
-	}
-}
 
 static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 					struct mdss_mdp_data *data)
@@ -953,6 +966,8 @@ static int mdss_mdp_pipe_solidfill_setup(struct mdss_mdp_pipe *pipe)
 	secure = (pipe->flags & MDP_SECURE_OVERLAY_SESSION ? 0xF : 0x0);
 
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_FORMAT, format);
+	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_CONSTANT_COLOR,
+		pipe->bg_color);
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_SRC_ADDR_SW_STATUS, secure);
 
 	return 0;
@@ -991,7 +1006,8 @@ int mdss_mdp_pipe_queue_data(struct mdss_mdp_pipe *pipe,
 			 (pipe->mixer->type == MDSS_MDP_MIXER_TYPE_WRITEBACK)
 			 && (ctl->mdata->mixer_switched)) ||
 			 ctl->roi_changed;
-	if (src_data == NULL) {
+	if (src_data == NULL || (pipe->flags & MDP_SOLID_FILL)) {
+		pipe->params_changed = 0;
 		mdss_mdp_pipe_solidfill_setup(pipe);
 		goto update_nobuf;
 	}

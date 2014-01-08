@@ -23,19 +23,20 @@
 #include <linux/delay.h>
 #include <linux/sysfs.h>
 #include <linux/of_gpio.h>
+#include <linux/clk/msm-clk.h>
 
-#include <mach/clk.h>
 #include <mach/subsystem_restart.h>
 #include <mach/subsystem_notif.h>
 #include <mach/scm.h>
 #include <mach/ramdump.h>
-#include <mach/msm_smem.h>
 #include <mach/msm_bus_board.h>
+#include <mach/sysmon.h>
+
+#include <soc/qcom/smem.h>
 
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
 #include "scm-pas.h"
-#include "sysmon.h"
 
 #define QDSP6SS_RST_EVB			0x010
 #define PROXY_TIMEOUT_MS		10000
@@ -240,7 +241,8 @@ static void adsp_log_failure_reason(void)
 	char buffer[81];
 	unsigned size;
 
-	reason = smem_get_entry(SMEM_SSR_REASON_LPASS0, &size);
+	reason = smem_get_entry(SMEM_SSR_REASON_LPASS0, &size, 0,
+							SMEM_ANY_HOST_FLAG);
 
 	if (!reason) {
 		pr_err("ADSP subsystem failure reason: (unknown, smem_get_entry failed).");

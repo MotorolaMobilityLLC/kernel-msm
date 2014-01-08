@@ -25,7 +25,9 @@
 #include <linux/of_irq.h>
 #include <linux/memory.h>
 #include <linux/regulator/qpnp-regulator.h>
+#include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/msm_tsens.h>
+#include <linux/clk/msm-clk-provider.h>
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
@@ -33,40 +35,18 @@
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #include <mach/restart.h>
-#ifdef CONFIG_ION_MSM
-#include <mach/ion.h>
-#endif
 #include <mach/msm_memtypes.h>
 #include <mach/socinfo.h>
 #include <mach/board.h>
-#include <mach/clk-provider.h>
 #include <mach/msm_smd.h>
 #include <mach/rpm-smd.h>
-#include <mach/rpm-regulator-smd.h>
-#include <mach/msm_smem.h>
+#include <soc/qcom/smem.h>
 #include <linux/msm_thermal.h>
 #include "board-dt.h"
 #include "clock.h"
 #include "platsmp.h"
 #include "spm.h"
 #include "pm.h"
-#include "modem_notifier.h"
-
-static struct memtype_reserve msm8226_reserve_table[] __initdata = {
-	[MEMTYPE_SMI] = {
-	},
-	[MEMTYPE_EBI0] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
-	},
-	[MEMTYPE_EBI1] = {
-		.flags	=	MEMTYPE_FLAGS_1M_ALIGN,
-	},
-};
-
-static int msm8226_paddr_to_memtype(unsigned int paddr)
-{
-	return MEMTYPE_EBI1;
-}
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -86,22 +66,14 @@ static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
 	{}
 };
 
-static struct reserve_info msm8226_reserve_info __initdata = {
-	.memtype_reserve_table = msm8226_reserve_table,
-	.paddr_to_memtype = msm8226_paddr_to_memtype,
-};
-
 static void __init msm8226_early_memory(void)
 {
-	reserve_info = &msm8226_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_hole, msm8226_reserve_table);
+	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
 }
 
 static void __init msm8226_reserve(void)
 {
-	reserve_info = &msm8226_reserve_info;
-	of_scan_flat_dt(dt_scan_for_memory_reserve, msm8226_reserve_table);
-	msm_reserve();
+	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
 }
 
 /*
@@ -112,13 +84,11 @@ static void __init msm8226_reserve(void)
  */
 void __init msm8226_add_drivers(void)
 {
-	msm_smem_init();
-	msm_init_modem_notifier_list();
 	msm_smd_init();
 	msm_rpm_driver_init();
 	msm_spm_device_init();
 	msm_pm_sleep_status_init();
-	rpm_regulator_smd_driver_init();
+	rpm_smd_regulator_driver_init();
 	qpnp_regulator_init();
 	if (of_board_is_rumi())
 		msm_clock_init(&msm8226_rumi_clock_init_data);
@@ -132,11 +102,20 @@ void __init msm8226_init(void)
 {
 	struct of_dev_auxdata *adata = msm8226_auxdata_lookup;
 
+	/*
+	 * populate devices from DT first so smem probe will get called as part
+	 * of msm_smem_init.  socinfo_init needs smem support so call
+	 * msm_smem_init before it.  msm8226_init_gpiomux needs socinfo so
+	 * call socinfo_init before it.
+	 */
+	board_dt_populate(adata);
+
+	msm_smem_init();
+
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
 
 	msm8226_init_gpiomux();
-	board_dt_populate(adata);
 	msm8226_add_drivers();
 }
 

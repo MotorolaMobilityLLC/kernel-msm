@@ -51,6 +51,8 @@
 #define QPNP_PON_KPDPWR_RESIN_S2_CNTL2(base)	(base + 0x4B)
 #define QPNP_PON_PS_HOLD_RST_CTL(base)		(base + 0x5A)
 #define QPNP_PON_PS_HOLD_RST_CTL2(base)		(base + 0x5B)
+#define QPNP_PON_WD_RST_S2_CTL(base)		(base + 0x56)
+#define QPNP_PON_WD_RST_S2_CTL2(base)		(base + 0x57)
 #define QPNP_PON_TRIGGER_EN(base)		(base + 0x80)
 #define QPNP_PON_S3_DBC_CTL(base)		(base + 0x75)
 
@@ -74,6 +76,7 @@
 #define QPNP_PON_RESIN_BARK_N_SET		BIT(4)
 #define QPNP_PON_KPDPWR_RESIN_BARK_N_SET	BIT(5)
 
+#define QPNP_PON_WD_EN			BIT(7)
 #define QPNP_PON_RESET_EN			BIT(7)
 #define QPNP_PON_POWER_OFF_MASK			0xF
 
@@ -356,6 +359,32 @@ int qpnp_pon_is_warm_reset(void)
 	return 0;
 }
 EXPORT_SYMBOL(qpnp_pon_is_warm_reset);
+
+/**
+ * qpnp_pon_wd_config - Disable the wd in a warm reset.
+ * @enable: to enable or disable the PON watch dog
+ *
+ * Returns = 0 for operate successfully, < 0 for errors
+ */
+int qpnp_pon_wd_config(bool enable)
+{
+	struct qpnp_pon *pon = sys_reset_dev;
+	int rc = 0;
+
+	if (!pon)
+		return -EPROBE_DEFER;
+
+	rc = qpnp_pon_masked_write(pon, QPNP_PON_WD_RST_S2_CTL2(pon->base),
+			QPNP_PON_WD_EN, enable ? QPNP_PON_WD_EN : 0);
+	if (rc)
+		dev_err(&pon->spmi->dev,
+				"Unable to write to addr=%x, rc(%d)\n",
+				QPNP_PON_WD_RST_S2_CTL2(pon->base), rc);
+
+	return rc;
+}
+EXPORT_SYMBOL(qpnp_pon_wd_config);
+
 
 /**
  * qpnp_pon_trigger_config - Configures (enable/disable) the PON trigger source
@@ -855,6 +884,8 @@ qpnp_pon_config_input(struct qpnp_pon *pon,  struct qpnp_pon_config *cfg)
 		pon->pon_input->phys = "qpnp_pon/input0";
 	}
 
+	/* don't send dummy release event when system resumes */
+	__set_bit(INPUT_PROP_NO_DUMMY_RELEASE, pon->pon_input->propbit);
 	input_set_capability(pon->pon_input, EV_KEY, cfg->key_code);
 
 	return 0;
@@ -1205,6 +1236,8 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 		return rc;
 	}
 
+	boot_reason = ffs(pon_sts);
+
 	index = ffs(pon_sts) - 1;
 	cold_boot = !qpnp_pon_is_warm_reset();
 	if (index >= ARRAY_SIZE(qpnp_pon_reason) || index < 0)
@@ -1312,8 +1345,8 @@ static int qpnp_pon_remove(struct spmi_device *spmi)
 }
 
 static struct of_device_id spmi_match_table[] = {
-	{	.compatible = "qcom,qpnp-power-on",
-	}
+	{ .compatible = "qcom,qpnp-power-on", },
+	{}
 };
 
 static struct spmi_driver qpnp_pon_driver = {

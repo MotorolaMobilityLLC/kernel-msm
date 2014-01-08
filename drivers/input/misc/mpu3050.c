@@ -37,6 +37,7 @@
 #include <linux/err.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
+#include <linux/sensors.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
@@ -121,11 +122,30 @@ struct mpu3050_sensor {
 	struct input_dev *idev;
 	struct mpu3050_gyro_platform_data *platform_data;
 	struct delayed_work input_work;
+	struct sensors_classdev cdev;
 	u32    use_poll;
 	u32    poll_interval;
 	u32    dlpf_index;
 	u32    enable_gpio;
 	u32    enable;
+};
+
+static struct sensors_classdev sensors_cdev = {
+	.name = "mpu3050-gyro",
+	.vendor = "Invensense",
+	.version = 1,
+	.handle = SENSORS_GYROSCOPE_HANDLE,
+	.type = SENSOR_TYPE_GYROSCOPE,
+	.max_range = "35.0",
+	.resolution = "0.06",
+	.sensor_power = "0.2",
+	.min_delay = 2000,
+	.fifo_reserved_event_count = 0,
+	.fifo_max_event_count = 0,
+	.enabled = 0,
+	.delay_msec = MPU3050_DEFAULT_POLL_INTERVAL,
+	.sensors_enable = NULL,
+	.sensors_poll_delay = NULL,
 };
 
 struct sensor_regulator {
@@ -243,6 +263,40 @@ error_vdd:
 	return rc;
 }
 
+static int mpu3050_poll_delay_set(struct sensors_classdev *sensors_cdev,
+		unsigned int delay_msec)
+{
+	struct mpu3050_sensor *sensor = container_of(sensors_cdev,
+			struct mpu3050_sensor, cdev);
+	unsigned int  dlpf_index;
+	u8  divider, reg;
+	int ret;
+
+	dlpf_index = interval_to_dlpf_cfg(delay_msec);
+	divider = delay_msec * dlpf_table[dlpf_index].sample_rate - 1;
+
+	if (sensor->dlpf_index != dlpf_index) {
+		/* Set low pass filter and full scale */
+		reg = dlpf_table[dlpf_index].cfg;
+		reg |= MPU3050_DEFAULT_FS_RANGE << 3;
+		reg |= MPU3050_EXT_SYNC_NONE << 5;
+		ret = i2c_smbus_write_byte_data(sensor->client,
+				MPU3050_DLPF_FS_SYNC, reg);
+		if (!ret)
+			sensor->dlpf_index = dlpf_index;
+	}
+
+	if (sensor->poll_interval != delay_msec) {
+		/* Output frequency divider. The poll interval */
+		ret = i2c_smbus_write_byte_data(sensor->client,
+				MPU3050_SMPLRT_DIV, divider);
+		if (!ret)
+			sensor->poll_interval = delay_msec;
+	}
+
+	return 0;
+}
+
 /**
  *	mpu3050_attr_get_polling_rate	-	get the sampling rate
  */
@@ -265,8 +319,6 @@ static ssize_t mpu3050_attr_set_polling_rate(struct device *dev,
 {
 	struct mpu3050_sensor *sensor = dev_get_drvdata(dev);
 	unsigned long interval_ms;
-	unsigned int  dlpf_index;
-	u8  divider, reg;
 	int ret;
 
 	if (kstrtoul(buf, 10, &interval_ms))
@@ -275,29 +327,39 @@ static ssize_t mpu3050_attr_set_polling_rate(struct device *dev,
 		(interval_ms > MPU3050_MAX_POLL_INTERVAL))
 		return -EINVAL;
 
-	dlpf_index = interval_to_dlpf_cfg(interval_ms);
-	divider = interval_ms * dlpf_table[dlpf_index].sample_rate - 1;
+	ret = mpu3050_poll_delay_set(&sensor->cdev, interval_ms);
 
-	if (sensor->dlpf_index != dlpf_index) {
-		/* Set low pass filter and full scale */
-		reg = dlpf_table[dlpf_index].cfg;
-		reg |= MPU3050_DEFAULT_FS_RANGE << 3;
-		reg |= MPU3050_EXT_SYNC_NONE << 5;
-		ret = i2c_smbus_write_byte_data(sensor->client,
-				MPU3050_DLPF_FS_SYNC, reg);
-		if (ret == 0)
-			sensor->dlpf_index = dlpf_index;
+	return ret < 0 ? ret : size;
+}
+static int mpu3050_enable_set(struct sensors_classdev *sensors_cdev,
+		unsigned int enabled)
+{
+	struct mpu3050_sensor *sensor = container_of(sensors_cdev,
+			struct mpu3050_sensor, cdev);
+
+
+	if (enabled && (!sensor->enable)) {
+		sensor->enable = enabled;
+		pm_runtime_get_sync(sensor->dev);
+		if (sensor->use_poll)
+			schedule_delayed_work(&sensor->input_work,
+				msecs_to_jiffies(sensor->poll_interval));
+		else
+			enable_irq(sensor->client->irq);
+	} else if (!enabled && sensor->enable) {
+		if (sensor->use_poll)
+			cancel_delayed_work_sync(&sensor->input_work);
+		else
+			disable_irq(sensor->client->irq);
+		pm_runtime_put_sync(sensor->dev);
+		sensor->enable = enabled;
+	} else {
+		dev_warn(&sensor->client->dev,
+				"ignore enable state change from %d to %d\n",
+				sensor->enable, enabled);
 	}
 
-	if (sensor->poll_interval != interval_ms) {
-		/* Output frequency divider. The poll interval */
-		ret = i2c_smbus_write_byte_data(sensor->client,
-				MPU3050_SMPLRT_DIV, divider);
-		if (ret == 0)
-			sensor->poll_interval = interval_ms;
-	}
-
-	return size;
+	return 0;
 }
 
 /**
@@ -310,32 +372,14 @@ static ssize_t mpu3050_attr_set_enable(struct device *dev,
 {
 	struct mpu3050_sensor *sensor = dev_get_drvdata(dev);
 	unsigned long val;
+	int err;
 
 	if (kstrtoul(buf, 10, &val))
 		return -EINVAL;
-	sensor->enable = (u32)val == 0 ? 0 : 1;
-	if (sensor->enable) {
-		pm_runtime_get_sync(sensor->dev);
-		gpio_set_value(sensor->enable_gpio, 1);
-		if (sensor->use_poll)
-			schedule_delayed_work(&sensor->input_work,
-				msecs_to_jiffies(sensor->poll_interval));
-		else {
-			i2c_smbus_write_byte_data(sensor->client,
-					MPU3050_INT_CFG,
-					MPU3050_ACTIVE_LOW |
-					MPU3050_OPEN_DRAIN |
-					MPU3050_RAW_RDY_EN);
-			enable_irq(sensor->client->irq);
-		}
-	} else {
-		if (sensor->use_poll)
-			cancel_delayed_work_sync(&sensor->input_work);
-		else
-			disable_irq(sensor->client->irq);
-		gpio_set_value(sensor->enable_gpio, 0);
-		pm_runtime_put(sensor->dev);
-	}
+	err = mpu3050_enable_set(&sensor->cdev, val);
+	if (err < 0)
+		return err;
+
 	return count;
 }
 
@@ -470,54 +514,6 @@ static void mpu3050_set_power_mode(struct i2c_client *client, u8 val)
 }
 
 /**
- *	mpu3050_input_open	-	called on input event open
- *	@input: input dev of opened device
- *
- *	The input layer calls this function when input event is opened. The
- *	function will push the device to resume. Then, the device is ready
- *	to provide data.
- */
-static int mpu3050_input_open(struct input_dev *input)
-{
-	struct mpu3050_sensor *sensor = input_get_drvdata(input);
-	int error;
-
-	pm_runtime_get_sync(sensor->dev);
-
-	/* Enable interrupts */
-	error = i2c_smbus_write_byte_data(sensor->client, MPU3050_INT_CFG,
-					MPU3050_ACTIVE_LOW |
-					MPU3050_OPEN_DRAIN |
-					MPU3050_RAW_RDY_EN);
-	if (error < 0) {
-		pm_runtime_put(sensor->dev);
-		return error;
-	}
-	if (sensor->use_poll)
-		schedule_delayed_work(&sensor->input_work,
-			msecs_to_jiffies(sensor->poll_interval));
-
-	return 0;
-}
-
-/**
- *	mpu3050_input_close	-	called on input event close
- *	@input: input dev of closed device
- *
- *	The input layer calls this function when input event is closed. The
- *	function will push the device to suspend.
- */
-static void mpu3050_input_close(struct input_dev *input)
-{
-	struct mpu3050_sensor *sensor = input_get_drvdata(input);
-
-	if (sensor->use_poll)
-		cancel_delayed_work_sync(&sensor->input_work);
-
-	pm_runtime_put(sensor->dev);
-}
-
-/**
  *	mpu3050_interrupt_thread	-	handle an IRQ
  *	@irq: interrupt numner
  *	@data: the sensor
@@ -579,12 +575,6 @@ static int mpu3050_hw_init(struct mpu3050_sensor *sensor)
 	int ret;
 	u8 reg;
 
-	/* Reset */
-	ret = i2c_smbus_write_byte_data(client, MPU3050_PWR_MGM,
-					MPU3050_PWR_MGM_RESET);
-	if (ret < 0)
-		return ret;
-
 	ret = i2c_smbus_read_byte_data(client, MPU3050_PWR_MGM);
 	if (ret < 0)
 		return ret;
@@ -608,6 +598,16 @@ static int mpu3050_hw_init(struct mpu3050_sensor *sensor)
 	ret = i2c_smbus_write_byte_data(client, MPU3050_DLPF_FS_SYNC, reg);
 	if (ret < 0)
 		return ret;
+
+	/* Enable interrupts */
+	if (!sensor->use_poll) {
+		reg = MPU3050_ACTIVE_LOW;
+		reg |= MPU3050_OPEN_DRAIN;
+		reg |= MPU3050_RAW_RDY_EN;
+		ret = i2c_smbus_write_byte_data(client, MPU3050_INT_CFG, reg);
+		if (ret < 0)
+			return ret;
+	}
 
 	return 0;
 }
@@ -708,6 +708,19 @@ static int mpu3050_probe(struct i2c_client *client,
 		sensor->enable_gpio = -EINVAL;
 	}
 
+	sensor->cdev = sensors_cdev;
+	sensor->cdev.min_delay = MPU3050_MIN_POLL_INTERVAL;
+	sensor->cdev.delay_msec = sensor->poll_interval;
+	sensor->cdev.sensors_enable = mpu3050_enable_set;
+	sensor->cdev.sensors_poll_delay = mpu3050_poll_delay_set;
+	ret = sensors_classdev_register(&client->dev, &sensor->cdev);
+
+	if (ret) {
+		dev_err(&client->dev, "class device create failed: %d\n", ret);
+		error = -EINVAL;
+		goto err_free_mem;
+	}
+
 	if (gpio_is_valid(sensor->enable_gpio)) {
 		ret = gpio_request(sensor->enable_gpio, "GYRO_EN_PM");
 		gpio_direction_output(sensor->enable_gpio, 1);
@@ -719,7 +732,7 @@ static int mpu3050_probe(struct i2c_client *client,
 	if (ret < 0) {
 		dev_err(&client->dev, "failed to detect device\n");
 		error = -ENXIO;
-		goto err_free_mem;
+		goto err_class_sysfs;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(mpu3050_chip_ids); i++)
@@ -729,14 +742,11 @@ static int mpu3050_probe(struct i2c_client *client,
 	if (i == ARRAY_SIZE(mpu3050_chip_ids)) {
 		dev_err(&client->dev, "unsupported chip id\n");
 		error = -ENXIO;
-		goto err_free_mem;
+		goto err_class_sysfs;
 	}
 
 	idev->name = "MPU3050";
 	idev->id.bustype = BUS_I2C;
-
-	idev->open = mpu3050_input_open;
-	idev->close = mpu3050_input_close;
 
 	input_set_capability(idev, EV_ABS, ABS_MISC);
 	input_set_abs_params(idev, ABS_X,
@@ -798,6 +808,9 @@ static int mpu3050_probe(struct i2c_client *client,
 		disable_irq(client->irq);
 	}
 
+	sensor->enable = 0;
+	mpu3050_set_power_mode(client, 0);
+
 	error = input_register_device(idev);
 	if (error) {
 		dev_err(&client->dev, "failed to register input device\n");
@@ -826,6 +839,8 @@ err_free_gpio:
 		gpio_free(sensor->platform_data->gpio_int);
 err_pm_set_suspended:
 	pm_runtime_set_suspended(&client->dev);
+err_class_sysfs:
+	sensors_classdev_unregister(&sensor->cdev);
 err_free_mem:
 	input_free_device(idev);
 	kfree(sensor);
@@ -870,10 +885,11 @@ static int mpu3050_suspend(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mpu3050_sensor *sensor = i2c_get_clientdata(client);
 
-	if (!sensor->use_poll)
-		disable_irq(client->irq);
-
-	mpu3050_set_power_mode(client, 0);
+	if (sensor->enable) {
+		if (!sensor->use_poll)
+			disable_irq(client->irq);
+		mpu3050_set_power_mode(client, 0);
+	}
 
 	return 0;
 }
@@ -889,16 +905,64 @@ static int mpu3050_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mpu3050_sensor *sensor = i2c_get_clientdata(client);
 
-	mpu3050_set_power_mode(client, 1);
+	if (sensor->enable) {
+		mpu3050_set_power_mode(client, 1);
+		mpu3050_hw_init(sensor);
+		if (!sensor->use_poll)
+			enable_irq(client->irq);
+	}
 
-	if (!sensor->use_poll)
-		enable_irq(client->irq);
+	return 0;
+}
+
+/**
+ *	mpu3050_runtime_suspend		-	called on device enters runtime suspend
+ *	@dev: device being suspended
+ *
+ *	Put the device into sleep mode.
+ */
+static int mpu3050_runtime_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct mpu3050_sensor *sensor = i2c_get_clientdata(client);
+
+	if (sensor->enable)
+		mpu3050_set_power_mode(client, 0);
+
+	return 0;
+}
+
+/**
+ *	mpu3050_runtime_resume		-	called on device enters runtime resume
+ *	@dev: device being resumed
+ *
+ *	Put the device into powered mode.
+ */
+static int mpu3050_runtime_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct mpu3050_sensor *sensor = i2c_get_clientdata(client);
+
+	if (sensor->enable) {
+		mpu3050_set_power_mode(client, 1);
+		mpu3050_hw_init(sensor);
+	}
 
 	return 0;
 }
 #endif
 
-static UNIVERSAL_DEV_PM_OPS(mpu3050_pm, mpu3050_suspend, mpu3050_resume, NULL);
+static const struct dev_pm_ops mpu3050_pm = {
+	.runtime_suspend = mpu3050_runtime_suspend,
+	.runtime_resume = mpu3050_runtime_resume,
+	.runtime_idle = NULL,
+	.suspend = mpu3050_suspend,
+	.resume = mpu3050_resume,
+	.freeze = mpu3050_suspend,
+	.thaw = mpu3050_resume,
+	.poweroff = mpu3050_suspend,
+	.restore = mpu3050_resume,
+};
 
 static const struct i2c_device_id mpu3050_ids[] = {
 	{ "mpu3050", 0 },

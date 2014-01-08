@@ -32,11 +32,15 @@ MODULE_PARM_DESC(override_phy_init, "Override HSPHY Init Seq");
 #define MSM_CORE_VER_120		0x10020061
 
 /* QSCRATCH register offsets */
+#define GENERAL_CFG_REG			(0x08)
 #define HS_PHY_CTRL_REG			(0x10)
 #define PARAMETER_OVERRIDE_X_REG	(0x14)
 #define ALT_INTERRUPT_EN_REG		(0x20)
 #define HS_PHY_IRQ_STAT_REG		(0x24)
 #define HS_PHY_CTRL_COMMON_REG		(0xEC)	/* ver >= MSM_CORE_VER_120 */
+
+/* GENERAL_CFG_REG bits */
+#define SEC_UTMI_FREE_CLK_GFM_SEL1	(0x80)
 
 /* HS_PHY_CTRL_REG bits */
 #define RETENABLEN			BIT(1)
@@ -58,14 +62,20 @@ MODULE_PARM_DESC(override_phy_init, "Override HSPHY Init Seq");
 #define USB2_SUSPEND_N_SEL		BIT(23)
 #define DMSEHV_CLAMP_EN_N		BIT(24)
 #define CLAMP_MPM_DPSE_DMSE_EN_N	BIT(26)
-#define SW_SESSVLD_SEL			BIT(28)	/* ver >= MSM_CORE_VER_120 */
+/* Following exist only when core_ver >= MSM_CORE_VER_120 */
+#define FREECLK_DIS_WHEN_SUSP		BIT(27)
+#define SW_SESSVLD_SEL			BIT(28)
+#define FREECLOCK_SEL			BIT(29)
 
 /* HS_PHY_CTRL_COMMON_REG bits used when core_ver >= MSM_CORE_VER_120 */
+#define COMMON_PLLBTUNE		BIT(15)
+#define COMMON_CLKCORE			BIT(14)
 #define COMMON_VBUSVLDEXTSEL0		BIT(12)
 #define COMMON_OTGDISABLE0		BIT(11)
 #define COMMON_OTGTUNE0_MASK		(0x7 << 8)
 #define COMMON_OTGTUNE0_DEFAULT		(0x4 << 8)
 #define COMMON_COMMONONN		BIT(7)
+#define COMMON_FSEL			(0x7 << 4)
 #define COMMON_RETENABLEN		BIT(3)
 
 /* ALT_INTERRUPT_EN/HS_PHY_IRQ_STAT bits */
@@ -101,6 +111,7 @@ struct msm_hsphy {
 	void __iomem		*base;
 	void __iomem		*tcsr;
 	int			hsphy_init_seq;
+	bool			set_pllbtune;
 	u32			core_ver;
 
 	struct regulator	*vdd;
@@ -236,9 +247,10 @@ static void msm_usb_write_readback(void *base, u32 offset,
 static int msm_hsphy_init(struct usb_phy *uphy)
 {
 	struct msm_hsphy *phy = container_of(uphy, struct msm_hsphy, phy);
+	u32 val;
 
 	if (phy->tcsr) {
-		u32 val = readl_relaxed(phy->tcsr);
+		val = readl_relaxed(phy->tcsr);
 
 		/* Assert/deassert TCSR Reset */
 		writel_relaxed((val | TCSR_HSPHY_ARES), phy->tcsr);
@@ -253,18 +265,36 @@ static int msm_hsphy_init(struct usb_phy *uphy)
 	 * HSPHY Initialization: Enable UTMI clock and clamp enable HVINTs,
 	 * and disable RETENTION (power-on default is ENABLED)
 	 */
-	writel_relaxed(RETENABLEN | FSEL_DEFAULT | CLAMP_EN_N |
-			OTGSESSVLD_HV_CLAMP_EN_N | ID_HV_CLAMP_EN_N |
-			COMMONONN | DPSEHV_CLAMP_EN_N | USB2_UTMI_CLK_EN |
-			DMSEHV_CLAMP_EN_N | CLAMP_MPM_DPSE_DMSE_EN_N,
-			phy->base + HS_PHY_CTRL_REG);
+	val = readl_relaxed(phy->base + HS_PHY_CTRL_REG);
+	val |= (USB2_UTMI_CLK_EN | CLAMP_MPM_DPSE_DMSE_EN_N | RETENABLEN);
+
+	if (uphy->flags & ENABLE_SECONDARY_PHY) {
+		val &= ~(USB2_UTMI_CLK_EN | FREECLOCK_SEL);
+		val |= FREECLK_DIS_WHEN_SUSP;
+	}
+
+	writel_relaxed(val, phy->base + HS_PHY_CTRL_REG);
 	usleep_range(2000, 2200);
 
-	if (phy->core_ver >= MSM_CORE_VER_120)
-		writel_relaxed(COMMON_OTGDISABLE0 | COMMON_OTGTUNE0_DEFAULT |
+	if (uphy->flags & ENABLE_SECONDARY_PHY)
+		msm_usb_write_readback(phy->base, GENERAL_CFG_REG,
+					SEC_UTMI_FREE_CLK_GFM_SEL1,
+					SEC_UTMI_FREE_CLK_GFM_SEL1);
+
+	if (phy->core_ver >= MSM_CORE_VER_120) {
+		if (phy->set_pllbtune) {
+			val = readl_relaxed(phy->base + HS_PHY_CTRL_COMMON_REG);
+			val |= COMMON_PLLBTUNE | COMMON_CLKCORE;
+			val &= ~COMMON_FSEL;
+			writel_relaxed(val, phy->base + HS_PHY_CTRL_COMMON_REG);
+		} else {
+			writel_relaxed(COMMON_OTGDISABLE0 |
+				COMMON_OTGTUNE0_DEFAULT |
 				COMMON_COMMONONN | FSEL_DEFAULT |
 				COMMON_RETENABLEN,
 				phy->base + HS_PHY_CTRL_COMMON_REG);
+		}
+	}
 
 	/*
 	 * write HSPHY init value to QSCRATCH reg to set HSPHY parameters like
@@ -334,13 +364,13 @@ static int msm_hsphy_set_suspend(struct usb_phy *uphy, int suspend)
 					(OTGSESSVLDHV_INTEN | IDHV_INTEN));
 
 		/* can turn off regulators if disconnected in device mode */
-		if (!host || !chg_connected) {
+		if (!host && !chg_connected) {
 			if (phy->ext_vbus_id)
 				msm_hsusb_ldo_enable(phy, 0);
 			msm_hsusb_config_vdd(phy, 0);
 		}
 	} else {
-		if (!host || !chg_connected) {
+		if (!host && !chg_connected) {
 			msm_hsusb_config_vdd(phy, 1);
 			if (phy->ext_vbus_id)
 				msm_hsusb_ldo_enable(phy, 1);
@@ -489,6 +519,11 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 				phy->tcsr);
 	}
 
+	if (of_get_property(dev->of_node, "qcom,primary-phy", NULL)) {
+		dev_dbg(dev, "secondary HSPHY\n");
+		phy->phy.flags |= ENABLE_SECONDARY_PHY;
+	}
+
 	ret = of_property_read_u32_array(dev->of_node, "qcom,vdd-voltage-level",
 					 (u32 *) phy->vdd_levels,
 					 ARRAY_SIZE(phy->vdd_levels));
@@ -545,6 +580,9 @@ static int msm_hsphy_probe(struct platform_device *pdev)
 		dev_dbg(dev, "unable to read hsphy init seq\n");
 	else if (!phy->hsphy_init_seq)
 		dev_warn(dev, "hsphy init seq cannot be 0. Using POR value\n");
+
+	phy->set_pllbtune = of_property_read_bool(dev->of_node,
+						 "qcom,set-pllbtune");
 
 	platform_set_drvdata(pdev, phy);
 

@@ -3,6 +3,12 @@
 
 #include <uapi/linux/msm_ion.h>
 
+enum ion_permission_type {
+	IPT_TYPE_MM_CARVEOUT = 0,
+	IPT_TYPE_MFC_SHAREDMEM = 1,
+	IPT_TYPE_MDP_WRITEBACK = 2,
+};
+
 /*
  * This flag allows clients when mapping into the IOMMU to specify to
  * defer un-mapping from the IOMMU until the buffer memory is freed.
@@ -34,7 +40,6 @@
  * @release_region:	function to be called when the number of allocations
  *			goes from 1 -> 0
  * @setup_region:	function to be called upon ion registration
- * @memory_type:Memory type used for the heap
  * @allow_nonsecure_alloc: allow non-secure allocations from this heap. For
  *			secure heaps, this flag must be set so allow non-secure
  *			allocations. For non-secure heaps, this flag is ignored.
@@ -52,7 +57,6 @@ struct ion_cp_heap_pdata {
 	int (*request_region)(void *);
 	int (*release_region)(void *);
 	void *(*setup_region)(void);
-	enum ion_memory_types memory_type;
 	int allow_nonsecure_alloc;
 };
 
@@ -76,7 +80,14 @@ struct ion_co_heap_pdata {
 	int (*request_region)(void *);
 	int (*release_region)(void *);
 	void *(*setup_region)(void);
-	enum ion_memory_types memory_type;
+};
+
+/**
+ * struct ion_cma_pdata - extra data for CMA regions
+ * @default_prefetch_size - default size to use for prefetching
+ */
+struct ion_cma_pdata {
+	unsigned long default_prefetch_size;
 };
 
 #ifdef CONFIG_ION

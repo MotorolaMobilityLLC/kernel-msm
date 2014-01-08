@@ -21,7 +21,6 @@
 #include <linux/of.h>
 
 #include <asm/cputype.h>
-#include <asm/mach-types.h>
 /*
  * SOC version type with major number in the upper 16 bits and minor
  * number in the lower 16 bits.  For example:
@@ -44,6 +43,7 @@
 #define of_board_is_qrd()	of_machine_is_compatible("qcom,qrd")
 #define of_board_is_xpm()	of_machine_is_compatible("qcom,xpm")
 #define of_board_is_skuf()	of_machine_is_compatible("qcom,skuf")
+#define of_board_is_sbc()	of_machine_is_compatible("qcom,sbc")
 
 #define machine_is_msm8974()	of_machine_is_compatible("qcom,msm8974")
 #define machine_is_msm9625()	of_machine_is_compatible("qcom,msm9625")
@@ -75,6 +75,7 @@
 #define of_board_is_qrd()		0
 #define of_board_is_xpm()		0
 #define of_board_is_skuf()		0
+#define of_board_is_sbc()		0
 
 #define machine_is_msm8974()		0
 #define machine_is_msm9625()		0
@@ -92,6 +93,7 @@
 #endif
 
 #define PLATFORM_SUBTYPE_MDM	1
+#define PLATFORM_SUBTYPE_INTERPOSERV3 2
 #define PLATFORM_SUBTYPE_SGLTE	6
 
 enum msm_cpu {
@@ -314,20 +316,12 @@ static inline int cpu_is_msm8x60(void)
 
 static inline int cpu_is_msm8960(void)
 {
-#ifdef CONFIG_ARCH_MSM8960
-	return read_msm_cpu_type() == MSM_CPU_8960;
-#else
 	return 0;
-#endif
 }
 
 static inline int cpu_is_msm8960ab(void)
 {
-#ifdef CONFIG_ARCH_MSM8960
-	return read_msm_cpu_type() == MSM_CPU_8960AB;
-#else
 	return 0;
-#endif
 }
 
 static inline int cpu_is_apq8064(void)

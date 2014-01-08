@@ -49,9 +49,15 @@ static struct gpiomux_setting gpio_uart_config = {
 };
 
 static struct gpiomux_setting gpio_spi_config = {
-	.func = GPIOMUX_FUNC_2,
+	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_6MA,
 	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_spi_cs_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 
 static struct gpiomux_setting gpio_smb_stat_int_act_config = {
@@ -67,18 +73,6 @@ static struct gpiomux_setting gpio_smb_stat_int_sus_config = {
 };
 
 static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
-	{
-		.gpio      = 6,		/* BLSP1 QUP2 I2C_SDA */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 7,		/* BLSP1 QUP2 I2C_SCL */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
 	{
 		.gpio      = 8,	       /* BLSP1 UART TX */
 		.settings = {
@@ -111,25 +105,25 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio      = 20,		/* BLSP1 QUP6 SPI_DATA_MOSI */
+		.gpio      = 4,		/* BLSP1 QUP2 SPI_DATA_MOSI */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
 		},
 	},
 	{
-		.gpio      = 21,		/* BLSP1 QUP6 SPI_DATA_MISO */
+		.gpio      = 5,		/* BLSP1 QUP2 SPI_DATA_MISO */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
 		},
 	},
 	{
-		.gpio      = 23,		/* BLSP1 QUP6 SPI_CLK */
+		.gpio      = 6,		/* BLSP1 QUP2 SPI_CS */
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
+			[GPIOMUX_SUSPENDED] = &gpio_spi_cs_config,
 		},
 	},
 	{
-		.gpio      = 22,		/* BLSP1 QUP6 SPI_CS */
+		.gpio      = 7,		/* BLSP1 QUP2 SPI_CLK */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
 		},
@@ -145,9 +139,26 @@ static struct gpiomux_setting gpio_sd_card_vreg_config = {
 
 static struct msm_gpiomux_config msm_sd_card_configs[] __initdata = {
 	{
-		.gpio      = 51,		/* SD CARD VREG EN GPIO */
+		.gpio      = 89,		/* SD CARD VREG EN GPIO */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_sd_card_vreg_config,
+		},
+	},
+};
+
+static struct gpiomux_setting wlan_en_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_16MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct msm_gpiomux_config msm_wlan_configs[] __initdata = {
+	{
+		.gpio = 70,			/* WLAN ENABLE */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &wlan_en_cfg,
+			[GPIOMUX_SUSPENDED] = &wlan_en_cfg,
 		},
 	},
 };
@@ -168,4 +179,6 @@ void __init msmkrypton_init_gpiomux(void)
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	msm_gpiomux_install(msm_eth_config, ARRAY_SIZE(msm_eth_config));
 #endif
+	msm_gpiomux_install(msm_wlan_configs, ARRAY_SIZE(msm_wlan_configs));
+
 }

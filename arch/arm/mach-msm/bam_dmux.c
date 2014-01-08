@@ -28,7 +28,8 @@
 #include <linux/wakelock.h>
 #include <linux/kfifo.h>
 #include <linux/of.h>
-#include <mach/msm_ipc_logging.h>
+#include <linux/ipc_logging.h>
+#include <linux/srcu.h>
 #include <mach/sps.h>
 #include <mach/bam_dmux.h>
 #include <mach/msm_smsm.h>
@@ -215,12 +216,15 @@ static void notify_all(int event, unsigned long data);
 static void bam_mux_write_done(struct work_struct *work);
 static void handle_bam_mux_cmd(struct work_struct *work);
 static void rx_timer_work_func(struct work_struct *work);
+static void queue_rx_work_func(struct work_struct *work);
 
 static DECLARE_WORK(rx_timer_work, rx_timer_work_func);
-static struct delayed_work queue_rx_work;
+static DECLARE_WORK(queue_rx_work, queue_rx_work_func);
 
 static struct workqueue_struct *bam_mux_rx_workqueue;
 static struct workqueue_struct *bam_mux_tx_workqueue;
+
+static struct srcu_struct bam_dmux_srcu;
 
 /* A2 power collaspe */
 #define UL_TIMEOUT_DELAY 1000	/* in ms */
@@ -382,7 +386,7 @@ static inline void verify_tx_queue_is_empty(const char *func)
 	spin_unlock_irqrestore(&bam_tx_pool_spinlock, flags);
 }
 
-static void queue_rx(void)
+static void __queue_rx(gfp_t alloc_flags)
 {
 	void *ptr;
 	struct rx_pkt_info *info;
@@ -397,23 +401,23 @@ static void queue_rx(void)
 		if (in_global_reset)
 			goto fail;
 
-		info = kmalloc(sizeof(struct rx_pkt_info),
-						GFP_NOWAIT | __GFP_NOWARN);
+		info = kmalloc(sizeof(struct rx_pkt_info), alloc_flags);
 		if (!info) {
 			DMUX_LOG_KERR(
-			"%s: unable to alloc rx_pkt_info, will retry later\n",
-								__func__);
+			"%s: unable to alloc rx_pkt_info w/ flags %x, will retry later\n",
+								__func__,
+								alloc_flags);
 			goto fail;
 		}
 
 		INIT_WORK(&info->work, handle_bam_mux_cmd);
 
-		info->skb = __dev_alloc_skb(BUFFER_SIZE,
-						GFP_NOWAIT | __GFP_NOWARN);
+		info->skb = __dev_alloc_skb(BUFFER_SIZE, alloc_flags);
 		if (info->skb == NULL) {
 			DMUX_LOG_KERR(
-				"%s: unable to alloc skb, will retry later\n",
-								__func__);
+				"%s: unable to alloc skb w/ flags %x, will retry later\n",
+								__func__,
+								alloc_flags);
 			goto fail_info;
 		}
 		ptr = skb_put(info->skb, BUFFER_SIZE);
@@ -455,15 +459,30 @@ fail_info:
 	kfree(info);
 
 fail:
-	if (rx_len_cached == 0 && !in_global_reset) {
+	if (!in_global_reset) {
 		DMUX_LOG_KERR("%s: rescheduling\n", __func__);
-		schedule_delayed_work(&queue_rx_work, msecs_to_jiffies(100));
+		schedule_work(&queue_rx_work);
 	}
+}
+
+static void queue_rx(void)
+{
+	/*
+	 * Hot path.  Delays waiting for the allocation to find memory if its
+	 * not immediately available, and delays from logging allocation
+	 * failures which cannot be tolerated at this time.
+	 */
+	__queue_rx(GFP_NOWAIT | __GFP_NOWARN);
 }
 
 static void queue_rx_work_func(struct work_struct *work)
 {
-	queue_rx();
+	/*
+	 * Cold path.  Delays can be tolerated.  Use of GFP_KERNEL should
+	 * guarentee the requested memory will be found, after some ammount of
+	 * delay.
+	 */
+	__queue_rx(GFP_KERNEL);
 }
 
 static void bam_mux_process_data(struct sk_buff *rx_skb)
@@ -739,6 +758,7 @@ int msm_bam_dmux_write(uint32_t id, struct sk_buff *skb)
 	struct sk_buff *new_skb = NULL;
 	dma_addr_t dma_address;
 	struct tx_pkt_info *pkt;
+	int rcu_id;
 
 	if (id >= BAM_DMUX_NUM_CHANNELS)
 		return -EINVAL;
@@ -747,11 +767,19 @@ int msm_bam_dmux_write(uint32_t id, struct sk_buff *skb)
 	if (!bam_mux_initialized)
 		return -ENODEV;
 
+	rcu_id = srcu_read_lock(&bam_dmux_srcu);
+	if (in_global_reset) {
+		BAM_DMUX_LOG("%s: In SSR... ch_id[%d]\n", __func__, id);
+		srcu_read_unlock(&bam_dmux_srcu, rcu_id);
+		return -EFAULT;
+	}
+
 	DBG("%s: writing to ch %d len %d\n", __func__, id, skb->len);
 	spin_lock_irqsave(&bam_ch[id].lock, flags);
 	if (!bam_ch_is_open(id)) {
 		spin_unlock_irqrestore(&bam_ch[id].lock, flags);
 		pr_err("%s: port not open: %d\n", __func__, bam_ch[id].status);
+		srcu_read_unlock(&bam_dmux_srcu, rcu_id);
 		return -ENODEV;
 	}
 
@@ -759,6 +787,7 @@ int msm_bam_dmux_write(uint32_t id, struct sk_buff *skb)
 	    (bam_ch[id].num_tx_pkts >= HIGH_WATERMARK)) {
 		spin_unlock_irqrestore(&bam_ch[id].lock, flags);
 		pr_err("%s: watermark exceeded: %d\n", __func__, id);
+		srcu_read_unlock(&bam_dmux_srcu, rcu_id);
 		return -EAGAIN;
 	}
 	spin_unlock_irqrestore(&bam_ch[id].lock, flags);
@@ -767,8 +796,10 @@ int msm_bam_dmux_write(uint32_t id, struct sk_buff *skb)
 	if (!bam_is_connected) {
 		read_unlock(&ul_wakeup_lock);
 		ul_wakeup();
-		if (unlikely(in_global_reset == 1))
+		if (unlikely(in_global_reset == 1)) {
+			srcu_read_unlock(&bam_dmux_srcu, rcu_id);
 			return -EFAULT;
+		}
 		read_lock(&ul_wakeup_lock);
 		notify_all(BAM_DMUX_UL_CONNECTED, (unsigned long)(NULL));
 	}
@@ -846,6 +877,7 @@ int msm_bam_dmux_write(uint32_t id, struct sk_buff *skb)
 	}
 	ul_packet_written = 1;
 	read_unlock(&ul_wakeup_lock);
+	srcu_read_unlock(&bam_dmux_srcu, rcu_id);
 	return rc;
 
 write_fail3:
@@ -856,6 +888,7 @@ write_fail2:
 		dev_kfree_skb_any(new_skb);
 write_fail:
 	read_unlock(&ul_wakeup_lock);
+	srcu_read_unlock(&bam_dmux_srcu, rcu_id);
 	return -ENOMEM;
 }
 
@@ -1956,9 +1989,12 @@ static int restart_notifier_cb(struct notifier_block *this,
 	 * because a watchdog crash from a bus stall would likely occur.
 	 */
 	if (code == SUBSYS_BEFORE_SHUTDOWN) {
+		BAM_DMUX_LOG("%s: begin\n", __func__);
 		in_global_reset = 1;
 		in_ssr = 1;
-		BAM_DMUX_LOG("%s: begin\n", __func__);
+		/* wait till all bam_dmux writes completes */
+		synchronize_srcu(&bam_dmux_srcu);
+		BAM_DMUX_LOG("%s: ssr signaling complete\n", __func__);
 		flush_workqueue(bam_mux_rx_workqueue);
 	}
 	if (code != SUBSYS_AFTER_SHUTDOWN)
@@ -2476,8 +2512,8 @@ static int bam_dmux_probe(struct platform_device *pdev)
 	init_completion(&shutdown_completion);
 	complete_all(&shutdown_completion);
 	INIT_DELAYED_WORK(&ul_timeout_work, ul_timeout);
-	INIT_DELAYED_WORK(&queue_rx_work, queue_rx_work_func);
 	wake_lock_init(&bam_wakelock, WAKE_LOCK_SUSPEND, "bam_dmux_wakelock");
+	init_srcu_struct(&bam_dmux_srcu);
 
 	rc = bam_ops->smsm_state_cb_register_ptr(SMSM_MODEM_STATE,
 			SMSM_A2_POWER_CONTROL,

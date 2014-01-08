@@ -130,6 +130,7 @@ static struct qpnp_vadc_scale_fn vadc_scale_fn[] = {
 	[SCALE_QRD_BATT_THERM] = {qpnp_adc_scale_qrd_batt_therm},
 	[SCALE_QRD_SKUAA_BATT_THERM] = {qpnp_adc_scale_qrd_skuaa_batt_therm},
 	[SCALE_SMB_BATT_THERM] = {qpnp_adc_scale_smb_batt_therm},
+	[SCALE_QRD_SKUG_BATT_THERM] = {qpnp_adc_scale_qrd_skug_batt_therm},
 };
 
 static int32_t qpnp_vadc_read_reg(struct qpnp_vadc_chip *vadc, int16_t reg,
@@ -512,6 +513,16 @@ static int32_t qpnp_vadc_version_check(struct qpnp_vadc_chip *dev)
 #define QPNP_VBAT_COEFF_13	102640000
 #define QPNP_VBAT_COEFF_14	22220000
 #define QPNP_VBAT_COEFF_15	83060000
+#define QPNP_VBAT_COEFF_16	2810
+#define QPNP_VBAT_COEFF_17	5260
+#define QPNP_VBAT_COEFF_18	8027
+#define QPNP_VBAT_COEFF_19	2347
+#define QPNP_VBAT_COEFF_20	6043
+#define QPNP_VBAT_COEFF_21	1914
+#define QPNP_VBAT_OFFSET_SMIC	9446
+#define QPNP_VBAT_OFFSET_GF	9441
+#define QPNP_OCV_OFFSET_SMIC	4596
+#define QPNP_OCV_OFFSET_GF	5896
 
 static int32_t qpnp_ocv_comp(int64_t *result,
 			struct qpnp_vadc_chip *vadc, int64_t die_temp)
@@ -524,11 +535,15 @@ static int32_t qpnp_ocv_comp(int64_t *result,
 	if (version == -EINVAL)
 		return 0;
 
-	if (die_temp < 25000)
-		return 0;
-
-	if (die_temp > 60000)
-		die_temp = 60000;
+	if (version == QPNP_REV_ID_8110_2_0) {
+		if (die_temp < -20000)
+			die_temp = -20000;
+	} else {
+		if (die_temp < 25000)
+			return 0;
+		if (die_temp > 60000)
+			die_temp = 60000;
+	}
 
 	switch (version) {
 	case QPNP_REV_ID_8941_3_1:
@@ -565,13 +580,37 @@ static int32_t qpnp_ocv_comp(int64_t *result,
 	case QPNP_REV_ID_8026_2_1:
 		switch (vadc->id) {
 		case COMP_ID_TSMC:
-			temp_var = ((die_temp - 2500) *
+			temp_var = ((die_temp - 25000) *
 			(-QPNP_VBAT_COEFF_10));
 			break;
 		default:
 		case COMP_ID_GF:
-			temp_var = ((die_temp - 2500) *
+			temp_var = ((die_temp - 25000) *
 			(-QPNP_VBAT_COEFF_8));
+			break;
+		}
+		break;
+	case QPNP_REV_ID_8110_2_0:
+		switch (vadc->id) {
+		case COMP_ID_SMIC:
+			*result -= QPNP_OCV_OFFSET_SMIC;
+			if (die_temp < 25000)
+				temp_var = QPNP_VBAT_COEFF_18;
+			else
+				temp_var = QPNP_VBAT_COEFF_19;
+			temp_var = (die_temp - 25000) * temp_var;
+			break;
+		case COMP_ID_TSMC:
+			pr_debug("No TSMC Comp Info, exiting\n");
+			return 0;
+		default:
+		case COMP_ID_GF:
+			*result -= QPNP_OCV_OFFSET_GF;
+			if (die_temp < 25000)
+				temp_var = QPNP_VBAT_COEFF_20;
+			else
+				temp_var = QPNP_VBAT_COEFF_21;
+			temp_var = (die_temp - 25000) * temp_var;
 			break;
 		}
 		break;
@@ -603,12 +642,16 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 	if (version == -EINVAL)
 		return 0;
 
-	if (die_temp < 25000)
-		return 0;
-
-	/* min(die_temp_c, 60_degC) */
-	if (die_temp > 60000)
-		die_temp = 60000;
+	if (version == QPNP_REV_ID_8110_2_0) {
+		if (die_temp < -20000)
+			die_temp = -20000;
+	} else {
+		if (die_temp < 25000)
+			return 0;
+		/* min(die_temp_c, 60_degC) */
+		if (die_temp > 60000)
+			die_temp = 60000;
+	}
 
 	switch (version) {
 	case QPNP_REV_ID_8941_3_1:
@@ -644,13 +687,31 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 	case QPNP_REV_ID_8026_2_1:
 		switch (vadc->id) {
 		case COMP_ID_TSMC:
-			temp_var = ((die_temp - 2500) *
+			temp_var = ((die_temp - 25000) *
 			(-QPNP_VBAT_COEFF_11));
 			break;
 		default:
 		case COMP_ID_GF:
-			temp_var = ((die_temp - 2500) *
+			temp_var = ((die_temp - 25000) *
 			(-QPNP_VBAT_COEFF_9));
+			break;
+		}
+		break;
+	case QPNP_REV_ID_8110_2_0:
+		switch (vadc->id) {
+		case COMP_ID_SMIC:
+			*result -= QPNP_VBAT_OFFSET_SMIC;
+			temp_var = ((die_temp - 25000) *
+			(QPNP_VBAT_COEFF_17));
+			break;
+		case COMP_ID_TSMC:
+			pr_debug("No TSMC Comp Info, exiting\n");
+			return 0;
+		default:
+		case COMP_ID_GF:
+			*result -= QPNP_VBAT_OFFSET_GF;
+			temp_var = ((die_temp - 25000) *
+			(QPNP_VBAT_COEFF_16));
 			break;
 		}
 		break;
@@ -672,7 +733,7 @@ static int32_t qpnp_vbat_sns_comp(int64_t *result,
 }
 
 int32_t qpnp_vbat_sns_comp_result(struct qpnp_vadc_chip *vadc,
-						int64_t *result)
+					int64_t *result, bool is_pon_ocv)
 {
 	struct qpnp_vadc_result die_temp_result;
 	int rc = 0;
@@ -688,7 +749,12 @@ int32_t qpnp_vbat_sns_comp_result(struct qpnp_vadc_chip *vadc,
 		return rc;
 	}
 
-	rc = qpnp_ocv_comp(result, vadc, die_temp_result.physical);
+	if (is_pon_ocv)
+		rc = qpnp_ocv_comp(result, vadc, die_temp_result.physical);
+	else
+		rc = qpnp_vbat_sns_comp(result, vadc,
+				die_temp_result.physical);
+
 	if (rc < 0)
 		pr_err("Error with vbat compensation\n");
 
@@ -789,7 +855,14 @@ static int32_t qpnp_vadc_calib_device(struct qpnp_vadc_chip *vadc)
 	}
 
 	pr_debug("absolute reference raw: 625mV:0x%x 1.25V:0x%x\n",
-				calib_read_1, calib_read_2);
+				calib_read_2, calib_read_1);
+
+	if (calib_read_1 == calib_read_2) {
+		pr_err("absolute reference raw: 625mV:0x%x 1.25V:0x%x\n",
+				calib_read_2, calib_read_1);
+		rc = -EINVAL;
+		goto calib_fail;
+	}
 
 	vadc->adc->amux_prop->chan_prop->adc_graph[CALIB_ABSOLUTE].dy =
 					(calib_read_1 - calib_read_2);
@@ -869,6 +942,14 @@ static int32_t qpnp_vadc_calib_device(struct qpnp_vadc_chip *vadc)
 
 	pr_debug("ratiometric reference raw: VDD:0x%x GND:0x%x\n",
 				calib_read_1, calib_read_2);
+
+	if (calib_read_1 == calib_read_2) {
+		pr_err("ratiometric reference raw: VDD:0x%x GND:0x%x\n",
+				calib_read_1, calib_read_2);
+		rc = -EINVAL;
+		goto calib_fail;
+	}
+
 	vadc->adc->amux_prop->chan_prop->adc_graph[CALIB_RATIOMETRIC].dy =
 					(calib_read_1 - calib_read_2);
 	vadc->adc->amux_prop->chan_prop->adc_graph[CALIB_RATIOMETRIC].dx =

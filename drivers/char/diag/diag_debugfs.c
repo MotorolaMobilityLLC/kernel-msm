@@ -41,15 +41,16 @@ static ssize_t diag_dbgfs_read_status(struct file *file, char __user *ubuf,
 	}
 
 	ret = scnprintf(buf, DEBUG_BUF_SIZE,
-		"modem ch: 0x%x\n"
-		"lpass ch: 0x%x\n"
-		"riva ch: 0x%x\n"
-		"dci ch: 0x%x\n"
-		"modem cntl_ch: 0x%x\n"
-		"lpass cntl_ch: 0x%x\n"
-		"riva cntl_ch: 0x%x\n"
-		"modem cmd ch: 0x%x\n"
-		"dci cmd ch: 0x%x\n"
+		"modem ch: 0x%p\n"
+		"lpass ch: 0x%p\n"
+		"riva ch: 0x%p\n"
+		"modem dci ch: 0x%p\n"
+		"lpass dci ch: 0x%p\n"
+		"modem cntl_ch: 0x%p\n"
+		"lpass cntl_ch: 0x%p\n"
+		"riva cntl_ch: 0x%p\n"
+		"modem cmd ch: 0x%p\n"
+		"modem dci cmd ch: 0x%p\n"
 		"CPU Tools id: %d\n"
 		"Apps only: %d\n"
 		"Apps master: %d\n"
@@ -110,15 +111,16 @@ static ssize_t diag_dbgfs_read_status(struct file *file, char __user *ubuf,
 		"Received Feature mask from WCNSS: %d\n"
 		"logging_mode: %d\n"
 		"real_time_mode: %d\n",
-		(unsigned int)driver->smd_data[MODEM_DATA].ch,
-		(unsigned int)driver->smd_data[LPASS_DATA].ch,
-		(unsigned int)driver->smd_data[WCNSS_DATA].ch,
-		(unsigned int)driver->smd_dci[MODEM_DATA].ch,
-		(unsigned int)driver->smd_cntl[MODEM_DATA].ch,
-		(unsigned int)driver->smd_cntl[LPASS_DATA].ch,
-		(unsigned int)driver->smd_cntl[WCNSS_DATA].ch,
-		(unsigned int)driver->smd_cmd[MODEM_DATA].ch,
-		(unsigned int)driver->smd_dci_cmd[MODEM_DATA].ch,
+		driver->smd_data[MODEM_DATA].ch,
+		driver->smd_data[LPASS_DATA].ch,
+		driver->smd_data[WCNSS_DATA].ch,
+		driver->smd_dci[MODEM_DATA].ch,
+		driver->smd_dci[LPASS_DATA].ch,
+		driver->smd_cntl[MODEM_DATA].ch,
+		driver->smd_cntl[LPASS_DATA].ch,
+		driver->smd_cntl[WCNSS_DATA].ch,
+		driver->smd_cmd[MODEM_DATA].ch,
+		driver->smd_dci_cmd[MODEM_DATA].ch,
 		chk_config_get_id(),
 		chk_apps_only(),
 		chk_apps_master(),
@@ -230,38 +232,30 @@ static ssize_t diag_dbgfs_read_dcistats(struct file *file,
 		bytes_in_buf += bytes_written;
 		bytes_remaining -= bytes_written;
 #endif
-		if (driver->dci_device) {
-			bytes_written = scnprintf(buf+bytes_in_buf,
-						  bytes_remaining,
-				"dci power active, relax: %lu, %lu\n",
-				driver->dci_device->power.wakeup->active_count,
-				driver->dci_device->power.wakeup->relax_count);
-			bytes_in_buf += bytes_written;
-			bytes_remaining -= bytes_written;
-		}
-		if (driver->dci_cmd_device) {
-			bytes_written = scnprintf(buf+bytes_in_buf,
-						  bytes_remaining,
-				"dci cmd power active, relax: %lu, %lu\n",
-				driver->dci_cmd_device->power.wakeup->
-						  active_count,
-				driver->dci_cmd_device->power.wakeup->
-						  relax_count);
-			bytes_in_buf += bytes_written;
-			bytes_remaining -= bytes_written;
-		}
+		bytes_written = scnprintf(buf+bytes_in_buf,
+					  bytes_remaining,
+					  "dci power: active, relax: %lu, %lu\n",
+					  driver->diag_dev->power.wakeup->
+						active_count,
+					  driver->diag_dev->
+						power.wakeup->relax_count);
+		bytes_in_buf += bytes_written;
+		bytes_remaining -= bytes_written;
+
 	}
 	temp_data += diag_dbgfs_dci_data_index;
 	for (i = diag_dbgfs_dci_data_index; i < DIAG_DCI_DEBUG_CNT; i++) {
 		if (temp_data->iteration != 0) {
 			bytes_written = scnprintf(
 				buf + bytes_in_buf, bytes_remaining,
-				"i %-10ld\t"
-				"s %-10d\t"
-				"c %-10d\t"
+				"i %-5ld\t"
+				"s %-5d\t"
+				"p %-5d\t"
+				"c %-5d\t"
 				"t %-15s\n",
 				temp_data->iteration,
 				temp_data->data_size,
+				temp_data->peripheral,
 				temp_data->ch_type,
 				temp_data->time_stamp);
 			bytes_in_buf += bytes_written;

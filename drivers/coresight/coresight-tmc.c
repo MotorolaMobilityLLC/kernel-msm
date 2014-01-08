@@ -1295,16 +1295,26 @@ static ssize_t tmc_etr_store_byte_cntr_value(struct device *dev,
 	struct tmc_drvdata *drvdata = dev_get_drvdata(dev->parent);
 	unsigned long val;
 
-	if (!drvdata->byte_cntr_present || drvdata->byte_cntr_enable)
+	mutex_lock(&drvdata->byte_cntr_lock);
+	if (!drvdata->byte_cntr_present || drvdata->byte_cntr_enable) {
+		mutex_unlock(&drvdata->byte_cntr_lock);
 		return -EPERM;
-	if (sscanf(buf, "%lx", &val) != 1)
+	}
+	if (sscanf(buf, "%lx", &val) != 1) {
+		mutex_unlock(&drvdata->byte_cntr_lock);
 		return -EINVAL;
-	if ((drvdata->size / 8) < val)
+	}
+	if ((drvdata->size / 8) < val) {
+		mutex_unlock(&drvdata->byte_cntr_lock);
 		return -EINVAL;
-	if (val && drvdata->size % (val * 8) != 0)
+	}
+	if (val && drvdata->size % (val * 8) != 0) {
+		mutex_unlock(&drvdata->byte_cntr_lock);
 		return -EINVAL;
+	}
 
 	drvdata->byte_cntr_value = val;
+	mutex_unlock(&drvdata->byte_cntr_lock);
 	return size;
 }
 static DEVICE_ATTR(byte_cntr_value, S_IRUGO | S_IWUSR,
@@ -1464,6 +1474,8 @@ static int tmc_etr_byte_cntr_init(struct platform_device *pdev,
 		goto out;
 	}
 
+	init_waitqueue_head(&drvdata->wq);
+
 	drvdata->byte_cntr_irq = platform_get_irq_byname(pdev,
 							"byte-cntr-irq");
 	if (drvdata->byte_cntr_irq < 0) {
@@ -1483,7 +1495,6 @@ static int tmc_etr_byte_cntr_init(struct platform_device *pdev,
 		goto err;
 	}
 
-	init_waitqueue_head(&drvdata->wq);
 	node_size += strlen(node_name);
 
 	drvdata->byte_cntr_node = devm_kzalloc(&pdev->dev,

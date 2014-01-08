@@ -32,6 +32,13 @@
 
 #define FIRST_TIMEOUT (HZ / 2)
 
+#define KGSL_IOCTL_FUNC(_cmd, _func, _flags) \
+	[_IOC_NR((_cmd))] = \
+		{ .cmd = (_cmd), .func = (_func), .flags = (_flags) }
+
+#define KGSL_IOCTL_LOCK		BIT(0)
+#define KGSL_IOCTL_WAKE		BIT(1)
+
 
 /* KGSL device state is initialized to INIT when platform_probe		*
  * sucessfully initialized the device.  Once a device has been opened	*
@@ -62,6 +69,8 @@
 #define KGSL_EVENT_TIMESTAMP_RETIRED 0
 #define KGSL_EVENT_CANCELLED 1
 
+#define KGSL_FLAG_WAKE_ON_TOUCH BIT(0)
+
 /*
  * "list" of event types for ftrace symbolic magic
  */
@@ -91,16 +100,17 @@ struct kgsl_functable {
 	bool (*isidle) (struct kgsl_device *device);
 	int (*suspend_context) (struct kgsl_device *device);
 	int (*init) (struct kgsl_device *device);
-	int (*start) (struct kgsl_device *device);
+	int (*start) (struct kgsl_device *device, int priority);
 	int (*stop) (struct kgsl_device *device);
 	int (*getproperty) (struct kgsl_device *device,
-		enum kgsl_property_type type, void *value,
-		unsigned int sizebytes);
+		enum kgsl_property_type type, void __user *value,
+		size_t sizebytes);
 	int (*waittimestamp) (struct kgsl_device *device,
 		struct kgsl_context *context, unsigned int timestamp,
 		unsigned int msecs);
-	unsigned int (*readtimestamp) (struct kgsl_device *device,
-		struct kgsl_context *context, enum kgsl_timestamp_type type);
+	int (*readtimestamp) (struct kgsl_device *device,
+		struct kgsl_context *context, enum kgsl_timestamp_type type,
+		unsigned int *timestamp);
 	int (*issueibcmds) (struct kgsl_device_private *dev_priv,
 		struct kgsl_context *context, struct kgsl_cmdbatch *cmdbatch,
 		uint32_t *timestamps);
@@ -110,7 +120,6 @@ struct kgsl_functable {
 		struct kgsl_pagetable *pagetable);
 	void (*power_stats)(struct kgsl_device *device,
 		struct kgsl_power_stats *stats);
-	void (*irqctrl)(struct kgsl_device *device, int state);
 	unsigned int (*gpuid)(struct kgsl_device *device, unsigned int *chipid);
 	void * (*snapshot)(struct kgsl_device *device, void *snapshot,
 		int *remain, int hang);
@@ -128,9 +137,8 @@ struct kgsl_functable {
 	long (*ioctl) (struct kgsl_device_private *dev_priv,
 		unsigned int cmd, void *data);
 	int (*setproperty) (struct kgsl_device *device,
-		enum kgsl_property_type type, void *value,
+		enum kgsl_property_type type, void __user *value,
 		unsigned int sizebytes);
-	int (*postmortem_dump) (struct kgsl_device *device, int manual);
 	void (*drawctxt_sched)(struct kgsl_device *device,
 		struct kgsl_context *context);
 	void (*resume)(struct kgsl_device *device);
@@ -144,6 +152,19 @@ struct kgsl_mh {
 	uint32_t         mpu_base;
 	int              mpu_range;
 };
+
+typedef long (*kgsl_ioctl_func_t)(struct kgsl_device_private *,
+	unsigned int, void *);
+
+struct kgsl_ioctl {
+	unsigned int cmd;
+	kgsl_ioctl_func_t func;
+	unsigned int flags;
+};
+
+long kgsl_ioctl_helper(struct file *filep, unsigned int cmd,
+			const struct kgsl_ioctl *ioctl_funcs,
+			unsigned int array_size, unsigned long arg);
 
 typedef void (*kgsl_event_func)(struct kgsl_device *, void *, u32, u32, u32);
 
@@ -291,17 +312,12 @@ struct kgsl_device {
 	int drv_log;
 	int mem_log;
 	int pwr_log;
-	int pm_dump_enable;
 	struct kgsl_pwrscale pwrscale;
 	struct kobject pwrscale_kobj;
 	struct work_struct ts_expired_ws;
 	struct list_head events;
 	struct list_head events_pending_list;
 	unsigned int events_last_timestamp;
-
-	/* Postmortem Control switches */
-	int pm_regs_enabled;
-	int pm_ib_enabled;
 
 	int reset_counter; /* Track how many GPU core resets have occured */
 	int cff_dump_enable;
@@ -360,6 +376,7 @@ struct kgsl_process_private;
 struct kgsl_context {
 	struct kref refcount;
 	uint32_t id;
+	uint32_t priority;
 	pid_t pid;
 	pid_t tid;
 	struct kgsl_device_private *dev_priv;
@@ -467,11 +484,12 @@ static inline unsigned int kgsl_gpuid(struct kgsl_device *device,
 	return device->ftbl->gpuid(device, chipid);
 }
 
-static inline unsigned int kgsl_readtimestamp(struct kgsl_device *device,
+static inline int kgsl_readtimestamp(struct kgsl_device *device,
 					      struct kgsl_context *context,
-					      enum kgsl_timestamp_type type)
+					      enum kgsl_timestamp_type type,
+					      unsigned int *timestamp)
 {
-	return device->ftbl->readtimestamp(device, context, type);
+	return device->ftbl->readtimestamp(device, context, type, timestamp);
 }
 
 static inline int kgsl_create_device_sysfs_files(struct device *root,
@@ -729,4 +747,40 @@ static inline int kgsl_cmdbatch_sync_pending(struct kgsl_cmdbatch *cmdbatch)
 	return ret;
 }
 
+/**
+ * kgsl_property_read_u32() - Read a u32 property from the device tree
+ * @device: Pointer to the KGSL device
+ * @prop: String name of the property to query
+ * @ptr: Pointer to the variable to store the property
+ */
+static inline int kgsl_property_read_u32(struct kgsl_device *device,
+	const char *prop, unsigned int *ptr)
+{
+	struct platform_device *pdev =
+		container_of(device->parentdev, struct platform_device, dev);
+
+	return of_property_read_u32(pdev->dev.of_node, prop, ptr);
+}
+
+/**
+ * kgsl_sysfs_store() - parse a string from a sysfs store function
+ * @buf: Incoming string to parse
+ * @count: Size of the incoming string
+ * @ptr: Pointer to an unsigned int to store the value
+ */
+static inline ssize_t kgsl_sysfs_store(const char *buf, size_t count,
+		unsigned int *ptr)
+{
+	unsigned int val;
+	int rc;
+
+	rc = kstrtou32(buf, 0, &val);
+	if (rc)
+		return rc;
+
+	if (ptr)
+		*ptr = val;
+
+	return count;
+}
 #endif  /* __KGSL_DEVICE_H */
