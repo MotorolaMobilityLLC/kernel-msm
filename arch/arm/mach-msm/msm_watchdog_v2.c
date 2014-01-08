@@ -34,6 +34,7 @@
 #include <asm/bootinfo.h>
 #include <asm/stacktrace.h>
 #include <asm/traps.h>
+#include <asm/sections.h>
 #include <mach/socinfo.h>
 #endif
 
@@ -654,15 +655,21 @@ static void msm_wdt_show_status(u32 sc_status, const char *label)
 		MSMWDTD("%s: probably didn't finish dump.\n", label);
 		return;
 	}
-	MSMWDTD("%s: was in %ssecure world.\n", label,
-		(sc_status & TZBSP_SC_STATUS_NS_BIT) ? "non-" : "");
-	if (sc_status & TZBSP_SC_STATUS_WDT)
-		MSMWDTD("%s: experienced a watchdog timeout.\n", label);
-	if (sc_status & TZBSP_SC_STATUS_SGI)
-		MSMWDTD("%s: some other core experienced a watchdog timeout.\n",
-			label);
-	if (sc_status & TZBSP_SC_STATUS_WARM_BOOT)
-		MSMWDTD("%s: WDT bark occured during TZ warm boot.\n", label);
+	MSMWDTD("%s: ");
+	if (sc_status & TZBSP_SC_STATUS_DBI) {
+		MSMWDTD("SDI: Secure watchdog bite. ");
+	} else {
+		MSMWDTD("TZ: Non-secure watchdog bite. ");
+		MSMWDTD("%sS ", (sc_status & TZBSP_SC_STATUS_NS_BIT) ?
+				"N" : "");
+		if (sc_status & TZBSP_SC_STATUS_WDT)
+			MSMWDTD("WDT ");
+		if (sc_status & TZBSP_SC_STATUS_SGI)
+			MSMWDTD("SGI ");
+		if (sc_status & TZBSP_SC_STATUS_WARM_BOOT)
+			MSMWDTD("WARM_BOOT ");
+	}
+	MSMWDTD("\n");
 }
 
 static const char stat_nam[] = TASK_STATE_TO_CHAR_STR;
@@ -682,10 +689,19 @@ static void msm_wdt_show_task(struct task_struct *p,
 			(unsigned long)ti->flags);
 }
 
-static void msm_wdt_show_regs(struct tzbsp_mon_cpu_ctx_s *regs,
+static void msm_wdt_show_regs(struct tzbsp_cpu_ctx_s *cpu_ctx, int sec,
 				const char *label)
 {
+	struct tzbsp_mon_cpu_ctx_s *regs = &cpu_ctx->saved_ctx;
 	MSMWDTD("%s\n", label);
+	if (!sec) {
+		if ((cpu_ctx->wdog_pc >= (u32)_stext) &&
+				(cpu_ctx->wdog_pc <= (u32)_etext))
+			MSMWDTD("PC is at %pS <%08x>\n", cpu_ctx->wdog_pc,
+					cpu_ctx->wdog_pc);
+		else
+			MSMWDTD("PC is at %08x\n", cpu_ctx->wdog_pc);
+	}
 	MSMWDTD("\tr12: %08x  r11: %08x  r10: %08x  r9 : %08x  r8 : %08x\n",
 			regs->usr_r12, regs->usr_r11, regs->usr_r10,
 			regs->usr_r9, regs->usr_r8);
@@ -695,7 +711,11 @@ static void msm_wdt_show_regs(struct tzbsp_mon_cpu_ctx_s *regs,
 	MSMWDTD("\tr3 : %08x  r2 : %08x  r1 : %08x  r0 : %08x\n",
 			regs->usr_r3, regs->usr_r2, regs->usr_r1,
 			regs->usr_r0);
-	MSMWDTD("MON:\tlr : %08x  spsr: %08x\n",
+	if (!sec)
+		MSMWDTD("MON:\tlr : %08x  sp : %08x  spsr : %08x\n",
+			regs->mon_lr, cpu_ctx->mon_sp, regs->mon_spsr);
+	else
+		MSMWDTD("MON:\tlr : %08x  spsr: %08x\n",
 			regs->mon_lr, regs->mon_spsr);
 	MSMWDTD("SVC:\tlr : %08x  sp : %08x  spsr : %08x\n",
 			regs->svc_r14, regs->svc_r13, regs->svc_spsr);
@@ -859,7 +879,7 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 				break;
 		}
 		if (!orr) {
-			MSMWDTD("\n*** Might be Watchdog Bite ***\n");
+			MSMWDTD("\n*** Might be Secure watchdog bite ***\n");
 			return;
 		} else {
 			MSMWDTD("*** Likely Bad Dump ***\n");
@@ -897,9 +917,9 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 	MSMWDTD("\n");
 	for (i = 0; i < cpu_count; i++) {
 		snprintf(label, sizeof(label) - 1, "CPU%d nsec", i);
-		msm_wdt_show_regs(&sc_ns[i].saved_ctx, label);
+		msm_wdt_show_regs(&sc_ns[i], 0, label);
 	}
-	msm_wdt_show_regs(&sc_ns[cpu_count].saved_ctx, "sec");
+	msm_wdt_show_regs(&sc_ns[cpu_count], 1, "sec");
 	if ((ctx->p1.cinfo.sig != MSM_WDT_CTX_SIG)
 		|| (ctx->p1.cinfo.rev_tz != MSM_WDT_CTX_REV)
 		|| (ctx->p1.cinfo.size_tz != MSM_WDT_CTX_SIZE)) {
