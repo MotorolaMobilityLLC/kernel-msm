@@ -777,6 +777,56 @@ static struct msm_gpiomux_config apq8084_pri_ter_auxpcm_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting mi2s_act_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting mi2s_sus_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm_quad_mi2s_configs[] __initdata = {
+	{
+		.gpio = 100,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+		},
+	},
+	{
+                .gpio = 92,
+                .settings = {
+                        [GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+                        [GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+                },
+        },
+	{
+                .gpio = 93,
+                .settings = {
+                        [GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+                        [GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+                },
+        },
+	{
+                .gpio = 94,
+                .settings = {
+                        [GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+                        [GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+                },
+        },
+	{
+                .gpio = 95,
+                .settings = {
+                        [GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+                        [GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+                },
+        },
+};
+
 static struct gpiomux_setting wlan_en_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_16MA,
@@ -1257,6 +1307,8 @@ void __init apq8084_init_gpiomux(void)
 				ARRAY_SIZE(msm_sensor_configs));
 	msm_gpiomux_install(msm_pcie_configs, ARRAY_SIZE(msm_pcie_configs));
 	msm_gpiomux_install(msm_epm_configs, ARRAY_SIZE(msm_epm_configs));
+	msm_gpiomux_install(msm_quad_mi2s_configs,
+				ARRAY_SIZE(msm_quad_mi2s_configs));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())
