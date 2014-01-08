@@ -63,10 +63,12 @@ static int apq8084_auxpcm_rate = 8000;
 #define I2S_PCM_SEL 1
 #define I2S_PCM_SEL_OFFSET 1
 
+static int quad_mi2s_tx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+static int quad_mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
 #define WCD9XXX_MBHC_DEF_BUTTONS 8
 #define WCD9XXX_MBHC_DEF_RLOADS 5
-#define TAIKO_EXT_CLK_RATE 9600000
+#define TAIKO_EXT_CLK_RATE 12288000
 
 /* It takes about 13ms for Class-D PAs to ramp-up */
 #define EXT_CLASS_D_EN_DELAY 13000
@@ -78,6 +80,7 @@ static int apq8084_auxpcm_rate = 8000;
 #define EXT_CLASS_AB_DIS_DELAY 1000
 #define EXT_CLASS_AB_DELAY_DELTA 1000
 
+#define NUM_OF_MI2S_GPIOS 4
 #define NUM_OF_AUXPCM_GPIOS 4
 
 static void *adsp_state_notifier;
@@ -146,11 +149,34 @@ struct msm_auxpcm_ctrl {
 	u32 cnt;
 };
 
+struct msm_mi2s_gpio {
+	unsigned gpio_no;
+	const char *gpio_name;
+};
+
+struct msm_mi2s_ctrl {
+	struct msm_mi2s_gpio *pin_data;
+	u32 cnt;
+};
+
 struct apq8084_asoc_mach_data {
 	u32 mclk_freq;
 	int us_euro_gpio;
 	struct msm_auxpcm_ctrl *pri_auxpcm_ctrl;
 	struct msm_auxpcm_ctrl *sec_auxpcm_ctrl;
+	struct msm_mi2s_gpio *mclk_pin;
+	struct msm_mi2s_ctrl *mi2s_ctrl;
+	u32 quad_clk_usrs;
+};
+
+static const struct afe_clk_cfg lpass_default = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_VALID,
+	0,
 };
 
 #define GPIO_NAME_INDEX 0
@@ -172,6 +198,18 @@ static char *msm_sec_auxpcm_gpio_name[][2] = {
 
 void *lpaif_pri_muxsel_virt_addr;
 void *lpaif_sec_muxsel_virt_addr;
+
+static char *msm_mi2s_gpio_name[][2] = {
+	{"QUAD_MI2S_WS",          "qcom,quad-mi2s-gpio-ws"},
+	{"QUAD_MI2S_D0",          "qcom,quad-mi2s-gpio-data0"},
+	{"QUAD_MI2S_D1",          "qcom,quad-mi2s-gpio-data1"},
+	{"QUAD_MI2S_SCLK",        "qcom,quad-mi2s-gpio-sclk"},
+};
+
+static char *msm_mclk_gpio[][2] = {
+	{"MI2S_MCLK",             "qcom,quad-mi2s-gpio-mclk"},
+};
+
 
 struct apq8084_liquid_dock_dev {
 	int dock_plug_gpio;
@@ -229,6 +267,9 @@ static int ext_mclk_gpio = -1;
 static int clk_users;
 static atomic_t prim_auxpcm_rsc_ref;
 static atomic_t sec_auxpcm_rsc_ref;
+static int apq8084_mi2s_rx_ch = 1;
+static int apq8084_mi2s_tx_ch = 1;
+static atomic_t mi2s_ref_count;
 
 static int apq8084_liquid_ext_spk_power_amp_init(void)
 {
@@ -608,46 +649,50 @@ static int msm_snd_enable_codec_ext_clk(struct snd_soc_codec *codec,
 					int enable, bool dapm)
 {
 	int ret = 0;
+	struct apq8084_asoc_mach_data *pdata =
+			snd_soc_card_get_drvdata(codec->card);
+	struct afe_clk_cfg *lpass_clk = NULL;
 
 	pr_debug("%s: enable = %d clk_users = %d\n",
 			__func__, enable, clk_users);
+	lpass_clk = kzalloc(sizeof(struct afe_clk_cfg), GFP_KERNEL);
+	if (lpass_clk == NULL) {
+		pr_err("%s:Failed to allocate memory\n", __func__);
+		return -ENOMEM;
+	}
 	mutex_lock(&cdc_mclk_mutex);
+	memcpy(lpass_clk, &lpass_default, sizeof(struct afe_clk_cfg));
 	if (enable) {
-		if (ext_mclk_gpio >= 0) {
-			clk_users++;
-			if (clk_users != 1)
+		if (pdata->quad_clk_usrs == 0) {
+			lpass_clk->clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+			lpass_clk->clk_set_mode = Q6AFE_LPASS_MODE_CLK2_VALID;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_QUATERNARY_MI2S_RX,
+					lpass_clk);
+			if (ret < 0) {
+				pr_err("%s:afe_set_lpass_clock failed\n",
+				       __func__);
 				goto exit;
-
-			gpio_direction_output(ext_mclk_gpio, 1);
-			taiko_mclk_enable(codec, 1, dapm);
-		} else if (codec_clk) {
-			clk_users++;
-			if (clk_users != 1)
-				goto exit;
-
-			clk_prepare_enable(codec_clk);
-			taiko_mclk_enable(codec, 1, dapm);
-		} else {
-			dev_err(codec->dev, "%s: did not get Taiko MCLK\n",
-				__func__);
-			ret = -EINVAL;
-			goto exit;
-		}
-	} else {
-		if (clk_users > 0) {
-			clk_users--;
-			if (clk_users == 0) {
-				taiko_mclk_enable(codec, 0, dapm);
-				if (ext_mclk_gpio >= 0)
-					gpio_direction_output(ext_mclk_gpio, 0);
-				else if (codec_clk)
-					clk_disable_unprepare(codec_clk);
 			}
-		} else {
-			pr_err("%s: Error releasing Taiko MCLK\n", __func__);
-			ret = -EINVAL;
-			goto exit;
 		}
+		pdata->quad_clk_usrs++;
+		taiko_mclk_enable(codec, 1, dapm);
+	} else {
+		if (pdata->quad_clk_usrs > 0)
+			pdata->quad_clk_usrs--;
+		if (pdata->quad_clk_usrs == 0) {
+			lpass_clk->clk_set_mode = Q6AFE_LPASS_MODE_CLK2_VALID;
+			lpass_clk->clk_val2 = Q6AFE_LPASS_OSR_CLK_DISABLE;
+			ret = afe_set_lpass_clock(
+					AFE_PORT_ID_QUATERNARY_MI2S_RX,
+					lpass_clk);
+			if (ret < 0) {
+				pr_err("%s:afe_set_lpass_clock failed\n",
+				       __func__);
+				goto exit;
+			}
+		}
+		taiko_mclk_enable(codec, 0, dapm);
 	}
 exit:
 	mutex_unlock(&cdc_mclk_mutex);
@@ -715,6 +760,9 @@ static char const *hdmi_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 static const char * const slim1_tx_ch_text[] = {"One", "Two"};
 static const char * const slim3_rx_ch_text[] = {"One", "Two"};
 static const char *const slim1_rate_text[] = {"8000", "16000", "48000"};
+
+static const char *const mi2s_tx_ch_text[] = {"One", "Two"};
+static const char *const mi2s_rx_ch_text[] = {"One", "Two"};
 
 static int slim0_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -1268,6 +1316,305 @@ static struct snd_soc_ops msm_sec_auxpcm_be_ops = {
 	.shutdown = msm_sec_auxpcm_shutdown,
 };
 
+static int msm_mi2s_get_gpios(struct msm_mi2s_ctrl *mi2s_ctrl)
+{
+	struct msm_mi2s_gpio *pin_data = NULL;
+	int ret = 0;
+	int i;
+	int j;
+
+	pin_data = mi2s_ctrl->pin_data;
+	if (!pin_data) {
+		pr_err("%s: Invalid control data for MI2S\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+	for (i = 0; i < mi2s_ctrl->cnt; i++, pin_data++) {
+		ret = gpio_request(pin_data->gpio_no,
+				   pin_data->gpio_name);
+		pr_debug("%s: gpio = %d, gpio name = %s\n"
+			 "ret = %d\n", __func__,
+			pin_data->gpio_no,
+			pin_data->gpio_name,
+			ret);
+		if (ret) {
+			pr_err("%s: Failed to request gpio %d\n",
+				 __func__, pin_data->gpio_no);
+			/* Release all GPIOs on failure */
+			if (i > 0) {
+				for (j = i; j >= 0; j--)
+					gpio_free(pin_data->gpio_no);
+			}
+			goto err;
+		}
+	}
+err:
+	return ret;
+}
+
+static int msm_mi2s_get_mclk_gpio(struct msm_mi2s_gpio *mclk_pin)
+{
+	int ret = 0;
+
+	if (!mclk_pin) {
+		pr_err("%s: Invalid mclk data for MI2S\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+	ret = gpio_request(mclk_pin->gpio_no, mclk_pin->gpio_name);
+	pr_debug("%s gpio = %d, gpio_name = %s ret = %d\n", __func__,
+		mclk_pin->gpio_no, mclk_pin->gpio_name, ret);
+	if (ret)
+		pr_err("%s Failed to request mclk gpio\n", __func__);
+
+err:
+	return ret;
+}
+
+static int msm_mi2s_free_gpios(struct msm_mi2s_ctrl *mi2s_ctrl)
+{
+	struct msm_mi2s_gpio *pin_data = NULL;
+	int i;
+	int ret = 0;
+
+	if (mi2s_ctrl == NULL || mi2s_ctrl->pin_data == NULL) {
+		pr_err("%s: Invalid control data for MI2S\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	pin_data = mi2s_ctrl->pin_data;
+	for (i = 0; i < mi2s_ctrl->cnt; i++, pin_data++) {
+		gpio_free(pin_data->gpio_no);
+		pr_debug("%s: gpio = %d, gpio_name = %s\n",
+			  __func__, pin_data->gpio_no,
+			  pin_data->gpio_name);
+	}
+err:
+	return ret;
+}
+
+static int msm_mi2s_free_mclk_gpio(struct msm_mi2s_gpio *mclk_pin)
+{
+	int ret = 0;
+
+	if (mclk_pin == NULL) {
+		pr_err("%s: Invalid mclk pin infor for MI2S\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+	gpio_free(mclk_pin->gpio_no);
+err:
+	return ret;
+}
+
+static int apq8084_mi2s_clk_ctl(struct snd_soc_pcm_runtime *rtd, bool enable)
+{
+	struct snd_soc_card *card = rtd->card;
+	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct afe_clk_cfg *lpass_clk = NULL;
+	int ret = 0;
+
+	if (pdata == NULL) {
+		pr_err("%s:platform data is null\n", __func__);
+		return -ENOMEM;
+	}
+	lpass_clk = kzalloc(sizeof(struct afe_clk_cfg), GFP_KERNEL);
+	if (lpass_clk == NULL) {
+		pr_err("%s:Failed to allocate memory\n", __func__);
+		return -ENOMEM;
+	}
+	memcpy(lpass_clk, &lpass_default, sizeof(struct afe_clk_cfg));
+	pr_debug("%s:enable = %x\n", __func__, enable);
+	if (enable) {
+		if (pdata->quad_clk_usrs == 0) {
+			lpass_clk->clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+			lpass_clk->clk_val1 = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+			lpass_clk->clk_set_mode = Q6AFE_LPASS_MODE_BOTH_VALID;
+		} else
+			lpass_clk->clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+			ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX,
+						  lpass_clk);
+		if (ret < 0)
+			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+		else
+			pdata->quad_clk_usrs++;
+	} else {
+		if (pdata->quad_clk_usrs > 0)
+			pdata->quad_clk_usrs--;
+		if (pdata->quad_clk_usrs == 0) {
+			lpass_clk->clk_val2 = Q6AFE_LPASS_OSR_CLK_DISABLE;
+			lpass_clk->clk_set_mode = Q6AFE_LPASS_MODE_BOTH_VALID;
+		} else
+			lpass_clk->clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+		lpass_clk->clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
+		ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_TX,
+					 lpass_clk);
+		if (ret < 0)
+			pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+	}
+	pr_debug("%s: clk 1 = %x clk2 = %x mode = %x\n",
+			 __func__, lpass_clk->clk_val1,
+			lpass_clk->clk_val2,
+			lpass_clk->clk_set_mode);
+	kfree(lpass_clk);
+	return ret;
+}
+static int msm_mi2s_startup(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_mi2s_ctrl *mi2s_ctrl = NULL;
+	int ret = 0;
+	uint32_t pcm_sel_reg;
+
+	pr_debug("%s(): substream = %s, mi2s_ref_count = %d\n",
+		 __func__, substream->name, atomic_read(&mi2s_ref_count));
+
+	mi2s_ctrl = pdata->mi2s_ctrl;
+
+	if (mi2s_ctrl == NULL || mi2s_ctrl->pin_data == NULL ||
+	    lpaif_sec_muxsel_virt_addr == NULL) {
+		pr_err("%s: Invalid control data for AUXPCM\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+	if (atomic_inc_return(&mi2s_ref_count) == 1) {
+		pcm_sel_reg = ioread32(lpaif_sec_muxsel_virt_addr);
+		if ((pcm_sel_reg & (I2S_PCM_SEL << I2S_PCM_SEL_OFFSET)) ==
+		    (I2S_PCM_SEL << I2S_PCM_SEL_OFFSET)) {
+			iowrite32(pcm_sel_reg &
+				~(I2S_PCM_SEL << I2S_PCM_SEL_OFFSET),
+				  lpaif_sec_muxsel_virt_addr);
+		}
+
+		ret = msm_mi2s_get_gpios(mi2s_ctrl);
+		if (ret < 0) {
+			pr_err("%s: MI2S GPIO request failed\n", __func__);
+			return -EINVAL;
+		}
+		ret = msm_mi2s_get_mclk_gpio(pdata->mclk_pin);
+		if (ret < 0)
+			pr_err("%s MI2S MCLK GPIO request failed\n", __func__);
+
+		ret = apq8084_mi2s_clk_ctl(rtd, true);
+		if (ret < 0) {
+			pr_err("Setting mclk control failed\n");
+			return ret;
+		}
+		/* This sets the CONFIG PARAMETER WS_SRC.
+		 * 1 means internal clock master mode.
+		 * 0 means external clock slave mode.
+		*/
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0)
+			pr_err("set fmt cpu dai failed\n");
+	}
+err:
+	return ret;
+}
+
+static void msm_mi2s_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_mi2s_ctrl *mi2s_ctrl = NULL;
+	struct msm_mi2s_gpio *mclk_pin;
+
+	int ret;
+
+	pr_debug("%s(): substream = %s, mi2s_ref_count = %d\n",
+		 __func__, substream->name, atomic_read(&mi2s_ref_count));
+
+	mi2s_ctrl = pdata->mi2s_ctrl;
+	mclk_pin = pdata->mclk_pin;
+
+	if (atomic_dec_return(&mi2s_ref_count) == 0) {
+		msm_mi2s_free_gpios(mi2s_ctrl);
+		ret = apq8084_mi2s_clk_ctl(rtd, false);
+		if (ret < 0)
+			pr_err("%s Clock disable failed\n", __func__);
+		msm_mi2s_free_mclk_gpio(mclk_pin);
+	}
+}
+
+static struct snd_soc_ops apq8084_mi2s_be_ops = {
+	.startup = msm_mi2s_startup,
+	.shutdown = msm_mi2s_shutdown,
+};
+
+static int apq8084_mi2s_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+					     struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+						SNDRV_PCM_HW_PARAM_RATE);
+	struct snd_interval *channels = hw_param_interval(params,
+						SNDRV_PCM_HW_PARAM_CHANNELS);
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+				quad_mi2s_tx_bit_format);
+	rate->min = rate->max = 48000;
+	channels->min = channels->max = apq8084_mi2s_tx_ch;
+	pr_debug("%s: format = %d rate = %d, channels = %d\n",
+			__func__, params_format(params), params_rate(params),
+			apq8084_mi2s_tx_ch);
+	return 0;
+}
+
+static int apq8084_mi2s_tx_ch_get(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: apq8084_i2s_tx_ch  = %d\n", __func__,
+		 apq8084_mi2s_tx_ch);
+	ucontrol->value.integer.value[0] = apq8084_mi2s_tx_ch - 1;
+	return 0;
+}
+
+static int apq8084_mi2s_tx_ch_put(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	apq8084_mi2s_tx_ch = ucontrol->value.integer.value[0] + 1;
+	pr_debug("%s: apq8084_i2s_tx_ch = %d\n", __func__,
+		 apq8084_mi2s_tx_ch);
+	return 1;
+}
+static int apq8084_mi2s_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+					     struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+						SNDRV_PCM_HW_PARAM_RATE);
+	struct snd_interval *channels = hw_param_interval(params,
+						SNDRV_PCM_HW_PARAM_CHANNELS);
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+				quad_mi2s_rx_bit_format);
+	rate->min = rate->max = 48000;
+	channels->min = channels->max = apq8084_mi2s_rx_ch;
+	pr_debug("%s: format = %d rate = %d, channels = %d\n",
+			__func__, params_format(params), params_rate(params),
+			apq8084_mi2s_rx_ch);
+	return 0;
+}
+
+static int apq8084_mi2s_rx_ch_get(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: apq8084_i2s_rx_ch  = %d\n", __func__,
+		 apq8084_mi2s_rx_ch);
+	ucontrol->value.integer.value[0] = apq8084_mi2s_rx_ch - 1;
+	return 0;
+}
+
+static int apq8084_mi2s_rx_ch_put(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	apq8084_mi2s_rx_ch = ucontrol->value.integer.value[0] + 1;
+	pr_debug("%s: apq8084_i2s_rx_ch = %d\n", __func__,
+		 apq8084_mi2s_tx_ch);
+	return 1;
+}
+
 static int msm_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					    struct snd_pcm_hw_params *params)
 {
@@ -1478,6 +1825,11 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, slim1_tx_ch_text),
 	SOC_ENUM_SINGLE_EXT(3, slim1_rate_text),
 	SOC_ENUM_SINGLE_EXT(3, slim3_rx_ch_text),
+};
+
+static const struct soc_enum apq8084_mi2s_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, mi2s_tx_ch_text),
+	SOC_ENUM_SINGLE_EXT(2, mi2s_rx_ch_text),
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -1788,6 +2140,72 @@ static int apq8084_snd_startup(struct snd_pcm_substream *substream)
 		  rtd->dai_link->cpu_dai_name,
 		  rtd->dai_link->codec_dai_name);
 	return 0;
+}
+
+static const struct snd_kcontrol_new msm_mi2s_snd_controls[] = {
+	SOC_ENUM_EXT("Speaker Function", msm_snd_enum[0], apq8084_get_spk,
+			apq8084_set_spk),
+	SOC_ENUM_EXT("AUX PCM SampleRate", apq8084_auxpcm_enum[0],
+			apq8084_auxpcm_rate_get, apq8084_auxpcm_rate_put),
+	SOC_ENUM_EXT("PROXY_RX Channels", msm_snd_enum[6],
+			msm_proxy_rx_ch_get, msm_proxy_rx_ch_put),
+	SOC_SINGLE_EXT("Incall Rec Mode", SND_SOC_NOPM, 0, 1, 0,
+		msm_incall_rec_mode_get, msm_incall_rec_mode_put),
+	SOC_ENUM_EXT("QUAD_MI2S_TX Channels", apq8084_mi2s_enum[0],
+			apq8084_mi2s_tx_ch_get,
+			apq8084_mi2s_tx_ch_put),
+	SOC_ENUM_EXT("QUAD_MI2S_RX Channels",   apq8084_mi2s_enum[1],
+			apq8084_mi2s_rx_ch_get,
+			apq8084_mi2s_rx_ch_put),
+};
+
+static int apq8084_mi2s_audrx_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int err;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	pr_debug("%s(), dev_name%s\n", __func__, dev_name(cpu_dai->dev));
+
+	rtd->pmdown_time = 0;
+	err = snd_soc_add_codec_controls(codec, msm_mi2s_snd_controls,
+					 ARRAY_SIZE(msm_mi2s_snd_controls));
+	if (err < 0)
+		goto out;
+
+	snd_soc_dapm_new_controls(dapm, apq8084_dapm_widgets,
+				ARRAY_SIZE(apq8084_dapm_widgets));
+
+	snd_soc_dapm_enable_pin(dapm, "Lineout_1 amp");
+	snd_soc_dapm_enable_pin(dapm, "Lineout_3 amp");
+	snd_soc_dapm_enable_pin(dapm, "Lineout_2 amp");
+	snd_soc_dapm_enable_pin(dapm, "Lineout_4 amp");
+	snd_soc_dapm_sync(dapm);
+
+	mbhc_cfg.calibration = def_taiko_mbhc_cal();
+	if (mbhc_cfg.calibration) {
+		err = taiko_hs_detect(codec, &mbhc_cfg);
+		if (err)
+			goto out;
+	} else {
+		err = -ENOMEM;
+		goto out;
+	}
+	adsp_state_notifier =
+	    subsys_notif_register_notifier("adsp",
+					   &adsp_state_notifier_block);
+	if (!adsp_state_notifier) {
+		pr_err("%s: Failed to register adsp state notifier\n",
+		       __func__);
+		err = -EFAULT;
+		taiko_hs_detect_exit(codec);
+		goto out;
+	}
+
+	taiko_event_register(apq8084_taiko_event_cb, rtd->codec);
+	return 0;
+out:
+	return err;
 }
 
 void *def_taiko_mbhc_cal(void)
@@ -2241,22 +2659,6 @@ static struct snd_soc_dai_link apq8084_common_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA3,
 	},
-	/* Hostless PCM purpose */
-	{
-		.name = "SLIMBUS_0 Hostless",
-		.stream_name = "SLIMBUS_0 Hostless",
-		.cpu_dai_name = "SLIMBUS0_HOSTLESS",
-		.platform_name = "msm-pcm-hostless",
-		.dynamic = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		/* this dai link has playback support */
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-	},
 	{
 		.name = "QCHAT",
 		.stream_name = "QCHAT",
@@ -2320,51 +2722,6 @@ static struct snd_soc_dai_link apq8084_common_dai_links[] = {
 		.ignore_suspend = 1,
 		/* this dainlink has playback support */
 		.ignore_pmdown_time = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-	},
-	{
-		.name = "SLIMBUS_1 Hostless",
-		.stream_name = "SLIMBUS_1 Hostless",
-		.cpu_dai_name = "SLIMBUS1_HOSTLESS",
-		.platform_name = "msm-pcm-hostless",
-		.dynamic = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		/* this dai link has playback support */
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-	},
-	{
-		.name = "SLIMBUS_3 Hostless",
-		.stream_name = "SLIMBUS_3 Hostless",
-		.cpu_dai_name = "SLIMBUS3_HOSTLESS",
-		.platform_name = "msm-pcm-hostless",
-		.dynamic = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		/* this dai link has playback support */
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-	},
-	{
-		.name = "SLIMBUS_4 Hostless",
-		.stream_name = "SLIMBUS_4 Hostless",
-		.cpu_dai_name = "SLIMBUS4_HOSTLESS",
-		.platform_name = "msm-pcm-hostless",
-		.dynamic = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		/* this dai link has playback support */
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
@@ -2506,43 +2863,6 @@ static struct snd_soc_dai_link apq8084_common_dai_links[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
-	{
-		.name = LPASS_BE_SLIMBUS_4_TX,
-		.stream_name = "Slimbus4 Capture",
-		.cpu_dai_name = "msm-dai-q6-dev.16393",
-		.platform_name = "msm-pcm-hostless",
-		.codec_name = "taiko_codec",
-		.codec_dai_name	= "taiko_vifeedback",
-		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_TX,
-		.be_hw_params_fixup = msm_slim_4_tx_be_hw_params_fixup,
-		.ops = &apq8084_be_ops,
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ignore_suspend = 1,
-	},
-	/* Ultrasound RX Back End DAI Link */
-	{
-		.name = "SLIMBUS_2 Hostless Playback",
-		.stream_name = "SLIMBUS_2 Hostless Playback",
-		.cpu_dai_name = "msm-dai-q6-dev.16388",
-		.platform_name = "msm-pcm-hostless",
-		.codec_name = "taiko_codec",
-		.codec_dai_name = "taiko_rx2",
-		.ignore_suspend = 1,
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ops = &apq8084_slimbus_2_be_ops,
-	},
-	/* Ultrasound TX Back End DAI Link */
-	{
-		.name = "SLIMBUS_2 Hostless Capture",
-		.stream_name = "SLIMBUS_2 Hostless Capture",
-		.cpu_dai_name = "msm-dai-q6-dev.16389",
-		.platform_name = "msm-pcm-hostless",
-		.codec_name = "taiko_codec",
-		.codec_dai_name = "taiko_tx2",
-		.ignore_suspend = 1,
-		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
-		.ops = &apq8084_slimbus_2_be_ops,
-	},
 	/* Backend AFE DAI Links */
 	{
 		.name = LPASS_BE_AFE_PCM_RX,
@@ -2627,6 +2947,99 @@ static struct snd_soc_dai_link apq8084_common_dai_links[] = {
 		.be_hw_params_fixup = msm_auxpcm_be_params_fixup,
 		.ops = &msm_sec_auxpcm_be_ops,
 		.ignore_suspend = 1,
+	},
+	/* MI2S Backend DAI Links */
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "taiko_codec",
+		.codec_dai_name	= "taiko_i2s_rx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.init  = &apq8084_mi2s_audrx_init,
+		.be_hw_params_fixup = &apq8084_mi2s_rx_be_hw_params_fixup,
+		.ops = &apq8084_mi2s_be_ops,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+	},
+	{
+		.name = LPASS_BE_QUAT_MI2S_TX,
+		.stream_name = "Quaternary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "taiko_codec",
+		.codec_dai_name	= "taiko_i2s_tx1",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+		.be_hw_params_fixup = &apq8084_mi2s_tx_be_hw_params_fixup,
+		.ops = &apq8084_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+};
+
+static struct snd_soc_dai_link apq8084_slim_dai_links[] = {
+	/* Hostless PCM purpose */
+	{
+		.name = "SLIMBUS_0 Hostless",
+		.stream_name = "SLIMBUS_0 Hostless",
+		.cpu_dai_name = "SLIMBUS0_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		/* this dai link has playback support */
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+	{
+		.name = "SLIMBUS_1 Hostless",
+		.stream_name = "SLIMBUS_1 Hostless",
+		.cpu_dai_name = "SLIMBUS1_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		/* this dai link has playback support */
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+	{
+		.name = "SLIMBUS_3 Hostless",
+		.stream_name = "SLIMBUS_3 Hostless",
+		.cpu_dai_name = "SLIMBUS3_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		/* this dai link has playback support */
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+	{
+		.name = "SLIMBUS_4 Hostless",
+		.stream_name = "SLIMBUS_4 Hostless",
+		.cpu_dai_name = "SLIMBUS4_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		/* this dai link has playback support */
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
 	},
 	/* Slimbus Backend DAI Links */
 	{
@@ -2728,6 +3141,43 @@ static struct snd_soc_dai_link apq8084_common_dai_links[] = {
 		/* this dai link has playback support */
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_SLIMBUS_4_TX,
+		.stream_name = "Slimbus4 Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16393",
+		.platform_name = "msm-pcm-hostless",
+		.codec_name = "taiko_codec",
+		.codec_dai_name	= "taiko_vifeedback",
+		.be_id = MSM_BACKEND_DAI_SLIMBUS_4_TX,
+		.be_hw_params_fixup = msm_slim_4_tx_be_hw_params_fixup,
+		.ops = &apq8084_be_ops,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+	},
+	/* Ultrasound RX Back End DAI Link */
+	{
+		.name = "SLIMBUS_2 Hostless Playback",
+		.stream_name = "SLIMBUS_2 Hostless Playback",
+		.cpu_dai_name = "msm-dai-q6-dev.16388",
+		.platform_name = "msm-pcm-hostless",
+		.codec_name = "taiko_codec",
+		.codec_dai_name = "taiko_rx2",
+		.ignore_suspend = 1,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ops = &apq8084_slimbus_2_be_ops,
+	},
+	/* Ultrasound TX Back End DAI Link */
+	{
+		.name = "SLIMBUS_2 Hostless Capture",
+		.stream_name = "SLIMBUS_2 Hostless Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.16389",
+		.platform_name = "msm-pcm-hostless",
+		.codec_name = "taiko_codec",
+		.codec_dai_name = "taiko_tx2",
+		.ignore_suspend = 1,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ops = &apq8084_slimbus_2_be_ops,
 	},
 	/* Incall Record Uplink BACK END DAI Link */
 	{
@@ -2875,6 +3325,7 @@ static struct snd_soc_dai_link apq8084_hdmi_dai_link[] = {
 
 static struct snd_soc_dai_link apq8084_dai_links[
 		 ARRAY_SIZE(apq8084_common_dai_links) +
+		 ARRAY_SIZE(apq8084_slim_dai_links) +
 		 ARRAY_SIZE(apq8084_hdmi_dai_link)];
 
 struct snd_soc_card snd_soc_card_apq8084 = {
@@ -2944,6 +3395,98 @@ err:
 	return ret;
 }
 
+static int apq8084_dtparse_mi2s(struct platform_device *pdev,
+				struct apq8084_asoc_mach_data **pdata,
+				struct msm_mi2s_ctrl **mi2s_ctrl,
+				char *msm_mi2s_gpio_name[][2])
+{
+	int ret = 0;
+	int i = 0;
+	struct msm_mi2s_gpio *pin_data = NULL;
+	struct msm_mi2s_ctrl *ctrl;
+	struct msm_mi2s_gpio *mclk_pin = NULL;
+	unsigned int gpio_no[NUM_OF_MI2S_GPIOS];
+	enum of_gpio_flags flags = OF_GPIO_ACTIVE_LOW;
+	int prim_cnt = 0;
+	unsigned int dt_mclk = 0;
+
+	pin_data = devm_kzalloc(&pdev->dev, (ARRAY_SIZE(gpio_no) *
+				sizeof(struct msm_mi2s_gpio)),
+				GFP_KERNEL);
+	mclk_pin = devm_kzalloc(&pdev->dev,
+				sizeof(struct msm_mi2s_gpio),
+				GFP_KERNEL);
+
+	if (!pin_data || !mclk_pin) {
+		dev_err(&pdev->dev, "No memory for gpio\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(gpio_no); i++) {
+		gpio_no[i] = of_get_named_gpio_flags(pdev->dev.of_node,
+				msm_mi2s_gpio_name[i][DT_PARSE_INDEX],
+				0, &flags);
+
+		if (gpio_no[i] > 0) {
+			pin_data[i].gpio_name =
+				msm_mi2s_gpio_name[prim_cnt][GPIO_NAME_INDEX];
+			pin_data[i].gpio_no = gpio_no[i];
+			dev_dbg(&pdev->dev, "%s:GPIO gpio[%s] =\n"
+				"0x%x\n", __func__,
+				pin_data[i].gpio_name,
+				pin_data[i].gpio_no);
+			prim_cnt++;
+		} else {
+			dev_err(&pdev->dev, "%s:Invalid MI2S GPIO[%s]= %x\n",
+				__func__,
+				msm_mi2s_gpio_name[i][GPIO_NAME_INDEX],
+				gpio_no[i]);
+			ret = -ENODEV;
+			goto err;
+		}
+	}
+	for (i = 0; i < ARRAY_SIZE(msm_mclk_gpio); i++) {
+		dt_mclk = of_get_named_gpio_flags(pdev->dev.of_node,
+				msm_mclk_gpio[i][DT_PARSE_INDEX], 0,
+				&flags);
+		if (dt_mclk > 0) {
+			mclk_pin->gpio_name =
+				msm_mclk_gpio[i][GPIO_NAME_INDEX];
+			mclk_pin->gpio_no = dt_mclk;
+			dev_dbg(&pdev->dev, "%s:GPIO gpio[%s] =\n"
+				"0x%x\n", __func__,
+				mclk_pin->gpio_name,
+				mclk_pin->gpio_no);
+		} else {
+			dev_err(&pdev->dev, "%s:MCLK gpio is incorrect\n",
+				__func__);
+			ret = -ENODEV;
+			goto err;
+		}
+	}
+	ctrl = devm_kzalloc(&pdev->dev,
+				sizeof(struct msm_mi2s_ctrl), GFP_KERNEL);
+	if (!ctrl) {
+		dev_err(&pdev->dev, "No memory for gpio\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	ctrl->pin_data = pin_data;
+	ctrl->cnt = prim_cnt;
+	(*pdata)->mi2s_ctrl = ctrl;
+	(*pdata)->mclk_pin = mclk_pin;
+	return ret;
+
+err:
+	if (pin_data)
+		devm_kfree(&pdev->dev, pin_data);
+	if (mclk_pin)
+		devm_kfree(&pdev->dev, mclk_pin);
+	return ret;
+}
+
 static int apq8084_prepare_us_euro(struct snd_soc_card *card)
 {
 	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
@@ -3002,7 +3545,7 @@ static int apq8084_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	if (pdata->mclk_freq != 9600000) {
+	if (pdata->mclk_freq != 12288000) {
 		dev_err(&pdev->dev, "unsupported taiko mclk freq %u\n",
 			pdata->mclk_freq);
 		ret = -EINVAL;
@@ -3017,6 +3560,10 @@ static int apq8084_asoc_machine_probe(struct platform_device *pdev)
 			sizeof(apq8084_common_dai_links));
 
 		memcpy(apq8084_dai_links + ARRAY_SIZE(apq8084_common_dai_links),
+			apq8084_slim_dai_links, sizeof(apq8084_slim_dai_links));
+
+		memcpy(apq8084_dai_links + ARRAY_SIZE(apq8084_common_dai_links)
+			+ ARRAY_SIZE(apq8084_slim_dai_links),
 			apq8084_hdmi_dai_link, sizeof(apq8084_hdmi_dai_link));
 
 		card->dai_link	= apq8084_dai_links;
@@ -3062,6 +3609,15 @@ static int apq8084_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	/* Parse Quarternary MI2S info from DT */
+	ret = apq8084_dtparse_mi2s(pdev, &pdata, &pdata->mi2s_ctrl,
+					msm_mi2s_gpio_name);
+	if (ret) {
+		dev_err(&pdev->dev,
+		"%s: MI2S pin data parse failed\n", __func__);
+		goto err;
+	}
+
 	pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,us-euro-gpios", 0);
 	if (pdata->us_euro_gpio < 0) {
@@ -3102,7 +3658,7 @@ static int apq8084_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
-	lpaif_sec_muxsel_virt_addr = ioremap(LPAIF_SEC_MODE_MUXSEL, 4);
+	lpaif_sec_muxsel_virt_addr = ioremap(LPAIF_QUAD_MODE_MUXSEL, 4);
 	if (lpaif_sec_muxsel_virt_addr == NULL) {
 		pr_err("%s Sec muxsel virt addr is null\n", __func__);
 		ret = -EINVAL;

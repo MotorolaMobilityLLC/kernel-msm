@@ -303,8 +303,8 @@
 	status = "ok";
 };
 
-&slim_msm {
-	taiko_codec {
+&i2c_2 {
+	wcd9xxx_codec@0d {
 		qcom,cdc-micbias1-ext-cap;
 		qcom,cdc-micbias2-ext-cap;
 		qcom,cdc-micbias3-ext-cap;

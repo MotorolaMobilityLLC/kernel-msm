@@ -29,7 +29,6 @@
 &soc {
 	sound {
 		qcom,model = "apq8084-taiko-cdp-snd-card";
-		qcom,hdmi-audio-rx;
 		qcom,cdc-micbias2-headset-only;
 		qcom,ext-mclk-gpio  = <&msmgpio 47 0>;
 	};
@@ -443,8 +442,8 @@
 	};
 };
 
-&slim_msm {
-	taiko_codec {
+&i2c_2 {
+	wcd9xxx_codec@0d {
 		qcom,cdc-micbias1-ext-cap;
 		qcom,cdc-micbias3-ext-cap;
 		qcom,cdc-micbias4-ext-cap;

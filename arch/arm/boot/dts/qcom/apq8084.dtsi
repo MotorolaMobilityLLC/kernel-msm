@@ -716,27 +716,56 @@
 				<82 512 12288 24576>; /* Max. bandwidth, 2xTSIF, each max of 96Mbps */
 	};
 
-	slim_msm: slim@fe1af000 {
-		cell-index = <1>;
-		compatible = "qcom,slim-ngd";
-		reg = <0xfe1af000 0x35000>,
-		      <0xfe184000 0x20000>;
-		reg-names = "slimbus_physical", "slimbus_bam_physical";
-		interrupts = <0 163 0>, <0 164 0>;
-		interrupt-names = "slimbus_irq", "slimbus_bam_irq";
-		qcom,apps-ch-pipes = <0x60000000>;
-		qcom,ea-pc = <0xb0>;
-		qcom,slim-mdm;
+	i2c_0: i2c@f9925000 { /* BLSP1 QUP3 */
+		cell-index = <0>;
+		compatible = "qcom,i2c-qup";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0xf9925000 0x1000>;
+		interrupt-names = "qup_err_intr";
+		interrupts = <0 97 0>;
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <50000000>;
+		qcom,sda-gpio = <&msmgpio 10 0>;
+		qcom,scl-gpio = <&msmgpio 11 0>;
+		qcom,master-id = <86>;
+	};
 
-		audio_slimslave {
-			compatible = "qcom,audio-slimslave";
-			elemental-addr = [ff ff ff ff 17 02];
-		};
+	i2c@f9926000 { /* BLSP-1 QUP-4 */
+		cell-index = <3>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9926000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 98 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 29 0>;
+		qcom,scl-gpio = <&msmgpio 30 0>;
+		qcom,master-id = <86>;
+	};
 
-		taiko_codec {
-			compatible = "qcom,taiko-slim-pgd";
-			elemental-addr = [00 01 A0 00 17 02];
+	i2c_2: i2c@f9927000 { /* BLSP1 QUP5 */
+		cell-index = <2>;
+		compatible = "qcom,i2c-qup";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0xf9927000 0x1000>;
+		interrupt-names = "qup_err_intr";
+		interrupts = <0 99 0>;
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 41 0>;
+		qcom,scl-gpio = <&msmgpio 42 0>;
+		qcom,master-id = <86>;
 
+		wcd9xxx_codec@0d{
+			compatible = "qcom,wcd9xxx-i2c";
+			reg = <0x0d>;
 			interrupt-parent = <&wcd9xxx_intc>;
 			interrupts = <0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
 				      17 18 19 20 21 22 23 24 25 26 27 28>;
@@ -787,59 +816,23 @@
 			qcom,cdc-micbias2-cfilt-sel = <0x1>;
 			qcom,cdc-micbias3-cfilt-sel = <0x2>;
 			qcom,cdc-micbias4-cfilt-sel = <0x2>;
-			qcom,cdc-mclk-clk-rate = <9600000>;
-			qcom,cdc-slim-ifd = "taiko-slim-ifd";
-			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 00 17 02];
-			qcom,cdc-dmic-sample-rate = <4800000>;
+			qcom,cdc-mclk-clk-rate = <12288000>;
 		};
-	};
 
-	i2c_0: i2c@f9925000 { /* BLSP1 QUP3 */
-		cell-index = <0>;
-		compatible = "qcom,i2c-qup";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		reg = <0xf9925000 0x1000>;
-		interrupt-names = "qup_err_intr";
-		interrupts = <0 97 0>;
-		qcom,i2c-bus-freq = <100000>;
-		qcom,i2c-src-freq = <50000000>;
-		qcom,sda-gpio = <&msmgpio 10 0>;
-		qcom,scl-gpio = <&msmgpio 11 0>;
-		qcom,master-id = <86>;
-	};
+		wcd9xxx_codec@77{
+			compatible = "qcom,wcd9xxx-i2c";
+			reg = <0x77>;
+		};
 
-	i2c@f9926000 { /* BLSP-1 QUP-4 */
-		cell-index = <3>;
-		compatible = "qcom,i2c-qup";
-		reg = <0xf9926000 0x1000>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		interrupts = <0 98 0>;
-		interrupt-names = "qup_err_intr";
-		qcom,i2c-bus-freq = <400000>;
-		qcom,i2c-src-freq = <19200000>;
-		qcom,sda-gpio = <&msmgpio 29 0>;
-		qcom,scl-gpio = <&msmgpio 30 0>;
-		qcom,master-id = <86>;
-	};
+		wcd9xxx_codec@66{
+			compatible = "qcom,wcd9xxx-i2c";
+			reg = <0x66>;
+		};
 
-	i2c_2: i2c@f9927000 { /* BLSP1 QUP5 */
-		cell-index = <2>;
-		compatible = "qcom,i2c-qup";
-		#address-cells = <1>;
-		#size-cells = <0>;
-		reg-names = "qup_phys_addr";
-		reg = <0xf9927000 0x1000>;
-		interrupt-names = "qup_err_intr";
-		interrupts = <0 99 0>;
-		qcom,i2c-bus-freq = <100000>;
-		qcom,i2c-src-freq = <19200000>;
-		qcom,sda-gpio = <&msmgpio 41 0>;
-		qcom,scl-gpio = <&msmgpio 42 0>;
-		qcom,master-id = <86>;
+		wcd9xxx_codec@55{
+			compatible = "qcom,wcd9xxx-i2c";
+			reg = <0x55>;
+		};
 	};
 
 	i2c_1: i2c@f9966000 { /* BLSP2 QUP4 */
@@ -3188,7 +3181,7 @@
 			"DMIC6", "MIC BIAS3 External",
 			"MIC BIAS3 External", "Digital Mic6";
 
-		qcom,taiko-mclk-clk-freq = <9600000>;
+		qcom,taiko-mclk-clk-freq = <12288000>;
 		qcom,prim-auxpcm-gpio-clk  = <&msmgpio 87 0>;
 		qcom,prim-auxpcm-gpio-sync = <&msmgpio 88 0>;
 		qcom,prim-auxpcm-gpio-din  = <&msmgpio 89 0>;
@@ -3198,6 +3191,11 @@
 		qcom,sec-auxpcm-gpio-sync = <&msmgpio 83 0>;
 		qcom,sec-auxpcm-gpio-din  = <&msmgpio 84 0>;
 		qcom,sec-auxpcm-gpio-dout = <&msmgpio 85 0>;
+		qcom,quad-mi2s-gpio-sclk = <&msmgpio 92 0>;
+		qcom,quad-mi2s-gpio-ws = <&msmgpio 93 0>;
+		qcom,quad-mi2s-gpio-data0 = <&msmgpio 94 0>;
+		qcom,quad-mi2s-gpio-data1 = <&msmgpio 95 0>;
+		qcom,quad-mi2s-gpio-mclk = <&msmgpio 100 0>;
 	};
 
 	qcom,msm-adsp-loader {
@@ -3287,71 +3285,6 @@
 
 	qcom,msm-dai-q6 {
 		compatible = "qcom,msm-dai-q6";
-		qcom,msm-dai-q6-sb-0-rx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16384>;
-		};
-
-		qcom,msm-dai-q6-sb-0-tx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16385>;
-		};
-
-		qcom,msm-dai-q6-sb-1-rx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16386>;
-		};
-
-		qcom,msm-dai-q6-sb-1-tx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16387>;
-		};
-
-		qcom,msm-dai-q6-sb-2-rx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16388>;
-		};
-
-		qcom,msm-dai-q6-sb-2-tx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16389>;
-		};
-
-		qcom,msm-dai-q6-sb-3-rx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16390>;
-		};
-
-		qcom,msm-dai-q6-sb-3-tx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16391>;
-		};
-
-		qcom,msm-dai-q6-sb-4-rx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16392>;
-		};
-
-		qcom,msm-dai-q6-sb-4-tx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16393>;
-		};
-
-		qcom,msm-dai-q6-sb-5-tx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16395>;
-		};
-
-		qcom,msm-dai-q6-sb-6-rx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16396>;
-		};
-
-		qcom,msm-dai-q6-sb-6-tx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <16397>;
-		};
-
 		qcom,msm-dai-q6-bt-sco-rx {
 			compatible = "qcom,msm-dai-q6-dev";
 			qcom,msm-dai-q6-dev-id = <12288>;
@@ -3360,16 +3293,6 @@
 		qcom,msm-dai-q6-bt-sco-tx {
 			compatible = "qcom,msm-dai-q6-dev";
 			qcom,msm-dai-q6-dev-id = <12289>;
-		};
-
-		qcom,msm-dai-q6-int-fm-rx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <12292>;
-		};
-
-		qcom,msm-dai-q6-int-fm-tx {
-			compatible = "qcom,msm-dai-q6-dev";
-			qcom,msm-dai-q6-dev-id = <12293>;
 		};
 
 		qcom,msm-dai-q6-be-afe-pcm-rx {
@@ -3438,7 +3361,7 @@
 			compatible = "qcom,msm-dai-q6-mi2s";
 			qcom,msm-dai-q6-mi2s-dev-id = <3>;
 			qcom,msm-mi2s-rx-lines = <1>;
-			qcom,msm-mi2s-tx-lines = <2>;
+			qcom,msm-mi2s-tx-lines = <1>;
 		};
 	};
 
