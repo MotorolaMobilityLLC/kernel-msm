@@ -417,7 +417,8 @@ static irqreturn_t wdog_ppi_bark(int irq, void *dev_id)
 #define TZBSP_SC_STATUS_WARM_BOOT	0x08
 
 #define TZBSP_DUMP_CTX_MAGIC		0x44434151
-#define TZBSP_DUMP_CTX_VERSION		2
+#define TZBSP_DUMP_CTX_VERSION2		2
+#define TZBSP_DUMP_CTX_VERSION4		4
 
 #define MSM_WDT_CTX_SIG			0x77647473
 #define MSM_WDT_CTX_REV			0x00010003
@@ -482,6 +483,37 @@ struct tzbsp_cpu_ctx_s {
 	u32 wdog_pc;
 };
 
+struct tzbsp_neon_regs_s {
+	u64 d[32];
+};
+
+struct tzbsp_neon_cpu_ctx_s {
+	u32 fpsid;
+	u32 fpscr;
+	u32 fpexc;
+	u32 hole1;
+	struct tzbsp_neon_regs_s regs;
+};
+
+#define ARM_MAX_BPS_WPS 16
+
+struct tzbsp_dbg_bpt_s {
+	u32 bpt_value;
+	u32 bpt_control;
+};
+
+struct tzbsp_dbg_wpt_s {
+	u32 wpt_value;
+	u32 wpt_control;
+};
+
+struct tzbsp_dbg_cpu_ctx_s {
+	u32 dbgdidr;
+	u32 dbgscr;
+	struct tzbsp_dbg_bpt_s breakpoints[ARM_MAX_BPS_WPS];
+	struct tzbsp_dbg_wpt_s watchpoints[ARM_MAX_BPS_WPS];
+};
+
 /* Structure of the entire non-secure context dump buffer. Because TZ is single
  * entry only a single secure context is saved. */
 struct tzbsp_dump_buf_s0 {
@@ -490,7 +522,7 @@ struct tzbsp_dump_buf_s0 {
 	u32 cpu_count;
 };
 
-struct tzbsp_dump_buf_s2 {
+struct tzbsp_dump_buf_s2_v2 {
 	u32 magic;
 	u32 version;
 	u32 cpu_count;
@@ -500,7 +532,14 @@ struct tzbsp_dump_buf_s2 {
 	u32 wdt_sts[NR_CPUS_2];
 };
 
-struct tzbsp_dump_buf_s4 {
+struct tzbsp_dump_buf_s2_v4 {
+	struct tzbsp_dump_buf_s2_v2 v2;
+	u32 cpacr[NR_CPUS_2];
+	struct tzbsp_neon_cpu_ctx_s neon[NR_CPUS_2];
+	struct tzbsp_dbg_cpu_ctx_s dbg[NR_CPUS_2];
+};
+
+struct tzbsp_dump_buf_s4_v2 {
 	u32 magic;
 	u32 version;
 	u32 cpu_count;
@@ -510,10 +549,19 @@ struct tzbsp_dump_buf_s4 {
 	u32 wdt_sts[NR_CPUS_4];
 };
 
+struct tzbsp_dump_buf_s4_v4 {
+	struct tzbsp_dump_buf_s4_v2 v2;
+	u32 cpacr[NR_CPUS_4];
+	struct tzbsp_neon_cpu_ctx_s neon[NR_CPUS_4];
+	struct tzbsp_dbg_cpu_ctx_s dbg[NR_CPUS_4];
+};
+
 union tzbsp_dump_buf_s {
 	struct tzbsp_dump_buf_s0 s0;
-	struct tzbsp_dump_buf_s2 s2;
-	struct tzbsp_dump_buf_s4 s4;
+	struct tzbsp_dump_buf_s2_v2 s2v2;
+	struct tzbsp_dump_buf_s2_v4 s2v4;
+	struct tzbsp_dump_buf_s4_v2 s4v2;
+	struct tzbsp_dump_buf_s4_v4 s4v4;
 };
 
 struct msm_wdt_lnx_info {
@@ -751,14 +799,15 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 
 	switch (cpu_count) {
 	case NR_CPUS_2:
-		sc_status = ctx->p1.tzbsp.s2.sc_status;
-		sc_ns = ctx->p1.tzbsp.s2.sc_ns;
-		wdt_sts = ctx->p1.tzbsp.s2.wdt_sts;
+		/* Common between v2 and v4. Same for NR_CPUS_4. */
+		sc_status = ctx->p1.tzbsp.s2v2.sc_status;
+		sc_ns = ctx->p1.tzbsp.s2v2.sc_ns;
+		wdt_sts = ctx->p1.tzbsp.s2v2.wdt_sts;
 		break;
 	case NR_CPUS_4:
-		sc_status = ctx->p1.tzbsp.s4.sc_status;
-		sc_ns = ctx->p1.tzbsp.s4.sc_ns;
-		wdt_sts = ctx->p1.tzbsp.s4.wdt_sts;
+		sc_status = ctx->p1.tzbsp.s4v2.sc_status;
+		sc_ns = ctx->p1.tzbsp.s4v2.sc_ns;
+		wdt_sts = ctx->p1.tzbsp.s4v2.wdt_sts;
 		break;
 	default:
 		MSMWDTD("msm_wdt_ctx: unsupported cpu_count %d\n", cpu_count);
@@ -785,15 +834,17 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 		}
 	}
 	if ((ctx->p1.tzbsp.s0.magic != TZBSP_DUMP_CTX_MAGIC)
-		|| (ctx->p1.tzbsp.s0.version != TZBSP_DUMP_CTX_VERSION)
+		|| ((ctx->p1.tzbsp.s0.version != TZBSP_DUMP_CTX_VERSION2) &&
+			(ctx->p1.tzbsp.s0.version != TZBSP_DUMP_CTX_VERSION4))
 		|| (ctx->p1.tzbsp.s0.cpu_count != cpu_count)) {
 		MSMWDTD("msm_wdt_ctx: tzbsp dump buffer mismatch.\n");
-		MSMWDTD("Expected: magic 0x%08x, version %d, cpu_count %d\n",
-			TZBSP_DUMP_CTX_MAGIC, TZBSP_DUMP_CTX_VERSION,
-			cpu_count);
-		MSMWDTD("Found:    magic 0x%08x, version %d, cpu_count %d\n",
-			ctx->p1.tzbsp.s0.magic, ctx->p1.tzbsp.s0.version,
-			ctx->p1.tzbsp.s0.cpu_count);
+		MSMWDTD("Expected: magic 0x%08x, cpu_count %d, ",
+				TZBSP_DUMP_CTX_MAGIC, cpu_count);
+		MSMWDTD("version %d or %d\n", TZBSP_DUMP_CTX_VERSION2,
+				TZBSP_DUMP_CTX_VERSION4);
+		MSMWDTD("Found:    magic 0x%08x, cpu_count %d, version %d\n",
+			ctx->p1.tzbsp.s0.magic, ctx->p1.tzbsp.s0.cpu_count,
+			ctx->p1.tzbsp.s0.version);
 		return;
 	}
 	MSMWDTD("sc_status: ");
