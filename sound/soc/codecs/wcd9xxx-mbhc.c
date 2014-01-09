@@ -1468,6 +1468,12 @@ wcd9xxx_cs_find_plug_type(struct wcd9xxx_mbhc *mbhc,
 			type = PLUG_TYPE_INVALID;
 		}
 	}
+
+	if (type == PLUG_TYPE_HEADSET &&
+	    (mbhc->mbhc_cfg->micbias_enable_flags &
+	    (1 << MBHC_MICBIAS_ENABLE_REGULAR_HEADSET)))
+		mbhc->micbias_enable = true;
+
 exit:
 	pr_debug("%s: Plug type %d detected\n", __func__, type);
 	return type;
@@ -4268,6 +4274,14 @@ static int wcd9xxx_event_notify(struct notifier_block *self, unsigned long val,
 			 */
 			if (!mbhc->polling_active)
 				wcd9xxx_enable_mbhc_txfe(mbhc, false);
+		}
+		if (mbhc->micbias_enable && mbhc->polling_active &&
+		    !(snd_soc_read(mbhc->codec, mbhc->mbhc_bias_regs.ctl_reg)
+	            & 0x80)) {
+			pr_debug("%s:Micbias turned off by recording, set up again",
+				 __func__);
+			snd_soc_update_bits(codec, mbhc->mbhc_bias_regs.ctl_reg,
+					    0x80, 0x80);
 		}
 		break;
 	/* PA usage change */
