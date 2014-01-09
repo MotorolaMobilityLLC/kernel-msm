@@ -8734,9 +8734,12 @@ WLANTL_TxProcessMsg
       break;
 
   case WDA_DS_FINISH_ULA:
-    callbackContext = (void *)message->bodyval;
-    callbackRoutine = message->bodyptr;
-    callbackRoutine(callbackContext);
+    callbackContext = message->bodyptr;
+    callbackRoutine = message->callback;
+    if ( NULL != callbackRoutine )
+    {
+      callbackRoutine(callbackContext);
+    }
     break;
 
   case WLANTL_TX_SNAPSHOT:
