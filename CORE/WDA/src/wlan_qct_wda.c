@@ -10230,9 +10230,14 @@ void WDA_GTKOffloadRespCallback( WDI_GtkOffloadRspParams  *pwdiGtkOffloadRsparam
 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
 
-   VOS_ASSERT(NULL != pWdaParams);
-   
    vos_mem_free(pWdaParams->wdaMsgParam) ;
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
    vos_mem_free(pWdaParams) ;
@@ -10362,8 +10367,13 @@ void WDA_GtkOffloadGetInfoRespCallback( WDI_GtkOffloadGetInfoRspParams *pwdiGtkO
 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
-
-   VOS_ASSERT(NULL != pWdaParams);
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
 
    pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext ;
    pGtkOffloadGetInfoReq = (tpSirGtkOffloadGetInfoRspParams)pWdaParams->wdaMsgParam;
