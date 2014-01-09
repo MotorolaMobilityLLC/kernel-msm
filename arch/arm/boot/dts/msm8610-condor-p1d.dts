@@ -32,3 +32,8 @@
 		/delete-property/ enable-active-high;
 	};
 };
+
+/* limit clock speed by 25MHz due to signal integrity issues in HS mode */
+&sdhc_2 {
+	qcom,clk-rates = <400000 25000000>;
+};
