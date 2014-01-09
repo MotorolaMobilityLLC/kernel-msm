@@ -148,6 +148,9 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define MSM_PRONTO_TXP_PHY_ABORT        0xfb080488
 #define MSM_PRONTO_BRDG_ERR_SRC         0xfb080fb0
 
+#define MSM_PRONTO_ALARMS_TXCTL         0xfb0120a8
+#define MSM_PRONTO_ALARMS_TACTL         0xfb012448
+
 #define WCNSS_DEF_WLAN_RX_BUFF_COUNT		1024
 #define WCNSS_VBATT_THRESHOLD		3500000
 #define WCNSS_VBATT_GUARD		200
@@ -181,6 +184,8 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define	WCNSS_BUILD_VER_REQ           (WCNSS_CTRL_MSG_START + 9)
 #define	WCNSS_BUILD_VER_RSP           (WCNSS_CTRL_MSG_START + 10)
 
+/* max 20mhz channel count */
+#define WCNSS_MAX_CH_NUM			45
 
 #define VALID_VERSION(version) \
 	((strncmp(version, "INVALID", WCNSS_VERSION_LEN)) ? 1 : 0)
@@ -356,6 +361,8 @@ static struct {
 	void __iomem *wlan_tx_status;
 	void __iomem *wlan_tx_phy_aborts;
 	void __iomem *wlan_brdg_err_source;
+	void __iomem *alarms_txctl;
+	void __iomem *alarms_tactl;
 	void __iomem *fiq_reg;
 	int	nv_downloaded;
 	unsigned char *fw_cal_data;
@@ -377,6 +384,8 @@ static struct {
 	struct qpnp_adc_tm_btm_param vbat_monitor_params;
 	struct qpnp_adc_tm_chip *adc_tm_dev;
 	struct mutex vbat_monitor_mutex;
+	u16 unsafe_ch_count;
+	u16 unsafe_ch_list[WCNSS_MAX_CH_NUM];
 } *penv = NULL;
 
 static ssize_t wcnss_serial_number_show(struct device *dev,
@@ -682,6 +691,12 @@ void wcnss_pronto_log_debug_regs(void)
 
 	reg = readl_relaxed(penv->wlan_tx_status);
 	pr_info_ratelimited("%s: WLAN_TX_STATUS %08x\n", __func__, reg);
+
+	reg = readl_relaxed(penv->alarms_txctl);
+	pr_err("ALARMS_TXCTL %08x\n", reg);
+
+	reg = readl_relaxed(penv->alarms_tactl);
+	pr_err("ALARMS_TACTL %08x\n", reg);
 }
 EXPORT_SYMBOL(wcnss_pronto_log_debug_regs);
 
@@ -1176,6 +1191,35 @@ u32 wcnss_get_wlan_rx_buff_count(void)
 
 }
 EXPORT_SYMBOL(wcnss_get_wlan_rx_buff_count);
+
+int wcnss_set_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 ch_count)
+{
+	if (penv && unsafe_ch_list &&
+		(ch_count <= WCNSS_MAX_CH_NUM)) {
+		memcpy((char *)penv->unsafe_ch_list,
+			(char *)unsafe_ch_list, ch_count * sizeof(u16));
+		penv->unsafe_ch_count = ch_count;
+		return 0;
+	} else
+		return -ENODEV;
+}
+EXPORT_SYMBOL(wcnss_set_wlan_unsafe_channel);
+
+int wcnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 buffer_size,
+					u16 *ch_count)
+{
+	if (penv) {
+		if (buffer_size < penv->unsafe_ch_count * sizeof(u16))
+			return -ENODEV;
+		memcpy((char *)unsafe_ch_list,
+			(char *)penv->unsafe_ch_list,
+			penv->unsafe_ch_count * sizeof(u16));
+		*ch_count = penv->unsafe_ch_count;
+		return 0;
+	} else
+		return -ENODEV;
+}
+EXPORT_SYMBOL(wcnss_get_wlan_unsafe_channel);
 
 static int wcnss_smd_tx(void *data, int len)
 {
@@ -2085,6 +2129,18 @@ wcnss_trigger_config(struct platform_device *pdev)
 			pr_err("%s: ioremap wlan TX STATUS failed\n", __func__);
 			goto fail_ioremap9;
 		}
+		penv->alarms_txctl = ioremap(MSM_PRONTO_ALARMS_TXCTL, SZ_8);
+		if (!penv->alarms_txctl) {
+			ret = -ENOMEM;
+			pr_err("%s: ioremap alarms TXCTL failed\n", __func__);
+			goto fail_ioremap10;
+		}
+		penv->alarms_tactl = ioremap(MSM_PRONTO_ALARMS_TACTL, SZ_8);
+		if (!penv->alarms_tactl) {
+			ret = -ENOMEM;
+			pr_err("%s: ioremap alarms TACTL failed\n", __func__);
+			goto fail_ioremap11;
+		}
 	}
 	penv->adc_tm_dev = qpnp_get_adc_tm(&penv->pdev->dev, "wcnss");
 	if (IS_ERR(penv->adc_tm_dev)) {
@@ -2110,6 +2166,12 @@ wcnss_trigger_config(struct platform_device *pdev)
 fail_pil:
 	if (penv->riva_ccu_base)
 		iounmap(penv->riva_ccu_base);
+	if (penv->alarms_tactl)
+		iounmap(penv->alarms_tactl);
+fail_ioremap11:
+	if (penv->alarms_txctl)
+		iounmap(penv->alarms_txctl);
+fail_ioremap10:
 	if (penv->wlan_tx_status)
 		iounmap(penv->wlan_tx_status);
 fail_ioremap9:
