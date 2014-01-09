@@ -86,6 +86,29 @@
 	};
 };
 
+&i2c_3 {
+	synaptics_dsx_i2c@20 {
+		status = "disabled";
+	};
+
+	atmel_mxt_ts@4a {
+		compatible = "atmel,mxt-ts";
+		reg = <0x4a>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <62 0>;
+		gpios = <&msmgpio 62 0>,        /* IRQ */
+			<&msmgpio 57 0>;        /* RESET */
+		touch_vdd-supply = <&pm8941_s3>;
+		touch_avdd-supply = <&pm8941_l23>;
+	};
+};
+
+&pm8941_l23 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
+};
+
 &soc {
 	sound {
 		qcom,tfa9890-stereo;
