@@ -17,21 +17,48 @@
 
 static unsigned int tp_pid_state;
 
+DEFINE_PER_CPU(u32, previous_ccnt);
+DEFINE_PER_CPU(u32[NUM_L1_CTRS], previous_l1_cnts);
+DEFINE_PER_CPU(u32[NUM_L2_PERCPU], previous_l2_cnts);
+DEFINE_PER_CPU(u32, old_pid);
+/* Reset per_cpu variables that store counter values uppn CPU hotplug */
+static int tracectr_cpu_hotplug_notifier(struct notifier_block *self,
+				    unsigned long action, void *hcpu)
+{
+	int ret = NOTIFY_OK;
+	int cpu = (int)hcpu;
+	int i;
+
+	if ((action & (~CPU_TASKS_FROZEN)) == CPU_UP_PREPARE) {
+		per_cpu(previous_ccnt, cpu) = 0;
+		for (i = 0; i < NUM_L1_CTRS; i++)
+			per_cpu(previous_l1_cnts[i], cpu) = 0;
+		for (i = 0; i < NUM_L2_PERCPU; i++)
+			per_cpu(previous_l2_cnts[i], cpu) = 0;
+	}
+	return ret;
+}
+
+static struct notifier_block tracectr_cpu_hotplug_notifier_block = {
+	.notifier_call = tracectr_cpu_hotplug_notifier,
+};
+
 static int tracectr_notifier(struct notifier_block *self, unsigned long cmd,
 		void *v)
 {
-	static int old_pid = -1;
 	struct thread_info *thread = v;
 	int current_pid;
+	u32 cpu = smp_processor_id();
 
 	if (cmd != THREAD_NOTIFY_SWITCH)
-		return old_pid;
+		return -EFAULT;
 
 	current_pid = thread->task->pid;
-	if (old_pid != -1)
-		trace_sched_switch_with_ctrs(old_pid, current_pid);
-	old_pid = current_pid;
-	return old_pid;
+	if (per_cpu(old_pid, cpu) != -1)
+		trace_sched_switch_with_ctrs(per_cpu(old_pid, cpu),
+						current_pid);
+	per_cpu(old_pid, cpu) = current_pid;
+	return NOTIFY_OK;
 }
 
 static struct notifier_block tracectr_notifier_block = {
@@ -102,6 +129,7 @@ int __init init_tracecounters(void)
 	struct dentry *dir;
 	struct dentry *file;
 	unsigned int value = 1;
+	int cpu;
 
 	dir = debugfs_create_dir("perf_debug_tp", NULL);
 	if (!dir)
@@ -112,6 +140,15 @@ int __init init_tracecounters(void)
 		debugfs_remove(dir);
 		return -ENOMEM;
 	}
+	register_cpu_notifier(&tracectr_cpu_hotplug_notifier_block);
+	for_each_possible_cpu(cpu)
+		per_cpu(old_pid, cpu) = -1;
+	return 0;
+}
+
+int __exit exit_tracecounters(void)
+{
+	unregister_cpu_notifier(&tracectr_cpu_hotplug_notifier_block);
 	return 0;
 }
 late_initcall(init_tracecounters);
