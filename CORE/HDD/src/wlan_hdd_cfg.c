@@ -4239,6 +4239,14 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
                fStatus = FALSE;
                hddLog(LOGE, "Could not pass on WNI_CFG_VHT_TX_MCS_MAP to CCM");
            }
+           /* Currently shortGI40Mhz is used for shortGI80Mhz */
+           if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_VHT_SHORT_GI_80MHZ,
+               pConfig->ShortGI40MhzEnable, NULL, eANI_BOOLEAN_FALSE)
+               == eHAL_STATUS_FAILURE)
+           {
+               fStatus = FALSE;
+               hddLog(LOGE, "Could not pass WNI_VHT_SHORT_GI_80MHZ to CCM\n");
+           }
        }
    }
 #endif
