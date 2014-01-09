@@ -957,6 +957,13 @@ static struct msm_gpiomux_config vib_en_gpio __initdata = {
 	},
 };
 
+static struct gpiomux_setting cycapsense_reset = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
 static struct msm_gpiomux_config cycapsence_issp_gpio_configs[] = {
 	/*
 	 * pull down are enabled by default on following pins, they should be
@@ -974,6 +981,13 @@ static struct msm_gpiomux_config cycapsence_issp_gpio_configs[] = {
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &gpio_suspend_config[0],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
+		},
+	},
+	{
+		.gpio = 63, /*XRES*/
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cycapsense_reset,
+			[GPIOMUX_SUSPENDED] = &cycapsense_reset,
 		},
 	},
 };
