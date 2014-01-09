@@ -129,7 +129,7 @@ static struct gpiomux_setting synaptics_int_act_cfg = {
 static struct gpiomux_setting synaptics_int_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.pull = GPIOMUX_PULL_NONE,
 };
 
 static struct gpiomux_setting taiko_int = {
@@ -140,14 +140,14 @@ static struct gpiomux_setting taiko_int = {
 
 static struct msm_gpiomux_config msm_touch_configs[] __initdata = {
 	{
-		.gpio      = 80,		/* TOUCH RESET */
+		.gpio      = 57,		/* TOUCH RESET */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &synaptics_reset_act_cfg,
 			[GPIOMUX_SUSPENDED] = &synaptics_reset_sus_cfg,
 		},
 	},
 	{
-		.gpio      = 81,		/* TOUCH IRQ */
+		.gpio      = 62,		/* TOUCH IRQ */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &synaptics_int_act_cfg,
 			[GPIOMUX_SUSPENDED] = &synaptics_int_sus_cfg,
