@@ -47,6 +47,7 @@
 			"MIC BIAS3 External", "Digital Mic3";
 
 		qcom,cdc-micbias2-headset-only;
+		qcom,mclk-ctrl-gpio  = <&pma8084_gpios 1 0>;
 	};
 
 	i2c@f9926000 { /* BLSP1 QUP4 */
@@ -308,6 +309,14 @@
 
 &pma8084_gpios {
 	gpio@c000 { /* GPIO 1 */
+		qcom,mode = <1>;
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* PMA8084 S4 = 1.8 V */
+		qcom,src-sel = <0>;		/* GPIO */
+		qcom,invert = <0>;		/* Do not invert the output */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		qcom,out-strength = <3>;        /* High drive strength */
 	};
 
 	gpio@c100 { /* GPIO 2 */

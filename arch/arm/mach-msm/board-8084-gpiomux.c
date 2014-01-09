@@ -789,6 +789,37 @@ static struct gpiomux_setting mi2s_sus_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+static struct msm_gpiomux_config msm_pri_mi2s_configs[] __initdata = {
+	{
+                .gpio = 77,
+                .settings = {
+                        [GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+                        [GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+                },
+        },
+	{
+                .gpio = 78,
+                .settings = {
+                        [GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+                        [GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+                },
+        },
+	{
+                .gpio = 79,
+                .settings = {
+                        [GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+                        [GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+                },
+        },
+	{
+                .gpio = 80,
+                .settings = {
+                        [GPIOMUX_SUSPENDED] = &mi2s_sus_cfg,
+                        [GPIOMUX_ACTIVE] = &mi2s_act_cfg,
+                },
+        },
+};
+
 static struct msm_gpiomux_config msm_quad_mi2s_configs[] __initdata = {
 	{
 		.gpio = 100,
@@ -1307,6 +1338,8 @@ void __init apq8084_init_gpiomux(void)
 				ARRAY_SIZE(msm_sensor_configs));
 	msm_gpiomux_install(msm_pcie_configs, ARRAY_SIZE(msm_pcie_configs));
 	msm_gpiomux_install(msm_epm_configs, ARRAY_SIZE(msm_epm_configs));
+	msm_gpiomux_install(msm_pri_mi2s_configs,
+				ARRAY_SIZE(msm_pri_mi2s_configs));
 	msm_gpiomux_install(msm_quad_mi2s_configs,
 				ARRAY_SIZE(msm_quad_mi2s_configs));
 
