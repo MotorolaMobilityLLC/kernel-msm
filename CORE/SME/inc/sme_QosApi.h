@@ -381,4 +381,17 @@ v_BOOL_t sme_QosIsTSInfoAckPolicyValid(tpAniSirGlobal pMac,
     sme_QosWmmTspecInfo * pQoSInfo,
     v_U8_t sessionId);
 
+
+/*--------------------------------------------------------------------------
+  \brief sme_QosUpdateHandOff() - Function which can be called to update
+   Hand-off state of SME QoS Session
+  \param sessionId - session id
+  \param updateHandOff - value True/False to update the handoff flag
+
+  \sa
+
+-------------------------------------------------------------------------*/
+void sme_QosUpdateHandOff(v_U8_t sessionId,
+     v_BOOL_t updateHandOff);
+
 #endif //#if !defined( __SME_QOSAPI_H )
