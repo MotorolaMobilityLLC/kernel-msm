@@ -4168,7 +4168,7 @@ VOS_STATUS hdd_parse_send_action_frame_data(tANI_U8 *pValue, tANI_U8 *pTargetApB
     if (1 != v) return -EINVAL;
 
     v = kstrtos32(tempBuf, 10, &tempInt);
-    if ( v < 0 || tempInt <= 0) return -EINVAL;
+    if ( v < 0 || tempInt < 0) return -EINVAL;
 
     *pDwellTime = tempInt;
 
