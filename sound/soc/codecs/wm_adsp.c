@@ -1987,13 +1987,6 @@ static void wm_adsp2_boot_work(struct work_struct *work)
 	if (ret != 0)
 		goto err;
 
-	ret = regmap_update_bits(dsp->regmap,
-				 dsp->base + ADSP2_CONTROL,
-				 ADSP2_CORE_ENA,
-				 ADSP2_CORE_ENA);
-	if (ret != 0)
-		goto err;
-
 	dsp->running = true;
 
 	return;
@@ -2085,8 +2078,8 @@ int wm_adsp2_event(struct snd_soc_dapm_widget *w,
 
 		ret = regmap_update_bits(dsp->regmap,
 					 dsp->base + ADSP2_CONTROL,
-					 ADSP2_START,
-					 ADSP2_START);
+					 ADSP2_CORE_ENA | ADSP2_START,
+					 ADSP2_CORE_ENA | ADSP2_START);
 		if (ret != 0)
 			goto err;
 		break;
