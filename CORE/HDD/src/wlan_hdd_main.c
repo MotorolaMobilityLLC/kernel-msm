@@ -1472,7 +1472,14 @@ tANI_U32 hdd_populate_user_batch_scan_rsp
          pPrev = pHead;
          pHead = pHead->pNext;
          pAdapter->pBatchScanRsp  = pHead;
-         pAdapter->prev_batch_id = pPrev->ApInfo.batchId;
+         if (TRUE == pPrev->ApInfo.isLastAp)
+         {
+             pAdapter->prev_batch_id = 0;
+         }
+         else
+         {
+             pAdapter->prev_batch_id = pPrev->ApInfo.batchId;
+         }
          vos_mem_free(pPrev);
          pPrev = NULL;
    }
