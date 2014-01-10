@@ -158,11 +158,16 @@ static int mdss_fb_splash_thread(void *data)
 	int ret = -EINVAL;
 	struct fb_info *fbi = NULL;
 	int ov_index[2];
+	struct mdss_panel_data *pdata;
 
 	if (!mfd || !mfd->fbi || !mfd->mdp.splash_fnc) {
 		pr_err("Invalid input parameter\n");
 		goto end;
 	}
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (pdata && pdata->panel_info.cont_splash_enabled)
+		goto end;
 
 	fbi = mfd->fbi;
 
