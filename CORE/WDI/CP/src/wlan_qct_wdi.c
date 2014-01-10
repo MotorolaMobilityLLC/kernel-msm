@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -24918,6 +24918,7 @@ WDI_PackRoamScanOffloadParams
    pRoamCandidateListParams->ConnectedNetwork.ChannelCount = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ChannelCount;
    pRoamCandidateListParams->ChannelCacheType = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ChannelCacheType ;
    pRoamCandidateListParams->LookupThreshold = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.LookupThreshold;
+   pRoamCandidateListParams->RxSensitivityThreshold = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.RxSensitivityThreshold;
    pRoamCandidateListParams->RoamRssiDiff = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.RoamRssiDiff ;
    pRoamCandidateListParams->MAWCEnabled = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.MAWCEnabled ;
    pRoamCandidateListParams->Command = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.Command ;
