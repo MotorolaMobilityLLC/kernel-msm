@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -15539,6 +15539,11 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
    tANI_U32 host_channels = 0;
    tANI_U8 ChannelCacheStr[128] = {0};
    eCsrBand eBand;
+   tSirBssDescription *pBssDesc = NULL;
+   tDot11fBeaconIEs *pIes = NULL;
+   tANI_U8 minRate = 0, dataRate;
+   tANI_U8 operationChannel;
+
    currChannelListInfo = &pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo;
 
    if (0 == csrRoamIsRoamOffloadScanEnabled(pMac))
@@ -15575,6 +15580,12 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
       return eHAL_STATUS_FAILURE;
    }
    pSession = CSR_GET_SESSION( pMac, sessionId );
+   pBssDesc = pSession->pConnectBssDesc;
+   if (pBssDesc == NULL)
+   {
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: pBssDesc not found for current session", __func__);
+      return eHAL_STATUS_FAILURE;
+   }
    pRequestBuf = vos_mem_malloc(sizeof(tSirRoamOffloadScanReq));
    if (NULL == pRequestBuf)
    {
@@ -15586,7 +15597,13 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
     /* If command is STOP, then pass down ScanOffloadEnabled as Zero.This will handle the case of
      * host driver reloads, but Riva still up and running*/
     if(command == ROAM_SCAN_OFFLOAD_STOP)
+    {
        pRequestBuf->RoamScanOffloadEnabled = 0;
+       /*For a STOP Command, there is no need to
+        * go through filling up all the below parameters
+        * since they are not required for the STOP command*/
+       goto send_roam_scan_offload_cmd;
+    }
     else
        pRequestBuf->RoamScanOffloadEnabled = pMac->roam.configParam.isRoamOffloadScanEnabled;
     vos_mem_copy(pRequestBuf->ConnectedNetwork.currAPbssid,
@@ -15603,8 +15620,141 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
             pMac->roam.roamSession[sessionId].connectedProfile.EncryptionType;
     pRequestBuf->ConnectedNetwork.mcencryption =
             pMac->roam.roamSession[sessionId].connectedProfile.mcEncryptionType;
-    pRequestBuf->LookupThreshold =
+    if (pNeighborRoamInfo->cfgParams.neighborLookupThreshold)
+    {
+       pRequestBuf->LookupThreshold =
             (v_S7_t)pNeighborRoamInfo->cfgParams.neighborLookupThreshold * (-1);
+       pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_DEFAULT;
+    }
+    else
+    {
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "Calculate Adaptive Threshold");
+       operationChannel = pSession->connectedProfile.operationChannel;
+
+       if (!HAL_STATUS_SUCCESS(csrGetParsedBssDescriptionIEs(pMac, pBssDesc, &pIes)))
+       {
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+          "%s: csrGetParsedBssDescriptionIEs failed", __func__);
+          vos_mem_free(pRequestBuf);
+          return eHAL_STATUS_FAILURE;
+       }
+       if (pIes->SuppRates.present)
+       {
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "Number \t  Rate");
+          /*Check for both basic rates and extended rates.*/
+          for (i = 0; i < pIes->SuppRates.num_rates; i++)
+          {
+              /*Check if the Rate is Mandatory or Not*/
+              if (csrRatesIsDot11RateSupported(pMac, pIes->SuppRates.rates[i])
+                  && (pIes->SuppRates.rates[i] & 0x80))
+              {
+                  /*Retrieve the actual data rate*/
+                  dataRate = (pIes->SuppRates.rates[i] & 0x7F)/2;
+                  VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%d \t\t %d", i, dataRate);
+                  if (minRate == 0)
+                    minRate = dataRate;
+                  else
+                    minRate = (minRate < dataRate) ? minRate:dataRate;
+              }
+          }
+
+          if (pIes->ExtSuppRates.present)
+          {
+             for (i = 0; i < pIes->ExtSuppRates.num_rates; i++)
+             {
+                 /*Check if the Rate is Mandatory or Not*/
+                 if (csrRatesIsDot11RateSupported(pMac, pIes->ExtSuppRates.rates[i])
+                      && (pIes->ExtSuppRates.rates[i] & 0x80))
+                 {
+                    /*Retrieve the actual data rate*/
+                    dataRate = (pIes->ExtSuppRates.rates[i] & 0x7F)/2;
+                    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%d \t\t %d", i, dataRate);
+                    if (minRate == 0)
+                      minRate = dataRate;
+                    else
+                      minRate = (minRate < dataRate) ? minRate:dataRate;
+                 }
+             }
+          }
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG, "MinRate = %d", minRate);
+       }
+       else
+       {
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+          "%s: Supp Rates not present in pIes", __func__);
+          vos_mem_free(pRequestBuf);
+          return eHAL_STATUS_FAILURE;
+       }
+       if (NULL != pIes)
+       {
+          vos_mem_free(pIes);
+          pIes = NULL;
+       }
+       switch (minRate)
+       {
+          case 1:
+            pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_1MBPS;
+            pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_1MBPS;
+            break;
+          case 2:
+            pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_2MBPS;
+            pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_2MBPS;
+            break;
+          case 5:
+            pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_5_5MBPS;
+            pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_5_5MBPS;
+            break;
+          case 6:
+            if (CSR_IS_CHANNEL_24GHZ(operationChannel))
+            {
+               pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_6MBPS_2G;
+               pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_6MBPS_2G;
+            }
+            else
+            {
+               pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_6MBPS_5G;
+               pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_6MBPS_5G;
+            }
+            break;
+          case 11:
+            pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_11MBPS;
+            pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_11MBPS;
+            break;
+          case 12:
+            if (CSR_IS_CHANNEL_24GHZ(operationChannel))
+            {
+               pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_12MBPS_2G;
+               pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_12MBPS_2G;
+            }
+            else
+            {
+               pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_12MBPS_5G;
+               pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_12MBPS_5G;
+            }
+            break;
+          case 24:
+            if (CSR_IS_CHANNEL_24GHZ(operationChannel))
+            {
+               pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_24MBPS_2G;
+               pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_24MBPS_2G;
+            }
+            else
+            {
+               pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_24MBPS_5G;
+               pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_24MBPS_5G;
+            }
+            break;
+          default:
+            pRequestBuf->LookupThreshold = LFR_LOOKUP_THR_DEFAULT;
+            pRequestBuf->RxSensitivityThreshold = LFR_SENSITIVITY_THR_DEFAULT;
+            break;
+       }
+    }
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                "Chnl=%d,MinRate=%d,RxSenThr=%d,LookupThr=%d",
+                operationChannel, minRate,
+                pRequestBuf->RxSensitivityThreshold,
+                pRequestBuf->LookupThreshold);
     pRequestBuf->RoamRssiDiff =
             pMac->roam.configParam.RoamRssiDiff;
     pRequestBuf->Command = command;
@@ -15782,6 +15932,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
 
    csrRoamScanOffloadPrepareProbeReqTemplate(pMac,SIR_ROAM_SCAN_5G_DEFAULT_CH, ucDot11Mode, pSession->selfMacAddr,
                                              pRequestBuf->p5GProbeTemplate, &pRequestBuf->us5GProbeTemplateLen);
+send_roam_scan_offload_cmd:
    msg.type     = WDA_ROAM_SCAN_OFFLOAD_REQ;
    msg.reserved = 0;
    msg.bodyptr  = pRequestBuf;
