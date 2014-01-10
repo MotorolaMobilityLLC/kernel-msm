@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -310,7 +310,7 @@ int adreno_drawctxt_wait_global(struct adreno_device *adreno_dev,
 	mutex_unlock(&device->mutex);
 
 	if (timeout) {
-		ret = (int) wait_event_interruptible_timeout(drawctxt->waiting,
+		ret = (int) wait_event_timeout(drawctxt->waiting,
 			_check_global_timestamp(device, timestamp),
 			msecs_to_jiffies(timeout));
 
@@ -319,7 +319,7 @@ int adreno_drawctxt_wait_global(struct adreno_device *adreno_dev,
 		else if (ret > 0)
 			ret = 0;
 	} else {
-		ret = (int) wait_event_interruptible(drawctxt->waiting,
+		wait_event(drawctxt->waiting,
 			_check_global_timestamp(device, timestamp));
 	}
 
