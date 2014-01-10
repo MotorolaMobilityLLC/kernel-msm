@@ -93,6 +93,28 @@
 	};
 };
 
+&i2c_1 {
+	status = "ok";
+
+	stm401@39 {
+		compatible = "stm,stm401";
+		reg = <0x39>;
+		gpios = <&msmgpio 95 0>,        /* IRQ */
+			<&msmgpio 145 0>,       /* RESET */
+			<&msmgpio 33 0>,        /* BSLEN */
+			<&msmgpio 20 0>;        /* WakeIRQ */
+		lux_table = <5 50 100 1500 3000 8000>;
+		brightness_table = <9 14 18 46 67 93 140>;
+		bslen_pin_active_value = <1>;
+		ct406_detect_threshold = <0x006E>;
+		ct406_undetect_threshold = <0x0050>;
+		ct406_recalibrate_threshold = <0x0064>;
+		ct406_pulse_count = <0x04>;
+		sensor1-supply = <&pm8941_lvs1>;
+		sensor2-supply = <&pm8941_l18>;
+	};
+};
+
 &soc {
 	sound {
 		qcom,tfa9890-stereo;
