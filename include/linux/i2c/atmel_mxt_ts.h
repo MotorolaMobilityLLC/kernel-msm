@@ -15,8 +15,19 @@
 
 #include <linux/types.h>
 
+struct mxt_info {
+	u8 family_id;
+	u8 variant_id;
+	u8 version;
+	u8 build;
+	u8 matrix_xsize;
+	u8 matrix_ysize;
+	u8 object_num;
+};
+
 /* The platform data for the Atmel maXTouch touchscreen driver */
 struct mxt_platform_data {
+	struct mxt_info dt_info;
 	unsigned long irqflags;
 	u8 t19_num_keys;
 	const unsigned int *t19_keymap;
