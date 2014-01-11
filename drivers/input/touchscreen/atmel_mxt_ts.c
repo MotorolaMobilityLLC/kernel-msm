@@ -41,6 +41,9 @@ static int fb_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data);
 #endif
 
+#define DRIVER_NAME "atmel_mxt_ts"
+#define MXT_MAX_RETRIES		10
+
 /* Configuration file */
 #define MXT_CFG_MAGIC		"OBP_RAW V1"
 
@@ -207,16 +210,6 @@ struct t9_range {
 
 #define MXT_PIXELS_PER_MM	20
 
-struct mxt_info {
-	u8 family_id;
-	u8 variant_id;
-	u8 version;
-	u8 build;
-	u8 matrix_xsize;
-	u8 matrix_ysize;
-	u8 object_num;
-};
-
 struct mxt_object {
 	u8 type;
 	u16 start_address;
@@ -263,6 +256,8 @@ struct mxt_data {
 	unsigned long t15_keystatus;
 	bool use_retrigen_workaround;
 	bool use_regulator;
+	bool poweron;
+	bool input_registered;
 	struct regulator *reg_vdd;
 	struct regulator *reg_avdd;
 	char *fw_name;
@@ -437,6 +432,8 @@ static int mxt_lookup_bootloader_address(struct mxt_data *data, bool retry)
 
 	if (data->info)
 		family_id = data->info->family_id;
+	else
+		family_id = data->pdata->dt_info.family_id;
 
 	switch (appmode) {
 	case 0x4a:
@@ -461,6 +458,9 @@ static int mxt_lookup_bootloader_address(struct mxt_data *data, bool retry)
 	}
 
 	data->bootloader_addr = bootloader;
+	dev_dbg(&data->client->dev, "Bootloader address set to %x\n",
+		data->bootloader_addr);
+
 	return 0;
 }
 
@@ -598,7 +598,7 @@ static int __mxt_read_reg(struct i2c_client *client,
 	struct i2c_msg xfer[2];
 	u8 buf[2];
 	int ret;
-	bool retry = false;
+	int retry = MXT_MAX_RETRIES;
 
 	buf[0] = reg & 0xff;
 	buf[1] = (reg >> 8) & 0xff;
@@ -618,10 +618,10 @@ static int __mxt_read_reg(struct i2c_client *client,
 retry_read:
 	ret = i2c_transfer(client->adapter, xfer, ARRAY_SIZE(xfer));
 	if (ret != ARRAY_SIZE(xfer)) {
-		if (!retry) {
-			dev_dbg(&client->dev, "%s: i2c retry\n", __func__);
+		if (--retry) {
+			dev_dbg(&client->dev, "%s: i2c retry %d\n",
+				__func__, MXT_MAX_RETRIES - retry);
 			msleep(MXT_WAKEUP_TIME);
-			retry = true;
 			goto retry_read;
 		} else {
 			dev_err(&client->dev, "%s: i2c transfer failed (%d)\n",
@@ -639,7 +639,7 @@ static int __mxt_write_reg(struct i2c_client *client, u16 reg, u16 len,
 	u8 *buf;
 	size_t count;
 	int ret;
-	bool retry = false;
+	int retry = MXT_MAX_RETRIES;
 
 	count = len + 2;
 	buf = kmalloc(count, GFP_KERNEL);
@@ -653,10 +653,10 @@ static int __mxt_write_reg(struct i2c_client *client, u16 reg, u16 len,
 retry_write:
 	ret = i2c_master_send(client, buf, count);
 	if (ret != count) {
-		if (!retry) {
-			dev_dbg(&client->dev, "%s: i2c retry\n", __func__);
+		if (--retry) {
+			dev_dbg(&client->dev, "%s: i2c retry %d\n",
+				__func__, MXT_MAX_RETRIES - retry);
 			msleep(MXT_WAKEUP_TIME);
-			retry = true;
 			goto retry_write;
 		} else {
 			dev_err(&client->dev, "%s: i2c send failed (%d)\n",
@@ -1402,10 +1402,8 @@ static int mxt_check_reg_init(struct mxt_data *data)
 	u8 val;
 	u16 reg;
 
-	if (!data->cfg_name) {
-		dev_dbg(dev, "Skipping cfg download\n");
+	if (!data->cfg_name)
 		return 0;
-	}
 
 	ret = request_firmware(&cfg, data->cfg_name, dev);
 	if (ret < 0) {
@@ -1687,7 +1685,7 @@ recheck:
 		    return mxt_set_t7_power_cfg(data, MXT_POWER_CFG_RUN);
 		}
 	} else {
-		dev_info(dev, "Initialised power cfg: ACTV %d, IDLE %d\n",
+		dev_info(dev, "Initialized power cfg: ACTV %d, IDLE %d\n",
 				data->t7_cfg.active, data->t7_cfg.idle);
 		return 0;
 	}
@@ -1711,8 +1709,12 @@ static int mxt_acquire_irq(struct mxt_data *data)
 static void mxt_free_input_device(struct mxt_data *data)
 {
 	if (data->input_dev) {
-		input_unregister_device(data->input_dev);
+		if (data->input_registered)
+			input_unregister_device(data->input_dev);
+		else
+			input_free_device(data->input_dev);
 		data->input_dev = NULL;
+		data->input_registered = false;
 	}
 }
 
@@ -1893,8 +1895,10 @@ static int mxt_read_info_block(struct mxt_data *data)
 	}
 
 	error = __mxt_read_reg(client, 0, size, buf);
-	if (error)
+	if (error) {
+		dev_err(&client->dev, "error reading info block\n");
 		goto err_free_mem;
+	}
 
 	/* Resize buffer to give space for rest of info block */
 	num_objects = ((struct mxt_info *)buf)->object_num;
@@ -1912,8 +1916,10 @@ static int mxt_read_info_block(struct mxt_data *data)
 	error = __mxt_read_reg(client, MXT_OBJECT_START,
 			       size - MXT_OBJECT_START,
 			       buf + MXT_OBJECT_START);
-	if (error)
+	if (error) {
+		dev_err(&client->dev, "error reading object table\n");
 		goto err_free_mem;
+	}
 
 	/* Extract & calculate checksum */
 	crc_ptr = buf + size - MXT_INFO_CHECKSUM_SIZE;
@@ -2235,24 +2241,10 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 	if (error)
 		dev_warn(dev, "Failed to initialize T100 resolution\n");
 
-	input_dev = input_allocate_device();
-	if (!data || !input_dev) {
-		dev_err(dev, "Failed to allocate memory\n");
-		return -ENOMEM;
-	}
-
+	input_dev = data->input_dev;
+#ifdef MXT_DISTINCT_INPUT_NAME
 	input_dev->name = "Atmel maXTouch T100 Touchscreen";
-
-	input_dev->phys = data->phys;
-	input_dev->id.bustype = BUS_I2C;
-	input_dev->dev.parent = &data->client->dev;
-#ifndef CONFIG_FB
-	input_dev->open = mxt_input_open;
-	input_dev->close = mxt_input_close;
 #endif
-
-	set_bit(EV_ABS, input_dev->evbit);
-	input_set_capability(input_dev, EV_KEY, BTN_TOUCH);
 	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
 
 	/* For single touch */
@@ -2264,13 +2256,8 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 	if (data->t100_aux_ampl)
 		input_set_abs_params(input_dev, ABS_PRESSURE,
 				     0, 255, 0, 0);
-
 	/* For multi touch */
-	error = input_mt_init_slots(input_dev, data->num_touchids);
-	if (error) {
-		dev_err(dev, "Error %d initialising slots\n", error);
-		goto err_free_mem;
-	}
+	input_mt_init_slots(input_dev, data->num_touchids);
 
 	input_set_abs_params(input_dev, ABS_MT_TOOL_TYPE, 0, MT_TOOL_MAX, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_POSITION_X,
@@ -2289,28 +2276,14 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 	if (data->t100_aux_vect)
 		input_set_abs_params(input_dev, ABS_MT_ORIENTATION,
 				     0, 255, 0, 0);
-
-	input_set_drvdata(input_dev, data);
-
-	error = input_register_device(input_dev);
-	if (error) {
-		dev_err(dev, "Error %d registering input device\n", error);
-		goto err_free_mem;
-	}
-
-	data->input_dev = input_dev;
-
 	return 0;
-
-err_free_mem:
-	input_free_device(input_dev);
-	return error;
 }
 
 static int mxt_initialize_t9_input_device(struct mxt_data *data);
 static int mxt_configure_objects(struct mxt_data *data);
 static void mxt_start(struct mxt_data *data);
 static int mxt_apply_tdat_tsett(struct mxt_data *data);
+static int mxt_alloc_input_device(struct mxt_data *data);
 
 static int mxt_initialize(struct mxt_data *data)
 {
@@ -2403,6 +2376,23 @@ static int mxt_configure_objects(struct mxt_data *data)
 		dev_warn(&client->dev, "No touch object detected\n");
 	}
 
+	if (!data->in_bootloader && !data->input_registered) {
+		if (!data->input_dev) {
+			error = mxt_alloc_input_device(data);
+			dev_err(&client->dev,
+				"Error %d allocating input device\n", error);
+			return error;
+		}
+
+		error = input_register_device(data->input_dev);
+		if (error) {
+			dev_err(&client->dev,
+				"Error %d registering input device\n", error);
+			return error;
+		}
+		data->input_registered = true;
+	}
+
 	data->enable_reporting = true;
 	return 0;
 }
@@ -2426,19 +2416,49 @@ static ssize_t mxt_hw_version_show(struct device *dev,
 			data->info->family_id, data->info->variant_id);
 }
 
+/* Build Id is returned as FamilyID-ConfigID */
+static ssize_t mxt_buildid_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	struct mxt_info *info = data->info ? data->info : &data->pdata->dt_info;
+	return scnprintf(buf, PAGE_SIZE, "%02x%02x%02x-%08x\n",
+			info->version >> 4,
+			info->version & 0xf,
+			info->build,
+			data->config_id);
+}
+
+/* Product Id returned as FamilyID */
+static ssize_t mxt_productinfo_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	struct mxt_info *info = data->info ? data->info : &data->pdata->dt_info;
+	return scnprintf(buf, PAGE_SIZE, "%02x\n", info->family_id);
+}
+
+static ssize_t mxt_poweron_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", data->poweron);
+}
+
 static ssize_t mxt_ic_ver_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
 	struct mxt_data *data = dev_get_drvdata(dev);
+	struct mxt_info *info = data->info ? data->info : &data->pdata->dt_info;
 	return scnprintf(buf, PAGE_SIZE,
-			"%s%02X%02X\n%s%u.%u.%X\n%s%X\n",
+			"%s%02x%02x\n%s%02x%02x%02x\n%s%08x\n",
 			"Product ID: ",
-			data->info->family_id,
-			data->info->variant_id,
+			info->family_id,
+			info->variant_id,
 			"Build ID: ",
-			data->info->version >> 4,
-			data->info->version & 0xf,
-			data->info->build,
+			info->version >> 4,
+			info->version & 0xf,
+			info->build,
 			"Config ID: ",
 			data->config_id);
 }
@@ -2889,12 +2909,30 @@ just_leave:
 	return ret;
 }
 
+static bool forcereflash;
+static ssize_t mxt_forcereflash_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned int input;
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	if (input != 1)
+		return -EINVAL;
+
+	forcereflash = true;
+
+	return count;
+}
+
 static bool mxt_check_tdat_format(const unsigned char *image)
 {
 	return image[0] == 0x31;
 }
 
-static unsigned int mxt_get_config_id(const unsigned char *data, size_t size)
+static u32 mxt_get_tdat_config_id(const unsigned char *data, size_t size)
 {
 	unsigned short id;
 	u32 config_id;
@@ -2915,6 +2953,7 @@ static unsigned int mxt_get_config_id(const unsigned char *data, size_t size)
 static int mxt_parse_tdat_image(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
+	u32 config_id, firmware_id;
 	u8 *section, id;
 	size_t ii, length, offset, header_sz, raw_size = data->tdat->size;
 	const u8 *raw_image = data->tdat->data;
@@ -2952,17 +2991,18 @@ static int mxt_parse_tdat_image(struct mxt_data *data)
 
 		switch (id) {
 		case 1: /* config */
-			data->config_id = mxt_get_config_id(section, length);
-			dev_dbg(dev, "Config ID %x\n", data->config_id);
+			config_id = mxt_get_tdat_config_id(
+							section, length);
+			pr_info("TDAT: Config ID %x\n", config_id);
 
 			data->tsett.data = section;
 			data->tsett.size = length;
 			break;
 
 		case 2: /* firmware */
-			data->firmware_id = be32_to_cpu(
+			firmware_id = be32_to_cpu(
 						*(unsigned int *)(&section[1]));
-			dev_dbg(dev, "FW build ID %x\n", data->firmware_id);
+			pr_info("TDAT: FW build ID %x\n", firmware_id);
 
 			/* skip section header */
 			header_sz = section[0] + 1;
@@ -2973,6 +3013,14 @@ static int mxt_parse_tdat_image(struct mxt_data *data)
 			break;
 		}
 	}
+
+	if ((config_id <= data->config_id) && !forcereflash) {
+		dev_err(dev, "Firmware upgrade is not required\n");
+		return -EINVAL;
+	}
+
+	data->config_id = config_id;
+	data->firmware_id = firmware_id;
 
 	return 0;
 }
@@ -2992,6 +3040,8 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 	if (error)
 		return error;
 
+	pr_info("TDAT file name: %s\n", data->fw_name);
+
 	error = request_firmware(&data->tdat, data->fw_name, dev);
 	if (error) {
 		dev_err(dev, "Unable to load firmware %s\n", data->fw_name);
@@ -3002,6 +3052,7 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 		error = mxt_parse_tdat_image(data);
 		if (error)
 			goto release_firmware;
+		forcereflash = false;
 	} else {
 		dev_err(dev, "invalid TDAT format\n");
 		goto release_firmware;
@@ -3124,12 +3175,16 @@ static ssize_t mxt_flashprog_show(struct device *dev,
 
 static DEVICE_ATTR(fw_version, S_IRUGO, mxt_fw_version_show, NULL);
 static DEVICE_ATTR(hw_version, S_IRUGO, mxt_hw_version_show, NULL);
+static DEVICE_ATTR(buildid, S_IRUGO, mxt_buildid_show, NULL);
+static DEVICE_ATTR(productinfo, S_IRUGO, mxt_productinfo_show, NULL);
 static DEVICE_ATTR(object, S_IRUGO, mxt_object_show, NULL);
+static DEVICE_ATTR(poweron, S_IRUGO, mxt_poweron_show, NULL);
 static DEVICE_ATTR(ic_ver, S_IRUGO, mxt_ic_ver_show, NULL);
 static DEVICE_ATTR(flashprog, S_IRUGO, mxt_flashprog_show, NULL);
 static DEVICE_ATTR(update_fw, S_IWUSR, NULL, mxt_update_fw_store);
 static DEVICE_ATTR(update_cfg, S_IWUSR, NULL, mxt_update_cfg_store);
 static DEVICE_ATTR(doreflash, S_IWUSR, NULL, mxt_doreflash_store);
+static DEVICE_ATTR(forcereflash, S_IWUSR, NULL, mxt_forcereflash_store);
 
 static struct attribute *mxt_attrs[] = {
 	&dev_attr_fw_version.attr,
@@ -3140,6 +3195,10 @@ static struct attribute *mxt_attrs[] = {
 	&dev_attr_ic_ver.attr,
 	&dev_attr_doreflash.attr,
 	&dev_attr_flashprog.attr,
+	&dev_attr_buildid.attr,
+	&dev_attr_productinfo.attr,
+	&dev_attr_poweron.attr,
+	&dev_attr_forcereflash.attr,
 	NULL
 };
 
@@ -3230,7 +3289,9 @@ static void mxt_input_close(struct input_dev *dev)
 #ifdef CONFIG_OF
 static int mxt_parse_dt(struct device *dev, struct mxt_platform_data *pdata)
 {
-	struct device_node *np = dev->of_node;
+	int error = 0;
+	u32 value;
+	struct device_node *temp, *np = dev->of_node;
 
 	pdata->common_vdd_supply = of_property_read_bool(np,
 					"atmel,common-vdd-supply");
@@ -3238,7 +3299,45 @@ static int mxt_parse_dt(struct device *dev, struct mxt_platform_data *pdata)
 	pdata->gpio_irq = of_get_gpio(np, 0);
 	pdata->gpio_reset = of_get_gpio(np, 1);
 
-	dev_dbg(dev, "DT parsed successfully\n");
+	/* defaults in case DTS is not populated */
+	pdata->dt_info.family_id = 0xa4;
+	pdata->dt_info.variant_id = 0x2;
+	pdata->dt_info.version = 0x5;
+	pdata->dt_info.build = 0x2;
+
+	for_each_child_of_node(np, temp) {
+		error = of_property_read_u32(temp, "atmel,family-id", &value);
+		if (error) {
+			dev_err(dev, "Unable to read family id\n");
+			goto exit_parser;
+		}
+		pdata->dt_info.family_id = (u8)value;
+
+		error = of_property_read_u32(temp, "atmel,variant-id", &value);
+		if (error) {
+			dev_err(dev, "Unable to read variant id\n");
+			goto exit_parser;
+		}
+		pdata->dt_info.variant_id = (u8)value;
+
+		error = of_property_read_u32(temp, "atmel,version", &value);
+		if (error) {
+			dev_err(dev, "Unable to read controller version\n");
+			goto exit_parser;
+		}
+		pdata->dt_info.version = (u8)value;
+
+		error = of_property_read_u32(temp, "atmel,build", &value);
+		if (error) {
+			dev_err(dev, "Unable to read build id\n");
+			goto exit_parser;
+		}
+		pdata->dt_info.build = (u8)value;
+	}
+
+exit_parser:
+	if (!error)
+		dev_dbg(dev, "DT parsed successfully\n");
 	return 0;
 }
 #else
@@ -3295,24 +3394,10 @@ static int mxt_initialize_t9_input_device(struct mxt_data *data)
 	if (error)
 		dev_warn(dev, "Failed to initialize T9 resolution\n");
 
-	input_dev = input_allocate_device();
-	if (!input_dev) {
-		dev_err(dev, "Failed to allocate memory\n");
-		return -ENOMEM;
-	}
-
+	input_dev = data->input_dev;
+#ifdef MXT_DISTINCT_INPUT_NAME
 	input_dev->name = "Atmel maXTouch T9 Touchscreen";
-	input_dev->phys = data->phys;
-	input_dev->id.bustype = BUS_I2C;
-	input_dev->dev.parent = dev;
-#ifndef CONFIG_FB
-	input_dev->open = mxt_input_open;
-	input_dev->close = mxt_input_close;
 #endif
-
-	__set_bit(EV_ABS, input_dev->evbit);
-	input_set_capability(input_dev, EV_KEY, BTN_TOUCH);
-
 	if (pdata->t19_num_keys) {
 		__set_bit(INPUT_PROP_BUTTONPAD, input_dev->propbit);
 
@@ -3327,11 +3412,12 @@ static int mxt_initialize_t9_input_device(struct mxt_data *data)
 				  MXT_PIXELS_PER_MM);
 		input_abs_set_res(input_dev, ABS_MT_POSITION_Y,
 				  MXT_PIXELS_PER_MM);
-
+#ifdef MXT_DISTINCT_INPUT_NAME
 		input_dev->name = "Atmel maXTouch Touchpad";
-	} else {
-		__set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
-	}
+#endif
+	} else
+		set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
+
 
 	/* For single touch */
 	input_set_abs_params(input_dev, ABS_X,
@@ -3343,11 +3429,7 @@ static int mxt_initialize_t9_input_device(struct mxt_data *data)
 
 	/* For multi touch */
 	num_mt_slots = data->num_touchids + data->num_stylusids;
-	error = input_mt_init_slots(input_dev, num_mt_slots);
-	if (error) {
-		dev_err(dev, "Error %d initialising slots\n", error);
-		goto err_free_mem;
-	}
+	input_mt_init_slots(input_dev, num_mt_slots);
 
 	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR,
 			     0, MXT_MAX_AREA, 0, 0);
@@ -3377,21 +3459,31 @@ static int mxt_initialize_t9_input_device(struct mxt_data *data)
 					     data->pdata->t15_keymap[i]);
 	}
 
-	input_set_drvdata(input_dev, data);
+	return 0;
+}
 
-	error = input_register_device(input_dev);
-	if (error) {
-		dev_err(dev, "Error %d registering input device\n", error);
-		goto err_free_mem;
-	}
+static int mxt_alloc_input_device(struct mxt_data *data)
+{
+	data->input_dev = input_allocate_device();
+	if (IS_ERR_OR_NULL(data->input_dev))
+		return PTR_ERR(data->input_dev);
 
-	data->input_dev = input_dev;
+#ifndef MXT_DISTINCT_INPUT_NAME
+	data->input_dev->name = DRIVER_NAME;
+#endif
+	data->input_dev->id.bustype = BUS_I2C;
+	data->input_dev->dev.parent = &data->client->dev;
+#ifndef CONFIG_FB
+	input_dev->open = mxt_input_open;
+	input_dev->close = mxt_input_close;
+#endif
+	set_bit(EV_SYN, data->input_dev->evbit);
+	set_bit(EV_ABS, data->input_dev->evbit);
+	input_set_capability(data->input_dev, EV_KEY, BTN_TOUCH);
+
+	input_set_drvdata(data->input_dev, data);
 
 	return 0;
-
-err_free_mem:
-	input_free_device(input_dev);
-	return error;
 }
 
 static int mxt_probe(struct i2c_client *client,
@@ -3431,9 +3523,15 @@ static int mxt_probe(struct i2c_client *client,
 	if (error)
 		goto err_free_pdata;
 
+	error = mxt_alloc_input_device(data);
+	if (error) {
+		dev_err(&client->dev, "Failed to allocate input device\n");
+		goto err_free_pdata;
+	}
+
 	error = mxt_power_init(data);
 	if (error)
-		goto err_free_pdata;
+		goto err_free_input;
 
 	disable_irq(data->irq);
 	data->in_bootloader = true;
@@ -3465,6 +3563,8 @@ err_free_object:
 	mxt_free_object_table(data);
 err_free_irq:
 	free_irq(data->irq, data);
+err_free_input:
+	mxt_free_input_device(data);
 err_free_pdata:
 	if (!dev_get_platdata(&data->client->dev))
 		kfree(data->pdata);
@@ -3497,14 +3597,9 @@ static int mxt_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
-	struct input_dev *input_dev = data->input_dev;
 
-	mutex_lock(&input_dev->mutex);
-
-	if (input_dev->users)
-		mxt_stop(data);
-
-	mutex_unlock(&input_dev->mutex);
+	data->poweron = false;
+	mxt_stop(data);
 
 	return 0;
 }
@@ -3513,14 +3608,9 @@ static int mxt_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
-	struct input_dev *input_dev = data->input_dev;
 
-	mutex_lock(&input_dev->mutex);
-
-	if (input_dev->users)
-		mxt_start(data);
-
-	mutex_unlock(&input_dev->mutex);
+	mxt_start(data);
+	data->poweron = true;
 
 	return 0;
 }
