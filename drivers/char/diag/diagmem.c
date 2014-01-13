@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <linux/mempool.h>
 #include <linux/mutex.h>
+#include <linux/ratelimit.h>
 #include <asm/atomic.h>
 #include "diagchar.h"
 #include "diagfwd_bridge.h"
@@ -223,7 +224,7 @@ void diagmem_free(struct diagchar_dev *driver, void *buf, int pool_type)
 			atomic_add(-1, (atomic_t *)
 				   &diag_hsic[index].count_hsic_pool);
 		} else
-			pr_err("diag: Attempt to free up DIAG driver HSIC mempool which is already free %d, ch = %d",
+			pr_err_ratelimited("diag: Attempt to free up DIAG driver HSIC mempool which is already free %d, ch = %d",
 				diag_hsic[index].count_hsic_pool, index);
 	} else if (pool_type == POOL_TYPE_HSIC_WRITE ||
 				pool_type == POOL_TYPE_HSIC_2_WRITE) {
