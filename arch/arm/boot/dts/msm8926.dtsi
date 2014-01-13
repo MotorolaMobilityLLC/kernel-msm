@@ -159,7 +159,6 @@
 	qcom,cpr-quotient-adjustment = <0 72 72>;
 	qcom,cpr-enable;
 
-	qcom,check-cpr-fuse;
 	qcom,cpr-fuse-read-val = <54 42 6 7>;
 	qcom,cpr-min-volt = <1140000>;
 };
