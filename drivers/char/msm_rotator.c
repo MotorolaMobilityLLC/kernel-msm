@@ -449,7 +449,7 @@ int msm_rotator_imem_allocate(int requestor)
 		rc = 1;
 #endif
 	if (rc == 1) {
-		cancel_delayed_work(&msm_rotator_dev->imem_clk_work);
+		cancel_delayed_work_sync(&msm_rotator_dev->imem_clk_work);
 		if (msm_rotator_dev->imem_clk_state != CLK_EN
 			&& msm_rotator_dev->imem_clk) {
 			clk_prepare_enable(msm_rotator_dev->imem_clk);
@@ -1347,12 +1347,10 @@ static int msm_rotator_ycxcx_h2v2_2pass(struct msm_rotator_img_info *info,
 
 	msm_rotator_dev->processing = 1;
 	iowrite32(0x1, MSM_ROTATOR_START);
-	mutex_unlock(&msm_rotator_dev->rotator_lock);
 	/* End of Pass-1 */
 	wait_event(msm_rotator_dev->wq,
 		   (msm_rotator_dev->processing == 0));
 	/* Beginning of Pass-2 */
-	mutex_lock(&msm_rotator_dev->rotator_lock);
 	status = (unsigned char)ioread32(MSM_ROTATOR_INTR_STATUS);
 	if ((status & 0x03) != 0x01) {
 		pr_err("%s(): AXI Bus Error, issuing SW_RESET\n",
@@ -2027,7 +2025,7 @@ static int msm_rotator_do_rotate_sub(
 	msm_rotator_wait_for_fence(commit_info->acq_fen);
 	commit_info->acq_fen = NULL;
 
-	cancel_delayed_work(&msm_rotator_dev->rot_clk_work);
+	cancel_delayed_work_sync(&msm_rotator_dev->rot_clk_work);
 	if (msm_rotator_dev->rot_clk_state != CLK_EN) {
 		enable_rot_clks();
 		msm_rotator_dev->rot_clk_state = CLK_EN;
@@ -2139,10 +2137,8 @@ static int msm_rotator_do_rotate_sub(
 
 	msm_rotator_dev->processing = 1;
 	iowrite32(0x1, MSM_ROTATOR_START);
-	mutex_unlock(&msm_rotator_dev->rotator_lock);
 	wait_event(msm_rotator_dev->wq,
 		   (msm_rotator_dev->processing == 0));
-	mutex_lock(&msm_rotator_dev->rotator_lock);
 	status = (unsigned char)ioread32(MSM_ROTATOR_INTR_STATUS);
 	if ((status & 0x03) != 0x01) {
 		pr_err("%s(): AXI Bus Error, issuing SW_RESET\n", __func__);
