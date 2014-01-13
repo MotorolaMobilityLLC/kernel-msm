@@ -25,6 +25,7 @@
 #include "mdp3.h"
 #include "mdp3_ppp.h"
 #include "dsi_v2.h"
+#include "mdss_dsi.h"
 
 #define VSYNC_EXPIRE_TICK	4
 
@@ -624,12 +625,8 @@ static int mdp3_ctrl_on(struct msm_fb_data_type *mfd)
 	rc = mdp3_ctrl_intf_init(mfd, mdp3_session->intf);
 	if (rc) {
 		pr_err("display interface init failed\n");
-		goto on_error;
 	}
-
 	mdp3_session->clk_on = 1;
-
-	mdp3_session->first_commit = true;
 
 on_error:
 	if (!rc)
@@ -771,6 +768,7 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 	struct mdp3_dma *mdp3_dma;
 	struct mdss_panel_data *panel;
 	struct mdp3_notification vsync_client;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
 	pr_debug("mdp3_ctrl_reset\n");
 	mdp3_session = (struct mdp3_session_data *)mfd->mdp.private1;
@@ -797,10 +795,6 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 		goto reset_error;
 	}
 
-	rc = panel->event_handler(panel, MDSS_EVENT_PANEL_OFF, NULL);
-	if (rc)
-		pr_err("fail to turn off panel\n");
-
 	rc = mdp3_put_mdp_dsi_clk();
 	if (rc) {
 		pr_err("fail to release mdp clocks\n");
@@ -825,12 +819,6 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 		goto reset_error;
 	}
 
-	rc = panel->event_handler(panel, MDSS_EVENT_PANEL_ON, NULL);
-	if (rc) {
-		pr_err("fail to turn on the panel\n");
-		goto reset_error;
-	}
-
 	rc = mdp3_get_mdp_dsi_clk();
 	if (rc) {
 		pr_err("fail to turn on mdp clks\n");
@@ -843,7 +831,10 @@ static int mdp3_ctrl_reset(struct msm_fb_data_type *mfd)
 	if (vsync_client.handler)
 		mdp3_dma->vsync_enable(mdp3_dma, &vsync_client);
 
-	mdp3_session->first_commit = true;
+	ctrl_pdata = container_of(panel, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+	if (ctrl_pdata && ctrl_pdata->cont_splash_on)
+		ctrl_pdata->cont_splash_on(panel);
 
 reset_error:
 	mutex_unlock(&mdp3_session->lock);
