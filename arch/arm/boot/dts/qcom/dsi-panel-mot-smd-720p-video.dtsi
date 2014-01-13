@@ -91,8 +91,7 @@
 		qcom,mdss-dsi-mdp-trigger = <0>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
-		qcom,panel-en-reset-sequence = <1 11>;
-		qcom,panel-dis-reset-sequence = <0 3>;
+		qcom,mdss-dsi-reset-sequence = <1 11>;
 		qcom,platform-supply-entry1 {
 			qcom,supply-name = "vbat_disp";
 			qcom,supply-min-voltage = <5000000>;
