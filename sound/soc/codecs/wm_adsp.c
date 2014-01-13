@@ -1466,7 +1466,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp)
 					region->len *= 4;
 					wm_adsp_create_grouped_control(dsp, region, true);
 				} else {
-					adsp_warn(dsp, "Missing length info for region DM with ID %x\n",
+					adsp_warn(dsp, "Length info not specified for region DM with ID %x\n",
 						  be32_to_cpu(adsp1_alg[i].alg.id));
 				}
 
@@ -1484,7 +1484,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp)
 					region->len *= 4;
 					wm_adsp_create_grouped_control(dsp, region, true);
 				} else {
-					adsp_warn(dsp, "Missing length info for region ZM with ID %x\n",
+					adsp_warn(dsp, "Length info not specified for region ZM with ID %x\n",
 						  be32_to_cpu(adsp1_alg[i].alg.id));
 				}
 			}
@@ -1522,7 +1522,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp)
 					region->len *= 4;
 					wm_adsp_create_grouped_control(dsp, region, true);
 				} else {
-					adsp_warn(dsp, "Missing length info for region XM with ID %x\n",
+					adsp_warn(dsp, "Length info not specified for region XM with ID %x\n",
 						  be32_to_cpu(adsp2_alg[i].alg.id));
 				}
 
@@ -1540,7 +1540,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp)
 					region->len *= 4;
 					wm_adsp_create_grouped_control(dsp, region, true);
 				} else {
-					adsp_warn(dsp, "Missing length info for region YM with ID %x\n",
+					adsp_warn(dsp, "Length info not specified for region YM with ID %x\n",
 						  be32_to_cpu(adsp2_alg[i].alg.id));
 				}
 
@@ -1558,7 +1558,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp)
 					region->len *= 4;
 					wm_adsp_create_grouped_control(dsp, region, true);
 				} else {
-					adsp_warn(dsp, "Missing length info for region ZM with ID %x\n",
+					adsp_warn(dsp, "Length info not specified for region ZM with ID %x\n",
 						  be32_to_cpu(adsp2_alg[i].alg.id));
 				}
 			}
