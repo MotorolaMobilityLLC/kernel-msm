@@ -142,7 +142,7 @@ static struct gpiomux_setting synaptics_reset_act_cfg = {
 static struct gpiomux_setting synaptics_reset_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_6MA,
-	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_OUT_LOW,
 };
 
 static struct gpiomux_setting synaptics_int_act_cfg = {
@@ -165,14 +165,14 @@ static struct gpiomux_setting gpio_uart_config = {
 
 static struct msm_gpiomux_config msm_synaptics_configs[] __initdata = {
 	{
-		.gpio = 143,
+		.gpio = 84,
 		.settings = {
 			[GPIOMUX_ACTIVE] = &synaptics_int_act_cfg,
 			[GPIOMUX_SUSPENDED] = &synaptics_int_sus_cfg,
 		},
 	},
 	{
-		.gpio = 145,
+		.gpio = 97,
 		.settings = {
 			[GPIOMUX_ACTIVE] = &synaptics_reset_act_cfg,
 			[GPIOMUX_SUSPENDED] = &synaptics_reset_sus_cfg,
