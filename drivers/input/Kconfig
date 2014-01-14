@@ -153,6 +153,23 @@ config INPUT_EVBUG
 	  To compile this driver as a module, choose M here: the
 	  module will be called evbug.
 
+config INPUT_MOT_VIRTUAL_TOUCHPAD
+        tristate "Input Motorola Webtop Devices"
+        default n
+        help
+          This driver is for a virtual touch pad devices used in Moible
+          View application to translate mouse clicks into touchscreen
+          events or a virutal keyboard and mouse event.  This depends
+          on which module is used as two get created.
+
+          aev is for writing touch screen events
+
+          evfwd is for writing standard mouse and keyboard events
+
+          If unsure, say N.
+
+          To compile this driver as a module, choose M here
+
 config INPUT_APMPOWER
 	tristate "Input Power Event -> APM Bridge" if EXPERT
 	depends on INPUT && APM_EMULATION
