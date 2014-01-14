@@ -178,8 +178,15 @@
 		reg = <0xf991f000 0x1000>,
 			<0xf9904000 0x19000>;
 		reg-names = "core_mem", "bam_mem";
-		interrupts = <0 109 0>, <0 238 0>;
-		interrupt-names = "core_irq", "bam_irq";
+		interrupt-parent = <&uart3>;
+		#address-cells = <0>;
+		interrupts = <0 1 2>;
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 109 0
+				1 &intc 0 238 0
+				2 &msmgpio 10 0>;
 		qcom,bam-tx-ep-pipe-index = <4>;
 		qcom,bam-rx-ep-pipe-index = <5>;
 		qcom,msm-bus,name = "uart3";
