@@ -166,6 +166,8 @@ struct msm_sensor_fn_t {
 		 struct sensor_hdr_update_parm_t *);
 	int (*sensor_ctrl_strobe)(struct msm_sensor_ctrl_t *s_ctrl,
 			uint8_t strobe_enable);
+	int32_t (*sensor_get_exposure_time)
+		(struct msm_sensor_ctrl_t *, uint32_t *);
 };
 
 struct msm_sensor_csi_info {

@@ -681,6 +681,32 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			else
 				rc = -EFAULT;
 				break;
+		case CFG_GET_SNAPSHOTDATA:
+			if (s_ctrl->func_tbl->sensor_get_exposure_time
+							== NULL) {
+				rc = -EFAULT;
+				break;
+			}
+
+			rc = s_ctrl->func_tbl->sensor_get_exposure_time(
+				s_ctrl,
+				&cdata.cfg.data.exposure_time);
+			if (rc < 0) {
+				pr_err("%s: Unable to get exposure time!\n",
+							__func__);
+				break;
+			}
+
+			cdata.cfg.data.flash = -1;
+			cdata.cfg.data.metering_mode = -1;
+			cdata.cfg.data.light_source = -1;
+			if (copy_to_user((void *)argp, &cdata,
+				sizeof(struct sensor_cfg_data))) {
+				pr_err("%s: error copying cfg_data to user",
+							__func__);
+				rc = -EFAULT;
+			}
+			break;
 		default:
 			rc = -EFAULT;
 			break;
