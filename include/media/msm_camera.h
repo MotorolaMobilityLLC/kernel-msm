@@ -1027,7 +1027,8 @@ struct msm_snapshot_pp_status {
 #define CFG_HDR_UPDATE                62
 #define CFG_SET_STROBE                63
 #define CFG_ACTUAOTOR_REG_INIT        64
-#define CFG_MAX                       65
+#define CFG_GET_SNAPSHOTDATA          65
+#define CFG_MAX                       66
 
 
 #define MOVE_NEAR	0
@@ -1650,6 +1651,13 @@ struct msm_cam_clk_setting {
 	uint8_t enable;
 };
 
+struct snapshotdata {
+	uint32_t exposure_time;
+	int light_source;
+	int metering_mode;
+	int flash;
+};
+
 struct sensor_cfg_data {
 	int cfgtype;
 	int mode;
@@ -1696,6 +1704,7 @@ struct sensor_cfg_data {
 		int32_t vision_ae;
 		struct otp_info_t module_info;
 		uint8_t enable_strobe;
+		struct snapshotdata data;
 	} cfg;
 };
 
