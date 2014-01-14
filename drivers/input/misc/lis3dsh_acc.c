@@ -50,6 +50,13 @@ Version History.
 #include	<linux/regulator/consumer.h>
 #include	<linux/input/lis3dsh.h>
 #include	<linux/mutex.h>
+#include	<linux/wakelock.h>
+
+/* TILT_WAKELOCK_HOLD_MS defines time to hold wakelock to allow receiver of
+ * tilt event to grab their own wakelock
+ */
+#define TILT_WAKELOCK_HOLD_MS	(HZ / 2)
+#define TILT_LOCK_NAME		"tilt_detect"
 
 #define LOAD_STATE_PROGRAM1
 #define LOAD_SP1_PARAMETERS
@@ -403,6 +410,8 @@ struct lis3dsh_acc_data {
 
 	int irq1;
 	int irq2;
+
+	struct wake_lock tilt_wakelock;
 
 	/* counts number of times device has gone into TILT */
 	u32 tilt_count;
@@ -1035,6 +1044,12 @@ static void lis3dsh_acc_report_values(struct lis3dsh_acc_data *acc,
 					int *xyz)
 {
 	if (acc->report_events) {
+		/*
+		 * Grab or reprime a temporary wakelock to keep system awake
+		 * long enough for receiver of tilt event to grab it's own
+		 * wakelock
+		 */
+		wake_lock_timeout(&acc->tilt_wakelock, TILT_WAKELOCK_HOLD_MS);
 		input_report_abs(acc->input_dev, ABS_X, xyz[0]);
 		input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
 		input_report_abs(acc->input_dev, ABS_Z, xyz[2]);
@@ -2072,6 +2087,8 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	acc->client = client;
 	i2c_set_clientdata(client, acc);
 
+	wake_lock_init(&acc->tilt_wakelock, WAKE_LOCK_SUSPEND, TILT_LOCK_NAME);
+
 	err = lis3dsh_parse_dt(acc);
 	if (err < 0) {
 		printk("%s: failed getting board data\n", __func__);
@@ -2202,6 +2219,7 @@ err_input_cleanup:
 err_power_off:
 	lis3dsh_acc_device_power_off(acc);
 exit_mutex_unlock:
+	wake_lock_destroy(&acc->tilt_wakelock);
 	mutex_unlock(&acc->lock);
 	kfree(acc);
 exit_check_functionality_failed:
@@ -2234,6 +2252,7 @@ static int lis3dsh_acc_remove(struct i2c_client *client)
 	remove_sysfs_interfaces(&client->dev);
 
 	kfree(acc->pdata);
+	wake_lock_destroy(&acc->tilt_wakelock);
 	mutex_unlock(&acc->lock);
 	kfree(acc);
 
