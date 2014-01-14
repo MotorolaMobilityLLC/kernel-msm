@@ -108,6 +108,15 @@ static int arizona_spk_ev(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, ARIZONA_OUTPUT_ENABLES_1,
 				    1 << w->shift, 1 << w->shift);
 
+		switch (arizona->type) {
+		case WM8280:
+		case WM5110:
+			msleep(10);
+			break;
+		default:
+			break;
+		};
+
 		if (priv->spk_ena_pending) {
 			msleep(75);
 			snd_soc_write(codec, 0x4f5, 0xda);
