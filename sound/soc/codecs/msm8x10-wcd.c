@@ -886,7 +886,22 @@ static int msm8x10_wcd_pa_gain_put(struct snd_kcontrol *kcontrol,
 		ear_pa_gain = 0x00;
 		break;
 	case 1:
+		ear_pa_gain = 0x20;
+		break;
+	case 2:
+		ear_pa_gain = 0x40;
+		break;
+	case 3:
+		ear_pa_gain = 0x60;
+		break;
+	case 4:
 		ear_pa_gain = 0x80;
+		break;
+	case 5:
+		ear_pa_gain = 0xA0;
+		break;
+	case 6:
+		ear_pa_gain = 0xE0;
 		break;
 	default:
 		return -EINVAL;
@@ -1093,9 +1108,10 @@ static int msm8x10_wcd_put_iir_band_audio_mixer(
 }
 
 static const char * const msm8x10_wcd_ear_pa_gain_text[] = {
-		"POS_6_DB", "POS_2_DB"};
+	"POS_6_DB", "POS_4P5_DB", "POS_3_DB", "POS_1P5_DB",
+	"POS_0_DB", "NEG_2P5_DB", "NEG_12_DB"};
 static const struct soc_enum msm8x10_wcd_ear_pa_gain_enum[] = {
-		SOC_ENUM_SINGLE_EXT(2, msm8x10_wcd_ear_pa_gain_text),
+	SOC_ENUM_SINGLE_EXT(7, msm8x10_wcd_ear_pa_gain_text),
 };
 
 /*cut of frequency for high pass filter*/
