@@ -1051,6 +1051,12 @@
 			<&msmgpio 34 0x0>, /* NFC_IRQ */
 			<&msmgpio 32 0x0>; /* REG_PU */
 	};
+
+	tmp108@48 {
+		compatible = "ti,tmp108";
+		reg = <0x48>;
+		gpios = <&msmgpio 144 0>;
+	};
 };
 
 &i2c_3 {
