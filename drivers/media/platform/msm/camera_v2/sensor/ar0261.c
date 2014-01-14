@@ -49,60 +49,126 @@ DEFINE_MSM_MUTEX(ar0261_mut);
 
 static struct msm_sensor_ctrl_t ar0261_s_ctrl;
 
-static struct msm_sensor_power_setting ar0261_power_setting[] = {
+/* Power up sequencing if Aptina devboard is used */
+static struct msm_sensor_power_setting ar0261_power_setting_with_devboard[] = {
 	{
 		.seq_type	= SENSOR_GPIO,
 		.seq_val	= SENSOR_GPIO_RESET,
-		.config_val	= GPIO_OUT_LOW,
-		.delay		= 10,
-	},
-	{
-		.seq_type	= SENSOR_VREG,
-		.seq_val	= CAM_VIO,
-		.config_val	= 0,
-		.delay		= 10,
-	},
-	{
-		.seq_type	= SENSOR_VREG,
-		.seq_val	= CAM_VDIG,
-		.config_val	= 0,
-		.delay		= 10,
-	},
-	{
-		.seq_type	= SENSOR_VREG,
-		.seq_val	= CAM_VANA,
-		.config_val	= 0,
-		.delay		= 10,
-	},
-	{
-		.seq_type	= SENSOR_CLK,
-		.seq_val	= SENSOR_CAM_MCLK,
-		.config_val	= 24000000,
-		.delay		= 20,
-	},
-	{
-		.seq_type	= SENSOR_GPIO,
-		.seq_val	= SENSOR_GPIO_STANDBY,
 		.config_val	= GPIO_OUT_LOW,
 		.delay		= 1,
 	},
 	{
 		.seq_type	= SENSOR_GPIO,
-		.seq_val	= SENSOR_GPIO_STANDBY,
+		.seq_val	= SENSOR_GPIO_VDIG,
+		.config_val	= GPIO_OUT_LOW,
+		.delay		= 1,
+	},
+	{
+		.seq_type	= SENSOR_GPIO,
+		.seq_val	= SENSOR_GPIO_VANA,
+		.config_val	= GPIO_OUT_LOW,
+		.delay		= 1,
+	},
+	{
+		.seq_type	= SENSOR_VREG,
+		.seq_val	= CAM_VIO,
+		.config_val	= 0,
+		.delay		= 5,
+	},
+	/* ar0261 dev boards needs regulator l10 */
+	{
+		.seq_type	= SENSOR_VREG,
+		.seq_val	= CAM_VANA,
+		.config_val	= 0,
+		.delay		= 5,
+	},
+	{
+		.seq_type	= SENSOR_GPIO,
+		.seq_val	= SENSOR_GPIO_VANA,
 		.config_val	= GPIO_OUT_HIGH,
-		.delay		= 30,
+		.delay		= 5,
+	},
+	{
+		.seq_type	= SENSOR_VREG,
+		.seq_val	= CAM_VDIG,
+		.config_val	= 0,
+		.delay		= 1,
+	},
+	{
+		.seq_type	= SENSOR_GPIO,
+		.seq_val	= SENSOR_GPIO_VDIG,
+		.config_val	= GPIO_OUT_HIGH,
+		.delay		= 5,
+	},
+	{
+		.seq_type	= SENSOR_CLK,
+		.seq_val	= SENSOR_CAM_MCLK,
+		.config_val	= 24000000,
+		.delay		= 15,
 	},
 	{
 		.seq_type	= SENSOR_GPIO,
 		.seq_val	= SENSOR_GPIO_RESET,
 		.config_val	= GPIO_OUT_HIGH,
-		.delay		= 40,
+		.delay		= 20,
+	},
+};
+
+/* Power up sequencing if Aptina devboard is not used */
+static struct msm_sensor_power_setting ar0261_power_setting[] = {
+	{
+		.seq_type	= SENSOR_GPIO,
+		.seq_val	= SENSOR_GPIO_RESET,
+		.config_val	= GPIO_OUT_LOW,
+		.delay		= 1,
 	},
 	{
-		.seq_type	= SENSOR_I2C_MUX,
-		.seq_val	= 0,
+		.seq_type	= SENSOR_GPIO,
+		.seq_val	= SENSOR_GPIO_VDIG,
+		.config_val	= GPIO_OUT_LOW,
+		.delay		= 1,
+	},
+	{
+		.seq_type	= SENSOR_GPIO,
+		.seq_val	= SENSOR_GPIO_VANA,
+		.config_val	= GPIO_OUT_LOW,
+		.delay		= 1,
+	},
+	{
+		.seq_type	= SENSOR_VREG,
+		.seq_val	= CAM_VIO,
 		.config_val	= 0,
-		.delay		= 10,
+		.delay		= 5,
+	},
+	{
+		.seq_type	= SENSOR_GPIO,
+		.seq_val	= SENSOR_GPIO_VANA,
+		.config_val	= GPIO_OUT_HIGH,
+		.delay		= 5,
+	},
+	{
+		.seq_type	= SENSOR_VREG,
+		.seq_val	= CAM_VDIG,
+		.config_val	= 0,
+		.delay		= 1,
+	},
+	{
+		.seq_type	= SENSOR_GPIO,
+		.seq_val	= SENSOR_GPIO_VDIG,
+		.config_val	= GPIO_OUT_HIGH,
+		.delay		= 5,
+	},
+	{
+		.seq_type	= SENSOR_CLK,
+		.seq_val	= SENSOR_CAM_MCLK,
+		.config_val	= 24000000,
+		.delay		= 15,
+	},
+	{
+		.seq_type	= SENSOR_GPIO,
+		.seq_val	= SENSOR_GPIO_RESET,
+		.config_val	= GPIO_OUT_HIGH,
+		.delay		= 20,
 	},
 };
 
@@ -231,13 +297,23 @@ static int32_t ar0261_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
 	const struct of_device_id *match;
+	struct msm_sensor_ctrl_t *s_ctrl;
+
 #ifdef SET_ALT_I2C_ADDRESS
 	struct msm_sensor_fn_t *ar0261_sensor_func_tbl;
 #endif
 
 	match = of_match_device(ar0261_dt_match, &pdev->dev);
-
 	if (match) {
+		if (of_property_read_bool(pdev->dev.of_node, "qcom,cam-nondirect") == true) {
+			/* Devboard is used.  Replace the power up sequence */
+			s_ctrl = (struct msm_sensor_ctrl_t *)match->data;
+			s_ctrl->power_setting_array.power_setting =
+				ar0261_power_setting_with_devboard;
+			s_ctrl->power_setting_array.size =
+				ARRAY_SIZE(ar0261_power_setting_with_devboard);
+		}
+
 		rc = msm_sensor_platform_probe(pdev, match->data);
 	} else {
 		pr_err("%s:%d failed match device\n", __func__, __LINE__);
