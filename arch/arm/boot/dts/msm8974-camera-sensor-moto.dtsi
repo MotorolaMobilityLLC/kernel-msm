@@ -25,11 +25,10 @@
 		qcom,vdd-cx-name = "qcom,vdd-cx";
 		cam_vdig-supply = <&pm8941_l3>;
 		cam_vio-supply = <&pm8941_lvs3>;
-		cam_vana-supply = <&pm8941_l10>;
 		qcom,cam-vreg-name = "cam_vdig", "cam_vio";
 		qcom,cam-vreg-type = <0 1>;
 		qcom,cam-vreg-min-voltage = <1225000 0>;
-		qcom,cam-vreg-max-voltage = <1225000 0 >;
+		qcom,cam-vreg-max-voltage = <1225000 0>;
 		qcom,cam-vreg-op-mode = <105000 0>;
 		qcom,gpio-no-mux = <0>;
 		gpios = <&msmgpio 17 0>,
@@ -42,9 +41,9 @@
 		qcom,gpio-req-tbl-num = <0 1 2 3>;
 		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
-					  "CAM_RESET1",
-					  "CAM_STANDBY",
-					  "CAM_PWREN";
+					  "CAM_RESET",
+					  "CAM_AVDD",
+					  "CAM_VDIG";
 		qcom,gpio-set-tbl-num = <1 1>;
 		qcom,gpio-set-tbl-flags = <0 2>;
 		qcom,gpio-set-tbl-delay = <1000 4000>;
@@ -52,6 +51,7 @@
 		qcom,csi-lane-mask = <0x07>;
 		qcom,sensor-position = <1>;
 		qcom,sensor-mode = <1>;
+		qcom,sensor-type = <0>;
 		qcom,cci-master = <1>;
 		status = "ok";
 	};

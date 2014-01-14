@@ -70,3 +70,17 @@
 	regulator-always-on;
 };
 
+&cci {
+
+	qcom,camera@6e {
+		cam_vana-supply = <&pm8941_l10>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
+		qcom,cam-vreg-type = <0 1 0>;
+		qcom,cam-vreg-min-voltage = <1225000 0 2850000>;
+		qcom,cam-vreg-max-voltage = <1225000 0 2850000>;
+		qcom,cam-vreg-op-mode = <105000 0 80000>;
+		qcom,cam-nondirect = <1>;  /* Abbagoochie p2 has to use Aptina dev board
+                                      for front camera */
+	};
+};
+

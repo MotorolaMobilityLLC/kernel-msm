@@ -296,6 +296,15 @@
 		/include/ "batterydata-ed30-lishen.dtsi"
 		/include/ "batterydata-ed30-lg.dtsi"
 	};
+
+	cci: qcom,cci@fda0C000 {
+		gpios = <&msmgpio 21 0>,
+			<&msmgpio 22 0>;
+		qcom,gpio-tbl-num = <0 1>;
+		qcom,gpio-tbl-flags = <1 1>;
+		qcom,gpio-tbl-label = "CCI_I2C_DATA1",
+			"CCI_I2C_CLK1";
+	};
 };
 
 &mdss_mdp {
