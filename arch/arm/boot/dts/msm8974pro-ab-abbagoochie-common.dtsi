@@ -63,17 +63,6 @@
 	status = "ok";
 };
 
-&cci {
-
-	qcom,camera@6e {
-		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
-		qcom,cam-vreg-type = <0 1 0>;
-		qcom,cam-vreg-min-voltage = <1225000 1800000 2850000>;
-		qcom,cam-vreg-max-voltage = <1225000 1800000 2850000>;
-		qcom,cam-vreg-op-mode = <105000 0 80000>;
-	};
-};
-
 &i2c_0 {
 	tfa9890@34 {
 		compatible = "nxp,tfa9890";
