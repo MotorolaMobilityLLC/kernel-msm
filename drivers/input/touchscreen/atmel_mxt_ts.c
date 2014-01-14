@@ -2463,6 +2463,97 @@ static ssize_t mxt_ic_ver_show(struct device *dev,
 			data->config_id);
 }
 
+static ssize_t mxt_drv_irq_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			data->enable_reporting ? "ENABLED" : "DISABLED");
+}
+
+static ssize_t mxt_drv_irq_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	unsigned long value = 0;
+	int err = 0;
+
+	err = kstrtoul(buf, 10, &value);
+	if (err < 0) {
+		printk(KERN_ERR "%s: Failed to convert value.\n", __func__);
+		return -EINVAL;
+	}
+
+	switch (value) {
+	case 0: /* Disable irq */
+		if (data->enable_reporting) {
+			disable_irq(data->irq);
+			data->enable_reporting = false;
+		}
+		break;
+	case 1: /* Enable irq */
+		if (!data->enable_reporting) {
+			enable_irq(data->irq);
+			data->enable_reporting = true;
+		}
+		break;
+	default:
+		printk(KERN_ERR "%s: Invalid value\n", __func__);
+		return -EINVAL;
+	}
+	return count;
+}
+
+static ssize_t mxt_hw_irqstat_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+
+	switch (gpio_get_value(data->pdata->gpio_irq)) {
+	case 0:
+		return scnprintf(buf, PAGE_SIZE, "Low\n");
+	case 1:
+		return scnprintf(buf, PAGE_SIZE, "High\n");
+	default:
+		printk(KERN_ERR "%s: Failed to get GPIO for irq %d.\n",
+				__func__,
+				data->irq);
+		return scnprintf(buf, PAGE_SIZE, "Unknown\n");
+	}
+}
+
+static ssize_t mxt_reset_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int reset;
+	struct mxt_data *data = dev_get_drvdata(dev);
+
+	if (sscanf(buf, "%u", &reset) != 1)
+		return -EINVAL;
+
+	if (reset != 1)
+		return -EINVAL;
+
+	if (data->suspended)
+		mxt_start(data);
+	else {
+		data->enable_reporting = false;
+		disable_irq(data->irq);
+
+		gpio_set_value(data->pdata->gpio_reset, 0);
+		msleep(MXT_REGULATOR_DELAY);
+
+		INIT_COMPLETION(data->bl_completion);
+		gpio_set_value(data->pdata->gpio_reset, 1);
+		mxt_wait_for_completion(data, &data->bl_completion,
+							MXT_POWERON_DELAY);
+		mxt_acquire_irq(data);
+		data->enable_reporting = true;
+	}
+
+	return count;
+}
+
 static ssize_t mxt_show_instance(char *buf, int count,
 				 struct mxt_object *object, int instance,
 				 const u8 *val)
@@ -3185,6 +3276,10 @@ static DEVICE_ATTR(update_fw, S_IWUSR, NULL, mxt_update_fw_store);
 static DEVICE_ATTR(update_cfg, S_IWUSR, NULL, mxt_update_cfg_store);
 static DEVICE_ATTR(doreflash, S_IWUSR, NULL, mxt_doreflash_store);
 static DEVICE_ATTR(forcereflash, S_IWUSR, NULL, mxt_forcereflash_store);
+static DEVICE_ATTR(hw_irqstat, S_IRUGO, mxt_hw_irqstat_show, NULL);
+static DEVICE_ATTR(reset, S_IWUSR, NULL, mxt_reset_store);
+static DEVICE_ATTR(drv_irq, S_IRUGO | S_IWUSR,
+				mxt_drv_irq_show, mxt_drv_irq_store);
 
 static struct attribute *mxt_attrs[] = {
 	&dev_attr_fw_version.attr,
@@ -3199,6 +3294,9 @@ static struct attribute *mxt_attrs[] = {
 	&dev_attr_productinfo.attr,
 	&dev_attr_poweron.attr,
 	&dev_attr_forcereflash.attr,
+	&dev_attr_drv_irq.attr,
+	&dev_attr_hw_irqstat.attr,
+	&dev_attr_reset.attr,
 	NULL
 };
 
@@ -3675,7 +3773,7 @@ static struct of_device_id mxt_match_table[] = {
 
 static struct i2c_driver mxt_driver = {
 	.driver = {
-		.name	= "atmel_mxt_ts",
+		.name	= DRIVER_NAME,
 		.owner	= THIS_MODULE,
 		.of_match_table = mxt_match_table,
 #ifdef CONFIG_PM
