@@ -63,17 +63,33 @@ int mmc_card_sleepawake(struct mmc_host *host, int sleep)
 {
 	struct mmc_command cmd = {0};
 	struct mmc_card *card = host->card;
+	unsigned int timeout_ms = DIV_ROUND_UP(card->ext_csd.sa_timeout, 10000);
 	int err;
 
-	if (sleep)
-		mmc_deselect_cards(host);
+	if (sleep) {
+		err = mmc_deselect_cards(host);
+		if (err)
+			return err;
+	}
 
 	cmd.opcode = MMC_SLEEP_AWAKE;
 	cmd.arg = card->rca << 16;
 	if (sleep)
 		cmd.arg |= 1 << 15;
 
-	cmd.flags = MMC_RSP_R1B | MMC_CMD_AC;
+	/*
+	 * If the max_busy_timeout of the host is specified, validate it against
+	 * the sleep cmd timeout. A failure means we need to prevent the host
+	 * from doing hw busy detection, which is done by converting to a R1
+	 * response instead of a R1B.
+	 */
+	if (host->max_discard_to && (timeout_ms > host->max_discard_to)) {
+		cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+	} else {
+		cmd.flags = MMC_RSP_R1B | MMC_CMD_AC;
+		cmd.cmd_timeout_ms = timeout_ms;
+	}
+
 	err = mmc_wait_for_cmd(host, &cmd, 0);
 	if (err)
 		return err;
@@ -84,8 +100,8 @@ int mmc_card_sleepawake(struct mmc_host *host, int sleep)
 	 * SEND_STATUS command to poll the status because that command (and most
 	 * others) is invalid while the card sleeps.
 	 */
-	if (!(host->caps & MMC_CAP_WAIT_WHILE_BUSY))
-		mmc_delay(DIV_ROUND_UP(card->ext_csd.sa_timeout, 10000));
+	if (!cmd.cmd_timeout_ms || !(host->caps & MMC_CAP_WAIT_WHILE_BUSY))
+		mmc_delay(timeout_ms);
 
 	if (!sleep)
 		err = mmc_select_card(card);
