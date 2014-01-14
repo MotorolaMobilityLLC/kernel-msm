@@ -1860,6 +1860,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 					"Reading peek draw data from msp failed\n");
 				msp430_quickpeek_status_ack(ps_msp430,
 					qp_message, AOD_QP_ACK_INVALID);
+				kfree(qp_message);
 				goto EXIT;
 			}
 			qp_message->buffer_id = read_cmdbuff[0] & 0x3f;
@@ -1885,6 +1886,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 					"Reading peek erase data from msp failed\n");
 				msp430_quickpeek_status_ack(ps_msp430,
 					qp_message, AOD_QP_ACK_INVALID);
+				kfree(qp_message);
 				goto EXIT;
 			}
 			qp_message->x1 = read_cmdbuff[1] | read_cmdbuff[2] << 8;
