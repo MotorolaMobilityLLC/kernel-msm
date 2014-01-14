@@ -39,6 +39,24 @@
 	};
 };
 
+&i2c_1 {
+	synaptics@20 {
+		status = "disabled";
+	};
+
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <84 0>;
+		gpios = <&msmgpio 84 0>, /* IRQ */
+			<&msmgpio 97 0>; /* RESET */
+		touch_vdd-supply = <&pma8084_l19>;
+		synaptics,normal-mode = <1>;
+		synaptics,gpio-config;
+	};
+};
+
 &usb3 {
 	vbus_dwc3-supply = <&smb1357_otg_vreg>;
 };
