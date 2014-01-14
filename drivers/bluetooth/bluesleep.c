@@ -216,18 +216,23 @@ static void bluesleep_sleep_work(struct work_struct *work)
 			return;
 		}
 
-		if (debug_mask & DEBUG_SUSPEND)
-			pr_info("going to sleep...\n");
+		if (msm_hs_tx_empty(bsi->uport)) {
+			if (debug_mask & DEBUG_SUSPEND)
+				pr_info("going to sleep...\n");
 
-		set_bit(BT_ASLEEP, &flags);
+			set_bit(BT_ASLEEP, &flags);
 
-		/*Deactivating UART */
-		hsuart_power(0);
+			/*Deactivating UART */
+			hsuart_power(0);
 
-		/* UART clk is not turned off immediately. Release
-		 * wakelock after 500 ms.
-		 */
-		wake_lock_timeout(&bsi->wake_lock, HZ / 2);
+			/* UART clk is not turned off immediately. Release
+			 * wakelock after 500 ms.
+			 */
+			wake_lock_timeout(&bsi->wake_lock, HZ / 2);
+		} else {
+			mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+			return;
+		}
 	} else if (test_bit(BT_EXT_WAKE, &flags)
 		   && !test_bit(BT_ASLEEP, &flags)) {
 		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
