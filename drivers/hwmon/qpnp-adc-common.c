@@ -186,6 +186,18 @@ static const struct qpnp_vadc_map_pt adcmap_btm_threshold_mmi_neg10[] = {
    their framework which is 0.1DegC. True resolution of 0.1DegC
    will result in the below table size to increase by 10 times */
 static const struct qpnp_vadc_map_pt adcmap_btm_threshold[] = {
+	{-520,	1637},
+	{-510,	1629},
+	{-500,	1620},
+	{-490,	1611},
+	{-480,	1600},
+	{-470,	1589},
+	{-460,	1579},
+	{-450,	1569},
+	{-440,	1558},
+	{-430,	1545},
+	{-420,	1531},
+	{-410,	1520},
 	{-400,	1512},
 	{-390,	1509},
 	{-380,	1506},
