@@ -125,7 +125,7 @@
 	};
 
 	atmel_mxt_ts@4a {
-		compatible = "atmel,mxt-ts";
+		compatible = "atmel,atmel_mxt_ts";
 		reg = <0x4a>;
 		interrupt-parent = <&msmgpio>;
 		interrupts = <62 0>;
