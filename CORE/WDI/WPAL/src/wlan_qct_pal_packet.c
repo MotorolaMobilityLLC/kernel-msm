@@ -144,8 +144,6 @@ VOS_STATUS wpalPacketRXLowResourceCB(vos_pkt_t *pPacket, v_VOID_t *userData)
 
    wpalPacketAvailableCB( (wpt_packet *)pPacket, userData );
 
-   wpalPacketAvailableCB = NULL;
-
    return VOS_STATUS_SUCCESS;
 }
 
