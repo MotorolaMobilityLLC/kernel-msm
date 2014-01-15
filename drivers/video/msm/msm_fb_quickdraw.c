@@ -14,6 +14,7 @@
 #include <linux/delay.h>
 #include <linux/msm_mdp.h>
 #include <linux/msp430.h>
+#include <linux/syscalls.h>
 
 #include "mdp.h"
 #include "mipi_mot.h"
@@ -157,6 +158,23 @@ EXIT:
 	return ret;
 }
 
+static void delete_buffer_fd(struct work_struct *work)
+{
+	struct msmfb_quickdraw_buffer *buffer =
+		container_of(work, struct msmfb_quickdraw_buffer, delete_work);
+
+	pr_debug("%s+: (buffer: %p) (fd: %d)\n", __func__, buffer,
+		buffer->mem_fd);
+
+	if (buffer->mem_fd >= 0)
+		sys_close(buffer->mem_fd);
+	else if (buffer->file)
+		fput(buffer->file);
+	vfree(buffer);
+
+	pr_debug("%s-: (buffer: %p)\n", __func__, buffer);
+}
+
 static void delete_buffer(struct kref *kref)
 {
 	struct msmfb_quickdraw_buffer *buffer =
@@ -168,11 +186,7 @@ static void delete_buffer(struct kref *kref)
 
 	if (buffer->overlay_id != MSMFB_NEW_REQUEST)
 		unset_overlay(mfd, buffer);
-	if (buffer->mem_fd >= 0)
-		put_unused_fd(buffer->mem_fd);
-	if (buffer->file)
-		fput(buffer->file);
-	vfree(buffer);
+	schedule_work(&buffer->delete_work);
 
 	pr_debug("%s-: (buffer: %p)\n", __func__, buffer);
 }
@@ -321,6 +335,7 @@ int msm_fb_quickdraw_create_buffer(struct msmfb_quickdraw_buffer_data *data)
 		}
 		buffer->mem_fd = -1;
 		buffer->overlay_id = MSMFB_NEW_REQUEST;
+		INIT_WORK(&buffer->delete_work, delete_buffer_fd);
 		kref_init(&buffer->kref);
 		list_add_tail(&buffer->list,
 			&msm_fb_quickdraw_buffer_list_head);
