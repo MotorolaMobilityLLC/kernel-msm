@@ -53,6 +53,7 @@ extern int msm_fw_debug;
 extern int msm_fw_debug_mode;
 extern int msm_fw_low_power_mode;
 extern int msm_vidc_hw_rsp_timeout;
+extern int msm_vidc_vpe_csc_601_to_709;
 
 #define VIDC_MSG_PRIO2STRING(__level) ({ \
 	char *__str; \
