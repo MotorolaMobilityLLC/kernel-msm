@@ -2087,8 +2087,6 @@ static int msm_hs_check_clock_off(struct uart_port *uport)
 
 	spin_unlock_irqrestore(&uport->lock, flags);
 
-	/* Reset PNOC Bus Scaling */
-	msm_hs_bus_voting(msm_uport, BUS_RESET);
 	mutex_unlock(&msm_uport->clk_mutex);
 
 	return 1;
