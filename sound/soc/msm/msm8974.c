@@ -55,10 +55,6 @@
 static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int hdmi_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
-#ifdef CONFIG_SND_SOC_TFA9890
-static int tfa9890_stereo;
-#endif
-
 #define SAMPLING_RATE_48KHZ 48000
 #define SAMPLING_RATE_96KHZ 96000
 #define SAMPLING_RATE_192KHZ 192000
@@ -74,7 +70,7 @@ static int msm8974_auxpcm_rate = 8000;
 
 #define WCD9XXX_MBHC_DEF_BUTTONS 8
 #define WCD9XXX_MBHC_DEF_RLOADS 5
-#define TAIKO_EXT_CLK_RATE 24576000
+#define TAIKO_EXT_CLK_RATE 9600000
 
 /* It takes about 13ms for Class-D PAs to ramp-up */
 #define EXT_CLASS_D_EN_DELAY 13000
@@ -184,7 +180,6 @@ static char *msm_sec_auxpcm_gpio_name[MAX_AUXPCM_NAME][2] = {
 };
 
 static char *msm_quat_auxpcm_gpio_name[MAX_AUXPCM_NAME][2] = {
-	{"QUAT_AUXPCM_MCLK",      "qcom,quat-auxpcm-gpio-mclk"},
 	{"QUAT_AUXPCM_SCLK",      "qcom,quat-auxpcm-gpio-sclk"},
 	{"QUAT_AUXPCM_WS",        "qcom,quat-auxpcm-gpio-ws"},
 	{"QUAT_AUXPCM_DOUT",      "qcom,quat-auxpcm-gpio-dout"},
@@ -733,8 +728,10 @@ static const struct snd_soc_dapm_widget msm8974_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic6", NULL),
+#ifdef CONFIG_SND_SOC_WM5110
 	SND_SOC_DAPM_OUTPUT("ACME_I2S1_RX"),
 	SND_SOC_DAPM_INPUT("ACME_I2S1_TX"),
+#endif
 };
 
 #ifdef CONFIG_SND_SOC_TPA6165A2
@@ -1738,6 +1735,9 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		snd_soc_dapm_new_controls(dapm, tpa6165_dapm_widgets,
 				ARRAY_SIZE(tpa6165_dapm_widgets));
 
+		snd_soc_dapm_add_routes(dapm, tpa6165_hp_map,
+				ARRAY_SIZE(tpa6165_hp_map));
+
 		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headphone");
 		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headset Mic");
 		snd_soc_dapm_sync(dapm);
@@ -1990,7 +1990,7 @@ end:
 	return ret;
 }
 
-static struct snd_soc_codec *wm5110_codec;
+
 
 #ifdef CONFIG_SND_SOC_WM5110
 #define MSM8974_AIF1_CHANNELS 2
@@ -1999,7 +1999,7 @@ static struct snd_soc_codec *wm5110_codec;
 					MSM8974_AIF1_SAMPLE_DEPTH * \
 					MSM8974_AIF1_CHANNELS)
 #define WM5110_SYSCLK_RATE (48000 * 1024 * 2)
-
+static struct snd_soc_codec *wm5110_codec;
 static int wm5110_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret;
@@ -2216,7 +2216,8 @@ static int msm8974_mi2s_quat_hw_params(struct snd_pcm_substream *substream,
 	/* if it is msm stub dummy codec dai, it doesnt support this op
 	* causes an unneseccary failure to startup path. */
 	if (strncmp(codec_dai->name, "msm-stub-tx", 11)) {
-		ret = snd_soc_dai_set_sysclk(codec_dai, 0, TAIKO_EXT_CLK_RATE,
+		ret = snd_soc_dai_set_sysclk(codec_dai, 0,
+			Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
 			SND_SOC_CLOCK_IN);
 
 		if (ret < 0) {
@@ -2241,12 +2242,10 @@ static void msm8974_mi2s_quat_shutdown(struct snd_pcm_substream *substream)
 
 	auxpcm_ctrl = pdata->quat_auxpcm_ctrl;
 
-	if (atomic_dec_return(&prim_auxpcm_rsc_ref) == 0)
-		msm_aux_pcm_free_gpios(auxpcm_ctrl);
-
 	if (atomic_dec_return(&quat_auxpcm_rsc_ref) == 0) {
 		pr_info("%s: free mi2s resources\n", __func__);
-		ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_TX,
+		msm_aux_pcm_free_gpios(auxpcm_ctrl);
+		ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX,
 			&lpass_mi2s_disable);
 		if (ret < 0)
 			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
@@ -2275,7 +2274,7 @@ static int msm8974_mi2s_quat_startup(struct snd_pcm_substream *substream)
 			return -EINVAL;
 		}
 
-		ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_TX,
+		ret = afe_set_lpass_clock(AFE_PORT_ID_QUATERNARY_MI2S_RX,
 			&lpass_mi2s_enable);
 		if (ret < 0) {
 			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
@@ -3179,27 +3178,17 @@ static struct snd_soc_dai_link msm8974_common_dai_links[] = {
 		.stream_name = "Quaternary MI2S Capture",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
-		.codec_name     = "wm5110-codec",
-		.codec_dai_name = "wm5110-aif3",
+#ifdef CONFIG_SND_SOC_WM5110
+		.codec_name = "wm5110-codec",
+		.codec_dai_name = "wm5110-slim3",
+#else
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-tx",
+#endif
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ops = &msm8974_mi2s_quat_be_ops,
-	},
-	/* MI2S I2S RX BACK END DAI Link */
-	{
-		.name = LPASS_BE_QUAT_MI2S_RX,
-		.stream_name = "Quaternary MI2S Playback",
-		.cpu_dai_name = "msm-dai-q6-mi2s.3",
-		.platform_name = "msm-pcm-routing",
-		.codec_name     = "wm5110-codec",
-		.codec_dai_name = "wm5110-aif3",
-		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
-		.ops = &msm8974_mi2s_quat_be_ops,
-		.ignore_pmdown_time = 1,
-		.ignore_suspend = 1,
 	},
 #ifdef CONFIG_SND_SOC_WM5110
 	/* WM5110 - ACME chip codec-dsp link */
@@ -3249,47 +3238,43 @@ static struct snd_soc_dai_link msm8974_hdmi_dai_link[] = {
 	},
 };
 
-#if defined(CONFIG_SND_SOC_WM5110) && defined(CONFIG_SND_SOC_TFA9890)
+#ifdef CONFIG_SND_SOC_TFA9890
 static struct snd_soc_dai_link  msm8974_tfa9890_dai_link[] = {
-	/* WM5110 - TFA9890 codec-codec left link */
+	/* MI2S I2S RX BACK END DAI left Link */
 	{
-		.name = "TFA9890_WM5110_RXL",
-		.stream_name = "codec-codec link left Playback",
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
-		.cpu_dai_name = "wm5110-aif1",
 		/* codec name will be updated if it is present in devtree
 		 * to support different codecs name on different i2c bus
 		 */
 		.codec_name = "tfa9890.2-0034",
 		.codec_dai_name = "tfa9890_codec_left",
 		.no_pcm = 1,
-		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
-		.init = &wm5110_tfa9890_init,
-		.ignore_suspend = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8974_mi2s_quat_be_ops,
+		/* dai link has playback support */
 		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
 	},
-	/* WM5110 - TFA9890 codec-codec right link */
+	/* MI2S I2S RX BACK END DAI right Link */
 	{
-		.name = "TFA9890_WM5110_RXR",
-		.stream_name = "codec-codec link right Playback",
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
-		.cpu_dai_name = "wm5110-aif1",
 		.codec_name = "tfa9890.2-0035",
 		.codec_dai_name = "tfa9890_codec_right",
 		.no_pcm = 1,
-		.be_hw_params_fixup = msm_slim_0_rx_be_hw_params_fixup,
-		.init = &wm5110_tfa9890_init,
-		.ignore_suspend = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8974_mi2s_quat_be_ops,
+		/* dai link has playback support */
 		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
 	},
-};
-
-static const struct snd_soc_dapm_route wm5110_tfa9890_left_routes[] = {
-	{"I2S1L", NULL, "AIF1TX1"},
-};
-
-static const struct snd_soc_dapm_route wm5110_tfa9890_right_routes[] = {
-	{"I2S1R", NULL, "AIF1TX2"},
 };
 
 #endif
@@ -3304,54 +3289,8 @@ static struct snd_soc_dai_link msm8974_dai_tfa9890_links[
 				ARRAY_SIZE(msm8974_tfa9890_dai_link)];
 #endif
 
-static const struct snd_soc_dapm_route wm5110_ext_codec_routes[] = {
-	{"ACME_I2S1_RX", NULL, "AIF2TX1"},
-	{"AIF2RX1", NULL, "ACME_I2S1_TX"}
-};
-
-int msm8974_late_probe(struct snd_soc_card *card)
-{
-	int ret;
-	/* Add the wm5110-aif1 to tfa9890 route as
-	   the soc-core does not do this for us
-	   yet.
-	 */
-	dev_err(card->dev, "%s called\n", __func__);
-
-	ret = snd_soc_dapm_add_routes(&card->dapm, wm5110_ext_codec_routes,
-				ARRAY_SIZE(wm5110_ext_codec_routes));
-	if (ret != 0) {
-		dev_err(card->dev, "Failed to add wm5110_ext_codec_routes %d\n",
-			ret);
-		goto out;
-	}
-
-#if defined(CONFIG_SND_SOC_WM5110) && defined(CONFIG_SND_SOC_TFA9890)
-	ret = snd_soc_dapm_add_routes(&card->dapm, wm5110_tfa9890_left_routes,
-				ARRAY_SIZE(wm5110_tfa9890_left_routes));
-	if (ret != 0) {
-		dev_err(card->dev, "Failed to add wm5110_tfa9890_left_routes %d\n",
-			ret);
-		goto out;
-	}
-	if (tfa9890_stereo) {
-		ret = snd_soc_dapm_add_routes(&card->dapm,
-				wm5110_tfa9890_right_routes,
-				ARRAY_SIZE(wm5110_tfa9890_right_routes));
-		if (ret != 0) {
-			dev_err(card->dev, "Failed to add wm5110_tfa9890_right_routes %d\n",
-				ret);
-			goto out;
-		}
-	}
-#endif
-out:
-	return ret;
-}
-
 struct snd_soc_card snd_soc_card_msm8974 = {
 	.name		= "msm8974-taiko-snd-card",
-	.late_probe	= &msm8974_late_probe,
 };
 
 static int msm8974_dtparse_auxpcm(struct platform_device *pdev,
@@ -3562,7 +3501,6 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 	if (of_property_read_bool(pdev->dev.of_node, "qcom,tfa9890-stereo")) {
 		dev_info(&pdev->dev, "%s(): tfa9890 stereo support present\n",
 				__func__);
-		tfa9890_stereo = 1;
 
 		if (of_property_read_string(pdev->dev.of_node,
 				"qcom,tfa9890-right-name",
