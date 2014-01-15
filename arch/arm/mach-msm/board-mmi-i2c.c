@@ -30,6 +30,7 @@
 #include <linux/lp8556.h>
 #include <sound/tfa9890.h>
 #include <linux/ct406.h>
+#include <mach/gpiomux.h>
 
 #define SY32xx_TOUCH_SCL_GPIO       37
 #define SY32xx_TOUCH_SDA_GPIO       36
@@ -247,8 +248,256 @@ static int __init melfas_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
+#define DT_GENERIC_TOUCH_DRIVER        0x00000019
+#define DT_GENERIC_TOUCH_IC            0x0000001A
+#define DT_GENERIC_TOUCH_FIRMWARE      0x0000001B
+#define DT_GENERIC_TOUCH_FRAMEWORK     0x0000001C
 #define DT_GENERIC_TOUCH_TDAT          0x0000001E
 #define DT_GENERIC_TOUCH_TGPIO         0x0000001F
+
+
+static int __init mmi_touch_driver_settings_init(
+		struct touch_platform_data *tpdata,
+		struct device_node *node)
+{
+	int err = 0;
+	const void *prop;
+	int size = 0;
+
+	prop = of_get_property(node, "touch_driver_flags", &size);
+	if (prop != NULL && size > 0)
+		tpdata->flags = *((uint16_t *) prop);
+	else
+		tpdata->flags = 0;
+
+	return err;
+}
+
+
+static int __init mmi_touch_ic_settings_init(
+		struct touch_platform_data *tpdata,
+		struct device_node *node)
+{
+	int err = 0;
+	const void *prop;
+	int size = 0;
+	const void *list_prop;
+	int list_size = 0;
+	char *prop_name = NULL;
+	int  prop_name_length;
+	char *str_num = NULL;
+	const char str1[] = "tsett";
+	const char str2[] = "_tag";
+	uint8_t tsett_num;
+	int i = 0;
+
+	prop = of_get_property(node, "i2c_addrs", &size);
+	if (prop == NULL || size <= 0) {
+		pr_err("%s: I2C address data is missing.\n", __func__);
+		err = -ENOENT;
+		goto touch_ic_settings_init_fail;
+	} else if (size > ARRAY_SIZE(tpdata->addr)) {
+		pr_err("%s: Too many I2C addresses provided.\n", __func__);
+		err = -E2BIG;
+		goto touch_ic_settings_init_fail;
+	}
+
+	for (i = 0; i < size; i++)
+		tpdata->addr[i] = ((uint8_t *)prop)[i];
+
+	for (i = size; i < ARRAY_SIZE(tpdata->addr); i++)
+		tpdata->addr[i] = 0;
+
+	list_prop = of_get_property(node, "tsett_list", &list_size);
+	if (list_prop == NULL || size <= 0) {
+		pr_err("%s: No settings list provided.\n", __func__);
+		err = -ENOENT;
+		goto touch_ic_settings_init_fail;
+	}
+
+	prop_name_length = sizeof(str1) + (sizeof(char) * 4) + sizeof(str2);
+	prop_name = kzalloc(prop_name_length, GFP_KERNEL);
+	if (prop_name == NULL) {
+		pr_err("%s: No memory for prop_name.\n", __func__);
+		err = -ENOMEM;
+		goto touch_ic_settings_init_fail;
+	}
+
+	str_num = kzalloc(sizeof(char) * 4, GFP_KERNEL);
+	if (str_num == NULL) {
+		pr_err("%s: No memory for str_num.\n", __func__);
+		err = -ENOMEM;
+		goto touch_ic_settings_init_fail;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(tpdata->sett); i++)
+		tpdata->sett[i] = NULL;
+
+	for (i = 0; i < list_size; i++) {
+		tsett_num = ((uint8_t *)list_prop)[i];
+		err = snprintf(str_num, 3, "%hu", tsett_num);
+		if (err < 0) {
+			pr_err("%s: Error in snprintf converting %hu.\n",
+					__func__, tsett_num);
+			goto touch_ic_settings_init_fail;
+		}
+		err = 0;
+		prop_name[0] = '\0';
+		strlcat(prop_name, str1, prop_name_length);
+		strlcat(prop_name, str_num, prop_name_length);
+
+		prop = of_get_property(node, prop_name, &size);
+		if (prop == NULL || size <= 0) {
+			pr_err("%s: Entry %s from tsett_list is missing.\n",
+					__func__, prop_name);
+			err = -ENOENT;
+			goto touch_ic_settings_init_fail;
+		}
+
+		tpdata->sett[tsett_num] = kzalloc(sizeof(struct touch_settings),
+				GFP_KERNEL);
+		if (tpdata->sett[tsett_num] == NULL) {
+			pr_err("%s: Unable to create tsett node %s.\n",
+					__func__, str_num);
+			err = -ENOMEM;
+			goto touch_ic_settings_init_fail;
+		}
+
+		tpdata->sett[tsett_num]->size = size;
+		tpdata->sett[tsett_num]->data = kmemdup(prop, size,
+				GFP_KERNEL);
+
+		if (!tpdata->sett[tsett_num]->data) {
+			pr_err("%s: unable to allocate memory for sett data\n",
+					__func__);
+			err = -ENOMEM;
+			goto touch_ic_settings_init_fail;
+		}
+
+		strlcat(prop_name, str2, prop_name_length);
+
+		prop = of_get_property(node, prop_name, &size);
+		if (prop != NULL && size > 0)
+			tpdata->sett[tsett_num]->tag = *((uint8_t *)prop);
+		else
+			tpdata->sett[tsett_num]->tag = 0;
+	}
+
+touch_ic_settings_init_fail:
+	kfree(prop_name);
+	kfree(str_num);
+
+	return err;
+}
+
+static int __init mmi_touch_firmware_init(
+		struct touch_platform_data *tpdata,
+		struct device_node *node)
+{
+	int err = 0;
+	const void *prop;
+	int size = 0;
+
+	tpdata->fw =
+		kzalloc(sizeof(struct touch_firmware), GFP_KERNEL);
+	if (tpdata->fw == NULL) {
+		pr_err("%s: Unable to create fw node.\n", __func__);
+		err = -ENOMEM;
+		goto touch_firmware_init_fail;
+	}
+
+	prop = of_get_property(node, "fw_image", &size);
+	if (prop == NULL || size <= 0) {
+		pr_err("%s: Firmware image is missing.\n", __func__);
+		err = -ENOENT;
+		goto touch_firmware_init_fail;
+	} else {
+		tpdata->fw->img = kmemdup(prop, size, GFP_KERNEL);
+		tpdata->fw->size = size;
+
+		if (!tpdata->fw->img) {
+			pr_err("%s: unable to allocate memory for FW image\n",
+					__func__);
+			err = -ENOMEM;
+			goto touch_firmware_init_fail;
+		}
+	}
+
+	prop = of_get_property(node, "fw_version", &size);
+	if (prop == NULL || size <= 0) {
+		pr_err("%s: Firmware version is missing.\n", __func__);
+		err = -ENOENT;
+		goto touch_firmware_init_fail;
+	} else {
+		tpdata->fw->ver = kmemdup(prop, size, GFP_KERNEL);
+		tpdata->fw->vsize = size;
+
+		if (!tpdata->fw->ver) {
+			kfree(tpdata->fw->img);
+
+			pr_err("%s: unable to allocate memory for FW version\n",
+					__func__);
+			err = -ENOMEM;
+			goto touch_firmware_init_fail;
+		}
+	}
+
+touch_firmware_init_fail:
+	return err;
+}
+
+
+static int __init mmi_touch_framework_settings_init(
+		struct touch_platform_data *tpdata,
+		struct device_node *node)
+{
+	int err = 0;
+	const void *prop;
+	int size = 0;
+
+	tpdata->frmwrk =
+		kzalloc(sizeof(struct touch_framework), GFP_KERNEL);
+	if (tpdata->frmwrk == NULL) {
+		pr_err("%s: Unable to create frmwrk node.\n",
+			__func__);
+		err = -ENOMEM;
+		goto touch_framework_settings_fail;
+	}
+
+	prop = of_get_property(node, "abs_params", &size);
+	if (prop == NULL || size <= 0) {
+		pr_err("%s: Abs parameters are missing.\n", __func__);
+		err = -ENOENT;
+		goto touch_framework_settings_fail;
+	} else {
+		tpdata->frmwrk->abs = kmemdup(prop, size, GFP_KERNEL);
+		tpdata->frmwrk->size = size/sizeof(uint16_t);
+
+		if (!tpdata->frmwrk->abs) {
+			pr_err("%s: unable to allocate memory for abs_params\n",
+					__func__);
+			err = -ENOMEM;
+			goto touch_framework_settings_fail;
+		}
+	}
+
+	tpdata->frmwrk->enable_vkeys = of_property_read_bool(
+									node,
+									"enable_touch_vkeys");
+
+	if (!tpdata->frmwrk->enable_vkeys) {
+		kfree(tpdata->frmwrk->abs);
+
+		pr_err("%s: unable to allocate memory for enable_touch_vkeys\n",
+				__func__);
+		err = -ENOMEM;
+		goto touch_framework_settings_fail;
+	}
+
+touch_framework_settings_fail:
+	return err;
+}
+
 
 static int __init mmi_touch_tdat_init(
 		struct touch_platform_data *tpdata,
@@ -293,6 +542,57 @@ touch_gpio_init_fail:
 	return rv;
 }
 
+
+static int __init mmi_touch_panel_init(
+		struct touch_platform_data *tpdata,
+		struct device_node *node)
+{
+	int err = 0;
+	struct device_node *child;
+
+	for_each_child_of_node(node, child) {
+		int type;
+		if (!of_property_read_u32(child, "type", &type)) {
+			switch (type) {
+			case DT_GENERIC_TOUCH_DRIVER:
+				err = mmi_touch_driver_settings_init(tpdata,
+									child);
+				break;
+
+			case DT_GENERIC_TOUCH_IC:
+				err = mmi_touch_ic_settings_init(tpdata, child);
+				break;
+
+			case DT_GENERIC_TOUCH_FIRMWARE:
+				err = mmi_touch_firmware_init(tpdata, child);
+				break;
+
+			case DT_GENERIC_TOUCH_FRAMEWORK:
+				err = mmi_touch_framework_settings_init(tpdata,
+									child);
+				break;
+
+			case DT_GENERIC_TOUCH_TDAT:
+				err = mmi_touch_tdat_init(tpdata, child);
+				break;
+
+			case DT_GENERIC_TOUCH_TGPIO:
+				err = mmi_touch_tgpio_init(tpdata, child);
+				break;
+			}
+		}
+
+		if (err) {
+			pr_err(KERN_ERR "%s: Failure Noticed. Bailing out.\n",
+					__func__);
+			break;
+		}
+	}
+
+	return err;
+}
+
+
 static int __init atmxt_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *node)
 {
@@ -330,6 +630,107 @@ static int __init atmxt_init_i2c_device(struct i2c_board_info *info,
 out:
 	return rv;
 }
+
+#define CYTT_GPIO_INTR  46
+#define CYTT_GPIO_RST   50
+#define CYTT_GPIO_ENABLE        52
+
+static struct gpiomux_setting cyts3_resout_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting cyts3_resout_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting cyts3_sleep_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting cyts3_sleep_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting cyts3_int_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting cyts3_int_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm8960_cyts3_configs[] = {
+	{
+		.gpio = CYTT_GPIO_INTR,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cyts3_int_act_cfg,
+			[GPIOMUX_SUSPENDED] = &cyts3_int_sus_cfg,
+		},
+	},
+	{
+		.gpio = CYTT_GPIO_ENABLE,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cyts3_sleep_act_cfg,
+			[GPIOMUX_SUSPENDED] = &cyts3_sleep_sus_cfg,
+		},
+	},
+	{
+		.gpio = CYTT_GPIO_RST,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cyts3_resout_act_cfg,
+			[GPIOMUX_SUSPENDED] = &cyts3_resout_sus_cfg,
+		},
+	},
+};
+
+static int __init cyttsp3_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *node)
+{
+	int rv = 0;
+	struct touch_platform_data *tpdata;
+
+	pr_info("%s Cypress TTSP3: platform init for %s\n",
+		__func__, info->type);
+
+	tpdata = kzalloc(sizeof(struct touch_platform_data), GFP_KERNEL);
+	if (!tpdata) {
+		pr_err("%s: Unable to create platform data.\n", __func__);
+		rv = -ENOMEM;
+		goto out;
+	}
+
+	info->platform_data = tpdata;
+
+	tpdata->gpio_enable    = CYTT_GPIO_ENABLE;
+	tpdata->gpio_reset     = CYTT_GPIO_RST;
+	tpdata->gpio_interrupt = CYTT_GPIO_INTR;
+
+	msm_gpiomux_install(msm8960_cyts3_configs,
+			ARRAY_SIZE(msm8960_cyts3_configs));
+
+	if (mmi_touch_panel_init(tpdata, node) != 0) {
+		pr_err("%s:FATAL! No touch devtree params found\n", __func__);
+		kfree(tpdata);
+		info->platform_data = NULL;
+		rv = -ENOMEM;
+	}
+
+out:
+	return rv;
+}
+
 
 static struct oem_camera_sensor_data s5k5b3g_oem_data;
 
@@ -860,6 +1261,7 @@ struct mmi_apq_i2c_lookup {
 struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00270000, melfas_init_i2c_device},  /* Melfas_MMS100 */
 	{0x00260001, atmxt_init_i2c_device},   /* Atmel_MXT */
+	{0x00040002, cyttsp3_init_i2c_device}, /* Cypress_CYTTSP3 */
 	{0x00290000, ov8820_init_i2c_device},  /* OV8820 8MP Bayer Sensor */
 	{0x00290001, ov7736_init_i2c_device},  /* ov7736 yuv Sensor */
 	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
