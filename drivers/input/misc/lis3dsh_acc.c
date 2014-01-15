@@ -837,6 +837,14 @@ static int lis3dsh_clear_irq2(struct lis3dsh_acc_data *acc)
 	return lis3dsh_acc_i2c_read(acc, &val, 1);
 }
 
+static int is_tilt_detect_enabled(struct lis3dsh_acc_data *acc)
+{
+	/* If external INT1 is enabled, we're setup for TILT detect */
+	if (atomic_read(&acc->int1_enabled))
+		return 1;
+	return 0;
+}
+
 static irqreturn_t lis3dsh_acc_isr_threaded(int irq, void *dev)
 {
 	struct lis3dsh_acc_data *acc = dev;
@@ -844,6 +852,8 @@ static irqreturn_t lis3dsh_acc_isr_threaded(int irq, void *dev)
 	u8 val = 0;
 
 	mutex_lock(&acc->lock);
+	if (is_tilt_detect_enabled(acc))
+		dev_info(&acc->client->dev, "DEVICE IN TILT\n");
 	val = LIS3DSH_INT_STATUS_REG;
 	err = lis3dsh_acc_i2c_read(acc, &val, 1);
 	if (err) {
