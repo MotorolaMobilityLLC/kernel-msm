@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -51,13 +51,8 @@ void sme_FTOpen(tHalHandle hHal)
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     eHalStatus     status = eHAL_STATUS_SUCCESS;
 
-    pMac->ft.ftSmeContext.auth_ft_ies = NULL;                        
-    pMac->ft.ftSmeContext.auth_ft_ies_length = 0;                        
-
-    pMac->ft.ftSmeContext.reassoc_ft_ies = NULL;                        
-    pMac->ft.ftSmeContext.reassoc_ft_ies_length = 0;       
-    pMac->ft.ftSmeContext.setFTPreAuthState = FALSE;
-    pMac->ft.ftSmeContext.setFTPTKState = FALSE;
+    //Clear the FT Context.
+    sme_FTReset(hHal);
     status = vos_timer_init(&pMac->ft.ftSmeContext.preAuthReassocIntvlTimer,VOS_TIMER_TYPE_SW,
                             sme_PreauthReassocIntvlTimerCallback, (void *)pMac);
 
@@ -66,11 +61,6 @@ void sme_FTOpen(tHalHandle hHal)
         smsLog(pMac, LOGE, FL("Preauth Reassoc interval Timer allocation failed"));
         return;
     }                 
-
-    pMac->ft.ftSmeContext.psavedFTPreAuthRsp = NULL;                        
-    pMac->ft.ftSmeContext.pCsrFTKeyInfo = NULL;
-
-    pMac->ft.ftSmeContext.FTState = eFT_START_READY;
 }
 
 /*--------------------------------------------------------------------------
@@ -79,42 +69,8 @@ void sme_FTOpen(tHalHandle hHal)
 void sme_FTClose(tHalHandle hHal)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-
-    if (pMac->ft.ftSmeContext.auth_ft_ies != NULL)
-    {
-#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-        smsLog( pMac, LOGE, FL(" Freeing %p and setting to NULL"),
-            pMac->ft.ftSmeContext.auth_ft_ies);
-#endif
-        vos_mem_free(pMac->ft.ftSmeContext.auth_ft_ies);
-        pMac->ft.ftSmeContext.auth_ft_ies = NULL;
-    }
-    pMac->ft.ftSmeContext.auth_ft_ies_length = 0;                        
-
-    if (pMac->ft.ftSmeContext.reassoc_ft_ies != NULL)
-    {
-#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-        smsLog( pMac, LOGE, FL(" Freeing %p and setting to NULL"),
-            pMac->ft.ftSmeContext.reassoc_ft_ies);
-#endif
-        vos_mem_free(pMac->ft.ftSmeContext.reassoc_ft_ies);
-        pMac->ft.ftSmeContext.reassoc_ft_ies = NULL;                        
-    }
-    pMac->ft.ftSmeContext.reassoc_ft_ies_length = 0;                        
-
-    pMac->ft.ftSmeContext.FTState = eFT_START_READY;
-    vos_mem_zero(pMac->ft.ftSmeContext.preAuthbssId, ANI_MAC_ADDR_SIZE);
-
-    if (pMac->ft.ftSmeContext.psavedFTPreAuthRsp != NULL)
-    {
-#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-        smsLog( pMac, LOGE, FL("Freeing %p and setting to NULL"),
-            pMac->ft.ftSmeContext.psavedFTPreAuthRsp);
-#endif
-        vos_mem_free(pMac->ft.ftSmeContext.psavedFTPreAuthRsp);
-        pMac->ft.ftSmeContext.psavedFTPreAuthRsp = NULL;                        
-    }
-
+    //Clear the FT Context.
+    sme_FTReset(hHal);
     vos_timer_destroy(&pMac->ft.ftSmeContext.preAuthReassocIntvlTimer);
 }
 
@@ -516,6 +472,60 @@ void sme_PreauthReassocIntvlTimerCallback(void *context)
     csrNeighborRoamRequestHandoff(pMac);
 #endif
     return;
+}
+
+/*--------------------------------------------------------------------------
+  Reset the FT context.
+  ------------------------------------------------------------------------*/
+void sme_FTReset(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    if (pMac == NULL)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, FL("pMac is NULL"));
+        return;
+    }
+    if (pMac->ft.ftSmeContext.auth_ft_ies != NULL)
+    {
+#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
+        smsLog( pMac, LOGE, FL(" Freeing FT Auth IE %p and setting to NULL"),
+            pMac->ft.ftSmeContext.auth_ft_ies);
+#endif
+        vos_mem_free(pMac->ft.ftSmeContext.auth_ft_ies);
+    }
+    pMac->ft.ftSmeContext.auth_ft_ies = NULL;
+    pMac->ft.ftSmeContext.auth_ft_ies_length = 0;
+
+    if (pMac->ft.ftSmeContext.reassoc_ft_ies != NULL)
+    {
+#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
+        smsLog( pMac, LOGE, FL(" Freeing FT Reassoc  IE %p and setting to NULL"),
+            pMac->ft.ftSmeContext.auth_ft_ies);
+#endif
+        vos_mem_free(pMac->ft.ftSmeContext.reassoc_ft_ies);
+    }
+    pMac->ft.ftSmeContext.reassoc_ft_ies = NULL;
+    pMac->ft.ftSmeContext.reassoc_ft_ies_length = 0;
+
+    if (pMac->ft.ftSmeContext.psavedFTPreAuthRsp != NULL)
+    {
+#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
+        smsLog( pMac, LOGE, FL("Freeing FtPreAuthRsp %p and setting to NULL"),
+            pMac->ft.ftSmeContext.psavedFTPreAuthRsp);
+#endif
+        vos_mem_free(pMac->ft.ftSmeContext.psavedFTPreAuthRsp);
+    }
+    pMac->ft.ftSmeContext.psavedFTPreAuthRsp = NULL;
+    pMac->ft.ftSmeContext.setFTPreAuthState = FALSE;
+    pMac->ft.ftSmeContext.setFTPTKState = FALSE;
+
+    if (pMac->ft.ftSmeContext.pCsrFTKeyInfo != NULL)
+    {
+        vos_mem_free(pMac->ft.ftSmeContext.pCsrFTKeyInfo);
+    }
+    pMac->ft.ftSmeContext.pCsrFTKeyInfo = NULL;
+    vos_mem_zero(pMac->ft.ftSmeContext.preAuthbssId, ANI_MAC_ADDR_SIZE);
+    pMac->ft.ftSmeContext.FTState = eFT_START_READY;
 }
 /* End of File */
 #endif /* WLAN_FEATURE_VOWIFI_11R */
