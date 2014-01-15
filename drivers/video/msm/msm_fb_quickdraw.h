@@ -26,6 +26,7 @@ struct msmfb_quickdraw_buffer {
 	wait_queue_head_t wait_queue;
 	struct list_head list;
 	struct kref kref;
+	struct work_struct delete_work;
 };
 
 #ifdef CONFIG_FB_MSM_QUICKDRAW
