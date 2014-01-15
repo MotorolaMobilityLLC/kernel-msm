@@ -64,6 +64,7 @@ struct max17050_chip {
 	struct work_struct work;
 	struct mutex mutex;
 	struct timespec next_update_time;
+	bool suspended;
 
 	/* values read from chip */
 	u16 status;
@@ -447,6 +448,9 @@ static int max17050_get_property(struct power_supply *psy,
 	struct timespec now;
 	s16 s16_value;
 
+	if (chip->suspended)
+		return -EAGAIN;
+
 	ktime_get_ts(&now);
 	monotonic_to_bootbased(&now);
 	if (timespec_compare(&now, &chip->next_update_time) >= 0) {
@@ -718,6 +722,36 @@ static int max17050_remove(struct i2c_client *client)
 	return 0;
 }
 
+static int max17050_pm_prepare(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct max17050_chip *chip = i2c_get_clientdata(client);
+
+	chip->suspended = true;
+	if (chip->client->irq) {
+		disable_irq(chip->client->irq);
+		enable_irq_wake(chip->client->irq);
+	}
+	return 0;
+}
+
+static void max17050_pm_complete(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct max17050_chip *chip = i2c_get_clientdata(client);
+
+	chip->suspended = false;
+	if (chip->client->irq) {
+		disable_irq_wake(chip->client->irq);
+		enable_irq(chip->client->irq);
+	}
+}
+
+static const struct dev_pm_ops max17050_pm_ops = {
+	.prepare = max17050_pm_prepare,
+	.complete = max17050_pm_complete,
+};
+
 static const struct of_device_id max17050_dt_match[] = {
 	{ .compatible = "maxim,max17050" },
 	{ },
@@ -735,6 +769,7 @@ static struct i2c_driver max17050_i2c_driver = {
 		.name = "max17050",
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(max17050_dt_match),
+		.pm = &max17050_pm_ops,
 	},
 	.probe = max17050_probe,
 	.remove = max17050_remove,
