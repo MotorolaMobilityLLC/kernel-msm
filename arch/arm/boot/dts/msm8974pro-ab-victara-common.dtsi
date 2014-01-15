@@ -131,6 +131,16 @@
 			qcom,msm-mi2s-tx-lines = <1>;
 		};
 	};
+
+	factory_support {
+		compatible = "mmi,factory-support-kungpow";
+		gpios = <&pm8941_gpios 36 0x0>, /* GPIOF_OUT_INIT_LOW */
+			<&pm8941_mpps 5 0x1>, /* GPIOF_IN */
+			<&pm8941_mpps 6 0x1>; /* GPIOF_IN */
+		gpio-names = "factory_kill_disable",
+				"factory_cable_detect",
+				"factory_warn";
+	};
 };
 
 &slim_msm {
