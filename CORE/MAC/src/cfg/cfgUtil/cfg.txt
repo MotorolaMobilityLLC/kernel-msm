@@ -4650,6 +4650,18 @@ HAL
 *
 *
 
+* Debug p2p remain on channel
+*            
+WNI_CFG_DEBUG_P2P_REMAIN_ON_CHANNEL    I    4    7
+V    RW    NP       
+NONE
+0    1    0             
+V    RW    NP
+NONE
+0    1    0  
+*
+*            
+
 * RMC action period frequency (milli seconds)
 *
 WNI_CFG_RMC_ACTION_PERIOD_FREQUENCY    I    4    7
@@ -4687,7 +4699,7 @@ HAL
 *
 
 *Rssi Hysteresis threshold for RSSI-RTT
-*
+* 
 WNI_CFG_ASD_RTT_RSSI_HYST_THRESHOLD    I    4    7
 V    RW    NP
 HAL
@@ -4695,17 +4707,5 @@ HAL
 V    RW    NP
 HAL
 0    100    0
-*
-*
-
-* Debug p2p remain on channel
-*
-WNI_CFG_DEBUG_P2P_REMAIN_ON_CHANNEL    I    4    7
-V    RW    NP
-NONE
-0    1    0
-V    RW    NP
-NONE
-0    1    0
 *
 *
