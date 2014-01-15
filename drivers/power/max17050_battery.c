@@ -493,19 +493,6 @@ static int max17050_get_property(struct power_supply *psy,
 	return 0;
 }
 
-/**
- * max17050_interrupt_handler - dummy handler function
- *
- * This is to satisfy the request_threaded_irq() API so that the irq
- * handler is called in interrupt context.
-*/
-static irqreturn_t max17050_interrupt_handler(int id, void *dev)
-{
-	pr_debug("%s: interrupt occured, ID = %d\n", __func__, id);
-
-	return IRQ_HANDLED;
-}
-
 static irqreturn_t max17050_interrupt(int id, void *dev)
 {
 	struct max17050_chip *chip = dev;
@@ -687,14 +674,16 @@ static int max17050_probe(struct i2c_client *client,
 		chip->battery.num_properties -= 1;
 
 	if (client->irq) {
-		ret = request_threaded_irq(client->irq, max17050_interrupt_handler,
-						max17050_interrupt,
-						IRQF_TRIGGER_FALLING,
-						chip->battery.name, chip);
-		if (ret)
+		ret = request_threaded_irq(client->irq, NULL,
+					max17050_interrupt,
+					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+					chip->battery.name, chip);
+		if (ret) {
 			dev_err(&client->dev, "cannot enable irq");
-		else
+			return ret;
+		} else {
 			enable_irq_wake(client->irq);
+		}
 	}
 
 	INIT_WORK(&chip->work, max17050_init_worker);
