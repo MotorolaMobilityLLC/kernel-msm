@@ -88,6 +88,7 @@ struct mmi_unit_info {
 extern struct msm_camera_sensor_info msm_camera_sensor_s5k5b3g_data;
 extern struct msm_camera_sensor_info msm_camera_sensor_ov8835_data;
 extern struct msm_camera_sensor_info msm_camera_sensor_ov8820_data;
+extern struct msm_camera_sensor_info msm_camera_sensor_ov7736_data;
 extern struct msm_camera_sensor_info msm_camera_sensor_ar0834_data;
 extern struct msm_camera_sensor_info msm_camera_sensor_ov10820_data;
 

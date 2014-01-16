@@ -196,6 +196,30 @@ struct msm_camera_sensor_info msm_camera_sensor_ov8820_data = {
 	.sensor_type = BAYER_SENSOR,
 	.actuator_info = &msm_act_main_cam_0_dw9714_info,
 };
+static struct msm_camera_sensor_flash_data flash_ov7736 = {
+	.flash_type = MSM_CAMERA_FLASH_NONE
+};
+
+static struct msm_camera_csi_lane_params ov7736_csi_lane_params = {
+	.csi_lane_assign = 0xE4,
+	.csi_lane_mask = 0x1,
+};
+
+static struct msm_camera_sensor_platform_info sensor_board_info_ov7736 = {
+	.mount_angle = 270,
+	.csi_lane_params = &ov7736_csi_lane_params,
+};
+
+struct msm_camera_sensor_info msm_camera_sensor_ov7736_data = {
+	.sensor_name          = "ov7736",
+	.pdata                = &msm_camera_csi_device_data[1],
+	.flash_data           = &flash_ov7736,
+	.sensor_platform_info = &sensor_board_info_ov7736,
+	.csi_if               = 1,
+	.camera_type          = FRONT_CAMERA_2D,
+	.sensor_type          = YUV_SENSOR,
+};
+
 
 static struct msm_camera_csi_lane_params ov10820_csi_lane_params = {
 	.csi_lane_assign = 0xE4,
