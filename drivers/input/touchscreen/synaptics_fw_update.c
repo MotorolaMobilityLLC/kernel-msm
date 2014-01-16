@@ -348,8 +348,12 @@ static void parse_header(void)
 	memcpy(img->product_info, data->product_info,
 		sizeof(data->product_info));
 
+#ifdef CHECK_BUILD_INFO
 	img->is_contain_build_info =
 		(data->options_firmware_id == (1 << OPTION_BUILD_INFO));
+#else
+	img->is_contain_build_info = 0;
+#endif
 
 	if (img->is_contain_build_info) {
 		img->package_id = (data->pkg_id_msb << 8) |
@@ -707,6 +711,7 @@ static enum flash_area fwu_go_nogo(void)
 	struct i2c_client *i2c_client = fwu->rmi4_data->i2c_client;
 	struct f01_device_status f01_device_status;
 	struct image_content *img = &fwu->image_content;
+	int config_flag = 0;
 
 	if (fwu->force_update) {
 		flash_area = UI_FIRMWARE;
@@ -802,7 +807,8 @@ static enum flash_area fwu_go_nogo(void)
 			dev_err(&i2c_client->dev,
 				"No valid PR number (PRxxxxxxx)" \
 				"found in image file name...\n");
-			goto exit;
+			config_flag = 1;
+			goto check_config_id;
 		}
 
 		strptr += 2;
@@ -834,6 +840,8 @@ static enum flash_area fwu_go_nogo(void)
 			__func__);
 		goto exit;
 	}
+
+check_config_id:
 
 	/* device config id */
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
@@ -867,7 +875,10 @@ static enum flash_area fwu_go_nogo(void)
 		__func__, deviceConfigID, imageConfigID);
 
 	if (imageConfigID > deviceConfigID) {
-		flash_area = CONFIG_AREA;
+		if (config_flag)
+			flash_area = UI_FIRMWARE;
+		else
+			flash_area = CONFIG_AREA;
 		goto exit;
 	}
 exit:
@@ -1653,10 +1664,16 @@ int synaptics_fw_updater(void)
 
 	fwu->config_area = UI_CONFIG_AREA;
 
+	if (fwu->fn_ptr->enable)
+		fwu->fn_ptr->enable(fwu->rmi4_data, false);
+
 	retval = fwu_start_reflash();
 	fwu->rmi4_data->fw_updating = false;
 
 	synaptics_rmi4_update_debug_info();
+
+	if (fwu->fn_ptr->enable)
+		fwu->fn_ptr->enable(fwu->rmi4_data, true);
 
 	return retval;
 }
@@ -2103,7 +2120,17 @@ static struct device_attribute attrs[] = {
 
 static void synaptics_rmi4_fwu_work(struct work_struct *work)
 {
+	struct synaptics_rmi4_fwu_handle *fwu =
+		container_of(to_delayed_work(work),
+			struct synaptics_rmi4_fwu_handle, fwu_work);
+
+	if (fwu->fn_ptr->enable)
+		fwu->fn_ptr->enable(fwu->rmi4_data, false);
+
 	fwu_start_reflash();
+
+	if (fwu->fn_ptr->enable)
+		fwu->fn_ptr->enable(fwu->rmi4_data, true);
 }
 
 static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
