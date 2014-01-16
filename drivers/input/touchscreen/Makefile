@@ -6,6 +6,8 @@
 
 wm97xx-ts-y := wm97xx-core.o
 
+obj-$(CONFIG_TOUCHSCREEN_CYTTSP3)       += cyttsp3_core.o
+obj-$(CONFIG_TOUCHSCREEN_CYTTSP3)       += cyttsp3_i2c.o
 obj-$(CONFIG_TOUCHSCREEN_SY3200)	+= sy3200.o
 obj-$(CONFIG_TOUCHSCREEN_SY3400)	+= sy3400.o
 obj-$(CONFIG_TOUCHSCREEN_88PM860X)	+= 88pm860x-ts.o
