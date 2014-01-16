@@ -373,7 +373,26 @@ static struct gpiomux_setting mi2s_sus_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+static struct gpiomux_setting mic_en_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting mic_en_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+};
+
 static struct msm_gpiomux_config msm_mi2s_configs[] __initdata = {
+	{
+		.gpio	= 60,		/*  MIC_EN */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &mic_en_act_cfg,
+			[GPIOMUX_SUSPENDED] = &mic_en_sus_cfg,
+		},
+	},
 	{
 		.gpio	= 63,		/*  MIC_I2S_SCK */
 		.settings = {
