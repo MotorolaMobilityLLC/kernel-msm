@@ -325,6 +325,8 @@ struct cyttsp {
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif
+	struct notifier_block panel_nb;
+	bool display_synced_suspend;
 #ifdef CONFIG_TOUCHSCREEN_DEBUG
 	int ic_grpnum;
 	int ic_grpoffset;
@@ -2850,6 +2852,37 @@ void cyttsp_late_resume(struct early_suspend *h)
 }
 #endif
 
+static int cypress_panel_cb(struct notifier_block *nb,
+		unsigned long event, void *ignore)
+{
+	int value = -1;
+	struct cyttsp *ts =
+		container_of(nb, struct cyttsp, panel_nb);
+
+	switch (event) {
+	case MMI_PANEL_EVENT_HIDE_IMAGE:
+	case MMI_PANEL_EVENT_PRE_DEINIT:
+	if (ts->display_synced_suspend)
+		cyttsp_early_suspend(&ts->early_suspend);
+		value = 1; /* set flag */
+		break;
+	case MMI_PANEL_EVENT_PWR_OFF:
+		break;
+	case MMI_PANEL_EVENT_POST_INIT:
+		if (ts->display_synced_suspend)
+			cyttsp_late_resume(&ts->early_suspend);
+		value = 0; /* clear flag */
+		break;
+	case MMI_PANEL_EVENT_PWR_ON:
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+
 void cyttsp_core_release(void *handle) {
 	struct cyttsp *ts = handle;
 
@@ -3095,13 +3128,31 @@ void *cyttsp_core_init(struct cyttsp_bus_ops *bus_ops, struct device *dev,
 
 	/* Add /sys files */
 	cyttsp_ldr_init(ts);
+	ts->display_synced_suspend = true;
+
+#ifndef CONFIG_MIPI_MOT_NOTIFICATIONS
+	pr_notice("display notifications not available\n");
+	/* Check if devtree and config option conflicts */
+	if (ts->display_synced_suspend) {
+		pr_notice("default to configured suspend/resume option\n");
+		ts->display_synced_suspend = false;
+	}
+#endif
+
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	ts->early_suspend.suspend = cyttsp_early_suspend;
 	ts->early_suspend.resume = cyttsp_late_resume;
-	register_early_suspend(&ts->early_suspend);
+	if (!ts->display_synced_suspend)
+		register_early_suspend(&ts->early_suspend);
 #endif
+	if (ts->display_synced_suspend) {
+		ts->panel_nb.notifier_call = cypress_panel_cb;
+		if (!mmi_panel_register_notifier(&ts->panel_nb))
+			pr_debug("registered panel notifier\n");
+		}
+
 	goto no_error;
 
 error_input_register_device:

@@ -39,6 +39,14 @@ config TOUCHSCREEN_ATMXT
 
 	  If unsure, say N.
 
+config TOUCHSCREEN_CYTTSP3
+	tristate "Cypress TrueTouch Generation 3 Touchscreen Driver"
+	depends on I2C
+	help
+	  Say Y here if you have an cypress Gen 3 touchscreen.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
 	depends on MFD_88PM860X

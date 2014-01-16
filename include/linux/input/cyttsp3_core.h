@@ -32,6 +32,9 @@
 
 #include <linux/kernel.h>
 #include <linux/err.h>
+#include <linux/module.h>
+#include <linux/export.h>
+#include <mach/mmi_panel_notifier.h>
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
