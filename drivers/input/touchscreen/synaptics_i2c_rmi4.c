@@ -434,6 +434,7 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_reg_control_store),
 };
 
+static bool need_wakeup;
 static bool exp_fn_inited;
 static struct mutex exp_fn_list_mutex;
 static struct list_head exp_fn_list;
@@ -1414,6 +1415,15 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
+	if (need_wakeup) {
+		/* Wake up the system by sending power key down/up events */
+		need_wakeup = 0;
+		input_report_key(rmi4_data->input_dev, KEY_TOUCHPAD_TOGGLE, 1);
+		input_sync(rmi4_data->input_dev);
+		input_report_key(rmi4_data->input_dev, KEY_TOUCHPAD_TOGGLE, 0);
+		input_sync(rmi4_data->input_dev);
+	}
+
 	/* Check device status */
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_data_base_addr,
@@ -1445,6 +1455,10 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 			rmi4_data->num_of_intr_regs);
 	if (retval < 0)
 		return retval;
+
+	if (rmi4_data->suspended) {
+		return 0;
+	}
 
 	/* Checking ESD damage */
 	if (intr[0] & INTERRUPT_MASK_FLASH) {
@@ -1567,6 +1581,7 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 	rmi4_pdata->y_flip = of_property_read_bool(np, "synaptics,y-flip");
 	rmi4_pdata->do_lockdown = of_property_read_bool(np,
 			"synaptics,do-lockdown");
+	rmi4_pdata->wakeup = of_property_read_bool(np, "synaptics,wakeup");
 
 	rc = synaptics_rmi4_get_dt_coords(dev, "synaptics,display-coords",
 				rmi4_pdata);
@@ -3271,6 +3286,10 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		return retval;
 	}
 
+	device_init_wakeup(&client->dev, rmi4_data->board->wakeup);
+	if (rmi4_data->board->wakeup)
+		input_set_capability(rmi4_data->input_dev, EV_KEY, KEY_TOUCHPAD_TOGGLE);
+
 	return retval;
 
 err_sysfs:
@@ -3338,6 +3357,8 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 	struct synaptics_rmi4_fn *next_fhandler;
 	struct synaptics_rmi4_data *rmi4_data = i2c_get_clientdata(client);
 	struct synaptics_rmi4_device_info *rmi;
+
+	device_init_wakeup(&client->dev, 0);
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
@@ -3753,16 +3774,23 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	int retval;
 
+	if (rmi4_data->suspended) {
+		dev_info(dev, "Already in suspend state\n");
+		return 0;
+	}
+
+	if (device_may_wakeup(&rmi4_data->i2c_client->dev)) {
+		need_wakeup = 1;
+		rmi4_data->suspended = true;
+		enable_irq_wake(rmi4_data->irq);
+		return 0;
+	}
+
 	if (rmi4_data->stay_awake) {
 		rmi4_data->staying_awake = true;
 		return 0;
 	} else
 		rmi4_data->staying_awake = false;
-
-	if (rmi4_data->suspended) {
-		dev_info(dev, "Already in suspend state\n");
-		return 0;
-	}
 
 	if (!rmi4_data->fw_updating) {
 		if (!rmi4_data->sensor_sleep) {
@@ -3812,13 +3840,20 @@ static int synaptics_rmi4_resume(struct device *dev)
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	int retval;
 
-	if (rmi4_data->staying_awake)
-		return 0;
-
 	if (!rmi4_data->suspended) {
 		dev_info(dev, "Already in awake state\n");
 		return 0;
 	}
+
+	if (device_may_wakeup(&rmi4_data->i2c_client->dev)) {
+		need_wakeup = 0;
+		rmi4_data->suspended = 0;
+		disable_irq_wake(rmi4_data->irq);
+		return 0;
+	}
+
+	if (rmi4_data->staying_awake)
+		return 0;
 
 	retval = synaptics_rmi4_regulator_lpm(rmi4_data, false);
 	if (retval < 0) {
