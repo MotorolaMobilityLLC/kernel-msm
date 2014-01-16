@@ -704,7 +704,8 @@ static int msm_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 			}
 
 			if (dchdr->wait)
-				usleep(dchdr->wait * 1000);
+				usleep_range(dchdr->wait * 1000,
+							dchdr->wait * 1000);
 
 			mdss_dsi_buf_init(tp);
 			len = 0;
@@ -1542,8 +1543,11 @@ static int __devinit msm_dsi_probe(struct platform_device *pdev)
 
 	mdss_panel_set_reg_boot_on(dsi_pan_node, ctrl_pdata);
 
+	mdss_panel_set_reg_boot_on(dsi_pan_node, ctrl_pdata);
 	cmd_cfg_cont_splash = mdp3_panel_get_boot_cfg() ? true : false;
 
+	ctrl_pdata->pdev = pdev;
+	ctrl_pdata->get_dt_vreg_data = dsi_parse_vreg;
 	rc = mdss_dsi_panel_init(dsi_pan_node, ctrl_pdata, cmd_cfg_cont_splash);
 	if (rc) {
 		pr_err("%s: dsi panel init failed\n", __func__);

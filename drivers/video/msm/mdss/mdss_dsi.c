@@ -1120,9 +1120,19 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		goto error_pan_node;
 	}
 
+	/* Parse the regulator information */
+	rc = mdss_dsi_get_dt_vreg_data(&pdev->dev,
+					&ctrl_pdata->power_data, NULL);
+	if (rc) {
+		pr_err("%s: failed to get vreg data from dt. rc=%d\n",
+								__func__, rc);
+		goto error_pan_node;
+	}
+
 	cmd_cfg_cont_splash = mdss_panel_get_boot_cfg() ? true : false;
 
 	ctrl_pdata->pdev = pdev;
+	ctrl_pdata->get_dt_vreg_data = mdss_dsi_get_dt_vreg_data;
 	rc = mdss_dsi_panel_init(dsi_pan_node, ctrl_pdata, cmd_cfg_cont_splash);
 	if (rc) {
 		pr_err("%s: dsi panel init failed\n", __func__);
