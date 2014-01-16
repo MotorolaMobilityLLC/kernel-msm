@@ -224,11 +224,12 @@
 #define QWLAN_HAL_CFG_ASD_PROBE_INTERVAL                171
 #define QWLAN_HAL_CFG_ASD_TRIGGER_THRESHOLD             172
 #define QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD       173
-#define QWLAN_HAL_CFG_MAX_PARAMS                        174
+#define QWLAN_HAL_CFG_BTC_CTS2S_ON_STA_DURING_SCO       174
+#define QWLAN_HAL_CFG_MAX_PARAMS                        175
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                     170
+#define QWLAN_HAL_CFG_INTEGER_PARAM                     175
 
 /*-------------------------------------------------------------------------
   Configuration Parameter min, max, defaults
@@ -884,6 +885,10 @@
 #define QWLAN_HAL_CFG_BTC_SAP_STATIC_OPP_WLAN_ACTIVE_BT_LEN_MIN   0
 #define QWLAN_HAL_CFG_BTC_SAP_STATIC_OPP_WLAN_ACTIVE_BT_LEN_MAX   250000
 #define QWLAN_HAL_CFG_BTC_SAP_STATIC_OPP_WLAN_ACTIVE_BT_LEN_DEF   90000
+
+#define QWLAN_HAL_CFG_BTC_CTS2S_ON_STA_DURING_SCO_MIN     0
+#define QWLAN_HAL_CFG_BTC_CTS2S_ON_STA_DURING_SCO_MAX     1
+#define QWLAN_HAL_CFG_BTC_CTS2S_ON_STA_DURING_SCO_DEF     0
 
 /* QWLAN_HAL_CFG_ANTENNA_DIVERSITY */
 #define QWLAN_HAL_CFG_ANTENNA_DIVERSITY_DEF  0
