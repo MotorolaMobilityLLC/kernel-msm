@@ -98,6 +98,7 @@ enum device_status {
 #define MAX_F11_TOUCH_WIDTH 15
 
 #define RMI4_COORDS_ARR_SIZE 4
+#define INTERRUPT_MASK_FLASH 1
 
 static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
@@ -167,6 +168,7 @@ static ssize_t synaptics_rmi4_flipy_show(struct device *dev,
 static ssize_t synaptics_rmi4_flipy_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
 
 struct synaptics_rmi4_f01_device_status {
 	union {
@@ -1306,8 +1308,30 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_exp_fn *exp_fhandler;
 	struct synaptics_rmi4_device_info *rmi;
+	struct synaptics_rmi4_f01_device_status device_status;
 
 	rmi = &(rmi4_data->rmi4_mod_info);
+
+	/* Check device status */
+	retval = synaptics_rmi4_i2c_read(rmi4_data,
+			rmi4_data->f01_data_base_addr,
+			device_status.data,
+			sizeof(device_status.data));
+	if (retval < 0)
+		return retval;
+
+	if ((device_status.status_code & STATUS_DEVICE_FAILURE)
+						== STATUS_DEVICE_FAILURE) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"ESD damage occurred. Reset Touch IC\n");
+		return -EIO;
+	}
+
+	if (device_status.unconfigured) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"Touch IC resetted internally. Reconfigure...\n");
+		return -EIO;
+	}
 
 	/*
 	 * Get interrupt status information from F01 Data1 register to
@@ -1319,6 +1343,12 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 			rmi4_data->num_of_intr_regs);
 	if (retval < 0)
 		return retval;
+
+	/* Checking ESD damage */
+	if (intr[0] & INTERRUPT_MASK_FLASH) {
+		dev_err(&rmi4_data->i2c_client->dev,"Impossible interrupt\n");
+		return -EIO;
+	}
 
 	/*
 	 * Traverse the function handler list and service the source(s)
@@ -1365,7 +1395,8 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 {
 	struct synaptics_rmi4_data *rmi4_data = data;
 
-	synaptics_rmi4_sensor_report(rmi4_data);
+	if (synaptics_rmi4_sensor_report(rmi4_data) == -EIO)
+		queue_work(rmi4_data->svc_workqueue, &rmi4_data->recovery_work);
 
 	return IRQ_HANDLED;
 }
@@ -2412,10 +2443,11 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 
 	retval = synaptics_rmi4_reset_command(rmi4_data);
 	if (retval < 0) {
-		dev_err(&rmi4_data->i2c_client->dev,
-			"%s: Failed to send command reset\n",
-			__func__);
-		return retval;
+		if (gpio_is_valid(rmi4_data->board->reset_gpio)) {
+			gpio_set_value(rmi4_data->board->reset_gpio, 0);
+			usleep(RMI4_GPIO_SLEEP_LOW_US);
+			gpio_set_value(rmi4_data->board->reset_gpio, 1);
+		}
 	}
 
 	if (!list_empty(&rmi->support_fn_list)) {
@@ -2441,7 +2473,23 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 		return retval;
 	}
 
+	synaptics_rmi4_sensor_wake(rmi4_data);
+
 	return 0;
+}
+
+/*
+ * Recover touch IC
+ */
+static void synaptics_rmi4_recover_work(struct work_struct *work)
+{
+	struct synaptics_rmi4_data *rmi4_data =
+		container_of(work, struct synaptics_rmi4_data, recovery_work);
+
+	synaptics_rmi4_irq_enable(rmi4_data, false);
+	synaptics_rmi4_release_all(rmi4_data);
+	synaptics_rmi4_reset_device(rmi4_data);
+	synaptics_rmi4_irq_enable(rmi4_data, true);
 }
 
 /**
@@ -2936,6 +2984,8 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		goto err_free_gpios;
 	}
 
+	synaptics_rmi4_sensor_wake(rmi4_data);
+
 	if (rmi4_data->board->disp_maxx)
 		rmi4_data->disp_maxx = rmi4_data->board->disp_maxx;
 	else
@@ -3024,6 +3074,10 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	queue_delayed_work(rmi4_data->det_workqueue,
 			&rmi4_data->det_work,
 			msecs_to_jiffies(EXP_FN_DET_INTERVAL));
+
+	rmi4_data->svc_workqueue =
+			create_singlethread_workqueue("rmi_svc_workqueue");
+	INIT_WORK(&rmi4_data->recovery_work, synaptics_rmi4_recover_work);
 
 	rmi4_data->irq = gpio_to_irq(platform_data->irq_gpio);
 
@@ -3277,6 +3331,7 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 
 	device_ctrl.sleep_mode = NORMAL_OPERATION;
 	device_ctrl.nosleep = NO_SLEEP_OFF;
+	device_ctrl.configured = DEVICE_CONFIGURED;
 
 	retval = synaptics_rmi4_i2c_write(rmi4_data,
 			rmi4_data->f01_ctrl_base_addr,
@@ -3432,6 +3487,8 @@ static int synaptics_rmi4_regulator_lpm(struct synaptics_rmi4_data *rmi4_data,
 	if (gpio_is_valid(rmi4_data->board->reset_gpio))
 		gpio_set_value(rmi4_data->board->reset_gpio, 0);
 
+	pr_info("touch off\n");
+
 	return 0;
 
 regulator_hpm:
@@ -3478,6 +3535,8 @@ regulator_hpm:
 
 	if (gpio_is_valid(rmi4_data->board->reset_gpio))
 		gpio_set_value(rmi4_data->board->reset_gpio, 1);
+
+	pr_info("touch on\n");
 
 	return 0;
 
