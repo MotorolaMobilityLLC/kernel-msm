@@ -41,9 +41,7 @@
 #define TYPE_B_PROTOCOL
 
 #define NO_0D_WHILE_2D
-/*
 #define REPORT_2D_Z
-*/
 #define REPORT_2D_W
 
 #define RPT_TYPE (1 << 0)
@@ -983,9 +981,10 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					ABS_MT_POSITION_X, x);
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_Y, y);
+#ifdef REPORT_2D_Z
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_PRESSURE, z);
-
+#endif
 #ifdef REPORT_2D_W
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_TOUCH_MAJOR, max(wx, wy));
@@ -1040,6 +1039,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int y;
 	int wx;
 	int wy;
+	int z;
 	struct synaptics_rmi4_f12_extra_data *extra_data;
 	struct synaptics_rmi4_f12_finger_data *data;
 	struct synaptics_rmi4_f12_finger_data *finger_data;
@@ -1082,6 +1082,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			wx = finger_data->wx;
 			wy = finger_data->wy;
 #endif
+#ifdef REPORT_2D_Z
+			z = finger_data->z;
+#endif
 
 			if (rmi4_data->flip_x)
 				x = rmi4_data->sensor_max_x - x;
@@ -1107,6 +1110,10 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					ABS_MT_POSITION_X, x);
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_POSITION_Y, y);
+#ifdef REPORT_2D_Z
+			input_report_abs(rmi4_data->input_dev,
+					ABS_MT_PRESSURE, z);
+#endif
 #ifdef REPORT_2D_W
 			input_report_abs(rmi4_data->input_dev,
 					ABS_MT_TOUCH_MAJOR, max(wx, wy));
@@ -2955,8 +2962,10 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_POSITION_Y, rmi4_data->disp_miny,
 			rmi4_data->disp_maxy, 0, 0);
+#ifdef REPORT_2D_Z
 	input_set_abs_params(rmi4_data->input_dev,
-			ABS_PRESSURE, 0, 255, 0, 0);
+			ABS_MT_PRESSURE, 0, 255, 0, 0);
+#endif
 #ifdef REPORT_2D_W
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_TOUCH_MAJOR, 0,
