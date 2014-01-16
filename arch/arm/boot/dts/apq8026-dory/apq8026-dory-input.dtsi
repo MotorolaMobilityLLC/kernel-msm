@@ -44,12 +44,8 @@
 			vcc_i2c-supply = <&pm8226_lvs1>;
 			synaptics,reset-gpio = <&msmgpio 16 0x00>;
 			synaptics,irq-gpio = <&msmgpio 17 0x2008>;
-			synaptics,panel-x = <1080>;
-			synaptics,panel-y = <1920>;
-			synaptics,button-map = <158 139>;
 			synaptics,i2c-pull-up;
-			synaptics,reg-en;
-			synaptics,fw-image-name = "synaptics/PR1237618-DS4.3.5.0.16.img";
+			synaptics,fw-image-name = "synaptics_fw.bin";
 			status = "disable";
 		};
 
