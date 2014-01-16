@@ -47,6 +47,11 @@ static struct gpio mi2s_gpio[] = {
 	},
 };
 
+static struct gpio mic_en_gpio = {
+	.flags = GPIOF_OUT_INIT_HIGH,
+	.label = "dory,mic-en-gpio",
+};
+
 static struct afe_clk_cfg lpass_mi2s = {
 	AFE_API_VERSION_I2S_CONFIG,
 	Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ,
@@ -80,6 +85,20 @@ static int dory_request_gpios(struct platform_device *pdev)
 	if (ret) {
 		pr_err("Unable to request gpios");
 		return ret;
+	}
+
+	/* Request optional mic enable GPIO */
+	mic_en_gpio.gpio = of_get_named_gpio(pdev->dev.of_node,
+							mic_en_gpio.label, 0);
+	if (gpio_is_valid(mic_en_gpio.gpio)) {
+		ret = gpio_request_one(mic_en_gpio.gpio, mic_en_gpio.flags,
+							mic_en_gpio.label);
+		if (ret) {
+			pr_err("Unable to request mic_en_gpio");
+			gpio_free_array(mi2s_gpio, ARRAY_SIZE(mi2s_gpio));
+
+			return ret;
+		}
 	}
 
 	return 0;
@@ -284,6 +303,8 @@ static int dory_asoc_machine_probe(struct platform_device *pdev)
 
 err_register_card:
 	gpio_free_array(mi2s_gpio, ARRAY_SIZE(mi2s_gpio));
+	if (gpio_is_valid(mic_en_gpio.gpio))
+		gpio_free(mic_en_gpio.gpio);
 err_request_gpios:
 	regulator_put(machine->mic_supply);
 
