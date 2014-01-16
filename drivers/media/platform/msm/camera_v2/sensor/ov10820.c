@@ -17,10 +17,12 @@
 #include "msm_cci.h"
 #include <mach/gpiomux.h>
 #include "msm_camera_i2c_mux.h"
+#include <linux/device.h>
 
 #define OV10820_SENSOR_NAME     "ov10820"
 
 #define OV10820_SECONDARY_I2C_ADDRESS 0x20
+#define OV10820_HW_REV_REG 0x302a
 #define SET_10MP_RESET_HIGH     0
 #define SET_10MP_RESET_LOW      1
 #define SET_DVDD_EN_RESET_HIGH  0
@@ -44,6 +46,7 @@ enum msm_sensor_ov10820_vreg_t {
 DEFINE_MSM_MUTEX(ov10820_mut);
 static uint8_t is_vdd_pk_powered_up;
 static uint8_t is_sensor_powered_up;
+static uint16_t ov10820_hw_rev;
 
 static struct msm_sensor_ctrl_t ov10820_s_ctrl;
 static bool ov660_exists;
@@ -52,6 +55,30 @@ static struct regulator *cam_afvdd;
 static struct regulator *cam_ov660_dvdd_pk;
 static struct regulator *cam_vddio;
 struct clk *cam_mclk[CLK_NUM];
+
+static ssize_t show_ov10820(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%x\n", ov10820_hw_rev);
+}
+
+static ssize_t store_ov10820(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	return count;
+}
+
+static DEVICE_ATTR(ov10820_hw_rev, 0444, show_ov10820, store_ov10820);
+
+static struct kobject *ov10820_kobject;
+static struct attribute *ov10820_attributes[] = {
+	&dev_attr_ov10820_hw_rev.attr,
+	NULL,
+};
+
+static const struct attribute_group ov10820_group = {
+	.attrs = ov10820_attributes,
+};
 
 static struct v4l2_subdev_info ov10820_subdev_info[] = {
 	{
@@ -143,8 +170,20 @@ check_chipid:
 		return -ENODEV;
 	}
 
-	pr_info("%s: Probe successful with I2C slave address of 0x%x\n",
-			__func__, s_ctrl->sensor_i2c_client->cci_client->sid);
+	/* Check hardware revision */
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client,
+			OV10820_HW_REV_REG,
+			&ov10820_hw_rev,
+			MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: unable to determine hw rev of sensor!\n", __func__);
+		return rc;
+	}
+
+	pr_info("%s: Probe successful with I2C slave addr of 0x%x and hw %x\n",
+			__func__, s_ctrl->sensor_i2c_client->cci_client->sid,
+			ov10820_hw_rev);
 	return 0;
 }
 
@@ -399,6 +438,19 @@ static int32_t ov10820_platform_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	ov10820_kobject = kobject_create_and_add("ov10280", fs_kobj);
+	if (ov10820_kobject == NULL) {
+		pr_err("%s: unable to create kobject!\n", __func__);
+		return -EINVAL;
+	}
+
+	rc = sysfs_create_group(ov10820_kobject, &ov10820_group);
+	if (rc) {
+		pr_err("%s: unable to create kobject group!\n", __func__);
+		kobject_del(ov10820_kobject);
+		ov10820_kobject = NULL;
+	}
+
 	return rc;
 }
 
@@ -420,6 +472,11 @@ static void __exit ov10820_exit_module(void)
 		platform_driver_unregister(&ov10820_platform_driver);
 	} else
 		i2c_del_driver(&ov10820_i2c_driver);
+
+	if (ov10820_kobject) {
+		sysfs_remove_group(ov10820_kobject, &ov10820_group);
+		kobject_del(ov10820_kobject);
+	}
 	return;
 }
 
