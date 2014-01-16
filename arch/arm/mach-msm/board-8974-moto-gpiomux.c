@@ -1094,6 +1094,23 @@ static struct msm_gpiomux_config wm5110_spi_configs[] __initdata = {
 #endif
 };
 
+static struct gpiomux_setting tmp108_irq_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config tmp108_configs[] __initdata = {
+	{
+		.gpio = 144,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &tmp108_irq_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &tmp108_irq_gpio_cfg,
+		},
+	}
+};
+
 void __init msm_8974_moto_init_gpiomux(void)
 {
 	int rc;
@@ -1130,6 +1147,8 @@ void __init msm_8974_moto_init_gpiomux(void)
 	msm_gpiomux_install(stm401_configs, ARRAY_SIZE(stm401_configs));
 
 	msm_gpiomux_install(bcm2079x_configs, ARRAY_SIZE(bcm2079x_configs));
+
+	msm_gpiomux_install(tmp108_configs, ARRAY_SIZE(tmp108_configs));
 
 	if (of_board_is_fluid())
 		msm_gpiomux_install(msm_mhl_configs,
