@@ -20,6 +20,18 @@
 		     "qcom,msm8974";
 };
 
+&vbat_disp_vreg {
+	/delete-property/ gpio;
+};
+
+&vdd_disp_vreg {
+	/delete-property/ gpio;
+};
+
+&vci_disp_vreg {
+	gpio = <&pm8941_gpios 14 0x0>;
+};
+
 &mot_smd_1080p_cmd_v0 {
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vdd_disp-supply = <&vdd_disp_vreg>;
