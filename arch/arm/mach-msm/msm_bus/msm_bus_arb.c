@@ -261,6 +261,8 @@ static int getpath(int src, int dest)
 					info = fabnodeinfo->info;
 					ret_pnode = getpath(info->
 						node_info->priv_id, dest);
+					if (ret_pnode == -ENXIO)
+						continue;
 					pnode_num = add_path_node(info,
 						ret_pnode);
 					if (pnode_num < 0) {
