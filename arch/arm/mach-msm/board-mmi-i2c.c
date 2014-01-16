@@ -504,6 +504,34 @@ static int __init ov8820_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
+static struct oem_camera_sensor_data ov7736_oem_data;
+
+static int __init ov7736_init_i2c_device(struct i2c_board_info *info,
+						struct device_node *node)
+{
+	int ret = -EINVAL;
+	/* get reset gpio */
+	of_property_read_u32(node, "gpio_reset",
+		&msm_camera_sensor_ov7736_data.sensor_reset);
+
+	/* get pwd gpio */
+	of_property_read_u32(node, "gpio_pwd",
+		&msm_camera_sensor_ov7736_data.sensor_pwd);
+
+	ret = of_property_read_u32(node, "mclk_freq",
+		&ov7736_oem_data.mclk_freq);
+	if (ret)
+		ov7736_oem_data.mclk_freq = 24000000;
+	/* get avdd_en gpio */
+	of_property_read_u32(node, "gpio_avdd_en",
+		&ov7736_oem_data.sensor_avdd_en);
+
+	msm_camera_sensor_ov7736_data.oem_data = &ov7736_oem_data;
+	info->platform_data = &msm_camera_sensor_ov7736_data;
+
+	return 0;
+}
+
 static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *node)
 {
@@ -833,6 +861,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00270000, melfas_init_i2c_device},  /* Melfas_MMS100 */
 	{0x00260001, atmxt_init_i2c_device},   /* Atmel_MXT */
 	{0x00290000, ov8820_init_i2c_device},  /* OV8820 8MP Bayer Sensor */
+	{0x00290001, ov7736_init_i2c_device},  /* ov7736 yuv Sensor */
 	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
 	{0x00190001, pn544_init_i2c_device}, /* NXP PN544 */
 	{0x00290002, ov8835_init_i2c_device},  /* Omnivision 8MP Bayer */
