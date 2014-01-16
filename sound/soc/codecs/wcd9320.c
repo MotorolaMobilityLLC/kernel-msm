@@ -1529,8 +1529,13 @@ static int taiko_hph_impedance_get(struct snd_kcontrol *kcontrol,
 	mc = (struct soc_multi_mixer_control *)(kcontrol->private_value);
 
 	hphr = mc->shift;
+	pr_debug("%s: taiko_priv: %p\n", __func__, priv);
+#ifndef CONFIG_SND_SOC_TPA6165A2
 	wcd9xxx_mbhc_get_impedance(&priv->mbhc, &zl, &zr);
 	pr_debug("%s: zl %u, zr %u\n", __func__, zl, zr);
+#else
+	zr = zl = 0;
+#endif
 	ucontrol->value.integer.value[0] = hphr ? zr : zl;
 
 	return 0;
@@ -3219,6 +3224,7 @@ static int taiko_hphl_dac_event(struct snd_soc_dapm_widget *w,
 						 WCD9XXX_CLSH_STATE_HPHL,
 						 WCD9XXX_CLSH_REQ_ENABLE,
 						 WCD9XXX_CLSH_EVENT_PRE_DAC);
+#ifndef CONFIG_SND_SOC_TPA6165A2
 		ret = wcd9xxx_mbhc_get_impedance(&taiko_p->mbhc,
 					&impedl, &impedr);
 		if (!ret)
@@ -3226,6 +3232,10 @@ static int taiko_hphl_dac_event(struct snd_soc_dapm_widget *w,
 		else
 			dev_err(codec->dev, "Failed to get mbhc impedance %d\n",
 						ret);
+#else
+		impedl = impedr = 0;
+		ret = 0;
+#endif
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		snd_soc_update_bits(codec, TAIKO_A_CDC_CLK_RDAC_CLK_EN_CTL,
