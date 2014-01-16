@@ -3277,8 +3277,8 @@ static DEVICE_ATTR(update_cfg, S_IWUSR, NULL, mxt_update_cfg_store);
 static DEVICE_ATTR(doreflash, S_IWUSR, NULL, mxt_doreflash_store);
 static DEVICE_ATTR(forcereflash, S_IWUSR, NULL, mxt_forcereflash_store);
 static DEVICE_ATTR(hw_irqstat, S_IRUGO, mxt_hw_irqstat_show, NULL);
-static DEVICE_ATTR(reset, S_IWUSR, NULL, mxt_reset_store);
-static DEVICE_ATTR(drv_irq, S_IRUGO | S_IWUSR,
+static DEVICE_ATTR(reset, S_IWUSR | S_IWGRP, NULL, mxt_reset_store);
+static DEVICE_ATTR(drv_irq, S_IRUGO | S_IWUSR | S_IWGRP,
 				mxt_drv_irq_show, mxt_drv_irq_store);
 
 static struct attribute *mxt_attrs[] = {
