@@ -268,6 +268,7 @@ struct synaptics_rmi4_fwu_handle {
 	const unsigned char *firmware_data;
 	const unsigned char *config_data;
 	const unsigned char *lockdown_data;
+	unsigned char img_config_data[4];
 	unsigned short block_size;
 	unsigned short fw_block_count;
 	unsigned short config_block_count;
@@ -857,18 +858,24 @@ check_config_id:
 	}
 	deviceConfigID =  extract_uint_be(config_id);
 
-	dev_dbg(&i2c_client->dev,
+	dev_info(&i2c_client->dev,
 		"Device config ID 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
 		config_id[0], config_id[1], config_id[2], config_id[3]);
 
 	/* .img config id */
-	dev_dbg(&i2c_client->dev,
+	dev_info(&i2c_client->dev,
 			".img config ID 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
 			fwu->config_data[0],
 			fwu->config_data[1],
 			fwu->config_data[2],
 			fwu->config_data[3]);
 	imageConfigID =  extract_uint_be(fwu->config_data);
+
+	/* copy to keep debug information */
+	fwu->img_config_data[0] = fwu->config_data[0];
+	fwu->img_config_data[1] = fwu->config_data[1];
+	fwu->img_config_data[2] = fwu->config_data[2];
+	fwu->img_config_data[3] = fwu->config_data[3];
 
 	dev_dbg(&i2c_client->dev,
 		"%s: Device config ID %d, .img config ID %d\n",
@@ -1618,6 +1625,9 @@ static int fwu_start_reflash(void)
 	/* reset device */
 	fwu_reset_device();
 
+	/* rescan pdt */
+	fwu_scan_pdt();
+
 	/* check device status */
 	retval = fwu_read_f01_device_status(&f01_device_status);
 	if (retval < 0)
@@ -2000,13 +2010,19 @@ static ssize_t fwu_sysfs_config_id_show(struct device *dev,
 {
 	unsigned char config_id[4];
 	/* device config id */
+
+	if (fwu->rmi4_data->suspended == true)
+		return snprintf(buf, PAGE_SIZE, "Device is in suspend\n");
+
 	fwu->fn_ptr->read(fwu->rmi4_data,
 				fwu->f34_fd.ctrl_base_addr,
 				config_id,
 				sizeof(config_id));
 
-	return snprintf(buf, PAGE_SIZE, "%d.%d.%d.%d\n",
-		config_id[0], config_id[1], config_id[2], config_id[3]);
+	return snprintf(buf, PAGE_SIZE, "DEVICE: %c%c%c%c IMG: %c%c%c%c\n",
+		config_id[0], config_id[1], config_id[2], config_id[3],
+		fwu->img_config_data[0], fwu->img_config_data[1],
+		fwu->img_config_data[2], fwu->img_config_data[3]);
 }
 
 static ssize_t fwu_sysfs_package_id_show(struct device *dev,
@@ -2014,6 +2030,10 @@ static ssize_t fwu_sysfs_package_id_show(struct device *dev,
 {
 	unsigned char pkg_id[4];
 	/* read device package id */
+
+	if (fwu->rmi4_data->suspended == true)
+		return snprintf(buf, PAGE_SIZE, "Device is in suspend\n");
+
 	fwu->fn_ptr->read(fwu->rmi4_data,
 				fwu->f01_fd.query_base_addr + 17,
 				pkg_id,

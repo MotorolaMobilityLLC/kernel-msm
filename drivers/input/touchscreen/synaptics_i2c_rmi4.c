@@ -71,6 +71,8 @@
 #define NO_SLEEP_OFF 0
 #define NO_SLEEP_ON 1
 
+#define MAX_OFFSET_SIZE 200
+
 enum device_status {
 	STATUS_NO_ERROR = 0x00,
 	STATUS_RESET_OCCURED = 0x01,
@@ -167,6 +169,9 @@ static ssize_t synaptics_rmi4_flipy_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
 static ssize_t synaptics_rmi4_flipy_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t synaptics_rmi4_reg_control_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
@@ -424,6 +429,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(flipy, (S_IRUGO | S_IWUSR | S_IWGRP),
 			synaptics_rmi4_flipy_show,
 			synaptics_rmi4_flipy_store),
+	__ATTR(reg_control, (S_IRUGO | S_IWUSR),
+			NULL,
+			synaptics_rmi4_reg_control_store),
 };
 
 static bool exp_fn_inited;
@@ -566,6 +574,9 @@ static ssize_t synaptics_rmi4_f01_flashprog_show(struct device *dev,
 	struct synaptics_rmi4_f01_device_status device_status;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
+	if (rmi4_data->suspended == true)
+		return snprintf(buf, PAGE_SIZE, "Device is in suspend\n");
+
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_data_base_addr,
 			device_status.data,
@@ -691,6 +702,93 @@ static ssize_t synaptics_rmi4_flipy_store(struct device *dev,
 		return -EINVAL;
 
 	rmi4_data->flip_y = input > 0 ? 1 : 0;
+
+	return count;
+}
+
+static ssize_t synaptics_rmi4_reg_control_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned char string[7];
+	char reg_s[11];
+	char offset_s[11];
+	char value_s[11];
+	int reg;
+	int offset = 0;
+	int value;
+	int ret = 0;
+	int num_of_params;
+	u8 data[MAX_OFFSET_SIZE];
+
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	num_of_params = sscanf(buf, "%6s %10s %10s %10s",
+				string, reg_s, offset_s, value_s);
+
+	if (kstrtoint(reg_s, 0, &reg) != 0) {
+		dev_err(dev, "Invalid parameter\n");
+		return count;
+	}
+
+	if (num_of_params > 2) {
+		if (kstrtoint(offset_s, 0, &offset) != 0)
+			offset = 0;
+
+		if (offset >= MAX_OFFSET_SIZE) {
+			dev_err(dev, "Invalid offset (should be < %d)\n",
+					MAX_OFFSET_SIZE);
+			return count;
+		}
+	}
+
+	if (num_of_params > 3) {
+		if (kstrtoint(value_s, 0, &value) != 0)
+			value = 0;
+	}
+
+	if (!rmi4_data->suspended) {
+		if (!strncmp(string, "read", 4)) {
+			ret = synaptics_rmi4_i2c_read(rmi4_data,
+					reg, data, offset+1);
+			if (ret < 0)
+				dev_err(dev,
+					"cannot read register[0x%x:%d]\n",
+					offset, reg);
+			else
+				pr_info("register[0x%x:%d] = 0x%x\n",
+						reg, offset, data[offset]);
+		} else if (!strncmp(string, "write", 4)) {
+			if (num_of_params != 4) {
+				value = offset;
+				offset = 0;
+			}
+
+			ret = synaptics_rmi4_i2c_read(rmi4_data, reg,
+							data, offset+1);
+			if (ret < 0) {
+				dev_err(dev,
+					"cannot read register[0x%x:%d]\n",
+					reg, offset);
+				return count;
+			}
+
+			data[offset] = value;
+			ret = synaptics_rmi4_i2c_write(rmi4_data, reg,
+							data, offset+1);
+			if (ret < 0)
+				dev_err(dev,
+					"cannot write register[0x%x]\n", reg);
+			else
+				pr_info("register[0x%x:%d] is set to 0x%x\n", reg, offset, data[offset]);
+		} else {
+			pr_info("Usage: echo [read | write] reg_num [offset] value > ic_rw\n");
+			pr_info(" - reg_num : register address\n");
+			pr_info(" - offset [read/write] : offset of bulk register access (def: 0)\n");
+			pr_info(" - value [write] : set value into reg_num:offset\n");
+		}
+	} else {
+		pr_info("state=[suspend]. we cannot use I2C, now\n");
+	}
 
 	return count;
 }
