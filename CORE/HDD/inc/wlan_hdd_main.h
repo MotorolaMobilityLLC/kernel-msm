@@ -840,6 +840,7 @@ struct hdd_adapter_s
     
    /** IPv4 notifier callback for handling ARP offload on change in IP */
    struct notifier_block ipv4_notifier;
+   bool ipv4_notifier_registered;
    struct work_struct  ipv4NotifierWorkQueue;
 
    //TODO Move this to sta Ctx
