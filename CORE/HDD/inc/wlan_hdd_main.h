@@ -835,6 +835,7 @@ struct hdd_adapter_s
 #ifdef WLAN_NS_OFFLOAD
    /** IPv6 notifier callback for handling NS offload on change in IP */
    struct notifier_block ipv6_notifier;
+   bool ipv6_notifier_registered;
    struct work_struct  ipv6NotifierWorkQueue;
 #endif
     
