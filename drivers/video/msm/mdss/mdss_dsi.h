@@ -279,6 +279,8 @@ struct mdss_dsi_ctrl_pdata {
 			int mode, size_t size, u8 *buffer);
 	int (*reg_write) (struct mdss_panel_data *pdata,
 			int mode, size_t size, u8 *buffer);
+	int (*get_dt_vreg_data) (struct device *dev,
+			struct dss_module_power *mp, struct device_node *node);
 	struct mdss_panel_data panel_data;
 	struct mdss_panel_config panel_config;
 	struct mdss_panel_esd_pdata panel_esd_data;
