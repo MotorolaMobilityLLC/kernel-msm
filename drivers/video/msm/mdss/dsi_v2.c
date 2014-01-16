@@ -64,19 +64,26 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 				panel_data);
 
 	if (enable) {
-		dsi_ctrl_gpio_request(ctrl_pdata);
-		mdss_dsi_panel_reset(pdata, 1);
 		pdata->panel_info.panel_power_on = 1;
-		rc = ctrl_pdata->on(pdata);
-		if (rc)
-			pr_err("dsi_panel_handler panel on failed %d\n", rc);
+		if (ctrl_pdata->on)
+			ctrl_pdata->on(pdata);
+		else {
+			pr_err("%s: ctrl_pdata->on() is not defined\n",
+								__func__);
+			rc = -EINVAL;
+		}
 	} else {
 		if (dsi_intf.op_mode_config)
 			dsi_intf.op_mode_config(DSI_CMD_MODE, pdata);
-		rc = ctrl_pdata->off(pdata);
+
+		if (ctrl_pdata->off)
+			ctrl_pdata->off(pdata);
+		else {
+			pr_err("%s: ctrl_pdata->off() is not defined\n",
+								__func__);
+			rc = -EINVAL;
+		}
 		pdata->panel_info.panel_power_on = 0;
-		mdss_dsi_panel_reset(pdata, 0);
-		dsi_ctrl_gpio_free(ctrl_pdata);
 	}
 	return rc;
 }
@@ -223,7 +230,8 @@ void dsi_ctrl_gpio_free(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	}
 }
 
-static int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp)
+int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp,
+						struct device_node *node)
 {
 	int i = 0, rc = 0;
 	u32 tmp = 0;
@@ -236,7 +244,10 @@ static int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp)
 		goto error;
 	}
 
-	np = dev->of_node;
+	if (node)
+		np = node;
+	else
+		np = dev->of_node;
 
 	mp->num_vreg = 0;
 	for_each_child_of_node(np, supply_node) {
@@ -430,7 +441,7 @@ int dsi_ctrl_config_init(struct platform_device *pdev,
 {
 	int rc;
 
-	rc = dsi_parse_vreg(&pdev->dev, &ctrl_pdata->power_data);
+	rc = dsi_parse_vreg(&pdev->dev, &ctrl_pdata->power_data, NULL);
 	if (rc) {
 		pr_err("%s:%d unable to get the regulator resources",
 			__func__, __LINE__);
@@ -536,6 +547,18 @@ int dsi_panel_device_register_v2(struct platform_device *dev,
 		pr_info("MDSS PANEL: ESD detection is disable\n");
 
 	mutex_init(&ctrl_pdata->panel_config.panel_mutex);
+
+	if (ctrl_pdata->panel_config.esd_enable) {
+		pr_debug("%s: create ESD worker thread\n", __func__);
+		ctrl_pdata->panel_esd_data.esd_wq =
+		create_singlethread_workqueue("mdss_panel_esd");
+		if (ctrl_pdata->panel_esd_data.esd_wq == NULL) {
+			pr_err("%s: failed to create ESD work queue\n",
+								__func__);
+			ctrl_pdata->panel_config.esd_enable = false;
+		}
+	} else
+		pr_info("MDSS PANEL: ESD detection is disable\n");
 
 	pr_debug("%s: Panal data initialized\n", __func__);
 	return 0;
