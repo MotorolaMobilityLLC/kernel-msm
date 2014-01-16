@@ -56,4 +56,6 @@ struct mdss_panel_cfg *mdp3_panel_intf_type(int intf_val);
 
 int mdp3_panel_get_boot_cfg(void);
 
+int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp,
+					struct device_node *node);
 #endif /* DSI_V2_H */
