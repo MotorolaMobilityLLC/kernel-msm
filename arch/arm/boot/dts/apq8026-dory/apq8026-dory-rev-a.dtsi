@@ -17,6 +17,23 @@
 	sound {
 		dory,mic-en-gpio = <&msmgpio 60 0x00>;
 	};
+	i2c@f9924000 {
+		inv_dev@68 {
+			axis_map_x = <0>;
+			axis_map_y = <1>;
+			axis_map_z = <2>;
+			negate_x = <0>;
+			negate_y = <1>;
+			negate_z = <1>;
+
+			inven,secondary_axis_map_x = <0>;
+			inven,secondary_axis_map_y = <1>;
+			inven,secondary_axis_map_z = <2>;
+			inven,secondary_negate_x = <1>;
+			inven,secondary_negate_y = <1>;
+			inven,secondary_negate_z = <0>;
+		};
+	};
 	i2c@f9927000 {
 		synaptics@20 {
 			status = "ok";
