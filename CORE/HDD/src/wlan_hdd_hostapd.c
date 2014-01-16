@@ -3148,7 +3148,7 @@ int iw_get_softap_linkspeed(struct net_device *dev,
    unsigned short staId;
    int len = sizeof(v_U32_t)+1;
    v_BYTE_t macAddress[VOS_MAC_ADDR_SIZE];
-   VOS_STATUS status;
+   VOS_STATUS status = VOS_STATUS_E_FAILURE;
    int rc, valid;
 
    pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
@@ -3162,36 +3162,35 @@ int iw_get_softap_linkspeed(struct net_device *dev,
    }
 
    hddLog(VOS_TRACE_LEVEL_INFO, "%s wrqu->data.length= %d", __func__, wrqu->data.length);
-   if (wrqu->data.length != MAC_ADDRESS_STR_LEN)
+
+   if (wrqu->data.length >= MAC_ADDRESS_STR_LEN - 1)
    {
-       hddLog(LOG1, "Invalid length");
-       return -EINVAL;
-   }
-   pmacAddress = kmalloc(MAC_ADDRESS_STR_LEN, GFP_KERNEL);
-   if(NULL == pmacAddress) {
-       hddLog(LOG1, "unable to allocate memory");
-       return -ENOMEM;
-   }
-   if (copy_from_user((void *)pmacAddress,
-       wrqu->data.pointer, wrqu->data.length))
-   {
-       hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
+       pmacAddress = kmalloc(MAC_ADDRESS_STR_LEN, GFP_KERNEL);
+       if (NULL == pmacAddress) {
+           hddLog(LOG1, "unable to allocate memory");
+           return -ENOMEM;
+       }
+       if (copy_from_user((void *)pmacAddress,
+          wrqu->data.pointer, MAC_ADDRESS_STR_LEN))
+       {
+           hddLog(LOG1, "%s: failed to copy data to user buffer", __func__);
+           kfree(pmacAddress);
+           return -EFAULT;
+       }
+       pmacAddress[MAC_ADDRESS_STR_LEN] = '\0';
+
+       status = hdd_string_to_hex (pmacAddress, MAC_ADDRESS_STR_LEN, macAddress );
        kfree(pmacAddress);
-       return -EFAULT;
+
+       if (!VOS_IS_STATUS_SUCCESS(status ))
+       {
+           hddLog(VOS_TRACE_LEVEL_ERROR, FL("String to Hex conversion Failed"));
+       }
    }
-
-   status = hdd_string_to_hex (pmacAddress, wrqu->data.length, macAddress );
-   kfree(pmacAddress);
-
-   if (!VOS_IS_STATUS_SUCCESS(status ))
-   {
-      hddLog(VOS_TRACE_LEVEL_ERROR, FL("String to Hex conversion Failed"));
-   }
-
    /* If no mac address is passed and/or its length is less than 17,
     * link speed for first connected client will be returned.
     */
-   if (!VOS_IS_STATUS_SUCCESS(status ) || wrqu->data.length < 17)
+   if (wrqu->data.length < 17 || !VOS_IS_STATUS_SUCCESS(status ))
    {
       status = hdd_softap_GetConnectedStaId(pHostapdAdapter, (void *)(&staId));
    }
