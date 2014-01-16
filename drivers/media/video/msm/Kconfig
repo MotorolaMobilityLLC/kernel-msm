@@ -230,6 +230,15 @@ config OV8820
 	---help---
 	  Omnivision bayer 8MP Sensor with auto focus.
 
+config OV7736
+	bool "Sensor ov7736 (Omnivision VGA)"
+	depends on MSM_CAMERA && (ARCH_MSM8X60 || ARCH_MSM8960)
+	default n
+	---help---
+	  Support for OV7736 sensor driver
+	  It is a Omnivision VGA YUV Camera sensor
+	  Omnivision VGA YUV Camera
+
 config AR0834
 	bool "Sensor AR0834 (8MP)"
 	depends on MSM_CAMERA && (ARCH_MSM8X60 || ARCH_MSM8960)

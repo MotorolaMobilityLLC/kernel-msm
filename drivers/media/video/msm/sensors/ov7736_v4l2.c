@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+	/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,15 +19,14 @@
 /*=============================================================
   SENSOR REGISTER DEFINES
   ==============================================================*/
-#define OV7736_DEFAULT_CLOCK_RATE	24000000
 
 DEFINE_MUTEX(ov7736_mut);
 static struct msm_sensor_ctrl_t ov7736_s_ctrl;
 
-static struct regulator *reg_1p8;
+static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
+	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
+};
 
-static uint16_t sharpening_saved_5300;
-static uint16_t sharpening_saved_5301;
 
 /*=============================================================
   SENSOR REGISTER DEFINES
@@ -40,7 +39,6 @@ static struct msm_camera_i2c_reg_conf ov7736_start_settings[] = {
 	{0x4805, 0x10},
 	{0x300e, 0x04},
 	{0x3008, 0x02},
-
 };
 
 static struct msm_camera_i2c_reg_conf ov7736_stop_settings[] = {
@@ -52,6 +50,7 @@ static struct msm_camera_i2c_reg_conf ov7736_stop_settings[] = {
 	{0x3008, 0x42},
 };
 
+#ifdef CONFIG_FF_TEST_PATTERNS
 static struct msm_camera_i2c_reg_conf ov7736_15_15_fps_settings[] = {
 	{0x380C, 0x06},
 	{0x380D, 0x28},
@@ -62,40 +61,7 @@ static struct msm_camera_i2c_reg_conf ov7736_30_30_fps_settings[] = {
 	{0x380D, 0x14},
 };
 
-static int32_t ov7736_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
-		struct fps_range_t *fps_range)
-{
-	int32_t rc = 0;
-
-	if (fps_range->max_fps != fps_range->min_fps) {
-		pr_err("%s: FPS is incorrect\n", __func__);
-		rc = -EINVAL;
-		goto frame_rate_done;
-	}
-
-	if (fps_range->max_fps == 30) {
-		rc = msm_camera_i2c_write_tbl(
-				s_ctrl->sensor_i2c_client,
-				ov7736_30_30_fps_settings,
-				ARRAY_SIZE(ov7736_30_30_fps_settings),
-				MSM_CAMERA_I2C_BYTE_DATA);
-	} else if (fps_range->max_fps == 15) {
-		rc = msm_camera_i2c_write_tbl(
-				s_ctrl->sensor_i2c_client,
-				ov7736_15_15_fps_settings,
-				ARRAY_SIZE(ov7736_15_15_fps_settings),
-				MSM_CAMERA_I2C_BYTE_DATA);
-	} else {
-		rc = -EINVAL;
-		pr_err("%s: failed to set frame rate range (%d)\n", __func__,
-				rc);
-		goto frame_rate_done;
-	}
-
-
-frame_rate_done:
-	return rc;
-}
+#endif
 
 static struct msm_camera_i2c_reg_conf mode_preview_tbl[] = {
 };
@@ -337,31 +303,6 @@ static struct msm_sensor_output_info_t ov7736_dimensions[] = {
 	},
 };
 
-static struct msm_camera_csid_vc_cfg ov7736_cid_cfg[] = {
-	{0, 0x1E, CSI_DECODE_8BIT},
-	{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
-};
-
-static struct msm_camera_csi2_params ov7736_csi_params = {
-	.csid_params = {
-		.lane_assign = 0xe4,
-		.lane_cnt = 1,
-		.lut_params = {
-			.num_cid = 2,
-			.vc_cfg = ov7736_cid_cfg,
-		},
-	},
-	.csiphy_params = {
-		.lane_cnt = 1,
-		.settle_cnt = 8,
-	},
-};
-
-static struct msm_camera_csi2_params *ov7736_csi_params_array[] = {
-	&ov7736_csi_params,
-	&ov7736_csi_params,
-};
-
 static struct msm_sensor_output_reg_addr_t ov7736_reg_addr = {
 	.x_output = 0xFFFF,
 	.y_output = 0xFFFF,
@@ -374,136 +315,115 @@ static struct msm_sensor_id_info_t ov7736_id_info = {
 	.sensor_id = 0x7736,
 };
 
-static int32_t ov7736_regulator_on(struct regulator **reg, char *regname,
-		int uV)
+static int32_t ov7736_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
-	pr_info("ov7736_regulator_on: %s %d\n", regname, uV);
+	struct device *dev = NULL;
+	struct msm_camera_sensor_info *info = s_ctrl->sensordata;
 
-	*reg = regulator_get(NULL, regname);
-	if (IS_ERR(*reg)) {
-		pr_err("ov7736: failed to get %s (%ld)\n",
-				regname, PTR_ERR(*reg));
-		goto reg_on_done;
+	dev = &s_ctrl->sensor_i2c_client->client->dev;
+
+	pr_info("ov7736_power_up R:%d P:%d A:%d CLK:%d\n",
+			info->sensor_reset,
+			info->sensor_pwd,
+			info->oem_data->sensor_avdd_en,
+			info->oem_data->mclk_freq);
+
+	if (!info->oem_data) {
+		pr_err("%s: oem data NULL in sensor info, aborting",
+				__func__);
+		rc = -EINVAL;
+		goto power_on_done;
 	}
-	rc = regulator_set_voltage(*reg, uV, uV);
+
+	/* obtain gpios */
+	rc = gpio_request(info->sensor_pwd, "ov7736");
 	if (rc) {
-		pr_err("ov7736: failed to set voltage for %s (%d)\n",
-				regname, rc);
-		goto reg_on_done;
+		pr_err("ov7736: gpio request DIGITAL_EN failed (%d)\n",
+				rc);
+		goto power_on_done;
 	}
-	rc = regulator_enable(*reg);
+	rc = gpio_request(info->oem_data->sensor_avdd_en, "ov7736");
 	if (rc) {
-		pr_err("ov7736: failed to enable %s (%d)\n",
-				regname, rc);
-		goto reg_on_done;
-	}
-reg_on_done:
-	return rc;
-}
-
-static int32_t ov7736_regulator_off(struct regulator *reg, char *regname)
-{
-	int32_t rc = 0;
-
-	if (reg) {
-		pr_info("ov7736_regulator_off: %s\n", regname);
-
-		rc = regulator_disable(reg);
-		if (rc) {
-			pr_err("ov7736: failed to disable %s (%d)\n",
-					regname, rc);
-			goto reg_off_done;
-		}
-		regulator_put(reg);
-	}
-reg_off_done:
-	return rc;
-}
-
-static int32_t ov7736_power_up(struct msm_sensor_ctrl_t *s_ctrl)
-{
-	int32_t rc = 0;
-	struct msm_camera_sensor_platform_info *pinfo =
-		s_ctrl->sensordata->sensor_platform_info;
-
-	pr_info("ov7736_power_up R:%d P:%d A:%d 1.8:%s\n",
-			pinfo->sensor_reset,
-			pinfo->sensor_pwd,
-			pinfo->analog_en,
-			pinfo->reg_1p8);
-
-	rc = gpio_request(pinfo->analog_en, "ov7736");
-	if (rc < 0) {
 		pr_err("ov7736: gpio request ANALOG_EN failed (%d)\n",
 				rc);
-		goto power_up_done;
+		goto power_on_done;
 	}
-	rc = gpio_request(pinfo->sensor_pwd, "ov7736");
-	if (rc < 0) {
-		pr_err("ov7736: gpio request PWRDWN failed (%d)\n", rc);
-		goto power_up_done;
+	rc = gpio_request(info->sensor_reset, "ov7736");
+	if (rc) {
+		pr_err("ov7736: gpio request CAM2_RST_N failed (%d)\n", rc);
+		goto power_on_done;
 	}
-	rc = gpio_request(pinfo->sensor_reset, "ov7736");
-	if (rc < 0) {
-		pr_err("7736: gpio request RESET failed (%d)\n", rc);
-		goto power_up_done;
-	}
-	gpio_direction_output(pinfo->sensor_pwd, 1);
 
-	rc = ov7736_regulator_on(&reg_1p8, pinfo->reg_1p8, 1800000);
-	if (rc < 0)
-		goto power_up_done;
+	/* turn on anlog supply */
+	gpio_direction_output(info->sensor_pwd, 1);
+
 	usleep_range(5000, 5000);
 
-	gpio_direction_output(pinfo->analog_en, 1);
+	/* turn on pwdn supply */
+	gpio_direction_output(info->oem_data->sensor_avdd_en, 1);
 	usleep(20000);
 
-	msm_sensor_probe_on(&s_ctrl->sensor_i2c_client->client->dev);
-	msm_camio_clk_rate_set(OV7736_DEFAULT_CLOCK_RATE);
+	pr_info("ov7736 enabling MCLK\n");
+
+	cam_mot_8960_clk_info->clk_rate = info->oem_data->mclk_freq;
+
+	rc = msm_cam_clk_enable(dev, cam_mot_8960_clk_info,
+			s_ctrl->cam_clk, ARRAY_SIZE(cam_mot_8960_clk_info), 1);
+	if (rc < 0) {
+		pr_err("OV7736: msm_cam_clk_enable failed (%d)\n", rc);
+		goto power_on_done;
+	}
+
 	usleep(5000);
 
-	gpio_direction_output(pinfo->sensor_pwd, 0);
+	pr_info("ov7736 setting PWRDWN Low\n");
+	gpio_direction_output(info->sensor_pwd, 0);
 
-	gpio_direction_output(pinfo->sensor_reset, 1);
+	pr_info("ov7736 setting Reset High\n");
+	gpio_direction_output(info->sensor_reset, 1);
 	msleep(20);
 
-power_up_done:
+	pr_info("ov7736 power up sequence complete\n");
+power_on_done:
 	return rc;
 }
 
-
-static int32_t ov7736_power_down(struct msm_sensor_ctrl_t *s_ctrl)
+static int32_t ov7736_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	struct msm_camera_sensor_platform_info *pinfo =
-		s_ctrl->sensordata->sensor_platform_info;
+	struct device *dev = NULL;
+	int32_t rc = 0;
+	struct msm_camera_sensor_info *info = s_ctrl->sensordata;
 
-	pr_info("ov7736_power_down\n");
+	dev = &s_ctrl->sensor_i2c_client->client->dev;
+	pr_info("ov7736_sensor_power_off\n");
 
-	/* Turn off MCLK */
-	msm_sensor_probe_off(&s_ctrl->sensor_i2c_client->client->dev);
+	/*Disable MCLK*/
+	rc = msm_cam_clk_enable(dev, cam_mot_8960_clk_info, s_ctrl->cam_clk,
+			ARRAY_SIZE(cam_mot_8960_clk_info), 0);
+	if (rc < 0)
+		pr_err("ov8820: MCLK disable failed (%d)\n", rc);
 	usleep(1000);
 
 	/* Set Reset Low */
-	gpio_direction_output(pinfo->sensor_reset, 0);
+	gpio_direction_output(info->sensor_reset, 0);
 	usleep(1000);
 
 	/* Disable AVDD */
-	gpio_direction_output(pinfo->analog_en, 0);
+	gpio_direction_output(info->oem_data->sensor_avdd_en, 0);
 
 	/* Set PWRDWN Low */
-	gpio_direction_output(pinfo->sensor_pwd, 0);
+	gpio_direction_output(info->sensor_pwd, 0);
 
 	/* Clean up */
-	gpio_free(pinfo->sensor_pwd);
-	gpio_free(pinfo->sensor_reset);
-	gpio_free(pinfo->analog_en);
-	ov7736_regulator_off(reg_1p8, "1.8");
+	gpio_free(info->sensor_pwd);
+	gpio_free(info->sensor_reset);
+	gpio_free(info->oem_data->sensor_avdd_en);
 
 	return 0;
 }
 
-static int32_t ov7736_match_id(struct msm_sensor_ctrl_t *s_ctrl)
+static int32_t ov7736_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	uint16_t chipid = 0;
@@ -524,6 +444,48 @@ static int32_t ov7736_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 	pr_info("ov7736: match_id success\n");
 	return 0;
+}
+
+/* FIX ME: Update stop stream with correct i2c wrie sequence
+inorder to move sensor to proper state */
+static void ov7736_stop_stream(struct msm_sensor_ctrl_t *s_ctrl) {}
+
+/* TODO: Motorola added feature. Needs porting */
+#ifdef CONFIG_FF_TEST_PATTERNS
+
+static int32_t ov7736_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
+		struct fps_range_t *fps_range)
+{
+	int32_t rc = 0;
+
+	if (fps_range->max_fps != fps_range->min_fps) {
+		pr_err("%s: FPS is incorrect\n", __func__);
+		rc = -EINVAL;
+		goto frame_rate_done;
+	}
+
+	if (fps_range->max_fps == 30) {
+		rc = msm_camera_i2c_write_tbl(
+				s_ctrl->sensor_i2c_client,
+				ov7736_30_30_fps_settings,
+				ARRAY_SIZE(ov7736_30_30_fps_settings),
+				MSM_CAMERA_I2C_BYTE_DATA);
+	} else if (fps_range->max_fps == 15) {
+		rc = msm_camera_i2c_write_tbl(
+				s_ctrl->sensor_i2c_client,
+				ov7736_15_15_fps_settings,
+				ARRAY_SIZE(ov7736_15_15_fps_settings),
+				MSM_CAMERA_I2C_BYTE_DATA);
+	} else {
+		rc = -EINVAL;
+		pr_err("%s: failed to set frame rate range (%d)\n", __func__,
+				rc);
+		goto frame_rate_done;
+	}
+
+
+frame_rate_done:
+	return rc;
 }
 
 static int32_t ov7736_set_gamma(struct msm_sensor_ctrl_t *s_ctrl, uint8_t unity)
@@ -618,7 +580,6 @@ static int32_t ov7736_set_sharpening(struct msm_sensor_ctrl_t *s_ctrl,
 			return rc;
 		}
 	} else {
-
 		if ((sharpening_saved_5300 != 0x0000) &&
 				(sharpening_saved_5301 != 0x0000)) {
 			data = (uint8_t)sharpening_saved_5300;
@@ -649,7 +610,6 @@ static int32_t ov7736_set_sharpening(struct msm_sensor_ctrl_t *s_ctrl,
 					__func__);
 			return -EINVAL;
 		}
-
 	}
 
 	return rc;
@@ -750,6 +710,8 @@ static int32_t ov7736_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
+#endif
+
 static int32_t ov7736_get_exposure_time(struct msm_sensor_ctrl_t *s_ctrl,
 		uint32_t *ex_time)
 {
@@ -837,22 +799,28 @@ static struct v4l2_subdev_ops ov7736_subdev_ops = {
 };
 
 static struct msm_sensor_fn_t ov7736_func_tbl = {
-	.sensor_start_stream           = msm_sensor_start_stream,
-	.sensor_stop_stream            = msm_sensor_stop_stream,
-	.sensor_setting                = msm_sensor_setting,
-	.sensor_set_sensor_mode        = msm_sensor_set_sensor_mode,
-	.sensor_mode_init              = msm_sensor_mode_init,
-	.sensor_get_output_info        = msm_sensor_get_output_info,
-	.sensor_config                 = msm_sensor_config,
-	.sensor_power_up               = ov7736_power_up,
-	.sensor_power_down             = ov7736_power_down,
-	.sensor_match_id               = ov7736_match_id,
+	.sensor_start_stream    = msm_sensor_start_stream,
+	.sensor_stop_stream     = ov7736_stop_stream,
+	.sensor_setting         = msm_sensor_setting,
+	.sensor_set_sensor_mode = msm_sensor_set_sensor_mode,
+	.sensor_mode_init       = msm_sensor_mode_init,
+	.sensor_get_output_info = msm_sensor_get_output_info,
+	.sensor_config          = msm_sensor_config,
+	.sensor_power_up        = ov7736_sensor_power_up,
+	.sensor_power_down      = ov7736_sensor_power_down,
+	.sensor_match_id        = ov7736_sensor_match_id,
+	.sensor_csi_setting     = msm_sensor_setting1,
+	.sensor_get_csi_params  = msm_sensor_get_csi_params,
+	.sensor_get_exposure_time      = ov7736_get_exposure_time,
+/* TODO: Motorola added feature. Needs porting */
+#ifdef CONFIG_FF_TEST_PATTERNS
 	.sensor_set_gamma              = ov7736_set_gamma,
 	.sensor_set_sharpening         = ov7736_set_sharpening,
 	.sensor_set_lens_shading       = ov7736_set_lens_shading,
 	.sensor_set_target_exposure    = ov7736_set_target_exposure,
 	.sensor_get_exposure_time      = ov7736_get_exposure_time,
 	.sensor_set_frame_rate_range   = ov7736_set_frame_rate_range,
+#endif
 };
 
 static struct msm_sensor_reg_t ov7736_regs = {
@@ -877,7 +845,6 @@ static struct msm_sensor_ctrl_t ov7736_s_ctrl = {
 	.sensor_id_info               = &ov7736_id_info,
 
 	.cam_mode                     = MSM_SENSOR_MODE_INVALID,
-	.csi_params                   = &ov7736_csi_params_array[0],
 	.msm_sensor_mutex             = &ov7736_mut,
 	.sensor_i2c_driver            = &ov7736_i2c_driver,
 	.sensor_v4l2_subdev_info      = ov7736_subdev_info,
