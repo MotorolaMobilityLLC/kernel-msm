@@ -13,6 +13,14 @@
 
 /include/ "apq8026-dory.dtsi"
 
+&soc {
+	i2c@f9927000 {
+		melfas_mms136@48 {
+			status = "ok";
+		};
+	};
+};
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_lgd_nano_240_cmd>;
 };
