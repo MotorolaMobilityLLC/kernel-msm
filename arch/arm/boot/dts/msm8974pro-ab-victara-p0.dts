@@ -28,20 +28,10 @@
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "left";
 	};
-
-	tfa9890@35 {
-		compatible = "nxp,tfa9890";
-		reg = <0x35>;
-		tfa_vdd-supply = <&pm8941_s3>;
-		nxp,tfa_max-vol-steps = <15>;
-		nxp,tfa-dev = "right";
-	};
 };
 
 &soc {
 	sound {
-		qcom,tfa9890-stereo;
 		qcom,tfa9890-left-name = "tfa9890.2-0034";
-		qcom,tfa9890-right-name = "tfa9890.2-0035";
 	};
 };
