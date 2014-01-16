@@ -3420,6 +3420,9 @@ static int synaptics_rmi4_regulator_lpm(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
+	if (gpio_is_valid(rmi4_data->board->reset_gpio))
+		gpio_set_value(rmi4_data->board->reset_gpio, 0);
+
 	return 0;
 
 regulator_hpm:
@@ -3463,6 +3466,9 @@ regulator_hpm:
 			}
 		}
 	}
+
+	if (gpio_is_valid(rmi4_data->board->reset_gpio))
+		gpio_set_value(rmi4_data->board->reset_gpio, 1);
 
 	return 0;
 
