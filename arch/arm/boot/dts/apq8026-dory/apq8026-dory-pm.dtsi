@@ -431,6 +431,7 @@
 	qcom,ibatsafe-ma = <300>;
 	qcom,vbatdet-delta-mv = <100>;
 	qcom,tchg-mins = <480>;
+	qcom,btc-disabled;
 };
 
 &pm8226_bms{
