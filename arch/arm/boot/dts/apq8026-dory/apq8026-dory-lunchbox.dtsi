@@ -12,3 +12,7 @@
  */
 
 /include/ "apq8026-dory.dtsi"
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_lgd_nano_240_cmd>;
+};
