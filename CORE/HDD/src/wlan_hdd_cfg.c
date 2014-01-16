@@ -88,25 +88,6 @@ static void cbNotifySetImmediateRoamRssiDiff(hdd_context_t *pHddCtx, unsigned lo
 
 static void cbNotifySetRoamRssiDiff(hdd_context_t *pHddCtx, unsigned long NotifyId)
 {
-    if (pHddCtx->cfg_ini->nSelect5GHzMargin)
-    {
-        /*
-           LFR2.0 firmware posts roam candidates whose RSSI is above the
-           look down threshold and RoamRssiDiff better than current AP Rssi.
-           if gSelect5GHzMargin is non-zero; then the expectation is firmware
-           should post all the roam candidates whose RSSI is above lookdown
-           threshold and don't ignore the APs in RoamRssiDiff zone.
-
-           For ex: RoamRssiDiff=5, Lookdown threshold=-78 and
-           gSelect5GHzMargin=30 then firmware selects APs
-           with Rssi -73 or better as roam candidates.
-           if the 5G AP Rssi is -75 it will be ignored.
-           if 2.4G AP Rssi is -45 and 5G AP with -75 is available,
-           STA should connect to 5G AP, hence RoamRssiDiff is set to 0.
-        */
-        pHddCtx->cfg_ini->RoamRssiDiff = 0;
-    }
-
     sme_UpdateRoamRssiDiff((tHalHandle)(pHddCtx->hHal),
                                     pHddCtx->cfg_ini->RoamRssiDiff);
 }
@@ -4739,10 +4720,6 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #endif
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    smeConfig.csrConfig.isFastTransitionEnabled = pConfig->isFastTransitionEnabled;
-   if (pConfig->nSelect5GHzMargin)
-   {
-       pConfig->RoamRssiDiff = 0;
-   }
    smeConfig.csrConfig.RoamRssiDiff = pConfig->RoamRssiDiff;
    smeConfig.csrConfig.nImmediateRoamRssiDiff = pConfig->nImmediateRoamRssiDiff;
    smeConfig.csrConfig.isWESModeEnabled = pConfig->isWESModeEnabled;
