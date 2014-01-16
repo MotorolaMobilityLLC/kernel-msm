@@ -1,4 +1,5 @@
 /* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2013,2014 LGE Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -60,7 +61,7 @@
 			 */
 			inven,secondary_type = "compass";
 			inven,secondary_name = "ak8963";
-			inven,secondary_reg  = <0x0c>;
+			inven,secondary_reg  = <0x0f>;
 			inven,secondary_axis_map_x = <1>;
 			inven,secondary_axis_map_y = <0>;
 			inven,secondary_axis_map_z = <2>;
