@@ -37,6 +37,7 @@
 #define DEBUGFS_DIR_NAME "ts_debug"
 
 #define RESET_DELAY 100
+#define PON_DELAY 100
 
 #define TYPE_B_PROTOCOL
 
@@ -169,6 +170,9 @@ static ssize_t synaptics_rmi4_flipy_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
+
+static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
+						*rmi4_data);
 
 struct synaptics_rmi4_f01_device_status {
 	union {
@@ -1482,6 +1486,15 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 		rmi4_pdata->reset_delay = temp_val;
 	else if (rc != -EINVAL) {
 		dev_err(dev, "Unable to read reset delay\n");
+		return rc;
+	}
+
+	rmi4_pdata->pon_delay = PON_DELAY;
+	rc = of_property_read_u32(np, "synaptics,pon-delay", &temp_val);
+	if (!rc)
+		rmi4_pdata->pon_delay = temp_val;
+	else if (rc != -EINVAL) {
+		dev_err(dev, "Unable to read power on delay\n");
 		return rc;
 	}
 
@@ -2834,6 +2847,26 @@ err_irq_gpio_req:
 	return retval;
 }
 
+static void synaptics_rmi4_init_work(struct work_struct *work)
+{
+	struct synaptics_rmi4_data *rmi4_data =
+			container_of(to_delayed_work(work),
+					struct synaptics_rmi4_data, init_work);
+	int retval;
+
+	synaptics_rmi4_sensor_wake(rmi4_data);
+	rmi4_data->touch_stopped = false;
+	synaptics_rmi4_irq_enable(rmi4_data, true);
+
+	retval = synaptics_rmi4_check_configuration(rmi4_data);
+	if (retval < 0) {
+		dev_err(&(rmi4_data->input_dev->dev),
+				"Failed to check configuration\n");
+		return;
+	}
+	rmi4_data->suspended = false;
+}
+
  /**
  * synaptics_rmi4_probe()
  *
@@ -3078,6 +3111,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->svc_workqueue =
 			create_singlethread_workqueue("rmi_svc_workqueue");
 	INIT_WORK(&rmi4_data->recovery_work, synaptics_rmi4_recover_work);
+	INIT_DELAYED_WORK(&rmi4_data->init_work, synaptics_rmi4_init_work);
 
 	rmi4_data->irq = gpio_to_irq(platform_data->irq_gpio);
 
@@ -3700,16 +3734,22 @@ static int synaptics_rmi4_resume(struct device *dev)
 		}
 	}
 
-	synaptics_rmi4_sensor_wake(rmi4_data);
-	rmi4_data->touch_stopped = false;
-	synaptics_rmi4_irq_enable(rmi4_data, true);
+	if (rmi4_data->board->power_down_enable) {
+		queue_delayed_work(rmi4_data->svc_workqueue,
+				&rmi4_data->init_work,
+				msecs_to_jiffies(rmi4_data->board->pon_delay));
+	} else {
+		synaptics_rmi4_sensor_wake(rmi4_data);
+		rmi4_data->touch_stopped = false;
+		synaptics_rmi4_irq_enable(rmi4_data, true);
 
-	retval = synaptics_rmi4_check_configuration(rmi4_data);
-	if (retval < 0) {
-		dev_err(dev, "Failed to check configuration\n");
-		return retval;
+		retval = synaptics_rmi4_check_configuration(rmi4_data);
+		if (retval < 0) {
+			dev_err(dev, "Failed to check configuration\n");
+			return retval;
+		}
+		rmi4_data->suspended = false;
 	}
-	rmi4_data->suspended = false;
 
 	return 0;
 }
