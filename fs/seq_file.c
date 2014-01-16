@@ -325,10 +325,9 @@ loff_t seq_lseek(struct file *file, loff_t offset, int origin)
 					m->read_pos = offset;
 					retval = file->f_pos = offset;
 				}
+			} else {
+				file->f_pos = offset;
 			}
-		} else {
-			file->f_pos = offset;
-		}
 	}
 	file->f_version = m->version;
 	mutex_unlock(&m->lock);
