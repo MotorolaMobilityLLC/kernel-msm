@@ -1171,6 +1171,8 @@ qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 			msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 		pm_stay_awake(chip->dev);
 	}
+
+	disable_irq_wake(chip->chg_vbatdet_lo.irq);
 	qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
 
 	pr_debug("psy changed usb_psy\n");
@@ -1706,6 +1708,7 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 	}
 
 	qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
+	enable_irq_wake(chip->chg_vbatdet_lo.irq);
 
 	return IRQ_HANDLED;
 }
@@ -3133,7 +3136,9 @@ qpnp_eoc_work(struct work_struct *work)
 					VBATDET_MAX_ERR_MV, vbat_low_count);
 			if (vbat_low_count >= CONSECUTIVE_COUNT) {
 				pr_debug("woke up too early stopping\n");
+
 				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
+				enable_irq_wake(chip->chg_vbatdet_lo.irq);
 				goto stop_eoc;
 			} else {
 				goto check_again_later;
@@ -3174,7 +3179,9 @@ qpnp_eoc_work(struct work_struct *work)
 						!chip->charging_disabled);
 				pr_debug("psy changed batt_psy\n");
 				power_supply_changed(&chip->batt_psy);
+
 				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
+				enable_irq_wake(chip->chg_vbatdet_lo.irq);
 				goto stop_eoc;
 			} else {
 				count += 1;
@@ -3824,7 +3831,6 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 			enable_irq_wake(chip->chg_trklchg.irq);
 			enable_irq_wake(chip->chg_failed.irq);
 			qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
-			enable_irq_wake(chip->chg_vbatdet_lo.irq);
 
 			break;
 		case SMBB_BAT_IF_SUBTYPE:
