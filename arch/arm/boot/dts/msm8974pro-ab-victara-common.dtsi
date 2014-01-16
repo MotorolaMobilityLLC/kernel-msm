@@ -100,7 +100,9 @@
 		sensor1-supply = <&pm8941_lvs1>;
 		sensor2-supply = <&pm8941_l18>;
 	};
+};
 
+&i2c_2 {
 	tfa9890@34 {
 		compatible = "nxp,tfa9890";
 		reg = <0x34>;
@@ -109,13 +111,31 @@
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "left";
 	};
+};
 
-	tfa9890@35 {
-		compatible = "nxp,tfa9890";
-		reg = <0x35>;
-		tfa_vdd-supply = <&pm8941_s3>;
-		nxp,tfa_max-vol-steps = <15>;
-		nxp,tfa-dev = "right";
+&soc {
+	sound {
+		qcom,quat-auxpcm-gpio-sclk = <&msmgpio 58 0>;
+		qcom,quat-auxpcm-gpio-ws =  <&msmgpio 59 0>;
+		qcom,quat-auxpcm-gpio-dout = <&msmgpio 61 0>;
+		qcom,quat-auxpcm-gpio-din = <&msmgpio 60 0>;
+		qcom,tfa9890-left-name = "tfa9890.2-0034";
+	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		qcom,msm-dai-q6-mi2s-quat {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <3>;
+			qcom,msm-mi2s-rx-lines = <2>;
+			qcom,msm-mi2s-tx-lines = <1>;
+		};
+	};
+};
+
+&slim_msm {
+	taiko_codec {
+		qcom,cdc-reset-gpio = <&msmgpio 23 0>;
 	};
 };
 
@@ -146,14 +166,6 @@
 	regulator-min-microvolt = <3300000>;
 	regulator-max-microvolt = <3300000>;
 	qcom,init-voltage = <3300000>;
-};
-
-&soc {
-	sound {
-		qcom,tfa9890-stereo;
-		qcom,tfa9890-left-name = "tfa9890.0-0034";
-		qcom,tfa9890-right-name = "tfa9890.0-0035";
-	};
 };
 
 &spi_7 {
