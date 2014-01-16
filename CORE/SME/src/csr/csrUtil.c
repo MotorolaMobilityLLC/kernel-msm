@@ -1539,6 +1539,7 @@ tANI_BOOLEAN csrIsP2pSessionConnected( tpAniSirGlobal pMac )
     tCsrRoamSession *pSession = NULL;
     tANI_U32 countP2pCli = 0;
     tANI_U32 countP2pGo = 0;
+    tANI_U32 countSAP = 0;
 
     for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
     {
@@ -1555,6 +1556,10 @@ tANI_BOOLEAN csrIsP2pSessionConnected( tpAniSirGlobal pMac )
                 if (pSession->pCurRoamProfile->csrPersona == VOS_P2P_GO_MODE) {
                     countP2pGo++;
                 }
+
+                if (pSession->pCurRoamProfile->csrPersona == VOS_STA_SAP_MODE) {
+                    countSAP++;
+                }
             }
         }
     }
@@ -1563,7 +1568,7 @@ tANI_BOOLEAN csrIsP2pSessionConnected( tpAniSirGlobal pMac )
      * - at least one P2P CLI session is connected
      * - at least one P2P GO session is connected
      */
-    if ( (countP2pCli > 0) || (countP2pGo > 0 ) ) {
+    if ( (countP2pCli > 0) || (countP2pGo > 0 ) || (countSAP > 0 ) ) {
         fRc = eANI_BOOLEAN_TRUE;
     }
 
