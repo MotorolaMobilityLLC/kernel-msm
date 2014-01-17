@@ -142,11 +142,6 @@ static void enable_emergency_dload_mode(void)
 {
 	printk(KERN_ERR "dload mode is not enabled on target\n");
 }
-
-static bool get_dload_mode(void)
-{
-	return false;
-}
 #endif
 
 void msm_set_restart_mode(int mode)
