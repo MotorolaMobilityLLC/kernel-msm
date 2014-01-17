@@ -51,6 +51,11 @@
 
 		qcom,mdss-dsi-on-command = [
 				05 01 00 00 78 00 01 11		/* exit sleep mode */
+				29 01 00 00 00 00 03 f0 5a 5a   /* Level 2*/
+				29 01 00 00 00 00 03 f1 5a 5a   /* MTP */
+				29 01 00 00 00 00 03 fc 5a 5a   /* Level 3 */
+				15 01 00 00 00 00 02 b0 04      /* Sleep-in mem retention offset */
+				15 01 00 00 00 00 02 fd 0c      /* Sleep-in mem retention en */
 				15 01 00 00 01 00 02 35 00	/* enable_te */
 				15 01 00 00 01 00 02 51 ff	/* brightness_ctrl */
 				15 01 00 00 01 00 02 55 03	/* acl_enable_disable_settings */
