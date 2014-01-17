@@ -672,10 +672,10 @@ static int max17050_probe(struct i2c_client *client,
 	 * data via the POWER_SUPPLY_TYPE_BMS type.
 	 */
 	if (chip->pdata->ext_batt_psy) {
-		chip->battery.name = "max17050_bms";
+		chip->battery.name = "bms";
 		chip->battery.type = POWER_SUPPLY_TYPE_BMS;
 	} else {
-		chip->battery.name = "max17050_battery";
+		chip->battery.name = "battery";
 		chip->battery.type = POWER_SUPPLY_TYPE_BATTERY;
 	}
 
