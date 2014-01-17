@@ -2341,6 +2341,8 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
         }
     }
 
+    hdd_hostapd_stop(dev);
+
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
      || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
        )
