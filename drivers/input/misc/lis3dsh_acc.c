@@ -373,9 +373,9 @@ struct lis3dsh_acc_private_data {
 	u8 axis_map_x;
 	u8 axis_map_y;
 	u8 axis_map_z;
-	bool negate_x;
-	bool negate_y;
-	bool negate_z;
+	u8 negate_x;
+	u8 negate_y;
+	u8 negate_z;
 	int gpio_int1;
 	int gpio_int2;
 	int gpio_dsp_int1;
@@ -2014,9 +2014,21 @@ static int lis3dsh_parse_dt(struct lis3dsh_acc_data *acc)
 		goto exit;
 	}
 
-	pdata->negate_x = of_property_read_bool(np, "lis,negate_x");
-	pdata->negate_y = of_property_read_bool(np, "lis,negate_y");
-	pdata->negate_z = of_property_read_bool(np, "lis,negate_z");
+	err = my_of_property_read_u8(np, "lis,negate_x", &pdata->negate_x);
+	if (err) {
+		pr_err("FAILED to get negate_x\n");
+		goto exit;
+	}
+	err = my_of_property_read_u8(np, "lis,negate_y", &pdata->negate_y);
+	if (err) {
+		pr_err("FAILED to get negate_y\n");
+		goto exit;
+	}
+	err = my_of_property_read_u8(np, "lis,negate_z", &pdata->negate_z);
+	if (err) {
+		pr_err("FAILED to get negate_z\n");
+		goto exit;
+	}
 
 	err = of_property_read_u32(np, "lis,min_interval",
 							&pdata->min_interval);
