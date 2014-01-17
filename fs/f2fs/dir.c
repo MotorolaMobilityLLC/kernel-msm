@@ -447,7 +447,8 @@ next:
  * Caller should grab and release a rwsem by calling f2fs_lock_op() and
  * f2fs_unlock_op().
  */
-int __f2fs_add_link(struct inode *dir, const struct qstr *name, struct inode *inode)
+int __f2fs_add_link(struct inode *dir, const struct qstr *name,
+						struct inode *inode)
 {
 	unsigned int bit_pos;
 	unsigned int level;
@@ -654,7 +655,7 @@ static int f2fs_readdir(struct file *file, void *dirent, filldir_t filldir)
 	bit_pos = (pos % NR_DENTRY_IN_BLOCK);
 	n = (pos / NR_DENTRY_IN_BLOCK);
 
-	for ( ; n < npages; n++) {
+	for (; n < npages; n++) {
 		dentry_page = get_lock_data_page(inode, n);
 		if (IS_ERR(dentry_page))
 			continue;
