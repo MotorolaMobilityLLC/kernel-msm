@@ -98,9 +98,9 @@ out_unmap_put:
 	kunmap(page);
 	f2fs_put_page(page, 0);
 out:
-	f2fs_msg(inode->i_sb, KERN_DEBUG, "recover_inode and its dentry: "
-			"ino = %x, name = %s, dir = %lx, err = %d",
-			ino_of_node(ipage), raw_inode->i_name,
+	f2fs_msg(inode->i_sb, KERN_DEBUG,
+			"%s: ino = %x, name = %s, dir = %lx, err = %d",
+			__func__, ino_of_node(ipage), raw_inode->i_name,
 			IS_ERR(dir) ? 0 : dir->i_ino, err);
 	return err;
 }
@@ -400,9 +400,9 @@ err:
 	f2fs_put_dnode(&dn);
 	f2fs_unlock_op(sbi);
 out:
-	f2fs_msg(sbi->sb, KERN_DEBUG, "recover_data: ino = %lx, "
-			"recovered_data = %d blocks, err = %d",
-			inode->i_ino, recovered, err);
+	f2fs_msg(sbi->sb, KERN_DEBUG,
+		"recover_data: ino = %lx, recovered = %d blocks, err = %d",
+		inode->i_ino, recovered, err);
 	return err;
 }
 
