@@ -14,6 +14,13 @@
 /include/ "apq8026-dory.dtsi"
 
 &soc {
+	i2c@f9924000 {
+		lis3dsh_acc@1e {
+			lis,negate_x = <0>;
+			lis,negate_y = <0>;
+			lis,negate_z = <0>;
+		};
+	};
 	i2c@f9927000 {
 		melfas_mms136@48 {
 			status = "ok";
