@@ -1,4 +1,4 @@
-/* Copyright (c) 2013 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -188,7 +188,6 @@ struct smb349_charger {
 	bool			disable_apsd;
 	bool			battery_missing;
 	const char		*bms_psy_name;
-	struct completion	resumed;
 	bool			resume_completed;
 	bool			irq_waiting;
 
@@ -1216,11 +1215,12 @@ static irqreturn_t smb349_chg_stat_handler(int irq, void *dev_id)
 
 	mutex_lock(&chip->irq_complete);
 
-	init_completion(&chip->resumed);
 	chip->irq_waiting = true;
 	if (!chip->resume_completed) {
 		dev_dbg(chip->dev, "IRQ triggered before device-resume\n");
-		wait_for_completion_interruptible(&chip->resumed);
+		disable_irq_nosync(irq);
+		mutex_unlock(&chip->irq_complete);
+		return IRQ_HANDLED;
 	}
 	chip->irq_waiting = false;
 
@@ -1716,7 +1716,6 @@ static int smb349_charger_probe(struct i2c_client *client,
 	chip->batt_psy.external_power_changed = smb349_external_power_changed;
 
 	chip->resume_completed = true;
-	init_completion(&chip->resumed);
 	mutex_init(&chip->irq_complete);
 
 	rc = power_supply_register(chip->dev, &chip->batt_psy);
@@ -1914,8 +1913,16 @@ static int smb349_resume(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct smb349_charger *chip = i2c_get_clientdata(client);
 
+	mutex_lock(&chip->irq_complete);
 	chip->resume_completed = true;
-	complete(&chip->resumed);
+	if (chip->irq_waiting) {
+		mutex_unlock(&chip->irq_complete);
+		smb349_chg_stat_handler(client->irq, chip);
+		enable_irq(client->irq);
+	} else {
+		mutex_unlock(&chip->irq_complete);
+	}
+
 	return 0;
 }
 
