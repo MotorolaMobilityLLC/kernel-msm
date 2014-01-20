@@ -1512,7 +1512,7 @@ static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 	struct synaptics_rmi4_data *rmi4_data = data;
 
 	if (synaptics_rmi4_sensor_report(rmi4_data) == -EIO)
-		queue_work(rmi4_data->svc_workqueue, &rmi4_data->recovery_work);
+		queue_work(rmi4_data->det_workqueue, &rmi4_data->recovery_work);
 
 	return IRQ_HANDLED;
 }
@@ -3221,8 +3221,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 			&rmi4_data->det_work,
 			msecs_to_jiffies(EXP_FN_DET_INTERVAL));
 
-	rmi4_data->svc_workqueue =
-			create_singlethread_workqueue("rmi_svc_workqueue");
 	INIT_WORK(&rmi4_data->recovery_work, synaptics_rmi4_recover_work);
 	INIT_DELAYED_WORK(&rmi4_data->init_work, synaptics_rmi4_init_work);
 
@@ -3870,7 +3868,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	if (rmi4_data->board->power_down_enable) {
-		queue_delayed_work(rmi4_data->svc_workqueue,
+		queue_delayed_work(rmi4_data->det_workqueue,
 				&rmi4_data->init_work,
 				msecs_to_jiffies(rmi4_data->board->pon_delay));
 	} else {
