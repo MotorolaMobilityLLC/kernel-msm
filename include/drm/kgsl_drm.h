@@ -149,6 +149,14 @@ struct drm_kgsl_gem_cache_ops)
 #define DRM_KGSL_GEM_TYPE_FD_FBMEM   0x1000000
 #define DRM_KGSL_GEM_TYPE_FD_MASK    0xF000000
 
+enum drm_kgsl_crtc_id {
+	DRM_KGSL_CRTC_PRIMARY,
+	DRM_KGSL_CRTC_HDMI,
+	DRM_KGSL_CRTC_ROTATOR,
+	DRM_KGSL_CRTC_WFD,
+	DRM_KGSL_CRTC_MAX,
+};
+
 struct drm_kgsl_gem_create {
 	uint32_t size;
 	uint32_t handle;
