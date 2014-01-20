@@ -4554,31 +4554,39 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
 {
     int ret,sub_cmd;
     unsigned int length;
+    char *pointer,*param;
     VOS_STATUS status;
     hdd_adapter_t *pAdapter;
 
     ret =0;
+    pointer = wrqu->data.pointer;
     length = wrqu->data.length;
     sub_cmd = wrqu->data.flags;
     pAdapter = (hdd_adapter_t *)netdev_priv(dev);
 
-    /*we can only accept input length bytes at most less than 512,
-     *and ensure extra is null delimited string
+    /* we cannot use iotctl_private_iw_point in kernel to allocate memory
+     * to store data from userspace as IW_SETCHAR_GETNONE is defined as
+     * odd number which assigns set_args to zero.we assisgn memory using
+     * kzalloc here to hold userspace data
      */
-    if (length>=512)
-    {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-              "%s: Received command out of bound %s", __func__, extra);
-       return -EINVAL;
-    }
+    param = kzalloc(length + 1, GFP_KERNEL);
+    if (!param)
+        return -EINVAL;
 
-    extra[length] = 0;
+    if (copy_from_user(param, pointer, length))
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "%s:Failed to get user data %s", __func__, param);
+
+        ret = -EINVAL;
+        goto OUT;
+    }
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
               "%s: Received length %d", __func__, length);
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-              "%s: Received data %s", __func__, extra);
+              "%s: Received parameters %s", __func__,param);
 
     switch(sub_cmd)
     {
@@ -4588,7 +4596,7 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                     "SET MAC ADDRESS");
 
-          status  = wlan_ftm_priv_set_mac_address(pAdapter,extra);
+          status  = wlan_ftm_priv_set_mac_address(pAdapter,param);
 
           if(status != VOS_STATUS_SUCCESS)
           {
@@ -4602,7 +4610,7 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
        }
        case WE_SET_TX_RATE:
        {
-            status  = wlan_ftm_priv_set_txrate(pAdapter,extra);
+            status  = wlan_ftm_priv_set_txrate(pAdapter,param);
 
             if(status != VOS_STATUS_SUCCESS)
             {
@@ -4621,6 +4629,9 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
            break;
        }
     }
+
+OUT:
+    kfree(param);
     return ret;
 }
 
