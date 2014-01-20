@@ -729,6 +729,13 @@ static struct msm_gpiomux_config msm8974_quat_auxpcm_configs[] __initdata = {
 		},
 	},
 	{
+		.gpio = 60,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
+			[GPIOMUX_ACTIVE] = &auxpcm_act_cfg,
+		},
+	},
+	{
 		.gpio = 61,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &auxpcm_sus_cfg,
@@ -1046,13 +1053,13 @@ static struct gpiomux_setting c55_ap_int_cfg = {
 
 static struct msm_gpiomux_config c55_configs[] __initdata = {
 	{
-		.gpio = 61,
+		.gpio = 124,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &c55_c55_int_cfg,
 		},
 	},
 	{
-		.gpio = 102,
+		.gpio = 79,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &c55_ap_int_cfg,
 		},
