@@ -218,6 +218,6 @@ void vos_trace(v_U8_t module, v_U8_t code, v_U8_t session, v_U32_t data);
 void vosTraceRegister(VOS_MODULE_ID, tpvosTraceCb);
 VOS_STATUS vos_trace_spin_lock_init(void);
 void vosTraceInit(void);
-void vosTraceEnable(v_U32_t);
+void vosTraceEnable(v_U32_t, v_U8_t enable);
 void vosTraceDumpAll(void*, v_U8_t, v_U8_t, v_U32_t, v_U32_t);
 #endif
