@@ -120,6 +120,9 @@ static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data);
 static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
 		*rmi4_data);
 
+static int synaptics_rmi4_set_configuration(struct synaptics_rmi4_data
+		*rmi4_data);
+
 #ifdef CONFIG_PM
 static int synaptics_rmi4_suspend(struct device *dev);
 
@@ -2600,6 +2603,7 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 	}
 
 	synaptics_rmi4_sensor_wake(rmi4_data);
+	synaptics_rmi4_set_configuration(rmi4_data);
 
 	return 0;
 }
@@ -3130,8 +3134,6 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 		goto err_free_gpios;
 	}
 
-	synaptics_rmi4_sensor_wake(rmi4_data);
-
 	if (rmi4_data->board->disp_maxx)
 		rmi4_data->disp_maxx = rmi4_data->board->disp_maxx;
 	else
@@ -3269,6 +3271,7 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	}
 
 	synaptics_rmi4_sensor_wake(rmi4_data);
+	synaptics_rmi4_set_configuration(rmi4_data);
 
 	retval = synaptics_rmi4_irq_enable(rmi4_data, true);
 	if (retval < 0) {
@@ -3482,7 +3485,6 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 
 	device_ctrl.sleep_mode = NORMAL_OPERATION;
 	device_ctrl.nosleep = NO_SLEEP_OFF;
-	device_ctrl.configured = DEVICE_CONFIGURED;
 
 	retval = synaptics_rmi4_i2c_write(rmi4_data,
 			rmi4_data->f01_ctrl_base_addr,
@@ -3712,11 +3714,33 @@ fail_regulator_hpm:
 	return retval;
 }
 
-static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
+static int synaptics_rmi4_set_configuration(struct synaptics_rmi4_data
 						*rmi4_data)
 {
 	int retval;
 	struct synaptics_rmi4_f01_device_control_0 device_control;
+
+	retval = synaptics_rmi4_i2c_read(rmi4_data,
+			rmi4_data->f01_ctrl_base_addr,
+			device_control.data,
+			sizeof(device_control.data));
+	if (retval < 0)
+		return retval;
+
+	device_control.configured = DEVICE_CONFIGURED;
+
+	retval = synaptics_rmi4_i2c_write(rmi4_data,
+			rmi4_data->f01_ctrl_base_addr,
+			device_control.data,
+			sizeof(device_control.data));
+
+	return retval;
+}
+
+static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
+						*rmi4_data)
+{
+	int retval;
 	struct synaptics_rmi4_f01_device_status device_status;
 
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
@@ -3737,21 +3761,7 @@ static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
 			return retval;
 		}
 
-		retval = synaptics_rmi4_i2c_read(rmi4_data,
-				rmi4_data->f01_ctrl_base_addr,
-				device_control.data,
-				sizeof(device_control.data));
-		if (retval < 0)
-			return retval;
-
-		device_control.configured = DEVICE_CONFIGURED;
-
-		retval = synaptics_rmi4_i2c_write(rmi4_data,
-				rmi4_data->f01_ctrl_base_addr,
-				device_control.data,
-				sizeof(device_control.data));
-		if (retval < 0)
-			return retval;
+		return synaptics_rmi4_set_configuration(rmi4_data);
 	}
 
 	return 0;
