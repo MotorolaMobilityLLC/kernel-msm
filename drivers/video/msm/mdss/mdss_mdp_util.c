@@ -30,6 +30,9 @@
 #include "mdss_mdp_formats.h"
 #include "mdss_debug.h"
 
+u32 mdp_drm_intr_status;
+EXPORT_SYMBOL(mdp_drm_intr_status);
+
 enum {
 	MDP_INTR_VSYNC_INTF_0,
 	MDP_INTR_VSYNC_INTF_1,
@@ -135,6 +138,7 @@ irqreturn_t mdss_mdp_isr(int irq, void *ptr)
 	if (isr == 0)
 		goto mdp_isr_done;
 
+	mdp_drm_intr_status = isr;
 
 	mask = readl_relaxed(mdata->mdp_base + MDSS_MDP_REG_INTR_EN);
 	writel_relaxed(isr, mdata->mdp_base + MDSS_MDP_REG_INTR_CLEAR);
