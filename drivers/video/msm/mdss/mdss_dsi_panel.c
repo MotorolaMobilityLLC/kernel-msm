@@ -22,6 +22,8 @@
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
 #include <linux/dropbox.h>
+#include <linux/uaccess.h>
+#include <linux/msm_mdp.h>
 
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
@@ -1259,13 +1261,12 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 	return 0;
 }
 
-static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
-				int mode, size_t size, u8 *buffer)
+static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
+				u8 reg, size_t size, u8 *buffer)
 {
-	int old_tx_mode;
 	int ret;
 	struct dcs_cmd_req cmdreq;
-	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct dsi_cmd_desc reg_read_cmd = {
 		.dchdr.dtype = DTYPE_DCS_READ,
 		.dchdr.last = 1,
@@ -1280,8 +1281,6 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
-	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
 
 	if (size > MDSS_DSI_LEN) {
 		pr_warn("%s: size %d, max rx length is %d.\n", __func__,
@@ -1289,11 +1288,8 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
 		return -EINVAL;
 	}
 
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 	pr_debug("%s: Reading %d bytes from 0x%02x\n", __func__, size, reg);
-
-	old_tx_mode = mdss_get_tx_power_mode(pdata);
-	if (mode != old_tx_mode)
-		mdss_set_tx_power_mode(mode, pdata);
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &reg_read_cmd;
@@ -1309,8 +1305,8 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
 	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 
 	if (ret <= 0) {
-		pr_err("%s: Error reading %d bytes from reg 0x%02x error.\n",
-			__func__, size, (unsigned int) reg);
+		pr_err("%s: Error reading %d bytes from reg 0x%02x. ret=0x%x\n",
+			__func__, size, (unsigned int) reg, ret);
 		ret = -EFAULT;
 	} else {
 		memcpy(buffer, cmdreq.rbuf, size);
@@ -1319,18 +1315,15 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata, u8 reg,
 	kfree(cmdreq.rbuf);
 
 err1:
-	if (mode != old_tx_mode)
-		mdss_set_tx_power_mode(old_tx_mode, pdata);
 	return ret;
 }
 
-static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata, int mode,
+static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata,
 				size_t size, u8 *buffer)
 {
-	int old_tx_mode;
 	int ret = 0;
 	struct dcs_cmd_req cmdreq;
-	struct mdss_dsi_ctrl_pdata *ctrl;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct dsi_cmd_desc reg_write_cmd = {
 		.dchdr.dtype = DTYPE_DCS_LWRITE,
 		.dchdr.last = 1,
@@ -1345,15 +1338,16 @@ static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata, int mode,
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
-	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
 
+	/* Limit size to 32 to match with disp_util size checking */
+	if (size > 32) {
+		pr_err("%s: size is larger than 32 bytes. size=%d\n",
+						__func__, size);
+		return -EINVAL;
+	}
+
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 	pr_debug("%s: Writing %d bytes to 0x%02x\n", __func__, size, buffer[0]);
-
-	old_tx_mode = mdss_get_tx_power_mode(pdata);
-	if (mode != old_tx_mode)
-		mdss_set_tx_power_mode(mode, pdata);
-
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &reg_write_cmd;
 	cmdreq.cmds_cnt = 1;
@@ -1362,15 +1356,11 @@ static int mdss_dsi_panel_reg_write(struct mdss_panel_data *pdata, int mode,
 	cmdreq.cb = NULL;
 
 	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
-	if (ret <= 0) {
-		pr_err("%s: Failed writing %d bytes to 0x%02x.\n",
-			__func__, size, buffer[0]);
+	if (ret != 0) {
+		pr_err("%s: Failed writing %d bytes to 0x%02x. Ret=0x%x\n",
+			__func__, size, buffer[0], ret);
 		ret = -EFAULT;
-	} else
-		ret = 0;
-
-	if (mode != old_tx_mode)
-		mdss_set_tx_power_mode(old_tx_mode, pdata);
+	}
 
 	return ret;
 }
@@ -1775,6 +1765,51 @@ bool mdss_dsi_match_chosen_panel(struct device_node *np,
 	return true;
 }
 
+int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
+					u32 cmd, void *arg)
+{
+	int rc = -EINVAL;
+	struct msmfb_reg_access reg_access;
+	u8 *reg_access_buf;
+
+	if (copy_from_user(&reg_access, arg, sizeof(reg_access)))
+		return -EFAULT;
+
+	reg_access_buf = kmalloc(reg_access.buffer_size + 1, GFP_KERNEL);
+	if (reg_access_buf == NULL)
+		return -ENOMEM;
+
+	switch (cmd) {
+	case MSMFB_REG_WRITE:
+		reg_access_buf[0] = reg_access.address;
+		if (copy_from_user(&reg_access_buf[1], reg_access.buffer,
+						reg_access.buffer_size))
+			rc = -EFAULT;
+		else
+			rc = mdss_dsi_panel_reg_write(pdata,
+						reg_access.buffer_size + 1,
+						reg_access_buf);
+		break;
+	case MSMFB_REG_READ:
+		rc = mdss_dsi_panel_reg_read(pdata, reg_access.address,
+						reg_access.buffer_size,
+						reg_access_buf);
+		if ((rc == 0) && (copy_to_user(reg_access.buffer,
+						reg_access_buf,
+						reg_access.buffer_size)))
+			rc = -EFAULT;
+		break;
+	default:
+		pr_err("%s: unsupport ioctl =0x%x\n", __func__, cmd);
+		rc = -EFAULT;
+		break;
+	}
+
+	kfree(reg_access_buf);
+
+	return rc;
+}
+
 int mdss_dsi_panel_init(struct device_node *node,
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	bool cmd_cfg_cont_splash)
@@ -1831,8 +1866,6 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->lock_mutex = mdss_dsi_panel_lock_mutex;
 	ctrl_pdata->unlock_mutex = mdss_dsi_panel_unlock_mutex;
-	ctrl_pdata->reg_read = mdss_dsi_panel_reg_read;
-	ctrl_pdata->reg_write = mdss_dsi_panel_reg_write;
 	ctrl_pdata->cont_splash_on = mdss_dsi_panel_cont_splash_on;
 
 
