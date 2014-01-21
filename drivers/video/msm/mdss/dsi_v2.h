@@ -23,6 +23,9 @@
 #define DSI_BUF_SIZE	1024
 #define DSI_MRPS	0x04  /* Maximum Return Packet Size */
 
+#define DSI_MODE_BIT_HS 0
+#define DSI_MODE_BIT_LP 1
+
 struct dsi_interface {
 	int (*on)(struct mdss_panel_data *pdata);
 	int (*off)(struct mdss_panel_data *pdata);
@@ -42,6 +45,8 @@ int dsi_buf_alloc(struct dsi_buf *dp, int size);
 
 void dsi_set_tx_power_mode(int mode);
 
+int dsi_get_tx_power_mode(void);
+
 void dsi_ctrl_config_deinit(struct platform_device *pdev,
 				struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
@@ -58,4 +63,6 @@ int mdp3_panel_get_boot_cfg(void);
 
 int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp,
 					struct device_node *node);
+int dsi_panel_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg);
+
 #endif /* DSI_V2_H */

@@ -275,10 +275,6 @@ struct mdss_dsi_ctrl_pdata {
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	int (*esd) (struct mdss_panel_data *pdata);
 	int (*cont_splash_on) (struct mdss_panel_data *pdata);
-	int (*reg_read) (struct mdss_panel_data *pdata, u8 reg,
-			int mode, size_t size, u8 *buffer);
-	int (*reg_write) (struct mdss_panel_data *pdata,
-			int mode, size_t size, u8 *buffer);
 	int (*get_dt_vreg_data) (struct device *dev,
 			struct dss_module_power *mp, struct device_node *node);
 	struct mdss_panel_data panel_data;
@@ -417,6 +413,8 @@ void mdss_panel_set_reg_boot_on(struct device_node *node,
 int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 bool mdss_dsi_match_chosen_panel(struct device_node *np,
 				struct mdss_panel_config *pconfig);
+int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
+					u32 cmd, void *arg);
 
 static inline bool mdss_dsi_broadcast_mode_enabled(void)
 {
