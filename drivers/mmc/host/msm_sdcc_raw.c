@@ -1057,6 +1057,8 @@ static unsigned int raw_mmc_send_command(struct raw_mmc_command *cmd)
 
 	/* 2k. Write to RAW_MMC_MCI_CMD register */
 	writel(mmc_cmd, RAW_MMC_MCI_CMD);
+	/* Ensure the command to be written to mmc */
+	mdelay(2);
 
 	pr_debug("Command sent: CMD%d MCI_CMD_REG:%x MCI_ARG:%x\n",
 			cmd_index, mmc_cmd, cmd->argument);
@@ -1911,6 +1913,10 @@ static unsigned int raw_mmc_init(struct raw_mmc_host *host)
 	if (mmc_ret != RAW_MMC_E_SUCCESS)
 		return RAW_MMC_E_CLK_ENABLE_FAIL;
 
+	/* Ensure to clean the HC_MODE_EN bit */
+	wmb();
+	writel_relaxed(0, RAW_MCI_HC_MODE);
+
 	/* set power mode */
 	/* give some time to reach minimum voltate */
 	mdelay(2);
@@ -1920,9 +1926,6 @@ static unsigned int raw_mmc_init(struct raw_mmc_host *host)
 	writel(mmc_pwr, RAW_MMC_MCI_POWER);
 	/* some more time to stabilize voltage */
 	mdelay(2);
-
-	/* Ensure to clean the HC_MODE_EN bit */
-	writel(0, RAW_MCI_HC_MODE);
 
 	return RAW_MMC_E_SUCCESS;
 }
