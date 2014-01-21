@@ -377,6 +377,7 @@ struct msm_otg {
 	u8 active_tmout;
 	struct hrtimer timer;
 	enum usb_vdd_type vdd_type;
+	atomic_t pmic_id_masked;
 };
 
 struct msm_hsic_host_platform_data {
