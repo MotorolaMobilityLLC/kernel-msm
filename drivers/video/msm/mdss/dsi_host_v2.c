@@ -491,6 +491,16 @@ void dsi_set_tx_power_mode(int mode)
 	MIPI_OUTP(ctrl_base + DSI_COMMAND_MODE_DMA_CTRL, data);
 }
 
+int dsi_get_tx_power_mode(void)
+{
+	u32 data;
+	unsigned char *ctrl_base = dsi_host_private->dsi_base;
+
+	data = MIPI_INP(ctrl_base + DSI_COMMAND_MODE_DMA_CTRL);
+
+	return !!(data & BIT(26));
+}
+
 void msm_dsi_sw_reset(void)
 {
 	u32 dsi_ctrl;
@@ -908,7 +918,7 @@ int msm_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 	return rc;
 }
 
-void msm_dsi_cmdlist_tx(struct mdss_dsi_ctrl_pdata *ctrl,
+int msm_dsi_cmdlist_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 				struct dcs_cmd_req *req)
 {
 	int ret;
@@ -917,6 +927,8 @@ void msm_dsi_cmdlist_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	if (req->cb)
 		req->cb(ret);
+
+	return ret;
 }
 
 void msm_dsi_cmdlist_rx(struct mdss_dsi_ctrl_pdata *ctrl,
@@ -963,10 +975,11 @@ int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	if (0 == (req->flags & CMD_REQ_LP_MODE))
 		dsi_set_tx_power_mode(0);
 
-	if (req->flags & CMD_REQ_RX)
+	if (req->flags & CMD_REQ_RX) {
 		msm_dsi_cmdlist_rx(ctrl, req);
-	else
-		msm_dsi_cmdlist_tx(ctrl, req);
+		ret = ctrl->rx_buf.len;
+	} else
+		ret = msm_dsi_cmdlist_tx(ctrl, req);
 
 	if (0 == (req->flags & CMD_REQ_LP_MODE))
 		dsi_set_tx_power_mode(1);
@@ -974,7 +987,7 @@ int msm_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	msm_dsi_clk_ctrl(&ctrl->panel_data, 0);
 
 	mutex_unlock(&ctrl->cmd_mutex);
-	return 0;
+	return ret;
 }
 
 static int msm_dsi_cal_clk_rate(struct mdss_panel_data *pdata,

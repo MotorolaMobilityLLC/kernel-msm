@@ -1283,9 +1283,10 @@ int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp)
 	pr_debug("%s:  from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
 	mdss_dsi_clk_ctrl(ctrl, 1);
 
-	if (req->flags & CMD_REQ_RX)
-		ret = mdss_dsi_cmdlist_rx(ctrl, req);
-	else
+	if (req->flags & CMD_REQ_RX) {
+		mdss_dsi_cmdlist_rx(ctrl, req);
+		ret = ctrl->rx_buf.len;
+	} else
 		ret = mdss_dsi_cmdlist_tx(ctrl, req);
 
 	mdss_dsi_clk_ctrl(ctrl, 0);
