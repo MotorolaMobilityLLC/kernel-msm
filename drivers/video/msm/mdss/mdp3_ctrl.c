@@ -24,6 +24,7 @@
 #include "mdp3_ctrl.h"
 #include "mdp3.h"
 #include "mdp3_ppp.h"
+#include "dsi_v2.h"
 
 #define VSYNC_EXPIRE_TICK	4
 
@@ -1644,6 +1645,7 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 	struct mdp_overlay *req = NULL;
 	struct msmfb_overlay_data ov_data;
 	int val;
+	struct mdss_panel_data *pdata;
 
 	mdp3_session = (struct mdp3_session_data *)mfd->mdp.private1;
 	if (!mdp3_session)
@@ -1736,6 +1738,19 @@ static int mdp3_ctrl_ioctl_handler(struct msm_fb_data_type *mfd,
 		break;
 	case MSMFB_OVERLAY_PREPARE:
 		rc = mdp3_overlay_prepare(mfd, argp);
+		break;
+	case MSMFB_REG_WRITE:
+	case MSMFB_REG_READ:
+		if (mfd->panel.type == MIPI_VIDEO_PANEL ||
+				mfd->panel.type == MIPI_CMD_PANEL) {
+			pdata = dev_get_platdata(&mfd->pdev->dev);
+			if (!pdata)
+				return -EFAULT;
+
+			mutex_lock(&mdp3_session->lock);
+			rc = dsi_panel_ioctl_handler(pdata, cmd, argp);
+			mutex_unlock(&mdp3_session->lock);
+		}
 		break;
 	default:
 		break;
