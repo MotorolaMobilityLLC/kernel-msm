@@ -1170,6 +1170,12 @@ void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
                                    "%s", "HT40_OBSS_SCAN");
                           pCapStr += strlen("HT40_OBSS_SCAN");
                           break;
+                     case EXTENDED_NSOFFLOAD_SLOT: snprintf(pCapStr,
+                                              sizeof("EXTENDED_NSOFFLOAD_SLOT"),
+                                              "%s", "EXTENDED_NSOFFLOAD_SLOT");
+                          pCapStr += strlen("EXTENDED_NSOFFLOAD_SLOT");
+                          break;
+
                  }
                  *pCapStr++ = ',';
                  *pCapStr++ = ' ';
