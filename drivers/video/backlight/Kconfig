@@ -184,6 +184,16 @@ config BACKLIGHT_GENERIC
 	  known as the Corgi backlight driver. If you have a Sharp Zaurus
 	  SL-C7xx, SL-Cxx00 or SL-6000x say y.
 
+config BACKLIGHT_LM3532
+        tristate "Backlight Driver for LM3532"
+        depends on BACKLIGHT_CLASS_DEVICE && I2C
+        select NEW_LEDS
+        select LEDS_CLASS
+        help
+          If you have a LCD backlight connected to the LM3532,
+          say Y here to enable this driver.
+
+
 config BACKLIGHT_LOCOMO
 	tristate "Sharp LOCOMO LCD/Backlight Driver"
 	depends on SHARP_LOCOMO
