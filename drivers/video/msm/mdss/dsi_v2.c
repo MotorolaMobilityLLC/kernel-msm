@@ -17,6 +17,7 @@
 #include <linux/iopoll.h>
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
+#include <linux/uaccess.h>
 
 #include "dsi_v2.h"
 
@@ -87,6 +88,31 @@ static int dsi_panel_handler(struct mdss_panel_data *pdata, int enable)
 	}
 	return rc;
 }
+
+int dsi_panel_ioctl_handler(struct mdss_panel_data *pdata, u32 cmd, void *arg)
+{
+	int rc = -EINVAL;
+	struct msmfb_reg_access reg_access;
+	int mode = DSI_MODE_BIT_LP;
+	int old_tx_mode;
+
+	if (copy_from_user(&reg_access, arg, sizeof(reg_access)))
+		return -EFAULT;
+
+	if (reg_access.use_hs_mode)
+		mode = DSI_MODE_BIT_HS;
+
+	old_tx_mode = dsi_get_tx_power_mode();
+	if (mode != old_tx_mode)
+		dsi_set_tx_power_mode(mode);
+
+	rc = mdss_dsi_panel_ioctl_handler(pdata, cmd, arg);
+	if (mode != old_tx_mode)
+		dsi_set_tx_power_mode(old_tx_mode);
+
+	return rc;
+}
+
 
 static int dsi_splash_on(struct mdss_panel_data *pdata)
 {
