@@ -109,6 +109,19 @@ static const int vdd_val[VDD_TYPE_MAX][VDD_VAL_MAX] = {
 		},
 };
 
+static bool factory_mode;
+static bool  msm_pmic_mmi_factory_mode(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+	return factory;
+}
+
 static int msm_hsusb_ldo_init(struct msm_otg *motg, int init)
 {
 	int rc = 0;
@@ -2395,6 +2408,13 @@ static void msm_otg_sm_work(struct work_struct *w)
 			msm_otg_reset(otg->phy);
 			pm_runtime_put_noidle(otg->phy->dev);
 			pm_runtime_suspend(otg->phy->dev);
+			/* Re-enable ID IRQ's if they are masked */
+			if (motg->pdata->pmic_id_irq &&
+				atomic_read(&motg->pmic_id_masked) &&
+				!factory_mode) {
+				enable_irq(motg->pdata->pmic_id_irq);
+				atomic_set(&motg->pmic_id_masked, 0);
+			}
 		}
 		break;
 	case OTG_STATE_B_SRP_INIT:
@@ -3039,6 +3059,17 @@ static void msm_otg_set_vbus_state(int online)
 		motg->sm_work_pending = true;
 	else
 		queue_work(system_nrt_wq, &motg->sm_work);
+
+	/*
+	 * Disable ID IRQ's when not in factory mode when
+	 * a Vbus related event is going on.
+	 */
+	if (motg->pdata->pmic_id_irq &&
+		!atomic_read(&motg->pmic_id_masked) &&
+		!factory_mode) {
+		disable_irq(motg->pdata->pmic_id_irq);
+		atomic_set(&motg->pmic_id_masked, 1);
+	}
 }
 static int factory_cable;
 static int msm_pmic_is_factory_cable(struct msm_otg *motg)
@@ -3919,6 +3950,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 
 	factory_cable = msm_pmic_is_factory_cable(motg);
+	factory_mode = msm_pmic_mmi_factory_mode();
 
 	return 0;
 
