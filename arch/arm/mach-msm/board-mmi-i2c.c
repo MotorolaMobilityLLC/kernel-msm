@@ -31,6 +31,10 @@
 #include <sound/tfa9890.h>
 #include <linux/ct406.h>
 #include <mach/gpiomux.h>
+#ifdef CONFIG_BACKLIGHT_LM3532
+#include <linux/i2c/lm3532.h>
+#endif
+
 
 #define SY32xx_TOUCH_SCL_GPIO       37
 #define SY32xx_TOUCH_SDA_GPIO       36
@@ -933,6 +937,145 @@ static int __init ov7736_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
+#ifdef CONFIG_BACKLIGHT_LM3532
+/*
+ * LM3532
+ */
+
+#define LM3532_RESET_GPIO 12
+
+static struct gpiomux_setting lm3532_reset_suspend_config = {
+			.func = GPIOMUX_FUNC_GPIO,
+			.drv = GPIOMUX_DRV_2MA,
+			.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting lm3532_reset_active_config = {
+			.func = GPIOMUX_FUNC_GPIO,
+			.drv = GPIOMUX_DRV_2MA,
+			.pull = GPIOMUX_PULL_NONE,
+			.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct msm_gpiomux_config lm3532_reset_gpio_config = {
+	.gpio = LM3532_RESET_GPIO,
+	.settings = {
+		[GPIOMUX_SUSPENDED] = &lm3532_reset_suspend_config,
+		[GPIOMUX_ACTIVE] = &lm3532_reset_active_config,
+	},
+};
+
+static int lm3532_power_up(void)
+{
+	int ret;
+
+	msm_gpiomux_install(&lm3532_reset_gpio_config, 1);
+
+	ret = gpio_request(LM3532_RESET_GPIO, "lm3532_reset");
+	if (ret) {
+		pr_err("%s: Request LM3532 reset GPIO failed, ret=%d\n",
+			__func__, ret);
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+static int lm3532_power_down(void)
+{
+	gpio_free(LM3532_RESET_GPIO);
+
+	return 0;
+}
+
+static int lm3532_reset_assert(void)
+{
+	gpio_set_value(LM3532_RESET_GPIO, 0);
+
+	return 0;
+}
+
+static int lm3532_reset_release(void)
+{
+	gpio_set_value(LM3532_RESET_GPIO, 1);
+
+	return 0;
+}
+
+struct lm3532_backlight_platform_data mp_lm3532_pdata = {
+	.power_up = lm3532_power_up,
+	.power_down = lm3532_power_down,
+	.reset_assert = lm3532_reset_assert,
+	.reset_release = lm3532_reset_release,
+
+	.led1_controller = LM3532_CNTRL_A,
+	.led2_controller = LM3532_CNTRL_A,
+	.led3_controller = LM3532_CNTRL_C,
+
+	.ctrl_a_name = "lcd-backlight",
+	.ctrl_b_name = "lm3532_led1",
+	.ctrl_c_name = "lm3532_led2",
+
+	.susd_ramp = 0xC0,
+	.runtime_ramp = 0xC0,
+
+	.als1_res = 0xE0,
+	.als2_res = 0xE0,
+	.als_dwn_delay = 0x00,
+	.als_cfgr = 0x2C,
+
+	.en_ambl_sens = 0,
+
+	.pwm_init_delay_ms = 5000,
+	.pwm_resume_delay_ms = 0,
+	.pwm_disable_threshold = 0,
+
+	.ctrl_a_usage = LM3532_BACKLIGHT_DEVICE,
+	.ctrl_a_pwm = 0xC2,
+	.ctrl_a_fsc = 0xFF,
+	.ctrl_a_l4_daylight = 0xFF,
+	.ctrl_a_l3_bright = 0xCC,
+	.ctrl_a_l2_office = 0x99,
+	.ctrl_a_l1_indoor = 0x66,
+	.ctrl_a_l0_dark = 0x33,
+
+	.ctrl_b_usage = LM3532_UNUSED_DEVICE,
+	.ctrl_b_pwm = 0x82,
+	.ctrl_b_fsc = 0xFF,
+	.ctrl_b_l4_daylight = 0xFF,
+	.ctrl_b_l3_bright = 0xCC,
+	.ctrl_b_l2_office = 0x99,
+	.ctrl_b_l1_indoor = 0x66,
+	.ctrl_b_l0_dark = 0x33,
+
+	.ctrl_c_usage = LM3532_UNUSED_DEVICE,
+	.ctrl_c_pwm = 0x82,
+	.ctrl_c_fsc = 0xFF,
+	.ctrl_c_l4_daylight = 0xFF,
+	.ctrl_c_l3_bright = 0xCC,
+	.ctrl_c_l2_office = 0x99,
+	.ctrl_c_l1_indoor = 0x66,
+	.ctrl_c_l0_dark = 0x33,
+
+	.l4_high = 0xCC,
+	.l4_low = 0xCC,
+	.l3_high = 0x99,
+	.l3_low = 0x99,
+	.l2_high = 0x66,
+	.l2_low = 0x66,
+	.l1_high = 0x33,
+	.l1_low = 0x33,
+
+	.boot_brightness = 102,
+};
+#endif
+
+static int __init lm3532_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *node)
+{
+	info->platform_data = &mp_lm3532_pdata;
+	return 0;
+}
 static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *node)
 {
@@ -1275,6 +1418,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00030018, aic3253_init_i2c_device}, /* TI aic3253 audio codec Driver */
 	{0x0003001A, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
 	{0x00090007, s5k5b3g_init_i2c_device}, /* Samsung 2MP Bayer */
+	{0x000B0004, lm3532_init_i2c_device}, /* National LM3532 Backlight */
 	{0x000B0006, lm3556_init_i2c_device}, /* National LM3556 LED Flash */
 	{0x0003001C, tps65132_init_i2c_device}, /* TI lcd bias Driver */
 	{0x000B0007, lp8556_init_i2c_device}, /* National LP8556 Backlight */
