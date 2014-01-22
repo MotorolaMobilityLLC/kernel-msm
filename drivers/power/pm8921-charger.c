@@ -2469,9 +2469,11 @@ static void __pm8921_charger_vbus_draw(unsigned int mA)
 		/* USB Suspended ensure FULL is cleared */
 		the_chip->bms_notify.is_battery_full = 0;
 	} else {
+#ifdef CONFIG_EMU_DETECTION
 		if (!usb_max_current && (mA > MAX_CHARGER_MA) &&
 		    (the_chip->emu_accessory == EMU_ACCY_CHARGER))
 			mA = MAX_CHARGER_MA;
+#endif
 
 		rc = pm_chg_usb_suspend_enable(the_chip, 0);
 		if (rc)

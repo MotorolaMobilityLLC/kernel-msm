@@ -72,6 +72,8 @@
 #define JACK_DETECT_INT PM8921_GPIO_IRQ(PM8921_IRQ_BASE, JACK_DETECT_GPIO)
 
 #define JACK_US_EURO_SEL_GPIO 35
+
+#ifdef CONFIG_EMU_DETECTION
 static int emu_state = NO_DEVICE;
 
 static int emu_audio_accy_notify(struct notifier_block *,
@@ -79,6 +81,7 @@ static int emu_audio_accy_notify(struct notifier_block *,
 static struct notifier_block emu_accy_notifier = {
 	.notifier_call = emu_audio_accy_notify,
 };
+#endif
 struct msm8960_asoc_mach_data {
 	struct gpio *pri_i2s_gpios;
 	unsigned int num_pri_i2s_gpios;
@@ -359,6 +362,7 @@ static int msm8960_set_spk(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+#ifdef CONFIG_EMU_DETECTION
 static int emu_audio_accy_notify(struct notifier_block *nb,
 		unsigned long status, void *unused)
 {
@@ -381,6 +385,7 @@ static int msm8960_check_for_emu_audio(void)
 	else
 		return 0;
 }
+#endif
 
 static int msm8960_mic_event(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *k, int event)
@@ -419,10 +424,11 @@ static int msm8960_spkramp_event(struct snd_soc_dapm_widget *w,
 					__func__, w->name);
 			return -EINVAL;
 		}
-
+#ifdef CONFIG_EMU_DETECTION
 		pr_debug("emu_on = %d\n", emu_on);
 		if ((emu_on == 2) && msm8960_check_for_emu_audio())
 			pr_debug("EMU dock connected, route to dock\n");
+#endif
 
 	} else {
 		if (!strncmp(w->name, "Ext Spk Bottom Pos", 18)) {
@@ -443,8 +449,10 @@ static int msm8960_spkramp_event(struct snd_soc_dapm_widget *w,
 			return -EINVAL;
 		}
 
+#ifdef CONFIG_EMU_DETECTION
 		if ((emu_on == 0) && msm8960_check_for_emu_audio())
 			pr_debug("Don't route audio to EMU anymore\n");
+#endif
 	}
 	return 0;
 }
@@ -2454,7 +2462,9 @@ static int __init msm8960_audio_init(void)
 								__func__);
 	}
 
+#ifdef CONFIG_EMU_DETECTION
 	semu_audio_register_notify(&emu_accy_notifier);
+#endif
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&auxpcm_rsc_ref, 0);
 	atomic_set(&mi2s_rsc_ref, 0);
