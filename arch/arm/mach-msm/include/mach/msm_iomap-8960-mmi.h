@@ -60,5 +60,7 @@
 
 #define MSM_GSBI4_I2C_SDA	20
 #define MSM_GSBI4_I2C_CLK	21
+#define MSM_GSBI12_I2C_SDA	44
+#define MSM_GSBI12_I2C_SCL	45
 
 #endif
