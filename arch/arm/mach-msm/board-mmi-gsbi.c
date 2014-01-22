@@ -54,7 +54,7 @@ struct platform_device *i2c_dt_lookup_table[] __initdata = {
 	&msm8960_device_qup_i2c_gsbi9,
 	&msm8960_device_qup_i2c_gsbi10,
 	NULL,
-	&msm8960_device_qup_i2c_gsbi12,
+	&mmi_msm8960_device_qup_i2c_gsbi12,
 };
 
 struct platform_device *spi_dt_lookup_table[] __initdata = {
