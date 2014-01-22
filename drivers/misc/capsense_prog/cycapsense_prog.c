@@ -25,6 +25,7 @@
 #include <linux/firmware.h>
 #include <linux/limits.h>
 #include <linux/uaccess.h>
+#include <linux/delay.h>
 #include "cycapsense_issp.h"
 
 #define CYCAPSENSE_PROG_NAME	"cycapsense_prog"
@@ -114,6 +115,11 @@ fw_upd_end:
 		release_firmware(fw);
 	if (fw_name != NULL)
 		kfree(fw_name);
+	/* Reset IC after download */
+	gpio_set_value(ctrl_data->issp_d.rst_gpio, 1);
+	usleep_range(1000, 2000);
+	gpio_set_value(ctrl_data->issp_d.rst_gpio, 0);
+
 	device_unlock(ctrl_data->dev);
 	return error;
 }
