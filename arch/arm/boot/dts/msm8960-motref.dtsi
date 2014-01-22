@@ -1,0 +1,29 @@
+/ {
+	/* Audio Codec Reset Issue */
+	pm8921_gpio: qcom,msm-pm8921-gpios {
+		mux {
+			status = "okay";
+
+			/* WCD9310_RESET_N */
+			gpio@34 {
+				qcom,pm8xxx-gpio-pin = <34>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <2>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+		};
+	};
+
+};
