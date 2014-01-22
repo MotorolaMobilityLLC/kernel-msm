@@ -158,6 +158,8 @@ dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-p2.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-p2a1.dtb
 dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-peregrine-p2d.dtb
 
+dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-titan-p1.dtb
+
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
 # to be runtime added by the bootloader (i.e. /chosen properties)
