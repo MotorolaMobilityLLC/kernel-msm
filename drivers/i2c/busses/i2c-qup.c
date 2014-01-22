@@ -1493,6 +1493,15 @@ static int qup_i2c_resume(struct device *device)
 		if (!ret) {
 			pm_runtime_mark_last_busy(device);
 			pm_request_autosuspend(device);
+
+			/* If the device had been suspended before the system
+			   suspend, update the runtime PM status to reflect
+			   the actual device status after system resume.
+			*/
+			pm_runtime_disable(device);
+			if (pm_runtime_set_active(device) < 0)
+				dev_warn(device, "Failed to set active");
+			pm_runtime_enable(device);
 		}
 		return ret;
 	}
