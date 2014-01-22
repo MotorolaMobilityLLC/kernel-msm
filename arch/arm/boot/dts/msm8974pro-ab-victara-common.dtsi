@@ -120,6 +120,7 @@
 		qcom,quat-auxpcm-gpio-dout = <&msmgpio 61 0>;
 		qcom,quat-auxpcm-gpio-din = <&msmgpio 60 0>;
 		qcom,tfa9890-left-name = "tfa9890.2-0034";
+		qcom,model = "msm8974-taiko-tfa9890_codec-snd-card";
 	};
 
 	qcom,msm-dai-mi2s {
