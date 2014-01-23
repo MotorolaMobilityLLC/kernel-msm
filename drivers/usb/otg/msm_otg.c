@@ -105,6 +105,7 @@ static bool mhl_det_in_progress;
 static int factory_kill_gpio;
 static int factory_kill_gpio_active_high;
 static int factory_cable;
+static bool factory_mode;
 
 static struct regulator *hsusb_3p3;
 static struct regulator *hsusb_1p8;
@@ -2737,6 +2738,13 @@ static void msm_otg_sm_work(struct work_struct *w)
 			pm_runtime_mark_last_busy(otg->phy->dev);
 			pm_runtime_autosuspend(otg->phy->dev);
 			motg->pm_done = 1;
+			/* Re-enable ID IRQ's if they are masked */
+			if (motg->pdata->pmic_id_irq &&
+				atomic_read(&motg->pmic_id_masked) &&
+				!factory_mode) {
+				enable_irq(motg->pdata->pmic_id_irq);
+				atomic_set(&motg->pmic_id_masked, 0);
+			}
 		}
 		break;
 	case OTG_STATE_B_SRP_INIT:
@@ -3409,6 +3417,17 @@ static void msm_otg_set_vbus_state(int online)
 		motg->sm_work_pending = true;
 	else
 		queue_work(system_nrt_wq, &motg->sm_work);
+
+	/*
+	* Disable ID IRQ's when not in factory mode when
+	* a Vbus related event is going on.
+	*/
+	if (motg->pdata->pmic_id_irq &&
+		!atomic_read(&motg->pmic_id_masked) &&
+		!factory_mode) {
+		disable_irq(motg->pdata->pmic_id_irq);
+		atomic_set(&motg->pmic_id_masked, 1);
+	}
 }
 
 static int msm_pmic_is_factory_cable(struct msm_otg *motg)
@@ -4885,8 +4904,8 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	if (ret)
 		dev_dbg(&pdev->dev, "fail to setup cdev\n");
 
-	factory_cable = msm_pmic_mmi_factory_mode() ||
-				msm_pmic_is_factory_cable(motg);
+	factory_mode = msm_pmic_mmi_factory_mode();
+	factory_cable = factory_mode || msm_pmic_is_factory_cable(motg);
 	msm_otg_get_factory_kill_gpio();
 	return 0;
 
