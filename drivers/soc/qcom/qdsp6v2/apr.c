@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -404,9 +404,8 @@ struct apr_svc *apr_register(char *dest, char *svc_name, apr_fn svc_fn,
 			if (!svc->port_cnt && !svc->svc_cnt)
 				clnt->svc_cnt++;
 			svc->fn = svc_fn;
-			if (svc->port_cnt)
-				svc->svc_cnt++;
 		}
+		svc->svc_cnt++;
 	}
 
 	mutex_unlock(&svc->m_lock);

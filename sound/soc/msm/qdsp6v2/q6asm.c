@@ -408,14 +408,6 @@ void send_asm_custom_topology(struct audio_client *ac)
 				break;
 			}
 		}
-
-		result = q6asm_mmap_apr_dereg();
-		if (result < 0) {
-			pr_err("%s: q6asm_mmap_apr_dereg failed, err %d\n",
-				__func__, result);
-		} else {
-			common_client.mmap_apr = NULL;
-		}
 	}
 
 	q6asm_add_hdr_custom_topology(ac, &asm_top.hdr,
@@ -1105,6 +1097,8 @@ static int32_t q6asm_srvc_callback(struct apr_client_data *data, void *priv)
 		reset_custom_topology_flags();
 		set_custom_topology = 1;
 		topology_map_handle = 0;
+		common_client.mmap_apr = NULL;
+		atomic_set(&this_mmap.ref_cnt, 0);
 		rtac_clear_mapping(ASM_RTAC_CAL);
 		return 0;
 	}
