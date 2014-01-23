@@ -42,6 +42,10 @@
 	qcom,dsi-pref-prim-pan = <&mot_smd_1080p_cmd_v0>;
 };
 
+&usb3 {
+	qcom,otg-capability;
+};
+
 &sdhc_2 {
 	#address-cells = <0>;
 	interrupt-parent = <&sdhc_2>;
