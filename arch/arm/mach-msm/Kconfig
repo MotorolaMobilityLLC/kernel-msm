@@ -3109,6 +3109,34 @@ config MMI_DEVICE_DTBS
 	  Only include Motorola device specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config MMI_TITAN_DTB
+	depends on ARCH_MSM8226
+	default n
+	bool "Motorola Titan Device DTBs"
+	help
+	  Only include Motorola Titan specific DTBs to limit the number that
+	  get built during kernel compilation.
+
+	  Titan is a Motorola device that uses MSM8226 chipset, which uses the
+	  MSM8226 defconfig.  Due to its many revisions, adding all of the device
+	  trees will consume at least 1MB of space.
+
+	  If unsure, say 'n'.
+
+config MMI_PEREGRINE_DTB
+	depends on ARCH_MSM8226
+	default n
+	bool "Motorola Peregrine Device DTBs"
+	help
+	  Only include Motorola Peregrine specific DTBs to limit the number that
+	  get built during kernel compilation.
+
+	  Peregrine is a Motorola device that uses MSM8926 chipset, which uses the
+	  MSM8226 defconfig.  Due to its many revisions, adding all of the device
+	  trees will consume at least 1MB of space.
+
+	  If unsure, say 'n'.
+
 config MMI_MSM_PINMUX
 	depends on ARCH_MSM
 	default n
