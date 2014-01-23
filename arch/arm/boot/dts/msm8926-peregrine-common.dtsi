@@ -63,7 +63,7 @@
 &sdhc_2 {
 	vdd-supply = <&pm8226_l18>;
 	qcom,vdd-voltage-level = <2950000 2950000>;
-	qcom,vdd-current-level = <9000 400000>;
+	qcom,vdd-current-level = <9000 600000>;
 
 	vdd-io-supply = <&pm8226_l21>;
 	qcom,vdd-io-voltage-level = <1800000 2950000>;
@@ -74,8 +74,8 @@
 	qcom,pad-drv-on = <0x3 0x4 0x3>; /* 8mA, 10mA, 8mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
 
-	qcom,clk-rates = <400000 25000000 100000000>;
-	qcom,bus-speed-mode = "SDR12_1p8v", "SDR50_1p8v", "DDR_1p8v";
+	qcom,clk-rates = <400000 23076923 100000000 120000000>;
+	qcom,bus-speed-mode = "SDR12_1p8v", "SDR25_1p8v", "SDR50_1p8v", "DDR_1p8v", "SDR104_1p8v";
 
 	#address-cells = <0>;
 	interrupt-parent = <&sdhc_2>;
