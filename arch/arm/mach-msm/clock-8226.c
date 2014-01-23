@@ -874,6 +874,17 @@ static struct clk_freq_tbl ftbl_gcc_sdcc1_3_apps_clk[] = {
 	F_END
 };
 
+static struct clk_freq_tbl ftbl_gcc_sdcc2_apps_clk[] = {
+	F_GCC(    144000,         xo,  16,    3,   25),
+	F_GCC(    400000,         xo,  12,    1,    4),
+	F_GCC(  20000000,      gpll0,  15,    1,    2),
+	F_GCC(  23076923,      gpll0,  13,    1,    2),
+	F_GCC(  50000000,      gpll0,  12,    0,    0),
+	F_GCC( 100000000,      gpll0,   6,    0,    0),
+	F_GCC( 120000000,      gpll0,   5,    0,    0),
+	F_END
+};
+
 static struct rcg_clk sdcc1_apps_clk_src = {
 	.cmd_rcgr_reg = SDCC1_APPS_CMD_RCGR,
 	.set_rate = set_rate_mnd,
@@ -891,13 +902,13 @@ static struct rcg_clk sdcc1_apps_clk_src = {
 static struct rcg_clk sdcc2_apps_clk_src = {
 	.cmd_rcgr_reg = SDCC2_APPS_CMD_RCGR,
 	.set_rate = set_rate_mnd,
-	.freq_tbl = ftbl_gcc_sdcc1_3_apps_clk,
+	.freq_tbl = ftbl_gcc_sdcc2_apps_clk,
 	.current_freq = &rcg_dummy_freq,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
 		.dbg_name = "sdcc2_apps_clk_src",
 		.ops = &clk_ops_rcg_mnd,
-		VDD_DIG_FMAX_MAP2(LOW, 100000000, NOMINAL, 200000000),
+		VDD_DIG_FMAX_MAP2(LOW, 100000000, NOMINAL, 120000000),
 		CLK_INIT(sdcc2_apps_clk_src.c),
 	},
 };
