@@ -260,6 +260,7 @@ struct audio_dev {
 	s64				frames_sent;
 
 	bool				audio_ep_enabled;
+	atomic_t			audio_deferred;
 };
 
 static inline struct audio_dev *func_to_audio_source(struct usb_function *f)
@@ -530,7 +531,7 @@ static int audio_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	pr_debug("audio_set_alt intf %d, alt %d\n", intf, alt);
 
 	if (intf == as_interface_alt_1_desc.bInterfaceNumber) {
-		if (alt && !audio->audio_ep_enabled) {
+		if (!audio->audio_ep_enabled) {
 			ret = config_ep_by_speed(cdev->gadget, f, audio->in_ep);
 			if (ret) {
 				audio->in_ep->desc = NULL;
@@ -540,14 +541,15 @@ static int audio_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			}
 			ret = usb_ep_enable(audio->in_ep);
 			if (ret) {
-				ERROR(cdev, "failedto enable ep%s, result %d\n",
+				ERROR(cdev, "failed to enable ep%s,result %d\n",
 					audio->in_ep->name, ret);
 				return ret;
 			}
 			audio->audio_ep_enabled = true;
-		} else if (!alt && audio->audio_ep_enabled) {
-			usb_ep_disable(audio->in_ep);
-			audio->audio_ep_enabled = false;
+			if (atomic_read(&audio->audio_deferred)) {
+				atomic_set(&audio->audio_deferred, 0);
+				audio_send(audio);
+			}
 		}
 	}
 	return 0;
@@ -562,6 +564,7 @@ static void audio_disable(struct usb_function *f)
 		usb_ep_disable(audio->in_ep);
 		audio->audio_ep_enabled = false;
 	}
+	atomic_set(&audio->audio_deferred, 0);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -653,7 +656,10 @@ static void audio_pcm_playback_start(struct audio_dev *audio)
 {
 	audio->start_time = ktime_get();
 	audio->frames_sent = 0;
-	audio_send(audio);
+	if (audio->audio_ep_enabled)
+		audio_send(audio);
+	else
+		atomic_set(&audio->audio_deferred, 1);
 }
 
 static void audio_pcm_playback_stop(struct audio_dev *audio)
@@ -664,6 +670,7 @@ static void audio_pcm_playback_stop(struct audio_dev *audio)
 	audio->buffer_start = 0;
 	audio->buffer_end = 0;
 	audio->buffer_pos = 0;
+	atomic_set(&audio->audio_deferred, 0);
 	spin_unlock_irqrestore(&audio->lock, flags);
 }
 
