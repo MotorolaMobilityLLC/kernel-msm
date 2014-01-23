@@ -410,7 +410,7 @@
 			qcom,pin-num = <106>;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(106)       */
-				qcom,pull = <2>;  /* pulldown               */
+				qcom,pull = <3>;  /* pullup               */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* input                  */
 			};
@@ -427,7 +427,7 @@
 			qcom,pin-num = <107>;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(107)       */
-				qcom,pull = <2>;  /* pulldown                     */
+				qcom,pull = <3>;  /* pullup                     */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* input                  */
 			};
