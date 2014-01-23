@@ -1282,6 +1282,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x002B0001, sy3400_init_i2c_device},   /* Synaptics 34xx */
 	{0x00190002, tfa9890_init_i2c_device}, /* NXP Audio Codec Driver */
         {0x00250001, ct406_init}, 	       /*CT406 driver*/
+	{0x00030014, msm8960_tmp105_init},	/*TMP105*/
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)

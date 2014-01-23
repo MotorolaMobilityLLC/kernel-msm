@@ -64,6 +64,9 @@ void __init mmi_vibrator_init(void);
 #else
 static inline void mmi_vibrator_init(void) { }
 #endif
+extern int __init msm8960_tmp105_init(struct i2c_board_info *info,
+		struct device_node *child);
+
 
 /* set of data provided to the modem over SMEM */
 #define MMI_UNIT_INFO_VER 2
