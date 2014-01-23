@@ -292,6 +292,14 @@ static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter)
    VOS_STATUS status = VOS_STATUS_E_FAILURE;
    hdd_list_node_t *anchor = NULL;
 
+   if (NULL == pAdapter)
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+       FL("pAdapter is NULL"));
+      VOS_ASSERT(0);
+      return NULL;
+   }
+
    // do we have any packets pending in this AC?
    hdd_list_size( &pAdapter->wmm_tx_queue[ac], &size ); 
    if( size == 0 )
