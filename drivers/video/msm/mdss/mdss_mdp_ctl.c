@@ -1067,33 +1067,25 @@ int mdss_mdp_ctl_intf_event(struct mdss_mdp_ctl *ctl, int event, void *arg)
 	return rc;
 }
 
-static int mdss_mdp_ctl_start_sub(struct mdss_mdp_ctl *ctl, bool handoff)
+static int mdss_mdp_ctl_start_sub(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_mixer *mixer;
 	u32 outsize, temp;
 	int ret = 0;
 	int i, nmixers;
 
-	pr_debug("ctl_num=%d\n", ctl->num);
+	if (ctl->start_fnc)
+		ret = ctl->start_fnc(ctl);
+	else
+		pr_warn("no start function for ctl=%d type=%d\n", ctl->num,
+				ctl->panel_data->panel_info.type);
 
-	/*
-	 * Need start_fnc in 2 cases:
-	 * (1) handoff
-	 * (2) continuous splash finished.
-	 */
-	if (handoff || !ctl->panel_data->panel_info.cont_splash_enabled) {
-		if (ctl->start_fnc)
-			ret = ctl->start_fnc(ctl);
-		else
-			pr_warn("no start function for ctl=%d type=%d\n",
-					ctl->num,
-					ctl->panel_data->panel_info.type);
-
-		if (ret) {
-			pr_err("unable to start intf\n");
-			return ret;
-		}
+	if (ret) {
+		pr_err("unable to start intf\n");
+		return ret;
 	}
+
+	pr_debug("ctl_num=%d\n", ctl->num);
 
 	if (!ctl->panel_data->panel_info.cont_splash_enabled) {
 		nmixers = MDSS_MDP_INTF_MAX_LAYERMIXER +
@@ -1121,7 +1113,7 @@ static int mdss_mdp_ctl_start_sub(struct mdss_mdp_ctl *ctl, bool handoff)
 	return ret;
 }
 
-int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff)
+int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_ctl *sctl;
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
@@ -1136,17 +1128,12 @@ int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff)
 	if (ret)
 		return ret;
 
+
 	sctl = mdss_mdp_get_split_ctl(ctl);
 
 	mutex_lock(&ctl->lock);
 
-	/*
-	 * keep power_on false during handoff to avoid unexpected
-	 * operations to overlay.
-	 */
-	if (!handoff)
-		ctl->power_on = true;
-
+	ctl->power_on = true;
 	ctl->bus_ab_quota = 0;
 	ctl->bus_ib_quota = 0;
 	ctl->clk_rate = 0;
@@ -1159,10 +1146,10 @@ int mdss_mdp_ctl_start(struct mdss_mdp_ctl *ctl, bool handoff)
 		goto error;
 	}
 
-	ret = mdss_mdp_ctl_start_sub(ctl, handoff);
+	ret = mdss_mdp_ctl_start_sub(ctl);
 	if (ret == 0) {
 		if (sctl) { /* split display is available */
-			ret = mdss_mdp_ctl_start_sub(sctl, handoff);
+			ret = mdss_mdp_ctl_start_sub(sctl);
 			if (!ret)
 				mdss_mdp_ctl_split_display_enable(1, ctl, sctl);
 		} else if (ctl->mixer_right) {
