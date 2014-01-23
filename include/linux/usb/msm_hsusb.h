@@ -476,6 +476,7 @@ struct msm_otg {
 	int ui_enabled;
 	bool pm_done;
 	struct qpnp_vadc_chip	*vadc_dev;
+	atomic_t pmic_id_masked;
 };
 
 struct ci13xxx_platform_data {
