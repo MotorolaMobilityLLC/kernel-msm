@@ -13,9 +13,13 @@
 /dts-v1/;
 
 /include/ "msm8610-moto-reserve.dtsi"
-/include/ "msm8610-v1.dtsi"
+/include/ "msm8610-v2.dtsi"
 /include/ "msm8610-moto-common.dtsi"
 
 / {
-	qcom,msm-id = <147 0x41 0x8200>;
+	/* HWREV: 0x0101 0x8200
+	 *        ^^^^^^ ^^^^^^
+	 *        Rev1.1 P2
+	 */
+	qcom,msm-id = <147 0x41 0x01018200>;
 };
