@@ -133,6 +133,18 @@
 		qcom,quat-auxpcm-gpio-din = <&msmgpio 60 0>;
 		qcom,tfa9890-left-name = "tfa9890.2-0034";
 		qcom,model = "msm8974-taiko-tfa9890_codec-snd-card";
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"AIF4 MAD", "MCLK",
+			"AMIC1", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Tertiary Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Handset Mic",
+			"AMIC4", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Secondary Mic";
 	};
 
 	qcom,msm-dai-mi2s {
