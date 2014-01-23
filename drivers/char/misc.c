@@ -242,7 +242,7 @@ int misc_register(struct miscdevice * misc)
 
 int misc_deregister(struct miscdevice *misc)
 {
-	int i = DYNAMIC_MINORS - misc->minor - 1;
+	int i = DYNAMIC_MINORS - misc->minor - 1 + dynamic_minors_offset;
 
 	if (WARN_ON(list_empty(&misc->list)))
 		return -EINVAL;
