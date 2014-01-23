@@ -1149,6 +1149,33 @@ static int __init no_disp_detection(void)
 	return no_disp;
 }
 
+
+/*
+ * This voltage used to enable in mipi_dsi_panel_power() but since SOL
+ * smooth transition between boot loader and kernel, this API will be called
+ * much later on. The panel needs to have this voltage to run when kernel starts
+ */
+static __init int enable_ext_5v_reg(void)
+{
+	static struct regulator *ext_5v_vreg;
+	int rc;
+
+	ext_5v_vreg = regulator_get(NULL, "ext_5v");
+	if (IS_ERR(ext_5v_vreg)) {
+		pr_err("could not get 8921_ext_5v, rc = %ld\n",
+							PTR_ERR(ext_5v_vreg));
+		rc = -ENODEV;
+		goto end;
+	}
+
+	rc = regulator_enable(ext_5v_vreg);
+	if (rc)
+		pr_err("regulator enable failed, rc=%d\n", rc);
+end:
+	return rc;
+}
+
+
 void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 				struct mipi_dsi_platform_data *mipi_dsi_pdata)
 {
@@ -1166,6 +1193,8 @@ void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 
 	if (no_disp && mipi_dsi_pdata->disable_splash)
 		mipi_dsi_pdata->disable_splash();
+
+	enable_ext_5v_reg();
 
 	platform_device_register(&mipi_dsi_mot_panel_device);
 }
