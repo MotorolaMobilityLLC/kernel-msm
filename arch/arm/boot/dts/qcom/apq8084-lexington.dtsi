@@ -25,12 +25,20 @@
 	};
 };
 
+&wlan_vreg {
+	gpio = <&msmgpio 119 0>;
+};
+
 &soc {
 	sound {
 		qcom,model = "apq8084-taiko-cdp-snd-card";
 		qcom,hdmi-audio-rx;
 		qcom,cdc-micbias2-headset-only;
 		qcom,ext-mclk-gpio  = <&msmgpio 47 0>;
+		/delete-property/ qcom,sec-auxpcm-gpio-clk;
+		/delete-property/ qcom,sec-auxpcm-gpio-sync;
+		/delete-property/ qcom,sec-auxpcm-gpio-din;
+		/delete-property/ qcom,sec-auxpcm-gpio-dout;
 	};
 
 	gpio_keys {
