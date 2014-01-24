@@ -4,6 +4,43 @@
 		mux {
 			status = "okay";
 
+			/* AUD_AIC_RST_N */
+			gpio@18 {
+				qcom,pm8xxx-gpio-pin = <18>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* ID_FLOAT */
+			gpio@19 {
+				qcom,pm8xxx-gpio-pin = <19>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : None
+				 * VIN Select  : L17
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <6>;
+			};
+
+
 			/* WCD9310_RESET_N */
 			gpio@34 {
 				qcom,pm8xxx-gpio-pin = <34>;
