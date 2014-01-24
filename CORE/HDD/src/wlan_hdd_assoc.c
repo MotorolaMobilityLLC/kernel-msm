@@ -2583,8 +2583,12 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             }
             else
             {
-                // Clear saved connection information in HDD
-                hdd_connRemoveConnectInfo( WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) );
+                // To Do - address probable memory leak with WEP encryption upon successful association
+                if (eCSR_ROAM_RESULT_ASSOCIATED != roamResult)
+                {
+                  //Clear saved connection information in HDD
+                  hdd_connRemoveConnectInfo( WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) );
+                }
                 halStatus = hdd_AssociationCompletionHandler( pAdapter, pRoamInfo, roamId, roamStatus, roamResult );
             }
 
