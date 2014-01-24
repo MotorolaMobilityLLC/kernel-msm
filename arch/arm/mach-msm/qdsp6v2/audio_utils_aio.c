@@ -1110,6 +1110,7 @@ long audio_aio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case AUDIO_GET_STATS: {
 		struct msm_audio_stats stats;
+		memset(&stats, 0, sizeof(struct msm_audio_stats));
 		stats.byte_count = atomic_read(&audio->in_bytes);
 		stats.sample_count = atomic_read(&audio->in_samples);
 		if (copy_to_user((void *)arg, &stats, sizeof(stats)))
