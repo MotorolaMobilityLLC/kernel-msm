@@ -40,6 +40,19 @@
 		/delete-property/ qcom,sec-auxpcm-gpio-sync;
 		/delete-property/ qcom,sec-auxpcm-gpio-din;
 		/delete-property/ qcom,sec-auxpcm-gpio-dout;
+
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"AIF4 MAD", "MCLK",
+			"AMIC1", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Tertiary Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Handset Mic",
+			"AMIC4", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Secondary Mic";
 	};
 
 	gpio_keys {
