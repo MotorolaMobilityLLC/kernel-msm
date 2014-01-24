@@ -1842,7 +1842,9 @@ limPopulatePeerRateSet(tpAniSirGlobal pMac,
         limLog(pMac, LOGE, FL("more than SIR_MAC_RATESET_EID_MAX rates\n"));
         goto error;
     }
-    if (psessionEntry->dot11mode == WNI_CFG_DOT11_MODE_11G)
+    if ((psessionEntry->dot11mode == WNI_CFG_DOT11_MODE_11G) ||
+        (psessionEntry->dot11mode == WNI_CFG_DOT11_MODE_11A) ||
+        (psessionEntry->dot11mode == WNI_CFG_DOT11_MODE_11N))
     {
 
         if (psessionEntry->extRateSet.numRates <= SIR_MAC_RATESET_EID_MAX)
