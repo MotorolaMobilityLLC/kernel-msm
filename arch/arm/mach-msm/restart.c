@@ -236,6 +236,10 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x6f656d00 | code, restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+#ifdef CONFIG_LGE_HANDLE_PANIC
+		} else if (!strncmp(cmd, "lafd", 4)) {
+			lge_set_restart_reason(LAF_DLOAD_MODE);
+#endif
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
@@ -243,6 +247,9 @@ static void msm_restart_prepare(const char *cmd)
 		__raw_writel(0x77665501, restart_reason);
 	}
 #ifdef CONFIG_LGE_HANDLE_PANIC
+	if (restart_mode == RESTART_DLOAD)
+		lge_set_restart_reason(LAF_DLOAD_MODE);
+
 	if (in_panic) {
 		lge_set_panic_reason();
 
