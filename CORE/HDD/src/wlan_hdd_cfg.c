@@ -2830,7 +2830,13 @@ REG_VARIABLE( CFG_TDLS_EXTERNAL_CONTROL, WLAN_PARAM_Integer,
                 CFG_ENABLE_MEMORY_DEBUG_MIN,
                 CFG_ENABLE_MEMORY_DEBUG_MAX ),
 #endif
+
+   REG_VARIABLE_STRING( CFG_OVERRIDE_COUNTRY_CODE, WLAN_PARAM_String,
+                hdd_config_t, overrideCountryCode,
+                VAR_FLAGS_OPTIONAL,
+               (void *)CFG_OVERRIDE_COUNTRY_CODE_DEFAULT),
 };
+
 
 /*
  * This function returns a pointer to the character after the occurence
@@ -3201,6 +3207,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [nSelect5GHzMargin] Value = [%u] ",pHddCtx->cfg_ini->nSelect5GHzMargin);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gCoalesingInIBSS] Value = [%u] ",pHddCtx->cfg_ini->isCoalesingInIBSSAllowed);
 
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [overrideCountryCode] Value = [%s] ",pHddCtx->cfg_ini->overrideCountryCode);
 }
 
 
