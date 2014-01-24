@@ -153,8 +153,14 @@ static __init int load_pm8921_gpios_from_dt(struct pm8xxx_gpio_init **ptr,
 
 		of_node_put(np);
 		if (avail) {
-			pr_debug("%s: OF DT GPIO mux being used\n", __func__);
-			return -EINVAL;
+			pr_info("%s: OF DT GPIO mux being used\n", __func__);
+			/*return -EINVAL;*/
+			/*
+			 Let's use Mixed DT for 8960 devices. Populate common
+			 GPIOs under OF DT node /qcom,msm-pm8921-gpios/mux
+			 and fall through and parse /System@0/PowerIC@0 from
+			 device specific legacy device tree nodes.
+			*/
 		}
 	}
 
