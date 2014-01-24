@@ -438,7 +438,7 @@ static int32_t ov10820_platform_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	ov10820_kobject = kobject_create_and_add("ov10280", fs_kobj);
+	ov10820_kobject = kobject_create_and_add("ov10820", fs_kobj);
 	if (ov10820_kobject == NULL) {
 		pr_err("%s: unable to create kobject!\n", __func__);
 		return -EINVAL;
