@@ -2993,7 +2993,7 @@ eHalStatus pmcSetRssiFilter(tHalHandle hHal,   v_U8_t        rssiThreshold)
     vos_msg_t msg;
 
 
-    pRequestBuf = vos_mem_malloc(sizeof(tpSirSetRSSIFilterReq));
+    pRequestBuf = vos_mem_malloc(sizeof(tSirSetRSSIFilterReq));
     if (NULL == pRequestBuf)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate memory for PNO request", __func__);
