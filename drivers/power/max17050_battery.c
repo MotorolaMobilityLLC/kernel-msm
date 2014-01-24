@@ -649,8 +649,6 @@ static int max17050_probe(struct i2c_client *client,
 	struct max17050_chip *chip;
 	int ret = 0;
 
-	pr_info("%s: start\n", __func__);
-
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_WORD_DATA))
 		return -EIO;
 
@@ -713,8 +711,6 @@ static int max17050_probe(struct i2c_client *client,
 		schedule_work(&chip->work);
 	else
 		max17050_complete_init(chip);
-
-	pr_info("%s: done\n", __func__);
 
 	return ret;
 }
