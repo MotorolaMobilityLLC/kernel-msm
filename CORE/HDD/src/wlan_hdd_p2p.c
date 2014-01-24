@@ -810,12 +810,10 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
                      ESTIMATED_ROC_DUR_REQD_FOR_ACTION_TX)
             {
                 hddLog(LOG1,"action frame: Extending the RoC");
+                pAdapter->internalCancelRemainOnChReq = VOS_TRUE;
                 status = wlan_hdd_check_remain_on_channel(pAdapter);
-                if ( !status )
-                {
-                    pAdapter->internalCancelRemainOnChReq = VOS_TRUE;
-                }
-                else
+                pAdapter->internalCancelRemainOnChReq = VOS_FALSE;
+                if ( status )
                 {
                     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                              "Failed to cancel the existing RoC");
