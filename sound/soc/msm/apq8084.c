@@ -832,12 +832,10 @@ static const struct snd_soc_dapm_widget apq8084_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Analog Mic6", NULL),
 	SND_SOC_DAPM_MIC("Analog Mic7", NULL),
 
-	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
-	SND_SOC_DAPM_MIC("Digital Mic2", NULL),
-	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
-	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
-	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
-	SND_SOC_DAPM_MIC("Digital Mic6", NULL),
+	SND_SOC_DAPM_MIC("Secondary Mic", NULL),
+	SND_SOC_DAPM_MIC("Tertiary Mic", NULL),
+	SND_SOC_DAPM_MIC("Quaternary Mic", NULL),
+	SND_SOC_DAPM_MIC("Quinary Mic", NULL),
 };
 
 static const char *const spk_function[] = {"Off", "On"};
