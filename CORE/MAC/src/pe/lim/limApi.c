@@ -355,6 +355,8 @@ static void __limInitVars(tpAniSirGlobal pMac)
 
     //Scan in Power Save Flag
     pMac->lim.gScanInPowersave = 0;
+    pMac->lim.probeCounter = 0;
+    pMac->lim.maxProbe = 0;
 }
 
 static void __limInitAssocVars(tpAniSirGlobal pMac)
