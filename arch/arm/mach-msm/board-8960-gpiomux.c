@@ -271,6 +271,7 @@ static struct gpiomux_setting usbsw_cfg = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
+#ifdef CONFIG_MDP_VSYNC
 static struct gpiomux_setting mdp_vsync_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -282,6 +283,7 @@ static struct gpiomux_setting mdp_vsync_active_cfg = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
+#endif
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 static struct gpiomux_setting hdmi_suspend_cfg = {
@@ -869,6 +871,7 @@ static struct msm_gpiomux_config sglte_configs[] __initdata = {
 	}
 };
 
+#ifdef CONFIG_MDP_VSYNC
 static struct msm_gpiomux_config msm8960_mdp_vsync_configs[] __initdata = {
 	{
 		.gpio = 0,
@@ -878,6 +881,7 @@ static struct msm_gpiomux_config msm8960_mdp_vsync_configs[] __initdata = {
 		},
 	}
 };
+#endif
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 static struct msm_gpiomux_config msm8960_hdmi_configs[] __initdata = {
@@ -1086,8 +1090,10 @@ int __init msm8960_init_gpiomux(void)
 			ARRAY_SIZE(msm8960_hdmi_configs));
 #endif
 
+#ifdef CONFIG_MDP_VSYNC
 	msm_gpiomux_install(msm8960_mdp_vsync_configs,
 			ARRAY_SIZE(msm8960_mdp_vsync_configs));
+#endif
 
 	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE)
 		msm_gpiomux_install(msm8960_gsbi8_uartdm_configs,
