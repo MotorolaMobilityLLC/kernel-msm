@@ -499,4 +499,7 @@ config SND_SOC_TAS2552
 	tristate
 
 config SND_SOC_TPA6165A2
-	tristate
+	bool "Headset detection chip"
+	depends on I2C
+	help
+	TPA6165A2 headset detection IC chip
