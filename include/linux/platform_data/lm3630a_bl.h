@@ -58,6 +58,7 @@ struct lm3630a_platform_data {
 	int ledb_max_brt;
 	enum lm3630a_ledb_ctrl ledb_ctrl;
 	/* pwm config. */
+	int pwm_gpio;
 	unsigned int pwm_period;
 	enum lm3630a_pwm_ctrl pwm_ctrl;
 };
