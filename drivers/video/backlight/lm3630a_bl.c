@@ -1,6 +1,7 @@
 /*
 * Simple driver for Texas Instruments LM3630A Backlight driver chip
 * Copyright (C) 2012 Texas Instruments
+* Copyright (C) 2014 Motorola Mobility LLC.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 as
@@ -162,7 +163,7 @@ static int lm3630a_intr_config(struct lm3630a_chip *pchip)
 
 static void lm3630a_pwm_ctrl(struct lm3630a_chip *pchip, int br, int br_max)
 {
-	unsigned int period = pwm_get_period(pchip->pwmd);
+	unsigned int period = pchip->pdata->pwm_period;
 	unsigned int duty = br * period / br_max;
 
 	pwm_config(pchip->pwmd, duty, period);
@@ -335,10 +336,9 @@ static int lm3630a_backlight_register(struct lm3630a_chip *pchip)
 	if (pdata->leda_ctrl != LM3630A_LEDA_DISABLE) {
 		props.brightness = pdata->leda_init_brt;
 		props.max_brightness = pdata->leda_max_brt;
-		pchip->bleda =
-		    devm_backlight_device_register(pchip->dev, "lm3630a_leda",
-						   pchip->dev, pchip,
-						   &lm3630a_bank_a_ops, &props);
+		pchip->bleda = backlight_device_register("lm3630a_leda",
+					pchip->dev, pchip,
+					&lm3630a_bank_a_ops, &props);
 		if (IS_ERR(pchip->bleda))
 			return PTR_ERR(pchip->bleda);
 	}
@@ -347,10 +347,9 @@ static int lm3630a_backlight_register(struct lm3630a_chip *pchip)
 	    (pdata->ledb_ctrl != LM3630A_LEDB_ON_A)) {
 		props.brightness = pdata->ledb_init_brt;
 		props.max_brightness = pdata->ledb_max_brt;
-		pchip->bledb =
-		    devm_backlight_device_register(pchip->dev, "lm3630a_ledb",
-						   pchip->dev, pchip,
-						   &lm3630a_bank_b_ops, &props);
+		pchip->bledb = backlight_device_register("lm3630a_ledb",
+					pchip->dev, pchip,
+					&lm3630a_bank_b_ops, &props);
 		if (IS_ERR(pchip->bledb))
 			return PTR_ERR(pchip->bledb);
 	}
@@ -415,27 +414,38 @@ static int lm3630a_probe(struct i2c_client *client,
 	rval = lm3630a_backlight_register(pchip);
 	if (rval < 0) {
 		dev_err(&client->dev, "fail : backlight register.\n");
-		return rval;
+		goto err1;
 	}
 	/* pwm */
 	if (pdata->pwm_ctrl != LM3630A_PWM_DISABLE) {
-		pchip->pwmd = devm_pwm_get(pchip->dev, "lm3630a-pwm");
+		pchip->pwmd = pwm_request(pdata->pwm_gpio, "lm3630a-pwm");
 		if (IS_ERR(pchip->pwmd)) {
 			dev_err(&client->dev, "fail : get pwm device\n");
-			return PTR_ERR(pchip->pwmd);
+			rval = PTR_ERR(pchip->pwmd);
+			goto err1;
 		}
 	}
-	pchip->pwmd->period = pdata->pwm_period;
 
 	/* interrupt enable  : irq 0 is not allowed */
 	pchip->irq = client->irq;
 	if (pchip->irq) {
 		rval = lm3630a_intr_config(pchip);
 		if (rval < 0)
-			return rval;
+			goto err2;
 	}
 	dev_info(&client->dev, "LM3630A backlight register OK.\n");
 	return 0;
+
+err2:
+	if (!IS_ERR_OR_NULL(pchip->pwmd))
+		pwm_free(pchip->pwmd);
+err1:
+	if (!IS_ERR_OR_NULL(pchip->bleda))
+		backlight_device_unregister(pchip->bleda);
+	if (!IS_ERR_OR_NULL(pchip->bledb))
+		backlight_device_unregister(pchip->bledb);
+
+	return rval;
 }
 
 static int lm3630a_remove(struct i2c_client *client)
@@ -456,6 +466,15 @@ static int lm3630a_remove(struct i2c_client *client)
 		flush_workqueue(pchip->irqthread);
 		destroy_workqueue(pchip->irqthread);
 	}
+
+	if (!IS_ERR_OR_NULL(pchip->pwmd))
+		pwm_free(pchip->pwmd);
+
+	if (!IS_ERR_OR_NULL(pchip->bleda))
+		backlight_device_unregister(pchip->bleda);
+	if (!IS_ERR_OR_NULL(pchip->bledb))
+		backlight_device_unregister(pchip->bledb);
+
 	return 0;
 }
 
