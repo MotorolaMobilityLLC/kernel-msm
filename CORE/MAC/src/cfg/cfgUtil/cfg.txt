@@ -18,17 +18,15 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/*
- * Woodside Networks, Inc proprietary. All rights reserved.
- * This is the data definition file for the CFG module.
- * Author:         Kevin Nguyen
- * Date:           03/18/02
- * History:-
- * 03/18/02        Created.
- * 08/10/05  ww: add maoe channels to have a complete channel listing: (see WNI_CFG_VALID_CHANNEL_LIST)
- * 08/10/05 ww: WNI_CFG_SCAN_CONTROL_LIST has a new contents
- * --------------------------------------------------------------------
- */
+
+* This is the data definition file for the CFG module.
+* Author:         Kevin Nguyen
+* Date:           03/18/02
+* History:-
+* 03/18/02        Created.
+* 08/10/05  ww: add maoe channels to have a complete channel listing: (see WNI_CFG_VALID_CHANNEL_LIST)
+* 08/10/05 ww: WNI_CFG_SCAN_CONTROL_LIST has a new contents
+* --------------------------------------------------------------------
 
 **********************************************************************
 *
@@ -4647,5 +4645,65 @@ HAL
 V    RW    NP
 HAL
 0    250000    90000
+*
+*
+
+* RMC action period frequency (milli seconds)
+*
+WNI_CFG_RMC_ACTION_PERIOD_FREQUENCY    I    4    7
+V    RW    NP
+HAL
+0   0xFFFFFFFF    300
+V    RW    NP
+HAL
+0   0xFFFFFFFF    300
+*
+*
+
+* Rssi probe interval (milli seconds)
+*
+WNI_CFG_ASD_PROBE_INTERVAL    I    4    7
+V    RW    NP
+HAL
+10    100    50
+V    RW    NP
+HAL
+10    100    50
+*
+*
+
+*Rssi threshold to trigger probing and slecting
+*
+WNI_CFG_ASD_TRIGGER_THRESHOLD    I    4    7
+V    RW    NP
+HAL
+0    120     45
+V    RW    NP
+HAL
+0    120    45
+*
+*
+
+*Rssi Hysteresis threshold for RSSI-RTT
+*
+WNI_CFG_ASD_RTT_RSSI_HYST_THRESHOLD    I    4    7
+V    RW    NP
+HAL
+0    100    0
+V    RW    NP
+HAL
+0    100    0
+*
+*
+
+* Debug p2p remain on channel
+*
+WNI_CFG_DEBUG_P2P_REMAIN_ON_CHANNEL    I    4    7
+V    RW    NP
+NONE
+0    1    0
+V    RW    NP
+NONE
+0    1    0
 *
 *
