@@ -138,7 +138,7 @@
 		fih,cdc-lineout-botspkr-gpios = <&msmgpio 51 0x1>;
 		fih,cdc-spk-rcv-sel-gpios = <&msmgpio 52 0>;
 
-		status = "disabled";
+		status = "ok";
 	};
 
 	/* TODO sound part, need to enable it later */
@@ -150,7 +150,6 @@
 			"SPK_OUT", "EXT_VDD_SPKR",
 			"Lineout_1 amp", "LINEOUT1",
 			"Lineout_2 amp", "LINEOUT2",
-			"EAR amp", "EAR",
 			"AMIC1", "MIC BIAS1 External",
 			"MIC BIAS1 External", "Handset Mic",
 			"AMIC2", "MIC BIAS2 External",
@@ -163,7 +162,7 @@
 		fih,cdc-lineout-topspkr-gpios = <&msmgpio 50 0x1>;
 		fih,cdc-lineout-botspkr-gpios = <&msmgpio 51 0x1>;
 		fih,cdc-spk-rcv-sel-gpios = <&msmgpio 52 0>;
-		status = "disabled";
+		status = "ok";
 	};
 
 
@@ -524,3 +523,9 @@
 	status = "disabled";
 };
 
+&i2c_3 {
+	tpa6165xx@40 {
+		status = "disabled";
+
+	};
+};
