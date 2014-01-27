@@ -8,6 +8,9 @@
 * published by the Free Software Foundation.
 *
 */
+
+#define pr_fmt(fmt)	"%s: " fmt, __func__
+
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
@@ -18,6 +21,9 @@
 #include <linux/interrupt.h>
 #include <linux/regmap.h>
 #include <linux/pwm.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/regulator/consumer.h>
 #include <linux/platform_data/lm3630a_bl.h>
 
 #define REG_CTRL	0x00
@@ -35,6 +41,8 @@
 #define REG_MAX		0x1F
 
 #define INT_DEBOUNCE_MSEC	10
+#define LM3630A_VDDIO_VOLT	1800000
+
 struct lm3630a_chip {
 	struct device *dev;
 	struct delayed_work work;
@@ -46,6 +54,7 @@ struct lm3630a_chip {
 	struct backlight_device *bledb;
 	struct regmap *regmap;
 	struct pwm_device *pwmd;
+	struct regulator *vddio;
 };
 
 /* i2c access */
@@ -73,11 +82,82 @@ static int lm3630a_update(struct lm3630a_chip *pchip,
 	return regmap_update_bits(pchip->regmap, reg, mask, data);
 }
 
+static int lm3630a_chip_enable(struct lm3630a_chip *pchip)
+{
+	struct lm3630a_platform_data *pdata = pchip->pdata;
+	int ret;
+
+	if (!IS_ERR(pchip->vddio)) {
+		if (regulator_set_voltage(pchip->vddio,
+				LM3630A_VDDIO_VOLT, LM3630A_VDDIO_VOLT)) {
+			dev_err(pchip->dev, "Fail to set regulator voltage.\n");
+			ret = -EBUSY;
+			goto err;
+		}
+		if (regulator_enable(pchip->vddio)) {
+			dev_err(pchip->dev, "Fail to enable regulator.\n");
+			ret = -EIO;
+			goto err;
+		}
+	}
+
+	if (gpio_is_valid(pdata->hwen_gpio))
+		gpio_direction_output(pdata->hwen_gpio, 1);
+
+err:
+	return ret;
+}
+
+static int lm3630a_chip_disable(struct lm3630a_chip *pchip)
+{
+	struct lm3630a_platform_data *pdata = pchip->pdata;
+	int ret;
+
+	if (!IS_ERR(pchip->vddio)) {
+		if (regulator_disable(pchip->vddio)) {
+			dev_err(pchip->dev, "Fail to disable regulator.\n");
+			ret = -EIO;
+			goto err;
+		}
+	}
+
+	if (gpio_is_valid(pdata->hwen_gpio))
+		gpio_direction_output(pdata->hwen_gpio, 0);
+
+err:
+	return ret;
+}
+
 /* initialize chip */
 static int lm3630a_chip_init(struct lm3630a_chip *pchip)
 {
 	int rval;
 	struct lm3630a_platform_data *pdata = pchip->pdata;
+
+	/* enable vddio power supply */
+	if (pdata->vddio_name[0] != 0) {
+		pchip->vddio = devm_regulator_get(pchip->dev,
+						pdata->vddio_name);
+		if (IS_ERR(pchip->vddio)) {
+			dev_err(pchip->dev, "Fail to get regulator rc = %ld\n",
+				PTR_ERR(pchip->vddio));
+			rval = -ENXIO;
+			goto err;
+		}
+	}
+
+	/* enable chip */
+	if (gpio_is_valid(pdata->hwen_gpio)) {
+		if (devm_gpio_request(pchip->dev, pdata->hwen_gpio,
+				LM3630A_NAME)) {
+			dev_err(pchip->dev, "gpio %d unavailable\n",
+					pdata->hwen_gpio);
+			rval = -EOPNOTSUPP;
+			goto err;
+		}
+	}
+
+	lm3630a_chip_enable(pchip);
 
 	usleep_range(1000, 2000);
 	/* set Filter Strength Register */
@@ -100,6 +180,10 @@ static int lm3630a_chip_init(struct lm3630a_chip *pchip)
 
 	if (rval < 0)
 		dev_err(pchip->dev, "i2c failed to access register\n");
+	return rval;
+err:
+	if (!IS_ERR(pchip->vddio))
+		devm_regulator_put(pchip->vddio);
 	return rval;
 }
 
@@ -362,11 +446,75 @@ static const struct regmap_config lm3630a_regmap = {
 	.max_register = REG_MAX,
 };
 
+static int lm3630a_parse_dt(struct device_node *np,
+		struct lm3630a_chip *pchip)
+{
+	struct lm3630a_platform_data *pdata = pchip->pdata;
+	int rc;
+	u32 tmp;
+	const char *st = NULL;
+
+	rc = of_get_named_gpio(np, "ti,irq-gpio", 0);
+	if (!gpio_is_valid(rc))
+		dev_warn(pchip->dev, "irq gpio not specified\n");
+	else
+		pchip->irq = gpio_to_irq(rc);
+
+	pdata->hwen_gpio = of_get_named_gpio(np, "ti,hwen-gpio", 0);
+	if (!gpio_is_valid(pdata->hwen_gpio))
+		dev_warn(pchip->dev, "hwen gpio not specified\n");
+
+	rc = of_property_read_string(np, "ti,vddio-name", &st);
+	if (rc)
+		dev_warn(pchip->dev, "vddio name not specified\n");
+	else
+		snprintf(pdata->vddio_name,
+			ARRAY_SIZE(pdata->vddio_name), "%s", st);
+
+	rc = of_property_read_u32(np, "ti,leda-ctrl", &tmp);
+	if (rc) {
+		dev_err(pchip->dev, "leda-ctrl not found in devtree\n");
+		return -EINVAL;
+	}
+	pdata->leda_ctrl = tmp;
+
+	rc = of_property_read_u32(np, "ti,ledb-ctrl", &tmp);
+	if (rc) {
+		dev_err(pchip->dev, "ledb-ctrl not found in devtree\n");
+		return -EINVAL;
+	}
+	pdata->ledb_ctrl = tmp;
+
+	rc = of_property_read_u32(np, "ti,leda-max-brt", &tmp);
+	if (rc)
+		dev_warn(pchip->dev, "leda-max-brt not found in devtree\n");
+	pdata->leda_max_brt = rc ? rc : LM3630A_MAX_BRIGHTNESS;
+
+	rc = of_property_read_u32(np, "ti,ledb-max-brt", &tmp);
+	if (rc)
+		dev_warn(pchip->dev, "ledb-max-brt not found in devtree\n");
+	pdata->ledb_max_brt = rc ? rc : LM3630A_MAX_BRIGHTNESS;
+
+	rc = of_property_read_u32(np, "ti,leda-init-brt", &tmp);
+	if (rc)
+		dev_warn(pchip->dev, "leda-init-brt not found in devtree\n");
+	pdata->leda_init_brt = rc ? rc : LM3630A_MAX_BRIGHTNESS;
+
+	rc = of_property_read_u32(np, "ti,ledb-init-brt", &tmp);
+	if (rc)
+		dev_warn(pchip->dev, "ledb-init-brt not found in devtree\n");
+	pdata->ledb_init_brt = rc ? rc : LM3630A_MAX_BRIGHTNESS;
+
+	dev_info(pchip->dev, "loading configuration done.\n");
+	return 0;
+}
+
 static int lm3630a_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	struct lm3630a_platform_data *pdata = dev_get_platdata(&client->dev);
 	struct lm3630a_chip *pchip;
+	struct device_node *np = client->dev.of_node;
 	int rval;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -394,15 +542,11 @@ static int lm3630a_probe(struct i2c_client *client,
 				     GFP_KERNEL);
 		if (pdata == NULL)
 			return -ENOMEM;
-		/* default values */
-		pdata->leda_ctrl = LM3630A_LEDA_ENABLE;
-		pdata->ledb_ctrl = LM3630A_LEDB_ENABLE;
-		pdata->leda_max_brt = LM3630A_MAX_BRIGHTNESS;
-		pdata->ledb_max_brt = LM3630A_MAX_BRIGHTNESS;
-		pdata->leda_init_brt = LM3630A_MAX_BRIGHTNESS;
-		pdata->ledb_init_brt = LM3630A_MAX_BRIGHTNESS;
-	}
-	pchip->pdata = pdata;
+		pchip->pdata = pdata;
+		if (lm3630a_parse_dt(np, pchip))
+			return -EINVAL;
+	} else
+		pchip->pdata = pdata;
 
 	/* chip initialize */
 	rval = lm3630a_chip_init(pchip);
@@ -427,7 +571,6 @@ static int lm3630a_probe(struct i2c_client *client,
 	}
 
 	/* interrupt enable  : irq 0 is not allowed */
-	pchip->irq = client->irq;
 	if (pchip->irq) {
 		rval = lm3630a_intr_config(pchip);
 		if (rval < 0)
@@ -470,6 +613,8 @@ static int lm3630a_remove(struct i2c_client *client)
 	if (!IS_ERR_OR_NULL(pchip->pwmd))
 		pwm_free(pchip->pwmd);
 
+	lm3630a_chip_disable(pchip);
+
 	if (!IS_ERR_OR_NULL(pchip->bleda))
 		backlight_device_unregister(pchip->bleda);
 	if (!IS_ERR_OR_NULL(pchip->bledb))
@@ -483,12 +628,18 @@ static const struct i2c_device_id lm3630a_id[] = {
 	{}
 };
 
+static struct of_device_id lm3630a_match_table[] = {
+	{ .compatible = "ti,lm3630a",},
+	{ },
+};
+
 MODULE_DEVICE_TABLE(i2c, lm3630a_id);
 
 static struct i2c_driver lm3630a_i2c_driver = {
 	.driver = {
-		   .name = LM3630A_NAME,
-		   },
+		.name = LM3630A_NAME,
+		.of_match_table = lm3630a_match_table,
+	},
 	.probe = lm3630a_probe,
 	.remove = lm3630a_remove,
 	.id_table = lm3630a_id,
