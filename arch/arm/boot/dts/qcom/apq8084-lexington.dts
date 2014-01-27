@@ -55,6 +55,29 @@
 		synaptics,normal-mode = <1>;
 		synaptics,gpio-config;
 	};
+	/* TI drv2605 */
+	drv2605@5a {
+		compatible = "ti,drv2605";
+		reg = <0x5A>;
+		gpios = <&msmgpio 75 0>,        /* EN_GPIO */
+			<&msmgpio 74 0>;        /* Trigger */
+		external_trigger = <1>;
+		default_effect = <17>;          /* Strong Click 100% */
+		rated_voltage = <0x70>;         /* 2.4v */
+		overdrive_voltage = <0x89>;     /* 3.0v */
+	};
+};
+
+&i2c_8 {
+	tpa6165xx@40 {
+		compatible = "ti,tpa6165";
+		reg = <0x40>;
+		interrupts = <&msmgpio 9 0x0>;
+		gpios = <&msmgpio 9 0x0>;
+		hs_det_vdd-supply = <&pma8084_lvs2>;
+		hs_det_micvdd-supply = <&pma8084_l18>;
+		ti,tpa6165-always-on-micbias = <1>;
+	};
 };
 
 &usb3 {
