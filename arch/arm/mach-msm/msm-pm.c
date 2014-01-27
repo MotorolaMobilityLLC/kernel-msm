@@ -41,6 +41,7 @@
 #include "scm-boot.h"
 #include "spm.h"
 #include "pm-boot.h"
+#include "clock.h"
 
 #define CREATE_TRACE_POINTS
 #include <mach/trace_msm_low_power.h>
@@ -789,6 +790,14 @@ int msm_cpu_pm_enter_sleep(enum msm_pm_sleep_mode mode, bool from_idle)
 	if (!from_idle)
 		pr_info("CPU%u: %s mode:%d\n",
 			smp_processor_id(), __func__, mode);
+
+	/* enable clock debug for idle and suspend */
+	if (mode == MSM_PM_SLEEP_MODE_POWER_COLLAPSE) {
+		if (!from_idle)
+			clock_debug_print_enabled();
+		else if (MSM_PM_DEBUG_IDLE_CLK & msm_pm_debug_mask)
+			clock_debug_print_enabled();
+	}
 
 	time = sched_clock();
 	if (execute[mode])
