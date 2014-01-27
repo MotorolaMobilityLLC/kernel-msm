@@ -779,13 +779,15 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 			}
 		}
 		if (led->mpp_cfg->pwm_mode == PWM_MODE) {
-			pwm_disable(led->mpp_cfg->pwm_cfg->pwm_dev);
 			duty_us = (led->mpp_cfg->pwm_cfg->pwm_period_us *
-					led->cdev.brightness) / LED_FULL;
+					led->cdev.brightness *
+					NSEC_PER_USEC) / LED_FULL;
+			pwm_disable(led->mpp_cfg->pwm_cfg->pwm_dev);
 			/*config pwm for brightness scaling*/
-			rc = pwm_config_us(led->mpp_cfg->pwm_cfg->pwm_dev,
+			rc = pwm_config(led->mpp_cfg->pwm_cfg->pwm_dev,
 					duty_us,
-					led->mpp_cfg->pwm_cfg->pwm_period_us);
+					led->mpp_cfg->pwm_cfg->pwm_period_us *
+						NSEC_PER_USEC);
 			if (rc < 0) {
 				dev_err(&led->spmi_dev->dev, "Failed to " \
 					"configure pwm for new values\n");
