@@ -1,0 +1,7 @@
+config SENSORS_STM401
+        tristate "STM401 Sensor Processor"
+        default n
+        depends on I2C
+        help
+          Say yes here if you wish to include the STM
+          STM401 Sensor processor driver.
