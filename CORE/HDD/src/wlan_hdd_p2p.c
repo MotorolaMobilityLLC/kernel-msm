@@ -1673,7 +1673,8 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
                 }
 #endif
                 if( (actionFrmType == WLAN_HDD_PROV_DIS_REQ) ||
-                    (actionFrmType == WLAN_HDD_GO_NEG_REQ) )
+                    (actionFrmType == WLAN_HDD_GO_NEG_REQ) ||
+                    (actionFrmType == WLAN_HDD_INVITATION_REQ) )
                 {
                     pScanInfo =  &pHddCtx->scan_info;
                     if((pScanInfo != NULL) && (pHddCtx->scan_info.mScanPending))
