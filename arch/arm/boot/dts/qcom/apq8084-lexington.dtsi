@@ -16,6 +16,7 @@
 / {
 	aliases {
 		serial0 = &blsp2_uart1;
+		uart3 = &blsp2_uart3;
 	};
 
 	bt_qca6174 {
@@ -130,6 +131,23 @@
 		regulator-boot-on;
 	};
 
+	i2c_8: i2c@f9964000 { /* BLSP8 */
+		status = "ok";
+		cell-index = <8>;
+		compatible = "qcom,i2c-qup";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0xf9964000 0x1000>;
+		interrupt-names = "qup_err_intr";
+		interrupts = <0 102 0>;
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 53 0>;
+		qcom,scl-gpio = <&msmgpio 54 0>;
+		qcom,master-id = <84>;
+	};
+
 	i2c_12: i2c@f9968000 { /* BLSP12 */
 		status = "ok";
 		cell-index = <12>;
@@ -145,6 +163,29 @@
 		qcom,sda-gpio = <&msmgpio 49 0>;
 		qcom,scl-gpio = <&msmgpio 50 0>;
 		qcom,master-id = <84>;
+	};
+	blsp2_uart3: uart@f995f000 {  /* "UART_AP_*_C55" on BLSP9 (BLSP2 UART3) */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0xf995f000 0x1000>,
+			<0xf9944000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupt-parent = <&blsp2_uart3>;
+		#address-cells = <0>;
+		interrupts = <0 1 2>;
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 115 0
+				1 &intc 0 239 0
+				2 &msmgpio 57 0>;
+		qcom,bam-tx-ep-pipe-index = <4>;
+		qcom,bam-rx-ep-pipe-index = <5>;
+		qcom,msm-bus,name = "blsp2_uart3";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<86 512 0 0>,
+				<86 512 500 800>;
 	};
 };
 
