@@ -954,6 +954,8 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 				ktime_set(0, ts->pdata->role->report_period),
 				HRTIMER_MODE_REL);
 
+		msleep(ts->pdata->role->booting_delay);
+
 		touch_ic_init(ts);
 
 		if (saved_state == POWER_WAKE || saved_state == POWER_SLEEP)
