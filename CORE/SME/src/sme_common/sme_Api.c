@@ -4071,6 +4071,26 @@ eHalStatus sme_RegisterPowerSaveCheck (
 }
 
 /* ---------------------------------------------------------------------------
+    \fn sme_Register11dScanDoneCallback
+    \brief  Register a routine of type csrScanCompleteCallback which is
+            called whenever an 11d scan is done
+    \param  hHal - The handle returned by macOpen.
+    \param  callback -  11d scan complete routine to be registered
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_Register11dScanDoneCallback (
+   tHalHandle hHal,
+   csrScanCompleteCallback callback)
+{
+   eHalStatus status = eHAL_STATUS_SUCCESS;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   pMac->scan.callback11dScanDone = callback;
+
+   return (status);
+}
+
+/* ---------------------------------------------------------------------------
     \fn sme_DeregisterPowerSaveCheck
     \brief  Deregister a power save check routine
     \param  hHal - The handle returned by macOpen.

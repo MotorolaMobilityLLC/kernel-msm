@@ -1171,6 +1171,18 @@ extern eHalStatus sme_RegisterPowerSaveCheck (
    tANI_BOOLEAN (*checkRoutine) (void *checkContext), void *checkContext);
 
 /* ---------------------------------------------------------------------------
+    \fn sme_Register11dScanDoneCallback
+    \brief  Register a routine of type csrScanCompleteCallback which is
+            called whenever an 11d scan is done
+    \param  hHal - The handle returned by macOpen.
+    \param  callback -  11d scan complete routine to be registered
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+extern eHalStatus sme_Register11dScanDoneCallback (
+   tHalHandle hHal,
+   csrScanCompleteCallback);
+
+/* ---------------------------------------------------------------------------
     \fn sme_DeregisterPowerSaveCheck
     \brief  Deregister a power save check routine
     \param  hHal - The handle returned by macOpen.
