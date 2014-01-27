@@ -61,6 +61,9 @@ struct lm3630a_platform_data {
 	int pwm_gpio;
 	unsigned int pwm_period;
 	enum lm3630a_pwm_ctrl pwm_ctrl;
+	/* hardware control */
+	int hwen_gpio;
+	char vddio_name[32];
 };
 
 #endif /* __LINUX_LM3630A_H */
