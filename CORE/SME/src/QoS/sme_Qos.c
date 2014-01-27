@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -41,12 +41,12 @@
 
 
 /**=========================================================================
-  
+
   \file  sme_Qos.c
-  
+
   \brief implementation for SME QoS APIs
-  
-  
+
+
   ========================================================================*/
 /* $Header$ */
 /*--------------------------------------------------------------------------
@@ -6100,7 +6100,7 @@ static eHalStatus sme_QosBufferExistingFlows(tpAniSirGlobal pMac,
    pEntry = csrLLPeekHead( &sme_QosCb.flow_list, VOS_FALSE );
    if(!pEntry)
    {
-      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
                 "%s: %d: Flow List empty, nothing to buffer",
                 __func__, __LINE__);
       return eHAL_STATUS_FAILURE;
