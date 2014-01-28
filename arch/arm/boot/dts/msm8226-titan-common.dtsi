@@ -237,6 +237,8 @@
 	interrupt-names = "core_irq", "async_irq", "pmic_id_irq";
 	qcom,hsusb-otg-mode = <3>;
 	vbus_otg-supply = <&pm8226_chg_otg>;
+	/delete-property/ otg,id_flt_gpio;
+	/delete-property/ otg,id_gnd_gpio;
 };
 
 
