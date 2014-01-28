@@ -36,6 +36,11 @@ enum lm3630a_ledb_ctrl {
 	LM3630A_LEDB_ENABLE_LINEAR = 0x0A,
 };
 
+enum lm3630a_sleep_ctrl {
+	LM3630A_SLEEP_ENABLE = 0x80,
+	LM3630A_SLEEP_STATUS = 0x40,
+};
+
 #define LM3630A_MAX_BRIGHTNESS 255
 /*
  *@leda_init_brt : led a init brightness. 4~255
