@@ -13,13 +13,8 @@
 
 /include/ "msm8226-moto-common.dtsi"
 /include/ "msm8226-titan-gpiomux.dtsi"
-
-/*  TODO  display panel part
- /include/ "dsi-panel-mot-cmi-720p-video.dtsi"
- /include/ "dsi-panel-mot-lgd-720p-video.dtsi"
-
-*/
-
+/include/ "dsi-panel-mot-dummy-qhd-video.dtsi"
+/include/ "dsi-panel-mot-inx-720p-video.dtsi"
 
 / {
 	model = "Motorola QC-MSM8226 Titan";
@@ -29,8 +24,6 @@
 };
 
 &soc {
-
-
 	gpio_keys {
 
 		vol_down {
@@ -45,7 +38,7 @@
 	};
 
 	/*  TODO  nfc part , need to enable it later  */
-	i2c@f9925000 { /* BLSP1 QUP5 */
+	i2c@f9925000 { /* BLSP1 QUP3 */
 		status = "disabled";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <19200000>;
@@ -61,13 +54,42 @@
 			interrupts = <56 0x2>;
 			nxp,irq-gpio = <&msmgpio 56 0x00>;
 		};
-
+		/delete-node/ tps65132@3e;
 	};
 
 	i2c@f9926000 { /* BLSP-1 QUP-4 */
 		qcom,i2c-src-freq = <50000000>;
+		tps65132@3e {
+			compatible = "ti,tps65132";
+			reg = <0x3e>;
+			gpios = <&msmgpio 12 0x0>, <&msmgpio 13 0x0>;
+			active-dis;
+			bias-delay-us = <2000>;
+			tps65132: regulator {
+				regulator-boot-on;
+				regulator-name = "tps65132";
+				regulator-min-microvolt = <5400000>;
+				regulator-max-microvolt = <5600000>;
+				startup-delay-us = <10000>;
+			};
+		};
+		lm3630a@38 {
+			status = "okay";
+			compatible = "ti,lm3630a";
+			reg = <0x38>;
+			/* 2 string LEDs controled by LEDA */
+			ti,leda-ctrl = <0x14>;
+			ti,ledb-ctrl = <0x01>;
+			ti,leda-max-brt = <0xff>;
+			ti,ledb-max-brt = <0xff>;
+			ti,leda-init-brt = <0xf0>;
+			ti,ledb-init-brt = <0xf0>;
+			ti,irq-gpio = <&msmgpio 4 0>;
+			ti,hwen-gpio = <&msmgpio 5 0>;
+			ti,vddio-name = "vddio_bl";
+			vddio_bl-supply = <&pm8226_l6>;
+		};
 	};
-
 
 	/* TODO touch  part , need to enable it later */
 	i2c@f9927000 {
@@ -186,6 +208,8 @@
 
 	vddio_disp_vreg: vddio_disp_vreg {
 		regulator-boot-on;
+		gpio = <&msmgpio 10 0x0>;
+		/delete-property/ parent-supply;
 	};
 };
 
@@ -437,9 +461,6 @@
 	};
 };
 
-
-
-
 &pm8226_bms {
 	status = "ok";
 	qcom,enable-fcc-learning;
@@ -485,6 +506,13 @@
 	};
 };
 
+&spmi_bus {
+	qcom,pm8226@1 {
+		qcom,leds@d800 {
+			status = "disabled";
+		};
+	};
+};
 
 
 /*  TODO Camera
@@ -520,15 +548,14 @@
 
 */
 
-&mdss_mdp {
-	qcom,mdss-pref-prim-intf = "dsi";
-	status = "disabled";
+&mot_inx_720p_vid_v0 {
+	qcom,cont-splash-enabled;
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_nt35521_720_vid>; //TODO , need right panel data
-	qcom,platform-vddio-gpio = <&msmgpio 10 1>;
-	status = "disabled";
+	qcom,dsi-pref-prim-pan = <&mot_inx_720p_vid_v0>;
+	vddio_disp-supply = <&vddio_disp_vreg>;
+	lcdbias-supply = <&tps65132>;
 };
 
 &i2c_3 {
