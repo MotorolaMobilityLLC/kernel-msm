@@ -21,6 +21,7 @@
 #include <linux/interrupt.h>
 #include <linux/regmap.h>
 #include <linux/pwm.h>
+#include <linux/leds.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
@@ -55,6 +56,10 @@ struct lm3630a_chip {
 	struct regmap *regmap;
 	struct pwm_device *pwmd;
 	struct regulator *vddio;
+	struct led_classdev ledcdev;
+	struct workqueue_struct *ledwq;
+	struct work_struct ledwork;
+	int ledval;
 };
 
 /* i2c access */
@@ -446,6 +451,110 @@ static const struct regmap_config lm3630a_regmap = {
 	.max_register = REG_MAX,
 };
 
+static int lm3630a_sleep(struct lm3630a_chip *pchip, bool enable)
+{
+	int ret;
+
+	if (enable) {
+		/* enable sleep if needed*/
+		ret = lm3630a_update(pchip, REG_CTRL,
+				LM3630A_SLEEP_ENABLE, LM3630A_SLEEP_ENABLE);
+		if (ret < 0)
+			dev_err(pchip->dev, "fail to enter sleep mode\n");
+	} else {
+		/* exit sleep */
+		ret = lm3630a_update(pchip, REG_CTRL, LM3630A_SLEEP_ENABLE,
+					0x00);
+		if (ret < 0)
+			dev_err(pchip->dev, "fail to exit sleep mode\n");
+	}
+	return ret;
+}
+
+static void lm3630a_led_set_func(struct work_struct *work)
+{
+	struct lm3630a_chip *pchip;
+	struct lm3630a_platform_data *pdata;
+	int ret, brt;
+
+	pchip = container_of(work, struct lm3630a_chip, ledwork);
+	pdata = pchip->pdata;
+
+	dev_dbg(pchip->dev, "led value = %d\n", pchip->ledval);
+	if (pdata->leda_ctrl != LM3630A_LEDA_DISABLE) {
+		/* pwm control */
+		if ((pdata->pwm_ctrl & LM3630A_PWM_BANK_A) != 0)
+			lm3630a_pwm_ctrl(pchip, pchip->ledval,
+						pdata->leda_max_brt);
+		else {
+			lm3630a_sleep(pchip, false);
+			usleep_range(1000, 2000);
+			brt = pchip->ledval > pdata->leda_max_brt ?
+				pdata->leda_max_brt : pchip->ledval;
+			ret = lm3630a_write(pchip, REG_BRT_A, brt);
+			ret |= lm3630a_update(pchip, REG_CTRL,
+				LM3630A_LEDA_ENABLE,
+				pchip->ledval ? LM3630A_LEDA_ENABLE : 0);
+			if (ret < 0) {
+				dev_err(pchip->dev,
+					"fail to set leda brightness\n");
+				goto out;
+			}
+			if (!brt)
+				lm3630a_sleep(pchip, true);
+		}
+	}
+
+	if ((pdata->ledb_ctrl != LM3630A_LEDB_DISABLE) &&
+	    (pdata->ledb_ctrl != LM3630A_LEDB_ON_A)) {
+		/* pwm control */
+		if ((pdata->pwm_ctrl & LM3630A_PWM_BANK_B) != 0)
+			lm3630a_pwm_ctrl(pchip, pchip->ledval,
+						pdata->ledb_max_brt);
+		else {
+			lm3630a_sleep(pchip, false);
+			usleep_range(1000, 2000);
+			brt = pchip->ledval > pdata->ledb_max_brt ?
+				pdata->ledb_max_brt : pchip->ledval;
+			ret = lm3630a_write(pchip, REG_BRT_B, brt);
+			ret |= lm3630a_update(pchip, REG_CTRL,
+				LM3630A_LEDB_ENABLE,
+				pchip->ledval ? LM3630A_LEDB_ENABLE : 0);
+			if (ret < 0) {
+				dev_err(pchip->dev,
+					"fail to set ledb brightness\n");
+				goto out;
+			}
+			if (!brt)
+				lm3630a_sleep(pchip, true);
+		}
+	}
+out:
+	return;
+}
+
+static void lm3630a_led_set(struct led_classdev *cdev,
+				enum led_brightness value)
+{
+	struct lm3630a_chip *pchip;
+
+	pchip = container_of(cdev, struct lm3630a_chip, ledcdev);
+
+	if (value < LED_OFF) {
+		dev_err(pchip->dev, "Invalid brightness value\n");
+		return;
+	}
+
+	pchip->ledval = value;
+	queue_work(pchip->ledwq, &pchip->ledwork);
+}
+
+static struct led_classdev lm3630a_led_cdev = {
+	.name = "lm3630a-backlight",
+	.default_trigger = "bkl-trigger",
+	.brightness_set = lm3630a_led_set,
+};
+
 static int lm3630a_parse_dt(struct device_node *np,
 		struct lm3630a_chip *pchip)
 {
@@ -576,9 +685,34 @@ static int lm3630a_probe(struct i2c_client *client,
 		if (rval < 0)
 			goto err2;
 	}
+
+	pchip->ledcdev = lm3630a_led_cdev;
+	INIT_WORK(&pchip->ledwork, lm3630a_led_set_func);
+	rval = led_classdev_register(pchip->dev, &pchip->ledcdev);
+	if (rval) {
+		dev_err(pchip->dev, "unable to register %s,rc=%d\n",
+			lm3630a_led_cdev.name, rval);
+		goto err3;
+	}
+	pchip->ledwq = create_singlethread_workqueue("lm3630a-led-wq");
+	if (!pchip->ledwq) {
+		dev_err(pchip->dev, "fail to create led thread\n");
+		rval = -ENOMEM;
+		goto err4;
+	}
+
 	dev_info(&client->dev, "LM3630A backlight register OK.\n");
 	return 0;
 
+err4:
+	led_classdev_unregister(&pchip->ledcdev);
+err3:
+	if (pchip->irq)
+		free_irq(pchip->irq, pchip);
+	if (pchip->irqthread) {
+		flush_workqueue(pchip->irqthread);
+		destroy_workqueue(pchip->irqthread);
+	}
 err2:
 	if (!IS_ERR_OR_NULL(pchip->pwmd))
 		pwm_free(pchip->pwmd);
@@ -614,6 +748,9 @@ static int lm3630a_remove(struct i2c_client *client)
 		pwm_free(pchip->pwmd);
 
 	lm3630a_chip_disable(pchip);
+
+	destroy_workqueue(pchip->ledwq);
+	led_classdev_unregister(&pchip->ledcdev);
 
 	if (!IS_ERR_OR_NULL(pchip->bleda))
 		backlight_device_unregister(pchip->bleda);
