@@ -189,7 +189,7 @@ static struct gpiomux_setting gpio_fps_spi_sleep = {
 static struct gpiomux_setting gpio_fps_spi_drdy = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_UP,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 
 static struct msm_gpiomux_config msm_blsp12_fps_spi_configs[] __initdata = {
