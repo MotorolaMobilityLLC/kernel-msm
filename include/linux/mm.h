@@ -1328,6 +1328,7 @@ extern void free_initmem(void);
  */
 extern unsigned long free_reserved_area(unsigned long start, unsigned long end,
 					int poison, char *s);
+
 #ifdef	CONFIG_HIGHMEM
 /*
  * Free a highmem page into the buddy system, adjusting totalhigh_pages
@@ -1336,10 +1337,7 @@ extern unsigned long free_reserved_area(unsigned long start, unsigned long end,
 extern void free_highmem_page(struct page *page);
 #endif
 
-static inline void adjust_managed_page_count(struct page *page, long count)
-{
-	totalram_pages += count;
-}
+extern void adjust_managed_page_count(struct page *page, long count);
 
 /* Free the reserved page into the buddy system, so it gets managed. */
 static inline void __free_reserved_page(struct page *page)
