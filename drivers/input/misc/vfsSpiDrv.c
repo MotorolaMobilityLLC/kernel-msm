@@ -719,6 +719,17 @@ static int vfsspi_probe(struct spi_device *spi)
 		goto vfsspi_probe_gpio_init_failed;
 	}
 
+	/* Check for sensor. */
+	vfsspi_hard_reset(vfsspi_device);
+	usleep(50000);
+	if (gpio_get_value(vfsspi_device->drdy_pin) != DRDY_ACTIVE_STATUS) {
+		pr_err("FPS not found\n");
+		status = -EBUSY;
+		goto vfsspi_probe_gpio_init_failed;
+	} else {
+		pr_err("FPS found\n");
+	}
+
 	gpio_irq = gpio_to_irq(vfsspi_device->drdy_pin);
 
 	if (gpio_irq < 0) {
