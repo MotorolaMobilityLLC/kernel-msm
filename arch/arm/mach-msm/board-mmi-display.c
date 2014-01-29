@@ -1194,7 +1194,9 @@ void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 	if (no_disp && mipi_dsi_pdata->disable_splash)
 		mipi_dsi_pdata->disable_splash();
 
-	enable_ext_5v_reg();
+	if (!strncmp(panel_name, "mipi_mot_cmd_auo_hd_450",
+			strlen(panel_name)))
+				enable_ext_5v_reg();
 
 	platform_device_register(&mipi_dsi_mot_panel_device);
 }
