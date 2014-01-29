@@ -4258,6 +4258,11 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
 
             /* reset info based on new cc, and we are done */
             csrResetCountryInformation(pMac, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_TRUE);
+           /* Regulatory Domain Changed, Purge Only scan result
+            * which does not have channel number belong to 11d
+            * channel list
+            */
+            csrScanFilter11dResult(pMac);
         }
 #endif
         fRet = eANI_BOOLEAN_TRUE;
