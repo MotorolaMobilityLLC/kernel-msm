@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -13661,6 +13661,8 @@ VOS_STATUS WDA_ProcessRoamScanOffloadReq(tWDA_CbContext *pWDA,
        pRoamOffloadScanReqParams->ConnectedNetwork.mcencryption);
    pwdiRoamOffloadScanInfo->LookupThreshold =
            pRoamOffloadScanReqParams->LookupThreshold ;
+   pwdiRoamOffloadScanInfo->RxSensitivityThreshold =
+           pRoamOffloadScanReqParams->RxSensitivityThreshold;
    pwdiRoamOffloadScanInfo->RoamRssiDiff =
            pRoamOffloadScanReqParams->RoamRssiDiff ;
    pwdiRoamOffloadScanInfo->MAWCEnabled =

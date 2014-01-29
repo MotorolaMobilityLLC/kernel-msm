@@ -1225,9 +1225,11 @@ typedef enum
 #define CFG_NEIGHBOR_REASSOC_RSSI_THRESHOLD_DEFAULT           (83)
 
 #define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_NAME      "gNeighborLookupThreshold"
-#define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MIN       (10)
+#define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MIN       (0)
 #define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MAX       (120)
-#define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_DEFAULT   (78)
+#define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_DEFAULT   (0) /*A Zero value indicates the host to calculate
+                                                           Adaptive thresold based on the minimum
+                                                           supported data rate.*/
 
 #define CFG_NEIGHBOR_SCAN_CHAN_LIST_NAME                      "gNeighborScanChannelList"
 #define CFG_NEIGHBOR_SCAN_CHAN_LIST_DEFAULT                   ""

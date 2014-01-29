@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -4932,7 +4932,6 @@ typedef struct
 
 #define WDI_ROAM_SCAN_MAX_CHANNELS       80 /* NUM_RF_CHANNELS */
 #define WDI_ROAM_SCAN_MAX_PROBE_SIZE     450
-#define WDI_ROAM_SCAN_RESERVED_BYTES     61
 
 typedef struct
 {
@@ -4972,6 +4971,7 @@ typedef struct
   wpt_boolean RoamScanOffloadEnabled;
   wpt_boolean MAWCEnabled;
   wpt_uint8   LookupThreshold;
+  wpt_uint8   RxSensitivityThreshold;
   wpt_uint8   RoamRssiDiff;
   wpt_uint8   ChannelCacheType;
   wpt_uint8   Command;
@@ -4997,7 +4997,6 @@ typedef struct
   WDI_MobilityDomainInfo  MDID;
   wpt_uint8               nProbes;
   wpt_uint16              HomeAwayTime;
-  wpt_uint8               ReservedBytes[WDI_ROAM_SCAN_RESERVED_BYTES];
 } WDI_RoamOffloadScanInfo;
 
 typedef struct
