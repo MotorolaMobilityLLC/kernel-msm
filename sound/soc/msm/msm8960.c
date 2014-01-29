@@ -147,7 +147,7 @@ static struct tabla_mbhc_config mbhc_cfg = {
 	.mclk_rate = TABLA_EXT_CLK_RATE,
 	.gpio = 0,
 	.gpio_irq = 0,
-	.gpio_level_insert = 1,
+	.gpio_level_insert = 0,
 	.swap_gnd_mic = NULL,
 	.detect_extn_cable = false,
 };
@@ -2380,13 +2380,24 @@ static inline void msm8960_of_parse_dt(struct snd_soc_card *card,
 
 static int __init msm8960_audio_init(void)
 {
-	int ret;
+	int ret, len = 0;
 	struct device_node *np;
+	const void *prop;
 
 	if (!soc_class_is_msm8960()) {
 		pr_debug("%s: Not the right machine type\n", __func__);
 		return -ENODEV ;
 	}
+
+	np = of_find_node_by_path("/Chosen@0");
+	if (np == NULL)
+		return hs_detect_use_gpio;
+
+	prop = of_get_property(np, "disable_headset_gpio", &len);
+	if (prop)
+		hs_detect_use_gpio = !(*((u32 *)prop));
+	else
+		hs_detect_use_gpio = 1;
 
 	mbhc_cfg.calibration = def_tabla_mbhc_cal();
 	if (!mbhc_cfg.calibration) {
