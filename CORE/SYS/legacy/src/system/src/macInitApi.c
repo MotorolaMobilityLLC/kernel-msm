@@ -132,12 +132,6 @@ tSirRetStatus macStart(tHalHandle hHal, void* pHalMacStartParams)
 
    do
    {
-
-#if defined(TRACE_RECORD)
-      //Enable Tracing
-      macTraceInit(pMac);
-#endif
-
       pMac->pResetMsg = vos_mem_malloc(sizeof(tSirMbMsg));
       if ( NULL == pMac->pResetMsg )
       {

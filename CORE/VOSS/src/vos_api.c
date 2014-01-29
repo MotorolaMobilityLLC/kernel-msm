@@ -85,6 +85,7 @@
 #include "wlan_hdd_cfg80211.h"
 
 #include "sapApi.h"
+#include "vos_trace.h"
 
 
 
@@ -170,6 +171,13 @@ VOS_STATUS vos_preOpen ( v_CONTEXT_t *pVosContext )
    vos_mem_zero(gpVosContext, sizeof(VosContextType));
 
    *pVosContext = gpVosContext;
+
+   /* Initialize the spinlock */
+   vos_trace_spin_lock_init();
+   /* it is the right time to initialize MTRACE structures */
+   #if defined(TRACE_RECORD)
+       vosTraceInit();
+   #endif
 
    return VOS_STATUS_SUCCESS;
 
@@ -269,6 +277,7 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
 
    /* Initialize the timer module */
    vos_timer_module_init();
+
 
    /* Initialize the probe event */
    if (vos_event_init(&gpVosContext->ProbeEvent) != VOS_STATUS_SUCCESS)
