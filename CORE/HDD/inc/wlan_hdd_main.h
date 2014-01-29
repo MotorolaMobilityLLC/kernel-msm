@@ -1364,6 +1364,20 @@ int hdd_handle_batch_scan_ioctl
     hdd_priv_data_t *pPrivdata,
     tANI_U8 *command
 );
+
+/**---------------------------------------------------------------------------
+
+  \brief hdd_deinit_batch_scan () - This function cleans up batch scan data
+   structures
+
+  \param  - pAdapter Pointer to HDD adapter
+
+  \return - None
+
+  --------------------------------------------------------------------------*/
+
+void hdd_deinit_batch_scan(hdd_adapter_t *pAdapter);
+
 #endif /*End of FEATURE_WLAN_BATCH_SCAN*/
 
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

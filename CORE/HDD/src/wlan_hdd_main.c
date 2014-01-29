@@ -1795,6 +1795,10 @@ int hdd_handle_batch_scan_ioctl
               goto exit;
          }
 
+         mutex_lock(&pAdapter->hdd_batch_scan_lock);
+         hdd_deinit_batch_scan(pAdapter);
+         mutex_unlock(&pAdapter->hdd_batch_scan_lock);
+
          pAdapter->batchScanState = eHDD_BATCH_SCAN_STATE_STOPPED;
 
          halStatus = sme_StopBatchScanInd(WLAN_HDD_GET_HAL_CTX(pAdapter), pInd,
@@ -5558,21 +5562,18 @@ void hdd_cleanup_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_
 #ifdef FEATURE_WLAN_BATCH_SCAN
    if ((pAdapter->device_mode == WLAN_HDD_INFRA_STATION)
      || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
+     || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
      || (pAdapter->device_mode == WLAN_HDD_P2P_DEVICE)
      )
    {
-      tHddBatchScanRsp *pNode;
-      tHddBatchScanRsp *pPrev;
-      pNode = pAdapter->pBatchScanRsp;
-      while (pNode)
+      if (pAdapter)
       {
-          pPrev = pNode;
-          pNode = pNode->pNext;
-          vos_mem_free((v_VOID_t * )pPrev);
-          pPrev = NULL;
+          if (eHDD_BATCH_SCAN_STATE_STARTED == pAdapter->batchScanState)
+          {
+              hdd_deinit_batch_scan(pAdapter);
+          }
       }
-      pAdapter->pBatchScanRsp = NULL;
-    }
+   }
 #endif
 
    if(test_bit(NET_DEVICE_REGISTERED, &pAdapter->event_flags)) {
@@ -6315,6 +6316,45 @@ VOS_STATUS hdd_stop_all_adapters( hdd_context_t *pHddCtx )
    return VOS_STATUS_SUCCESS;
 }
 
+
+#ifdef FEATURE_WLAN_BATCH_SCAN
+/**---------------------------------------------------------------------------
+
+  \brief hdd_deinit_batch_scan () - This function cleans up batch scan data
+   structures
+
+  \param  - pAdapter Pointer to HDD adapter
+
+  \return - None
+
+  --------------------------------------------------------------------------*/
+void hdd_deinit_batch_scan(hdd_adapter_t *pAdapter)
+{
+    tHddBatchScanRsp *pNode;
+    tHddBatchScanRsp *pPrev;
+
+    if (pAdapter)
+    {
+        pNode = pAdapter->pBatchScanRsp;
+        while (pNode)
+        {
+            pPrev = pNode;
+            pNode = pNode->pNext;
+            vos_mem_free((v_VOID_t * )pPrev);
+        }
+        pAdapter->pBatchScanRsp = NULL;
+    }
+
+    pAdapter->pBatchScanRsp = NULL;
+    pAdapter->numScanList = 0;
+    pAdapter->batchScanState = eHDD_BATCH_SCAN_STATE_STOPPED;
+    pAdapter->prev_batch_id = 0;
+
+    return;
+}
+#endif
+
+
 VOS_STATUS hdd_reset_all_adapters( hdd_context_t *pHddCtx )
 {
    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
@@ -6339,6 +6379,13 @@ VOS_STATUS hdd_reset_all_adapters( hdd_context_t *pHddCtx )
           hdd_wmm_adapter_close( pAdapter );
           clear_bit(WMM_INIT_DONE, &pAdapter->event_flags);
       }
+
+#ifdef FEATURE_WLAN_BATCH_SCAN
+      if (eHDD_BATCH_SCAN_STATE_STARTED == pAdapter->batchScanState)
+      {
+          hdd_deinit_batch_scan(pAdapter);
+      }
+#endif
 
       status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
       pAdapterNode = pNext;
