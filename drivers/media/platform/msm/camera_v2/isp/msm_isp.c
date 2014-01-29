@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -9,6 +9,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+
 
 #include <linux/delay.h>
 #include <linux/clk.h>
@@ -28,6 +29,7 @@
 #include "msm_isp_axi_util.h"
 #include "msm_isp_stats_util.h"
 #include "msm_sd.h"
+#include "msm_isp46.h"
 #include "msm_isp44.h"
 #include "msm_isp40.h"
 #include "msm_isp32.h"
@@ -35,6 +37,10 @@
 static struct msm_sd_req_vb2_q vfe_vb2_ops;
 
 static const struct of_device_id msm_vfe_dt_match[] = {
+	{
+		.compatible = "qcom,vfe46",
+		.data = &vfe46_hw_info,
+	},
 	{
 		.compatible = "qcom,vfe44",
 		.data = &vfe44_hw_info,
