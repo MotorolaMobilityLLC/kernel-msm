@@ -89,9 +89,9 @@
 
 			Clock@3 {
 				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
-				clock = <0x0009>;
-				clockname = [636f72655f636c6b00];
-				deviceid = [6d736d5f73657269616c5f68732e3100];
+				clock = <0x0024>;
+				clockname = [63616d5f636c6b00];
+				deviceid = [342d3030343800];
 				type = <0x001e0015>;
 			};
 
@@ -108,6 +108,13 @@
 				clock = <0x000b>;
 				clockname = [69666163655f636c6b00];
 				deviceid = [7175705f6932632e3400];
+				type = <0x001e0015>;
+			};
+			Clock@6 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x0009>;
+				clockname = [636f72655f636c6b00];
+				deviceid = [6d736d5f73657269616c5f68732e3100];
 				type = <0x001e0015>;
 			};
 		};
