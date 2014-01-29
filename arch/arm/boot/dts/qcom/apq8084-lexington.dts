@@ -78,6 +78,15 @@
 		hs_det_micvdd-supply = <&pma8084_l18>;
 		ti,tpa6165-always-on-micbias = <1>;
 	};
+	bcm2079x@76 {
+		compatible = "brcm,bcm2079x";
+		reg = <0x76>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <8 0>; /* NFC_IRQ */
+		gpios = <&pma8084_mpps 5 0>, /* NFC_WAKE */
+			<&msmgpio 8 0>, /* NFC_IRQ */
+			<&msmgpio 116 0>; /* REG_PU */
+	};
 };
 
 &usb3 {
