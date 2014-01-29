@@ -1,0 +1,36 @@
+* BRCM BCM2079x
+
+BCM2079x is NFC compliant highly integrated, low power, low cost 40nm NFC
+controller with EEPROM.
+
+Required properties:
+	- compatible:
+		the string of "brcm,bcm2079x"
+	- reg:
+		the i2c slave address of the IC
+	- interrupts:
+		there is one interrupt line connected to the main SoC
+	- interrupt-parent:
+		The parent interrupt controller
+	- gpios:
+		an array specifiying the required GPIO for operation
+			- WAKE GPIO
+			- IRQ GPIO
+			- ENABLE GPIO
+Optional:
+	- nfc_vddswp-supply:
+		regulator suppy to VDD_SWP
+Example:
+
+	&i2c_3 {
+	status = "ok";
+	bcm2079x@77 {
+		compatible = "brcm,bcm2079x";
+		reg = <0x77>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <21 0x2>;
+		gpios = <&msmgpio 20 0x0>, /* WAKE */
+			<&msmgpio 21 0x0>, /* IRQ */
+			<&msmgpio 22 0x0>; /* EN */
+		nfc_vddswp-supply = <&pm8226_l22>;
+	};
