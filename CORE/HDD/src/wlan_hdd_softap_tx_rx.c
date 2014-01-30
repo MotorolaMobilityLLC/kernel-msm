@@ -44,9 +44,6 @@
   \file  wlan_hdd_softap_tx_rx.c
   
   \brief Linux HDD Tx/RX APIs
-         Copyright 2008 (c) Qualcomm, Incorporated.
-         All Rights Reserved.
-         Qualcomm Confidential and Proprietary.
   
   ==========================================================================*/
 
@@ -984,6 +981,7 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    v_SIZE_t size = 0;
    v_U8_t STAId = WLAN_MAX_STA_COUNT;   
    hdd_context_t *pHddCtx = NULL;
+   v_U8_t proto_type = 0;
 
    //Sanity check on inputs
    if ( ( NULL == vosContext ) || 
@@ -1168,6 +1166,21 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
       }
    }
  
+   if (pHddCtx->cfg_ini->gEnableDebugLog)
+   {
+      proto_type = vos_pkt_get_proto_type(skb,
+                                          pHddCtx->cfg_ini->gEnableDebugLog);
+      if (VOS_PKT_PROTO_TYPE_EAPOL & proto_type)
+      {
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "SAP TX EAPOL");
+      }
+      else if (VOS_PKT_PROTO_TYPE_DHCP & proto_type)
+      {
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "SAP TX DHCP");
+      }
+   }
 //xg: @@@@: temporarily disble these. will revisit later
    {
       pPktMetaInfo->ucUP = pktNode->userPriority;
@@ -1302,6 +1315,7 @@ VOS_STATUS hdd_softap_rx_packet_cbk( v_VOID_t *vosContext,
    vos_pkt_t* pVosPacket;
    vos_pkt_t* pNextVosPacket;   
    hdd_context_t *pHddCtx = NULL;   
+   v_U8_t proto_type;
 
    //Sanity check on inputs
    if ( ( NULL == vosContext ) || 
@@ -1386,6 +1400,22 @@ VOS_STATUS hdd_softap_rx_packet_cbk( v_VOID_t *vosContext,
       ++pAdapter->hdd_stats.hddTxRxStats.rxPackets;
       ++pAdapter->stats.rx_packets;
       pAdapter->stats.rx_bytes += skb->len;
+
+      if (pHddCtx->cfg_ini->gEnableDebugLog)
+      {
+         proto_type = vos_pkt_get_proto_type(skb,
+                                             pHddCtx->cfg_ini->gEnableDebugLog);
+         if (VOS_PKT_PROTO_TYPE_EAPOL & proto_type)
+         {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "SAP RX EAPOL");
+         }
+         else if (VOS_PKT_PROTO_TYPE_DHCP & proto_type)
+         {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "SAP RX DHCP");
+         }
+      }
 
       if (WLAN_RX_BCMC_STA_ID == pRxMetaInfo->ucDesSTAId)
       {
