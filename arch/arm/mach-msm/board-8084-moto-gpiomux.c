@@ -433,6 +433,35 @@ static struct msm_gpiomux_config msm_sbc_blsp_configs[] __initdata = {
 	}
 };
 
+static struct gpiomux_setting stm401_boot_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting stm401_reset_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct msm_gpiomux_config stm401_configs[] __initdata = {
+	{
+		.gpio = 137,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &stm401_boot_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &stm401_boot_gpio_cfg,
+		},
+		.gpio = 136,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &stm401_reset_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &stm401_reset_gpio_cfg,
+		},
+	},
+};
+
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 static struct gpiomux_setting gpio_eth_config = {
 	.pull = GPIOMUX_PULL_UP,
@@ -1313,6 +1342,8 @@ void __init apq8084_moto_init_gpiomux(void)
 				ARRAY_SIZE(msm_sensor_configs));
 	msm_gpiomux_install(msm_pcie_configs, ARRAY_SIZE(msm_pcie_configs));
 	msm_gpiomux_install(msm_epm_configs, ARRAY_SIZE(msm_epm_configs));
+
+	msm_gpiomux_install(stm401_configs, ARRAY_SIZE(stm401_configs));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())
