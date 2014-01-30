@@ -2021,6 +2021,23 @@ static int mxt_parse_object_table(struct mxt_data *data)
 	return 0;
 }
 
+static u32 mxt_update_config_id(struct mxt_data *data)
+{
+	struct i2c_client *client = data->client;
+	u8 userdata[4] = {0};
+	u32 config_id = 0;
+	int error;
+
+	error = __mxt_read_reg(client, data->T38_address,
+				sizeof(userdata), userdata);
+	if (error)
+		dev_warn(&client->dev, "Unable to read config id\n");
+	else
+		config_id = be32_to_cpu(*(unsigned int *)&userdata[0]);
+
+	return config_id;
+}
+
 static int mxt_read_info_block(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
@@ -2105,18 +2122,8 @@ static int mxt_read_info_block(struct mxt_data *data)
 		return error;
 	}
 
-	data->config_id = 0;
-	if (data->T38_address) {
-		u8 userdata[4] = {0};
-
-		error = __mxt_read_reg(client, data->T38_address,
-					sizeof(userdata), userdata);
-		if (error)
-			dev_warn(&client->dev, "Unable to read config id\n");
-		else
-			data->config_id = be32_to_cpu(
-						*(unsigned int *)&userdata[0]);
-	}
+	if (data->T38_address)
+		data->config_id = mxt_update_config_id(data);
 
 	return 0;
 
@@ -2183,7 +2190,7 @@ static void mxt_regulator_enable(struct mxt_data *data)
 	if (data->pdata->common_vdd_supply == 0)
 		regulator_enable(data->reg_avdd);
 
-	msleep(MXT_REGULATOR_DELAY);
+	msleep(MXT_WAKEUP_TIME);
 
 	INIT_COMPLETION(data->bl_completion);
 	gpio_set_value(data->pdata->gpio_reset, 1);
@@ -2496,6 +2503,15 @@ static int mxt_configure_objects(struct mxt_data *data)
 	struct i2c_client *client = data->client;
 	int error;
 
+	if (!data->input_dev) {
+		error = mxt_alloc_input_device(data);
+		if (error) {
+			dev_err(&client->dev,
+				"Failed to allocate input device\n");
+			return error;
+		}
+	}
+
 	error = mxt_debug_msg_init(data);
 	if (error)
 		return error;
@@ -2530,13 +2546,6 @@ static int mxt_configure_objects(struct mxt_data *data)
 	}
 
 	if (!data->in_bootloader && !data->input_registered) {
-		if (!data->input_dev) {
-			error = mxt_alloc_input_device(data);
-			dev_err(&client->dev,
-				"Error %d allocating input device\n", error);
-			return error;
-		}
-
 		error = input_register_device(data->input_dev);
 		if (error) {
 			dev_err(&client->dev,
@@ -3249,6 +3258,10 @@ static int mxt_apply_tdat_tsett(struct mxt_data *data)
 	/* T7 config may have changed */
 	mxt_init_t7_power_cfg(data);
 
+	/* T38 may have changed */
+	if (data->T38_address)
+		data->config_id = mxt_update_config_id(data);
+
 release_mem:
 	kfree(config_mem);
 just_leave:
@@ -3827,7 +3840,7 @@ static int mxt_alloc_input_device(struct mxt_data *data)
 {
 	data->input_dev = input_allocate_device();
 	if (IS_ERR_OR_NULL(data->input_dev))
-		return PTR_ERR(data->input_dev);
+		return -ENOMEM;
 
 #ifndef MXT_DISTINCT_INPUT_NAME
 	data->input_dev->name = DRIVER_NAME;
@@ -3885,23 +3898,19 @@ static int mxt_probe(struct i2c_client *client,
 	if (error)
 		goto err_free_pdata;
 
-	error = mxt_alloc_input_device(data);
-	if (error) {
-		dev_err(&client->dev, "Failed to allocate input device\n");
-		goto err_free_pdata;
-	}
-
 	error = mxt_power_init(data);
 	if (error)
-		goto err_free_input;
+		goto err_free_irq;
 
-	disable_irq(data->irq);
+	/* set flag to satisfy bl_completion */
 	data->in_bootloader = true;
+	/* must be called with IRQ enabled */
 	mxt_regulator_enable(data);
 
+	disable_irq(data->irq);
 	error = mxt_initialize(data);
 	if (error)
-		goto err_free_irq;
+		goto err_disable_reg;
 
 	mutex_init(&data->crit_section_lock);
 
@@ -3939,10 +3948,10 @@ err_remove_sysfs_group:
 	sysfs_remove_group(&client->dev.kobj, &mxt_attr_group);
 err_free_object:
 	mxt_free_object_table(data);
+err_disable_reg:
+	mxt_regulator_disable(data);
 err_free_irq:
 	free_irq(data->irq, data);
-err_free_input:
-	mxt_free_input_device(data);
 err_free_pdata:
 	if (!dev_get_platdata(&data->client->dev))
 		kfree(data->pdata);
