@@ -600,6 +600,134 @@ tSirRetStatus limSendSetTxPowerReq(tpAniSirGlobal pMac,  tANI_U32 *pMsgBuf)
         vos_mem_free(txPowerReq);
         return retCode;
     }
+    return retCode;
+}
+
+/** ---------------------------------------------------------
+\fn      limSendHT40OBSSScanInd
+\brief   LIM sends a WDA_HT40_OBSS_SCAN_IND message to WDA
+\param   tpAniSirGlobal      pMac
+\param   psessionEntry  session Entry
+\return  None
+  -----------------------------------------------------------*/
+tSirRetStatus limSendHT40OBSSScanInd(tpAniSirGlobal pMac,
+                                               tpPESession psessionEntry)
+{
+    tSirRetStatus           retCode = eSIR_SUCCESS;
+    tSirHT40OBSSScanInd    *ht40OBSSScanInd;
+    tANI_U32                validChannelNum;
+    tSirMsgQ             msgQ;
+    tANI_U8              validChanList[SIR_ROAM_MAX_CHANNELS];
+    tANI_U8              channel24GNum, count;
+
+    ht40OBSSScanInd = vos_mem_malloc(sizeof(tSirHT40OBSSScanInd));
+    if ( NULL == ht40OBSSScanInd)
+    {
+        return eSIR_FAILURE;
+    }
+
+    VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
+             "OBSS Scan Indication bssIdx- %d staId %d",
+             psessionEntry->bssIdx, psessionEntry->staId);
+
+    ht40OBSSScanInd->cmdType = HT40_OBSS_SCAN_PARAM_START;
+    ht40OBSSScanInd->scanType = eSIR_ACTIVE_SCAN;
+    ht40OBSSScanInd->OBSSScanPassiveDwellTime =
+           psessionEntry->obssHT40ScanParam.OBSSScanPassiveDwellTime;
+    ht40OBSSScanInd->OBSSScanActiveDwellTime =
+           psessionEntry->obssHT40ScanParam.OBSSScanActiveDwellTime;
+    ht40OBSSScanInd->BSSChannelWidthTriggerScanInterval =
+           psessionEntry->obssHT40ScanParam.BSSChannelWidthTriggerScanInterval;
+    ht40OBSSScanInd->OBSSScanPassiveTotalPerChannel =
+           psessionEntry->obssHT40ScanParam.OBSSScanPassiveTotalPerChannel;
+    ht40OBSSScanInd->OBSSScanActiveTotalPerChannel =
+           psessionEntry->obssHT40ScanParam.OBSSScanActiveTotalPerChannel;
+    ht40OBSSScanInd->BSSWidthChannelTransitionDelayFactor =
+           psessionEntry->obssHT40ScanParam.BSSWidthChannelTransitionDelayFactor;
+    ht40OBSSScanInd->OBSSScanActivityThreshold =
+           psessionEntry->obssHT40ScanParam.OBSSScanActivityThreshold;
+    /* TODO update it from the associated BSS*/
+    ht40OBSSScanInd->currentOperatingClass = 1;
+
+    validChannelNum = WNI_CFG_VALID_CHANNEL_LIST_LEN;
+    if (wlan_cfgGetStr(pMac, WNI_CFG_VALID_CHANNEL_LIST,
+                          validChanList,
+                          &validChannelNum) != eSIR_SUCCESS)
+    {
+        limLog(pMac, LOGE,
+                   FL("could not retrieve Valid channel list"));
+    }
+    /* Extract 24G channel list */
+    channel24GNum = 0;
+    for( count =0 ;count < validChannelNum ;count++)
+    {
+       if ((validChanList[count]> RF_CHAN_1) &&
+           (validChanList[count] < RF_CHAN_14))
+       {
+          ht40OBSSScanInd->channels[channel24GNum] = validChanList[count];
+          channel24GNum++;
+       }
+    }
+    ht40OBSSScanInd->channelCount = channel24GNum;
+    /* FW API requests BSS IDX */
+    ht40OBSSScanInd->selfStaIdx = psessionEntry->staId;
+    ht40OBSSScanInd->bssIdx = psessionEntry->bssIdx;
+    ht40OBSSScanInd->fortyMHZIntolerent = 0;
+    ht40OBSSScanInd->ieFieldLen = 0;
+
+    msgQ.type = WDA_HT40_OBSS_SCAN_IND;
+    msgQ.reserved = 0;
+    msgQ.bodyptr = (void *)ht40OBSSScanInd;
+    msgQ.bodyval = 0;
+    PELOGW(limLog(pMac, LOGW, FL("Sending WDA_HT40_OBSS_SCAN_IND to WDA"));)
+    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    retCode = wdaPostCtrlMsg(pMac, &msgQ);
+    if (eSIR_SUCCESS != retCode)
+    {
+        limLog(pMac, LOGP, FL("Posting WDA_HT40_OBSS_SCAN_IND "
+                              "to WDA failed, reason=%X"), retCode);
+        vos_mem_free(ht40OBSSScanInd);
+        return retCode;
+    }
+    return retCode;
+}
+/** ---------------------------------------------------------
+\fn      limSendHT40OBSSScanInd
+\brief   LIM sends a WDA_HT40_OBSS_SCAN_IND message to WDA
+\         Stop command support is only for debugging
+\         As per 802.11 spec OBSS scan is mandatory while
+\         operating in HT40 on 2.4GHz band
+\param   tpAniSirGlobal      pMac
+\param   psessionEntry  Session entry
+\return  None
+  -----------------------------------------------------------*/
+tSirRetStatus limSendHT40OBSSStopScanInd(tpAniSirGlobal pMac,
+                                               tpPESession psessionEntry)
+{
+    tSirRetStatus        retCode = eSIR_SUCCESS;
+    tSirMsgQ             msgQ;
+    tANI_U8              bssIdx;
+
+    bssIdx = psessionEntry->bssIdx;
+
+    VOS_TRACE (VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
+               " Sending STOP OBSS cmd, bssid %d staid %d \n",
+               psessionEntry->bssIdx, psessionEntry->staId);
+
+    msgQ.type = WDA_HT40_OBSS_STOP_SCAN_IND;
+    msgQ.reserved = 0;
+    msgQ.bodyptr = (void *)&bssIdx;
+    msgQ.bodyval = 0;
+    PELOGW(limLog(pMac, LOGW,
+         FL("Sending WDA_HT40_OBSS_STOP_SCAN_IND to WDA"));)
+    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    retCode = wdaPostCtrlMsg(pMac, &msgQ);
+    if (eSIR_SUCCESS != retCode)
+    {
+        limLog(pMac, LOGE, FL("Posting WDA_HT40_OBSS_SCAN_IND "
+                              "to WDA failed, reason=%X"), retCode);
+        return retCode;
+    }
 
     return retCode;
 }
