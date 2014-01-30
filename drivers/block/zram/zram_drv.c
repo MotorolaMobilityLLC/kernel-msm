@@ -309,6 +309,7 @@ static struct zram_meta *zram_meta_alloc(u64 disksize)
 	}
 
 	rwlock_init(&meta->tb_lock);
+	mutex_init(&meta->buffer_lock);
 	return meta;
 
 free_table:
@@ -492,6 +493,7 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 	unsigned char *user_mem, *cmem, *src, *uncmem = NULL;
 	struct zram_meta *meta = zram->meta;
 	static unsigned long zram_rs_time;
+	bool locked = false;
 
 	page = bvec->bv_page;
 	src = meta->compress_buffer;
@@ -511,6 +513,8 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 			goto out;
 	}
 
+	mutex_lock(&meta->buffer_lock);
+	locked = true;
 	user_mem = kmap_atomic(page);
 
 	if (is_partial_io(bvec)) {
@@ -537,7 +541,6 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 
 	ret = z_compress(uncmem, PAGE_SIZE, src, &clen,
 			       meta->compress_workmem);
-
 	if (!is_partial_io(bvec)) {
 		kunmap_atomic(user_mem);
 		user_mem = NULL;
@@ -596,6 +599,8 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec, u32 index,
 		atomic_inc(&zram->stats.good_compress);
 
 out:
+	if (locked)
+		mutex_unlock(&meta->buffer_lock);
 	if (is_partial_io(bvec))
 		kfree(uncmem);
 
@@ -609,15 +614,10 @@ static int zram_bvec_rw(struct zram *zram, struct bio_vec *bvec, u32 index,
 {
 	int ret;
 
-	if (rw == READ) {
-		down_read(&zram->lock);
+	if (rw == READ)
 		ret = zram_bvec_read(zram, bvec, index, offset, bio);
-		up_read(&zram->lock);
-	} else {
-		down_write(&zram->lock);
+	else
 		ret = zram_bvec_write(zram, bvec, index, offset);
-		up_write(&zram->lock);
-	}
 
 	return ret;
 }
@@ -888,7 +888,6 @@ static int create_device(struct zram *zram, int device_id)
 {
 	int ret = -ENOMEM;
 
-	init_rwsem(&zram->lock);
 	init_rwsem(&zram->init_lock);
 
 	zram->queue = blk_alloc_queue(GFP_KERNEL);
