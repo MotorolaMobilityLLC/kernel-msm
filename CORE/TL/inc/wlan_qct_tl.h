@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -51,17 +51,6 @@
 DESCRIPTION
   This file contains the external API exposed by the wlan transport layer
   module.
-<<<<<<< HEAD:CORE/TL/inc/wlan_qct_tl.h
-  
-      
-  Copyright (c) 2008 QUALCOMM Incorporated. All Rights Reserved.
-  Qualcomm Confidential and Proprietary
-=======
-
-
-  Copyright (c) 2008 Qualcomm Technologies, Inc. All Rights Reserved.
-  Qualcomm Technologies Confidential and Proprietary
->>>>>>> 326d6cf... wlan: remove obsolete ANI_CHIPSET_VOLANS featurization:prima/CORE/TL/inc/wlan_qct_tl.h
 ===========================================================================*/
 
 
@@ -1704,7 +1693,7 @@ WLANTL_TxMgmtFrm
   v_U8_t               tid,
   WLANTL_TxCompCBType  pfnCompTxFunc,
   v_PVOID_t            voosBDHeader,
-  v_U8_t               ucAckResponse
+  v_U32_t              ucAckResponse
 );
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -37,19 +37,6 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
- */
-
-/*
- * Airgo Networks, Inc proprietary. All rights reserved.
- * This file sirParams.h contains the common parameter definitions, which
- * are not dependent on threadX API. These can be used by all Firmware
- * modules.
- *
- * Author:      Sandesh Goel
- * Date:        04/13/2002
- * History:-
- * Date            Modified by    Modification Information
- * --------------------------------------------------------------------
  */
 
 #ifndef __SIRPARAMS_H
@@ -108,6 +95,7 @@ typedef enum {
 #ifdef FEATURE_WLAN_BATCH_SCAN
    BATCH_SCAN = 30,
 #endif
+   FW_IN_TX_PATH = 31,
 
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
