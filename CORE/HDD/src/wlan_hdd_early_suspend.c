@@ -569,6 +569,7 @@ void hdd_ipv6_notifier_work_queue(struct work_struct *work)
     int status;
 
     hddLog(LOG1, FL("Reconfiguring NS Offload"));
+
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     status = wlan_hdd_validate_context(pHddCtx);
     if (0 != status)
@@ -577,7 +578,9 @@ void hdd_ipv6_notifier_work_queue(struct work_struct *work)
         return;
     }
 
-    if (VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid)
+    if ((eConnectionState_Associated ==
+                (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState)
+         && (VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid))
     {
         // This invocation being part of the IPv6 registration callback,
         // we are passing second parameter as 2 to avoid registration
@@ -593,9 +596,19 @@ static int wlan_hdd_ipv6_changed(struct notifier_block *nb,
     struct net_device *ndev = ifa->idev->dev;
     hdd_adapter_t *pAdapter =
              container_of(nb, struct hdd_adapter_s, ipv6_notifier);
+    hdd_context_t *pHddCtx;
+    int status;
 
     if (pAdapter && pAdapter->dev == ndev)
     {
+        pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+        status = wlan_hdd_validate_context(pHddCtx);
+        if (0 != status)
+        {
+            hddLog(LOGE, FL("HDD context is invalid"));
+            return NOTIFY_DONE;
+        }
+
         schedule_work(&pAdapter->ipv6NotifierWorkQueue);
     }
 
@@ -631,9 +644,11 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
     int ret =0;
     eHalStatus returnStatus;
 
+    ENTER();
+    hddLog(LOG1, FL(" fenable = %d"), fenable);
+
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
-    ENTER();
     if (fenable)
     {
         in6_dev = __in6_dev_get(pAdapter->dev);
@@ -738,7 +753,7 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
                     vos_mem_zero(&offLoadRequest, sizeof(offLoadRequest));
                 }
             }
-            if (fenable == 1)
+            if (fenable == 1 && !pAdapter->ipv6_notifier_registered)
             {
                 // Register IPv6 notifier to notify if any change in IP
                 // So that we can reconfigure the offload parameters
@@ -748,6 +763,11 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
                 if (ret)
                 {
                     hddLog(LOGE, FL("Failed to register IPv6 notifier"));
+                }
+                else
+                {
+                    hddLog(LOG1, FL("Registered IPv6 notifier"));
+                    pAdapter->ipv6_notifier_registered = true;
                 }
             }
         }
@@ -761,7 +781,12 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
     else
     {
         //Disable NSOffload
-        unregister_inet6addr_notifier(&pAdapter->ipv6_notifier);
+        if (pAdapter->ipv6_notifier_registered)
+        {
+            hddLog(LOG1, FL("Unregistered IPv6 notifier"));
+            unregister_inet6addr_notifier(&pAdapter->ipv6_notifier);
+            pAdapter->ipv6_notifier_registered = false;
+        }
         vos_mem_zero((void *)&offLoadRequest, sizeof(tSirHostOffloadReq));
         offLoadRequest.enableOrDisable = SIR_OFFLOAD_DISABLE;
         offLoadRequest.offloadType =  SIR_IPV6_NS_OFFLOAD;
