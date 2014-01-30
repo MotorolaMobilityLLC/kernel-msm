@@ -820,9 +820,17 @@ static int wlan_hdd_ipv4_changed(struct notifier_block *nb,
     struct net_device *ndev = ifa->ifa_dev->dev;
     hdd_adapter_t *pAdapter =
              container_of(nb, struct hdd_adapter_s, ipv4_notifier);
-
+    hdd_context_t *pHddCtx;
+    int status;
     if (pAdapter && pAdapter->dev == ndev)
     {
+       pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+       status = wlan_hdd_validate_context(pHddCtx);
+       if (0 != status)
+       {
+           hddLog(LOGE, FL("HDD context is invalid"));
+           return NOTIFY_DONE;
+       }
        if ((in_dev = __in_dev_get_rtnl(pAdapter->dev)) != NULL)
        {
            for (ifap = &in_dev->ifa_list; (ifa = *ifap) != NULL;
@@ -932,7 +940,7 @@ VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, int fenable)
            hddLog(VOS_TRACE_LEVEL_INFO, FL("IP Address is not assigned\n"));
        }
 
-       if (fenable == 1)
+       if (fenable == 1 && !pAdapter->ipv4_notifier_registered)
        {
            // Register IPv4 notifier to notify if any change in IP
            // So that we can reconfigure the offload parameters
@@ -943,12 +951,22 @@ VOS_STATUS hdd_conf_arp_offload(hdd_adapter_t *pAdapter, int fenable)
            {
                hddLog(LOGE, FL("Failed to register IPv4 notifier"));
            }
+           else
+           {
+               hddLog(LOG1, FL("Registered IPv4 notifier"));
+               pAdapter->ipv4_notifier_registered = true;
+           }
        }
        return VOS_STATUS_SUCCESS;
    }
    else
    {
-       unregister_inetaddr_notifier(&pAdapter->ipv4_notifier);
+       if (pAdapter->ipv4_notifier_registered)
+       {
+           hddLog(LOG1, FL("Unregistered IPv4 notifier"));
+           unregister_inetaddr_notifier(&pAdapter->ipv4_notifier);
+           pAdapter->ipv4_notifier_registered = false;
+       }
        vos_mem_zero((void *)&offLoadRequest, sizeof(tSirHostOffloadReq));
        offLoadRequest.enableOrDisable = SIR_OFFLOAD_DISABLE;
        offLoadRequest.offloadType =  SIR_IPV4_ARP_REPLY_OFFLOAD;
