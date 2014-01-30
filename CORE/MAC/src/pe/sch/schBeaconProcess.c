@@ -471,8 +471,40 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         {
             limCancelDot11hChannelSwitch(pMac, psessionEntry);
         }
+        // check for HT capability
+        pStaDs = dphLookupHashEntry(pMac, pMh->sa, &aid,
+                                    &psessionEntry->dph.dphHashTable);
+        if (pStaDs != NULL)
+        {
+           /* Following check is related to HT40 on 2.4GHz mode*/
+           if ((pStaDs->htSecondaryChannelOffset !=
+                pBeacon->HTInfo.secondaryChannelOffset) &&
+                (IS_HT40_OBSS_SCAN_FEATURE_ENABLE) &&
+                (psessionEntry->currentOperChannel <= RF_CHAN_14))
+           {
+               VOS_TRACE( VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+                        FL(" Current Secondarychanoffset %d received "
+                        " secondaryChannelOffset %d, staIdx = %d"),
+                        pStaDs->htSecondaryChannelOffset,
+                        pBeacon->HTInfo.secondaryChannelOffset,
+                        pStaDs->staIndex);
+              if (eANI_BOOLEAN_TRUE ==(limCheckHTChanBondModeChange(pMac,
+                                              psessionEntry,
+                                              pBeacon->HTInfo.secondaryChannelOffset,
+                                              pStaDs->htSecondaryChannelOffset,
+                                              pStaDs->staIndex)))
+              {
+                  pStaDs->htSupportedChannelWidthSet =
+                             pBeacon->HTInfo.recommendedTxWidthSet;
+                  pStaDs->htSecondaryChannelOffset =
+                             pBeacon->HTInfo.secondaryChannelOffset;
+              }
+           }
+        }
+        else
+           PELOGE(schLog(pMac, LOGE, FL("Self Entry missing in Hash Table"));)
     }
-
+    /* TODO : Below condition checks can be merged with the if */
 #ifdef WLAN_FEATURE_11AC
     if ((psessionEntry->limSystemRole == eLIM_STA_ROLE) ||
         (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) ||

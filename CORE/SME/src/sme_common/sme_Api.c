@@ -1392,6 +1392,16 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
    /* update the directed scan offload setting */
    pMac->fScanOffload = pSmeConfigParams->fScanOffload;
 
+   /* Enable channel bonding mode in 2.4GHz */
+   if ((pSmeConfigParams->csrConfig.channelBondingMode24GHz == TRUE) &&
+       (IS_HT40_OBSS_SCAN_FEATURE_ENABLE))
+   {
+      ccmCfgSetInt(hHal,WNI_CFG_CHANNEL_BONDING_24G,
+                 eANI_BOOLEAN_TRUE, NULL,eANI_BOOLEAN_FALSE);
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
+                   "Setting channelBondingMode24GHz:%d " ,
+                pSmeConfigParams->csrConfig.channelBondingMode24GHz);
+   }
    if (pMac->fScanOffload)
    {
        /* If scan offload is enabled then lim has allow the sending of

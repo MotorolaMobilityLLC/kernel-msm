@@ -1034,9 +1034,10 @@ static void initConfigParam(tpAniSirGlobal pMac)
 {
     int i;
     pMac->roam.configParam.agingCount = CSR_AGING_COUNT;
-    pMac->roam.configParam.channelBondingMode24GHz = WNI_CFG_CHANNEL_BONDING_MODE_DISABLE;
-    pMac->roam.configParam.channelBondingMode5GHz = WNI_CFG_CHANNEL_BONDING_MODE_ENABLE;
-
+    pMac->roam.configParam.channelBondingMode24GHz =
+                              WNI_CFG_CHANNEL_BONDING_MODE_DISABLE;
+    pMac->roam.configParam.channelBondingMode5GHz =
+                              WNI_CFG_CHANNEL_BONDING_MODE_ENABLE;
     pMac->roam.configParam.phyMode = eCSR_DOT11_MODE_TAURUS;
     pMac->roam.configParam.eBand = eCSR_BAND_ALL;
     pMac->roam.configParam.uCfgDot11Mode = eCSR_CFG_DOT11_MODE_TAURUS;
@@ -2989,6 +2990,7 @@ eHalStatus csrRoamPrepareBssConfig(tpAniSirGlobal pMac, tCsrRoamProfile *pProfil
         }
         //validate CB
         pBssConfig->cbMode = csrGetCBModeFromIes(pMac, pBssDesc->channelId, pIes);
+
     }while(0);
     return (status);
 }
@@ -3807,7 +3809,6 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
     //ccmCfgSetInt(pMac, WNI_CFG_RTS_THRESHOLD, csrGetRTSThresh(pMac), NULL, eANI_BOOLEAN_FALSE);
 
     //ccmCfgSetInt(pMac, WNI_CFG_DOT11_MODE, csrTranslateToWNICfgDot11Mode(pMac, pBssConfig->uCfgDot11Mode), NULL, eANI_BOOLEAN_FALSE);
-        
     //Auth type
     ccmCfgSetInt(pMac, WNI_CFG_AUTHENTICATION_TYPE, pBssConfig->authType, NULL, eANI_BOOLEAN_FALSE);
     //encryption type
@@ -3837,9 +3838,14 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
     }
     if(0 != channel)
     {
-        if(CSR_IS_CHANNEL_24GHZ(channel))
-        {//for now if we are on 2.4 Ghz, CB will be always disabled
+        if(CSR_IS_CHANNEL_24GHZ(channel) &&
+           !pMac->roam.configParam.channelBondingMode24GHz &&
+           !WDA_getFwWlanFeatCaps(HT40_OBSS_SCAN))
+        {//On 2.4 Ghz, CB will be disabled if it is not configured through .ini
             cfgCb = WNI_CFG_CHANNEL_BONDING_MODE_DISABLE;
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH, "%s: "
+               " cbMode disabled cfgCb = %d channelBondingMode24GHz %d",
+               __func__, cfgCb, pMac->roam.configParam.channelBondingMode24GHz);
         }
         else
         {
@@ -3855,7 +3861,7 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
         if(!WDA_getFwWlanFeatCaps(DOT11AC)) {
             cfgCb = csrGetHTCBStateFromVHTCBState(cfgCb);
         }
-        else 
+        else
         {
             ccmCfgSetInt(pMac, WNI_CFG_VHT_CHANNEL_WIDTH,  pMac->roam.configParam.nVhtChannelWidth, NULL, eANI_BOOLEAN_FALSE);
         }
@@ -11074,6 +11080,7 @@ tANI_BOOLEAN csrRoamIsValid40MhzChannel(tpAniSirGlobal pMac, tANI_U8 channel)
     ePhyChanBondState eRet = PHY_SINGLE_CHANNEL_CENTERED;
     tANI_U8 centerChn;
     tANI_U32 ChannelBondingMode;
+
     if(CSR_IS_CHANNEL_24GHZ(primaryChn))
     {
         ChannelBondingMode = pMac->roam.configParam.channelBondingMode24GHz;
