@@ -14,6 +14,12 @@
 /include/ "apq8026-dory.dtsi"
 
 &soc {
+	i2c@f9923000 {
+		max17050@36 {
+			maxim,full-soc = <100>;
+			maxim,empty-soc = <4>;
+		};
+	};
 	i2c@f9924000 {
 		lis3dsh_acc@1e {
 			lis,negate_x = <0>;
