@@ -3845,6 +3845,7 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 
 			enable_irq_wake(chip->chg_trklchg.irq);
 			enable_irq_wake(chip->chg_failed.irq);
+			enable_irq_wake(chip->chg_fastchg.irq);
 			qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
 
 			break;
