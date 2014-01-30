@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1075,6 +1075,7 @@ typedef struct sAniSirGlobal
 #endif
     tANI_U8 fScanOffload;
     tANI_U8 isCoalesingInIBSSAllowed;
+    tANI_U32 fEnableDebugLog;
 } tAniSirGlobal;
 
 #ifdef FEATURE_WLAN_TDLS
