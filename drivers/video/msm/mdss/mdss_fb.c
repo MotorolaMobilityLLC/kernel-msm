@@ -162,16 +162,11 @@ static int mdss_fb_splash_thread(void *data)
 	int ret = -EINVAL;
 	struct fb_info *fbi = NULL;
 	int ov_index[2];
-	struct mdss_panel_data *pdata;
 
 	if (!mfd || !mfd->fbi || !mfd->mdp.splash_fnc) {
 		pr_err("Invalid input parameter\n");
 		goto end;
 	}
-
-	pdata = dev_get_platdata(&mfd->pdev->dev);
-	if (pdata && pdata->panel_info.cont_splash_enabled)
-		goto end;
 
 	fbi = mfd->fbi;
 
@@ -464,7 +459,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	else
 		mfd->mdp_sync_pt_data.threshold = 2;
 
-	if (mfd->index == 0) {
+	if (mfd->index == 0 && !pdata->panel_info.cont_splash_enabled) {
 		mfd->splash_thread = kthread_run(mdss_fb_splash_thread, mfd,
 				"mdss_fb_splash");
 		if (IS_ERR(mfd->splash_thread)) {
