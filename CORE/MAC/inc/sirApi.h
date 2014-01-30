@@ -3399,6 +3399,17 @@ typedef struct sSirChangeBIParams
     tANI_U8        sessionId;      // Session ID
 } tSirChangeBIParams, *tpSirChangeBIParams;
 
+typedef struct sSirOBSSHT40Param
+{
+   tANI_U16 OBSSScanPassiveDwellTime;
+   tANI_U16 OBSSScanActiveDwellTime;
+   tANI_U16 BSSChannelWidthTriggerScanInterval;
+   tANI_U16 OBSSScanPassiveTotalPerChannel;
+   tANI_U16 OBSSScanActiveTotalPerChannel;
+   tANI_U16 BSSWidthChannelTransitionDelayFactor;
+   tANI_U16 OBSSScanActivityThreshold;
+}tSirOBSSHT40Param, *tpOBSSHT40Param;
+
 #define SIR_WPS_UUID_LEN 16
 #define SIR_WPS_PBC_WALK_TIME   120  // 120 Second
 
@@ -4333,6 +4344,48 @@ typedef struct sSirActiveModeSetBcnFilterReq
    tANI_U16               length;
    tANI_U8                seesionId;
 } tSirSetActiveModeSetBncFilterReq, *tpSirSetActiveModeSetBncFilterReq;
+
+typedef enum
+{
+   HT40_OBSS_SCAN_PARAM_START,
+   HT40_OBSS_SCAN_PARAM_UPDATE
+}tHT40OBssScanCmdType;
+
+typedef struct sSirSmeHT40StopOBSSScanInd
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U8                seesionId;
+} tSirSmeHT40OBSSStopScanInd, *tpSirSmeHT40OBSSStopScanInd;
+
+typedef struct sSirSmeHT40OBSSScanInd
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U8                seesionId;
+} tSirSmeHT40OBSSScanInd, *tpSirSmeHT40OBSSScanInd;
+
+typedef struct sSirHT40OBSSScanInd
+{
+    tHT40OBssScanCmdType cmdType;
+    tSirScanType scanType;
+    tANI_U16     OBSSScanPassiveDwellTime; // In TUs
+    tANI_U16     OBSSScanActiveDwellTime;  // In TUs
+    tANI_U16     BSSChannelWidthTriggerScanInterval; // In seconds
+    tANI_U16     OBSSScanPassiveTotalPerChannel; // In TU
+    tANI_U16     OBSSScanActiveTotalPerChannel;  // In TUs
+    tANI_U16     BSSWidthChannelTransitionDelayFactor;
+    tANI_U16     OBSSScanActivityThreshold;
+    tANI_U8      selfStaIdx;
+    tANI_U8      bssIdx;
+    tANI_U8      fortyMHZIntolerent;
+    tANI_U8      channelCount;
+    tANI_U8      channels[SIR_ROAM_MAX_CHANNELS];
+    tANI_U8      currentOperatingClass;
+    tANI_U16     ieFieldLen;
+    tANI_U8      ieField[SIR_ROAM_SCAN_MAX_PB_REQ_SIZE];
+} tSirHT40OBSSScanInd, *tpSirHT40OBSSScanInd;
+
 
 //Reset AP Caps Changed
 typedef struct sSirResetAPCapsChange
