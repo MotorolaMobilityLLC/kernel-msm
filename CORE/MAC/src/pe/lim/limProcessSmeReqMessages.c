@@ -2786,6 +2786,20 @@ __limProcessSmeDeauthReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
                         retCode       = eSIR_SME_STA_NOT_AUTHENTICATED;
                         deauthTrigger = eLIM_HOST_DEAUTH;
+                        /**
+                         *here we received deauth request from AP so sme state is
+                          eLIM_SME_WT_DEAUTH_STATE.if we have ISSUED delSta then
+                          mlm state should be eLIM_MLM_WT_DEL_STA_RSP_STATE and if
+                          we got delBSS rsp then mlm state should be eLIM_MLM_IDLE_STATE
+                          so the below condition captures the state where delSta
+                          not done and firmware still in connected state.
+                        */
+                        if (psessionEntry->limSmeState == eLIM_SME_WT_DEAUTH_STATE &&
+                            psessionEntry->limMlmState != eLIM_MLM_IDLE_STATE &&
+                            psessionEntry->limMlmState != eLIM_MLM_WT_DEL_STA_RSP_STATE)
+                        {
+                            retCode = eSIR_SME_DEAUTH_STATUS;
+                        }
                         goto sendDeauth;
                     }
 
