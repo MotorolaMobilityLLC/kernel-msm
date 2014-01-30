@@ -12084,10 +12084,15 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          WDA_ProcessSetTmLevelReq(pWDA, (tAniSetTmLevelReq *)pMsg->bodyptr);
          break;
       }
-#ifdef WLAN_FEATURE_11AC
+
       case WDA_UPDATE_OP_MODE:
       {
-          if(WDA_getHostWlanFeatCaps(DOT11AC) && WDA_getFwWlanFeatCaps(DOT11AC))
+           if(WDA_getHostWlanFeatCaps(HT40_OBSS_SCAN) &&
+              WDA_getFwWlanFeatCaps(HT40_OBSS_SCAN))
+          {
+              WDA_ProcessUpdateOpMode(pWDA, (tUpdateVHTOpMode *)pMsg->bodyptr);
+          }
+          else if(WDA_getHostWlanFeatCaps(DOT11AC) && WDA_getFwWlanFeatCaps(DOT11AC))
           {
               if(WDA_getHostWlanFeatCaps(DOT11AC_OPMODE) && WDA_getFwWlanFeatCaps(DOT11AC_OPMODE))
                    WDA_ProcessUpdateOpMode(pWDA, (tUpdateVHTOpMode *)pMsg->bodyptr);
@@ -12100,7 +12105,6 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
                                             " 11AC Feature is Not Supported");
           break;
       }
-#endif
 #ifdef WLAN_FEATURE_11W
       case WDA_EXCLUDE_UNENCRYPTED_IND:
       {

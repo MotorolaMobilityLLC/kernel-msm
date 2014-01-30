@@ -177,6 +177,8 @@ typedef enum
 #else
 #define IS_ADVANCE_TDLS_ENABLE 0
 #endif
+#define IS_HT40_OBSS_SCAN_FEATURE_ENABLE ((WDA_getFwWlanFeatCaps(HT40_OBSS_SCAN)) & (WDI_getHostWlanFeatCaps(HT40_OBSS_SCAN)))
+
 /*--------------------------------------------------------------------------
   Definitions for Data path APIs
  --------------------------------------------------------------------------*/
