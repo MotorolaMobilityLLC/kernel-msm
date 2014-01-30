@@ -53,8 +53,10 @@
 #define ARIZONA_AIF_RX_ENABLES                  0x1A
 #define ARIZONA_AIF_FORCE_WRITE                 0x1B
 
+#define ARIZONA_FLL_VCO_CORNER 141900000
 #define ARIZONA_FLL_MAX_FREF   13500000
 #define ARIZONA_FLL_MIN_FVCO   90000000
+#define ARIZONA_FLL_MAX_FRATIO 16
 #define ARIZONA_FLL_MAX_REFDIV 8
 #define ARIZONA_FLL_MIN_OUTDIV 2
 #define ARIZONA_FLL_MAX_OUTDIV 7
@@ -1695,14 +1697,14 @@ static irqreturn_t arizona_fll_clock_ok(int irq, void *data)
 static struct {
 	unsigned int min;
 	unsigned int max;
-	u16 fratio[2];
+	u16 fratio;
 	int ratio;
 } fll_fratios[] = {
-	{       0,    64000, { 4, 0xf }, 16 },
-	{   64000,   128000, { 3, 0x7 },  8 },
-	{  128000,   256000, { 2, 0x3 },  4 },
-	{  256000,  1000000, { 1, 0x1 },  2 },
-	{ 1000000, 13500000, { 0, 0x0 },  1 },
+	{       0,    64000, 4, 16 },
+	{   64000,   128000, 3,  8 },
+	{  128000,   256000, 2,  4 },
+	{  256000,  1000000, 1,  2 },
+	{ 1000000, 13500000, 0,  1 },
 };
 
 static struct {
@@ -1721,31 +1723,9 @@ struct arizona_fll_cfg {
 	int lambda;
 	int refdiv;
 	int outdiv;
-	int fratio_ref;
-	int fratio_sync;
+	int fratio;
 	int gain;
 };
-
-static inline int arizona_fratio_ref(struct arizona *arizona, int i)
-{
-	switch (arizona->type) {
-	case WM8280:
-	case WM5110:
-		if (arizona->rev >= 3)
-			return fll_fratios[i].fratio[1];
-		else
-			return fll_fratios[i].fratio[0];
-		break;
-
-	default:
-		return fll_fratios[i].fratio[0];
-	}
-}
-
-static inline int arizona_fratio_sync(struct arizona *arizona, int i)
-{
-	return fll_fratios[i].fratio[0];
-}
 
 static int arizona_validate_fll(struct arizona_fll *fll,
 				unsigned int Fref,
@@ -1770,9 +1750,100 @@ static int arizona_validate_fll(struct arizona_fll *fll,
 	return 0;
 }
 
+static int arizona_find_fratio(unsigned int Fref, int *fratio)
+{
+	int i;
+
+	/* Find an appropriate FLL_FRATIO */
+	for (i = 0; i < ARRAY_SIZE(fll_fratios); i++) {
+		if (fll_fratios[i].min <= Fref && Fref <= fll_fratios[i].max) {
+			if (fratio)
+				*fratio = fll_fratios[i].fratio;
+			return fll_fratios[i].ratio;
+		}
+	}
+
+	return -EINVAL;
+}
+
+static int arizona_calc_fratio(struct arizona_fll *fll,
+			       struct arizona_fll_cfg *cfg,
+			       unsigned int target,
+			       unsigned int Fref, bool sync)
+{
+	int init_ratio, ratio;
+	int refdiv, div;
+
+	/* Fref must be <=13.5MHz, find initial refdiv */
+	div = 1;
+	cfg->refdiv = 0;
+	while (Fref > ARIZONA_FLL_MAX_FREF) {
+		div *= 2;
+		Fref /= 2;
+		cfg->refdiv++;
+
+		if (div > ARIZONA_FLL_MAX_REFDIV)
+			return -EINVAL;
+	}
+
+	/* Find an appropriate FLL_FRATIO */
+	init_ratio = arizona_find_fratio(Fref, &cfg->fratio);
+	if (init_ratio < 0) {
+		arizona_fll_err(fll, "Unable to find FRATIO for Fref=%uHz\n",
+				Fref);
+		return init_ratio;
+	}
+
+	switch (fll->arizona->type) {
+	case WM8280:
+	case WM5110:
+		if (fll->arizona->rev < 3 || sync)
+			return init_ratio;
+		break;
+	default:
+		return init_ratio;
+	}
+
+	cfg->fratio = init_ratio - 1;
+
+	/* Adjust FRATIO/refdiv to avoid integer mode if possible */
+	refdiv = cfg->refdiv;
+
+	while (div <= ARIZONA_FLL_MAX_REFDIV) {
+		for (ratio = init_ratio; ratio <= ARIZONA_FLL_MAX_FRATIO;
+		     ratio++) {
+			if (target % (ratio * Fref)) {
+				cfg->refdiv = refdiv;
+				cfg->fratio = ratio - 1;
+				return ratio;
+			}
+		}
+
+		for (ratio = init_ratio - 1; ratio >= 0; ratio--) {
+			if (ARIZONA_FLL_VCO_CORNER / (fll->vco_mult * ratio) <
+			    Fref)
+				break;
+
+			if (target % (ratio * Fref)) {
+				cfg->refdiv = refdiv;
+				cfg->fratio = ratio - 1;
+				return ratio;
+			}
+		}
+
+		div *= 2;
+		Fref /= 2;
+		refdiv++;
+		init_ratio = arizona_find_fratio(Fref, NULL);
+	}
+
+	arizona_fll_warn(fll, "Falling back to integer mode operation\n");
+	return cfg->fratio + 1;
+}
+
 static int arizona_calc_fll(struct arizona_fll *fll,
 			    struct arizona_fll_cfg *cfg,
-			    unsigned int Fref)
+			    unsigned int Fref, bool sync)
 {
 	unsigned int target, div, gcd_fll;
 	int i, ratio;
@@ -1791,34 +1862,13 @@ static int arizona_calc_fll(struct arizona_fll *fll,
 
 	arizona_fll_dbg(fll, "Fvco=%dHz\n", target);
 
-	/* Fref must be <=13.5MHz */
-	div = 1;
-	cfg->refdiv = 0;
-	while ((Fref / div) > ARIZONA_FLL_MAX_FREF) {
-		div *= 2;
-		cfg->refdiv++;
-
-		if (div > ARIZONA_FLL_MAX_REFDIV)
-			return -EINVAL;
-	}
+	/* Find an appropriate FLL_FRATIO and refdiv */
+	ratio = arizona_calc_fratio(fll, cfg, target, Fref, sync);
+	if (ratio < 0)
+		return ratio;
 
 	/* Apply the division for our remaining calculations */
-	Fref /= div;
-
-	/* Find an appropraite FLL_FRATIO and factor it out of the target */
-	for (i = 0; i < ARRAY_SIZE(fll_fratios); i++) {
-		if (fll_fratios[i].min <= Fref && Fref <= fll_fratios[i].max) {
-			cfg->fratio_ref = arizona_fratio_ref(fll->arizona, i);
-			cfg->fratio_sync = arizona_fratio_sync(fll->arizona, i);
-			ratio = fll_fratios[i].ratio;
-			break;
-		}
-	}
-	if (i == ARRAY_SIZE(fll_fratios)) {
-		arizona_fll_err(fll, "Unable to find FRATIO for Fref=%uHz\n",
-				Fref);
-		return -EINVAL;
-	}
+	Fref = Fref / (1 << cfg->refdiv);
 
 	cfg->n = target / (ratio * Fref);
 
@@ -1857,11 +1907,8 @@ static int arizona_calc_fll(struct arizona_fll *fll,
 
 	arizona_fll_dbg(fll, "N=%x THETA=%x LAMBDA=%x\n",
 			cfg->n, cfg->theta, cfg->lambda);
-	arizona_fll_dbg(fll, "FRATIO_REF=%x(%d) FRATIO_SYNC=%x(%d)\n",
-			cfg->fratio_ref, cfg->fratio_ref,
-			cfg->fratio_sync, cfg->fratio_sync);
-	arizona_fll_dbg(fll, "OUTDIV=%x REFCLK_DIV=%x\n",
-			cfg->outdiv, cfg->refdiv);
+	arizona_fll_dbg(fll, "FRATIO=%x(%d) OUTDIV=%x REFCLK_DIV=%x\n",
+			cfg->fratio, cfg->fratio, cfg->outdiv, cfg->refdiv);
 	arizona_fll_dbg(fll, "GAIN=%d\n", cfg->gain);
 
 	return 0;
@@ -1876,6 +1923,9 @@ static void arizona_apply_fll(struct arizona *arizona, unsigned int base,
 			   ARIZONA_FLL1_THETA_MASK, cfg->theta);
 	regmap_update_bits(arizona->regmap, base + 4,
 			   ARIZONA_FLL1_LAMBDA_MASK, cfg->lambda);
+	regmap_update_bits(arizona->regmap, base + 5,
+			   ARIZONA_FLL1_FRATIO_MASK,
+			   cfg->fratio << ARIZONA_FLL1_FRATIO_SHIFT);
 	regmap_update_bits(arizona->regmap, base + 6,
 			   ARIZONA_FLL1_CLK_REF_DIV_MASK |
 			   ARIZONA_FLL1_CLK_REF_SRC_MASK,
@@ -1883,16 +1933,10 @@ static void arizona_apply_fll(struct arizona *arizona, unsigned int base,
 			   source << ARIZONA_FLL1_CLK_REF_SRC_SHIFT);
 
 	if (sync) {
-		regmap_update_bits(arizona->regmap, base + 5,
-				   ARIZONA_FLL1_FRATIO_MASK,
-				   cfg->fratio_sync << ARIZONA_FLL1_FRATIO_SHIFT);
 		regmap_update_bits(arizona->regmap, base + 0x7,
 				   ARIZONA_FLL1_GAIN_MASK,
 				   cfg->gain << ARIZONA_FLL1_GAIN_SHIFT);
 	} else {
-		regmap_update_bits(arizona->regmap, base + 5,
-				   ARIZONA_FLL1_FRATIO_MASK,
-				   cfg->fratio_ref << ARIZONA_FLL1_FRATIO_SHIFT);
 		regmap_update_bits(arizona->regmap, base + 0x5,
 				   ARIZONA_FLL1_OUTDIV_MASK,
 				   cfg->outdiv << ARIZONA_FLL1_OUTDIV_SHIFT);
@@ -1935,19 +1979,19 @@ static void arizona_enable_fll(struct arizona_fll *fll)
 	 */
 	if (fll->ref_src >= 0 && fll->ref_freq &&
 	    fll->ref_src != fll->sync_src) {
-		arizona_calc_fll(fll, &cfg, fll->ref_freq);
+		arizona_calc_fll(fll, &cfg, fll->ref_freq, false);
 
 		arizona_apply_fll(arizona, fll->base, &cfg, fll->ref_src,
 				  false);
 		if (fll->sync_src >= 0) {
-			arizona_calc_fll(fll, &cfg, fll->sync_freq);
+			arizona_calc_fll(fll, &cfg, fll->sync_freq, true);
 
 			arizona_apply_fll(arizona, fll->base + 0x10, &cfg,
 					  fll->sync_src, true);
 			use_sync = true;
 		}
 	} else if (fll->sync_src >= 0) {
-		arizona_calc_fll(fll, &cfg, fll->sync_freq);
+		arizona_calc_fll(fll, &cfg, fll->sync_freq, false);
 
 		arizona_apply_fll(arizona, fll->base, &cfg,
 				  fll->sync_src, false);
