@@ -4705,5 +4705,15 @@ NONE
 V    RW    NP
 NONE
 0    1    0
+
+* BTC CTS2S during SCO
+*
+WNI_CFG_BTC_CTS2S_DURING_SCO    I    4    7
+V    RW    NP
+HAL
+0    1     0
+V    RW    NP
+HAL
+0    1     0
 *
 *
