@@ -357,8 +357,8 @@ static int qpnp_blink_set(unsigned on)
 				dev_err(&led->spmi_dev->dev,
 					"Change to PWM err (%d)\n", ret);
 			ret = pwm_config(pwm->pwm_dev,
-				delay_on * 1000,
-				(delay_on + delay_off) * 1000);
+				delay_on * 1000 * NSEC_PER_USEC,
+				(delay_on + delay_off) * 1000 * NSEC_PER_USEC);
 			if (ret) {
 				dev_err(&led->spmi_dev->dev,
 					"PWM config error (%d)\n", ret);
@@ -574,8 +574,9 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 				duty_us,
 				led->mpp_cfg->pwm_cfg->pwm_period_us);
 			rc = pwm_config(led->mpp_cfg->pwm_cfg->pwm_dev,
-					duty_us,
-					led->mpp_cfg->pwm_cfg->pwm_period_us);
+					duty_us * NSEC_PER_USEC,
+					led->mpp_cfg->pwm_cfg->pwm_period_us *
+					NSEC_PER_USEC);
 			if (rc < 0) {
 				dev_err(&led->spmi_dev->dev, "Failed to " \
 					"configure pwm for new values\n");
@@ -629,8 +630,10 @@ static int qpnp_rgb_set(struct qpnp_led_data *led)
 		if (led->rgb_cfg->pwm_cfg->mode == PWM_MODE) {
 			duty_us = (led->rgb_cfg->pwm_cfg->pwm_period_us *
 				led->cdev.brightness) / LED_FULL;
-			rc = pwm_config(led->rgb_cfg->pwm_cfg->pwm_dev, duty_us,
-					led->rgb_cfg->pwm_cfg->pwm_period_us);
+			rc = pwm_config(led->rgb_cfg->pwm_cfg->pwm_dev,
+					duty_us * NSEC_PER_USEC,
+					led->rgb_cfg->pwm_cfg->pwm_period_us *
+						NSEC_PER_USEC);
 			if (rc < 0) {
 				dev_err(&led->spmi_dev->dev,
 					"pwm config failed\n");
