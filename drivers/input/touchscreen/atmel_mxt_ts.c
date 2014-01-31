@@ -243,6 +243,7 @@ struct mxt_data {
 	u8 t100_aux_ampl;
 	u8 t100_aux_area;
 	u8 t100_aux_vect;
+	bool mem_access_created;
 	struct bin_attribute mem_access_attr;
 	bool debug_enabled;
 	bool debug_v2_enabled;
@@ -378,6 +379,7 @@ static void mxt_debug_msg_enable(struct mxt_data *data)
 	data->debug_msg_data = kcalloc(DEBUG_MSG_MAX,
 				data->T5_msg_size, GFP_KERNEL);
 	if (!data->debug_msg_data) {
+		mutex_unlock(&data->debug_msg_lock);
 		dev_err(&data->client->dev, "Failed to allocate buffer\n");
 		return;
 	}
@@ -413,6 +415,7 @@ static void mxt_debug_msg_add(struct mxt_data *data, u8 *msg)
 	mutex_lock(&data->debug_msg_lock);
 
 	if (!data->debug_msg_data) {
+		mutex_unlock(&data->debug_msg_lock);
 		dev_err(dev, "No buffer!\n");
 		return;
 	}
@@ -444,8 +447,7 @@ static ssize_t mxt_debug_msg_read(struct file *filp, struct kobject *kobj,
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct mxt_data *data = dev_get_drvdata(dev);
-	int count;
-	size_t bytes_read;
+	size_t count, bytes_read;
 
 	if (!data->debug_msg_data) {
 		dev_err(dev, "No buffer!\n");
@@ -3942,6 +3944,8 @@ static int mxt_probe(struct i2c_client *client,
 		goto err_remove_sysfs_group;
 	}
 
+	data->mem_access_created = true;
+
 	return 0;
 
 err_remove_sysfs_group:
@@ -3964,7 +3968,7 @@ static int mxt_remove(struct i2c_client *client)
 {
 	struct mxt_data *data = i2c_get_clientdata(client);
 
-	if (data->mem_access_attr.attr.name)
+	if (data->mem_access_created)
 		sysfs_remove_bin_file(&client->dev.kobj,
 				      &data->mem_access_attr);
 
