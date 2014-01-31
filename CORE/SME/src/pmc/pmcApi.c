@@ -2164,8 +2164,12 @@ eHalStatus pmcWowlAddBcastPattern (
     {
        log_ptr->pattern_id = pattern->ucPatternId;
        log_ptr->pattern_byte_offset = pattern->ucPatternByteOffset;
-       log_ptr->pattern_size = pattern->ucPatternSize;
-       log_ptr->pattern_mask_size = pattern->ucPatternMaskSize;
+       log_ptr->pattern_size =
+           (pattern->ucPatternSize <= VOS_LOG_MAX_WOW_PTRN_SIZE) ?
+           pattern->ucPatternSize : VOS_LOG_MAX_WOW_PTRN_SIZE;
+       log_ptr->pattern_mask_size =
+          (pattern->ucPatternMaskSize <= VOS_LOG_MAX_WOW_PTRN_MASK_SIZE) ?
+           pattern->ucPatternMaskSize : VOS_LOG_MAX_WOW_PTRN_MASK_SIZE;
 
        vos_mem_copy(log_ptr->pattern, pattern->ucPattern,
                     SIR_WOWL_BCAST_PATTERN_MAX_SIZE);
@@ -2904,7 +2908,12 @@ eHalStatus pmcSetPreferredNetworkList
                *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[20]),
                *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[24]),
                *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[28]));
-
+    if (!pSession)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            "%s: pSessionis NULL", __func__);
+        return eHAL_STATUS_FAILURE;
+    }
 
     pRequestBuf = vos_mem_malloc(sizeof(tSirPNOScanReq));
     if (NULL == pRequestBuf)

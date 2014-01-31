@@ -5595,7 +5595,7 @@ void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
 
 void hdd_cleanup_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_U8 rtnl_held )
 {
-   struct net_device *pWlanDev;
+   struct net_device *pWlanDev = NULL;
 
    ENTER();
    if (NULL == pAdapter)
@@ -7197,7 +7197,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    v_CONTEXT_t pVosContext = pHddCtx->pvosContext;
    VOS_STATUS vosStatus;
    struct wiphy *wiphy = pHddCtx->wiphy;
-   hdd_adapter_t* pAdapter;
+   hdd_adapter_t* pAdapter = NULL;
    struct statsContext powerContext;
    long lrc;
 
@@ -7652,6 +7652,9 @@ void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx)
    tSirVersionString versionString;
    tANI_U8 fwFeatCapsMsgSupported = 0;
    VOS_STATUS vstatus;
+
+   memset(&versionCompiled, 0, sizeof(versionCompiled));
+   memset(&versionReported, 0, sizeof(versionReported));
 
    /* retrieve and display WCNSS version information */
    do {
