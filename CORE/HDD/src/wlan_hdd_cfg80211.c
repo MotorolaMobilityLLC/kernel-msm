@@ -2735,7 +2735,7 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
 {
     struct wireless_dev *wdev;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev );
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+    hdd_context_t *pHddCtx;
     hdd_adapter_t  *pP2pAdapter = NULL;
     tCsrRoamProfile *pRoamProfile = NULL;
     eCsrRoamBssType LastBSSType;
@@ -2745,6 +2745,21 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
     long ret;
 
     ENTER();
+
+    if (!pAdapter)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Adapter context is null", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    if (!pHddCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is null", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
 
     status = wlan_hdd_validate_context(pHddCtx);
 
@@ -2788,6 +2803,12 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
       )
     {
         hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+        if (!pWextState)
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: pWextState is null", __func__);
+            return VOS_STATUS_E_FAILURE;
+        }
         pRoamProfile = &pWextState->roamProfile;
         LastBSSType = pRoamProfile->BSSType;
 
@@ -6320,14 +6341,28 @@ static int wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
     int status;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev );
     VOS_STATUS exitbmpsStatus = VOS_STATUS_E_INVAL;
-    hdd_context_t *pHddCtx = NULL;
+    hdd_context_t *pHddCtx;
 
     ENTER();
+
+    if (!pAdapter)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Adapter context is null", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
 
     hddLog(VOS_TRACE_LEVEL_INFO,
              "%s: device_mode = %d",__func__,pAdapter->device_mode);
 
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    if (!pHddCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is null", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)

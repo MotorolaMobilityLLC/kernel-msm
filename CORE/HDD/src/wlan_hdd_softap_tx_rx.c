@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -921,7 +921,7 @@ VOS_STATUS hdd_softap_tx_complete_cbk( v_VOID_t *vosContext,
 
    //Return the skb to the OS
    status = vos_pkt_get_os_packet( pVosPacket, &pOsPkt, VOS_TRUE );
-   if(!VOS_IS_STATUS_SUCCESS( status ))
+   if ((!VOS_IS_STATUS_SUCCESS(status)) || (!pOsPkt))
    {
       //This is bad but still try to free the VOSS resources if we can
       VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,"%s: Failure extracting skb from vos pkt", __func__);

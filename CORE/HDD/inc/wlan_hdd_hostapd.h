@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -66,6 +66,9 @@
 /*---------------------------------------------------------------------------
   Preprocessor definitions and constants
   -------------------------------------------------------------------------*/
+
+/* max length of command string in hostapd ioctl */
+#define HOSTAPD_IOCTL_COMMAND_STRLEN_MAX   2048
 
 hdd_adapter_t* hdd_wlan_create_ap_dev( hdd_context_t *pHddCtx, tSirMacAddr macAddr, tANI_U8 *name);
 
