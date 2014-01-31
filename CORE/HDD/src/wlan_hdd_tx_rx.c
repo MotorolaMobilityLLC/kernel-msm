@@ -996,7 +996,7 @@ v_BOOL_t hdd_IsEAPOLPacket( vos_pkt_t *pVosPacket )
                           &pBuffer, HDD_ETHERTYPE_802_1_X_SIZE );
     if (VOS_IS_STATUS_SUCCESS( vosStatus ) )
     {
-       if ( vos_be16_to_cpu( *(unsigned short*)pBuffer ) == HDD_ETHERTYPE_802_1_X )
+       if (pBuffer && vos_be16_to_cpu( *(unsigned short*)pBuffer ) == HDD_ETHERTYPE_802_1_X )
        {
           fEAPOL = VOS_TRUE;
        }
@@ -1027,7 +1027,7 @@ v_BOOL_t hdd_IsWAIPacket( vos_pkt_t *pVosPacket )
 
     if (VOS_IS_STATUS_SUCCESS( vosStatus ) )
     {
-       if ( vos_be16_to_cpu( *(unsigned short*)pBuffer ) == HDD_ETHERTYPE_WAI)
+       if (pBuffer && vos_be16_to_cpu( *((unsigned short*)pBuffer)) == HDD_ETHERTYPE_WAI)
        {
           fIsWAI = VOS_TRUE;
        }
