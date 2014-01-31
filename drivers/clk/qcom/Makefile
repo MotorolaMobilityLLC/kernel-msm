@@ -13,5 +13,11 @@ obj-$(CONFIG_DEBUG_FS)		+= clock-debug.o
 # MDM9630
 obj-$(CONFIG_ARCH_MDM9630)	+= clock-alpha-pll.o
 
+# ACPU clock
+obj-$(CONFIG_ARCH_MSM8610)	+= clock-a7.o
+obj-$(CONFIG_ARCH_MSM8226)	+= clock-a7.o
+obj-$(CONFIG_ARCH_MDM9630)	+= clock-a7.o
+obj-$(CONFIG_ARCH_MSM8916)	+= clock-a7.o
+
 obj-y				+= gdsc.o
 obj-y				+= mdss/
