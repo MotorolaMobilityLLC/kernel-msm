@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -244,6 +244,7 @@
 #define VFE_CMD_STATS_BG_CFG                            167
 #define VFE_CMD_STATS_BF_CFG                            168
 #define VFE_CMD_STATS_BHIST_CFG                         169
+#define VFE_CMD_MAX                                     170
 
 struct msm_isp_cmd {
 	int32_t  id;
