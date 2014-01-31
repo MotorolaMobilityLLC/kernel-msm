@@ -612,6 +612,7 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 #else
     NULL,
 #endif /*FEATURE_WLAN_BATCH_SCAN*/
+  WDI_ProcessSetMaxTxPowerPerBandRsp,  /* WDI_SET_MAX_TX_POWER_PER_BAND_RSP */
 
   /*---------------------------------------------------------------------
     Indications
@@ -18303,6 +18304,68 @@ WDI_ProcessSetTxPowerRsp
 
   return WDI_STATUS_SUCCESS;
 }
+
+/**
+ @brief Process Set Max Tx Power Per Band Rsp function (called when a response
+        is being received over the bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessSetMaxTxPowerPerBandRsp
+(
+   WDI_ControlBlockType*          pWDICtx,
+   WDI_EventInfoType*             pEventData
+)
+{
+   tSetMaxTxPwrPerBandRspMsg      halMaxTxPowerPerBandRsp;
+   WDI_SetMaxTxPowerPerBandRspMsg wdiSetTxPowerPerBandRspMsg;
+   WDA_SetMaxTxPowerPerBandRspCb  wdiReqStatusCb;
+   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+   /*-------------------------------------------------------------------------
+     Sanity check
+    -------------------------------------------------------------------------*/
+   if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+       ( NULL == pEventData->pEventData))
+   {
+       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                  "%s: Invalid parameters", __func__);
+       WDI_ASSERT(0);
+       return WDI_STATUS_E_FAILURE;
+   }
+
+   wdiReqStatusCb = (WDA_SetMaxTxPowerPerBandRspCb)pWDICtx->pfncRspCB;
+
+   /*-------------------------------------------------------------------------
+     Extract response and send it to UMAC
+   -------------------------------------------------------------------------*/
+   wpalMemoryCopy(&halMaxTxPowerPerBandRsp.setMaxTxPwrPerBandRspParams,
+                  pEventData->pEventData,
+                  sizeof(halMaxTxPowerPerBandRsp.setMaxTxPwrPerBandRspParams));
+
+   if (eHAL_STATUS_SUCCESS !=
+       halMaxTxPowerPerBandRsp.setMaxTxPwrPerBandRspParams.status)
+   {
+       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  "Error status returned in Set Max Tx Power Per Band Response");
+       return WDI_STATUS_E_FAILURE;
+   }
+
+   wdiSetTxPowerPerBandRspMsg.wdiStatus =
+         WDI_HAL_2_WDI_STATUS(
+         halMaxTxPowerPerBandRsp.setMaxTxPwrPerBandRspParams.status);
+
+   /* Notify UMAC */
+   wdiReqStatusCb(&wdiSetTxPowerPerBandRspMsg, pWDICtx->pRspCBUserData);
+
+   return WDI_STATUS_SUCCESS;
+}
+
 #ifdef FEATURE_WLAN_TDLS
 /**
  @brief Process TDLS Link Establish Rsp function (called

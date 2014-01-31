@@ -3644,6 +3644,23 @@ WDI_ProcessSetMaxTxPowerRsp
   WDI_EventInfoType*             pEventData
 );
 
+/**
+ @brief Process Set Max Tx Power Per Band Rsp function (called when a response
+        is being received over the bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessSetMaxTxPowerPerBandRsp
+(
+  WDI_ControlBlockType*          pWDICtx,
+  WDI_EventInfoType*             pEventData
+);
+
   /**
  @brief Process Set Tx Power Rsp function (called when a response
         is being received over the bus from HAL)
