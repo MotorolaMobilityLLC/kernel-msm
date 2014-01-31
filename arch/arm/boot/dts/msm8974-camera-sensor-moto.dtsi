@@ -117,3 +117,30 @@
 	};
 };
 
+&master0 {
+	qcom,hw-thigh = <20>;
+	qcom,hw-tlow = <28>;
+	qcom,hw-tsu-sto = <21>;
+	qcom,hw-tsu-sta = <21>;
+	qcom,hw-thd-dat = <13>;
+	qcom,hw-thd-sta = <18>;
+	qcom,hw-tbuf = <25>;
+	qcom,hw-scl-stretch-en = <0>;
+	qcom,hw-trdhld = <6>;
+	qcom,hw-tsp = <3>;
+	status = "ok";
+};
+
+&master1 {
+	qcom,hw-thigh = <20>;
+	qcom,hw-tlow = <28>;
+	qcom,hw-tsu-sto = <21>;
+	qcom,hw-tsu-sta = <21>;
+	qcom,hw-thd-dat = <13>;
+	qcom,hw-thd-sta = <18>;
+	qcom,hw-tbuf = <25>;
+	qcom,hw-scl-stretch-en = <0>;
+	qcom,hw-trdhld = <6>;
+	qcom,hw-tsp = <3>;
+	status = "ok";
+};
