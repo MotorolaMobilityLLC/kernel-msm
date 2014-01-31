@@ -435,6 +435,9 @@ typedef enum
    WLAN_HAL_IP_FORWARD_TABLE_UPDATE_IND     = 232,
 
    WLAN_HAL_AVOID_FREQ_RANGE_IND            = 233,
+   /* 2G4 HT40 OBSS scan */
+   WLAN_HAL_START_HT40_OBSS_SCAN_IND        = 254,
+   WLAN_HAL_STOP_HT40_OBSS_SCAN_IND         = 255,
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -6110,7 +6113,9 @@ typedef enum {
     BATCH_SCAN             = 30,
     FW_IN_TX_PATH          = 31,
     EXTENDED_NSOFFLOAD_SLOT = 32,
-    MCS8_9_IN_2_4G         = 34,
+    CH_SWITCH_V1           = 33,
+    HT40_OBSS_SCAN         = 34,
+    UPDATE_CHANNEL_LIST    = 35,
     MAX_FEATURE_SUPPORTED  = 128,
 } placeHolderInCapBitmap;
 
@@ -6936,8 +6941,51 @@ typedef PACKED_PRE struct PACKED_POST
 }  tHalAvoidFreqRangeInd, *tpHalAvoidFreqRangeInd;
 
 /*---------------------------------------------------------------------------
+ * WLAN_HAL_START_HT40_OBSS_SCAN_IND
  *-------------------------------------------------------------------------*/
 
+typedef enum
+{
+   WLAN_HAL_HT40_OBSS_SCAN_PARAM_START,
+   WLAN_HAL_HT40_OBSS_SCAN_PARAM_UPDATE,
+   WLAN_HAL_HT40_OBSS_SCAN_CMD_MAX = WLAN_HAL_MAX_ENUM_SIZE
+}tHT40OBssScanCmdType;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHT40OBssScanCmdType cmdType;
+   tSirScanType scanType;
+   tANI_U16     OBSSScanPassiveDwellTime; // In TUs
+   tANI_U16     OBSSScanActiveDwellTime;  // In TUs
+   tANI_U16     BSSChannelWidthTriggerScanInterval; // In seconds
+   tANI_U16     OBSSScanPassiveTotalPerChannel; // In TUs
+   tANI_U16     OBSSScanActiveTotalPerChannel;  // In TUs
+   tANI_U16     BSSWidthChannelTransitionDelayFactor;
+   tANI_U16     OBSSScanActivityThreshold;
+   tANI_U8      selfStaIdx;
+   tANI_U8      bssIdx;
+   tANI_U8      fortyMHZIntolerent;
+   tANI_U8      channelCount;
+   tANI_U8      channels[WLAN_HAL_ROAM_SCAN_MAX_CHANNELS];
+   tANI_U8      currentOperatingClass;
+   tANI_U16     ieFieldLen;
+   tANI_U8      ieField[WLAN_HAL_PNO_MAX_PROBE_SIZE];
+}tHT40ObssScanIndType, *tpHT40ObssScanIndType;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHT40ObssScanIndType scanHT40ObssScanParams;
+}  tHalStartHT40ObssScanIndMsg, *tpHalStartHT40ObssScanIndMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_STOP_HT40_OBSS_SCAN_IND
+ *-------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tANI_U8       bssIdx;
+}  tHalStopHT40OBSSScanIndMsg, *tpHalStopHT40OBSSScanIndMsg;
 #if defined(__ANI_COMPILER_PRAGMA_PACK_STACK)
 #pragma pack(pop)
 #elif defined(__ANI_COMPILER_PRAGMA_PACK)
