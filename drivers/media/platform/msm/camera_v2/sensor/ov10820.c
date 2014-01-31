@@ -413,7 +413,7 @@ abort3:
 			&cam_afvdd, VREG_OFF);
 abort2:
 abort1:
-	rc = msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
+	msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
 			(struct clk **)&cam_mclk[0],
 			s_ctrl->clk_info_size, CLK_OFF);
 abort0:
