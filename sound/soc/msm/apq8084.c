@@ -36,6 +36,7 @@
 #include "../codecs/wcd9xxx-common.h"
 #include "../codecs/wcd9320.h"
 #include "../codecs/wcd9330.h"
+#include "../codecs/tpa6165a2-core.h"
 
 #define DRV_NAME "apq8084-asoc"
 
@@ -837,6 +838,44 @@ static const struct snd_soc_dapm_widget apq8084_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Quaternary Mic", NULL),
 	SND_SOC_DAPM_MIC("Quinary Mic", NULL),
 };
+
+#ifdef CONFIG_SND_SOC_TPA6165A2
+static int msm_ext_hp_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	pr_debug("%s: headphone event: %d\n", __func__, event);
+
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		tpa6165_hp_event(1);
+	else
+		tpa6165_hp_event(0);
+
+	return 0;
+}
+
+static int msm_ext_mic_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	pr_debug("%s: mic event: %d\n", __func__, event);
+
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		tpa6165_mic_event(1);
+	else
+		tpa6165_mic_event(0);
+
+	return 0;
+}
+
+static const struct snd_soc_dapm_widget tpa6165_dapm_widgets[] = {
+	SND_SOC_DAPM_MIC("TPA6165 Headset Mic", msm_ext_mic_event),
+	SND_SOC_DAPM_HP("TPA6165 Headphone", msm_ext_hp_event),
+};
+
+static const struct snd_soc_dapm_route tpa6165_hp_map[] = {
+	{"TPA6165 Headphone", NULL, "HEADPHONE"},
+	{"MIC BIAS2 External", NULL, "TPA6165 Headset Mic"},
+};
+#endif	/* CONFIG_SND_SOC_TPA6165A2 */
 
 static const char *const spk_function[] = {"Off", "On"};
 static const char *const slim0_rx_ch_text[] = {"One", "Two"};
@@ -2335,6 +2374,24 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			return err;
 		}
 	}
+#ifdef CONFIG_SND_SOC_TPA6165A2
+	err = tpa6165_hs_detect(codec);
+	if (!err) {
+		pr_info("%s:tpa6165 hs det mechanism is used", __func__);
+		/* dapm controls for tpa6165 */
+		snd_soc_dapm_new_controls(dapm, tpa6165_dapm_widgets,
+				ARRAY_SIZE(tpa6165_dapm_widgets));
+
+		snd_soc_dapm_add_routes(dapm, tpa6165_hp_map,
+				ARRAY_SIZE(tpa6165_hp_map));
+
+		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headphone");
+		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headset Mic");
+		snd_soc_dapm_sync(dapm);
+	}
+	return err;
+#endif
+
 	/* start mbhc */
 	mbhc_cfg.calibration = def_codec_mbhc_cal();
 	if (mbhc_cfg.calibration) {
