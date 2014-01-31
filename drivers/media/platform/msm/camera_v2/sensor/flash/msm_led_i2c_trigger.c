@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,10 +19,10 @@
 #include "msm_camera_io_util.h"
 #include "../msm_sensor.h"
 #include "msm_led_flash.h"
+#include "../cci/msm_cci.h"
 #include <linux/debugfs.h>
 
 #define FLASH_NAME "camera-led-flash"
-
 /*#define CONFIG_MSMB_CAMERA_DEBUG*/
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
@@ -106,6 +106,15 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 			flashdata->gpio_conf->cam_gpiomux_conf_tbl_size);
 	}
 
+	/* CCI Init */
+	if (fctrl->flash_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
+		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_util(
+			fctrl->flash_i2c_client, MSM_CCI_INIT);
+		if (rc < 0)
+			pr_err("cci_init failed\n");
+	}
+
+
 	rc = msm_camera_request_gpio_table(
 		flashdata->gpio_conf->cam_gpio_req_tbl,
 		flashdata->gpio_conf->cam_gpio_req_tbl_size, 1);
@@ -113,9 +122,15 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 		pr_err("%s: request gpio failed\n", __func__);
 		return rc;
 	}
+
 	msleep(20);
 	gpio_set_value_cansleep(
 		flashdata->gpio_conf->gpio_num_info->gpio_num[0],
+		GPIO_OUT_HIGH);
+
+	gpio_set_value_cansleep(
+		power_info->gpio_conf->gpio_num_info->
+		gpio_num[SENSOR_GPIO_FL_NOW],
 		GPIO_OUT_HIGH);
 
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
@@ -125,7 +140,6 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 		if (rc < 0)
 			pr_err("%s:%d failed\n", __func__, __LINE__);
 	}
-
 	return rc;
 }
 
@@ -342,6 +356,16 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 		goto ERROR1;
 	}
 
+	rc = of_property_read_u32(of_node, "qcom,cci-master",
+		&fctrl->cci_i2c_master);
+	CDBG("%s qcom,cci-master %d, rc %d\n", __func__, fctrl->cci_i2c_master,
+		rc);
+	if (rc < 0) {
+		/* Set default master 0 */
+		fctrl->cci_i2c_master = MASTER_0;
+		rc = 0;
+	}
+
 	if (of_get_property(of_node, "qcom,flash-source", &count)) {
 		count /= sizeof(uint32_t);
 		CDBG("count %d\n", count);
@@ -486,6 +510,19 @@ static struct msm_camera_i2c_fn_t msm_sensor_qup_func_tbl = {
 		msm_camera_qup_i2c_write_table_w_microdelay,
 };
 
+static struct msm_camera_i2c_fn_t msm_sensor_cci_func_tbl = {
+	.i2c_read = msm_camera_cci_i2c_read,
+	.i2c_read_seq = msm_camera_cci_i2c_read_seq,
+	.i2c_write = msm_camera_cci_i2c_write,
+	.i2c_write_table = msm_camera_cci_i2c_write_table,
+	.i2c_write_seq_table = msm_camera_cci_i2c_write_seq_table,
+	.i2c_write_table_w_microdelay =
+		msm_camera_cci_i2c_write_table_w_microdelay,
+	.i2c_util = msm_sensor_cci_i2c_util,
+	.i2c_write_conf_tbl = msm_camera_cci_i2c_write_conf_tbl,
+};
+
+
 #ifdef CONFIG_DEBUG_FS
 static int set_led_status(void *data, u64 val)
 {
@@ -562,6 +599,77 @@ int msm_flash_i2c_probe(struct i2c_client *client,
 			&msm_sensor_qup_func_tbl;
 
 	rc = msm_led_i2c_flash_create_v4lsubdev(fctrl);
+#ifdef CONFIG_DEBUG_FS
+	dentry = debugfs_create_file("ledflash", S_IRUGO, NULL, (void *)fctrl,
+		&ledflashdbg_fops);
+	if (!dentry)
+		pr_err("Failed to create the debugfs ledflash file");
+#endif
+	CDBG("%s:%d probe success\n", __func__, __LINE__);
+	return 0;
+
+probe_failure:
+	CDBG("%s:%d probe failed\n", __func__, __LINE__);
+	return rc;
+}
+
+int msm_flash_probe(struct platform_device *pdev,
+	const void *data)
+{
+	int rc = 0;
+	struct msm_led_flash_ctrl_t *fctrl =
+		(struct msm_led_flash_ctrl_t *)data;
+	struct device_node *of_node = pdev->dev.of_node;
+	struct msm_camera_cci_client *cci_client = NULL;
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *dentry;
+#endif
+	if (!of_node) {
+		pr_err("of_node NULL\n");
+		goto probe_failure;
+	}
+	fctrl->pdev = pdev;
+
+	rc = msm_led_get_dt_data(pdev->dev.of_node, fctrl);
+	if (rc < 0) {
+		pr_err("%s failed line %d\n", __func__, __LINE__);
+		return rc;
+	}
+
+	/* Assign name for sub device */
+	snprintf(fctrl->msm_sd.sd.name, sizeof(fctrl->msm_sd.sd.name),
+			"%s", fctrl->flashdata->sensor_name);
+	/* Set device type as Platform*/
+	fctrl->flash_device_type = MSM_CAMERA_PLATFORM_DEVICE;
+
+	if (NULL == fctrl->flash_i2c_client) {
+		pr_err("%s flash_i2c_client NULL\n",
+			__func__);
+		rc = -EFAULT;
+	}
+
+	fctrl->flash_i2c_client->cci_client = kzalloc(sizeof(
+		struct msm_camera_cci_client), GFP_KERNEL);
+	if (!fctrl->flash_i2c_client->cci_client) {
+		pr_err("%s failed line %d\n", __func__, __LINE__);
+		return rc;
+	}
+
+	cci_client = fctrl->flash_i2c_client->cci_client;
+	cci_client->cci_subdev = msm_cci_get_subdev();
+	cci_client->cci_i2c_master = fctrl->cci_i2c_master;
+	if (fctrl->flashdata->slave_info->sensor_slave_addr)
+		cci_client->sid =
+			fctrl->flashdata->slave_info->sensor_slave_addr >> 1;
+	cci_client->retries = 3;
+	cci_client->id_map = 0;
+
+	if (!fctrl->flash_i2c_client->i2c_func_tbl)
+		fctrl->flash_i2c_client->i2c_func_tbl =
+			&msm_sensor_cci_func_tbl;
+
+	rc = msm_led_flash_create_v4lsubdev(pdev, fctrl);
+
 #ifdef CONFIG_DEBUG_FS
 	dentry = debugfs_create_file("ledflash", S_IRUGO, NULL, (void *)fctrl,
 		&ledflashdbg_fops);
