@@ -26,6 +26,8 @@
 
 #include "xhci.h"
 
+extern struct dbg_data dbg_hsic;
+
 #define	PORT_WAKE_BITS	(PORT_WKOC_E | PORT_WKDISC_E | PORT_WKCONN_E)
 #define	PORT_RWC_BITS	(PORT_CSC | PORT_PEC | PORT_WRC | PORT_OCC | \
 			 PORT_RC | PORT_PLC | PORT_PE)
@@ -1432,6 +1434,10 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 			temp &= ~(PORT_RWC_BITS | PORT_CEC | PORT_WAKE_BITS);
 		else
 			temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
+
+		xhci_dbg_log_event(&dbg_hsic, NULL, "PORTSC before resume",
+					xhci_readl(xhci, port_array[port_index]));
+
 		if (test_bit(port_index, &bus_state->bus_suspended) &&
 		    (temp & PORT_PLS_MASK)) {
 			if (DEV_SUPERSPEED(temp)) {
@@ -1454,6 +1460,9 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 			spin_unlock_irqrestore(&xhci->lock, flags);
 			msleep(20);
 			spin_lock_irqsave(&xhci->lock, flags);
+
+			xhci_dbg_log_event(&dbg_hsic, NULL, "PORTSC",
+						xhci_readl(xhci, port_array[port_index]));
 
 			/* Clear PLC */
 			xhci_test_and_clear_bit(xhci, port_array, port_index,

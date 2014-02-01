@@ -54,6 +54,8 @@ static const char * const rmnet_hsusb_bridge_names[] = {
 	"rmnet_hsusb_ctrl",
 };
 
+extern void dump_regs(void);
+
 /* since driver supports multiple instances, on smp systems
  * probe might get called from multiple cores, hence use lock
  * to identify unclaimed bridge device instance
@@ -1025,6 +1027,8 @@ out:
 static void bridge_disconnect(struct usb_interface *intf)
 {
 	struct data_bridge	*dev = usb_get_intfdata(intf);
+
+	dump_regs();
 
 	if (!dev) {
 		pr_err("%s: data device not found\n", __func__);
