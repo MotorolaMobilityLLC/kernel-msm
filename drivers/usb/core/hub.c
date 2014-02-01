@@ -33,6 +33,8 @@
 
 #include "hub.h"
 
+extern void dump_regs(void);
+
 /* if we are in debug mode, always announce new devices */
 #ifdef DEBUG
 #ifndef CONFIG_USB_ANNOUNCE_NEW_DEVICES
@@ -3165,9 +3167,12 @@ static int finish_port_resume(struct usb_device *udev)
 	 * operation is carried out here, after the port has been
 	 * resumed.
 	 */
-	if (udev->reset_resume)
+	if (udev->reset_resume) {
  retry_reset_resume:
+ 		pr_err("****************HSIC BUS RESET************\n");
+		dump_regs();
 		status = usb_reset_and_verify_device(udev);
+	}
 
  	/* 10.5.4.5 says be sure devices in the tree are still there.
  	 * For now let's assume the device didn't go crazy on resume,
