@@ -787,7 +787,7 @@ typedef struct
     /*BSSID*/
     tANI_U8  bssid[SIR_MAC_ADDR_LEN];
     /*SSID*/
-    tANI_U8  ssid[SIR_MAX_SSID_SIZE];
+    tANI_U8  ssid[SIR_MAX_SSID_SIZE + 1];
     /*Channel*/
     tANI_U8  ch;
     /*RSSI or Level*/
