@@ -6109,6 +6109,7 @@ typedef enum {
     ADVANCE_TDLS           = 29,
     BATCH_SCAN             = 30,
     FW_IN_TX_PATH          = 31,
+    EXTENDED_NSOFFLOAD_SLOT = 32,
     MAX_FEATURE_SUPPORTED  = 128,
 } placeHolderInCapBitmap;
 
