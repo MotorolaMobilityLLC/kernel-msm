@@ -120,7 +120,7 @@ static bool suspend_notify_sent;
 ----------------------------------------------------------------------------*/
 static int wlan_suspend(hdd_context_t* pHddCtx)
 {
-   int rc = 0;
+   long rc = 0;
 
    pVosSchedContext vosSchedContext = NULL;
 
@@ -153,9 +153,11 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
    /* Wait for Suspend Confirmation from Tx Thread */
    rc = wait_for_completion_interruptible_timeout(&pHddCtx->tx_sus_event_var, msecs_to_jiffies(200));
 
-   if(!rc)
+   if (rc <= 0)
    {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s: Not able to suspend TX thread timeout happened", __func__);
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+           "%s: Not able to suspend TX thread timeout happened %ld"
+           , __func__, rc);
       clear_bit(TX_SUSPEND_EVENT_MASK, &vosSchedContext->txEventFlag);
 
       return -ETIME;
@@ -173,9 +175,10 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
    /* Wait for Suspend Confirmation from Rx Thread */
    rc = wait_for_completion_interruptible_timeout(&pHddCtx->rx_sus_event_var, msecs_to_jiffies(200));
 
-   if(!rc)
+   if (rc <= 0)
    {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s: Not able to suspend Rx thread timeout happened", __func__);
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+            "%s: Not able to suspend Rx thread timeout happened %ld", __func__, rc);
 
        clear_bit(RX_SUSPEND_EVENT_MASK, &vosSchedContext->rxEventFlag);
 
@@ -203,7 +206,9 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
 
    if(!rc)
    {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s: Not able to suspend MC thread timeout happened", __func__);
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+            "%s: Not able to suspend MC thread timeout happened %ld",
+            __func__, rc);
 
        clear_bit(MC_SUSPEND_EVENT_MASK, &vosSchedContext->mcEventFlag);
 
