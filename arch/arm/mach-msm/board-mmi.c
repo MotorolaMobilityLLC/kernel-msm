@@ -27,6 +27,10 @@
 #include <linux/of_gpio.h>
 #include <linux/of_platform.h>
 #include <linux/persistent_ram.h>
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/proc_fs.h>
+#include <linux/sysdev.h>
 #include <linux/seq_file.h>
 
 #include <mach/devtree_util.h>
@@ -569,6 +573,61 @@ static int hw_rev_txt_init(void)
 	return retval;
 }
 
+static ssize_t
+sysfs_extended_baseband_show(struct sys_device *dev,
+		struct sysdev_attribute *attr,
+		char *buf)
+{
+	if (!strnlen(extended_baseband, BASEBAND_MAX_LEN)) {
+		pr_err("%s: No extended_baseband available!\n", __func__);
+		return 0;
+	}
+	return snprintf(buf, BASEBAND_MAX_LEN, "%s\n", extended_baseband);
+}
+
+static struct sysdev_attribute baseband_files[] = {
+	_SYSDEV_ATTR(extended_baseband, 0444,
+			sysfs_extended_baseband_show, NULL),
+};
+
+static struct sysdev_class baseband_sysdev_class = {
+	.name = "baseband",
+};
+
+static struct sys_device baseband_sys_device = {
+	.id = 0,
+	.cls = &baseband_sysdev_class,
+};
+
+static void init_sysfs_extended_baseband(void){
+	int err;
+
+	if (!strnlen(extended_baseband, BASEBAND_MAX_LEN)) {
+		pr_err("%s: No extended_baseband available!\n", __func__);
+		return;
+	}
+
+	err = sysdev_class_register(&baseband_sysdev_class);
+	if (err) {
+		pr_err("%s: sysdev_class_register fail (%d)\n",
+				__func__, err);
+		return;
+	}
+
+	err = sysdev_register(&baseband_sys_device);
+	if (err) {
+		pr_err("%s: sysdev_register fail (%d)\n",
+			__func__, err);
+		return;
+	}
+
+	err = sysdev_create_file(&baseband_sys_device, &baseband_files[0]);
+	if (err) {
+		pr_err("%s: sysdev_create_file(%s)=%d\n",
+				__func__, baseband_files[0].attr.name, err);
+		return;
+	}
+}
 
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
@@ -577,6 +636,7 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 
 	mmi_vibrator_init();
 	mmi_unit_info_init();
+	init_sysfs_extended_baseband();
 
 	/* Factory gsbi12 sysfs entry and tcmd gpio exports */
 	sysfs_factory_gsbi12_mode_init();
