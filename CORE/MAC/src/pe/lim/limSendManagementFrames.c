@@ -1218,6 +1218,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
 
     if(NULL == psessionEntry)
     {
+        limLog( pMac, LOGE, FL("psessionEntry is NULL"));
         return;
     }
 
@@ -1371,7 +1372,8 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
         if (wlan_cfgGetInt(pMac, WNI_CFG_ASSOC_RSP_ADDNIE_FLAG, 
                     &addnIEPresent) != eSIR_SUCCESS)
         {
-            limLog(pMac, LOGP, FL("Unable to get WNI_CFG_ASSOC_RSP_ADDNIE_FLAG"));
+            limLog(pMac, LOGP, FL("Unable to get "
+                                  "WNI_CFG_ASSOC_RSP_ADDNIE_FLAG"));
             return;
         }
 
@@ -1381,7 +1383,8 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
             if (wlan_cfgGetStrLen(pMac, WNI_CFG_ASSOC_RSP_ADDNIE_DATA,
                         &addnIELen) != eSIR_SUCCESS)
             {
-                limLog(pMac, LOGP, FL("Unable to get WNI_CFG_ASSOC_RSP_ADDNIE_DATA length"));
+                limLog(pMac, LOGP, FL("Unable to get "
+                           "WNI_CFG_ASSOC_RSP_ADDNIE_DATA length"));
                 return;
             }
 
@@ -1436,8 +1439,8 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
                                        nPayload, &nPayload );
     if ( DOT11F_FAILED( nStatus ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack an Association Response (0x%08x)."),
-                nStatus );
+        limLog( pMac, LOGE, FL("Failed to pack an Association Response"
+                               " (0x%08x)."), nStatus );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
                     ( void* ) pFrame, ( void* ) pPacket );
         return;                 // allocated!
@@ -1975,17 +1978,14 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 
     if(NULL == psessionEntry)
     {
+        limLog(pMac, LOGE, FL("psessionEntry is NULL") );
         return;
     }
 
-    if(NULL == psessionEntry->pLimJoinReq)
-    {
-        return;
-    }
-    
     /* check this early to avoid unncessary operation */
     if(NULL == psessionEntry->pLimJoinReq)
     {
+        limLog(pMac, LOGE, FL("psessionEntry->pLimJoinReq is NULL") );
         return;
     }
     nAddIELen = psessionEntry->pLimJoinReq->addIEAssoc.length; 
@@ -1994,7 +1994,7 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     pFrm = vos_mem_malloc(sizeof(tDot11fAssocRequest));
     if ( NULL == pFrm )
     {
-        limLog(pMac, LOGE, FL("Unable to allocate memory in limSendAssocReqMgmtFrame") );
+        limLog(pMac, LOGE, FL("Unable to allocate memory") );
         return;
     }
 
@@ -2139,7 +2139,8 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 
         if( (psessionEntry->pLimJoinReq != NULL) && (!psessionEntry->pLimJoinReq->bssDescription.aniIndicator))
         {
-                limLog( pMac, LOG1, FL("Sending Assoc Req to Non-TQ AP, Turning off Greenfield"));
+                limLog( pMac, LOG1, FL("Sending Assoc Req to Non-TQ AP,"
+                                        " Turning off Greenfield"));
             pFrm->HTCaps.greenField = WNI_CFG_GREENFIELD_CAPABILITY_DISABLE;
         }
 #endif
@@ -2249,13 +2250,13 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     }
 
 
-    // That done, pack the Probe Request:
+    // That done, pack the Assoc Request:
     nStatus = dot11fPackAssocRequest( pMac, pFrm, pFrame +
             sizeof(tSirMacMgmtHdr),
             nPayload, &nPayload );
     if ( DOT11F_FAILED( nStatus ) )
     {
-        limLog( pMac, LOGE, FL("Failed to pack a Probe Response (0x%0"
+        limLog( pMac, LOGE, FL("Failed to pack a Assoc Request (0x%0"
                     "8x)."),
                 nStatus );
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
@@ -2265,8 +2266,8 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     }
     else if ( DOT11F_WARNED( nStatus ) )
     {
-        limLog( pMac, LOGW, FL("There were warnings while packing a P"
-                               "robe Response (0x%08x)."), nStatus );
+        limLog( pMac, LOGW, FL("There were warnings while packing a Assoc"
+                               "Request (0x%08x)."), nStatus );
     }
 
     PELOG1(limLog( pMac, LOG1, FL("*** Sending Association Request length %d"
@@ -2291,7 +2292,8 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     psessionEntry->assocReq = vos_mem_malloc(nPayload);
     if ( NULL == psessionEntry->assocReq )
     {
-        PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store assoc request"));)
+        PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store "
+                                     "assoc request"));)
     }
     else
     {
@@ -2312,7 +2314,6 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     {
         txFlag |= HAL_USE_PEER_STA_REQUESTED_MASK;
     }
-
     halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) (sizeof(tSirMacMgmtHdr) + nPayload),
             HAL_TXRX_FRM_802_11_MGMT,
             ANI_TXDIR_TODS,
@@ -3169,9 +3170,16 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
 
     if(NULL == psessionEntry)
     {
+        limLog(pMac, LOGE, FL("Error: psession Entry is NULL"));
         return;
     }
-      
+
+    limLog(pMac, LOG1,
+           FL("Sending Auth seq# %d status %d (%d) to "MAC_ADDRESS_STR),
+           pAuthFrameBody->authTransactionSeqNumber,
+           pAuthFrameBody->authStatusCode,
+           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS),
+            MAC_ADDR_ARRAY(peerMacAddr));
     if (wepBit == LIM_WEP_IN_FC)
     {
         /// Auth frame3 to be sent with encrypted framebody
@@ -3214,7 +3222,8 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
                 }
                 else
                 {
-                    limLog(pMac, LOG3, FL("Auth frame, Does not contain FTIES!!!"));
+                    limLog(pMac, LOG3, FL("Auth frame, Does not contain "
+                                          "FTIES!!!"));
                     frameLen += (2+SIR_MDIE_SIZE);
                 }
             }
@@ -3305,6 +3314,8 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
     if (limPopulateMacHeader(pMac, pFrame, SIR_MAC_MGMT_FRAME,
                       SIR_MAC_MGMT_AUTH, peerMacAddr,psessionEntry->selfMacAddr) != eSIR_SUCCESS)
     {
+        limLog(pMac, LOGE, FL("call to limPopulateMacHeader failed for "
+                              "AUTH frame"));
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame, ( void* ) pPacket );
         return;
     }
@@ -3328,11 +3339,11 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
         vos_mem_copy(pBody, (tANI_U8 *) pAuthFrameBody, bodyLen);
 
         PELOG1(limLog(pMac, LOG1,
-           FL("*** Sending Auth seq# 3 status %d (%d) to"),
+           FL("*** Sending Auth seq# 3 status %d (%d) to"MAC_ADDRESS_STR),
            pAuthFrameBody->authStatusCode,
-           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS));
+           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS),
+           MAC_ADDR_ARRAY(pMacHdr->da));)
 
-        limPrintMacAddr(pMac, pMacHdr->da, LOG1);)
     }
     else
     {
@@ -3391,12 +3402,11 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
 #endif
 
         PELOG1(limLog(pMac, LOG1,
-           FL("*** Sending Auth seq# %d status %d (%d) to "),
+           FL("*** Sending Auth seq# %d status %d (%d) to "MAC_ADDRESS_STR),
            pAuthFrameBody->authTransactionSeqNumber,
            pAuthFrameBody->authStatusCode,
-           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS));
-
-        limPrintMacAddr(pMac, pMacHdr->da, LOG1);)
+           (pAuthFrameBody->authStatusCode == eSIR_MAC_SUCCESS_STATUS),
+           MAC_ADDR_ARRAY(pMacHdr->da));)
     }
     PELOG2(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2, pFrame, frameLen);)
 
