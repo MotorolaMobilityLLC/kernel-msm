@@ -17,6 +17,10 @@
 #include "board-8960.h"
 #include "clock-local.h"
 
+extern unsigned int k_atag_tcmd_raw_cid[4];
+extern unsigned int k_atag_tcmd_raw_csd[4];
+extern unsigned char k_atag_tcmd_raw_ecsd[512];
+
 /* MMI OEM Data Structure */
 struct mmi_oem_data {
 	int (*is_factory)(void);

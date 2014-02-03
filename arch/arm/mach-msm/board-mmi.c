@@ -155,6 +155,81 @@ static void __init mmi_gpiomux_init(struct msm8960_oem_init_ptrs *oem_ptr)
 
 	of_node_put(node);
 }
+
+static ssize_t cid_show(struct kobject *kobj, struct kobj_attribute *attr,
+			char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "0x%08X 0x%08X 0x%08X 0x%08X\n",
+			k_atag_tcmd_raw_cid[0], k_atag_tcmd_raw_cid[1],
+			k_atag_tcmd_raw_cid[2], k_atag_tcmd_raw_cid[3]);
+}
+
+static ssize_t csd_show(struct kobject *kobj, struct kobj_attribute *attr,
+			char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "0x%08X 0x%08X 0x%08X 0x%08X\n",
+			k_atag_tcmd_raw_csd[0], k_atag_tcmd_raw_csd[1],
+			k_atag_tcmd_raw_csd[2], k_atag_tcmd_raw_csd[3]);
+}
+
+static ssize_t ecsd_show(struct kobject *kobj, struct kobj_attribute *attr,
+			char *buf)
+{
+	char *d = buf;
+	char b[8];
+	int i = 0;
+
+	while (i < 512) {
+		snprintf(b, 8, "%02X", k_atag_tcmd_raw_ecsd[i]);
+		*d++ = b[0];
+		*d++ = b[1];
+		*d++ = ' ';
+		i++;
+	}
+	*d++ = 10;
+	*d = 0;
+
+	return (512*3) + 1;
+}
+
+static struct kobj_attribute cid_attribute =
+	__ATTR(cid, 0444, cid_show, NULL);
+
+static struct kobj_attribute csd_attribute =
+	__ATTR(csd, 0444, csd_show, NULL);
+
+static struct kobj_attribute ecsd_attribute =
+	__ATTR(ecsd, 0444, ecsd_show, NULL);
+
+static struct attribute *emmc_attrs[] = {
+	&cid_attribute.attr,
+	&csd_attribute.attr,
+	&ecsd_attribute.attr,
+	NULL
+};
+
+static struct attribute_group emmc_attr_group = {
+	.attrs = emmc_attrs,
+};
+
+static int emmc_version_init(void)
+{
+	static struct kobject *emmc_kobj;
+	int retval;
+
+	emmc_kobj = kobject_create_and_add("emmc", NULL);
+	if (!emmc_kobj) {
+		pr_err("%s: failed to create /sys/emmc\n", __func__);
+		return -ENOMEM;
+	}
+
+	retval = sysfs_create_group(emmc_kobj, &emmc_attr_group);
+	if (retval)
+		pr_err("%s: failed for entries under /sys/emmc\n", __func__);
+
+	return retval;
+}
+
 /* This sysfs allows sensor TCMD to switch the control of I2C-12
  *  from DSPS to Krait at runtime by issuing the following command:
  *	echo 1 > /sys/kernel/factory_gsbi12_mode/install
@@ -448,6 +523,7 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 	/* Factory gsbi12 sysfs entry and tcmd gpio exports */
 	sysfs_factory_gsbi12_mode_init();
 	mot_tcmd_export_gpio();
+	emmc_version_init();
 
 	if (mbmprotocol == 0) {
 		/* do not reboot - version was not reported */
