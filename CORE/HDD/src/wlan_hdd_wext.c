@@ -221,6 +221,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_DISPLAY_DXE_SNAP_SHOT   7
 #define WE_DISPLAY_DATAPATH_SNAP_SHOT    9
 #define WE_SET_REASSOC_TRIGGER     8
+#define WE_STOP_OBSS_SCAN    11
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_VAR_INT_GET_NONE   (SIOCIWFIRSTPRIV + 7)
@@ -5108,7 +5109,28 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
             return 0;
         }
 
+        case WE_STOP_OBSS_SCAN:
+        {
+            /* 1.OBSS Scan is mandatory while operating in 2.4GHz
+               2.OBSS scan is stopped by Firmware during the disassociation
+               3.OBSS stop comamnd is added for debugging purpose*/
+            hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+            tpAniSirGlobal pMac;
 
+            if (pAdapter == NULL)
+            {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           " pAdapter is NULL ");
+            }
+            pMac = WLAN_HDD_GET_HAL_CTX(pAdapter);
+            if (pMac == NULL)
+            {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           " pMac is NULL ");
+            }
+            sme_HT40StopOBSSScan(pMac, pAdapter->sessionId);
+        }
+        break;
         default:
         {
             hddLog(LOGE, "%s: unknown ioctl %d", __func__, sub_cmd);
@@ -7830,6 +7852,11 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         0,
         "reassoc" },
+    {
+        WE_STOP_OBSS_SCAN,
+        0,
+        0,
+        "stopOBSSScan" },
 
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_VAR_INT_GET_NONE,
