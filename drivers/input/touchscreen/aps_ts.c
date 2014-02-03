@@ -546,7 +546,7 @@ out:
 	return ret;
 }
 
-static void aps_query_device(struct aps_ts_info *info)
+static int aps_query_device(struct aps_ts_info *info)
 {
 	int ret;
 
@@ -556,7 +556,7 @@ static void aps_query_device(struct aps_ts_info *info)
 		sizeof(info->bootmode));
 	if (ret <= 0) {
 		pr_err("Failed to read boot mode\n");
-		info->bootmode = 0;
+		goto out_failure;
 	}
 
 	if (!info->input_dev) {
@@ -611,8 +611,13 @@ out_bootloader:
 	else
 		pr_info("Product: APS-%s, build-id: %x%02x\n",
 			info->product_id, info->version[2], info->version[3]);
+
+	mutex_unlock(&info->lock);
+	return 0;
+
 out_failure:
 	mutex_unlock(&info->lock);
+	return 1;
 }
 
 static int aps_isp_status(struct aps_ts_info *info, u32 success_mask,
@@ -1109,7 +1114,11 @@ static int aps_ts_probe(struct i2c_client *client,
 
 	aps_reset(info);
 
-	aps_query_device(info);
+	ret = aps_query_device(info);
+	if (ret) {
+		ret = -ENODEV;
+		goto out_free_gpio;
+	}
 
 	ret = aps_ts_config(info);
 	if (ret) {
@@ -1161,6 +1170,7 @@ out_free_mem:
 		kfree(info);
 	}
 
+	dev_notice(&client->dev, "aps_ts probe failed\n");
 	return ret;
 }
 
