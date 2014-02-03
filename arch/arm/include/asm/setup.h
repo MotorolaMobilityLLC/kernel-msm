@@ -192,6 +192,13 @@ struct tag_bl_build_sig {
 
 #endif /*  CONFIG_BOOTINFO */
 
+#define ATAG_EMMC_VERSION 0xf1000416
+struct tag_emmc_version {
+	unsigned int raw_cid[4];
+	unsigned int raw_csd[4];
+	unsigned char raw_ecsd[512];
+};
+
 #define ATAG_BASEBAND 0x41000812
 struct tag_baseband {
 	char baseband[1];
@@ -232,6 +239,7 @@ struct tag {
 		struct tag_cid_recover_boot            cid_recover_boot;
 		struct tag_bl_build_sig                bl_build_sig;
 #endif /*  CONFIG_BOOTINFO */
+		struct tag_emmc_version	emmc_version;
 		struct tag_baseband	baseband;
 	} u;
 };

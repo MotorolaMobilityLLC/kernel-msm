@@ -112,6 +112,13 @@ EXPORT_SYMBOL(elf_hwcap);
 unsigned int boot_reason;
 EXPORT_SYMBOL(boot_reason);
 
+unsigned int k_atag_tcmd_raw_cid[4];
+EXPORT_SYMBOL(k_atag_tcmd_raw_cid);
+unsigned int k_atag_tcmd_raw_csd[4];
+EXPORT_SYMBOL(k_atag_tcmd_raw_csd);
+unsigned char k_atag_tcmd_raw_ecsd[512];
+EXPORT_SYMBOL(k_atag_tcmd_raw_ecsd);
+
 #ifdef MULTI_CPU
 struct processor processor __read_mostly;
 #endif
@@ -792,6 +799,22 @@ static int __init parse_tag_cid_recover_boot(const struct tag *tag)
 }
 
 __tagtable(ATAG_CID_RECOVER_BOOT, parse_tag_cid_recover_boot);
+
+static int __init parse_tag_emmc_version(const struct tag *tag)
+{
+	bi_set_cid_recover_boot(tag->u.cid_recover_boot.cid_recover_boot);
+
+	memcpy(k_atag_tcmd_raw_cid,  &(tag->u.emmc_version.raw_cid),
+			sizeof(k_atag_tcmd_raw_cid));
+	memcpy(k_atag_tcmd_raw_csd,  &(tag->u.emmc_version.raw_csd),
+			sizeof(k_atag_tcmd_raw_csd));
+	memcpy(k_atag_tcmd_raw_ecsd, &(tag->u.emmc_version.raw_ecsd),
+			sizeof(k_atag_tcmd_raw_ecsd));
+
+	return 0;
+}
+
+__tagtable(ATAG_EMMC_VERSION, parse_tag_emmc_version);
 
 static int __init parse_tag_bl_build_sig(const struct tag *tag)
 {
