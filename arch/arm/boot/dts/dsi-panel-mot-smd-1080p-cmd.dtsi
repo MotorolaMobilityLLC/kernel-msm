@@ -58,7 +58,7 @@
 				15 01 00 00 00 00 02 b0 04      /* Sleep-in mem retention offset */
 				15 01 00 00 00 00 02 fd 0c      /* Sleep-in mem retention en */
 				15 01 00 00 01 00 02 35 00	/* enable_te */
-				15 01 00 00 01 00 02 51 ff	/* brightness_ctrl */
+				15 01 00 00 01 00 02 51 00	/* brightness_ctrl */
 				15 01 00 00 01 00 02 55 03	/* acl_enable_disable_settings */
 				15 01 00 00 01 00 02 53 20	/* disp_ctrl */
 				05 01 00 00 00 00 01 29];	/* display on */
@@ -81,10 +81,10 @@
 		qcom,mdss-dsi-t-clk-post = <0x04>;
 		qcom,mdss-dsi-t-clk-pre = <0x1b>;
 		qcom,mdss-dsi-bl-min-level = <1>;
-		qcom,mdss-dsi-bl-max-level = <4095>;
+		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
-		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
 		qcom,panel-en-reset-sequence = <1 11>;
 		qcom,panel-dis-reset-sequence = <0 1>;
