@@ -1014,6 +1014,7 @@ struct hdd_adapter_s
    v_U8_t psbChanged;
    /* UAPSD psb value configured through framework */
    v_U8_t configuredPsb;
+   v_BOOL_t internalCancelRemainOnChReq;
 };
 
 #define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)

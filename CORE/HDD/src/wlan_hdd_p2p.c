@@ -118,6 +118,17 @@ static void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
                                                tANI_U32 nFrameLength, 
                                                tANI_U8* pbFrames,
                                                tANI_U8 frameType );
+static bool hdd_p2p_is_action_type_rsp( tActionFrmType actionFrmType )
+{
+        if ( actionFrmType <= MAX_P2P_ACTION_FRAME_TYPE &&
+            actionFrmType != WLAN_HDD_GO_NEG_REQ &&
+            actionFrmType != WLAN_HDD_INVITATION_REQ &&
+            actionFrmType != WLAN_HDD_DEV_DIS_REQ &&
+            actionFrmType != WLAN_HDD_PROV_DIS_REQ )
+            return TRUE;
+        else
+            return FALSE;
+}
 
 eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
                                                 eHalStatus status )
@@ -136,8 +147,8 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
     hddLog( LOG1, "Received remain on channel rsp");
 
     cfgState->remain_on_chan_ctx = NULL;
-
-    if( REMAIN_ON_CHANNEL_REQUEST == pRemainChanCtx->rem_on_chan_request )
+    if( REMAIN_ON_CHANNEL_REQUEST == pRemainChanCtx->rem_on_chan_request &&
+        !pAdapter->internalCancelRemainOnChReq )
     {
         if( cfgState->buf )
         {
@@ -159,6 +170,7 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
                               GFP_KERNEL);
     }
 
+    pAdapter->internalCancelRemainOnChReq = VOS_FALSE;
 
     if ( ( WLAN_HDD_INFRA_STATION == pAdapter->device_mode ) ||
          ( WLAN_HDD_P2P_CLIENT == pAdapter->device_mode ) ||
@@ -736,6 +748,20 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
 
         // In case of P2P Client mode if we are already
         // on the same channel then send the frame directly
+
+        //For remain on channel we issue a passive scan to firmware
+        //but currently there is no provision for dynamically extending
+        //the dwell time therefore cancelling the ongoing remain on channel
+        //and requesting for new one.
+        //The below logic will be extended for request type action frames if
+        //needed in future.
+        if ( hdd_p2p_is_action_type_rsp(actionFrmType) &&
+            cfgState->remain_on_chan_ctx &&
+            cfgState->current_freq == chan->center_freq ) {
+            status = wlan_hdd_check_remain_on_channel(pAdapter);
+            if ( !status )
+                pAdapter->internalCancelRemainOnChReq = VOS_TRUE;
+        }
 
         if((cfgState->remain_on_chan_ctx != NULL) &&
            (cfgState->current_freq == chan->center_freq)
