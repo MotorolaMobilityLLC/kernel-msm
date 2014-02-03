@@ -61,6 +61,9 @@
 #include "vos_threads.h"
 
 #include <linux/delay.h>
+#if defined(ANI_OS_TYPE_ANDROID)
+#include <asm/arch_timer.h>
+#endif
 
 /*---------------------------------------------------------------------------
  \brief wpalTimerCback - VOS timer callback function
@@ -224,6 +227,24 @@ wpt_uint32 wpalGetSystemTime(void)
 {
    return vos_timer_get_system_time();
 }/*wpalGetSystemTime*/
+
+/*---------------------------------------------------------------------------
+    \brief wpalGetArchCounterTime - Get time from physical counter
+
+    \return
+        MPM counter value
+---------------------------------------------------------------------------*/
+#if defined(ANI_OS_TYPE_ANDROID)
+wpt_uint64 wpalGetArchCounterTime(void)
+{
+   return arch_counter_get_cntpct();
+}/*wpalGetArchCounterTime*/
+#else
+wpt_uint64 wpalGetArchCounterTime(void)
+{
+   return 0;
+}/*wpalGetArchCounterTime*/
+#endif
 
 /*---------------------------------------------------------------------------
     wpalSleep - sleep for a specified interval
