@@ -234,6 +234,15 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
     return eSIR_FAILURE;
 #endif
 
+    /* The probe req should not send 11ac capabilieties if band is 2.4GHz,
+     * unless enableVhtFor24GHz is enabled in INI. So if enableVhtFor24GHz
+     * is false and dot11mode is 11ac set it to 11n.
+     */
+    if ( nChannelNum <= SIR_11B_CHANNEL_END &&
+        ( FALSE == pMac->roam.configParam.enableVhtFor24GHz ) &&
+         ( WNI_CFG_DOT11_MODE_11AC == dot11mode ||
+           WNI_CFG_DOT11_MODE_11AC_ONLY == dot11mode ) )
+            dot11mode = WNI_CFG_DOT11_MODE_11N;
     /*
     * session context may or may not be present, when probe request needs to be sent out.
     * following cases exist:
