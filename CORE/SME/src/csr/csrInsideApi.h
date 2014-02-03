@@ -984,6 +984,7 @@ tANI_BOOLEAN csrNeighborRoamConnectedProfileMatch(tpAniSirGlobal pMac, tCsrScanR
                                                   tDot11fBeaconIEs *pIes);
 #endif
 eHalStatus csrSetTxPower(tpAniSirGlobal pMac, v_U8_t sessionId, v_U8_t mW);
+eHalStatus csrHT40StopOBSSScan(tpAniSirGlobal pMac, v_U8_t sessionId);
 
 eHalStatus csrScanCreateEntryInScanCache(tpAniSirGlobal pMac, tANI_U32 sessionId,
                                          tCsrBssid bssid, tANI_U8 channel);
