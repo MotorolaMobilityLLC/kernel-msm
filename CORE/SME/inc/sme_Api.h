@@ -918,6 +918,17 @@ eHalStatus sme_CfgSetStr(tHalHandle hHal, tANI_U32 cfgId, tANI_U8 *pStr,
 eHalStatus sme_GetModifyProfileFields(tHalHandle hHal, tANI_U8 sessionId, 
                                      tCsrRoamModifyProfileFields * pModifyProfileFields);
 
+/* ---------------------------------------------------------------------------
+    \fn sme_HT40StopOBSSScan
+    \brief HDD or SME - Command to stop the OBSS scan
+     THis is implemented only for debugging purpose.
+     As per spec while operating in 2.4GHz OBSS scan shouldnt be stopped.
+    \param sessionId - sessionId
+    changing which can cause reassoc
+
+    \return eHalStatus
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_HT40StopOBSSScan(tHalHandle hHal, tANI_U8 sessionId );
 
 /*--------------------------------------------------------------------------
     \fn sme_SetConfigPowerSave
