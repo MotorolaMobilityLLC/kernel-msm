@@ -4815,3 +4815,14 @@ NONE
 V    RW    NP
 NONE
 0    100    25
+
+*
+* TDLS Off Channel Implementation
+*
+WNI_CFG_TDLS_OFF_CHANNEL_ENABLED I 4 7
+V    RW    NP
+LIM
+0    1     0
+V    RW    NP
+LIM
+0    1     0
