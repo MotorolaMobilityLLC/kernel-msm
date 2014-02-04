@@ -3368,6 +3368,9 @@ typedef struct
   void*             pUserData;
 }WDI_SetP2PGONOAReqParamsType;
 
+#define WDI_MAX_SUPP_CHANNELS 128
+#define WDI_MAX_SUPP_OPER_CLASSES 32
+
 typedef struct
 {
     wpt_uint16 uStaIdx;
@@ -3375,6 +3378,13 @@ typedef struct
     wpt_uint8  uUapsdQueues;
     wpt_uint8  uMaxSp;
     wpt_uint8  uIsBufSta;
+    wpt_uint8  uIsOffChannelSupported;
+    wpt_uint8   peerCurrOperClass;
+    wpt_uint8   selfCurrOperClass;
+    wpt_uint8  validChannelsLen;
+    wpt_uint8  validChannels[WDI_MAX_SUPP_CHANNELS];
+    wpt_uint8  validOperClassesLen;
+    wpt_uint8  validOperClasses[WDI_MAX_SUPP_OPER_CLASSES];
 }WDI_SetTDLSLinkEstablishReqInfoType;
 /*---------------------------------------------------------------------------
   WDI_SetTDLSLinkEstablishReqParamsType
