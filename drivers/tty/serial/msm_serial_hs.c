@@ -95,7 +95,6 @@ module_param_named(debug_mask, hs_serial_debug_mask,
 
 #define MSM_HS_DBG(x...) do { \
 	if (hs_serial_debug_mask >= DBG_LEV) { \
-		pr_debug(x); \
 		if (ipc_msm_hs_log_ctxt) \
 			ipc_log_string(ipc_msm_hs_log_ctxt, x); \
 	} \
@@ -103,7 +102,6 @@ module_param_named(debug_mask, hs_serial_debug_mask,
 
 #define MSM_HS_INFO(x...) do { \
 	if (hs_serial_debug_mask >= INFO_LEV) {\
-		pr_info(x); \
 		if (ipc_msm_hs_log_ctxt) \
 			ipc_log_string(ipc_msm_hs_log_ctxt, x); \
 	} \
