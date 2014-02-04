@@ -37,6 +37,10 @@
 
 	};
 
+	i2c@f9923000 {
+		/delete-node/ synaptics_dsx_i2c@20;
+	};
+
 	/*  TODO  nfc part , need to enable it later  */
 	i2c@f9925000 { /* BLSP1 QUP3 */
 		status = "disabled";
@@ -91,23 +95,21 @@
 		};
 	};
 
-	/* TODO touch  part , need to enable it later */
 	i2c@f9927000 {
-		status = "disabled";
+		status = "okay";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <50000000>;
 
 		synaptics@20 {
-			compatible = "synaptics,dsx";
+			compatible = "synaptics,synaptics_dsx_i2c";
 			reg = <0x20>;
 			interrupt-parent = <&msmgpio>;
 			interrupts = <17 0x2>;
 			synaptics,reset-gpio = <&msmgpio 16 0x00>;
 			synaptics,irq-gpio  = <&msmgpio 17 0x00>;
-			/*vcc-supply = <&pm8226_l15>;*/
+			touch_vdd-supply = <&vdd_touch_vreg>;
 			vcc_i2c-supply = <&pm8226_lvs1>;
 			synaptics,i2c-pull-up;
-			/*synaptics,reg-en;*/
 		};
 
 	};
@@ -211,6 +213,16 @@
 		gpio = <&msmgpio 10 0x0>;
 		/delete-property/ parent-supply;
 	};
+
+	vdd_touch_vreg: vdd_touch_vreg {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_touch";
+		gpio = <&msmgpio 73 0x0>;
+		startup-delay-us = <300>;
+		enable-active-high;
+		regulator-boot-on;
+	};
+
 };
 
 &usb_otg {
