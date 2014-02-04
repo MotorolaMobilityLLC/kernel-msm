@@ -1903,7 +1903,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
    if (NULL == pAdapter)
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-         "%s: HDD adapter context is Null", __func__);
+         "%s: pAdapter is Null", __func__);
       ret = -ENODEV;
       goto exit; 
    }
@@ -4630,7 +4630,7 @@ int hdd_open (struct net_device *dev)
    if (NULL == pAdapter) 
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-         "%s: HDD adapter context is Null", __func__);
+         "%s: pAdapter is Null", __func__);
       return -ENODEV;
    }
    
@@ -4720,7 +4720,7 @@ int hdd_stop (struct net_device *dev)
    if (NULL == pAdapter)
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-         "%s: HDD adapter context is Null", __func__);
+         "%s: pAdapter is Null", __func__);
       return -ENODEV;
    }
 
@@ -7779,12 +7779,12 @@ static boolean hdd_is_5g_supported(hdd_context_t * pHddCtx)
    */
    if (WCNSS_XO_48MHZ == wcnss_wlan_iris_xo_mode())
    {
-      hddLog(VOS_TRACE_LEVEL_INFO, "%s: Hardware supports 5Ghz", __func__);
+      hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Hardware supports 5Ghz", __func__);
       return true;
    }
    else
    {
-      hddLog(VOS_TRACE_LEVEL_INFO, "%s: Hardware doesn't supports 5Ghz",
+      hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Hardware doesn't supports 5Ghz",
                     __func__);
       return false;
    }
