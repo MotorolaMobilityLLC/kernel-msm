@@ -233,12 +233,6 @@ struct msm_sensor_ctrl_t {
 	uint16_t power_seq_delay;
 	struct msm_sensor_eeprom_data eeprom_data;
 	struct otp_info_t sensor_otp;
-	/* Copy of Sensor Exposure gain params for ov8820 */
-	bool isStreamActive;
-	uint8_t  sensor_mode;
-	uint16_t t_fl_lines;
-	uint16_t t_gain;
-	uint8_t t_coarse_int_time[3];
 };
 
 struct msm_sensor_ctrl_t *get_sctrl(struct v4l2_subdev *sd);

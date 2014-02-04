@@ -171,36 +171,6 @@ void msm_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 		s_ctrl->msm_sensor_reg->start_stream_conf_size,
 		s_ctrl->msm_sensor_reg->default_data_type);
 	msleep(20);
-
-	pr_info("%s: sensor_id - %d res:%d mode:%d isStreamActive:%d",
-		__func__, s_ctrl->sensor_id_info->sensor_id,
-		s_ctrl->curr_res, s_ctrl->sensor_mode, s_ctrl->isStreamActive);
-
-	/* Set exposure settings only when in ZSL mode for rear sensor */
-	if (((0 == s_ctrl->sensor_mode) ||	/* SENSOR_MODE_SNAPSHOT */
-		(10 == s_ctrl->sensor_mode)) && /* SENSOR_MODE_ZSL */
-		(s_ctrl->isStreamActive == true) &&
-		(s_ctrl->sensor_id_info->sensor_id == 0x8820)) {
-		s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
-		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
-			s_ctrl->sensor_output_reg_addr->frame_length_lines,
-			s_ctrl->t_fl_lines, MSM_CAMERA_I2C_WORD_DATA);
-
-		msm_camera_i2c_write_seq(s_ctrl->sensor_i2c_client,
-			s_ctrl->sensor_exp_gain_info->coarse_int_time_addr-1,
-			&(s_ctrl->t_coarse_int_time[0]), 3);
-
-		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
-			s_ctrl->sensor_exp_gain_info->global_gain_addr,
-			s_ctrl->t_gain,	MSM_CAMERA_I2C_WORD_DATA);
-		s_ctrl->func_tbl->sensor_group_hold_off(s_ctrl);
-		msleep(20);
-		pr_info("%s:Set sensor_exp_gain for %d - fl_lines:%d, gain:%d",
-			 __func__, s_ctrl->sensor_id_info->sensor_id,
-			s_ctrl->t_fl_lines, s_ctrl->t_gain);
-	} else {
-		pr_info("%s:Skip overwriting, exp gain already SET", __func__);
-	}
 }
 
 void msm_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
@@ -211,12 +181,6 @@ void msm_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 		s_ctrl->msm_sensor_reg->stop_stream_conf_size,
 		s_ctrl->msm_sensor_reg->default_data_type);
 	msm_sensor_delay_frames(s_ctrl);
-
-	if (s_ctrl->sensor_id_info->sensor_id == 0x8820) {
-		pr_err("%s: isStreamActive = false for - %d",
-			__func__, s_ctrl->sensor_id_info->sensor_id);
-		s_ctrl->isStreamActive = false;
-	}
 }
 
 void msm_sensor_group_hold_on(struct msm_sensor_ctrl_t *s_ctrl)
@@ -341,7 +305,6 @@ int32_t msm_sensor_set_sensor_mode(struct msm_sensor_ctrl_t *s_ctrl,
 	int mode, int res)
 {
 	int32_t rc = 0;
-	CDBG("%s: res:%d mode:%d", __func__, res, mode);
 	if (s_ctrl->curr_res != res) {
 		s_ctrl->curr_frame_length_lines =
 			s_ctrl->msm_sensor_reg->
@@ -363,7 +326,6 @@ int32_t msm_sensor_set_sensor_mode(struct msm_sensor_ctrl_t *s_ctrl,
 		s_ctrl->curr_res = res;
 	}
 
-	s_ctrl->sensor_mode = mode;
 	return rc;
 }
 
@@ -374,7 +336,7 @@ int32_t msm_sensor_mode_init(struct msm_sensor_ctrl_t *s_ctrl,
 	s_ctrl->fps_divider = Q10;
 	s_ctrl->cam_mode = MSM_SENSOR_MODE_INVALID;
 
-	CDBG("%s: camera_mode %d\n", __func__, mode);
+	CDBG("%s: %d\n", __func__, __LINE__);
 	if (mode != s_ctrl->cam_mode) {
 		s_ctrl->curr_res = MSM_SENSOR_INVALID_RES;
 		s_ctrl->cam_mode = mode;

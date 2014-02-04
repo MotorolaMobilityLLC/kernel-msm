@@ -643,7 +643,7 @@ static int32_t ov8820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 static int32_t ov8820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
-	uint16_t fl_lines, offset;
+	uint32_t fl_lines, offset;
 	uint8_t int_time[3];
 
 	fl_lines =
@@ -653,17 +653,13 @@ static int32_t ov8820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		fl_lines = line + offset;
 
 	fl_lines += (fl_lines & 0x1);
+	s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
+	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+		s_ctrl->sensor_output_reg_addr->frame_length_lines, fl_lines,
+		MSM_CAMERA_I2C_WORD_DATA);
 	int_time[0] = line >> 12;
 	int_time[1] = line >> 4;
 	int_time[2] = line << 4;
-
-	pr_info("%s : fps_divider = %d  fl_lines = %d gain = %d\n",
-		__func__, s_ctrl->fps_divider, fl_lines, gain);
-
-	s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
-	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
-		s_ctrl->sensor_output_reg_addr->frame_length_lines,
-		fl_lines, MSM_CAMERA_I2C_WORD_DATA);
 	msm_camera_i2c_write_seq(s_ctrl->sensor_i2c_client,
 		s_ctrl->sensor_exp_gain_info->coarse_int_time_addr-1,
 		&int_time[0], 3);
@@ -671,17 +667,6 @@ static int32_t ov8820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		s_ctrl->sensor_exp_gain_info->global_gain_addr, gain,
 		MSM_CAMERA_I2C_WORD_DATA);
 	s_ctrl->func_tbl->sensor_group_hold_off(s_ctrl);
-	s_ctrl->isStreamActive = true;
-
-	s_ctrl->t_fl_lines = fl_lines;
-	s_ctrl->t_gain = gain;
-	s_ctrl->t_coarse_int_time[0] = int_time[0];
-	s_ctrl->t_coarse_int_time[1] = int_time[1];
-	s_ctrl->t_coarse_int_time[2] = int_time[2];
-
-	pr_info("%s : fps_divider2 = %d  fl_lines2 = %d gain2 = %d\n",
-		__func__, s_ctrl->fps_divider, fl_lines, gain);
-
 	return 0;
 }
 
@@ -757,7 +742,6 @@ static int32_t ov8820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	usleep(35000);
 
 power_up_done:
-	s_ctrl->isStreamActive = false;
 	return rc;
 }
 
