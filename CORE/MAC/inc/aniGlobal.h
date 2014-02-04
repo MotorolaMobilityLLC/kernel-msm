@@ -671,6 +671,7 @@ typedef struct sAniSirLim
 #ifdef FEATURE_WLAN_TDLS
     tANI_U8 gLimTDLSBufStaEnabled;
     tANI_U8 gLimTDLSUapsdMask;
+    tANI_U8 gLimTDLSOffChannelEnabled;
 #endif
 
 
