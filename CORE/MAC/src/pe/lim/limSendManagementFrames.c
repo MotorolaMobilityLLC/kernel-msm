@@ -3736,9 +3736,11 @@ limSendDisassocMgmtFrame(tpAniSirGlobal pMac,
                                "isassociation (0x%08x)."), nStatus );
     }
 
-    PELOG1(limLog( pMac, LOG1, FL("*** Sending Disassociation frame with rea"
-                           "son %d to"), nReason );
-    limPrintMacAddr( pMac, pMacHdr->da, LOG1 );)
+    limLog( pMac, LOG1, FL("***Sessionid %d Sending Disassociation frame with "
+          "reason %u and waitForAck %d to "MAC_ADDRESS_STR" ,From "
+          MAC_ADDRESS_STR), psessionEntry->peSessionId, nReason, waitForAck,
+          MAC_ADDR_ARRAY(pMacHdr->da),
+          MAC_ADDR_ARRAY(psessionEntry->selfMacAddr));
 
     if( ( SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel))
        || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
@@ -3928,10 +3930,11 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
         limLog( pMac, LOGW, FL("There were warnings while packing a D"
                                "e-Authentication (0x%08x)."), nStatus );
     }
-
-    PELOG1(limLog( pMac, LOG1, FL("*** Sending De-Authentication frame with rea"
-                           "son %d to"), nReason );
-    limPrintMacAddr( pMac, pMacHdr->da, LOG1 );)
+     limLog( pMac, LOG1, FL("***Sessionid %d Sending Deauth frame with "
+          "reason %u and waitForAck %d to "MAC_ADDRESS_STR" ,From "
+          MAC_ADDRESS_STR), psessionEntry->peSessionId, nReason, waitForAck,
+          MAC_ADDR_ARRAY(pMacHdr->da),
+          MAC_ADDR_ARRAY(psessionEntry->selfMacAddr));
 
     if( ( SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel))
        || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
