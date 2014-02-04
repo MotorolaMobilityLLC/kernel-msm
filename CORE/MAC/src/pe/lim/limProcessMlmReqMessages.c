@@ -2149,11 +2149,17 @@ limProcessMlmPostJoinSuspendLink(tpAniSirGlobal pMac, eHalStatus status, tANI_U3
 
     if( eHAL_STATUS_SUCCESS != status )
     {
-       limLog(pMac, LOGE, FL("Suspend link(NOTIFY_BSS) failed. still proceeding with join"));
+       limLog(pMac, LOGE, FL("Sessionid %d Suspend link(NOTIFY_BSS) failed. "
+       "still proceeding with join"),psessionEntry->peSessionId);
     }
     psessionEntry->limPrevMlmState = psessionEntry->limMlmState;
     psessionEntry->limMlmState = eLIM_MLM_WT_JOIN_BEACON_STATE;
     MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
+
+    limLog(pMac, LOG1, FL("Sessionid %d prev lim state %d new lim state %d "
+    "systemrole = %d"), psessionEntry->peSessionId,
+    psessionEntry->limPrevMlmState,
+    psessionEntry->limMlmState,psessionEntry->limSystemRole);
 
     limDeactivateAndChangeTimer(pMac, eLIM_JOIN_FAIL_TIMER);
 
@@ -2184,7 +2190,10 @@ limProcessMlmPostJoinSuspendLink(tpAniSirGlobal pMac, eHalStatus status, tANI_U3
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     psessionEntry->pLimMlmReassocRetryReq = NULL;
 #endif
-
+    limLog(pMac, LOG1, FL("[limProcessMlmJoinReq]: suspend link sucess(%d) "
+             "on sessionid: %d setting channel to: %d with secChanOffset:%d"
+             "and maxtxPower: %d"), status, psessionEntry->peSessionId,
+             chanNum, secChanOffset, psessionEntry->maxTxPower);
     limSetChannel(pMac, chanNum, secChanOffset, psessionEntry->maxTxPower, psessionEntry->peSessionId); 
 
     return;
@@ -2265,11 +2274,17 @@ limProcessMlmJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         if( isLimSessionOffChannel(pMac, sessionId) )
         {
           //suspend link
+          limLog(pMac, LOG1, FL("Suspend link as LimSession on sessionid %d"
+          "is off channel"),sessionId);
           limSuspendLink(pMac, eSIR_DONT_CHECK_LINK_TRAFFIC_BEFORE_SCAN, 
                    limProcessMlmPostJoinSuspendLink, (tANI_U32*)psessionEntry );
         }
         else
         {
+          limLog(pMac, LOG1, FL("No need to Suspend link as LimSession on "
+              "sessionid %d is not off channel, calling "
+              "limProcessMlmPostJoinSuspendLink with status as SUCCESS"),
+              sessionId);
           //No need to suspend link.
           limProcessMlmPostJoinSuspendLink( pMac, eHAL_STATUS_SUCCESS,
                                                     (tANI_U32*) psessionEntry );
@@ -4174,12 +4189,14 @@ limProcessAuthFailureTimeout(tpAniSirGlobal pMac)
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT_LIM
     vos_log_rssi_pkt_type *pRssiLog = NULL;
 #endif //FEATURE_WLAN_DIAG_SUPPORT_LIM
-
     if((psessionEntry = peFindSessionBySessionId(pMac, pMac->lim.limTimers.gLimAuthFailureTimer.sessionId))== NULL) 
     {
         limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
         return;
     }
+    limLog(pMac, LOGE, FL("received AUTH failure timeout in sessionid %d "
+    "limMlmstate %X limSmeState %X"), psessionEntry->peSessionId,
+    psessionEntry->limMlmState, psessionEntry->limSmeState);
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT_LIM
     WLAN_VOS_DIAG_LOG_ALLOC(pRssiLog,
                             vos_log_rssi_pkt_type, LOG_WLAN_RSSI_UPDATE_C);
