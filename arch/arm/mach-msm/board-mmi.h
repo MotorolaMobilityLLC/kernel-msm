@@ -21,6 +21,14 @@ extern unsigned int k_atag_tcmd_raw_cid[4];
 extern unsigned int k_atag_tcmd_raw_csd[4];
 extern unsigned char k_atag_tcmd_raw_ecsd[512];
 
+extern char pmic_hw_rev_txt_version[8];
+extern unsigned char pmic_hw_rev_txt_rev1;
+extern unsigned char pmic_hw_rev_txt_rev2;
+
+extern unsigned short display_hw_rev_txt_manufacturer;
+extern unsigned short display_hw_rev_txt_controller;
+extern unsigned short display_hw_rev_txt_controller_drv;
+
 /* MMI OEM Data Structure */
 struct mmi_oem_data {
 	int (*is_factory)(void);
