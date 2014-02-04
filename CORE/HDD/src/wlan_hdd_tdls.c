@@ -1413,6 +1413,9 @@ int wlan_hdd_tdls_set_force_peer(hdd_adapter_t *pAdapter, u8 *mac,
     if (curr_peer == NULL)
         goto error;
     curr_peer->isForcedPeer = forcePeer;
+
+    mutex_unlock(&pHddCtx->tdls_lock);
+    return 0;
 error:
     mutex_unlock(&pHddCtx->tdls_lock);
     return -1;
