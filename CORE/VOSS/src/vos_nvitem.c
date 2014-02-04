@@ -3513,12 +3513,12 @@ int wlan_hdd_linux_reg_notifier(struct wiphy *wiphy,
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                "cfg80211 reg notifier callback for country for initiator %d", request->initiator);
 
-    if (pHddCtx->isLoadUnloadInProgress)
+    if (TRUE == isWDresetInProgress())
     {
-        wiphy_dbg(wiphy, "info: %s: Unloading/Loading in Progress. Ignore!!!",
-                  __func__);
+       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                   ("SSR is in progress") );
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
-        return;
+       return;
 #else
        return 0;
 #endif
