@@ -648,6 +648,99 @@ static void max17042_init_worker(struct work_struct *work)
 	chip->init_complete = 1;
 }
 
+struct max17042_config_data eg30_lg_config = {
+	/* External current sense resistor value in milli-ohms */
+	.cur_sense_val = 10,
+
+	/* A/D measurement */
+	.tgain = 0xE71C,	/* 0x2C */
+	.toff = 0x251A,		/* 0x2D */
+	.cgain = 0x4000,	/* 0x2E */
+	.coff = 0x0000,		/* 0x2F */
+
+	/* Alert / Status */
+	.valrt_thresh = 0xFF00,	/* 0x01 */
+	.talrt_thresh = 0x7F80,	/* 0x02 */
+	.soc_alrt_thresh = 0xFF00,	/* 0x03 */
+	.config = 0x0210,		/* 0x01D */
+	.shdntimer = 0xE000,	/* 0x03F */
+
+	/* App data */
+	.full_soc_thresh = 0x6200,	/* 0x13 */
+	.design_cap = 4172,	/* 0x18 0.5 mAh per bit */
+	.ichgt_term = 0x01C0,	/* 0x1E */
+
+	/* MG3 config */
+	.filter_cfg = 0x87A4,	/* 0x29 */
+
+	/* MG3 save and restore */
+	.fullcap = 4172,	/* 0x10 0.5 mAh per bit */
+	.fullcapnom = 4172,	/* 0x23 0.5 mAh per bit */
+	.qrtbl00 = 0x1E01,	/* 0x12 */
+	.qrtbl10 = 0x1281,	/* 0x22 */
+	.qrtbl20 = 0x0781,	/* 0x32 */
+	.qrtbl30 = 0x0681,	/* 0x42 */
+
+	/* Cell technology from power_supply.h */
+	.cell_technology = POWER_SUPPLY_TECHNOLOGY_LION,
+
+	/* Cell Data */
+	.vempty = 0x7D5A,		/* 0x12 */
+	.temp_nom = 0x1400,	/* 0x24 */
+	.rcomp0 = 0x004A,		/* 0x38 */
+	.tcompc0 = 0x243A,	/* 0x39 */
+	.cell_char_tbl = {
+		0x9B00,
+		0xA470,
+		0xB2E0,
+		0xB7B0,
+		0xB9B0,
+		0xBB70,
+		0xBC20,
+		0xBD00,
+		0xBE10,
+		0xC060,
+		0xC220,
+		0xC750,
+		0xCB80,
+		0xCF10,
+		0xD2A0,
+		0xD840,
+		0x0070,
+		0x0020,
+		0x0900,
+		0x0D00,
+		0x0B00,
+		0x1B40,
+		0x1B00,
+		0x2030,
+		0x0FB0,
+		0x0BD0,
+		0x08F0,
+		0x08D0,
+		0x06D0,
+		0x06D0,
+		0x07D0,
+		0x07D0,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+		0x0180,
+	},
+};
+
 #ifdef CONFIG_OF
 static  struct gpio *
 max17042_get_gpio_list(struct device *dev, int *num_gpio_list)
