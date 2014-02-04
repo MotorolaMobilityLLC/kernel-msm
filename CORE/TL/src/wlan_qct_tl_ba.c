@@ -41,11 +41,6 @@
   DEPENDENCIES: 
 
   Are listed for each API below. 
-  
-  
-  Copyright (c) 2008 QUALCOMM Incorporated.
-  All Rights Reserved.
-  Qualcomm Confidential and Proprietary
 ===========================================================================*/
 
 /*===========================================================================
@@ -76,6 +71,9 @@
 #include "wlan_qct_tli.h" 
 #include "wlan_qct_tli_ba.h" 
 #include "wlan_qct_hal.h" 
+#include "wlan_qct_tl_trace.h"
+#include "vos_trace.h"
+#include "vos_types.h"
 #include "vos_list.h"
 #include "vos_lock.h"
 #include "tlDebug.h"
@@ -197,6 +195,9 @@ v_VOID_t WLANTL_ReorderingAgingTimerExpierCB
 
    opCode      = WLANTL_OPCODE_FWDALL_DROPCUR;
    vosDataBuff = NULL;
+
+   MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_REORDER_TIMER_EXP_CB,
+                      ucSTAID , opCode ));
 
 
    TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"BA timeout with %d pending frames, curIdx %d", ReorderInfo->pendingFramesCount, ReorderInfo->ucCIndex));
@@ -804,6 +805,9 @@ WLANTL_BaSessionDel
   reOrderInfo->SSN       = 0;
   reOrderInfo->sessionID = 0;
   reOrderInfo->LastSN = 0;
+
+  MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_BA_SESSION_DEL,
+                      ucSTAId, ucTid ));
 
   TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
              "WLAN TL: BA session deleted for STA: %d TID: %d",
@@ -1710,6 +1714,9 @@ VOS_STATUS WLANTL_QueueCurrent
                *vosDataBuff));
    if(NULL != pwBaReorder->reorderBuffer->arrayBuffer[ucSlotIndex])
    {
+      MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_QUEUE_CURRENT,
+                      pwBaReorder->sessionID , pwBaReorder->pendingFramesCount ));
+
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"One Cycle rounded, lost many frames already, not in Q %d",
                   pwBaReorder->pendingFramesCount));
       return VOS_STATUS_E_RESOURCES;
