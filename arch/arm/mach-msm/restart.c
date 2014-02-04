@@ -60,8 +60,6 @@
 #define use_restart_v2()	0
 #endif
 
-#define RESET_EXTRA_PANIC_REASON	BIT(0)
-
 static int restart_mode;
 void *restart_reason;
 
