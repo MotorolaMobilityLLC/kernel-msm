@@ -66,6 +66,10 @@ struct pm8921 {
 	u8						restart_reason;
 };
 
+char pmic_hw_rev_txt_version[8];
+unsigned char pmic_hw_rev_txt_rev1;
+unsigned char pmic_hw_rev_txt_rev2;
+
 static int pm8921_readb(const struct device *dev, u16 addr, u8 *val)
 {
 	const struct pm8xxx_drvdata *pm8921_drvdata = dev_get_drvdata(dev);
@@ -858,6 +862,10 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 	int rc;
 	u8 val;
 
+	pmic_hw_rev_txt_version[0] = 0;
+	pmic_hw_rev_txt_rev1 = 0;
+	pmic_hw_rev_txt_rev2 = 0;
+
 	if (!pdata) {
 		pr_err("missing platform data\n");
 		return -EINVAL;
@@ -876,6 +884,7 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 		goto err_read_rev;
 	}
 	pr_info("PMIC revision 1: %02X\n", val);
+	pmic_hw_rev_txt_rev1 = val;
 	pmic->rev_registers = val;
 
 	/* Read PMIC chip revision 2 */
@@ -886,6 +895,7 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 		goto err_read_rev;
 	}
 	pr_info("PMIC revision 2: %02X\n", val);
+	pmic_hw_rev_txt_rev2 = val;
 	pmic->rev_registers |= val << BITS_PER_BYTE;
 
 	pmic->dev = &pdev->dev;
@@ -899,6 +909,8 @@ static int __devinit pm8921_probe(struct platform_device *pdev)
 		if (revision >= 0 && revision < ARRAY_SIZE(pm8921_rev_names))
 			revision_name = pm8921_rev_names[revision];
 		pr_info("PMIC version: PM8921 rev %s\n", revision_name);
+		strlcpy(pmic_hw_rev_txt_version, revision_name, 8);
+		pmic_hw_rev_txt_version[7] = 0;
 	} else if (version == PM8XXX_VERSION_8922) {
 		if (revision >= 0 && revision < ARRAY_SIZE(pm8922_rev_names))
 			revision_name = pm8922_rev_names[revision];

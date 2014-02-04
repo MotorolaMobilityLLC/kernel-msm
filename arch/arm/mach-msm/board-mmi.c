@@ -512,6 +512,64 @@ static int mot_tcmd_export_gpio(void)
 	return 0;
 }
 
+static ssize_t hw_rev_txt_pmic_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf)
+{
+/* Format: TYPE:VENDOR:HWREV:DATE:FIRMWARE_REV:INFO  */
+	return snprintf(buf, PAGE_SIZE,
+			"PMIC:QUALCOMM-PM8921:%s:::rev1=0x%02X,rev2=0x%02X\n",
+			pmic_hw_rev_txt_version,
+			pmic_hw_rev_txt_rev1,
+			pmic_hw_rev_txt_rev2);
+}
+
+static ssize_t hw_rev_txt_display_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE,
+			"Display:0x%02X:0x%02X::0x%02X:\n",
+			display_hw_rev_txt_manufacturer,
+			display_hw_rev_txt_controller,
+			display_hw_rev_txt_controller_drv);
+}
+
+static struct kobj_attribute hw_rev_txt_pmic_attribute =
+	__ATTR(pmic, 0444, hw_rev_txt_pmic_show, NULL);
+
+static struct kobj_attribute hw_rev_txt_display_attribute =
+	__ATTR(display, 0444, hw_rev_txt_display_show, NULL);
+
+static struct attribute *hw_rev_txt_attrs[] = {
+	&hw_rev_txt_pmic_attribute.attr,
+	&hw_rev_txt_display_attribute.attr,
+	NULL
+};
+
+static struct attribute_group hw_rev_txt_attr_group = {
+	.attrs = hw_rev_txt_attrs,
+};
+
+static int hw_rev_txt_init(void)
+{
+	static struct kobject *hw_rev_txt_kobj;
+	int retval;
+
+	hw_rev_txt_kobj = kobject_create_and_add("hardware_revisions", NULL);
+	if (!hw_rev_txt_kobj) {
+		pr_err("%s: failed to create /sys/hardware_revisions\n",
+				__func__);
+		return -ENOMEM;
+	}
+
+	retval = sysfs_create_group(hw_rev_txt_kobj, &hw_rev_txt_attr_group);
+	if (retval)
+		pr_err("%s: failed for entries in /sys/hardware_revisions\n",
+				__func__);
+
+	return retval;
+}
+
+
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
@@ -524,6 +582,7 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 	sysfs_factory_gsbi12_mode_init();
 	mot_tcmd_export_gpio();
 	emmc_version_init();
+	hw_rev_txt_init();
 
 	if (mbmprotocol == 0) {
 		/* do not reboot - version was not reported */
