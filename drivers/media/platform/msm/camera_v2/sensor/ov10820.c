@@ -181,7 +181,7 @@ check_chipid:
 		return rc;
 	}
 
-	pr_info("%s: Probe successful with I2C slave addr of 0x%x and hw %x\n",
+	pr_info("%s: success addr:0x%x hw:0x%x\n",
 			__func__, s_ctrl->sensor_i2c_client->cci_client->sid,
 			ov10820_hw_rev);
 	return 0;
@@ -195,7 +195,7 @@ static int32_t ov10820_sensor_power_down(
 	struct msm_sensor_power_setting_array *power_setting_array = NULL;
 	struct msm_sensor_power_setting *power_setting = NULL;
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 
 	if (is_sensor_powered_up == 0)
 		goto exit;
@@ -273,7 +273,7 @@ int32_t ov10820_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	struct msm_camera_sensor_board_info *info = s_ctrl->sensordata;
 	struct device *dev = s_ctrl->dev;
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	if (info->gpio_conf->cam_gpiomux_conf_tbl != NULL) {
 		msm_gpiomux_install(
 			(struct msm_gpiomux_config *)
