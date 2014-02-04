@@ -3489,8 +3489,9 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 	pr_debug("PMIC: ID FLT %d\n", id_flt);
 
 	if (!id_gnd && !id_flt) {
-		pr_info_once("Factory Cable Attached!\n");
-		factory_cable = 1;
+		factory_cable = msm_pmic_is_factory_cable(motg);
+		if (factory_cable)
+			pr_info_once("Factory Cable Attached!\n");
 	} else
 		if (factory_cable) {
 			pr_info("Factory Cable Detached!\n");
