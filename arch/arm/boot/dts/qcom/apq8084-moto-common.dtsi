@@ -37,3 +37,11 @@
 		};
 	};
 };
+
+&i2c_0 {
+	max17050: max17050-battery@36 {
+		compatible = "maxim,max17050";
+		reg = <0x36>;
+		maxim,rsns-microohm = <10000>;
+	};
+};
