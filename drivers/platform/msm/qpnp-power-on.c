@@ -14,6 +14,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/reboot.h>
 #include <linux/slab.h>
 #include <linux/spmi.h>
 #include <linux/delay.h>
@@ -77,6 +78,7 @@
 #define QPNP_PON_KPDPWR_N_SET			BIT(0)
 #define QPNP_PON_RESIN_N_SET			BIT(1)
 #define QPNP_PON_CBLPWR_N_SET			BIT(2)
+#define QPNP_PON_KPDPWR_BARK_N_SET		BIT(3)
 #define QPNP_PON_RESIN_BARK_N_SET		BIT(4)
 #define QPNP_PON_KPDPWR_RESIN_BARK_N_SET	BIT(5)
 
@@ -123,7 +125,8 @@ struct qpnp_pon {
 	struct qpnp_pon_config *pon_cfg;
 	int num_pon_config;
 	u16 base;
-	struct delayed_work bark_work;
+	struct delayed_work resin_bark_work;
+	struct delayed_work kpdpwr_bark_work;
 };
 
 static struct qpnp_pon *sys_reset_dev;
@@ -464,8 +467,23 @@ static irqreturn_t qpnp_kpdpwr_irq(int irq, void *_pon)
 	return IRQ_HANDLED;
 }
 
+static void kpdpwr_bark_work_func(struct work_struct *work)
+{
+	kernel_restart(NULL);
+}
+
 static irqreturn_t qpnp_kpdpwr_bark_irq(int irq, void *_pon)
 {
+	struct qpnp_pon *pon = _pon;
+
+	disable_irq_nosync(irq);
+
+	/* set HW reset power up reason */
+	qpnp_pon_store_extra_reset_info(RESET_EXTRA_HW_RESET_REASON,
+					RESET_EXTRA_HW_RESET_REASON);
+
+	schedule_delayed_work(&pon->kpdpwr_bark_work, QPNP_KEY_STATUS_DELAY);
+
 	return IRQ_HANDLED;
 }
 
@@ -497,13 +515,13 @@ static irqreturn_t qpnp_cblpwr_irq(int irq, void *_pon)
 	return IRQ_HANDLED;
 }
 
-static void bark_work_func(struct work_struct *work)
+static void resin_bark_work_func(struct work_struct *work)
 {
 	int rc;
 	u8 pon_rt_sts = 0;
 	struct qpnp_pon_config *cfg;
 	struct qpnp_pon *pon =
-		container_of(work, struct qpnp_pon, bark_work.work);
+		container_of(work, struct qpnp_pon, resin_bark_work.work);
 
 	cfg = qpnp_get_cfg(pon, PON_RESIN);
 	if (!cfg) {
@@ -543,7 +561,8 @@ static void bark_work_func(struct work_struct *work)
 			goto err_return;
 		}
 		/* re-arm the work */
-		schedule_delayed_work(&pon->bark_work, QPNP_KEY_STATUS_DELAY);
+		schedule_delayed_work(&pon->resin_bark_work,
+				      QPNP_KEY_STATUS_DELAY);
 	}
 
 err_return:
@@ -577,7 +596,7 @@ static irqreturn_t qpnp_resin_bark_irq(int irq, void *_pon)
 	input_report_key(pon->pon_input, cfg->key_code, 1);
 	input_sync(pon->pon_input);
 	/* schedule work to check the bark status for key-release */
-	schedule_delayed_work(&pon->bark_work, QPNP_KEY_STATUS_DELAY);
+	schedule_delayed_work(&pon->resin_bark_work, QPNP_KEY_STATUS_DELAY);
 err_exit:
 	return IRQ_HANDLED;
 }
@@ -1205,7 +1224,8 @@ static int __devinit qpnp_pon_probe(struct spmi_device *spmi)
 
 	dev_set_drvdata(&spmi->dev, pon);
 
-	INIT_DELAYED_WORK(&pon->bark_work, bark_work_func);
+	INIT_DELAYED_WORK(&pon->resin_bark_work, resin_bark_work_func);
+	INIT_DELAYED_WORK(&pon->kpdpwr_bark_work, kpdpwr_bark_work_func);
 
 	/* register the PON configurations */
 	rc = qpnp_pon_config_init(pon);
@@ -1226,7 +1246,8 @@ static int qpnp_pon_remove(struct spmi_device *spmi)
 {
 	struct qpnp_pon *pon = dev_get_drvdata(&spmi->dev);
 
-	cancel_delayed_work_sync(&pon->bark_work);
+	cancel_delayed_work_sync(&pon->resin_bark_work);
+	cancel_delayed_work_sync(&pon->kpdpwr_bark_work);
 
 	if (pon->pon_input)
 		input_unregister_device(pon->pon_input);
