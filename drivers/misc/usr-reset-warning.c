@@ -29,8 +29,6 @@
 #include <linux/of_gpio.h>
 #include <linux/qpnp/power-on.h>
 
-#define RESET_EXTRA_HW_RESET_REASON	BIT(1)
-
 struct usr_reset_warning_data {
 	struct work_struct work;
 	int gpio;
