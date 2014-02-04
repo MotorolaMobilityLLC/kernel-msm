@@ -519,8 +519,8 @@ out:
 	kmem_cache_destroy(fsync_entry_slab);
 
 	if (err) {
-		truncate_inode_pages_final(NODE_MAPPING(sbi));
-		truncate_inode_pages_final(META_MAPPING(sbi));
+		truncate_inode_pages(NODE_MAPPING(sbi), 0);
+		truncate_inode_pages(META_MAPPING(sbi), 0);
 	}
 
 	sbi->por_doing = false;
