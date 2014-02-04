@@ -242,12 +242,14 @@ static int32_t msm_sensor_disable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
 		VIDIOC_MSM_I2C_MUX_RELEASE, NULL);
 	return 0;
 }
+#endif
 
 /* ar0261 match_id function */
-int32_t ar0261_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
+int32_t ar0261_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 
+#ifdef SET_ALT_I2C_ADDRESS
 	/* to hack in alternate I2C address */
 	/* Set slave address to primary */
 	ar0261_s_ctrl.sensordata->slave_info->sensor_slave_addr =
@@ -281,16 +283,18 @@ int32_t ar0261_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	ar0261_s_ctrl.sensor_i2c_client->cci_client->sid =
 		ar0261_s_ctrl.sensordata->slave_info->sensor_slave_addr >> 1;
 	/* End of added code */
+#endif
 
 	rc = msm_sensor_match_id(s_ctrl);
 
 	if (rc < 0)
 		pr_err("%s:%d match id failed rc %d\n", __func__, __LINE__, rc);
+	else
+		pr_info("%s success\n", __func__);
 
 	CDBG("%s exit\n", __func__);
 	return rc;
 }
-#endif
 
 
 static int32_t ar0261_platform_probe(struct platform_device *pdev)
@@ -298,10 +302,6 @@ static int32_t ar0261_platform_probe(struct platform_device *pdev)
 	int32_t rc = 0;
 	const struct of_device_id *match;
 	struct msm_sensor_ctrl_t *s_ctrl;
-
-#ifdef SET_ALT_I2C_ADDRESS
-	struct msm_sensor_fn_t *ar0261_sensor_func_tbl;
-#endif
 
 	match = of_match_device(ar0261_dt_match, &pdev->dev);
 	if (match) {
@@ -319,21 +319,6 @@ static int32_t ar0261_platform_probe(struct platform_device *pdev)
 		pr_err("%s:%d failed match device\n", __func__, __LINE__);
 		return -EINVAL;
 	}
-#ifdef SET_ALT_I2C_ADDRESS
-	/* highjack power up to facilitate alternate I2C address */
-	ar0261_sensor_func_tbl = kzalloc(sizeof(struct msm_sensor_fn_t),
-		GFP_KERNEL);
-	if (!ar0261_sensor_func_tbl) {
-		pr_err("%s:%d failed nomem\n", __func__, __LINE__);
-		return -ENOMEM;
-	}
-	memcpy(ar0261_sensor_func_tbl,
-		ar0261_s_ctrl.func_tbl,
-		sizeof(struct msm_sensor_fn_t));
-
-	ar0261_sensor_func_tbl->sensor_match_id = ar0261_sensor_match_id;
-	ar0261_s_ctrl.func_tbl = ar0261_sensor_func_tbl;
-#endif
 
 	return rc;
 }
@@ -359,6 +344,13 @@ static void __exit ar0261_exit_module(void)
 	return;
 }
 
+static struct msm_sensor_fn_t ar0261_func_tbl = {
+	.sensor_config = msm_sensor_config,
+	.sensor_power_up = msm_sensor_power_up,
+	.sensor_power_down = msm_sensor_power_down,
+	.sensor_match_id = ar0261_match_id,
+};
+
 static struct msm_sensor_ctrl_t ar0261_s_ctrl = {
 	.sensor_i2c_client = &ar0261_sensor_i2c_client,
 	.power_setting_array.power_setting = ar0261_power_setting,
@@ -366,6 +358,7 @@ static struct msm_sensor_ctrl_t ar0261_s_ctrl = {
 	.msm_sensor_mutex = &ar0261_mut,
 	.sensor_v4l2_subdev_info = ar0261_subdev_info,
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(ar0261_subdev_info),
+	.func_tbl = &ar0261_func_tbl,
 };
 
 module_init(ar0261_init_module);
