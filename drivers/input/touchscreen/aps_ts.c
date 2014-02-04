@@ -21,12 +21,11 @@
 #include <linux/of_gpio.h>
 #endif
 
-#ifdef CONFIG_FB
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+#include <mach/mmi_panel_notifier.h>
+#elif defined(CONFIG_FB)
 #include <linux/notifier.h>
 #include <linux/fb.h>
-
-static int fb_notifier_callback(struct notifier_block *self,
-	unsigned long event, void *data);
 #endif
 
 #define DRIVER_NAME "aps_ts"
@@ -132,7 +131,9 @@ struct aps_ts_info {
 	struct i2c_client		*client;
 	struct input_dev		*input_dev;
 
-#ifdef CONFIG_FB
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	struct mmi_notifier panel_nb;
+#elif defined(CONFIG_FB)
 	struct notifier_block fb_notif;
 #endif
 	int				max_x;
@@ -1056,6 +1057,60 @@ static struct aps_ts_platform_data *aps_ts_of_init(struct i2c_client *client,
 }
 #endif
 
+static int aps_ts_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct aps_ts_info *info = i2c_get_clientdata(client);
+
+	mutex_lock(&info->input_dev->mutex);
+	aps_ts_disable(info);
+	aps_clear_input_data(info);
+	mutex_unlock(&info->input_dev->mutex);
+	pr_debug("SUSPENDED\n");
+
+	return 0;
+
+}
+
+static int aps_ts_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct aps_ts_info *info = i2c_get_clientdata(client);
+
+	mutex_lock(&info->input_dev->mutex);
+	aps_ts_enable(info);
+	mutex_unlock(&info->input_dev->mutex);
+	pr_debug("RESUMED\n");
+
+	return 0;
+}
+
+#if defined(CONFIG_FB) && !defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+static int fb_notifier_callback(struct notifier_block *self,
+	unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	struct aps_ts_info *info = container_of(self, struct aps_ts_info,
+		fb_notif);
+
+	if (!evdata || !evdata->data || !event == FB_EVENT_BLANK
+		|| !info || !info->client)
+		return 0;
+
+	blank = evdata->data;
+	if (*blank == FB_BLANK_UNBLANK) {
+		aps_ts_resume(&info->client->dev);
+		pr_debug("DISPLAY-ON\n");
+	} else if (*blank == FB_BLANK_POWERDOWN) {
+		aps_ts_suspend(&info->client->dev);
+		pr_debug("DISPLAY-OFF\n");
+	}
+
+	return 0;
+}
+#endif
+
 static int aps_ts_probe(struct i2c_client *client,
 				  const struct i2c_device_id *id)
 {
@@ -1134,8 +1189,17 @@ static int aps_ts_probe(struct i2c_client *client,
 		ret = -EAGAIN;
 		goto out_free_irq;
 	}
-
-#ifdef CONFIG_FB
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	info->panel_nb.suspend = aps_ts_suspend;
+	info->panel_nb.resume = aps_ts_resume;
+	info->panel_nb.dev = &client->dev;
+	if (!mmi_panel_register_notifier(&info->panel_nb))
+		pr_info("registered MMI panel notifier\n");
+	else {
+		dev_err(&client->dev, "unable to register MMI notifier");
+		goto out_sysfs_remove_group;
+	}
+#elif defined(CONFIG_FB)
 	info->fb_notif.notifier_call = fb_notifier_callback;
 	ret = fb_register_client(&info->fb_notif);
 	if (ret) {
@@ -1186,68 +1250,19 @@ static int aps_ts_remove(struct i2c_client *client)
 	gpio_free(info->pdata->gpio_reset);
 	gpio_free(info->pdata->gpio_irq);
 	kfree(info->perf_irq_data);
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	mmi_panel_unregister_notifier(&info->panel_nb);
+#elif defined(CONFIG_FB)
+	fb_unregister_client(&info->panel_nb);
+#endif
 	kfree(info);
 
 	return 0;
 }
 
 #if defined(CONFIG_PM)
-static int aps_ts_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct aps_ts_info *info = i2c_get_clientdata(client);
-
-	mutex_lock(&info->input_dev->mutex);
-	aps_ts_disable(info);
-	aps_clear_input_data(info);
-	mutex_unlock(&info->input_dev->mutex);
-
-	return 0;
-
-}
-
-static int aps_ts_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct aps_ts_info *info = i2c_get_clientdata(client);
-
-	mutex_lock(&info->input_dev->mutex);
-	aps_ts_enable(info);
-	mutex_unlock(&info->input_dev->mutex);
-
-	return 0;
-}
-#endif
-
-#ifdef CONFIG_FB
-static int fb_notifier_callback(struct notifier_block *self,
-	unsigned long event, void *data)
-{
-	struct fb_event *evdata = data;
-	int *blank;
-	struct aps_ts_info *info = container_of(self, struct aps_ts_info,
-		fb_notif);
-
-	if (!evdata || !evdata->data || !event == FB_EVENT_BLANK
-		|| !info || !info->client)
-		return 0;
-
-	blank = evdata->data;
-	if (*blank == FB_BLANK_UNBLANK) {
-		aps_ts_resume(&info->client->dev);
-		pr_debug("DISPLAY-ON\n");
-	} else if (*blank == FB_BLANK_POWERDOWN) {
-		aps_ts_suspend(&info->client->dev);
-		pr_debug("DISPLAY-OFF\n");
-	}
-
-	return 0;
-}
-#endif
-
-#if defined(CONFIG_PM)
 static const struct dev_pm_ops aps_ts_pm_ops = {
-#if !defined(CONFIG_FB)
+#if !(defined(CONFIG_FB) || defined(CONFIG_MMI_PANEL_NOTIFICATIONS))
 	.suspend	= aps_ts_suspend,
 	.resume		= aps_ts_resume,
 #endif
