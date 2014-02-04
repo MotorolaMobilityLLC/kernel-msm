@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -44,10 +44,6 @@
   \file  sme_Rrm.c
   
   \brief implementation for SME RRM APIs
-  
-   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
-   
-   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
 
@@ -433,7 +429,7 @@ static eHalStatus sme_CcxSendBeaconReqScanResults(tpAniSirGlobal pMac,
        pBcnReport->flag = (measurementDone << 1)|((pCurResult)?true:false);
 
        smsLog(pMac, LOG1, "SME Sending BcnRep to HDD numBss(%d)"
-               " msgCounter(%d) bssCounter(%d)",
+               " msgCounter(%d) bssCounter(%d) flag(%d)",
                 pBcnReport->numBss, msgCounter, bssCounter, pBcnReport->flag);
 
        roamInfo.pCcxBcnReportRsp = pBcnReport;
@@ -545,15 +541,18 @@ static eHalStatus sme_RrmSendScanResult( tpAniSirGlobal pMac,
       if( measurementDone )
       {
 #if defined(FEATURE_WLAN_CCX_UPLOAD)
-         status = sme_CcxSendBeaconReqScanResults(pMac,
+         if (eRRM_MSG_SOURCE_CCX_UPLOAD == pSmeRrmContext->msgSource)
+         {
+             status = sme_CcxSendBeaconReqScanResults(pMac,
                                                   sessionId,
                                                   chanList[0],
                                                   NULL,
                                                   measurementDone,
                                                   0);
-#else
-         status = sme_RrmSendBeaconReportXmitInd( pMac, NULL, measurementDone, 0);
+         }
+         else
 #endif /*FEATURE_WLAN_CCX_UPLOAD*/
+             status = sme_RrmSendBeaconReportXmitInd( pMac, NULL, measurementDone, 0);
       }
       return status;
    }
@@ -561,7 +560,21 @@ static eHalStatus sme_RrmSendScanResult( tpAniSirGlobal pMac,
    pScanResult = sme_ScanResultGetFirst(pMac, pResult);
 
    if( NULL == pScanResult && measurementDone )
-      status = sme_RrmSendBeaconReportXmitInd( pMac, NULL, measurementDone, 0 );
+   {
+#if defined(FEATURE_WLAN_CCX_UPLOAD)
+       if (eRRM_MSG_SOURCE_CCX_UPLOAD == pSmeRrmContext->msgSource)
+       {
+           status = sme_CcxSendBeaconReqScanResults(pMac,
+                                                 sessionId,
+                                                 chanList[0],
+                                                 NULL,
+                                                 measurementDone,
+                                                 0);
+       }
+       else
+#endif /*FEATURE_WLAN_CCX_UPLOAD*/
+           status = sme_RrmSendBeaconReportXmitInd( pMac, NULL, measurementDone, 0 );
+   }
 
    counter=0;
    while (pScanResult)
@@ -577,18 +590,21 @@ static eHalStatus sme_RrmSendScanResult( tpAniSirGlobal pMac,
    {
           smsLog(pMac, LOG1, " Number of BSS Desc with RRM Scan %d ", counter);
 #if defined(FEATURE_WLAN_CCX_UPLOAD)
-       status = sme_CcxSendBeaconReqScanResults(pMac,
+         if (eRRM_MSG_SOURCE_CCX_UPLOAD == pSmeRrmContext->msgSource)
+         {
+             status = sme_CcxSendBeaconReqScanResults(pMac,
                                                 sessionId,
                                                 chanList[0],
                                                 pScanResultsArr,
                                                 measurementDone,
                                                 counter);
-#else
-       status = sme_RrmSendBeaconReportXmitInd( pMac,
+         }
+         else
+#endif /*FEATURE_WLAN_CCX_UPLOAD*/
+             status = sme_RrmSendBeaconReportXmitInd( pMac,
                                                 pScanResultsArr,
                                                 measurementDone,
                                                 counter);
-#endif /*FEATURE_WLAN_CCX_UPLOAD*/
    }
    sme_ScanResultPurge(pMac, pResult); 
 
@@ -881,6 +897,7 @@ void sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf)
    pSmeRrmContext->regClass = pBeaconReq->channelInfo.regulatoryClass;
          pSmeRrmContext->randnIntvl = VOS_MAX( pBeaconReq->randomizationInterval, pSmeRrmContext->rrmConfig.maxRandnInterval );
          pSmeRrmContext->currentIndex = 0;
+   pSmeRrmContext->msgSource = pBeaconReq->msgSource;
    vos_mem_copy((tANI_U8*)&pSmeRrmContext->measMode, (tANI_U8*)&pBeaconReq->fMeasurementtype, SIR_CCX_MAX_MEAS_IE_REQS);
    vos_mem_copy((tANI_U8*)&pSmeRrmContext->duration, (tANI_U8*)&pBeaconReq->measurementDuration, SIR_CCX_MAX_MEAS_IE_REQS);
 

@@ -10276,7 +10276,7 @@ WDI_ProcessTSMStatsReq
   if ( eWLAN_PAL_TRUE == pBSSSes->bAssocReqQueued )
   {
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
-              "s: Association sequence for this BSS exists but currently queued. macBSSID " MAC_ADDRESS_STR, 
+              "%s: Association sequence for this BSS exists but currently queued. macBSSID " MAC_ADDRESS_STR,
               __func__, MAC_ADDR_ARRAY(pwdiTSMParams->wdiTsmStatsParamsInfo.bssid));
 
     wdiStatus = WDI_QueueAssocRequest( pWDICtx, pBSSSes, pEventData); 

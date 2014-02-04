@@ -650,6 +650,7 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
    pSmeBcnReportReq->messageType = eWNI_SME_BEACON_REPORT_REQ_IND;
    pSmeBcnReportReq->length = sizeof( tSirBeaconReportReqInd );
    pSmeBcnReportReq->uDialogToken = pBeaconReq->measurement_token;
+   pSmeBcnReportReq->msgSource = eRRM_MSG_SOURCE_DRV;
    pSmeBcnReportReq->randomizationInterval = SYS_TU_TO_MS (pBeaconReq->measurement_request.Beacon.randomization);
    pSmeBcnReportReq->channelInfo.regulatoryClass = pBeaconReq->measurement_request.Beacon.regClass;
    pSmeBcnReportReq->channelInfo.channelNum = pBeaconReq->measurement_request.Beacon.channel;
