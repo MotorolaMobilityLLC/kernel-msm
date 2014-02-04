@@ -1336,6 +1336,9 @@ typedef struct sP2pPsParams
    tANI_U8   psSelection;
 }tP2pPsParams, *tpP2pPsParams;
 
+#define HAL_MAX_SUPP_CHANNELS 128
+#define HAL_MAX_SUPP_OPER_CLASSES 32
+
 typedef struct sTdlsLinkEstablishParams
 {
    tANI_U16  staIdx;
@@ -1343,6 +1346,13 @@ typedef struct sTdlsLinkEstablishParams
    tANI_U8   uapsdQueues;
    tANI_U8   maxSp;
    tANI_U8   isBufsta;
+   tANI_U8   isOffChannelSupported;
+   tANI_U8   peerCurrOperClass;
+   tANI_U8   selfCurrOperClass;
+   tANI_U8   validChannelsLen;
+   tANI_U8   validChannels[HAL_MAX_SUPP_CHANNELS];
+   tANI_U8   validOperClassesLen;
+   tANI_U8   validOperClasses[HAL_MAX_SUPP_OPER_CLASSES];
    tANI_U32  status;
 }tTdlsLinkEstablishParams, *tpTdlsLinkEstablishParams;
 

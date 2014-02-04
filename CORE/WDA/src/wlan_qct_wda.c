@@ -6971,6 +6971,21 @@ VOS_STATUS WDA_ProcessSetTdlsLinkEstablishReq(tWDA_CbContext *pWDA,
                                                   pTdlsLinkEstablishParams->maxSp;
     wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uIsBufSta =
                                                   pTdlsLinkEstablishParams->isBufsta;
+    wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.uIsOffChannelSupported =
+                                        pTdlsLinkEstablishParams->isOffChannelSupported;
+
+    vos_mem_copy(wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.validChannels,
+                                       pTdlsLinkEstablishParams->validChannels,
+                                       pTdlsLinkEstablishParams->validChannelsLen);
+
+    wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.validChannelsLen =
+                                  pTdlsLinkEstablishParams->validChannelsLen;
+
+    vos_mem_copy(wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.validOperClasses,
+                                       pTdlsLinkEstablishParams->validOperClasses,
+                                       pTdlsLinkEstablishParams->validOperClassesLen);
+    wdiSetTDLSLinkEstablishReqParam->wdiTDLSLinkEstablishInfo.validOperClassesLen =
+                                  pTdlsLinkEstablishParams->validOperClassesLen;
 
     wdiSetTDLSLinkEstablishReqParam->wdiReqStatusCB = NULL ;
     /* Store msg pointer from PE, as this will be used for response */
