@@ -445,10 +445,11 @@ void vos_trace_hex_dump( VOS_MODULE_ID module, VOS_TRACE_LEVEL level,
 
 /*-----------------------------------------------------------------------------
   \brief vosTraceEnable() - Enable MTRACE for specific modules whose bits are
-  set in bitmask. set the bitmask according to enum value of the modules.
+  set in bitmask and enable is true. if enable is false it disables MTRACE for
+  that module. set the bitmask according to enum value of the modules.
 
   this functions will be called when you issue ioctl as mentioned following
-  [iwpriv wlan0 setdumplog <value>].
+  [iwpriv wlan0 setdumplog <value> <enable>].
   <value> - Decimal number, i.e. 64 decimal value shows only SME module,
   128 decimal value shows only PE module, 192 decimal value shows PE and SME.
 
@@ -457,30 +458,54 @@ void vos_trace_hex_dump( VOS_MODULE_ID module, VOS_TRACE_LEVEL level,
   32 [dec]  = 0010 0000 [bin] <enum of HDD is 5>
   64 [dec]  = 0100 0000 [bin] <enum of SME is 6>
   128 [dec] = 1000 0000 [bin] <enum of PE is 7>
+  \param - enable - can be true or false.
+           True implies enabling MTRACE, false implies disabling MTRACE.
   ---------------------------------------------------------------------------*/
-void vosTraceEnable(v_U32_t bitmask_of_moduleId)
+void vosTraceEnable(v_U32_t bitmask_of_moduleId, v_U8_t enable)
 {
     int i;
     if (bitmask_of_moduleId)
     {
        for (i=0; i<VOS_MODULE_ID_MAX; i++)
        {
-           if (!((bitmask_of_moduleId >> i) & 1 ))
+           if (((bitmask_of_moduleId >> i) & 1 ))
            {
-              vostraceRestoreCBTable[i] = vostraceCBTable[i];
-              vostraceCBTable[i] = NULL;
+             if(enable)
+             {
+                if (NULL != vostraceRestoreCBTable[i])
+                {
+                   vostraceCBTable[i] = vostraceRestoreCBTable[i];
+                }
+             }
+             else
+             {
+                vostraceRestoreCBTable[i] = vostraceCBTable[i];
+                vostraceCBTable[i] = NULL;
+             }
            }
        }
     }
+
     else
     {
-       for (i=0; i<VOS_MODULE_ID_MAX; i++)
-       {
-           if (NULL != vostraceRestoreCBTable[i])
-           {
-              vostraceCBTable[i] = vostraceRestoreCBTable[i];
-           }
-       }
+      if(enable)
+      {
+         for (i=0; i<VOS_MODULE_ID_MAX; i++)
+         {
+             if (NULL != vostraceRestoreCBTable[i])
+             {
+                vostraceCBTable[i] = vostraceRestoreCBTable[i];
+             }
+         }
+      }
+      else
+      {
+         for (i=0; i<VOS_MODULE_ID_MAX; i++)
+         {
+            vostraceRestoreCBTable[i] = vostraceCBTable[i];
+            vostraceCBTable[i] = NULL;
+         }
+      }
     }
 }
 
