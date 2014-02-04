@@ -406,7 +406,7 @@ static void update_sit_entry(struct f2fs_sb_info *sbi, block_t blkaddr, int del)
 
 	se = get_seg_entry(sbi, segno);
 	new_vblocks = se->valid_blocks + del;
-	offset = GET_SEGOFF_FROM_SEG0(sbi, blkaddr) & (sbi->blocks_per_seg - 1);
+	offset = GET_BLKOFF_FROM_SEG0(sbi, blkaddr);
 
 	if (new_vblocks < 0 || new_vblocks > sbi->blocks_per_seg ||
 	    (new_vblocks >> (sizeof(unsigned short) << 3)))
@@ -1021,8 +1021,7 @@ void recover_data_page(struct f2fs_sb_info *sbi,
 		change_curseg(sbi, type, true);
 	}
 
-	curseg->next_blkoff = GET_SEGOFF_FROM_SEG0(sbi, new_blkaddr) &
-					(sbi->blocks_per_seg - 1);
+	curseg->next_blkoff = GET_BLKOFF_FROM_SEG0(sbi, new_blkaddr);
 	__add_sum_entry(sbi, type, sum);
 
 	refresh_sit_entry(sbi, old_blkaddr, new_blkaddr);
@@ -1060,8 +1059,7 @@ void rewrite_node_page(struct f2fs_sb_info *sbi,
 		curseg->next_segno = segno;
 		change_curseg(sbi, type, true);
 	}
-	curseg->next_blkoff = GET_SEGOFF_FROM_SEG0(sbi, new_blkaddr) &
-					(sbi->blocks_per_seg - 1);
+	curseg->next_blkoff = GET_BLKOFF_FROM_SEG0(sbi, new_blkaddr);
 	__add_sum_entry(sbi, type, sum);
 
 	/* change the current log to the next block addr in advance */
@@ -1069,8 +1067,7 @@ void rewrite_node_page(struct f2fs_sb_info *sbi,
 		curseg->next_segno = next_segno;
 		change_curseg(sbi, type, true);
 	}
-	curseg->next_blkoff = GET_SEGOFF_FROM_SEG0(sbi, next_blkaddr) &
-					(sbi->blocks_per_seg - 1);
+	curseg->next_blkoff = GET_BLKOFF_FROM_SEG0(sbi, next_blkaddr);
 
 	/* rewrite node page */
 	set_page_writeback(page);
