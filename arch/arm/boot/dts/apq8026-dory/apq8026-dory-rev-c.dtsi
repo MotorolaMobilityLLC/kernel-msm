@@ -1,0 +1,42 @@
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2013,2014 LGE Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "apq8026-dory.dtsi"
+
+&soc {
+	sound {
+		dory,mic-en-gpio = <&msmgpio 60 0x00>;
+	};
+	i2c@f9924000 {
+		inv_dev@68 {
+			axis_map_x = <1>;
+			axis_map_y = <0>;
+			axis_map_z = <2>;
+			negate_x = <1>;
+			negate_y = <0>;
+			negate_z = <0>;
+
+			inven,secondary_axis_map_x = <0>;
+			inven,secondary_axis_map_y = <1>;
+			inven,secondary_axis_map_z = <2>;
+			inven,secondary_negate_x = <1>;
+			inven,secondary_negate_y = <1>;
+			inven,secondary_negate_z = <0>;
+		};
+	};
+	i2c@f9927000 {
+		synaptics@20 {
+			status = "ok";
+		};
+	};
+};
