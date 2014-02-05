@@ -87,6 +87,39 @@
 			<&msmgpio 8 0>, /* NFC_IRQ */
 			<&msmgpio 116 0>; /* REG_PU */
 	};
+
+	tfa9890@34 {
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		gpios = <&msmgpio 129 0>;     /* RESET */
+		tfa_vdd-supply = <&pma8084_s4>;
+		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "left";
+	};
+};
+
+&soc {
+	sound {
+		/delete-property/ qcom,quat-auxpcm-gpio-sclk;
+		/delete-property/ qcom,quat-auxpcm-gpio-ws;
+		/delete-property/ qcom,quat-auxpcm-gpio-dout;
+		/delete-property/ qcom,quat-auxpcm-gpio-din;
+		pinctrl-names = "pmx-quad-mi2s-sleep",
+				"pmx-quad-mi2s-active";
+		pinctrl-0 = <&quad_mi2s_sleep>;
+		pinctrl-1 = <&quad_mi2s_active>;
+		qcom,tfa9890-left-name = "tfa9890.8-0034";
+	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		qcom,msm-dai-q6-mi2s-quat {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <3>;
+			qcom,msm-mi2s-rx-lines = <2>;
+			qcom,msm-mi2s-tx-lines = <1>;
+		};
+	};
 };
 
 &usb3 {
