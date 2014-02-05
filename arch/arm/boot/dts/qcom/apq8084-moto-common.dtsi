@@ -1,0 +1,39 @@
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014 Motorola Mobility LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+&spmi_bus {
+	qcom,pma8084@0 {
+		qcom,leds@a700 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa700 0x100>;
+			status = "okay";
+			label = "mpp";
+			mpp-power-supply = <&pma8084_l17>;
+			qcom,mpp-power-min-voltage = <2800000>;
+			qcom,mpp-power-max-voltage = <2800000>;
+			qcom,led_mpp_8 {
+				label = "mpp";
+				linux,name = "charging";
+				linux-default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,mode = "manual";
+			};
+		};
+	};
+};
