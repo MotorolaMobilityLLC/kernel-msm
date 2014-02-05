@@ -454,7 +454,7 @@ fan5646_blink_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR(blink, 0777, fan5646_blink_show, fan5646_blink_store);
+static DEVICE_ATTR(blink, 0664, fan5646_blink_show, fan5646_blink_store);
 
 static ssize_t
 fan5646_settings_show(struct device *dev,
@@ -536,7 +536,7 @@ fan5646_settings_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR(settings, 0777, fan5646_settings_show,
+static DEVICE_ATTR(settings, 0664, fan5646_settings_show,
 		   fan5646_settings_store);
 
 static ssize_t
@@ -588,7 +588,7 @@ fan5646_prot_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR(prot, 0777, fan5646_prot_show, fan5646_prot_store);
+static DEVICE_ATTR(prot, 0664, fan5646_prot_show, fan5646_prot_store);
 
 static ssize_t
 fan5646_rgb_show_control(struct device *dev,
