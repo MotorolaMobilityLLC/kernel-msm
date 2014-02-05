@@ -862,6 +862,49 @@ static struct msm_gpiomux_config apq8084_pri_ter_auxpcm_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting quat_act_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting quat_sus_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config apq8084_quat_auxpcm_configs[] __initdata = {
+	{
+		.gpio = 92,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &quat_sus_cfg,
+			[GPIOMUX_ACTIVE] = &quat_act_cfg,
+		},
+	},
+	{
+		.gpio = 93,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &quat_sus_cfg,
+			[GPIOMUX_ACTIVE] = &quat_act_cfg,
+		},
+	},
+	{
+		.gpio = 94,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &quat_sus_cfg,
+			[GPIOMUX_ACTIVE] = &quat_act_cfg,
+		},
+	},
+	{
+		.gpio = 95,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &quat_sus_cfg,
+			[GPIOMUX_ACTIVE] = &quat_act_cfg,
+		},
+	},
+};
+
 static struct gpiomux_setting wlan_en_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_16MA,
@@ -1348,6 +1391,10 @@ void __init apq8084_moto_init_gpiomux(void)
 			msm_gpiomux_install(msm_qca1530_cdp_configs,
 					ARRAY_SIZE(msm_qca1530_cdp_configs));
 	}
+
+	msm_gpiomux_install(apq8084_quat_auxpcm_configs,
+		ARRAY_SIZE(apq8084_quat_auxpcm_configs));
+
 	msm_gpiomux_install_nowrite(msm_lcd_configs,
 			ARRAY_SIZE(msm_lcd_configs));
 	msm_gpiomux_install(apq8084_pri_ter_auxpcm_configs,
