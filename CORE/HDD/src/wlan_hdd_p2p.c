@@ -650,6 +650,7 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
     hdd_adapter_t *goAdapter;
 #endif
+    u64 old_cookie = 0;
 
     status = wlan_hdd_validate_context(pHddCtx);
 
@@ -810,6 +811,7 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
                      ESTIMATED_ROC_DUR_REQD_FOR_ACTION_TX)
             {
                 hddLog(LOG1,"action frame: Extending the RoC");
+                old_cookie = cfgState->remain_on_chan_ctx->cookie;
                 pAdapter->internalCancelRemainOnChReq = VOS_TRUE;
                 status = wlan_hdd_check_remain_on_channel(pAdapter);
                 pAdapter->internalCancelRemainOnChReq = VOS_FALSE;
@@ -840,6 +842,10 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
                                         wait, cookie,
                                         OFF_CHANNEL_ACTION_TX);
 
+        // Assign the preserved cookie value here to appear as
+        // same RoC to supplicant
+        if (old_cookie)
+            cfgState->remain_on_chan_ctx->cookie = old_cookie;
         if(0 != status)
         {
             if( (-EBUSY == status) &&
