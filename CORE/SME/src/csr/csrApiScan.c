@@ -2573,7 +2573,7 @@ eHalStatus csrScanFilter11dResult(tpAniSirGlobal pMac)
     if (!HAL_STATUS_SUCCESS(csrGetCfgValidChannels(pMac,
                                       pMac->roam.validChannelList, &len)))
     {
-        smsLog( pMac, LOG1, "Failed to get Channel list from CFG");
+        smsLog( pMac, LOGE, "Failed to get Channel list from CFG");
     }
 
     pEntry = csrLLPeekHead( &pMac->scan.scanResultList, LL_ACCESS_LOCK );
