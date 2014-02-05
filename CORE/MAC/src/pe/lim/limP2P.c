@@ -855,16 +855,25 @@ void limRemainOnChnRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data)
  *
  *------------------------------------------------------------------*/
 void limSendSmeMgmtFrameInd(
-                    tpAniSirGlobal pMac, tANI_U8 frameType,
-                    tANI_U8  *frame, tANI_U32 frameLen, tANI_U16 sessionId,
-                    tANI_U32 rxChannel, tpPESession psessionEntry,
+                    tpAniSirGlobal pMac, tANI_U16 sessionId,
+                    tANI_U8 *pRxPacketInfo, tpPESession psessionEntry,
                     tANI_S8 rxRssi)
 {
     tSirMsgQ              mmhMsg;
-    tpSirSmeMgmtFrameInd pSirSmeMgmtFrame = NULL;
+    tpSirSmeMgmtFrameInd  pSirSmeMgmtFrame = NULL;
     tANI_U16              length;
+    tANI_U8               frameType;
+    tpSirMacMgmtHdr       frame;
+    tANI_U32              frameLen;
+    tANI_U8               rfBand = 0;
+    tANI_U32              rxChannel;
 
+    frame = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+    frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo) + sizeof(tSirMacMgmtHdr);
     length = sizeof(tSirSmeMgmtFrameInd) + frameLen;
+    frameType = frame->fc.subType;
+    rfBand = WDA_GET_RX_RFBAND(pRxPacketInfo);
+    rxChannel = WDA_GET_RX_CH( pRxPacketInfo );
 
     pSirSmeMgmtFrame = vos_mem_malloc(length);
     if (NULL == pSirSmeMgmtFrame)
@@ -880,6 +889,31 @@ void limSendSmeMgmtFrameInd(
     pSirSmeMgmtFrame->sessionId = sessionId;
     pSirSmeMgmtFrame->frameType = frameType;
     pSirSmeMgmtFrame->rxRssi = rxRssi;
+
+    if (( IS_5G_BAND(rfBand)))
+    {
+        rxChannel = limUnmapChannel(rxChannel);
+        limLog(pMac, LOG1,
+               FL("rxChannel after unmapping is %d"), rxChannel);
+        if ( !rxChannel )
+        {
+            tpPESession pTempSessionEntry = limIsApSessionActive(pMac);
+            if( tx_timer_running(&pMac->lim.limTimers.gLimRemainOnChannelTimer)
+                && (pMac->lim.gpLimRemainOnChanReq != NULL) )
+            {
+                rxChannel = pMac->lim.gpLimRemainOnChanReq->chnNum;
+                limLog(pMac, LOG1,
+                   FL("ROC timer is running."
+                      " Assign ROC channel to rxChannel i.e., %d"), rxChannel);
+            }
+            else if ( (pTempSessionEntry != NULL) &&
+                      (SIR_BAND_5_GHZ !=
+                       limGetRFBand(pTempSessionEntry->currentOperChannel)) )
+                limLog(pMac, LOGW,
+                   FL("No active p2p GO in 5GHz"
+                      "  but recvd Action frame in 5GHz"));
+        }
+    }
 
     /*
      *  Work around to address LIM sending wrong channel to HDD for p2p action
@@ -902,6 +936,9 @@ void limSendSmeMgmtFrameInd(
             (SIR_BAND_5_GHZ == limGetRFBand(pTempSessionEntry->currentOperChannel)) )
         {
             rxChannel = pTempSessionEntry->currentOperChannel;
+            limLog(pMac, LOG1,
+                   FL("Invalid rxChannel."
+                      " Assign GO session op channel to rxChannel i.e., %d"), rxChannel);
         }
     }
 
