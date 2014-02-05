@@ -245,6 +245,8 @@ config SND_SOC_APQ8084
 	select SND_SOC_CPE
 	select DOLBY_DS2
 	select SND_SOC_TPA6165A2
+	select SND_SOC_TFA9890
+
 	help
 	 To add support for SoC audio on APQ8084.
 	 This will enable sound soc drivers which
