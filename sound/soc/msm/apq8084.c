@@ -4108,7 +4108,7 @@ static struct snd_soc_dai_link apq8084_tomtom_dai_links[
 
 #ifdef CONFIG_SND_SOC_TFA9890
 static struct snd_soc_dai_link apq8084_dai_tfa9890_links[
-				ARRAY_SIZE(apq8084_dai_links) +
+				ARRAY_SIZE(apq8084_taiko_dai_links) +
 				ARRAY_SIZE(apq8084_tfa9890_dai_link)];
 #endif
 
