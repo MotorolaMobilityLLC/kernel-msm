@@ -96,7 +96,8 @@ void __init lge_add_persistent_device(void)
 #endif
 
 /* See include/mach/board_lge.h. CAUTION: These strings come from LK. */
-static char *rev_str[] = {"unknown", "evb1", "rev_a", "rev_b"};
+static char *rev_str[] = {"unknown", "evb1", "rev_a", "rev_b", "rev_c",
+	"rev_d", "rev_10", "rev_11"};
 
 static int __init board_revno_setup(char *rev_info)
 {
