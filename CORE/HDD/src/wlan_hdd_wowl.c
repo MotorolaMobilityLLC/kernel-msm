@@ -124,7 +124,7 @@ static void dump_hdd_wowl_ptrn(tSirWowlAddBcastPtrn *ptrn)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: ucPatternMaskSize = 0x%x", __func__, 
       ptrn->ucPatternMaskSize);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Pattern: ", __func__);
-  for(i = 0; i<ptrn->ucPatternSize; i++)
+  for(i = 0; i < ptrn->ucPatternSize; i++)
      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO," %02X", ptrn->ucPattern[i]);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: PatternMask: ", __func__);
   for(i = 0; i<ptrn->ucPatternMaskSize; i++)
@@ -208,7 +208,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
     localPattern.ucPatternMaskSize = 
       ( hdd_parse_hex( ptrn[3] ) * 0x10 ) + hdd_parse_hex( ptrn[4] );
 
-    if(localPattern.ucPatternSize > WOWL_PTRN_MAX_SIZE ||
+    if(localPattern.ucPatternSize > SIR_WOWL_BCAST_PATTERN_MAX_SIZE ||
        localPattern.ucPatternMaskSize > WOWL_PTRN_MASK_MAX_SIZE)
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
@@ -404,7 +404,13 @@ v_BOOL_t hdd_add_wowl_ptrn_debugfs(hdd_adapter_t *pAdapter, v_U8_t pattern_idx,
   localPattern.ucPatternId = pattern_idx;
   localPattern.ucPatternByteOffset = pattern_offset;
   localPattern.ucPatternSize = pattern_len;
-
+  if (localPattern.ucPatternSize > SIR_WOWL_BCAST_PATTERN_MAX_SIZE) {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: WoW pattern size (%d) greater than max (%d)",
+               __func__, localPattern.ucPatternSize,
+               SIR_WOWL_BCAST_PATTERN_MAX_SIZE);
+    return VOS_FALSE;
+  }
   /* Extract the pattern */
   for (i = 0; i < localPattern.ucPatternSize; i++)
   {
@@ -428,7 +434,12 @@ v_BOOL_t hdd_add_wowl_ptrn_debugfs(hdd_adapter_t *pAdapter, v_U8_t pattern_idx,
 
     return VOS_FALSE;
   }
-
+  if (localPattern.ucPatternMaskSize > WOWL_PTRN_MASK_MAX_SIZE) {
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: WoW pattern mask size (%d) greater than max (%d)",
+               __func__, localPattern.ucPatternMaskSize, WOWL_PTRN_MASK_MAX_SIZE);
+    return VOS_FALSE;
+  }
   /* Extract the pattern mask */
   for (i = 0; i < localPattern.ucPatternMaskSize; i++)
   {
