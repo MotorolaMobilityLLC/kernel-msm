@@ -576,6 +576,7 @@ typedef struct hdd_remain_on_chan_ctx
   unsigned int duration;
   u64 cookie;
   rem_on_channel_request_type_t rem_on_chan_request;
+  v_U32_t p2pRemOnChanTimeStamp;
 }hdd_remain_on_chan_ctx_t;
 
 typedef enum{
