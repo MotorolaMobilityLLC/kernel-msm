@@ -212,7 +212,6 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_smd_720p_vid>;
 	qcom,platform-reset-gpio = <&msmgpio 86 0>;
-	qcom,platform-enable-gpio = <&msmgpio 137 0>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vdd_disp-supply = <&vdd_disp_vreg>;
 	vci_disp-supply = <&vci_disp_vreg>;
