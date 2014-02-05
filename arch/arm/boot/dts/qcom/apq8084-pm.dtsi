@@ -216,6 +216,9 @@
 			<50 172>, /* usb1_hs_async_wakeup_irq */
 			<53 104>, /* mdss_irq */
 			<62 222>, /* ee0_krait_hlos_spmi_periph_irq */
+			<0xff 18>,  /* APCx_qgicQTmrSecPhysIrptReq */
+			<0xff 19>,  /* APCx_qgicQTmrSecPhysIrptReq */
+			<0xff 25>,  /* APCx_qgicExtFaultIrptReq */
 			<0xff 33>, /* APCC_qgicL2PerfMonIrptReq */
 			<0xff 34>, /* APCC_qgicL2ErrorIrptReq */
 			<0xff 35>, /* WDT_barkInt */
@@ -250,6 +253,9 @@
 			<0xff 113>, /* o_ocmem_axi_timeout_nonseq_irq */
 			<0xff 116>, /* mdss_vbif_irpt */
 			<0xff 126>, /* bam_dma_irq[0] */
+			<0xff 140>,  /* uart_dm_intr */
+			<0xff 157>,  /* sdcc_irq[0] */
+			<0xff 159>,  /* sdcc_irq[0] */
 			<0xff 163>, /* usb30_ee1_irq */
 			<0xff 168>, /* lpass_irq_out_apcs[11] */
 			<0xff 170>, /* sdcc_pwr_cmd_irq */
