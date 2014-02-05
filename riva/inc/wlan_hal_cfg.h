@@ -1,5 +1,5 @@
 /*
-  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+  * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
   *
   * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
   *
@@ -926,8 +926,6 @@
 #define QWLAN_HAL_CFG_SAR_POWER_BACKOFF_MIN  1
 #define QWLAN_HAL_CFG_SAR_POWER_BACKOFF_MAX  21
 
-#endif //__WLAN_HAL_CFG_H__
-
 /*Once the period expires the RSSI will be compared with Threshold
  * and if needed trigger events will be raised
  */
@@ -944,3 +942,5 @@
 #define QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD_DEF     50
 #define QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MIN     50
 #define QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD_MAX     100
+
+#endif //__WLAN_HAL_CFG_H__
