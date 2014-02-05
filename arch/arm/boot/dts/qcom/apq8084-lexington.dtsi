@@ -34,7 +34,6 @@
 &soc {
 	sound {
 		qcom,model = "apq8084-taiko-cdp-snd-card";
-		qcom,hdmi-audio-rx;
 		qcom,cdc-micbias2-headset-only;
 		qcom,ext-mclk-gpio  = <&msmgpio 47 0>;
 		/delete-property/ qcom,sec-auxpcm-gpio-clk;
