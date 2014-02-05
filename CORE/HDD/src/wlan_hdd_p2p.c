@@ -120,8 +120,7 @@ static void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
                                                tANI_U8 frameType );
 static bool hdd_p2p_is_action_type_rsp( tActionFrmType actionFrmType )
 {
-        if ( actionFrmType <= MAX_P2P_ACTION_FRAME_TYPE &&
-            actionFrmType != WLAN_HDD_GO_NEG_REQ &&
+        if ( actionFrmType != WLAN_HDD_GO_NEG_REQ &&
             actionFrmType != WLAN_HDD_INVITATION_REQ &&
             actionFrmType != WLAN_HDD_DEV_DIS_REQ &&
             actionFrmType != WLAN_HDD_PROV_DIS_REQ )
@@ -755,12 +754,19 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
         //and requesting for new one.
         //The below logic will be extended for request type action frames if
         //needed in future.
-        if ( hdd_p2p_is_action_type_rsp(actionFrmType) &&
-            cfgState->remain_on_chan_ctx &&
-            cfgState->current_freq == chan->center_freq ) {
-            status = wlan_hdd_check_remain_on_channel(pAdapter);
-            if ( !status )
-                pAdapter->internalCancelRemainOnChReq = VOS_TRUE;
+        if ( (type == SIR_MAC_MGMT_FRAME) &&
+            (subType == SIR_MAC_MGMT_ACTION) &&
+            (buf[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] ==
+                                              WLAN_HDD_PUBLIC_ACTION_FRAME) ) {
+            actionFrmType = buf[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
+            if ( actionFrmType < MAX_P2P_ACTION_FRAME_TYPE &&
+                hdd_p2p_is_action_type_rsp(actionFrmType) &&
+                cfgState->remain_on_chan_ctx &&
+                cfgState->current_freq == chan->center_freq ) {
+                status = wlan_hdd_check_remain_on_channel(pAdapter);
+                if ( !status )
+                    pAdapter->internalCancelRemainOnChReq = VOS_TRUE;
+            }
         }
 
         if((cfgState->remain_on_chan_ctx != NULL) &&
