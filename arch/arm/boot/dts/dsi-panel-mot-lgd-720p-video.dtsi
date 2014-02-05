@@ -60,7 +60,7 @@
 			05 01 00 00 78 00 02 10 00];   /* enter sleep */
 
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
-		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-h-sync-pulse = <1>;
 		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
 		qcom,mdss-dsi-bllp-eof-power-mode;
@@ -78,8 +78,6 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 
-		/* Disallow power off, only used for bringup */
-		qcom,panel-disallow-pwr-off;
 		qcom,panel-en-reset-sequence = <1 11>;
 		qcom,panel-dis-reset-sequence = <0 2>;
 		qcom,platform-supply-entry1 {
