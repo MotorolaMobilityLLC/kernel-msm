@@ -370,7 +370,6 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
     pRemainChanCtx->chan_type = channel_type;
 #endif
     pRemainChanCtx->duration = duration;
-    pRemainChanCtx->p2pRemOnChanTimeStamp = vos_timer_get_system_time();
     pRemainChanCtx->dev = dev;
     *cookie = (uintptr_t) pRemainChanCtx;
     pRemainChanCtx->cookie = *cookie;
@@ -434,6 +433,9 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
         }
 
     }
+
+    pRemainChanCtx->p2pRemOnChanTimeStamp = vos_timer_get_system_time();
+
     return 0;
 
 }
@@ -471,6 +473,11 @@ void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter )
 
     if( pRemainChanCtx != NULL )
     {
+        // Removing READY_EVENT_PROPOGATE_TIME from current time which gives
+        // more accurate Remain on Channel start time.
+        pRemainChanCtx->p2pRemOnChanTimeStamp =
+                      vos_timer_get_system_time() - READY_EVENT_PROPOGATE_TIME;
+
         if( REMAIN_ON_CHANNEL_REQUEST == pRemainChanCtx->rem_on_chan_request )
         {
             cfg80211_ready_on_channel(
