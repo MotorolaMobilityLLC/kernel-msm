@@ -226,6 +226,7 @@ struct apq8084_asoc_mach_data {
 	int us_euro_gpio;
 	struct msm_auxpcm_ctrl *pri_auxpcm_ctrl;
 	struct msm_auxpcm_ctrl *sec_auxpcm_ctrl;
+	struct msm_auxpcm_ctrl *quat_auxpcm_ctrl;
 	u32 quad_rx_clk_usrs;
 	u32 quad_tx_clk_usrs;
 	struct msm_mi2s_pinctrl_info mi2s_pinctrl_info;
@@ -1692,6 +1693,13 @@ static int msm_quad_mi2s_startup(struct snd_pcm_substream *substream)
 		if (ret)
 			pr_err("%s: set fmt cpu dai failed with %d\n",
 				__func__, ret);
+
+		/*ret = snd_soc_dai_set_fmt(codec_dai,
+			SND_SOC_DAIFMT_CBS_CFS|SND_SOC_DAIFMT_I2S);
+		if (ret)
+			pr_err("%s: set fmt codec dai failed with %d\n",
+				__func__, ret);*/
+
 	}
 err:
 	return ret;
@@ -1724,9 +1732,34 @@ static void msm_quad_mi2s_shutdown(struct snd_pcm_substream *substream)
 	}
 }
 
+static int msm_quad_mi2s_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	int ret;
+
+	/* if it is msm stub dummy codec dai, it doesnt support this op
+	* causes an unneseccary failure to startup path. */
+
+	if (strncmp(codec_dai->name, "msm-stub-tx", 11)) {
+		ret = snd_soc_dai_set_sysclk(codec_dai, 0,
+			Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+			SND_SOC_CLOCK_IN);
+
+		if (ret < 0) {
+			pr_err("can't set rx codec clk configuration\n");
+			return ret;
+		}
+	}
+
+	return 1;
+}
+
 static struct snd_soc_ops apq8084_quad_mi2s_be_ops = {
 	.startup = msm_quad_mi2s_startup,
 	.shutdown = msm_quad_mi2s_shutdown,
+	.hw_params = msm_quad_mi2s_hw_params,
 };
 
 static int apq8084_mi2s_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
@@ -3737,20 +3770,6 @@ static struct snd_soc_dai_link apq8084_common_be_dai_links[] = {
 	},
 	/* MI2S Backend DAI Links */
 	{
-		.name = LPASS_BE_QUAT_MI2S_RX,
-		.stream_name = "Quaternary MI2S Playback",
-		.cpu_dai_name = "msm-dai-q6-mi2s.3",
-		.platform_name = "msm-pcm-routing",
-		.codec_name = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-rx",
-		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
-		.be_hw_params_fixup = &apq8084_mi2s_rx_be_hw_params_fixup,
-		.ops = &apq8084_quad_mi2s_be_ops,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-	},
-	{
 		.name = LPASS_BE_QUAT_MI2S_TX,
 		.stream_name = "Quaternary MI2S Capture",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
@@ -4031,7 +4050,48 @@ static struct snd_soc_dai_link apq8084_cpe_lsm_dailink[] = {
 	},
 };
 
+#ifdef CONFIG_SND_SOC_TFA9890
+static struct snd_soc_dai_link  apq8084_tfa9890_dai_link[] = {
+	/* MI2S I2S RX BACK END DAI left Link */
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		/* codec name will be updated if it is present in devtree
+		 * to support different codecs name on different i2c bus
+		 */
+		.codec_name = "tfa9890.8-0034",
+		.codec_dai_name = "tfa9890_codec_left",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = &apq8084_mi2s_rx_be_hw_params_fixup,
+		.ops = &apq8084_quad_mi2s_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+	/* MI2S I2S RX BACK END DAI right Link */
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tfa9890.8-0035",
+		.codec_dai_name = "tfa9890_codec_right",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = &apq8084_mi2s_rx_be_hw_params_fixup,
+		.ops = &apq8084_quad_mi2s_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+};
+#endif
+
 static struct snd_soc_dai_link apq8084_taiko_dai_links[
+
 		 ARRAY_SIZE(apq8084_common_dai_links) +
 		 ARRAY_SIZE(apq8084_taiko_fe_dai_links) +
 		 ARRAY_SIZE(apq8084_common_be_dai_links) +
@@ -4045,6 +4105,13 @@ static struct snd_soc_dai_link apq8084_tomtom_dai_links[
 		 ARRAY_SIZE(apq8084_tomtom_be_dai_links) +
 		 ARRAY_SIZE(apq8084_hdmi_dai_link) +
 		 ARRAY_SIZE(apq8084_cpe_lsm_dailink)];
+
+#ifdef CONFIG_SND_SOC_TFA9890
+static struct snd_soc_dai_link apq8084_dai_tfa9890_links[
+				ARRAY_SIZE(apq8084_dai_links) +
+				ARRAY_SIZE(apq8084_tfa9890_dai_link)];
+#endif
+
 
 struct snd_soc_card snd_soc_card_tomtom_apq8084 = {
 	.name		= "apq8084-tomtom-snd-card",
@@ -4330,6 +4397,43 @@ static int apq8084_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
+
+#ifdef CONFIG_SND_SOC_TFA9890
+	if (of_property_read_string(pdev->dev.of_node, "qcom,tfa9890-left-name",
+			&apq8084_tfa9890_dai_link[0].codec_name))
+		dev_info(&pdev->dev, "property %s not detected in node %s",
+			"qcom,tfa9890-left-name",
+			pdev->dev.of_node->full_name);
+
+	memcpy(apq8084_dai_tfa9890_links, card->dai_link,
+			card->num_links*sizeof(struct snd_soc_dai_link));
+
+	memcpy((apq8084_dai_tfa9890_links + card->num_links),
+			&apq8084_tfa9890_dai_link[0],
+			sizeof(apq8084_tfa9890_dai_link[0]));
+
+	card->dai_link = apq8084_dai_tfa9890_links;
+	card->num_links++;
+
+	/* add right IC if stereo mode is enabled */
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,tfa9890-stereo")) {
+		dev_info(&pdev->dev, "%s(): tfa9890 stereo support present\n",
+				__func__);
+
+		if (of_property_read_string(pdev->dev.of_node,
+				"qcom,tfa9890-right-name",
+				&apq8084_tfa9890_dai_link[1].codec_name))
+			dev_info(&pdev->dev, "property %s not detected in node %s",
+				"qcom,tfa9890-right-name",
+				pdev->dev.of_node->full_name);
+
+		memcpy((apq8084_dai_tfa9890_links + card->num_links),
+			&apq8084_tfa9890_dai_link[1],
+			sizeof(apq8084_tfa9890_dai_link[1]));
+
+		card->num_links++;
+	}
+#endif
 
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&prim_auxpcm_rsc_ref, 0);
