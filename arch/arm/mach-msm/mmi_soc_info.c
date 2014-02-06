@@ -12,9 +12,23 @@
  */
 
 #include <linux/module.h>
+#include <linux/proc_fs.h>
 #include <linux/apanic_mmc.h>
 #include <linux/persistent_ram.h>
 #include <mach/socinfo.h>
+
+struct mmi_msm_bin {
+	int	set;
+	int	speed;
+	int	pvs;
+	int	ver;
+};
+
+#define MMI_MSM_BIN_INVAL	INT_MAX
+#define ACPU_BIN_SET		BIT(0)
+
+static struct mmi_msm_bin mmi_msm_bin_info;
+static DEFINE_SPINLOCK(mmi_msm_bin_lock);
 
 static inline void mmi_panic_annotate(const char *str)
 {
@@ -56,9 +70,74 @@ static void __init mmi_msm_annotate_socinfo(void)
 	mmi_panic_annotate(socinfo);
 }
 
+static int mmi_acpu_proc_read(char *buf, char **start, off_t off,
+			  int count, int *eof, void *data)
+{
+	int len = snprintf(buf, 2, "%1x", (int)data);
+	*eof = 1;
+	return len;
+}
+
+void mmi_acpu_bin_set(int *speed, int *pvs, int *ver)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&mmi_msm_bin_lock, flags);
+	if (mmi_msm_bin_info.set & ACPU_BIN_SET) {
+		spin_unlock_irqrestore(&mmi_msm_bin_lock, flags);
+		return;
+	}
+	mmi_msm_bin_info.speed = speed ? *speed : MMI_MSM_BIN_INVAL;
+	mmi_msm_bin_info.pvs = pvs ? *pvs : MMI_MSM_BIN_INVAL;
+	mmi_msm_bin_info.ver = ver ? *ver : MMI_MSM_BIN_INVAL;
+	mmi_msm_bin_info.set |= ACPU_BIN_SET;
+	spin_unlock_irqrestore(&mmi_msm_bin_lock, flags);
+}
+
+static void __init mmi_msm_acpu_bin_export(void)
+{
+	struct proc_dir_entry *proc;
+	unsigned long flags;
+	char acpu[64];
+
+	spin_lock_irqsave(&mmi_msm_bin_lock, flags);
+	if (!(mmi_msm_bin_info.set & ACPU_BIN_SET)) {
+		spin_unlock_irqrestore(&mmi_msm_bin_lock, flags);
+		pr_err("ACPU Bin is not available.\n");
+		return;
+	}
+	spin_unlock_irqrestore(&mmi_msm_bin_lock, flags);
+
+	mmi_panic_annotate("ACPU: ");
+	if (mmi_msm_bin_info.speed != MMI_MSM_BIN_INVAL) {
+		snprintf(acpu, sizeof(acpu), "Speed bin %d ",
+				mmi_msm_bin_info.speed);
+		mmi_panic_annotate(acpu);
+	}
+	if (mmi_msm_bin_info.pvs != MMI_MSM_BIN_INVAL) {
+		proc = create_proc_read_entry("cpu/msm_acpu_pvs",
+			(S_IFREG | S_IRUGO), NULL,
+			mmi_acpu_proc_read, (void *)mmi_msm_bin_info.pvs);
+		if (!proc)
+			pr_err("Failed to create /proc/cpu/msm_acpu_pvs.\n");
+		else
+			proc->size = 1;
+		snprintf(acpu, sizeof(acpu), "PVS bin %d ",
+				mmi_msm_bin_info.pvs);
+		mmi_panic_annotate(acpu);
+	}
+	if (mmi_msm_bin_info.ver != MMI_MSM_BIN_INVAL) {
+		snprintf(acpu, sizeof(acpu), "PVS version %d ",
+				mmi_msm_bin_info.ver);
+		mmi_panic_annotate(acpu);
+	}
+	mmi_panic_annotate("\n");
+}
+
 static int __init init_mmi_soc_info(void)
 {
 	mmi_msm_annotate_socinfo();
+	mmi_msm_acpu_bin_export();
 	return 0;
 }
 module_init(init_mmi_soc_info);
