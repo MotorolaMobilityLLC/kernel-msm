@@ -907,6 +907,15 @@ typedef struct
 }tUpdateDtimParams, *tpUpdateDtimParams;
 */
 
+typedef enum
+{
+    eHAL_CHANNEL_SWITCH_SOURCE_SCAN,
+    eHAL_CHANNEL_SWITCH_SOURCE_LISTEN,
+    eHAL_CHANNEL_SWITCH_SOURCE_MCC,
+    eHAL_CHANNEL_SWITCH_SOURCE_CSA,
+    eHAL_CHANNEL_SWITCH_SOURCE_MAX = 0x7fffffff
+} eHalChanSwitchSource;
+
 
 //HAL MSG: SIR_HAL_CHNL_SWITCH_REQ
 typedef struct
@@ -923,6 +932,8 @@ typedef struct
     tSirMacAddr selfStaMacAddr;
                         //the request has power constraints, this should be applied only to that session
 #endif
+    eHalChanSwitchSource channelSwitchSrc;
+
     /* VO Wifi comment: BSSID is needed to identify which session issued this request. As the 
        request has power constraints, this should be applied only to that session */
     /* V IMP: Keep bssId field at the end of this msg. It is used to mantain backward compatbility

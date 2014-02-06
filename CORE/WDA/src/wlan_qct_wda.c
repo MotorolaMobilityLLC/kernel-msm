@@ -3128,6 +3128,121 @@ VOS_STATUS WDA_ProcessChannelSwitchReq(tWDA_CbContext *pWDA,
    }
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
+
+/*
+ * FUNCTION: WDA_SwitchChannelReqCallback_V1
+ * send Switch channel RSP back to PE
+ */
+void WDA_SwitchChannelReqCallback_V1(
+               WDI_SwitchChRspParamsType_V1 *wdiSwitchChanRsp,
+               void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData ;
+   tWDA_CbContext *pWDA;
+   tSwitchChannelParams *pSwitchChanParams;
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                 "<------ %s " ,__func__);
+
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                   "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return ;
+   }
+   pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
+   pSwitchChanParams =
+        (tSwitchChannelParams *)pWdaParams->wdaMsgParam;
+   pSwitchChanParams->channelSwitchSrc =
+        wdiSwitchChanRsp->channelSwitchSrc;
+#ifdef WLAN_FEATURE_VOWIFI
+   pSwitchChanParams->txMgmtPower =
+        wdiSwitchChanRsp->ucTxMgmtPower;
+#endif
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   vos_mem_free(pWdaParams);
+   pSwitchChanParams->status =
+                          wdiSwitchChanRsp->wdiStatus ;
+   WDA_SendMsg(pWDA, WDA_SWITCH_CHANNEL_RSP,
+        (void *)pSwitchChanParams , 0);
+   return;
+}
+
+/*
+ * FUNCTION: WDA_ProcessChannelSwitchReq_V1
+ * Request to WDI to switch channel REQ params.
+ */
+VOS_STATUS WDA_ProcessChannelSwitchReq_V1(tWDA_CbContext *pWDA,
+                        tSwitchChannelParams *pSwitchChanParams)
+{
+   WDI_Status status = WDI_STATUS_SUCCESS ;
+   WDI_SwitchChReqParamsType_V1 *wdiSwitchChanParam =
+                    (WDI_SwitchChReqParamsType_V1 *)vos_mem_malloc(
+                    sizeof(WDI_SwitchChReqParamsType_V1)) ;
+   tWDA_ReqParams *pWdaParams ;
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                "------> %s " ,__func__);
+   if (NULL == wdiSwitchChanParam)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_NOMEM;
+   }
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(wdiSwitchChanParam);
+      return VOS_STATUS_E_NOMEM;
+   }
+   wdiSwitchChanParam->wdiChInfo.channelSwitchSrc =
+        pSwitchChanParams->channelSwitchSrc;
+
+   wdiSwitchChanParam->wdiChInfo.ucChannel =
+        pSwitchChanParams->channelNumber;
+#ifndef WLAN_FEATURE_VOWIFI
+   wdiSwitchChanParam->wdiChInfo.ucLocalPowerConstraint =
+        pSwitchChanParams->localPowerConstraint;
+#endif
+   wdiSwitchChanParam->wdiChInfo.wdiSecondaryChannelOffset =
+        pSwitchChanParams->secondaryChannelOffset;
+   wdiSwitchChanParam->wdiReqStatusCB = NULL ;
+   /* Store req pointer, as this will be used for response */
+   /* store Params pass it to WDI */
+   pWdaParams->pWdaContext = pWDA;
+   pWdaParams->wdaMsgParam = pSwitchChanParams;
+   pWdaParams->wdaWdiApiMsgParam = wdiSwitchChanParam;
+#ifdef WLAN_FEATURE_VOWIFI
+   wdiSwitchChanParam->wdiChInfo.cMaxTxPower =
+        pSwitchChanParams->maxTxPower;
+   vos_mem_copy(wdiSwitchChanParam->wdiChInfo.macSelfStaMacAddr,
+                    pSwitchChanParams ->selfStaMacAddr,
+                    sizeof(tSirMacAddr));
+#endif
+   vos_mem_copy(wdiSwitchChanParam->wdiChInfo.macBSSId,
+                    pSwitchChanParams->bssId,
+                    sizeof(tSirMacAddr));
+
+   status = WDI_SwitchChReq_V1(wdiSwitchChanParam,
+            (WDI_SwitchChRspCb_V1)WDA_SwitchChannelReqCallback_V1,
+            pWdaParams);
+   if (IS_WDI_STATUS_FAILURE(status))
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+           "Failure in process channel switch Req WDI "
+           "API, free all the memory " );
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams) ;
+      pSwitchChanParams->status = eSIR_FAILURE ;
+      WDA_SendMsg(pWDA, WDA_SWITCH_CHANNEL_RSP,
+            (void *)pSwitchChanParams, 0) ;
+   }
+   return CONVERT_WDI2VOS_STATUS(status) ;
+}
+
 /*
  * FUNCTION: WDA_ConfigBssReqCallback
  * config BSS Req Callback, called by WDI
@@ -11890,8 +12005,22 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          }
          else
          {
-            WDA_ProcessChannelSwitchReq(pWDA, 
-                                 (tSwitchChannelParams*)pMsg->bodyptr) ;
+            if (IS_FEATURE_SUPPORTED_BY_FW(CH_SWITCH_V1) &&
+                 eHAL_CHANNEL_SWITCH_SOURCE_CSA ==
+                ((tSwitchChannelParams*)pMsg->bodyptr)->channelSwitchSrc )
+            {
+                VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                             "call ProcessChannelSwitchReq_V1" );
+                WDA_ProcessChannelSwitchReq_V1(pWDA,
+                             (tSwitchChannelParams*)pMsg->bodyptr) ;
+            }
+            else
+            {
+                VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                 "call ProcessChannelSwitchReq" );
+               WDA_ProcessChannelSwitchReq(pWDA,
+                             (tSwitchChannelParams*)pMsg->bodyptr) ;
+            }
          }
          break ;
       }

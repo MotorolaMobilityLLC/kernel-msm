@@ -167,6 +167,7 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
     ,CH_SWITCH_V1                   //33
     ,HT40_OBSS_SCAN                 //34
     ,UPDATE_CHANNEL_LIST            //35
+
 };
 
 /*-------------------------------------------------------------------------- 
@@ -420,8 +421,11 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
   NULL,
 #endif /* FEATURE_WLAN_BATCH_SCAN */
   WDI_ProcessRateUpdateInd,              /* WDI_RATE_UPDATE_IND */
+
   WDI_ProcessHT40OBSSScanInd,        /*WDI_START_HT40_OBSS_SCAN_IND */
-  WDI_ProcessHT40OBSSStopScanInd     /*WDI_STOP_HT40_OBSS_SCAN_IND */
+  WDI_ProcessHT40OBSSStopScanInd,    /*WDI_STOP_HT40_OBSS_SCAN_IND */
+
+  WDI_ProcessChannelSwitchReq_V1,    /* WDI_CH_SWITCH_REQ_V1*/
 
 };
 
@@ -615,6 +619,8 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
   WDI_ProcessSetMaxTxPowerPerBandRsp,  /* WDI_SET_MAX_TX_POWER_PER_BAND_RSP */
 
     WDI_ProcessUpdateChanRsp,         /* WDI_UPDATE_CHAN_RESP */
+
+    WDI_ProcessChannelSwitchRsp_V1,     /* WDI_CH_SWITCH_RESP_V1  */
 
   /*---------------------------------------------------------------------
     Indications
@@ -915,6 +921,7 @@ static char *WDI_getReqMsgString(wpt_uint16 wdiReqMsgId)
     CASE_RETURN_STRING( WDI_ADD_BA_SESSION_REQ );
     CASE_RETURN_STRING( WDI_DEL_BA_REQ );
     CASE_RETURN_STRING( WDI_CH_SWITCH_REQ );
+    CASE_RETURN_STRING( WDI_CH_SWITCH_REQ_V1);
     CASE_RETURN_STRING( WDI_CONFIG_STA_REQ );
     CASE_RETURN_STRING( WDI_SET_LINK_ST_REQ );
     CASE_RETURN_STRING( WDI_GET_STATS_REQ );
@@ -4836,6 +4843,68 @@ WDI_SwitchChReq
   return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
 
 }/*WDI_SwitchChReq*/
+
+/**
+ @brief WDI_SwitchChReq_V1 will be called when the upper MAC wants
+        the WLAN HW to change the current channel of operation.
+        Upon the call of this API the WLAN DAL will pack and
+        send a HAL Start request message to the lower RIVA
+        sub-system if DAL is in state STARTED.
+        This request message also includes source of channel switch,
+        like CSA,
+
+        In state BUSY this request will be queued. Request won't
+        be allowed in any other state.
+
+ WDI_Start must have been called.
+
+ @param wdiSwitchChReqParams: the switch ch parameters as
+                      specified by the Device Interface
+
+        wdiSwitchChRspCb: callback for passing back the response
+        of the switch ch operation received from the device
+
+        pUserData: user data will be passed back with the
+        callback
+
+ @see WDI_Start
+ @return Result of the function call
+*/
+WDI_Status
+WDI_SwitchChReq_V1
+(
+  WDI_SwitchChReqParamsType_V1* pwdiSwitchChReqParams,
+  WDI_SwitchChRspCb_V1          wdiSwitchChRspCb,
+  void*                      pUserData
+)
+{
+  WDI_EventInfoType      wdiEventData;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+   WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+              "WDI API call WDI_SwitchChReq_V1");
+  /*------------------------------------------------------------------------
+    Sanity Check
+  ------------------------------------------------------------------------*/
+  if ( eWLAN_PAL_FALSE == gWDIInitialized )
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+              "WDI API call before module is initialized - Fail request");
+
+    return WDI_STATUS_E_NOT_ALLOWED;
+  }
+
+  /*------------------------------------------------------------------------
+    Fill in Event data and post to the Main FSM
+  ------------------------------------------------------------------------*/
+  wdiEventData.wdiRequest      = WDI_CH_SWITCH_REQ_V1;
+  wdiEventData.pEventData      = pwdiSwitchChReqParams;
+  wdiEventData.uEventDataSize  = sizeof(*pwdiSwitchChReqParams);
+  wdiEventData.pCBfnc          = wdiSwitchChRspCb;
+  wdiEventData.pUserData       = pUserData;
+
+  return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+
+}/*WDI_SwitchChReq_V1*/
 
 
 /**
@@ -11427,6 +11496,99 @@ WDI_ProcessChannelSwitchReq
 }/*WDI_ProcessChannelSwitchReq*/
 
 /**
+ @brief Process Channel Switch Request function (called when
+        Main FSM allows it)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status WDI_ProcessChannelSwitchReq_V1
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_SwitchChReqParamsType_V1*   pwdiSwitchChParams;
+  WDI_SwitchChRspCb_V1            wdiSwitchChRspCb;
+  wpt_uint8*                   pSendBuffer         = NULL;
+  wpt_uint16                   usDataOffset        = 0;
+  wpt_uint16                   usSendSize          = 0;
+  tSwitchChannelReqMsg_V1      halSwitchChannelReq = {{0}};
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pEventData ) || ( NULL == pEventData->pEventData ) ||
+      ( NULL == pEventData->pCBfnc ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  pwdiSwitchChParams = (WDI_SwitchChReqParamsType_V1*)pEventData->pEventData;
+  wdiSwitchChRspCb   = (WDI_SwitchChRspCb_V1)pEventData->pCBfnc;
+  /*-----------------------------------------------------------------------
+    Get message buffer
+    ! TO DO : proper conversion into the HAL Message Request Format
+  -----------------------------------------------------------------------*/
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx,
+            WDI_CH_SWITCH_REQ_V1,
+            sizeof(halSwitchChannelReq.switchChannelParams_V1),
+            &pSendBuffer, &usDataOffset, &usSendSize))||
+      ( usSendSize < (usDataOffset +
+        sizeof(halSwitchChannelReq.switchChannelParams_V1) )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+              "Unable to get send buffer in channel switch req %p %p %p",
+                pEventData, pwdiSwitchChParams, wdiSwitchChRspCb);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  halSwitchChannelReq.switchChannelParams_V1.channelSwitchSrc =
+        pwdiSwitchChParams->wdiChInfo.channelSwitchSrc;
+
+  halSwitchChannelReq.switchChannelParams_V1.channelNumber =
+                       pwdiSwitchChParams->wdiChInfo.ucChannel;
+#ifndef WLAN_FEATURE_VOWIFI
+  halSwitchChannelReq.switchChannelParams_V1.localPowerConstraint =
+                       pwdiSwitchChParams->wdiChInfo.ucLocalPowerConstraint;
+#endif
+  halSwitchChannelReq.switchChannelParams_V1.secondaryChannelOffset =
+                pwdiSwitchChParams->wdiChInfo.wdiSecondaryChannelOffset;
+
+#ifdef WLAN_FEATURE_VOWIFI
+  halSwitchChannelReq.switchChannelParams_V1.maxTxPower
+                            = pwdiSwitchChParams->wdiChInfo.cMaxTxPower;
+  wpalMemoryCopy(halSwitchChannelReq.switchChannelParams_V1.selfStaMacAddr,
+                  pwdiSwitchChParams->wdiChInfo.macSelfStaMacAddr,
+                  WDI_MAC_ADDR_LEN);
+  wpalMemoryCopy(halSwitchChannelReq.switchChannelParams_V1.bssId,
+                  pwdiSwitchChParams->wdiChInfo.macBSSId,
+                  WDI_MAC_ADDR_LEN);
+#endif
+  wpalMemoryCopy( pSendBuffer+usDataOffset,
+                  &halSwitchChannelReq.switchChannelParams_V1,
+                  sizeof(halSwitchChannelReq.switchChannelParams_V1));
+
+  pWDICtx->wdiReqStatusCB     = pwdiSwitchChParams->wdiReqStatusCB;
+  pWDICtx->pReqStatusUserData = pwdiSwitchChParams->pUserData;
+
+  /*-------------------------------------------------------------------------
+    Send Switch Channel Request to HAL
+  -------------------------------------------------------------------------*/
+  return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
+                         wdiSwitchChRspCb, pEventData->pUserData,
+                         WDI_CH_SWITCH_RESP_V1);
+}/*WDI_ProcessChannelSwitchReq_V1*/
+
+/**
  @brief Process Config STA Request function (called when Main FSM
         allows it)
 
@@ -17489,6 +17651,72 @@ WDI_ProcessChannelSwitchRsp
   return WDI_STATUS_SUCCESS;
 }/*WDI_ProcessChannelSwitchRsp*/
 
+/**
+ @brief Process Channel Switch Rsp function (called when a response
+        is being received over the bus from HAL against
+        WDI_ProcessChannelSwitchReq_V1)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+
+WDI_Status
+WDI_ProcessChannelSwitchRsp_V1
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_SwitchChRspParamsType_V1   wdiSwitchChRsp;
+  WDI_SwitchChRspCb_V1          wdiChSwitchRspCb;
+  tSwitchChannelRspParams_V1        halSwitchChannelRsp;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  wdiChSwitchRspCb = (WDI_SwitchChRspCb_V1)pWDICtx->pfncRspCB;
+
+  /*-------------------------------------------------------------------------
+    Extract response and send it to UMAC
+  -------------------------------------------------------------------------*/
+  wpalMemoryCopy( &halSwitchChannelRsp,
+                  (wpt_uint8*)pEventData->pEventData,
+                  sizeof(halSwitchChannelRsp));
+
+  wdiSwitchChRsp.wdiStatus   =
+               WDI_HAL_2_WDI_STATUS(halSwitchChannelRsp.status);
+  wdiSwitchChRsp.ucChannel = halSwitchChannelRsp.channelNumber;
+
+#ifdef WLAN_FEATURE_VOWIFI
+  wdiSwitchChRsp.ucTxMgmtPower =  halSwitchChannelRsp.txMgmtPower;
+#endif
+
+  wdiSwitchChRsp.channelSwitchSrc = halSwitchChannelRsp.channelSwitchSrc;
+  if (( NULL == wdiChSwitchRspCb ) )
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                   "%s: ### Call back function is null", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+  /*Notify UMAC*/
+  wdiChSwitchRspCb( &wdiSwitchChRsp, pWDICtx->pRspCBUserData);
+
+  return WDI_STATUS_SUCCESS;
+}/*WDI_ProcessChannelSwitchRsp_V1*/
 
 /**
  @brief Process Config STA Rsp function (called when a response
@@ -23031,6 +23259,8 @@ WDI_2_HAL_REQ_TYPE
        return WLAN_HAL_STOP_HT40_OBSS_SCAN_IND;
   case WDI_UPDATE_CHAN_REQ:
     return WLAN_HAL_UPDATE_CHANNEL_LIST_REQ;
+  case WDI_CH_SWITCH_REQ_V1:
+       return WLAN_HAL_CH_SWITCH_V1_REQ;
   default:
     return WLAN_HAL_MSG_MAX;
   }
@@ -24135,6 +24365,10 @@ WDI_ExtractRequestCBFromEvent
   case WDI_CH_SWITCH_REQ:
     *ppfnReqCB   =  ((WDI_SwitchChReqParamsType*)pEvent->pEventData)->wdiReqStatusCB;
     *ppUserData  =  ((WDI_SwitchChReqParamsType*)pEvent->pEventData)->pUserData;
+    break;
+  case WDI_CH_SWITCH_REQ_V1:
+    *ppfnReqCB   =  ((WDI_SwitchChReqParamsType_V1*)pEvent->pEventData)->wdiReqStatusCB;
+    *ppUserData  =  ((WDI_SwitchChReqParamsType_V1*)pEvent->pEventData)->pUserData;
     break;
   case WDI_CONFIG_STA_REQ:
     *ppfnReqCB   =  ((WDI_ConfigSTAReqParamsType*)pEvent->pEventData)->wdiReqStatusCB;
