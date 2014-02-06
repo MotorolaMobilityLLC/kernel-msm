@@ -25,6 +25,7 @@
 #include <linux/of.h>
 
 #include <mach/clock-generic.h>
+#include <mach/mmi_soc_info.h>
 #include "clock-local2.h"
 
 #define UPDATE_CHECK_MAX_LOOPS 200
@@ -320,6 +321,7 @@ static int clock_a7_probe(struct platform_device *pdev)
 		return a7ssmux.num_parents;
 
 	get_speed_bin(pdev, &speed_bin, &version);
+	mmi_acpu_bin_set(&speed_bin, NULL, &version);
 
 	snprintf(prop_name, ARRAY_SIZE(prop_name),
 			"qcom,speed%d-bin-v%d", speed_bin, version);
