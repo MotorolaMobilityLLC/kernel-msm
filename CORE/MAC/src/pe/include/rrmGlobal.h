@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -51,10 +51,6 @@
 
   \brief Definitions for SME APIs
 
-   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
-
-   Qualcomm Confidential and Proprietary.
-
   ========================================================================*/
 
 typedef enum eRrmRetStatus
@@ -64,6 +60,12 @@ typedef enum eRrmRetStatus
     eRRM_REFUSED,
     eRRM_FAILURE
 } tRrmRetStatus;
+
+typedef enum eRrmMsgReqSource
+{
+    eRRM_MSG_SOURCE_DRV         = 1, /* for both 11k and legacy ccx */
+    eRRM_MSG_SOURCE_CCX_UPLOAD  = 2, /* ccx upload approach */
+} tRrmMsgReqSource;
 
 typedef struct sSirChannelInfo
 {
@@ -84,6 +86,7 @@ typedef struct sSirBeaconReportReqInd
    tAniSSID     ssId;              //May be wilcard.
    tANI_U16      uDialogToken;
    tSirChannelList channelList; //From AP channel report.
+   tRrmMsgReqSource msgSource;
 } tSirBeaconReportReqInd, * tpSirBeaconReportReqInd;
 
 
