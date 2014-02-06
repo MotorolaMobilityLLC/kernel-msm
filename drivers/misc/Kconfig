@@ -633,6 +633,13 @@ config HAPTIC_DRV2605
 	  If you say yes here you get support for the TI DRV2605
 	  haptic driver.
 
+config C55_CTRL
+	tristate "TI C55 Control driver"
+	help
+	  This option enables device driver to control the TI C55 IC. This
+	  is intended to be a simple driver which only exports the GPIOs
+	  for user space use.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
