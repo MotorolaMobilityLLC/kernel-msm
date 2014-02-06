@@ -6766,6 +6766,8 @@ static struct clk_lookup apq_clocks_8084[] = {
 	/* QCA1530 clocks */
 	CLK_LOOKUP("qca,rtc_clk",	div_clk3.c, "qca1530.1"),
 	CLK_LOOKUP("qca,tcxo_clk",	rf_clk2_pin.c, "qca1530.1"),
+
+	CLK_LOOKUP("adc_mclk", bb_clk2_a_pin.c, "c55_ctrl"),
 };
 
 static struct pll_config_regs mmpll0_regs __initdata = {
