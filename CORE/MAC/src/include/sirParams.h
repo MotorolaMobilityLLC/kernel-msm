@@ -96,6 +96,7 @@ typedef enum {
    BATCH_SCAN = 30,
 #endif
    FW_IN_TX_PATH = 31,
+   UPDATE_CHANNEL_LIST = 34,
 
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
