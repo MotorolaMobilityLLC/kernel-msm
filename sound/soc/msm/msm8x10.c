@@ -279,11 +279,11 @@ static void msm8x10_enable_ext_spk_power_amp(u32 on)
 			     EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
 	} else {
 		gpio_direction_output(ext_spk_amp_gpio, on);
-		if (ext_spk_boost_gpio >= 0)
-			gpio_direction_output(ext_spk_boost_gpio, on);
 		/*time takes disable the external power amplifier*/
 		usleep_range(EXT_CLASS_D_DIS_DELAY,
 			     EXT_CLASS_D_DIS_DELAY + EXT_CLASS_D_DELAY_DELTA);
+		if (ext_spk_boost_gpio >= 0)
+			gpio_direction_output(ext_spk_boost_gpio, on);
 	}
 
 	pr_debug("%s: %s external speaker PAs.\n", __func__,
