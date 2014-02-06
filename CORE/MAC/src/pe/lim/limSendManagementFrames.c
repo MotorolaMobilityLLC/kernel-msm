@@ -3375,8 +3375,8 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
                 if (pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length) 
                 {
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-                    PELOGE(limLog(pMac, LOGE, FL("Auth1 Frame FTIE is: "));
-                        sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOGE,
+                    PELOG2(limLog(pMac, LOG2, FL("Auth1 Frame FTIE is: "));
+                        sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2,
                             (tANI_U8 *)pBody,
                             (pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length));)
 #endif
