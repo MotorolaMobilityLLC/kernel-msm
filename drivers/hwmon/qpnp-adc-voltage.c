@@ -781,8 +781,8 @@ static void qpnp_vadc_625mv_channel_sel(struct qpnp_vadc_chip *vadc,
 	uint32_t dt_index = 0;
 
 	/* Check if the buffered 625mV channel exists */
-	while ((vadc->adc->adc_channels[dt_index].channel_num
-		!= SPARE1) && (dt_index < vadc->max_channels_available))
+	while ((dt_index < vadc->max_channels_available) &&
+		(vadc->adc->adc_channels[dt_index].channel_num != SPARE1))
 		dt_index++;
 
 	if (dt_index >= vadc->max_channels_available) {
