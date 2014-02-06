@@ -65,7 +65,8 @@ irqreturn_t stm401_wake_isr(int irq, void *dev)
 void stm401_irq_wake_work_func(struct work_struct *work)
 {
 	int err;
-	unsigned short irq_status, irq2_status;
+	unsigned short irq_status;
+	u32 irq2_status;
 	signed short x, y, z, q;
 
 	struct stm401_data *ps_stm401 = container_of(work,
@@ -85,12 +86,13 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 
 	/* read algorithm interrupt status register */
 	stm401_cmdbuff[0] = ALGO_INT_STATUS;
-	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
 	if (err < 0) {
 		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq2_status = (stm401_readbuff[1] << 8) | stm401_readbuff[0];
+	irq2_status = (stm401_readbuff[2] << 16) | (stm401_readbuff[1] << 8) |
+		stm401_readbuff[0];
 
 	/* First, check for error messages */
 	if (irq_status & M_LOG_MSG) {
