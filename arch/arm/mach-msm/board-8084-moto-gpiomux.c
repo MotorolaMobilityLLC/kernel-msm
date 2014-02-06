@@ -1356,6 +1356,73 @@ static struct msm_gpiomux_config msm_epm_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting c55_i2s_act_cfg = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting c55_i2s_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
+};
+
+/* Primary AUXPCM port sharing GPIO lines with Primary MI2S */
+static struct msm_gpiomux_config c55_i2s_configs[] __initdata = {
+	{
+		.gpio = 77,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &c55_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 78,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &c55_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 80,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &c55_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
+		},
+	},
+};
+
+static struct gpiomux_setting c55_c55_int_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting c55_ap_int_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config c55_configs[] __initdata = {
+	{
+		.gpio = 140,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &c55_c55_int_cfg,
+		},
+	},
+	{
+		.gpio = 76,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &c55_ap_int_cfg,
+		},
+	},
+};
+
 void __init apq8084_moto_init_gpiomux(void)
 {
 	int rc;
@@ -1429,6 +1496,9 @@ void __init apq8084_moto_init_gpiomux(void)
 	msm_gpiomux_install(bcm2079x_configs, ARRAY_SIZE(bcm2079x_configs));
 
 	msm_gpiomux_install(stm401_configs, ARRAY_SIZE(stm401_configs));
+
+	msm_gpiomux_install(c55_i2s_configs, ARRAY_SIZE(c55_i2s_configs));
+	msm_gpiomux_install(c55_configs, ARRAY_SIZE(c55_configs));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())
