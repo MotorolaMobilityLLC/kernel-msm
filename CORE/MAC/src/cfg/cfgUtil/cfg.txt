@@ -4719,3 +4719,99 @@ HAL
 0    1     0
 *
 *
+
+*************************************
+* Feature:   Channel Bonding 2.4G
+*************************************
+
+WNI_CFG_CHANNEL_BONDING_24G    I    4    12
+V    RW    NP    RESTART
+LIM
+0    1     0
+V    RW    NP    RESTART
+LIM
+0    1     0
+
+*
+*  OBSS PASSIVE Channel Time (TU)
+*
+
+WNI_CFG_OBSS_HT40_SCAN_PASSIVE_DWELL_TIME    I    4    9
+V    RW    NP
+NONE
+5    1000    20
+V    RW    NP
+NONE
+5    1000    20
+
+*
+*  OBSS ACTIVE Channel Time (TU)
+*
+
+WNI_CFG_OBSS_HT40_SCAN_ACTIVE_DWELL_TIME    I    4    9
+V    RW    NP
+NONE
+10    1000    10
+V    RW    NP
+NONE
+10    1000    10
+
+*
+*  OBSS SCAN WIDTH TRIGGER Interval (TU)
+*
+
+WNI_CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL    I    4    9
+V    RW    NP
+NONE
+10    900    200
+V    RW    NP
+NONE
+10    900    200
+
+*
+*  OBSS SCAN passive total per chanenl (TU)
+*
+
+WNI_CFG_OBSS_HT40_SCAN_PASSIVE_TOTAL_PER_CHANNEL    I    4    9
+V    RW    NP
+NONE
+200    10000    200
+V    RW    NP
+NONE
+200    10000    200
+
+*
+*  OBSS SCAN active total per Channel (TU)
+*
+
+WNI_CFG_OBSS_HT40_SCAN_ACTIVE_TOTAL_PER_CHANNEL    I    4    9
+V    RW    NP
+NONE
+20    10000    20
+V    RW    NP
+NONE
+20    10000    20
+
+*
+*  OBSS Width Channel Transition Delay Factor
+*
+
+WNI_CFG_OBSS_HT40_WIDTH_CHANNEL_TRANSITION_DELAY_FACTOR  I    4    9
+V    RW    NP
+NONE
+5    100    5
+V    RW    NP
+NONE
+5    100    5
+
+*
+*  OBSS SCAN Activity Threshold(TU)
+*
+
+WNI_CFG_OBSS_HT40_SCAN_ACTIVITY_THRESHOLD    I    4    9
+V    RW    NP
+NONE
+0    100    25
+V    RW    NP
+NONE
+0    100    25
