@@ -805,26 +805,6 @@ static int lis3dsh_acc_device_power_on(struct lis3dsh_acc_data *acc)
 	return 0;
 }
 
-static irqreturn_t lis3dsh_acc_isr1(int irq, void *dev)
-{
-	struct lis3dsh_acc_data *acc = dev;
-
-	if (atomic_read(&acc->int1_enabled))
-		disable_irq_nosync(irq);
-
-	return IRQ_WAKE_THREAD;
-}
-
-static irqreturn_t lis3dsh_acc_isr2(int irq, void *dev)
-{
-	struct lis3dsh_acc_data *acc = dev;
-
-	if (atomic_read(&acc->int2_enabled))
-		disable_irq_nosync(irq);
-
-	return IRQ_WAKE_THREAD;
-}
-
 static int lis3dsh_clear_irq1(struct lis3dsh_acc_data *acc)
 {
 	u8 val = LIS3DSH_OUTS_1;
@@ -889,14 +869,6 @@ static irqreturn_t lis3dsh_acc_isr_threaded(int irq, void *dev)
 
 exit:
 	mutex_unlock(&acc->lock);
-	if (irq == acc->irq1) {
-		if (atomic_read(&acc->int1_enabled) == 1)
-			enable_irq(acc->irq1);
-	} else {
-		if (atomic_read(&acc->int2_enabled) == 1)
-			enable_irq(acc->irq2);
-	}
-
 	return IRQ_HANDLED;
 }
 
@@ -2199,9 +2171,9 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 	/* As default, do not report information */
 	if (acc->pdata->gpio_int1 >= 0) {
 		atomic_set(&acc->int1_enabled, 1);
-		err = request_threaded_irq(acc->irq1, lis3dsh_acc_isr1,
+		err = request_threaded_irq(acc->irq1, NULL,
 				lis3dsh_acc_isr_threaded,
-				IRQF_TRIGGER_RISING,
+				IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
 				"lis3dsh_acc_irq1", acc);
 		if (err < 0) {
 			dev_err(&client->dev, "request irq1 failed: %d\n", err);
@@ -2214,9 +2186,9 @@ static int lis3dsh_acc_probe(struct i2c_client *client,
 
 	if (acc->pdata->gpio_int2 >= 0) {
 		atomic_set(&acc->int2_enabled, 1);
-		err = request_threaded_irq(acc->irq2, lis3dsh_acc_isr2,
+		err = request_threaded_irq(acc->irq2, NULL,
 				lis3dsh_acc_isr_threaded,
-				IRQF_TRIGGER_RISING,
+				IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
 				"lis3dsh_acc_irq2", acc);
 		if (err < 0) {
 			dev_err(&client->dev, "request irq2 failed: %d\n", err);
