@@ -11,3 +11,26 @@
  */
 
 #include "apq8084-moto-common.dtsi"
+#include "dsi-panel-mot-smd-QHD-dualmipi0-cmd.dtsi"
+#include "dsi-panel-mot-smd-QHD-dualmipi1-cmd.dtsi"
+
+&mdss_fb0 {
+	qcom,mdss-fb-split = <720 720>;
+};
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_0_cmd_v0>;
+	qcom,platform-reset-gpio = <&msmgpio 86 0>;
+	qcom,platform-te-gpio = <&msmgpio 12 0>;
+	vbat_disp-supply = <&vbat_disp_vreg>;
+	vdd_disp-supply = <&vdd_disp_vreg>;
+	vci_disp-supply = <&vci_disp_vreg>;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_1_cmd_v0>;
+};
