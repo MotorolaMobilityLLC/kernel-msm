@@ -441,9 +441,15 @@ typedef enum
    WLAN_HAL_IP_FORWARD_TABLE_UPDATE_IND     = 232,
 
    WLAN_HAL_AVOID_FREQ_RANGE_IND            = 233,
+
+   /* Channel Switch Request version 1 */
+   WLAN_HAL_CH_SWITCH_V1_REQ                = 252,
+   WLAN_HAL_CH_SWITCH_V1_RSP                = 253,
+
    /* 2G4 HT40 OBSS scan */
    WLAN_HAL_START_HT40_OBSS_SCAN_IND        = 254,
    WLAN_HAL_STOP_HT40_OBSS_SCAN_IND         = 255,
+
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -494,6 +500,20 @@ typedef enum
    eHAL_SYS_MODE_OEM_DATA,
    eHAL_SYS_MODE_MAX = WLAN_HAL_MAX_ENUM_SIZE
 } eHalSysMode;
+
+typedef enum
+{
+   eHAL_CHANNEL_SWITCH_SOURCE_SCAN,
+   eHAL_CHANNEL_SWITCH_SOURCE_LISTEN,
+   eHAL_CHANNEL_SWITCH_SOURCE_MCC,
+   eHAL_CHANNEL_SWITCH_SOURCE_CSA,
+   eHAL_CHANNEL_SWITCH_SOURCE_CONFIG_BSS,
+   eHAL_CHANNEL_SWITCH_SOURCE_CONFIG_STA,
+   eHAL_CHANNEL_SWITCH_SOURCE_JOIN_REQ,
+   eHAL_CHANNEL_SWITCH_SOURCE_INNAV,
+   eHAL_CHANNEL_SWITCH_SOURCE_WCA,
+   eHAL_CHANNEL_SWITCH_SOURCE_MAX = WLAN_HAL_MAX_ENUM_SIZE
+} eHalChanSwitchSource;
 
 typedef enum
 {
@@ -1084,6 +1104,11 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader header;
    tStartScanParams startScanParams;
 }  tHalStartScanReqMsg, *tpHalStartScanReqMsg;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+}  tHalMotionEventReqMsg, *tpHalMotionEventReqMsg;
 
 /*---------------------------------------------------------------------------
   WLAN_HAL_START_SCAN_RSP
@@ -1704,10 +1729,10 @@ typedef enum
 // IFACE PERSONA for different Operating modes
 typedef enum
 {
-    HAL_IFACE_UNKNOWN,
-    HAL_IFACE_STA_MODE,
-    HAL_IFACE_P2P_MODE,
-    HAL_IFACE_MAX
+    HAL_IFACE_UNKNOWN=0,
+    HAL_IFACE_STA_MODE=1,
+    HAL_IFACE_P2P_MODE=2,
+    HAL_IFACE_MAX=0x7FFFFFFF,
 } tHalIfacePersona;
 
 typedef PACKED_PRE struct PACKED_POST
@@ -2386,7 +2411,79 @@ typedef PACKED_PRE struct PACKED_POST
 
 #endif
 
+/*---------------------------------------------------------------------------
+WLAN_HAL_CH_SWITCH_V1_REQ
+---------------------------------------------------------------------------*/
 
+typedef PACKED_PRE struct PACKED_POST
+{
+    /* Channel number */
+    tANI_U8 channelNumber;
+
+    /* Local power constraint */
+    tANI_U8 localPowerConstraint;
+
+    /*Secondary channel offset */
+    ePhyChanBondState secondaryChannelOffset;
+
+    //HAL fills in the tx power used for mgmt frames in this field.
+    tPowerdBm txMgmtPower;
+
+    /* Max TX power */
+    tPowerdBm maxTxPower;
+
+    /* Self STA MAC */
+    tSirMacAddr selfStaMacAddr;
+
+    /*VO WIFI comment: BSSID needed to identify session. As the request has
+     * power constraints, this should be applied only to that session
+     * Since MTU timing and EDCA are sessionized, this struct needs to be
+     * sessionized and bssid needs to be out of the VOWifi feature flag
+     * V IMP: Keep bssId field at the end of this msg. It is used to
+     * mantain backward compatbility by way of ignoring if using new
+     * host/old FW or old host/new FW since it is at the end of this struct
+     */
+    tSirMacAddr bssId;
+
+    /* Source of Channel Switch */
+    eHalChanSwitchSource channelSwitchSrc;
+} tSwitchChannelParams_V1, *tpSwitchChannelParams_V1;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tSwitchChannelParams_V1 switchChannelParams_V1;
+} tSwitchChannelReqMsg_V1, *tpSwitchChannelReqMsg_V1;
+
+
+/*---------------------------------------------------------------------------
+WLAN_HAL_CH_SWITCH_V1_RSP
+---------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    /* Status */
+    tANI_U32 status;
+
+    /* Channel number - same as in request*/
+    tANI_U8 channelNumber;
+
+    /* HAL fills in the tx power used for mgmt frames in this field */
+    tPowerdBm txMgmtPower;
+
+    /* BSSID needed to identify session - same as in request*/
+    tSirMacAddr bssId;
+
+    /* Source of Channel Switch */
+    eHalChanSwitchSource channelSwitchSrc;
+
+} tSwitchChannelRspParams_V1, *tpSwitchChannelRspParams_V1;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tSwitchChannelRspParams_V1 channelSwitchRspParams_V1;
+} tSwitchChannelRspMsg_V1, *tpSwitchChannelRspMsg_V1;
 
 /*---------------------------------------------------------------------------
 WLAN_HAL_CH_SWITCH_REQ
@@ -6118,6 +6215,7 @@ typedef enum {
     CH_SWITCH_V1           = 33,
     HT40_OBSS_SCAN         = 34,
     UPDATE_CHANNEL_LIST    = 35,
+
     MAX_FEATURE_SUPPORTED  = 128,
 } placeHolderInCapBitmap;
 
@@ -6140,6 +6238,7 @@ typedef PACKED_PRE struct PACKED_POST{
 #define IS_WLAN_ROAM_SCAN_OFFLOAD_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(WLAN_ROAM_SCAN_OFFLOAD)))
 #define IS_IBSS_HEARTBEAT_OFFLOAD_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(IBSS_HEARTBEAT_OFFLOAD)))
 #define IS_SCAN_OFFLOAD_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(WLAN_SCAN_OFFLOAD)))
+#define IS_CH_SWITCH_V1_SUPPORTED_BY_HOST ((!!(halMsg_GetHostWlanFeatCaps(CH_SWITCH_V1))))
 
 tANI_U8 halMsg_GetHostWlanFeatCaps(tANI_U8 feat_enum_value);
 
