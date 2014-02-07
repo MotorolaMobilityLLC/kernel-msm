@@ -1563,6 +1563,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int p;
 	int w;
 	int id;
+	struct timespec hw_time = ktime_to_timespec(ktime_get());
 
 	fingers_supported = fhandler->num_of_data_points;
 	data_addr = fhandler->full_addr.data_base;
@@ -1581,8 +1582,18 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	} else
 		synaptics_dsx_resumeinfo_purgeoff(rmi4_data);
 
+	input_event(rmi4_data->input_dev, EV_SYN,
+			SYN_TIME_SEC, hw_time.tv_sec);
+	input_event(rmi4_data->input_dev, EV_SYN,
+			SYN_TIME_NSEC, hw_time.tv_nsec);
+
 	for (finger = 0; finger < fingers_supported; finger++,
 			 index += fhandler->size_of_data_register_block) {
+#ifdef TYPE_B_PROTOCOL
+		input_mt_slot(rmi4_data->input_dev, finger);
+		input_mt_report_slot_state(rmi4_data->input_dev,
+				MT_TOOL_FINGER, finger_data[index] != 0);
+#endif
 		if (finger_data[index] == 0)
 			continue;
 
@@ -1612,19 +1623,24 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					ABS_MT_POSITION_Y, y);
 		input_report_abs(rmi4_data->input_dev,
 					ABS_MT_PRESSURE, p);
+#ifdef REPORT_2D_W
 		input_report_abs(rmi4_data->input_dev,
 					ABS_MT_TOUCH_MAJOR, w);
+#endif
 		input_report_abs(rmi4_data->input_dev,
 					ABS_MT_TRACKING_ID, id);
+#ifndef TYPE_B_PROTOCOL
 		input_mt_sync(rmi4_data->input_dev);
+#endif
 		touch_count++;
 
 		synaptics_dsx_resumeinfo_touch(rmi4_data);
 	}
 
+#ifndef TYPE_B_PROTOCOL
 	if (!touch_count)
 		input_mt_sync(rmi4_data->input_dev);
-
+#endif
 	input_sync(rmi4_data->input_dev);
 
 	return touch_count;
@@ -2379,6 +2395,13 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	} else
 		return -ENOENT;
 
+	dev_dbg(&rmi4_data->i2c_client->dev,
+			"%s: Function %02x max x = %d max y = %d nof = %d\n",
+			__func__, fhandler->fn_number,
+			rmi4_data->sensor_max_x,
+			rmi4_data->sensor_max_y,
+			rmi4_data->num_of_fingers);
+
 	fhandler->intr_reg_num = (intr_count + 7) / 8;
 	if (fhandler->intr_reg_num != 0)
 		fhandler->intr_reg_num -= 1;
@@ -2419,11 +2442,15 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 			ABS_MT_TOUCH_MAJOR, 0,
 			255, 0, 0);
 #endif
+#ifdef TYPE_B_PROTOCOL
+	input_mt_init_slots(rmi4_data->input_dev,
+			rmi4_data->num_of_fingers);
+#else
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_TRACKING_ID, 0,
 			rmi4_data->num_of_fingers - 1, 0, 0);
-
 	input_set_events_per_packet(rmi4_data->input_dev, 64);
+#endif
 
 	return retval;
 }
