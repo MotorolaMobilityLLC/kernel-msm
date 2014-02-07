@@ -7191,7 +7191,24 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
                 "%s: Current band value = %u, new setting %u ",
                  __func__, currBand, band);
 
-        if (hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter)))
+        /* We need to change the band and flush the scan results here itself
+         * as we may get timeout for disconnection in which we will return
+         * with out doing any of these
+         */
+        if (eHAL_STATUS_SUCCESS != sme_SetFreqBand(hHal, (eCsrBand)band))
+        {
+             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                     "%s: failed to set the band value to %u ",
+                        __func__, band);
+             return -EINVAL;
+        }
+        wlan_hdd_cfg80211_update_band(pHddCtx->wiphy, (eCsrBand)band);
+        hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
+                           eCSR_SCAN_ABORT_DUE_TO_BAND_CHANGE);
+        sme_FilterScanResults(hHal, pAdapter->sessionId);
+
+        if (band != eCSR_BAND_ALL &&
+            hdd_connIsConnected(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter)))
         {
              hdd_station_ctx_t *pHddStaCtx = &(pAdapter)->sessionCtx.station;
              eHalStatus status = eHAL_STATUS_SUCCESS;
@@ -7230,18 +7247,6 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
                 return (0 == lrc) ? -ETIMEDOUT : -EINTR;
              }
         }
-
-        hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
-                           eCSR_SCAN_ABORT_DUE_TO_BAND_CHANGE);
-        sme_ScanFlushResult(hHal, pAdapter->sessionId);
-        if (eHAL_STATUS_SUCCESS != sme_SetFreqBand(hHal, (eCsrBand)band))
-        {
-             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                     "%s: failed to set the band value to %u ",
-                        __func__, band);
-             return -EINVAL;
-        }
-        wlan_hdd_cfg80211_update_band(pHddCtx->wiphy, (eCsrBand)band);
     }
     return 0;
 }
