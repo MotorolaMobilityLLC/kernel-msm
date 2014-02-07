@@ -1833,10 +1833,10 @@ static int mdss_fb_check_var(struct fb_var_screeninfo *var,
 			(var->blue.offset == 24) &&
 			(var->green.offset == 16) &&
 			(var->red.offset == 8)) &&
-		    !((var->transp.offset == 24) &&
-			(var->blue.offset == 16) &&
-			(var->green.offset == 8) &&
-			(var->red.offset == 0)))
+		    !((var->transp.offset == 0) &&
+			(var->blue.offset == 8) &&
+			(var->green.offset == 16) &&
+			(var->red.offset == 24)))
 				return -EINVAL;
 
 		/* Check the common values for both RGBA and ARGB */
