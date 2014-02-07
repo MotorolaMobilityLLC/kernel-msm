@@ -5666,6 +5666,7 @@ typedef enum {
     RATECTRL           = 21,
     WOW                = 22,
     WLAN_ROAM_SCAN_OFFLOAD = 23,
+    EXTENDED_NSOFFLOAD_SLOT = 24,
     //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 
