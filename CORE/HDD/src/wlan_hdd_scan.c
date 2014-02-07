@@ -1191,8 +1191,9 @@ exit_point:
 }
 
 /* Abort any MAC scan if in progress */
-void hdd_abort_mac_scan(hdd_context_t* pHddCtx, tANI_U8 sessionId)
+void hdd_abort_mac_scan(hdd_context_t* pHddCtx, tANI_U8 sessionId,
+                        eCsrAbortReason reason)
 {
-    sme_AbortMacScan(pHddCtx->hHal, sessionId);
+    sme_AbortMacScan(pHddCtx->hHal, sessionId, reason);
 }
 
