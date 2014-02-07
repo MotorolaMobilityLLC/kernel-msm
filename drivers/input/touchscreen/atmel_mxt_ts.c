@@ -53,6 +53,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 #define MXT_OBJECT_START	0x07
 #define MXT_OBJECT_SIZE		6
 #define MXT_INFO_CHECKSUM_SIZE	3
+#define MXT_T37_REVISION	21
 
 /* Object types */
 #define MXT_DEBUG_DIAGNOSTIC_T37	37
@@ -143,6 +144,7 @@ struct t9_range {
 #define MXT_BOOT_VALUE		0xa5
 #define MXT_RESET_VALUE		0x01
 #define MXT_BACKUP_VALUE	0x55
+#define MXT_IDENT_VALUE		0x80
 
 /* Define for MXT_PROCI_TOUCHSUPPRESSION_T42 */
 #define MXT_T42_MSG_TCHSUP	(1 << 0)
@@ -251,6 +253,7 @@ struct mxt_data {
 	u16 debug_msg_count;
 	struct bin_attribute debug_msg_attr;
 	struct mutex debug_msg_lock;
+	u8 revision_id;
 	u8 max_reportid;
 	u32 config_crc;
 	u32 info_crc;
@@ -1413,6 +1416,27 @@ static int mxt_t6_command(struct mxt_data *data, u16 cmd_offset,
 	return 0;
 }
 
+static int mxt_read_revision_id(struct mxt_data *data, u8 *revision)
+{
+	struct mxt_object *object;
+	int error = -EINVAL;
+
+	object = mxt_get_object(data, MXT_DEBUG_DIAGNOSTIC_T37);
+	if (!object)
+		goto err_exit;
+
+	error = mxt_t6_command(data, MXT_COMMAND_DIAGNOSTIC,
+				MXT_IDENT_VALUE, true);
+	if (error)
+		goto err_exit;
+
+	error = __mxt_read_reg(data->client,
+			       object->start_address + MXT_T37_REVISION,
+			       sizeof(*revision), revision);
+err_exit:
+	return error;
+}
+
 static int mxt_soft_reset(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
@@ -2049,6 +2073,7 @@ static int mxt_read_info_block(struct mxt_data *data)
 	uint8_t num_objects;
 	u32 calculated_crc;
 	u8 *crc_ptr;
+	u8 revision = 0;
 
 	/* If info block already allocated, free it */
 	if (data->raw_info_block != NULL)
@@ -2126,6 +2151,13 @@ static int mxt_read_info_block(struct mxt_data *data)
 
 	if (data->T38_address)
 		data->config_id = mxt_update_config_id(data);
+
+	error = mxt_read_revision_id(data, &revision);
+	if (!error) {
+		data->revision_id = revision;
+		dev_info(&client->dev,
+			"Revision ID: 0x%02x\n", data->revision_id);
+	}
 
 	return 0;
 
@@ -2599,7 +2631,8 @@ static ssize_t mxt_productinfo_show(struct device *dev,
 {
 	struct mxt_data *data = dev_get_drvdata(dev);
 	struct mxt_info *info = data->info ? data->info : &data->pdata->dt_info;
-	return scnprintf(buf, PAGE_SIZE, "%02x\n", info->family_id);
+	return scnprintf(buf, PAGE_SIZE, "%02x%02x\n",
+				info->family_id, data->revision_id);
 }
 
 static ssize_t mxt_poweron_show(struct device *dev,
@@ -2615,9 +2648,10 @@ static ssize_t mxt_ic_ver_show(struct device *dev,
 	struct mxt_data *data = dev_get_drvdata(dev);
 	struct mxt_info *info = data->info ? data->info : &data->pdata->dt_info;
 	return scnprintf(buf, PAGE_SIZE,
-			"%s%02x%02x\n%s%02x%02x%02x\n%s%08x\n",
+			"%s%02x%02x(%02x)\n%s%02x%02x%02x\n%s%08x\n",
 			"Product ID: ",
 			info->family_id,
+			data->revision_id,
 			info->variant_id,
 			"Build ID: ",
 			info->version >> 4,
@@ -3293,31 +3327,37 @@ static bool mxt_check_tdat_format(const unsigned char *image)
 	return image[0] == 0x31;
 }
 
-static u32 mxt_get_tdat_config_id(const unsigned char *data, size_t size)
+static int mxt_get_tdat_config_id(const unsigned char *data, size_t size,
+	u32 *config_id, u8 *revision)
 {
 	unsigned short id;
-	u32 config_id;
+	int error = -EINVAL;
 	size_t length, offset;
 
 	for (offset = 0; offset < size; offset += length+5) {
 		id = (data[offset+1] << 8) | data[offset];
 		length = (data[offset+4] << 8) | data[offset+3];
 		if (id == MXT_SPT_USERDATA_T38) {
-			config_id = be32_to_cpu(
+			*config_id = be32_to_cpu(
 					*(unsigned int *)&data[offset+5]);
-			return config_id;
+			*revision = data[offset+9];
+			error = 0;
+			break;
 		}
 	}
-	return 0;
+	return error;
 }
 
 static int mxt_parse_tdat_image(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
-	u32 config_id, firmware_id;
+	u32 firmware_id;
 	u8 *section, id;
 	size_t ii, length, offset, header_sz, raw_size = data->tdat->size;
 	const u8 *raw_image = data->tdat->data;
+	int error;
+	u32 config_id = 0;
+	u8 revision_id = 0;
 
 	pr_info("Start TDAT image processing\n");
 
@@ -3352,10 +3392,13 @@ static int mxt_parse_tdat_image(struct mxt_data *data)
 
 		switch (id) {
 		case 1: /* config */
-			config_id = mxt_get_tdat_config_id(
-							section, length);
-			pr_info("TDAT: Config ID %x\n", config_id);
+			error = mxt_get_tdat_config_id(section, length,
+						&config_id, &revision_id);
+			if (error)
+				return -EINVAL;
 
+			pr_info("TDAT: Config ID %x, revision 0x%02x\n",
+						config_id, revision_id);
 			data->tsett.data = section;
 			data->tsett.size = length;
 			break;
@@ -3375,6 +3418,11 @@ static int mxt_parse_tdat_image(struct mxt_data *data)
 		}
 	}
 
+	if (revision_id != data->revision_id) {
+		dev_err(dev, "Incorrect firmware\n");
+		return -EINVAL;
+	}
+
 	if ((config_id <= data->config_id) && !forcereflash) {
 		dev_err(dev, "Firmware upgrade is not required\n");
 		return -EINVAL;
@@ -3382,6 +3430,7 @@ static int mxt_parse_tdat_image(struct mxt_data *data)
 
 	data->config_id = config_id;
 	data->firmware_id = firmware_id;
+	data->revision_id = revision_id;
 
 	return 0;
 }
