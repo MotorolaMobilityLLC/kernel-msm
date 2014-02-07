@@ -3018,6 +3018,20 @@ static int smb_parse_dt(struct smb135x_chg *chip)
 	return 0;
 }
 
+
+static bool smb135x_charger_mmi_factory(void)
+{
+	struct device_node *np = of_find_node_by_path("/chosen");
+	bool factory = false;
+
+	if (np)
+		factory = of_property_read_bool(np, "mmi,factory-cable");
+
+	of_node_put(np);
+
+	return factory;
+}
+
 static int smb135x_charger_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
@@ -3025,6 +3039,11 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	struct smb135x_chg *chip;
 	struct power_supply *usb_psy;
 	u8 reg = 0;
+
+	if (smb135x_charger_mmi_factory()) {
+		pr_info("Factory Mode Disabling!\n");
+		return -ENODEV;
+	}
 
 	usb_psy = power_supply_get_by_name("usb");
 	if (!usb_psy) {
