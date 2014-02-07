@@ -118,6 +118,10 @@
 #define STM401_TOUCH_REG_SIZE  8
 #define STM401_MAG_CAL_SIZE 26
 #define STM_AOD_INSTRUMENTATION_REG_SIZE 256
+#define STM401_AS_DATA_BUFF_SIZE 20
+#define STM401_MS_DATA_BUFF_SIZE 20
+
+#define STM401_CAMERA_DATA 0x01
 
 /* Mask values */
 
@@ -172,20 +176,17 @@
 
 struct stm401_android_sensor_data {
 	int64_t timestamp;
-	signed short data1;
-	signed short data2;
-	signed short data3;
 	unsigned char type;
+	unsigned char data[STM401_AS_DATA_BUFF_SIZE];
+	int size;
 	unsigned char status;
 };
 
 struct stm401_moto_sensor_data {
 	int64_t timestamp;
-	signed short data1;
-	signed short data2;
-	signed short data3;
-	signed short data4;
 	unsigned char type;
+	unsigned char data[STM401_MS_DATA_BUFF_SIZE];
+	int size;
 };
 
 enum STM401_data_types {
@@ -344,10 +345,8 @@ struct stm_response {
 
 #define STM401_AS_DATA_QUEUE_SIZE       0x20
 #define STM401_AS_DATA_QUEUE_MASK       0x1F
-#define STM401_ES_DATA_QUEUE_SIZE       0x08
-#define STM401_ES_DATA_QUEUE_MASK       0x07
-
-#define CAMERA_DATA			0x01
+#define STM401_MS_DATA_QUEUE_SIZE       0x08
+#define STM401_MS_DATA_QUEUE_MASK       0x07
 
 #define STM401_CLIENT_MASK		0xF0
 
@@ -360,6 +359,46 @@ struct stm_response {
 #define I2C_RESPONSE_LENGTH		8
 
 #define STM401_MAXDATA_LENGTH		256
+
+/* stm401_readbuff offsets. */
+#define IRQ_LO  0
+#define IRQ_HI  1
+#define IRQ_HI2 2
+
+#define DOCK_STATE	0
+#define PROX_DISTANCE	0
+#define TOUCH_REASON	1
+#define FLAT_UP		0
+#define FLAT_DOWN	0
+#define STOWED_STATUS	0
+#define NFC_VALUE	0
+#define ALGO_TYPE	7
+#define COMPASS_STATUS	12
+#define DISP_VALUE	0
+#define ACCEL_RD_X	0
+#define ACCEL_RD_Y	2
+#define ACCEL_RD_Z	4
+#define MAG_X		0
+#define MAG_Y		2
+#define MAG_Z		4
+#define ORIENT_X	6
+#define ORIENT_Y	8
+#define ORIENT_Z	10
+#define GYRO_RD_X	0
+#define GYRO_RD_Y	2
+#define GYRO_RD_Z	4
+#define ALS_VALUE	0
+#define TEMP_VALUE	0
+#define PRESSURE_VALUE	0
+#define GRAV_X		0
+#define GRAV_Y		2
+#define GRAV_Z		4
+#define CAMERA_VALUE	0
+
+/* The following macros are intended to be called with the stm IRQ handlers */
+/* only and refer to local variables in those functions. */
+#define STM16_TO_HOST(x) ((short) be16_to_cpu(*((u16 *) (stm401_readbuff+(x)))))
+#define STM32_TO_HOST(x) ((short) be32_to_cpu(*((u32 *) (stm401_readbuff+(x)))))
 
 struct stm401_platform_data {
 	int (*init)(void);
@@ -420,7 +459,7 @@ struct stm401_data {
 	wait_queue_head_t stm401_as_data_wq;
 
 	struct stm401_moto_sensor_data
-		stm401_ms_data_buffer[STM401_ES_DATA_QUEUE_SIZE];
+		stm401_ms_data_buffer[STM401_MS_DATA_QUEUE_SIZE];
 	int stm401_ms_data_buffer_head;
 	int stm401_ms_data_buffer_tail;
 	wait_queue_head_t stm401_ms_data_wq;
@@ -461,13 +500,12 @@ void stm401_reset(struct stm401_platform_data *pdata);
 int stm401_reset_and_init(void);
 
 int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
-	unsigned char type, signed short data1, signed short data2,
-	signed short data3, unsigned char status);
+	unsigned char type, unsigned char *data, int size,
+	unsigned char status);
 int stm401_as_data_buffer_read(struct stm401_data *ps_stm401,
 	struct stm401_android_sensor_data *buff);
 int stm401_ms_data_buffer_write(struct stm401_data *ps_stm401,
-	unsigned char type, signed short data1, signed short data2,
-	signed short data3, signed short data4);
+	unsigned char type, unsigned char *data, int size);
 int stm401_ms_data_buffer_read(struct stm401_data *ps_stm401,
 	struct stm401_moto_sensor_data *buff);
 
