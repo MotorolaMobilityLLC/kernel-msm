@@ -62,6 +62,11 @@ struct lm3630a_chip {
 	int ledval;
 };
 
+#ifdef CONFIG_FB_BACKLIGHT
+static bool is_fb_backlight = true;
+#else
+static bool is_fb_backlight;
+#endif
 /* i2c access */
 static int lm3630a_read(struct lm3630a_chip *pchip, unsigned int reg)
 {
@@ -165,6 +170,8 @@ static int lm3630a_chip_init(struct lm3630a_chip *pchip)
 	lm3630a_chip_enable(pchip);
 
 	usleep_range(1000, 2000);
+	/* exit sleep mode */
+	rval |= lm3630a_update(pchip, REG_CTRL, 0x80, 0x00);
 	/* set Filter Strength Register */
 	rval = lm3630a_write(pchip, 0x50, 0x03);
 	/* set Cofig. register */
@@ -663,12 +670,31 @@ static int lm3630a_probe(struct i2c_client *client,
 		dev_err(&client->dev, "fail : init chip\n");
 		return rval;
 	}
+
 	/* backlight register */
-	rval = lm3630a_backlight_register(pchip);
-	if (rval < 0) {
-		dev_err(&client->dev, "fail : backlight register.\n");
-		goto err1;
+	if (is_fb_backlight) {
+		rval = lm3630a_backlight_register(pchip);
+		if (rval < 0) {
+			dev_err(&client->dev, "fail : backlight register.\n");
+			goto err1;
+		}
+	} else {
+		pchip->ledcdev = lm3630a_led_cdev;
+		INIT_WORK(&pchip->ledwork, lm3630a_led_set_func);
+		rval = led_classdev_register(pchip->dev, &pchip->ledcdev);
+		if (rval) {
+			dev_err(pchip->dev, "unable to register %s,rc=%d\n",
+				lm3630a_led_cdev.name, rval);
+			return rval;
+		}
+		pchip->ledwq = create_singlethread_workqueue("lm3630a-led-wq");
+		if (!pchip->ledwq) {
+			dev_err(pchip->dev, "fail to create led thread\n");
+			rval = -ENOMEM;
+			goto err1;
+		}
 	}
+
 	/* pwm */
 	if (pdata->pwm_ctrl != LM3630A_PWM_DISABLE) {
 		pchip->pwmd = pwm_request(pdata->pwm_gpio, "lm3630a-pwm");
@@ -686,41 +712,26 @@ static int lm3630a_probe(struct i2c_client *client,
 			goto err2;
 	}
 
-	pchip->ledcdev = lm3630a_led_cdev;
-	INIT_WORK(&pchip->ledwork, lm3630a_led_set_func);
-	rval = led_classdev_register(pchip->dev, &pchip->ledcdev);
-	if (rval) {
-		dev_err(pchip->dev, "unable to register %s,rc=%d\n",
-			lm3630a_led_cdev.name, rval);
-		goto err3;
-	}
-	pchip->ledwq = create_singlethread_workqueue("lm3630a-led-wq");
-	if (!pchip->ledwq) {
-		dev_err(pchip->dev, "fail to create led thread\n");
-		rval = -ENOMEM;
-		goto err4;
-	}
-
 	dev_info(&client->dev, "LM3630A backlight register OK.\n");
 	return 0;
 
-err4:
-	led_classdev_unregister(&pchip->ledcdev);
-err3:
+err2:
+	if (!IS_ERR_OR_NULL(pchip->pwmd))
+		pwm_free(pchip->pwmd);
 	if (pchip->irq)
 		free_irq(pchip->irq, pchip);
 	if (pchip->irqthread) {
 		flush_workqueue(pchip->irqthread);
 		destroy_workqueue(pchip->irqthread);
 	}
-err2:
-	if (!IS_ERR_OR_NULL(pchip->pwmd))
-		pwm_free(pchip->pwmd);
 err1:
-	if (!IS_ERR_OR_NULL(pchip->bleda))
-		backlight_device_unregister(pchip->bleda);
-	if (!IS_ERR_OR_NULL(pchip->bledb))
-		backlight_device_unregister(pchip->bledb);
+	if (is_fb_backlight) {
+		if (!IS_ERR_OR_NULL(pchip->bleda))
+			backlight_device_unregister(pchip->bleda);
+		if (!IS_ERR_OR_NULL(pchip->bledb))
+			backlight_device_unregister(pchip->bledb);
+	} else
+		led_classdev_unregister(&pchip->ledcdev);
 
 	return rval;
 }
@@ -749,13 +760,15 @@ static int lm3630a_remove(struct i2c_client *client)
 
 	lm3630a_chip_disable(pchip);
 
-	destroy_workqueue(pchip->ledwq);
-	led_classdev_unregister(&pchip->ledcdev);
-
-	if (!IS_ERR_OR_NULL(pchip->bleda))
-		backlight_device_unregister(pchip->bleda);
-	if (!IS_ERR_OR_NULL(pchip->bledb))
-		backlight_device_unregister(pchip->bledb);
+	if (is_fb_backlight) {
+		if (!IS_ERR_OR_NULL(pchip->bleda))
+			backlight_device_unregister(pchip->bleda);
+		if (!IS_ERR_OR_NULL(pchip->bledb))
+			backlight_device_unregister(pchip->bledb);
+	} else {
+		destroy_workqueue(pchip->ledwq);
+		led_classdev_unregister(&pchip->ledcdev);
+	}
 
 	return 0;
 }
