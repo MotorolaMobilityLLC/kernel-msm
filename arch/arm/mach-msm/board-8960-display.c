@@ -1006,7 +1006,6 @@ void __init msm8960_init_fb(void)
 {
 	uint32_t soc_platform_version = socinfo_get_version();
 
-
 	if (SOCINFO_VERSION_MAJOR(soc_platform_version) >= 3)
 		mdp_pdata.mdp_rev = MDP_REV_43;
 
@@ -1029,7 +1028,8 @@ void __init msm8960_init_fb(void)
 	platform_device_register(&mipi_dsi_orise_panel_device);
 
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
-	platform_device_register(&hdmi_msm_device);
+	if (msm8960_oem_funcs.msm_hdmi_init())
+		platform_device_register(&hdmi_msm_device);
 #endif
 
 	if (machine_is_msm8960_liquid())

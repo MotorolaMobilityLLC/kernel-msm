@@ -60,6 +60,7 @@ extern struct clk_lookup *mmi_init_clocks_from_dt(int *size);
 extern void mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 			struct mipi_dsi_platform_data *mipi_dsi_pdata);
 int mmi_mipi_panel_power_en(int on);
+int is_mmi_hdmi_dt_available(void);
 
 /* from board-mmi-dsp.c */
 extern void mmi_audio_dsp_init(void);
