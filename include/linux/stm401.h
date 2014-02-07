@@ -138,6 +138,8 @@
 #define M_GRAVITY		0x0400
 #define M_DISP_ROTATE		0x0800
 #define M_DISP_BRIGHTNESS	0x1000
+#define M_IR_GESTURE           0x2000
+#define M_IR_RAW               0x4000
 
 /* wake sensor status */
 #define M_DOCK			0x0001
@@ -153,13 +155,13 @@
 #define M_LOG_MSG		0x8000
 
 /* algo config mask */
-#define M_MMOVEME               0x0001
-#define M_NOMMOVE               0x0002
-#define M_ALGO_MODALITY         0x0008
-#define M_ALGO_ORIENTATION      0x0010
-#define M_ALGO_STOWED           0x0020
-#define M_ALGO_ACCUM_MODALITY   0x0040
-#define M_ALGO_ACCUM_MVMT       0x0080
+#define M_MMOVEME               0x000001
+#define M_NOMMOVE               0x000002
+#define M_ALGO_MODALITY         0x000008
+#define M_ALGO_ORIENTATION      0x000010
+#define M_ALGO_STOWED           0x000020
+#define M_ALGO_ACCUM_MODALITY   0x000040
+#define M_ALGO_ACCUM_MVMT       0x000080
 
 /* algo index */
 #define STM401_IDX_MODALITY        0
@@ -173,6 +175,9 @@
 #define STM401_EVT_SZ_TRANSITION   7
 #define STM401_EVT_SZ_ACCUM_STATE  2
 #define STM401_EVT_SZ_ACCUM_MVMT   4
+
+#define STM401_IR_SZ_GESTURE       32
+#define STM401_IR_SZ_RAW           18
 
 struct stm401_android_sensor_data {
 	int64_t timestamp;
@@ -213,6 +218,8 @@ enum STM401_data_types {
 	DT_NFC,
 	DT_ALGO_EVT,
 	DT_ACCUM_MVMT,
+	DT_IR_GESTURE,
+	DT_IR_RAW,
 	DT_RESET
 };
 
@@ -270,6 +277,10 @@ struct stm_response {
 
 #define NONWAKESENSOR_CONFIG            0x1A
 #define WAKESENSOR_CONFIG               0x1B
+
+#define IR_GESTURE                      0x1C
+#define IR_RAW                          0x1D
+#define IR_CONFIG                       0x1E
 
 #define MOTION_DUR                      0x20
 #define ZRMOTION_DUR                    0x22
@@ -363,7 +374,6 @@ struct stm_response {
 /* stm401_readbuff offsets. */
 #define IRQ_LO  0
 #define IRQ_HI  1
-#define IRQ_HI2 2
 
 #define DOCK_STATE	0
 #define PROX_DISTANCE	0

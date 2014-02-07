@@ -254,6 +254,21 @@ void stm401_irq_work_func(struct work_struct *work)
 			"Sending Display Brightness %d\n",
 			stm401_readbuff[DISP_VALUE]);
 	}
+	/* TODO(kliegs): Implement in IKLOCSEN-1223. */
+	if (irq_status & M_IR_GESTURE)
+		dev_dbg(&ps_stm401->client->dev, "Not sending IR Gesture\n");
+	if (irq_status & M_IR_RAW) {
+		stm401_cmdbuff[0] = IR_RAW;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
+			STM401_IR_SZ_RAW);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev, "Reading IR data failed\n");
+			goto EXIT;
+		}
+		stm401_as_data_buffer_write(ps_stm401, DT_IR_RAW,
+			stm401_readbuff, STM401_IR_SZ_RAW, 0);
+		dev_dbg(&ps_stm401->client->dev, "Sending raw IR data\n");
+	}
 
 EXIT:
 	/* For now HAE needs events even if the activity is still */
