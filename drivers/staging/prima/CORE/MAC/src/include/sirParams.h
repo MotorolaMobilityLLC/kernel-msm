@@ -97,6 +97,7 @@ typedef enum {
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
    WLAN_ROAM_SCAN_OFFLOAD = 23,
 #endif
+   EXTENDED_NSOFFLOAD_SLOT = 24,
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 
