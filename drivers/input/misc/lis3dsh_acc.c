@@ -2288,8 +2288,10 @@ static int lis3dsh_acc_resume(struct i2c_client *client)
 	int err = 0;
 
 	/* Don't do anything if IRQ1 interrupt is enabled */
-	if (atomic_read(&acc->int1_enabled))
+	if (atomic_read(&acc->int1_enabled)) {
+		enable_irq(acc->irq1);
 		return 0;
+	}
 
 	mutex_lock(&acc->lock);
 	if (acc->on_before_suspend)
@@ -2304,8 +2306,10 @@ static int lis3dsh_acc_suspend(struct i2c_client *client, pm_message_t mesg)
 	int err = 0;
 
 	/* Don't do anything if IRQ1 interrupt is enabled */
-	if (atomic_read(&acc->int1_enabled))
+	if (atomic_read(&acc->int1_enabled)) {
+		disable_irq(acc->irq1);
 		return 0;
+	}
 
 	mutex_lock(&acc->lock);
 	acc->on_before_suspend = acc->enabled;
