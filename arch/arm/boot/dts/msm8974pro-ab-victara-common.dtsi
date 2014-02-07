@@ -183,6 +183,8 @@
 };
 
 &i2c_3 {
+	qcom,i2c-bus-freq = <400000>;
+
 	synaptics_dsx_i2c@20 {
 		status = "disabled";
 	};
