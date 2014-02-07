@@ -254,11 +254,11 @@
 };
 
 &ufsphy1 {
-	status = "ok";
+	status = "disabled";
 };
 
 &ufs1 {
-	status = "ok";
+	status = "disabled";
 };
 
 &sdhc_1 {
