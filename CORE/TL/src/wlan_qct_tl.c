@@ -2417,8 +2417,8 @@ WLANTL_TxBAPFrm
 
   }
 
-  vos_atomic_set_U32( (v_U32_t*)&pTLCb->tlBAPClient.vosPendingDataBuff,
-                      (v_U32_t)vosDataBuff);
+  vos_atomic_set( (uintptr_t*)&pTLCb->tlBAPClient.vosPendingDataBuff,
+                      (uintptr_t)vosDataBuff);
 
   /*------------------------------------------------------------------------
     Check if thre are enough resources for transmission and tx is not
@@ -3205,8 +3205,8 @@ WLANTL_TxMgmtFrm
 
 
     /*Failing the tx for the previous packet enqued by PE*/
-    //vos_atomic_set_U32( (v_U32_t*)&pTLCb->tlMgmtFrmClient.vosPendingDataBuff,
-    //                    (v_U32_t)NULL);
+    //vos_atomic_set( (uintptr_t*)&pTLCb->tlMgmtFrmClient.vosPendingDataBuff,
+    //                    (uintptr_t)NULL);
 
     //vos_pkt_get_user_data_ptr( vosTempBuff, VOS_PKT_USER_DATA_ID_TL,
     //                           (v_PVOID_t)&pfnTxComp);
@@ -3289,9 +3289,8 @@ WLANTL_TxMgmtFrm
                                (v_PVOID_t)WLANTL_TxCompDefaultCb);
 
   }
-
-  vos_atomic_set_U32( (v_U32_t*)&pTLCb->tlMgmtFrmClient.vosPendingDataBuff,
-                      (v_U32_t)vosFrmBuf);
+  vos_atomic_set( (uintptr_t*)&pTLCb->tlMgmtFrmClient.vosPendingDataBuff,
+                      (uintptr_t)vosFrmBuf);
 
   /*------------------------------------------------------------------------
     Check if thre are enough resources for transmission and tx is not
@@ -3306,7 +3305,7 @@ WLANTL_TxMgmtFrm
     {
        TLLOGP(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_FATAL,
               "WLAN TL:WDA_DS_StartXmit fails. vosStatus %d", vosStatus));
-       vos_atomic_set_U32( (v_U32_t*)&pTLCb->tlMgmtFrmClient.vosPendingDataBuff,0); 
+       vos_atomic_set( (uintptr_t*)&pTLCb->tlMgmtFrmClient.vosPendingDataBuff,0);
     }
     return vosStatus;
     
@@ -4046,7 +4045,7 @@ WLANTL_GetFrames
 
           vos_pkt_chain_packet( vosDataBuff, pTLCb->vosTxFCBuf, 1 /*true*/ );
 
-          vos_atomic_set_U32( (v_U32_t*)&pTLCb->vosTxFCBuf, (v_U32_t)NULL);
+          vos_atomic_set( (uintptr_t*)&pTLCb->vosTxFCBuf, (uintptr_t) NULL);
 
           /*FC frames cannot be delayed*/
           pTLCb->bUrgent      = TRUE;
@@ -4091,8 +4090,8 @@ WLANTL_GetFrames
                               pTLCb->tlMgmtFrmClient.vosPendingDataBuff,
                               1 /*true*/ );
 
-        vos_atomic_set_U32( (v_U32_t*)&pTLCb->tlMgmtFrmClient.
-                                  vosPendingDataBuff, (v_U32_t)NULL);
+        vos_atomic_set( (uintptr_t*)&pTLCb->tlMgmtFrmClient.
+                                  vosPendingDataBuff, (uintptr_t)NULL);
 
         /*management frames cannot be delayed*/
         pTLCb->bUrgent      = TRUE;
@@ -4135,8 +4134,8 @@ WLANTL_GetFrames
         /*BAP frames cannot be delayed*/
         pTLCb->bUrgent      = TRUE;
 
-        vos_atomic_set_U32( (v_U32_t*)&pTLCb->tlBAPClient.vosPendingDataBuff,
-                            (v_U32_t)NULL);
+        vos_atomic_set( (uintptr_t*)&pTLCb->tlBAPClient.vosPendingDataBuff,
+                        (uintptr_t) NULL);
 
         /*Update remaining len from SSC */
         uRemaining        -=  (usPktLen + WDA_DXE_HEADER_SIZE);
