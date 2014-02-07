@@ -48,10 +48,11 @@
 
 
 int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
-	unsigned char type, signed short data1, signed short data2,
-	signed short data3, unsigned char status)
+	unsigned char type, unsigned char *data, int size,
+	unsigned char status)
 {
 	int new_head;
+	struct stm401_android_sensor_data *buffer;
 	struct timespec ts;
 	static bool error_reported;
 
@@ -65,16 +66,21 @@ int stm401_as_data_buffer_write(struct stm401_data *ps_stm401,
 		wake_up(&ps_stm401->stm401_as_data_wq);
 		return 0;
 	}
-
-	ps_stm401->stm401_as_data_buffer[new_head].type = type;
-	ps_stm401->stm401_as_data_buffer[new_head].data1 = data1;
-	ps_stm401->stm401_as_data_buffer[new_head].data2 = data2;
-	ps_stm401->stm401_as_data_buffer[new_head].data3 = data3;
-	ps_stm401->stm401_as_data_buffer[new_head].status = status;
+	buffer = &(ps_stm401->stm401_as_data_buffer[new_head]);
+	buffer->type = type;
+	buffer->status = status;
+	if (data != NULL && size > 0) {
+		if (size > sizeof(buffer->data)) {
+			dev_err(&ps_stm401->client->dev,
+				"size %d exceeds as buffer\n", size);
+			return 0;
+		}
+		memcpy(buffer->data, data, size);
+	}
+	buffer->size = size;
 
 	ktime_get_ts(&ts);
-	ps_stm401->stm401_as_data_buffer[new_head].timestamp
-		= ts.tv_sec*1000000000LL + ts.tv_nsec;
+	buffer->timestamp = ts.tv_sec*1000000000LL + ts.tv_nsec;
 
 	ps_stm401->stm401_as_data_buffer_head = new_head;
 	wake_up(&ps_stm401->stm401_as_data_wq);
@@ -103,15 +109,15 @@ int stm401_as_data_buffer_read(struct stm401_data *ps_stm401,
 }
 
 int stm401_ms_data_buffer_write(struct stm401_data *ps_stm401,
-	unsigned char type, signed short data1, signed short data2,
-	signed short data3, signed short data4)
+	unsigned char type, unsigned char *data, int size)
 {
 	int new_head;
+	struct stm401_moto_sensor_data *buffer;
 	struct timespec ts;
 	static bool error_reported;
 
 	new_head = (ps_stm401->stm401_ms_data_buffer_head + 1)
-		& STM401_ES_DATA_QUEUE_MASK;
+		& STM401_MS_DATA_QUEUE_MASK;
 	if (new_head == ps_stm401->stm401_ms_data_buffer_tail) {
 		if (!error_reported) {
 			dev_err(&ps_stm401->client->dev, "ms data buffer full\n");
@@ -120,15 +126,20 @@ int stm401_ms_data_buffer_write(struct stm401_data *ps_stm401,
 		wake_up(&ps_stm401->stm401_ms_data_wq);
 		return 0;
 	}
-
-	ps_stm401->stm401_ms_data_buffer[new_head].type = type;
-	ps_stm401->stm401_ms_data_buffer[new_head].data1 = data1;
-	ps_stm401->stm401_ms_data_buffer[new_head].data2 = data2;
-	ps_stm401->stm401_ms_data_buffer[new_head].data3 = data3;
-	ps_stm401->stm401_ms_data_buffer[new_head].data4 = data4;
+	buffer = &(ps_stm401->stm401_ms_data_buffer[new_head]);
+	buffer->type = type;
+	if (data != NULL && size > 0) {
+		if (size > sizeof(buffer->data)) {
+			dev_err(&ps_stm401->client->dev,
+				"size %d exceeds ms buffer\n", size);
+			return 0;
+		}
+		memcpy(buffer->data, data, size);
+	}
+	buffer->size = size;
 
 	ktime_get_ts(&ts);
-	ps_stm401->stm401_ms_data_buffer[new_head].timestamp
+	buffer->timestamp
 		= ts.tv_sec*1000000000LL + ts.tv_nsec;
 
 	ps_stm401->stm401_ms_data_buffer_head = new_head;
@@ -148,7 +159,7 @@ int stm401_ms_data_buffer_read(struct stm401_data *ps_stm401,
 		return 0;
 
 	new_tail = (ps_stm401->stm401_ms_data_buffer_tail + 1)
-		& STM401_ES_DATA_QUEUE_MASK;
+		& STM401_MS_DATA_QUEUE_MASK;
 
 	*buff = ps_stm401->stm401_ms_data_buffer[new_tail];
 
@@ -249,12 +260,10 @@ static unsigned int stm401_ms_poll(struct file *file,
 {
 	unsigned int mask = 0;
 	struct stm401_data *ps_stm401 = file->private_data;
-
 	poll_wait(file, &ps_stm401->stm401_ms_data_wq, wait);
 	if (ps_stm401->stm401_ms_data_buffer_head
 		!= ps_stm401->stm401_ms_data_buffer_tail)
 		mask = POLLIN | POLLRDNORM;
-
 	return mask;
 }
 
