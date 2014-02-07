@@ -129,6 +129,7 @@ struct msm8960_oem_init_ptrs {
 	void (*msm_regulator_init)(struct msm8960_oem_init_ptrs *);
 	void (*msm_otg_init)(struct msm8960_oem_init_ptrs *, void *);
 	void (*msm_mmc_init)(struct msm8960_oem_init_ptrs *, int, void*, int*);
+	int (*msm_hdmi_init)(void);
 	void *oem_data;
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;

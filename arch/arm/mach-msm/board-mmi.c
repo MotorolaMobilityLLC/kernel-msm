@@ -1020,6 +1020,7 @@ static void __init mmi_msm8960_init_early(void)
 	msm8960_oem_funcs.msm_regulator_init = mmi_regulator_init;
 	msm8960_oem_funcs.msm_otg_init = mmi_otg_init;
 	msm8960_oem_funcs.msm_mmc_init = mmi_mmc_init;
+	msm8960_oem_funcs.msm_hdmi_init = is_mmi_hdmi_dt_available;
 
 	/* Custom OEM Platform Data */
 	mmi_data.is_factory = mmi_boot_mode_is_factory;

@@ -36,6 +36,25 @@
 static int  mmi_feature_hdmi = 1;
 static char panel_name[PANEL_NAME_MAX_LEN + 1];
 
+static int mmi_dt_get_hdmi_feature(int *value)
+{
+	struct device_node *panel_node;
+	const void *panel_prop;
+	panel_node = of_find_node_by_path("/System@0/Feature@0");
+	if (panel_node == NULL)
+		return -ENODEV;
+
+	panel_prop = of_get_property(panel_node, "feature_hdmi", NULL);
+	if (panel_prop != NULL)
+		*value = *(u8 *)panel_prop;
+	return 0;
+}
+
+int is_mmi_hdmi_dt_available(void)
+{
+	return mmi_feature_hdmi;
+}
+
 static int __init mot_parse_atag_display(const struct tag *tag)
 {
 	const struct tag_display *display_tag = &tag->u.display;
@@ -1194,6 +1213,9 @@ void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 {
 	int no_disp;
 
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
+	mmi_dt_get_hdmi_feature(&mmi_feature_hdmi);
+#endif
 	mmi_load_panel_from_dt();
 	no_disp = no_disp_detection();
 	msm_fb_pdata->is_partial_mode_supported = is_partial_mode_supported;
@@ -1211,4 +1233,5 @@ void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 		enable_ext_5v_reg();
 
 	platform_device_register(&mipi_dsi_mot_panel_device);
+
 }
