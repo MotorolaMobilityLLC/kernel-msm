@@ -221,6 +221,14 @@
 				<86 512 0 0>,
 				<86 512 500 800>;
 	};
+	ti,c55-ctrl {
+		compatible = "ti,c55-ctrl";
+		reg = <0 0>;
+		gpios = <&msmgpio 91 2>,      /* gpio_core */
+			<&msmgpio 85 0>,      /* gpio_reset */
+			<&msmgpio 76 1>,      /* gpio_ap_int */
+			<&msmgpio 140 2>;     /* gpio_c55_int */
+	};
 };
 
 &pma8084_lvs3 {
