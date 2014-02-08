@@ -48,8 +48,9 @@ enum pon_power_off_type {
 	PON_POWER_OFF_HARD_RESET	= 0x07,
 };
 
-#define RESET_EXTRA_PANIC_REASON    BIT(0)
-#define RESET_EXTRA_HW_RESET_REASON BIT(1)
+#define RESET_EXTRA_PANIC_REASON        BIT(0)
+#define RESET_EXTRA_HW_RESET_REASON     BIT(1)
+#define RESET_EXTRA_REBOOT_BL_REASON    BIT(2)
 
 #ifdef CONFIG_QPNP_POWER_ON
 int qpnp_pon_system_pwr_off(enum pon_power_off_type type);
