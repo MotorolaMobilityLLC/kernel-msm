@@ -1953,7 +1953,8 @@ v_U16_t hdd_wmm_select_queue(struct net_device * dev, struct sk_buff *skb)
       if (pAdapter->isVosLowResource && is_dhcp_packet(skb))
       {
          VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_WARN,
-                   "%s: Making priority of DHCP packet as VOICE", __func__);
+                   "%s: BestEffort Tx Queue is 3/4th full"
+                   " Make DHCP packet's pri as VO", __func__);
          up = SME_QOS_WMM_UP_VO;
          ac = hddWmmUpToAcMap[up];
       }
