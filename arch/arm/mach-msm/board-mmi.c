@@ -234,6 +234,12 @@ static int emmc_version_init(void)
 	return retval;
 }
 
+static struct msm_i2c_platform_data mmi_msm8960_i2c_qup_gsbi12_pdata = {
+	.clk_freq = 100000,
+	.src_clk_rate = 24000000,
+};
+
+
 /* This sysfs allows sensor TCMD to switch the control of I2C-12
  *  from DSPS to Krait at runtime by issuing the following command:
  *	echo 1 > /sys/kernel/factory_gsbi12_mode/install
@@ -245,7 +251,9 @@ static ssize_t factory_gsbi12_mode_install_set(struct kobject *kobj,
 {
 	int Error;
 
-	Error = platform_device_register(&msm8960_device_qup_i2c_gsbi12);
+	mmi_msm8960_device_qup_i2c_gsbi12.dev.platform_data =
+				&mmi_msm8960_i2c_qup_gsbi12_pdata;
+	Error = platform_device_register(&mmi_msm8960_device_qup_i2c_gsbi12);
 
 	if (Error)
 		printk(KERN_ERR "%s: failed to register gsbi12\n", __func__);
