@@ -737,6 +737,11 @@ static int msm_camera_v4l2_s_parm(struct file *f, void *pctx,
 	pcam_inst = container_of(f->private_data,
 		struct msm_cam_v4l2_dev_inst, eventHandle);
 	pcam_inst->image_mode = (a->parm.capture.extendedmode & 0x7F);
+	if (pcam_inst->pcam->dev_inst_map[pcam_inst->image_mode]) {
+		pr_err("%s Stream type %d already streaming. Return Busy ",
+				__func__, pcam_inst->image_mode);
+		return -EBUSY;
+	}
 	SET_DEVID_MODE(pcam_inst->inst_handle, pcam_inst->pcam->vnode_id);
 	SET_IMG_MODE(pcam_inst->inst_handle, pcam_inst->image_mode);
 	SET_VIDEO_INST_IDX(pcam_inst->inst_handle, pcam_inst->my_index);
