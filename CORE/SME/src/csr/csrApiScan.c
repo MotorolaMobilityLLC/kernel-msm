@@ -7197,10 +7197,13 @@ eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
             vos_mem_set(&pScanCmd->u.scanCmd, sizeof(tScanCmd), 0);
             pScanCmd->u.scanCmd.pToRoamProfile = vos_mem_malloc(sizeof(tCsrRoamProfile));
             if ( NULL == pScanCmd->u.scanCmd.pToRoamProfile )
+            {
                 status = eHAL_STATUS_FAILURE;
+            }
             else
-                status = eHAL_STATUS_SUCCESS;
-            status = csrRoamCopyProfile(pMac, pScanCmd->u.scanCmd.pToRoamProfile, pProfile);
+            {
+                status = csrRoamCopyProfile(pMac, pScanCmd->u.scanCmd.pToRoamProfile, pProfile);
+            }
             if(!HAL_STATUS_SUCCESS(status))
                 break;
             pScanCmd->u.scanCmd.roamId = roamId;
