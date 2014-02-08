@@ -31,7 +31,7 @@
 #include "mdss_mdp.h"
 #include "mdp3_ctrl.h"
 
-#define STATUS_CHECK_INTERVAL 5000
+#define STATUS_CHECK_INTERVAL 8000
 #define STATUS_CHECK_INTERVAL_MIN 200
 
 struct dsi_status_data {
