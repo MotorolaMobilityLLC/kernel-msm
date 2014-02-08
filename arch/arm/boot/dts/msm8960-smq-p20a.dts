@@ -274,14 +274,6 @@
 				type = <0x001e0013>;
 			};
 
-			GSBI@12 {
-				class = [5175616c636f6d6d47534249504f525400];
-				clk_freq = <0x00061a80>;
-				gsbi_type = <0x02>;
-				src_clk_rate = <0x016e3600>;
-				type = <0x001e0013>;
-			};
-
 			GSBI@3 {
 				class = [5175616c636f6d6d47534249504f525400];
 				clk_freq = <0x00061a80>;
