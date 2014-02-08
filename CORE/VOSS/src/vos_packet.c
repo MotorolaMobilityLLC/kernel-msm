@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -47,10 +47,6 @@
 
    Network Protocol packet/buffer support interfaces
 
-   Copyright 2009 (c) Qualcomm, Incorporated.  All Rights Reserved.
-
-   Qualcomm Confidential and Proprietary.
-
   ========================================================================*/
 
 /* $Header$ */
@@ -68,6 +64,13 @@
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
   ------------------------------------------------------------------------*/
+/* Protocol specific packet tracking feature */
+#define VOS_PKT_PROT_ETH_TYPE_OFFSET 12
+#define VOS_PKT_PROT_IP_OFFSET       14
+#define VOS_PKT_PROT_IP_HEADER_SIZE  20
+#define VOS_PKT_PROT_DHCP_SRV_PORT   67
+#define VOS_PKT_PROT_DHCP_CLI_PORT   68
+#define VOS_PKT_PROT_EAPOL_ETH_TYPE  0x888E
 
 /*--------------------------------------------------------------------------
   Type declarations
@@ -3018,6 +3021,57 @@ v_SIZE_t vos_pkt_get_num_of_rx_raw_pkts(void)
 #endif
 }
 
+v_U8_t vos_pkt_get_proto_type
+(
+   void  *pskb,
+   v_U8_t tracking_map
+)
+{
+   v_U8_t     pkt_proto_type = 0;
+   v_U16_t    ether_type;
+   v_U16_t    SPort;
+   v_U16_t    DPort;
+   struct sk_buff *skb = NULL;
+
+
+   if (NULL == pskb)
+   {
+      return pkt_proto_type;
+   }
+   else
+   {
+      skb = (struct sk_buff *)pskb;
+   }
+
+   /* EAPOL Tracking enabled */
+   if (VOS_PKT_PROTO_TYPE_EAPOL & tracking_map)
+   {
+      ether_type = (v_U16_t)(*(v_U16_t *)(skb->data + VOS_PKT_PROT_ETH_TYPE_OFFSET));
+      if (VOS_PKT_PROT_EAPOL_ETH_TYPE == VOS_SWAP_U16(ether_type))
+      {
+         pkt_proto_type |= VOS_PKT_PROTO_TYPE_EAPOL;
+      }
+   }
+
+   /* DHCP Tracking enabled */
+   if (VOS_PKT_PROTO_TYPE_DHCP & tracking_map)
+   {
+      SPort = (v_U16_t)(*(v_U16_t *)(skb->data + VOS_PKT_PROT_IP_OFFSET +
+                                     VOS_PKT_PROT_IP_HEADER_SIZE));
+      DPort = (v_U16_t)(*(v_U16_t *)(skb->data + VOS_PKT_PROT_IP_OFFSET +
+                                     VOS_PKT_PROT_IP_HEADER_SIZE + sizeof(v_U16_t)));
+      if (((VOS_PKT_PROT_DHCP_SRV_PORT == VOS_SWAP_U16(SPort)) &&
+           (VOS_PKT_PROT_DHCP_CLI_PORT == VOS_SWAP_U16(DPort))) ||
+          ((VOS_PKT_PROT_DHCP_CLI_PORT == VOS_SWAP_U16(SPort)) &&
+           (VOS_PKT_PROT_DHCP_SRV_PORT == VOS_SWAP_U16(DPort))))
+      {
+         pkt_proto_type |= VOS_PKT_PROTO_TYPE_DHCP;
+      }
+   }
+
+   /* Protocol type map */
+   return pkt_proto_type;
+}
 #ifdef VOS_PACKET_UNIT_TEST
 #include "vos_packet_test.c"
 #endif

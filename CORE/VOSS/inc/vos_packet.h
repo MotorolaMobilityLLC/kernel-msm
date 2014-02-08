@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -50,10 +50,6 @@
                
    Network Protocol packet/buffer support interfaces 
   
-   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
-   
-   Qualcomm Confidential and Proprietary.
-  
   ========================================================================*/
 
 /* $Header$ */
@@ -67,7 +63,8 @@
 /*-------------------------------------------------------------------------- 
   Preprocessor definitions and constants
   ------------------------------------------------------------------------*/
-
+#define VOS_PKT_PROTO_TYPE_EAPOL   0x02
+#define VOS_PKT_PROTO_TYPE_DHCP    0x04
 /*-------------------------------------------------------------------------- 
   Type declarations
   ------------------------------------------------------------------------*/
@@ -1131,4 +1128,9 @@ VOS_STATUS vos_pkt_get_available_buffer_pool
 */
 v_SIZE_t vos_pkt_get_num_of_rx_raw_pkts(void);
 
+v_U8_t vos_pkt_get_proto_type
+(
+   void  *pskb,
+   v_U8_t tracking_map
+);
 #endif  // !defined( __VOS_PKT_H )
