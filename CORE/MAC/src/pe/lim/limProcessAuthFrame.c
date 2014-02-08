@@ -665,6 +665,8 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                                       (tANI_U8 *) &(pHdr->sa), (tANI_U8) (sizeof(tSirMacAddr))) )
                                   break;
                         }
+
+                        pStaDs = NULL;
                     }
 
                     if (NULL != pStaDs)
