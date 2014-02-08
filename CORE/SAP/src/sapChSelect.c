@@ -1361,7 +1361,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
             else
                 channel_id = pScanResult->BssDescriptor.channelId;
 
-            if (channel_id == pSpectCh->chNum) {
+            if (pSpectCh && (channel_id == pSpectCh->chNum)) {
                 if (pSpectCh->rssiAgr < pScanResult->BssDescriptor.rssi)
                     pSpectCh->rssiAgr = pScanResult->BssDescriptor.rssi;
 
