@@ -130,7 +130,7 @@ struct sd_ssr {
 struct sd_switch_caps {
 	unsigned int		hs_max_dtr;
 	unsigned int		uhs_max_dtr;
-#define HIGH_SPEED_MAX_DTR	50000000
+#define HIGH_SPEED_MAX_DTR	25000000 /* From 50MHz To 25MHz */
 #define UHS_SDR104_MAX_DTR	208000000
 #define UHS_SDR50_MAX_DTR	100000000
 #define UHS_DDR50_MAX_DTR	50000000
