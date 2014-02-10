@@ -63,6 +63,23 @@
 		qcom,cci-master = <1>;
 	};
 
+	led_flash1: qcom,lm3646@ce {
+		cell-index = <0>;
+		reg = <0xce>;
+		qcom,slave-id = <0xce 0x00 0x11>;
+		compatible = "qcom,lm3646";
+		qcom,flash-name = "lm3646";
+		qcom,flash-type = <1>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 18 0>;
+		qcom,gpio-flash-en = <0>;
+		qcom,gpio-req-tbl-num = <0>;
+		qcom,gpio-req-tbl-flags = <0>;
+		qcom,gpio-req-tbl-label = "FLASH_EN";
+		qcom,cci-master = <1>;
+		flash-now-support = <0>;
+};
+
 	qcom,camera@6c {
 		compatible = "qcom,ov10820";
 		reg = <0x6c>;
@@ -70,6 +87,7 @@
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,actuator-src = <&actuator0>;
+		qcom,led-flash-src = <&led_flash1>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "ov10820";
 		qcom,vdd-cx-supply = <&pm8841_s2>;
