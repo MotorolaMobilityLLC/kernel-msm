@@ -84,6 +84,8 @@ static int fb_notifier_callback(struct notifier_block *self,
 #define MXT_SPT_MESSAGECOUNT_T44	44
 #define MXT_SPT_CTECONFIG_T46		46
 #define MXT_PROCI_ACTIVE_STYLUS_T63	63
+#define MXT_PROCI_LENSEBENDING_T65	65
+#define MXT_PROCG_NOISESUPPRESSION_T72	72
 #define MXT_TOUCH_MULTITOUCHSCREEN_T100 100
 
 /* MXT_GEN_MESSAGE_T5 object */
@@ -334,9 +336,15 @@ static inline size_t mxt_obj_instances(const struct mxt_object *obj)
 static bool mxt_object_readable(unsigned int type)
 {
 	switch (type) {
-	case MXT_GEN_COMMAND_T6:
 	case MXT_GEN_POWER_T7:
 	case MXT_GEN_ACQUIRE_T8:
+	case MXT_SPT_SELFTEST_T25:
+	case MXT_SPT_USERDATA_T38:
+	case MXT_SPT_CTECONFIG_T46:
+	case MXT_PROCI_LENSEBENDING_T65:
+	case MXT_PROCG_NOISESUPPRESSION_T72:
+	case MXT_TOUCH_MULTITOUCHSCREEN_T100:
+		return true;
 	case MXT_GEN_DATASOURCE_T53:
 	case MXT_TOUCH_MULTI_T9:
 	case MXT_TOUCH_KEYARRAY_T15:
@@ -353,12 +361,8 @@ static bool mxt_object_readable(unsigned int type)
 	case MXT_PROCG_NOISESUPPRESSION_T48:
 	case MXT_SPT_COMMSCONFIG_T18:
 	case MXT_SPT_GPIOPWM_T19:
-	case MXT_SPT_SELFTEST_T25:
 	case MXT_SPT_CTECONFIG_T28:
-	case MXT_SPT_USERDATA_T38:
 	case MXT_SPT_DIGITIZER_T43:
-	case MXT_SPT_CTECONFIG_T46:
-		return true;
 	default:
 		return false;
 	}
@@ -2706,7 +2710,6 @@ static ssize_t mxt_hw_irqstat_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct mxt_data *data = dev_get_drvdata(dev);
-
 	switch (gpio_get_value(data->pdata->gpio_irq)) {
 	case 0:
 		return scnprintf(buf, PAGE_SIZE, "Low\n");
