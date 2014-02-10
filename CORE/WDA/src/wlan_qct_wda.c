@@ -11053,7 +11053,102 @@ VOS_STATUS WDA_ProcessSetBatchScanReq(tWDA_CbContext *pWDA,
 }
 
 #endif
+/*
+ * FUNCTION: WDA_ProcessHT40OBSSScanInd
+ *
+ * DESCRIPTION: This function sends start/update OBSS scan
+ *                       inidcation message to WDI
+ *
+ * PARAM:
+ * pWDA: pointer to WDA context
+ * pReq: pointer to start  OBSS scan request
+ */
+VOS_STATUS WDA_ProcessHT40OBSSScanInd(tWDA_CbContext *pWDA,
+                               tSirHT40OBSSScanInd *pReq)
+{
+   WDI_Status status;
+   WDI_HT40ObssScanParamsType wdiOBSSScanParams;
+   WDI_HT40ObssScanIndType *pWdiOBSSScanInd;
 
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                             "------> %s " ,__func__);
+   wdiOBSSScanParams.wdiReqStatusCB = WDA_WdiIndicationCallback;
+   wdiOBSSScanParams.pUserData = pWDA;
+
+   pWdiOBSSScanInd = &(wdiOBSSScanParams.wdiHT40ObssScanParam);
+   pWdiOBSSScanInd->cmdType  = pReq->cmdType;
+   pWdiOBSSScanInd->scanType = pReq->scanType;
+   pWdiOBSSScanInd->OBSSScanActiveDwellTime =
+      pReq->OBSSScanActiveDwellTime;
+   pWdiOBSSScanInd->OBSSScanPassiveDwellTime =
+      pReq->OBSSScanPassiveDwellTime;
+   pWdiOBSSScanInd->BSSChannelWidthTriggerScanInterval =
+      pReq->BSSChannelWidthTriggerScanInterval;
+   pWdiOBSSScanInd->BSSWidthChannelTransitionDelayFactor =
+      pReq->BSSWidthChannelTransitionDelayFactor;
+   pWdiOBSSScanInd->OBSSScanActiveTotalPerChannel =
+      pReq->OBSSScanActiveTotalPerChannel;
+   pWdiOBSSScanInd->OBSSScanPassiveTotalPerChannel =
+      pReq->OBSSScanPassiveTotalPerChannel;
+   pWdiOBSSScanInd->OBSSScanActivityThreshold =
+      pReq->OBSSScanActivityThreshold;
+   pWdiOBSSScanInd->channelCount = pReq->channelCount;
+   vos_mem_copy(pWdiOBSSScanInd->channels,
+                pReq->channels,
+                pReq->channelCount);
+   pWdiOBSSScanInd->selfStaIdx = pReq->selfStaIdx;
+   pWdiOBSSScanInd->fortyMHZIntolerent =  pReq->fortyMHZIntolerent;
+   pWdiOBSSScanInd->bssIdx = pReq->bssIdx;
+   pWdiOBSSScanInd->currentOperatingClass = pReq->currentOperatingClass;
+   pWdiOBSSScanInd->ieFieldLen = pReq->ieFieldLen;
+
+   vos_mem_copy(pWdiOBSSScanInd->ieField,
+                pReq->ieField,
+                pReq->ieFieldLen);
+
+   status = WDI_HT40OBSSScanInd(&wdiOBSSScanParams);
+   if (WDI_STATUS_PENDING == status)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+              "Pending received for %s:%d ",__func__,__LINE__ );
+   }
+   else if (WDI_STATUS_SUCCESS_SYNC != status)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "Failure in %s:%d ",__func__,__LINE__ );
+   }
+   return CONVERT_WDI2VOS_STATUS(status) ;
+}
+/*
+ * FUNCTION: WDA_ProcessHT40OBSSStopScanInd
+ *
+ * DESCRIPTION: This function sends stop OBSS scan inidcation message to WDI
+ *
+ * PARAM:
+ * pWDA: pointer to WDA context
+ * pReq: pointer to stop batch scan request
+ */
+VOS_STATUS WDA_ProcessHT40OBSSStopScanInd(tWDA_CbContext *pWDA,
+                             tANI_U8   *bssIdx)
+{
+   WDI_Status status;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                       "------> %s " ,__func__);
+
+   status = WDI_HT40OBSSStopScanInd(*bssIdx);
+   if (WDI_STATUS_PENDING == status)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+              "Pending received for %s:%d ",__func__,__LINE__ );
+   }
+   else if (WDI_STATUS_SUCCESS_SYNC != status)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "Failure in %s:%d ",__func__,__LINE__ );
+   }
+   return CONVERT_WDI2VOS_STATUS(status) ;
+}
 /*
  * FUNCTION: WDA_ProcessRateUpdateInd
  *
@@ -12175,6 +12270,18 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
       }
 #endif
 
+      case WDA_HT40_OBSS_SCAN_IND:
+      {
+          WDA_ProcessHT40OBSSScanInd(pWDA,
+            (tSirHT40OBSSScanInd *)pMsg->bodyptr);
+          break;
+      }
+      case WDA_HT40_OBSS_STOP_SCAN_IND:
+      {
+          WDA_ProcessHT40OBSSStopScanInd(pWDA,
+            (tANI_U8*)pMsg->bodyptr);
+          break;
+      }
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
