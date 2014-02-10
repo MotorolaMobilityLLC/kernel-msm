@@ -9345,6 +9345,7 @@ static int wlan_hdd_cfg80211_testmode(struct wiphy *wiphy, void *data, int len)
             int   buf_len;
             void *buf;
             tSirLPHBReq *hb_params = NULL;
+            tSirLPHBReq *hb_params_temp = NULL;
 
             if (!tb[WLAN_HDD_TM_ATTR_DATA])
             {
@@ -9355,6 +9356,12 @@ static int wlan_hdd_cfg80211_testmode(struct wiphy *wiphy, void *data, int len)
 
             buf = nla_data(tb[WLAN_HDD_TM_ATTR_DATA]);
             buf_len = nla_len(tb[WLAN_HDD_TM_ATTR_DATA]);
+
+            hb_params_temp =(tSirLPHBReq *)buf;
+            if ((hb_params_temp->cmd == LPHB_SET_TCP_PARAMS_INDID) &&
+                (hb_params_temp->params.lphbTcpParamReq.timePeriodSec == 0))
+                return -EINVAL;
+
             hb_params = (tSirLPHBReq *)vos_mem_malloc(sizeof(tSirLPHBReq));
             if (NULL == hb_params)
             {
