@@ -7010,6 +7010,10 @@ eHalStatus csrRoamDisconnectInternal(tpAniSirGlobal pMac, tANI_U32 sessionId, eC
         smsLog(pMac, LOG2, FL("called"));
         status = csrRoamIssueDisassociateCmd(pMac, sessionId, reason);
     }
+    else
+    {
+        smsLog( pMac, LOGE, FL("Roam command is not present"));
+    }
     return (status);
 }
 
@@ -7366,6 +7370,22 @@ tANI_BOOLEAN csrIsRoamCommandWaitingForSession(tpAniSirGlobal pMac, tANI_U32 ses
             pEntry = csrLLNext(&pMac->sme.smeCmdPendingList, pEntry, LL_ACCESS_NOLOCK);
         }
         csrLLUnlock(&pMac->sme.smeCmdPendingList);
+    }
+    if (eANI_BOOLEAN_FALSE == fRet)
+    {
+        csrLLLock(&pMac->roam.roamCmdPendingList);
+        pEntry = csrLLPeekHead(&pMac->roam.roamCmdPendingList, LL_ACCESS_NOLOCK);
+        while (pEntry)
+        {
+            pCommand = GET_BASE_ADDR(pEntry, tSmeCmd, Link);
+            if (( eSmeCommandRoam == pCommand->command ) && ( sessionId == pCommand->sessionId ) )
+            {
+                fRet = eANI_BOOLEAN_TRUE;
+                break;
+            }
+            pEntry = csrLLNext(&pMac->roam.roamCmdPendingList, pEntry, LL_ACCESS_NOLOCK);
+        }
+        csrLLUnlock(&pMac->roam.roamCmdPendingList);
     }
     csrLLUnlock( &pMac->sme.smeCmdActiveList );
     return (fRet);
