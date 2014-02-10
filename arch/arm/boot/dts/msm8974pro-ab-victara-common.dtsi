@@ -235,3 +235,40 @@
 		};
 	};
 };
+
+&pm8941_vadc {
+	/delete-node/ chan@b3;
+	/delete-node/ chan@b4;
+	/delete-node/ chan@b7;
+	/delete-node/ chan@b8;
+
+	chan@b4 {
+		label = "pa_therm1";
+		reg = <0xb4>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
+
+&pm8941_adc_tm {
+	/delete-node/ chan@b3;
+	/delete-node/ chan@b4;
+	/delete-node/ chan@b7;
+
+	chan@b4 {
+		label = "pa_therm1";
+		reg = <0xb4>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x88>;
+		qcom,thermal-node;
+	};
+};
