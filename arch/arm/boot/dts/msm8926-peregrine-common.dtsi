@@ -75,7 +75,7 @@
 	qcom,pad-drv-on = <0x3 0x3 0x3>; /* 8mA, 8mA, 8mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
 
-	qcom,clk-rates = <400000 23076923 100000000 120000000>;
+	qcom,clk-rates = <400000 23076923 50000000 100000000 120000000>;
 	qcom,bus-speed-mode = "SDR12_1p8v", "SDR25_1p8v", "SDR50_1p8v", "DDR_1p8v", "SDR104_1p8v";
 
 	#address-cells = <0>;
