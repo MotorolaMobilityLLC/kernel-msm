@@ -159,11 +159,15 @@ static void arizona_micsupp_check_cp(struct work_struct *work)
 	}
 
 	if (dapm) {
+		mutex_lock(&dapm->card->dapm_mutex);
+
 		if ((reg & (ARIZONA_CPMIC_ENA | ARIZONA_CPMIC_BYPASS)) ==
 		    ARIZONA_CPMIC_ENA)
 			snd_soc_dapm_force_enable_pin(dapm, "MICSUPP");
 		else
 			snd_soc_dapm_disable_pin(dapm, "MICSUPP");
+
+		mutex_unlock(&dapm->card->dapm_mutex);
 
 		snd_soc_dapm_sync(dapm);
 	}
