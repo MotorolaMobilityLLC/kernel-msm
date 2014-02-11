@@ -146,7 +146,6 @@ static struct dsi_cmd_desc mot_display_off_cmds[] = {
 
 static int panel_enable(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
 	static bool exec_once;
 
 	if (mot_panel == NULL) {
@@ -154,11 +153,9 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 		return -1;
 	}
 
-	dsi_tx_buf = mot_panel->mot_tx_buf;
-
 	/*Send display off commands only one time - IKHSS7-48508*/
 	if (exec_once == false) {
-		mipi_dsi_cmds_tx(mfd, dsi_tx_buf, mot_display_off_cmds,
+		mipi_mot_tx_cmds(mot_display_off_cmds,
 			ARRAY_SIZE(mot_display_off_cmds));
 
 		exec_once = true;
@@ -166,43 +163,35 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 
 	if (mipi_mot_get_controller_ver(mfd) <= 2) {
 		if (rotate_display == true) {
-			mipi_dsi_cmds_tx(mfd, dsi_tx_buf,
-				mot_cmd_2_dot_inverted_on_cmds,
+			mipi_mot_tx_cmds(mot_cmd_2_dot_inverted_on_cmds,
 				ARRAY_SIZE(mot_cmd_2_dot_inverted_on_cmds));
 		} else {
-			mipi_dsi_cmds_tx(mfd, dsi_tx_buf,
-				mot_cmd_2_dot_on_cmds,
+			mipi_mot_tx_cmds(mot_cmd_2_dot_on_cmds,
 				ARRAY_SIZE(mot_cmd_2_dot_on_cmds));
 		}
 	} else {
 		if (rotate_display == true) {
-			mipi_dsi_cmds_tx(mfd, dsi_tx_buf,
-				mot_cmd_inverted_on_cmds,
+			mipi_mot_tx_cmds(mot_cmd_inverted_on_cmds,
 				ARRAY_SIZE(mot_cmd_inverted_on_cmds));
 		} else {
-			mipi_dsi_cmds_tx(mfd, dsi_tx_buf,
-				mot_cmd_on_cmds,
+			mipi_mot_tx_cmds(mot_cmd_on_cmds,
 				ARRAY_SIZE(mot_cmd_on_cmds));
 		}
 	}
 
-	mipi_dsi_cmds_tx(mfd, dsi_tx_buf, mot_cmd_scanline_cmds,
+	mipi_mot_tx_cmds(mot_cmd_scanline_cmds,
 				ARRAY_SIZE(mot_cmd_scanline_cmds));
 	return 0;
 }
 
 static int panel_disable(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
-
 	if (mot_panel == NULL) {
 		pr_err("%s: Invalid mot_panel\n", __func__);
 		return -1;
 	}
 
-	dsi_tx_buf =  mot_panel->mot_tx_buf;
-
-	mipi_dsi_cmds_tx(mfd, dsi_tx_buf, mot_display_off_cmds,
+	mipi_mot_tx_cmds(mot_display_off_cmds,
 					ARRAY_SIZE(mot_display_off_cmds));
 
 	return 0;
