@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1527,7 +1527,6 @@ tANI_U8 pRSNOui03[ WLANBAP_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x03 }; // Reser
 tANI_U8 pRSNOui04[ WLANBAP_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x04 }; // AES-CCMP
 tANI_U8 pRSNOui05[ WLANBAP_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x05 }; // WEP-104
 
-#define GET_IE_LEN_IN_BSS(lenInBss) ( lenInBss + sizeof(lenInBss) - ((int) OFFSET_OF( tSirBssDescription, ieFields))) 
 /* Incoming Association indication validation predicate */
 v_U32_t 
 validAssocInd

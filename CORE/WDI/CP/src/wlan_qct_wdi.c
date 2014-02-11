@@ -17371,7 +17371,6 @@ WDI_ProcessDelSTASelfRsp
  @see
  @return Result of the function call
 */
-#define OFFSET_OF(structType,fldName)   (&((structType*)0)->fldName)
 
 WDI_Status
 WDI_ProcessStartOemDataRsp
