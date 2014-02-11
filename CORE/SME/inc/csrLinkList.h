@@ -73,7 +73,7 @@ typedef struct tagDblLinkList
                                                   (tANI_U8 *)(&((type *)0)->field)))
                                      
 //To get the offset of (field) inside structure (type)                                                  
-#define GET_FIELD_OFFSET(type, field)  ((tANI_U32_OR_PTR)(&(((type *)0)->field)))
+#define GET_FIELD_OFFSET(type, field)  ((uintptr_t)(&(((type *)0)->field)))
 
 #define GET_ROUND_UP( _Field, _Boundary ) (((_Field) + ((_Boundary) - 1))  & ~((_Boundary) - 1))
 #define BITS_ON(  _Field, _Bitmask ) ( (_Field) |=  (_Bitmask) )
