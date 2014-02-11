@@ -29,6 +29,7 @@
 #include "mdss_dsi.h"
 #include "mdss_panel.h"
 #include "mdss_mdp.h"
+#include "mdp3_ctrl.h"
 
 #define STATUS_CHECK_INTERVAL 5000
 
@@ -54,8 +55,12 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 	struct dsi_status_data *pdsi_status = NULL;
 	struct mdss_panel_data *pdata = NULL;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+#ifdef CONFIG_FB_MSM_MDSS_MDP3
+	struct mdp3_session_data *mdp3_session = NULL;
+#else
 	struct mdss_overlay_private *mdp5_data = NULL;
 	struct mdss_mdp_ctl *ctl = NULL;
+#endif
 	int ret = 0;
 
 	pdsi_status = container_of(to_delayed_work(work),
@@ -79,6 +84,12 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 		return;
 	}
 
+#ifdef CONFIG_FB_MSM_MDSS_MDP3
+	mdp3_session = pdsi_status->mfd->mdp.private1;
+	mutex_lock(&mdp3_session->lock);
+	ret = ctrl_pdata->check_status(ctrl_pdata);
+	mutex_unlock(&mdp3_session->lock);
+#else
 	mdp5_data = mfd_to_mdp5_data(pdsi_status->mfd);
 	ctl = mfd_to_ctl(pdsi_status->mfd);
 
@@ -110,6 +121,7 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 	if (ctl->shared_lock)
 		mutex_unlock(ctl->shared_lock);
 	mutex_unlock(&ctl->offlock);
+#endif
 
 	if ((pdsi_status->mfd->panel_power_on)) {
 		if (ret > 0) {
