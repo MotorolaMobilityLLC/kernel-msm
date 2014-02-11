@@ -742,4 +742,11 @@ config INPUT_VALIDITY_METALLICA
 
           If unsure, say N.
 
+config SENSORS_STK3X1X_MOTO
+	bool "SensorTek stk3x1x"
+	default n
+	depends on I2C
+	help
+	  Say yes here for STK3X1X by Sensortek
+
 endif

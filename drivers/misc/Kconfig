@@ -795,6 +795,29 @@ config SENSORS_LIS3DH_MOT
 	 Say yes here if you wish to include the ST Micro
 	 LIS3DH Mot accelerometer driver.
 
+config SENSORS_BMA2X2
+	tristate "BMA255/BMA250E/BMA222E/BMA280 acceleration sensor support"
+	default n
+	depends on I2C
+	help
+	  If you say yes here you get support for Bosch Sensortec's
+	  acceleration sensors BMA255/BMA250E/BMA222E/BMA280.
+
+config SENSORS_BMG
+	tristate "Bosch Gyroscope Sensor Driver"
+	default n
+	depends on I2C
+	help
+	  If you say yes here you get support for Bosch Sensortec's
+	  gyroscope sensor drivers of BMG160/BMI055/etc.
+
+config SENSORS_BMM050
+	tristate "BMM050 Magnetic Sensor Driver"
+	default n
+	depends on I2C
+	help
+	  BMM050 Magnetic Sensor Driver implemented by Bosch-Sensortec.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
