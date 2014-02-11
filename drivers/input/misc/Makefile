@@ -69,3 +69,4 @@ obj-$(CONFIG_SENSORS_STK3X1X)		+= stk3x1x.o
 obj-$(CONFIG_SENSORS_CAPELLA_CM36283)	+= cm36283.o
 obj-$(CONFIG_INPUT_CT406)               += ct406.o
 obj-$(CONFIG_INPUT_VALIDITY_METALLICA)	+= vfsSpiDrv.o
+obj-$(CONFIG_SENSORS_STK3X1X_MOTO)      += stk3x1x_moto.o
