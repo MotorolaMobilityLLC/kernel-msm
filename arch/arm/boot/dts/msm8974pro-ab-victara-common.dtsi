@@ -152,7 +152,11 @@
 			"AMIC3", "MIC BIAS1 External",
 			"MIC BIAS1 External", "Handset Mic",
 			"AMIC4", "MIC BIAS3 External",
-			"MIC BIAS3 External", "Secondary Mic";
+			"MIC BIAS3 External", "Secondary Mic",
+			"AMIC5", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Quaternary Mic",
+			"AMIC6", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Quinary Mic";
 	};
 
 	qcom,msm-dai-mi2s {
