@@ -11326,7 +11326,7 @@ VOS_STATUS WLANTL_GetStatistics
   }
 
   statistics = &pClientSTA->trafficStatistics;
-  memcpy(statBuffer, statistics, sizeof(WLANTL_TRANSFER_STA_TYPE));
+  vos_mem_copy(statBuffer, statistics, sizeof(WLANTL_TRANSFER_STA_TYPE));
 
   return status;
 }
