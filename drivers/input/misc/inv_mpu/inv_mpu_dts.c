@@ -238,7 +238,17 @@ int inv_parse_aux(struct device *dev, struct mpu_platform_data *pdata)
 int invensense_mpu_parse_dt(struct device *dev, struct mpu_platform_data *pdata)
 {
 	int rc;
+	u32 temp_val;
+	struct device_node *np = dev->of_node;
 	pr_debug("Invensense MPU parse_dt started.\n");
+
+	rc = of_property_read_u32(np, "inven,int_config", &temp_val);
+	if (rc) {
+		dev_err(dev, "Unable to read inven,int_config\n");
+		return rc;
+	} else {
+		pdata->int_config = temp_val;
+	}
 
 	rc = inv_parse_orientation_matrix(dev, pdata->orientation);
 	if (rc)
