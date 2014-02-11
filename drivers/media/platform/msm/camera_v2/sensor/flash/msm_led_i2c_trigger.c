@@ -128,10 +128,11 @@ int msm_flash_led_init(struct msm_led_flash_ctrl_t *fctrl)
 		flashdata->gpio_conf->gpio_num_info->gpio_num[0],
 		GPIO_OUT_HIGH);
 
-	gpio_set_value_cansleep(
-		power_info->gpio_conf->gpio_num_info->
-		gpio_num[SENSOR_GPIO_FL_NOW],
-		GPIO_OUT_HIGH);
+	if (fctrl->flash_now_support)
+		gpio_set_value_cansleep(
+			flashdata->gpio_conf->gpio_num_info->
+			gpio_num[1],
+			GPIO_OUT_HIGH);
 
 	if (fctrl->flash_i2c_client && fctrl->reg_setting) {
 		rc = fctrl->flash_i2c_client->i2c_func_tbl->i2c_write_table(
@@ -250,7 +251,7 @@ int msm_flash_led_high(struct msm_led_flash_ctrl_t *fctrl)
 
 static int32_t msm_flash_init_gpio_pin_tbl(struct device_node *of_node,
 	struct msm_camera_gpio_conf *gconf, uint16_t *gpio_array,
-	uint16_t gpio_array_size)
+	uint16_t gpio_array_size, struct msm_led_flash_ctrl_t *fctrl)
 {
 	int32_t rc = 0;
 	int32_t val = 0;
@@ -261,6 +262,17 @@ static int32_t msm_flash_init_gpio_pin_tbl(struct device_node *of_node,
 		pr_err("%s failed %d\n", __func__, __LINE__);
 		rc = -ENOMEM;
 		return rc;
+	}
+
+	/* Figure out if our hardware have flash now pin */
+	rc = of_property_read_u32(of_node, "flash-now-support",
+		&fctrl->flash_now_support);
+	CDBG("%s flash-now-support %d, rc %d\n", __func__,
+		fctrl->flash_now_support, rc);
+	if (rc < 0) {
+		pr_err("%s:%d read flash-now-support failed rc %d\n",
+			__func__, __LINE__, rc);
+		goto ERROR;
 	}
 
 	rc = of_property_read_u32(of_node, "qcom,gpio-flash-en", &val);
@@ -279,21 +291,23 @@ static int32_t msm_flash_init_gpio_pin_tbl(struct device_node *of_node,
 	CDBG("%s qcom,gpio-flash-en %d\n", __func__,
 		gconf->gpio_num_info->gpio_num[0]);
 
-	rc = of_property_read_u32(of_node, "qcom,gpio-flash-now", &val);
-	if (rc < 0) {
-		pr_err("%s:%d read qcom,gpio-flash-now failed rc %d\n",
-			__func__, __LINE__, rc);
-		goto ERROR;
-	} else if (val >= gpio_array_size) {
-		pr_err("%s:%d qcom,gpio-flash-now invalid %d\n",
-			__func__, __LINE__, val);
-		goto ERROR;
+	if (fctrl->flash_now_support == 1) {
+		rc = of_property_read_u32(of_node, "qcom,gpio-flash-now", &val);
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-flash-now failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-flash-now invalid %d\n",
+				__func__, __LINE__, val);
+			goto ERROR;
+		}
+		/*index 1 is for qcom,gpio-flash-now */
+		gconf->gpio_num_info->gpio_num[1] =
+			gpio_array[val];
+		CDBG("%s qcom,gpio-flash-now %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[1]);
 	}
-	/*index 1 is for qcom,gpio-flash-now */
-	gconf->gpio_num_info->gpio_num[1] =
-		gpio_array[val];
-	CDBG("%s qcom,gpio-flash-now %d\n", __func__,
-		gconf->gpio_num_info->gpio_num[1]);
 
 	return rc;
 
@@ -455,7 +469,7 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 			}
 
 			rc = msm_flash_init_gpio_pin_tbl(of_node, gconf,
-				gpio_array, gpio_array_size);
+				gpio_array, gpio_array_size, fctrl);
 			if (rc < 0) {
 				pr_err("%s failed %d\n", __func__, __LINE__);
 				goto ERROR6;
