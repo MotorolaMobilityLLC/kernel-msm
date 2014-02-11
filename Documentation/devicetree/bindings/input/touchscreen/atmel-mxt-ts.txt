@@ -16,6 +16,7 @@ Required properties:
  - atmel,reset-gpio	: reset gpio
  - atmel,family-id	: family identification of the controller
  - atmel,variant-id	: variant identification of the controller
+ - atmel,revision-id	: revision identification of the controller
  - atmel,version	: firmware version of the controller
  - atmel,build		: firmware build number of the controller
 

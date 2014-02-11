@@ -3715,8 +3715,10 @@ static void mxt_input_close(struct input_dev *dev)
 #endif
 
 #ifdef CONFIG_OF
-static int mxt_parse_dt(struct device *dev, struct mxt_platform_data *pdata)
+static int mxt_parse_dt(struct mxt_data *data)
 {
+	struct device *dev = &data->client->dev;
+	struct mxt_platform_data *pdata = data->pdata;
 	int error = 0;
 	u32 value;
 	struct device_node *temp, *np = dev->of_node;
@@ -3761,6 +3763,13 @@ static int mxt_parse_dt(struct device *dev, struct mxt_platform_data *pdata)
 			goto exit_parser;
 		}
 		pdata->dt_info.build = (u8)value;
+
+		error = of_property_read_u32(temp, "atmel,revision-id", &value);
+		if (error) {
+			dev_err(dev, "Unable to read revision id\n");
+			goto exit_parser;
+		}
+		data->revision_id = (u8)value;
 	}
 
 exit_parser:
@@ -3801,7 +3810,7 @@ static int mxt_handle_pdata(struct mxt_data *data)
 	data->pdata->irqflags = IRQF_TRIGGER_FALLING;
 
 	if (data->client->dev.of_node) {
-		error = mxt_parse_dt(&data->client->dev, data->pdata);
+		error = mxt_parse_dt(data);
 		if (error)
 			return error;
 	}
