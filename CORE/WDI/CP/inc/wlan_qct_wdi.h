@@ -2692,6 +2692,49 @@ typedef struct
   void*             pUserData;
 }WDI_DelBAReqParamsType;
 
+/*---------------------------------------------------------------------------
+  WDI_UpdateChannelReqinfoType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+    /** primary 20 MHz channel frequency in mhz */
+  wpt_uint32 mhz;
+  /** Center frequency 1 in MHz*/
+  wpt_uint32 band_center_freq1;
+  /** Center frequency 2 in MHz - valid only for 11acvht 80plus80 mode*/
+  wpt_uint32 band_center_freq2;
+  /* The first 26 bits are a bit mask to indicate any channel flags,
+     (see WLAN_HAL_CHAN_FLAG*)
+     The last 6 bits indicate the mode (see tChannelPhyModeType)*/
+  wpt_uint32 channel_info;
+  /** contains min power, max power, reg power and reg class id. */
+  wpt_uint32 reg_info_1;
+  /** contains antennamax */
+  wpt_uint32 reg_info_2;
+}WDI_UpdateChannelReqinfoType;
+
+typedef struct
+{
+    wpt_uint8 numchan;
+    WDI_UpdateChannelReqinfoType *pchanParam;
+}WDI_UpdateChannelReqType;
+/*---------------------------------------------------------------------------
+  WDI_UpdateChReqParamsType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /*BA Info */
+  WDI_UpdateChannelReqType  wdiUpdateChanParams;
+
+  /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb   wdiReqStatusCB;
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*             pUserData;
+}WDI_UpdateChReqParamsType;
 
 /*---------------------------------------------------------------------------
   WDI_SwitchCHRspParamsType
@@ -7010,6 +7053,9 @@ typedef void  (*WDI_UpdateScanParamsCb)(WDI_Status  wdiStatus,
                                         void*       pUserData);
 #endif // FEATURE_WLAN_SCAN_PNO
 
+typedef void  (*WDI_UpdateChannelRspCb)(WDI_Status  wdiStatus,
+                                        void*       pUserData);
+
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 /*---------------------------------------------------------------------------
    WDI_RoamOffloadScanCb
@@ -9234,7 +9280,34 @@ WDI_SwitchChReq
   void*                      pUserData
 );
 
+/**
+ @brief WDI_UpdateChannelReq will be called when the upper MAC
+        wants to update the channel list on change in country code.
 
+        In state BUSY this request will be queued. Request won't
+        be allowed in any other state.
+
+ WDI_UpdateChannelReq must have been called.
+
+ @param wdiUpdateChannelReqParams: the updated channel parameters
+                      as specified by the Device Interface
+
+        wdiUpdateChannelRspCb: callback for passing back the
+        response of the update channel operation received from
+        the device
+
+        pUserData: user data will be passed back with the
+        callback
+
+ @return Result of the function call
+*/
+WDI_Status
+WDI_UpdateChannelReq
+(
+  WDI_UpdateChReqParamsType *pwdiUpdateChannelReqParams,
+  WDI_UpdateChannelRspCb     wdiUpdateChannelRspCb,
+  void*                     pUserData
+);
 
 /**
  @brief WDI_ConfigSTAReq will be called when the upper MAC 
