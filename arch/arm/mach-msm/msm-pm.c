@@ -121,6 +121,7 @@ static struct clk *l2_clk;
 static int cpu_count;
 static DEFINE_SPINLOCK(cpu_cnt_lock);
 #define SCM_HANDOFF_LOCK_ID "S:7"
+static bool need_scm_handoff_lock;
 static remote_spinlock_t scm_handoff_lock;
 
 static void (*msm_pm_disable_l2_fn)(void);
@@ -502,8 +503,9 @@ static int msm_pm_collapse(unsigned long unused)
 	 *
 	 * It must be acquired before releasing cpu_cnt_lock.
 	 */
-	remote_spin_lock_rlock_id(&scm_handoff_lock,
-				  REMOTE_SPINLOCK_TID_START + cpu);
+	if (need_scm_handoff_lock)
+		remote_spin_lock_rlock_id(&scm_handoff_lock,
+					  REMOTE_SPINLOCK_TID_START + cpu);
 	spin_unlock(&cpu_cnt_lock);
 
 	if (flag == MSM_SCM_L2_OFF) {
@@ -1190,6 +1192,7 @@ static int msm_cpu_pm_probe(struct platform_device *pdev)
 	struct resource *res = NULL;
 	int i;
 	struct msm_pm_init_data_type pdata_local;
+	struct device_node *lpm_node;
 	int ret = 0;
 
 	memset(&pdata_local, 0, sizeof(struct msm_pm_init_data_type));
@@ -1216,11 +1219,21 @@ static int msm_cpu_pm_probe(struct platform_device *pdev)
 		msm_pc_debug_counters_phys = 0;
 	}
 
-	ret = remote_spin_lock_init(&scm_handoff_lock, SCM_HANDOFF_LOCK_ID);
-	if (ret) {
-		pr_err("%s: Failed initializing scm_handoff_lock (%d)\n",
-			__func__, ret);
-		return ret;
+	lpm_node = of_parse_phandle(pdev->dev.of_node, "qcom,lpm-levels", 0);
+	if (!lpm_node) {
+		pr_warn("Could not get qcom,lpm-levels handle\n");
+		return -EINVAL;
+	}
+	need_scm_handoff_lock = of_property_read_bool(lpm_node,
+						      "qcom,allow-synced-levels");
+	if (need_scm_handoff_lock) {
+		ret = remote_spin_lock_init(&scm_handoff_lock,
+					    SCM_HANDOFF_LOCK_ID);
+		if (ret) {
+			pr_err("%s: Failed initializing scm_handoff_lock (%d)\n",
+				__func__, ret);
+			return ret;
+		}
 	}
 
 	if (pdev->dev.of_node) {
