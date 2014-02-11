@@ -206,7 +206,8 @@
 			atmel,family-id = <0xa4>;
 			atmel,variant-id = <0x7>;
 			atmel,version = <0x5>;
-			atmel,build = <0xb>;
+			atmel,build = <0x11>;
+			atmel,revision-id = <0x32>;
 		};
 	};
 };
