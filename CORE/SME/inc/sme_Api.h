@@ -2070,7 +2070,8 @@ tANI_U8 sme_GetConcurrentOperationChannel( tHalHandle hHal );
             VOS_STATUS_E_FAILURE - failure
             VOS_STATUS_SUCCESS  success
   ---------------------------------------------------------------------------*/
-eHalStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId);
+eHalStatus sme_AbortMacScan(tHalHandle hHal, tANI_U8 sessionId,
+                            eCsrAbortReason reason);
 
 /* ---------------------------------------------------------------------------
     \fn sme_GetCfgValidChannels

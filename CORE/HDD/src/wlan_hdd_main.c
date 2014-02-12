@@ -303,7 +303,8 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
         { 
            long result;
            INIT_COMPLETION(pHddCtx->scan_info.abortscan_event_var);
-           hdd_abort_mac_scan(pAdapter->pHddCtx, pAdapter->sessionId);
+           hdd_abort_mac_scan(pAdapter->pHddCtx, pAdapter->sessionId,
+                              eCSR_SCAN_ABORT_DEFAULT);
            result = wait_for_completion_interruptible_timeout(
                                &pHddCtx->scan_info.abortscan_event_var,
                                msecs_to_jiffies(WLAN_WAIT_TIME_ABORTSCAN));
@@ -1418,7 +1419,6 @@ hdd_format_batch_scan_rsp
        pTemp += temp_len;
        temp_total_len += temp_len;
 
-       pAdapter->prev_batch_id = 0;
    }
 
    if (temp_total_len < rem_len)
@@ -6286,7 +6286,8 @@ VOS_STATUS hdd_stop_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
          }
          else
          {
-            hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId);
+            hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId,
+                               eCSR_SCAN_ABORT_DEFAULT);
          }
 #ifdef WLAN_NS_OFFLOAD
 #ifdef WLAN_OPEN_SOURCE
@@ -7288,7 +7289,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    // the expectation is that by the time Request Full Power has completed,
    // all scans will be cancelled.
    if (NULL != pAdapter)
-      hdd_abort_mac_scan( pHddCtx, pAdapter->sessionId);
+      hdd_abort_mac_scan(pHddCtx, pAdapter->sessionId, eCSR_SCAN_ABORT_DEFAULT);
    else
        hddLog(VOS_TRACE_LEVEL_ERROR,
            "%s: pAdapter is NULL, cannot Abort scan", __func__);

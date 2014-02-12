@@ -6495,7 +6495,7 @@ eHalStatus csrRoamConnect(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
     csrScanRemoveFreshScanCommand(pMac, sessionId);
     csrScanCancelIdleScan(pMac);
     //Only abort the scan if it is not used for other roam/connect purpose
-    csrScanAbortMacScan(pMac, sessionId);
+    csrScanAbortMacScan(pMac, sessionId, eCSR_SCAN_ABORT_DEFAULT);
     if (!vos_concurrent_sessions_running() && (VOS_STA_SAP_MODE == pProfile->csrPersona))//In case of AP mode we do not want idle mode scan
     {
         csrScanDisable(pMac);
@@ -10237,7 +10237,7 @@ void csrRoamCancelRoaming(tpAniSirGlobal pMac, tANI_U32 sessionId)
             //Roaming is stopped after here 
             csrRoamCompleteRoaming(pMac, sessionId, eANI_BOOLEAN_TRUE, roamResult);
             //Since CSR may be in lostlink roaming situation, abort all roaming related activities
-            csrScanAbortMacScan(pMac, sessionId);
+            csrScanAbortMacScan(pMac, sessionId, eCSR_SCAN_ABORT_DEFAULT);
             csrRoamStopRoamingTimer(pMac, sessionId);
         }
     }

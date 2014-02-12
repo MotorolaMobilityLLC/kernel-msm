@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1174,7 +1174,7 @@ eHalStatus p2pCreateActionFrame(tpAniSirGlobal pMac, tANI_U8 SessionID, void *p2
       return eHAL_STATUS_FAILURE;
    }
 
-   csrScanAbortMacScan(pMac);
+   csrScanAbortMacScan(pMac, SessionID, eCSR_SCAN_ABORT_DEFAULT);
 
    switch (actionFrameType)
    {
