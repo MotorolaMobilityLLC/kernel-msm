@@ -5141,7 +5141,7 @@ tANI_U8* wlan_hdd_get_intf_addr(hdd_context_t* pHddCtx)
    int i;
    for ( i = 0; i < VOS_MAX_CONCURRENCY_PERSONA; i++)
    {
-      if( 0 == (pHddCtx->cfg_ini->intfAddrMask >> i))
+      if( 0 == ((pHddCtx->cfg_ini->intfAddrMask) & (1 << i)) )
          break;
    }
 
