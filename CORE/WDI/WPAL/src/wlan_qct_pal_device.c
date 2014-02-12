@@ -553,7 +553,7 @@ wpt_status wpalWriteDeviceMemory
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
-   memcpy(gpEnv->mmio + (address - WCNSS_BASE_ADDRESS), s_buffer, len);
+   vos_mem_copy(gpEnv->mmio + (address - WCNSS_BASE_ADDRESS), s_buffer, len);
    wmb();
 
    return eWLAN_PAL_STATUS_SUCCESS;
@@ -598,7 +598,7 @@ wpt_status wpalReadDeviceMemory
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 
-   memcpy(d_buffer, gpEnv->mmio + (address - WCNSS_BASE_ADDRESS), len);
+   vos_mem_copy(d_buffer, gpEnv->mmio + (address - WCNSS_BASE_ADDRESS), len);
    rmb();
 
    return eWLAN_PAL_STATUS_SUCCESS;
