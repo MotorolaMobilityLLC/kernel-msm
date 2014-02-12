@@ -1459,7 +1459,6 @@ void msm_dsi_ctrl_init(struct mdss_dsi_ctrl_pdata *ctrl)
 	dsi_buf_alloc(&ctrl->rx_buf, SZ_4K);
 	ctrl->cmdlist_commit = msm_dsi_cmdlist_commit;
 	ctrl->panel_mode = ctrl->panel_data.panel_info.mipi.mode;
-	ctrl->check_status = msm_dsi_bta_status_check;
 }
 
 static int __devinit msm_dsi_probe(struct platform_device *pdev)
