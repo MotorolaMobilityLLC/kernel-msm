@@ -7803,3 +7803,73 @@ tANI_U8 limGetShortSlotFromPhyMode(tpAniSirGlobal pMac, tpPESession psessionEntr
     limLog(pMac, LOG1, FL("phyMode = %u shortslotsupported = %u"), phyMode, val);
     return val;
 }
+
+/**--------------------------------------------
+\fn       limUpdateOBSSScanParams
+\brief    Updates OBSS SCAN IE parameters to session
+
+\param psessionEntry  - Session Entry
+\return NONE
+---------------------------------------------*/
+void limUpdateOBSSScanParams(tpPESession psessionEntry ,
+             tDot11fIEOBSSScanParameters *pOBSSScanParameters)
+{
+    /*If the recieved value is not in the range specified by the Specification
+    then it will be the default value configured through cfg */
+    if (( pOBSSScanParameters->obssScanActiveDwell >
+       WNI_CFG_OBSS_HT40_SCAN_ACTIVE_DWELL_TIME_STAMIN ) &&
+       ( pOBSSScanParameters->obssScanActiveDwell <
+        WNI_CFG_OBSS_HT40_SCAN_ACTIVE_DWELL_TIME_STAMAX))
+    {
+        psessionEntry->obssHT40ScanParam.OBSSScanActiveDwellTime=
+              pOBSSScanParameters->obssScanActiveDwell;
+    }
+    if((pOBSSScanParameters->obssScanPassiveDwell >
+          WNI_CFG_OBSS_HT40_SCAN_PASSIVE_DWELL_TIME_STAMIN ) &&
+        (pOBSSScanParameters->obssScanPassiveDwell <
+           WNI_CFG_OBSS_HT40_SCAN_PASSIVE_DWELL_TIME_STAMAX))
+    {
+        psessionEntry->obssHT40ScanParam.OBSSScanPassiveDwellTime =
+              pOBSSScanParameters->obssScanPassiveDwell;
+    }
+    if((pOBSSScanParameters->bssWidthChannelTransitionDelayFactor >
+         WNI_CFG_OBSS_HT40_WIDTH_CHANNEL_TRANSITION_DELAY_FACTOR_STAMIN) &&
+       (pOBSSScanParameters->bssWidthChannelTransitionDelayFactor <
+        WNI_CFG_OBSS_HT40_WIDTH_CHANNEL_TRANSITION_DELAY_FACTOR_STAMAX))
+    {
+        psessionEntry->obssHT40ScanParam.BSSWidthChannelTransitionDelayFactor =
+              pOBSSScanParameters->bssWidthChannelTransitionDelayFactor;
+    }
+    if((pOBSSScanParameters->obssScanActiveTotalPerChannel >
+            WNI_CFG_OBSS_HT40_SCAN_ACTIVE_TOTAL_PER_CHANNEL_STAMIN) &&
+       (pOBSSScanParameters->obssScanActiveTotalPerChannel <
+           WNI_CFG_OBSS_HT40_SCAN_ACTIVE_TOTAL_PER_CHANNEL_STAMAX))
+    {
+        psessionEntry->obssHT40ScanParam.OBSSScanActiveTotalPerChannel =
+             pOBSSScanParameters->obssScanActiveTotalPerChannel;
+    }
+    if((pOBSSScanParameters->obssScanPassiveTotalPerChannel >
+            WNI_CFG_OBSS_HT40_SCAN_PASSIVE_TOTAL_PER_CHANNEL_STAMIN) &&
+       (pOBSSScanParameters->obssScanPassiveTotalPerChannel <
+           WNI_CFG_OBSS_HT40_SCAN_PASSIVE_TOTAL_PER_CHANNEL_STAMAX))
+    {
+        psessionEntry->obssHT40ScanParam.OBSSScanPassiveTotalPerChannel =
+             pOBSSScanParameters->obssScanPassiveTotalPerChannel;
+    }
+    if((pOBSSScanParameters->bssChannelWidthTriggerScanInterval >
+           WNI_CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL_STAMIN) &&
+       (pOBSSScanParameters->bssChannelWidthTriggerScanInterval <
+        WNI_CFG_OBSS_HT40_SCAN_WIDTH_TRIGGER_INTERVAL_STAMAX))
+    {
+         psessionEntry->obssHT40ScanParam.BSSChannelWidthTriggerScanInterval =
+              pOBSSScanParameters->bssChannelWidthTriggerScanInterval;
+    }
+    if((pOBSSScanParameters->obssScanActivityThreshold >
+       WNI_CFG_OBSS_HT40_SCAN_ACTIVITY_THRESHOLD_STAMIN )&&
+       (pOBSSScanParameters->obssScanActivityThreshold <
+        WNI_CFG_OBSS_HT40_SCAN_ACTIVITY_THRESHOLD_STAMAX))
+    {
+       psessionEntry->obssHT40ScanParam.OBSSScanActivityThreshold =
+              pOBSSScanParameters->obssScanActivityThreshold;
+    }
+}

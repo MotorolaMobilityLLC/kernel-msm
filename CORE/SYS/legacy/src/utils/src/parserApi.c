@@ -2459,7 +2459,11 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
         limLogVHTOperation(pMac, &pAssocRsp->VHTOperation);
     }
 #endif
-
+    if(ar.OBSSScanParameters.present)
+    {
+       vos_mem_copy( &pAssocRsp->OBSSScanParameters, &ar.OBSSScanParameters,
+                      sizeof( tDot11fIEOBSSScanParameters));
+    }
     return eSIR_SUCCESS;
 
 } // End sirConvertAssocRespFrame2Struct.
@@ -3480,7 +3484,12 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
                       sizeof( tDot11fIEWiderBWChanSwitchAnn));
     }      
 #endif
-
+    if(pBeacon->OBSSScanParameters.present)
+    {
+       vos_mem_copy( &pBeaconStruct->OBSSScanParameters,
+                     &pBeacon->OBSSScanParameters,
+                     sizeof( tDot11fIEOBSSScanParameters));
+    }
     vos_mem_free(pBeacon);
     return eSIR_SUCCESS;
 

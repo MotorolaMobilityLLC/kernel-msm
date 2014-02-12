@@ -360,6 +360,8 @@ typedef struct sPESession           // Added to Support BT-AMP
     tANI_U8 isAmsduSupportInAMPDU;
     tANI_U8 isCoalesingInIBSSAllowed;
     tANI_BOOLEAN isCiscoVendorAP;
+    /* To hold OBSS Scan IE Parameters */
+    tSirOBSSHT40Param obssHT40ScanParam;
 }tPESession, *tpPESession;
 
 #define LIM_MAX_ACTIVE_SESSIONS 4
