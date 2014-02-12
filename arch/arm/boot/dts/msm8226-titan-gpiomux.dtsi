@@ -119,13 +119,13 @@
 			qcom,pin-num = <17>;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(17)         */
-				qcom,pull = <0>;  /* pull_up                */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* input                  */
 			};
 			qcom,suspend@1 {
 				qcom,func = <0>;  /* gpio_in_out(17)         */
-				qcom,pull = <0>;  /* down                   */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* input                  */
 			};
@@ -395,10 +395,10 @@
 				qcom,func = <0>;  /* gpio_in_out(73)        */
 				qcom,pull = <3>;  /* pullup                 */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <1>;   /* input                  */
+				qcom,dir = <1>;   /* output high            */
 			};
 			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out(72)        */
+				qcom,func = <0>;  /* gpio_in_out(73)        */
 				qcom,pull = <1>;  /* down                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* input                  */
