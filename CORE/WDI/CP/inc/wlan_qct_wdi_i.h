@@ -489,12 +489,14 @@ typedef enum
 
   /*Send stop batch scan indication to FW*/
   WDI_TRIGGER_BATCH_SCAN_RESULT_IND,
+  WDI_START_HT40_OBSS_SCAN_IND,
+  WDI_STOP_HT40_OBSS_SCAN_IND,
 
   /*Keep adding the indications to the max request
     such that we keep them sepparate */
 
   WDI_MAX_UMAC_IND
-}WDI_RequestEnumType; 
+}WDI_RequestEnumType;
 
 /*--------------------------------------------------------------------------- 
    WLAN DAL Supported Response Types
@@ -3006,6 +3008,32 @@ WDI_ProcessDelPeriodicTxPtrnInd
  );
 
 #endif
+/**
+ @brief Process start OBSS scan request from Host
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessHT40OBSSScanInd(
+  WDI_ControlBlockType*  pWDICtx,  WDI_EventInfoType*   pEventData );
+
+
+/**
+ @brief Process stop OBSS scan request from Host
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessHT40OBSSStopScanInd(
+  WDI_ControlBlockType*  pWDICtx,  WDI_EventInfoType*   pEventData );
 
 /*========================================================================
           Main DAL Control Path Response Processing API 

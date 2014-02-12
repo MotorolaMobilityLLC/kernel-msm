@@ -5014,6 +5014,49 @@ typedef struct
 #endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 
 /*---------------------------------------------------------------------------
+  WDI_HT40ObssScanIndType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+    wpt_uint8     cmdType;
+    wpt_uint8     scanType;
+    wpt_uint16    OBSSScanPassiveDwellTime; // In TUs
+    wpt_uint16    OBSSScanActiveDwellTime;  // In TUs
+    wpt_uint16    BSSChannelWidthTriggerScanInterval; // In seconds
+    wpt_uint16    OBSSScanPassiveTotalPerChannel; // In TUs
+    wpt_uint16    OBSSScanActiveTotalPerChannel;  // In TUs
+    wpt_uint16    BSSWidthChannelTransitionDelayFactor;
+    wpt_uint16    OBSSScanActivityThreshold;
+    wpt_uint8     selfStaIdx;
+    wpt_uint8     bssIdx;
+    wpt_uint8     fortyMHZIntolerent;
+    wpt_uint8     channelCount;
+    wpt_uint8     channels[WDI_ROAM_SCAN_MAX_CHANNELS];
+    wpt_uint8     currentOperatingClass;
+    wpt_uint16    ieFieldLen;
+    wpt_uint8     ieField[WDI_ROAM_SCAN_MAX_PROBE_SIZE];
+} WDI_HT40ObssScanIndType;
+
+
+/*---------------------------------------------------------------------------
+  WDI_OBSSScanIndParamsType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  WDI_HT40ObssScanIndType wdiHT40ObssScanParam;
+
+   /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb   wdiReqStatusCB;
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*             pUserData;
+
+}WDI_HT40ObssScanParamsType;
+
+/*---------------------------------------------------------------------------
   WDI_UpdateScanParamsInfo
 ---------------------------------------------------------------------------*/
 typedef struct 
@@ -10334,9 +10377,30 @@ WDI_TriggerBatchScanResultInd(WDI_TriggerBatchScanResultIndType *pWdiReq);
 
 #endif /*FEATURE_WLAN_BATCH_SCAN*/
 
+/**
+ @brief wdi_HT40OBSSScanInd
+    This API is called to start OBSS scan
+
+ @param pWdiReq : pointer to get  ind param
+ @see
+ @return SUCCESS or FAIL
+*/
+
+WDI_Status WDI_HT40OBSSScanInd(WDI_HT40ObssScanParamsType *pWdiReq);
+
+/**
+ @brief wdi_HT40OBSSStopScanInd
+    This API is called to stop OBSS scan
+
+ @param bssIdx : bssIdx to stop
+ @see
+ @return SUCCESS or FAIL
+*/
+
+WDI_Status WDI_HT40OBSSStopScanInd(wpt_uint8  bssIdx);
+
 #ifdef __cplusplus
  }
 #endif 
-
 
 #endif /* #ifndef WLAN_QCT_WDI_H */

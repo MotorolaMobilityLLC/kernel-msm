@@ -427,6 +427,9 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
   NULL,
 #endif /* FEATURE_WLAN_BATCH_SCAN */
   WDI_ProcessRateUpdateInd,              /* WDI_RATE_UPDATE_IND */
+  WDI_ProcessHT40OBSSScanInd,        /*WDI_START_HT40_OBSS_SCAN_IND */
+  WDI_ProcessHT40OBSSStopScanInd     /*WDI_STOP_HT40_OBSS_SCAN_IND */
+
 };
 
 
@@ -992,6 +995,8 @@ static char *WDI_getReqMsgString(wpt_uint16 wdiReqMsgId)
     CASE_RETURN_STRING( WDI_STOP_BATCH_SCAN_IND );
     CASE_RETURN_STRING( WDI_TRIGGER_BATCH_SCAN_RESULT_IND);
 #endif
+    CASE_RETURN_STRING(WDI_START_HT40_OBSS_SCAN_IND);
+    CASE_RETURN_STRING(WDI_STOP_HT40_OBSS_SCAN_IND);
     default:
         return "Unknown WDI MessageId";
   }
@@ -29328,4 +29333,259 @@ WDI_ProcessChAvoidInd
   return WDI_STATUS_SUCCESS;
 }
 #endif /* FEATURE_WLAN_CH_AVOID */
+
+/**
+ @brief Process OBSS Start scan result indication
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessHT40OBSSScanInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  wpt_uint8*              pSendBuffer        = NULL;
+  wpt_uint16              usDataOffset       = 0;
+  wpt_uint16              usSendSize         = 0;
+  wpt_uint16              usLen              = 0;
+  WDI_HT40ObssScanIndType *pwdiHT40OBSSScanInd = NULL;
+  WDI_HT40ObssScanParamsType  *pwdiHT40OBSSScanParams = NULL;
+  tHT40ObssScanIndType*      pHT40ObssScanInd = NULL;
+  WDI_Status wdiStatus = WDI_STATUS_SUCCESS;
+
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+         "%s", __func__);
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pEventData ) || ( NULL == pEventData->pEventData ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+  pwdiHT40OBSSScanParams = (WDI_HT40ObssScanParamsType*)pEventData->pEventData;
+
+  pwdiHT40OBSSScanInd = &pwdiHT40OBSSScanParams->wdiHT40ObssScanParam;
+  /*-----------------------------------------------------------------------
+    Get message buffer
+  -----------------------------------------------------------------------*/
+
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx,
+                        WDI_START_HT40_OBSS_SCAN_IND,
+                        sizeof(tHT40ObssScanIndType),
+                        &pSendBuffer, &usDataOffset, &usSendSize))||
+      ( usSendSize < (usDataOffset + usLen )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
+              "Unable to get send buffer in HT40 OBSS Start req %p ",
+                pEventData);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+  pHT40ObssScanInd = (tHT40ObssScanIndType*)(pSendBuffer+usDataOffset);
+  pHT40ObssScanInd->cmdType = pwdiHT40OBSSScanInd->cmdType;
+  pHT40ObssScanInd->scanType = pwdiHT40OBSSScanInd->scanType;
+  pHT40ObssScanInd->OBSSScanPassiveDwellTime =
+         pwdiHT40OBSSScanInd->OBSSScanPassiveDwellTime;
+  pHT40ObssScanInd->OBSSScanActiveDwellTime =
+         pwdiHT40OBSSScanInd->OBSSScanActiveDwellTime;
+  pHT40ObssScanInd->BSSChannelWidthTriggerScanInterval =
+         pwdiHT40OBSSScanInd->BSSChannelWidthTriggerScanInterval;
+  pHT40ObssScanInd->OBSSScanPassiveTotalPerChannel =
+         pwdiHT40OBSSScanInd->OBSSScanPassiveTotalPerChannel;
+  pHT40ObssScanInd->OBSSScanActiveTotalPerChannel =
+         pwdiHT40OBSSScanInd->OBSSScanActiveTotalPerChannel;
+  pHT40ObssScanInd->BSSWidthChannelTransitionDelayFactor =
+         pwdiHT40OBSSScanInd->BSSWidthChannelTransitionDelayFactor;
+  pHT40ObssScanInd->OBSSScanActivityThreshold =
+         pwdiHT40OBSSScanInd->OBSSScanActivityThreshold;
+  pHT40ObssScanInd->selfStaIdx =
+         pwdiHT40OBSSScanInd->selfStaIdx;
+  pHT40ObssScanInd->bssIdx =
+         pwdiHT40OBSSScanInd->bssIdx;
+  pHT40ObssScanInd->fortyMHZIntolerent =
+         pwdiHT40OBSSScanInd->fortyMHZIntolerent;
+  pHT40ObssScanInd->channelCount =
+         pwdiHT40OBSSScanInd->channelCount;
+
+  wpalMemoryCopy(pHT40ObssScanInd->channels, pwdiHT40OBSSScanInd->channels,
+                                        WDI_ROAM_SCAN_MAX_CHANNELS);
+  pHT40ObssScanInd->ieFieldLen =
+         pwdiHT40OBSSScanInd->ieFieldLen;
+
+  wpalMemoryCopy(pHT40ObssScanInd->ieField, pwdiHT40OBSSScanInd->ieField,
+                                        WDI_ROAM_SCAN_MAX_PROBE_SIZE);
+  pWDICtx->pReqStatusUserData = NULL;
+  pWDICtx->pfncRspCB = NULL;
+
+  pWDICtx->wdiReqStatusCB     = pwdiHT40OBSSScanParams->wdiReqStatusCB;
+  pWDICtx->pReqStatusUserData = pwdiHT40OBSSScanParams->pUserData;
+
+ /*-------------------------------------------------------------------------
+    Send OBSS Start Indication to HAL
+  -------------------------------------------------------------------------*/
+  wdiStatus =  WDI_SendIndication( pWDICtx, pSendBuffer, usSendSize);
+  return (wdiStatus != WDI_STATUS_SUCCESS) ? wdiStatus:WDI_STATUS_SUCCESS_SYNC;
+
+} /*End of WDI_ProcessHT40OBSSStartScanInd*/
+
+
+/**
+ @brief wdi_HT40OBSSScanInd
+    This API is called to start OBSS scan
+
+ @param pWdiReq : pointer to get  ind param
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_HT40OBSSScanInd
+(
+    WDI_HT40ObssScanParamsType *pWdiReq
+)
+{
+    WDI_EventInfoType      wdiEventData;
+
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+         "%s", __func__);
+    /*-------------------------------------------------------------------------
+      Sanity Check
+    ------------------------------------------------------------------------*/
+    if (eWLAN_PAL_FALSE == gWDIInitialized)
+    {
+        WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+             "WDI API call before module is initialized - Fail request!");
+
+        return WDI_STATUS_E_NOT_ALLOWED;
+    }
+
+    /*-------------------------------------------------------------------------
+      Fill in Event data and post to the Main FSM
+     ------------------------------------------------------------------------*/
+    wdiEventData.wdiRequest      = WDI_START_HT40_OBSS_SCAN_IND;
+    wdiEventData.pEventData      = pWdiReq;
+    wdiEventData.uEventDataSize  = sizeof(WDI_HT40ObssScanParamsType);
+    wdiEventData.pCBfnc          = NULL;
+    wdiEventData.pUserData       = NULL;
+
+
+    return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+/**
+ @brief Process OBSS Stop scan result
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessHT40OBSSStopScanInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  wpt_uint8*              pSendBuffer        = NULL;
+  wpt_uint16              usDataOffset       = 0;
+  wpt_uint16              usSendSize         = 0;
+  wpt_uint16              usLen              = 0;
+  wpt_uint8               *wdiBssIdx         = 0;
+  tANI_U8                 *bssIdx            = 0;
+  WDI_Status              wdiStatus = WDI_STATUS_SUCCESS;
+
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+         "%s", __func__);
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pEventData ) || ( NULL == pEventData->pEventData ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+  bssIdx = (wpt_uint8*)pEventData->pEventData;
+  /*-----------------------------------------------------------------------
+    Get message buffer
+  -----------------------------------------------------------------------*/
+
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx,
+                        WDI_STOP_HT40_OBSS_SCAN_IND,
+                        sizeof(tANI_U8),
+                        &pSendBuffer, &usDataOffset, &usSendSize))||
+      ( usSendSize < (usDataOffset + usLen )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
+              "Unable to get send buffer in HT40 OBSS Start req %p ",
+                pEventData);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  bssIdx = (tANI_U8*)pSendBuffer+usDataOffset;
+  bssIdx = wdiBssIdx;
+
+  pWDICtx->pReqStatusUserData = NULL;
+  pWDICtx->pfncRspCB = NULL;
+
+ /*-------------------------------------------------------------------------
+    Send DHCP Start Indication to HAL
+  -------------------------------------------------------------------------*/
+  wdiStatus =  WDI_SendIndication( pWDICtx, pSendBuffer, usSendSize);
+  return (wdiStatus != WDI_STATUS_SUCCESS) ? wdiStatus:WDI_STATUS_SUCCESS_SYNC;
+} /*End of WDI_ProcessHT40OBSSStopScanInd*/
+
+/**
+ @brief WDI_HT40OBSSStopScanInd
+    This API is called to start OBSS scan
+ @param pWdiReq : pointer to get  ind param
+ @see
+ @return SUCCESS or FAIL
+*/
+WDI_Status WDI_HT40OBSSStopScanInd
+(
+    wpt_uint8 bssIdx
+)
+{
+    WDI_EventInfoType      wdiEventData;
+
+    /*-------------------------------------------------------------------------
+      Sanity Check
+    ------------------------------------------------------------------------*/
+    if (eWLAN_PAL_FALSE == gWDIInitialized)
+    {
+        WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+             "WDI API call before module is initialized - Fail request!");
+
+        return WDI_STATUS_E_NOT_ALLOWED;
+    }
+
+    /*-------------------------------------------------------------------------
+      Fill in Event data and post to the Main FSM
+     ------------------------------------------------------------------------*/
+    wdiEventData.wdiRequest      = WDI_STOP_HT40_OBSS_SCAN_IND;
+    wdiEventData.pEventData      = &bssIdx;
+    wdiEventData.uEventDataSize  = sizeof(wpt_uint8);
+    wdiEventData.pCBfnc          = NULL;
+    wdiEventData.pUserData       = NULL;
+
+    return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
 
