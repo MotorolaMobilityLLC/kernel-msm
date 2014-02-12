@@ -1654,6 +1654,9 @@ typedef  struct sSirMacRpiReportIE
 
 #define SIR_MAC_MAX_SUPP_RATES            32
 
+#define SIR_MAC_MAX_SUPP_CHANNELS            100
+#define SIR_MAC_MAX_SUPP_OPER_CLASSES        32
+
 #define SIR_MAC_MAX_EXTN_CAP               8
 
 // VHT Capabilities Info
