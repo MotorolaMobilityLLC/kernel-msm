@@ -11683,6 +11683,12 @@ eHalStatus csrRoamIssueStartBss( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRo
     pParam->uCfgDot11Mode = csrRoamGetPhyModeBandForBss(pMac, pProfile, pParam->operationChn /* pProfile->operationChannel*/, 
                                         &eBand);
     pParam->bssPersona = pProfile->csrPersona;
+
+#ifdef WLAN_FEATURE_11W
+    pParam->mfpCapable = (0 != pProfile->MFPCapable);
+    pParam->mfpRequired = (0 != pProfile->MFPRequired);
+#endif
+
     // When starting an IBSS, start on the channel from the Profile.
     status = csrSendMBStartBssReqMsg( pMac, sessionId, pProfile->BSSType, pParam, pBssDesc );
     return (status);
@@ -13821,6 +13827,14 @@ eHalStatus csrSendMBStartBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, eCs
         //txLdpcIniFeatureEnabled
         *pBuf = (tANI_U8)(tANI_U8)pMac->roam.configParam.txLdpcEnable;
         pBuf++;
+
+#ifdef WLAN_FEATURE_11W
+        // Set MFP capable/required
+        *pBuf = (tANI_U8)pParam->mfpCapable;
+        pBuf++;
+        *pBuf = (tANI_U8)pParam->mfpRequired;
+        pBuf++;
+#endif
 
         // set RSN IE
         if( pParam->nRSNIELength > sizeof(pMsg->rsnIE.rsnIEdata) )

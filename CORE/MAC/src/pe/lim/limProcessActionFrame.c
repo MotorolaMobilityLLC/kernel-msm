@@ -1869,18 +1869,56 @@ static void __limProcessSAQueryResponseActionFrame(tpAniSirGlobal pMac, tANI_U8 
 {
     tpSirMacMgmtHdr     pHdr;
     tANI_U32            frameLen;
+    tANI_U8             *pBody;
+    tpDphHashNode       pSta;
+    tANI_U16            aid;
+    tANI_U16            transId;
+    tANI_U8             retryNum;
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
     frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+    pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
     VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
                          ("SA Query Response received...")) ;
-    /* Forward to the SME to HDD to wpa_supplicant */
-    // type is ACTION
-    limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType,
-       (tANI_U8*)pHdr, frameLen + sizeof(tSirMacMgmtHdr), 0,
-       WDA_GET_RX_CH( pRxPacketInfo ), psessionEntry, 0);
-}
 
+    /* If this is an unprotected SA Query Response, then ignore it. */
+    if (pHdr->fc.wep == 0)
+        return;
+
+    pSta = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
+    if (NULL == pSta)
+        return;
+
+    limLog(pMac, LOG1,
+           FL("SA Query Response source addr - %0x:%0x:%0x:%0x:%0x:%0x"),
+           pHdr->sa[0], pHdr->sa[1], pHdr->sa[2], pHdr->sa[3],
+           pHdr->sa[4], pHdr->sa[5]);
+    limLog(pMac, LOG1,
+           FL("SA Query state for station - %d"), pSta->pmfSaQueryState);
+
+    if (DPH_SA_QUERY_IN_PROGRESS != pSta->pmfSaQueryState)
+        return;
+
+    /* Extract 11w trsansId from SA query reponse action frame
+       In SA query response action frame:
+          Category       : 1 byte
+          Action         : 1 byte
+          Transaction ID : 2 bytes */
+    vos_mem_copy(&transId, &pBody[2], 2);
+
+    /* If SA Query is in progress with the station and the station
+       responds then the association request that triggered the SA
+       query is from a rogue station, just go back to initial state. */
+    for (retryNum = 0; retryNum <= pSta->pmfSaQueryRetryCount; retryNum++)
+        if (transId == pSta->pmfSaQueryStartTransId + retryNum)
+        {
+            limLog(pMac, LOG1,
+                   FL("Found matching SA Query Request - transaction ID %d"), transId);
+            tx_timer_deactivate(&pSta->pmfSaQueryTimer);
+            pSta->pmfSaQueryState = DPH_SA_QUERY_NOT_IN_PROGRESS;
+            break;
+        }
+}
 #endif
 
 /**
@@ -2202,7 +2240,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                 break;
             case  SIR_MAC_SA_QUERY_RSP:
                 /**11w SA query response action frame received**/
-                /* Forward to the SME to HDD to wpa_supplicant */
+                /* Handle based on the current SA Query state */
                 __limProcessSAQueryResponseActionFrame(pMac,(tANI_U8*) pRxPacketInfo, psessionEntry );
                 break;
             default:

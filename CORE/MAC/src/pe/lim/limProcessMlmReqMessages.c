@@ -1674,6 +1674,10 @@ limMlmAddBss (
     pAddBssParams->currentOperChannel   = pMlmStartReq->channelNumber;
     pAddBssParams->currentExtChannel    = pMlmStartReq->cbMode;
 
+#ifdef WLAN_FEATURE_11W
+    pAddBssParams->rmfEnabled           = psessionEntry->limRmfEnabled;
+#endif
+
     /* Update PE sessionId*/
     pAddBssParams->sessionId            = pMlmStartReq->sessionId; 
 
@@ -1707,11 +1711,6 @@ limMlmAddBss (
 
 #if defined WLAN_FEATURE_VOWIFI_11R
     pAddBssParams->extSetStaKeyParamValid = 0;
-#endif
-
-#ifdef WLAN_FEATURE_11W
-    pAddBssParams->rmfEnabled = (psessionEntry->gStartBssRSNIe.RSN_Cap[0] >> 7) & 0x1;
-    limLog( pMac, LOG1, FL("PMF capable value for BSS is %d"), pAddBssParams->rmfEnabled);
 #endif
 
     //

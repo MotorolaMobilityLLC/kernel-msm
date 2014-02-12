@@ -54,6 +54,9 @@
 #include "limSessionUtils.h"
 #include "limSession.h"
 #include "vos_nvitem.h"
+#ifdef WLAN_FEATURE_11W
+#include "wniCfgAp.h"
+#endif
 
 /* Static global used to mark situations where pMac->lim.gLimTriggerBackgroundScanDuringQuietBss is SET
  * and limTriggerBackgroundScanDuringQuietBss() returned failure.  In this case, we will stop data
@@ -7871,3 +7874,68 @@ void limUpdateOBSSScanParams(tpPESession psessionEntry ,
               pOBSSScanParameters->obssScanActivityThreshold;
     }
 }
+
+#ifdef WLAN_FEATURE_11W
+void limPmfSaQueryTimerHandler(void *pMacGlobal, tANI_U32 param)
+{
+    tpAniSirGlobal pMac = (tpAniSirGlobal)pMacGlobal;
+    tPmfSaQueryTimerId timerId;
+    tpPESession psessionEntry;
+    tpDphHashNode pSta;
+    tANI_U32 maxRetries;
+
+    limLog(pMac, LOG1, FL("SA Query timer fires"));
+    timerId.value = param;
+
+    // Check that SA Query is in progress
+    if ((psessionEntry = peFindSessionBySessionId(
+        pMac, timerId.fields.sessionId)) == NULL)
+    {
+        limLog(pMac, LOGE, FL("Session does not exist for given session ID %d"),
+               timerId.fields.sessionId);
+        pSta->pmfSaQueryState = DPH_SA_QUERY_NOT_IN_PROGRESS;
+        return;
+    }
+    if ((pSta = dphGetHashEntry(pMac, timerId.fields.peerIdx,
+                                &psessionEntry->dph.dphHashTable)) == NULL)
+    {
+        limLog(pMac, LOGE, FL("Entry does not exist for given peer index %d"),
+               timerId.fields.peerIdx);
+        pSta->pmfSaQueryState = DPH_SA_QUERY_NOT_IN_PROGRESS;
+        return;
+    }
+    if (DPH_SA_QUERY_IN_PROGRESS != pSta->pmfSaQueryState)
+        return;
+
+    // Increment the retry count, check if reached maximum
+    if (wlan_cfgGetInt(pMac, WNI_CFG_PMF_SA_QUERY_MAX_RETRIES,
+                       &maxRetries) != eSIR_SUCCESS)
+    {
+        limLog(pMac, LOGE, FL("Could not retrieve PMF SA Query maximum retries value"));
+        pSta->pmfSaQueryState = DPH_SA_QUERY_NOT_IN_PROGRESS;
+        return;
+    }
+    pSta->pmfSaQueryRetryCount++;
+    if (pSta->pmfSaQueryRetryCount >= maxRetries)
+    {
+        limLog(pMac, LOG1, FL("SA Query timed out"));
+        /* remove before submission */
+        limLog(pMac, LOGE, FL("SA Query timed out"));
+        pSta->pmfSaQueryState = DPH_SA_QUERY_TIMED_OUT;
+        return;
+    }
+
+    // Retry SA Query
+    limSendSaQueryRequestFrame(pMac, (tANI_U8 *)&(pSta->pmfSaQueryCurrentTransId),
+                               pSta->staAddr, psessionEntry);
+    pSta->pmfSaQueryCurrentTransId++;
+    /* remove before submission */
+    limLog(pMac, LOGE, FL("Starting SA Query retry %d"), pSta->pmfSaQueryRetryCount);
+    if (tx_timer_activate(&pSta->pmfSaQueryTimer) != TX_SUCCESS)
+    {
+        limLog(pMac, LOGE, FL("PMF SA Query timer activation failed!"));
+        pSta->pmfSaQueryState = DPH_SA_QUERY_NOT_IN_PROGRESS;
+    }
+}
+#endif
+

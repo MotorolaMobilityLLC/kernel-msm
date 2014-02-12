@@ -5097,5 +5097,14 @@ void PopulateDot11fAssocRspRates ( tpAniSirGlobal pMac, tDot11fIESuppRates *pSup
      pExt->num_rates = num_ext;
      pExt->present = 1;
   }
-} 
+}
+
+void PopulateDot11fTimeoutInterval( tpAniSirGlobal pMac,
+                                    tDot11fIETimeoutInterval *pDot11f,
+                                    tANI_U8 type, tANI_U32 value )
+{
+   pDot11f->present = 1;
+   pDot11f->timeoutType = type;
+   pDot11f->timeoutValue = value;
+}
 // parserApi.c ends here.

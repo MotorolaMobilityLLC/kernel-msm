@@ -882,3 +882,8 @@ PopulateDot11fWiderBWChanSwitchAnn(tpAniSirGlobal pMac,
                                    tDot11fIEWiderBWChanSwitchAnn *pDot11f,
                                    tpPESession psessionEntry);
 #endif
+
+void PopulateDot11fTimeoutInterval( tpAniSirGlobal pMac,
+                                    tDot11fIETimeoutInterval *pDot11f,
+                                    tANI_U8 type, tANI_U32 value );
+
