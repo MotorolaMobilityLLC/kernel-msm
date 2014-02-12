@@ -2032,8 +2032,18 @@ int mmc_can_erase(struct mmc_card *card)
 }
 EXPORT_SYMBOL(mmc_can_erase);
 
+#define TOSHIBA_MANFID 0x11
 int mmc_can_trim(struct mmc_card *card)
 {
+	/*
+	* Toshiba 24nm (eMMC v4.41) parts perform poorly when issued TRIM
+	* commands because they do synchronous garbage collection.   Falling
+	* back on normal erase commands works around this, since the part will
+	* only do a logical remapping of the erased block.  This is resolved
+	* on their 19nm (eMMC v4.5) parts.
+	*/
+	if (card->cid.manfid == TOSHIBA_MANFID && card->ext_csd.rev == 5)
+		return 0;
 	if (card->ext_csd.sec_feature_support & EXT_CSD_SEC_GB_CL_EN)
 		return 1;
 	return 0;
