@@ -118,6 +118,8 @@
 #define WLAN_AKM_SUITE_FT_PSK           0x000FAC04
 #endif
 
+#define HDD_CHANNEL_14 14
+
 static const u32 hdd_cipher_suites[] =
 {
     WLAN_CIPHER_SUITE_WEP40,
@@ -3345,6 +3347,7 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
 #ifdef FEATURE_WLAN_TDLS
     tCsrStaParams StaParams = {0};
     tANI_U8 isBufSta = 0;
+    tANI_U8 isOffChannelSupported = 0;
 #endif
     ENTER();
 
@@ -3398,6 +3401,36 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
             StaParams.uapsd_queues = params->uapsd_queues;
             StaParams.max_sp = params->max_sp;
 
+            /* Convert (first channel , number of channels) tuple to
+             * the total list of channels. This goes with the assumption
+             * that if the first channel is < 14, then the next channels
+             * are an incremental of 1 else an incremental of 4 till the number
+             * of channels.
+             */
+            if (0 != params->supported_channels_len) {
+                int i = 0,j = 0,k = 0, no_of_channels = 0 ;
+                for ( i = 0 ; i < params->supported_channels_len ; i+=2)
+                {
+                    int wifi_chan_index;
+                    StaParams.supported_channels[j] = params->supported_channels[i];
+                    wifi_chan_index =
+                        ((StaParams.supported_channels[j] <= HDD_CHANNEL_14 ) ? 1 : 4 );
+                    no_of_channels = params->supported_channels[i+1];
+                    for(k=1; k <= no_of_channels; k++)
+                    {
+                        StaParams.supported_channels[j+1] =
+                              StaParams.supported_channels[j] + wifi_chan_index;
+                        j+=1;
+                    }
+                }
+                StaParams.supported_channels_len = j;
+            }
+            vos_mem_copy(StaParams.supported_oper_classes,
+                         params->supported_oper_classes,
+                         params->supported_oper_classes_len);
+            StaParams.supported_oper_classes_len  =
+                                             params->supported_oper_classes_len;
+
             if (0 != params->ext_capab_len)
                 vos_mem_copy(StaParams.extn_capability, params->ext_capab,
                              sizeof(StaParams.extn_capability));
@@ -3443,9 +3476,15 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
                 if ((1<<4) & StaParams.extn_capability[3]) {
                     isBufSta = 1;
                 }
+                /* TDLS Channel Switching Support */
+                if ((1<<6) & StaParams.extn_capability[3]) {
+                    isOffChannelSupported = 1;
+                }
             }
-            status = wlan_hdd_tdls_set_peer_caps( pAdapter, mac, params->uapsd_queues,
-                                                  params->max_sp, isBufSta);
+            status = wlan_hdd_tdls_set_peer_caps( pAdapter, mac,
+                                                  &StaParams, isBufSta,
+                                                  isOffChannelSupported);
+
             if (VOS_STATUS_SUCCESS != status) {
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                           "%s: wlan_hdd_tdls_set_peer_caps failed!", __func__);
