@@ -103,7 +103,12 @@ typedef struct TdlsLinkEstablishInfo
   tANI_U8 uapsdQueues;
   tANI_U8 maxSp;
   tANI_U8 isBufSta;
+  tANI_U8 isOffChannelSupported;
   tANI_U8 isResponder;
+  tANI_U8 supportedChannelsLen;
+  tANI_U8 supportedChannels[SIR_MAC_MAX_SUPP_CHANNELS];
+  tANI_U8 supportedOperClassesLen;
+  tANI_U8 supportedOperClasses[SIR_MAC_MAX_SUPP_OPER_CLASSES];
 } tTdlsLinkEstablishCmdInfo;
 
 typedef struct TdlsAddStaInfo
