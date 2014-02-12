@@ -2464,12 +2464,15 @@ tANI_U8 csrScanFlushDenied(tpAniSirGlobal pMac)
 eHalStatus csrScanFlushResult(tpAniSirGlobal pMac)
 {
     tANI_U8 isFlushDenied = csrScanFlushDenied(pMac);
+    eHalStatus status = eHAL_STATUS_SUCCESS;
     if (isFlushDenied) {
         smsLog(pMac, LOGW, "%s: scan flush denied in roam state %d",
                 __func__, isFlushDenied);
         return eHAL_STATUS_FAILURE;
     }
-    return ( csrLLScanPurgeResult(pMac, &pMac->scan.scanResultList) );
+    csrLLScanPurgeResult( pMac, &pMac->scan.tempScanResults );
+    csrLLScanPurgeResult( pMac, &pMac->scan.scanResultList );
+    return( status );
 }
 
 eHalStatus csrScanFlushSelectiveResult(tpAniSirGlobal pMac, v_BOOL_t flushP2P)
@@ -2506,7 +2509,7 @@ eHalStatus csrScanFlushSelectiveResult(tpAniSirGlobal pMac, v_BOOL_t flushP2P)
  * csrCheck11dChannel
  *
  *FUNCTION:
- * This function is called from csrScanFilter11dResult function and
+ * This function is called from csrScanFilterResults function and
  * compare channel number with given channel list.
  *
  *LOGIC:
@@ -2541,7 +2544,7 @@ eHalStatus csrCheck11dChannel(tANI_U8 channelId, tANI_U8 *pChannelList, tANI_U32
 }
 
 /**
- * csrScanFilter11dResult
+ * csrScanFilterResults
  *
  *FUNCTION:
  * This function is called from csrApplyCountryInformation function and
@@ -2562,7 +2565,7 @@ eHalStatus csrCheck11dChannel(tANI_U8 channelId, tANI_U8 *pChannelList, tANI_U32
  * @return Status
  */
 
-eHalStatus csrScanFilter11dResult(tpAniSirGlobal pMac)
+eHalStatus csrScanFilterResults(tpAniSirGlobal pMac)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tListElem *pEntry,*pTempEntry;
@@ -2580,10 +2583,10 @@ eHalStatus csrScanFilter11dResult(tpAniSirGlobal pMac)
     while( pEntry )
     {
         pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
-        pTempEntry = csrLLNext( &pMac->scan.scanResultList, pEntry, 
+        pTempEntry = csrLLNext( &pMac->scan.scanResultList, pEntry,
                                                             LL_ACCESS_LOCK );
         if(csrCheck11dChannel(pBssDesc->Result.BssDescriptor.channelId,
-                                              pMac->roam.validChannelList, len))
+                              pMac->roam.validChannelList, len))
         {
             /* Remove Scan result which does not have 11d channel */
             if( csrLLRemoveEntry( &pMac->scan.scanResultList, pEntry,
@@ -2591,6 +2594,35 @@ eHalStatus csrScanFilter11dResult(tpAniSirGlobal pMac)
             {
                 csrFreeScanResultEntry( pMac, pBssDesc );
             }
+        }
+        else
+        {
+            smsLog( pMac, LOG1, FL("%d is a Valid channel"),
+                    pBssDesc->Result.BssDescriptor.channelId);
+        }
+        pEntry = pTempEntry;
+    }
+
+    pEntry = csrLLPeekHead( &pMac->scan.tempScanResults, LL_ACCESS_LOCK );
+    while( pEntry )
+    {
+        pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+        pTempEntry = csrLLNext( &pMac->scan.tempScanResults, pEntry,
+                                                            LL_ACCESS_LOCK );
+        if(csrCheck11dChannel(pBssDesc->Result.BssDescriptor.channelId,
+                              pMac->roam.validChannelList, len))
+        {
+            /* Remove Scan result which does not have 11d channel */
+            if( csrLLRemoveEntry( &pMac->scan.tempScanResults, pEntry,
+                        LL_ACCESS_LOCK ))
+            {
+                csrFreeScanResultEntry( pMac, pBssDesc );
+            }
+        }
+        else
+        {
+            smsLog( pMac, LOG1, FL("%d is a Valid channel"),
+                    pBssDesc->Result.BssDescriptor.channelId);
         }
         pEntry = pTempEntry;
     }
@@ -4262,7 +4294,7 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
             * which does not have channel number belong to 11d
             * channel list
             */
-            csrScanFilter11dResult(pMac);
+            csrScanFilterResults(pMac);
         }
 #endif
         fRet = eANI_BOOLEAN_TRUE;
