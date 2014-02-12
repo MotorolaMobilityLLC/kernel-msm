@@ -224,6 +224,7 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
     tANI_U8              sessionId;
     tANI_U8             *p2pIe = NULL;
     tANI_U32             txFlag = 0;
+    tANI_U32             chanbond24G = 0;
 
 #ifndef GEN4_SCAN
     return eSIR_FAILURE;
@@ -311,13 +312,13 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
            }
     }
 
-    /* Set channelbonding information as "disabled" when tunned to a 2.4 GHz channel */
-    if( nChannelNum <= SIR_11B_CHANNEL_END)
+    /* Get HT40 capability  for 2.4GHz band */
+    wlan_cfgGetInt(pMac,WNI_CFG_CHANNEL_BONDING_24G,&chanbond24G);
+    if( (nChannelNum <= SIR_11B_CHANNEL_END) && chanbond24G != TRUE)
     {
         pr.HTCaps.supportedChannelWidthSet = eHT_CHANNEL_WIDTH_20MHZ;
         pr.HTCaps.shortGI40MHz = 0;
     }
-
 #ifdef WLAN_FEATURE_11AC
     if (psessionEntry != NULL ) {
        psessionEntry->vhtCapability = IS_DOT11_MODE_VHT(dot11mode);
@@ -636,9 +637,10 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
         PopulateDot11fVHTOperation( pMac, &pFrm->VHTOperation );
         // we do not support multi users yet
         //PopulateDot11fVHTExtBssLoad( pMac, &frm.VHTExtBssLoad );
-        PopulateDot11fExtCap( pMac, &pFrm->ExtCap);
+        PopulateDot11fExtCap( pMac, &pFrm->ExtCap, psessionEntry);
     }
 #endif
+
 
     if ( psessionEntry->pLimStartBssReq ) 
     {
@@ -1324,7 +1326,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
             limLog( pMac, LOG1, FL("Populate VHT IEs in Assoc Response"));
             PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
             PopulateDot11fVHTOperation( pMac, &frm.VHTOperation);
-            PopulateDot11fExtCap( pMac, &frm.ExtCap);
+            PopulateDot11fExtCap( pMac, &frm.ExtCap, psessionEntry);
         }
 #endif
 
@@ -2153,10 +2155,9 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     {
         limLog( pMac, LOG1, FL("Populate VHT IEs in Assoc Request"));
         PopulateDot11fVHTCaps( pMac, &pFrm->VHTCaps );
-        PopulateDot11fExtCap( pMac, &pFrm->ExtCap);
     }
 #endif
-
+    PopulateDot11fExtCap( pMac, &pFrm->ExtCap, psessionEntry);
 
 #if defined WLAN_FEATURE_VOWIFI_11R
     if (psessionEntry->pLimJoinReq->is11Rconnection)
@@ -2585,9 +2586,9 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     {
         limLog( pMac, LOG1, FL("Populate VHT IEs in Re-Assoc Request"));
         PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
-        PopulateDot11fExtCap( pMac, &frm.ExtCap);
     }
 #endif
+    PopulateDot11fExtCap( pMac, &frm.ExtCap, psessionEntry);
 
     nStatus = dot11fGetPackedReAssocRequestSize( pMac, &frm, &nPayload );
     if ( DOT11F_FAILED( nStatus ) )
@@ -2998,7 +2999,7 @@ limSendReassocReqMgmtFrame(tpAniSirGlobal     pMac,
     {
         limLog( pMac, LOG1, FL("Populate VHT IEs in Re-Assoc Request"));
         PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
-        PopulateDot11fExtCap( pMac, &frm.ExtCap);
+        PopulateDot11fExtCap( pMac, &frm.ExtCap, psessionEntry);
     }
 #endif
 

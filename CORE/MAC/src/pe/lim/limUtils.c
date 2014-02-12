@@ -1280,10 +1280,6 @@ limPrintMacAddr(tpAniSirGlobal pMac, tSirMacAddr macAddr, tANI_U8 logLevel)
 } /****** end limPrintMacAddr() ******/
 
 
-
-
-
-
 /*
  * limResetDeferredMsgQ()
  *
@@ -7702,6 +7698,59 @@ tANI_BOOLEAN limIsconnectedOnDFSChannel(tANI_U8 currentChannel)
     {
         return eANI_BOOLEAN_FALSE;
     }
+}
+
+/**
+ * \brief verify the changes in channel bonding
+ *
+ * \param pMac Pointer to the global MAC structure
+ *
+ * \param psessionEntry session entry
+ *           beaconSecChanWidth    Secondary channel width
+ *                                             advertized in beacon
+ *          currentSecChanWidth     Current configured width
+ *          staId                            Station Id
+ * \return eSIR_SUCCESS on success, eSIR_FAILURE else
+ */
+tANI_BOOLEAN limCheckHTChanBondModeChange(tpAniSirGlobal pMac,
+                                                  tpPESession psessionEntry,
+                                                  tANI_U8 beaconSecChanWidth,
+                                                  tANI_U8 currentSecChanWidth,
+                                                  tANI_U8 staId)
+{
+    tUpdateVHTOpMode tempParam;
+    tANI_BOOLEAN fCbMode24G = FALSE;
+    tANI_BOOLEAN status = eANI_BOOLEAN_FALSE;
+
+     /* Moving from HT40 to HT20 operation*/
+    if (((PHY_DOUBLE_CHANNEL_LOW_PRIMARY == currentSecChanWidth) ||
+      (PHY_DOUBLE_CHANNEL_HIGH_PRIMARY == currentSecChanWidth))
+      && (PHY_SINGLE_CHANNEL_CENTERED == beaconSecChanWidth))
+    {
+       tempParam.opMode = eHT_CHANNEL_WIDTH_20MHZ;
+       tempParam.staId  = staId;
+       fCbMode24G = TRUE;
+    }
+
+     /* Moving from HT20 to HT40 operation*/
+    if ((( PHY_DOUBLE_CHANNEL_LOW_PRIMARY == beaconSecChanWidth) ||
+      ( PHY_DOUBLE_CHANNEL_HIGH_PRIMARY == beaconSecChanWidth ))
+      && (PHY_SINGLE_CHANNEL_CENTERED == currentSecChanWidth))
+    {
+       tempParam.opMode = eHT_CHANNEL_WIDTH_40MHZ;
+       tempParam.staId  = staId;
+       fCbMode24G = TRUE;
+    }
+
+    if (TRUE == fCbMode24G)
+    {
+       VOS_TRACE( VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+                 "Changing CBMODE to = %d staId = %d",
+                  tempParam.opMode, tempParam.staId );
+       if( eSIR_SUCCESS == limSendModeUpdate(pMac, &tempParam, psessionEntry))
+          status = eANI_BOOLEAN_TRUE;
+    }
+    return status;
 }
 
 #ifdef WLAN_FEATURE_11AC

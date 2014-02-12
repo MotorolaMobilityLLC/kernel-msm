@@ -1,5 +1,5 @@
 /*
-  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+  * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
   *
   * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
   *
@@ -19,7 +19,7 @@
   * PERFORMANCE OF THIS SOFTWARE.
 */
 /*
- * Copyright (c) 2011-2013 Qualcomm Atheros, Inc.
+ * Copyright (c) 2011-2014 Qualcomm Atheros, Inc.
  * All Rights Reserved.
  * Qualcomm Atheros Confidential and Proprietary.
  *
@@ -56,8 +56,9 @@ static tBeaconFilterIe beaconFilterTable[] = {
    {SIR_MAC_EDCA_PARAM_SET_EID,  0, {0, 0, EDCA_FILTER_MASK,      0}},
    {SIR_MAC_QOS_CAPABILITY_EID,  0, {0, 0, QOS_FILTER_MASK,       0}},
    {SIR_MAC_CHNL_SWITCH_ANN_EID, 1, {0, 0, 0,                     0}},
-   {SIR_MAC_HT_INFO_EID,         0, {0, 0, HT_BYTE0_FILTER_MASK,  0}},  
-   {SIR_MAC_HT_INFO_EID,         0, {2, 0, HT_BYTE2_FILTER_MASK,  0}}, 
+   {SIR_MAC_HT_INFO_EID,         0, {0, 0, HT_BYTE0_FILTER_MASK,  0}}, //primary channel
+   {SIR_MAC_HT_INFO_EID,         0, {1, 0, HT_BYTE1_FILTER_MASK,  0}}, //Secondary Channel
+   {SIR_MAC_HT_INFO_EID,         0, {2, 0, HT_BYTE2_FILTER_MASK,  0}}, //HT  protection
    {SIR_MAC_HT_INFO_EID,         0, {5, 0, HT_BYTE5_FILTER_MASK,  0}}
 #if defined WLAN_FEATURE_VOWIFI
    ,{SIR_MAC_PWR_CONSTRAINT_EID,  0, {0, 0, 0, 0}}
@@ -704,7 +705,15 @@ tSirRetStatus limSendBeaconFilterInfo(tpAniSirGlobal pMac,tpPESession psessionEn
     return retCode;
 }
 
-#ifdef WLAN_FEATURE_11AC
+/**
+ * \brief Send CB mode update to WDA
+ *
+ * \param pMac Pointer to the global MAC structure
+ *
+ * \param psessionEntry          session entry
+ *          pTempParam            CB mode
+ * \return eSIR_SUCCESS on success, eSIR_FAILURE else
+ */
 tSirRetStatus limSendModeUpdate(tpAniSirGlobal pMac, 
                                 tUpdateVHTOpMode *pTempParam,
                                 tpPESession  psessionEntry )
@@ -745,7 +754,6 @@ tSirRetStatus limSendModeUpdate(tpAniSirGlobal pMac,
 
     return retCode;
 }
-#endif 
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 /** ---------------------------------------------------------

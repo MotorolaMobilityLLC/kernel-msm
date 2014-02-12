@@ -885,7 +885,8 @@ tSirRetStatus
 PopulateDot11fVHTExtBssLoad(tpAniSirGlobal  pMac, tDot11fIEVHTExtBssLoad   *pDot11f);
 
 tSirRetStatus
-PopulateDot11fExtCap(tpAniSirGlobal pMac, tDot11fIEExtCap * pDot11f);
+PopulateDot11fExtCap(tpAniSirGlobal pMac, tDot11fIEExtCap * pDot11f,
+                            tPESession *sessionEntry);
 
 tSirRetStatus
 PopulateDot11fOperatingMode(tpAniSirGlobal pMac, tDot11fIEOperatingMode *pDot11f, tpPESession psessionEntry );

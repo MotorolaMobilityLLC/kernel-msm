@@ -873,13 +873,11 @@ typedef struct
     tANI_U16 paramChangeBitmap;
 }tUpdateBeaconParams, *tpUpdateBeaconParams;
 
-#ifdef WLAN_FEATURE_11AC
 typedef struct 
 {
    tANI_U16   opMode;
    tANI_U16  staId;
 }tUpdateVHTOpMode, *tpUpdateVHTOpMode;
-#endif
 
 //HAL MSG: SIR_HAL_UPDATE_CF_IND
 typedef struct

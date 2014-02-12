@@ -63,11 +63,11 @@ tSirRetStatus limSendBeaconParams(tpAniSirGlobal pMac,
                                   tpUpdateBeaconParams pUpdatedBcnParams,
                                   tpPESession  psessionEntry );
 //tSirRetStatus limSendBeaconParams(tpAniSirGlobal pMac, tpUpdateBeaconParams pUpdatedBcnParams);
-#ifdef WLAN_FEATURE_11AC
 tSirRetStatus limSendModeUpdate(tpAniSirGlobal pMac, 
                                 tUpdateVHTOpMode *tempParam,
                                 tpPESession  psessionEntry );
 
+#ifdef WLAN_FEATURE_11AC
 tANI_U32 limGetCenterChannel(tpAniSirGlobal pMac,
                              tANI_U8 primarychanNum,
                              ePhyChanBondState secondaryChanOffset, 
@@ -98,6 +98,7 @@ void limSetActiveEdcaParams(tpAniSirGlobal pMac, tSirMacEdcaParamRecord *plocalE
 #define EDCA_FILTER_MASK        0xF0
 #define QOS_FILTER_MASK         0xF0
 #define HT_BYTE0_FILTER_MASK    0x0
+#define HT_BYTE1_FILTER_MASK    0x07
 #define HT_BYTE2_FILTER_MASK    0xEB
 #define HT_BYTE5_FILTER_MASK    0xFD
 #define DS_PARAM_CHANNEL_MASK   0x0

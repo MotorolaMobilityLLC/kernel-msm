@@ -172,6 +172,10 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
 #endif
     ,FEATURE_NOT_SUPPORTED          //30
     ,FW_IN_TX_PATH                  //31
+    ,EXTENDED_NSOFFLOAD_SLOT        //32
+    ,CH_SWITCH_V1                   //33
+    ,HT40_OBSS_SCAN                 //34
+    ,UPDATE_CHANNEL_LIST            //35
 };
 
 /*-------------------------------------------------------------------------- 
@@ -1185,6 +1189,11 @@ void WDI_TraceHostFWCapabilities(tANI_U32 *capabilityBitmap)
                           break;
                      case FW_IN_TX_PATH: snprintf(pCapStr, sizeof("FW_IN_TX_PATH"), "%s", "FW_IN_TX_PATH");
                           pCapStr += strlen("FW_IN_TX_PATH");
+                          break;
+                     case HT40_OBSS_SCAN:
+                          snprintf(pCapStr, sizeof("HT40_OBSS_SCAN"),
+                                   "%s", "HT40_OBSS_SCAN");
+                          pCapStr += strlen("HT40_OBSS_SCAN");
                           break;
               }
               *pCapStr++ = ',';
