@@ -119,16 +119,6 @@ struct mdss_panel_recovery {
  *				The event handler will enable the panel and
  *				vote for the display clocks.
  * @MDSS_EVENT_PANEL_UPDATE_FPS: Event to update the frame rate of the panel.
- * @MDSS_EVENT_LOCK_PANEL_MUTEX: This is a special panel mutex, which only be
- *				used in the special ESD recovery event.
- * @MDSS_EVENT_UNLOCK_PANEL_MUTEX: This is a special panel mutex, which only be
- *				used in the special ESD recovery event.
- *				The same as for MDSS_EVENT_LOCK_PANEL_MUTEX,
- *				during the ESD recovery kicks in, it will
- *				turn off and on the display. While it is doing
- *				so, it will acquire this mutex to prevent
- *				any blank or unblank calls that might
- *				interfere with its ESD recovery
  * @MDSS_EVENT_FB_REGISTERED:	Called after fb dev driver has been registered,
  *				panel driver gets ptr to struct fb_info which
  *				holds fb dev information.
@@ -151,8 +141,6 @@ enum mdss_intf_events {
 	MDSS_EVENT_CONT_SPLASH_BEGIN,
 	MDSS_EVENT_CONT_SPLASH_FINISH,
 	MDSS_EVENT_PANEL_UPDATE_FPS,
-	MDSS_EVENT_LOCK_PANEL_MUTEX,
-	MDSS_EVENT_UNLOCK_PANEL_MUTEX,
 	MDSS_EVENT_FB_REGISTERED,
 	MDSS_EVENT_PANEL_CLK_CTRL,
 	MDSS_EVENT_DSI_CMDLIST_KOFF,

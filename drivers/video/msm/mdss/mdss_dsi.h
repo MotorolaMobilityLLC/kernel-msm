@@ -219,12 +219,7 @@ enum {
 };
 
 struct mdss_panel_esd_pdata {
-
-	struct workqueue_struct *esd_wq;
-	bool esd_detection_run;
-	bool esd_recovery_run;
 	int esd_pwr_mode_chk;
-
 	int esd_detect_mode;
 	int te_irq;
 	struct completion te_detected;
@@ -232,9 +227,7 @@ struct mdss_panel_esd_pdata {
 
 struct mdss_panel_config {
 	bool esd_enable;
-	struct mutex panel_mutex;
 	bool esd_disable_bl;
-
 	bool bare_board;
 	char panel_name[32];
 	u64 panel_ver;
@@ -275,9 +268,6 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_panel_config panel_config;
 	struct mdss_panel_esd_pdata panel_esd_data;
 	struct dss_module_power panel_vregs;
-	void(*lock_mutex) (struct mdss_panel_data *pdata);
-	void(*unlock_mutex) (struct mdss_panel_data *pdata);
-	struct delayed_work esd_work;
 	unsigned char *ctrl_base;
 	int reg_size;
 	u32 clk_cnt;

@@ -2421,8 +2421,6 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		mdp5_data->ctl = ctl;
 	}
 
-	mdss_mdp_video_lock_panel(mdp5_data->ctl);
-
 	if (!mfd->panel_info->cont_splash_enabled &&
 		(mfd->panel_info->type != DTV_PANEL)) {
 		rc = mdss_mdp_overlay_start(mfd);
@@ -2431,13 +2429,9 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
 	} else {
 		rc = mdss_mdp_ctl_setup(mdp5_data->ctl);
-		if (rc) {
-			mdss_mdp_video_unlock_panel(mdp5_data->ctl);
+		if (rc)
 			return rc;
-		}
 	}
-
-	mdss_mdp_video_unlock_panel(mdp5_data->ctl);
 
 	if (IS_ERR_VALUE(rc)) {
 		pr_err("Failed to turn on fb%d\n", mfd->index);
@@ -2470,8 +2464,6 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	if (!mdp5_data->ctl->power_on)
 		return 0;
 
-	mdss_mdp_video_lock_panel(mdp5_data->ctl);
-
 	mdss_mdp_overlay_free_fb_pipe(mfd);
 
 	mixer = mdss_mdp_mixer_get(mdp5_data->ctl, MDSS_MDP_MIXER_MUX_LEFT);
@@ -2492,8 +2484,6 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	}
 
 	rc = mdss_mdp_ctl_stop(mdp5_data->ctl);
-	mdss_mdp_video_unlock_panel(mdp5_data->ctl);
-
 	if (rc == 0) {
 		__mdss_mdp_overlay_free_list_purge(mfd);
 		mdss_mdp_ctl_notifier_unregister(mdp5_data->ctl,

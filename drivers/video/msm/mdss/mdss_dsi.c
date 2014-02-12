@@ -769,14 +769,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 	case MDSS_EVENT_ENABLE_PARTIAL_UPDATE:
 		rc = mdss_dsi_ctl_partial_update(pdata);
 		break;
-	case MDSS_EVENT_LOCK_PANEL_MUTEX:
-		if (ctrl_pdata->lock_mutex)
-			ctrl_pdata->lock_mutex(pdata);
-		break;
-	case MDSS_EVENT_UNLOCK_PANEL_MUTEX:
-		if (ctrl_pdata->unlock_mutex)
-			ctrl_pdata->unlock_mutex(pdata);
-		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
@@ -1409,7 +1401,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 	}
 
 	ctrl_pdata->panel_data.event_handler = mdss_dsi_event_handler;
-	ctrl_pdata->check_status = mdss_dsi_bta_status_check;
 
 	if (ctrl_pdata->bklt_ctrl == BL_PWM)
 		mdss_dsi_panel_pwm_cfg(ctrl_pdata);
@@ -1460,20 +1451,6 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			ctrl_pdata->ctrl_base, ctrl_pdata->reg_size);
 		ctrl_pdata->ndx = 1;
 	}
-
-	if (ctrl_pdata->panel_config.esd_enable) {
-		pr_debug("%s: create ESD worker thread\n", __func__);
-		ctrl_pdata->panel_esd_data.esd_wq =
-				create_singlethread_workqueue("mdss_panel_esd");
-		if (ctrl_pdata->panel_esd_data.esd_wq == NULL) {
-			pr_err("%s: failed to create ESD work queue\n",
-								__func__);
-			ctrl_pdata->panel_config.esd_enable = false;
-		}
-	} else
-		pr_info("MDSS PANEL: ESD detection is disable\n");
-
-	mutex_init(&ctrl_pdata->panel_config.panel_mutex);
 
 	pr_debug("%s: Panel data initialized\n", __func__);
 

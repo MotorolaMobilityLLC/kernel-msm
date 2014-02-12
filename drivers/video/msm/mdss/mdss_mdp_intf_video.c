@@ -708,16 +708,6 @@ static int mdss_mdp_video_display(struct mdss_mdp_ctl *ctl, void *arg)
 	return 0;
 }
 
-void mdss_mdp_video_lock_panel(struct mdss_mdp_ctl *ctl)
-{
-	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_LOCK_PANEL_MUTEX, NULL);
-}
-
-void mdss_mdp_video_unlock_panel(struct mdss_mdp_ctl *ctl)
-{
-	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_UNLOCK_PANEL_MUTEX, NULL);
-}
-
 int mdss_mdp_video_reconfigure_splash_done(struct mdss_mdp_ctl *ctl,
 	bool handoff)
 {
