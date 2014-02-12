@@ -13222,17 +13222,14 @@ csrSendMBGetAssociatedStasReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId,
         vos_mem_copy(pBuf, (tANI_U8 *)&dwTmp, sizeof(tANI_U16));
         pBuf += sizeof(tANI_U16);
         // pUsrContext
-        dwTmp = pal_cpu_to_be32((tANI_U32)pUsrContext);
-        vos_mem_copy(pBuf, (tANI_U8 *)&dwTmp, sizeof(tANI_U32));
-        pBuf += sizeof(tANI_U32);
+        vos_mem_copy(pBuf, (tANI_U8 *)pUsrContext, sizeof(void *));
+        pBuf += sizeof(void*);
         // pfnSapEventCallback
-        dwTmp = pal_cpu_to_be32((tANI_U32)pfnSapEventCallback);
-        vos_mem_copy(pBuf, (tANI_U8 *)&dwTmp, sizeof(tANI_U32));
-        pBuf += sizeof(tANI_U32);
+        vos_mem_copy(pBuf, (tANI_U8 *)pfnSapEventCallback, sizeof(void*));
+        pBuf += sizeof(void*);
         // pAssocStasBuf
-        dwTmp = pal_cpu_to_be32((tANI_U32)pAssocStasBuf);
-        vos_mem_copy(pBuf, (tANI_U8 *)&dwTmp, sizeof(tANI_U32));
-        pBuf += sizeof(tANI_U32);
+        vos_mem_copy(pBuf, pAssocStasBuf, sizeof(void*));
+        pBuf += sizeof(void*);
         pMsg->length = pal_cpu_to_be16((tANI_U16)(sizeof(tANI_U32 ) + (pBuf - wTmpBuf)));//msg_header + msg
         status = palSendMBMessage( pMac->hHdd, pMsg );
     } while( 0 );
@@ -13245,7 +13242,7 @@ csrSendMBGetWPSPBCSessions( tpAniSirGlobal pMac, tANI_U32 sessionId,
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tSirSmeGetWPSPBCSessionsReq *pMsg;
     tANI_U8 *pBuf = NULL, *wTmpBuf = NULL;
-    tANI_U32 dwTmp;
+
     do
         {
         pMsg = vos_mem_malloc(sizeof(tSirSmeGetWPSPBCSessionsReq));
@@ -13261,13 +13258,11 @@ csrSendMBGetWPSPBCSessions( tpAniSirGlobal pMac, tANI_U32 sessionId,
 
         wTmpBuf = pBuf;
         // pUsrContext
-        dwTmp = pal_cpu_to_be32((tANI_U32)pUsrContext);
-        vos_mem_copy(pBuf, (tANI_U8 *)&dwTmp, sizeof(tANI_U32));
-        pBuf += sizeof(tANI_U32);
+        vos_mem_copy(pBuf, (tANI_U8 *)pUsrContext, sizeof(void*));
+        pBuf += sizeof(void *);
         // pSapEventCallback
-        dwTmp = pal_cpu_to_be32((tANI_U32)pfnSapEventCallback);
-        vos_mem_copy(pBuf, (tANI_U8 *)&dwTmp, sizeof(tANI_U32));
-        pBuf += sizeof(tANI_U32);
+        vos_mem_copy(pBuf, (tANI_U8 *)pfnSapEventCallback, sizeof(void *));
+        pBuf += sizeof(void *);
         // bssId
         vos_mem_copy((tSirMacAddr *)pBuf, bssId, sizeof(tSirMacAddr));
         pBuf += sizeof(tSirMacAddr);
