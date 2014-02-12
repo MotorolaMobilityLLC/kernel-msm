@@ -640,6 +640,11 @@ static tSirRetStatus __limInitConfig( tpAniSirGlobal pMac )
        limLog(pMac, LOGP, FL("cfg get LimTDLSUapsdMask failed"));
        return eSIR_FAILURE;
    }
+   if(wlan_cfgGetInt(pMac, WNI_CFG_TDLS_OFF_CHANNEL_ENABLED,(tANI_U32 *) &pMac->lim.gLimTDLSOffChannelEnabled) != eSIR_SUCCESS)
+   {
+       limLog(pMac, LOGP, FL("cfg get LimTDLSUapsdMask failed"));
+       return eSIR_FAILURE;
+   }
 #endif
    return eSIR_SUCCESS;
 }
