@@ -91,6 +91,7 @@ struct wm_adsp {
 
 	struct regulator *dvfs;
 
+	struct mutex ctl_lock;
 	struct list_head ctl_list;
 
 	u32 host_buf_ptr;
