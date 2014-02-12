@@ -1066,6 +1066,12 @@ sapconvertToCsrProfile(tsap_Config_t *pconfig_params, eCsrRoamBssType bssType, t
     //wps config info
     profile->wps_state = pconfig_params->wps_state;
 
+#ifdef WLAN_FEATURE_11W
+    // MFP capable/required
+    profile->MFPCapable = pconfig_params->mfpCapable ? 1 : 0;
+    profile->MFPRequired = pconfig_params->mfpRequired ? 1 : 0;
+#endif
+
     return eSAP_STATUS_SUCCESS; /* Success.  */
 }
 

@@ -858,7 +858,11 @@ void limProcessMlmHalBADeleteInd( tpAniSirGlobal pMac,
 void limProcessMlmRemoveKeyRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ );
 
 void limProcessLearnIntervalTimeout(tpAniSirGlobal pMac);
+
 #ifdef WLAN_FEATURE_11W
+//11w send SA query request action frame
+tSirRetStatus limSendSaQueryRequestFrame( tpAniSirGlobal pMac, tANI_U8 *transId,
+                                          tSirMacAddr peer, tpPESession psessionEntry );
 //11w SA query request action frame handler
 tSirRetStatus limSendSaQueryResponseFrame( tpAniSirGlobal pMac, 
                    tANI_U8 *transId, tSirMacAddr peer,tpPESession psessionEntry);

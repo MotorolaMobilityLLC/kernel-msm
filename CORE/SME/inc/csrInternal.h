@@ -380,6 +380,10 @@ typedef struct tagCsrRoamStartBssParams
     tANI_U8             *pRSNIE;     //If not null, it has the IE byte stream for RSN
     tANI_BOOLEAN        updatebeaconInterval; //Flag used to indicate update
                                              // beaconInterval
+#ifdef WLAN_FEATURE_11W
+    tANI_BOOLEAN        mfpCapable;
+    tANI_BOOLEAN        mfpRequired;
+#endif
 }tCsrRoamStartBssParams;
 
 

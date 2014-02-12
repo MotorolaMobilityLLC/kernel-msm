@@ -1,4 +1,4 @@
-/*
+ *
  * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -17,13 +17,13 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
- */
+ *
 
-/*
+ *
  * This file was originally distributed by Qualcomm Atheros, Inc.
  * under proprietary terms before Copyright ownership was assigned
  * to the Linux Foundation.
- */
+ *
 
 *
 
@@ -4834,3 +4834,29 @@ LIM
 V    RW    NP
 LIM
 0    1     0
+
+*
+* PMF SA Query Maximum Retries
+*
+
+WNI_CFG_PMF_SA_QUERY_MAX_RETRIES    I    4    1
+V    RO   NP RESTART
+NONE
+0    20   5
+V    RO   NP RESTART
+NONE
+0    20   5
+
+*
+* PMF SA Query Retry Interval (in TUs)
+*
+
+WNI_CFG_PMF_SA_QUERY_RETRY_INTERVAL    I    4    1
+V    RO   NP RESTART
+NONE
+0    2000 200
+V    RO   NP RESTART
+NONE
+0    2000 200
+
+

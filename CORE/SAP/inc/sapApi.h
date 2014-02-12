@@ -442,6 +442,11 @@ typedef struct sap_Config {
     v_U32_t         ht_op_mode_fixed;
     tVOS_CON_MODE   persona; /*Tells us which persona it is GO or AP for now*/
 
+#ifdef WLAN_FEATURE_11W
+    v_BOOL_t        mfpRequired;
+    v_BOOL_t        mfpCapable;
+#endif
+
 } tsap_Config_t;
 
 typedef enum {

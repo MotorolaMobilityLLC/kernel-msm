@@ -665,6 +665,18 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
+#ifdef WLAN_FEATURE_11W
+    // Extract MFP capable/required
+    pStartBssReq->pmfCapable = *pBuf++;
+    len--;
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+       return eSIR_FAILURE;
+    pStartBssReq->pmfRequired = *pBuf++;
+    len--;
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+       return eSIR_FAILURE;
+#endif
+
     // Extract rsnIe
     pStartBssReq->rsnIE.length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);

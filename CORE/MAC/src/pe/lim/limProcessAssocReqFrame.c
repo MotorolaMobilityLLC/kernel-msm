@@ -54,6 +54,9 @@
 #include "limAdmitControl.h"
 #include "palApi.h"
 #include "limSessionUtils.h"
+#ifdef WLAN_FEATURE_11W
+#include "wniCfgAp.h"
+#endif
 
 
 #include "vos_types.h"
@@ -191,6 +194,10 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
     tSirMacRateSet  basicRates;
     tANI_U8 i = 0, j = 0;
     tANI_BOOLEAN pmfConnection = eANI_BOOLEAN_FALSE;
+#ifdef WLAN_FEATURE_11W
+    tPmfSaQueryTimerId timerId;
+    tANI_U32 retryInterval;
+#endif
 
     limGetPhyMode(pMac, &phyMode, psessionEntry);
 
@@ -844,9 +851,57 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
             goto error;
         } // if (pStaDs->mlmStaContext.mlmState != eLIM_MLM_LINK_ESTABLISHED_STATE)
 
-           /* STA sent association Request frame while already in
-            * 'associated' state and no change in the capability
-            *  so drop the frame */
+        /* STA sent association Request frame while already in
+         * 'associated' state */
+
+#ifdef WLAN_FEATURE_11W
+        limLog(pMac, LOG1, FL("Re/Assoc request from station that is already associated"));
+        limLog(pMac, LOG1, FL("PMF enabled %d, SA Query state %d"), pStaDs->rmfEnabled,
+               pStaDs->pmfSaQueryState);
+        if (pStaDs->rmfEnabled)
+        {
+            switch (pStaDs->pmfSaQueryState)
+            {
+
+            // start SA Query procedure, respond to Association Request
+            // with try again later
+            case DPH_SA_QUERY_NOT_IN_PROGRESS:
+                limSendAssocRspMgmtFrame(pMac, eSIR_MAC_TRY_AGAIN_LATER, 1,
+                                         pHdr->sa, subType, pStaDs, psessionEntry);
+                limSendSaQueryRequestFrame(
+                    pMac, (tANI_U8 *)&(pStaDs->pmfSaQueryCurrentTransId),
+                    pHdr->sa, psessionEntry);
+                pStaDs->pmfSaQueryStartTransId = pStaDs->pmfSaQueryCurrentTransId;
+                pStaDs->pmfSaQueryCurrentTransId++;
+                pStaDs->pmfSaQueryRetryCount = 0;
+
+                // start timer for SA Query retry
+                if (tx_timer_activate(&pStaDs->pmfSaQueryTimer) != TX_SUCCESS)
+                {
+                    limLog(pMac, LOGE, FL("PMF SA Query timer activation failed!"));
+                    goto error;
+                }
+
+                pStaDs->pmfSaQueryState = DPH_SA_QUERY_IN_PROGRESS;
+                goto error;
+
+            // SA Query procedure still going, respond to Association
+            // Request with try again later
+            case DPH_SA_QUERY_IN_PROGRESS:
+                limSendAssocRspMgmtFrame(pMac, eSIR_MAC_TRY_AGAIN_LATER, 1,
+                                         pHdr->sa, subType, 0, psessionEntry);
+                goto error;
+
+            // SA Query procedure timed out, accept Association Request
+            // normally
+             case DPH_SA_QUERY_TIMED_OUT:
+                pStaDs->pmfSaQueryState = DPH_SA_QUERY_NOT_IN_PROGRESS;
+                break;
+            }
+        }
+#endif
+
+        /* no change in the capability so drop the frame */
         if ((VOS_TRUE == vos_mem_compare(&pStaDs->mlmStaContext.capabilityInfo,
                                           &pAssocReq->capabilityInfo,
                                           sizeof(tSirMacCapabilityInfo)))&&
@@ -1203,6 +1258,31 @@ if (limPopulateMatchingRateSet(pMac,
 
 #ifdef WLAN_FEATURE_11W
     pStaDs->rmfEnabled = (pmfConnection) ? 1 : 0;
+    pStaDs->pmfSaQueryState = DPH_SA_QUERY_NOT_IN_PROGRESS;
+    timerId.fields.sessionId = psessionEntry->peSessionId;
+    timerId.fields.peerIdx = peerIdx;
+    if (wlan_cfgGetInt(pMac, WNI_CFG_PMF_SA_QUERY_RETRY_INTERVAL,
+                       &retryInterval) != eSIR_SUCCESS)
+    {
+        limLog(pMac, LOGE, FL("Could not retrieve PMF SA Query retry interval value"));
+        limRejectAssociation(pMac, pHdr->sa,
+                             subType, true, authType,
+                             peerIdx, false,
+                             (tSirResultCodes) eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
+        goto error;
+    }
+    if (tx_timer_create(&pStaDs->pmfSaQueryTimer, "PMF SA Query timer",
+                        limPmfSaQueryTimerHandler, timerId.value,
+                        SYS_MS_TO_TICKS((retryInterval * 1024) / 1000),
+                        0, TX_NO_ACTIVATE) != TX_SUCCESS)
+    {
+        limLog(pMac, LOGE, FL("could not create PMF SA Query timer"));
+        limRejectAssociation(pMac, pHdr->sa,
+                             subType, true, authType,
+                             peerIdx, false,
+                             (tSirResultCodes) eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
+        goto error;
+    }
 #endif
 
     // BTAMP: Storing the parsed assoc request in the psessionEntry array

@@ -657,6 +657,11 @@ typedef struct sSirSmeStartBssReq
     tSirMacRateSet          operationalRateSet;// Has 11a or 11b rates
     tSirMacRateSet          extendedRateSet;    // Has 11g rates
 
+#ifdef WLAN_FEATURE_11W
+    tANI_BOOLEAN            pmfCapable;
+    tANI_BOOLEAN            pmfRequired;
+#endif
+
 } tSirSmeStartBssReq, *tpSirSmeStartBssReq;
 
 #define GET_IE_LEN_IN_BSS(lenInBss) ( lenInBss + sizeof(lenInBss) - \
