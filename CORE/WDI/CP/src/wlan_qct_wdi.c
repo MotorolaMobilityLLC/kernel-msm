@@ -13007,6 +13007,20 @@ WDI_ProcessTdlsLinkEstablishReq
   halSetTDLSLinkEstablishParams.maxServicePeriodLength = (pwdiTDLSLinkEstablishReqParams->wdiTDLSLinkEstablishInfo.uMaxSp & 0x03);
   halSetTDLSLinkEstablishParams.moreDataAck = 0;
   halSetTDLSLinkEstablishParams.TPUBufferStaSupport =  pwdiTDLSLinkEstablishReqParams->wdiTDLSLinkEstablishInfo.uIsBufSta;
+  halSetTDLSLinkEstablishParams.tdlsOffChannelSupport =
+                             pwdiTDLSLinkEstablishReqParams->wdiTDLSLinkEstablishInfo.uIsOffChannelSupported;
+
+  wpalMemoryCopy( halSetTDLSLinkEstablishParams.validChannels,
+                  pwdiTDLSLinkEstablishReqParams->wdiTDLSLinkEstablishInfo.validChannels,
+                  pwdiTDLSLinkEstablishReqParams->wdiTDLSLinkEstablishInfo.validChannelsLen);
+  halSetTDLSLinkEstablishParams.validChannelsLen =
+                             pwdiTDLSLinkEstablishReqParams->wdiTDLSLinkEstablishInfo.validChannelsLen;
+
+  wpalMemoryCopy( halSetTDLSLinkEstablishParams.validOperClasses,
+                  pwdiTDLSLinkEstablishReqParams->wdiTDLSLinkEstablishInfo.validOperClasses,
+                  pwdiTDLSLinkEstablishReqParams->wdiTDLSLinkEstablishInfo.validOperClassesLen);
+  halSetTDLSLinkEstablishParams.validOperClassesLen =
+                             pwdiTDLSLinkEstablishReqParams->wdiTDLSLinkEstablishInfo.validOperClassesLen;
 
   wpalMemoryCopy( pSendBuffer+usDataOffset,
                   &halSetTDLSLinkEstablishParams,
