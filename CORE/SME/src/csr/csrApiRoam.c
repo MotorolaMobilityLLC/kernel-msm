@@ -9914,7 +9914,21 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                                        status = palSendMBMessage(pMac->hHdd, pMsg ); 
                                     }
 #endif
-                                       result = eCSR_ROAM_RESULT_AUTHENTICATED;
+                   /* OBSS SCAN Indication will be sent to Firmware to start OBSS Scan */
+                                    if( CSR_IS_CHANNEL_24GHZ(pSession->connectedProfile.operationChannel)
+                                       && IS_HT40_OBSS_SCAN_FEATURE_ENABLE )
+                                    {
+                                         tpSirSmeHT40OBSSScanInd pMsg;
+                                         pMsg = vos_mem_malloc(sizeof(tSirSmeHT40OBSSScanInd));
+                                         pMsg->messageType =
+                                           pal_cpu_to_be16((tANI_U16)eWNI_SME_HT40_OBSS_SCAN_IND);
+                                         pMsg->length =
+                                          pal_cpu_to_be16(sizeof( tANI_U8));
+                                         pMsg->seesionId = sessionId;
+                                         status = palSendMBMessage(pMac->hHdd,
+                                                                     pMsg );
+                                    }
+                                    result = eCSR_ROAM_RESULT_AUTHENTICATED;
                                 }
                                 else
                                 {
@@ -17058,6 +17072,38 @@ eHalStatus csrSetTxPower(tpAniSirGlobal pMac, v_U8_t sessionId, v_U8_t mW)
    return status;
 }
 
+eHalStatus csrHT40StopOBSSScan(tpAniSirGlobal pMac, v_U8_t sessionId)
+{
+   tSirSmeHT40OBSSStopScanInd *pMsg = NULL;
+   eHalStatus status = eHAL_STATUS_SUCCESS;
+   tCsrRoamSession *pSession = CSR_GET_SESSION(pMac, sessionId);
+
+   if (!pSession)
+   {
+       smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
+       return eHAL_STATUS_FAILURE;
+   }
+   if(IS_HT40_OBSS_SCAN_FEATURE_ENABLE)
+   {
+       pMsg = vos_mem_malloc(sizeof(tSirSmeHT40OBSSStopScanInd));
+       vos_mem_zero((void *)pMsg, sizeof(tSirSmeHT40OBSSStopScanInd));
+       pMsg->messageType     = eWNI_SME_HT40_STOP_OBSS_SCAN_IND;
+       pMsg->length          = sizeof(tANI_U8);
+       pMsg->seesionId       = sessionId;
+       status = palSendMBMessage(pMac->hHdd, pMsg);
+       if (!HAL_STATUS_SUCCESS(status))
+       {
+           smsLog(pMac, LOGE, FL(" csr STOP OBSS SCAN Fail %d "), status);
+           //pMsg is freed by palSendMBMessage
+       }
+   }
+   else
+   {
+       smsLog(pMac, LOGE, FL(" OBSS STOP OBSS SCAN is not supported"));
+       status = eHAL_STATUS_FAILURE;
+   }
+   return status;
+}
 /* Returns whether a session is in VOS_STA_MODE...or not */
 tANI_BOOLEAN csrRoamIsStaMode(tpAniSirGlobal pMac, tANI_U32 sessionId)
 {
