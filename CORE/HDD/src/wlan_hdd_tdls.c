@@ -1098,9 +1098,9 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
 
 int wlan_hdd_tdls_set_peer_caps(hdd_adapter_t *pAdapter,
                                 u8 *mac,
-                                tANI_U8 uapsdQueues,
-                                tANI_U8 maxSp,
-                                tANI_BOOLEAN isBufSta)
+                                tCsrStaParams *StaParams,
+                                tANI_BOOLEAN isBufSta,
+                                tANI_BOOLEAN isOffChannelSupported)
 {
     hddTdlsPeer_t *curr_peer;
 
@@ -1112,9 +1112,24 @@ int wlan_hdd_tdls_set_peer_caps(hdd_adapter_t *pAdapter,
         return -1;
     }
 
-    curr_peer->uapsdQueues = uapsdQueues;
-    curr_peer->maxSp = maxSp;
+    curr_peer->uapsdQueues = StaParams->uapsd_queues;
+    curr_peer->maxSp = StaParams->max_sp;
     curr_peer->isBufSta = isBufSta;
+    curr_peer->isOffChannelSupported = isOffChannelSupported;
+
+    vos_mem_copy(curr_peer->supported_channels,
+                 StaParams->supported_channels,
+                 StaParams->supported_channels_len);
+
+    curr_peer->supported_channels_len =
+               StaParams->supported_channels_len;
+
+    vos_mem_copy(curr_peer->supported_oper_classes,
+                 StaParams->supported_oper_classes,
+                 StaParams->supported_oper_classes_len);
+
+    curr_peer->supported_oper_classes_len =
+               StaParams->supported_oper_classes_len;
     return 0;
 }
 
@@ -1135,6 +1150,22 @@ int wlan_hdd_tdls_get_link_establish_params(hdd_adapter_t *pAdapter, u8 *mac,
     tdlsLinkEstablishParams->uapsdQueues = curr_peer->uapsdQueues;
     tdlsLinkEstablishParams->maxSp = curr_peer->maxSp;
     tdlsLinkEstablishParams->isBufSta = curr_peer->isBufSta;
+    tdlsLinkEstablishParams->isOffChannelSupported =
+                                 curr_peer->isOffChannelSupported;
+
+    vos_mem_copy(tdlsLinkEstablishParams->supportedChannels,
+                 curr_peer->supported_channels,
+                 curr_peer->supported_channels_len);
+
+    tdlsLinkEstablishParams->supportedChannelsLen =
+                 curr_peer->supported_channels_len;
+
+    vos_mem_copy(tdlsLinkEstablishParams->supportedOperClasses,
+                 curr_peer->supported_oper_classes,
+                 curr_peer->supported_oper_classes_len);
+
+    tdlsLinkEstablishParams->supportedOperClassesLen =
+                 curr_peer->supported_oper_classes_len;
     return 0;
 }
 
