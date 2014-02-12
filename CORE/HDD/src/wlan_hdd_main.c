@@ -2723,7 +2723,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            vos_mem_free(buf);
            buf = NULL;
 
-           wlan_hdd_action( NULL,
+           wlan_hdd_mgmt_tx( NULL,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
                        &(pAdapter->wdev),
 #else
