@@ -237,6 +237,10 @@ typedef struct tagCsrStaParams
     tSirVHTCap VHTCap;
     tANI_U8    uapsd_queues;
     tANI_U8    max_sp;
+    tANI_U8    supported_channels_len;
+    tANI_U8    supported_channels[SIR_MAC_MAX_SUPP_CHANNELS];
+    tANI_U8    supported_oper_classes_len;
+    tANI_U8    supported_oper_classes[SIR_MAC_MAX_SUPP_OPER_CLASSES];
 }tCsrStaParams;
 
 typedef struct tagCsrScanRequest
@@ -1344,7 +1348,12 @@ typedef struct tagCsrLinkEstablishParams
     tANI_U8 uapsdQueues;
     tANI_U8 maxSp;
     tANI_U8 isBufSta;
+    tANI_U8 isOffChannelSupported;
     tANI_U8 isResponder;
+    tANI_U8 supportedChannelsLen;
+    tANI_U8 supportedChannels[SIR_MAC_MAX_SUPP_CHANNELS];
+    tANI_U8 supportedOperClassesLen;
+    tANI_U8 supportedOperClasses[SIR_MAC_MAX_SUPP_OPER_CLASSES];
 }tCsrTdlsLinkEstablishParams;
 
 typedef struct tagCsrTdlsSendMgmt
