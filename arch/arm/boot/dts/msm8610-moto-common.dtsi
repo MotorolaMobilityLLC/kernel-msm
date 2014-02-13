@@ -16,7 +16,7 @@
 /include/ "dsi-panel-mot-tianma-qhd-video.dtsi"
 /include/ "dsi-panel-mot-inx-qhd-video.dtsi"
 /include/ "dsi-panel-mot-dummy-qhd-video.dtsi"
-
+/include/ "carrier-channel-ids.dtsi"
 
 / {
 	model = "Motorola QC-MSM8610";
