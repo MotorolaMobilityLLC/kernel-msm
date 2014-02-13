@@ -89,6 +89,9 @@
 			ti,ledb-max-brt = <0xff>;
 			ti,leda-init-brt = <0xf0>;
 			ti,ledb-init-brt = <0xf0>;
+			ti,leda-max-cur = <0x19>;
+			ti,ledb-max-cur = <0x19>;
+			ti,boost-ctrl = <0x20>;
 			ti,irq-gpio = <&msmgpio 4 0>;
 			ti,hwen-gpio = <&msmgpio 5 0>;
 			ti,vddio-name = "vddio_bl";
