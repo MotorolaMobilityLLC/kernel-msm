@@ -16,6 +16,7 @@
 /include/ "msm8974-camera-sensor-moto.dtsi"
 /include/ "msm8974-leds.dtsi"
 /include/ "dsi-panel-mot-dummy-qhd-video.dtsi"
+/include/ "carrier-channel-ids.dtsi"
 
 / {
 	aliases {
