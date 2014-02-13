@@ -11709,28 +11709,25 @@ static VOS_STATUS WDA_ProcessDHCPStartInd (tWDA_CbContext *pWDA,
                                            tAniDHCPInd *dhcpStartInd)
 {
    WDI_Status status;
-   WDI_DHCPInd *wdiDHCPInd = (WDI_DHCPInd*)vos_mem_malloc(sizeof(WDI_DHCPInd)) ;
-   if (NULL == wdiDHCPInd)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                 "%s: VOS MEM Alloc Failure", __func__);
-      VOS_ASSERT(0);
-      vos_mem_free(dhcpStartInd);
-      return VOS_STATUS_E_NOMEM;
-   }
+   WDI_DHCPInd wdiDHCPInd;
 
-   wdiDHCPInd->device_mode = dhcpStartInd->device_mode;
-   vos_mem_copy(wdiDHCPInd->macAddr, dhcpStartInd->macAddr,
+   wdiDHCPInd.device_mode = dhcpStartInd->device_mode;
+   vos_mem_copy(wdiDHCPInd.macAddr, dhcpStartInd->macAddr,
                                                sizeof(tSirMacAddr));
 
-   status = WDI_dhcpStartInd(wdiDHCPInd);
+   status = WDI_dhcpStartInd(&wdiDHCPInd);
 
-   if (IS_WDI_STATUS_FAILURE(status))
+   if (WDI_STATUS_PENDING == status)
    {
-      vos_mem_free(wdiDHCPInd);
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                 "DHCP Start Indication failed");
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                "Pending received for %s:%d ",__func__,__LINE__ );
    }
+   else if (WDI_STATUS_SUCCESS_SYNC != status)
+   {
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "Failure status: %d in %s:%d ", status, __func__, __LINE__);
+   }
+
    vos_mem_free(dhcpStartInd);
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
@@ -11743,25 +11740,26 @@ static VOS_STATUS WDA_ProcessDHCPStartInd (tWDA_CbContext *pWDA,
                                            tAniDHCPInd *dhcpStopInd)
  {
    WDI_Status status;
-   WDI_DHCPInd *wdiDHCPInd = (WDI_DHCPInd*)vos_mem_malloc(sizeof(WDI_DHCPInd)) ;
-   if (NULL == wdiDHCPInd)
+   WDI_DHCPInd wdiDHCPInd;
+
+   wdiDHCPInd.device_mode = dhcpStopInd->device_mode;
+   vos_mem_copy(wdiDHCPInd.macAddr, dhcpStopInd->macAddr, sizeof(tSirMacAddr));
+
+   status = WDI_dhcpStopInd(&wdiDHCPInd);
+
+   if (WDI_STATUS_PENDING == status)
    {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                 "%s: VOS MEM Alloc Failure", __func__);
-      VOS_ASSERT(0);
-      vos_mem_free(dhcpStopInd);
-      return VOS_STATUS_E_NOMEM;
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                "Pending received for %s:%d ",__func__,__LINE__ );
    }
-   wdiDHCPInd->device_mode = dhcpStopInd->device_mode;
-   vos_mem_copy(wdiDHCPInd->macAddr, dhcpStopInd->macAddr, sizeof(tSirMacAddr));
-   status = WDI_dhcpStopInd(wdiDHCPInd);
-   if (IS_WDI_STATUS_FAILURE(status))
+   else if (WDI_STATUS_SUCCESS_SYNC != status)
    {
-      vos_mem_free(wdiDHCPInd);
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                 "DHCP Start Indication failed");
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "Failure status: %d in %s:%d ", status, __func__, __LINE__);
    }
+
    vos_mem_free(dhcpStopInd);
+
    return CONVERT_WDI2VOS_STATUS(status) ;
  }
 
