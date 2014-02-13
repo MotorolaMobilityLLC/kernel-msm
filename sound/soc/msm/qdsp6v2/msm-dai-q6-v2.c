@@ -66,6 +66,7 @@ struct msm_dai_q6_dai_data {
 	u32 rate;
 	u32 channels;
 	u32 bitwidth;
+	int force_bitwidth;
 	union afe_port_config port_config;
 };
 
@@ -113,6 +114,27 @@ static const char *const mi2s_format[] = {
 static const struct soc_enum mi2s_config_enum[] = {
 	SOC_ENUM_SINGLE_EXT(4, mi2s_format),
 };
+
+/*
+ * Force the MI2S capture bit width
+ * 0: do not force (inherit bit width from PCM format)
+ * 1: force to 16 bit
+ * 2: force to 24 bit
+ */
+enum {
+	BITWIDTH_INHERIT = 0,
+	BITWIDTH_16,
+	BITWIDTH_24,
+};
+
+static const char *const mi2s_bitwidth_text[] = {
+	"Inherit",
+	"16 bit",
+	"24 bit",
+};
+
+static const struct soc_enum mi2s_bitwidth_enum =
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mi2s_bitwidth_text), mi2s_bitwidth_text);
 
 static int msm_dai_q6_dai_add_route(struct snd_soc_dai *dai)
 {
@@ -1929,6 +1951,33 @@ static const struct snd_kcontrol_new mi2s_config_controls[] = {
 		     msm_dai_q6_mi2s_format_put),
 };
 
+static int msm_dai_q6_mi2s_bitwidth_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct msm_dai_q6_dai_data *dai_data = kcontrol->private_data;
+	int value = ucontrol->value.integer.value[0];
+
+	dai_data->force_bitwidth = value;
+
+	return 0;
+}
+
+static int msm_dai_q6_mi2s_bitwidth_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct msm_dai_q6_dai_data *dai_data = kcontrol->private_data;
+
+	ucontrol->value.integer.value[0] =
+		dai_data->force_bitwidth;
+
+	return 0;
+}
+
+static const struct snd_kcontrol_new mi2s_bitwidth_control =
+	SOC_ENUM_EXT("PRI MI2S TX bit width", mi2s_bitwidth_enum,
+		msm_dai_q6_mi2s_bitwidth_get,
+		msm_dai_q6_mi2s_bitwidth_put);
+
 static int msm_dai_q6_dai_mi2s_probe(struct snd_soc_dai *dai)
 {
 	struct msm_dai_q6_mi2s_dai_data *mi2s_dai_data =
@@ -1981,6 +2030,19 @@ static int msm_dai_q6_dai_mi2s_probe(struct snd_soc_dai *dai)
 			if (kcontrol)
 				snd_ctl_remove(dai->card->snd_card, kcontrol);
 			dev_err(dai->dev, "%s: err add TX fmt ctl DAI = %s\n",
+				__func__, dai->name);
+		}
+	}
+
+	if (!strncmp(dai->name, "msm-dai-q6-mi2s.0", 17)) {
+		rc = snd_ctl_add(dai->card->snd_card,
+				snd_ctl_new1(&mi2s_bitwidth_control,
+				&mi2s_dai_data->tx_dai.mi2s_dai_data));
+
+		if (IS_ERR_VALUE(rc)) {
+			if (kcontrol)
+				snd_ctl_remove(dai->card->snd_card, kcontrol);
+			dev_err(dai->dev, "%s: err add TX bitwidth DAI = %s\n",
 				__func__, dai->name);
 		}
 	}
@@ -2197,18 +2259,27 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	}
 	dai_data->rate = params_rate(params);
 
-	switch (params_format(params)) {
-	case SNDRV_PCM_FORMAT_S16_LE:
-	case SNDRV_PCM_FORMAT_SPECIAL:
+	if (dai_data->force_bitwidth == BITWIDTH_INHERIT) {
+		/* choose bitwidth based on PCM format */
+		switch (params_format(params)) {
+		case SNDRV_PCM_FORMAT_S16_LE:
+		case SNDRV_PCM_FORMAT_SPECIAL:
+			dai_data->port_config.i2s.bit_width = 16;
+			dai_data->bitwidth = 16;
+			break;
+		case SNDRV_PCM_FORMAT_S24_LE:
+			dai_data->port_config.i2s.bit_width = 24;
+			dai_data->bitwidth = 24;
+			break;
+		default:
+			return -EINVAL;
+		}
+	} else if (dai_data->force_bitwidth == BITWIDTH_16) {
 		dai_data->port_config.i2s.bit_width = 16;
 		dai_data->bitwidth = 16;
-		break;
-	case SNDRV_PCM_FORMAT_S24_LE:
+	} else { /* BITWIDTH_24 */
 		dai_data->port_config.i2s.bit_width = 24;
 		dai_data->bitwidth = 24;
-		break;
-	default:
-		return -EINVAL;
 	}
 
 	dai_data->port_config.i2s.i2s_cfg_minor_version =
