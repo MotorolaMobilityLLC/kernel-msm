@@ -21,9 +21,9 @@
 
 extern char *mdss_timeout_data;
 extern u32 mdss_timeout_data_pos;
-extern void mdss_timeout_init(struct msm_fb_data_type *mfd);
-extern void mdss_timeout_dump(struct msm_fb_data_type *mfd,
-			      const char *timeout_type);
+extern void mdss_timeout_init(void (*mdss_mdp_dump_func)(void *data),
+			      void *data);
+extern void mdss_timeout_dump(const char *timeout_type);
 
 #define MDSS_DUMP_SIZE (2*PAGE_SIZE)
 #define MDSS_TIMEOUT_DUMP(fmt, args...) \
@@ -54,7 +54,7 @@ extern void mdss_timeout_dump(struct msm_fb_data_type *mfd,
 #define MDSS_TIMEOUT_LOG(fmt, args...) pr_err(fmt, ##args)
 
 #define mdss_timeout_init(x)
-#define mdss_timeout_dump(x, y)
+#define mdss_timeout_dump(x)
 
 #endif
 
