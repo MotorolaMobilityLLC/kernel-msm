@@ -17,12 +17,58 @@
 #include "mdp3_dma.h"
 #include "mdp3_hwio.h"
 
+#include "mdss_timeout.h"
+
 #define DMA_STOP_POLL_SLEEP_US 1000
 #define DMA_STOP_POLL_TIMEOUT_US 32000
 #define DMA_HISTO_RESET_TIMEOUT_MS 40
 #define DMA_LUT_CONFIG_MASK 0xfffffbe8
 #define DMA_CCS_CONFIG_MASK 0xfffffc17
 #define HIST_WAIT_TIMEOUT(frame) ((75 * HZ * (frame)) / 1000)
+
+static int mdp3_wait4vsync(struct mdp3_dma *dma, bool killable,
+	unsigned long timeout)
+{
+	int rc;
+	int timeouts = 0;
+	static int timeout_occurred;
+	int prev_vsync_cnt = dma->vsync_cnt;
+	unsigned long tout = timeout ? timeout : KOFF_TIMEOUT;
+
+	do {
+		if (killable) {
+			rc = wait_for_completion_killable_timeout(
+				&dma->vsync_comp, tout);
+		} else {
+			rc = wait_for_completion_timeout(
+				&dma->vsync_comp, tout);
+		}
+
+		if (rc == -ERESTARTSYS)
+			return rc;
+
+		if (rc == 0) {
+			pr_err("%s: TIMEOUT (vsync_cnt: prev: %u cur: %u)\n",
+				__func__, prev_vsync_cnt, dma->vsync_cnt);
+			timeout_occurred = 1;
+			if (timeouts == 0)
+				mdss_timeout_dump(__func__);
+			timeouts++;
+		} else {
+			if (timeout_occurred)
+				pr_info("%s: recovered from previous timeout\n",
+					__func__);
+			timeout_occurred = 0;
+			break;
+		}
+	} while (timeout == 0);
+
+	if (timeout == 0 && timeouts)
+		pr_err("%s: wait of %u ms timed out %d times!\n", __func__,
+			jiffies_to_msecs(tout), timeouts);
+
+	return rc;
+}
 
 static void mdp3_vsync_intr_handler(int type, void *arg)
 {
@@ -34,6 +80,7 @@ static void mdp3_vsync_intr_handler(int type, void *arg)
 	spin_lock(&dma->dma_lock);
 	vsync_client = dma->vsync_client;
 	wait_for_next_vs = !dma->vsync_status;
+	dma->vsync_cnt++;
 	dma->vsync_status = 0;
 	if (wait_for_next_vs)
 		complete(&dma->vsync_comp);
@@ -625,8 +672,7 @@ static int mdp3_dmap_update(struct mdp3_dma *dma, void *buf,
 	mdp3_dma_callback_enable(dma, cb_type);
 	pr_debug("mdp3_dmap_update wait for vsync_comp in\n");
 	if (dma->output_config.out_sel == MDP3_DMA_OUTPUT_SEL_DSI_VIDEO) {
-		rc = wait_for_completion_timeout(&dma->vsync_comp,
-			KOFF_TIMEOUT);
+		rc = mdp3_wait4vsync(dma, false, KOFF_TIMEOUT);
 		if (rc <= 0)
 			rc = -1;
 	}
@@ -663,7 +709,7 @@ static int mdp3_dmas_update(struct mdp3_dma *dma, void *buf,
 
 	mdp3_dma_callback_enable(dma, cb_type);
 	if (dma->output_config.out_sel == MDP3_DMA_OUTPUT_SEL_DSI_VIDEO)
-		wait_for_completion_killable(&dma->vsync_comp);
+		mdp3_wait4vsync(dma, true, 0);
 	return 0;
 }
 
@@ -869,7 +915,7 @@ static int mdp3_dma_start(struct mdp3_dma *dma, struct mdp3_intf *intf)
 
 	mdp3_dma_callback_enable(dma, cb_type);
 	pr_debug("mdp3_dma_start wait for vsync_comp in\n");
-	wait_for_completion_killable(&dma->vsync_comp);
+	mdp3_wait4vsync(dma, true, 0);
 	pr_debug("mdp3_dma_start wait for vsync_comp out\n");
 	return 0;
 }
@@ -906,6 +952,24 @@ static int mdp3_dma_stop(struct mdp3_dma *dma, struct mdp3_intf *intf)
 	init_completion(&dma->dma_comp);
 	dma->vsync_client.handler = NULL;
 	return ret;
+}
+
+void mdp3_dump_dma(void *data)
+{
+	struct mdp3_dma *dma = (struct mdp3_dma *)data;
+	u32 isr, mask;
+
+	isr = MDP3_REG_READ(MDP3_REG_INTR_STATUS);
+	mask = MDP3_REG_READ(MDP3_REG_INTR_ENABLE);
+	MDSS_TIMEOUT_LOG("-------- MDP3 INTERRUPT DATA ---------\n");
+	MDSS_TIMEOUT_LOG("MDP3_REG_INTR_STATUS: 0x%08X\n", isr);
+	MDSS_TIMEOUT_LOG("MDP3_REG_INTR_ENABLE: 0x%08X\n", mask);
+	MDSS_TIMEOUT_LOG("global irqs disabled: %d\n", irqs_disabled());
+	MDSS_TIMEOUT_LOG("------ MDP3 INTERRUPT DATA DONE ------\n");
+
+	MDSS_TIMEOUT_LOG("-------- MDP3 DMA DATA ---------\n");
+	MDSS_TIMEOUT_LOG("vsync_cnt=%u\n", dma->vsync_cnt);
+	MDSS_TIMEOUT_LOG("------ MDP3 DMA DATA DONE ------\n");
 }
 
 int mdp3_dma_init(struct mdp3_dma *dma)
@@ -960,9 +1024,13 @@ int mdp3_dma_init(struct mdp3_dma *dma)
 	dma->vsync_client.arg = NULL;
 	dma->histo_state = MDP3_DMA_HISTO_STATE_IDLE;
 
+	dma->vsync_cnt = 0;
+
 	memset(&dma->cursor, 0, sizeof(dma->cursor));
 	memset(&dma->ccs_config, 0, sizeof(dma->ccs_config));
 	memset(&dma->histogram_config, 0, sizeof(dma->histogram_config));
+
+	mdss_timeout_init(mdp3_dump_dma, dma);
 
 	return ret;
 }

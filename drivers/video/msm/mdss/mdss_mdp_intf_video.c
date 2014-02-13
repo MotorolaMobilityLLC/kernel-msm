@@ -444,7 +444,7 @@ static int mdss_mdp_video_wait4comp(struct mdss_mdp_ctl *ctl, void *arg)
 			pr_err("%s: TIMEOUT (vsync_cnt: prev: %u cur: %u)\n",
 				__func__, prev_vsync_cnt, ctl->vsync_cnt);
 			timeout_occurred = 1;
-			mdss_timeout_dump(ctl->mfd, __func__);
+			mdss_timeout_dump(__func__);
 
 			pr_warn("vsync wait timeout %d, fallback to poll mode\n",
 					ctl->num);

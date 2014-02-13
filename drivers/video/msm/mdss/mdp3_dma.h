@@ -240,6 +240,7 @@ struct mdp3_dma {
 	u32 capability;
 	int in_use;
 	int available;
+	int vsync_cnt;
 
 	spinlock_t dma_lock;
 	spinlock_t histo_lock;
