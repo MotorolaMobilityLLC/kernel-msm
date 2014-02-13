@@ -1888,9 +1888,17 @@ void dxeRXResourceAvailableTimerExpHandler
    void    *usrData
 )
 {
+   WLANDXE_CtrlBlkType      *dxeCtxt    = NULL;
+
+   dxeCtxt = (WLANDXE_CtrlBlkType *)usrData;
+
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
             "RX Low resource, Durign wait time period %d, RX resource not allocated",
             T_WLANDXE_MAX_RX_PACKET_WAIT);
+
+   if(0 != dxeCtxt)
+      dxeCtxt->driverReloadInProcessing = eWLAN_PAL_TRUE;
+
    wpalWlanReload();
 
    if (NULL != usrData)
