@@ -138,6 +138,36 @@ err:
 	return ret;
 }
 
+/* Configure chip registers */
+static int lm3630a_chip_config(struct lm3630a_chip *pchip)
+{
+	int rval = 0;
+	struct lm3630a_platform_data *pdata = pchip->pdata;
+
+	dev_dbg(pchip->dev, "Configure registers\n");
+	/* exit sleep mode */
+	rval |= lm3630a_update(pchip, REG_CTRL, 0x80, 0x00);
+	/* set Filter Strength Register */
+	rval = lm3630a_write(pchip, 0x50, pdata->flt_str);
+	/* set Cofig. register */
+	rval |= lm3630a_update(pchip, REG_CONFIG, 0x07, pdata->pwm_ctrl);
+	/* set boost control */
+	rval |= lm3630a_write(pchip, REG_BOOST, pdata->boost_ctrl);
+	/* set current A */
+	rval |= lm3630a_update(pchip, REG_I_A, 0x1F, pdata->leda_max_cur);
+	/* set current B */
+	rval |= lm3630a_write(pchip, REG_I_B, pdata->ledb_max_cur);
+	/* set control */
+	rval |= lm3630a_update(pchip, REG_CTRL, 0x14, pdata->leda_ctrl);
+	rval |= lm3630a_update(pchip, REG_CTRL, 0x0B, pdata->ledb_ctrl);
+	/* wait for a while to make sure configuration effective */
+	usleep_range(1000, 2000);
+	if (rval < 0)
+		dev_err(pchip->dev, "Failed to configure registers\n");
+	return rval;
+
+}
+
 /* initialize chip */
 static int lm3630a_chip_init(struct lm3630a_chip *pchip)
 {
@@ -170,22 +200,7 @@ static int lm3630a_chip_init(struct lm3630a_chip *pchip)
 	lm3630a_chip_enable(pchip);
 
 	usleep_range(1000, 2000);
-	/* exit sleep mode */
-	rval |= lm3630a_update(pchip, REG_CTRL, 0x80, 0x00);
-	/* set Filter Strength Register */
-	rval = lm3630a_write(pchip, 0x50, 0x03);
-	/* set Cofig. register */
-	rval |= lm3630a_update(pchip, REG_CONFIG, 0x07, pdata->pwm_ctrl);
-	/* set boost control */
-	rval |= lm3630a_write(pchip, REG_BOOST, 0x38);
-	/* set current A */
-	rval |= lm3630a_update(pchip, REG_I_A, 0x1F, 0x1F);
-	/* set current B */
-	rval |= lm3630a_write(pchip, REG_I_B, 0x1F);
-	/* set control */
-	rval |= lm3630a_update(pchip, REG_CTRL, 0x14, pdata->leda_ctrl);
-	rval |= lm3630a_update(pchip, REG_CTRL, 0x0B, pdata->ledb_ctrl);
-	usleep_range(1000, 2000);
+	rval = lm3630a_chip_config(pchip);
 	/* set brightness A and B */
 	rval |= lm3630a_write(pchip, REG_BRT_A, pdata->leda_init_brt);
 	rval |= lm3630a_write(pchip, REG_BRT_B, pdata->ledb_init_brt);
@@ -458,31 +473,12 @@ static const struct regmap_config lm3630a_regmap = {
 	.max_register = REG_MAX,
 };
 
-static int lm3630a_sleep(struct lm3630a_chip *pchip, bool enable)
-{
-	int ret;
-
-	if (enable) {
-		/* enable sleep if needed*/
-		ret = lm3630a_update(pchip, REG_CTRL,
-				LM3630A_SLEEP_ENABLE, LM3630A_SLEEP_ENABLE);
-		if (ret < 0)
-			dev_err(pchip->dev, "fail to enter sleep mode\n");
-	} else {
-		/* exit sleep */
-		ret = lm3630a_update(pchip, REG_CTRL, LM3630A_SLEEP_ENABLE,
-					0x00);
-		if (ret < 0)
-			dev_err(pchip->dev, "fail to exit sleep mode\n");
-	}
-	return ret;
-}
-
 static void lm3630a_led_set_func(struct work_struct *work)
 {
 	struct lm3630a_chip *pchip;
 	struct lm3630a_platform_data *pdata;
-	int ret, brt;
+	int ret = 0, brt;
+	static bool is_sleep;
 
 	pchip = container_of(work, struct lm3630a_chip, ledwork);
 	pdata = pchip->pdata;
@@ -494,21 +490,23 @@ static void lm3630a_led_set_func(struct work_struct *work)
 			lm3630a_pwm_ctrl(pchip, pchip->ledval,
 						pdata->leda_max_brt);
 		else {
-			lm3630a_sleep(pchip, false);
-			usleep_range(1000, 2000);
 			brt = pchip->ledval > pdata->leda_max_brt ?
 				pdata->leda_max_brt : pchip->ledval;
-			ret = lm3630a_write(pchip, REG_BRT_A, brt);
-			ret |= lm3630a_update(pchip, REG_CTRL,
-				LM3630A_LEDA_ENABLE,
-				pchip->ledval ? LM3630A_LEDA_ENABLE : 0);
-			if (ret < 0) {
-				dev_err(pchip->dev,
-					"fail to set leda brightness\n");
-				goto out;
-			}
 			if (!brt)
-				lm3630a_sleep(pchip, true);
+				ret |= lm3630a_update(pchip, REG_CTRL,
+						LM3630A_LEDA_ENABLE, 0);
+			else {
+				if (is_sleep) {
+					ret |= lm3630a_chip_config(pchip);
+					is_sleep = false;
+				} else
+					ret |= lm3630a_update(pchip, REG_CTRL,
+						LM3630A_LEDA_ENABLE,
+						LM3630A_LEDA_ENABLE);
+				ret = lm3630a_write(pchip, REG_BRT_A, brt);
+			}
+			if (ret < 0)
+				goto out;
 		}
 	}
 
@@ -519,24 +517,34 @@ static void lm3630a_led_set_func(struct work_struct *work)
 			lm3630a_pwm_ctrl(pchip, pchip->ledval,
 						pdata->ledb_max_brt);
 		else {
-			lm3630a_sleep(pchip, false);
-			usleep_range(1000, 2000);
 			brt = pchip->ledval > pdata->ledb_max_brt ?
 				pdata->ledb_max_brt : pchip->ledval;
-			ret = lm3630a_write(pchip, REG_BRT_B, brt);
-			ret |= lm3630a_update(pchip, REG_CTRL,
-				LM3630A_LEDB_ENABLE,
-				pchip->ledval ? LM3630A_LEDB_ENABLE : 0);
-			if (ret < 0) {
-				dev_err(pchip->dev,
-					"fail to set ledb brightness\n");
-				goto out;
-			}
 			if (!brt)
-				lm3630a_sleep(pchip, true);
+				ret |= lm3630a_update(pchip, REG_CTRL,
+						LM3630A_LEDB_ENABLE, 0);
+			else {
+				if (is_sleep) {
+					ret |= lm3630a_chip_config(pchip);
+					is_sleep = false;
+				} else
+					ret |= lm3630a_update(pchip, REG_CTRL,
+						LM3630A_LEDB_ENABLE,
+						LM3630A_LEDB_ENABLE);
+				ret = lm3630a_write(pchip, REG_BRT_B, brt);
+			}
+			if (ret < 0)
+				goto out;
 		}
 	}
+
+	if (!pchip->ledval) {
+		ret |= lm3630a_update(pchip, REG_CTRL, LM3630A_SLEEP_ENABLE,
+				LM3630A_SLEEP_ENABLE);
+		is_sleep = true;
+	}
 out:
+	if (ret < 0)
+		dev_err(pchip->dev, "fail to set brightness\n");
 	return;
 }
 
@@ -620,6 +628,31 @@ static int lm3630a_parse_dt(struct device_node *np,
 	if (rc)
 		dev_warn(pchip->dev, "ledb-init-brt not found in devtree\n");
 	pdata->ledb_init_brt = rc ? rc : LM3630A_MAX_BRIGHTNESS;
+
+	rc = of_property_read_u32(np, "ti,leda-max-cur", &tmp);
+	if (rc)
+		dev_warn(pchip->dev, "leda-max-cur not found in devtree\n");
+	pdata->leda_max_cur = rc ? rc : 0x1F;
+
+	rc = of_property_read_u32(np, "ti,ledb-max-cur", &tmp);
+	if (rc)
+		dev_warn(pchip->dev, "ledb-max-cur not found in devtree\n");
+	pdata->ledb_max_cur = rc ? rc : 0x1F;
+
+	rc = of_property_read_u32(np, "ti,boost-ctrl", &tmp);
+	if (rc)
+		dev_warn(pchip->dev, "boost-ctrl not found in devtree\n");
+	pdata->boost_ctrl = rc ? rc : 0x38;
+
+	rc = of_property_read_u32(np, "ti,flt-str", &tmp);
+	if (rc)
+		dev_warn(pchip->dev, "flt-str not found in devtree\n");
+	pdata->flt_str = rc ? rc : 0x03;
+
+	rc = of_property_read_u32(np, "ti,pwm-ctrl", &tmp);
+	if (rc)
+		dev_warn(pchip->dev, "pwm-ctrl not found in devtree\n");
+	pdata->pwm_ctrl = rc ? rc : 0x00;
 
 	dev_info(pchip->dev, "loading configuration done.\n");
 	return 0;
