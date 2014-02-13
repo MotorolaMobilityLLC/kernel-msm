@@ -241,6 +241,7 @@ struct synaptics_rmi4_data {
 	int disp_maxy;
 	int disp_minx;
 	int disp_miny;
+	bool palm_detected;
 	bool irq_enabled;
 	bool touch_stopped;
 	bool fingers_on_2d;

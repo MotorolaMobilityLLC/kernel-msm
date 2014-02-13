@@ -1143,6 +1143,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	unsigned char finger_status;
 	unsigned char size_of_2d_data;
 	unsigned short data_addr;
+	bool palm_detected = false;
 	int x;
 	int y;
 	int wx;
@@ -1169,6 +1170,22 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	for (finger = 0; finger < fingers_to_process; finger++) {
 		finger_data = data + finger;
 		finger_status = finger_data->object_type_and_status & MASK_2BIT;
+
+#ifdef REPORT_2D_W
+		if (finger_status && rmi4_data->board->palm_detect_threshold) {
+			wx = finger_data->wx;
+			wy = finger_data->wy;
+			if (max(wx, wy) > rmi4_data->board->palm_detect_threshold) {
+				palm_detected = true;
+#ifdef TYPE_B_PROTOCOL
+				input_mt_slot(rmi4_data->input_dev, finger);
+				input_mt_report_slot_state(rmi4_data->input_dev,
+							MT_TOOL_FINGER, 0);
+#endif
+				continue;
+			}
+		}
+#endif
 
 		/*
 		 * Each 2-bit finger status field represents the following:
@@ -1235,6 +1252,13 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
+	if (palm_detected != rmi4_data->palm_detected) {
+		rmi4_data->palm_detected = palm_detected;
+		input_report_key(rmi4_data->input_dev,
+				 rmi4_data->board->palm_detect_keycode,
+				 palm_detected);
+	}
+
 	input_report_key(rmi4_data->input_dev,
 			BTN_TOUCH, touch_count > 0);
 	input_report_key(rmi4_data->input_dev,
@@ -1246,7 +1270,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 	input_sync(rmi4_data->input_dev);
 
-	return touch_count;
+	return palm_detected ? 1 : touch_count;
 }
 
 static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
@@ -1620,6 +1644,15 @@ static int synaptics_rmi4_parse_dt(struct device *dev,
 		dev_err(dev, "Unable to read fw image name\n");
 		return rc;
 	}
+
+	rc = of_property_read_u32(np, "synaptics,palm-detect-threshold", &temp_val);
+	if (!rc)
+		rmi4_pdata->palm_detect_threshold = temp_val;
+
+	rmi4_pdata->palm_detect_keycode = KEY_HOME;
+	rc = of_property_read_u32(np, "synaptics,palm-detect-keycode", &temp_val);
+	if (!rc)
+		rmi4_pdata->palm_detect_keycode = temp_val;
 
 	/* reset, irq gpio info */
 	rmi4_pdata->reset_gpio = of_get_named_gpio_flags(np,
@@ -3097,6 +3130,10 @@ static int synaptics_rmi4_probe(struct i2c_client *client,
 	set_bit(EV_ABS, rmi4_data->input_dev->evbit);
 	set_bit(BTN_TOUCH, rmi4_data->input_dev->keybit);
 	set_bit(BTN_TOOL_FINGER, rmi4_data->input_dev->keybit);
+
+	if (rmi4_data->board->palm_detect_threshold)
+		set_bit(rmi4_data->board->palm_detect_keycode,
+						rmi4_data->input_dev->keybit);
 
 #ifdef INPUT_PROP_DIRECT
 	set_bit(INPUT_PROP_DIRECT, rmi4_data->input_dev->propbit);
