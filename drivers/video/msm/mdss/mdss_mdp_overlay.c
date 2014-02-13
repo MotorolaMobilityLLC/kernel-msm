@@ -687,6 +687,7 @@ int mdss_mdp_overlay_get_buf(struct msm_fb_data_type *mfd,
 	if ((num_planes <= 0) || (num_planes > MAX_PLANES))
 		return -EINVAL;
 
+	mdss_bus_bandwidth_ctrl(1);
 	memset(data, 0, sizeof(*data));
 	for (i = 0; i < num_planes; i++) {
 		data->p[i].flags = flags;
@@ -700,6 +701,7 @@ int mdss_mdp_overlay_get_buf(struct msm_fb_data_type *mfd,
 			break;
 		}
 	}
+	mdss_bus_bandwidth_ctrl(0);
 
 	data->num_planes = i;
 
@@ -709,8 +711,11 @@ int mdss_mdp_overlay_get_buf(struct msm_fb_data_type *mfd,
 int mdss_mdp_overlay_free_buf(struct mdss_mdp_data *data)
 {
 	int i;
+
+	mdss_bus_bandwidth_ctrl(1);
 	for (i = 0; i < data->num_planes && data->p[i].len; i++)
 		mdss_mdp_put_img(&data->p[i]);
+	mdss_bus_bandwidth_ctrl(0);
 
 	data->num_planes = 0;
 
@@ -1266,6 +1271,9 @@ static int mdss_mdp_overlay_queue(struct msm_fb_data_type *mfd,
 
 	flags = (pipe->flags & MDP_SECURE_OVERLAY_SESSION);
 	flags |= (pipe->flags & MDP_SECURE_DISPLAY_OVERLAY_SESSION);
+
+	if (!mfd->panel_info->cont_splash_enabled)
+		mdss_iommu_attach(mdata);
 
 	if (!mfd->panel_info->cont_splash_enabled)
 		mdss_iommu_attach(mdata);
@@ -2545,14 +2553,9 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 
 int mdss_panel_register_done(struct mdss_panel_data *pdata)
 {
-	/*
-	 * Clocks are already on if continuous splash is enabled,
-	 * increasing ref_cnt to help balance clocks once done.
-	 */
-	if (pdata->panel_info.cont_splash_enabled) {
+	if (pdata->panel_info.cont_splash_enabled)
 		mdss_mdp_footswitch_ctrl_splash(1);
-		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
-	}
+
 	return 0;
 }
 
