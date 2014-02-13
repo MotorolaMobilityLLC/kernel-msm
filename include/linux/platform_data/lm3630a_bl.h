@@ -57,18 +57,23 @@ struct lm3630a_platform_data {
 	/* led a config.  */
 	int leda_init_brt;
 	int leda_max_brt;
+	int leda_max_cur;
 	enum lm3630a_leda_ctrl leda_ctrl;
 	/* led b config. */
 	int ledb_init_brt;
 	int ledb_max_brt;
+	int ledb_max_cur;
 	enum lm3630a_ledb_ctrl ledb_ctrl;
 	/* pwm config. */
 	int pwm_gpio;
 	unsigned int pwm_period;
 	enum lm3630a_pwm_ctrl pwm_ctrl;
+	int flt_str;
 	/* hardware control */
 	int hwen_gpio;
 	char vddio_name[32];
+	/* misc */
+	int boost_ctrl;
 };
 
 #endif /* __LINUX_LM3630A_H */
