@@ -155,37 +155,21 @@ static int dory_mi2s_hw_params(struct snd_pcm_substream *substream,
 	int ret;
 
 	/*
-	 * For 16 bit, the ratio between the IBIT and OSR clocks is 1:8.
-	 * For 32 bit, this ratio is 1:4.
+	 * This I2S mic only supports 24 bit output, which is why the
+	 * clocks are never modified for 16 bit use.
 	 */
-	if (params_format(params) == SNDRV_PCM_FORMAT_S16_LE) {
-		switch (params_rate(params)) {
-		case 8000:
-			lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_256_KHZ;
-			lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_2_P048_MHZ;
-			break;
-		case 16000:
-			lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_512_KHZ;
-			lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_4_P096_MHZ;
-			break;
-		default:
-			lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
-			lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
-		}
-	} else {
-		switch (params_rate(params)) {
-		case 8000:
-			lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_512_KHZ;
-			lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_2_P048_MHZ;
-			break;
-		case 16000:
-			lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ;
-			lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_4_P096_MHZ;
-			break;
-		default:
-			lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
-			lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
-		}
+	switch (params_rate(params)) {
+	case 8000:
+		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_512_KHZ;
+		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_2_P048_MHZ;
+		break;
+	case 16000:
+		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ;
+		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_4_P096_MHZ;
+		break;
+	default:
+		lpass_mi2s.clk_val1 = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
+		lpass_mi2s.clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
 	}
 
 	ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX,
