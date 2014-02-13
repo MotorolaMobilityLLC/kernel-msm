@@ -399,7 +399,7 @@ static int gpio_setup_irq(struct gpio_desc *desc, struct device *dev,
 		goto free_id;
 	}
 
-	irq_flags = IRQF_SHARED;
+	irq_flags = IRQF_SHARED | IRQF_ONESHOT;
 	if (test_bit(FLAG_TRIG_FALL, &gpio_flags))
 		irq_flags |= test_bit(FLAG_ACTIVE_LOW, &desc->flags) ?
 			IRQF_TRIGGER_RISING : IRQF_TRIGGER_FALLING;
