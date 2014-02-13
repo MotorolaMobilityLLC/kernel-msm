@@ -47,6 +47,8 @@
 			synaptics,i2c-pull-up;
 			synaptics,fw-image-name = "synaptics_fw.bin";
 			synaptics,wakeup;
+			synaptics,palm-detect-threshold = <0xd>;
+			synaptics,palm-detect-keycode = <0x66>; /* KEY_HOME */
 			status = "disabled";
 		};
 
