@@ -325,6 +325,7 @@ static int local_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	struct pll_freq_tbl *nf;
 	struct pll_clk *pll = to_pll_clk(c);
 	unsigned long flags;
+	u32 regval;
 
 	for (nf = pll->freq_tbl; nf->freq_hz != PLL_FREQ_END
 			&& nf->freq_hz != rate; nf++)
@@ -338,6 +339,17 @@ static int local_pll_clk_set_rate(struct clk *c, unsigned long rate)
 	 * assume no downstream clock is using actively using it.
 	 */
 	spin_lock_irqsave(&c->lock, flags);
+	pll->rcg_cmd_value = readl_relaxed(*pll->rcg_debug_base + 0x50);
+	pll->rcg_cfg_value = readl_relaxed(*pll->rcg_debug_base + 0x54);
+	regval = (pll->rcg_cfg_value & BM(10, 8)) >> 8;
+	if (regval == 0x5) {
+		pr_err("invalid pll setting, c->count = %d, 0x%x, 0x%x\n",
+			c->count, pll->rcg_cmd_value, pll->rcg_cfg_value);
+		pr_err("L = %d\n", readl_relaxed(PLL_L_REG(pll)));
+		pr_err("M = %d\n", readl_relaxed(PLL_M_REG(pll)));
+		pr_err("N = %d\n", readl_relaxed(PLL_N_REG(pll)));
+		BUG_ON(1);
+	}
 	if (c->count)
 		c->ops->disable(c);
 
