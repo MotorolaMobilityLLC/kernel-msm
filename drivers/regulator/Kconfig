@@ -183,6 +183,14 @@ config REGULATOR_ISL6271A
 	help
 	  This driver supports ISL6271A voltage regulator chip.
 
+config REGULATOR_LM3631
+	tristate "TI LM3631 voltage regulators"
+	depends on MFD_TI_LMU
+	help
+	 This driver supports LM3631 voltage regulators for the LCD bias.
+	 One boost output voltage is configurable and always on.
+	 Four LDOs are used for the display module.
+
 config REGULATOR_88PM8607
 	bool "Marvell 88PM8607 Power regulators"
 	depends on MFD_88PM860X=y
