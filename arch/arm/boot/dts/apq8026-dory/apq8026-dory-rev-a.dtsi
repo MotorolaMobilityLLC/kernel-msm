@@ -51,3 +51,15 @@
 		};
 	};
 };
+
+&pm8226_chg {
+	qcom,vddmax-mv = <4200>;
+	qcom,vddsafe-mv = <4230>;
+	qcom,ibatmax-ma= <300>;
+	qcom,ibatterm-ma = <50>;
+	qcom,ibatsafe-ma = <300>;
+	qcom,warm-bat-mv = <4100>;
+	qcom,cool-bat-mv = <4100>;
+	qcom,ibatmax-warm-ma = <150>;
+	qcom,ibatmax-cool-ma = <150>;
+};
