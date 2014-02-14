@@ -506,6 +506,11 @@
 
 };
 
+&pm8226_adc_tm {
+
+	/delete-node/ chan@17;
+};
+
 &slim_msm {
 	tapan_codec {
 		qcom,cdc-micbias1-ext-cap;
