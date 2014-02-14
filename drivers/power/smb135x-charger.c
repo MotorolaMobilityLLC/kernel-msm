@@ -343,6 +343,7 @@ struct smb135x_chg {
 	unsigned int			therm_lvl_sel;
 	unsigned int			*thermal_mitigation;
 	struct mutex			current_change_lock;
+	bool				factory_mode;
 };
 
 static int __smb135x_read(struct smb135x_chg *chip, int reg,
@@ -366,6 +367,9 @@ static int __smb135x_write(struct smb135x_chg *chip, int reg,
 						u8 val)
 {
 	s32 ret;
+
+	if (chip->factory_mode)
+		return 0;
 
 	ret = i2c_smbus_write_byte_data(chip->client, reg, val);
 	if (ret < 0) {
@@ -3040,11 +3044,6 @@ static int smb135x_charger_probe(struct i2c_client *client,
 	struct power_supply *usb_psy;
 	u8 reg = 0;
 
-	if (smb135x_charger_mmi_factory()) {
-		pr_info("Factory Mode Disabling!\n");
-		return -ENODEV;
-	}
-
 	usb_psy = power_supply_get_by_name("usb");
 	if (!usb_psy) {
 		dev_dbg(&client->dev, "USB supply not found; defer probe\n");
@@ -3056,6 +3055,10 @@ static int smb135x_charger_probe(struct i2c_client *client,
 		dev_err(&client->dev, "Unable to allocate memory\n");
 		return -ENOMEM;
 	}
+
+	chip->factory_mode = smb135x_charger_mmi_factory();
+	if (chip->factory_mode)
+		pr_info("Factory Mode I2C Writes Disabled!\n");
 
 	chip->client = client;
 	chip->dev = &client->dev;
