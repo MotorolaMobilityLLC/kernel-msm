@@ -4564,7 +4564,7 @@ int iw_set_three_ints_getnone(struct net_device *dev, struct iw_request_info *in
 
         default:
         {
-            hddLog(LOGE, "Invalid IOCTL command %d",  sub_cmd );
+            hddLog(LOGE, "%s: Invalid IOCTL command %d", __func__, sub_cmd );
             break;
         }
     }
@@ -4982,7 +4982,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
 #endif
         default:
         {
-            hddLog(LOGE, "Invalid IOCTL command %d",  sub_cmd );
+            hddLog(LOGE, "%s: Invalid IOCTL command %d", __func__, sub_cmd );
             break;
         }
     }
@@ -5369,7 +5369,8 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
 #endif
         default:
             {
-                hddLog(LOGE, "Invalid IOCTL command %d",  sub_cmd );
+                hddLog(LOGE, "%s: Invalid IOCTL command %d",
+                       __func__, sub_cmd );
             }
             break;
     }

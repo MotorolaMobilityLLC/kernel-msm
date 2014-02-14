@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 Qualcomm Atheros, Inc.
+ * Copyright (c) 2012-2014 Qualcomm Atheros, Inc.
  * All Rights Reserved.
  * Qualcomm Atheros Confidential and Proprietary.
  */
@@ -5030,7 +5030,7 @@ static int iw_ftm_get_char_setnone(struct net_device *dev, struct iw_request_inf
         }
         default:
         {
-            hddLog(LOGE, "Invalid IOCTL command %d",  sub_cmd );
+            hddLog(LOGE, "%s: Invalid IOCTL command %d", __func__, sub_cmd );
             break;
         }
     }
