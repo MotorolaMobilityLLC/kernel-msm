@@ -312,6 +312,10 @@ struct mmc_host {
 	int			detect_change;	/* card detect flag */
 	struct mmc_hotplug	hotplug;
 
+#define MMC_MAX_FAILURES	3
+	unsigned int		failures;	/* number of device failures */
+	struct wake_lock	recovery_wake_lock;
+
 	const struct mmc_bus_ops *bus_ops;	/* current bus driver */
 	unsigned int		bus_refs;	/* reference counter */
 
