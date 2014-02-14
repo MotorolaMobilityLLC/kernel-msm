@@ -5015,6 +5015,21 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
         }
         case WE_INIT_AP:
         {
+          /*FIX ME: Need to be revisited if multiple SAPs to be supported */
+
+          /* As Soft AP mode might been changed to STA already with
+           * killing of Hostapd, need to find the adpater by name
+           * rather than mode */
+          hdd_adapter_t* pAdapter_to_stop =
+                hdd_get_adapter_by_name(WLAN_HDD_GET_CTX(pAdapter), "softap.0");
+          if( pAdapter_to_stop )
+          {
+              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                       "Adapter with name softap.0 already "
+                       "exist, ignoring the request.\nRemove the "
+                       "adapter and try again\n");
+              break;
+          }
           pr_info("Init AP trigger\n");
           hdd_open_adapter( WLAN_HDD_GET_CTX(pAdapter), WLAN_HDD_SOFTAP, "softap.%d",
                  wlan_hdd_get_intf_addr( WLAN_HDD_GET_CTX(pAdapter) ),TRUE);
