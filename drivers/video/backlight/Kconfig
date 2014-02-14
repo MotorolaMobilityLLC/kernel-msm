@@ -393,6 +393,15 @@ config BACKLIGHT_LM3532
 	  Up to 3 backlight strings and 8 bit dimming is supported.
 	  PWM brightness control is also supported.
 
+config BACKLIGHT_LM3631
+	tristate "Backlight driver for TI LM3631"
+	depends on BACKLIGHT_CLASS_DEVICE && MFD_TI_LMU
+	select TI_LMU_BACKLIGHT
+	help
+	  Say Y to enable the backlight driver for TI LM3631.
+	  Up to 2 backlight strings and 11 bit dimming is supported.
+	  PWM brightness control is also supported.
+
 config TI_LMU_BACKLIGHT
 	tristate "Backlight driver for TI LMU"
 	depends on BACKLIGHT_LM3532 || BACKLIGHT_LM3631 || BACKLIGHT_LM3633 || BACKLIGHT_LM3695 || BACKLIGHT_LM3697
