@@ -1,0 +1,49 @@
+TI LMU LM3631 regulator device tree bindings
+
+Required properties:
+  - compatible: "ti,lm3631-regulator"
+
+Optional properties:
+  - regulator-name
+  - regulator-min-microvolt
+  - regulator-max-microvolt
+  - regulator-always-on
+  - regulator-boot-on
+
+  For those properties, please refer to:
+  Documentation/devicetree/bindings/regulator/regulator.txt
+
+Example:
+
+lm3631@29 {
+	compatible = "ti,lm3631";
+	reg = <0x29>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	/* Only VPOS and VNEG are used with LCD boost */
+	regulators {
+		compatible = "ti,lm3631-regulator";
+
+		vboost {
+			regulator-name = "lcd_boost";
+			regulator-min-microvolt = <4500000>;
+			regulator-max-microvolt = <6350000>;
+			regulator-always-on;
+		};
+
+		vpos {
+			regulator-name = "lcd_vpos";
+			regulator-min-microvolt = <4000000>;
+			regulator-max-microvolt = <6000000>;
+			regulator-boot-on;
+		};
+
+		vneg {
+			regulator-name = "lcd_vneg";
+			regulator-min-microvolt = <4000000>;
+			regulator-max-microvolt = <6000000>;
+			regulator-boot-on;
+		};
+	};
+};
