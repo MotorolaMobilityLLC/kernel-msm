@@ -458,7 +458,7 @@
 	};
 
 	mpp@a700 { /* MPP 8 */
-		/* PA_THERM1 config */
+		/* USB_ID config */
 		qcom,mode = <4>; /* AIN input */
 		qcom,invert = <1>; /* Enable MPP */
 		qcom,ain-route = <3>; /* AMUX 8 */
@@ -494,12 +494,12 @@
 	};
 
 	chan@17 {
-		label = "pa_therm1";
+		label = "usb_id_pin";
 		reg = <0x17>;
 		qcom,decimation = <0>;
 		qcom,pre-div-channel-scaling = <0>;
 		qcom,calibration-type = "ratiometric";
-		qcom,scale-function = <2>;
+		qcom,scale-function = <0>;
 		qcom,hw-settle-time = <2>;
 		qcom,fast-avg-setup = <0>;
 	};
