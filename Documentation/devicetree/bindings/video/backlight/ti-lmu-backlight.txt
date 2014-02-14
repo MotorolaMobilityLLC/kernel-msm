@@ -1,0 +1,127 @@
+TI LMU backlight device tree bindings
+
+Required properties:
+  - compatible: One of lists below with "ti,lmu-backlight" should be set.
+    "ti,lm3532-backlight"
+    "ti,lm3631-backlight"
+    "ti,lm3633-backlight"
+    "ti,lm3695-backlight"
+    "ti,lm3697-backlight"
+  - hvled1-used, hvled2-used, hvled3-used: Backlight string configuration.
+    Each backlight child node should include this information about
+    which backlight string is used.
+
+Optional properties
+  - bl-name: Backlight device name
+  - max-current-milliamp: Max current setting. Unit is mA.
+  - initial-brightness: Backlight initial brightness
+  - ramp-up: Light effect for ramp up rate. Unit is msec.
+  - ramp-down: Light effect for ramp down rate. Unit is msec.
+  - pwm-period: PWM period. Only valid for PWM brightness control mode.
+  - pwms, pwm-names: For the PWM user nodes, please refer to
+    Documentation/devicetree/bindings/pwm/pwm.txt
+
+Examples:
+
+lm3532@38 {
+	compatible = "ti,lm3532";
+	reg = <0x38>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3532-backlight";
+
+		lcd {
+			hvled1-used;
+			hvled2-used;
+			hvled3-used;
+
+			max-current-milliamp = /bits/ 8 <20>;
+		};
+	};
+};
+
+lm3631@29 {
+	compatible = "ti,lm3631";
+	reg = <0x29>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3631-backlight";
+
+		lcd_bl {
+			bl-name = "lcd";
+			hvled1-used;
+			hvled2-used;
+			ramp-up = <100>;
+		};
+	};
+};
+
+lm3633@36 {
+	compatible = "ti,lm3633";
+	reg = <0x36>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3633-backlight";
+
+		main {
+			bl-name = "main_lcd";
+			hvled2-used;
+			hvled3-used;
+			max-current-milliamp = /bits/ 8 <20>;
+		};
+
+		front {
+			bl-name = "front_lcd";
+			hvled1-used;
+			max-current-milliamp = /bits/ 8 <10>;
+		};
+	};
+};
+
+lm3695@63 {
+	compatible = "ti,lm3695";
+	reg = <0x63>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3695-backlight";
+
+		lcd {
+			hvled1-used;
+			hvled2-used;
+		};
+	};
+};
+
+lm3697@36 {
+	compatible = "ti,lm3697";
+	reg = <0x36>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	pwms = <&pwm3943 1 10000>;
+	pwm-names = "lmu-backlight";
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3697-backlight";
+
+		lcd {
+			hvled1-used;
+			hvled2-used;
+			hvled3-used;
+
+			max-current-milliamp = /bits/ 8 <20>;
+			initial-brightness = /bits/ 8 <10>;
+
+			ramp-up = <500>;
+			ramp-down = <500>;
+			pwm-period = <10000>;
+		};
+	};
+};
