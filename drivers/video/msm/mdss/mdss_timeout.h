@@ -53,7 +53,7 @@ extern void mdss_timeout_dump(const char *timeout_type);
 #define MDSS_TIMEOUT_DUMP(fmt, args...)
 #define MDSS_TIMEOUT_LOG(fmt, args...) pr_err(fmt, ##args)
 
-#define mdss_timeout_init(x)
+#define mdss_timeout_init(x, y)
 #define mdss_timeout_dump(x)
 
 #endif
