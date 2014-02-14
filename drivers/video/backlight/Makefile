@@ -40,6 +40,7 @@ obj-$(CONFIG_BACKLIGHT_LM3639)		+= lm3639_bl.o
 obj-$(CONFIG_BACKLIGHT_LM3532)		+= lm3532_bl.o
 obj-$(CONFIG_BACKLIGHT_LM3631)		+= lm3631_bl.o
 obj-$(CONFIG_BACKLIGHT_LM3633)		+= lm3633_bl.o
+obj-$(CONFIG_BACKLIGHT_LM3695)		+= lm3695_bl.o
 obj-$(CONFIG_TI_LMU_BACKLIGHT)		+= ti-lmu-backlight.o
 obj-$(CONFIG_BACKLIGHT_LOCOMO)		+= locomolcd.o
 obj-$(CONFIG_BACKLIGHT_LP855X)		+= lp855x_bl.o
