@@ -25,7 +25,7 @@
 #include <linux/rcupdate.h>
 #include <linux/compiler.h>
 #include <linux/compat.h>
-#include "bstclass.h"
+#include "linux/bstclass.h"
 
 MODULE_AUTHOR("contact@bosch-sensortec.com");
 MODULE_DESCRIPTION("Bst core");
