@@ -26,6 +26,8 @@
 
 #include <linux/version.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
@@ -39,7 +41,7 @@
 #include <linux/earlysuspend.h>
 #endif
 
-#include "bmg160.h"
+#include "linux/bmg160.h"
 
 /* sensor specific */
 #define SENSOR_NAME "bmg160"
@@ -1244,6 +1246,17 @@ static int bmg_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	if (err < 0)
 		goto exit_err_sysfs;
 
+	if (client->dev.of_node) {
+		client_data->bst_pd = kzalloc(sizeof(*client_data->bst_pd),
+				GFP_KERNEL);
+
+		if (NULL != client_data->bst_pd) {
+			struct device_node *np = client->dev.of_node;
+			u32 val;
+			if (!of_property_read_u32(np, "bmg,place", &val))
+					client_data->bst_pd->place = (u8)val;
+		}
+	} else
 	if (NULL != client->dev.platform_data) {
 		client_data->bst_pd = kzalloc(sizeof(*client_data->bst_pd),
 				GFP_KERNEL);
@@ -1480,12 +1493,20 @@ static const struct i2c_device_id bmg_id[] = {
 	{ }
 };
 
+#ifdef CONFIG_OF
+static struct of_device_id bmg160_match_tbl[] = {
+	{ .compatible = "bosch,bmg160" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, bmg160_match_tbl);
+#endif
 MODULE_DEVICE_TABLE(i2c, bmg_id);
 
 static struct i2c_driver bmg_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = SENSOR_NAME,
+		.of_match_table = of_match_ptr(bmg160_match_tbl),
 	},
 	.class = I2C_CLASS_HWMON,
 	.id_table = bmg_id,
