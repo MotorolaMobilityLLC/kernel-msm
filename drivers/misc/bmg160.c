@@ -14,7 +14,7 @@
  * @brief   BMG160 API
 */
 
-#include "bmg160.h"
+#include "linux/bmg160.h"
 struct bmg160_t *p_bmg160;
 
 

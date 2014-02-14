@@ -13,7 +13,7 @@
  * @brief       BMM050 Linux Driver API
  */
 
-#include "bmm050.h"
+#include "linux/bmm050.h"
 
 static struct bmm050 *p_bmm050;
 

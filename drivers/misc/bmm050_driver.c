@@ -16,6 +16,8 @@
 
 #include <linux/version.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
@@ -41,8 +43,16 @@
 #endif
 
 
-#include "bmm050.h"
-#include "bs_log.h"
+#include "linux/bmm050.h"
+
+#define PINFO(format, ...)
+#define PWARN(format, ...)
+#define PDEBUG(format, ...)
+#define PNOTICE(format, ...)
+#define PERR(format, ...)
+
+#define CONFIG_BMM_USE_PLATFORM_DATA
+#define BMM_USE_BASIC_I2C_FUNC
 
 /* sensor specific */
 #define SENSOR_NAME "bmm050"
@@ -1347,6 +1357,17 @@ static int bmm_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto exit_err_sysfs;
 
 #ifdef CONFIG_BMM_USE_PLATFORM_DATA
+	if (client->dev.of_node) {
+		client_data->bst_pd = kzalloc(sizeof(*client_data->bst_pd),
+				GFP_KERNEL);
+
+		if (NULL != client_data->bst_pd) {
+			struct device_node *np = client->dev.of_node;
+			u32 val;
+			if (!of_property_read_u32(np, "bmm,place", &val))
+					client_data->bst_pd->place = (u8)val;
+		}
+	} else
 	if (NULL != client->dev.platform_data) {
 		client_data->bst_pd = kzalloc(sizeof(*client_data->bst_pd),
 				GFP_KERNEL);
@@ -1615,12 +1636,21 @@ static const struct i2c_device_id bmm_id[] = {
 	{}
 };
 
+#ifdef CONFIG_OF
+static struct of_device_id bmm050_match_tbl[] = {
+	{ .compatible = "bosch,bmm050" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, bmm050_match_tbl);
+#endif
+
 MODULE_DEVICE_TABLE(i2c, bmm_id);
 
 static struct i2c_driver bmm_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = SENSOR_NAME,
+		.of_match_table = of_match_ptr(bmm050_match_tbl),
 	},
 	.class = I2C_CLASS_HWMON,
 	.id_table = bmm_id,

@@ -24,6 +24,9 @@
 #include <linux/input.h>
 #include <linux/workqueue.h>
 #include <linux/mutex.h>
+#include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <linux/interrupt.h>
@@ -47,9 +50,12 @@
 #include <string.h>
 #endif
 
-#include "bstclass.h"
+#include "linux/bstclass.h"
 
 #define ACC_NAME  "ACC"
+#define BMA2X2_ENABLE_INT1
+#define CONFIG_SIG_MOTION
+#define CONFIG_DOUBLE_TAP
 /*#define CONFIG_BMA_ENABLE_NEWDATA_INT 1*/
 
 #define SENSOR_NAME                 "bma2x2"
@@ -6527,7 +6533,13 @@ static int bma2x2_probe(struct i2c_client *client,
 	/* enable new data interrupt */
 	bma2x2_set_Int_Enable(client, 4, 1);
 #endif
-
+	if (client->dev.of_node) {
+		struct device_node *np = client->dev.of_node;
+		client->irq = of_get_gpio(np, 0);
+		printk(KERN_ERR "mbing gets irq number %d\n", client->irq);
+		client->irq = gpio_to_irq(client->irq);
+		printk(KERN_ERR "mbing gets irq number %d\n", client->irq);
+	}
 	data->IRQ = client->irq;
 	err = request_irq(data->IRQ, bma2x2_irq_handler, IRQF_TRIGGER_RISING,
 			"bma2x2", data);
@@ -6679,6 +6691,17 @@ static int bma2x2_probe(struct i2c_client *client,
 	if (err < 0)
 		goto bst_free_exit;
 
+	if (client->dev.of_node) {
+		data->bst_pd = kzalloc(sizeof(*data->bst_pd),
+				GFP_KERNEL);
+
+		if (NULL != data->bst_pd) {
+			struct device_node *np = client->dev.of_node;
+			u32 val;
+			if (!of_property_read_u32(np, "bma,place", &val))
+				data->bst_pd->place = (u8)val;
+		}
+	} else
 	if (NULL != client->dev.platform_data) {
 		data->bst_pd = kzalloc(sizeof(*data->bst_pd),
 				GFP_KERNEL);
@@ -6868,12 +6891,20 @@ static const struct i2c_device_id bma2x2_id[] = {
 	{ }
 };
 
+#ifdef CONFIG_OF
+static struct of_device_id bma2x2_match_tbl[] = {
+	{ .compatible = "bosch,bma2x2" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, bma2x2_match_tbl);
+#endif
 MODULE_DEVICE_TABLE(i2c, bma2x2_id);
 
 static struct i2c_driver bma2x2_driver = {
 	.driver = {
 		.owner  = THIS_MODULE,
 		.name   = SENSOR_NAME,
+		.of_match_table = of_match_ptr(bma2x2_match_tbl),
 	},
 	.suspend    = bma2x2_suspend,
 	.resume     = bma2x2_resume,

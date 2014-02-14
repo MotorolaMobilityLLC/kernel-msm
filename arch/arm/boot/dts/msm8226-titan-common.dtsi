@@ -520,6 +520,48 @@
 	lcdbias-supply = <&tps65132>;
 };
 
+&i2c_2 {
+        bma2x2@11 {
+                compatible = "bosch,bma2x2";
+                reg = <0x11>;
+                vdd-supply = <&pm8226_l19>;
+                gpios = <&msmgpio 63 0>; /* IRQ */
+		bma,place = <4>;
+        };
+
+        bmm050@13 {
+                compatible = "bosch,bmm050";
+                reg = <0x13>;
+                vdd-supply = <&pm8226_l19>;
+                gpios = <&msmgpio 66 0>; /* IRQ */
+		bmm,place = <4>;
+        };
+
+        bmg160@68 {
+                compatible = "bosch,bmg160";
+                reg = <0x68>;
+                vdd-supply = <&pm8226_l19>;
+                gpios = <&msmgpio 64 0>; /* IRQ */
+                bmg,place = <2>;
+        };
+
+        stk3x1x@48 {
+                compatible = "stk,stk3x1x";
+                reg = <0x48>;
+                vdd-supply = <&pm8226_l19>;
+                gpios = <&msmgpio 65 0>; /* IRQ */
+                stk,irq-gpio = <&msmgpio 65 0x0>;
+                stk,transmittance = <500>;
+                stk,state-reg = <0x00>;
+                stk,psctrl-reg = <0x71>;
+                stk,alsctrl-reg = <0x39>;
+                stk,ledctrl-reg = <0xFF>;
+                stk,wait-reg = <0x07>;
+                stk,ps-thdh = <300>;
+                stk,ps-thdl = <200>;
+        };
+};
+
 &i2c_3 {
 	tpa6165xx@40 {
 		status = "disabled";
