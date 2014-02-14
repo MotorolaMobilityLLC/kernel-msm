@@ -81,6 +81,7 @@ enum arizona_type {
 
 #define ARIZONA_NUM_IRQ                   52
 
+#define ARIZONA_HP_SHORT_IMPEDANCE        4
 struct snd_soc_dapm_context;
 
 struct arizona {
@@ -105,7 +106,6 @@ struct arizona {
 
 	bool hpdet_magic;
 	unsigned int hp_ena;
-	unsigned int hp_short;
 
 	unsigned int hp_impedance;
 
