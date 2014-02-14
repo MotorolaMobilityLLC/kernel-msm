@@ -63,6 +63,16 @@ config LEDS_LM3533
 	  hardware-accelerated blinking with maximum on and off periods of 9.8
 	  and 77 seconds respectively.
 
+config LEDS_LM3633
+	tristate "LED support for the TI LM3633 LMU"
+	depends on LEDS_CLASS
+	depends on MFD_TI_LMU
+	help
+	  This option enables support for the LEDs on the LM3633.
+	  LM3633 has 6 low voltage indicator LEDs.
+	  All low voltage current sinks can have a programmable pattern
+	  modulated onto LED output strings.
+
 config LEDS_LM3642
 	tristate "LED support for LM3642 Chip"
 	depends on LEDS_CLASS && I2C

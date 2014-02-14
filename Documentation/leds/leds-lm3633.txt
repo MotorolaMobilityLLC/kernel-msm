@@ -1,0 +1,38 @@
+LM3633 LED Driver
+=================
+
+LM3633 LED driver supports not only LED functions but also programmable pattern.
+A pattern is generated via the sysfs.
+
+LED Pattern Generator
+
+                            (3)
+  (a) --------------->  ___________
+                       /           \
+                  (2) /             \ (4)
+  (b) ----> _________/               \_________  ...
+               (1)                       (5)
+
+                     |<-----   period   -----> |
+
+  Time dimension
+    (1) delay : 0 ~ 10 sec
+    (2) rise  : 0 ~ 16 sec
+    (3) high  : 0 ~ 10 sec
+    (4) fall  : 0 ~ 16 sec
+    (5) low   : 0 ~ 16 sec
+
+  Level dimension - channel current
+    (a) low   : 0 ~ 255
+    (b) high  : 0 ~ 255
+
+Example)
+Time  : No delay, rise 500ms, high 1000ms, fall 400ms, low 2000ms
+Level : Brightness 0 and 255
+
+echo 0 500 1000 400 2000 > /sys/class/leds/<LED NAME>/pattern_times
+echo 0 255 >  /sys/class/leds/<LED NAME>/pattern_levels
+echo 1 >  /sys/class/leds/<LED NAME>/run_pattern
+
+To stop running pattern,
+echo 0 >  /sys/class/leds/<LED NAME>/run_pattern
