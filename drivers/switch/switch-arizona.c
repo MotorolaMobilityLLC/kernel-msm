@@ -268,6 +268,9 @@ static void arizona_extcon_pulse_micbias(struct arizona_extcon_info *info)
 
 	snd_soc_dapm_sync(dapm);
 
+	if (arizona->pdata.micd_force_micbias_initial && info->detecting)
+		return;
+
 	if (!arizona->pdata.micd_force_micbias) {
 		mutex_lock(&dapm->card->dapm_mutex);
 
@@ -1337,6 +1340,9 @@ static int arizona_extcon_get_pdata(struct arizona *arizona)
 		of_property_read_bool(arizona->dev->of_node,
 				      "wlf,micd-force-micbias");
 
+	pdata->micd_force_micbias_initial =
+		of_property_read_bool(arizona->dev->of_node,
+				      "wlf,micd-force-micbias-initial");
 	pdata->micd_software_compare =
 			of_property_read_bool(arizona->dev->of_node,
 					      "wlf,micd-software-compare");
