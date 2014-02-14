@@ -425,6 +425,11 @@
 	};
 
 	gpio@c900 { /* GPIO 10 */
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <4>;		/* QPNP_PIN_PULL_DN */
+		qcom,src-sel = <2>;		/* QPNP_PIN_SEL_FUNC_1 */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,master-en = <1>;
 	};
 
 	gpio@ca00 { /* GPIO 11 */
