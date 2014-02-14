@@ -152,6 +152,10 @@ struct pll_clk {
 	void __iomem *const config_reg;
 	void __iomem *const status_reg;
 
+	void *const __iomem *rcg_debug_base;
+	u32 rcg_cfg_value;
+	u32 rcg_cmd_value;
+
 	struct pll_config_masks masks;
 	struct pll_freq_tbl *freq_tbl;
 
