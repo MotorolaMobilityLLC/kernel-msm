@@ -56,6 +56,7 @@
 
 #define LO_1_SPK_AMP   0x1
 #define LO_2_SPK_AMP   0x2
+#define SPK_RCV_SWITCH 0x4
 
 #define ADSP_STATE_READY_TIMEOUT_MS 3000
 
@@ -151,6 +152,9 @@ static struct mutex cdc_mclk_mutex;
 static struct clk *codec_clk;
 static int clk_users;
 static int ext_spk_amp_gpio = -1;
+static int ext_top_spk_amp_gpio = -1;
+static int ext_bot_spk_amp_gpio = -1;
+static int ext_spk_rcv_sel_gpio = -1;
 static int vdd_spkr_gpio = -1;
 static int msm_proxy_rx_ch = 2;
 static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
@@ -261,15 +265,15 @@ static int msm8226_mclk_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static void msm8226_ext_spk_power_amp_enable(u32 enable)
+static void msm8226_ext_spk_power_amp_enable(int spk_amp_gpio, u32 enable)
 {
 	if (enable) {
-		gpio_direction_output(ext_spk_amp_gpio, enable);
+		gpio_direction_output(spk_amp_gpio, enable);
 		/* time takes enable the external power amplifier */
 		usleep_range(EXT_CLASS_D_EN_DELAY,
 			EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
 	} else {
-		gpio_direction_output(ext_spk_amp_gpio, enable);
+		gpio_direction_output(spk_amp_gpio, enable);
 		/* time takes disable the external power amplifier */
 		usleep_range(EXT_CLASS_D_DIS_DELAY,
 			EXT_CLASS_D_DIS_DELAY + EXT_CLASS_D_DELAY_DELTA);
@@ -292,11 +296,36 @@ static void msm8226_ext_spk_power_amp_on(u32 spk)
 				(msm8226_ext_spk_pamp & LO_2_SPK_AMP))
 				if (ext_spk_amp_gpio >= 0) {
 					pr_debug("%s  enable power", __func__);
-					msm8226_ext_spk_power_amp_enable(1);
+					msm8226_ext_spk_power_amp_enable(
+						ext_spk_amp_gpio, 1);
 				}
 		} else  {
 			pr_err("%s: Invalid external speaker ampl. spk = 0x%x\n",
 				__func__, spk);
+		}
+	} else if (gpio_is_valid(ext_top_spk_amp_gpio) &&
+		gpio_is_valid(ext_bot_spk_amp_gpio) &&
+		gpio_is_valid(ext_spk_rcv_sel_gpio)) {
+		if (spk & LO_1_SPK_AMP) {
+			if (ext_top_spk_amp_gpio >= 0) {
+				pr_debug("%s enable power-TOP amp", __func__);
+				msm8226_ext_spk_power_amp_enable(
+					ext_top_spk_amp_gpio, 1);
+			}
+		}
+		if (spk & LO_2_SPK_AMP) {
+			if (ext_bot_spk_amp_gpio >= 0) {
+				pr_debug("%s  enable power-BOT amp", __func__);
+				msm8226_ext_spk_power_amp_enable(
+					ext_bot_spk_amp_gpio, 1);
+			}
+		}
+		if (spk & SPK_RCV_SWITCH) {
+			if (ext_spk_rcv_sel_gpio >= 0) {
+				pr_debug("%s  switch to Ear mode", __func__);
+				msm8226_ext_spk_power_amp_enable(
+					ext_spk_rcv_sel_gpio, 1);
+			}
 		}
 	}
 }
@@ -313,13 +342,39 @@ static void msm8226_ext_spk_power_amp_off(u32 spk)
 			if (!msm8226_ext_spk_pamp) {
 				if (ext_spk_amp_gpio >= 0) {
 					pr_debug("%s  disable power", __func__);
-					msm8226_ext_spk_power_amp_enable(0);
+					msm8226_ext_spk_power_amp_enable(
+						ext_spk_amp_gpio, 0);
 				}
 				msm8226_ext_spk_pamp = 0;
 			}
 		 } else  {
 			pr_err("%s: ERROR : Invalid Ext Spk Ampl. spk = 0x%08x\n",
 				__func__, spk);
+		}
+	} else if (gpio_is_valid(ext_top_spk_amp_gpio) &&
+		gpio_is_valid(ext_bot_spk_amp_gpio) &&
+		gpio_is_valid(ext_spk_rcv_sel_gpio)) {
+		if (spk & LO_1_SPK_AMP) {
+			if (ext_top_spk_amp_gpio >= 0) {
+				pr_debug("%s disable power-TOP amp", __func__);
+				msm8226_ext_spk_power_amp_enable(
+					ext_top_spk_amp_gpio, 0);
+			}
+		}
+		if (spk & LO_2_SPK_AMP) {
+			if (ext_bot_spk_amp_gpio >= 0) {
+				pr_debug("%s disable power-BOT amp", __func__);
+				msm8226_ext_spk_power_amp_enable(
+					ext_bot_spk_amp_gpio, 0);
+			}
+		}
+		if (spk & SPK_RCV_SWITCH) {
+			if (ext_spk_rcv_sel_gpio >= 0) {
+				pr_debug("%s  switch back to speaker mode",
+					__func__);
+				msm8226_ext_spk_power_amp_enable(
+					ext_spk_rcv_sel_gpio, 0);
+			}
 		}
 	}
 }
@@ -334,6 +389,9 @@ static int msm8226_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 			msm8226_ext_spk_power_amp_on(LO_1_SPK_AMP);
 		else if (!strncmp(w->name, "Lineout_2 amp", 14))
 			msm8226_ext_spk_power_amp_on(LO_2_SPK_AMP);
+		else if (!strncmp(w->name, "Ear select", 15))
+			msm8226_ext_spk_power_amp_on(
+				LO_1_SPK_AMP|SPK_RCV_SWITCH);
 		else {
 			pr_err("%s() Invalid Speaker Widget = %s\n",
 				__func__, w->name);
@@ -344,6 +402,9 @@ static int msm8226_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 			msm8226_ext_spk_power_amp_off(LO_1_SPK_AMP);
 		else if (!strncmp(w->name, "Lineout_2 amp", 14))
 			msm8226_ext_spk_power_amp_off(LO_2_SPK_AMP);
+		else if (!strncmp(w->name, "Ear select", 15))
+			msm8226_ext_spk_power_amp_off(
+				LO_1_SPK_AMP|SPK_RCV_SWITCH);
 		else {
 			pr_err("%s() Invalid Speaker Widget = %s\n",
 				__func__, w->name);
@@ -400,6 +461,7 @@ static const struct snd_soc_dapm_widget msm8226_dapm_widgets[] = {
 
 	SND_SOC_DAPM_SPK("Lineout_1 amp", msm8226_ext_spkramp_event),
 	SND_SOC_DAPM_SPK("Lineout_2 amp", msm8226_ext_spkramp_event),
+	SND_SOC_DAPM_SPK("Ear select", msm8226_ext_spkramp_event),
 
 	SND_SOC_DAPM_SUPPLY("EXT_VDD_SPKR",  SND_SOC_NOPM, 0, 0,
 	msm8226_vdd_spkr_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
@@ -2474,6 +2536,66 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 
+	ext_top_spk_amp_gpio = of_get_named_gpio(pdev->dev.of_node,
+			"fih,cdc-lineout-topspkr-gpios", 0);
+	if (ext_top_spk_amp_gpio < 0) {
+		dev_err(&pdev->dev,
+			"Looking up %s property in node %s failed %d\n",
+			"fih, cdc-lineout-topspkr-gpios",
+			pdev->dev.of_node->full_name, ext_top_spk_amp_gpio);
+	} else {
+		ret = gpio_request(ext_top_spk_amp_gpio,
+				"TAPAN_CODEC_LINEOUT_TOP_SPKR");
+		if (ret) {
+			/* GPIO to enable TOP EXT AMP exists,
+			   but failed request */
+			dev_err(card->dev,
+				"%s: Failed to request tapan amp spkr gpio %d\n",
+				__func__, ext_top_spk_amp_gpio);
+			goto err_lineout_spkr;
+		}
+	}
+
+	ext_bot_spk_amp_gpio = of_get_named_gpio(pdev->dev.of_node,
+			"fih,cdc-lineout-botspkr-gpios", 0);
+	if (ext_bot_spk_amp_gpio < 0) {
+		dev_err(&pdev->dev,
+			"Looking up %s property in node %s failed %d\n",
+			"fih, cdc-lineout-botspkr-gpios",
+			pdev->dev.of_node->full_name, ext_bot_spk_amp_gpio);
+	} else {
+		ret = gpio_request(ext_bot_spk_amp_gpio,
+				"TAPAN_CODEC_LINEOUT_BOT_SPKR");
+		if (ret) {
+			/* GPIO to enable BOT EXT AMP exists,
+			   but failed request */
+			dev_err(card->dev,
+				"%s: Failed to request tapan amp spkr gpio %d\n",
+				__func__, ext_bot_spk_amp_gpio);
+			goto err_lineout_top_spkr;
+		}
+	}
+
+	ext_spk_rcv_sel_gpio = of_get_named_gpio(pdev->dev.of_node,
+			"fih,cdc-spk-rcv-sel-gpios", 0);
+	if (ext_spk_rcv_sel_gpio < 0) {
+		dev_err(&pdev->dev,
+			"Looking up %s property in node %s failed %d\n",
+			"fih,cdc-spk-rcv-sel-gpios",
+			pdev->dev.of_node->full_name, ext_spk_rcv_sel_gpio);
+	} else {
+		ret = gpio_request(ext_spk_rcv_sel_gpio,
+				"TAPAN_CODEC_LINEOUT_SPKR_RVC_SEL");
+		if (ret) {
+			/* GPIO to enable SPK/EAR SELECT exists,
+			   but failed request */
+			dev_err(card->dev,
+				"%s: Failed to request tapan spkr ear select gpio %d\n",
+				__func__, ext_spk_rcv_sel_gpio);
+			goto err_lineout_bot_spkr;
+		}
+	}
+
 	msm8226_setup_hs_jack(pdev, pdata);
 
 	ret = of_property_read_string(pdev->dev.of_node,
@@ -2482,7 +2604,7 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Looking up %s property in node %s failed",
 			"qcom,prim-auxpcm-gpio-set",
 			pdev->dev.of_node->full_name);
-		goto err_lineout_spkr;
+		goto err_spkr_rcv_sel;
 	}
 	if (!strcmp(auxpcm_pri_gpio_set, "prim-gpio-prim")) {
 		lpaif_pri_muxsel_virt_addr = ioremap(LPAIF_PRI_MODE_MUXSEL, 4);
@@ -2492,15 +2614,33 @@ static __devinit int msm8226_asoc_machine_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Invalid value %s for AUXPCM GPIO set\n",
 			auxpcm_pri_gpio_set);
 		ret = -EINVAL;
-		goto err_lineout_spkr;
+		goto err_spkr_rcv_sel;
 	}
 	if (lpaif_pri_muxsel_virt_addr == NULL) {
 		pr_err("%s Pri muxsel virt addr is null\n", __func__);
 		ret = -EINVAL;
-		goto err_lineout_spkr;
+		goto err_spkr_rcv_sel;
 	}
 
 	return 0;
+
+err_spkr_rcv_sel:
+	if (ext_spk_rcv_sel_gpio >= 0) {
+		gpio_free(ext_spk_rcv_sel_gpio);
+		ext_spk_rcv_sel_gpio = -1;
+	}
+
+err_lineout_bot_spkr:
+	if (ext_bot_spk_amp_gpio >= 0) {
+		gpio_free(ext_bot_spk_amp_gpio);
+		ext_bot_spk_amp_gpio = -1;
+	}
+
+err_lineout_top_spkr:
+	if (ext_top_spk_amp_gpio >= 0) {
+		gpio_free(ext_top_spk_amp_gpio);
+		ext_top_spk_amp_gpio = -1;
+	}
 
 err_lineout_spkr:
 	if (ext_spk_amp_gpio >= 0) {
