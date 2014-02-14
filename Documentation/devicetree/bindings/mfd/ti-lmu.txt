@@ -1,0 +1,182 @@
+TI LMU(Lighting Management Unit) device tree bindings
+
+TI LMU driver supports lighting devices belows.
+
+   Name        Device tree properties
+  ------      ------------------------
+  LM3532       Backlight
+  LM3631       Backlight and regulator
+  LM3633       Backlight and LED
+  LM3695       Backlight
+  LM3697       Backlight
+
+Those have shared device tree properties.
+
+Required properties:
+  - compatible: "ti,lm3532", "ti,lm3631", "ti,lm3633", "ti,lm3695", "ti,lm3697"
+  - reg: I2C slave address.
+    0x38 is LM3532
+    0x29 is LM3631
+    0x36 is LM3633, LM3697
+    0x63 is LM3695
+  - ti,enable-gpio: GPIO number of hardware enable pin
+
+For the TI LMU backlight properties, please refer to:
+Documentation/devicetree/bindings/video/backlight/ti-lmu-backlight.txt
+
+For the LM3631 regulator properties, please refer to:
+Documentation/devicetree/bindings/regulator/lm3631-regulator.txt
+
+For the LM3633 LED properties, please refer to:
+Documentation/devicetree/bindings/leds/leds-lm3633.txt
+
+Examples:
+
+lm3532@38 {
+	compatible = "ti,lm3532";
+	reg = <0x38>;
+
+	/* GPIO134 for HWEN pin */
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3532-backlight";
+
+		lcd {
+			hvled1-used;
+			hvled2-used;
+			hvled3-used;
+
+			max-current-milliamp = /bits/ 8 <20>;
+			ramp-up = <1>;
+			ramp-down = <1>;
+		};
+	};
+};
+
+lm3631@29 {
+	compatible = "ti,lm3631";
+	reg = <0x29>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	/* Only Vpos and Vneg are used with LCD boost */
+	regulators {
+		compatible = "ti,lm3631-regulator";
+
+		vboost {
+			regulator-name = "lcd_boost";
+			regulator-min-microvolt = <4500000>;
+			regulator-max-microvolt = <6350000>;
+			regulator-always-on;
+		};
+
+		vpos {
+			regulator-name = "lcd_vpos";
+			regulator-min-microvolt = <4000000>;
+			regulator-max-microvolt = <6000000>;
+			regulator-boot-on;
+		};
+
+		vneg {
+			regulator-name = "lcd_vneg";
+			regulator-min-microvolt = <4000000>;
+			regulator-max-microvolt = <6000000>;
+			regulator-boot-on;
+		};
+	};
+
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3631-backlight";
+
+		lcd_bl {
+			bl-name = "lcd";
+			hvled1-used;
+			hvled2-used;
+			ramp-up = <100>;
+		};
+	};
+};
+
+lm3633@36 {
+	compatible = "ti,lm3633";
+	reg = <0x36>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3633-backlight";
+
+		main {
+			bl-name = "main_lcd";
+			hvled2-used;
+			hvled3-used;
+			max-current-milliamp = /bits/ 8 <20>;
+		};
+
+		front {
+			bl-name = "front_lcd";
+			hvled1-used;
+			max-current-milliamp = /bits/ 8 <10>;
+		};
+	};
+
+	leds {
+		compatible = "ti,lm3633-leds";
+
+		chan2 {
+			chan-name = "status";
+			lvled2-used;
+			max-current-milliamp = /bits/ 8 <6>;
+		};
+
+		chan456 {
+			chan-name = "rgb";
+			lvled4-used;
+			lvled5-used;
+			lvled6-used;
+
+			max-current-milliamp = /bits/ 8 <5>;
+		};
+	};
+};
+
+lm3695@63 {
+	compatible = "ti,lm3695";
+	reg = <0x63>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3695-backlight";
+
+		lcd {
+			hvled1-used;
+			hvled2-used;
+		};
+	};
+};
+
+lm3697@36 {
+	compatible = "ti,lm3697";
+	reg = <0x36>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	backlight {
+		compatible = "ti,lmu-backlight", "ti,lm3697-backlight";
+
+		lcd_bl {
+			bl-name = "lcd";
+			hvled1-used;
+			hvled2-used;
+			hvled3-used;
+
+			max-current-milliamp = /bits/ 8 <20>;
+			initial-brightness = /bits/ 8 <10>;
+
+			ramp-up = <500>;
+			ramp-down = <500>;
+		};
+	};
+};
