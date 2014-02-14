@@ -771,7 +771,8 @@ int arizona_hp_ev(struct snd_soc_dapm_widget *w,
 	priv->arizona->hp_ena |= val;
 
 	/* Force off if HPDET magic is active */
-	if (priv->arizona->hpdet_magic || priv->arizona->hp_short)
+	if (priv->arizona->hpdet_magic ||
+	    priv->arizona->hp_impedance <= ARIZONA_HP_SHORT_IMPEDANCE)
 		val = 0;
 
 	snd_soc_update_bits(w->codec, ARIZONA_OUTPUT_ENABLES_1, mask, val);
