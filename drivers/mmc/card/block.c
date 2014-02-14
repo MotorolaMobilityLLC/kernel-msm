@@ -1957,17 +1957,19 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 			break;
 		case MMC_BLK_CMD_ERR:
 			ret = mmc_blk_cmd_err(md, card, brq, req, ret);
-			if (!mmc_blk_reset(md, card->host, type))
-				break;
-			goto cmd_abort;
+			goto cmd_recover;
 		case MMC_BLK_RETRY:
+			/*
+			 * Let infirmity increase blindly so that all retries
+			 * are attempted before we catch it on fall-though.
+			 */
+			if (mmc_card_recoverable(card))
+				card->infirmity++;
 			if (retry++ < 5)
 				break;
 			/* Fall through */
 		case MMC_BLK_ABORT:
-			if (!mmc_blk_reset(md, card->host, type))
-				break;
-			goto cmd_abort;
+			goto cmd_recover;
 		case MMC_BLK_DATA_ERR: {
 			int err;
 
@@ -1988,6 +1990,17 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 				break;
 			}
 			/*
+			 * If we get into this mode of operation and
+			 * the trouble continues, we will not get out
+			 * along the normal error path until all of the
+			 * single transfers are done.
+			 */
+			if (mmc_card_recoverable(card)) {
+				if (card->infirmity >= MMC_MAX_CARD_INFIRMITY)
+					goto cmd_recover;
+				card->infirmity++;
+			}
+			/*
 			 * After an error, we redo I/O one sector at a
 			 * time, so we only reach here after trying to
 			 * read a single sector.
@@ -2001,6 +2014,43 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 			goto cmd_abort;
 		}
 
+		goto cmd_done;
+cmd_recover:
+		/*
+		 * Keep track of recoverable cards that are not stable and
+		 * attempt to recover them if necessary.
+		 */
+		if (mmc_card_recoverable(card)) {
+			card->infirmity++;
+			if (card->infirmity >= MMC_MAX_CARD_INFIRMITY) {
+				card->host->failures++;
+				pr_err("%s: card has experienced %d semi-"
+					"consecutive errors and %u failures\n",
+					req->rq_disk->disk_name,
+					card->infirmity,
+					card->host->failures);
+
+				if (!(card->host->caps & MMC_CAP_NONREMOVABLE) &&
+				    card->host->failures >= MMC_MAX_FAILURES) {
+					mmc_card_set_removed(card);
+					mmc_detect_change(card->host, 0);
+					goto cmd_abort;
+				}
+
+				pr_info("%s: trying to recover\n",
+					req->rq_disk->disk_name);
+				mmc_blk_reset(md, card->host, type);
+				card->infirmity = 0;
+			}
+
+			if (card->infirmity > 0)
+				pr_info("%s: card infirmity score: %d\n",
+					req->rq_disk->disk_name,
+					card->infirmity);
+		} else
+			goto cmd_abort;
+
+cmd_done:
 		if (ret) {
 			if (mq_rq->packed_cmd == MMC_PACKED_NONE) {
 				/*
@@ -2019,7 +2069,14 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 						&mq_rq->mmc_active, NULL);
 			}
 		}
+
 	} while (ret);
+
+	/*
+	 * Improve the card's health score on success.
+	 */
+	if (card->infirmity > 0)
+		card->infirmity--;
 
 	return 1;
 
