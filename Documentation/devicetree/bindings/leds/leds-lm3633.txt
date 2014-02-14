@@ -1,0 +1,39 @@
+TI LMU LM3633 LED device tree bindings
+
+Required properties:
+  - compatible: "ti,lm3633-leds"
+  - lvled1-used, lvled2-used, lvled3-used, lvled4-used, lvled5-used, lvled6-used
+    : LED string configuration. Each child node should include this information
+      about which LED string is used.
+
+Optional properties:
+  - chan-name: LED channel name
+  - max-current-milliamp: Max current setting. Unit is mA.
+
+Example:
+
+lm3633@36 {
+	compatible = "ti,lm3633";
+	reg = <0x36>;
+
+	ti,enable-gpio = <&gpio5 6 GPIO_ACTIVE_HIGH>;
+
+	leds {
+		compatible = "ti,lm3633-leds";
+
+		chan2 {
+			chan-name = "status";
+			lvled2-used;
+			max-current-milliamp = /bits/ 8 <6>;
+		};
+
+		chan456 {
+			chan-name = "rgb";
+			lvled4-used;
+			lvled5-used;
+			lvled6-used;
+
+			max-current-milliamp = /bits/ 8 <5>;
+		};
+	};
+};
