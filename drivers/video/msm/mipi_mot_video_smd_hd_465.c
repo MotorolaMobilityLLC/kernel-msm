@@ -154,7 +154,7 @@ static int mipi_mot_read_byte(__u8 address, __u8 *value)
 		.payload = cmd_buf
 	};
 
-	ret = mipi_mot_rx_cmd(&reg_read_cmd, &address, 1);
+	ret = mipi_mot_rx_cmd(&reg_read_cmd, value, 1);
 	if (ret < 0) {
 		pr_err("%s: failed to read cmd=0x%x\n", __func__, address);
 		*value = 0;
