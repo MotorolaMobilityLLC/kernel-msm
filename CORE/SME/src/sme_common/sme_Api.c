@@ -2494,10 +2494,11 @@ eHalStatus sme_ScanRequest(tHalHandle hHal, tANI_U8 sessionId, tCsrScanRequest *
                     else
                     {
                         smsLog(pMac, LOGE, FL("Scan denied in state %s"
-                               "(sub-state %d)"),
+                               "(sub-state %s)"),
                                macTraceGetNeighbourRoamState(
                                pMac->roam.neighborRoamInfo.neighborRoamState),
-                               pMac->roam.curSubState[sessionId]);
+                               macTraceGetcsrRoamSubState(
+                               pMac->roam.curSubState[sessionId]));
                         /*HandOff is in progress. So schedule this scan later*/
                         status = eHAL_STATUS_RESOURCES;
                     }
