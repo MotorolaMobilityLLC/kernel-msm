@@ -44,8 +44,38 @@ else
 endif
 
 # Copy WCNSS_cfg.dat file from firmware_bin/ folder to target out directory.
+ifeq ($(WLAN_PROPRIETARY),0)
+
 $(shell rm -f $(TARGET_OUT_ETC)/firmware/wlan/prima/WCNSS_cfg.dat)
 $(shell cp $(LOCAL_PATH)/firmware_bin/WCNSS_cfg.dat $(TARGET_OUT_ETC)/firmware/wlan/prima)
+
+else
+
+include $(CLEAR_VARS)
+LOCAL_MODULE       := WCNSS_qcom_wlan_nv.bin
+LOCAL_MODULE_TAGS  := optional
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH  := $(PRODUCT_OUT)/persist
+LOCAL_SRC_FILES    := firmware_bin/$(LOCAL_MODULE)
+include $(BUILD_PREBUILT)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE       := WCNSS_cfg.dat
+LOCAL_MODULE_TAGS  := optional
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH  := $(TARGET_OUT_ETC)/firmware/wlan/prima
+LOCAL_SRC_FILES    := firmware_bin/$(LOCAL_MODULE)
+include $(BUILD_PREBUILT)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE       := WCNSS_qcom_cfg.ini
+LOCAL_MODULE_TAGS  := optional
+LOCAL_MODULE_CLASS := ETC
+LOCAL_MODULE_PATH  := $(PRODUCT_OUT)/persist
+LOCAL_SRC_FILES    := firmware_bin/$(LOCAL_MODULE)
+include $(BUILD_PREBUILT)
+
+endif
 
 # Build wlan.ko as either prima_wlan.ko or pronto_wlan.ko
 ###########################################################
