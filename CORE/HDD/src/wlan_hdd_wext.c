@@ -2715,6 +2715,7 @@ static int iw_get_rssi(struct net_device *dev,
           /* append the rssi to the ssid in the format required by
              the WiFI Framework */
           rc = scnprintf(&cmd[ssidlen], len - ssidlen, " rssi %d", s7Rssi);
+          rc += ssidlen;
       }
       else
       {
