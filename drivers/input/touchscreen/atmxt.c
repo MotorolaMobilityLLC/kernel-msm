@@ -41,6 +41,7 @@
 #endif
 
 #define FAMILY_ID 0x82
+#define FAMILY_ID_V1 0x81
 
 static int atmxt_probe(struct i2c_client *client,
 		const struct i2c_device_id *id);
@@ -211,10 +212,10 @@ static int atmxt_probe_ic(struct atmxt_driver_data *dd)
 		return err;
 	}
 
-	if (infoblk[0] != FAMILY_ID) {
-		printk(KERN_ERR "%s: Family ID mismatch:"
-			" expected 0x%02x actual is 0x%02x\n",
-			__func__, FAMILY_ID, infoblk[0]);
+	if (infoblk[0] != FAMILY_ID && infoblk[0] != FAMILY_ID_V1) {
+		printk(KERN_ERR "%s: Family ID mismatch:" \
+			" expected 0x%02x or 0x%02x actual is 0x%02x\n",
+			__func__, FAMILY_ID_V1, FAMILY_ID, infoblk[0]);
 		return -EIO;
 	}
 
