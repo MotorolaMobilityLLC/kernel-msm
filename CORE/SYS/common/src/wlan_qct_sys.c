@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -150,11 +150,11 @@ VOS_STATUS sysStop( v_CONTEXT_t pVosContext )
    /* post a message to SYS module in MC to stop SME and MAC */
    sysBuildMessageHeader( SYS_MSG_ID_MC_STOP, &sysMsg );
 
-   // Save the user callback and user data to callback in the body pointer
-   // and body data portion of the message.
+   // Save the user callback and user data
+
    // finished.
-   sysMsg.bodyptr = (void *)sysStopCompleteCb;
-   sysMsg.bodyval = (v_U32_t) &gStopEvt;
+   sysMsg.callback = sysStopCompleteCb;
+   sysMsg.bodyptr  = (void *) &gStopEvt;
 
    // post the message..
    vosStatus = vos_mq_post_message( VOS_MQ_ID_SYS, &sysMsg );
@@ -371,7 +371,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
                vosStatus = macStop( hHal, HAL_STOP_TYPE_SYS_DEEP_SLEEP );
                VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
 
-               ((sysResponseCback)pMsg->bodyptr)((v_VOID_t *)pMsg->bodyval);
+               ((sysResponseCback)pMsg->callback)((v_VOID_t *)pMsg->bodyptr);
 
                vosStatus = VOS_STATUS_SUCCESS;
             }
