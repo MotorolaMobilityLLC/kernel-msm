@@ -314,6 +314,7 @@ static enum power_supply_property msm_bms_power_props[] = {
 
 static int discard_backup_fcc_data(struct qpnp_bms_chip *chip);
 static void backup_charge_cycle(struct qpnp_bms_chip *chip);
+static int clamp_soc_based_on_voltage(struct qpnp_bms_chip *chip, int soc);
 
 static bool bms_reset;
 static int last_ocv_uv = -EINVAL;
@@ -1961,6 +1962,7 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 			soc = chip->last_soc;
 	}
 
+	soc = clamp_soc_based_on_voltage(chip, soc);
 	chip->last_soc = bound_soc(soc);
 	soc_sanity_check(chip, batt_temp, chip->last_soc);
 	backup_soc_and_iavg(chip, batt_temp, chip->last_soc);
