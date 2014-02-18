@@ -60,6 +60,7 @@ struct kgsl_pwr_constraint {
 			unsigned int level;
 		} pwrlevel;
 	} hint;
+	unsigned long expires;
 };
 
 /**

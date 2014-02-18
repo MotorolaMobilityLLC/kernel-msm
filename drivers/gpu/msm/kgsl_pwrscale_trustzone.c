@@ -189,7 +189,11 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 	if (val > 0)
 		val *= pwr->step_mul;
 
-	if (val) {
+	if ((pwr->constraint.type == KGSL_CONSTRAINT_NONE) ||
+			((pwr->active_pwrlevel + val) <
+			pwr->constraint.hint.pwrlevel.level) ||
+			(time_after(jiffies, pwr->constraint.expires))) {
+
 		kgsl_pwrctrl_pwrlevel_change(device,
 					     pwr->active_pwrlevel + val);
 		if (pwr->constraint.type != KGSL_CONSTRAINT_NONE) {
