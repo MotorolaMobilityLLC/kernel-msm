@@ -553,6 +553,31 @@
 				qcom,support-reset = <0>;
 			};
 		};
+		qcom,leds@a300 {
+			compatible = "qcom,leds-qpnp-rgb";
+			status = "okay";
+			qcom,led_mpp_4 {
+				label = "mpp";
+				linux,name = "white";
+				linux,default-trigger = "none";
+				qcom,max-current = <40>;
+				qcom,current-setting = <5>;
+				qcom,id = <6>;
+				qcom,mode = "pwm";
+				qcom,source-sel = <8>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,pwm-channel = <0>;
+				qcom,pwm-us = <1000>;
+			};
+
+			qcom,led_rgb {
+				label = "combo";
+				linux,name = "rgb";
+				qcom,max-current = <12>;
+				qcom,id = <9>;
+			};
+		};
+		/delete-node/ qcom,leds@a500;
 	};
 
 	qcom,pm8226@1 {
