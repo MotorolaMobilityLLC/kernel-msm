@@ -3397,6 +3397,13 @@ void mmc_rescan(struct work_struct *work)
 	mmc_bus_put(host);
 	mmc_bus_get(host);
 
+	/* Don't redetect if the card has failed too many times */
+	if (host->card_bad) {
+		pr_err("%s: ignoring bad card\n", mmc_hostname(host));
+		mmc_bus_put(host);
+		goto out;
+	}
+
 	/* if there still is a card present, stop here */
 	if (host->bus_ops != NULL) {
 		mmc_rpm_release(host, &host->class_dev);
