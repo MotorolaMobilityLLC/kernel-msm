@@ -1250,7 +1250,6 @@ static ssize_t diagchar_read(struct file *file, char __user *buf, size_t count,
 	int remote_token;
 	int exit_stat;
 	int copy_data = 0;
-	unsigned long flags;
 
 	for (i = 0; i < driver->num_clients; i++)
 		if (driver->client_map[i].pid == current->tgid)
@@ -1328,10 +1327,7 @@ drop:
 				COPY_USER_SPACE_OR_EXIT(buf+ret,
 					*(data->buf_in_1),
 					data->write_ptr_1->length);
-				spin_lock_irqsave(&data->in_busy_lock, flags);
 				data->in_busy_1 = 0;
-				spin_unlock_irqrestore(&data->in_busy_lock,
-						       flags);
 				diag_ws_on_copy(DIAG_WS_MD);
 				copy_data = 1;
 			}
@@ -1344,10 +1340,7 @@ drop:
 				COPY_USER_SPACE_OR_EXIT(buf+ret,
 					*(data->buf_in_2),
 					data->write_ptr_2->length);
-				spin_lock_irqsave(&data->in_busy_lock, flags);
 				data->in_busy_2 = 0;
-				spin_unlock_irqrestore(&data->in_busy_lock,
-						       flags);
 				diag_ws_on_copy(DIAG_WS_MD);
 				copy_data = 1;
 			}
