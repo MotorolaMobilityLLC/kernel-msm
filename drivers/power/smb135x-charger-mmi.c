@@ -60,6 +60,13 @@
 #define RECHARGE_200MV_BIT		BIT(2)
 #define USB_2_3_BIT			BIT(5)
 
+#define CFG_A_REG			0x0A
+#define DCIN_VOLT_SEL			SMB135X_MASK(7, 5)
+#define DCIN_INPUT_MASK			SMB135X_MASK(4, 0)
+
+#define CFG_B_REG			0x0B
+#define DCIN_AICL_BIT			BIT(2)
+
 #define CFG_C_REG			0x0C
 #define USBIN_INPUT_MASK		SMB135X_MASK(4, 0)
 
@@ -68,9 +75,6 @@
 #define CFG_E_REG			0x0E
 #define POLARITY_100_500_BIT		BIT(2)
 #define USB_CTRL_BY_PIN_BIT		BIT(1)
-
-#define CFG_10_REG			0x11
-#define DCIN_INPUT_MASK			SMB135X_MASK(4, 0)
 
 #define CFG_11_REG			0x11
 #define PRIORITY_BIT			BIT(7)
@@ -95,6 +99,9 @@
 #define CHG_STAT_DISABLE_BIT		BIT(0)
 #define CHG_STAT_ACTIVE_HIGH_BIT	BIT(1)
 #define CHG_STAT_IRQ_ONLY_BIT		BIT(4)
+
+#define CFG_18_REG			0x18
+#define DCIN_CMD_BIT			BIT(3)
 
 #define CFG_19_REG			0x19
 #define BATT_MISSING_ALGO_BIT		BIT(2)
@@ -1035,7 +1042,7 @@ static int smb135x_set_dc_chg_current(struct smb135x_chg *chip,
 			break;
 	}
 	dc_cur_val = i & DCIN_INPUT_MASK;
-	rc = smb135x_masked_write(chip, CFG_10_REG,
+	rc = smb135x_masked_write(chip, CFG_A_REG,
 				DCIN_INPUT_MASK, dc_cur_val);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't set dc charge current rc = %d\n",
@@ -2866,6 +2873,35 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 		if (rc < 0) {
 			dev_err(chip->dev, "Couldn't set dc charge current rc = %d\n",
 					rc);
+			return rc;
+		}
+
+		/* Configure Command mode for DCIN */
+		rc = smb135x_masked_write(chip, CFG_18_REG,
+					  DCIN_CMD_BIT, 0);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set dc command mode rc = %d\n",
+				rc);
+			return rc;
+		}
+
+		/* Configure DCIN 5V to 9V */
+		rc = smb135x_masked_write(chip, CFG_A_REG,
+					  DCIN_VOLT_SEL, 0x40);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set dc voltage mode rc = %d\n",
+				rc);
+			return rc;
+		}
+
+		/* Configure DCIN AICL */
+		rc = smb135x_masked_write(chip, CFG_B_REG,
+					  DCIN_AICL_BIT, 0);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't set dc AICL rc = %d\n",
+				rc);
 			return rc;
 		}
 	}
