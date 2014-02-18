@@ -98,6 +98,19 @@ config TOUCHSCREEN_ATMEL_MXT
 	  To compile this driver as a module, choose M here: the
 	  module will be called atmel_mxt_ts.
 
+config TOUCHSCREEN_ATMEL_MXT_MMI
+	tristate "Atmel mXT MMI I2C Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have Atmel mXT series I2C touchscreen,
+	  such as mX540S/mX640S, connected to your system.
+	  This driver include enhancements from MMI.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called atmel_mxt_ts.
+
 config TOUCHSCREEN_ATMEL_MAXTOUCH_TS
 	tristate "Atmel Maxtouch Touchscreen Family"
 	depends on I2C
