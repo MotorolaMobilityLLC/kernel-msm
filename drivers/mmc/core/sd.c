@@ -1351,6 +1351,7 @@ int mmc_attach_sd(struct mmc_host *host)
 	u32 ocr;
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
 	int retries;
+	unsigned long delay = 5000, settle = 0;
 #endif
 
 	BUG_ON(!host);
@@ -1418,9 +1419,14 @@ int mmc_attach_sd(struct mmc_host *host)
 		if (err) {
 			retries--;
 			mmc_power_off(host);
-			usleep_range(5000, 5500);
+			usleep_range(delay, delay + 500);
 			mmc_power_up(host);
 			mmc_select_voltage(host, host->ocr);
+			if (settle)
+				usleep_range(settle, settle + 500);
+			/* Increase settle times on each attempt */
+			delay += 10000;
+			settle += 10000;
 			continue;
 		}
 		break;
