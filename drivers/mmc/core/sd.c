@@ -1248,6 +1248,7 @@ static int mmc_sd_resume(struct mmc_host *host)
 	int err;
 #ifdef CONFIG_MMC_PARANOID_SD_INIT
 	int retries;
+	unsigned long delay = 5000, settle = 0;
 #endif
 
 	BUG_ON(!host);
@@ -1260,13 +1261,19 @@ static int mmc_sd_resume(struct mmc_host *host)
 		err = mmc_sd_init_card(host, host->ocr, host->card);
 
 		if (err) {
-			printk(KERN_ERR "%s: Re-init card rc = %d (retries = %d)\n",
-			       mmc_hostname(host), err, retries);
+			printk(KERN_ERR "%s: Re-init card rc = %d "
+				"(retries = %d, delay = %lu)\n",
+				mmc_hostname(host), err, retries, delay);
 			retries--;
 			mmc_power_off(host);
-			usleep_range(5000, 5500);
+			usleep_range(delay, delay + 500);
 			mmc_power_up(host);
 			mmc_select_voltage(host, host->ocr);
+			if (settle)
+				usleep_range(settle, settle + 500);
+			/* Increase settle times on each attempt */
+			delay += 10000;
+			settle += 10000;
 			continue;
 		}
 		break;
