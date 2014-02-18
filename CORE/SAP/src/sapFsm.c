@@ -823,7 +823,7 @@ sapFsm
              else if (msg == eSAP_MAC_START_FAILS)
              {
                  /*Transition from STARTING to DISCONNECTED (both without substates)*/
-                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
+                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, from state %s => %s",
                             __func__, "eSAP_STARTING", "eSAP_DISCONNECTED");
 
                  /*Action code for transition */
