@@ -588,6 +588,16 @@
 	};
 };
 
+&pma8084_l19 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
+	qcom,init-current = <100>;
+	qcom,system-load = <100000>;
+	qcom,init-ldo-mode = <1>;
+	qcom,always-send-current;
+};
+
 &i2c_1 {
 	synaptics@20 {
 		compatible = "synaptics,rmi4";
@@ -617,6 +627,24 @@
 		touch_vdd-supply = <&pma8084_l19>;
 		synaptics,normal-mode = <1>;
 		synaptics,gpio-config;
+	};
+
+	atmel_mxt_ts@4a {
+		compatible = "atmel,atmel_mxt_ts";
+		reg = <0x4a>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <84 0>;
+		gpios = <&msmgpio 84 0>,        /* IRQ */
+			<&msmgpio 97 0>;        /* RESET */
+		touch_vdd-supply = <&pma8084_s4>;
+		touch_avdd-supply = <&pma8084_l19>;
+		atmel,cfg {
+			atmel,family-id = <0xa4>;
+			atmel,variant-id = <0x7>;
+			atmel,version = <0x5>;
+			atmel,build = <0x11>;
+			atmel,revision-id = <0x32>;
+		};
 	};
 
 	/* TI drv2605 */
