@@ -58,9 +58,6 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long current_posix_time;
 	struct timespec current_time;
 
-	if (ps_stm401->stm401_hub_fail)
-		return -EIO;
-
 	mutex_lock(&ps_stm401->lock);
 	switch (cmd) {
 	case STM401_IOCTL_BOOTLOADERMODE:
@@ -113,8 +110,10 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			dev_err(&ps_stm401->client->dev,
 				"Attempted normal mode ioctl in boot\n");
 			mutex_unlock(&ps_stm401->lock);
-			return -EFAULT;
+			return -EPERM;
 		}
+		if (ps_stm401->stm401_hub_fail)
+			return -EPERM;
 	}
 
 	switch (cmd) {
