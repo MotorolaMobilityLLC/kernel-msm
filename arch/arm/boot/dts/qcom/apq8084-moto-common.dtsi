@@ -369,6 +369,12 @@
 
 &pma8084_gpios {
 	gpio@c000 { /* GPIO 1 */
+		/* Wireless Charger Pad Detect N */
+		qcom,mode = <0>;	/* Digital input */
+		qcom,pull = <5>;	/* No pull */
+		qcom,vin-sel = <2>;      /* VIN2 */
+                qcom,src-sel = <0>;      /* GPIO */
+                qcom,master-en = <1>;    /* Enable GPIO */
 	};
 
 	gpio@c100 { /* GPIO 2 */
@@ -536,6 +542,13 @@
 	};
 
 	mpp@a300 { /* MPP 4 */
+		/* Wireless Charge Complete N */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <1>;		/* Open Drain NMOS logic */
+		qcom,vin-sel = <2>;		/* VIN 2 */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
 	mpp@a400 { /* MPP 5 */
@@ -579,12 +592,33 @@
 		qcom,soft-vfloat-comp-disabled;
 		therm-bias-supply = <&pma8084_lvs2>;
 		qcom,thermal-mitigation = <1500 700 600 0>;
+		qcom,dc-psy-type = "Wireless";
+		qcom,dc-psy-ma = <600>;
 	};
 
 	max17050: max17050-battery@36 {
 		compatible = "maxim,max17050";
 		reg = <0x36>;
 		maxim,rsns-microohm = <10000>;
+	};
+
+	mmi_wls_chrg@6d {
+		compatible = "mmi,wls-charger-bq51021";
+		reg = <0x6d>;
+		gpios = <&pma8084_gpios 1 0x1>, /* GPIOF_IN */
+			<&pma8084_mpps 4 0x2>, /* GPIOF_OUT_INIT_HIGH */
+			<&msmgpio 66 0x0>; /* GPIOF_OUT_INIT_LOW */
+		gpio-names = "pad_detect_n",
+				"charge_complete_n",
+				"charge_terminate";
+		supply-names = "max170xx_battery",
+				"dc",
+				"usb";
+		mmi,priority = <1>;
+		mmi,resume-soc = <99>;
+		mmi,resume-vbatt-mv = <4270>;
+		mmi,hot-temp-thresh = <60>;
+		mmi,cold-temp-thresh = <(-20)>;
 	};
 };
 
