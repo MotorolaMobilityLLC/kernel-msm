@@ -1,0 +1,64 @@
+MMI Wireless charger
+
+MMI Wireless Charger can support various TI Inductive charging Chips
+
+The MMI Wireless Charger interface is via I2C bus.
+
+Required Properties:
+- compatible:			Must be "mmi,wls-charger-XXXXX" were XXXXX is the TI Part number.
+- reg:				The device 7-bit I2C address.
+
+- gpios	        		This indicates the GPIOS that are connected
+				to the chip for control and information.
+
+- gpio-names			This list is the names used for exporting the
+				gpios in the above field.
+
+Optional Properties:
+- mmi,priority		 	This is the Priority for the Charge Path when both
+				Wired and Wireless and present.
+				Program using:
+				enum mmi_wls_charger_priority {
+				     MMI_WLS_CHRG_WIRELESS = 0,
+				     MMI_WLS_CHRG_WIRED,
+				};
+				Driver Defaults to MMI_WLS_CHRG_WIRED.
+
+- mmi,resume-soc	 	Indicates the State of Charge to Re-Enable
+				the Wireless Pad.
+				Units are Percentage
+				Driver Defaults to 99%.
+
+- mmi,resume-vbatt-mv		Indicates the Battery Voltage to Re-Enable
+				the Wireless Pad.
+				Units are milliVolts
+				Driver Defaults to 0 mV.
+
+- mmi,hot-temp-thresh		Indicates the Hot Battery Temperature for Disabling
+				the Wireless Pad.
+				Units are Degrees Celsius
+				Driver Defaults to 60 C.
+
+- mmi,cold-temp-thresh		Indicates the Cold Battery Temperature for Disabling
+				the Wireless Pad.
+				Units are Degrees Celsius
+				Driver Defaults to -20 C.
+
+Example:
+	i2c@f9967000 {
+		     mmi_wls_chrg@6d {
+				     compatible = "mmi,wls-charger-bq51021";
+				     reg = <0x6d>;
+				     gpios = <&pma8084_gpios 1 0x1>, /* GPIOF_IN */
+				     	     <&pma8084_mpps 4 0x2>, /* GPIOF_OUT_INIT_HIGH */
+					     <&msmgpio 66 0x0>; /* GPIOF_OUT_INIT_LOW */
+				     gpio-names = "pad_detect_n",
+						"charge_complete_n",
+						"charger_terminate";
+				     mmi,priority = <1>;
+				     mmi,resume-soc = <99>;
+				     mmi,resume-vbatt-mv = <4270>;
+				     mmi,hot-temp-thresh = <60>;
+				     mmi,cold-temp-thresh = <(-20)>;
+			};
+	};

@@ -394,6 +394,16 @@ config SMB135X_CHARGER
 	  The driver reports the charger status via the power supply framework.
 	  A charger status change triggers an IRQ via the device STAT pin.
 
+config MMI_WLS_CHARGER
+	tristate "MMI Wireless Charger"
+	depends on I2C
+	help
+	  Say Y to include support for MMI Wireless Charger.
+	  This a generic Wireless charger Driver used with
+	  MMI Products.
+	  The driver supports multiple vendor chips.
+	  The driver supports the Qi standard.
+
 config BQ27520_TEST_ENABLE
 	bool "Enable BQ27520 Fuel Gauge Chip Test"
 	depends on BATTERY_BQ27520
