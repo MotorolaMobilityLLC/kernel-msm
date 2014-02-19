@@ -272,7 +272,6 @@ static __init bool config_keyboard_from_dt(void)
 	struct device_node *chosen;
 	int len = 0;
 	const void *prop;
-	bool val;
 
 	chosen = of_find_node_by_path("/Chosen@0");
 	if (!chosen)
