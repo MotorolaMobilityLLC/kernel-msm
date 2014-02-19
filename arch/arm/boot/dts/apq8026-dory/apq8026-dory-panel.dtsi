@@ -139,6 +139,7 @@
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 160>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_external";
 
+		qcom,mdss-pan-always-on;
 		qcom,cont-splash-enabled;
 	};
 
@@ -209,6 +210,7 @@
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 160>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_external";
 
+		qcom,mdss-pan-always-on;
 		qcom,cont-splash-enabled;
 	};
 };
