@@ -119,6 +119,14 @@ config IMX135
 		snapshot config = 4208 x 3120 at 24 fps,
 		Video HDR support.
 
+config IMX179
+	bool "Sensor IMX179 (BAYER 8M)"
+	depends on MSMB_CAMERA
+	---help---
+		Sony 8 MP Bayer Sensor with auto focus, uses
+		4 mipi lanes, preview config = 3280 x 2464 at 30 fps,
+		snapshot config = 3280 x 2464 at 30 fps
+
 config IMX134
 	bool "Sensor IMX134 (BAYER 8M)"
 	depends on MSMB_CAMERA
