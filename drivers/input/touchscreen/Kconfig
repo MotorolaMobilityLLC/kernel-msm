@@ -126,17 +126,18 @@ config TOUCHSCREEN_AD7879_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad7879-spi.
 
-config TOUCHSCREEN_ATMEL_MXT
+config TOUCHSCREEN_ATMEL_MXT_MMI
 	tristate "Atmel mXT I2C Touchscreen"
 	depends on I2C
 	help
 	  Say Y here if you have Atmel mXT series I2C touchscreen,
-	  such as AT42QT602240/ATMXT224, connected to your system.
+	  such as mX540S/mX640S, connected to your system.
+	  This driver includes enhancements from MMI.
 
 	  If unsure, say N.
 
 	  To compile this driver as a module, choose M here: the
-	  module will be called atmel_mxt_ts.
+	  module will be called atmel_mxt_ts_mmi.
 
 config TOUCHSCREEN_ATMEL_MAXTOUCH_TS
 	tristate "Atmel Maxtouch Touchscreen Family"
