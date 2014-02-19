@@ -3065,7 +3065,7 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
 
     tmpSsid.length = 0;
     cand_Bss_rssi = -128; // RSSI coming from PE is -ve
-    rssi_of_current_country = -128;
+    rssi_of_current_country = pMac->scan.currentCountryRSSI;
 
     // remove the BSS descriptions from temporary list
     while( ( pEntry = csrLLRemoveTail( &pMac->scan.tempScanResults, LL_ACCESS_LOCK ) ) != NULL)
@@ -3171,6 +3171,7 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac, tANI_U8 reaso
                                pBssDescription->Result.BssDescriptor.rssi * (-1),
                                pIesLocal->Country.country[0],pIesLocal->Country.country[1] );
             rssi_of_current_country =  pBssDescription->Result.BssDescriptor.rssi ;
+            pMac->scan.currentCountryRSSI = rssi_of_current_country;
         }
 
 
@@ -5365,9 +5366,19 @@ tANI_BOOLEAN csrScanAgeOutBss(tpAniSirGlobal pMac, tCsrScanResult *pResult)
                 smsLog(pMac, LOGW, "Aging out BSS "MAC_ADDRESS_STR" Channel %d",
                        MAC_ADDR_ARRAY(pResult->Result.BssDescriptor.bssId),
                        pResult->Result.BssDescriptor.channelId);
+
                 //No need to hold the spin lock because caller should hold the lock for pMac->scan.scanResultList
                 if( csrLLRemoveEntry(&pMac->scan.scanResultList, &pResult->Link, LL_ACCESS_NOLOCK) )
                 {
+                    if (csrIsMacAddressEqual(pMac,
+                                        (tCsrBssid *) pResult->Result.BssDescriptor.bssId,
+                                        (tCsrBssid *) pMac->scan.currentCountryBssid))
+                    {
+                        smsLog(pMac, LOGW, "Aging out 11d BSS "MAC_ADDRESS_STR,
+                               MAC_ADDR_ARRAY(pResult->Result.BssDescriptor.bssId));
+                        pMac->scan.currentCountryRSSI = -128;
+                    }
+
                     csrFreeScanResultEntry(pMac, pResult);
                     fRet = eANI_BOOLEAN_TRUE;
                 }
