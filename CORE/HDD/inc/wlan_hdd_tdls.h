@@ -11,6 +11,9 @@
 
 \brief       Linux HDD TDLS include file
 
+Copyright (c) 2012-2014 Qualcomm Atheros, Inc.
+All Rights Reserved.
+Qualcomm Atheros Confidential and Proprietary.
 ==========================================================================*/
 
 #define MAX_NUM_TDLS_PEER           3
@@ -145,6 +148,11 @@ typedef struct _hddTdlsPeer_t {
     tANI_U8     uapsdQueues;
     tANI_U8     maxSp;
     tANI_U8     isBufSta;
+    tANI_U8     isOffChannelSupported;
+    tANI_U8     supported_channels_len;
+    tANI_U8     supported_channels[SIR_MAC_MAX_SUPP_CHANNELS];
+    tANI_U8     supported_oper_classes_len;
+    tANI_U8     supported_oper_classes[SIR_MAC_MAX_SUPP_OPER_CLASSES];
     vos_timer_t     peerIdleTimer;
     vos_timer_t     initiatorWaitTimeoutTimer;
     tANI_BOOLEAN isForcedPeer;
@@ -189,9 +197,9 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac);
 
 int wlan_hdd_tdls_set_peer_caps(hdd_adapter_t *pAdapter,
                                 u8 *mac,
-                                tANI_U8 uapsdQueues,
-                                tANI_U8 maxSp,
-                                tANI_BOOLEAN isBufSta);
+                                tCsrStaParams *StaParams,
+                                tANI_BOOLEAN isBufSta,
+                                tANI_BOOLEAN isOffChannelSupported);
 
 int wlan_hdd_tdls_set_rssi(hdd_adapter_t *pAdapter, u8 *mac, tANI_S8 rxRssi);
 
