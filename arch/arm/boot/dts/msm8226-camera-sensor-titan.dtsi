@@ -1,0 +1,52 @@
+/*
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&cci {
+
+	qcom,camera@79 {
+		compatible = "qcom,imx179";
+		reg = <0x79>;
+		qcom,slave-id = <0x20 0x0002 0x8179>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <270>;
+		qcom,sensor-name = "imx179";
+		cam_vdig-supply = <&pm8226_l5>;
+		cam_vaf-supply = <&pm8226_l28>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vaf";
+		qcom,cam-vreg-type = <0 0>;
+		qcom,cam-vreg-min-voltage = <1200000 2850000>;
+		qcom,cam-vreg-max-voltage = <1200000 2850000>;
+		qcom,cam-vreg-op-mode = <105000 100000>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 26 0>,
+			<&msmgpio 27 0>,
+			<&msmgpio 33 0>,
+			<&msmgpio 37 0>;
+		qcom,gpio-vana = <1>;
+		qcom,gpio-vio = <2>;
+		qcom,gpio-reset = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <0 0 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					"CAM_VANA",
+					"CAM_VIO",
+					"CAM_RESET";
+		qcom,csi-lane-assign = <0x4320>;
+		qcom,csi-lane-mask = <0x1F>;
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		status = "ok";
+		};
+	};
