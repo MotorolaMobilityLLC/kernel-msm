@@ -92,6 +92,10 @@ static void check_dsi_ctrl_status(struct work_struct *work)
 #else
 	mdp5_data = mfd_to_mdp5_data(pdsi_status->mfd);
 	ctl = mfd_to_ctl(pdsi_status->mfd);
+	if (!ctl) {
+		pr_warn("%s: mdss_mdp_ctl data not available\n", __func__);
+		return;
+	}
 
 	mutex_lock(&ctl->offlock);
 	if (ctl->shared_lock)
