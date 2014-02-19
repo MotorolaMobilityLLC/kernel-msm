@@ -8358,8 +8358,8 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     hdd_context_t *pHddCtx;
     tHalHandle hHal;
     v_U32_t i, indx, num_ch, tempInterval;
-    u8 valid_ch[WNI_CFG_VALID_CHANNEL_LIST_LEN];
-    u8 channels_allowed[WNI_CFG_VALID_CHANNEL_LIST_LEN];
+    u8 valid_ch[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
+    u8 channels_allowed[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
     v_U32_t num_channels_allowed = WNI_CFG_VALID_CHANNEL_LIST_LEN;
     eHalStatus status = eHAL_STATUS_FAILURE;
     int ret = 0;
