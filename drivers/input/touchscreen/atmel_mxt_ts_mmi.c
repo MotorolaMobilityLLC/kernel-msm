@@ -2318,6 +2318,12 @@ fail:
 	return error;
 }
 
+static void mxt_gpio_free(struct mxt_data *data)
+{
+	gpio_free(data->pdata->gpio_reset);
+	gpio_free(data->pdata->gpio_irq);
+}
+
 static int mxt_power_init(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
@@ -3973,7 +3979,7 @@ static int mxt_probe(struct i2c_client *client,
 				     data->pdata->irqflags | IRQF_ONESHOT,
 				     client->name, data);
 	if (error)
-		goto err_free_pdata;
+		goto err_free_gpio;
 
 	error = mxt_power_init(data);
 	if (error)
@@ -4031,6 +4037,8 @@ err_disable_reg:
 	mxt_regulator_disable(data);
 err_free_irq:
 	free_irq(data->irq, data);
+err_free_gpio:
+	mxt_gpio_free(data);
 err_free_pdata:
 	if (!dev_get_platdata(&data->client->dev))
 		kfree(data->pdata);
@@ -4052,8 +4060,7 @@ static int mxt_remove(struct i2c_client *client)
 	regulator_put(data->reg_avdd);
 	if (data->pdata->common_vdd_supply == 0)
 		regulator_put(data->reg_vdd);
-	gpio_free(data->pdata->gpio_irq);
-	gpio_free(data->pdata->gpio_reset);
+	mxt_gpio_free(data);
 	mxt_free_object_table(data);
 	if (!dev_get_platdata(&data->client->dev))
 		kfree(data->pdata);
