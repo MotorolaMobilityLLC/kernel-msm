@@ -312,6 +312,7 @@ struct mdss_panel_info {
 	char dfps_update;
 	int new_fps;
 	u32 mode_gpio_state;
+	bool always_on;
 
 	u32 cont_splash_enabled;
 	u32 partial_update_enabled;
