@@ -2467,11 +2467,7 @@ static int inv_check_chip_type(struct inv_mpu_state *st,
 	st->hw  = &hw_info[st->chip_type];
 	reg = &st->reg;
 	st->setup_reg(reg);
-	/* reset to make sure previous state are not there */
-	result = inv_i2c_single_write(st, reg->pwr_mgmt_1, BIT_H_RESET);
-	if (result)
-		return result;
-	msleep(POWER_UP_TIME);
+
 	/* toggle power state */
 	result = st->set_power_state(st, false);
 	if (result)
@@ -2699,9 +2695,8 @@ static int inv_mpu_probe(struct i2c_client *client,
 					"power_on failed: %d\n", result);
 			return result;
 		}
+		msleep(POWER_UP_TIME);
 	}
-
-msleep(100);
 #else
 	/* power is turned on inside check chip type */
 	st->plat_data =
@@ -2813,6 +2808,7 @@ static void inv_mpu_shutdown(struct i2c_client *client)
 		dev_err(&client->adapter->dev, "Failed to reset %s\n",
 			st->hw->name);
 	msleep(POWER_UP_TIME);
+
 	/* turn off power to ensure gyro engine is off */
 	result = st->set_power_state(st, false);
 	if (result)
