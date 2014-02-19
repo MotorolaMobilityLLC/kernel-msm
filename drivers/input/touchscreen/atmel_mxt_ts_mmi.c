@@ -13,7 +13,7 @@
  * option) any later version.
  *
  */
-#define pr_fmt(fmt) "atmel_mxt_ts: %s: " fmt, __func__
+#define pr_fmt(fmt) "atmel_mxt_ts_mmi: %s: " fmt, __func__
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -21,7 +21,7 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/i2c.h>
-#include <linux/i2c/atmel_mxt_ts.h>
+#include <linux/i2c/atmel_mxt_ts_mmi.h>
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
 #include <linux/slab.h>
@@ -1381,11 +1381,10 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 	if (!data->object_table)
 		return IRQ_NONE;
 
-	if (data->T44_address) {
+	if (data->T44_address)
 		return mxt_process_messages_t44(data);
-	} else {
+	else
 		return mxt_process_messages(data);
-	}
 }
 
 static int mxt_t6_command(struct mxt_data *data, u16 cmd_offset,
@@ -2834,7 +2833,7 @@ static int mxt_check_firmware_format(struct device *dev,
 	 * xxd -r -p mXTXXX__APP_VX-X-XX.enc > maxtouch.fw */
 	dev_err(dev, "Aborting: firmware file must be in binary format\n");
 
-	return -1;
+	return -EINVAL;
 }
 
 static int mxt_load_fw(struct device *dev)
