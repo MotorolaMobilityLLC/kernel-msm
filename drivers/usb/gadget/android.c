@@ -176,6 +176,9 @@ struct android_dev {
 	struct usb_composite_dev *cdev;
 	struct device *dev;
 
+	void (*setup_complete)(struct usb_ep *ep,
+				struct usb_request *req);
+
 	bool enabled;
 	int disable_depth;
 	struct mutex mutex;
@@ -3072,6 +3075,9 @@ static int android_bind(struct usb_composite_dev *cdev)
 
 	dev->cdev = cdev;
 
+	/* Save the default handler */
+	dev->setup_complete = cdev->req->complete;
+
 	/*
 	 * Start disconnected. Userspace will connect the gadget once
 	 * it is done configuring the functions.
@@ -3151,6 +3157,7 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 
 	req->zero = 0;
 	req->length = 0;
+	req->complete = dev->setup_complete;
 	gadget->ep0->driver_data = cdev;
 
 	list_for_each_entry(conf, &dev->configs, list_item)
