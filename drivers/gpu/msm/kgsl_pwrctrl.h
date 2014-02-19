@@ -118,7 +118,6 @@ struct kgsl_pwrctrl {
 	struct pm_qos_request pm_qos_req_dma;
 	unsigned int pm_qos_active_latency;
 	unsigned int pm_qos_wakeup_latency;
-	unsigned int irq_last;
 	bool bus_control;
 	int bus_mod;
 	unsigned int bus_index[KGSL_MAX_PWRLEVELS];
