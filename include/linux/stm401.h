@@ -155,13 +155,13 @@
 #define M_LOG_MSG		0x8000
 
 /* algo config mask */
-#define M_MMOVEME               0x000001
-#define M_NOMMOVE               0x000002
-#define M_ALGO_MODALITY         0x000008
-#define M_ALGO_ORIENTATION      0x000010
-#define M_ALGO_STOWED           0x000020
-#define M_ALGO_ACCUM_MODALITY   0x000040
-#define M_ALGO_ACCUM_MVMT       0x000080
+#define M_MMOVEME               0x0001
+#define M_NOMMOVE               0x0002
+#define M_ALGO_MODALITY         0x0008
+#define M_ALGO_ORIENTATION      0x0010
+#define M_ALGO_STOWED           0x0020
+#define M_ALGO_ACCUM_MODALITY   0x0040
+#define M_ALGO_ACCUM_MVMT       0x0080
 
 /* algo index */
 #define STM401_IDX_MODALITY        0
@@ -175,9 +175,6 @@
 #define STM401_EVT_SZ_TRANSITION   7
 #define STM401_EVT_SZ_ACCUM_STATE  2
 #define STM401_EVT_SZ_ACCUM_MVMT   4
-
-#define STM401_IR_SZ_GESTURE       32
-#define STM401_IR_SZ_RAW           18
 
 struct stm401_android_sensor_data {
 	int64_t timestamp;
@@ -371,6 +368,10 @@ struct stm_response {
 
 #define STM401_MAXDATA_LENGTH		256
 
+#define STM401_IR_GESTURE_CNT      8
+#define STM401_IR_SZ_GESTURE       4
+#define STM401_IR_SZ_RAW           18
+
 /* stm401_readbuff offsets. */
 #define IRQ_LO  0
 #define IRQ_HI  1
@@ -404,6 +405,8 @@ struct stm_response {
 #define GRAV_Y		2
 #define GRAV_Z		4
 #define CAMERA_VALUE	0
+#define IR_GESTURE_EVENT    0
+#define IR_GESTURE_ID       1
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
