@@ -15,3 +15,7 @@
 	qcom,hsusb-otg-mode = <1>;
 	qcom,no-set-vbus-power;
 };
+
+&android_usb {
+	qcom,android-usb-swfi-latency = <0>;
+};
