@@ -57,7 +57,7 @@
 		android,bootinfo-buffer-size = <0x800>;
 	};
 
-	fan5646_vreg: fan5646_vreg {
+	fan5646_vreg: fixedregulator@0 {
 		status = "ok";
 		compatible = "regulator-fixed";
 		regulator-name = "fan5646_vreg";
@@ -180,7 +180,7 @@
 			"AMIC3", "MIC BIAS External";
 
 		qcom,ext-spk-amp-gpio = <&msmgpio 4 0x0>;
-		qcom,ext-spk-boost-gpio = <&msmgpio 58 0x0>;
+		boost-supply = <&fan5646_vreg>; /* phandle of our regulator node */
 	};
 
 	hob_ram@f500000 {
