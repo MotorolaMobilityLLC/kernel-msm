@@ -48,7 +48,7 @@
 		emu_id_flt_activehigh = <0x01>;
 		emu_id_flt_gpio = <0xaa>;
 		emu_id_mpp_gpio = <0xcd>;
-		factory_kill_disable = <0x01>;
+		factory_kill_disable = <0x00>;
 		factory_kill_gpio = <0x0000004b>;
 		formfactor = <0x00000003>;
 		last_compat_version = <0x01330684>;
