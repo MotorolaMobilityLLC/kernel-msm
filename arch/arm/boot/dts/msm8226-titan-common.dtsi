@@ -217,6 +217,13 @@
 		startup-delay-us = <300>;
 		enable-active-high;
 	};
+
+	mmi_batterydata: qcom,battery-data {
+		mmi,ed30-lg-batterydata {
+			qcom,batt-id-range = <977044 1039064>;
+		};
+	};
+
 };
 
 &usb_otg {
