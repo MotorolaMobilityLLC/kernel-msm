@@ -49,3 +49,10 @@
 	status = "ok";
 };
 
+&ufsphy1 {
+	status = "disabled";
+};
+
+&ufs1 {
+	status = "disabled";
+};
