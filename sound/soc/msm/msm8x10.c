@@ -53,7 +53,7 @@ static int msm_btsco_ch = 1;
 static int msm_proxy_rx_ch = 2;
 static struct platform_device *spdev;
 static int ext_spk_amp_gpio = -1;
-static int ext_spk_boost_gpio = -1;
+static struct regulator *boost_reg;
 
 /* pointers for digital codec register mappings */
 static void __iomem *pcbcr;
@@ -208,30 +208,6 @@ static const struct snd_soc_dapm_route tpa6165_hp_map[] = {
 	{"MIC BIAS Internal2", NULL, "TPA6165 Headset Mic"},
 };
 #endif
-static int msm8x10_ext_spk_power_boost_init(void)
-{
-	int ret = 0;
-
-	ext_spk_boost_gpio = of_get_named_gpio(spdev->dev.of_node,
-		"qcom,ext-spk-boost-gpio", 0);
-	if (ext_spk_boost_gpio >= 0) {
-		if (!gpio_is_valid(ext_spk_boost_gpio)) {
-			pr_err("%s: Couldn't find ext_spk_boost_gpio in dev.\n",
-				__func__);
-			return -EINVAL;
-		} else {
-			ret = gpio_request(ext_spk_boost_gpio,
-				"ext_spk_boost_gpio");
-			if (ret) {
-				pr_err("%s: gpio_request failed for boost gpio\n",
-					__func__);
-				return -EINVAL;
-			}
-			gpio_direction_output(ext_spk_boost_gpio, 0);
-		}
-	}
-	return 0;
-}
 
 static int msm8x10_ext_spk_power_amp_init(void)
 {
@@ -269,9 +245,12 @@ static int msm_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 static void msm8x10_enable_ext_spk_power_amp(u32 on)
 {
 	if (on) {
-		if (ext_spk_boost_gpio >= 0) {
-			gpio_direction_output(ext_spk_boost_gpio, on);
-			msleep_interruptible(20);
+		if (!IS_ERR(boost_reg)) {
+			if (regulator_enable(boost_reg))
+				pr_err("%s: enable failed ext_spk_boost_reg\n",
+					__func__);
+			else
+				msleep_interruptible(20);
 		}
 		gpio_direction_output(ext_spk_amp_gpio, on);
 		/*time takes enable the external power amplifier*/
@@ -282,8 +261,13 @@ static void msm8x10_enable_ext_spk_power_amp(u32 on)
 		/*time takes disable the external power amplifier*/
 		usleep_range(EXT_CLASS_D_DIS_DELAY,
 			     EXT_CLASS_D_DIS_DELAY + EXT_CLASS_D_DELAY_DELTA);
-		if (ext_spk_boost_gpio >= 0)
-			gpio_direction_output(ext_spk_boost_gpio, on);
+		if (!IS_ERR(boost_reg)) {
+			if (regulator_disable(boost_reg))
+				pr_err("%s: disable failed ext_spk_boost_reg\n",
+					__func__);
+			else
+				usleep(3000);
+		}
 	}
 
 	pr_debug("%s: %s external speaker PAs.\n", __func__,
@@ -599,7 +583,6 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	int ret = 0;
 
 	pr_debug("%s(),dev_name%s\n", __func__, dev_name(cpu_dai->dev));
-	msm8x10_ext_spk_power_boost_init();
 	msm8x10_ext_spk_power_amp_init();
 
 #ifndef CONFIG_SND_SOC_TPA6165A2
@@ -1188,6 +1171,16 @@ static __devinit int msm8x10_asoc_machine_probe(struct platform_device *pdev)
 						"qcom,mbhc-bias-internal");
 
 	spdev = pdev;
+
+	if (of_parse_phandle(pdev->dev.of_node, "boost-supply", 0)) {
+		boost_reg = devm_regulator_get(&pdev->dev, "boost");
+		ret = IS_ERR(boost_reg);
+		if (ret) {
+			dev_err(&pdev->dev, "boost's regulator get error %d\n",
+				ret);
+			goto err1;
+		}
+	}
 
 	ret = snd_soc_register_card(card);
 	if (ret == -EPROBE_DEFER)
