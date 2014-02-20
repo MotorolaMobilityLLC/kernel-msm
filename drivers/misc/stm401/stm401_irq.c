@@ -254,9 +254,27 @@ void stm401_irq_work_func(struct work_struct *work)
 			"Sending Display Brightness %d\n",
 			stm401_readbuff[DISP_VALUE]);
 	}
-	/* TODO(kliegs): Implement in IKLOCSEN-1223. */
-	if (irq_status & M_IR_GESTURE)
-		dev_dbg(&ps_stm401->client->dev, "Not sending IR Gesture\n");
+	if (irq_status & M_IR_GESTURE) {
+		int i;
+
+		stm401_cmdbuff[0] = IR_GESTURE;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
+			STM401_IR_SZ_GESTURE * STM401_IR_GESTURE_CNT);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev, "Reading IR gesture failed\n");
+			goto EXIT;
+		}
+		for (i = 0; i < STM401_IR_GESTURE_CNT; i++) {
+			int ofs = i * STM401_IR_SZ_GESTURE;
+			if (stm401_readbuff[ofs + IR_GESTURE_EVENT] == 0)
+				continue;
+			stm401_as_data_buffer_write(ps_stm401, DT_IR_GESTURE,
+						    stm401_readbuff + ofs,
+						    STM401_IR_SZ_GESTURE, 0);
+			dev_dbg(&ps_stm401->client->dev, "Send IR Gesture %d\n",
+				stm401_readbuff[ofs + IR_GESTURE_ID]);
+		}
+	}
 	if (irq_status & M_IR_RAW) {
 		stm401_cmdbuff[0] = IR_RAW;
 		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1,
