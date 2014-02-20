@@ -383,9 +383,9 @@ static void a4xx_start(struct adreno_device *adreno_dev)
 	kgsl_regwrite(device, A4XX_RBBM_INTERFACE_HANG_INT_CTL,
 			(1 << 30) | 0xFFFF);
 
-	/* Set the OCMEM base address for A4XX */
+	/* Set the GMEM/OCMEM base address for A4XX */
 	kgsl_regwrite(device, A4XX_RB_GMEM_BASE_ADDR,
-			(unsigned int)(adreno_dev->ocmem_base >> 14));
+			(unsigned int)(adreno_dev->gmem_base >> 14));
 
 	/* Turn on performance counters */
 	kgsl_regwrite(device, A4XX_RBBM_PERFCTR_CTL, 0x01);
