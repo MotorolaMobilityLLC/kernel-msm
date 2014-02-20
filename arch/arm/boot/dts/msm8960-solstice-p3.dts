@@ -48,6 +48,7 @@
 		emu_id_flt_gpio = <0xaa>;
 		emu_id_mpp_gpio = <0xcd>;
 		formfactor = <0x00000003>;
+		factory_kill_disable = <0x00>;
 		factory_kill_gpio = <0x0000004b>;
 		headset_bias = <0x00000a8c>;
 		last_compat_version = <0x01330684>;
