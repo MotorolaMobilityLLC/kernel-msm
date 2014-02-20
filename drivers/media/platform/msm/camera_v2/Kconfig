@@ -181,6 +181,14 @@ config MT9M114
 		1280 * 270. It does not support auto focus. It supports
 		few special effects like saturation.
 
+config IMX132
+   bool "Sensor IMX132 (BAYER 2M)"
+   depends on MSMB_CAMERA
+   ---help---
+       Sony 2 MP Bayer Sensor with auto focus, uses
+       2 mipi lanes, preview config = 1920 x 1080 at 30 fps,
+       snapshot config = 1920 x 1080 at 30 fps
+
 config SP1628
 	bool "Sensor SP1628 (YUV 720P)"
 	depends on MSMB_CAMERA

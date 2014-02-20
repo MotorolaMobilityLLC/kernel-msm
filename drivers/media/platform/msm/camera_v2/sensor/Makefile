@@ -7,6 +7,7 @@ obj-$(CONFIG_MSMB_CAMERA) += cci/ io/ csiphy/ csid/ actuator/ flash/ eeprom/
 obj-$(CONFIG_MSM_CAMERA_SENSOR) += msm_sensor.o
 obj-$(CONFIG_S5K3L1YX) += s5k3l1yx.o
 obj-$(CONFIG_IMX179) += imx179.o
+obj-$(CONFIG_IMX132) += imx132.o
 obj-$(CONFIG_IMX135) += imx135.o
 obj-$(CONFIG_IMX134) += imx134.o
 obj-$(CONFIG_OV8825) += ov8825.o
