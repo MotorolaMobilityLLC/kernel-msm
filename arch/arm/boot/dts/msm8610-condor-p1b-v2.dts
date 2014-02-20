@@ -40,7 +40,7 @@
 
 	sound {
 		/delete-property/ qcom,ext-spk-amp-gpio;
-		/delete-property/ qcom,ext-spk-boost-gpio;
+		/delete-property/ boost-supply;
 	};
 
 	usb@f9a55000 {
