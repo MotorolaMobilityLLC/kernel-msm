@@ -56,6 +56,7 @@ static int mdss_mdp_overlay_free_fb_pipe(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_splash_parse_dt(struct msm_fb_data_type *mfd);
+static void mdss_mdp5_dump_ctl(void *data);
 
 static int mdss_mdp_overlay_sd_ctrl(struct msm_fb_data_type *mfd,
 					unsigned int enable)
@@ -2419,6 +2420,8 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		if (IS_ERR_OR_NULL(ctl))
 			return PTR_ERR(ctl);
 		mdp5_data->ctl = ctl;
+
+		mdss_timeout_init(mdss_mdp5_dump_ctl, mdp5_data->ctl);
 	}
 
 	if (!mfd->panel_info->cont_splash_enabled &&
@@ -2519,7 +2522,7 @@ int mdss_panel_register_done(struct mdss_panel_data *pdata)
 	return 0;
 }
 
-void mdss_mdp5_dump_ctl(void *data)
+static void mdss_mdp5_dump_ctl(void *data)
 {
 	struct mdss_mdp_ctl *ctl = (struct mdss_mdp_ctl *)data;
 
@@ -2532,16 +2535,18 @@ void mdss_mdp5_dump_ctl(void *data)
 	MDSS_TIMEOUT_LOG("global irqs disabled: %d\n", irqs_disabled());
 	MDSS_TIMEOUT_LOG("------ MDP5 INTERRUPT DATA DONE ------\n");
 
-	MDSS_TIMEOUT_LOG("-------- MDP5 CTL DATA ---------\n");
-	MDSS_TIMEOUT_LOG("play_cnt=%u\n", ctl->play_cnt);
-	MDSS_TIMEOUT_LOG("vsync_cnt=%u\n", ctl->vsync_cnt);
-	MDSS_TIMEOUT_LOG("underrun_cnt=%u\n", ctl->underrun_cnt);
-	MDSS_TIMEOUT_LOG("------ MDP5 CTL DATA DONE ------\n");
+	if (ctl) {
+		MDSS_TIMEOUT_LOG("-------- MDP5 CTL DATA ---------\n");
+		MDSS_TIMEOUT_LOG("play_cnt=%u\n", ctl->play_cnt);
+		MDSS_TIMEOUT_LOG("vsync_cnt=%u\n", ctl->vsync_cnt);
+		MDSS_TIMEOUT_LOG("underrun_cnt=%u\n", ctl->underrun_cnt);
+		MDSS_TIMEOUT_LOG("------ MDP5 CTL DATA DONE ------\n");
 
-	if (ctl->ctx_dump_fnc) {
-		MDSS_TIMEOUT_LOG("-------- MDP5 CTX DATA ---------\n");
-		ctl->ctx_dump_fnc(ctl);
-		MDSS_TIMEOUT_LOG("------ MDP5 CTX DATA DONE ------\n");
+		if (ctl->ctx_dump_fnc) {
+			MDSS_TIMEOUT_LOG("-------- MDP5 CTX DATA ---------\n");
+			ctl->ctx_dump_fnc(ctl);
+			MDSS_TIMEOUT_LOG("------ MDP5 CTX DATA DONE ------\n");
+		}
 	}
 }
 
@@ -2839,8 +2844,6 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			rc = 0;
 		}
 	}
-
-	mdss_timeout_init(mdss_mdp5_dump_ctl, mdp5_data->ctl);
 
 	return rc;
 init_fail:
