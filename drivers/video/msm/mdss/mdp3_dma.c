@@ -51,7 +51,7 @@ static int mdp3_wait4vsync(struct mdp3_dma *dma, bool killable,
 			pr_err("%s: TIMEOUT (vsync_cnt: prev: %u cur: %u)\n",
 				__func__, prev_vsync_cnt, dma->vsync_cnt);
 			timeout_occurred = 1;
-			if (timeouts == 0)
+			if (timeouts == 0 && dma->vsync_cnt > 0)
 				mdss_timeout_dump(__func__);
 			timeouts++;
 		} else {
