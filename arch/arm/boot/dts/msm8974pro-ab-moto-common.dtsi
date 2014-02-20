@@ -1068,7 +1068,7 @@
 		compatible = "ti,drv2605";
 		reg = <0x5A>;
 		gpios = <&msmgpio 45 0>,        /* EN_GPIO */
-			<&pm8941_gpios 2 0>;    /* Trigger */
+			<&pm8941_mpps 2 0>;    /* Trigger */
 		external_trigger = <1>;
 		default_effect = <17>;          /* Strong Click 100% */
 		rated_voltage = <0x70>;         /* 2.4v */
