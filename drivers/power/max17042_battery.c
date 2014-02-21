@@ -33,6 +33,7 @@
 #include <linux/power_supply.h>
 #include <linux/power/max17042_battery.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/types.h>
 
 /* Status register bits */
@@ -745,6 +746,38 @@ struct max17042_config_data eg30_lg_config = {
 };
 
 #ifdef CONFIG_OF
+static  struct gpio *
+max17042_get_gpio_list(struct device *dev, int *num_gpio_list)
+{
+	struct device_node *np = dev->of_node;
+	struct gpio *gpio_list;
+	int i, num_gpios, gpio_list_size;
+	enum of_gpio_flags flags;
+
+	if (!np)
+		return NULL;
+
+	num_gpios = of_gpio_count(np);
+	if (num_gpios <= 0)
+		return NULL;
+
+	gpio_list_size = sizeof(struct gpio) * num_gpios;
+	gpio_list = devm_kzalloc(dev, gpio_list_size, GFP_KERNEL);
+
+	if (!gpio_list)
+		return NULL;
+
+	*num_gpio_list = num_gpios;
+	for (i = 0; i < num_gpios; i++) {
+		gpio_list[i].gpio = of_get_gpio_flags(np, i, &flags);
+		gpio_list[i].flags = flags;
+		of_property_read_string_index(np, "gpio-names", i,
+					      &gpio_list[i].label);
+	}
+
+	return gpio_list;
+}
+
 static struct max17042_reg_data *
 max17042_get_init_data(struct device *dev, int *num_init_data)
 {
@@ -806,6 +839,7 @@ max17042_get_pdata(struct device *dev)
 		return NULL;
 
 	pdata->init_data = max17042_get_init_data(dev, &pdata->num_init_data);
+	pdata->gpio_list = max17042_get_gpio_list(dev, &pdata->num_gpio_list);
 
 	/*
 	 * Require current sense resistor value to be specified for
@@ -894,6 +928,13 @@ static int max17042_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	ret = gpio_request_array(chip->pdata->gpio_list,
+				 chip->pdata->num_gpio_list);
+	if (ret) {
+		dev_err(&client->dev, "cannot request GPIOs\n");
+		return ret;
+	}
+
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,
 						max17042_thread_handler,
@@ -929,6 +970,7 @@ static int max17042_remove(struct i2c_client *client)
 
 	if (client->irq)
 		free_irq(client->irq, chip);
+	gpio_free_array(chip->pdata->gpio_list, chip->pdata->num_gpio_list);
 	power_supply_unregister(&chip->battery);
 	return 0;
 }
