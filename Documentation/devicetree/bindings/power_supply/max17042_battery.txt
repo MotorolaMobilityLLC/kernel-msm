@@ -9,10 +9,16 @@ Optional properties :
                          (datasheet-recommended value is 10000).
    Defining this property enables current-sense functionality.
 
+ - maxim,regs-init-data : Initialization data for device registers specified as
+   register address and value pairs.
+
 Example:
 
 	battery-charger@36 {
 		compatible = "maxim,max17042";
 		reg = <0x36>;
 		maxim,rsns-microohm = <10000>;
+		maxim,regs-init-data = <
+			0x01 0xffb4 /* VALRT, VMAX = 5.1V and VMIN = 3.6V */
+		>;
 	};
