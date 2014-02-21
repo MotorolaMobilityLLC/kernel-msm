@@ -69,6 +69,8 @@
 #define MAX17042_IC_VERSION	0x0092
 #define MAX17047_IC_VERSION	0x00AC	/* same for max17050 */
 
+#define INIT_DATA_PROPERTY	"maxim,regs-init-data"
+
 struct max17042_chip {
 	struct i2c_client *client;
 	struct regmap *regmap;
@@ -647,8 +649,6 @@ static void max17042_init_worker(struct work_struct *work)
 }
 
 #ifdef CONFIG_OF
-<<<<<<< HEAD
-=======
 static  struct gpio *
 max17042_get_gpio_list(struct device *dev, int *num_gpio_list)
 {
@@ -727,7 +727,6 @@ max17042_get_init_data(struct device *dev, int *num_init_data)
 	return init_data;
 }
 
->>>>>>> 619512e... IKDREL3KK-150 max17042_battery: Read gpio configurations from DT
 static struct max17042_platform_data *
 max17042_get_pdata(struct device *dev)
 {
@@ -742,12 +741,11 @@ max17042_get_pdata(struct device *dev)
 	if (!pdata)
 		return NULL;
 
-<<<<<<< HEAD
-=======
 	pdata->init_data = max17042_get_init_data(dev, &pdata->num_init_data);
 	pdata->gpio_list = max17042_get_gpio_list(dev, &pdata->num_gpio_list);
 
->>>>>>> 619512e... IKDREL3KK-150 max17042_battery: Read gpio configurations from DT
+	pdata->init_data = max17042_get_init_data(dev, &pdata->num_init_data);
+
 	/*
 	 * Require current sense resistor value to be specified for
 	 * current-sense functionality to be enabled at all.
