@@ -18,10 +18,13 @@ Optional properties :
 
  - gpio-names: List of strings with GPIO names.
 
+<<<<<<< HEAD
  - maxim,batt_undervoltage_zero_soc : Define this property to report "0" SOC
    if and only if battery undervoltage interrupt has fired
 
 >>>>>>> 33efe99... IKDREL3KK-150 max17042_battery: Use battery undervoltage IRQ for "0" SOC
+=======
+>>>>>>> 619512e... IKDREL3KK-150 max17042_battery: Read gpio configurations from DT
 Example:
 
 	battery-charger@36 {
@@ -35,6 +38,9 @@ Example:
 		>;
 		gpios = <&gpio5 12 0x1>;
 		gpio-names = "alert-pin";
+<<<<<<< HEAD
 		maxim,batt_undervoltage_zero_soc;
 >>>>>>> 33efe99... IKDREL3KK-150 max17042_battery: Use battery undervoltage IRQ for "0" SOC
+=======
+>>>>>>> 619512e... IKDREL3KK-150 max17042_battery: Read gpio configurations from DT
 	};
