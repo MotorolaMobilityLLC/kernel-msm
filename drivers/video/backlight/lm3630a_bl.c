@@ -44,6 +44,12 @@
 #define INT_DEBOUNCE_MSEC	10
 #define LM3630A_VDDIO_VOLT	1800000
 
+#define LM3630A_MAX_BRIGHTNESS		0xFF
+#define LM3630A_MAX_CURRENT		0x1F
+#define LM3630A_BOOST_CTRL_DEFAULT	0x38
+#define LM3630A_FLT_STRENGTH_DEFAULT	0x03
+#define LM3630A_PWM_CTRL_DEFAULT	0x00
+
 struct lm3630a_chip {
 	struct device *dev;
 	struct delayed_work work;
@@ -612,47 +618,47 @@ static int lm3630a_parse_dt(struct device_node *np,
 	rc = of_property_read_u32(np, "ti,leda-max-brt", &tmp);
 	if (rc)
 		dev_warn(pchip->dev, "leda-max-brt not found in devtree\n");
-	pdata->leda_max_brt = rc ? rc : LM3630A_MAX_BRIGHTNESS;
+	pdata->leda_max_brt = rc ? LM3630A_MAX_BRIGHTNESS : tmp;
 
 	rc = of_property_read_u32(np, "ti,ledb-max-brt", &tmp);
 	if (rc)
 		dev_warn(pchip->dev, "ledb-max-brt not found in devtree\n");
-	pdata->ledb_max_brt = rc ? rc : LM3630A_MAX_BRIGHTNESS;
+	pdata->ledb_max_brt = rc ? LM3630A_MAX_BRIGHTNESS : tmp;
 
 	rc = of_property_read_u32(np, "ti,leda-init-brt", &tmp);
 	if (rc)
 		dev_warn(pchip->dev, "leda-init-brt not found in devtree\n");
-	pdata->leda_init_brt = rc ? rc : LM3630A_MAX_BRIGHTNESS;
+	pdata->leda_init_brt = rc ? LM3630A_MAX_BRIGHTNESS : tmp;
 
 	rc = of_property_read_u32(np, "ti,ledb-init-brt", &tmp);
 	if (rc)
 		dev_warn(pchip->dev, "ledb-init-brt not found in devtree\n");
-	pdata->ledb_init_brt = rc ? rc : LM3630A_MAX_BRIGHTNESS;
+	pdata->ledb_init_brt = rc ? LM3630A_MAX_BRIGHTNESS : tmp;
 
 	rc = of_property_read_u32(np, "ti,leda-max-cur", &tmp);
 	if (rc)
 		dev_warn(pchip->dev, "leda-max-cur not found in devtree\n");
-	pdata->leda_max_cur = rc ? rc : 0x1F;
+	pdata->leda_max_cur = rc ? LM3630A_MAX_CURRENT : tmp;
 
 	rc = of_property_read_u32(np, "ti,ledb-max-cur", &tmp);
 	if (rc)
 		dev_warn(pchip->dev, "ledb-max-cur not found in devtree\n");
-	pdata->ledb_max_cur = rc ? rc : 0x1F;
+	pdata->ledb_max_cur = rc ? LM3630A_MAX_CURRENT : tmp;
 
 	rc = of_property_read_u32(np, "ti,boost-ctrl", &tmp);
 	if (rc)
 		dev_warn(pchip->dev, "boost-ctrl not found in devtree\n");
-	pdata->boost_ctrl = rc ? rc : 0x38;
+	pdata->boost_ctrl = rc ? LM3630A_BOOST_CTRL_DEFAULT : tmp;
 
 	rc = of_property_read_u32(np, "ti,flt-str", &tmp);
 	if (rc)
 		dev_warn(pchip->dev, "flt-str not found in devtree\n");
-	pdata->flt_str = rc ? rc : 0x03;
+	pdata->flt_str = rc ? LM3630A_FLT_STRENGTH_DEFAULT : tmp;
 
 	rc = of_property_read_u32(np, "ti,pwm-ctrl", &tmp);
 	if (rc)
 		dev_warn(pchip->dev, "pwm-ctrl not found in devtree\n");
-	pdata->pwm_ctrl = rc ? rc : 0x00;
+	pdata->pwm_ctrl = rc ? LM3630A_PWM_CTRL_DEFAULT : tmp;
 
 	dev_info(pchip->dev, "loading configuration done.\n");
 	return 0;
