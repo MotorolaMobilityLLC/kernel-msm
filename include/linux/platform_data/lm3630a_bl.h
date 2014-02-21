@@ -41,7 +41,6 @@ enum lm3630a_sleep_ctrl {
 	LM3630A_SLEEP_STATUS = 0x40,
 };
 
-#define LM3630A_MAX_BRIGHTNESS 255
 /*
  *@leda_init_brt : led a init brightness. 4~255
  *@leda_max_brt  : led a max brightness.  4~255
