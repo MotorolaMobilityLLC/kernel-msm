@@ -199,6 +199,8 @@ struct max17042_platform_data {
 	struct max17042_reg_data *init_data;
 	struct max17042_config_data *config_data;
 	int num_init_data; /* Number of enties in init_data array */
+	struct gpio *gpio_list;
+	int num_gpio_list; /* Number of entries in gpio_list array */
 	bool enable_current_sense;
 	bool enable_por_init; /* Use POR init from Maxim appnote */
 
