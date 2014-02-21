@@ -946,6 +946,23 @@ static struct msm_gpiomux_config sd_card_det[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting headset_det_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config headset_det[] __initdata = {
+	{
+		.gpio = 9,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &headset_det_config,
+			[GPIOMUX_SUSPENDED] = &headset_det_config,
+		},
+	},
+};
+
 static struct gpiomux_setting eth_pwr_sleep_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -1483,6 +1500,7 @@ void __init apq8084_moto_init_gpiomux(void)
 
 	msm_gpiomux_install(msm_wlan_configs, ARRAY_SIZE(msm_wlan_configs));
 	msm_gpiomux_install(sd_card_det, ARRAY_SIZE(sd_card_det));
+	msm_gpiomux_install(headset_det, ARRAY_SIZE(headset_det));
 	if (of_board_is_cdp() || of_board_is_sbc())
 		msm_gpiomux_install(eth_pwr, ARRAY_SIZE(eth_pwr));
 	if (of_board_is_sbc())
