@@ -167,8 +167,8 @@
 				class = [4750494f00];
 				gpio-info = <0x0309>;
 				pin-name = [454d555f49445f454e5f4750494f00];
-				pmic-mpp-cfg = <0x000400>;
-				pmic-mpp-cfg-alt = <0x010400>;
+				pmic-mpp-cfg = [000400];
+				pmic-mpp-cfg-alt = [010400];
 				type = <0x001e0010>;
 			};
 
@@ -176,7 +176,7 @@
 				class = [4750494f00];
 				gpio-info = <0x030a>;
 				pin-name = [454d555f49445f4750494f00];
-				pmic-mpp-cfg = <0x030200>;
+				pmic-mpp-cfg = [030200];
 				type = <0x001e0010>;
 			};
 
