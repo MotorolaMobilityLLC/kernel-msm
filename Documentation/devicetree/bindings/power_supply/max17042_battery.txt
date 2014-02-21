@@ -12,6 +12,10 @@ Optional properties :
  - maxim,regs-init-data : Initialization data for device registers specified as
    register address and value pairs.
 
+ - gpios : GPIOs used by the device, such as an interrupt line.
+
+ - gpio-names: List of strings with GPIO names.
+
 Example:
 
 	battery-charger@36 {
@@ -21,4 +25,6 @@ Example:
 		maxim,regs-init-data = <
 			0x01 0xffb4 /* VALRT, VMAX = 5.1V and VMIN = 3.6V */
 		>;
+		gpios = <&gpio5 12 0x1>;
+		gpio-names = "alert-pin";
 	};
