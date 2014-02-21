@@ -490,6 +490,14 @@ static void lm3630a_led_set_func(struct work_struct *work)
 	pdata = pchip->pdata;
 
 	dev_dbg(pchip->dev, "led value = %d\n", pchip->ledval);
+	if (is_sleep) {
+		ret = lm3630a_chip_config(pchip);
+		if (ret < 0)
+			goto out;
+		else
+			is_sleep = false;
+	}
+
 	if (pdata->leda_ctrl != LM3630A_LEDA_DISABLE) {
 		/* pwm control */
 		if ((pdata->pwm_ctrl & LM3630A_PWM_BANK_A) != 0)
@@ -499,17 +507,13 @@ static void lm3630a_led_set_func(struct work_struct *work)
 			brt = pchip->ledval > pdata->leda_max_brt ?
 				pdata->leda_max_brt : pchip->ledval;
 			if (!brt)
-				ret |= lm3630a_update(pchip, REG_CTRL,
+				ret = lm3630a_update(pchip, REG_CTRL,
 						LM3630A_LEDA_ENABLE, 0);
 			else {
-				if (is_sleep) {
-					ret |= lm3630a_chip_config(pchip);
-					is_sleep = false;
-				} else
-					ret |= lm3630a_update(pchip, REG_CTRL,
+				ret = lm3630a_update(pchip, REG_CTRL,
 						LM3630A_LEDA_ENABLE,
 						LM3630A_LEDA_ENABLE);
-				ret = lm3630a_write(pchip, REG_BRT_A, brt);
+				ret |= lm3630a_write(pchip, REG_BRT_A, brt);
 			}
 			if (ret < 0)
 				goto out;
@@ -526,17 +530,13 @@ static void lm3630a_led_set_func(struct work_struct *work)
 			brt = pchip->ledval > pdata->ledb_max_brt ?
 				pdata->ledb_max_brt : pchip->ledval;
 			if (!brt)
-				ret |= lm3630a_update(pchip, REG_CTRL,
+				ret = lm3630a_update(pchip, REG_CTRL,
 						LM3630A_LEDB_ENABLE, 0);
 			else {
-				if (is_sleep) {
-					ret |= lm3630a_chip_config(pchip);
-					is_sleep = false;
-				} else
-					ret |= lm3630a_update(pchip, REG_CTRL,
+				ret = lm3630a_update(pchip, REG_CTRL,
 						LM3630A_LEDB_ENABLE,
 						LM3630A_LEDB_ENABLE);
-				ret = lm3630a_write(pchip, REG_BRT_B, brt);
+				ret |= lm3630a_write(pchip, REG_BRT_B, brt);
 			}
 			if (ret < 0)
 				goto out;
@@ -544,9 +544,10 @@ static void lm3630a_led_set_func(struct work_struct *work)
 	}
 
 	if (!pchip->ledval) {
-		ret |= lm3630a_update(pchip, REG_CTRL, LM3630A_SLEEP_ENABLE,
+		ret = lm3630a_update(pchip, REG_CTRL, LM3630A_SLEEP_ENABLE,
 				LM3630A_SLEEP_ENABLE);
-		is_sleep = true;
+		if (ret >= 0)
+			is_sleep = true;
 	}
 out:
 	if (ret < 0)
