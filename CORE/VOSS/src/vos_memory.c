@@ -352,11 +352,6 @@ v_VOID_t vos_mem_zero( v_VOID_t *ptr, v_SIZE_t numBytes )
    
 }
 
-
-//This function is to validate one list in SME. We suspect someone corrupt te list. This code need to be removed
-//once the issue is fixed.
-extern int csrCheckValidateLists(void * dest, const void *src, v_SIZE_t num, int idx);
-
 v_VOID_t vos_mem_copy( v_VOID_t *pDst, const v_VOID_t *pSrc, v_SIZE_t numBytes )
 {
    if (0 == numBytes)
@@ -373,10 +368,7 @@ v_VOID_t vos_mem_copy( v_VOID_t *pDst, const v_VOID_t *pSrc, v_SIZE_t numBytes )
       VOS_ASSERT(0);
       return;
    }
-   //These two check function calls are to see if someone corrupt the list while doing mem copy.
-   csrCheckValidateLists(pDst, pSrc, numBytes, 1);
    memcpy(pDst, pSrc, numBytes);
-   csrCheckValidateLists(pDst, pSrc, numBytes, 2);
 }
 
 v_VOID_t vos_mem_move( v_VOID_t *pDst, const v_VOID_t *pSrc, v_SIZE_t numBytes )
