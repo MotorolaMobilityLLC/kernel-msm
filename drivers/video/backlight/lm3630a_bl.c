@@ -594,6 +594,10 @@ static int lm3630a_parse_dt(struct device_node *np,
 	if (!gpio_is_valid(pdata->hwen_gpio))
 		dev_warn(pchip->dev, "hwen gpio not specified\n");
 
+	pdata->pwm_gpio = of_get_named_gpio(np, "ti,pwm-gpio", 0);
+	if (!gpio_is_valid(pdata->pwm_gpio))
+		dev_warn(pchip->dev, "pwm gpio not specified\n");
+
 	rc = of_property_read_string(np, "ti,vddio-name", &st);
 	if (rc)
 		dev_warn(pchip->dev, "vddio name not specified\n");
@@ -659,6 +663,11 @@ static int lm3630a_parse_dt(struct device_node *np,
 	if (rc)
 		dev_warn(pchip->dev, "pwm-ctrl not found in devtree\n");
 	pdata->pwm_ctrl = rc ? LM3630A_PWM_CTRL_DEFAULT : tmp;
+	if ((pdata->pwm_ctrl & LM3630A_PWM_BANK_ALL) &&
+		!gpio_is_valid(pdata->pwm_gpio)) {
+		dev_err(pchip->dev, "pwm gpio not configured correctly\n");
+		return -EINVAL;
+	}
 
 	dev_info(pchip->dev, "loading configuration done.\n");
 	return 0;
