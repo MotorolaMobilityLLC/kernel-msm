@@ -1112,14 +1112,13 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 		if (cmd->opcode == MMC_SEND_STATUS)
 			timeout = 500;
 		else
-			timeout = SDHCI_REQUEST_TIMEOUT + 1000;
+			timeout = SDHCI_REQUEST_TIMEOUT * MSEC_PER_SEC;
 	}
 
-	mod_timer(&host->timer, jiffies + msecs_to_jiffies(timeout));
+	if (timeout < cmd->cmd_timeout_ms * 2)
+		timeout = cmd->cmd_timeout_ms * 2;
 
-	if (cmd->cmd_timeout_ms > SDHCI_REQUEST_TIMEOUT * MSEC_PER_SEC)
-		mod_timer(&host->timer, jiffies +
-				(msecs_to_jiffies(cmd->cmd_timeout_ms * 2)));
+	mod_timer(&host->timer, jiffies + msecs_to_jiffies(timeout));
 
 	host->cmd = cmd;
 
