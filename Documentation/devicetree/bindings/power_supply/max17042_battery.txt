@@ -9,8 +9,6 @@ Optional properties :
                          (datasheet-recommended value is 10000).
    Defining this property enables current-sense functionality.
 
-<<<<<<< HEAD
-=======
  - maxim,regs-init-data : Initialization data for device registers specified as
    register address and value pairs.
 
@@ -18,29 +16,26 @@ Optional properties :
 
  - gpio-names: List of strings with GPIO names.
 
-<<<<<<< HEAD
  - maxim,batt_undervoltage_zero_soc : Define this property to report "0" SOC
    if and only if battery undervoltage interrupt has fired
 
->>>>>>> 33efe99... IKDREL3KK-150 max17042_battery: Use battery undervoltage IRQ for "0" SOC
-=======
->>>>>>> 619512e... IKDREL3KK-150 max17042_battery: Read gpio configurations from DT
+ - maxim,regs-init-data : Initialization data for device registers specified as
+   register address and value pairs.
+
 Example:
 
 	battery-charger@36 {
 		compatible = "maxim,max17042";
 		reg = <0x36>;
 		maxim,rsns-microohm = <10000>;
-<<<<<<< HEAD
-=======
 		maxim,regs-init-data = <
 			0x01 0xffb4 /* VALRT, VMAX = 5.1V and VMIN = 3.6V */
 		>;
 		gpios = <&gpio5 12 0x1>;
 		gpio-names = "alert-pin";
-<<<<<<< HEAD
+
 		maxim,batt_undervoltage_zero_soc;
->>>>>>> 33efe99... IKDREL3KK-150 max17042_battery: Use battery undervoltage IRQ for "0" SOC
-=======
->>>>>>> 619512e... IKDREL3KK-150 max17042_battery: Read gpio configurations from DT
+		maxim,regs-init-data = <
+			0x01 0xffb4 /* VALRT, VMAX = 5.1V and VMIN = 3.6V */
+		>;
 	};
