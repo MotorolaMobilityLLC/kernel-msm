@@ -1,0 +1,78 @@
+Texas Instrument LM3630A Backlight Controller
+
+Required Properties:
+ - compatible:
+        Should be set to "ti,lm3630a"
+ - reg:
+        The i2c slave address of the IC
+
+Optional Properties:
+ - ti,vddio-name:
+        Regulator supply name for the IC's VDD if required
+ - ti,irq-gpio:
+        Interrupt gpio pin for the IC's INTN if required
+ - ti,hwen-gpio:
+        Hardware enable pin for the IC's HWEN if required
+ - ti,pwm-gpio:
+        PWM gpio pin for the IC's PWM control if required
+ - ti,leda-ctrl:
+        The settings are related to LEDA enable/disable and output
+        mode, which will be programmed to REG_CTRL (0x00) bit 2 and
+        bit 4.
+ - ti,ledb-ctrl:
+        The settings are related to LEDB enable/disable and output
+        mode, which will be programmed to REG_CTRL (0x00) bit 0,
+        bit 1 and bit 3.
+ - ti,boost-ctrl:
+        The settings are related to over-voltage, over-current and
+        boost frequency etc, which will be programed to REG_BOOST
+        (0x02).
+ - ti,pwm-ctrl:
+        The PWM settings to enable/disable and active level, and
+        will be programed to REG_CONFIG (0x01) 3 lowest bits.
+ - ti,leda-init-brt:
+        LEDA power up brightness to set during first initialization.
+        If not supplied it will be set to 0xFF. This value is
+        programmed to the REG_BRT_A (0x03) register.
+ - ti,ledb-init-brt:
+        LEDB power up brightness to set during first initialization.
+        If not supplied it will be set to 0xFF. This value is
+        programmed to the REG_BRT_B (0x04) register.
+ - ti,leda-max-brt:
+        Maximum allowable brightness value to program to REG_BRT_A
+        (0x03). If not supplied 0xFF will be used.
+ - ti,ledb-max-brt:
+        Maximum allowable brightness value to program to REG_BRT_B
+        (0x04). If not supplied 0xFF will be used.
+ - ti,leda-max-cur:
+        Maximum allowable current value while setting backlight
+        brightness value as 0xFF. It will be programmed to REG_I_A
+        (0x05) 5 lowest bits.
+ - ti,ledb-max-cur:
+        Maximum allowable current value while setting backlight
+        brightness value as 0xFF. It will be programmed to REG_I_B
+        (0x06) 5 lowest bits.
+
+Example:
+	lm3630a@38 {
+		status = "okay";
+		compatible = "ti,lm3630a";
+		reg = <0x38>;
+
+		/* 2 string LEDs controled by LEDA */
+		ti,leda-ctrl = <0x14>;
+		ti,ledb-ctrl = <0x01>;
+		ti,leda-max-brt = <0xff>;
+		ti,ledb-max-brt = <0xff>;
+		ti,leda-init-brt = <0xf0>;
+		ti,ledb-init-brt = <0xf0>;
+		ti,leda-max-cur = <0x19>;
+		ti,ledb-max-cur = <0x19>;
+		ti,boost-ctrl = <0x20>;
+		ti,pwm-ctrl = <0x00>;
+		ti,irq-gpio = <&msmgpio 4 0>;
+		ti,hwen-gpio = <&msmgpio 5 0>;
+		ti,vddio-name = "vddio_bl";
+		vddio_bl-supply = <&pm8226_l6>;
+	};
+
