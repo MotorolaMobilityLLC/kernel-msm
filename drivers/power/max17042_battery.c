@@ -34,6 +34,8 @@
 #include <linux/power/max17042_battery.h>
 #include <linux/of.h>
 #include <linux/regmap.h>
+#include <linux/of_gpio.h>
+#include <linux/types.h>
 
 /* Status register bits */
 #define STATUS_POR_BIT         (1 << 1)
@@ -645,6 +647,87 @@ static void max17042_init_worker(struct work_struct *work)
 }
 
 #ifdef CONFIG_OF
+<<<<<<< HEAD
+=======
+static  struct gpio *
+max17042_get_gpio_list(struct device *dev, int *num_gpio_list)
+{
+	struct device_node *np = dev->of_node;
+	struct gpio *gpio_list;
+	int i, num_gpios, gpio_list_size;
+	enum of_gpio_flags flags;
+
+	if (!np)
+		return NULL;
+
+	num_gpios = of_gpio_count(np);
+	if (num_gpios <= 0)
+		return NULL;
+
+	gpio_list_size = sizeof(struct gpio) * num_gpios;
+	gpio_list = devm_kzalloc(dev, gpio_list_size, GFP_KERNEL);
+
+	if (!gpio_list)
+		return NULL;
+
+	*num_gpio_list = num_gpios;
+	for (i = 0; i < num_gpios; i++) {
+		gpio_list[i].gpio = of_get_gpio_flags(np, i, &flags);
+		gpio_list[i].flags = flags;
+		of_property_read_string_index(np, "gpio-names", i,
+					      &gpio_list[i].label);
+	}
+
+	return gpio_list;
+}
+
+static struct max17042_reg_data *
+max17042_get_init_data(struct device *dev, int *num_init_data)
+{
+	struct device_node *np = dev->of_node;
+	const __be32 *property;
+	static struct max17042_reg_data *init_data;
+	int i, lenp, num_cells, init_data_size;
+
+	if (!np)
+		return NULL;
+
+	property = of_get_property(np, INIT_DATA_PROPERTY, &lenp);
+
+	if (!property || lenp <= 0)
+		return NULL;
+
+	/*
+	 * Check data validity and whether number of cells is even
+	 */
+	if (lenp % sizeof(*property)) {
+		dev_err(dev, "%s has invalid data\n", INIT_DATA_PROPERTY);
+		return NULL;
+	}
+
+	num_cells = lenp / sizeof(*property);
+	if (num_cells % 2) {
+		dev_err(dev, "%s must have even number of cells\n",
+			INIT_DATA_PROPERTY);
+		return NULL;
+	}
+
+	*num_init_data = num_cells / 2;
+	init_data_size = sizeof(struct max17042_reg_data) * (num_cells / 2);
+	init_data = (struct max17042_reg_data *)
+		    devm_kzalloc(dev, init_data_size, GFP_KERNEL);
+
+	if (init_data) {
+		for (i = 0; i < num_cells / 2; i++) {
+			init_data[i].addr = be32_to_cpu(property[2 * i]);
+			init_data[i].data = be32_to_cpu(property[2 * i + 1]);
+		}
+	}
+
+	return init_data;
+}
+
+>>>>>>> 619512e... IKDREL3KK-150 max17042_battery: Read gpio configurations from DT
 static struct max17042_platform_data *
 max17042_get_pdata(struct device *dev)
 {
@@ -659,6 +742,12 @@ max17042_get_pdata(struct device *dev)
 	if (!pdata)
 		return NULL;
 
+<<<<<<< HEAD
+=======
+	pdata->init_data = max17042_get_init_data(dev, &pdata->num_init_data);
+	pdata->gpio_list = max17042_get_gpio_list(dev, &pdata->num_gpio_list);
+
+>>>>>>> 619512e... IKDREL3KK-150 max17042_battery: Read gpio configurations from DT
 	/*
 	 * Require current sense resistor value to be specified for
 	 * current-sense functionality to be enabled at all.
@@ -765,6 +854,13 @@ static int max17042_probe(struct i2c_client *client,
 		return ret;
 	}
 
+	ret = gpio_request_array(chip->pdata->gpio_list,
+				 chip->pdata->num_gpio_list);
+	if (ret) {
+		dev_err(&client->dev, "cannot request GPIOs\n");
+		return ret;
+	}
+
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,
 					max17042_thread_handler,
@@ -799,6 +895,7 @@ static int max17042_remove(struct i2c_client *client)
 
 	if (client->irq)
 		free_irq(client->irq, chip);
+	gpio_free_array(chip->pdata->gpio_list, chip->pdata->num_gpio_list);
 	power_supply_unregister(&chip->battery);
 	return 0;
 }
