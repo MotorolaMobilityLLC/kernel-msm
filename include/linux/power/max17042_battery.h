@@ -208,6 +208,11 @@ struct max17042_platform_data {
 	 * the datasheet although it can be changed by board designers.
 	 */
 	unsigned int r_sns;
+	/*
+	 * Enable this flag to report "0" SOC iff battery undervoltage interrupt
+	 * has fired.
+	 */
+	bool batt_undervoltage_zero_soc;
 };
 
 #endif /* __MAX17042_BATTERY_H_ */
