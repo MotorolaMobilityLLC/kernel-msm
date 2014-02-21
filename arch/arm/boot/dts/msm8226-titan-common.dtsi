@@ -87,10 +87,10 @@
 			ti,ledb-ctrl = <0x01>;
 			ti,leda-max-brt = <0xff>;
 			ti,ledb-max-brt = <0xff>;
-			ti,leda-init-brt = <0xf0>;
-			ti,ledb-init-brt = <0xf0>;
-			ti,leda-max-cur = <0x19>;
-			ti,ledb-max-cur = <0x19>;
+			ti,leda-init-brt = <0xff>;
+			ti,ledb-init-brt = <0xff>;
+			ti,leda-max-cur = <0x11>;
+			ti,ledb-max-cur = <0x11>;
 			ti,boost-ctrl = <0x20>;
 			ti,pwm-ctrl = <0x00>;
 			ti,irq-gpio = <&msmgpio 4 0>;
