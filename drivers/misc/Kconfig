@@ -761,7 +761,7 @@ config ALSA_TO_H2W
 	default n
 
 config HOB_SHARED_RAM
-	tristate "HOB RAM MMAP Client"
+	bool "HOB RAM MMAP Client"
 	depends on OF
 	help
 	  Provide mechanism to access hob storage shared memory on apps
