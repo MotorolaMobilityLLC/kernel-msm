@@ -1778,29 +1778,11 @@ static int scale_soc_while_chg(struct qpnp_bms_chip *chip, int chg_time_sec,
 static void soc_sanity_check(struct qpnp_bms_chip *chip,
 			    int batt_temp, int soc)
 {
-	int pc;
-	int ibat_ua, vbat_uv, ocv_uv;
-	int rc;
-	int rbatt_mohm = get_rbatt(chip, soc, batt_temp);
-
 	if (wake_lock_active(&chip->low_voltage_wake_lock)) {
 		chip->last_soc = 0;
 		return;
 	}
 
-	rc = get_simultaneous_batt_v_and_i(chip, &ibat_ua, &vbat_uv);
-	if (rc) {
-		pr_err("simultaneous failed rc = %d\n", rc);
-		return;
-	}
-
-	ocv_uv = vbat_uv + (ibat_ua * rbatt_mohm) / 1000;
-	pc = calculate_pc(chip, ocv_uv, batt_temp);
-	pr_debug("voltage_soc = %d\n", pc);
-
-	/* for this first Interation just calculate */
-	/* voltage_soc but don't manipulate last_soc */
-	/* Calculation is done so that debug print will be generated */
 	return;
 }
 
@@ -1954,7 +1936,7 @@ static int report_cc_based_soc(struct qpnp_bms_chip *chip)
 	if (rc)
 		pr_err("failed to read BMS interrupt sts %d\n", rc);
 	else if ((0 == (chg_sts & CHG_BEGIN_INT_RT_STS))
-		&& (!is_battery_full(chip))
+		&& (chip->battery_status != POWER_SUPPLY_STATUS_FULL)
 		&& (chip->last_soc != -EINVAL)
 		&& (chip->last_soc < soc)) {
 			pr_err("calculated soc = %d ,last soc = %d\n", soc,
