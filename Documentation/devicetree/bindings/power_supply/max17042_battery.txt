@@ -16,6 +16,9 @@ Optional properties :
 
  - gpio-names: List of strings with GPIO names.
 
+ - maxim,batt_undervoltage_zero_soc : Define this property to report "0" SOC
+   if and only if battery undervoltage interrupt has fired
+
 Example:
 
 	battery-charger@36 {
@@ -27,4 +30,5 @@ Example:
 		>;
 		gpios = <&gpio5 12 0x1>;
 		gpio-names = "alert-pin";
+		maxim,batt_undervoltage_zero_soc;
 	};
