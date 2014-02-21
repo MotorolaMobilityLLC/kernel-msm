@@ -846,7 +846,8 @@ static int max17042_probe(struct i2c_client *client,
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,
 						max17042_thread_handler,
-						IRQF_TRIGGER_FALLING,
+						IRQF_TRIGGER_FALLING |
+						IRQF_ONESHOT,
 						chip->battery.name, chip);
 		if (!ret) {
 			reg =  max17042_read_reg(client, MAX17042_CONFIG);
