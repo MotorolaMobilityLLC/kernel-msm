@@ -1073,6 +1073,17 @@ static void rmnet_usb_ctrl_debugfs_init(void) { }
 static void rmnet_usb_ctrl_debugfs_exit(void) { }
 #endif
 
+static void free_rmnet_ctrl_udev(struct rmnet_ctrl_udev *cudev)
+{
+	kfree(cudev->in_ctlreq);
+	kfree(cudev->rcvbuf);
+	kfree(cudev->intbuf);
+	usb_free_urb(cudev->rcvurb);
+	usb_free_urb(cudev->inturb);
+	destroy_workqueue(cudev->wq);
+	kfree(cudev);
+}
+
 int rmnet_usb_ctrl_init(int no_rmnet_devs, int no_rmnet_insts_per_dev,
 		unsigned long mux_info)
 {
@@ -1118,6 +1129,50 @@ int rmnet_usb_ctrl_init(int no_rmnet_devs, int no_rmnet_insts_per_dev,
 			snprintf(dev->name, CTRL_DEV_MAX_LEN, "%s%d",
 				 rmnet_dev_names[i], n);
 
+			/* ctrl usb dev inits */
+			cmux_enabled = test_bit(i, &mux_info);
+			if (n && cmux_enabled)
+				/* for mux config one cudev maps to n dev */
+				goto skip_cudev_init;
+
+			cudev = kzalloc(sizeof(*cudev), GFP_KERNEL);
+			if (!cudev) {
+				pr_err("Error allocating rmnet usb ctrl dev\n");
+				kfree(dev);
+				return -ENOMEM;
+			}
+
+			cudev->rdev_num = i;
+			cudev->wq = create_singlethread_workqueue(dev->name);
+			if (!cudev->wq) {
+				pr_err("unable to allocate workqueue");
+				kfree(cudev);
+				kfree(dev);
+				return -ENOMEM;
+			}
+
+			init_usb_anchor(&cudev->tx_submitted);
+			init_usb_anchor(&cudev->rx_submitted);
+			INIT_WORK(&cudev->get_encap_work, get_encap_work);
+
+			status = rmnet_usb_ctrl_alloc_rx(cudev);
+			if (status) {
+				destroy_workqueue(cudev->wq);
+				kfree(cudev);
+				kfree(dev);
+				return status;
+			}
+
+skip_cudev_init:
+			/* ctrl dev inits */
+			dev->cudev = cudev;
+
+			if (cmux_enabled) {
+				set_bit(RMNET_CTRL_DEV_MUX_EN, &dev->status);
+				set_bit(RMNET_CTRL_DEV_MUX_EN,
+						&dev->cudev->status);
+			}
+
 			dev->ch_id = n;
 
 			mutex_init(&dev->dev_lock);
@@ -1133,6 +1188,7 @@ int rmnet_usb_ctrl_init(int no_rmnet_devs, int no_rmnet_insts_per_dev,
 			if (status) {
 				pr_err("%s: cdev_add() ret %i\n", __func__,
 					status);
+				free_rmnet_ctrl_udev(dev->cudev);
 				kfree(dev);
 				return status;
 			}
@@ -1145,6 +1201,7 @@ int rmnet_usb_ctrl_init(int no_rmnet_devs, int no_rmnet_insts_per_dev,
 				pr_err("%s: device_create() returned %ld\n",
 					__func__, PTR_ERR(dev->devicep));
 				cdev_del(&dev->cdev);
+				free_rmnet_ctrl_udev(dev->cudev);
 				kfree(dev);
 				return PTR_ERR(dev->devicep);
 			}
@@ -1156,65 +1213,11 @@ int rmnet_usb_ctrl_init(int no_rmnet_devs, int no_rmnet_insts_per_dev,
 				device_destroy(dev->devicep->class,
 					       dev->devicep->devt);
 				cdev_del(&dev->cdev);
+				free_rmnet_ctrl_udev(dev->cudev);
 				kfree(dev);
 				return status;
 			}
 			dev_set_drvdata(dev->devicep, dev);
-
-			cmux_enabled = test_bit(i, &mux_info);
-			if (n && cmux_enabled) {
-				dev->cudev = cudev;
-				set_bit(RMNET_CTRL_DEV_MUX_EN, &dev->status);
-				continue;
-			}
-			cudev = kzalloc(sizeof(*cudev), GFP_KERNEL);
-			if (!cudev) {
-				pr_err("Error allocating rmnet usb ctrl dev\n");
-				device_remove_file(dev->devicep,
-						   &dev_attr_modem_wait);
-				device_destroy(dev->devicep->class,
-						   dev->devicep->devt);
-				cdev_del(&dev->cdev);
-				kfree(dev);
-				return -ENOMEM;
-			}
-
-			cudev->rdev_num = i;
-			cudev->wq = create_singlethread_workqueue(dev->name);
-			if (!cudev->wq) {
-				pr_err("unable to allocate workqueue");
-				kfree(cudev);
-				device_remove_file(dev->devicep,
-						   &dev_attr_modem_wait);
-				device_destroy(dev->devicep->class,
-						   dev->devicep->devt);
-				cdev_del(&dev->cdev);
-				kfree(dev);
-				return -ENOMEM;
-			}
-
-			init_usb_anchor(&cudev->tx_submitted);
-			init_usb_anchor(&cudev->rx_submitted);
-			INIT_WORK(&cudev->get_encap_work, get_encap_work);
-
-			status = rmnet_usb_ctrl_alloc_rx(cudev);
-			if (status) {
-				destroy_workqueue(cudev->wq);
-				kfree(cudev);
-				device_remove_file(dev->devicep,
-						   &dev_attr_modem_wait);
-				device_destroy(dev->devicep->class,
-					       dev->devicep->devt);
-				cdev_del(&dev->cdev);
-				kfree(dev);
-				return status;
-			}
-
-			dev->cudev = cudev;
-			if (cmux_enabled) {
-				set_bit(RMNET_CTRL_DEV_MUX_EN, &dev->status);
-				set_bit(RMNET_CTRL_DEV_MUX_EN, &cudev->status);
-			}
 		}
 	}
 
@@ -1229,17 +1232,6 @@ static void free_rmnet_ctrl_dev(struct rmnet_ctrl_dev *dev)
 	cdev_del(&dev->cdev);
 	device_destroy(dev->devicep->class,
 		       dev->devicep->devt);
-}
-
-static void free_rmnet_ctrl_udev(struct rmnet_ctrl_udev *cudev)
-{
-	kfree(cudev->in_ctlreq);
-	kfree(cudev->rcvbuf);
-	kfree(cudev->intbuf);
-	usb_free_urb(cudev->rcvurb);
-	usb_free_urb(cudev->inturb);
-	destroy_workqueue(cudev->wq);
-	kfree(cudev);
 }
 
 void rmnet_usb_ctrl_exit(int no_rmnet_devs, int no_rmnet_insts_per_dev,
