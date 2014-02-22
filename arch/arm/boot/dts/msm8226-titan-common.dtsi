@@ -109,6 +109,15 @@
 		synaptics_dsx_i2c@20 {
 			touch_vdd-supply = <&vdd_touch_vreg>;
 		};
+
+		cyttsp3_i2c@3b {
+			status = "disabled";
+		};
+
+		aps_ts@34 {
+			status = "disabled";
+		};
+
 	};
 
 	/* TODO charge/gauge part, need to enable it later */
