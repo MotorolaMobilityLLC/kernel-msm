@@ -11,8 +11,23 @@
  */
 
 #include "apq8084-moto-common.dtsi"
-#include "dsi-panel-mot-smd-QHD-dualmipi0-cmd.dtsi"
-#include "dsi-panel-mot-smd-QHD-dualmipi1-cmd.dtsi"
+#include "dsi-panel-mot-dummy-qhd-video.dtsi"
+#include "dsi-panel-mot-smd-QHD-cmd.dtsi"
+
+&pma8084_l22 {
+	regulator-always-on;
+};
+
+&pma8084_l17 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	qcom,init-voltage = <3300000>;
+	/delete-property/ regulator-always-on;
+};
+
+&pma8084_lvs3 {
+	/delete-property/ regulator-always-on;
+};
 
 &mdss_fb0 {
 	qcom,mdss-fb-split = <720 720>;
@@ -27,10 +42,14 @@
 	qcom,platform-reset-gpio = <&msmgpio 86 0>;
 	qcom,platform-te-gpio = <&msmgpio 12 0>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
-	vdd_disp-supply = <&vdd_disp_vreg>;
-	vci_disp-supply = <&vci_disp_vreg>;
+	vdd_disp-supply = <&pma8084_lvs3>;
+	vci_disp-supply = <&pma8084_l17>;
+	/delete-property/ vdd-supply;
+	/delete-node/ qcom,platform-supply-entry1;
 };
 
 &mdss_dsi1 {
 	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_1_cmd_v0>;
+	/delete-property/ vdd-supply;
+	/delete-node/ qcom,platform-supply-entry1;
 };
