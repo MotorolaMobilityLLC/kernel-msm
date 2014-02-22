@@ -157,8 +157,6 @@
 		gpio = <&msmgpio 96 0x0>;
 		startup-delay-us = <300>;
 		enable-active-high;
-		regulator-always-on;
-		regulator-boot-on;
 	};
 
 	vdd_disp_vreg: vdd_disp_vreg {
@@ -168,8 +166,6 @@
 		parent-supply = <&pma8084_lvs3>;
 		startup-delay-us = <300>;
 		enable-active-high;
-		regulator-always-on;
-		regulator-boot-on;
 	};
 
 	vci_disp_vreg: vci_disp_vreg {
@@ -179,8 +175,6 @@
 		parent-supply = <&pma8084_l17>;
 		startup-delay-us = <300>;
 		enable-active-high;
-		regulator-always-on;
-		regulator-boot-on;
 	};
 
 	i2c_8: i2c@f9964000 { /* BLSP8 */
@@ -812,9 +806,6 @@
 			reg = <0xa700 0x100>;
 			status = "okay";
 			label = "mpp";
-			mpp-power-supply = <&pma8084_l17>;
-			qcom,mpp-power-min-voltage = <2800000>;
-			qcom,mpp-power-max-voltage = <2800000>;
 			qcom,led_mpp_8 {
 				label = "mpp";
 				linux,name = "charging";

@@ -14,6 +14,10 @@
 #include "apq8084-moto-common.dtsi"
 #include "dsi-panel-mot-smd-720p-video.dtsi"
 
+&pma8084_l22 {
+	regulator-always-on;
+};
+
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
 };
@@ -21,10 +25,12 @@
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&mot_smd_720p_vid>;
 	qcom,platform-reset-gpio = <&msmgpio 86 0>;
+	qcom,platform-te-gpio = <&msmgpio 12 0>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vdd_disp-supply = <&vdd_disp_vreg>;
 	vci_disp-supply = <&vci_disp_vreg>;
-
+	/delete-property/ vdd-supply;
+	/delete-node/ qcom,platform-supply-entry1;
 };
 
 &mdss_dsi1 {
