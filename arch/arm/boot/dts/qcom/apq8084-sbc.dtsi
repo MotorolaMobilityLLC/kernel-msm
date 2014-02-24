@@ -151,6 +151,10 @@
 	status = "disabled";
 };
 
+&xhci_hsic_host {
+   status = "disabled";
+};
+
 &ufsphy1 {
 	status = "disabled";
 };
