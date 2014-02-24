@@ -18,6 +18,8 @@
 		qcom,mdss-dsi-te-pin-select = <1>;
 		qcom,mdss-dsi-te-check-enable;
 		qcom,mdss-dsi-te-using-te-pin;
+		qcom,mdss-dsi-te-dcs-command = <1>;
+
 		/* Disable ESD for now, reading fails while in command mode */
 		qcom,panel-esd-detect-disable;
 		qcom,panel-esd-power-mode-chk = <0x94>;
