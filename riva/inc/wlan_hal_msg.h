@@ -6795,6 +6795,49 @@ typedef enum {
 #define WLAN_HAL_CHAN_FLAG_DFS         10
 #define WLAN_HAL_CHAN_FLAG_ALLOW_HT    11  /* HT is allowed on this channel */
 #define WLAN_HAL_CHAN_FLAG_ALLOW_VHT   12  /* VHT is allowed on this channel */
+#define WLAN_HAL_CHAN_CHANGE_CAUSE_CSA 13  /* Indicate reason for channel switch */
+
+#define WLAN_HAL_SET_CHANNEL_FLAG(pwlan_hal_update_channel,flag) do { \
+        (pwlan_hal_update_channel)->channel_info |=  (1 << flag);      \
+     } while(0)
+
+#define WLAN_HAL_GET_CHANNEL_FLAG(pwlan_hal_update_channel,flag)   \
+        (((pwlan_hal_update_channel)->channel_info & (1 << flag)) >> flag)
+
+#define WLAN_HAL_SET_CHANNEL_MIN_POWER(pwlan_hal_update_channel,val) do { \
+     (pwlan_hal_update_channel)->reg_info_1 &= 0xffffff00;           \
+     (pwlan_hal_update_channel)->reg_info_1 |= (val&0xff);           \
+     } while(0)
+#define WLAN_HAL_GET_CHANNEL_MIN_POWER(pwlan_hal_update_channel) ((pwlan_hal_update_channel)->reg_info_1 & 0xff )
+
+#define WLAN_HAL_SET_CHANNEL_MAX_POWER(pwlan_hal_update_channel,val) do { \
+     (pwlan_hal_update_channel)->reg_info_1 &= 0xffff00ff;           \
+     (pwlan_hal_update_channel)->reg_info_1 |= ((val&0xff) << 8);    \
+     } while(0)
+#define WLAN_HAL_GET_CHANNEL_MAX_POWER(pwlan_hal_update_channel) ( (((pwlan_hal_update_channel)->reg_info_1) >> 8) & 0xff )
+
+#define WLAN_HAL_SET_CHANNEL_REG_POWER(pwlan_hal_update_channel,val) do { \
+     (pwlan_hal_update_channel)->reg_info_1 &= 0xff00ffff;           \
+     (pwlan_hal_update_channel)->reg_info_1 |= ((val&0xff) << 16);   \
+     } while(0)
+#define WLAN_HAL_GET_CHANNEL_REG_POWER(pwlan_hal_update_channel) ( (((pwlan_hal_update_channel)->reg_info_1) >> 16) & 0xff )
+#define WLAN_HAL_SET_CHANNEL_REG_CLASSID(pwlan_hal_update_channel,val) do { \
+     (pwlan_hal_update_channel)->reg_info_1 &= 0x00ffffff;             \
+     (pwlan_hal_update_channel)->reg_info_1 |= ((val&0xff) << 24);     \
+     } while(0)
+#define WLAN_HAL_GET_CHANNEL_REG_CLASSID(pwlan_hal_update_channel) ( (((pwlan_hal_update_channel)->reg_info_1) >> 24) & 0xff )
+
+#define WLAN_HAL_SET_CHANNEL_ANTENNA_MAX(pwlan_hal_update_channel,val) do { \
+     (pwlan_hal_update_channel)->reg_info_2 &= 0xffffff00;             \
+     (pwlan_hal_update_channel)->reg_info_2 |= (val&0xff);             \
+     } while(0)
+#define WLAN_HAL_GET_CHANNEL_ANTENNA_MAX(pwlan_hal_update_channel) ((pwlan_hal_update_channel)->reg_info_2 & 0xff )
+
+#define WLAN_HAL_SET_CHANNEL_MAX_TX_POWER(pwlan_hal_update_channel,val) do { \
+     (pwlan_hal_update_channel)->reg_info_2 &= 0xffff00ff;              \
+     (pwlan_hal_update_channel)->reg_info_2 |= ((val&0xff)<<8);         \
+     } while(0)
+#define WLAN_HAL_GET_CHANNEL_MAX_TX_POWER(pwlan_hal_update_channel) ( (((pwlan_hal_update_channel)->reg_info_2)>>8) & 0xff )
 
 typedef PACKED_PRE struct PACKED_POST
 {
