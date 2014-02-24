@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -38,28 +38,8 @@
 
 */
 
-/*===========================================================================
-
-  Copyright (c) 2008 QUALCOMM Incorporated. All Rights Reserved
-
-  Qualcomm Proprietary
-
-  Export of this technology or software is regulated by the U.S. Government.
-  Diversion contrary to U.S. law prohibited.
-
-  All ideas, data and information contained in or disclosed by
-  this document are confidential and proprietary information of
-  QUALCOMM Incorporated and all rights therein are expressly reserved.
-  By accepting this material the recipient agrees that this material
-  and the information contained therein are held in confidence and in
-  trust and will not be used, copied, reproduced in whole or in part,
-  nor its contents revealed in any manner to others without the express
-  written permission of QUALCOMM Incorporated.
-
-===========================================================================*/
 
 /*===========================================================================
-
                         EDIT HISTORY FOR MODULE
 
 This section contains comments describing changes made to the module.
