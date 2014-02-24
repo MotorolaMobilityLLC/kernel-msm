@@ -17,6 +17,7 @@
 / {
 	aliases {
 		serial0 = &blsp2_uart1;
+		uart0 = &uart6;
 		uart3 = &blsp2_uart3;
 	};
 
@@ -257,10 +258,6 @@
 };
 
 &blsp2_uart1 {
-	status = "ok";
-};
-
-&blsp2_uart0 {
 	status = "ok";
 };
 
