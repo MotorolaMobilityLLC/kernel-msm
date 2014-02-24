@@ -81,10 +81,12 @@ VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t*,v_U8_t*);
 void hdd_softap_sta_disassoc(hdd_adapter_t*,v_U8_t*);
 void hdd_softap_tkip_mic_fail_counter_measure(hdd_adapter_t*,v_BOOL_t);
 int hdd_softap_unpackIE( tHalHandle halHandle,
-                eCsrEncryptionType *pEncryptType, 
-                eCsrEncryptionType *mcEncryptType, 
-                eCsrAuthType *pAuthType, 
-                u_int16_t gen_ie_len, 
+                eCsrEncryptionType *pEncryptType,
+                eCsrEncryptionType *mcEncryptType,
+                eCsrAuthType *pAuthType,
+                v_BOOL_t *pMFPCapable,
+                v_BOOL_t *pMFPRequired,
+                u_int16_t gen_ie_len,
                 u_int8_t *gen_ie );
 
 VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCallback);

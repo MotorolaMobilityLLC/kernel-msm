@@ -678,7 +678,9 @@ typedef enum eSirMacStatusCodes
     eSIR_MAC_SHORT_SLOT_NOT_SUPORTED_STATUS       = 25, //Association denied due to requesting station not supporting the Short Slot Time
                                                         //option
     eSIR_MAC_DSSS_OFDM_NOT_SUPPORTED_STATUS       = 26, //Association denied due to requesting station not supporting the DSSS-OFDM option
-    // reserved                                     27-31
+    // reserved                                     27-29
+    eSIR_MAC_TRY_AGAIN_LATER                      = 30, //Association request rejected temporarily, try again later
+    // reserved                                     31
     eSIR_MAC_QOS_UNSPECIFIED_FAILURE_STATUS       = 32, //Unspecified, QoS-related failure
     eSIR_MAC_QAP_NO_BANDWIDTH_STATUS              = 33, //Association denied because QoS AP has insufficient bandwidth to handle another
                                                         //QoS STA
@@ -2845,4 +2847,32 @@ typedef __ani_attr_pre_packed struct sSirPhy11aHdr
 } __ani_attr_packed tSirPhy11aHdr, *tpSirPhy11aHdr;
 
 #define SIR_MAC_MIN_IE_LEN 2 // Minimum IE length for IE validation
+
+#if defined WLAN_FEATURE_RELIABLE_MCAST
+
+// Reliable Multicast action codes
+#define SIR_MAC_RMC_ENABLE_REQ                  0
+#define SIR_MAC_RMC_DISABLE_REQ                 1
+#define SIR_MAC_RMC_LEADER_INFORM_SELECTED      2
+#define SIR_MAC_RMC_LEADER_INFORM_CANCELLED     3
+
+// Reliable multicast protocol version
+#define SIR_MAC_RMC_VER 0x01
+
+// Organization Identifier
+#define SIR_MAC_RMC_OUI             "\x00\x16\x32"
+#define SIR_MAC_RMC_OUI_SIZE        3
+
+// Magic code for Oxygen network
+#define SIR_MAC_OXYGEN_MAGIC_CODE       "OXYGEN"
+#define SIR_MAC_OXYGEN_MAGIC_CODE_SIZE  6
+
+#define SIR_MAC_RMC_MCAST_ADDRESS  "\x01\x00\x5E\x00\x02\x0A"
+
+#endif /* WLAN_FEATURE_RELIABLE_MCAST */
+
+#define SIR_MAC_TI_TYPE_REASSOC_DEADLINE        1
+#define SIR_MAC_TI_TYPE_KEY_LIFETIME            2
+#define SIR_MAC_TI_TYPE_ASSOC_COMEBACK          3
+
 #endif /* __MAC_PROT_DEFS_H */

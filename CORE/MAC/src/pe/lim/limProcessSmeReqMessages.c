@@ -633,6 +633,11 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->txLdpcIniFeatureEnabled = 
                                     pSmeStartBssReq->txLdpcIniFeatureEnabled;
 
+#ifdef WLAN_FEATURE_11W
+        psessionEntry->limRmfEnabled = pSmeStartBssReq->pmfCapable ? 1 : 0;
+        limLog(pMac, LOG1, FL("Session RMF enabled: %d"), psessionEntry->limRmfEnabled);
+#endif
+
         vos_mem_copy((void*)&psessionEntry->rateSet,
             (void*)&pSmeStartBssReq->operationalRateSet,
             sizeof(tSirMacRateSet));

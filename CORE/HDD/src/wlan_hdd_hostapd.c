@@ -981,12 +981,15 @@ stopbss :
     }
     return VOS_STATUS_SUCCESS;
 }
-int hdd_softap_unpackIE( 
+
+int hdd_softap_unpackIE(
                 tHalHandle halHandle,
-                eCsrEncryptionType *pEncryptType, 
-                eCsrEncryptionType *mcEncryptType, 
-                eCsrAuthType *pAuthType, 
-                u_int16_t gen_ie_len, 
+                eCsrEncryptionType *pEncryptType,
+                eCsrEncryptionType *mcEncryptType,
+                eCsrAuthType *pAuthType,
+                v_BOOL_t *pMFPCapable,
+                v_BOOL_t *pMFPRequired,
+                u_int16_t gen_ie_len,
                 u_int8_t *gen_ie )
 {
     tDot11fIERSN dot11RSNIE; 
@@ -1038,6 +1041,8 @@ int hdd_softap_unpackIE(
         //dot11RSNIE.gp_cipher_suite_count 
         *mcEncryptType = hdd_TranslateRSNToCsrEncryptionType(dot11RSNIE.gp_cipher_suite);                     
         // Set the PMKSA ID Cache for this interface
+        *pMFPCapable = 0 != (dot11RSNIE.RSN_Cap[0] & 0x80);
+        *pMFPRequired = 0 != (dot11RSNIE.RSN_Cap[0] & 0x40);
           
         // Calling csrRoamSetPMKIDCache to configure the PMKIDs into the cache
     } else 
@@ -1070,6 +1075,8 @@ int hdd_softap_unpackIE(
         *pEncryptType = hdd_TranslateWPAToCsrEncryptionType(dot11WPAIE.unicast_ciphers[0]);                       
         //dot11WPAIE.unicast_cipher_count 
         *mcEncryptType = hdd_TranslateWPAToCsrEncryptionType(dot11WPAIE.multicast_cipher);                       
+        *pMFPCapable = VOS_FALSE;
+        *pMFPRequired = VOS_FALSE;
     } 
     else 
     { 
@@ -1907,6 +1914,8 @@ static iw_softap_commit(struct net_device *dev,
     eCsrAuthType RSNAuthType;
     eCsrEncryptionType RSNEncryptType;
     eCsrEncryptionType mcRSNEncryptType;
+    v_BOOL_t MFPCapable;
+    v_BOOL_t MFPRequired;
 
     pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(pHostapdAdapter);
     pCommitConfig = (s_CommitConfig_t *)extra;
@@ -1973,6 +1982,8 @@ static iw_softap_commit(struct net_device *dev,
                                   &RSNEncryptType,
                                   &mcRSNEncryptType,
                                   &RSNAuthType,
+                                  &MFPCapable,
+                                  &MFPRequired,
                                   pConfig->pRSNWPAReqIE[1]+2,
                                   pConfig->pRSNWPAReqIE );
              

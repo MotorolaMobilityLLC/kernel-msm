@@ -51,15 +51,15 @@
 #include "limSendMessages.h"
 #include "limAssocUtils.h"
 #include "limFT.h"
+#ifdef WLAN_FEATURE_11W
+#include "wniCfgAp.h"
+#endif
 
 #if defined WLAN_FEATURE_VOWIFI
 #include "rrmApi.h"
 #endif
 
 #include "wlan_qct_wda.h"
-#ifdef WLAN_FEATURE_11W
-#include "dot11fdefs.h"
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -1222,6 +1222,10 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
     tANI_U32             addnIELen=0;
     tANI_U8              addIE[WNI_CFG_ASSOC_RSP_ADDNIE_DATA_LEN];
     tpSirAssocReq        pAssocReq = NULL; 
+#ifdef WLAN_FEATURE_11W
+    tANI_U32 retryInterval;
+    tANI_U32 maxRetries;
+#endif
 
     if(NULL == psessionEntry)
     {
@@ -1336,8 +1340,24 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
 
     } // End if on non-NULL 'pSta'.
 
+#ifdef WLAN_FEATURE_11W
+    if( eSIR_MAC_TRY_AGAIN_LATER == statusCode )
+    {
+        if ( wlan_cfgGetInt(pMac, WNI_CFG_PMF_SA_QUERY_MAX_RETRIES,
+                           &maxRetries ) != eSIR_SUCCESS )
+            limLog( pMac, LOGE, FL("Could not retrieve PMF SA Query maximum retries value") );
+        else
+            if ( wlan_cfgGetInt(pMac, WNI_CFG_PMF_SA_QUERY_RETRY_INTERVAL,
+                               &retryInterval ) != eSIR_SUCCESS)
+                limLog( pMac, LOGE, FL("Could not retrieve PMF SA Query timer interval value") );
+            else
+                PopulateDot11fTimeoutInterval(
+                   pMac, &frm.TimeoutInterval, SIR_MAC_TI_TYPE_ASSOC_COMEBACK,
+                   (maxRetries - pSta->pmfSaQueryRetryCount) * retryInterval );
+    }
+#endif
 
-   vos_mem_set(( tANI_U8* )&beaconParams, sizeof( tUpdateBeaconParams), 0);
+    vos_mem_set(( tANI_U8* )&beaconParams, sizeof( tUpdateBeaconParams), 0);
 
     if( psessionEntry->limSystemRole == eLIM_AP_ROLE ){
         if(psessionEntry->gLimProtectionControl != WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
@@ -6145,6 +6165,157 @@ returnAfterError:
 
 #ifdef WLAN_FEATURE_11W
 /**
+ * \brief Send SA query request action frame to peer
+ *
+ * \sa limSendSaQueryRequestFrame
+ *
+ *
+ * \param pMac    The global tpAniSirGlobal object
+ *
+ * \param transId Transaction identifier
+ *
+ * \param peer    The Mac address of the station to which this action frame is addressed
+ *
+ * \param psessionEntry The PE session entry
+ *
+ * \return eSIR_SUCCESS if setup completes successfully
+ *         eSIR_FAILURE is some problem is encountered
+ */
+
+tSirRetStatus limSendSaQueryRequestFrame( tpAniSirGlobal pMac, tANI_U8 *transId,
+                                          tSirMacAddr peer, tpPESession psessionEntry )
+{
+
+   tDot11fSaQueryReq  frm; // SA query request action frame
+   tANI_U8            *pFrame;
+   tSirRetStatus      nSirStatus;
+   tpSirMacMgmtHdr    pMacHdr;
+   tANI_U32           nBytes, nPayload, nStatus;
+   void               *pPacket;
+   eHalStatus         halstatus;
+   tANI_U8            txFlag = 0;
+
+   vos_mem_set( ( tANI_U8* )&frm, sizeof( frm ), 0 );
+   frm.Category.category  = SIR_MAC_ACTION_SA_QUERY;
+   /* 11w action  field is :
+    action: 0 --> SA Query Request action frame
+    action: 1 --> SA Query Response action frame */
+   frm.Action.action    = SIR_MAC_SA_QUERY_REQ;
+   /* 11w SA Query Request transId */
+   vos_mem_copy( &frm.TransactionId.transId[0], &transId[0], 2 );
+
+   nStatus = dot11fGetPackedSaQueryReqSize(pMac, &frm, &nPayload);
+   if ( DOT11F_FAILED( nStatus ) )
+   {
+      limLog( pMac, LOGP, FL("Failed to calculate the packed size "
+               "for an SA Query Request (0x%08x)."),
+            nStatus );
+      // We'll fall back on the worst case scenario:
+      nPayload = sizeof( tDot11fSaQueryReq );
+   }
+   else if ( DOT11F_WARNED( nStatus ) )
+   {
+      limLog( pMac, LOGW, FL("There were warnings while calculating "
+               "the packed size for an SA Query Request"
+               " (0x%08x)."), nStatus );
+   }
+
+   nBytes = nPayload + sizeof( tSirMacMgmtHdr );
+   halstatus = palPktAlloc( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,  nBytes, ( void** ) &pFrame, ( void** ) &pPacket );
+   if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+   {
+      limLog( pMac, LOGP, FL("Failed to allocate %d bytes for a SA Query Request "
+                               "action frame"), nBytes );
+      return eSIR_FAILURE;
+   }
+
+   // Paranoia:
+   vos_mem_set( pFrame, nBytes, 0 );
+
+   // Copy necessary info to BD
+   nSirStatus = limPopulateMacHeader( pMac,
+                                      pFrame,
+                                      SIR_MAC_MGMT_FRAME,
+                                      SIR_MAC_MGMT_ACTION,
+                                      peer, psessionEntry->selfMacAddr );
+   if ( eSIR_SUCCESS != nSirStatus )
+      goto returnAfterError;
+
+   // Update A3 with the BSSID
+   pMacHdr = ( tpSirMacMgmtHdr ) pFrame;
+
+   sirCopyMacAddr( pMacHdr->bssId, psessionEntry->bssId );
+
+   // Since this is a SA Query Request, set the "protect" (aka WEP) bit
+   // in the FC
+   limSetProtectedBit(pMac, psessionEntry, peer, pMacHdr);
+
+   // Pack 11w SA Query Request frame
+   nStatus = dot11fPackSaQueryReq( pMac,
+         &frm,
+         pFrame + sizeof( tSirMacMgmtHdr ),
+         nPayload,
+         &nPayload );
+
+   if ( DOT11F_FAILED( nStatus ))
+   {
+      limLog( pMac, LOGE,
+            FL( "Failed to pack an SA Query Request (0x%08x)." ),
+            nStatus );
+      // FIXME - Need to convert to tSirRetStatus
+      nSirStatus = eSIR_FAILURE;
+      goto returnAfterError;
+   }
+   else if ( DOT11F_WARNED( nStatus ))
+   {
+      limLog( pMac, LOGW,
+            FL( "There were warnings while packing SA Query Request (0x%08x)." ),
+            nStatus);
+   }
+
+   limLog( pMac, LOG1,
+         FL( "Sending an SA Query Request to " ));
+   limPrintMacAddr( pMac, peer, LOG1 );
+   limPrintMacAddr( pMac, peer, LOGE );
+   limLog( pMac, LOGE,
+         FL( "Sending an SA Query Request from " ));
+   limPrintMacAddr( pMac, psessionEntry->selfMacAddr, LOGE );
+
+   if ( ( SIR_BAND_5_GHZ == limGetRFBand( psessionEntry->currentOperChannel ) )
+#ifdef WLAN_FEATURE_P2P
+        || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
+        ( psessionEntry->pePersona == VOS_P2P_GO_MODE )
+#endif
+      )
+   {
+      txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
+   }
+
+   halstatus = halTxFrame( pMac,
+                           pPacket,
+                           (tANI_U16) nBytes,
+                           HAL_TXRX_FRM_802_11_MGMT,
+                           ANI_TXDIR_TODS,
+                           7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                           limTxComplete,
+                           pFrame, txFlag );
+   if ( eHAL_STATUS_SUCCESS != halstatus )
+   {
+      PELOGE(limLog( pMac, LOGE, FL( "halTxFrame FAILED! Status [%d]" ), halstatus );)
+      nSirStatus = eSIR_FAILURE;
+      //Pkt will be freed up by the callback
+      return nSirStatus;
+   }
+   else {
+      return eSIR_SUCCESS;
+   }
+
+returnAfterError:
+   palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame, ( void* ) pPacket );
+   return nSirStatus;
+} // End limSendSaQueryRequestFrame
+
+/**
  * \brief Send SA query response action frame to peer 
  *
  * \sa limSendSaQueryResponseFrame
@@ -6229,10 +6400,7 @@ tSirMacAddr peer,tpPESession psessionEntry)
 
    // Since this is a SA Query Response, set the "protect" (aka WEP) bit
    // in the FC
-   if ( psessionEntry->limRmfEnabled )
-   {
-       pMacHdr->fc.wep = 1;
-   }
+   limSetProtectedBit(pMac, psessionEntry, peer, pMacHdr);
 
    // Pack 11w SA query response frame
    nStatus = dot11fPackSaQueryRsp( pMac,
