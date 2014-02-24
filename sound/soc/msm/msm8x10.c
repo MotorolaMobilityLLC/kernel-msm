@@ -259,14 +259,13 @@ static void msm8x10_enable_ext_spk_power_amp(u32 on)
 	} else {
 		gpio_direction_output(ext_spk_amp_gpio, on);
 		/*time takes disable the external power amplifier*/
-		usleep_range(EXT_CLASS_D_DIS_DELAY,
-			     EXT_CLASS_D_DIS_DELAY + EXT_CLASS_D_DELAY_DELTA);
+		usleep_range(EXT_CLASS_D_DIS_DELAY + 2000,
+			     EXT_CLASS_D_DIS_DELAY + EXT_CLASS_D_DELAY_DELTA
+			     + 2000);
 		if (!IS_ERR(boost_reg)) {
 			if (regulator_disable(boost_reg))
 				pr_err("%s: disable failed ext_spk_boost_reg\n",
 					__func__);
-			else
-				usleep(3000);
 		}
 	}
 
