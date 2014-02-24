@@ -178,7 +178,6 @@ struct msm8x10_wcd_priv {
 	/* mbhc module */
 	struct wcd9xxx_mbhc mbhc;
 
-	struct delayed_work hs_detect_work;
 	struct wcd9xxx_mbhc_config *mbhc_cfg;
 
 	/*
@@ -299,7 +298,6 @@ static int msm8x10_wcd_i2c_write_device(u16 reg, u8 *value, u32 bytes)
 			return ret;
 		}
 	}
-	pr_debug("write sucess register = %x val = %x\n", reg, data[1]);
 	return 0;
 }
 
@@ -348,7 +346,6 @@ int msm8x10_wcd_i2c_read_device(u32 reg, u32 bytes, u8 *dest)
 			}
 		}
 	}
-	pr_debug("%s: reg 0x%x = 0x%x\n", __func__, reg, *dest);
 	return 0;
 }
 
@@ -454,8 +451,8 @@ static int __msm8x10_wcd_reg_write(struct msm8x10_wcd *msm8x10_wcd,
 				__func__, reg);
 	else
 		dev_dbg(msm8x10_wcd->dev,
-			"%s: Write %x to R%d(0x%x)\n",
-			__func__, val, reg, reg);
+			"%s: Write 0x%x to 0x%x\n",
+			__func__, val, reg);
 
 	return ret;
 }
@@ -491,8 +488,6 @@ static int msm8x10_wcd_volatile(struct snd_soc_codec *codec, unsigned int reg)
 	 * Registers lower than 0x100 are top level registers which can be
 	 * written by the Taiko core driver.
 	 */
-	dev_dbg(codec->dev, "%s: reg 0x%x\n", __func__, reg);
-
 	if ((reg >= MSM8X10_WCD_A_CDC_MBHC_EN_CTL) || (reg < 0x100))
 		return 1;
 
@@ -528,7 +523,7 @@ static int msm8x10_wcd_write(struct snd_soc_codec *codec, unsigned int reg,
 			     unsigned int value)
 {
 	int ret;
-	dev_dbg(codec->dev, "%s: Write from reg 0x%x\n", __func__, reg);
+	dev_dbg(codec->dev, "%s: Write to reg 0x%x\n", __func__, reg);
 	if (reg == SND_SOC_NOPM)
 		return 0;
 
@@ -2582,8 +2577,6 @@ static const struct msm8x10_wcd_reg_mask_val msm8x10_wcd_reg_defaults[] = {
 	/* Disable internal biasing path which can cause leakage */
 	MSM8X10_WCD_REG_VAL(MSM8X10_WCD_A_BIAS_CURR_CTL_2, 0x04),
 
-	/* Enable pulldown to reduce leakage */
-	MSM8X10_WCD_REG_VAL(MSM8X10_WCD_A_MICB_1_CTL, 0x82),
 	MSM8X10_WCD_REG_VAL(MSM8X10_WCD_A_TX_COM_BIAS, 0xE0),
 	/* Keep the same default gain settings for TX paths */
 	MSM8X10_WCD_REG_VAL(MSM8X10_WCD_A_TX_1_EN, 0x32),
@@ -3025,33 +3018,18 @@ static const struct wcd9xxx_mbhc_cb mbhc_cb = {
 	.compute_impedance = msm8x10_wcd_compute_impedance,
 };
 
-static void delayed_hs_detect_fn(struct work_struct *work)
-{
-	struct delayed_work *delayed_work;
-	struct msm8x10_wcd_priv *wcd_priv;
-
-	delayed_work = to_delayed_work(work);
-	wcd_priv = container_of(delayed_work, struct msm8x10_wcd_priv,
-				hs_detect_work);
-
-	if (!wcd_priv) {
-		pr_err("%s: Invalid private data for codec\n", __func__);
-		return;
-	}
-
-	wcd9xxx_mbhc_start(&wcd_priv->mbhc, wcd_priv->mbhc_cfg);
-}
-
-
 int msm8x10_wcd_hs_detect(struct snd_soc_codec *codec,
 		    struct wcd9xxx_mbhc_config *mbhc_cfg)
 {
 	struct msm8x10_wcd_priv *wcd = snd_soc_codec_get_drvdata(codec);
 
+	if (!wcd) {
+		dev_err(codec->dev, "%s: Invalid private data for codec\n",
+			__func__);
+		return -EINVAL;
+	}
 	wcd->mbhc_cfg = mbhc_cfg;
-	schedule_delayed_work(&wcd->hs_detect_work,
-			msecs_to_jiffies(5000));
-	return 0;
+	return wcd9xxx_mbhc_start(&wcd->mbhc, wcd->mbhc_cfg);
 }
 EXPORT_SYMBOL_GPL(msm8x10_wcd_hs_detect);
 
@@ -3218,8 +3196,6 @@ static int msm8x10_wcd_codec_probe(struct snd_soc_codec *codec)
 	msm8x10_wcd = codec->control_data;
 	msm8x10_wcd->pdino_base = ioremap(MSM8X10_DINO_CODEC_BASE_ADDR,
 					  MSM8X10_DINO_CODEC_REG_SIZE);
-	INIT_DELAYED_WORK(&msm8x10_wcd_priv->hs_detect_work,
-			delayed_hs_detect_fn);
 
 	pdata = dev_get_platdata(msm8x10_wcd->dev);
 	if (!pdata) {
