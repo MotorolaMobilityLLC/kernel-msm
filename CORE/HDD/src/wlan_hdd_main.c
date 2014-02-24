@@ -7755,7 +7755,7 @@ void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx)
   \return -  true if hardware supports 5GHz
 
   --------------------------------------------------------------------------*/
-static boolean hdd_is_5g_supported(hdd_context_t * pHddCtx)
+boolean hdd_is_5g_supported(hdd_context_t * pHddCtx)
 {
    /* If wcnss_wlan_iris_xo_mode() returns WCNSS_XO_48MHZ(1);
     * then hardware support 5Ghz.
