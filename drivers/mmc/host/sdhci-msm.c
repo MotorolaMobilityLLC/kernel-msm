@@ -3099,6 +3099,46 @@ static int sdhci_msm_select_drive_strength(struct sdhci_host *host,
 }
 
 /*
+ * Simulate a device reset by toggling power on the slot.
+ */
+static void sdhci_msm_hw_reset(struct sdhci_host *host)
+{
+	struct mmc_card *card = host->mmc->card;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+	unsigned long delay = 10000;
+	int rc;
+
+	if (!card || !mmc_card_sd(card))
+		return;
+
+	pr_debug("%s: host reset (%lu uS)\n", mmc_hostname(host->mmc), delay);
+
+	/*
+	 * We bug-out on any failure, since there is no safe way to recover.
+	 */
+	rc = sdhci_msm_setup_vreg(msm_host->pdata, false, false);
+	if (rc) {
+		pr_err("%s: %s disable regulator: failed: %d\n",
+		       mmc_hostname(host->mmc), __func__, rc);
+		BUG_ON(rc);
+	}
+
+	/* Let the rails drain. */
+	usleep_range(delay, delay + 2000);
+
+	rc = sdhci_msm_setup_vreg(msm_host->pdata, true, false);
+	if (rc) {
+		pr_err("%s: %s enable regulator: failed: %d\n",
+		       mmc_hostname(host->mmc), __func__, rc);
+		BUG_ON(rc);
+	}
+
+	/* Let the rails settle. */
+	usleep_range(delay, delay + 2000);
+}
+
+/*
  * sdhci_msm_disable_data_xfer - disable undergoing AHB bus data transfer
  *
  * Write 0 to bit 0 in MCI_DATA_CTL (offset 0x2C) - clearing TxActive bit by
@@ -3416,6 +3456,7 @@ static struct sdhci_ops sdhci_msm_ops = {
 	.get_min_clock = sdhci_msm_get_min_clock,
 	.get_max_clock = sdhci_msm_get_max_clock,
 	.select_drive_strength = sdhci_msm_select_drive_strength,
+	.hw_reset = sdhci_msm_hw_reset,
 	.disable_data_xfer = sdhci_msm_disable_data_xfer,
 	.dump_vendor_regs = sdhci_msm_dump_vendor_regs,
 	.config_auto_tuning_cmd = sdhci_msm_config_auto_tuning_cmd,
@@ -3790,6 +3831,8 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->caps |= msm_host->pdata->mmc_bus_width;
 	msm_host->mmc->caps |= msm_host->pdata->caps;
 	msm_host->mmc->caps |= MMC_CAP_WAIT_WHILE_BUSY;
+	msm_host->mmc->caps |= MMC_CAP_HW_RESET;
+
 	msm_host->mmc->caps2 |= msm_host->pdata->caps2;
 	msm_host->mmc->caps2 |= MMC_CAP2_CORE_RUNTIME_PM;
 	msm_host->mmc->caps2 |= MMC_CAP2_PACKED_WR;
