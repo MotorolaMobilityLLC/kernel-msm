@@ -78,7 +78,7 @@
 		qcom,gpio-req-tbl-label = "FLASH_EN";
 		qcom,cci-master = <1>;
 		flash-now-support = <0>;
-};
+	};
 
 	qcom,camera@6c {
 		compatible = "qcom,ov10820";
