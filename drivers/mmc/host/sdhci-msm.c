@@ -2567,6 +2567,46 @@ static int sdhci_msm_set_uhs_signaling(struct sdhci_host *host,
 }
 
 /*
+ * Simulate a device reset by toggling power on the slot.
+ */
+static void sdhci_msm_hw_reset(struct sdhci_host *host)
+{
+	struct mmc_card *card = host->mmc->card;
+	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
+	struct sdhci_msm_host *msm_host = pltfm_host->priv;
+	unsigned long delay = 10000;
+	int rc;
+
+	if (!card || !mmc_card_sd(card))
+		return;
+
+	pr_debug("%s: host reset (%lu uS)\n", mmc_hostname(host->mmc), delay);
+
+	/*
+	 * We bug-out on any failure, since there is no safe way to recover.
+	 */
+	rc = sdhci_msm_setup_vreg(msm_host->pdata, false, false);
+	if (rc) {
+		pr_err("%s: %s disable regulator: failed: %d\n",
+		       mmc_hostname(host->mmc), __func__, rc);
+		BUG_ON(rc);
+	}
+
+	/* Let the rails drain. */
+	usleep_range(delay, delay + 2000);
+
+	rc = sdhci_msm_setup_vreg(msm_host->pdata, true, false);
+	if (rc) {
+		pr_err("%s: %s enable regulator: failed: %d\n",
+		       mmc_hostname(host->mmc), __func__, rc);
+		BUG_ON(rc);
+	}
+
+	/* Let the rails settle. */
+	usleep_range(delay, delay + 2000);
+}
+
+/*
  * sdhci_msm_disable_data_xfer - disable undergoing AHB bus data transfer
  *
  * Write 0 to bit 0 in MCI_DATA_CTL (offset 0x2C) - clearing TxActive bit by
@@ -2626,6 +2666,7 @@ static struct sdhci_ops sdhci_msm_ops = {
 	.set_clock = sdhci_msm_set_clock,
 	.get_min_clock = sdhci_msm_get_min_clock,
 	.get_max_clock = sdhci_msm_get_max_clock,
+	.hw_reset = sdhci_msm_hw_reset,
 	.disable_data_xfer = sdhci_msm_disable_data_xfer,
 	.enable_controller_clock = sdhci_msm_enable_controller_clock,
 };
@@ -2884,6 +2925,7 @@ static int __devinit sdhci_msm_probe(struct platform_device *pdev)
 	/* Set host capabilities */
 	msm_host->mmc->caps |= msm_host->pdata->mmc_bus_width;
 	msm_host->mmc->caps |= msm_host->pdata->caps;
+	msm_host->mmc->caps |= MMC_CAP_HW_RESET;
 
 	vdd_max_current = sdhci_msm_get_vreg_vdd_max_current(msm_host);
 	if (vdd_max_current >= 800)
