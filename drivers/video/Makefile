@@ -167,3 +167,6 @@ obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 
 #video output switch sysfs driver
 obj-$(CONFIG_VIDEO_OUTPUT_CONTROL) += output.o
+
+#framebuffer quickdraw driver
+obj-$(CONFIG_FB_QUICKDRAW) += fb_quickdraw.o
