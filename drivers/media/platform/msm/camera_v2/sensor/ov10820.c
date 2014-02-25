@@ -23,10 +23,6 @@
 
 #define OV10820_SECONDARY_I2C_ADDRESS 0x20
 #define OV10820_HW_REV_REG 0x302a
-#define SET_10MP_RESET_HIGH     0
-#define SET_10MP_RESET_LOW      1
-#define SET_DVDD_EN_RESET_HIGH  0
-#define SET_DVDD_EN_RESET_LOW   1
 
 #define VREG_ON              1
 #define VREG_OFF             0
@@ -218,7 +214,7 @@ static int32_t ov10820_sensor_power_down(
 
 	/*Reset 10MP*/
 	gpio_direction_output(info->gpio_conf->cam_gpio_req_tbl[4].gpio,
-			SET_10MP_RESET_LOW);
+			GPIO_OUT_LOW);
 	usleep_range(100, 200);
 
 	/*Reset OV660*/
@@ -228,7 +224,7 @@ static int32_t ov10820_sensor_power_down(
 
 	/*Set 10MP DVDD Low*/
 	gpio_direction_output(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
-			SET_DVDD_EN_RESET_LOW);
+			GPIO_OUT_LOW);
 	usleep_range(100, 200);
 
 	/*Set OV660 DVDD low*/
@@ -299,7 +295,7 @@ int32_t ov10820_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	/*Reset 10MP*/
 	gpio_direction_output(info->gpio_conf->cam_gpio_req_tbl[4].gpio,
-			SET_10MP_RESET_LOW);
+			GPIO_OUT_LOW);
 
 	/*Turn on mclk */
 	rc = msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
@@ -360,7 +356,7 @@ int32_t ov10820_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	/*Enable 10mp 1.2v*/
 	gpio_direction_output(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
-			SET_DVDD_EN_RESET_HIGH);
+			GPIO_OUT_HIGH);
 	usleep_range(500, 600);
 
 	/*Wait for core supplies to power up*/
@@ -373,7 +369,7 @@ int32_t ov10820_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	/*Set reset high for 10MP*/
 	gpio_direction_output(info->gpio_conf->cam_gpio_req_tbl[4].gpio,
-			SET_10MP_RESET_HIGH);
+			GPIO_OUT_HIGH);
 
 	/*Set reset high for OV660*/
 	gpio_direction_output(info->gpio_conf->cam_gpio_req_tbl[5].gpio,
