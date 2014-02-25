@@ -2408,6 +2408,13 @@ config FB_PUV3_UNIGFX
 	  Choose this option if you want to use the Unigfx device as a
 	  framebuffer device. Without the support of PCI & AGP.
 
+config FB_QUICKDRAW
+	bool "Framebuffer quickdraw"
+	default n
+	---help---
+	  Allow userspace to register offscreen buffers with the
+	  fb quickdraw driver to be drawn to the panel on demand
+
 source "drivers/video/msm/Kconfig"
 
 source "drivers/video/omap/Kconfig"
