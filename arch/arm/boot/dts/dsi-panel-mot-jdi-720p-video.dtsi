@@ -14,7 +14,6 @@
 	mot_jdi_720p_vid_v0: qcom,mdss_dsi_mot_jdi_720p_video_v0 {
 		compatible = "qcom,mdss-dsi-panel";
 		status = "ok";
-		qcom,panel-esd-detect-disable;
 		qcom,panel-esd-power-mode-chk = <0x94>;
 
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_jdi_720p_500_v0";
