@@ -796,6 +796,61 @@ static struct attribute_group clk_scaling_attr_grp = {
 	.attrs = clk_scaling_attrs,
 };
 
+static ssize_t show_bad_card(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mmc_host *host = cls_dev_to_mmc_host(dev);
+	int card_bad;
+	int ret;
+
+	spin_lock(&host->lock);
+	card_bad = host->card_bad;
+	spin_unlock(&host->lock);
+
+	ret = snprintf(buf, PAGE_SIZE, "%d\n", card_bad);
+
+	return ret;
+}
+
+static ssize_t show_total_requests(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mmc_host *host = cls_dev_to_mmc_host(dev);
+	unsigned long long requests;
+	int ret;
+
+	spin_lock(&host->lock);
+	requests = host->requests;
+	spin_unlock(&host->lock);
+
+	ret = snprintf(buf, PAGE_SIZE, "%llu\n", requests);
+
+	return ret;
+}
+
+static ssize_t show_total_errors(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mmc_host *host = cls_dev_to_mmc_host(dev);
+	unsigned long long request_errors;
+	int ret;
+
+	spin_lock(&host->lock);
+	request_errors = host->request_errors;
+	spin_unlock(&host->lock);
+
+	ret = snprintf(buf, PAGE_SIZE, "%llu\n", request_errors);
+
+	return ret;
+}
+
+static DEVICE_ATTR(bad_card, S_IRUGO | S_IWUSR,
+		show_bad_card, NULL);
+static DEVICE_ATTR(total_requests, S_IRUGO | S_IWUSR,
+		show_total_requests, NULL);
+static DEVICE_ATTR(total_errors, S_IRUGO | S_IWUSR,
+		show_total_errors, NULL);
+
 #ifdef CONFIG_MMC_PERF_PROFILING
 static ssize_t
 show_perf(struct device *dev, struct device_attribute *attr, char *buf)
@@ -848,6 +903,9 @@ static DEVICE_ATTR(perf, S_IRUGO | S_IWUSR,
 #endif
 
 static struct attribute *dev_attrs[] = {
+	&dev_attr_bad_card.attr,
+	&dev_attr_total_requests.attr,
+	&dev_attr_total_errors.attr,
 #ifdef CONFIG_MMC_PERF_PROFILING
 	&dev_attr_perf.attr,
 #endif
