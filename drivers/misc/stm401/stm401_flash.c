@@ -53,7 +53,7 @@
 #define BUSY_BYTE 0x76
 
 #define ERASE_DELAY 200
-#define ERASE_TIMEOUT 50
+#define ERASE_TIMEOUT 80
 
 #define RESTART_DELAY 1000
 #define WRITE_DELAY 20
@@ -314,7 +314,7 @@ int stm401_boot_flash_erase(void)
 		   driver will time out and fail.
 		   Instead we just wait and hope the erase was succesful.
 		*/
-		msleep(10000);
+		msleep(16000);
 	}
 
 	dev_dbg(&stm401_misc_data->client->dev,
