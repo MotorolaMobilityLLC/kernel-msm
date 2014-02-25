@@ -18,6 +18,11 @@
 /include/ "carrier-channel-ids.dtsi"
 
 / {
+	memory {
+		reg = <0x00000000 0x00000000>,
+		      <0x00000000 0x00000000>;
+	};
+
 	aliases {
 		uart3 = &uart3;
                 spi12 = &spi_12;
