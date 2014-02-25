@@ -21,6 +21,11 @@
 / {
 	model = "Motorola QC-MSM8610";
 	compatible = "qcom,msm8610-moto", "qcom,msm8610";
+
+	memory {
+		reg = <0x00000000 0x00000000>,
+		      <0x00000000 0x00000000>;
+	};
 };
 
 &soc {
