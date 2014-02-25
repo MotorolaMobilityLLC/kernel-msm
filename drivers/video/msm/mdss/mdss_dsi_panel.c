@@ -572,6 +572,12 @@ end:
 static int mdss_dsi_panel_cont_splash_on(struct mdss_panel_data *pdata)
 {
 	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
+
+#ifndef CONFIG_FB_MSM_MDSS_MDP3
+	if (pdata->panel_info.hs_cmds_post_init)
+		mdss_set_tx_power_mode(DSI_MODE_BIT_HS, pdata);
+#endif
+
 	return 0;
 }
 
@@ -617,6 +623,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			__func__);
 		dropbox_queue_event_empty("display_issue");
 	}
+
+#ifndef CONFIG_FB_MSM_MDSS_MDP3
+	if (pdata->panel_info.hs_cmds_post_init)
+		mdss_set_tx_power_mode(DSI_MODE_BIT_HS, pdata);
+#endif
 end:
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
@@ -1497,6 +1508,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	ctrl_pdata->panel_config.disallow_panel_pwr_off =
 		of_property_read_bool(np, "qcom,panel-disallow-pwr-off");
+
+	pinfo->hs_cmds_post_init = of_property_read_bool(np,
+		"qcom,mdss-dsi-hs-cmds-post-init");
 
 	return 0;
 
