@@ -15,6 +15,7 @@
 		pin@fd51050 {
 			reg = <0xfd511050 0x10>;	/* BL_EN */
 			qcom,pin-num = <5>;
+			qcom,pin-keep-state;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(5)         */
 				qcom,pull = <3>;  /* pull_up                */
@@ -32,15 +33,16 @@
 		pin@fd510a0 {
 			reg = <0xfd5110a0 0x10>;	/* LCD_IOVDD_EN */
 			qcom,pin-num = <10>;
+			qcom,pin-keep-state;
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(10)        */
-				qcom,pull = <3>;  /* pullup                 */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <1>;   /* output high            */
 			};
 			qcom,suspend@1 {
 				qcom,func = <0>;  /* gpio_in_out(10)        */
-				qcom,pull = <1>;  /* down                   */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* input                  */
 			};
@@ -66,15 +68,16 @@
 		pin@fd510c0 {
 			reg = <0xfd5110c0 0x10>;	/* LCD_BIAS_P_EN */
 			qcom,pin-num = <12>;
+			qcom,pin-keep-state;
 			qcom,active@0 {
-				qcom,func = <0>;  /* gpio_in_out(12)         */
-				qcom,pull = <3>;  /* pull_up                */
+				qcom,func = <0>;  /* gpio_in_out(12)        */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <1>;   /* output high            */
 			};
 			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out(12)         */
-				qcom,pull = <1>;  /* down                   */
+				qcom,func = <0>;  /* gpio_in_out(12)        */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* input                  */
 			};
@@ -83,15 +86,16 @@
 		pin@fd510d0 {
 			reg = <0xfd5110d0 0x10>;	/* LCD_BIAS_N_EN */
 			qcom,pin-num = <13>;
+			qcom,pin-keep-state;
 			qcom,active@0 {
-				qcom,func = <0>;  /* gpio_in_out(13)         */
-				qcom,pull = <3>;  /* pull_up                */
+				qcom,func = <0>;  /* gpio_in_out(13)        */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
-				qcom,dir = <2>;   /* output low  TODO        */
+				qcom,dir = <1>;   /* output high            */
 			};
 			qcom,suspend@1 {
-				qcom,func = <0>;  /* gpio_in_out(13)         */
-				qcom,pull = <1>;  /* down                   */
+				qcom,func = <0>;  /* gpio_in_out(13)        */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* input                  */
 			};
