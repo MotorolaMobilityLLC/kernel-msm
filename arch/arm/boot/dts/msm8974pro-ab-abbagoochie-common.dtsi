@@ -118,3 +118,13 @@
 		qcom,tfa9890-right-name = "tfa9890.0-0035";
 	};
 };
+
+&cci {
+	qcom,camera@6c {
+		/delete-property/ qcom,led-flash-src;
+	};
+
+	qcom,lm3646@ce {
+		status = "disabled";
+	};
+};
