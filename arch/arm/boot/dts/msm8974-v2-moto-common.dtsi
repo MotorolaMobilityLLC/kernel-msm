@@ -658,7 +658,7 @@
 	gpio@cc00 { /* GPIO 13 */
 		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1  */
+		qcom,src-sel = <1>;       /* QPNP_PIN_SEL_FUNC_1  */
 		qcom,vin-sel = <2>;       /* QPNP_PIN_VIN2 */
 		qcom,master-en = <1>;
 	};
@@ -745,7 +745,7 @@
 	gpio@d800 { /* GPIO 25 */
 		qcom,mode = <1>;          /* QPNP_PIN_MODE_DIG_OUT */
 		qcom,out-strength = <1>;  /* QPNP_PIN_OUT_STRENGTH_LOW */
-		qcom,src-sel = <2>;       /* QPNP_PIN_SEL_FUNC_1  */
+		qcom,src-sel = <1>;       /* QPNP_PIN_SEL_FUNC_1  */
 		qcom,vin-sel = <2>;       /* QPNP_PIN_VIN2  */
 		qcom,master-en = <1>;
 	};
