@@ -193,8 +193,11 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 #ifdef CONFIG_MMC_PERF_PROFILING
 	ktime_t diff;
 #endif
-	if (host->card)
+	if (host->card) {
 		mmc_update_clk_scaling(host);
+		if (err)
+			host->card->request_errors++;
+	}
 
 	if (err && cmd->retries && mmc_host_is_spi(host)) {
 		if (cmd->resp[0] & R1_SPI_ILLEGAL_COMMAND)
@@ -336,6 +339,9 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 		mmc_clk_scaling(host, false);
 		host->clk_scaling.start_busy = ktime_get();
 	}
+
+	if (host->card)
+		host->card->requests++;
 
 	host->ops->request(host, mrq);
 }
