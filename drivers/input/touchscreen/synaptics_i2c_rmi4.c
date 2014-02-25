@@ -3897,15 +3897,10 @@ static int synaptics_rmi4_resume(struct device *dev)
 	return 0;
 }
 
-#if (!defined(CONFIG_FB) && !defined(CONFIG_HAS_EARLYSUSPEND))
 static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 	.suspend = synaptics_rmi4_suspend,
 	.resume  = synaptics_rmi4_resume,
 };
-#else
-static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
-};
-#endif
 #else
 static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 {
