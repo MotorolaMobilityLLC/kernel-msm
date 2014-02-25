@@ -188,7 +188,6 @@ struct sdio_func;
 struct sdio_func_tuple;
 
 #define SDIO_MAX_FUNCS		7
-#define MMC_MAX_CARD_INFIRMITY 8
 
 enum mmc_packed_stop_reasons {
 	EXCEEDS_SEGMENTS = 0,
@@ -349,7 +348,10 @@ struct mmc_card {
 
 	struct notifier_block reboot_notify;
 
-	unsigned int		infirmity;	/* measure of a card's health */
+#define MMC_ERROR_FAILURE_RATIO	10		/* give up on cards with too many failures/successes */
+#define MMC_ERROR_FORGIVE_RATIO	10		/* forgive cards with enough successes/failures */
+	unsigned int		failures;	/* number of recent request failures */
+	unsigned int		successes;	/* successful requests since 1st recorded failure  */
 };
 
 /*
@@ -488,8 +490,7 @@ static inline void __maybe_unused remove_quirk(struct mmc_card *card, int data)
 #define mmc_card_clr_doing_bkops(c)	((c)->state &= ~MMC_STATE_DOING_BKOPS)
 #define mmc_card_set_need_bkops(c)	((c)->state |= MMC_STATE_NEED_BKOPS)
 #define mmc_card_clr_need_bkops(c)	((c)->state &= ~MMC_STATE_NEED_BKOPS)
-#define mmc_card_recoverable(c) ((c) && (c)->host && \
-				!((c)->host->caps & MMC_CAP_NONREMOVABLE))
+
 /*
  * Quirk add/remove for MMC products.
  */
