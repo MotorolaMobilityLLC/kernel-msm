@@ -1208,7 +1208,7 @@ VOS_STATUS vos_nv_open(void)
         }
 
         VOS_TRACE(VOS_MODULE_ID_VOSS,  VOS_TRACE_LEVEL_INFO,
-                  "NV_2: readBufferSize %zu, EFSV2DefaultSize %zu",
+                  "NV_2: readBufferSize %u, EFSV2DefaultSize %zu",
                   nvReadBufSize, sizeof(nvEFSTableV2_t));
 
         /* From here, NV2 will be stored into NV3 structure */
