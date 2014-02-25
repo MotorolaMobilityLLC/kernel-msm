@@ -490,6 +490,10 @@ struct mmc_host {
 	 */
 	bool			card_clock_off;
 	bool			wakeup_on_idle;
+
+	unsigned long long	requests;	/* cumulative number of requests */
+	unsigned long long	request_errors;	/* cumulative number of request errors */
+
 	unsigned long		private[0] ____cacheline_aligned;
 };
 
