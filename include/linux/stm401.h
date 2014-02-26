@@ -111,6 +111,12 @@
 		_IOR(STM401_IOCTL_BASE, 44, char*)
 #define STM401_IOCTL_GET_AOD_INSTRUMENTATION_REG \
 		_IOR(STM401_IOCTL_BASE, 45, char*)
+#define STM401_IOCTL_WRITE_REG \
+		_IOR(STM401_IOCTL_BASE, 46, char*)
+#define STM401_IOCTL_READ_REG \
+		_IOR(STM401_IOCTL_BASE, 47, char*)
+#define STM401_IOCTL_SET_STEP_COUNTER_DELAY	\
+		_IOW(STM401_IOCTL_BASE, 48,  unsigned short)
 
 #define FW_VERSION_SIZE 12
 #define STM401_CONTROL_REG_SIZE 200
@@ -132,6 +138,8 @@
 #define M_ECOMPASS		0x0008
 #define M_TEMPERATURE		0x0010
 #define M_ALS			0x0020
+#define M_STEP_DETECTOR	0x0040
+#define M_STEP_COUNTER		0x0080
 
 #define M_LIN_ACCEL		0x0100
 #define M_QUATERNION		0x0200
@@ -140,6 +148,8 @@
 #define M_DISP_BRIGHTNESS	0x1000
 #define M_IR_GESTURE           0x2000
 #define M_IR_RAW               0x4000
+#define M_UNCALIB_GYRO		0x8000
+#define M_UNCALIB_MAG		0x8000
 
 /* wake sensor status */
 #define M_DOCK			0x0001
@@ -152,6 +162,7 @@
 #define M_STOWED		0x0400
 #define M_CAMERA_ACT		0x0800
 #define M_NFC			0x1000
+#define M_SIM			0x2000
 #define M_LOG_MSG		0x8000
 
 /* algo config mask */
@@ -162,6 +173,9 @@
 #define M_ALGO_STOWED           0x0020
 #define M_ALGO_ACCUM_MODALITY   0x0040
 #define M_ALGO_ACCUM_MVMT       0x0080
+
+/* generic interrupt mask */
+#define M_GENERIC_INTRPT        0x0080
 
 /* algo index */
 #define STM401_IDX_MODALITY        0
@@ -217,7 +231,13 @@ enum STM401_data_types {
 	DT_ACCUM_MVMT,
 	DT_IR_GESTURE,
 	DT_IR_RAW,
-	DT_RESET
+	DT_SIM,
+	DT_RESET,
+	DT_GENERIC_INT,
+	DT_STEP_COUNTER,
+	DT_STEP_DETECTOR,
+	DT_UNCALIB_GYRO,
+	DT_UNCALIB_MAG
 };
 
 enum {
@@ -287,6 +307,7 @@ struct stm_response {
 
 #define ALGO_CONFIG                     0x26
 #define ALGO_INT_STATUS                 0x27
+#define GENERIC_INT_STATUS              0x28
 
 #define MOTION_DATA                     0x2D
 
@@ -294,6 +315,7 @@ struct stm_response {
 
 #define LUX_TABLE_VALUES                0x34
 #define BRIGHTNESS_TABLE_VALUES         0x35
+#define STEP_COUNTER_UPDATE_RATE        0x36
 
 #define INTERRUPT_MASK                  0x37
 #define WAKESENSOR_STATUS               0x39
@@ -302,12 +324,17 @@ struct stm_response {
 #define ACCEL_X                         0x3B
 #define LIN_ACCEL_X                     0x3C
 #define GRAVITY_X                       0x3D
+#define STEP_COUNTER			0X3E
 
 #define DOCK_DATA                       0x3F
 
 #define TEMPERATURE_DATA                0x41
 
 #define GYRO_X                          0x43
+#define UNCALIB_GYRO_X			0x45
+#define UNCALIB_MAG_X			0x46
+
+#define STEP_DETECTOR			0X47
 
 #define MAG_CAL                         0x48
 #define MAG_HX                          0x49
@@ -316,6 +343,7 @@ struct stm_response {
 #define FLAT_DATA                       0x4B
 #define CAMERA                          0x4C
 #define NFC                             0x4D
+#define SIM                             0x4E
 
 #define ALGO_CFG_ACCUM_MODALITY         0x5D
 #define ALGO_REQ_ACCUM_MODALITY         0x60
@@ -360,6 +388,8 @@ struct stm_response {
 
 #define AOD_WAKEUP_REASON_ESD		4
 
+#define STM401_MAX_GENERIC_DATA		512
+
 #define ESR_SIZE			32
 
 #define STM401_RESET_DELAY		400
@@ -392,12 +422,18 @@ struct stm_response {
 #define MAG_X		0
 #define MAG_Y		2
 #define MAG_Z		4
+#define MAG_UNCALIB_X   6
+#define MAG_UNCALIB_Y   8
+#define MAG_UNCALIB_Z   10
 #define ORIENT_X	6
 #define ORIENT_Y	8
 #define ORIENT_Z	10
 #define GYRO_RD_X	0
 #define GYRO_RD_Y	2
 #define GYRO_RD_Z	4
+#define GYRO_UNCALIB_X	6
+#define GYRO_UNCALIB_Y	8
+#define GYRO_UNCALIB_Z	10
 #define ALS_VALUE	0
 #define TEMP_VALUE	0
 #define PRESSURE_VALUE	0
@@ -407,6 +443,12 @@ struct stm_response {
 #define CAMERA_VALUE	0
 #define IR_GESTURE_EVENT    0
 #define IR_GESTURE_ID       1
+#define STEP8_DATA	0
+#define STEP16_DATA	2
+#define STEP32_DATA	4
+#define STEP64_DATA	6
+#define SIM_DATA	0
+#define STEP_DETECT	0
 
 /* The following macros are intended to be called with the stm IRQ handlers */
 /* only and refer to local variables in those functions. */
@@ -546,12 +588,14 @@ extern unsigned short stm401_g_acc_delay;
 extern unsigned short stm401_g_mag_delay;
 extern unsigned short stm401_g_gyro_delay;
 extern unsigned short stm401_g_baro_delay;
+extern unsigned short stm401_g_step_counter_delay;
 extern unsigned short stm401_g_nonwake_sensor_state;
 extern unsigned short stm401_g_algo_state;
 extern unsigned char stm401_g_motion_dur;
 extern unsigned char stm401_g_zmotion_dur;
 extern unsigned char stm401_g_control_reg[STM401_CONTROL_REG_SIZE];
 extern unsigned char stm401_g_mag_cal[STM401_MAG_CAL_SIZE];
+extern unsigned short stm401_g_control_reg_restore;
 
 extern unsigned char stm401_cmdbuff[];
 extern unsigned char stm401_readbuff[];
