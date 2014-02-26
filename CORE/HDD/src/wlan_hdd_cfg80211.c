@@ -4813,6 +4813,7 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     hdd_scaninfo_t *pScanInfo = &pHddCtx->scan_info;
     struct cfg80211_scan_request *req = NULL;
     int ret = 0;
+    bool aborted = false;
     long waitRet = 0;
 
     ENTER();
@@ -4909,7 +4910,11 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
      * cfg80211_scan_done informing NL80211 about completion
      * of scanning
      */
-    cfg80211_scan_done(req, false);
+    if (status == eCSR_SCAN_ABORT || status == eCSR_SCAN_FAILURE)
+    {
+         aborted = true;
+    }
+    cfg80211_scan_done(req, aborted);
     complete(&pScanInfo->abortscan_event_var);
 
 allow_suspend:
@@ -6511,7 +6516,6 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
     int status;
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-    long ret;
 
     status = wlan_hdd_validate_context(pHddCtx);
 
@@ -6537,18 +6541,25 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
                __func__, (int)status );
         return -EINVAL;
     }
-    ret = wait_for_completion_interruptible_timeout(
+    status = wait_for_completion_interruptible_timeout(
                 &pAdapter->disconnect_comp_var,
                 msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
-    if (ret <= 0)
+    if (!status)
     {
         hddLog(VOS_TRACE_LEVEL_ERROR,
-               FL("wait on disconnect_comp_var failed %ld"), ret);
+              "%s: Failed to disconnect, timed out", __func__);
+        return -ETIMEDOUT;
+    }
+    else if (status == -ERESTARTSYS)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+               "%s: Failed to disconnect, wait interrupted", __func__);
+        return status;
     }
     /*stop tx queues*/
     netif_tx_disable(pAdapter->dev);
     netif_carrier_off(pAdapter->dev);
-    return status;
+    return 0;
 }
 
 
