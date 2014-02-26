@@ -65,13 +65,6 @@ static struct gpiomux_setting hap_lvl_shft_suspended_config = {
 	.pull = GPIOMUX_PULL_DOWN,
 };
 
-static struct gpiomux_setting gpio_epm_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv  = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_HIGH,
-};
-
 static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
 	{
 		.gpio = 48,
@@ -1321,15 +1314,6 @@ static struct msm_gpiomux_config msm_qca1530_liquid_configs[] __initdata = {
 	},
 };
 
-static struct msm_gpiomux_config msm_epm_configs[] __initdata = {
-	{
-		.gpio      = 92,		/* EPM enable */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_epm_config,
-		},
-	},
-};
-
 static struct gpiomux_setting c55_i2s_act_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
@@ -1463,7 +1447,7 @@ void __init apq8084_moto_init_gpiomux(void)
 		msm_gpiomux_install(msm_sensor_configs,
 				ARRAY_SIZE(msm_sensor_configs));
 	msm_gpiomux_install(msm_pcie_configs, ARRAY_SIZE(msm_pcie_configs));
-	msm_gpiomux_install(msm_epm_configs, ARRAY_SIZE(msm_epm_configs));
+
 	msm_gpiomux_install(bcm2079x_configs, ARRAY_SIZE(bcm2079x_configs));
 
 	msm_gpiomux_install(stm401_configs, ARRAY_SIZE(stm401_configs));
