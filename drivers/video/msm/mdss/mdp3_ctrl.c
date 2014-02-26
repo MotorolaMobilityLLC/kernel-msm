@@ -1798,6 +1798,18 @@ int mdp3_ctrl_init(struct msm_fb_data_type *mfd)
 	pr_debug("vsync kobject_uevent(KOBJ_ADD)\n");
 
 	if (mdp3_get_cont_spash_en()) {
+		/*
+		 * Before DMA init, assume DMA source configs are same with
+		 * framebuffer settings to avoid screen flicker caused by
+		 * DMA re-configuration while calling mdp3_overlay_set() for
+		 * first time during booting stage.
+		 */
+		if (mdp3_session->dma->dma_sel == MDP3_DMA_P) {
+			mdp3_session->dma->source_config.format =
+				mdp3_ctrl_get_source_format(mfd->fb_imgType);
+			mdp3_session->dma->source_config.stride  =
+						mfd->fbi->fix.line_length;
+		}
 		mdp3_session->clk_on = 1;
 		mdp3_ctrl_notifier_register(mdp3_session,
 			&mdp3_session->mfd->mdp_sync_pt_data.notifier);
