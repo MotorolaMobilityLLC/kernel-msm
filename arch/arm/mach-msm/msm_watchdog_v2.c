@@ -423,6 +423,7 @@ static irqreturn_t wdog_ppi_bark(int irq, void *dev_id)
 
 #define TZBSP_DUMP_CTX_MAGIC		0x44434151
 #define TZBSP_DUMP_CTX_VERSION2		2
+#define TZBSP_DUMP_CTX_VERSION3		3
 #define TZBSP_DUMP_CTX_VERSION4		4
 
 #define MSM_WDT_CTX_SIG			0x77647473
@@ -655,7 +656,7 @@ static void msm_wdt_show_status(u32 sc_status, const char *label)
 		MSMWDTD("%s: probably didn't finish dump.\n", label);
 		return;
 	}
-	MSMWDTD("%s: ");
+	MSMWDTD("%s: ", label);
 	if (sc_status & TZBSP_SC_STATUS_DBI) {
 		MSMWDTD("SDI: Secure watchdog bite. ");
 	} else {
@@ -697,8 +698,8 @@ static void msm_wdt_show_regs(struct tzbsp_cpu_ctx_s *cpu_ctx, int sec,
 	if (!sec) {
 		if ((cpu_ctx->wdog_pc >= (u32)_stext) &&
 				(cpu_ctx->wdog_pc <= (u32)_etext))
-			MSMWDTD("PC is at %pS <%08x>\n", cpu_ctx->wdog_pc,
-					cpu_ctx->wdog_pc);
+			MSMWDTD("PC is at %pS <%08x>\n",
+				(void *)cpu_ctx->wdog_pc, cpu_ctx->wdog_pc);
 		else
 			MSMWDTD("PC is at %08x\n", cpu_ctx->wdog_pc);
 	}
@@ -818,39 +819,93 @@ static void msm_wdt_unwind_backtrace(struct tzbsp_mon_cpu_ctx_s *regs,
 	}
 }
 
-static int get_tzbsp_core_count(struct msm_wdt_ctx *ctx)
+static int get_tzbsp_core_count(struct scm_buf *scm_buf, unsigned long phys)
 {
 	int ret = get_core_count();
 
 	if (cpu_is_msm8610()) {
-		struct scm_buf *scm_buf = &ctx->p1.scm_buf;
-
 		scm_buf->mot_cmd = SCM_OEM_GET_CORE_COUNT;
+		scm_buf->ret_addr_phys = phys + offsetof(struct scm_buf, ret);
 		if (!scm_call(SCM_SVC_OEM, 1, scm_buf,
-				sizeof(*scm_buf), NULL, 0))
+				sizeof(*scm_buf), NULL, 0)) {
 			ret = scm_buf->ret;
-		else
+		} else {
 			pr_err("Failed to get tzbsp cpu count for msm8610.\n");
+			ret = -EINVAL;
+		}
 	}
 	return ret;
 }
 
-static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
+static int msm_wdt_tzbsp_ctx_header_check(struct msm_wdt_ctx *ctx,
+						unsigned long phys)
 {
-	int i;
-	unsigned long stack_tmp = 0, orr = 0;
+	const int cpu_count = get_core_count();
+	int tzbsp_cpu_count;
+	struct tzbsp_dump_buf_s0 *tzctx = &ctx->p1.tzbsp.s0;
+
+	if (tzctx->magic != TZBSP_DUMP_CTX_MAGIC)
+		goto tzbsp_ctx_invalid;
+
+	switch (tzctx->version) {
+	case TZBSP_DUMP_CTX_VERSION2:
+	case TZBSP_DUMP_CTX_VERSION3:
+	case TZBSP_DUMP_CTX_VERSION4:
+		break;
+	default:
+		goto tzbsp_ctx_invalid;
+	}
+
+	tzbsp_cpu_count = get_tzbsp_core_count(&ctx->p1.scm_buf,
+			phys + offsetof(struct msm_wdt_ctx, p1.scm_buf));
+
+	if (tzbsp_cpu_count < 0) {
+		if ((tzctx->cpu_count != cpu_count) &&
+				(tzctx->cpu_count > NR_CPUS_MAX))
+			goto tzbsp_ctx_invalid;
+	} else if ((tzctx->cpu_count != tzbsp_cpu_count)) {
+		goto tzbsp_ctx_invalid;
+	}
+	return 0;
+
+tzbsp_ctx_invalid:
+	if (bi_powerup_reason() == PU_REASON_WDOG_AP_RESET) {
+		struct tzbsp_dump_buf_s0 *start = &ctx->p1.tzbsp.s0 + 1;
+		union tzbsp_dump_buf_s *end = &ctx->p1.tzbsp + 1;
+		u32 *tmp;
+
+		MSMWDTD("msm_wdt_ctx: tzbsp dump buffer mismatch.\n");
+		MSMWDTD("Expected: magic 0x%08x, cpu_count %d, ",
+			TZBSP_DUMP_CTX_MAGIC, (tzbsp_cpu_count < 0) ?
+			cpu_count : tzbsp_cpu_count);
+		MSMWDTD("version %d, %d, or %d\n", TZBSP_DUMP_CTX_VERSION2,
+			TZBSP_DUMP_CTX_VERSION3, TZBSP_DUMP_CTX_VERSION4);
+		MSMWDTD("Found:    magic 0x%08x, cpu_count %d, version %d\n",
+			tzctx->magic, tzctx->cpu_count, tzctx->version);
+
+		for (tmp = (u32 *)start; tmp < (u32 *)end; tmp++)
+			if (*tmp)
+				break;
+		if (tmp >= (u32 *)end)
+			MSMWDTD("\n*** Might be Secure watchdog bite ***\n\n");
+		else
+			MSMWDTD("*** Likely Bad Dump ***\n");
+	}
+	return -EINVAL;
+}
+
+static void msm_wdt_tzbsp_ctx_dump(struct msm_wdt_ctx *ctx)
+{
 	u32 *sc_status, *wdt_sts;
 	struct tzbsp_cpu_ctx_s *sc_ns;
 	char label[64];
-	u8 (*stack)[THREAD_SIZE];
+	const int tzctx_cpu_count = ctx->p1.tzbsp.s0.cpu_count;
 	const int cpu_count = get_core_count();
-	const int tzbsp_cpu_count = get_tzbsp_core_count(ctx);
-	struct msm_wdt_pcp *pcp;
-	struct task_struct *task;
+	int i;
 
-	switch (tzbsp_cpu_count) {
+	switch (tzctx_cpu_count) {
 	case NR_CPUS_2:
-		/* Common between v2 and v4. Same for NR_CPUS_4. */
+		/* Common for v2, v3 and v4. */
 		sc_status = ctx->p1.tzbsp.s2v2.sc_status;
 		sc_ns = ctx->p1.tzbsp.s2v2.sc_ns;
 		wdt_sts = ctx->p1.tzbsp.s2v2.wdt_sts;
@@ -862,45 +917,7 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 		break;
 	default:
 		MSMWDTD("msm_wdt_ctx: unsupported cpu_count %d\n",
-				tzbsp_cpu_count);
-		return;
-	}
-	for (i = 0; i < tzbsp_cpu_count; i++) {
-		orr |= wdt_sts[i];
-		orr |= sc_ns[i].saved_ctx.mon_lr;
-	}
-	if (!orr) {
-		u32 *tzctx;
-		if (bi_powerup_reason() != PU_REASON_WDOG_AP_RESET)
-			return;
-		for (tzctx = sc_status; tzctx < (u32 *)ctx->p1.spare; tzctx++) {
-			orr |= *tzctx;
-			if (orr)
-				break;
-		}
-		if (!orr) {
-			MSMWDTD("\n*** Might be Secure watchdog bite ***\n");
-			return;
-		} else {
-			MSMWDTD("*** Likely Bad Dump ***\n");
-		}
-	}
-	if ((ctx->p1.tzbsp.s0.magic != TZBSP_DUMP_CTX_MAGIC)
-		|| ((ctx->p1.tzbsp.s0.version != TZBSP_DUMP_CTX_VERSION2) &&
-			(ctx->p1.tzbsp.s0.version != TZBSP_DUMP_CTX_VERSION4))
-		|| ((ctx->p1.tzbsp.s0.cpu_count != tzbsp_cpu_count) &&
-			(sc_status[0] & TZBSP_SC_STATUS_DBI) &&
-			(ctx->p1.tzbsp.s0.cpu_count != cpu_count))) {
-		MSMWDTD("msm_wdt_ctx: tzbsp dump buffer mismatch.\n");
-		MSMWDTD("Expected: magic 0x%08x, cpu_count %d, ",
-				TZBSP_DUMP_CTX_MAGIC,
-				(sc_status[0] & TZBSP_SC_STATUS_DBI) ?
-					cpu_count : tzbsp_cpu_count);
-		MSMWDTD("version %d or %d\n", TZBSP_DUMP_CTX_VERSION2,
-				TZBSP_DUMP_CTX_VERSION4);
-		MSMWDTD("Found:    magic 0x%08x, cpu_count %d, version %d\n",
-			ctx->p1.tzbsp.s0.magic, ctx->p1.tzbsp.s0.cpu_count,
-			ctx->p1.tzbsp.s0.version);
+			tzctx_cpu_count);
 		return;
 	}
 	MSMWDTD("sc_status: ");
@@ -919,7 +936,11 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 		snprintf(label, sizeof(label) - 1, "CPU%d nsec", i);
 		msm_wdt_show_regs(&sc_ns[i], 0, label);
 	}
-	msm_wdt_show_regs(&sc_ns[cpu_count], 1, "sec");
+	msm_wdt_show_regs(&sc_ns[tzctx_cpu_count], 1, "sec");
+}
+
+static int msm_wdt_lnx_ctx_header_check(struct msm_wdt_ctx *ctx)
+{
 	if ((ctx->p1.cinfo.sig != MSM_WDT_CTX_SIG)
 		|| (ctx->p1.cinfo.rev_tz != MSM_WDT_CTX_REV)
 		|| (ctx->p1.cinfo.size_tz != MSM_WDT_CTX_SIZE)) {
@@ -929,9 +950,36 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 		MSMWDTD("Found:    sig 0x%08x, ver 0x%08x size 0x%08x\n",
 			ctx->p1.cinfo.sig, ctx->p1.cinfo.rev_tz,
 			ctx->p1.cinfo.size_tz);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static void msm_wdt_lnx_ctx_dump(struct msm_wdt_ctx *ctx)
+{
+	unsigned long stack_tmp = 0;
+	struct msm_wdt_pcp *pcp;
+	struct task_struct *task;
+	u8 (*stack)[THREAD_SIZE];
+	struct tzbsp_cpu_ctx_s *sc_ns;
+	const int tzctx_cpu_count = ctx->p1.tzbsp.s0.cpu_count;
+	const int cpu_count = get_core_count();
+	int i;
+
+	switch (tzctx_cpu_count) {
+	case NR_CPUS_2:
+		/* Common for v2, v3 and v4. */
+		sc_ns = ctx->p1.tzbsp.s2v2.sc_ns;
+		break;
+	case NR_CPUS_4:
+		sc_ns = ctx->p1.tzbsp.s4v2.sc_ns;
+		break;
+	default:
+		MSMWDTD("msm_wdt_ctx: unsupported cpu_count %d\n",
+			tzctx_cpu_count);
 		return;
 	}
-	/* now dump customized stuff */
+
 	MSMWDTD("\n");
 	MSMWDTD("ret 0x%08x\n", ctx->p1.cinfo.ret);
 	MSMWDTD("\n");
@@ -977,6 +1025,15 @@ static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 	}
 	if (stack_tmp)
 		free_pages(stack_tmp, THREAD_SIZE_ORDER);
+}
+
+static void msm_wdt_ctx_print(struct msm_wdt_ctx *ctx, unsigned long phys)
+{
+	if (!msm_wdt_tzbsp_ctx_header_check(ctx, phys)) {
+		msm_wdt_tzbsp_ctx_dump(ctx);
+		if (!msm_wdt_lnx_ctx_header_check(ctx))
+			msm_wdt_lnx_ctx_dump(ctx);
+	}
 }
 
 static void msm_watchdog_ctx_lnx(struct msm_wdt_lnx_info *lnx)
@@ -1037,9 +1094,7 @@ static void msm_watchdog_alloc_buf(struct msm_watchdog_data *wdog_dd)
 		dev_err(wdog_dd->dev, "cannot remap buffer: %08lX\n", phys);
 		return;
 	}
-	ctx->p1.scm_buf.ret_addr_phys = phys +
-			offsetof(struct msm_wdt_ctx, p1.scm_buf.ret);
-	msm_wdt_ctx_print(ctx);
+	msm_wdt_ctx_print(ctx, phys);
 	msm_wdt_ctx_reset(ctx);
 	iounmap(ctx);
 	return;
