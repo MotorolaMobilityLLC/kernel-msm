@@ -133,7 +133,7 @@ int stm401_i2c_write_read_no_reset(struct stm401_data *ps_stm401,
 	do {
 		err = i2c_transfer(ps_stm401->client->adapter, msgs, 2);
 		if (err != 2)
-			msleep_interruptible(stm401_i2c_retry_delay);
+			msleep(stm401_i2c_retry_delay);
 	} while ((err != 2) && (++tries < I2C_RETRIES));
 	if (err != 2) {
 		dev_err(&ps_stm401->client->dev, "Read transfer error\n");
@@ -164,7 +164,7 @@ int stm401_i2c_read_no_reset(struct stm401_data *ps_stm401,
 	do {
 		err = i2c_master_recv(ps_stm401->client, buf, len);
 		if (err < 0)
-			msleep_interruptible(stm401_i2c_retry_delay);
+			msleep(stm401_i2c_retry_delay);
 	} while ((err < 0) && (++tries < I2C_RETRIES));
 	if (err < 0) {
 		dev_err(&ps_stm401->client->dev, "i2c read transfer error\n");
@@ -192,7 +192,7 @@ int stm401_i2c_write_no_reset(struct stm401_data *ps_stm401,
 	do {
 		err = i2c_master_send(ps_stm401->client, buf, len);
 		if (err < 0)
-			msleep_interruptible(stm401_i2c_retry_delay);
+			msleep(stm401_i2c_retry_delay);
 	} while ((err < 0) && (++tries < I2C_RETRIES));
 
 	if (err < 0) {
