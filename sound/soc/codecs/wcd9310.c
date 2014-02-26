@@ -33,6 +33,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/kernel.h>
 #include <linux/gpio.h>
+#include <linux/emu-accy.h>
 #include <linux/irq.h>
 #include <linux/wakelock.h>
 #include <linux/suspend.h>
@@ -135,7 +136,7 @@ static int tabla_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event);
 static int tabla_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event);
-
+static int emu_analog_antipop;
 
 enum tabla_bandgap_type {
 	TABLA_BANDGAP_OFF = 0,
@@ -788,6 +789,38 @@ static int tabla_put_iir_band_audio_mixer(
 	return 0;
 }
 
+static int snd_soc_get_emu_antipop(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = emu_analog_antipop;
+	return 0;
+}
+
+static int snd_soc_put_emu_antipop(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned short val = ucontrol->value.integer.value[0];
+
+	pr_debug("%s: old value %u; new value %u\n", __func__,
+			emu_analog_antipop, val);
+
+	if (val > 1)
+		return -EINVAL;
+	else if (val == emu_analog_antipop)
+		return 0;
+	emu_analog_antipop = val;
+
+	if (val == 1) {
+		set_mux_ctrl_mode_for_audio(MUXMODE_AUDIO);
+		pr_debug("%s SET EMU TO MUXMODE_AUDIO\n", __func__);
+	} else {
+		set_mux_ctrl_mode_for_audio(MUXMODE_USB);
+		pr_debug("%s SET EMU TO MUXMODE_USB\n", __func__);
+	}
+
+	return 0;
+}
+
 static int tabla_compander_gain_offset(
 	struct snd_soc_codec *codec, u32 enable,
 	unsigned int pa_reg, unsigned int vol_reg,
@@ -1334,6 +1367,8 @@ static const struct snd_kcontrol_new tabla_snd_controls[] = {
 				   tabla_get_compander, tabla_set_compander),
 	SOC_SINGLE_EXT("COMP2 Switch", SND_SOC_NOPM, COMPANDER_2, 1, 0,
 				   tabla_get_compander, tabla_set_compander),
+	SOC_SINGLE_BOOL_EXT("EMU Antipop", 0, snd_soc_get_emu_antipop,
+					snd_soc_put_emu_antipop),
 };
 
 static const struct snd_kcontrol_new tabla_1_x_snd_controls[] = {
@@ -8873,6 +8908,7 @@ static int __init tabla_codec_init(void)
 		rtn = platform_driver_register(&tabla1x_codec_driver);
 		if (rtn != 0)
 			platform_driver_unregister(&tabla_codec_driver);
+		emu_analog_antipop = 0;
 	}
 	return rtn;
 }
