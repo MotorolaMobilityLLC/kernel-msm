@@ -204,6 +204,34 @@ tANI_U8 peIsAnySessionActive(tpAniSirGlobal pMac)
 }
 
 /*--------------------------------------------------------------------------
+  \brief pePrintActiveSession() - print all the active pesession present .
+
+  This function print all the active pesession present
+
+  \param pMac                   - pointer to global adapter context
+
+  \sa
+  --------------------------------------------------------------------------*/
+
+
+void pePrintActiveSession(tpAniSirGlobal pMac)
+{
+    tANI_U8 i;
+    for(i =0; i < pMac->lim.maxBssId; i++)
+    {
+        if(pMac->lim.gpSession[i].valid == TRUE)
+        {
+            limLog(pMac, LOGE, FL("Active sessionId: %d BSID: "MAC_ADDRESS_STR
+                   "opmode = %d bssIdx = %d"), i,
+                   MAC_ADDR_ARRAY(pMac->lim.gpSession[i].bssId),
+                   pMac->lim.gpSession[i].operMode,
+                   pMac->lim.gpSession[i].bssIdx);
+        }
+    }
+    return;
+}
+
+/*--------------------------------------------------------------------------
   \brief isLimSessionOffChannel() - Determines if the there is any other off channel 
                                     session.
 

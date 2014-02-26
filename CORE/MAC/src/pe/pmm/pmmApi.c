@@ -1451,7 +1451,17 @@ void pmmEnterImpsRequestHandler (tpAniSirGlobal pMac)
     /*Returns True even single active session present */
     if(peIsAnySessionActive(pMac))
     {
+        /* Print active pesession and tracedump once in every 16
+         * continous error.
+         */
+        if (!(pMac->pmc.ImpsReqFailCnt & 0xF))
+        {
+            pePrintActiveSession(pMac);
+            vosTraceDumpAll(pMac,0,0,100,0);
+        }
         resultCode = eSIR_SME_INVALID_STATE;
+        pmmLog(pMac, LOGE, FL("Session is active go to failure resultCode = "
+               "eSIR_SME_INVALID_STATE (%d)"),resultCode);
         goto failure;
     }
 

@@ -128,6 +128,22 @@ tpPESession peGetValidPowerSaveSession(tpAniSirGlobal pMac);
   --------------------------------------------------------------------------*/
 
 tANI_U8 peIsAnySessionActive(tpAniSirGlobal pMac);
+
+/* --------------------------------------------------------------------------*/
+
+
+/*--------------------------------------------------------------------------
+  \brief pePrintActiveSession() - print all the active pesession present .
+
+  This function print all the active pesession present
+
+  \param pMac                   - pointer to global adapter context
+
+  \sa
+  --------------------------------------------------------------------------*/
+
+void pePrintActiveSession(tpAniSirGlobal pMac);
+
 /* --------------------------------------------------------------------------*/
 
 

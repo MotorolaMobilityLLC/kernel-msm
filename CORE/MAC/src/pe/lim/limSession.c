@@ -187,6 +187,10 @@ tpPESession peCreateSession(tpAniSirGlobal pMac, tANI_U8 *bssid , tANI_U8* sessi
 #endif
             pMac->lim.gpSession[i].fWaitForProbeRsp = 0;
             pMac->lim.gpSession[i].fIgnoreCapsChange = 0;
+            limLog(pMac, LOG1, FL("Create a new sessionId (%d) with BSSID: "
+               MAC_ADDRESS_STR " Max No. of STA %d"),
+               pMac->lim.gpSession[i].peSessionId,
+               MAC_ADDR_ARRAY(bssid), numSta);
             return(&pMac->lim.gpSession[i]);
         }
     }
@@ -341,7 +345,10 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
     tANI_U16 n;
     TX_TIMER *timer_ptr;
 
-    limLog(pMac, LOGW, FL("Trying to delete a session %d.\n "), psessionEntry->peSessionId);
+    limLog(pMac, LOGW, FL("Trying to delete a session %d Opmode %d BssIdx %d"
+           " BSSID: " MAC_ADDRESS_STR), psessionEntry->peSessionId,
+           psessionEntry->operMode, psessionEntry->bssIdx,
+           MAC_ADDR_ARRAY(psessionEntry->bssId));
 
     for (n = 0; n < pMac->lim.maxStation; n++)
     {
