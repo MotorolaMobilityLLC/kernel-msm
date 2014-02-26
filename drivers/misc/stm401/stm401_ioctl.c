@@ -24,6 +24,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/fs.h>
+#include <linux/gfp.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
@@ -51,6 +52,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	static int brightness_table_loaded;
 	int err = -ENOTTY;
 	unsigned int addr = 0;
+	unsigned int data_size = 0;
+	unsigned char rw_bytes[4];
 	struct stm401_data *ps_stm401 = file->private_data;
 	unsigned char byte;
 	unsigned char bytes[2];
@@ -164,6 +167,20 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		stm401_cmdbuff[1] = delay;
 		stm401_g_gyro_delay = delay;
 		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 2);
+		break;
+	case STM401_IOCTL_SET_STEP_COUNTER_DELAY:
+		delay = 0;
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			dev_dbg(&ps_stm401->client->dev,
+				"Copy step counter delay returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		stm401_cmdbuff[0] = STEP_COUNTER_UPDATE_RATE;
+		stm401_cmdbuff[1] = (delay>>8);
+		stm401_cmdbuff[2] = delay;
+		stm401_g_step_counter_delay = delay;
+		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 3);
 		break;
 	case STM401_IOCTL_SET_PRES_DELAY:
 		dev_dbg(&ps_stm401->client->dev,
@@ -415,6 +432,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
+		stm401_g_control_reg_restore = 1;
 		memcpy(stm401_g_control_reg, &stm401_cmdbuff[1],
 			STM401_CONTROL_REG_SIZE);
 
@@ -547,6 +565,81 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			stm401_algo_info[addr].evt_size))
 			err = -EFAULT;
 		break;
+		case STM401_IOCTL_WRITE_REG:
+			dev_dbg(&ps_stm401->client->dev,
+				"STM401_IOCTL_WRITE_REG");
+
+			/* copy addr and size */
+			if (copy_from_user(&rw_bytes, argp, sizeof(rw_bytes))) {
+				dev_err(&ps_stm401->client->dev,
+					"Write Reg, copy bytes returned error\n");
+				err = -EFAULT;
+				break;
+			}
+			addr = (rw_bytes[0] << 8) | rw_bytes[1];
+			data_size = (rw_bytes[2] << 8) | rw_bytes[3];
+
+			/* fail if the write size is too large */
+			if (data_size > 512 - 1) {
+				err = -EFAULT;
+				dev_err(&ps_stm401->client->dev,
+					"Write Reg, data_size > %d\n",
+					512 - 1);
+				break;
+			}
+
+			/* copy in the data */
+			if (copy_from_user(&stm401_cmdbuff[1], argp +
+				sizeof(rw_bytes), data_size)) {
+				dev_err(&ps_stm401->client->dev,
+					"Write Reg copy from user returned error\n");
+				err = -EFAULT;
+				break;
+			}
+
+			/* setup the address */
+			stm401_cmdbuff[0] = addr;
+
+			/* + 1 for the address in [0] */
+			err = stm401_i2c_write(ps_stm401, stm401_cmdbuff,
+				data_size + 1);
+
+			if (err < 0)
+				dev_err(&stm401_misc_data->client->dev,
+					"Write Reg unable to write to direct reg %d\n",
+					err);
+			break;
+		case STM401_IOCTL_READ_REG:
+			dev_dbg(&ps_stm401->client->dev,
+				"STM401_IOCTL_READ_REG");
+
+			/* copy addr and size */
+			if (copy_from_user(&rw_bytes, argp, sizeof(rw_bytes))) {
+				dev_err(&ps_stm401->client->dev,
+				    "Read Reg, copy bytes returned error\n");
+				err = -EFAULT;
+				break;
+			}
+			addr = (rw_bytes[0] << 8) | rw_bytes[1];
+			data_size = (rw_bytes[2] << 8) | rw_bytes[3];
+
+			/* setup the address */
+			stm401_cmdbuff[0] = addr;
+			err = stm401_i2c_write_read(ps_stm401,
+				stm401_cmdbuff, 1, data_size);
+
+			if (err < 0)
+				dev_err(&stm401_misc_data->client->dev,
+					"Read Reg, unable to read from direct reg %d\n",
+					err);
+
+			if (copy_to_user(argp, stm401_readbuff, data_size)) {
+				dev_err(&ps_stm401->client->dev,
+					"Read Reg error copying to user\n");
+				err = -EFAULT;
+				break;
+			}
+			break;
 	/* No default here since previous switch could have
 	   handled the command and cannot over write that */
 	}
