@@ -203,40 +203,6 @@ int stm401_boot_flash_erase(void)
 	}
 
 	dev_dbg(&stm401_misc_data->client->dev,
-		"Sending Write Unprotect command\n");
-
-	err = stm401_boot_cmd_write(stm401_misc_data, WRITE_UNPROTECT);
-	if (err < 0)
-		goto EXIT;
-
-	err = stm401_boot_i2c_read(stm401_misc_data,
-		stm401_readbuff, 1);
-	if (err < 0)
-		goto EXIT;
-	if (stm401_readbuff[0] != ACK_BYTE) {
-		dev_err(&stm401_misc_data->client->dev,
-			"Error sending WRITE UNPROTECT command 0x%02x\n",
-			stm401_readbuff[0]);
-		err = -EIO;
-		goto EXIT;
-	}
-
-	err = stm401_boot_i2c_read(stm401_misc_data,
-		stm401_readbuff, 1);
-	if (err < 0)
-		goto EXIT;
-	if (stm401_readbuff[0] != ACK_BYTE) {
-		dev_err(&stm401_misc_data->client->dev,
-			"Error executing WRITE UNPROTECT command 0x%02x\n",
-			stm401_readbuff[0]);
-		err = -EIO;
-		goto EXIT;
-	}
-
-	/* The STM401 needs time to reboot after the unprotect command */
-	msleep(RESTART_DELAY);
-
-	dev_dbg(&stm401_misc_data->client->dev,
 		"Starting flash erase\n");
 
 	if (stm401_bootloader_ver > OLD_BOOT_VER) {
