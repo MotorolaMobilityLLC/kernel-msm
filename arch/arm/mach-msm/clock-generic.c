@@ -16,8 +16,6 @@
 #include <linux/err.h>
 #include <linux/clk.h>
 #include <linux/io.h>
-#include <linux/sched.h>
-#include <linux/spinlock.h>
 
 #include <mach/clk-provider.h>
 #include <mach/clock-generic.h>
@@ -498,49 +496,9 @@ struct clk_ops clk_ops_ext = {
 
 /* ==================== Mux_div clock ==================== */
 
-struct clk_logger {
-	u64 timestamp;
-	u32 fn;
-	u32 cmd_reg;
-	u32 cfg_reg;
-	u32 rate;
-};
-
-#define BUF_SIZE (50)
-#define FN_SET_RATE (1)
-#define FN_ENABLE (2)
-#define FN_DISABLE (3)
-static struct clk_logger clk_log[BUF_SIZE];
-static u32 buf_index;
-static DEFINE_SPINLOCK(log_lock);
-
-static void log_clk_call(struct clk *c, u32 fn, u32 rate)
-{
-	struct mux_div_clk *md = to_mux_div_clk(c);
-	struct clk_logger *log;
-	unsigned long flags;
-
-	spin_lock_irqsave(&log_lock, flags);
-	log = &clk_log[buf_index];
-
-	log->timestamp = sched_clock();
-	log->fn = fn;
-	log->cmd_reg = readl_relaxed(md->base + md->div_offset - 0x4);
-	log->cfg_reg = readl_relaxed(md->base + md->div_offset);
-	log->rate = rate;
-
-	buf_index++;
-	if (buf_index >= BUF_SIZE)
-		buf_index = 0;
-
-	spin_unlock_irqrestore(&log_lock, flags);
-}
-
 static int mux_div_clk_enable(struct clk *c)
 {
 	struct mux_div_clk *md = to_mux_div_clk(c);
-
-	log_clk_call(c, FN_ENABLE, c->rate);
 
 	if (md->ops->enable)
 		return md->ops->enable(md);
@@ -550,8 +508,6 @@ static int mux_div_clk_enable(struct clk *c)
 static void mux_div_clk_disable(struct clk *c)
 {
 	struct mux_div_clk *md = to_mux_div_clk(c);
-
-	log_clk_call(c, FN_DISABLE, 300000000);
 
 	if (md->ops->disable)
 		return md->ops->disable(md);
@@ -610,11 +566,6 @@ static int __set_src_div(struct mux_div_clk *md, struct clk *parent, u32 div)
 	 * If the clock is disabled, don't change to the new settings until
 	 * the clock is reenabled
 	 */
-
-	/* Calling this procedure with the clock disabled should never happen */
-	WARN(!md->c.count,
-		"ref count is zero! parent will not be switched to gpll0\n");
-
 	if (md->c.count)
 		rc = md->ops->set_src_div(md, src_sel, div);
 	if (!rc) {
@@ -672,8 +623,6 @@ static int mux_div_clk_set_rate(struct clk *c, unsigned long rate)
 	u32 new_div, old_div;
 	int rc;
 
-	log_clk_call(c, FN_SET_RATE, rate);
-
 	rc = safe_parent_init_once(c);
 	if (rc)
 		return rc;
@@ -699,11 +648,8 @@ static int mux_div_clk_set_rate(struct clk *c, unsigned long rate)
 		 */
 		rc = set_src_div(md, old_parent, new_div);
 	}
-	if (rc) {
-		WARN(rc, "error switching to safe_parent freq=%ld\n",
-				md->safe_freq);
+	if (rc)
 		return rc;
-	}
 
 	rc = clk_set_rate(new_parent, new_prate);
 	if (rc) {
@@ -727,20 +673,16 @@ static int mux_div_clk_set_rate(struct clk *c, unsigned long rate)
 	return 0;
 
 err_set_src_div:
-	/* Ensure that warnings are printed out on error cases
-	 * before attempting to repair the error
-	 */
-	WARN(rc, "disabling %s\n", new_parent->dbg_name);
 	/* Not switching to new_parent, so disable it */
 	__clk_post_reparent(c, new_parent, &flags);
 err_pre_reparent:
+	rc = clk_set_rate(old_parent, old_prate);
 	WARN(rc, "%s: error changing parent (%s) rate to %ld\n",
 		c->dbg_name, old_parent->dbg_name, old_prate);
-	rc = clk_set_rate(old_parent, old_prate);
 err_set_rate:
+	rc = set_src_div(md, old_parent, old_div);
 	WARN(rc, "%s: error changing back to original div (%d) and parent (%s)\n",
 		c->dbg_name, old_div, old_parent->dbg_name);
-	rc = set_src_div(md, old_parent, old_div);
 
 	return rc;
 }
