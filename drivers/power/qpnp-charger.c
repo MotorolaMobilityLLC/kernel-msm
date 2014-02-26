@@ -395,6 +395,7 @@ struct qpnp_chg_chip {
 	bool				power_stage_workaround_running;
 	bool				power_stage_workaround_enable;
 	char				shutdown_needed;
+	bool                            use_step_charge;
 	unsigned int			step_charge_mv;
 	unsigned int			step_charge_ma;
 	unsigned int			cutoff_mv;
@@ -2991,6 +2992,9 @@ qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 	if (chip->bat_is_warm)
 		chg_current = min(chg_current, chip->warm_bat_chg_ma);
 
+	if (chip->use_step_charge)
+		chg_current = min(chg_current, chip->step_charge_ma);
+
 	if (chip->therm_lvl_sel != 0 && chip->thermal_mitigation)
 		chg_current = min(chg_current,
 			chip->thermal_mitigation[chip->therm_lvl_sel]);
@@ -3513,12 +3517,13 @@ qpnp_eoc_work(struct work_struct *work)
 			chip->step_charge_mv) {
 			pr_debug("Step Rate used Batt V = %d\n",
 				(get_prop_battery_voltage_now(chip)/1000));
-			qpnp_chg_ibatmax_set(chip, chip->step_charge_ma);
+			chip->use_step_charge = true;
 		} else {
 			pr_debug("Step Rate NOT used Batt V = %d\n",
 				(get_prop_battery_voltage_now(chip)/1000));
-			qpnp_chg_ibatmax_set(chip, chip->max_bat_chg_current);
+			chip->use_step_charge = false;
 		}
+		qpnp_chg_set_appropriate_battery_current(chip);
 	}
 
 	qpnp_chg_charge_en(chip, (!chip->charging_disabled &&
