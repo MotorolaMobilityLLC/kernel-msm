@@ -39,6 +39,7 @@
 };
 
 &mdss_dsi0 {
+	mmi,mipi-d0-sel = <&msmgpio 129 0>;
 	qcom,dsi-pref-prim-pan = <&mot_smd_1080p_cmd_v0>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vdd_disp-supply = <&vdd_disp_vreg>;
