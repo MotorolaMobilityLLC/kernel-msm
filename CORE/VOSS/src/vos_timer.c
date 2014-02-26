@@ -32,9 +32,6 @@
   \brief virtual Operating System Servies (vOS)
 
    Definitions for vOSS Timer services
-<<<<<<< HEAD:CORE/VOSS/src/vos_timer.c
-
->>>>>>> f7413b6... wlan: voss: remove obsolete "INTEGRATED_SOC" featurization:prima/CORE/VOSS/src/vos_timer.c
   ========================================================================*/
 
 /* $Header$ */
