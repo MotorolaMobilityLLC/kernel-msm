@@ -24,6 +24,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/fs.h>
+#include <linux/gfp.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
@@ -62,8 +63,9 @@ irqreturn_t stm401_wake_isr(int irq, void *dev)
 void stm401_irq_wake_work_func(struct work_struct *work)
 {
 	int err;
-	unsigned short irq_status, irq2_status;
-
+	unsigned short irq_status;
+	u32 irq2_status;
+	uint8_t irq3_status;
 	struct stm401_data *ps_stm401 = container_of(work,
 			struct stm401_data, irq_wake_work);
 
@@ -87,6 +89,15 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		goto EXIT;
 	}
 	irq2_status = (stm401_readbuff[IRQ_HI] << 8) | stm401_readbuff[IRQ_LO];
+
+	/* read generic interrupt register */
+	stm401_cmdbuff[0] = GENERIC_INT_STATUS;
+	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 1);
+	if (err < 0) {
+		dev_err(&ps_stm401->client->dev, "Reading from stm failed\n");
+		goto EXIT;
+	}
+	irq3_status = stm401_readbuff[0];
 
 	/* First, check for error messages */
 	if (irq_status & M_LOG_MSG) {
@@ -261,10 +272,28 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 			goto EXIT;
 		}
 		stm401_as_data_buffer_write(ps_stm401, DT_NFC,
-			stm401_readbuff, 1, 0);
+				stm401_readbuff, 1, 0);
 
 		dev_dbg(&ps_stm401->client->dev,
 			"Sending NFC value: %d\n", stm401_readbuff[NFC_VALUE]);
+
+	}
+	if (irq_status & M_SIM) {
+		stm401_cmdbuff[0] = SIM;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev,
+				"Reading sig_motion data from stm failed\n");
+			goto EXIT;
+		}
+		stm401_as_data_buffer_write(ps_stm401, DT_SIM,
+				stm401_readbuff, 2, 0);
+
+		/* This is one shot sensor */
+		stm401_g_wake_sensor_state &= (~M_SIM);
+
+		dev_dbg(&ps_stm401->client->dev, "Sending SIM Value=%d\n",
+					STM16_TO_HOST(SIM_DATA));
 	}
 	if (irq2_status & M_MMOVEME) {
 		unsigned char status;
@@ -361,6 +390,13 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
 			stm401_readbuff, 8);
 		dev_dbg(&ps_stm401->client->dev, "Sending accum mvmt event\n");
+	}
+	if (irq3_status & M_GENERIC_INTRPT) {
+		/* x (data1) : irq3_status */
+		stm401_ms_data_buffer_write(ps_stm401, DT_GENERIC_INT,
+			stm401_readbuff, 1);
+		dev_dbg(&ps_stm401->client->dev,
+			"Sending generic interrupt event:%d\n", irq3_status);
 	}
 EXIT:
 	mutex_unlock(&ps_stm401->lock);
