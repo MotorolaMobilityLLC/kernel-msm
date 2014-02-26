@@ -6537,8 +6537,11 @@ static irqreturn_t tabla_dce_handler(int irq, void *data)
 		mask = tabla_get_button_mask(btn);
 		priv->buttons_pressed |= mask;
 		wcd9xxx_lock_sleep(core);
+		/* Shorten delay from 400ms to 10ms for comparability with */
+		/* Motorola's extention for the HS key events like */
+		/* 2 short HS key press = KEY_MEDIA_NEXT */
 		if (schedule_delayed_work(&priv->mbhc_btn_dwork,
-					  msecs_to_jiffies(400)) == 0) {
+					  msecs_to_jiffies(10)) == 0) {
 			WARN(1, "Button pressed twice without release"
 			     "event\n");
 			wcd9xxx_unlock_sleep(core);
