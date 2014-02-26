@@ -3003,6 +3003,9 @@ qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 	qpnp_chg_ibatmax_set(chip, chg_current);
 }
 
+static int num_thermal_levels;
+module_param(num_thermal_levels, int, 0444);
+
 static void
 qpnp_batt_system_temp_level_set(struct qpnp_chg_chip *chip, int lvl_sel)
 {
@@ -5036,6 +5039,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 			return rc;
 		}
 	}
+	num_thermal_levels = chip->thermal_levels;
 
 	return rc;
 }
