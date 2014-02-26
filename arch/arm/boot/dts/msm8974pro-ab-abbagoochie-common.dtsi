@@ -124,6 +124,26 @@
 		/delete-property/ qcom,led-flash-src;
 	};
 
+	qcom,camera@20 {
+		/delete-property/ qcom,led-flash-src;
+		/* This is to use SEMCO Header board with off
+		 * the shelf 13MP */
+		qcom,mot-cam-usedevboard = <1>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 15 0>,
+			<&msmgpio 89 0>,
+			<&pm8941_gpios 25 0>,
+			<&msmgpio 91 0>;
+		qcom,gpio-reset = <2>;
+		qcom,gpio-vdig = <3>;
+		qcom,gpio-req-tbl-num = <0 1 2 3>;
+		qcom,gpio-req-tbl-flags = <0 0 0 0>;
+		qcom,gpio-req-tbl-label = "MCLK",
+					  "CAM_PWRN",
+					  "CAM_RESET",
+					  "DIG_EN";
+	};
+
 	qcom,lm3646@ce {
 		status = "disabled";
 	};
