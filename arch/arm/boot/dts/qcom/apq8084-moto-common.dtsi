@@ -253,6 +253,12 @@
 	regulator-always-on;
 };
 
+&pma8084_l3 {
+	regulator-min-microvolt = <1000000>;
+	regulator-max-microvolt = <1000000>;
+	qcom,init-voltage = <1000000>;
+};
+
 &pma8084_l17 {
 	regulator-always-on;
 };
@@ -293,14 +299,6 @@
 	qcom,ap2mdm-wakeup-gpio = <&msmgpio 108 0x00>;
 	qcom,ap2mdm-vddmin-gpio = <&msmgpio 114 0x00>;
 	qcom,mdm2ap-vddmin-gpio = <&msmgpio 115 0x00>;
-	status = "ok";
-};
-
-&ufsphy1 {
-	status = "ok";
-};
-
-&ufs1 {
 	status = "ok";
 };
 
