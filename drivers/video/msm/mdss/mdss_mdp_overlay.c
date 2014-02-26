@@ -3935,6 +3935,43 @@ static struct attribute_group dynamic_fps_fs_attrs_group = {
 	.attrs = dynamic_fps_fs_attrs,
 };
 
+static ssize_t frame_counter_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	struct mdss_mdp_mixer *mixer;
+	u32 reg;
+
+	if (!ctl) {
+		pr_warn("there is no ctl attached to fb\n");
+		return -ENODEV;
+	}
+
+	mixer = mdss_mdp_mixer_get(ctl, MDSS_MDP_MIXER_MUX_LEFT);
+	if (!mixer) {
+		pr_warn("there is no mixer\n");
+		return -ENODEV;
+	}
+
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	reg = mdss_mdp_pingpong_read(mixer->pingpong_base,
+				MDSS_MDP_REG_PP_INT_COUNT_VAL) >> 16;
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+	return snprintf(buf, PAGE_SIZE, "%d\n", reg);
+}
+
+static DEVICE_ATTR(frame_counter, S_IRUSR | S_IRGRP, frame_counter_show, NULL);
+static struct attribute *factory_te_attrs[] = {
+	&dev_attr_frame_counter.attr,
+	NULL,
+};
+static struct attribute_group factory_te_attrs_group = {
+	.attrs = factory_te_attrs,
+};
+
+
 static ssize_t mdss_mdp_vsync_show_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -6734,6 +6771,16 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			goto init_fail;
 		}
 	}
+
+	if (mfd->panel_info->type == MIPI_CMD_PANEL) {
+		rc = sysfs_create_group(&dev->kobj,
+					&factory_te_attrs_group);
+		if (rc) {
+			pr_err("Error factory te sysfs creation ret=%d\n", rc);
+			goto init_fail;
+		}
+	}
+
 	mfd->mdp_sync_pt_data.async_wait_fences = true;
 
 	pm_runtime_set_suspended(&mfd->pdev->dev);
