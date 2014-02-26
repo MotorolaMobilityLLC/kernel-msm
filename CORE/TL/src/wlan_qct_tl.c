@@ -231,22 +231,6 @@ int bdPduInterruptGetThreshold = WLANTL_BD_PDU_INTERRUPT_GET_THRESHOLD;
 typedef struct
 {
 
-#ifndef TL_LITTLE_BIT_ENDIAN
-
-   v_U8_t subType :4;
-   v_U8_t type :2;
-   v_U8_t protVer :2;
-
-   v_U8_t order :1;
-   v_U8_t wep :1;
-   v_U8_t moreData :1;
-   v_U8_t powerMgmt :1;
-   v_U8_t retry :1;
-   v_U8_t moreFrag :1;
-   v_U8_t fromDS :1;
-   v_U8_t toDS :1;
-
-#else
 
    v_U8_t protVer :2;
    v_U8_t type :2;
@@ -261,7 +245,6 @@ typedef struct
    v_U8_t wep :1;
    v_U8_t order :1;
 
-#endif
 
 } WLANTL_MACFCType;
 

@@ -2368,102 +2368,6 @@ dump_lim_get_pkts_rcvd_per_rssi_values( tpAniSirGlobal pMac, tANI_U32 arg1, tANI
 }
 #endif
 
-#ifdef WLAN_FEATURE_RELIABLE_MCAST
-
-static char *
-dump_lim_enable_reliable_mcast_data_path
-(
-    tpAniSirGlobal pMac,
-    tANI_U32 arg1,
-    tANI_U32 arg2,
-    tANI_U32 arg3,
-    tANI_U32 arg4,
-    char *p
-)
-{
-    v_MACADDR_t reliableMcastTransmitterAddr;
-    v_VOID_t * pVosContext = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
-
-    reliableMcastTransmitterAddr.bytes[0] = (tANI_U8)((arg1 & 0xFF000000) >> 24);
-    reliableMcastTransmitterAddr.bytes[1] = (tANI_U8)((arg1 & 0x00FF0000) >> 16);
-    reliableMcastTransmitterAddr.bytes[2] = (tANI_U8)((arg1 & 0x0000FF00) >>  8);
-    reliableMcastTransmitterAddr.bytes[3] = (tANI_U8)((arg1 & 0x000000FF));
-    reliableMcastTransmitterAddr.bytes[4] = (tANI_U8)((arg2 & 0xFF000000) >> 24);
-    reliableMcastTransmitterAddr.bytes[5] = (tANI_U8)((arg2 & 0x00FF0000) >> 16);
-
-    limLog(pMac, LOGE,
-        FL("Enable RMCAST data path for MCAST transmitter:" MAC_ADDRESS_STR),
-        MAC_ADDR_ARRAY( reliableMcastTransmitterAddr.bytes));
-
-    /*Input format is in MAC address fromat for example
-      iwpriv wlan0 dump 0xaabbccdd 0xeeff0000 translates into enable RMCAST for
-      MAC address 0xaa:0xbb:0xcc:0xdd:0xee:0xff*/
-
-    /*Enable TL data path*/
-    WLANTL_EnableReliableMcast( pVosContext, &reliableMcastTransmitterAddr );
-
-  return p;
-}
-
-static char *
-dump_lim_disable_reliable_mcast_data_path
-(
-    tpAniSirGlobal pMac,
-    tANI_U32 arg1,
-    tANI_U32 arg2,
-    tANI_U32 arg3,
-    tANI_U32 arg4,
-    char *p
-)
-{
-    v_MACADDR_t reliableMcastTransmitterAddr;
-    v_VOID_t * pVosContext = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
-
-    reliableMcastTransmitterAddr.bytes[0] = (tANI_U8)((arg1 & 0xFF000000) >> 24);
-    reliableMcastTransmitterAddr.bytes[1] = (tANI_U8)((arg1 & 0x00FF0000) >> 16);
-    reliableMcastTransmitterAddr.bytes[2] = (tANI_U8)((arg1 & 0x0000FF00) >>  8);
-    reliableMcastTransmitterAddr.bytes[3] = (tANI_U8)((arg1 & 0x000000FF));
-    reliableMcastTransmitterAddr.bytes[4] = (tANI_U8)((arg2 & 0xFF000000) >> 24);
-    reliableMcastTransmitterAddr.bytes[5] = (tANI_U8)((arg2 & 0x00FF0000) >> 16);
-
-
-    limLog(pMac, LOGE,
-        FL("Disable RMCAST data path for MCAST transmitter:" MAC_ADDRESS_STR),
-        MAC_ADDR_ARRAY( reliableMcastTransmitterAddr.bytes));
-
-    /*Input format is in MAC address fromat for example
-      iwpriv wlan0 dump 0xaabbccdd 0xeeff0000 translates into enable RMCAST for
-      MAC address 0xaa:0xbb:0xcc:0xdd:0xee:0xff*/
-
-    /*Disable TL data path*/
-    WLANTL_DisableReliableMcast( pVosContext, &reliableMcastTransmitterAddr );
-
-    return p;
-}
-
-static char *
-dump_lim_rmc_status(tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2,
-             tANI_U32 arg3, tANI_U32 arg4, char *p)
-{
-    limRmcDumpStatus(pMac);
-    return p;
-}
-
-static char *
-dump_set_mcast_dup_detect(tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2,
-             tANI_U32 arg3, tANI_U32 arg4, char *p)
-{
-    v_VOID_t * pVosContext = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
-    v_U8_t enable;
-
-    enable = (tANI_U8)arg1;
-
-    /* Enable or Disable Multicast Duplicate Detection */
-    WLANTL_SetMcastDuplicateDetection( pVosContext, enable);
-
-    return p;
-}
-#endif /* WLAN_FEATURE_RELIABLE_MCAST */
 
 static char *
 dump_set_max_probe_req(tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2,
@@ -2563,17 +2467,7 @@ static tDumpFuncEntry limMenuDumpTable[] = {
     {369,   "PE.LIM: pkts/rateIdx: iwpriv wlan0 dump 368 <staId> <boolean to flush counter>",    dump_lim_get_pkts_rcvd_per_rate_idx},
     {370,   "PE.LIM: pkts/rssi: : iwpriv wlan0 dump 369 <staId> <boolean to flush counter>",    dump_lim_get_pkts_rcvd_per_rssi_values},
 #endif
-#ifdef WLAN_FEATURE_RELIABLE_MCAST
-    {371,   "PE.LIM: Enable RMCAST data path in TL for input MCAST addr",
-        dump_lim_enable_reliable_mcast_data_path },
-    {372,   "PE.LIM: Disable RMCAST data path in TL for input MCAST addr",
-        dump_lim_disable_reliable_mcast_data_path },
-    {373,   "PE.LIM: Dump RMCAST transmitter and leader status", dump_lim_rmc_status },
-#endif /* WLAN_FEATURE_RELIABLE_MCAST */
     {374,   "PE.LIM: MAS RX stats MAC eff <MAC eff in percentage>",  dump_limRateInfoBasedOnMacEff},
-#ifdef WLAN_FEATURE_RELIABLE_MCAST
-    {375,   "PE.LIM: Enable(1)/Disable(0) RMCAST duplicate detection", dump_set_mcast_dup_detect },
-#endif /* WLAN_FEATURE_RELIABLE_MCAST */
     {376,   "PE.LIM: max number of probe per scan", dump_set_max_probe_req },
 };
 
