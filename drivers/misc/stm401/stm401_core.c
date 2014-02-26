@@ -68,6 +68,7 @@ unsigned short stm401_g_acc_delay;
 unsigned short stm401_g_mag_delay;
 unsigned short stm401_g_gyro_delay;
 unsigned short stm401_g_baro_delay;
+unsigned short stm401_g_step_counter_delay;
 unsigned short stm401_g_nonwake_sensor_state;
 unsigned short stm401_g_wake_sensor_state;
 unsigned short stm401_g_algo_state;
@@ -75,6 +76,7 @@ unsigned char stm401_g_motion_dur;
 unsigned char stm401_g_zmotion_dur;
 unsigned char stm401_g_control_reg[STM401_CONTROL_REG_SIZE];
 unsigned char stm401_g_mag_cal[STM401_MAG_CAL_SIZE];
+unsigned short stm401_g_control_reg_restore;
 
 /* Store error message */
 unsigned char stat_string[ESR_SIZE+1];
@@ -181,7 +183,6 @@ int stm401_i2c_write_no_reset(struct stm401_data *ps_stm401,
 	int err = 0;
 	int tries = 0;
 
-	tries = 0;
 	do {
 		err = i2c_master_send(ps_stm401->client, buf, len);
 		if (err < 0)
