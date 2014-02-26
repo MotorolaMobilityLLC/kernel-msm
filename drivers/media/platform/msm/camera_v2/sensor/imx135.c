@@ -11,72 +11,39 @@
  *
  */
 #include "msm_sensor.h"
+#include <linux/of_gpio.h>
+#include "msm_camera_io_util.h"
+#include <linux/regulator/consumer.h>
+#include "msm_cci.h"
+#include <mach/gpiomux.h>
+#include "msm_camera_i2c_mux.h"
+#include <linux/device.h>
+
 #define IMX135_SENSOR_NAME "imx135"
+#define IMX135_SECONDARY_I2C_ADDRESS 0x34
 DEFINE_MSM_MUTEX(imx135_mut);
 
 static struct msm_sensor_ctrl_t imx135_s_ctrl;
 
-static struct msm_sensor_power_setting imx135_power_setting[] = {
-	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VDIG,
-		.config_val = 0,
-		.delay = 0,
-	},
-	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VANA,
-		.config_val = 0,
-		.delay = 0,
-	},
-	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VIO,
-		.config_val = 0,
-		.delay = 0,
-	},
-	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VAF,
-		.config_val = 0,
-		.delay = 0,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_LOW,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 30,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_STANDBY,
-		.config_val = GPIO_OUT_LOW,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_STANDBY,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 30,
-	},
-	{
-		.seq_type = SENSOR_CLK,
-		.seq_val = SENSOR_CAM_MCLK,
-		.config_val = 24000000,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_I2C_MUX,
-		.seq_val = 0,
-		.config_val = 0,
-		.delay = 0,
-	},
+static struct regulator *imx135_cam_vdd;
+static struct regulator *imx135_cam_vddio;
+static struct regulator *imx135_cam_vaf;
+struct clk *imx135_cam_mclk[2];
+
+static bool imx135_devboard_config;
+
+#define VREG_ON              1
+#define VREG_OFF             0
+#define GPIO_REQUEST_USE     1
+#define GPIO_REQUEST_NO_USE  0
+#define CLK_ON               1
+#define CLK_OFF              0
+
+/* This list of enum has to match what's defined in dtsi file */
+enum msm_sensor_imx135_vreg_t {
+	IMX135_CAM_VIO,
+	IMX135_CAM_VDIG,
+	IMX135_CAM_VAF,
 };
 
 static struct v4l2_subdev_info imx135_subdev_info[] = {
@@ -131,7 +98,451 @@ static int32_t imx135_platform_probe(struct platform_device *pdev)
 	int32_t rc = 0;
 	const struct of_device_id *match;
 	match = of_match_device(imx135_dt_match, &pdev->dev);
-	rc = msm_sensor_platform_probe(pdev, match->data);
+
+	if (match) {
+		if (of_property_read_bool(pdev->dev.of_node,
+					"qcom,mot-cam-usedevboard")
+				== true)
+			imx135_devboard_config = true;
+
+		rc = msm_sensor_platform_probe(pdev, match->data);
+	} else {
+		pr_err("%s: Failed to match device tree!\n", __func__);
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
+static int32_t imx135_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	uint16_t chipid = 0;
+
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client,
+			s_ctrl->sensordata->slave_info->sensor_id_reg_addr,
+			&chipid,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc >= 0)
+		goto check_chipid;
+
+	s_ctrl->sensordata->slave_info->sensor_slave_addr =
+		IMX135_SECONDARY_I2C_ADDRESS;
+	s_ctrl->sensor_i2c_client->cci_client->sid =
+		(IMX135_SECONDARY_I2C_ADDRESS >> 1);
+	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
+			s_ctrl->sensor_i2c_client,
+			s_ctrl->sensordata->slave_info->sensor_id_reg_addr,
+			&chipid,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: Unable to read chip id!\n", __func__);
+		return rc;
+	}
+
+check_chipid:
+	if (chipid != s_ctrl->sensordata->slave_info->sensor_id) {
+		pr_err("%s: chip id %x does not match expected %x\n", __func__,
+				chipid, s_ctrl->sensordata->
+				slave_info->sensor_id);
+		return -ENODEV;
+	}
+
+	pr_info("%s: success with slave addr 0x%x!\n", __func__,
+			s_ctrl->sensor_i2c_client->cci_client->sid);
+	return rc;
+}
+
+static int32_t imx135_sensor_power_down_devboard(
+		struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	struct msm_camera_sensor_board_info *info = s_ctrl->sensordata;
+	struct device *dev = s_ctrl->dev;
+
+	pr_debug("%s: Enter\n", __func__);
+
+	/* Disable MCLK */
+	msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
+			(struct clk **)&imx135_cam_mclk[0],
+			s_ctrl->clk_info_size, CLK_OFF);
+	usleep_range(500, 600);
+
+	/* Put into Reset State */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[2].gpio,
+			GPIO_OUT_LOW);
+	usleep_range(5000, 6000);
+
+	/* Disable VAF */
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VAF],
+			&imx135_cam_vaf, VREG_OFF);
+
+	/* Disable Avdd */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[1].gpio,
+			GPIO_OUT_LOW);
+	usleep_range(1000, 2000);
+
+	/* Disable VDIG */
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VDIG],
+			&imx135_cam_vdd, VREG_OFF);
+	usleep_range(1000, 2000);
+
+	/* Disable VDDIO */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
+			GPIO_OUT_LOW);
+
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VIO],
+			&imx135_cam_vddio, VREG_OFF);
+	usleep_range(1000, 2000);
+
+	/* Disable GPIO's */
+	msm_camera_request_gpio_table(
+		info->gpio_conf->cam_gpio_req_tbl,
+		info->gpio_conf->cam_gpio_req_tbl_size, GPIO_REQUEST_NO_USE);
+
+	return rc;
+}
+
+static int32_t imx135_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	struct msm_camera_sensor_board_info *info = s_ctrl->sensordata;
+	struct device *dev = s_ctrl->dev;
+
+	pr_debug("%s: Enter\n", __func__);
+
+	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
+		s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
+			s_ctrl->sensor_i2c_client, MSM_CCI_RELEASE);
+	}
+
+	if (imx135_devboard_config == true)
+		return imx135_sensor_power_down_devboard(s_ctrl);
+
+	/* Disable MCLK */
+	msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
+			(struct clk **)&imx135_cam_mclk[0],
+			s_ctrl->clk_info_size, CLK_OFF);
+	usleep_range(500, 600);
+
+	/* Set reset low */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[4].gpio,
+			GPIO_OUT_LOW);
+	usleep_range(1000, 2000);
+
+	/* Disable VAF */
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VAF],
+			&imx135_cam_vaf, VREG_OFF);
+
+	/* Disable AVDD */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[1].gpio,
+			GPIO_OUT_LOW);
+	usleep_range(1000, 2000);
+
+	/* Disable VDD_EN */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
+			GPIO_OUT_LOW);
+	usleep_range(500, 600);
+
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VDIG],
+			&imx135_cam_vdd, VREG_OFF);
+	usleep_range(1000, 2000);
+
+	/* Disable I/O Supply(Vddio) */
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VIO],
+			&imx135_cam_vddio, VREG_OFF);
+	usleep_range(1000, 2000);
+
+	msm_camera_request_gpio_table(
+		info->gpio_conf->cam_gpio_req_tbl,
+		info->gpio_conf->cam_gpio_req_tbl_size, GPIO_REQUEST_NO_USE);
+	return rc;
+}
+
+static int32_t imx135_sensor_power_up_devboard(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	struct msm_camera_sensor_board_info *info = s_ctrl->sensordata;
+	struct device *dev = s_ctrl->dev;
+
+	pr_debug("%s: Enter\n", __func__);
+
+	/* Initialize gpios low state */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[1].gpio,
+			GPIO_OUT_LOW);
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[2].gpio,
+			GPIO_OUT_LOW);
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
+			GPIO_OUT_LOW);
+	usleep_range(1000, 2000);
+
+	/* Enable Core supply (VDD) */
+	rc = msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VDIG],
+			&imx135_cam_vdd, VREG_ON);
+	if (rc < 0) {
+		pr_err("%s: Unable to turn on VDD (%d)\n", __func__, rc);
+		goto abort0;
+	}
+
+	/* Enable I/O Supply(Vddio) */
+	rc = msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VIO],
+			&imx135_cam_vddio, VREG_ON);
+	if (rc < 0) {
+		pr_err("%s: Unable to turn on VDDIO (%d)\n", __func__, rc);
+		goto abort1;
+	}
+	usleep_range(1000, 2000);
+
+	/* Enable Switch to send DVDD to sensor */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
+			GPIO_OUT_HIGH);
+	usleep_range(1000, 2000);
+
+	/* Enable AVDD LDO */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[1].gpio,
+			GPIO_OUT_HIGH);
+	usleep_range(1000, 2000);
+
+	/* Enable AF Supply */
+	rc = msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VAF],
+			&imx135_cam_vaf, VREG_ON);
+	if (rc < 0) {
+		pr_err("%s: Unable to turn on VAF (%d)\n", __func__, rc);
+		goto abort2;
+	}
+	usleep_range(1000, 2000);
+
+	/* Enable MCLK */
+	s_ctrl->clk_info[0].clk_rate = 24000000;
+	rc = msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
+			(struct clk **)&imx135_cam_mclk[0],
+			s_ctrl->clk_info_size, CLK_ON);
+	if (rc < 0) {
+		pr_err("%s: clk enable failed\n", __func__);
+		goto abort3;
+	}
+	usleep_range(2000, 3000);
+
+	/* Initiate a Reset */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[2].gpio,
+			GPIO_OUT_HIGH);
+	usleep_range(30000, 31000);
+
+	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
+			s_ctrl->sensor_i2c_client, MSM_CCI_INIT);
+		if (rc < 0) {
+			pr_err("%s cci_init failed\n", __func__);
+			goto abort4;
+		}
+	}
+
+	rc = imx135_sensor_match_id(s_ctrl);
+	if (rc < 0) {
+		pr_err("%s: match id failed!\n", __func__);
+		goto abort5;
+	}
+
+	goto power_up_done;
+
+abort5:
+	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
+		s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
+			s_ctrl->sensor_i2c_client, MSM_CCI_RELEASE);
+	}
+
+abort4:
+	msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
+			(struct clk **)&imx135_cam_mclk[0],
+			s_ctrl->clk_info_size, CLK_OFF);
+	usleep_range(1000, 1500);
+
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[2].gpio,
+			GPIO_OUT_LOW);
+	usleep_range(1000, 1500);
+
+abort3:
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VAF],
+			&imx135_cam_vaf, VREG_OFF);
+
+abort2:
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[1].gpio,
+			GPIO_OUT_LOW);
+
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
+			GPIO_OUT_LOW);
+
+abort1:
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VDIG],
+			&imx135_cam_vdd, VREG_OFF);
+
+abort0:
+	msm_camera_request_gpio_table(
+			info->gpio_conf->cam_gpio_req_tbl,
+			info->gpio_conf->cam_gpio_req_tbl_size,
+			GPIO_REQUEST_NO_USE);
+power_up_done:
+	return rc;
+}
+
+static int32_t imx135_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	struct msm_camera_sensor_board_info *info = s_ctrl->sensordata;
+	struct device *dev = s_ctrl->dev;
+
+	pr_debug("%s: Enter\n", __func__);
+
+	if (info->gpio_conf->cam_gpiomux_conf_tbl != NULL) {
+		msm_gpiomux_install(
+				(struct msm_gpiomux_config *)
+				info->gpio_conf->cam_gpiomux_conf_tbl,
+				info->gpio_conf->cam_gpiomux_conf_tbl_size);
+	}
+
+	rc = msm_camera_request_gpio_table(
+			info->gpio_conf->cam_gpio_req_tbl,
+			info->gpio_conf->cam_gpio_req_tbl_size,
+			GPIO_REQUEST_USE);
+	if (rc < 0) {
+		pr_err("%s: request gpio failed\n", __func__);
+		return rc;
+	}
+
+	if (imx135_devboard_config == true)
+		return imx135_sensor_power_up_devboard(s_ctrl);
+
+	/* Initialize gpios */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[2].gpio,
+			GPIO_OUT_LOW);
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
+			GPIO_OUT_LOW);
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[4].gpio,
+			GPIO_OUT_LOW);
+
+	/* Enable VDDIO Supply */
+	rc = msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VIO],
+			&imx135_cam_vddio, VREG_ON);
+	if (rc < 0) {
+		pr_err("%s: Unable to turn on VDDIO (%d)\n", __func__, rc);
+		goto abort0;
+	}
+	usleep_range(1000, 2000);
+
+	/* Enable Core supply (VDD) and enable load switch */
+	rc = msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VDIG],
+			&imx135_cam_vdd, VREG_ON);
+	if (rc < 0) {
+		pr_err("%s: Unable to turn on VDD (%d)\n", __func__, rc);
+		goto abort1;
+	}
+	usleep_range(1000, 2000);
+
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
+			GPIO_OUT_HIGH);
+	usleep_range(1000, 2000);
+
+	/* Enable AVDD supply */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[1].gpio,
+			GPIO_OUT_HIGH);
+	usleep_range(1000, 2000);
+
+	/* Enable AF Supply (VAF) */
+	rc = msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VAF],
+			&imx135_cam_vaf, VREG_ON);
+	if (rc < 0) {
+		pr_err("%s: Unable to turn on VAF (%d)\n", __func__, rc);
+		goto abort2;
+	}
+	usleep_range(1000, 2000);
+
+	/* Enable MCLK */
+	s_ctrl->clk_info[0].clk_rate = 24000000;
+	rc = msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
+				(struct clk **)&imx135_cam_mclk[0],
+				s_ctrl->clk_info_size, CLK_ON);
+	if (rc < 0) {
+		pr_err("%s: clk enable failed\n", __func__);
+		goto abort3;
+	}
+	usleep_range(2000, 3000);
+
+	/* Initiate a Reset */
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[4].gpio,
+			GPIO_OUT_HIGH);
+	usleep_range(30000, 31000);
+
+	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
+			s_ctrl->sensor_i2c_client, MSM_CCI_INIT);
+		if (rc < 0) {
+			pr_err("%s cci_init failed\n", __func__);
+			goto abort4;
+		}
+	}
+
+	rc = imx135_sensor_match_id(s_ctrl);
+	if (rc < 0) {
+		pr_err("%s: match id failed!\n", __func__);
+		goto abort5;
+	}
+
+	goto power_up_done;
+abort5:
+	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
+		s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
+			s_ctrl->sensor_i2c_client, MSM_CCI_RELEASE);
+	}
+
+abort4:
+	msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
+			(struct clk **)&imx135_cam_mclk[0],
+			s_ctrl->clk_info_size, CLK_OFF);
+	usleep_range(1000, 1500);
+
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[2].gpio,
+			GPIO_OUT_LOW);
+	usleep_range(1000, 1500);
+
+abort3:
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VAF],
+			&imx135_cam_vaf, VREG_OFF);
+
+abort2:
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[1].gpio,
+			GPIO_OUT_LOW);
+
+	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
+			GPIO_OUT_LOW);
+
+abort1:
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VDIG],
+			&imx135_cam_vdd, VREG_OFF);
+
+abort0:
+	msm_camera_request_gpio_table(
+			info->gpio_conf->cam_gpio_req_tbl,
+			info->gpio_conf->cam_gpio_req_tbl_size,
+			GPIO_REQUEST_NO_USE);
+
+power_up_done:
 	return rc;
 }
 
@@ -158,13 +569,19 @@ static void __exit imx135_exit_module(void)
 	return;
 }
 
+static struct msm_sensor_fn_t imx135_func_tbl = {
+	.sensor_config = msm_sensor_config,
+	.sensor_power_up = imx135_sensor_power_up,
+	.sensor_power_down = imx135_sensor_power_down,
+	.sensor_match_id = imx135_sensor_match_id,
+};
+
 static struct msm_sensor_ctrl_t imx135_s_ctrl = {
 	.sensor_i2c_client = &imx135_sensor_i2c_client,
-	.power_setting_array.power_setting = imx135_power_setting,
-	.power_setting_array.size = ARRAY_SIZE(imx135_power_setting),
 	.msm_sensor_mutex = &imx135_mut,
 	.sensor_v4l2_subdev_info = imx135_subdev_info,
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(imx135_subdev_info),
+	.func_tbl = &imx135_func_tbl,
 };
 
 module_init(imx135_init_module);
