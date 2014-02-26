@@ -976,3 +976,15 @@
 &mdss_dsi1 {
 	status = "disabled";
 };
+
+&rpm_bus {
+	rpm-regulator-ldoa3 {
+		status = "okay";
+		pm8941_l3: regulator-l3 {
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1225000>;
+			qcom,init-voltage = <1050000>;
+			status = "okay";
+		};
+	};
+};
