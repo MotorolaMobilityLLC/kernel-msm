@@ -3125,6 +3125,9 @@ qpnp_boost_vget_uv(struct qpnp_chg_chip *chip)
 	return BOOST_MIN_UV + ((boost_reg - BOOST_MIN) * BOOST_STEP_UV);
 }
 
+static int num_thermal_levels;
+module_param(num_thermal_levels, int, 0444);
+
 static void
 qpnp_batt_system_temp_level_set(struct qpnp_chg_chip *chip, int lvl_sel)
 {
@@ -5174,6 +5177,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 			return rc;
 		}
 	}
+	num_thermal_levels = chip->thermal_levels;
 
 	return rc;
 }
