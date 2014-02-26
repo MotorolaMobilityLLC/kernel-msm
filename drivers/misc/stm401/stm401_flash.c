@@ -296,7 +296,7 @@ int stm401_get_version(struct stm401_data *ps_stm401)
 		dev_dbg(&ps_stm401->client->dev,
 			"Switch to normal to get version\n");
 		switch_stm401_mode(NORMALMODE);
-		msleep_interruptible(stm401_i2c_retry_delay);
+		msleep(stm401_i2c_retry_delay);
 	}
 	dev_dbg(&ps_stm401->client->dev, "STM software version: ");
 	stm401_cmdbuff[0] = REV_ID;
