@@ -72,7 +72,7 @@
 
 	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
 	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x3 0x4 0x3>; /* 8mA, 10mA, 8mA */
+	qcom,pad-drv-on = <0x3 0x3 0x3>; /* 8mA, 8mA, 8mA */
 	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
 
 	qcom,clk-rates = <400000 23076923 100000000 120000000>;
