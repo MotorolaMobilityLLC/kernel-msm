@@ -77,11 +77,11 @@ int stm401_load_brightness_table(struct stm401_data *ps_stm401)
 void stm401_reset(struct stm401_platform_data *pdata)
 {
 	dev_err(&stm401_misc_data->client->dev, "stm401_reset\n");
-	msleep_interruptible(stm401_i2c_retry_delay);
+	msleep(stm401_i2c_retry_delay);
 	gpio_set_value(pdata->gpio_reset, 0);
-	msleep_interruptible(stm401_i2c_retry_delay);
+	msleep(stm401_i2c_retry_delay);
 	gpio_set_value(pdata->gpio_reset, 1);
-	msleep_interruptible(STM401_RESET_DELAY);
+	msleep(STM401_RESET_DELAY);
 }
 
 int stm401_reset_and_init(void)
