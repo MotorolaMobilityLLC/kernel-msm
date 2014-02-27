@@ -351,7 +351,8 @@ static eHalStatus sme_CcxSendBeaconReqScanResults(tpAniSirGlobal pMac,
                break;
            }
        }
-       pBcnReport->measurementToken = pCurMeasReqIe->measurementToken;
+       if(NULL != pCurMeasReqIe)
+           pBcnReport->measurementToken = pCurMeasReqIe->measurementToken;
        smsLog( pMac, LOG1, "Channel(%d) MeasToken(%d)", channel, pBcnReport->measurementToken);
 
        msgCounter=0;
@@ -363,7 +364,8 @@ static eHalStatus sme_CcxSendBeaconReqScanResults(tpAniSirGlobal pMac,
                ie_len = GET_IE_LEN_IN_BSS( pBssDesc->length );
                pBcnReport->bcnRepBssInfo[msgCounter].bcnReportFields.ChanNum = pBssDesc->channelId;
                pBcnReport->bcnRepBssInfo[msgCounter].bcnReportFields.Spare = 0;
-               pBcnReport->bcnRepBssInfo[msgCounter].bcnReportFields.MeasDuration = pCurMeasReqIe->measurementDuration;
+               if(NULL != pCurMeasReqIe)
+                   pBcnReport->bcnRepBssInfo[msgCounter].bcnReportFields.MeasDuration = pCurMeasReqIe->measurementDuration;
                pBcnReport->bcnRepBssInfo[msgCounter].bcnReportFields.PhyType = pBssDesc->nwType;
                pBcnReport->bcnRepBssInfo[msgCounter].bcnReportFields.RecvSigPower = pBssDesc->rssi;
                pBcnReport->bcnRepBssInfo[msgCounter].bcnReportFields.ParentTsf = pBssDesc->parentTSF;
