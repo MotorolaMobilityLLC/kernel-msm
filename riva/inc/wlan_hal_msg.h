@@ -3110,8 +3110,6 @@ typedef PACKED_PRE struct PACKED_POST
 }  tDelBARspMsg, *tpDelBARspMsg;
 
 
-#ifdef FEATURE_WLAN_CCX
-
 /*---------------------------------------------------------------------------
  * WLAN_HAL_TSM_STATS_REQ
  *--------------------------------------------------------------------------*/
@@ -3166,8 +3164,6 @@ typedef PACKED_PRE struct PACKED_POST
     tTsmStatsRspParams tsmStatsRspParams;
 }  tTsmStatsRspMsg, *tpTsmStatsRspMsg;
 
-
-#endif
 
 /*---------------------------------------------------------------------------
  * WLAN_HAL_SET_KEYDONE_MSG
@@ -3705,7 +3701,7 @@ typedef PACKED_PRE struct PACKED_POST
    //if association is based on ProbeRsp instead of beacon.
    tANI_U8 dtimPeriod;
 
-   // For CCX and 11R Roaming
+   // For ESE and 11R Roaming
    tANI_U32 rssiFilterPeriod;
    tANI_U32 numBeaconPerRssiAverage;
    tANI_U8  bRssiFilterEnable;
@@ -5610,7 +5606,7 @@ typedef PACKED_PRE struct PACKED_POST {
    tANI_U16          EmptyRefreshScanPeriod;
    tANI_U8           ValidChannelCount;
    tANI_U8           ValidChannelList[WLAN_HAL_ROAM_SCAN_MAX_CHANNELS];
-   eAniBoolean       IsCCXEnabled;
+   eAniBoolean       IsESEEnabled;
 
    tANI_U16          us24GProbeSize;
    tANI_U8           a24GProbeTemplate[WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE];
