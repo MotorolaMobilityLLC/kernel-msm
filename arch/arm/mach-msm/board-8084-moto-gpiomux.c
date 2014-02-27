@@ -1197,7 +1197,7 @@ static struct msm_gpiomux_config msm_sbc_sensor_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 78, /* CAM2_STANDBY  */
+		.gpio = 37, /* CAM2_STANDBY  */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
@@ -1338,6 +1338,13 @@ static struct msm_gpiomux_config c55_i2s_configs[] __initdata = {
 	},
 	{
 		.gpio = 78,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &c55_i2s_sus_cfg,
+			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
+		},
+	},
+	{
+		.gpio = 79,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &c55_i2s_sus_cfg,
 			[GPIOMUX_ACTIVE] = &c55_i2s_act_cfg,
