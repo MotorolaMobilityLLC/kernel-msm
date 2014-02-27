@@ -40,8 +40,6 @@ enum msm_sensor_ov10820_vreg_t {
 };
 
 DEFINE_MSM_MUTEX(ov10820_mut);
-static uint8_t is_vdd_pk_powered_up;
-static uint8_t is_sensor_powered_up;
 static uint16_t ov10820_hw_rev;
 
 static struct msm_sensor_ctrl_t ov10820_s_ctrl;
@@ -193,9 +191,6 @@ static int32_t ov10820_sensor_power_down(
 
 	pr_debug("%s\n", __func__);
 
-	if (is_sensor_powered_up == 0)
-		goto exit;
-
 	power_setting_array = &s_ctrl->power_setting_array;
 	power_setting = &power_setting_array->power_setting[0];
 
@@ -248,6 +243,11 @@ static int32_t ov10820_sensor_power_down(
 				&cam_vddio, VREG_OFF);
 	usleep_range(500, 600);
 
+	/*Turn off VDD PK*/
+	msm_camera_config_single_vreg(s_ctrl->dev,
+			&info->cam_vreg[OV10820_CAM_VDIG],
+			&cam_ov660_dvdd_pk, VREG_OFF);
+
 	/*Turn off AF regulator supply*/
 	rc = msm_camera_config_single_vreg(s_ctrl->dev,
 			&s_ctrl->sensordata->cam_vreg[OV10820_CAM_VAF],
@@ -258,8 +258,6 @@ static int32_t ov10820_sensor_power_down(
 		info->gpio_conf->cam_gpio_req_tbl,
 		info->gpio_conf->cam_gpio_req_tbl_size, GPIO_REQUEST_NO_USE);
 
-	is_sensor_powered_up = 0;
-exit:
 	return rc;
 }
 
@@ -306,21 +304,16 @@ int32_t ov10820_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		goto abort0;
 	}
 
-	/*Turn on vdd pk and leave it on for ov660*/
-	if (is_vdd_pk_powered_up == 0) {
-		rc = msm_camera_config_single_vreg(dev,
-				&info->cam_vreg[OV10820_CAM_VDIG],
-				&cam_ov660_dvdd_pk, VREG_ON);
-		if (rc < 0) {
-			pr_err("%s: Unable to turn on cam_pk_dvdd (%d)\n",
+	/*Turn on vdd pk for ov660*/
+	rc = msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[OV10820_CAM_VDIG],
+			&cam_ov660_dvdd_pk, VREG_ON);
+	if (rc < 0) {
+		pr_err("%s: Unable to turn on cam_pk_dvdd (%d)\n",
 				__func__, rc);
-			goto abort1;
-		} else {
-			is_vdd_pk_powered_up = 1;
-			usleep_range(1000, 2000);
-		}
+		goto abort1;
 	}
-	usleep_range(500, 600);
+	usleep_range(1000, 2000);
 
 	/*Turn on VIO for both 10MP and OV660*/
 	rc = msm_camera_config_single_vreg(dev,
@@ -391,7 +384,6 @@ int32_t ov10820_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		goto abort5;
 	}
 
-	is_sensor_powered_up = 1;
 	goto power_up_done;
 
 abort5:
@@ -408,6 +400,9 @@ abort3:
 			&info->cam_vreg[OV10820_CAM_VAF],
 			&cam_afvdd, VREG_OFF);
 abort2:
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[OV10820_CAM_VDIG],
+			&cam_ov660_dvdd_pk, VREG_OFF);
 abort1:
 	msm_cam_clk_enable(dev, &s_ctrl->clk_info[0],
 			(struct clk **)&cam_mclk[0],
