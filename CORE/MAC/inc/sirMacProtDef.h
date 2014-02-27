@@ -426,9 +426,9 @@
 #define SIR_MAC_RSN_IE_MIN_LENGTH   2
 #define SIR_MAC_WPA_IE_MIN_LENGTH   6
 
-#ifdef FEATURE_WLAN_CCX
-#define CCX_VERSION_4               4
-#define CCX_VERSION_SUPPORTED       CCX_VERSION_4
+#ifdef FEATURE_WLAN_ESE
+#define ESE_VERSION_4               4
+#define ESE_VERSION_SUPPORTED       ESE_VERSION_4
 
 // When station sends Radio Management Cap.
 // State should be normal=1
@@ -714,11 +714,11 @@ typedef enum eSirMacStatusCodes
     eSIR_MAC_DSSS_CCK_RATE_MUST_SUPPORT_STATUS    = 52, //FIXME: 
     eSIR_MAC_DSSS_CCK_RATE_NOT_SUPPORT_STATUS     = 53,
     eSIR_MAC_PSMP_CONTROLLED_ACCESS_ONLY_STATUS   = 54,
-#ifdef FEATURE_WLAN_CCX    
-    eSIR_MAC_CCX_UNSPECIFIED_QOS_FAILURE_STATUS   = 200, //CCX-Unspecified, QoS related failure in (Re)Assoc response frames
-    eSIR_MAC_CCX_TSPEC_REQ_REFUSED_STATUS         = 201, //CCX-TSPEC request refused due to AP's policy configuration in AddTs Rsp, (Re)Assoc Rsp.
-    eSIR_MAC_CCX_ASSOC_DENIED_INSUFF_BW_STATUS    = 202, //CCX-Assoc denied due to insufficient bandwidth to handle new TS in (Re)Assoc Rsp.
-    eSIR_MAC_CCX_INVALID_PARAMETERS_STATUS        = 203, //CCX-Invalid parameters. (Re)Assoc request had one or more TSPEC parameters with 
+#ifdef FEATURE_WLAN_ESE
+    eSIR_MAC_ESE_UNSPECIFIED_QOS_FAILURE_STATUS   = 200, //ESE-Unspecified, QoS related failure in (Re)Assoc response frames
+    eSIR_MAC_ESE_TSPEC_REQ_REFUSED_STATUS         = 201, //ESE-TSPEC request refused due to AP's policy configuration in AddTs Rsp, (Re)Assoc Rsp.
+    eSIR_MAC_ESE_ASSOC_DENIED_INSUFF_BW_STATUS    = 202, //ESE-Assoc denied due to insufficient bandwidth to handle new TS in (Re)Assoc Rsp.
+    eSIR_MAC_ESE_INVALID_PARAMETERS_STATUS        = 203, //ESE-Invalid parameters. (Re)Assoc request had one or more TSPEC parameters with
                                                          //invalid values.
 #endif
 
@@ -2423,7 +2423,7 @@ typedef __ani_attr_pre_packed struct sSirMacActionFrameHdr
     tANI_U8    actionID;
 } __ani_attr_packed tSirMacActionFrameHdr, *tpSirMacActionFrameHdr;
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
 typedef __ani_attr_pre_packed struct sSirMacVendorSpecificFrameHdr
 {
     tANI_U8    category;

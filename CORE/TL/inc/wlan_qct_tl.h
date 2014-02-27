@@ -270,9 +270,9 @@ typedef struct
  /*Flag to indicate if STA is a WAPI STA*/
   v_U8_t         ucIsWapiSta;
 
-#ifdef FEATURE_WLAN_CCX
- /*Flag to indicate if STA is a CCX STA*/
-  v_U8_t         ucIsCcxSta;
+#ifdef FEATURE_WLAN_ESE
+ /*Flag to indicate if STA is a ESE STA*/
+  v_U8_t         ucIsEseSta;
 #endif
 
   /*DPU Signature used for broadcast data - used for data caching*/

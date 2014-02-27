@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1253,7 +1253,7 @@ typedef struct sEnterBmpsParams
     //if association is based on ProbeRsp instead of beacon.
     tANI_U8 dtimPeriod;
 
-    // For CCX and 11R Roaming
+    // For ESE and 11R Roaming
     tANI_U8  bRssiFilterEnable;
     tANI_U32 rssiFilterPeriod;
     tANI_U32 numBeaconPerRssiAverage;

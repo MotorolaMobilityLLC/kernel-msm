@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -52,8 +52,8 @@
 #include "limStaHashApi.h"
 #include "limSendMessages.h"
 
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
-#include "ccxApi.h"
+#if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
+#include "eseApi.h"
 #endif
 
 extern tSirRetStatus schBeaconEdcaProcess(tpAniSirGlobal pMac, tSirMacEdcaParamSetIE *edca, tpPESession psessionEntry);
@@ -354,7 +354,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
          (psessionEntry->limMlmState != eLIM_MLM_WT_ASSOC_RSP_STATE)) ||
         ((subType == LIM_REASSOC) &&
          ((psessionEntry->limMlmState != eLIM_MLM_WT_REASSOC_RSP_STATE) 
-#if defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
          && (psessionEntry->limMlmState != eLIM_MLM_WT_FT_REASSOC_RSP_STATE)
 #endif
          )))
@@ -509,7 +509,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     }
 #endif    
 
-#ifdef FEATURE_WLAN_CCX    
+#ifdef FEATURE_WLAN_ESE
     if (psessionEntry->tspecIes != NULL) 
     {
         vos_mem_free(psessionEntry->tspecIes);
@@ -575,7 +575,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         limDeactivateAndChangeTimer(pMac, eLIM_ASSOC_FAIL_TIMER);
     else        // Stop Reassociation failure timer
     {
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
         pMac->lim.reAssocRetryAttempt = 0;
         if ((NULL != pMac->lim.pSessionEntry) && (NULL != pMac->lim.pSessionEntry->pLimMlmReassocRetryReq))
         {
@@ -652,7 +652,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     {
         // Log success
         PELOG1(limLog(pMac, LOG1, FL("Successfully Reassociated with BSS"));)
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
         {
             tANI_U8 cnt = 0;
             if (pAssocRsp->tsmPresent)
@@ -663,10 +663,10 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
                     // Find the TSPEC IE with VO user priority
                     for (cnt=0; cnt<pAssocRsp->num_tspecs; cnt++) {
                         if ( upToAc(pAssocRsp->TSPECInfo[cnt].user_priority) == EDCA_AC_VO) {
-                            psessionEntry->ccxContext.tsm.tid = pAssocRsp->TSPECInfo[cnt].user_priority;
-                            vos_mem_copy(&psessionEntry->ccxContext.tsm.tsmInfo,
-                                    &pAssocRsp->tsmIE, sizeof(tSirMacCCXTSMIE));
-#ifdef FEATURE_WLAN_CCX_UPLOAD
+                            psessionEntry->eseContext.tsm.tid = pAssocRsp->TSPECInfo[cnt].user_priority;
+                            vos_mem_copy(&psessionEntry->eseContext.tsm.tsmInfo,
+                                    &pAssocRsp->tsmIE, sizeof(tSirMacESETSMIE));
+#ifdef FEATURE_WLAN_ESE_UPLOAD
                             limSendSmeTsmIEInd(pMac,
                                                psessionEntry,
                                                pAssocRsp->tsmIE.tsid,
@@ -674,9 +674,9 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
                                                pAssocRsp->tsmIE.msmt_interval);
 #else
                             limActivateTSMStatsTimer(pMac, psessionEntry);
-#endif /* FEATURE_WLAN_CCX_UPLOAD */
-                            if(psessionEntry->ccxContext.tsm.tsmInfo.state) {
-                                psessionEntry->ccxContext.tsm.tsmMetrics.RoamingCount++;
+#endif /* FEATURE_WLAN_ESE_UPLOAD */
+                            if(psessionEntry->eseContext.tsm.tsmInfo.state) {
+                                psessionEntry->eseContext.tsm.tsmMetrics.RoamingCount++;
                             }
                             break;
                         }
@@ -711,7 +711,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
             goto assocReject;
         }
 
-#if defined(WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if defined(WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
         if (psessionEntry->limMlmState == eLIM_MLM_WT_FT_REASSOC_RSP_STATE)
         {
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
@@ -771,10 +771,10 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     // Log success
     PELOG1(limLog(pMac, LOG1, FL("Successfully Associated with BSS "MAC_ADDRESS_STR),
            MAC_ADDR_ARRAY(pHdr->sa));)
-#ifdef FEATURE_WLAN_CCX
-    if(psessionEntry->ccxContext.tsm.tsmInfo.state)
+#ifdef FEATURE_WLAN_ESE
+    if(psessionEntry->eseContext.tsm.tsmInfo.state)
     {
-        psessionEntry->ccxContext.tsm.tsmMetrics.RoamingCount = 0;
+        psessionEntry->eseContext.tsm.tsmMetrics.RoamingCount = 0;
     }
 #endif
     /**

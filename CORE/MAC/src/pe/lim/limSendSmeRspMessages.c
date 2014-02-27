@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -273,7 +273,7 @@ limSendSmeJoinReassocRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
 #ifdef WLAN_FEATURE_VOWIFI_11R
             psessionEntry->RICDataLen +
 #endif
-#ifdef FEATURE_WLAN_CCX            
+#ifdef FEATURE_WLAN_ESE
             psessionEntry->tspecLen + 
 #endif            
             sizeof(tSirSmeJoinRsp) - sizeof(tANI_U8) ;
@@ -312,7 +312,7 @@ limSendSmeJoinReassocRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
 #ifdef WLAN_FEATURE_VOWIFI_11R
         pSirSmeJoinRsp->parsedRicRspLen = 0;
 #endif
-#ifdef FEATURE_WLAN_CCX            
+#ifdef FEATURE_WLAN_ESE
         pSirSmeJoinRsp->tspecIeLen = 0;
 #endif
         
@@ -364,7 +364,7 @@ limSendSmeJoinReassocRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
                 PELOG1(limLog(pMac, LOG1, FL("RicLength=%d"), pSirSmeJoinRsp->parsedRicRspLen);)
             }
 #endif
-#ifdef FEATURE_WLAN_CCX            
+#ifdef FEATURE_WLAN_ESE
             if(psessionEntry->tspecIes != NULL)
             {
                 pSirSmeJoinRsp->tspecIeLen = psessionEntry->tspecLen;
@@ -374,7 +374,7 @@ limSendSmeJoinReassocRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
                               psessionEntry->tspecIes, pSirSmeJoinRsp->tspecIeLen);
                 vos_mem_free(psessionEntry->tspecIes);
                 psessionEntry->tspecIes = NULL;
-                PELOG1(limLog(pMac, LOG1, FL("CCX-TspecLen=%d"), psessionEntry->tspecLen);)
+                PELOG1(limLog(pMac, LOG1, FL("ESE-TspecLen=%d"), psessionEntry->tspecLen);)
             }
 #endif            
             pSirSmeJoinRsp->aid = psessionEntry->limAID;
@@ -2415,7 +2415,7 @@ limSendSmePEStatisticsRsp(tpAniSirGlobal pMac, tANI_U16 msgType, void* stats)
 
 } /*** end limSendSmePEStatisticsRsp() ***/
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
 /**
  * limSendSmePEGetRoamRssiRsp()
  *
@@ -2477,9 +2477,9 @@ limSendSmePEGetRoamRssiRsp(tpAniSirGlobal pMac, tANI_U16 msgType, void* stats)
 #endif
 
 
-#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
 /**
- * limSendSmePECcxTsmRsp()
+ * limSendSmePEEseTsmRsp()
  *
  *FUNCTION:
  * This function is called to send tsm stats response to HDD.
@@ -2494,7 +2494,7 @@ limSendSmePEGetRoamRssiRsp(tpAniSirGlobal pMac, tANI_U16 msgType, void* stats)
  */
 
 void
-limSendSmePECcxTsmRsp(tpAniSirGlobal pMac, tAniGetTsmStatsRsp *pStats)
+limSendSmePEEseTsmRsp(tpAniSirGlobal pMac, tAniGetTsmStatsRsp *pStats)
 {
     tSirMsgQ            mmhMsg;
     tANI_U8             sessionId;
@@ -2518,8 +2518,8 @@ limSendSmePECcxTsmRsp(tpAniSirGlobal pMac, tAniGetTsmStatsRsp *pStats)
     }
 
     pPeStats->msgType = eWNI_SME_GET_TSM_STATS_RSP;
-    pPeStats->tsmMetrics.RoamingCount = pPeSessionEntry->ccxContext.tsm.tsmMetrics.RoamingCount;
-    pPeStats->tsmMetrics.RoamingDly = pPeSessionEntry->ccxContext.tsm.tsmMetrics.RoamingDly;
+    pPeStats->tsmMetrics.RoamingCount = pPeSessionEntry->eseContext.tsm.tsmMetrics.RoamingCount;
+    pPeStats->tsmMetrics.RoamingDly = pPeSessionEntry->eseContext.tsm.tsmMetrics.RoamingDly;
 
     mmhMsg.type = eWNI_SME_GET_TSM_STATS_RSP;
     mmhMsg.bodyptr = pStats;
@@ -2528,9 +2528,9 @@ limSendSmePECcxTsmRsp(tpAniSirGlobal pMac, tAniGetTsmStatsRsp *pStats)
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
 
     return;
-} /*** end limSendSmePECcxTsmRsp() ***/
+} /*** end limSendSmePEEseTsmRsp() ***/
 
-#endif /* FEATURE_WLAN_CCX) && FEATURE_WLAN_CCX_UPLOAD */
+#endif /* FEATURE_WLAN_ESE) && FEATURE_WLAN_ESE_UPLOAD */
 
 
 void

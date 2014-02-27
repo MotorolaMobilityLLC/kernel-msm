@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -55,7 +55,7 @@ typedef enum
 #define LIM_AID_MASK                              0xC000
 #define LIM_SPECTRUM_MANAGEMENT_BIT_MASK          0x0100
 #define LIM_RRM_BIT_MASK                          0x1000
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
 #define LIM_MAX_REASSOC_RETRY_LIMIT            2
 #endif
 
@@ -111,7 +111,7 @@ void limPrintMsgName(tpAniSirGlobal pMac, tANI_U16 logLevel, tANI_U32 msgType);
 void limPrintMsgInfo(tpAniSirGlobal pMac, tANI_U16 logLevel, tSirMsgQ *msg);
 char* limBssTypeStr(tSirBssType bssType);
 
-#if defined FEATURE_WLAN_CCX || defined WLAN_FEATURE_VOWIFI
+#if defined FEATURE_WLAN_ESE || defined WLAN_FEATURE_VOWIFI
 extern tSirRetStatus limSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, 
                                   tPowerdBm txPower, 
                                   tpPESession pSessionEntry );
