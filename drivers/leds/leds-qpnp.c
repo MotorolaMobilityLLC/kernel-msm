@@ -98,7 +98,7 @@
 #define WLED_SWITCH_FREQ_DEFAULT	0x0B
 #define WLED_CABC_ENABLE		0x80
 #define WLED_PANEL_DEFAULT		0xffffffffffffffffULL
-#define WLED_PANEL_ES5			0x85
+#define WLED_PANEL_NAME_LEN		50
 
 #define FLASH_SAFETY_TIMER(base)	(base + 0x40)
 #define FLASH_MAX_CURR(base)		(base + 0x41)
@@ -2688,8 +2688,10 @@ static int __devinit qpnp_get_config_wled(struct qpnp_led_data *led,
 {
 	u32 val;
 	int rc;
-	unsigned long long panel_ver;
-	struct device_node *np;
+	unsigned long long pan_ver;
+	const char *pname, *pname_chosen;
+	struct device_node *np, *panel_node;
+	size_t len;
 
 	led->wled_cfg = devm_kzalloc(&led->spmi_dev->dev,
 				sizeof(struct wled_config_data), GFP_KERNEL);
@@ -2774,23 +2776,40 @@ static int __devinit qpnp_get_config_wled(struct qpnp_led_data *led,
 	led->wled_cfg->cs_out_en =
 		of_property_read_bool(node, "qcom,cs-out-en");
 
-	/* Use panel revision check to enable cabc */
-	led->wled_cfg->cabc_done = 0;
+	/* Get panel version and name from dev tree, no cabc by default */
 	np = of_find_node_by_path("/chosen");
-	panel_ver = WLED_PANEL_DEFAULT;
-	of_property_read_u64(np, "mmi,panel_ver", &panel_ver);
-	panel_ver = (panel_ver & 0xff00) >> 8;
+	pan_ver = WLED_PANEL_DEFAULT;
+	if (of_property_read_string(np, "mmi,panel_name", &pname_chosen)) {
+		dev_warn(&led->spmi_dev->dev, "Failed to get mmi,panel_name\n");
+		goto nocabc;
+	}
+	len = strnlen(pname_chosen, WLED_PANEL_NAME_LEN);
+	of_property_read_u64(np, "mmi,panel_ver", &pan_ver);
+	pan_ver = (pan_ver & 0xff00) >> 8;
 	of_node_put(np);
-	if ((panel_ver == 0xff) || (panel_ver < WLED_PANEL_ES5)) {
-		led->wled_cfg->cabc_en = 0;
-		dev_info(&led->spmi_dev->dev,
-			"no CABC panel rev. %#x\n", (u32)panel_ver);
-	} else {
-		led->wled_cfg->cabc_en = 1;
-		dev_info(&led->spmi_dev->dev,
-			"CABC will be enabled panel: %#x\n", (u32)panel_ver);
+	dev_info(&led->spmi_dev->dev, "Panel name: %s, version %#x\n",
+		pname_chosen, (u32)pan_ver);
+
+	/* Get list of supported panels from subnode */
+
+	panel_node = of_find_node_by_name(node, "mmi,panels");
+	if (panel_node) {
+		for_each_available_child_of_node(panel_node, np) {
+			if (of_property_read_string(np, "panel_name", &pname))
+				continue;
+			if (strncmp(pname_chosen, pname, len) == 0) {
+				if (of_property_read_u32(np, "version", &val))
+					led->wled_cfg->cabc_en = 1;
+				else if ((pan_ver != 0xff) && (pan_ver >= val))
+					led->wled_cfg->cabc_en = 1;
+				break;
+			}
+		}
+		of_node_put(panel_node);
 	}
 
+nocabc:	dev_info(&led->spmi_dev->dev, "CABC support %s\n",
+		(led->wled_cfg->cabc_en ? "enabled" : "disabled"));
 	return 0;
 }
 
