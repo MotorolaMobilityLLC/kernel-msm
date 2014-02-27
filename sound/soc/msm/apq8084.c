@@ -322,6 +322,7 @@ static int ext_mclk_gpio = -1;
 static int clk_users;
 static atomic_t prim_auxpcm_rsc_ref;
 static atomic_t sec_auxpcm_rsc_ref;
+static atomic_t pri_mi2s_rsc_ref;
 static bool codec_reg_done;
 static int apq8084_mi2s_rx_ch = 1;
 static int apq8084_mi2s_tx_ch = 1;
@@ -2035,6 +2036,18 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static int msm_be_pri_mi2s_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_RATE);
+
+	pr_debug("%s()\n", __func__);
+	rate->min = rate->max = 16000;
+
+	return 0;
+}
+
 static int msm_incall_rec_mode_get(struct snd_kcontrol *kcontrol,
 				   struct snd_ctl_elem_value *ucontrol)
 {
@@ -2903,6 +2916,114 @@ static struct snd_soc_ops apq8084_slimbus_6_be_ops = {
 	.startup = apq8084_snd_startup,
 	.hw_params = apq8084_slimbus_6_hw_params,
 	.shutdown = apq8084_snd_shudown,
+};
+
+
+static struct afe_clk_cfg lpass_pri_i2s_enable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_512_KHZ,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_VALID,
+	0,
+};
+static struct afe_clk_cfg lpass_pri_i2s_disable = {
+	AFE_API_VERSION_I2S_CONFIG,
+	0,
+	0,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_VALID,
+	0,
+};
+
+static int apq8084_mi2s_pri_snd_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+			SNDRV_PCM_HW_PARAM_RATE);
+
+	pr_debug("%s()\n", __func__);
+	rate->min = rate->max = 16000;
+
+	return 1;
+}
+
+static void  apq8084_mi2s_pri_snd_shudown(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct msm_auxpcm_ctrl *auxpcm_ctrl = NULL;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	auxpcm_ctrl = pdata->pri_auxpcm_ctrl;
+
+	pr_debug("%s(): substream = %s, pri_mi2s_rsc_ref counter = %d\n",
+		__func__, substream->name, atomic_read(&pri_mi2s_rsc_ref));
+
+	if (atomic_dec_return(&pri_mi2s_rsc_ref) == 0) {
+		msm_aux_pcm_free_gpios(auxpcm_ctrl);
+
+		ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX,
+			&lpass_pri_i2s_disable);
+		if (ret < 0)
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+	}
+}
+
+static int apq8084_mi2s_pri_snd_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_card *card = rtd->card;
+	struct apq8084_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_auxpcm_ctrl *auxpcm_ctrl = NULL;
+	auxpcm_ctrl = pdata->pri_auxpcm_ctrl;
+
+	pr_debug("%s: dai name %s %p\n", __func__, cpu_dai->name, cpu_dai->dev);
+
+	if (atomic_inc_return(&pri_mi2s_rsc_ref) == 1) {
+		pr_debug("%s: acquire mi2s resources\n", __func__);
+
+		ret = msm_aux_pcm_get_gpios(auxpcm_ctrl);
+		if (ret < 0) {
+			pr_err("%s: PRI MI2S GPIO request failed\n", __func__);
+			atomic_dec_return(&pri_mi2s_rsc_ref);
+			return -EINVAL;
+		}
+
+		ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX,
+			&lpass_pri_i2s_enable);
+		if (ret < 0) {
+			pr_err("%s: afe_set_lpass_clock failed\n", __func__);
+			goto pri_clk_fail;
+		}
+
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0) {
+			dev_err(cpu_dai->dev, "set format for CPU dai failed\n");
+			goto pri_fmt_fail;
+		}
+
+	}
+	return ret;
+
+pri_fmt_fail:
+	/* disable clock */
+	afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_TX,
+			&lpass_pri_i2s_disable);
+pri_clk_fail:
+	msm_aux_pcm_free_gpios(auxpcm_ctrl);
+	atomic_dec_return(&pri_mi2s_rsc_ref);
+	return ret;
+}
+
+static struct snd_soc_ops apq8084_mi2s_pri_be_ops = {
+	.startup = apq8084_mi2s_pri_snd_startup,
+	.hw_params = apq8084_mi2s_pri_snd_hw_params,
+	.shutdown = apq8084_mi2s_pri_snd_shudown,
 };
 
 /* Digital audio interface glue - connects codec <---> CPU */
@@ -4013,6 +4134,21 @@ static struct snd_soc_dai_link apq8084_taiko_be_dai_links[] = {
 		.ops = &apq8084_be_ops,
 		.ignore_suspend = 1,
 	},
+
+	/* APQ <-> C55 */
+	{
+		.name = LPASS_BE_PRI_MI2S_TX,
+		.stream_name = "Primary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.0",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_PRI_MI2S_TX,
+		.be_hw_params_fixup = msm_be_pri_mi2s_hw_params_fixup,
+		.ops = &apq8084_mi2s_pri_be_ops,
+		.ignore_suspend = 1,
+	},
 };
 
 static struct snd_soc_dai_link apq8084_hdmi_dai_link[] = {
@@ -4438,6 +4574,7 @@ static int apq8084_asoc_machine_probe(struct platform_device *pdev)
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&prim_auxpcm_rsc_ref, 0);
 	atomic_set(&sec_auxpcm_rsc_ref, 0);
+	atomic_set(&pri_mi2s_rsc_ref, 0);
 	spdev = pdev;
 
 	ret = snd_soc_register_card(card);
