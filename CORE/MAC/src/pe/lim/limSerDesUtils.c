@@ -2384,23 +2384,23 @@ limIsSmeGetAssocSTAsReqValid(tpAniSirGlobal pMac, tpSirSmeGetAssocSTAsReq pGetAs
         return eSIR_FAILURE;
 
     // Extract pUsrContext
-    pGetAssocSTAsReq->pUsrContext = (void *)limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-    len  -= sizeof(tANI_U32);
+    vos_mem_copy((tANI_U8 *)pGetAssocSTAsReq->pUsrContext, pBuf, sizeof(void*));
+    pBuf += sizeof(void*);
+    len  -= sizeof(void*);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
     // Extract pSapEventCallback
-    pGetAssocSTAsReq->pSapEventCallback = (void *)limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-    len  -= sizeof(tANI_U32);
+    vos_mem_copy((tANI_U8 *)pGetAssocSTAsReq->pSapEventCallback, pBuf, sizeof(void*));
+    pBuf += sizeof(void*);
+    len  -= sizeof(void*);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
     // Extract pAssocStasArray
-    pGetAssocSTAsReq->pAssocStasArray = (void *)limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-    len  -= sizeof(tANI_U32);
+    vos_mem_copy((tANI_U8 *)pGetAssocSTAsReq->pAssocStasArray, pBuf, sizeof(void*));
+    pBuf += sizeof(void*);
+    len  -= sizeof(void*);
 
     PELOG1(limLog(pMac, LOG1, FL("SME_GET_ASSOC_STAS_REQ length consumed %d bytes "), len);)
 
@@ -2537,16 +2537,16 @@ limIsSmeGetWPSPBCSessionsReqValid(tpAniSirGlobal pMac, tSirSmeGetWPSPBCSessionsR
         return eSIR_FAILURE;
 
    // Extract pUsrContext
-    pGetWPSPBCSessionsReq->pUsrContext = (void *)limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-    len  -= sizeof(tANI_U32);
+    vos_mem_copy((tANI_U8 *)pGetWPSPBCSessionsReq->pUsrContext, pBuf, sizeof(void*));
+    pBuf += sizeof(void*);
+    len  -= sizeof(void*);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
     // Extract pSapEventCallback
-    pGetWPSPBCSessionsReq->pSapEventCallback = (void *)limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-    len  -= sizeof(tANI_U32);
+    vos_mem_copy((tANI_U8 *)pGetWPSPBCSessionsReq->pSapEventCallback, pBuf, sizeof(void*));
+    pBuf += sizeof(void*);
+    len  -= sizeof(void*);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
