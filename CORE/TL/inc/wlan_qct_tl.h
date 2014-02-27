@@ -39,8 +39,6 @@
 DESCRIPTION
   This file contains the external API exposed by the wlan transport layer
   module.
-
-
 ===========================================================================*/
 
 
