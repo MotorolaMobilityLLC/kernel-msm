@@ -16,6 +16,7 @@
 #include <linux/irq.h>
 #include <linux/kthread.h>
 #include <mach/msm_qmi_interface.h>
+#include <mach/subsystem_notif.h>
 
 /* Per spec.max 40 bytes per received message */
 #define SLIM_MSGQ_BUF_LEN	40
@@ -82,7 +83,8 @@
 
 /* Slimbus QMI service */
 #define SLIMBUS_QMI_SVC_ID 0x0301
-#define SLIMBUS_QMI_INS_ID 1
+#define SLIMBUS_QMI_SVC_V1 1
+#define SLIMBUS_QMI_INS_ID 0
 
 #define PGD_THIS_EE(r, v) ((v) ? PGD_THIS_EE_V2(r) : PGD_THIS_EE_V1(r))
 #define PGD_PORT(r, p, v) ((v) ? PGD_PORT_V2(r, p) : PGD_PORT_V1(r, p))
@@ -168,7 +170,7 @@ enum msm_slim_port_status {
 
 enum msm_ctrl_state {
 	MSM_CTRL_AWAKE,
-	MSM_CTRL_SLEEPING,
+	MSM_CTRL_IDLE,
 	MSM_CTRL_ASLEEP,
 	MSM_CTRL_DOWN,
 };
@@ -203,6 +205,11 @@ struct msm_slim_qmi {
 	struct notifier_block		nb;
 	struct work_struct		ssr_down;
 	struct work_struct		ssr_up;
+};
+
+struct msm_slim_mdm {
+	struct notifier_block nb;
+	void *ssr;
 };
 
 struct msm_slim_pdata {
@@ -253,6 +260,7 @@ struct msm_slim_ctrl {
 	struct work_struct	slave_notify;
 	struct msm_slim_qmi	qmi;
 	struct msm_slim_pdata	pdata;
+	struct msm_slim_mdm	mdm;
 };
 
 struct msm_sat_chan {
@@ -317,4 +325,5 @@ void msm_slim_disconnect_endp(struct msm_slim_ctrl *dev,
 void msm_slim_qmi_exit(struct msm_slim_ctrl *dev);
 int msm_slim_qmi_init(struct msm_slim_ctrl *dev, bool apps_is_master);
 int msm_slim_qmi_power_request(struct msm_slim_ctrl *dev, bool active);
+int msm_slim_qmi_check_framer_request(struct msm_slim_ctrl *dev);
 #endif
