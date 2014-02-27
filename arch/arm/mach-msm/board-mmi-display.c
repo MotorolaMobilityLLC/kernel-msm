@@ -1194,20 +1194,6 @@ end:
 	return rc;
 }
 
-__init int is_ext_5v_req(void)
-{
-	int rc = 0;
-	if (!strncmp(panel_name, "mipi_mot_cmd_auo_hd_450",
-			strlen(panel_name)))
-		rc = 1;
-
-	if (!strncmp(panel_name, "mipi_mot_cmd_auo_qhd_430",
-			strlen(panel_name)))
-		rc = 1;
-
-	return rc;
-}
-
 void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 				struct mipi_dsi_platform_data *mipi_dsi_pdata)
 {
@@ -1229,7 +1215,6 @@ void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 	if (no_disp && mipi_dsi_pdata->disable_splash)
 		mipi_dsi_pdata->disable_splash();
 
-	if (is_ext_5v_req())
 		enable_ext_5v_reg();
 
 	platform_device_register(&mipi_dsi_mot_panel_device);
