@@ -372,6 +372,7 @@
 			maxim,vf_fullcap = <0x0316>;
 			maxim,temperature = <0x1400>;
 			maxim,dpacc = <0x0C80>;
+			maxim,param-version = <0x1>;
 		};
 	};
 };

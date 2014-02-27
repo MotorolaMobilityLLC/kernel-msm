@@ -45,6 +45,7 @@
 			maxim,qrtable30 = <0x0600>;
 			maxim,capacity = <0x0267>;
 			maxim,vf_fullcap = <0x0267>;
+			maxim,param-version = <0x0>;
 		};
 	};
 	i2c@f9924000 {
