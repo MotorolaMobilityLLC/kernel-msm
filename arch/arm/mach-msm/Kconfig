@@ -2350,6 +2350,17 @@ config MSM_TZ_LOG
 	  produced by the Secure code (Trust zone). These messages provide
 	  diagnostic information about TZ operation.
 
+config MSM_TZ_LOG_WDOG_DUMP
+	bool "Dump TZ Log after watchdog reset"
+	depends on MSM_TZ_LOG
+	default n
+	help
+	  There are multiple kinds of fatal errors in TZ can trigger watchdog
+	  reset. From kernel log there is no evidence to tell what's the reset
+	  reason. After enabling this option, kernel will reserve a buffer
+	  to get TZ log backup. After a watchdog reset, kernel can print
+	  the log out.
+
 config MSM_RPM_LOG
 	tristate "MSM Resource Power Manager Log Driver"
 	depends on DEBUG_FS
