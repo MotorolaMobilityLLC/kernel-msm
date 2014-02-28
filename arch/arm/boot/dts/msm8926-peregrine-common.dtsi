@@ -49,7 +49,7 @@
 		compatible = "qcom,msm-mem-hole";
 		qcom,memblock-remove = <0x07300000 0x8300000
 					0x0fa00000 0x500000>; /* Address and size of the hole */
-		qcom,memblock-reserve = <0x0 0x100000>;
+		qcom,memblock-reserve = <0x0 0x2000>;
 	};
 
 	usr_reset_warning {
