@@ -24,23 +24,6 @@
 				qcom,pm8xxx-gpio-vin-sel = <2>;
 			};
 
-			/* ID_FLOAT */
-			gpio@19 {
-				qcom,pm8xxx-gpio-pin = <19>;
-
-				/*
-				 * Function    : Normal
-				 * Direction   : Input
-				 * Pull        : None
-				 * VIN Select  : L17
-				 */
-				qcom,pm8xxx-gpio-func = <0>;
-				qcom,pm8xxx-gpio-direction = <2>;
-				qcom,pm8xxx-gpio-pull = <5>;
-				qcom,pm8xxx-gpio-vin-sel = <6>;
-			};
-
-
 			/* WCD9310_RESET_N */
 			gpio@34 {
 				qcom,pm8xxx-gpio-pin = <34>;
