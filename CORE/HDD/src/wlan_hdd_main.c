@@ -5853,6 +5853,15 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
 
    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "%s iface =%s type = %d",__func__,iface_name,session_type);
 
+   if(macAddr == NULL)
+   {
+         /* Not received valid macAddr */
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s:Unable to add virtual intf: Not able to get"
+                             "valid mac address",__func__);
+         return NULL;
+   }
+
    //Disable BMPS incase of Concurrency
    exitbmpsStatus = hdd_disable_bmps_imps(pHddCtx, session_type);
 
