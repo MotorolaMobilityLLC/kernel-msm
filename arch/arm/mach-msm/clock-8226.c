@@ -1865,6 +1865,10 @@ static struct rcg_clk cci_clk_src = {
 static struct clk_freq_tbl ftbl_camss_gp0_1_clk[] = {
 	F_MMSS(     10000,         xo,  16,    1,  120),
 	F_MMSS(     24000,         xo,  16,    1,   50),
+#if defined(CONFIG_MSM_PWM_VIBRATOR)
+	F_MMSS(29268,       xo,  16,   1,  41), /* for 230Hz */
+	F_MMSS(22222,       xo,  16,   1,  54), /* for 175Hz */
+#endif
 	F_MMSS(   6000000,      gpll0,  10,    1,   10),
 	F_MMSS(  12000000,      gpll0,  10,    1,    5),
 	F_MMSS(  13000000,      gpll0,   4,   13,  150),
@@ -3524,6 +3528,9 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("iface_clk", gcc_prng_ahb_clk.c, "f9bff000.qcom,msm-rng"),
 	CLK_LOOKUP("cam_gp0_clk", camss_gp0_clk.c, ""),
 	CLK_LOOKUP("cam_gp1_clk", camss_gp1_clk.c, ""),
+#if defined(CONFIG_MSM_PWM_VIBRATOR)
+	CLK_LOOKUP("cam_gp1_clk", camss_gp1_clk.c, "vibrator"),
+#endif
 	CLK_LOOKUP("iface_clk", camss_micro_ahb_clk.c, ""),
 
 	CLK_LOOKUP("", mmss_mmssnoc_bto_ahb_clk.c, ""),
