@@ -1001,6 +1001,7 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	struct device_node *np;
 	const char *pname;
 	u32 panel_ver;
+	u32 detect_status;
 
 	np = of_find_node_by_path("/chosen");
 	ctrl_pdata->panel_config.esd_disable_bl =
@@ -1025,6 +1026,9 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		strlcpy(ctrl_pdata->panel_config.panel_name, pname,
 			sizeof(ctrl_pdata->panel_config.panel_name));
 
+	if (of_property_read_u32(np, "mmi,display_auto_detect", &detect_status))
+		detect_status = 0xff;
+
 	pr_debug("%s: esd_disable_bl=%d bare_board_bl=%d, " \
 		" factory_cable=%d panel_name=%s bare_board=%d\n",
 		__func__, ctrl_pdata->panel_config.esd_disable_bl,
@@ -1034,11 +1038,12 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		ctrl_pdata->panel_config.bare_board);
 
 	panel_ver = (u32)ctrl_pdata->panel_config.panel_ver;
-	pr_info("BL: panel=%s, manufacture_id(0xDA)= 0x%x controller_ver(0xDB)= 0x%x controller_drv_ver(0XDC)= 0x%x, full=0x%016llx\n",
+	pr_info("BL: panel=%s, manufacture_id(0xDA)= 0x%x controller_ver(0xDB)= 0x%x controller_drv_ver(0XDC)= 0x%x, full=0x%016llx, detect status = 0x%x\n",
 		ctrl_pdata->panel_config.panel_name,
 		panel_ver & 0xff, (panel_ver & 0xff00) >> 8,
 		(panel_ver & 0xff0000) >> 16,
-		ctrl_pdata->panel_config.panel_ver);
+		ctrl_pdata->panel_config.panel_ver,
+		detect_status);
 
 	of_node_put(np);
 
