@@ -329,6 +329,8 @@
 				ctrl_a_fsc = <0x16>;
 				i2c,address = <0x00000038>;
 				i2c,type = [6c6d3335333200];
+				led2_controller = <0x01>;
+				ctrl_b_name = "keyboard-backlight";
 				pwm_disable_threshold = <0xff>;
 				type = <0x000b0004>;
 			};
