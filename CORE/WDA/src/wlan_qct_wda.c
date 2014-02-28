@@ -10807,7 +10807,22 @@ VOS_STATUS WDA_HALDumpCmdReq(tpAniSirGlobal   pMac, tANI_U32  cmd,
    VOS_STATUS vStatus;
    pVosContext = (pVosContextType)vos_get_global_context(VOS_MODULE_ID_PE,
                                                            (void *)pMac);
-   
+   if(pVosContext)
+   {
+      if (pVosContext->isLogpInProgress)
+      {
+         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_FATAL,
+                                "%s:LOGP in Progress. Ignore!!!", __func__);
+         return VOS_STATUS_E_BUSY;
+      }
+   }
+   else
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                          "%s: VOS Context Null", __func__);
+      return VOS_STATUS_E_RESOURCES;
+   }
+
    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
    if(NULL == pWdaParams)
    {
