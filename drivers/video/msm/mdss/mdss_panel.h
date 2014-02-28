@@ -127,6 +127,7 @@ struct mdss_panel_recovery {
 				 - 1 clock enable
  * @MDSS_EVENT_ENABLE_PARTIAL_UPDATE: Event to update ROI of the panel.
  * @MDSS_EVENT_DSI_CMDLIST_KOFF: acquire dsi_mdp_busy lock before kickoff.
+ * @MDSS_EVENT_ENABLE_TE: Change TE state, used for factory testing only
  */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -145,6 +146,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_PANEL_CLK_CTRL,
 	MDSS_EVENT_DSI_CMDLIST_KOFF,
 	MDSS_EVENT_ENABLE_PARTIAL_UPDATE,
+	MDSS_EVENT_ENABLE_TE,
 };
 
 struct lcd_panel_info {

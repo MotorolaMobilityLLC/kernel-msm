@@ -1720,8 +1720,89 @@ static ssize_t frame_counter_show(struct device *dev,
 }
 
 static DEVICE_ATTR(frame_counter, S_IRUSR | S_IRGRP, frame_counter_show, NULL);
+
+static ssize_t te_enable_store(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	struct mdss_mdp_mixer *mixer;
+	static int prev_height;
+
+	int enable;
+	int r = 0;
+
+	if (!ctl || !mdp5_data) {
+		pr_warning("there is no ctl or mdp5_data attached to fb\n");
+		r = -ENODEV;
+		goto end;
+	}
+
+	mixer = mdss_mdp_mixer_get(ctl, MDSS_MDP_MIXER_MUX_DEFAULT);
+	if (!mixer) {
+		pr_err("there is no mixer\n");
+		r = -ENODEV;
+		goto end;
+	}
+
+	if (!mfd->panel_power_on) {
+		pr_warning("panel is not powered\n");
+		r = -EPERM;
+		goto end;
+	}
+
+	r = kstrtoint(buf, 0, &enable);
+	if ((r) || ((enable != 0) && (enable != 1))) {
+		pr_err("invalid TE enable value = %d\n",
+			enable);
+		r = -EINVAL;
+		goto end;
+	}
+
+	mutex_lock(&mdp5_data->ov_lock);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON, false);
+
+	r = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_ENABLE_TE, (void *) enable);
+	if (r) {
+		pr_err("Failed sending TE command, r = %d\n", r);
+		r = -EFAULT;
+		goto locked_end;
+	}
+
+	/* The TE max height in MDP is being set to a max value of 0xFFF0. Since
+	   this is such a large number, when TE is disabled from the panel,
+	   we'll start to get constant timeout errors and get 1 FPS.  To prevent
+	   this from happening, set the height to display height * 2.  This
+	   will just cause our FPS to drop to 30 FPS, and prevent timeout
+	   errors. */
+	if (!enable) {
+		prev_height = mdss_mdp_pingpong_read(mixer,
+				MDSS_MDP_REG_PP_SYNC_CONFIG_HEIGHT) & 0xFFFF;
+		mdss_mdp_pingpong_write(mixer,
+					MDSS_MDP_REG_PP_SYNC_CONFIG_HEIGHT,
+					mfd->fbi->var.yres * 2);
+	} else if (enable && prev_height) {
+		mdss_mdp_pingpong_write(mixer,
+					MDSS_MDP_REG_PP_SYNC_CONFIG_HEIGHT,
+					prev_height);
+	}
+
+locked_end:
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
+	mutex_unlock(&mdp5_data->ov_lock);
+
+end:
+	return r ? r : count;
+}
+
+static DEVICE_ATTR(te_enable, S_IWUSR | S_IWGRP, NULL, te_enable_store);
+
 static struct attribute *factory_te_attrs[] = {
 	&dev_attr_frame_counter.attr,
+	&dev_attr_te_enable.attr,
 	NULL,
 };
 static struct attribute_group factory_te_attrs_group = {

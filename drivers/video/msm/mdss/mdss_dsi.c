@@ -30,6 +30,17 @@
 
 static unsigned char *mdss_dsi_base;
 
+static int mdss_dsi_hndl_enable_te(struct mdss_dsi_ctrl_pdata *ctrl,
+				int enable)
+{
+	if (enable)
+		mdss_dsi_set_tear_on(ctrl);
+	else
+		mdss_dsi_set_tear_off(ctrl);
+
+	return 0;
+}
+
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -768,6 +779,9 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_ENABLE_PARTIAL_UPDATE:
 		rc = mdss_dsi_ctl_partial_update(pdata);
+		break;
+	case MDSS_EVENT_ENABLE_TE:
+		rc = mdss_dsi_hndl_enable_te(ctrl_pdata, (int) arg);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
