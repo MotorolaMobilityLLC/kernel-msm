@@ -369,7 +369,7 @@ static int emu_audio_accy_notify(struct notifier_block *nb,
 	pr_debug("%s(), status = %d\n", __func__, (int)status);
 	emu_state = status;
 
-	if (emu_state == EMU_OUT) {
+	if (emu_state == EMU_OUT && tabla_mot_get_emu_audio_state()) {
 		set_mux_ctrl_mode_for_audio(MUXMODE_AUDIO);
 		pr_debug("%s SET EMU TO MUXMODE_AUDIO\n", __func__);
 	}
