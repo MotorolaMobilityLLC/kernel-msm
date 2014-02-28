@@ -592,6 +592,42 @@ static struct msm_gpiomux_config bt_rst_configs[] = {
 	},
 };
 
+#if defined(CONFIG_MSM_PWM_VIBRATOR)
+static struct gpiomux_setting vibrator_suspend_cfg = {
+       .func = GPIOMUX_FUNC_GPIO,
+       .drv = GPIOMUX_DRV_2MA,
+       .pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting vibrator_active_cfg_gpio22 = {
+       .func = GPIOMUX_FUNC_6,
+       .drv = GPIOMUX_DRV_2MA,
+       .pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting vibrator_active_cfg_gpio62 = {
+       .func = GPIOMUX_FUNC_GPIO,
+       .drv = GPIOMUX_DRV_2MA,
+       .pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config vibrator_configs[] = {
+	{
+		.gpio = 22,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &vibrator_active_cfg_gpio22,
+			[GPIOMUX_SUSPENDED] = &vibrator_suspend_cfg,
+		},
+	},
+	{
+		.gpio = 62,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &vibrator_active_cfg_gpio62,
+			[GPIOMUX_SUSPENDED] = &vibrator_suspend_cfg,
+		},
+	},
+};
+#endif
 static void bluetooth_msm_gpiomux_install(void)
 {
 	/* UART */
@@ -642,5 +678,8 @@ void __init msm8226_init_gpiomux(void)
 #endif
 
 	msm_gpiomux_install(msm_mi2s_configs, ARRAY_SIZE(msm_mi2s_configs));
+#if defined(CONFIG_MSM_PWM_VIBRATOR)
+	msm_gpiomux_install(vibrator_configs, ARRAY_SIZE(vibrator_configs));
+#endif
 	bluetooth_msm_gpiomux_install();
 }
