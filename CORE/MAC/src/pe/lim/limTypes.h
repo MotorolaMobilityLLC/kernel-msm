@@ -164,6 +164,7 @@ enum eChannelChangeReasonCodes
     LIM_SWITCH_CHANNEL_REASSOC,
     LIM_SWITCH_CHANNEL_JOIN,
     LIM_SWITCH_CHANNEL_OPERATION, // Generic change channel
+    LIM_SWITCH_CHANNEL_CSA,
 };
 
 typedef struct sLimAuthRspTimeout

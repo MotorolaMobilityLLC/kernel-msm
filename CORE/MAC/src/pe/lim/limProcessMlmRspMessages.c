@@ -87,6 +87,10 @@ static void  limHandleDelBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode 
 void limGetSessionInfo(tpAniSirGlobal pMac, tANI_U8 *, tANI_U8 *, tANI_U16 *);
 static void
 limProcessBtampAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESession psessionEntry);
+
+void limSwitchChannelResumeLinkRsp(tpAniSirGlobal pMac,
+                            eHalStatus status, tANI_U32* mlmAddBssRsp);
+
 /**
  * limProcessMlmRspMessages()
  *
@@ -3837,6 +3841,24 @@ void limProcessSwitchChannelRsp(tpAniSirGlobal pMac,  void *body)
             if (pMac->lim.gpchangeChannelCallback)
             {
                 PELOG1(limLog( pMac, LOG1, "Channel changed hence invoke registered call back");)
+                if (eHAL_CHANNEL_SWITCH_SOURCE_CSA == pChnlParams->channelSwitchSrc )
+                {
+                    if (IS_MCC_SUPPORTED && limIsLinkSuspended( pMac ) )
+                    {
+                        if ( psessionEntry && psessionEntry->limSmeState
+                            == eLIM_SME_LINK_EST_STATE )
+                        {
+                            peSetResumeChannel( pMac,
+                                psessionEntry->currentOperChannel,
+                                psessionEntry->htSecondaryChannelOffset);
+                        }
+                        else
+                        {
+                            peSetResumeChannel( pMac, 0, 0);
+                        }
+                        limResumeLink(pMac, limSwitchChannelResumeLinkRsp, NULL);
+                    }
+                }
                 pMac->lim.gpchangeChannelCallback(pMac, status, pMac->lim.gpchangeChannelData, psessionEntry);
             }
             break;
@@ -4931,4 +4953,16 @@ void limProcessRxScanEvent(tpAniSirGlobal pMac, void *buf)
             VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_DEBUG,
                     "Received unhandled scan event %u", pScanEvent->event);
     }
+}
+
+void limSwitchChannelResumeLinkRsp(tpAniSirGlobal pMac,
+                         eHalStatus status,
+                         tANI_U32* mlmAddBssRsp)
+{
+    if (status != eHAL_STATUS_SUCCESS)
+    {
+        limLog(pMac, LOGE,
+            FL(" CSA failed to get the response for resume link"));
+    }
+    return;
 }

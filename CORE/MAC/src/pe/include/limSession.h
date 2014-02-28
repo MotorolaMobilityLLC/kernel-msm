@@ -99,6 +99,7 @@ typedef struct sPESession           // Added to Support BT-AMP
 #endif
     void                    *pLimMlmReassocReq;      //handle to MLM reassoc Req
     tANI_U16                channelChangeReasonCode;
+    tANI_U16                channelChangeCSA;        // channel change flag for CSA
     tANI_U8                 dot11mode;
     tANI_U8                 htCapability;
     /* Supported Channel Width Set: 0-20MHz 1 - 40MHz */
