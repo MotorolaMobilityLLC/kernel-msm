@@ -193,6 +193,7 @@ struct mdss_intf_recovery {
  * @MDSS_EVENT_DSI_RECONFIG_CMD: Setup DSI controller in new mode
  *				- MIPI_VIDEO_PANEL: switch to video mode
  *				- MIPI_CMD_PANEL: switch to command mode
+ * @MDSS_EVENT_ENABLE_TE: Change TE state, used for factory testing only
  */
 enum mdss_intf_events {
 	MDSS_EVENT_RESET = 1,
@@ -218,6 +219,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_PANEL_STATUS,
 	MDSS_EVENT_DSI_DYNAMIC_SWITCH,
 	MDSS_EVENT_DSI_RECONFIG_CMD,
+	MDSS_EVENT_ENABLE_TE,
 };
 
 struct lcd_panel_info {
