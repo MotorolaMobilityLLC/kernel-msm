@@ -1073,6 +1073,24 @@ struct lm3532_backlight_platform_data mp_lm3532_pdata = {
 static int __init lm3532_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *node)
 {
+	const char *name;
+	int value = 0;
+
+	if (!of_property_read_string(node, "ctrl_b_name", &name))
+		strlcpy((char *)&mp_lm3532_pdata.ctrl_b_name, name,
+				sizeof(mp_lm3532_pdata.ctrl_b_name)-1);
+
+	if (!of_property_read_u32(node, "pwm_disable_threshold", &value))
+		mp_lm3532_pdata.pwm_disable_threshold =	(u8)value;
+
+	if (!of_property_read_u32(node, "ctrl_a_fsc", &value))
+		mp_lm3532_pdata.ctrl_a_fsc = (u8)value;
+
+	if (!of_property_read_u32(node, "led2_controller", &value)) {
+		mp_lm3532_pdata.led2_controller = (u8)value;
+		mp_lm3532_pdata.ctrl_b_usage = LM3532_LED_DEVICE_FDBCK;
+	}
+
 	info->platform_data = &mp_lm3532_pdata;
 	return 0;
 }
