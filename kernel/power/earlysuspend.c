@@ -45,6 +45,12 @@ enum {
 };
 static int state;
 
+#ifdef CONFIG_PM_SYNC_BEFORE_SUSPEND
+static int earlysuspendsync = 1;
+#else
+static int earlysuspendsync;
+#endif
+
 static struct task_struct *current_handler;
 static void handler_timeout(unsigned long data);
 static DEFINE_TIMER(handler_wd, handler_timeout, 0, 0);
@@ -130,10 +136,11 @@ static void early_suspend(struct work_struct *work)
 	}
 	mutex_unlock(&early_suspend_lock);
 
-	if (debug_mask & DEBUG_SUSPEND)
-		pr_info("early_suspend: sync\n");
-
-	sys_sync();
+	if (earlysuspendsync) {
+		if (debug_mask & DEBUG_SUSPEND)
+			pr_info("early_suspend: sync\n");
+		sys_sync();
+	}
 abort:
 	spin_lock_irqsave(&state_lock, irqflags);
 	if (state == SUSPEND_REQUESTED_AND_SUSPENDED)
@@ -214,3 +221,11 @@ suspend_state_t get_suspend_state(void)
 {
 	return requested_suspend_state;
 }
+
+static int __init earlysuspendsync_setup(char *str)
+{
+	earlysuspendsync = simple_strtoul(str, NULL, 0);
+	return 1;
+}
+
+__setup("earlysuspendsync=", earlysuspendsync_setup);
