@@ -12,7 +12,7 @@
 
 &soc {
 	vibrator {
-		status = "disabled";
+		status = "ok";
 		compatible = "msm,pwm_vibrator";
 		haptic-pwr-gpio = <&msmgpio 62 0x00>;
 		motor-pwm-gpio = <&msmgpio 22 0x00>;

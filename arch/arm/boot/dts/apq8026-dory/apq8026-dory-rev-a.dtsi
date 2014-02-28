@@ -40,3 +40,11 @@
 		};
 	};
 };
+
+&spmi_bus {
+	qcom,pm8226@1 {
+		qcom,vibrator@c000 {
+                        status = "ok";
+		};
+	};
+};

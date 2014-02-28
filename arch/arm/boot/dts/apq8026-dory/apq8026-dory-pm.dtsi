@@ -125,7 +125,7 @@
 
 	qcom,pm8226@1 {
 		qcom,vibrator@c000 {
-                        status = "okay";
+                        status = "disabled";
                         qcom,vib-timeout-ms = <15000>;
                         qcom,vib-vtg-level-mV = <1500>;
 		};
