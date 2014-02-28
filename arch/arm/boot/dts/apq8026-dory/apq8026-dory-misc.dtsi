@@ -11,5 +11,18 @@
  */
 
 &soc {
-
+	vibrator {
+		status = "disabled";
+		compatible = "msm,pwm_vibrator";
+		haptic-pwr-gpio = <&msmgpio 62 0x00>;
+		motor-pwm-gpio = <&msmgpio 22 0x00>;
+		motor-amp = <63>;
+		n-value = <127>;
+		vibe-warmup-delay = <0>;
+		vibe-braking-gain = <100>;
+		vibe-braking-ms = <0>;
+		vibe-driving-ms = <20>;
+		vdd-supply = <&pm8226_l28>;
+		use-vdd-supply;
+	};
 };
