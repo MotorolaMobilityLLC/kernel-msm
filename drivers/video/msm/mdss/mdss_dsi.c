@@ -28,6 +28,17 @@
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
 
+static int mdss_dsi_hndl_enable_te(struct mdss_dsi_ctrl_pdata *ctrl,
+				int enable)
+{
+	if (enable)
+		mdss_dsi_set_tear_on(ctrl);
+	else
+		mdss_dsi_set_tear_off(ctrl);
+
+	return 0;
+}
+
 static int mdss_dsi_regulator_init(struct platform_device *pdev)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -1014,6 +1025,9 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_DSI_ULPS_CTRL:
 		rc = mdss_dsi_ulps_config(ctrl_pdata, (int)arg);
+		break;
+	case MDSS_EVENT_ENABLE_TE:
+		rc = mdss_dsi_hndl_enable_te(ctrl_pdata, (int) arg);
 		break;
 	default:
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
