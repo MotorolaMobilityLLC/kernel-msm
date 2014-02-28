@@ -94,6 +94,17 @@ static void mdss_dsi_pm_qos_update_request(int val)
 	pm_qos_update_request(&mdss_dsi_pm_qos_request, val);
 }
 
+static int mdss_dsi_hndl_enable_te(struct mdss_dsi_ctrl_pdata *ctrl,
+				int enable)
+{
+	if (enable)
+		mdss_dsi_set_tear_on(ctrl);
+	else
+		mdss_dsi_set_tear_off(ctrl);
+
+	return 0;
+}
+
 static struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl(u32 ctrl_id)
 {
 	if (ctrl_id >= DSI_CTRL_MAX || !mdss_dsi_res)
@@ -2699,6 +2710,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		break;
 	case MDSS_EVENT_ENABLE_PARTIAL_ROI:
 		rc = mdss_dsi_ctl_partial_roi(pdata);
+		break;
+	case MDSS_EVENT_ENABLE_TE:
+		rc = mdss_dsi_hndl_enable_te(ctrl_pdata,
+				(int) (unsigned long) arg);
 		break;
 	case MDSS_EVENT_DSI_RESET_WRITE_PTR:
 		rc = mdss_dsi_reset_write_ptr(pdata);
