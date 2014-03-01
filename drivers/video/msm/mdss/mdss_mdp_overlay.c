@@ -1039,7 +1039,7 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 		}
 
 		/* ensure pipes are always reconfigured after power off/on */
-		if (pipe->play_cnt == 0)
+		if (ctl->play_cnt == 0)
 			pipe->params_changed++;
 
 		if (pipe->back_buf.num_planes) {
