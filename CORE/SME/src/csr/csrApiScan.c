@@ -5999,6 +5999,7 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
     tANI_U32 len = sizeof(pMac->roam.validChannelList);
     tANI_U32 index = 0;
     tANI_U32 new_index = 0;
+    eNVChannelEnabledType NVchannel_state;
 
     do
     {
@@ -6056,9 +6057,15 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                     {
                        for ( index = 0; index < pSrcReq->ChannelInfo.numOfChannels ; index++ )
                        {
-                          pDstReq->ChannelInfo.ChannelList[new_index] =
-                                             pSrcReq->ChannelInfo.ChannelList[index];
-                          new_index++;
+                          NVchannel_state = vos_nv_getChannelEnabledState(
+                                  pSrcReq->ChannelInfo.ChannelList[index]);
+                          if ((NV_CHANNEL_ENABLE == NVchannel_state) ||
+                                  (NV_CHANNEL_DFS == NVchannel_state))
+                          {
+                             pDstReq->ChannelInfo.ChannelList[new_index] =
+                                 pSrcReq->ChannelInfo.ChannelList[index];
+                             new_index++;
+                          }
                        }
                        pDstReq->ChannelInfo.numOfChannels = new_index;
                     }
