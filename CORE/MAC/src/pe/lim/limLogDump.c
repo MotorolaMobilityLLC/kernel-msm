@@ -2475,7 +2475,7 @@ static tDumpFuncEntry limMenuDumpTable[] = {
 
 void limDumpInit(tpAniSirGlobal pMac)
 {
-    logDumpRegisterTable( pMac, &limMenuDumpTable[0],
+    logDumpRegisterTable( pMac, &limMenuDumpTable[0], 
                           sizeof(limMenuDumpTable)/sizeof(limMenuDumpTable[0]) );
 }
 

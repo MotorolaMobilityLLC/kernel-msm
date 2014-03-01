@@ -192,7 +192,7 @@ limCollectBssDescription(tpAniSirGlobal pMac,
             FL("Beacon Interval is ZERO, making it to default 100 "
             MAC_ADDRESS_STR), MAC_ADDR_ARRAY(pHdr->bssId));
         pBssDescr->beaconInterval= 100;
-    }
+    }	
     /*
     * There is a narrow window after Channel Switch msg is sent to HAL and before the AGC is shut
     * down and beacons/Probe Rsps can trickle in and we may report the incorrect channel in 5Ghz

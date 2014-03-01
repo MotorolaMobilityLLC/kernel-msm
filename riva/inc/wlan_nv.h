@@ -25,7 +25,6 @@
  * to the Linux Foundation.
  */
 
-
 /** ------------------------------------------------------------------------- *
     ------------------------------------------------------------------------- *
 
@@ -378,7 +377,7 @@ typedef enum
 // The above params are used for scripts.
    NUM_2_4GHZ_CHANNELS,
 }eRfChannels_2_4GHz;
-
+	
 enum
 {
    NV_CHANNEL_DISABLE,

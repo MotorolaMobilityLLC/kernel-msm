@@ -84,7 +84,7 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
 #if !defined WLAN_FEATURE_VOWIFI
     tANI_U32            localPowerConstraints = 0;
 #endif
-
+    
     pBeaconStruct = vos_mem_malloc(sizeof(tSirProbeRespBeacon));
 
     if ( NULL == pBeaconStruct )
