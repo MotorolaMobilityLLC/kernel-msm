@@ -24387,6 +24387,18 @@ WDI_SetPreferredNetworkReq
      return WDI_STATUS_E_NOT_ALLOWED;
    }
 
+   /*----------------------------------------------------------------------
+     Avoid Enable PNO during any active session or an ongoing session
+   ----------------------------------------------------------------------*/
+   if ( (pwdiPNOScanReqParams->wdiPNOScanInfo.bEnable &&
+        WDI_GetActiveSessionsCount(&gWDICb, NULL, eWLAN_PAL_FALSE)) )
+   {
+     WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "%s:(Active/Ongoing Session) - Fail request", __func__);
+
+     return WDI_STATUS_E_NOT_ALLOWED;
+   }
+
    /*------------------------------------------------------------------------
      Fill in Event data and post to the Main FSM
    ------------------------------------------------------------------------*/

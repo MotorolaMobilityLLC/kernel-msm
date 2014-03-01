@@ -205,6 +205,7 @@
 #define HDD_PNO_SCAN_TIMERS_SET_ONE      1
 /* value should not be greater than PNO_MAX_SCAN_TIMERS */
 #define HDD_PNO_SCAN_TIMERS_SET_MULTIPLE 6
+#define WLAN_WAIT_TIME_PNO  500
 #endif
 
 #define MAX_USER_COMMAND_SIZE 4096
@@ -889,6 +890,10 @@ struct hdd_adapter_s
 
    /* completion variable for cancel remain on channel Event */
    struct completion cancel_rem_on_chan_var;
+
+   /** completion variable for PNO req callback */
+   struct completion pno_comp_var;
+   int pno_req_status;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
    /* completion variable for off channel  remain on channel Event */
