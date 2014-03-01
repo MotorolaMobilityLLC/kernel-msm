@@ -441,6 +441,8 @@
 	qcom,cool-bat-mv = <4200>;
 	qcom,ibatmax-warm-ma = <200>;
 	qcom,ibatmax-cool-ma = <200>;
+	qcom,step-dwn-offset-ma = <200>;
+	qcom,step-dwn-thr-mv = <4250>;
 };
 
 &pm8226_bms{

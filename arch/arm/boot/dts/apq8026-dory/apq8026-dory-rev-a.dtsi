@@ -92,4 +92,6 @@
 	qcom,cool-bat-mv = <4100>;
 	qcom,ibatmax-warm-ma = <150>;
 	qcom,ibatmax-cool-ma = <150>;
+	qcom,step-dwn-offset-ma = <0>;
+	qcom,step-dwn-thr-mv = <0>;
 };
