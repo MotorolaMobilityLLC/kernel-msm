@@ -54,10 +54,8 @@
 #include <linux/jiffies.h>
 
 #define VALIDITY_PART_NAME "metallica"
-static DECLARE_WAIT_QUEUE_HEAD(wq);
 static LIST_HEAD(device_list);
 static DEFINE_MUTEX(device_list_mutex);
-static int data_to_read;
 static struct class *vfsspi_device_class;
 static int gpio_irq;
 
@@ -409,23 +407,6 @@ static int vfsspi_set_clk(struct vfsspi_device_data *vfsspi_device,
 	return 0;
 }
 
-static int vfsspi_check_drdy(struct vfsspi_device_data *vfsspi_device,
-			     unsigned long arg)
-{
-	unsigned long timeout = msecs_to_jiffies(DRDY_TIMEOUT_MS);
-	data_to_read = 0;
-	if (gpio_get_value(vfsspi_device->drdy_pin) == DRDY_ACTIVE_STATUS)
-		return 0;
-
-	wait_event_interruptible_timeout(wq, data_to_read != 0, timeout);
-
-	if (gpio_get_value(vfsspi_device->drdy_pin) == !DRDY_ACTIVE_STATUS) {
-		pr_err("Timed out for read.\n");
-		return -ETIMEDOUT;
-	}
-	data_to_read = 0;
-	return 0;
-}
 static int vfsspi_register_drdy_signal(struct vfsspi_device_data *vfsspi_device,
 				       unsigned long arg)
 {
@@ -444,9 +425,8 @@ static irqreturn_t vfsspi_irq(int irq, void *context)
 {
 	struct vfsspi_device_data *vfsspi_device = context;
 
-	data_to_read = 1;
-	wake_up_interruptible(&wq);
-	vfsspi_send_drdy_signal(vfsspi_device);
+	if (gpio_get_value(vfsspi_device->drdy_pin) == DRDY_ACTIVE_STATUS)
+		vfsspi_send_drdy_signal(vfsspi_device);
 
 	return IRQ_HANDLED;
 }
@@ -511,7 +491,6 @@ static void vfsspi_hard_reset(struct vfsspi_device_data *vfsspi_device)
 	pr_debug("vfsspi_hard_reset\n");
 
 	if (vfsspi_device != NULL) {
-		data_to_read = 0;
 		gpio_set_value(vfsspi_device->sleep_pin, 0);
 		usleep(1000);
 		gpio_set_value(vfsspi_device->sleep_pin, 1);
@@ -525,7 +504,6 @@ static void vfsspi_suspend(struct vfsspi_device_data *vfsspi_device)
 
 	if (vfsspi_device != NULL) {
 		spin_lock(&vfsspi_device->vfs_spi_lock);
-		data_to_read = 0;
 		gpio_set_value(vfsspi_device->sleep_pin, 0);
 		spin_unlock(&vfsspi_device->vfs_spi_lock);
 	}
@@ -563,10 +541,6 @@ static long vfsspi_ioctl(struct file *filp, unsigned int cmd,
 	case VFSSPI_IOCTL_SET_CLK:
 		pr_debug("VFSSPI_IOCTL_SET_CLK\n");
 		ret_val = vfsspi_set_clk(vfsspi_device, arg);
-		break;
-	case VFSSPI_IOCTL_CHECK_DRDY:
-		pr_debug("VFSSPI_IOCTL_CHECK_DRDY\n");
-		ret_val = vfsspi_check_drdy(vfsspi_device, arg);
 		break;
 	case VFSSPI_IOCTL_REGISTER_DRDY_SIGNAL:
 		pr_debug("VFSSPI_IOCTL_REGISTER_DRDY_SIGNAL\n");
@@ -679,6 +653,8 @@ static int vfsspi_probe(struct spi_device *spi)
 	int status = 0;
 	struct vfsspi_device_data *vfsspi_device;
 	struct device *dev;
+	int hw_test_countdown = 10;
+	int drdy_value;
 
 	pr_info("vfsspi_probe\n");
 
@@ -747,8 +723,15 @@ static int vfsspi_probe(struct spi_device *spi)
 
 	/* Check for sensor. */
 	vfsspi_hard_reset(vfsspi_device);
-	usleep(50000);
-	if (gpio_get_value(vfsspi_device->drdy_pin) != DRDY_ACTIVE_STATUS) {
+	drdy_value = gpio_get_value(vfsspi_device->drdy_pin);
+	while (hw_test_countdown) {
+		if (drdy_value == DRDY_ACTIVE_STATUS)
+			break;
+		usleep(5000);
+		drdy_value = gpio_get_value(vfsspi_device->drdy_pin);
+		hw_test_countdown--;
+	}
+	if (drdy_value != DRDY_ACTIVE_STATUS) {
 		pr_err("FPS not found\n");
 		status = -EBUSY;
 		goto vfsspi_probe_gpio_init_failed;
