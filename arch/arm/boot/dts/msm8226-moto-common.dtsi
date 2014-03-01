@@ -12,7 +12,6 @@
  */
 
 /include/ "msm8226-moto-gpiomux.dtsi"
-/include/ "msm8226-camera-sensor-falcon.dtsi"
 /include/ "carrier-channel-ids.dtsi"
 
 / {
