@@ -397,8 +397,8 @@ WLANSAP_RoamCallback
         case eCSR_ROAM_SEND_ACTION_CNF:
             sapSignalHDDevent(sapContext, pCsrRoamInfo, 
                             eSAP_SEND_ACTION_CNF, 
-                            (v_PVOID_t)(( roamResult == eCSR_ROAM_RESULT_NONE) ?
-                            eSAP_STATUS_SUCCESS : eSAP_STATUS_FAILURE));
+                            (v_PVOID_t)((eSapStatus)((roamResult == eCSR_ROAM_RESULT_NONE)
+                            ? eSAP_STATUS_SUCCESS : eSAP_STATUS_FAILURE)));
             break;
 
        case eCSR_ROAM_DISCONNECT_ALL_P2P_CLIENTS:
