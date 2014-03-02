@@ -315,7 +315,7 @@ WLANBAP_XlateTxDataPkt
     v_PVOID_t                pHddHdl; /* Handle to return BSL context in */
     v_U16_t                  headerLength;  /* The 802.3 frame length*/
     v_U16_t                  protoType = WLANBAP_BT_AMP_TYPE_DATA;  /* The protocol type bytes*/
-    v_U32_t                  value = 0;
+    uintptr_t                value = 0;
     /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
  
@@ -448,7 +448,7 @@ WLANBAP_XlateTxDataPkt
 
     /*Set the logical link handle as user data so that we can retrieve it on 
       Tx Complete */
-    value = (v_U32_t)hciACLHeader.logLinkHandle;
+    value = (uintptr_t)hciACLHeader.logLinkHandle;
     vos_pkt_set_user_data_ptr( vosDataBuff, VOS_PKT_USER_DATA_ID_BAP,
                                (v_VOID_t *)value);
 
@@ -951,12 +951,12 @@ WLANBAP_TxCompCB
   VOS_STATUS     wTxSTAtus 
 )
 {
-    VOS_STATUS    vosStatus; 
-    ptBtampHandle bapHdl;  /* holds ptBtampHandle value returned  */ 
-    ptBtampContext bapContext; /* Holds the btampContext value returned */ 
+    VOS_STATUS    vosStatus;
+    ptBtampHandle bapHdl;  /* holds ptBtampHandle value returned  */
+    ptBtampContext bapContext; /* Holds the btampContext value returned */
     v_PVOID_t     pHddHdl; /* Handle to return BSL context in */
     v_PVOID_t      pvlogLinkHandle = NULL;
-    v_U32_t       value;
+    uintptr_t       value;
 
     WLANBAP_HCIACLHeaderType hciACLHeader;
 
@@ -1009,7 +1009,7 @@ WLANBAP_TxCompCB
     vos_pkt_get_user_data_ptr( vosDataBuff, VOS_PKT_USER_DATA_ID_BAP,
                                &pvlogLinkHandle);
 
-    value = (v_U32_t)pvlogLinkHandle;
+    value = (uintptr_t)pvlogLinkHandle;
     hciACLHeader.logLinkHandle = value;
 
 #ifdef BAP_DEBUG
