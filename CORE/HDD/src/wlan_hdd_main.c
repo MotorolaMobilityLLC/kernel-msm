@@ -1921,7 +1921,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
    }
 
    if (priv_data.total_len <= 0 ||
-	      priv_data.total_len > WLAN_PRIV_DATA_MAX_LEN)
+             priv_data.total_len > WLAN_PRIV_DATA_MAX_LEN)
    {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                  "%s:invalid priv_data.total_len(%d)!!!", __func__,
