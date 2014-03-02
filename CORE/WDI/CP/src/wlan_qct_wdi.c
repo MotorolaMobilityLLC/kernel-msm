@@ -28402,19 +28402,20 @@ WDI_UpdateVHTOpModeReq
     Or if host driver detects any abnormal stcuk may display
         
  @param  displaySnapshot : Display DXE snapshot option
- @param  enableStallDetect : Enable stall detect feature
-                        This feature will take effect to data performance
-                        Not integrate till fully verification
+ @param  debugFlags      : Enable stall detect features
+                           defined by WPAL_DeviceDebugFlags
+                           These features may effect
+                           data performance.
  @see
  @return none
 */
 void WDI_TransportChannelDebug
 (
    wpt_boolean  displaySnapshot,
-   wpt_boolean  toggleStallDetect
+   wpt_uint8    debugFlags
 )
 {
-   WDTS_ChannelDebug(displaySnapshot, toggleStallDetect);
+   WDTS_ChannelDebug(displaySnapshot, debugFlags);
    return;
 }
 /**

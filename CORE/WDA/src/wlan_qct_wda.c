@@ -60,6 +60,7 @@
 #include "vos_nvitem.h"
 #include "sirApi.h"
 #include "wlan_qct_pal_packet.h"
+#include "wlan_qct_pal_device.h"
 #include "wlan_qct_wda.h"
 #include "wlan_qct_wda_msg.h"
 #include "wlan_qct_wdi_cfg.h"
@@ -11659,7 +11660,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
                                 after the packet gets completed(packet freed once)*/
 
       /* TX MGMT fail with COMP timeout, try to detect DXE stall */
-      WDA_TransportChannelDebug(pMac, 1, 0);
+      WDA_TransportChannelDebug(pMac, 1, WPAL_DEBUG_TX_DESC_RESYNC);
 
       /*Tag Frame as timed out for later deletion*/
       vos_pkt_set_user_data_ptr( (vos_pkt_t *)pFrmBuf, VOS_PKT_USER_DATA_ID_WDA, 
@@ -15416,9 +15417,10 @@ VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA,
   PARAMETERS
     pMac : upper MAC context pointer
     displaySnapshot : Display DXE snapshot option
-    enableStallDetect : Enable stall detect feature
-                        This feature will take effect to data performance
-                        Not integrate till fully verification
+    debugFlags      : Enable stall detect features
+                      defined by WPAL_DeviceDebugFlags
+                      These features may effect
+                      data performance.
 
   RETURN VALUE
     NONE
@@ -15428,10 +15430,10 @@ void WDA_TransportChannelDebug
 (
   tpAniSirGlobal pMac,
   v_BOOL_t       displaySnapshot,
-  v_BOOL_t       toggleStallDetect
+  v_U8_t         debugFlags
 )
 {
-   WDI_TransportChannelDebug(displaySnapshot, toggleStallDetect);
+   WDI_TransportChannelDebug(displaySnapshot, debugFlags);
    return;
 }
 

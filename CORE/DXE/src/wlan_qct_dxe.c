@@ -4243,6 +4243,39 @@ void dxeTXReSyncDesc
 }
 
 /*==========================================================================
+  @  Function Name
+      dxeDebugTxDescReSync
+
+  @  Description
+       Check DXE Tx channel state and correct it in
+       case Tx Data stall is detected by calling
+       %dxeTXReSyncDesc. Also ensure that WCN SS
+       is not power collapsed before calling
+       %dxeTXReSyncDesc
+
+  @  Parameters
+      void    *msgPtr
+               Message pointer to sync with TX thread
+
+  @  Return
+      NONE
+===========================================================================*/
+void dxeDebugTxDescReSync
+(
+   wpt_msg                  *msgPtr
+)
+{
+   HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "%s: Check for DXE TX Async",__func__);
+   /* Make wake up HW */
+   dxeNotifySmsm(eWLAN_PAL_FALSE, eWLAN_PAL_TRUE);
+   dxeNotifySmsm(eWLAN_PAL_TRUE, eWLAN_PAL_FALSE);
+
+   wpalSleep(10);
+
+   dxeTXReSyncDesc(msgPtr);
+}
+/*==========================================================================
   @  Function Name 
       dxeTXISR
 
@@ -5561,9 +5594,10 @@ wpt_uint32 WLANDXE_GetFreeTxDataResNumber
 
   @  Parameters
     displaySnapshot : Display DXE snapshot option
-    enableStallDetect : Enable stall detect feature
-                        This feature will take effect to data performance
-                        Not integrate till fully verification
+    debugFlags      : Enable stall detect features
+                      defined by WPAL_DeviceDebugFlags
+                      These features may effect
+                      data performance.
 
   @  Return
     NONE
@@ -5571,11 +5605,12 @@ wpt_uint32 WLANDXE_GetFreeTxDataResNumber
 ===========================================================================*/
 void WLANDXE_ChannelDebug
 (
-   wpt_boolean    displaySnapshot,
-   wpt_boolean    enableStallDetect   
+   wpt_boolean displaySnapshot,
+   wpt_uint8   debugFlags
 )
 {
    wpt_msg                  *channelDebugMsg;
+   wpt_msg                  *txDescReSyncMsg ;
    wpt_uint32                regValue;
    wpt_status                status = eWLAN_PAL_STATUS_SUCCESS;
 
@@ -5618,10 +5653,31 @@ void WLANDXE_ChannelDebug
       }
    }
 
-   /* Debug Type 2, toggling stall detect enable/disable */
-   if(enableStallDetect)
+   if(debugFlags & WPAL_DEBUG_TX_DESC_RESYNC)
    {
-      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_WARN,
+      txDescReSyncMsg = (wpt_msg *)wpalMemoryAllocate(sizeof(wpt_msg));
+      if(NULL == txDescReSyncMsg)
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  "%s: Resync MSG MEM alloc Fail",__func__);
+      }
+      else
+      {
+         txDescReSyncMsg->callback = dxeDebugTxDescReSync;
+         txDescReSyncMsg->pContext = tempDxeCtrlBlk;
+         status = wpalPostTxMsg(WDI_GET_PAL_CTX(),
+                                txDescReSyncMsg);
+         if(eWLAN_PAL_STATUS_SUCCESS != status)
+         {
+            HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                     "%s: Post TX re-sync MSG fail",__func__);
+         }
+      }
+   }
+
+   if(debugFlags & WPAL_DEBUG_START_HEALTH_TIMER)
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                "DXE TX Stall detect");
       /* Start Stall detect timer and detect stall */
       wpalTimerStart(&tempDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_LOW_PRI].healthMonitorTimer,
