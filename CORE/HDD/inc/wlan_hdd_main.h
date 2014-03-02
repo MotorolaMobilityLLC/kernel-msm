@@ -1389,4 +1389,6 @@ void hdd_deinit_batch_scan(hdd_adapter_t *pAdapter);
 
 #endif /*End of FEATURE_WLAN_BATCH_SCAN*/
 
+boolean hdd_is_5g_supported(hdd_context_t * pHddCtx);
+
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )
