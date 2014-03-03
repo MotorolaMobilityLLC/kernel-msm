@@ -752,7 +752,7 @@ void arch_idle(void)
 	return;
 }
 
-static u64 msm_pm_coupled_sleep_time;
+static u32 msm_pm_coupled_sleep_time;
 
 static u32 msm_get_coupled_sleep_time(void)
 {
@@ -854,9 +854,7 @@ int msm_pm_idle_prepare(struct cpuidle_device *dev,
 		if (power < power_usage) {
 			power_usage = power;
 			modified_time_us = time_param.modified_time_us;
-			/* msm_pm_coupled_sleep_time needs to be in ns. */
-			msm_pm_coupled_sleep_time =
-				time_param.sleep_us * NSEC_PER_USEC;
+			msm_pm_coupled_sleep_time = time_param.sleep_us;
 			ret = mode;
 		}
 
