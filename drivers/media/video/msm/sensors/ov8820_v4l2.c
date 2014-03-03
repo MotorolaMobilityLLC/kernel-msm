@@ -25,6 +25,7 @@
 #define OV8820_OTP_BANK_COUNT 8
 #define OV8820_OTP_SIZE       (OV8820_OTP_BANK_COUNT * OV8820_OTP_BANK_SIZE)
 
+static struct regulator *reg_1p8;
 static uint8_t ov8820_otp[OV8820_OTP_SIZE];
 static struct otp_info_t ov8820_otp_info;
 static uint8_t is_ov8820_otp_read;
@@ -670,6 +671,50 @@ static int32_t ov8820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 	return 0;
 }
 
+static int32_t ov8820_regulator_on(struct regulator **reg,
+		char *regname, int uV)
+{
+	int32_t rc = 0;
+	pr_info("ov8820_regulator_on: %s %d\n", regname, uV);
+
+	*reg = regulator_get(NULL, regname);
+	if (IS_ERR(*reg)) {
+		pr_err("ov8820: failed to get %s (%ld)\n",
+				regname, PTR_ERR(*reg));
+		goto reg_on_done;
+	}
+	rc = regulator_set_voltage(*reg, uV, uV);
+	if (rc) {
+		pr_err("ov8820: failed to set voltage for %s (%d)\n",
+				regname, rc);
+		goto reg_on_done;
+	}
+	rc = regulator_enable(*reg);
+	if (rc) {
+		pr_err("ov8820: failed to enable %s (%d)\n",
+				regname, rc);
+		goto reg_on_done;
+	}
+reg_on_done:
+	return rc;
+}
+
+static int32_t ov8820_regulator_off(struct regulator *reg)
+{
+	int32_t rc = 0;
+	if (reg) {
+		rc = regulator_disable(reg);
+		if (rc) {
+			pr_err("ov8820: failed to disable (%d)\n",
+					rc);
+			goto reg_off_done;
+		}
+		regulator_put(reg);
+	}
+reg_off_done:
+	return rc;
+}
+
 static int32_t ov8820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -707,14 +752,22 @@ static int32_t ov8820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		goto power_up_done;
 	}
 	/* VDD */
-	rc = gpio_request(info->oem_data->sensor_dig_en, "ov8820");
-	if (rc < 0) {
-		pr_err("ov8820: gpio request DIG_EN failed (%d)\n", rc);
-		goto power_up_done;
+	if (info->oem_data->sensor_dig_en) {
+		rc = gpio_request(info->oem_data->sensor_dig_en, "ov8820");
+		if (rc < 0) {
+			pr_err("ov8820: gpio request DIG_EN failed (%d)\n", rc);
+			goto power_up_done;
+		}
 	}
 
 	/*Turn on VDDIO*/
-	gpio_direction_output(info->oem_data->sensor_dig_en, 1);
+	if (info->oem_data->sensor_dig_en) {
+		gpio_direction_output(info->oem_data->sensor_dig_en, 1);
+	} else {
+		rc = ov8820_regulator_on(&reg_1p8, "8921_l29", 1800000);
+		if (rc < 0)
+			goto power_up_done;
+	}
 
 	/* Wait for core supplies to power up */
 	usleep(10000);
@@ -771,7 +824,11 @@ static int32_t ov8820_power_down(
 	usleep(15000);
 
 	/*Disable VDDIO*/
-	gpio_direction_output(info->oem_data->sensor_dig_en, 0);
+	if (info->oem_data->sensor_dig_en)
+		gpio_direction_output(info->oem_data->sensor_dig_en, 0);
+	else
+		ov8820_regulator_off(reg_1p8);
+
 
 	/* Wait for core to shut off */
 	usleep(10000);
@@ -783,7 +840,8 @@ static int32_t ov8820_power_down(
 	gpio_free(info->oem_data->sensor_avdd_en);
 	gpio_free(info->sensor_pwd);
 	gpio_free(info->sensor_reset);
-	gpio_free(info->oem_data->sensor_dig_en);
+	if (info->oem_data->sensor_dig_en)
+		gpio_free(info->oem_data->sensor_dig_en);
 	return 0;
 }
 
