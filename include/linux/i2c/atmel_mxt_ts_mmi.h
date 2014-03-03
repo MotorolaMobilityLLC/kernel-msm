@@ -30,9 +30,9 @@ struct mxt_platform_data {
 	struct mxt_info dt_info;
 	unsigned long irqflags;
 	u8 t19_num_keys;
-	const unsigned int *t19_keymap;
+	unsigned int *t19_keymap;
 	int t15_num_keys;
-	const unsigned int *t15_keymap;
+	unsigned int *t15_keymap;
 	unsigned gpio_reset;
 	unsigned gpio_irq;
 	bool common_vdd_supply;
