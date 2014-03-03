@@ -1117,6 +1117,7 @@
 	qcom,otg-capability;
 	dwc_usb3-adc_tm = <0>;
 	qcom,misc-ref = <&pm8941_misc>;
+	qcom,usbin-vadc = <&pm8941_vadc>;
 };
 
 &pm8941_l13 {
