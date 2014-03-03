@@ -28,6 +28,21 @@
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
 
+#define ATMEL_MXT_STATES { \
+	MXT_DEF(UNKNOWN), \
+	MXT_DEF(ACTIVE), \
+	MXT_DEF(STANDBY), \
+	MXT_DEF(SUSPEND), \
+	MXT_DEF(BL), \
+	MXT_DEF(INIT), \
+	MXT_DEF(FLASH), \
+	MXT_DEF(QUERY), \
+	MXT_DEF(INVALID) }
+
+#define MXT_DEF(a)	STATE_##a
+enum ATMEL_MXT_STATES;
+#undef MXT_DEF
+
 #ifdef CONFIG_OF
 #include <linux/of.h>
 #include <linux/of_gpio.h>
@@ -238,6 +253,7 @@ struct mxt_data {
 	struct mxt_object *object_table;
 	struct mxt_info *info;
 	void *raw_info_block;
+	atomic_t state;
 	unsigned int irq;
 	unsigned int max_x;
 	unsigned int max_y;
@@ -274,6 +290,9 @@ struct mxt_data {
 	bool poweron;
 	bool input_registered;
 	bool buttons_enabled;
+	bool one_touch_enabled;
+	bool sensor_sleep;
+	bool irq_enabled;
 	struct regulator *reg_vdd;
 	struct regulator *reg_avdd;
 	char *fw_name;
@@ -324,6 +343,13 @@ struct mxt_data {
 	struct mxt_tdat_section fw;
 	struct mxt_tdat_section tsett;
 };
+
+static int mxt_resume(struct device *dev);
+static int mxt_get_sensor_state(struct mxt_data *data);
+static int mxt_init_t7_power_cfg(struct mxt_data *data);
+static void mxt_regulator_disable(struct mxt_data *data);
+static void mxt_regulator_enable(struct mxt_data *data);
+static void mxt_reset_slots(struct mxt_data *data);
 
 static inline size_t mxt_obj_size(const struct mxt_object *obj)
 {
@@ -681,7 +707,7 @@ recheck:
 			/*
 			 * TODO: handle -EINTR better by terminating fw update
 			 * process before returning to userspace by writing
-			 * length 0x000 to device (iff we are in
+			 * length 0x000 to device (if we are in
 			 * WAITING_FRAME_DATA state).
 			 */
 			dev_err(dev, "Update wait error %d\n", ret);
@@ -775,8 +801,8 @@ retry_read:
 			msleep(MXT_WAKEUP_TIME);
 			goto retry_read;
 		} else {
-			dev_err(&client->dev, "%s: i2c transfer failed (%d)\n",
-				__func__, ret);
+			dev_err(&client->dev, "%s: i2c read @%d failed (%d)\n",
+				__func__, reg, ret);
 			return -EIO;
 		}
 	}
@@ -810,8 +836,8 @@ retry_write:
 			msleep(MXT_WAKEUP_TIME);
 			goto retry_write;
 		} else {
-			dev_err(&client->dev, "%s: i2c send failed (%d)\n",
-				__func__, ret);
+			dev_err(&client->dev, "%s: i2c write @%d failed (%d)\n",
+				__func__, reg, ret);
 			ret = -EIO;
 		}
 	} else {
@@ -827,8 +853,7 @@ static int mxt_write_reg(struct i2c_client *client, u16 reg, u8 val)
 	return __mxt_write_reg(client, reg, 1, &val);
 }
 
-static struct mxt_object *
-mxt_get_object(struct mxt_data *data, u8 type)
+static struct mxt_object *mxt_get_object(struct mxt_data *data, u8 type)
 {
 	struct mxt_object *object;
 	int i;
@@ -1055,7 +1080,6 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 
 	data->update_input = true;
 }
-
 
 static void mxt_proc_t15_messages(struct mxt_data *data, u8 *msg)
 {
@@ -1373,8 +1397,10 @@ update_count:
 static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 {
 	struct mxt_data *data = dev_id;
+	int state = mxt_get_sensor_state(data);
 
-	if (data->in_bootloader) {
+	if (data->in_bootloader  || data->suspended ||
+		(state == STATE_UNKNOWN)) {
 		/* bootloader state transition completion */
 		complete(&data->bl_completion);
 		return IRQ_HANDLED;
@@ -1539,8 +1565,6 @@ static int mxt_check_retrigen(struct mxt_data *data)
 	data->use_retrigen_workaround = true;
 	return 0;
 }
-
-static int mxt_init_t7_power_cfg(struct mxt_data *data);
 
 /*
  * mxt_check_reg_init - download configuration to chip
@@ -1856,24 +1880,22 @@ recheck:
 			mxt_soft_reset(data);
 			retry = true;
 			goto recheck;
-		} else {
-		    dev_dbg(dev, "T7 cfg zero after reset, overriding\n");
-		    data->t7_cfg.active = 20;
-		    data->t7_cfg.idle = 100;
-		    return mxt_set_t7_power_cfg(data, MXT_POWER_CFG_RUN);
 		}
-	} else {
-		dev_info(dev, "Initialized power cfg: ACTV %d, IDLE %d\n",
-				data->t7_cfg.active, data->t7_cfg.idle);
-		return 0;
+
+		dev_dbg(dev, "T7 cfg zero after reset, overriding\n");
+		data->t7_cfg.active = 20;
+		data->t7_cfg.idle = 100;
+		return mxt_set_t7_power_cfg(data, MXT_POWER_CFG_RUN);
 	}
+
+	dev_info(dev, "Initialized power cfg: ACTV %d, IDLE %d\n",
+				data->t7_cfg.active, data->t7_cfg.idle);
+	return 0;
 }
 
 static int mxt_acquire_irq(struct mxt_data *data)
 {
 	int error;
-
-	enable_irq(data->irq);
 
 	if (data->use_retrigen_workaround) {
 		error = mxt_process_messages_until_invalid(data);
@@ -1882,6 +1904,128 @@ static int mxt_acquire_irq(struct mxt_data *data)
 	}
 
 	return 0;
+}
+
+static void mxt_irq_enable(struct mxt_data *data, bool enable)
+{
+	if (enable && !data->irq_enabled) {
+		enable_irq(data->irq);
+		data->irq_enabled = true;
+	} else if (!enable && data->irq_enabled) {
+		disable_irq(data->irq);
+		data->irq_enabled = false;
+	}
+}
+
+static void mxt_sensor_one_touch(struct mxt_data *data, bool enable)
+{
+	dev_dbg(&data->client->dev, "TBD: config one touch: %d\n", enable);
+}
+
+static void mxt_sensor_sleep(struct mxt_data *data)
+{
+	mxt_set_t7_power_cfg(data, MXT_POWER_CFG_DEEPSLEEP);
+	data->sensor_sleep = true;
+	dev_dbg(&data->client->dev, "LPM mode\n");
+}
+
+static void mxt_sensor_wake(struct mxt_data *data, bool calibrate)
+{
+	/* Discard any messages still in message buffer
+	 * from before chip went to sleep */
+	mxt_process_messages_until_invalid(data);
+	mxt_set_t7_power_cfg(data, MXT_POWER_CFG_RUN);
+
+	if (calibrate) {
+		/* Recalibrate since chip has been in deep sleep */
+		mxt_t6_command(data, MXT_COMMAND_CALIBRATE, 1, false);
+		dev_dbg(&data->client->dev, "calibrating\n");
+	}
+
+	data->sensor_sleep = false;
+	dev_dbg(&data->client->dev, "Normal mode\n");
+}
+
+#define MXT_DEF(a)	(#a)
+static const char * const mxt_state_names[] = ATMEL_MXT_STATES;
+#undef MXT_DEF
+
+static const char *mxt_state_name(int state)
+{
+	int index = state < 0 || state > STATE_INVALID ? STATE_INVALID : state;
+	return mxt_state_names[index];
+}
+
+static int mxt_get_sensor_state(struct mxt_data *data)
+{
+	return atomic_read(&data->state);
+}
+
+static void mxt_set_sensor_state(struct mxt_data *data, int state)
+{
+	int current_state = mxt_get_sensor_state(data);
+
+	if (current_state == state)
+		return;
+
+	switch (state) {
+	case STATE_QUERY:
+		/* drop flag to allow object specific message handling */
+		if (data->in_bootloader)
+			data->in_bootloader = false;
+	case STATE_UNKNOWN:
+	case STATE_FLASH:
+		/* no special handling for these states */
+			break;
+
+	case STATE_SUSPEND:
+		mxt_irq_enable(data, false);
+		data->enable_reporting = false;
+
+		if (data->one_touch_enabled)
+			mxt_sensor_one_touch(data, true);
+			break;
+
+	case STATE_ACTIVE:
+		if (!data->use_regulator && data->sensor_sleep)
+			mxt_sensor_wake(data, false);
+
+		if (data->one_touch_enabled)
+			mxt_sensor_one_touch(data, false);
+
+		mxt_irq_enable(data, true);
+		data->enable_reporting = true;
+			break;
+
+	case STATE_STANDBY:
+		mxt_irq_enable(data, false);
+		/* put sensor to sleep to ensure the same */
+		/* initial conditions apply to all */
+		if (!data->use_regulator && !data->sensor_sleep)
+			mxt_sensor_sleep(data);
+			break;
+
+	case STATE_BL:
+		if (!data->in_bootloader)
+			data->in_bootloader = true;
+
+		mxt_irq_enable(data, false);
+			break;
+
+	case STATE_INIT:
+		mxt_irq_enable(data, true);
+
+		if (!data->in_bootloader)
+			data->in_bootloader = true;
+
+		if (!data->use_regulator && data->sensor_sleep)
+			mxt_sensor_wake(data, false);
+			break;
+	}
+
+	pr_info("state change %s -> %s\n", mxt_state_name(current_state),
+			mxt_state_name(state));
+	atomic_set(&data->state, state);
 }
 
 static void mxt_free_input_device(struct mxt_data *data)
@@ -2221,22 +2365,34 @@ static int mxt_read_t9_resolution(struct mxt_data *data)
 
 static void mxt_regulator_enable(struct mxt_data *data)
 {
+	struct device *dev = &data->client->dev;
 	int error;
 
 	gpio_set_value(data->pdata->gpio_reset, 0);
 
-	regulator_enable(data->reg_vdd);
-	if (data->pdata->common_vdd_supply == 0)
-		regulator_enable(data->reg_avdd);
+	error = regulator_enable(data->reg_vdd);
+	if (error) {
+		dev_err(dev, "Error %d enabling vdd regulator\n", error);
+		return;
+	}
+
+	if (data->pdata->common_vdd_supply == 0) {
+		error = regulator_enable(data->reg_avdd);
+		if (error) {
+			regulator_disable(data->reg_vdd);
+			dev_err(dev, "Error %d enabling avdd regulator\n",
+				error);
+			return;
+		}
+	}
 
 	msleep(MXT_WAKEUP_TIME);
+	dev_dbg(&data->client->dev, "Regulator On\n");
 
 	INIT_COMPLETION(data->bl_completion);
 	gpio_set_value(data->pdata->gpio_reset, 1);
-	error = mxt_wait_for_completion(data, &data->bl_completion,
-						MXT_POWERON_DELAY);
-	if (!error)
-		data->in_bootloader = false;
+	mxt_wait_for_completion(data, &data->bl_completion,
+					MXT_POWERON_DELAY);
 }
 
 static void mxt_regulator_disable(struct mxt_data *data)
@@ -2246,6 +2402,8 @@ static void mxt_regulator_disable(struct mxt_data *data)
 	regulator_disable(data->reg_vdd);
 	if (data->pdata->common_vdd_supply == 0)
 		regulator_disable(data->reg_avdd);
+
+	dev_dbg(&data->client->dev, "Regulator Off\n");
 }
 
 static int mxt_gpio_configure(struct mxt_data *data)
@@ -2335,7 +2493,6 @@ static int mxt_power_init(struct mxt_data *data)
 		}
 	}
 
-	data->use_regulator = true;
 	return 0;
 
 fail_release_vdd:
@@ -2343,7 +2500,6 @@ fail_release_vdd:
 fail:
 	data->reg_vdd = NULL;
 	data->reg_avdd = NULL;
-	data->use_regulator = false;
 	return error;
 }
 
@@ -2421,11 +2577,6 @@ static int mxt_read_t100_config(struct mxt_data *data)
 	return 0;
 }
 
-#ifndef CONFIG_FB
-static int mxt_input_open(struct input_dev *dev);
-static void mxt_input_close(struct input_dev *dev);
-#endif
-
 static int mxt_initialize_t100_input_device(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
@@ -2478,14 +2629,13 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 
 static int mxt_initialize_t9_input_device(struct mxt_data *data);
 static int mxt_configure_objects(struct mxt_data *data);
-static void mxt_start(struct mxt_data *data);
 static int mxt_apply_tdat_tsett(struct mxt_data *data);
 static int mxt_alloc_input_device(struct mxt_data *data);
 
 static int mxt_initialize(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
-	int error;
+	int error, current_state = mxt_get_sensor_state(data);
 	bool alt_bootloader_addr = false;
 	bool retry = false;
 
@@ -2510,7 +2660,7 @@ retry_bootloader:
 						"bootloader mode\n");
 				/* this is not an error state, we can reflash
 				 * from here */
-				data->in_bootloader = true;
+				mxt_set_sensor_state(data, STATE_BL);
 				return 0;
 			}
 
@@ -2521,8 +2671,6 @@ retry_bootloader:
 			goto retry_info;
 		}
 	}
-
-	data->in_bootloader = false;
 
 	error = mxt_check_retrigen(data);
 	if (error)
@@ -2536,6 +2684,8 @@ retry_bootloader:
 	if (error)
 		return error;
 
+	mxt_set_sensor_state(data, (current_state == STATE_UNKNOWN) ?
+					STATE_STANDBY : STATE_ACTIVE);
 	return 0;
 }
 
@@ -2569,7 +2719,7 @@ static int mxt_configure_objects(struct mxt_data *data)
 	else
 		error = mxt_check_reg_init(data);
 	if (error) {
-		dev_err(&client->dev, "Error %d initialising configuration\n",
+		dev_err(&client->dev, "Error %d initializing configuration\n",
 			error);
 		return error;
 	}
@@ -2582,9 +2732,8 @@ static int mxt_configure_objects(struct mxt_data *data)
 		error = mxt_initialize_t100_input_device(data);
 		if (error)
 			return error;
-	} else {
+	} else
 		dev_warn(&client->dev, "No touch object detected\n");
-	}
 
 	if (!data->in_bootloader && !data->input_registered) {
 		error = input_register_device(data->input_dev);
@@ -2596,7 +2745,6 @@ static int mxt_configure_objects(struct mxt_data *data)
 		data->input_registered = true;
 	}
 
-	data->enable_reporting = true;
 	return 0;
 }
 
@@ -2673,7 +2821,7 @@ static ssize_t mxt_drv_irq_show(struct device *dev,
 {
 	struct mxt_data *data = dev_get_drvdata(dev);
 	return scnprintf(buf, PAGE_SIZE, "%s\n",
-			data->enable_reporting ? "ENABLED" : "DISABLED");
+			data->irq_enabled ? "ENABLED" : "DISABLED");
 }
 
 static ssize_t mxt_drv_irq_store(struct device *dev,
@@ -2691,16 +2839,12 @@ static ssize_t mxt_drv_irq_store(struct device *dev,
 
 	switch (value) {
 	case 0: /* Disable irq */
-		if (data->enable_reporting) {
-			disable_irq(data->irq);
-			data->enable_reporting = false;
-		}
+		mxt_irq_enable(data, false);
+		data->enable_reporting = false;
 		break;
 	case 1: /* Enable irq */
-		if (!data->enable_reporting) {
-			enable_irq(data->irq);
-			data->enable_reporting = true;
-		}
+		mxt_irq_enable(data, true);
+		data->enable_reporting = true;
 		break;
 	default:
 		printk(KERN_ERR "%s: Invalid value\n", __func__);
@@ -2739,18 +2883,14 @@ static ssize_t mxt_reset_store(struct device *dev,
 		return -EINVAL;
 
 	if (data->suspended)
-		mxt_start(data);
+		mxt_resume(&data->client->dev);
 	else {
 		data->enable_reporting = false;
-		disable_irq(data->irq);
 
 		gpio_set_value(data->pdata->gpio_reset, 0);
 		msleep(MXT_REGULATOR_DELAY);
-
-		INIT_COMPLETION(data->bl_completion);
 		gpio_set_value(data->pdata->gpio_reset, 1);
-		mxt_wait_for_completion(data, &data->bl_completion,
-							MXT_POWERON_DELAY);
+
 		mxt_acquire_irq(data);
 		data->enable_reporting = true;
 	}
@@ -2861,18 +3001,13 @@ static int mxt_load_fw(struct device *dev)
 	if (ret)
 		goto release_firmware;
 
-	if (data->suspended) {
-		if (data->use_regulator)
-			mxt_regulator_enable(data);
-
-		enable_irq(data->irq);
-		data->suspended = false;
-	}
+	if (data->suspended)
+		mxt_resume(&data->client->dev);
 
 	if (!data->in_bootloader) {
-		/* Change to the bootloader mode */
-		data->in_bootloader = true;
+		mxt_irq_enable(data, false);
 
+		/* Change to the bootloader mode */
 		ret = mxt_t6_command(data, MXT_COMMAND_RESET,
 				     MXT_BOOT_VALUE, false);
 		if (ret)
@@ -2885,12 +3020,12 @@ static int mxt_load_fw(struct device *dev)
 		ret = mxt_lookup_bootloader_address(data, 0);
 		if (ret)
 			goto release_firmware;
-	} else {
-		enable_irq(data->irq);
+
+		mxt_irq_enable(data, true);
 	}
 
+	mxt_set_sensor_state(data, STATE_INIT);
 	mxt_free_object_table(data);
-	INIT_COMPLETION(data->bl_completion);
 
 	ret = mxt_check_bootloader(data, MXT_WAITING_BOOTLOAD_CMD, false);
 	if (ret) {
@@ -2898,20 +3033,20 @@ static int mxt_load_fw(struct device *dev)
 		 * attempt */
 		ret = mxt_check_bootloader(data, MXT_WAITING_FRAME_DATA, false);
 		if (ret)
-			goto disable_irq;
+			goto release_firmware;
 	} else {
 		dev_info(dev, "Unlocking bootloader\n");
-
 		/* Unlock bootloader */
 		ret = mxt_send_bootloader_cmd(data, true);
 		if (ret)
-			goto disable_irq;
+			goto release_firmware;
 	}
 
+	mxt_set_sensor_state(data, STATE_FLASH);
 	while (pos < fw->size) {
 		ret = mxt_check_bootloader(data, MXT_WAITING_FRAME_DATA, true);
 		if (ret)
-			goto disable_irq;
+			goto release_firmware;
 
 		frame_size = ((*(fw->data + pos) << 8) | *(fw->data + pos + 1));
 
@@ -2921,7 +3056,7 @@ static int mxt_load_fw(struct device *dev)
 		/* Write one frame to device */
 		ret = mxt_bootloader_write(data, fw->data + pos, frame_size);
 		if (ret)
-			goto disable_irq;
+			goto release_firmware;
 
 		ret = mxt_check_bootloader(data, MXT_FRAME_CRC_PASS, true);
 		if (ret) {
@@ -2932,7 +3067,7 @@ static int mxt_load_fw(struct device *dev)
 
 			if (retry > 20) {
 				dev_err(dev, "Retry count exceeded\n");
-				goto disable_irq;
+				goto release_firmware;
 			}
 		} else {
 			retry = 0;
@@ -2945,23 +3080,19 @@ static int mxt_load_fw(struct device *dev)
 				frame, pos, fw->size);
 	}
 
+	dev_info(dev, "Sent %d frames, %zd bytes\n", frame, pos);
+	INIT_COMPLETION(data->bl_completion);
 	/* Wait for flash. */
 	ret = mxt_wait_for_completion(data, &data->bl_completion,
 				MXT_FW_RESET_TIME);
 	if (ret)
-		goto disable_irq;
-
-	dev_info(dev, "Sent %d frames, %zd bytes\n", frame, pos);
+		goto release_firmware;
 
 	/* Wait for device to reset. Some bootloader versions do not assert
 	 * the CHG line after bootloading has finished, so ignore error */
 	mxt_wait_for_completion(data, &data->bl_completion,
 				MXT_FW_RESET_TIME);
 
-	data->in_bootloader = false;
-
-disable_irq:
-	disable_irq(data->irq);
 release_firmware:
 	release_firmware(fw);
 	return ret;
@@ -3014,7 +3145,7 @@ static ssize_t mxt_update_fw_store(struct device *dev,
 	} else {
 		dev_info(dev, "The firmware update succeeded\n");
 
-		data->suspended = false;
+		mxt_set_sensor_state(data, STATE_QUERY);
 
 		error = mxt_initialize(data);
 		if (error)
@@ -3043,16 +3174,8 @@ static ssize_t mxt_update_cfg_store(struct device *dev,
 	data->enable_reporting = false;
 	mxt_free_input_device(data);
 
-	if (data->suspended) {
-		if (data->use_regulator)
-			mxt_regulator_enable(data);
-		else
-			mxt_set_t7_power_cfg(data, MXT_POWER_CFG_RUN);
-
-		mxt_acquire_irq(data);
-
-		data->suspended = false;
-	}
+	if (data->suspended)
+		mxt_resume(&data->client->dev);
 
 	ret = mxt_configure_objects(data);
 	if (ret)
@@ -3291,10 +3414,7 @@ static int mxt_apply_tdat_tsett(struct mxt_data *data)
 	if (ret)
 		goto release_mem;
 
-	ret = mxt_soft_reset(data);
-	if (ret)
-		goto release_mem;
-
+	mxt_soft_reset(data);
 	dev_info(dev, "Config written\n");
 
 	/* T7 config may have changed */
@@ -3475,47 +3595,58 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 	}
 
 	if (data->suspended)
-		mxt_start(data);
+		mxt_resume(&data->client->dev);
 
 	if (!data->in_bootloader) {
+		mxt_irq_enable(data, false);
+
+		dev_dbg(dev, "Reboot to bootloader\n\n");
+		/* Change to the bootloader mode */
 		error = mxt_t6_command(data, MXT_COMMAND_RESET,
 				     MXT_BOOT_VALUE, false);
 		if (error)
 			goto release_firmware;
 
-		data->in_bootloader = true;
 		msleep(MXT_RESET_TIME);
 
+		/* At this stage, do not need to scan since we know
+		 * family ID */
 		error = mxt_lookup_bootloader_address(data, 0);
 		if (error)
 			goto release_firmware;
-	} else
-		enable_irq(data->irq);
+
+		mxt_irq_enable(data, true);
+	}
+
+	mxt_set_sensor_state(data, STATE_INIT);
 
 	mutex_lock(&data->crit_section_lock);
-	dev_dbg(dev, "mutex LOCK\n");
+	dev_dbg(dev, "critical section LOCK\n");
 
 	mxt_free_object_table(data);
-	INIT_COMPLETION(data->bl_completion);
 
+	dev_dbg(dev, "confirming bootloader mode\n");
 	error = mxt_check_bootloader(data, MXT_WAITING_BOOTLOAD_CMD, false);
 	if (error) {
 		error = mxt_check_bootloader(data,
 					MXT_WAITING_FRAME_DATA, false);
 		if (error)
-			goto disable_irq;
+			goto flash_error;
 	} else {
 		dev_info(dev, "Unlocking bootloader\n");
+		/* Unlock bootloader */
 		error = mxt_send_bootloader_cmd(data, true);
 		if (error)
-			goto disable_irq;
+			goto flash_error;
 	}
 
+	dev_dbg(dev, "start flashing frames\n");
+	mxt_set_sensor_state(data, STATE_FLASH);
 	while (pos < data->fw.size) {
 		error = mxt_check_bootloader(data,
 					MXT_WAITING_FRAME_DATA, true);
 		if (error)
-			goto disable_irq;
+			goto flash_error;
 
 		frame_size = ((*(data->fw.data + pos) << 8) |
 				*(data->fw.data + pos + 1));
@@ -3526,7 +3657,7 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 		error = mxt_bootloader_write(data,
 					data->fw.data + pos, frame_size);
 		if (error)
-			goto disable_irq;
+			goto flash_error;
 
 		error = mxt_check_bootloader(data,
 					MXT_FRAME_CRC_PASS, true);
@@ -3535,7 +3666,7 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 			msleep(retry * 20);
 			if (retry > 20) {
 				dev_err(dev, "Retry count exceeded\n");
-				goto disable_irq;
+				goto flash_error;
 			}
 		} else {
 			retry = 0;
@@ -3549,33 +3680,30 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 	}
 
 	dev_info(dev, "FW: sent %d frames, %u bytes\n", frame, pos);
+	INIT_COMPLETION(data->bl_completion);
 	error = mxt_wait_for_completion(data, &data->bl_completion,
 				MXT_FW_RESET_TIME);
 	if (error)
-		goto disable_irq;
+		goto flash_error;
 
-	INIT_COMPLETION(data->bl_completion);
-	mxt_wait_for_completion(data, &data->bl_completion,
-				MXT_FW_RESET_TIME);
 	dev_info(dev, "The firmware update succeeded\n");
+	goto initialize;
 
-	data->in_bootloader = false;
-	disable_irq(data->irq);
+flash_error:
+	mxt_soft_reset(data);
 
+initialize:
+	mxt_set_sensor_state(data, STATE_QUERY);
 	error = mxt_initialize(data);
 	if (error)
 		dev_info(dev, "Init failed after firmware upgrade\n");
 
 	mutex_unlock(&data->crit_section_lock);
-	dev_dbg(dev, "mutex RELEASE\n");
+	dev_dbg(dev, "critical section RELEASE\n");
 
 	memset(&data->fw, 0, sizeof(data->fw));
 	memset(&data->tsett, 0, sizeof(data->tsett));
 
-	goto release_firmware;
-
-disable_irq:
-	disable_irq(data->irq);
 release_firmware:
 	release_firmware(data->tdat);
 	data->tdat = NULL;
@@ -3656,58 +3784,21 @@ static void mxt_reset_slots(struct mxt_data *data)
 	mxt_input_sync(input_dev);
 }
 
-static void mxt_start(struct mxt_data *data)
-{
-	if (!data->suspended || data->in_bootloader)
-		return;
-
-	if (data->use_regulator) {
-		mxt_regulator_enable(data);
-	} else {
-		/* Discard any messages still in message buffer from before
-		 * chip went to sleep */
-		mxt_process_messages_until_invalid(data);
-
-		mxt_set_t7_power_cfg(data, MXT_POWER_CFG_RUN);
-
-		/* Recalibrate since chip has been in deep sleep */
-		mxt_t6_command(data, MXT_COMMAND_CALIBRATE, 1, false);
-	}
-
-	mxt_acquire_irq(data);
-	data->enable_reporting = true;
-	data->suspended = false;
-
-	mutex_unlock(&data->crit_section_lock);
-	dev_dbg(&data->client->dev, "mutex RELEASE\n");
-}
-
-static void mxt_stop(struct mxt_data *data)
-{
-	if (data->suspended || data->in_bootloader)
-		return;
-
-	mutex_lock(&data->crit_section_lock);
-	dev_dbg(&data->client->dev, "mutex LOCK\n");
-
-	data->enable_reporting = false;
-	disable_irq(data->irq);
-
-	if (data->use_regulator)
-		mxt_regulator_disable(data);
-	else
-		mxt_set_t7_power_cfg(data, MXT_POWER_CFG_DEEPSLEEP);
-
-	mxt_reset_slots(data);
-	data->suspended = true;
-}
-
 #ifndef CONFIG_FB
 static int mxt_input_open(struct input_dev *dev)
 {
 	struct mxt_data *data = input_get_drvdata(dev);
 
-	mxt_start(data);
+	mxt_irq_enable(data, true);
+
+	if (data->use_regulator)
+		mxt_regulator_enable(data);
+	else if (data->sensor_sleep)
+		mxt_sensor_wake(data, true);
+
+	mxt_acquire_irq(data);
+	mutex_unlock(&data->crit_section_lock);
+	dev_dbg(&data->client->dev, "critical section RELEASE\n");
 
 	return 0;
 }
@@ -3716,7 +3807,16 @@ static void mxt_input_close(struct input_dev *dev)
 {
 	struct mxt_data *data = input_get_drvdata(dev);
 
-	mxt_stop(data);
+	mxt_reset_slots(data);
+	mxt_irq_enable(data, false);
+
+	if (data->use_regulator)
+		mxt_regulator_disable(data);
+	else if (!data->sensor_sleep)
+		mxt_sensor_sleep(data);
+
+	mutex_lock(&data->crit_section_lock);
+	dev_dbg(&data->client->dev, "critical section LOCK\n");
 }
 #endif
 
@@ -3732,6 +3832,10 @@ static int mxt_parse_dt(struct mxt_data *data)
 
 	pdata->common_vdd_supply = of_property_read_bool(np,
 					"atmel,common-vdd-supply");
+	data->use_regulator = !of_property_read_bool(np,
+					"atmel,suspend-method-lpm");
+	pr_info("using suspend method: %s\n", data->use_regulator ?
+					"reset" : "lpm");
 	/* reset, irq gpio info */
 	pdata->gpio_irq = of_get_gpio(np, 0);
 	pdata->gpio_reset = of_get_gpio(np, 1);
@@ -3827,7 +3931,6 @@ static int mxt_handle_pdata(struct mxt_data *data)
 					     &data->cfg_name,
 					     data->pdata->cfg_name,
 					     strlen(data->pdata->cfg_name));
-
 		return 0;
 	}
 
@@ -3995,12 +4098,9 @@ static int mxt_probe(struct i2c_client *client,
 	if (error)
 		goto err_free_irq;
 
-	/* set flag to satisfy bl_completion */
-	data->in_bootloader = true;
-	/* must be called with IRQ enabled */
+	mxt_irq_enable(data, true);
 	mxt_regulator_enable(data);
 
-	disable_irq(data->irq);
 	error = mxt_initialize(data);
 	if (error)
 		goto err_disable_reg;
@@ -4084,8 +4184,23 @@ static int mxt_suspend(struct device *dev)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
 
+	if (!data->suspended) {
+		/* if driver is in critical section at the moment,
+		 * mutex_lock can block until mutex gets released */
+		mutex_lock(&data->crit_section_lock);
+		dev_dbg(&data->client->dev, "critical section LOCK\n");
+
+		mxt_set_sensor_state(data, STATE_SUSPEND);
+		mxt_reset_slots(data);
+
+		if (data->use_regulator)
+			mxt_regulator_disable(data);
+		else if (!data->sensor_sleep)
+			mxt_sensor_sleep(data);
+	}
+
 	data->poweron = false;
-	mxt_stop(data);
+	data->suspended = true;
 
 	return 0;
 }
@@ -4094,9 +4209,30 @@ static int mxt_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct mxt_data *data = i2c_get_clientdata(client);
+	int state = mxt_get_sensor_state(data);
 
-	mxt_start(data);
+	if (data->suspended) {
+		mxt_irq_enable(data, true);
+
+		if (data->use_regulator) {
+			mxt_regulator_enable(data);
+			mxt_acquire_irq(data);
+		} else if (data->sensor_sleep)
+			mxt_sensor_wake(data, true);
+
+		mutex_unlock(&data->crit_section_lock);
+		dev_dbg(&data->client->dev, "critical section RELEASE\n");
+	}
+
+	if (data->in_bootloader)
+		state = (state == STATE_INIT ||
+			 state == STATE_FLASH) ? state : STATE_BL;
+	else
+		state = STATE_ACTIVE;
+
+	mxt_set_sensor_state(data, state);
 	data->poweron = true;
+	data->suspended = false;
 
 	return 0;
 }
