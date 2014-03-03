@@ -44,6 +44,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 #define DRIVER_NAME "atmel_mxt_ts"
 #define MXT_MAX_RETRIES		10
 #define MXT_MAX_BLOCK_WRITE	256
+#define MXT_MAX_BUTTONS		8
 #define DEBUG_MSG_MAX		200
 
 /* Configuration file */
@@ -272,6 +273,7 @@ struct mxt_data {
 	bool use_regulator;
 	bool poweron;
 	bool input_registered;
+	bool buttons_enabled;
 	struct regulator *reg_vdd;
 	struct regulator *reg_avdd;
 	char *fw_name;
@@ -2428,7 +2430,7 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 {
 	struct device *dev = &data->client->dev;
 	struct input_dev *input_dev;
-	int error;
+	int i, error;
 
 	error = mxt_read_t100_config(data);
 	if (error)
@@ -2440,15 +2442,6 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 #endif
 	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
 
-	/* For single touch */
-	input_set_abs_params(input_dev, ABS_X,
-			     0, data->max_x, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y,
-			     0, data->max_y, 0, 0);
-
-	if (data->t100_aux_ampl)
-		input_set_abs_params(input_dev, ABS_PRESSURE,
-				     0, 255, 0, 0);
 	/* For multi touch */
 	input_mt_init_slots(input_dev, data->num_touchids);
 
@@ -2469,6 +2462,17 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 	if (data->t100_aux_vect)
 		input_set_abs_params(input_dev, ABS_MT_ORIENTATION,
 				     0, 255, 0, 0);
+
+	/* For T15 key array */
+	if (data->T15_reportid_min) {
+		data->t15_keystatus = 0;
+
+		for (i = 0; i < data->pdata->t15_num_keys; i++)
+			if (data->pdata->t15_keymap[i])
+				input_set_capability(input_dev, EV_KEY,
+					     data->pdata->t15_keymap[i]);
+	}
+
 	return 0;
 }
 
@@ -3646,6 +3650,9 @@ static void mxt_reset_slots(struct mxt_data *data)
 		input_mt_report_slot_state(input_dev, MT_TOOL_FINGER, 0);
 	}
 
+	if (data->buttons_enabled)
+		data->t15_keystatus = 0;
+
 	mxt_input_sync(input_dev);
 }
 
@@ -3716,6 +3723,7 @@ static void mxt_input_close(struct input_dev *dev)
 #ifdef CONFIG_OF
 static int mxt_parse_dt(struct mxt_data *data)
 {
+	unsigned key_codes[MXT_MAX_BUTTONS];
 	struct device *dev = &data->client->dev;
 	struct mxt_platform_data *pdata = data->pdata;
 	int error = 0;
@@ -3733,6 +3741,30 @@ static int mxt_parse_dt(struct mxt_data *data)
 	pdata->dt_info.variant_id = 0x2;
 	pdata->dt_info.version = 0x5;
 	pdata->dt_info.build = 0x2;
+
+	memset(key_codes, 0, sizeof(key_codes));
+	error = of_property_read_u32_array(np, "atmel,key-buttons",
+			 key_codes, MXT_MAX_BUTTONS);
+	if (!error) {
+		int i, keys;
+
+		pdata->t15_num_keys = MXT_MAX_BUTTONS;
+		pdata->t15_keymap = devm_kzalloc(dev,
+			sizeof(unsigned) * pdata->t15_num_keys, GFP_KERNEL);
+		if (!pdata->t15_keymap) {
+			dev_err(dev, "T15 keymap allocation failure\n");
+			goto exit_parser;
+		}
+
+		for (i = 0, keys = 0; i < pdata->t15_num_keys; i++)
+			if (key_codes[i]) {
+				*(pdata->t15_keymap + i) = key_codes[i];
+				keys++;
+			}
+
+		data->buttons_enabled = true;
+		pr_info("T15 has %d buttons\n", keys);
+	}
 
 	for_each_child_of_node(np, temp) {
 		error = of_property_read_u32(temp, "atmel,family-id", &value);
@@ -3915,7 +3947,6 @@ static int mxt_alloc_input_device(struct mxt_data *data)
 #endif
 	set_bit(EV_SYN, data->input_dev->evbit);
 	set_bit(EV_ABS, data->input_dev->evbit);
-	input_set_capability(data->input_dev, EV_KEY, BTN_TOUCH);
 
 	input_set_drvdata(data->input_dev, data);
 
