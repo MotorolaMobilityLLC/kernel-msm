@@ -286,7 +286,7 @@ void limSetLinkStateP2PCallback(tpAniSirGlobal pMac, void *callbackArg)
                                         MsgRemainonChannel,
                                         REMAIN_ON_CHANNEL_SECOND_MARKER_FRAME) )
             {
-                limLog( pMac, LOG1,
+                limLog( pMac, LOGE,
                         "%s: Successfully sent 2nd Marker frame "
                         "seq num = %d on start ROC", __func__,
                         pMac->lim.remOnChnSeqNum);
@@ -556,16 +556,6 @@ void limRemainOnChnlSetLinkStat(tpAniSirGlobal pMac, eHalStatus status,
                   "%s: remain on channel Timer Start Failed", __func__);
         goto error;
     }
-
-    if (eSIR_SUCCESS !=
-        wlan_cfgGetInt(pMac, WNI_CFG_DEBUG_P2P_REMAIN_ON_CHANNEL,
-                       (tANI_U32 *)&pMac->lim.gDebugP2pRemainOnChannel))
-    {
-        limLog( pMac, LOGE,
-                "%s: Couldn't get WNI_CFG_DEBUG_P2P_REMAIN_ON_CHANNEL value",
-                 __func__);
-        pMac->lim.gDebugP2pRemainOnChannel = 0;
-    }
     if (pMac->lim.gDebugP2pRemainOnChannel)
     {
         pMac->lim.remOnChnSeqNum++;
@@ -573,7 +563,7 @@ void limRemainOnChnlSetLinkStat(tpAniSirGlobal pMac, eHalStatus status,
                                      pMac, MsgRemainonChannel,
                                      REMAIN_ON_CHANNEL_FIRST_MARKER_FRAME) )
         {
-            limLog( pMac, LOG1,
+            limLog( pMac, LOGE,
                     "%s: Successfully sent 1st marker frame with seq num = %d"
                     " on start ROC", __func__, pMac->lim.remOnChnSeqNum);
         }
@@ -678,7 +668,7 @@ void limSetlinkStateCallback(tpAniSirGlobal pMac, void *callbackArg)
                                       pMac,
                                       REMAIN_ON_CHANNEL_SECOND_MARKER_FRAME))
         {
-            limLog( pMac, LOG1,
+            limLog( pMac, LOGE,
                     "%s: Successfully sent 2nd marker frame with seq num=%d"
                     " on cancel ROC", __func__, pMac->lim.remOnChnSeqNum);
         }
@@ -723,7 +713,7 @@ void limProcessRemainOnChnTimeout(tpAniSirGlobal pMac)
                                         pMac,
                                         REMAIN_ON_CHANNEL_FIRST_MARKER_FRAME))
         {
-            limLog( pMac, LOG1,
+            limLog( pMac, LOGE,
                     "%s: Successfully sent 1st marker frame with seqnum = %d"
                     " on cancel ROC", __func__, pMac->lim.remOnChnSeqNum);
         }
@@ -806,6 +796,8 @@ void limRemainOnChnRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data)
         return;
     }
 
+    limLog( pMac, LOG1, "Remain on channel rsp with status %d", status);
+
     //Incase of the Remain on Channel Failure Case
     //Cleanup Everything
     if(eHAL_STATUS_FAILURE == status)
@@ -836,7 +828,7 @@ void limRemainOnChnRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data)
     }
 
     /* Post the meessage to Sme */
-    limSendSmeRsp(pMac, eWNI_SME_REMAIN_ON_CHN_RSP, status, 
+    limSendSmeRsp(pMac, eWNI_SME_REMAIN_ON_CHN_RSP, status,
                   MsgRemainonChannel->sessionId, 0);
 
     vos_mem_free(pMac->lim.gpLimRemainOnChanReq);
@@ -848,6 +840,8 @@ void limRemainOnChnRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data)
      * indicaiton confirmation with status failure */
     if (pMac->lim.mgmtFrameSessionId != 0xff)
     {
+       limLog(pMac, LOGE,
+              FL("Remain on channel expired, Action frame status failure"));
        limP2PActionCnf(pMac, 0);
     }
 
@@ -962,6 +956,9 @@ void limSendSmeMgmtFrameInd(
 
 eHalStatus limP2PActionCnf(tpAniSirGlobal pMac, tANI_U32 txCompleteSuccess)
 {
+    limLog(pMac, LOG1,
+              FL(" %s txCompleteSuccess %d, Session Id %d"),
+              __func__, txCompleteSuccess, pMac->lim.mgmtFrameSessionId);
     if (pMac->lim.mgmtFrameSessionId != 0xff)
     {
         /* The session entry might be invalid(0xff) action confirmation received after
@@ -1341,6 +1338,7 @@ void limAbortRemainOnChan(tpAniSirGlobal pMac)
     {
         //TODO check for state and take appropriate actions
         limDeactivateAndChangeTimer(pMac, eLIM_REMAIN_CHN_TIMER);
+        limLog( pMac, LOG1, FL("Abort ROC !!!" ));
         limProcessRemainOnChnTimeout(pMac);
     }
     return;
