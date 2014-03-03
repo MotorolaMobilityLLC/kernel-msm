@@ -17,7 +17,7 @@
 /include/ "msm8226-titan-common.dtsi"
 
 / {
-	qcom,msm-id = <145 0x4b 0x8100>;
+	qcom,msm-id = <145 0x4d 0x8100>;
 };
 
 &pm8226_chg {
