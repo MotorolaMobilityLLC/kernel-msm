@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -366,6 +366,7 @@
 			interrupt-names = "eoc-int-en-set";
 			qcom,adc-bit-resolution = <15>;
 			qcom,adc-vdd-reference = <1800>;
+			qcom,vadc-poll-eoc;
 
 			chan@8 {
 				label = "die_temp";
@@ -422,6 +423,7 @@
 			qcom,adc-bit-resolution = <16>;
 			qcom,adc-vdd-reference = <1800>;
 			qcom,iadc-vadc = <&pm8226_vadc>;
+			qcom,iadc-poll-eoc;
 
 			chan@0 {
 				label = "internal_rsense";
