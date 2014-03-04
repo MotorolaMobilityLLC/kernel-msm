@@ -6643,6 +6643,7 @@ static struct pll_config_regs mmpll0_regs __initdata = {
 	.m_reg = (void __iomem *)MMPLL0_PLL_M_VAL,
 	.n_reg = (void __iomem *)MMPLL0_PLL_N_VAL,
 	.config_reg = (void __iomem *)MMPLL0_PLL_USER_CTL,
+	.config_ctl_reg = (void __iomem *)MMPLL0_PLL_CONFIG_CTL,
 	.mode_reg = (void __iomem *)MMPLL0_PLL_MODE,
 	.base = &virt_bases[MMSS_BASE],
 };
@@ -6662,6 +6663,7 @@ static struct pll_config mmpll0_config __initdata = {
 	.mn_ena_mask = BIT(24),
 	.main_output_val = BIT(0),
 	.main_output_mask = BIT(0),
+	.cfg_ctl_val = 0x341600,
 };
 
 static struct pll_config_regs mmpll1_regs __initdata = {
@@ -6669,6 +6671,7 @@ static struct pll_config_regs mmpll1_regs __initdata = {
 	.m_reg = (void __iomem *)MMPLL1_PLL_M_VAL,
 	.n_reg = (void __iomem *)MMPLL1_PLL_N_VAL,
 	.config_reg = (void __iomem *)MMPLL1_PLL_USER_CTL,
+	.config_ctl_reg = (void __iomem *)MMPLL1_PLL_CONFIG_CTL,
 	.mode_reg = (void __iomem *)MMPLL1_PLL_MODE,
 	.base = &virt_bases[MMSS_BASE],
 };
@@ -6688,6 +6691,7 @@ static struct pll_config mmpll1_config __initdata = {
 	.mn_ena_mask = BIT(24),
 	.main_output_val = BIT(0),
 	.main_output_mask = BIT(0),
+	.cfg_ctl_val = 0x341600,
 };
 
 static struct pll_config_regs mmpll3_regs __initdata = {
@@ -6695,6 +6699,7 @@ static struct pll_config_regs mmpll3_regs __initdata = {
 	.m_reg = (void __iomem *)MMPLL3_PLL_M_VAL,
 	.n_reg = (void __iomem *)MMPLL3_PLL_N_VAL,
 	.config_reg = (void __iomem *)MMPLL3_PLL_USER_CTL,
+	.config_ctl_reg = (void __iomem *)MMPLL3_PLL_CONFIG_CTL,
 	.mode_reg = (void __iomem *)MMPLL3_PLL_MODE,
 	.base = &virt_bases[MMSS_BASE],
 };
@@ -6714,6 +6719,7 @@ static struct pll_config mmpll3_config __initdata = {
 	.mn_ena_mask = BIT(24),
 	.main_output_val = BIT(0),
 	.main_output_mask = BIT(0),
+	.cfg_ctl_val = 0x341600,
 };
 
 static struct pll_config_regs mmpll4_regs __initdata = {
@@ -6721,6 +6727,7 @@ static struct pll_config_regs mmpll4_regs __initdata = {
 	.m_reg = (void __iomem *)MMPLL4_PLL_M_VAL,
 	.n_reg = (void __iomem *)MMPLL4_PLL_N_VAL,
 	.config_reg = (void __iomem *)MMPLL4_PLL_USER_CTL,
+	.config_ctl_reg = (void __iomem *)MMPLL4_PLL_CONFIG_CTL,
 	.mode_reg = (void __iomem *)MMPLL4_PLL_MODE,
 	.base = &virt_bases[MMSS_BASE],
 };
@@ -6740,6 +6747,7 @@ static struct pll_config mmpll4_config __initdata = {
 	.mn_ena_mask = BIT(24),
 	.main_output_val = BIT(0),
 	.main_output_mask = BIT(0),
+	.cfg_ctl_val = 0x341600,
 };
 
 static void __init reg_init(void)
