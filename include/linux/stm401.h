@@ -453,9 +453,6 @@ struct stm401_data {
 	unsigned int current_addr;
 	enum stm_mode mode;
 	unsigned char intp_mask;
-	#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend early_suspend;
-	#endif
 
 	dev_t stm401_dev_num;
 	struct class *stm401_class;
@@ -484,6 +481,8 @@ struct stm401_data {
 
 	unsigned int stm401_i2c_fail_count;
 	unsigned int stm401_hub_fail;
+
+	bool is_suspended;
 };
 
 /* per algo config, request, and event registers */
