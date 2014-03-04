@@ -18,9 +18,6 @@
 
 #include <linux/cdev.h>
 #include <linux/delay.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/export.h>
