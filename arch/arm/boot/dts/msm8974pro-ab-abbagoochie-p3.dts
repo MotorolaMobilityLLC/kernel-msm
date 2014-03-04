@@ -20,6 +20,13 @@
 		      <217 0x41 0x83b0>;
 };
 
+&i2c_1 {
+        stm401@39 {
+                sensor2-supply = <&pm8941_l17>;
+        };
+};
+
+
 &i2c_2 {
 	tfa9890@34 {
 		compatible = "nxp,tfa9890";
