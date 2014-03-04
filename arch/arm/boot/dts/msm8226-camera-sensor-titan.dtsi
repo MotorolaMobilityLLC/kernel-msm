@@ -12,6 +12,12 @@
  */
 
 &cci {
+	actuator0: qcom,actuator@79 {
+		cell-index = <1>;
+		reg = <0x18 0x0>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+	};
 
 	qcom,camera@79 {
 		compatible = "qcom,imx179";
@@ -20,14 +26,15 @@
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
+		qcom,actuator-src = <&actuator0>;
 		qcom,sensor-name = "imx179";
 		cam_vdig-supply = <&pm8226_l5>;
 		cam_vaf-supply = <&pm8226_l28>;
-		qcom,cam-vreg-name = "cam_vdig", "cam_vaf";
-		qcom,cam-vreg-type = <0 0>;
-		qcom,cam-vreg-min-voltage = <1200000 2850000>;
-		qcom,cam-vreg-max-voltage = <1200000 2850000>;
-		qcom,cam-vreg-op-mode = <105000 100000>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana", "cam_vaf";
+		qcom,cam-vreg-type = <0 1 1 0>;
+		qcom,cam-vreg-min-voltage = <1200000 0 0 2850000>;
+		qcom,cam-vreg-max-voltage = <1200000 0 0 2850000>;
+		qcom,cam-vreg-op-mode = <105000 0 0 100000>;
 		qcom,gpio-no-mux = <0>;
 		gpios = <&msmgpio 26 0>,
 			<&msmgpio 27 0>,
