@@ -462,6 +462,12 @@
 	};
 
 	gpio@cc00 { /* GPIO 13 */
+		/* USB_VBUS_DET */
+		qcom,mode = <0>;               /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;               /* NO PULL */
+		qcom,vin-sel = <2>;            /* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;            /* GPIO */
+		qcom,master-en = <1>;          /* Enable GPIO */
 	};
 
 	gpio@cd00 { /* GPIO 14 */
