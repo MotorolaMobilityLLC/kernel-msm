@@ -749,6 +749,12 @@ static struct gpiomux_setting cam_settings[] = {
 		.drv = GPIOMUX_DRV_2MA,
 		.pull = GPIOMUX_PULL_DOWN,
 	},
+
+	{
+		.func = GPIOMUX_FUNC_1, /*active 2*/ /* 5 */
+		.drv = GPIOMUX_DRV_6MA,
+		.pull = GPIOMUX_PULL_NONE,
+	},
 };
 
 static struct gpiomux_setting sd_card_det_active_config = {
@@ -777,7 +783,7 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	{
 		.gpio = 15, /* CAM_MCLK0 */
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[0],
+			[GPIOMUX_ACTIVE]    = &cam_settings[5],
 			[GPIOMUX_SUSPENDED] = &cam_settings[1],
 		},
 	},
@@ -791,7 +797,7 @@ static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	{
 		.gpio = 17, /* CAM_MCLK2 */
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[0],
+			[GPIOMUX_ACTIVE]    = &cam_settings[5],
 			[GPIOMUX_SUSPENDED] = &cam_settings[1],
 		},
 	},
