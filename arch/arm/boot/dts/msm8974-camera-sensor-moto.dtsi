@@ -63,11 +63,11 @@
 		qcom,cci-master = <1>;
 	};
 
-	actuator1: qcom,actuator@36 {
-		cell-index = <1>;
-		reg = <0x36>;
+	actuatorWV560: qcom,actuator@e0 {
+		cell-index = <7>;
+		reg = <0xe0>;
 		compatible = "qcom,actuator";
-		qcom,cci-master = <0>;
+		qcom,cci-master = <1>;
 	};
 
 	led_flash1: qcom,lm3646@ce {
@@ -149,7 +149,7 @@
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "imx135";
-		qcom,actuator-src = <&actuator1>;
+		qcom,actuator-src = <&actuatorWV560>;
 		qcom,led-flash-src = <&led_flash1>;
 		cam_vdig-supply = <&pm8941_l3>;
 		cam_vio-supply = <&pm8941_lvs3>;
