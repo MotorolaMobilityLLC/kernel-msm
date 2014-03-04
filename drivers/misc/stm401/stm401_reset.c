@@ -18,9 +18,6 @@
 
 #include <linux/cdev.h>
 #include <linux/delay.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/export.h>
@@ -92,6 +89,9 @@ int stm401_reset_and_init(void)
 	int stm401_req_value;
 	unsigned int i;
 	int err, ret_err = 0;
+
+	if (stm401_misc_data->is_suspended)
+		return ret_err;
 
 	pdata = stm401_misc_data->pdata;
 
