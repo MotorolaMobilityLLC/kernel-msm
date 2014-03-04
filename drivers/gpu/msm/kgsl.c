@@ -2467,7 +2467,7 @@ static int kgsl_setup_phys_file(struct kgsl_mem_entry *entry,
 	entry->memdesc.hostptr = (void *) (virt + offset);
 	/* USE_CPU_MAP is not impemented for PMEM. */
 	entry->memdesc.flags &= ~KGSL_MEMFLAGS_USE_CPU_MAP;
-	entry->memdesc.flags = KGSL_MEMFLAGS_USERMEM_PMEM;
+	entry->memdesc.flags |= KGSL_MEMFLAGS_USERMEM_PMEM;
 
 	ret = memdesc_sg_phys(&entry->memdesc, phys + offset, size);
 	if (ret)
@@ -2609,7 +2609,7 @@ static int kgsl_setup_useraddr(struct kgsl_mem_entry *entry,
 	entry->memdesc.useraddr = param->hostptr;
 	if (kgsl_memdesc_use_cpu_map(&entry->memdesc))
 		entry->memdesc.gpuaddr = entry->memdesc.useraddr;
-	entry->memdesc.flags = KGSL_MEMFLAGS_USERMEM_ADDR;
+	entry->memdesc.flags |= KGSL_MEMFLAGS_USERMEM_ADDR;
 
 	return memdesc_sg_virt(&entry->memdesc, NULL);
 }
@@ -2637,7 +2637,7 @@ static int kgsl_setup_ashmem(struct kgsl_mem_entry *entry,
 	entry->memdesc.useraddr = useraddr;
 	if (kgsl_memdesc_use_cpu_map(&entry->memdesc))
 		entry->memdesc.gpuaddr = entry->memdesc.useraddr;
-	entry->memdesc.flags = KGSL_MEMFLAGS_USERMEM_ASHMEM;
+	entry->memdesc.flags |= KGSL_MEMFLAGS_USERMEM_ASHMEM;
 
 	ret = memdesc_sg_virt(&entry->memdesc, vmfile);
 	if (ret)
@@ -2684,7 +2684,7 @@ static int kgsl_setup_dma_buf(struct kgsl_mem_entry *entry,
 	entry->memdesc.size = 0;
 	/* USE_CPU_MAP is not impemented for ION. */
 	entry->memdesc.flags &= ~KGSL_MEMFLAGS_USE_CPU_MAP;
-	entry->memdesc.flags = KGSL_MEMFLAGS_USERMEM_ION;
+	entry->memdesc.flags |= KGSL_MEMFLAGS_USERMEM_ION;
 
 	sg_table = dma_buf_map_attachment(attach, DMA_TO_DEVICE);
 
@@ -2791,6 +2791,7 @@ long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 	 * determined by type of allocation being mapped.
 	 */
 	param->flags &= KGSL_MEMFLAGS_GPUREADONLY
+			| KGSL_MEMTYPE_MASK
 			| KGSL_MEMALIGN_MASK
 			| KGSL_MEMFLAGS_USE_CPU_MAP;
 
