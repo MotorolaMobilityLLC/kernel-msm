@@ -504,5 +504,6 @@ void clearWlanResetReason(void);
 void vos_timer_module_init( void );
 VOS_STATUS vos_watchdog_wlan_shutdown(void);
 VOS_STATUS vos_watchdog_wlan_re_init(void);
+v_BOOL_t isWDresetInProgress(void);
 
 #endif // #if !defined __VOSS_SCHED_H

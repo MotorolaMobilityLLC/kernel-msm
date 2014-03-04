@@ -3664,12 +3664,14 @@ void csrSetOppositeBandChannelInfo( tpAniSirGlobal pMac )
         if ( CSR_IS_CHANNEL_5GHZ( pMac->scan.channelOf11dInfo ) )
         {
             // and the 2.4 band is empty, then populate the 2.4 channel info
+            if ( !csrLLIsListEmpty( &pMac->scan.channelPowerInfoList24, LL_ACCESS_LOCK ) ) break;
             fPopulate5GBand = FALSE;
         }
         else
         {
             // else, we found channel info in the 2.4 GHz band.  If the 5.0 band is empty
             // set the 5.0 band info from the 2.4 country code.
+            if ( !csrLLIsListEmpty( &pMac->scan.channelPowerInfoList5G, LL_ACCESS_LOCK ) ) break;
             fPopulate5GBand = TRUE;
         }
         csrSaveChannelPowerForBand( pMac, fPopulate5GBand );
@@ -3764,7 +3766,6 @@ void csrConstructCurrentValidChannelList( tpAniSirGlobal pMac, tDblLinkList *pCh
 tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription *pSirBssDesc,
                                          tDot11fBeaconIEs *pIes, tANI_BOOLEAN fForce)
 {
-    tANI_U8 Num2GChannels, bMaxNumChn;
     eHalStatus status;
     tANI_BOOLEAN fRet = eANI_BOOLEAN_FALSE;
     v_REGDOMAIN_t domainId;
@@ -3884,56 +3885,66 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
             }
         }
         smsLog(pMac, LOG3, FL("  %d sets each one is %d"), pIesLocal->Country.num_triplets, sizeof(tSirMacChanInfo));
-        // save the channel/power information from the Channel IE.
-        //sizeof(tSirMacChanInfo) has to be 3
-        if (eHAL_STATUS_SUCCESS != csrSaveToChannelPower2G_5G( pMac, pIesLocal->Country.num_triplets * sizeof(tSirMacChanInfo),
-                    (tSirMacChanInfo *)(&pIesLocal->Country.triplets[0]) ))
-        {
-            fRet = eANI_BOOLEAN_FALSE;
-            return fRet;
-        }
 
         // set the indicator of the channel where the country IE was found...
         pMac->scan.channelOf11dInfo = pSirBssDesc->channelId;
-        csrGetRegulatoryDomainForCountry(pMac, pIesLocal->Country.country, &domainId );
+        status = csrGetRegulatoryDomainForCountry(pMac,
+                       pIesLocal->Country.country, &domainId );
+        if ( status != eHAL_STATUS_SUCCESS )
+        {
+            smsLog( pMac, LOGE, FL("  fail to get regId %d"), domainId );
+            fRet = eANI_BOOLEAN_FALSE;
+            return fRet;
+        }
         // Checking for Domain Id change
         if ( domainId != pMac->scan.domainIdCurrent )
         {
-            tSirMacChanInfo* pMacChnSet = (tSirMacChanInfo *)(&pIesLocal->Country.triplets[0]);
-            palCopyMemory( pMac->hHdd, pMac->scan.countryCode11d, pIesLocal->Country.country,
-                                        sizeof( pMac->scan.countryCode11d ) );
+            vos_mem_copy(pMac->scan.countryCode11d,
+                                  pIesLocal->Country.country,
+                                  sizeof( pMac->scan.countryCode11d ) );
+            /* Set Current Country code and Current Regulatory domain */
+            status = csrSetRegulatoryDomain(pMac, domainId, NULL);
+            if (eHAL_STATUS_SUCCESS != status)
+            {
+                smsLog(pMac, LOGE, "Set Reg Domain Fail %d", status);
+                fRet = eANI_BOOLEAN_FALSE;
+                return fRet;
+            }
+            //csrSetRegulatoryDomain will fail if the country doesn't fit our domain criteria.
+            vos_mem_copy(pMac->scan.countryCodeCurrent,
+                            pIesLocal->Country.country, WNI_CFG_COUNTRY_CODE_LEN);
+            //Simply set it to cfg.
             csrSetCfgCountryCode(pMac, pIesLocal->Country.country);
-            WDA_SetRegDomain(pMac, domainId);
+
+            /* overwrite the defualt country code */
+            vos_mem_copy(pMac->scan.countryCodeDefault,
+                                      pMac->scan.countryCodeCurrent,
+                                      WNI_CFG_COUNTRY_CODE_LEN);
+            /* Set Current RegDomain */
+            status = WDA_SetRegDomain(pMac, domainId);
+            if ( status != eHAL_STATUS_SUCCESS )
+            {
+                smsLog( pMac, LOGE, FL("  fail to Set regId %d"), domainId );
+                fRet = eANI_BOOLEAN_FALSE;
+                return fRet;
+            }
+             /* set to default domain ID */
             pMac->scan.domainIdCurrent = domainId;
-            // Check whether AP provided the 2.4GHZ list or 5GHZ list
-            if(CSR_IS_CHANNEL_24GHZ(pMacChnSet[0].firstChanNum))
-            {
-                // AP Provided the 2.4 Channels, Update the 5GHz channels from nv.bin
-                csrGet5GChannels(pMac );
-            }
-            else
-            {
-                // AP Provided the 5G Channels, Update the 2.4GHZ channel list from nv.bin
-                csrGet24GChannels(pMac );
-            }
-        }
-        // Populate both band channel lists based on what we found in the country information...
-        csrSetOppositeBandChannelInfo( pMac );
-        bMaxNumChn = WNI_CFG_VALID_CHANNEL_LIST_LEN;
-        // construct 2GHz channel list first
-        csrConstructCurrentValidChannelList( pMac, &pMac->scan.channelPowerInfoList24, pMac->scan.channels11d.channelList, 
-                                                bMaxNumChn, &Num2GChannels );
-        // construct 5GHz channel list now
-        if(bMaxNumChn > Num2GChannels)
-        {
-            csrConstructCurrentValidChannelList( pMac, &pMac->scan.channelPowerInfoList5G, pMac->scan.channels11d.channelList + Num2GChannels,
-                                                 bMaxNumChn - Num2GChannels,
-                                                 &pMac->scan.channels11d.numChannels );
-        }
+            /* get the channels based on new cc */
+            status = csrInitGetChannels( pMac );
 
-        pMac->scan.channels11d.numChannels += Num2GChannels;
-        fRet = eANI_BOOLEAN_TRUE;
+            if ( status != eHAL_STATUS_SUCCESS )
+            {
+                smsLog( pMac, LOGE, FL("  fail to get Channels "));
+                fRet = eANI_BOOLEAN_FALSE;
+                return fRet;
+            }
 
+            /* reset info based on new cc, and we are done */
+            csrResetCountryInformation(pMac, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_TRUE);
+            fRet = eANI_BOOLEAN_TRUE;
+
+        }
     } while( 0 );
     
     if( !pIes && pIesLocal )
@@ -6774,7 +6785,7 @@ eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
             {
                 pScanCmd->u.scanCmd.u.scanRequest.p2pSearch = 1;
             }
-            if(pProfile->pAddIEScan)
+            if(pProfile->nAddIEScanLength)
             {
                 status = palAllocateMemory(pMac->hHdd,
                                 (void **)&pScanCmd->u.scanCmd.u.scanRequest.pIEField,
@@ -6782,7 +6793,7 @@ eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
                 palZeroMemory(pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.pIEField, pProfile->nAddIEScanLength);
                 if(HAL_STATUS_SUCCESS(status))
                 {
-                    palCopyMemory(pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.pIEField, pProfile->pAddIEScan, pProfile->nAddIEScanLength);
+                    palCopyMemory(pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.pIEField, pProfile->addIEScan, pProfile->nAddIEScanLength);
                     pScanCmd->u.scanCmd.u.scanRequest.uIEFieldLen = pProfile->nAddIEScanLength;
                 }
                 else

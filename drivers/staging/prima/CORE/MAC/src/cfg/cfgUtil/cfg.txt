@@ -1,4 +1,4 @@
-/*
+ *
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -17,7 +17,7 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
- */
+ *
 * Copyright (c) 2012, The Linux Foundation. All rights reserved.
 *
 * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -4498,3 +4498,27 @@ HAL
 V    RW    NP
 HAL
 1    255    3
+
+* RA filter enable/disable
+*
+WNI_CFG_RA_FILTER_ENABLE    I    4    7
+V    RW    NP
+HAL
+0    1     1
+V    RW    NP
+HAL
+0    1     1
+*
+*
+
+* RA filter rate interval
+*
+WNI_CFG_RA_RATE_LIMIT_INTERVAL    I    4    7
+V    RW    NP
+HAL
+0    60     60
+V    RW     NP
+HAL
+0    60     60
+*
+*
