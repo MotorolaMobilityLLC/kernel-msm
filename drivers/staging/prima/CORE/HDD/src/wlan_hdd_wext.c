@@ -908,8 +908,8 @@ void hdd_clearRoamProfileIe( hdd_adapter_t *pAdapter)
    pWextState->roamProfile.pRSNReqIE = (tANI_U8 *)NULL;
 
    pWextState->roamProfile.bWPSAssociation = VOS_FALSE;
-   pWextState->roamProfile.pAddIEScan = (tANI_U8 *)NULL;
    pWextState->roamProfile.nAddIEScanLength = 0;
+   memset(pWextState->roamProfile.addIEScan, 0 , SIR_MAC_MAX_IE_LENGTH+2);
    pWextState->roamProfile.pAddIEAssoc = (tANI_U8 *)NULL;
    pWextState->roamProfile.nAddIEAssocLength = 0;
 
@@ -5743,43 +5743,87 @@ int wlan_hdd_setIPv6Filter(hdd_context_t *pHddCtx, tANI_U8 filterType,
 
 void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set)
 {
-    v_U8_t filterAction;
-    tPacketFilterCfg request;
     v_U8_t i;
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    tpSirRcvFltMcAddrList pMulticastAddrs = NULL;
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
 
-    filterAction = set ? HDD_RCV_FILTER_SET : HDD_RCV_FILTER_CLEAR;
-
-    /*set mulitcast addr list*/
-    for (i = 0; i < pAdapter->mc_addr_list.mc_cnt; i++)
+    if (NULL == hHal)
     {
-        memset(&request, 0, sizeof (tPacketFilterCfg));
-        request.filterAction = filterAction;
-        request.filterId = i; 
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("HAL Handle is NULL"));
+        return;
+    }
+    if (NULL == pHddCtx)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, FL("HDD CTX is NULL"));
+        return;
+    }
+
+    /* Check if INI is enabled or not, other wise just return
+     */
+    if (pHddCtx->cfg_ini->fEnableMCAddrList)
+    {
+        pMulticastAddrs = vos_mem_malloc(sizeof(tSirRcvFltMcAddrList));
+        if (NULL == pMulticastAddrs)
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR, FL("Could not allocate Memory"));
+            return;
+        }
+
         if (set)
         {
-            request.numParams = 1; 
-            request.paramsData[0].protocolLayer = HDD_FILTER_PROTO_TYPE_MAC; 
-            request.paramsData[0].cmpFlag = HDD_FILTER_CMP_TYPE_EQUAL;   
-            request.paramsData[0].dataOffset = WLAN_HDD_80211_FRM_DA_OFFSET;
-            request.paramsData[0].dataLength = ETH_ALEN;
-            memcpy(&(request.paramsData[0].compareData[0]), 
-                    &(pAdapter->mc_addr_list.addr[i][0]), ETH_ALEN);
-            /*set mulitcast filters*/
-            hddLog(VOS_TRACE_LEVEL_INFO, 
-                    "%s: %s multicast filter: addr =" 
-                    MAC_ADDRESS_STR,
-                    __func__, set ? "setting" : "clearing", 
-                    MAC_ADDR_ARRAY(request.paramsData[0].compareData));
+            /* Following pre-conditions should be satisfied before wei
+             * configure the MC address list.
+             */
+            if (((pAdapter->device_mode == WLAN_HDD_INFRA_STATION) ||
+               (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT))
+               && pAdapter->mc_addr_list.mc_cnt
+               && (eConnectionState_Associated ==
+               (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState))
+            {
+                pMulticastAddrs->ulMulticastAddrCnt =
+                                 pAdapter->mc_addr_list.mc_cnt;
+                for (i = 0; i < pAdapter->mc_addr_list.mc_cnt; i++)
+                {
+                    memcpy(&(pMulticastAddrs->multicastAddr[i][0]),
+                            &(pAdapter->mc_addr_list.addr[i][0]),
+                            sizeof(pAdapter->mc_addr_list.addr[i]));
+                    hddLog(VOS_TRACE_LEVEL_INFO,
+                            "%s: %s multicast filter: addr ="
+                            MAC_ADDRESS_STR,
+                            __func__, set ? "setting" : "clearing",
+                            MAC_ADDR_ARRAY(pMulticastAddrs->multicastAddr[i]));
+                }
+                /* Set multicast filter */
+                sme_8023MulticastList(hHal, pAdapter->sessionId,
+                                      pMulticastAddrs);
+            }
         }
-        wlan_hdd_set_filter(pHddCtx, &request, pAdapter->sessionId);
+        else
+        {
+            /* Need to clear only if it was previously configured
+             */
+            if (pAdapter->mc_addr_list.isFilterApplied)
+            {
+                pMulticastAddrs->ulMulticastAddrCnt = 0;
+                sme_8023MulticastList(hHal, pAdapter->sessionId,
+                                      pMulticastAddrs);
+            }
+
+        }
+        pAdapter->mc_addr_list.isFilterApplied = set ? TRUE : FALSE;
     }
-    pAdapter->mc_addr_list.isFilterApplied = set ? TRUE : FALSE;
+    else
+    {
+        hddLog(VOS_TRACE_LEVEL_INFO,
+                FL("fEnableMCAddrList is not enabled in INI"));
+    }
+    return;
 }
 
 static int iw_set_packet_filter_params(struct net_device *dev, struct iw_request_info *info,
         union iwreq_data *wrqu, char *extra)
-{   
+{
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tpPacketFilterCfg pRequest = (tpPacketFilterCfg)wrqu->data.pointer;
 

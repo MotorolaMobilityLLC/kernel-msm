@@ -626,7 +626,8 @@ VosMCThread
       "%s: MC Thread exiting!!!!", __func__);
   complete_and_exit(&pSchedContext->McShutdown, 0);
 } /* VosMCThread() */
-int isWDresetInProgress(void)
+
+v_BOOL_t isWDresetInProgress(void)
 {
    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                 "%s: Reset is in Progress...",__func__);
@@ -636,7 +637,7 @@ int isWDresetInProgress(void)
    }
    else
    {
-      return 0;
+      return FALSE;
    }
 }
 /*---------------------------------------------------------------------------

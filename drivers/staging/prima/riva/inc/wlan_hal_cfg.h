@@ -155,8 +155,9 @@
 #define QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT          101
 #define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT           102
 #define QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER         103
-#define QWLAN_HAL_CFG_ENABLE_TDLS_OXYGEN_MODE           104
-#define QWLAN_HAL_CFG_MAX_PARAMS                        105
+#define QWLAN_HAL_CFG_RA_FILTER_ENABLE                  104
+#define QWLAN_HAL_CFG_RA_RATE_LIMIT_INTERVAL            105
+#define QWLAN_HAL_CFG_MAX_PARAMS                        106
 
 
 
