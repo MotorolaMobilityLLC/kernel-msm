@@ -1095,7 +1095,7 @@ static int wm_adsp_create_control(struct wm_adsp *dsp,
 				ctl->enabled = 1;
 
 			kfree(name);
-			return 0;
+			return -EEXIST;
 		}
 	}
 
@@ -1158,16 +1158,26 @@ static int wm_adsp_create_grouped_control(struct wm_adsp *dsp,
 	int ret;
 
 	/* This is the quick case for control groups of a single block */
-	if (region->len <= 512)
-		return wm_adsp_create_control(dsp, region);
+	if (region->len <= 512) {
+		ret = wm_adsp_create_control(dsp, region);
+		if (ret == -EEXIST)
+			ret = 0;
+
+		return ret;
+	}
+
 
 	/* The passed `region' is already in the list
 	 * of algorithm regions so just create the control for it and don't
 	 * add it to the list */
 	region->len = 512;
 	ret = wm_adsp_create_control(dsp, region);
-	if (ret < 0)
+	if (ret < 0) {
+		if (ret == -EEXIST)
+			ret = 0;
+
 		return ret;
+	}
 	offset += 512;
 
 	/* Carve up the entire region into 512-byte chunks */
