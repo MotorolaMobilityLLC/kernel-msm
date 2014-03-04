@@ -91,6 +91,9 @@ int stm401_reset_and_init(void)
 	unsigned int i;
 	int err, ret_err = 0;
 
+	if (stm401_misc_data->is_suspended)
+		return ret_err;
+
 	pdata = stm401_misc_data->pdata;
 
 	if (stm401_misc_data->ap_stm401_handoff_ctrl) {
