@@ -16026,7 +16026,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
        }
      }
 #endif
-    for (i = 0, j = 0; i < pRequestBuf->ConnectedNetwork.ChannelCount; i++)
+    for (i = 0, j = 0;j < (sizeof(ChannelCacheStr)/sizeof(ChannelCacheStr[0])) && i < pRequestBuf->ConnectedNetwork.ChannelCount; i++)
     {
             j += snprintf(ChannelCacheStr + j, sizeof(ChannelCacheStr) - j," %d",
                           pRequestBuf->ConnectedNetwork.ChannelCache[i]);
