@@ -18,7 +18,7 @@
 		mmi,panel_name = "mipi_mot_video_lgd_hd_450";
 		mmi,panel_ver_min = <0x00 0x00>;
 		mmi,panel_ver_max = <0xffffffff 0xffffffff>;
-		qcom,panel-esd-detect-disable;
+		qcom,mdss-dsi-hs-cmds-post-init;
 		qcom,panel-esd-power-mode-chk = <0x1c>;
 
 		qcom,mdss-dsi-panel-name = "mipi_mot_video_lgd_hd_450 v0";
@@ -51,6 +51,8 @@
 
 		qcom,mdss-dsi-on-command = [
 			29 01 00 00 78 00 02 11 00      /* exit sleep */
+			29 01 00 00 00 00 02 b0 ac
+			29 01 00 00 00 00 06 b5 47 00 80 ff ff
 			29 01 00 00 00 00 02 51 ff      /* led_pwm1 */
 			29 01 00 00 00 00 02 53 2c      /* led_pwm2 */
 			29 01 00 00 00 00 02 55 00      /* led_pwm3 */
