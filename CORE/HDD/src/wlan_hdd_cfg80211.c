@@ -1878,6 +1878,8 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
     v_BOOL_t MFPCapable;
     v_BOOL_t MFPRequired;
+    eHddDot11Mode sapDot11Mode =
+            (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->sapDot11Mode;
 
     ENTER();
 
@@ -2172,10 +2174,11 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
      */
     if( ((pConfig->SapHw_mode == eSAP_DOT11_MODE_11n) ||
          (pConfig->SapHw_mode == eSAP_DOT11_MODE_11n_ONLY)) &&
-        (((WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->dot11Mode == eHDD_DOT11_MODE_AUTO) ||
-         ((WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->dot11Mode == eHDD_DOT11_MODE_11ac) ||
-         ((WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->dot11Mode == eHDD_DOT11_MODE_11ac_ONLY)) &&
-         (sme_IsFeatureSupportedByDriver(DOT11AC)) && (sme_IsFeatureSupportedByFW(DOT11AC)) )
+        (( sapDot11Mode == eHDD_DOT11_MODE_AUTO ) ||
+         ( sapDot11Mode == eHDD_DOT11_MODE_11ac ) ||
+         ( sapDot11Mode == eHDD_DOT11_MODE_11ac_ONLY ) ) &&
+         (sme_IsFeatureSupportedByDriver(DOT11AC)) &&
+          (sme_IsFeatureSupportedByFW(DOT11AC)) )
     {
         pConfig->SapHw_mode = eSAP_DOT11_MODE_11ac;
 
