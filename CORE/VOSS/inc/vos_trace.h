@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -97,6 +97,9 @@ typedef enum
 #include  <i_vos_trace.h>   
 
 #ifdef TRACE_RECORD
+
+#define CASE_RETURN_STRING( str )           \
+    case ( ( str ) ): return( (tANI_U8*)(#str) );
 
 #define MTRACE(p) p
 #define NO_SESSION 0xFF

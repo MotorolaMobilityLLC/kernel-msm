@@ -88,7 +88,9 @@
 #include <bap_hdd_main.h>
 #include <bapInternal.h>
 #endif // WLAN_BTAMP_FEATURE
-
+#include "wlan_hdd_trace.h"
+#include "vos_types.h"
+#include "vos_trace.h"
 #include <linux/wireless.h>
 #include <net/cfg80211.h>
 #include <linux/inetdevice.h>
@@ -1960,6 +1962,13 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
        if (strncmp(command, "P2P_DEV_ADDR", 12) == 0 )
        {
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_P2P_DEV_ADDR_IOCTL,
+                            pAdapter->sessionId, (unsigned)
+                            (*(pHddCtx->p2pDeviceAddress.bytes+2)<<24 |
+                             *(pHddCtx->p2pDeviceAddress.bytes+3)<<16 |
+                             *(pHddCtx->p2pDeviceAddress.bytes+4)<<8  |
+                             *(pHddCtx->p2pDeviceAddress.bytes+5))));
            if (copy_to_user(priv_data.buf, pHddCtx->p2pDeviceAddress.bytes,
                                                            sizeof(tSirMacAddr)))
            {
@@ -2042,6 +2051,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            tANI_U8 *ptr = (tANI_U8*)command + 15;
 
            suspend = *ptr - '0';
+            MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                             TRACE_CODE_HDD_SETSUSPENDMODE_IOCTL,
+                             pAdapter->sessionId, suspend));
            hdd_set_wlan_suspend_mode(suspend);
        }
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
@@ -2084,6 +2096,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                goto exit;
            }
 
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_SETROAMTRIGGER_IOCTL,
+                            pAdapter->sessionId, lookUpThreshold));
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                       "%s: Received Command to Set Roam trigger"
                       " (Neighbor lookup threshold) = %d", __func__, lookUpThreshold);
@@ -2107,7 +2122,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            int rssi = (-1) * lookUpThreshold;
            char extra[32];
            tANI_U8 len = 0;
-
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_GETROAMTRIGGER_IOCTL,
+                            pAdapter->sessionId, lookUpThreshold));
            len = scnprintf(extra, sizeof(extra), "%s %d", command, rssi);
            if (copy_to_user(priv_data.buf, &extra, len + 1))
            {
@@ -2151,7 +2168,10 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                       (CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX/1000));
                ret = -EINVAL;
                goto exit;
-           }
+              }
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_SETROAMSCANPERIOD_IOCTL,
+                            pAdapter->sessionId, roamScanPeriod));
            neighborEmptyScanRefreshPeriod = roamScanPeriod * 1000;
 
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -2167,6 +2187,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            char extra[32];
            tANI_U8 len = 0;
 
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_GETROAMSCANPERIOD_IOCTL,
+                            pAdapter->sessionId, nEmptyScanRefreshPeriod));
            len = scnprintf(extra, sizeof(extra), "%s %d",
                    "GETROAMSCANPERIOD", (nEmptyScanRefreshPeriod/1000));
            /* Returned value is in units of seconds */
@@ -2364,6 +2387,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            char extra[32];
            tANI_U8 len = 0;
 
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_GETROAMDELTA_IOCTL,
+                            pAdapter->sessionId, roamRssiDiff));
            len = scnprintf(extra, sizeof(extra), "%s %d",
                    command, roamRssiDiff);
            if (copy_to_user(priv_data.buf, &extra, len + 1))
@@ -2383,6 +2409,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            tANI_U8 len = 0;
            hdd_getBand_helper(pHddCtx, &band);
 
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_GETBAND_IOCTL,
+                            pAdapter->sessionId, band));
            len = scnprintf(extra, sizeof(extra), "%s %d", command, band);
            if (copy_to_user(priv_data.buf, &extra, len + 1))
            {
@@ -2408,6 +2437,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                goto exit;
            }
 
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_SETROAMSCANCHANNELS_IOCTL,
+                            pAdapter->sessionId, numChannels));
            if (numChannels > WNI_CFG_VALID_CHANNEL_LIST_LEN)
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -2442,6 +2474,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                ret = -EFAULT;
                goto exit;
            }
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_GETROAMSCANCHANNELS_IOCTL,
+                            pAdapter->sessionId, numChannels));
            /* output channel list is of the format
            [Number of roam scan channels][Channel1][Channel2]... */
            /* copy the number of channels in the 0th index */
@@ -2582,6 +2617,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                goto exit;
            }
 
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_SETROAMSCANCHANNELMINTIME_IOCTL,
+                            pAdapter->sessionId, minTime));
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                       "%s: Received Command to change channel min time = %d", __func__, minTime);
 
@@ -2685,7 +2723,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            vos_mem_free(buf);
            buf = NULL;
 
-           wlan_hdd_action( NULL,
+           wlan_hdd_mgmt_tx( NULL,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
                        &(pAdapter->wdev),
 #else
@@ -2708,6 +2746,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            /* value is interms of msec */
            len = scnprintf(extra, sizeof(extra), "%s %d",
                    "GETROAMSCANCHANNELMINTIME", val);
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_GETROAMSCANCHANNELMINTIME_IOCTL,
+                            pAdapter->sessionId, val));
            if (copy_to_user(priv_data.buf, &extra, len + 1))
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -3746,6 +3787,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        }
 #endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
        else {
+           MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                            TRACE_CODE_HDD_UNSUPPORTED_IOCTL,
+                            pAdapter->sessionId, 0));
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);
        }
@@ -4611,6 +4655,8 @@ int hdd_open (struct net_device *dev)
    }
    
    pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
+   MTRACE(vos_trace(VOS_MODULE_ID_HDD, TRACE_CODE_HDD_OPEN_REQUEST,
+                    pAdapter->sessionId, pAdapter->device_mode));
    if (NULL == pHddCtx)
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
@@ -4692,14 +4738,14 @@ int hdd_stop (struct net_device *dev)
    v_BOOL_t enter_standby = TRUE;
    
    ENTER();
-
    if (NULL == pAdapter)
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
          "%s: pAdapter is Null", __func__);
       return -ENODEV;
    }
-
+   MTRACE(vos_trace(VOS_MODULE_ID_HDD, TRACE_CODE_HDD_OPEN_REQUEST,
+                    pAdapter->sessionId, pAdapter->device_mode));
    pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
    if (NULL == pHddCtx)
    {
@@ -5217,6 +5263,7 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
       init_completion(&pAdapter->linkup_event_var);
       init_completion(&pAdapter->cancel_rem_on_chan_var);
       init_completion(&pAdapter->rem_on_chan_ready_event);
+      init_completion(&pAdapter->pno_comp_var);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
       init_completion(&pAdapter->offchannel_tx_event);
 #endif
@@ -5852,6 +5899,15 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
    VOS_STATUS exitbmpsStatus;
 
    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "%s iface =%s type = %d",__func__,iface_name,session_type);
+
+   if(macAddr == NULL)
+   {
+         /* Not received valid macAddr */
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s:Unable to add virtual intf: Not able to get"
+                             "valid mac address",__func__);
+         return NULL;
+   }
 
    //Disable BMPS incase of Concurrency
    exitbmpsStatus = hdd_disable_bmps_imps(pHddCtx, session_type);
@@ -7935,6 +7991,7 @@ int hdd_wlan_startup(struct device *dev )
    init_completion(&pHddCtx->scan_info.scan_req_completion_event);
    init_completion(&pHddCtx->scan_info.abortscan_event_var);
    init_completion(&pHddCtx->wiphy_channel_update_event);
+   init_completion(&pHddCtx->ssr_comp_var);
 
 #ifdef CONFIG_ENABLE_LINUX_REG
    init_completion(&pHddCtx->linux_reg_req);
@@ -8708,6 +8765,7 @@ static int hdd_driver_init( void)
    wake_lock_init(&wlan_wake_lock, WAKE_LOCK_SUSPEND, "wlan");
 #endif
 
+   hddTraceInit();
    pr_info("%s: loading driver v%s\n", WLAN_MODULE_NAME,
            QWLAN_VERSIONSTR TIMER_MANAGER_STR MEMORY_DEBUG_STR);
 
@@ -8874,7 +8932,7 @@ static void hdd_driver_exit(void)
 {
    hdd_context_t *pHddCtx = NULL;
    v_CONTEXT_t pVosContext = NULL;
-   int retry = 0;
+   unsigned long rc = 0;
 
    pr_info("%s: unloading driver v%s\n", WLAN_MODULE_NAME, QWLAN_VERSIONSTR);
 
@@ -8896,18 +8954,21 @@ static void hdd_driver_exit(void)
    }
    else
    {
-      while (pHddCtx->isLogpInProgress) {
+       INIT_COMPLETION(pHddCtx->ssr_comp_var);
+
+       if (pHddCtx->isLogpInProgress)
+       {
          VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-              "%s:SSR in Progress; block rmmod for 1 second!!!", __func__);
-         msleep(1000);
-
-         if (retry++ == HDD_MOD_EXIT_SSR_MAX_RETRIES) {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-              "%s:SSR never completed, fatal error", __func__);
-            VOS_BUG(0);
+              "%s:SSR in Progress; block rmmod !!!", __func__);
+         rc = wait_for_completion_timeout(&pHddCtx->ssr_comp_var,
+                                          msecs_to_jiffies(30000));
+         if(!rc)
+         {
+              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+              "%s:SSR timedout, fatal error", __func__);
+              VOS_BUG(0);
          }
-      }
-
+       }
 
       pHddCtx->isLoadUnloadInProgress = TRUE;
       vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, TRUE);

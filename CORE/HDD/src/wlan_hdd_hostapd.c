@@ -83,6 +83,9 @@
 #ifdef FEATURE_WLAN_CH_AVOID
 #include "wcnss_wlan.h"
 #endif /* FEATURE_WLAN_CH_AVOID */
+#include "wlan_hdd_trace.h"
+#include "vos_types.h"
+#include "vos_trace.h"
 
 #define    IS_UP(_dev) \
     (((_dev)->flags & (IFF_RUNNING|IFF_UP)) == (IFF_RUNNING|IFF_UP))
@@ -95,7 +98,7 @@
  */
 #define WE_SAP_MAX_STA_INFO 0x7FF
 
-#define SAP_24GHZ_CH_COUNT (14) 
+#define SAP_24GHZ_CH_COUNT (14)
 
 #ifdef FEATURE_WLAN_CH_AVOID
 /* Channle/Freqency table */
@@ -151,13 +154,13 @@ safeChannelType safeChannels[NUM_20MHZ_RF_CHANNELS] =
 };
 #endif /* FEATURE_WLAN_CH_AVOID */
 
-/*--------------------------------------------------------------------------- 
+/*---------------------------------------------------------------------------
  *   Function definitions
  *-------------------------------------------------------------------------*/
 /**---------------------------------------------------------------------------
-  
+
   \brief hdd_hostapd_open() - HDD Open function for hostapd interface
-  
+
   This is called in response to ifconfig up
   
   \param  - dev Pointer to net_device structure
@@ -169,6 +172,8 @@ int hdd_hostapd_open (struct net_device *dev)
 {
    ENTER();
 
+   MTRACE(vos_trace(VOS_MODULE_ID_HDD,
+                    TRACE_CODE_HDD_HOSTAPD_OPEN_REQUEST, NO_SESSION, 0));
    //Turn ON carrier state
    netif_carrier_on(dev);
    //Enable all Tx queues  
