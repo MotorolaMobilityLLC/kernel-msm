@@ -5443,6 +5443,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 		msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 	schedule_delayed_work(&chip->update_heartbeat_work,
 		msecs_to_jiffies(UPDATE_HEARTBEAT_MS));
+	pm_wakeup_event(chip->dev, 15000);
 	pr_info("success chg_dis = %d, bpd = %d, usb = %d, dc = %d b_health = %d batt_present = %d\n",
 			chip->charging_disabled,
 			chip->bpd_detection,
