@@ -67,6 +67,8 @@ enum {
 
 struct dcs_cmd_list	cmdlist;
 
+static void mipi_dsi_wait4video_eng_busy(void);
+
 #ifdef CONFIG_FB_MSM_MDP40
 void mipi_dsi_mdp_stat_inc(int which)
 {
@@ -1079,15 +1081,17 @@ void mipi_dsi_op_mode_config(int mode)
 
 void mipi_dsi_wait4video_done(void)
 {
-	unsigned long flag;
+	unsigned long flag, wait;
 
 	spin_lock_irqsave(&dsi_mdp_lock, flag);
 	INIT_COMPLETION(dsi_video_comp);
 	mipi_dsi_enable_irq(DSI_VIDEO_TERM);
 	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
 
-	wait_for_completion_timeout(&dsi_video_comp,
+	wait = wait_for_completion_timeout(&dsi_video_comp,
 					msecs_to_jiffies(VSYNC_PERIOD * 4));
+	if (wait == 0)
+		pr_err("%s: video done timeout error\n", __func__);
 }
 
 void mipi_dsi_mdp_busy_wait(void)
@@ -1236,7 +1240,7 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 						__func__, cm->payload[0]);
 			goto next_one;
 		}
-
+		mipi_dsi_wait4video_eng_busy();
 		ret = mipi_dsi_cmd_dma_tx(tp);
 		if (ret < 0)
 			pr_err("%s: failed to send cmd = 0x%x\n", __func__,
@@ -1303,6 +1307,7 @@ int mipi_dsi_cmds_single_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds,
 	}
 	tp->data = cmds_tx;
 	tp->len = cmd_len;
+	mipi_dsi_wait4video_eng_busy();
 	mipi_dsi_cmd_dma_tx(tp);
 	kfree(cmds_tx);
 
@@ -1406,6 +1411,7 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 			goto err;
 		}
 
+		mipi_dsi_wait4video_eng_busy();
 		mipi_dsi_enable_irq(DSI_CMD_TERM);
 		ret = mipi_dsi_cmd_dma_tx(tp);
 		if (ret < 0) {
@@ -1425,6 +1431,7 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 		goto err;
 	}
 
+	mipi_dsi_wait4video_eng_busy();
 	mipi_dsi_enable_irq(DSI_CMD_TERM);
 	/* transmit read comamnd to client */
 	ret = mipi_dsi_cmd_dma_tx(tp);
@@ -1581,6 +1588,7 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 			goto err;
 		}
 
+		mipi_dsi_wait4video_eng_busy();
 		mipi_dsi_enable_irq(DSI_CMD_TERM);
 		ret = mipi_dsi_cmd_dma_tx(tp);
 		if (ret < 0) {
@@ -1600,6 +1608,7 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 		goto err;
 	}
 
+	mipi_dsi_wait4video_eng_busy();
 	mipi_dsi_enable_irq(DSI_CMD_TERM);
 	/* transmit read comamnd to client */
 	ret = mipi_dsi_cmd_dma_tx(tp);
@@ -1763,14 +1772,16 @@ int mipi_dsi_cmd_dma_rx(struct dsi_buf *rp, int rlen)
 	return rlen;
 }
 
-#if 0
 static void mipi_dsi_wait4video_eng_busy(void)
 {
-	mipi_dsi_wait4video_done();
-	/* delay 4 ms to skip BLLP */
-	usleep(4000);
+	uint32 dsi_ctrl;
+	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
+	if (dsi_ctrl & 0x02) {
+		mipi_dsi_wait4video_done();
+		/* delay 4 ms to skip BLLP */
+		usleep_range(4000, 4000);
+	}
 }
-#endif
 
 void mipi_dsi_cmd_mdp_busy(void)
 {
