@@ -956,6 +956,7 @@ static struct clk_freq_tbl ftbl_gcc_blsp1_2_qup1_6_spi_apps_clk[] = {
 	F(  4800000,         xo,    4, 0, 0),
 	F(  9600000,         xo,    2, 0, 0),
 	F( 15000000,      gpll0,   10, 1, 4),
+	F( 17143000,      gpll0,  3.5, 1, 10),
 	F( 19200000,         xo,    1, 0, 0),
 	F( 25000000,      gpll0,   12, 1, 2),
 	F( 50000000,      gpll0,   12, 0, 0),
@@ -6000,8 +6001,7 @@ static struct clk_lookup apq_clocks_8084[] = {
 	CLK_LOOKUP("iface_clk",	gcc_blsp1_ahb_clk.c,	"f9923000.spi"),
 	CLK_LOOKUP("iface_clk",	gcc_blsp1_ahb_clk.c,	"f9925000.i2c"),
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c,	"f9922000.uart"),
-	/* NFC */
-	CLK_LOOKUP("iface_clk",	gcc_blsp1_ahb_clk.c,	"f9926000.i2c"),
+	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c,	"f9926000.spi"),
 	CLK_LOOKUP("iface_clk", gcc_blsp1_ahb_clk.c,	"f9927000.i2c"),
 	CLK_LOOKUP("",	gcc_blsp1_qup1_i2c_apps_clk.c,	""),
 	CLK_LOOKUP("core_clk",	gcc_blsp1_qup1_spi_apps_clk.c,	"f9923000.spi"),
@@ -6009,9 +6009,7 @@ static struct clk_lookup apq_clocks_8084[] = {
 	CLK_LOOKUP("",	gcc_blsp1_qup2_spi_apps_clk.c,	""),
 	CLK_LOOKUP("core_clk",	gcc_blsp1_qup3_i2c_apps_clk.c, "f9925000.i2c"),
 	CLK_LOOKUP("",	gcc_blsp1_qup3_spi_apps_clk.c,	""),
-	/* NFC */
-	CLK_LOOKUP("core_clk",	gcc_blsp1_qup4_i2c_apps_clk.c,	"f9926000.i2c"),
-	CLK_LOOKUP("",	gcc_blsp1_qup4_spi_apps_clk.c,	""),
+	CLK_LOOKUP("core_clk",	gcc_blsp1_qup4_spi_apps_clk.c,	"f9926000.spi"),
 	CLK_LOOKUP("core_clk", gcc_blsp1_qup5_i2c_apps_clk.c, "f9927000.i2c"),
 	CLK_LOOKUP("",	gcc_blsp1_qup5_spi_apps_clk.c,	""),
 	CLK_LOOKUP("",	gcc_blsp1_qup6_i2c_apps_clk.c,	""),
