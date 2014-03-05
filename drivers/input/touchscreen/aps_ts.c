@@ -156,6 +156,34 @@ struct aps_ts_info {
 	struct aps_irq_perf		*perf_irq_data;
 };
 
+static void aps_ts_enable(struct aps_ts_info *info);
+static void aps_ts_disable(struct aps_ts_info *info);
+
+static ssize_t aps_irq_perf_show(struct device *dev,
+	struct device_attribute *attr, char *buf);
+
+static ssize_t aps_drv_irq_show(struct device *dev,
+	struct device_attribute *attr, char *buf);
+
+static ssize_t aps_drv_irq_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t aps_hw_irqstat_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t aps_store_error(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count);
+
+static DEVICE_ATTR(aps_perf, 0440, aps_irq_perf_show, NULL);
+
+static DEVICE_ATTR(drv_irq, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),
+			aps_drv_irq_show,
+			aps_drv_irq_store);
+
+static DEVICE_ATTR(hw_irqstat, S_IRUSR | S_IRGRP,
+			aps_hw_irqstat_show,
+			aps_store_error);
+
 static int timeval_sub(
 	struct timespec *result, struct timespec x, struct timespec y)
 {
@@ -210,7 +238,65 @@ static ssize_t aps_irq_perf_show(struct device *dev,
 	return offset;
 }
 
-static DEVICE_ATTR(aps_perf, 0440, aps_irq_perf_show, NULL);
+static ssize_t aps_drv_irq_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct aps_ts_info *info = dev_get_drvdata(dev);
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			info->enabled ? "ENABLED" : "DISABLED");
+}
+
+static ssize_t aps_drv_irq_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct aps_ts_info *info = dev_get_drvdata(dev);
+	unsigned long value = 0;
+	int err = 0;
+
+	err = kstrtoul(buf, 10, &value);
+	if (err < 0) {
+		pr_err("Failed to convert value.\n");
+		return -EINVAL;
+	}
+
+	switch (value) {
+	case 0:
+		aps_ts_disable(info);
+		break;
+	case 1:
+		aps_ts_enable(info);
+		break;
+	default:
+		pr_err("Invalid value\n");
+	}
+	return count;
+}
+
+static ssize_t aps_hw_irqstat_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct aps_ts_info *info = dev_get_drvdata(dev);
+
+	switch (gpio_get_value(info->pdata->gpio_irq)) {
+	case 0:
+		return scnprintf(buf, PAGE_SIZE, "Low\n");
+	case 1:
+		return scnprintf(buf, PAGE_SIZE, "High\n");
+	default:
+		pr_err("Failed to get GPIO value for irq GPIO %d.\n",
+			info->pdata->gpio_irq);
+		return scnprintf(buf, PAGE_SIZE, "Unknown\n");
+	}
+
+}
+
+static ssize_t aps_store_error(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	pr_warn("Attempted to write to read-only attribute %s\n",
+		attr->attr.name);
+	return -EPERM;
+}
 
 static void aps_set_reset_low(struct aps_ts_info *info)
 {
@@ -251,7 +337,6 @@ static void aps_ts_disable(struct aps_ts_info *info)
 	mutex_lock(&info->lock);
 
 	disable_irq(info->irq);
-	aps_set_reset_low(info);
 	info->enabled = false;
 
 	mutex_unlock(&info->lock);
@@ -968,7 +1053,8 @@ static ssize_t aps_start_isp(struct device *dev, struct device_attribute *attr,
 
 	ret = request_firmware(&fw, info->fw_name, &info->client->dev);
 	if (ret || !fw) {
-		dev_err(&info->client->dev, "unable to download firmware\n");
+		dev_err(&info->client->dev,
+			"unable to download firmware ret = %d\n", ret);
 		return -EINVAL;
 	}
 
@@ -1008,6 +1094,8 @@ static struct attribute *aps_attrs[] = {
 	&dev_attr_doreflash.attr,
 	&dev_attr_buildid.attr,
 	&dev_attr_aps_perf.attr,
+	&dev_attr_drv_irq.attr,
+	&dev_attr_hw_irqstat.attr,
 	NULL,
 };
 
@@ -1059,8 +1147,7 @@ static struct aps_ts_platform_data *aps_ts_of_init(struct i2c_client *client,
 
 static int aps_ts_suspend(struct device *dev)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct aps_ts_info *info = i2c_get_clientdata(client);
+	struct aps_ts_info *info = dev_get_drvdata(dev);
 
 	mutex_lock(&info->input_dev->mutex);
 	aps_ts_disable(info);
@@ -1074,8 +1161,7 @@ static int aps_ts_suspend(struct device *dev)
 
 static int aps_ts_resume(struct device *dev)
 {
-	struct i2c_client *client = to_i2c_client(dev);
-	struct aps_ts_info *info = i2c_get_clientdata(client);
+	struct aps_ts_info *info = dev_get_drvdata(dev);
 
 	mutex_lock(&info->input_dev->mutex);
 	aps_ts_enable(info);
