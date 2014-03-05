@@ -289,7 +289,7 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
          * To avoid addition overflow total_len should be
          * smaller than INT_MAX. */
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-           "%s: integer out of range", __func__);
+           "%s: integer out of range len %d", __func__, priv_data.total_len);
         ret = -EFAULT;
         goto exit;
     }

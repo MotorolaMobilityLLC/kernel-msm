@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -440,10 +440,10 @@ tSirRetStatus ConvertTCLAS(tpAniSirGlobal  pMac,
         if ( 4 == pNew->info.IpParams.version )
         {
             pOld->tclasParams.ipv4.version = 4;
-            vos_mem_copy( ( tANI_U8* )&pOld->tclasParams.ipv4.srcIpAddr,
-                          ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.source, 4 );
-            vos_mem_copy( ( tANI_U8* )&pOld->tclasParams.ipv4.dstIpAddr,
-                          ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.dest, 4 );
+            vos_mem_copy( pOld->tclasParams.ipv4.srcIpAddr,
+                          pNew->info.IpParams.params.IpV4Params.source, 4 );
+            vos_mem_copy( pOld->tclasParams.ipv4.dstIpAddr,
+                          pNew->info.IpParams.params.IpV4Params.dest, 4 );
             pOld->tclasParams.ipv4.srcPort  = pNew->info.IpParams.params.IpV4Params.src_port;
             pOld->tclasParams.ipv4.dstPort  = pNew->info.IpParams.params.IpV4Params.dest_port;
             pOld->tclasParams.ipv4.dscp     = pNew->info.IpParams.params.IpV4Params.DSCP;
@@ -535,10 +535,10 @@ tSirRetStatus ConvertWMMTCLAS(tpAniSirGlobal    pMac,
         if ( 4 == pNew->info.IpParams.version )
         {
             pOld->tclasParams.ipv4.version = 4;
-            vos_mem_copy( ( tANI_U8* )&pOld->tclasParams.ipv4.srcIpAddr,
-                          ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.source, 4 );
-            vos_mem_copy( ( tANI_U8* )&pOld->tclasParams.ipv4.dstIpAddr,
-                          ( tANI_U8* )pNew->info.IpParams.params.IpV4Params.dest, 4 );
+            vos_mem_copy( pOld->tclasParams.ipv4.srcIpAddr,
+                          pNew->info.IpParams.params.IpV4Params.source, 4 );
+            vos_mem_copy( pOld->tclasParams.ipv4.dstIpAddr,
+                          pNew->info.IpParams.params.IpV4Params.dest, 4 );
             pOld->tclasParams.ipv4.srcPort  = pNew->info.IpParams.params.IpV4Params.src_port;
             pOld->tclasParams.ipv4.dstPort  = pNew->info.IpParams.params.IpV4Params.dest_port;
             pOld->tclasParams.ipv4.dscp     = pNew->info.IpParams.params.IpV4Params.DSCP;

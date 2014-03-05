@@ -776,7 +776,13 @@ eHalStatus p2pRemainOnChannel(tHalHandle hHal, tANI_U8 sessionId,
 #endif
     } while(0);
   
-    smsLog(pMac, LOGW, "exiting function %s", __func__);
+    smsLog(pMac, LOGW, "%s: status %d",
+#ifdef WLAN_FEATURE_P2P_INTERNAL
+           " for reason = %d" __func__, status, reason
+#else
+           __func__, status
+#endif
+    );
   
     return(status);
 }
@@ -1070,7 +1076,8 @@ void p2pRetryActionFrameTimerHandler(void *pContext)
    tpAniSirGlobal pMac = PMAC_STRUCT( p2pContext->hHal );
 
    p2pContext->PeerFound = TRUE;
-   smsLog( pMac, LOGE, "%s Calling remain on channel ", __func__);
+   smsLog( pMac, LOGE, "%s Calling remain on channel to Resend Action Frame ",
+           __func__);
    status = p2pRemainOnChannel( pMac, p2pContext->SMEsessionId, p2pContext->P2PListenChannel/*pScanResult->BssDescriptor.channelId*/, P2P_REMAIN_ON_CHAN_TIMEOUT_LOW,
                                     NULL, NULL, TRUE, eP2PRemainOnChnReasonSendFrame);
    if(status != eHAL_STATUS_SUCCESS)

@@ -101,7 +101,7 @@ static void hdd_wlan_tx_complete( hdd_adapter_t* pAdapter,
                                   tANI_BOOLEAN actionSendSuccess );
 
 static void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
-                                               tANI_U32 nFrameLength, 
+                                               tANI_U32 nFrameLength,
                                                tANI_U8* pbFrames,
                                                tANI_U8 frameType );
 
@@ -154,8 +154,11 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
           "%s: No Rem on channel pending for which Rsp is received", __func__);
        return eHAL_STATUS_SUCCESS;
     }
-
-    hddLog( LOG1, "Received remain on channel rsp");
+    hddLog( VOS_TRACE_LEVEL_INFO,
+            "Received ROC rsp (request type %d, channel %d, cookie %llu",
+            pRemainChanCtx->rem_on_chan_request,
+            pRemainChanCtx->chan.center_freq,
+            pRemainChanCtx->cookie);
 
     cfgState->remain_on_chan_ctx = NULL;
     if( REMAIN_ON_CHANNEL_REQUEST == pRemainChanCtx->rem_on_chan_request &&
@@ -163,7 +166,7 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
     {
         if( cfgState->buf )
         {
-           hddLog( LOGP, 
+           hddLog( LOGE,
                    "%s: We need to receive yet an ack from one of tx packet",
                    __func__);
         }
@@ -220,7 +223,9 @@ void wlan_hdd_cancel_existing_remain_on_channel(hdd_adapter_t *pAdapter)
 
     if(cfgState->remain_on_chan_ctx != NULL)
     {
-        hddLog( LOG1, "Cancel Existing Remain on Channel");
+        hddLog(VOS_TRACE_LEVEL_INFO,
+               "Cancel Existing ROC (cookie=%llu)",
+                cfgState->remain_on_chan_ctx->cookie);
 
         /* Wait till remain on channel ready indication before issuing cancel 
          * remain on channel request, otherwise if remain on channel not 
@@ -288,7 +293,8 @@ int wlan_hdd_check_remain_on_channel(hdd_adapter_t *pAdapter)
         }
         else
         {
-           hddLog( LOG1, "Cannot Cancel Existing Remain on Channel");
+           hddLog(VOS_TRACE_LEVEL_DEBUG,
+                   "Cannot Cancel Existing Remain on Channel");
            status = -EBUSY;
         }
      }
@@ -308,17 +314,20 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_remain_on_chan_ctx_t *pRemainChanCtx;
     hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
+
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d",
                                  __func__,pAdapter->device_mode);
-
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
-    hddLog( LOG1,
-        "chan(hw_val)0x%x chan(centerfreq) %d chan type 0x%x, duration %d",
-        chan->hw_value, chan->center_freq, channel_type, duration );
+    hddLog(VOS_TRACE_LEVEL_INFO,
+           "chan(hw_val)0x%x chan(centerfreq) %d chan type 0x%x, dur %d,"
+           " request type %d, cookie %llu",
+           chan->hw_value, chan->center_freq, channel_type, duration,
+           request_type, *cookie);
 #else
-    hddLog( LOG1,
-        "chan(hw_val)0x%x chan(centerfreq) %d, duration %d",
-        chan->hw_value, chan->center_freq, duration );
+     hddLog(VOS_TRACE_LEVEL_INFO,
+            "chan(hw_val)0x%x chan(centerfreq) %d, duration %d"
+            " reuest type %d, cookie %llu", chan->hw_value, chan->center_freq,
+            duration, request_type, *cookie );
 #endif
     //Cancel existing remain On Channel if any
     wlan_hdd_cancel_existing_remain_on_channel(pAdapter);
@@ -374,16 +383,21 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
         tANI_U8 sessionId = pAdapter->sessionId;
         //call sme API to start remain on channel.
         sme_RemainOnChannel(
-                       WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId,
-                       chan->hw_value, duration,
-                       wlan_hdd_remain_on_channel_callback, pAdapter,
-                       (tANI_U8)(request_type == REMAIN_ON_CHANNEL_REQUEST)? TRUE:FALSE);
+             WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId,
+             chan->hw_value, duration,
+             wlan_hdd_remain_on_channel_callback, pAdapter,
+             (tANI_U8)(request_type == REMAIN_ON_CHANNEL_REQUEST)? TRUE:FALSE);
 
         if( REMAIN_ON_CHANNEL_REQUEST == request_type)
         {
-            sme_RegisterMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter),
-                                   sessionId, (SIR_MAC_MGMT_FRAME << 2) |
-                                  (SIR_MAC_MGMT_PROBE_REQ << 4), NULL, 0 );
+            if( eHAL_STATUS_SUCCESS != sme_RegisterMgmtFrame(
+                                      WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                      sessionId, (SIR_MAC_MGMT_FRAME << 2) |
+                                      (SIR_MAC_MGMT_PROBE_REQ << 4), NULL, 0 ))
+            {
+                hddLog(VOS_TRACE_LEVEL_ERROR,
+                       "sme_RegisterMgmtFrame returned fail");
+            }
         }
 
     }
@@ -455,8 +469,6 @@ void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter )
     hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
     hdd_remain_on_chan_ctx_t* pRemainChanCtx = cfgState->remain_on_chan_ctx;
 
-    hddLog( LOG1, "Ready on chan ind");
-
     if( pRemainChanCtx != NULL )
     {
         // Removing READY_EVENT_PROPOGATE_TIME from current time which gives
@@ -485,6 +497,8 @@ void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter )
             complete(&pAdapter->offchannel_tx_event);
         }
 #endif
+        hddLog( VOS_TRACE_LEVEL_INFO, "Ready on chan ind (cookie=%llu)",
+                pRemainChanCtx->cookie);
         complete(&pAdapter->rem_on_chan_ready_event);
     }
     else
@@ -510,8 +524,6 @@ int wlan_hdd_cfg80211_cancel_remain_on_channel( struct wiphy *wiphy,
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
     int status;
 
-    hddLog( LOG1, "Cancel remain on channel req");
-
     status = wlan_hdd_validate_context(pHddCtx);
 
     if (0 != status)
@@ -520,6 +532,8 @@ int wlan_hdd_cfg80211_cancel_remain_on_channel( struct wiphy *wiphy,
                    "%s: HDD context is not valid", __func__);
         return status;
     }
+    hddLog( LOG1, "Cancel remain on channel req (cookie = %llu)", cookie);
+
     /* FIXME cancel currently running remain on chan.
      * Need to check cookie and cancel accordingly
      */
@@ -813,10 +827,15 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
            (cfgState->current_freq == chan->center_freq)
           )
         {
-            hddLog(LOG1,"action frame: extending the wait time");
             extendedWait = (tANI_U16)wait;
+            hddLog(VOS_TRACE_LEVEL_INFO,
+                   "action frame: extending the wait time %u",
+                   wait);
             goto send_frame;
         }
+
+        hddLog(VOS_TRACE_LEVEL_INFO,
+               "action frame: Request ROC for wait time %u", wait);
 
         INIT_COMPLETION(pAdapter->offchannel_tx_event);
 
@@ -906,16 +925,16 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
                 (buf[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_PUBLIC_ACTION_FRAME))
         {
             actionFrmType = buf[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
-            hddLog(LOG1, "Tx Action Frame %u", actionFrmType);
+            hddLog(LOG1, "Tx Action Frame %u.", actionFrmType);
             if (actionFrmType == WLAN_HDD_PROV_DIS_REQ)
             {
                 cfgState->actionFrmState = HDD_PD_REQ_ACK_PENDING;
-                hddLog(LOG1, "%s: HDD_PD_REQ_ACK_PENDING", __func__);
+                hddLog(LOG1, "%s: HDD_PD_REQ_ACK_PENDING.", __func__);
             }
             else if (actionFrmType == WLAN_HDD_GO_NEG_REQ)
             {
                 cfgState->actionFrmState = HDD_GO_NEG_REQ_ACK_PENDING;
-                hddLog(LOG1, "%s: HDD_GO_NEG_REQ_ACK_PENDING", __func__);
+                hddLog(LOG1, "%s: HDD_GO_NEG_REQ_ACK_PENDING.", __func__);
             }
         }
 #ifdef WLAN_FEATURE_11W
