@@ -1254,9 +1254,14 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	if (palm_detected != rmi4_data->palm_detected) {
 		rmi4_data->palm_detected = palm_detected;
-		input_report_key(rmi4_data->input_dev,
-				 rmi4_data->board->palm_detect_keycode,
-				 palm_detected);
+		if (palm_detected) {
+			input_report_key(rmi4_data->input_dev,
+					 rmi4_data->board->palm_detect_keycode,
+					 1);
+			input_report_key(rmi4_data->input_dev,
+					 rmi4_data->board->palm_detect_keycode,
+					 0);
+		}
 	}
 
 	input_report_key(rmi4_data->input_dev,
