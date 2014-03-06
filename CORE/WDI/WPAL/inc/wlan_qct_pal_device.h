@@ -66,6 +66,11 @@
 #define     WPAL_SMSM_WLAN_TX_ENABLE          0x00000400
 #define     WPAL_SMSM_WLAN_TX_RINGS_EMPTY     0x00000200
 
+typedef enum
+{
+   WPAL_DEBUG_START_HEALTH_TIMER = 1<<0,
+   WPAL_DEBUG_TX_DESC_RESYNC     = 1<<1,
+} WPAL_DeviceDebugFlags;
 /* ====================================================================================================================
   @  Function Name 
       wpalIsrType

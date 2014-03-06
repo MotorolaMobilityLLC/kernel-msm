@@ -273,6 +273,8 @@ tSirRetStatus limSendSwitchChnlParams(tpAniSirGlobal pMac,
         pChnlParams->secondaryChannelOffset, pChnlParams->channelNumber, pChnlParams->localPowerConstraint);)
 #endif
     MTRACE(macTraceMsgTx(pMac, peSessionId, msgQ.type));
+    limLog(pMac,LOG1,"SessionId:%d WDA_CHNL_SWITCH_REQ for SSID:%s",peSessionId,
+            pSessionEntry->ssId.ssId);
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
         vos_mem_free(pChnlParams);
