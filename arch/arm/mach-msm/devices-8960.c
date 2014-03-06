@@ -1718,8 +1718,8 @@ struct platform_device msm8960_cpu_slp_status = {
 };
 
 static struct msm_watchdog_pdata msm_watchdog_pdata = {
-	.pet_time = 10000,
-	.bark_time = 22000,
+	.pet_time = 21000,
+	.bark_time = 41000,
 	.has_secure = true,
 	.base = MSM_TMR0_BASE + WDT0_OFFSET,
 };
