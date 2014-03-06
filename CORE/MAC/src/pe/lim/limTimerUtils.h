@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -70,7 +70,7 @@ enum
 #endif
     eLIM_REMAIN_CHN_TIMER,
     eLIM_PERIODIC_PROBE_REQ_TIMER,
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     eLIM_TSM_TIMER,
 #endif
 #ifdef FEATURE_WLAN_TDLS_INTERNAL

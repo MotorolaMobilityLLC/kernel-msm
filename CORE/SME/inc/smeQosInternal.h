@@ -246,8 +246,8 @@ v_U8_t sme_QosGetACMMask(tpAniSirGlobal pMac, tSirBssDescription *pSirBssDesc, t
 */
 sme_QosStatusType sme_QosTriggerUapsdChange( tpAniSirGlobal pMac );
 
-#ifdef FEATURE_WLAN_CCX
-v_U8_t sme_QosCCxRetrieveTspecInfo(tpAniSirGlobal pMac, v_U8_t sessionId, tTspecInfo *pTspecInfo);
+#ifdef FEATURE_WLAN_ESE
+v_U8_t sme_QosESERetrieveTspecInfo(tpAniSirGlobal pMac, v_U8_t sessionId, tTspecInfo *pTspecInfo);
 
 #endif
 

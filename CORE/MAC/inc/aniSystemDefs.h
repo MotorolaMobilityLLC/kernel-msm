@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -84,7 +84,7 @@ typedef enum eAniAuthType
 #if defined WLAN_FEATURE_VOWIFI_11R
     eSIR_FT_AUTH,
 #endif
-#if defined FEATURE_WLAN_CCX
+#if defined FEATURE_WLAN_ESE
     eSIR_LEAP_AUTH = 0x80,
 #endif
     eSIR_AUTO_SWITCH,
@@ -162,7 +162,7 @@ typedef struct sSirAddie
     tANI_U8        addIEdata[SIR_MAC_MAX_IE_LENGTH+2];
 } tSirAddie, *tpSirAddie;
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
 
 // The CCKM IE needs to be in the
 // Join and Reassoc Req.

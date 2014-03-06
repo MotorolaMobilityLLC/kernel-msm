@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -294,8 +294,8 @@ enum eWniMsgTypes
     eWNI_SME_FT_AGGR_QOS_RSP,
 #endif
 
-#if defined FEATURE_WLAN_CCX
-    eWNI_SME_CCX_ADJACENT_AP_REPORT,
+#if defined FEATURE_WLAN_ESE
+    eWNI_SME_ESE_ADJACENT_AP_REPORT,
 #endif
 
     eWNI_SME_REGISTER_MGMT_FRAME_REQ,

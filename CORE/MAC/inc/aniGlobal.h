@@ -85,9 +85,9 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #include "smeRrmInternal.h"
 #include "rrmGlobal.h"
 #endif
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
-#include "ccxApi.h"
-#include "ccxGlobal.h"
+#if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
+#include "eseApi.h"
+#include "eseGlobal.h"
 #endif
 #include "p2p_Api.h"
 
@@ -230,8 +230,8 @@ typedef struct sLimTimers
     TX_TIMER           gLimFTPreAuthRspTimer;
 #endif
 
-#ifdef FEATURE_WLAN_CCX
-    TX_TIMER           gLimCcxTsmTimer;
+#ifdef FEATURE_WLAN_ESE
+    TX_TIMER           gLimEseTsmTimer;
 #endif
     TX_TIMER           gLimRemainOnChannelTimer;
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
@@ -905,7 +905,7 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
     tANI_U32    mgmtFrameSessionId;
     tSirBackgroundScanMode gLimBackgroundScanMode;
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
     tpPESession  pSessionEntry;
     tANI_U8 reAssocRetryAttempt;
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -135,11 +135,11 @@ ap_beacon_process(
                     (pBcnStruct->erpIEInfo.useProtection ||
                     pBcnStruct->erpIEInfo.nonErpPresent)))
                 {
-#ifdef FEATURE_WLAN_CCX
-                    if( psessionEntry->isCCXconnection )
+#ifdef FEATURE_WLAN_ESE
+                    if( psessionEntry->isESEconnection )
                     {
                         VOS_TRACE (VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, 
-                            "%s: [INFOLOG]CCX 11g erpPresent=%d useProtection=%d nonErpPresent=%d", __func__,
+                            "%s: [INFOLOG]ESE 11g erpPresent=%d useProtection=%d nonErpPresent=%d", __func__,
                             pBcnStruct->erpPresent,
                             pBcnStruct->erpIEInfo.useProtection,
                             pBcnStruct->erpIEInfo.nonErpPresent);
@@ -162,11 +162,11 @@ ap_beacon_process(
                   (pBcnStruct->erpIEInfo.useProtection ||
                   pBcnStruct->erpIEInfo.nonErpPresent)))
               {
-#ifdef FEATURE_WLAN_CCX
-                  if( psessionEntry->isCCXconnection )
+#ifdef FEATURE_WLAN_ESE
+                  if( psessionEntry->isESEconnection )
                   {
                       VOS_TRACE (VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, 
-                          "%s: [INFOLOG]CCX 11g erpPresent=%d useProtection=%d nonErpPresent=%d", __func__,
+                          "%s: [INFOLOG]ESE 11g erpPresent=%d useProtection=%d nonErpPresent=%d", __func__,
                           pBcnStruct->erpPresent,
                           pBcnStruct->erpIEInfo.useProtection,
                           pBcnStruct->erpIEInfo.nonErpPresent);
@@ -340,7 +340,7 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
     tANI_U8  operMode;
     tANI_U8  chWidth = 0;
 #endif
-#if defined FEATURE_WLAN_CCX || defined FEATURE_WLAN_VOWIFI
+#if defined FEATURE_WLAN_ESE || defined FEATURE_WLAN_VOWIFI
      tPowerdBm regMax = 0,maxTxPower = 0;
 #endif
 
@@ -622,7 +622,7 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
     }
 #endif
 
-#if defined (FEATURE_WLAN_CCX) || defined (FEATURE_WLAN_VOWIFI)
+#if defined (FEATURE_WLAN_ESE) || defined (FEATURE_WLAN_VOWIFI)
     /* Obtain the Max Tx power for the current regulatory  */
     regMax = cfgGetRegulatoryMaxTransmitPower( pMac, psessionEntry->currentOperChannel );
 #endif
@@ -640,24 +640,24 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         }
         maxTxPower = VOS_MIN(regMax,(regMax - localRRMConstraint));
     }
-#elif defined FEATURE_WLAN_CCX
+#elif defined FEATURE_WLAN_ESE
     maxTxPower = regMax;
 #endif
 
-#if defined FEATURE_WLAN_CCX
-    if( psessionEntry->isCCXconnection )
+#if defined FEATURE_WLAN_ESE
+    if( psessionEntry->isESEconnection )
     {
-        tPowerdBm  localCCXConstraint = 0;
-        if (pBeacon->ccxTxPwr.present)
+        tPowerdBm  localESEConstraint = 0;
+        if (pBeacon->eseTxPwr.present)
         {
-            localCCXConstraint = pBeacon->ccxTxPwr.power_limit;
-            maxTxPower = limGetMaxTxPower(maxTxPower, localCCXConstraint, pMac->roam.configParam.nTxPowerCap);
+            localESEConstraint = pBeacon->eseTxPwr.power_limit;
+            maxTxPower = limGetMaxTxPower(maxTxPower, localESEConstraint, pMac->roam.configParam.nTxPowerCap);
         }
-        schLog( pMac, LOG1, "RegMax = %d, localCcxCons = %d, MaxTx = %d", regMax, localCCXConstraint, maxTxPower );
+        schLog( pMac, LOG1, "RegMax = %d, localESECons = %d, MaxTx = %d", regMax, localESEConstraint, maxTxPower );
     }
 #endif
 
-#if defined (FEATURE_WLAN_CCX) || defined (FEATURE_WLAN_VOWIFI)
+#if defined (FEATURE_WLAN_ESE) || defined (FEATURE_WLAN_VOWIFI)
     {
         //If maxTxPower is increased or decreased
         if( maxTxPower != psessionEntry->maxTxPower )

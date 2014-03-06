@@ -713,7 +713,6 @@ VOS_STATUS hdd_softap_deinit_tx_rx( hdd_adapter_t *pAdapter )
   ===========================================================================*/
 static VOS_STATUS hdd_softap_flush_tx_queues_sta( hdd_adapter_t *pAdapter, v_U8_t STAId )
 {
-   VOS_STATUS status = VOS_STATUS_SUCCESS;
    v_U8_t i = -1;
 
    hdd_list_node_t *anchor = NULL;
@@ -723,7 +722,7 @@ static VOS_STATUS hdd_softap_flush_tx_queues_sta( hdd_adapter_t *pAdapter, v_U8_
 
    if (FALSE == pAdapter->aStaInfo[STAId].isUsed)
    {
-      return status;
+      return VOS_STATUS_SUCCESS;
    }
 
    for (i = 0; i < NUM_TX_QUEUES; i ++)
@@ -731,8 +730,9 @@ static VOS_STATUS hdd_softap_flush_tx_queues_sta( hdd_adapter_t *pAdapter, v_U8_
       spin_lock_bh(&pAdapter->aStaInfo[STAId].wmm_tx_queue[i].lock);
       while (true) 
       {
-         status = hdd_list_remove_front ( &pAdapter->aStaInfo[STAId].wmm_tx_queue[i], &anchor);
-         if (VOS_STATUS_E_EMPTY != status)
+         if (VOS_STATUS_E_EMPTY !=
+              hdd_list_remove_front(&pAdapter->aStaInfo[STAId].wmm_tx_queue[i],
+                                    &anchor))
          {
             //If success then we got a valid packet from some AC
             pktNode = list_entry(anchor, skb_list_node_t, anchor);
@@ -750,7 +750,7 @@ static VOS_STATUS hdd_softap_flush_tx_queues_sta( hdd_adapter_t *pAdapter, v_U8_
       spin_unlock_bh(&pAdapter->aStaInfo[STAId].wmm_tx_queue[i].lock);
    }
 
-   return status;
+   return VOS_STATUS_SUCCESS;
 }
 
 /**============================================================================
@@ -1722,13 +1722,14 @@ VOS_STATUS hdd_softap_stop_bss( hdd_adapter_t *pAdapter)
     for (staId = 0; staId < WLAN_MAX_STA_COUNT; staId++)
     {
         if (pAdapter->aStaInfo[staId].isUsed)// This excludes BC sta as it is already deregistered
-            vosStatus = hdd_softap_DeregisterSTA( pAdapter, staId);
-
-        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
         {
-            VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
+            vosStatus = hdd_softap_DeregisterSTA( pAdapter, staId);
+            if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+            {
+                VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
                        "%s: Failed to deregister sta Id %d", __func__, staId);
-        }
+            }
+       }
     }
 
     return vosStatus;

@@ -1700,7 +1700,7 @@ eHalStatus sme_UnprotectedMgmtFrmInd( tHalHandle hHal,
 }
 #endif
 
-#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
 /*------------------------------------------------------------------
  *
  * Handle the tsm ie indication from  LIM and forward it to HDD.
@@ -1749,32 +1749,32 @@ eHalStatus sme_SetCCKMIe(tHalHandle hHal, tANI_U8 sessionId,
 }
 
 /* ---------------------------------------------------------------------------
-    \fn sme_SetCcxBeaconRequest
-    \brief  function to set CCX beacon request parameters
+    \fn sme_SetEseBeaconRequest
+    \brief  function to set Ese beacon request parameters
     \param  hHal       - HAL handle for device
     \param  sessionId  - Session id
-    \param  pCcxBcnReq - pointer to CCX beacon request
+    \param  pEseBcnReq - pointer to Ese beacon request
     \- return Success or failure
     -------------------------------------------------------------------------*/
-eHalStatus sme_SetCcxBeaconRequest(tHalHandle hHal, const tANI_U8 sessionId,
-                                   const tCsrCcxBeaconReq* pCcxBcnReq)
+eHalStatus sme_SetEseBeaconRequest(tHalHandle hHal, const tANI_U8 sessionId,
+                                   const tCsrEseBeaconReq* pEseBcnReq)
 {
    eHalStatus               status           = eSIR_SUCCESS;
    tpAniSirGlobal           pMac             = PMAC_STRUCT( hHal );
    tpSirBeaconReportReqInd  pSmeBcnReportReq = NULL;
-   tCsrCcxBeaconReqParams  *pBeaconReq       = NULL;
+   tCsrEseBeaconReqParams  *pBeaconReq       = NULL;
    tANI_U8                  counter          = 0;
    tCsrRoamSession         *pSession         = CSR_GET_SESSION(pMac, sessionId);
    tpRrmSMEContext          pSmeRrmContext   = &pMac->rrm.rrmSmeContext;
 
    /* Store the info in RRM context */
-   vos_mem_copy(&pSmeRrmContext->ccxBcnReqInfo, pCcxBcnReq, sizeof(tCsrCcxBeaconReq));
+   vos_mem_copy(&pSmeRrmContext->eseBcnReqInfo, pEseBcnReq, sizeof(tCsrEseBeaconReq));
 
    //Prepare the request to send to SME.
    pSmeBcnReportReq = vos_mem_malloc(sizeof( tSirBeaconReportReqInd ));
    if(NULL == pSmeBcnReportReq)
    {
-      smsLog(pMac, LOGP, "Memory Allocation Failure!!! CCX  BcnReq Ind to SME");
+      smsLog(pMac, LOGP, "Memory Allocation Failure!!! Ese  BcnReq Ind to SME");
       return eSIR_FAILURE;
    }
 
@@ -1785,12 +1785,12 @@ eHalStatus sme_SetCcxBeaconRequest(tHalHandle hHal, const tANI_U8 sessionId,
    pSmeBcnReportReq->length = sizeof( tSirBeaconReportReqInd );
    vos_mem_copy( pSmeBcnReportReq->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr) );
    pSmeBcnReportReq->channelInfo.channelNum = 255;
-   pSmeBcnReportReq->channelList.numChannels = pCcxBcnReq->numBcnReqIe;
-   pSmeBcnReportReq->msgSource = eRRM_MSG_SOURCE_CCX_UPLOAD;
+   pSmeBcnReportReq->channelList.numChannels = pEseBcnReq->numBcnReqIe;
+   pSmeBcnReportReq->msgSource = eRRM_MSG_SOURCE_ESE_UPLOAD;
 
-   for (counter = 0; counter < pCcxBcnReq->numBcnReqIe; counter++)
+   for (counter = 0; counter < pEseBcnReq->numBcnReqIe; counter++)
    {
-        pBeaconReq = (tCsrCcxBeaconReqParams *)&pCcxBcnReq->bcnReq[counter];
+        pBeaconReq = (tCsrEseBeaconReqParams *)&pEseBcnReq->bcnReq[counter];
         pSmeBcnReportReq->fMeasurementtype[counter] = pBeaconReq->scanMode;
         pSmeBcnReportReq->measurementDuration[counter] = SYS_TU_TO_MS(pBeaconReq->measurementDuration);
         pSmeBcnReportReq->channelList.channelNumber[counter] = pBeaconReq->channel;
@@ -1800,7 +1800,7 @@ eHalStatus sme_SetCcxBeaconRequest(tHalHandle hHal, const tANI_U8 sessionId,
    return status;
 }
 
-#endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
+#endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
 
 
 /*--------------------------------------------------------------------------
@@ -2137,7 +2137,7 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                 }
                 break;
 #endif
-#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
            case eWNI_SME_TSM_IE_IND:
               {
                 if (pMsg->bodyptr)
@@ -2151,7 +2151,7 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                 }
                 break;
               }
-#endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
+#endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
           case eWNI_SME_ROAM_SCAN_OFFLOAD_RSP:
                 status = csrRoamOffloadScanRspHdlr((void *)pMac, pMsg->bodyval);
@@ -4549,7 +4549,7 @@ eHalStatus sme_GetSnr(tHalHandle hHal,
    }
    return status;
 }
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
 /* ---------------------------------------------------------------------------
     \fn sme_GetRoamRssi
     \brief a wrapper function that client calls to register a callback to get Roam RSSI
@@ -4580,7 +4580,7 @@ eHalStatus sme_GetRoamRssi(tHalHandle hHal,
 #endif
 
 
-#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
 /* ---------------------------------------------------------------------------
     \fn sme_GetTsmStats
     \brief a wrapper function that client calls to register a callback to get TSM Stats
@@ -8350,7 +8350,7 @@ void sme_ResetPowerValuesFor5G (tHalHandle hHal)
     csrApplyPower2Current(pMac);     // Store the channel+power info in the global place: Cfg
 }
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
 /* ---------------------------------------------------------------------------
     \fn sme_UpdateRoamPrefer5GHz
     \brief  enable/disable Roam prefer 5G runtime option
@@ -8709,7 +8709,7 @@ eHalStatus sme_SetRoamScanControl(tHalHandle hHal, v_BOOL_t roamScanControl)
     }
     return status ;
 }
-#endif /* (WLAN_FEATURE_VOWIFI_11R) || (FEATURE_WLAN_CCX) || (FEATURE_WLAN_LFR) */
+#endif /* (WLAN_FEATURE_VOWIFI_11R) || (FEATURE_WLAN_ESE) || (FEATURE_WLAN_LFR) */
 
 #ifdef FEATURE_WLAN_LFR
 /*--------------------------------------------------------------------------
@@ -8811,40 +8811,40 @@ eHalStatus sme_UpdateEnableFastRoamInConcurrency(tHalHandle hHal,
 #endif
 #endif /* FEATURE_WLAN_LFR */
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
 /*--------------------------------------------------------------------------
-  \brief sme_UpdateIsCcxFeatureEnabled() - enable/disable CCX support at runtime
+  \brief sme_UpdateIsEseFeatureEnabled() - enable/disable Ese support at runtime
   It is used at in the REG_DYNAMIC_VARIABLE macro definition of
-  isCcxIniFeatureEnabled.
+  isEseIniFeatureEnabled.
   This is a synchronous call
   \param hHal - The handle returned by macOpen.
-  \return eHAL_STATUS_SUCCESS - SME update isCcxIniFeatureEnabled config successfully.
-          Other status means SME is failed to update isCcxIniFeatureEnabled.
+  \return eHAL_STATUS_SUCCESS - SME update isEseIniFeatureEnabled config successfully.
+          Other status means SME is failed to update isEseIniFeatureEnabled.
   \sa
   --------------------------------------------------------------------------*/
 
-eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
-                const v_BOOL_t isCcxIniFeatureEnabled)
+eHalStatus sme_UpdateIsEseFeatureEnabled(tHalHandle hHal,
+                const v_BOOL_t isEseIniFeatureEnabled)
 {
   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
 
-  if (pMac->roam.configParam.isCcxIniFeatureEnabled == isCcxIniFeatureEnabled)
+  if (pMac->roam.configParam.isEseIniFeatureEnabled == isEseIniFeatureEnabled)
   {
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                     "%s: CCX Mode is already enabled or disabled, nothing to do (returning) old(%d) new(%d)", __func__,
-                      pMac->roam.configParam.isCcxIniFeatureEnabled,
-                      isCcxIniFeatureEnabled);
+                     "%s: Ese Mode is already enabled or disabled, nothing to do (returning) old(%d) new(%d)", __func__,
+                      pMac->roam.configParam.isEseIniFeatureEnabled,
+                      isEseIniFeatureEnabled);
       return eHAL_STATUS_SUCCESS;
   }
 
   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                     "%s: CcxEnabled is changed from %d to %d", __func__,
-                      pMac->roam.configParam.isCcxIniFeatureEnabled,
-                      isCcxIniFeatureEnabled);
-  pMac->roam.configParam.isCcxIniFeatureEnabled = isCcxIniFeatureEnabled;
-  csrNeighborRoamUpdateCcxModeEnabled(pMac, isCcxIniFeatureEnabled);
+                     "%s: EseEnabled is changed from %d to %d", __func__,
+                      pMac->roam.configParam.isEseIniFeatureEnabled,
+                      isEseIniFeatureEnabled);
+  pMac->roam.configParam.isEseIniFeatureEnabled = isEseIniFeatureEnabled;
+  csrNeighborRoamUpdateEseModeEnabled(pMac, isEseIniFeatureEnabled);
 
-  if(TRUE == isCcxIniFeatureEnabled)
+  if(TRUE == isEseIniFeatureEnabled)
   {
       sme_UpdateFastTransitionEnabled(hHal, TRUE);
   }
@@ -8852,12 +8852,12 @@ eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     if (pMac->roam.configParam.isRoamOffloadScanEnabled)
     {
-       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_CCX_INI_CFG_CHANGED);
+       csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_UPDATE_CFG, REASON_ESE_INI_CFG_CHANGED);
     }
 #endif
   return eHAL_STATUS_SUCCESS;
 }
-#endif /* FEATURE_WLAN_CCX */
+#endif /* FEATURE_WLAN_ESE */
 
 /*--------------------------------------------------------------------------
   \brief sme_UpdateConfigFwRssiMonitoring() - enable/disable firmware RSSI Monitoring at runtime
@@ -9265,7 +9265,7 @@ v_U16_t sme_getNeighborScanPeriod(tHalHandle hHal)
 
 #endif
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
 
 /*--------------------------------------------------------------------------
   \brief sme_getRoamRssiDiff() - get Roam rssi diff
@@ -9341,16 +9341,16 @@ eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
 }
 
 
-#ifdef FEATURE_WLAN_CCX_UPLOAD
+#ifdef FEATURE_WLAN_ESE_UPLOAD
 /*--------------------------------------------------------------------------
-  \brief sme_SetCcxRoamScanChannelList() - set ccx roam scan channel list
+  \brief sme_SetEseRoamScanChannelList() - set ese roam scan channel list
   This is a synchronuous call
   \param hHal - The handle returned by macOpen.
   \return eHAL_STATUS_SUCCESS - SME update config successful.
           Other status means SME is failed to update
   \sa
   --------------------------------------------------------------------------*/
-eHalStatus sme_SetCcxRoamScanChannelList(tHalHandle hHal,
+eHalStatus sme_SetEseRoamScanChannelList(tHalHandle hHal,
                                          tANI_U8 *pChannelList,
                                          tANI_U8 numChannels)
 {
@@ -9388,11 +9388,9 @@ eHalStatus sme_SetCcxRoamScanChannelList(tHalHandle hHal,
             }
 
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-                         "CCX roam scan channel list successfully set to %s"
-                         " - old value is %s - roam state is %s",
-                         newChannelList, oldChannelList,
-                         macTraceGetNeighbourRoamState(
-                         pMac->roam.neighborRoamInfo.neighborRoamState));
+                        "ESE roam scan channel list successfully set to %s - old value is %s - roam state is %s",
+                        newChannelList, oldChannelList,
+                        macTraceGetNeighbourRoamState(pMac->roam.neighborRoamInfo.neighborRoamState));
         }
         sme_ReleaseGlobalLock( &pMac->sme );
     }
@@ -9448,18 +9446,18 @@ eHalStatus sme_getRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
 }
 
 /*--------------------------------------------------------------------------
-  \brief sme_getIsCcxFeatureEnabled() - get CCX feature enabled or not
+  \brief sme_getIsEseFeatureEnabled() - get Ese feature enabled or not
   This is a synchronuous call
   \param hHal - The handle returned by macOpen.
-  \return TRUE (1) - if the CCX feature is enabled
+  \return TRUE (1) - if the Ese feature is enabled
           FALSE (0) - if feature is disabled (compile or runtime)
   \sa
   --------------------------------------------------------------------------*/
-tANI_BOOLEAN sme_getIsCcxFeatureEnabled(tHalHandle hHal)
+tANI_BOOLEAN sme_getIsEseFeatureEnabled(tHalHandle hHal)
 {
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    return csrRoamIsCcxIniFeatureEnabled(pMac);
+    return csrRoamIsEseIniFeatureEnabled(pMac);
 #else
     return eANI_BOOLEAN_FALSE;
 #endif

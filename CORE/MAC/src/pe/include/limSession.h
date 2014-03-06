@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -94,7 +94,7 @@ typedef struct sPESession           // Added to Support BT-AMP
     tpSirSmeJoinReq         pLimJoinReq;            // handle to sme join req
     tpSirSmeJoinReq         pLimReAssocReq;         //handle to sme reassoc req
     tpLimMlmJoinReq         pLimMlmJoinReq;         //handle to MLM join Req
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
     void                    *pLimMlmReassocRetryReq; //keep reasoc req for retry
 #endif
     void                    *pLimMlmReassocReq;      //handle to MLM reassoc Req
@@ -178,7 +178,7 @@ typedef struct sPESession           // Added to Support BT-AMP
     tANI_U32                RICDataLen;             //Used to store the Ric data received in the assoc response
     tANI_U8                 *ricData;
 #endif
-#ifdef FEATURE_WLAN_CCX    
+#ifdef FEATURE_WLAN_ESE
     tANI_U32                tspecLen;               //Used to store the TSPEC IEs received in the assoc response
     tANI_U8                 *tspecIes;
 #endif
@@ -267,11 +267,11 @@ typedef struct sPESession           // Added to Support BT-AMP
     tAniBool            is11Rconnection;
 #endif
 
-#ifdef FEATURE_WLAN_CCX
-    tAniBool            isCCXconnection;
-    tCcxPEContext       ccxContext;
+#ifdef FEATURE_WLAN_ESE
+    tAniBool            isESEconnection;
+    tEsePEContext       eseContext;
 #endif
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
     tAniBool            isFastTransitionEnabled;
 #endif
 #ifdef FEATURE_WLAN_LFR

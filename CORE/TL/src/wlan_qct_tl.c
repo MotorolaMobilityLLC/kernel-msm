@@ -158,10 +158,10 @@
 /*LLC header value*/
 static v_U8_t WLANTL_LLC_HEADER[] =  {0xAA, 0xAA, 0x03, 0x00, 0x00, 0x00 };
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
 /*Aironet SNAP header value*/
 static v_U8_t WLANTL_AIRONET_SNAP_HEADER[] =  {0xAA, 0xAA, 0x03, 0x00, 0x40, 0x96, 0x00, 0x00 };
-#endif //FEATURE_WLAN_CCX
+#endif //FEATURE_WLAN_ESE
 
 /*BT-AMP packet LLC OUI value*/
 const v_U8_t WLANTL_BT_AMP_OUI[] =  {0x00, 0x19, 0x58 };
@@ -1209,16 +1209,16 @@ WLANTL_RegisterSTAClient
 
   pClientSTA->wSTADesc.ucProtectedFrame = pwSTADescType->ucProtectedFrame;
 
-#ifdef FEATURE_WLAN_CCX
-  pClientSTA->wSTADesc.ucIsCcxSta = pwSTADescType->ucIsCcxSta;
+#ifdef FEATURE_WLAN_ESE
+  pClientSTA->wSTADesc.ucIsEseSta = pwSTADescType->ucIsEseSta;
 
   TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-             "WLAN TL:Registering STA Client ID: %d QoS %d Add LLC %d ProtFrame %d CcxSta %d", 
+             "WLAN TL:Registering STA Client ID: %d QoS %d Add LLC %d ProtFrame %d EseSta %d",
              pwSTADescType->ucSTAId, 
              pwSTADescType->ucQosEnabled,
              pwSTADescType->ucAddRmvLLC,
              pwSTADescType->ucProtectedFrame,
-             pwSTADescType->ucIsCcxSta));
+             pwSTADescType->ucIsEseSta));
 #else
 
   TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
@@ -1228,7 +1228,7 @@ WLANTL_RegisterSTAClient
              pwSTADescType->ucAddRmvLLC,
              pwSTADescType->ucProtectedFrame));
 
-#endif //FEATURE_WLAN_CCX
+#endif //FEATURE_WLAN_ESE
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
   // if this station was not allocated resources to perform HW-based
   // TX frame translation then force SW-based TX frame translation
@@ -3229,7 +3229,7 @@ WLANTL_TxMgmtFrm
        return vosStatus;
      }
 
-    /* CCX IAPP/TDLS Frame which are data frames but technically used
+    /* ESE IAPP/TDLS Frame which are data frames but technically used
      * for management functionality comes through route.
      */
     if (WLANTL_IS_QOS_DATA_FRAME(wFrmType))                                      \
@@ -4906,13 +4906,13 @@ done:
 }/*WLANTL_ForwardSTAFrames*/
 
 
-#if defined(FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_ESE_UPLOAD)
 /*==========================================================================
 
   FUNCTION    WLANTL_IsIAPPFrame
 
   DESCRIPTION
-    Internal utility function for detecting incoming CCX IAPP frames
+    Internal utility function for detecting incoming ESE IAPP frames
 
   DEPENDENCIES
 
@@ -4991,7 +4991,7 @@ WLANTL_IsIAPPFrame
   return VOS_TRUE;
 
 }
-#endif //FEATURE_WLAN_CCX
+#endif //FEATURE_WLAN_ESE
 
 /*==========================================================================
 
@@ -5751,11 +5751,11 @@ WLANTL_RxFrames
         continue;
       }
 
-#ifdef FEATURE_WLAN_CCX_UPLOAD
-      if ((pClientSTA->wSTADesc.ucIsCcxSta)|| broadcast)
+#ifdef FEATURE_WLAN_ESE_UPLOAD
+      if ((pClientSTA->wSTADesc.ucIsEseSta)|| broadcast)
       {
         /*--------------------------------------------------------------------
-          Filter the IAPP frames for CCX connection;
+          Filter the IAPP frames for ESE connection;
           if data it will return false and it
           will be routed through the regular data path
         --------------------------------------------------------------------*/
@@ -5767,11 +5767,11 @@ WLANTL_RxFrames
       }
 #endif
 
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
-      if ((pClientSTA->wSTADesc.ucIsCcxSta)|| broadcast)
+#if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
+      if ((pClientSTA->wSTADesc.ucIsEseSta)|| broadcast)
       {
         /*--------------------------------------------------------------------
-          Filter the IAPP frames for CCX connection; 
+          Filter the IAPP frames for ESE connection;
           if data it will return false and it 
           will be routed through the regular data path
         --------------------------------------------------------------------*/
@@ -5787,7 +5787,7 @@ WLANTL_RxFrames
             } else {
 
                TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
-                        "WLAN TL: Received CCX IAPP Frame"));
+                        "WLAN TL: Received ESE IAPP Frame"));
 
                pTLCb->tlMgmtFrmClient.pfnTlMgmtFrmRx( pvosGCtx, vosTempBuff); 
             }
@@ -5795,7 +5795,7 @@ WLANTL_RxFrames
             continue;
         }
       }
-#endif  /* defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD) */
+#endif  /* defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD) */
 
       if ( WLAN_STA_BT_AMP == pClientSTA->wSTADesc.wSTAType )
       {
@@ -9065,7 +9065,7 @@ WLANTL_Translate8023To80211Header
   WLANTL_STAClientType*  pClientSTA = NULL;
   v_U8_t                 ucQoSOffset = WLAN80211_MANDATORY_HEADER_SIZE;
   v_U8_t                 ucStaId;
-#ifdef FEATURE_WLAN_CCX_UPLOAD
+#ifdef FEATURE_WLAN_ESE_UPLOAD
   v_BOOL_t               bIAPPTxwithLLC = VOS_FALSE;
   v_SIZE_t               wIAPPSnapSize = WLANTL_LLC_HEADER_LEN;
   v_U8_t                 wIAPPSnap[WLANTL_LLC_HEADER_LEN] = {0};
@@ -9128,8 +9128,8 @@ WLANTL_Translate8023To80211Header
   }
 #endif
 
-#ifdef FEATURE_WLAN_CCX_UPLOAD
-if ((0 == w8023Header.usLenType) && (pClientSTA->wSTADesc.ucIsCcxSta))
+#ifdef FEATURE_WLAN_ESE_UPLOAD
+if ((0 == w8023Header.usLenType) && (pClientSTA->wSTADesc.ucIsEseSta))
 {
     vos_pkt_extract_data(vosDataBuff,0,&wIAPPSnap[0],&wIAPPSnapSize);
     if (vos_mem_compare(wIAPPSnap,WLANTL_AIRONET_SNAP_HEADER,WLANTL_LLC_HEADER_LEN))
@@ -9143,12 +9143,12 @@ if ((0 == w8023Header.usLenType) && (pClientSTA->wSTADesc.ucIsCcxSta))
         bIAPPTxwithLLC = VOS_FALSE;
     }
 }
-#endif /* FEATURE_WLAN_CCX_UPLOAD */
+#endif /* FEATURE_WLAN_ESE_UPLOAD */
 
   if ((0 != pClientSTA->wSTADesc.ucAddRmvLLC)
-#ifdef FEATURE_WLAN_CCX_UPLOAD
+#ifdef FEATURE_WLAN_ESE_UPLOAD
       && (!bIAPPTxwithLLC)
-#endif /* FEATURE_WLAN_CCX_UPLOAD */
+#endif /* FEATURE_WLAN_ESE_UPLOAD */
      )
   {
     /* Push the length */
@@ -9194,9 +9194,9 @@ if ((0 == w8023Header.usLenType) && (pClientSTA->wSTADesc.ucIsCcxSta))
   }/*If add LLC is enabled*/
   else
   {
-#ifdef FEATURE_WLAN_CCX_UPLOAD
+#ifdef FEATURE_WLAN_ESE_UPLOAD
       bIAPPTxwithLLC = VOS_FALSE; /*Reset the Flag here to start afresh with the next TX pkt*/
-#endif /* FEATURE_WLAN_CCX_UPLOAD */
+#endif /* FEATURE_WLAN_ESE_UPLOAD */
        TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
                  "WLAN TL: STA Client registered to not remove LLC"
                   " WLANTL_Translate8023To80211Header"));
@@ -9556,9 +9556,9 @@ WLANTL_Translate80211To8023Header
   }
 
   if ( 0 != pTLCb->atlSTAClients[ucSTAId]->wSTADesc.ucAddRmvLLC
-#ifdef FEATURE_WLAN_CCX_UPLOAD
+#ifdef FEATURE_WLAN_ESE_UPLOAD
     && (!bForwardIAPPwithLLC)
-#endif /*  FEATURE_WLAN_CCX_UPLOAD */
+#endif /*  FEATURE_WLAN_ESE_UPLOAD */
      )
   {
     // Extract the LLC header
