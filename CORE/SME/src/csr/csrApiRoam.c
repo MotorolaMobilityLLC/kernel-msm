@@ -11143,13 +11143,14 @@ tANI_BOOLEAN csrRoamIsValid40MhzChannel(tpAniSirGlobal pMac, tANI_U8 channel)
         {
             // Check set as TKIP or not.
             if ((NULL != &(pIes->RSN.pwise_cipher_suites[0][0]) &&
-               !memcmp( &(pIes->RSN.pwise_cipher_suites[0][0]),
+                (pIes->RSN.pwise_cipher_suite_count == 1) &&
+                !memcmp( &(pIes->RSN.pwise_cipher_suites[0][0]),
                                         "\x00\x0f\xac\x02" ,4))
                || (((NULL != &(pIes->WPA)) &&
                     (pIes->WPA.unicast_cipher_count == 1))
                     && ((NULL != &(pIes->WPA.unicast_ciphers[0]))
                         && memcmp(&(pIes->WPA.unicast_ciphers[0]),
-                                  "\x00\x0f\xac\x02", 4))))
+                                  "\x00\x50\xf2\x02", 4))))
             {
                 smsLog(pMac, LOGW, " No channel bonding in TKIP mode ");
                 eRet = PHY_SINGLE_CHANNEL_CENTERED;
