@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -99,7 +99,7 @@
 #define CSR_BSS_CAP_VALUE_HT    2    
 #define CSR_BSS_CAP_VALUE_WMM   1
 #define CSR_BSS_CAP_VALUE_UAPSD 1
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
 #define CSR_BSS_CAP_VALUE_5GHZ  1
 #endif
 #define CSR_DEFAULT_ROAMING_TIME 10   //10 seconds
@@ -954,11 +954,11 @@ eHalStatus csrRoamStopJoinRetryTimer(tpAniSirGlobal pMac, tANI_U32 sessionId);
 void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuthRsp );
 #endif
 
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
-void csrCcxSendAdjacentApRepMsg(tpAniSirGlobal pMac, tCsrRoamSession *pSession);
+#if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
+void csrEseSendAdjacentApRepMsg(tpAniSirGlobal pMac, tCsrRoamSession *pSession);
 #endif
 
-#if defined(FEATURE_WLAN_CCX)
+#if defined(FEATURE_WLAN_ESE)
 void UpdateCCKMTSF(tANI_U32 *timeStamp0, tANI_U32 *timeStamp1, tANI_U32 *incr);
 #endif
 

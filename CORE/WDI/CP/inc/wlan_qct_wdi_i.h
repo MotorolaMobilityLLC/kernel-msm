@@ -1980,7 +1980,7 @@ WDI_ProcessDelBAReq
   WDI_EventInfoType*     pEventData
 );
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
 /**
  @brief Process TSM Stats Request function (called when Main FSM
         allows it)
@@ -2069,7 +2069,7 @@ WDI_ProcessGetStatsReq
   WDI_EventInfoType*     pEventData
 );
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
 /**
  @brief Process Get Roam rssi Request function (called when Main FSM
         allows it)
@@ -3466,7 +3466,7 @@ WDI_ProcessDelBARsp
   WDI_EventInfoType*     pEventData
 );
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
 /**
  @brief Process TSM stats Rsp function (called when a response
         is being received over the bus from HAL)

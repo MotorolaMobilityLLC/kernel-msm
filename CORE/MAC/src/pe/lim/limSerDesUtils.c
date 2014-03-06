@@ -229,7 +229,7 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
 #endif
 #endif
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     pBssDescription->QBSSLoad_present = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
     len  -= sizeof(tANI_U16);
@@ -1040,7 +1040,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
         }
     }
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     // Extract CCKM IE
     pJoinReq->cckmIE.length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
@@ -1162,9 +1162,9 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     }
 #endif
 
-#ifdef FEATURE_WLAN_CCX
-    //CCX version IE
-    pJoinReq->isCCXFeatureIniEnabled = (tAniBool)limGetU32(pBuf);
+#ifdef FEATURE_WLAN_ESE
+    //ESE version IE
+    pJoinReq->isESEFeatureIniEnabled = (tAniBool)limGetU32(pBuf);
     pBuf += sizeof(tAniBool);
     len -= sizeof(tAniBool);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
@@ -1173,8 +1173,8 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
        return eSIR_FAILURE;
     }
 
-    //isCCXconnection;
-    pJoinReq->isCCXconnection = (tAniBool)limGetU32(pBuf);
+    //isESEconnection;
+    pJoinReq->isESEconnection = (tAniBool)limGetU32(pBuf);
     pBuf += sizeof(tAniBool);
     len -= sizeof(tAniBool);
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
@@ -1184,12 +1184,12 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     }
 
     // TSPEC information
-    pJoinReq->ccxTspecInfo.numTspecs = *pBuf++;
+    pJoinReq->eseTspecInfo.numTspecs = *pBuf++;
     len -= sizeof(tANI_U8);
-    vos_mem_copy((void*)&pJoinReq->ccxTspecInfo.tspec[0], pBuf,
-                 (sizeof(tTspecInfo)* pJoinReq->ccxTspecInfo.numTspecs));
-    pBuf += sizeof(tTspecInfo)*SIR_CCX_MAX_TSPEC_IES;
-    len  -= sizeof(tTspecInfo)*SIR_CCX_MAX_TSPEC_IES;
+    vos_mem_copy((void*)&pJoinReq->eseTspecInfo.tspec[0], pBuf,
+                 (sizeof(tTspecInfo)* pJoinReq->eseTspecInfo.numTspecs));
+    pBuf += sizeof(tTspecInfo)*SIR_ESE_MAX_TSPEC_IES;
+    len  -= sizeof(tTspecInfo)*SIR_ESE_MAX_TSPEC_IES;
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
     {
         limLog(pMac, LOGE, FL("remaining len %d is too short"), len);
@@ -1197,7 +1197,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     }
 #endif
     
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
     //isFastTransitionEnabled;
     pJoinReq->isFastTransitionEnabled = (tAniBool)limGetU32(pBuf);
     pBuf += sizeof(tAniBool);

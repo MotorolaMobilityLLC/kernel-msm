@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -179,8 +179,8 @@ typedef struct sCsrNeighborRoamControlInfo
     tANI_BOOLEAN                is11rAssoc;
     tCsr11rAssocNeighborInfo    FTRoamInfo;
 #endif /* WLAN_FEATURE_VOWIFI_11R */
-#ifdef FEATURE_WLAN_CCX    
-    tANI_BOOLEAN                isCCXAssoc;
+#ifdef FEATURE_WLAN_ESE
+    tANI_BOOLEAN                isESEAssoc;
     tANI_BOOLEAN                isVOAdmitted;
     tANI_U32                    MinQBssLoadRequired;
 #endif
@@ -228,7 +228,7 @@ tANI_BOOLEAN csrNeighborRoamScanRspPending(tHalHandle hHal);
 tANI_BOOLEAN csrNeighborMiddleOfRoaming(tHalHandle hHal);
 VOS_STATUS csrNeighborRoamSetLookupRssiThreshold(tpAniSirGlobal pMac, v_U8_t neighborLookupRssiThreshold);
 VOS_STATUS csrNeighborRoamUpdateFastRoamingEnabled(tpAniSirGlobal pMac, const v_BOOL_t fastRoamEnabled);
-VOS_STATUS csrNeighborRoamUpdateCcxModeEnabled(tpAniSirGlobal pMac, const v_BOOL_t ccxMode);
+VOS_STATUS csrNeighborRoamUpdateEseModeEnabled(tpAniSirGlobal pMac, const v_BOOL_t eseMode);
 VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
                       tpAniSirGlobal pMac,
                       tANI_U8*  pInputChannelList,
@@ -258,7 +258,7 @@ VOS_STATUS csrNeighborRoamMergeChannelLists(tpAniSirGlobal pMac,
 #define REASON_LOOKUP_THRESH_CHANGED                3
 #define REASON_DISCONNECTED                         4
 #define REASON_RSSI_DIFF_CHANGED                    5
-#define REASON_CCX_INI_CFG_CHANGED                  6
+#define REASON_ESE_INI_CFG_CHANGED                  6
 #define REASON_NEIGHBOR_SCAN_REFRESH_PERIOD_CHANGED 7
 #define REASON_VALID_CHANNEL_LIST_CHANGED           8
 #define REASON_FLUSH_CHANNEL_LIST                   9
@@ -278,14 +278,14 @@ eHalStatus csrNeighborRoamSssidScanDone(tpAniSirGlobal pMac, eHalStatus status);
 eHalStatus csrNeighborRoamStartLfrScan(tpAniSirGlobal pMac);
 #endif
 
-#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
 VOS_STATUS csrSetCCKMIe(tpAniSirGlobal pMac, const tANI_U8 sessionId,
                             const tANI_U8 *pCckmIe,
                             const tANI_U8 ccKmIeLen);
 VOS_STATUS csrRoamReadTSF(tpAniSirGlobal pMac, tANI_U8 *pTimestamp);
 
 
-#endif /*FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
+#endif /*FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
 
 
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */

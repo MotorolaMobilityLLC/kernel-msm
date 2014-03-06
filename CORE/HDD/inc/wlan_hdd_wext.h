@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -294,9 +294,9 @@ typedef struct hdd_wext_state_s
    v_U32_t oemDataReqID;
 #endif
 
-#ifdef FEATURE_WLAN_CCX
-   /* CCX state variables */
-   v_BOOL_t isCCXConnection;
+#ifdef FEATURE_WLAN_ESE
+   /* ESE state variables */
+   v_BOOL_t isESEConnection;
    eCsrAuthType collectedAuthType; /* Collected from ALL SIOCSIWAUTH Ioctls. Will be negotiatedAuthType - in tCsrProfile */
 #endif
 }hdd_wext_state_t;
@@ -407,7 +407,7 @@ void hdd_wmm_tx_snapshot(hdd_adapter_t *pAdapter);
 #ifdef FEATURE_WLAN_TDLS
 VOS_STATUS iw_set_tdls_params(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *extra, int nOffset);
 #endif
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
 VOS_STATUS wlan_hdd_get_roam_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
 #endif
 

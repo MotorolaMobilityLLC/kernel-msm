@@ -2982,7 +2982,7 @@ typedef struct
    * structure depending on statsMask.*/
 }WDI_GetStatsRspParamsType;
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
 /*---------------------------------------------------------------------------
   WDI_GetRoamRssiParamsInfoType
 ---------------------------------------------------------------------------*/
@@ -3032,7 +3032,7 @@ typedef struct
 }WDI_GetRoamRssiRspParamsType;
 #endif
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
 /*---------------------------------------------------------------------------
   WDI_TSMStatsParamsInfoType
 ---------------------------------------------------------------------------*/
@@ -3588,7 +3588,7 @@ typedef struct
    DXE when DXE wakes up from power save*/
    unsigned int      dxePhyAddr;
 
-   // For CCX and 11R Roaming
+   // For ESE and 11R Roaming
    wpt_uint32 rssiFilterPeriod;
    wpt_uint32 numBeaconPerRssiAverage;
    wpt_uint8  bRssiFilterEnable;
@@ -5024,7 +5024,7 @@ typedef struct
   wpt_uint16  EmptyRefreshScanPeriod;
   wpt_uint8   ValidChannelCount;
   wpt_uint8   ValidChannelList[WDI_ROAM_SCAN_MAX_CHANNELS];
-  wpt_boolean IsCCXEnabled;
+  wpt_boolean IsESEEnabled;
   /*Probe template for 2.4GHz band*/
   wpt_uint16  us24GProbeSize;
   wpt_uint8   a24GProbeTemplate[WDI_ROAM_SCAN_MAX_PROBE_SIZE];
@@ -5855,7 +5855,7 @@ typedef void  (*WDI_RemoveSTAKeyRspCb)(WDI_Status   wdiStatus,
                                        void*        pUserData);
 
 
-#ifdef FEATURE_WLAN_CCX 
+#ifdef FEATURE_WLAN_ESE
 /*---------------------------------------------------------------------------
    WDI_TsmRspCb
  
@@ -6079,7 +6079,7 @@ typedef void  (*WDI_SetLinkStateRspCb)( WDI_Status   wdiStatus,
 typedef void  (*WDI_GetStatsRspCb)(WDI_GetStatsRspParamsType*  pwdiGetStatsRsp,
                                    void*                       pUserData);
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
 /*---------------------------------------------------------------------------
    WDI_GetRoamRssiRspCb
 
@@ -8119,7 +8119,7 @@ WDI_SetMaxTxPowerPerBandReq
   void*                                 pUserData
 );
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
 /**
  @brief WDI_TSMStatsReq will be called by the upper MAC to fetch 
         Traffic Stream metrics. 
@@ -9408,7 +9408,7 @@ WDI_GetStatsReq
   void*                      pUserData
 );
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
 /**
  @brief WDI_GetRoamRssiReq will be called when the upper MAC wants
         to get roam rssi from the device. Upon

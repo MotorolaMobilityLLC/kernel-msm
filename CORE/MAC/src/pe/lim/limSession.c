@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -47,8 +47,8 @@
 #include "limDebug.h"
 #include "limSession.h"
 #include "limUtils.h"
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
-#include "ccxApi.h"
+#if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
+#include "eseApi.h"
 #endif
 
 /*--------------------------------------------------------------------------
@@ -164,11 +164,11 @@ tpPESession peCreateSession(tpAniSirGlobal pMac, tANI_U8 *bssid , tANI_U8* sessi
             pMac->lim.gpSession[i].is11Rconnection = FALSE;
 #endif
 
-#ifdef FEATURE_WLAN_CCX
-            pMac->lim.gpSession[i].isCCXconnection = FALSE;
+#ifdef FEATURE_WLAN_ESE
+            pMac->lim.gpSession[i].isESEconnection = FALSE;
 #endif
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
             pMac->lim.gpSession[i].isFastTransitionEnabled = FALSE;
 #endif
 #ifdef FEATURE_WLAN_LFR
@@ -452,7 +452,7 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
         psessionEntry->limAssocResponseData = NULL;
     }
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
     if (NULL != psessionEntry->pLimMlmReassocRetryReq)
     {
         vos_mem_free( psessionEntry->pLimMlmReassocRetryReq);
@@ -466,8 +466,8 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
         psessionEntry->pLimMlmReassocReq = NULL;
     }
 
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
-    limCleanupCcxCtxt(pMac, psessionEntry); 
+#if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
+    limCleanupEseCtxt(pMac, psessionEntry);
 #endif
 
     psessionEntry->valid = FALSE;

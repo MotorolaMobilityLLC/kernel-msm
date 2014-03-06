@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -199,7 +199,7 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
        }
        /* fall through if ethType != TDLS, which is error case */
 #endif
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
         PELOGW(sysLog(pMac, LOGW, FL("IAPP Frame...\n")););
         //Post the message to PE Queue
         ret = (tSirRetStatus) limPostMsgApi(pMac, pMsg);

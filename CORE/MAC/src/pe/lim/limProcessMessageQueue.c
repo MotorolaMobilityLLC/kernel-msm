@@ -62,8 +62,8 @@
 #if defined WLAN_FEATURE_VOWIFI
 #include "rrmApi.h"
 #endif
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
-#include "ccxApi.h"
+#if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
+#include "eseApi.h"
 #endif
 
 #if defined WLAN_FEATURE_VOWIFI_11R
@@ -590,10 +590,10 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
         goto end;
     }
 #endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     if (fc.type == SIR_MAC_DATA_FRAME && isFrmFt) 
     {
-#if 0 // CCX TBD Need to PORT
+#if 0 // Ese TBD Need to PORT
         tpSirMacDot3Hdr pDataFrmHdr;
 
         pDataFrmHdr = (tpSirMacDot3Hdr)((tANI_U8 *)pBD+ WLANHAL_RX_BD_GET_MPDU_H_OFFSET(pBD));
@@ -605,9 +605,9 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
             return;
         }
 
-        if (!psessionEntry->isCCXconnection)
+        if (!psessionEntry->isESEconnection)
         {
-            limLog( pMac, LOGE, FL("LIM received Type %d, Subtype %d in Non CCX connection"),
+            limLog( pMac, LOGE, FL("LIM received Type %d, Subtype %d in Non ESE connection"),
                     fc.type, fc.subType);
             limPktFree(pMac, HAL_TXRX_FRM_802_11_MGMT, pBD, limMsg->bodyptr);
             return;
@@ -615,7 +615,7 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
         limLog( pMac, LOGE, FL("Processing IAPP Frm from SA:"));
         limPrintMacAddr(pMac, pDataFrmHdr->sa, LOGE);
 #else
-        printk("%s: Need to port handling of IAPP frames to PRIMA for CCX", __func__);
+        printk("%s: Need to port handling of IAPP frames to PRIMA for ESE", __func__);
 #endif
 
 
@@ -836,12 +836,12 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
                 }
             }     
 #endif
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
              /* We accept data frame (IAPP frame) only if Session is
-              * present and ccx connection is established on that
+              * present and ese connection is established on that
               * session
               */
-             if (psessionEntry && psessionEntry->isCCXconnection) {
+             if (psessionEntry && psessionEntry->isESEconnection) {
                  limProcessIappFrame(pMac, pRxPacketInfo, psessionEntry);
              }
 #endif
@@ -1368,8 +1368,8 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case eWNI_SME_NEIGHBOR_REPORT_REQ_IND:
         case eWNI_SME_BEACON_REPORT_RESP_XMIT_IND:
 #endif
-#if defined FEATURE_WLAN_CCX
-        case eWNI_SME_CCX_ADJACENT_AP_REPORT:
+#if defined FEATURE_WLAN_ESE
+        case eWNI_SME_ESE_ADJACENT_AP_REPORT:
 #endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
         case eWNI_SME_FT_UPDATE_KEY:
@@ -1386,12 +1386,12 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case eWNI_SME_GLOBAL_STAT_REQ:
         case eWNI_SME_STAT_SUMM_REQ:
         case eWNI_SME_GET_STATISTICS_REQ:
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
         case eWNI_SME_GET_ROAM_RSSI_REQ:
 #endif
-#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
         case eWNI_SME_GET_TSM_STATS_REQ:
-#endif /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
+#endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
             // These messages are from HDD
             limProcessNormalHddMsg(pMac, limMsg, false);   //no need to response to hdd
             break;
@@ -1598,18 +1598,18 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case SIR_LIM_ADDTS_RSP_TIMEOUT:
             limProcessSmeReqMessages(pMac,limMsg);
             break;
-#ifdef FEATURE_WLAN_CCX
-        case SIR_LIM_CCX_TSM_TIMEOUT:
-#ifndef FEATURE_WLAN_CCX_UPLOAD
+#ifdef FEATURE_WLAN_ESE
+        case SIR_LIM_ESE_TSM_TIMEOUT:
+#ifndef FEATURE_WLAN_ESE_UPLOAD
             limProcessTsmTimeoutHandler(pMac,limMsg);
-#endif /* FEATURE_WLAN_CCX_UPLOAD */
+#endif /* FEATURE_WLAN_ESE_UPLOAD */
             break;
         case WDA_TSM_STATS_RSP:
-#ifdef FEATURE_WLAN_CCX_UPLOAD
-            limSendSmePECcxTsmRsp(pMac, (tAniGetTsmStatsRsp *)limMsg->bodyptr);
+#ifdef FEATURE_WLAN_ESE_UPLOAD
+            limSendSmePEEseTsmRsp(pMac, (tAniGetTsmStatsRsp *)limMsg->bodyptr);
 #else
-            limProcessHalCcxTsmRsp(pMac, limMsg);
-#endif /* FEATURE_WLAN_CCX_UPLOAD */
+            limProcessHalEseTsmRsp(pMac, limMsg);
+#endif /* FEATURE_WLAN_ESE_UPLOAD */
             break;
 #endif
         case WDA_ADD_TS_RSP:
@@ -1917,7 +1917,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case WDA_GET_STATISTICS_RSP:
             limSendSmePEStatisticsRsp ( pMac, limMsg->type, (void *)limMsg->bodyptr);
             break;
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
         case WDA_GET_ROAM_RSSI_RSP:
             limSendSmePEGetRoamRssiRsp ( pMac, limMsg->type, (void *)limMsg->bodyptr);
             break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -134,14 +134,14 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
         // Extract the UAPSD flag from WMM Parameter element
         if (pBeaconStruct->wmeEdcaPresent)
             *uapsd = pBeaconStruct->edcaParams.qosInfo.uapsd;
-#if defined FEATURE_WLAN_CCX
+#if defined FEATURE_WLAN_ESE
         /* If there is Power Constraint Element specifically,
          * adapt to it. Hence there is else condition check
          * for this if statement.
          */
-        if ( pBeaconStruct->ccxTxPwr.present)
+        if ( pBeaconStruct->eseTxPwr.present)
         {
-            *localConstraint = pBeaconStruct->ccxTxPwr.power_limit;
+            *localConstraint = pBeaconStruct->eseTxPwr.power_limit;
         }
 #endif
         if (pBeaconStruct->powerConstraintPresent)

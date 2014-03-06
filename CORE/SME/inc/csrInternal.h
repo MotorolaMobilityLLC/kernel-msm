@@ -86,7 +86,7 @@
    (((pMac)->roam.configParam.nSelect5GHzMargin)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
 )
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
 #define CSR_IS_ROAM_PREFER_5GHZ( pMac ) \
 ( \
    (((pMac)->roam.configParam.nRoamPrefer5GHz)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
@@ -109,7 +109,7 @@
 )
 #endif
 
-//Support for "Fast roaming" (i.e., CCX, LFR, or 802.11r.)
+//Support for "Fast roaming" (i.e., ESE, LFR, or 802.11r.)
 #define CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN 15
 
 typedef enum
@@ -615,11 +615,11 @@ typedef struct tagCsrConfig
 #endif
 #endif
 
-#ifdef FEATURE_WLAN_CCX
-    tANI_U8   isCcxIniFeatureEnabled;
+#ifdef FEATURE_WLAN_ESE
+    tANI_U8   isEseIniFeatureEnabled;
 #endif
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
     tANI_U8       isFastTransitionEnabled;
     tANI_U8       RoamRssiDiff;
     tANI_U8       nImmediateRoamRssiDiff;
@@ -809,7 +809,7 @@ typedef struct tagRoamCsrConnectedInfo
 #ifdef WLAN_FEATURE_VOWIFI_11R
     tANI_U32 nRICRspLength; //Length of the parsed RIC response IEs received in reassoc response
 #endif
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     tANI_U32 nTspecIeLength;
 #endif
     tANI_U8 *pbFrames;  //Point to a buffer contain the beacon, assoc req, assoc rsp frame, in that order
@@ -933,16 +933,16 @@ typedef struct tagCsrRoamSession
     tCsrTimerInfo joinRetryTimerInfo;
     tANI_U32 maxRetryCount;
 #endif
-#ifdef FEATURE_WLAN_CCX
-    tCsrCcxCckmInfo ccxCckmInfo;
+#ifdef FEATURE_WLAN_ESE
+    tCsrEseCckmInfo eseCckmInfo;
     tANI_BOOLEAN isPrevApInfoValid;
     tSirMacSSid prevApSSID;
     tCsrBssid prevApBssid;
     tANI_U8 prevOpChannel;
     tANI_U16 clientDissSecs;
     tANI_U32 roamTS1;
-#if defined(FEATURE_WLAN_CCX_UPLOAD)
-    tCsrCcxCckmIe suppCckmIeInfo;
+#if defined(FEATURE_WLAN_ESE_UPLOAD)
+    tCsrEseCckmIe suppCckmIeInfo;
 #endif
 #endif
     tANI_U8 bRefAssocStartCnt;   //Tracking assoc start indication
@@ -997,10 +997,10 @@ typedef struct tagCsrRoamStruct
 #ifdef FEATURE_WLAN_LFR
     tANI_U8   isFastRoamIniFeatureEnabled;
 #endif
-#ifdef FEATURE_WLAN_CCX
-    tANI_U8   isCcxIniFeatureEnabled;
+#ifdef FEATURE_WLAN_ESE
+    tANI_U8   isEseIniFeatureEnabled;
 #endif
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
     tANI_U8        RoamRssiDiff;
     tANI_BOOLEAN   isWESModeEnabled;
 #endif
@@ -1250,7 +1250,7 @@ eHalStatus csrGetRssi(tpAniSirGlobal pMac,tCsrRssiCallback callback,tANI_U8 staI
 eHalStatus csrGetSnr(tpAniSirGlobal pMac, tCsrSnrCallback callback,
                      tANI_U8 staId, tCsrBssid bssId, void *pContext);
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
 eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
                           tCsrRssiCallback callback,
                           tANI_U8 staId,
@@ -1259,11 +1259,11 @@ eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
                           void * pVosContext);
 #endif
 
-#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
 eHalStatus csrGetTsmStats(tpAniSirGlobal pMac, tCsrTsmStatsCallback callback, tANI_U8 staId,
                               tCsrBssid bssId, void *pContext, void* pVosContext,
                               tANI_U8 tid);
-#endif  /* FEATURE_WLAN_CCX && FEATURE_WLAN_CCX_UPLOAD */
+#endif  /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
 
 eHalStatus csrRoamRegisterCallback(tpAniSirGlobal pMac, csrRoamCompleteCallback callback, void *pContext);
 /* ---------------------------------------------------------------------------
@@ -1391,11 +1391,11 @@ eHalStatus csrScanSavePreferredNetworkFound(tpAniSirGlobal pMac,
 tANI_BOOLEAN csrRoamIs11rAssoc(tpAniSirGlobal pMac);
 #endif
 
-#ifdef FEATURE_WLAN_CCX
-//Returns whether the current association is a CCX assoc or not
-tANI_BOOLEAN csrRoamIsCCXAssoc(tpAniSirGlobal pMac);
-tANI_BOOLEAN csrRoamIsCcxIniFeatureEnabled(tpAniSirGlobal pMac);
-tANI_BOOLEAN csrNeighborRoamIsCCXAssoc(tpAniSirGlobal pMac);
+#ifdef FEATURE_WLAN_ESE
+//Returns whether the current association is a ESE assoc or not
+tANI_BOOLEAN csrRoamIsESEAssoc(tpAniSirGlobal pMac);
+tANI_BOOLEAN csrRoamIsEseIniFeatureEnabled(tpAniSirGlobal pMac);
+tANI_BOOLEAN csrNeighborRoamIsESEAssoc(tpAniSirGlobal pMac);
 #endif
 
 //Remove this code once SLM_Sessionization is supported

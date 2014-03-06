@@ -2176,7 +2176,7 @@ limProcessMlmPostJoinSuspendLink(tpAniSirGlobal pMac, eHalStatus status, tANI_U3
     secChanOffset = psessionEntry->htSecondaryChannelOffset;
     //store the channel switch sessionEntry in the lim global var
     psessionEntry->channelChangeReasonCode = LIM_SWITCH_CHANNEL_JOIN;
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
     psessionEntry->pLimMlmReassocRetryReq = NULL;
 #endif
     limLog(pMac, LOG1, FL("[limProcessMlmJoinReq]: suspend link sucess(%d) "
@@ -4476,7 +4476,7 @@ limProcessAssocFailureTimeout(tpAniSirGlobal pMac, tANI_U32 MsgType)
                 limPostSmeMessage(pMac, LIM_MLM_ASSOC_CNF, (tANI_U32 *) &mlmAssocCnf);
             else 
             {
-                /* Will come here only in case of 11r, CCx FT when reassoc rsp 
+                /* Will come here only in case of 11r, ESE, FT when reassoc rsp
                    is not received and we receive a reassoc - timesout */
                 mlmAssocCnf.resultCode = eSIR_SME_FT_REASSOC_TIMEOUT_FAILURE;
                 limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmAssocCnf);

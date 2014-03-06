@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -179,7 +179,7 @@ typedef struct
    v_U32_t                      wmmAcUapsdSuspensionInterval;
    sme_QosWmmDirType            wmmAcUapsdDirection;
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
    // Inactivity time parameters for TSPEC
    v_U32_t                      wmmInactivityTime;
    v_U32_t                      wmmPrevTrafficCnt;

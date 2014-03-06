@@ -620,7 +620,7 @@ struct hdd_station_ctx
 
    roaming_info_t roam_info;
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
    int     ft_carrier_on;
 #endif
 
@@ -1012,7 +1012,7 @@ struct hdd_adapter_s
    eHDD_BATCH_SCAN_STATE batchScanState;
 #endif
 
-#if defined(FEATURE_WLAN_CCX) && defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
    tAniTrafStrmMetrics tsmStats;
 #endif
    /* Flag to ensure PSB is configured through framework */

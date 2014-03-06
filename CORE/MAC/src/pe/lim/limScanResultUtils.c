@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -269,7 +269,7 @@ limCollectBssDescription(tpAniSirGlobal pMac,
     }
 #endif
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     pBssDescr->QBSSLoad_present = FALSE;
     pBssDescr->QBSSLoad_avail = 0; 
     if( pBPR->QBSSLoad.present) 

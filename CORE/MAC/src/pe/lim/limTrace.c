@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2012-2013 Qualcomm Atheros, Inc.
+ * Copyright (c) 2012-2014 Qualcomm Atheros, Inc.
  * All Rights Reserved.
  * Qualcomm Atheros Confidential and Proprietary.
  */
 /**=========================================================================
-* Copyright (c) 2013 The Linux Foundation. All rights reserved.
+* Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -92,7 +92,7 @@ static tANI_U8* __limTraceGetTimerString( tANI_U16 timerId )
 #endif
         CASE_RETURN_STRING(eLIM_REMAIN_CHN_TIMER);
         CASE_RETURN_STRING(eLIM_PERIODIC_PROBE_REQ_TIMER);
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
         CASE_RETURN_STRING(eLIM_TSM_TIMER);
 #endif
         CASE_RETURN_STRING(eLIM_DISASSOC_ACK_TIMER);

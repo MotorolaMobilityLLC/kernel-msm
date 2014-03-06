@@ -45,9 +45,10 @@ ifeq ($(KERNEL_BUILD), 0)
 
 endif
 
-# To enable CCX upload, dependent config
-# CONFIG_QCOM_CCX must be enabled.
-CONFIG_QCOM_CCX_UPLOAD := n
+# To enable CONFIG_QCOM_ESE_UPLOAD, dependent config
+# CONFIG_QCOM_ESE must be enabled.
+CONFIG_QCOM_ESE := n
+CONFIG_QCOM_ESE_UPLOAD := n
 
 # Feature flags which are not (currently) configurable via Kconfig
 
@@ -211,9 +212,9 @@ MAC_LIM_OBJS := $(MAC_SRC_DIR)/pe/lim/limAIDmgmt.o \
 		$(MAC_SRC_DIR)/pe/lim/limTrace.o \
 		$(MAC_SRC_DIR)/pe/lim/limUtils.o
 
-ifeq ($(CONFIG_QCOM_CCX),y)
-ifneq ($(CONFIG_QCOM_CCX_UPLOAD),y)
-MAC_LIM_OBJS += $(MAC_SRC_DIR)/pe/lim/limProcessCcxFrame.o
+ifeq ($(CONFIG_QCOM_ESE),y)
+ifneq ($(CONFIG_QCOM_ESE_UPLOAD),y)
+MAC_LIM_OBJS += $(MAC_SRC_DIR)/pe/lim/limProcessEseFrame.o
 endif
 endif
 
@@ -272,9 +273,9 @@ SME_CSR_OBJS := $(SME_SRC_DIR)/csr/csrApiRoam.o \
 		$(SME_SRC_DIR)/csr/csrNeighborRoam.o \
 		$(SME_SRC_DIR)/csr/csrUtil.o
 
-ifeq ($(CONFIG_QCOM_CCX),y)
-ifneq ($(CONFIG_QCOM_CCX_UPLOAD),y)
-SME_CSR_OBJS += $(SME_SRC_DIR)/csr/csrCcx.o
+ifeq ($(CONFIG_QCOM_ESE),y)
+ifneq ($(CONFIG_QCOM_ESE_UPLOAD),y)
+SME_CSR_OBJS += $(SME_SRC_DIR)/csr/csrEse.o
 endif
 endif
 
@@ -575,10 +576,10 @@ CDEFINES += -DUSE_80211_WMMTSPEC_FOR_RIC
 endif
 endif
 
-ifeq ($(CONFIG_QCOM_CCX),y)
-CDEFINES += -DFEATURE_WLAN_CCX
-ifeq ($(CONFIG_QCOM_CCX_UPLOAD),y)
-CDEFINES += -DFEATURE_WLAN_CCX_UPLOAD
+ifeq ($(CONFIG_QCOM_ESE),y)
+CDEFINES += -DFEATURE_WLAN_ESE
+ifeq ($(CONFIG_QCOM_ESE_UPLOAD),y)
+CDEFINES += -DFEATURE_WLAN_ESE_UPLOAD
 endif
 endif
 

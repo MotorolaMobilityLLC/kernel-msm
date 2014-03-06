@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -431,7 +431,7 @@ static v_BOOL_t hdd_wmm_is_access_allowed(hdd_adapter_t* pAdapter,
    return VOS_TRUE;
 }
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
 /**
   @brief hdd_wmm_inactivity_timer_cb() - timer handler function which is
   called for every inactivity interval per AC. This function gets the
@@ -572,7 +572,7 @@ VOS_STATUS hdd_wmm_disable_inactivity_timer(hdd_wmm_qos_context_t* pQosContext)
 
     return vos_status;
 }
-#endif // FEATURE_WLAN_CCX
+#endif // FEATURE_WLAN_ESE
 
 /**
   @brief hdd_wmm_sme_callback() - callback registered by HDD with SME for receiving
@@ -675,7 +675,7 @@ static eHalStatus hdd_wmm_sme_callback (tHalHandle hHal,
          hdd_wmm_notify_app(pQosContext);
       }
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
       // Check if the inactivity interval is specified
       if (pCurrentQosInfo && pCurrentQosInfo->inactivity_interval) {
          VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
@@ -683,7 +683,7 @@ static eHalStatus hdd_wmm_sme_callback (tHalHandle hHal,
                  __func__, pCurrentQosInfo->inactivity_interval, acType);
          hdd_wmm_enable_inactivity_timer(pQosContext, pCurrentQosInfo->inactivity_interval);
       }
-#endif // FEATURE_WLAN_CCX
+#endif // FEATURE_WLAN_ESE
 
       // notify TL to enable trigger frames if necessary
       hdd_wmm_enable_tl_uapsd(pQosContext);
@@ -1383,7 +1383,7 @@ static void hdd_wmm_do_implicit_qos(struct work_struct *work)
       qosInfo.suspension_interval = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->InfraUapsdBkSuspIntv;
       break;
    }
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
    qosInfo.inactivity_interval = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->InfraInactivityInterval;
 #endif
    qosInfo.ts_info.burst_size_defn = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->burstSizeDefinition;
@@ -1617,7 +1617,7 @@ VOS_STATUS hdd_wmm_adapter_close ( hdd_adapter_t* pAdapter )
    {
       pQosContext = list_first_entry(&pAdapter->hddWmmStatus.wmmContextList,
                                      hdd_wmm_qos_context_t, node);
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
       hdd_wmm_disable_inactivity_timer(pQosContext);
 #endif
 #ifdef WLAN_OPEN_SOURCE
@@ -2610,7 +2610,7 @@ hdd_wlan_wmm_status_e hdd_wmm_delts( hdd_adapter_t* pAdapter,
       // need to tell TL to stop trigger timer, etc
       hdd_wmm_disable_tl_uapsd(pQosContext);
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
       // disable the inactivity timer
       hdd_wmm_disable_inactivity_timer(pQosContext);
 #endif

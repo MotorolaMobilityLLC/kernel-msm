@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -705,7 +705,7 @@ tSirRetStatus limSendLinkReportActionFrame(tpAniSirGlobal, tpSirMacLinkReport, t
 tSirRetStatus limSendRadioMeasureReportActionFrame(tpAniSirGlobal, tANI_U8, tANI_U8, tpSirMacRadioMeasureReport, tSirMacAddr, tpPESession);
 #endif
 
-#if defined(FEATURE_WLAN_CCX) && !defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE) && !defined(FEATURE_WLAN_ESE_UPLOAD)
 void limProcessIappFrame(tpAniSirGlobal, tANI_U8 *,tpPESession);
 #endif
 

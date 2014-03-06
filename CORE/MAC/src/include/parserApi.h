@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -99,8 +99,8 @@ typedef struct sSirProbeRespBeacon
 #ifdef WLAN_FEATURE_VOWIFI_11R
     tANI_U8                   mdie[SIR_MDIE_SIZE];
 #endif
-#ifdef FEATURE_WLAN_CCX
-    tDot11fIECCXTxmitPower    ccxTxPwr;
+#ifdef FEATURE_WLAN_ESE
+    tDot11fIEESETxmitPower    eseTxPwr;
     tDot11fIEQBSSLoad         QBSSLoad;
 #endif
     tANI_U8                   ssidPresent;
@@ -235,10 +235,10 @@ typedef struct sSirAssocRsp
     tDot11fIERICDataDesc      RICData[2];
 #endif
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     tANI_U8                   num_tspecs;
-    tDot11fIEWMMTSPEC         TSPECInfo[SIR_CCX_MAX_TSPEC_IES];
-    tSirMacCCXTSMIE           tsmIE;
+    tDot11fIEWMMTSPEC         TSPECInfo[SIR_ESE_MAX_TSPEC_IES];
+    tSirMacESETSMIE           tsmIE;
 #endif
 
     tANI_U8                   suppRatesPresent;
@@ -253,7 +253,7 @@ typedef struct sSirAssocRsp
     tANI_U8                   mdiePresent;
     tANI_U8                   ricPresent;
 #endif
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     tANI_U8                   tspecPresent;
     tANI_U8                   tsmPresent;
 #endif    
@@ -264,9 +264,9 @@ typedef struct sSirAssocRsp
     tDot11fIEOBSSScanParameters OBSSScanParameters;
 } tSirAssocRsp, *tpSirAssocRsp;
 
-#if defined(FEATURE_WLAN_CCX_UPLOAD)
-// Structure to hold CCX Beacon report mandatory IEs
-typedef struct sSirCcxBcnReportMandatoryIe
+#if defined(FEATURE_WLAN_ESE_UPLOAD)
+// Structure to hold Ese Beacon report mandatory IEs
+typedef struct sSirEseBcnReportMandatoryIe
 {
     tSirMacSSid           ssId;
     tSirMacRateSet        supportedRates;
@@ -285,8 +285,8 @@ typedef struct sSirCcxBcnReportMandatoryIe
     tANI_U8               ibssParamPresent;
     tANI_U8               timPresent;
     tANI_U8               rrmPresent;
-} tSirCcxBcnReportMandatoryIe, *tpSirCcxBcnReportMandatoryIe;
-#endif /* FEATURE_WLAN_CCX_UPLOAD */
+} tSirEseBcnReportMandatoryIe, *tpSirEseBcnReportMandatoryIe;
+#endif /* FEATURE_WLAN_ESE_UPLOAD */
 
 tANI_U8
 sirIsPropCapabilityEnabled(struct sAniSirGlobal *pMac, tANI_U32 bitnum);
@@ -383,14 +383,14 @@ sirParseBeaconIE(struct sAniSirGlobal *pMac,
                  tANI_U8                    *pPayload,
                  tANI_U32                    payloadLength);
 
-#if defined(FEATURE_WLAN_CCX_UPLOAD)
+#if defined(FEATURE_WLAN_ESE_UPLOAD)
 tSirRetStatus
-sirFillBeaconMandatoryIEforCcxBcnReport(tpAniSirGlobal    pMac,
+sirFillBeaconMandatoryIEforEseBcnReport(tpAniSirGlobal    pMac,
                                         tANI_U8          *pPayload,
                                         const tANI_U32    payloadLength,
                                         tANI_U8         **outIeBuf,
                                         tANI_U32         *pOutIeLen);
-#endif /* FEATURE_WLAN_CCX_UPLOAD */
+#endif /* FEATURE_WLAN_ESE_UPLOAD */
 
 tSirRetStatus
 sirConvertBeaconFrame2Struct(struct sAniSirGlobal *pMac,
@@ -727,19 +727,19 @@ void PopulateDot11fWMM(tpAniSirGlobal      pMac,
 
 void PopulateDot11fWMMCaps(tDot11fIEWMMCaps *pCaps);
 
-#if defined(FEATURE_WLAN_CCX)
-// Fill the CCX version IE
-void PopulateDot11fCCXVersion(tDot11fIECCXVersion *pCCXVersion);
+#if defined(FEATURE_WLAN_ESE)
+// Fill the ESE version IE
+void PopulateDot11fESEVersion(tDot11fIEESEVersion *pESEVersion);
 // Fill the Radio Management Capability
-void PopulateDot11fCCXRadMgmtCap(tDot11fIECCXRadMgmtCap *pCCXRadMgmtCap);
+void PopulateDot11fESERadMgmtCap(tDot11fIEESERadMgmtCap *pESERadMgmtCap);
 // Fill the CCKM IE
-tSirRetStatus PopulateDot11fCCXCckmOpaque( tpAniSirGlobal pMac,
+tSirRetStatus PopulateDot11fESECckmOpaque( tpAniSirGlobal pMac,
                                            tpSirCCKMie    pCCKMie,
-                                           tDot11fIECCXCckmOpaque *pDot11f );
+                                           tDot11fIEESECckmOpaque *pDot11f );
 
 void PopulateDot11TSRSIE(tpAniSirGlobal  pMac,
-                               tSirMacCCXTSRSIE     *pOld,
-                               tDot11fIECCXTrafStrmRateSet  *pDot11f,
+                               tSirMacESETSRSIE     *pOld,
+                               tDot11fIEESETrafStrmRateSet  *pDot11f,
                                tANI_U8 rate_length);
 void PopulateDot11fReAssocTspec(tpAniSirGlobal pMac, tDot11fReAssocRequest *pReassoc, tpPESession psessionEntry);
 #endif

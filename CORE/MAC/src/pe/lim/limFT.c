@@ -355,12 +355,12 @@ void limPerformFTPreAuth(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data,
         // receive Auth2.
         authFrame.authAlgoNumber = eSIR_FT_AUTH; // Set the auth type to FT
     }
-#if defined FEATURE_WLAN_CCX || defined FEATURE_WLAN_LFR
+#if defined FEATURE_WLAN_ESE || defined FEATURE_WLAN_LFR
     else
     {
-        // Will need to make isCCXconnection a enum may be for further
+        // Will need to make isESEconnection a enum may be for further
         // improvements to this to match this algorithm number
-        authFrame.authAlgoNumber = eSIR_OPEN_SYSTEM; // For now if its CCX and 11r FT. 
+        authFrame.authAlgoNumber = eSIR_OPEN_SYSTEM; // For now if its ESE and 11r FT.
     }
 #endif
     authFrame.authTransactionSeqNumber = SIR_MAC_AUTH_FRAME_1;
@@ -698,7 +698,7 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
        
     /* Retrieve the session that has already been created and update the entry */
     pftSessionEntry = pMac->ft.ftPEContext.pftSessionEntry;
-#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
     limPrintMacAddr(pMac, pbssDescription->bssId, LOG1);
 #endif
     pftSessionEntry->limWmeEnabled = psessionEntry->limWmeEnabled;
@@ -750,7 +750,7 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
     // Self Mac
     sirCopyMacAddr(pftSessionEntry->selfMacAddr, psessionEntry->selfMacAddr);
     sirCopyMacAddr(pftSessionEntry->limReAssocbssId, pbssDescription->bssId);
-#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
     limPrintMacAddr(pMac, pftSessionEntry->limReAssocbssId, LOG1);
 #endif
 
@@ -802,7 +802,7 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
         pftSessionEntry->limCurrentBssPropCap;
 
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
     pftSessionEntry->maxTxPower = limGetMaxTxPower(regMax, localPowerConstraint, pMac->roam.configParam.nTxPowerCap);
 #else
     pftSessionEntry->maxTxPower = VOS_MIN( regMax , (localPowerConstraint) );
@@ -853,10 +853,10 @@ void limFTSetupAuthSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
     if (pftSessionEntry)
     {
         pftSessionEntry->is11Rconnection = psessionEntry->is11Rconnection;
-#ifdef FEATURE_WLAN_CCX
-        pftSessionEntry->isCCXconnection = psessionEntry->isCCXconnection;
+#ifdef FEATURE_WLAN_ESE
+        pftSessionEntry->isESEconnection = psessionEntry->isESEconnection;
 #endif
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
         pftSessionEntry->isFastTransitionEnabled = psessionEntry->isFastTransitionEnabled;
 #endif
 

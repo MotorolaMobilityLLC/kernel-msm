@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -20,7 +20,7 @@
  */
 
 /*
- * Copyright (c) 2012-2013 Qualcomm Atheros, Inc.
+ * Copyright (c) 2012-2014 Qualcomm Atheros, Inc.
  * All Rights Reserved.
  * Qualcomm Atheros Confidential and Proprietary.
  *
@@ -390,7 +390,7 @@ static void __limInitAssocVars(tpAniSirGlobal pMac)
     vos_mem_set(pMac->lim.protStaCache,
                 sizeof(tCacheParams) * LIM_PROT_STA_CACHE_SIZE, 0);
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
     pMac->lim.pSessionEntry = NULL;
     pMac->lim.reAssocRetryAttempt = 0;
 #endif

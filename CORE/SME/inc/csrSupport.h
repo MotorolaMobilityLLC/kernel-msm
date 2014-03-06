@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -820,9 +820,9 @@ tANI_BOOLEAN csrIsProfile11r( tCsrRoamProfile *pProfile );
 tANI_BOOLEAN csrIsAuthType11r( eCsrAuthType AuthType, tANI_U8 mdiePresent);
 #endif
 
-#ifdef FEATURE_WLAN_CCX
-tANI_BOOLEAN csrIsAuthTypeCCX( eCsrAuthType AuthType );
-tANI_BOOLEAN csrIsProfileCCX( tCsrRoamProfile *pProfile );
+#ifdef FEATURE_WLAN_ESE
+tANI_BOOLEAN csrIsAuthTypeESE( eCsrAuthType AuthType );
+tANI_BOOLEAN csrIsProfileESE( tCsrRoamProfile *pProfile );
 #endif
 
 #endif

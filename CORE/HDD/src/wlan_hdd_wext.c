@@ -872,7 +872,7 @@ VOS_STATUS wlan_hdd_get_snr(hdd_adapter_t *pAdapter, v_S7_t *snr)
 
    return VOS_STATUS_SUCCESS;
 }
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
 
 static void hdd_GetRoamRssiCB( v_S7_t rssi, tANI_U32 staId, void *pContext )
 {
@@ -3708,12 +3708,12 @@ static int iw_set_encodeext(struct net_device *dev,
           setKey.encType = eCSR_ENCRYPT_TYPE_AES;
           break;
 
-#ifdef FEATURE_WLAN_CCX
+#ifdef FEATURE_WLAN_ESE
 #define IW_ENCODE_ALG_KRK 6
        case IW_ENCODE_ALG_KRK:
           setKey.encType = eCSR_ENCRYPT_TYPE_KRK;
           break;
-#endif  /* FEATURE_WLAN_CCX */
+#endif  /* FEATURE_WLAN_ESE */
 
        default:
           setKey.encType = eCSR_ENCRYPT_TYPE_NONE;
@@ -4897,7 +4897,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
         }
 #endif
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
         case WE_GET_ROAM_RSSI:
         {
             v_S7_t s7Rssi = 0;
@@ -7840,7 +7840,7 @@ static const struct iw_priv_args we_private_args[] = {
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getRSSI" },
 #endif
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_ESE || defined(FEATURE_WLAN_LFR)
     {   WE_GET_ROAM_RSSI,
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
