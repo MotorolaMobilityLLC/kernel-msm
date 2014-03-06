@@ -91,6 +91,8 @@
 #define FTM_CHAIN_SEL_R0_T0_ON      3
 #define FTM_CHAIN_SEL_MAX           3
 
+#define WCNSS_TXFIR_OFFSET          0x00018000
+
 #ifndef QWLAN_PHYDBG_BASE
 #define QWLAN_PHYDBG_BASE                   0x03004000
 #endif /* QWLAN_PHYDBG_BASE */
@@ -3603,6 +3605,7 @@ static VOS_STATUS wlan_ftm_priv_enable_dpd(hdd_adapter_t *pAdapter,
     tANI_U32 value = 0;
     tANI_U32 reg_addr;
     hdd_context_t *pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
+
     if (pHddCtx->ftm.ftm_state != WLAN_FTM_STARTED)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
@@ -3610,11 +3613,8 @@ static VOS_STATUS wlan_ftm_priv_enable_dpd(hdd_adapter_t *pAdapter,
         return VOS_STATUS_E_FAILURE;
     }
 
-#ifdef WCN_PRONTO
-    reg_addr = 0xfb018000;
-#else
-    reg_addr = 0x03018000;
-#endif
+    reg_addr = WCNSS_TXFIR_OFFSET;
+
     wpalReadRegister(reg_addr, &value);
     if (enable)
     {
