@@ -122,6 +122,9 @@ static int dory_mi2s_startup(struct snd_pcm_substream *substream)
 	struct dory_data *machine = snd_soc_card_get_drvdata(rtd->card);
 
 	if (atomic_inc_return(&machine->mi2s_rsc_ref) == 1) {
+
+		gpio_set_value(mic_en_gpio.gpio, 1);
+
 		dory_regulator_enable(machine, true);
 
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
@@ -190,6 +193,8 @@ static void dory_mi2s_shutdown(struct snd_pcm_substream *substream)
 	if (atomic_dec_return(&machine->mi2s_rsc_ref) == 0) {
 		if (afe_set_lpass_clock(MI2S_RX, &lpass_mi2s_disable) < 0)
 			pr_err("Unable to disable LPASS clock");
+
+		gpio_set_value(mic_en_gpio.gpio, 0);
 
 		dory_regulator_enable(machine, false);
 	}
