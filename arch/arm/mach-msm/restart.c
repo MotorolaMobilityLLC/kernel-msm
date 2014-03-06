@@ -88,7 +88,7 @@ static struct notifier_block panic_blk = {
 	.notifier_call	= panic_prep_restart,
 };
 
-static void set_dload_mode(int on)
+void set_dload_mode(int on)
 {
 	if (dload_mode_addr) {
 		__raw_writel(on ? 0xE47B337D : 0, dload_mode_addr);
@@ -326,6 +326,9 @@ static int __init msm_restart_init(void)
 	/* Set default restart_reason to TZ crash.
 	 * If can't be set explicit, it causes by TZ */
 	__raw_writel(LGE_RB_MAGIC | LGE_ERR_TZ, restart_reason);
+
+	if (!lge_is_handle_panic_enable())
+		set_dload_mode(0);
 #endif
 	return 0;
 

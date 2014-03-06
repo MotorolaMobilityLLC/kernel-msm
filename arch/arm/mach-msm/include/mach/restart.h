@@ -28,5 +28,9 @@ void fsm_restart(char mode, const char *cmd);
 
 extern int pmic_reset_irq;
 
+#if defined(CONFIG_MSM_DLOAD_MODE)
+void set_dload_mode(int on);
+#endif
+
 #endif
 

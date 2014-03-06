@@ -37,13 +37,36 @@
 static void *msm_imem_base;
 static int dummy_arg;
 static int subsys_crash_magic = 0x0;
-static int enable = 0; /* 0 - disabed, 1 - enabled */
-module_param_named(enable, enable, int, S_IWUSR | S_IRUGO);
+static int enable = 0; /* 0 - disabled, 1 - enabled */
+static int enable_set(const char *val, struct kernel_param *kp);
+module_param_call(enable, enable_set, param_get_int,
+		&enable, S_IWUSR | S_IRUGO);
 
 static void imem_writel(unsigned int val, unsigned int offset)
 {
 	if (msm_imem_base)
 		__raw_writel(val, msm_imem_base + offset);
+}
+
+static int enable_set(const char *val, struct kernel_param *kp)
+{
+	int ret;
+	int old_val = enable;
+
+	ret = param_set_int(val, kp);
+	if (ret)
+		return ret;
+
+	/* if enable is not zero or one, ignore */
+	if (enable >> 1) {
+		enable = old_val;
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_MSM_DLOAD_MODE
+	set_dload_mode(enable);
+#endif
+	return 0;
 }
 
 int lge_is_handle_panic_enable(void)
