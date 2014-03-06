@@ -148,6 +148,13 @@ typedef struct sSirMsgQ
      */
     void *bodyptr;
     tANI_U32 bodyval;
+
+    /*
+     * Some messages provide a callback function.  The function signature
+     * must be agreed upon between the two entities exchanging the message
+     */
+    void *callback;
+
 } tSirMsgQ, *tpSirMsgQ;
 
 /// Mailbox Message Structure Define
