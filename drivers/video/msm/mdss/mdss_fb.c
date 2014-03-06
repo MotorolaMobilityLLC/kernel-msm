@@ -121,7 +121,11 @@ static int mdss_fb_notify_update(struct msm_fb_data_type *mfd,
 	if (notify > NOTIFY_UPDATE_POWER_OFF)
 		return -EINVAL;
 
-	if (notify == NOTIFY_UPDATE_START) {
+	if (mfd->update.is_suspend) {
+		to_user = NOTIFY_TYPE_SUSPEND;
+		mfd->update.is_suspend = 0;
+		ret = 1;
+	} else if (notify == NOTIFY_UPDATE_START) {
 		INIT_COMPLETION(mfd->update.comp);
 		ret = wait_for_completion_timeout(
 						&mfd->update.comp, 4 * HZ);
@@ -787,6 +791,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 			}
 			mutex_lock(&mfd->update.lock);
 			mfd->update.type = NOTIFY_TYPE_UPDATE;
+			mfd->update.is_suspend = 0;
 			mutex_unlock(&mfd->update.lock);
 		}
 		break;
@@ -801,7 +806,9 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 			mutex_lock(&mfd->update.lock);
 			mfd->update.type = NOTIFY_TYPE_SUSPEND;
+			mfd->update.is_suspend = 1;
 			mutex_unlock(&mfd->update.lock);
+			complete(&mfd->update.comp);
 			del_timer(&mfd->no_update.timer);
 			mfd->no_update.value = NOTIFY_TYPE_SUSPEND;
 			complete(&mfd->no_update.comp);
@@ -2300,13 +2307,6 @@ static int mdss_fb_register_extra_panel(struct platform_device *pdev,
 		pr_err("split panel already setup for framebuffer device %s\n",
 				dev_name(&pdev->dev));
 		return -EEXIST;
-	}
-
-	if ((fb_pdata->panel_info.type != MIPI_VIDEO_PANEL) ||
-			(pdata->panel_info.type != MIPI_VIDEO_PANEL)) {
-		pr_err("Split panel not supported for panel type %d\n",
-				pdata->panel_info.type);
-		return -EINVAL;
 	}
 
 	fb_pdata->next = pdata;
