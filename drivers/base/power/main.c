@@ -406,6 +406,51 @@ static int dpm_run_callback(pm_callback_t cb, struct device *dev,
  * The driver of @dev will not receive interrupts while this function is being
  * executed.
  */
+
+struct callback_tracer {
+	ktime_t start_time;
+	ktime_t finish_time;
+	u64 longest_duration;
+	pm_callback_t current_callback;
+	pm_callback_t longest_callback;
+} resume_noirq_info;
+
+void debug_resume_noirq_init(void)
+{
+	resume_noirq_info.longest_duration = 1000; /*1us*/
+	resume_noirq_info.current_callback = NULL;
+	resume_noirq_info.longest_callback = NULL;
+}
+void debug_resume_noirq_start(pm_callback_t cb)
+{
+	resume_noirq_info.start_time = ktime_get();
+	resume_noirq_info.current_callback = cb;
+}
+
+void debug_resume_noirq_end(pm_callback_t cb, struct device *dev)
+{
+	u64 usecs64;
+	int usecs;
+
+	WARN_ON(cb != resume_noirq_info.current_callback);
+	resume_noirq_info.finish_time = ktime_get();
+
+	usecs64 = ktime_to_ns(ktime_sub(resume_noirq_info.finish_time,
+			resume_noirq_info.start_time));
+
+	if (usecs64 > resume_noirq_info.longest_duration) {
+		resume_noirq_info.longest_callback = cb;
+		resume_noirq_info.longest_duration = usecs64;
+		do_div(usecs64, NSEC_PER_USEC);
+		usecs = usecs64;
+		if (usecs == 0)
+			return;
+		pr_info("PM: resume_noirq longest - %s(0x%p) (%ld.%03ld msecs)\n",
+			dev->driver ? dev->driver->name : "NULL", cb,
+			(usecs / USEC_PER_MSEC), (usecs % USEC_PER_MSEC));
+	}
+
+}
 static int device_resume_noirq(struct device *dev, pm_message_t state)
 {
 	pm_callback_t callback = NULL;
@@ -434,7 +479,9 @@ static int device_resume_noirq(struct device *dev, pm_message_t state)
 		callback = pm_noirq_op(dev->driver->pm, state);
 	}
 
+	debug_resume_noirq_start(callback);
 	error = dpm_run_callback(callback, dev, state, info);
+	debug_resume_noirq_end(callback, dev);
 
 	TRACE_RESUME(error);
 	return error;
@@ -452,6 +499,7 @@ static void dpm_resume_noirq(pm_message_t state)
 	ktime_t starttime = ktime_get();
 
 	mutex_lock(&dpm_list_mtx);
+	debug_resume_noirq_init();
 	while (!list_empty(&dpm_noirq_list)) {
 		struct device *dev = to_device(dpm_noirq_list.next);
 		int error;
