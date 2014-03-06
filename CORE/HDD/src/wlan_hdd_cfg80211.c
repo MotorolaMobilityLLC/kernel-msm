@@ -5515,6 +5515,7 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
 {
     int status = 0;
     hdd_wext_state_t *pWextState;
+    hdd_context_t *pHddCtx;
     v_U32_t roamId;
     tCsrRoamProfile *pRoamProfile;
     eCsrAuthType RSNAuthType;
@@ -5522,6 +5523,15 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
     ENTER();
 
     pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+
+    status = wlan_hdd_validate_context(pHddCtx);
+    if (status)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid!", __func__);
+        return status;
+    }
 
     if (SIR_MAC_MAX_SSID_LENGTH < ssid_len)
     {

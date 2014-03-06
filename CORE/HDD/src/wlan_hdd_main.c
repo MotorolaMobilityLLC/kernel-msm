@@ -1669,6 +1669,16 @@ int hdd_handle_batch_scan_ioctl
 )
 {
     int ret = 0;
+    hdd_context_t *pHddCtx;
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    ret = wlan_hdd_validate_context(pHddCtx);
+    if (ret)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: HDD context is not valid!", __func__);
+        goto exit;
+    }
 
     if (strncmp(command, "WLS_BATCHING VERSION", 20) == 0)
     {
