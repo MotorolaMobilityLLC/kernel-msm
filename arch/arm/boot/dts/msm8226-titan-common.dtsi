@@ -557,8 +557,8 @@
                 stk,alsctrl-reg = <0x39>;
                 stk,ledctrl-reg = <0xFF>;
                 stk,wait-reg = <0x07>;
-                stk,ps-thdh = <300>;
-                stk,ps-thdl = <200>;
+                stk,ps-thdh = <500>;
+                stk,ps-thdl = <400>;
         };
 };
 
