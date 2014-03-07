@@ -1067,46 +1067,46 @@ static ssize_t bmg_store_fifo_tag(struct device *dev,
 
 static DEVICE_ATTR(chip_id, S_IRUGO,
 		bmg_show_chip_id, NULL);
-static DEVICE_ATTR(op_mode, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(op_mode, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_op_mode, bmg_store_op_mode);
 static DEVICE_ATTR(value, S_IRUGO,
 		bmg_show_value, NULL);
-static DEVICE_ATTR(range, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(range, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_range, bmg_store_range);
-static DEVICE_ATTR(bandwidth, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(bandwidth, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_bandwidth, bmg_store_bandwidth);
-static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_enable, bmg_store_enable);
-static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_delay, bmg_store_delay);
-static DEVICE_ATTR(fastoffset_en, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(fastoffset_en, S_IRUGO|S_IWUSR|S_IWGRP,
 		NULL, bmg_store_fastoffset_en);
-static DEVICE_ATTR(slowoffset_en, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(slowoffset_en, S_IRUGO|S_IWUSR|S_IWGRP,
 		NULL, bmg_store_slowoffset_en);
 static DEVICE_ATTR(selftest, S_IRUGO,
 		bmg_show_selftest, NULL);
-static DEVICE_ATTR(sleepdur, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(sleepdur, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_sleepdur, bmg_store_sleepdur);
-static DEVICE_ATTR(autosleepdur, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(autosleepdur, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_autosleepdur, bmg_store_autosleepdur);
 #ifdef BMG_DEBUG
-static DEVICE_ATTR(softreset, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(softreset, S_IRUGO|S_IWUSR|S_IWGRP,
 		NULL, bmg_store_softreset);
 static DEVICE_ATTR(regdump, S_IRUGO,
 		bmg_show_dumpreg, NULL);
 #endif
 #ifdef BMG_USE_FIFO
-static DEVICE_ATTR(fifo_mode, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(fifo_mode, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_fifo_mode, bmg_store_fifo_mode);
-static DEVICE_ATTR(fifo_framecount, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(fifo_framecount, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_fifo_framecount, bmg_store_fifo_framecount);
-static DEVICE_ATTR(fifo_overrun, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(fifo_overrun, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_fifo_overrun, NULL);
-static DEVICE_ATTR(fifo_data_frame, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(fifo_data_frame, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_fifo_data_frame, NULL);
-static DEVICE_ATTR(fifo_data_sel, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(fifo_data_sel, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_fifo_data_sel, bmg_store_fifo_data_sel);
-static DEVICE_ATTR(fifo_tag, S_IRUGO|S_IWUSR,
+static DEVICE_ATTR(fifo_tag, S_IRUGO|S_IWUSR|S_IWGRP,
 		bmg_show_fifo_tag, bmg_store_fifo_tag);
 #endif
 
