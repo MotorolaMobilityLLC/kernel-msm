@@ -647,6 +647,10 @@ static int smb135x_get_prop_batt_capacity(struct smb135x_chg *chip)
 {
 	union power_supply_propval ret = {0, };
 
+	if (!chip->bms_psy && chip->bms_psy_name)
+		chip->bms_psy =
+			power_supply_get_by_name((char *)chip->bms_psy_name);
+
 	if (chip->fake_battery_soc >= 0)
 		return chip->fake_battery_soc;
 	if (chip->bms_psy) {
