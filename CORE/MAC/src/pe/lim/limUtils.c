@@ -7431,12 +7431,12 @@ void limProcessDelStaSelfRsp(tpAniSirGlobal pMac,tpSirMsgQ limMsgQ)
 tANI_U8 limUnmapChannel(tANI_U8 mapChannel)
 {
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
-   if( mapChannel > 0 && mapChannel < aUnsortedChannelListSize )
+   if( mapChannel > 0 && mapChannel <= aUnsortedChannelListSize )
        if (IS_ROAM_SCAN_OFFLOAD_FEATURE_ENABLE)
            return aUnsortedChannelList[mapChannel -1];
        else
 #else
-   if( mapChannel > 0 && mapChannel < abChannelSize )
+   if( mapChannel > 0 && mapChannel <= abChannelSize )
 #endif
      return abChannel[mapChannel -1];
    else
