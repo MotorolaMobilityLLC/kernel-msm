@@ -711,7 +711,7 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			pr_err(
 				"%s: invalid max-clock-frequency-hz property, %d\n",
 				__func__, ret);
-			return ret;
+			goto out;
 		}
 	}
 
@@ -725,14 +725,16 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 		if (PTR_ERR(vreg_info->hdl) == -EPROBE_DEFER) {
 			PCIE_DBG("EPROBE_DEFER for VReg:%s\n",
 				vreg_info->name);
-			return PTR_ERR(vreg_info->hdl);
+			ret = PTR_ERR(vreg_info->hdl);
+			goto out;
 		}
 
 		if (IS_ERR(vreg_info->hdl)) {
 			if (vreg_info->required) {
 				PCIE_DBG("Vreg %s doesn't exist\n",
 					vreg_info->name);
-				return PTR_ERR(vreg_info->hdl);
+				ret = PTR_ERR(vreg_info->hdl);
+				goto out;
 			} else {
 				PCIE_DBG("Optional Vreg %s doesn't exist\n",
 					vreg_info->name);
@@ -765,7 +767,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 		if (PTR_ERR(dev->gdsc) == -EPROBE_DEFER)
 			PCIE_DBG("PCIe: EPROBE_DEFER for %s GDSC\n",
 					dev->pdev->name);
-		return PTR_ERR(dev->gdsc);
+		ret = PTR_ERR(dev->gdsc);
+		goto out;
 	}
 
 	dev->gpio_n = 0;
@@ -780,7 +783,7 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			PCIE_DBG("GPIO num for %s is %d\n", gpio_info->name,
 							gpio_info->num);
 		} else {
-			return ret;
+			goto out;
 		}
 	}
 
@@ -793,7 +796,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			if (clk_info->required) {
 				PCIE_DBG("Clock %s isn't available:%ld\n",
 				clk_info->name, PTR_ERR(clk_info->hdl));
-				return PTR_ERR(clk_info->hdl);
+				ret = PTR_ERR(clk_info->hdl);
+				goto out;
 			} else {
 				PCIE_DBG("Ignoring Clock %s\n", clk_info->name);
 				clk_info->hdl = NULL;
@@ -817,7 +821,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			if (clk_info->required) {
 				PCIE_DBG("Clock %s isn't available:%ld\n",
 				clk_info->name, PTR_ERR(clk_info->hdl));
-				return PTR_ERR(clk_info->hdl);
+				ret = PTR_ERR(clk_info->hdl);
+				goto out;
 			} else {
 				PCIE_DBG("Ignoring Clock %s\n", clk_info->name);
 				clk_info->hdl = NULL;
@@ -839,7 +844,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 
 		if (!res) {
 			pr_err("pcie:can't get %s resource.\n", res_info->name);
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto out;
 		} else
 			PCIE_DBG("start addr for %s is %pa.\n", res_info->name,
 					&res->start);
@@ -848,7 +854,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 						res->start, resource_size(res));
 		if (!res_info->base) {
 			pr_err("pcie: can't remap %s.\n", res_info->name);
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto out;
 		}
 		res_info->resource = res;
 	}
@@ -868,7 +875,7 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 			pr_err("pcie: can't find IRQ # for %s.\n",
 				irq_info->name);
 			ret = -ENODEV;
-			break;
+			goto out;
 		} else {
 			irq_info->num = res->start;
 			PCIE_DBG("IRQ # for %s is %d.\n", irq_info->name,
@@ -890,6 +897,8 @@ static int msm_pcie_get_resources(struct msm_pcie_dev_t *dev,
 	dev->dev_io_res = dev->res[MSM_PCIE_RES_IO].resource;
 	dev->dev_io_res->flags = IORESOURCE_IO;
 
+out:
+	kfree(clkfreq);
 	return ret;
 }
 
