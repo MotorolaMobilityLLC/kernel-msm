@@ -136,13 +136,13 @@ static struct gpiomux_setting audio_auxpcm[] = {
 	{
 		.func = GPIOMUX_FUNC_GPIO,
 		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_DOWN,
+		.pull = GPIOMUX_PULL_NONE,
 	},
 	/* Active state */
 	{
 		.func = GPIOMUX_FUNC_1,
 		.drv = GPIOMUX_DRV_2MA,
-		.pull = GPIOMUX_PULL_NONE,
+		.pull = GPIOMUX_PULL_DOWN,
 	},
 };
 
