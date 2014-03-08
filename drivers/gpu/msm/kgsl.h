@@ -45,13 +45,6 @@
 /* The size of each entry in a page table */
 #define KGSL_PAGETABLE_ENTRY_SIZE  4
 
-/* Pagetable Virtual Address base */
-#ifndef CONFIG_MSM_KGSL_CFF_DUMP
-#define KGSL_PAGETABLE_BASE	0x10000000
-#else
-#define KGSL_PAGETABLE_BASE	SZ_4M
-#endif
-
 /* Extra accounting entries needed in the pagetable */
 #define KGSL_PT_EXTRA_ENTRIES      16
 
