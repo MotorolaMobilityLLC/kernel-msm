@@ -107,7 +107,7 @@ static int msm_rpmstats_copy_stats(struct msm_rpmstats_private_data *pdata)
 						pdata->read_idx, 2);
 
 	if (record.id == ID_ACCUM_TIME_SCLK) {
-		usec = record.val * USEC_PER_SEC;
+		usec = (uint64_t)record.val * USEC_PER_SEC;
 		do_div(usec, SCLK_HZ);
 	}  else
 		usec = (unsigned long)record.val;
