@@ -35,7 +35,7 @@ static struct kobject *wakeup_reason;
 static spinlock_t resume_reason_lock;
 
 static ssize_t reason_show(struct kobject *kobj, struct kobj_attribute *attr,
-		char *buf)
+		const char *buf, size_t count)
 {
 	int irq_no, buf_offset = 0;
 	struct irq_desc *desc;
@@ -106,7 +106,7 @@ static struct notifier_block wakeup_reason_pm_notifier_block = {
 /* Initializes the sysfs parameter
  * registers the pm_event notifier
  */
-int __init wakeup_reason_init(void)
+void __init wakeup_reason_init(void)
 {
 	int retval;
 	spin_lock_init(&resume_reason_lock);
@@ -119,7 +119,7 @@ int __init wakeup_reason_init(void)
 	if (!wakeup_reason) {
 		printk(KERN_WARNING "[%s] failed to create a sysfs kobject\n",
 				__func__);
-		return 1;
+		return;
 	}
 	retval = sysfs_create_group(wakeup_reason, &attr_group);
 	if (retval) {
@@ -127,7 +127,6 @@ int __init wakeup_reason_init(void)
 		printk(KERN_WARNING "[%s] failed to create a sysfs group %d\n",
 				__func__, retval);
 	}
-	return 0;
 }
 
 late_initcall(wakeup_reason_init);
