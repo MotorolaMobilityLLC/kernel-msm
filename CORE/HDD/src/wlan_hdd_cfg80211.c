@@ -8169,8 +8169,7 @@ static int wlan_hdd_cfg80211_flush_pmksa(struct wiphy *wiphy, struct net_device 
     /*in case index is 0,no entry to delete*/
     if (0 == PMKIDCacheIndex)
     {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid entry to delete" ,
-              __func__);
+       hddLog(VOS_TRACE_LEVEL_ERROR, FL("No entries to flush"));
        return -EINVAL;
     }
 
@@ -8285,8 +8284,7 @@ void hdd_cfg80211_sched_scan_done_callback(void *callbackContext,
 
 /*
  * FUNCTION: wlan_hdd_is_pno_allowed
- * To check is there any P2P GO/SAP or P2P Client/STA
- * session is active
+ * Disallow pno if any session is active
  */
 static eHalStatus wlan_hdd_is_pno_allowed(hdd_adapter_t *pAdapter)
 {
@@ -8297,6 +8295,10 @@ static eHalStatus wlan_hdd_is_pno_allowed(hdd_adapter_t *pAdapter)
    int status = 0;
    status = hdd_get_front_adapter(pHddCtx, &pAdapterNode);
 
+   /* The current firmware design does not allow PNO during any
+    * active sessions. Hence, determine the active sessions
+    * and return a failure.
+    */
    while ((NULL != pAdapterNode) && (VOS_STATUS_SUCCESS == status))
    {
         pTempAdapter = pAdapterNode->pAdapter;
@@ -8356,8 +8358,8 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     hdd_context_t *pHddCtx;
     tHalHandle hHal;
     v_U32_t i, indx, num_ch, tempInterval;
-    u8 valid_ch[WNI_CFG_VALID_CHANNEL_LIST_LEN];
-    u8 channels_allowed[WNI_CFG_VALID_CHANNEL_LIST_LEN];
+    u8 valid_ch[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
+    u8 channels_allowed[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
     v_U32_t num_channels_allowed = WNI_CFG_VALID_CHANNEL_LIST_LEN;
     eHalStatus status = eHAL_STATUS_FAILURE;
     int ret = 0;
@@ -8387,14 +8389,9 @@ static int wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         return -EINVAL;
     }
 
-    /* The current firmware design for PNO does not consider concurrent
-     * active sessions.Hence , determine the concurrent active sessions
-     * and return a failure to the framework on a request for schedule
-     * scan.
-     */
     if (eHAL_STATUS_SUCCESS != wlan_hdd_is_pno_allowed(pAdapter))
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                   FL("Cannot handle sched_scan"));
         return -EBUSY;
     }
