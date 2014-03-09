@@ -96,6 +96,14 @@ static inline bool aca_enabled(void)
 #endif
 }
 
+static inline bool vbus_power_control_enabled(struct msm_otg *motg)
+{
+	if (motg->pdata->otg_control == OTG_ACCY_CONTROL)
+		return false;
+	else
+		return true;
+}
+
 static const int vdd_val[VDD_TYPE_MAX][VDD_VAL_MAX] = {
 		{  /* VDD_CX CORNER Voting */
 			[VDD_NONE]	= RPM_VREG_CORNER_NONE,
@@ -478,6 +486,7 @@ static int msm_otg_link_reset(struct msm_otg *motg)
 	writel_relaxed(0x0, USB_AHBBURST);
 	writel_relaxed(0x08, USB_AHBMODE);
 
+	ulpi_init(motg);
 	return 0;
 }
 
@@ -1314,6 +1323,9 @@ static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 {
 	int ret;
 	static bool vbus_is_on;
+
+	if (!vbus_power_control_enabled(motg))
+		return;
 
 	if (vbus_is_on == on)
 		return;
@@ -4004,6 +4016,15 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 					goto free_pmic_id_irq;
 				}
 			}
+#ifdef CONFIG_EMU_DETECTION
+			/*
+			 * This is a workaround for the PMIC ID IRQ constantly
+			 * firing after disconnecting a cable. The IRQ is not
+			 * used by any MMI devices so we just disable it for
+			 * now.
+			 */
+			disable_irq(motg->pdata->pmic_id_irq);
+#endif
 		} else {
 			ret = -ENODEV;
 			dev_err(&pdev->dev, "PMIC IRQ for ID notifications doesn't exist\n");
