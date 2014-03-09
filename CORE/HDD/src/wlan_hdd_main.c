@@ -172,16 +172,6 @@ DEFINE_SPINLOCK(hdd_context_lock);
 #define SIZE_OF_SETROAMMODE             11    /* size of SETROAMMODE */
 #define SIZE_OF_GETROAMMODE             11    /* size of GETROAMMODE */
 
-#ifdef FEATURE_CESIUM_PROPRIETARY
-/*
- * Ibss prop IE from command will be of size 5 + 1(Element ID) + 1(length)
- */
-#define WLAN_HDD_IBSS_PROP_IE_SIZE 7
-#define WLAN_HDD_IBSS_PROP_VENDOR_ID 0xDD
-#define WLAN_HDD_IBSS_PROP_OUI_DATA_LEN 0x05
-static tANI_U8 ibssPropIe[3] = {0x00,0x16,0x32};
-#endif
-
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)
 #define TID_MIN_VALUE 0
 #define TID_MAX_VALUE 15
