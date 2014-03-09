@@ -3197,15 +3197,30 @@ static irqreturn_t msm_pmic_id_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static const char *usb_event_name(enum usb_phy_events event)
+{
+	if (event == USB_EVENT_NONE)
+		return "DISCONNECTED";
+	if (event == USB_EVENT_VBUS)
+		return "VBUS";
+	if (event == USB_EVENT_ID)
+		return "ID";
+	if (event == USB_EVENT_CHARGER)
+		return "CHARGER";
+	return "INVALID";
+}
+
 static int msm_otg_accy_notify(struct notifier_block *nb,
 			unsigned long event, void *ignore)
 {
 	struct msm_otg *motg;
-	struct usb_phy *otg;
+	struct usb_otg *otg;
 	enum usb_otg_state req_state;
 
 	motg = container_of(nb, struct msm_otg, accy_nb);
-	otg = &motg->phy;
+	/*otg_phy = &motg->phy;*/
+	otg = motg->phy.otg;
+	dev_info(otg->phy->dev, "received %s event\n", usb_event_name(event));
 
 	if (event == USB_EVENT_ID)
 		req_state = OTG_STATE_A_HOST;
@@ -3214,14 +3229,17 @@ static int msm_otg_accy_notify(struct notifier_block *nb,
 	else
 		req_state = OTG_STATE_B_IDLE;
 
+	dev_info(otg->phy->dev, ":%s --> %s\n",
+		otg_state_string(otg->phy->state), otg_state_string(req_state));
+
 	switch (req_state) {
 	case OTG_STATE_B_IDLE:
-		switch (otg->state) {
+		switch (otg->phy->state) {
 		case OTG_STATE_UNDEFINED:
 			/* set when accy driver init detection completes */
-			otg->state = OTG_STATE_B_IDLE;
+			otg->phy->state = OTG_STATE_B_IDLE;
 			if (event != USB_EVENT_CHARGER) {
-				pm_request_idle(otg->dev);
+				pm_request_idle(otg->phy->dev);
 				goto out;
 			}
 		case OTG_STATE_B_IDLE:
@@ -3237,6 +3255,7 @@ static int msm_otg_accy_notify(struct notifier_block *nb,
 			} else if (motg->chg_type != USB_DCP_CHARGER)
 				goto out;
 		case OTG_STATE_A_HOST:
+		case OTG_STATE_A_WAIT_BCON:
 		case OTG_STATE_B_PERIPHERAL:
 			set_bit(ID, &motg->inputs);
 			clear_bit(B_SESS_VLD, &motg->inputs);
@@ -3246,10 +3265,10 @@ static int msm_otg_accy_notify(struct notifier_block *nb,
 		}
 		break;
 	case OTG_STATE_B_PERIPHERAL:
-		switch (otg->state) {
+		switch (otg->phy->state) {
 		case OTG_STATE_UNDEFINED:
 			/* set when accy driver init detection completes */
-			otg->state = OTG_STATE_B_IDLE;
+			otg->phy->state = OTG_STATE_B_IDLE;
 		case OTG_STATE_B_IDLE:
 		case OTG_STATE_A_HOST:
 			set_bit(ID, &motg->inputs);
@@ -3262,10 +3281,10 @@ static int msm_otg_accy_notify(struct notifier_block *nb,
 		}
 		break;
 	case OTG_STATE_A_HOST:
-		switch (otg->state) {
+		switch (otg->phy->state) {
 		case OTG_STATE_UNDEFINED:
 			/* set when accy driver init detection completes */
-			otg->state = OTG_STATE_B_IDLE;
+			otg->phy->state = OTG_STATE_B_IDLE;
 		case OTG_STATE_B_IDLE:
 		case OTG_STATE_B_PERIPHERAL:
 			clear_bit(ID, &motg->inputs);
