@@ -4859,4 +4859,24 @@ V    RO   NP RESTART
 NONE
 0    2000 200
 
+* RA filter enable/disable
+*
+WNI_CFG_RA_FILTER_ENABLE    I    4    7
+V    RW    NP
+HAL
+0    1     1
+V    RW    NP
+HAL
+0    1     1
+*
+*
 
+* RA filter rate interval
+*
+WNI_CFG_RA_RATE_LIMIT_INTERVAL    I    4    7
+V    RW    NP
+HAL
+0    60     60
+V    RW     NP
+HAL
+0    60     60

@@ -230,11 +230,32 @@
 #define QWLAN_HAL_CFG_ASD_TRIGGER_THRESHOLD             172
 #define QWLAN_HAL_CFG_ASD_RTT_RSSI_HYST_THRESHOLD       173
 #define QWLAN_HAL_CFG_BTC_CTS2S_ON_STA_DURING_SCO       174
-#define QWLAN_HAL_CFG_MAX_PARAMS                        175
+#define QWLAN_HAL_CFG_SHORT_PREAMBLE                    175
+#define QWLAN_HAL_CFG_SHORT_SLOT_TIME                   176
+#define QWLAN_HAL_CFG_DELAYED_BA                        177
+#define QWLAN_HAL_CFG_IMMEDIATE_BA                      178
+#define QWLAN_HAL_CFG_DOT11_MODE                        179
+#define QWLAN_HAL_CFG_HT_CAPS                           180
+#define QWLAN_HAL_CFG_AMPDU_PARAMS                      181
+#define QWLAN_HAL_CFG_TX_BF_INFO                        182
+#define QWLAN_HAL_CFG_ASC_CAP_INFO                      183
+#define QWLAN_HAL_CFG_EXT_HT_CAPS                       184
+#define QWLAN_HAL_CFG_QOS_ENABLED                       185
+#define QWLAN_HAL_CFG_WME_ENABLED                       186
+#define QWLAN_HAL_CFG_WSM_ENABLED                       187
+#define QWLAN_HAL_CFG_WMM_ENABLED                       188
+#define QWLAN_HAL_CFG_UAPSD_PER_AC_BITMASK              189
+#define QWLAN_HAL_CFG_MCS_RATES                         190
+#define QWLAN_HAL_CFG_VHT_CAPS                          191
+#define QWLAN_HAL_CFG_VHT_RX_SUPP_MCS                   192
+#define QWLAN_HAL_CFG_VHT_TX_SUPP_MCS                   193
+#define QWLAN_HAL_CFG_RA_FILTER_ENABLE                  194
+#define QWLAN_HAL_CFG_RA_RATE_LIMIT_INTERVAL            195
+#define QWLAN_HAL_CFG_MAX_PARAMS                        196
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                     175
+#define QWLAN_HAL_CFG_INTEGER_PARAM                     196
 
 /*-------------------------------------------------------------------------
   Configuration Parameter min, max, defaults
