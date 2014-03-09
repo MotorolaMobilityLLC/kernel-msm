@@ -9319,13 +9319,6 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                     csrRoamIssueWmStatusChange( pMac, sessionId, eCsrDisassociated, pSirMsg );
                     if (CSR_IS_INFRA_AP(&pSession->connectedProfile))
                     {
-
-                        pCommand = csrGetCommandBuffer(pMac);
-                        if (NULL == pCommand)
-                        {
-                            smsLog( pMac, LOGE, FL(" fail to get command buffer") );
-                            status = eHAL_STATUS_RESOURCES;
-                        }
                         pRoamInfo = &roamInfo;
                         pRoamInfo->statusCode = pDisassocInd->statusCode;
                         pRoamInfo->u.pConnectedProfile = &pSession->connectedProfile;
@@ -9343,6 +9336,13 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                          *  STA/P2P client got  disassociated so remove any pending deauth
                          *  commands in sme pending list
                          */
+                        pCommand = csrGetCommandBuffer(pMac);
+                        if (NULL == pCommand)
+                        {
+                            smsLog( pMac, LOGE, FL(" fail to get command buffer") );
+                            status = eHAL_STATUS_RESOURCES;
+                            return;
+                        }
                         pCommand->command = eSmeCommandRoam;
                         pCommand->sessionId = (tANI_U8)sessionId;
                         pCommand->u.roamCmd.roamReason = eCsrForcedDeauthSta;
@@ -16026,7 +16026,7 @@ eHalStatus csrRoamOffloadScan(tpAniSirGlobal pMac, tANI_U8 command, tANI_U8 reas
        }
      }
 #endif
-    for (i = 0, j = 0; i < pRequestBuf->ConnectedNetwork.ChannelCount; i++)
+    for (i = 0, j = 0;j < (sizeof(ChannelCacheStr)/sizeof(ChannelCacheStr[0])) && i < pRequestBuf->ConnectedNetwork.ChannelCount; i++)
     {
             j += snprintf(ChannelCacheStr + j, sizeof(ChannelCacheStr) - j," %d",
                           pRequestBuf->ConnectedNetwork.ChannelCache[i]);
@@ -17234,79 +17234,6 @@ eHalStatus csrHandoffRequest(tpAniSirGlobal pMac,
    return status;
 }
 #endif /* WLAN_FEATURE_ROAM_SCAN_OFFLOAD */
-
-#if defined WLAN_FEATURE_RELIABLE_MCAST
-eHalStatus csrEnableRMC(tpAniSirGlobal pMac, tANI_U32 sessionId)
-{
-   tSirSetRMCReq *pMsg = NULL;
-   eHalStatus status = eHAL_STATUS_SUCCESS;
-   tCsrRoamSession *pSession = CSR_GET_SESSION(pMac, sessionId);
-
-   if (!pSession)
-   {
-       smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
-       return eHAL_STATUS_FAILURE;
-   }
-
-   pMsg = vos_mem_malloc(sizeof(tSirSetRMCReq));
-   if (NULL != pMsg)
-   {
-       vos_mem_set((void *)pMsg, sizeof(tSirSetRMCReq), 0);
-       pMsg->msgType = eWNI_SME_ENABLE_RMC_REQ;
-       pMsg->msgLen  = sizeof(tSirSetRMCReq);
-       vos_mem_copy((v_U8_t *)pMsg->mcastTransmitter,
-             &pSession->selfMacAddr, sizeof(tSirMacAddr));
-
-       status = palSendMBMessage(pMac->hHdd, pMsg);
-       if (!HAL_STATUS_SUCCESS(status))
-       {
-           smsLog(pMac, LOGE, FL(" csr enable RMC Post MSG Fail %d "), status);
-           //pMsg is freed by palSendMBMessage
-       }
-   }
-   else
-   {
-       return eHAL_STATUS_FAILURE;
-   }
-   return status;
-}
-
-eHalStatus csrDisableRMC(tpAniSirGlobal pMac, tANI_U32 sessionId)
-{
-   tSirSetRMCReq *pMsg = NULL;
-   eHalStatus status = eHAL_STATUS_SUCCESS;
-   tCsrRoamSession *pSession = CSR_GET_SESSION(pMac, sessionId);
-
-   if (!pSession)
-   {
-       smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
-       return eHAL_STATUS_FAILURE;
-   }
-
-   pMsg = vos_mem_malloc(sizeof(tSirSetRMCReq));
-   if (NULL != pMsg)
-   {
-       vos_mem_set((void *)pMsg, sizeof(tSirSetRMCReq), 0);
-       pMsg->msgType = eWNI_SME_DISABLE_RMC_REQ;
-       pMsg->msgLen  = sizeof(tSirSetRMCReq);
-       vos_mem_copy((v_U8_t *)pMsg->mcastTransmitter,
-             &pSession->selfMacAddr, sizeof(tSirMacAddr));
-
-       status = palSendMBMessage(pMac->hHdd, pMsg);
-       if (!HAL_STATUS_SUCCESS(status))
-       {
-           smsLog(pMac, LOGE, FL(" csr disable RMC Post MSG Fail %d "), status);
-           //pMsg is freed by palSendMBMessage
-       }
-   }
-   else
-   {
-       return eHAL_STATUS_FAILURE;
-   }
-   return status;
-}
-
-#endif /* defined WLAN_FEATURE_RELIABLE_MCAST */
 
 
 #if defined(FEATURE_WLAN_ESE) && defined(FEATURE_WLAN_ESE_UPLOAD)

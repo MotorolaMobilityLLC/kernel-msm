@@ -632,6 +632,7 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
     {
         smsLog( pMac, LOGE, FL(" pScanRequest is NULL"));
         VOS_ASSERT(0);
+        return eHAL_STATUS_FAILURE ;
     }
 
     /* During group formation, the P2P client scans for GO with the specific SSID.

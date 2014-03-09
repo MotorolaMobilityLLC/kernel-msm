@@ -2930,6 +2930,19 @@ REG_VARIABLE( CFG_TDLS_EXTERNAL_CONTROL, WLAN_PARAM_Integer,
                  CFG_SAP_DOT11_MODE_MIN,
                  CFG_SAP_DOT11_MODE_MAX ),
 
+   REG_VARIABLE(CFG_RA_FILTER_ENABLE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, cfgRAFilterEnable,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_RA_FILTER_ENABLE_DEFAULT,
+                CFG_RA_FILTER_ENABLE_MIN,
+                CFG_RA_FILTER_ENABLE_MAX ),
+
+   REG_VARIABLE(CFG_RA_RATE_LIMIT_INTERVAL_NAME, WLAN_PARAM_Integer,
+               hdd_config_t, cfgRARateLimitInterval,
+               VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+               CFG_RA_RATE_LIMIT_INTERVAL_DEFAULT,
+               CFG_RA_RATE_LIMIT_INTERVAL_MIN,
+               CFG_RA_RATE_LIMIT_INTERVAL_MAX ),
 };
 
 /*
@@ -4623,6 +4636,21 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
        hddLog(LOGE, "Could not pass on WNI_CFG_DEFAULT_RATE_INDEX_24GHZ to"
                     " CCM\n");
    }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_RA_FILTER_ENABLE, pConfig->cfgRAFilterEnable,
+      NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_RA_FILTER_ENABLE to CCM");
+   }
+
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_RA_RATE_LIMIT_INTERVAL, pConfig->cfgRARateLimitInterval,
+      NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_RA_FILTER_ENABLE to CCM");
+   }
+
    return fStatus;
 }
 
