@@ -1,15 +1,15 @@
 /*!
  * @section LICENSE
- * (C) Copyright 2013 Bosch Sensortec GmbH All Rights Reserved
+ * (C) Copyright 2014 Bosch Sensortec GmbH All Rights Reserved
  *
  * This software program is licensed subject to the GNU General
  * Public License (GPL).Version 2,June 1991,
  * available at http://www.fsf.org/copyleft/gpl.html
  *
  * @filename bma2x2.c
- * @date    2013/12/20 16:30
- * @id       "f280351"
- * @version  1.9.3
+ * @date    2014/01/25 14:47
+ * @id       "fcff9b1"
+ * @version  1.9.4
  *
  * @brief
  * This file contains all function implementations for the BMA2X2 in linux
@@ -83,6 +83,8 @@
 #define FLAT_INTERRUPT              ABS_DISTANCE
 #define SLOW_NO_MOTION_INTERRUPT    REL_Y
 
+#define FIFO_WM_INTERRUPT			REL_X
+
 #define HIGH_G_INTERRUPT_X_HAPPENED                 1
 #define HIGH_G_INTERRUPT_Y_HAPPENED                 2
 #define HIGH_G_INTERRUPT_Z_HAPPENED                 3
@@ -109,6 +111,7 @@
 #define FLAT_INTERRUPT_FALSE_HAPPENED               24
 #define LOW_G_INTERRUPT_HAPPENED                    25
 #define SLOW_NO_MOTION_INTERRUPT_HAPPENED           26
+#define FIFO_WM_INTERRUPT_HAPPENED                  27
 
 #define PAD_LOWG                    0
 #define PAD_HIGHG                   1
@@ -1257,6 +1260,13 @@ unsigned char *sensor_name[] = { "BMA255", "BMA250E", "BMA222E", "BMA280" };
 #define BMA2X2_FIFO_DAT_SEL_Y                     2
 #define BMA2X2_FIFO_DAT_SEL_Z                     3
 
+
+#define BMA2X2_FAST_CALIB_X_READY   0x01
+#define BMA2X2_FAST_CALIB_Y_READY   0x02
+#define BMA2X2_FAST_CALIB_Z_READY   0x04
+#define BMA2X2_FAST_CALIB_XYZ_READY 0x07
+#define BMA2X2_FAST_CALIB_DONE      REL_RX
+
 #ifdef CONFIG_SENSORS_BMI058
 #define C_BMI058_One_U8X                                 1
 #define C_BMI058_Two_U8X                                 2
@@ -1283,6 +1293,9 @@ unsigned char *sensor_name[] = { "BMA255", "BMA250E", "BMA222E", "BMA280" };
 #define BMA2X2_SLOPE_X_INT          5
 /*! BMA2x2 common slope Y interrupt type definition*/
 #define BMA2X2_SLOPE_Y_INT          6
+
+
+
 
 /*! this structure holds some interrupt types difference
 **between BMA2x2 and BMI058.
@@ -1404,6 +1417,7 @@ struct bma2x2_data {
 	struct timer_list	tap_timer;
 	int tap_time_period;
 #endif
+	unsigned char calib_status;
 };
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -1885,6 +1899,15 @@ static int bma2x2_set_Int_Enable(struct i2c_client *client, unsigned char
 		data1 = BMA2X2_SET_BITSLICE(data1, BMA2X2_EN_FLAT_INT, value);
 		break;
 
+
+	case 17:
+		/* FIFO Watermark Interrupt */
+
+		data2 = BMA2X2_SET_BITSLICE(data2,
+					    BMA2X2_INT_FWM_EN_INT,
+					    value);
+		break;
+
 	default:
 		break;
 	}
@@ -1910,7 +1933,6 @@ static int bma2x2_get_interruptstatus1(struct i2c_client *client, unsigned char
 	return comres;
 }
 
-#ifdef CONFIG_BMA_ENABLE_NEWDATA_INT
 static int bma2x2_get_interruptstatus2(struct i2c_client *client, unsigned char
 		*intstatus)
 {
@@ -1922,7 +1944,6 @@ static int bma2x2_get_interruptstatus2(struct i2c_client *client, unsigned char
 
 	return comres;
 }
-#endif
 
 static int bma2x2_get_HIGH_first(struct i2c_client *client, unsigned char
 						param, unsigned char *intstatus)
@@ -2042,6 +2063,19 @@ static int bma2x2_get_orient_flat_status(struct i2c_client *client, unsigned
 			&data);
 	data = BMA2X2_GET_BITSLICE(data, BMA2X2_FLAT_S);
 	*intstatus = data;
+
+	return comres;
+}
+static int bma2x2_reset_interrupt(struct i2c_client *client,
+						unsigned char reset_int)
+
+{
+	unsigned char data;
+	int comres = 0 ;
+
+	comres = bma2x2_smbus_read_byte(client, BMA2X2_RESET_INT__REG, &data);
+	data = BMA2X2_SET_BITSLICE(data, BMA2X2_RESET_INT, reset_int);
+	comres = bma2x2_smbus_write_byte(client, BMA2X2_RESET_INT__REG, &data);
 
 	return comres;
 }
@@ -2644,6 +2678,69 @@ static int bma2x2_normal_to_suspend(struct bma2x2_data *bma2x2,
 
 }
 
+static int bma2x2_set_int1_fwm(struct i2c_client *client,
+					unsigned char int1_fwm)
+{
+	unsigned char data;
+	int comres = 0;
+
+	comres = bma2x2_smbus_read_byte(client,
+		BMA2X2_EN_INT1_PAD_FWM__REG, &data);
+	data = BMA2X2_SET_BITSLICE(data, BMA2X2_EN_INT1_PAD_FWM, int1_fwm);
+	comres = bma2x2_smbus_write_byte(client,
+		BMA2X2_EN_INT1_PAD_FWM__REG, &data);
+
+	return comres;
+}
+
+static int bma2x2_set_int2_fwm(struct i2c_client *client,
+					unsigned char int2_fwm)
+{
+	unsigned char data;
+	int comres = 0;
+
+	comres = bma2x2_smbus_read_byte(client,
+		BMA2X2_EN_INT2_PAD_FWM__REG, &data);
+	data = BMA2X2_SET_BITSLICE(data, BMA2X2_EN_INT2_PAD_FWM, int2_fwm);
+	comres = bma2x2_smbus_write_byte(client,
+		BMA2X2_EN_INT2_PAD_FWM__REG, &data);
+
+	return comres;
+}
+
+
+
+static int bma2x2_set_fifo_wml_trig(struct i2c_client *client,
+					unsigned char fifo_wml_trig)
+{
+	unsigned char data;
+	int comres = 0;
+
+	comres = bma2x2_smbus_read_byte(client,
+					BMA2X2_FIFO_WML_TRIG_RETAIN__REG,
+					&data);
+	data = BMA2X2_SET_BITSLICE(data,
+					BMA2X2_FIFO_WML_TRIG_RETAIN,
+					fifo_wml_trig);
+	comres = bma2x2_smbus_write_byte(client,
+					 BMA2X2_FIFO_WML_TRIG_RETAIN__REG,
+					 &data);
+
+	return comres;
+}
+
+static int bma2x2_get_fifo_wml_trig(struct i2c_client *client,
+					unsigned char *fifo_wml_trig)
+{
+	unsigned char data;
+	int comres = 0;
+
+	comres = bma2x2_smbus_read_byte(client,
+				BMA2X2_FIFO_WML_TRIG_RETAIN__REG, &data);
+	*fifo_wml_trig = BMA2X2_GET_BITSLICE(data, BMA2X2_FIFO_WML_TRIG_RETAIN);
+
+	return comres;
+}
 static int bma2x2_set_mode(struct i2c_client *client, unsigned char mode)
 {
 	int comres = 0;
@@ -5018,7 +5115,10 @@ static ssize_t bma2x2_fast_calibration_x_store(struct device *dev,
 
 	} while (tmp == 0);
 
-	printk(KERN_INFO "x axis fast calibration finished\n");
+	bma2x2->calib_status |= BMA2X2_FAST_CALIB_X_READY;
+
+	printk(KERN_INFO "x axis fast calibration finished calib_status  %d\n",
+				bma2x2->calib_status);
 	return count;
 }
 
@@ -5087,7 +5187,11 @@ static ssize_t bma2x2_fast_calibration_y_store(struct device *dev,
 
 	} while (tmp == 0);
 
-	printk(KERN_INFO "y axis fast calibration finished\n");
+	bma2x2->calib_status |= BMA2X2_FAST_CALIB_Y_READY;
+
+
+	printk(KERN_INFO "y axis fast calibration finished calib_status  %d\n",
+				bma2x2->calib_status);
 	return count;
 }
 
@@ -5143,7 +5247,12 @@ static ssize_t bma2x2_fast_calibration_z_store(struct device *dev,
 
 	} while (tmp == 0);
 
-	printk(KERN_INFO "z axis fast calibration finished\n");
+	bma2x2->calib_status |= BMA2X2_FAST_CALIB_Z_READY;
+	if (bma2x2->calib_status == BMA2X2_FAST_CALIB_XYZ_READY)
+		input_report_rel(bma2x2->input, BMA2X2_FAST_CALIB_DONE, 1);
+
+	printk(KERN_INFO "z axis fast calibration finished calib_status %d\n",
+				bma2x2->calib_status);
 	return count;
 }
 
@@ -5248,7 +5357,38 @@ static ssize_t bma2x2_fifo_trig_store(struct device *dev,
 	return count;
 }
 
+static ssize_t bma2x2_fifo_wml_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned char data;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma2x2_data *bma2x2 = i2c_get_clientdata(client);
 
+	if (bma2x2_get_fifo_wml_trig(bma2x2->bma2x2_client, &data) < 0)
+		return snprintf(buf, 20, "Read error\n");
+
+	return snprintf(buf, 20, "%d\n", data);
+
+}
+
+static ssize_t bma2x2_fifo_wml_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned long data;
+	int error;
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bma2x2_data *bma2x2 = i2c_get_clientdata(client);
+
+	error = kstrtoul(buf, 10, &data);
+	if (error)
+		return error;
+	if (bma2x2_set_fifo_wml_trig(bma2x2->bma2x2_client,
+				(unsigned char) data) < 0)
+		return -EINVAL;
+
+	return count;
+}
 
 static ssize_t bma2x2_fifo_trig_src_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -5289,7 +5429,7 @@ static ssize_t bma2x2_fifo_trig_src_store(struct device *dev,
  * 0--> x, y, z axis fifo data for every frame
  * 1--> only x axis fifo data for every frame
  * 2--> only y axis fifo data for every frame
- * 3--> only x axis fifo data for every frame
+ * 3--> only z axis fifo data for every frame
  */
 static ssize_t bma2x2_fifo_data_sel_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -5315,15 +5455,14 @@ static ssize_t bma2x2_fifo_data_sel_show(struct device *dev,
 		sensor_place = bma2x2->bst_pd->place;
 		/* sensor with place 0 needs not to be remapped */
 		if ((sensor_place > 0) && (sensor_place < MAX_AXIS_REMAP_TAB_SZ)) {
-			/*Need X Y axis revesal sensor place: P1, P3, P5, P7 */
-			if (sensor_place % 2) {
-				if (BMA2X2_FIFO_DAT_SEL_X == data)
-					data = BMA2X2_FIFO_DAT_SEL_Y;
-				else if (BMA2X2_FIFO_DAT_SEL_Y == data)
-					data = BMA2X2_FIFO_DAT_SEL_X;
-			}
+			/* BMA2X2_FIFO_DAT_SEL_X: 1, Y:2, Z:3;
+			 * but bst_axis_remap_tab_dft[i].src_x:0, y:1, z:2
+			 * so we need to +1*/
+		    if (BMA2X2_FIFO_DAT_SEL_X == data)
+			data = bst_axis_remap_tab_dft[sensor_place].src_x + 1;
+		    else if (BMA2X2_FIFO_DAT_SEL_Y == data)
+			data = bst_axis_remap_tab_dft[sensor_place].src_y + 1;
 		}
-
 	}
 
 	return sprintf(buf, "%d\n", data);
@@ -5380,7 +5519,7 @@ static ssize_t bma2x2_temperature_show(struct device *dev,
  * 0--> x, y, z axis fifo data for every frame
  * 1--> only x axis fifo data for every frame
  * 2--> only y axis fifo data for every frame
- * 3--> only x axis fifo data for every frame
+ * 3--> only z axis fifo data for every frame
  */
 static ssize_t bma2x2_fifo_data_sel_store(struct device *dev,
 		struct device_attribute *attr,
@@ -5405,14 +5544,14 @@ static ssize_t bma2x2_fifo_data_sel_store(struct device *dev,
 		/* sensor with place 0 needs not to be remapped */
 		if ((sensor_place > 0) && (sensor_place < MAX_AXIS_REMAP_TAB_SZ)) {
 			/*Need X Y axis revesal sensor place: P1, P3, P5, P7 */
-			if (sensor_place % 2) {
-				if (BMA2X2_FIFO_DAT_SEL_X == data)
-					data = BMA2X2_FIFO_DAT_SEL_Y;
-				else if (BMA2X2_FIFO_DAT_SEL_Y == data)
-					data = BMA2X2_FIFO_DAT_SEL_X;
-			}
+			/* BMA2X2_FIFO_DAT_SEL_X: 1, Y:2, Z:3;
+			  * but bst_axis_remap_tab_dft[i].src_x:0, y:1, z:2
+			  * so we need to +1*/
+		    if (BMA2X2_FIFO_DAT_SEL_X == data)
+			data =  bst_axis_remap_tab_dft[sensor_place].src_x + 1;
+		    else if (BMA2X2_FIFO_DAT_SEL_Y == data)
+			data =  bst_axis_remap_tab_dft[sensor_place].src_y + 1;
 		}
-
 	}
 #ifdef CONFIG_SENSORS_BMI058
 	/*Update BMI058 fifo_data_sel to the BMA2x2 common definition*/
@@ -5457,26 +5596,25 @@ static void bma2x2_single_axis_remaping(unsigned char fifo_datasel,
 			switch (fifo_datasel) {
 			/*P2, P3, P4, P5 X axis(andorid) need to reverse*/
 			case BMA2X2_FIFO_DAT_SEL_X:
-				if (sensor_place >= 2 && sensor_place <= 5)
-					*remap_dir = 1;
-				else
-					*remap_dir = 0;
-				break;
+			  if (-1 == bst_axis_remap_tab_dft[sensor_place].sign_x)
+				*remap_dir = 1;
+			  else
+				*remap_dir = 0;
+			  break;
 			/*P1, P2, P5, P6 Y axis(andorid) need to reverse*/
 			case BMA2X2_FIFO_DAT_SEL_Y:
-				if (sensor_place == 1 || sensor_place == 2
-					|| sensor_place == 5 || sensor_place == 6)
-					*remap_dir = 1;
-				else
-					*remap_dir = 0;
-				break;
+			  if (-1 == bst_axis_remap_tab_dft[sensor_place].sign_y)
+				*remap_dir = 1;
+			  else
+				*remap_dir = 0;
+			  break;
 			case BMA2X2_FIFO_DAT_SEL_Z:
 			/*P4, P5, P6, P7 Z axis(andorid) need to reverse*/
-				if (sensor_place >= 4 && sensor_place <= 7)
-					*remap_dir = 1;
-				else
-					*remap_dir = 0;
-				break;
+			  if (-1 == bst_axis_remap_tab_dft[sensor_place].sign_z)
+				*remap_dir = 1;
+			  else
+				*remap_dir = 0;
+			  break;
 			default:
 				break;
 			}
@@ -5897,6 +6035,8 @@ static DEVICE_ATTR(fifo_framecount, S_IRUGO|S_IWUSR|S_IWGRP,
 		bma2x2_fifo_framecount_show, bma2x2_fifo_framecount_store);
 static DEVICE_ATTR(fifo_trig, S_IRUGO|S_IWUSR|S_IWGRP,
 		bma2x2_fifo_trig_show, bma2x2_fifo_trig_store);
+static DEVICE_ATTR(fifo_wml, S_IRUGO|S_IWUSR|S_IWGRP,
+		bma2x2_fifo_wml_show, bma2x2_fifo_wml_store);
 static DEVICE_ATTR(fifo_trig_src, S_IRUGO|S_IWUSR|S_IWGRP,
 		bma2x2_fifo_trig_src_show, bma2x2_fifo_trig_src_store);
 static DEVICE_ATTR(fifo_data_sel, S_IRUGO|S_IWUSR|S_IWGRP,
@@ -5995,6 +6135,7 @@ static struct attribute *bma2x2_attributes[] = {
 	&dev_attr_fifo_mode.attr,
 	&dev_attr_fifo_framecount.attr,
 	&dev_attr_fifo_trig.attr,
+	&dev_attr_fifo_wml.attr,
 	&dev_attr_fifo_trig_src.attr,
 	&dev_attr_fifo_data_sel.attr,
 	&dev_attr_fifo_data_frame.attr,
@@ -6113,6 +6254,8 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 	}
 #endif
 
+
+
 	bma2x2_get_interruptstatus1(bma2x2->bma2x2_client, &status);
 	printk(KERN_INFO "bma2x2_irq_work_func, status = 0x%x\n", status);
 
@@ -6156,6 +6299,7 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 		}
 	}
 #endif
+
 
 	switch (status) {
 
@@ -6380,17 +6524,30 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 	default:
 		break;
 	}
+
+	bma2x2_get_interruptstatus2(bma2x2->bma2x2_client, &status);
+	printk(KERN_INFO "bma2x2_irq_work_func, interruptstatus2 = 0x%x\n",
+			status);
+	if ((status&0x40) == 0x40) {
+
+		printk(KERN_INFO "fifo WM interrupt happened\n");
+		input_report_rel(bma2x2->dev_for_interrupt, FIFO_WM_INTERRUPT,
+					FIFO_WM_INTERRUPT_HAPPENED);
+
+		input_sync(bma2x2->dev_for_interrupt);
+	}
+
+	if (bma2x2_reset_interrupt(bma2x2->bma2x2_client, 1) < 0)
+		printk(KERN_INFO "reset interrupt failed\n");
 }
 
 static irqreturn_t bma2x2_irq_handler(int irq, void *handle)
 {
 	struct bma2x2_data *data = handle;
-
 	if (data == NULL)
 		return IRQ_HANDLED;
 	if (data->bma2x2_client == NULL)
 		return IRQ_HANDLED;
-
 	schedule_work(&data->irq_work);
 
 	return IRQ_HANDLED;
@@ -6499,6 +6656,8 @@ static int bma2x2_probe(struct i2c_client *client,
 	bma2x2_set_int1_pad_sel(client, PAD_ORIENT);
 	bma2x2_set_int1_pad_sel(client, PAD_FLAT);
 	bma2x2_set_int1_pad_sel(client, PAD_SLOW_NO_MOTION);
+	bma2x2_set_int1_fwm(client, 1);
+	bma2x2_set_int2_fwm(client, 0);
 #ifdef CONFIG_BMA_ENABLE_NEWDATA_INT
 	bma2x2_set_newdata(client, BMA2X2_INT1_NDATA, 1);
 	bma2x2_set_newdata(client, BMA2X2_INT2_NDATA, 0);
@@ -6515,6 +6674,8 @@ static int bma2x2_probe(struct i2c_client *client,
 	bma2x2_set_int2_pad_sel(client, PAD_ORIENT);
 	bma2x2_set_int2_pad_sel(client, PAD_FLAT);
 	bma2x2_set_int2_pad_sel(client, PAD_SLOW_NO_MOTION);
+	bma2x2_set_int1_fwm(client, 0);
+	bma2x2_set_int2_fwm(client, 1);
 #ifdef CONFIG_BMA_ENABLE_NEWDATA_INT
 	bma2x2_set_newdata(client, BMA2X2_INT1_NDATA, 0);
 	bma2x2_set_newdata(client, BMA2X2_INT2_NDATA, 1);
@@ -6522,6 +6683,7 @@ static int bma2x2_probe(struct i2c_client *client,
 #endif
 
 	bma2x2_set_Int_Mode(client, 1);/*latch interrupt 250ms*/
+/*	bma2x2_set_Int_Mode(client, 7); latched*/
 
 	/* do not open any interrupt here  */
 	/*10,orient
@@ -6533,12 +6695,11 @@ static int bma2x2_probe(struct i2c_client *client,
 	/* enable new data interrupt */
 	bma2x2_set_Int_Enable(client, 4, 1);
 #endif
+	bma2x2_set_Int_Enable(client, 17, 1);
 	if (client->dev.of_node) {
 		struct device_node *np = client->dev.of_node;
 		client->irq = of_get_gpio(np, 0);
-		printk(KERN_ERR "mbing gets irq number %d\n", client->irq);
 		client->irq = gpio_to_irq(client->irq);
-		printk(KERN_ERR "mbing gets irq number %d\n", client->irq);
 	}
 	data->IRQ = client->irq;
 	err = request_irq(data->IRQ, bma2x2_irq_handler, IRQF_TRIGGER_RISING,
@@ -6576,6 +6737,8 @@ static int bma2x2_probe(struct i2c_client *client,
 	input_set_abs_params(dev, ABS_X, ABSMIN, ABSMAX, 0, 0);
 	input_set_abs_params(dev, ABS_Y, ABSMIN, ABSMAX, 0, 0);
 	input_set_abs_params(dev, ABS_Z, ABSMIN, ABSMAX, 0, 0);
+	input_set_capability(dev, EV_REL, BMA2X2_FAST_CALIB_DONE);
+	input_set_capability(dev, EV_REL, FIFO_WM_INTERRUPT);
 
 	input_set_drvdata(dev, data);
 	err = input_register_device(dev);
@@ -6587,6 +6750,8 @@ static int bma2x2_probe(struct i2c_client *client,
 	dev_for_interrupt->id.bustype = BUS_I2C;
 	input_set_capability(dev_for_interrupt, EV_REL,
 		SLOW_NO_MOTION_INTERRUPT);
+	input_set_capability(dev_for_interrupt, EV_REL,
+		FIFO_WM_INTERRUPT);
 	input_set_capability(dev_for_interrupt, EV_REL,
 		LOW_G_INTERRUPT);
 	input_set_capability(dev_for_interrupt, EV_REL,
@@ -6736,7 +6901,7 @@ static int bma2x2_probe(struct i2c_client *client,
 	setup_timer(&data->tap_timer, bma2x2_tap_timeout_handle,
 			(unsigned long)data);
 #endif
-
+	data->calib_status = 0;
 	printk(KERN_INFO "BMA2x2 driver probe successfully");
 
 	return 0;
@@ -6898,6 +7063,7 @@ static struct of_device_id bma2x2_match_tbl[] = {
 };
 MODULE_DEVICE_TABLE(of, bma2x2_match_tbl);
 #endif
+
 MODULE_DEVICE_TABLE(i2c, bma2x2_id);
 
 static struct i2c_driver bma2x2_driver = {
@@ -6925,8 +7091,8 @@ static void __exit BMA2X2_exit(void)
 }
 
 MODULE_AUTHOR("contact@bosch-sensortec.com");
-MODULE_DESCRIPTION("BMA2X2 accelerometer sensor driver");
-MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("BMA2X2 ACCELEROMETER SENSOR DRIVER");
+MODULE_LICENSE("GPL v2");
 
 module_init(BMA2X2_init);
 module_exit(BMA2X2_exit);

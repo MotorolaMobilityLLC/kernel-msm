@@ -1,14 +1,14 @@
 /*!
  * @section LICENSE
- * (C) Copyright 2013 Bosch Sensortec GmbH All Rights Reserved
+ * (C) Copyright 2014 Bosch Sensortec GmbH All Rights Reserved
  *
  * This software program is licensed subject to the GNU General
  * Public License (GPL).Version 2,June 1991,
  * available at http://www.fsf.org/copyleft/gpl.html
  *
  * @filename bstclass.c
- * @date     "Fri Aug 2 17:41:45 2013 +0800"
- * @id       "644147c"
+ * @date     "Tue Jan 7 16:02:57 2014 +0800"
+ * @id       "fcff9b1"
  *
  * @brief
  * The core code of bst device driver
@@ -26,10 +26,6 @@
 #include <linux/compiler.h>
 #include <linux/compat.h>
 #include "linux/bstclass.h"
-
-MODULE_AUTHOR("contact@bosch-sensortec.com");
-MODULE_DESCRIPTION("Bst core");
-MODULE_LICENSE("GPL");
 
 static LIST_HEAD(bst_dev_list);
 
@@ -262,5 +258,10 @@ static void __exit bst_exit(void)
 }
 
 /*subsys_initcall(bst_init);*/
+
+MODULE_AUTHOR("contact@bosch-sensortec.com");
+MODULE_DESCRIPTION("BST CLASS CORE");
+MODULE_LICENSE("GPL v2");
+
 module_init(bst_init);
 module_exit(bst_exit);

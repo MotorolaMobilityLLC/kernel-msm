@@ -1,15 +1,15 @@
 /*!
  * @section LICENSE
- * (C) Copyright 2013 Bosch Sensortec GmbH All Rights Reserved
+ * (C) Copyright 2014 Bosch Sensortec GmbH All Rights Reserved
  *
  * This software program is licensed subject to the GNU General
  * Public License (GPL).Version 2,June 1991,
  * available at http://www.fsf.org/copyleft/gpl.html
  *
  * @filename    bmm050_driver.c
- * @date        2013/12/09
- * @id          "5f164ee"
- * @version     v2.5.6
+ * @date        2014/01/07
+ * @id          "fcff9b1"
+ * @version     v2.6
  *
  * @brief       BMM050 Linux Driver
  */
@@ -44,12 +44,7 @@
 
 
 #include "linux/bmm050.h"
-
-#define PINFO(format, ...)
-#define PWARN(format, ...)
-#define PDEBUG(format, ...)
-#define PNOTICE(format, ...)
-#define PERR(format, ...)
+#include "linux/bs_log.h"
 
 #define CONFIG_BMM_USE_PLATFORM_DATA
 #define BMM_USE_BASIC_I2C_FUNC
@@ -1631,11 +1626,6 @@ static int bmm_remove(struct i2c_client *client)
 	return err;
 }
 
-static const struct i2c_device_id bmm_id[] = {
-	{SENSOR_NAME, 0},
-	{}
-};
-
 #ifdef CONFIG_OF
 static struct of_device_id bmm050_match_tbl[] = {
 	{ .compatible = "bosch,bmm050" },
@@ -1643,6 +1633,11 @@ static struct of_device_id bmm050_match_tbl[] = {
 };
 MODULE_DEVICE_TABLE(of, bmm050_match_tbl);
 #endif
+
+static const struct i2c_device_id bmm_id[] = {
+	{SENSOR_NAME, 0},
+	{}
+};
 
 MODULE_DEVICE_TABLE(i2c, bmm_id);
 
@@ -1674,8 +1669,8 @@ static void __exit BMM_exit(void)
 }
 
 MODULE_AUTHOR("contact@bosch.sensortec.com");
-MODULE_DESCRIPTION("driver for " SENSOR_NAME);
-MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("BMM MAGNETIC SENSOR DRIVER");
+MODULE_LICENSE("GPL v2");
 
 module_init(BMM_init);
 module_exit(BMM_exit);
