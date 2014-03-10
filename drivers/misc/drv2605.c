@@ -153,7 +153,7 @@
 #define REAL_TIME_PLAYBACK_STRENGTH 0x7F
 #endif
 
-#define MAX_TIMEOUT 10000	/* 10s */
+#define MAX_TIMEOUT 15000	/* 15s */
 
 #define DEFAULT_EFFECT 14	/* Strong buzz 100% */
 
