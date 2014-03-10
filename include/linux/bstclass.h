@@ -1,6 +1,6 @@
 /*!
  * @section LICENSE
- * (C) Copyright 2013 Bosch Sensortec GmbH All Rights Reserved
+ * (C) Copyright 2014 Bosch Sensortec GmbH All Rights Reserved
  *
  * This software program is licensed subject to the GNU General
  * Public License (GPL).Version 2,June 1991,
