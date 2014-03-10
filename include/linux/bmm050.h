@@ -1,20 +1,21 @@
 /*!
  * @section LICENSE
- * (C) Copyright 2013 Bosch Sensortec GmbH All Rights Reserved
+ * (C) Copyright 2014 Bosch Sensortec GmbH All Rights Reserved
  *
  * This software program is licensed subject to the GNU General
  * Public License (GPL).Version 2,June 1991,
  * available at http://www.fsf.org/copyleft/gpl.html
  *
- * @filename    bmm050.h
- * @date        "Fri Aug 2 17:41:45 2013 +0800"
- * @id          "644147c"
- * @version     v1.0.1
- * @brief       Header of BMM050 Linux Driver API
+ * @filename bmm050.h
+ * @date: 2013/11/25
+ * @id       "fcff9b1"
+ * @version: 1.2
+ *
+ * @brief    Header of BMM050API
  */
+
 #ifndef __BMM050_H__
 #define __BMM050_H__
-
 
 #define BMM050_U16 unsigned short
 #define BMM050_S16 signed short
@@ -72,7 +73,7 @@
 /* Fixed Data Registers */
 #define BMM050_CHIP_ID                     0x40
 
-/* Data Registers */
+/* Data Registers*/
 #define BMM050_DATAX_LSB                   0x42
 #define BMM050_DATAX_MSB                   0x43
 #define BMM050_DATAY_LSB                   0x44
@@ -81,6 +82,13 @@
 #define BMM050_DATAZ_MSB                   0x47
 #define BMM050_R_LSB                       0x48
 #define BMM050_R_MSB                       0x49
+
+/* Data Registers for remapped axis(XandY)
+ * this only applicable for BMX055 */
+#define BMM050_BMX055_REMAPPED_DATAY_LSB      0x42
+#define BMM050_BMX055_REMAPPED_DATAY_MSB      0x43
+#define BMM050_BMX055_REMAPPED_DATAX_LSB      0x44
+#define BMM050_BMX055_REMAPPED_DATAX_MSB      0x45
 
 /* Status Registers */
 #define BMM050_INT_STAT                    0x4A
@@ -114,40 +122,43 @@
 #define BMM050_DIG_XY1                     0x71
 
 
-/* Data X LSB Regsiter */
+/* Data X LSB Register */
 #define BMM050_DATAX_LSB_VALUEX__POS        3
 #define BMM050_DATAX_LSB_VALUEX__LEN        5
 #define BMM050_DATAX_LSB_VALUEX__MSK        0xF8
 #define BMM050_DATAX_LSB_VALUEX__REG        BMM050_DATAX_LSB
 
+/* Data X SelfTest Register */
 #define BMM050_DATAX_LSB_TESTX__POS         0
 #define BMM050_DATAX_LSB_TESTX__LEN         1
 #define BMM050_DATAX_LSB_TESTX__MSK         0x01
 #define BMM050_DATAX_LSB_TESTX__REG         BMM050_DATAX_LSB
 
-/* Data Y LSB Regsiter */
+/* Data Y LSB Register */
 #define BMM050_DATAY_LSB_VALUEY__POS        3
 #define BMM050_DATAY_LSB_VALUEY__LEN        5
 #define BMM050_DATAY_LSB_VALUEY__MSK        0xF8
 #define BMM050_DATAY_LSB_VALUEY__REG        BMM050_DATAY_LSB
 
+/* Data Y SelfTest Register */
 #define BMM050_DATAY_LSB_TESTY__POS         0
 #define BMM050_DATAY_LSB_TESTY__LEN         1
 #define BMM050_DATAY_LSB_TESTY__MSK         0x01
 #define BMM050_DATAY_LSB_TESTY__REG         BMM050_DATAY_LSB
 
-/* Data Z LSB Regsiter */
+/* Data Z LSB Register */
 #define BMM050_DATAZ_LSB_VALUEZ__POS        1
 #define BMM050_DATAZ_LSB_VALUEZ__LEN        7
 #define BMM050_DATAZ_LSB_VALUEZ__MSK        0xFE
 #define BMM050_DATAZ_LSB_VALUEZ__REG        BMM050_DATAZ_LSB
 
+/* Data Z SelfTest Register */
 #define BMM050_DATAZ_LSB_TESTZ__POS         0
 #define BMM050_DATAZ_LSB_TESTZ__LEN         1
 #define BMM050_DATAZ_LSB_TESTZ__MSK         0x01
 #define BMM050_DATAZ_LSB_TESTZ__REG         BMM050_DATAZ_LSB
 
-/* Hall Resistance LSB Regsiter */
+/* Hall Resistance LSB Register */
 #define BMM050_R_LSB_VALUE__POS             2
 #define BMM050_R_LSB_VALUE__LEN             6
 #define BMM050_R_LSB_VALUE__MSK             0xFC
@@ -158,7 +169,21 @@
 #define BMM050_DATA_RDYSTAT__MSK            0x01
 #define BMM050_DATA_RDYSTAT__REG            BMM050_R_LSB
 
-/* Interupt Status Register */
+/* Data X LSB Remapped Register only applicable for BMX055 */
+#define BMM050_BMX055_REMAPPED_DATAX_LSB_VALUEX__POS        3
+#define BMM050_BMX055_REMAPPED_DATAX_LSB_VALUEX__LEN        5
+#define BMM050_BMX055_REMAPPED_DATAX_LSB_VALUEX__MSK        0xF8
+#define BMM050_BMX055_REMAPPED_DATAX_LSB_VALUEX__REG\
+					BMM050_BMX055_REMAPPED_DATAX_LSB
+
+/* Data Y LSB Remapped Register only applicable for BMX055  */
+#define BMM050_BMX055_REMAPPED_DATAY_LSB_VALUEY__POS        3
+#define BMM050_BMX055_REMAPPED_DATAY_LSB_VALUEY__LEN        5
+#define BMM050_BMX055_REMAPPED_DATAY_LSB_VALUEY__MSK        0xF8
+#define BMM050_BMX055_REMAPPED_DATAY_LSB_VALUEY__REG\
+					BMM050_BMX055_REMAPPED_DATAY_LSB
+
+/* Interrupt Status Register */
 #define BMM050_INT_STAT_DOR__POS            7
 #define BMM050_INT_STAT_DOR__LEN            1
 #define BMM050_INT_STAT_DOR__MSK            0x80
@@ -241,7 +266,7 @@
 #define BMM050_CNTL_S_TEST__MSK            0x01
 #define BMM050_CNTL_S_TEST__REG            BMM050_CONTROL
 
-/* Interupt Control Register */
+/* Interrupt Control Register */
 #define BMM050_INT_CNTL_DOR_EN__POS            7
 #define BMM050_INT_CNTL_DOR_EN__LEN            1
 #define BMM050_INT_CNTL_DOR_EN__MSK            0x80
@@ -340,6 +365,7 @@
 #define BMM050_XYZ                  7
 
 /* Constants */
+#define BMM050_Zero_U8X                         0
 #define BMM050_NULL                             0
 #define BMM050_DISABLE                          0
 #define BMM050_ENABLE                           1
@@ -472,6 +498,26 @@ struct bmm050_mdata_float {
 	BMM050_U16 resistance;
 };
 
+/*user defined Structures for remapped functions
+ * this only applicable for BMX055*/
+struct bmm050_remapped_mdata {
+	BMM050_S16 datax;
+	BMM050_S16 datay;
+	BMM050_S16 dataz;
+	BMM050_U16 resistance;
+};
+struct bmm050_remapped_mdata_s32 {
+	BMM050_S32 datax;
+	BMM050_S32 datay;
+	BMM050_S32 dataz;
+	BMM050_U16 resistance;
+};
+struct bmm050_remapped_mdata_float {
+	float datax;
+	float datay;
+	float  dataz;
+	BMM050_U16 resistance;
+};
 struct bmm050 {
 	unsigned char company_id;
 	unsigned char dev_addr;
@@ -514,52 +560,55 @@ BMM050_RETURN_FUNCTION_TYPE bmm050_write_register(
 BMM050_RETURN_FUNCTION_TYPE bmm050_get_self_test_XYZ(
 		unsigned char *self_testxyz);
 BMM050_S16 bmm050_compensate_X(
-		BMM050_S16 mdata_x, BMM050_U16 data_R);
+		BMM050_S16 mdata_x, BMM050_U16 data_r);
 BMM050_S32 bmm050_compensate_X_s32(
-		BMM050_S16 mdata_x,  BMM050_U16 data_R);
+		BMM050_S16 mdata_x,  BMM050_U16 data_r);
 #ifdef ENABLE_FLOAT
 float bmm050_compensate_X_float(
-		BMM050_S16 mdata_x,  BMM050_U16 data_R);
+		BMM050_S16 mdata_x,  BMM050_U16 data_r);
 #endif
 BMM050_S16 bmm050_compensate_Y(
-		BMM050_S16 mdata_y, BMM050_U16 data_R);
+		BMM050_S16 mdata_y, BMM050_U16 data_r);
 BMM050_S32 bmm050_compensate_Y_s32(
-		BMM050_S16 mdata_y,  BMM050_U16 data_R);
+		BMM050_S16 mdata_y,  BMM050_U16 data_r);
 #ifdef ENABLE_FLOAT
 float bmm050_compensate_Y_float(
-		BMM050_S16 mdata_y,  BMM050_U16 data_R);
+		BMM050_S16 mdata_y,  BMM050_U16 data_r);
 #endif
 BMM050_S16 bmm050_compensate_Z(
-		BMM050_S16 mdata_z,  BMM050_U16 data_R);
+		BMM050_S16 mdata_z,  BMM050_U16 data_r);
 BMM050_S32 bmm050_compensate_Z_s32(
-		BMM050_S16 mdata_z,  BMM050_U16 data_R);
+		BMM050_S16 mdata_z,  BMM050_U16 data_r);
 #ifdef ENABLE_FLOAT
 float bmm050_compensate_Z_float(
-		BMM050_S16 mdata_z,  BMM050_U16 data_R);
+		BMM050_S16 mdata_z,  BMM050_U16 data_r);
 #endif
 BMM050_RETURN_FUNCTION_TYPE bmm050_get_raw_xyz(
-		struct bmm050_mdata *mdata);
+struct bmm050_mdata *mdata);
+
 BMM050_RETURN_FUNCTION_TYPE bmm050_init_trim_registers(void);
+
 BMM050_RETURN_FUNCTION_TYPE bmm050_set_spi3(
-		unsigned char value);
+unsigned char value);
+
 BMM050_RETURN_FUNCTION_TYPE bmm050_get_powermode(
-		unsigned char *mode);
+unsigned char *mode);
 BMM050_RETURN_FUNCTION_TYPE bmm050_set_powermode(
-		unsigned char mode);
+unsigned char mode);
 BMM050_RETURN_FUNCTION_TYPE bmm050_set_adv_selftest(
-		unsigned char adv_selftest);
+unsigned char adv_selftest);
 BMM050_RETURN_FUNCTION_TYPE bmm050_get_adv_selftest(
-		unsigned char *adv_selftest);
+unsigned char *adv_selftest);
 BMM050_RETURN_FUNCTION_TYPE bmm050_set_datarate(
-		unsigned char data_rate);
+unsigned char data_rate);
 BMM050_RETURN_FUNCTION_TYPE bmm050_get_datarate(
-		unsigned char *data_rate);
+unsigned char *data_rate);
 BMM050_RETURN_FUNCTION_TYPE bmm050_set_functional_state(
-		unsigned char functional_state);
+unsigned char functional_state);
 BMM050_RETURN_FUNCTION_TYPE bmm050_get_functional_state(
-		unsigned char *functional_state);
+unsigned char *functional_state);
 BMM050_RETURN_FUNCTION_TYPE bmm050_set_selftest(
-		unsigned char selftest);
+unsigned char selftest);
 BMM050_RETURN_FUNCTION_TYPE bmm050_get_selftest(
 		unsigned char *selftest);
 BMM050_RETURN_FUNCTION_TYPE bmm050_perform_advanced_selftest(
@@ -579,4 +628,12 @@ BMM050_RETURN_FUNCTION_TYPE bmm050_set_control_measurement_x(
 BMM050_RETURN_FUNCTION_TYPE bmm050_set_control_measurement_y(
 		unsigned char enable_disable);
 BMM050_RETURN_FUNCTION_TYPE bmm050_soft_reset(void);
+BMM050_RETURN_FUNCTION_TYPE bmm050_get_bmx055_remapped_raw_xyz
+(struct bmm050_remapped_mdata *mdata);
+BMM050_RETURN_FUNCTION_TYPE bmm050_read_bmx055_remapped_mdataXYZ_float
+(struct bmm050_remapped_mdata_float *mdata);
+BMM050_RETURN_FUNCTION_TYPE bmm050_read_bmx055_remapped_mdataXYZ_s32
+(struct bmm050_remapped_mdata_s32 *mdata);
+BMM050_RETURN_FUNCTION_TYPE bmm050_read_bmx055_remapped_mdataXYZ
+(struct bmm050_remapped_mdata *mdata);
 #endif
