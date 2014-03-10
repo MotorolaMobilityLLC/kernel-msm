@@ -5874,7 +5874,7 @@ WLANTL_RxFrames
         broadcast = VOS_FALSE;
 #else
         vosStatus = WLANTL_ReadRSSI(pvosGCtx, pvBDHeader, ucSTAId);
-#endif /*FEATURE_WLAN_GEN6_ROAMING*/
+#endif
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
         {
           TLLOGW(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
@@ -6153,7 +6153,7 @@ WLANTL_RxCachedFrames
         broadcast = VOS_FALSE;
 #else
         vosStatus = WLANTL_ReadRSSI(vos_get_global_context(VOS_MODULE_ID_TL,pTLCb), pvBDHeader, ucSTAId);
-#endif /*FEATURE_WLAN_GEN6_ROAMING*/
+#endif
         if(!VOS_IS_STATUS_SUCCESS(vosStatus))
         {
           TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
