@@ -73,6 +73,17 @@ struct etm_ctx {
 };
 static struct etm_ctx etm;
 
+static inline u64 cp15_read_timer_count(void)
+{
+	u32 cvall, cvalh;
+
+	asm volatile("mrrc p15, 0, %0, %1, c14" : "=r" (cvall), "=r" (cvalh));
+	return ((u64) cvalh << 32) | cvall;
+}
+
+DEFINE_PER_CPU(u64, tval_bef_pc);
+DEFINE_PER_CPU(u64, tval_aft_pc);
+
 static int dbg_read_bxr(uint32_t *state, int i, int j)
 {
 	switch (j) {
@@ -1048,6 +1059,8 @@ void msm_jtag_save_state(void)
 		dbg_save_state(cpu);
 	if (etm.save_restore_enabled)
 		etm_save_state(cpu);
+	per_cpu(tval_bef_pc, cpu) = cp15_read_timer_count();
+	per_cpu(tval_aft_pc, cpu) = ~0ULL;
 }
 EXPORT_SYMBOL(msm_jtag_save_state);
 
@@ -1074,6 +1087,7 @@ void msm_jtag_restore_state(void)
 	int cpu;
 
 	cpu = raw_smp_processor_id();
+	per_cpu(tval_aft_pc, cpu) = cp15_read_timer_count();
 
 	/* Attempt restore only if save has been done. If power collapse
 	 * is disabled, hotplug off of non-boot core will result in WFI
