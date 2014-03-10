@@ -81,6 +81,7 @@
 #include <wlan_btc_svc.h>
 #include <wlan_hdd_cfg.h>
 #include <wlan_ptt_sock_svc.h>
+#include <wlan_logging_sock_svc.h>
 #include <wlan_hdd_wowl.h>
 #include <wlan_hdd_misc.h>
 #include <wlan_hdd_wext.h>
@@ -7494,6 +7495,13 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    nl_srv_exit();
 #endif /* WLAN_KD_READY_NOTIFIER */
 
+#ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
+   if(pHddCtx->cfg_ini->wlanLoggingEnable)
+   {
+       wlan_logging_sock_deactivate_svc();
+   }
+#endif
+
    /* Cancel the vote for XO Core ON. 
     * This is done here to ensure there is no race condition since MC, TX and WD threads have
     * exited at this point
@@ -8605,6 +8613,20 @@ int hdd_wlan_startup(struct device *dev )
    {
       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: ptt_sock_activate_svc failed",__func__);
       goto err_nl_srv;
+   }
+#endif
+
+#ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
+   if(pHddCtx->cfg_ini && pHddCtx->cfg_ini->wlanLoggingEnable)
+   {
+      if(wlan_logging_sock_activate_svc(
+               pHddCtx->cfg_ini->wlanLoggingFEToConsole,
+               pHddCtx->cfg_ini->wlanLoggingNumBuf))
+      {
+         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: wlan_logging_sock_activate_svc"
+                                      " failed", __func__);
+         goto err_nl_srv;
+      }
    }
 #endif
 
