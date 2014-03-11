@@ -462,10 +462,10 @@ static void dwc3_ext_event_notify(struct usb_otg *otg,
 		}
 
 		if (ext_xceiv->bsv) {
-			dev_dbg(phy->dev, "XCVR: BSV set\n");
+			dev_info(phy->dev, "XCVR: BSV set\n");
 			set_bit(B_SESS_VLD, &dotg->inputs);
 		} else {
-			dev_dbg(phy->dev, "XCVR: BSV clear\n");
+			dev_info(phy->dev, "XCVR: BSV clear\n");
 			clear_bit(B_SESS_VLD, &dotg->inputs);
 		}
 
