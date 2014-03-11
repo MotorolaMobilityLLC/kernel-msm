@@ -661,6 +661,7 @@ typedef struct tagCsrConfig
     tANI_U8 isAmsduSupportInAMPDU;
     tANI_U8 nSelect5GHzMargin;
     tANI_U8 isCoalesingInIBSSAllowed;
+    tANI_U8 allowDFSChannelRoam;
 }tCsrConfig;
 
 typedef struct tagCsrChannelPowerInfo
