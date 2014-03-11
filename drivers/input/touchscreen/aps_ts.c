@@ -21,8 +21,10 @@
 #include <linux/of_gpio.h>
 #endif
 
-#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
 #include <mach/mmi_panel_notifier.h>
+#include <linux/notifier.h>
+#include <linux/fb.h>
 #elif defined(CONFIG_FB)
 #include <linux/notifier.h>
 #include <linux/fb.h>
@@ -31,9 +33,9 @@
 #define DRIVER_NAME "aps_ts"
 #define INPUT_PHYS_NAME "aps_ts/input0"
 
-/* TODO: to be confirmed with touch spec */
 #define RESET_DELAY_USEC	2000
-#define UI_READY_MSEC		200
+#define UI_BOOT_STEP_MSEC	20
+#define UI_BOOT_MAX_STEPS	20
 
 #define APS_I2C_RETRY_TIMES	10
 #define APS_I2C_RETRY_DELAY_MS	10
@@ -59,6 +61,9 @@
 #define APS_BOOTMODE_APPLICATION	0x22
 #define APS_BOOTMODE_VERIFYING		0x33
 
+#define APS_PRODUCT_ID_SIZE	4
+#define APS_FW_VERSION_SIZE	4
+
 /* Event types */
 #define APS_ET_LOG		0xD
 #define APS_ET_NOTIFY		0xE
@@ -75,6 +80,8 @@
 #define ISP_LOCK		{ 0x00, 0x04, 0x05, 0xFA, 0x00, 0x00 }
 
 #define ISP_CLK_20MHZ		{ 0x00, 0x4C, 0x05, 0xFA, 0x00, 0x07 }
+
+#define ISP_MAX_RETRIES		1000
 
 #define ISP_FULL_ERASE		{ 0x00, 0x10, 0x00, 0x00, 0x10, 0x44 }
 #define ISP_CLEAR_DONE		{ 0x00, 0x0C, 0x00, 0x00, 0x00, 0x20 }
@@ -131,8 +138,9 @@ struct aps_ts_info {
 	struct i2c_client		*client;
 	struct input_dev		*input_dev;
 
-#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
 	struct mmi_notifier panel_nb;
+	struct notifier_block fb_notif;
 #elif defined(CONFIG_FB)
 	struct notifier_block fb_notif;
 #endif
@@ -143,21 +151,28 @@ struct aps_ts_info {
 	struct completion		init_done;
 	struct mutex			lock;
 	bool				enabled;
+	bool				irq_enabled;
 	bool				in_bootloader;
 	bool				input_registered;
 	bool				high_speed_isp;
-	u8				product_id[5];
-	u8				version[4];
+	u8				prod_id[APS_PRODUCT_ID_SIZE+1];
+	u8				default_prod_id[APS_PRODUCT_ID_SIZE+1];
+	u8				version[APS_FW_VERSION_SIZE];
 	u8				bootmode;
 	char				fw_name[MAX_FW_NAME_LEN];
 	int				perf_irq_count;
 	int				perf_irq_first;
 	int				perf_irq_last;
 	struct aps_irq_perf		*perf_irq_data;
+	bool				force_reflash;
+	u32				ui_ready_msec;
 };
 
+static int aps_i2c_read(struct aps_ts_info *info, u16 addr, void *buf, u16 len);
+static int aps_query_device(struct aps_ts_info *info);
 static void aps_ts_enable(struct aps_ts_info *info);
 static void aps_ts_disable(struct aps_ts_info *info);
+static void aps_clear_input_data(struct aps_ts_info *info);
 
 static ssize_t aps_irq_perf_show(struct device *dev,
 	struct device_attribute *attr, char *buf);
@@ -261,14 +276,22 @@ static ssize_t aps_drv_irq_store(struct device *dev,
 
 	switch (value) {
 	case 0:
+		mutex_lock(&info->lock);
 		aps_ts_disable(info);
+		aps_clear_input_data(info);
+		mutex_unlock(&info->lock);
 		break;
 	case 1:
+		mutex_lock(&info->lock);
 		aps_ts_enable(info);
+		if (info->bootmode == 0)
+			aps_query_device(info);
+		mutex_unlock(&info->lock);
 		break;
 	default:
 		pr_err("Invalid value\n");
 	}
+
 	return count;
 }
 
@@ -311,7 +334,8 @@ static void aps_reset(struct aps_ts_info *info)
 	gpio_set_value(info->pdata->gpio_reset, 0);
 	udelay(RESET_DELAY_USEC);
 	gpio_set_value(info->pdata->gpio_reset, 1);
-	msleep(UI_READY_MSEC);
+	if (info->ui_ready_msec)
+		msleep(info->ui_ready_msec);
 	pr_debug("out of reset\n");
 }
 
@@ -320,13 +344,14 @@ static void aps_ts_enable(struct aps_ts_info *info)
 	if (info->enabled)
 		return;
 
-	mutex_lock(&info->lock);
-
 	info->enabled = true;
-	enable_irq(info->irq);
-	aps_reset(info);
 
-	mutex_unlock(&info->lock);
+	if (info->input_dev) {
+		enable_irq(info->irq);
+		info->irq_enabled = true;
+	}
+
+	aps_reset(info);
 }
 
 static void aps_ts_disable(struct aps_ts_info *info)
@@ -334,12 +359,12 @@ static void aps_ts_disable(struct aps_ts_info *info)
 	if (!info->enabled)
 		return;
 
-	mutex_lock(&info->lock);
+	if (info->irq_enabled) {
+		disable_irq(info->irq);
+		info->irq_enabled = false;
+	}
 
-	disable_irq(info->irq);
 	info->enabled = false;
-
-	mutex_unlock(&info->lock);
 }
 
 static int aps_i2c_read(struct aps_ts_info *info, u16 addr, void *buf, u16 len)
@@ -411,12 +436,14 @@ static void aps_clear_input_data(struct aps_ts_info *info)
 {
 	int i;
 
-	for (i = 0; i < MAX_FINGER_NUM; i++) {
-		input_mt_slot(info->input_dev, i);
-		input_mt_report_slot_state(info->input_dev, MT_TOOL_FINGER,
-			false);
+	if (info->input_dev) {
+		for (i = 0; i < MAX_FINGER_NUM; i++) {
+			input_mt_slot(info->input_dev, i);
+			input_mt_report_slot_state(info->input_dev,
+				MT_TOOL_FINGER,	false);
+		}
+		input_sync(info->input_dev);
 	}
-	input_sync(info->input_dev);
 
 	return;
 }
@@ -634,15 +661,32 @@ out:
 
 static int aps_query_device(struct aps_ts_info *info)
 {
-	int ret;
+	int ret, i;
+	u8 bootmode;
 
-	mutex_lock(&info->lock);
+	/* wait for UI mode when bootmode becomes readable */
+	for (i = 0; i < UI_BOOT_MAX_STEPS; i++) {
+		msleep(UI_BOOT_STEP_MSEC);
+		ret = aps_i2c_read(info, APS_REG_BOOTMODE, &bootmode,
+			sizeof(bootmode));
+		if (ret <= 0) {
+			pr_err("Failed to read boot mode\n");
+			goto out_failure;
+		}
+		if (bootmode != 0)
+			break;
+	}
+	pr_debug("bootmode: 0x%x waited: %d %d msec intervals\n",
+		bootmode, i, UI_BOOT_STEP_MSEC);
 
-	ret = aps_i2c_read(info, APS_REG_BOOTMODE, &info->bootmode,
-		sizeof(info->bootmode));
-	if (ret <= 0) {
-		pr_err("Failed to read boot mode\n");
-		goto out_failure;
+	if (bootmode == 0) {
+		/* Do not fail here if touch IC is unresponsive.	    */
+		/* For example, bootloader did initialize the display and   */
+		/* touch is not active. Will attempt to activate touch IC   */
+		/* next time display is on. */
+		goto out_touch_inactive;
+	} else {
+		info->bootmode = bootmode;
 	}
 
 	if (!info->input_dev) {
@@ -658,17 +702,19 @@ static int aps_query_device(struct aps_ts_info *info)
 		goto out_bootloader;
 
 	ret = aps_i2c_read(info, APS_REG_FW_VER, info->version,
-		sizeof(info->version));
+		APS_FW_VERSION_SIZE);
 	if (ret <= 0) {
 		pr_err("Failed to read FW version\n");
-		memset(info->version, 0, sizeof(info->version));
+		goto out_failure;
 	}
 
-	ret = aps_i2c_read(info, APS_REG_PROD_INFO, info->product_id, 4);
+	ret = aps_i2c_read(info, APS_REG_PROD_INFO, info->prod_id,
+		APS_PRODUCT_ID_SIZE);
 	if (ret <= 0) {
 		pr_err("Failed to read product id\n");
-		info->product_id[0] = 0;
-	}
+		goto out_failure;
+	} else
+		info->prod_id[APS_PRODUCT_ID_SIZE] = 0;
 
 	ret = aps_ts_read_resolution(info);
 	if (ret) {
@@ -690,19 +736,25 @@ static int aps_query_device(struct aps_ts_info *info)
 		}
 		info->input_registered = true;
 	}
-
 out_bootloader:
 	if (info->in_bootloader)
-		pr_info("Product: APS in bootloader mode\n");
+		pr_info("Touch IC in bootloader mode (0x%x)\n",
+			info->bootmode);
 	else
 		pr_info("Product: APS-%s, build-id: %x%02x\n",
-			info->product_id, info->version[2], info->version[3]);
+			info->prod_id, info->version[2], info->version[3]);
 
-	mutex_unlock(&info->lock);
+	return 0;
+
+out_touch_inactive:
+	/* Touch IC is currently inactive - clear old info */
+	pr_err("Touch IC failed to activate\n");
+	memset(info->prod_id, 0, sizeof(info->prod_id));
+	memset(info->version, 0, sizeof(info->version));
+	info->bootmode = 0;
 	return 0;
 
 out_failure:
-	mutex_unlock(&info->lock);
 	return 1;
 }
 
@@ -751,21 +803,52 @@ static int aps_isp_clear(struct aps_ts_info *info)
 	return ret;
 }
 
+static int aps_sendcmd(struct i2c_client *client, u8 *cmd, int cmd_size,
+	const char *cmdname)
+{
+	int i;
+	int ret = 0;
+
+	pr_info("Sending command \"%s\"\n", cmdname);
+	for (i = 0; i < ISP_MAX_RETRIES; i++)
+		if (i2c_master_send(client, cmd, cmd_size) != cmd_size)
+			continue;
+		else
+			break;
+
+	if (i < ISP_MAX_RETRIES)
+		pr_info("Command \"%s\" succeeded after %d retries\n",
+			cmdname, i);
+	else {
+		pr_info("Command \"%s\" failed\n", cmdname);
+		ret = -1;
+	}
+
+	return ret;
+}
+
 static int aps_isp_entry(struct aps_ts_info *info)
 {
 	struct i2c_client *client = info->client;
 	u8 entry_a[6] = ISP_ENTRY1;
 	u8 entry_b[6] = ISP_ENTRY2;
 	u8 entry_c[6] = ISP_ENTRY3;
-	int ret = 0;
+	u8 speed_up[6] = ISP_CLK_20MHZ;
 
-	if (i2c_master_send(client, entry_a, 6) != 6)
-		ret = -EIO;
-	else if (i2c_master_send(client, entry_b, 6) != 6)
-		ret = -EIO;
-	else if (i2c_master_send(client, entry_c, 6) != 6)
-		ret = -EIO;
-	return ret;
+	if (aps_sendcmd(client, entry_a, 6, "ISP entry 1"))
+		return -EINVAL;
+
+	if (aps_sendcmd(client, entry_b, 6, "ISP entry 2"))
+		return -EINVAL;
+
+	if (aps_sendcmd(client, entry_c, 6, "ISP entry 3"))
+		return -EINVAL;
+
+	if (info->high_speed_isp)
+		if (aps_sendcmd(client, speed_up, 6, "Switch to 20MHz"))
+			return -EINVAL;
+
+	return 0;
 }
 
 static int aps_isp_mode_check(struct aps_ts_info *info)
@@ -960,7 +1043,11 @@ static int aps_fw_flash(const struct firmware *fw, struct aps_ts_info *info)
 	if ((fw_size % 8) != 0)
 		fw_size = fw_size + (8 - (fw_size % 8));
 
-	aps_isp_entry(info);
+	if (aps_isp_entry(info)) {
+		dev_err(&info->client->dev, "isp entry command failed\n");
+		ret = -EAGAIN;
+		goto out;
+	}
 
 	if (aps_isp_mode_check(info)) {
 		dev_err(&info->client->dev, "isp entry failed\n");
@@ -1010,13 +1097,25 @@ static int aps_fw_flash(const struct firmware *fw, struct aps_ts_info *info)
 
 lock_and_exit:
 	ret = aps_isp_lock(info);
-
+out:
 	return ret;
 }
 
 static void aps_fw_update(struct aps_ts_info *info, const struct firmware *fw)
 {
 	int ret;
+	struct i2c_client *client = info->client;
+
+	pr_debug("About to flash FW...");
+	mutex_lock(&info->lock);
+
+	if (info->irq_enabled)
+		disable_irq(client->irq);
+
+	if (!info->enabled) {
+		pr_info("Touch IC is not powered on - abort FW flashing");
+		goto out;
+	}
 
 	ret = aps_fw_flash(fw, info);
 	if (ret)
@@ -1034,6 +1133,11 @@ static void aps_fw_update(struct aps_ts_info *info, const struct firmware *fw)
 	}
 
 	aps_query_device(info);
+out:
+	if (info->irq_enabled)
+		enable_irq(client->irq);
+
+	mutex_unlock(&info->lock);
 }
 
 static ssize_t aps_start_isp(struct device *dev, struct device_attribute *attr,
@@ -1070,25 +1174,115 @@ static ssize_t aps_version(struct device *dev, struct device_attribute *attr,
 	struct aps_ts_info *info = dev_get_drvdata(dev);
 	ssize_t count;
 
-	mutex_lock(&info->lock);
-
 	if (info->bootmode == APS_BOOTMODE_APPLICATION) {
-		count = scnprintf(buf, PAGE_SIZE, "%x%02x-00000000\n",
-			info->version[2],
-			info->version[3]);
+		count = scnprintf(buf, PAGE_SIZE, "%02x%02x-%02x%02x0000\n",
+			info->version[2], info->version[3],
+			info->version[2], info->version[3]);
 	} else if (info->bootmode == APS_BOOTMODE_BOOTLOADER) {
-		count = scnprintf(buf, PAGE_SIZE, "%x%02x-00000000\n",
-			info->version[0],
-			info->version[1]);
+		count = scnprintf(buf, PAGE_SIZE, "%02x%02x-%02x%02x0000\n",
+			info->version[0], info->version[1],
+			info->version[0], info->version[1]);
 	} else
-		count = scnprintf(buf, PAGE_SIZE, "000-00000000\n");
+		count = scnprintf(buf, PAGE_SIZE, "0000-00000000\n");
 
-	mutex_unlock(&info->lock);
 	return count;
 }
 
-static DEVICE_ATTR(doreflash, 0600, NULL, aps_start_isp);
+static ssize_t aps_product_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct aps_ts_info *info = dev_get_drvdata(dev);
+	ssize_t count;
+
+	if (info->bootmode == APS_BOOTMODE_APPLICATION)
+		count = scnprintf(buf, PAGE_SIZE, "%s\n",
+			info->prod_id);
+	else
+		/* Supply default product id needed for FW flashing   */
+		/* if actual product id can not be read from touch IC */
+		count = scnprintf(buf, PAGE_SIZE, "%s\n",
+			info->default_prod_id);
+
+	return count;
+}
+
+static ssize_t aps_ic_ver_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct aps_ts_info *info = dev_get_drvdata(dev);
+	ssize_t count;
+
+	if (info->bootmode == APS_BOOTMODE_APPLICATION)
+		count = scnprintf(buf, PAGE_SIZE, "Product ID: %s\n"
+			"Build ID: %02x%02x\n"
+			"Config ID: %02x%02x0000\n",
+			info->prod_id,
+			info->version[2], info->version[3],
+			info->version[2], info->version[3]);
+	else
+		count = scnprintf(buf, PAGE_SIZE, "Product ID: %s\n"
+			"Build ID: %02x%02x\n"
+			"Config ID: %02x%02x0000\n",
+			info->default_prod_id,
+			info->version[0], info->version[1],
+			info->version[0], info->version[1]);
+
+	return count;
+}
+
+static ssize_t aps_poweron_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct aps_ts_info *info = dev_get_drvdata(dev);
+	ssize_t count;
+
+	count = scnprintf(buf, PAGE_SIZE, "%d\n", info->enabled);
+	return count;
+}
+
+static ssize_t aps_flashprog_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct aps_ts_info *info = dev_get_drvdata(dev);
+	ssize_t count;
+
+	count = scnprintf(buf, PAGE_SIZE, "%d\n", info->in_bootloader);
+	return count;
+}
+
+static ssize_t aps_forcereflash_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct aps_ts_info *info = dev_get_drvdata(dev);
+	unsigned long value = 0;
+	int err = 0;
+
+	err = kstrtoul(buf, 10, &value);
+	if (err < 0) {
+		pr_err("Failed to convert value.\n");
+		return -EINVAL;
+	}
+
+	switch (value) {
+	case 0:
+	case 1:
+		mutex_lock(&info->lock);
+		info->force_reflash = value;
+		mutex_unlock(&info->lock);
+		break;
+	default:
+		pr_err("Invalid value\n");
+	}
+	return count;
+}
+
+static DEVICE_ATTR(doreflash, 0220, NULL, aps_start_isp);
 static DEVICE_ATTR(buildid, 0444, aps_version, NULL);
+static DEVICE_ATTR(productinfo, 0444, aps_product_show, NULL);
+static DEVICE_ATTR(ic_ver, 0444, aps_ic_ver_show, NULL);
+static DEVICE_ATTR(forcereflash, 0220, NULL, aps_forcereflash_store);
+static DEVICE_ATTR(poweron, 0444, aps_poweron_show, NULL);
+static DEVICE_ATTR(flashprog, 0444, aps_flashprog_show, NULL);
 
 static struct attribute *aps_attrs[] = {
 	&dev_attr_doreflash.attr,
@@ -1096,6 +1290,11 @@ static struct attribute *aps_attrs[] = {
 	&dev_attr_aps_perf.attr,
 	&dev_attr_drv_irq.attr,
 	&dev_attr_hw_irqstat.attr,
+	&dev_attr_productinfo.attr,
+	&dev_attr_ic_ver.attr,
+	&dev_attr_forcereflash.attr,
+	&dev_attr_poweron.attr,
+	&dev_attr_flashprog.attr,
 	NULL,
 };
 
@@ -1110,6 +1309,7 @@ static struct aps_ts_platform_data *aps_ts_of_init(struct i2c_client *client,
 	struct aps_ts_platform_data *pdata;
 	struct device *dev = &client->dev;
 	struct device_node *np = dev->of_node;
+	const char *default_prod_id;
 
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
@@ -1129,9 +1329,21 @@ static struct aps_ts_platform_data *aps_ts_of_init(struct i2c_client *client,
 		return NULL;
 	}
 
-	if (of_property_read_bool(np, "melfas,high-speed-isp")) {
+	if (of_property_read_bool(np, "aps_ts,high-speed-isp")) {
 		pr_notice("using 20MHz clock in ISP mode\n");
 		info->high_speed_isp = true;
+	}
+
+	if (!of_property_read_string(np, "aps_ts,default-product-id",
+		&default_prod_id)) {
+		pr_notice("default productid is \"%s\"\n", default_prod_id);
+		strlcpy(info->default_prod_id, default_prod_id,
+			sizeof(info->default_prod_id));
+	}
+
+	if (of_property_read_u32(np, "aps_ts,ui-ready-msec", &info->ui_ready_msec)) {
+		pr_notice("waiting %u msec for UI on reset\n",
+			info->ui_ready_msec);
 	}
 
 	return pdata;
@@ -1145,31 +1357,64 @@ static struct aps_ts_platform_data *aps_ts_of_init(struct i2c_client *client,
 }
 #endif
 
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
+/* Need both MMI notifications and frame buffer notifications.
+   MMI notifications:
+	suspend - delay suspend while FW flashing is in progress
+	resume - reset touch IC. Can't read any touch IC registers here
+		since display is not processing frames yet and touch IC
+		is inactive
+   FB notifications:
+	unblank - activate touch IC if was inactive
+*/
 static int aps_ts_suspend(struct device *dev)
 {
 	struct aps_ts_info *info = dev_get_drvdata(dev);
-
-	mutex_lock(&info->input_dev->mutex);
+	mutex_lock(&info->lock);
 	aps_ts_disable(info);
 	aps_clear_input_data(info);
-	mutex_unlock(&info->input_dev->mutex);
+	mutex_unlock(&info->lock);
 	pr_debug("SUSPENDED\n");
-
 	return 0;
-
 }
 
 static int aps_ts_resume(struct device *dev)
 {
 	struct aps_ts_info *info = dev_get_drvdata(dev);
-
-	mutex_lock(&info->input_dev->mutex);
+	mutex_lock(&info->lock);
 	aps_ts_enable(info);
-	mutex_unlock(&info->input_dev->mutex);
+	mutex_unlock(&info->lock);
 	pr_debug("RESUMED\n");
+	return 0;
+}
+
+static int fb_notifier_callback(struct notifier_block *self,
+	unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+	struct aps_ts_info *info = container_of(self, struct aps_ts_info,
+		fb_notif);
+
+	if (!evdata || !evdata->data || event != FB_EVENT_BLANK
+		|| !info || !info->client)
+		return 0;
+
+	blank = evdata->data;
+	if (*blank == FB_BLANK_UNBLANK) {
+		if (info->bootmode == 0 && info->enabled) {
+			mutex_lock(&info->lock);
+			aps_query_device(info);
+			mutex_unlock(&info->lock);
+		}
+		pr_debug("DISPLAY-ON\n");
+	} else if (*blank == FB_BLANK_POWERDOWN) {
+		pr_debug("DISPLAY-OFF\n");
+	}
 
 	return 0;
 }
+#endif
 
 #if defined(CONFIG_FB) && !defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
 static int fb_notifier_callback(struct notifier_block *self,
@@ -1180,14 +1425,19 @@ static int fb_notifier_callback(struct notifier_block *self,
 	struct aps_ts_info *info = container_of(self, struct aps_ts_info,
 		fb_notif);
 
-	if (!evdata || !evdata->data || !event == FB_EVENT_BLANK
+	if (!evdata || !evdata->data || event != FB_EVENT_BLANK
 		|| !info || !info->client)
 		return 0;
 
 	blank = evdata->data;
 	if (*blank == FB_BLANK_UNBLANK) {
-		aps_ts_resume(&info->client->dev);
 		pr_debug("DISPLAY-ON\n");
+		aps_ts_resume(&info->client->dev);
+		if (info->bootmode == 0) {
+			mutex_lock(&info->lock);
+			aps_query_device(info);
+			mutex_unlock(&info->lock);
+		}
 	} else if (*blank == FB_BLANK_POWERDOWN) {
 		aps_ts_suspend(&info->client->dev);
 		pr_debug("DISPLAY-OFF\n");
@@ -1275,7 +1525,7 @@ static int aps_ts_probe(struct i2c_client *client,
 		ret = -EAGAIN;
 		goto out_free_irq;
 	}
-#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
 	info->panel_nb.suspend = aps_ts_suspend;
 	info->panel_nb.resume = aps_ts_resume;
 	info->panel_nb.dev = &client->dev;
@@ -1283,6 +1533,15 @@ static int aps_ts_probe(struct i2c_client *client,
 		pr_info("registered MMI panel notifier\n");
 	else {
 		dev_err(&client->dev, "unable to register MMI notifier");
+		goto out_sysfs_remove_group;
+	}
+
+	info->fb_notif.notifier_call = fb_notifier_callback;
+	ret = fb_register_client(&info->fb_notif);
+	if (ret) {
+		dev_err(&client->dev,
+			"Error registering fb_notifier: %d\n", ret);
+		ret = -EINVAL;
 		goto out_sysfs_remove_group;
 	}
 #elif defined(CONFIG_FB)
@@ -1336,10 +1595,11 @@ static int aps_ts_remove(struct i2c_client *client)
 	gpio_free(info->pdata->gpio_reset);
 	gpio_free(info->pdata->gpio_irq);
 	kfree(info->perf_irq_data);
-#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
 	mmi_panel_unregister_notifier(&info->panel_nb);
+	fb_unregister_client(&info->fb_notif);
 #elif defined(CONFIG_FB)
-	fb_unregister_client(&info->panel_nb);
+	fb_unregister_client(&info->fb_notif);
 #endif
 	kfree(info);
 
@@ -1348,7 +1608,7 @@ static int aps_ts_remove(struct i2c_client *client)
 
 #if defined(CONFIG_PM)
 static const struct dev_pm_ops aps_ts_pm_ops = {
-#if !(defined(CONFIG_FB) || defined(CONFIG_MMI_PANEL_NOTIFICATIONS))
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
 	.suspend	= aps_ts_suspend,
 	.resume		= aps_ts_resume,
 #endif
@@ -1363,7 +1623,7 @@ MODULE_DEVICE_TABLE(i2c, aps_ts_id);
 
 #ifdef CONFIG_OF
 static struct of_device_id aps_ts_match_table[] = {
-	{ .compatible = "melfas,aps_ts",},
+	{ .compatible = "melfas-aps,aps_ts",},
 	{ },
 };
 #endif
@@ -1383,5 +1643,5 @@ static struct i2c_driver aps_ts_driver = {
 module_i2c_driver(aps_ts_driver);
 
 MODULE_VERSION("1.1");
-MODULE_DESCRIPTION("APS Touchscreen driver");
+MODULE_DESCRIPTION("Melfas APS Touchscreen driver");
 MODULE_LICENSE("GPL");
