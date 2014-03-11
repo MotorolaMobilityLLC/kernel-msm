@@ -23,6 +23,9 @@
 #include <linux/time.h>
 #include <linux/vmalloc.h>
 
+#define DROPBOX_TEXT_FLAG   0x00000002
+#define DROPBOX_FILE_FLAG   0x40000000
+
 #define EVENT_QUEUE_SIZE 5
 #define EVENT_NAME_LENGTH 64
 
@@ -163,12 +166,23 @@ void dropbox_queue_event_binary(char *name, void *data, size_t size)
 
 void dropbox_queue_event_text(char *name, void *data, size_t size)
 {
-	dropbox_queue_event(name, data, size, 2);
+	dropbox_queue_event(name, data, size, DROPBOX_TEXT_FLAG);
+}
+
+void dropbox_queue_event_binaryfile(char *name, char *path)
+{
+	dropbox_queue_event(name, path, strlen(path), DROPBOX_FILE_FLAG);
+}
+
+void dropbox_queue_event_textfile(char *name, char *path)
+{
+	dropbox_queue_event(name, path, strlen(path),
+		DROPBOX_TEXT_FLAG | DROPBOX_FILE_FLAG);
 }
 
 void dropbox_queue_event_empty(char *name)
 {
-	dropbox_queue_event(name, name, strlen(name), 2);
+	dropbox_queue_event(name, name, strlen(name), DROPBOX_TEXT_FLAG);
 }
 
 struct dropbox_trigger_callback {
