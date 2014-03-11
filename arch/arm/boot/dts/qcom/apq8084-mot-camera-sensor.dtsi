@@ -13,6 +13,13 @@
 
 &cci {
 
+	rohm_bu64296gwx: qcom,actuator@18 {
+		cell-index = <1>;
+		reg = <0x18>;
+		compatible = "qcom,actuator";
+		qcom,cci-master = <0>;
+	};
+
 	qcom,camera@20 {
 		cell-index = <0>;
 		compatible = "qcom,camera";
@@ -20,6 +27,7 @@
 		qcom,slave-id = <0x20 0x0016 0x0220>;
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
+		qcom,actuator-src = <&rohm_bu64296gwx>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "imx220";
 		cam_vdig-supply = <&pma8084_l27>;
