@@ -337,6 +337,12 @@
 				qcom,ovp-val = <2>;
 				qcom,num-strings = <1>;
 				qcom,id = <0>;
+				mmi,panels {
+					panel@0 {
+						panel_name = "mipi_mot_video_cmi_hd_450";
+						version = <0x85>;
+					};
+				};
 			};
 		};
 	};
