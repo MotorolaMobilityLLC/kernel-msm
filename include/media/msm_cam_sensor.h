@@ -491,6 +491,7 @@ enum msm_actuator_cfg_type_t {
 	CFG_SET_POSITION,
 	CFG_MOVE_FOCUS,
 	CFG_DIRECT_I2C_WRITE, /*to support non-trivial actuators*/
+	CFG_DIRECT_I2C_READ,
 };
 
 enum actuator_type {
@@ -607,6 +608,12 @@ struct msm_actuator_i2c_table {
 	uint32_t size;
 };
 
+struct msm_actuator_i2c_read_config {
+	uint16_t reg_addr;
+	uint32_t data_size;
+	uint8_t *data;
+};
+
 struct msm_actuator_cfg_data {
 	int cfgtype;
 	uint8_t is_af_supported;
@@ -617,6 +624,7 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
 		struct msm_actuator_i2c_table i2c_table;
+		struct msm_actuator_i2c_read_config actuator_i2c_read_config;
 	} cfg;
 };
 

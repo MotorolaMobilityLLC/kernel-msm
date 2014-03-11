@@ -618,6 +618,54 @@ static int32_t msm_actuator_direct_i2c_write(
 	return rc;
 }
 
+static int32_t msm_actuator_direct_i2c_read(
+		struct msm_actuator_ctrl_t *a_ctrl,
+		struct msm_actuator_i2c_read_config *actuator_i2c_read_config)
+{
+	int32_t rc = -EINVAL;
+	uint8_t *data_read = NULL;
+
+	if (NULL == actuator_i2c_read_config || NULL == a_ctrl) {
+		pr_err("%s: NULL pointer: i2c_read_config %p, a_ctrl %p\n",
+				__func__, actuator_i2c_read_config, a_ctrl);
+		goto exit;
+	}
+
+	data_read = kmalloc(sizeof(uint8_t)*actuator_i2c_read_config->data_size,
+			GFP_KERNEL);
+	if (data_read == NULL) {
+		pr_err("%s: Unable to allocate memory!\n", __func__);
+		rc = -ENOMEM;
+		goto exit;
+	}
+
+	if (a_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq) {
+
+		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
+				&a_ctrl->i2c_client,
+				actuator_i2c_read_config->reg_addr,
+				data_read,
+				actuator_i2c_read_config->data_size);
+		if (rc < 0) {
+			pr_err("%s: Unable to read seq (%d)\n", __func__, rc);
+			rc = -EIO;
+			goto exit;
+		}
+	}
+
+	if (copy_to_user(actuator_i2c_read_config->data, data_read,
+				sizeof(uint8_t) *
+				actuator_i2c_read_config->data_size)) {
+		pr_err("%s: Unable to copy to user space!\n", __func__);
+		rc = -EFAULT;
+		goto exit;
+	}
+
+exit:
+	kfree(data_read);
+	return rc;
+}
+
 static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 	void __user *argp)
 {
@@ -666,6 +714,15 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 		if (rc < 0)
 			pr_err("%s CFG_DIRECT_I2C_WRITE failed %d\n",
 					__func__, rc);
+		break;
+
+	case CFG_DIRECT_I2C_READ:
+		rc = msm_actuator_direct_i2c_read(a_ctrl,
+				&cdata->cfg.actuator_i2c_read_config);
+		if (rc < 0)
+			pr_err("%s CFG_DIRECT_I2C_READ failed %d\n",
+					__func__, rc);
+
 		break;
 
 	default:
