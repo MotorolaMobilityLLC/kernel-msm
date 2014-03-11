@@ -836,6 +836,6 @@
 	vbus_dwc3-supply = <&smb1357_otg_vreg>;
 };
 
-&gdsc_pcie_1{
-	status = "disabled";
+&soc {
+	/delete-node/ qcom,pcie@fc528000;
 };
