@@ -3505,7 +3505,7 @@ static int __devinit parse_smd_devicetree(struct device_node *node,
 	ret = request_irq(irq_line,
 				private_irq->irq_handler,
 				irq_flags,
-				"smd_dev",
+				node->name ? node->name : "smd_dev",
 				NULL);
 	if (ret < 0) {
 		pr_err("%s: request_irq() failed on %d\n", __func__, irq_line);
@@ -3572,7 +3572,7 @@ static int __devinit parse_smsm_devicetree(struct device_node *node,
 	ret = request_irq(irq_line,
 				private_irq->irq_handler,
 				IRQF_TRIGGER_RISING,
-				"smsm_dev",
+				node->name ? node->name : "smsm_dev",
 				NULL);
 	if (ret < 0) {
 		pr_err("%s: request_irq() failed on %d\n", __func__, irq_line);
