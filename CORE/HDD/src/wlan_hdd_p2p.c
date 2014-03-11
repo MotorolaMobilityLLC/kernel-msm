@@ -192,7 +192,7 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
 
     cfgState->remain_on_chan_ctx = NULL;
     if( REMAIN_ON_CHANNEL_REQUEST == pRemainChanCtx->rem_on_chan_request &&
-        !pAdapter->internalCancelRemainOnChReq )
+        (pAdapter->internalRoCinProgress == VOS_FALSE) )
     {
         if( cfgState->buf )
         {
@@ -214,7 +214,6 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
                               GFP_KERNEL);
     }
 
-    pAdapter->internalCancelRemainOnChReq = VOS_FALSE;
 
     if ( ( WLAN_HDD_INFRA_STATION == pAdapter->device_mode ) ||
          ( WLAN_HDD_P2P_CLIENT == pAdapter->device_mode ) ||
@@ -514,8 +513,8 @@ void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter )
         // more accurate Remain on Channel start time.
         pRemainChanCtx->p2pRemOnChanTimeStamp =
                       vos_timer_get_system_time() - READY_EVENT_PROPOGATE_TIME;
-
-        if( REMAIN_ON_CHANNEL_REQUEST == pRemainChanCtx->rem_on_chan_request )
+        if( REMAIN_ON_CHANNEL_REQUEST == pRemainChanCtx->rem_on_chan_request
+            && (pAdapter->internalRoCinProgress == VOS_FALSE) )
         {
             cfg80211_ready_on_channel(
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
@@ -531,7 +530,8 @@ void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter )
                                pRemainChanCtx->duration, GFP_KERNEL );
         }
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
-        else if( OFF_CHANNEL_ACTION_TX == pRemainChanCtx->rem_on_chan_request )
+        else if( OFF_CHANNEL_ACTION_TX == pRemainChanCtx->rem_on_chan_request
+             || (pAdapter->internalRoCinProgress == VOS_TRUE))
         {
             complete(&pAdapter->offchannel_tx_event);
         }
@@ -695,7 +695,6 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
     hdd_adapter_t *goAdapter;
 #endif
-    u64 old_cookie = 0;
 
      MTRACE(vos_trace(VOS_MODULE_ID_HDD,
                       TRACE_CODE_HDD_ACTION, pAdapter->sessionId,
@@ -831,7 +830,8 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
     if( offchan && wait)
     {
         int status;
-
+        hdd_remain_on_chan_ctx_t old_roc_ctx;
+        rem_on_channel_request_type_t req_type = OFF_CHANNEL_ACTION_TX;
         // In case of P2P Client mode if we are already
         // on the same channel then send the frame directly
 
@@ -863,14 +863,16 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
                      ESTIMATED_ROC_DUR_REQD_FOR_ACTION_TX)
             {
                 hddLog(LOG1,"action frame: Extending the RoC");
-                old_cookie = cfgState->remain_on_chan_ctx->cookie;
-                pAdapter->internalCancelRemainOnChReq = VOS_TRUE;
+                pAdapter->internalRoCinProgress = VOS_TRUE;
+                // saved old RoC Context
+                vos_mem_copy(&old_roc_ctx,cfgState->remain_on_chan_ctx,
+                                        sizeof(hdd_remain_on_chan_ctx_t));
                 status = wlan_hdd_check_remain_on_channel(pAdapter);
-                pAdapter->internalCancelRemainOnChReq = VOS_FALSE;
                 if ( status )
                 {
                     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                              "Failed to cancel the existing RoC");
+                    pAdapter->internalRoCinProgress = VOS_FALSE;
                 }
             }
         }
@@ -890,21 +892,44 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
                "action frame: Request ROC for wait time %u", wait);
 
         INIT_COMPLETION(pAdapter->offchannel_tx_event);
-
+        // Restore request type if it is internal RoC.
+        if(pAdapter->internalRoCinProgress == VOS_TRUE)
+             req_type = old_roc_ctx.rem_on_chan_request;
         status = wlan_hdd_request_remain_on_channel(wiphy, dev,
                                         chan,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
                                         channel_type,
 #endif
                                         wait, cookie,
-                                        OFF_CHANNEL_ACTION_TX);
+                                        req_type);
 
         // Assign the preserved cookie value here to appear as
         // same RoC to supplicant
-        if (old_cookie)
-            cfgState->remain_on_chan_ctx->cookie = old_cookie;
+        if (pAdapter->internalRoCinProgress == VOS_TRUE)
+            cfgState->remain_on_chan_ctx->cookie = old_roc_ctx.cookie;
+
         if(0 != status)
         {
+            // If new RoC request fails then indicate complete RoC
+            // to supplicant if internalRoCinProgress using old RoC Context
+            if(pAdapter->internalRoCinProgress == VOS_TRUE)
+            {
+                hddLog( LOGE, "Indicate Complete RoC to supplicant for"
+                          "cookie %llu",old_roc_ctx.cookie);
+                cfg80211_remain_on_channel_expired(
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+                              old_roc_ctx.dev->ieee80211_ptr,
+#else
+                              old_roc_ctx.dev,
+#endif
+                              old_roc_ctx.cookie,
+                              &old_roc_ctx.chan,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+                              old_roc_ctx.chan_type,
+#endif
+                              GFP_KERNEL);
+                pAdapter->internalRoCinProgress = VOS_FALSE;
+            }
             if( (-EBUSY == status) &&
                 (cfgState->current_freq == chan->center_freq) )
             {
@@ -923,9 +948,30 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
                      msecs_to_jiffies(WAIT_CHANGE_CHANNEL_FOR_OFFCHANNEL_TX));
         if(0 >= status)
         {
+            // If Ready indication timeout occuers then indicate complete
+            // RoC to supplicant is internalRoCin Progress is set
+            if(pAdapter->internalRoCinProgress == VOS_TRUE)
+            {
+                hddLog( LOGE, "Indicate Complete RoC to supplicant for"
+                  "cookie %llu Timeout",cfgState->remain_on_chan_ctx->cookie);
+                cfg80211_remain_on_channel_expired(
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+                              cfgState->remain_on_chan_ctx->dev->ieee80211_ptr,
+#else
+                              cfgState->remain_on_chan_ctx->dev,
+#endif
+                              cfgState->remain_on_chan_ctx->cookie,
+                              &cfgState->remain_on_chan_ctx->chan,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0))
+                              cfgState->remain_on_chan_ctx->chan_type,
+#endif
+                              GFP_KERNEL);
+                pAdapter->internalRoCinProgress = VOS_FALSE;
+            }
             hddLog( LOGE, "wait on offchannel_tx_event failed %d", status);
             goto err_rem_channel;
         }
+        pAdapter->internalRoCinProgress = VOS_FALSE;
     }
     else if ( offchan )
     {
