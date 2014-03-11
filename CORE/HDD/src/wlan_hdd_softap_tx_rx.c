@@ -1727,7 +1727,7 @@ VOS_STATUS hdd_softap_stop_bss( hdd_adapter_t *pAdapter)
     pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
     /*bss deregister is not allowed during wlan driver loading or unloading*/
-    if (pHddCtx->isLoadUnloadInProgress)
+    if (WLAN_HDD_IS_LOAD_UNLOAD_IN_PROGRESS(pHddCtx))
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s:Loading_unloading in Progress. Ignore!!!",__func__);
