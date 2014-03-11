@@ -6523,9 +6523,10 @@ void csrScanResultAgingTimerHandler(void *pv)
     tANI_BOOLEAN fDisconnected = csrIsAllSessionDisconnected(pMac);
     
     //no scan, no aging
-    if(pMac->scan.fScanEnable && 
+    if (pMac->scan.fScanEnable &&
         (((eANI_BOOLEAN_FALSE == fDisconnected) && pMac->roam.configParam.bgScanInterval)    
-        || (fDisconnected && (pMac->scan.fCancelIdleScan == eANI_BOOLEAN_FALSE)))
+        || (fDisconnected && (pMac->scan.fCancelIdleScan == eANI_BOOLEAN_FALSE))
+        || (pMac->fScanOffload))
         )
     {
         tListElem *pEntry, *tmpEntry;
