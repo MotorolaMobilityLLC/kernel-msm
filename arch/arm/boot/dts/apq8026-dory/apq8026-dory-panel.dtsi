@@ -41,14 +41,15 @@
 		qcom,mdss-dsi-underflow-color = <0xff>;
 		qcom,mdss-dsi-border-color = <0>;
 		qcom,mdss-dsi-on-command = [
-			05 01 00 00 B0 00 01 11
 			39 01 00 00 00 00 03 ED 01 FE /* unlock cmd2 */
 			39 01 00 00 00 00 06 3B 43 74 74 28 32 /* VBP, VFP, HBP, HFP setting */
 			39 01 00 00 00 00 02 36 D4 /* SET_ADDRESS_MODE */
 			39 01 00 00 00 00 02 3A 76 /* SET_PIXEL_FORMAT */
 			39 01 00 00 00 00 02 26 01 /* SET_GAMMA_CURVE */
 			39 01 00 00 00 00 02 35 00 /* SET_TEAR_ON */
-			39 01 00 00 B0 00 03 44 00 00 /* SET_TEAR_LINE */
+			39 01 00 00 00 00 03 44 00 00 /* SET_TEAR_LINE */
+			39 01 00 00 00 00 05 30 00 C8 01 DF /*SET_PARTIAL_LINE*/
+			05 01 00 00 B0 00 01 12 /*ENTER_PARTIAL_MODE*/
 			39 01 00 00 00 00 02 B0 00 /* DISPLAY_CTRL */
 			39 01 00 00 00 00 04 B1 1C 1C 04 /* front & backporch setting */
 			39 01 00 00 00 00 04 B2 8D 8D 8D /* framerate */
@@ -103,9 +104,10 @@
 			D2 00 D9 00 F3 00
 			39 01 00 00 00 00 05 E9 AA 00 00 00
 			39 01 00 00 B0 00 02 00 AA
+			05 01 00 00 0A 00 01 11
 			39 01 00 00 00 00 05 2A 00 14 01 2B /* Set Hori address 21~300(280) */
-			39 01 00 00 B0 00 05 2B 00 C8 01 DF /* Set Vert address 200~479(280) */
-			05 01 00 00 00 00 01 29];
+			39 01 00 00 0A 00 05 2B 00 C8 01 DF /* Set Vert address 200~479(280) */
+			05 01 00 00 0A 00 01 29];
 		qcom,mdss-dsi-off-command = [
 			05 01 00 00 05 00 01 28
 			05 01 00 00 A0 00 01 10];
@@ -134,7 +136,7 @@
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
-		qcom,mdss-dsi-reset-sequence = <1 100>, <0 100>, <1 100>;
+		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 160>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_external";
 
 		qcom,cont-splash-enabled;
@@ -204,7 +206,7 @@
 		qcom,mdss-dsi-bl-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
-		qcom,mdss-dsi-reset-sequence = <1 20>, <0 1>, <1 20>;
+		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 160>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_external";
 
 		qcom,cont-splash-enabled;
