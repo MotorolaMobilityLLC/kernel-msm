@@ -287,6 +287,7 @@ out:
 	pinfo->mipi.tx_eot_append = 0x01;
 	pinfo->mipi.rx_eot_ignore = 0;
 	pinfo->mipi.esc_byte_ratio = 4;
+	pinfo->mipi.frame_rate = 58;
 
 	mot_panel->panel_enable = panel_enable;
 	mot_panel->panel_disable = panel_disable;
