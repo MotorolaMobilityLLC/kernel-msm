@@ -35,6 +35,9 @@
 			status = "ok";
 		};
 	};
+	vibrator {
+		status = "disabled";
+	};
 };
 
 &mdss_dsi0 {

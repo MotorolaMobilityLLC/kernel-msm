@@ -39,6 +39,9 @@
 			status = "ok";
 		};
 	};
+	vibrator {
+		status = "disabled";
+	};
 };
 
 &spmi_bus {
