@@ -2186,7 +2186,7 @@ static int emu_det_probe(struct platform_device *pdev)
 	ret = request_irqs(pdev);
 	if (ret) {
 		pr_err("couldn't register interrupts rc=%d\n", ret);
-		goto free_gpios;
+		goto free_works;
 	}
 
 	emu_det_enable_irq(SEMU_PPD_DET_IRQ);
@@ -2258,9 +2258,9 @@ free_works:
 	destroy_workqueue(data->wq);
 /*free_misc_dev:*/
 	misc_deregister(&emu_det_dev);
+	wake_lock_destroy(&data->wake_lock);
 free_gpios:
 	free_gpios();
-	wake_lock_destroy(&data->wake_lock);
 free_data:
 	kfree(data);
 

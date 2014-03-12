@@ -1955,6 +1955,9 @@ static int __devexit rpm_vreg_remove(struct platform_device *pdev)
 		}
 	}
 
+	if (requires_tcxo_workaround)
+		wake_lock_destroy(&tcxo_wake_lock);
+
 	return 0;
 }
 
