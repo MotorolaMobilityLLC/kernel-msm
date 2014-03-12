@@ -94,6 +94,13 @@ typedef enum
 #define INVALID_VOS_TRACE_ADDR 0xffffffff
 #define DEFAULT_VOS_TRACE_DUMP_COUNT 0
 
+/* Variables to trigger mtrace during connection failure*/
+#define ENABLE_CONNECTION_FAIL_DUMP_LOG          1
+#define CODE_ARG1_FOR_DUMP_LOG                   0
+#define SESSION_ARG2_FOR_DUMP_LOG                0
+#define NUM_CONNECTION_FAIL_DUMP_LOG_MSG       200
+#define ENABLE_ALL_MODULE_MTRACE                 0
+
 #include  <i_vos_trace.h>   
 
 #ifdef TRACE_RECORD

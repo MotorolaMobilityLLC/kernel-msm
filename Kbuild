@@ -367,7 +367,8 @@ TL_INC := 	-I$(WLAN_ROOT)/$(TL_INC_DIR) \
 
 TL_OBJS := 	$(TL_SRC_DIR)/wlan_qct_tl.o \
 		$(TL_SRC_DIR)/wlan_qct_tl_ba.o \
-		$(TL_SRC_DIR)/wlan_qct_tl_hosupport.o
+		$(TL_SRC_DIR)/wlan_qct_tl_hosupport.o \
+               $(TL_SRC_DIR)/wlan_qct_tl_trace.o
 
 ############ VOSS ############
 VOSS_DIR :=	CORE/VOSS

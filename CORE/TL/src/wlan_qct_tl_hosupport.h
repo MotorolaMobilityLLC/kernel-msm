@@ -304,6 +304,6 @@ VOS_STATUS WLANTL_StatHandleTXFrame
    WLANTL_MetaInfoType *txMetaInfo
 );
 
-#endif //FEATURE_WLAN_GEN6_ROAMING
+#endif
 
 #endif /* WLAN_QCT_TL_HOSUPPORT_H */
