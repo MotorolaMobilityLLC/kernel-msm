@@ -23,6 +23,8 @@
 
 enum mmi_notifier_enum {
 	MMI_PANEL_EVENT_PRE_DISPLAY_OFF,
+	MMI_PANEL_EVENT_PRE_DISPLAY_ON,
+	MMI_PANEL_EVENT_DISPLAY_OFF,
 	MMI_PANEL_EVENT_DISPLAY_ON
 };
 
@@ -30,8 +32,10 @@ struct mmi_notifier {
 #ifdef CONFIG_MMI_PANEL_NOTIFICATIONS
 	struct notifier_block mmi_nb;
 	struct device *dev;
-	int (*suspend)(struct device *dev);
-	int (*resume)(struct device *dev);
+	int (*pre_display_off)(struct device *dev);
+	int (*display_off)(struct device *dev);
+	int (*pre_display_on)(struct device *dev);
+	int (*display_on)(struct device *dev);
 #endif
 };
 

@@ -1526,8 +1526,8 @@ static int aps_ts_probe(struct i2c_client *client,
 		goto out_free_irq;
 	}
 #if defined(CONFIG_MMI_PANEL_NOTIFICATIONS) && defined(CONFIG_FB)
-	info->panel_nb.suspend = aps_ts_suspend;
-	info->panel_nb.resume = aps_ts_resume;
+	info->panel_nb.pre_display_off = aps_ts_suspend;
+	info->panel_nb.display_on = aps_ts_resume;
 	info->panel_nb.dev = &client->dev;
 	if (!mmi_panel_register_notifier(&info->panel_nb))
 		pr_info("registered MMI panel notifier\n");
