@@ -19,7 +19,7 @@
 		qcom,slave-id = <0x6c 0x0000 0x0052>;
 		qcom,csiphy-sd-index = <1>;
 		qcom,csid-sd-index = <1>;
-		qcom,mount-angle = <90>;
+		qcom,mount-angle = <270>;
 		qcom,sensor-name = "ar0261";
 		qcom,vdd-cx-supply = <&pm8841_s2>;
 		qcom,vdd-cx-name = "qcom,vdd-cx";
