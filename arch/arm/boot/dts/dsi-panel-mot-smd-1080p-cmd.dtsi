@@ -84,6 +84,7 @@
 		qcom,mdss-dsi-lane-1-state;
 		qcom,mdss-dsi-lane-2-state;
 		qcom,mdss-dsi-lane-3-state;
+		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-dsi-panel-timings = [b0 23 1b 00 94 93 1e 25 15 03 04 00];
 		qcom,mdss-dsi-t-clk-post = <0x04>;
 		qcom,mdss-dsi-t-clk-pre = <0x1b>;
