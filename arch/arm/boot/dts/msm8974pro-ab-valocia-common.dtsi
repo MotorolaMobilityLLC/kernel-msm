@@ -11,7 +11,7 @@
  */
 
 /include/ "msm8974pro-ab-moto-common.dtsi"
-/include/ "dsi-panel-mot-smd-1080p-cmd.dtsi"
+/include/ "dsi-panel-mot-smd-598-1080p-cmd.dtsi"
 
 / {
 	model = "Motorola QC-MSM8974 Pro Valocia";
@@ -35,12 +35,12 @@
 	regulator-boot-on;
 };
 
-&mot_smd_1080p_cmd_v0 {
+&mot_smd_598_1080p_cmd_v0 {
 	qcom,cont-splash-enabled;
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&mot_smd_1080p_cmd_v0>;
+	qcom,dsi-pref-prim-pan = <&mot_smd_598_1080p_cmd_v0>;
 	vbat_disp-supply = <&vbat_disp_vreg>;
 	vdd_disp-supply = <&vdd_disp_vreg>;
 	vci_disp-supply = <&vci_disp_vreg>;
