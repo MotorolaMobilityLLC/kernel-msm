@@ -142,8 +142,9 @@ int stm401_reset_and_init(void)
 
 	stm401_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 	stm401_cmdbuff[1] = stm401_g_nonwake_sensor_state & 0xFF;
-	stm401_cmdbuff[2] = stm401_g_nonwake_sensor_state >> 8;
-	err = stm401_i2c_write_no_reset(stm401_misc_data, stm401_cmdbuff, 3);
+	stm401_cmdbuff[2] = (stm401_g_nonwake_sensor_state >> 8) & 0xFF;
+	stm401_cmdbuff[3] = stm401_g_nonwake_sensor_state >> 16;
+	err = stm401_i2c_write_no_reset(stm401_misc_data, stm401_cmdbuff, 4);
 	if (err < 0)
 		ret_err = err;
 

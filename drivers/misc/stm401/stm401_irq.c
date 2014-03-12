@@ -63,7 +63,7 @@ irqreturn_t stm401_isr(int irq, void *dev)
 void stm401_irq_work_func(struct work_struct *work)
 {
 	int err;
-	unsigned short irq_status;
+	u32 irq_status;
 	struct stm401_data *ps_stm401 = container_of(work,
 			struct stm401_data, irq_work);
 
@@ -72,13 +72,15 @@ void stm401_irq_work_func(struct work_struct *work)
 
 	/* read interrupt mask register */
 	stm401_cmdbuff[0] = INTERRUPT_STATUS;
-	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
 	if (err < 0) {
 		dev_err(&ps_stm401->client->dev,
 			"Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq_status = (stm401_readbuff[IRQ_HI] << 8) | stm401_readbuff[IRQ_LO];
+	irq_status = (stm401_readbuff[IRQ_NOWAKE_HI] << 16) |
+		(stm401_readbuff[IRQ_NOWAKE_MED] << 8) |
+		stm401_readbuff[IRQ_NOWAKE_LO];
 
 	if (irq_status & M_ACCEL) {
 		/* read accelerometer values from STM401 */

@@ -79,7 +79,8 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq_status = (stm401_readbuff[IRQ_HI] << 8) | stm401_readbuff[IRQ_LO];
+	irq_status = (stm401_readbuff[IRQ_WAKE_HI] << 8)
+				| stm401_readbuff[IRQ_WAKE_LO];
 
 	/* read algorithm interrupt status register */
 	stm401_cmdbuff[0] = ALGO_INT_STATUS;
@@ -88,7 +89,8 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq2_status = (stm401_readbuff[IRQ_HI] << 8) | stm401_readbuff[IRQ_LO];
+	irq2_status = (stm401_readbuff[IRQ_WAKE_HI] << 8)
+				| stm401_readbuff[IRQ_WAKE_LO];
 
 	/* read generic interrupt register */
 	stm401_cmdbuff[0] = GENERIC_INT_STATUS;
