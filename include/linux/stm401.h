@@ -132,24 +132,25 @@
 /* Mask values */
 
 /* Non wakable sensors */
-#define M_ACCEL			0x0001
-#define M_GYRO			0x0002
-#define M_PRESSURE		0x0004
-#define M_ECOMPASS		0x0008
-#define M_TEMPERATURE		0x0010
-#define M_ALS			0x0020
-#define M_STEP_DETECTOR	0x0040
-#define M_STEP_COUNTER		0x0080
+#define M_ACCEL			0x000001
+#define M_GYRO			0x000002
+#define M_PRESSURE		0x000004
+#define M_ECOMPASS		0x000008
+#define M_TEMPERATURE	0x000010
+#define M_ALS			0x000020
+#define M_STEP_DETECTOR	0x000040
+#define M_STEP_COUNTER	0x000080
 
-#define M_LIN_ACCEL		0x0100
-#define M_QUATERNION		0x0200
-#define M_GRAVITY		0x0400
-#define M_DISP_ROTATE		0x0800
-#define M_DISP_BRIGHTNESS	0x1000
-#define M_IR_GESTURE           0x2000
-#define M_IR_RAW               0x4000
-#define M_UNCALIB_GYRO		0x8000
-#define M_UNCALIB_MAG		0x8000
+#define M_LIN_ACCEL		0x000100
+#define M_QUATERNION	0x000200
+#define M_GRAVITY		0x000400
+#define M_DISP_ROTATE		0x000800
+#define M_DISP_BRIGHTNESS	0x001000
+#define M_IR_GESTURE        0x002000
+#define M_IR_RAW            0x004000
+
+#define M_UNCALIB_GYRO		0x008000
+#define M_UNCALIB_MAG		0x010000
 
 /* wake sensor status */
 #define M_DOCK			0x0001
@@ -403,8 +404,12 @@ struct stm_response {
 #define STM401_IR_SZ_RAW           18
 
 /* stm401_readbuff offsets. */
-#define IRQ_LO  0
-#define IRQ_HI  1
+#define IRQ_WAKE_LO  0
+#define IRQ_WAKE_HI  1
+
+#define IRQ_NOWAKE_LO   0
+#define IRQ_NOWAKE_MED  1
+#define IRQ_NOWAKE_HI   2
 
 #define DOCK_STATE	0
 #define PROX_DISTANCE	0
@@ -589,7 +594,7 @@ extern unsigned short stm401_g_mag_delay;
 extern unsigned short stm401_g_gyro_delay;
 extern unsigned short stm401_g_baro_delay;
 extern unsigned short stm401_g_step_counter_delay;
-extern unsigned short stm401_g_nonwake_sensor_state;
+extern unsigned long stm401_g_nonwake_sensor_state;
 extern unsigned short stm401_g_algo_state;
 extern unsigned char stm401_g_motion_dur;
 extern unsigned char stm401_g_zmotion_dur;
