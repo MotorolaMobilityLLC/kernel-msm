@@ -100,7 +100,9 @@ typedef enum {
    CH_SWITCH_V1           = 33,
    HT40_OBSS_SCAN         = 34,
    UPDATE_CHANNEL_LIST    = 35,
-   WLAN_MCADDR_FLT        = 36
+   WLAN_MCADDR_FLT        = 36,
+   WLAN_CH144             = 37,
+
    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 
