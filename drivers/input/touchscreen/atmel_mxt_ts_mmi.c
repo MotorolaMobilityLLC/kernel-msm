@@ -227,7 +227,8 @@ struct t9_range {
 #define MXT_BOOT_ID_MASK	0x1f
 
 /* Touchscreen absolute values */
-#define MXT_MAX_AREA		0xff
+#define MXT_MAX_AREA		50
+#define MXT_MAX_PRESSURE	26
 
 #define MXT_PIXELS_PER_MM	20
 
@@ -2608,7 +2609,7 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 
 	if (data->t100_aux_ampl)
 		input_set_abs_params(input_dev, ABS_MT_PRESSURE,
-				     0, 255, 0, 0);
+				     0, MXT_MAX_PRESSURE, 0, 0);
 
 	if (data->t100_aux_vect)
 		input_set_abs_params(input_dev, ABS_MT_ORIENTATION,
