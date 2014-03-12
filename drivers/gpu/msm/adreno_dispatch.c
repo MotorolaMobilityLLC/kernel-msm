@@ -991,6 +991,9 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 	 */
 
 	if (!test_bit(KGSL_FT_SKIP_PMDUMP, &cmdbatch->fault_policy)) {
+		char *path;
+		char sys_path[256];
+
 		adreno_fault_header(device, cmdbatch);
 
 		if (device->pm_dump_enable)
@@ -998,8 +1001,11 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 
 		kgsl_device_snapshot(device, 1);
 
-		dropbox_queue_event_binary("gpu_snapshot",
-			device->snapshot, device->snapshot_size);
+		path = kobject_get_path(&device->snapshot_kobj, GFP_KERNEL);
+		snprintf(sys_path, sizeof(sys_path), "/sys%s/dump", path);
+		kfree(path);
+
+		dropbox_queue_event_binaryfile("gpu_snapshot", sys_path);
 	}
 
 	mutex_unlock(&device->mutex);
