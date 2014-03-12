@@ -56,7 +56,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned char rw_bytes[4];
 	struct stm401_data *ps_stm401 = file->private_data;
 	unsigned char byte;
-	unsigned char bytes[2];
+	unsigned char bytes[3];
 	unsigned short delay;
 	unsigned long current_posix_time;
 	struct timespec current_time;
@@ -199,7 +199,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_SET_SENSORS:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_SENSORS");
-		if (copy_from_user(bytes, argp, 2 * sizeof(unsigned char))) {
+		if (copy_from_user(bytes, argp, 3 * sizeof(unsigned char))) {
 			dev_dbg(&ps_stm401->client->dev,
 				"Copy set sensors returned error\n");
 			err = -EFAULT;
@@ -220,16 +220,17 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		stm401_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 		stm401_cmdbuff[1] = bytes[0];
 		stm401_cmdbuff[2] = bytes[1];
-		stm401_g_nonwake_sensor_state = (stm401_cmdbuff[2] << 8)
-			| stm401_cmdbuff[1];
-		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 3);
-		dev_dbg(&ps_stm401->client->dev, "Sensor enable = 0x%02X\n",
+		stm401_cmdbuff[3] = bytes[2];
+		stm401_g_nonwake_sensor_state = (stm401_cmdbuff[3] << 16)
+			| (stm401_cmdbuff[2] << 8) | stm401_cmdbuff[1];
+		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff, 4);
+		dev_dbg(&ps_stm401->client->dev, "Sensor enable = 0x%lx\n",
 			stm401_g_nonwake_sensor_state);
 		break;
 	case STM401_IOCTL_GET_SENSORS:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_SENSORS");
 		stm401_cmdbuff[0] = NONWAKESENSOR_CONFIG;
-		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
 		if (err < 0) {
 			dev_err(&ps_stm401->client->dev,
 				"Reading get sensors failed\n");
@@ -237,7 +238,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		bytes[0] = stm401_readbuff[0];
 		bytes[1] = stm401_readbuff[1];
-		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
+		bytes[2] = stm401_readbuff[2];
+		if (copy_to_user(argp, bytes, 3 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
 	case STM401_IOCTL_SET_WAKESENSORS:
