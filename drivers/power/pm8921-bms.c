@@ -3768,6 +3768,8 @@ static int __devexit pm8921_bms_remove(struct platform_device *pdev)
 	kfree(chip->adjusted_fcc_temp_lut);
 	platform_set_drvdata(pdev, NULL);
 	the_chip = NULL;
+	wake_lock_destroy(&chip->low_voltage_wake_lock);
+	wake_lock_destroy(&chip->soc_wake_lock);
 	kfree(chip);
 	return 0;
 }
