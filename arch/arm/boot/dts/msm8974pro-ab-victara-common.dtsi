@@ -176,6 +176,7 @@
 			<&msmgpio 57 0>;        /* RESET */
 		touch_vdd-supply = <&pm8941_s3>;
 		touch_avdd-supply = <&pm8941_l23>;
+		atmel,suspend-method-lpm;
 		atmel,cfg {
 			atmel,family-id = <0xa4>;
 			atmel,variant-id = <0x7>;
