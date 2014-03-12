@@ -28,12 +28,20 @@ static int mmi_panel_notifier_cb(struct notifier_block *nb,
 
 	switch (event) {
 	case MMI_PANEL_EVENT_PRE_DISPLAY_OFF:
-		if (mmi && mmi->suspend)
-			mmi->suspend(mmi->dev);
+		if (mmi && mmi->pre_display_off)
+			mmi->pre_display_off(mmi->dev);
+		break;
+	case MMI_PANEL_EVENT_PRE_DISPLAY_ON:
+		if (mmi && mmi->pre_display_on)
+			mmi->pre_display_on(mmi->dev);
+		break;
+	case MMI_PANEL_EVENT_DISPLAY_OFF:
+		if (mmi && mmi->display_off)
+			mmi->display_off(mmi->dev);
 		break;
 	case MMI_PANEL_EVENT_DISPLAY_ON:
-		if (mmi && mmi->resume)
-			mmi->resume(mmi->dev);
+		if (mmi && mmi->display_on)
+			mmi->display_on(mmi->dev);
 		break;
 	default:
 		return -EINVAL;

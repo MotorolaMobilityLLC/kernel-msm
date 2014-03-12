@@ -3257,8 +3257,8 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	init_waitqueue_head(&rmi4_data->wait);
 
 #if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
-	rmi4_data->panel_nb.suspend = synaptics_rmi4_suspend;
-	rmi4_data->panel_nb.resume = synaptics_rmi4_resume;
+	rmi4_data->panel_nb.pre_display_off = synaptics_rmi4_suspend;
+	rmi4_data->panel_nb.display_on = synaptics_rmi4_resume;
 	rmi4_data->panel_nb.dev = &client->dev;
 	if (!mmi_panel_register_notifier(&rmi4_data->panel_nb))
 		pr_info("registered MMI panel notifier\n");
