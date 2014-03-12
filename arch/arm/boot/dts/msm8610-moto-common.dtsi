@@ -425,7 +425,7 @@
 				qcom,source-sel = <8>;
 				qcom,mode-ctrl = <0x10>;
 				qcom,pwm-channel = <0>;
-				qcom,pwm-us = <50>;
+				qcom,pwm-us = <25>;
 				qcom,vin-ctrl = <0x03>;
 				qcom,mode = "pwm";
 			};
@@ -545,6 +545,10 @@
 			qcom,vib-vtg-level-mV = <1800>;
 			qcom,vib-vtg-level-mV-haptic = <2500>;
 			qcom,vib-boot-up-vibe-ms = <200>;
+		};
+
+		pwm@bc00 {
+			qcom,force-pwm-size = <9>;
 		};
 	};
 };
