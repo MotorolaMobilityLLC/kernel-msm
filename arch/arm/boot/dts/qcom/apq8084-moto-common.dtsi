@@ -702,6 +702,7 @@
 		touch_vdd-supply = <&pma8084_s4>;
 		touch_avdd-supply = <&pma8084_l19>;
 		atmel,key-buttons = <59 61 60 0 0 0 0 0>; /* KEY_F1,F2,F3 */
+		atmel,suspend-method-lpm;
 		atmel,cfg {
 			atmel,family-id = <0xa4>;
 			atmel,variant-id = <0x7>;
