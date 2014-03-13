@@ -25,6 +25,7 @@
 #include <linux/of.h>
 #include <linux/clk/msm-clock-generic.h>
 #include <soc/qcom/clock-local2.h>
+#include <mach/mmi_soc_info.h>
 
 #define UPDATE_CHECK_MAX_LOOPS 200
 
@@ -327,6 +328,7 @@ static int clock_a7_probe(struct platform_device *pdev)
 		a7ssmux.safe_freq = of_read_ulong(prop, 1);
 
 	get_speed_bin(pdev, &speed_bin, &version);
+	mmi_acpu_bin_set(&speed_bin, NULL, &version);
 
 	snprintf(prop_name, ARRAY_SIZE(prop_name),
 			"qcom,speed%d-bin-v%d", speed_bin, version);
