@@ -540,6 +540,8 @@ Required properties:
 Required properties:
 - compatible : "qcom,apq8084-audio-taiko"
 - qcom,ext-mclk-gpio  : audio uses this GPIO to request mclk in MTP and CDP
+- qcom,codec-mclk-clk-freq : Codec mclk frequency in Hz. Currently only
+				9.6MHz is supported
 
 Example:
 
