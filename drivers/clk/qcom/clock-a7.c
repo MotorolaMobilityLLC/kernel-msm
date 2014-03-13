@@ -31,6 +31,7 @@
 #include <dt-bindings/clock/msm-clocks-a7.h>
 
 #include "clock.h"
+#include <soc/qcom/mmi_soc_info.h>
 
 DEFINE_VDD_REGS_INIT(vdd_cpu, 1);
 
@@ -408,6 +409,8 @@ static int clock_a7_probe(struct platform_device *pdev)
 		get_speed_bin_b(pdev, &speed_bin, &version);
 	else
 		get_speed_bin(pdev, &speed_bin, &version);
+
+	mmi_acpu_bin_set(&speed_bin, NULL, &version);
 
 	snprintf(prop_name, ARRAY_SIZE(prop_name),
 			"qcom,speed%d-bin-v%d", speed_bin, version);
