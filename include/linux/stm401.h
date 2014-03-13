@@ -282,6 +282,8 @@ struct stm_response {
 
 #ifdef __KERNEL__
 
+#include <mach/mmi_panel_notifier.h>
+
 /* STM401 memory map */
 #define ID                              0x00
 #define REV_ID                          0x01
@@ -540,6 +542,9 @@ struct stm401_data {
 	unsigned int stm401_hub_fail;
 
 	bool is_suspended;
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	struct mmi_notifier panel_nb;
+#endif
 };
 
 /* per algo config, request, and event registers */

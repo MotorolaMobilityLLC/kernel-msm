@@ -616,6 +616,20 @@ static void stm401_gpio_free(struct stm401_platform_data *pdata)
 #endif
 }
 
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+static int stm401_pre_display_on(struct device *dev)
+{
+	dev_dbg(dev, "%s\n", __func__);
+	return pm_runtime_get_sync(dev);
+}
+
+static int stm401_display_off(struct device *dev)
+{
+	dev_dbg(dev, "%s\n", __func__);
+	return pm_runtime_put_sync_suspend(dev);
+}
+#endif
+
 static int stm401_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
@@ -835,7 +849,23 @@ static int stm401_probe(struct i2c_client *client,
 		goto err9;
 	}
 
+	pm_runtime_get_noresume(&client->dev);
+	pm_runtime_set_active(&client->dev);
 	pm_runtime_enable(&client->dev);
+
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+	ps_stm401->panel_nb.display_off = stm401_display_off;
+	ps_stm401->panel_nb.pre_display_on = stm401_pre_display_on;
+	ps_stm401->panel_nb.dev = &client->dev;
+	if (!mmi_panel_register_notifier(&ps_stm401->panel_nb))
+		dev_info(&client->dev, "registered MMI panel notifier\n");
+	else {
+		dev_err(&client->dev,
+				"%s: Unable to register MMI notifier\n",
+				__func__);
+		goto err10;
+	}
+#endif
 
 	switch_stm401_mode(NORMALMODE);
 
@@ -845,6 +875,10 @@ static int stm401_probe(struct i2c_client *client,
 
 	return 0;
 
+#if defined(CONFIG_MMI_PANEL_NOTIFICATIONS)
+err10:
+	input_unregister_device(ps_stm401->input_dev);
+#endif
 err9:
 	input_free_device(ps_stm401->input_dev);
 err8:
@@ -906,14 +940,16 @@ static int stm401_remove(struct i2c_client *client)
 	return 0;
 }
 
-static int stm401_resume(struct device *dev)
+#ifdef CONFIG_PM_RUNTIME
+static int stm401_runtime_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct stm401_data *ps_stm401 = i2c_get_clientdata(client);
 	int count = 0, level = 0;
 	int stm401_req = ps_stm401->pdata->gpio_mipi_req;
 	int stm401_busy = ps_stm401->pdata->gpio_mipi_busy;
-	dev_dbg(&stm401_misc_data->client->dev, "stm401_resume\n");
+
+	dev_dbg(dev, "%s\n", __func__);
 	mutex_lock(&ps_stm401->lock);
 
 	ps_stm401->is_suspended = false;
@@ -949,7 +985,7 @@ static int stm401_resume(struct device *dev)
 	return 0;
 }
 
-static int stm401_suspend(struct device *dev)
+static int stm401_runtime_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct stm401_data *ps_stm401 = i2c_get_clientdata(client);
@@ -957,7 +993,7 @@ static int stm401_suspend(struct device *dev)
 	int stm401_req = ps_stm401->pdata->gpio_mipi_req;
 	int stm401_busy = ps_stm401->pdata->gpio_mipi_busy;
 
-	dev_dbg(&ps_stm401->client->dev, "stm401_suspend\n");
+	dev_dbg(dev, "%s\n", __func__);
 	mutex_lock(&ps_stm401->lock);
 
 	ps_stm401->is_suspended = true;
@@ -984,31 +1020,12 @@ static int stm401_suspend(struct device *dev)
 	mutex_unlock(&ps_stm401->lock);
 	return 0;
 }
-
-#ifdef CONFIG_PM_RUNTIME
-static int stm401_runtime_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(client);
-	dev_err(&ps_stm401->client->dev, "stm401_runtime_resume\n");
-	return stm401_resume(dev);
-}
-
-static int stm401_runtime_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct stm401_data *ps_stm401 = i2c_get_clientdata(client);
-	dev_err(&ps_stm401->client->dev, "stm401_runtime_suspend\n");
-	return stm401_suspend(dev);
-}
 #endif
 
 static const struct dev_pm_ops stm401_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(stm401_suspend,
-						stm401_resume)
 	SET_RUNTIME_PM_OPS(stm401_runtime_suspend,
-						stm401_runtime_resume,
-						NULL)
+			stm401_runtime_resume,
+			NULL)
 };
 
 static const struct i2c_device_id stm401_id[] = {
