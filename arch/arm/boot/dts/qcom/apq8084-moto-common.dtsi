@@ -840,3 +840,10 @@
 &soc {
 	/delete-node/ qcom,pcie@fc528000;
 };
+
+/* This is VREG_5P0, controlled via MPP3 */
+&vbus_det_vreg {
+    regulator-always-on;
+    regulator-boot-on;
+    qcom,init-voltage = <5000000>;
+};
