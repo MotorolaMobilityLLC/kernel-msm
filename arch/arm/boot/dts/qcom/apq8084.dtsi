@@ -10,7 +10,8 @@
  * GNU General Public License for more details.
  */
 
-/include/ "skeleton64.dtsi"
+#include "skeleton64.dtsi"
+#include <dt-bindings/clock/msm-clocks-krait.h>
 
 / {
 	model = "Qualcomm APQ 8084";
@@ -48,23 +49,47 @@
 			reg = <0 0 0 0xfc00000>;
 			label = "secure_mem";
 		};
+
+		tz_apps_and_debug_mem: tz_apps_and_debug_region@d400000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0xd400000 0x0 0x700000>;
+			label = "tz_apps_and_debug_mem";
+		};
+
+		peripheral_mem: peripheral_region@0xdb00000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0x0db00000 0x0 0x1d00000>;
+			label = "peripheral_mem";
+		};
+
+		external_image_mem: external_image_region@f800000 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0x0 0x0f800000 0x0 0x600000>;
+			label = "external_image_mem";
+		};
         };
 };
 
-/include/ "msm-gdsc.dtsi"
-/include/ "apq8084-ion.dtsi"
-/include/ "apq8084-iommu.dtsi"
-/include/ "apq8084-iommu-domains.dtsi"
-/include/ "apq8084-smp2p.dtsi"
-/include/ "apq8084-coresight.dtsi"
-/include/ "apq8084-mdss.dtsi"
-/include/ "apq8084-gpu.dtsi"
-/include/ "apq8084-pm.dtsi"
-/include/ "apq8084-bus.dtsi"
-/include/ "apq8084-iommu-domains.dtsi"
-/include/ "apq8084-pinctrl.dtsi"
-/include/ "apq8084-camera.dtsi"
-/include/ "apq8084-ipcrouter.dtsi"
+#include "msm-gdsc.dtsi"
+#include "apq8084-ion.dtsi"
+#include "apq8084-iommu.dtsi"
+#include "apq8084-iommu-domains.dtsi"
+#include "apq8084-smp2p.dtsi"
+#include "apq8084-coresight.dtsi"
+#include "apq8084-mdss.dtsi"
+#include "apq8084-gpu.dtsi"
+#include "apq8084-pm.dtsi"
+#include "apq8084-bus.dtsi"
+#include "apq8084-iommu-domains.dtsi"
+#include "apq8084-pinctrl.dtsi"
+#include "apq8084-camera.dtsi"
+#include "apq8084-ipcrouter.dtsi"
 
 &soc {
 	#address-cells = <1>;
@@ -869,7 +894,7 @@
 		qcom,master-id = <84>;
 	};
 
-	qcom,clock-krait@f9016000 {
+	clock_krait: qcom,clock-krait@f9016000 {
 		compatible = "qcom,clock-krait-8974";
 		reg = <0xf9016000 0x20>,
 			<0xf908a000 0x20>,
@@ -891,6 +916,7 @@
 		qcom,hfpll-config-val = <0x04D0405D>;
 		qcom,hfpll-user-vco-mask = <0x00100000>;
 		qcom,pvs-config-ver = <1>;
+		#clock-cells = <1>;
 
 		qcom,l2-fmax =
 			<          0 0			 >,
@@ -2498,6 +2524,13 @@
 	qcom,msm-cpufreq@0 {
 		reg = <0 4>;
 		compatible = "qcom,msm-cpufreq";
+		clock-names = "l2_clk", "cpu0_clk", "cpu1_clk", "cpu2_clk",
+				"cpu3_clk";
+		clocks = <&clock_krait clk_l2_clk>,
+			 <&clock_krait clk_krait0_clk>,
+			 <&clock_krait clk_krait1_clk>,
+			 <&clock_krait clk_krait2_clk>,
+			 <&clock_krait clk_krait3_clk>;
 		qcom,cpufreq-table =
 			<  300000  300000  1144 >,
 			<  422400  422400  2288 >,
@@ -2801,11 +2834,6 @@
 
 	};
 
-	memory_hole: qcom,msm-mem-hole {
-		compatible = "qcom,msm-mem-hole";
-		qcom,memblock-remove = <0x0d400000 0x02a00000>; /* Address and Size of Hole */
-	};
-
 	qcom,ipc-spinlock@fd484000 {
 		compatible = "qcom,ipc-spinlock-sfpb";
 		reg = <0xfd484000 0x400>;
@@ -2861,7 +2889,6 @@
 		qcom,msm-bus,name = "pil-venus";
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,active-only = <0>;
 		qcom,msm-bus,vectors-KBps =
 				<63 512 0 0>,
 				<63 512 0 304000>;
@@ -2872,14 +2899,20 @@
 	};
 
 	qcom,lpass@fe200000 {
-		compatible = "qcom,pil-q6v5-lpass";
-		reg = <0xfe200000 0x00100>,
-		      <0xfd485100 0x00010>,
-		      <0xfc4016c0 0x00004>;
-		reg-names = "qdsp6_base", "halt_base", "restart_reg";
-		vdd_cx-supply = <&pma8084_s2_corner>;
+		compatible = "qcom,pil-tz-generic";
+		reg = <0xfe200000 0x00100>;
 		interrupts = <0 162 1>;
 
+		vdd_cx-supply = <&pma8084_s2_corner>;
+		proxy-reg-names = "vdd_cx";
+		vdd_cx-uV-uA = <7 100000>;
+		clock-names = "bus_clk", "xo";
+		active-clock-names = "bus_clk";
+		proxy-clock-names = "xo";
+
+		qcom,pas-id = <1>;
+		qcom,proxy-timeout-ms = <10000>;
+		qcom,smem-id = <423>;
 		qcom,firmware-name = "adsp";
 
 		/* GPIO inputs from lpass */
@@ -3022,6 +3055,7 @@
 		qcom,msm-bus,num-cases = <4>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,support-bus-scaling;
+		qcom,support-fde;
 		qcom,msm-bus,vectors-KBps =
 				<55 512 0 0>,
 				<55 512 0 0>,
@@ -3061,6 +3095,7 @@
 		qcom,poll-ms = <250>;
 		qcom,limit-temp = <60>;
 		qcom,temp-hysteresis = <10>;
+		qcom,therm-reset-temp = <115>;
 		qcom,freq-step = <2>;
 		qcom,freq-control-mask = <0xf>;
 		qcom,core-limit-temp = <80>;
@@ -3167,7 +3202,6 @@
 			qcom,msm-bus-client@0 {
 				qcom,msm-bus,name = "venc-ddr";
 				qcom,msm-bus,num-cases = <8>;
-				qcom,msm-bus,active-only = <0>;
 				qcom,msm-bus,num-paths = <1>;
 				qcom,msm-bus,vectors-KBps =
 					<63 512 0 0>,
@@ -3182,9 +3216,24 @@
 			};
 
 			qcom,msm-bus-client@1 {
-				qcom,msm-bus,name = "vdec-ddr";
+				qcom,msm-bus,name = "vdec-core0-ddr";
 				qcom,msm-bus,num-cases = <8>;
-				qcom,msm-bus,active-only = <0>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<63 512 0 0>,
+					<63 512 312000 454500>,
+					<63 512 804000 2400000>,
+					<63 512 1518000 2400000>,
+					<63 512 3036000 2400000>,
+					<63 512 4860000 2400000>,
+					<63 512 6072000 2400000>,
+					<63 512 6396000 2400000>;
+				qcom,bus-configs = <0xc000000>;
+			};
+
+			qcom,msm-bus-client@2 {
+				qcom,msm-bus,name = "vdec-core1-ddr";
+				qcom,msm-bus,num-cases = <8>;
 				qcom,msm-bus,num-paths = <1>;
 				qcom,msm-bus,vectors-KBps =
 					<63 512 0 0>,
@@ -3195,13 +3244,12 @@
 					<63 512 3240000 1600000>,
 					<63 512 4048000 1600000>,
 					<63 512 4264000 1600000>;
-				qcom,bus-configs = <0xf0fcfff>;
+				qcom,bus-configs = <0x30fcfff>;
 			};
 
-			qcom,msm-bus-client@2 {
+			qcom,msm-bus-client@3 {
 				qcom,msm-bus,name = "venc-ocmem";
 				qcom,msm-bus,num-cases = <8>;
-				qcom,msm-bus,active-only = <0>;
 				qcom,msm-bus,num-paths = <1>;
 				qcom,msm-bus,vectors-KBps =
 					<68 604 0 0>,
@@ -3215,21 +3263,37 @@
 				qcom,bus-configs = <0x1000414>;
 			};
 
-			qcom,msm-bus-client@3 {
-				qcom,msm-bus,name = "vdec-ocmem";
+			qcom,msm-bus-client@4 {
+				qcom,msm-bus,name = "vdec-core0-ocmem";
 				qcom,msm-bus,num-cases = <8>;
-				qcom,msm-bus,active-only = <0>;
+				qcom,msm-bus,num-paths = <1>;
+				qcom,msm-bus,vectors-KBps =
+					<68 604 0 0>,
+					<68 604 264000 778500>,
+					<68 604 684000 778500>,
+					<68 604 1296000 943500>,
+					<68 604 2592000 1557000>,
+					<68 604 4149000 2491500>,
+					<68 604 5184000 3114000>,
+					<68 604 5493000 3297000>;
+
+				qcom,bus-configs = <0xc000000>;
+			};
+
+			qcom,msm-bus-client@5 {
+				qcom,msm-bus,name = "vdec-core1-ocmem";
+				qcom,msm-bus,num-cases = <8>;
 				qcom,msm-bus,num-paths = <1>;
 				qcom,msm-bus,vectors-KBps =
 					<68 604 0 0>,
 					<68 604 176000 519000>,
 					<68 604 456000 519000>,
-					<68 604 864000 629000>,
+					<68 604 864000 833500>,
 					<68 604 1728000 1038000>,
 					<68 604 2766000 1661000>,
 					<68 604 3456000 2076000>,
 					<68 604 3662000 2198000>;
-				qcom,bus-configs = <0xf0fcfff>;
+				qcom,bus-configs = <0x30fcfff>;
 			};
 		};
 	};
@@ -3579,6 +3643,15 @@
 		reg-names = "ramdump";
 		wlan-en-gpio = <&msmgpio 82 0>;
 		vdd-wlan-supply = <&wlan_vreg>;
+
+		qcom,msm-bus,name = "msm-cnss";
+		qcom,msm-bus,num-cases = <4>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+					  <45 512 0 0>,           /* No vote */
+					  <45 512 6250 200000>,   /* 50 Mbps */
+					  <45 512 25000 200000>,  /* 200 Mbps */
+					  <45 512 100000 200000>; /* 800 Mbps */
 	};
 };
 
@@ -3645,9 +3718,9 @@
 	status = "ok";
 };
 
-/include/ "msm-pma8084-rpm-regulator.dtsi"
-/include/ "msm-pma8084.dtsi"
-/include/ "apq8084-regulator.dtsi"
+#include "msm-pma8084-rpm-regulator.dtsi"
+#include "msm-pma8084.dtsi"
+#include "apq8084-regulator.dtsi"
 
 &pma8084_vadc {
 	chan@73 {
@@ -3669,6 +3742,17 @@
 		qcom,calibration-type = "ratiometric";
 		qcom,scale-function = <2>;
 		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@7 {
+		label = "vph_pwr";
+		reg = <7>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
 		qcom,fast-avg-setup = <0>;
 	};
 };
