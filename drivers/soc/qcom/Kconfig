@@ -892,3 +892,10 @@ config QCOM_CX_IPEAK
 	  an interrupt to cDSP block to throttle cDSP fmax.
 
 source "drivers/soc/qcom/memshare/Kconfig"
+
+config MMI_SOC_INFO
+	default n
+	bool "Motorola Mobility SOC Info"
+	help
+	  Provide mechanism to export MSM SOC info.
+
