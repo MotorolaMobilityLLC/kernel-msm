@@ -925,4 +925,10 @@ config MMI_UNIT_INFO
 	help
 	Provide mechanism to expose unit information to other cpu via smem.
 
+config MMI_SOC_INFO
+	default n
+	bool "Motorola Mobility SOC Info"
+	help
+	  Provide mechanism to export MSM SOC info.
+
 endif # ARCH_MSM
