@@ -104,3 +104,4 @@ obj-$(CONFIG_MSM_REMOTEQDSS) += remoteqdss.o
 obj-$(CONFIG_QCOM_SMCINVOKE) += smcinvoke.o
 obj-$(CONFIG_BOOTINFO) += bootinfo.o
 obj-$(CONFIG_MMI_UNIT_INFO) += mmi-unit-info.o
+obj-$(CONFIG_MMI_SOC_INFO) += mmi_soc_info.o
