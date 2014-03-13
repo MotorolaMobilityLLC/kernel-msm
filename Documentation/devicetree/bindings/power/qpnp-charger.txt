@@ -111,6 +111,8 @@ Parent node optional properties:
 					be enabled in board designs with PM8941 which have DC_IN
 					and USB_IN connected via a short.
 - qcom,step-charge-voltage              Voltage threshold for High Voltage batteries to
+                                        charge at a reduced rate.  USAGE HAS BEEN DEPRECATED STARTING MSM8974
+- qcom,step-charge-soc                  SOC threshold for High Voltage batteries to
                                         charge at a reduced rate.
 - qcom,step-charge-current             Reduced charge rate for High Voltage batteries
                                         which are above a certain Voltage threshold
