@@ -284,6 +284,8 @@ struct qpnp_chg_regulator {
  *				throughout the driver
  * @step_charge_mv:		Voltage threshold for High Voltage batteries to
  *                              charge at a reduced rate
+ * @step_charge_soc:		SOC threshold for High Voltage batteries to
+ *                              charge at a reduced rate
  * @step_charge_ma:             Reduced charge rate for High Voltage batteries
  *                              which are above a certain Voltage threshold
  * @cutoff_mv:                  cutoff voltage where the battery is considered
@@ -403,6 +405,7 @@ struct qpnp_chg_chip {
 	char				shutdown_needed;
 	bool                            use_step_charge;
 	unsigned int			step_charge_mv;
+	unsigned int			step_charge_soc;
 	unsigned int			step_charge_ma;
 	unsigned int			cutoff_mv;
 	struct delayed_work		chrg_ocv_work;
@@ -3645,6 +3648,18 @@ qpnp_eoc_work(struct work_struct *work)
 			chip->use_step_charge = false;
 		}
 		qpnp_chg_set_appropriate_battery_current(chip);
+	} else if ((chip->step_charge_soc < 100) &&
+		(chip->step_charge_soc > 0)) {
+		if (get_prop_capacity(chip) >= chip->step_charge_soc) {
+			pr_debug("Step Rate used SOC = %d\n",
+				 get_prop_capacity(chip));
+			chip->use_step_charge = true;
+		} else {
+			pr_debug("Step Rate NOT used SOC = %d\n",
+				get_prop_capacity(chip));
+			chip->use_step_charge = false;
+		}
+		qpnp_chg_set_appropriate_battery_current(chip);
 	}
 
 	qpnp_chg_charge_en(chip, (!chip->charging_disabled &&
@@ -5099,6 +5114,7 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 	OF_PROP_READ(chip, batt_weak_voltage_mv, "vbatweak-mv", rc, 1);
 	OF_PROP_READ(chip, vbatdet_max_err_mv, "vbatdet-maxerr-mv", rc, 1);
 	OF_PROP_READ(chip, step_charge_mv, "step-charge-voltage", rc, 1);
+	OF_PROP_READ(chip, step_charge_soc, "step-charge-soc", rc, 1);
 	OF_PROP_READ(chip, step_charge_ma, "step-charge-current", rc, 1);
 
 	if (rc)
