@@ -50,10 +50,6 @@
 	qcom,otg-capability;
 };
 
-&sdhc_2 {
-	status = "disabled";
-};
-
 &cci {
 
 	qcom,camera@6e {
