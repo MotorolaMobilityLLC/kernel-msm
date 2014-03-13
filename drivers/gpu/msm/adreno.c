@@ -2576,6 +2576,9 @@ adreno_dump_and_exec_ft(struct kgsl_device *device)
 		 * we will get errors
 		 */
 		if (!adreno_dev->long_ib) {
+			char *path;
+			char sys_path[256];
+
 			/*
 			 * Trigger an automatic dump of the state to
 			 * the console
@@ -2589,8 +2592,14 @@ adreno_dump_and_exec_ft(struct kgsl_device *device)
 			*/
 			kgsl_device_snapshot(device, 1);
 
-			dropbox_queue_event_binary("gpu_snapshot",
-				device->snapshot, device->snapshot_size);
+			path = kobject_get_path(&device->snapshot_kobj,
+				GFP_KERNEL);
+			snprintf(sys_path, sizeof(sys_path), "/sys%s/dump",
+				path);
+			kfree(path);
+
+			dropbox_queue_event_binaryfile("gpu_snapshot",
+				sys_path);
 		}
 
 		result = adreno_ft(device, &ft_data);
