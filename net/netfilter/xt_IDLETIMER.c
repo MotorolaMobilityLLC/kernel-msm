@@ -127,7 +127,7 @@ static void notify_netlink_uevent(const char *iface, struct idletimer_tg *timer)
 		return;
 	}
 
-	getnstimeofday(&ts);
+	get_monotonic_boottime(&ts);
 	state = check_for_delayed_trigger(timer, &ts);
 	res = snprintf(state_msg, NLMSG_MAX_SIZE, "STATE=%s",
 			state ? "active" : "inactive");
@@ -221,7 +221,7 @@ static int idletimer_resume(struct notifier_block *notifier,
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		getnstimeofday(&timer->last_suspend_time);
+		get_monotonic_boottime(&timer->last_suspend_time);
 		break;
 	case PM_POST_SUSPEND:
 		if (!timer || !timer->active)
@@ -229,7 +229,7 @@ static int idletimer_resume(struct notifier_block *notifier,
 		/* since jiffies are not updated when suspended now represents
 		 * the time it would have suspended */
 		if (time_after(timer->timer.expires, now)) {
-			getnstimeofday(&ts);
+			get_monotonic_boottime(&ts);
 			ts = timespec_sub(ts, timer->last_suspend_time);
 			time_diff = timespec_to_jiffies(&ts);
 			if (timer->timer.expires > (time_diff + now)) {
@@ -285,7 +285,7 @@ static int idletimer_tg_create(struct idletimer_tg_info *info)
 	spin_lock_bh(&timestamp_lock);
 	info->timer->delayed_timer_trigger.tv_sec = 0;
 	info->timer->delayed_timer_trigger.tv_nsec = 0;
-	getnstimeofday(&info->timer->last_modified_timer);
+	get_monotonic_boottime(&info->timer->last_modified_timer);
 	spin_unlock_bh(&timestamp_lock);
 
 	info->timer->pm_nb.notifier_call = idletimer_resume;
@@ -326,11 +326,11 @@ static void reset_timer(const struct idletimer_tg_info *info)
 		if (cancel_work_sync(&timer->work))
 			timer->delayed_timer_trigger = timer->last_modified_timer;
 
-		getnstimeofday(&timer->last_modified_timer);
+		get_monotonic_boottime(&timer->last_modified_timer);
 		schedule_work(&timer->work);
 	}
 
-	getnstimeofday(&timer->last_modified_timer);
+	get_monotonic_boottime(&timer->last_modified_timer);
 	mod_timer(&timer->timer,
 			msecs_to_jiffies(info->timeout * 1000) + now);
 	spin_unlock_bh(&timestamp_lock);
