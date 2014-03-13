@@ -19,6 +19,7 @@
 		serial0 = &blsp2_uart1;
 		uart0 = &uart6;
 		uart3 = &blsp2_uart3;
+		spi3 = &spi_3;
 	};
 
 	bt_qca6174 {
@@ -179,6 +180,42 @@
 		parent-supply = <&pma8084_l17>;
 		startup-delay-us = <300>;
 		enable-active-high;
+	};
+
+	i2c@f9926000 { /* BLSP-1 QUP-4 */
+		status = "disabled";
+	};
+
+	/* BLSP4 (BLSP1 QUP3) VALIDITY FP SENSOR */
+	spi_3: spi@f9926000 {
+		compatible = "qcom,spi-qup-v2";
+		cell-index = <3>;
+
+		reg = <0xf9926000 0x1000>, <0xf9904000 0x19000>;
+		reg-names = "spi_physical", "spi_bam_physical";
+
+		interrupts = <0 98 0>, <0 238 0>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+
+		spi-max-frequency = <48000000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		gpios = <&msmgpio 30 0>,
+			<&msmgpio 28 0>,
+			<&msmgpio 27 0>;
+		cs-gpios = <&msmgpio 29 0>;
+		qcom,master-id = <86>;
+
+		qcom,use-bam;
+		qcom,bam-consumer-pipe-index = <18>;
+		qcom,bam-producer-pipe-index = <19>;
+		qcom,ver-reg-exists;
+
+		validity-metallica@0{
+			compatible = "validity,metallica";
+			reg = <0>;
+			spi-max-frequency = <17143000>;
+		};
 	};
 
 	i2c_8: i2c@f9964000 { /* BLSP8 */
