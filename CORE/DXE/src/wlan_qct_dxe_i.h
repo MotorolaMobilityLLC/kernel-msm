@@ -663,7 +663,9 @@ typedef struct
    wpt_boolean                     rxPalPacketUnavailable;
    wpt_boolean                     driverReloadInProcessing;
    wpt_boolean                     smsmToggled;
+#ifdef WLAN_DXE_LOW_RESOURCE_TIMER
    wpt_timer                       rxResourceAvailableTimer;
+#endif
    wpt_timer                       dxeSSRTimer;
 } WLANDXE_CtrlBlkType;
 

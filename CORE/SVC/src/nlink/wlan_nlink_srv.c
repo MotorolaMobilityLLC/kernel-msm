@@ -160,7 +160,7 @@ int nl_srv_unregister(tWlanNlModTypes msg_type, nl_srv_msg_callback msg_handler)
  * Unicast the message to the process in user space identfied
  * by the dst-pid
  */
-int nl_srv_ucast(struct sk_buff *skb, int dst_pid)
+int nl_srv_ucast(struct sk_buff *skb, int dst_pid, int flag)
 {
    int err;
 
@@ -171,7 +171,7 @@ int nl_srv_ucast(struct sk_buff *skb, int dst_pid)
 #endif
    NETLINK_CB(skb).dst_group = 0; //not multicast
 
-   err = netlink_unicast(nl_srv_sock, skb, dst_pid, MSG_DONTWAIT);
+   err = netlink_unicast(nl_srv_sock, skb, dst_pid, flag);
 
    if (err < 0)
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,

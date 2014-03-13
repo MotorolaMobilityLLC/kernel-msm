@@ -1698,6 +1698,8 @@ limHandleIBSScoalescing(
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
     if ( (!pBeacon->capabilityInfo.ibss) ||
+         ( psessionEntry->privacy !=
+                  (tANI_U8)pBeacon->capabilityInfo.privacy ) ||
          (limCmpSSid(pMac, &pBeacon->ssId,psessionEntry) != true) ||
          (psessionEntry->currentOperChannel != pBeacon->channelNumber) )
         /* Received SSID does not match => Ignore received Beacon frame. */

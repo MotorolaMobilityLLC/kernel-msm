@@ -5560,7 +5560,7 @@ eHalStatus sme_QosAggregateParams(
    if(pCurrent_Tspec_Info->ts_info.direction != 
       pInput_Tspec_Info->ts_info.direction)
    {
-      TspecInfo.ts_info.direction = SME_QOS_WMM_TS_DIR_BOTH;
+      TspecInfo.ts_info.direction = pInput_Tspec_Info->ts_info.direction;
    }
    /*-------------------------------------------------------------------------
      Max MSDU size : these sizes are `maxed'

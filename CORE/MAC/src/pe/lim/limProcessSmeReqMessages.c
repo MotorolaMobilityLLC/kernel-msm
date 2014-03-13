@@ -683,6 +683,16 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                  psessionEntry->shortSlotTimeSupported =
                         limGetShortSlotFromPhyMode(pMac, psessionEntry,
                                                    psessionEntry->gLimPhyMode);
+                 /* In WPA-NONE case we wont get the privacy bit in ibss config
+                  * from supplicant, but we are updating WNI_CFG_PRIVACY_ENABLED
+                  * on basis of Encryption type in csrRoamSetBssConfigCfg. So
+                  * get the privacy info from WNI_CFG_PRIVACY_ENABLED
+                  */
+                 if (wlan_cfgGetInt(pMac, WNI_CFG_PRIVACY_ENABLED, &val)
+                                                               != eSIR_SUCCESS)
+                      limLog(pMac, LOGE, FL("cfg get WNI_CFG_PRIVACY_ENABLED"
+                            " failed"));
+                 psessionEntry->privacy =(tANI_U8) val;
                  psessionEntry->isCoalesingInIBSSAllowed =
                                 pSmeStartBssReq->isCoalesingInIBSSAllowed;
                  break;
