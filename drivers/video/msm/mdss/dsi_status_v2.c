@@ -67,6 +67,11 @@ void check_dsi_ctrl_status(struct work_struct *work)
 		return;
 	}
 
+	if (!pdsi_status || !(pdsi_status->mfd)) {
+		pr_err("%s: mfd not available\n", __func__);
+		return;
+	}
+
 	pdata = dev_get_platdata(&pdsi_status->mfd->pdev->dev);
 	if (!pdata) {
 		pr_err("%s: Panel data not available\n", __func__);
@@ -80,6 +85,11 @@ void check_dsi_ctrl_status(struct work_struct *work)
 		return;
 	}
 	mdp3_session = pdsi_status->mfd->mdp.private1;
+	if (!mdp3_session) {
+		pr_err("%s: Display is off\n", __func__);
+		return;
+	}
+
 	mutex_lock(&mdp3_session->lock);
 
 	ret = ctrl_pdata->check_status(ctrl_pdata);
