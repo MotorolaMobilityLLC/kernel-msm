@@ -956,3 +956,10 @@ config MSM_CACHE_M4M_ERP64_PANIC_ON_UE
          are detected.
 
 source "drivers/soc/qcom/memshare/Kconfig"
+
+config MMI_SOC_INFO
+	default n
+	bool "Motorola Mobility SOC Info"
+	help
+	  Provide mechanism to export MSM SOC info.
+
