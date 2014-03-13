@@ -27,6 +27,7 @@
 #include <linux/clk/msm-clock-generic.h>
 #include <soc/qcom/clock-local2.h>
 #include <soc/qcom/clock-krait.h>
+#include <mach/mmi_soc_info.h>
 
 #include <asm/cputype.h>
 
@@ -788,6 +789,7 @@ static int clock_krait_8974_driver_probe(struct platform_device *pdev)
 	}
 
 	get_krait_bin_format_b(pdev, &speed, &pvs, &svs_pvs, &pvs_ver);
+	mmi_acpu_bin_set(&speed, &pvs, &pvs_ver);
 	snprintf(table_name, ARRAY_SIZE(table_name),
 			"qcom,speed%d-pvs%d-bin-v%d", speed, pvs, pvs_ver);
 
