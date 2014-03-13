@@ -2232,6 +2232,7 @@ qpnp_batt_external_power_changed(struct power_supply *psy)
 	struct qpnp_chg_chip *chip = container_of(psy, struct qpnp_chg_chip,
 								batt_psy);
 	union power_supply_propval ret = {0,};
+	int iusb_max_ma;
 
 	if (!chip->bms_psy)
 		chip->bms_psy = power_supply_get_by_name("bms");
@@ -2243,20 +2244,21 @@ qpnp_batt_external_power_changed(struct power_supply *psy)
 	if (qpnp_chg_is_usb_chg_plugged_in(chip)) {
 		chip->usb_psy->get_property(chip->usb_psy,
 			  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
+		iusb_max_ma = ret.intval / 1000;
 
-		if (chip->prev_usb_max_ma == ret.intval)
+		if (chip->prev_usb_max_ma == iusb_max_ma)
 			goto skip_set_iusb_max;
 
-		chip->prev_usb_max_ma = ret.intval;
+		chip->prev_usb_max_ma = iusb_max_ma;
 
-		if (ret.intval <= 2 && !chip->use_default_batt_values &&
+		if (iusb_max_ma <= 2 && !chip->use_default_batt_values &&
 						get_prop_batt_present(chip)) {
-			if (ret.intval ==  2)
+			if (iusb_max_ma ==  2)
 				qpnp_chg_usb_suspend_enable(chip, 1);
 			qpnp_chg_iusbmax_set(chip, QPNP_CHG_I_MAX_MIN_100);
 		} else {
 			qpnp_chg_usb_suspend_enable(chip, 0);
-			if (((ret.intval / 1000) > USB_WALL_THRESHOLD_MA)
+			if ((iusb_max_ma > USB_WALL_THRESHOLD_MA)
 					&& (charger_monitor ||
 					!chip->charger_monitor_checked)) {
 				if (!ext_ovp_present)
@@ -2266,11 +2268,11 @@ qpnp_batt_external_power_changed(struct power_supply *psy)
 					qpnp_chg_iusbmax_set(chip,
 						OVP_USB_WALL_THRESHOLD_MA);
 			} else {
-				qpnp_chg_iusbmax_set(chip, ret.intval / 1000);
+				qpnp_chg_iusbmax_set(chip, iusb_max_ma);
 			}
 
 			if ((chip->flags & POWER_STAGE_WA)
-			&& ((ret.intval / 1000) > USB_WALL_THRESHOLD_MA)
+			&& (iusb_max_ma > USB_WALL_THRESHOLD_MA)
 			&& !chip->power_stage_workaround_running
 			&& chip->power_stage_workaround_enable) {
 				chip->power_stage_workaround_running = true;
