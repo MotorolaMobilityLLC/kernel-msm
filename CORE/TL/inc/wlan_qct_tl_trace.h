@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -25,31 +25,35 @@
  * to the Linux Foundation.
  */
 
-#ifndef QWLAN_VERSION_H
-#define QWLAN_VERSION_H
-/*===========================================================================
+/***********************************************************************
+   wlan_qct_tl_trace.h
 
-FILE:
-   qwlan_version.h
+  \brief definition for trace related APIs
 
-BRIEF DESCRIPTION:
-   WLAN Host Version file.
-   Build number automaticly updated by build scripts.
+  ========================================================================*/
+#ifndef __WLAN_QCT_TL_TRACE_H__
+#define __WLAN_QCT_TL_TRACE_H__
 
 
-                Copyright (c) 2008-2011 QUALCOMM Incorporated.
-                All Right Reserved.
-                Qualcomm Confidential and Proprietary
-===========================================================================*/
+#include "macTrace.h"
 
-#define QWLAN_VERSION_MAJOR            3
-#define QWLAN_VERSION_MINOR            2
-#define QWLAN_VERSION_PATCH            3
-#define QWLAN_VERSION_EXTRA            ""
+#define NO_SESSION 0xFF
 
-#define QWLAN_VERSION_BUILD            262
+enum {
+    TRACE_CODE_TL_STA_STATE,
+    TRACE_CODE_TL_EAPOL_PKT_PENDING,
+    TRACE_CODE_TL_GET_FRAMES_EAPOL,
+    TRACE_CODE_TL_RX_CONN_EAPOL,
+    TRACE_CODE_TL_REGISTER_STA_CLIENT,
+    TRACE_CODE_TL_SUSPEND_DATA_TX,
+    TRACE_CODE_TL_RESUME_DATA_TX,
+    TRACE_CODE_TL_STA_PKT_PENDING,
+    TRACE_CODE_TL_QUEUE_CURRENT,
+    TRACE_CODE_TL_REORDER_TIMER_EXP_CB,
+    TRACE_CODE_TL_BA_SESSION_DEL,
+};
 
-#define QWLAN_VERSIONSTR               "3.2.3.262"
+void tlTraceDump(void *pMac, tpvosTraceRecord pRecord, tANI_U16 recIndex);
+void tlTraceInit(void);
 
-#endif /* QWLAN_VERSION_H */
-
+#endif

@@ -2130,17 +2130,14 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         }
         break;
 #endif
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR) \
-    || defined (WLAN_FEATURE_RELIABLE_MCAST)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_ESE) || defined(FEATURE_WLAN_LFR)
         case SIR_MAC_ACTION_VENDOR_SPECIFIC_CATEGORY:
             {
               tpSirMacVendorSpecificFrameHdr pVendorSpecific = (tpSirMacVendorSpecificFrameHdr) pActionHdr;
               tpSirMacMgmtHdr     pHdr;
-              tANI_U32            frameLen;
               tANI_U8 Oui[] = { 0x00, 0x00, 0xf0 };
 
               pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
-              frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
               //Check if it is a vendor specific action frame.
               if ((eLIM_STA_ROLE == psessionEntry->limSystemRole) &&
@@ -2153,9 +2150,8 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                          pVendorSpecific->Oui[0], pVendorSpecific->Oui[1], pVendorSpecific->Oui[2]);)
                  /* Forward to the SME to HDD to wpa_supplicant */
                  // type is ACTION
-                 limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType,
-                    (tANI_U8*)pHdr, frameLen + sizeof(tSirMacMgmtHdr), 0,
-                    WDA_GET_RX_CH( pRxPacketInfo ), psessionEntry, 0);
+                  limSendSmeMgmtFrameInd(pMac, 0, pRxPacketInfo,
+                                         psessionEntry, 0);
               }
               else
               {
@@ -2175,21 +2171,15 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         case SIR_MAC_ACTION_VENDOR_SPECIFIC:
             {
               tpSirMacVendorSpecificPublicActionFrameHdr pPubAction = (tpSirMacVendorSpecificPublicActionFrameHdr) pActionHdr;
-              tpSirMacMgmtHdr     pHdr;
-              tANI_U32            frameLen;
               tANI_U8 P2POui[] = { 0x50, 0x6F, 0x9A, 0x09 };
-
-              pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
-              frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
               //Check if it is a P2P public action frame.
               if (vos_mem_compare(pPubAction->Oui, P2POui, 4))
               {
                  /* Forward to the SME to HDD to wpa_supplicant */
                  // type is ACTION
-                 limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType, 
-                    (tANI_U8*)pHdr, frameLen + sizeof(tSirMacMgmtHdr), 0, 
-                    WDA_GET_RX_CH( pRxPacketInfo ), psessionEntry, 0);
+                 limSendSmeMgmtFrameInd(pMac, 0, pRxPacketInfo,
+                                        psessionEntry, 0);
               }
               else
               {
@@ -2205,18 +2195,13 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                //LIM_LOG_TDLS(printk("Public Action TDLS Discovery RSP ..")) ;
                limProcessTdlsPublicActionFrame(pMac, (tANI_U32*)pRxPacketInfo, psessionEntry) ;
 #else
-               tpSirMacMgmtHdr     pHdr;
-               tANI_U32            frameLen;
                tANI_S8             rssi;
 
-               pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
-               frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
                rssi = WDA_GET_RX_RSSI_DB(pRxPacketInfo);
                VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, 
                                     ("Public Action TDLS Discovery RSP ..")) ;
-               limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType, 
-                  (tANI_U8*)pHdr, frameLen + sizeof(tSirMacMgmtHdr), 0, 
-                  WDA_GET_RX_CH( pRxPacketInfo ), psessionEntry, rssi);
+               limSendSmeMgmtFrameInd(pMac, 0, pRxPacketInfo,
+                                      psessionEntry, rssi);
 #endif
            }
                break;
@@ -2307,21 +2292,14 @@ limProcessActionFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd)
          switch(pActionHdr->actionID) {
             case SIR_MAC_ACTION_VENDOR_SPECIFIC:
               {
-                tpSirMacMgmtHdr     pHdr;
-                tANI_U32            frameLen;
                 tANI_U8 P2POui[] = { 0x50, 0x6F, 0x9A, 0x09 };
-
-                pHdr = WDA_GET_RX_MAC_HEADER(pBd);
-                frameLen = WDA_GET_RX_PAYLOAD_LEN(pBd);
 
                 //Check if it is a P2P public action frame.
                 if (vos_mem_compare(pActionHdr->Oui, P2POui, 4))
                 {
                   /* Forward to the SME to HDD to wpa_supplicant */
                   // type is ACTION
-                  limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType, 
-                      (tANI_U8*)pHdr, frameLen + sizeof(tSirMacMgmtHdr), 0,
-                      WDA_GET_RX_CH( pBd ), NULL, 0);
+                  limSendSmeMgmtFrameInd(pMac, 0, pBd, NULL, 0);
                 }
                 else
                 {

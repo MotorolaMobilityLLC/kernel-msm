@@ -1056,10 +1056,9 @@ limChangeChannelWithCallback(tpAniSirGlobal pMac, tANI_U8 newChannel,
    CHANGE_CHANNEL_CALLBACK callback, tANI_U32 *cbdata, tpPESession psessionEntry);
 
 void limSendSmeMgmtFrameInd(
-                    tpAniSirGlobal pMac, tANI_U8 frameType,
-                    tANI_U8  *frame, tANI_U32 frameLen, tANI_U16 sessionId,
-                    tANI_U32 rxChan, tpPESession psessionEntry,
-                    tANI_S8 rxRssi);
+                    tpAniSirGlobal pMac, tANI_U16 sessionId,
+                    tANI_U8 *pRxPacketInfo,
+                    tpPESession psessionEntry, tANI_S8 rxRssi);
 void limProcessRemainOnChnTimeout(tpAniSirGlobal pMac);
 void limProcessInsertSingleShotNOATimeout(tpAniSirGlobal pMac);
 void limConvertActiveChannelToPassiveChannel(tpAniSirGlobal pMac);

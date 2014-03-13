@@ -136,6 +136,9 @@
 #include "wlan_qct_tli.h" 
 #include "wlan_qct_tli_ba.h" 
 #include "wlan_qct_tl_hosupport.h"
+#include "vos_types.h"
+#include "vos_trace.h"
+#include "wlan_qct_tl_trace.h"
 #include "tlDebug.h"
 #ifdef FEATURE_WLAN_WAPI
 /*Included to access WDI_RxBdType */
@@ -637,6 +640,7 @@ WLANTL_Start
   TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
              "WLAN TL:WLAN TL:WLANTL_Start"));
 
+  tlTraceInit();
   vosStatus = WDA_DS_Register( pvosGCtx, 
                           WLANTL_TxComp, 
                           WLANTL_RxFrames,
@@ -1178,6 +1182,13 @@ WLANTL_RegisterSTAClient
   /*------------------------------------------------------------------------
     Register station with TL
    ------------------------------------------------------------------------*/
+  MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_REGISTER_STA_CLIENT,
+                   pwSTADescType->ucSTAId, (unsigned )
+                              (*(pwSTADescType->vSTAMACAddress.bytes+2)<<24 |
+                               *(pwSTADescType->vSTAMACAddress.bytes+3)<<16 |
+                               *(pwSTADescType->vSTAMACAddress.bytes+4)<<8 |
+                               *(pwSTADescType->vSTAMACAddress.bytes+5))));
+
   TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
              "WLAN TL:Registering STA Client ID: %d", pwSTADescType->ucSTAId ));
 
@@ -1607,6 +1618,9 @@ WLANTL_ChangeSTAState
              "WLAN TL:Changing state for STA Client ID: %d from %d to %d",
              ucSTAId, pTLCb->atlSTAClients[ucSTAId]->tlState, tlSTAState));
 
+  MTRACE(vos_trace(VOS_MODULE_ID_TL,
+                   TRACE_CODE_TL_STA_STATE, ucSTAId,tlSTAState ));
+
   pTLCb->atlSTAClients[ucSTAId]->tlState = tlSTAState;
 
   return VOS_STATUS_SUCCESS;
@@ -1986,6 +2000,9 @@ WLANTL_STAPktPending
        Just in the case when STA got disconnected shortly after connectection */
     pClientSTA->ucEapolPktPending = 1;
 
+    MTRACE(vos_trace(VOS_MODULE_ID_TL,
+           TRACE_CODE_TL_EAPOL_PKT_PENDING, ucSTAId, ucAc));
+
     VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
       "WLAN TL:Packet pending indication for STA: %d AC: %d State: %d", 
                ucSTAId, ucAc, pClientSTA->tlState);
@@ -2009,6 +2026,9 @@ WLANTL_STAPktPending
        if (( pTLCb->uResCount >=  WDA_TLI_MIN_RES_DATA ) &&
           ( 0 == pTLCb->ucTxSuspended ))
       {
+        MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_STA_PKT_PENDING,
+                      ucSTAId, pClientSTA->tlState ));
+
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
               "Issuing Xmit start request to BAL"));
            WDA_DS_StartXmit(pvosGCtx);
@@ -3473,6 +3493,9 @@ WLANTL_SuspendDataTx
   vosMsg.type     = WLANTL_TX_SIG_SUSPEND;
   vosMsg.bodyptr     = (v_PVOID_t)pfnSuspendTx;
 
+  MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_SUSPEND_DATA_TX,
+                    vosMsg.reserved , 0 ));
+
   if(!VOS_IS_STATUS_SUCCESS(vos_tx_mq_serialize( VOS_MQ_ID_TL, &vosMsg)))
   {
     VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
@@ -3541,12 +3564,18 @@ WLANTL_ResumeDataTx
    ------------------------------------------------------------------------*/
   if ( NULL == pucSTAId )
   {
+    MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_RESUME_DATA_TX,
+                      41 , 0 ));
+
     TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
               "WLAN TL:General resume requested"));
     vos_atomic_set_U8( &pTLCb->ucTxSuspended, 0);
   }
   else
   {
+    MTRACE(vos_trace(VOS_MODULE_ID_TL, TRACE_CODE_TL_RESUME_DATA_TX,
+                      *pucSTAId , 0 ));
+
     if ( WLANTL_STA_ID_INVALID( *pucSTAId ))
     {
       TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
@@ -4156,6 +4185,9 @@ WLANTL_GetFrames
         }
         /* Serve EAPOL frame with HI_FLOW_MASK */
         ucSTAId = i;
+
+        MTRACE(vos_trace(VOS_MODULE_ID_TL,
+                   TRACE_CODE_TL_GET_FRAMES_EAPOL, ucSTAId, pTLCb->atlSTAClients[i]->tlState));
 
         for (j = WLANTL_MAX_AC ; j > 0; j--)
         {
@@ -5842,7 +5874,7 @@ WLANTL_RxFrames
         broadcast = VOS_FALSE;
 #else
         vosStatus = WLANTL_ReadRSSI(pvosGCtx, pvBDHeader, ucSTAId);
-#endif /*FEATURE_WLAN_GEN6_ROAMING*/
+#endif
         if (!VOS_IS_STATUS_SUCCESS(vosStatus))
         {
           TLLOGW(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
@@ -6121,7 +6153,7 @@ WLANTL_RxCachedFrames
         broadcast = VOS_FALSE;
 #else
         vosStatus = WLANTL_ReadRSSI(vos_get_global_context(VOS_MODULE_ID_TL,pTLCb), pvBDHeader, ucSTAId);
-#endif /*FEATURE_WLAN_GEN6_ROAMING*/
+#endif
         if(!VOS_IS_STATUS_SUCCESS(vosStatus))
         {
           TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
@@ -7633,6 +7665,8 @@ WLANTL_STARxConn
 #endif /* FEATURE_WLAN_WAPI */
     else /* Frame is an EAPOL frame or a WAI frame*/  
     {
+      MTRACE(vos_trace(VOS_MODULE_ID_TL,
+                   TRACE_CODE_TL_RX_CONN_EAPOL, ucSTAId, usEtherType ));
 
       VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
                  "WLAN TL:RX Frame  EAPOL EtherType %d - processing", usEtherType);
