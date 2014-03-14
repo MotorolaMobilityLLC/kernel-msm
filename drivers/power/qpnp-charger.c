@@ -1842,11 +1842,6 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 		power_supply_changed(&chip->dc_psy);
 	}
 
-	if (chip->resuming_charging) {
-		chip->resuming_charging = false;
-		qpnp_chg_set_appropriate_vbatdet(chip);
-	}
-
 	if (!chip->charging_disabled) {
 		schedule_delayed_work(&chip->eoc_work,
 			msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
@@ -3824,7 +3819,7 @@ qpnp_chg_adc_notification(enum qpnp_tm_state state, void *ctx)
 		chip->bat_is_warm = bat_warm;
 		chip->out_of_temp = out_temp;
 
-		if (bat_cool || bat_warm)
+		if ((bat_cool || bat_warm) && chip->ext_hi_temp)
 			chip->resuming_charging = false;
 		else
 			chip->resuming_charging = true;
