@@ -29,9 +29,9 @@
 #define MAX_BAUD_RATE       17143000
 #define BAUD_RATE_COEF      1000
 #define DRDY_TIMEOUT_MS     40
-#define VFSSPI_DRDY_PIN     74
-#define VFSSPI_SLEEP_PIN    76
-#define VFSSPI_CS_PIN       87
+#define VFSSPI_DRDY_PIN     143
+#define VFSSPI_SLEEP_PIN    127
+#define VFSSPI_CS_PIN       29
 #define DO_CHIP_SELECT      1
 #define DRDY_ACTIVE_STATUS  1
 #define BITS_PER_WORD       8
