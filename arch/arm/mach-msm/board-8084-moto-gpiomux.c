@@ -53,28 +53,6 @@ static struct gpiomux_setting ap2mdm_soft_reset_cfg = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-static struct gpiomux_setting hap_lvl_shft_active_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};
-
-static struct gpiomux_setting hap_lvl_shft_suspended_config = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-};
-
-static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
-	{
-		.gpio = 48,
-		.settings = {
-			[GPIOMUX_ACTIVE] = &hap_lvl_shft_active_config,
-			[GPIOMUX_SUSPENDED] = &hap_lvl_shft_suspended_config,
-		},
-	},
-};
-
 static struct msm_gpiomux_config mdm_configs[] __initdata = {
 	/* AP2MDM_STATUS */
 	{
@@ -206,18 +184,6 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	},
 	{
 		.gpio      = 11,		/* BLSP1 QUP3 I2C_SCL */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 29,		/* BLSP1 QUP4 I2C_SDA */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 30,		/* BLSP1 QUP4 I2C_SCL */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config,
 		},
@@ -413,6 +379,83 @@ static struct msm_gpiomux_config msm_sbc_blsp_configs[] __initdata = {
 		},
 	}
 };
+
+static struct gpiomux_setting gpio_blsp4_fps_spi_sck_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_blsp4_fps_spi_mosi_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gpio_blsp4_fps_spi_miso_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting gpio_blsp4_fps_spi_cs_config = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting gpio_fps_spi_sleep = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting gpio_fps_spi_drdy = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config msm_blsp4_fps_spi_configs[] __initdata = {
+	{
+		.gpio      = 27,		/* FPS SPI MOSI */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp4_fps_spi_mosi_config,
+		},
+	},
+	{
+		.gpio      = 28,		/* FPS SPI MISO */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp4_fps_spi_miso_config,
+		},
+	},
+	{
+		.gpio      = 29,		/* FPS SPI CS */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp4_fps_spi_cs_config,
+		},
+	},
+	{
+		.gpio      = 30,		/* FPS SPI SCK */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_blsp4_fps_spi_sck_config,
+		},
+	},
+	{
+		.gpio      = 127,		/* FPS SLEEP */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_fps_spi_sleep,
+		},
+	},
+	{
+		.gpio      = 143,		/* FPS DRDY */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gpio_fps_spi_drdy,
+		},
+	},
+};
+
 
 static struct gpiomux_setting stm401_boot_gpio_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -1438,8 +1481,6 @@ void __init apq8084_moto_init_gpiomux(void)
 			ARRAY_SIZE(apq8084_hsic_configs));
 		msm_gpiomux_install(msm_hdmi_configs,
 			ARRAY_SIZE(msm_hdmi_configs));
-		msm_gpiomux_install(hap_lvl_shft_config,
-			ARRAY_SIZE(hap_lvl_shft_config));
 	}
 
 	msm_gpiomux_install(msm_wlan_configs, ARRAY_SIZE(msm_wlan_configs));
@@ -1453,6 +1494,10 @@ void __init apq8084_moto_init_gpiomux(void)
 	else
 		msm_gpiomux_install(msm_sensor_configs,
 				ARRAY_SIZE(msm_sensor_configs));
+
+	msm_gpiomux_install(msm_blsp4_fps_spi_configs,
+			ARRAY_SIZE(msm_blsp4_fps_spi_configs));
+
 	msm_gpiomux_install(msm_pcie_configs, ARRAY_SIZE(msm_pcie_configs));
 
 	msm_gpiomux_install(bcm2079x_configs, ARRAY_SIZE(bcm2079x_configs));
