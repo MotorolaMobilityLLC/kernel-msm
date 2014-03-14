@@ -412,7 +412,7 @@ struct stm_response {
 
 #define STM401_MAX_GENERIC_DATA		512
 
-#define ESR_SIZE			32
+#define ESR_SIZE			128
 
 #define STM401_RESET_DELAY		400
 
