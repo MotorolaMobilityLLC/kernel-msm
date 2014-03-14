@@ -323,6 +323,10 @@
 		qcom,memory-reservation-type = "EBI1";
 		qcom,memory-reservation-size = <0x1000>; /* 4kb from EBI1 buffer */
 	};
+
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
 };
 
 &mdss_mdp {
