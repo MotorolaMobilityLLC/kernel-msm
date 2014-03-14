@@ -590,6 +590,14 @@ config HAPTIC_DRV2624
 	  If you say yes here you get support for the TI DRV2624
 	  haptic driver.
 
+config ALSA_TO_H2W
+	tristate "ALSA to H2W wired headset detection converter"
+	help
+	  This option enables a device driver that attach to the input queue and
+	  and exposes EV_SW events SW_HEADPHONE_INSERT & SW_MICROPHONE_INSERT in
+	  /sys/class/switch/h2w/state used by Android headset observer.
+	default n
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
