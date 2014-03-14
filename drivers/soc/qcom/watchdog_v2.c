@@ -387,6 +387,11 @@ static __ref int watchdog_kthread(void *arg)
 			;
 		INIT_COMPLETION(wdog_dd->pet_complete);
 		if (enable) {
+			if (test_taint(TAINT_DIE) || oops_in_progress) {
+				pr_info("MSM Watchdog Skip Pet Work.\n");
+				return 0;
+			}
+
 			delay_time = msecs_to_jiffies(wdog_dd->pet_time);
 			if (wdog_dd->do_ipi_ping)
 				ping_other_cpus(wdog_dd);
