@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -117,6 +117,7 @@ typedef enum
    VOS_MODULE_ID_SAP        = 11,
    VOS_MODULE_ID_HDD_SOFTAP = 12,
    VOS_MODULE_ID_PMC        = 13,
+   VOS_MODULE_ID_HDD_DATA   = 14,
    VOS_MODULE_ID_HDD_SAP_DATA   = 15,
 
    // not a real module ID.  This is used to identify the maxiumum
