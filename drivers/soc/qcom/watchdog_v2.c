@@ -377,6 +377,12 @@ static void pet_watchdog_work(struct work_struct *work)
 	struct msm_watchdog_data *wdog_dd = container_of(delayed_work,
 						struct msm_watchdog_data,
 							dogwork_struct);
+
+	if (test_taint(TAINT_DIE) || oops_in_progress) {
+		pr_info("MSM Watchdog Skip Pet Work.\n");
+		return;
+	}
+
 	delay_time = msecs_to_jiffies(wdog_dd->pet_time);
 	if (enable) {
 		if (wdog_dd->do_ipi_ping)
