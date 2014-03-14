@@ -291,6 +291,10 @@
 				"factory_cable_detect",
 				"factory_warn";
 	};
+
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
 };
 
 &pma8084_lvs3 {
