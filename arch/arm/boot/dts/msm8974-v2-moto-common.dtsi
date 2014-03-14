@@ -233,6 +233,9 @@
 			"CCI_I2C_CLK1";
 	};
 
+	alsa_to_h2w {
+		compatible = "mmi,alsa-to-h2w";
+	};
 };
 
 &spmi_bus {
