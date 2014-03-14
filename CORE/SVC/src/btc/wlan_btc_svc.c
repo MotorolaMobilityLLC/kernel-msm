@@ -199,7 +199,7 @@ void send_btc_nlink_msg (int type, int dest_pid)
    if(dest_pid == 0)
       (void)nl_srv_bcast(skb);
    else
-      (void)nl_srv_ucast(skb, dest_pid);
+      (void)nl_srv_ucast(skb, dest_pid, MSG_DONTWAIT);
 }
 /*
  * Activate BTC handler. This will register a handler to receive

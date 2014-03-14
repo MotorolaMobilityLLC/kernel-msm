@@ -2943,6 +2943,13 @@ REG_VARIABLE( CFG_TDLS_EXTERNAL_CONTROL, WLAN_PARAM_Integer,
                CFG_RA_RATE_LIMIT_INTERVAL_DEFAULT,
                CFG_RA_RATE_LIMIT_INTERVAL_MIN,
                CFG_RA_RATE_LIMIT_INTERVAL_MAX ),
+
+   REG_VARIABLE( CFG_ROAMING_DFS_CHANNEL_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, allowDFSChannelRoam,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_ROAMING_DFS_CHANNEL_DEFAULT,
+                 CFG_ROAMING_DFS_CHANNEL_MIN,
+                 CFG_ROAMING_DFS_CHANNEL_MAX ),
 };
 
 /*
@@ -3323,6 +3330,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAsdProbeInterval] Value = [%u]",pHddCtx->cfg_ini->gAsdProbeInterval);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAsdTriggerThreshold] Value = [%u]",pHddCtx->cfg_ini->gAsdTriggerThreshold);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAsdRTTRssiHystThreshold]Value = [%u]",pHddCtx->cfg_ini->gAsdRTTRssiHystThreshold);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gRoamtoDFSChannel] Value = [%u] ",pHddCtx->cfg_ini->allowDFSChannelRoam);
 }
 
 
@@ -4848,7 +4856,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 
    smeConfig.csrConfig.addTSWhenACMIsOff = pConfig->AddTSWhenACMIsOff;
    smeConfig.csrConfig.fValidateList = pConfig->fValidateScanList;
-
+   smeConfig.csrConfig.allowDFSChannelRoam = pConfig->allowDFSChannelRoam;
    //Enable/Disable MCC
    smeConfig.csrConfig.fEnableMCCMode = pConfig->enableMCC;
    smeConfig.csrConfig.fAllowMCCGODiffBI = pConfig->allowMCCGODiffBI;

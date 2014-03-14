@@ -349,7 +349,9 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
 
     if(eLIM_STA_IN_IBSS_ROLE == psessionEntry->limSystemRole )
     {
-        limHandleIBSScoalescing(pMac, pBeacon,  pRxPacketInfo, psessionEntry);
+        if( limHandleIBSScoalescing(pMac, pBeacon, pRxPacketInfo, psessionEntry)
+                                                               != eSIR_SUCCESS )
+            return;
     }
     else if(  (eLIM_STA_ROLE == psessionEntry->limSystemRole) || 
                   (eLIM_BT_AMP_STA_ROLE == psessionEntry->limSystemRole))

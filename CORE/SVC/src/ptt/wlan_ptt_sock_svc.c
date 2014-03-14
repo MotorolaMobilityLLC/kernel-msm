@@ -118,7 +118,7 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid)
 #ifdef PTT_SOCK_DEBUG_VERBOSE
    ptt_sock_dump_buf((const unsigned char *)skb->data, skb->len);
 #endif
-   err = nl_srv_ucast(skb, pid);
+   err = nl_srv_ucast(skb, pid, MSG_DONTWAIT);
    return err;
 }
 /*
