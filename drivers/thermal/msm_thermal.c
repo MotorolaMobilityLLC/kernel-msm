@@ -1783,6 +1783,8 @@ int __devinit msm_thermal_init(struct msm_thermal_data *pdata)
 
 	enabled = 1;
 	for_each_possible_cpu(cpu) {
+		cpus[cpu].user_max_freq = UINT_MAX;
+		cpus[cpu].user_min_freq = 0;
 		cpus[cpu].limited_max_freq = UINT_MAX;
 		cpus[cpu].limited_min_freq = 0;
 	}
