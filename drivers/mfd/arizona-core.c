@@ -587,23 +587,22 @@ int arizona_of_get_type(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(arizona_of_get_type);
 
-int arizona_of_get_named_gpio(struct arizona *arizona,
-			      const char *prop, bool mandatory,
-			      int *gpio)
+int arizona_of_get_named_gpio(struct arizona *arizona, const char *prop,
+			      bool mandatory, int *gpio)
 {
 	int ret;
 
 	ret = of_get_named_gpio(arizona->dev->of_node, prop, 0);
-	*gpio = ret;
-	if (ret >= 0)
+	if (ret >= 0) {
+		*gpio = ret;
 		return ret;
+	}
 
-	*gpio = 0;
-
-	if (mandatory)
+	/* Warn if GPIO is mandatory and not specified */
+	if (mandatory && *gpio <= 0)
 		dev_err(arizona->dev,
-			"Mandatory DT gpio %s missing/malformed: %d\n",
-			prop, ret);
+				"Mandatory DT gpio %s missing/malformed: %d\n",
+				prop, ret);
 
 	return ret;
 }
