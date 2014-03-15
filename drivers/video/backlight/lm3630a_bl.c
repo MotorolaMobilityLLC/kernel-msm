@@ -48,7 +48,7 @@
 #define LM3630A_MAX_CURRENT		0x1F
 #define LM3630A_BOOST_CTRL_DEFAULT	0x38
 #define LM3630A_FLT_STRENGTH_DEFAULT	0x03
-#define LM3630A_PWM_CTRL_DEFAULT	0x00
+#define LM3630A_CONFIG_DEFAULT		0x00
 
 struct lm3630a_chip {
 	struct device *dev;
@@ -156,7 +156,7 @@ static int lm3630a_chip_config(struct lm3630a_chip *pchip)
 	/* set Filter Strength Register */
 	rval = lm3630a_write(pchip, 0x50, pdata->flt_str);
 	/* set Cofig. register */
-	rval |= lm3630a_update(pchip, REG_CONFIG, 0x07, pdata->pwm_ctrl);
+	rval |= lm3630a_update(pchip, REG_CONFIG, 0x1f, pdata->config);
 	/* set boost control */
 	rval |= lm3630a_write(pchip, REG_BOOST, pdata->boost_ctrl);
 	/* set current A */
@@ -177,7 +177,7 @@ static int lm3630a_chip_config(struct lm3630a_chip *pchip)
 /* initialize chip */
 static int lm3630a_chip_init(struct lm3630a_chip *pchip)
 {
-	int rval;
+	int rval = 0;
 	struct lm3630a_platform_data *pdata = pchip->pdata;
 
 	/* enable vddio power supply */
@@ -205,14 +205,20 @@ static int lm3630a_chip_init(struct lm3630a_chip *pchip)
 
 	lm3630a_chip_enable(pchip);
 
+	if (pdata->skip_init_config) {
+		dev_info(pchip->dev, "Skip init configuration.");
+		goto end;
+	}
+
 	usleep_range(1000, 2000);
 	rval = lm3630a_chip_config(pchip);
 	/* set brightness A and B */
 	rval |= lm3630a_write(pchip, REG_BRT_A, pdata->leda_init_brt);
 	rval |= lm3630a_write(pchip, REG_BRT_B, pdata->ledb_init_brt);
-
 	if (rval < 0)
 		dev_err(pchip->dev, "i2c failed to access register\n");
+
+end:
 	return rval;
 err:
 	if (!IS_ERR(pchip->vddio))
@@ -660,15 +666,15 @@ static int lm3630a_parse_dt(struct device_node *np,
 		dev_warn(pchip->dev, "flt-str not found in devtree\n");
 	pdata->flt_str = rc ? LM3630A_FLT_STRENGTH_DEFAULT : tmp;
 
-	rc = of_property_read_u32(np, "ti,pwm-ctrl", &tmp);
+	rc = of_property_read_u32(np, "ti,config", &tmp);
 	if (rc)
-		dev_warn(pchip->dev, "pwm-ctrl not found in devtree\n");
-	pdata->pwm_ctrl = rc ? LM3630A_PWM_CTRL_DEFAULT : tmp;
-	if ((pdata->pwm_ctrl & LM3630A_PWM_BANK_ALL) &&
-		!gpio_is_valid(pdata->pwm_gpio)) {
-		dev_err(pchip->dev, "pwm gpio not configured correctly\n");
-		return -EINVAL;
-	}
+		dev_warn(pchip->dev, "config not found in devtree\n");
+	pdata->config = rc ? LM3630A_CONFIG_DEFAULT : tmp;
+	pdata->pwm_ctrl = gpio_is_valid(pdata->pwm_gpio) ?
+			pdata->config & LM3630A_PWM_BANK_ALL : 0x00;
+
+	pdata->skip_init_config = of_property_read_bool(np,
+					"ti,skip-init-config");
 
 	dev_info(pchip->dev, "loading configuration done.\n");
 	return 0;
