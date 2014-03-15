@@ -794,6 +794,15 @@ static int adreno_ib_find_objs(struct kgsl_device *device,
 	}
 
 done:
+	/*
+	 * For set draw objects there may not be a draw_indx packet at its end
+	 * to signal that we need to save the found objects in it, so just save
+	 * it here.
+	 */
+	if (!ret && SNAPSHOT_GPU_OBJECT_DRAW == obj_type)
+		ret = ib_add_type0_entries(device, ptbase, ib_obj_list,
+			&ib_parse_vars);
+
 	kgsl_memdesc_unmap(&entry->memdesc);
 	kgsl_mem_entry_put(entry);
 	return ret;
