@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -339,6 +339,8 @@ static void mdp3_dmap_config_source(struct mdp3_dma *dma)
 	dma_p_cfg_reg = MDP3_REG_READ(MDP3_REG_DMA_P_CONFIG);
 	dma_p_cfg_reg &= ~MDP3_DMA_IBUF_FORMAT_MASK;
 	dma_p_cfg_reg |= source_config->format << 25;
+	dma_p_cfg_reg &= ~MDP3_DMA_PACK_PATTERN_MASK;
+	dma_p_cfg_reg |= dma->output_config.pack_pattern << 8;
 
 	dma_p_size = source_config->width | (source_config->height << 16);
 
@@ -602,6 +604,13 @@ static int mdp3_dmap_update(struct mdp3_dma *dma, void *buf,
 				rc = -1;
 			}
 		}
+	}
+	if (dma->update_src_cfg) {
+		if (dma->output_config.out_sel ==
+				 MDP3_DMA_OUTPUT_SEL_DSI_VIDEO && intf->active)
+			pr_err("configuring dma source while dma is active\n");
+		dma->dma_config_source(dma);
+		dma->update_src_cfg = false;
 	}
 	spin_lock_irqsave(&dma->dma_lock, flag);
 	MDP3_REG_WRITE(MDP3_REG_DMA_P_IBUF_ADDR, (u32)buf);
@@ -959,6 +968,7 @@ int mdp3_dma_init(struct mdp3_dma *dma)
 	dma->vsync_client.handler = NULL;
 	dma->vsync_client.arg = NULL;
 	dma->histo_state = MDP3_DMA_HISTO_STATE_IDLE;
+	dma->update_src_cfg = false;
 
 	memset(&dma->cursor, 0, sizeof(dma->cursor));
 	memset(&dma->ccs_config, 0, sizeof(dma->ccs_config));
