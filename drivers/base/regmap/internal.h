@@ -41,6 +41,10 @@ struct regmap {
 
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs;
+
+	unsigned int debugfs_reg_len;
+	unsigned int debugfs_val_len;
+	unsigned int debugfs_tot_len;
 #endif
 
 	unsigned int max_register;
