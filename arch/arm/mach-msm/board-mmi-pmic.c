@@ -342,6 +342,8 @@ void __init mmi_init_pm8921_gpio_mpp(void)
 	}
 }
 
+extern int get_l17_voltage(void);
+
 void w1_gpio_enable_regulators(int enable)
 {
 	static struct regulator *vdd1;
@@ -358,7 +360,7 @@ void w1_gpio_enable_regulators(int enable)
 	if (enable) {
 		if (!IS_ERR_OR_NULL(vdd1)) {
 			rc = regulator_set_voltage(vdd1,
-						2850000, 2850000);
+						get_l17_voltage(), 2850000);
 			if (!rc) {
 				rc = regulator_enable(vdd1);
 			}

@@ -121,7 +121,7 @@
 			uart-gsbi = <0x0c>;
 			usb-otg-vreg = [383932315f7573625f6f746700];
 			vdd-vreg = [454d555f504f57455200];
-			vdd-vreg-mv = <0x002b7cd0>;
+			vdd-vreg-mv = <0x00286f90>;
 
 			Gpio-alt-mode@0 {
 				class = [4750494f00];
