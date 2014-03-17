@@ -163,11 +163,27 @@ void limFTInit(tpAniSirGlobal pMac)
     // clean it up.
     if (pMac->ft.ftPEContext.pftSessionEntry)
     {
-        /* Cannot delete sessions across associations */
+
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
         PELOGE(limLog( pMac, LOGE, "%s: Deleting session = %p ",
             __func__, pMac->ft.ftPEContext.pftSessionEntry);) 
 #endif
+        /* Delete the previous valid preauth pesession if it is still in
+         * mMlmState= eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE
+         * and limSmeState = eLIM_SME_WT_REASSOC_STATE. This means last
+         * preauth didnt went through and its Session was not deleted.
+         */
+        if ((((tpPESession)(pMac->ft.ftPEContext.pftSessionEntry))->valid) &&
+            (((tpPESession)(pMac->ft.ftPEContext.pftSessionEntry))->limSmeState
+                                               == eLIM_SME_WT_REASSOC_STATE) &&
+            (((tpPESession)(pMac->ft.ftPEContext.pftSessionEntry))->limMlmState
+                                   == eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE) )
+        {
+            limLog( pMac, LOGE, FL("Deleting Preauth Session %d"),
+               ((tpPESession)pMac->ft.ftPEContext.pftSessionEntry)->peSessionId);
+            peDeleteSession(pMac, pMac->ft.ftPEContext.pftSessionEntry);
+        }
+
         pMac->ft.ftPEContext.pftSessionEntry = NULL;
     }
 
@@ -1335,6 +1351,30 @@ void limProcessFTPreauthRspTimeout(tpAniSirGlobal pMac)
         return;
     }
 
+    /* To handle the race condition where we recieve preauth rsp after
+     * timer has expired.
+     */
+    if (eANI_BOOLEAN_TRUE ==
+        pMac->ft.ftPEContext.pFTPreAuthReq->bPreAuthRspProcessed)
+    {
+        limLog(pMac,LOGE,FL("Auth rsp already posted to SME"
+               " (session %p)"), psessionEntry);
+        return;
+    }
+    else
+    {
+        /* Here we are sending preauth rsp with failure state
+         * and which is forwarded to SME. Now, if we receive an preauth
+         * resp from AP with success it would create a FT pesession, but
+         * will be dropped in SME leaving behind the pesession.
+         * Mark Preauth rsp processed so that any rsp from AP is dropped in
+         * limProcessAuthFrameNoSession.
+         */
+        limLog(pMac,LOG1,FL("Auth rsp not yet posted to SME"
+               " (session %p)"), psessionEntry);
+        pMac->ft.ftPEContext.pFTPreAuthReq->bPreAuthRspProcessed =
+            eANI_BOOLEAN_TRUE;
+    }
     // Ok, so attempted at Pre-Auth and failed. If we are off channel. We need
     // to get back.
     limHandleFTPreAuthRsp(pMac, eSIR_FAILURE, NULL, 0, psessionEntry);

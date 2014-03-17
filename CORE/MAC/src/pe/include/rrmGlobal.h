@@ -52,8 +52,9 @@ typedef enum eRrmRetStatus
 
 typedef enum eRrmMsgReqSource
 {
-    eRRM_MSG_SOURCE_DRV         = 1, /* for both 11k and legacy ese */
-    eRRM_MSG_SOURCE_ESE_UPLOAD  = 2, /* ese upload approach */
+    eRRM_MSG_SOURCE_LEGACY_ESE  = 1, /* legacy ese */
+    eRRM_MSG_SOURCE_11K         = 2, /* 11k */
+    eRRM_MSG_SOURCE_ESE_UPLOAD  = 3  /* ese upload approach */
 } tRrmMsgReqSource;
 
 typedef struct sSirChannelInfo
