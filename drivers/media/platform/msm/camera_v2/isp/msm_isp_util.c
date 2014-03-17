@@ -24,8 +24,8 @@
 static DEFINE_MUTEX(bandwidth_mgr_mutex);
 static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
 
-#define MSM_ISP_MIN_AB 300000000
-#define MSM_ISP_MIN_IB 450000000
+#define MSM_ISP_MIN_AB 300000000 * 3
+#define MSM_ISP_MIN_IB 450000000 * 3
 
 static struct msm_bus_vectors msm_isp_init_vectors[] = {
 	{
@@ -532,9 +532,11 @@ static int msm_isp_send_hw_cmd(struct vfe_device *vfe_dev,
 		int i;
 		uint32_t *data_ptr = cfg_data +
 			reg_cfg_cmd->u.rw_info.cmd_data_offset/4;
-		for (i = 0; i < reg_cfg_cmd->u.rw_info.len/4; i++)
+		for (i = 0; i < reg_cfg_cmd->u.rw_info.len/4; i++) {
 			*data_ptr++ = msm_camera_io_r(vfe_dev->vfe_base +
-				reg_cfg_cmd->u.rw_info.reg_offset++);
+				reg_cfg_cmd->u.rw_info.reg_offset);
+				reg_cfg_cmd->u.rw_info.reg_offset += 4;
+		}
 		break;
 	}
 	}
