@@ -132,6 +132,7 @@ struct snd_card {
 	int shutdown;			/* this card is going down */
 	int free_on_last_close;		/* free in context of file_release */
 	wait_queue_head_t shutdown_sleep;
+	atomic_t refcount;		/* refcount for disconnection */
 	struct device *dev;		/* device assigned to this card */
 	struct device *card_dev;	/* cardX object for sysfs */
 	int offline;			/* if this sound card is offline */
@@ -192,6 +193,7 @@ struct snd_minor {
 	const struct file_operations *f_ops;	/* file operations */
 	void *private_data;		/* private data for f_ops->open */
 	struct device *dev;		/* device for sysfs */
+	struct snd_card *card_ptr;	/* assigned card instance */
 };
 
 /* return a device pointer linked to each sound device as a parent */
@@ -298,6 +300,7 @@ int snd_card_info_done(void);
 int snd_component_add(struct snd_card *card, const char *component);
 int snd_card_file_add(struct snd_card *card, struct file *file);
 int snd_card_file_remove(struct snd_card *card, struct file *file);
+void snd_card_unref(struct snd_card *card);
 void snd_card_change_online_state(struct snd_card *card, int online);
 bool snd_card_is_online_state(struct snd_card *card);
 

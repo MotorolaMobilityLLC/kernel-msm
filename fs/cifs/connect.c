@@ -70,6 +70,7 @@ enum {
 	/* Mount options that take no arguments */
 	Opt_user_xattr, Opt_nouser_xattr,
 	Opt_forceuid, Opt_noforceuid,
+	Opt_forcegid, Opt_noforcegid,
 	Opt_noblocksend, Opt_noautotune,
 	Opt_hard, Opt_soft, Opt_perm, Opt_noperm,
 	Opt_mapchars, Opt_nomapchars, Opt_sfu,
@@ -121,6 +122,8 @@ static const match_table_t cifs_mount_option_tokens = {
 	{ Opt_nouser_xattr, "nouser_xattr" },
 	{ Opt_forceuid, "forceuid" },
 	{ Opt_noforceuid, "noforceuid" },
+	{ Opt_forcegid, "forcegid" },
+	{ Opt_noforcegid, "noforcegid" },
 	{ Opt_noblocksend, "noblocksend" },
 	{ Opt_noautotune, "noautotune" },
 	{ Opt_hard, "hard" },
@@ -238,8 +241,8 @@ static const match_table_t cifs_mount_option_tokens = {
 enum {
 	Opt_sec_krb5, Opt_sec_krb5i, Opt_sec_krb5p,
 	Opt_sec_ntlmsspi, Opt_sec_ntlmssp,
-	Opt_ntlm, Opt_sec_ntlmi, Opt_sec_ntlmv2i,
-	Opt_sec_nontlm, Opt_sec_lanman,
+	Opt_ntlm, Opt_sec_ntlmi, Opt_sec_ntlmv2,
+	Opt_sec_ntlmv2i, Opt_sec_lanman,
 	Opt_sec_none,
 
 	Opt_sec_err
@@ -253,8 +256,9 @@ static const match_table_t cifs_secflavor_tokens = {
 	{ Opt_sec_ntlmssp, "ntlmssp" },
 	{ Opt_ntlm, "ntlm" },
 	{ Opt_sec_ntlmi, "ntlmi" },
+	{ Opt_sec_ntlmv2, "nontlm" },
+	{ Opt_sec_ntlmv2, "ntlmv2" },
 	{ Opt_sec_ntlmv2i, "ntlmv2i" },
-	{ Opt_sec_nontlm, "nontlm" },
 	{ Opt_sec_lanman, "lanman" },
 	{ Opt_sec_none, "none" },
 
@@ -1163,7 +1167,7 @@ static int cifs_parse_security_flavors(char *value,
 	case Opt_sec_ntlmi:
 		vol->secFlg |= CIFSSEC_MAY_NTLM | CIFSSEC_MUST_SIGN;
 		break;
-	case Opt_sec_nontlm:
+	case Opt_sec_ntlmv2:
 		vol->secFlg |= CIFSSEC_MAY_NTLMV2;
 		break;
 	case Opt_sec_ntlmv2i:
@@ -1285,6 +1289,12 @@ cifs_parse_mount_options(const char *mountdata, const char *devname,
 			break;
 		case Opt_noforceuid:
 			override_uid = 0;
+			break;
+		case Opt_forcegid:
+			override_gid = 1;
+			break;
+		case Opt_noforcegid:
+			override_gid = 0;
 			break;
 		case Opt_noblocksend:
 			vol->noblocksnd = 1;
@@ -1566,14 +1576,24 @@ cifs_parse_mount_options(const char *mountdata, const char *devname,
 			}
 			break;
 		case Opt_blank_pass:
-			vol->password = NULL;
-			break;
-		case Opt_pass:
 			/* passwords have to be handled differently
 			 * to allow the character used for deliminator
 			 * to be passed within them
 			 */
 
+			/*
+			 * Check if this is a case where the  password
+			 * starts with a delimiter
+			 */
+			tmp_end = strchr(data, '=');
+			tmp_end++;
+			if (!(tmp_end < end && tmp_end[1] == delim)) {
+				/* No it is not. Set the password to NULL */
+				vol->password = NULL;
+				break;
+			}
+			/* Yes it is. Drop down to Opt_pass below.*/
+		case Opt_pass:
 			/* Obtain the value string */
 			value = strchr(data, '=');
 			value++;
@@ -1585,24 +1605,26 @@ cifs_parse_mount_options(const char *mountdata, const char *devname,
 			 * If yes, we have encountered a double deliminator
 			 * reset the NULL character to the deliminator
 			 */
-			if (tmp_end < end && tmp_end[1] == delim)
+			if (tmp_end < end && tmp_end[1] == delim) {
 				tmp_end[0] = delim;
 
-			/* Keep iterating until we get to a single deliminator
-			 * OR the end
-			 */
-			while ((tmp_end = strchr(tmp_end, delim)) != NULL &&
-			       (tmp_end[1] == delim)) {
-				tmp_end = (char *) &tmp_end[2];
-			}
+				/* Keep iterating until we get to a single
+				 * deliminator OR the end
+				 */
+				while ((tmp_end = strchr(tmp_end, delim))
+					!= NULL && (tmp_end[1] == delim)) {
+						tmp_end = (char *) &tmp_end[2];
+				}
 
-			/* Reset var options to point to next element */
-			if (tmp_end) {
-				tmp_end[0] = '\0';
-				options = (char *) &tmp_end[1];
-			} else
-				/* Reached the end of the mount option string */
-				options = end;
+				/* Reset var options to point to next element */
+				if (tmp_end) {
+					tmp_end[0] = '\0';
+					options = (char *) &tmp_end[1];
+				} else
+					/* Reached the end of the mount option
+					 * string */
+					options = end;
+			}
 
 			/* Now build new password string */
 			temp_len = strlen(value);
@@ -3346,6 +3368,18 @@ void cifs_setup_cifs_sb(struct smb_vol *pvolume_info,
 #define CIFS_DEFAULT_NON_POSIX_RSIZE (60 * 1024)
 #define CIFS_DEFAULT_NON_POSIX_WSIZE (65536)
 
+/*
+ * On hosts with high memory, we can't currently support wsize/rsize that are
+ * larger than we can kmap at once. Cap the rsize/wsize at
+ * LAST_PKMAP * PAGE_SIZE. We'll never be able to fill a read or write request
+ * larger than that anyway.
+ */
+#ifdef CONFIG_HIGHMEM
+#define CIFS_KMAP_SIZE_LIMIT	(LAST_PKMAP * PAGE_CACHE_SIZE)
+#else /* CONFIG_HIGHMEM */
+#define CIFS_KMAP_SIZE_LIMIT	(1<<24)
+#endif /* CONFIG_HIGHMEM */
+
 static unsigned int
 cifs_negotiate_wsize(struct cifs_tcon *tcon, struct smb_vol *pvolume_info)
 {
@@ -3376,6 +3410,9 @@ cifs_negotiate_wsize(struct cifs_tcon *tcon, struct smb_vol *pvolume_info)
 		wsize = min_t(unsigned int, wsize,
 				server->maxBuf - sizeof(WRITE_REQ) + 4);
 
+	/* limit to the amount that we can kmap at once */
+	wsize = min_t(unsigned int, wsize, CIFS_KMAP_SIZE_LIMIT);
+
 	/* hard limit of CIFS_MAX_WSIZE */
 	wsize = min_t(unsigned int, wsize, CIFS_MAX_WSIZE);
 
@@ -3396,18 +3433,15 @@ cifs_negotiate_rsize(struct cifs_tcon *tcon, struct smb_vol *pvolume_info)
 	 * MS-CIFS indicates that servers are only limited by the client's
 	 * bufsize for reads, testing against win98se shows that it throws
 	 * INVALID_PARAMETER errors if you try to request too large a read.
+	 * OS/2 just sends back short reads.
 	 *
-	 * If the server advertises a MaxBufferSize of less than one page,
-	 * assume that it also can't satisfy reads larger than that either.
-	 *
-	 * FIXME: Is there a better heuristic for this?
+	 * If the server doesn't advertise CAP_LARGE_READ_X, then assume that
+	 * it can't handle a read request larger than its MaxBufferSize either.
 	 */
 	if (tcon->unix_ext && (unix_cap & CIFS_UNIX_LARGE_READ_CAP))
 		defsize = CIFS_DEFAULT_IOSIZE;
 	else if (server->capabilities & CAP_LARGE_READ_X)
 		defsize = CIFS_DEFAULT_NON_POSIX_RSIZE;
-	else if (server->maxBuf >= PAGE_CACHE_SIZE)
-		defsize = CIFSMaxBufSize;
 	else
 		defsize = server->maxBuf - sizeof(READ_RSP);
 
@@ -3419,6 +3453,9 @@ cifs_negotiate_rsize(struct cifs_tcon *tcon, struct smb_vol *pvolume_info)
 	 */
 	if (!(server->capabilities & CAP_LARGE_READ_X))
 		rsize = min_t(unsigned int, CIFSMaxBufSize, rsize);
+
+	/* limit to the amount that we can kmap at once */
+	rsize = min_t(unsigned int, rsize, CIFS_KMAP_SIZE_LIMIT);
 
 	/* hard limit of CIFS_MAX_RSIZE */
 	rsize = min_t(unsigned int, rsize, CIFS_MAX_RSIZE);
