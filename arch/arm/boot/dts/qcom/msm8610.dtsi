@@ -671,6 +671,7 @@
 
 		/* GPIO output to wcnss */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_4_out 0 0>;
+		linux,contiguous-region = <&peripheral_mem>;
 	};
 
 	qcom,iris-fm {
@@ -898,6 +899,7 @@
 
 		/* GPIO output to mss */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_1_out 0 0>;
+		linux,contiguous-region = <&modem_mem>;
 	};
 
 	qcom,lpass@fe200000 {
@@ -925,6 +927,7 @@
 
 		/* GPIO output to lpass */
 		qcom,gpio-force-stop = <&smp2pgpio_ssr_smp2p_2_out 0 0>;
+		linux,contiguous-region = <&peripheral_mem>;
 	};
 
 	tsens: tsens@fc4a8000 {
