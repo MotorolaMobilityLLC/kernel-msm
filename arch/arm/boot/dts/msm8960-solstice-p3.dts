@@ -185,7 +185,7 @@
 				class = [4750494f00];
 				gpio-info = <0x0309>;
 				pin-name = [444d425f5050445f4445545f4750494f00];
-				pmic-mpp-cfg = <0x000400>;
+				pmic-mpp-cfg = [000400];
 				type = <0x001e0010>;
 			};
 
@@ -235,7 +235,7 @@
 				class = [4750494f00];
 				gpio-info = <0x030a>;
 				pin-name = [454d555f5343495f4f55545f4750494f00];
-				pmic-mpp-cfg = <0x000400>;
+				pmic-mpp-cfg = [000400];
 				type = <0x001e0010>;
 			};
 

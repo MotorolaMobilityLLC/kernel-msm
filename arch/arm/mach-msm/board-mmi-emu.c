@@ -282,6 +282,10 @@ static struct emu_det_dt_data	emu_det_dt_data = {
 	.vdd_voltage	= 2650000,
 };
 
+int get_l17_voltage(void)
+{
+	return emu_det_dt_data.vdd_voltage;
+}
 
 static int emu_det_enable_5v(int on)
 {
