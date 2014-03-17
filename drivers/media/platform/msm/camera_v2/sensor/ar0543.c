@@ -112,16 +112,16 @@ static struct module_otp_rev_t ar0543_otp_rev = {
 		.cal_lsc_q5_os = 102,
 	},
 	.n[AR0543_OTP_CAL_REV_3] = {
-		.size = 133,
+		.size = 135,
 		.max_entries = 3,
 		.mod_size = 18,
 		.mod_os = 0,
 		.mod_record_entry_base = 0x30,
-		.cal_size = 115,
+		.cal_size = 117,
 		.cal_os = 18,
 		.cal_record_entry_base = 0x31,
 		.cal_lsc_en = 1,
-		.cal_lsc_os = 26,
+		.cal_lsc_os = 28,
 		.cal_lsc_p0_os = 0,
 		.cal_lsc_p1_os = 20,
 		.cal_lsc_p2_os = 40,
@@ -526,7 +526,7 @@ static int32_t ar0543_otp_validate_crc(uint8_t *otp_ptr, uint16_t size)
 	crc_otp = *(otp_ptr + size) | *(otp_ptr + size + 1) << 8;
 
 	/* Compare CRC */
-	if (crc_ref == crc_otp) {
+	if ((crc_ref == crc_otp) && (crc_otp != 0)) {
 		pr_debug("%s: OTP CRC pass\n", __func__);
 	} else {
 		pr_warn("%s: OTP CRC fail(crc_ref = 0x%x, crc_otp = 0x%x)!\n",
@@ -728,17 +728,15 @@ static int32_t ar0543_read_otp_info(struct msm_sensor_ctrl_t *s_ctrl)
 
 	/* For the number of valid OTP revisions */
 	for (i = AR0543_OTP_CAL_REV_MAX; i >= 0; i--) {
-		/* Single version read or recursive version read */
-		if ((cal_ver == i) || (cal_ver == AR0543_OTP_CAL_REV_DEF)) {
-			rc = ar0543_read_otp(s_ctrl, ar0543_otp,
-					&ar0543_otp_rev.n[i]);
-			if (rc < 0) {
-				pr_err("%s: Read OTP fail!\n", __func__);
-			} else {
-				pr_debug("%s: Read OTP pass\n", __func__);
-				ar0543_otp_info.cal_ver = i;
-				break;
-			}
+		/* Recursive version read */
+		rc = ar0543_read_otp(s_ctrl, ar0543_otp,
+				&ar0543_otp_rev.n[i]);
+		if (rc < 0) {
+			pr_err("%s: Read OTP fail!\n", __func__);
+		} else {
+			pr_debug("%s: Read OTP pass\n", __func__);
+			ar0543_otp_info.cal_ver = i;
+			break;
 		}
 	}
 
