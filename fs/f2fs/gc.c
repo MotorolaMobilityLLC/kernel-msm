@@ -29,10 +29,11 @@ static struct kmem_cache *winode_slab;
 static int gc_thread_func(void *data)
 {
 	struct f2fs_sb_info *sbi = data;
+	struct f2fs_gc_kthread *gc_th = sbi->gc_thread;
 	wait_queue_head_t *wq = &sbi->gc_thread->gc_wait_queue_head;
 	long wait_ms;
 
-	wait_ms = GC_THREAD_MIN_SLEEP_TIME;
+	wait_ms = gc_th->min_sleep_time;
 
 	do {
 		if (try_to_freeze())
@@ -45,7 +46,7 @@ static int gc_thread_func(void *data)
 			break;
 
 		if (sbi->sb->s_writers.frozen >= SB_FREEZE_WRITE) {
-			wait_ms = GC_THREAD_MAX_SLEEP_TIME;
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
 			continue;
 		}
 
@@ -66,21 +67,25 @@ static int gc_thread_func(void *data)
 			continue;
 
 		if (!is_idle(sbi)) {
-			wait_ms = increase_sleep_time(wait_ms);
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
 			mutex_unlock(&sbi->gc_mutex);
 			continue;
 		}
 
 		if (has_enough_invalid_blocks(sbi))
-			wait_ms = decrease_sleep_time(wait_ms);
+			wait_ms = decrease_sleep_time(gc_th, wait_ms);
 		else
-			wait_ms = increase_sleep_time(wait_ms);
+			wait_ms = increase_sleep_time(gc_th, wait_ms);
 
-		sbi->bg_gc++;
+		stat_inc_bggc_count(sbi);
 
 		/* if return value is not zero, no victim was selected */
 		if (f2fs_gc(sbi))
-			wait_ms = GC_THREAD_NOGC_SLEEP_TIME;
+			wait_ms = gc_th->no_gc_sleep_time;
+
+		/* balancing f2fs's metadata periodically */
+		f2fs_balance_fs_bg(sbi);
+
 	} while (!kthread_should_stop());
 	return 0;
 }
@@ -89,23 +94,33 @@ int start_gc_thread(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_gc_kthread *gc_th;
 	dev_t dev = sbi->sb->s_bdev->bd_dev;
+	int err = 0;
 
 	if (!test_opt(sbi, BG_GC))
-		return 0;
+		goto out;
 	gc_th = kmalloc(sizeof(struct f2fs_gc_kthread), GFP_KERNEL);
-	if (!gc_th)
-		return -ENOMEM;
+	if (!gc_th) {
+		err = -ENOMEM;
+		goto out;
+	}
+
+	gc_th->min_sleep_time = DEF_GC_THREAD_MIN_SLEEP_TIME;
+	gc_th->max_sleep_time = DEF_GC_THREAD_MAX_SLEEP_TIME;
+	gc_th->no_gc_sleep_time = DEF_GC_THREAD_NOGC_SLEEP_TIME;
+
+	gc_th->gc_idle = 0;
 
 	sbi->gc_thread = gc_th;
 	init_waitqueue_head(&sbi->gc_thread->gc_wait_queue_head);
 	sbi->gc_thread->f2fs_gc_task = kthread_run(gc_thread_func, sbi,
 			"f2fs_gc-%u:%u", MAJOR(dev), MINOR(dev));
 	if (IS_ERR(gc_th->f2fs_gc_task)) {
+		err = PTR_ERR(gc_th->f2fs_gc_task);
 		kfree(gc_th);
 		sbi->gc_thread = NULL;
-		return -ENOMEM;
 	}
-	return 0;
+out:
+	return err;
 }
 
 void stop_gc_thread(struct f2fs_sb_info *sbi)
@@ -118,9 +133,17 @@ void stop_gc_thread(struct f2fs_sb_info *sbi)
 	sbi->gc_thread = NULL;
 }
 
-static int select_gc_type(int gc_type)
+static int select_gc_type(struct f2fs_gc_kthread *gc_th, int gc_type)
 {
-	return (gc_type == BG_GC) ? GC_CB : GC_GREEDY;
+	int gc_mode = (gc_type == BG_GC) ? GC_CB : GC_GREEDY;
+
+	if (gc_th && gc_th->gc_idle) {
+		if (gc_th->gc_idle == 1)
+			gc_mode = GC_CB;
+		else if (gc_th->gc_idle == 2)
+			gc_mode = GC_GREEDY;
+	}
+	return gc_mode;
 }
 
 static void select_policy(struct f2fs_sb_info *sbi, int gc_type,
@@ -131,12 +154,18 @@ static void select_policy(struct f2fs_sb_info *sbi, int gc_type,
 	if (p->alloc_mode == SSR) {
 		p->gc_mode = GC_GREEDY;
 		p->dirty_segmap = dirty_i->dirty_segmap[type];
+		p->max_search = dirty_i->nr_dirty[type];
 		p->ofs_unit = 1;
 	} else {
-		p->gc_mode = select_gc_type(gc_type);
+		p->gc_mode = select_gc_type(sbi->gc_thread, gc_type);
 		p->dirty_segmap = dirty_i->dirty_segmap[DIRTY];
+		p->max_search = dirty_i->nr_dirty[DIRTY];
 		p->ofs_unit = sbi->segs_per_sec;
 	}
+
+	if (p->max_search > sbi->max_victim_search)
+		p->max_search = sbi->max_victim_search;
+
 	p->offset = sbi->last_victim[p->gc_mode];
 }
 
@@ -208,8 +237,8 @@ static unsigned int get_cb_cost(struct f2fs_sb_info *sbi, unsigned int segno)
 	return UINT_MAX - ((100 * (100 - u) * age) / (100 + u));
 }
 
-static unsigned int get_gc_cost(struct f2fs_sb_info *sbi, unsigned int segno,
-					struct victim_sel_policy *p)
+static inline unsigned int get_gc_cost(struct f2fs_sb_info *sbi,
+			unsigned int segno, struct victim_sel_policy *p)
 {
 	if (p->alloc_mode == SSR)
 		return get_seg_entry(sbi, segno)->ckpt_valid_blocks;
@@ -234,14 +263,14 @@ static int get_victim_by_default(struct f2fs_sb_info *sbi,
 {
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
 	struct victim_sel_policy p;
-	unsigned int secno;
+	unsigned int secno, max_cost;
 	int nsearched = 0;
 
 	p.alloc_mode = alloc_mode;
 	select_policy(sbi, gc_type, type, &p);
 
 	p.min_segno = NULL_SEGNO;
-	p.min_cost = get_max_cost(sbi, &p);
+	p.min_cost = max_cost = get_max_cost(sbi, &p);
 
 	mutex_lock(&dirty_i->seglist_lock);
 
@@ -265,7 +294,11 @@ static int get_victim_by_default(struct f2fs_sb_info *sbi,
 			}
 			break;
 		}
-		p.offset = ((segno / p.ofs_unit) * p.ofs_unit) + p.ofs_unit;
+
+		p.offset = segno + p.ofs_unit;
+		if (p.ofs_unit > 1)
+			p.offset -= segno % p.ofs_unit;
+
 		secno = GET_SECNO(sbi, segno);
 
 		if (sec_usage_check(sbi, secno))
@@ -278,18 +311,17 @@ static int get_victim_by_default(struct f2fs_sb_info *sbi,
 		if (p.min_cost > cost) {
 			p.min_segno = segno;
 			p.min_cost = cost;
+		} else if (unlikely(cost == max_cost)) {
+			continue;
 		}
 
-		if (cost == get_max_cost(sbi, &p))
-			continue;
-
-		if (nsearched++ >= MAX_VICTIM_SEARCH) {
+		if (nsearched++ >= p.max_search) {
 			sbi->last_victim[p.gc_mode] = segno;
 			break;
 		}
 	}
-got_it:
 	if (p.min_segno != NULL_SEGNO) {
+got_it:
 		if (p.alloc_mode == LFS) {
 			secno = GET_SECNO(sbi, p.min_segno);
 			if (gc_type == FG_GC)
@@ -314,35 +346,24 @@ static const struct victim_selection default_v_ops = {
 
 static struct inode *find_gc_inode(nid_t ino, struct list_head *ilist)
 {
-	struct list_head *this;
 	struct inode_entry *ie;
 
-	list_for_each(this, ilist) {
-		ie = list_entry(this, struct inode_entry, list);
+	list_for_each_entry(ie, ilist, list)
 		if (ie->inode->i_ino == ino)
 			return ie->inode;
-	}
 	return NULL;
 }
 
 static void add_gc_inode(struct inode *inode, struct list_head *ilist)
 {
-	struct list_head *this;
-	struct inode_entry *new_ie, *ie;
+	struct inode_entry *new_ie;
 
-	list_for_each(this, ilist) {
-		ie = list_entry(this, struct inode_entry, list);
-		if (ie->inode == inode) {
-			iput(inode);
-			return;
-		}
+	if (inode == find_gc_inode(inode->i_ino, ilist)) {
+		iput(inode);
+		return;
 	}
-repeat:
-	new_ie = kmem_cache_alloc(winode_slab, GFP_NOFS);
-	if (!new_ie) {
-		cond_resched();
-		goto repeat;
-	}
+
+	new_ie = f2fs_kmem_cache_alloc(winode_slab, GFP_NOFS);
 	new_ie->inode = inode;
 	list_add_tail(&new_ie->list, ilist);
 }
@@ -407,8 +428,7 @@ next_step:
 
 		/* set page dirty and write it */
 		if (gc_type == FG_GC) {
-			f2fs_submit_bio(sbi, NODE, true);
-			wait_on_page_writeback(node_page);
+			f2fs_wait_on_page_writeback(node_page, NODE);
 			set_page_dirty(node_page);
 		} else {
 			if (!PageWriteback(node_page))
@@ -447,7 +467,7 @@ next_step:
  * as indirect or double indirect node blocks, are given, it must be a caller's
  * bug.
  */
-block_t start_bidx_of_node(unsigned int node_ofs)
+block_t start_bidx_of_node(unsigned int node_ofs, struct f2fs_inode_info *fi)
 {
 	unsigned int indirect_blks = 2 * NIDS_PER_BLOCK + 4;
 	unsigned int bidx;
@@ -464,7 +484,7 @@ block_t start_bidx_of_node(unsigned int node_ofs)
 		int dec = (node_ofs - indirect_blks - 3) / (NIDS_PER_BLOCK + 1);
 		bidx = node_ofs - 5 - dec;
 	}
-	return bidx * ADDRS_PER_BLOCK + ADDRS_PER_INODE;
+	return bidx * ADDRS_PER_BLOCK + ADDRS_PER_INODE(fi);
 }
 
 static int check_dnode(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
@@ -500,26 +520,23 @@ static int check_dnode(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 
 static void move_data_page(struct inode *inode, struct page *page, int gc_type)
 {
+	struct f2fs_io_info fio = {
+		.type = DATA,
+		.rw = WRITE_SYNC,
+	};
+
 	if (gc_type == BG_GC) {
 		if (PageWriteback(page))
 			goto out;
 		set_page_dirty(page);
 		set_cold_data(page);
 	} else {
-		struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
+		f2fs_wait_on_page_writeback(page, DATA);
 
-		if (PageWriteback(page)) {
-			f2fs_submit_bio(sbi, DATA, true);
-			wait_on_page_writeback(page);
-		}
-
-		if (clear_page_dirty_for_io(page) &&
-			S_ISDIR(inode->i_mode)) {
-			dec_page_count(sbi, F2FS_DIRTY_DENTS);
+		if (clear_page_dirty_for_io(page))
 			inode_dec_dirty_dents(inode);
-		}
 		set_cold_data(page);
-		do_write_data_page(page);
+		do_write_data_page(page, &fio);
 		clear_cold_data(page);
 	}
 out:
@@ -575,13 +592,14 @@ next_step:
 			continue;
 		}
 
-		start_bidx = start_bidx_of_node(nofs);
 		ofs_in_node = le16_to_cpu(entry->ofs_in_node);
 
 		if (phase == 2) {
 			inode = f2fs_iget(sb, dni.ino);
 			if (IS_ERR(inode))
 				continue;
+
+			start_bidx = start_bidx_of_node(nofs, F2FS_I(inode));
 
 			data_page = find_data_page(inode,
 					start_bidx + ofs_in_node, false);
@@ -593,6 +611,8 @@ next_step:
 		} else {
 			inode = find_gc_inode(dni.ino, ilist);
 			if (inode) {
+				start_bidx = start_bidx_of_node(nofs,
+								F2FS_I(inode));
 				data_page = get_lock_data_page(inode,
 						start_bidx + ofs_in_node);
 				if (IS_ERR(data_page))
@@ -610,7 +630,7 @@ next_iput:
 		goto next_step;
 
 	if (gc_type == FG_GC) {
-		f2fs_submit_bio(sbi, DATA, true);
+		f2fs_submit_merged_bio(sbi, DATA, WRITE);
 
 		/*
 		 * In the case of FG_GC, it'd be better to reclaim this victim
@@ -643,8 +663,6 @@ static void do_garbage_collect(struct f2fs_sb_info *sbi, unsigned int segno,
 
 	/* read segment summary of victim */
 	sum_page = get_sum_page(sbi, segno);
-	if (IS_ERR(sum_page))
-		return;
 
 	blk_start_plug(&plug);
 
@@ -676,7 +694,9 @@ int f2fs_gc(struct f2fs_sb_info *sbi)
 
 	INIT_LIST_HEAD(&ilist);
 gc_more:
-	if (!(sbi->sb->s_flags & MS_ACTIVE))
+	if (unlikely(!(sbi->sb->s_flags & MS_ACTIVE)))
+		goto stop;
+	if (unlikely(is_set_ckpt_flags(F2FS_CKPT(sbi), CP_ERROR_FLAG)))
 		goto stop;
 
 	if (gc_type == BG_GC && has_not_enough_free_secs(sbi, nfree)) {
