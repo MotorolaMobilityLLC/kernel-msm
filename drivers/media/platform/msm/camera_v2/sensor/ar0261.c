@@ -138,6 +138,7 @@ static int32_t msm_sensor_disable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
 int32_t ar0261_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
+	int32_t retry = 0;
 
 #ifdef SET_ALT_I2C_ADDRESS
 	/* to hack in alternate I2C address */
@@ -175,12 +176,21 @@ int32_t ar0261_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	/* End of added code */
 #endif
 
-	rc = msm_sensor_match_id(s_ctrl);
+	for (retry = 0; retry < 3; retry++) {
+		rc = msm_sensor_match_id(s_ctrl);
+		if (rc < 0) {
+			pr_err("%s:%d match id failed rc %d,retry = %d\n",
+						__func__, __LINE__, rc , retry);
+			if (retry < 2)
+				continue;
+			else
+				break;
+		} else {
+			break;
+		}
+	}
 
-	if (rc < 0)
-		pr_err("%s:%d match id failed rc %d\n",
-				__func__, __LINE__, rc);
-	else
+	if (rc >= 0)
 		pr_info("%s success with slave addr 0x%x\n", __func__,
 				s_ctrl->sensor_i2c_client->cci_client->sid);
 
@@ -267,7 +277,7 @@ static int32_t ar0261_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		pr_err("%s: Unable to enable MCLK!\n", __func__);
 		goto abort4;
 	}
-	usleep_range(5000, 6000);
+	usleep_range(18000, 19000);
 
 	/* Set reset to normal mode */
 	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[1].gpio,
