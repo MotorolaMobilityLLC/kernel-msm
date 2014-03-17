@@ -9,8 +9,8 @@ WLAN_CHIPSET := prima
 WLAN_SELECT := CONFIG_PRIMA_WLAN=m
 endif
 
-# Build/Package options for 8974, 8226, 8610 targets
-ifneq (,$(filter msm8974 msm8226 msm8610,$(TARGET_BOARD_PLATFORM)))
+# Build/Package options for  8974, 8226, 8610 targets
+ifneq (,$(filter  msm8974 msm8226 msm8610,$(TARGET_BOARD_PLATFORM)))
 WLAN_CHIPSET := pronto
 WLAN_SELECT := CONFIG_PRONTO_WLAN=m
 endif

@@ -433,7 +433,10 @@ v_BOOL_t sapChanSelInit(tHalHandle halHandle, tSapChSelSpectInfo *pSpectInfoPara
 #endif /* FEATURE_WLAN_CH_AVOID */
 
         if(*pChans == 14 ) //OFDM rates are not supported on channel 14
+        {
+            pChans++;
             continue;
+        }
 #ifdef FEATURE_WLAN_CH_AVOID
         if (VOS_TRUE == chSafe)
         {

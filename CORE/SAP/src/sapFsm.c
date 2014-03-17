@@ -86,7 +86,9 @@
 /*----------------------------------------------------------------------------
  *  External declarations for global context
  * -------------------------------------------------------------------------*/
-
+#ifdef FEATURE_WLAN_CH_AVOID
+extern safeChannelType safeChannels[];
+#endif /* FEATURE_WLAN_CH_AVOID */
 /*----------------------------------------------------------------------------
  * Static Variable Definitions
  * -------------------------------------------------------------------------*/
@@ -1298,6 +1300,10 @@ static VOS_STATUS sapGetChannelList(ptSapContext sapContext,
     v_U8_t bandEndChannel ;
     v_U32_t enableLTECoex;
     tHalHandle hHal = VOS_GET_HAL_CB(sapContext->pvosGCtx);
+#ifdef FEATURE_WLAN_CH_AVOID
+    v_U8_t i;
+#endif
+
 
     if (NULL == hHal)
     {
@@ -1378,8 +1384,25 @@ static VOS_STATUS sapGetChannelList(ptSapContext sapContext,
         {
             if( regChannels[loopCount].enabled )
             {
-                list[channelCount] = rfChannels[loopCount].channelNum;
-                channelCount++;
+#ifdef FEATURE_WLAN_CH_AVOID
+                for( i = 0; i < NUM_20MHZ_RF_CHANNELS; i++ )
+                {
+                    if( (safeChannels[i].channelNumber ==
+                                rfChannels[loopCount].channelNum) )
+                    {
+                        /* Check if channel is safe */
+                        if(VOS_TRUE == safeChannels[i].isSafe)
+                        {
+#endif
+                            list[channelCount] =
+                                     rfChannels[loopCount].channelNum;
+                            channelCount++;
+#ifdef FEATURE_WLAN_CH_AVOID
+                        }
+                        break;
+                    }
+                }
+#endif
             }
         }
     }

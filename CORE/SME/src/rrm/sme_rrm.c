@@ -689,7 +689,12 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
    if ((pSmeRrmContext->currentIndex) >= pSmeRrmContext->channelList.numOfChannels)
        return status;
 
-   scanType = pSmeRrmContext->measMode[pSmeRrmContext->currentIndex];
+   if( eRRM_MSG_SOURCE_ESE_UPLOAD == pSmeRrmContext->msgSource ||
+       eRRM_MSG_SOURCE_LEGACY_ESE == pSmeRrmContext->msgSource )
+       scanType = pSmeRrmContext->measMode[pSmeRrmContext->currentIndex];
+   else
+       scanType = pSmeRrmContext->measMode[0];
+
    if ((eSIR_ACTIVE_SCAN == scanType) || (eSIR_PASSIVE_SCAN == scanType))
    {
 #if defined WLAN_VOWIFI_DEBUG
@@ -724,7 +729,12 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
 
        /* set min and max channel time */
        scanRequest.minChnTime = 0; //pSmeRrmContext->duration; Dont use min timeout.
-       scanRequest.maxChnTime = pSmeRrmContext->duration[pSmeRrmContext->currentIndex];
+       if( eRRM_MSG_SOURCE_ESE_UPLOAD == pSmeRrmContext->msgSource ||
+           eRRM_MSG_SOURCE_LEGACY_ESE == pSmeRrmContext->msgSource )
+          scanRequest.maxChnTime = pSmeRrmContext->duration[pSmeRrmContext->currentIndex];
+       else
+          scanRequest.maxChnTime = pSmeRrmContext->duration[0];
+
        smsLog( pMac, LOG1, "Scan Type(%d) Max Dwell Time(%d)", scanRequest.scanType,
                   scanRequest.maxChnTime );
 
@@ -888,8 +898,8 @@ void sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf)
 
    pSmeRrmContext->token = pBeaconReq->uDialogToken;
    pSmeRrmContext->regClass = pBeaconReq->channelInfo.regulatoryClass;
-         pSmeRrmContext->randnIntvl = VOS_MAX( pBeaconReq->randomizationInterval, pSmeRrmContext->rrmConfig.maxRandnInterval );
-         pSmeRrmContext->currentIndex = 0;
+   pSmeRrmContext->randnIntvl = VOS_MAX( pBeaconReq->randomizationInterval, pSmeRrmContext->rrmConfig.maxRandnInterval );
+   pSmeRrmContext->currentIndex = 0;
    pSmeRrmContext->msgSource = pBeaconReq->msgSource;
    vos_mem_copy((tANI_U8*)&pSmeRrmContext->measMode, (tANI_U8*)&pBeaconReq->fMeasurementtype, SIR_ESE_MAX_MEAS_IE_REQS);
    vos_mem_copy((tANI_U8*)&pSmeRrmContext->duration, (tANI_U8*)&pBeaconReq->measurementDuration, SIR_ESE_MAX_MEAS_IE_REQS);
