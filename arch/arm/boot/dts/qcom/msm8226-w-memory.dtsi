@@ -67,3 +67,14 @@
 	};
 };
 
+&modem_pil {
+	/delete-property/ linux,contiguous-region;
+};
+
+&venus_pil {
+	/delete-property/ linux,contiguous-region;
+};
+
+&lpass_pil {
+	linux,contiguous-region = <&adsp_pil_mem>;
+};
