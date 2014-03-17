@@ -428,6 +428,16 @@
 				qcom,pwm-us = <25>;
 				qcom,vin-ctrl = <0x03>;
 				qcom,mode = "pwm";
+				mmi,panels {
+					panel@0 {
+						panel_name = "mipi_mot_video_tianma_qhd_430";
+						backlight_scale = <67>;
+					};
+					panel@1 {
+						panel_name = "mipi_mot_video_inx_qhd_430";
+						backlight_scale = <100>;
+					};
+				};
 			};
 		};
 
