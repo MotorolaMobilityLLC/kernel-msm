@@ -45,6 +45,12 @@
 
 		qcom,mdss-dsi-on-command = [
 			29 01 00 00 00 00 02 b0 04
+			29 01 00 00 00 00 02 00 00	/* Start of Entering engineering mode */
+			29 01 00 00 00 00 04 FF 96 05 01
+			29 01 00 00 00 00 02 00 80
+			29 01 00 00 00 00 03 FF 96 05	/* End of entering engineering mode */
+			29 01 00 00 00 00 02 00 95	/* Start of setting VGH pump frequency */
+			29 01 00 00 00 00 02 C5 34	/* End of setting VGH pump frequency at 30k Hz */
 			05 01 00 00 78 00 02 11 00
 			05 01 00 00 00 00 02 29 00];
 
