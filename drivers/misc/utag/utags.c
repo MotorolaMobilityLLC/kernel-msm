@@ -681,7 +681,7 @@ write_utag(struct file *file, const char __user *buffer,
 	struct utag *tags = NULL;
 	enum utag_error status;
 	struct inode *inode = file->f_dentry->d_inode;
-	struct proc_node *proc = proc_get_parent_data(inode);
+	struct proc_node *proc = PDE_DATA(inode);
 
 	if (OUT_TYPE == proc->mode) {
 		return count;
@@ -732,7 +732,7 @@ new_utag(struct file *file, const char __user *buffer,
 	struct utag *tags, *cur;
 	enum utag_error status;
 	struct inode *inode = file->f_dentry->d_inode;
-	struct proc_node *proc = proc_get_parent_data(inode);
+	struct proc_node *proc = PDE_DATA(inode);
 	char uname[MAX_UTAG_NAME];
 	char utype[MAX_UTAG_NAME];
 	struct dir_node *dnode;
@@ -865,17 +865,17 @@ out:
 
 static int config_read(struct inode *inode, struct file *file)
 {
-	return single_open(file, read_tag, proc_get_parent_data(inode));
+	return single_open(file, read_tag, PDE_DATA(inode));
 }
 
 static int config_dump(struct inode *inode, struct file *file)
 {
-	return single_open(file, dump_all, proc_get_parent_data(inode));
+	return single_open(file, dump_all, PDE_DATA(inode));
 }
 
 static int reload_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, reload_show, proc_get_parent_data(inode));
+	return single_open(file, reload_show, PDE_DATA(inode));
 }
 
 static const struct file_operations utag_fops = {
