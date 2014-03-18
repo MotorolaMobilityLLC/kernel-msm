@@ -95,7 +95,7 @@
 
 &pm8226_mpps {
 	mpp@a000 { /* MPP 1 */
-		qcom,src-sel = <0>;
+		status = "disabled";
 	};
 };
 
