@@ -64,8 +64,12 @@ struct msm_rpm_stats_data_v2 {
 	u64 last_entered_at;
 	u64 last_exited_at;
 	u64 accumulated;
+//[CR] Support to trace Subsystem voting status
 	u32 client_votes;
-	u32 reserved[3];
+	u32 subsystem_votes;
+	u32 debug0;
+	u32 debug1;
+	//u32 reserved[4];
 };
 
 static inline u64 get_time_in_sec(u64 counter)
@@ -98,13 +102,14 @@ static inline int msm_rpmstats_append_data_to_buf(char *buf,
 	time_since_last_mode = get_time_in_sec(time_since_last_mode);
 	actual_last_sleep = get_time_in_msec(data->accumulated);
 
+	//[CR] Support to trace Subsystem voting status
 	return  snprintf(buf , buflength,
 		"RPM Mode:%s\n\t count:%d\ntime in last mode(msec):%llu\n"
 		"time since last mode(sec):%llu\nactual last sleep(msec):%llu\n"
-		"client votes: %#010x\n\n",
+		"client votes: %#010x, Subsystem votes: 0x%x\n",
 		stat_type, data->count, time_in_last_mode,
-		time_since_last_mode, actual_last_sleep,
-		data->client_votes);
+		time_since_last_mode, actual_last_sleep, 
+		data->client_votes, data->subsystem_votes);
 }
 
 static inline u32 msm_rpmstats_read_long_register_v2(void __iomem *regbase,
@@ -150,9 +155,23 @@ static inline int msm_rpmstats_copy_stats_v2(
 		data.accumulated = msm_rpmstats_read_quad_register_v2(reg,
 				i, offsetof(struct msm_rpm_stats_data_v2,
 					accumulated));
+		//[CR] Support to trace Subsystem voting status
 		data.client_votes = msm_rpmstats_read_long_register_v2(reg,
 				i, offsetof(struct msm_rpm_stats_data_v2,
 					client_votes));
+
+		data.subsystem_votes = msm_rpmstats_read_quad_register_v2(reg,
+				i, offsetof(struct msm_rpm_stats_data_v2,
+					subsystem_votes));
+		/*
+		data.debug0 = msm_rpmstats_read_quad_register_v2(reg,
+				i, offsetof(struct msm_rpm_stats_data_v2,
+					debug0));
+
+		data.debug1 = msm_rpmstats_read_quad_register_v2(reg,
+				i, offsetof(struct msm_rpm_stats_data_v2,
+					debug1));
+		*/
 		length += msm_rpmstats_append_data_to_buf(prvdata->buf + length,
 				&data, sizeof(prvdata->buf) - length);
 		prvdata->read_idx++;
@@ -310,6 +329,10 @@ static const struct file_operations msm_rpmstats_fops = {
 	.llseek   = no_llseek,
 };
 
+//[CR] Support to trace Subsystem voting status
+phys_addr_t g_phys_addr_base = 0;
+u32 g_phys_size = 0;
+
 static  int msm_rpmstats_probe(struct platform_device *pdev)
 {
 	struct dentry *dent = NULL;
@@ -332,9 +355,8 @@ static  int msm_rpmstats_probe(struct platform_device *pdev)
 	if (!res)
 		return -EINVAL;
 
-	pdata->phys_addr_base  = res->start;
-
-	pdata->phys_size = resource_size(res);
+	g_phys_addr_base = pdata->phys_addr_base  = res->start;
+	g_phys_size = pdata->phys_size = resource_size(res);
 	node = pdev->dev.of_node;
 	if (pdev->dev.platform_data) {
 		pd = pdev->dev.platform_data;
@@ -374,9 +396,102 @@ static int msm_rpmstats_remove(struct platform_device *pdev)
 	return 0;
 }
 
+//[CR] ++Support to trace Subsystem voting status
+#ifdef CONFIG_PM_SLEEP
+static int rpm_stats_suspend(struct device *dev)
+{
+	void __iomem *reg =0;
+	struct msm_rpm_stats_data_v2 data;
+
+	reg = ioremap_nocache(g_phys_addr_base, g_phys_size);
+	if(!reg) {
+		return 0;
+	}
+
+	data.client_votes = msm_rpmstats_read_quad_register_v2(reg, 0,
+		offsetof(struct msm_rpm_stats_data_v2, client_votes));
+	data.subsystem_votes = msm_rpmstats_read_quad_register_v2(reg, 0,
+		offsetof(struct msm_rpm_stats_data_v2, subsystem_votes));
+
+	printk("[RPM] Voting status: Client: 0x%x, Subsystem: 0x%0x\n",
+		data.client_votes, data.subsystem_votes);
+
+	iounmap(reg);
+	return 0;
+}
+
+static int rpm_stats_resume(struct device *dev)
+{
+	void __iomem *reg =0;
+	struct msm_rpm_stats_data_v2 data;
+	int i, length;
+	char stat_type[5];
+	u64 time_in_last_mode;
+	u64 time_since_last_mode;
+	u64 actual_last_sleep;
+
+	reg = ioremap_nocache(g_phys_addr_base, g_phys_size);
+	if(!reg) {
+		return 0;
+	}
+
+	for (i = 0, length = 0; i < 2; i++) {
+		data.stat_type = msm_rpmstats_read_long_register_v2(reg, i,
+			offsetof(struct msm_rpm_stats_data_v2, stat_type));
+		data.count = msm_rpmstats_read_long_register_v2(reg, i,
+			offsetof(struct msm_rpm_stats_data_v2, count));
+		data.last_entered_at = msm_rpmstats_read_quad_register_v2(reg, i,
+			offsetof(struct msm_rpm_stats_data_v2, last_entered_at));
+		data.last_exited_at = msm_rpmstats_read_quad_register_v2(reg, i,
+			offsetof(struct msm_rpm_stats_data_v2, last_exited_at));
+		data.accumulated = msm_rpmstats_read_quad_register_v2(reg, i,
+			offsetof(struct msm_rpm_stats_data_v2, accumulated));
+		if(0 == i) {
+			data.client_votes = msm_rpmstats_read_quad_register_v2(reg, i,
+				offsetof(struct msm_rpm_stats_data_v2, client_votes));
+			data.subsystem_votes = msm_rpmstats_read_quad_register_v2(reg, i,
+				offsetof(struct msm_rpm_stats_data_v2, subsystem_votes));
+		}
+
+		stat_type[4] = 0;
+		memcpy(stat_type, &data.stat_type, sizeof(u32));
+
+		time_in_last_mode = data.last_exited_at - data.last_entered_at;
+		time_in_last_mode = get_time_in_msec(time_in_last_mode);
+		time_since_last_mode = arch_counter_get_cntpct() - data.last_exited_at;
+		time_since_last_mode = get_time_in_sec(time_since_last_mode);
+		actual_last_sleep = get_time_in_msec(data.accumulated);
+
+		if(0 == i) {
+			printk("[RPM] Resume: RPM Mode:%s\n\t count:%d\n time in last mode(msec):%llu\n"
+			"time since last mode(sec):%llu\n actual last sleep(msec):%llu\n"
+			"Client votes: 0x%x, Subsystem votes: 0x%x\n",
+			stat_type, data.count, time_in_last_mode,
+			time_since_last_mode, actual_last_sleep,
+			data.client_votes, data.subsystem_votes);
+		}
+		else {
+			printk("[RPM] Resume: RPM Mode:%s\n\t count:%d\n time in last mode(msec):%llu\n"
+			"time since last mode(sec):%llu\n actual last sleep(msec):%llu\n",
+			stat_type, data.count, time_in_last_mode,
+			time_since_last_mode, actual_last_sleep);
+		}
+	}
+	iounmap(reg);
+	return 0;
+}
+#endif
+//[CR] --Support to trace Subsystem voting status
+
 static struct of_device_id rpm_stats_table[] = {
 	       {.compatible = "qcom,rpm-stats"},
 	       {},
+};
+
+//[CR] Support to trace Subsystem voting status
+static const struct dev_pm_ops rpm_stats_pm_ops = {
+	.suspend = rpm_stats_suspend,
+	.resume = rpm_stats_resume,
 };
 
 static struct platform_driver msm_rpmstats_driver = {
@@ -386,6 +501,8 @@ static struct platform_driver msm_rpmstats_driver = {
 		.name = "msm_rpm_stat",
 		.owner = THIS_MODULE,
 		.of_match_table = rpm_stats_table,
+		//[CR] Support to trace Subsystem voting status
+		.pm = &rpm_stats_pm_ops,
 	},
 };
 static int __init msm_rpmstats_init(void)
