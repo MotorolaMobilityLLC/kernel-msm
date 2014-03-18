@@ -531,10 +531,14 @@ abort2:
 	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[3].gpio,
 			GPIO_OUT_LOW);
 
-abort1:
 	msm_camera_config_single_vreg(dev,
 			&info->cam_vreg[IMX135_CAM_VDIG],
 			&imx135_cam_vdd, VREG_OFF);
+
+abort1:
+	msm_camera_config_single_vreg(dev,
+			&info->cam_vreg[IMX135_CAM_VIO],
+			&imx135_cam_vddio, VREG_OFF);
 
 abort0:
 	msm_camera_request_gpio_table(
