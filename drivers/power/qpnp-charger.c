@@ -218,7 +218,7 @@
 
 struct qpnp_chg_irq {
 	int		irq;
-	unsigned long		disabled;
+	bool		disabled;
 };
 
 struct qpnp_chg_regulator {
@@ -380,6 +380,7 @@ struct qpnp_chg_chip {
 	struct work_struct		reduce_power_stage_work;
 	bool				power_stage_workaround_running;
 	bool				power_stage_workaround_enable;
+	spinlock_t			irq_lock;
 };
 
 
@@ -515,21 +516,37 @@ qpnp_chg_masked_write(struct qpnp_chg_chip *chip, u16 base,
 }
 
 static void
-qpnp_chg_enable_irq(struct qpnp_chg_irq *irq)
+qpnp_chg_enable_irq(struct qpnp_chg_chip *chip, struct qpnp_chg_irq *irq)
 {
-	if (__test_and_clear_bit(0, &irq->disabled)) {
+	unsigned long flags;
+
+	spin_lock_irqsave(&chip->irq_lock, flags);
+
+	if (irq->disabled) {
 		pr_debug("number = %d\n", irq->irq);
 		enable_irq(irq->irq);
+		enable_irq_wake(irq->irq);
+		irq->disabled = false;
 	}
+
+	spin_unlock_irqrestore(&chip->irq_lock, flags);
 }
 
 static void
-qpnp_chg_disable_irq(struct qpnp_chg_irq *irq)
+qpnp_chg_disable_irq(struct qpnp_chg_chip *chip, struct qpnp_chg_irq *irq)
 {
-	if (!__test_and_set_bit(0, &irq->disabled)) {
+	unsigned long flags;
+
+	spin_lock_irqsave(&chip->irq_lock, flags);
+
+	if (!irq->disabled) {
 		pr_debug("number = %d\n", irq->irq);
+		disable_irq_wake(irq->irq);
 		disable_irq_nosync(irq->irq);
+		irq->disabled = true;
 	}
+
+	spin_unlock_irqrestore(&chip->irq_lock, flags);
 }
 
 #define USB_OTG_EN_BIT	BIT(0)
@@ -1172,8 +1189,7 @@ qpnp_chg_vbatdet_lo_irq_handler(int irq, void *_chip)
 		pm_stay_awake(chip->dev);
 	}
 
-	disable_irq_wake(chip->chg_vbatdet_lo.irq);
-	qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
+	qpnp_chg_disable_irq(chip, &chip->chg_vbatdet_lo);
 
 	pr_debug("psy changed usb_psy\n");
 	power_supply_changed(chip->usb_psy);
@@ -1707,8 +1723,7 @@ qpnp_chg_chgr_chg_fastchg_irq_handler(int irq, void *_chip)
 		}
 	}
 
-	qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
-	enable_irq_wake(chip->chg_vbatdet_lo.irq);
+	qpnp_chg_enable_irq(chip, &chip->chg_vbatdet_lo);
 
 	return IRQ_HANDLED;
 }
@@ -3152,8 +3167,7 @@ qpnp_eoc_work(struct work_struct *work)
 			if (vbat_low_count >= CONSECUTIVE_COUNT) {
 				pr_debug("woke up too early stopping\n");
 
-				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
-				enable_irq_wake(chip->chg_vbatdet_lo.irq);
+				qpnp_chg_enable_irq(chip, &chip->chg_vbatdet_lo);
 				goto stop_eoc;
 			} else {
 				goto check_again_later;
@@ -3195,8 +3209,7 @@ qpnp_eoc_work(struct work_struct *work)
 				pr_debug("psy changed batt_psy\n");
 				power_supply_changed(&chip->batt_psy);
 
-				qpnp_chg_enable_irq(&chip->chg_vbatdet_lo);
-				enable_irq_wake(chip->chg_vbatdet_lo.irq);
+				qpnp_chg_enable_irq(chip, &chip->chg_vbatdet_lo);
 				goto stop_eoc;
 			} else {
 				count += 1;
@@ -3846,7 +3859,8 @@ qpnp_chg_request_irqs(struct qpnp_chg_chip *chip)
 			enable_irq_wake(chip->chg_trklchg.irq);
 			enable_irq_wake(chip->chg_failed.irq);
 			enable_irq_wake(chip->chg_fastchg.irq);
-			qpnp_chg_disable_irq(&chip->chg_vbatdet_lo);
+			disable_irq_nosync(chip->chg_vbatdet_lo.irq);
+			chip->chg_vbatdet_lo.disabled = true;
 
 			break;
 		case SMBB_BAT_IF_SUBTYPE:
@@ -4525,6 +4539,7 @@ qpnp_charger_probe(struct spmi_device *spmi)
 	mutex_init(&chip->jeita_configure_lock);
 	mutex_init(&chip->batfet_vreg_lock);
 	spin_lock_init(&chip->usbin_health_monitor_lock);
+	spin_lock_init(&chip->irq_lock);
 	alarm_init(&chip->reduce_power_stage_alarm, ALARM_REALTIME,
 			qpnp_chg_reduce_power_stage_callback);
 	INIT_WORK(&chip->reduce_power_stage_work,
