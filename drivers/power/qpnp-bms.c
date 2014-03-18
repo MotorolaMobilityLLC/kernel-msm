@@ -1008,7 +1008,7 @@ static int find_ocv_for_pc(struct qpnp_bms_chip *chip, int batt_temp, int pc)
 }
 
 #define OCV_RAW_UNINITIALIZED	0xFFFF
-#define MIN_OCV_UV		2000000
+#define MIN_OCV_UV		2700000
 static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 				struct raw_soc_params *raw,
 				int batt_temp)
@@ -1043,11 +1043,11 @@ static int read_soc_params_raw(struct qpnp_bms_chip *chip,
 		warm_reset = qpnp_pon_is_warm_reset();
 		if (raw->last_good_ocv_uv < MIN_OCV_UV
 				|| warm_reset > 0) {
-			pr_debug("OCV is stale or bad, estimating new OCV.\n");
+			pr_err("OCV is stale or bad, estimating new OCV.\n");
 			chip->last_ocv_uv = estimate_ocv(chip);
 			raw->last_good_ocv_uv = chip->last_ocv_uv;
 			reset_cc(chip, CLEAR_CC | CLEAR_SHDW_CC);
-			pr_debug("New PON_OCV_UV = %d, cc = %llx\n",
+			pr_err("New PON_OCV_UV = %d, cc = %llx\n",
 					chip->last_ocv_uv, raw->cc);
 		}
 	} else if (chip->new_battery) {
@@ -3525,6 +3525,7 @@ static int read_shutdown_iavg_ma(struct qpnp_bms_chip *chip)
 	}
 }
 
+#define SHUTDOWN_SOC_RECALC_THRES  5
 static int read_shutdown_soc(struct qpnp_bms_chip *chip)
 {
 	u8 stored_soc;
@@ -3547,8 +3548,16 @@ static int read_shutdown_soc(struct qpnp_bms_chip *chip)
 	else
 		shutdown_soc = SOC_INVALID;
 
-	pr_debug("stored soc = 0x%02x, shutdown_soc = %d\n",
+	pr_err("stored soc = 0x%02x, shutdown_soc = %d\n",
 			stored_soc, shutdown_soc);
+
+	/* Use the Power-up OCV when Shutdown SOC is Low */
+	if (shutdown_soc <= SHUTDOWN_SOC_RECALC_THRES) {
+		pr_err("soc below low soc threshold of %d Invalidate it!\n",
+		       SHUTDOWN_SOC_RECALC_THRES);
+		shutdown_soc = SOC_INVALID;
+	}
+
 	return shutdown_soc;
 }
 
