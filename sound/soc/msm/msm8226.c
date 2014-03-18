@@ -1075,9 +1075,10 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headphone");
 		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headset Mic");
 		snd_soc_dapm_sync(dapm);
+	} else {
+		goto out;
 	}
-	return err;
-#endif
+#else
 
 	/* start mbhc */
 	mbhc_cfg.calibration = def_tapan_mbhc_cal();
@@ -1087,6 +1088,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		err = -ENOMEM;
 		goto out;
 	}
+#endif
 
 	adsp_state_notifier =
 		subsys_notif_register_notifier("adsp",
