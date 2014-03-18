@@ -557,8 +557,11 @@
                 stk,alsctrl-reg = <0x39>;
                 stk,ledctrl-reg = <0xFF>;
                 stk,wait-reg = <0x07>;
-                stk,ps-thdh = <500>;
-                stk,ps-thdl = <400>;
+		stk,als_thresh_pct = <5>;
+		stk,covered_thresh = <0x0096>;
+		stk,uncovered_thresh = <0x006E>;
+		stk,recal_thresh = <0x0046>;
+		stk,max_noise_fl = <0x0F00>;
         };
 };
 
