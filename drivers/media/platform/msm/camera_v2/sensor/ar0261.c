@@ -272,7 +272,7 @@ static int32_t ar0261_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	/* Set reset to normal mode */
 	gpio_set_value_cansleep(info->gpio_conf->cam_gpio_req_tbl[1].gpio,
 			GPIO_OUT_HIGH);
-	usleep_range(1000, 2000);
+	usleep_range(4000, 5000);
 
 	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
@@ -376,6 +376,10 @@ static int32_t ar0261_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 			&ar0261_cam_vana, VREG_OFF);
 		usleep_range(1000, 2000);
 	}
+
+	msm_camera_config_single_vreg(dev, &info->cam_vreg[1],
+			&ar0261_cam_vddio, VREG_OFF);
+	usleep_range(1000, 2000);
 
 	msm_camera_request_gpio_table(
 		info->gpio_conf->cam_gpio_req_tbl,
