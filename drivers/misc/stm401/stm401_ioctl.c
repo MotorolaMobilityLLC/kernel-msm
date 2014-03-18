@@ -115,8 +115,10 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			mutex_unlock(&ps_stm401->lock);
 			return -EPERM;
 		}
-		if (ps_stm401->stm401_hub_fail)
+		if (ps_stm401->stm401_hub_fail) {
+			mutex_unlock(&ps_stm401->lock);
 			return -EPERM;
+		}
 	}
 
 	switch (cmd) {
