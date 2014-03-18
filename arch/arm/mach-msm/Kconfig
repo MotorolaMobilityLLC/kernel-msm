@@ -3156,4 +3156,9 @@ config MMI_MSM_PINMUX
 	  Provides capability for reading an OF DT node to provide initial
 	  configuration of GPIO MUX settings on MSM chip families.
 
+config PM_DEBUG_WAKEUP
+	depends on PM_DEBUG
+    default n
+    bool "Report wakeup source in a uevent"
+
 endif
