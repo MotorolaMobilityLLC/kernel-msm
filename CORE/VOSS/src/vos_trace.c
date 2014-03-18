@@ -112,6 +112,7 @@ moduleTraceInfo gVosTraceInfo[ VOS_MODULE_ID_MAX ] =
    [VOS_MODULE_ID_HDD_SOFTAP] = { VOS_DEFAULT_TRACE_LEVEL, "HSP" },
    [VOS_MODULE_ID_PMC]        = { VOS_DEFAULT_TRACE_LEVEL, "PMC" },
    [VOS_MODULE_ID_HDD_DATA]   = { VOS_DEFAULT_TRACE_LEVEL, "HDP" },
+   [VOS_MODULE_ID_HDD_SAP_DATA] = { VOS_DEFAULT_TRACE_LEVEL, "SDP" },
 };
 /*-------------------------------------------------------------------------
   Static and Global variables
