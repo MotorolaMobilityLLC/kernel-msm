@@ -17,6 +17,21 @@
 #include <linux/time.h>
 #include <linux/module.h>
 #include <linux/fb.h>
+#include <linux/suspend.h>
+#include <linux/power_supply.h>
+
+#define PMDBG_IRQ_LIST_SIZE 3
+#define PMDBG_UEVENT_ENV_BUFF 64
+static unsigned int pmdbg_gpio_irq[PMDBG_IRQ_LIST_SIZE];
+static unsigned int pmdbg_gic_irq[PMDBG_IRQ_LIST_SIZE];
+static unsigned int pmdbg_pmic_irq[PMDBG_IRQ_LIST_SIZE];
+
+static int pmdbg_gpio_irq_index;
+static int pmdbg_gic_irq_index;
+static int pmdbg_pmic_irq_index;
+
+static uint64_t pmdbg_suspend_time;
+static uint64_t pmdbg_resume_time;
 
 static void stuck_wakelock_timeout(unsigned long data);
 static void stuck_wakelock_wdset(void);
@@ -113,6 +128,150 @@ static int pmdbg_driver_remove(struct platform_device *pdev)
 	return 0;
 }
 
+void wakeup_source_gpio_cleanup(void)
+{
+	pmdbg_gpio_irq_index = 0;
+}
+
+int wakeup_source_gpio_add_irq(unsigned int irq)
+{
+	if (pmdbg_gpio_irq_index < PMDBG_IRQ_LIST_SIZE) {
+		pmdbg_gpio_irq[pmdbg_gpio_irq_index] = irq;
+		pmdbg_gpio_irq_index++;
+		return 0;
+	} else {
+		return -ENOBUFS;
+	}
+}
+
+void wakeup_source_gic_cleanup(void)
+{
+	pmdbg_gic_irq_index = 0;
+}
+
+int wakeup_source_gic_add_irq(unsigned int irq)
+{
+	if (pmdbg_gic_irq_index < PMDBG_IRQ_LIST_SIZE) {
+		pmdbg_gic_irq[pmdbg_gic_irq_index] = irq;
+		pmdbg_gic_irq_index++;
+		return 0;
+	} else {
+		return -ENOBUFS;
+	}
+}
+
+void wakeup_source_pmic_cleanup(void)
+{
+	pmdbg_pmic_irq_index = 0;
+}
+
+int wakeup_source_pmic_add_irq(unsigned int irq)
+{
+	if (pmdbg_pmic_irq_index < PMDBG_IRQ_LIST_SIZE) {
+		pmdbg_pmic_irq[pmdbg_pmic_irq_index] = irq;
+		pmdbg_pmic_irq_index++;
+		return 0;
+	} else {
+		return -ENOBUFS;
+	}
+}
+
+void wakeup_source_uevent_env(char *buf, char *tag, unsigned int irqs[],
+				int index)
+{
+	int i, len;
+
+	if (index > 0) {
+		if (index > PMDBG_IRQ_LIST_SIZE)
+			index = PMDBG_IRQ_LIST_SIZE;
+		len = 0;
+		for (i = 0; i < index; i++) {
+			if (i == 0)
+				len += snprintf(buf,
+					PMDBG_UEVENT_ENV_BUFF - len,
+					"%s=%d", tag, irqs[i]);
+			else
+				len += snprintf(buf + len,
+					PMDBG_UEVENT_ENV_BUFF - len,
+					",%d", irqs[i]);
+			if (len == PMDBG_UEVENT_ENV_BUFF)
+				break;
+		}
+	}
+}
+
+static uint64_t pmdbg_gettimeofday_ms(void)
+{
+	uint64_t timeofday = 0;
+	struct timespec time;
+
+	getnstimeofday(&time);
+	timeofday = time.tv_nsec;
+	do_div(timeofday, NSEC_PER_MSEC);
+	timeofday = (uint64_t)time.tv_sec * MSEC_PER_SEC + timeofday;
+	return timeofday;
+}
+
+int pmdbg_suspend(struct device *dev)
+{
+	pmdbg_suspend_time = pmdbg_gettimeofday_ms();
+	return 0;
+}
+
+int pmdbg_resume(struct device *dev)
+{
+	char *envp[6];
+	char buf[5][PMDBG_UEVENT_ENV_BUFF];
+	int env_index = 0;
+
+	if (pmdbg_suspend_time == 0)
+		return 0;
+
+	pmdbg_resume_time = pmdbg_gettimeofday_ms();
+
+	snprintf(buf[0], 33, "suspend_time=%019lld", pmdbg_suspend_time);
+	snprintf(buf[1], 32, "resume_time=%019lld", pmdbg_resume_time);
+	envp[0] = buf[0];
+	envp[1] = buf[1];
+	env_index = 2;
+
+	if (pmdbg_gic_irq_index > 0) {
+		wakeup_source_uevent_env(buf[env_index], "GIC",
+					pmdbg_gic_irq,
+					pmdbg_gic_irq_index);
+		pmdbg_gic_irq_index = 0;
+		envp[env_index] = buf[env_index];
+		env_index++;
+	}
+
+	if (pmdbg_gpio_irq_index > 0) {
+		wakeup_source_uevent_env(buf[env_index], "GPIO",
+					pmdbg_gpio_irq,
+					pmdbg_gpio_irq_index);
+		pmdbg_gpio_irq_index = 0;
+		envp[env_index] = buf[env_index];
+		env_index++;
+	}
+
+	if (pmdbg_pmic_irq_index > 0) {
+		wakeup_source_uevent_env(buf[env_index], "PMIC",
+					pmdbg_pmic_irq,
+					pmdbg_pmic_irq_index);
+		pmdbg_pmic_irq_index = 0;
+		envp[env_index] = buf[env_index];
+		env_index++;
+	}
+
+	envp[env_index] = NULL;
+	kobject_uevent_env(&dev->kobj, KOBJ_ONLINE, envp);
+	return 0;
+}
+
+static const struct dev_pm_ops pm_debug_pm_ops = {
+	.suspend	= pmdbg_suspend,
+	.resume		= pmdbg_resume,
+};
+
 static struct platform_device pmdbg_device = {
 	.name		= "pm_dbg",
 	.id		= -1,
@@ -124,6 +283,7 @@ static struct platform_driver pmdbg_driver = {
 	.driver		= {
 			.name	= "pm_dbg",
 			.owner	= THIS_MODULE,
+			.pm	= &pm_debug_pm_ops,
 	},
 };
 
