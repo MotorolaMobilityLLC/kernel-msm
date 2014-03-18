@@ -1893,6 +1893,24 @@ recheck:
 	return 0;
 }
 
+static bool mxt_t47_stylus_state(struct mxt_data *data)
+{
+	struct mxt_object *object;
+	int error;
+	u8 control = 0;
+
+	object = mxt_get_object(data, MXT_PROCI_STYLUS_T47);
+	if (!object)
+		return false;
+
+	error = __mxt_read_reg(data->client, object->start_address,
+				sizeof(control), &control);
+	if (error)
+		dev_warn(&data->client->dev, "Unable to read T47\n");
+
+	return control ? true : false;
+}
+
 static int mxt_acquire_irq(struct mxt_data *data)
 {
 	int error;
@@ -2604,7 +2622,10 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 	/* For multi touch */
 	input_mt_init_slots(input_dev, data->num_touchids, 0);
 
-	input_set_abs_params(input_dev, ABS_MT_TOOL_TYPE, 0, MT_TOOL_MAX, 0, 0);
+	if (mxt_t47_stylus_state(data))
+		input_set_abs_params(input_dev, ABS_MT_TOOL_TYPE,
+					0, MT_TOOL_MAX, 0, 0);
+
 	input_set_abs_params(input_dev, ABS_MT_POSITION_X,
 			     0, data->max_x, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_POSITION_Y,
