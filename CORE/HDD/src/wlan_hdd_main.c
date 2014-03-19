@@ -182,8 +182,11 @@ static VOS_STATUS hdd_parse_ese_beacon_req(tANI_U8 *pValue,
                                      tCsrEseBeaconReq *pEseBcnReq);
 #endif /* FEATURE_WLAN_ESE && FEATURE_WLAN_ESE_UPLOAD */
 
-#define WLAN_PRIV_DATA_MAX_LEN 4096
-
+/*
+ * Maximum buffer size used for returning the data back to user space
+ */
+#define WLAN_MAX_BUF_SIZE 1024
+#define WLAN_PRIV_DATA_MAX_LEN    8192
 /*
  * Driver miracast parameters 0-Disabled
  * 1-Source, 2-Sink
