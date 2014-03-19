@@ -112,6 +112,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_TAS2552 if I2C
 	select SND_SOC_TPA6165A2 if I2C
 	select SND_SOC_TIMPANI if MARIMBA_CORE
+	select SND_SOC_FSA8500 if I2C
         help
           Normally ASoC codec drivers are only built if a machine driver which
           uses them is also built since they are only usable with a machine
@@ -503,3 +504,9 @@ config SND_SOC_TPA6165A2
 	depends on I2C
 	help
 	TPA6165A2 headset detection IC chip
+
+config SND_SOC_FSA8500
+	bool "Headset detection chip"
+	depends on I2C
+	help
+	FSA8500 headset detection IC chip
