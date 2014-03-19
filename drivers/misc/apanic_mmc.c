@@ -874,6 +874,14 @@ static void apanic_mmc(struct kmsg_dumper *dumper, enum kmsg_dump_reason reason)
 	if (in_panic)
 		return;
 	in_panic = 1;
+
+	/*
+	* HW watchdog may not enabled yet (e.g. panic in
+	* suspend/resume). Enable HW watchdog to avoid hang
+	* in raw mmc operation.
+	*/
+	panic_watchdog_set(10);
+
 #ifdef CONFIG_PREEMPT
 	/* Ensure that cond_resched() won't try to preempt anybody */
 	add_preempt_count(PREEMPT_ACTIVE);
