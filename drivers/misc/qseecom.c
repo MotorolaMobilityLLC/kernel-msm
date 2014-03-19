@@ -3563,6 +3563,8 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_CREATE_KEY_REQ: {
+		if (!(qseecom.support_pfe || qseecom.support_fde))
+			pr_err("Features requiring key init not supported\n");
 		if (data->type != QSEECOM_GENERIC) {
 			pr_err("create key req: invalid handle (%d)\n",
 								data->type);
@@ -3584,6 +3586,8 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_WIPE_KEY_REQ: {
+		if (!(qseecom.support_pfe || qseecom.support_fde))
+			pr_err("Features requiring key init not supported\n");
 		if (data->type != QSEECOM_GENERIC) {
 			pr_err("wipe key req: invalid handle (%d)\n",
 								data->type);
@@ -3604,6 +3608,8 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		break;
 	}
 	case QSEECOM_IOCTL_UPDATE_KEY_USER_INFO_REQ: {
+		if (!(qseecom.support_pfe || qseecom.support_fde))
+			pr_err("Features requiring key init not supported\n");
 		if (data->type != QSEECOM_GENERIC) {
 			pr_err("update key req: invalid handle (%d)\n",
 								data->type);
@@ -4045,7 +4051,8 @@ static int qseecom_probe(struct platform_device *pdev)
 		if (ret)
 			goto exit_destroy_ion_client;
 
-		if (qseecom.qsee.instance != qseecom.ce_drv.instance) {
+		if ((qseecom.qsee.instance != qseecom.ce_drv.instance) &&
+				(qseecom.support_pfe || qseecom.support_fde)) {
 			ret = __qseecom_init_clk(CLK_CE_DRV);
 			if (ret) {
 				__qseecom_deinit_clk(CLK_QSEE);
@@ -4175,7 +4182,8 @@ exit_irqrestore:
 	/* register client for bus scaling */
 	if (pdev->dev.of_node) {
 		__qseecom_deinit_clk(CLK_QSEE);
-		if (qseecom.qsee.instance != qseecom.ce_drv.instance)
+		if ((qseecom.qsee.instance != qseecom.ce_drv.instance) &&
+				(qseecom.support_pfe || qseecom.support_fde))
 			__qseecom_deinit_clk(CLK_CE_DRV);
 	}
 
