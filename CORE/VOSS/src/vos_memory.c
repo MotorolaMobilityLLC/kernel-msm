@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -292,7 +292,7 @@ v_VOID_t vos_mem_free( v_VOID_t *ptr )
         {
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                       "%s: Unallocated memory (double free?)", __func__);
-            VOS_ASSERT(0);
+            VOS_BUG(0);
         }
     }
 }
