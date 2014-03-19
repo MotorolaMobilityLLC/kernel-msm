@@ -15,6 +15,7 @@
 #include <linux/errno.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/i2c/i2c-qup.h>
 #include <linux/gpio.h>
 #include <linux/irq.h>
 #include <linux/irqdomain.h>
@@ -25,13 +26,16 @@
 #include <linux/of_irq.h>
 #include <linux/memory.h>
 #include <linux/memblock.h>
+#include <linux/regulator/cpr-regulator.h>
 #include <linux/regulator/qpnp-regulator.h>
 #include <linux/regulator/rpm-smd-regulator.h>
+#include <linux/regulator/spm-regulator.h>
 #include <linux/msm_tsens.h>
 #include <asm/mach/map.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <mach/board.h>
+#include <mach/msm_bus.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_memtypes.h>
@@ -140,7 +144,11 @@ void __init msm8226_add_drivers(void)
 	msm_pm_sleep_status_init();
 	rpm_smd_regulator_driver_init();
 	qpnp_regulator_init();
+	spm_regulator_init();
 	msm_clock_init(&msm8226_clock_init_data);
+	msm_bus_fabric_init_driver();
+	qup_i2c_init_driver();
+	cpr_regulator_init();
 	tsens_tm_init_driver();
 	msm_thermal_device_init();
 #ifdef CONFIG_PSTORE_RAM
