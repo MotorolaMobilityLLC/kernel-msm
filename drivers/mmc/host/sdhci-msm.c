@@ -258,12 +258,11 @@ struct sdhci_msm_reg_data {
 	/* voltage level to be set */
 	u32 low_vol_level;
 	u32 high_vol_level;
+	u32 curr_vol_level;
 	/* Load values for low power and high power mode */
 	u32 lpm_uA;
 	u32 hpm_uA;
 
-	/* is this regulator enabled? */
-	bool is_enabled;
 	/* is this regulator needs to be always on? */
 	bool is_always_on;
 	/* is low power mode setting required for this regulator? */
@@ -280,6 +279,10 @@ struct sdhci_msm_slot_reg_data {
 	struct sdhci_msm_reg_data *vdd_data;
 	 /* keeps VDD IO regulator info */
 	struct sdhci_msm_reg_data *vdd_io_data;
+	/* number of users of slot power */
+	int users;
+	/* protect regulator management during concurrent access */
+	struct mutex lock;
 };
 
 struct sdhci_msm_gpio {
@@ -1380,6 +1383,7 @@ static int sdhci_msm_dt_parse_vreg_info(struct device *dev,
 	} else {
 		vreg->low_vol_level = be32_to_cpup(&prop[0]);
 		vreg->high_vol_level = be32_to_cpup(&prop[1]);
+		vreg->curr_vol_level = vreg->high_vol_level;
 	}
 
 	snprintf(prop_name, MAX_PROP_SIZE,
@@ -1762,6 +1766,8 @@ static struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 		dev_err(dev, "failed to allocate memory for vreg data\n");
 		goto out;
 	}
+
+	mutex_init(&pdata->vreg_data->lock);
 
 	if (sdhci_msm_dt_parse_vreg_info(dev, &pdata->vreg_data->vdd_data,
 					 "vdd")) {
@@ -2160,22 +2166,19 @@ static int sdhci_msm_vreg_enable(struct sdhci_msm_reg_data *vreg)
 	/* Put regulator in HPM (high power mode) */
 	ret = sdhci_msm_vreg_set_optimum_mode(vreg, vreg->hpm_uA);
 	if (ret < 0)
-		return ret;
+		goto out;
 
-	if (!vreg->is_enabled) {
-		/* Set voltage level */
-		ret = sdhci_msm_vreg_set_voltage(vreg, vreg->high_vol_level,
-						vreg->high_vol_level);
-		if (ret)
-			return ret;
-	}
+	/* Set voltage level */
+	ret = sdhci_msm_vreg_set_voltage(vreg, vreg->curr_vol_level,
+					 vreg->curr_vol_level);
+	if (ret)
+		goto out;
+
 	ret = regulator_enable(vreg->reg);
-	if (ret) {
-		pr_err("%s: regulator_enable(%s) failed. ret=%d\n",
-				__func__, vreg->name, ret);
-		return ret;
-	}
-	vreg->is_enabled = true;
+	if (ret)
+		pr_err("%s: failed to enable regulator %s: %d\n",
+			__func__, vreg->name, ret);
+out:
 	return ret;
 }
 
@@ -2184,52 +2187,41 @@ static int sdhci_msm_vreg_disable(struct sdhci_msm_reg_data *vreg)
 	int ret = 0;
 
 	/* Never disable regulator marked as always_on */
-	if (vreg->is_enabled && !vreg->is_always_on) {
-		ret = regulator_disable(vreg->reg);
-		if (ret) {
-			pr_err("%s: regulator_disable(%s) failed. ret=%d\n",
-				__func__, vreg->name, ret);
-			goto out;
-		}
-		vreg->is_enabled = false;
+	if (vreg->is_always_on) {
+		/* Always put always_on regulator in LPM (low power mode) */
+		if (vreg->lpm_sup)
+			ret = sdhci_msm_vreg_set_optimum_mode(vreg,
+							      vreg->lpm_uA);
+		goto out;
+	}
 
+	ret = regulator_disable(vreg->reg);
+	if (ret) {
+		pr_err("%s: failed to disable regulator %s: %d\n",
+			__func__, vreg->name, ret);
+		goto out;
+	}
+
+	if (!regulator_is_enabled(vreg->reg)) {
 		ret = sdhci_msm_vreg_set_optimum_mode(vreg, 0);
 		if (ret < 0)
 			goto out;
 
 		/* Set min. voltage level to 0 */
-		ret = sdhci_msm_vreg_set_voltage(vreg, 0, vreg->high_vol_level);
-		if (ret)
-			goto out;
-	} else if (vreg->is_enabled && vreg->is_always_on) {
-		if (vreg->lpm_sup) {
-			/* Put always_on regulator in LPM (low power mode) */
-			ret = sdhci_msm_vreg_set_optimum_mode(vreg,
-							      vreg->lpm_uA);
-			if (ret < 0)
-				goto out;
-		}
+		ret = sdhci_msm_vreg_set_voltage(vreg, 0, vreg->curr_vol_level);
 	}
 out:
 	return ret;
 }
 
-static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
-			bool enable, bool is_init)
+static int sdhci_msm_vreg_setup_slot(struct sdhci_msm_slot_reg_data *vreg_data,
+			bool enable)
 {
-	int ret = 0, i;
-	struct sdhci_msm_slot_reg_data *curr_slot;
 	struct sdhci_msm_reg_data *vreg_table[2];
+	int i, ret = 0;
 
-	curr_slot = pdata->vreg_data;
-	if (!curr_slot) {
-		pr_debug("%s: vreg info unavailable,assuming the slot is powered by always on domain\n",
-			 __func__);
-		goto out;
-	}
-
-	vreg_table[0] = curr_slot->vdd_data;
-	vreg_table[1] = curr_slot->vdd_io_data;
+	vreg_table[0] = vreg_data->vdd_data;
+	vreg_table[1] = vreg_data->vdd_io_data;
 
 	for (i = 0; i < ARRAY_SIZE(vreg_table); i++) {
 		if (vreg_table[i]) {
@@ -2242,6 +2234,38 @@ static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
 		}
 	}
 out:
+	return ret;
+}
+
+static int sdhci_msm_setup_vreg(struct sdhci_msm_pltfm_data *pdata,
+			bool enable, bool is_init)
+{
+	int ret = 0;
+	struct sdhci_msm_slot_reg_data *curr_slot;
+
+	curr_slot = pdata->vreg_data;
+	if (!curr_slot) {
+		pr_debug("%s: vreg info unavailable,assuming the slot is powered by always on domain\n",
+			 __func__);
+		return ret;
+	}
+
+	mutex_lock(&curr_slot->lock);
+
+	/* protect against extra disable from upper layers */
+	if (!enable && curr_slot->users == 0)
+		goto out;
+
+	ret = sdhci_msm_vreg_setup_slot(curr_slot, enable);
+	if (ret)
+		goto out;
+
+	if (enable)
+		curr_slot->users++;
+	else
+		curr_slot->users--;
+out:
+	mutex_unlock(&curr_slot->lock);
 	return ret;
 }
 
@@ -2316,13 +2340,16 @@ static int sdhci_msm_set_vdd_io_vol(struct sdhci_msm_pltfm_data *pdata,
 {
 	int ret = 0;
 	int set_level;
+	struct sdhci_msm_slot_reg_data *vreg_data = pdata->vreg_data;
 	struct sdhci_msm_reg_data *vdd_io_reg;
 
-	if (!pdata->vreg_data)
+	if (!vreg_data)
 		return ret;
 
-	vdd_io_reg = pdata->vreg_data->vdd_io_data;
-	if (vdd_io_reg && vdd_io_reg->is_enabled) {
+	mutex_lock(&vreg_data->lock);
+
+	vdd_io_reg = vreg_data->vdd_io_data;
+	if (vdd_io_reg && vreg_data->users > 0) {
 		switch (level) {
 		case VDD_IO_LOW:
 			set_level = vdd_io_reg->low_vol_level;
@@ -2337,11 +2364,15 @@ static int sdhci_msm_set_vdd_io_vol(struct sdhci_msm_pltfm_data *pdata,
 			pr_err("%s: invalid argument level = %d",
 					__func__, level);
 			ret = -EINVAL;
-			return ret;
+			goto out;
 		}
 		ret = sdhci_msm_vreg_set_voltage(vdd_io_reg, set_level,
-				set_level);
+						 set_level);
+		if (!ret)
+			vdd_io_reg->curr_vol_level = set_level;
 	}
+out:
+	mutex_unlock(&vreg_data->lock);
 	return ret;
 }
 
@@ -3109,13 +3140,24 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 	struct mmc_card *card = host->mmc->card;
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
 	struct sdhci_msm_host *msm_host = pltfm_host->priv;
-	unsigned long delay;
+	struct sdhci_msm_slot_reg_data *vreg_data = msm_host->pdata->vreg_data;
+	unsigned long delay = HW_RESET_DELAY_INCREMENT * 2;
 	int rc;
 
-	if (!card || !mmc_card_sd(card))
+	if (!vreg_data || (card && !mmc_card_sd(card)))
 		return;
 
-	delay = HW_RESET_DELAY_INCREMENT * (card->failures + 1);
+	mutex_lock(&vreg_data->lock);
+
+	/* No way to reset if we are already off */
+	if (vreg_data->users == 0) {
+		pr_warning("%s: host reset called with regulators off\n",
+			   mmc_hostname(host->mmc));
+		goto out;
+	}
+
+	if (card)
+		delay += card->failures * HW_RESET_DELAY_INCREMENT;
 	if (delay > HW_RESET_DELAY_MAX)
 		delay = HW_RESET_DELAY_MAX;
 	pr_debug("%s: host reset (%lu uS)\n", mmc_hostname(host->mmc), delay);
@@ -3123,7 +3165,7 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 	/*
 	 * We bug-out on any failure, since there is no safe way to recover.
 	 */
-	rc = sdhci_msm_setup_vreg(msm_host->pdata, false, false);
+	rc = sdhci_msm_vreg_setup_slot(vreg_data, false);
 	if (rc) {
 		pr_err("%s: %s disable regulator: failed: %d\n",
 		       mmc_hostname(host->mmc), __func__, rc);
@@ -3133,7 +3175,7 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 	/* Let the rails drain. */
 	usleep_range(delay, delay + HW_RESET_DELAY_RANGE);
 
-	rc = sdhci_msm_setup_vreg(msm_host->pdata, true, false);
+	rc = sdhci_msm_vreg_setup_slot(vreg_data, true);
 	if (rc) {
 		pr_err("%s: %s enable regulator: failed: %d\n",
 		       mmc_hostname(host->mmc), __func__, rc);
@@ -3142,6 +3184,9 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 
 	/* Let the rails settle. */
 	usleep_range(delay, delay + HW_RESET_DELAY_RANGE);
+
+out:
+	mutex_unlock(&vreg_data->lock);
 }
 
 /*
