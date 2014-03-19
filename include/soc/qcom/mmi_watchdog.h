@@ -30,3 +30,7 @@ static inline void trigger_watchdog_reset(void)
 {
 	msm_watchdog_reset(0);
 }
+static inline void panic_watchdog_set(unsigned int t)
+{
+	msm_panic_wdt_set(t);
+}
