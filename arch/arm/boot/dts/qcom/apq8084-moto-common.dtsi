@@ -816,6 +816,11 @@
 		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "left";
 	};
+	tmp108@48 {
+		compatible = "ti,tmp108";
+		reg = <0x48>;
+		gpios = <&msmgpio 60 0>;
+	};
 };
 
 &i2c_12 {
