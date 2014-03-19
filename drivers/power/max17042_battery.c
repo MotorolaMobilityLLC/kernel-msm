@@ -495,19 +495,18 @@ static void max17042_reset_vfsoc0_reg(struct max17042_chip *chip)
 
 static void max17042_load_new_capacity_params(struct max17042_chip *chip)
 {
-	u16 full_cap0, rep_cap, dq_acc, vfSoc;
+	u16 rep_cap, dq_acc, vfSoc;
 	u32 rem_cap;
 
 	struct max17042_config_data *config = chip->pdata->config_data;
 
-	full_cap0 = max17042_read_reg(chip->client, MAX17042_FullCAP0);
 	vfSoc = max17042_read_reg(chip->client, MAX17042_VFSOC);
 
-	/* fg_vfSoc needs to shifted by 8 bits to get the
+	/* vfSoc needs to shifted by 8 bits to get the
 	 * perc in 1% accuracy, to get the right rem_cap multiply
-	 * full_cap0, fg_vfSoc and devide by 100
+	 * fullcapnom by vfSoc and devide by 100
 	 */
-	rem_cap = ((vfSoc >> 8) * full_cap0) / 100;
+	rem_cap = ((vfSoc >> 8) * config->fullcapnom) / 100;
 	max17042_write_verify_reg(chip->client, MAX17042_RemCap, (u16)rem_cap);
 
 	rep_cap = (u16)rem_cap;
@@ -578,7 +577,7 @@ static inline void max17042_override_por_values(struct max17042_chip *chip)
 	max17042_override_por(client, MAX17042_FCTC, config->fctc);
 	max17042_override_por(client, MAX17042_RCOMP0, config->rcomp0);
 	max17042_override_por(client, MAX17042_TempCo, config->tcompc0);
-	if (chip->chip_type) {
+	if (chip->chip_type == MAX17042) {
 		max17042_override_por(client, MAX17042_EmptyTempCo,
 					config->empty_tempco);
 		max17042_override_por(client, MAX17042_K_empty0,
