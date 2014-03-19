@@ -805,6 +805,14 @@ static int apanic_mmc(struct notifier_block *this, unsigned long event,
 	if (in_panic)
 		return NOTIFY_DONE;
 	in_panic = 1;
+
+	/*
+	 * HW watchdog may not enabled yet (e.g. panic in
+	 * suspend/resume). Enable HW watchdog to avoid hang
+	 * in raw mmc operation.
+	 */
+	panic_watchdog_set(10);
+
 #ifdef CONFIG_PREEMPT
 	/* Ensure that cond_resched() won't try to preempt anybody */
 	add_preempt_count(PREEMPT_ACTIVE);
