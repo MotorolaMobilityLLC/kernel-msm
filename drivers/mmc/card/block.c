@@ -113,6 +113,9 @@ struct mmc_blk_data {
 #define MMC_BLK_DISCARD		BIT(2)
 #define MMC_BLK_SECDISCARD	BIT(3)
 
+	unsigned int	failure_ratio;
+	unsigned int	forgive_ratio;
+
 	/*
 	 * Only set in main mmc_blk_data associated
 	 * with mmc_card with mmc_set_drvdata, and keeps
@@ -126,6 +129,8 @@ struct mmc_blk_data {
 	struct device_attribute total_requests;
 	struct device_attribute total_request_errors;
 	struct device_attribute current_health;
+	struct device_attribute adj_failure_ratio;
+	struct device_attribute adj_forgive_ratio;
 	int	area_type;
 };
 
@@ -408,11 +413,77 @@ current_health_show(struct device *dev, struct device_attribute *attr,
 
 	if (card->failures > 0)
 		ret = snprintf(buf, PAGE_SIZE, "%u\n",
-			       (card->successes * MMC_ERROR_FAILURE_RATIO) /
+			       (card->successes * md->failure_ratio) /
 				card->failures);
 	else
 		ret = snprintf(buf, PAGE_SIZE, "100\n");
 
+	mmc_blk_put(md);
+	return ret;
+}
+
+static ssize_t
+failure_ratio_show(struct device *dev, struct device_attribute *attr,
+		   char *buf)
+{
+	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
+	int ret;
+
+	ret = snprintf(buf, PAGE_SIZE, "%u\n", md->failure_ratio);
+
+	mmc_blk_put(md);
+	return ret;
+}
+
+static ssize_t failure_ratio_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	int ret;
+	char *end;
+	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
+	unsigned long set = simple_strtoul(buf, &end, 0);
+	if (end == buf) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	md->failure_ratio = set;
+	ret = count;
+out:
+	mmc_blk_put(md);
+	return ret;
+}
+
+static ssize_t
+forgive_ratio_show(struct device *dev, struct device_attribute *attr,
+		   char *buf)
+{
+	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
+	int ret;
+
+	ret = snprintf(buf, PAGE_SIZE, "%u\n", md->forgive_ratio);
+
+	mmc_blk_put(md);
+	return ret;
+}
+
+static ssize_t forgive_ratio_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	int ret;
+	char *end;
+	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
+	unsigned long set = simple_strtoul(buf, &end, 0);
+	if (end == buf) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	md->forgive_ratio = set;
+	ret = count;
+out:
 	mmc_blk_put(md);
 	return ret;
 }
@@ -969,8 +1040,8 @@ static int mmc_blk_reset(struct mmc_blk_data *md, struct mmc_host *host,
 		 */
 		card->failures++;
 		if (card->failures >= (card->successes + 1) *
-				      MMC_ERROR_FAILURE_RATIO ||
-		    card->failures >= MMC_ERROR_FAILURE_RATIO * 10) {
+				      md->failure_ratio ||
+		    card->failures >= md->failure_ratio * 10) {
 			pr_warning("%s: giving up on card (%u/%u, %llu/%llu)\n",
 				   mmc_hostname(host),
 				   card->failures, card->successes,
@@ -1032,7 +1103,7 @@ static inline void mmc_blk_reset_success(struct mmc_blk_data *md,
 	if (card->failures > 0) {
 		card->successes++;
 		if (card->successes >= (card->failures + 1) *
-				     MMC_ERROR_FORGIVE_RATIO) {
+				     md->forgive_ratio) {
 			pr_info("%s: forgiving card (%u/%u, %llu/%llu)\n",
 				mmc_hostname(host),
 				card->failures, card->successes,
@@ -2317,6 +2388,8 @@ static struct mmc_blk_data *mmc_blk_alloc_req(struct mmc_card *card,
 	spin_lock_init(&md->lock);
 	INIT_LIST_HEAD(&md->part);
 	md->usage = 1;
+	md->failure_ratio = MMC_ERROR_FAILURE_RATIO;
+	md->forgive_ratio = MMC_ERROR_FORGIVE_RATIO;
 
 	ret = mmc_init_queue(&md->queue, card, &md->lock, subname);
 	if (ret)
@@ -2587,8 +2660,34 @@ static int mmc_add_disk(struct mmc_blk_data *md)
 	if (ret)
 		goto current_health_fails;
 
+	md->adj_failure_ratio.show = failure_ratio_show;
+	md->adj_failure_ratio.store = failure_ratio_store;
+	sysfs_attr_init(&md->adj_failure_ratio.attr);
+	md->adj_failure_ratio.attr.name = "failure_ratio";
+	md->adj_failure_ratio.attr.mode = S_IRUGO | S_IWUSR;
+	ret = device_create_file(disk_to_dev(md->disk),
+				 &md->adj_failure_ratio);
+	if (ret)
+		goto failure_ratio_fails;
+
+	md->adj_forgive_ratio.show = forgive_ratio_show;
+	md->adj_forgive_ratio.store = forgive_ratio_store;
+	sysfs_attr_init(&md->adj_forgive_ratio.attr);
+	md->adj_forgive_ratio.attr.name = "forgive_ratio";
+	md->adj_forgive_ratio.attr.mode = S_IRUGO | S_IWUSR;
+	ret = device_create_file(disk_to_dev(md->disk),
+				 &md->adj_forgive_ratio);
+	if (ret)
+		goto forgive_ratio_fails;
+
 	return ret;
 
+forgive_ratio_fails:
+	device_remove_file(disk_to_dev(md->disk),
+			   &md->adj_failure_ratio);
+failure_ratio_fails:
+	device_remove_file(disk_to_dev(md->disk),
+			   &md->current_health);
 current_health_fails:
 	device_remove_file(disk_to_dev(md->disk),
 			   &md->total_request_errors);
