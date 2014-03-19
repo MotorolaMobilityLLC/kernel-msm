@@ -1602,7 +1602,7 @@ static int taiko_hph_impedance_get(struct snd_kcontrol *kcontrol,
 
 	hphr = mc->shift;
 	pr_debug("%s: taiko_priv: %p\n", __func__, priv);
-#ifndef CONFIG_SND_SOC_TPA6165A2
+#if !defined CONFIG_SND_SOC_TPA6165A2 && !defined CONFIG_SND_SOC_FSA8500
 	wcd9xxx_mbhc_get_impedance(&priv->mbhc, &zl, &zr);
 	pr_debug("%s: zl %u, zr %u\n", __func__, zl, zr);
 #else
@@ -3318,7 +3318,7 @@ static int taiko_hphl_dac_event(struct snd_soc_dapm_widget *w,
 						WCD9XXX_CLSAB_REQ_ENABLE);
 		}
 
-#ifndef CONFIG_SND_SOC_TPA6165A2
+#if !defined CONFIG_SND_SOC_TPA6165A2 && !defined CONFIG_SND_SOC_FSA8500
 		ret = wcd9xxx_mbhc_get_impedance(&taiko_p->mbhc,
 					&impedl, &impedr);
 		if (!ret)
@@ -7025,7 +7025,7 @@ static int taiko_codec_probe(struct snd_soc_codec *codec)
 	else
 		rco_clk_rate = TAIKO_MCLK_CLK_9P6MHZ;
 
-#ifndef CONFIG_SND_SOC_TPA6165A2
+#if !defined CONFIG_SND_SOC_TPA6165A2 && !defined CONFIG_SND_SOC_FSA8500
 	/* init and start mbhc */
 	ret = wcd9xxx_mbhc_init(&taiko->mbhc, &taiko->resmgr, codec,
 				taiko_enable_mbhc_micbias,
