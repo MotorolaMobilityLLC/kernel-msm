@@ -38,6 +38,8 @@
 u32 dsi_irq;
 u32 esc_byte_ratio;
 
+bool apply_quirk;
+
 static boolean tlmm_settings = FALSE;
 
 static int mipi_dsi_probe(struct platform_device *pdev);
@@ -65,6 +67,25 @@ static struct platform_driver mipi_dsi_driver = {
 };
 
 struct device dsi_dev;
+
+/* is slew rate modifiction reruired */
+static bool is_quirk_required(void)
+{
+	bool ret = false;
+	struct device_node *node = NULL;
+	const char *product;
+
+	node = of_find_node_by_path("/");
+	if (node) {
+		ret = of_property_read_string(node, "mmi,product", &product);
+		if (!ret) {
+			if (!strcmp(product, "mmi,msm8960-solstice"))
+				ret = true;
+		}
+		of_node_put(node);
+	}
+	return ret;
+}
 
 static int mipi_dsi_fps_level_change(struct platform_device *pdev,
 					u32 fps_level)
@@ -561,6 +582,10 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 		platform_device_put(mdp_dev);
 		return -ENOMEM;
 	}
+
+	/* check if the fix required */
+	apply_quirk = is_quirk_required();
+
 	/*
 	 * data chain
 	 */

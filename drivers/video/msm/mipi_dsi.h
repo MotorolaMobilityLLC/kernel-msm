@@ -132,6 +132,7 @@ extern struct device dsi_dev;
 extern int mipi_dsi_clk_on;
 extern u32 dsi_irq;
 extern u32 esc_byte_ratio;
+extern bool apply_quirk;
 
 extern void  __iomem *periph_base;
 extern char *mmss_cc_base;	/* mutimedia sub system clock control */

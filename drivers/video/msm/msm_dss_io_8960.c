@@ -252,7 +252,13 @@ void mipi_dsi_lane_cfg(void)
 		ln_offset += 0x40;
 	}
 
-	MIPI_OUTP(MIPI_DSI_BASE + 0x0400, 0x40); /* DSI1_DSIPHY_LNCK_CFG0 */
+	/* DSI1_DSIPHY_LNCK_CFG0 */
+	if (apply_quirk)
+		/* solstice related change IKSOLSTICE-836 */
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0400, 0x0);
+	else
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0400, 0x40);
+
 	MIPI_OUTP(MIPI_DSI_BASE + 0x0404, 0x67); /* DSI1_DSIPHY_LNCK_CFG1 */
 	MIPI_OUTP(MIPI_DSI_BASE + 0x0408, 0x0); /* DSI1_DSIPHY_LNCK_CFG2 */
 	/* DSI1_DSIPHY_LNCK_TEST_DATAPATH */
