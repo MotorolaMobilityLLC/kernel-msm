@@ -295,6 +295,15 @@
 	alsa_to_h2w {
 		compatible = "mmi,alsa-to-h2w";
 	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		buttons {
+			label = "buttons-backlight";
+			pwms = <&pma8084_lpg2 0 25000>;
+			max-brightness = <255>;
+		};
+	};
 };
 
 &pma8084_lvs3 {
@@ -453,9 +462,10 @@
 	};
 
 	gpio@c400 { /* GPIO 5 */
-		qcom,mode = <0>;
-		qcom,pull = <0>;
-		qcom,vin-sel = <2>;
+		/* Buttons Backlight PWM */
+		qcom,mode = <1>; 		/* Digital output */
+		qcom,pull = <0>;		/* No pull */
+		qcom,vin-sel = <2>;		/* PMA8084 S4 = 1.8 V */
 		qcom,src-sel = <0>;
 	};
 
@@ -469,27 +479,15 @@
 	};
 
 	gpio@c600 { /* GPIO 7 */
-		/* Backlight PWM */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;		/* CMOS logic */
-		qcom,invert = <0>;		/* Do not invert the output */
-		qcom,vin-sel = <2>;		/* PMA8084 S4 = 1.8 V */
-		qcom,src-sel = <2>;		/* Special Function 1=LPG 3 */
-		qcom,out-strength = <3>;	/* High drive strength */
-		qcom,master-en = <1>;
+		qcom,master-en = <0>;    /* Disable GPIO */
 	};
 
 	gpio@c700 { /* GPIO 8 */
+		qcom,master-en = <0>;    /* Disable GPIO */
 	};
 
 	gpio@c800 { /* GPIO 9 */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;		/* CMOS logic */
-		qcom,invert = <0>;		/* Do not invert the output */
-		qcom,vin-sel = <0>;		/* VPH_PWR */
-		qcom,src-sel = <0>;		/* GPIO */
-		qcom,out-strength = <1>;	/* High drive strength */
-		qcom,master-en = <1>;		/* Enable GPIO */
+		qcom,master-en = <0>;    /* Disable GPIO */
 	};
 
 	gpio@c900 { /* GPIO 10 */
