@@ -55,7 +55,7 @@
 #define ACC_NAME  "ACC"
 #define BMA2X2_ENABLE_INT1
 #define CONFIG_SIG_MOTION
-#define CONFIG_DOUBLE_TAP
+#define MOTO_REMOVE
 /*#define CONFIG_BMA_ENABLE_NEWDATA_INT 1*/
 
 #define SENSOR_NAME                 "bma2x2"
@@ -71,7 +71,7 @@
 #define SLOPE_Y_INDEX               6
 #define SLOPE_Z_INDEX               7
 #define BMA2X2_MAX_DELAY            200
-#define BMA2X2_RANGE_SET            3  /* +/- 2G */
+#define BMA2X2_RANGE_SET            5  /* +/- 4G */
 #define BMA2X2_BW_SET               12 /* 125HZ  */
 
 #define LOW_G_INTERRUPT             REL_Z
@@ -1933,6 +1933,7 @@ static int bma2x2_get_interruptstatus1(struct i2c_client *client, unsigned char
 	return comres;
 }
 
+#ifndef MOTO_REMOVE
 static int bma2x2_get_interruptstatus2(struct i2c_client *client, unsigned char
 		*intstatus)
 {
@@ -1944,6 +1945,7 @@ static int bma2x2_get_interruptstatus2(struct i2c_client *client, unsigned char
 
 	return comres;
 }
+#endif
 
 static int bma2x2_get_HIGH_first(struct i2c_client *client, unsigned char
 						param, unsigned char *intstatus)
@@ -5808,7 +5810,7 @@ static int bma2x2_set_en_slope_int(struct bma2x2_data *bma2x2,
 		* interfaces: slope_threshold and slope_duration
 		*/
 		/*dur: 192 samples ~= 3s*/
-		err = bma2x2_set_slope_duration(client, 0xc0);
+		err = bma2x2_set_slope_duration(client, 0x03);
 		err += bma2x2_set_slope_threshold(client, 0x16);
 
 		/*Enable the interrupts*/
@@ -6525,6 +6527,7 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 		break;
 	}
 
+#ifndef MOTO_REMOVE
 	bma2x2_get_interruptstatus2(bma2x2->bma2x2_client, &status);
 	printk(KERN_INFO "bma2x2_irq_work_func, interruptstatus2 = 0x%x\n",
 			status);
@@ -6536,7 +6539,7 @@ static void bma2x2_irq_work_func(struct work_struct *work)
 
 		input_sync(bma2x2->dev_for_interrupt);
 	}
-
+#endif
 	if (bma2x2_reset_interrupt(bma2x2->bma2x2_client, 1) < 0)
 		printk(KERN_INFO "reset interrupt failed\n");
 }
@@ -6695,7 +6698,9 @@ static int bma2x2_probe(struct i2c_client *client,
 	/* enable new data interrupt */
 	bma2x2_set_Int_Enable(client, 4, 1);
 #endif
+#ifndef MOTO_REMOVE
 	bma2x2_set_Int_Enable(client, 17, 1);
+#endif
 	if (client->dev.of_node) {
 		struct device_node *np = client->dev.of_node;
 		client->irq = of_get_gpio(np, 0);
