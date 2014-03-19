@@ -642,6 +642,7 @@ void msm_8974_reserve(void);
 void msm_8974_very_early(void);
 void msm_8974_init_gpiomux(void);
 void apq8084_init_gpiomux(void);
+void apq8084_moto_init_gpiomux(void);
 void msm9625_init_gpiomux(void);
 void mdm9630_init_gpiomux(void);
 void msmsamarium_init_gpiomux(void);
