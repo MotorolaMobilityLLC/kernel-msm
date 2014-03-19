@@ -3891,10 +3891,19 @@ static void update_heartbeat(struct work_struct *work)
 	if (rc)
 		pr_err("failed to read CHG sts %d\n", rc);
 	else if (!(bat_chg_sts & CHG_BMS_SIGN_BIT) &&
-			ret.intval)
-		/* We are discharging and USB PSY is online */
-		pr_err("USB valid bit is %d\n",
-			qpnp_chg_is_usb_chg_plugged_in(chip));
+			ret.intval) {
+		if (qpnp_chg_is_usb_chg_plugged_in(chip))
+			pr_err("USB valid bit is set 1\n");
+		else {
+			/* USB accessory is not connected and USB PSY is online
+			 * hence trigger USBIN-valid Irq handler to do the
+			 * appropriate changes
+			 */
+			pr_err("USB valid bit is set 0");
+			qpnp_chg_usb_usbin_valid_irq_handler(
+				chip->usbin_valid.irq, chip);
+		}
+	}
 
 	schedule_delayed_work(&chip->update_heartbeat_work,
 		msecs_to_jiffies(UPDATE_HEARTBEAT_MS));
