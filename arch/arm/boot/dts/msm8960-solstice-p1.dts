@@ -329,6 +329,7 @@
 				ct406_prox_covered_offset = <0x0096>;
 				ct406_prox_pulse_count = <0x05>;
 				ct406_prox_uncovered_offset = <0x006e>;
+				ams,ink_type = <2>;
 				i2c,address = <0x00000039>;
 				i2c,type = [637434303600];
 				irq,gpio = <0x31>;
