@@ -141,6 +141,24 @@ static int msm_watchdog_resume(struct device *dev)
 	return 0;
 }
 
+void msm_panic_wdt_set(unsigned int timeout)
+{
+	unsigned long flags;
+	void __iomem *msm_wdt_base;
+
+	local_irq_save(flags);
+
+	if (timeout > 60)
+		timeout = 60;
+
+	msm_wdt_base = g_wdog_dd->base;
+	__raw_writel(WDT_HZ * timeout, msm_wdt_base + WDT0_BARK_TIME);
+	__raw_writel(WDT_HZ * (timeout + 2), msm_wdt_base + WDT0_BITE_TIME);
+	__raw_writel(1, msm_wdt_base + WDT0_EN);
+	__raw_writel(1, msm_wdt_base + WDT0_RST);
+
+	local_irq_restore(flags);
+}
 void msm_watchdog_reset(unsigned int timeout)
 {
 	unsigned long flags;
