@@ -118,6 +118,7 @@ snd-soc-max9877-objs := max9877.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
 snd-soc-tas2552-objs := tas2552.o
 snd-soc-tpa6165a2-objs := tpa6165a2.o
+snd-soc-fsa8500-objs := fsa8500.o
 
 obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o
 obj-$(CONFIG_SND_SOC_AC97_CODEC)	+= snd-soc-ac97.o
@@ -235,3 +236,4 @@ obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
 obj-$(CONFIG_SND_SOC_TAS2552)   += snd-soc-tas2552.o
 obj-$(CONFIG_SND_SOC_TPA6165A2) += snd-soc-tpa6165a2.o
+obj-$(CONFIG_SND_SOC_FSA8500) += snd-soc-fsa8500.o
