@@ -195,7 +195,7 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 #endif
 	if (host->card) {
 		mmc_update_clk_scaling(host);
-		if (err)
+		if (err || (mrq->data && mrq->data->error))
 			host->card->request_errors++;
 	}
 
