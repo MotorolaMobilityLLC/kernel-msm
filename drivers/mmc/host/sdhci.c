@@ -1990,6 +1990,8 @@ static int sdhci_do_start_signal_voltage_switch(struct sdhci_host *host,
 		 * failed. We power cycle the card, and retry initialization
 		 * sequence by setting S18R to 0.
 		 */
+		pr_info(DRIVER_NAME ": Switching to 1.8V signalling "
+			"voltage failed, retrying with S18R set to 0\n");
 		pwr = sdhci_readb(host, SDHCI_POWER_CONTROL);
 		pwr &= ~SDHCI_POWER_ON;
 		sdhci_writeb(host, pwr, SDHCI_POWER_CONTROL);
@@ -1998,13 +2000,15 @@ static int sdhci_do_start_signal_voltage_switch(struct sdhci_host *host,
 
 		/* Wait for 1ms as per the spec */
 		usleep_range(1000, 1500);
+
+		if (host->ops->hw_reset)
+			host->ops->hw_reset(host);
+
 		pwr |= SDHCI_POWER_ON;
 		sdhci_writeb(host, pwr, SDHCI_POWER_CONTROL);
 		if (host->ops->check_power_status)
 			host->ops->check_power_status(host, REQ_BUS_ON);
 
-		pr_info(DRIVER_NAME ": Switching to 1.8V signalling "
-			"voltage failed, retrying with S18R set to 0\n");
 		return -EAGAIN;
 	} else
 		/* No signal voltage switch required */
