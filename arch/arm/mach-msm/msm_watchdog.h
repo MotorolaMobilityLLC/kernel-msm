@@ -78,8 +78,10 @@ extern unsigned int msm7k_fiq_start, msm7k_fiq_length;
 void g_pet_watchdog(void);
 #define pet_watchdog(void) g_pet_watchdog(void);
 void msm_watchdog_reset(unsigned int timeout);
+void msm_panic_wdt_set(unsigned int timeout);
 #else
 static inline void pet_watchdog(void) { }
 static inline void msm_watchdog_reset(unsigned int timeout) { }
+static msm_panic_wdt_set(unsigned int timeout) { }
 #endif
 #endif
