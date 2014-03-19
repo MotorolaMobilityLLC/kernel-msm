@@ -37,6 +37,7 @@
 #include "../codecs/wcd9320.h"
 #include "../codecs/wcd9330.h"
 #include "../codecs/tpa6165a2-core.h"
+#include "../codecs/fsa8500-core.h"
 
 #define DRV_NAME "apq8084-asoc"
 
@@ -840,6 +841,43 @@ static const struct snd_soc_dapm_widget apq8084_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Quaternary Mic", NULL),
 	SND_SOC_DAPM_MIC("Quinary Mic", NULL),
 };
+#ifdef CONFIG_SND_SOC_FSA8500
+static int fsa8500_msm_ext_hp_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	pr_debug("%s: headphone event: %d\n", __func__, event);
+
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		fsa8500_hp_event(1);
+	else
+		fsa8500_hp_event(0);
+
+	return 0;
+}
+
+static int fsa8500_msm_ext_mic_event(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	pr_debug("%s: mic event: %d\n", __func__, event);
+
+	if (SND_SOC_DAPM_EVENT_ON(event))
+		fsa8500_mic_event(1);
+	else
+		fsa8500_mic_event(0);
+
+	return 0;
+}
+
+static const struct snd_soc_dapm_widget fsa8500_dapm_widgets[] = {
+	SND_SOC_DAPM_MIC("FSA8500 Headset Mic", fsa8500_msm_ext_mic_event),
+	SND_SOC_DAPM_HP("FSA8500 Headphone", fsa8500_msm_ext_hp_event),
+};
+
+static const struct snd_soc_dapm_route fsa8500_hp_map[] = {
+	{"FSA8500 Headphone", NULL, "HEADPHONE"},
+	{"MIC BIAS2 External", NULL, "FSA8500 Headset Mic"},
+};
+#endif /* CONFIG_SND_SOC_FSA8500 */
 
 #ifdef CONFIG_SND_SOC_TPA6165A2
 static int msm_ext_hp_event(struct snd_soc_dapm_widget *w,
@@ -878,6 +916,64 @@ static const struct snd_soc_dapm_route tpa6165_hp_map[] = {
 	{"MIC BIAS2 External", NULL, "TPA6165 Headset Mic"},
 };
 #endif	/* CONFIG_SND_SOC_TPA6165A2 */
+
+
+static int msm_snd_ext_hs_detect(struct snd_soc_codec *codec)
+{
+	int err = 0;
+	const char *hs_detect_name;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	if (of_property_read_string(codec->card->dev->of_node,
+				"qcom,ext_hs_detect", &hs_detect_name))
+		dev_info(codec->card->dev,
+				"qcom,ext_hs_detect is not configured");
+
+#ifdef CONFIG_SND_SOC_TPA6165A2
+	if (!strcmp(hs_detect_name, "tpa6165")) {
+		err = tpa6165_hs_detect(codec);
+		if (!err) {
+			pr_info("%s:tpa6165 hs detection is used", __func__);
+			/* dapm controls for tpa6165 */
+			snd_soc_dapm_new_controls(dapm, tpa6165_dapm_widgets,
+					ARRAY_SIZE(tpa6165_dapm_widgets));
+
+			snd_soc_dapm_add_routes(dapm, tpa6165_hp_map,
+					ARRAY_SIZE(tpa6165_hp_map));
+
+			snd_soc_dapm_enable_pin(dapm, "TPA6165 Headphone");
+			snd_soc_dapm_enable_pin(dapm, "TPA6165 Headset Mic");
+			snd_soc_dapm_sync(dapm);
+			return err;
+		}
+		pr_info("%s:tpa6165 hs det load error %d", __func__, err);
+	}
+#endif
+#ifdef CONFIG_SND_SOC_FSA8500
+	if (!strcmp(hs_detect_name, "fsa8500")) {
+		err = fsa8500_hs_detect(codec);
+		if (!err) {
+			pr_info("%s:fsa8500 hs detection is used", __func__);
+			/* dapm controls for fsa8500 */
+			snd_soc_dapm_new_controls(dapm, fsa8500_dapm_widgets,
+					ARRAY_SIZE(fsa8500_dapm_widgets));
+
+			snd_soc_dapm_add_routes(dapm, fsa8500_hp_map,
+					ARRAY_SIZE(fsa8500_hp_map));
+
+			snd_soc_dapm_enable_pin(dapm, "FSA8500 Headphone");
+			snd_soc_dapm_enable_pin(dapm, "FSA8500 Headset Mic");
+			snd_soc_dapm_sync(dapm);
+			return err;
+		}
+		pr_info("%s:fsa8500 hs det load error %d", __func__, err);
+	}
+
+#endif
+	return 1;
+}
+
+
 
 static const char *const spk_function[] = {"Off", "On"};
 static const char *const slim0_rx_ch_text[] = {"One", "Two"};
@@ -2420,24 +2516,12 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			return err;
 		}
 	}
-#ifdef CONFIG_SND_SOC_TPA6165A2
-	err = tpa6165_hs_detect(codec);
+
+	err = msm_snd_ext_hs_detect(codec);
 	if (!err) {
-		pr_info("%s:tpa6165 hs det mechanism is used", __func__);
-		/* dapm controls for tpa6165 */
-		snd_soc_dapm_new_controls(dapm, tpa6165_dapm_widgets,
-				ARRAY_SIZE(tpa6165_dapm_widgets));
-
-		snd_soc_dapm_add_routes(dapm, tpa6165_hp_map,
-				ARRAY_SIZE(tpa6165_hp_map));
-
-		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headphone");
-		snd_soc_dapm_enable_pin(dapm, "TPA6165 Headset Mic");
-		snd_soc_dapm_sync(dapm);
+		pr_info("%s: External HS detect enabled\n", __func__);
+		return err;
 	}
-	return err;
-#endif
-
 	/* start mbhc */
 	mbhc_cfg.calibration = def_codec_mbhc_cal();
 	if (mbhc_cfg.calibration) {
