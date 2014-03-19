@@ -339,13 +339,8 @@ fail_vbif:
 	pgmn_dev->jpeg_clk, ARRAY_SIZE(jpeg_8x_clk_info), 0);
 
 fail_clk:
-	rc = regulator_disable(pgmn_dev->jpeg_fs);
-	if (!rc)
-		regulator_put(pgmn_dev->jpeg_fs);
-	else
-		JPEG_PR_ERR("%s:%d] regulator disable failed %d",
-			__func__, __LINE__, rc);
-	pgmn_dev->jpeg_fs = NULL;
+	regulator_disable(pgmn_dev->jpeg_fs);
+	regulator_put(pgmn_dev->jpeg_fs);
 
 fail_fs:
 	iounmap(jpeg_base);
