@@ -18,20 +18,3 @@
 / {
 	qcom,msm-id = <217 0x4C 0x8000>;
 };
-
-&i2c_2 {
-	tfa9890@34 {
-		compatible = "nxp,tfa9890";
-		reg = <0x34>;
-		gpios = <&pm8941_gpios 20 0>;     /* RESET */
-		tfa_vdd-supply = <&pm8941_s3>;
-		nxp,tfa_max-vol-steps = <15>;
-		nxp,tfa-dev = "left";
-	};
-};
-
-&soc {
-	sound {
-		qcom,tfa9890-left-name = "tfa9890.2-0034";
-	};
-};
