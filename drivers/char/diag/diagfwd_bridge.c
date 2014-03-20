@@ -22,9 +22,6 @@
 #ifdef CONFIG_DIAG_OVER_USB
 #include <mach/usbdiag.h>
 #endif
-#ifdef CONFIG_DIAG_OVER_TTY
-#include <mach/tty_diag.h>
-#endif
 #include "diagchar.h"
 #include "diagmem.h"
 #include "diagfwd_cntl.h"
@@ -56,13 +53,11 @@ void connect_bridge(int process_cable, uint8_t index)
 	mutex_lock(&diag_bridge[index].bridge_mutex);
 	/* If the usb cable is being connected */
 	if (process_cable) {
-		if (driver->logging_mode == USB_MODE) {
-			err = usb_diag_alloc_req(diag_bridge[index].ch,
-					N_MDM_WRITE, N_MDM_READ);
-			if (err)
-				pr_err("diag: unable to alloc USB req for ch %d err:%d\n",
-						index, err);
-		}
+		err = usb_diag_alloc_req(diag_bridge[index].ch, N_MDM_WRITE,
+			       N_MDM_READ);
+		if (err)
+			pr_err("diag: unable to alloc USB req for ch %d err:%d\n",
+							 index, err);
 
 		diag_bridge[index].usb_connected = 1;
 	}
@@ -111,8 +106,7 @@ void connect_bridge(int process_cable, uint8_t index)
 			if (diag_hsic[index].hsic_device_opened) {
 				diag_hsic[index].hsic_ch = 1;
 				/* Poll USB mdm channel to check for data */
-				if ((driver->logging_mode == USB_MODE) ||
-					(driver->logging_mode == TTY_MODE))
+				if (driver->logging_mode == USB_MODE)
 					queue_work(diag_bridge[index].wq,
 						   &diag_bridge[index].
 							diag_read_work);
@@ -145,8 +139,7 @@ int diagfwd_disconnect_bridge(int process_cable)
 
 			if (i == SMUX) {
 				if (driver->diag_smux_enabled &&
-					((driver->logging_mode == USB_MODE) ||
-					 (driver->logging_mode == TTY_MODE))) {
+					driver->logging_mode == USB_MODE) {
 					driver->in_busy_smux = 1;
 					driver->lcid = LCID_INVALID;
 					driver->smux_connected = 0;
@@ -235,15 +228,14 @@ int diagfwd_read_complete_bridge(struct diag_request *diag_read_ptr)
 	 * If there is no write of the usb mdm data on the
 	 * HSIC channel
 	 */
-	if (!diag_hsic[index].in_busy_hsic_write &&
-			(driver->logging_mode == USB_MODE))
+	if (!diag_hsic[index].in_busy_hsic_write)
 		queue_work(diag_bridge[index].wq,
 			 &diag_bridge[index].diag_read_work);
 
 	return 0;
 }
 
-void diagfwd_bridge_notifier(void *priv, unsigned event,
+static void diagfwd_bridge_notifier(void *priv, unsigned event,
 					struct diag_request *d_req)
 {
 	int index;
@@ -259,20 +251,10 @@ void diagfwd_bridge_notifier(void *priv, unsigned event,
 		break;
 	case USB_DIAG_READ_DONE:
 		index = (int)(d_req->context);
-		if (driver->logging_mode == TTY_MODE) {
-			diag_bridge[index].usb_read_ptr->buf =
-				diag_bridge[index].usb_buf_out;
-			diag_bridge[index].usb_read_ptr->length =
-				USB_MAX_OUT_BUF;
-			channel_diag_read(diag_bridge[index].ch,
-					diag_bridge[index].usb_read_ptr);
-		}
 		queue_work(diag_bridge[index].wq,
 		&diag_bridge[index].usb_read_complete_work);
 		break;
 	case USB_DIAG_WRITE_DONE:
-		if (driver->logging_mode == TTY_MODE)
-			tty_diag_channel_abandon_request();
 		index = (int)(d_req->context);
 		if (index == SMUX && driver->diag_smux_enabled)
 			diagfwd_write_complete_smux();
@@ -332,7 +314,7 @@ void diagfwd_bridge_init(int index)
 		INIT_WORK(&(diag_bridge[index].diag_read_work),
 		      diag_read_usb_hsic_work_fn);
 		if (index == HSIC_DATA_CH)
-			diag_bridge[index].ch = channel_diag_open(DIAG_MDM,
+			diag_bridge[index].ch = usb_diag_open(DIAG_MDM,
 				 (void *)index, diagfwd_bridge_notifier);
 		if (IS_ERR(diag_bridge[index].ch)) {
 			pr_err("diag: Unable to open USB MDM ch = %d\n", index);
@@ -346,9 +328,8 @@ void diagfwd_bridge_init(int index)
 #ifdef CONFIG_DIAG_OVER_USB
 		INIT_WORK(&(diag_bridge[index].diag_read_work),
 					 diag_read_usb_smux_work_fn);
-		diag_bridge[index].ch = channel_diag_open(DIAG_QSC,
-					 (void *)index,
-					 diagfwd_bridge_notifier);
+		diag_bridge[index].ch = usb_diag_open(DIAG_QSC, (void *)index,
+					     diagfwd_bridge_notifier);
 		if (IS_ERR(diag_bridge[index].ch)) {
 			pr_err("diag: Unable to open USB diag QSC channel\n");
 			goto err;
@@ -399,7 +380,7 @@ void diagfwd_bridge_exit(void)
 	for (i = 0; i < MAX_BRIDGES_DATA; i++) {
 		if (diag_bridge[i].enabled) {
 #ifdef CONFIG_DIAG_OVER_USB
-			channel_diag_close(diag_bridge[i].ch);
+			usb_diag_close(diag_bridge[i].ch);
 #endif
 			kfree(diag_bridge[i].usb_buf_out);
 			kfree(diag_bridge[i].usb_read_ptr);

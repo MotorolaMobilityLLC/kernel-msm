@@ -67,7 +67,7 @@ int wrap_enabled;
 uint16_t wrap_count;
 
 #ifdef CONFIG_DIAG_OVER_USB
-struct usb_diag_ch *channel_diag_open(const char *name, void *priv,
+static struct usb_diag_ch *channel_diag_open(const char *name, void *priv,
 			void (*notify)(void *, unsigned, struct diag_request *))
 {
 	if (driver->logging_mode == USB_MODE)
@@ -79,7 +79,7 @@ struct usb_diag_ch *channel_diag_open(const char *name, void *priv,
 	return ERR_PTR(-ENODEV);
 }
 
-void channel_diag_close(struct usb_diag_ch *ch)
+static void channel_diag_close(struct usb_diag_ch *ch)
 {
 	if (driver->logging_mode == USB_MODE) {
 		usb_diag_close(ch);
@@ -93,34 +93,24 @@ void channel_diag_close(struct usb_diag_ch *ch)
 #endif
 }
 
-int channel_diag_read(struct usb_diag_ch *ch, struct diag_request *d_req)
+static int channel_diag_read(struct usb_diag_ch *ch, struct diag_request *d_req)
 {
 	if (driver->logging_mode == USB_MODE)
 		return usb_diag_read(ch, d_req);
 #ifdef CONFIG_DIAG_OVER_TTY
-	if (driver->logging_mode == TTY_MODE) {
-		/*
-		 * Use legacy_ch instead ch to take care of both ttydiag0
-		 * and ttydiag1.
-		 */
-		return tty_diag_channel_read(driver->legacy_ch, d_req);
-	}
+	if (driver->logging_mode == TTY_MODE)
+		return tty_diag_channel_read(ch, d_req);
 #endif
 	return -1;
 }
 
-int channel_diag_write(struct usb_diag_ch *ch, struct diag_request *d_req)
+static int channel_diag_write(struct usb_diag_ch *ch, struct diag_request *d_req)
 {
 	if (driver->logging_mode == USB_MODE)
 		return usb_diag_write(ch, d_req);
 #ifdef CONFIG_DIAG_OVER_TTY
-	if (driver->logging_mode == TTY_MODE) {
-		/*
-		 * Use legacy_ch instead ch to take care of both ttydiag0
-		 * and ttydiag1
-		 */
-		return tty_diag_channel_write(driver->legacy_ch, d_req);
-	}
+	if (driver->logging_mode == TTY_MODE)
+		return tty_diag_channel_write(ch, d_req);
 #endif
 	return -1;
 }
@@ -964,7 +954,7 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 					write_ptr_mdm->length =
 					   diag_bridge[index].write_len;
 					write_ptr_mdm->context = (void *)index;
-					err = channel_diag_write(
+					err = usb_diag_write(
 					diag_bridge[index].ch, write_ptr_mdm);
 					/* Return to the pool immediately */
 					if (err) {
@@ -2033,6 +2023,9 @@ int diagfwd_read_complete(struct diag_request *diag_read_ptr)
 			else
 				queue_work(driver->diag_wq,
 						 &(driver->diag_read_work));
+		} else if (driver->logging_mode == TTY_MODE) {
+			queue_work(driver->diag_wq,
+					&(driver->diag_proc_hdlc_work));
 		}
 	}
 #ifdef CONFIG_DIAG_SDIO_PIPE
@@ -2056,7 +2049,7 @@ void diag_read_work_fn(struct work_struct *work)
 	APPEND_DEBUG('d');
 	driver->usb_read_ptr->buf = driver->usb_buf_out;
 	driver->usb_read_ptr->length = USB_MAX_OUT_BUF;
-	usb_diag_read(driver->legacy_ch, driver->usb_read_ptr);
+	channel_diag_read(driver->legacy_ch, driver->usb_read_ptr);
 	APPEND_DEBUG('e');
 }
 

@@ -278,8 +278,7 @@ static void diag_hsic_read_complete_callback(void *ctxt, char *buf,
 	 * the USB only when we are logging data to the USB
 	 */
 	if ((actual_size > 0) ||
-		((actual_size == 0) && ((driver->logging_mode == USB_MODE)
-			|| (driver->logging_mode == TTY_MODE)))) {
+		((actual_size == 0) && (driver->logging_mode == USB_MODE))) {
 		if (!buf) {
 			pr_err("diag: Out of diagmem for HSIC\n");
 		} else {
@@ -395,7 +394,7 @@ static void diag_hsic_write_complete_callback(void *ctxt, char *buf,
 		pr_err("DIAG in %s: actual_size: %d\n", __func__, actual_size);
 
 	if (diag_bridge[index].usb_connected &&
-				 driver->logging_mode == USB_MODE)
+				 (driver->logging_mode == USB_MODE))
 		queue_work(diag_bridge[index].wq,
 				 &diag_bridge[index].diag_read_work);
 }
@@ -648,7 +647,7 @@ void diag_read_usb_hsic_work_fn(struct work_struct *work)
 				 diag_bridge[index].usb_buf_out;
 		diag_bridge[index].usb_read_ptr->length = USB_MAX_OUT_BUF;
 		diag_bridge[index].usb_read_ptr->context = (void *)index;
-		channel_diag_read(diag_bridge[index].ch,
+		usb_diag_read(diag_bridge[index].ch,
 				 diag_bridge[index].usb_read_ptr);
 		APPEND_DEBUG('y');
 	}
@@ -657,8 +656,7 @@ void diag_read_usb_hsic_work_fn(struct work_struct *work)
 	 */
 
 	if (!diag_hsic[index].in_busy_hsic_read_on_device &&
-		((driver->logging_mode == USB_MODE) ||
-		(driver->logging_mode == TTY_MODE)))
+		(driver->logging_mode == USB_MODE))
 		queue_work(diag_bridge[index].wq,
 			 &(diag_bridge[index].diag_read_work));
 }

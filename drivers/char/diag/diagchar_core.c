@@ -1003,7 +1003,7 @@ int diag_switch_logging(int requested_mode)
 	} else if (temp == USB_MODE && driver->logging_mode == TTY_MODE) {
 		usb_diag_close(driver->legacy_ch);
 		driver->legacy_ch = tty_diag_channel_open(DIAG_LEGACY,
-					driver, diagfwd_bridge_notifier);
+					driver, diag_usb_legacy_notifier);
 	} else if (temp == TTY_MODE && driver->logging_mode == USB_MODE) {
 		tty_diag_channel_close(driver->legacy_ch);
 		driver->legacy_ch = usb_diag_open(DIAG_LEGACY,
