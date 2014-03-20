@@ -86,6 +86,10 @@ static int msm8974_auxpcm_rate = 8000;
 
 static void *adsp_state_notifier;
 
+static int tfa9890_left_active;
+static int tfa9890_right_active;
+static int msm8974_tfa9890_earpiece;
+
 #define ADSP_STATE_READY_TIMEOUT_MS 3000
 
 static inline int param_is_mask(int p)
@@ -155,6 +159,8 @@ struct msm8974_asoc_mach_data {
 	int mclk_gpio;
 	u32 mclk_freq;
 	int us_euro_gpio;
+	/* this gpio will be toggled in earpiece mode */
+	int tfa9890_earpiece_gpio;
 	struct msm_auxpcm_ctrl *pri_auxpcm_ctrl;
 	struct msm_auxpcm_ctrl *sec_auxpcm_ctrl;
 	struct msm_auxpcm_ctrl *quat_auxpcm_ctrl;
@@ -2217,6 +2223,190 @@ static int wm5110_acme_init(struct snd_soc_pcm_runtime *rtd)
 
 #endif
 
+static int msm8974_tfa9890_earpiece_get(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm8974_tfa9890_earpiece= %d",
+					__func__, msm8974_tfa9890_earpiece);
+
+	ucontrol->value.integer.value[0] = msm8974_tfa9890_earpiece;
+	return 0;
+}
+
+static int msm8974_tfa9890_earpiece_put(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_card *card = codec->card;
+	struct msm8974_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	pr_debug("%s() gpio %d\n", __func__, pdata->tfa9890_earpiece_gpio);
+
+	if (msm8974_tfa9890_earpiece == ucontrol->value.integer.value[0])
+		return 1;
+
+	if (!gpio_is_valid(pdata->tfa9890_earpiece_gpio)) {
+		pr_err("%s: Invalid tfa9890 earpiece gpio\n", __func__);
+		return 0;
+	}
+
+	if (!ucontrol->value.integer.value[0])
+		gpio_set_value_cansleep(pdata->tfa9890_earpiece_gpio, 0);
+	else
+		gpio_set_value_cansleep(pdata->tfa9890_earpiece_gpio, 1);
+
+	msm8974_tfa9890_earpiece = ucontrol->value.integer.value[0];
+
+	return 1;
+}
+
+static int msm_tfa9890_routing_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget_list *wlist = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
+
+	pr_debug("%s: widget name %s\n", __func__, widget->name);
+
+	if (!strncmp(widget->name, "TFA9890_RX_LEFT", 15))
+		ucontrol->value.integer.value[0] = tfa9890_left_active;
+	else if (!strncmp(widget->name, "TFA9890_RX_RIGHT", 16))
+		ucontrol->value.integer.value[0] = tfa9890_right_active;
+
+	return 0;
+}
+
+static int msm_tfa9890_routing_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget_list *wlist = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
+
+	if (ucontrol->value.integer.value[0])
+		snd_soc_dapm_mixer_update_power(widget, kcontrol, 1);
+	else
+		snd_soc_dapm_mixer_update_power(widget, kcontrol, 0);
+
+	pr_debug("%s: widget sname %s\n", __func__, widget->sname);
+	if (!strncmp(widget->name, "TFA9890_RX_LEFT", 15))
+		tfa9890_left_active = ucontrol->value.integer.value[0];
+	else if (!strncmp(widget->name, "TFA9890_RX_RIGHT", 16))
+		tfa9890_right_active = ucontrol->value.integer.value[0];
+
+	return 1;
+}
+
+/* platform controls to power up tfa9890 left and right IC's */
+static const struct snd_kcontrol_new tfa9890_rx_left_mixer_controls[] = {
+	SOC_SINGLE_EXT("TFA9890_LEFT", 0,
+		0, 1, 0, msm_tfa9890_routing_get, msm_tfa9890_routing_put),
+};
+
+static const struct snd_kcontrol_new tfa9890_rx_right_mixer_controls[] = {
+	SOC_SINGLE_EXT("TFA9890_RIGHT", 1,
+		0, 1, 0, msm_tfa9890_routing_get, msm_tfa9890_routing_put),
+
+};
+
+static const char *const tfa9890_earpiece[] = {"Off", "On"};
+static const struct soc_enum tfa9890_earpiece_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, tfa9890_earpiece),
+};
+
+/* TFA9890 codec control to turn on ear piece cutback gpio when used
+ * in earpiece mode
+*/
+static const struct snd_kcontrol_new tfa9890_earpiece_control[] = {
+	SOC_ENUM_EXT("TFA9890 earpiece mode", tfa9890_earpiece_enum[0],
+			msm8974_tfa9890_earpiece_get,
+			msm8974_tfa9890_earpiece_put),
+};
+
+/* platform widgets to help with stereo tfa9890 and to trigger tfa9890 BE DAI,
+ *  when playback streams are started.
+*/
+static const struct snd_soc_dapm_widget msm8974_tfa9890_widgets[] = {
+	SND_SOC_DAPM_AIF_OUT("TFA9890_RXL",
+			"TFA9890 Playback Left",
+			0, 0, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("TFA9890_RXR",
+			"TFA9890 Playback Right",
+			0, 0, 0, 0),
+	SND_SOC_DAPM_MIXER("TFA9890_RX_LEFT Mixer", SND_SOC_NOPM, 0, 0,
+			tfa9890_rx_left_mixer_controls,
+			ARRAY_SIZE(tfa9890_rx_left_mixer_controls)),
+	SND_SOC_DAPM_MIXER("TFA9890_RX_RIGHT Mixer", SND_SOC_NOPM, 0, 0,
+			tfa9890_rx_right_mixer_controls,
+			ARRAY_SIZE(tfa9890_rx_right_mixer_controls)),
+};
+
+static const struct snd_soc_dapm_route tfa9890_routes[] = {
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "MM_DL1"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "MM_DL2"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "MM_DL3"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "MM_DL4"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "MM_DL5"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "MM_DL6"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "MM_DL7"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "MM_DL8"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "VOIP_DL"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "CS-VOICE_DL1"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "VOICE2_DL"},
+	{ "TFA9890_RX_LEFT Mixer", "TFA9890_LEFT", "VoLTE_DL"},
+	{ "TFA9890_RXL", NULL, "TFA9890_RX_LEFT Mixer"},
+
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "MM_DL1"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "MM_DL2"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "MM_DL3"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "MM_DL4"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "MM_DL5"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "MM_DL6"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "MM_DL7"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "MM_DL8"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "VOIP_DL"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "CS-VOICE_DL1"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "VOICE2_DL"},
+	{ "TFA9890_RX_RIGHT Mixer", "TFA9890_RIGHT", "VoLTE_DL"},
+	{ "TFA9890_RXR", NULL, "TFA9890_RX_RIGHT Mixer"},
+};
+
+static int msm_tfa9890_stereo_init(struct snd_soc_pcm_runtime *rtd)
+{
+	int ret;
+	struct snd_soc_platform *platform = rtd->platform;
+	struct snd_soc_codec *codec = rtd->codec;
+
+	pr_debug("%s: adding tfa9890 stereo controls\n", __func__);
+
+	/* add platform tfa9890 stereo controls */
+	ret = snd_soc_dapm_new_controls(&platform->dapm,
+				msm8974_tfa9890_widgets,
+				ARRAY_SIZE(msm8974_tfa9890_widgets));
+
+	if (ret != 0) {
+		pr_err("%s: failed add tfa9890 stereo controls\n", __func__);
+		return ret;
+	}
+
+	ret = snd_soc_dapm_add_routes(&platform->dapm,
+				tfa9890_routes,
+				ARRAY_SIZE(tfa9890_routes));
+	if (ret != 0) {
+		pr_err("%s: failed add tfa9890 stereo routes\n", __func__);
+		return ret;
+	}
+
+	/* add tfa9890 earpiece gpio controls to codec*/
+	ret = snd_soc_add_codec_controls(codec, tfa9890_earpiece_control,
+					 ARRAY_SIZE(tfa9890_earpiece_control));
+	if (ret != 0) {
+		pr_err("%s: failed add tfa9890 stereo routes\n", __func__);
+		return ret;
+	}
+
+	return ret;
+}
+
 static struct snd_soc_ops msm8974_slimbus_2_be_ops = {
 	.startup = msm8974_snd_startup,
 	.hw_params = msm8974_slimbus_2_hw_params,
@@ -3296,6 +3486,11 @@ static struct snd_soc_dai_link msm8974_hdmi_dai_link[] = {
 static struct snd_soc_dai_link  msm8974_tfa9890_dai_link[] = {
 	/* MI2S I2S RX BACK END DAI left Link */
 	{
+		/* stream name is updated for stereo configuration
+		* to have the ability to turn ON/OFF left and right
+		* IC's independently without getting automatically
+		* turned ON by DAPM when QUAT MI2S RX is triggered
+		*/
 		.name = LPASS_BE_QUAT_MI2S_RX,
 		.stream_name = "Quaternary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
@@ -3315,16 +3510,33 @@ static struct snd_soc_dai_link  msm8974_tfa9890_dai_link[] = {
 	},
 	/* MI2S I2S RX BACK END DAI right Link */
 	{
-		.name = LPASS_BE_QUAT_MI2S_RX,
-		.stream_name = "Quaternary MI2S Playback",
+		.name = "QUAT_MI2S_RX Right",
+		.stream_name = "TFA9890 Playback Right",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "tfa9890.2-0035",
 		.codec_dai_name = "tfa9890_codec_right",
+		.init = &msm_tfa9890_stereo_init,
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ops = &msm8974_mi2s_quat_be_ops,
+		/* dai link has playback support */
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+	/* dummy QUAT MI2S RX added only for stereo configuration
+	* to avoid getting BE DAi not found error in the logs.
+	*/
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
 		/* dai link has playback support */
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
@@ -3469,7 +3681,7 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Can't allocate msm8974_asoc_mach_data\n");
 		return -ENOMEM;
 	}
-
+	pdata->tfa9890_earpiece_gpio = -EINVAL;
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, pdata);
@@ -3555,19 +3767,60 @@ static __devinit int msm8974_asoc_machine_probe(struct platform_device *pdev)
 	if (of_property_read_bool(pdev->dev.of_node, "qcom,tfa9890-stereo")) {
 		dev_info(&pdev->dev, "%s(): tfa9890 stereo support present\n",
 				__func__);
-
+		/* update stream names and codec names in the link*/
+		msm8974_tfa9890_dai_link[0].name = "QUAT_MI2S_RX Left";
 		if (of_property_read_string(pdev->dev.of_node,
 				"qcom,tfa9890-right-name",
 				&msm8974_tfa9890_dai_link[1].codec_name))
 			dev_info(&pdev->dev, "property %s not detected in node %s",
 				"qcom,tfa9890-right-name",
 				pdev->dev.of_node->full_name);
+		if (of_property_read_string(pdev->dev.of_node,
+				"qcom,tfa9890-left-dai-name",
+				&msm8974_tfa9890_dai_link[0].stream_name))
+			dev_info(&pdev->dev, "property %s not detected in node %s",
+				"qcom,tfa9890-left-dai-name",
+				pdev->dev.of_node->full_name);
+
+		if (of_property_read_string(pdev->dev.of_node,
+				"qcom,tfa9890-right-dai-name",
+				&msm8974_tfa9890_dai_link[1].stream_name))
+			dev_info(&pdev->dev, "property %s not detected in node %s",
+			"qcom,tfa9890-right-dai-name",
+			pdev->dev.of_node->full_name);
+
 
 		memcpy((msm8974_dai_tfa9890_links + card->num_links),
 			&msm8974_tfa9890_dai_link[1],
 			sizeof(msm8974_tfa9890_dai_link[1]));
 
 		card->num_links++;
+
+		memcpy((msm8974_dai_tfa9890_links + card->num_links),
+			&msm8974_tfa9890_dai_link[2],
+			sizeof(msm8974_tfa9890_dai_link[2]));
+
+		card->num_links++;
+		/* read earpiece gpio */
+		pdata->tfa9890_earpiece_gpio =
+					of_get_named_gpio(pdev->dev.of_node,
+					"qcom,tfa9890-earpiece-gpio", 0);
+		if (gpio_is_valid(pdata->tfa9890_earpiece_gpio)) {
+			ret = devm_gpio_request(&pdev->dev,
+						pdata->tfa9890_earpiece_gpio,
+						"TFA9890 earpiece gpio");
+			if (ret)
+				dev_info(card->dev,
+					"%s: Failed to request TFA9890 earpiece gpio %d error %d\n",
+					__func__,
+					pdata->tfa9890_earpiece_gpio, ret);
+			else
+				gpio_direction_output(pdata->tfa9890_earpiece_gpio, 0);
+
+		} else
+			dev_info(&pdev->dev, "property %s not detected in node %s",
+				"qcom,tfa9890-earpiece-gpio",
+				pdev->dev.of_node->full_name);
 	}
 #endif
 
