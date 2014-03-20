@@ -305,7 +305,7 @@ static ssize_t kgsl_pwrctrl_min_pwrlevel_store(struct device *dev,
 	pwr = &device->pwrctrl;
 
 	ret = kgsl_sysfs_store(buf, &level);
-	if (ret != count)
+	if (ret)
 		return ret;
 
 	kgsl_mutex_lock(&device->mutex, &device->mutex_owner);
