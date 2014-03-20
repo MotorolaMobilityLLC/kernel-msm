@@ -224,13 +224,19 @@ static inline void log_buf_wrapcnt(unsigned int cnt, uintptr_t *off)
 	*off = (*off + cnt) % ADRENO_PROFILE_LOG_BUF_SIZE_DWORDS;
 }
 
-static inline void log_buf_wrapinc(unsigned int *profile_log_buffer,
-		unsigned int **ptr)
+static inline void log_buf_wrapinc_len(unsigned int *profile_log_buffer,
+		unsigned int **ptr, unsigned int len)
 {
-	*ptr += 1;
+	*ptr += len;
 	if (*ptr >= (profile_log_buffer +
 				ADRENO_PROFILE_LOG_BUF_SIZE_DWORDS))
 		*ptr -= ADRENO_PROFILE_LOG_BUF_SIZE_DWORDS;
+}
+
+static inline void log_buf_wrapinc(unsigned int *profile_log_buffer,
+		unsigned int **ptr)
+{
+	log_buf_wrapinc_len(profile_log_buffer, ptr, 1);
 }
 
 static inline unsigned int log_buf_available(struct adreno_profile *profile,
@@ -745,7 +751,7 @@ static int _pipe_print_results(struct adreno_device *adreno_dev,
 	struct adreno_profile *profile = &adreno_dev->profile;
 	const char *grp_name;
 	char *usr_buf = ubuf;
-	unsigned int *log_ptr = NULL;
+	unsigned int *log_ptr = NULL, *tmp_log_ptr = NULL;
 	int len, i;
 	int status = 0;
 	ssize_t size, total_size = 0;
@@ -761,14 +767,28 @@ static int _pipe_print_results(struct adreno_device *adreno_dev,
 	log_ptr = profile->log_tail;
 
 	do {
+		/* store the tmp var for error cases so we can skip */
+		tmp_log_ptr = log_ptr;
+
+		/* Too many to output to pipe, so skip this data */
 		cnt = *log_ptr;
 		log_buf_wrapinc(profile->log_buffer, &log_ptr);
+
 		if (SIZE_PIPE_ENTRY(cnt) > max) {
-			status = 0;
-			goto err;
+			log_buf_wrapinc_len(profile->log_buffer,
+				&tmp_log_ptr, SIZE_PIPE_ENTRY(cnt));
+			log_ptr = tmp_log_ptr;
+			goto done;
 		}
-		if ((max - (usr_buf - ubuf)) < SIZE_PIPE_ENTRY(cnt))
-			break;
+
+		/*
+		 * Not enough space left in pipe, return without doing
+		 * anything
+		 */
+		if ((max - (usr_buf - ubuf)) < SIZE_PIPE_ENTRY(cnt)) {
+			log_ptr = tmp_log_ptr;
+			goto done;
+		}
 
 		api_type = *log_ptr;
 		api_str = get_api_type_str(api_type);
@@ -787,9 +807,13 @@ static int _pipe_print_results(struct adreno_device *adreno_dev,
 		size = simple_read_from_buffer(usr_buf,
 				max - (usr_buf - ubuf),
 				&unused, pipe_hdr_buf, len);
+
+		/* non-fatal error, so skip rest of entry and return */
 		if (size < 0) {
-			status = -EINVAL;
-			goto err;
+			log_buf_wrapinc_len(profile->log_buffer,
+				&tmp_log_ptr, SIZE_PIPE_ENTRY(cnt));
+			log_ptr = tmp_log_ptr;
+			goto done;
 		}
 
 		unused = 0;
@@ -801,10 +825,14 @@ static int _pipe_print_results(struct adreno_device *adreno_dev,
 			unsigned int end_lo, end_hi;
 
 			grp_name = adreno_perfcounter_get_name(
-					adreno_dev, *log_ptr >> 16);
+					adreno_dev, (*log_ptr >> 16) & 0xffff);
+
+			/* non-fatal error, so skip rest of entry and return */
 			if (grp_name == NULL) {
-				status = -EFAULT;
-				goto err;
+				log_buf_wrapinc_len(profile->log_buffer,
+					&tmp_log_ptr, SIZE_PIPE_ENTRY(cnt));
+				log_ptr = tmp_log_ptr;
+				goto done;
 			}
 
 			if (i == cnt - 1)
@@ -835,9 +863,13 @@ static int _pipe_print_results(struct adreno_device *adreno_dev,
 			size = simple_read_from_buffer(usr_buf,
 					max - (usr_buf - ubuf),
 					&unused, pipe_cntr_buf, len);
+
+			/* non-fatal error, so skip rest of entry and return */
 			if (size < 0) {
-				status = size;
-				goto err;
+				log_buf_wrapinc_len(profile->log_buffer,
+					&tmp_log_ptr, SIZE_PIPE_ENTRY(cnt));
+				log_ptr = tmp_log_ptr;
+				goto done;
 			}
 			unused = 0;
 			usr_buf += size;
@@ -845,8 +877,8 @@ static int _pipe_print_results(struct adreno_device *adreno_dev,
 		}
 	} while (log_ptr != profile->log_head);
 
+done:
 	status = total_size;
-err:
 	profile->log_tail = log_ptr;
 
 	return status;
