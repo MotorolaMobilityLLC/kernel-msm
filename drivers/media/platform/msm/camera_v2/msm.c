@@ -663,7 +663,6 @@ static unsigned int msm_poll(struct file *f,
 int msm_post_event(struct v4l2_event *event, int timeout)
 {
 	int rc = 0;
-	uint8_t wait_count;
 	struct video_device *vdev;
 	struct msm_session *session;
 	struct msm_v4l2_event_data *event_data =
@@ -715,18 +714,9 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 		return rc;
 	}
 
-	/* should wait on session based condition */
-	wait_count = 5;
-	do {
-		rc = wait_event_interruptible_timeout(cmd_ack->wait,
-			!list_empty_careful(&cmd_ack->command_q.list),
-			msecs_to_jiffies(timeout));
-		if (rc != -ERESTARTSYS)
-			break;
-		else
-			pr_info("%s: signal interruption, retry", __func__);
-		wait_count--;
-	} while (wait_count > 0);
+	rc = wait_event_timeout(cmd_ack->wait,
+		!list_empty_careful(&cmd_ack->command_q.list),
+		msecs_to_jiffies(timeout));
 
 	if (list_empty_careful(&cmd_ack->command_q.list)) {
 		if (!rc) {
