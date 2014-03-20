@@ -238,6 +238,7 @@
 #define KPDBL_MODULE_EN_MASK		0x80
 
 #define ATC_LED_CTRL(base)		(base + 0x4D)
+#define MAX_BACKLIGHT_SCALE		100
 
 /**
  * enum qpnp_leds - QPNP supported led ids
@@ -506,6 +507,7 @@ struct qpnp_led_data {
 };
 
 static int num_kpbl_leds_on;
+static int backlight_scale = MAX_BACKLIGHT_SCALE;
 
 static int
 qpnp_led_masked_write(struct qpnp_led_data *led, u16 addr, u8 mask, u8 val)
@@ -781,7 +783,8 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 		if (led->mpp_cfg->pwm_mode == PWM_MODE) {
 			duty_us = (led->mpp_cfg->pwm_cfg->pwm_period_us *
 					led->cdev.brightness *
-					NSEC_PER_USEC) / LED_FULL;
+					NSEC_PER_USEC) / LED_FULL *
+					backlight_scale / MAX_BACKLIGHT_SCALE;
 			pwm_disable(led->mpp_cfg->pwm_cfg->pwm_dev);
 			/*config pwm for brightness scaling*/
 			rc = pwm_config(led->mpp_cfg->pwm_cfg->pwm_dev,
@@ -2798,9 +2801,9 @@ static int __devinit qpnp_get_config_wled(struct qpnp_led_data *led,
 			if (of_property_read_string(np, "panel_name", &pname))
 				continue;
 			if (strncmp(pname_chosen, pname, len) == 0) {
-				if (of_property_read_u32(np, "version", &val))
-					led->wled_cfg->cabc_en = 1;
-				else if ((pan_ver != 0xff) && (pan_ver >= val))
+				if ((!of_property_read_u32(np, "version", &val))
+					&& ((pan_ver != 0xff)
+					&& (pan_ver >= val)))
 					led->wled_cfg->cabc_en = 1;
 				break;
 			}
@@ -2970,6 +2973,42 @@ error_get_flash_reg:
 
 }
 
+static int qpnp_get_backlight_scale(struct device_node *node)
+{
+	struct device_node *np, *panel_node;
+	const char *pname, *pname_chosen;
+	int rc;
+	int scale = MAX_BACKLIGHT_SCALE;
+
+	np = of_find_node_by_path("/chosen");
+	if (!np)
+		return MAX_BACKLIGHT_SCALE;
+
+	rc = of_property_read_string(np, "mmi,panel_name", &pname_chosen);
+	of_node_put(np);
+
+	if (rc)
+		return MAX_BACKLIGHT_SCALE;
+
+	panel_node = of_find_node_by_name(node, "mmi,panels");
+	if (!panel_node)
+		return MAX_BACKLIGHT_SCALE;
+
+	for_each_available_child_of_node(panel_node, np) {
+		if (of_property_read_string(np, "panel_name", &pname))
+			continue;
+		if (!strcmp(pname_chosen, pname)) {
+			if (of_property_read_u32(np,
+						"backlight_scale", &scale))
+				scale = MAX_BACKLIGHT_SCALE;
+			break;
+		}
+	}
+	of_node_put(panel_node);
+
+	return scale;
+}
+
 static int __devinit qpnp_get_config_pwm(struct pwm_config_data *pwm_cfg,
 				struct spmi_device *spmi_dev,
 				struct device_node *node)
@@ -2992,6 +3031,9 @@ static int __devinit qpnp_get_config_pwm(struct pwm_config_data *pwm_cfg,
 		else
 			return rc;
 	}
+
+	backlight_scale = qpnp_get_backlight_scale(node);
+	pr_debug("backlight_scale = %d", backlight_scale);
 
 	pwm_cfg->use_blink =
 		of_property_read_bool(node, "qcom,use-blink");
