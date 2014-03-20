@@ -237,14 +237,6 @@ struct diag_client_map {
 	int pid;
 };
 
-struct diag_nrt_wake_lock {
-	int enabled;
-	int ref_count;
-	int copy_count;
-	struct wake_lock read_lock;
-	spinlock_t read_spinlock;
-};
-
 struct real_time_vote_t {
 	uint16_t proc;
 	uint8_t real_time_vote;
@@ -289,8 +281,6 @@ struct diag_smd_info {
 
 	struct diag_request *write_ptr_1;
 	struct diag_request *write_ptr_2;
-
-	struct diag_nrt_wake_lock nrt_lock;
 
 	struct workqueue_struct *wq;
 
@@ -471,6 +461,10 @@ struct diagchar_dev {
 #ifdef CONFIG_DIAG_EXTENSION
 	struct list_head addon_list;
 #endif
+	/* Wakeup source related variables */
+	spinlock_t ws_lock;
+	int ws_ref_count;
+	int copy_count;
 };
 
 extern struct diag_bridge_dev *diag_bridge;
