@@ -25,6 +25,12 @@ DEFINE_MSM_MUTEX(imx135_mut);
 
 static struct msm_sensor_ctrl_t imx135_s_ctrl;
 
+#define IMX135_EEPROM_I2C_ADDR 0xA0
+#define IMX135_EEPROM_PAGE_SIZE 256
+#define IMX135_EEPROM_NUM_PAGES 8
+#define IMX135_EEPROM_SIZE   (IMX135_EEPROM_NUM_PAGES * IMX135_EEPROM_PAGE_SIZE)
+static bool eeprom_read;
+
 static struct regulator *imx135_cam_vdd;
 static struct regulator *imx135_cam_vddio;
 static struct regulator *imx135_cam_vaf;
@@ -105,6 +111,16 @@ static int32_t imx135_platform_probe(struct platform_device *pdev)
 				== true)
 			imx135_devboard_config = true;
 
+		imx135_s_ctrl.sensor_otp.otp_info = devm_kzalloc(&pdev->dev,
+				IMX135_EEPROM_SIZE, GFP_KERNEL);
+		if (imx135_s_ctrl.sensor_otp.otp_info == NULL) {
+			pr_err("%s: Unable to allocate memory for EEPROM!\n",
+					__func__);
+			return -ENOMEM;
+		}
+
+		imx135_s_ctrl.sensor_otp.size = IMX135_EEPROM_SIZE;
+
 		rc = msm_sensor_platform_probe(pdev, match->data);
 	} else {
 		pr_err("%s: Failed to match device tree!\n", __func__);
@@ -112,6 +128,52 @@ static int32_t imx135_platform_probe(struct platform_device *pdev)
 	}
 
 	return rc;
+}
+
+static void imx135_read_eeprom(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	int i;
+	uint16_t eeprom_slave_addr;
+	uint8_t *eeprom_ptr;
+	uint16_t cam_slave_addr =
+		s_ctrl->sensordata->slave_info->sensor_slave_addr;
+	int cam_addr_type = s_ctrl->sensor_i2c_client->addr_type;
+
+	if (eeprom_read)
+		return;
+
+	s_ctrl->sensor_i2c_client->addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+	eeprom_ptr = s_ctrl->sensor_otp.otp_info;
+
+	for (i = 0; i < IMX135_EEPROM_NUM_PAGES; i++) {
+		eeprom_slave_addr = IMX135_EEPROM_I2C_ADDR + i * 2;
+		s_ctrl->sensordata->slave_info->sensor_slave_addr =
+			eeprom_slave_addr;
+		s_ctrl->sensor_i2c_client->cci_client->sid =
+			(eeprom_slave_addr >> 1);
+
+		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read_seq(
+				s_ctrl->sensor_i2c_client,
+				0x00,
+				eeprom_ptr,
+				IMX135_EEPROM_PAGE_SIZE);
+		if (rc < 0) {
+			pr_err("%s: Unable to read page: %d, status %d\n",
+					__func__, i, rc);
+			goto exit;
+		}
+		eeprom_ptr += IMX135_EEPROM_PAGE_SIZE;
+	}
+
+	eeprom_read = true;
+
+exit:
+	/* Restore sensor defaults */
+	s_ctrl->sensordata->slave_info->sensor_slave_addr = cam_slave_addr;
+	s_ctrl->sensor_i2c_client->cci_client->sid = (cam_slave_addr >> 1);
+	s_ctrl->sensor_i2c_client->addr_type = cam_addr_type;
+	return;
 }
 
 static int32_t imx135_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
@@ -149,6 +211,7 @@ check_chipid:
 		return -ENODEV;
 	}
 
+	imx135_read_eeprom(s_ctrl);
 	pr_info("%s: success with slave addr 0x%x!\n", __func__,
 			s_ctrl->sensor_i2c_client->cci_client->sid);
 	return rc;
@@ -554,6 +617,12 @@ power_up_done:
 	return rc;
 }
 
+static int32_t imx135_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	/* Place holder so that data is transferred to user space */
+	return 0;
+}
+
 static int __init imx135_init_module(void)
 {
 	int32_t rc = 0;
@@ -582,6 +651,7 @@ static struct msm_sensor_fn_t imx135_func_tbl = {
 	.sensor_power_up = imx135_sensor_power_up,
 	.sensor_power_down = imx135_sensor_power_down,
 	.sensor_match_id = imx135_sensor_match_id,
+	.sensor_get_module_info = imx135_get_module_info,
 };
 
 static struct msm_sensor_ctrl_t imx135_s_ctrl = {
