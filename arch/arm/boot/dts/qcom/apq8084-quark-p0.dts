@@ -20,7 +20,8 @@
 	compatible = "qcom,apq8084-quark",
 		   "qcom,apq8084-moto",
 		   "qcom,apq8084";
-	qcom,msm-id = <178 0x42 0x8000>;
+	qcom,msm-id = <178 0x42 0x8000>,
+		  <178 0x44 0x8000>; /* MAXX */
 };
 
 &soc {
