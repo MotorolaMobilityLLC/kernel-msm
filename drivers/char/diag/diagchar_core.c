@@ -2318,26 +2318,30 @@ static ssize_t diag_logging_mode_store(struct device *dev,
 		struct device_attribute *attr, const char *buff, size_t size)
 {
 	char buf[256], *b;
+	int req_mode = 0;
 
 	strlcpy(buf, buff, sizeof(buf));
 	b = strim(buf);
 
 	if (strlen(b)) {
 		if (!strcmp(b, MEMORY_DEVICE_MODE_NAME))
-			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)MEMORY_DEVICE_MODE);
+			req_mode = MEMORY_DEVICE_MODE;
 		else if (!strcmp(b, NO_LOGGING_MODE_NAME))
-			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)NO_LOGGING_MODE);
+			req_mode = NO_LOGGING_MODE;
 		else if (!strcmp(b, UART_MODE_NAME))
-			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)UART_MODE);
+			req_mode = UART_MODE;
 #ifdef CONFIG_DIAG_OVER_USB
 		else if (!strcmp(b, USB_MODE_NAME))
-			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)USB_MODE);
+			req_mode = USB_MODE;
 #endif
 #ifdef CONFIG_DIAG_OVER_TTY
 		else if (!strcmp(b, TTY_MODE_NAME))
-			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)TTY_MODE);
+			req_mode = TTY_MODE;
 #endif
 	}
+
+	if (req_mode)
+		diag_switch_logging(req_mode);
 
 	return size;
 }
