@@ -1431,6 +1431,23 @@ static struct msm_gpiomux_config c55_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting tmp108_irq_gpio_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config tmp108_configs[] __initdata = {
+	{
+		.gpio = 60,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &tmp108_irq_gpio_cfg,
+			[GPIOMUX_SUSPENDED] = &tmp108_irq_gpio_cfg,
+		},
+	}
+};
+
 void __init apq8084_moto_init_gpiomux(void)
 {
 	int rc;
@@ -1506,6 +1523,8 @@ void __init apq8084_moto_init_gpiomux(void)
 
 	msm_gpiomux_install(c55_i2s_configs, ARRAY_SIZE(c55_i2s_configs));
 	msm_gpiomux_install(c55_configs, ARRAY_SIZE(c55_configs));
+
+	msm_gpiomux_install(tmp108_configs, ARRAY_SIZE(tmp108_configs));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())
