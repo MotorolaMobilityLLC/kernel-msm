@@ -33,6 +33,11 @@
 	regulator-min-microvolt = <3300000>;
 	regulator-max-microvolt = <3300000>;
 	qcom,init-voltage = <3300000>;
+	/delete-property/ regulator-always-on;
+};
+
+&pma8084_lvs3 {
+	/delete-property/ regulator-always-on;
 };
 
 &mdss_fb0 {
