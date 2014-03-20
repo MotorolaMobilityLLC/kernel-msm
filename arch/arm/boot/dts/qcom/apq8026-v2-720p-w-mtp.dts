@@ -20,3 +20,11 @@
 	compatible = "qcom,apq8026-mtp", "qcom,apq8026", "qcom,mtp";
 	qcom,board-id = <8 4>;
 };
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
+};
+
+&dsi_nt35590_qvga_cmd {
+	qcom,cont-splash-enabled;
+};

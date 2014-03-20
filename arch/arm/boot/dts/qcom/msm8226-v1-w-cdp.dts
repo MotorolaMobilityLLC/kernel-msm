@@ -19,3 +19,11 @@
 	compatible = "qcom,msm8226-cdp", "qcom,msm8226", "qcom,cdp";
 	qcom,board-id = <1 4>;
 };
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_nt35590_qvga_cmd>;
+};
+
+&dsi_nt35590_qvga_cmd {
+	qcom,cont-splash-enabled;
+};
