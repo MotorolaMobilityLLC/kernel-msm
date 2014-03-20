@@ -472,8 +472,7 @@ int get_ic_info(struct synaptics_ts_data* ts, struct touch_fw_info* fw_info)
 	u8 device_status = 0;
 	u8 flash_control = 0;
 
-	if (read_page_description_table(ts->client) < 0)
-		return -EIO;
+	read_page_description_table(ts->client);
 
 	memset(fw_info, 0, sizeof(fw_info));
 
