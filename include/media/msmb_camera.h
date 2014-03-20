@@ -61,6 +61,8 @@
 #define MSM_CAMERA_SUBDEV_OIS          15
 #define MSM_CAMERA_SUBDEV_FLASH        16
 
+#define MSM_CAMERA_SUBDEV_CCI_INTF     20
+
 #define MSM_MAX_CAMERA_SENSORS  5
 
 /* The below macro is defined to put an upper limit on maximum
