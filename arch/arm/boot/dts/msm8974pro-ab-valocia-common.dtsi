@@ -50,6 +50,18 @@
 	qcom,otg-capability;
 };
 
+&pm8941_gpios {
+	gpio@c500 { /* GPIO 6 */
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,out-strength = <1>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
+	};
+};
+
 &cci {
 
 	qcom,camera@6e {
@@ -103,8 +115,17 @@
 		gpios = <&pm8941_gpios 20 0>;     /* RESET */
 		tfa_vdd-supply = <&pm8941_s3>;
 		nxp,tfa_max-vol-steps = <15>;
+		nxp,tfa-dev = "right";
+	};
+
+	tfa9890@35 {
+		compatible = "nxp,tfa9890";
+		reg = <0x35>;
+		tfa_vdd-supply = <&pm8941_s3>;
+		nxp,tfa_max-vol-steps = <15>;
 		nxp,tfa-dev = "left";
 	};
+
 };
 
 &soc {
@@ -113,7 +134,12 @@
 		qcom,quat-auxpcm-gpio-ws =  <&msmgpio 59 0>;
 		qcom,quat-auxpcm-gpio-dout = <&msmgpio 61 0>;
 		qcom,quat-auxpcm-gpio-din = <&msmgpio 60 0>;
-		qcom,tfa9890-left-name = "tfa9890.2-0034";
+		qcom,tfa9890-stereo;
+		qcom,tfa9890-left-name = "tfa9890.2-0035";
+		qcom,tfa9890-right-name = "tfa9890.2-0034";
+		qcom,tfa9890-left-dai-name = "TFA9890 Playback Left";
+		qcom,tfa9890-right-dai-name = "TFA9890 Playback Right";
+		qcom,tfa9890-earpiece-gpio = <&pm8941_gpios 6 0x0>;
 		qcom,model = "msm8974-taiko-tfa9890_codec-snd-card";
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
