@@ -22,3 +22,9 @@
 		   "qcom,apq8084";
 	qcom,msm-id = <178 0x42 0x8000>;
 };
+
+&soc {
+	sound {
+		qcom,ext_hs_detect = "tpa6165";
+	};
+};
