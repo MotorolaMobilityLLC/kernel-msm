@@ -14,6 +14,17 @@
 #include "dsi-panel-mot-dummy-qhd-video.dtsi"
 #include "dsi-panel-mot-smd-QHD-cmd.dtsi"
 
+/ {
+	model = "Motorola APQ 8084 Quark";
+	compatible = "qcom,apq8084-quark",
+		   "qcom,apq8084-moto",
+		   "qcom,apq8084";
+};
+
+&pcie0 {
+	vreg-0.9-supply = <&pma8084_l3>;
+};
+
 &pma8084_l22 {
 	regulator-always-on;
 };
@@ -47,4 +58,10 @@
 	qcom,dsi-pref-prim-pan = <&mot_smd_QHD_1_cmd_v0>;
 	/delete-property/ vdd-supply;
 	/delete-node/ qcom,platform-supply-entry1;
+};
+
+&soc {
+	sound {
+		qcom,ext_hs_detect = "tpa6165";
+	};
 };

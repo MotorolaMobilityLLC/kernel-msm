@@ -130,7 +130,8 @@ endif
 
 dtb-$(CONFIG_ARCH_APQ8084) += apq8084-lexington-p0.dtb \
 	apq8084-lexington-p1a.dtb \
-	apq8084-quark-p0.dtb
+	apq8084-quark-p0.dtb \
+	apq8084-quark-p1.dtb
 
 ifeq ($(CONFIG_MMI_DEVICE_DTBS),y)
 # Add 1k of padding to the DTBs to allow for environment variables
