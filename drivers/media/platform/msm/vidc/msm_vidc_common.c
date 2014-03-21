@@ -2264,7 +2264,7 @@ static int msm_vidc_load_resources(int flipped_state,
 		msm_vidc_print_running_insts(core);
 		inst->state = MSM_VIDC_CORE_INVALID;
 		msm_comm_kill_session(inst);
-		return -ENOMEM;
+		return -EBUSY;
 	}
 
 	hdev = core->device;
