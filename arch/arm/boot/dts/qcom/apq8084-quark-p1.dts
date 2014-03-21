@@ -16,10 +16,6 @@
 #include "apq8084-quark.dtsi"
 
 / {
-	qcom,msm-id = <178 0x42 0x8000>,
-		  <178 0x44 0x8000>; /* MAXX */
-};
-
-&pcie0 {
-	vreg-0.9-supply = <&pma8084_l4>;
+	qcom,msm-id = <178 0x42 0x8100>,
+		  <178 0x44 0x8100>; /* MAXX */
 };
