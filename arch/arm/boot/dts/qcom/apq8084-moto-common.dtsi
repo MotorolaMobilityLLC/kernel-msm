@@ -681,11 +681,11 @@
 
 &i2c_0 {
 	smb1357_otg_vreg: smb1357-charger@1c {
-		compatible = "qcom,smb1357-charger";
+		compatible = "qcom,smb1359-charger";
 		reg = <0x1c>;
 		interrupt-parent = <&spmi_bus>;
 		interrupts = <0x0 0xcd 0x0>;	/* PMA8084 GPIO 14 */
-		qcom,float-voltage-mv = <4200>;
+		qcom,float-voltage-mv = <4350>;
 		qcom,charging-timeout = <1536>;
 		qcom,recharge-thresh-mv = <200>;
 		qcom,iterm-ma = <100>;
