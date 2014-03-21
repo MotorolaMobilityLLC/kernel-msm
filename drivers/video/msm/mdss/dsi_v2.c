@@ -383,7 +383,6 @@ int dsi_parse_vreg(struct device *dev, struct dss_module_power *mp,
 					__func__, rc);
 			}
 			mp->vreg_config[i].post_off_sleep = (!rc ? tmp : 0);
-			mp->vreg_config[i].boot_on = mp->boot_on;
 
 			pr_debug("%s: %s min=%d, max=%d, enable=%d, disable=%d, preonsleep=%d, postonsleep=%d, preoffsleep=%d, postoffsleep=%d\n",
 				__func__,

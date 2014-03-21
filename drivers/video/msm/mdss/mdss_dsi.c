@@ -239,8 +239,6 @@ int mdss_dsi_get_dt_vreg_data(struct device *dev,
 			}
 			mp->vreg_config[i].post_off_sleep = (!rc ? tmp : 0);
 
-			mp->vreg_config[i].boot_on = mp->boot_on;
-
 			pr_debug("%s: %s min=%d, max=%d, enable=%d, disable=%d, preonsleep=%d, postonsleep=%d, preoffsleep=%d, postoffsleep=%d\n",
 				__func__,
 				mp->vreg_config[i].vreg_name,
@@ -1275,8 +1273,6 @@ static int __devinit mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		pr_err("%s: can't find panel node %s\n", __func__, panel_cfg);
 		goto error_pan_node;
 	}
-
-	mdss_panel_set_reg_boot_on(dsi_pan_node, ctrl_pdata);
 
 	/* Parse the regulator information */
 	rc = mdss_dsi_get_dt_vreg_data(&pdev->dev,
