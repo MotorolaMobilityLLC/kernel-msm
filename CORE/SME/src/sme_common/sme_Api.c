@@ -9597,13 +9597,14 @@ VOS_STATUS sme_SendTdlsLinkEstablishParams(tHalHandle hHal,
     \param frame_type - Type of TDLS mgmt frame to be sent.
     \param dialog - dialog token used in the frame.
     \param status - status to be incuded in the frame.
+    \param peerCapability - peer cpabilities
     \param buf - additional IEs to be included
     \param len - lenght of additional Ies
     \param responder - Tdls request type
     \- return VOS_STATUS_SUCCES
     -------------------------------------------------------------------------*/
 VOS_STATUS sme_SendTdlsMgmtFrame(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac,
-      tANI_U8 frame_type, tANI_U8 dialog, tANI_U16 statusCode, tANI_U8 *buf, tANI_U8 len, tANI_U8 responder)
+      tANI_U8 frame_type, tANI_U8 dialog, tANI_U16 statusCode, tANI_U32 peerCapability, tANI_U8 *buf, tANI_U8 len, tANI_U8 responder)
 {
     eHalStatus          status    = eHAL_STATUS_SUCCESS;
     tCsrTdlsSendMgmt sendTdlsReq = {{0}} ;
@@ -9619,6 +9620,7 @@ VOS_STATUS sme_SendTdlsMgmtFrame(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr
         sendTdlsReq.dialog = dialog;
         sendTdlsReq.statusCode = statusCode;
         sendTdlsReq.responder = responder;
+        sendTdlsReq.peerCapability = peerCapability;
 
         status = csrTdlsSendMgmtReq(hHal, sessionId, &sendTdlsReq) ;
 

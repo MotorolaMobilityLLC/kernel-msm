@@ -211,7 +211,7 @@ static v_VOID_t wlan_hdd_tdls_discover_peer_cb( v_PVOID_t userData )
                                                   pHddTdlsCtx->pAdapter->sessionId,
                                                   curr_peer->peerMac,
                                                   WLAN_TDLS_DISCOVERY_REQUEST,
-                                                  1, 0, NULL, 0, 0);
+                                                  1, 0, 0, NULL, 0, 0);
                             curr_peer->discovery_attempt++;
                         }
                         else

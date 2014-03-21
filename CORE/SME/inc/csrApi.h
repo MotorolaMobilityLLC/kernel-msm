@@ -1389,6 +1389,7 @@ typedef struct tagCsrTdlsSendMgmt
         tANI_U8 dialog;
         tANI_U16 statusCode;
         tANI_U8 responder;
+        tANI_U32 peerCapability;
         tANI_U8 *buf;
         tANI_U8 len;
 
