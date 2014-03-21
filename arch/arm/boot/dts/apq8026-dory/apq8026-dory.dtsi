@@ -133,3 +133,15 @@
 	qcom,memblock-remove = <0x0d900000 0x1c00000
 				0x0fa00000 0x500000>; /* Address and size of the hole */
 };
+
+&secure_mem {
+	reg = <0 0x1000>;
+};
+
+&qsecom_mem {
+	reg = <0 0x1000>;
+};
+
+&fb_mem {
+	reg = <0 0x200000>;
+};
