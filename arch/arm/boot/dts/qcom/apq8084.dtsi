@@ -349,25 +349,14 @@
 	qcom,vpu@fde0b000 {
 		compatible = "qcom,vpu";
 		reg = <0xfde0b000 0x1000>,
-			<0x0f800000 0x200000>;
-		reg-names = "vpu_csr", "vpu_smem";
+			<0x0f800000 0x200000>,
+			<0xfdee0000 0x1000>;
+		reg-names = "vpu_csr", "vpu_smem", "vpu_vbif";
 		interrupts = <0 24 0>, <0 26 0>;
 		interrupt-names = "vpu_wdog", "vpu_hfi";
 		qcom,clock-names = "vdp_bus_clk", "core_clk", "vdp_clk",
 			"iface_clk", "bus_clk", "sleep_clk", "cxo_clk",
 			"maple_bus_clk", "prng_clk";
-		qcom,maple-clk-load-freq-tbl = <100000 50000000>,
-			<200000 100000000>,
-			<300000 200000000>,
-			<400000 320000000>,
-			<500000 400000000>;
-		qcom,vdp-clk-load-freq-tbl = <100000 50000000>,
-			<200000 100000000>,
-			<300000 200000000>,
-			<400000 320000000>,
-			<500000 400000000>;
-		qcom,bus-clk-load-freq-tbl = <100000 40000000>,
-			<200000 80000000>;
 		qcom,bus-load-vector-tbl = <0 0 0>,
 			<36000  208000  303000>,
 			<110400 536000  303000>,
@@ -376,6 +365,13 @@
 			<783360 3240000 970000>,
 			<979200 4048000 1212000>,
 			<9792000 4264000 1279000>;
+		qcom,vbif-reg-presets = <0x00b0 0x10101010>,
+			<0x00b4 0x00001010>,
+			<0x00b8 0x00000000>,
+			<0x00c0 0x00000000>,
+			<0x00c4 0x10100000>,
+			<0x00c8 0x00101010>,
+			<0x0124 0x00000003>;
 		qcom,enabled-iommu-maps = "vpu_nonsecure", "vpu_secure";
 		vdd-supply = <&gdsc_vpu>;
 	};
@@ -563,6 +559,13 @@
 
 		qcom,msi-gicm-addr = <0xf9040040>;
 		qcom,msi-gicm-base = <0x160>;
+
+		qcom,msm-bus,name = "pcie0";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<45 512 0 0>,
+				<45 512 500 800>;
 	};
 
 	pcie1: qcom,pcie@fc528000 {
@@ -3647,6 +3650,15 @@
 		reg-names = "ramdump";
 		wlan-en-gpio = <&msmgpio 82 0>;
 		vdd-wlan-supply = <&wlan_vreg>;
+
+		qcom,msm-bus,name = "msm-cnss";
+		qcom,msm-bus,num-cases = <4>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+					  <45 512 0 0>,           /* No vote */
+					  <45 512 6250 200000>,   /* 50 Mbps */
+					  <45 512 25000 200000>,  /* 200 Mbps */
+					  <45 512 100000 200000>; /* 800 Mbps */
 	};
 };
 
