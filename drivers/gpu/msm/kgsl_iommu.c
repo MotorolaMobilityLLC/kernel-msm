@@ -1676,36 +1676,18 @@ done:
 	return status;
 }
 
-static int
-kgsl_iommu_unmap(struct kgsl_pagetable *pt,
-		struct kgsl_memdesc *memdesc,
-		unsigned int *tlb_flags)
+/*
+ * kgsl_iommu_flush_tlb_pt_current - Flush IOMMU TLB if pagetable is
+ * currently used by GPU.
+ * @pt - Pointer to kgsl pagetable structure
+ *
+ * Return - void
+ */
+static void kgsl_iommu_flush_tlb_pt_current(struct kgsl_pagetable *pt)
 {
-	int ret = 0, lock_taken = 0;
-	unsigned int range = memdesc->size;
-	struct kgsl_iommu_pt *iommu_pt = pt->priv;
+	int lock_taken = 0;
 	struct kgsl_device *device = pt->mmu->device;
 	struct kgsl_iommu *iommu = pt->mmu->priv;
-
-	/* All GPU addresses as assigned are page aligned, but some
-	   functions purturb the gpuaddr with an offset, so apply the
-	   mask here to make sure we have the right address */
-
-	unsigned int gpuaddr = PAGE_ALIGN(memdesc->gpuaddr);
-
-	if (range == 0 || gpuaddr == 0)
-		return 0;
-
-	if (kgsl_memdesc_has_guard_page(memdesc))
-		range += PAGE_SIZE;
-
-	ret = iommu_unmap_range(iommu_pt->domain, gpuaddr, range);
-	if (ret) {
-		KGSL_CORE_ERR("iommu_unmap_range(%p, %x, %d) failed "
-			"with err: %d\n", iommu_pt->domain, gpuaddr,
-			range, ret);
-		return ret;
-	}
 
 	/*
 	 * Check to see if the current thread already holds the device mutex.
@@ -1727,6 +1709,38 @@ kgsl_iommu_unmap(struct kgsl_pagetable *pt,
 
 	if (lock_taken)
 		kgsl_mutex_unlock(&device->mutex, &device->mutex_owner);
+}
+
+static int
+kgsl_iommu_unmap(struct kgsl_pagetable *pt,
+		struct kgsl_memdesc *memdesc,
+		unsigned int *tlb_flags)
+{
+	int ret = 0;
+	unsigned int range = memdesc->size;
+	struct kgsl_iommu_pt *iommu_pt = pt->priv;
+
+	/* All GPU addresses as assigned are page aligned, but some
+	   functions purturb the gpuaddr with an offset, so apply the
+	   mask here to make sure we have the right address */
+
+	unsigned int gpuaddr = PAGE_ALIGN(memdesc->gpuaddr);
+
+	if (range == 0 || gpuaddr == 0)
+		return 0;
+
+	if (kgsl_memdesc_has_guard_page(memdesc))
+		range += PAGE_SIZE;
+
+	ret = iommu_unmap_range(iommu_pt->domain, gpuaddr, range);
+	if (ret) {
+		KGSL_CORE_ERR("iommu_unmap_range(%p, %x, %d) failed "
+			"with err: %d\n", iommu_pt->domain, gpuaddr,
+			range, ret);
+		return ret;
+	}
+
+	kgsl_iommu_flush_tlb_pt_current(pt);
 
 	return ret;
 }
@@ -1741,6 +1755,8 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 	struct kgsl_iommu_pt *iommu_pt = pt->priv;
 	size_t size = memdesc->size;
 	unsigned int protflags;
+	struct kgsl_device *device = pt->mmu->device;
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
 	BUG_ON(NULL == iommu_pt);
 
@@ -1773,6 +1789,23 @@ kgsl_iommu_map(struct kgsl_pagetable *pt,
 					  size);
 		}
 	}
+
+	/*
+	 *  IOMMU V1 BFBs pre-fetch data beyond what is being used by the core.
+	 *  This can include both allocated pages and un-allocated pages.
+	 *  If an un-allocated page is cached, and later used (if it has been
+	 *  newly dynamically allocated by SW) the SMMU HW should automatically
+	 *  re-fetch the pages from memory (rather than using the cached
+	 *  un-allocated page). This logic is known as the re-fetch logic.
+	 *  In current chips we suspect this re-fetch logic is broken,
+	 *  it can result in bad translations which can either cause downstream
+	 *  bus errors, or upstream cores being hung (because of garbage data
+	 *  being read) -> causing TLB sync stuck issues. As a result SW must
+	 *  implement the invalidate+map.
+	 */
+	if (adreno_dev->features & IOMMU_FLUSH_TLB_ON_MAP)
+		kgsl_iommu_flush_tlb_pt_current(pt);
+
 	return ret;
 }
 
