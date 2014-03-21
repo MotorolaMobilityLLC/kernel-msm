@@ -79,12 +79,7 @@ void g_pet_watchdog(void);
 #define pet_watchdog(void) g_pet_watchdog(void);
 void msm_watchdog_reset(unsigned int timeout);
 #else
-#ifdef CONFIG_MSM_WATCHDOG
-void pet_watchdog(void);
-void msm_watchdog_reset(unsigned int timeout);
-#else
 static inline void pet_watchdog(void) { }
 static inline void msm_watchdog_reset(unsigned int timeout) { }
-#endif
 #endif
 #endif
