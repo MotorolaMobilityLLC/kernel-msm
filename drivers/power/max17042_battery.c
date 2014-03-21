@@ -68,7 +68,24 @@
 #define MAX17042_IC_VERSION	0x0092
 #define MAX17047_IC_VERSION	0x00AC	/* same for max17050 */
 
-#define INIT_DATA_PROPERTY	"maxim,regs-init-data"
+#define INIT_DATA_PROPERTY		"maxim,regs-init-data"
+#define CONFIG_NODE			"maxim,configuration"
+#define CONFIG_PROPERTY			"config"
+#define FULL_SOC_THRESH_PROPERTY	"full_soc_thresh"
+#define DESIGN_CAP_PROPERTY		"design_cap"
+#define ICHGT_TERM_PROPERTY		"ichgt_term"
+#define LEARN_CFG_PROPERTY		"learn_cfg"
+#define FILTER_CFG_PROPERTY		"filter_cfg"
+#define RELAX_CFG_PROPERTY		"relax_cfg"
+#define FULLCAP_PROPERTY		"fullcap"
+#define FULLCAPNOM_PROPERTY		"fullcapnom"
+#define QRTBL00_PROPERTY		"qrtbl00"
+#define QRTBL10_PROPERTY		"qrtbl10"
+#define QRTBL20_PROPERTY		"qrtbl20"
+#define QRTBL30_PROPERTY		"qrtbl30"
+#define RCOMP0_PROPERTY			"rcomp0"
+#define TCOMPC0_PROPERTY		"tcompc0"
+#define CELL_CHAR_TBL_PROPERTY		"maxim,cell-char-tbl"
 
 struct max17042_chip {
 	struct i2c_client *client;
@@ -843,6 +860,107 @@ max17042_get_init_data(struct device *dev, int *num_init_data)
 	return init_data;
 }
 
+static int max17042_get_cell_char_tbl(struct device *dev,
+				      struct device_node *np,
+				      struct max17042_config_data *config_data)
+{
+	const __be16 *property;
+	int i, lenp;
+
+	property = of_get_property(np, CELL_CHAR_TBL_PROPERTY, &lenp);
+	if (!property)
+		return -ENODEV ;
+
+	if (lenp != sizeof(*property) * MAX17042_CHARACTERIZATION_DATA_SIZE) {
+		dev_err(dev, "%s must have %d cells\n", CELL_CHAR_TBL_PROPERTY,
+			MAX17042_CHARACTERIZATION_DATA_SIZE);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < MAX17042_CHARACTERIZATION_DATA_SIZE; i++)
+		config_data->cell_char_tbl[i] = be16_to_cpu(property[i]);
+
+	return 0;
+}
+
+static int max17042_cfg_rqrd_prop(struct device *dev,
+				  struct device_node *np,
+				  struct max17042_config_data *config_data)
+{
+	if (of_property_read_u16(np, CONFIG_PROPERTY,
+				 &config_data->config))
+		return -EINVAL;
+	if (of_property_read_u16(np, FILTER_CFG_PROPERTY,
+				 &config_data->filter_cfg))
+		return -EINVAL;
+	if (of_property_read_u16(np, RELAX_CFG_PROPERTY,
+				 &config_data->relax_cfg))
+		return -EINVAL;
+	if (of_property_read_u16(np, LEARN_CFG_PROPERTY,
+				 &config_data->learn_cfg))
+		return -EINVAL;
+	if (of_property_read_u16(np, FULL_SOC_THRESH_PROPERTY,
+				 &config_data->full_soc_thresh))
+		return -EINVAL;
+	if (of_property_read_u16(np, RCOMP0_PROPERTY,
+				 &config_data->rcomp0))
+		return -EINVAL;
+	if (of_property_read_u16(np, TCOMPC0_PROPERTY,
+				 &config_data->tcompc0))
+		return -EINVAL;
+	if (of_property_read_u16(np, ICHGT_TERM_PROPERTY,
+				 &config_data->ichgt_term))
+		return -EINVAL;
+	if (of_property_read_u16(np, QRTBL00_PROPERTY,
+				 &config_data->qrtbl00))
+		return -EINVAL;
+	if (of_property_read_u16(np, QRTBL10_PROPERTY,
+				 &config_data->qrtbl10))
+		return -EINVAL;
+	if (of_property_read_u16(np, QRTBL20_PROPERTY,
+				 &config_data->qrtbl20))
+		return -EINVAL;
+	if (of_property_read_u16(np, QRTBL30_PROPERTY,
+				 &config_data->qrtbl30))
+		return -EINVAL;
+	if (of_property_read_u16(np, FULLCAP_PROPERTY,
+				 &config_data->fullcap))
+		return -EINVAL;
+	if (of_property_read_u16(np, DESIGN_CAP_PROPERTY,
+				 &config_data->design_cap))
+		return -EINVAL;
+	if (of_property_read_u16(np, FULLCAPNOM_PROPERTY,
+				 &config_data->fullcapnom))
+		return -EINVAL;
+
+	return max17042_get_cell_char_tbl(dev, np, config_data);
+}
+
+static struct max17042_config_data *
+max17042_get_config_data(struct device *dev)
+{
+	struct max17042_config_data *config_data;
+	struct device_node *np = dev->of_node;
+
+	if (!np)
+		return NULL;
+
+	np = of_get_child_by_name(np, CONFIG_NODE);
+	if (!np)
+		return NULL;
+
+	config_data = devm_kzalloc(dev, sizeof(*config_data), GFP_KERNEL);
+	if (!config_data)
+		return NULL;
+
+	if (max17042_cfg_rqrd_prop(dev, np, config_data)) {
+		devm_kfree(dev, config_data);
+		return NULL;
+	}
+
+	return config_data;
+}
+
 static struct max17042_platform_data *
 max17042_get_pdata(struct device *dev)
 {
@@ -869,8 +987,15 @@ max17042_get_pdata(struct device *dev)
 		pdata->enable_current_sense = true;
 	}
 
+	pdata->enable_por_init =
+		of_property_read_bool(np, "maxim,enable_por_init");
+
 	pdata->batt_undervoltage_zero_soc =
 		of_property_read_bool(np, "maxim,batt_undervoltage_zero_soc");
+
+	pdata->config_data = max17042_get_config_data(dev);
+	if (!pdata->config_data)
+		dev_warn(dev, "config data is missing\n");
 
 	pdata->config_data = &eg30_lg_config;
 	pdata->enable_por_init = true;
