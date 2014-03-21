@@ -36,6 +36,8 @@
 
 &mot_smd_1080p_cmd_v0 {
 	qcom,cont-splash-enabled;
+	qcom,partial-update-enabled;
+	mmi,quickdraw-enabled;
 };
 
 &mdss_dsi0 {
