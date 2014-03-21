@@ -134,6 +134,12 @@ static struct gpiomux_setting gpio_uart_config = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting gpio_uart_config_weak = {
+	.func = GPIOMUX_FUNC_2,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
 static struct msm_gpiomux_config msm_synaptics_configs[] __initdata = {
 	{
 		.gpio = 84,
@@ -215,13 +221,13 @@ static struct msm_gpiomux_config msm_blsp_configs[] __initdata = {
 	{
 		.gpio      = 51,		/* BLSP2 UART1 TX */
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config_weak,
 		},
 	},
 	{
 		.gpio      = 52,		/* BLSP2 UART1 RX */
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_uart_config,
+			[GPIOMUX_SUSPENDED] = &gpio_uart_config_weak,
 		},
 	},
 	{
