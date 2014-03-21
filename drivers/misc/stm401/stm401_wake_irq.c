@@ -89,18 +89,19 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq_status = (stm401_readbuff[IRQ_WAKE_HI] << 8)
+	irq_status = (stm401_readbuff[IRQ_WAKE_MED] << 8)
 				| stm401_readbuff[IRQ_WAKE_LO];
 
 	/* read algorithm interrupt status register */
 	stm401_cmdbuff[0] = ALGO_INT_STATUS;
-	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 2);
+	err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, 3);
 	if (err < 0) {
 		dev_err(&ps_stm401->client->dev, "Reading from stm401 failed\n");
 		goto EXIT;
 	}
-	irq2_status = (stm401_readbuff[IRQ_WAKE_HI] << 8)
-				| stm401_readbuff[IRQ_WAKE_LO];
+	irq2_status = (stm401_readbuff[IRQ_WAKE_HI] << 16) |
+		(stm401_readbuff[IRQ_WAKE_MED] << 8) |
+		stm401_readbuff[IRQ_WAKE_LO];
 
 	/* read generic interrupt register */
 	stm401_cmdbuff[0] = GENERIC_INT_STATUS;
@@ -421,6 +422,11 @@ void stm401_irq_wake_work_func(struct work_struct *work)
 		stm401_ms_data_buffer_write(ps_stm401, DT_ALGO_EVT,
 			stm401_readbuff, 8);
 		dev_dbg(&ps_stm401->client->dev, "Sending accum mvmt event\n");
+	}
+	if (irq2_status & M_IR_WAKE_GESTURE) {
+		err = stm401_process_ir_gesture(ps_stm401);
+		if (err < 0)
+			goto EXIT;
 	}
 	if (irq3_status & M_GENERIC_INTRPT) {
 		/* x (data1) : irq3_status */

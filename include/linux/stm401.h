@@ -117,6 +117,10 @@
 		_IOR(STM401_IOCTL_BASE, 47, char*)
 #define STM401_IOCTL_SET_STEP_COUNTER_DELAY	\
 		_IOW(STM401_IOCTL_BASE, 48,  unsigned short)
+#define STM401_IOCTL_GET_IR_CONFIG \
+		_IOWR(STM401_IOCTL_BASE, 49, char*)
+#define STM401_IOCTL_SET_IR_CONFIG \
+		_IOW(STM401_IOCTL_BASE, 50, char*)
 #define STM401_IOCTL_SET_IR_GESTURE_DELAY	\
 		_IOW(STM401_IOCTL_BASE, 51,  unsigned short)
 #define STM401_IOCTL_SET_IR_RAW_DELAY	\
@@ -162,19 +166,21 @@
 #define M_IR_OBJECT		0x020000
 
 /* wake sensor status */
-#define M_DOCK			0x0001
-#define M_PROXIMITY		0x0002
-#define M_TOUCH			0x0004
+#define M_DOCK			0x000001
+#define M_PROXIMITY		0x000002
+#define M_TOUCH			0x000004
 #define M_COVER			0x000008
-#define M_HUB_RESET		0x0080
+#define M_HUB_RESET		0x000080
 
-#define M_FLATUP		0x0100
-#define M_FLATDOWN		0x0200
-#define M_STOWED		0x0400
-#define M_CAMERA_ACT		0x0800
-#define M_NFC			0x1000
-#define M_SIM			0x2000
-#define M_LOG_MSG		0x8000
+#define M_FLATUP		0x000100
+#define M_FLATDOWN		0x000200
+#define M_STOWED		0x000400
+#define M_CAMERA_ACT		0x000800
+#define M_NFC			0x001000
+#define M_SIM			0x002000
+#define M_LOG_MSG		0x008000
+
+#define M_IR_WAKE_GESTURE	0x200000
 
 /* algo config mask */
 #define M_MMOVEME               0x0001
@@ -423,10 +429,12 @@ struct stm_response {
 #define STM401_IR_GESTURE_CNT      8
 #define STM401_IR_SZ_GESTURE       4
 #define STM401_IR_SZ_RAW           18
+#define STM401_IR_CONFIG_REG_SIZE  50
 
 /* stm401_readbuff offsets. */
 #define IRQ_WAKE_LO  0
-#define IRQ_WAKE_HI  1
+#define IRQ_WAKE_MED 1
+#define IRQ_WAKE_HI  2
 
 #define IRQ_NOWAKE_LO   0
 #define IRQ_NOWAKE_MED  1
@@ -581,6 +589,7 @@ void stm401_irq_work_func(struct work_struct *work);
 
 irqreturn_t stm401_wake_isr(int irq, void *dev);
 void stm401_irq_wake_work_func(struct work_struct *work);
+int stm401_process_ir_gesture(struct stm401_data *ps_stm401);
 
 long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg);
@@ -638,6 +647,8 @@ extern unsigned char stm401_g_zmotion_dur;
 extern unsigned char stm401_g_control_reg[STM401_CONTROL_REG_SIZE];
 extern unsigned char stm401_g_mag_cal[STM401_MAG_CAL_SIZE];
 extern unsigned short stm401_g_control_reg_restore;
+extern unsigned char stm401_g_ir_config_reg[STM401_IR_CONFIG_REG_SIZE];
+extern bool stm401_g_ir_config_reg_restore;
 extern bool stm401_g_booted;
 
 extern unsigned char stm401_cmdbuff[];
