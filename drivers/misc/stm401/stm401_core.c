@@ -77,6 +77,8 @@ unsigned char stm401_g_zmotion_dur;
 unsigned char stm401_g_control_reg[STM401_CONTROL_REG_SIZE];
 unsigned char stm401_g_mag_cal[STM401_MAG_CAL_SIZE];
 unsigned short stm401_g_control_reg_restore;
+unsigned char stm401_g_ir_config_reg[STM401_IR_CONFIG_REG_SIZE];
+bool stm401_g_ir_config_reg_restore;
 
 /* Store error message */
 unsigned char stat_string[ESR_SIZE+1];
