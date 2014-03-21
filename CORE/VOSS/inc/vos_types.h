@@ -106,6 +106,8 @@ typedef enum
    VOS_MODULE_ID_TL         = 1,
    VOS_MODULE_ID_WDI        = 2,
    // 3 & 4 are unused for historical purposes
+   VOS_MODULE_ID_RSV3       = 3,
+   VOS_MODULE_ID_RSV4       = 4,
    VOS_MODULE_ID_HDD        = 5,
    VOS_MODULE_ID_SME        = 6,
    VOS_MODULE_ID_PE         = 7,
