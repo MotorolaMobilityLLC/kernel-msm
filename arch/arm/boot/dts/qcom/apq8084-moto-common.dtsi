@@ -460,6 +460,12 @@
 	};
 
 	gpio@c500 { /* GPIO 6 */
+		/* Wireless Charging - CHG_GOOD_N */
+		qcom,mode = <0>;        /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;        /* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;     /* QPNP_PIN_VIN2 (S4 - 1.8V) */
+		qcom,src-sel = <0>;     /* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
 	};
 
 	gpio@c600 { /* GPIO 7 */
