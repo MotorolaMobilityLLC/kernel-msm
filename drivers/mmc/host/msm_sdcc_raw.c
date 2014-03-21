@@ -21,9 +21,6 @@
 #include <linux/apanic_mmc.h>
 #include <linux/init.h>
 
-#include "../../../arch/arm/mach-msm/devices.h"
-#include "../../../arch/arm/mach-msm/include/mach/clk.h"
-
 static void __iomem *raw_mmc_mci_base;
 
 #define RAW_MMC_MCI_REG(offset)          ((raw_mmc_mci_base) + offset)
@@ -506,7 +503,8 @@ struct raw_mmc_host {
 #define PUT_LWORD_TO_BYTE(x, y)   do {*(x) = y & 0xff;     \
 	*(x+1) = (y >> 8) & 0xff;     \
 	*(x+2) = (y >> 16) & 0xff;     \
-	*(x+3) = (y >> 24) & 0xff; } while (0)
+	*(x+3) = (y >> 24) & 0xff; \
+	} while (0)
 
 #define GET_PAR_NUM_FROM_POS(x) (((x & 0x0000FF00) >> 8) + (x & 0x000000FF))
 
@@ -736,7 +734,8 @@ static unsigned int raw_mmc_enable_clock(struct raw_mmc_host *host,
 	mmc_clk |= RAW_MMC_MCI_CLK_ENA_FLOW;
 	/* latch data and command using feedback clock */
 	mmc_clk |= RAW_MMC_MCI_CLK_IN_FEEDBACK;
-	writel(mmc_clk, RAW_MMC_MCI_CLK);
+	wmb();
+	writel_relaxed(mmc_clk, RAW_MMC_MCI_CLK);
 	return RAW_MMC_E_SUCCESS;
 
 error_pclk:
@@ -1017,7 +1016,8 @@ static unsigned int raw_mmc_send_command(struct raw_mmc_command *cmd)
 		return RAW_MMC_E_INVAL;
 
 	/* 1. Write command argument to RAW_MMC_MCI_ARGUMENT register */
-	writel(cmd->argument, RAW_MMC_MCI_ARGUMENT);
+	wmb();
+	writel_relaxed(cmd->argument, RAW_MMC_MCI_ARGUMENT);
 
 	/* 2. Set appropriate fields and write RAW_MMC_MCI_CMD */
 	/* 2a. Write command index in CMD_INDEX field */
@@ -1053,10 +1053,12 @@ static unsigned int raw_mmc_send_command(struct raw_mmc_command *cmd)
 	   of CE-ATA device is enabled */
 
 	/* 2j. clear all static status bits */
-	writel(RAW_MMC_MCI_STATIC_STATUS, RAW_MMC_MCI_CLEAR);
+	wmb();
+	writel_relaxed(RAW_MMC_MCI_STATIC_STATUS, RAW_MMC_MCI_CLEAR);
 
 	/* 2k. Write to RAW_MMC_MCI_CMD register */
-	writel(mmc_cmd, RAW_MMC_MCI_CMD);
+	wmb();
+	writel_relaxed(mmc_cmd, RAW_MMC_MCI_CMD);
 	/* Ensure the command to be written to mmc */
 	mdelay(2);
 
@@ -1067,10 +1069,13 @@ static unsigned int raw_mmc_send_command(struct raw_mmc_command *cmd)
 	   register */
 	do {
 		/* 3a. Read MCI_STATUS register */
-		while (readl(RAW_MMC_MCI_STATUS) & RAW_MMC_MCI_STAT_CMD_ACTIVE)
+		wmb();
+		while (readl_relaxed(RAW_MMC_MCI_STATUS)
+			& RAW_MMC_MCI_STAT_CMD_ACTIVE)
 			;
 
-		mmc_status = readl(RAW_MMC_MCI_STATUS);
+		wmb();
+		mmc_status = readl_relaxed(RAW_MMC_MCI_STATUS);
 
 		/* 3b. CMD_SENT bit supposed to be set to 1 only after CMD0 is sent -
 		   no response required. */
@@ -1094,7 +1099,8 @@ static unsigned int raw_mmc_send_command(struct raw_mmc_command *cmd)
 				|| (cmd_index == CMD8_SEND_IF_COND)) {
 			/* 3i. Read MCI_RESP_CMD register to verify that
 			 * response index is equal to command index */
-			mmc_resp = readl(RAW_MMC_MCI_RESP_CMD) & 0x3F;
+			wmb();
+			mmc_resp = readl_relaxed(RAW_MMC_MCI_RESP_CMD) & 0x3F;
 
 			/* However, long response does not contain the command
 			 * index field. In that case, response index field
@@ -1110,15 +1116,18 @@ static unsigned int raw_mmc_send_command(struct raw_mmc_command *cmd)
 				 * - MCI_RESP0 for all other registers */
 				if (IS_RESP_136_BITS(cmd->resp_type))
 					for (i = 0; i < 4; i++) {
+						wmb();
 						cmd->resp[3 - i] =
-							readl
+							readl_relaxed
 							(RAW_MMC_MCI_RESP_0 +
 							 (i * 4));
 
 					}
-				else
+				else {
+					wmb();
 					cmd->resp[0] =
-						readl(RAW_MMC_MCI_RESP_0);
+					readl_relaxed(RAW_MMC_MCI_RESP_0);
+				}
 			} else
 				/* command index mis-match */
 				mmc_return = RAW_MMC_E_CMD_INDX_MISMATCH;
@@ -1131,9 +1140,10 @@ static unsigned int raw_mmc_send_command(struct raw_mmc_command *cmd)
 		/* 3e. If CMD_CRC_FAIL bit is set to 1 then cmd's response was
 		 * recvd, but CRC check failed. */
 		else if ((mmc_status & RAW_MMC_MCI_STAT_CMD_CRC_FAIL)) {
-			if (cmd_index == ACMD41_SEND_OP_COND)
-				cmd->resp[0] = readl(RAW_MMC_MCI_RESP_0);
-			else
+			if (cmd_index == ACMD41_SEND_OP_COND) {
+				wmb();
+				cmd->resp[0] = readl_relaxed(RAW_MMC_MCI_RESP_0);
+			} else
 				mmc_return = RAW_MMC_E_CRC_FAIL;
 			break;
 		}
@@ -1607,7 +1617,8 @@ static unsigned int raw_mmc_set_bus_width(struct raw_mmc_card *card,
 		return mmc_ret;
 
 	/* set MCI_CLK accordingly */
-	mmc_reg = readl(RAW_MMC_MCI_CLK);
+	wmb();
+	mmc_reg = readl_relaxed(RAW_MMC_MCI_CLK);
 	mmc_reg &= ~RAW_MMC_MCI_CLK_WIDEBUS_MODE;
 	if (width == RAW_MMC_BUS_WIDTH_1_BIT)
 		mmc_reg |= RAW_MMC_MCI_CLK_WIDEBUS_1_BIT;
@@ -1615,7 +1626,8 @@ static unsigned int raw_mmc_set_bus_width(struct raw_mmc_card *card,
 		mmc_reg |= RAW_MMC_MCI_CLK_WIDEBUS_4_BIT;
 	else if (width == RAW_MMC_BUS_WIDTH_8_BIT)
 		mmc_reg |= RAW_MMC_MCI_CLK_WIDEBUS_8_BIT;
-	writel(mmc_reg, RAW_MMC_MCI_CLK);
+	wmb();
+	writel_relaxed(mmc_reg, RAW_MMC_MCI_CLK);
 
 	mdelay(10);		/* Giving some time to card to stabilize. */
 
@@ -1722,19 +1734,23 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 		? (unsigned int) data_addr : (unsigned int) (data_addr / 512);
 
 	/* Set the FLOW_ENA bit of MCI_CLK register to 1 */
-	mmc_reg = readl(RAW_MMC_MCI_CLK);
+	wmb();
+	mmc_reg = readl_relaxed(RAW_MMC_MCI_CLK);
 	mmc_reg |= RAW_MMC_MCI_CLK_ENA_FLOW;
-	writel(mmc_reg, RAW_MMC_MCI_CLK);
+	wmb();
+	writel_relaxed(mmc_reg, RAW_MMC_MCI_CLK);
 
 	/* Write data timeout period to MCI_DATA_TIMER register */
 	/* Data timeout period should be in card bus clock periods */
 	/*TODO: Fix timeout value */
 	mmc_reg = 0xFFFFFFFF;
-	writel(mmc_reg, RAW_MMC_MCI_DATA_TIMER);
+	wmb();
+	writel_relaxed(mmc_reg, RAW_MMC_MCI_DATA_TIMER);
 
 	/* Write the total size of the transfer data to MCI_DATA_LENGTH
 	 * register */
-	writel(data_len, RAW_MMC_MCI_DATA_LENGTH);
+	wmb();
+	writel_relaxed(data_len, RAW_MMC_MCI_DATA_LENGTH);
 
 	/* Send command to the card/device in order to start the write data
 	 * xfer. The possible commands are CMD24/25/53/60/61 */
@@ -1757,7 +1773,8 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 	/* Write size of block to be used during the data transfer to
 	   BLOCKSIZE field */
 	mmc_reg |= card->wr_block_len << RAW_MMC_MCI_BLKSIZE_POS;
-	writel(mmc_reg, RAW_MMC_MCI_DATA_CTL);
+	wmb();
+	writel_relaxed(mmc_reg, RAW_MMC_MCI_DATA_CTL);
 
 	write_error = RAW_MMC_MCI_STAT_DATA_CRC_FAIL |
 		RAW_MMC_MCI_STAT_DATA_TIMEOUT | RAW_MMC_MCI_STAT_TX_UNDRUN;
@@ -1768,6 +1785,7 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 	/* If Data Mover is NOT used for data xfer: */
 	do {
 		mmc_ret = RAW_MMC_E_SUCCESS;
+		wmb();
 		mmc_status = readl_relaxed(RAW_MMC_MCI_STATUS);
 
 		if (mmc_status & write_error) {
@@ -1785,7 +1803,8 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 			for (i = 0; i < RAW_MMC_MCI_HFIFO_COUNT; i++) {
 				/* FIFO contains 16 32-bit data buffer on 16
 				 * sequential addresses */
-				writel(*mmc_ptr, RAW_MMC_MCI_FIFO +
+				wmb();
+				writel_relaxed(*mmc_ptr, RAW_MMC_MCI_FIFO +
 						(mmc_count %
 						 RAW_MMC_MCI_FIFO_SIZE));
 				mmc_ptr++;
@@ -1797,7 +1816,8 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 				&& (mmc_count != data_len)) {
 			/* FIFO contains 16 32-bit data buffer on 16
 			 * sequential addresses */
-			writel(*mmc_ptr, RAW_MMC_MCI_FIFO +
+			wmb();
+			writel_relaxed(*mmc_ptr, RAW_MMC_MCI_FIFO +
 					(mmc_count % RAW_MMC_MCI_FIFO_SIZE));
 			mmc_ptr++;
 			/* increase mmc_count by word size */
@@ -1852,7 +1872,8 @@ static unsigned int raw_mmc_write_to_card(struct raw_mmc_host *host,
 	 * If PROG_DONE bit is set to 1 it means that the card finished it
 	 * programming and stopped driving DAT0 line to 0 */
 	do {
-		mmc_status = readl(RAW_MMC_MCI_STATUS);
+		wmb();
+		mmc_status = readl_relaxed(RAW_MMC_MCI_STATUS);
 		if (mmc_status & RAW_MMC_MCI_STAT_PROG_DONE)
 			break;
 	} while (1);
@@ -1923,7 +1944,8 @@ static unsigned int raw_mmc_init(struct raw_mmc_host *host)
 	mmc_pwr &= ~RAW_MMC_MCI_PWR_UP;
 	mmc_pwr |= RAW_MMC_MCI_PWR_ON;
 	mmc_pwr |= RAW_MMC_MCI_PWR_UP;
-	writel(mmc_pwr, RAW_MMC_MCI_POWER);
+	wmb();
+	writel_relaxed(mmc_pwr, RAW_MMC_MCI_POWER);
 	/* some more time to stabilize voltage */
 	mdelay(2);
 
@@ -2154,7 +2176,8 @@ static unsigned int raw_mmc_set_sd_bus_width(struct raw_mmc_card *card,
 		return mmc_ret;
 
 	/* set MCI_CLK accordingly */
-	sd_reg = readl(RAW_MMC_MCI_CLK);
+	wmb();
+	sd_reg = readl_relaxed(RAW_MMC_MCI_CLK);
 	sd_reg &= ~RAW_MMC_MCI_CLK_WIDEBUS_MODE;
 	if (width == RAW_MMC_BUS_WIDTH_1_BIT)
 		sd_reg |= RAW_MMC_MCI_CLK_WIDEBUS_1_BIT;
@@ -2162,7 +2185,8 @@ static unsigned int raw_mmc_set_sd_bus_width(struct raw_mmc_card *card,
 		sd_reg |= RAW_MMC_MCI_CLK_WIDEBUS_4_BIT;
 	else if (width == RAW_MMC_BUS_WIDTH_8_BIT)
 		sd_reg |= RAW_MMC_MCI_CLK_WIDEBUS_8_BIT;
-	writel(sd_reg, RAW_MMC_MCI_CLK);
+	wmb();
+	writel_relaxed(sd_reg, RAW_MMC_MCI_CLK);
 
 	mdelay(10);		/* Giving some time to card to stabilize. */
 
