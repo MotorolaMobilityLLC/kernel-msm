@@ -71,7 +71,24 @@
 #define MAX17042_IC_VERSION	0x0092
 #define MAX17047_IC_VERSION	0x00AC	/* same for max17050 */
 
-#define INIT_DATA_PROPERTY	"maxim,regs-init-data"
+#define INIT_DATA_PROPERTY		"maxim,regs-init-data"
+#define CONFIG_NODE			"maxim,configuration"
+#define CONFIG_PROPERTY			"config"
+#define FULL_SOC_THRESH_PROPERTY	"full_soc_thresh"
+#define DESIGN_CAP_PROPERTY		"design_cap"
+#define ICHGT_TERM_PROPERTY		"ichgt_term"
+#define LEARN_CFG_PROPERTY		"learn_cfg"
+#define FILTER_CFG_PROPERTY		"filter_cfg"
+#define RELAX_CFG_PROPERTY		"relax_cfg"
+#define FULLCAP_PROPERTY		"fullcap"
+#define FULLCAPNOM_PROPERTY		"fullcapnom"
+#define QRTBL00_PROPERTY		"qrtbl00"
+#define QRTBL10_PROPERTY		"qrtbl10"
+#define QRTBL20_PROPERTY		"qrtbl20"
+#define QRTBL30_PROPERTY		"qrtbl30"
+#define RCOMP0_PROPERTY			"rcomp0"
+#define TCOMPC0_PROPERTY		"tcompc0"
+#define CELL_CHAR_TBL_PROPERTY		"maxim,cell-char-tbl"
 
 struct max17042_chip {
 	struct i2c_client *client;
@@ -970,10 +987,14 @@ max17042_get_pdata(struct device *dev)
 		pdata->enable_current_sense = true;
 	}
 
+	pdata->enable_por_init =
+		of_property_read_bool(np, "maxim,enable_por_init");
+
 	pdata->batt_undervoltage_zero_soc =
 		of_property_read_bool(np, "maxim,batt_undervoltage_zero_soc");
 
 	pdata->config_data = max17042_get_config_data(dev);
+
 	if (!pdata->config_data) {
 		dev_warn(dev, "config data is missing\n");
 
