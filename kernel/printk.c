@@ -3134,6 +3134,99 @@ out:
 EXPORT_SYMBOL_GPL(kmsg_dump_get_buffer);
 
 /**
+ * kmsg_dump_get_buffer_panic - copy kmsg log lines for apanic driver
+ * @dumper: registered kmsg dumper
+ * @syslog: include the "<4>" prefixes
+ * @buf: buffer to copy the line to
+ * @size: maximum size of the buffer
+ * @len: length of line placed into buffer
+ *
+ * Start at the beginning of the kmsg buffer and fill the provided buffer
+ * If the buffer is large enough, all available kmsg records will be
+ * copied with a single call.
+ *
+ * Consecutive calls will fill the buffer with the next block of
+ * available newer records, not including the earlier retrieved ones.
+ *
+ * A return value of FALSE indicates that there are no more records to
+ * read.
+ */
+bool kmsg_dump_get_buffer_panic(struct kmsg_dumper *dumper, bool syslog,
+			  char *buf, size_t size, size_t *len)
+{
+	unsigned long flags;
+	u64 seq;
+	u32 idx;
+	u64 next_seq;
+	u32 next_idx;
+	enum log_flags prev;
+	size_t l = 0;
+	bool ret = false;
+
+	if (!dumper->active)
+		goto out;
+
+	raw_spin_lock_irqsave(&logbuf_lock, flags);
+	if (dumper->cur_seq < log_first_seq) {
+		/* messages are gone, move to first available one */
+		dumper->cur_seq = log_first_seq;
+		dumper->cur_idx = log_first_idx;
+	}
+
+	/* last entry */
+	if (dumper->cur_seq >= dumper->next_seq) {
+		raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+		goto out;
+	}
+
+	/* backup the buf end */
+	next_seq = dumper->next_seq;
+	next_idx = dumper->next_idx;
+	/* Navigate to the end point of this dump */
+	seq = dumper->cur_seq;
+	idx = dumper->cur_idx;
+	prev = 0;
+	while (seq < dumper->next_seq) {
+		struct log *msg = log_from_idx(idx, true);
+
+		l += msg_print_text(msg, prev, true, NULL, 0);
+		idx = log_next(idx, true);
+		prev = msg->flags;
+		if (l >= size)
+			break;
+		seq++;
+	}
+
+	dumper->next_seq = seq;
+	dumper->next_idx = idx;
+
+	seq = dumper->cur_seq;
+	idx = dumper->cur_idx;
+
+	l = 0;
+	prev = 0;
+	while (seq < dumper->next_seq) {
+		struct log *msg = log_from_idx(idx, true);
+
+		l += msg_print_text(msg, prev, syslog, buf + l, size - l);
+		idx = log_next(idx, true);
+		seq++;
+		prev = msg->flags;
+	}
+
+	dumper->cur_seq = seq;
+	dumper->cur_idx = idx;
+	dumper->next_seq = next_seq;
+	dumper->next_idx = next_idx;
+	ret = true;
+	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
+out:
+	if (len)
+		*len = l;
+	return ret;
+}
+EXPORT_SYMBOL_GPL(kmsg_dump_get_buffer_panic);
+/**
  * kmsg_dump_rewind_nolock - reset the interator (unlocked version)
  * @dumper: registered kmsg dumper
  *
