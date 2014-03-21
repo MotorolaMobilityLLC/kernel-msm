@@ -2728,12 +2728,12 @@ static int smb135x_hw_init(struct smb135x_chg *chip)
 	/*
 	 * set chg en by cmd register, set chg en by writing bit 1,
 	 * enable auto pre to fast, enable current termination, enable
-	 * auto recharge, enable chg inhibition
+	 * auto recharge, disable chg inhibition
 	 */
 	rc = smb135x_masked_write(chip, CFG_14_REG,
 			CHG_EN_BY_PIN_BIT | CHG_EN_ACTIVE_LOW_BIT
 			| PRE_TO_FAST_REQ_CMD_BIT | DISABLE_AUTO_RECHARGE_BIT
-			| EN_CHG_INHIBIT_BIT, EN_CHG_INHIBIT_BIT);
+			| EN_CHG_INHIBIT_BIT, 0);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't set cfg 14 rc=%d\n", rc);
 		return rc;
