@@ -3163,6 +3163,12 @@ static void sdhci_msm_hw_reset(struct sdhci_host *host)
 	pr_debug("%s: host reset (%lu uS)\n", mmc_hostname(host->mmc), delay);
 
 	/*
+	 * Disable pwrsave so that we have a steady clock during init.
+	 */
+	writel_relaxed(readl_relaxed(host->ioaddr + CORE_VENDOR_SPEC) &
+		~CORE_CLK_PWRSAVE, host->ioaddr + CORE_VENDOR_SPEC);
+
+	/*
 	 * We bug-out on any failure, since there is no safe way to recover.
 	 */
 	rc = sdhci_msm_vreg_setup_slot(vreg_data, false);
