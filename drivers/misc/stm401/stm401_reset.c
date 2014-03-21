@@ -269,6 +269,17 @@ int stm401_reset_and_init(void)
 	if (err < 0)
 		ret_err = err;
 
+	if (stm401_g_ir_config_reg_restore) {
+		rst_cmdbuff[0] = IR_CONFIG;
+		memcpy(&rst_cmdbuff[1], stm401_g_ir_config_reg,
+			stm401_g_ir_config_reg[0]);
+		err = stm401_i2c_write_no_reset(stm401_misc_data,
+						rst_cmdbuff,
+						stm401_g_ir_config_reg[0] + 1);
+		if (err < 0)
+			ret_err = err;
+	}
+
 	/* sending reset to slpc hal */
 	stm401_ms_data_buffer_write(stm401_misc_data, DT_RESET,
 		NULL, 0);
