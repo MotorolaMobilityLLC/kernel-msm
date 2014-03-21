@@ -671,6 +671,70 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 				break;
 			}
 			break;
+	case STM401_IOCTL_GET_IR_CONFIG:
+		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_IR_CONFIG");
+		if (copy_from_user(&byte, argp, 1)) {
+			dev_err(&ps_stm401->client->dev,
+				"Copy size from user returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		if (byte > sizeof(stm401_g_ir_config_reg)) {
+			dev_err(&ps_stm401->client->dev,
+				"IR Config too big: %d > %d\n", byte,
+				sizeof(stm401_g_ir_config_reg));
+			err = -EINVAL;
+			break;
+		}
+
+		stm401_cmdbuff[0] = IR_CONFIG;
+		err = stm401_i2c_write_read(ps_stm401, stm401_cmdbuff, 1, byte);
+		if (err < 0) {
+			dev_err(&ps_stm401->client->dev,
+				"Get IR config failed: %d\n", err);
+			break;
+		}
+		if (copy_to_user(argp, stm401_readbuff, byte))
+			err = -EFAULT;
+
+		break;
+	case STM401_IOCTL_SET_IR_CONFIG:
+		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_IR_CONFIG");
+		stm401_cmdbuff[0] = IR_CONFIG;
+		if (copy_from_user(&stm401_cmdbuff[1], argp, 1)) {
+			dev_err(&ps_stm401->client->dev,
+				"Copy size from user returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		if (stm401_cmdbuff[1] > sizeof(stm401_g_ir_config_reg)) {
+			dev_err(&ps_stm401->client->dev,
+				"IR Config too big: %d > %d\n",
+				stm401_cmdbuff[1],
+				sizeof(stm401_g_ir_config_reg));
+			err = -EINVAL;
+			break;
+		}
+		if (copy_from_user(&stm401_cmdbuff[2], argp + 1,
+					stm401_cmdbuff[1] - 1)) {
+			dev_err(&ps_stm401->client->dev,
+				"Copy data from user returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		stm401_g_ir_config_reg_restore = 1;
+		memcpy(stm401_g_ir_config_reg, &stm401_cmdbuff[1],
+			stm401_cmdbuff[1]);
+
+		err = stm401_i2c_write(ps_stm401, stm401_cmdbuff,
+				stm401_cmdbuff[1] + 1);
+		dev_dbg(&stm401_misc_data->client->dev,
+			"SET_IR_CONFIG: Writing %d bytes (err=%d)\n",
+			stm401_cmdbuff[1] + 1, err);
+		if (err < 0)
+			dev_err(&stm401_misc_data->client->dev,
+				"Unable to write IR config reg %d\n", err);
+		break;
 	case STM401_IOCTL_SET_IR_GESTURE_DELAY:
 		dev_dbg(&ps_stm401->client->dev,
 			"STM401_IOCTL_SET_IR_GESTURE_DELAY");
