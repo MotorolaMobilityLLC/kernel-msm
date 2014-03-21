@@ -58,7 +58,6 @@ struct dss_vreg {
 	int post_on_sleep;
 	int pre_off_sleep;
 	int post_off_sleep;
-	int boot_on;
 };
 
 struct dss_gpio {
@@ -87,7 +86,6 @@ struct dss_module_power {
 	struct dss_gpio *gpio_config;
 	unsigned num_clk;
 	struct dss_clk *clk_config;
-	int boot_on;
 };
 
 int msm_dss_ioremap_byname(struct platform_device *pdev,
