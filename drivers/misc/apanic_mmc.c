@@ -2,6 +2,7 @@
  *
  * Copyright (C) 2009 Google, Inc.
  * Copyright (C) 2012 Motorola Mobility LLC.
+ * Copyright (C) 2014 Motorola Mobility LLC.
  * Author: San Mehat <san@android.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -28,12 +29,11 @@
 
 #include <asm/setup.h>
 #include <mach/mmi_watchdog.h>
+#include <linux/kmsg_dump.h>
 
 /* from kernel/printk.c */
-int log_buf_copy(char *dest, int idx, int len);
-void log_buf_clear(void);
 
-#define memdump_wdt_disable() do {} while (0);
+#define memdump_wdt_disable() do {} while (0)
 
 #define MEMDUMP_PLABEL "memdump"
 
@@ -79,6 +79,8 @@ struct apanic_data {
 	struct hd_struct *hd;
 	struct raw_mmc_panic_ops *mmc_panic_ops;
 	char *annotation;
+	struct kmsg_dumper dump;
+	u32 annotation_size;
 };
 
 static int start_apanic_threads;
@@ -104,8 +106,11 @@ static void mmc_bio_complete(struct bio *bio, int err)
 	complete((struct completion *) bio->bi_private);
 }
 
-static int apanic_proc_read_mmc(char *buffer, char **start, off_t offset,
-				int count, int *peof, void *dat)
+static void apanic_mmc(struct kmsg_dumper *dumper,
+			enum kmsg_dump_reason reason);
+
+static int apanic_proc_read_mmc(struct file *file, char __user *buffer,
+				size_t count, loff_t *ppos, void *dat)
 {
 	int i, index = 0;
 	int ret;
@@ -120,6 +125,7 @@ static int apanic_proc_read_mmc(char *buffer, char **start, off_t offset,
 	struct completion complete;
 	struct page *page;
 	struct device *dev = part_to_dev(drv_ctx.hd);
+	loff_t offset = *ppos;
 
 	if (!ctx->hd || !ctx->mmc_panic_ops)
 		return -EBUSY;
@@ -188,7 +194,8 @@ static int apanic_proc_read_mmc(char *buffer, char **start, off_t offset,
 		if ((i == start_sect)
 		    && ((file_offset + offset) % 512 != 0)) {
 			/* first sect, may be the only sect */
-			memcpy(buffer, ctx->bounce + (file_offset + offset)
+			ret = copy_to_user(buffer,
+				ctx->bounce + (file_offset + offset)
 			       % 512, min((unsigned long) count,
 					  (unsigned long)
 					  (512 -
@@ -199,21 +206,21 @@ static int apanic_proc_read_mmc(char *buffer, char **start, off_t offset,
 			   && ((file_offset + offset + count)
 			       % 512 != 0)) {
 			/* last sect */
-			memcpy(buffer + index, ctx->bounce, (file_offset +
-							     offset +
-							     count) % 512);
+			ret = copy_to_user(buffer + index,
+						ctx->bounce,
+						(file_offset + offset +
+						count) % 512);
 		} else {
 			/* middle sect */
-			memcpy(buffer + index, ctx->bounce, 512);
+			ret = copy_to_user(buffer + index, ctx->bounce, 512);
 			index += 512;
 		}
+		if (ret)
+			goto out_err;
 	}
 	blkdev_put(bdev, FMODE_READ);
 
-	*start = (char *) count;
-
-	if ((offset + count) == file_length)
-		*peof = 1;
+	*ppos = offset + count;
 
 	mutex_unlock(&drv_mutex);
 	return count;
@@ -221,6 +228,27 @@ static int apanic_proc_read_mmc(char *buffer, char **start, off_t offset,
 out_err:
 	mutex_unlock(&drv_mutex);
 	return ret;
+}
+
+static int apanic_con_proc_read_mmc(struct file *file, char __user *buffer,
+				size_t count, loff_t *ppos)
+{
+	void *dat = (void *)1;
+	return apanic_proc_read_mmc(file, buffer, count, ppos, dat);
+}
+
+static int apanic_th_proc_read_mmc(struct file *file, char __user *buffer,
+				size_t count, loff_t *ppos)
+{
+	void *dat = (void *)2;
+	return apanic_proc_read_mmc(file, buffer, count, ppos, dat);
+}
+
+static int apanic_app_th_proc_read_mmc(struct file *file, char __user *buffer,
+				size_t count, loff_t *ppos)
+{
+	void *dat = (void *)3;
+	return apanic_proc_read_mmc(file, buffer, count, ppos, dat);
 }
 
 static void mmc_panic_erase(void)
@@ -296,8 +324,8 @@ static void apanic_remove_proc_work(struct work_struct *work)
 	mutex_unlock(&drv_mutex);
 }
 
-static int apanic_proc_write(struct file *file, const char __user * buffer,
-			     unsigned long count, void *data)
+static int apanic_proc_write(struct file *file, const char __user *buffer,
+			     size_t count, loff_t *offset)
 {
 	schedule_work(&proc_removal_work);
 	return count;
@@ -308,6 +336,7 @@ static int apanic_save_annotation(const char *annotation, unsigned long len)
 	struct apanic_data *ctx = &drv_ctx;
 	char *buffer;
 	size_t oldlen = 0;
+	size_t totalen = 0;
 
 	pr_debug("%s: %s (%lu)\n", __func__, annotation, len);
 	if (ctx->annotation)
@@ -317,16 +346,18 @@ static int apanic_save_annotation(const char *annotation, unsigned long len)
 	if (!buffer)
 		return -ENOMEM;
 
+	totalen = len + oldlen + 1;
 	if (ctx->annotation) {
-		strcpy(buffer, ctx->annotation);
+		strlcpy(buffer, ctx->annotation, totalen);
 		kfree(ctx->annotation);
 	} else
 		buffer[0] = '\0';
 
-	strncat(buffer, annotation, len);
-	if (ctx->apanic_annotate)
-		ctx->apanic_annotate->size = strlen(buffer);
-
+	strlcat(buffer, annotation, totalen);
+	if (ctx->apanic_annotate) {
+		proc_set_size(ctx->apanic_annotate, strlen(buffer));
+		ctx->annotation_size = strlen(buffer);
+	}
 	ctx->annotation = buffer;
 
 	return (int)len;
@@ -344,32 +375,49 @@ int apanic_mmc_annotate(const char *annotation)
 }
 EXPORT_SYMBOL(apanic_mmc_annotate);
 
-static int apanic_proc_read_annotation(char *buffer, char **start,
-				off_t offset, int count, int *peof, void *dat)
+static int apanic_proc_read_annotation(struct file *file, char __user *buffer,
+				size_t count, loff_t *ppos)
 {
 	struct apanic_data *ctx = &drv_ctx;
+	loff_t offset = *ppos;
 
-	if (offset + count > ctx->apanic_annotate->size)
-		count = ctx->apanic_annotate->size - offset;
+	if (offset < 0)
+		return -EINVAL;
+	if (offset + count > ctx->annotation_size)
+		count = ctx->annotation_size - offset;
 	if (count <= 0)
-		return 0;
+		return -EINVAL;
 
-	memcpy(buffer, ctx->annotation + offset, count);
+	if (copy_to_user(buffer, ctx->annotation + offset, count))
+		return -EFAULT;
 
-	*start = (char*)count;
-
-	if ((offset + count) == ctx->apanic_annotate->size)
-		*peof = 1;
-
+	*ppos = offset + count;
 	return count;
 }
 
 static int apanic_proc_annotate(struct file *file,
 				const char __user *annotation,
-				unsigned long count, void *data)
+				size_t count, loff_t *offset)
 {
 	return apanic_save_annotation(annotation, count);
 }
+
+static const struct file_operations apanic_con_fops = {
+	.read	= apanic_con_proc_read_mmc,
+	.write	= apanic_proc_write,
+};
+static const struct file_operations apanic_th_fops = {
+	.read	= apanic_th_proc_read_mmc,
+	.write	= apanic_proc_write,
+};
+static const struct file_operations apanic_app_th_fops = {
+	.read	= apanic_app_th_proc_read_mmc,
+	.write	= apanic_proc_write,
+};
+static const struct file_operations apanic_anno_fops = {
+	.read	= apanic_proc_read_annotation,
+	.write	= apanic_proc_annotate,
+};
 
 static void mmc_panic_notify_add(struct hd_struct *hd)
 {
@@ -383,8 +431,7 @@ static void mmc_panic_notify_add(struct hd_struct *hd)
 	struct device *dev = part_to_dev(hd);
 
 	if (!ctx->mmc_panic_ops) {
-		pr_err("apanic: found apanic partition, but apanic not "
-				"initialized\n");
+		pr_err("apanic: found apanic partition,without initialized\n");
 		return;
 	}
 
@@ -395,6 +442,13 @@ static void mmc_panic_notify_add(struct hd_struct *hd)
 		goto out;
 	}
 
+	ctx->dump.max_reason = KMSG_DUMP_PANIC;
+	ctx->dump.dump = apanic_mmc;
+	if (kmsg_dump_register(&ctx->dump) < 0) {
+		pr_err("apanic: kmsg_dumper register failed\n");
+		goto out;
+
+	}
 	ctx->hd = hd;
 	page = virt_to_page(ctx->bounce);
 
@@ -438,62 +492,51 @@ static void mmc_panic_notify_add(struct hd_struct *hd)
 	       hdr->app_threads_offset, hdr->app_threads_length);
 
 	if (hdr->console_length) {
-		ctx->apanic_console = create_proc_entry("apanic_console",
+		ctx->apanic_console = proc_create("apanic_console",
 							S_IFREG | S_IRUGO,
-							NULL);
+							NULL,
+							&apanic_con_fops);
 		if (!ctx->apanic_console)
 			pr_err("apanic: failed creating procfile\n");
-		else {
-			ctx->apanic_console->read_proc =
-			    apanic_proc_read_mmc;
-			ctx->apanic_console->write_proc =
-			    apanic_proc_write;
-			ctx->apanic_console->size = hdr->console_length;
-			ctx->apanic_console->data = (void *) 1;
-		}
+		else
+			proc_set_size(ctx->apanic_console, hdr->console_length);
 	}
 
 	if (hdr->threads_length) {
-		ctx->apanic_threads = create_proc_entry("apanic_threads",
+		ctx->apanic_threads = proc_create("apanic_threads",
 							S_IFREG | S_IRUGO,
-							NULL);
+							NULL,
+							&apanic_th_fops);
 		if (!ctx->apanic_threads)
 			pr_err("apanic: failed creating procfile\n");
-		else {
-			ctx->apanic_threads->read_proc =
-			    apanic_proc_read_mmc;
-			ctx->apanic_threads->write_proc =
-			    apanic_proc_write;
-			ctx->apanic_threads->size = hdr->threads_length;
-			ctx->apanic_threads->data = (void *) 2;
-		}
+		else
+			proc_set_size(ctx->apanic_threads, hdr->threads_length);
 	}
 
 	if (hdr->app_threads_length) {
-		ctx->apanic_app_threads = create_proc_entry(
-			"apanic_app_threads", S_IFREG | S_IRUGO, NULL);
+		ctx->apanic_app_threads = proc_create(
+						"apanic_app_threads",
+						S_IFREG | S_IRUGO,
+						NULL,
+						&apanic_app_th_fops);
 		if (!ctx->apanic_app_threads)
 			pr_err("%s: failed creating procfile\n", __func__);
-		else {
-			ctx->apanic_app_threads->read_proc
-					= apanic_proc_read_mmc;
-			ctx->apanic_app_threads->write_proc = apanic_proc_write;
-			ctx->apanic_app_threads->size = hdr->app_threads_length;
-			ctx->apanic_app_threads->data = (void *) 3;
-		}
+		else
+			proc_set_size(ctx->apanic_app_threads,
+					hdr->app_threads_length);
 
 	}
 
 out:
-	ctx->apanic_annotate = create_proc_entry("apanic_annotate",
-				S_IFREG | S_IRUGO | S_IWUSR, NULL);
+	ctx->apanic_annotate = proc_create("apanic_annotate",
+				S_IFREG | S_IRUGO | S_IWUSR,
+				NULL,
+				&apanic_anno_fops);
 	if (!ctx->apanic_annotate)
-		printk(KERN_ERR "%s: failed creating procfile\n", __func__);
+		pr_err("%s: failed creating procfile\n", __func__);
 	else {
-		ctx->apanic_annotate->read_proc = apanic_proc_read_annotation;
-		ctx->apanic_annotate->write_proc = apanic_proc_annotate;
-		ctx->apanic_annotate->size = 0;
-		ctx->apanic_annotate->data = NULL;
+		proc_set_size(ctx->apanic_annotate, 0);
+		ctx->annotation_size = 0;
 	}
 
 	return;
@@ -502,6 +545,9 @@ out:
 static void mmc_panic_notify_remove(struct hd_struct *hd)
 {
 	struct device *dev = part_to_dev(hd);
+
+	if (kmsg_dump_unregister(&drv_ctx.dump) < 0)
+		pr_err("apanic_mmc: could not unregister kmsg_dumper\n");
 
 	drv_ctx.hd = NULL;
 	pr_info(KERN_INFO "apanic: Unbound from %s\n", dev_name(dev));
@@ -536,32 +582,49 @@ static int in_panic;
  * Writes the contents of the console to the specified offset in mmc.
  * Returns number of bytes written
  */
-static int apanic_write_console_mmc(unsigned int off)
+static int apanic_write_console_mmc(unsigned int off,
+					struct kmsg_dumper *dumper)
 {
 	struct apanic_data *ctx = &drv_ctx;
 	int saved_oip;
 	int idx = 0;
 	int rc, rc2;
-	unsigned int last_chunk = 0;
+	int totallen = 0;
+	int len;
+	int n = 0;
+	int copied = 0;
 
 	if (!ctx->hd || !ctx->mmc_panic_ops)
 		return -EBUSY;
 
-	while (!last_chunk) {
+	kmsg_dump_rewind_nolock(dumper);
+	while (kmsg_dump_get_line_nolock(dumper, 1, NULL, 0, &len)) {
+		n++;
+		totallen += len;
+	}
+
+	kmsg_dump_rewind_nolock(dumper);
+	while (copied < totallen) {
 		saved_oip = oops_in_progress;
 		oops_in_progress = 1;
-		rc = log_buf_copy(ctx->bounce, idx, PAGE_SIZE);
-		if (rc < 0)
+
+		if (!kmsg_dump_get_buffer_panic(dumper, 1, ctx->bounce,
+						PAGE_SIZE, &rc))
 			break;
 
-		if (rc != PAGE_SIZE)
-			last_chunk = rc;
-
-		oops_in_progress = saved_oip;
 		if (rc <= 0)
 			break;
-		if (rc != PAGE_SIZE)
-			memset(ctx->bounce + rc, 0, PAGE_SIZE - rc);
+
+		copied += rc;
+
+		oops_in_progress = saved_oip;
+
+		if (rc <= 0)
+			break;
+		if (rc != PAGE_SIZE) {
+			memset(ctx->bounce + rc, 0, PAGE_SIZE - rc - 1);
+			memset(ctx->bounce  + PAGE_SIZE - 1, '\n', 1);
+		}
 
 		rc2 =
 		    ctx->mmc_panic_ops->panic_write(ctx->hd,
@@ -570,10 +633,7 @@ static int apanic_write_console_mmc(unsigned int off)
 			pr_emerg("apanic: Flash write failed (%d)\n", rc2);
 			return idx;
 		}
-		if (!last_chunk)
-			idx += rc2;
-		else
-			idx += last_chunk;
+		idx += rc2;
 		off += rc2;
 	}
 	return idx;
@@ -592,14 +652,16 @@ int is_emergency_dump(void)
 void emergency_dump(void)
 {
 	struct apanic_data *ctx = &drv_ctx;
+	struct kmsg_dumper *dumper = &drv_ctx.dump;
 
 	emergency_dump_flag = 1;
 	ctx->buf_offset = ALIGN(ctx->written, 512);
-	ctx->written += apanic_write_console_mmc(ctx->buf_offset);
+	ctx->written += apanic_write_console_mmc(ctx->buf_offset, dumper);
 	emergency_dump_flag = 0;
 }
 
-static void apanic_mmc_logbuf_dump(void)
+extern int do_syslog(int type, char __user *bug, int count);
+static void apanic_mmc_logbuf_dump(struct kmsg_dumper *dumper)
 {
 	struct apanic_data *ctx = &drv_ctx;
 	struct panic_header *hdr = (struct panic_header *) ctx->bounce;
@@ -620,8 +682,7 @@ static void apanic_mmc_logbuf_dump(void)
 		return;
 	if (ctx->mmc_panic_ops->panic_probe(ctx->hd,
 					    ctx->mmc_panic_ops->type)) {
-		pr_err("apanic: choose to use mmc, "
-		       "but eMMC card not detected\n");
+		pr_err("apanic: choose to use emmc, but card not detected\n");
 		return;
 	}
 	console_offset = 1024;
@@ -653,13 +714,13 @@ static void apanic_mmc_logbuf_dump(void)
 	bust_spinlocks(0);
 
 	if (ctx->annotation)
-		printk(KERN_EMERG "%s\n", ctx->annotation);
+		pr_emerg("%s\n", ctx->annotation);
 
 	touch_hw_watchdog();
 	/*
 	 * Write out the console
 	 */
-	console_len = apanic_write_console_mmc(console_offset);
+	console_len = apanic_write_console_mmc(console_offset, dumper);
 	if (console_len < 0) {
 		pr_emerg("Error writing console to panic log! (%d)\n",
 				console_len);
@@ -673,7 +734,10 @@ static void apanic_mmc_logbuf_dump(void)
 				1024) == 0) ? 1024 :
 	    ALIGN(console_offset + console_len, 1024);
 
-	log_buf_clear();
+	/*
+	 * Clear ring buffer
+	 */
+	do_syslog(5 /* clear */, NULL, 0);
 
 	for (con = console_drivers; con; con = con->next)
 		con->flags &= ~CON_ENABLED;
@@ -681,17 +745,23 @@ static void apanic_mmc_logbuf_dump(void)
 	ctx->buf_offset = app_threads_offset;
 	ctx->written = app_threads_offset;
 	start_apanic_threads = 1;
+/*
 	if (tracing_get_trace_buf_size() < (SZ_512K + 1))
 		ftrace_dump(1);
+*/
 	show_state_thread_filter(0, SHOW_APP_THREADS);
 	ctx->buf_offset = ALIGN(ctx->written, 512);
 	start_apanic_threads = 0;
-	ctx->written += apanic_write_console_mmc(ctx->buf_offset);
+	ctx->written += apanic_write_console_mmc(ctx->buf_offset, dumper);
 	app_threads_len = ctx->written - app_threads_offset;
 
 	touch_hw_watchdog();
 
-	log_buf_clear();
+	/*
+	 * Clear ring buffer
+	 */
+	do_syslog(5 /* clear */, NULL, 0);
+
 	threads_offset = ALIGN(ctx->written, 512);
 	ctx->buf_offset = threads_offset;
 	ctx->written = threads_offset;
@@ -699,7 +769,7 @@ static void apanic_mmc_logbuf_dump(void)
 	show_state_thread_filter(0, SHOW_KTHREADS);
 	start_apanic_threads = 0;
 	ctx->buf_offset = ALIGN(ctx->written, 512);
-	ctx->written += apanic_write_console_mmc(ctx->buf_offset);
+	ctx->written += apanic_write_console_mmc(ctx->buf_offset, dumper);
 	threads_len = ctx->written - threads_offset + 512;
 
 	touch_hw_watchdog();
@@ -780,7 +850,7 @@ static void apanic_mmc_memdump(void)
 		return;
 	}
 
-	strncpy(hdr->magic, MEMDUMP_MAGIC, MEMDUMP_MAGIC_LEN);
+	strlcpy(hdr->magic, MEMDUMP_MAGIC, MEMDUMP_MAGIC_LEN);
 	hdr->version = PHDR_VERSION;
 	hdr->ts = current_kernel_time();
 	hdr->sdram_offset = PAGE_SIZE;
@@ -799,11 +869,10 @@ static void apanic_mmc_memdump(void)
 }
 #endif				/* CONFIG_APANIC_MMC_MEMDUMP */
 
-static int apanic_mmc(struct notifier_block *this, unsigned long event,
-		      void *ptr)
+static void apanic_mmc(struct kmsg_dumper *dumper, enum kmsg_dump_reason reason)
 {
 	if (in_panic)
-		return NOTIFY_DONE;
+		return;
 	in_panic = 1;
 #ifdef CONFIG_PREEMPT
 	/* Ensure that cond_resched() won't try to preempt anybody */
@@ -811,7 +880,7 @@ static int apanic_mmc(struct notifier_block *this, unsigned long event,
 #endif
 	touch_softlockup_watchdog();
 
-	apanic_mmc_logbuf_dump();
+	apanic_mmc_logbuf_dump(dumper);
 
 #ifdef CONFIG_APANIC_MMC_MEMDUMP
 	apanic_mmc_memdump();
@@ -821,16 +890,13 @@ static int apanic_mmc(struct notifier_block *this, unsigned long event,
 	sub_preempt_count(PREEMPT_ACTIVE);
 #endif
 	in_panic = 0;
-	return NOTIFY_DONE;
+	return;
 }
 
-static struct notifier_block panic_blk = {
-	.notifier_call = apanic_mmc,
-};
-
-static int panic_dbg_get(void *data, u64 * val)
+static int panic_dbg_get(void *data, u64 *val)
 {
-	apanic_mmc(NULL, 0, NULL);
+	struct kmsg_dumper *dumper = &drv_ctx.dump;
+	apanic_mmc(dumper, KMSG_DUMP_PANIC);
 	return 0;
 }
 
@@ -866,8 +932,8 @@ static void apanic_mmc_memdump_remove(struct hd_struct *part)
 		mmc_memdump_notify_remove(part);
 }
 #else
-static inline void apanic_mmc_memdump_add(struct hd_struct * part) {}
-static inline void apanic_mmc_memdump_remove(struct hd_struct * part) {}
+static inline void apanic_mmc_memdump_add(struct hd_struct *part) {}
+static inline void apanic_mmc_memdump_remove(struct hd_struct *part) {}
 #endif
 void apanic_mmc_partition_add(struct hd_struct *part)
 {
@@ -903,7 +969,6 @@ void apanic_mmc_partition_remove(struct hd_struct *part)
 
 int __init apanic_mmc_init(struct raw_mmc_panic_ops *panic_ops)
 {
-	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
 
 	debugfs_create_file("apanic_mmc", 0644, NULL, NULL,
 			    &panic_dbg_fops);
