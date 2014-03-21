@@ -100,24 +100,6 @@
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
 
-		camera_snapshot {
-			label = "camera_snapshot";
-			gpios = <&pma8084_gpios 21 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x2fe>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
-
-		camera_focus {
-			label = "camera_focus";
-			gpios = <&pma8084_gpios 5 0x1>;
-			linux,input-type = <1>;
-			linux,code = <0x210>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
-
 		vol_up {
 			label = "volume_up";
 			gpios = <&pma8084_gpios 2 0x1>;
