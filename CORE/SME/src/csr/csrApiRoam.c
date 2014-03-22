@@ -1694,7 +1694,12 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         {
             pMac->roam.configParam.scanAgeTimeCPS = pParam->scanAgeTimeCPS;   
         }
-        
+        if (pParam->initialScanSkipDFSCh)
+        {
+            pMac->roam.configParam.initialScanSkipDFSCh =
+                  pParam->initialScanSkipDFSCh;
+        }
+
         csrAssignRssiForCategory(pMac, CSR_BEST_RSSI_VALUE, pParam->bCatRssiOffset);
         pMac->roam.configParam.nRoamingTime = pParam->nRoamingTime;
         pMac->roam.configParam.fEnforce11dChannels = pParam->fEnforce11dChannels;
