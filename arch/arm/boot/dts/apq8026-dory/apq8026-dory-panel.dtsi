@@ -232,9 +232,9 @@
 			status = "ok";
 			reg = <0x38>;
 			lm3530,en_gpio = <&msmgpio 57 0x00>;
-			lm3530,max_current = /bits/ 8 <0x17>;
+			lm3530,max_current = /bits/ 8 <0x02>;
 			lm3530,default_brt = /bits/ 8 <0x10>;
-			lm3530,max_brt = /bits/ 8 <0x26>;
+			lm3530,max_brt = /bits/ 8 <0x60>;
 			lm3530,mode = /bits/ 8 <0>; /* Manual Mode */
 			lm3530,linear_map = /bits/ 8 <1>; /* Linear map */
 			lm3530,brt_ramp_fall = /bits/ 8 <0>;
