@@ -53,7 +53,10 @@ enum rmnet_ioctl_extended_cmds_e {
 	RMNET_IOCTL_GET_HWSW_MAP               = 0x000E,   /* Get HW/SW map   */
 	RMNET_IOCTL_SET_RX_HEADROOM            = 0x000F,   /* RX Headroom     */
 	RMNET_IOCTL_GET_EP_PAIR                = 0x0010,   /* Endpoint pair   */
-	RMNET_IOCTL_EXTENDED_MAX               = 0x0011
+	RMNET_IOCTL_SET_QOS_VERSION            = 0x0011,   /* 8/6 byte QoS hdr*/
+	RMNET_IOCTL_GET_QOS_VERSION            = 0x0012,   /* 8/6 byte QoS hdr*/
+	RMNET_IOCTL_GET_SUPPORTED_QOS_MODES    = 0x0013,   /* Get QoS modes   */
+	RMNET_IOCTL_EXTENDED_MAX               = 0x0014
 };
 
 /* Return values for the RMNET_IOCTL_GET_SUPPORTED_FEATURES IOCTL */
@@ -115,6 +118,16 @@ struct rmnet_ioctl_extended_s {
 	} u;
 };
 
+struct rmnet_ioctl_data_s {
+	union {
+		uint32_t	operation_mode;
+		uint32_t	tcm_handle;
+	} u;
+};
+
+#define RMNET_IOCTL_QOS_MODE_6   (1<<0)
+#define RMNET_IOCTL_QOS_MODE_8   (1<<1)
+
 /* QMI QoS header definition */
 #define QMI_QOS_HDR_S  __attribute((__packed__)) qmi_qos_hdr_s
 struct QMI_QOS_HDR_S {
@@ -122,5 +135,12 @@ struct QMI_QOS_HDR_S {
 	unsigned char    flags;
 	unsigned long    flow_id;
 };
+
+/* QMI QoS 8-byte header. */
+struct qmi_qos_hdr8_s {
+	uint8_t   version_flags;
+	uint8_t   reserved[3];
+	uint32_t  flow_id;
+} __attribute((__packed__));
 
 #endif /* _UAPI_MSM_RMNET_H_ */

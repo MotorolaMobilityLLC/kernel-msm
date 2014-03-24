@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,15 +19,16 @@
 #include "vpu_configuration.h"
 #include "vpu_translate.h"
 #include "vpu_channel.h"
+#include "vpu_ipc.h"
 
-#ifdef CONFIG_VPU_IN_VCAP
+#ifdef CONFIG_MSM_VPU_IN_VCAP
 extern int vpu_init_port_vcap(struct vpu_dev_session *session,
 			struct vpu_port_info *port_info);
 #else
 #define vpu_init_port_vcap(session, port_info)		0
 #endif
 
-#ifdef CONFIG_VPU_OUT_MDSS
+#ifdef CONFIG_MSM_VPU_OUT_MDSS
 extern int vpu_init_port_mdss(struct vpu_dev_session *session,
 			struct vpu_port_info *port_info);
 #else
@@ -141,16 +142,24 @@ static void __sys_buffer_callback_handler(u32 sid, struct vpu_buffer *pbuf,
 	if (!pbuf)
 		return;
 
+	if (!pbuf->vb.vb2_queue) {
+		pr_err("ERROR: Null pointer\n");
+		return;
+	}
+
 	port = get_port_number(pbuf->vb.vb2_queue->type);
 	session = vb2_get_drv_priv(pbuf->vb.vb2_queue);
 
 	if (data) {
-		pr_debug("ERROR (%d) buffer callback port %d buff %d\n",
-				data, port, pbuf->vb.v4l2_buf.index);
+		pr_debug("%s (%d) buffer callback session %d port %d buff %d\n",
+			data == VPU_STS_EFRAMEUNPROCESSED ?
+					"Unprocessed" : "Error",
+			data, session->id, port, pbuf->vb.v4l2_buf.index);
+
 		vb2_buffer_done(&pbuf->vb, VB2_BUF_STATE_ERROR);
 	} else {
-		pr_debug("GOOD buffer callback for port %d buff %d\n",
-				port, pbuf->vb.v4l2_buf.index);
+		pr_debug("Good buffer callback session %d port %d buff %d\n",
+			session->id, port, pbuf->vb.v4l2_buf.index);
 
 		/* update bytesused */
 		port_info = &session->port_info[port];
@@ -170,43 +179,30 @@ static void __sys_buffer_callback_handler(u32 sid, struct vpu_buffer *pbuf,
  * Dynamic switch (on/off) of VPU hardware on first/last global client.
  * Function must be called with core->lock mutex held.
  */
-static int __dynamic_vpu_hw_switch(struct vpu_dev_core *core, int on)
+static int __vpu_hw_switch(struct vpu_dev_core *core, int on)
 {
 	int ret = 0;
 
 	if (on) {
 		if (core->global_client_count++ == 0) {
 
+			pr_debug("Starting up VPU hardware\n");
 			ret = vpu_hw_sys_start(__sys_event_callback_handler,
 					__sys_buffer_callback_handler,
 					(void *)core);
 			if (ret) {
-				pr_err("failed to start IPC system\n");
+				pr_err("failed to start VPU hardware\n");
 				core->global_client_count--;
-				goto exit_hfi_init;
-			}
-
-			ret = attach_vpu_iommus(&core->resources);
-			if (ret) {
-				pr_err("could not attach VPU IOMMUs\n");
-				core->global_client_count--;
-				goto err_stop_sys;
 			}
 		}
 
 	} else { /* off */
-		if (--core->global_client_count == 0)
-			goto hfi_deinit;
+		if (--core->global_client_count == 0) {
+			pr_debug("Shutting down VPU hardware\n");
+			vpu_hw_sys_stop(0);
+		}
 	}
 
-	goto exit_hfi_init; /* hfi system stays on */
-
-hfi_deinit:
-	pr_debug("Shutting down hfi IPC\n");
-	detach_vpu_iommus(&core->resources);
-err_stop_sys:
-	vpu_hw_sys_stop(0);
-exit_hfi_init:
 	return ret;
 }
 
@@ -246,7 +242,7 @@ static struct vpu_client *__create_client(struct vpu_dev_core *core,
 	INIT_LIST_HEAD(&client->clients_entry);
 
 	/* Initialize HFI on first client open */
-	ret = __dynamic_vpu_hw_switch(core, 1);
+	ret = __vpu_hw_switch(core, 1);
 	if (ret) {
 		devm_kfree(core->dev, client);
 		goto err_client_create;
@@ -309,7 +305,7 @@ int vpu_close_client(struct vpu_client *client)
 		vpu_detach_client(client);
 
 	mutex_lock(&client->core->lock);
-	__dynamic_vpu_hw_switch(client->core, 0);
+	__vpu_hw_switch(client->core, 0);
 	list_del_init(&client->clients_entry); /* remove from unattached list */
 	mutex_unlock(&client->core->lock);
 
@@ -471,9 +467,14 @@ int vpu_get_fmt(struct vpu_client *client, struct v4l2_format *f)
 	if (port == INPUT_PORT) {
 		ret = vpu_hw_session_g_input_params(session->id, &in_param);
 		translate_input_format_to_api(&in_param, f);
+		f->fmt.pix_mp.colorspace =
+			session->port_info[INPUT_PORT].format.colorspace;
+
 	} else {
 		ret = vpu_hw_session_g_output_params(session->id, &out_param);
 		translate_output_format_to_api(&out_param, f);
+		f->fmt.pix_mp.colorspace =
+			session->port_info[OUTPUT_PORT].format.colorspace;
 	}
 
 	return ret;
@@ -481,9 +482,9 @@ int vpu_get_fmt(struct vpu_client *client, struct v4l2_format *f)
 
 int vpu_try_fmt(struct vpu_client *client, struct v4l2_format *f)
 {
-	int i;
-	u32 hfi_pixelformat;
 	const struct vpu_format_desc *vpu_format;
+	u32 hfi_pixelformat, bytesperline;
+	int i;
 
 	hfi_pixelformat =
 		translate_pixelformat_to_hfi(f->fmt.pix_mp.pixelformat);
@@ -491,18 +492,26 @@ int vpu_try_fmt(struct vpu_client *client, struct v4l2_format *f)
 	if (!vpu_format)
 		return -EINVAL;
 
+	pr_debug("width = %d, height = %d\n",
+			f->fmt.pix_mp.width, f->fmt.pix_mp.height);
 	if (!is_format_valid(f))
 		return -EINVAL;
 
 	f->fmt.pix_mp.num_planes = vpu_format->num_planes;
+
 	for (i = 0; i < vpu_format->num_planes; i++) {
-		f->fmt.pix_mp.plane_fmt[i].bytesperline =
-			get_bytesperline(f->fmt.pix_mp.width,
+		bytesperline = get_bytesperline(f->fmt.pix_mp.width,
 				vpu_format->plane[i].bitsperpixel,
-				f->fmt.pix_mp.plane_fmt[i].bytesperline);
+				f->fmt.pix_mp.plane_fmt[i].bytesperline,
+				f->fmt.pix_mp.pixelformat);
+		if (!bytesperline) {
+			pr_err("Invalid plane %d bytesperline\n", i);
+			return -EINVAL;
+		}
+		f->fmt.pix_mp.plane_fmt[i].bytesperline = bytesperline;
+
 		f->fmt.pix_mp.plane_fmt[i].sizeimage =
-			get_sizeimage(f->fmt.pix_mp.plane_fmt[i].bytesperline,
-				f->fmt.pix_mp.height,
+			get_sizeimage(bytesperline, f->fmt.pix_mp.height,
 				vpu_format->plane[i].heightfactor);
 	}
 
@@ -547,12 +556,12 @@ int vpu_set_fmt(struct vpu_client *client, struct v4l2_format *f)
 		session->port_info[INPUT_PORT].scan_mode =
 				translate_v4l2_scan_mode(pix_mp->field);
 
-	ret = commit_port_config(session, port, 1);
-	if (ret) {
-		pr_err("commit_port_config failed (err %d)\n", ret);
-		return -EINVAL;
-	}
+	ret = configure_colorspace(session, port);
+	if (ret)
+		goto exit;
 
+	ret = commit_port_config(session, port, 1);
+exit:
 	mutex_unlock(&session->lock);
 	return ret;
 }
@@ -672,8 +681,14 @@ int vpu_set_input(struct vpu_client *client, unsigned int i)
 					&session->port_info[INPUT_PORT]);
 		if (ret)
 			goto exit_s_input;
+
 		ret = call_port_op(session, INPUT_PORT, attach);
+		if (ret)
+			goto exit_s_input;
+
 	}
+
+	ret = commit_port_config(session, INPUT_PORT, 1);
 
 exit_s_input:
 	mutex_unlock(&session->lock);
@@ -713,8 +728,13 @@ int vpu_set_output(struct vpu_client *client, unsigned int i)
 					&session->port_info[OUTPUT_PORT]);
 		if (ret)
 			goto exit_s_output;
+
 		ret = call_port_op(session, OUTPUT_PORT, attach);
+		if (ret)
+			goto exit_s_output;
 	}
+
+	ret = commit_port_config(session, OUTPUT_PORT, 1);
 
 exit_s_output:
 	mutex_unlock(&session->lock);
@@ -890,6 +910,7 @@ static int __check_user_planes(struct vb2_queue *vbq, struct v4l2_buffer *b)
 		return 0;
 	}
 
+	pr_err("Invalid planes parameters\n");
 	return -EINVAL;
 }
 
@@ -1034,6 +1055,22 @@ exit_flush:
 	return ret;
 }
 
+int vpu_trigger_stream(struct vpu_dev_session *session)
+{
+	int ret = 0;
+
+	ret = vpu_hw_session_start(session->id);
+	if (ret) {
+		pr_err("channel start failed\n");
+		return ret;
+	}
+
+	session->streaming_state = ALL_STREAMING;
+	__queue_pending_buffers(session);
+
+	return ret;
+}
+
 int vpu_streamon(struct vpu_client *client, enum v4l2_buf_type type)
 {
 	struct vpu_dev_session *session = client ? client->session : 0;
@@ -1082,20 +1119,24 @@ int vpu_streamon(struct vpu_client *client, enum v4l2_buf_type type)
 	if (ret)
 		goto late_exit_streamon;
 
-	/* in tunneling case, buffers are set before the start command */
-	ret = call_port_op(session, port, streamon);
-	if (ret)
-		goto late_exit_streamon;
-
-	/* Start end-to-end session streaming */
-	ret = vpu_hw_session_start(session->id);
+	ret = call_port_op(session, OUTPUT_PORT, streamon);
 	if (ret) {
-		pr_err("channel start failed\n");
+		pr_err("streamon failed on output port\n");
 		goto late_exit_streamon;
 	}
 
-	session->streaming_state = temp_streaming; /* ALL_STREAMING */
-	__queue_pending_buffers(session);
+	ret = call_port_op(session, INPUT_PORT, streamon);
+	if (ret == -EAGAIN) {
+		pr_debug("streamon delayed on input port\n");
+		ret = 0;
+		goto delay_streamon;
+	} else if (ret) {
+		pr_err("streamon failed on input port\n");
+		goto late_exit_streamon;
+	}
+
+	/* Start end-to-end session streaming */
+	ret = vpu_trigger_stream(session);
 
 	pr_debug("Session streaming started successfully\n");
 
@@ -1105,6 +1146,7 @@ late_exit_streamon:
 		if (__is_tunneling(session, port))
 			session->io_client[port] = NULL;
 	}
+delay_streamon:
 	mutex_unlock(&session->lock);
 
 	return ret;

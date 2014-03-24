@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -296,11 +296,11 @@ int32_t msm_sensor_driver_probe(void *setting)
 
 	/* Print slave info */
 	CDBG("camera id %d", slave_info->camera_id);
-	CDBG("slave_addr %x", slave_info->slave_addr);
+	CDBG("slave_addr 0x%x", slave_info->slave_addr);
 	CDBG("addr_type %d", slave_info->addr_type);
-	CDBG("sensor_id_reg_addr %x",
+	CDBG("sensor_id_reg_addr 0x%x",
 		slave_info->sensor_id_info.sensor_id_reg_addr);
-	CDBG("sensor_id %x", slave_info->sensor_id_info.sensor_id);
+	CDBG("sensor_id 0x%x", slave_info->sensor_id_info.sensor_id);
 	CDBG("size %d", slave_info->power_setting_array.size);
 	CDBG("size down %d", slave_info->power_setting_array.size_down);
 
@@ -309,7 +309,7 @@ int32_t msm_sensor_driver_probe(void *setting)
 		pr_err("failed: invalid camera id %d max %d",
 			slave_info->camera_id, MAX_CAMERAS);
 		rc = -EINVAL;
-		goto FREE_POWER_SETTING;
+		goto FREE_SLAVE_INFO;
 	}
 
 	/* Extract s_ctrl from camera id */
@@ -318,7 +318,7 @@ int32_t msm_sensor_driver_probe(void *setting)
 		pr_err("failed: s_ctrl %p for camera_id %d", s_ctrl,
 			slave_info->camera_id);
 		rc = -EINVAL;
-		goto FREE_POWER_SETTING;
+		goto FREE_SLAVE_INFO;
 	}
 
 	CDBG("s_ctrl[%d] %p", slave_info->camera_id, s_ctrl);
@@ -330,8 +330,8 @@ int32_t msm_sensor_driver_probe(void *setting)
 		 * probe
 		 */
 		pr_err("slot %d has some other sensor", slave_info->camera_id);
-		kfree(slave_info);
-		return 0;
+		rc = 0;
+		goto FREE_SLAVE_INFO;
 	}
 
 	size = slave_info->power_setting_array.size;
@@ -455,8 +455,9 @@ int32_t msm_sensor_driver_probe(void *setting)
 	cci_client->sid = slave_info->slave_addr >> 1;
 	cci_client->retries = 3;
 	cci_client->id_map = 0;
+	cci_client->i2c_freq_mode = slave_info->i2c_freq_mode;
 
-	/* Parse and fill vreg params */
+	/* Parse and fill vreg params for powerup settings */
 	rc = msm_camera_fill_vreg_params(
 		power_info->cam_vreg,
 		power_info->num_vreg,
@@ -464,6 +465,18 @@ int32_t msm_sensor_driver_probe(void *setting)
 		power_info->power_setting_size);
 	if (rc < 0) {
 		pr_err("failed: msm_camera_get_dt_power_setting_data rc %d",
+			rc);
+		goto FREE_CAMERA_INFO;
+	}
+
+	/* Parse and fill vreg params for powerdown settings*/
+	rc = msm_camera_fill_vreg_params(
+		power_info->cam_vreg,
+		power_info->num_vreg,
+		power_info->power_down_setting,
+		power_info->power_down_setting_size);
+	if (rc < 0) {
+		pr_err("failed: msm_camera_fill_vreg_params for PDOWN rc %d",
 			rc);
 		goto FREE_CAMERA_INFO;
 	}

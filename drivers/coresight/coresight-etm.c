@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,8 +31,8 @@
 #include <linux/of_coresight.h>
 #include <linux/coresight.h>
 #include <asm/sections.h>
-#include <mach/socinfo.h>
-#include <mach/msm_memory_dump.h>
+#include <soc/qcom/socinfo.h>
+#include <soc/qcom/memory_dump.h>
 
 #include "coresight-priv.h"
 

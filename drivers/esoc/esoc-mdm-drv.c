@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -12,6 +12,7 @@
 
 #include <linux/delay.h>
 #include <linux/workqueue.h>
+#include <linux/reboot.h>
 #include "esoc.h"
 
 enum {
@@ -36,10 +37,22 @@ struct mdm_drv {
 	bool boot_fail;
 	struct workqueue_struct *mdm_queue;
 	struct work_struct ssr_work;
+	struct notifier_block esoc_restart;
 };
-
 #define to_mdm_drv(d)	container_of(d, struct mdm_drv, cmd_eng)
 
+static int esoc_msm_restart_handler(struct notifier_block *nb,
+		unsigned long action, void *data)
+{
+	struct mdm_drv *mdm_drv = container_of(nb, struct mdm_drv,
+					esoc_restart);
+	struct esoc_clink *esoc_clink = mdm_drv->esoc_clink;
+	const struct esoc_clink_ops const *clink_ops = esoc_clink->clink_ops;
+
+	dev_dbg(&esoc_clink->dev, "Notifying esoc of cold reboot\n");
+	clink_ops->notify(ESOC_PRIMARY_REBOOT, esoc_clink);
+	return NOTIFY_OK;
+}
 static void mdm_handle_clink_evt(enum esoc_evt evt,
 					struct esoc_eng *eng)
 {
@@ -226,6 +239,10 @@ int esoc_ssr_probe(struct esoc_clink *esoc_clink)
 	mdm_drv->esoc_clink = esoc_clink;
 	mdm_drv->mode = PWR_OFF;
 	mdm_drv->boot_fail = false;
+	mdm_drv->esoc_restart.notifier_call = esoc_msm_restart_handler;
+	ret = register_reboot_notifier(&mdm_drv->esoc_restart);
+	if (ret)
+		dev_err(&esoc_clink->dev, "register for reboot failed\n");
 	return 0;
 queue_err:
 	esoc_clink_unregister_ssr(esoc_clink);
@@ -234,11 +251,23 @@ ssr_err:
 	return ret;
 }
 
+static struct esoc_compat compat_table[] = {
+	{	.name = "MDM9x25",
+		.data = NULL,
+	},
+	{
+		.name = "MDM9x35",
+		.data = NULL,
+	},
+};
+
 static struct esoc_drv esoc_ssr_drv = {
 	.owner = THIS_MODULE,
 	.probe = esoc_ssr_probe,
+	.compat_table = compat_table,
+	.compat_entries = ARRAY_SIZE(compat_table),
 	.driver = {
-		.name = "MDM9x25",
+		.name = "mdm-4x",
 	},
 };
 

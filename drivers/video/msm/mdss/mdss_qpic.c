@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,7 +30,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/clk/msm-clk.h>
 
-#include <mach/sps.h>
+#include <linux/msm-sps.h>
 #include <mach/hardware.h>
 
 #include "mdss_fb.h"
@@ -201,7 +201,7 @@ int qpic_init_sps(struct platform_device *pdev,
 	struct sps_connect *sps_config = &end_point->config;
 	struct sps_register_event *sps_event = &end_point->bam_event;
 	struct sps_bam_props bam = {0};
-	u32 bam_handle = 0;
+	unsigned long bam_handle = 0;
 
 	if (qpic_res->sps_init)
 		return 0;
@@ -366,7 +366,7 @@ int qpic_flush_buffer_bam(u32 cmd, u32 len, u32 *param, u32 is_cmd)
 		phys_addr += block_len;
 		len -= block_len;
 	}
-	ret = wait_for_completion_interruptible_timeout(
+	ret = wait_for_completion_timeout(
 		&qpic_res->qpic_endpt.completion,
 		msecs_to_jiffies(100 * 4));
 	if (ret <= 0)

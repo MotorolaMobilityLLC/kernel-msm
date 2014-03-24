@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,6 +27,7 @@
 #define QSEOS_RESULT_FAIL_KS_ALREADY_DONE     -69
 #define QSEOS_RESULT_FAIL_KEY_ID_DNE          -70
 #define QSEOS_RESULT_FAIL_INCORRECT_PSWD      -71
+#define QSEOS_RESULT_FAIL_MAX_ATTEMPT         -72
 
 enum qseecom_command_scm_resp_type {
 	QSEOS_APP_ID = 0xEE01,
@@ -55,6 +56,20 @@ enum qseecom_qceos_cmd_id {
 	QSEOS_MAX_KEY_COUNT,
 	QSEOS_SET_KEY,
 	QSEOS_UPDATE_KEY_USERINFO,
+	QSEOS_TEE_OPEN_SESSION,
+	QSEOS_TEE_INVOKE_COMMAND,
+	QSEOS_TEE_CLOSE_SESSION,
+	QSEOS_FSM_LTE_INIT_DB = 0x100,
+	QSEOS_FSM_LTE_STORE_KENB = 0x101,
+	QSEOS_FSM_LTE_GEN_KEYS = 0x102,
+	QSEOS_FSM_LTE_GET_KEY_OFFSETS = 0x103,
+	QSEOS_FSM_LTE_GEN_KENB_STAR = 0x104,
+	QSEOS_FSM_LTE_GET_KENB_STAR = 0x105,
+	QSEOS_FSM_LTE_STORE_NH = 0x106,
+	QSEOS_FSM_LTE_DELETE_NH = 0x107,
+	QSEOS_FSM_LTE_DELETE_KEYS = 0x108,
+	QSEOS_FSM_IKE_CMD_SIGN = 0x200,
+	QSEOS_FSM_IKE_CMD_PROV_KEY = 0x201,
 	QSEOS_CMD_MAX     = 0xEFFFFFFF
 };
 
@@ -206,5 +221,21 @@ __packed struct qseecom_key_max_count_query_irsp {
 	uint32_t max_key_count;
 };
 
+__packed struct qseecom_qteec_ireq {
+	uint32_t    qsee_cmd_id;
+	uint32_t    app_id;
+	void	*req_ptr;
+	uint32_t    req_len;
+	void    *resp_ptr;
+	uint32_t    resp_len;
+};
+
+__packed struct qseecom_client_send_fsm_key_req {
+	uint32_t qsee_cmd_id;
+	void     *req_ptr;
+	uint32_t req_len;
+	void     *rsp_ptr;
+	uint32_t rsp_len;
+};
 
 #endif /* __QSEECOMI_H_ */

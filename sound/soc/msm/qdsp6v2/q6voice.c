@@ -1,4 +1,4 @@
-/*  Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/*  Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,7 +18,7 @@
 #include <linux/mutex.h>
 #include <linux/msm_audio_ion.h>
 
-#include <mach/socinfo.h>
+#include <soc/qcom/socinfo.h>
 #include <linux/qdsp6v2/apr_tal.h>
 
 #include "sound/apr_audio-v2.h"
@@ -28,7 +28,7 @@
 #include "q6voice.h"
 
 
-#define TIMEOUT_MS 200
+#define TIMEOUT_MS 300
 
 
 #define CMD_STATUS_SUCCESS 0
@@ -300,8 +300,8 @@ static struct voice_data *voice_get_session(u32 session_id)
 		break;
 	}
 
-	pr_debug("%s:session_id 0x%x session handle 0x%x\n",
-		__func__, session_id, (unsigned int)v);
+	pr_debug("%s:session_id 0x%x session handle %p\n",
+		__func__, session_id, v);
 
 	return v;
 }
@@ -950,6 +950,7 @@ static int voice_destroy_mvm_cvs_session(struct voice_data *v)
 
 	if (is_voip_session(v->session_id) ||
 	    is_qchat_session(v->session_id) ||
+	    is_volte_session(v->session_id) ||
 	    v->voc_state == VOC_ERROR) {
 		/* Destroy CVS. */
 		pr_debug("%s: CVS destroy session\n", __func__);
@@ -1496,6 +1497,77 @@ done:
 	return ret;
 }
 
+static int voice_config_cvs_vocoder_amr_rate(struct voice_data *v)
+{
+	int ret = 0;
+	void *apr_cvs;
+	u16 cvs_handle;
+	struct cvs_set_amr_enc_rate_cmd cvs_set_amr_rate;
+
+	if (v == NULL) {
+		pr_err("%s: v is NULL\n", __func__);
+
+		ret = -EINVAL;
+		goto done;
+	}
+	apr_cvs = common.apr_q6_cvs;
+
+	if (!apr_cvs) {
+		pr_err("%s: apr_cvs is NULL.\n", __func__);
+
+		ret = -EINVAL;
+		goto done;
+	}
+
+	cvs_handle = voice_get_cvs_handle(v);
+
+	pr_debug("%s: Setting AMR rate. Media Type: %d\n", __func__,
+		 common.mvs_info.media_type);
+
+	cvs_set_amr_rate.hdr.hdr_field =
+			APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+			APR_HDR_LEN(APR_HDR_SIZE),
+			APR_PKT_VER);
+	cvs_set_amr_rate.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
+			       sizeof(cvs_set_amr_rate) - APR_HDR_SIZE);
+	cvs_set_amr_rate.hdr.src_port =
+			voice_get_idx_for_session(v->session_id);
+	cvs_set_amr_rate.hdr.dest_port = cvs_handle;
+	cvs_set_amr_rate.hdr.token = 0;
+
+	if (common.mvs_info.media_type == VSS_MEDIA_ID_AMR_NB_MODEM)
+		cvs_set_amr_rate.hdr.opcode =
+				VSS_ISTREAM_CMD_VOC_AMR_SET_ENC_RATE;
+	else if (common.mvs_info.media_type == VSS_MEDIA_ID_AMR_WB_MODEM)
+		cvs_set_amr_rate.hdr.opcode =
+				VSS_ISTREAM_CMD_VOC_AMRWB_SET_ENC_RATE;
+
+	cvs_set_amr_rate.amr_rate.mode = common.mvs_info.rate;
+
+	v->cvs_state = CMD_STATUS_FAIL;
+
+	ret = apr_send_pkt(apr_cvs, (uint32_t *) &cvs_set_amr_rate);
+	if (ret < 0) {
+		pr_err("%s: Error %d sending SET_AMR_RATE\n",
+		       __func__, ret);
+
+		goto done;
+	}
+	ret = wait_event_timeout(v->cvs_wait,
+				 (v->cvs_state == CMD_STATUS_SUCCESS),
+				 msecs_to_jiffies(TIMEOUT_MS));
+	if (!ret) {
+		pr_err("%s: wait_event timeout\n", __func__);
+
+		ret = -EINVAL;
+		goto done;
+	}
+
+	return 0;
+done:
+	return ret;
+}
+
 static int voice_config_cvs_vocoder(struct voice_data *v)
 {
 	int ret = 0;
@@ -1600,80 +1672,13 @@ static int voice_config_cvs_vocoder(struct voice_data *v)
 
 		break;
 	}
-	case VSS_MEDIA_ID_AMR_NB_MODEM: {
-		struct cvs_set_amr_enc_rate_cmd cvs_set_amr_rate;
-
-		pr_debug("Setting AMR rate\n");
-
-		cvs_set_amr_rate.hdr.hdr_field =
-				APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-				APR_HDR_LEN(APR_HDR_SIZE),
-				APR_PKT_VER);
-		cvs_set_amr_rate.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
-				       sizeof(cvs_set_amr_rate) - APR_HDR_SIZE);
-		cvs_set_amr_rate.hdr.src_port =
-				voice_get_idx_for_session(v->session_id);
-		cvs_set_amr_rate.hdr.dest_port = cvs_handle;
-		cvs_set_amr_rate.hdr.token = 0;
-		cvs_set_amr_rate.hdr.opcode =
-					VSS_ISTREAM_CMD_VOC_AMR_SET_ENC_RATE;
-		cvs_set_amr_rate.amr_rate.mode = common.mvs_info.rate;
-
-		v->cvs_state = CMD_STATUS_FAIL;
-
-		ret = apr_send_pkt(apr_cvs, (uint32_t *) &cvs_set_amr_rate);
-		if (ret < 0) {
-			pr_err("%s: Error %d sending SET_AMR_RATE\n",
-			       __func__, ret);
-			goto fail;
-		}
-		ret = wait_event_timeout(v->cvs_wait,
-					 (v->cvs_state == CMD_STATUS_SUCCESS),
-					 msecs_to_jiffies(TIMEOUT_MS));
-		if (!ret) {
-			pr_err("%s: wait_event timeout\n", __func__);
-			goto fail;
-		}
-
-		ret = voice_set_dtx(v);
-		if (ret < 0)
-			goto fail;
-
-		break;
-	}
+	case VSS_MEDIA_ID_AMR_NB_MODEM:
 	case VSS_MEDIA_ID_AMR_WB_MODEM: {
-		struct cvs_set_amrwb_enc_rate_cmd cvs_set_amrwb_rate;
-
-		pr_debug("Setting AMR WB rate\n");
-
-		cvs_set_amrwb_rate.hdr.hdr_field =
-				APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
-				APR_HDR_LEN(APR_HDR_SIZE),
-				APR_PKT_VER);
-		cvs_set_amrwb_rate.hdr.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
-						sizeof(cvs_set_amrwb_rate) -
-						APR_HDR_SIZE);
-		cvs_set_amrwb_rate.hdr.src_port =
-				voice_get_idx_for_session(v->session_id);
-		cvs_set_amrwb_rate.hdr.dest_port = cvs_handle;
-		cvs_set_amrwb_rate.hdr.token = 0;
-		cvs_set_amrwb_rate.hdr.opcode =
-					VSS_ISTREAM_CMD_VOC_AMRWB_SET_ENC_RATE;
-		cvs_set_amrwb_rate.amrwb_rate.mode = common.mvs_info.rate;
-
-		v->cvs_state = CMD_STATUS_FAIL;
-
-		ret = apr_send_pkt(apr_cvs, (uint32_t *) &cvs_set_amrwb_rate);
-		if (ret < 0) {
-			pr_err("%s: Error %d sending SET_AMRWB_RATE\n",
+		ret = voice_config_cvs_vocoder_amr_rate(v);
+		if (ret) {
+			pr_err("%s: Failed to update vocoder rate. %d\n",
 			       __func__, ret);
-			goto fail;
-		}
-		ret = wait_event_timeout(v->cvs_wait,
-					 (v->cvs_state == CMD_STATUS_SUCCESS),
-					 msecs_to_jiffies(TIMEOUT_MS));
-		if (!ret) {
-			pr_err("%s: wait_event timeout\n", __func__);
+
 			goto fail;
 		}
 
@@ -1698,6 +1703,31 @@ static int voice_config_cvs_vocoder(struct voice_data *v)
 
 fail:
 	return -EINVAL;
+}
+
+int voc_update_amr_vocoder_rate(uint32_t session_id)
+{
+	int ret = 0;
+	struct voice_data *v;
+
+	pr_debug("%s: session_id:%d", __func__, session_id);
+
+	v = voice_get_session(session_id);
+
+	if (v == NULL) {
+		pr_err("%s: v is NULL, session_id:%d\n", __func__,
+		       session_id);
+
+		ret = -EINVAL;
+		goto done;
+	}
+
+	mutex_lock(&v->lock);
+	ret = voice_config_cvs_vocoder_amr_rate(v);
+	mutex_unlock(&v->lock);
+
+done:
+	return ret;
 }
 
 static int voice_send_start_voice_cmd(struct voice_data *v)
@@ -2013,7 +2043,7 @@ static int voice_send_cvs_register_cal_cmd(struct voice_data *v)
 	if (cal_block.cal_size == 0 ||
 	    cal_block.cal_size >
 	    sizeof(cvs_reg_cal_cmd.cvs_cal_data.column_info)) {
-		pr_err("%s: Invalid VOCSTRM_CAL size %d\n",
+		pr_err("%s: Invalid VOCSTRM_CAL size %zd\n",
 		       __func__, cal_block.cal_size);
 
 		ret = -EINVAL;
@@ -2296,7 +2326,7 @@ static int voice_send_cvp_register_cal_cmd(struct voice_data *v)
 	if (cal_block.cal_size == 0 ||
 	    cal_block.cal_size >
 	    sizeof(cvp_reg_cal_cmd.cvp_cal_data.column_info)) {
-		pr_err("%s: Invalid VOCPROC_CAL size %d\n",
+		pr_err("%s: Invalid VOCPROC_CAL size %zd\n",
 		       __func__, cal_block.cal_size);
 
 		ret = -EINVAL;
@@ -2446,7 +2476,7 @@ static int voice_send_cvp_register_vol_cal_cmd(struct voice_data *v)
 	if (cal_block.cal_size == 0 ||
 	    cal_block.cal_size >
 	    sizeof(cvp_reg_vol_cal_cmd.cvp_vol_cal_data.column_info)) {
-		pr_err("%s: Invalid VOCVOL_CAL size %d\n",
+		pr_err("%s: Invalid VOCVOL_CAL size %zd\n",
 		       __func__, cal_block.cal_size);
 
 		ret = -EINVAL;
@@ -2576,8 +2606,8 @@ static int voice_map_memory_physical_cmd(struct voice_data *v,
 	 * Store next table descriptor's address(64 bit) as NULL as there
 	 * is only one memory block
 	 */
-	memtable[0] = (uint32_t)NULL;
-	memtable[1] = (uint32_t)NULL;
+	memtable[0] = 0;
+	memtable[1] = 0;
 
 	/* Store next table descriptor's size */
 	memtable[2] = 0;
@@ -2851,8 +2881,8 @@ int voc_map_rtac_block(struct rtac_cal_block_data *cal_block)
 	if (!is_rtac_memory_allocated()) {
 		result = voice_alloc_rtac_mem_map_table();
 		if (result < 0) {
-			pr_err("%s: RTAC alloc mem map table did not work! addr = 0x%x, size = %d\n",
-				__func__, cal_block->cal_data.paddr,
+			pr_err("%s: RTAC alloc mem map table did not work! addr = 0x%pa, size = %d\n",
+				__func__, &cal_block->cal_data.paddr,
 				cal_block->map_data.map_size);
 
 			goto done_unlock;
@@ -2861,13 +2891,14 @@ int voc_map_rtac_block(struct rtac_cal_block_data *cal_block)
 
 	result = voice_map_memory_physical_cmd(v,
 		&common.rtac_mem_map_table,
-		(dma_addr_t)cal_block->cal_data.paddr,
+		cal_block->cal_data.paddr,
 		cal_block->map_data.map_size,
 		VOC_RTAC_MEM_MAP_TOKEN);
 	if (result < 0) {
-		pr_err("%s: RTAC mmap did not work! addr = 0x%x, size = %d\n",
-			__func__, cal_block->cal_data.paddr,
-			cal_block->map_data.map_size);
+		pr_debug("%s: mmap failed for %pa\n", __func__,
+			&cal_block->cal_data.paddr);
+		pr_err("%s: RTAC mmap did not work! size = %d\n",
+			__func__, cal_block->map_data.map_size);
 
 		free_rtac_map_table();
 		goto done_unlock;
@@ -3395,6 +3426,10 @@ static int voice_destroy_vocproc(struct voice_data *v)
 	}
 	mvm_handle = voice_get_mvm_handle(v);
 	cvp_handle = voice_get_cvp_handle(v);
+
+	/* disable slowtalk if st_enable is set */
+	if (v->st_enable)
+		voice_send_set_pp_enable_cmd(v, MODULE_ID_VOICE_MODULE_ST, 0);
 
 	/* stop playback or recording */
 	v->music_info.force = 1;
@@ -5647,7 +5682,7 @@ static int voice_alloc_oob_shared_mem(void)
 {
 	int cnt = 0;
 	int rc = 0;
-	int len;
+	size_t len;
 	void *mem_addr;
 	dma_addr_t phys;
 	int bufsz = BUFFER_BLOCK_SIZE;
@@ -5666,7 +5701,7 @@ static int voice_alloc_oob_shared_mem(void)
 	rc = msm_audio_ion_alloc("voip_client", &(v->shmem_info.sh_buf.client),
 			&(v->shmem_info.sh_buf.handle),
 			bufsz*bufcnt,
-			(ion_phys_addr_t *)&phys, (size_t *)&len,
+			&phys, &len,
 			&mem_addr);
 	if (rc < 0) {
 		pr_err("%s: audio ION alloc failed, rc = %d\n",
@@ -5703,7 +5738,7 @@ done:
 static int voice_alloc_oob_mem_table(void)
 {
 	int rc = 0;
-	int len;
+	size_t len;
 	struct voice_data *v = voice_get_session(
 				common.voice[VOC_PATH_FULL].session_id);
 
@@ -5718,8 +5753,8 @@ static int voice_alloc_oob_mem_table(void)
 	rc = msm_audio_ion_alloc("voip_client", &(v->shmem_info.memtbl.client),
 				&(v->shmem_info.memtbl.handle),
 				sizeof(struct vss_imemory_table_t),
-				(ion_phys_addr_t *)&v->shmem_info.memtbl.phys,
-				(size_t *)&len,
+				&v->shmem_info.memtbl.phys,
+				&len,
 				&(v->shmem_info.memtbl.data));
 	if (rc < 0) {
 		pr_err("%s: audio ION alloc failed, rc = %d\n",
@@ -5862,7 +5897,7 @@ done:
 
 int voc_send_cvp_map_vocpcm_memory(uint32_t session_id,
 				   struct mem_map_table *tp_mem_table,
-				   uint32_t paddr, uint32_t bufsize)
+				   phys_addr_t paddr, uint32_t bufsize)
 {
 	return  voice_map_memory_physical_cmd(voice_get_session(session_id),
 					      tp_mem_table,
@@ -5963,14 +5998,14 @@ void voc_deregister_hpcm_evt_cb(void)
 static int voice_alloc_cal_mem_map_table(void)
 {
 	int ret = 0;
-	int len;
+	size_t len;
 
 	ret = msm_audio_ion_alloc("voc_cal",
 				&(common.cal_mem_map_table.client),
 				&(common.cal_mem_map_table.handle),
 				sizeof(struct vss_imemory_table_t),
-			      (ion_phys_addr_t *)&common.cal_mem_map_table.phys,
-				(size_t *) &len,
+				&common.cal_mem_map_table.phys,
+				&len,
 				&(common.cal_mem_map_table.data));
 	if ((ret < 0) && (ret != -EPROBE_DEFER)) {
 		pr_err("%s: audio ION alloc failed, rc = %d\n",
@@ -5979,8 +6014,8 @@ static int voice_alloc_cal_mem_map_table(void)
 	}
 
 	common.cal_mem_map_table.size = sizeof(struct vss_imemory_table_t);
-	pr_debug("%s: data 0x%x phys %pa\n", __func__,
-		 (unsigned int) common.cal_mem_map_table.data,
+	pr_debug("%s: data %p phys %pa\n", __func__,
+		 common.cal_mem_map_table.data,
 		 &common.cal_mem_map_table.phys);
 
 done:
@@ -5990,14 +6025,14 @@ done:
 static int voice_alloc_rtac_mem_map_table(void)
 {
 	int ret = 0;
-	int len;
+	size_t len;
 
 	ret = msm_audio_ion_alloc("voc_rtac_cal",
 			&(common.rtac_mem_map_table.client),
 			&(common.rtac_mem_map_table.handle),
 			sizeof(struct vss_imemory_table_t),
-			(ion_phys_addr_t *)&common.rtac_mem_map_table.phys,
-			(size_t *) &len,
+			&common.rtac_mem_map_table.phys,
+			&len,
 			&(common.rtac_mem_map_table.data));
 	if (ret < 0) {
 		pr_err("%s: audio ION alloc failed, rc = %d\n",
@@ -6006,8 +6041,8 @@ static int voice_alloc_rtac_mem_map_table(void)
 	}
 
 	common.rtac_mem_map_table.size = sizeof(struct vss_imemory_table_t);
-	pr_debug("%s: data 0x%x phys %pa\n", __func__,
-		 (unsigned int) common.rtac_mem_map_table.data,
+	pr_debug("%s: data %p phys %pa\n", __func__,
+		 common.rtac_mem_map_table.data,
 		 &common.rtac_mem_map_table.phys);
 
 done:

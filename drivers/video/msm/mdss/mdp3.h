@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  * Copyright (C) 2007 Google Incorporated
  *
  * This program is free software; you can redistribute it and/or modify
@@ -25,6 +25,7 @@
 #include "mdss_fb.h"
 
 #define MDP_VSYNC_CLK_RATE	19200000
+#define MDP_CORE_CLK_RATE	100000000
 #define KOFF_TIMEOUT msecs_to_jiffies(84)
 
 enum  {
@@ -135,9 +136,6 @@ struct mdp3_hw_resource {
 	struct ion_handle *ion_handle;
 	struct mutex iommu_lock;
 	struct rb_root iommu_root;
-	void *virt;
-	unsigned long phys;
-	size_t size;
 
 	struct mdp3_dma dma[MDP3_DMA_MAX];
 	struct mdp3_intf intf[MDP3_DMA_OUTPUT_SEL_MAX];
@@ -150,7 +148,7 @@ struct mdp3_hw_resource {
 
 	int irq_registered;
 
-	u32 splash_mem_addr;
+	unsigned long splash_mem_addr;
 	u32 splash_mem_size;
 	struct mdss_panel_cfg pan_cfg;
 
@@ -192,9 +190,9 @@ int mdp3_get_img(struct msmfb_data *img, struct mdp3_img_data *data,
 int mdp3_iommu_enable(int client);
 int mdp3_iommu_disable(int client);
 int mdp3_iommu_is_attached(int client);
-void mdp3_free(void);
+void mdp3_free(struct msm_fb_data_type *mfd);
 int mdp3_parse_dt_splash(struct msm_fb_data_type *mfd);
-void mdp3_release_splash_memory(void);
+void mdp3_release_splash_memory(struct msm_fb_data_type *mfd);
 int mdp3_create_sysfs_link(struct device *dev);
 int mdp3_get_cont_spash_en(void);
 int mdp3_get_mdp_dsi_clk(void);

@@ -34,19 +34,19 @@
 #include <mach/board.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
-#include <mach/restart.h>
 #include <mach/msm_memtypes.h>
-#include <mach/socinfo.h>
 #include <mach/board.h>
-#include <mach/msm_smd.h>
-#include <mach/rpm-smd.h>
 #include <soc/qcom/smem.h>
+#include <soc/qcom/smd.h>
+#include <soc/qcom/rpm-smd.h>
+#include <soc/qcom/spm.h>
+#include <soc/qcom/pm.h>
+#include <soc/qcom/restart.h>
+#include <soc/qcom/socinfo.h>
 #include <linux/msm_thermal.h>
 #include "../board-dt.h"
 #include "../clock.h"
 #include "../platsmp.h"
-#include "../spm.h"
-#include "../pm.h"
 #include <mach/board_lge.h>
 
 static struct of_dev_auxdata msm8226_auxdata_lookup[] __initdata = {
@@ -171,7 +171,6 @@ static const char * const msm8226_dt_match[] __initconst = {
 
 DT_MACHINE_START(MSM8226_DT, "Qualcomm MSM 8226 DORY (Flattened Device Tree)")
 	.map_io = msm_map_msm8226_io,
-	.init_irq = msm_dt_init_irq,
 	.init_machine = msm8226_init,
 	.dt_compat = msm8226_dt_match,
 	.reserve = msm8226_reserve,

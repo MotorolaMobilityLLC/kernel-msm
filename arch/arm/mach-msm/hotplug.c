@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 2002 ARM Ltd.
  *  All Rights Reserved
- *  Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -13,14 +13,13 @@
 #include <linux/cpu.h>
 #include <linux/notifier.h>
 #include <linux/msm_rtb.h>
+#include <soc/qcom/spm.h>
+#include <soc/qcom/pm.h>
 
 #include <asm/smp_plat.h>
 #include <asm/vfp.h>
 
-#include <mach/jtag.h>
-
-#include "pm.h"
-#include "spm.h"
+#include <soc/qcom/jtag.h>
 
 static cpumask_t cpu_dying_mask;
 
@@ -39,7 +38,7 @@ static inline void platform_do_lowpower(unsigned int cpu, int *spurious)
 	/* Just enter wfi for now. TODO: Properly shut off the cpu. */
 	for (;;) {
 
-		msm_pm_cpu_enter_lowpower(cpu);
+		lpm_cpu_hotplug_enter(cpu);
 		if (pen_release == cpu_logical_map(cpu)) {
 			/*
 			 * OK, proper wakeup, we're done

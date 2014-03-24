@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -173,7 +173,7 @@ struct msm_bus_scale_pdata *msm_bus_cl_get_pdata(struct platform_device *pdev)
 	of_node = pdev->dev.of_node;
 	pdata = get_pdata(pdev, of_node);
 	if (!pdata) {
-		pr_err("Error getting bus pdata!\n");
+		pr_err("client has to provide missing entry for successful registration\n");
 		return NULL;
 	}
 
@@ -214,7 +214,7 @@ struct msm_bus_scale_pdata *msm_bus_pdata_from_node(
 
 	pdata = get_pdata(pdev, of_node);
 	if (!pdata) {
-		pr_err("Error getting bus pdata!\n");
+		pr_err("client has to provide missing entry for successful registration\n");
 		return NULL;
 	}
 
@@ -571,6 +571,16 @@ struct msm_bus_fabric_registration
 
 	if (of_property_read_bool(of_node, "qcom,virt"))
 		pdata->virt = true;
+
+	ret = of_property_read_u32(of_node, "qcom,qos-baseoffset",
+						&pdata->qos_baseoffset);
+	if (ret)
+		pr_debug("%s:qos_baseoffset not available\n", __func__);
+
+	ret = of_property_read_u32(of_node, "qcom,qos-delta",
+						&pdata->qos_delta);
+	if (ret)
+		pr_debug("%s:qos_delta not available\n", __func__);
 
 	if (of_property_read_bool(of_node, "qcom,rpm-en"))
 		pdata->rpm_enabled = 1;

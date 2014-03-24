@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1593,7 +1593,7 @@ static int32_t hi256_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		return rc;
 	}
 
-	CDBG("%s: read id: %x expected id %x:\n", __func__, chipid,
+	CDBG("%s: read id: 0x%x expected id 0x%x:\n", __func__, chipid,
 		s_ctrl->sensordata->slave_info->sensor_id);
 	if (chipid != s_ctrl->sensordata->slave_info->sensor_id) {
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
@@ -1753,7 +1753,7 @@ int32_t hi256_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	void __user *argp)
 {
 	struct sensorb_cfg_data *cdata = (struct sensorb_cfg_data *)argp;
-	long rc = 0;
+	int32_t rc = 0;
 	int32_t i = 0;
 	mutex_lock(s_ctrl->msm_sensor_mutex);
 	CDBG("%s:%d %s cfgtype = %d\n", __func__, __LINE__,
@@ -1768,6 +1768,10 @@ int32_t hi256_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		for (i = 0; i < SUB_MODULE_MAX; i++)
 			cdata->cfg.sensor_info.subdev_id[i] =
 				s_ctrl->sensordata->sensor_info->subdev_id[i];
+		cdata->cfg.sensor_info.is_mount_angle_valid =
+			s_ctrl->sensordata->sensor_info->is_mount_angle_valid;
+		cdata->cfg.sensor_info.sensor_mount_angle =
+			s_ctrl->sensordata->sensor_info->sensor_mount_angle;
 		CDBG("%s:%d sensor name %s\n", __func__, __LINE__,
 			cdata->cfg.sensor_info.sensor_name);
 		CDBG("%s:%d session id %d\n", __func__, __LINE__,
@@ -1869,13 +1873,13 @@ int32_t hi256_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			rc = -EFAULT;
 			break;
 		}
-		CDBG("%s sensor id %x\n", __func__,
+		CDBG("%s sensor id 0x%x\n", __func__,
 			sensor_slave_info.slave_addr);
 		CDBG("%s sensor addr type %d\n", __func__,
 			sensor_slave_info.addr_type);
-		CDBG("%s sensor reg %x\n", __func__,
+		CDBG("%s sensor reg 0x%x\n", __func__,
 			sensor_slave_info.sensor_id_info.sensor_id_reg_addr);
-		CDBG("%s sensor id %x\n", __func__,
+		CDBG("%s sensor id 0x%x\n", __func__,
 			sensor_slave_info.sensor_id_info.sensor_id);
 		for (slave_index = 0; slave_index <
 			power_setting_array->size; slave_index++) {

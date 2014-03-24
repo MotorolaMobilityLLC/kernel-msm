@@ -1094,9 +1094,6 @@ void __init sanity_check_meminfo(void)
 		}
 	}
 #endif
-#ifdef CONFIG_DONT_MAP_HOLE_AFTER_MEMBANK0
-	find_memory_hole();
-#endif
 
 	for (i = 0, j = 0; i < meminfo.nr_banks; i++) {
 		struct membank *bank = &meminfo.bank[j];
@@ -1472,8 +1469,10 @@ void mem_text_address_writeable(unsigned long addr)
 	mem_unprotect.pmd_to_flush = mem_unprotect.pmd;
 	mem_unprotect.addr = addr & PAGE_MASK;
 
+#ifndef CONFIG_ARM_LPAE
 	if (addr & SECTION_SIZE)
-			mem_unprotect.pmd++;
+		mem_unprotect.pmd++;
+#endif
 
 	mem_unprotect.saved_pmd = *mem_unprotect.pmd;
 	if ((mem_unprotect.saved_pmd & PMD_TYPE_MASK) != PMD_TYPE_SECT)

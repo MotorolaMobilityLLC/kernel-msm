@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,7 +11,7 @@
  */
 
 #include <linux/module.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/ratelimit.h>
 
 #include "msm_isp40.h"
@@ -35,6 +35,7 @@
 #define VFE40_8974V3_VERSION 0x1001001B
 #define VFE40_8x26_VERSION 0x20000013
 #define VFE40_8x26V2_VERSION 0x20010014
+#define VFE40_8916_VERSION 0x10030000
 
 #define VFE40_BURST_LEN 3
 #define VFE40_STATS_BURST_LEN 2
@@ -47,12 +48,14 @@
 #define VFE40_PING_PONG_BASE(wm, ping_pong) \
 	(VFE40_WM_BASE(wm) + 0x4 * (1 + (~(ping_pong >> wm) & 0x1)))
 
+static uint8_t stats_pingpong_offset_map[] = {
+	8, 9, 10, 11, 12, 13, 14, 15};
+
 #define VFE40_NUM_STATS_TYPE 8
-#define VFE40_STATS_PING_PONG_OFFSET 8
 #define VFE40_STATS_BASE(idx) (0x168 + 0x18 * idx)
 #define VFE40_STATS_PING_PONG_BASE(idx, ping_pong) \
 	(VFE40_STATS_BASE(idx) + 0x4 * \
-	(~(ping_pong >> (idx + VFE40_STATS_PING_PONG_OFFSET)) & 0x1))
+	(~(ping_pong >> (stats_pingpong_offset_map[idx])) & 0x1))
 
 #define VFE40_VBIF_CLKON                    0x4
 #define VFE40_VBIF_IN_RD_LIM_CONF0          0xB0
@@ -116,6 +119,15 @@ static void msm_vfe40_init_qos_parms(struct vfe_device *vfe_dev)
 		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE40_BUS_BDG_QOS_CFG_5);
 		msm_camera_io_w(0xAAA9AAA9, vfebase + VFE40_BUS_BDG_QOS_CFG_6);
 		msm_camera_io_w(0x0001AAA9, vfebase + VFE40_BUS_BDG_QOS_CFG_7);
+	} else if (vfe_dev->vfe_hw_version == VFE40_8916_VERSION) {
+		msm_camera_io_w(0xAAA5AAA5, vfebase + VFE40_BUS_BDG_QOS_CFG_0);
+		msm_camera_io_w(0xAAA5AAA5, vfebase + VFE40_BUS_BDG_QOS_CFG_1);
+		msm_camera_io_w(0xAAA5AAA5, vfebase + VFE40_BUS_BDG_QOS_CFG_2);
+		msm_camera_io_w(0xAAA5AAA5, vfebase + VFE40_BUS_BDG_QOS_CFG_3);
+		msm_camera_io_w(0xAAA5AAA5, vfebase + VFE40_BUS_BDG_QOS_CFG_4);
+		msm_camera_io_w(0xAAA5AAA5, vfebase + VFE40_BUS_BDG_QOS_CFG_5);
+		msm_camera_io_w(0xAAA5AAA5, vfebase + VFE40_BUS_BDG_QOS_CFG_6);
+		msm_camera_io_w(0x0001AAA5, vfebase + VFE40_BUS_BDG_QOS_CFG_7);
 	} else {
 		BUG();
 		pr_err("%s: QOS is NOT configured for HW Version %x\n",
@@ -873,11 +885,13 @@ static void msm_vfe40_update_camif_state(struct vfe_device *vfe_dev,
 		msm_camera_io_w_mb(0x0, vfe_dev->vfe_base + 0x2F4);
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 0;
 	} else if (update_state == DISABLE_CAMIF_IMMEDIATELY) {
+		vfe_dev->ignore_error = 1;
 		msm_camera_io_w_mb(0x6, vfe_dev->vfe_base + 0x2F4);
 		vfe_dev->hw_info->vfe_ops.axi_ops.halt(vfe_dev);
 		vfe_dev->hw_info->vfe_ops.core_ops.reset_hw(vfe_dev);
 		vfe_dev->hw_info->vfe_ops.core_ops.init_hw_reg(vfe_dev);
 		vfe_dev->axi_data.src_info[VFE_PIX_0].active = 0;
+		vfe_dev->ignore_error = 0;
 	}
 }
 
@@ -1041,7 +1055,7 @@ static void msm_vfe40_axi_clear_wm_xbar_reg(
 		vfe_dev->vfe_base + VFE40_XBAR_BASE(wm));
 }
 
-#define MSM_ISP40_TOTAL_WM_UB 819
+#define MSM_ISP40_TOTAL_WM_UB 1140
 
 static void msm_vfe40_cfg_axi_ub_equal_default(
 	struct vfe_device *vfe_dev)
@@ -1104,9 +1118,10 @@ static void msm_vfe40_cfg_axi_ub(struct vfe_device *vfe_dev)
 
 static void msm_vfe40_update_ping_pong_addr(
 	struct vfe_device *vfe_dev,
-	uint8_t wm_idx, uint32_t pingpong_status, unsigned long paddr)
+	uint8_t wm_idx, uint32_t pingpong_status, dma_addr_t paddr)
 {
-	msm_camera_io_w(paddr, vfe_dev->vfe_base +
+	uint32_t paddr32 = (paddr & 0xFFFFFFFF);
+	msm_camera_io_w(paddr32, vfe_dev->vfe_base +
 		VFE40_PING_PONG_BASE(wm_idx, pingpong_status));
 }
 
@@ -1300,10 +1315,11 @@ static void msm_vfe40_stats_enable_module(struct vfe_device *vfe_dev,
 
 static void msm_vfe40_stats_update_ping_pong_addr(
 	struct vfe_device *vfe_dev, struct msm_vfe_stats_stream *stream_info,
-	uint32_t pingpong_status, unsigned long paddr)
+	uint32_t pingpong_status, dma_addr_t paddr)
 {
+	uint32_t paddr32 = (paddr & 0xFFFFFFFF);
 	int stats_idx = STATS_IDX(stream_info->stream_handle);
-	msm_camera_io_w(paddr, vfe_dev->vfe_base +
+	msm_camera_io_w(paddr32, vfe_dev->vfe_base +
 		VFE40_STATS_PING_PONG_BASE(stats_idx, pingpong_status));
 }
 
@@ -1362,9 +1378,8 @@ static int msm_vfe40_get_platform_data(struct vfe_device *vfe_dev)
 		goto vfe_no_resource;
 	}
 
-	vfe_dev->iommu_ctx[0] = msm_iommu_get_ctx("vfe0");
-	vfe_dev->iommu_ctx[1] = msm_iommu_get_ctx("vfe1");
-	if (!vfe_dev->iommu_ctx[0] || !vfe_dev->iommu_ctx[1]) {
+	vfe_dev->iommu_ctx[0] = msm_iommu_get_ctx("vfe");
+	if (!vfe_dev->iommu_ctx[0]) {
 		pr_err("%s: cannot get iommu_ctx\n", __func__);
 		rc = -ENODEV;
 		goto vfe_no_resource;
@@ -1395,7 +1410,7 @@ static struct msm_vfe_stats_hardware_info msm_vfe40_stats_hw_info = {
 		1 << MSM_ISP_STATS_BG | 1 << MSM_ISP_STATS_BHIST |
 		1 << MSM_ISP_STATS_AWB | 1 << MSM_ISP_STATS_IHIST |
 		1 << MSM_ISP_STATS_RS | 1 << MSM_ISP_STATS_CS,
-	.stats_ping_pong_offset = VFE40_STATS_PING_PONG_OFFSET,
+	.stats_ping_pong_offset = stats_pingpong_offset_map,
 	.num_stats_type = VFE40_NUM_STATS_TYPE,
 	.num_stats_comp_mask = 2,
 };
@@ -1416,7 +1431,7 @@ static struct v4l2_subdev_internal_ops msm_vfe40_internal_ops = {
 };
 
 struct msm_vfe_hardware_info vfe40_hw_info = {
-	.num_iommu_ctx = 2,
+	.num_iommu_ctx = 1,
 	.vfe_clk_idx = VFE40_CLK_IDX,
 	.vfe_ops = {
 		.irq_ops = {

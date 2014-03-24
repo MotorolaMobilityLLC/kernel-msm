@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -41,6 +41,7 @@
 #define VPU_STS_EINVALIDCLIENTID                     21
 #define VPU_STS_EINSUFFICIENTMEMAVAILABLE            22
 #define VPU_STS_EBADSTATE                            23
+#define VPU_STS_EFRAMEUNPROCESSED                    24
 
 /* Bit fields */
 #define VPU_IPC_BUFFER_RETURN_TO_HOST_BIT	0x0
@@ -249,11 +250,6 @@ struct vpu_ipc_msg_header_packet {
 	u32	sid;
 	u32	port_id;
 	u32	reserved;
-};
-
-struct vpu_timestamp_info {
-	u32 high;
-	u32 low;
 };
 
 /*
@@ -594,7 +590,7 @@ struct vpu_ipc_msg_event_notify_packet {
 };
 
 /* VPU_IPC_MSG_SESSION_TIMESTAMP
- * Message is used to return the timestamp information in manual (polling) mode.
+ * Message is used to return the timestamp information in auto mode.
  * presentation: timestamp of last buffer output to MDSS
  * qtimer: timestamp of last buffer output to MDSS
  */

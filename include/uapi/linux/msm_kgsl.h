@@ -24,6 +24,7 @@
 
 #define KGSL_CONTEXT_NO_FAULT_TOLERANCE 0x00000200
 #define KGSL_CONTEXT_SYNC               0x00000400
+#define KGSL_CONTEXT_PWR_CONSTRAINT     0x00000800
 /* bits [12:15] are reserved for future use */
 #define KGSL_CONTEXT_PRIORITY_MASK      0x0000F000
 #define KGSL_CONTEXT_PRIORITY_SHIFT     12
@@ -90,6 +91,31 @@
 #define KGSL_MEMALIGN_MASK		0x00FF0000
 #define KGSL_MEMALIGN_SHIFT		16
 
+enum kgsl_user_mem_type {
+	KGSL_USER_MEM_TYPE_PMEM		= 0x00000000,
+	KGSL_USER_MEM_TYPE_ASHMEM	= 0x00000001,
+	KGSL_USER_MEM_TYPE_ADDR		= 0x00000002,
+	KGSL_USER_MEM_TYPE_ION		= 0x00000003,
+	KGSL_USER_MEM_TYPE_MAX		= 0x00000004,
+};
+#define KGSL_MEMFLAGS_USERMEM_MASK 0x000000e0
+#define KGSL_MEMFLAGS_USERMEM_SHIFT 5
+
+/*
+ * Unfortunately, enum kgsl_user_mem_type starts at 0 which does not
+ * leave a good value for allocated memory. In the flags we use
+ * 0 to indicate allocated memory and thus need to add 1 to the enum
+ * values.
+ */
+#define KGSL_USERMEM_FLAG(x) (((x) + 1) << KGSL_MEMFLAGS_USERMEM_SHIFT)
+
+#define KGSL_MEMFLAGS_NOT_USERMEM 0
+#define KGSL_MEMFLAGS_USERMEM_PMEM KGSL_USERMEM_FLAG(KGSL_USER_MEM_TYPE_PMEM)
+#define KGSL_MEMFLAGS_USERMEM_ASHMEM \
+		KGSL_USERMEM_FLAG(KGSL_USER_MEM_TYPE_ASHMEM)
+#define KGSL_MEMFLAGS_USERMEM_ADDR KGSL_USERMEM_FLAG(KGSL_USER_MEM_TYPE_ADDR)
+#define KGSL_MEMFLAGS_USERMEM_ION KGSL_USERMEM_FLAG(KGSL_USER_MEM_TYPE_ION)
+
 /* --- generic KGSL flag values --- */
 
 #define KGSL_FLAGS_NORMALMODE  0x00000000
@@ -134,14 +160,6 @@ enum kgsl_deviceid {
 	KGSL_DEVICE_2D0		= 0x00000001,
 	KGSL_DEVICE_2D1		= 0x00000002,
 	KGSL_DEVICE_MAX		= 0x00000003
-};
-
-enum kgsl_user_mem_type {
-	KGSL_USER_MEM_TYPE_PMEM		= 0x00000000,
-	KGSL_USER_MEM_TYPE_ASHMEM	= 0x00000001,
-	KGSL_USER_MEM_TYPE_ADDR		= 0x00000002,
-	KGSL_USER_MEM_TYPE_ION		= 0x00000003,
-	KGSL_USER_MEM_TYPE_MAX		= 0x00000004,
 };
 
 struct kgsl_devinfo {
@@ -201,6 +219,7 @@ enum kgsl_property_type {
 	KGSL_PROP_VERSION         = 0x00000008,
 	KGSL_PROP_GPU_RESET_STAT  = 0x00000009,
 	KGSL_PROP_PWRCTRL         = 0x0000000E,
+	KGSL_PROP_PWR_CONSTRAINT  = 0x00000012,
 };
 
 struct kgsl_shadowprop {
@@ -899,4 +918,31 @@ struct kgsl_submit_commands {
 #define IOCTL_KGSL_SUBMIT_COMMANDS \
 	_IOWR(KGSL_IOC_TYPE, 0x3D, struct kgsl_submit_commands)
 
+/**
+ * struct kgsl_device_constraint - device constraint argument
+ * @context_id: KGSL context ID
+ * @type: type of constraint i.e pwrlevel/none
+ * @data: constraint data
+ * @size: size of the constraint data
+ */
+struct kgsl_device_constraint {
+	unsigned int type;
+	unsigned int context_id;
+	void __user *data;
+	size_t size;
+};
+
+/* Constraint Type*/
+#define KGSL_CONSTRAINT_NONE 0
+#define KGSL_CONSTRAINT_PWRLEVEL 1
+
+/* PWRLEVEL constraint level*/
+/* set to min frequency */
+#define KGSL_CONSTRAINT_PWR_MIN    0
+/* set to max frequency */
+#define KGSL_CONSTRAINT_PWR_MAX    1
+
+struct kgsl_device_constraint_pwrlevel {
+	unsigned int level;
+};
 #endif /* _UAPI_MSM_KGSL_H */

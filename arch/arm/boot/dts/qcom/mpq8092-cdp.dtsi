@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -38,6 +38,22 @@
 					&ts_in_1_a_valid_active
 					&ts_in_1_a_ser_active>;	/* dual-ts */
 	};
+        sound {
+                qcom,model = "mpq8092-tabla-cdp-snd-card";
+                qcom,hdmi-audio-rx;
+                qcom,cdc-micbias2-headset-only;
+                qcom,ext-mclk-gpio  = <&msmgpio 42 0>;
+        };
+
+	spi@f9968000 {
+	   ci-bridge-spi@0 {
+			compatible = "smartv,cimax";
+			reg = <0>;
+			spi-max-frequency = <15000000>;
+			smartv,cimax-int-gpio = <&msmgpio 71 0>;
+			smartv,cimax-rst-gpio = <&msmgpio 138 0>;
+	   };
+	};
 };
 
 &smb211_vreg {
@@ -60,6 +76,14 @@
 	status = "ok";
 };
 
+&sataphy0 {
+	status = "ok";
+};
+
+&sata0 {
+	status = "ok";
+};
+
 &sdhc_1 {
 	vdd-supply = <&pma8084_l20>;
 	qcom,vdd-voltage-level = <2950000 2950000>;
@@ -70,11 +94,9 @@
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
 	qcom,vdd-io-current-level = <200 154000>;
 
-	qcom,pad-pull-on = <0x0 0x3 0x3 0x1>; /* no-pull, pull-up, pull-up, pull-down */
-	qcom,pad-pull-off = <0x0 0x3 0x3 0x1>; /* no-pull, pull-up, pull-up, pull-down */
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
-	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
-
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off>;
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 200000000>;
 	qcom,nonremovable;
 	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
@@ -90,11 +112,9 @@
 	qcom,vdd-io-voltage-level = <1800000 2950000>;
 	qcom,vdd-io-current-level = <200 22000>;
 
-	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
-	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
-
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off>;
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 200000000>;
 	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
 
@@ -133,6 +153,12 @@
 	};
 
 	gpio@c500 { /* GPIO 6 */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,pull = <1>;		/* QPNP_PIN_GPIO_PULL_UP_1P5 */
+		qcom,vin-sel = <2>;		/* VIN2 */
+		qcom,src_sel = <0>;		/* GPIO */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
 	gpio@c600 { /* GPIO 7 */
@@ -179,10 +205,24 @@
 	gpio@cc00 { /* GPIO 13 */
 	};
 
-	gpio@cd00 { /* GPIO 14 */
+	gpio@cd00 { /* GPIO 14 - ETH_RST_N */
+		qcom,mode = <1>;         /* Digital output */
+		qcom,pull = <4>;         /* PULLDOWN_10UA */
+		qcom,vin-sel = <0>;      /* VIN0 */
+		qcom,src_sel = <0>;      /* GPIO */
+		qcom,invert = <1>;       /* Output high initially */
+		qcom,out-strength = <1>; /* Low */
+		qcom,master-en = <1>;    /* Enable GPIO */
 	};
 
 	gpio@ce00 { /* GPIO 15 */
+		qcom,mode = <1>;                /* Digital output */
+		qcom,output-type = <0>;         /* CMOS logic */
+		qcom,pull = <5>;                /* No pull */
+		qcom,vin-sel = <2>;             /* VIN 2 */
+		qcom,src-sel = <2>;             /* Function 1 */
+		qcom,out-strength = <2>;        /* Medium */
+		qcom,master-en = <1>;           /* Enable GPIO */
 	};
 
 	gpio@cf00 { /* GPIO 16 */
@@ -235,4 +275,58 @@
 
 	mpp@a700 { /* MPP 8 */
 	};
+};
+
+&slim_msm {
+	tabla_codec {
+	};
+};
+
+/* CoreSight */
+&tpiu {
+	qcom,seta-gpios = <&msmgpio 32 0>,
+			  <&msmgpio 33 0>,
+			  <&msmgpio 34 0>,
+			  <&msmgpio 35 0>,
+			  <&msmgpio 26 0>,
+			  <&msmgpio 52 0>,
+			  <&msmgpio 53 0>,
+			  <&msmgpio 54 0>,
+			  <&msmgpio 47 0>,
+			  <&msmgpio 48 0>,
+			  <&msmgpio 49 0>,
+			  <&msmgpio 50 0>,
+			  <&msmgpio 55 0>,
+			  <&msmgpio 56 0>,
+			  <&msmgpio 57 0>,
+			  <&msmgpio 58 0>,
+			  <&msmgpio 17 0>,
+			  <&msmgpio 18 0>;
+	qcom,seta-gpios-func = <5 5 5 5 5 4 3 3 8 8 8 8 8 8 8 8 7 6>;
+	qcom,seta-gpios-drv =  <7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7>;
+	qcom,seta-gpios-pull = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+	qcom,seta-gpios-dir =  <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
+
+	qcom,setb-gpios = <&msmgpio 2 0>,
+			  <&msmgpio 8 0>,
+			  <&msmgpio 9 0>,
+			  <&msmgpio 10 0>,
+			  <&msmgpio 19 0>,
+			  <&msmgpio 20 0>,
+			  <&msmgpio 21 0>,
+			  <&msmgpio 22 0>,
+			  <&msmgpio 28 0>,
+			  <&msmgpio 29 0>,
+			  <&msmgpio 30 0>,
+			  <&msmgpio 31 0>,
+			  <&msmgpio 37 0>,
+			  <&msmgpio 38 0>,
+			  <&msmgpio 39 0>,
+			  <&msmgpio 40 0>,
+			  <&msmgpio 51 0>,
+			  <&msmgpio 7 0>;
+	qcom,setb-gpios-func = <6 8 8 8 4 2 2 2 6 6 6 6 5 4 4 4 7 6>;
+	qcom,setb-gpios-drv =  <7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7 7>;
+	qcom,setb-gpios-pull = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+	qcom,setb-gpios-dir =  <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>;
 };

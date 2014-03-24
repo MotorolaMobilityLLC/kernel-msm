@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -33,6 +33,7 @@
 #define MSM_HSIC_BASE			(hcd->regs)
 
 #define MSM_HSIC_PORTSC			(MSM_HSIC_BASE + 0x0420)
+#define MSM_HSIC_PORTLI			(MSM_HSIC_BASE + 0x0428)
 #define MSM_HSIC_GCTL			(MSM_HSIC_BASE + 0xc110)
 #define MSM_HSIC_GUSB2PHYCFG		(MSM_HSIC_BASE + 0xc200)
 #define MSM_HSIC_GUSB2PHYACC		(MSM_HSIC_BASE + 0xc280)
@@ -68,11 +69,13 @@
 
 /* PWR_EVENT_IRQ_STAT reg */
 #define LPM_IN_L2_IRQ_STAT	BIT(4)
+#define LPM_OUT_L2_IRQ_STAT	BIT(5)
 
 /* PWR_EVENT_IRQ_MASK reg */
 #define LPM_IN_L2_IRQ_MASK	BIT(4)
+#define LPM_OUT_L2_IRQ_MASK	BIT(5)
 
-#define PHY_LPM_WAIT_TIMEOUT_MS	500
+#define PHY_LPM_WAIT_TIMEOUT_MS	5000
 #define ULPI_IO_TIMEOUT_USECS	(10 * 1000)
 
 static u64 dma_mask = DMA_BIT_MASK(64);
@@ -92,8 +95,6 @@ struct mxhci_hsic_hcd {
 	struct regulator	*hsic_vddcx;
 	struct regulator	*hsic_gdsc;
 
-	struct wakeup_source	ws;
-
 	u32			bus_perf_client;
 	struct msm_bus_scale_pdata	*bus_scale_table;
 	struct work_struct	bus_vote_w;
@@ -103,6 +104,8 @@ struct mxhci_hsic_hcd {
 	bool			wakeup_irq_enabled;
 	int			strobe;
 	int			data;
+	int			host_ready;
+	int			resume_gpio;
 	int			wakeup_irq;
 	int			pwr_event_irq;
 	unsigned int		vdd_no_vol_level;
@@ -113,6 +116,7 @@ struct mxhci_hsic_hcd {
 	struct completion	phy_in_lpm;
 
 	uint32_t		wakeup_int_cnt;
+	uint32_t		pwr_evt_irq_inlpm;
 };
 
 #define SYNOPSIS_DWC3_VENDOR	0x5533
@@ -370,6 +374,28 @@ static int mxhci_hsic_config_gpios(struct mxhci_hsic_hcd *mxhci)
 		goto out;
 	}
 
+	if (mxhci->host_ready) {
+		rc = devm_gpio_request(mxhci->dev,
+				mxhci->host_ready, "host_ready");
+		if (rc < 0) {
+			dev_err(mxhci->dev,
+				"gpio request failed host ready gpio\n");
+			mxhci->host_ready = 0;
+			rc = 0;
+		}
+	}
+
+	if (mxhci->resume_gpio) {
+		rc = devm_gpio_request(mxhci->dev,
+				mxhci->resume_gpio, "HSIC_RESUME_GPIO");
+		if (rc < 0) {
+			dev_err(mxhci->dev,
+				"gpio request failed for resume gpio\n");
+			mxhci->resume_gpio = 0;
+			rc = 0;
+		}
+	}
+
 out:
 	return rc;
 }
@@ -529,19 +555,45 @@ static irqreturn_t mxhci_hsic_pwr_event_irq(int irq, void *data)
 {
 	struct mxhci_hsic_hcd *mxhci = data;
 	struct usb_hcd *hcd = hsic_to_hcd(mxhci);
-	u32 stat;
+	u32 stat = 0;
+	bool in_lpm = mxhci->in_lpm;
+
+	if (in_lpm) {
+		clk_prepare_enable(mxhci->core_clk);
+		xhci_dbg_log_event(&dbg_hsic, NULL,
+				"PWR EVT IRQ IN LPM",
+				in_lpm);
+		mxhci->pwr_evt_irq_inlpm++;
+	}
 
 	stat = readl_relaxed(MSM_HSIC_PWR_EVENT_IRQ_STAT);
 	if (stat & LPM_IN_L2_IRQ_STAT) {
-		xhci_dbg_log_event(&dbg_hsic, NULL, "LPM_IN_L2_IRQ", 0);
+		xhci_dbg_log_event(&dbg_hsic, NULL, "LPM_IN_L2_IRQ", stat);
 		writel_relaxed(stat, MSM_HSIC_PWR_EVENT_IRQ_STAT);
-		complete(&mxhci->phy_in_lpm);
+
+		/* Ensure irq is acked before turning off clks for lpm */
+		mb();
+
+		/* this can be spurious interrupt if in_lpm is true */
+		if (!in_lpm)
+			complete(&mxhci->phy_in_lpm);
+
+	} else if (stat & LPM_OUT_L2_IRQ_STAT) {
+		xhci_dbg_log_event(&dbg_hsic, NULL, "LPM_OUT_L2_IRQ", stat);
+		writel_relaxed(stat, MSM_HSIC_PWR_EVENT_IRQ_STAT);
+
+		/* ensure to ack the OUT_L2_IRQ */
+		mb();
 	} else {
-		xhci_dbg_log_event(&dbg_hsic, NULL, "spurious pwr evt irq", 0);
+		xhci_dbg_log_event(&dbg_hsic, NULL, "spurious pwr evt irq",
+				stat);
 		dev_info(mxhci->dev,
 			"%s: spurious interrupt.pwr_event_irq stat = %x\n",
 			__func__, stat);
 	}
+
+	if (in_lpm)
+		clk_disable_unprepare(mxhci->core_clk);
 
 	return IRQ_HANDLED;
 }
@@ -551,9 +603,11 @@ static int mxhci_hsic_bus_suspend(struct usb_hcd *hcd)
 	struct mxhci_hsic_hcd *mxhci = hcd_to_hsic(hcd->primary_hcd);
 	int ret;
 
+	if (!usb_hcd_is_primary_hcd(hcd))
+		return 0;
+
 	/* don't miss connect bus state from peripheral for USB 2.0 root hub */
-	if (usb_hcd_is_primary_hcd(hcd) &&
-			!(readl_relaxed(MSM_HSIC_PORTSC) & PORT_PE)) {
+	if (!(readl_relaxed(MSM_HSIC_PORTSC) & PORT_PE)) {
 		xhci_dbg_log_event(&dbg_hsic, NULL,
 				"port is not enabled; skip suspend", 0);
 		dev_dbg(mxhci->dev, "%s: port is not enabled; skip suspend\n",
@@ -561,9 +615,64 @@ static int mxhci_hsic_bus_suspend(struct usb_hcd *hcd)
 		return -EAGAIN;
 	}
 
-	ret = xhci_bus_suspend(hcd);
+	init_completion(&mxhci->phy_in_lpm);
 
-	xhci_dbg_log_event(&dbg_hsic, NULL, "Suspend RH", ret);
+	ret = xhci_bus_suspend(hcd);
+	if (ret)
+		return ret;
+
+	/* make sure HSIC phy is in LPM */
+	ret = wait_for_completion_timeout(&mxhci->phy_in_lpm,
+			msecs_to_jiffies(PHY_LPM_WAIT_TIMEOUT_MS));
+	if (!ret) {
+		dev_dbg(mxhci->dev, "IN_L2_IRQ timeout\n");
+		xhci_dbg_log_event(&dbg_hsic, NULL, "IN_L2_IRQ timeout",
+			readl_relaxed(MSM_HSIC_PWR_EVENT_IRQ_STAT));
+		xhci_dbg_log_event(&dbg_hsic, NULL, "PORTSC",
+				readl_relaxed(MSM_HSIC_PORTSC));
+		xhci_dbg_log_event(&dbg_hsic, NULL, "PORTLI",
+				readl_relaxed(MSM_HSIC_PORTLI));
+		panic("fail to get IN_L2 power event irq");
+	}
+
+	xhci_dbg_log_event(&dbg_hsic, NULL, "Suspend RH",
+			readl_relaxed(MSM_HSIC_PORTSC));
+	xhci_dbg_log_event(&dbg_hsic, NULL, "IN_L2_IRQ_STAT",
+			readl_relaxed(MSM_HSIC_PWR_EVENT_IRQ_STAT));
+	return 0;
+}
+
+static int mxhci_hsic_bus_resume(struct usb_hcd *hcd)
+{
+	int ret;
+	struct mxhci_hsic_hcd *mxhci = hcd_to_hsic(hcd->primary_hcd);
+	struct xhci_bus_state *bus_state;
+
+	if (!usb_hcd_is_primary_hcd(hcd))
+		return 0;
+
+	if (mxhci->resume_gpio) {
+		bus_state = &mxhci->xhci->bus_state[hcd_index(hcd)];
+		if (time_before_eq(jiffies, bus_state->next_statechange))
+			usleep_range(10000, 11000);
+
+		xhci_dbg_log_event(&dbg_hsic, NULL, "resume gpio high",
+				readl_relaxed(MSM_HSIC_PORTSC));
+		gpio_direction_output(mxhci->resume_gpio, 1);
+
+		usleep_range(9000, 10000);
+	}
+
+	ret = xhci_bus_resume(hcd);
+
+	xhci_dbg_log_event(&dbg_hsic, NULL, "Resume RH",
+			readl_relaxed(MSM_HSIC_PORTSC));
+
+	if (mxhci->resume_gpio) {
+		xhci_dbg_log_event(&dbg_hsic, NULL, "resume gpio low",
+				readl_relaxed(MSM_HSIC_PORTSC));
+		gpio_direction_output(mxhci->resume_gpio, 0);
+	}
 
 	return ret;
 }
@@ -588,18 +697,8 @@ static int mxhci_hsic_suspend(struct mxhci_hsic_hcd *mxhci)
 		return -EBUSY;
 	}
 
-	/* make sure HSIC phy is in LPM */
-	ret = wait_for_completion_timeout(
-			&mxhci->phy_in_lpm,
-			msecs_to_jiffies(PHY_LPM_WAIT_TIMEOUT_MS));
-	if (!ret) {
-		dev_err(mxhci->dev, "HSIC phy failed to enter lpm\n");
-		init_completion(&mxhci->phy_in_lpm);
-		enable_irq(hcd->irq);
-		return -EBUSY;
-	}
-
-	init_completion(&mxhci->phy_in_lpm);
+	xhci_dbg_log_event(&dbg_hsic, NULL, "Read PWR_EVENT_IRQ_STAT",
+			readl_relaxed(MSM_HSIC_PWR_EVENT_IRQ_STAT));
 
 	/* Don't poll the roothubs after bus suspend. */
 	clear_bit(HCD_FLAG_POLL_RH, &hcd->flags);
@@ -759,7 +858,7 @@ static struct hc_driver mxhci_hsic_hc_driver = {
 	.hub_control =		xhci_hub_control,
 	.hub_status_data =	xhci_hub_status_data,
 	.bus_suspend =		mxhci_hsic_bus_suspend,
-	.bus_resume =		xhci_bus_resume,
+	.bus_resume =		mxhci_hsic_bus_resume,
 
 	/* dbg log support */
 	.log_urb =		xhci_hsic_log_urb,
@@ -822,6 +921,57 @@ static ssize_t config_imod_show(struct device *pdev,
 static DEVICE_ATTR(config_imod, S_IRUGO | S_IWUSR,
 		config_imod_show, config_imod_store);
 
+static ssize_t host_ready_store(struct device *pdev,
+			struct device_attribute *attr,
+			const char *buff, size_t size)
+{
+	int assert;
+	struct usb_hcd *hcd = dev_get_drvdata(pdev);
+	struct mxhci_hsic_hcd *mxhci;
+
+	sscanf(buff, "%d", &assert);
+	assert = !!assert;
+
+	if (!hcd) {
+		pr_err("%s: hsic: null hcd\n", __func__);
+		return -ENODEV;
+	}
+
+	dev_dbg(pdev, "assert: %d\n", assert);
+
+	mxhci = hcd_to_hsic(hcd);
+	if (mxhci->host_ready)
+		gpio_direction_output(mxhci->host_ready, assert);
+	else
+		return -ENODEV;
+
+	return size;
+}
+
+static ssize_t host_ready_show(struct device *pdev,
+			struct device_attribute *attr, char *buff)
+{
+	struct usb_hcd *hcd = dev_get_drvdata(pdev);
+	struct mxhci_hsic_hcd *mxhci;
+	int val = -ENODEV;
+
+	if (!hcd) {
+		pr_err("%s: hsic: null hcd\n", __func__);
+		return -ENODEV;
+	}
+
+	mxhci = hcd_to_hsic(hcd);
+
+	if (mxhci->host_ready)
+		val = gpio_get_value(mxhci->host_ready);
+
+	return snprintf(buff, PAGE_SIZE, "%d\n", val);
+
+}
+
+static DEVICE_ATTR(host_ready, S_IRUGO | S_IWUSR,
+		host_ready_show, host_ready_store);
+
 static int mxhci_hsic_probe(struct platform_device *pdev)
 {
 	struct hc_driver *driver;
@@ -834,6 +984,7 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 	int ret;
 	int irq;
 	u32 tmp[3];
+	u32 temp;
 
 	if (usb_disabled())
 		return -ENODEV;
@@ -891,6 +1042,15 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto put_hcd;
 	}
+
+	mxhci->host_ready = of_get_named_gpio(node,
+					"qcom,host-ready-gpio", 0);
+	if (mxhci->host_ready < 0)
+		mxhci->host_ready = 0;
+
+	mxhci->resume_gpio = of_get_named_gpio(node, "hsic,resume-gpio", 0);
+	if (mxhci->resume_gpio < 0)
+		mxhci->resume_gpio = 0;
 
 	ret = of_property_read_u32_array(node, "qcom,vdd-voltage-level",
 							tmp, ARRAY_SIZE(tmp));
@@ -959,7 +1119,8 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 	}
 
 	/* enable pwr event irq for LPM_IN_L2_IRQ */
-	writel_relaxed(LPM_IN_L2_IRQ_MASK, MSM_HSIC_PWR_EVNT_IRQ_MASK);
+	writel_relaxed(LPM_IN_L2_IRQ_MASK | LPM_OUT_L2_IRQ_MASK,
+			MSM_HSIC_PWR_EVNT_IRQ_MASK);
 
 	mxhci->wakeup_irq = platform_get_irq_byname(pdev, "wakeup_irq");
 	if (mxhci->wakeup_irq < 0) {
@@ -1016,15 +1177,13 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 		goto remove_usb3_hcd;
 	}
 
-	ret = devm_request_irq(&pdev->dev, mxhci->pwr_event_irq,
-				mxhci_hsic_pwr_event_irq,
-				0, "mxhci_hsic_pwr_evt", mxhci);
+	ret = devm_request_threaded_irq(&pdev->dev, mxhci->pwr_event_irq,
+				NULL, mxhci_hsic_pwr_event_irq,
+				IRQF_ONESHOT, "mxhci_hsic_pwr_evt", mxhci);
 	if (ret) {
 		dev_err(&pdev->dev, "request irq failed (pwr event irq)\n");
 		goto remove_usb3_hcd;
 	}
-
-	init_completion(&mxhci->phy_in_lpm);
 
 	mxhci->wq = create_singlethread_workqueue("mxhci_wq");
 	if (!mxhci->wq) {
@@ -1053,6 +1212,11 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 		}
 	}
 
+	temp = xhci_readl(xhci, &xhci->ir_set->irq_control);
+	temp &= ~ER_IRQ_INTERVAL_MASK;
+	temp |= (u32) 4000;
+	xhci_writel(xhci, temp, &xhci->ir_set->irq_control);
+
 	ret = device_create_file(&pdev->dev, &dev_attr_config_imod);
 	if (ret)
 		dev_dbg(&pdev->dev, "%s: unable to create imod sysfs entry\n",
@@ -1062,11 +1226,16 @@ static int mxhci_hsic_probe(struct platform_device *pdev)
 	mxhci_hsic_ulpi_write(mxhci, 0x01, MSM_HSIC_CFG_SET);
 
 	device_init_wakeup(&pdev->dev, 1);
-	wakeup_source_init(&mxhci->ws, dev_name(&pdev->dev));
 	pm_stay_awake(mxhci->dev);
 
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
+
+	ret = device_create_file(&pdev->dev, &dev_attr_host_ready);
+	if (ret)
+		pr_err("err creating sysfs node\n");
+
+	dev_dbg(&pdev->dev, "%s: Probe complete\n", __func__);
 
 	return 0;
 
@@ -1106,6 +1275,7 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 	mb();
 
 	device_remove_file(&pdev->dev, &dev_attr_config_imod);
+	device_remove_file(&pdev->dev, &dev_attr_host_ready);
 
 	/* If the device was removed no need to call pm_runtime_disable */
 	if (pdev->dev.power.power_state.event != PM_EVENT_INVALID)
@@ -1129,11 +1299,11 @@ static int mxhci_hsic_remove(struct platform_device *pdev)
 
 	destroy_workqueue(mxhci->wq);
 
-	device_init_wakeup(&pdev->dev, 0);
+	device_wakeup_disable(&pdev->dev);
 	mxhci_hsic_init_vddcx(mxhci, 0);
 	mxhci_hsic_init_clocks(mxhci, 0);
 	mxhci_msm_config_gdsc(mxhci, 0);
-	wakeup_source_trash(&mxhci->ws);
+	kfree(xhci);
 	usb_put_hcd(hcd);
 
 	return 0;

@@ -34,17 +34,18 @@ wit the following convention:
 
 (name): region@(base-address) {
 	reg = <(baseaddr) (size)>;
-	(linux,contiguous-region);
+	(linux,reserve-contiguous-region);
 	(linux,default-contiguous-region);
 	(linux,reserve-region);
 	(linux,memory-limit);
+	(linux,remove-completely);
         label = (unique_name);
 };
 
 name:		an name given to the defined region.
 base-address:	the base address of the defined region.
 size:		the size of the memory region.
-linux,contiguous-region: property indicating that the defined memory
+linux,reserve-contiguous-region: property indicating that the defined memory
 		region is used for contiguous memory allocations,
 		Linux specific (optional)
 linux,default-contiguous-region: property indicating that the region
@@ -58,6 +59,10 @@ linux,memory-limit: property specifying an upper bound on the physical address
 		is specificed, the region may be placed anywhere in the physical
 		address space. 0 may be used to specify lowmem (i.e. the region
 		will be placed in the direct mapped lowmem region)
+linux,remove-completely: property indicating the memory will be removed from the
+		linux page allocator completely. This means that page structures
+		associated with the memory will not be valid. This binding is
+		expected to be used in conjunction with linux,reserve-region.
 label:		an internal name used for automatically associating the
 		cma region with a given device. The label is optional;
 		if the label is not given the client is responsible for
@@ -98,13 +103,13 @@ logo appears.
 			0x70000000 0x10000000>;
 
 		contig_mem: region@72000000 {
-			linux,contiguous-region;
+			linux,reserve-contiguous-region;
 			linux,default-contiguous-region;
 			reg = <0x72000000 0x4000000>;
 		};
 
 		display_mem: region@78000000 {
-			linux,contiguous-region;
+			linux,reserve-contiguous-region;
 			reg = <0x78000000 0x1000000>;
 		};
 	};

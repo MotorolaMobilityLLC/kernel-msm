@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,11 +24,7 @@
 #include <linux/usb/cdc.h>
 #include <linux/termios.h>
 #include <asm/unaligned.h>
-#include <mach/usb_bridge.h>
-
-/* polling interval for Interrupt ep */
-#define HS_INTERVAL		7
-#define FS_LS_INTERVAL		3
+#include <linux/usb/usb_bridge.h>
 
 #define ACM_CTRL_DTR		(1 << 0)
 #define DEFAULT_READ_URB_LENGTH	4096
@@ -495,6 +491,8 @@ int ctrl_bridge_suspend(unsigned int id)
 	dev = __dev[id];
 	if (!dev)
 		return -ENODEV;
+	if (!dev->int_pipe)
+		return 0;
 
 	spin_lock_irqsave(&dev->lock, flags);
 	if (!usb_anchor_empty(&dev->tx_submitted) || dev->rx_state == RX_BUSY) {
@@ -534,7 +532,8 @@ int ctrl_bridge_resume(unsigned int id)
 	dev = __dev[id];
 	if (!dev)
 		return -ENODEV;
-
+	if (!dev->int_pipe)
+		return 0;
 	if (!test_bit(SUSPENDED, &dev->flags))
 		return 0;
 
@@ -682,7 +681,8 @@ ctrl_bridge_probe(struct usb_interface *ifc, struct usb_host_endpoint *int_in,
 		pr_err("%s:device not found\n", __func__);
 		return -ENODEV;
 	}
-
+	if (!int_in)
+		return 0;
 	dev->name = name;
 
 	dev->pdev = platform_device_alloc(name, -1);
@@ -719,8 +719,7 @@ ctrl_bridge_probe(struct usb_interface *ifc, struct usb_host_endpoint *int_in,
 		goto free_inturb;
 	}
 
-	interval =
-		(udev->speed == USB_SPEED_HIGH) ? HS_INTERVAL : FS_LS_INTERVAL;
+	interval = int_in->desc.bInterval;
 
 	usb_fill_int_urb(dev->inturb, udev, dev->int_pipe,
 				dev->intbuf, wMaxPacketSize,
@@ -796,6 +795,8 @@ void ctrl_bridge_disconnect(unsigned int id)
 {
 	struct ctrl_bridge	*dev = __dev[id];
 
+	if (!dev->int_pipe)
+		return;
 	dev_dbg(&dev->intf->dev, "%s:\n", __func__);
 
 	/*set device name to none to get correct channel id

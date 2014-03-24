@@ -31,6 +31,12 @@ Required properties:
 				of an element in the list corresponds to the max coefficient supported
 				by the phase count mentioned in qcom,valid-phases array at that index. The
 				coefficient entries must be in increasing order.
+- qcom,phase-scaling-factor-bits-pos	indicates bit position of scaling factor data within the efuse
+					register.
+- qcom,valid-scaling-factor-versions	This is an array holding four boolean values and indicates whether
+					the version read from efuses is valid.
+					The version is a two bit field and the value read from hardware is
+					used as an index in this array to check for validity.
 Optional properties:
 - qcom,use-phase-switching	indicates whether the driver should add/shed phases on the PMIC
 				ganged regulator as cpus are hotplugged.
@@ -69,6 +75,20 @@ Optional properties:
 Any property defined as part of the core regulator
 binding, defined in regulator.txt, can also be used.
 
+[Third Level Nodes]
+This Third level node represents a regulator which when enabled reduces
+coeff1 component of the load by a defined percentage amount. This Third Level
+Node is optional.
+Required properties:
+- regulator-name:		A string used as a descriptive name for the regulator
+Optional properties:
+- qcom,coeff1-reduction:	percentage to reduce the coeff1 component
+				of the load by. If this is not specified
+				a default of 75 percent is assumed.
+
+Any property defined as part of the core regulator
+binding, defined in regulator.txt, can also be used.
+
 Example:
 	krait_pdn: krait-pdn@f9011000 {
 		reg = <0xf9011000 0x1000>,
@@ -80,6 +100,8 @@ Example:
 		qcom,pfm-threshold = <376975>;
 		qcom,valid-phases = <1 2 4>;
 		qcom,phase-coeff-threshold = <1000000 2000000 4000000>;
+		qcom,phase-scaling-factor-bits-pos = <18>;
+		qcom,valid-scaling-factor-versions = <0 1 1 0>;
 
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -99,5 +121,9 @@ Example:
 			qcom,ldo-threshold-voltage = <850000>;
 			qcom,ldo-delta-voltage = <50000>;
 			qcom,cpu-num = <0>;
+			krait0_adj_reg: regulator@0 {
+				regulator-name = "krait-adjustment0";
+				qcom,coeff1-reduction = <75>;
+			};
 		};
 	};

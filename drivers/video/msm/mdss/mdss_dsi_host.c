@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -90,7 +90,13 @@ void mdss_dsi_ctrl_init(struct mdss_dsi_ctrl_pdata *ctrl)
 		ctrl->ndx = DSI_CTRL_1;
 	}
 
+	ctrl->panel_mode = ctrl->panel_data.panel_info.mipi.mode;
+
 	ctrl_list[ctrl->ndx] = ctrl;	/* keep it */
+
+	if (ctrl->shared_pdata.broadcast_enable)
+		if (ctrl->ndx == DSI_CTRL_1)
+			ctrl->flags |= DSI_FLAG_CLOCK_MASTER;
 
 	if (mdss_register_irq(ctrl->dsi_hw))
 		pr_err("%s: mdss_register_irq failed.\n", __func__);
@@ -115,6 +121,22 @@ void mdss_dsi_ctrl_init(struct mdss_dsi_ctrl_pdata *ctrl)
 						"mdss_dsi_event");
 		dsi_event.inited  = 1;
 	}
+}
+
+struct mdss_dsi_ctrl_pdata *mdss_dsi_ctrl_slave(
+				struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	int ndx;
+	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+
+	/* only two controllers */
+	ndx = ctrl->ndx;
+	ndx += 1;
+	ndx %= DSI_CTRL_MAX;
+	sctrl = ctrl_list[ndx];
+
+	return sctrl;
+
 }
 
 void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl, int enable)
@@ -200,36 +222,42 @@ void mdss_dsi_disable_irq_nosync(struct mdss_dsi_ctrl_pdata *ctrl, u32 term)
 	spin_unlock(&ctrl->irq_lock);
 }
 
-void mdss_dsi_cmd_test_pattern(struct mdss_panel_data *pdata)
+void mdss_dsi_video_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl)
 {
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int i;
 
-	if (pdata == NULL) {
-		pr_err("%s: Invalid input data\n", __func__);
-		return;
-	}
-
-	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
-
-	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x015c, 0x201);
-	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x016c, 0xff0000); /* red */
+	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x021);
+	MIPI_OUTP((ctrl->ctrl_base) + 0x0164, 0xff0000); /* red */
 	i = 0;
 	while (i++ < 50) {
-		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0184, 0x1);
+		MIPI_OUTP((ctrl->ctrl_base) + 0x0180, 0x1);
 		/* Add sleep to get ~50 fps frame rate*/
 		msleep(20);
 	}
-	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x015c, 0x0);
+	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x0);
 }
 
-void mdss_dsi_host_init(struct mipi_panel_info *pinfo,
-				struct mdss_panel_data *pdata)
+void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	int i;
+
+	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x201);
+	MIPI_OUTP((ctrl->ctrl_base) + 0x016c, 0xff0000); /* red */
+	i = 0;
+	while (i++ < 50) {
+		MIPI_OUTP((ctrl->ctrl_base) + 0x0184, 0x1);
+		/* Add sleep to get ~50 fps frame rate*/
+		msleep(20);
+	}
+	MIPI_OUTP((ctrl->ctrl_base) + 0x015c, 0x0);
+}
+
+void mdss_dsi_host_init(struct mdss_panel_data *pdata)
 {
 	u32 dsi_ctrl, intr_ctrl;
 	u32 data;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mipi_panel_info *pinfo = NULL;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -239,9 +267,9 @@ void mdss_dsi_host_init(struct mipi_panel_info *pinfo,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	pinfo->rgb_swap = DSI_RGB_SWAP_RGB;
+	pinfo = &pdata->panel_info.mipi;
 
-	ctrl_pdata->panel_mode = pinfo->mode;
+	pinfo->rgb_swap = DSI_RGB_SWAP_RGB;
 
 	if (pinfo->mode == DSI_VIDEO_MODE) {
 		data = 0;
@@ -949,7 +977,8 @@ int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 		data_byte = 12;	/* NOT first read */
 		pkt_size += data_byte;
 		pr_debug("%s: rp data=%x len=%d dlen=%d diff=%d\n",
-			__func__, (int)rp->data, rp->len, dlen, diff);
+			 __func__, (int) (unsigned long) rp->data,
+			 rp->len, dlen, diff);
 	}
 
 	rp->data = rp->start;	/* move back to start position */
@@ -1454,13 +1483,15 @@ irqreturn_t mdss_dsi_isr(int irq, void *ptr)
 			u32 isr0;
 			isr0 = MIPI_INP(left_ctrl_pdata->ctrl_base
 						+ 0x0110);/* DSI_INTR_CTRL */
-			MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0110, isr0);
+			if (isr0 & DSI_INTR_CMD_DMA_DONE)
+				MIPI_OUTP(left_ctrl_pdata->ctrl_base + 0x0110,
+					DSI_INTR_CMD_DMA_DONE);
 		}
 
-	pr_debug("%s: isr=%x", __func__, isr);
+	pr_debug("%s: ndx=%d isr=%x\n", __func__, ctrl->ndx, isr);
 
 	if (isr & DSI_INTR_ERROR) {
-		pr_err("%s: isr=%x %x", __func__, isr, (int)DSI_INTR_ERROR);
+		pr_err("%s: ndx=%d isr=%x\n", __func__, ctrl->ndx, isr);
 		mdss_dsi_error(ctrl);
 	}
 

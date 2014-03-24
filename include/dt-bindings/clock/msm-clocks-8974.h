@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -276,6 +276,7 @@
 #define clk_snoc_clk 0x2c341aa0
 #define clk_snoc_msmbus_a_clk 0x5d4683bd
 #define clk_snoc_msmbus_clk 0xe6900bb6
+#define clk_usb30_mock_utmi_clk_src 0xa024a976
 #define clk_vcodec0_clk_src 0xbc193019
 #define clk_venus0_ahb_clk 0x6694087d
 #define clk_venus0_axi_clk 0x34fecbbe
@@ -283,5 +284,6 @@
 #define clk_venus0_vcodec0_clk 0xaf0dbde4
 #define clk_vfe0_clk_src 0xa0c2bd8f
 #define clk_vfe1_clk_src 0x4e357366
+#define clk_wcnss_m_clk 0x709f430b
 
 #endif

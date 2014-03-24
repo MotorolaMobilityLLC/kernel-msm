@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,11 +23,11 @@
 #include <linux/compiler.h>
 #include <linux/ratelimit.h>
 
-#include <mach/sps.h>
+#include <linux/msm-sps.h>
 
 #include "sps_map.h"
 
-#ifdef CONFIG_ARM_LPAE
+#if defined(CONFIG_PHYS_ADDR_T_64BIT) || defined(CONFIG_ARM_LPAE)
 #define SPS_LPAE (true)
 #else
 #define SPS_LPAE (false)
@@ -41,16 +41,19 @@
 #define SPS_ERROR -1
 
 /* BAM identifier used in log messages */
-#define BAM_ID(dev)       ((dev)->props.phys_addr)
+#define BAM_ID(dev)       (&(dev)->props.phys_addr)
 
 /* "Clear" value for the connection parameter struct */
-#define SPSRM_CLEAR     0xcccccccc
+#define SPSRM_CLEAR     0xccccccccUL
+#define SPSRM_ADDR_CLR \
+	((sizeof(int) == sizeof(long)) ? 0 : (SPSRM_CLEAR << 32))
 
 #define MAX_MSG_LEN 80
 
 extern u32 d_type;
 extern bool enhd_pipe;
 extern bool imem;
+extern enum sps_bam_type bam_type;
 
 #ifdef CONFIG_DEBUG_FS
 extern u8 debugfs_record_enabled;
@@ -142,8 +145,8 @@ extern u8 print_limit_option;
 
 /* End point parameters */
 struct sps_conn_end_pt {
-	u32 dev;		/* Device handle of BAM */
-	u32 bam_phys;		/* Physical address of BAM. */
+	unsigned long dev;		/* Device handle of BAM */
+	phys_addr_t bam_phys;		/* Physical address of BAM. */
 	u32 pipe_index;		/* Pipe index */
 	u32 event_threshold;	/* Pipe event threshold */
 	u32 lock_group;	/* The lock group this pipe belongs to */
@@ -192,6 +195,12 @@ struct sps_mem_stats {
 	u32 blocks_used;
 	u32 bytes_used;
 	u32 max_bytes_used;
+};
+
+enum sps_bam_type {
+	SPS_BAM_LEGACY,
+	SPS_BAM_NDP,
+	SPS_BAM_NDP_4K
 };
 
 #ifdef CONFIG_DEBUG_FS
@@ -375,7 +384,7 @@ void sps_dma_de_init(void);
  * @return 0 on success, negative value on error
  *
  */
-int sps_dma_device_init(u32 h);
+int sps_dma_device_init(unsigned long h);
 
 /**
  * De-initialize BAM DMA device
@@ -387,7 +396,7 @@ int sps_dma_device_init(u32 h);
  * @return 0 on success, negative value on error
  *
  */
-int sps_dma_device_de_init(u32 h);
+int sps_dma_device_de_init(unsigned long h);
 
 /**
  * Initialize connection mapping module

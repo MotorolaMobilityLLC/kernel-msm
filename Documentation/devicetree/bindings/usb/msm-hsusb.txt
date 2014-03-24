@@ -27,6 +27,9 @@ Required properties :
          Required "supply-name" is "HSUSB_VDDCX" (when voting for VDDCX) or
          "hsusb_vdd_dig" (when voting for VDDCX Corner voltage),
          "HSUSB_1p8-supply" and "HSUSB_3p3-supply".
+- qcom,vdd-voltage-level: This property must be a list of three integer
+	values (no, min, max) where each value represents either a voltage
+	in microvolts or a value corresponding to voltage corner.
 
 Optional properties :
 - reg : offset and length of the TCSR register for routing USB Controller
@@ -70,9 +73,6 @@ Optional properties :
 	power mode.
 - <supply-name>-supply: handle to the regulator device tree node.
          Optional "supply-name" is "vbus_otg" to supply vbus in host mode.
-- qcom,vdd-voltage-level: This property must be a list of three integer
-	values (no, min, max) where each value represents either a voltage
-	in microvolts or a value corresponding to voltage corner.
 - qcom,dp-manual-pullup: If present, vbus is not routed to USB controller/phy
 	and controller driver therefore enables pull-up explicitly before
 	starting controller using usbcmd run/stop bit.
@@ -102,6 +102,8 @@ Optional properties :
 	enable this feature without proper bus voting.
 - qcom,disable-retention-with-vdd-min: If present don't allow phy retention but allow
 	vdd min.
+- qcom,usbin-vadc: Corresponding vadc device's phandle to read usbin voltage using VADC.
+	This will be used to get value of usb power supply's VOLTAGE_NOW property.
 
 Example HSUSB OTG controller device node :
 	usb@f9690000 {
@@ -137,6 +139,7 @@ Example HSUSB OTG controller device node :
 		qcom,hsusb-otg-vddmin-gpio = <&pm8019_mpps 6 0>;
 		qcom,hsusb-otg-rw-during-lpm-workaround = <1>;
 		qcom,disable-retention-with-vdd-min;
+		qcom,usbin-vadc = <&pm8226_vadc>;
 	};
 
 MSM HSUSB EHCI controller
@@ -151,15 +154,6 @@ Required properties :
   Required "supply-name" is either "hsusb_vdd_dig" or "HSUSB_VDDCX"
   "HSUSB_1p8-supply" "HSUSB_3p3-supply".
 - qcom,usb2-power-budget: maximum vbus power (in mA) that can be provided.
-
-Optional properties :
-- qcom,usb2-enable-hsphy2: If present, select second PHY for USB operation.
-- qcom,resume-gpio: if present then peripheral connected to usb controller
-  cannot wakeup from XO shutdown using in-band usb bus resume. Use resume
-  gpio to wakeup peripheral.
-- qcom,ext-hub-reset-gpio: If present then an external HUB is connected to
-  the USB host controller and its RESET_N signal is connected to this
-  ext-hub-reset-gpio GPIO. It should be driven LOW to RESET the HUB.
 - qcom,vdd-voltage-level: This property must be a list of five integer
   values (no, 0.5vsuspend, 0.75suspend, min, max) where each value respresents
   either a voltage in microvolts or a value corresponding to voltage corner.
@@ -169,6 +163,15 @@ Optional properties :
   and no peripheral connected over dock during low power mode, fourth value represents
   minimum value to vote when USB is operational, fifth item represents maximum value
   to vote for USB is operational.
+
+Optional properties :
+- qcom,usb2-enable-hsphy2: If present, select second PHY for USB operation.
+- qcom,resume-gpio: if present then peripheral connected to usb controller
+  cannot wakeup from XO shutdown using in-band usb bus resume. Use resume
+  gpio to wakeup peripheral.
+- qcom,ext-hub-reset-gpio: If present then an external HUB is connected to
+  the USB host controller and its RESET_N signal is connected to this
+  ext-hub-reset-gpio GPIO. It should be driven LOW to RESET the HUB.
 
 Example MSM HSUSB EHCI controller device node :
 	ehci: qcom,ehci-host@f9a55000 {
@@ -206,131 +209,4 @@ Example Android USB device node :
 		reg = <0xfc42b0c8 0xc8>;
 		qcom,android-usb-swfi-latency = <1>;
 		qcom,streaming-func = "rndis","mtp";
-	};
-
-
-BAM:
-
-Required properties:
-- compatible: should be "qcom,usb-bam-msm"
-- reg  : pairs of physical base addresses and region sizes
-            of all the memory mapped BAM devices present
-- reg-names : Register region name(s), in 1-1 correspondence with the
-	    registers in 'reg'. This list should contain at least as many names
-            as the number of unique values given in both 'usb-active-bam' and
-            all the subnodes' 'usb-bam-type' properties.
-
-            If SSUSB_BAM is used, "ssusb" should be present.
-            If HSUSB_BAM is used, "hsusb" should be present.
-            If HSIC_BAM is used, "hsic" should be present.
-
-            If a QSCRATCH RAM1 register is designated for providing USB3
-            private memory to use as a BAM FIFO, specify "qscratch_ram1_reg".
-- interrupts: IRQ lines for BAM devices
-- interrupt-names: BAM interrupt name(s), in 1-1 correspondence with
-            'interrupts' above.
-
-            If SSUSB_BAM is used, "ssusb" should be present.
-            If HSUSB_BAM is used, "hsusb" should be present.
-            If HSIC_BAM is used, "hsic" should be present.
-- qcom,usb-bam-num-pipes: max number of pipes that can be used
-
-Optional properties:
-- qcom,usb-bam-fifo-baseaddr: base address for bam pipe's data and descriptor
-  fifos. This can be on chip memory (ocimem) or usb private memory. This
-  property is required if sub-node's mem-type is ocimem or usb private mem.
-
-A number of USB BAM pipe parameters are represented as sub-nodes:
-
-Subnode Required:
-- label: a string describing uniquely the usb bam pipe. The string can be
-  constracted as follows: <core>-<peer>-<direction>-<pipe num>.
-	core options: hsusb, ssusb/dwc3, hsic
-	peer options: qdss, ipa, a2
-	direction options: in (from peer to usb), out (from usb to peer)
-	pipe num options: 0..127
-- qcom,usb-bam-mem-type: Type of memory used by this PIPE. Can be one of
-            0 - Uses SPS's dedicated pipe memory
-            1 - USB's private memory residing @ 'qcom,usb-bam-fifo-baseaddr'
-            2 - System RAM allocated by driver
-	    3 - OCI memory residing @ 'qcom,usb-bam-fifo-baseaddr'
-- qcom,bam-type: BAM type can be one of
-	0 - SSUSB_BAM
-	1 - HSUSB_BAM
-	2 - HSIC_BAM
-- qcom,dir: pipe direction
-	0 - from usb (out)
-	1 - to usb (in)
-- qcom,pipe-num: pipe number
-- qcom,peer-bam: peer BAM can be one of
-	0 - A2_P_BAM
-	1 - QDSS_P_BAM
-	2 - IPA_P_BAM
-- qcom,data-fifo-size: data fifo size
-- qcom,descriptor-fifo-size: descriptor fifo size
-
-Optional Properties for Subnode:
-- qcom,reset-bam-on-connect: If present then BAM is RESET before connecting
-  pipe. This may be required if BAM peripheral is also reset before connect.
-- qcom,dst-bam-physical-address: destination BAM physical address
-- qcom,dst-bam-pipe-index: destination BAM pipe index
-- qcom,src-bam-physical-address: source BAM physical address
-- qcom,src-bam-pipe-index: source BAM pipe index
-- qcom,data-fifo-offset: data fifo offset address
-- qcom,descriptor-fifo-offset: descriptor fifo offset address
-
-Optional properties :
-- qcom,bam-mode: BAM mode can be one of.
-	0 - BAM_MODE_DEVICE
-	1 - BAM_MODE_HOST
-	(If not set will be set by default to BAM_MODE_DEVICE)
-- qcom,ignore-core-reset-ack: If present then BAM ignores ACK from USB core
-	    while performing PIPE RESET
-- qcom,disable-clk-gating: If present then disable BAM clock gating.
-- qcom,usb-bam-override-threshold: If present then the default 512 byte threshold
-		is overriden. This threshold configures the threshold value for Read/Write
-		event generation by the BAM towards another BAM.
-
-Example USB BAM controller device node:
-
-	qcom,usbbam@f9a44000 {
-		compatible = "qcom,usb-bam-msm";
-		reg = <0xf9a44000 0x11000>;
-		reg-names = "hsusb";
-		interrupts = <0 135 0>;
-		interrupt-names = "hsusb";
-		qcom,usb-bam-num-pipes = <16>;
-		qcom,ignore-core-reset-ack;
-		qcom,disable-clk-gating;
-
-		qcom,pipe0 {
-			label = "hsusb-ipa-out-0";
-			qcom,usb-bam-mem-type = <0>;
-			qcom,bam-type = <1>;
-			qcom,bam-mode = <0>;
-			qcom,dir = <0>;
-			qcom,pipe-num = <0>;
-			qcom,peer-bam = <2>;
-			qcom,src-bam-physical-address = <0xf9a44000>;
-			qcom,src-bam-pipe-index = <1>;
-			qcom,data-fifo-offset = <0x2200>;
-			qcom,data-fifo-size = <0x1e00>;
-			qcom,descriptor-fifo-offset = <0x2100>;
-			qcom,descriptor-fifo-size = <0x100>;
-		};
-		qcom,pipe1 {
-			label = "hsusb-ipa-in-0";
-			qcom,usb-bam-mem-type = <0>;
-			qcom,bam-type = <1>;
-			qcom,bam-mode = <0>;
-			qcom,dir = <1>;
-			qcom,pipe-num = <0>;
-			qcom,peer-bam = <2>;
-			qcom,dst-bam-physical-address = <0xf9a44000>;
-			qcom,dst-bam-pipe-index = <0>;
-			qcom,data-fifo-offset = <0x300>;
-			qcom,data-fifo-size = <0x1e00>;
-			qcom,descriptor-fifo-offset = <0>;
-			qcom,descriptor-fifo-size = <0x300>;
-		};
 	};

@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -39,36 +39,36 @@
 				/* Object 6, Instance = 0 */
 				00 00 00 00 00 00
 				/* Object 38, Instance = 0 */
-				1D 04 00 1E 07 0D 00 00
+				1d 13 00 17 01 0e 00 00
 				/* Object 7, Instance = 0 */
-				20 08 32
+				20 0a 32
 				/* Object 8, Instance = 0 */
-				19 00 14 14 00 00 FF 00 00 00
+				19 00 14 14 00 00 ff 00 00 00
 				/* Object 9, Instance = 0 */
-				83 00 00 13 0B 00 20 32 01 03
-				00 32 05 30 0A 05 0A 00 70 03
-				FC 01 04 2F F8 DC 00 00 40 00
-				00 0A 00 00 02
+				83 00 00 13 0b 00 20 32 01 03
+				00 0a 05 30 05 05 0a 00 70 03
+				fc 01 04 2f f8 dc 00 00 40 00
+				00 0a 00 00 02
 				/* Object 18, Instance = 0 */
 				00 00
 				/* Object 19, Instance = 0 */
 				00 00 00 00 00 00
 				/* Object 25, Instance = 0 */
-				03 00 18 79 A8 61
+				03 00 18 79 a8 61
 				/* Object 58, Instance = 0 */
 				00 00 00 00 00 00 00 00 00 00
 				00
 				/* Object 42, Instance = 0 */
-				00 00 00 00 00 00 00 00
+				03 19 1e 14 80 05 00 00
 				/* Object 46, Instance = 0 */
 				04 03 08 10 00 00 00 00 00
 				/* Object 47, Instance = 0 */
 				00 00 00 00 00 00 00 00 00 00
 				/* Object 48, Instance = 0 */
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
+				1d c0 22 00 00 00 00 00 00 00
+				20 19 00 06 06 00 00 64 04 40
+				00 00 00 05 00 2a 00 00 00 19
+				34 0c 00 00 00 00 00 00 00 00
 				00 00 00 00 00 00 00 00 00 00
 				00 00 00 00
 				/* Object 55, Instance = 0 */
@@ -151,10 +151,11 @@
 			reg = <0x0e>;
 			qcom,irq-gpio = <&msmgpio 77 0x00>;
 			qcom,dis-gpio = <&msmgpio 93 0x00>;
-			qcom,clk-en-gpio = <&msmgpio 78 0x00>;
+			qcom,clk-req-gpio = <&msmgpio 75 0x00>;
+			qcom,clk-src-gpio = <&msmgpio 78 0x00>;
 			qcom,clk-src = "GPCLK";
 			interrupt-parent = <&msmgpio>;
-			interrupts = <77 0>;
+			interrupts = <77 75 0>;
 			qcom,clk-gpio = <&pm8110_gpios 1 0>;
 		};
 	};
@@ -331,11 +332,9 @@
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
 	qcom,vdd-io-current-level = <200 60000>;
 
-	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
-	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
-
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off>;
 	qcom,clk-rates = <400000 25000000 50000000 100000000 200000000>;
 	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
 	qcom,nonremovable;
@@ -352,11 +351,9 @@
 	qcom,vdd-io-voltage-level = <1800000 2950000>;
 	qcom,vdd-io-current-level = <200 50000>;
 
-	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x4 0x4 0x4>; /* 10mA, 10mA, 10mA */
-	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
-
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
 	qcom,clk-rates = <400000 25000000 50000000 100000000 200000000>;
 
 	#address-cells = <0>;

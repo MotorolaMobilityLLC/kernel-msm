@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,7 +22,7 @@
 #include <linux/workqueue.h>
 #include <linux/sched.h>
 #include <linux/wakelock.h>
-#include <mach/msm_smd.h>
+#include <soc/qcom/smd.h>
 #include <asm/atomic.h>
 
 /* Size of the USB buffers used for read and write*/
@@ -41,8 +41,12 @@
 #define POOL_TYPE_WRITE_STRUCT	4
 #define POOL_TYPE_HSIC		5
 #define POOL_TYPE_HSIC_2	6
+#define POOL_TYPE_HSIC_DCI	7
+#define POOL_TYPE_HSIC_DCI_2	8
 #define POOL_TYPE_HSIC_WRITE	11
 #define POOL_TYPE_HSIC_2_WRITE	12
+#define POOL_TYPE_HSIC_DCI_WRITE	13
+#define POOL_TYPE_HSIC_DCI_2_WRITE	14
 #define POOL_TYPE_ALL		10
 #define POOL_TYPE_DCI		20
 
@@ -53,11 +57,11 @@
 #define POOL_DCI_IDX		4
 #define POOL_BRIDGE_BASE	POOL_DCI_IDX
 #define POOL_HSIC_IDX		(POOL_BRIDGE_BASE + 1)
-#define POOL_HSIC_2_IDX		(POOL_BRIDGE_BASE + 2)
+#define POOL_HSIC_DCI_IDX	(POOL_BRIDGE_BASE + 2)
 #define POOL_HSIC_3_IDX		(POOL_BRIDGE_BASE + 3)
 #define POOL_HSIC_4_IDX		(POOL_BRIDGE_BASE + 4)
 #define POOL_HSIC_WRITE_IDX	(POOL_BRIDGE_BASE + 5)
-#define POOL_HSIC_2_WRITE_IDX	(POOL_BRIDGE_BASE + 6)
+#define POOL_HSIC_DCI_WRITE_IDX	(POOL_BRIDGE_BASE + 6)
 #define POOL_HSIC_3_WRITE_IDX	(POOL_BRIDGE_BASE + 7)
 #define POOL_HSIC_4_WRITE_IDX	(POOL_BRIDGE_BASE + 8)
 
@@ -74,9 +78,8 @@
 #define LPASS_DATA		1
 #define WCNSS_DATA		2
 #define APPS_DATA		3
-#define SDIO_DATA		4
-#define HSIC_DATA		5
-#define HSIC_2_DATA		6
+#define HSIC_DATA		4
+#define HSIC_2_DATA		5
 #define SMUX_DATA		10
 #define APPS_PROC		1
 /*
@@ -111,6 +114,26 @@
 #define DIAG_STM_WCNSS	0x04
 #define DIAG_STM_APPS	0x08
 
+#define DIAG_CMD_VERSION	0
+#define DIAG_CMD_DOWNLOAD	0x3A
+#define DIAG_CMD_DIAG_SUBSYS	0x4B
+#define DIAG_CMD_LOG_ON_DMND	0x78
+#define DIAG_CMD_EXT_BUILD	0x7c
+
+#define DIAG_SS_DIAG		0x12
+#define DIAG_SS_PARAMS		0x32
+
+#define DIAG_DIAG_MAX_PKT_SZ	0x55
+#define DIAG_DIAG_STM		0x214
+#define DIAG_DIAG_POLL		0x03
+#define DIAG_DEL_RSP_WRAP	0x04
+#define DIAG_DEL_RSP_WRAP_CNT	0x05
+
+#define BAD_PARAM_RESPONSE_MESSAGE 20
+
+#define MODE_CMD	41
+#define RESET_ID	2
+
 /*
  * The status bit masks when received in a signal handler are to be
  * used in conjunction with the peripheral list bit mask to determine the
@@ -134,7 +157,10 @@
  * processor. This doesn't mean that a peripheral has the
  * feature.
  */
-#define NUM_DCI_PROC	(NUM_SMD_DATA_CHANNELS + 1)
+#define NUM_DCI_PERIPHERALS	(NUM_SMD_DATA_CHANNELS + 1)
+
+/* Indicates the number of processors that support DCI */
+#define NUM_DCI_PROC		2
 
 #define SMD_DATA_TYPE 0
 #define SMD_CNTL_TYPE 1
@@ -152,6 +178,19 @@
 
 #define DIAG_TS_SIZE	50
 
+#define MAX_HSIC_DATA_CH	2
+#define MAX_HSIC_DCI_CH		2
+#define MAX_HSIC_CH		(MAX_HSIC_DATA_CH + MAX_HSIC_DCI_CH)
+
+#define DIAG_LOCAL_PROC	0
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
+/* Local Processor + HSIC channels */
+#define DIAG_NUM_PROC	(1 + MAX_HSIC_DATA_CH)
+#else
+/* Local Processor only */
+#define DIAG_NUM_PROC	1
+#endif
+
 /* Maximum number of pkt reg supported at initialization*/
 extern int diag_max_reg;
 extern int diag_threshold_reg;
@@ -167,8 +206,6 @@ do {							\
 enum remote_procs {
 	MDM = 1,
 	MDM2 = 2,
-	MDM3 = 3,
-	MDM4 = 4,
 	QSC = 5,
 };
 
@@ -226,9 +263,15 @@ struct diag_nrt_wake_lock {
 };
 
 struct real_time_vote_t {
+	int client_id;
 	uint16_t proc;
 	uint8_t real_time_vote;
-};
+} __packed;
+
+struct real_time_query_t {
+	int real_time;
+	int proc;
+} __packed;
 
 /* This structure is defined in USB header file */
 #ifndef CONFIG_DIAG_OVER_USB
@@ -361,6 +404,11 @@ struct diagchar_dev {
 	struct diag_ctrl_msg_mask *msg_mask;
 	struct diag_ctrl_feature_mask *feature_mask;
 	struct mutex log_mask_mutex;
+	/* Members for Sending response */
+	unsigned char *encoded_rsp_buf;
+	uint8_t rsp_buf_busy;
+	struct diag_request *rsp_write_ptr;
+	spinlock_t rsp_buf_busy_lock;
 	/* State for diag forwarding */
 	struct diag_smd_info smd_data[NUM_SMD_DATA_CHANNELS];
 	struct diag_smd_info smd_cntl[NUM_SMD_CONTROL_CHANNELS];
@@ -384,10 +432,10 @@ struct diagchar_dev {
 	unsigned hdlc_escape;
 	int in_busy_pktdata;
 	/* Variables for non real time mode */
-	int real_time_mode;
+	int real_time_mode[DIAG_NUM_PROC];
 	int real_time_update_busy;
 	uint16_t proc_active_mask;
-	uint16_t proc_rt_vote_mask;
+	uint16_t proc_rt_vote_mask[DIAG_NUM_PROC];
 	struct mutex real_time_mutex;
 	struct work_struct diag_real_time_work;
 	struct workqueue_struct *diag_real_time_wq;
@@ -413,6 +461,9 @@ struct diagchar_dev {
 	struct diag_master_table *table;
 	uint8_t *pkt_buf;
 	int pkt_length;
+	uint8_t *dci_pkt_buf; /* For Apps DCI packets */
+	uint32_t dci_pkt_length;
+	int in_busy_dcipktdata;
 	struct diag_request *usb_read_ptr;
 	struct diag_request *write_ptr_svc;
 	int logging_mode;
@@ -420,20 +471,7 @@ struct diagchar_dev {
 	int logging_process_id;
 	struct task_struct *socket_process;
 	struct task_struct *callback_process;
-#ifdef CONFIG_DIAG_SDIO_PIPE
-	unsigned char *buf_in_sdio;
-	unsigned char *usb_buf_mdm_out;
-	struct sdio_channel *sdio_ch;
-	int read_len_mdm;
-	int in_busy_sdio;
-	struct usb_diag_ch *mdm_ch;
-	struct work_struct diag_read_mdm_work;
-	struct workqueue_struct *diag_sdio_wq;
-	struct work_struct diag_read_sdio_work;
-	struct work_struct diag_close_sdio_work;
-	struct diag_request *usb_read_mdm_ptr;
-	struct diag_request *write_ptr_mdm;
-#endif
+
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 	/* common for all bridges */
 	struct work_struct diag_connect_work;
@@ -449,7 +487,9 @@ struct diagchar_dev {
 };
 
 extern struct diag_bridge_dev *diag_bridge;
+extern struct diag_bridge_dci_dev *diag_bridge_dci;
 extern struct diag_hsic_dev *diag_hsic;
+extern struct diag_hsic_dci_dev *diag_hsic_dci;
 extern struct diagchar_dev *driver;
 
 extern int wrap_enabled;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -297,6 +297,21 @@ static int getpath(int src, int dest)
 	return CREATE_PNODE_ID(src, pnode_num);
 }
 
+static uint64_t get_node_maxib(struct msm_bus_inode_info *info)
+{
+	int i, ctx;
+	uint64_t maxib = 0;
+
+	for (i = 0; i <= info->num_pnodes; i++) {
+		for (ctx = 0; ctx < NUM_CTX; ctx++)
+			maxib = max(info->pnode[i].clk[ctx], maxib);
+	}
+
+	MSM_BUS_DBG("%s: Node %d numpnodes %d maxib %llu", __func__,
+		info->num_pnodes, info->node_info->id, maxib);
+	return maxib;
+}
+
 /**
  * update_path() - Update the path with the bandwidth and clock values, as
  * requested by the client.
@@ -344,15 +359,6 @@ static int update_path(int curr, int pnode, uint64_t req_clk, uint64_t req_bw,
 		return -ENXIO;
 	}
 
-	/**
-	 * If master supports dual configuration, check if
-	 * the configuration needs to be changed based on
-	 * incoming requests
-	 */
-	if (info->node_info->dual_conf)
-		fabdev->algo->config_master(fabdev, info,
-			req_clk, req_bw);
-
 	info->link_info.sel_bw = &info->link_info.bw[ctx];
 	info->link_info.sel_clk = &info->link_info.clk[ctx];
 	*info->link_info.sel_bw += add_bw;
@@ -366,6 +372,19 @@ static int update_path(int curr, int pnode, uint64_t req_clk, uint64_t req_bw,
 	info->pnode[index].sel_clk = &info->pnode[index].clk[ctx &
 		cl_active_flag];
 	*info->pnode[index].sel_bw += add_bw;
+	*info->pnode[index].sel_clk = req_clk;
+
+	/**
+	 * If master supports dual configuration, check if
+	 * the configuration needs to be changed based on
+	 * incoming requests
+	 */
+	if (info->node_info->dual_conf) {
+		uint64_t node_maxib = 0;
+		node_maxib = get_node_maxib(info);
+		fabdev->algo->config_master(fabdev, info,
+			node_maxib, req_bw);
+	}
 
 	info->link_info.num_tiers = info->node_info->num_tiers;
 	info->link_info.tier = info->node_info->tier;
@@ -472,16 +491,7 @@ static int msm_bus_commit_fn(struct device *dev, void *data)
 	return ret;
 }
 
-/**
- * msm_bus_scale_register_client() - Register the clients with the msm bus
- * driver
- * @pdata: Platform data of the client, containing src, dest, ab, ib
- *
- * Client data contains the vectors specifying arbitrated bandwidth (ab)
- * and instantaneous bandwidth (ib) requested between a particular
- * src and dest.
- */
-uint32_t msm_bus_scale_register_client(struct msm_bus_scale_pdata *pdata)
+static uint32_t register_client_legacy(struct msm_bus_scale_pdata *pdata)
 {
 	struct msm_bus_client *client = NULL;
 	int i;
@@ -579,17 +589,8 @@ err:
 	mutex_unlock(&msm_bus_lock);
 	return 0;
 }
-EXPORT_SYMBOL(msm_bus_scale_register_client);
 
-/**
- * msm_bus_scale_client_update_request() - Update the request for bandwidth
- * from a particular client
- *
- * cl: Handle to the client
- * index: Index into the vector, to which the bw and clock values need to be
- * updated
- */
-int msm_bus_scale_client_update_request(uint32_t cl, unsigned index)
+static int update_request_legacy(uint32_t cl, unsigned index)
 {
 	int i, ret = 0;
 	struct msm_bus_scale_pdata *pdata;
@@ -678,9 +679,8 @@ err:
 	mutex_unlock(&msm_bus_lock);
 	return ret;
 }
-EXPORT_SYMBOL(msm_bus_scale_client_update_request);
 
-int reset_pnodes(int curr, int pnode)
+static int reset_pnodes(int curr, int pnode)
 {
 	struct msm_bus_inode_info *info;
 	struct msm_bus_fabric_device *fabdev;
@@ -767,11 +767,7 @@ void msm_bus_scale_client_reset_pnodes(uint32_t cl)
 	}
 }
 
-/**
- * msm_bus_scale_unregister_client() - Unregister the client from the bus driver
- * @cl: Handle to the client
- */
-void msm_bus_scale_unregister_client(uint32_t cl)
+static void unregister_client_legacy(uint32_t cl)
 {
 	int i;
 	struct msm_bus_client *client = (struct msm_bus_client *)(cl);
@@ -822,5 +818,11 @@ void msm_bus_scale_unregister_client(uint32_t cl)
 	kfree(client->src_pnode);
 	kfree(client);
 }
-EXPORT_SYMBOL(msm_bus_scale_unregister_client);
+
+void msm_bus_arb_setops_legacy(struct msm_bus_arb_ops *arb_ops)
+{
+	arb_ops->register_client = register_client_legacy;
+	arb_ops->update_request = update_request_legacy;
+	arb_ops->unregister_client = unregister_client_legacy;
+}
 

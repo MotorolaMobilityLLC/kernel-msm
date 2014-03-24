@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,11 +23,11 @@
 #include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/stat.h>
+#include <soc/qcom/subsystem_notif.h>
+#include <soc/qcom/ramdump.h>
 
 #include <soc/qcom/smem.h>
 
-#include <mach/ramdump.h>
-#include <mach/subsystem_notif.h>
 
 #include "smem_private.h"
 
@@ -92,6 +92,7 @@ static DEFINE_SPINLOCK(smem_init_check_lock);
 static int smem_module_inited;
 static RAW_NOTIFIER_HEAD(smem_module_init_notifier_list);
 static DEFINE_MUTEX(smem_module_init_notifier_lock);
+static bool probe_done;
 
 /* smem security feature components */
 #define SMEM_TOC_IDENTIFIER 0x434f5424 /* "$TOC" */
@@ -149,6 +150,16 @@ struct smem_partition_info {
 static struct smem_partition_info partitions[NUM_SMEM_SUBSYSTEMS];
 /* end smem security feature components */
 
+/* Identifier for the SMEM target info struct. */
+#define SMEM_TARG_INFO_IDENTIFIER 0x49494953 /* "SIII" in little-endian. */
+
+struct smem_targ_info_type {
+	/* Identifier is a constant, set to SMEM_TARG_INFO_IDENTIFIER. */
+	uint32_t identifier;
+	uint32_t size;
+	phys_addr_t phys_base_addr;
+};
+
 struct restart_notifier_block {
 	unsigned processor;
 	char *name;
@@ -169,6 +180,19 @@ static struct restart_notifier_block restart_notifiers[] = {
 };
 
 static int init_smem_remote_spinlock(void);
+
+/**
+ * is_probe_done() - Did the probe function successfully complete
+ *
+ * @return - true if probe successfully completed, false if otherwise
+ *
+ * Helper function for EPROBE_DEFER support.  If this function returns false,
+ * the calling function should immediately return -EPROBE_DEFER.
+ */
+static bool is_probe_done(void)
+{
+	return probe_done;
+}
 
 /**
  * smem_phys_to_virt() - Convert a physical base and offset to virtual address
@@ -245,7 +269,10 @@ static void *smem_phys_to_virt(phys_addr_t base, unsigned offset)
  * @returns: Physical address (or NULL if there is a failure)
  *
  * This function should only be used if an SMEM item needs to be handed
- * off to a DMA engine.
+ * off to a DMA engine.  This function will not return a version of EPROBE_DEFER
+ * if the driver is not ready since the caller should obtain @smem_address from
+ * one of the other public APIs and get EPROBE_DEFER at that time, if
+ * applicable.
  */
 phys_addr_t smem_virt_to_phys(void *smem_address)
 {
@@ -475,7 +502,8 @@ static void *__smem_find(unsigned id, unsigned size_in, bool skip_init_check)
  * @size_in:  Size of the SMEM item
  * @to_proc:  SMEM host that shares the item with apps
  * @flags:    Item attribute flags
- * @returns:  Pointer to SMEM item or NULL if it doesn't exist
+ * @returns:  Pointer to SMEM item, NULL if it doesn't exist, or -EPROBE_DEFER
+ *	if the driver is not ready
  */
 void *smem_find(unsigned id, unsigned size_in, unsigned to_proc, unsigned flags)
 {
@@ -484,6 +512,16 @@ void *smem_find(unsigned id, unsigned size_in, unsigned to_proc, unsigned flags)
 
 	SMEM_DBG("%s(%u, %u, %u, %u)\n", __func__, id, size_in, to_proc,
 									flags);
+
+	/*
+	 * Handle the circular dependecy between SMEM and software implemented
+	 * remote spinlocks.  SMEM must initialize the remote spinlocks in
+	 * probe() before it is done.  EPROBE_DEFER handling will not resolve
+	 * this code path, so we must be intellegent to know that the spinlock
+	 * item is a special case.
+	 */
+	if (!is_probe_done() && id != SMEM_SPINLOCK_ARRAY)
+		return ERR_PTR(-EPROBE_DEFER);
 
 	ptr = smem_get_entry(id, &size, to_proc, flags);
 	if (!ptr)
@@ -658,7 +696,8 @@ static void *alloc_item_secure(unsigned id, unsigned size_in, unsigned to_proc,
  * @size_in:  Size of the SMEM item
  * @to_proc:  SMEM host that shares the item with apps
  * @flags:    Item attribute flags
- * @returns:  Pointer to SMEM item or NULL if it couldn't be found/allocated
+ * @returns:  Pointer to SMEM item, NULL if it couldn't be found/allocated,
+ *	or -EPROBE_DEFER if the driver is not ready
  */
 void *smem_alloc(unsigned id, unsigned size_in, unsigned to_proc,
 								unsigned flags)
@@ -671,6 +710,9 @@ void *smem_alloc(unsigned id, unsigned size_in, unsigned to_proc,
 
 	SMEM_DBG("%s(%u, %u, %u, %u)\n", __func__, id, size_in, to_proc,
 									flags);
+
+	if (!is_probe_done())
+		return ERR_PTR(-EPROBE_DEFER);
 
 	if (!smem_initialized_check())
 		return NULL;
@@ -738,12 +780,23 @@ EXPORT_SYMBOL(smem_alloc);
  * @size:     Pointer to size variable for storing the result
  * @to_proc:  SMEM host that shares the item with apps
  * @flags:    Item attribute flags
- * @returns:  Pointer to SMEM item or NULL if it doesn't exist
+ * @returns:  Pointer to SMEM item, NULL if it doesn't exist, or -EPROBE_DEFER
+ *	if the driver isn't ready
  */
 void *smem_get_entry(unsigned id, unsigned *size, unsigned to_proc,
 								unsigned flags)
 {
 	SMEM_DBG("%s(%u, %u, %u, %u)\n", __func__, id, *size, to_proc, flags);
+
+	/*
+	 * Handle the circular dependecy between SMEM and software implemented
+	 * remote spinlocks.  SMEM must initialize the remote spinlocks in
+	 * probe() before it is done.  EPROBE_DEFER handling will not resolve
+	 * this code path, so we must be intellegent to know that the spinlock
+	 * item is a special case.
+	 */
+	if (!is_probe_done() && id != SMEM_SPINLOCK_ARRAY)
+		return ERR_PTR(-EPROBE_DEFER);
 
 	return __smem_get_entry_secure(id, size, to_proc, flags, false, true);
 }
@@ -756,7 +809,8 @@ EXPORT_SYMBOL(smem_get_entry);
  * @size_out: Pointer to size variable for storing the result
  * @to_proc:  SMEM host that shares the item with apps
  * @flags:    Item attribute flags
- * @returns:  Pointer to SMEM item or NULL if it doesn't exist
+ * @returns:  Pointer to SMEM item, NULL if it doesn't exist, or -EPROBE_DEFER
+ *	if the driver isn't ready
  *
  * This function does not lock the remote spinlock and should only be used in
  * failure-recover cases such as retrieving the subsystem failure reason during
@@ -765,6 +819,9 @@ EXPORT_SYMBOL(smem_get_entry);
 void *smem_get_entry_no_rlock(unsigned id, unsigned *size_out, unsigned to_proc,
 								unsigned flags)
 {
+	if (!is_probe_done())
+		return ERR_PTR(-EPROBE_DEFER);
+
 	return __smem_get_entry_secure(id, size_out, to_proc, flags, false,
 									false);
 }
@@ -1152,6 +1209,38 @@ static void smem_init_security(void)
 	SMEM_DBG("%s done\n", __func__);
 }
 
+/**
+ * smem_init_target_info - Init smem target information
+ *
+ * @info_addr : smem target info physical address.
+ * @size : size of the smem target info structure.
+ *
+ * This function is used to initialize the smem_targ_info structure and checks
+ * for valid identifier, if identifier is valid initialize smem variables.
+ */
+static int smem_init_target_info(phys_addr_t info_addr, resource_size_t size)
+{
+	struct smem_targ_info_type *smem_targ_info;
+	void *smem_targ_info_addr;
+	smem_targ_info_addr = ioremap_nocache(info_addr, size);
+	if (!smem_targ_info_addr) {
+		LOG_ERR("%s: failed ioremap_nocache() of addr:%pa size:%pa\n",
+				__func__, &info_addr, &size);
+		return -ENODEV;
+	}
+	smem_targ_info =
+		(struct smem_targ_info_type __iomem *)smem_targ_info_addr;
+
+	if (smem_targ_info->identifier != SMEM_TARG_INFO_IDENTIFIER) {
+		LOG_ERR("%s failed: invalid TARGET INFO magic\n", __func__);
+		return -ENODEV;
+	}
+	smem_ram_phys = smem_targ_info->phys_base_addr;
+	smem_ram_size = smem_targ_info->size;
+	iounmap(smem_targ_info_addr);
+	return 0;
+}
+
 static int msm_smem_probe(struct platform_device *pdev)
 {
 	char *key;
@@ -1166,15 +1255,50 @@ static int msm_smem_probe(struct platform_device *pdev)
 	int smem_idx = 0;
 	bool security_enabled;
 
+	r = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+						"smem_targ_info_imem");
+	if (r) {
+		if (smem_init_target_info(r->start, resource_size(r)))
+			goto smem_targ_info_legacy;
+		goto smem_targ_info_done;
+	}
+
+	r = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+						"smem_targ_info_reg");
+	if (r) {
+		void *reg_base_addr;
+		uint64_t base_addr;
+		reg_base_addr = ioremap_nocache(r->start, resource_size(r));
+		base_addr = (uint32_t)readl_relaxed(reg_base_addr);
+		base_addr |=
+			((uint64_t)readl_relaxed(reg_base_addr + 0x4) << 32);
+		iounmap(reg_base_addr);
+		if ((base_addr == 0) || ((base_addr >> 32) != 0)) {
+			SMEM_INFO("%s: Invalid SMEM address\n", __func__);
+			goto smem_targ_info_legacy;
+		}
+		if (smem_init_target_info(base_addr,
+				sizeof(struct smem_targ_info_type)))
+			goto smem_targ_info_legacy;
+		goto smem_targ_info_done;
+	}
+
+smem_targ_info_legacy:
+	SMEM_INFO("%s: reading dt-specified SMEM address\n", __func__);
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, "smem");
-	if (!r) {
-		LOG_ERR("%s: missing reg\n", __func__);
+	if (r) {
+		smem_ram_size = resource_size(r);
+		smem_ram_phys = r->start;
+	}
+
+smem_targ_info_done:
+	if (!smem_ram_phys || !smem_ram_size) {
+		LOG_ERR("%s: Missing SMEM TARGET INFO\n", __func__);
 		return -ENODEV;
 	}
 
-	smem_ram_base = ioremap(r->start, resource_size(r));
-	smem_ram_size = resource_size(r);
-	smem_ram_phys = r->start;
+	smem_ram_base = ioremap_nocache(smem_ram_phys, smem_ram_size);
+
 	if (!smem_ram_base) {
 		LOG_ERR("%s: ioremap_nocache() of addr:%pa size: %pa\n",
 				__func__,
@@ -1221,13 +1345,6 @@ static int msm_smem_probe(struct platform_device *pdev)
 		}
 	}
 	/* Initialize main SMEM region and SSR ramdump region */
-	key = "smem";
-	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, key);
-	if (!r) {
-		LOG_ERR("%s: missing '%s'\n", __func__, key);
-		return -ENODEV;
-	}
-
 	smem_areas_tmp = kmalloc_array(num_smem_areas, sizeof(struct smem_area),
 				GFP_KERNEL);
 	if (!smem_areas_tmp) {
@@ -1243,12 +1360,12 @@ static int msm_smem_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto free_smem_areas;
 	}
-	smem_areas_tmp[smem_idx].phys_addr =  r->start;
-	smem_areas_tmp[smem_idx].size = resource_size(r);
+	smem_areas_tmp[smem_idx].phys_addr =  smem_ram_phys;
+	smem_areas_tmp[smem_idx].size = smem_ram_size;
 	smem_areas_tmp[smem_idx].virt_addr = smem_ram_base;
 
-	ramdump_segments_tmp[smem_idx].address = r->start;
-	ramdump_segments_tmp[smem_idx].size = resource_size(r);
+	ramdump_segments_tmp[smem_idx].address = smem_ram_phys;
+	ramdump_segments_tmp[smem_idx].size = smem_ram_size;
 	++smem_idx;
 
 	/* Configure auxiliary SMEM regions */
@@ -1314,6 +1431,8 @@ static int msm_smem_probe(struct platform_device *pdev)
 		smem_init_security();
 	}
 
+	probe_done = true;
+
 	ret = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
 	if (ret)
 		LOG_ERR("%s: of_platform_populate failed %d\n", __func__, ret);
@@ -1372,4 +1491,4 @@ int __init msm_smem_init(void)
 	return 0;
 }
 
-module_init(msm_smem_init);
+arch_initcall(msm_smem_init);

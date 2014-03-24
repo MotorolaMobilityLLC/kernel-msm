@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -35,9 +35,9 @@
 #include <linux/of.h>
 #include <linux/ipc_logging.h>
 
-#include <mach/msm_smd.h>
-#include <mach/subsystem_restart.h>
-#include <mach/msm_smsm.h>
+#include <soc/qcom/smd.h>
+#include <soc/qcom/smsm.h>
+#include <soc/qcom/subsystem_restart.h>
 
 #ifdef CONFIG_ARCH_FSM9XXX
 #define DEFAULT_NUM_SMD_PKT_PORTS 4
@@ -415,7 +415,7 @@ static long smd_pkt_ioctl(struct file *file, unsigned int cmd,
 		break;
 	default:
 		pr_err("%s: Unrecognized ioctl command %d\n", __func__, cmd);
-		ret = -1;
+		ret = -ENOIOCTLCMD;
 	}
 	mutex_unlock(&smd_pkt_devp->ch_lock);
 
@@ -451,7 +451,7 @@ ssize_t smd_pkt_read(struct file *file,
 		E_SMD_PKT_SSR(smd_pkt_devp);
 		return notify_reset(smd_pkt_devp);
 	}
-	D_READ("Begin %s on smd_pkt_dev id:%d buffer_size %d\n",
+	D_READ("Begin %s on smd_pkt_dev id:%d buffer_size %zu\n",
 		__func__, smd_pkt_devp->i, count);
 
 wait_for_packet:
@@ -503,7 +503,7 @@ wait_for_packet:
 	}
 
 	if ((uint32_t)pkt_size > count) {
-		pr_err("%s: failure on smd_pkt_dev id: %d - packet size %d > buffer size %d,",
+		pr_err("%s: failure on smd_pkt_dev id: %d - packet size %d > buffer size %zu,",
 			__func__, smd_pkt_devp->i,
 			pkt_size, count);
 		mutex_unlock(&smd_pkt_devp->rx_lock);
@@ -587,7 +587,7 @@ ssize_t smd_pkt_write(struct file *file,
 		/* notify client that a reset occurred */
 		return notify_reset(smd_pkt_devp);
 	}
-	D_WRITE("Begin %s on smd_pkt_dev id:%d data_size %d\n",
+	D_WRITE("Begin %s on smd_pkt_dev id:%d data_size %zu\n",
 		__func__, smd_pkt_devp->i, count);
 
 	mutex_lock(&smd_pkt_devp->tx_lock);
@@ -645,7 +645,7 @@ ssize_t smd_pkt_write(struct file *file,
 	mutex_unlock(&smd_pkt_devp->tx_lock);
 	D_WRITE_DUMP_BUFFER("Write: ",
 			    (bytes_written > 16 ? 16 : bytes_written), buf);
-	D_WRITE("Finished %s on smd_pkt_dev id:%d %d bytes\n",
+	D_WRITE("Finished %s on smd_pkt_dev id:%d %zu bytes\n",
 		__func__, smd_pkt_devp->i, count);
 
 	return count;
@@ -1014,6 +1014,7 @@ exit:
 static void smd_pkt_remove_driver(struct smd_pkt_dev *smd_pkt_devp)
 {
 	struct smd_pkt_driver *smd_pkt_driverp;
+	bool found_item = false;
 
 	if (!smd_pkt_devp) {
 		pr_err("%s on a NULL device\n", __func__);
@@ -1026,6 +1027,7 @@ static void smd_pkt_remove_driver(struct smd_pkt_dev *smd_pkt_devp)
 	list_for_each_entry(smd_pkt_driverp, &smd_pkt_driver_list, list) {
 		if (!strcmp(smd_pkt_driverp->pdriver_name,
 					smd_pkt_devp->ch_name)) {
+			found_item = true;
 			D_STATUS("%s:%s Platform driver cnt:%d\n",
 				__func__, smd_pkt_devp->ch_name,
 				smd_pkt_driverp->ref_cnt);
@@ -1036,8 +1038,11 @@ static void smd_pkt_remove_driver(struct smd_pkt_dev *smd_pkt_devp)
 			break;
 		}
 	}
+	if (!found_item)
+		pr_err("%s:%s No item found in list.\n",
+				__func__, smd_pkt_devp->ch_name);
 
-	if (smd_pkt_driverp->ref_cnt == 0) {
+	if (found_item && smd_pkt_driverp->ref_cnt == 0) {
 		platform_driver_unregister(&smd_pkt_driverp->driver);
 		smd_pkt_driverp->driver.probe = NULL;
 		list_del(&smd_pkt_driverp->list);
@@ -1079,7 +1084,7 @@ int smd_pkt_open(struct inode *inode, struct file *file)
 		}
 
 		peripheral = smd_edge_to_pil_str(smd_pkt_devp->edge);
-		if (peripheral) {
+		if (!IS_ERR_OR_NULL(peripheral)) {
 			smd_pkt_devp->pil = subsystem_get(peripheral);
 			if (IS_ERR(smd_pkt_devp->pil)) {
 				r = PTR_ERR(smd_pkt_devp->pil);
@@ -1233,6 +1238,7 @@ static const struct file_operations smd_pkt_fops = {
 	.write = smd_pkt_write,
 	.poll = smd_pkt_poll,
 	.unlocked_ioctl = smd_pkt_ioctl,
+	.compat_ioctl = smd_pkt_ioctl,
 };
 
 static int smd_pkt_init_add_device(struct smd_pkt_dev *smd_pkt_devp, int i)

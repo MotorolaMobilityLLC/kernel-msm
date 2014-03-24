@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -34,7 +34,8 @@
 #define DIAG_CTRL_MSG_LOG_MASK_WITH_PRESET_ID	14
 #define DIAG_CTRL_MSG_EVENT_MASK_WITH_PRESET_ID	15
 #define DIAG_CTRL_MSG_F3_MASK_WITH_PRESET_ID	16
-#define DIAG_CTRL_MSG_LAST DIAG_CTRL_MSG_F3_MASK_WITH_PRESET_ID
+#define DIAG_CTRL_MSG_DCI_CONNECTION_STATUS	20
+#define DIAG_CTRL_MSG_LAST DIAG_CTRL_MSG_DCI_CONNECTION_STATUS
 
 /* Denotes that we support sending/receiving the feature mask */
 #define F_DIAG_INT_FEATURE_MASK		0x01
@@ -54,14 +55,17 @@
 #define ENABLE_SEPARATE_CMDRSP	1
 #define DISABLE_SEPARATE_CMDRSP	0
 
-#define ENABLE_STM	1
 #define DISABLE_STM	0
+#define ENABLE_STM	1
+#define STATUS_STM	2
 
 #define UPDATE_PERIPHERAL_STM_STATE	1
 #define CLEAR_PERIPHERAL_STM_STATE	2
 
 #define ENABLE_APPS_HDLC_ENCODING	1
 #define DISABLE_APPS_HDLC_ENCODING	0
+
+#define DIAG_MODE_PKT_LEN	36
 
 struct cmd_code_range {
 	uint16_t cmd_code_lo;
@@ -138,7 +142,14 @@ struct diag_ctrl_msg_stm {
 	uint8_t  control_data;
 } __packed;
 
-void diagfwd_cntl_init(void);
+struct diag_ctrl_dci_status {
+	uint32_t ctrl_pkt_id;
+	uint32_t ctrl_pkt_data_len;
+	uint32_t version;
+	uint8_t count;
+} __packed;
+
+int diagfwd_cntl_init(void);
 void diagfwd_cntl_exit(void);
 void diag_read_smd_cntl_work_fn(struct work_struct *);
 void diag_notify_ctrl_update_fn(struct work_struct *work);
@@ -148,8 +159,8 @@ int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
 								int total_recd);
 void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 							int real_time);
-void diag_update_proc_vote(uint16_t proc, uint8_t vote);
-void diag_update_real_time_vote(uint16_t proc, uint8_t real_time);
+void diag_update_proc_vote(uint16_t proc, uint8_t vote, int index);
+void diag_update_real_time_vote(uint16_t proc, uint8_t real_time, int index);
 void diag_real_time_work_fn(struct work_struct *work);
 int diag_send_stm_state(struct diag_smd_info *smd_info,
 				uint8_t stm_control_data);

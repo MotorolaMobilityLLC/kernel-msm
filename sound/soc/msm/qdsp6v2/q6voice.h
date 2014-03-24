@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1574,7 +1574,7 @@ int voc_register_vocproc_vol_table(void);
 int voc_deregister_vocproc_vol_table(void);
 int voc_send_cvp_map_vocpcm_memory(uint32_t session_id,
 				   struct mem_map_table *tp_mem_table,
-				   uint32_t paddr, uint32_t bufsize);
+				   phys_addr_t paddr, uint32_t bufsize);
 int voc_send_cvp_unmap_vocpcm_memory(uint32_t session_id);
 int voc_send_cvp_start_vocpcm(uint32_t session_id,
 			      struct vss_ivpcm_tap_point *vpcm_tp,
@@ -1596,5 +1596,6 @@ int voc_start_playback(uint32_t set, uint16_t port_id);
 int voc_start_record(uint32_t port_id, uint32_t set, uint32_t session_id);
 int voice_get_idx_for_session(u32 session_id);
 int voc_set_ext_ec_ref(uint16_t port_id, bool state);
+int voc_update_amr_vocoder_rate(uint32_t session_id);
 
 #endif

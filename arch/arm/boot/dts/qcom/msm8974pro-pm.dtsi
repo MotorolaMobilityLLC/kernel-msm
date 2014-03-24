@@ -120,7 +120,7 @@
 		qcom,phase-port = <0x1>;
 		qcom,pfm-port = <0x2>;
 		qcom,saw2-spm-cmd-ret = [1f 00 03 00 0f];
-		qcom,saw2-spm-cmd-gdhs = [00 32 42 07 44 50 02 32 50 0f];
+		qcom,saw2-spm-cmd-gdhs = [00 32 42 03 44 50 02 32 50 0f];
 		qcom,saw2-spm-cmd-pc = [00 10 32 b0 11 42 07 01 b0 12 44
 				50 02 32 50 0f];
 		qcom,L2-spm-is-apcs-master;
@@ -129,59 +129,69 @@
 	qcom,lpm-levels {
 		compatible = "qcom,lpm-levels";
 		qcom,default-l2-state = "l2_cache_retention";
+		qcom,allow-synced-levels;
 		#address-cells = <1>;
-		#size-cells = <0>;
+		#size-cells = <1>;
 
-		qcom,lpm-level@0 {
-			reg = <0x0>;
-			qcom,mode = "wfi";
-			qcom,l2 = "l2_cache_retention";
-			qcom,latency-us = <1>;
-			qcom,ss-power = <715>;
-			qcom,energy-overhead = <17700>;
-			qcom,time-overhead = <2>;
+		qcom,cpu-modes {
+			compatible = "qcom,cpu-modes";
+			qcom,cpu-mode@0 {
+				qcom,mode = "wfi";
+				qcom,latency-us = <1>;
+				qcom,ss-power = <715>;
+				qcom,energy-overhead = <17700>;
+				qcom,time-overhead = <2>;
+			};
+
+			qcom,cpu-mode@1 {
+				qcom,mode = "retention";
+				qcom,latency-us = <35>;
+				qcom,ss-power = <542>;
+				qcom,energy-overhead = <34920>;
+				qcom,time-overhead = <40>;
+			};
+
+			qcom,cpu-mode@2 {
+				qcom,mode = "standalone_pc";
+				qcom,latency-us = <300>;
+				qcom,ss-power = <476>;
+				qcom,energy-overhead = <225300>;
+				qcom,time-overhead = <350>;
+			};
+
+			qcom,cpu-mode@3 {
+				qcom,mode = "pc";
+				qcom,latency-us = <500>;
+				qcom,ss-power = <400>;
+				qcom,energy-overhead = <280000>;
+				qcom,time-overhead = <500>;
+				qcom,use-broadcast-timer;
+			};
+
 		};
+		qcom,system-modes {
+			compatible = "qcom,system-modes";
 
-		qcom,lpm-level@1 {
-			reg = <0x1>;
-			qcom,mode = "retention";
-			qcom,l2 = "l2_cache_retention";
-			qcom,latency-us = <35>;
-			qcom,ss-power = <542>;
-			qcom,energy-overhead = <34920>;
-			qcom,time-overhead = <40>;
-		};
+			qcom,system-mode@0 {
+				qcom,l2 = "l2_cache_gdhs";
+				qcom,latency-us = <500>;
+				qcom,ss-power = <163>;
+				qcom,energy-overhead = <577736>;
+				qcom,time-overhead = <1000>;
+				qcom,min-cpu-mode= "standalone_pc";
+				qcom,sync-mode;
+			};
 
-
-		qcom,lpm-level@2 {
-			reg = <0x2>;
-			qcom,mode = "standalone_pc";
-			qcom,l2 = "l2_cache_retention";
-			qcom,latency-us = <300>;
-			qcom,ss-power = <476>;
-			qcom,energy-overhead = <225300>;
-			qcom,time-overhead = <350>;
-		};
-
-		qcom,lpm-level@3 {
-			reg = <0x3>;
-			qcom,mode = "pc";
-			qcom,l2 = "l2_cache_gdhs";
-			qcom,gpio-detectable;
-			qcom,latency-us = <20000>;
-			qcom,ss-power = <163>;
-			qcom,energy-overhead = <1577736>;
-			qcom,time-overhead = <5067>;
-		};
-
-		qcom,lpm-level@4 {
-			reg = <0x4>;
-			qcom,mode = "pc";
-			qcom,l2 = "l2_cache_pc";
-			qcom,latency-us = <30000>;
-			qcom,ss-power = <83>;
-			qcom,energy-overhead = <2274420>;
-			qcom,time-overhead = <6605>;
+			qcom,system-mode@1 {
+				qcom,l2 = "l2_cache_pc";
+				qcom,latency-us = <30000>;
+				qcom,ss-power = <83>;
+				qcom,energy-overhead = <2274420>;
+				qcom,time-overhead = <6605>;
+				qcom,min-cpu-mode = "pc";
+				qcom,send-rpm-sleep-set;
+				qcom,sync-mode;
+			};
 		};
 	};
 
@@ -200,6 +210,7 @@
 			<50 172>, /* usb1_hs_async_wakeup_irq */
 			<53 104>, /* mdss_irq */
 			<62 222>, /* ee0_krait_hlos_spmi_periph_irq */
+			<0xff 33>,  /* APCC_qgicL2PerfMonIrptReq */
 			<0xff 34>,  /* APCC_qgicL2ErrorIrptReq */
 			<0xff 35>,  /* WDT_barkInt */
 			<0xff 40>,  /* qtimer_phy_irq */
@@ -222,6 +233,7 @@
 			<0xff 105>, /* iommu_pmon_nonsecure_irq */
 			<0xff 109>,  /* ocmem_dm_nonsec_irq */
 			<0xff 126>,  /* bam_irq[0] */
+			<0xff 146>,  /* uart_dm_intr: blsp2_uart_2_irq */
 			<0xff 155>,  /* sdcc_irq[0] */
 			<0xff 163>,  /* usb30_ee1_irq */
 			<0xff 170>,  /* sdcc_pwr_cmd_irq */
@@ -301,14 +313,12 @@
 			<41  144>;
 	};
 
-	qcom,pm-8x60@fe805664 {
-		compatible = "qcom,pm-8x60";
+	qcom,pm@fe805664 {
+		compatible = "qcom,pm";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
 		reg = <0xfe805664 0x40>;
-		qcom,pc-mode = "tz_l2_int";
-		qcom,use-sync-timer;
 
 		qcom,pm-snoc-client {
 			compatible = "qcom,pm-snoc-client";
@@ -351,5 +361,13 @@
 		compatible = "qcom,rpmrbcpr-stats";
 		reg = <0xfc000000 0x1a0000>;
 		qcom,start-offset = <0x190010>;
+	};
+
+	qcom,rpm-master-stats@fc428150 {
+		compatible = "qcom,rpm-master-stats";
+		reg = <0xfc428150 0x3200>;
+		qcom,masters = "APSS", "MPSS", "LPSS", "PRONTO";
+		qcom,master-stats-version = <2>;
+		qcom,master-offset = <2560>;
 	};
 };

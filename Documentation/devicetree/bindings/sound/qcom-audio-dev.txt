@@ -113,6 +113,12 @@ Required properties:
    This enables stub CPU dai in Audio. The stub dai is used when
    there is no real backend in Audio.
 
+* msm-dai-q6-spdif
+
+Optional properties:
+
+ - compatible : "msm-dai-q6-spdif"
+
 * msm-dai-q6-hdmi
 
 Required properties:
@@ -311,6 +317,10 @@ Example:
 		compatible = "qcom,msm-dai-stub";
 	};
 
+	qcom,msm-dai-q6-spdif {
+		compatible = "qcom,msm-dai-q6-spdif";
+	};
+
 	qcom,msm-dai-q6-hdmi {
 		compatible = "qcom,msm-dai-q6-hdmi";
 		qcom,msm-dai-q6-dev-id = <8>;
@@ -465,6 +475,40 @@ Example:
 		elemental-addr = [ff ff ff ff 17 02];
 	};
 
+* MSM8916 ASoC Machine driver
+
+Required properties:
+- compatible : "qcom,msm8x16-audio-codec"
+- qcom,model : The user-visible name of this sound card.
+- qcom,msm-snd-card-id : This id is used to recognize the sound card number
+- qcom,msm-codec-type : This property is used to recognize the codec type
+  internal or external.
+- pinctrl-names : Pincntrl entries to configure the PDM gpio lines accordingly
+- pinctrl-0 : This exoplains the active state of the PDM gpio lines
+- pinctrl-1 : This exoplains the suspend state of the PDM gpio lines
+
+Example:
+
+	sound {
+		compatible = "qcom,msm8x16-audio-codec";
+		qcom,model = "msm8x16-snd-card";
+		qcom,msm-snd-card-id = <0>;
+		qcom,msm-codec-type = "internal";
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS External", "Handset Mic",
+			"MIC BIAS Internal2", "Headset Mic",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
+			"AMIC2", "MIC BIAS Internal2",
+			"AMIC3", "MIC BIAS External";
+		pinctrl-names = "cdc_pdm_lines_act",
+				"cdc_pdm_lines_sus";
+		pinctrl-0 = <&cdc_pdm_lines_act>;
+		pinctrl-1 = <&cdc_pdm_lines_sus>;
+	};
+
 * MSM8974 ASoC Machine driver
 
 Required properties:
@@ -514,6 +558,11 @@ Optional properties:
 			   for headset detection.
 - qcom,dock-plug-det-irq: Interrupt line to detect Docking/Undocking of Liquid
 			  device
+- qcom,mbhc-audio-jack-type : String to indicate the jack type on the hardware.
+		Possible Values:
+		4-pole-jack : Jack on the hardware is 4-pole.
+		5-pole-jack : Jack on the hardware is 5-pole.
+		6-pole-jack : Jack on the hardware is 6-pole.
 
 * APQ8074 ASoC Machine driver
 
@@ -579,6 +628,7 @@ sound {
 	qcom,sec-auxpcm-gpio-sync = <&msmgpio 80 0>;
 	qcom,sec-auxpcm-gpio-din  = <&msmgpio 81 0>;
 	qcom,sec-auxpcm-gpio-dout = <&msmgpio 82 0>;
+	qcom,mbhc-audio-jack-type = "4-pole-jack";
 };
 
 * msm-dai-mi2s
@@ -705,11 +755,22 @@ Required properties:
 	Value of 0 indicates ADSP loader needs to use PIL and value of 2 means
 	ADSP image is already loaded by SBL.
 
+Optional properties:
+ - qcom,proc-img-to-load;
+	This property can be used to override default ADSP
+	loading by PIL. Based on string input, different proc is
+	loaded. Right now we are adding option "modem"
+	for 8916 purpose. Default image will be "adsp" which
+	will load LPASS Q6 for other targets as expected.
+	"adsp" option need not be explicitly mentioned in
+	DTSI file, as it is default option.
+
 Example:
 
 qcom,msm-adsp-loader {
 	compatible = "qcom,adsp-loader";
 	qcom,adsp-state = <2>;
+	qcom,proc-img-to-load = "modem";
 };
 
 * msm-audio-ion
@@ -824,6 +885,11 @@ Required properties:
 - qcom,tabla-mclk-clk-freq : Tabla mclk Freq in Hz.
 Optional properties:
 - qcom,hdmi-audio-rx: specifies if HDMI audio support is enabled or not.
+- qcom,spdif-audio-rx: specifies if SPDIF audio support is enabled or not.
+- qcom,spdif-opt-gpio: GPIO on which SPDIF optical output signal is coming.
+  If qcom,spdif-audio-rx property is present then this property must be present.
+- qcom,spdif-elec-gpio: GPIO on which SPDIF electrical output signal is coming.
+  If qcom,spdif-audio-rx property is present then this property must be present.
 
 Example:
 
@@ -846,5 +912,66 @@ Example:
 
 		qcom,cdc-mclk-gpios = <&msmgpio 42 0>;
 		qcom,tabla-mclk-clk-freq = <12288000>;
+		qcom,spdif-opt-gpio = <&msmgpio 46 0>;
+		qcom,spdif-elec-gpio = <&msmgpio 41 0>;
 		qcom,hdmi-audio-rx;
+		qcom,spdif-audio-rx;
+	};
+
+* MDM9630 ASoC Machine driver
+
+Required properties:
+- compatible : "qcom,mdm9630-audio-taiko"
+- qcom,model : The user-visible name of this sound card.
+- qcom,audio-routing : A list of the connections between audio components.
+  Each entry is a pair of strings, the first being the connection's sink,
+  the second being the connection's source.
+- qcom,taiko-mclk-clk-freq : Master clock value given to codec. Some WCD9XXX
+  codec can run at different mclk values. Mclk value can be 9.6MHz or 12.288MHz.
+  This element represents the value for MCLK provided to codec.
+- qcom,prim-i2s-gpio-ws : Specifies gpio assigned for primary WS I2S pin.
+- qcom,prim-i2s-gpio-din : Specifies gpio assigned for primary DIN I2S pin.
+- qcom,prim-i2s-gpio-dout : Specifies gpio assigned for primary DOUT I2S pin.
+- qcom,prim-i2s-gpio-sclk : Specifies gpio assigned for primary SCLK I2S pin.
+- qcom,prim-i2s-gpio-mclk : Specifies gpio assigned for MCLK I2S pin.
+
+Example:
+
+	sound {
+                compatible = "qcom,mdm9630-audio-taiko";
+                qcom,model = "mdm9630-taiko-i2s-snd-card";
+
+                qcom,audio-routing =
+                        "RX_BIAS", "MCLK",
+                        "LDO_H", "MCLK",
+                        "Ext Spk Bottom Pos", "LINEOUT1",
+                        "Ext Spk Bottom Neg", "LINEOUT3",
+                        "Ext Spk Top Pos", "LINEOUT2",
+                        "Ext Spk Top Neg", "LINEOUT4",
+                        "AMIC1", "MIC BIAS1 External",
+                        "MIC BIAS1 External", "Handset Mic",
+                        "AMIC2", "MIC BIAS2 External",
+                        "MIC BIAS2 External", "Headset Mic",
+                        "AMIC3", "MIC BIAS3 Internal1",
+                        "MIC BIAS3 Internal1", "ANCRight Headset Mic",
+                        "AMIC4", "MIC BIAS1 Internal2",
+                        "MIC BIAS1 Internal2", "ANCLeft Headset Mic",
+                        "DMIC1", "MIC BIAS1 External",
+                        "MIC BIAS1 External", "Digital Mic1",
+                        "DMIC2", "MIC BIAS1 External",
+                        "MIC BIAS1 External", "Digital Mic2",
+                        "DMIC3", "MIC BIAS3 External",
+                        "MIC BIAS3 External", "Digital Mic3",
+                        "DMIC4", "MIC BIAS3 External",
+                        "MIC BIAS3 External", "Digital Mic4",
+                        "DMIC5", "MIC BIAS4 External",
+                        "MIC BIAS4 External", "Digital Mic5",
+                        "DMIC6", "MIC BIAS4 External",
+                        "MIC BIAS4 External", "Digital Mic6";
+                        qcom,taiko-mclk-clk-freq = <12288000>;
+                        qcom,prim-i2s-gpio-ws   =  <&msmgpio 12 0>;
+                        qcom,prim-i2s-gpio-din  =  <&msmgpio 13 0>;
+                        qcom,prim-i2s-gpio-dout =  <&msmgpio 14 0>;
+                        qcom,prim-i2s-gpio-sclk =  <&msmgpio 15 0>;
+                        qcom,prim-i2s-gpio-mclk =  <&msmgpio 71 0>;
 	};

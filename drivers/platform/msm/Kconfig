@@ -123,6 +123,11 @@ config RMNET_IPA
 	  for RmNet Data Driver and also exchange of QMI messages between
 	  A7 and Q6 IPA-driver.
 
+config KLM
+	boolean "KLM Driver"
+	help
+	  This driver handles the power management of the KLM (Key Ladder Module).
+
 config MSM_AVTIMER
 	tristate "Avtimer Driver"
 	depends on MSM_QDSP6_APRV2
@@ -153,5 +158,11 @@ config QCA1530
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called qca1530.
+
+config MSM_SPSS
+	tristate "MSM SPSS driver"
+	default n
+	help
+	  Support for Standby Processing Sub-System (SPSS) module.
 
 endmenu

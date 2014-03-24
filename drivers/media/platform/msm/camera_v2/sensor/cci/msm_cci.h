@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,7 +18,7 @@
 #include <linux/platform_device.h>
 #include <media/v4l2-subdev.h>
 #include <media/msm_cam_sensor.h>
-#include <mach/camera2.h>
+#include <soc/qcom/camera2.h>
 #include "msm_sd.h"
 
 #define NUM_MASTERS 2
@@ -26,7 +26,6 @@
 
 #define TRUE  1
 #define FALSE 0
-
 enum cci_i2c_queue_t {
 	QUEUE_0,
 	QUEUE_1,
@@ -35,6 +34,7 @@ enum cci_i2c_queue_t {
 struct msm_camera_cci_client {
 	struct v4l2_subdev *cci_subdev;
 	uint32_t freq;
+	enum i2c_freq_mode_t i2c_freq_mode;
 	enum cci_i2c_master_t cci_i2c_master;
 	uint16_t sid;
 	uint16_t cid;
@@ -133,9 +133,10 @@ struct cci_device {
 	struct msm_camera_cci_i2c_queue_info
 		cci_i2c_queue_info[NUM_MASTERS][NUM_QUEUES];
 	struct msm_camera_cci_master_info cci_master_info[NUM_MASTERS];
-	struct msm_cci_clk_params_t cci_clk_params[MASTER_MAX];
+	struct msm_cci_clk_params_t cci_clk_params[I2C_MAX_MODES];
 	struct gpio *cci_gpio_tbl;
 	uint8_t cci_gpio_tbl_size;
+	uint8_t master_clk_init[MASTER_MAX];
 };
 
 enum msm_cci_i2c_cmd_type {

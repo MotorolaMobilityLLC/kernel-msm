@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,14 +22,14 @@
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/rpm-smd-regulator.h>
 #include <linux/clk/msm-clock-generic.h>
+#include <soc/qcom/clock-local2.h>
+#include <soc/qcom/clock-pll.h>
+#include <soc/qcom/clock-rpm.h>
+#include <soc/qcom/clock-voter.h>
 
-#include <mach/socinfo.h>
-#include <mach/rpm-smd.h>
+#include <soc/qcom/socinfo.h>
+#include <soc/qcom/rpm-smd.h>
 
-#include "clock-local2.h"
-#include "clock-pll.h"
-#include "clock-rpm.h"
-#include "clock-voter.h"
 #include "clock-mdss-8974.h"
 #include "clock.h"
 
@@ -1555,6 +1555,8 @@ static struct branch_clk gcc_usb_hsic_system_clk = {
 	},
 };
 
+static DEFINE_CLK_MEASURE(wcnss_m_clk);
+
 #ifdef CONFIG_DEBUG_FS
 struct measure_mux_entry {
 	struct clk *c;
@@ -1610,6 +1612,7 @@ static struct measure_mux_entry measure_mux_GCC[] = {
 	{ &pnoc_clk.c, GCC_BASE, 0x010},
 	{ &snoc_clk.c, GCC_BASE, 0x000},
 	{ &cnoc_clk.c, GCC_BASE, 0x008},
+	{ &wcnss_m_clk, GCC_BASE, 0x0198},
 	/*
 	 * measure the gcc_bimc_kpss_axi_clk instead to account for the DDR
 	 * rate being gcc_bimc_clk/2.
@@ -2522,17 +2525,6 @@ static struct branch_clk mmss_misc_ahb_clk = {
 	},
 };
 
-static struct branch_clk mmss_mmssnoc_bto_ahb_clk = {
-	.cbcr_reg = MMSS_MMSSNOC_BTO_AHB_CBCR,
-	.has_sibling = 1,
-	.base = &virt_bases[MMSS_BASE],
-	.c = {
-		.dbg_name = "mmss_mmssnoc_bto_ahb_clk",
-		.ops = &clk_ops_branch,
-		CLK_INIT(mmss_mmssnoc_bto_ahb_clk.c),
-	},
-};
-
 static struct branch_clk mmss_mmssnoc_axi_clk = {
 	.cbcr_reg = MMSS_MMSSNOC_AXI_CBCR,
 	.has_sibling = 1,
@@ -2634,7 +2626,6 @@ static struct branch_clk venus0_vcodec0_clk = {
 
 #ifdef CONFIG_DEBUG_FS
 static struct measure_mux_entry measure_mux_MMSS[] = {
-	{ &mmss_mmssnoc_bto_ahb_clk.c,  MMSS_BASE, 0x0002 },
 	{ &mmss_misc_ahb_clk.c,  MMSS_BASE, 0x0003 },
 	{ &mmss_mmssnoc_axi_clk.c,  MMSS_BASE, 0x0004 },
 	{ &mmss_s0_axi_clk.c,  MMSS_BASE, 0x0005 },
@@ -2785,6 +2776,8 @@ static struct pll_freq_tbl apcs_pll_freq[] = {
 	F_APCS_PLL(1401600000, 73, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1497600000, 78, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1593600000, 83, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1689600000, 88, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1785600000, 93, 0x0, 0x1, 0x0, 0x0, 0x0),
 	PLL_F_END
 };
 
@@ -3076,6 +3069,10 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("apc3_m_clk", apc3_m_clk, ""),
 	CLK_LOOKUP("l2_m_clk", l2_m_clk, ""),
 
+	/* Measure clocks for WCNSS */
+	CLK_LOOKUP("measure",   measure_clk.c, "fb000000.qcom,wcnss-wlan"),
+	CLK_LOOKUP("wcnss_debug", wcnss_m_clk, "fb000000.qcom,wcnss-wlan"),
+
 	/* LPM Resources */
 	CLK_LOOKUP("xo",          cxo_lpm_clk.c, "fc4281d0.qcom,mpm"),
 
@@ -3344,6 +3341,8 @@ static struct clk_lookup msm_clocks_8226[] = {
 	CLK_LOOKUP("iface_clk", mdss_ahb_clk.c, "fd922800.qcom,mdss_dsi"),
 	CLK_LOOKUP("bus_clk", mdss_axi_clk.c, "fd922800.qcom,mdss_dsi"),
 	CLK_LOOKUP("mdp_core_clk", mdss_mdp_clk.c, "fd922800.qcom,mdss_dsi"),
+	CLK_LOOKUP("core_mmss_clk", mmss_misc_ahb_clk.c,
+		"fd922800.qcom,mdss_dsi"),
 
 	CLK_LOOKUP("core_clk", mdss_mdp_clk.c, "fd900000.qcom,mdss_mdp"),
 	CLK_LOOKUP("lut_clk", mdss_mdp_lut_clk.c, "fd900000.qcom,mdss_mdp"),
@@ -3533,7 +3532,6 @@ static struct clk_lookup msm_clocks_8226[] = {
 #endif
 	CLK_LOOKUP("iface_clk", camss_micro_ahb_clk.c, ""),
 
-	CLK_LOOKUP("", mmss_mmssnoc_bto_ahb_clk.c, ""),
 	CLK_LOOKUP("", mmss_mmssnoc_axi_clk.c, ""),
 	CLK_LOOKUP("", mmss_s0_axi_clk.c, ""),
 

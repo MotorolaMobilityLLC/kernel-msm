@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,6 +13,12 @@
 / {
 	aliases {
 		serial0 = &blsp2_uart1;
+	};
+
+	memory {
+		fb_mem: fb_region@0 {
+			reg = <0 0 0 0x4400000>;
+		};
 	};
 
 	bt_qca6174 {
@@ -40,9 +46,9 @@
 			"AMIC2", "MIC BIAS2 External",
 			"MIC BIAS2 External", "Headset Mic",
 			"AMIC5", "MIC BIAS1 External",
-			"MIC BIAS1 External", "Analog Mic5",
+			"MIC BIAS1 External", "Analog Mic6",
 			"AMIC6", "MIC BIAS3 External",
-			"MIC BIAS3 External", "Analog Mic6",
+			"MIC BIAS3 External", "Analog Mic7",
 			"DMIC1", "MIC BIAS4 External",
 			"MIC BIAS4 External", "Digital Mic1",
 			"DMIC2", "MIC BIAS4 External",
@@ -85,6 +91,7 @@
 };
 
 &mdss_hdmi_tx {
+	qcom,primary_panel = <1>;
 	qcom,mdss-fb-map = <&mdss_fb0>;
 	hpd-5v-en-supply = <&vph_pwr_vreg>;
 	qcom,supply-names = "hpd-gdsc", "hpd-5v", "core-vdda", "core-vcc";
@@ -92,6 +99,7 @@
 	qcom,max-voltage-level = <0 0 1800000 1800000>;
 	qcom,enable-load = <0 0 300000 0>;
 	qcom,disable-load = <0 0 0 0>;
+	status = "ok";
 };
 
 &uart6 {
@@ -140,6 +148,10 @@
 
 &i2c_2 {
 	status = "disabled";
+};
+
+&xhci_hsic_host {
+   status = "disabled";
 };
 
 &ufsphy1 {
@@ -218,10 +230,9 @@
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
 	qcom,vdd-io-current-level = <200 154000>;
 
-	qcom,pad-pull-on = <0x0 0x3 0x3 0x1>; /* no-pull, pull-up, pull-up, pull-down */
-	qcom,pad-pull-off = <0x0 0x3 0x3 0x1>; /* no-pull, pull-up, pull-up, pull-down */
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
-	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on &sdc1_rclk_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off &sdc1_rclk_off>;
 
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 192000000 384000000>;
 	qcom,nonremovable;
@@ -238,10 +249,9 @@
 	qcom,vdd-io-voltage-level = <1800000 2950000>;
 	qcom,vdd-io-current-level = <200 22000>;
 
-	qcom,pad-pull-on = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-pull-off = <0x0 0x3 0x3>; /* no-pull, pull-up, pull-up */
-	qcom,pad-drv-on = <0x7 0x4 0x4>; /* 16mA, 10mA, 10mA */
-	qcom,pad-drv-off = <0x0 0x0 0x0>; /* 2mA, 2mA, 2mA */
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdhc2_cd_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdhc2_cd_off>;
 
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 200000000>;
 	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
@@ -334,7 +344,13 @@
 
 	gpio@c600 { /* GPIO 7 */
 		/* BACKLIGHT_PWM */
-
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,invert = <0>;		/* Do not invert the output */
+		qcom,vin-sel = <2>;		/* PMA8084 S4 = 1.8 V */
+		qcom,src-sel = <2>;		/* Special Function 1=LPG 3 */
+		qcom,out-strength = <3>;	/* High drive strength */
+		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
 	gpio@c700 { /* GPIO 8 */
@@ -350,9 +366,9 @@
 		qcom,mode = <1>;		/* Digital output */
 		qcom,output-type = <0>;		/* CMOS logic */
 		qcom,invert = <0>;		/* Do not invert the output */
-		qcom,vin-sel = <0>;		/* VPH_PWR */
-		qcom,src-sel = <0>;		/* GPIO */
-		qcom,out-strength = <1>;	/* High drive strength */
+		qcom,vin-sel = <2>;		/* PMA8084 S4 = 1.8 V */
+		qcom,src-sel = <2>;		/* Special Function 1=LPG 5 */
+		qcom,out-strength = <3>;	/* High drive strength */
 		qcom,master-en = <1>;		/* Enable GPIO */
 	};
 
@@ -494,4 +510,25 @@
 
 &pcie0 {
 	vreg-3.3-supply = <&vph_pwr_vreg>;
+};
+
+&spmi_bus {
+	qcom,pma8084@0 {
+		qcom,leds@c900 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xc900 0x100>;
+			status = "okay";
+			qcom,led_gpio_10 {
+				label = "mpp";
+				linux,name = "led:notification";
+				linux,default-trigger = "notification";
+				qcom,default-state = "on";
+				qcom,max-current = <40>;
+				qcom,id = <6>;
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>;
+				qcom,mode = "manual";
+			};
+		};
+	};
 };

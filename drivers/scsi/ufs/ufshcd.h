@@ -3,6 +3,7 @@
  *
  * This code is based on drivers/scsi/ufs/ufshcd.h
  * Copyright (C) 2011-2013 Samsung India Software Operations
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Authors:
  *	Santosh Yaraganavi <santosh.sy@samsung.com>
@@ -136,7 +137,8 @@ enum ufs_pm_level {
 	UFS_PM_LVL_1, /* UFS_ACTIVE_PWR_MODE, UIC_LINK_HIBERN8_STATE */
 	UFS_PM_LVL_2, /* UFS_SLEEP_PWR_MODE, UIC_LINK_ACTIVE_STATE */
 	UFS_PM_LVL_3, /* UFS_SLEEP_PWR_MODE, UIC_LINK_HIBERN8_STATE */
-	UFS_PM_LVL_4, /* UFS_POWERDOWN_PWR_MODE, UIC_LINK_OFF_STATE */
+	UFS_PM_LVL_4, /* UFS_POWERDOWN_PWR_MODE, UIC_LINK_HIBERN8_STATE */
+	UFS_PM_LVL_5, /* UFS_POWERDOWN_PWR_MODE, UIC_LINK_OFF_STATE */
 	UFS_PM_LVL_MAX
 };
 
@@ -206,8 +208,9 @@ struct ufs_dev_cmd {
 
 #ifdef CONFIG_DEBUG_FS
 struct ufs_stats {
-	u64 *tag_stats;
 	bool enabled;
+	u64 **tag_stats;
+	int q_depth;
 };
 
 struct debugfs_files {
@@ -220,6 +223,17 @@ struct debugfs_files {
 	struct fault_attr fail_attr;
 #endif
 };
+
+/* tag stats statistics types */
+enum ts_types {
+	TS_NOT_SUPPORTED	= -1,
+	TS_TAG			= 0,
+	TS_READ			= 1,
+	TS_WRITE		= 2,
+	TS_URGENT		= 3,
+	TS_FLUSH		= 4,
+	TS_NUM_STATS		= 5,
+};
 #endif
 
 /**
@@ -228,6 +242,8 @@ struct debugfs_files {
  * @clk: clock node
  * @name: clock name
  * @max_freq: maximum frequency supported by the clock
+ * @min_freq: min frequency that can be used for clock scaling
+ * @curr_freq: indicates the current frequency that it is set to
  * @enabled: variable to check against multiple enable/disable
  */
 struct ufs_clk_info {
@@ -235,6 +251,8 @@ struct ufs_clk_info {
 	struct clk *clk;
 	const char *name;
 	u32 max_freq;
+	u32 min_freq;
+	u32 curr_freq;
 	bool enabled;
 };
 
@@ -256,6 +274,7 @@ struct ufs_pa_layer_attr {
  * @name: variant name
  * @init: called when the driver is initialized
  * @exit: called to cleanup everything done in init
+ * @clk_scale_notify: notifies that clks are scaled up/down
  * @setup_clocks: called before touching any of the controller registers
  * @setup_regulators: called before accessing the host controller
  * @hce_enable_notify: called before and after HCE enable bit is set to allow
@@ -272,6 +291,7 @@ struct ufs_hba_variant_ops {
 	const char *name;
 	int	(*init)(struct ufs_hba *);
 	void    (*exit)(struct ufs_hba *);
+	void    (*clk_scale_notify)(struct ufs_hba *);
 	int     (*setup_clocks)(struct ufs_hba *, bool);
 	int     (*setup_regulators)(struct ufs_hba *, bool);
 	int     (*hce_enable_notify)(struct ufs_hba *, bool);
@@ -315,6 +335,22 @@ struct ufs_clk_gating {
 	int active_reqs;
 };
 
+struct ufs_clk_scaling {
+	ktime_t  busy_start_t;
+	bool is_busy_started;
+	unsigned long  tot_busy_t;
+	unsigned long window_start_t;
+};
+
+/**
+ * struct ufs_init_prefetch - contains data that is pre-fetched once during
+ * initialization
+ * @icc_level: icc level which was read during initialization
+ */
+struct ufs_init_prefetch {
+	u32 icc_level;
+};
+
 /**
  * struct ufs_hba - per adapter private structure
  * @mmio_base: UFSHCI base register address
@@ -349,6 +385,8 @@ struct ufs_clk_gating {
  * @intr_mask: Interrupt Mask Bits
  * @ee_ctrl_mask: Exception event control mask
  * @is_powered: flag to check if HBA is powered
+ * @is_init_prefetch: flag to check if data was pre-fetched in initialization
+ * @init_prefetch_data: data pre-fetched during initialization
  * @eh_work: Worker to handle UFS errors that require s/w attention
  * @eeh_work: Worker to handle exception events
  * @errors: HBA errors
@@ -444,6 +482,20 @@ struct ufs_hba {
 
 	#define UFSHCD_QUIRK_BROKEN_2_TX_LANES            (1 << 8)
 
+	/*
+	 * If LCC (Line Control Command) are having issue on the host
+	 * controller then enable this quirk. Note that connected UFS device
+	 * should also have workaround to not expect LCC commands from host.
+	 */
+	#define UFSHCD_BROKEN_LCC			  (1 << 9)
+
+	/*
+	 * The attribute PA_RXHSUNTERMCAP specifies whether or not the
+	 * inbound Link supports unterminated line in HS mode. Setting this
+	 * attribute to 1 fixes moving to HS gear.
+	 */
+	#define UFSHCD_BROKEN_GEAR_CHANGE_INTO_HS        (1 << 10)
+
 	wait_queue_head_t tm_wq;
 	wait_queue_head_t tm_tag_wq;
 	unsigned long tm_condition;
@@ -458,6 +510,8 @@ struct ufs_hba {
 	u32 intr_mask;
 	u16 ee_ctrl_mask;
 	bool is_powered;
+	bool is_init_prefetch;
+	struct ufs_init_prefetch init_prefetch_data;
 
 	/* Work Queues */
 	struct work_struct eh_work;
@@ -486,11 +540,18 @@ struct ufs_hba {
 #define UFSHCD_CAP_CLK_GATING	(1 << 0)
 	/* Allow hiberb8 with clk gating */
 #define UFSHCD_CAP_HIBERN8_WITH_CLK_GATING (1 << 1)
+	/* Allow dynamic clk scaling */
+#define UFSHCD_CAP_CLK_SCALING	(1 << 2)
+	/* Allow auto bkops to enabled during runtime suspend */
+#define UFSHCD_CAP_AUTO_BKOPS_SUSPEND (1 << 3)
 
+	struct devfreq *devfreq;
+	struct ufs_clk_scaling clk_scaling;
 #ifdef CONFIG_DEBUG_FS
 	struct ufs_stats ufs_stats;
 	struct debugfs_files debugfs_files;
 #endif
+	bool is_sys_suspended;
 };
 
 /* Returns true if clocks can be gated. Otherwise false */
@@ -505,6 +566,15 @@ static inline bool ufshcd_can_hibern8_during_gating(struct ufs_hba *hba)
 	else
 		return false;
 }
+static inline int ufshcd_is_clkscaling_enabled(struct ufs_hba *hba)
+{
+	return hba->caps & UFSHCD_CAP_CLK_SCALING;
+}
+static inline bool ufshcd_can_autobkops_during_suspend(struct ufs_hba *hba)
+{
+	return hba->caps & UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
+}
+
 #define ufshcd_writel(hba, val, reg)	\
 	writel((val), (hba)->mmio_base + (reg))
 #define ufshcd_readl(hba, reg)	\
@@ -528,6 +598,7 @@ static inline void ufshcd_rmwl(struct ufs_hba *hba, u32 mask, u32 val, u32 reg)
 }
 
 int ufshcd_alloc_host(struct device *, struct ufs_hba **);
+void ufshcd_dealloc_host(struct ufs_hba *);
 int ufshcd_init(struct ufs_hba * , void __iomem * , unsigned int);
 void ufshcd_remove(struct ufs_hba *);
 int ufshcd_wait_for_register(struct ufs_hba *hba, u32 reg, u32 mask,
@@ -630,7 +701,7 @@ int ufshcd_query_flag(struct ufs_hba *hba, enum query_opcode opcode,
 int ufshcd_query_attr(struct ufs_hba *hba, enum query_opcode opcode,
 	enum attr_idn idn, u8 index, u8 selector, u32 *attr_val);
 int ufshcd_query_descriptor(struct ufs_hba *hba, enum query_opcode opcode,
-	enum attr_idn idn, u8 index, u8 selector, u8 *desc_buf, int *buf_len);
+	enum desc_idn idn, u8 index, u8 selector, u8 *desc_buf, int *buf_len);
 
 int ufshcd_hold(struct ufs_hba *hba, bool async);
 void ufshcd_release(struct ufs_hba *hba);

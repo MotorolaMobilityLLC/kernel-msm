@@ -1,0 +1,54 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "msm8916-qrd.dtsi"
+
+/ {
+	model = "Qualcomm MSM 8916 QRD";
+	compatible = "qcom,msm8916-qrd", "qcom,msm8916", "qcom,qrd";
+	qcom,board-id = <11 0>;
+};
+
+&tlmm_pinmux {
+	akm_reset_pin {
+		qcom,pins = <&gp 36>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "akm_reset_pin";
+		akm_default: akm_default {
+			  drive-strength = <16>;
+			  bias-pull-up;
+		};
+		akm_reset: akm_reset {
+			   drive-strength = <16>;
+			   bias-pull-down;
+		};
+	};
+};
+
+&i2c_0 { /* BLSP1 QUP2 */
+	akm@c {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		compatible = "ak,ak09911";
+		reg = <0x0c>;
+		pinctrl-names = "default","reset";
+		pinctrl-0 = <&akm_default>;
+		pinctrl-1 = <&akm_reset>;
+		vdd-supply = <&pm8916_l17>;
+		vio-supply = <&pm8916_l6>;
+		akm,layout = <0x0>;
+		akm,gpio_rstn = <&msmgpio 36 0x0>;
+	};
+};

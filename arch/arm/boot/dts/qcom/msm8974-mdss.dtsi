@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,10 +30,10 @@
 
 		/* Fudge factors */
 		qcom,mdss-ab-factor = <2 1>;		/* 2 times    */
-		qcom,mdss-ib-factor = <3 2>;		/* 1.5 times  */
-		qcom,mdss-high-ib-factor = <2 1>;	/* 2 times    */
+		qcom,mdss-ib-factor = <6 5>;		/* 1.2 times  */
 		qcom,mdss-clk-factor = <5 4>;		/* 1.25 times */
 
+		qcom,mdss-mdp-reg-offset = <0x00000100>;
 		qcom,max-bandwidth-low-kbps = <2300000>;
 		qcom,max-bandwidth-high-kbps = <3000000>;
 		qcom,max-clk-rate = <320000000>;
@@ -45,6 +45,20 @@
 		qcom,mdss-pipe-vig-fetch-id = <1 4 7>;
 		qcom,mdss-pipe-rgb-fetch-id = <16 17 18>;
 		qcom,mdss-pipe-dma-fetch-id = <10 13>;
+
+		qcom,mdss-pipe-vig-xin-id = <0 4 8>;
+		qcom,mdss-pipe-rgb-xin-id = <1 5 9>;
+		qcom,mdss-pipe-dma-xin-id = <2 10>;
+
+		qcom,mdss-pipe-vig-clk-ctrl-offsets = <0x2AC 0 0>,
+						      <0x2B4 0 0>,
+						      <0x2BC 0 0>;
+		qcom,mdss-pipe-rgb-clk-ctrl-offsets = <0x2AC 4 8>,
+						      <0x2B4 4 8>,
+						      <0x2BC 4 8>;
+		qcom,mdss-pipe-dma-clk-ctrl-offsets = <0x2AC 8 12>,
+						      <0x2B4 8 12>;
+
 		qcom,mdss-smp-data = <22 4096>;
 
 		qcom,mdss-ctl-off = <0x00000600 0x00000700 0x00000800
@@ -58,7 +72,7 @@
 		qcom,mdss-intf-off = <0x00021100 0x00021300
 					   0x00021500 0x00021700>;
 
-		qcom,mdss-has-wfd-blk;
+		qcom,mdss-wfd-mode = "intf";
 		qcom,vbif-settings = <0x0004 0x00000001>,
 				     <0x00D8 0x00000707>,
 				     <0x00F0 0x00000030>,
@@ -75,6 +89,15 @@
 				    <0x04A8 0x0CCCC0C0>,
 				    <0x04B0 0xCCCCC0C0>,
 				    <0x04B8 0xCCCCC000>;
+
+		/* buffer parameters to calculate prefill bandwidth */
+		qcom,mdss-prefill-outstanding-buffer-bytes = <1024>;
+		qcom,mdss-prefill-y-buffer-bytes = <4096>;
+		qcom,mdss-prefill-scaler-buffer-lines-bilinear = <2>;
+		qcom,mdss-prefill-scaler-buffer-lines-caf = <4>;
+		qcom,mdss-prefill-post-scaler-buffer-pixels = <0>;
+		qcom,mdss-prefill-pingpong-buffer-pixels = <4096>;
+		qcom,mdss-prefill-fbc-lines = <2>;
 
 		mdss_fb0: qcom,mdss_fb_primary {
 			cell-index = <0>;
@@ -98,7 +121,9 @@
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->0";
 		cell-index = <0>;
-		reg = <0xfd922800 0x600>;
+		reg = 	<0xfd922800 0x600>,
+			<0xfdf30000 0x108>;
+		reg-names = "dsi_phys", "mmss_misc_phys";
 		vdd-supply = <&pm8941_l22>;
 		vddio-supply = <&pm8941_l12>;
 		vdda-supply = <&pm8941_l2>;
@@ -154,7 +179,9 @@
 		compatible = "qcom,mdss-dsi-ctrl";
 		label = "MDSS DSI CTRL->1";
 		cell-index = <1>;
-		reg = <0xfd922e00 0x600>;
+		reg = 	<0xfd922e00 0x600>,
+			<0xfdf30000 0x108>;
+		reg-names = "dsi_phys", "mmss_misc_phys";
 		vdd-supply = <&pm8941_l22>;
 		vddio-supply = <&pm8941_l12>;
 		vdda-supply = <&pm8941_l2>;

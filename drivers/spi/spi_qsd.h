@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,6 +14,7 @@
 #ifndef _SPI_QSD_H
 #define _SPI_QSD_H
 
+#include <linux/pinctrl/consumer.h>
 #define SPI_DRV_NAME                  "spi_qsd"
 
 #if defined(CONFIG_SPI_QSD) || defined(CONFIG_SPI_QSD_MODULE)
@@ -196,7 +197,6 @@ static char const * const spi_cs_rsrcs[] = {
 enum msm_spi_mode {
 	SPI_FIFO_MODE  = 0x0,  /* 00 */
 	SPI_BLOCK_MODE = 0x1,  /* 01 */
-	SPI_DMOV_MODE  = 0x2,  /* 10 */
 	SPI_BAM_MODE   = 0x3,  /* 11 */
 	SPI_MODE_NONE  = 0xFF, /* invalid value */
 };
@@ -205,15 +205,6 @@ enum msm_spi_mode {
 struct spi_cs_gpio {
 	int  gpio_num;
 	bool valid;
-};
-
-/* Structures for Data Mover */
-struct spi_dmov_cmd {
-	dmov_box box;      /* data aligned to max(dm_burst_size, block_size)
-							   (<= fifo_size) */
-	dmov_s single_pad; /* data unaligned to max(dm_burst_size, block_size)
-			      padded to fit */
-	dma_addr_t cmd_ptr;
 };
 
 #ifdef CONFIG_DEBUG_FS
@@ -338,14 +329,6 @@ struct msm_spi {
 	int                      (*dma_init) (struct msm_spi *dd);
 	void                     (*dma_teardown) (struct msm_spi *dd);
 	struct msm_spi_bam       bam;
-	/* Data Mover Commands */
-	struct spi_dmov_cmd      *tx_dmov_cmd;
-	struct spi_dmov_cmd      *rx_dmov_cmd;
-	/* Physical address of the tx dmov box command */
-	dma_addr_t               tx_dmov_cmd_dma;
-	dma_addr_t               rx_dmov_cmd_dma;
-	struct msm_dmov_cmd      tx_hdr;
-	struct msm_dmov_cmd      rx_hdr;
 	int                      input_block_size;
 	int                      output_block_size;
 	int                      input_burst_size;
@@ -360,12 +343,8 @@ struct msm_spi {
 	u32                      tx_unaligned_len;
 	u32                      rx_unaligned_len;
 	/* DMA statistics */
-	int                      stat_dmov_tx_err;
-	int                      stat_dmov_rx_err;
 	int                      stat_rx;
-	int                      stat_dmov_rx;
 	int                      stat_tx;
-	int                      stat_dmov_tx;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *dent_spi;
 	struct dentry *debugfs_spi_regs[ARRAY_SIZE(debugfs_spi_regs)];
@@ -388,6 +367,9 @@ struct msm_spi {
 	int			 max_trfr_len;
 	int			 num_xfrs_grped;
 	u16			 xfrs_delay_usec;
+	struct pinctrl		*pinctrl;
+	struct pinctrl_state	*pins_active;
+	struct pinctrl_state	*pins_sleep;
 };
 
 /* Forward declaration */

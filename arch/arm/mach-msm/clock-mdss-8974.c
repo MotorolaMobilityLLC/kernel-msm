@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -162,6 +162,9 @@ static unsigned char *mdss_edp_base;
 static void __iomem *hdmi_phy_base;
 static void __iomem *hdmi_phy_pll_base;
 static unsigned hdmi_pll_on;
+
+static u32 hdmi_phy_addr = HDMI_PHY_PHYS;
+static u32 hdmi_phy_pll_addr = HDMI_PHY_PLL_PHYS;
 
 static int mdss_gdsc_enabled(void)
 {
@@ -1077,9 +1080,9 @@ static void dsi_pll_software_reset(void)
 	 * reset bit off and back on.
 	 */
 	DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_TEST_CFG, 0x01);
-	udelay(1000);
+	udelay(1);
 	DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_TEST_CFG, 0x00);
-	udelay(1000);
+	udelay(1);
 }
 
 static int dsi_pll_enable_seq_m(void)
@@ -1298,22 +1301,22 @@ static int dsi_pll_enable_seq_8974(void)
 	 * Add necessary delays recommeded by hardware.
 	 */
 	DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0x01);
-	udelay(1000);
+	udelay(1);
 	DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0x05);
-	udelay(1000);
+	udelay(200);
 	DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0x07);
-	udelay(1000);
+	udelay(500);
 	DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0x0f);
-	udelay(1000);
+	udelay(500);
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < 2; i++) {
+		udelay(100);
 		/* DSI Uniphy lock detect setting */
 		DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_LKDET_CFG2,
 			0x0c);
 		udelay(100);
 		DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_LKDET_CFG2,
 			0x0d);
-		udelay(500);
 		/* poll for PLL ready status */
 		max_reads = 5;
 		timeout_us = 100;
@@ -1336,17 +1339,17 @@ static int dsi_pll_enable_seq_8974(void)
 		 * Add necessary delays recommeded by hardware.
 		 */
 		DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0x1);
-		udelay(1000);
+		udelay(1);
 		DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0x5);
-		udelay(1000);
+		udelay(200);
 		DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0x7);
-		udelay(1000);
+		udelay(250);
 		DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0x5);
-		udelay(1000);
+		udelay(200);
 		DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0x7);
-		udelay(1000);
+		udelay(500);
 		DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_GLB_CFG, 0xf);
-		udelay(2000);
+		udelay(500);
 
 	}
 
@@ -1521,7 +1524,7 @@ static int vco_set_rate(struct clk *c, unsigned long rate)
 	DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_SDM_CFG4, 0x00);
 
 	/* Add hardware recommended delay for correct PLL configuration */
-	udelay(1000);
+	udelay(1);
 
 	DSS_REG_W(mdss_dsi_base, DSI_0_PHY_PLL_UNIPHY_PLL_REFCLK_CFG,
 		(u32)refclk_cfg);
@@ -2844,6 +2847,12 @@ struct div_clk hdmipll_clk_src = {
 	},
 };
 
+void mdss_clk_update_hdmi_addr(u32 phy_addr, u32 phy_pll_addr)
+{
+	hdmi_phy_addr = phy_addr;
+	hdmi_phy_pll_addr = phy_pll_addr;
+}
+
 void mdss_clk_ctrl_pre_init(struct clk *ahb_clk)
 {
 	BUG_ON(ahb_clk == NULL);
@@ -2858,11 +2867,11 @@ void mdss_clk_ctrl_pre_init(struct clk *ahb_clk)
 
 	mdss_ahb_clk = ahb_clk;
 
-	hdmi_phy_base = ioremap(HDMI_PHY_PHYS, HDMI_PHY_SIZE);
+	hdmi_phy_base = ioremap(hdmi_phy_addr, HDMI_PHY_SIZE);
 	if (!hdmi_phy_base)
 		pr_err("%s: unable to ioremap hdmi phy base", __func__);
 
-	hdmi_phy_pll_base = ioremap(HDMI_PHY_PLL_PHYS, HDMI_PHY_PLL_SIZE);
+	hdmi_phy_pll_base = ioremap(hdmi_phy_pll_addr, HDMI_PHY_PLL_SIZE);
 	if (!hdmi_phy_pll_base)
 		pr_err("%s: unable to ioremap hdmi phy pll base", __func__);
 

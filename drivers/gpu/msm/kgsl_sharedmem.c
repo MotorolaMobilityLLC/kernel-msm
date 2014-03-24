@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -74,12 +74,12 @@ static struct kgsl_process_private *
 _get_priv_from_kobj(struct kobject *kobj)
 {
 	struct kgsl_process_private *private;
-	unsigned long name;
+	unsigned int name;
 
 	if (!kobj)
 		return NULL;
 
-	if (sscanf(kobj->name, "%ld", &name) != 1)
+	if (kstrtou32(kobj->name, 0, &name))
 		return NULL;
 
 	list_for_each_entry(private, &kgsl_driver.process_list, list) {
@@ -462,8 +462,8 @@ static int kgsl_page_alloc_map_kernel(struct kgsl_memdesc *memdesc)
 		int i, count = 0;
 
 		/* create a list of pages to call vmap */
-		pages = vmalloc(npages * sizeof(struct page *));
-		if (!pages) {
+		pages = kgsl_malloc(npages * sizeof(struct page *));
+		if (pages == NULL) {
 			ret = -ENOMEM;
 			goto done;
 		}
@@ -484,7 +484,7 @@ static int kgsl_page_alloc_map_kernel(struct kgsl_memdesc *memdesc)
 				kgsl_driver.stats.vmalloc_max);
 		else
 			ret = -ENOMEM;
-		vfree(pages);
+		kgsl_free(pages);
 	}
 	if (memdesc->hostptr)
 		memdesc->hostptr_count++;
@@ -518,7 +518,7 @@ static int kgsl_contiguous_vmfault(struct kgsl_memdesc *memdesc,
 static void kgsl_coherent_free(struct kgsl_memdesc *memdesc)
 {
 	kgsl_driver.stats.coherent -= memdesc->size;
-	dma_free_coherent(NULL, memdesc->size,
+	dma_free_coherent(memdesc->dev, memdesc->size,
 			  memdesc->hostptr, memdesc->physaddr);
 }
 
@@ -586,7 +586,8 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 			size_t size)
 {
 	int pcount = 0, order, ret = 0;
-	int j, len, page_size, sglen_alloc, sglen = 0;
+	int j, page_size, sglen_alloc, sglen = 0;
+	size_t len;
 	struct page **pages = NULL;
 	pgprot_t page_prot = pgprot_writecombine(PAGE_KERNEL);
 	void *ptr;
@@ -608,12 +609,10 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 	sglen_alloc = PAGE_ALIGN(size) >> PAGE_SHIFT;
 
-	memdesc->size = size;
 	memdesc->pagetable = pagetable;
 	memdesc->ops = &kgsl_page_alloc_ops;
 
-	memdesc->sglen_alloc = sglen_alloc;
-	memdesc->sg = kgsl_sg_alloc(memdesc->sglen_alloc);
+	memdesc->sg = kgsl_malloc(sglen_alloc * sizeof(struct scatterlist));
 
 	if (memdesc->sg == NULL) {
 		ret = -ENOMEM;
@@ -621,17 +620,11 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	}
 
 	/*
-	 * Allocate space to store the list of pages to send to vmap.
-	 * This is an array of pointers so we can track 1024 pages per page
-	 * of allocation.  Since allocations can be as large as the user dares,
-	 * we have to use the kmalloc/vmalloc trick here to make sure we can
-	 * get the memory we need.
+	 * Allocate space to store the list of pages to send to vmap. This is an
+	 * array of pointers so we can track 1024 pages per page of allocation
 	 */
 
-	if ((memdesc->sglen_alloc * sizeof(struct page *)) > PAGE_SIZE)
-		pages = vmalloc(memdesc->sglen_alloc * sizeof(struct page *));
-	else
-		pages = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	pages = kgsl_malloc(sglen_alloc * sizeof(struct page *));
 
 	if (pages == NULL) {
 		ret = -ENOMEM;
@@ -640,7 +633,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 
 	kmemleak_not_leak(memdesc->sg);
 
-	sg_init_table(memdesc->sg, memdesc->sglen_alloc);
+	sg_init_table(memdesc->sg, sglen_alloc);
 
 	len = size;
 
@@ -671,6 +664,14 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 				continue;
 			}
 
+			/*
+			 * Update sglen and memdesc size,as requested allocation
+			 * not served fully. So that they can be correctly freed
+			 * in kgsl_sharedmem_free().
+			 */
+			memdesc->sglen = sglen;
+			memdesc->size = (size - len);
+
 			KGSL_CORE_ERR(
 				"Out of memory: only allocated %zuKB of %zuKB requested\n",
 				(size - len) >> 10, size >> 10);
@@ -687,6 +688,7 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	}
 
 	memdesc->sglen = sglen;
+	memdesc->size = size;
 
 	/*
 	 * All memory that goes to the user has to be zeroed out before it gets
@@ -733,45 +735,22 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	outer_cache_range_op_sg(memdesc->sg, memdesc->sglen,
 				KGSL_CACHE_OP_FLUSH);
 
-	KGSL_STATS_ADD(size, kgsl_driver.stats.page_alloc,
-		kgsl_driver.stats.page_alloc_max);
-
 	order = get_order(size);
 
 	if (order < 16)
 		kgsl_driver.stats.histogram[order]++;
 
 done:
-	if ((memdesc->sglen_alloc * sizeof(struct page *)) > PAGE_SIZE)
-		vfree(pages);
-	else
-		kfree(pages);
+	KGSL_STATS_ADD(memdesc->size, kgsl_driver.stats.page_alloc,
+		kgsl_driver.stats.page_alloc_max);
+
+	kgsl_free(pages);
 
 	if (ret)
 		kgsl_sharedmem_free(memdesc);
 
 	return ret;
 }
-
-int
-kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
-		       struct kgsl_pagetable *pagetable, size_t size)
-{
-	int ret = 0;
-	BUG_ON(size == 0);
-
-	size = ALIGN(size, PAGE_SIZE * 2);
-	if (size == 0)
-		return -EINVAL;
-
-	ret =  _kgsl_sharedmem_page_alloc(memdesc, pagetable, size);
-	if (!ret)
-		ret = kgsl_page_alloc_map_kernel(memdesc);
-	if (ret)
-		kgsl_sharedmem_free(memdesc);
-	return ret;
-}
-EXPORT_SYMBOL(kgsl_sharedmem_page_alloc);
 
 int
 kgsl_sharedmem_page_alloc_user(struct kgsl_memdesc *memdesc,
@@ -787,7 +766,8 @@ kgsl_sharedmem_page_alloc_user(struct kgsl_memdesc *memdesc,
 EXPORT_SYMBOL(kgsl_sharedmem_page_alloc_user);
 
 int
-kgsl_sharedmem_alloc_coherent(struct kgsl_memdesc *memdesc, size_t size)
+kgsl_sharedmem_alloc_coherent(struct kgsl_device *device,
+			struct kgsl_memdesc *memdesc, size_t size)
 {
 	int result = 0;
 
@@ -797,9 +777,10 @@ kgsl_sharedmem_alloc_coherent(struct kgsl_memdesc *memdesc, size_t size)
 
 	memdesc->size = size;
 	memdesc->ops = &kgsl_coherent_ops;
+	memdesc->dev = device->parentdev;
 
-	memdesc->hostptr = dma_alloc_coherent(NULL, size, &memdesc->physaddr,
-					      GFP_KERNEL);
+	memdesc->hostptr = dma_alloc_coherent(memdesc->dev, size,
+					&memdesc->physaddr, GFP_KERNEL);
 	if (memdesc->hostptr == NULL) {
 		result = -ENOMEM;
 		goto err;
@@ -835,7 +816,7 @@ void kgsl_sharedmem_free(struct kgsl_memdesc *memdesc)
 	if (memdesc->ops && memdesc->ops->free)
 		memdesc->ops->free(memdesc);
 
-	kgsl_sg_free(memdesc->sg, memdesc->sglen_alloc);
+	kgsl_free(memdesc->sg);
 
 	memset(memdesc, 0, sizeof(*memdesc));
 }

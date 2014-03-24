@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -45,7 +45,7 @@ extern int emac_check_phy_link(struct emac_hw *hw, u32 *speed, bool *link_up);
 extern int emac_hw_get_lpa_speed(struct emac_hw *hw, u32 *speed);
 extern int emac_hw_ack_phy_intr(struct emac_hw *hw);
 extern int emac_hw_init_phy(struct emac_hw *hw);
-extern int emac_hw_reset_phy(struct emac_hw *hw);
+extern int emac_hw_init_ephy(struct emac_hw *hw);
 extern int emac_hw_init_sgmii(struct emac_hw *hw);
 extern int emac_hw_reset_sgmii(struct emac_hw *hw);
 extern int emac_check_sgmii_link(struct emac_hw *hw, u32 *speed, bool *linkup);
@@ -73,6 +73,12 @@ extern void emac_hw_stop_mac(struct emac_hw *hw);
 extern void emac_hw_set_mac_addr(struct emac_hw *hw, u8 *addr);
 
 #define IMR_NORMAL_MASK         (\
+		ISR_ERROR       |\
+		ISR_GPHY_LINK   |\
+		ISR_TX_PKT      |\
+		GPHY_WAKEUP_INT)
+
+#define IMR_EXTENDED_MASK       (\
 		SW_MAN_INT      |\
 		ISR_OVER        |\
 		ISR_ERROR       |\
@@ -193,6 +199,8 @@ extern void emac_hw_set_mac_addr(struct emac_hw *hw, u8 *addr);
 
 /* PHY */
 #define MII_PSSR                        0x11 /* PHY Specific Status Reg */
+#define MII_DBG_ADDR                    0x1D /* PHY Debug Address Reg */
+#define MII_DBG_DATA                    0x1E /* PHY Debug Data Reg */
 
 /* MII_BMCR (0x00) */
 #define BMCR_SPEED10                    0x0000
@@ -206,5 +214,11 @@ extern void emac_hw_set_mac_addr(struct emac_hw *hw, u8 *addr);
 #define PSSR_10MBS                      0x0000  /* 00=10Mbs */
 #define PSSR_100MBS                     0x4000  /* 01=100Mbs */
 #define PSSR_1000MBS                    0x8000  /* 10=1000Mbs */
+
+/* MII DBG registers */
+#define HIBERNATE_CTRL_REG              0xB
+
+/* HIBERNATE_CTRL_REG */
+#define HIBERNATE_EN                    0x8000
 
 #endif /*_EMAC_HW_H_*/

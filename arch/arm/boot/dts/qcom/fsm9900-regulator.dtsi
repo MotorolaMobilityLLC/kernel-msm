@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,15 +16,15 @@
 		compatible = "qcom,stub-regulator";
 		regulator-name = "8084_s1";
 		qcom,set = <1>;
-		regulator-min-microvolt = <950000>;
-		regulator-max-microvolt = <950000>;
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1050000>;
 	};
 	pma8084_s2: regulator-s2 {
 		compatible = "qcom,stub-regulator";
 		regulator-name = "8084_s2";
 		qcom,set = <1>;
-		regulator-min-microvolt = <915000>;
-		regulator-max-microvolt = <915000>;
+		regulator-min-microvolt = <1050000>;
+		regulator-max-microvolt = <1050000>;
 	};
 	pma8084_l12_ao: regulator-l12-ao {
 		compatible = "qcom,stub-regulator";
@@ -158,20 +158,10 @@
 
 		/* HVDDA_BBRX_CHx; VDDA_TXDACx */
 		pma8084_l14: regulator@4d00 {
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
+			regulator-min-microvolt = <1850000>;
+			regulator-max-microvolt = <1850000>;
 			qcom,enable-time = <500>;
 			qcom,pull-down-enable = <1>;
-			status = "okay";
-		};
-
-		/* RFICs LDO15*/
-		pma8084_l15: regulator@4e00 {
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-			qcom,enable-time = <500>;
-			qcom,pull-down-enable = <1>;
-			regulator-always-on;
 			status = "okay";
 		};
 
@@ -243,8 +233,8 @@
 
 		/* Mantaray LDO26*/
 		pma8084_l26: regulator@5900 {
-			regulator-min-microvolt = <2200000>;
-			regulator-max-microvolt = <2200000>;
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
 			qcom,enable-time = <500>;
 			qcom,pull-down-enable = <1>;
 			status = "okay";
@@ -271,6 +261,7 @@
 		startup-delay-us = <4000>;
 		enable-active-high;
 		gpio = <&pma8084_gpios 16 0>;
+		regulator-boot-on;
 	};
 	pcie1_power_en_vreg: pcie1_power_en_vreg {
 		compatible = "regulator-fixed";
@@ -278,5 +269,6 @@
 		startup-delay-us = <4000>;
 		enable-active-high;
 		gpio = <&pma8084_gpios 22 0>;
+		regulator-boot-on;
 	};
 };

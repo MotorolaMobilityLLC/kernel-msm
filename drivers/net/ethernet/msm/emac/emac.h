@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -36,11 +36,15 @@
 #define EMAC_SGMII_PHY_IRQ    5
 #define EMAC_NUM_IRQ          6
 
-/* emac clock */
-#define EMAC_SGMII_125M_CLK	0
-#define EMAC_SGMII_SYS_25M_CLK	1
-#define EMAC_SGMII_TX_CLK	2
-#define EMAC_NUM_CLK		3
+/* emac clocks */
+#define EMAC_AXI_CLK          0
+#define EMAC_CFG_AHB_CLK      1
+#define EMAC_125M_CLK         2
+#define EMAC_SYS_25M_CLK      3
+#define EMAC_TX_CLK           4
+#define EMAC_RX_CLK           5
+#define EMAC_SYS_CLK          6
+#define EMAC_NUM_CLK          7
 
 /* mdio/mdc gpios */
 #define EMAC_NUM_GPIO         2
@@ -193,6 +197,7 @@ struct emac_hw {
 	/* PHY parameter */
 	u32             phy_addr;
 	u16             phy_id[2];
+	bool            autoneg;
 	u32             autoneg_advertised;
 	u32             link_speed;
 	bool            link_up;
@@ -288,6 +293,12 @@ struct emac_hw {
 
 #define EMAC_MAX_RX_QUEUES      4
 #define EMAC_DEF_RX_QUEUES      4
+
+#define EMAC_MIN_TX_DESCS       128
+#define EMAC_MIN_RX_DESCS       128
+
+#define EMAC_MAX_TX_DESCS       16383
+#define EMAC_MAX_RX_DESCS       2047
 
 #define EMAC_DEF_TX_DESCS       512
 #define EMAC_DEF_RX_DESCS       256
@@ -491,8 +502,10 @@ struct emac_gpio_info {
 };
 
 struct emac_clk_info {
-	struct clk *clk;
-	char *name;
+	struct clk           *clk;
+	char                 *name;
+	bool                  enabled;
+	struct emac_adapter  *adpt;
 };
 
 /* emac_ring_header represents a single, contiguous block of DMA space
@@ -519,21 +532,21 @@ struct emac_rfd_ring {
 	struct emac_buffer      *rfbuff;
 	u32 __iomem             *rfdesc;  /* virtual address */
 	dma_addr_t               rfdma;   /* physical address */
-	u16 size;          /* length in bytes */
-	u16 count;         /* number of descriptors in the ring */
-	u16 produce_idx;
-	u16 process_idx;
-	u16 consume_idx;   /* unused */
+	u64 size;          /* length in bytes */
+	u32 count;         /* number of descriptors in the ring */
+	u32 produce_idx;
+	u32 process_idx;
+	u32 consume_idx;   /* unused */
 };
 
 /* receive return desciptor (rrd) ring */
 struct emac_rrd_ring {
 	u32 __iomem         *rrdesc;    /* virtual address */
 	dma_addr_t           rrdma;     /* physical address */
-	u16 size;          /* length in bytes */
-	u16 count;         /* number of descriptors in the ring */
-	u16 produce_idx;   /* unused */
-	u16 consume_idx;
+	u64 size;          /* length in bytes */
+	u32 count;         /* number of descriptors in the ring */
+	u32 produce_idx;   /* unused */
+	u32 consume_idx;
 };
 
 /* rx queue */
@@ -569,11 +582,11 @@ struct emac_tpd_ring {
 	u32 __iomem        *tpdesc;   /* virtual address */
 	dma_addr_t          tpdma;    /* physical address */
 
-	u16 size;    /* length in bytes */
-	u16 count;   /* number of descriptors in the ring */
-	u16 produce_idx;
-	u16 consume_idx;
-	u16 last_produce_idx;
+	u64 size;    /* length in bytes */
+	u32 count;   /* number of descriptors in the ring */
+	u32 produce_idx;
+	u32 consume_idx;
+	u32 last_produce_idx;
 };
 
 /* tx queue */
@@ -613,8 +626,8 @@ struct emac_adapter {
 	u16 num_txques;
 	u16 num_rxques;
 
-	u16 num_txdescs;
-	u16 num_rxdescs;
+	u32 num_txdescs;
+	u32 num_rxdescs;
 	u8 rrdesc_size; /* in quad words */
 	u8 rfdesc_size; /* in quad words */
 	u8 tpdesc_size; /* in quad words */
@@ -631,6 +644,7 @@ struct emac_adapter {
 	bool            tstamp_en;
 	int             phy_mode;
 	bool            no_ephy;
+	bool            no_mdio_gpio;
 	u32             wol;
 	u16             msg_enable;
 	unsigned long   flags;
@@ -669,5 +683,8 @@ extern const char emac_drv_version[];
 extern void emac_set_ethtool_ops(struct net_device *netdev);
 extern void emac_reinit_locked(struct emac_adapter *adpt);
 extern void emac_update_hw_stats(struct emac_adapter *adpt);
+extern int emac_resize_rings(struct net_device *netdev);
+extern int emac_up(struct emac_adapter *adpt);
+extern void emac_down(struct emac_adapter *adpt, u32 ctrl);
 
 #endif /* _MSM_EMAC_H_ */

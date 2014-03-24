@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -176,6 +176,7 @@ struct sps_pipe {
 	u32 irq_mask;
 	int polled;
 	int hybrid;
+	bool late_eot;
 	u32 irq_gen_addr;
 	enum sps_mode mode;
 	u32 num_descs; /* Size (number of elements) of descriptor FIFO */
@@ -185,6 +186,7 @@ struct sps_pipe {
 	/* System mode control */
 	struct sps_bam_sys_mode sys;
 
+	bool disconnecting;
 };
 
 /* BAM device descriptor */

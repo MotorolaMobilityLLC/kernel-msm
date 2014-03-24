@@ -31,10 +31,13 @@ Optional properties:
 - qcom,hdmi-tx-mux-sel: gpio required to toggle HDMI output between
   docking station, type A, and liquid device, type D, ports. Required
   property for liquid devices.
+- qcom,hdmi-tx-ddc-mux-sel: gpio for ddc mux select.
 - qcom,hdmi-tx-mux-en: gpio required to enable mux for HDMI output
   on liquid devices. Required property for liquid devices.
 - qcom,hdmi-tx-mux-lpm: gpio required for hdmi mux configuration
   selection on liquid devices. Required property for liquid devices.
+- qcom,conditional-power-on: Enables HPD conditionally on MTP targets.
+  Required property for MTP devices which are reworked to expose HDMI port.
 
 [Optional child nodes]: These nodes are for devices which are
 dependent on HDMI Tx controller. If HDMI Tx controller is disabled then
@@ -64,6 +67,7 @@ Example:
 		qcom,enable-load = <0 0 0 1800000 0>;
 		qcom,disable-load = <0 0 0 0 0>;
 
+		qcom,hdmi-tx-ddc-mux-sel = <&pma8084_gpios 6 0>;
 		qcom,hdmi-tx-cec = <&msmgpio 31 0>;
 		qcom,hdmi-tx-ddc-clk = <&msmgpio 32 0>;
 		qcom,hdmi-tx-ddc-data = <&msmgpio 33 0>;
@@ -72,6 +76,8 @@ Example:
 		qcom,hdmi-tx-mux-lpm = <&msmgpio 27 0>;
 		qcom,hdmi-tx-mux-en = <&msmgpio 83 0>;
 		qcom,hdmi-tx-mux-sel = <&msmgpio 85 0>;
+
+		qcom,conditional-power-on;
 
 		qcom,msm-hdmi-audio-rx {
 			compatible = "qcom,msm-hdmi-audio-codec-rx";

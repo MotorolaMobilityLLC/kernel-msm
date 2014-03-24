@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,7 +15,7 @@
 
 #include <linux/msm_ion.h>
 #include <linux/iommu.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <mach/msm_bus_board.h>
 #include <asm-generic/sizes.h>
@@ -78,10 +78,105 @@ static struct vpu_iommu_map iommus_array[VPU_MAX_IOMMU_DOMAIN] = {
 	},
 };
 
-static const char * const clk_table_dt_entries[] = {
-	[VPU_BUS_CLK] = "qcom,bus-clk-load-freq-tbl",
-	[VPU_MAPLE_CLK] = "qcom,maple-clk-load-freq-tbl",
-	[VPU_VDP_CLK] = "qcom,vdp-clk-load-freq-tbl",
+struct vpu_clock_descr {
+	char *name;
+	u32 flag;	/* enum vpu_clock_flag */
+	u32 pwr_frequencies[VPU_POWER_MAX];
+};
+
+const struct vpu_clock_descr vpu_clock_set[VPU_MAX_CLKS] = {
+		[VPU_BUS_CLK] = {
+			.name = "vdp_bus_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT | CLOCK_SCALABLE,
+			.pwr_frequencies = { 40000000,  80000000,  80000000},
+		},
+		[VPU_MAPLE_CLK] = {
+			.name = "core_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT | CLOCK_SCALABLE,
+			.pwr_frequencies = {200000000, 400000000, 400000000},
+		},
+		[VPU_VDP_CLK] = {
+			.name = "vdp_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT | CLOCK_SCALABLE,
+			.pwr_frequencies = {200000000, 200000000, 400000000},
+		},
+		[VPU_VDP_XIN] = {
+			.name = "vdp_xin_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT | CLOCK_SCALABLE,
+			.pwr_frequencies = {200000000, 467000000, 467000000},
+		},
+		[VPU_AHB_CLK] = {
+			.name = "iface_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT,
+		},
+		[VPU_AXI_CLK] = {
+			.name = "bus_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT,
+		},
+		[VPU_SLEEP_CLK] = {
+			.name = "sleep_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT,
+		},
+		[VPU_CXO_CLK] = {
+			.name = "cxo_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT,
+		},
+		[VPU_MAPLE_AXI_CLK] = {
+			.name = "maple_bus_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT,
+		},
+		[VPU_PRNG_CLK] = {
+			.name = "prng_clk",
+			.flag = CLOCK_CORE | CLOCK_BOOT,
+		},
+		[VPU_FRC_GPROC] {
+			.name = "gproc_clk",
+			.flag = CLOCK_FRC | CLOCK_BOOT,
+		},
+		[VPU_FRC_KPROC] {
+			.name = "kproc_clk",
+			.flag = CLOCK_FRC | CLOCK_BOOT,
+		},
+		[VPU_FRC_SDMC_FRCS] {
+			.name = "sdmc_frcs_clk",
+			.flag = CLOCK_FRC,
+		},
+		[VPU_FRC_SDME_FRCF] {
+			.name = "sdme_frcf_clk",
+			.flag = CLOCK_FRC,
+		},
+		[VPU_FRC_SDME_FRCS] {
+			.name = "sdme_frcs_clk",
+			.flag = CLOCK_FRC,
+		},
+		[VPU_FRC_SDME_VPRO] {
+			.name = "sdme_vproc_clk",
+			.flag = CLOCK_FRC,
+		},
+		[VPU_FRC_HDMC_FRCF] {
+			.name = "hdmc_frcf_clk",
+			.flag = CLOCK_FRC,
+		},
+		[VPU_FRC_PREPROC] {
+			.name = "preproc_clk",
+			.flag = CLOCK_FRC,
+		},
+		[VPU_FRC_FRC_XIN] {
+			.name = "frc_xin_clk",
+			.flag = CLOCK_FRC,
+		},
+		[VPU_FRC_MAPLE_AXI] {
+			.name = "maple_axi_clk",
+			.flag = CLOCK_FRC,
+		},
+		[VPU_QDSS_AT] {
+			.name = "qdss_at_clk",
+			.flag = CLOCK_QDSS,
+		},
+		[VPU_QDSS_TSCTR_DIV8] {
+			.name = "qdss_tsctr_div8_clk",
+			.flag = CLOCK_QDSS,
+		},
 };
 
 struct bus_pdata_config {
@@ -107,55 +202,6 @@ static int __get_u32_array_num_elements(struct platform_device *pdev,
 
 	num_elements = len_bytes / (sizeof(u32) * element_width);
 	return num_elements;
-}
-
-static int __vpu_load_freq_table(struct vpu_platform_resources *res,
-		const char *name, struct load_freq_table *clk_table)
-{
-	int ret = 0, i;
-	int num_elements = 0;
-	struct platform_device *pdev = res->pdev;
-
-	num_elements = __get_u32_array_num_elements(pdev, name, 2);
-	if (num_elements == 0) {
-		pr_warn("no valid %s table\n", name);
-		return ret;
-	}
-
-	clk_table->entry = devm_kzalloc(&pdev->dev,
-		num_elements * sizeof(*clk_table->entry), GFP_KERNEL);
-	if (!clk_table->entry) {
-		pr_err("Failed alloc load_freq_tabll\n");
-		return -ENOMEM;
-	}
-
-	if (of_property_read_u32_array(pdev->dev.of_node, name,
-			(u32 *) clk_table->entry, num_elements * 2)) {
-		pr_err("Failed to read frequency table\n");
-		return -EINVAL;
-	}
-
-	for (i = 0; i < num_elements; i++)
-		pr_debug("%s, entry %d: load = %d, freq = %d\n", name, i,
-			clk_table->entry[i].load, clk_table->entry[i].freq);
-
-	clk_table->count = num_elements;
-
-	return ret;
-}
-
-static int __vpu_load_freq_tables(struct vpu_platform_resources *res)
-{
-	int ret = 0, i;
-
-	for (i = 0; i < ARRAY_SIZE(clk_table_dt_entries); i++) {
-		ret = __vpu_load_freq_table(res, clk_table_dt_entries[i],
-				&res->clock_tables[i]);
-		if (ret)
-			return ret;
-	}
-
-	return ret;
 }
 
 static int __vpu_load_bus_vector_data(struct vpu_platform_resources *res,
@@ -259,6 +305,80 @@ static int __vpu_load_bus_vectors(struct vpu_platform_resources *res)
 	return 0;
 }
 
+static int __vpu_load_clk_names(struct vpu_platform_resources *res)
+{
+	int ret = 0, i, j, num_elements;
+	struct platform_device *pdev = res->pdev;
+	const char *name;
+
+	num_elements = of_property_count_strings(pdev->dev.of_node,
+				"qcom,clock-names");
+	if (num_elements <= 0) {
+		pr_err("No valid clock list in device tree.\n");
+		return -EINVAL;
+	} else if (num_elements > VPU_MAX_CLKS) {
+		pr_err("List of clocks to enable is too large\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < num_elements; i++) {
+		bool found = false;
+		ret = of_property_read_string_index(pdev->dev.of_node,
+				"qcom,clock-names", i, &name);
+		if (ret)
+			return ret;
+
+		for (j = 0; j < VPU_MAX_CLKS; j++) {
+			if (strcmp(name, vpu_clock_set[j].name) == 0) {
+				res->clock[j].name = vpu_clock_set[j].name;
+				res->clock[j].flag = vpu_clock_set[j].flag |
+								CLOCK_PRESENT;
+				res->clock[j].pwr_frequencies =
+					vpu_clock_set[j].pwr_frequencies;
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			pr_err("clock %s not found\n", name);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static int __vpu_load_reg_values_table(struct vpu_platform_resources *res,
+		struct reg_value_set *reg_set, const char *propname)
+{
+	int ret = 0;
+	int num_elements = 0;
+	struct platform_device *pdev = res->pdev;
+
+	num_elements = __get_u32_array_num_elements(pdev, propname, 2);
+	if (num_elements == 0) {
+		pr_debug("no elements in %s\n", propname);
+		return 0;
+	}
+
+	reg_set->count = num_elements;
+	reg_set->table = devm_kzalloc(&pdev->dev,
+		sizeof(*reg_set->table) * num_elements, GFP_KERNEL);
+	if (!reg_set->table) {
+		pr_err("Failed to allocate memory for %s\n", propname);
+		return -ENOMEM;
+	}
+
+	ret = of_property_read_u32_array(pdev->dev.of_node, propname,
+			(u32 *)reg_set->table, num_elements * 2);
+	if (ret) {
+		pr_err("Failed to read %s table entries\n", propname);
+		return ret;
+	}
+
+	return 0;
+}
+
 static int __vpu_load_iommu_maps(struct vpu_platform_resources *res)
 {
 	int ret = 0, i, j, num_elements;
@@ -318,28 +438,37 @@ int read_vpu_platform_resources(struct vpu_platform_resources *res,
 
 	kres = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vpu_csr");
 	res->register_base_phy = kres ? kres->start : -1;
-	res->register_size = kres ? (kres->end + 1 - kres->start) : -1;
+	res->register_size = kres ? (kres->end + 1 - kres->start) : 0;
 
 	kres = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vpu_smem");
 	res->mem_base_phy = kres ? kres->start : -1;
-	res->mem_size = kres ? (kres->end + 1 - kres->start) : -1;
+	res->mem_size = kres ? (kres->end + 1 - kres->start) : 0;
 
-	kres = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "vpu_wdog");
-	res->irq_wd = kres ? kres->start : -1;
+	kres = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vpu_vbif");
+	res->vbif_base_phy = kres ? kres->start : -1;
+	res->vbif_size = kres ? (kres->end + 1 - kres->start) : 0;
 
-	kres = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "vpu_hfi");
-	res->irq = kres ? kres->start : -1;
-
-	if ((res->register_base_phy | res->register_size |
-			res->mem_base_phy | res->mem_size |
-			res->irq_wd | res->irq) < 0) {
-		pr_err("Failed to read platform resources\n");
+	if (res->register_size == 0 || res->mem_size == 0) {
+		pr_err("Failed to read IO memory resources\n");
 		return -ENODEV;
 	}
 	pr_debug("CSR base = 0x%08x, size = 0x%x\n",
 			(u32) res->register_base_phy, res->register_size);
 	pr_debug("Shared mem base = 0x%08x, size = 0x%x\n",
 			(u32) res->mem_base_phy, res->mem_size);
+	pr_debug("VBIF base = 0x%08x, size = 0x%x\n",
+			(u32) res->vbif_base_phy, res->vbif_size);
+
+	kres = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "vpu_wdog");
+	res->irq_wd = kres ? kres->start : 0;
+
+	kres = platform_get_resource_byname(pdev, IORESOURCE_IRQ, "vpu_hfi");
+	res->irq = kres ? kres->start : 0;
+
+	if (res->irq_wd == 0 || res->irq == 0) {
+		pr_err("Failed to read IRQ resources\n");
+		return -ENODEV;
+	}
 	pr_debug("Wdog IRQ = %d\n", res->irq_wd);
 	pr_debug("IPC IRQ = %d\n", res->irq);
 
@@ -351,14 +480,21 @@ int read_vpu_platform_resources(struct vpu_platform_resources *res,
 			GFP_KERNEL))
 		return -ENOMEM;
 
-	ret = __vpu_load_freq_tables(res);
+	ret = __vpu_load_clk_names(res);
 	if (ret) {
-		pr_err("Failed to load freq tables: %d\n", ret);
+		pr_err("Failed to load clock names: %d\n", ret);
 		goto err_read_dt_resources;
 	}
+
 	ret = __vpu_load_bus_vectors(res);
 	if (ret) {
 		pr_err("Failed to load bus vectors: %d\n", ret);
+		goto err_read_dt_resources;
+	}
+	ret = __vpu_load_reg_values_table(res, &res->vbif_reg_set,
+			"qcom,vbif-reg-presets");
+	if (ret) {
+		pr_err("Failed to load register values table: %d\n", ret);
 		goto err_read_dt_resources;
 	}
 	ret = __vpu_load_iommu_maps(res);
@@ -597,6 +733,7 @@ static int __vpu_mem_map_handle(struct vpu_mem_handle *handle, u32 device_id,
 		domain_number = handle->domain_num[device_id];
 
 		if (handle->flags & MEM_SECURE) { /* handle secure buffers */
+			pr_debug("Securing ION buffer\n");
 			align = SZ_1M;
 			ret = msm_ion_secure_buffer(ion_client, ion_handle,
 					VIDEO_PIXEL, 0);
@@ -704,11 +841,13 @@ int vpu_mem_alloc(void *mem_handle, u32 size, bool secure)
 		align = SZ_4K;
 		heap_mask = ION_HEAP(ION_SYSTEM_CONTIG_HEAP_ID);
 	} else {
-		heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
-		if (flags & MEM_SECURE)
+		if (flags & MEM_SECURE) {
+			heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID);
 			align = SZ_1M;
-		else
+		} else {
+			heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
 			align = SZ_4K;
+		}
 	}
 
 	ion_handle = ion_alloc(ion_client, ALIGN(size, align), align,

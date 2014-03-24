@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,6 +27,9 @@
 #include "rmnet_data_handlers.h"
 #include "rmnet_data_private.h"
 #include "rmnet_map.h"
+#include "rmnet_data_vnd.h"
+#include "rmnet_data_stats.h"
+#include "rmnet_data_trace.h"
 
 RMNET_LOG_MODULE(RMNET_DATA_LOGMASK_VND);
 
@@ -52,8 +55,7 @@ struct rmnet_map_flow_mapping_s {
 };
 
 struct rmnet_vnd_private_s {
-	uint8_t qos_mode:1;
-	uint8_t reserved:7;
+	uint32_t qos_version;
 	struct rmnet_logical_ep_conf_s local_ep;
 
 	rwlock_t flow_map_lock;
@@ -75,15 +77,28 @@ struct rmnet_vnd_private_s {
  * headroom.
  */
 static void rmnet_vnd_add_qos_header(struct sk_buff *skb,
-				     struct net_device *dev)
+				     struct net_device *dev,
+				     uint32_t qos_version)
 {
 	struct QMI_QOS_HDR_S *qmih;
+	struct qmi_qos_hdr8_s *qmi8h;
 
-	qmih = (struct QMI_QOS_HDR_S *)
-		skb_push(skb, sizeof(struct QMI_QOS_HDR_S));
-	qmih->version = 1;
-	qmih->flags = 0;
-	qmih->flow_id = skb->mark;
+	if (qos_version & RMNET_IOCTL_QOS_MODE_6) {
+		qmih = (struct QMI_QOS_HDR_S *)
+			skb_push(skb, sizeof(struct QMI_QOS_HDR_S));
+		qmih->version = 1;
+		qmih->flags = 0;
+		qmih->flow_id = skb->mark;
+	} else if (qos_version & RMNET_IOCTL_QOS_MODE_8) {
+		qmi8h = (struct qmi_qos_hdr8_s *)
+			skb_push(skb, sizeof(struct qmi_qos_hdr8_s));
+		/* Flags are 0 always */
+		qmi8h->version_flags =  0;
+		memset(qmi8h->reserved, 0, sizeof(qmi8h->reserved));
+		qmi8h->flow_id = skb->mark;
+	} else {
+		LOGD("%s(): Bad QoS version configured\n", __func__);
+	}
 }
 
 /* ***************** RX/TX Fixup ******************************************** */
@@ -154,15 +169,18 @@ static netdev_tx_t rmnet_vnd_start_xmit(struct sk_buff *skb,
 					struct net_device *dev)
 {
 	struct rmnet_vnd_private_s *dev_conf;
+	trace_rmnet_vnd_start_xmit(skb);
 	dev_conf = (struct rmnet_vnd_private_s *) netdev_priv(dev);
 	if (dev_conf->local_ep.egress_dev) {
 		/* QoS header should come after MAP header */
-		if (dev_conf->qos_mode)
-			rmnet_vnd_add_qos_header(skb, dev);
+		if (dev_conf->qos_version)
+			rmnet_vnd_add_qos_header(skb,
+						 dev,
+						 dev_conf->qos_version);
 		rmnet_egress_handler(skb, &dev_conf->local_ep);
 	} else {
 		dev->stats.tx_dropped++;
-		kfree_skb(skb);
+		rmnet_kfree_skb(skb, RMNET_STATS_SKBFREE_VND_NO_EGRESS);
 	}
 	return NETDEV_TX_OK;
 }
@@ -196,40 +214,50 @@ static int _rmnet_vnd_do_qos_ioctl(struct net_device *dev,
 {
 	struct rmnet_vnd_private_s *dev_conf;
 	int rc;
+	struct rmnet_ioctl_data_s ioctl_data;
 	rc = 0;
 	dev_conf = (struct rmnet_vnd_private_s *) netdev_priv(dev);
 
 	switch (cmd) {
 
 	case RMNET_IOCTL_SET_QOS_ENABLE:
-		LOGM("%s(): RMNET_IOCTL_SET_QOS_ENABLE on %s\n",
-		     __func__, dev->name);
-		dev_conf->qos_mode = 1;
+		LOGM("RMNET_IOCTL_SET_QOS_ENABLE on %s", dev->name);
+		if (!dev_conf->qos_version)
+			dev_conf->qos_version = RMNET_IOCTL_QOS_MODE_6;
 		break;
 
 	case RMNET_IOCTL_SET_QOS_DISABLE:
-		LOGM("%s(): RMNET_IOCTL_SET_QOS_DISABLE on %s\n",
-		     __func__, dev->name);
-		dev_conf->qos_mode = 0;
-		break;
-
-	case RMNET_IOCTL_FLOW_ENABLE:
-		LOGL("%s(): RMNET_IOCTL_FLOW_ENABLE on %s\n",
-		     __func__, dev->name);
-		tc_qdisc_flow_control(dev, (u32)ifr->ifr_data, 1);
-		break;
-
-	case RMNET_IOCTL_FLOW_DISABLE:
-		LOGL("%s(): RMNET_IOCTL_FLOW_DISABLE on %s\n",
-		     __func__, dev->name);
-		tc_qdisc_flow_control(dev, (u32)ifr->ifr_data, 0);
+		LOGM("RMNET_IOCTL_SET_QOS_DISABLE on %s", dev->name);
+		dev_conf->qos_version = 0;
 		break;
 
 	case RMNET_IOCTL_GET_QOS:           /* Get QoS header state    */
-		LOGM("%s(): RMNET_IOCTL_GET_QOS on %s\n",
-		     __func__, dev->name);
-		ifr->ifr_ifru.ifru_data =
-			(void *)(dev_conf->qos_mode == 1);
+		LOGM("RMNET_IOCTL_GET_QOS on %s", dev->name);
+		ioctl_data.u.operation_mode = (dev_conf->qos_version ==
+						RMNET_IOCTL_QOS_MODE_6);
+		if (copy_to_user(ifr->ifr_ifru.ifru_data, &ioctl_data,
+			sizeof(struct rmnet_ioctl_data_s)))
+			rc = -EFAULT;
+		break;
+
+	case RMNET_IOCTL_FLOW_ENABLE:
+		LOGL("RMNET_IOCTL_FLOW_ENABLE on %s", dev->name);
+		if (copy_from_user(&ioctl_data, ifr->ifr_ifru.ifru_data,
+			sizeof(struct rmnet_ioctl_data_s))) {
+			rc = -EFAULT;
+			break;
+		}
+		tc_qdisc_flow_control(dev, ioctl_data.u.tcm_handle, 1);
+		break;
+
+	case RMNET_IOCTL_FLOW_DISABLE:
+		LOGL("RMNET_IOCTL_FLOW_DISABLE on %s", dev->name);
+		if (copy_from_user(&ioctl_data, ifr->ifr_ifru.ifru_data,
+			sizeof(struct rmnet_ioctl_data_s))) {
+			rc = -EFAULT;
+		break;
+		}
+		tc_qdisc_flow_control(dev, ioctl_data.u.tcm_handle, 0);
 		break;
 
 	default:
@@ -255,8 +283,8 @@ static void _rmnet_vnd_wq_flow_control(struct work_struct *work)
 	tc_qdisc_flow_control(fcwork->dev, fcwork->tc_handle, fcwork->enable);
 	rtnl_unlock();
 
-	LOGL("%s(): [%s] handle:%08X enable:%d\n",
-	     __func__, fcwork->dev->name, fcwork->tc_handle, fcwork->enable);
+	LOGL("[%s] handle:%08X enable:%d",
+	     fcwork->dev->name, fcwork->tc_handle, fcwork->enable);
 
 	kfree(work);
 }
@@ -293,10 +321,70 @@ static inline int _rmnet_vnd_do_flow_control(struct net_device *dev,
 					     uint32_t tc_handle,
 					     int enable)
 {
-	LOGD("%s(): [%s] called with no QoS support", __func__, dev->name);
+	LOGD("[%s] called with no QoS support", dev->name);
 	return RMNET_VND_FC_NOT_ENABLED;
 }
 #endif /* CONFIG_RMNET_DATA_FC */
+
+static int rmnet_vnd_ioctl_extended(struct net_device *dev, struct ifreq *ifr)
+{
+	struct rmnet_vnd_private_s *dev_conf;
+	struct rmnet_ioctl_extended_s ext_cmd;
+	int rc = 0;
+	dev_conf = (struct rmnet_vnd_private_s *) netdev_priv(dev);
+
+	rc = copy_from_user(&ext_cmd, ifr->ifr_ifru.ifru_data,
+			    sizeof(struct rmnet_ioctl_extended_s));
+	if (rc) {
+		LOGM("%s(): copy_from_user() failed\n", __func__);
+		return rc;
+	}
+
+	switch (ext_cmd.extended_ioctl) {
+	case RMNET_IOCTL_GET_SUPPORTED_FEATURES:
+		ext_cmd.u.data = 0;
+		break;
+
+	case RMNET_IOCTL_GET_DRIVER_NAME:
+		strlcpy(ext_cmd.u.if_name, "rmnet_data",
+			sizeof(ext_cmd.u.if_name));
+		break;
+
+	case RMNET_IOCTL_GET_SUPPORTED_QOS_MODES:
+		ext_cmd.u.data = RMNET_IOCTL_QOS_MODE_6
+				 | RMNET_IOCTL_QOS_MODE_8;
+		break;
+
+	case RMNET_IOCTL_GET_QOS_VERSION:
+		ext_cmd.u.data = dev_conf->qos_version;
+		break;
+
+	case RMNET_IOCTL_SET_QOS_VERSION:
+		if (ext_cmd.u.data == RMNET_IOCTL_QOS_MODE_6
+		    || ext_cmd.u.data == RMNET_IOCTL_QOS_MODE_8
+		    ||  ext_cmd.u.data == 0) {
+			dev_conf->qos_version = ext_cmd.u.data;
+		} else {
+			rc = -EINVAL;
+			goto done;
+		}
+		break;
+
+	default:
+		rc = -EINVAL;
+		goto done;
+		break;
+	}
+
+	rc = copy_to_user(ifr->ifr_ifru.ifru_data, &ext_cmd,
+			  sizeof(struct rmnet_ioctl_extended_s));
+	if (rc)
+		LOGM("%s(): copy_to_user() failed\n", __func__);
+
+done:
+	return rc;
+}
+
 
 /**
  * rmnet_vnd_ioctl() - IOCTL NDO callback
@@ -315,6 +403,7 @@ static int rmnet_vnd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
 	struct rmnet_vnd_private_s *dev_conf;
 	int rc;
+	struct rmnet_ioctl_data_s ioctl_data;
 	rc = 0;
 	dev_conf = (struct rmnet_vnd_private_s *) netdev_priv(dev);
 
@@ -326,34 +415,37 @@ static int rmnet_vnd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 	switch (cmd) {
 
 	case RMNET_IOCTL_OPEN: /* Do nothing. Support legacy behavior */
-		LOGM("%s(): RMNET_IOCTL_OPEN on %s (ignored)\n",
-		     __func__, dev->name);
+		LOGM("RMNET_IOCTL_OPEN on %s (ignored)", dev->name);
 		break;
 
 	case RMNET_IOCTL_CLOSE: /* Do nothing. Support legacy behavior */
-		LOGM("%s(): RMNET_IOCTL_CLOSE on %s (ignored)\n",
-		     __func__, dev->name);
+		LOGM("RMNET_IOCTL_CLOSE on %s (ignored)", dev->name);
 		break;
 
 	case RMNET_IOCTL_SET_LLP_ETHERNET:
-		LOGM("%s(): RMNET_IOCTL_SET_LLP_ETHERNET on %s (no support)\n",
-		     __func__, dev->name);
+		LOGM("RMNET_IOCTL_SET_LLP_ETHERNET on %s (no support)",
+		     dev->name);
 		rc = -EINVAL;
 		break;
 
 	case RMNET_IOCTL_SET_LLP_IP: /* Do nothing. Support legacy behavior */
-		LOGM("%s(): RMNET_IOCTL_SET_LLP_IP on %s  (ignored)\n",
-		     __func__, dev->name);
+		LOGM("RMNET_IOCTL_SET_LLP_IP on %s (ignored)", dev->name);
 		break;
 
 	case RMNET_IOCTL_GET_LLP: /* Always return IP mode */
-		LOGM("%s(): RMNET_IOCTL_GET_LLP on %s\n",
-		     __func__, dev->name);
-		ifr->ifr_ifru.ifru_data = (void *)(RMNET_MODE_LLP_IP);
+		LOGM("RMNET_IOCTL_GET_LLP on %s", dev->name);
+		ioctl_data.u.operation_mode = RMNET_MODE_LLP_IP;
+		if (copy_to_user(ifr->ifr_ifru.ifru_data, &ioctl_data,
+			sizeof(struct rmnet_ioctl_data_s)))
+			rc = -EFAULT;
+		break;
+
+	case RMNET_IOCTL_EXTENDED:
+		rc = rmnet_vnd_ioctl_extended(dev, ifr);
 		break;
 
 	default:
-		LOGH("%s(): Unkown IOCTL 0x%08X\n", __func__, cmd);
+		LOGH("Unkown IOCTL 0x%08X", cmd);
 		rc = -EINVAL;
 	}
 
@@ -381,7 +473,7 @@ static const struct net_device_ops rmnet_data_vnd_ops = {
 static void rmnet_vnd_setup(struct net_device *dev)
 {
 	struct rmnet_vnd_private_s *dev_conf;
-	LOGM("%s(): Setting up device %s\n", __func__, dev->name);
+	LOGM("Setting up device %s", dev->name);
 
 	/* Clear out private data */
 	dev_conf = (struct rmnet_vnd_private_s *) netdev_priv(dev);
@@ -394,6 +486,7 @@ static void rmnet_vnd_setup(struct net_device *dev)
 	dev->needed_headroom = RMNET_DATA_NEEDED_HEADROOM;
 	random_ether_addr(dev->dev_addr);
 	dev->watchdog_timeo = 1000;
+	dev->tx_queue_len = RMNET_DATA_TX_QUEUE_LEN;
 
 	/* Raw IP mode */
 	dev->header_ops = 0;  /* No header */
@@ -461,7 +554,7 @@ int rmnet_vnd_create_dev(int id, struct net_device **new_device,
 	char dev_prefix[IFNAMSIZ];
 	int p, rc = 0;
 
-	if (id < 0 || id > RMNET_DATA_MAX_VND || rmnet_devices[id] != 0) {
+	if (id < 0 || id >= RMNET_DATA_MAX_VND || rmnet_devices[id] != 0) {
 		*new_device = 0;
 		return -EINVAL;
 	}
@@ -473,7 +566,7 @@ int rmnet_vnd_create_dev(int id, struct net_device **new_device,
 		p = scnprintf(dev_prefix, IFNAMSIZ, "%s%%d",
 			  prefix);
 	if (p >= (IFNAMSIZ-1)) {
-		LOGE("%s(): Specified prefix longer than IFNAMSIZ", __func__);
+		LOGE("Specified prefix (%d) longer than IFNAMSIZ", p);
 		return -EINVAL;
 	}
 
@@ -481,16 +574,14 @@ int rmnet_vnd_create_dev(int id, struct net_device **new_device,
 			   dev_prefix,
 			   rmnet_vnd_setup);
 	if (!dev) {
-		LOGE("%s(): Failed to to allocate netdev for id %d",
-		      __func__, id);
+		LOGE("Failed to to allocate netdev for id %d", id);
 		*new_device = 0;
 		return -EINVAL;
 	}
 
 	rc = register_netdevice(dev);
 	if (rc != 0) {
-		LOGE("%s(): Failed to to register netdev [%s]",
-		      __func__, dev->name);
+		LOGE("Failed to to register netdev [%s]", dev->name);
 		free_netdev(dev);
 		*new_device = 0;
 	} else {
@@ -498,8 +589,45 @@ int rmnet_vnd_create_dev(int id, struct net_device **new_device,
 		*new_device = dev;
 	}
 
-	LOGM("%s(): Registered device %s\n", __func__, dev->name);
+	LOGM("Registered device %s", dev->name);
 	return rc;
+}
+
+/**
+ * rmnet_vnd_free_dev() - free a virtual network device node.
+ * @id:         Virtual device node id
+ *
+ * Unregisters the virtual network device node and frees it.
+ * unregister_netdev locks the rtnl mutex, so the mutex must not be locked
+ * by the caller of the function. unregister_netdev enqueues the request to
+ * unregister the device into a TODO queue. The requests in the TODO queue
+ * are only done after rtnl mutex is unlocked, therefore free_netdev has to
+ * called after unlocking rtnl mutex.
+ *
+ * Return:
+ *      - 0 if successful
+ *      - RMNET_CONFIG_NO_SUCH_DEVICE if id is invalid or not in range
+ *      - RMNET_CONFIG_DEVICE_IN_USE if device has logical ep that wasn't unset
+ */
+int rmnet_vnd_free_dev(int id)
+{
+	struct rmnet_logical_ep_conf_s *epconfig_l;
+
+	if ((id < 0) || (id >= RMNET_DATA_MAX_VND) || !rmnet_devices[id]) {
+		LOGM("Invalid id [%d]", id);
+		return RMNET_CONFIG_NO_SUCH_DEVICE;
+	}
+
+	epconfig_l = rmnet_vnd_get_le_config(rmnet_devices[id]);
+		if (epconfig_l && epconfig_l->refcount)
+			return RMNET_CONFIG_DEVICE_IN_USE;
+
+	unregister_netdev(rmnet_devices[id]);
+	free_netdev(rmnet_devices[id]);
+	rtnl_lock();
+	rmnet_devices[id] = 0;
+	rtnl_unlock();
+	return 0;
 }
 
 /**
@@ -522,21 +650,21 @@ int rmnet_vnd_get_name(int id, char *name, int name_len)
 	int p;
 
 	if (!name) {
-		LOGM("%s(): Bad arguments; name buffer null", __func__);
+		LOGM("%s", "Bad arguments; name buffer null");
 		return -EINVAL;
 	}
 
 	if ((id < 0) || (id >= RMNET_DATA_MAX_VND) || !rmnet_devices[id]) {
-		LOGM("%s(): Invalid id [%d]", __func__, id);
+		LOGM("Invalid id [%d]", id);
 		return -EINVAL;
 	}
 
 	p = strlcpy(name, rmnet_devices[id]->name, name_len);
 	if (p >= name_len) {
-		LOGM("%s(): Buffer to small to fit device name", __func__);
+		LOGM("Buffer to small (%d) to fit device name", name_len);
 		return -EINVAL;
 	}
-	LOGL("%s(): Found mapping [%d]->\"%s\"", __func__, id, name);
+	LOGL("Found mapping [%d]->\"%s\"", id, name);
 
 	return 0;
 }
@@ -660,8 +788,8 @@ static int _rmnet_vnd_update_flow_map(uint8_t action,
 				itm->tc_flow_valid[i] = 1;
 				itm->tc_flow_id[i] = tc_flow;
 				rc = RMNET_VND_UPDATE_FLOW_OK;
-				LOGD("%s(): {%p}->tc_flow_id[%d] = %08X\n",
-				     __func__, itm, i, tc_flow);
+				LOGD("{%p}->tc_flow_id[%d]=%08X",
+				     itm, i, tc_flow);
 				break;
 			}
 		}
@@ -676,8 +804,7 @@ static int _rmnet_vnd_update_flow_map(uint8_t action,
 					itm->tc_flow_valid[i] = 0;
 					itm->tc_flow_id[i] = 0;
 					j++;
-					LOGD("%s(): {%p}->tc_flow_id[%d] = 0\n",
-					     __func__, itm, i);
+					LOGD("{%p}->tc_flow_id[%d]=0", itm, i);
 				}
 			} else {
 				j++;
@@ -718,7 +845,7 @@ int rmnet_vnd_add_tc_flow(uint32_t id, uint32_t map_flow, uint32_t tc_flow)
 	unsigned long flags;
 
 	if ((id < 0) || (id >= RMNET_DATA_MAX_VND) || !rmnet_devices[id]) {
-		LOGM("%s(): Invalid id [%d]\n", __func__, id);
+		LOGM("Invalid VND id [%d]", id);
 		return RMNET_CONFIG_NO_SUCH_DEVICE;
 	}
 
@@ -747,7 +874,7 @@ int rmnet_vnd_add_tc_flow(uint32_t id, uint32_t map_flow, uint32_t tc_flow)
 		kmalloc(sizeof(struct rmnet_map_flow_mapping_s), GFP_KERNEL);
 
 	if (!itm) {
-		LOGM("%s(): failure allocating flow mapping\n", __func__);
+		LOGM("%s", "Failure allocating flow mapping");
 		return RMNET_CONFIG_NOMEM;
 	}
 	memset(itm, 0, sizeof(struct rmnet_map_flow_mapping_s));
@@ -766,8 +893,8 @@ int rmnet_vnd_add_tc_flow(uint32_t id, uint32_t map_flow, uint32_t tc_flow)
 	list_add(&(itm->list), &(dev_conf->flow_head));
 	write_unlock_irqrestore(&dev_conf->flow_map_lock, flags);
 
-	LOGD("%s(): Created flow mapping [%s][0x%08X][0x%08X]@%p\n", __func__,
-		     dev->name, itm->map_flow_id, itm->tc_flow_id[0], itm);
+	LOGD("Created flow mapping [%s][0x%08X][0x%08X]@%p",
+	     dev->name, itm->map_flow_id, itm->tc_flow_id[0], itm);
 
 	return RMNET_CONFIG_OK;
 }
@@ -797,7 +924,7 @@ int rmnet_vnd_del_tc_flow(uint32_t id, uint32_t map_flow, uint32_t tc_flow)
 	int rc = RMNET_CONFIG_OK;
 
 	if ((id < 0) || (id >= RMNET_DATA_MAX_VND) || !rmnet_devices[id]) {
-		LOGM("%s(): Invalid id [%d]\n", __func__, id);
+		LOGM("Invalid VND id [%d]", id);
 		return RMNET_CONFIG_NO_SUCH_DEVICE;
 	}
 
@@ -822,8 +949,8 @@ int rmnet_vnd_del_tc_flow(uint32_t id, uint32_t map_flow, uint32_t tc_flow)
 
 	if (r ==  RMNET_VND_UPDATE_FLOW_NO_VALID_LEFT) {
 		if (itm)
-			LOGD("%s(): Removed flow mapping [%s][0x%08X]@%p\n",
-			__func__, dev->name, itm->map_flow_id, itm);
+			LOGD("Removed flow mapping [%s][0x%08X]@%p",
+			     dev->name, itm->map_flow_id, itm);
 		kfree(itm);
 	}
 
@@ -871,16 +998,16 @@ int rmnet_vnd_do_flow_control(struct net_device *dev,
 	itm = _rmnet_vnd_get_flow_map(dev_conf, map_flow_id);
 
 	if (!itm) {
-		LOGL("%s(): Got flow control request for unknown flow %08X\n",
-		     __func__, map_flow_id);
+		LOGL("Got flow control request for unknown flow %08X",
+		     map_flow_id);
 		goto fcdone;
 	}
 	if (v4_seq == 0 || v4_seq >= atomic_read(&(itm->v4_seq))) {
 		atomic_set(&(itm->v4_seq), v4_seq);
 		for (i = 0; i < RMNET_MAP_FLOW_NUM_TC_HANDLE; i++) {
 			if (itm->tc_flow_valid[i] == 1) {
-				LOGD("%s(): Found [%s][0x%08X][%d:0x%08X]\n",
-				     __func__, dev->name, itm->map_flow_id, i,
+				LOGD("Found [%s][0x%08X][%d:0x%08X]",
+				     dev->name, itm->map_flow_id, i,
 				     itm->tc_flow_id[i]);
 
 				_rmnet_vnd_do_flow_control(dev,
@@ -889,8 +1016,8 @@ int rmnet_vnd_do_flow_control(struct net_device *dev,
 			}
 		}
 	} else {
-		LOGD("%s(): Internal seq(%hd) higher than called(%hd)\n",
-		     __func__, atomic_read(&(itm->v4_seq)), v4_seq);
+		LOGD("Internal seq(%hd) higher than called(%hd)",
+		     atomic_read(&(itm->v4_seq)), v4_seq);
 	}
 
 fcdone:

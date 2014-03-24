@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -125,10 +125,15 @@ void msm_pcie_config_msi_controller(struct msm_pcie_dev_t *dev)
 	wmb();
 }
 
-void msm_pcie_destroy_irq(unsigned int irq)
+void msm_pcie_destroy_irq(unsigned int irq, struct msm_pcie_dev_t *pcie_dev)
 {
 	int pos;
-	struct msm_pcie_dev_t *dev = irq_get_chip_data(irq);
+	struct msm_pcie_dev_t *dev;
+
+	if (pcie_dev)
+		dev = pcie_dev;
+	else
+		dev = irq_get_chip_data(irq);
 
 	if (dev->msi_gicm_addr) {
 		PCIE_DBG("destroy QGIC based irq\n");
@@ -140,15 +145,39 @@ void msm_pcie_destroy_irq(unsigned int irq)
 
 	PCIE_DBG("\n");
 
-	dynamic_irq_cleanup(irq);
+	if (!dev->msi_gicm_addr)
+		dynamic_irq_cleanup(irq);
+
+	PCIE_DBG("Before clear_bit pos:%d msi_irq_in_use:%ld\n",
+		pos, *dev->msi_irq_in_use);
 	clear_bit(pos, dev->msi_irq_in_use);
+	PCIE_DBG("After clear_bit pos:%d msi_irq_in_use:%ld\n",
+		pos, *dev->msi_irq_in_use);
 }
 
 /* hookup to linux pci msi framework */
 void arch_teardown_msi_irq(unsigned int irq)
 {
 	PCIE_DBG("irq %d deallocated\n", irq);
-	msm_pcie_destroy_irq(irq);
+	msm_pcie_destroy_irq(irq, NULL);
+}
+
+void arch_teardown_msi_irqs(struct pci_dev *dev)
+{
+	struct msi_desc *entry;
+	struct msm_pcie_dev_t *pcie_dev = PCIE_BUS_PRIV_DATA(dev);
+
+	PCIE_DBG("RC:%d EP: vendor_id:0x%x device_id:0x%x\n",
+		pcie_dev->rc_idx, dev->vendor, dev->device);
+
+	list_for_each_entry(entry, &dev->msi_list, list) {
+		int i, nvec;
+		if (entry->irq == 0)
+			continue;
+		nvec = 1 << entry->msi_attrib.multiple;
+		for (i = 0; i < nvec; i++)
+			msm_pcie_destroy_irq(entry->irq + i, pcie_dev);
+	}
 }
 
 static void msm_pcie_msi_nop(struct irq_data *d)
@@ -178,13 +207,16 @@ again:
 	if (pos >= PCIE_MSI_NR_IRQS)
 		return -ENOSPC;
 
+	PCIE_DBG("pos:%d msi_irq_in_use:%ld\n", pos, *dev->msi_irq_in_use);
+
 	if (test_and_set_bit(pos, dev->msi_irq_in_use))
 		goto again;
+	else
+		PCIE_DBG("test_and_set_bit is successful\n");
 
 	irq = irq_create_mapping(dev->irq_domain, pos);
 	if (!irq)
 		return -EINVAL;
-
 
 	return irq;
 }
@@ -230,8 +262,12 @@ again:
 	if (pos >= PCIE_MSI_NR_IRQS)
 		return -ENOSPC;
 
+	PCIE_DBG("pos:%d msi_irq_in_use:%ld\n", pos, *dev->msi_irq_in_use);
+
 	if (test_and_set_bit(pos, dev->msi_irq_in_use))
 		goto again;
+	else
+		PCIE_DBG("test_and_set_bit is successful\n");
 
 	irq = dev->msi_gicm_base + pos;
 	if (!irq) {
@@ -385,17 +421,18 @@ int32_t msm_pcie_irq_init(struct msm_pcie_dev_t *dev)
 	}
 
 	/* Create a virtual domain of interrupts */
-	dev->irq_domain = irq_domain_add_linear(dev->pdev->dev.of_node,
-			PCIE_MSI_NR_IRQS,
-			&msm_pcie_msi_ops,
-			&dev);
-	if (!dev->irq_domain) {
-		pr_err("PCIe: Unable to initialize irq domain\n");
-		disable_irq(dev->wake_n);
-		return PTR_ERR(dev->irq_domain);
-	}
+	if (!dev->msi_gicm_addr) {
+		dev->irq_domain = irq_domain_add_linear(dev->pdev->dev.of_node,
+			PCIE_MSI_NR_IRQS, &msm_pcie_msi_ops, dev);
 
-	msi_start = irq_create_mapping(dev->irq_domain, 0);
+		if (!dev->irq_domain) {
+			pr_err("PCIe: Unable to initialize irq domain\n");
+			disable_irq(dev->wake_n);
+			return PTR_ERR(dev->irq_domain);
+		}
+
+		msi_start = irq_create_mapping(dev->irq_domain, 0);
+	}
 
 	return 0;
 }

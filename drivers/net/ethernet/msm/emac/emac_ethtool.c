@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -89,13 +89,17 @@ static int emac_get_settings(struct net_device *netdev,
 			   SUPPORTED_TP);
 
 	ecmd->advertising = ADVERTISED_TP;
-	ecmd->advertising |= ADVERTISED_Autoneg;
-	ecmd->advertising |= hw->autoneg_advertised;
+	if (hw->autoneg) {
+		ecmd->advertising |= ADVERTISED_Autoneg;
+		ecmd->advertising |= hw->autoneg_advertised;
+		ecmd->autoneg = AUTONEG_ENABLE;
+	} else {
+		ecmd->autoneg = AUTONEG_DISABLE;
+	}
 
 	ecmd->port = PORT_TP;
 	ecmd->phy_address = hw->phy_addr;
 	ecmd->transceiver = XCVR_INTERNAL;
-	ecmd->autoneg = AUTONEG_ENABLE;
 
 	if (hw->link_up) {
 		switch (hw->link_speed) {
@@ -176,18 +180,28 @@ static int emac_set_settings(struct net_device *netdev,
 		}
 	}
 
-	if (hw->autoneg_advertised == advertised) {
-		CLI_ADPT_FLAG(STATE_RESETTING);
-		return retval;
-	}
+	if ((hw->autoneg == autoneg) && (hw->autoneg_advertised == advertised))
+		goto done;
 
 	retval = emac_setup_phy_link_speed(hw, advertised, autoneg,
 					   !hw->disable_fc_autoneg);
 	if (retval) {
-		retval = emac_setup_phy_link_speed(hw, old, autoneg,
-						   !hw->disable_fc_autoneg);
+		emac_setup_phy_link_speed(hw, old, autoneg,
+					  !hw->disable_fc_autoneg);
 	}
 
+	if (netif_running(adpt->netdev)) {
+		/* If there is no EPHY, the EMAC internal PHY may get reset in
+		 * emac_setup_phy_link_speed. Reset the MAC to avoid the memory
+		 * corruption.
+		 */
+		if (adpt->no_ephy) {
+			emac_down(adpt, EMAC_HW_CTRL_RESET_MAC);
+			emac_up(adpt);
+		}
+	}
+
+done:
 	CLI_ADPT_FLAG(STATE_RESETTING);
 	return retval;
 }
@@ -397,6 +411,38 @@ static int emac_set_intr_coalesce(struct net_device *netdev,
 	return 0;
 }
 
+static void emac_get_ringparam(struct net_device *netdev,
+			       struct ethtool_ringparam *ring)
+{
+	struct emac_adapter *adpt = netdev_priv(netdev);
+
+	ring->rx_max_pending = EMAC_MAX_RX_DESCS;
+	ring->tx_max_pending = EMAC_MAX_TX_DESCS;
+	ring->rx_pending = adpt->num_rxdescs;
+	ring->tx_pending = adpt->num_txdescs;
+}
+
+static int emac_set_ringparam(struct net_device *netdev,
+			      struct ethtool_ringparam *ring)
+{
+	struct emac_adapter *adpt = netdev_priv(netdev);
+	int retval = 0;
+
+	if ((ring->rx_mini_pending) || (ring->rx_jumbo_pending))
+		return -EINVAL;
+
+	adpt->num_txdescs = clamp_t(u32, ring->tx_pending,
+				    EMAC_MIN_TX_DESCS, EMAC_MAX_TX_DESCS);
+
+	adpt->num_rxdescs = clamp_t(u32, ring->rx_pending,
+				    EMAC_MIN_RX_DESCS, EMAC_MAX_RX_DESCS);
+
+	if (netif_running(netdev))
+		retval = emac_resize_rings(netdev);
+
+	return retval;
+}
+
 static int emac_nway_reset(struct net_device *netdev)
 {
 	struct emac_adapter *adpt = netdev_priv(netdev);
@@ -459,6 +505,8 @@ static const struct ethtool_ops emac_ethtool_ops = {
 	.set_msglevel    = emac_set_msglevel,
 	.get_coalesce    = emac_get_intr_coalesce,
 	.set_coalesce    = emac_set_intr_coalesce,
+	.get_ringparam   = emac_get_ringparam,
+	.set_ringparam   = emac_set_ringparam,
 	.nway_reset      = emac_nway_reset,
 	.get_link        = ethtool_op_get_link,
 	.get_sset_count  = emac_get_sset_count,

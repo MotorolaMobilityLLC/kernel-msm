@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -67,8 +67,8 @@ enum smem_cache_ops {
 };
 
 enum core_id {
-	MSM_VIDC_CORE_0 = 0,
-	MSM_VIDC_CORE_1,      /* for Q6 core */
+	MSM_VIDC_CORE_VENUS = 0,
+	MSM_VIDC_CORE_Q6,
 	MSM_VIDC_CORES_MAX,
 };
 enum session_type {
@@ -83,6 +83,7 @@ int msm_vidc_enum_fmt(void *instance, struct v4l2_fmtdesc *f);
 int msm_vidc_s_fmt(void *instance, struct v4l2_format *f);
 int msm_vidc_g_fmt(void *instance, struct v4l2_format *f);
 int msm_vidc_s_ctrl(void *instance, struct v4l2_control *a);
+int msm_vidc_s_ext_ctrl(void *instance, struct v4l2_ext_controls *a);
 int msm_vidc_g_ctrl(void *instance, struct v4l2_control *a);
 int msm_vidc_reqbufs(void *instance, struct v4l2_requestbuffers *b);
 int msm_vidc_prepare_buf(void *instance, struct v4l2_buffer *b);

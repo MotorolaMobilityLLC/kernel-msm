@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,6 +19,7 @@
 #include <linux/qpnp/clkdiv.h>
 #include <linux/regulator/consumer.h>
 #include <linux/io.h>
+#include <soc/qcom/subsystem_notif.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -27,7 +28,6 @@
 #include <sound/q6afe-v2.h>
 #include <sound/pcm_params.h>
 #include <asm/mach-types.h>
-#include <mach/subsystem_notif.h>
 #include "qdsp6v2/msm-pcm-routing-v2.h"
 #include "qdsp6v2/q6core.h"
 #include "../codecs/wcd9xxx-common.h"
@@ -41,10 +41,12 @@
 #define MSM_SLIM_0_RX_MAX_CHANNELS		2
 #define MSM_SLIM_0_TX_MAX_CHANNELS		4
 
+#define SAMPLING_RATE_22_05KHZ 22050
 #define SAMPLING_RATE_44_1KHZ 44100
 #define SAMPLING_RATE_32KHZ   32000
 #define SAMPLING_RATE_48KHZ   48000
 #define SAMPLING_RATE_96KHZ   96000
+#define SAMPLING_RATE_176_4KHZ  176400
 #define SAMPLING_RATE_192KHZ  192000
 
 #define LO_1_SPK_AMP	0x1
@@ -80,6 +82,7 @@
 #define MI2S_WS		34
 #define MI2S_DATAO	35
 
+#define spdif_clock_value(rate) (2*rate*32*2)
 
 static int clk_users;
 static struct mutex cdc_mclk_mutex;
@@ -99,6 +102,17 @@ static struct request_gpio amux_gpio[] = {
 	{
 		.gpio_no = AMUX_CTRL2,
 		.gpio_name = "AMUX_CTRL2",
+	},
+};
+
+static struct request_gpio spdif_rx_gpio[] = {
+	{
+		.gpio_no = -1,
+		.gpio_name = "SPDIF_RX_OPTICAL",
+	},
+	{
+		.gpio_no = -1,
+		.gpio_name = "SPDIF_RX_ELECTRICAL",
 	},
 };
 
@@ -149,6 +163,16 @@ struct mpq8092_asoc_mach_data {
 	struct msm_auxpcm_ctrl *sec_auxpcm_ctrl;
 };
 
+static const struct afe_clk_cfg lpass_default = {
+	AFE_API_VERSION_I2S_CONFIG,
+	0,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_BOTH_INVALID,
+	0,
+};
+
 #define DT_PARSE_INDEX  1
 static const char *const spk_function[] = {"Off", "On"};
 static const char *const slim0_rx_ch_text[] = {"One", "Two"};
@@ -168,6 +192,8 @@ static char const *hdmi_rx_sample_rate_text[] = {"KHZ_32", "KHZ_44_1",
 static char const *sec_rx_sample_rate_text[] = {"KHZ_32", "KHZ_44_1",
 						"KHZ_48"};
 static const char *const btsco_rate_text[] = {"8000", "16000"};
+static char const *spdif_rx_sample_rate_text[] = {"KHZ_22_05", "KHZ_32",
+	"KHZ_44_1", "KHZ_48", "KHZ_96", "KHZ_176_4", "KHZ_192"};
 static const struct soc_enum msm_btsco_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, btsco_rate_text),
 };
@@ -186,6 +212,9 @@ static int sec_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_hdmi_rx_ch = 2;
 static int hdmi_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int hdmi_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+
+static int spdif_rx_sample_rate = SAMPLING_RATE_48KHZ;
+static int spdif_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
 static int slim0_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -210,6 +239,39 @@ static int slim0_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[0] = sample_rate_val;
 	pr_debug("%s: slim0_rx_sample_rate = %d\n", __func__,
 				slim0_rx_sample_rate);
+
+	return 0;
+}
+
+static int lpass_mclk_ctrl(bool enable)
+{
+	struct afe_clk_cfg *lpass_clk = NULL;
+	int ret = 0;
+
+	lpass_clk = kzalloc(sizeof(struct afe_clk_cfg), GFP_KERNEL);
+	if (lpass_clk == NULL) {
+		pr_err("%s:Failed to allocate memory\n", __func__);
+		return -ENOMEM;
+	}
+
+	memcpy(lpass_clk, &lpass_default, sizeof(struct afe_clk_cfg));
+	pr_debug("%s:enable = %d\n", __func__, enable);
+
+	if (enable) {
+		lpass_clk->clk_val2 = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+		lpass_clk->clk_val1 = 0;
+		lpass_clk->clk_set_mode =
+			Q6AFE_LPASS_MODE_CLK2_VALID;
+	} else {
+		lpass_clk->clk_val2 = Q6AFE_LPASS_OSR_CLK_DISABLE;
+		lpass_clk->clk_set_mode =
+			Q6AFE_LPASS_MODE_BOTH_INVALID;
+	}
+	ret = afe_set_lpass_clock(AUDIO_PORT_ID_I2S_RX, lpass_clk);
+	if (ret < 0) {
+		pr_err("%s:afe_set_lpass_clock failed\n", __func__);
+		return ret;
+	}
 
 	return 0;
 }
@@ -352,6 +414,46 @@ static int sec_rx_bit_format_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int spdif_rx_bit_format_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+
+	switch (spdif_rx_bit_format) {
+	case SNDRV_PCM_FORMAT_S24_LE:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+
+	case SNDRV_PCM_FORMAT_S16_LE:
+	default:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	}
+
+	pr_debug("%s: spdif_rx_bit_format = %d, ucontrol value = %ld\n",
+			 __func__, spdif_rx_bit_format,
+			ucontrol->value.integer.value[0]);
+
+	return 0;
+}
+
+static int spdif_rx_bit_format_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 1:
+		spdif_rx_bit_format = SNDRV_PCM_FORMAT_S24_LE;
+		break;
+	case 0:
+	default:
+		spdif_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+		break;
+	}
+	pr_debug("%s: spdif_rx_bit_format = %d, ucontrol value = %ld\n",
+			 __func__, spdif_rx_bit_format,
+			ucontrol->value.integer.value[0]);
+	return 0;
+}
+
 static int hdmi_rx_bit_format_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
@@ -483,6 +585,79 @@ static int hdmi_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int spdif_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int sample_rate_val = 0;
+
+	switch (spdif_rx_sample_rate) {
+	case SAMPLING_RATE_192KHZ:
+		sample_rate_val = 6;
+		break;
+	case SAMPLING_RATE_176_4KHZ:
+		sample_rate_val = 5;
+		break;
+	case SAMPLING_RATE_96KHZ:
+		sample_rate_val = 4;
+		break;
+	case SAMPLING_RATE_44_1KHZ:
+		sample_rate_val = 2;
+		break;
+	case SAMPLING_RATE_32KHZ:
+		sample_rate_val = 1;
+		break;
+	case SAMPLING_RATE_22_05KHZ:
+		sample_rate_val = 0;
+		break;
+	case SAMPLING_RATE_48KHZ:
+	default:
+		sample_rate_val = 3;
+		break;
+	}
+
+	ucontrol->value.integer.value[0] = sample_rate_val;
+	pr_debug("%s: spdif_rx_sample_rate = %d\n", __func__,
+				spdif_rx_sample_rate);
+
+	return 0;
+}
+
+static int spdif_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: ucontrol value = %ld\n", __func__,
+			ucontrol->value.integer.value[0]);
+
+	switch (ucontrol->value.integer.value[0]) {
+	case 6:
+		spdif_rx_sample_rate = SAMPLING_RATE_192KHZ;
+		break;
+	case 5:
+		spdif_rx_sample_rate = SAMPLING_RATE_176_4KHZ;
+		break;
+	case 4:
+		spdif_rx_sample_rate = SAMPLING_RATE_96KHZ;
+		break;
+	case 2:
+		spdif_rx_sample_rate = SAMPLING_RATE_44_1KHZ;
+		break;
+	case 1:
+		spdif_rx_sample_rate = SAMPLING_RATE_32KHZ;
+		break;
+	case 0:
+		spdif_rx_sample_rate = SAMPLING_RATE_22_05KHZ;
+		break;
+	case 3:
+	default:
+		spdif_rx_sample_rate = SAMPLING_RATE_48KHZ;
+	}
+
+	pr_debug("%s: spdif_rx_sample_rate = %d\n", __func__,
+			spdif_rx_sample_rate);
+
+	return 0;
+}
+
 static int sec_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
@@ -588,6 +763,25 @@ static int mpq8092_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static int mpq8092_spdif_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+				struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_RATE);
+	struct snd_interval *channels = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	pr_debug("%s channels->min %u channels->max %u ()\n", __func__,
+			channels->min, channels->max);
+
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
+				spdif_rx_bit_format);
+	rate->min = rate->max = spdif_rx_sample_rate;
+	channels->min = channels->max = 2;
+
+		return 0;
+};
+
 static int msm_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					    struct snd_pcm_hw_params *params)
 {
@@ -609,6 +803,48 @@ static int msm_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+
+static int mpq8092_spdif_rx_hw_params(struct snd_pcm_substream *substream,
+		struct snd_pcm_hw_params *params)
+{
+	struct afe_param_id_spdif_clk_cfg clk_cfg;
+	int rate = params_rate(params);
+	int ret = 0;
+	clk_cfg.clk_cfg_minor_version = 1;
+	clk_cfg.clk_value = spdif_clock_value(rate);
+	clk_cfg.clk_root = AFE_PORT_CLK_ROOT_LPAPLL;
+	pr_debug("%s: rate = %d clk_value = %d clk_root = %d\n", __func__,
+			rate, clk_cfg.clk_value, clk_cfg.clk_root);
+	ret = afe_send_spdif_clk_cfg(&clk_cfg, AFE_PORT_ID_SPDIF_RX);
+	if (ret < 0) {
+		pr_err("%s: Clock config command failed\n",
+				__func__);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static void mpq8092_spdif_rx_shutdown(struct snd_pcm_substream *substream)
+{
+	struct afe_param_id_spdif_clk_cfg clk_cfg;
+	int ret = 0;
+	clk_cfg.clk_cfg_minor_version = 1;
+	clk_cfg.clk_value = 0;
+	clk_cfg.clk_root = AFE_PORT_CLK_ROOT_LPAPLL;
+	ret = afe_send_spdif_clk_cfg(&clk_cfg, AFE_PORT_ID_SPDIF_RX);
+	if (ret < 0) {
+		pr_err("%s: Clock config command failed\n",
+				__func__);
+	}
+	pr_info("%s(): substream = %s  stream = %d\n", __func__,
+			substream->name, substream->stream);
+}
+
+
+static struct snd_soc_ops mpq8092_spdif_rx_be_ops = {
+	.shutdown = mpq8092_spdif_rx_shutdown,
+	.hw_params = mpq8092_spdif_rx_hw_params,
+};
 
 static int msm_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 				    bool dapm)
@@ -775,6 +1011,7 @@ static void mpq8092_snd_shudown(struct snd_pcm_substream *substream)
 {
 	pr_debug("%s(): substream = %s stream = %d\n", __func__,
 		 substream->name, substream->stream);
+	lpass_mclk_ctrl(false);
 
 }
 
@@ -782,7 +1019,7 @@ static int mpq8092_snd_startup(struct snd_pcm_substream *substream)
 {
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
-	return 0;
+	return lpass_mclk_ctrl(true);
 }
 
 static int msm_snd_hw_params(struct snd_pcm_substream *substream,
@@ -905,7 +1142,7 @@ static int mpq8092_prepare_codec_mclk(struct snd_soc_card *card)
 		ret = gpio_request(pdata->mclk_gpio, "TABLA_CODEC_PMIC_MCLK");
 		if (ret) {
 			dev_err(card->dev,
-				"%s: Failed to request taiko mclk gpio %d\n",
+				"%s: Failed to request tabla mclk gpio %d\n",
 				__func__, pdata->mclk_gpio);
 			return ret;
 		}
@@ -924,6 +1161,7 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(8, proxy_rx_ch_text),
 	SOC_ENUM_SINGLE_EXT(3, hdmi_rx_sample_rate_text),
 	SOC_ENUM_SINGLE_EXT(3, sec_rx_sample_rate_text),
+	SOC_ENUM_SINGLE_EXT(3, spdif_rx_sample_rate_text),
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -949,6 +1187,10 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			sec_rx_sample_rate_get, sec_rx_sample_rate_put),
 	SOC_ENUM_EXT("SEC_RX Bit Format", msm_snd_enum[4],
 			sec_rx_bit_format_get, sec_rx_bit_format_put),
+	SOC_ENUM_EXT("SPDIF_RX SampleRate", msm_snd_enum[9],
+			spdif_rx_sample_rate_get, spdif_rx_sample_rate_put),
+	SOC_ENUM_EXT("SPDIF_RX Bit Format", msm_snd_enum[4],
+			spdif_rx_bit_format_get, spdif_rx_bit_format_put),
 };
 
 static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
@@ -1017,11 +1259,6 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_sync(dapm);
 
-	if (err) {
-		pr_err("%s: apq8084 mclk_gpio init failed (%d)\n",
-			__func__, err);
-	}
-
 	snd_soc_dai_set_channel_map(codec_dai, ARRAY_SIZE(tx_ch),
 				    tx_ch, ARRAY_SIZE(rx_ch), rx_ch);
 
@@ -1071,7 +1308,7 @@ static struct snd_soc_dai_link mpq8092_common_dai_links[] = {
 		.name = "MPQ8092 Compr",
 		.stream_name = "COMPR",
 		.cpu_dai_name	= "MultiMedia4",
-		.platform_name  = "msm-compr-dsp",
+		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			 SND_SOC_DPCM_TRIGGER_POST},
@@ -1087,7 +1324,7 @@ static struct snd_soc_dai_link mpq8092_common_dai_links[] = {
 		.name = "MPQ8092 Compr2",
 		.stream_name = "COMPR2",
 		.cpu_dai_name	= "MultiMedia6",
-		.platform_name  = "msm-compr-dsp",
+		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			 SND_SOC_DPCM_TRIGGER_POST},
@@ -1102,7 +1339,7 @@ static struct snd_soc_dai_link mpq8092_common_dai_links[] = {
 		.name = "MPQ8092 Compr3",
 		.stream_name = "COMPR3",
 		.cpu_dai_name	= "MultiMedia7",
-		.platform_name  = "msm-compr-dsp",
+		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			 SND_SOC_DPCM_TRIGGER_POST},
@@ -1117,7 +1354,7 @@ static struct snd_soc_dai_link mpq8092_common_dai_links[] = {
 		.name = "MPQ8092 Compr4",
 		.stream_name = "COMPR4",
 		.cpu_dai_name	= "MultiMedia8",
-		.platform_name  = "msm-compr-dsp",
+		.platform_name  = "msm-compress-dsp",
 		.dynamic = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			 SND_SOC_DPCM_TRIGGER_POST},
@@ -1128,6 +1365,22 @@ static struct snd_soc_dai_link mpq8092_common_dai_links[] = {
 		 /* this dainlink has playback support */
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA8,
 	},
+	{
+		.name = "MSM8092 LowLatency",
+		.stream_name = "MultiMedia5",
+		.cpu_dai_name   = "MultiMedia5",
+		.platform_name  = "msm-pcm-dsp.1",
+		.dynamic = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+		.ignore_suspend = 1,
+		/* this dainlink has playback support */
+		.ignore_pmdown_time = 1,
+		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA5,
+	},
+
 	/* Hostless PCM purpose */
 	{
 		.name = "MSM AFE-PCM RX",
@@ -1155,8 +1408,8 @@ static struct snd_soc_dai_link mpq8092_common_dai_links[] = {
 		.stream_name = "Slimbus Playback",
 		.cpu_dai_name = "msm-dai-q6-dev.16384",
 		.platform_name = "msm-pcm-routing",
-		.codec_name     = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-rx",
+		.codec_name     = "tabla_codec",
+		.codec_dai_name = "tabla_rx1",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX,
 		.init = &msm_audrx_init,
@@ -1176,8 +1429,8 @@ static struct snd_soc_dai_link mpq8092_hdmi_dai_link[] = {
 		.cpu_dai_name = "msm-dai-q6-hdmi.8",
 		.platform_name = "msm-pcm-routing",
 /*Update the codecs once the HDMI entry is in the dtsi file*/
-		.codec_name     = "msm-stub-codec.1",
-		.codec_dai_name = "msm-stub-rx",
+		.codec_name     = "msm-hdmi-audio-codec-rx",
+		.codec_dai_name = "msm_hdmi_audio_codec_rx_dai",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_HDMI_RX,
 		.be_hw_params_fixup = mpq8092_hdmi_be_hw_params_fixup,
@@ -1185,9 +1438,29 @@ static struct snd_soc_dai_link mpq8092_hdmi_dai_link[] = {
 		.ignore_suspend = 1,
 	},
 };
+
+static struct snd_soc_dai_link mpq8092_spdif_dai_link[] = {
+/* HDMI BACK END DAI Link */
+	{
+		.name = LPASS_BE_SPDIF_RX  ,
+		.stream_name = "SPDIF Playback",
+		.cpu_dai_name = "msm-dai-q6-spdif",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_SPDIF_RX,
+		.be_hw_params_fixup = mpq8092_spdif_be_hw_params_fixup,
+		.ops = &mpq8092_spdif_rx_be_ops,
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
+};
+
 static struct snd_soc_dai_link mpq8092_dai_links[
 		 ARRAY_SIZE(mpq8092_common_dai_links) +
-		 ARRAY_SIZE(mpq8092_hdmi_dai_link)];
+		 ARRAY_SIZE(mpq8092_hdmi_dai_link) +
+		 ARRAY_SIZE(mpq8092_spdif_dai_link)];
 
 struct snd_soc_card snd_soc_card_mpq8092 = {
 	.name		= "mpq8092-tabla-snd-card",
@@ -1223,8 +1496,10 @@ err:
 static int free_gpio_list(struct request_gpio *gpios, int size)
 {
 	int	i;
-	for (i = 0; i < size; i++)
-		gpio_free(gpios[i].gpio_no);
+	for (i = 0; i < size; i++) {
+		if (gpios[i].gpio_no > 0)
+			gpio_free(gpios[i].gpio_no);
+	}
 	return 0;
 }
 
@@ -1298,6 +1573,36 @@ static int mpq8092_asoc_machine_probe(struct platform_device *pdev)
 			mpq8092_hdmi_dai_link, sizeof(mpq8092_hdmi_dai_link));
 		num_links += ARRAY_SIZE(mpq8092_hdmi_dai_link);
 	}
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,spdif-audio-rx")) {
+		dev_info(&pdev->dev, "%s(): spdif audio support present\n",
+				__func__);
+		memcpy(mpq8092_dai_links + num_links,
+			mpq8092_spdif_dai_link, sizeof(mpq8092_spdif_dai_link));
+		num_links += ARRAY_SIZE(mpq8092_spdif_dai_link);
+		spdif_rx_gpio[0].gpio_no = of_get_named_gpio(pdev->dev.of_node,
+				"qcom,spdif-opt-gpio", 0);
+		if (spdif_rx_gpio[0].gpio_no < 0) {
+			dev_err(&pdev->dev,
+					"Looking up %s property in node %s failed %d\n",
+					"qcom,spdif-opt-gpio",
+					pdev->dev.of_node->full_name,
+					spdif_rx_gpio[0].gpio_no < 0);
+			ret = -ENODEV;
+			goto err;
+		}
+		spdif_rx_gpio[1].gpio_no = of_get_named_gpio(pdev->dev.of_node,
+				"qcom,spdif-elec-gpio", 0);
+		if (spdif_rx_gpio[1].gpio_no < 0) {
+			dev_err(&pdev->dev,
+					"Looking up %s property in node %s failed %d\n",
+					"qcom,spdif-elec-gpio",
+					pdev->dev.of_node->full_name,
+					spdif_rx_gpio[1].gpio_no < 0);
+			ret = -ENODEV;
+			goto err;
+		}
+		request_gpio_list(spdif_rx_gpio, ARRAY_SIZE(spdif_rx_gpio));
+	}
 	card->dai_link	= mpq8092_dai_links;
 	card->num_links	= num_links;
 	ret = snd_soc_register_card(card);
@@ -1331,6 +1636,7 @@ static int mpq8092_asoc_machine_remove(struct platform_device *pdev)
 	gpio_free(pdata->mclk_gpio);
 	snd_soc_unregister_card(card);
 	free_gpio_list(amux_gpio, ARRAY_SIZE(amux_gpio));
+	free_gpio_list(spdif_rx_gpio, ARRAY_SIZE(spdif_rx_gpio));
 	mutex_destroy(&cdc_mclk_mutex);
 
 	return 0;

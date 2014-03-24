@@ -51,6 +51,14 @@
 #define MAX_EEPROM_NAME 32
 
 #define MAX_AF_ITERATIONS 3
+#define MAX_NUMBER_OF_STEPS 47
+
+#define MAX_LED_TRIGGERS 3
+
+enum sensor_stats_type {
+	YRGB,
+	YYYY,
+};
 
 enum flash_type {
 	LED_FLASH = 1,
@@ -249,12 +257,20 @@ enum cci_i2c_master_t {
 	MASTER_MAX,
 };
 
+enum i2c_freq_mode_t {
+	I2C_STANDARD_MODE,
+	I2C_FAST_MODE,
+	I2C_CUSTOM_MODE,
+	I2C_MAX_MODES,
+};
+
 struct msm_camera_sensor_slave_info {
 	char sensor_name[32];
 	char eeprom_name[32];
 	char actuator_name[32];
 	enum msm_sensor_camera_id_t camera_id;
 	uint16_t slave_addr;
+	enum i2c_freq_mode_t i2c_freq_mode;
 	enum msm_camera_i2c_reg_addr_type addr_type;
 	struct msm_sensor_id_info_t sensor_id_info;
 	struct msm_sensor_power_setting_array power_setting_array;
@@ -470,8 +486,11 @@ enum msm_actuator_cfg_type_t {
 	CFG_GET_ACTUATOR_INFO,
 	CFG_SET_ACTUATOR_INFO,
 	CFG_SET_DEFAULT_FOCUS,
+	CFG_SET_POSITION,
 	CFG_MOVE_FOCUS,
 	CFG_ACTUATOR_POWERDOWN,
+	CFG_ACTUATOR_POWERUP,
+	CFG_ACTUATOR_INIT,
 };
 
 enum actuator_type {
@@ -489,9 +508,18 @@ enum msm_actuator_addr_type {
 	MSM_ACTUATOR_WORD_ADDR,
 };
 
+enum msm_actuator_i2c_operation {
+	MSM_ACT_WRITE = 0,
+	MSM_ACT_POLL,
+};
+
 struct reg_settings_t {
 	uint16_t reg_addr;
+	enum msm_actuator_addr_type addr_type;
 	uint16_t reg_data;
+	enum msm_actuator_data_type data_type;
+	enum msm_actuator_i2c_operation i2c_operation;
+	uint32_t delay;
 };
 
 struct region_params_t {
@@ -569,6 +597,13 @@ enum af_camera_name {
 	ACTUATOR_WEB_CAM_2,
 };
 
+
+struct msm_actuator_set_position_t {
+	uint16_t number_of_steps;
+	uint16_t pos[MAX_NUMBER_OF_STEPS];
+	uint16_t delay[MAX_NUMBER_OF_STEPS];
+};
+
 struct msm_actuator_cfg_data {
 	int cfgtype;
 	uint8_t is_af_supported;
@@ -576,6 +611,7 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_move_params_t move;
 		struct msm_actuator_set_info_t set_info;
 		struct msm_actuator_get_info_t get_info;
+		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
 	} cfg;
 };
@@ -603,6 +639,8 @@ enum msm_camera_led_config_t {
 
 struct msm_camera_led_cfg_t {
 	enum msm_camera_led_config_t cfgtype;
+	uint32_t torch_current;
+	uint32_t flash_current[MAX_LED_TRIGGERS];
 };
 
 /* sensor init structures and enums */

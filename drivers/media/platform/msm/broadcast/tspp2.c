@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,7 +27,7 @@
 #include <linux/mutex.h>
 #include <linux/workqueue.h>
 #include <linux/iommu.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_tspp2.h>
@@ -35,13 +35,15 @@
 
 #define TSPP2_MODULUS_OP(val, mod)	((val) & ((mod) - 1))
 
-/* General definitions */
+/* General definitions. Note we're reserving one batch. */
 #define TSPP2_NUM_ALL_INPUTS	(TSPP2_NUM_TSIF_INPUTS + TSPP2_NUM_MEM_INPUTS)
-#define TSPP2_NUM_CONTEXTS	128
-#define TSPP2_NUM_HW_FILTERS	128
-#define TSPP2_NUM_BATCHES	16
-#define TSPP2_FILTERS_PER_BATCH	(TSPP2_NUM_HW_FILTERS / TSPP2_NUM_BATCHES)
-#define TSPP2_NUM_KEYTABLES	32
+#define TSPP2_NUM_CONTEXTS		128
+#define TSPP2_NUM_AVAIL_CONTEXTS	127
+#define TSPP2_NUM_HW_FILTERS		128
+#define TSPP2_NUM_BATCHES		15
+#define TSPP2_FILTERS_PER_BATCH		8
+#define TSPP2_NUM_AVAIL_FILTERS	(TSPP2_NUM_HW_FILTERS - TSPP2_FILTERS_PER_BATCH)
+#define TSPP2_NUM_KEYTABLES		32
 #define TSPP2_TSIF_DEF_TIME_LIMIT   15000 /* Number of tsif-ref-clock ticks */
 
 #define TSPP2_NUM_EVENT_WORK_ELEMENTS	256
@@ -64,9 +66,28 @@
  */
 #define TSPP2_DEFAULT_SRC_CONFIG	0x47801E49
 
+/*
+ * Default memory source configuration:
+ * Use 16 batches,
+ * Attach last batch to each memory source.
+ */
+#define TSPP2_DEFAULT_MEM_SRC_CONFIG	0x80000010
+
 /* Bypass VBIF/IOMMU for debug and bring-up purposes */
 static int tspp2_iommu_bypass;
 module_param(tspp2_iommu_bypass, int, S_IRUGO);
+
+/* Enable Invalid Adaptation Field control bits event */
+static int tspp2_en_invalid_af_ctrl;
+module_param(tspp2_en_invalid_af_ctrl, int, S_IRUGO | S_IWUSR);
+
+/* Enable Invalid Adaptation Field length event */
+static int tspp2_en_invalid_af_length;
+module_param(tspp2_en_invalid_af_length, int, S_IRUGO | S_IWUSR);
+
+/* Enable PES No Sync event */
+static int tspp2_en_pes_no_sync;
+module_param(tspp2_en_pes_no_sync, int, S_IRUGO | S_IWUSR);
 
 /**
  * enum tspp2_operation_opcode - TSPP2 Operation opcode for TSPP2_OPCODE
@@ -200,7 +221,7 @@ enum tspp2_operation_opcode {
 /* Bits for TSPP2_FILTER_ENTRY1 register */
 #define FILTER_ENTRY1_CONTEXT_OFFS	0
 
-/* Filter counter register definitions: n = 0..127 */
+/* Filter context-based counter register definitions: n = 0..127 */
 #define TSPP2_FILTER_TSP_SYNC_ERROR(n)		(0x4000 + ((n) << 2))
 #define TSPP2_FILTER_ERRED_TSP(n)		(0x4200 + ((n) << 2))
 #define TSPP2_FILTER_DISCONTINUITIES(n)		(0x4400 + ((n) << 2))
@@ -244,10 +265,7 @@ enum tspp2_operation_opcode {
 #define TSPP2_VERSION				0x6FFC
 
 /* Bits for TSPP2_GLOBAL_IRQ_CLEAR register */
-#define GLOBAL_IRQ_CLEAR_RESERVED_OFFS		4
-
-/* Bits for TSPP2_GLOBAL_IRQ_ENABLE register */
-#define GLOBAL_IRQ_ENABLE_READ_FAIL_OFFS	16
+#define GLOBAL_IRQ_CLEAR_RESERVED_OFFS         4
 
 /* Bits for TSPP2_VERSION register */
 #define VERSION_MAJOR_OFFS			28
@@ -733,12 +751,12 @@ struct tspp2_pipe_irq_stats {
 };
 
 /**
- * struct tspp2_filter_irq_stats - Filter interrupt statistics counters
+ * struct tspp2_filter_context_irq_stats - Filter interrupt statistics counters
  *
  * @sc_go_high:	Scrambling bits change from clear to encrypted.
  * @sc_go_low:	Scrambling bits change from encrypted to clear.
  */
-struct tspp2_filter_irq_stats {
+struct tspp2_filter_context_irq_stats {
 	u32 sc_go_high;
 	u32 sc_go_low;
 };
@@ -750,14 +768,14 @@ struct tspp2_filter_irq_stats {
  * @src:	Memory source interrupt statistics counters
  * @kt:		Key table interrupt statistics counters
  * @pipe:	Pipe interrupt statistics counters
- * @filter:	Filter interrupt statistics counters
+ * @ctx:	Filter context interrupt statistics counters
  */
 struct tspp2_irq_stats {
 	struct tspp2_global_irq_stats global;
 	struct tspp2_src_irq_stats src[TSPP2_NUM_MEM_INPUTS];
 	struct tspp2_keytable_irq_stats kt[TSPP2_NUM_KEYTABLES];
 	struct tspp2_pipe_irq_stats pipe[TSPP2_NUM_PIPES];
-	struct tspp2_filter_irq_stats filter[TSPP2_NUM_HW_FILTERS];
+	struct tspp2_filter_context_irq_stats ctx[TSPP2_NUM_CONTEXTS];
 };
 
 /**
@@ -841,7 +859,7 @@ struct tspp2_device {
 	struct device *dev;
 	void __iomem *base;
 	u32 tspp2_irq;
-	u32 bam_handle;
+	unsigned long bam_handle;
 	u32 bam_irq;
 	struct sps_bam_props bam_props;
 	struct tspp2_iommu_info iommu_info;
@@ -859,11 +877,11 @@ struct tspp2_device {
 	struct clk *tspp2_klm_ahb_clk;
 	struct clk *tsif_ref_clk;
 	struct tspp2_filter_batch batches[TSPP2_NUM_BATCHES];
-	int contexts[TSPP2_NUM_CONTEXTS];
+	int contexts[TSPP2_NUM_AVAIL_CONTEXTS];
 	struct tspp2_indexing_table indexing_tables[TSPP2_NUM_INDEXING_TABLES];
 	struct tspp2_src tsif_sources[TSPP2_NUM_TSIF_INPUTS];
 	struct tspp2_src mem_sources[TSPP2_NUM_MEM_INPUTS];
-	struct tspp2_filter filters[TSPP2_NUM_HW_FILTERS];
+	struct tspp2_filter filters[TSPP2_NUM_AVAIL_FILTERS];
 	struct tspp2_pipe pipes[TSPP2_NUM_PIPES];
 	u8 num_secured_opened_pipes;
 	u8 num_non_secured_opened_pipes;
@@ -1077,7 +1095,7 @@ static int tspp2_device_debugfs_print(struct seq_file *s, void *p)
 
 	seq_printf(s, "dev_id: %d\n", device->dev_id);
 	seq_puts(s, "Enabled filters:");
-	for (count = 0; count < TSPP2_NUM_HW_FILTERS; count++)
+	for (count = 0; count < TSPP2_NUM_AVAIL_FILTERS; count++)
 		if (device->filters[count].enabled) {
 			seq_printf(s, "\n\tfilter%3d", count);
 			exist_flag = 1;
@@ -1089,7 +1107,7 @@ static int tspp2_device_debugfs_print(struct seq_file *s, void *p)
 
 	exist_flag = 0;
 	seq_puts(s, "Opened filters:");
-	for (count = 0; count < TSPP2_NUM_HW_FILTERS; count++)
+	for (count = 0; count < TSPP2_NUM_AVAIL_FILTERS; count++)
 		if (device->filters[count].opened) {
 			seq_printf(s, "\n\tfilter%3d", count);
 			exist_flag = 1;
@@ -1226,6 +1244,45 @@ static int filter_debugfs_print(struct seq_file *s, void *p)
 	seq_printf(s, "raw_op_set: %d\n", filter->raw_op_set);
 	seq_printf(s, "pes_tx_op_set: %d\n", filter->pes_tx_op_set);
 	seq_printf(s, "Status: %s\n", filter->enabled ? "enabled" : "disabled");
+
+	if (filter->enabled) {
+		seq_printf(s, "Filter context-based counters, context %d\n",
+				filter->context);
+		seq_printf(s, "filter_tsp_sync_err = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_TSP_SYNC_ERROR(filter->context)));
+		seq_printf(s, "filter_erred_tsp = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_ERRED_TSP(filter->context)));
+		seq_printf(s, "filter_discontinuities = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_DISCONTINUITIES(filter->context)));
+		seq_printf(s, "filter_sc_bits_discard = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_SCRAMBLING_BITS_DISCARD(filter->context)));
+		seq_printf(s, "filter_tsp_total_num = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_TSP_TOTAL_NUM(filter->context)));
+		seq_printf(s, "filter_discont_indicator = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_DISCONT_INDICATOR(filter->context)));
+		seq_printf(s, "filter_tsp_no_payload = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_TSP_NO_PAYLOAD(filter->context)));
+		seq_printf(s, "filter_tsp_duplicate = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_TSP_DUPLICATE(filter->context)));
+		seq_printf(s, "filter_key_fetch_fail = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_KEY_FETCH_FAILURE(filter->context)));
+		seq_printf(s, "filter_dropped_pcr = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_DROPPED_PCR(filter->context)));
+		seq_printf(s, "filter_pes_errors = 0x%08X\n",
+			readl_relaxed(filter->device->base +
+			TSPP2_FILTER_PES_ERRORS(filter->context)));
+	}
+
 	return 0;
 }
 
@@ -1369,35 +1426,11 @@ static void tspp2_debugfs_init(struct tspp2_device *device)
 			&device->irq_stats.global.encrypt_level_err);
 	}
 
-	dir = debugfs_create_dir("filters", device->debugfs_entry);
-	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++) {
-		snprintf(name, 80, "filter%03i", i);
+	dir = debugfs_create_dir("counters", device->debugfs_entry);
+	for (i = 0; i < TSPP2_NUM_CONTEXTS; i++) {
+		snprintf(name, 80, "context%03i", i);
 		dentry = debugfs_create_dir(name, dir);
 		if (dentry) {
-			debugfs_create_u32(
-				"stat_sc_go_high",
-				S_IRUGO | S_IWUSR | S_IWGRP,
-				dentry,
-				&device->irq_stats.filter[i].sc_go_high);
-
-			debugfs_create_u32(
-				"stat_sc_go_low",
-				S_IRUGO | S_IWUSR | S_IWGRP,
-				dentry,
-				&device->irq_stats.filter[i].sc_go_low);
-
-			debugfs_create_file("filter_entry0",
-				TSPP2_S_RW,
-				dentry,
-				base + TSPP2_FILTER_ENTRY0(i),
-				&fops_iomem_x32);
-
-			debugfs_create_file("filter_entry1",
-				TSPP2_S_RW,
-				dentry,
-				base + TSPP2_FILTER_ENTRY1(i),
-				&fops_iomem_x32);
-
 			debugfs_create_file("filter_tsp_sync_err",
 				TSPP2_S_RW,
 				dentry,
@@ -1462,6 +1495,37 @@ static void tspp2_debugfs_init(struct tspp2_device *device)
 				TSPP2_S_RW,
 				dentry,
 				base + TSPP2_FILTER_PES_ERRORS(i),
+				&fops_iomem_x32);
+
+			debugfs_create_u32(
+				"stat_sc_go_high",
+				S_IRUGO | S_IWUSR | S_IWGRP,
+				dentry,
+				&device->irq_stats.ctx[i].sc_go_high);
+
+			debugfs_create_u32(
+				"stat_sc_go_low",
+				S_IRUGO | S_IWUSR | S_IWGRP,
+				dentry,
+				&device->irq_stats.ctx[i].sc_go_low);
+		}
+	}
+
+	dir = debugfs_create_dir("filters", device->debugfs_entry);
+	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++) {
+		snprintf(name, 80, "filter%03i", i);
+		dentry = debugfs_create_dir(name, dir);
+		if (dentry) {
+			debugfs_create_file("filter_entry0",
+				TSPP2_S_RW,
+				dentry,
+				base + TSPP2_FILTER_ENTRY0(i),
+				&fops_iomem_x32);
+
+			debugfs_create_file("filter_entry1",
+				TSPP2_S_RW,
+				dentry,
+				base + TSPP2_FILTER_ENTRY1(i),
 				&fops_iomem_x32);
 
 			for (j = 0; j < TSPP2_MAX_OPS_PER_FILTER; j++) {
@@ -1597,7 +1661,7 @@ static void tspp2_debugfs_init(struct tspp2_device *device)
 
 	dentry = debugfs_create_dir("filters", dir);
 	if (dentry) {
-		for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++) {
+		for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++) {
 			snprintf(name, 20, "filter%03i", i);
 			debugfs_create_file(name, S_IRUGO, dentry,
 				&(device->filters[i]), &dbgfs_filter_fops);
@@ -1948,27 +2012,24 @@ static void tspp2_clock_stop(struct tspp2_device *device)
  * tspp2_filter_counters_reset() - Reset a filter's HW counters.
  *
  * @device:	TSPP2 device.
- * @hw_index:	Filter HW index.
+ * @index:	Filter context index. Note counters are based on the context
+ *		index and not on the filter HW index.
  */
-static void tspp2_filter_counters_reset(struct tspp2_device *device,
-					u32 hw_index)
+static void tspp2_filter_counters_reset(struct tspp2_device *device, u32 index)
 {
 	/* Reset filter counters */
-	writel_relaxed(0, device->base + TSPP2_FILTER_TSP_SYNC_ERROR(hw_index));
-	writel_relaxed(0, device->base + TSPP2_FILTER_ERRED_TSP(hw_index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_TSP_SYNC_ERROR(index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_ERRED_TSP(index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_DISCONTINUITIES(index));
 	writel_relaxed(0,
-		device->base + TSPP2_FILTER_DISCONTINUITIES(hw_index));
-	writel_relaxed(0,
-		device->base + TSPP2_FILTER_SCRAMBLING_BITS_DISCARD(hw_index));
-	writel_relaxed(0, device->base + TSPP2_FILTER_TSP_TOTAL_NUM(hw_index));
-	writel_relaxed(0,
-		device->base + TSPP2_FILTER_DISCONT_INDICATOR(hw_index));
-	writel_relaxed(0, device->base + TSPP2_FILTER_TSP_NO_PAYLOAD(hw_index));
-	writel_relaxed(0, device->base + TSPP2_FILTER_TSP_DUPLICATE(hw_index));
-	writel_relaxed(0,
-		device->base + TSPP2_FILTER_KEY_FETCH_FAILURE(hw_index));
-	writel_relaxed(0, device->base + TSPP2_FILTER_DROPPED_PCR(hw_index));
-	writel_relaxed(0, device->base + TSPP2_FILTER_PES_ERRORS(hw_index));
+		device->base + TSPP2_FILTER_SCRAMBLING_BITS_DISCARD(index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_TSP_TOTAL_NUM(index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_DISCONT_INDICATOR(index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_TSP_NO_PAYLOAD(index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_TSP_DUPLICATE(index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_KEY_FETCH_FAILURE(index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_DROPPED_PCR(index));
+	writel_relaxed(0, device->base + TSPP2_FILTER_PES_ERRORS(index));
 }
 
 /**
@@ -1990,6 +2051,7 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 {
 	int i, n;
 	unsigned long rate_in_hz = 0;
+	u32 global_irq_en = 0;
 
 	if (!device) {
 		pr_err("%s: NULL device\n", __func__);
@@ -2033,13 +2095,9 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 			device->base + TSPP2_INDEX_TABLE_PARAMS(i));
 	}
 
-	/* Disable memory inputs */
-	for (i = 0; i < TSPP2_NUM_MEM_INPUTS; i++)
-		writel_relaxed(0, device->base + TSPP2_MEM_INPUT_SRC_CONFIG(i));
-
-	/* Disable TSIF inputs */
+	/* Disable TSIF inputs. Set mode of operation to 16 batches */
 	for (i = 0; i < TSPP2_NUM_TSIF_INPUTS; i++)
-		writel_relaxed(0,
+		writel_relaxed((0x1 << TSIF_INPUT_SRC_CONFIG_16_BATCHES_OFFS),
 			device->base + TSPP2_TSIF_INPUT_SRC_CONFIG(i));
 
 	/* Reset source related registers and performance counters */
@@ -2075,9 +2133,27 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 		/* Disable all HW filters */
 		writel_relaxed(0, device->base + TSPP2_FILTER_ENTRY0(i));
 		writel_relaxed(0, device->base + TSPP2_FILTER_ENTRY1(i));
-		/* Reset filter counters */
+	}
+
+	for (i = 0; i < TSPP2_NUM_CONTEXTS; i++) {
+		/* Reset filter context-based counters */
 		tspp2_filter_counters_reset(device, i);
 	}
+
+	/*
+	 * Disable memory inputs. Set mode of operation to 16 batches.
+	 * Configure last batch to be associated with all memory input sources,
+	 * and add a filter to match all PIDs and drop the TS packets in the
+	 * last HW filter entry. Use the last context for this filter.
+	 */
+	for (i = 0; i < TSPP2_NUM_MEM_INPUTS; i++)
+		writel_relaxed(TSPP2_DEFAULT_MEM_SRC_CONFIG,
+			device->base + TSPP2_MEM_INPUT_SRC_CONFIG(i));
+
+	writel_relaxed(((TSPP2_NUM_CONTEXTS - 1) << FILTER_ENTRY1_CONTEXT_OFFS),
+		device->base + TSPP2_FILTER_ENTRY1((TSPP2_NUM_HW_FILTERS - 1)));
+	writel_relaxed((0x1 << FILTER_ENTRY0_EN_OFFS),
+		device->base + TSPP2_FILTER_ENTRY0((TSPP2_NUM_HW_FILTERS - 1)));
 
 	/* Reset pipe registers */
 	for (i = 0; i < TSPP2_NUM_PIPES; i++)
@@ -2122,7 +2198,7 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 	/*
 	 * Global interrupts configuration:
 	 * Flow Control (per memory source):	Disabled
-	 * Read Failue (per memory source):	Enabled
+	 * Read Failure (per memory source):	Enabled
 	 * SC_GO_LOW (aggregate):		Enabled
 	 * SC_GO_HIGH (aggregate):		Enabled
 	 * Wrong Pipe Direction (aggregate):	Enabled
@@ -2130,12 +2206,21 @@ static int tspp2_global_hw_reset(struct tspp2_device *device,
 	 * Unexpected Reset (aggregate):	Enabled
 	 * Key Not Ready (aggregate):		Disabled
 	 * Op Encrypt Level Error:		Enabled
-	 * PES No Sync:				Enabled
-	 * TSP Invalid Length:			Enabled
-	 * TSP Invalid AF Control:		Enabled
+	 * PES No Sync:				Disabled (module parameter)
+	 * TSP Invalid Length:			Disabled (module parameter)
+	 * TSP Invalid AF Control:		Disabled (module parameter)
 	 */
+	global_irq_en = 0x00FF03E8;
+	if (tspp2_en_invalid_af_ctrl)
+		global_irq_en |=
+			(0x1 << GLOBAL_IRQ_TSP_INVALID_AF_OFFS);
+	if (tspp2_en_invalid_af_length)
+		global_irq_en |= (0x1 << GLOBAL_IRQ_TSP_INVALID_LEN_OFFS);
+	if (tspp2_en_pes_no_sync)
+		global_irq_en |= (0x1 << GLOBAL_IRQ_PES_NO_SYNC_OFFS);
+
 	if (enable_intr)
-		writel_relaxed(0x00FF03EF,
+		writel_relaxed(global_irq_en,
 			device->base + TSPP2_GLOBAL_IRQ_ENABLE);
 	else
 		writel_relaxed(0, device->base + TSPP2_GLOBAL_IRQ_ENABLE);
@@ -2271,7 +2356,7 @@ static int tspp2_device_initialize(struct tspp2_device *device)
 	for (i = 0; i < TSPP2_NUM_MEM_INPUTS; i++)
 		device->mem_sources[i].device = device;
 
-	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++)
+	for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++)
 		device->filters[i].device = device;
 
 	for (i = 0; i < TSPP2_NUM_PIPES; i++)
@@ -3776,7 +3861,11 @@ int tspp2_src_open(u32 dev_id,
 			device->base +
 			TSPP2_TSIF_INPUT_SRC_CONFIG(src->input));
 	} else {
-		writel_relaxed((0x1 << MEM_INPUT_SRC_CONFIG_16_BATCHES_OFFS),
+		/*
+		 * Disable memory inputs. Set mode of operation to 16 batches.
+		 * Configure last batch to be associated with this source.
+		 */
+		writel_relaxed(TSPP2_DEFAULT_MEM_SRC_CONFIG,
 			device->base +
 			TSPP2_MEM_INPUT_SRC_CONFIG(src->hw_index));
 	}
@@ -4683,14 +4772,21 @@ int tspp2_src_pipe_detach(u32 src_handle, u32 pipe_handle)
 				__func__, pipe_handle, src_handle);
 			goto err_inval;
 		}
+
 		writel_relaxed(0xFFFF,	src->input_pipe->device->base +
 			TSPP2_PIPE_THRESH_CONFIG(src->input_pipe->hw_index));
 
-		reg = readl_relaxed(src->device->base +
-			TSPP2_MEM_INPUT_SRC_CONFIG(src->hw_index));
-		reg &= ~(0x1F << MEM_INPUT_SRC_CONFIG_INPUT_PIPE_OFFS);
-		writel_relaxed(reg, src->device->base +
-			TSPP2_MEM_INPUT_SRC_CONFIG(src->hw_index));
+		if (src->enabled) {
+			pr_warn("%s: Detaching input pipe from an active memory source\n",
+				__func__);
+		}
+		/*
+		 * Note: not updating TSPP2_MEM_INPUT_SRC_CONFIG to reflect
+		 * this pipe is detached, since there is no invalid value we
+		 * can write instead. tspp2_src_pipe_attach() already takes
+		 * care of zeroing the relevant bit-field before writing the
+		 * new pipe nummber.
+		 */
 
 		src->input_pipe = NULL;
 	} else {
@@ -5062,8 +5158,8 @@ int tspp2_src_filters_clear(u32 src_handle)
 			TSPP2_FILTER_ENTRY0(filter->hw_index));
 		/* Clear filter operations in HW as well as related SW fields */
 		tspp2_filter_ops_clear(filter);
-		/* Reset filter counters */
-		tspp2_filter_counters_reset(filter->device, filter->hw_index);
+		/* Reset filter context-based counters */
+		tspp2_filter_counters_reset(filter->device, filter->context);
 		/* Reset filter context and release it back to the device */
 		tspp2_filter_context_reset(filter);
 		/* Reset filter SW fields */
@@ -5162,10 +5258,10 @@ int tspp2_filter_open(u32 src_handle, u16 pid, u16 mask, u32 *filter_handle)
 	}
 
 	/* Find an available filter object in the device's filters database */
-	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++)
+	for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++)
 		if (!src->device->filters[i].opened)
 			break;
-	if (i == TSPP2_NUM_HW_FILTERS) {
+	if (i == TSPP2_NUM_AVAIL_FILTERS) {
 		pr_err("%s: No available filters\n", __func__);
 		mutex_unlock(&src->device->mutex);
 		pm_runtime_mark_last_busy(src->device->dev);
@@ -5175,10 +5271,10 @@ int tspp2_filter_open(u32 src_handle, u16 pid, u16 mask, u32 *filter_handle)
 	filter = &src->device->filters[i];
 
 	/* Find an available context. Each new filter needs a unique context */
-	for (i = 0; i < TSPP2_NUM_CONTEXTS; i++)
+	for (i = 0; i < TSPP2_NUM_AVAIL_CONTEXTS; i++)
 		if (!src->device->contexts[i])
 			break;
-	if (i == TSPP2_NUM_CONTEXTS) {
+	if (i == TSPP2_NUM_AVAIL_CONTEXTS) {
 		pr_err("%s: No available filters\n", __func__);
 		mutex_unlock(&src->device->mutex);
 		pm_runtime_mark_last_busy(src->device->dev);
@@ -5229,6 +5325,7 @@ int tspp2_filter_open(u32 src_handle, u16 pid, u16 mask, u32 *filter_handle)
 		if (i == TSPP2_NUM_BATCHES) {
 			pr_err("%s: No available filters\n", __func__);
 			src->device->contexts[filter->context] = 0;
+			filter->context = 0;
 			mutex_unlock(&src->device->mutex);
 			pm_runtime_mark_last_busy(src->device->dev);
 			pm_runtime_put_autosuspend(src->device->dev);
@@ -5265,8 +5362,8 @@ int tspp2_filter_open(u32 src_handle, u16 pid, u16 mask, u32 *filter_handle)
 	list_add_tail(&filter->link, &src->filters_list);
 	src->num_associated_filters++;
 
-	/* Reset filter counters */
-	tspp2_filter_counters_reset(filter->device, filter->hw_index);
+	/* Reset filter context-based counters */
+	tspp2_filter_counters_reset(filter->device, filter->context);
 
 	/* Reset this filter's context */
 	writel_relaxed((0x1 << TSPP2_MODULUS_OP(filter->context, 32)),
@@ -5378,8 +5475,8 @@ int tspp2_filter_close(u32 filter_handle)
 	/* Clear filter operations in HW as well as related SW fields */
 	tspp2_filter_ops_clear(filter);
 
-	/* Reset filter counters */
-	tspp2_filter_counters_reset(device, filter->hw_index);
+	/* Reset filter context-based counters */
+	tspp2_filter_counters_reset(device, filter->context);
 
 	/* Reset filter context and release it back to the device */
 	tspp2_filter_context_reset(filter);
@@ -6261,10 +6358,10 @@ static int tspp2_filter_ops_update(struct tspp2_filter *filter,
 	 * Find an available temporary filter object in the device's
 	 * filters database.
 	 */
-	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++)
+	for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++)
 		if (!src->device->filters[i].opened)
 			break;
-	if (i == TSPP2_NUM_HW_FILTERS) {
+	if (i == TSPP2_NUM_AVAIL_FILTERS) {
 		/* Should never happen */
 		pr_err("%s: No available filters\n", __func__);
 		return -ENOMEM;
@@ -6315,9 +6412,6 @@ static int tspp2_filter_ops_update(struct tspp2_filter *filter,
 		return -EINVAL;
 	}
 
-	/* Reset new filter HW counters */
-	tspp2_filter_counters_reset(filter->device, tmp_filter->hw_index);
-
 	/* Set the same context of the old filter to the new HW filter */
 	writel_relaxed((filter->context << FILTER_ENTRY1_CONTEXT_OFFS),
 		filter->device->base +
@@ -6329,6 +6423,10 @@ static int tspp2_filter_ops_update(struct tspp2_filter *filter,
 	 * that uses a context where before there was no operation that used it,
 	 * we reset that context. We need to do this before we start using the
 	 * new operation, so before we enable the new filter.
+	 * Note: there is no need to reset most of the filter's context-based
+	 * counters, because the filter keeps using the same context. The
+	 * exception is the PES error counters that we may want to reset when
+	 * resetting the entire PES context.
 	 */
 	if (!filter->pes_tx_op_set && tmp_filter->pes_tx_op_set) {
 		/* PES Tx operation added */
@@ -6336,6 +6434,8 @@ static int tspp2_filter_ops_update(struct tspp2_filter *filter,
 			(0x1 << TSPP2_MODULUS_OP(filter->context, 32)),
 			filter->device->base +
 			TSPP2_PES_CONTEXT_RESET(filter->context >> 5));
+		writel_relaxed(0, filter->device->base +
+			TSPP2_FILTER_PES_ERRORS(filter->context));
 	}
 
 	if (!filter->indexing_op_set && tmp_filter->indexing_op_set) {
@@ -6378,9 +6478,6 @@ static int tspp2_filter_ops_update(struct tspp2_filter *filter,
 
 	/* The new HW filter may be in a new batch, so we need to update */
 	filter->batch = batch;
-
-	/* Reset old filter HW counters */
-	tspp2_filter_counters_reset(filter->device, filter->hw_index);
 
 	/*
 	 * Update source's reserved filter HW index, and also update the
@@ -7107,6 +7204,7 @@ int tspp2_global_event_notification_register(u32 dev_id,
 {
 	struct tspp2_device *device;
 	unsigned long flags;
+	u32 reg = 0;
 
 	if (dev_id >= TSPP2_NUM_DEVICES) {
 		pr_err("%s: Invalid device ID %d\n", __func__, dev_id);
@@ -7127,6 +7225,44 @@ int tspp2_global_event_notification_register(u32 dev_id,
 		mutex_unlock(&device->mutex);
 		return -EPERM;
 	}
+
+	/*
+	 * Some of the interrupts that are generated when these events occur
+	 * may be disabled due to module parameters. So we make sure to enable
+	 * them here, depending on which event was requested. If some events
+	 * were requested before and now this function is called again with
+	 * other events, though, we want to restore the interrupt configuration
+	 * to the default state according to the module parameters.
+	 */
+	reg = readl_relaxed(device->base + TSPP2_GLOBAL_IRQ_ENABLE);
+	if (global_event_bitmask & TSPP2_GLOBAL_EVENT_INVALID_AF_CTRL) {
+		reg |= (0x1 << GLOBAL_IRQ_TSP_INVALID_AF_OFFS);
+	} else {
+		if (tspp2_en_invalid_af_ctrl)
+			reg |= (0x1 << GLOBAL_IRQ_TSP_INVALID_AF_OFFS);
+		else
+			reg &= ~(0x1 << GLOBAL_IRQ_TSP_INVALID_AF_OFFS);
+	}
+
+	if (global_event_bitmask & TSPP2_GLOBAL_EVENT_INVALID_AF_LENGTH) {
+		reg |= (0x1 << GLOBAL_IRQ_TSP_INVALID_LEN_OFFS);
+	} else {
+		if (tspp2_en_invalid_af_length)
+			reg |= (0x1 << GLOBAL_IRQ_TSP_INVALID_LEN_OFFS);
+		else
+			reg &= ~(0x1 << GLOBAL_IRQ_TSP_INVALID_LEN_OFFS);
+	}
+
+	if (global_event_bitmask & TSPP2_GLOBAL_EVENT_PES_NO_SYNC) {
+		reg |= (0x1 << GLOBAL_IRQ_PES_NO_SYNC_OFFS);
+	} else {
+		if (tspp2_en_pes_no_sync)
+			reg |= (0x1 << GLOBAL_IRQ_PES_NO_SYNC_OFFS);
+		else
+			reg &= ~(0x1 << GLOBAL_IRQ_PES_NO_SYNC_OFFS);
+	}
+
+	writel_relaxed(reg, device->base + TSPP2_GLOBAL_IRQ_ENABLE);
 
 	spin_lock_irqsave(&device->spinlock, flags);
 	device->event_callback = callback;
@@ -7227,10 +7363,10 @@ int tspp2_src_event_notification_register(u32 src_handle,
 	reg = readl_relaxed(src->device->base + TSPP2_GLOBAL_IRQ_ENABLE);
 	if (callback && (src_event_bitmask & TSPP2_SRC_EVENT_FLOW_CTRL_STALL)) {
 		reg |= ((0x1 << src->hw_index) <<
-			GLOBAL_IRQ_ENABLE_READ_FAIL_OFFS);
+			GLOBAL_IRQ_FC_STALL_OFFS);
 	} else {
 		reg &= ~((0x1 << src->hw_index) <<
-			GLOBAL_IRQ_ENABLE_READ_FAIL_OFFS);
+			GLOBAL_IRQ_FC_STALL_OFFS);
 	}
 	writel_relaxed(reg, src->device->base + TSPP2_GLOBAL_IRQ_ENABLE);
 
@@ -7318,14 +7454,14 @@ int tspp2_filter_event_notification_register(u32 filter_handle,
 	spin_unlock_irqrestore(&filter->device->spinlock, flags);
 
 	/* Enable/disable SC high/low interrupts per filter as requested */
-	idx = (filter->hw_index >> 5);
+	idx = (filter->context >> 5);
 	reg = readl_relaxed(filter->device->base +
 		TSPP2_SC_GO_HIGH_ENABLE(idx));
 	if (callback &&
 		(filter_event_bitmask & TSPP2_FILTER_EVENT_SCRAMBLING_HIGH)) {
-		reg |= (0x1 << TSPP2_MODULUS_OP(filter->hw_index, 32));
+		reg |= (0x1 << TSPP2_MODULUS_OP(filter->context, 32));
 	} else {
-		reg &= ~(0x1 << TSPP2_MODULUS_OP(filter->hw_index, 32));
+		reg &= ~(0x1 << TSPP2_MODULUS_OP(filter->context, 32));
 	}
 	writel_relaxed(reg, filter->device->base +
 		TSPP2_SC_GO_HIGH_ENABLE(idx));
@@ -7334,9 +7470,9 @@ int tspp2_filter_event_notification_register(u32 filter_handle,
 		TSPP2_SC_GO_LOW_ENABLE(idx));
 	if (callback &&
 		(filter_event_bitmask & TSPP2_FILTER_EVENT_SCRAMBLING_LOW)) {
-		reg |= (0x1 << TSPP2_MODULUS_OP(filter->hw_index, 32));
+		reg |= (0x1 << TSPP2_MODULUS_OP(filter->context, 32));
 	} else {
-		reg &= ~(0x1 << TSPP2_MODULUS_OP(filter->hw_index, 32));
+		reg &= ~(0x1 << TSPP2_MODULUS_OP(filter->context, 32));
 	}
 	writel_relaxed(reg, filter->device->base +
 		TSPP2_SC_GO_LOW_ENABLE(idx));
@@ -7441,43 +7577,6 @@ msm_tspp2_dt_to_pdata(struct platform_device *pdev)
 	/* Get power regulator */
 	if (!of_get_property(node, "vdd-supply", NULL)) {
 		pr_err("%s: Could not find vdd-supply property\n", __func__);
-		return NULL;
-	}
-
-	/* Get clocks information */
-	rc = of_property_read_string(node, "qcom,tspp2-ahb-clk",
-					&data->tspp2_ahb_clk);
-	if (rc) {
-		pr_err("%s: Could not find tspp2-ahb-clk property, err = %d\n",
-			__func__, rc);
-		return NULL;
-	}
-	rc = of_property_read_string(node, "qcom,tspp2-core-clk",
-					&data->tspp2_core_clk);
-	if (rc) {
-		pr_err("%s: Could not find tspp2-core-clk property, err = %d\n",
-			__func__, rc);
-		return NULL;
-	}
-	rc = of_property_read_string(node, "qcom,tspp2-vbif-clk",
-					&data->tspp2_vbif_clk);
-	if (rc) {
-		pr_err("%s: Could not find tspp2-vbif-clk property, err = %d\n",
-			__func__, rc);
-		return NULL;
-	}
-	rc = of_property_read_string(node, "qcom,tspp2-klm-ahb-clk",
-					&data->tspp2_klm_ahb_clk);
-	if (rc) {
-		pr_err("%s: Could not find tspp2-klm-ahb-clk property, err = %d\n",
-			__func__, rc);
-		return NULL;
-	}
-	rc = of_property_read_string(node, "qcom,tsif-ref-clk",
-			&data->tsif_ref_clk);
-	if (rc) {
-		pr_err("%s: Could not find tsif-ref-clk property, err = %d\n",
-			__func__, rc);
 		return NULL;
 	}
 
@@ -7658,8 +7757,6 @@ static int msm_tspp2_clocks_setup(struct platform_device *pdev,
 	unsigned long rate_in_hz = 0;
 	struct clk *tspp2_core_clk_src = NULL;
 
-	struct msm_tspp2_platform_data *data = pdev->dev.platform_data;
-
 	/* Get power regulator (GDSC) */
 	device->gdsc = devm_regulator_get(&pdev->dev, "vdd");
 	if (IS_ERR(device->gdsc)) {
@@ -7677,40 +7774,28 @@ static int msm_tspp2_clocks_setup(struct platform_device *pdev,
 	device->tspp2_klm_ahb_clk = NULL;
 	device->tsif_ref_clk = NULL;
 
-	if (data->tspp2_ahb_clk) {
-		device->tspp2_ahb_clk =
-			clk_get(&pdev->dev, data->tspp2_ahb_clk);
-		if (IS_ERR(device->tspp2_ahb_clk)) {
-			pr_err("%s: Failed to get %s",
-				__func__, data->tspp2_ahb_clk);
-			ret = PTR_ERR(device->tspp2_ahb_clk);
-			device->tspp2_ahb_clk = NULL;
-			goto err_clocks;
-		}
+	device->tspp2_ahb_clk = clk_get(&pdev->dev, "bcc_tspp2_ahb_clk");
+	if (IS_ERR(device->tspp2_ahb_clk)) {
+		pr_err("%s: Failed to get %s", __func__, "bcc_tspp2_ahb_clk");
+		ret = PTR_ERR(device->tspp2_ahb_clk);
+		device->tspp2_ahb_clk = NULL;
+		goto err_clocks;
 	}
 
-	if (data->tspp2_core_clk) {
-		device->tspp2_core_clk =
-			clk_get(&pdev->dev, data->tspp2_core_clk);
-		if (IS_ERR(device->tspp2_core_clk)) {
-			pr_err("%s: Failed to get %s",
-				__func__, data->tspp2_core_clk);
-			ret = PTR_ERR(device->tspp2_core_clk);
-			device->tspp2_core_clk = NULL;
-			goto err_clocks;
-		}
+	device->tspp2_core_clk = clk_get(&pdev->dev, "bcc_tspp2_core_clk");
+	if (IS_ERR(device->tspp2_core_clk)) {
+		pr_err("%s: Failed to get %s", __func__, "bcc_tspp2_core_clk");
+		ret = PTR_ERR(device->tspp2_core_clk);
+		device->tspp2_core_clk = NULL;
+		goto err_clocks;
 	}
 
-	if (data->tspp2_vbif_clk) {
-		device->tspp2_vbif_clk =
-			clk_get(&pdev->dev, data->tspp2_vbif_clk);
-		if (IS_ERR(device->tspp2_vbif_clk)) {
-			pr_err("%s: Failed to get %s",
-				__func__, data->tspp2_vbif_clk);
-			ret = PTR_ERR(device->tspp2_vbif_clk);
-			device->tspp2_vbif_clk = NULL;
-			goto err_clocks;
-		}
+	device->tspp2_vbif_clk = clk_get(&pdev->dev, "bcc_vbif_tspp2_clk");
+	if (IS_ERR(device->tspp2_vbif_clk)) {
+		pr_err("%s: Failed to get %s", __func__, "bcc_vbif_tspp2_clk");
+		ret = PTR_ERR(device->tspp2_vbif_clk);
+		device->tspp2_vbif_clk = NULL;
+		goto err_clocks;
 	}
 
 	device->vbif_ahb_clk = clk_get(&pdev->dev, "iface_vbif_clk");
@@ -7729,34 +7814,27 @@ static int msm_tspp2_clocks_setup(struct platform_device *pdev,
 		goto err_clocks;
 	}
 
-	if (data->tspp2_klm_ahb_clk) {
-		device->tspp2_klm_ahb_clk =
-			clk_get(&pdev->dev, data->tspp2_klm_ahb_clk);
-		if (IS_ERR(device->tspp2_klm_ahb_clk)) {
-			pr_err("%s: Failed to get %s",
-				__func__, data->tspp2_klm_ahb_clk);
-			ret = PTR_ERR(device->tspp2_klm_ahb_clk);
-			device->tspp2_klm_ahb_clk = NULL;
-			goto err_clocks;
-		}
+	device->tspp2_klm_ahb_clk = clk_get(&pdev->dev, "bcc_klm_ahb_clk");
+	if (IS_ERR(device->tspp2_klm_ahb_clk)) {
+		pr_err("%s: Failed to get %s", __func__, "bcc_klm_ahb_clk");
+		ret = PTR_ERR(device->tspp2_klm_ahb_clk);
+		device->tspp2_klm_ahb_clk = NULL;
+		goto err_clocks;
 	}
 
-	if (data->tsif_ref_clk) {
-		device->tsif_ref_clk = clk_get(&pdev->dev, data->tsif_ref_clk);
-		if (IS_ERR(device->tsif_ref_clk)) {
-			pr_err("%s: Failed to get %s",
-				__func__, data->tsif_ref_clk);
-			ret = PTR_ERR(device->tsif_ref_clk);
-			device->tsif_ref_clk = NULL;
-			goto err_clocks;
-		}
+	device->tsif_ref_clk = clk_get(&pdev->dev, "gcc_tsif_ref_clk");
+	if (IS_ERR(device->tsif_ref_clk)) {
+		pr_err("%s: Failed to get %s", __func__, "gcc_tsif_ref_clk");
+		ret = PTR_ERR(device->tsif_ref_clk);
+		device->tsif_ref_clk = NULL;
+		goto err_clocks;
 	}
 
 	/* Set relevant clock rates */
 	rate_in_hz = clk_round_rate(device->tsif_ref_clk, 1);
 	if (clk_set_rate(device->tsif_ref_clk, rate_in_hz)) {
 		pr_err("%s: Failed to set rate %lu to %s\n", __func__,
-			rate_in_hz, data->tsif_ref_clk);
+			rate_in_hz, "gcc_tsif_ref_clk");
 		goto err_clocks;
 	}
 
@@ -7926,7 +8004,7 @@ static irqreturn_t tspp2_isr(int irq, void *dev)
 	u32 i = 0, j = 0;
 	u32 global_bitmask = 0;
 	u32 src_bitmask[TSPP2_NUM_MEM_INPUTS] = {0};
-	u32 filter_bitmask[TSPP2_NUM_HW_FILTERS] = {0};
+	u32 filter_bitmask[TSPP2_NUM_CONTEXTS] = {0};
 	u32 reg = 0;
 
 	reg = readl_relaxed(device->base + TSPP2_GLOBAL_IRQ_STATUS);
@@ -7993,7 +8071,7 @@ static irqreturn_t tspp2_isr(int irq, void *dev)
 			for_each_set_bit(i, &ext_reg, 32) {
 				filter_bitmask[j*32 + i] |=
 					TSPP2_FILTER_EVENT_SCRAMBLING_HIGH;
-				device->irq_stats.filter[j*32 + i].sc_go_high++;
+				device->irq_stats.ctx[j*32 + i].sc_go_high++;
 			}
 			writel_relaxed(ext_reg, device->base +
 					TSPP2_SC_GO_HIGH_CLEAR(j));
@@ -8007,7 +8085,7 @@ static irqreturn_t tspp2_isr(int irq, void *dev)
 			for_each_set_bit(i, &ext_reg, 32) {
 				filter_bitmask[j*32 + i] |=
 					TSPP2_FILTER_EVENT_SCRAMBLING_LOW;
-				device->irq_stats.filter[j*32 + i].sc_go_low++;
+				device->irq_stats.ctx[j*32 + i].sc_go_low++;
 			}
 			writel_relaxed(ext_reg, device->base +
 					TSPP2_SC_GO_LOW_CLEAR(j));
@@ -8053,15 +8131,15 @@ static irqreturn_t tspp2_isr(int irq, void *dev)
 	}
 
 	/* Invoke user callbacks on filter events */
-	for (i = 0; i < TSPP2_NUM_HW_FILTERS; i++) {
+	for (i = 0; i < TSPP2_NUM_AVAIL_FILTERS; i++) {
 		f = &device->filters[i];
 		if (f->event_callback &&
-			(f->event_bitmask & filter_bitmask[f->hw_index]))
+			(f->event_bitmask & filter_bitmask[f->context]))
 			tspp2_event_work_prepare(device,
 				f->event_callback,
 				f->event_cookie,
 				(f->event_bitmask &
-					filter_bitmask[f->hw_index]));
+					filter_bitmask[f->context]));
 	}
 
 	spin_unlock_irqrestore(&device->spinlock, flags);
@@ -8303,9 +8381,8 @@ static int msm_tspp2_probe(struct platform_device *pdev)
 		if (!device->bus_client)
 			pr_err("%s: Unable to register bus client\n", __func__);
 	} else {
-		pr_err("%s: Platform bus client data not available\n",
+		pr_err("%s: Platform bus client data not available. Continue anyway...\n",
 			__func__);
-		return -EINVAL;
 	}
 
 	rc = msm_tspp2_iommu_info_get(pdev, device);

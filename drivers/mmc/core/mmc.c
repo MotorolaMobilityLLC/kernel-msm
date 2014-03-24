@@ -341,6 +341,8 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	card->ext_csd.raw_card_type = ext_csd[EXT_CSD_CARD_TYPE];
 	mmc_select_card_type(card);
 
+	card->ext_csd.raw_drive_strength = ext_csd[EXT_CSD_DRIVE_STRENGTH];
+
 	card->ext_csd.raw_s_a_timeout = ext_csd[EXT_CSD_S_A_TIMEOUT];
 	card->ext_csd.raw_erase_timeout_mult =
 		ext_csd[EXT_CSD_ERASE_TIMEOUT_MULT];
@@ -1391,6 +1393,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		card->rca = 1;
 		memcpy(card->raw_cid, cid, sizeof(card->raw_cid));
 		card->reboot_notify.notifier_call = mmc_reboot_notify;
+		host->card = card;
 	}
 
 	/*
@@ -1555,7 +1558,8 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 * If HPI is not supported then cache shouldn't be enabled.
 	 */
 	if ((host->caps2 & MMC_CAP2_CACHE_CTRL) &&
-	    (card->ext_csd.cache_size > 0) && card->ext_csd.hpi_en) {
+	    (card->ext_csd.cache_size > 0) && card->ext_csd.hpi_en &&
+	    ((card->quirks & MMC_QUIRK_CACHE_DISABLE) == 0)) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				EXT_CSD_CACHE_CTRL, 1,
 				card->ext_csd.generic_cmd6_time);
@@ -1574,6 +1578,11 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		} else {
 			card->ext_csd.cache_ctrl = 1;
 		}
+	}
+	if (card->quirks & MMC_QUIRK_CACHE_DISABLE) {
+		pr_warn("%s: This is Hynix card, cache disabled!\n",
+				mmc_hostname(card->host));
+		card->ext_csd.cache_ctrl = 0;
 	}
 
 	/*
@@ -1635,12 +1644,10 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		}
 	}
 
-	if (!oldcard)
-		host->card = card;
-
 	return 0;
 
 free_card:
+	host->card = NULL;
 	if (!oldcard)
 		mmc_remove_card(card);
 err:

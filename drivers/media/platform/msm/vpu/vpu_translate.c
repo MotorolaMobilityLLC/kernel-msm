@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -109,7 +109,7 @@ u32 translate_pixelformat_to_hfi(u32 api_pix_fmt)
 		hfi_pix_fmt = PIXEL_FORMAT_UYVY;
 		break;
 	case V4L2_PIX_FMT_YUYV10:
-		hfi_pix_fmt = PIXEL_FORMAT_YUYV_LOOSE;
+		hfi_pix_fmt = PIXEL_FORMAT_YUYV10_LOOSE;
 		break;
 	case V4L2_PIX_FMT_YUV8:
 		hfi_pix_fmt = PIXEL_FORMAT_YUV_8BIT_INTERLEAVED_DENSE;
@@ -122,8 +122,7 @@ u32 translate_pixelformat_to_hfi(u32 api_pix_fmt)
 		break;
 	default:
 		hfi_pix_fmt = PIXEL_FORMAT_MAX;
-		pr_warn("Unsupported api pixel format: %d (%4c)\n",
-				api_pix_fmt, (char)api_pix_fmt);
+		pr_warn("Unsupported api pixel format: %d\n", api_pix_fmt);
 		break;
 	}
 
@@ -131,40 +130,117 @@ u32 translate_pixelformat_to_hfi(u32 api_pix_fmt)
 	return hfi_pix_fmt;
 }
 
+void translate_colorspace_to_hfi(u32 api_colorspace,
+		struct vpu_prop_session_color_space *cs_1,
+		struct vpu_prop_session_color_space *cs_2)
+{
+	switch (api_colorspace) {
+	case VPU_CS_RGB_FULL:
+		cs_1->cs_config = CONFIG_RGB_RANGE;
+		cs_1->value = RGB_RANGE_FULL;
+	break;
+	case VPU_CS_RGB_LIMITED:
+		cs_1->cs_config = CONFIG_RGB_RANGE;
+		cs_1->value = RGB_RANGE_LIMITED;
+	break;
+	case VPU_CS_REC601_FULL:
+		cs_1->cs_config = CONFIG_NOMINAL_RANGE;
+		cs_1->value = NOMINAL_RANGE_FULL;
+		cs_2->cs_config = CONFIG_YCBCR_MATRIX;
+		cs_2->value = YCbCr_MATRIX_BT601;
+	break;
+	case VPU_CS_REC601_LIMITED:
+		cs_1->cs_config = CONFIG_NOMINAL_RANGE;
+		cs_1->value = NOMINAL_RANGE_LIMITED;
+		cs_2->cs_config = CONFIG_YCBCR_MATRIX;
+		cs_2->value = YCbCr_MATRIX_BT601;
+	break;
+	case VPU_CS_REC709_FULL:
+		cs_1->cs_config = CONFIG_NOMINAL_RANGE;
+		cs_1->value = NOMINAL_RANGE_FULL;
+		cs_2->cs_config = CONFIG_YCBCR_MATRIX;
+		cs_2->value = YCbCr_MATRIX_BT709;
+	break;
+	case VPU_CS_REC709_LIMITED:
+		cs_1->cs_config = CONFIG_NOMINAL_RANGE;
+		cs_1->value = NOMINAL_RANGE_LIMITED;
+		cs_2->cs_config = CONFIG_YCBCR_MATRIX;
+		cs_2->value = YCbCr_MATRIX_BT709;
+	break;
+	case VPU_CS_SMPTE240_FULL:
+		cs_1->cs_config = CONFIG_NOMINAL_RANGE;
+		cs_1->value = NOMINAL_RANGE_FULL;
+		cs_2->cs_config = CONFIG_YCBCR_MATRIX;
+		cs_2->value = YCbCr_MATRIX_BT240;
+	break;
+	case VPU_CS_SMPTE240_LIMITED:
+		cs_1->cs_config = CONFIG_NOMINAL_RANGE;
+		cs_1->value = NOMINAL_RANGE_LIMITED;
+		cs_2->cs_config = CONFIG_YCBCR_MATRIX;
+		cs_2->value = YCbCr_MATRIX_BT240;
+	break;
+	default:
+		pr_warn("Unsupported api colorspace %d\n", api_colorspace);
+	break;
+	}
+}
+
 u32 translate_input_source(u32 in)
 {
-	u32 hfi_source = 100; /* invaid */
+	pr_debug("received input source = %d\n", in);
+
+	if (in & VPU_INPUT_TYPE_VCAP)
+		return INPUT_SOURCE_VCAP;
+	else
+		return INPUT_SOURCE_HOST;
+}
+
+u32 translate_input_source_ch(u32 in)
+{
+	u32 hfi_source_ch = 0;
 
 	if (in & VPU_INPUT_TYPE_VCAP) {
 		if (in & VPU_PIPE_VCAP0)
-			hfi_source = INPUT_SOURCE_VCAP0;
-		else if (in & VPU_PIPE_VCAP1)
-			hfi_source = INPUT_SOURCE_VCAP1;
-		else
-			pr_warn("Unsupported input pipe: %d\n", in);
-	} else {
-		hfi_source = INPUT_SOURCE_HOST;
+			hfi_source_ch = VPU_SOURCE_VCAP_CH_0;
+		if (in & VPU_PIPE_VCAP1)
+			hfi_source_ch |= VPU_SOURCE_VCAP_CH_1;
 	}
-	return hfi_source;
+
+	if (hfi_source_ch == 0)
+		pr_warn("No VCAP channel set: %d\n", in);
+
+	return hfi_source_ch;
 }
 
 u32 translate_output_destination(u32 out)
 {
-	u32 hfi_destination = OUTPUT_DEST_NULL; /* removed */
+	pr_debug("received output destination = %d\n", out);
+
+	if (out & VPU_OUTPUT_TYPE_DISPLAY)
+		return OUTPUT_DEST_MDSS;
+	else
+		return OUTPUT_DEST_HOST;
+}
+
+u32 translate_output_destination_ch(u32 out)
+{
+	u32 hfi_destination_ch = 0;
 
 	if (out & VPU_OUTPUT_TYPE_DISPLAY) {
 		if (out & VPU_PIPE_DISPLAY0)
-			hfi_destination = OUTPUT_DEST_MDSS0;
-		else if (out & VPU_PIPE_DISPLAY1)
-			hfi_destination = OUTPUT_DEST_MDSS1;
-		else if (out & VPU_PIPE_DISPLAY2)
-			hfi_destination = OUTPUT_DEST_MDSS2;
-		else
-			pr_warn("Unsupported output pipe: %d\n", out);
-	} else {
-		hfi_destination = OUTPUT_DEST_HOST;
+			hfi_destination_ch = VPU_DEST_MDSS_CH_0;
+		if (out & VPU_PIPE_DISPLAY1)
+			hfi_destination_ch |= VPU_DEST_MDSS_CH_1;
+		if (out & VPU_PIPE_DISPLAY2)
+			hfi_destination_ch |= VPU_DEST_MDSS_CH_2;
+		if (out & VPU_PIPE_DISPLAY3)
+			hfi_destination_ch |= VPU_DEST_MDSS_CH_3;
 	}
-	return hfi_destination;
+
+	if (hfi_destination_ch == 0)
+		pr_warn("No MDSS channel set: %d\n", out);
+
+	return hfi_destination_ch;
 }
 
 u32 translate_pixelformat_to_api(u32 hfi_pix_fmt)
@@ -208,7 +284,7 @@ u32 translate_pixelformat_to_api(u32 hfi_pix_fmt)
 	case PIXEL_FORMAT_UYVY:
 		api_pix_fmt = V4L2_PIX_FMT_UYVY;
 		break;
-	case PIXEL_FORMAT_YUYV_LOOSE:
+	case PIXEL_FORMAT_YUYV10_LOOSE:
 		api_pix_fmt = V4L2_PIX_FMT_YUYV10;
 		break;
 	case PIXEL_FORMAT_YUV_8BIT_INTERLEAVED_DENSE:
@@ -483,22 +559,14 @@ void translate_ctrl_auto_manual_to_api(const void *hfi_data, void *api_data)
 			api->enable, api->auto_mode, api->value);
 }
 
-void translate_ctrl_two_value_to_hfi(const void *api_data, void *hfi_data)
+void translate_range_mapping_to_hfi(const void *api_data, void *hfi_data)
 {
-	const struct vpu_ctrl_two_value *api = api_data;
-	struct vpu_ctrl_two_value *hfi = hfi_data;
+	const struct vpu_ctrl_range_mapping *api = api_data;
+	struct vpu_prop_session_range_mapping *hfi = hfi_data;
 
-	hfi->enable = api->enable ? PROP_TRUE : PROP_FALSE;
-	hfi->value1 = api->value1;
-	hfi->value1 = api->value2;
-}
-
-void translate_ctrl_two_value_to_api(const void *hfi_data, void *api_data)
-{
-	const struct vpu_ctrl_two_value *hfi = hfi_data;
-	struct vpu_ctrl_two_value *api = api_data;
-
-	memcpy(api, hfi, sizeof(*api));
+	hfi->enabled = api->enable ? PROP_TRUE : PROP_FALSE;
+	hfi->y_map_range = api->y_range;
+	hfi->uv_map_range = api->uv_range;
 }
 
 void translate_active_region_param_to_hfi(const void *api_data, void *hfi_data)
@@ -521,11 +589,42 @@ void translate_active_region_param_to_hfi(const void *api_data, void *hfi_data)
 				(hfi_rect++));
 }
 
-
 void translate_active_region_result_to_api(const void *hfi_data, void *api_data)
 {
 	const struct rect *hfi = hfi_data;
 
 	struct v4l2_rect *api = api_data;
 	translate_roi_rect_to_api((struct rect *) hfi, api);
+}
+
+void translate_hqv_to_hfi(const void *api_data, void *hfi_data)
+{
+	const struct vpu_ctrl_hqv *api = api_data;
+	struct vpu_prop_session_auto_hqv *hfi = hfi_data;
+
+	hfi->enabled = api->enable ? PROP_TRUE : PROP_FALSE;
+	hfi->sharpen_strength = api->sharpen_strength;
+	hfi->auto_nr_strength = api->auto_nr_strength;
+}
+
+void translate_timestamp_to_hfi(const void *api_data, void *hfi_data)
+{
+	const struct vpu_info_frame_timestamp *api = api_data;
+	struct vpu_prop_session_timestamp *hfi = hfi_data;
+
+	hfi->presentation.low = api->pts_low;
+	hfi->presentation.high = api->pts_high;
+	hfi->qtimer.low = api->qtime_low;
+	hfi->qtimer.high = api->qtime_high;
+}
+
+void translate_timestamp_to_api(const void *hfi_data, void *api_data)
+{
+	const struct vpu_prop_session_timestamp *hfi = hfi_data;
+	struct vpu_info_frame_timestamp *api = api_data;
+
+	api->pts_low = hfi->presentation.low;
+	api->pts_high = hfi->presentation.high;
+	api->qtime_low = hfi->qtimer.low;
+	api->qtime_high = hfi->qtimer.high;
 }

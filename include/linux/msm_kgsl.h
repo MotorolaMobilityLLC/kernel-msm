@@ -54,12 +54,16 @@ struct kgsl_device_iommu_data {
  * struct kgsl_pwrlevel - Struct holding different pwrlevel info obtained from
  * from dtsi file
  * @gpu_freq:		GPU frequency vote in Hz
- * @bus_freq:		Bus bandwidth vote in Mbps
+ * @bus_freq:		Bus bandwidth vote index
+ * @bus_min:		Min bus index @gpu_freq
+ * @bus_max:		Max bus index @gpu_freq
  * @io_fraction:	IO percetage vote to the CPU
  */
 struct kgsl_pwrlevel {
 	unsigned int gpu_freq;
 	unsigned int bus_freq;
+	unsigned int bus_min;
+	unsigned int bus_max;
 	unsigned int io_fraction;
 };
 
@@ -79,6 +83,7 @@ struct kgsl_pwrlevel {
  * @csdev:		Pointer to the coresight device for this device
  * @coresight_pdata:	Coresight configuration for specific device
  * @chipid:		Chip ID for the device's GPU
+ * @pm_qos_latency:		latency value for cpu
  */
 struct kgsl_device_platform_data {
 	struct kgsl_pwrlevel pwrlevel[KGSL_MAX_PWRLEVELS];
@@ -95,6 +100,7 @@ struct kgsl_device_platform_data {
 	struct coresight_device *csdev;
 	struct coresight_platform_data *coresight_pdata;
 	unsigned int chipid;
+	unsigned int pm_qos_latency;
 };
 
 #ifdef CONFIG_MSM_KGSL_DRM

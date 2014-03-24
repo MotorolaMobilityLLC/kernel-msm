@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -13,10 +13,10 @@
 #ifndef IPA_QMI_SERVICE_H
 #define IPA_QMI_SERVICE_H
 
-#include <mach/ipa.h>
+#include <linux/ipa.h>
 #include <linux/ipa_qmi_service_v01.h>
-#include <mach/msm_qmi_interface.h>
 #include <uapi/linux/msm_rmnet.h>
+#include <soc/qcom/msm_qmi_interface.h>
 #include "ipa_i.h"
 
 /**

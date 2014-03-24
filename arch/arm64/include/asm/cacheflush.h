@@ -3,6 +3,7 @@
  *
  * Copyright (C) 1999-2002 Russell King.
  * Copyright (C) 2012 ARM Ltd.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -70,6 +71,7 @@
  *		- size   - region size
  */
 extern void flush_cache_all(void);
+extern void flush_cache_louis(void);
 extern void flush_cache_range(struct vm_area_struct *vma, unsigned long start, unsigned long end);
 extern void flush_icache_range(unsigned long start, unsigned long end);
 extern void __flush_dcache_area(void *addr, size_t len);
@@ -83,6 +85,19 @@ static inline void flush_cache_page(struct vm_area_struct *vma,
 				    unsigned long user_addr, unsigned long pfn)
 {
 }
+
+/*
+ * Cache maintenance functions used by the DMA API. No to be used directly.
+ */
+extern void __dma_map_area(const void *, size_t, int);
+extern void __dma_unmap_area(const void *, size_t, int);
+extern void __dma_flush_range(const void *, const void *);
+extern void __dma_inv_range(const void *, const void *);
+extern void __dma_clean_range(const void *, const void *);
+
+#define dmac_flush_range __dma_flush_range
+#define dmac_inv_range __dma_inv_range
+#define dmac_clean_range __dma_clean_range
 
 /*
  * Copy user data from/to a page which is mapped into a different
@@ -122,9 +137,6 @@ static inline void __flush_icache_all(void)
 	spin_lock_irq(&(mapping)->tree_lock)
 #define flush_dcache_mmap_unlock(mapping) \
 	spin_unlock_irq(&(mapping)->tree_lock)
-
-#define flush_icache_user_range(vma,page,addr,len) \
-	flush_dcache_page(page)
 
 /*
  * We don't appear to need to do anything here.  In fact, if we did, we'd

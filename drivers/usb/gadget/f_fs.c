@@ -214,6 +214,9 @@ struct ffs_data {
 	unsigned short			eps_count;
 	unsigned short			_pad1;
 
+	int				first_id;
+	int				old_strings_count;
+
 	/* filled by __ffs_data_got_strings() */
 	/* ids in stringtabs are set in functionfs_bind() */
 	const void			*raw_strings;
@@ -761,9 +764,9 @@ static ssize_t ffs_epfile_io(struct file *file,
 	char *data = NULL;
 	ssize_t ret;
 	int halt;
-	int buffer_len = !read ? len : round_up(len, 1024);
+	int buffer_len = 0;
 
-	pr_debug("%s: len %d, buffer_len %d, read %d\n", __func__, len, buffer_len, read);
+	pr_debug("%s: len %zu, read %d\n", __func__, len, read);
 
 	goto first_try;
 	do {
@@ -791,6 +794,9 @@ first_try:
 				goto error;
 			}
 		}
+
+		buffer_len = !read ? len : round_up(len,
+						ep->ep->desc->wMaxPacketSize);
 
 		/* Do we halt? */
 		halt = !read == !epfile->in;
@@ -1391,7 +1397,6 @@ static void ffs_data_reset(struct ffs_data *ffs)
 static int functionfs_bind(struct ffs_data *ffs, struct usb_composite_dev *cdev)
 {
 	struct usb_gadget_strings **lang;
-	int first_id;
 
 	ENTER();
 
@@ -1399,9 +1404,13 @@ static int functionfs_bind(struct ffs_data *ffs, struct usb_composite_dev *cdev)
 		 || test_and_set_bit(FFS_FL_BOUND, &ffs->flags)))
 		return -EBADFD;
 
-	first_id = usb_string_ids_n(cdev, ffs->strings_count);
-	if (unlikely(first_id < 0))
-		return first_id;
+	if (!ffs->first_id || ffs->old_strings_count < ffs->strings_count) {
+		int first_id = usb_string_ids_n(cdev, ffs->strings_count);
+		if (unlikely(first_id < 0))
+			return first_id;
+		ffs->first_id = first_id;
+		ffs->old_strings_count = ffs->strings_count;
+	}
 
 	ffs->ep0req = usb_ep_alloc_request(cdev->gadget->ep0, GFP_KERNEL);
 	if (unlikely(!ffs->ep0req))
@@ -1412,7 +1421,7 @@ static int functionfs_bind(struct ffs_data *ffs, struct usb_composite_dev *cdev)
 	lang = ffs->stringtabs;
 	for (lang = ffs->stringtabs; *lang; ++lang) {
 		struct usb_string *str = (*lang)->strings;
-		int id = first_id;
+		int id = ffs->first_id;
 		for (; str->s; ++id, ++str)
 			str->id = id;
 	}

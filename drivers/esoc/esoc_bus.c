@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -41,10 +41,17 @@ static struct device_attribute esoc_clink_attrs[] = {
 
 static int esoc_bus_match(struct device *dev, struct device_driver *drv)
 {
+	int i = 0, match = 1;
 	struct esoc_clink *esoc_clink = to_esoc_clink(dev);
+	struct esoc_drv *esoc_drv = to_esoc_drv(drv);
+	int entries = esoc_drv->compat_entries;
+	struct esoc_compat *table = esoc_drv->compat_table;
 
-	return !memcmp(esoc_clink->name, drv->name,
-					strlen(drv->name));
+	for (i = 0; i < entries; i++) {
+		if (strcasecmp(esoc_clink->name, table[i].name) == 0)
+			return match;
+	}
+	return 0;
 }
 
 static int esoc_bus_probe(struct device *dev)
@@ -94,6 +101,19 @@ static int esoc_clink_match_id(struct device *dev, void *id)
 	return 0;
 }
 
+static int esoc_clink_match_node(struct device *dev, void *id)
+{
+	struct esoc_clink *esoc_clink = to_esoc_clink(dev);
+	struct device_node *node = id;
+
+	if (esoc_clink->np == node) {
+		if (!try_module_get(esoc_clink->owner))
+			return 0;
+		return 1;
+	}
+	return 0;
+}
+
 void esoc_for_each_dev(void *data, int (*fn)(struct device *dev, void *))
 {
 	int ret;
@@ -115,6 +135,19 @@ struct esoc_clink *get_esoc_clink(int id)
 	return esoc_clink;
 }
 EXPORT_SYMBOL(get_esoc_clink);
+
+struct esoc_clink *get_esoc_clink_by_node(struct device_node *node)
+{
+	struct esoc_clink *esoc_clink;
+	struct device *dev;
+
+	dev = bus_find_device(&esoc_bus_type, NULL, node,
+						esoc_clink_match_node);
+	if (IS_ERR(dev))
+		return NULL;
+	esoc_clink = to_esoc_clink(dev);
+	return esoc_clink;
+}
 
 void put_esoc_clink(struct esoc_clink *esoc_clink)
 {
@@ -169,6 +202,7 @@ void esoc_clink_evt_notify(enum esoc_evt evt, struct esoc_clink *esoc_clink)
 	unsigned long flags;
 
 	spin_lock_irqsave(&esoc_clink->notify_lock, flags);
+	notify_esoc_clients(esoc_clink, evt);
 	if (esoc_clink->req_eng && esoc_clink->req_eng->handle_clink_evt)
 		esoc_clink->req_eng->handle_clink_evt(evt, esoc_clink->req_eng);
 	if (esoc_clink->cmd_eng && esoc_clink->cmd_eng->handle_clink_evt)

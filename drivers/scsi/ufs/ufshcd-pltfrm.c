@@ -62,6 +62,8 @@ static int ufshcd_parse_clock_info(struct ufs_hba *hba)
 	char *name;
 	u32 *clkfreq = NULL;
 	struct ufs_clk_info *clki;
+	int len = 0;
+	size_t sz = 0;
 
 	if (!np)
 		goto out;
@@ -81,24 +83,40 @@ static int ufshcd_parse_clock_info(struct ufs_hba *hba)
 	if (cnt <= 0)
 		goto out;
 
-	clkfreq = kzalloc(cnt * sizeof(*clkfreq), GFP_KERNEL);
+	if (!of_get_property(np, "freq-table-hz", &len)) {
+		dev_info(dev, "freq-table-hz property not specified\n");
+		goto out;
+	}
+
+	if (len <= 0)
+		goto out;
+
+	sz = len / sizeof(*clkfreq);
+	if (sz != 2 * cnt) {
+		dev_err(dev, "%s len mismatch\n", "freq-table-hz");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	clkfreq = devm_kzalloc(dev, sz * sizeof(*clkfreq),
+			GFP_KERNEL);
 	if (!clkfreq) {
+		dev_err(dev, "%s: no memory\n", "freq-table-hz");
 		ret = -ENOMEM;
-		dev_err(dev, "%s: memory alloc failed\n", __func__);
 		goto out;
 	}
 
-	ret = of_property_read_u32_array(np,
-			"max-clock-frequency-hz", clkfreq, cnt);
+	ret = of_property_read_u32_array(np, "freq-table-hz",
+			clkfreq, sz);
 	if (ret && (ret != -EINVAL)) {
-		dev_err(dev, "%s: invalid max-clock-frequency-hz property, %d\n",
-				__func__, ret);
+		dev_err(dev, "%s: error reading array %d\n",
+				"freq-table-hz", ret);
 		goto out;
 	}
 
-	for (i = 0; i < cnt; i++) {
+	for (i = 0; i < sz; i += 2) {
 		ret = of_property_read_string_index(np,
-				"clock-names", i, (const char **)&name);
+				"clock-names", i/2, (const char **)&name);
 		if (ret)
 			goto out;
 
@@ -108,12 +126,14 @@ static int ufshcd_parse_clock_info(struct ufs_hba *hba)
 			goto out;
 		}
 
-		clki->max_freq = clkfreq[i];
+		clki->min_freq = clkfreq[i];
+		clki->max_freq = clkfreq[i+1];
 		clki->name = kstrdup(name, GFP_KERNEL);
+		dev_dbg(dev, "%s: min %u max %u name %s\n", "freq-table-hz",
+				clki->min_freq, clki->max_freq, clki->name);
 		list_add_tail(&clki->list, &hba->clk_list_head);
 	}
 out:
-	kfree(clkfreq);
 	return ret;
 }
 
@@ -151,7 +171,7 @@ static int ufshcd_populate_vreg(struct device *dev, const char *name,
 	if (ret) {
 		dev_err(dev, "%s: unable to find %s err %d\n",
 				__func__, prop_name, ret);
-		goto out_free;
+		goto out;
 	}
 
 	vreg->min_uA = 0;
@@ -173,9 +193,6 @@ static int ufshcd_populate_vreg(struct device *dev, const char *name,
 
 	goto out;
 
-out_free:
-	devm_kfree(dev, vreg);
-	vreg = NULL;
 out:
 	if (!ret)
 		*out_vreg = vreg;
@@ -303,13 +320,13 @@ static int ufshcd_pltfrm_probe(struct platform_device *pdev)
 	if (err) {
 		dev_err(&pdev->dev, "%s: clock parse failed %d\n",
 				__func__, err);
-		goto out;
+		goto dealloc_host;
 	}
 	err = ufshcd_parse_regulator_info(hba);
 	if (err) {
 		dev_err(&pdev->dev, "%s: regulator init failed %d\n",
 				__func__, err);
-		goto out;
+		goto dealloc_host;
 	}
 
 	pm_runtime_set_active(&pdev->dev);
@@ -331,6 +348,8 @@ static int ufshcd_pltfrm_probe(struct platform_device *pdev)
 out_disable_rpm:
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
+dealloc_host:
+	ufshcd_dealloc_host(hba);
 out:
 	return err;
 }
@@ -347,6 +366,7 @@ static int ufshcd_pltfrm_remove(struct platform_device *pdev)
 
 	pm_runtime_get_sync(&(pdev)->dev);
 	ufshcd_remove(hba);
+	ufshcd_dealloc_host(hba);
 	return 0;
 }
 

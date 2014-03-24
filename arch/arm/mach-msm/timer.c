@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -24,19 +24,19 @@
 #include <linux/io.h>
 #include <linux/percpu.h>
 #include <linux/mm.h>
+#include <linux/sched_clock.h>
 
 #include <asm/localtimer.h>
 #include <asm/mach/time.h>
-#include <asm/sched_clock.h>
 #include <asm/smp_plat.h>
 #include <asm/user_accessible_timer.h>
 #include <mach/msm_iomap.h>
 #include <mach/irqs.h>
-#include <mach/socinfo.h>
+#include <soc/qcom/socinfo.h>
 
 #include <soc/qcom/smem.h>
 #if defined(CONFIG_MSM_SMD)
-#include <mach/msm_smsm.h>
+#include <soc/qcom/smsm.h>
 #endif
 #include "timer.h"
 

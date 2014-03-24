@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -26,14 +26,14 @@
 #include <linux/mfd/pm8xxx/misc.h>
 #include <linux/qpnp/power-on.h>
 #include <linux/of_address.h>
+#include <soc/qcom/scm.h>
 
 #include <asm/cacheflush.h>
 
 #include <mach/msm_iomap.h>
-#include <mach/restart.h>
-#include <mach/socinfo.h>
+#include <soc/qcom/restart.h>
+#include <soc/qcom/socinfo.h>
 #include <mach/irqs.h>
-#include <mach/scm.h>
 #include "msm_watchdog.h"
 #include "timer.h"
 #include "wdog_debug.h"

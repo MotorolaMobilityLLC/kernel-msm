@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,10 +23,16 @@
  * Translations between API parameters and HFI parameters
  */
 u32 translate_input_source(u32 in);
+u32 translate_input_source_ch(u32 in);
 u32 translate_output_destination(u32 out);
+u32 translate_output_destination_ch(u32 out);
 
 u32 translate_pixelformat_to_hfi(u32 api_pix_fmt);
 u32 translate_pixelformat_to_api(u32 hfi_pix_fmt);
+
+void translate_colorspace_to_hfi(u32 api_colorspace,
+		struct vpu_prop_session_color_space *cs_1,
+		struct vpu_prop_session_color_space *cs_2);
 
 void translate_input_format_to_hfi(const struct vpu_port_info *port_info,
 		struct vpu_prop_session_input *in);
@@ -58,12 +64,21 @@ void translate_ctrl_standard_to_api(const void *hfi_data, void *api_data);
 void translate_ctrl_auto_manual_to_hfi(const void *api_data, void *hfi_data);
 void translate_ctrl_auto_manual_to_api(const void *hfi_data, void *api_data);
 
-void translate_ctrl_two_value_to_hfi(const void *api_data, void *hfi_data);
-void translate_ctrl_two_value_to_api(const void *hfi_data, void *api_data);
+void translate_range_mapping_to_hfi(const void *api_data, void *hfi_data);
+void translate_range_mapping_to_api(const void *hfi_data, void *api_data);
 
 void translate_active_region_param_to_hfi(const void *api_data,
 		void *hfi_data);
 void translate_active_region_result_to_api(const void *hfi_data,
 		void *api_data);
+
+void translate_deinterlacing_mode_to_hfi(const void *api_data, void *hfi_data);
+void translate_deinterlacing_mode_to_api(const void *hfi_data, void *api_data);
+
+void translate_hqv_to_hfi(const void *api_data, void *hfi_data);
+void translate_hqv_to_api(const void *hfi_data, void *api_data);
+
+void translate_timestamp_to_hfi(const void *api_data, void *hfi_data);
+void translate_timestamp_to_api(const void *hfi_data, void *api_data);
 
 #endif /* _H_VPU_TRANSLATE_H_ */

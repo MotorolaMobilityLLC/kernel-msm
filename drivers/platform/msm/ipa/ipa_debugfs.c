@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,70 +22,6 @@
 #define IPA_DBG_CNTR_ON 127265
 #define IPA_DBG_CNTR_OFF 127264
 
-const char *ipa_client_name[] = {
-	__stringify(IPA_CLIENT_HSIC1_PROD),
-	__stringify(IPA_CLIENT_WLAN1_PROD),
-	__stringify(IPA_CLIENT_HSIC2_PROD),
-	__stringify(IPA_CLIENT_USB2_PROD),
-	__stringify(IPA_CLIENT_HSIC3_PROD),
-	__stringify(IPA_CLIENT_USB3_PROD),
-	__stringify(IPA_CLIENT_HSIC4_PROD),
-	__stringify(IPA_CLIENT_USB4_PROD),
-	__stringify(IPA_CLIENT_HSIC5_PROD),
-	__stringify(IPA_CLIENT_USB_PROD),
-	__stringify(IPA_CLIENT_A5_WLAN_AMPDU_PROD),
-	__stringify(IPA_CLIENT_A2_EMBEDDED_PROD),
-	__stringify(IPA_CLIENT_A2_TETHERED_PROD),
-	__stringify(IPA_CLIENT_APPS_LAN_WAN_PROD),
-	__stringify(IPA_CLIENT_APPS_CMD_PROD),
-	__stringify(IPA_CLIENT_Q6_LAN_PROD),
-	__stringify(IPA_CLIENT_Q6_CMD_PROD),
-
-	__stringify(IPA_CLIENT_HSIC1_CONS),
-	__stringify(IPA_CLIENT_WLAN1_CONS),
-	__stringify(IPA_CLIENT_HSIC2_CONS),
-	__stringify(IPA_CLIENT_USB2_CONS),
-	__stringify(IPA_CLIENT_WLAN2_CONS),
-	__stringify(IPA_CLIENT_HSIC3_CONS),
-	__stringify(IPA_CLIENT_USB3_CONS),
-	__stringify(IPA_CLIENT_WLAN3_CONS),
-	__stringify(IPA_CLIENT_HSIC4_CONS),
-	__stringify(IPA_CLIENT_USB4_CONS),
-	__stringify(IPA_CLIENT_WLAN4_CONS),
-	__stringify(IPA_CLIENT_HSIC5_CONS),
-	__stringify(IPA_CLIENT_USB_CONS),
-	__stringify(IPA_CLIENT_A2_EMBEDDED_CONS),
-	__stringify(IPA_CLIENT_A2_TETHERED_CONS),
-	__stringify(IPA_CLIENT_A5_LAN_WAN_CONS),
-	__stringify(IPA_CLIENT_APPS_LAN_CONS),
-	__stringify(IPA_CLIENT_APPS_WAN_CONS),
-	__stringify(IPA_CLIENT_Q6_LAN_CONS),
-	__stringify(IPA_CLIENT_Q6_WAN_CONS),
-};
-
-const char *ipa_ic_name[] = {
-	__stringify_1(IPA_IP_CMD_INVALID),
-	__stringify_1(IPA_DECIPH_INIT),
-	__stringify_1(IPA_PPP_FRM_INIT),
-	__stringify_1(IPA_IP_V4_FILTER_INIT),
-	__stringify_1(IPA_IP_V6_FILTER_INIT),
-	__stringify_1(IPA_IP_V4_NAT_INIT),
-	__stringify_1(IPA_IP_V6_NAT_INIT),
-	__stringify_1(IPA_IP_V4_ROUTING_INIT),
-	__stringify_1(IPA_IP_V6_ROUTING_INIT),
-	__stringify_1(IPA_HDR_INIT_LOCAL),
-	__stringify_1(IPA_HDR_INIT_SYSTEM),
-	__stringify_1(IPA_DECIPH_SETUP),
-	__stringify_1(IPA_INSERT_NAT_RULE),
-	__stringify_1(IPA_DELETE_NAT_RULE),
-	__stringify_1(IPA_NAT_DMA),
-	__stringify_1(IPA_IP_PACKET_TAG),
-	__stringify_1(IPA_IP_PACKET_INIT),
-	__stringify_1(IPA_IP_UNUSED),
-	__stringify_1(IPA_IP_UNUSED),
-	__stringify_1(IPA_DMA_SHARED_MEM),
-};
-
 const char *ipa_excp_name[] = {
 	__stringify_1(IPA_A5_MUX_HDR_EXCP_RSVD0),
 	__stringify_1(IPA_A5_MUX_HDR_EXCP_RSVD1),
@@ -95,6 +31,17 @@ const char *ipa_excp_name[] = {
 	__stringify_1(IPA_A5_MUX_HDR_EXCP_FLAG_SW_FLT),
 	__stringify_1(IPA_A5_MUX_HDR_EXCP_FLAG_NAT),
 	__stringify_1(IPA_A5_MUX_HDR_EXCP_FLAG_IP),
+};
+
+const char *ipa_status_excp_name[] = {
+	__stringify_1(IPA_EXCP_DEAGGR),
+	__stringify_1(IPA_EXCP_REPLICATION),
+	__stringify_1(IPA_EXCP_IP),
+	__stringify_1(IPA_EXCP_IHL),
+	__stringify_1(IPA_EXCP_FRAG_MISS),
+	__stringify_1(IPA_EXCP_SW),
+	__stringify_1(IPA_EXCP_NAT),
+	__stringify_1(IPA_EXCP_NONE),
 };
 
 const char *ipa_event_name[] = {
@@ -109,6 +56,8 @@ const char *ipa_event_name[] = {
 	__stringify(WLAN_STA_CONNECT),
 	__stringify(WLAN_STA_DISCONNECT),
 	__stringify(WLAN_CLIENT_CONNECT_EX),
+	__stringify(ECM_CONNECT),
+	__stringify(ECM_DISCONNECT),
 };
 
 static struct dentry *dent;
@@ -121,6 +70,7 @@ static struct dentry *dfile_ip6_rt;
 static struct dentry *dfile_ip4_flt;
 static struct dentry *dfile_ip6_flt;
 static struct dentry *dfile_stats;
+static struct dentry *dfile_wstats;
 static struct dentry *dfile_dbg_cnt;
 static struct dentry *dfile_msg;
 static struct dentry *dfile_ip4_nat;
@@ -435,50 +385,37 @@ static ssize_t ipa_read_hdr(struct file *file, char __user *ubuf, size_t count,
 	return simple_read_from_buffer(ubuf, count, ppos, dbg_buff, cnt);
 }
 
-static int ipa_attrib_dump(char *buff, size_t sz,
-		struct ipa_rule_attrib *attrib, enum ipa_ip_type ip)
+static int ipa_attrib_dump(struct ipa_rule_attrib *attrib,
+		enum ipa_ip_type ip)
 {
-	int nbytes = 0;
-	int cnt = 0;
 	uint32_t addr[4];
 	uint32_t mask[4];
 	int i;
 
+	if (attrib->attrib_mask & IPA_FLT_TOS_MASKED)
+		pr_info("tos_value:%d ", attrib->tos_value);
 
-	if (attrib->attrib_mask & IPA_FLT_TOS_MASKED) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "tos_value:%d ",
-				attrib->tos_value);
-		cnt += nbytes;
-	}
-	if (attrib->attrib_mask & IPA_FLT_TOS_MASKED) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "tos_mask:%d ",
-				attrib->tos_mask);
-		cnt += nbytes;
-	}
+	if (attrib->attrib_mask & IPA_FLT_TOS_MASKED)
+		pr_info("tos_mask:%d ", attrib->tos_mask);
 
-	if (attrib->attrib_mask & IPA_FLT_PROTOCOL) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "protocol:%d ",
-				attrib->u.v4.protocol);
-		cnt += nbytes;
-	}
+	if (attrib->attrib_mask & IPA_FLT_PROTOCOL)
+		pr_info("protocol:%d ", attrib->u.v4.protocol);
+
 	if (attrib->attrib_mask & IPA_FLT_SRC_ADDR) {
 		if (ip == IPA_IP_v4) {
 			addr[0] = htonl(attrib->u.v4.src_addr);
 			mask[0] = htonl(attrib->u.v4.src_addr_mask);
-			nbytes = scnprintf(buff + cnt, sz - cnt,
+			pr_info(
 					"src_addr:%pI4 src_addr_mask:%pI4 ",
 					addr + 0, mask + 0);
-			cnt += nbytes;
 		} else if (ip == IPA_IP_v6) {
 			for (i = 0; i < 4; i++) {
 				addr[i] = htonl(attrib->u.v6.src_addr[i]);
 				mask[i] = htonl(attrib->u.v6.src_addr_mask[i]);
 			}
-			nbytes =
-			   scnprintf(buff + cnt, sz - cnt,
+			pr_info(
 					   "src_addr:%pI6 src_addr_mask:%pI6 ",
 					   addr + 0, mask + 0);
-			cnt += nbytes;
 		} else {
 			WARN_ON(1);
 		}
@@ -487,94 +424,143 @@ static int ipa_attrib_dump(char *buff, size_t sz,
 		if (ip == IPA_IP_v4) {
 			addr[0] = htonl(attrib->u.v4.dst_addr);
 			mask[0] = htonl(attrib->u.v4.dst_addr_mask);
-			nbytes =
-			   scnprintf(buff + cnt, sz - cnt,
+			pr_info(
 					   "dst_addr:%pI4 dst_addr_mask:%pI4 ",
 					   addr + 0, mask + 0);
-			cnt += nbytes;
 		} else if (ip == IPA_IP_v6) {
 			for (i = 0; i < 4; i++) {
 				addr[i] = htonl(attrib->u.v6.dst_addr[i]);
 				mask[i] = htonl(attrib->u.v6.dst_addr_mask[i]);
 			}
-			nbytes =
-			   scnprintf(buff + cnt, sz - cnt,
+			pr_info(
 					   "dst_addr:%pI6 dst_addr_mask:%pI6 ",
 					   addr + 0, mask + 0);
-			cnt += nbytes;
 		} else {
 			WARN_ON(1);
 		}
 	}
 	if (attrib->attrib_mask & IPA_FLT_SRC_PORT_RANGE) {
-		nbytes =
-		   scnprintf(buff + cnt, sz - cnt, "src_port_range:%u %u ",
+		pr_info("src_port_range:%u %u ",
 				   attrib->src_port_lo,
 			     attrib->src_port_hi);
-		cnt += nbytes;
 	}
 	if (attrib->attrib_mask & IPA_FLT_DST_PORT_RANGE) {
-		nbytes =
-		   scnprintf(buff + cnt, sz - cnt, "dst_port_range:%u %u ",
+		pr_info("dst_port_range:%u %u ",
 				   attrib->dst_port_lo,
 			     attrib->dst_port_hi);
-		cnt += nbytes;
 	}
-	if (attrib->attrib_mask & IPA_FLT_TYPE) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "type:%d ",
-				attrib->type);
-		cnt += nbytes;
-	}
-	if (attrib->attrib_mask & IPA_FLT_CODE) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "code:%d ",
-				attrib->code);
-		cnt += nbytes;
-	}
-	if (attrib->attrib_mask & IPA_FLT_SPI) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "spi:%x ",
-				attrib->spi);
-		cnt += nbytes;
-	}
-	if (attrib->attrib_mask & IPA_FLT_SRC_PORT) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "src_port:%u ",
-				attrib->src_port);
-		cnt += nbytes;
-	}
-	if (attrib->attrib_mask & IPA_FLT_DST_PORT) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "dst_port:%u ",
-				attrib->dst_port);
-		cnt += nbytes;
-	}
-	if (attrib->attrib_mask & IPA_FLT_TC) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "tc:%d ",
-				attrib->u.v6.tc);
-		cnt += nbytes;
-	}
-	if (attrib->attrib_mask & IPA_FLT_FLOW_LABEL) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "flow_label:%x ",
-				attrib->u.v6.flow_label);
-		cnt += nbytes;
-	}
-	if (attrib->attrib_mask & IPA_FLT_NEXT_HDR) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "next_hdr:%d ",
-				attrib->u.v6.next_hdr);
-		cnt += nbytes;
-	}
+	if (attrib->attrib_mask & IPA_FLT_TYPE)
+		pr_info("type:%d ", attrib->type);
+
+	if (attrib->attrib_mask & IPA_FLT_CODE)
+		pr_info("code:%d ", attrib->code);
+
+	if (attrib->attrib_mask & IPA_FLT_SPI)
+		pr_info("spi:%x ", attrib->spi);
+
+	if (attrib->attrib_mask & IPA_FLT_SRC_PORT)
+		pr_info("src_port:%u ", attrib->src_port);
+
+	if (attrib->attrib_mask & IPA_FLT_DST_PORT)
+		pr_info("dst_port:%u ", attrib->dst_port);
+
+	if (attrib->attrib_mask & IPA_FLT_TC)
+		pr_info("tc:%d ", attrib->u.v6.tc);
+
+	if (attrib->attrib_mask & IPA_FLT_FLOW_LABEL)
+		pr_info("flow_label:%x ", attrib->u.v6.flow_label);
+
+	if (attrib->attrib_mask & IPA_FLT_NEXT_HDR)
+		pr_info("next_hdr:%d ", attrib->u.v6.next_hdr);
+
 	if (attrib->attrib_mask & IPA_FLT_META_DATA) {
-		nbytes =
-		   scnprintf(buff + cnt, sz - cnt,
+		pr_info(
 				   "metadata:%x metadata_mask:%x",
 				   attrib->meta_data, attrib->meta_data_mask);
-		cnt += nbytes;
 	}
-	if (attrib->attrib_mask & IPA_FLT_FRAGMENT) {
-		nbytes = scnprintf(buff + cnt, sz - cnt, "frg ");
-		cnt += nbytes;
-	}
-	nbytes = scnprintf(buff + cnt, sz - cnt, "\n");
-	cnt += nbytes;
 
-	return cnt;
+	if (attrib->attrib_mask & IPA_FLT_FRAGMENT)
+		pr_info("frg ");
+
+	pr_info("\n");
+	return 0;
+}
+
+static int ipa_attrib_dump_eq(struct ipa_ipfltri_rule_eq *attrib)
+{
+	uint8_t addr[16];
+	uint8_t mask[16];
+	int i;
+	int j;
+
+	if (attrib->tos_eq_present)
+		pr_info("tos_value:%d ", attrib->tos_eq);
+
+	if (attrib->protocol_eq_present)
+		pr_info("protocol:%d ", attrib->protocol_eq);
+
+	for (i = 0; i < attrib->num_ihl_offset_range_16; i++) {
+		pr_info(
+			   "(ihl_ofst_range16: ofst:%u lo:%u hi:%u) ",
+			   attrib->ihl_offset_range_16[i].offset,
+			   attrib->ihl_offset_range_16[i].range_low,
+			   attrib->ihl_offset_range_16[i].range_high);
+	}
+
+	for (i = 0; i < attrib->num_offset_meq_32; i++) {
+		pr_info(
+			   "(ofst_meq32: ofst:%u mask:0x%x val:0x%x) ",
+			   attrib->offset_meq_32[i].offset,
+			   attrib->offset_meq_32[i].mask,
+			   attrib->offset_meq_32[i].value);
+	}
+
+	if (attrib->tc_eq_present)
+		pr_info("tc:%d ", attrib->tc_eq);
+
+	if (attrib->fl_eq_present)
+		pr_info("flow_label:%d ", attrib->fl_eq);
+
+	if (attrib->ihl_offset_eq_16_present) {
+		pr_info(
+				"(ihl_ofst_eq16:%d val:0x%x) ",
+				attrib->ihl_offset_eq_16.offset,
+				attrib->ihl_offset_eq_16.value);
+	}
+
+	for (i = 0; i < attrib->num_ihl_offset_meq_32; i++) {
+		pr_info(
+				"(ihl_ofst_meq32: ofts:%d mask:0x%x val:0x%x) ",
+				attrib->ihl_offset_meq_32[i].offset,
+				attrib->ihl_offset_meq_32[i].mask,
+				attrib->ihl_offset_meq_32[i].value);
+	}
+
+	for (i = 0; i < attrib->num_offset_meq_128; i++) {
+		for (j = 0; j < 16; j++) {
+			addr[j] = attrib->offset_meq_128[i].value[j];
+			mask[j] = attrib->offset_meq_128[i].mask[j];
+		}
+		pr_info(
+				"(ofst_meq128: ofst:%d mask:%pI6 val:%pI6) ",
+				attrib->offset_meq_128[i].offset,
+				mask + 0,
+				addr + 0);
+	}
+
+	if (attrib->metadata_meq32_present) {
+		pr_info(
+				"(metadata: ofst:%u mask:0x%x val:0x%x) ",
+				attrib->metadata_meq32.offset,
+				attrib->metadata_meq32.mask,
+				attrib->metadata_meq32.value);
+	}
+
+	if (attrib->ipv4_frag_eq_present)
+		pr_info("frg ");
+
+	pr_info("\n");
+	return 0;
 }
 
 static int ipa_open_dbg(struct inode *inode, struct file *file)
@@ -586,8 +572,6 @@ static int ipa_open_dbg(struct inode *inode, struct file *file)
 static ssize_t ipa_read_rt(struct file *file, char __user *ubuf, size_t count,
 		loff_t *ppos)
 {
-	int nbytes = 0;
-	int cnt = 0;
 	int i = 0;
 	struct ipa_rt_tbl *tbl;
 	struct ipa_rt_entry *entry;
@@ -599,29 +583,15 @@ static ssize_t ipa_read_rt(struct file *file, char __user *ubuf, size_t count,
 
 	mutex_lock(&ipa_ctx->lock);
 	if (ip ==  IPA_IP_v6) {
-		if (ipa_ctx->ip6_rt_tbl_lcl) {
-			nbytes = scnprintf(dbg_buff + cnt,
-				IPA_MAX_MSG_LEN - cnt,
-				"Table Resides on local memory\n");
-			cnt += nbytes;
-		} else {
-			nbytes = scnprintf(dbg_buff + cnt,
-				IPA_MAX_MSG_LEN - cnt,
-				"Table Resides on system(ddr) memory\n");
-			cnt += nbytes;
-		}
+		if (ipa_ctx->ip6_rt_tbl_lcl)
+			pr_info("Table Resides on local memory\n");
+		else
+			pr_info("Table Resides on system(ddr) memory\n");
 	} else if (ip == IPA_IP_v4) {
-		if (ipa_ctx->ip4_rt_tbl_lcl) {
-			nbytes = scnprintf(dbg_buff + cnt,
-				IPA_MAX_MSG_LEN - cnt,
-				"Table Resides on local memory\n");
-			cnt += nbytes;
-		} else {
-			nbytes = scnprintf(dbg_buff + cnt,
-				IPA_MAX_MSG_LEN - cnt,
-				"Table Resides on system(ddr) memory\n");
-			cnt += nbytes;
-		}
+		if (ipa_ctx->ip4_rt_tbl_lcl)
+			pr_info("Table Resides on local memory\n");
+		else
+			pr_info("Table Resides on system(ddr) memory\n");
 	}
 
 	list_for_each_entry(tbl, &set->head_rt_tbl_list, link) {
@@ -631,34 +601,27 @@ static ssize_t ipa_read_rt(struct file *file, char __user *ubuf, size_t count,
 				hdr_ofst = entry->hdr->offset_entry->offset;
 			else
 				hdr_ofst = 0;
-			nbytes = scnprintf(dbg_buff + cnt,
-					IPA_MAX_MSG_LEN - cnt,
-					"tbl_idx:%d tbl_name:%s tbl_ref:%u rule_idx:%d dst:%d name:%s ep:%d S:%u hdr_ofst[words]:%u attrib_mask:%08x ",
+			pr_info(
+					"tbl_idx:%d tbl_name:%s tbl_ref:%u rule_idx:%d dst:%d ep:%d S:%u hdr_ofst[words]:%u attrib_mask:%08x ",
 					entry->tbl->idx, entry->tbl->name,
 					entry->tbl->ref_cnt, i, entry->rule.dst,
-					ipa_client_name[entry->rule.dst],
 					ipa_get_ep_mapping(entry->rule.dst),
 					!ipa_ctx->hdr_tbl_lcl,
 					hdr_ofst >> 2,
 					entry->rule.attrib.attrib_mask);
-			cnt += nbytes;
-			cnt += ipa_attrib_dump(dbg_buff + cnt,
-					   IPA_MAX_MSG_LEN - cnt,
-					   &entry->rule.attrib,
-					   ip);
+
+			ipa_attrib_dump(&entry->rule.attrib, ip);
 			i++;
 		}
 	}
 	mutex_unlock(&ipa_ctx->lock);
 
-	return simple_read_from_buffer(ubuf, count, ppos, dbg_buff, cnt);
+	return 0;
 }
 
 static ssize_t ipa_read_flt(struct file *file, char __user *ubuf, size_t count,
 		loff_t *ppos)
 {
-	int nbytes = 0;
-	int cnt = 0;
 	int i;
 	int j;
 	int k;
@@ -667,24 +630,36 @@ static ssize_t ipa_read_flt(struct file *file, char __user *ubuf, size_t count,
 	enum ipa_ip_type ip = (enum ipa_ip_type)file->private_data;
 	struct ipa_rt_tbl *rt_tbl;
 	u32 rt_tbl_idx;
+	u32 bitmap;
+	bool eq;
 
 	tbl = &ipa_ctx->glob_flt_tbl[ip];
 	mutex_lock(&ipa_ctx->lock);
 	i = 0;
 	list_for_each_entry(entry, &tbl->head_flt_rule_list, link) {
-		rt_tbl = (struct ipa_rt_tbl *)entry->rule.rt_tbl_hdl;
-		if (rt_tbl == NULL)
+		if (entry->rule.eq_attrib_type) {
 			rt_tbl_idx = entry->rule.rt_tbl_idx;
+			bitmap = entry->rule.eq_attrib.rule_eq_bitmap;
+			eq = true;
+		} else {
+			rt_tbl = ipa_id_find(entry->rule.rt_tbl_hdl);
+			if (rt_tbl)
+				rt_tbl_idx = rt_tbl->idx;
+			else
+				rt_tbl_idx = ~0;
+			bitmap = entry->rule.attrib.attrib_mask;
+			eq = false;
+		}
+		pr_info(
+			   "ep_idx:global rule_idx:%d act:%d rt_tbl_idx:%d "
+			   "attrib_mask:%08x to_uc:%d, retain_hdr:%d eq:%d ",
+			   i, entry->rule.action, rt_tbl_idx, bitmap,
+			   entry->rule.to_uc, entry->rule.retain_hdr, eq);
+		if (eq)
+			ipa_attrib_dump_eq(
+				&entry->rule.eq_attrib);
 		else
-			rt_tbl_idx = rt_tbl->idx;
-		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
-				   "ep_idx:global rule_idx:%d act:%d rt_tbl_idx:%d "
-				   "attrib_mask:%08x to_uc:%d, retain_hdr:%d ",
-				   i, entry->rule.action, rt_tbl_idx,
-				   entry->rule.attrib.attrib_mask,
-				   entry->rule.to_uc, entry->rule.retain_hdr);
-		cnt += nbytes;
-		cnt += ipa_attrib_dump(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+			ipa_attrib_dump(
 				&entry->rule.attrib, ip);
 		i++;
 	}
@@ -693,33 +668,38 @@ static ssize_t ipa_read_flt(struct file *file, char __user *ubuf, size_t count,
 		tbl = &ipa_ctx->flt_tbl[j][ip];
 		i = 0;
 		list_for_each_entry(entry, &tbl->head_flt_rule_list, link) {
-			rt_tbl = (struct ipa_rt_tbl *)entry->rule.rt_tbl_hdl;
-			if (rt_tbl == NULL)
-				rt_tbl_idx = ~0;
-			else
-				rt_tbl_idx = rt_tbl->idx;
+			if (entry->rule.eq_attrib_type) {
+				rt_tbl_idx = entry->rule.rt_tbl_idx;
+				bitmap = entry->rule.eq_attrib.rule_eq_bitmap;
+				eq = true;
+			} else {
+				rt_tbl = ipa_id_find(entry->rule.rt_tbl_hdl);
+				if (rt_tbl)
+					rt_tbl_idx = rt_tbl->idx;
+				else
+					rt_tbl_idx = ~0;
+				bitmap = entry->rule.attrib.attrib_mask;
+				eq = false;
+			}
 			k = ipa_get_client_mapping(j);
-			nbytes = scnprintf(dbg_buff + cnt,
-					IPA_MAX_MSG_LEN - cnt,
-					"ep_idx:%d name:%s rule_idx:%d act:%d rt_tbl_idx:%d "
-					"attrib_mask:%08x to_uc:%d, retain_hdr:%d ",
-					j, ipa_client_name[k], i,
-					entry->rule.action, rt_tbl_idx,
-					entry->rule.attrib.attrib_mask,
-					entry->rule.to_uc,
-					entry->rule.retain_hdr);
-			cnt += nbytes;
-			cnt +=
-			   ipa_attrib_dump(dbg_buff + cnt,
-					   IPA_MAX_MSG_LEN - cnt,
-					   &entry->rule.attrib,
-					   ip);
+			pr_info(
+				"ep_idx:%d rule_idx:%d act:%d rt_tbl_idx:%d "
+				"attrib_mask:%08x to_uc:%d, retain_hdr:%d eq:%d ",
+				j, i, entry->rule.action,
+				rt_tbl_idx, bitmap, entry->rule.to_uc,
+				entry->rule.retain_hdr, eq);
+			if (eq)
+				ipa_attrib_dump_eq(
+					&entry->rule.eq_attrib);
+			else
+				ipa_attrib_dump(
+					&entry->rule.attrib, ip);
 			i++;
 		}
 	}
 	mutex_unlock(&ipa_ctx->lock);
 
-	return simple_read_from_buffer(ubuf, count, ppos, dbg_buff, cnt);
+	return 0;
 }
 
 static ssize_t ipa_read_stats(struct file *file, char __user *ubuf,
@@ -733,69 +713,125 @@ static ssize_t ipa_read_stats(struct file *file, char __user *ubuf,
 	for (i = 0; i < IPA_NUM_PIPES; i++)
 		connect |= (ipa_ctx->ep[i].valid << i);
 
-	nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
+	if (ipa_ctx->ipa_hw_type == IPA_HW_v2_0) {
+		nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
+			"sw_tx=%u\n"
+			"hw_tx=%u\n"
+			"tx_compl=%u\n"
+			"wan_rx=%u\n"
+			"stat_compl=%u\n"
+			"lan_aggr_close=%u\n"
+			"wan_aggr_close=%u\n"
+			"con_clnt_bmap=0x%x\n",
+			ipa_ctx->stats.tx_sw_pkts,
+			ipa_ctx->stats.tx_hw_pkts,
+			ipa_ctx->stats.tx_pkts_compl,
+			ipa_ctx->stats.rx_pkts,
+			ipa_ctx->stats.stat_compl,
+			ipa_ctx->stats.aggr_close,
+			ipa_ctx->stats.wan_aggr_close,
+			connect);
+		cnt += nbytes;
+
+		for (i = 0; i < MAX_NUM_EXCP; i++) {
+			nbytes = scnprintf(dbg_buff + cnt,
+				IPA_MAX_MSG_LEN - cnt,
+				"lan_rx_excp[%u:%20s]=%u\n", i,
+				ipa_status_excp_name[i],
+				ipa_ctx->stats.rx_excp_pkts[i]);
+			cnt += nbytes;
+		}
+	} else{
+		nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
 			"sw_tx=%u\n"
 			"hw_tx=%u\n"
 			"rx=%u\n"
 			"rx_repl_repost=%u\n"
-			"x_intr_repost=%u\n"
-			"x_intr_repost_tx=%u\n"
 			"rx_q_len=%u\n"
 			"act_clnt=%u\n"
-			"con_clnt_bmap=0x%x\n"
-			"a2_power_on_reqs_in=%u\n"
-			"a2_power_on_reqs_out=%u\n"
-			"a2_power_off_reqs_in=%u\n"
-			"a2_power_off_reqs_out=%u\n"
-			"a2_power_modem_acks=%u\n"
-			"a2_power_apps_acks=%u\n"
-			"wlan_rx_pkts=%u\n"
-			"wlan_rx_comp=%u\n"
-			"wlan_tx_pkts=%u\n",
+			"con_clnt_bmap=0x%x\n",
 			ipa_ctx->stats.tx_sw_pkts,
 			ipa_ctx->stats.tx_hw_pkts,
 			ipa_ctx->stats.rx_pkts,
 			ipa_ctx->stats.rx_repl_repost,
-			ipa_ctx->stats.x_intr_repost,
-			ipa_ctx->stats.x_intr_repost_tx,
 			ipa_ctx->stats.rx_q_len,
 			ipa_ctx->ipa_active_clients,
-			connect,
-			ipa_ctx->stats.a2_power_on_reqs_in,
-			ipa_ctx->stats.a2_power_on_reqs_out,
-			ipa_ctx->stats.a2_power_off_reqs_in,
-			ipa_ctx->stats.a2_power_off_reqs_out,
-			ipa_ctx->stats.a2_power_modem_acks,
-			ipa_ctx->stats.a2_power_apps_acks,
-			ipa_ctx->stats.wlan_rx_pkts,
-			ipa_ctx->stats.wlan_rx_comp,
-		  ipa_ctx->stats.wlan_tx_pkts);
+			connect);
 	cnt += nbytes;
 
-	for (i = 0; i < MAX_NUM_EXCP; i++) {
-		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
+		for (i = 0; i < MAX_NUM_EXCP; i++) {
+			nbytes = scnprintf(dbg_buff + cnt,
+				IPA_MAX_MSG_LEN - cnt,
 				"rx_excp[%u:%35s]=%u\n", i, ipa_excp_name[i],
 				ipa_ctx->stats.rx_excp_pkts[i]);
-		cnt += nbytes;
+			cnt += nbytes;
+		}
 	}
 
-	for (i = 0; i < IPA_BRIDGE_TYPE_MAX; i++) {
-		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
-				"brg_pkt[%u:%s][dl]=%u\n"
-				"brg_pkt[%u:%s][ul]=%u\n",
-				i, (i == 0) ? "teth" : "embd",
-				ipa_ctx->stats.bridged_pkts[i][0],
-				i, (i == 0) ? "teth" : "embd",
-				ipa_ctx->stats.bridged_pkts[i][1]);
-		cnt += nbytes;
-	}
+	return simple_read_from_buffer(ubuf, count, ppos, dbg_buff, cnt);
+}
 
-	for (i = 0; i < ARRAY_SIZE(ipa_ic_name); i++) {
-		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
-				"IC[%2u:%22s]=%u\n", i, ipa_ic_name[i],
-				ipa_ctx->stats.imm_cmds[i]);
-		cnt += nbytes;
-	}
+static ssize_t ipa_read_wstats(struct file *file, char __user *ubuf,
+		size_t count, loff_t *ppos)
+{
+
+#define FRMT_STR "%25s %10u\n"
+#define FRMT_STR1 "%25s %10u\n\n"
+
+	int cnt = 0;
+	int nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Rx Pkts Rcvd:", ipa_ctx->wstats.rx_pkts_rcvd);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Rx Pkts Status Rcvd:", ipa_ctx->wstats.rx_pkts_status_rcvd);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Rx DH Rcvd:", ipa_ctx->wstats.rx_hd_rcvd);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Rx DH Processed:", ipa_ctx->wstats.rx_hd_processed);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Rx DH Sent Back:", ipa_ctx->wstats.rx_hd_reply);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR1,
+	 "Rx Pkt Leak:", ipa_ctx->wstats.rx_pkt_leak);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Rx DP Fail:", ipa_ctx->wstats.rx_dp_fail);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Tx Buf Total:", ipa_ctx->wlan_comm_cnt);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Tx Buf Cnt:", ipa_ctx->wstats.tx_buf_cnt);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Tx Pkts Sent:", ipa_ctx->wstats.tx_pkts_rcvd);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Tx Pkts Freed:", ipa_ctx->wstats.tx_pkts_freed);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Tx Pkts Dropped:", ipa_ctx->wstats.tx_pkts_dropped);
+	cnt += nbytes;
+
+	nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt, FRMT_STR,
+		"Avail Fifo Desc:", ipa_ctx->ep[19].avail_fifo_desc);
+	cnt += nbytes;
 
 	return simple_read_from_buffer(ubuf, count, ppos, dbg_buff, cnt);
 }
@@ -885,7 +921,7 @@ static ssize_t ipa_read_msg(struct file *file, char __user *ubuf,
 	int cnt = 0;
 	int i;
 
-	for (i = 0; i < IPA_EVENT_MAX; i++) {
+	for (i = 0; i < IPA_EVENT_MAX_NUM; i++) {
 		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
 				"msg[%u:%27s] W:%u R:%u\n", i,
 				ipa_event_name[i],
@@ -911,41 +947,23 @@ static ssize_t ipa_read_nat4(struct file *file,
 	u32 tbl_size, *tmp;
 	u32 value, i, j, rule_id;
 	u16 enable, tbl_entry, flag;
-	int nbytes, cnt;
 
-	cnt = 0;
 	value = ipa_ctx->nat_mem.public_ip_addr;
-	nbytes = scnprintf(dbg_buff + cnt,
-				IPA_MAX_MSG_LEN,
+	pr_info(
 				"Table IP Address:%d.%d.%d.%d\n",
 				((value & 0xFF000000) >> 24),
 				((value & 0x00FF0000) >> 16),
 				((value & 0x0000FF00) >> 8),
 				((value & 0x000000FF)));
-	cnt += nbytes;
 
-	nbytes = scnprintf(dbg_buff + cnt,
-				IPA_MAX_MSG_LEN,
-				"Table Size:%d\n",
+	pr_info("Table Size:%d\n",
 				ipa_ctx->nat_mem.size_base_tables);
-	cnt += nbytes;
 
-	nbytes = scnprintf(dbg_buff + cnt,
-				IPA_MAX_MSG_LEN,
-				"Expansion Table Size:%d\n",
+	pr_info("Expansion Table Size:%d\n",
 				ipa_ctx->nat_mem.size_expansion_tables);
-	cnt += nbytes;
 
-	if (!ipa_ctx->nat_mem.is_sys_mem) {
-		nbytes = scnprintf(dbg_buff + cnt,
-					IPA_MAX_MSG_LEN,
-					"Not supported for local(shared) memory\n");
-		cnt += nbytes;
-
-		return simple_read_from_buffer(ubuf, count,
-						ppos, dbg_buff, cnt);
-	}
-
+	if (!ipa_ctx->nat_mem.is_sys_mem)
+		pr_info("Not supported for local(shared) memory\n");
 
 	/* Print Base tables */
 	rule_id = 0;
@@ -954,17 +972,13 @@ static ssize_t ipa_read_nat4(struct file *file,
 			tbl_size = ipa_ctx->nat_mem.size_base_tables;
 			base_tbl = (u32 *)ipa_ctx->nat_mem.ipv4_rules_addr;
 
-			nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN,
-					"\nBase Table:\n");
-			cnt += nbytes;
+			pr_info("\nBase Table:\n");
 		} else {
 			tbl_size = ipa_ctx->nat_mem.size_expansion_tables;
 			base_tbl =
 			 (u32 *)ipa_ctx->nat_mem.ipv4_expansion_rules_addr;
 
-			nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN,
-					"\nExpansion Base Table:\n");
-			cnt += nbytes;
+			pr_info("\nExpansion Base Table:\n");
 		}
 
 		if (base_tbl != NULL) {
@@ -974,103 +988,73 @@ static ssize_t ipa_read_nat4(struct file *file,
 				enable = ((value & 0xFFFF0000) >> 16);
 
 				if (enable & NAT_ENTRY_ENABLE) {
-					nbytes = scnprintf(dbg_buff + cnt,
-								IPA_MAX_MSG_LEN,
-								"Rule:%d ",
-								rule_id);
-					cnt += nbytes;
+					pr_info("Rule:%d ", rule_id);
 
 					value = *tmp;
-					nbytes = scnprintf(dbg_buff + cnt,
-						IPA_MAX_MSG_LEN,
+					pr_info(
 						"Private_IP:%d.%d.%d.%d ",
 						((value & 0xFF000000) >> 24),
 						((value & 0x00FF0000) >> 16),
 						((value & 0x0000FF00) >> 8),
 						((value & 0x000000FF)));
-					cnt += nbytes;
 					tmp++;
 
 					value = *tmp;
-					nbytes = scnprintf(dbg_buff + cnt,
-						IPA_MAX_MSG_LEN,
+					pr_info(
 						"Target_IP:%d.%d.%d.%d ",
 						((value & 0xFF000000) >> 24),
 						((value & 0x00FF0000) >> 16),
 						((value & 0x0000FF00) >> 8),
 						((value & 0x000000FF)));
-					cnt += nbytes;
 					tmp++;
 
 					value = *tmp;
-					nbytes = scnprintf(dbg_buff + cnt,
-						IPA_MAX_MSG_LEN,
+					pr_info(
 						"Next_Index:%d  Public_Port:%d ",
 						(value & 0x0000FFFF),
 						((value & 0xFFFF0000) >> 16));
-					cnt += nbytes;
 					tmp++;
 
 					value = *tmp;
-					nbytes = scnprintf(dbg_buff + cnt,
-						IPA_MAX_MSG_LEN,
+					pr_info(
 						"Private_Port:%d  Target_Port:%d ",
 						(value & 0x0000FFFF),
 						((value & 0xFFFF0000) >> 16));
-					cnt += nbytes;
 					tmp++;
 
 					value = *tmp;
-					nbytes = scnprintf(dbg_buff + cnt,
-						IPA_MAX_MSG_LEN,
-						"IP-CKSM-delta:0x%x  ",
-						(value & 0x0000FFFF));
-					cnt += nbytes;
-
 					flag = ((value & 0xFFFF0000) >> 16);
 					if (flag & NAT_ENTRY_RST_FIN_BIT) {
-						nbytes =
-						 scnprintf(dbg_buff + cnt,
-							  IPA_MAX_MSG_LEN,
+						pr_info(
 								"IP_CKSM_delta:0x%x  Flags:%s ",
 							  (value & 0x0000FFFF),
 								"Direct_To_A5");
-						cnt += nbytes;
 					} else {
-						nbytes =
-						 scnprintf(dbg_buff + cnt,
-							IPA_MAX_MSG_LEN,
+						pr_info(
 							"IP_CKSM_delta:0x%x  Flags:%s ",
 							(value & 0x0000FFFF),
 							"Fwd_to_route");
-						cnt += nbytes;
 					}
 					tmp++;
 
 					value = *tmp;
-					nbytes = scnprintf(dbg_buff + cnt,
-						IPA_MAX_MSG_LEN,
+					pr_info(
 						"Time_stamp:0x%x Proto:%d ",
 						(value & 0x00FFFFFF),
-						((value & 0xFF000000) >> 27));
-					cnt += nbytes;
+						((value & 0xFF000000) >> 24));
 					tmp++;
 
 					value = *tmp;
-					nbytes = scnprintf(dbg_buff + cnt,
-						IPA_MAX_MSG_LEN,
+					pr_info(
 						"Prev_Index:%d  Indx_tbl_entry:%d ",
 						(value & 0x0000FFFF),
 						((value & 0xFFFF0000) >> 16));
-					cnt += nbytes;
 					tmp++;
 
 					value = *tmp;
-					nbytes = scnprintf(dbg_buff + cnt,
-						IPA_MAX_MSG_LEN,
+					pr_info(
 						"TCP_UDP_cksum_delta:0x%x\n",
 						((value & 0xFFFF0000) >> 16));
-					cnt += nbytes;
 				}
 
 				base_tbl += ENTRY_U32_FIELDS;
@@ -1086,17 +1070,13 @@ static ssize_t ipa_read_nat4(struct file *file,
 			tbl_size = ipa_ctx->nat_mem.size_base_tables;
 			indx_tbl = (u32 *)ipa_ctx->nat_mem.index_table_addr;
 
-			nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN,
-					"\nIndex Table:\n");
-			cnt += nbytes;
+			pr_info("\nIndex Table:\n");
 		} else {
 			tbl_size = ipa_ctx->nat_mem.size_expansion_tables;
 			indx_tbl =
 			 (u32 *)ipa_ctx->nat_mem.index_table_expansion_addr;
 
-			nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN,
-					"\nExpansion Index Table:\n");
-			cnt += nbytes;
+			pr_info("\nExpansion Index Table:\n");
 		}
 
 		if (indx_tbl != NULL) {
@@ -1106,19 +1086,13 @@ static ssize_t ipa_read_nat4(struct file *file,
 				tbl_entry = (value & 0x0000FFFF);
 
 				if (tbl_entry) {
-					nbytes = scnprintf(dbg_buff + cnt,
-								IPA_MAX_MSG_LEN,
-								"Rule:%d ",
-								rule_id);
-					cnt += nbytes;
+					pr_info("Rule:%d ", rule_id);
 
 					value = *tmp;
-					nbytes = scnprintf(dbg_buff + cnt,
-						IPA_MAX_MSG_LEN,
+					pr_info(
 						"Table_Entry:%d  Next_Index:%d\n",
 						tbl_entry,
 						((value & 0xFFFF0000) >> 16));
-					cnt += nbytes;
 				}
 
 				indx_tbl++;
@@ -1126,7 +1100,7 @@ static ssize_t ipa_read_nat4(struct file *file,
 		}
 	}
 
-	return simple_read_from_buffer(ubuf, count, ppos, dbg_buff, cnt);
+	return 0;
 }
 
 static ssize_t ipa_rm_read_stats(struct file *file, char __user *ubuf,
@@ -1172,6 +1146,10 @@ const struct file_operations ipa_flt_ops = {
 
 const struct file_operations ipa_stats_ops = {
 	.read = ipa_read_stats,
+};
+
+const struct file_operations ipa_wstats_ops = {
+	.read = ipa_read_wstats,
 };
 
 const struct file_operations ipa_msg_ops = {
@@ -1276,6 +1254,13 @@ void ipa_debugfs_init(void)
 		goto fail;
 	}
 
+	dfile_wstats = debugfs_create_file("wstats", read_only_mode,
+			dent, 0, &ipa_wstats_ops);
+	if (!dfile_wstats || IS_ERR(dfile_wstats)) {
+		IPAERR("fail to create file for debug_fs wstats\n");
+		goto fail;
+	}
+
 	dfile_dbg_cnt = debugfs_create_file("dbg_cnt", read_write_mode, dent, 0,
 			&ipa_dbg_cnt_ops);
 	if (!dfile_dbg_cnt || IS_ERR(dfile_dbg_cnt)) {
@@ -1301,6 +1286,21 @@ void ipa_debugfs_init(void)
 			read_only_mode, dent, 0, &ipa_rm_stats);
 	if (!dfile_rm_stats || IS_ERR(dfile_rm_stats)) {
 		IPAERR("fail to create file for debug_fs rm_stats\n");
+		goto fail;
+	}
+
+	file = debugfs_create_u32("enable_clock_scaling", read_write_mode,
+		dent, &ipa_ctx->enable_clock_scaling);
+	if (!file) {
+		IPAERR("could not create enable_clock_scaling file\n");
+		goto fail;
+	}
+
+	file = debugfs_create_u32("clock_scaling_bw_threshold_mbps",
+		read_write_mode, dent,
+		&ipa_ctx->ctrl->clock_scaling_bw_threshold);
+	if (!file) {
+		IPAERR("could not create clock_scaling_bw_threshold_mbps\n");
 		goto fail;
 	}
 

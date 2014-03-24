@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -32,15 +32,20 @@
 #define TEST_MAX_SECTOR_RANGE		(10*1024*1024) /* 5GB */
 #define LARGE_PRIME_1	1103515367
 #define LARGE_PRIME_2	35757
+#define MAGIC_SEED	7
 #define DEFAULT_NUM_OF_BIOS		2
 #define LONG_SEQUENTIAL_MIXED_TIMOUT_MS 100000
 #define THREADS_COMPLETION_TIMOUT msecs_to_jiffies(10000) /* 10 sec */
 #define MAX_PARALLEL_QUERIES 33
 #define RANDOM_REQUEST_THREADS 4
 #define LUN_DEPTH_TEST_SIZE 9
+#define SECTOR_SIZE	512
+#define NUM_UNLUCKY_RETRIES	10
 
 /* the amount of requests that will be inserted */
 #define LONG_SEQ_TEST_NUM_REQS  256
+/* we issue 4KB requests, so 256 reqs = 1MB */
+#define LONG_RAND_TEST_NUM_REQS	(256 * 64)
 /* request queue limitation is 128 requests, and we leave 10 spare requests */
 #define QUEUE_MAX_REQUESTS 118
 #define MB_MSEC_RATIO_APPROXIMATION ((1024 * 1024) / 1000)
@@ -76,17 +81,17 @@ const struct file_operations ufs_test_ ## test_name ## _ops = {		\
 ufs_test_add_test(utd, UFS_TEST_ ## upper_case_name, "ufs_test_"#test_name,\
 				&(ufs_test_ ## test_name ## _ops));	\
 
-
-
-
-
 enum ufs_test_testcases {
 	UFS_TEST_WRITE_READ_TEST,
 	UFS_TEST_MULTI_QUERY,
+	UFS_TEST_DATA_INTEGRITY,
 
 	UFS_TEST_LONG_SEQUENTIAL_READ,
 	UFS_TEST_LONG_SEQUENTIAL_WRITE,
 	UFS_TEST_LONG_SEQUENTIAL_MIXED,
+
+	UFS_TEST_LONG_RANDOM_READ,
+	UFS_TEST_LONG_RANDOM_WRITE,
 
 	UFS_TEST_PARALLEL_READ_AND_WRITE,
 	UFS_TEST_LUN_DEPTH,
@@ -118,7 +123,7 @@ struct ufs_test_data {
 	/* A wait queue for OPs to complete */
 	wait_queue_head_t wait_q;
 	/* a flag for write compleation */
-	bool write_completed;
+	bool queue_complete;
 	/*
 	 * To determine the number of r/w bios. When seed = 0, random is
 	 * disabled and 2 BIOs are written.
@@ -229,6 +234,12 @@ static char *ufs_test_get_test_case_str(struct test_data *td)
 	case UFS_TEST_MULTI_QUERY:
 		return "Test multiple queries at the same time";
 		break;
+	case UFS_TEST_LONG_RANDOM_READ:
+		return "UFS long random read test";
+	case UFS_TEST_LONG_RANDOM_WRITE:
+		return "UFS long random write test";
+	case UFS_TEST_DATA_INTEGRITY:
+		return "UFS random data integrity test";
 	case UFS_TEST_LONG_SEQUENTIAL_READ:
 		return "UFS long sequential read test";
 		break;
@@ -319,6 +330,14 @@ static int ufs_test_show(struct seq_file *file, int test_case)
 	case UFS_TEST_MULTI_QUERY:
 		test_description = "Test multiple queries at the same time.\n";
 		break;
+	case UFS_TEST_DATA_INTEGRITY:
+		test_description = "\nufs_data_integrity_test\n"
+		"=========\n"
+		 "Description:\n"
+		 "This test writes 118 requests of size 4KB to randomly chosen LBAs.\n"
+		 "The test then reads from these LBAs and checks that the\n"
+		 "correct buffer has been read.\n";
+		break;
 	case UFS_TEST_LONG_SEQUENTIAL_READ:
 		test_description = "\nufs_long_sequential_read_test\n"
 		 "=========\n"
@@ -328,6 +347,15 @@ static int ufs_test_show(struct seq_file *file, int test_case)
 		 "throughput at the driver level by sequentially reading many "
 		 "large requests.\n";
 		break;
+	case UFS_TEST_LONG_RANDOM_READ:
+		test_description = "\nufs_long_random_read_test\n"
+		 "=========\n"
+		 "Description:\n"
+		 "This test runs the following scenarios\n"
+		 "- Long Random Read Test: this test measures read "
+		 "IOPS at the driver level by reading many 4KB requests"
+		 "with random LBAs\n";
+		break;
 	case UFS_TEST_LONG_SEQUENTIAL_WRITE:
 		test_description =  "\nufs_long_sequential_write_test\n"
 		 "=========\n"
@@ -336,6 +364,15 @@ static int ufs_test_show(struct seq_file *file, int test_case)
 		 "- Long Sequential Write Test: this test measures write "
 		 "throughput at the driver level by sequentially writing many "
 		 "large requests\n";
+		break;
+	case UFS_TEST_LONG_RANDOM_WRITE:
+		test_description = "\nufs_long_random_write_test\n"
+		 "=========\n"
+		 "Description:\n"
+		 "This test runs the following scenarios\n"
+		 "- Long Random Write Test: this test measures write "
+		 "IOPS at the driver level by writing many 4KB requests"
+		 "with random LBAs\n";
 		break;
 	case UFS_TEST_LONG_SEQUENTIAL_MIXED:
 		test_description = "\nufs_long_sequential_mixed_test_read\n"
@@ -431,8 +468,8 @@ static int ufs_test_check_result(struct test_data *td)
 
 static bool ufs_write_read_completion(void)
 {
-	if (!utd->write_completed) {
-		utd->write_completed = true;
+	if (!utd->queue_complete) {
+		utd->queue_complete = true;
 		wake_up(&utd->wait_q);
 		return false;
 	}
@@ -459,7 +496,7 @@ static int ufs_test_run_write_read_test(struct test_data *td)
 		"%s: Adding a write request with %d bios to Q, req_id=%d"
 			, __func__, num_bios, td->wr_rd_next_req_id);
 
-	utd->write_completed = false;
+	utd->queue_complete = false;
 	ret = test_iosched_add_wr_rd_test_req(0, WRITE, start_sec, num_bios,
 						TEST_PATTERN_5A, NULL);
 
@@ -470,7 +507,7 @@ static int ufs_test_run_write_read_test(struct test_data *td)
 
 	/* waiting for the write request to finish */
 	blk_run_queue(q);
-	wait_event(utd->wait_q, utd->write_completed);
+	wait_event(utd->wait_q, utd->queue_complete);
 
 	/* Adding a read request*/
 	pr_info("%s: Adding a read request to Q", __func__);
@@ -599,6 +636,16 @@ static bool ufs_test_multi_thread_completion(void)
 {
 	return atomic_read(&utd->outstanding_threads) <= 0 &&
 			utd->test_stage != UFS_TEST_LUN_DEPTH_TEST_RUNNING;
+}
+
+static bool long_rand_test_check_completion(void)
+{
+	if (utd->completed_req_count > LONG_RAND_TEST_NUM_REQS) {
+		pr_err("%s: Error: Completed more requests than total test requests.\nTerminating test."
+		       , __func__);
+		return true;
+	}
+	return (utd->completed_req_count == LONG_RAND_TEST_NUM_REQS);
 }
 
 static bool long_seq_test_check_completion(void)
@@ -821,7 +868,7 @@ static int ufs_test_run_lun_depth_test(struct test_data *td)
 	return 0;
 }
 
-static void long_seq_test_free_end_io_fn(struct request *rq, int err)
+static void long_test_free_end_io_fn(struct request *rq, int err)
 {
 	struct test_request *test_rq;
 	struct test_data *ptd = test_get_test_data();
@@ -863,7 +910,7 @@ static void long_seq_test_free_end_io_fn(struct request *rq, int err)
 }
 
 /**
- * run_long_seq_test - main function for long sequential test
+ * run_long_test - main function for long sequential test
  * @td - test specific data
  *
  * This function is used to fill up (and keep full) the test queue with
@@ -871,12 +918,12 @@ static void long_seq_test_free_end_io_fn(struct request *rq, int err)
  * 1. Only read/write (STAGE_1 or no stage)
  * 2. Simultaneous read and write to the same LBAs (STAGE_2)
  */
-static int run_long_seq_test(struct test_data *td)
+static int run_long_test(struct test_data *td)
 {
 	int ret = 0;
-	int direction;
+	int direction, long_test_num_requests, num_bios_per_request;
 	static unsigned int inserted_requests;
-	u32 sector;
+	u32 sector, seed, num_bios, seq_sector_delta;
 
 	BUG_ON(!td);
 	sector = td->start_sector;
@@ -886,18 +933,37 @@ static int run_long_seq_test(struct test_data *td)
 		inserted_requests = 0;
 	}
 
-	/* Set the direction */
+	/* Set test parameters */
 	switch (td->test_info.testcase) {
+	case  UFS_TEST_LONG_RANDOM_READ:
+		num_bios_per_request = 1;
+		long_test_num_requests = LONG_RAND_TEST_NUM_REQS;
+		direction = READ;
+		break;
+	case  UFS_TEST_LONG_RANDOM_WRITE:
+		num_bios_per_request = 1;
+		long_test_num_requests = LONG_RAND_TEST_NUM_REQS;
+		direction = WRITE;
+		break;
 	case UFS_TEST_LONG_SEQUENTIAL_READ:
+		num_bios_per_request = TEST_MAX_BIOS_PER_REQ;
+		long_test_num_requests = LONG_SEQ_TEST_NUM_REQS;
 		direction = READ;
 		break;
 	case UFS_TEST_LONG_SEQUENTIAL_WRITE:
+		num_bios_per_request = TEST_MAX_BIOS_PER_REQ;
+		long_test_num_requests = LONG_SEQ_TEST_NUM_REQS;
 	case UFS_TEST_LONG_SEQUENTIAL_MIXED:
 	default:
 		direction = WRITE;
 	}
+
+	seq_sector_delta = num_bios_per_request * (TEST_BIO_SIZE / SECTOR_SIZE);
+
+	seed = utd->random_test_seed ? utd->random_test_seed : MAGIC_SEED;
+
 	pr_info("%s: Adding %d requests, first req_id=%d", __func__,
-		     LONG_SEQ_TEST_NUM_REQS, td->wr_rd_next_req_id);
+		     long_test_num_requests, td->wr_rd_next_req_id);
 
 	do {
 		/*
@@ -912,9 +978,25 @@ static int run_long_seq_test(struct test_data *td)
 			continue;
 		}
 
+		switch (td->test_info.testcase) {
+		case UFS_TEST_LONG_SEQUENTIAL_READ:
+		case UFS_TEST_LONG_SEQUENTIAL_WRITE:
+		case UFS_TEST_LONG_SEQUENTIAL_MIXED:
+			/* don't need to increment on the first iteration */
+			if (inserted_requests)
+				sector += seq_sector_delta;
+			break;
+		case  UFS_TEST_LONG_RANDOM_READ:
+		case  UFS_TEST_LONG_RANDOM_WRITE:
+			pseudo_rnd_sector_and_size(&seed, td->start_sector,
+						   &sector, &num_bios);
+		default:
+			break;
+		}
+
 		ret = test_iosched_add_wr_rd_test_req(0, direction, sector,
-				TEST_MAX_BIOS_PER_REQ, TEST_PATTERN_5A,
-				long_seq_test_free_end_io_fn);
+				num_bios_per_request, TEST_PATTERN_5A,
+				long_test_free_end_io_fn);
 		if (ret) {
 			pr_err("%s: failed to create request" , __func__);
 			break;
@@ -922,8 +1004,8 @@ static int run_long_seq_test(struct test_data *td)
 		inserted_requests++;
 		if (utd->test_stage == UFS_TEST_LONG_SEQUENTIAL_MIXED_STAGE2) {
 			ret = test_iosched_add_wr_rd_test_req(0, READ, sector,
-					TEST_MAX_BIOS_PER_REQ, TEST_PATTERN_5A,
-					long_seq_test_free_end_io_fn);
+					num_bios_per_request, TEST_PATTERN_5A,
+					long_test_free_end_io_fn);
 			if (ret) {
 				pr_err("%s: failed to create request" ,
 						__func__);
@@ -931,14 +1013,11 @@ static int run_long_seq_test(struct test_data *td)
 			}
 			inserted_requests++;
 		}
-		/* NUM_OF_BLOCK * (BLOCK_SIZE / SECTOR_SIZE) */
-		sector += TEST_MAX_BIOS_PER_REQ * (PAGE_SIZE /
-				td->req_q->limits.logical_block_size);
 
-	} while (inserted_requests < LONG_SEQ_TEST_NUM_REQS);
+	} while (inserted_requests < long_test_num_requests);
 
 	/* in this case the queue will not run in the above loop */
-	if (LONG_SEQ_TEST_NUM_REQS < QUEUE_MAX_REQUESTS)
+	if (long_test_num_requests < QUEUE_MAX_REQUESTS)
 		blk_run_queue(td->req_q);
 
 	return ret;
@@ -949,16 +1028,36 @@ static int run_mixed_long_seq_test(struct test_data *td)
 	int ret;
 
 	utd->test_stage = UFS_TEST_LONG_SEQUENTIAL_MIXED_STAGE1;
-	ret = run_long_seq_test(td);
+	ret = run_long_test(td);
 	if (ret)
 		goto out;
 
 	pr_info("%s: First write iteration completed.", __func__);
 	pr_info("%s: Starting mixed write and reads sequence.", __func__);
 	utd->test_stage = UFS_TEST_LONG_SEQUENTIAL_MIXED_STAGE2;
-	ret = run_long_seq_test(td);
+	ret = run_long_test(td);
 out:
 	return ret;
+}
+
+static int long_rand_test_calc_iops(struct test_data *td)
+{
+	unsigned long mtime, num_ios, iops;
+
+	mtime = ktime_to_ms(utd->test_info.test_duration);
+	num_ios = utd->completed_req_count;
+
+	pr_info("%s: time is %lu msec, IOS count is %lu", __func__, mtime,
+				num_ios);
+
+	/* preserve some precision */
+	num_ios *= 1000;
+	/* calculate those iops */
+	iops = num_ios / mtime;
+
+	pr_info("%s: IOPS: %lu IOP/sec\n", __func__, iops);
+
+	return 0;
 }
 
 static int long_seq_test_calc_throughput(struct test_data *td)
@@ -987,6 +1086,98 @@ static int long_seq_test_calc_throughput(struct test_data *td)
 				fraction);
 
 	return 0;
+}
+
+static bool ufs_data_integrity_completion(void)
+{
+	struct test_data *ptd = test_get_test_data();
+	bool ret = false;
+
+	if (!ptd->dispatched_count) {
+		/* q is empty in this case */
+		if (!utd->queue_complete) {
+			utd->queue_complete = true;
+			wake_up(&utd->wait_q);
+		} else {
+			/* declare completion only on second time q is empty */
+			ret = true;
+		}
+	}
+
+	return ret;
+}
+
+static int ufs_test_run_data_integrity_test(struct test_data *td)
+{
+	int ret = 0;
+	int i, j;
+	unsigned int start_sec, num_bios, retries = NUM_UNLUCKY_RETRIES;
+	struct request_queue *q = td->req_q;
+	int sectors[QUEUE_MAX_REQUESTS] = {0};
+
+	start_sec = td->start_sector;
+	utd->queue_complete = false;
+
+	if (utd->random_test_seed != 0) {
+		ufs_test_pseudo_rnd_size(&utd->random_test_seed, &num_bios);
+	} else {
+		num_bios = DEFAULT_NUM_OF_BIOS;
+		utd->random_test_seed = MAGIC_SEED;
+	}
+
+	/* Adding write requests */
+	pr_info("%s: Adding %d write requests, first req_id=%d", __func__,
+		     QUEUE_MAX_REQUESTS, td->wr_rd_next_req_id);
+
+	for (i = 0; i < QUEUE_MAX_REQUESTS; i++) {
+		/* make sure that we didn't draw the same start_sector twice */
+		while (retries--) {
+			pseudo_rnd_sector_and_size(&utd->random_test_seed,
+				td->start_sector, &start_sec, &num_bios);
+			sectors[i] = start_sec;
+			for (j = 0; (j < i) && (sectors[i] != sectors[j]); j++)
+				/* just increment j */;
+			if (j == i)
+				break;
+		}
+		if (!retries) {
+			pr_err("%s: too many unlucky start_sector draw retries",
+			       __func__);
+			ret = -EINVAL;
+			return ret;
+		}
+		retries = NUM_UNLUCKY_RETRIES;
+
+		ret = test_iosched_add_wr_rd_test_req(0, WRITE, start_sec, 1, i,
+						      long_test_free_end_io_fn);
+
+		if (ret) {
+			pr_err("%s: failed to add a write request", __func__);
+			return ret;
+		}
+	}
+
+	/* waiting for the write request to finish */
+	blk_run_queue(q);
+	wait_event(utd->wait_q, utd->queue_complete);
+
+	/* Adding read requests */
+	pr_info("%s: Adding %d read requests, first req_id=%d", __func__,
+		     QUEUE_MAX_REQUESTS, td->wr_rd_next_req_id);
+
+	for (i = 0; i < QUEUE_MAX_REQUESTS; i++) {
+		ret = test_iosched_add_wr_rd_test_req(0, READ, sectors[i],
+				1, i, long_test_free_end_io_fn);
+
+		if (ret) {
+			pr_err("%s: failed to add a read request", __func__);
+			return ret;
+		}
+	}
+
+	blk_run_queue(q);
+
+	return ret;
 }
 
 static ssize_t ufs_test_write(struct file *file, const char __user *buf,
@@ -1027,9 +1218,22 @@ static ssize_t ufs_test_write(struct file *file, const char __user *buf,
 		utd->test_info.run_test_fn = ufs_test_run_multi_query_test;
 		utd->test_info.check_test_result_fn = ufs_test_check_result;
 		break;
+	case UFS_TEST_DATA_INTEGRITY:
+		utd->test_info.run_test_fn = ufs_test_run_data_integrity_test;
+		utd->test_info.check_test_completion_fn =
+			ufs_data_integrity_completion;
+		break;
+	case UFS_TEST_LONG_RANDOM_READ:
+	case UFS_TEST_LONG_RANDOM_WRITE:
+		utd->test_info.run_test_fn = run_long_test;
+		utd->test_info.post_test_fn = long_rand_test_calc_iops;
+		utd->test_info.check_test_result_fn = ufs_test_check_result;
+		utd->test_info.check_test_completion_fn =
+			long_rand_test_check_completion;
+		break;
 	case UFS_TEST_LONG_SEQUENTIAL_READ:
 	case UFS_TEST_LONG_SEQUENTIAL_WRITE:
-		utd->test_info.run_test_fn = run_long_seq_test;
+		utd->test_info.run_test_fn = run_long_test;
 		utd->test_info.post_test_fn = long_seq_test_calc_throughput;
 		utd->test_info.check_test_result_fn = ufs_test_check_result;
 		utd->test_info.check_test_completion_fn =
@@ -1078,6 +1282,9 @@ static ssize_t ufs_test_write(struct file *file, const char __user *buf,
 
 TEST_OPS(write_read_test, WRITE_READ_TEST);
 TEST_OPS(multi_query, MULTI_QUERY);
+TEST_OPS(data_integrity, DATA_INTEGRITY);
+TEST_OPS(long_random_read, LONG_RANDOM_READ);
+TEST_OPS(long_random_write, LONG_RANDOM_WRITE);
 TEST_OPS(long_sequential_read, LONG_SEQUENTIAL_READ);
 TEST_OPS(long_sequential_write, LONG_SEQUENTIAL_WRITE);
 TEST_OPS(long_sequential_mixed, LONG_SEQUENTIAL_MIXED);
@@ -1122,6 +1329,15 @@ static int ufs_test_debugfs_init(void)
 	}
 
 	ret = add_test(utd, write_read_test, WRITE_READ_TEST);
+	if (ret)
+		goto exit_err;
+	ret = add_test(utd, data_integrity, DATA_INTEGRITY);
+	if (ret)
+		goto exit_err;
+	ret = add_test(utd, long_random_read, LONG_RANDOM_READ);
+	if (ret)
+		goto exit_err;
+	ret = add_test(utd, long_random_write, LONG_RANDOM_WRITE);
 	if (ret)
 		goto exit_err;
 	ret = add_test(utd, long_sequential_read, LONG_SEQUENTIAL_READ);

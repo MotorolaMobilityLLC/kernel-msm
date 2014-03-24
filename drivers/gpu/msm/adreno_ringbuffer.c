@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -398,7 +398,7 @@ static void _ringbuffer_setup_common(struct adreno_ringbuffer *rb)
 
 	/* CP ROQ queue sizes (bytes) - RB:16, ST:16, IB1:32, IB2:64 */
 	if (adreno_is_a305(adreno_dev) || adreno_is_a305c(adreno_dev) ||
-		adreno_is_a320(adreno_dev))
+		adreno_is_a306(adreno_dev) || adreno_is_a320(adreno_dev))
 		kgsl_regwrite(device, A3XX_CP_QUEUE_THRESHOLDS, 0x000E0602);
 	else if (adreno_is_a330(adreno_dev) || adreno_is_a305b(adreno_dev) ||
 			adreno_is_a310(adreno_dev))
@@ -565,7 +565,7 @@ int adreno_ringbuffer_init(struct kgsl_device *device)
 
 	rb->buffer_desc.flags = KGSL_MEMFLAGS_GPUREADONLY;
 	/* allocate memory for ringbuffer */
-	status = kgsl_allocate_contiguous(&rb->buffer_desc,
+	status = kgsl_allocate_contiguous(device, &rb->buffer_desc,
 		(rb->sizedwords << 2));
 
 	if (status != 0) {
@@ -652,7 +652,8 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	total_sizedwords += (flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE) ? 2 : 0;
 
 	/* Add two dwords for the CP_INTERRUPT */
-	total_sizedwords += drawctxt ? 2 : 0;
+	total_sizedwords +=
+		(drawctxt || (flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE)) ?  2 : 0;
 
 	/* context rollover */
 	if (adreno_is_a3xx(adreno_dev))
@@ -1102,6 +1103,67 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	return ret;
 }
 
+unsigned int adreno_ringbuffer_get_constraint(struct kgsl_device *device,
+				struct kgsl_context *context)
+{
+	unsigned int pwrlevel = device->pwrctrl.active_pwrlevel;
+
+	switch (context->pwr_constraint.type) {
+	case KGSL_CONSTRAINT_PWRLEVEL: {
+		switch (context->pwr_constraint.sub_type) {
+		case KGSL_CONSTRAINT_PWR_MAX:
+			pwrlevel = device->pwrctrl.max_pwrlevel;
+			break;
+		case KGSL_CONSTRAINT_PWR_MIN:
+			pwrlevel = device->pwrctrl.min_pwrlevel;
+			break;
+		default:
+			break;
+		}
+	}
+	break;
+
+	}
+
+	return pwrlevel;
+}
+
+void adreno_ringbuffer_set_constraint(struct kgsl_device *device,
+			struct kgsl_cmdbatch *cmdbatch)
+{
+	unsigned int constraint;
+	struct kgsl_context *context = cmdbatch->context;
+	/*
+	 * Check if the context has a constraint and constraint flags are
+	 * set.
+	 */
+	if (context->pwr_constraint.type &&
+		((context->flags & KGSL_CONTEXT_PWR_CONSTRAINT) ||
+			(cmdbatch->flags & KGSL_CONTEXT_PWR_CONSTRAINT))) {
+
+		constraint = adreno_ringbuffer_get_constraint(device, context);
+
+		/*
+		 * If a constraint is already set, set a new
+		 * constraint only if it is faster
+		 */
+		if ((device->pwrctrl.constraint.type ==
+			KGSL_CONSTRAINT_NONE) || (constraint <
+			device->pwrctrl.constraint.hint.pwrlevel.level)) {
+
+			kgsl_pwrctrl_pwrlevel_change(device, constraint);
+			device->pwrctrl.constraint.type =
+					context->pwr_constraint.type;
+			device->pwrctrl.constraint.hint.
+					pwrlevel.level = constraint;
+		}
+
+		device->pwrctrl.constraint.expires = jiffies +
+			device->pwrctrl.interval_timeout;
+	}
+
+}
+
 /* adreno_rindbuffer_submitcmd - submit userspace IBs to the GPU */
 int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 		struct kgsl_cmdbatch *cmdbatch)
@@ -1211,6 +1273,9 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	if (test_and_clear_bit(ADRENO_DEVICE_PWRON, &adreno_dev->priv) &&
 		test_bit(ADRENO_DEVICE_PWRON_FIXUP, &adreno_dev->priv))
 		flags |= KGSL_CMD_FLAGS_PWRON_FIXUP;
+
+	/* Set the constraints before adding to ringbuffer */
+	adreno_ringbuffer_set_constraint(device, cmdbatch);
 
 	ret = adreno_ringbuffer_addcmds(&adreno_dev->ringbuffer,
 					drawctxt,

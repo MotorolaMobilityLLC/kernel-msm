@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -26,14 +26,13 @@
 #include <linux/sysfs.h>
 #include <linux/device.h>
 #include <linux/slab.h>
+#include <soc/qcom/subsystem_restart.h>
+#include <soc/qcom/subsystem_notif.h>
 #include <sound/apr_audio-v2.h>
-#include <mach/subsystem_restart.h>
-#include <mach/msm_smd.h>
+#include <soc/qcom/smd.h>
 #include <linux/qdsp6v2/apr.h>
 #include <linux/qdsp6v2/apr_tal.h>
 #include <linux/qdsp6v2/dsp_debug.h>
-#include <mach/subsystem_notif.h>
-#include <mach/subsystem_restart.h>
 
 static struct apr_q6 q6;
 static struct apr_client client[APR_DEST_MAX][APR_CLIENT_MAX];

@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,8 +16,6 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/memory.h>
-#include <linux/msm_tsens.h>
-#include <linux/msm_thermal.h>
 #include <linux/clk/msm-clk-provider.h>
 #include <linux/regulator/rpm-smd-regulator.h>
 #include <asm/mach/map.h>
@@ -26,16 +24,16 @@
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_memtypes.h>
-#include <mach/restart.h>
-#include <mach/socinfo.h>
+#include <soc/qcom/socinfo.h>
+#include <soc/qcom/restart.h>
 #include <soc/qcom/smem.h>
-#include <mach/msm_smd.h>
-#include <mach/rpm-smd.h>
-#include "spm.h"
+#include <soc/qcom/spm.h>
+#include <soc/qcom/pm.h>
+#include <soc/qcom/rpm-smd.h>
+#include <soc/qcom/smd.h>
 #include "board-dt.h"
 #include "clock.h"
 #include "platsmp.h"
-#include "pm.h"
 
 static struct of_dev_auxdata msmsamarium_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -79,8 +77,6 @@ void __init msmsamarium_add_drivers(void)
 		msm_clock_init(&msmsamarium_rumi_clock_init_data);
 	else
 		msm_clock_init(&msmsamarium_clock_init_data);
-	tsens_tm_init_driver();
-	msm_thermal_device_init();
 }
 
 static void __init msmsamarium_map_io(void)
@@ -120,12 +116,11 @@ static const char *msmsamarium_dt_match[] __initconst = {
 };
 
 DT_MACHINE_START(MSMSAMARIUM_DT, "Qualcomm MSM Samarium(Flattened Device Tree)")
-	.map_io = msmsamarium_map_io,
-	.init_irq = msm_dt_init_irq,
-	.init_machine = msmsamarium_init,
-	.dt_compat = msmsamarium_dt_match,
-	.reserve = msmsamarium_reserve,
-	.init_very_early = msmsamarium_init_very_early,
-	.restart = msm_restart,
-	.smp = &msm8962_smp_ops,
+	.map_io			= msmsamarium_map_io,
+	.init_machine		= msmsamarium_init,
+	.dt_compat		= msmsamarium_dt_match,
+	.reserve		= msmsamarium_reserve,
+	.init_very_early	= msmsamarium_init_very_early,
+	.restart		= msm_restart,
+	.smp			= &msm8962_smp_ops,
 MACHINE_END

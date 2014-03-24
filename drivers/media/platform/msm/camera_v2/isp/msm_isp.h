@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,8 +22,8 @@
 #include <linux/avtimer.h>
 #include <media/v4l2-subdev.h>
 #include <media/msmb_isp.h>
-#include <mach/msm_bus.h>
-#include <mach/msm_bus_board.h>
+#include <linux/msm-bus.h>
+#include <linux/msm-bus-board.h>
 
 #include "msm_buf_mgr.h"
 
@@ -137,7 +137,7 @@ struct msm_vfe_axi_ops {
 	void (*cfg_ub) (struct vfe_device *vfe_dev);
 
 	void (*update_ping_pong_addr) (struct vfe_device *vfe_dev,
-		uint8_t wm_idx, uint32_t pingpong_status, unsigned long paddr);
+		uint8_t wm_idx, uint32_t pingpong_status, dma_addr_t paddr);
 
 	uint32_t (*get_wm_mask) (uint32_t irq_status0, uint32_t irq_status1);
 	uint32_t (*get_comp_mask) (uint32_t irq_status0, uint32_t irq_status1);
@@ -188,7 +188,7 @@ struct msm_vfe_stats_ops {
 
 	void (*update_ping_pong_addr) (struct vfe_device *vfe_dev,
 		struct msm_vfe_stats_stream *stream_info,
-		uint32_t pingpong_status, unsigned long paddr);
+		uint32_t pingpong_status, dma_addr_t paddr);
 
 	uint32_t (*get_frame_id) (struct vfe_device *vfe_dev);
 	uint32_t (*get_wm_mask) (uint32_t irq_status0, uint32_t irq_status1);
@@ -303,7 +303,7 @@ struct msm_vfe_axi_composite_info {
 };
 
 struct msm_vfe_src_info {
-	unsigned long frame_id;
+	uint32_t frame_id;
 	uint8_t active;
 	uint8_t pix_stream_count;
 	uint8_t raw_stream_count;
@@ -335,12 +335,12 @@ struct msm_vfe_axi_shared_data {
 	enum msm_isp_camif_update_state pipeline_update;
 	struct msm_vfe_src_info src_info[VFE_SRC_MAX];
 	uint16_t stream_handle_cnt;
-	unsigned long event_mask;
+	uint32_t event_mask;
 };
 
 struct msm_vfe_stats_hardware_info {
 	uint32_t stats_capability_mask;
-	uint32_t stats_ping_pong_offset;
+	uint8_t *stats_ping_pong_offset;
 	uint8_t num_stats_type;
 	uint8_t num_stats_comp_mask;
 };
@@ -446,6 +446,7 @@ struct vfe_device {
 	uint8_t vt_enable;
 	void __iomem *p_avtimer_msw;
 	void __iomem *p_avtimer_lsw;
+	uint8_t ignore_error;
 };
 
 #endif

@@ -39,7 +39,7 @@ config MSM_IOMMU_V0
 # MSM IOMMUv1 support
 config MSM_IOMMU_V1
 	bool "MSM IOMMUv1 Support"
-	depends on ARCH_MSM8974 || ARCH_MPQ8092 || ARCH_MSM8226 || ARCH_APQ8084
+	depends on ARCH_MSM8974 || ARCH_MPQ8092 || ARCH_MSM8226 || ARCH_APQ8084 || ARCH_MSM8916 || ARCH_MSMPLUTONIUM
 	select IOMMU_API
 	select MSM_IOMMU
 	help
@@ -98,6 +98,16 @@ config IOMMU_LPAE
 	  Enables Large Physical Address Extension (LPAE) for IOMMU. This allows
 	  clients of IOMMU to access physical addresses that are greater than
 	  32 bits.
+
+	  If unsure, say N here.
+
+config MSM_IOMMU_VBIF_CHECK
+	bool "Enable support for VBIF check when IOMMU gets stuck"
+	depends on MSM_IOMMU
+	help
+	  Enables an extra check in the IOMMU driver that logs debugging
+	  information when TLB sync or iommu halt issue occurs. This helps
+	  in debugging such issues.
 
 	  If unsure, say N here.
 

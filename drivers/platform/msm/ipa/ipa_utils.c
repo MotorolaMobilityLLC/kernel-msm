@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,13 +14,16 @@
 #include <linux/genalloc.h>	/* gen_pool_alloc() */
 #include <linux/io.h>
 #include <linux/ratelimit.h>
-#include <mach/msm_bus.h>
-#include <mach/msm_bus_board.h>
+#include <linux/msm-bus.h>
+#include <linux/msm-bus-board.h>
 #include "ipa_i.h"
 
 #define IPA_V1_CLK_RATE (92.31 * 1000 * 1000UL)
 #define IPA_V1_1_CLK_RATE (100 * 1000 * 1000UL)
-#define IPA_V2_0_CLK_RATE (150 * 1000 * 1000UL)
+#define IPA_V2_0_CLK_RATE_LOW (75 * 1000 * 1000UL)
+#define IPA_V2_0_CLK_RATE_HIGH (150 * 1000 * 1000UL)
+
+#define IPA_V2_0_BW_THRESHOLD_MBPS (800)
 
 static const int ipa_ofst_meq32[] = { IPA_OFFSET_MEQ32_0,
 					IPA_OFFSET_MEQ32_1, -1 };
@@ -103,7 +106,7 @@ static const int ep_mapping[2][IPA_CLIENT_MAX] = {
 	[IPA_2_0][IPA_CLIENT_USB4_CONS]          = 18,
 	[IPA_2_0][IPA_CLIENT_WLAN4_CONS]         = 18,
 	[IPA_2_0][IPA_CLIENT_HSIC5_CONS]         = -1,
-	[IPA_2_0][IPA_CLIENT_USB_CONS]           = 10,
+	[IPA_2_0][IPA_CLIENT_USB_CONS]           = 15,
 	[IPA_2_0][IPA_CLIENT_A2_EMBEDDED_CONS]   = -1,
 	[IPA_2_0][IPA_CLIENT_A2_TETHERED_CONS]   = -1,
 	[IPA_2_0][IPA_CLIENT_A5_LAN_WAN_CONS]    = -1,
@@ -111,6 +114,7 @@ static const int ep_mapping[2][IPA_CLIENT_MAX] = {
 	[IPA_2_0][IPA_CLIENT_APPS_WAN_CONS]      =  5,
 	[IPA_2_0][IPA_CLIENT_Q6_LAN_CONS]        =  8,
 	[IPA_2_0][IPA_CLIENT_Q6_WAN_CONS]        =  9,
+	[IPA_2_0][IPA_CLIENT_Q6_DUN_CONS]        = 10,
 };
 
 static struct msm_bus_vectors ipa_init_vectors_v1_1[]  = {
@@ -435,6 +439,7 @@ int ipa_get_ep_mapping(enum ipa_client_type client)
 
 	return ep_mapping[hw_type_index][client];
 }
+EXPORT_SYMBOL(ipa_get_ep_mapping);
 
 /**
  * ipa_get_client_mapping() - provide client mapping
@@ -515,7 +520,7 @@ u8 *ipa_write_8(u8 b, u8 *dest)
  */
 u8 *ipa_pad_to_32(u8 *dest)
 {
-	int i = (u32)dest & 0x3;
+	int i = (long)dest & 0x3;
 	int j;
 
 	if (i)
@@ -1441,10 +1446,6 @@ int ipa_cfg_ep(u32 clnt_hdl, const struct ipa_ep_cfg *ipa_ep_cfg)
 	if (result)
 		return result;
 
-	result = ipa_cfg_ep_status(clnt_hdl, &ipa_ep_cfg->status);
-	if (result)
-		return result;
-
 	result = ipa_cfg_ep_cfg(clnt_hdl, &ipa_ep_cfg->cfg);
 	if (result)
 		return result;
@@ -1622,7 +1623,7 @@ int ipa_cfg_ep_status(u32 clnt_hdl, const struct ipa_ep_cfg_status *ep_status)
 			ep_status->status_ep);
 
 	/* copy over EP cfg */
-	ipa_ctx->ep[clnt_hdl].cfg.status = *ep_status;
+	ipa_ctx->ep[clnt_hdl].status = *ep_status;
 
 	ipa_inc_client_enable_clks();
 
@@ -1632,7 +1633,6 @@ int ipa_cfg_ep_status(u32 clnt_hdl, const struct ipa_ep_cfg_status *ep_status)
 
 	return 0;
 }
-EXPORT_SYMBOL(ipa_cfg_ep_status);
 
 static void _ipa_cfg_ep_cfg_v1_1(u32 clnt_hdl,
 				const struct ipa_ep_cfg_cfg *cfg)
@@ -1971,6 +1971,44 @@ int ipa_cfg_ep_hdr_ext(u32 clnt_hdl,
 	return 0;
 }
 EXPORT_SYMBOL(ipa_cfg_ep_hdr_ext);
+
+/**
+ * ipa_cfg_ep_hdr() -  IPA end-point Control configuration
+ * @clnt_hdl:	[in] opaque client handle assigned by IPA to client
+ * @ipa_ep_cfg_ctrl:	[in] IPA end-point configuration params
+ *
+ * Returns:	0 on success, negative on failure
+ */
+int ipa_cfg_ep_ctrl(u32 clnt_hdl, const struct ipa_ep_cfg_ctrl *ep_ctrl)
+{
+	u32 reg_val = 0;
+
+	if (clnt_hdl >= IPA_NUM_PIPES || clnt_hdl < 0 || ep_ctrl == NULL) {
+		IPAERR("bad parm, clnt_hdl = %d\n", clnt_hdl);
+		return -EINVAL;
+	}
+	IPADBG("pipe=%d ep_suspend=%d, ep_delay=%d\n",
+		clnt_hdl,
+		ep_ctrl->ipa_ep_suspend,
+		ep_ctrl->ipa_ep_delay);
+
+
+	IPA_SETFIELD_IN_REG(reg_val, ep_ctrl->ipa_ep_suspend,
+		IPA_ENDP_INIT_CTRL_N_ENDP_SUSPEND_SHFT,
+		IPA_ENDP_INIT_CTRL_N_ENDP_SUSPEND_BMSK);
+
+	IPA_SETFIELD_IN_REG(reg_val, ep_ctrl->ipa_ep_delay,
+			IPA_ENDP_INIT_CTRL_N_ENDP_DELAY_SHFT,
+			IPA_ENDP_INIT_CTRL_N_ENDP_DELAY_BMSK);
+
+	ipa_write_reg(ipa_ctx->mmio,
+		IPA_ENDP_INIT_CTRL_N_OFST(clnt_hdl), reg_val);
+
+	return 0;
+
+}
+EXPORT_SYMBOL(ipa_cfg_ep_ctrl);
+
 
 const char *ipa_get_mode_type_str(enum ipa_mode_type mode)
 {
@@ -2566,6 +2604,8 @@ int ipa_cfg_ep_metadata(u32 clnt_hdl, const struct ipa_ep_cfg_metadata *ep_md)
 	ipa_inc_client_enable_clks();
 
 	ipa_ctx->ctrl->ipa_cfg_ep_metadata(clnt_hdl, ep_md);
+	ipa_ctx->ep[clnt_hdl].cfg.hdr.hdr_metadata_reg_valid = 1;
+	ipa_ctx->ctrl->ipa_cfg_ep_hdr(clnt_hdl, &ipa_ctx->ep[clnt_hdl].cfg.hdr);
 
 	ipa_dec_client_disable_clks();
 
@@ -2620,72 +2660,13 @@ void ipa_dump_buff_internal(void *base, dma_addr_t phy_base, u32 size)
 	int i;
 	u32 *cur = (u32 *)base;
 	u8 *byt;
-	IPADBG("system phys addr=0x%x len=%u\n", phy_base, size);
+	IPADBG("system phys addr=%pa len=%u\n", &phy_base, size);
 	for (i = 0; i < size / 4; i++) {
 		byt = (u8 *)(cur + i);
 		IPADBG("%2d %08x   %02x %02x %02x %02x\n", i, *(cur + i),
 				byt[0], byt[1], byt[2], byt[3]);
 	}
 	IPADBG("END\n");
-}
-
-/**
- * ipa_search() - search for handle in RB tree
- * @root: tree root
- * @hdl: handle
- *
- * Return value: tree node corresponding to the handle
- */
-struct ipa_tree_node *ipa_search(struct rb_root *root, u32 hdl)
-{
-	struct rb_node *node = root->rb_node;
-
-	while (node) {
-		struct ipa_tree_node *data = container_of(node,
-				struct ipa_tree_node, node);
-
-		if (hdl < data->hdl)
-			node = node->rb_left;
-		else if (hdl > data->hdl)
-			node = node->rb_right;
-		else
-			return data;
-	}
-	return NULL;
-}
-
-/**
- * ipa_insert() - insert new node to RB tree
- * @root: tree root
- * @data: new data to insert
- *
- * Return value:
- * 0: success
- * -EPERM: tree already contains the node with provided handle
- */
-int ipa_insert(struct rb_root *root, struct ipa_tree_node *data)
-{
-	struct rb_node **new = &(root->rb_node), *parent = NULL;
-
-	/* Figure out where to put new node */
-	while (*new) {
-		struct ipa_tree_node *this = container_of(*new,
-				struct ipa_tree_node, node);
-
-		parent = *new;
-		if (data->hdl < this->hdl)
-			new = &((*new)->rb_left);
-		else if (data->hdl > this->hdl)
-			new = &((*new)->rb_right);
-		else
-			return -EPERM;
-	}
-
-	/* Add new node and rebalance tree. */
-	rb_link_node(&data->node, parent, new);
-	rb_insert_color(&data->node, root);
-
-	return 0;
 }
 
 /**
@@ -2945,7 +2926,7 @@ void ipa_bam_reg_dump(void)
 	if (__ratelimit(&_rs)) {
 		ipa_inc_client_enable_clks();
 		pr_err("IPA BAM START\n");
-		sps_get_bam_debug_info(ipa_ctx->bam_handle, 5, 479182, 0, 0);
+		sps_get_bam_debug_info(ipa_ctx->bam_handle, 5, 511950, 0, 0);
 		sps_get_bam_debug_info(ipa_ctx->bam_handle, 93, 0, 0, 0);
 		ipa_dec_client_disable_clks();
 	}
@@ -2980,7 +2961,8 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_cfg_ep_status = _ipa_cfg_ep_status_v1_1;
 		ctrl->ipa_cfg_ep_cfg = _ipa_cfg_ep_cfg_v1_1;
 		ctrl->ipa_cfg_ep_metadata_mask = _ipa_cfg_ep_metadata_mask_v1_1;
-		ctrl->ipa_clk_rate = IPA_V1_CLK_RATE;
+		ctrl->ipa_clk_rate_hi = IPA_V1_CLK_RATE;
+		ctrl->ipa_clk_rate_lo = IPA_V1_CLK_RATE;
 		ctrl->ipa_read_gen_reg = _ipa_read_gen_reg_v1_0;
 		ctrl->ipa_read_ep_reg = _ipa_read_ep_reg_v1_0;
 		ctrl->ipa_write_dbg_cnt = _ipa_write_dbg_cnt_v1;
@@ -3007,7 +2989,8 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_cfg_ep_status = _ipa_cfg_ep_status_v1_1;
 		ctrl->ipa_cfg_ep_cfg = _ipa_cfg_ep_cfg_v1_1;
 		ctrl->ipa_cfg_ep_metadata_mask = _ipa_cfg_ep_metadata_mask_v1_1;
-		ctrl->ipa_clk_rate = IPA_V1_1_CLK_RATE;
+		ctrl->ipa_clk_rate_hi = IPA_V1_1_CLK_RATE;
+		ctrl->ipa_clk_rate_lo = IPA_V1_1_CLK_RATE;
 		ctrl->ipa_read_gen_reg = _ipa_read_gen_reg_v1_1;
 		ctrl->ipa_read_ep_reg = _ipa_read_ep_reg_v1_1;
 		ctrl->ipa_write_dbg_cnt = _ipa_write_dbg_cnt_v1;
@@ -3034,7 +3017,8 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_cfg_ep_status = _ipa_cfg_ep_status_v2_0;
 		ctrl->ipa_cfg_ep_cfg = _ipa_cfg_ep_cfg_v2_0;
 		ctrl->ipa_cfg_ep_metadata_mask = _ipa_cfg_ep_metadata_mask_v2_0;
-		ctrl->ipa_clk_rate = IPA_V2_0_CLK_RATE;
+		ctrl->ipa_clk_rate_hi = IPA_V2_0_CLK_RATE_HIGH;
+		ctrl->ipa_clk_rate_lo = IPA_V2_0_CLK_RATE_LOW;
 		ctrl->ipa_read_gen_reg = _ipa_read_gen_reg_v2_0;
 		ctrl->ipa_read_ep_reg = _ipa_read_ep_reg_v2_0;
 		ctrl->ipa_write_dbg_cnt = _ipa_write_dbg_cnt_v2_0;
@@ -3046,10 +3030,55 @@ int ipa_controller_static_bind(struct ipa_controller *ctrl,
 		ctrl->ipa_disable_clks = _ipa_disable_clks_v2_0;
 		ctrl->msm_bus_data_ptr = &ipa_bus_client_pdata_v2_0;
 		ctrl->ipa_cfg_ep_metadata = _ipa_cfg_ep_metadata_v2_0;
+		ctrl->clock_scaling_bw_threshold = IPA_V2_0_BW_THRESHOLD_MBPS;
 		break;
 	default:
 		return -EPERM;
 	}
 
 	return 0;
+}
+
+void ipa_skb_recycle(struct sk_buff *skb)
+{
+	struct skb_shared_info *shinfo;
+
+	shinfo = skb_shinfo(skb);
+	memset(shinfo, 0, offsetof(struct skb_shared_info, dataref));
+	atomic_set(&shinfo->dataref, 1);
+
+	memset(skb, 0, offsetof(struct sk_buff, tail));
+	skb->data = skb->head + NET_SKB_PAD;
+	skb_reset_tail_pointer(skb);
+}
+
+int ipa_id_alloc(void *ptr)
+{
+	int id;
+
+	idr_preload(GFP_KERNEL);
+	spin_lock(&ipa_ctx->idr_lock);
+	id = idr_alloc(&ipa_ctx->ipa_idr, ptr, 0, 0, GFP_NOWAIT);
+	spin_unlock(&ipa_ctx->idr_lock);
+	idr_preload_end();
+
+	return id;
+}
+
+void *ipa_id_find(u32 id)
+{
+	void *ptr;
+
+	spin_lock(&ipa_ctx->idr_lock);
+	ptr = idr_find(&ipa_ctx->ipa_idr, id);
+	spin_unlock(&ipa_ctx->idr_lock);
+
+	return ptr;
+}
+
+void ipa_id_remove(u32 id)
+{
+	spin_lock(&ipa_ctx->idr_lock);
+	idr_remove(&ipa_ctx->ipa_idr, id);
+	spin_unlock(&ipa_ctx->idr_lock);
 }

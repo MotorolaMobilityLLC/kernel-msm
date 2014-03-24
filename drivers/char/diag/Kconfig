@@ -5,6 +5,7 @@ config DIAG_CHAR
 	default m
 	depends on USB_G_ANDROID || USB_FUNCTION_DIAG || USB_QCOM_MAEMO
 	depends on ARCH_MSM
+	select CRC_CCITT
 	help
 	 Char driver interface for diag user space and diag-forwarding to modem ARM and back.
 	 This enables diagchar for maemo usb gadget or android usb gadget based on config selected.
@@ -18,16 +19,6 @@ config DIAG_OVER_USB
 	default y
 	help
 	 This feature helps segregate code required for DIAG traffic to go over USB.
-endmenu
-
-menu "SDIO support for DIAG"
-
-config DIAG_SDIO_PIPE
-	depends on MSM_SDIO_AL
-	default y
-	bool "Enable 9K DIAG traffic over SDIO"
-	help
-	 SDIO Transport Layer for DIAG Router
 endmenu
 
 menu "HSIC/SMUX support for DIAG"

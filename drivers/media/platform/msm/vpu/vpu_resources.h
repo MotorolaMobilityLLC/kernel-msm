@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,23 +27,60 @@ enum vpu_clocks {
 	VPU_BUS_CLK,
 	VPU_MAPLE_CLK,
 	VPU_VDP_CLK,
+	VPU_VDP_XIN,
 	VPU_AHB_CLK,
 	VPU_AXI_CLK,
 	VPU_SLEEP_CLK,
 	VPU_CXO_CLK,
 	VPU_MAPLE_AXI_CLK,
 	VPU_PRNG_CLK,
+
+	VPU_FRC_GPROC,
+	VPU_FRC_KPROC,
+	VPU_FRC_SDMC_FRCS,
+	VPU_FRC_SDME_FRCF,
+	VPU_FRC_SDME_FRCS,
+	VPU_FRC_SDME_VPRO,
+	VPU_FRC_HDMC_FRCF,
+	VPU_FRC_PREPROC,
+	VPU_FRC_FRC_XIN,
+	VPU_FRC_MAPLE_AXI,
+
+	VPU_QDSS_AT,
+	VPU_QDSS_TSCTR_DIV8,
+
 	VPU_MAX_CLKS
 };
 
-struct load_freq_pair {
-	u32 load;
-	u32 freq;
+enum vpu_clock_flag {
+
+	/* Group section */
+	CLOCK_CORE =		1 << 1,
+	CLOCK_FRC =		1 << 2,
+	CLOCK_QDSS =		1 << 3,
+	CLOCK_ALL_GROUPS =	(1 << 12) - 1,
+
+	/* Property section */
+	CLOCK_PRESENT =		1 << 12,
+	CLOCK_SCALABLE =	1 << 13,
+	CLOCK_BOOT =		1 << 14,
 };
 
-struct load_freq_table {
-	struct load_freq_pair *entry;
-	int count;
+enum vpu_power_mode {
+	VPU_POWER_SVS,
+	VPU_POWER_NOMINAL,
+	VPU_POWER_TURBO,
+	VPU_POWER_DYNAMIC,
+	VPU_POWER_MAX = VPU_POWER_DYNAMIC
+};
+
+struct vpu_clock {
+	struct clk *clk;
+	u32 status;
+	u32 dynamic_freq;
+	const char *name;
+	const u32 *pwr_frequencies;
+	u32 flag;
 };
 
 struct bus_load_tbl {
@@ -52,8 +89,13 @@ struct bus_load_tbl {
 };
 
 struct reg_value_pair {
-	u32 reg;
+	u32 reg_offset;
 	u32 value;
+};
+
+struct reg_value_set {
+	struct reg_value_pair *table;
+	int count;
 };
 
 struct vpu_iommu_map {
@@ -75,22 +117,26 @@ struct iommu_set {
 };
 
 struct vpu_platform_resources {
+	struct platform_device *pdev;
+
 	/* device register and mem window */
 	phys_addr_t register_base_phy;
 	phys_addr_t mem_base_phy;
+	phys_addr_t vbif_base_phy;
 	u32 register_size;
 	u32 mem_size;
+	u32 vbif_size;
 
 	/* interrupt number */
 	u32 irq; /* Firmware to APPS IPC irq */
 	u32 irq_wd; /* Firmware's watchdog irq */
 
-	struct load_freq_table clock_tables[VPU_MAX_CLKS];
+	/* device tree configs */
 	struct bus_load_tbl bus_table;
 	struct msm_bus_scale_pdata bus_pdata;
+	struct reg_value_set vbif_reg_set;
 	struct iommu_set iommu_set;
-
-	struct platform_device *pdev;
+	struct vpu_clock clock[VPU_MAX_CLKS];
 
 	/* VPU memory client */
 	void *mem_client;

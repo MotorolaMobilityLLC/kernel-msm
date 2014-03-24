@@ -24,7 +24,7 @@
 #include <mach/subsystem_restart.h>
 #include <mach/msm_iomap.h>
 #include <mach/lge_handle_panic.h>
-#include <mach/restart.h>
+#include <soc/qcom/restart.h>
 
 #define PANIC_HANDLER_NAME        "panic-handler"
 

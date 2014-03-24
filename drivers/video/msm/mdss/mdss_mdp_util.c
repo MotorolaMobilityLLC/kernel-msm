@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,7 +16,7 @@
 #include <linux/errno.h>
 #include <linux/file.h>
 #include <linux/msm_ion.h>
-#include <linux/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/msm_kgsl.h>
 #include <linux/spinlock.h>
 #include <linux/types.h>
@@ -130,14 +130,14 @@ irqreturn_t mdss_mdp_isr(int irq, void *ptr)
 	u32 isr, mask, hist_isr, hist_mask;
 
 
-	isr = MDSS_MDP_REG_READ(MDSS_MDP_REG_INTR_STATUS);
+	isr = readl_relaxed(mdata->mdp_base + MDSS_MDP_REG_INTR_STATUS);
 
 	if (isr == 0)
 		goto mdp_isr_done;
 
 
-	mask = MDSS_MDP_REG_READ(MDSS_MDP_REG_INTR_EN);
-	MDSS_MDP_REG_WRITE(MDSS_MDP_REG_INTR_CLEAR, isr);
+	mask = readl_relaxed(mdata->mdp_base + MDSS_MDP_REG_INTR_EN);
+	writel_relaxed(isr, mdata->mdp_base + MDSS_MDP_REG_INTR_CLEAR);
 
 	pr_debug("%s: isr=%x mask=%x\n", __func__, isr, mask);
 
@@ -217,11 +217,14 @@ irqreturn_t mdss_mdp_isr(int irq, void *ptr)
 	}
 
 mdp_isr_done:
-	hist_isr = MDSS_MDP_REG_READ(MDSS_MDP_REG_HIST_INTR_STATUS);
+	hist_isr = readl_relaxed(mdata->mdp_base +
+			MDSS_MDP_REG_HIST_INTR_STATUS);
 	if (hist_isr == 0)
 		goto hist_isr_done;
-	hist_mask = MDSS_MDP_REG_READ(MDSS_MDP_REG_HIST_INTR_EN);
-	MDSS_MDP_REG_WRITE(MDSS_MDP_REG_HIST_INTR_CLEAR, hist_isr);
+	hist_mask = readl_relaxed(mdata->mdp_base +
+			MDSS_MDP_REG_HIST_INTR_EN);
+	writel_relaxed(hist_isr, mdata->mdp_base +
+		MDSS_MDP_REG_HIST_INTR_CLEAR);
 	hist_isr &= hist_mask;
 	if (hist_isr == 0)
 		goto hist_isr_done;
@@ -620,9 +623,9 @@ int mdss_mdp_get_img(struct msmfb_data *img, struct mdss_mdp_img_data *data)
 
 int mdss_mdp_calc_phase_step(u32 src, u32 dst, u32 *out_phase)
 {
-	u32 unit, residue;
+	u32 unit, residue, result;
 
-	if (dst == 0)
+	if (src == 0 || dst == 0)
 		return -EINVAL;
 
 	unit = 1 << PHASE_STEP_SHIFT;
@@ -630,8 +633,13 @@ int mdss_mdp_calc_phase_step(u32 src, u32 dst, u32 *out_phase)
 
 	/* check if overflow is possible */
 	if (src > dst) {
-		residue = *out_phase & (unit - 1);
-		if (residue && ((residue * dst) < (unit - residue)))
+		residue = *out_phase - unit;
+		result = (residue * dst) + residue;
+
+		while (result > (unit + (unit >> 1)))
+			result -= unit;
+
+		if ((result > residue) && (result < unit))
 			return -EOVERFLOW;
 	}
 

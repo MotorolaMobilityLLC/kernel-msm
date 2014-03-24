@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -577,7 +577,9 @@ static int wwan_register_to_ipa(int index)
 		return -ENOMEM;
 	}
 
-		ext_properties.prop = ext_ioc_properties;
+	ext_properties.prop = ext_ioc_properties;
+	ext_properties.excp_pipe_valid = true;
+	ext_properties.excp_pipe = IPA_CLIENT_APPS_WAN_CONS;
 	ext_properties.num_props = num_q6_rule;
 	for (i = 0; i < num_q6_rule; i++) {
 		memcpy(&(ext_properties.prop[i]),
@@ -883,6 +885,7 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 	int rc = 0;
 	int mru = 1000, epid = 1, mux_index;
 	struct rmnet_ioctl_extended_s extend_ioctl_data;
+	struct rmnet_ioctl_data_s ioctl_data;
 
 	IPAWANDBG("rmnet_ipa got ioctl number 0x%08x", cmd);
 	switch (cmd) {
@@ -894,7 +897,10 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 		break;
 	/*  Get link protocol  */
 	case RMNET_IOCTL_GET_LLP:
-		ifr->ifr_ifru.ifru_data = (void *)RMNET_MODE_LLP_IP;
+		ioctl_data.u.operation_mode = RMNET_MODE_LLP_IP;
+		if (copy_to_user(ifr->ifr_ifru.ifru_data, &ioctl_data,
+			sizeof(struct rmnet_ioctl_data_s)))
+			rc = -EFAULT;
 		break;
 	/*  Set QoS header enabled  */
 	case RMNET_IOCTL_SET_QOS_ENABLE:
@@ -904,11 +910,17 @@ static int ipa_wwan_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 		break;
 	/*  Get QoS header state  */
 	case RMNET_IOCTL_GET_QOS:
-		ifr->ifr_ifru.ifru_data = (void *)RMNET_MODE_NONE;
+		ioctl_data.u.operation_mode = RMNET_MODE_NONE;
+		if (copy_to_user(ifr->ifr_ifru.ifru_data, &ioctl_data,
+			sizeof(struct rmnet_ioctl_data_s)))
+			rc = -EFAULT;
 		break;
 	/*  Get operation mode  */
 	case RMNET_IOCTL_GET_OPMODE:
-		ifr->ifr_ifru.ifru_data = (void *)RMNET_MODE_LLP_IP;
+		ioctl_data.u.operation_mode = RMNET_MODE_LLP_IP;
+		if (copy_to_user(ifr->ifr_ifru.ifru_data, &ioctl_data,
+			sizeof(struct rmnet_ioctl_data_s)))
+			rc = -EFAULT;
 		break;
 	/*  Open transport port  */
 	case RMNET_IOCTL_OPEN:

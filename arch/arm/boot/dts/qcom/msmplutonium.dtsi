@@ -1,0 +1,505 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "skeleton64.dtsi"
+#include <dt-bindings/clock/msm-clocks-plutonium.h>
+
+/ {
+	model = "Qualcomm MSM plutonium";
+	compatible = "qcom,msmplutonium";
+	qcom,msm-id = <207 0x0>;
+	interrupt-parent = <&intc>;
+
+	aliases {
+		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
+		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
+	};
+	soc: soc { };
+
+        aliases {
+		spi0 = &spi_0;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x0>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x06000000>;
+		};
+
+		cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x1>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x06000000>;
+		};
+
+		cpu@2 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x2>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x06000000>;
+		};
+
+		cpu@3 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a53";
+			reg = <0x3>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x06000000>;
+		};
+
+		cpu@100 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a57";
+			reg = <0x100>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x06000000>;
+		};
+
+		cpu@101 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a57";
+			reg = <0x101>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x06000000>;
+		};
+
+		cpu@102 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a57";
+			reg = <0x102>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x06000000>;
+		};
+
+		cpu@103 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a57";
+			reg = <0x103>;
+			enable-method = "spin-table";
+			cpu-release-addr = <0x0 0x06000000>;
+		};
+	};
+
+	memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+
+		adsp_mem: adsp_region@0 {
+                        linux,reserve-contiguous-region;
+			reg = <0 0 0 0x3F00000>;
+			label = "adsp_mem";
+		};
+
+		qsecom_mem: qsecom_region@0 {
+                        linux,reserve-contiguous-region;
+			reg = <0 0 0 0x1100000>;
+			label = "qseecom_mem";
+		};
+
+		audio_mem: audio_region@0 {
+                        linux,reserve-contiguous-region;
+			linux,reserve-region;
+			reg = <0 0 0 0x614000>;
+			label = "audio_mem";
+		};
+
+		removed_regions: removed_regions@0 {
+			linux,reserve-contiguous-region;
+			linux,reserve-region;
+			linux,remove-completely;
+			reg = <0 0x6c00000 0 0x9000000>;
+			label = "memory_hole";
+		};
+	};
+};
+
+#include "msm-gdsc.dtsi"
+#include "msmplutonium-smp2p.dtsi"
+#include "msmplutonium-ipcrouter.dtsi"
+#include "msmplutonium-coresight.dtsi"
+
+&soc {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	ranges = <0 0 0 0xffffffff>;
+	compatible = "simple-bus";
+
+	intc: interrupt-controller@f9000000 {
+		compatible = "qcom,msm-qgic2";
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		reg = <0xf9000000 0x1000>,
+		      <0xf9002000 0x1000>;
+	};
+
+	timer {
+		compatible = "arm,armv8-timer";
+		interrupts = <1 2 0xf08>,
+			     <1 3 0xf08>,
+			     <1 4 0xf08>,
+			     <1 1 0xf08>;
+		clock-frequency = <19200000>;
+	};
+
+	uartblsp1dm2: serial@f991f000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf991f000 0x1000>;
+		interrupts = <0 109 0>;
+		status = "disabled";
+		clock-names = "core_clk", "iface_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_uart3_apps_clk>,
+			<&clock_gcc clk_gcc_blsp1_ahb_clk>;
+	};
+
+	qcom,sps@f9984000 {
+		compatible = "qcom,msm_sps";
+		reg-names = "bam_mem", "core_mem";
+		reg = <0xf9984000 0x15000>,
+		      <0xf9999000 0xb000>;
+		interrupts = <0 94 0>;
+		qcom,pipe-attr-ee;
+		clocks = <&clock_rpm clk_pnoc_sps_clk>,
+			 <&clock_gcc clk_gcc_bam_dma_ahb_clk>;
+		clock-names = "dfab_clk", "dma_bam_pclk";
+	};
+
+	ipa_hw: qcom,ipa@fd4c0000 {
+		compatible = "qcom,ipa";
+		reg = <0xfd4c0000 0x29000>,
+		      <0xfd4c4000 0x15820>;
+		reg-names = "ipa-base", "bam-base";
+		interrupts = <0 302 0>,
+		             <0 303 0>;
+		interrupt-names = "ipa-irq", "bam-irq";
+		qcom,ipa-hw-ver = <3>; /* IPA core version = IPAv2.0 */
+		qcom,ipa-hw-mode = <0>; /* IPA hw type = Normal */
+		qcom,ee = <0>;
+		clock-names = "core_clk";
+		clocks = <&clock_rpm clk_ipa_clk>;
+	};
+
+	qcom,ipc-spinlock@fd484000 {
+		compatible = "qcom,ipc-spinlock-sfpb";
+		reg = <0xfd484000 0x400>;
+		qcom,num-locks = <8>;
+	};
+
+	qcom,smem@cc00000 {
+		compatible = "qcom,smem";
+		reg = <0xcc00000 0x200000>,
+			<0xf900d008 0x4>,
+			<0xfc428000 0x4000>;
+		reg-names = "smem", "irq-reg-base", "aux-mem1";
+		qcom,mpu-enabled;
+
+		qcom,smd-modem {
+			compatible = "qcom,smd";
+			qcom,smd-edge = <0>;
+			qcom,smd-irq-offset = <0x0>;
+			qcom,smd-irq-bitmask = <0x1000>;
+			qcom,pil-string = "modem";
+			interrupts = <0 25 1>;
+		};
+
+		qcom,smsm-modem {
+			compatible = "qcom,smsm";
+			qcom,smsm-edge = <0>;
+			qcom,smsm-irq-offset = <0x0>;
+			qcom,smsm-irq-bitmask = <0x2000>;
+			interrupts = <0 26 1>;
+		};
+
+		qcom,smd-adsp {
+			compatible = "qcom,smd";
+			qcom,smd-edge = <1>;
+			qcom,smd-irq-offset = <0x0>;
+			qcom,smd-irq-bitmask = <0x100>;
+			qcom,pil-string = "adsp";
+			interrupts = <0 156 1>;
+		};
+
+		qcom,smsm-adsp {
+			compatible = "qcom,smsm";
+			qcom,smsm-edge = <1>;
+			qcom,smsm-irq-offset = <0x0>;
+			qcom,smsm-irq-bitmask = <0x200>;
+			interrupts = <0 157 1>;
+		};
+
+		qcom,smd-rpm {
+			compatible = "qcom,smd";
+			qcom,smd-edge = <15>;
+			qcom,smd-irq-offset = <0x0>;
+			qcom,smd-irq-bitmask = <0x1>;
+			interrupts = <0 168 1>;
+			qcom,irq-no-suspend;
+		};
+	};
+
+	qcom,wdt@f9017000 {
+		compatible = "qcom,msm-watchdog";
+		reg = <0xf9017000 0x1000>;
+		interrupts = <0 3 0>, <0 4 0>;
+		qcom,bark-time = <11000>;
+		qcom,pet-time = <10000>;
+		qcom,ipi-ping;
+	};
+
+	sdhc_1: sdhci@f9824900 {
+		compatible = "qcom,sdhci-msm";
+		reg = <0xf9824900 0x1a0>, <0xf9824000 0x800>;
+		reg-names = "hc_mem", "core_mem";
+
+		interrupts = <0 123 0>, <0 138 0>;
+		interrupt-names = "hc_irq", "pwr_irq";
+
+		qcom,bus-width = <8>;
+		qcom,cpu-dma-latency-us = <200>;
+
+		qcom,msm-bus,name = "sdhc1";
+		qcom,msm-bus,num-cases = <8>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps = <78 512 0 0>, /* No vote */
+			<78 512 1600 3200>,       /* 400 KB/s*/
+			<78 512 80000 160000>,    /* 20 MB/s */
+			<78 512 100000 200000>,   /* 25 MB/s */
+			<78 512 200000 400000>,   /* 50 MB/s */
+			<78 512 400000 800000>,   /* 100 MB/s */
+			<78 512 400000 800000>,   /* 200 MB/s */
+			<78 512 2048000 4096000>; /* Max. bandwidth */
+		qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 50000000
+			100000000 200000000 4294967295>;
+
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_sdcc1_ahb_clk>,
+			 <&clock_gcc clk_gcc_sdcc1_apps_clk>;
+
+		status = "disabled";
+	};
+
+	sdhc_2: sdhci@f98a4900 {
+		compatible = "qcom,sdhci-msm";
+		reg = <0xf98a4900 0x11c>, <0xf98a4000 0x800>;
+		reg-names = "hc_mem", "core_mem";
+
+		interrupts = <0 125 0>, <0 221 0>;
+		interrupt-names = "hc_irq", "pwr_irq";
+
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_sdcc2_ahb_clk>,
+			 <&clock_gcc clk_gcc_sdcc2_apps_clk>;
+
+		qcom,bus-width = <4>;
+		status = "disabled";
+	};
+
+	spi_0: spi@f9923000 { /* BLSP1 QUP1 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0xf9923000 0x1000>,
+		      <0xf9904000 0x19000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 95 0>, <0 238 0>;
+		spi-max-frequency = <19200000>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <12>;
+		qcom,bam-producer-pipe-index = <13>;
+		qcom,master-id = <86>;
+		qcom,use-pinctrl;
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&spi_0_active>;
+		pinctrl-1 = <&spi_0_sleep>;
+
+		clock-names = "iface_clk", "core_clk";
+
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
+	};
+
+	qcom,msm-ssc-sensors {
+		compatible = "qcom,msm-ssc-sensors";
+	};
+
+	spmi_bus: qcom,spmi@fc4c0000 {
+		compatible = "qcom,spmi-pmic-arb";
+		reg-names = "core", "intr", "cnfg";
+		reg = <0xfc4cf000 0x1000>,
+		      <0xfc4cb000 0x1000>,
+		      <0xfc4ca000 0x1000>;
+		/* 190,ee0_krait_hlos_spmi_periph_irq */
+		/* 187,channel_0_krait_hlos_trans_done_irq */
+		interrupts = <0 190 0>, <0 187 0>;
+		qcom,pmic-arb-channel = <0>;
+		qcom,pmic-arb-ee = <0>;
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		cell-index = <0>;
+		qcom,not-wakeup; /* Needed until MPM is fully configured. */
+	};
+
+	usb_otg: usb@f9a55000 {
+		compatible = "qcom,hsusb-otg";
+		status = "disabled";
+
+		reg = <0xf9a55000 0x400>;
+		interrupts = <0 134 0 0 140 0>;
+		interrupt-names = "core_irq", "async_irq";
+
+		HSUSB_VDDCX-supply = <&pmplutonium_s2>;
+		HSUSB_1p8-supply = <&pmplutonium_l6>;
+		HSUSB_3p3-supply = <&pmplutonium_l24>;
+		qcom,vdd-voltage-level = <0 1100000 1287500>;
+
+		clocks = <&clock_gcc clk_gcc_usb_hs_system_clk>,
+			<&clock_gcc  clk_gcc_usb_hs_ahb_clk>,
+			<&clock_gcc  clk_gcc_usb2_hs_phy_sleep_clk>,
+			<&clock_rpm  clk_cxo_otg_clk>;
+		clock-names = "core_clk", "iface_clk", "sleep_clk", "xo";
+
+		qcom,hsusb-otg-phy-type = <2>;
+		qcom,hsusb-otg-phy-init-seq = <0x63 0x81 0xffffffff>;
+		qcom,hsusb-otg-mode = <1>;
+		qcom,hsusb-otg-otg-control = <1>;
+	};
+
+	android_usb@fe87f0c8 {
+		compatible = "qcom,android-usb";
+		reg = <0xfe87f0c8 0xc8>;
+	};
+
+	clock_rpm: qcom,rpmcc@fc401880 {
+		compatible = "qcom,rpmcc-plutonium";
+		reg = <0xfc401880 0x4>;
+		reg-names = "cc_base";
+		#clock-cells = <1>;
+	};
+
+	clock_gcc: qcom,gcc@fc400000 {
+		compatible = "qcom,gcc-plutonium";
+		reg = <0xfc400000 0x2000>;
+		reg-names = "cc_base";
+		vdd_dig-supply = <&pmplutonium_s1_corner>;
+		clock-names = "xo", "xo_a_clk";
+		clocks = <&clock_rpm clk_cxo_gcc>,
+		         <&clock_rpm clk_cxo_clk_src_ao>;
+		#clock-cells = <1>;
+	};
+
+	clock_mmss: qcom,mmsscc@fd8c0000 {
+		compatible = "qcom,mmsscc-plutonium";
+		reg = <0xfd8c0000 0x5200>;
+		reg-names = "cc_base";
+		vdd_dig-supply = <&pmplutonium_s1_corner>;
+		clock-names = "xo", "gpll0", "mmssnoc_ahb";
+		clocks = <&clock_rpm clk_cxo_mmss>,
+		         <&clock_gcc clk_gpll0_out_main>,
+			 <&clock_rpm clk_mmssnoc_ahb_clk>;
+		#clock-cells = <1>;
+	};
+
+	clock_debug: qcom,cc-debug@fc401880 {
+		compatible = "qcom,cc-debug-plutonium";
+		reg = <0xfc401880 0x4>;
+		reg-names = "cc_base";
+		clock-names = "debug_mmss_clk", "debug_rpm_clk";
+		clocks = <&clock_mmss clk_mmss_debug_mux>,
+		         <&clock_rpm clk_rpm_debug_mux>;
+		#clock-cells = <1>;
+	};
+};
+
+&gdsc_usb30 {
+	reg = <0xfc4003c4 0x4>;
+	status = "ok";
+};
+
+&gdsc_pcie_0 {
+	status = "ok";
+};
+
+&gdsc_pcie_1 {
+	status = "ok";
+};
+
+&gdsc_ufs {
+	status = "ok";
+};
+
+&gdsc_venus {
+	status = "ok";
+};
+
+&gdsc_venus_core0 {
+	qcom,support-hw-trigger;
+	status = "ok";
+};
+
+&gdsc_venus_core1 {
+	qcom,support-hw-trigger;
+	status = "ok";
+};
+
+&gdsc_venus_core2 {
+	qcom,support-hw-trigger;
+	status = "ok";
+};
+
+&gdsc_mdss {
+	status = "ok";
+};
+
+&gdsc_jpeg {
+	status = "ok";
+};
+
+&gdsc_vfe {
+	status = "ok";
+};
+
+&gdsc_cpp {
+	status = "ok";
+};
+
+&gdsc_fd {
+	status = "ok";
+};
+
+&gdsc_oxili_cx {
+	status = "ok";
+};
+
+&gdsc_oxili_gx {
+	status = "ok";
+	parent-supply = <&pmiplutonium_s2_corner>;
+};
+
+#include "msm-pmplutonium.dtsi"
+#include "msm-pmiplutonium.dtsi"
+#include "msmplutonium-regulator.dtsi"
+#include "msmplutonium-ion.dtsi"
+#include "msmplutonium-iommu.dtsi"

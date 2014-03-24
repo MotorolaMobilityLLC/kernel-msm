@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1335,6 +1335,7 @@ static int prepare_long_read_test_requests(struct test_data *td)
 	int ret;
 	int start_sec;
 	int j;
+	unsigned long read_test_no_req = LONG_READ_TEST_ACTUAL_NUM_REQS;
 
 	if (td)
 		start_sec = td->start_sector;
@@ -1343,8 +1344,8 @@ static int prepare_long_read_test_requests(struct test_data *td)
 		return -EINVAL;
 	}
 
-	pr_info("%s: Adding %d read requests, first req_id=%d", __func__,
-		     LONG_READ_TEST_ACTUAL_NUM_REQS, td->wr_rd_next_req_id);
+	pr_info("%s: Adding %lu read requests, first req_id=%d", __func__,
+		     read_test_no_req, td->wr_rd_next_req_id);
 
 	for (j = 0; j < LONG_READ_TEST_ACTUAL_NUM_REQS; j++) {
 
@@ -2218,7 +2219,7 @@ static ssize_t send_write_packing_test_read(struct file *file,
 			       loff_t *offset)
 {
 	if (!access_ok(VERIFY_WRITE, buffer, count))
-		return count;
+		return -EFAULT;
 
 	memset((void *)buffer, 0, count);
 
@@ -2319,7 +2320,7 @@ static ssize_t err_check_test_read(struct file *file,
 			       loff_t *offset)
 {
 	if (!access_ok(VERIFY_WRITE, buffer, count))
-		return count;
+		return -EFAULT;
 
 	memset((void *)buffer, 0, count);
 
@@ -2430,7 +2431,7 @@ static ssize_t send_invalid_packed_test_read(struct file *file,
 			       loff_t *offset)
 {
 	if (!access_ok(VERIFY_WRITE, buffer, count))
-		return count;
+		return -EFAULT;
 
 	memset((void *)buffer, 0, count);
 
@@ -2547,7 +2548,7 @@ static ssize_t write_packing_control_test_read(struct file *file,
 			       loff_t *offset)
 {
 	if (!access_ok(VERIFY_WRITE, buffer, count))
-		return count;
+		return -EFAULT;
 
 	memset((void *)buffer, 0, count);
 
@@ -2632,7 +2633,7 @@ static ssize_t bkops_test_read(struct file *file,
 			       loff_t *offset)
 {
 	if (!access_ok(VERIFY_WRITE, buffer, count))
-		return count;
+		return -EFAULT;
 
 	memset((void *)buffer, 0, count);
 
@@ -2665,6 +2666,10 @@ static ssize_t long_sequential_read_test_write(struct file *file,
 	int i = 0;
 	int number = -1;
 	unsigned long mtime, integer, fraction;
+	unsigned long test_size_integer, test_size_fraction;
+
+	test_size_integer = LONG_TEST_SIZE_INTEGER(LONG_READ_NUM_BYTES);
+	test_size_fraction = LONG_TEST_SIZE_FRACTION(LONG_READ_NUM_BYTES);
 
 	pr_info("%s: -- Long Sequential Read TEST --", __func__);
 
@@ -2692,10 +2697,8 @@ static ssize_t long_sequential_read_test_write(struct file *file,
 
 		mtime = ktime_to_ms(mbtd->test_info.test_duration);
 
-		pr_info("%s: time is %lu msec, size is %u.%u MiB",
-			__func__, mtime,
-			LONG_TEST_SIZE_INTEGER(LONG_READ_NUM_BYTES),
-			LONG_TEST_SIZE_FRACTION(LONG_READ_NUM_BYTES));
+		pr_info("%s: time is %lu msec, size is %lu.%lu MiB",
+			__func__, mtime, test_size_integer, test_size_fraction);
 
 		/* we first multiply in order not to lose precision */
 		mtime *= MB_MSEC_RATIO_APPROXIMATION;
@@ -2723,7 +2726,7 @@ static ssize_t long_sequential_read_test_read(struct file *file,
 			       loff_t *offset)
 {
 	if (!access_ok(VERIFY_WRITE, buffer, count))
-		return count;
+		return -EFAULT;
 
 	memset((void *)buffer, 0, count);
 
@@ -2886,7 +2889,7 @@ static ssize_t long_sequential_write_test_read(struct file *file,
 			       loff_t *offset)
 {
 	if (!access_ok(VERIFY_WRITE, buffer, count))
-		return count;
+		return -EFAULT;
 
 	memset((void *)buffer, 0, count);
 
@@ -2962,7 +2965,7 @@ static ssize_t new_req_notification_test_read(struct file *file,
 			       loff_t *offset)
 {
 	if (!access_ok(VERIFY_WRITE, buffer, count))
-		return count;
+		return -EFAULT;
 
 	memset((void *)buffer, 0, count);
 

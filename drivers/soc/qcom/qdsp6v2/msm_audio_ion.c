@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,10 +17,10 @@
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
-#include <mach/subsystem_restart.h>
 #include <linux/qdsp6v2/apr.h>
 #include <linux/of_device.h>
 #include <linux/msm_audio_ion.h>
+#include <soc/qcom/subsystem_restart.h>
 
 #include <linux/iommu.h>
 #include <linux/msm_iommu_domains.h>
@@ -95,10 +95,11 @@ int msm_audio_ion_alloc(const char *name, struct ion_client **client,
 		pr_err("%s: ION memory mapping for AUDIO failed\n", __func__);
 		goto err_ion_handle;
 	}
-	pr_debug("%s: mapped address = %p, size=%d\n", __func__, *vaddr, bufsz);
+	pr_debug("%s: mapped address = %p, size=%zd\n", __func__,
+		*vaddr, bufsz);
 
 	if (bufsz != 0) {
-		pr_debug("%s: memset to 0 %p %d\n", __func__, *vaddr, bufsz);
+		pr_debug("%s: memset to 0 %p %zd\n", __func__, *vaddr, bufsz);
 		memset((void *)*vaddr, 0, bufsz);
 	}
 
@@ -143,7 +144,7 @@ int msm_audio_ion_import(const char *name, struct ion_client **client,
 	bufsz should be 0 and fd shouldn't be 0 as of now
 	*/
 	*handle = ion_import_dma_buf(*client, fd);
-	pr_err("%s: DMA Buf name=%s, fd=%d handle=%p\n", __func__,
+	pr_debug("%s: DMA Buf name=%s, fd=%d handle=%p\n", __func__,
 							name, fd, *handle);
 	if (IS_ERR_OR_NULL((void *) (*handle))) {
 		pr_err("%s: ion import dma buffer failed\n",
@@ -174,7 +175,8 @@ int msm_audio_ion_import(const char *name, struct ion_client **client,
 		rc = -ENOMEM;
 		goto err_ion_handle;
 	}
-	pr_debug("%s: mapped address = %p, size=%d\n", __func__, *vaddr, bufsz);
+	pr_debug("%s: mapped address = %p, size=%zd\n", __func__,
+		*vaddr, bufsz);
 
 	return 0;
 
@@ -284,14 +286,14 @@ int msm_audio_ion_mmap(struct audio_buffer *ab,
 				, __func__ , ret);
 			return ret;
 		}
-		pr_debug("phys=%x len=%d\n", (unsigned int)phys_addr, phys_len);
+		pr_debug("phys=%pa len=%zd\n", &phys_addr, phys_len);
 		pr_debug("vma=%p, vm_start=%x vm_end=%x vm_pgoff=%ld vm_page_prot=%ld\n",
 			vma, (unsigned int)vma->vm_start,
 			(unsigned int)vma->vm_end, vma->vm_pgoff,
 			(unsigned long int)vma->vm_page_prot);
 		va_len = vma->vm_end - vma->vm_start;
 		if ((offset > phys_len) || (va_len > phys_len-offset)) {
-			pr_err("wrong offset size %ld, lens= %d, va_len=%d\n",
+			pr_err("wrong offset size %ld, lens= %zd, va_len=%zd\n",
 				offset, phys_len, va_len);
 			return -EINVAL;
 		}
@@ -397,7 +399,9 @@ err:
 int msm_audio_ion_free_legacy(struct ion_client *client,
 			      struct ion_handle *handle)
 {
-	/* To add condition for SMMU enabled */
+	if (msm_audio_ion_data.smmu_enabled)
+		ion_unmap_iommu(client, handle,
+		msm_audio_ion_data.domain_id, 0);
 	ion_unmap_kernel(client, handle);
 
 	ion_free(client, handle);
@@ -465,7 +469,7 @@ static int msm_audio_ion_get_phys(struct ion_client *client,
 		/* SMMU is disabled*/
 		rc = ion_phys(client, handle, addr, len);
 	}
-	pr_debug("phys=%x, len=%d, rc=%d\n", (unsigned int)*addr, *len, rc);
+	pr_debug("phys=%pa, len=%zd, rc=%d\n", &(*addr), *len, rc);
 	return rc;
 }
 

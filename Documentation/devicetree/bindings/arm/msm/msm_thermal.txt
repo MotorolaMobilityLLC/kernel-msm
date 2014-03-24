@@ -90,6 +90,27 @@ Optional properties
 			phandle_of_regulator is defined by reuglator device tree.
 
 Optional child nodes
+- qcom,pmic-opt-curr-temp: Threshold temperature for requesting optimum current (request
+			dual phase) for rails with PMIC, in degC. If this property exists,
+			then the properties, qcom,pmic-opt-curr-temp-hysteresis and
+			qcom,pmic-opt-curr-regs should also be defined to enable this
+			feature.
+- qcom,pmic-opt-curr-temp-hysteresis: Degree below the threshold to disable the optimum
+			current request for a rail, in degC. If this property exists,
+			then the properties, qcom,pmic-opt-curr-temp and
+			qcom,pmic-opt-curr-regs should also be defined to enable
+			this feature.
+- qcom,pmic-opt-curr-regs: Name of the rails for which the optimum current should be
+			requested. If this property exists, then the properties,
+			qcom,pmic-opt-curr-temp and qcom,pmic-opt-curr-temp-hysteresis
+			should also be defined to enable this feature.
+- qcom,pmic-opt-curr-sensor-id: Sensor, which needs to be monitored for requesting OCR
+			when qcom,pmic-opt-curr-temp threshold is reached.
+			It is an optional property, if it is configured, msm_thermal will
+			monitor only this sensor, otherwise it will monitor all TSENS for
+			this feature. If this property exists, then the properties,
+			qcom,pmic-opt-curr-temp, qcom,pmic-opt-curr-temp-hysteresis and
+			qcom,pmic-opt-curr-regs should also be defined to enable this feature.
 - qcom,<vdd restriction child node name>: Define the name of the child node.
 			If this property exisits, qcom,vdd-rstr-reg, qcom,levels
 			need to exist. qcom,min-level is optional if qcom,freq-req
@@ -102,6 +123,85 @@ Optional child nodes
 			This will not be required if qcom,freq-req exists.
 - qcom,freq-req: Flag to determine if we should restrict frequency on this rail
 			instead of voltage.
+- qcom,cx-phase-hot-crit-temp: Threshold temperature for sending the 'HOT_CRITICAL'
+			temperature band to RPM, in degC. This will aid RPM
+			in deciding the number of phases required for CX rail.
+			If this property exists, then the property,
+			qcom,cx-phase-hot-crit-temp-hyst should also be defined to
+			enable this feature.
+- qcom,cx-phase-hot-crit-temp-hyst: Degree below the threshold to send the 'WARM'
+			temperature band to RPM, in degC. This will aid RPM
+			in deciding the number of phases required for CX.
+			If this property exists, then the property,
+			qcom,cx-phase-hot-crit-temp should also be defined to enable
+			this feature.
+- qcom,cx-phase-resource-key: The key name to be used for sending the CX
+			temperature band message to RPM. This property should
+			be defined along with the other properties required for
+			CX phase selection feature.
+- qcom,gfx-phase-hot-crit-temp: Threshold temperature for sending the 'HOT_CRITICAL'
+			temperature band to RPM, in degC. This will aid RPM in
+			deciding the number of phases required for GFX rail.
+			If this property exists, then the properties,
+			qcom,gfx-phase-hot-crit-temp-hyst, qcom,gfx-sensor-id,
+			qcom,gfx-phase-warm-temp and qcom,gfx-phase-warm-temp-hyst
+			should also be defined to enable this feature.
+- qcom,gfx-phase-hot-crit-temp-hyst: Degree below the threshold to clear the 'HOT_CRITICAL'
+			band and send the 'WARM' temperature band to RPM, in degC.
+			This will aid RPM in deciding the number of phases required
+			for GFX rail. If this property exists, then the properties,
+			qcom,gfx-phase-hot-crit-temp, qcom,gfx-sensor-id,
+			qcom,gfx-phase-warm-temp and qcom,gfx-phase-warm-temp-hyst
+			should also be defined to enable this feature.
+- qcom,gfx-phase-warm-temp: Threshold temperature for sending the 'WARM' temperature
+			band to RPM, in degC. This will aid RPM in deciding the
+			number of phases required for GFX rail. If this property
+			exists, then the properties, qcom,gfx-phase-hot-crit-temp,
+			qcom,gfx-phase-hot-crit-temp-hyst, qcom,gfx-sensor-id and
+			qcom,gfx-phase-warm-temp-hyst should also be defined to
+			enable this feature.
+- qcom,gfx-phase-warm-temp-hyst: Degree below the threshold to clear the 'WARM'
+			band and send the 'NORMAL' temperature band to RPM, in degC.
+			This will aid RPM in deciding the number of phases required
+			for GFX rail. If this property exists, then the property,
+			qcom,gfx-phase-hot-crit-temp, qcom,gfx-phase-hot-temp-hyst,
+			qcom,gfx-sensor-id and qcom,gfx-phase-warm-temp should also
+			be defined to enable this feature.
+-qcom,gfx-sensor-id:     The ID of the TSENS sensor, which is closest to graphics
+			processor, monitoring the GPU temperature. If this property
+			exists, then the property, qcom,gfx-phase-hot-crit-temp,
+			qcom,gfx-phase-hot-crit-temp-hyst, qcom,gfx-phase-warm-temp and
+			qcom,gfx-phase-warm-temp-hyst should also be defined to
+			enable this feature.
+- qcom,gfx-phase-resource-key: The key name to be used for sending the GFX temperature
+			band message to RPM. This property should be defined along
+			with the other properties required for GFX phase selection
+			feature.
+- qcom,rpm-phase-resource-type: The RPM resource type name to be used for sending
+			temperature bands for CX and GFX phase selection. This
+			property should be defined along with the other properties
+			required for CX and GFX phase selection feature.
+- qcom,rpm-phase-resource-id: The RPM resource ID to be used for sending temperature
+			bands for CX and GFX phase selection. This property should
+			be defined along with the other properties required for CX
+			and GFX phase selection feature.
+- qcom,mx-restriction-temp: Threshold temperature below which the module votes for
+			higher data retention voltage of MX supply. If and only if this
+			property exists, then the property qcom,mx-restriction-temp-hysteresis,
+			qcom,mx-retention-min should also be present. Also, if this
+			property is defined, will have to define vdd-mx-supply =
+			<&phandle_of_regulator>
+- qcom,mx-restriction-temp-hysteresis: Degree above the threshold to remove MX vote.
+			If this property exists, then the property qcom,mx-restriction-temp,
+			qcom,mx-retention-min should also be present.Also, if this
+			property is defined, will have to define vdd-mx-supply =
+			<&phandle_of_regulator>
+- qcom,mx-retention-min: Minimum data retention voltage to be applied to MX rail if
+			the low threshold is crossed. If this property exists, then the
+			property qcom,mx-restriction-temp and
+			qcom,mx-restriction-temp-hysteresis should also be present.
+			Also, if this property is defined, will have to define
+			vdd-mx-supply = <&phandle_of_regulator>
 
 Example:
 
@@ -124,12 +224,27 @@ Example:
 		qcom,freq-mitigation-temp-hysteresis = <20>;
 		qcom,freq-mitigation-value = <960000>;
 		qcom,freq-mitigation-control-mask = <0x01>;
+		qcom,rpm-phase-resource-type = "misc";
+		qcom,rpm-phase-resource-id = <0>;
+		qcom,cx-phase-resource-key = "tmpc";
+		qcom,cx-phase-hot-crit-temp = <75>;
+		qcom,cx-phase-hot-crit-temp-hyst = <15>;
+		qcom,gfx-phase-warm-temp = <60>;
+		qcom,gfx-phase-warm-temp-hyst = <10>;
+		qcom,gfx-phase-hot-crit-temp = <85>;
+		qcom,gfx-phase-hot-crit-temp-hyst = <15>;
+		qcom,gfx-sensor-id = <4>;
+		qcom,gfx-phase-resource-key = "tmpg";
 		qcom,pmic-sw-mode-temp = <90>;
 		qcom,pmic-sw-mode-temp-hysteresis = <80>;
 		qcom,pmic-sw-mode-regs = "vdd-dig";
 		qcom,vdd-restriction-temp = <5>;
 		qcom,vdd-restriction-temp-hysteresis = <10>;
 		vdd-dig-supply=<&pm8841_s2_floor_corner>
+		qcom,mx-restriction-temp = <5>;
+		qcom,mx-restriction-temp-hysteresis = <10>;
+		qcom,mx-retention-min = <710000>;
+		vdd-mx-supply = <&pma8084_s1>
 
 		qcom,vdd-dig-rstr{
 			qcom,vdd-rstr-reg = "vdd-dig";

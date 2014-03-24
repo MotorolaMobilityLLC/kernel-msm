@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,10 +21,15 @@
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
+#include <linux/pm.h>
+#include <linux/pm_wakeup.h>
+#include <linux/sched.h>
+#include <linux/pm_qos.h>
+#include <soc/qcom/subsystem_restart.h>
+#include <soc/qcom/subsystem_notif.h>
+#include <soc/qcom/ramdump.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_pcie.h>
-#include <mach/subsystem_restart.h>
-#include <mach/ramdump.h>
 #include <net/cnss.h>
 #define subsys_to_drv(d) container_of(d, struct cnss_data, subsys_desc)
 
@@ -50,11 +55,14 @@
 #define POWER_ON_DELAY		2000
 #define WLAN_ENABLE_DELAY	10000
 
+#define MODEM_NAME		"esoc0"
+
 struct cnss_wlan_gpio_info {
 	char *name;
 	u32 num;
 	bool state;
 	bool init;
+	bool prop;
 };
 
 struct cnss_wlan_vreg_info {
@@ -66,7 +74,6 @@ struct cnss_wlan_vreg_info {
  * The function pointer callbacks are expected to be non null as well.
  */
 static struct cnss_data {
-	struct dev_info *device_info;
 	struct platform_device *pldev;
 	struct subsys_device *subsys;
 	struct subsys_desc    subsysdesc;
@@ -82,6 +89,8 @@ static struct cnss_data {
 	struct pci_saved_state *saved_state;
 	u16 revision_id;
 	struct cnss_fw_files fw_files;
+	struct pm_qos_request qos_request;
+	void *modem_notify_handler;
 } *penv;
 
 static int cnss_wlan_vreg_set(struct cnss_wlan_vreg_info *vreg_info, bool state)
@@ -139,6 +148,9 @@ err_gpio_req:
 
 static void cnss_wlan_gpio_set(struct cnss_wlan_gpio_info *info, bool state)
 {
+	if (!info->prop)
+		return;
+
 	if (info->state == state) {
 		pr_debug("Already %s gpio is %s\n",
 			 info->name, state ? "high" : "low");
@@ -177,6 +189,12 @@ static int cnss_wlan_get_resources(struct platform_device *pdev)
 	}
 	vreg_info->state = VREG_ON;
 
+	if (!of_find_property((&pdev->dev)->of_node, gpio_info->name, NULL)) {
+		gpio_info->prop = false;
+		goto end;
+	}
+
+	gpio_info->prop = true;
 	ret = of_get_named_gpio((&pdev->dev)->of_node,
 				gpio_info->name, 0);
 
@@ -199,6 +217,7 @@ static int cnss_wlan_get_resources(struct platform_device *pdev)
 		goto err_gpio_init;
 	}
 
+end:
 	return ret;
 
 err_gpio_init:
@@ -222,6 +241,7 @@ static void cnss_wlan_release_resources(void)
 	gpio_free(gpio_info->num);
 	regulator_put(vreg_info->wlan_reg);
 	gpio_info->state = WLAN_EN_LOW;
+	gpio_info->prop = false;
 	vreg_info->state = VREG_OFF;
 }
 
@@ -235,9 +255,9 @@ void cnss_setup_fw_files(u16 revision)
 	switch (revision) {
 
 	case QCA6174_FW_1_1:
-		strlcpy(penv->fw_files.image_file, "athwlan11.bin",
+		strlcpy(penv->fw_files.image_file, "qwlan11.bin",
 			CNSS_MAX_FILE_NAME);
-		strlcpy(penv->fw_files.board_data, "bdatawlan11.bin",
+		strlcpy(penv->fw_files.board_data, "bdwlan11.bin",
 			CNSS_MAX_FILE_NAME);
 		strlcpy(penv->fw_files.otp_data, "otp11.bin",
 			CNSS_MAX_FILE_NAME);
@@ -246,9 +266,9 @@ void cnss_setup_fw_files(u16 revision)
 		break;
 
 	case QCA6174_FW_1_3:
-		strlcpy(penv->fw_files.image_file, "athwlan13.bin",
+		strlcpy(penv->fw_files.image_file, "qwlan13.bin",
 			CNSS_MAX_FILE_NAME);
-		strlcpy(penv->fw_files.board_data, "bdatawlan13.bin",
+		strlcpy(penv->fw_files.board_data, "bdwlan13.bin",
 			CNSS_MAX_FILE_NAME);
 		strlcpy(penv->fw_files.otp_data, "otp13.bin",
 			CNSS_MAX_FILE_NAME);
@@ -257,9 +277,9 @@ void cnss_setup_fw_files(u16 revision)
 		break;
 
 	case QCA6174_FW_2_0:
-		strlcpy(penv->fw_files.image_file, "athwlan20.bin",
+		strlcpy(penv->fw_files.image_file, "qwlan20.bin",
 			CNSS_MAX_FILE_NAME);
-		strlcpy(penv->fw_files.board_data, "bdatawlan20.bin",
+		strlcpy(penv->fw_files.board_data, "bdwlan20.bin",
 			CNSS_MAX_FILE_NAME);
 		strlcpy(penv->fw_files.otp_data, "otp20.bin",
 			CNSS_MAX_FILE_NAME);
@@ -268,9 +288,9 @@ void cnss_setup_fw_files(u16 revision)
 		break;
 
 	case QCA6174_FW_3_0:
-		strlcpy(penv->fw_files.image_file, "athwlan30.bin",
+		strlcpy(penv->fw_files.image_file, "qwlan30.bin",
 			CNSS_MAX_FILE_NAME);
-		strlcpy(penv->fw_files.board_data, "bdatawlan30.bin",
+		strlcpy(penv->fw_files.board_data, "bdwlan30.bin",
 			CNSS_MAX_FILE_NAME);
 		strlcpy(penv->fw_files.otp_data, "otp30.bin",
 			CNSS_MAX_FILE_NAME);
@@ -279,9 +299,9 @@ void cnss_setup_fw_files(u16 revision)
 		break;
 
 	default:
-		strlcpy(penv->fw_files.image_file, "athwlan.bin",
+		strlcpy(penv->fw_files.image_file, "qwlan.bin",
 			CNSS_MAX_FILE_NAME);
-		strlcpy(penv->fw_files.board_data, "bdatawlan.bin",
+		strlcpy(penv->fw_files.board_data, "bdwlan.bin",
 			CNSS_MAX_FILE_NAME);
 		strlcpy(penv->fw_files.otp_data, "otp.bin",
 			CNSS_MAX_FILE_NAME);
@@ -460,6 +480,7 @@ err_wlan_probe:
 err_pcie_link_up:
 	cnss_wlan_gpio_set(gpio_info, WLAN_EN_LOW);
 	cnss_wlan_vreg_set(vreg_info, VREG_OFF);
+	pci_unregister_driver(&cnss_wlan_pci_driver);
 
 err_wlan_vreg_on:
 	penv->driver = NULL;
@@ -517,32 +538,6 @@ cut_power:
 }
 EXPORT_SYMBOL(cnss_wlan_unregister_driver);
 
-int cnss_config(struct dev_info *device_info)
-{
-	if (!penv)
-		return -ENODEV;
-
-	penv->device_info = device_info;
-	return 0;
-}
-EXPORT_SYMBOL(cnss_config);
-
-void cnss_deinit(void)
-{
-	if (penv && penv->device_info)
-		penv->device_info = NULL;
-}
-EXPORT_SYMBOL(cnss_deinit);
-
-void cnss_device_crashed(void)
-{
-	if (penv && penv->subsys) {
-		subsys_set_crash_status(penv->subsys, true);
-		subsystem_restart_dev(penv->subsys);
-	}
-}
-EXPORT_SYMBOL(cnss_device_crashed);
-
 int cnss_set_wlan_unsafe_channel(u16 *unsafe_ch_list, u16 ch_count)
 {
 	if (!penv)
@@ -581,6 +576,50 @@ int cnss_get_wlan_unsafe_channel(u16 *unsafe_ch_list,
 }
 EXPORT_SYMBOL(cnss_get_wlan_unsafe_channel);
 
+void cnss_pm_wake_lock_init(struct wakeup_source *ws, const char *name)
+{
+	wakeup_source_init(ws, name);
+}
+EXPORT_SYMBOL(cnss_pm_wake_lock_init);
+
+void cnss_pm_wake_lock(struct wakeup_source *ws)
+{
+	__pm_stay_awake(ws);
+}
+EXPORT_SYMBOL(cnss_pm_wake_lock);
+
+void cnss_pm_wake_lock_timeout(struct wakeup_source *ws, ulong msec)
+{
+	__pm_wakeup_event(ws, msec);
+}
+EXPORT_SYMBOL(cnss_pm_wake_lock_timeout);
+
+void cnss_pm_wake_lock_release(struct wakeup_source *ws)
+{
+	__pm_relax(ws);
+}
+EXPORT_SYMBOL(cnss_pm_wake_lock_release);
+
+void cnss_pm_wake_lock_destroy(struct wakeup_source *ws)
+{
+	wakeup_source_trash(ws);
+}
+EXPORT_SYMBOL(cnss_pm_wake_lock_destroy);
+
+void cnss_flush_work(void *work)
+{
+	struct work_struct *cnss_work = work;
+	cancel_work_sync(cnss_work);
+}
+EXPORT_SYMBOL(cnss_flush_work);
+
+void cnss_flush_delayed_work(void *dwork)
+{
+	struct delayed_work *cnss_dwork = dwork;
+	cancel_delayed_work_sync(cnss_dwork);
+}
+EXPORT_SYMBOL(cnss_flush_delayed_work);
+
 int cnss_get_ramdump_mem(unsigned long *address, unsigned long *size)
 {
 	struct resource *res;
@@ -599,6 +638,21 @@ int cnss_get_ramdump_mem(unsigned long *address, unsigned long *size)
 	return 0;
 }
 EXPORT_SYMBOL(cnss_get_ramdump_mem);
+
+void cnss_device_crashed(void)
+{
+	if (penv && penv->subsys) {
+		subsys_set_crash_status(penv->subsys, true);
+		subsystem_restart_dev(penv->subsys);
+	}
+}
+EXPORT_SYMBOL(cnss_device_crashed);
+
+int cnss_set_cpus_allowed_ptr(struct task_struct *task, ulong cpu)
+{
+	return set_cpus_allowed_ptr(task, cpumask_of(cpu));
+}
+EXPORT_SYMBOL(cnss_set_cpus_allowed_ptr);
 
 static int cnss_shutdown(const struct subsys_desc *subsys, bool force_stop)
 {
@@ -714,6 +768,7 @@ err_wlan_reinit:
 err_pcie_link_up:
 	cnss_wlan_gpio_set(gpio_info, WLAN_EN_LOW);
 	cnss_wlan_vreg_set(vreg_info, VREG_OFF);
+	pci_unregister_driver(&cnss_wlan_pci_driver);
 
 err_wlan_vreg_on:
 	return ret;
@@ -744,10 +799,55 @@ static int cnss_ramdump(int enable, const struct subsys_desc *subsys)
 
 static void cnss_crash_shutdown(const struct subsys_desc *subsys)
 {
-	if (penv && penv->device_info &&
-			penv->device_info->dev_crashshutdown)
-		penv->device_info->dev_crashshutdown();
+	struct cnss_wlan_driver *wdrv;
+	struct pci_dev *pdev;
+
+	if (!penv)
+		return;
+
+	wdrv = penv->driver;
+	pdev = penv->pdev;
+	if (pdev && wdrv && wdrv->crash_shutdown)
+		wdrv->crash_shutdown(pdev);
 }
+
+void cnss_device_self_recovery(void)
+{
+	cnss_shutdown(NULL, false);
+	usleep(1000);
+	cnss_powerup(NULL);
+}
+EXPORT_SYMBOL(cnss_device_self_recovery);
+
+static int cnss_modem_notifier_nb(struct notifier_block *this,
+				  unsigned long code,
+				  void *ss_handle)
+{
+	struct cnss_wlan_driver *wdrv;
+	struct pci_dev *pdev;
+
+	pr_debug("%s: Modem-Notify: event %lu\n", __func__, code);
+
+	if (!penv)
+		return NOTIFY_DONE;
+
+	wdrv = penv->driver;
+	pdev = penv->pdev;
+
+	if (!wdrv || !pdev || !wdrv->modem_status)
+		return NOTIFY_DONE;
+
+	if (SUBSYS_AFTER_POWERUP == code)
+		wdrv->modem_status(pdev, 1);
+	else if (SUBSYS_BEFORE_SHUTDOWN == code)
+		wdrv->modem_status(pdev, 0);
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block mnb = {
+	.notifier_call = cnss_modem_notifier_nb,
+};
 
 static int cnss_probe(struct platform_device *pdev)
 {
@@ -775,6 +875,13 @@ static int cnss_probe(struct platform_device *pdev)
 		goto err_subsys_reg;
 	}
 
+	penv->modem_notify_handler =
+		subsys_notif_register_notifier(MODEM_NAME, &mnb);
+	if (IS_ERR(penv->modem_notify_handler)) {
+		ret = PTR_ERR(penv->modem_notify_handler);
+		goto err_notif_modem;
+	}
+
 	subsystem_get(penv->subsysdesc.name);
 
 	penv->ramdump_dev = create_ramdump_device(penv->subsysdesc.name,
@@ -788,6 +895,7 @@ static int cnss_probe(struct platform_device *pdev)
 	penv->gpio_info.num = 0;
 	penv->gpio_info.state = WLAN_EN_LOW;
 	penv->gpio_info.init = WLAN_EN_HIGH;
+	penv->gpio_info.prop = false;
 	penv->vreg_info.wlan_reg = NULL;
 	penv->vreg_info.state = VREG_OFF;
 
@@ -810,6 +918,9 @@ err_get_wlan_res:
 	destroy_ramdump_device(penv->ramdump_dev);
 
 err_ramdump_create:
+	subsys_notif_unregister_notifier(penv->modem_notify_handler, &mnb);
+
+err_notif_modem:
 	subsys_unregister(penv->subsys);
 
 err_subsys_reg:
@@ -857,9 +968,22 @@ static void __exit cnss_exit(void)
 {
 	if (penv->ramdump_dev)
 		destroy_ramdump_device(penv->ramdump_dev);
+	subsys_notif_unregister_notifier(penv->modem_notify_handler, &mnb);
 	subsys_unregister(penv->subsys);
 	platform_driver_unregister(&cnss_driver);
 }
+
+void cnss_request_pm_qos(u32 qos_val)
+{
+	pm_qos_add_request(&penv->qos_request, PM_QOS_CPU_DMA_LATENCY, qos_val);
+}
+EXPORT_SYMBOL(cnss_request_pm_qos);
+
+void cnss_remove_pm_qos(void)
+{
+	pm_qos_remove_request(&penv->qos_request);
+}
+EXPORT_SYMBOL(cnss_remove_pm_qos);
 
 module_init(cnss_initialize);
 module_exit(cnss_exit);

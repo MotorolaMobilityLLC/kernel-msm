@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,10 +15,11 @@
 #define MDSS_DSI_H
 
 #include <linux/list.h>
+#include <linux/mdss_io_util.h>
 #include <mach/scm-io.h>
+#include <linux/irqreturn.h>
 
 #include "mdss_panel.h"
-#include "mdss_io_util.h"
 #include "mdss_dsi_cmd.h"
 
 #define MMSS_SERDES_BASE_PHY 0x04f01000 /* mmss (De)Serializer CFG */
@@ -223,6 +224,8 @@ enum {
 #define DSI_EV_MDP_FIFO_UNDERFLOW	0x0002
 #define DSI_EV_MDP_BUSY_RELEASE		0x80000000
 
+#define DSI_FLAG_CLOCK_MASTER		0x80000000
+
 struct mdss_dsi_ctrl_pdata {
 	int ndx;	/* panel_num */
 	int (*on) (struct mdss_panel_data *pdata);
@@ -232,11 +235,15 @@ struct mdss_dsi_ctrl_pdata {
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	struct mdss_panel_data panel_data;
 	unsigned char *ctrl_base;
+	struct dss_io_data mmss_misc_io;
 	int reg_size;
 	u32 clk_cnt;
+	int clk_cnt_sub;
+	u32 flags;
 	struct clk *mdp_core_clk;
 	struct clk *ahb_clk;
 	struct clk *axi_clk;
+	struct clk *mmss_misc_ahb_clk;
 	struct clk *byte_clk;
 	struct clk *esc_clk;
 	struct clk *pixel_clk;
@@ -249,11 +256,7 @@ struct mdss_dsi_ctrl_pdata {
 	int disp_te_gpio;
 	int bklt_en_gpio;
 	int mode_gpio;
-	int rst_gpio_requested;
-	int disp_en_gpio_requested;
 	int disp_te_gpio_requested;
-	int mode_gpio_requested;
-	int bklt_en_gpio_requested;
 	int bklt_ctrl;	/* backlight ctrl */
 	int pwm_period;
 	int pwm_pmic_gpio;
@@ -287,6 +290,8 @@ struct mdss_dsi_ctrl_pdata {
 	struct mutex mutex;
 	struct mutex cmd_mutex;
 
+	bool ulps;
+
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
 };
@@ -300,8 +305,7 @@ int mdss_dsi_cmds_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 int mdss_dsi_cmds_rx(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_cmd_desc *cmds, int rlen);
 
-void mdss_dsi_host_init(struct mipi_panel_info *pinfo,
-				struct mdss_panel_data *pdata);
+void mdss_dsi_host_init(struct mdss_panel_data *pdata);
 void mdss_dsi_op_mode_config(int mode,
 				struct mdss_panel_data *pdata);
 void mdss_dsi_cmd_mode_ctrl(int enable);
@@ -309,12 +313,19 @@ void mdp4_dsi_cmd_trigger(void);
 void mdss_dsi_cmd_mdp_start(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_cmd_bta_sw_trigger(struct mdss_panel_data *pdata);
 void mdss_dsi_ack_err_status(struct mdss_dsi_ctrl_pdata *ctrl);
-int mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable);
+void mdss_dsi_clk_ctrl(struct mdss_dsi_ctrl_pdata *ctrl, int enable);
+int mdss_dsi_link_clk_start(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_link_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl);
+int mdss_dsi_bus_clk_start(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_bus_clk_stop(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_clk_req(struct mdss_dsi_ctrl_pdata *ctrl,
 				int enable);
 void mdss_dsi_controller_cfg(int enable,
 				struct mdss_panel_data *pdata);
 void mdss_dsi_sw_reset(struct mdss_panel_data *pdata);
+
+struct mdss_dsi_ctrl_pdata *mdss_dsi_ctrl_slave(
+				struct mdss_dsi_ctrl_pdata *ctrl);
 
 irqreturn_t mdss_dsi_isr(int irq, void *ptr);
 void mdss_dsi_irq_handler_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
@@ -327,11 +338,12 @@ int mdss_dsi_clk_init(struct platform_device *pdev,
 void mdss_dsi_clk_deinit(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 int mdss_dsi_enable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 void mdss_dsi_disable_bus_clocks(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
-void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable);
+int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable);
 void mdss_dsi_phy_disable(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_phy_init(struct mdss_panel_data *pdata);
 void mdss_dsi_phy_sw_reset(unsigned char *ctrl_base);
-void mdss_dsi_cmd_test_pattern(struct mdss_panel_data *pdata);
+void mdss_dsi_cmd_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl);
+void mdss_dsi_video_test_pattern(struct mdss_dsi_ctrl_pdata *ctrl);
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl);
 
 void mdss_dsi_ctrl_init(struct mdss_dsi_ctrl_pdata *ctrl);
@@ -340,6 +352,7 @@ void mdss_dsi_wait4video_done(struct mdss_dsi_ctrl_pdata *ctrl);
 int mdss_dsi_cmdlist_commit(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 void mdss_dsi_cmdlist_kickoff(int intf);
 int mdss_dsi_bta_status_check(struct mdss_dsi_ctrl_pdata *ctrl);
+bool __mdss_dsi_clk_enabled(struct mdss_dsi_ctrl_pdata *ctrl);
 
 int mdss_dsi_panel_init(struct device_node *node,
 		struct mdss_dsi_ctrl_pdata *ctrl_pdata,

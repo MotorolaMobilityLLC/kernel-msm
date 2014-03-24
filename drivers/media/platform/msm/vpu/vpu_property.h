@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -43,6 +43,8 @@
 #define VPU_PROP_SESSION_BACKGROUND_COLOR           0x00001018
 #define VPU_PROP_SESSION_RANGE_MAPPING              0x00001019
 #define VPU_PROP_SESSION_COLOR_SPACE                0x0000101a
+#define VPU_PROP_SESSION_SOURCE_CONFIG              0x0000101b
+#define VPU_PROP_SESSION_SINK_CONFIG                0x0000101c
 
 #define VPU_PROP_SESSION_DEINTERLACING              0x00001030
 #define VPU_PROP_SESSION_NOISE_REDUCTION            0x00001031
@@ -290,15 +292,12 @@ struct vpu_frame_info {
 
 /* the input source */
 #define INPUT_SOURCE_HOST	0
-#define	INPUT_SOURCE_VCAP0	1
-#define	INPUT_SOURCE_VCAP1	2
+#define INPUT_SOURCE_VCAP	1
 
 /* the output destination */
 #define OUTPUT_DEST_NULL	0
 #define OUTPUT_DEST_HOST	1
-#define	OUTPUT_DEST_MDSS0	2
-#define	OUTPUT_DEST_MDSS1	3
-#define	OUTPUT_DEST_MDSS2	4
+#define OUTPUT_DEST_MDSS	2
 
 enum vpu_video_format {
 	/* outcoming video stream is in 2D format */
@@ -348,7 +347,7 @@ enum vpu_pixel_format {
 	/* YUV422 - UYVY Interleaved (AYUV: 0 8 8 8) */
 	PIXEL_FORMAT_UYVY = 0x0b,
 	/* YUV422 - 10 Bit Packed Loose (AYUV: 0 10 10 10) */
-	PIXEL_FORMAT_YUYV_LOOSE = 0x0c,
+	PIXEL_FORMAT_YUYV10_LOOSE = 0x0c,
 	/* YUV444 - YUV 8 Bit Interleaved Packed Dense (AYUV:0 8 8 8) */
 	PIXEL_FORMAT_YUV_8BIT_INTERLEAVED_DENSE = 0x0d, /* not supported */
 	/* YUV444 - YUV 10 Interleaved Bit Packed Loose (AYUV:0 10 10 10) */
@@ -524,6 +523,22 @@ struct vpu_prop_session_color_space {
 	  */
 	u32	value;
 };
+
+/* values defined for VPU_PROP_SESSION_SOURCE_CONFIG */
+#define VPU_SOURCE_VCAP_CH_0	1
+#define VPU_SOURCE_VCAP_CH_1	2
+
+/* values defined for VPU_PROP_SESSION_SINK_CONFIG */
+#define VPU_DEST_MDSS_CH_0	1
+#define VPU_DEST_MDSS_CH_1	2
+#define VPU_DEST_MDSS_CH_2	4
+#define VPU_DEST_MDSS_CH_3	8
+
+/* associated structure for VPU_PROP_SESSION_SOURCE_CONFIG
+ * struct vpu_data_value:
+ *       value: uint32 (refer to defines). Bitmask specifying 1 or more channels
+ *       flags: uint32 (reserved)
+ */
 
 /* values defined for VPU_PROP_SESSION_DEINTERLACING */
 
@@ -767,9 +782,17 @@ struct vpu_prop_session_auto_hqv {
 /* associated structure for VPU_PROP_SESSION_TIMESTAMP
  *	property to poll for the timestamp information of the last buffer sent
  *	to MDSS
- *
- * struct vpu_ipc_msg_session_timestamp
  */
+struct vpu_timestamp_info {
+	u32 high;
+	u32 low;
+};
+
+struct vpu_prop_session_timestamp {
+	struct vpu_timestamp_info presentation;
+	struct vpu_timestamp_info qtimer;
+	u32 reserved;
+};
 
 /* associated structure for VPU_PROP_SESSION_TIMESTAMP_AUTO_MODE
  *	In auto mode, the timestamp is returned at the output frame frequency
@@ -815,12 +838,6 @@ struct vpu_prop_session_auto_hqv {
  *       size:       reserved
  *       payload[0]: reserved
  */
-
-/* values defined for VPU_PROP_SESSION_GENERIC */
-#define VPU_PROP_SESSION_TABLE_LOAD		0x30000111
-#define VPU_PROP_SESSION_TUNE			0x30000112
-#define VPU_PROP_SESSION_STATS_EXTENDED		0x30000113
-#define VPU_PROP_SESSION_MEASUREMENTS		0x30000114
 
 /* associated structure for VPU_PROP_SESSION_GENERIC
  *  struct vpu_data_pkt:

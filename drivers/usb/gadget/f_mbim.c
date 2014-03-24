@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -33,10 +33,38 @@
  */
 
 #define MBIM_BULK_BUFFER_SIZE		4096
+#define MAX_CTRL_PKT_SIZE		4096
 
-#define MBIM_IOCTL_MAGIC		'o'
-#define MBIM_GET_NTB_SIZE		_IOR(MBIM_IOCTL_MAGIC, 2, u32)
-#define MBIM_GET_DATAGRAM_COUNT		_IOR(MBIM_IOCTL_MAGIC, 3, u16)
+
+enum mbim_peripheral_ep_type {
+	MBIM_DATA_EP_TYPE_RESERVED   = 0x0,
+	MBIM_DATA_EP_TYPE_HSIC       = 0x1,
+	MBIM_DATA_EP_TYPE_HSUSB      = 0x2,
+	MBIM_DATA_EP_TYPE_PCIE       = 0x3,
+	MBIM_DATA_EP_TYPE_EMBEDDED   = 0x4,
+};
+
+struct mbim_peripheral_ep_info {
+	enum peripheral_ep_type	ep_type;
+	u32  peripheral_iface_id;
+};
+
+struct mbim_ipa_ep_pair {
+	u32 cons_pipe_num;
+	u32 prod_pipe_num;
+};
+
+struct mbim_ipa_ep_info {
+	struct mbim_peripheral_ep_info ph_ep_info;
+	struct mbim_ipa_ep_pair        ipa_ep_pair;
+};
+
+#define MBIM_IOCTL_MAGIC	 'o'
+#define MBIM_GET_NTB_SIZE	 _IOR(MBIM_IOCTL_MAGIC, 2, u32)
+#define MBIM_GET_DATAGRAM_COUNT	 _IOR(MBIM_IOCTL_MAGIC, 3, u16)
+
+#define MBIM_EP_LOOKUP	_IOR(MBIM_IOCTL_MAGIC, 4, struct mbim_ipa_ep_info)
+
 
 #define NR_MBIM_PORTS			1
 
@@ -89,6 +117,9 @@ struct f_mbim {
 
 	struct mbim_ep_descs		fs;
 	struct mbim_ep_descs		hs;
+
+	const struct usb_endpoint_descriptor *in_ep_desc_backup;
+	const struct usb_endpoint_descriptor *out_ep_desc_backup;
 
 	u8				ctrl_id, data_id;
 	u8				data_alt_int;
@@ -662,29 +693,6 @@ static int mbim_bam_setup(int no_ports)
 	return 0;
 }
 
-int mbim_configure_params(void)
-{
-	struct teth_aggr_params aggr_params;
-	int ret = 0;
-
-	aggr_params.dl.aggr_prot = TETH_AGGR_PROTOCOL_MBIM;
-	aggr_params.dl.max_datagrams = mbim_ntb_parameters.wNtbOutMaxDatagrams;
-	aggr_params.dl.max_transfer_size_byte =
-			mbim_ntb_parameters.dwNtbInMaxSize;
-
-	aggr_params.ul.aggr_prot = TETH_AGGR_PROTOCOL_MBIM;
-	aggr_params.ul.max_datagrams = mbim_ntb_parameters.wNtbOutMaxDatagrams;
-	aggr_params.ul.max_transfer_size_byte =
-			mbim_ntb_parameters.dwNtbOutMaxSize;
-
-	ret = teth_bridge_set_mbim_aggr_params(&aggr_params,
-							IPA_CLIENT_USB_PROD);
-	if (ret)
-		pr_err("%s: teth_bridge_set_aggr_params failed\n", __func__);
-
-	return ret;
-}
-
 static int mbim_bam_connect(struct f_mbim *dev)
 {
 	int ret;
@@ -720,9 +728,7 @@ static int mbim_bam_connect(struct f_mbim *dev)
 
 static int mbim_bam_disconnect(struct f_mbim *dev)
 {
-	pr_info("dev:%p port:%d. Do nothing.\n",
-			dev, dev->port_num);
-
+	pr_info("%s - dev:%p port:%d\n", __func__, dev, dev->port_num);
 	bam_data_disconnect(&dev->bam_port, dev->port_num);
 
 	return 0;
@@ -1323,6 +1329,16 @@ static int mbim_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 				pr_info("Set mbim port out_desc = 0x%p",
 					mbim->bam_port.out->desc);
 
+				if (mbim->xport == USB_GADGET_XPORT_BAM2BAM_IPA
+					&& gadget_is_dwc3(cdev->gadget)) {
+					if (msm_ep_config(mbim->bam_port.in) ||
+					   msm_ep_config(mbim->bam_port.out)) {
+						pr_err("%s: ep_config failed\n",
+							__func__);
+						goto fail;
+					}
+				}
+
 				pr_debug("Activate mbim\n");
 				mbim_bam_connect(mbim);
 
@@ -1369,6 +1385,7 @@ static int mbim_get_alt(struct usb_function *f, unsigned intf)
 static void mbim_disable(struct usb_function *f)
 {
 	struct f_mbim	*mbim = func_to_mbim(f);
+	struct usb_composite_dev *cdev = mbim->cdev;
 
 	pr_info("SET DEVICE OFFLINE");
 	atomic_set(&mbim->online, 0);
@@ -1377,6 +1394,12 @@ static void mbim_disable(struct usb_function *f)
 
 	mbim_clear_queues(mbim);
 	mbim_reset_function_queue(mbim);
+
+	if (mbim->xport == USB_GADGET_XPORT_BAM2BAM_IPA &&
+			gadget_is_dwc3(cdev->gadget)) {
+		msm_ep_unconfig(mbim->bam_port.out);
+		msm_ep_unconfig(mbim->bam_port.in);
+	}
 
 	mbim_bam_disconnect(mbim);
 
@@ -1394,14 +1417,40 @@ static void mbim_disable(struct usb_function *f)
 
 static void mbim_suspend(struct usb_function *f)
 {
+	struct f_mbim	*mbim = func_to_mbim(f);
+
 	pr_info("mbim suspended\n");
-	bam_data_suspend(MBIM_ACTIVE_PORT);
+
+	if (mbim->cdev->gadget->remote_wakeup) {
+		bam_data_suspend(MBIM_ACTIVE_PORT);
+	} else {
+		/*
+		 * When remote wakeup is disabled, IPA BAM is disconnected
+		 * because it cannot send new data until the USB bus is resumed.
+		 * Endpoint descriptors info is saved before it gets reset by
+		 * the BAM disconnect API. This lets us restore this info when
+		 * the USB bus is resumed.
+		 */
+		mbim->in_ep_desc_backup  = mbim->bam_port.in->desc;
+		mbim->out_ep_desc_backup = mbim->bam_port.out->desc;
+		mbim_bam_disconnect(mbim);
+	}
 }
 
 static void mbim_resume(struct usb_function *f)
 {
+	struct f_mbim	*mbim = func_to_mbim(f);
+
 	pr_info("mbim resumed\n");
-	bam_data_resume(MBIM_ACTIVE_PORT);
+
+	if (mbim->cdev->gadget->remote_wakeup) {
+		bam_data_resume(MBIM_ACTIVE_PORT);
+	} else {
+		/* Restore endpoint descriptors info. */
+		mbim->bam_port.in->desc  = mbim->in_ep_desc_backup;
+		mbim->bam_port.out->desc = mbim->out_ep_desc_backup;
+		mbim_bam_connect(mbim);
+	}
 }
 
 /*---------------------- function driver setup/binding ---------------------*/
@@ -1672,7 +1721,7 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 	struct ctrl_pkt *cpkt = NULL;
 	int ret = 0;
 
-	pr_debug("Enter(%d)\n", count);
+	pr_debug("Enter(%zu)\n", count);
 
 	if (!dev) {
 		pr_err("Received NULL mbim pointer\n");
@@ -1680,7 +1729,7 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 	}
 
 	if (count > MBIM_BULK_BUFFER_SIZE) {
-		pr_err("Buffer size is too big %d, should be at most %d\n",
+		pr_err("Buffer size is too big %zu, should be at most %d\n",
 			count, MBIM_BULK_BUFFER_SIZE);
 		return -EINVAL;
 	}
@@ -1715,7 +1764,7 @@ mbim_read(struct file *fp, char __user *buf, size_t count, loff_t *pos)
 	if (cpkt->len > count) {
 		spin_unlock(&dev->lock);
 		mbim_unlock(&dev->read_excl);
-		pr_err("cpkt size too big:%d > buf size:%d\n",
+		pr_err("cpkt size too big:%d > buf size:%zu\n",
 				cpkt->len, count);
 		return -ENOMEM;
 	}
@@ -1747,7 +1796,7 @@ mbim_write(struct file *fp, const char __user *buf, size_t count, loff_t *pos)
 	struct ctrl_pkt *cpkt = NULL;
 	int ret = 0;
 
-	pr_debug("Enter(%d)", count);
+	pr_debug("Enter(%zu)", count);
 
 	if (!dev) {
 		pr_err("Received NULL mbim pointer\n");
@@ -1760,7 +1809,7 @@ mbim_write(struct file *fp, const char __user *buf, size_t count, loff_t *pos)
 	}
 
 	if (count > MAX_CTRL_PKT_SIZE) {
-		pr_err("given pkt size too big:%d > max_pkt_size:%d\n",
+		pr_err("given pkt size too big:%zu > max_pkt_size:%d\n",
 				count, MAX_CTRL_PKT_SIZE);
 		return -ENOMEM;
 	}
@@ -1795,7 +1844,7 @@ mbim_write(struct file *fp, const char __user *buf, size_t count, loff_t *pos)
 
 	mbim_unlock(&dev->write_excl);
 
-	pr_debug("Exit(%d)", count);
+	pr_debug("Exit(%zu)", count);
 
 	return count;
 
@@ -1841,9 +1890,16 @@ static int mbim_release(struct inode *ip, struct file *fp)
 static long mbim_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 {
 	struct f_mbim *mbim = fp->private_data;
+	struct data_port *port;
+	struct mbim_ipa_ep_info info;
 	int ret = 0;
 
 	pr_debug("Received command %d", cmd);
+
+	if (!mbim) {
+		pr_err("Bad parameter");
+		return -EINVAL;
+	}
 
 	if (mbim_lock(&mbim->ioctl_excl))
 		return -EBUSY;
@@ -1869,6 +1925,34 @@ static long mbim_ioctl(struct file *fp, unsigned cmd, unsigned long arg)
 		pr_info("Sent NTB datagrams count %d",
 			mbim->ntb_max_datagrams);
 		break;
+
+	case MBIM_EP_LOOKUP:
+		if (!atomic_read(&mbim->online)) {
+			pr_warn("usb cable is not connected\n");
+			return -ENOTCONN;
+		}
+
+		port = &mbim->bam_port;
+		if ((port->ipa_producer_ep == -1) ||
+			(port->ipa_consumer_ep == -1)) {
+			pr_err("EP_LOOKUP failed - IPA pipes were not updated");
+			ret = -EAGAIN;
+			break;
+		}
+
+		info.ph_ep_info.ep_type = MBIM_DATA_EP_TYPE_HSUSB;
+		info.ph_ep_info.peripheral_iface_id = mbim->data_id;
+		info.ipa_ep_pair.cons_pipe_num = port->ipa_consumer_ep;
+		info.ipa_ep_pair.prod_pipe_num = port->ipa_producer_ep;
+
+		ret = copy_to_user((void __user *)arg, &info,
+			sizeof(info));
+		if (ret) {
+			pr_err("copying to user space failed");
+			ret = -EFAULT;
+		}
+		break;
+
 	default:
 		pr_err("wrong parameter");
 		ret = -EINVAL;
@@ -1917,6 +2001,9 @@ static int mbim_init(int instances)
 		}
 
 		dev->port_num = i;
+		dev->bam_port.ipa_consumer_ep = -1;
+		dev->bam_port.ipa_producer_ep = -1;
+
 		spin_lock_init(&dev->lock);
 		INIT_LIST_HEAD(&dev->cpkt_req_q);
 		INIT_LIST_HEAD(&dev->cpkt_resp_q);

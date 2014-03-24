@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -288,37 +288,27 @@ static struct device_type slim_dev_type = {
 
 static void slim_report(struct work_struct *work)
 {
-	u8 laddr;
-	int ret, i;
 	struct slim_driver *sbdrv;
 	struct slim_device *sbdev =
 			container_of(work, struct slim_device, wd);
-	struct slim_controller *ctrl = sbdev->ctrl;
 	if (!sbdev->dev.driver)
 		return;
 	/* check if device-up or down needs to be called */
-	mutex_lock(&ctrl->m_ctrl);
-	/* address no longer valid, means device reported absent */
-	for (i = 0; i < ctrl->num_dev; i++) {
-		if (sbdev->laddr == ctrl->addrt[i].laddr &&
-			ctrl->addrt[i].valid == false &&
-			sbdev->notified)
-			break;
-	}
-	mutex_unlock(&ctrl->m_ctrl);
+	if ((!sbdev->reported && !sbdev->notified) ||
+			(sbdev->reported && sbdev->notified))
+		return;
+
 	sbdrv = to_slim_driver(sbdev->dev.driver);
-	if (i < ctrl->num_dev) {
+	/*
+	 * address no longer valid, means device reported absent, whereas
+	 * address valid, means device reported present
+	 */
+	if (sbdev->notified && !sbdev->reported) {
 		sbdev->notified = false;
 		if (sbdrv->device_down)
 			sbdrv->device_down(sbdev);
-		return;
-	}
-	if (sbdev->notified)
-		return;
-	ret = slim_get_logical_addr(sbdev, sbdev->e_addr, 6, &laddr);
-	if (!ret) {
-		if (sbdrv)
-			sbdev->notified = true;
+	} else if (!sbdev->notified && sbdev->reported) {
+		sbdev->notified = true;
 		if (sbdrv->device_up)
 			sbdrv->device_up(sbdev);
 	}
@@ -466,8 +456,8 @@ static int slim_register_controller(struct slim_controller *ctrl)
 	if (ret)
 		goto out_list;
 
-	dev_dbg(&ctrl->dev, "Bus [%s] registered:dev:%x\n", ctrl->name,
-							(u32)&ctrl->dev);
+	dev_dbg(&ctrl->dev, "Bus [%s] registered:dev:%p\n", ctrl->name,
+							&ctrl->dev);
 
 	if (ctrl->nports) {
 		ctrl->ports = kzalloc(ctrl->nports * sizeof(struct slim_port),
@@ -633,6 +623,7 @@ void slim_report_absent(struct slim_device *sbdev)
 			ctrl->addrt[i].valid = false;
 	}
 	mutex_unlock(&ctrl->m_ctrl);
+	sbdev->reported = false;
 	queue_work(ctrl->wq, &sbdev->wd);
 }
 EXPORT_SYMBOL(slim_report_absent);
@@ -686,9 +677,12 @@ void slim_msg_response(struct slim_controller *ctrl, u8 *reply, u8 tid, u8 len)
 
 	mutex_lock(&ctrl->m_ctrl);
 	txn = ctrl->txnt[tid];
-	if (txn == NULL) {
-		dev_err(&ctrl->dev, "Got response to invalid TID:%d, len:%d",
+	if (txn == NULL || txn->rbuf == NULL) {
+		if (txn == NULL)
+			dev_err(&ctrl->dev, "Got response to invalid TID:%d, len:%d",
 				tid, len);
+		else
+			dev_err(&ctrl->dev, "Invalid client buffer passed\n");
 		mutex_unlock(&ctrl->m_ctrl);
 		return;
 	}
@@ -791,6 +785,8 @@ int slim_assign_laddr(struct slim_controller *ctrl, const u8 *e_addr,
 	u8 i = 0;
 	bool exists = false;
 	struct slim_device *sbdev;
+	struct list_head *pos, *next;
+
 	mutex_lock(&ctrl->m_ctrl);
 	/* already assigned */
 	if (ctrl_getlogical_addr(ctrl, e_addr, e_len, &i) == 0) {
@@ -840,10 +836,12 @@ ret_assigned_laddr:
 	pr_info("slimbus:%d laddr:0x%x, EAPC:0x%x:0x%x", ctrl->nr, *laddr,
 				e_addr[1], e_addr[2]);
 	mutex_lock(&ctrl->m_ctrl);
-	list_for_each_entry(sbdev, &ctrl->devs, dev_list) {
+	list_for_each_safe(pos, next, &ctrl->devs) {
+		sbdev = list_entry(pos, struct slim_device, dev_list);
 		if (memcmp(sbdev->e_addr, e_addr, 6) == 0) {
 			struct slim_driver *sbdrv;
 			sbdev->laddr = *laddr;
+			sbdev->reported = true;
 			if (sbdev->dev.driver) {
 				sbdrv = to_slim_driver(sbdev->dev.driver);
 				if (sbdrv->device_up)
@@ -1095,6 +1093,28 @@ xfer_err:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(slim_xfer_msg);
+
+/*
+ * User message:
+ * slim_user_msg: Send user message that is interpreted by destination device
+ * @sb: Client handle sending the message
+ * @la: Destination device for this user message
+ * @mt: Message Type (Soruce-referred, or Destination-referred)
+ * @mc: Message Code
+ * @msg: Message structure (start offset, number of bytes) to be sent
+ * @buf: data buffer to be sent
+ * @len: data buffer size in bytes
+ */
+int slim_user_msg(struct slim_device *sb, u8 la, u8 mt, u8 mc,
+				struct slim_ele_access *msg, u8 *buf, u8 len)
+{
+	if (!sb || !sb->ctrl || !msg || mt == SLIM_MSG_MT_CORE)
+		return -EINVAL;
+	if (!sb->ctrl->xfer_user_msg)
+		return -EPROTONOSUPPORT;
+	return sb->ctrl->xfer_user_msg(sb->ctrl, la, mt, mc, msg, buf, len);
+}
+EXPORT_SYMBOL(slim_user_msg);
 
 /*
  * slim_alloc_mgrports: Allocate port on manager side.
@@ -1452,7 +1472,7 @@ EXPORT_SYMBOL_GPL(slim_disconnect_ports);
  * Client will call slim_port_get_xfer_status to get error and/or number of
  * bytes transferred if used asynchronously.
  */
-int slim_port_xfer(struct slim_device *sb, u32 ph, u8 *iobuf, u32 len,
+int slim_port_xfer(struct slim_device *sb, u32 ph, phys_addr_t iobuf, u32 len,
 				struct completion *comp)
 {
 	struct slim_controller *ctrl = sb->ctrl;
@@ -1482,7 +1502,7 @@ EXPORT_SYMBOL_GPL(slim_port_xfer);
  * processed from the multiple transfers.
  */
 enum slim_port_err slim_port_get_xfer_status(struct slim_device *sb, u32 ph,
-			u8 **done_buf, u32 *done_len)
+			phys_addr_t *done_buf, u32 *done_len)
 {
 	struct slim_controller *ctrl = sb->ctrl;
 	u8 pn = SLIM_HDL_TO_PORT(ph);
@@ -1495,7 +1515,7 @@ enum slim_port_err slim_port_get_xfer_status(struct slim_device *sb, u32 ph,
 	 */
 	if (la != SLIM_LA_MANAGER) {
 		if (done_buf)
-			*done_buf = NULL;
+			*done_buf = 0;
 		if (done_len)
 			*done_len = 0;
 		return SLIM_P_NOT_OWNED;

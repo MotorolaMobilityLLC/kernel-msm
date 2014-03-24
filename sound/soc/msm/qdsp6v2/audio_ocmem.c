@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,13 +23,13 @@
 #include <linux/io.h>
 #include <linux/of_device.h>
 #include <linux/dma-mapping.h>
+#include <soc/qcom/subsystem_restart.h>
+#include <soc/qcom/subsystem_notif.h>
+#include <soc/qcom/ramdump.h>
 #include <mach/msm_bus.h>
 #include <mach/msm_bus_board.h>
 #include <mach/ocmem.h>
-#include <mach/subsystem_notif.h>
-#include <mach/subsystem_restart.h>
 #include <mach/msm_memtypes.h>
-#include <mach/ramdump.h>
 #include "q6core.h"
 #include "audio_ocmem.h"
 
@@ -78,7 +78,7 @@
 #define clear_bit_pos(x, y)  (atomic_set(&x, (atomic_read(&x) & (~(1 << y)))))
 #define test_bit_pos(x, y) ((atomic_read(&x)) & (1 << y))
 
-static int enable_ocmem_audio_voice = 1;
+static int enable_ocmem_audio_voice;
 module_param(enable_ocmem_audio_voice, int,
 			S_IRUGO | S_IWUSR | S_IWGRP);
 MODULE_PARM_DESC(enable_ocmem_audio_voice, "control OCMEM usage for audio/voice");
@@ -536,6 +536,7 @@ fail_cmd2:
 	mutex_unlock(&audio_ocmem_lcl.state_process_lock);
 fail_cmd:
 	pr_debug("%s: exit\n", __func__);
+	audio_ocmem_lcl.buf = NULL;
 	audio_ocmem_lcl.audio_ocmem_running = false;
 	return ret;
 }
@@ -831,6 +832,7 @@ static void process_ocmem_dump(void)
 	ret = ocmem_free(OCMEM_LP_AUDIO, audio_ocmem_lcl.buf);
 	if (ret)
 		pr_err("%s: ocmem_free failed\n", __func__);
+	audio_ocmem_lcl.buf = NULL;
 }
 
 static int lpass_notifier_cb(struct notifier_block *this, unsigned long code,

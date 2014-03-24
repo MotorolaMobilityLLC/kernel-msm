@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2013, Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2014, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,6 +31,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/clk/msm-clk.h>
 #include <linux/irqchip/msm-mpm-irq.h>
+#include <soc/qcom/scm.h>
 
 #include <linux/usb.h>
 #include <linux/usb/otg.h>
@@ -45,11 +46,9 @@
 #include <linux/mfd/pm8xxx/pm8921-charger.h>
 #include <linux/mfd/pm8xxx/misc.h>
 #include <linux/mhl_8334.h>
+#include <linux/qpnp/qpnp-adc.h>
 
-#include <mach/scm.h>
-#include <mach/msm_xo.h>
-#include <mach/msm_bus.h>
-#include <mach/rpm-regulator.h>
+#include <linux/msm-bus.h>
 
 #define MSM_USB_BASE	(motg->regs)
 #define DRIVER_NAME	"msm_otg"
@@ -119,18 +118,7 @@ static inline bool aca_enabled(void)
 #endif
 }
 
-static int vdd_val[VDD_TYPE_MAX][VDD_VAL_MAX] = {
-		{  /* VDD_CX CORNER Voting */
-			[VDD_NONE]	= RPM_VREG_CORNER_NONE,
-			[VDD_MIN]	= RPM_VREG_CORNER_NOMINAL,
-			[VDD_MAX]	= RPM_VREG_CORNER_HIGH,
-		},
-		{ /* VDD_CX Voltage Voting */
-			[VDD_NONE]	= USB_PHY_VDD_DIG_VOL_NONE,
-			[VDD_MIN]	= USB_PHY_VDD_DIG_VOL_MIN,
-			[VDD_MAX]	= USB_PHY_VDD_DIG_VOL_MAX,
-		},
-};
+static int vdd_val[VDD_VAL_MAX];
 
 static int msm_hsusb_ldo_init(struct msm_otg *motg, int init)
 {
@@ -176,13 +164,11 @@ put_3p3_lpm:
 
 static int msm_hsusb_config_vddcx(int high)
 {
-	struct msm_otg *motg = the_msm_otg;
-	enum usb_vdd_type vdd_type = motg->vdd_type;
-	int max_vol = vdd_val[vdd_type][VDD_MAX];
+	int max_vol = vdd_val[VDD_MAX];
 	int min_vol;
 	int ret;
 
-	min_vol = vdd_val[vdd_type][!!high];
+	min_vol = vdd_val[!!high];
 	ret = regulator_set_voltage(hsusb_vdd, min_vol, max_vol);
 	if (ret) {
 		pr_err("%s: unable to set the voltage for regulator "
@@ -457,8 +443,10 @@ static int msm_otg_link_clk_reset(struct msm_otg *motg, bool assert)
 			dev_dbg(motg->phy.dev, "block_reset DEASSERT\n");
 			ret = clk_reset(motg->core_clk, CLK_RESET_DEASSERT);
 			ndelay(200);
-			clk_prepare_enable(motg->core_clk);
-			clk_prepare_enable(motg->pclk);
+			ret = clk_prepare_enable(motg->core_clk);
+			WARN(ret, "USB core_clk enable failed\n");
+			ret = clk_prepare_enable(motg->pclk);
+			WARN(ret, "USB pclk enable failed\n");
 		}
 		if (ret)
 			dev_err(motg->phy.dev, "usb hs_clk deassert failed\n");
@@ -891,9 +879,8 @@ static int msm_otg_suspend(struct msm_otg *motg)
 	struct msm_otg_platform_data *pdata = motg->pdata;
 	int cnt = 0;
 	bool host_bus_suspend, device_bus_suspend, dcp, prop_charger;
-	bool floated_charger;
+	bool floated_charger, sm_work_busy;
 	u32 phy_ctrl_val = 0, cmd_val;
-	unsigned ret;
 	u32 portsc, config2;
 	u32 func_ctrl;
 
@@ -915,6 +902,10 @@ static int msm_otg_suspend(struct msm_otg *motg)
 	prop_charger = motg->chg_type == USB_PROPRIETARY_CHARGER;
 	floated_charger = motg->chg_type == USB_FLOATED_CHARGER;
 
+	/* !BSV, but its handling is in progress by otg sm_work */
+	sm_work_busy = !test_bit(B_SESS_VLD, &motg->inputs) &&
+			phy->state == OTG_STATE_B_PERIPHERAL;
+
 	/* Enable line state difference wakeup fix for only device and host
 	 * bus suspend scenarios.  Otherwise PHY can not be suspended when
 	 * a charger that pulls DP/DM high is connected.
@@ -930,11 +921,12 @@ static int msm_otg_suspend(struct msm_otg *motg)
 	 * Abort suspend when,
 	 * 1. charging detection in progress due to cable plug-in
 	 * 2. host mode activation in progress due to Micro-A cable insertion
+	 * 3. !BSV, but its handling is in progress by otg sm_work
 	 */
 
 	if ((test_bit(B_SESS_VLD, &motg->inputs) && !device_bus_suspend &&
 		!dcp && !prop_charger && !floated_charger) ||
-		test_bit(A_BUS_REQ, &motg->inputs)) {
+		test_bit(A_BUS_REQ, &motg->inputs) || sm_work_busy) {
 		motg->ui_enabled = 1;
 		enable_irq(motg->irq);
 		return -EBUSY;
@@ -1087,14 +1079,6 @@ static int msm_otg_suspend(struct msm_otg *motg)
 		if (motg->xo_clk) {
 			clk_disable_unprepare(motg->xo_clk);
 			motg->lpm_flags |= XO_SHUTDOWN;
-		} else {
-			ret = msm_xo_mode_vote(motg->xo_handle,
-							MSM_XO_MODE_OFF);
-			if (ret)
-				dev_err(phy->dev, "%s fail to devote XO %d\n",
-								 __func__, ret);
-			else
-				motg->lpm_flags |= XO_SHUTDOWN;
 		}
 	}
 
@@ -1187,20 +1171,16 @@ static int msm_otg_resume(struct msm_otg *motg)
 
 	/* Vote for TCXO when waking up the phy */
 	if (motg->lpm_flags & XO_SHUTDOWN) {
-		if (motg->xo_clk) {
+		if (motg->xo_clk)
 			clk_prepare_enable(motg->xo_clk);
-		} else {
-			ret = msm_xo_mode_vote(motg->xo_handle, MSM_XO_MODE_ON);
-			if (ret)
-				dev_err(phy->dev, "%s fail to vote for XO %d\n",
-								__func__, ret);
-		}
 		motg->lpm_flags &= ~XO_SHUTDOWN;
 	}
 
 	if (motg->lpm_flags & CLOCKS_DOWN) {
-		clk_prepare_enable(motg->core_clk);
-		clk_prepare_enable(motg->pclk);
+		ret = clk_prepare_enable(motg->core_clk);
+		WARN(ret, "USB core_clk enable failed\n");
+		ret = clk_prepare_enable(motg->pclk);
+		WARN(ret, "USB pclk enable failed\n");
 		motg->lpm_flags &= ~CLOCKS_DOWN;
 	}
 
@@ -2512,7 +2492,8 @@ static void msm_chg_detect_work(struct work_struct *w)
 		 * due to which charger detection fails in case of PET.
 		 * Add delay of 100 microsec to avoid that.
 		 */
-		udelay(100);
+		if (aca_enabled())
+			udelay(100);
 		msm_chg_enable_aca_intr(motg);
 		dev_dbg(phy->dev, "chg_type = %s\n",
 			chg_to_string(motg->chg_type));
@@ -2659,6 +2640,8 @@ static void msm_otg_sm_work(struct work_struct *w)
 	bool work = 0, srp_reqd, dcp;
 
 	pm_runtime_resume(otg->phy->dev);
+	if (motg->pm_done)
+		pm_runtime_get_sync(otg->phy->dev);
 	pr_debug("%s work\n", usb_otg_state_string(otg->phy->state));
 	switch (otg->phy->state) {
 	case OTG_STATE_UNDEFINED:
@@ -2807,6 +2790,7 @@ static void msm_otg_sm_work(struct work_struct *w)
 			 */
 			pm_runtime_mark_last_busy(otg->phy->dev);
 			pm_runtime_autosuspend(otg->phy->dev);
+			motg->pm_done = 1;
 		}
 		break;
 	case OTG_STATE_B_SRP_INIT:
@@ -3438,6 +3422,7 @@ static irqreturn_t msm_otg_irq(int irq, void *data)
 static void msm_otg_set_vbus_state(int online)
 {
 	struct msm_otg *motg = the_msm_otg;
+	static bool init;
 
 	if (online) {
 		pr_debug("PMIC: BSV set\n");
@@ -3454,11 +3439,12 @@ static void msm_otg_set_vbus_state(int online)
 		 * completion in UNDEFINED state.  Process
 		 * the initial VBUS event in ID_GND state.
 		 */
-		if (pmic_vbus_init.done)
+		if (init)
 			return;
 	}
 
-	if (!pmic_vbus_init.done) {
+	if (!init) {
+		init = true;
 		complete(&pmic_vbus_init);
 		pr_debug("PMIC: BSV init complete\n");
 		/* fallthrough and schedule state machine work
@@ -3749,6 +3735,27 @@ static ssize_t msm_otg_bus_write(struct file *file, const char __user *ubuf,
 	return count;
 }
 
+static int
+otg_get_prop_usbin_voltage_now(struct msm_otg *motg)
+{
+	int rc = 0;
+	struct qpnp_vadc_result results;
+
+	if (IS_ERR_OR_NULL(motg->vadc_dev)) {
+		motg->vadc_dev = qpnp_get_vadc(motg->phy.dev, "usbin");
+		if (IS_ERR(motg->vadc_dev))
+			return PTR_ERR(motg->vadc_dev);
+	}
+
+	rc = qpnp_vadc_read(motg->vadc_dev, USBIN, &results);
+	if (rc) {
+		pr_err("Unable to read usbin rc=%d\n", rc);
+		return 0;
+	} else {
+		return results.physical;
+	}
+}
+
 static int otg_power_get_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
@@ -3779,6 +3786,9 @@ static int otg_power_get_property_usb(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = motg->usbin_health;
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+		val->intval = otg_get_prop_usbin_voltage_now(motg);
 		break;
 	default:
 		return -EINVAL;
@@ -3852,6 +3862,7 @@ static enum power_supply_property otg_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_SCOPE,
 	POWER_SUPPLY_PROP_TYPE,
+	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 };
 
 const struct file_operations msm_otg_bus_fops = {
@@ -4135,6 +4146,30 @@ msm_otg_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			complete(&motg->ext_chg_wait);
 			pm_runtime_put(motg->phy.dev);
 		}
+		break;
+	case MSM_USB_EXT_CHG_VOLTAGE_INFO:
+		if (get_user(val, (int __user *)arg)) {
+			pr_err("%s: get_user failed\n\n", __func__);
+			ret = -EFAULT;
+			break;
+		}
+
+		if (val == USB_REQUEST_5V)
+			pr_debug("%s:voting 5V voltage request\n", __func__);
+		else if (val == USB_REQUEST_9V)
+			pr_debug("%s:voting 9V voltage request\n", __func__);
+		break;
+	case MSM_USB_EXT_CHG_RESULT:
+		if (get_user(val, (int __user *)arg)) {
+			pr_err("%s: get_user failed\n\n", __func__);
+			ret = -EFAULT;
+			break;
+		}
+
+		if (!val)
+			pr_debug("%s:voltage request successful\n", __func__);
+		else
+			pr_debug("%s:voltage request failed\n", __func__);
 		break;
 	default:
 		ret = -EINVAL;
@@ -4562,26 +4597,12 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		motg->async_irq = 0;
 	}
 
-	if (!motg->xo_clk) {
-		motg->xo_handle = msm_xo_get(MSM_XO_TCXO_D0, "usb");
-		if (IS_ERR(motg->xo_handle)) {
-			dev_err(&pdev->dev, "%s fail to get handle for TCXO\n",
-								__func__);
-			ret = PTR_ERR(motg->xo_handle);
-			goto free_regs;
-		} else {
-			ret = msm_xo_mode_vote(motg->xo_handle, MSM_XO_MODE_ON);
-			if (ret) {
-				dev_err(&pdev->dev, "%s XO voting failed %d\n",
-								__func__, ret);
-				goto free_xo_handle;
-			}
-		}
-	} else {
+	if (motg->xo_clk) {
 		ret = clk_prepare_enable(motg->xo_clk);
 		if (ret) {
-			dev_err(&pdev->dev, "%s failed to vote for TCXO %d\n",
-							__func__, ret);
+			dev_err(&pdev->dev,
+				"%s failed to vote for TCXO %d\n",
+					__func__, ret);
 			goto free_xo_handle;
 		}
 	}
@@ -4589,7 +4610,6 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	clk_prepare_enable(motg->pclk);
 
-	motg->vdd_type = VDDCX_CORNER;
 	hsusb_vdd = devm_regulator_get(motg->phy.dev, "hsusb_vdd_dig");
 	if (IS_ERR(hsusb_vdd)) {
 		hsusb_vdd = devm_regulator_get(motg->phy.dev, "HSUSB_VDDCX");
@@ -4598,23 +4618,25 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 			ret = PTR_ERR(hsusb_vdd);
 			goto devote_xo_handle;
 		}
-		motg->vdd_type = VDDCX;
 	}
 
-	if (pdev->dev.of_node) {
-		of_get_property(pdev->dev.of_node,
-				"qcom,vdd-voltage-level",
-				&len);
+	if (of_get_property(pdev->dev.of_node,
+			"qcom,vdd-voltage-level",
+			&len)){
 		if (len == sizeof(tmp)) {
 			of_property_read_u32_array(pdev->dev.of_node,
 					"qcom,vdd-voltage-level",
 					tmp, len/sizeof(*tmp));
-			vdd_val[motg->vdd_type][0] = tmp[0];
-			vdd_val[motg->vdd_type][1] = tmp[1];
-			vdd_val[motg->vdd_type][2] = tmp[2];
+			vdd_val[0] = tmp[0];
+			vdd_val[1] = tmp[1];
+			vdd_val[2] = tmp[2];
 		} else {
-			dev_dbg(&pdev->dev, "Using default hsusb vdd config.\n");
+			dev_dbg(&pdev->dev,
+				"Using default hsusb vdd config.\n");
+			goto devote_xo_handle;
 		}
+	} else {
+		goto devote_xo_handle;
 	}
 
 	ret = msm_hsusb_config_vddcx(1);
@@ -4849,20 +4871,16 @@ free_hsusb_vdd:
 	regulator_disable(hsusb_vdd);
 free_config_vddcx:
 	regulator_set_voltage(hsusb_vdd,
-		vdd_val[motg->vdd_type][VDD_NONE],
-		vdd_val[motg->vdd_type][VDD_MAX]);
+		vdd_val[VDD_NONE],
+		vdd_val[VDD_MAX]);
 devote_xo_handle:
 	clk_disable_unprepare(motg->pclk);
 	if (motg->xo_clk)
 		clk_disable_unprepare(motg->xo_clk);
-	else
-		msm_xo_mode_vote(motg->xo_handle, MSM_XO_MODE_OFF);
 free_xo_handle:
 	if (motg->xo_clk) {
 		clk_put(motg->xo_clk);
 		motg->xo_clk = NULL;
-	} else {
-		msm_xo_put(motg->xo_handle);
 	}
 free_regs:
 	iounmap(motg->regs);
@@ -4966,8 +4984,6 @@ static int msm_otg_remove(struct platform_device *pdev)
 	if (motg->xo_clk) {
 		clk_disable_unprepare(motg->xo_clk);
 		clk_put(motg->xo_clk);
-	} else {
-		msm_xo_put(motg->xo_handle);
 	}
 
 	if (!IS_ERR(motg->sleep_clk))
@@ -4977,8 +4993,8 @@ static int msm_otg_remove(struct platform_device *pdev)
 	msm_hsusb_ldo_init(motg, 0);
 	regulator_disable(hsusb_vdd);
 	regulator_set_voltage(hsusb_vdd,
-		vdd_val[motg->vdd_type][VDD_NONE],
-		vdd_val[motg->vdd_type][VDD_MAX]);
+		vdd_val[VDD_NONE],
+		vdd_val[VDD_MAX]);
 
 	iounmap(motg->regs);
 	pm_runtime_set_suspended(&pdev->dev);
@@ -5041,6 +5057,7 @@ static int msm_otg_runtime_resume(struct device *dev)
 
 	dev_dbg(dev, "OTG runtime resume\n");
 	pm_runtime_get_noresume(dev);
+	motg->pm_done = 0;
 	return msm_otg_resume(motg);
 }
 #endif
@@ -5068,6 +5085,7 @@ static int msm_otg_pm_resume(struct device *dev)
 
 	dev_dbg(dev, "OTG PM resume\n");
 
+	motg->pm_done = 0;
 	atomic_set(&motg->pm_suspended, 0);
 	if (motg->async_int || motg->sm_work_pending ||
 			!pm_runtime_suspended(dev)) {

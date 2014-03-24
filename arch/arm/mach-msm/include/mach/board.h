@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/include/mach/board.h
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -34,6 +34,12 @@
 #define RF_TYPE_33 0x21
 #define RF_TYPE_48 0x30
 #define RF_TYPE_49 0x31
+
+#define WLAN_RF_REG_ADDR_START_OFFSET   0x3
+#define WLAN_RF_REG_DATA_START_OFFSET   0xf
+#define WLAN_RF_READ_REG_CMD            0x3
+#define WLAN_RF_WRITE_REG_CMD           0x2
+#define WLAN_RF_READ_CMD_MASK           0x3fff
 
 struct msm_camera_io_ext {
 	uint32_t mdcphy;
@@ -629,7 +635,7 @@ void fsm9900_init_gpiomux(void);
 void fsm9900_rf_init_gpiomux(void);
 void msm_map_8974_io(void);
 void msm_map_8084_io(void);
-void msm_map_msmkrypton_io(void);
+void msm_map_mdm9630_io(void);
 void msm_map_msmsamarium_io(void);
 void msm_map_msm8625_io(void);
 void msm_map_msm9625_io(void);
@@ -641,9 +647,10 @@ void msm_8974_very_early(void);
 void msm_8974_init_gpiomux(void);
 void apq8084_init_gpiomux(void);
 void msm9625_init_gpiomux(void);
-void msmkrypton_init_gpiomux(void);
+void mdm9630_init_gpiomux(void);
 void msmsamarium_init_gpiomux(void);
 void msm_map_mpq8092_io(void);
+void msm_map_msm8916_io(void);
 void mpq8092_init_gpiomux(void);
 void msm_map_msm8226_io(void);
 void msm8226_init_irq(void);
@@ -689,4 +696,5 @@ int smd_debugfs_init(void);
 static inline int smd_debugfs_init(void) { return 0; }
 #endif
 
+u32 wcnss_rf_read_reg(u32 rf_reg_addr);
 #endif

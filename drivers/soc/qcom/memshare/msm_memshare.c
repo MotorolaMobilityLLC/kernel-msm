@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,8 +15,8 @@
 #include <linux/module.h>
 #include <linux/dma-mapping.h>
 #include <linux/mutex.h>
-#include <mach/scm.h>
-#include <mach/msm_qmi_interface.h>
+#include <soc/qcom/msm_qmi_interface.h>
+#include <soc/qcom/scm.h>
 #include "msm_memshare.h"
 #include "heap_mem_ext_v01.h"
 #define MEM_SHARE_SERVICE_SVC_ID 0x00000034
@@ -33,6 +33,7 @@ static struct mem_blocks memblock;
 struct mutex mem_share;
 struct mutex mem_free;
 static uint32_t size;
+static struct work_struct memshare_init_work;
 
 static struct msg_desc mem_share_svc_alloc_req_desc = {
 	.max_msg_len = MEM_ALLOC_REQ_MAX_MSG_LEN_V01,
@@ -70,15 +71,16 @@ static int handle_alloc_req(void *req_h, void *req)
 	pr_debug("%s: req->num_bytes = %d\n", __func__, alloc_req->num_bytes);
 	alloc_resp.resp = QMI_RESULT_FAILURE_V01;
 	mutex_lock(&mem_share);
-	memset(&alloc_resp, 0, sizeof(struct mem_alloc_resp_msg_v01));
-	rc = memshare_alloc(alloc_req->num_bytes,
-				alloc_req->block_alignment,
-				&memblock);
-	if (rc) {
-		mutex_unlock(&mem_share);
-		return -ENOMEM;
+	if (!size) {
+		memset(&alloc_resp, 0, sizeof(struct mem_alloc_resp_msg_v01));
+		rc = memshare_alloc(alloc_req->num_bytes,
+					alloc_req->block_alignment,
+					&memblock);
+		if (rc) {
+			mutex_unlock(&mem_share);
+			return -ENOMEM;
+		}
 	}
-
 	alloc_resp.num_bytes_valid = 1;
 	alloc_resp.num_bytes =  alloc_req->num_bytes;
 	size = alloc_req->num_bytes;
@@ -86,6 +88,7 @@ static int handle_alloc_req(void *req_h, void *req)
 	alloc_resp.handle = memblock.phy_addr;
 	alloc_resp.resp = QMI_RESULT_SUCCESS_V01;
 	mutex_unlock(&mem_share);
+
 	pr_debug("alloc_resp.num_bytes :%d, alloc_resp.handle :%lx, alloc_resp.mem_req_result :%lx\n",
 			  alloc_resp.num_bytes,
 			  (unsigned long int)alloc_resp.handle,
@@ -113,9 +116,9 @@ static int handle_free_req(void *req_h, void *req)
 			(unsigned long int)free_req->handle, size);
 	dma_free_coherent(NULL, size,
 		memblock.virtual_addr, free_req->handle);
+	size = 0;
 	mutex_unlock(&mem_free);
 	free_resp.resp = QMI_RESULT_SUCCESS_V01;
-
 	rc = qmi_send_resp_from_cb(mem_share_svc_handle, curr_conn, req_h,
 			&mem_share_svc_free_resp_desc, &free_resp,
 			sizeof(free_resp));
@@ -265,21 +268,21 @@ int memshare_alloc(unsigned int block_size,
 	return 0;
 }
 
-static int __init memshare_init(void)
+static void memshare_init_worker(struct work_struct *work)
 {
 	int rc;
 
 	mem_share_svc_workqueue =
 		create_singlethread_workqueue("mem_share_svc");
 	if (!mem_share_svc_workqueue)
-		return -ENOMEM;
+		return;
 
 	mem_share_svc_handle = qmi_handle_create(qmi_mem_share_svc_ntfy, NULL);
 	if (!mem_share_svc_handle) {
 		pr_err("%s: Creating mem_share_svc qmi handle failed\n",
 			__func__);
 		destroy_workqueue(mem_share_svc_workqueue);
-		return -ENOMEM;
+		return;
 	}
 	rc = qmi_svc_register(mem_share_svc_handle, &mem_share_svc_ops_options);
 	if (rc < 0) {
@@ -287,13 +290,18 @@ static int __init memshare_init(void)
 			__func__, rc);
 		qmi_handle_destroy(mem_share_svc_handle);
 		destroy_workqueue(mem_share_svc_workqueue);
-		return rc;
+		return;
 	}
 	mutex_init(&connection);
 	mutex_init(&mem_share);
 	mutex_init(&mem_free);
 	pr_info("memshare: memshare_init successful\n");
+}
 
+static int __init memshare_init(void)
+{
+	INIT_WORK(&memshare_init_work, memshare_init_worker);
+	schedule_work(&memshare_init_work);
 	return 0;
 }
 

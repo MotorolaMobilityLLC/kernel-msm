@@ -1577,7 +1577,7 @@ static int fwu_start_reflash(void)
 		}
 
 		dev_dbg(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Firmware image size = %d\n",
+				"%s: Firmware image size = %zu\n",
 				__func__, fw_entry->size);
 
 		fwu->data_buffer = fw_entry->data;
@@ -1697,7 +1697,7 @@ static ssize_t fwu_sysfs_show_image(struct file *data_file,
 
 	if (count < fwu->config_size) {
 		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: Not enough space (%d bytes) in buffer\n",
+				"%s: Not enough space (%zu bytes) in buffer\n",
 				__func__, count);
 		return -EINVAL;
 	}
@@ -1932,11 +1932,19 @@ static ssize_t fwu_sysfs_config_area_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int retval;
-	unsigned long config_area;
+	unsigned short config_area;
+	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
-	retval = kstrtoul(buf, 10, &config_area);
+	retval = kstrtou16(buf, 10, &config_area);
 	if (retval)
 		return retval;
+
+	if (config_area < 0x00 || config_area > 0x03) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: Incorrect value of config_area\n",
+			__func__);
+		return -EINVAL;
+	}
 
 	fwu->config_area = config_area;
 

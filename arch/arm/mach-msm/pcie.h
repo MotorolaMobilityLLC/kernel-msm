@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -174,6 +174,9 @@ struct msm_pcie_dev_t {
 
 	bool                         l1ss_supported;
 	bool                         aux_clk_sync;
+	uint32_t                     n_fts;
+	bool                         ext_ref_clk;
+	uint32_t                     ep_latency;
 
 	uint32_t                     rc_idx;
 	bool                         enumerated;

@@ -17,7 +17,7 @@
 #include <mach/board.h>
 #include <mach/gpio.h>
 #include <mach/gpiomux.h>
-#include <mach/socinfo.h>
+#include <soc/qcom/socinfo.h>
 
 static struct gpiomux_setting gpio_keys_active = {
 	.func = GPIOMUX_FUNC_GPIO,

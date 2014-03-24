@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,6 +19,7 @@
 
 #define HFI_EVENT_SESSION_SEQUENCE_CHANGED (HFI_OX_BASE + 0x3)
 #define HFI_EVENT_SESSION_PROPERTY_CHANGED (HFI_OX_BASE + 0x4)
+#define HFI_EVENT_SESSION_LTRUSE_FAILED (HFI_OX_BASE + 0x5)
 #define HFI_EVENT_RELEASE_BUFFER_REFERENCE (HFI_OX_BASE + 0x6)
 
 #define HFI_EVENT_DATA_SEQUENCE_CHANGED_SUFFICIENT_BUFFER_RESOURCES	\
@@ -85,6 +86,7 @@
 #define HFI_EXTRADATA_MULTISLICE_INFO		0x7F100000
 #define HFI_EXTRADATA_NUM_CONCEALED_MB		0x7F100001
 #define HFI_EXTRADATA_INDEX					0x7F100002
+#define HFI_EXTRADATA_METADATA_LTR			0x7F100004
 #define HFI_EXTRADATA_METADATA_FILLER		0x7FE00002
 
 #define HFI_INDEX_EXTRADATA_INPUT_CROP		0x0700000E
@@ -223,6 +225,10 @@ struct hfi_extradata_header {
 	(HFI_PROPERTY_PARAM_VENC_OX_START + 0x001)
 #define  HFI_PROPERTY_PARAM_VENC_H264_IDR_S3D_FRAME_PACKING_NAL \
 	(HFI_PROPERTY_PARAM_VENC_OX_START + 0x002)
+#define  HFI_PROPERTY_PARAM_VENC_LTR_INFO			\
+	(HFI_PROPERTY_PARAM_VENC_OX_START + 0x003)
+#define  HFI_PROPERTY_PARAM_VENC_MBI_DUMPING				\
+	(HFI_PROPERTY_PARAM_VENC_OX_START + 0x005)
 
 #define HFI_PROPERTY_CONFIG_VENC_OX_START				\
 	(HFI_DOMAIN_BASE_VENC + HFI_ARCH_OX_OFFSET + 0x6000)
@@ -379,6 +385,7 @@ struct hfi_uncompressed_plane_actual_constraints_info {
 #define VIDC_IFACEQ_MIN_PKT_SIZE                        8
 #define VIDC_IFACEQ_VAR_SMALL_PKT_SIZE          100
 #define VIDC_IFACEQ_VAR_LARGE_PKT_SIZE          512
+#define VIDC_IFACEQ_VAR_HUGE_PKT_SIZE          (1024*12)
 
 
 struct hfi_cmd_sys_session_abort_packet {

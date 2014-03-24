@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,6 +22,10 @@
 #include "rmnet_data_config.h"
 #include "rmnet_data_vnd.h"
 
+/* ***************** Trace Points ******************************************* */
+#define CREATE_TRACE_POINTS
+#include "rmnet_data_trace.h"
+
 /* ***************** Module Parameters ************************************** */
 unsigned int rmnet_data_log_level = RMNET_LOG_LVL_ERR | RMNET_LOG_LVL_HI;
 module_param(rmnet_data_log_level, uint,  S_IRUGO | S_IWUSR);
@@ -43,7 +47,7 @@ static int __init rmnet_init(void)
 	rmnet_config_init();
 	rmnet_vnd_init();
 
-	LOGL("%s", "RMNET Data driver loaded successfully\n");
+	LOGL("%s", "RMNET Data driver loaded successfully");
 	return 0;
 }
 

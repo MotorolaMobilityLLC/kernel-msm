@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,8 +22,12 @@
 #include <linux/io.h>
 #include <linux/err.h>
 #include <linux/types.h>
+#include <linux/msm-bus.h>
+#include <linux/fs.h>
+#include <linux/cdev.h>
+#include <linux/of.h>
 #include <mach/msm_iomap.h>
-#include <mach/socinfo.h>
+#include <soc/qcom/socinfo.h>
 #include <mach/msm_bus.h>
 
 #define DRIVER_NAME "msm_rng"
@@ -48,7 +52,7 @@ struct msm_rng_device {
 	struct platform_device *pdev;
 	void __iomem *base;
 	struct clk *prng_clk;
-	uint32_t qrng_perf_client;
+	unsigned int qrng_perf_client;
 };
 
 static int msm_rng_read(struct hwrng *rng, void *data, size_t max, bool wait)

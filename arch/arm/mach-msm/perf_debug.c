@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -37,6 +37,9 @@ static char *descriptions =
 	"12 Perf: Make per-process counters cumulative\n"
 	"13 Perf: Fix PID for tracepoints\n"
 	"14 Perf: preserve registers across hotplug\n"
+	"15 msm: perf: Fix cpu id logic in tracectr notifier\n"
+	"16 msm: perf: tracectr: Initialize cnts after hotplug\n"
+	"17 Perf: Reset pmu after hotplug\n"
 ;
 
 static ssize_t desc_read(struct file *fp, char __user *buf,

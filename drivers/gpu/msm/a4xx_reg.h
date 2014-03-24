@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -382,6 +382,8 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_RBBM_PERFCTR_RBBM_SEL_3		0x179
 #define A4XX_RBBM_GPU_BUSY_MASKED		0x17a
 #define A4XX_RBBM_INT_0_STATUS			0x17d
+#define A4XX_RBBM_AHB_ME_SPLIT_STATUS		0x18c
+#define A4XX_RBBM_AHB_PFP_SPLIT_STATUS		0x18d
 #define A4XX_RBBM_AHB_ERROR_STATUS		0x18f
 #define A4XX_RBBM_STATUS			0x191
 #define A4XX_RBBM_CFG_COUNTER0			0x1a2
@@ -423,6 +425,22 @@ enum a4xx_rb_perfctr_rb_sel {
  */
 #define A4XX_CP_DEBUG_DEFAULT (1 << 25)
 
+#define A4XX_CP_PROTECT_REG_0		0x240
+#define A4XX_CP_PROTECT_REG_1		0x241
+#define A4XX_CP_PROTECT_REG_3		0x242
+#define A4XX_CP_PROTECT_REG_4		0x243
+#define A4XX_CP_PROTECT_REG_5		0x244
+#define A4XX_CP_PROTECT_REG_6		0x245
+#define A4XX_CP_PROTECT_REG_7		0x246
+#define A4XX_CP_PROTECT_REG_8		0x248
+#define A4XX_CP_PROTECT_REG_9		0x249
+#define A4XX_CP_PROTECT_REG_A		0x24a
+#define A4XX_CP_PROTECT_REG_B		0x24b
+#define A4XX_CP_PROTECT_REG_C		0x24c
+#define A4XX_CP_PROTECT_REG_D		0x24d
+#define A4XX_CP_PROTECT_REG_E		0x24e
+#define A4XX_CP_PROTECT_REG_F		0x24f
+
 #define A4XX_CP_PROTECT_CTRL		0x250
 #define A4XX_CP_SCRATCH_UMASK		0x228
 #define A4XX_CP_SCRATCH_ADDR		0x229
@@ -432,6 +450,8 @@ enum a4xx_rb_perfctr_rb_sel {
 #define A4XX_CP_PROTECT_CTRL		0x250
 #define A4XX_CP_ME_STATUS		0x4D1
 #define A4XX_CP_WFI_PEND_CTR		0x4d2
+#define A4XX_CP_HW_FAULT		0x4D8
+#define A4XX_CP_PROTECT_STATUS		0x4da
 #define A4XX_CP_PERFCTR_CP_SEL_0	0x500
 #define A4XX_CP_PERFCTR_CP_SEL_1	0x501
 #define A4XX_CP_SCRATCH_REG0		0x578
@@ -612,10 +632,10 @@ enum a4xx_vfd_perfctr_vfd_sel {
 #define A4XX_VBIF_PERF_PWR_HIGH_REG_LOW_OFF	8
 
 /* Bit flags for RBBM_CTL */
-#define A4XX_RBBM_RBBM_CTL_RESET_PWR_CTR0  BIT(0)
-#define A4XX_RBBM_RBBM_CTL_RESET_PWR_CTR1  BIT(1)
-#define A4XX_RBBM_RBBM_CTL_ENABLE_PWR_CTR0  BIT(4)
-#define A4XX_RBBM_RBBM_CTL_ENABLE_PWR_CTR1  BIT(5)
+#define A4XX_RBBM_RBBM_CTL_RESET_PWR_CTR0	0x00000001
+#define A4XX_RBBM_RBBM_CTL_RESET_PWR_CTR1	0x00000002
+#define A4XX_RBBM_RBBM_CTL_ENABLE_PWR_CTR0	0x00000010
+#define A4XX_RBBM_RBBM_CTL_ENABLE_PWR_CTR1	0x00000020
 
 /* GRAS registers */
 #define A4XX_GRAS_PERFCTR_TSE_SEL_0	0xc88

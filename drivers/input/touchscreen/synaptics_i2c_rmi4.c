@@ -5,7 +5,7 @@
  *
  * Copyright (C) 2012 Alexandra Chin <alexandra.chin@tw.synaptics.com>
  * Copyright (C) 2012 Scott Lin <scott.lin@tw.synaptics.com>
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -115,7 +115,14 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data);
 
 static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
 
-static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data);
+static void __maybe_unused synaptics_rmi4_sensor_sleep(
+			struct synaptics_rmi4_data *rmi4_data);
+
+static int __maybe_unused synaptics_rmi4_regulator_lpm(
+			struct synaptics_rmi4_data *rmi4_data, bool on);
+
+static void __maybe_unused synaptics_rmi4_release_all(
+			struct synaptics_rmi4_data *rmi4_data);
 
 static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
 		*rmi4_data);
@@ -123,7 +130,6 @@ static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
 static int synaptics_rmi4_set_configuration(struct synaptics_rmi4_data
 		*rmi4_data);
 
-#ifdef CONFIG_PM
 static int synaptics_rmi4_suspend(struct device *dev);
 
 static int synaptics_rmi4_resume(struct device *dev);
@@ -141,7 +147,6 @@ static int fb_notifier_callback(struct notifier_block *self,
 static void synaptics_rmi4_early_suspend(struct early_suspend *h);
 
 static void synaptics_rmi4_late_resume(struct early_suspend *h);
-#endif
 #endif
 
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
@@ -406,11 +411,9 @@ struct synaptics_rmi4_exp_fn {
 };
 
 static struct device_attribute attrs[] = {
-#ifdef CONFIG_PM
 	__ATTR(full_pm_cycle, (S_IRUGO | S_IWUSR | S_IWGRP),
 			synaptics_rmi4_full_pm_cycle_show,
 			synaptics_rmi4_full_pm_cycle_store),
-#endif
 	__ATTR(reset, S_IWUSR | S_IWGRP,
 			NULL,
 			synaptics_rmi4_f01_reset_store),
@@ -441,7 +444,31 @@ static bool need_wakeup;
 static bool exp_fn_inited;
 static struct mutex exp_fn_list_mutex;
 static struct list_head exp_fn_list;
-#ifdef CONFIG_PM
+
+static int synaptics_rmi4_debug_suspend_set(void *_data, u64 val)
+{
+	struct synaptics_rmi4_data *rmi4_data = _data;
+
+	if (val)
+		synaptics_rmi4_suspend(&rmi4_data->input_dev->dev);
+	else
+		synaptics_rmi4_resume(&rmi4_data->input_dev->dev);
+
+	return 0;
+}
+
+static int synaptics_rmi4_debug_suspend_get(void *_data, u64 *val)
+{
+	struct synaptics_rmi4_data *rmi4_data = _data;
+
+	*val = rmi4_data->suspended;
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(debug_suspend_fops, synaptics_rmi4_debug_suspend_get,
+			synaptics_rmi4_debug_suspend_set, "%lld\n");
+
 static ssize_t synaptics_rmi4_full_pm_cycle_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -464,30 +491,6 @@ static ssize_t synaptics_rmi4_full_pm_cycle_store(struct device *dev,
 
 	return count;
 }
-
-static int synaptics_rmi4_debug_suspend_set(void *_data, u64 val)
-{
-	struct synaptics_rmi4_data *rmi4_data = _data;
-
-	if (val)
-		synaptics_rmi4_suspend(&rmi4_data->input_dev->dev);
-	else
-		synaptics_rmi4_resume(&rmi4_data->input_dev->dev);
-
-	return 0;
-}
-
-static ssize_t synaptics_rmi4_debug_suspend_get(void *_data, u64 *val)
-{
-	struct synaptics_rmi4_data *rmi4_data = _data;
-
-	*val = rmi4_data->suspended;
-
-	return 0;
-}
-
-DEFINE_SIMPLE_ATTRIBUTE(debug_suspend_fops, synaptics_rmi4_debug_suspend_get,
-			synaptics_rmi4_debug_suspend_set, "%lld\n");
 
 #ifdef CONFIG_FB
 static void configure_sleep(struct synaptics_rmi4_data *rmi4_data)
@@ -517,7 +520,6 @@ static void configure_sleep(struct synaptics_rmi4_data *rmi4_data)
 {
 	return;
 }
-#endif
 #endif
 
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
@@ -3450,7 +3452,6 @@ static int synaptics_rmi4_remove(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_PM
  /**
  * synaptics_rmi4_sensor_sleep()
  *
@@ -3819,6 +3820,7 @@ static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
  * sleep (if not already done so during the early suspend phase),
  * disables the interrupt, and turns off the power to the sensor.
  */
+#ifdef CONFIG_PM
 static int synaptics_rmi4_suspend(struct device *dev)
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
@@ -3855,7 +3857,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		retval = synaptics_rmi4_regulator_lpm(rmi4_data, true);
 		if (retval < 0) {
 			dev_err(dev, "failed to enter low power mode\n");
-			return retval;
+			goto err_lpm_regulator;
 		}
 	} else {
 		dev_err(dev,
@@ -3867,12 +3869,24 @@ static int synaptics_rmi4_suspend(struct device *dev)
 		retval = synaptics_rmi4_gpio_configure(rmi4_data, false);
 		if (retval < 0) {
 			dev_err(dev, "failed to put gpios in suspend state\n");
-			return retval;
+			goto err_gpio_configure;
 		}
 	}
 	rmi4_data->suspended = true;
 
 	return 0;
+
+err_gpio_configure:
+	synaptics_rmi4_regulator_lpm(rmi4_data, false);
+
+err_lpm_regulator:
+	if (rmi4_data->sensor_sleep) {
+		synaptics_rmi4_sensor_wake(rmi4_data);
+		synaptics_rmi4_irq_enable(rmi4_data, true);
+		rmi4_data->touch_stopped = false;
+	}
+
+	return retval;
 }
 
  /**
@@ -3915,7 +3929,7 @@ static int synaptics_rmi4_resume(struct device *dev)
 		retval = synaptics_rmi4_gpio_configure(rmi4_data, true);
 		if (retval < 0) {
 			dev_err(dev, "Failed to put gpios in active state\n");
-			return retval;
+			goto err_gpio_configure;
 		}
 	}
 
@@ -3933,10 +3947,24 @@ static int synaptics_rmi4_resume(struct device *dev)
 			dev_err(dev, "Failed to check configuration\n");
 			return retval;
 		}
-		rmi4_data->suspended = false;
+		goto err_check_configuration;
 	}
 
 	return 0;
+
+err_check_configuration:
+	rmi4_data->suspended = false;
+	synaptics_rmi4_irq_enable(rmi4_data, false);
+	rmi4_data->touch_stopped = true;
+	synaptics_rmi4_sensor_sleep(rmi4_data);
+
+	if (rmi4_data->board->disable_gpios)
+		synaptics_rmi4_gpio_configure(rmi4_data, false);
+err_gpio_configure:
+	synaptics_rmi4_regulator_lpm(rmi4_data, true);
+	wake_up(&rmi4_data->wait);
+
+	return retval;
 }
 
 static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
@@ -3952,12 +3980,19 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data)
 {
 	return;
-};
+}
 
-static int synaptics_rmi4_check_configuration(struct synaptics_rmi4_data
-						*rmi4_data)
+static int synaptics_rmi4_suspend(struct device *dev)
 {
 	return 0;
+}
+
+static int synaptics_rmi4_resume(struct device *dev)
+{
+	return 0;
+}
+
+static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 };
 #endif
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -44,6 +44,7 @@
 #define FORMAT_MULTI_CHANNEL_LINEAR_PCM 0x0012
 #define FORMAT_AC3          0x0013
 #define FORMAT_EAC3         0x0014
+#define FORMAT_MP2          0x0015
 
 #define ENCDEC_SBCBITRATE   0x0001
 #define ENCDEC_IMMEDIATE_DECODE 0x0002
@@ -72,6 +73,7 @@
 #define SYNC_IO_MODE	0x0001
 #define ASYNC_IO_MODE	0x0002
 #define COMPRESSED_IO	0x0040
+#define COMPRESSED_STREAM_IO	0x0080
 #define NT_MODE        0x0400
 
 #define NO_TIMESTAMP    0xFF00
@@ -129,7 +131,7 @@ struct audio_buffer {
 };
 
 struct audio_aio_write_param {
-	unsigned long paddr;
+	phys_addr_t   paddr;
 	uint32_t      len;
 	uint32_t      uid;
 	uint32_t      lsw_ts;
@@ -140,7 +142,7 @@ struct audio_aio_write_param {
 };
 
 struct audio_aio_read_param {
-	unsigned long paddr;
+	phys_addr_t   paddr;
 	uint32_t      len;
 	uint32_t      uid;
 };
@@ -237,10 +239,10 @@ int q6asm_async_read(struct audio_client *ac,
 int q6asm_read(struct audio_client *ac);
 int q6asm_read_nolock(struct audio_client *ac);
 
-int q6asm_memory_map(struct audio_client *ac, uint32_t buf_add,
+int q6asm_memory_map(struct audio_client *ac, phys_addr_t buf_add,
 			int dir, uint32_t bufsz, uint32_t bufcnt);
 
-int q6asm_memory_unmap(struct audio_client *ac, uint32_t buf_add,
+int q6asm_memory_unmap(struct audio_client *ac, phys_addr_t buf_add,
 							int dir);
 
 int q6asm_unmap_cal_blocks(void);
@@ -398,5 +400,9 @@ int q6asm_media_format_block(struct audio_client *ac, uint32_t format);
 /* Send the meta data to remove initial and trailing silence */
 int q6asm_send_meta_data(struct audio_client *ac, uint32_t initial_samples,
 		uint32_t trailing_samples);
+
+/* Send the stream meta data to remove initial and trailing silence */
+int q6asm_stream_send_meta_data(struct audio_client *ac, uint32_t stream_id,
+		uint32_t initial_samples, uint32_t trailing_samples);
 
 #endif /* __Q6_ASM_H__ */

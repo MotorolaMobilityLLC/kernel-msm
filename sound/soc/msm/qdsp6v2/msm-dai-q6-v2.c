@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,6 +31,11 @@
 #define MSM_DAI_PRI_AUXPCM_DT_DEV_ID 1
 #define MSM_DAI_SEC_AUXPCM_DT_DEV_ID 2
 
+#define spdif_clock_value(rate) (2*rate*32*2)
+#define CHANNEL_STATUS_SIZE 24
+#define CHANNEL_STATUS_MASK_INIT 0x0
+#define CHANNEL_STATUS_MASK 0x4
+
 static const struct afe_clk_cfg lpass_clk_cfg_default = {
 	AFE_API_VERSION_I2S_CONFIG,
 	Q6AFE_LPASS_OSR_CLK_2_P048_MHZ,
@@ -57,11 +62,20 @@ enum {
 
 struct msm_dai_q6_dai_data {
 	DECLARE_BITMAP(status_mask, STATUS_MAX);
+	DECLARE_BITMAP(hwfree_status, STATUS_MAX);
 	u32 rate;
 	u32 channels;
 	u32 bitwidth;
 	int force_bitwidth;
 	union afe_port_config port_config;
+};
+
+struct msm_dai_q6_spdif_dai_data {
+	DECLARE_BITMAP(status_mask, STATUS_MAX);
+	u32 rate;
+	u32 channels;
+	u32 bitwidth;
+	struct afe_spdif_port_config spdif_port;
 };
 
 struct msm_dai_q6_mi2s_dai_config {
@@ -312,7 +326,7 @@ static int msm_dai_q6_auxpcm_prepare(struct snd_pcm_substream *substream,
 	struct msm_dai_q6_dai_data *dai_data = &aux_dai_data->bdai_data;
 	struct msm_dai_auxpcm_pdata *auxpcm_pdata = NULL;
 	int rc = 0;
-	unsigned long pcm_clk_rate;
+	u32 pcm_clk_rate;
 	struct afe_clk_cfg *lpass_pcm_src_clk = NULL;
 
 	auxpcm_pdata = dai->dev->platform_data;
@@ -547,6 +561,274 @@ static struct snd_soc_dai_driver msm_dai_q6_aux_pcm_dai[] = {
 		.probe = msm_dai_q6_aux_pcm_probe,
 		.remove = msm_dai_q6_dai_auxpcm_remove,
 	}
+};
+
+static int msm_dai_q6_spdif_format_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+
+	struct msm_dai_q6_spdif_dai_data *dai_data = kcontrol->private_data;
+	int value = ucontrol->value.integer.value[0];
+	dai_data->spdif_port.cfg.data_format = value;
+	pr_debug("%s: value = %d\n", __func__, value);
+	return 0;
+}
+
+static int msm_dai_q6_spdif_format_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+
+	struct msm_dai_q6_spdif_dai_data *dai_data = kcontrol->private_data;
+	ucontrol->value.integer.value[0] =
+		dai_data->spdif_port.cfg.data_format;
+	return 0;
+}
+
+static const char * const spdif_format[] = {
+	"LPCM",
+	"Compr"
+};
+
+static const struct soc_enum spdif_config_enum[] = {
+	SOC_ENUM_SINGLE_EXT(2, spdif_format),
+};
+
+static int msm_dai_q6_spdif_chstatus_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct msm_dai_q6_spdif_dai_data *dai_data = kcontrol->private_data;
+	int ret = 0;
+
+	dai_data->spdif_port.ch_status.status_type =
+		AFE_API_VERSION_SPDIF_CH_STATUS_CONFIG;
+	memset(dai_data->spdif_port.ch_status.status_mask,
+			CHANNEL_STATUS_MASK_INIT, CHANNEL_STATUS_SIZE);
+	dai_data->spdif_port.ch_status.status_mask[0] =
+		CHANNEL_STATUS_MASK;
+
+	memcpy(dai_data->spdif_port.ch_status.status_bits,
+			ucontrol->value.iec958.status, CHANNEL_STATUS_SIZE);
+
+	if (test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
+		pr_debug("%s: Port already started. Dynamic update\n",
+				__func__);
+		ret = afe_send_spdif_ch_status_cfg(
+				&dai_data->spdif_port.ch_status,
+				AFE_PORT_ID_SPDIF_RX);
+	}
+	return ret;
+}
+
+static int msm_dai_q6_spdif_chstatus_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+
+	struct msm_dai_q6_spdif_dai_data *dai_data = kcontrol->private_data;
+	memcpy(ucontrol->value.iec958.status,
+			dai_data->spdif_port.ch_status.status_bits,
+			CHANNEL_STATUS_SIZE);
+	return 0;
+}
+
+static int msm_dai_q6_spdif_chstatus_info(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_IEC958;
+	uinfo->count = 1;
+	return 0;
+}
+
+static const struct snd_kcontrol_new spdif_config_controls[] = {
+	{
+		.access = (SNDRV_CTL_ELEM_ACCESS_READWRITE |
+				SNDRV_CTL_ELEM_ACCESS_INACTIVE),
+		.iface  =   SNDRV_CTL_ELEM_IFACE_PCM,
+		.name   =   SNDRV_CTL_NAME_IEC958("", PLAYBACK, PCM_STREAM),
+		.info   =   msm_dai_q6_spdif_chstatus_info,
+		.get    =   msm_dai_q6_spdif_chstatus_get,
+		.put    =   msm_dai_q6_spdif_chstatus_put,
+	},
+	SOC_ENUM_EXT("SPDIF RX Format", spdif_config_enum[0],
+			msm_dai_q6_spdif_format_get,
+			msm_dai_q6_spdif_format_put)
+};
+
+
+static int msm_dai_q6_spdif_hw_params(struct snd_pcm_substream *substream,
+		struct snd_pcm_hw_params *params,
+		struct snd_soc_dai *dai)
+{
+	struct msm_dai_q6_spdif_dai_data *dai_data = dev_get_drvdata(dai->dev);
+
+	dai->id = AFE_PORT_ID_SPDIF_RX;
+	dai_data->channels = params_channels(params);
+	dai_data->spdif_port.cfg.num_channels = dai_data->channels;
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		dai_data->spdif_port.cfg.bit_width = 16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		dai_data->spdif_port.cfg.bit_width = 24;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	dai_data->rate = params_rate(params);
+	dai_data->bitwidth = dai_data->spdif_port.cfg.bit_width;
+	dai_data->spdif_port.cfg.sample_rate = dai_data->rate;
+	dai_data->spdif_port.cfg.spdif_cfg_minor_version =
+		AFE_API_VERSION_SPDIF_CONFIG;
+	dev_dbg(dai->dev, " channel %d sample rate %d bit width %d\n",
+			dai_data->channels, dai_data->rate,
+			dai_data->spdif_port.cfg.bit_width);
+	dai_data->spdif_port.cfg.reserved = 0;
+	return 0;
+}
+
+static void msm_dai_q6_spdif_shutdown(struct snd_pcm_substream *substream,
+		struct snd_soc_dai *dai)
+{
+	struct msm_dai_q6_spdif_dai_data *dai_data = dev_get_drvdata(dai->dev);
+	int rc = 0;
+
+	if (!test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
+		pr_info("%s:  afe port not started. dai_data->status_mask = %ld\n",
+				__func__, *dai_data->status_mask);
+		return;
+	}
+
+	rc = afe_close(dai->id);
+
+	if (IS_ERR_VALUE(rc))
+		dev_err(dai->dev, "fail to close AFE port\n");
+
+	pr_debug("%s: dai_data->status_mask = %ld\n", __func__,
+			*dai_data->status_mask);
+
+	clear_bit(STATUS_PORT_STARTED, dai_data->status_mask);
+}
+
+
+static int msm_dai_q6_spdif_prepare(struct snd_pcm_substream *substream,
+		struct snd_soc_dai *dai)
+{
+	struct msm_dai_q6_spdif_dai_data *dai_data = dev_get_drvdata(dai->dev);
+	int rc = 0;
+
+	if (IS_ERR_VALUE(rc)) {
+		dev_err(dai->dev, "%s clk_config failed", __func__);
+		return rc;
+	}
+	if (!test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
+		rc = afe_spdif_port_start(dai->id, &dai_data->spdif_port,
+				dai_data->rate);
+		if (IS_ERR_VALUE(rc))
+			dev_err(dai->dev, "fail to open AFE port %x\n",
+					dai->id);
+		else
+			set_bit(STATUS_PORT_STARTED,
+					dai_data->status_mask);
+	}
+
+	return rc;
+}
+
+static int msm_dai_q6_spdif_dai_probe(struct snd_soc_dai *dai)
+{
+	struct msm_dai_q6_spdif_dai_data *dai_data;
+	const struct snd_kcontrol_new *kcontrol;
+	int rc = 0;
+	struct snd_soc_dapm_route intercon;
+	dai_data = kzalloc(sizeof(struct msm_dai_q6_spdif_dai_data),
+			GFP_KERNEL);
+
+	if (!dai_data) {
+		dev_err(dai->dev, "DAI-%d: fail to allocate dai data\n",
+				AFE_PORT_ID_SPDIF_RX);
+		rc = -ENOMEM;
+	} else
+		rc = dev_set_drvdata(dai->dev, dai_data);
+
+	kcontrol = &spdif_config_controls[1];
+
+	rc = snd_ctl_add(dai->card->snd_card,
+			snd_ctl_new1(kcontrol, dai_data));
+
+	memset(&intercon, 0 , sizeof(intercon));
+	if (!rc && dai && dai->driver) {
+		if (dai->driver->playback.stream_name &&
+				dai->driver->playback.aif_name) {
+			dev_dbg(dai->dev, "%s add route for widget %s",
+				__func__, dai->driver->playback.stream_name);
+			intercon.source = dai->driver->playback.aif_name;
+			intercon.sink = dai->driver->playback.stream_name;
+			dev_dbg(dai->dev, "%s src %s sink %s\n",
+				__func__, intercon.source, intercon.sink);
+			snd_soc_dapm_add_routes(&dai->dapm, &intercon, 1);
+		}
+		if (dai->driver->capture.stream_name &&
+				dai->driver->capture.aif_name) {
+			dev_dbg(dai->dev, "%s add route for widget %s",
+				__func__, dai->driver->capture.stream_name);
+			intercon.sink = dai->driver->capture.aif_name;
+			intercon.source = dai->driver->capture.stream_name;
+			dev_dbg(dai->dev, "%s src %s sink %s\n",
+				__func__, intercon.source, intercon.sink);
+			snd_soc_dapm_add_routes(&dai->dapm, &intercon, 1);
+		}
+	}
+	return rc;
+}
+
+static int msm_dai_q6_spdif_dai_remove(struct snd_soc_dai *dai)
+{
+	struct msm_dai_q6_spdif_dai_data *dai_data;
+	int rc;
+
+	dai_data = dev_get_drvdata(dai->dev);
+
+	/* If AFE port is still up, close it */
+	if (test_bit(STATUS_PORT_STARTED, dai_data->status_mask)) {
+		rc = afe_close(dai->id); /* can block */
+
+		if (IS_ERR_VALUE(rc))
+			dev_err(dai->dev, "fail to close AFE port\n");
+
+		clear_bit(STATUS_PORT_STARTED, dai_data->status_mask);
+	}
+	kfree(dai_data);
+	snd_soc_unregister_component(dai->dev);
+
+	return 0;
+}
+
+
+static struct snd_soc_dai_ops msm_dai_q6_spdif_ops = {
+	.prepare	= msm_dai_q6_spdif_prepare,
+	.hw_params	= msm_dai_q6_spdif_hw_params,
+	.shutdown	= msm_dai_q6_spdif_shutdown,
+};
+
+static struct snd_soc_dai_driver msm_dai_q6_spdif_spdif_rx_dai = {
+	.playback = {
+		.stream_name = "SPDIF Playback",
+		.aif_name = "SPDIF_RX",
+		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
+			SNDRV_PCM_RATE_16000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+		.channels_min = 1,
+		.channels_max = 4,
+		.rate_min = 8000,
+		.rate_max = 48000,
+	},
+	.ops = &msm_dai_q6_spdif_ops,
+	.probe = msm_dai_q6_spdif_dai_probe,
+	.remove = msm_dai_q6_spdif_dai_remove,
+};
+
+static const struct snd_soc_component_driver msm_dai_spdif_q6_component = {
+	.name		= "msm-dai-q6-spdif",
 };
 
 static int msm_dai_q6_prepare(struct snd_pcm_substream *substream,
@@ -1825,6 +2107,9 @@ static int msm_mi2s_get_port_id(u32 mi2s_id, int stream, u16 *port_id)
 		case MSM_QUAT_MI2S:
 			*port_id = AFE_PORT_ID_QUATERNARY_MI2S_RX;
 			break;
+		case MSM_SEC_MI2S_VIBRA:
+			*port_id = AFE_PORT_ID_SECONDARY_MI2S_RX_VIBRA;
+			break;
 		break;
 		default:
 			ret = -1;
@@ -1895,6 +2180,11 @@ static int msm_dai_q6_mi2s_prepare(struct snd_pcm_substream *substream,
 			set_bit(STATUS_PORT_STARTED,
 				dai_data->status_mask);
 	}
+	if (!test_bit(STATUS_PORT_STARTED, dai_data->hwfree_status)) {
+		set_bit(STATUS_PORT_STARTED, dai_data->hwfree_status);
+		dev_dbg(dai->dev, "%s: set hwfree_status to started\n",
+				__func__);
+	}
 	return rc;
 }
 
@@ -1909,7 +2199,6 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 		&mi2s_dai_data->rx_dai : &mi2s_dai_data->tx_dai);
 	struct msm_dai_q6_dai_data *dai_data = &mi2s_dai_config->mi2s_dai_data;
 	struct afe_param_id_i2s_cfg *i2s = &dai_data->port_config.i2s;
-
 
 	dai_data->channels = params_channels(params);
 	switch (dai_data->channels) {
@@ -1996,10 +2285,14 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	dai_data->port_config.i2s.i2s_cfg_minor_version =
 			AFE_API_VERSION_I2S_CONFIG;
 	dai_data->port_config.i2s.sample_rate = dai_data->rate;
-	if (test_bit(STATUS_PORT_STARTED,
-	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) ||
+	if ((test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) &&
 	    test_bit(STATUS_PORT_STARTED,
-	    mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask)) {
+	    mi2s_dai_data->rx_dai.mi2s_dai_data.hwfree_status)) ||
+	    (test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask) &&
+	    test_bit(STATUS_PORT_STARTED,
+	    mi2s_dai_data->tx_dai.mi2s_dai_data.hwfree_status))) {
 		if ((mi2s_dai_data->tx_dai.mi2s_dai_data.rate !=
 		    mi2s_dai_data->rx_dai.mi2s_dai_data.rate) ||
 		   (mi2s_dai_data->rx_dai.mi2s_dai_data.bitwidth !=
@@ -2063,6 +2356,23 @@ static int msm_dai_q6_mi2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	return 0;
 }
 
+static int msm_dai_q6_mi2s_hw_free(struct snd_pcm_substream *substream,
+		struct snd_soc_dai *dai)
+{
+	struct msm_dai_q6_mi2s_dai_data *mi2s_dai_data =
+			dev_get_drvdata(dai->dev);
+	struct msm_dai_q6_dai_data *dai_data =
+		(substream->stream == SNDRV_PCM_STREAM_PLAYBACK ?
+		 &mi2s_dai_data->rx_dai.mi2s_dai_data :
+		 &mi2s_dai_data->tx_dai.mi2s_dai_data);
+
+	if (test_bit(STATUS_PORT_STARTED, dai_data->hwfree_status)) {
+		clear_bit(STATUS_PORT_STARTED, dai_data->status_mask);
+		dev_dbg(dai->dev, "%s: clear hwfree_status\n", __func__);
+	}
+	return 0;
+}
+
 static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 				     struct snd_soc_dai *dai)
 {
@@ -2090,12 +2400,15 @@ static void msm_dai_q6_mi2s_shutdown(struct snd_pcm_substream *substream,
 			dev_err(dai->dev, "fail to close AFE port\n");
 		clear_bit(STATUS_PORT_STARTED, dai_data->status_mask);
 	}
+	if (test_bit(STATUS_PORT_STARTED, dai_data->hwfree_status))
+		clear_bit(STATUS_PORT_STARTED, dai_data->hwfree_status);
 }
 
 static struct snd_soc_dai_ops msm_dai_q6_mi2s_ops = {
 	.startup	= msm_dai_q6_mi2s_startup,
 	.prepare	= msm_dai_q6_mi2s_prepare,
 	.hw_params	= msm_dai_q6_mi2s_hw_params,
+	.hw_free	= msm_dai_q6_mi2s_hw_free,
 	.set_fmt	= msm_dai_q6_mi2s_set_fmt,
 	.shutdown	= msm_dai_q6_mi2s_shutdown,
 };
@@ -2104,8 +2417,8 @@ static struct snd_soc_dai_ops msm_dai_q6_mi2s_ops = {
 static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 	{
 		.playback = {
-			.stream_name = "Primary I2S Playback",
-			.aif_name = "PRI_I2S_RX",
+			.stream_name = "Primary MI2S Playback",
+			.aif_name = "PRI_MI2S_RX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -2113,8 +2426,8 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 			.rate_max =     48000,
 		},
 		.capture = {
-			.stream_name = "Primary I2S Capture",
-			.aif_name = "PRI_I2S_TX",
+			.stream_name = "Primary MI2S Capture",
+			.aif_name = "PRI_MI2S_TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -2150,8 +2463,8 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 	},
 	{
 		.playback = {
-			/*No AIF to connect*/
 			.stream_name = "Tertiary MI2S Playback",
+			.aif_name = "TERT_MI2S_RX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -2159,8 +2472,8 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 			.rate_max =     48000,
 		},
 		.capture = {
-			/*No AIF to connect*/
 			.stream_name = "Tertiary MI2S Capture",
+			.aif_name = "TERT_MI2S_TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE,
@@ -2360,7 +2673,7 @@ static int msm_dai_q6_mi2s_dev_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "dev name %s dev id %x\n", dev_name(&pdev->dev),
 		mi2s_intf);
 
-	if (mi2s_intf < MSM_PRIM_MI2S || mi2s_intf > MSM_QUAT_MI2S
+	if ((mi2s_intf < MSM_PRIM_MI2S || mi2s_intf > MSM_SEC_MI2S_VIBRA)
 		|| (mi2s_intf >= ARRAY_SIZE(msm_dai_q6_mi2s_dai))) {
 		dev_err(&pdev->dev,
 			"%s: Invalid MI2S ID %u from Device Tree\n",
@@ -2574,10 +2887,10 @@ register_afe_playback:
 			__func__, stream_name);
 		break;
 	case RT_PROXY_DAI_001_TX:
-		strlcpy(stream_name, "AFE Capture", 80);
+		strlcpy(stream_name, "AFE-PROXY TX", 80);
 		goto register_afe_capture;
 	case RT_PROXY_DAI_002_TX:
-		strlcpy(stream_name, "AFE-PROXY TX", 80);
+		strlcpy(stream_name, "AFE Capture", 80);
 register_afe_capture:
 		rc = -ENODEV;
 		len = strnlen(stream_name , 80);
@@ -2739,6 +3052,46 @@ static struct platform_driver msm_dai_q6_mi2s_driver = {
 	},
 };
 
+static int msm_dai_q6_spdif_dev_probe(struct platform_device *pdev)
+{
+	int rc;
+
+	pdev->id = AFE_PORT_ID_SPDIF_RX;
+	dev_set_name(&pdev->dev, "%s", "msm-dai-q6-spdif");
+
+	pr_debug("%s: dev name %s, id:%d\n", __func__,
+			dev_name(&pdev->dev), pdev->id);
+
+	rc = snd_soc_register_component(&pdev->dev,
+			&msm_dai_spdif_q6_component,
+			&msm_dai_q6_spdif_spdif_rx_dai, 1);
+	return rc;
+}
+
+static int msm_dai_q6_spdif_dev_remove(struct platform_device *pdev)
+{
+	snd_soc_unregister_component(&pdev->dev);
+	return 0;
+}
+
+static const struct of_device_id msm_dai_q6_spdif_dt_match[] = {
+	{.compatible = "qcom,msm-dai-q6-spdif"},
+	{}
+};
+MODULE_DEVICE_TABLE(of, msm_dai_q6_spdif_dt_match);
+
+static struct platform_driver msm_dai_q6_spdif_driver = {
+	.probe  = msm_dai_q6_spdif_dev_probe,
+	.remove = msm_dai_q6_spdif_dev_remove,
+	.driver = {
+		.name = "msm-dai-q6-spdif",
+		.owner = THIS_MODULE,
+		.of_match_table = msm_dai_q6_spdif_dt_match,
+	},
+};
+
+
+
 static int __init msm_dai_q6_init(void)
 {
 	int rc;
@@ -2772,8 +3125,16 @@ static int __init msm_dai_q6_init(void)
 		pr_err("%s: fail to register dai MI2S\n", __func__);
 		goto dai_mi2s_q6_fail;
 	}
+
+	rc = platform_driver_register(&msm_dai_q6_spdif_driver);
+	if (rc) {
+		pr_err("%s: fail to register dai SPDIF\n", __func__);
+		goto dai_spdif_q6_fail;
+	}
 	return rc;
 
+dai_spdif_q6_fail:
+	platform_driver_unregister(&msm_dai_q6_spdif_driver);
 dai_mi2s_q6_fail:
 	platform_driver_unregister(&msm_dai_q6_mi2s_driver);
 dai_q6_mi2s_drv_fail:
@@ -2792,6 +3153,7 @@ static void __exit msm_dai_q6_exit(void)
 	platform_driver_unregister(&msm_dai_q6_dev);
 	platform_driver_unregister(&msm_dai_q6);
 	platform_driver_unregister(&msm_auxpcm_dev_driver);
+	platform_driver_unregister(&msm_dai_q6_spdif_driver);
 }
 module_exit(msm_dai_q6_exit);
 

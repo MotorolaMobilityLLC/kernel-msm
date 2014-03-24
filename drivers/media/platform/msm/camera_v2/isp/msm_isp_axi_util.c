@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -207,7 +207,7 @@ static uint32_t msm_isp_axi_get_plane_size(
 				plane_cfg[plane_idx].output_width;
 		else
 			size = plane_cfg[plane_idx].output_height *
-				plane_cfg[plane_idx].output_width / 2;
+				plane_cfg[plane_idx].output_width;
 		break;
 	case V4L2_PIX_FMT_NV14:
 	case V4L2_PIX_FMT_NV41:
@@ -216,7 +216,7 @@ static uint32_t msm_isp_axi_get_plane_size(
 				plane_cfg[plane_idx].output_width;
 		else
 			size = plane_cfg[plane_idx].output_height *
-				plane_cfg[plane_idx].output_width / 8;
+				plane_cfg[plane_idx].output_width;
 		break;
 	case V4L2_PIX_FMT_NV16:
 	case V4L2_PIX_FMT_NV61:
@@ -435,7 +435,7 @@ void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 	struct msm_isp_event_data sof_event;
 	switch (frame_src) {
 	case VFE_PIX_0:
-		ISP_DBG("%s: PIX0 frame id: %lu\n", __func__,
+		ISP_DBG("%s: PIX0 frame id: %u\n", __func__,
 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id);
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id++;
 		if (vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id == 0)
@@ -444,7 +444,7 @@ void msm_isp_sof_notify(struct vfe_device *vfe_dev,
 	case VFE_RAW_0:
 	case VFE_RAW_1:
 	case VFE_RAW_2:
-		ISP_DBG("%s: RDI%d frame id: %lu\n",
+		ISP_DBG("%s: RDI%d frame id: %u\n",
 			__func__, frame_src - VFE_RAW_0,
 			vfe_dev->axi_data.src_info[frame_src].frame_id);
 		vfe_dev->axi_data.src_info[frame_src].frame_id++;
@@ -1057,8 +1057,8 @@ static int msm_isp_update_stream_bandwidth(struct vfe_device *vfe_dev)
 	if (num_pix_streams > 0)
 		total_pix_bandwidth = total_pix_bandwidth /
 			num_pix_streams * (num_pix_streams - 1) +
-			axi_data->src_info[VFE_PIX_0].pixel_clock *
-			ISP_DEFAULT_FORMAT_FACTOR / ISP_Q2;
+			((unsigned long)axi_data->src_info[VFE_PIX_0].
+			pixel_clock) * ISP_DEFAULT_FORMAT_FACTOR / ISP_Q2;
 	total_bandwidth = total_pix_bandwidth + total_rdi_bandwidth;
 
 	rc = msm_isp_update_bandwidth(ISP_VFE0 + vfe_dev->pdev->id,
@@ -1194,6 +1194,8 @@ static int msm_isp_start_axi_stream(struct vfe_device *vfe_dev,
 			msm_isp_axi_stream_enable_cfg(vfe_dev, stream_info);
 			stream_info->state = ACTIVE;
 		}
+		vfe_dev->axi_data.src_info[
+			SRC_TO_INTF(stream_info->stream_src)].frame_id = 0;
 	}
 	msm_isp_update_stream_bandwidth(vfe_dev);
 	vfe_dev->hw_info->vfe_ops.axi_ops.reload_wm(vfe_dev, wm_reload_mask);
@@ -1347,7 +1349,10 @@ int msm_isp_update_axi_stream(struct vfe_device *vfe_dev, void *arg)
 			return -EINVAL;
 		}
 		if (stream_info->state == ACTIVE &&
-			stream_info->stream_type == BURST_STREAM) {
+			stream_info->stream_type == BURST_STREAM &&
+			(1 != update_cmd->num_streams ||
+				UPDATE_STREAM_FRAMEDROP_PATTERN !=
+					update_cmd->update_type)) {
 			pr_err("%s: Cannot update active burst stream\n",
 				__func__);
 			return -EINVAL;
@@ -1374,7 +1379,10 @@ int msm_isp_update_axi_stream(struct vfe_device *vfe_dev, void *arg)
 				msm_isp_get_framedrop_period(
 				   update_info->skip_pattern);
 			stream_info->runtime_init_frame_drop = 0;
-			stream_info->framedrop_pattern = 0x1;
+			if (update_info->skip_pattern == SKIP_ALL)
+				stream_info->framedrop_pattern = 0x0;
+			else
+				stream_info->framedrop_pattern = 0x1;
 			stream_info->framedrop_period = framedrop_period - 1;
 			vfe_dev->hw_info->vfe_ops.axi_ops.
 				cfg_framedrop(vfe_dev, stream_info);

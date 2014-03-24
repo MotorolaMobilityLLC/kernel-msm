@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -36,6 +36,7 @@ struct hsic_hub {
 	struct clk		*ref_clk;
 	struct regulator	*hsic_hub_reg;
 	struct regulator	*int_pad_reg, *hub_vbus_reg;
+	bool enabled;
 };
 static struct hsic_hub *smsc_hub;
 static struct platform_driver smsc_hub_driver;
@@ -191,6 +192,14 @@ static int msm_hsic_hub_init_clock(struct hsic_hub *hub, int init)
 {
 	int ret;
 
+	/*
+	 * xo_clk_gpio controls an external xo clock which feeds
+	 * the hub reference clock. When this gpio is present,
+	 * assume that no other clocks are required.
+	 */
+	if (hub->pdata->xo_clk_gpio)
+		return 0;
+
 	if (!init) {
 		if (!IS_ERR(hub->ref_clk))
 			clk_disable_unprepare(hub->ref_clk);
@@ -257,6 +266,15 @@ static int msm_hsic_hub_init_gpio(struct hsic_hub *hub, int init)
 			dev_err(hub->dev, "gpio request failed (CLK GPIO)\n");
 	}
 
+	if (pdata->xo_clk_gpio) {
+		ret = devm_gpio_request(hub->dev, pdata->xo_clk_gpio,
+							 "HSIC_HUB_XO_CLK");
+		if (ret < 0) {
+			dev_err(hub->dev, "gpio request failed(XO CLK GPIO)\n");
+			return ret;
+		}
+	}
+
 	if (pdata->int_gpio) {
 		ret = devm_gpio_request(hub->dev, pdata->int_gpio,
 							 "HSIC_HUB_INT");
@@ -266,7 +284,7 @@ static int msm_hsic_hub_init_gpio(struct hsic_hub *hub, int init)
 		}
 
 		/* Enable LDO if required for external pull-up */
-		smsc_hub->int_pad_reg = devm_regulator_get(hub->dev, "hub_int");
+		smsc_hub->int_pad_reg = devm_regulator_get(hub->dev, "hub-int");
 		if (IS_ERR(smsc_hub->int_pad_reg)) {
 			dev_dbg(hub->dev, "unable to get ext hub_int reg\n");
 		} else {
@@ -298,6 +316,9 @@ static int msm_hsic_hub_init_vdd(struct hsic_hub *hub, int init)
 {
 	int ret;
 
+	if (!of_get_property(hub->dev->of_node, "ext-hub-vddio-supply", NULL))
+		return 0;
+
 	if (!init) {
 		if (!IS_ERR(smsc_hub->hsic_hub_reg)) {
 			regulator_disable(smsc_hub->hsic_hub_reg);
@@ -308,7 +329,7 @@ static int msm_hsic_hub_init_vdd(struct hsic_hub *hub, int init)
 		return 0;
 	}
 
-	smsc_hub->hsic_hub_reg = devm_regulator_get(hub->dev, "EXT_HUB_VDDIO");
+	smsc_hub->hsic_hub_reg = devm_regulator_get(hub->dev, "ext-hub-vddio");
 	if (IS_ERR(smsc_hub->hsic_hub_reg)) {
 		dev_dbg(hub->dev, "unable to get ext hub vddcx\n");
 	} else {
@@ -345,6 +366,124 @@ reg_optimum_mode_fail:
 
 	return ret;
 }
+
+static int smsc_hub_enable(struct hsic_hub *hub)
+{
+	struct smsc_hub_platform_data *pdata = hub->pdata;
+	struct of_dev_auxdata *hsic_host_auxdata = dev_get_platdata(hub->dev);
+	struct device_node *node = hub->dev->of_node;
+	int ret;
+
+	ret = gpio_direction_output(pdata->xo_clk_gpio, 1);
+	if (ret < 0) {
+		dev_err(hub->dev, "fail to enable xo clk\n");
+		return ret;
+	}
+
+	ret = gpio_direction_output(pdata->hub_reset, 0);
+	if (ret < 0) {
+		dev_err(hub->dev, "fail to assert reset\n");
+		goto disable_xo;
+	}
+	udelay(5);
+	ret = gpio_direction_output(pdata->hub_reset, 1);
+	if (ret < 0) {
+		dev_err(hub->dev, "fail to de-assert reset\n");
+		goto disable_xo;
+	}
+
+	ret = of_platform_populate(node, NULL, hsic_host_auxdata,
+			hub->dev);
+	if (ret < 0) {
+		dev_err(smsc_hub->dev, "fail to add child with %d\n",
+				ret);
+		goto reset;
+	}
+
+	pm_runtime_allow(hub->dev);
+
+	return 0;
+
+reset:
+	gpio_direction_output(pdata->hub_reset, 0);
+disable_xo:
+	gpio_direction_output(pdata->xo_clk_gpio, 0);
+
+	return ret;
+}
+
+static int sms_hub_remove_child(struct device *dev, void *data)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+
+	/*
+	 * Runtime PM is disabled before the driver's remove method
+	 * is called.  So resume the device before unregistering
+	 * the device. Don't worry about the PM usage counter as
+	 * the device will be freed.
+	 */
+	pm_runtime_get_sync(dev);
+	of_device_unregister(pdev);
+
+	return 0;
+}
+
+static int smsc_hub_disable(struct hsic_hub *hub)
+{
+	struct smsc_hub_platform_data *pdata = hub->pdata;
+
+	pm_runtime_forbid(hub->dev);
+	device_for_each_child(hub->dev, NULL, sms_hub_remove_child);
+	gpio_direction_output(pdata->hub_reset, 0);
+	gpio_direction_output(pdata->xo_clk_gpio, 0);
+
+	return 0;
+}
+
+static ssize_t smsc_hub_enable_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%s\n", smsc_hub->enabled ?
+						"enabled" : "disabled");
+}
+
+static ssize_t smsc_hub_enable_store(struct device *dev,
+		struct device_attribute *attr, const char
+		*buf, size_t size)
+{
+
+	bool enable;
+	int val;
+	int ret = size;
+
+	if (sscanf(buf, "%d", &val) == 1) {
+		enable = !!val;
+	} else {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (smsc_hub->enabled == enable)
+		goto out;
+
+	if (enable)
+		ret = smsc_hub_enable(smsc_hub);
+	else
+		ret = smsc_hub_disable(smsc_hub);
+
+	pr_debug("smsc hub %s status %d\n", enable ?
+			"Enable" : "Disable", ret);
+	if (!ret) {
+		ret = size;
+		smsc_hub->enabled = enable;
+	}
+out:
+	return ret;
+}
+
+static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR, smsc_hub_enable_show,
+			smsc_hub_enable_store);
+
 struct smsc_hub_platform_data *msm_hub_dt_to_pdata(
 				struct platform_device *pdev)
 {
@@ -365,6 +504,8 @@ struct smsc_hub_platform_data *msm_hub_dt_to_pdata(
 		return ERR_PTR(rc);
 	} else {
 		pdata->model_id = temp_val;
+		if (pdata->model_id == 0)
+			return pdata;
 	}
 
 	pdata->hub_reset = of_get_named_gpio(node, "smsc,reset-gpio", 0);
@@ -378,6 +519,10 @@ struct smsc_hub_platform_data *msm_hub_dt_to_pdata(
 	pdata->int_gpio = of_get_named_gpio(node, "smsc,int-gpio", 0);
 	if (pdata->int_gpio < 0)
 		pdata->int_gpio = 0;
+
+	pdata->xo_clk_gpio = of_get_named_gpio(node, "smsc,xo-clk-gpio", 0);
+	if (pdata->xo_clk_gpio < 0)
+		pdata->xo_clk_gpio = 0;
 
 	return pdata;
 }
@@ -406,6 +551,12 @@ static int smsc_hub_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	if (pdata->model_id == 0) {
+		dev_dbg(&pdev->dev, "standalone HSIC config enabled\n");
+		return of_platform_populate(node, NULL,
+				hsic_host_auxdata, &pdev->dev);
+	}
+
 	if (!pdata->hub_reset)
 		return -EINVAL;
 
@@ -416,11 +567,14 @@ static int smsc_hub_probe(struct platform_device *pdev)
 	smsc_hub->dev = &pdev->dev;
 	smsc_hub->pdata = pdata;
 
-	smsc_hub->hub_vbus_reg = devm_regulator_get(&pdev->dev, "hub_vbus");
-	ret = PTR_ERR(smsc_hub->hub_vbus_reg);
-	if (ret == -EPROBE_DEFER) {
-		dev_dbg(&pdev->dev, "failed to get hub_vbus\n");
-		return ret;
+	if (of_get_property(pdev->dev.of_node, "hub-vbus-supply", NULL)) {
+		smsc_hub->hub_vbus_reg = devm_regulator_get(&pdev->dev,
+				"hub-vbus");
+		ret = PTR_ERR(smsc_hub->hub_vbus_reg);
+		if (ret == -EPROBE_DEFER) {
+			dev_dbg(&pdev->dev, "failed to get hub_vbus\n");
+			return ret;
+		}
 	}
 
 	ret = msm_hsic_hub_init_vdd(smsc_hub, 1);
@@ -439,6 +593,16 @@ static int smsc_hub_probe(struct platform_device *pdev)
 		goto uninit_clock;
 	}
 
+	if (pdata->model_id == SMSC3502_ID) {
+		ret = device_create_file(&pdev->dev, &dev_attr_enable);
+		if (ret < 0) {
+			dev_err(&pdev->dev, "fail to create sysfs file\n");
+			goto uninit_gpio;
+		}
+		pm_runtime_forbid(&pdev->dev);
+		goto done;
+	}
+
 	gpio_direction_output(pdata->hub_reset, 0);
 	/*
 	 * Hub reset should be asserted for minimum 2microsec
@@ -447,7 +611,7 @@ static int smsc_hub_probe(struct platform_device *pdev)
 	udelay(5);
 	gpio_direction_output(pdata->hub_reset, 1);
 
-	if (!IS_ERR(smsc_hub->hub_vbus_reg)) {
+	if (!IS_ERR_OR_NULL(smsc_hub->hub_vbus_reg)) {
 		ret = regulator_enable(smsc_hub->hub_vbus_reg);
 		if (ret) {
 			dev_err(&pdev->dev, "unable to enable hub_vbus\n");
@@ -501,10 +665,13 @@ i2c_add_fail:
 		goto uninit_gpio;
 	}
 
+	smsc_hub->enabled = true;
+
 	if (!smsc_hub->client)
 		dev_err(&pdev->dev,
 			"failed to connect to smsc_hub through I2C\n");
 
+done:
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
@@ -524,7 +691,12 @@ static int smsc_hub_remove(struct platform_device *pdev)
 {
 	const struct smsc_hub_platform_data *pdata;
 
+	if (!smsc_hub)
+		return 0;
+
 	pdata = smsc_hub->pdata;
+	if (pdata->model_id == SMSC3502_ID)
+		device_remove_file(&pdev->dev, &dev_attr_enable);
 	if (smsc_hub->client) {
 		i2c_unregister_device(smsc_hub->client);
 		smsc_hub->client = NULL;
@@ -532,7 +704,7 @@ static int smsc_hub_remove(struct platform_device *pdev)
 	}
 	pm_runtime_disable(&pdev->dev);
 
-	if (!IS_ERR(smsc_hub->hub_vbus_reg))
+	if (!IS_ERR_OR_NULL(smsc_hub->hub_vbus_reg))
 		regulator_disable(smsc_hub->hub_vbus_reg);
 	msm_hsic_hub_init_gpio(smsc_hub, 0);
 	msm_hsic_hub_init_clock(smsc_hub, 0);
@@ -553,13 +725,19 @@ static int smsc_hub_lpm_enter(struct device *dev)
 {
 	int ret = 0;
 
+	if (!smsc_hub || !smsc_hub->enabled)
+		return 0;
+
 	if (smsc_hub->xo_handle) {
 		ret = msm_xo_mode_vote(smsc_hub->xo_handle, MSM_XO_MODE_OFF);
 		if (ret) {
 			pr_err("%s: failed to devote for TCXO\n"
 				"D1 buffer%d\n", __func__, ret);
 		}
+	} else if (smsc_hub->pdata->xo_clk_gpio) {
+		gpio_direction_output(smsc_hub->pdata->xo_clk_gpio, 0);
 	}
+
 	return ret;
 }
 
@@ -567,13 +745,19 @@ static int smsc_hub_lpm_exit(struct device *dev)
 {
 	int ret = 0;
 
+	if (!smsc_hub || !smsc_hub->enabled)
+		return 0;
+
 	if (smsc_hub->xo_handle) {
 		ret = msm_xo_mode_vote(smsc_hub->xo_handle, MSM_XO_MODE_ON);
 		if (ret) {
 			pr_err("%s: failed to vote for TCXO\n"
 				"D1 buffer%d\n", __func__, ret);
 		}
+	} else if (smsc_hub->pdata->xo_clk_gpio) {
+		gpio_direction_output(smsc_hub->pdata->xo_clk_gpio, 1);
 	}
+
 	return ret;
 }
 #endif

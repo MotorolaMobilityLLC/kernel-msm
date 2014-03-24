@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,16 +22,16 @@
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/rpm-smd-regulator.h>
+#include <soc/qcom/clock-local2.h>
+#include <soc/qcom/clock-pll.h>
+#include <soc/qcom/clock-rpm.h>
+#include <soc/qcom/clock-voter.h>
+#include <soc/qcom/clock-krait.h>
 
-#include <mach/socinfo.h>
-#include <mach/rpm-smd.h>
+#include <soc/qcom/socinfo.h>
+#include <soc/qcom/rpm-smd.h>
 
-#include "clock-local2.h"
-#include "clock-pll.h"
-#include "clock-rpm.h"
-#include "clock-voter.h"
 #include "clock.h"
-#include "clock-krait.h"
 
 enum {
 	GCC_BASE,
@@ -89,6 +89,8 @@ static void __iomem *virt_bases[N_BASES];
 #define SDCC2_INACTIVITY_TIMERS_CBCR     0x050C
 #define BLSP1_BCR                        0x05C0
 #define BLSP1_AHB_CBCR                   0x05C4
+#define BLSP_UART_SIM_CMD_RCGR           0x0600
+#define BLSP_UART_SIM_CFG_RCGR           0x0604
 #define BLSP1_QUP1_BCR                   0x0640
 #define BLSP1_QUP1_SPI_APPS_CBCR         0x0644
 #define BLSP1_QUP1_I2C_APPS_CBCR         0x0648
@@ -655,6 +657,7 @@ static struct rcg_clk blsp1_qup6_spi_apps_clk_src = {
 };
 
 static struct clk_freq_tbl ftbl_gcc_blsp1_2_uart1_6_apps_clk[] = {
+	F(   660645,         xo,    5, 16, 93),
 	F(  3686400,      gpll0,    1, 96, 15625),
 	F(  7372800,      gpll0,    1, 192, 15625),
 	F( 14745600,      gpll0,    1, 384, 15625),
@@ -982,6 +985,24 @@ static struct rcg_clk blsp2_uart6_apps_clk_src = {
 		.dbg_name = "blsp2_uart6_apps_clk_src",
 		.ops = &clk_ops_rcg_mnd,
 		CLK_INIT(blsp2_uart6_apps_clk_src.c),
+	},
+};
+
+static struct clk_freq_tbl ftbl_gcc_blsp_sim_clk[] = {
+	F(  3840000,         xo,    5, 0, 0),
+	F_END
+};
+
+static struct rcg_clk blsp_sim_clk_src = {
+	.cmd_rcgr_reg = BLSP_UART_SIM_CMD_RCGR,
+	.set_rate = set_rate_hid,
+	.freq_tbl = ftbl_gcc_blsp_sim_clk,
+	.current_freq = &rcg_dummy_freq,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "blsp_sim_clk_src",
+		.ops = &clk_ops_rcg,
+		CLK_INIT(blsp_sim_clk_src.c),
 	},
 };
 
@@ -2108,6 +2129,50 @@ static struct gate_clk pcie_1_phy_ldo = {
 	},
 };
 
+static struct branch_clk gcc_emac0_axi_clk = {
+	.cbcr_reg = EMAC_0_AXI_CBCR,
+	.has_sibling = 1,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_emac0_axi_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_emac0_axi_clk.c),
+	},
+};
+
+static struct branch_clk gcc_emac1_axi_clk = {
+	.cbcr_reg = EMAC_1_AXI_CBCR,
+	.has_sibling = 1,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_emac1_axi_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_emac1_axi_clk.c),
+	},
+};
+
+static struct branch_clk gcc_emac0_ahb_clk = {
+	.cbcr_reg = EMAC_0_AHB_CBCR,
+	.has_sibling = 1,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_emac0_ahb_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_emac0_ahb_clk.c),
+	},
+};
+
+static struct branch_clk gcc_emac1_ahb_clk = {
+	.cbcr_reg = EMAC_1_AHB_CBCR,
+	.has_sibling = 1,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_emac1_ahb_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_emac1_ahb_clk.c),
+	},
+};
+
 static struct clk_freq_tbl ftbl_gcc_emac0_1_125m_clk[] = {
 	F(     19200000,              xo,    1, 0, 0),
 	F_EXT( 125000000,      emac0_125m,   1, 0, 0),
@@ -2276,6 +2341,50 @@ static struct branch_clk gcc_emac1_tx_clk = {
 	},
 };
 
+static struct branch_clk gcc_emac0_rx_clk = {
+	.cbcr_reg = EMAC_0_RX_CBCR,
+	.has_sibling = 1,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_emac0_rx_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_emac0_rx_clk.c),
+	},
+};
+
+static struct branch_clk gcc_emac1_rx_clk = {
+	.cbcr_reg = EMAC_1_RX_CBCR,
+	.has_sibling = 1,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_emac1_rx_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_emac1_rx_clk.c),
+	},
+};
+
+static struct branch_clk gcc_emac0_sys_clk = {
+	.cbcr_reg = EMAC_0_SYS_CBCR,
+	.has_sibling = 1,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_emac0_sys_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_emac0_sys_clk.c),
+	},
+};
+
+static struct branch_clk gcc_emac1_sys_clk = {
+	.cbcr_reg = EMAC_1_SYS_CBCR,
+	.has_sibling = 1,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_emac1_sys_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(gcc_emac1_sys_clk.c),
+	},
+};
+
 static DEFINE_CLK_MEASURE(l2_m_clk);
 static DEFINE_CLK_MEASURE(krait0_m_clk);
 static DEFINE_CLK_MEASURE(krait1_m_clk);
@@ -2368,12 +2477,20 @@ struct measure_mux_entry measure_mux[] = {
 	{&gcc_ce3_clk.c,			GCC_BASE, 0x0228},
 	{&gcc_ce3_axi_clk.c,			GCC_BASE, 0x0229},
 	{&gcc_ce3_ahb_clk.c,			GCC_BASE, 0x022a},
+	{&gcc_emac0_axi_clk.c,			GCC_BASE, 0x01a8},
+	{&gcc_emac0_ahb_clk.c,			GCC_BASE, 0x01a9},
 	{&gcc_emac0_sys_25m_clk.c,		GCC_BASE, 0x01aa},
 	{&gcc_emac0_tx_clk.c,			GCC_BASE, 0x01ab},
 	{&gcc_emac0_125m_clk.c,			GCC_BASE, 0x01ac},
+	{&gcc_emac0_rx_clk.c,			GCC_BASE, 0x01ad},
+	{&gcc_emac0_sys_clk.c,			GCC_BASE, 0x01ae},
+	{&gcc_emac1_axi_clk.c,			GCC_BASE, 0x01b0},
+	{&gcc_emac1_ahb_clk.c,			GCC_BASE, 0x01b1},
 	{&gcc_emac1_sys_25m_clk.c,		GCC_BASE, 0x01b2},
 	{&gcc_emac1_tx_clk.c,			GCC_BASE, 0x01b3},
 	{&gcc_emac1_125m_clk.c,			GCC_BASE, 0x01b4},
+	{&gcc_emac1_rx_clk.c,			GCC_BASE, 0x01b5},
+	{&gcc_emac1_sys_clk.c,			GCC_BASE, 0x01b6},
 
 	{&krait0_clk.c,				APCS_BASE, M_ACPU0},
 	{&krait1_clk.c,				APCS_BASE, M_ACPU1},
@@ -2601,17 +2718,22 @@ static struct clk_lookup fsm_clocks_9900[] = {
 	CLK_LOOKUP("core_clk",	gcc_blsp1_qup2_i2c_apps_clk.c, "f9924000.i2c"),
 
 	/* BLSP2  clocks. Only the valid configs are present in the table */
+	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f995d000.uim"),
 	CLK_LOOKUP("iface_clk", gcc_blsp2_ahb_clk.c, "f9960000.serial"),
 	CLK_LOOKUP("iface_clk",	gcc_blsp2_ahb_clk.c, "f9966000.i2c"),
 	CLK_LOOKUP("core_clk",	gcc_blsp2_qup4_i2c_apps_clk.c, "f9966000.i2c"),
+	CLK_LOOKUP("core_clk",	gcc_blsp2_uart1_apps_clk.c, "f995d000.uim"),
 	CLK_LOOKUP("core_clk",	gcc_blsp2_uart4_apps_clk.c, "f9960000.serial"),
+
+	/* BLSP SIM clock */
+	CLK_LOOKUP("sim_clk", blsp_sim_clk_src.c, "f995d000.uim"),
 
 	CLK_LOOKUP("iface_clk", gcc_prng_ahb_clk.c, "f9bff000.qcom,msm-rng"),
 
 	CLK_LOOKUP("",	gcc_boot_rom_ahb_clk.c,	""),
 
-	CLK_LOOKUP("",	gcc_pdm2_clk.c,	""),
-	CLK_LOOKUP("",	gcc_pdm_ahb_clk.c,	""),
+	CLK_LOOKUP("pdm2_clk",  gcc_pdm2_clk.c, "f9b10000.qcom,pdm"),
+	CLK_LOOKUP("ahb_clk",   gcc_pdm_ahb_clk.c, "f9b10000.qcom,pdm"),
 
 	/* SDCC clocks */
 	CLK_LOOKUP("iface_clk",	gcc_sdcc1_ahb_clk.c,	   "msm_sdcc.1"),
@@ -2622,6 +2744,7 @@ static struct clk_lookup fsm_clocks_9900[] = {
 	/* USB clocks */
 	CLK_LOOKUP("iface_clk", gcc_usb_hs_ahb_clk.c,      "f9a55000.usb"),
 	CLK_LOOKUP("core_clk",  gcc_usb_hs_system_clk.c,   "f9a55000.usb"),
+	CLK_LOOKUP("sleep_clk",	gcc_usb2a_phy_sleep_clk.c, "f9a55000.usb"),
 	CLK_LOOKUP("xo",        xo_usb_hs_host_clk.c,      "f9a55000.usb"),
 
 	CLK_LOOKUP("iface_clk",	gcc_usb_hs_ahb_clk.c,	   "msm_ehci_host"),
@@ -2630,12 +2753,20 @@ static struct clk_lookup fsm_clocks_9900[] = {
 	CLK_LOOKUP("xo",	xo_usb_hs_host_clk.c,      "msm_ehci_host"),
 
 	/* EMAC clocks */
+	CLK_LOOKUP("axi_clk",	gcc_emac0_axi_clk.c,	 "feb20000.qcom,emac"),
+	CLK_LOOKUP("cfg_ahb_clk", gcc_emac0_ahb_clk.c,	 "feb20000.qcom,emac"),
 	CLK_LOOKUP("25m_clk",	emac0_sys_25m_clk_src.c, "feb20000.qcom,emac"),
 	CLK_LOOKUP("125m_clk",	emac0_125m_clk_src.c,	 "feb20000.qcom,emac"),
 	CLK_LOOKUP("tx_clk",	emac0_tx_clk_src.c,	 "feb20000.qcom,emac"),
+	CLK_LOOKUP("rx_clk",	gcc_emac0_rx_clk.c,	 "feb20000.qcom,emac"),
+	CLK_LOOKUP("sys_clk",	gcc_emac0_sys_clk.c,	 "feb20000.qcom,emac"),
+	CLK_LOOKUP("axi_clk",	gcc_emac1_axi_clk.c,	 "feb00000.qcom,emac"),
+	CLK_LOOKUP("cfg_ahb_clk", gcc_emac1_ahb_clk.c,	 "feb00000.qcom,emac"),
 	CLK_LOOKUP("25m_clk",	emac1_sys_25m_clk_src.c, "feb00000.qcom,emac"),
 	CLK_LOOKUP("125m_clk",	emac1_125m_clk_src.c,	 "feb00000.qcom,emac"),
 	CLK_LOOKUP("tx_clk",	emac1_tx_clk_src.c,	 "feb00000.qcom,emac"),
+	CLK_LOOKUP("rx_clk",	gcc_emac1_rx_clk.c,	 "feb00000.qcom,emac"),
+	CLK_LOOKUP("sys_clk",	gcc_emac1_sys_clk.c,	 "feb00000.qcom,emac"),
 
 	/* PCIE clocks */
 
@@ -2675,6 +2806,18 @@ static struct clk_lookup fsm_clocks_9900[] = {
 	/* LDO */
 	CLK_LOOKUP("pcie_0_ldo",        pcie_0_phy_ldo.c, "fc520000.qcom,pcie"),
 	CLK_LOOKUP("pcie_1_ldo",        pcie_1_phy_ldo.c, "fc528000.qcom,pcie"),
+
+	/* QSEECOM clocks */
+	CLK_LOOKUP("core_clk",     gcc_ce1_clk.c,         "qseecom"),
+	CLK_LOOKUP("iface_clk",    gcc_ce1_ahb_clk.c,     "qseecom"),
+	CLK_LOOKUP("bus_clk",      gcc_ce1_axi_clk.c,     "qseecom"),
+	CLK_LOOKUP("core_clk_src", ce1_clk_src.c,         "qseecom"),
+
+	CLK_LOOKUP("ce_drv_core_clk",     gcc_ce2_clk.c,         "qseecom"),
+	CLK_LOOKUP("ce_drv_iface_clk",    gcc_ce2_ahb_clk.c,     "qseecom"),
+	CLK_LOOKUP("ce_drv_bus_clk",      gcc_ce2_axi_clk.c,     "qseecom"),
+	CLK_LOOKUP("ce_drv_core_clk_src", ce2_clk_src.c,         "qseecom"),
+
 };
 
 static struct pll_config_regs gpll4_regs __initdata = {

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,7 +21,7 @@
 #include <linux/version.h>
 #include <linux/slab.h>
 #include <mach/board.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/msm_iommu_domains.h>
 #include <media/msm_vidc.h>
 #include "msm_vidc_internal.h"
@@ -118,6 +118,13 @@ int msm_v4l2_g_ctrl(struct file *file, void *fh,
 {
 	struct msm_vidc_inst *vidc_inst = get_vidc_inst(file, fh);
 	return msm_vidc_g_ctrl((void *)vidc_inst, a);
+}
+
+int msm_v4l2_s_ext_ctrl(struct file *file, void *fh,
+					struct v4l2_ext_controls *a)
+{
+	struct msm_vidc_inst *vidc_inst = get_vidc_inst(file, fh);
+	return msm_vidc_s_ext_ctrl((void *)vidc_inst, a);
 }
 
 int msm_v4l2_reqbufs(struct file *file, void *fh,
@@ -226,6 +233,7 @@ static int msm_v4l2_enum_framesizes(struct file *file, void *fh,
 	struct msm_vidc_inst *vidc_inst = get_vidc_inst(file, fh);
 	return msm_vidc_enum_framesizes((void *)vidc_inst, fsize);
 }
+
 static const struct v4l2_ioctl_ops msm_v4l2_ioctl_ops = {
 	.vidioc_querycap = msm_v4l2_querycap,
 	.vidioc_enum_fmt_vid_cap_mplane = msm_v4l2_enum_fmt,
@@ -242,6 +250,7 @@ static const struct v4l2_ioctl_ops msm_v4l2_ioctl_ops = {
 	.vidioc_streamoff = msm_v4l2_streamoff,
 	.vidioc_s_ctrl = msm_v4l2_s_ctrl,
 	.vidioc_g_ctrl = msm_v4l2_g_ctrl,
+	.vidioc_s_ext_ctrls = msm_v4l2_s_ext_ctrl,
 	.vidioc_subscribe_event = msm_v4l2_subscribe_event,
 	.vidioc_unsubscribe_event = msm_v4l2_unsubscribe_event,
 	.vidioc_decoder_cmd = msm_v4l2_decoder_cmd,
@@ -267,6 +276,9 @@ static const struct v4l2_file_operations msm_v4l2_vidc_fops = {
 	.release = msm_v4l2_close,
 	.ioctl = video_ioctl2,
 	.poll = msm_v4l2_poll,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl32 = v4l2_compat_ioctl32,
+#endif
 };
 
 void msm_vidc_release_video_device(struct video_device *pvdev)
@@ -400,7 +412,11 @@ static int msm_vidc_probe(struct platform_device *pdev)
 	if (core->hfi_type == VIDC_HFI_Q6) {
 		dprintk(VIDC_DBG, "Q6 hfi device probe called\n");
 		nr += MSM_VIDC_MAX_DEVICES;
+		core->id = MSM_VIDC_CORE_Q6;
+	} else {
+		core->id = MSM_VIDC_CORE_VENUS;
 	}
+
 	rc = v4l2_device_register(&pdev->dev, &core->v4l2_dev);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to register v4l2 device\n");
@@ -455,7 +471,7 @@ static int msm_vidc_probe(struct platform_device *pdev)
 				vidc_driver->num_cores);
 		goto err_cores_exceeded;
 	}
-	core->id = vidc_driver->num_cores++;
+	vidc_driver->num_cores++;
 	mutex_unlock(&vidc_driver->lock);
 
 	core->device = vidc_hfi_initialize(core->hfi_type, core->id,
@@ -531,6 +547,7 @@ static int msm_vidc_remove(struct platform_device *pdev)
 }
 static const struct of_device_id msm_vidc_dt_match[] = {
 	{.compatible = "qcom,msm-vidc"},
+	{}
 };
 
 MODULE_DEVICE_TABLE(of, msm_vidc_dt_match);

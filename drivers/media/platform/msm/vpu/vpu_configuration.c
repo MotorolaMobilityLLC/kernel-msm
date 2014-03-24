@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,6 +17,7 @@
 #include <media/v4l2-dev.h>
 #include <media/v4l2-ctrls.h>
 #include <linux/stddef.h>
+#include <linux/sizes.h>
 
 #include "vpu_configuration.h"
 #include "vpu_v4l2.h"
@@ -34,7 +35,7 @@ enum vpu_ctrl_type {
 	CTRL_TYPE_VALUE,
 	CTRL_TYPE_STANDARD,
 	CTRL_TYPE_AUTO_MANUAL,
-	CTRL_TYPE_TWO_VALUE,
+	CTRL_TYPE_RESERVED,
 };
 
 struct vpu_ctrl_desc; /* forward declaration */
@@ -65,7 +66,7 @@ struct ctrl_bounds {
  *		and translate_to_api are automatically set accordingly.
  * @hfi_id: [Required] Identifies corresponding HFI property ID.
  *		If value is zero, then control is not sent to HFI.
- * @size: [Required] Size of API struct used with this control.
+ * @api_size: [Required] Size of API struct used with this control.
  * @hfi_size: [Required] Size of data sent to HFI. Auto set if type is valid.
  * @cached: Set to 1 if control cannot be read from HFI and needs to be
  *		returned from cache instead.
@@ -86,7 +87,7 @@ struct vpu_ctrl_desc {
 	const char *name;
 	enum vpu_ctrl_type type;
 	u32 hfi_id;
-	u32 size;
+	u32 api_size;
 	u32 hfi_size;
 	u32 cached;
 	u32 cache_offset;
@@ -119,7 +120,7 @@ static int __check_bounds(const struct ctrl_bounds *bounds, s32 val)
 static int value_bounds_check(const struct vpu_ctrl_desc *desc,
 		const void *api_arg)
 {
-	const __s32 *value = api_arg;
+	const s32 *value = api_arg;
 
 	return __check_bounds(&desc->bounds, *value);
 }
@@ -151,14 +152,35 @@ static int auto_manual_bounds_check(const struct vpu_ctrl_desc *desc,
 	return __check_bounds(bounds, arg->value);
 }
 
-static int two_value_bounds_check(const struct vpu_ctrl_desc *desc,
-		const void *api_arg)
+int configure_colorspace(struct vpu_dev_session *session, int port)
 {
-	const struct vpu_ctrl_two_value *arg = api_arg;
+	struct vpu_prop_session_color_space cs_param_1;
+	struct vpu_prop_session_color_space cs_param_2;
 	int ret;
+	int colorspace;
 
-	ret = __check_bounds(&desc->bounds, arg->value1);
-	ret |= __check_bounds(&desc->bounds2, arg->value2);
+	colorspace = session->port_info[port].format.colorspace;
+	if (!colorspace)
+		return 0;
+
+	translate_colorspace_to_hfi(colorspace, &cs_param_1, &cs_param_2);
+	ret = vpu_hw_session_s_property(session->id,
+			VPU_PROP_SESSION_COLOR_SPACE,
+			&cs_param_1, sizeof(cs_param_1));
+	if (ret) {
+		pr_err("Failed to set port colorspace\n");
+		return ret;
+	}
+
+	if (cs_param_1.cs_config != CONFIG_RGB_RANGE) {
+		ret = vpu_hw_session_s_property(session->id,
+				VPU_PROP_SESSION_COLOR_SPACE,
+				&cs_param_2, sizeof(cs_param_2));
+		if (ret) {
+			pr_err("Failed to set port colorspace\n");
+			return ret;
+		}
+	}
 	return ret;
 }
 
@@ -172,15 +194,16 @@ int configure_nr_buffers(struct vpu_dev_session *session,
 	int ret = 0, i, new_bufs = 0;
 
 	if (nr->enable) {
-		/* Get NR buffer size. NR buffers are YUV422 format */
-		vpu_format = query_supported_formats(PIXEL_FORMAT_YUYV);
+		/* Get NR buffer size. NR buffers are YUV422 10bit format */
+		vpu_format = query_supported_formats(PIXEL_FORMAT_YUYV10_LOOSE);
 		in_fmt = &session->port_info[INPUT_PORT].format;
 
 		if (!in_fmt->width || !in_fmt->height)
 			return 0; /* input resolution not configured yet */
 
 		buf_size = get_bytesperline(in_fmt->width,
-				vpu_format->plane[0].bitsperpixel, 0);
+				vpu_format->plane[0].bitsperpixel, 0,
+				in_fmt->pixelformat);
 		buf_size *= in_fmt->height;
 
 		for (i = 0; i < NUM_NR_BUFFERS; i++) {
@@ -213,6 +236,27 @@ exit_nr_bufs:
 	return ret;
 }
 
+static int range_mapping_bounds_check(const struct vpu_ctrl_desc *desc,
+		const void *api_arg)
+{
+	int ret;
+	const struct vpu_ctrl_range_mapping *arg = api_arg;
+
+	ret = __check_bounds(&desc->bounds, arg->y_range);
+	if (ret) {
+		pr_err("range mapping set for y out of range %d\n",
+				arg->y_range);
+		return ret;
+	}
+
+	ret = __check_bounds(&desc->bounds2, arg->uv_range);
+	if (ret) {
+		pr_err("range mapping set for uv out of range %d\n",
+				arg->uv_range);
+	}
+	return ret;
+}
+
 static int __active_region_param_get_size(const void *api_arg)
 {
 	const struct vpu_ctrl_active_region_param *arg = api_arg;
@@ -232,6 +276,48 @@ static int __active_region_param_bounds_check(const struct vpu_ctrl_desc *desc,
 
 	return (arg->num_exclusions > VPU_ACTIVE_REGION_N_EXCLUSIONS) ?
 			-EINVAL : 0;
+}
+
+static int deinterlacing_mode_bounds_check(const struct vpu_ctrl_desc *desc,
+		const void *api_arg)
+{
+	int ret;
+	const struct vpu_ctrl_deinterlacing_mode *arg = api_arg;
+
+	ret = __check_bounds(&desc->bounds, arg->field_polarity);
+	if (ret) {
+		pr_err("field polarity out of range %d\n",
+				arg->field_polarity);
+		return ret;
+	}
+
+	ret = __check_bounds(&desc->bounds2, arg->mvp_mode);
+	if (ret) {
+		pr_err("mvp mode is out of range %d\n",
+				arg->mvp_mode);
+	}
+	return ret;
+}
+
+static int hqv_bounds_check(const struct vpu_ctrl_desc *desc,
+		const void *api_arg)
+{
+	int ret;
+	const struct vpu_ctrl_hqv *arg = api_arg;
+
+	ret = __check_bounds(&desc->bounds, arg->sharpen_strength);
+	if (ret) {
+		pr_err("sharpen strength is out of range %d\n",
+				arg->sharpen_strength);
+		return ret;
+	}
+
+	ret = __check_bounds(&desc->bounds2, arg->auto_nr_strength);
+	if (ret) {
+		pr_err("auto nr strength is out of range %d\n",
+				arg->auto_nr_strength);
+	}
+	return ret;
 }
 
 static int vpu_set_content_protection(struct vpu_dev_session *session,
@@ -272,14 +358,14 @@ static struct vpu_ctrl_desc ctrl_descriptors[VPU_CTRL_ID_MAX] = {
 		.type = CTRL_TYPE_AUTO_MANUAL,
 		.hfi_id = VPU_PROP_SESSION_NOISE_REDUCTION,
 		.bounds = {
-				.min = VPU_AUTO_NR_LEVEL_MIN,
-				.max = VPU_AUTO_NR_LEVEL_MAX,
-				.step = VPU_AUTO_NR_LEVEL_STEP,
+			.min = VPU_AUTO_NR_LEVEL_MIN,
+			.max = VPU_AUTO_NR_LEVEL_MAX,
+			.step = VPU_AUTO_NR_LEVEL_STEP,
 		},
 		.bounds2 = {
-				.min = VPU_NOISE_REDUCTION_LEVEL_MIN,
-				.max = VPU_NOISE_REDUCTION_LEVEL_MAX,
-				.step = VPU_NOISE_REDUCTION_STEP,
+			.min = VPU_NOISE_REDUCTION_LEVEL_MIN,
+			.max = VPU_NOISE_REDUCTION_LEVEL_MAX,
+			.step = VPU_NOISE_REDUCTION_STEP,
 		},
 		.set_function = (custom_set_function) configure_nr_buffers,
 	},
@@ -288,14 +374,14 @@ static struct vpu_ctrl_desc ctrl_descriptors[VPU_CTRL_ID_MAX] = {
 		.type = CTRL_TYPE_AUTO_MANUAL,
 		.hfi_id = VPU_PROP_SESSION_IMAGE_ENHANCEMENT,
 		.bounds = {
-				.min = VPU_AUTO_IE_LEVEL_MIN,
-				.max = VPU_AUTO_IE_LEVEL_MAX,
+			.min = VPU_AUTO_IE_LEVEL_MIN,
+			.max = VPU_AUTO_IE_LEVEL_MAX,
 				.step = VPU_AUTO_IE_LEVEL_STEP,
 		},
 		.bounds2 = {
-				.min = VPU_IMAGE_ENHANCEMENT_LEVEL_MIN,
-				.max = VPU_IMAGE_ENHANCEMENT_LEVEL_MAX,
-				.step = VPU_IMAGE_ENHANCEMENT_STEP,
+			.min = VPU_IMAGE_ENHANCEMENT_LEVEL_MIN,
+			.max = VPU_IMAGE_ENHANCEMENT_LEVEL_MAX,
+			.step = VPU_IMAGE_ENHANCEMENT_STEP,
 		},
 	},
 	[VPU_CTRL_ANAMORPHIC_SCALING] = {
@@ -303,10 +389,10 @@ static struct vpu_ctrl_desc ctrl_descriptors[VPU_CTRL_ID_MAX] = {
 		.type = CTRL_TYPE_STANDARD,
 		.hfi_id = VPU_PROP_SESSION_ANAMORPHIC_SCALING,
 		.bounds = {
-				.min = VPU_ANAMORPHIC_SCALE_VALUE_MIN,
-				.max = VPU_ANAMORPHIC_SCALE_VALUE_MAX,
-				.step = VPU_ANAMORPHIC_SCALE_VALUE_STEP,
-				.def = VPU_ANAMORPHIC_SCALE_VALUE_DEF,
+			.min = VPU_ANAMORPHIC_SCALE_VALUE_MIN,
+			.max = VPU_ANAMORPHIC_SCALE_VALUE_MAX,
+			.step = VPU_ANAMORPHIC_SCALE_VALUE_STEP,
+			.def = VPU_ANAMORPHIC_SCALE_VALUE_DEF,
 		},
 	},
 	[VPU_CTRL_DIRECTIONAL_INTERPOLATION] = {
@@ -314,35 +400,55 @@ static struct vpu_ctrl_desc ctrl_descriptors[VPU_CTRL_ID_MAX] = {
 		.type = CTRL_TYPE_STANDARD,
 		.hfi_id = VPU_PROP_SESSION_DI,
 		.bounds = {
-				.min = VPU_DI_VALUE_MIN,
-				.max = VPU_DI_VALUE_MAX,
-				.step = 1,
+			.min = VPU_DI_VALUE_MIN,
+			.max = VPU_DI_VALUE_MAX,
+			.step = 1,
 		},
+	},
+	[VPU_CTRL_BACKGROUND_COLOR] = {
+		.name = "Background Color",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_BACKGROUND_COLOR,
 	},
 	[VPU_CTRL_RANGE_MAPPING] = {
 		.name = "Y/UV Range Mapping",
-		.type = CTRL_TYPE_TWO_VALUE,
 		.hfi_id = VPU_PROP_SESSION_RANGE_MAPPING,
+		.api_size = sizeof(struct vpu_ctrl_range_mapping),
+		.hfi_size = sizeof(struct vpu_prop_session_range_mapping),
 		.bounds = {
-				.min = VPU_RANGE_MAPPING_MIN,
-				.max = VPU_RANGE_MAPPING_MAX,
-				.step = VPU_RANGE_MAPPING_STEP,
+			.min = VPU_RANGE_MAPPING_MIN,
+			.max = VPU_RANGE_MAPPING_MAX,
+			.step = VPU_RANGE_MAPPING_STEP,
 		},
 		.bounds2 = {
-				.min = VPU_RANGE_MAPPING_MIN,
-				.max = VPU_RANGE_MAPPING_MAX,
-				.step = VPU_RANGE_MAPPING_STEP,
+			.min = VPU_RANGE_MAPPING_MIN,
+			.max = VPU_RANGE_MAPPING_MAX,
+			.step = VPU_RANGE_MAPPING_STEP,
 		},
+		.bounds_check = range_mapping_bounds_check,
+		.translate_to_hfi = translate_range_mapping_to_hfi,
 	},
-	[VPU_CTRL_DEINTERLACING] = {
+	[VPU_CTRL_DEINTERLACING_MODE] = {
 		.name = "Deinterlacing Mode",
-		.type = CTRL_TYPE_TWO_VALUE,
 		.hfi_id = VPU_PROP_SESSION_DEINTERLACING,
+		.api_size = sizeof(struct vpu_ctrl_deinterlacing_mode),
+		.hfi_size = sizeof(struct vpu_prop_session_deinterlacing),
+		.bounds = {
+			.min = FIELD_POLARITY_AUTO,
+			.max = FIELD_POLARITY_ODD,
+			.step = 1,
+		},
+		.bounds2 = {
+			.min = MVP_MODE_AUTO,
+			.max = MVP_MODE_VIDEO,
+			.step = 1,
+		},
+		.bounds_check = deinterlacing_mode_bounds_check,
 	},
 	[VPU_CTRL_ACTIVE_REGION_PARAM] = {
 		.name = "Active Region Detection Parameters",
 		.hfi_id = VPU_PROP_SESSION_ACTIVE_REGION_DETECT,
-		.size = sizeof(struct vpu_ctrl_active_region_param),
+		.api_size = sizeof(struct vpu_ctrl_active_region_param),
 		.custom_size = __active_region_param_get_size,
 		.cached = 1,
 		.bounds_check = __active_region_param_bounds_check,
@@ -350,7 +456,7 @@ static struct vpu_ctrl_desc ctrl_descriptors[VPU_CTRL_ID_MAX] = {
 	},
 	[VPU_CTRL_ACTIVE_REGION_RESULT] = {
 		.name = "Active Region Detection Result",
-		.size = sizeof(struct v4l2_rect),
+		.api_size = sizeof(struct v4l2_rect),
 		.hfi_size = sizeof(struct rect),
 		.cached = 1,
 		.translate_to_api = translate_active_region_result_to_api,
@@ -362,10 +468,145 @@ static struct vpu_ctrl_desc ctrl_descriptors[VPU_CTRL_ID_MAX] = {
 	},
 	[VPU_CTRL_CONTENT_PROTECTION] = {
 		.name = "Content Protection",
+		.api_size = sizeof(__s32),
 		.set_function =
 			(custom_set_function) vpu_set_content_protection,
 		.get_function =
 			(custom_get_function) vpu_get_content_protection,
+	},
+	[VPU_CTRL_DISPLAY_REFRESH_RATE] = {
+		.name = "Display Refresh Rate",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_DISPLAY_FPS,
+	},
+	[VPU_CTRL_HQV] = {
+		.name = "HQV",
+		.hfi_id = VPU_PROP_SESSION_AUTO_HQV,
+		.api_size = sizeof(struct vpu_ctrl_hqv),
+		.hfi_size = sizeof(struct vpu_prop_session_auto_hqv),
+		.bounds = {
+			.min = VPU_SHARPEN_STRENGTH_MIN,
+			.max = VPU_SHARPEN_STRENGTH_MAX,
+			.step = 1,
+			.def = VPU_SHARPEN_STRENGTH_MIN,
+		},
+		.bounds2 = {
+			.min = VPU_AUTO_NR_LEVEL_MIN,
+			.max = VPU_AUTO_NR_LEVEL_MAX,
+			.step = VPU_AUTO_NR_LEVEL_STEP,
+			.def = VPU_AUTO_NR_LEVEL_MIN,
+		},
+		.bounds_check = hqv_bounds_check,
+		.translate_to_hfi = translate_hqv_to_hfi,
+	},
+	[VPU_CTRL_HQV_SHARPEN] = {
+		.name = "HQV Sharpen",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_AUTO_HQV_SHARPEN_STRENGTH,
+		.bounds = {
+			.min = VPU_SHARPEN_STRENGTH_MIN,
+			.max = VPU_SHARPEN_STRENGTH_MAX,
+			.step = 1,
+			.def = VPU_SHARPEN_STRENGTH_MIN,
+		},
+	},
+	[VPU_CTRL_HQV_AUTONR] = {
+		.name = "HQV AutoNR",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_AUTO_HQV_AUTONR_STRENGTH,
+		.bounds = {
+			.min = VPU_AUTONR_STRENGTH_MIN,
+			.max = VPU_AUTONR_STRENGTH_MAX,
+			.step = 1,
+			.def = VPU_AUTONR_STRENGTH_MIN,
+		},
+	},
+	[VPU_CTRL_ACE] = {
+		.name = "ACE",
+		.type = CTRL_TYPE_STANDARD,
+		.hfi_id = VPU_PROP_SESSION_ACE,
+	},
+	[VPU_CTRL_ACE_BRIGHTNESS] = {
+		.name = "ACE Brightness",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_ACE_BRIGHTNESS,
+		.bounds = {
+			.min = VPU_ACE_BRIGHTNESS_MIN,
+			.max = VPU_ACE_BRIGHTNESS_MAX,
+			.step = VPU_ACE_BRIGHTNESS_STEP,
+			.def = VPU_ACE_BRIGHTNESS_MIN,
+		},
+	},
+	[VPU_CTRL_ACE_CONTRAST] = {
+		.name = "ACE Contrast",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_ACE_CONTRAST,
+		.bounds = {
+			.min = VPU_ACE_CONTRAST_MIN,
+			.max = VPU_ACE_CONTRAST_MAX,
+			.step = VPU_ACE_CONTRAST_STEP,
+			.def = VPU_ACE_CONTRAST_MIN,
+		},
+	},
+	[VPU_CTRL_2D3D] = {
+		.name = "2D3D",
+		.type = CTRL_TYPE_STANDARD,
+		.hfi_id = VPU_PROP_SESSION_2D3D,
+	},
+	[VPU_CTRL_2D3D_DEPTH] = {
+		.name = "2D3D Depth",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_2D3D_DEPTH,
+		.bounds = {
+			.min = VPU_2D3D_DEPTH_MIN,
+			.max = VPU_2D3D_DEPTH_MAX,
+			.step = VPU_2D3D_DEPTH_STEP,
+			.def = VPU_2D3D_DEPTH_MIN,
+		},
+	},
+	[VPU_INFO_TIMESTAMP] = {
+		.name = "Info Timestamp",
+		.hfi_id = VPU_PROP_SESSION_TIMESTAMP,
+		.api_size = sizeof(struct vpu_info_frame_timestamp),
+		.hfi_size = sizeof(struct vpu_prop_session_timestamp),
+		.translate_to_hfi = translate_timestamp_to_hfi,
+		.translate_to_api = translate_timestamp_to_api,
+	},
+	[VPU_CTRL_TIMESTAMP_INFO_MODE] = {
+		.name = "Timestamp Info Mode",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_TIMESTAMP_AUTO_MODE,
+	},
+	[VPU_CTRL_FRC] = {
+		.name = "FRC",
+		.type = CTRL_TYPE_STANDARD,
+		.hfi_id = VPU_PROP_SESSION_FRC,
+	},
+	[VPU_CTRL_FRC_MOTION_SMOOTHNESS] = {
+		.name = "FRC Motion Smoothness",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_FRC_MOTION_SMOOTHNESS,
+	},
+	[VPU_CTRL_FRC_MOTION_CLEAR] = {
+		.name = "FRC Motion Clear",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_FRC_MOTION_CLEAR,
+		.bounds = {
+			.min = VPU_FRC_MOTION_CLEAR_MIN,
+			.max = VPU_FRC_MOTION_CLEAR_MAX,
+			.step = VPU_FRC_MOTION_CLEAR_STEP,
+			.def = VPU_FRC_MOTION_CLEAR_DEFAULT,
+		},
+	},
+	[VPU_CTRL_LATENCY] = {
+		.name = "Latency",
+		.type = CTRL_TYPE_VALUE,
+		.hfi_id = VPU_PROP_SESSION_LATENCY_REQUIREMENTS,
+	},
+	[VPU_INFO_STATISTICS] = {
+		.name = "STATS",
+		.type = CTRL_TYPE_RESERVED,
+		.hfi_id = VPU_PROP_SESSION_STATS,
 	},
 };
 
@@ -391,21 +632,21 @@ void setup_vpu_controls(void)
 
 		switch (desc->type) {
 		case CTRL_TYPE_VALUE:
-			desc->size = sizeof(__s32);
+			desc->api_size = sizeof(s32);
 			desc->hfi_size = sizeof(struct vpu_s_data_value);
 			desc->bounds_check = value_bounds_check;
 			desc->translate_to_api = translate_ctrl_value_to_api;
 			desc->translate_to_hfi = translate_ctrl_value_to_hfi;
 			break;
 		case CTRL_TYPE_STANDARD:
-			desc->size = sizeof(struct vpu_ctrl_standard);
+			desc->api_size = sizeof(struct vpu_ctrl_standard);
 			desc->hfi_size = sizeof(struct vpu_s_data_value);
 			desc->bounds_check = standard_bounds_check;
 			desc->translate_to_api = translate_ctrl_standard_to_api;
 			desc->translate_to_hfi = translate_ctrl_standard_to_hfi;
 			break;
 		case CTRL_TYPE_AUTO_MANUAL:
-			desc->size = sizeof(struct vpu_ctrl_auto_manual);
+			desc->api_size = sizeof(struct vpu_ctrl_auto_manual);
 			desc->hfi_size = sizeof(struct vpu_s_data_value);
 			desc->bounds_check = auto_manual_bounds_check;
 			desc->translate_to_api =
@@ -413,21 +654,16 @@ void setup_vpu_controls(void)
 			desc->translate_to_hfi =
 					translate_ctrl_auto_manual_to_hfi;
 			break;
-		case CTRL_TYPE_TWO_VALUE:
-			desc->size = sizeof(struct vpu_ctrl_two_value);
-			desc->hfi_size = sizeof(struct vpu_ctrl_two_value);
-			desc->bounds_check = two_value_bounds_check;
-			desc->translate_to_api =
-					translate_ctrl_two_value_to_api;
-			desc->translate_to_hfi =
-					translate_ctrl_two_value_to_hfi;
-			break;
+		case CTRL_TYPE_RESERVED:
+			desc->api_size = sizeof(union control_data);
+			desc->hfi_size = sizeof(union control_data);
 		default:
 			break;
 		}
 
-		controller_cache_size += desc->size;
-		desc->cache_offset = prev_desc->cache_offset + prev_desc->size;
+		controller_cache_size += desc->api_size;
+		desc->cache_offset = prev_desc->cache_offset +
+				prev_desc->api_size;
 	}
 }
 
@@ -490,8 +726,8 @@ void *get_control(struct vpu_controller *controller, u32 id)
 
 	desc = &ctrl_descriptors[id];
 
-	if (!desc->size || desc->cache_offset > controller->cache_size ||
-	    (desc->cache_offset + desc->size) > controller->cache_size)
+	if (!desc->api_size || desc->cache_offset > controller->cache_size ||
+	    (desc->cache_offset + desc->api_size) > controller->cache_size)
 		return NULL;
 	else
 		return controller->cache + desc->cache_offset;
@@ -518,7 +754,7 @@ int apply_vpu_control(struct vpu_dev_session *session, int set,
 	}
 
 	desc = &ctrl_descriptors[control->control_id];
-	if (!desc->hfi_id && !desc->size &&
+	if (!desc->hfi_id && !desc->api_size &&
 			!desc->set_function && !desc->get_function) {
 		pr_err("control id %d is not supported\n", control->control_id);
 		return -EINVAL;
@@ -545,8 +781,8 @@ int apply_vpu_control(struct vpu_dev_session *session, int set,
 			call_op(desc, translate_to_hfi,
 					&control->data, hfi_data);
 		} else {
-			hfi_size = desc->size;
-			memcpy(hfi_data, &control->data, desc->size);
+			hfi_size = desc->api_size;
+			memcpy(hfi_data, &control->data, desc->api_size);
 		}
 
 		mutex_lock(&session->lock);
@@ -577,13 +813,13 @@ int apply_vpu_control(struct vpu_dev_session *session, int set,
 		}
 
 		/* update controls cache */
-		memcpy(cache, &control->data, desc->size);
+		memcpy(cache, &control->data, desc->api_size);
 
 		mutex_unlock(&session->lock);
 	} else {
 		/* If cached is set, copy control data from cache */
 		if (desc->cached) {
-			memcpy(&control->data, cache, desc->size);
+			memcpy(&control->data, cache, desc->api_size);
 			return 0;
 		}
 
@@ -602,7 +838,8 @@ int apply_vpu_control(struct vpu_dev_session *session, int set,
 				call_op(desc, translate_to_api,
 						hfi_data, &control->data);
 			else
-				memcpy(&control->data, hfi_data, desc->size);
+				memcpy(&control->data, hfi_data,
+						desc->api_size);
 		}
 	}
 
@@ -736,7 +973,7 @@ static const struct vpu_format_desc vpu_port_formats[] = {
 		.num_planes = 1,
 		.plane[0] = { .bitsperpixel = 16, .heightfactor = 1},
 	},
-	[PIXEL_FORMAT_YUYV_LOOSE] = {
+	[PIXEL_FORMAT_YUYV10_LOOSE] = {
 		.description = "YUYV 4:2:2 10bit intlvd loose",
 		.fourcc = V4L2_PIX_FMT_YUYV10,
 		.num_planes = 1,
@@ -758,41 +995,51 @@ static const struct vpu_format_desc vpu_port_formats[] = {
 		.description = "YUYV422 Compressed",
 		.fourcc = V4L2_PIX_FMT_YUYV10BWC,
 		.num_planes = 1,
-		.plane[0] = { .bitsperpixel = 10, .heightfactor = 1},
+		.plane[0] = { .bitsperpixel = 21, .heightfactor = 1},
 	},
 };
 
 #define PADDING 128
 #define CEIL(x, y) (((x) + ((y)-1)) / (y))
-u32 get_bytesperline(u32 width, u32 bitsperpixel, u32 input_bytesperline)
+u32 get_bytesperline(u32 width, u32 bitsperpixel, u32 input_bytesperline,
+		u32 pixelformat)
 {
-	u32 bytesperline = CEIL(width * bitsperpixel, 8);
-	u32 padding_factor = CEIL(bytesperline, PADDING);
-	u32 min_bytesperline = PADDING * padding_factor;
+	u32 bytesperline, padding_factor, min_bytesperline;
 
-	if (input_bytesperline < min_bytesperline) /* input too small */
-		return min_bytesperline;
-	else if (input_bytesperline % PADDING) /* must be multiple of padding */
-		return min_bytesperline;
-	else if (input_bytesperline > SZ_32K) /* not too big */
-		return min_bytesperline;
+	if (pixelformat == V4L2_PIX_FMT_YUYV10BWC)
+		bytesperline = CEIL(width * 64, 24);
 	else
-		return input_bytesperline; /* input bytesperline was fine */
+		bytesperline = CEIL(width * bitsperpixel, 8);
+
+	padding_factor = CEIL(bytesperline, PADDING);
+	min_bytesperline = PADDING * padding_factor;
+
+	if (!input_bytesperline) {
+		return min_bytesperline;
+	} else if (input_bytesperline < min_bytesperline ||
+			input_bytesperline % PADDING ||
+			input_bytesperline > SZ_16K) {
+		pr_err("Invalid input bytesperline %d\n", input_bytesperline);
+		return 0;
+	} else {
+		return input_bytesperline;
+	}
 }
 
 int is_format_valid(struct v4l2_format *fmt)
 {
-#define VPU_HEIGHT_MINIMUM 72
-#define VPU_HEIGHT_MULTIPLE 8
+#define VPU_DIM_MINIMUM 72
 	u32 height = fmt->fmt.pix_mp.height;
 	u32 width = fmt->fmt.pix_mp.width;
 
-	if (height < VPU_HEIGHT_MINIMUM)
-		return 0;
-	if ((height / VPU_HEIGHT_MULTIPLE) * VPU_HEIGHT_MULTIPLE != height)
+	if (width < VPU_DIM_MINIMUM || height < VPU_DIM_MINIMUM)
 		return 0;
 	if ((height & 1) || (width & 1)) /* must be even */
 		return 0;
+
+	if (fmt->fmt.pix_mp.colorspace <= VPU_CS_MIN
+		|| fmt->fmt.pix_mp.colorspace >= VPU_CS_MAX)
+		fmt->fmt.pix_mp.colorspace = 0;
 
 	return 1;
 }
@@ -827,6 +1074,80 @@ static int __get_bits_per_pixel(u32 api_pix_fmt)
 	return bpp;
 }
 
+
+#define SESSION_IS_ACTIVE(s, cur)	(((s) == (cur)) ? true : \
+					(s)->streaming_state == ALL_STREAMING)
+
+/* __get_frequency_mode() - returns the VPU frequency mode (enum vpu_power_mode)
+ *
+ * 1) Determine the pixel rate of each session:
+ *    (max(in_h, out_h) * max (in_v, out_v) * frame_rate
+ * 2) If the resolution is higher than 2MP, then use turbo frequency
+ * 3) For each frequency mode less than turbo:
+ *	3a) if single session and pixel rate (pr) is less than threshold, then
+ *	    use this frequency mode
+ *	3b) if dual session and each session's pixel rate is less than
+ *	    threshold/2, then use this frequency mode
+ * 4) If no frequency is chosen, choose turbo
+ */
+static u32 __get_frequency_mode(struct vpu_dev_session *cur_sess)
+{
+	struct vpu_dev_core *core = cur_sess->core;
+	struct vpu_dev_session *session = NULL;
+	enum vpu_power_mode m, mode = VPU_POWER_TURBO;
+	u32 max_w = 0, max_h = 0, fps, pr[VPU_NUM_SESSIONS] = {0, };
+	int i, num_sessions = 0;
+	const u32 pr_threshold[VPU_POWER_MAX] = {
+		[VPU_POWER_SVS]     =  63000000,
+		[VPU_POWER_NOMINAL] = 125000000,
+		[VPU_POWER_TURBO]   = 260000000,
+	};
+
+	for (i = 0; i < VPU_NUM_SESSIONS; i++) {
+		struct vpu_port_info *in, *out;
+		session = core->sessions[i];
+		if (!session || !SESSION_IS_ACTIVE(session, cur_sess))
+			continue;
+
+		in  = &session->port_info[INPUT_PORT];
+		out = &session->port_info[OUTPUT_PORT];
+
+		max_w = max(in->format.width,  out->format.width);
+		max_h = max(in->format.height, out->format.height);
+		if ((max_w * max_h) > SZ_2M)
+			goto exit_and_return_mode;
+
+		fps = max(in->framerate, out->framerate);
+		fps = fps ? fps : 60;
+
+		pr[i] = max_w * max_h * fps;
+		pr_debug("session %d's pixel rate is %d\n", i, pr[i]);
+
+		num_sessions++;
+	}
+
+	for (m = VPU_POWER_SVS; m <= VPU_POWER_NOMINAL; m++) {
+		bool eligible = true;
+
+		for (i = 0; i < VPU_NUM_SESSIONS; i++) {
+			session = core->sessions[i];
+			if (!session || !SESSION_IS_ACTIVE(session, cur_sess))
+				continue;
+
+			eligible &= (pr[i] < (pr_threshold[m] / num_sessions));
+		}
+		if (eligible) {
+			mode = m;
+			break;
+		}
+	}
+
+exit_and_return_mode:
+	pr_debug("eligible for %s mode\n", (mode == VPU_POWER_SVS) ? "svs" :
+			((mode == VPU_POWER_NOMINAL) ? "nominal" : "turbo"));
+	return (u32)mode;
+}
+
 /* compute the average load value for all VPU sessions (in bits per second) */
 static u32 __get_vpu_load(struct vpu_dev_core *core)
 {
@@ -838,7 +1159,7 @@ static u32 __get_vpu_load(struct vpu_dev_core *core)
 		session = core->sessions[i];
 		if (!session)
 			break;
-		pr_debug("session %d load: %dbps", i, session->load);
+		pr_debug("session %d load: %dbps\n", i, session->load);
 		load_bps = max(load_bps, session->load);
 	}
 
@@ -893,126 +1214,152 @@ int __calculate_session_load(struct vpu_dev_session *session)
 	return load_bits_per_sec;
 }
 
-int commit_initial_config(struct vpu_dev_session *session)
+static int __configure_input_port(struct vpu_dev_session *session)
 {
 	struct vpu_prop_session_input in_param;
-	struct vpu_prop_session_output out_param;
 	struct vpu_ctrl_auto_manual *nr;
 	int ret = 0;
-
-	if (session->commit_state == COMMITED)
-		return 0;
 
 	nr = get_control(session->controller, VPU_CTRL_NOISE_REDUCTION);
 	ret = configure_nr_buffers(session, nr);
 	if (ret) {
 		pr_err("Failed to configure nr\n");
-		goto exit_commit;
+		return ret;
 	}
 
 	translate_input_format_to_hfi(&session->port_info[INPUT_PORT],
 			&in_param);
 	ret = vpu_hw_session_s_input_params(session->id, &in_param);
 	if (ret) {
-		pr_err("Failed to set port 0 config\n");
-		goto exit_commit;
+		pr_err("Failed to set input port config\n");
+		return ret;
 	}
+
+	if (session->port_info[INPUT_PORT].source
+					!= VPU_INPUT_TYPE_HOST) {
+		struct vpu_data_value in_source_ch;
+		memset(&in_source_ch, 0, sizeof(in_source_ch));
+		in_source_ch.value = translate_input_source_ch(
+				session->port_info[INPUT_PORT].source);
+		ret = vpu_hw_session_s_property(session->id,
+				VPU_PROP_SESSION_SOURCE_CONFIG,
+				&in_source_ch, sizeof(in_source_ch));
+		if (ret) {
+			pr_err("Failed to set port 0 source ch\n");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int __configure_output_port(struct vpu_dev_session *session)
+{
+	struct vpu_prop_session_output out_param;
+	int ret = 0;
 
 	translate_output_format_to_hfi(&session->port_info[OUTPUT_PORT],
 			&out_param);
 	ret = vpu_hw_session_s_output_params(session->id, &out_param);
 	if (ret) {
-		pr_err("Failed to set port 1 config\n");
-		goto exit_commit;
+		pr_err("Failed to set output port config\n");
+		return ret;
 	}
 
-	/* calculate and store the newly computed session load */
-	session->load = __calculate_session_load(session);
-
-	ret = vpu_hw_session_commit(session->id, CH_COMMIT_AT_ONCE,
-			__get_vpu_load(session->core));
-	if (ret) {
-		pr_err("Commit Failed (err %d)\n", ret);
-		notify_vpu_event_session(session, VPU_EVENT_INVALID_CONFIG,
-				NULL, 0);
-		goto exit_commit;
+	if (session->port_info[OUTPUT_PORT].destination
+					!= VPU_OUTPUT_TYPE_HOST) {
+		struct vpu_data_pkt out_dest_ch;
+		memset(&out_dest_ch, 0, sizeof(out_dest_ch));
+		out_dest_ch.payload[0] = translate_output_destination_ch(
+				session->port_info[OUTPUT_PORT].destination);
+		out_dest_ch.size = sizeof(out_dest_ch);
+		ret = vpu_hw_session_s_property(session->id,
+				VPU_PROP_SESSION_SINK_CONFIG,
+				&out_dest_ch, sizeof(out_dest_ch));
+		if (ret) {
+			pr_err("Failed to set port 1 dest ch\n");
+			return ret;
+		}
 	}
+
+	return 0;
+}
+
+static int __do_commit(struct vpu_dev_session *session,
+		enum commit_type commit_type, int new_load)
+{
+	int ret;
+
+	if (new_load)
+		session->load = __calculate_session_load(session);
+
+	ret = vpu_hw_session_commit(session->id, commit_type,
+			__get_vpu_load(session->core),
+			__get_frequency_mode(session));
+	if (ret)
+		pr_err("Commit Failed\n");
+	else
+		pr_debug("Commit successful\n");
+
+	return ret;
+}
+
+int commit_initial_config(struct vpu_dev_session *session)
+{
+	int ret = 0;
+
+	if (session->commit_state == COMMITED)
+		return 0;
+
+	ret = __configure_input_port(session);
+	if (ret)
+		return ret;
+
+	ret = __configure_output_port(session);
+	if (ret)
+		return ret;
+
+	ret = __do_commit(session, CH_COMMIT_AT_ONCE, 1);
+	if (ret)
+		return ret;
 
 	session->commit_state = COMMITED;
-	pr_debug("Initial configuration committed successfully\n");
-
-exit_commit:
-	return ret;
+	return 0;
 }
 
 int commit_port_config(struct vpu_dev_session *session,	int port, int new_load)
 {
-	struct vpu_prop_session_input in_param;
-	struct vpu_prop_session_output out_param;
 	int ret = 0;
 
-	if (session->commit_state != COMMITED)
-		return 0; /* wait for initial configuration */
+	/* defer to initial session commit if not streaming */
+	if (session->streaming_state != ALL_STREAMING) {
+		session->commit_state = 0;
+		return 0;
+	}
 
 	if (port == INPUT_PORT) {
-		struct vpu_ctrl_auto_manual *nr = get_control(
-			session->controller, VPU_CTRL_NOISE_REDUCTION);
-		ret = configure_nr_buffers(session, nr);
-		if (ret) {
-			pr_err("Failed to configure nr\n");
+		ret = __configure_input_port(session);
+		if (ret)
 			return ret;
-		}
 
-		translate_input_format_to_hfi(&session->port_info[INPUT_PORT],
-				&in_param);
-		ret = vpu_hw_session_s_input_params(session->id, &in_param);
 	} else if (port == OUTPUT_PORT) {
-		translate_output_format_to_hfi(&session->port_info[OUTPUT_PORT],
-				&out_param);
-		ret = vpu_hw_session_s_output_params(session->id, &out_param);
-	} else
+		ret = __configure_output_port(session);
+		if (ret)
+			return ret;
+	} else {
 		return -EINVAL;
-
-	if (ret) {
-		pr_err("Failed to set port config\n");
-		goto exit_commit;
 	}
 
-	if (new_load)
-		session->load = __calculate_session_load(session);
-
-	ret = vpu_hw_session_commit(session->id, CH_COMMIT_IN_ORDER,
-			__get_vpu_load(session->core));
-	if (ret) {
-		pr_err("Commit Failed\n");
-		if (ret == -EIO)
-			ret = -EAGAIN; /* special runtime commit fail retval */
-		goto exit_commit;
-	}
-
-exit_commit:
-	return ret;
+	return __do_commit(session, CH_COMMIT_IN_ORDER, new_load);
 }
 
 int commit_control(struct vpu_dev_session *session, int new_load)
 {
-	int ret = 0;
-
-	if (session->commit_state != COMMITED)
-		return 0; /* wait for initial configuration */
-
-	if (new_load)
-		session->load = __calculate_session_load(session);
-
-	ret = vpu_hw_session_commit(session->id, CH_COMMIT_AT_ONCE,
-			__get_vpu_load(session->core));
-	if (ret) {
-		pr_err("Commit Failed\n");
-		if (ret == -EIO)
-			ret = -EAGAIN; /* special runtime commit fail retval */
-		goto exit_commit;
+	/* defer to initial session commit if not streaming */
+	if (session->streaming_state != ALL_STREAMING) {
+		session->commit_state = 0;
+		return 0;
 	}
 
-exit_commit:
-	return ret;
+	return __do_commit(session, CH_COMMIT_AT_ONCE, new_load);
 }

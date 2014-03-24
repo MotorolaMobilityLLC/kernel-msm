@@ -280,7 +280,7 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	else
 		reserve_headroom = NET_IP_ALIGN;
 
-	pr_debug("%s: size: %d + %d(hr)", __func__, size, reserve_headroom);
+	pr_debug("%s: size: %zu + %d(hr)", __func__, size, reserve_headroom);
 
 	skb = alloc_skb(size + reserve_headroom, gfp_flags);
 	if (skb == NULL) {
@@ -501,8 +501,11 @@ static __be16 ether_ip_type_trans(struct sk_buff *skb,
 		protocol = htons(ETH_P_IPV6);
 		break;
 	default:
-		pr_debug_ratelimited("[%s] L3 protocol decode error: 0x%02x",
-		       dev->name, skb->data[0] & 0xf0);
+		if ((skb->data[0] & 0x40) == 0x00)
+			protocol = htons(ETH_P_MAP);
+		else
+			pr_debug_ratelimited("[%s] L3 protocol decode error: 0x%02x",
+					dev->name, skb->data[0] & 0xf0);
 	}
 
 	return protocol;
@@ -598,7 +601,7 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 	spin_lock(&dev->req_lock);
 	list_add_tail(&req->list, &dev->tx_reqs);
 
-	if (dev->port_usb->multi_pkt_xfer) {
+	if (dev->port_usb->multi_pkt_xfer && !req->context) {
 		dev->no_tx_req_used--;
 		req->length = 0;
 		in = dev->port_usb->in_ep;
@@ -664,6 +667,14 @@ static void tx_complete(struct usb_ep *ep, struct usb_request *req)
 		}
 	} else {
 		skb = req->context;
+		/* Is aggregation already enabled and buffers allocated ? */
+		if (dev->port_usb->multi_pkt_xfer && dev->tx_req_bufsize) {
+			req->buf = kzalloc(dev->tx_req_bufsize, GFP_ATOMIC);
+			req->context = NULL;
+		} else {
+			req->buf = NULL;
+		}
+
 		spin_unlock(&dev->req_lock);
 		dev_kfree_skb_any(skb);
 	}
@@ -691,11 +702,14 @@ static int alloc_tx_buffer(struct eth_dev *dev)
 
 	list_for_each(act, &dev->tx_reqs) {
 		req = container_of(act, struct usb_request, list);
-		if (!req->buf)
+		if (!req->buf) {
 			req->buf = kzalloc(dev->tx_req_bufsize,
 						GFP_ATOMIC);
 			if (!req->buf)
 				goto free_buf;
+		}
+		/* req->context is not used for multi_pkt_xfers */
+		req->context = NULL;
 	}
 	return 0;
 
@@ -739,11 +753,15 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	}
 
 	/* Allocate memory for tx_reqs to support multi packet transfer */
+	spin_lock_irqsave(&dev->req_lock, flags);
 	if (multi_pkt_xfer && !dev->tx_req_bufsize) {
 		retval = alloc_tx_buffer(dev);
-		if (retval < 0)
+		if (retval < 0) {
+			spin_unlock_irqrestore(&dev->req_lock, flags);
 			return -ENOMEM;
+		}
 	}
+	spin_unlock_irqrestore(&dev->req_lock, flags);
 
 	/* apply outgoing CDC or RNDIS filters only for ETH packets */
 	if (!test_bit(RMNET_MODE_LLP_IP, &dev->flags) &&
@@ -1059,6 +1077,62 @@ static const struct net_device_ops eth_netdev_ops_ip = {
 	.ndo_validate_addr	= 0,
 };
 
+static int rmnet_ioctl_extended(struct net_device *dev, struct ifreq *ifr)
+{
+	struct rmnet_ioctl_extended_s ext_cmd;
+	struct eth_dev *eth_dev = netdev_priv(dev);
+	int rc = 0;
+
+	rc = copy_from_user(&ext_cmd, ifr->ifr_ifru.ifru_data,
+			    sizeof(struct rmnet_ioctl_extended_s));
+
+	if (rc) {
+		DBG("%s(): copy_from_user() failed\n", __func__);
+		return rc;
+	}
+
+	switch (ext_cmd.extended_ioctl) {
+	case RMNET_IOCTL_GET_SUPPORTED_FEATURES:
+		ext_cmd.u.data = 0;
+		break;
+
+	case RMNET_IOCTL_SET_MRU:
+		if (netif_running(dev))
+			return -EBUSY;
+
+		/* 16K max */
+		if ((size_t)ext_cmd.u.data > 0x4000)
+			return -EINVAL;
+
+		eth_dev->port_usb->is_fixed = true;
+		eth_dev->port_usb->fixed_out_len = (size_t) ext_cmd.u.data;
+		DBG("[%s] rmnet_ioctl(): SET MRU to %u\n", dev->name,
+				eth_dev->mru);
+		break;
+
+	case RMNET_IOCTL_GET_MRU:
+		ext_cmd.u.data = eth_dev->port_usb->is_fixed ?
+					eth_dev->port_usb->fixed_out_len :
+					dev->mtu;
+		break;
+
+	case RMNET_IOCTL_GET_DRIVER_NAME:
+		strlcpy(ext_cmd.u.if_name, dev->name,
+			sizeof(ext_cmd.u.if_name));
+		break;
+
+	default:
+		break;
+	}
+
+	rc = copy_to_user(ifr->ifr_ifru.ifru_data, &ext_cmd,
+			  sizeof(struct rmnet_ioctl_extended_s));
+
+	if (rc)
+		DBG("%s(): copy_to_user() failed\n", __func__);
+	return rc;
+}
+
 static int ether_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
 	struct eth_dev	*eth_dev = netdev_priv(dev);
@@ -1120,6 +1194,10 @@ static int ether_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 		DBG(eth_dev, "[%s] ioctl(): set RX HEADROOM: %x\n",
 				dev->name, eth_dev->rx_needed_headroom);
 		rc = 0;
+		break;
+
+	case RMNET_IOCTL_EXTENDED:
+		rc = rmnet_ioctl_extended(dev, ifr);
 		break;
 
 	default:

@@ -9,6 +9,7 @@
  *
  *  DMA uncached mapping support.
  */
+#include <linux/bootmem.h>
 #include <linux/module.h>
 #include <linux/mm.h>
 #include <linux/gfp.h>
@@ -157,6 +158,44 @@ struct dma_map_ops arm_coherent_dma_ops = {
 };
 EXPORT_SYMBOL(arm_coherent_dma_ops);
 
+static int __dma_supported(struct device *dev, u64 mask, bool warn)
+{
+	unsigned long max_dma_pfn;
+
+	/*
+	 * If the mask allows for more memory than we can address,
+	 * and we actually have that much memory, then we must
+	 * indicate that DMA to this device is not supported.
+	 */
+	if (sizeof(mask) != sizeof(dma_addr_t) &&
+	    mask > (dma_addr_t)~0 &&
+	    dma_to_pfn(dev, ~0) < max_pfn) {
+		if (warn) {
+			dev_warn(dev, "Coherent DMA mask %#llx is larger than dma_addr_t allows\n",
+				 mask);
+			dev_warn(dev, "Driver did not use or check the return value from dma_set_coherent_mask()?\n");
+		}
+		return 0;
+	}
+
+	max_dma_pfn = min(max_pfn, arm_dma_pfn_limit);
+
+	/*
+	 * Translate the device's DMA mask to a PFN limit.  This
+	 * PFN number includes the page which we can DMA to.
+	 */
+	if (dma_to_pfn(dev, mask) < max_dma_pfn) {
+		if (warn)
+			dev_warn(dev, "Coherent DMA mask %#llx (pfn %#lx-%#lx) covers a smaller range of system memory than the DMA zone pfn 0x0-%#lx\n",
+				 mask,
+				 dma_to_pfn(dev, 0), dma_to_pfn(dev, mask) + 1,
+				 max_dma_pfn + 1);
+		return 0;
+	}
+
+	return 1;
+}
+
 static u64 get_coherent_dma_mask(struct device *dev)
 {
 	u64 mask = (u64)arm_dma_limit;
@@ -173,12 +212,8 @@ static u64 get_coherent_dma_mask(struct device *dev)
 			return 0;
 		}
 
-		if ((~mask) & (u64)arm_dma_limit) {
-			dev_warn(dev, "coherent DMA mask %#llx is smaller "
-				 "than system GFP_DMA mask %#llx\n",
-				 mask, (u64)arm_dma_limit);
+		if (!__dma_supported(dev, mask, true))
 			return 0;
-		}
 	}
 
 	return mask;
@@ -580,12 +615,15 @@ static void *__alloc_from_contiguous(struct device *dev, size_t size,
 {
 	unsigned long order = get_order(size);
 	size_t count = size >> PAGE_SHIFT;
+	unsigned long pfn;
 	struct page *page;
 	void *ptr;
 
-	page = dma_alloc_from_contiguous(dev, count, order);
-	if (!page)
+	pfn = dma_alloc_from_contiguous(dev, count, order);
+	if (!pfn)
 		return NULL;
+
+	page = pfn_to_page(pfn);
 
 	__dma_clear_buffer(page, size);
 
@@ -601,7 +639,7 @@ static void *__alloc_from_contiguous(struct device *dev, size_t size,
 			ptr = __dma_alloc_remap(page, size, GFP_KERNEL, prot,
 						caller);
 			if (!ptr) {
-				dma_release_from_contiguous(dev, page, count);
+				dma_release_from_contiguous(dev, pfn, count);
 				return NULL;
 			}
 		}
@@ -620,7 +658,7 @@ static void __free_from_contiguous(struct device *dev, struct page *page,
 		__dma_free_remap(cpu_addr, size, true);
 	else
 		__dma_remap(page, size, pgprot_kernel, false);
-	dma_release_from_contiguous(dev, page, size >> PAGE_SHIFT);
+	dma_release_from_contiguous(dev, page_to_pfn(page), size >> PAGE_SHIFT);
 }
 
 static inline pgprot_t __get_dma_pgprot(struct dma_attrs *attrs, pgprot_t prot)
@@ -1034,9 +1072,7 @@ void arm_dma_sync_sg_for_device(struct device *dev, struct scatterlist *sg,
  */
 int dma_supported(struct device *dev, u64 mask)
 {
-	if (mask < (u64)arm_dma_limit)
-		return 0;
-	return 1;
+	return __dma_supported(dev, mask, false);
 }
 EXPORT_SYMBOL(dma_supported);
 
@@ -1127,10 +1163,13 @@ static struct page **__iommu_alloc_buffer(struct device *dev, size_t size,
 	{
 		unsigned long order = get_order(size);
 		struct page *page;
+		unsigned long pfn;
 
-		page = dma_alloc_from_contiguous(dev, count, order);
-		if (!page)
+		pfn = dma_alloc_from_contiguous(dev, count, order);
+		if (!pfn)
 			goto error;
+
+		pfn = pfn_to_page(pfn);
 
 		__dma_clear_buffer(page, size);
 
@@ -1186,7 +1225,7 @@ static int __iommu_free_buffer(struct device *dev, struct page **pages,
 	int i;
 
 	if (dma_get_attr(DMA_ATTR_FORCE_CONTIGUOUS, attrs)) {
-		dma_release_from_contiguous(dev, pages[0], count);
+		dma_release_from_contiguous(dev, page_to_pfn(pages[0]), count);
 	} else {
 		for (i = 0; i < count; i++)
 			if (pages[i])

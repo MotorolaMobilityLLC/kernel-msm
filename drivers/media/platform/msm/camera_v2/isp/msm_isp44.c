@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,7 +11,7 @@
  */
 
 #include <linux/module.h>
-#include <mach/iommu.h>
+#include <linux/qcom_iommu.h>
 #include <linux/ratelimit.h>
 
 #include "msm_isp44.h"
@@ -53,13 +53,15 @@
 #define VFE44_PING_PONG_BASE(wm, ping_pong) \
 	(VFE44_WM_BASE(wm) + 0x4 * (1 + (~(ping_pong >> wm) & 0x1)))
 
+static uint8_t stats_pingpong_offset_map[] = {
+	7, 8, 9, 10, 11, 12, 13, 14, 15};
+
 #define VFE44_NUM_STATS_TYPE 9
-#define VFE44_STATS_PING_PONG_OFFSET 7
 #define VFE44_STATS_BASE(idx) \
 	((idx) == STATS_IDX_BF_SCALE ? 0xA0C : (0x168 + 0x18 * (idx-1)))
 #define VFE44_STATS_PING_PONG_BASE(idx, ping_pong) \
 	(VFE44_STATS_BASE(idx) + 0x4 * \
-	(~(ping_pong >> (idx + VFE44_STATS_PING_PONG_OFFSET)) & 0x1))
+	(~(ping_pong >> (stats_pingpong_offset_map[idx])) & 0x1))
 
 #define VFE44_VBIF_CLKON                    0x4
 #define VFE44_VBIF_IN_RD_LIM_CONF0          0xB0
@@ -811,6 +813,7 @@ static void msm_vfe44_axi_clear_wm_reg(
 {
 	uint32_t val = 0;
 	uint32_t wm_base = VFE44_WM_BASE(stream_info->wm[plane_idx]);
+
 	/*WR_ADDR_CFG*/
 	msm_camera_io_w(val, vfe_dev->vfe_base + wm_base + 0xC);
 	/*WR_IMAGE_SIZE*/
@@ -948,7 +951,7 @@ static void msm_vfe44_cfg_axi_ub_equal_slicing(
 static void msm_vfe44_cfg_axi_ub(struct vfe_device *vfe_dev)
 {
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
-	axi_data->wm_ub_cfg_policy = MSM_WM_UB_EQUAL_SLICING;
+	axi_data->wm_ub_cfg_policy = MSM_WM_UB_CFG_DEFAULT;
 	if (axi_data->wm_ub_cfg_policy == MSM_WM_UB_EQUAL_SLICING)
 		msm_vfe44_cfg_axi_ub_equal_slicing(vfe_dev);
 	else
@@ -957,9 +960,10 @@ static void msm_vfe44_cfg_axi_ub(struct vfe_device *vfe_dev)
 
 static void msm_vfe44_update_ping_pong_addr(
 	struct vfe_device *vfe_dev,
-	uint8_t wm_idx, uint32_t pingpong_status, unsigned long paddr)
+	uint8_t wm_idx, uint32_t pingpong_status, dma_addr_t paddr)
 {
-	msm_camera_io_w(paddr, vfe_dev->vfe_base +
+	uint32_t paddr32 = (paddr & 0xFFFFFFFF);
+	msm_camera_io_w(paddr32, vfe_dev->vfe_base +
 		VFE44_PING_PONG_BASE(wm_idx, pingpong_status));
 }
 
@@ -1084,6 +1088,11 @@ static void msm_vfe44_stats_cfg_wm_reg(
 	int stats_idx = STATS_IDX(stream_info->stream_handle);
 	uint32_t stats_base = VFE44_STATS_BASE(stats_idx);
 
+	/* BF_SCALE does not have its own WR_ADDR_CFG,
+	 * IRQ_FRAMEDROP_PATTERN and IRQ_SUBSAMPLE_PATTERN;
+	 * it's using the same from BF */
+	if (stats_idx == STATS_IDX_BF_SCALE)
+		return;
 	/*WR_ADDR_CFG*/
 	msm_camera_io_w(stream_info->framedrop_period << 2,
 		vfe_dev->vfe_base + stats_base + 0x8);
@@ -1102,6 +1111,11 @@ static void msm_vfe44_stats_clear_wm_reg(
 	uint32_t val = 0;
 	int stats_idx = STATS_IDX(stream_info->stream_handle);
 	uint32_t stats_base = VFE44_STATS_BASE(stats_idx);
+	/* BF_SCALE does not have its own WR_ADDR_CFG,
+	 * IRQ_FRAMEDROP_PATTERN and IRQ_SUBSAMPLE_PATTERN;
+	 * it's using the same from BF */
+	if (stats_idx == STATS_IDX_BF_SCALE)
+		return;
 
 	/*WR_ADDR_CFG*/
 	msm_camera_io_w(val, vfe_dev->vfe_base + stats_base + 0x8);
@@ -1187,10 +1201,11 @@ static void msm_vfe44_stats_enable_module(struct vfe_device *vfe_dev,
 
 static void msm_vfe44_stats_update_ping_pong_addr(
 	struct vfe_device *vfe_dev, struct msm_vfe_stats_stream *stream_info,
-	uint32_t pingpong_status, unsigned long paddr)
+	uint32_t pingpong_status, dma_addr_t paddr)
 {
+	uint32_t paddr32 = (paddr & 0xFFFFFFFF);
 	int stats_idx = STATS_IDX(stream_info->stream_handle);
-	msm_camera_io_w(paddr, vfe_dev->vfe_base +
+	msm_camera_io_w(paddr32, vfe_dev->vfe_base +
 		VFE44_STATS_PING_PONG_BASE(stats_idx, pingpong_status));
 }
 
@@ -1249,9 +1264,8 @@ static int msm_vfe44_get_platform_data(struct vfe_device *vfe_dev)
 		goto vfe_no_resource;
 	}
 
-	vfe_dev->iommu_ctx[0] = msm_iommu_get_ctx("vfe0");
-	vfe_dev->iommu_ctx[1] = msm_iommu_get_ctx("vfe1");
-	if (!vfe_dev->iommu_ctx[0] || !vfe_dev->iommu_ctx[1]) {
+	vfe_dev->iommu_ctx[0] = msm_iommu_get_ctx("vfe");
+	if (!vfe_dev->iommu_ctx[0]) {
 		pr_err("%s: cannot get iommu_ctx\n", __func__);
 		rc = -ENODEV;
 		goto vfe_no_resource;
@@ -1283,7 +1297,7 @@ static struct msm_vfe_stats_hardware_info msm_vfe44_stats_hw_info = {
 		1 << MSM_ISP_STATS_AWB | 1 << MSM_ISP_STATS_IHIST |
 		1 << MSM_ISP_STATS_RS | 1 << MSM_ISP_STATS_CS |
 		1 << MSM_ISP_STATS_BF_SCALE,
-	.stats_ping_pong_offset = VFE44_STATS_PING_PONG_OFFSET,
+	.stats_ping_pong_offset = stats_pingpong_offset_map,
 	.num_stats_type = VFE44_NUM_STATS_TYPE,
 	.num_stats_comp_mask = 2,
 };
@@ -1304,7 +1318,7 @@ static struct v4l2_subdev_internal_ops msm_vfe44_internal_ops = {
 };
 
 struct msm_vfe_hardware_info vfe44_hw_info = {
-	.num_iommu_ctx = 2,
+	.num_iommu_ctx = 1,
 	.vfe_clk_idx = VFE44_CLK_IDX,
 	.vfe_ops = {
 		.irq_ops = {

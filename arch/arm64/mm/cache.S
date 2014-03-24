@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2001 Deep Blue Solutions Ltd.
  * Copyright (C) 2012 ARM Ltd.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,6 +23,39 @@
 #include <asm/assembler.h>
 
 #include "proc-macros.S"
+
+ /*
+ *     flush_dcache_louis()
+ *
+ *     Flush the D-cache up to the Level of Unification Inner Shareable
+ *
+ *     Corrupted registers: x0-x7, x9-x11
+ */
+
+ENTRY(flush_dcache_louis)
+	dsb	sy		// ensure ordering with previous memory accesses
+	mrs	x0, clidr_el1	// read clidr
+	and	x3, x0, #(7 << 21)	// extract LoUIS from clidr
+	lsr	x3, x3, #20	// x3 = LoUIS * 2
+	cbz	x3, done	// if LoUIS is 0, then no need to clean
+	mov	x10, #0		// start clean at cache level 0
+	b	loop1		// start flushing cache levels
+done:
+	ret
+ENDPROC(flush_dcache_louis)
+
+ /*
+ *     flush_kern_cache_louis(void)
+ *
+ *     Flush the data cache up to Level of Unification Inner Shareable.
+ *     Invalidate the I-cache to the point of unification.
+ */
+ENTRY(flush_cache_louis)
+	bl	flush_dcache_louis
+	mov	x0, #0
+	ic	ialluis				// I+BTB cache invalidate
+	ret
+ENDPROC(flush_cache_louis)
 
 /*
  *	__flush_dcache_all()
@@ -166,3 +200,81 @@ ENTRY(__flush_dcache_area)
 	dsb	sy
 	ret
 ENDPROC(__flush_dcache_area)
+
+/*
+ *	__dma_inv_range(start, end)
+ *	- start   - virtual start address of region
+ *	- end     - virtual end address of region
+ */
+ENTRY(__dma_inv_range)
+	dcache_line_size x2, x3
+	sub	x3, x2, #1
+	bic	x0, x0, x3
+	bic	x1, x1, x3
+1:	dc	ivac, x0			// invalidate D / U line
+	add	x0, x0, x2
+	cmp	x0, x1
+	b.lo	1b
+	dsb	sy
+	ret
+ENDPROC(__dma_inv_range)
+
+/*
+ *	__dma_clean_range(start, end)
+ *	- start   - virtual start address of region
+ *	- end     - virtual end address of region
+ */
+ENTRY(__dma_clean_range)
+	dcache_line_size x2, x3
+	sub	x3, x2, #1
+	bic	x0, x0, x3
+1:	dc	cvac, x0			// clean D / U line
+	add	x0, x0, x2
+	cmp	x0, x1
+	b.lo	1b
+	dsb	sy
+	ret
+ENDPROC(__dma_clean_range)
+
+/*
+ *	__dma_flush_range(start, end)
+ *	- start   - virtual start address of region
+ *	- end     - virtual end address of region
+ */
+ENTRY(__dma_flush_range)
+	dcache_line_size x2, x3
+	sub	x3, x2, #1
+	bic	x0, x0, x3
+1:	dc	civac, x0			// clean & invalidate D / U line
+	add	x0, x0, x2
+	cmp	x0, x1
+	b.lo	1b
+	dsb	sy
+	ret
+ENDPROC(__dma_flush_range)
+
+/*
+ *	__dma_map_area(start, size, dir)
+ *	- start	- kernel virtual start address
+ *	- size	- size of region
+ *	- dir	- DMA direction
+ */
+ENTRY(__dma_map_area)
+	add	x1, x1, x0
+	cmp	w2, #DMA_FROM_DEVICE
+	b.eq	__dma_inv_range
+	b	__dma_clean_range
+ENDPROC(__dma_map_area)
+
+/*
+ *	__dma_unmap_area(start, size, dir)
+ *	- start	- kernel virtual start address
+ *	- size	- size of region
+ *	- dir	- DMA direction
+ */
+ENTRY(__dma_unmap_area)
+	add	x1, x1, x0
+	cmp	w2, #DMA_TO_DEVICE
+	b.ne	__dma_inv_range
+	ret
+ENDPROC(__dma_unmap_area)

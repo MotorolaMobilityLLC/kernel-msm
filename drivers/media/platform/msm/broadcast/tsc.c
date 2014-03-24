@@ -42,6 +42,7 @@
 #include <linux/regulator/consumer.h> /* gdsc */
 #include <mach/msm_bus.h>	/* bus client */
 #include <linux/delay.h>	/* usleep function */
+/* TODO: include <linux/mpq_standby_if.h> after MCU is mainlined */
 
 /*
  * General defines
@@ -372,13 +373,14 @@ struct tsc_ci_chdev {
  * @cicam_ts_clk:	The clock for pushing TS data into the cicam.
  * @tspp2_core_clk:	The clock for enabling the TSPP2.
  * @vbif_tspp2_clk:	The clock for accessing the VBIF.
- * @tspp2_core_clk_src:	The clock for setting the rate of the TSPP2 and the VBIF
- *			clocks.
+ * @vbif_ahb_clk:	The clock for VBIF AHB.
+ * @vbif_axi_clk:	The clock for VBIF AXI.
  * @gdsc:               The Broadcast GDSC.
  * @bus_client:         The TSC bus client.
  * @pinctrl_info:	TSC pinctrl parameters.
  * @reset_cam_gpio:	GPIO No. for CAM HW reset.
  * @hw_card_status:	The card status as reflected by the HW registers.
+ * @card_power:		True if the card is powered up, false otherwise.
  * @debugfs_entry:      TSC device debugfs entry.
  */
 struct tsc_device {
@@ -404,11 +406,14 @@ struct tsc_device {
 	struct clk *cicam_ts_clk;
 	struct clk *tspp2_core_clk;
 	struct clk *vbif_tspp2_clk;
+	struct clk *vbif_ahb_clk;
+	struct clk *vbif_axi_clk;
 	struct regulator *gdsc;
 	uint32_t bus_client;
 	struct pinctrl_info pinctrl_info;
 	int reset_cam_gpio;
 	enum tsc_card_status hw_card_status;
+	bool card_power;
 	struct dentry *debugfs_entry;
 };
 
@@ -575,7 +580,221 @@ static void tsc_update_hw_card_status(void)
 	}
 }
 
+/**
+ * tsc_card_power_down() - power down card interface upon removal.
+ *
+ * Power down the card by disable VPP, disable pins in the TLMM, assert the
+ * reset line and disable the level-shifters. This function assumes the spinlock
+ * of ci device is already taken.
+ *
+ * Return 0 on finish, error value if interrupted while acquiring a mutex.
+ */
+static int tsc_card_power_down(void)
+{
+	int ret = 0;
+	struct pinctrl_info *ppinctrl = &tsc_device->pinctrl_info;
+	struct pinctrl_current_state *pcurr_state = &ppinctrl->curr_state;
+	int reset_gpio = tsc_device->reset_cam_gpio;
+	u32 reg = 0;
+
+	/* Clearing CAM TSIF OE to disable I/O CAM transactions */
+	CLEAR_BIT(TSC_CICAM_TSIF_OE_OFFS, reg);
+	writel_relaxed(reg, tsc_device->base + TSC_CICAM_TSIF);
+
+	/* Assert the reset line */
+	ret = gpio_direction_output(reset_gpio, 1); /* assert */
+	if (ret != 0)
+		pr_err("%s: Failed to assert the reset CAM GPIO\n", __func__);
+
+	/* Disable all the level-shifters */
+	/* TODO: call mpq_standby_pcmcia_master0_set(0) after MCU mainlined */
+	if (ret != 0)
+		pr_err("%s: error disable master0 level-shifters. ret value = %d\n",
+				__func__, ret);
+	/* TODO: call mpq_standby_pcmcia_master1_set(1) after MCU mainlined */
+	if (ret != 0)
+		pr_err("%s: error disable master1 level-shifters. ret value = %d\n",
+				__func__, ret);
+
+	/* Power-down the card */
+	/* TODO: call mpq_standby_pcmcia_vpp_set(1) after MCU mainlined */
+	if (ret != 0)
+		pr_err("%s: error disabling VPP. ret value = %d\n", __func__,
+				ret);
+	/* Wait 10msec until VPP become stable */
+	usleep(10000);
+
+	/* Disable pins in the TLMM */
+	if (mutex_lock_interruptible(&tsc_device->mutex))
+		return -ERESTARTSYS;
+
+	if (pcurr_state->ts0 && pcurr_state->ts1)
+		ret = pinctrl_select_state(ppinctrl->pinctrl,
+				ppinctrl->dual_ts);
+	else if (pcurr_state->ts0 && !pcurr_state->ts1)
+		ret = pinctrl_select_state(ppinctrl->pinctrl,
+				ppinctrl->ts0);
+	else if (!pcurr_state->ts0 && pcurr_state->ts1)
+		ret = pinctrl_select_state(ppinctrl->pinctrl,
+				ppinctrl->ts1);
+	else
+		ret = pinctrl_select_state(ppinctrl->pinctrl,
+				ppinctrl->disable);
+	if (ret != 0)
+		pr_err("%s: error changing PCMCIA pins upon card removal. ret value = %d\n",
+					__func__, ret);
+	else
+		pcurr_state->pcmcia_state = PCMCIA_STATE_DISABLE;
+
+	mutex_unlock(&tsc_device->mutex);
+
+	return 0;
+}
+
+/**
+ * tsc_card_power_up() - power up card interface upon insertion.
+ *
+ * Power up the card by open VPP, enable pins in the TLMM, deassert the reset
+ * line and enable the level-shifters. This function assumes the spinlock of ci
+ * device is already taken.
+ *
+ * Return 0 on success, error value otherwise.
+ */
+static int tsc_card_power_up(void)
+{
+	int ret = 0;
+	struct pinctrl_info *ppinctrl = &tsc_device->pinctrl_info;
+	struct pinctrl_current_state *pcurr_state = &ppinctrl->curr_state;
+	int reset_gpio = tsc_device->reset_cam_gpio;
+
+	/* Power-up the card */
+	/* TODO: call mpq_standby_pcmcia_vpp_set(1) after MCU mainlined */
+	if (ret != 0) {
+		pr_err("%s: error setting VPP. ret value = %d\n", __func__,
+				ret);
+		return ret;
+	}
+	/* Wait 10msec until VPP become stable */
+	usleep(10000);
+
+	/* Enable pins in the TLMM */
+	if (mutex_lock_interruptible(&tsc_device->mutex))
+		return -ERESTARTSYS;
+
+	if (pcurr_state->ts0 && pcurr_state->ts1)
+		ret = pinctrl_select_state(ppinctrl->pinctrl,
+				ppinctrl->dual_ts_pc_card);
+	else if (pcurr_state->ts0 && !pcurr_state->ts1)
+		ret = pinctrl_select_state(ppinctrl->pinctrl,
+				ppinctrl->ts0_pc_card);
+	else if (!pcurr_state->ts0 && pcurr_state->ts1)
+		ret = pinctrl_select_state(ppinctrl->pinctrl,
+				ppinctrl->ts1_pc_card);
+	else
+		ret = pinctrl_select_state(ppinctrl->pinctrl,
+				ppinctrl->pc_card);
+	if (ret != 0) {
+		pr_err("%s: error changing PCMCIA pins upon card insertion. ret value = %d\n",
+					__func__, ret);
+		mutex_unlock(&tsc_device->mutex);
+		goto err;
+	} else {
+		pcurr_state->pcmcia_state = PCMCIA_STATE_PC_CARD;
+	}
+	mutex_unlock(&tsc_device->mutex);
+
+	/* Release the reset line */
+	ret = gpio_direction_output(reset_gpio, 0); /* Deassert */
+	if (ret != 0) {
+		pr_err("%s: Failed to deassert the reset CAM GPIO\n", __func__);
+		goto err;
+	}
+
+	/* Enable level-shifters for all pins */
+	/* TODO: call mpq_standby_pcmcia_master0_set(0) after MCU mainlined */
+	if (ret != 0) {
+		pr_err("%s: error setting master0 level-shifters. ret value = %d\n",
+				__func__, ret);
+		goto err;
+	}
+	/* TODO: call mpq_standby_pcmcia_master1_set(0) after MCU mainlined */
+	if (ret != 0) {
+		pr_err("%s: error setting master1 level-shifters. ret value = %d\n",
+				__func__, ret);
+		goto err;
+	}
+
+	/* Wait 20msec at the end of the power-up sequence */
+	usleep(20000);
+
+	return ret;
+
+err:
+	tsc_card_power_down();
+	return ret;
+}
+
 /************************** Interrupt handlers **************************/
+/**
+ * tsc_card_detect_irq_thread_handler() - TSC card detect interrupt handler.
+ *
+ * @irq:	Interrupt number.
+ * @dev:	TSC device.
+ *
+ * The handler is executed on a thread context, not in the interrupt context
+ * (can take a mutex and sleep).
+ * Read the card detection status from the register and initiate a power-up/down
+ * sequence accordingly. The sequence will occur only if a change is needed in
+ * the current power state.
+ *
+ */
+static irqreturn_t tsc_card_detect_irq_thread_handler(int irq, void *dev)
+{
+	int ret = 0;
+	struct tsc_ci_chdev *tsc_ci;
+	unsigned long flags = 0;
+
+	tsc_ci = &tsc_device->ci_chdev;
+
+	mutex_lock(&tsc_ci->mutex);
+
+	tsc_update_hw_card_status();
+
+	/* waking-up ci poll queue */
+	wake_up_interruptible(&tsc_ci->poll_queue);
+
+	/* If in the middle of a data transaction- aborting the transaction */
+	if (tsc_ci->data_busy && tsc_device->hw_card_status ==
+			TSC_CARD_STATUS_NOT_DETECTED) {
+		spin_lock_irqsave(&tsc_ci->spinlock, flags);
+		tsc_ci->transaction_state = TRANSACTION_CARD_REMOVED;
+		spin_unlock_irqrestore(&tsc_ci->spinlock, flags);
+		complete_all(&tsc_ci->transaction_complete);
+	}
+
+	if (tsc_device->hw_card_status == TSC_CARD_STATUS_DETECTED &&
+			!tsc_device->card_power) {
+		ret = tsc_card_power_up();
+		if (ret != 0)
+			pr_err("%s: card power-up failed\n", __func__);
+		else
+			tsc_device->card_power = true;
+	} else if (tsc_device->hw_card_status == TSC_CARD_STATUS_NOT_DETECTED &&
+			tsc_device->card_power) {
+		tsc_card_power_down();
+		/*
+		 * In case something failed during the power down, the sequence
+		 * continue and the status of the card power is considered as
+		 * powered down.
+		 */
+		tsc_device->card_power = false;
+	}
+
+	mutex_unlock(&tsc_ci->mutex);
+
+	return IRQ_HANDLED;
+}
+
 /**
  * tsc_cam_cmd_irq_handler() - TSC CAM interrupt handler.
  *
@@ -633,53 +852,6 @@ static irqreturn_t tsc_cam_cmd_irq_handler(int irq, void *dev)
 
 	/* Clearing all the interrupts received */
 	writel_relaxed(stat_reg, tsc_device->base + TSC_IRQ_CLR);
-
-	/*
-	 * Before returning IRQ_HANDLED to the generic interrupt handling
-	 * framework need to make sure all operations including clearing of
-	 * interrupt status registers in the hardware is performed.
-	 * Thus a barrier after clearing the interrupt status register
-	 * is required to guarantee that the interrupt status register has
-	 * really been cleared by the time we return from this handler.
-	 */
-	wmb();
-
-	return IRQ_HANDLED;
-}
-
-/**
- * tsc_card_detect_irq_handler() - TSC card detect interrupt handler.
- *
- * @irq:	Interrupt number.
- * @dev:	TSC device.
- *
- * Handle TSC card detect HW interrupt. Update the HW card status argument
- * according to the HW state as reflected by the registers, and waking-up
- * the TSC CI poll wait-queue.
- *
- * Return IRQ_HANDLED.
- */
-static irqreturn_t tsc_card_detect_irq_handler(int irq, void *dev)
-{
-	struct tsc_ci_chdev *tsc_ci;
-	unsigned long flags;
-
-	tsc_ci = &tsc_device->ci_chdev;
-
-	spin_lock_irqsave(&tsc_ci->spinlock, flags);
-	tsc_update_hw_card_status();
-
-	/* waking-up ci poll queue */
-	wake_up_interruptible(&tsc_ci->poll_queue);
-
-	/* If in the middle of a data transaction- aborting the transaction */
-	if (tsc_ci->data_busy && tsc_device->hw_card_status ==
-			TSC_CARD_STATUS_NOT_DETECTED) {
-		tsc_ci->transaction_state = TRANSACTION_CARD_REMOVED;
-		complete_all(&tsc_ci->transaction_complete);
-	}
-
-	spin_unlock_irqrestore(&tsc_ci->spinlock, flags);
 
 	/*
 	 * Before returning IRQ_HANDLED to the generic interrupt handling
@@ -1276,23 +1448,36 @@ static int tsc_power_on_buff_mode_clocks(void)
 {
 	int ret = 0;
 
-	/* Enabling the clocks */
 	ret = clk_prepare_enable(tsc_device->tspp2_core_clk);
 	if (ret != 0) {
 		pr_err("%s: Can't start tspp2_core_clk", __func__);
-		goto err_tspp2_clk;
+		goto err_tspp2;
 	}
 	ret = clk_prepare_enable(tsc_device->vbif_tspp2_clk);
 	if (ret != 0) {
 		pr_err("%s: Can't start vbif_tspp2_clk", __func__);
-		goto err_vbif_clk;
+		goto err_vbif_tspp2;
+	}
+	ret = clk_prepare_enable(tsc_device->vbif_ahb_clk);
+	if (ret != 0) {
+		pr_err("%s: Can't start vbif_ahb_clk", __func__);
+		goto err_vbif_ahb;
+	}
+	ret = clk_prepare_enable(tsc_device->vbif_axi_clk);
+	if (ret != 0) {
+		pr_err("%s: Can't start vbif_axi_clk", __func__);
+		goto err_vbif_axi;
 	}
 
 	return ret;
 
-err_vbif_clk:
+err_vbif_axi:
+	clk_disable_unprepare(tsc_device->vbif_ahb_clk);
+err_vbif_ahb:
+	clk_disable_unprepare(tsc_device->vbif_tspp2_clk);
+err_vbif_tspp2:
 	clk_disable_unprepare(tsc_device->tspp2_core_clk);
-err_tspp2_clk:
+err_tspp2:
 	return ret;
 }
 
@@ -1303,6 +1488,8 @@ err_tspp2_clk:
  */
 static void tsc_power_off_buff_mode_clocks(void)
 {
+	clk_disable_unprepare(tsc_device->vbif_axi_clk);
+	clk_disable_unprepare(tsc_device->vbif_ahb_clk);
 	clk_disable_unprepare(tsc_device->tspp2_core_clk);
 	clk_disable_unprepare(tsc_device->vbif_tspp2_clk);
 }
@@ -1395,7 +1582,8 @@ static int tsc_data_transaction(struct tsc_ci_chdev *tsc_ci, uint io_mem,
 			goto err_copy_arg;
 		}
 		addr_size = arg_byte.address;
-		if (addr_size > CICAM_MAX_ADDRESS) {
+		if (IO_TRANSACTION == io_mem &&
+				addr_size > CICAM_MAX_ADDRESS) {
 			pr_err("%s: wrong address parameter: %d\n", __func__,
 					addr_size);
 			ret = -EFAULT;
@@ -1431,13 +1619,14 @@ static int tsc_data_transaction(struct tsc_ci_chdev *tsc_ci, uint io_mem,
 		 * mapping the ion handle to the VBIF and get the virtual
 		 * address
 		 */
-		if (!ion_map_iommu(tsc_device->iommu_info.ion_client,
+		ret = ion_map_iommu(tsc_device->iommu_info.ion_client,
 				ion_handle, tsc_device->iommu_info.domain_num,
-				addr_size, tsc_device->iommu_info.partition_num,
-				0, &iova, &buffer_size, 0, 0)) {
+				tsc_device->iommu_info.partition_num, SZ_4K,
+				0, &iova, &buffer_size, 0, 0);
+
+		if (ret != 0) {
 			pr_err("%s: get_ION_kernel physical addr fail\n",
 					__func__);
-			ret = -EIO;
 			goto err_ion_map;
 		}
 
@@ -1451,11 +1640,6 @@ static int tsc_data_transaction(struct tsc_ci_chdev *tsc_ci, uint io_mem,
 		else   /* write transaction */
 			writel_relaxed(iova,
 					tsc_device->base + TSC_WR_BUFF_ADDR);
-
-		/* powering-up the tspp2 and VBIF clocks */
-		ret = tsc_power_on_buff_mode_clocks();
-		if (!ret)
-			goto err_buff_clocks;
 	}
 
 	/* configuring the cam command register */
@@ -1520,14 +1704,11 @@ static int tsc_data_transaction(struct tsc_ci_chdev *tsc_ci, uint io_mem,
 	 * to the arg data field
 	 */
 	if (buff_mode == SINGLE_BYTE_MODE && read_write == READ_TRANSACTION)
-		return put_user(readl_relaxed(tsc_device->base +
+		ret = put_user(readl_relaxed(tsc_device->base +
 				TSC_CAM_RD_DATA),
 				&((struct tsc_single_byte_mode *)arg)->data);
 
 finish:
-	if (buff_mode == BUFFER_MODE)
-		tsc_power_off_buff_mode_clocks();
-err_buff_clocks:
 	if (iova != 0)
 		ion_unmap_iommu(tsc_device->iommu_info.ion_client, ion_handle,
 			tsc_device->iommu_info.domain_num,
@@ -1560,13 +1741,13 @@ static int tsc_personality_change(enum tsc_cam_personality pcmcia_state)
 	int ret = 0;
 	struct pinctrl_info *ppinctrl = &tsc_device->pinctrl_info;
 	struct pinctrl_current_state *pcurr_state = &ppinctrl->curr_state;
+	u32 reg = 0;
 
 	if (mutex_lock_interruptible(&tsc_device->mutex))
 		return -ERESTARTSYS;
 
 	if (pcmcia_state == (enum tsc_cam_personality)pcurr_state->pcmcia_state)
 		goto exit;
-
 
 	/* Transition from current pinctrl state to curr + new pcmcia state */
 	switch (pcmcia_state) {
@@ -1627,6 +1808,19 @@ static int tsc_personality_change(enum tsc_cam_personality pcmcia_state)
 
 	/* Update the current pcmcia state in the internal struct */
 	pcurr_state->pcmcia_state = (enum pcmcia_state)pcmcia_state;
+
+	/*
+	 * Setting CAM TSIF OE to enable I/O transactions for CI/+ cards
+	 * or clearing it when moving to disable state
+	 */
+	if (TSC_CICAM_PERSONALITY_CI == pcmcia_state ||
+			TSC_CICAM_PERSONALITY_CIPLUS == pcmcia_state) {
+		SET_BIT(TSC_CICAM_TSIF_OE_OFFS, reg);
+		writel_relaxed(reg, tsc_device->base + TSC_CICAM_TSIF);
+	} else {
+		CLEAR_BIT(TSC_CICAM_TSIF_OE_OFFS, reg);
+		writel_relaxed(reg, tsc_device->base + TSC_CICAM_TSIF);
+	}
 
 exit:
 	mutex_unlock(&tsc_device->mutex);
@@ -1696,7 +1890,7 @@ static void tsc_reset_registers(void)
 	writel_relaxed(0x00, tsc_device->base + TSC_IRQ_ENA);
 
 	/* Disabling HW polling */
-	writel_relaxed(0x01, tsc_device->base + TSC_CIP_CFG);
+	writel_relaxed(0x00, tsc_device->base + TSC_CIP_CFG);
 
 	/* Reset state - address for read/write buffer */
 	writel_relaxed(0x00000000, tsc_device->base + TSC_RD_BUFF_ADDR);
@@ -1706,7 +1900,7 @@ static void tsc_reset_registers(void)
 	writel_relaxed(0x01, tsc_device->base + TSC_FALSE_CD_CLR);
 	writel_relaxed(0x00, tsc_device->base + TSC_FALSE_CD_CLR);
 
-	/* Disabling TSIF out to cicam*/
+	/* Disabling TSIF out to cicam and IO read/write with the CAM */
 	writel_relaxed(0x00000000, tsc_device->base + TSC_CICAM_TSIF);
 }
 
@@ -1731,11 +1925,6 @@ static void tsc_disable_tsifs(void)
 	SET_BIT(TSIF_DISABLE_OFFS, reg);
 	SET_BIT((TSIF_DISABLE_OFFS + 16), reg);
 	writel_relaxed(reg, tsc_device->base + TSC_IN_IFC_CFG_INT);
-
-	/* Disabling TSIF out to CAM */
-	reg = readl_relaxed(tsc_device->base + TSC_IN_IFC_CFG_INT);
-	CLEAR_BIT(TSC_CICAM_TSIF_OE_OFFS, reg);
-	writel_relaxed(reg, tsc_device->base + TSC_CICAM_TSIF);
 }
 
 /**
@@ -1950,6 +2139,7 @@ static void tsc_device_power_off(void)
 			tsc_device->pinctrl_info.disable);
 	if (tsc_device->bus_client)
 		msm_bus_scale_client_update_request(tsc_device->bus_client, 0);
+
 	tsc_power_off_clocks();
 	regulator_disable(tsc_device->gdsc);
 
@@ -2068,11 +2258,23 @@ static int tsc_ci_open(struct inode *inode, struct file *filp)
 	if (ret != 0)
 		goto err_first_device;
 
+	/* powering-up the tspp2 and VBIF clocks */
+	ret = tsc_power_on_buff_mode_clocks();
+	if (ret != 0)
+		goto err_buff_clocks;
+
 	/* Request reset CAM GPIO */
 	ret = gpio_request(tsc_device->reset_cam_gpio, "tsc_ci_reset");
 	if (ret != 0) {
 		pr_err("%s: Failed to request reset CAM GPIO\n", __func__);
 		goto err_gpio_req;
+	}
+
+	/* Set the reset line to default "no card" state */
+	ret = gpio_direction_output(tsc_device->reset_cam_gpio, 1);
+	if (ret != 0) {
+		pr_err("%s: Failed to assert the reset CAM GPIO\n", __func__);
+		goto err_assert;
 	}
 
 	/* Attach the iommu group to support the required memory mapping */
@@ -2090,10 +2292,24 @@ static int tsc_ci_open(struct inode *inode, struct file *filp)
 	init_waitqueue_head(&tsc_ci->poll_queue);
 	tsc_ci->transaction_state = BEFORE_TRANSACTION;
 	tsc_ci->data_busy = false;
+	tsc_device->card_power = false;
 
-	/* Init hw card status flag according to the pins' state */
+	/*
+	 * Init hw card status flag according to the pins' state.
+	 * No need to protect from interrupt because the handler is not
+	 * registred yet.
+	 */
 	tsc_update_hw_card_status();
 	tsc_ci->card_status = tsc_device->hw_card_status;
+
+	/* If a card is already inserted - need to power up the card */
+	if (tsc_device->hw_card_status == TSC_CARD_STATUS_DETECTED) {
+		ret = tsc_card_power_up();
+		if (ret != 0)
+			pr_err("%s: card power-up failed\n", __func__);
+		else
+			tsc_device->card_power = true;
+	}
 
 	/* Enabling the TSC CI cam interrupts: EOT and Err */
 	ena_reg = readl_relaxed(tsc_device->base + TSC_IRQ_ENA);
@@ -2101,26 +2317,46 @@ static int tsc_ci_open(struct inode *inode, struct file *filp)
 	SET_BIT(CAM_IRQ_ERR_OFFS, ena_reg);
 	writel_relaxed(ena_reg, tsc_device->base + TSC_IRQ_ENA);
 
-	/* TODO: Set to default configuration pcmcia pins in the TLMM */
+	/* Registering the CAM cmd interrupt handler */
+	ret = request_irq(tsc_device->cam_cmd_irq, tsc_cam_cmd_irq_handler,
+			IRQF_SHARED, dev_name(&tsc_device->pdev->dev),
+			tsc_device);
+	if (ret) {
+		pr_err("%s: failed to request TSC IRQ %d : %d",
+				__func__, tsc_device->cam_cmd_irq, ret);
+		goto err_cam_irq;
+	}
 
-	/* Set the reset line to default "no card" state */
-	ret = gpio_direction_output(tsc_device->reset_cam_gpio, 1);
-	if (ret != 0) {
-		pr_err("%s: Failed to assert the reset CAM GPIO\n", __func__);
-		goto err_assert;
+	/*
+	 * Registering the card detect interrupt handler (this interrupt is
+	 * enabled by default, right after this registration)
+	 */
+	ret = request_threaded_irq(tsc_device->card_detection_irq,
+			NULL, tsc_card_detect_irq_thread_handler,
+			IRQF_ONESHOT | IRQF_TRIGGER_RISING,
+			dev_name(&tsc_device->pdev->dev), tsc_device);
+	if (ret) {
+		pr_err("%s: failed to request TSC IRQ %d : %d",
+				__func__, tsc_device->card_detection_irq, ret);
+		goto err_card_irq;
 	}
 
 	mutex_unlock(&tsc_device->ci_chdev.mutex);
 
 	return ret;
 
-err_assert:
+err_card_irq:
+	free_irq(tsc_device->cam_cmd_irq, tsc_device);
+err_cam_irq:
 	if (!tsc_iommu_bypass)
 		iommu_detach_group(tsc_device->iommu_info.domain,
 				tsc_device->iommu_info.group);
 err_iommu_attach:
 	gpio_free(tsc_device->reset_cam_gpio);
+err_assert:
 err_gpio_req:
+	tsc_power_off_buff_mode_clocks();
+err_buff_clocks:
 	/* De-init all resources if it's the only device (checked inside) */
 	tsc_device_power_off();
 err_first_device:
@@ -2183,6 +2419,7 @@ static int tsc_ci_release(struct inode *inode, struct file *filp)
 {
 	struct tsc_ci_chdev *tsc_ci;
 	u32 ena_reg;
+	int ret;
 
 	tsc_ci = filp->private_data;
 	if (!tsc_ci)
@@ -2200,18 +2437,31 @@ static int tsc_ci_release(struct inode *inode, struct file *filp)
 		mutex_lock(&tsc_ci->mutex);
 	}
 
-	if (!tsc_iommu_bypass)
-		iommu_detach_group(tsc_device->iommu_info.domain,
-				tsc_device->iommu_info.group);
-
-	gpio_free(tsc_device->reset_cam_gpio);
-
 	/* clearing EOT and ERR interrupts */
 	ena_reg = readl_relaxed(tsc_device->base + TSC_IRQ_ENA);
 	CLEAR_BIT(CAM_IRQ_EOT_OFFS, ena_reg);
 	CLEAR_BIT(CAM_IRQ_ERR_OFFS, ena_reg);
 	writel_relaxed(ena_reg, tsc_device->base + TSC_IRQ_ENA);
 
+	/* Cancel the  interrupt handlers registration */
+	free_irq(tsc_device->card_detection_irq, tsc_device);
+	free_irq(tsc_device->cam_cmd_irq, tsc_device);
+
+	/* power down the card interface if it's currently powered up */
+	if (tsc_device->hw_card_status == TSC_CARD_STATUS_DETECTED &&
+			tsc_device->card_power) {
+		ret = tsc_card_power_down();
+		if (ret != 0)
+			pr_err("%s: card power-down failed\n", __func__);
+	}
+
+	if (!tsc_iommu_bypass)
+		iommu_detach_group(tsc_device->iommu_info.domain,
+				tsc_device->iommu_info.group);
+
+	gpio_free(tsc_device->reset_cam_gpio);
+
+	tsc_power_off_buff_mode_clocks();
 	tsc_device_power_off();
 
 	tsc_device->num_ci_opened--;
@@ -2268,7 +2518,6 @@ static unsigned int tsc_mux_poll(struct file *filp, struct poll_table_struct *p)
  */
 static unsigned int tsc_ci_poll(struct file *filp, struct poll_table_struct *p)
 {
-	unsigned long flags;
 	unsigned int mask = 0;
 
 	struct tsc_ci_chdev *tsc_ci = filp->private_data;
@@ -2279,12 +2528,13 @@ static unsigned int tsc_ci_poll(struct file *filp, struct poll_table_struct *p)
 	poll_wait(filp, &tsc_ci->poll_queue, p);
 
 	/* Setting the mask upon card detect irq and update ci card state */
-	spin_lock_irqsave(&tsc_ci->spinlock, flags);
+	if (mutex_lock_interruptible(&tsc_ci->mutex))
+		return -ERESTARTSYS;
 	if (tsc_ci->card_status != tsc_device->hw_card_status) {
 		mask = POLLPRI;
 		tsc_ci->card_status = tsc_device->hw_card_status;
 	}
-	spin_unlock_irqrestore(&tsc_ci->spinlock, flags);
+	mutex_unlock(&tsc_ci->mutex);
 
 	return mask;
 }
@@ -2597,17 +2847,19 @@ static int tsc_get_regulator_bus(struct platform_device *pdev)
 	/* Reading the bus platform data */
 	tsc_bus_pdata = msm_bus_cl_get_pdata(pdev);
 	if (tsc_bus_pdata == NULL) {
-		dev_err(&pdev->dev, "%s: Could not find the bus property\n",
+		dev_err(&pdev->dev, "%s: Could not find the bus property. Continue anyway...\n",
 				__func__);
-		goto err;
 	}
 
 	/* Register the bus client */
-	tsc_device->bus_client = msm_bus_scale_register_client(tsc_bus_pdata);
-	if (!tsc_device->bus_client) {
-		dev_err(&pdev->dev, "%s: Unable to register bus client\n",
-				__func__);
-		goto err;
+	if (tsc_bus_pdata) {
+		tsc_device->bus_client =
+				msm_bus_scale_register_client(tsc_bus_pdata);
+		if (!tsc_device->bus_client) {
+			dev_err(&pdev->dev, "%s: Unable to register bus client\n",
+					__func__);
+			goto err;
+		}
 	}
 
 	return 0;
@@ -2617,73 +2869,38 @@ err:
 }
 
 /**
- * tsc_free_irqs() - Free the TSC irqs.
- */
-static void tsc_free_irqs(void)
-{
-	if (tsc_device->cam_cmd_irq)
-		free_irq(tsc_device->cam_cmd_irq, tsc_device);
-	if (tsc_device->card_detection_irq)
-		free_irq(tsc_device->card_detection_irq, tsc_device);
-
-	tsc_device->cam_cmd_irq = 0;
-	tsc_device->card_detection_irq = 0;
-}
-
-/**
- * tsc_map_irqs() - Map the TSC irqs to their handlers.
+ * tsc_get_irqs() - Get the TSC IRQ numbers and map the cam irq.
  *
  * @pdev:	A pointer to the TSC platform device.
  *
- * Read the irq numbers from the platform device information and set the irq
- * handlers
+ * Read the irq numbers from the platform device information.
  *
  * Return 0 on success, error value otherwise.
  */
-static int tsc_map_irqs(struct platform_device *pdev)
+static int tsc_get_irqs(struct platform_device *pdev)
 {
-	int irq, ret = 0;
+	int irq;
 
-	/* Reading the IRQ numbers from the platform device */
 	irq = platform_get_irq_byname(pdev, "cam-cmd");
 	if (irq > 0) {
 		tsc_device->cam_cmd_irq = irq;
 	} else {
 		dev_err(&pdev->dev, "%s: Failed to get CAM_CMD IRQ = %d",
 				__func__, irq);
-		return -EINVAL;
+		goto err;
 	}
+
 	irq = platform_get_irq_byname(pdev, "card-detect");
 	if (irq > 0) {
 		tsc_device->card_detection_irq = irq;
 	} else {
 		dev_err(&pdev->dev, "%s: Failed to get CARD_DETECT IRQ = %d",
 				__func__, irq);
-		return -EINVAL;
-	}
-	/* Registering the IRQ handlers */
-	ret = request_irq(tsc_device->cam_cmd_irq, tsc_cam_cmd_irq_handler,
-			IRQF_SHARED, dev_name(&pdev->dev), tsc_device);
-	if (ret) {
-		dev_err(&pdev->dev, "%s: failed to request TSC IRQ %d : %d",
-				__func__, tsc_device->cam_cmd_irq, ret);
-		goto err_cam;
-	}
-
-	ret = request_irq(tsc_device->card_detection_irq,
-			tsc_card_detect_irq_handler, IRQF_SHARED,
-			dev_name(&pdev->dev), tsc_device);
-	if (ret) {
-		dev_err(&pdev->dev, "%s: failed to request TSC IRQ %d : %d",
-				__func__, tsc_device->card_detection_irq, ret);
-		goto err_card;
+		goto err;
 	}
 
 	return 0;
-
-err_card:
-	free_irq(tsc_device->cam_cmd_irq, tsc_device);
-err_cam:
+err:
 	tsc_device->cam_cmd_irq = 0;
 	tsc_device->card_detection_irq = 0;
 
@@ -2735,12 +2952,24 @@ static void tsc_clocks_put(void)
 		clk_put(tsc_device->par_clk);
 	if (tsc_device->cicam_ts_clk)
 		clk_put(tsc_device->cicam_ts_clk);
+	if (tsc_device->tspp2_core_clk)
+		clk_put(tsc_device->tspp2_core_clk);
+	if (tsc_device->vbif_tspp2_clk)
+		clk_put(tsc_device->vbif_tspp2_clk);
+	if (tsc_device->vbif_ahb_clk)
+		clk_put(tsc_device->vbif_ahb_clk);
+	if (tsc_device->vbif_axi_clk)
+		clk_put(tsc_device->vbif_axi_clk);
 
 	tsc_device->ahb_clk = NULL;
 	tsc_device->ci_clk = NULL;
 	tsc_device->ser_clk = NULL;
 	tsc_device->par_clk = NULL;
 	tsc_device->cicam_ts_clk = NULL;
+	tsc_device->tspp2_core_clk = NULL;
+	tsc_device->vbif_tspp2_clk = NULL;
+	tsc_device->vbif_ahb_clk = NULL;
+	tsc_device->vbif_axi_clk = NULL;
 }
 
 /**
@@ -2800,12 +3029,32 @@ static int tsc_clocks_get(struct platform_device *pdev)
 	if (IS_ERR(tsc_device->vbif_tspp2_clk)) {
 		pr_err("%s: Failed to get bcc_vbif_tspp2_clk", __func__);
 		ret = PTR_ERR(tsc_device->vbif_tspp2_clk);
-		goto vbif_err;
+		goto vbif_tspp2_err;
+	}
+
+	tsc_device->vbif_ahb_clk = clk_get(&pdev->dev, "iface_vbif_clk");
+	if (IS_ERR(tsc_device->vbif_ahb_clk)) {
+		pr_err("%s: Failed to get bcc_vbif_ahb_clk", __func__);
+		ret = PTR_ERR(tsc_device->vbif_ahb_clk);
+		goto vbif_ahb_err;
+	}
+
+	tsc_device->vbif_axi_clk = clk_get(&pdev->dev, "vbif_core_clk");
+	if (IS_ERR(tsc_device->vbif_axi_clk)) {
+		pr_err("%s: Failed to get bcc_vbif_axi_clk", __func__);
+		ret = PTR_ERR(tsc_device->vbif_axi_clk);
+		goto vbif_axi_err;
 	}
 
 	return ret;
 
-vbif_err:
+vbif_axi_err:
+	tsc_device->vbif_axi_clk = NULL;
+	clk_put(tsc_device->vbif_ahb_clk);
+vbif_ahb_err:
+	tsc_device->vbif_ahb_clk = NULL;
+	clk_put(tsc_device->vbif_tspp2_clk);
+vbif_tspp2_err:
 	tsc_device->vbif_tspp2_clk = NULL;
 	clk_put(tsc_device->tspp2_core_clk);
 tspp2_err:
@@ -3028,7 +3277,7 @@ static int msm_tsc_probe(struct platform_device *pdev)
 		goto err_map_io;
 
 	/* map irqs */
-	ret = tsc_map_irqs(pdev);
+	ret = tsc_get_irqs(pdev);
 	if (ret != 0)
 		goto err_map_irqs;
 
@@ -3088,10 +3337,11 @@ err_chdev_mux:
 	class_destroy(tsc_class);
 err_class:
 err_pinctrl:
-	msm_bus_scale_unregister_client(tsc_device->bus_client);
+	if (tsc_device->bus_client)
+		msm_bus_scale_unregister_client(tsc_device->bus_client);
+
 	devm_regulator_put(tsc_device->gdsc);
 err_get_regulator_bus:
-	tsc_free_irqs();
 err_map_irqs:
 	iounmap(tsc_device->base);
 err_map_io:
@@ -3130,11 +3380,10 @@ static int msm_tsc_remove(struct platform_device *pdev)
 	class_destroy(tsc_class);
 
 	/* Unregister the bus client and the regulator */
-	msm_bus_scale_unregister_client(tsc_device->bus_client);
-	devm_regulator_put(tsc_device->gdsc);
+	if (tsc_device->bus_client)
+		msm_bus_scale_unregister_client(tsc_device->bus_client);
 
-	/* Free the IRQs */
-	tsc_free_irqs();
+	devm_regulator_put(tsc_device->gdsc);
 
 	/* Unmapping the io memory */
 	iounmap(tsc_device->base);

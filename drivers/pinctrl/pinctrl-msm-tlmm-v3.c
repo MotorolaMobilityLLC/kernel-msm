@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -57,6 +57,8 @@
 #define TLMMV3_SDC1_DATA_PULL_MASK	0x3
 #define TLMMV3_SDC1_CMD_PULL_SHFT	11
 #define TLMMV3_SDC1_CMD_PULL_MASK	0x3
+#define TLMMV3_SDC1_RCLK_PULL_SHFT	15
+#define TLMMV3_SDC1_RCLK_PULL_MASK	0x3
 /* SDC2 PIN TYPE REG MASKS */
 #define TLMMV3_SDC2_CLK_DRV_SHFT	6
 #define TLMMV3_SDC2_CLK_DRV_MASK	0x7
@@ -148,6 +150,12 @@ static struct msm_sdc_regs sdc_regs[] = {
 		.drv_mask = TLMMV3_SDC1_DATA_DRV_MASK,
 		.drv_shft = TLMMV3_SDC1_DATA_DRV_SHFT,
 	},
+	/* SDC1 RCLK */
+	{
+		.offset = 0,
+		.pull_mask = TLMMV3_SDC1_RCLK_PULL_MASK,
+		.pull_shft = TLMMV3_SDC1_RCLK_PULL_SHFT,
+	},
 	/* SDC2 CLK */
 	{
 		.offset = 0x4,
@@ -181,6 +189,9 @@ static int msm_tlmm_v3_sdc_cfg(uint pin_no, unsigned long *config,
 	unsigned int val, id, data;
 	u32 mask, shft;
 	void __iomem *cfg_reg;
+
+	if (pin_no >= ARRAY_SIZE(sdc_regs))
+		return -EINVAL;
 
 	cfg_reg = reg_base + sdc_regs[pin_no].offset;
 	id = pinconf_to_config_param(*config);
@@ -310,7 +321,7 @@ static int msm_tlmm_v3_gp_cfg(uint pin_no, unsigned long *config,
 			data = pinconf_to_config_argument(*config);
 			inout_val = dir_to_inout_val(data);
 			writel_relaxed(inout_val, inout_reg);
-			data = (mask << shft);
+			data = mask;
 		} else {
 			inout_val = readl_relaxed(inout_reg);
 			data = inout_val_to_dir(inout_val);
@@ -625,18 +636,8 @@ static const struct irq_domain_ops msm_tlmm_v3_gp_irqd_ops = {
 	.xlate	= irq_domain_xlate_twocell,
 };
 
-struct irq_chip mpm_tlmm_irq_extn = {
-	.irq_eoi	= NULL,
-	.irq_mask	= NULL,
-	.irq_unmask	= NULL,
-	.irq_retrigger	= NULL,
-	.irq_set_type	= NULL,
-	.irq_set_wake	= NULL,
-	.irq_disable	= NULL,
-};
 
 static struct msm_tlmm_irq_chip msm_tlmm_v3_gp_irq = {
-			.irq_chip_extn = &mpm_tlmm_irq_extn,
 			.chip = {
 				.name		= "msm_tlmm_v3_irq",
 				.irq_mask	= msm_tlmm_v3_irq_mask,
@@ -694,8 +695,8 @@ static struct syscore_ops msm_tlmm_v3_irq_syscore_ops = {
 };
 
 #ifdef CONFIG_USE_PINCTRL_IRQ
-int __init msm_tlmm_v3_of_irq_init(struct device_node *controller,
-						struct device_node *parent)
+int msm_tlmm_v3_of_irq_init(struct device_node *controller,
+						struct irq_chip *chip_extn)
 {
 	int ret, num_irqs, apps_id;
 	struct msm_tlmm_irq_chip *ic = &msm_tlmm_v3_gp_irq;
@@ -716,6 +717,7 @@ int __init msm_tlmm_v3_of_irq_init(struct device_node *controller,
 						ic);
 	if (IS_ERR(ic->domain))
 			return -ENOMEM;
+	ic->irq_chip_extn = chip_extn;
 	return 0;
 }
 #endif

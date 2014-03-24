@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,6 +24,7 @@
 #include "rmnet_data_config.h"
 #include "rmnet_map.h"
 #include "rmnet_data_private.h"
+#include "rmnet_data_stats.h"
 
 RMNET_LOG_MODULE(RMNET_DATA_LOGMASK_MAPD);
 
@@ -72,7 +73,7 @@ struct rmnet_map_header_s *rmnet_map_add_map_header(struct sk_buff *skb,
 		return 0;
 
 	padbytes = (uint8_t *) skb_put(skb, padding);
-	LOGD("pad: %d\n", padding);
+	LOGD("pad: %d", padding);
 	memset(padbytes, 0, padding);
 
 	map_header->pkt_len = htons(map_datalen + padding);
@@ -108,16 +109,17 @@ struct sk_buff *rmnet_map_deaggregate(struct sk_buff *skb,
 
 	maph = (struct rmnet_map_header_s *) skb->data;
 	packet_len = ntohs(maph->pkt_len) + sizeof(struct rmnet_map_header_s);
+
 	if ((((int)skb->len) - ((int)packet_len)) < 0) {
-		LOGM("%s(): Got malformed packet. Dropping\n", __func__);
+		LOGM("%s", "Got malformed packet. Dropping");
 		return 0;
 	}
 
-	skbn = skb_copy(skb, GFP_ATOMIC);
+	skbn = skb_clone(skb, GFP_ATOMIC);
 	if (!skbn)
 		return 0;
 
-	LOGD("Trimming to %d bytes\n", packet_len);
+	LOGD("Trimming to %d bytes", packet_len);
 	LOGD("before skbn->len = %d", skbn->len);
 	skb_trim(skbn, packet_len);
 	skb_pull(skb, packet_len);
@@ -126,8 +128,8 @@ struct sk_buff *rmnet_map_deaggregate(struct sk_buff *skb,
 	/* Sanity check */
 	ip_byte = (skbn->data[4]) & 0xF0;
 	if (ip_byte != 0x40 && ip_byte != 0x60) {
-		LOGM("%s() Unknown IP type: 0x%02X\n", __func__, ip_byte);
-		kfree_skb(skbn);
+		LOGM("Unknown IP type: 0x%02X", ip_byte);
+		rmnet_kfree_skb(skbn, RMNET_STATS_SKBFREE_DEAGG_UNKOWN_IP_TYP);
 		return 0;
 	}
 
@@ -149,30 +151,34 @@ static void rmnet_map_flush_packet_queue(struct work_struct *work)
 	struct rmnet_phys_ep_conf_s *config;
 	unsigned long flags;
 	struct sk_buff *skb;
+	int rc;
 
 	skb = 0;
 	real_work = (struct agg_work *)work;
 	config = real_work->config;
-	LOGD("Entering flush thread\n");
+	LOGD("%s", "Entering flush thread");
 	spin_lock_irqsave(&config->agg_lock, flags);
 	if (likely(config->agg_state == RMNET_MAP_TXFER_SCHEDULED)) {
+		/* Buffer may have already been shipped out */
 		if (likely(config->agg_skb)) {
-			/* Buffer may have already been shipped out */
+			rmnet_stats_agg_pkts(config->agg_count);
 			if (config->agg_count > 1)
-				LOGL("Agg count: %d\n", config->agg_count);
+				LOGL("Agg count: %d", config->agg_count);
 			skb = config->agg_skb;
 			config->agg_skb = 0;
 		}
 		config->agg_state = RMNET_MAP_AGG_IDLE;
 	} else {
 		/* How did we get here? */
-		LOGE("%s(): Ran queued command when state %s\n",
-			"is idle. State machine likely broken", __func__);
+		LOGE("Ran queued command when state %s",
+			"is idle. State machine likely broken");
 	}
 
 	spin_unlock_irqrestore(&config->agg_lock, flags);
-	if (skb)
-		dev_queue_xmit(skb);
+	if (skb) {
+		rc = dev_queue_xmit(skb);
+		rmnet_stats_queue_xmit(rc, RMNET_STATS_QUEUE_XMIT_AGG_TIMEOUT);
+	}
 	kfree(work);
 }
 
@@ -191,7 +197,7 @@ void rmnet_map_aggregate(struct sk_buff *skb,
 	struct agg_work *work;
 	unsigned long flags;
 	struct sk_buff *agg_skb;
-	int size;
+	int size, rc;
 
 
 	if (!skb || !config)
@@ -199,7 +205,7 @@ void rmnet_map_aggregate(struct sk_buff *skb,
 	size = config->egress_agg_size-skb->len;
 
 	if (size < 2000) {
-		LOGL("Invalid length %d\n", size);
+		LOGL("Invalid length %d", size);
 		return;
 	}
 
@@ -211,37 +217,43 @@ new_packet:
 			config->agg_skb = 0;
 			config->agg_count = 0;
 			spin_unlock_irqrestore(&config->agg_lock, flags);
-			dev_queue_xmit(skb);
+			rmnet_stats_agg_pkts(1);
+			rc = dev_queue_xmit(skb);
+			rmnet_stats_queue_xmit(rc,
+				RMNET_STATS_QUEUE_XMIT_AGG_CPY_EXP_FAIL);
 			return;
 		}
 		config->agg_count = 1;
-		kfree_skb(skb);
+		rmnet_kfree_skb(skb, RMNET_STATS_SKBFREE_AGG_CPY_EXPAND);
 		goto schedule;
 	}
 
 	if (skb->len > (config->egress_agg_size - config->agg_skb->len)) {
+		rmnet_stats_agg_pkts(config->agg_count);
 		if (config->agg_count > 1)
-			LOGL("Agg count: %d\n", config->agg_count);
+			LOGL("Agg count: %d", config->agg_count);
 		agg_skb = config->agg_skb;
 		config->agg_skb = 0;
 		config->agg_count = 0;
 		spin_unlock_irqrestore(&config->agg_lock, flags);
-		dev_queue_xmit(agg_skb);
+		rc = dev_queue_xmit(agg_skb);
+		rmnet_stats_queue_xmit(rc,
+					RMNET_STATS_QUEUE_XMIT_AGG_FILL_BUFFER);
 		goto new_packet;
 	}
 
 	dest_buff = skb_put(config->agg_skb, skb->len);
 	memcpy(dest_buff, skb->data, skb->len);
 	config->agg_count++;
-	kfree_skb(skb);
+	rmnet_kfree_skb(skb, RMNET_STATS_SKBFREE_AGG_INTO_BUFF);
 
 schedule:
 	if (config->agg_state != RMNET_MAP_TXFER_SCHEDULED) {
 		work = (struct agg_work *)
 			kmalloc(sizeof(struct agg_work), GFP_ATOMIC);
 		if (!work) {
-			LOGE("%s(): Failed to allocate work item for packet %s",
-			     "transfer. DATA PATH LIKELY BROKEN!\n", __func__);
+			LOGE("Failed to allocate work item for packet %s",
+			     "transfer. DATA PATH LIKELY BROKEN!");
 			config->agg_state = RMNET_MAP_AGG_IDLE;
 			spin_unlock_irqrestore(&config->agg_lock, flags);
 			return;
