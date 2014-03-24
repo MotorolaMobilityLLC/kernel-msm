@@ -4123,11 +4123,12 @@ static int mxt_probe(struct i2c_client *client,
 	if (error)
 		goto err_free_gpio;
 
+	data->irq_enabled = true;
+
 	error = mxt_power_init(data);
 	if (error)
 		goto err_free_irq;
 
-	mxt_irq_enable(data, true);
 	mxt_regulator_enable(data);
 
 	error = mxt_initialize(data);
