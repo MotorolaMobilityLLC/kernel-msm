@@ -20,6 +20,24 @@
 		qcom,cci-master = <0>;
 	};
 
+	lm3646_led_flash: qcom,lm3646@ce {
+		cell-index = <0>;
+		reg = <0xce>;
+		qcom,slave-id = <0xce 0x00 0x11>;
+		compatible = "qcom,lm3646";
+		qcom,flash-name = "lm3646";
+		label = "lm3646";
+		qcom,flash-type = <1>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 144 0>;
+		qcom,gpio-flash-en = <0>;
+		qcom,gpio-req-tbl-num = <0>;
+		qcom,gpio-req-tbl-flags = <0>;
+		qcom,gpio-req-tbl-label = "FLASH_EN";
+		qcom,cci-master = <0>;
+		flash-now-support = <0>;
+	};
+
 	qcom,camera@20 {
 		cell-index = <0>;
 		compatible = "qcom,camera";
@@ -28,6 +46,7 @@
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,actuator-src = <&rohm_bu64296gwx>;
+		qcom,led-flash-src = <&lm3646_led_flash>;
 		qcom,mount-angle = <90>;
 		qcom,sensor-name = "imx220";
 		cam_vdig-supply = <&pma8084_l27>;
