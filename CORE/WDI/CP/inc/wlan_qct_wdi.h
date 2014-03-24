@@ -1335,6 +1335,65 @@ typedef struct
 
 }WDI_JoinReqInfoType;
 
+typedef enum
+{
+    eWDI_CHANNEL_SWITCH_SOURCE_SCAN,
+    eWDI_CHANNEL_SWITCH_SOURCE_LISTEN,
+    eWDI_CHANNEL_SWITCH_SOURCE_MCC,
+    eWDI_CHANNEL_SWITCH_SOURCE_CSA,
+    eWDI_CHANNEL_SWITCH_SOURCE_MAX = 0x7FFFFFFF
+} WDI_ChanSwitchSource;
+
+/*---------------------------------------------------------------------------
+  WDI_SwitchChReqInfoType_V1
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /*Indicates the channel to switch to.*/
+  wpt_uint8         ucChannel;
+
+  /*Local power constraint*/
+  wpt_uint8         ucLocalPowerConstraint;
+
+  /*Secondary channel offset */
+  WDI_HTSecondaryChannelOffset  wdiSecondaryChannelOffset;
+
+#ifdef WLAN_FEATURE_VOWIFI
+  wpt_int8      cMaxTxPower;
+  /*Self STA Mac address*/
+  wpt_macAddr   macSelfStaMacAddr;
+#endif
+  /* VO Wifi comment: BSSID is needed to identify which session
+     issued this request. As the request has power constraints, this
+     should be applied only to that session
+  */
+  /* V IMP: Keep bssId field at the end of this msg. It is used to
+     maintain backward compatibility by way of ignoring if using new
+     host/old FW or old host/new FW since it is at the end of this struct
+   */
+  wpt_macAddr   macBSSId;
+  /* Source of Channel Switch */
+  WDI_ChanSwitchSource channelSwitchSrc;
+}WDI_SwitchChReqInfoType_V1;
+
+/*--------------------------------------------------------------------
+  WDI_SwitchChReqParamsType_V1
+----------------------------------------------------------------------*/
+typedef struct
+{
+  /*Channel Info*/
+  WDI_SwitchChReqInfoType_V1  wdiChInfo;
+
+  /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb   wdiReqStatusCB;
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*             pUserData;
+}WDI_SwitchChReqParamsType_V1;
+
 /*---------------------------------------------------------------------------
   WDI_JoinReqParamsType
 ---------------------------------------------------------------------------*/
@@ -2753,6 +2812,26 @@ typedef struct
 #endif
 
 }WDI_SwitchCHRspParamsType;
+
+/*--------------------------------------------------------------------
+  WDI_SwitchChRspParamsType_V1
+--------------------------------------------------------------------*/
+typedef struct
+{
+   /*Status of the response*/
+  WDI_Status    wdiStatus;
+
+  /*Indicates the channel that WLAN is on*/
+  wpt_uint8     ucChannel;
+
+#ifdef WLAN_FEATURE_VOWIFI
+  /*HAL fills in the tx power used for mgmt frames in this field.*/
+  wpt_int8     ucTxMgmtPower;
+#endif
+
+  /* Source of Channel Switch */
+  WDI_ChanSwitchSource channelSwitchSrc;
+}WDI_SwitchChRspParamsType_V1;
 
 /*---------------------------------------------------------------------------
   WDI_ConfigSTAReqParamsType
@@ -6011,6 +6090,9 @@ typedef void  (*WDI_DelBARspCb)(WDI_Status   wdiStatus,
 ---------------------------------------------------------------------------*/
 typedef void  (*WDI_SwitchChRspCb)(WDI_SwitchCHRspParamsType*  pwdiSwitchChRsp,
                                    void*                       pUserData);
+
+typedef void  (*WDI_SwitchChRspCb_V1)(WDI_SwitchChRspParamsType_V1*  pwdiSwitchChRsp,
+                                      void* pUserData);
 
  
 /*---------------------------------------------------------------------------
@@ -9281,9 +9363,34 @@ WDI_SwitchChReq
 );
 
 /**
+ @brief WDI_SwitchChReq_V1 is similar to WDI_SwitchChReq except
+        it also send type source for the channel change.
+        WDI_Start must have been called.
+
+ @param wdiSwitchChReqParams: the switch ch parameters as
+        specified by the Device Interface
+
+        wdiSwitchChRspCb: callback for passing back the response
+        of the switch ch operation received from the device
+
+        pUserData: user data will be passed back with the
+        callback
+
+ @see WDI_Start
+ @return Result of the function call
+*/
+
+WDI_Status
+WDI_SwitchChReq_V1
+(
+  WDI_SwitchChReqParamsType_V1* pwdiSwitchChReqParams,
+  WDI_SwitchChRspCb_V1          wdiSwitchChRspCb,
+  void*                      pUserData
+);
+
+/**
  @brief WDI_UpdateChannelReq will be called when the upper MAC
         wants to update the channel list on change in country code.
-
         In state BUSY this request will be queued. Request won't
         be allowed in any other state.
 

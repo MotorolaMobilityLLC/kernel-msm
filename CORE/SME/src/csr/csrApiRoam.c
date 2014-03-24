@@ -1592,6 +1592,11 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.disableAggWithBtc = pParam->disableAggWithBtc;
         //if HDD passed down non zero values then only update,
         //otherwise keep using the defaults
+        if (pParam->nInitialDwellTime)
+        {
+            pMac->roam.configParam.nInitialDwellTime =
+                                        pParam->nInitialDwellTime;
+        }
         if (pParam->nActiveMaxChnTime)
         {
             pMac->roam.configParam.nActiveMaxChnTime = pParam->nActiveMaxChnTime;

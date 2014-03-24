@@ -1433,6 +1433,15 @@ int wlan_hdd_ftm_close(hdd_context_t *pHddCtx)
         return VOS_STATUS_E_NOMEM;
     }
 
+    /*release the wlan_hdd_process_ftm_cmd(), if waiting for any response.*/
+    if (pHddCtx->ftm.IsCmdPending == TRUE)
+    {
+        if (vos_event_set(&pHddCtx->ftm.ftm_vos_event)!= VOS_STATUS_SUCCESS)
+        {
+            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                                      "%s: vos_event_set failed", __func__);
+        }
+    }
     if(WLAN_FTM_STARTED == pHddCtx->ftm.ftm_state)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
@@ -3078,6 +3087,15 @@ void wlan_hdd_process_ftm_cmd
         hddLog(VOS_TRACE_LEVEL_ERROR,"%s: request buffer is null",__func__);
         return ;
     }
+
+    if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HDD, NULL))
+    {
+        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
+        "%s: Load/Unload in Progress. Ignoring FTM Command %d"
+        , __func__, pRequestBuf->ftmpkt.ftm_cmd_type);
+        return ;
+    }
+
     /*Save the received request*/
     pHddCtx->ftm.pRequestBuf = pRequestBuf;
 
@@ -3198,7 +3216,6 @@ void wlan_hdd_process_ftm_cmd
 
         //HEXDUMP("Request:",(char*)pftm_data,cmd_len);
 
-        pHddCtx->ftm.IsCmdPending = TRUE;
 
         /*Post the command to the HAL*/
         if (wlan_ftm_postmsg(pftm_data, cmd_len) != VOS_STATUS_SUCCESS) {
@@ -3207,12 +3224,30 @@ void wlan_hdd_process_ftm_cmd
             return;
 
         }
+        /*After successful posting of message the command should be pending*/
+        pHddCtx->ftm.IsCmdPending = TRUE;
+
         /*Wait here until you get the response from HAL*/
         if (vos_wait_single_event(&pHddCtx->ftm.ftm_vos_event, FTM_VOS_EVENT_WAIT_TIME)!= VOS_STATUS_SUCCESS)
         {
-            hddLog(VOS_TRACE_LEVEL_ERROR,
-               "%s: vos_wait_single_event failed",__func__);
+            hddLog(VOS_TRACE_LEVEL_ERROR,"%s: vos_wait_single_event failed",__func__);
+            pHddCtx->ftm.pResponseBuf->ftm_err_code = WLAN_FTM_FAILURE;
+            wlan_ftm_send_response(pHddCtx);
+            pHddCtx->ftm.IsCmdPending = FALSE;
             return;
+        }
+        /*This check will handle the case where the completion is sent by
+          wlan_hdd_process_ftm_cmd() and not by the HAL*/
+        if (vos_is_load_unload_in_progress(VOS_MODULE_ID_HDD, NULL))
+        {
+            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
+            "%s: Load/Unload in Progress. Ignoring FTM Command %d"
+            , __func__, pRequestBuf->ftmpkt.ftm_cmd_type);
+
+            pHddCtx->ftm.pResponseBuf->ftm_err_code = WLAN_FTM_FAILURE;
+            wlan_ftm_send_response(pHddCtx);
+            pHddCtx->ftm.IsCmdPending = FALSE;
+            return ;
         }
 
         cmd_len = be16_to_cpu(pHddCtx->ftm.wnl->wmsg.length);

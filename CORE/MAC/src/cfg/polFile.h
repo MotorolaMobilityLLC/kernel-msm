@@ -124,8 +124,8 @@ typedef struct sPolFileHeader {
 
   tPolFileVersion FileVersion;
   tPolFileVersion HWCapabilities;
-  unsigned long   FileLength;
-  unsigned long   NumDirectoryEntries;
+  unsigned int   FileLength;
+  unsigned int   NumDirectoryEntries;
 
 } tPolFileHeader;
 
@@ -144,9 +144,9 @@ typedef enum ePolFileDirTypes {
 
 typedef struct sPolFileDirEntry {
 
-  unsigned long DirEntryType;
-  unsigned long DirEntryFileOffset;
-  unsigned long DirEntryLength;
+  unsigned int DirEntryType;
+  unsigned int DirEntryFileOffset;
+  unsigned int DirEntryLength;
 
 } tPolFileDirEntry;
 

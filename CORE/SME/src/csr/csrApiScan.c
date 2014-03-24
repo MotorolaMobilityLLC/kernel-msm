@@ -819,6 +819,14 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
                             scanReq.maxChnTimeBtc = pMac->roam.configParam.nActiveMaxChnTimeBtc;
                             scanReq.minChnTimeBtc = pMac->roam.configParam.nActiveMinChnTimeBtc;
                         }
+                        if (pMac->roam.configParam.nInitialDwellTime)
+                        {
+                            scanReq.maxChnTime =
+                                     pMac->roam.configParam.nInitialDwellTime;
+                            smsLog(pMac, LOG1, FL("11d scan, updating"
+                                   "dwell time for first scan %u"),
+                                    scanReq.maxChnTime);
+                        }
 
                         status = csrScanCopyRequest(pMac, &p11dScanCmd->u.scanCmd.u.scanRequest, &scanReq);
                         //Free the channel list
@@ -867,6 +875,16 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
                 {
                     smsLog( pMac, LOG1, FL("Scanning only 2G Channels during first scan"));
                     csrScan2GOnyRequest(pMac, pScanCmd, pScanRequest);
+                }
+
+                if (pMac->roam.configParam.nInitialDwellTime)
+                {
+                    pScanRequest->maxChnTime =
+                            pMac->roam.configParam.nInitialDwellTime;
+                    pMac->roam.configParam.nInitialDwellTime = 0;
+                    smsLog(pMac, LOG1,
+                                 FL("updating dwell time for first scan %u"),
+                                 pScanRequest->maxChnTime);
                 }
 
                 status = csrScanCopyRequest(pMac, &pScanCmd->u.scanCmd.u.scanRequest, pScanRequest);

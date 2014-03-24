@@ -256,7 +256,12 @@ tSirRetStatus limSendSwitchChnlParams(tpAniSirGlobal pMac,
 #endif
     vos_mem_copy(  pChnlParams->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr) );
     pChnlParams->peSessionId = peSessionId;
-    
+
+    if (LIM_SWITCH_CHANNEL_CSA == pSessionEntry->channelChangeCSA )
+    {
+        pChnlParams->channelSwitchSrc =  eHAL_CHANNEL_SWITCH_SOURCE_CSA;
+        pSessionEntry->channelChangeCSA = 0;
+    }
     //we need to defer the message until we get the response back from WDA.
     SET_LIM_PROCESS_DEFD_MESGS(pMac, false);
     msgQ.type = WDA_CHNL_SWITCH_REQ;
