@@ -81,12 +81,7 @@ static void notify_netlink_uevent(const char *iface, struct idletimer_tg *timer)
 		pr_err("message too long (%d)", res);
 		return;
 	}
-<<<<<<< HEAD
 
-	get_monotonic_boottime(&ts);
-	state = check_for_delayed_trigger(timer, &ts);
-=======
->>>>>>> parent of b1027c0... nf: IDLETIMER: time-stamp and suspend/resume handling.
 	res = snprintf(state_msg, NLMSG_MAX_SIZE, "STATE=%s",
 		       timer->active ? "active" : "inactive");
 	if (NLMSG_MAX_SIZE <= res) {
@@ -162,47 +157,6 @@ static void idletimer_tg_expired(unsigned long data)
 	schedule_work(&timer->work);
 }
 
-<<<<<<< HEAD
-static int idletimer_resume(struct notifier_block *notifier,
-		unsigned long pm_event, void *unused)
-{
-	struct timespec ts;
-	unsigned long time_diff, now = jiffies;
-	struct idletimer_tg *timer = container_of(notifier,
-			struct idletimer_tg, pm_nb);
-
-	switch (pm_event) {
-	case PM_SUSPEND_PREPARE:
-		get_monotonic_boottime(&timer->last_suspend_time);
-		break;
-	case PM_POST_SUSPEND:
-		if (!timer || !timer->active)
-			break;
-		/* since jiffies are not updated when suspended now represents
-		 * the time it would have suspended */
-		if (time_after(timer->timer.expires, now)) {
-			get_monotonic_boottime(&ts);
-			ts = timespec_sub(ts, timer->last_suspend_time);
-			time_diff = timespec_to_jiffies(&ts);
-			if (timer->timer.expires > (time_diff + now)) {
-				mod_timer_pending(&timer->timer,
-						(timer->timer.expires - time_diff));
-			} else {
-				del_timer(&timer->timer);
-				timer->timer.expires = 0;
-				timer->active = false;
-				schedule_work(&timer->work);
-			}
-		}
-		break;
-	default:
-		break;
-	}
-	return NOTIFY_DONE;
-}
-
-=======
->>>>>>> parent of b1027c0... nf: IDLETIMER: time-stamp and suspend/resume handling.
 static int idletimer_tg_create(struct idletimer_tg_info *info)
 {
 	int ret;
@@ -234,23 +188,6 @@ static int idletimer_tg_create(struct idletimer_tg_info *info)
 	info->timer->refcnt = 1;
 	info->timer->send_nl_msg = (info->send_nl_msg == 0) ? false : true;
 	info->timer->active = true;
-<<<<<<< HEAD
-	info->timer->timeout = info->timeout;
-
-	spin_lock_bh(&timestamp_lock);
-	info->timer->delayed_timer_trigger.tv_sec = 0;
-	info->timer->delayed_timer_trigger.tv_nsec = 0;
-	get_monotonic_boottime(&info->timer->last_modified_timer);
-	spin_unlock_bh(&timestamp_lock);
-
-	info->timer->pm_nb.notifier_call = idletimer_resume;
-	ret = register_pm_notifier(&info->timer->pm_nb);
-	if (ret)
-		printk(KERN_WARNING "[%s] Failed to register pm notifier %d\n",
-				__func__, ret);
-=======
->>>>>>> parent of b1027c0... nf: IDLETIMER: time-stamp and suspend/resume handling.
-
 	mod_timer(&info->timer->timer,
 		  msecs_to_jiffies(info->timeout * 1000) + jiffies);
 
@@ -266,36 +203,6 @@ out:
 	return ret;
 }
 
-<<<<<<< HEAD
-static void reset_timer(const struct idletimer_tg_info *info)
-{
-	unsigned long now = jiffies;
-	struct idletimer_tg *timer = info->timer;
-	bool timer_prev;
-
-	spin_lock_bh(&timestamp_lock);
-	timer_prev = timer->active;
-	timer->active = true;
-	/* timer_prev is used to guard overflow problem in time_before*/
-	if (!timer_prev || time_before(timer->timer.expires, now)) {
-		pr_debug("Starting Checkentry timer (Expired, Jiffies): %lu, %lu\n",
-				timer->timer.expires, now);
-		/* checks if there is a pending inactive notification*/
-		if (cancel_work_sync(&timer->work))
-			timer->delayed_timer_trigger = timer->last_modified_timer;
-
-		get_monotonic_boottime(&timer->last_modified_timer);
-		schedule_work(&timer->work);
-	}
-
-	get_monotonic_boottime(&timer->last_modified_timer);
-	mod_timer(&timer->timer,
-			msecs_to_jiffies(info->timeout * 1000) + now);
-	spin_unlock_bh(&timestamp_lock);
-}
-
-=======
->>>>>>> parent of b1027c0... nf: IDLETIMER: time-stamp and suspend/resume handling.
 /*
  * The actual xt_tables plugin.
  */
