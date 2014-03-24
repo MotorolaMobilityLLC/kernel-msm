@@ -263,8 +263,8 @@ void hdd_flush_ibss_tx_queues( hdd_adapter_t *pAdapter, v_U8_t STAId)
             if (skbStaIdx == STAId)
             {
                /* Data for STAId is freed along with the queue node */
-               kfree_skb(skb);
                list_del(tmp);
+               kfree_skb(skb);
 
                ++pAdapter->hdd_stats.hddTxRxStats.txFlushed;
                ++pAdapter->hdd_stats.hddTxRxStats.txFlushedAC[i];
