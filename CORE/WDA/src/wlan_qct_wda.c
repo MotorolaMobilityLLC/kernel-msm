@@ -7478,16 +7478,65 @@ VOS_STATUS WDA_ProcessAggrAddTSReq(tWDA_CbContext *pWDA,
 }
 #endif
 /*
- * FUNCTION: WDA_EnterImpsReqCallback
+ * FUNCTION: WDA_EnterImpsRspCallback
  * send Enter IMPS RSP back to PE
  */ 
-void WDA_EnterImpsReqCallback(WDI_Status status, void* pUserData)
+void WDA_EnterImpsRspCallback(WDI_Status status, void* pUserData)
 {
-   tWDA_CbContext *pWDA = (tWDA_CbContext *)pUserData ;
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_CbContext *pWDA;
+
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
-                                          "<------ %s " ,__func__);
+                                          "<------ %s status=%d" ,__func__,status);
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+
+   pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
+
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   vos_mem_free(pWdaParams);
    WDA_SendMsg(pWDA, WDA_ENTER_IMPS_RSP, NULL , status) ;
    return ;
+}
+
+
+/*
+ * FUNCTION: WDA_EnterImpsReqCallback
+ * Free memory and send Enter IMPS RSP back to PE.
+ * Invoked when Enter IMPS REQ failed in WDI and no RSP callback is generated.
+ */
+void WDA_EnterImpsReqCallback(WDI_Status wdiStatus, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_CbContext *pWDA;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+              "<------ %s, wdiStatus: %d", __func__, wdiStatus);
+
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+
+   pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
+
+   if(IS_WDI_STATUS_FAILURE(wdiStatus))
+   {
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams);
+      WDA_SendMsg(pWDA, WDA_ENTER_IMPS_RSP, NULL,
+                  CONVERT_WDI2SIR_STATUS(wdiStatus));
+   }
+
+   return;
 }
 /*
  * FUNCTION: WDA_ProcessEnterImpsReq
@@ -7496,13 +7545,51 @@ void WDA_EnterImpsReqCallback(WDI_Status status, void* pUserData)
 VOS_STATUS WDA_ProcessEnterImpsReq(tWDA_CbContext *pWDA)
 {
    WDI_Status status = WDI_STATUS_SUCCESS ;
+   WDI_EnterImpsReqParamsType *wdiEnterImpsReqParams;
+   tWDA_ReqParams *pWdaParams;
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> %s " ,__func__);
-   status = WDI_EnterImpsReq((WDI_EnterImpsRspCb)WDA_EnterImpsReqCallback, pWDA);
+
+
+   wdiEnterImpsReqParams = vos_mem_malloc(sizeof(WDI_EnterImpsReqParamsType));
+   if (NULL == wdiEnterImpsReqParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      WDA_SendMsg(pWDA, WDA_ENTER_IMPS_RSP, NULL,
+                  CONVERT_WDI2SIR_STATUS(WDI_STATUS_MEM_FAILURE)) ;
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams));
+   if (NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(wdiEnterImpsReqParams);
+      WDA_SendMsg(pWDA, WDA_ENTER_IMPS_RSP, NULL ,
+         CONVERT_WDI2SIR_STATUS(WDI_STATUS_MEM_FAILURE)) ;
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   wdiEnterImpsReqParams->wdiReqStatusCB = WDA_EnterImpsReqCallback;
+   wdiEnterImpsReqParams->pUserData = pWdaParams;
+
+   pWdaParams->wdaWdiApiMsgParam = wdiEnterImpsReqParams;
+   pWdaParams->wdaMsgParam = NULL;
+   pWdaParams->pWdaContext = pWDA;
+
+   status = WDI_EnterImpsReq(wdiEnterImpsReqParams,
+                             (WDI_EnterImpsRspCb)WDA_EnterImpsRspCallback,
+                             pWdaParams);
    if(IS_WDI_STATUS_FAILURE(status))
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
               "Failure in Enter IMPS REQ WDI API, free all the memory " );
+      vos_mem_free(wdiEnterImpsReqParams);
+      vos_mem_free(pWdaParams);
       WDA_SendMsg(pWDA, WDA_ENTER_IMPS_RSP, NULL , CONVERT_WDI2SIR_STATUS(status)) ;
    }
    return CONVERT_WDI2VOS_STATUS(status) ;

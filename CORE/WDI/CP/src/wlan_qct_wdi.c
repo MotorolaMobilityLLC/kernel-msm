@@ -3503,6 +3503,7 @@ WDI_SetPwrSaveCfgReq
 WDI_Status
 WDI_EnterImpsReq
 (
+   WDI_EnterImpsReqParamsType *pwdiEnterImpsReqParams,
    WDI_EnterImpsRspCb  wdiEnterImpsRspCb,
    void*                   pUserData
 )
@@ -3525,8 +3526,8 @@ WDI_EnterImpsReq
     Fill in Event data and post to the Main FSM
   ------------------------------------------------------------------------*/
   wdiEventData.wdiRequest      = WDI_ENTER_IMPS_REQ;
-  wdiEventData.pEventData      = NULL;
-  wdiEventData.uEventDataSize  = 0;
+  wdiEventData.pEventData      = pwdiEnterImpsReqParams;
+  wdiEventData.uEventDataSize  = sizeof(*pwdiEnterImpsReqParams);
   wdiEventData.pCBfnc          = wdiEnterImpsRspCb;
   wdiEventData.pUserData       = pUserData;
 
@@ -13283,10 +13284,6 @@ WDI_SetPowerStateCb
    wpt_status              wptStatus;
    WDI_ControlBlockType *pCB = NULL;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
-   if(eWLAN_PAL_STATUS_E_FAILURE == status )
-   {
-      //it shouldn't happen, put an error msg
-   }
    /*
     * Trigger the event to bring the Enter BMPS req function to come
     * out of wait
@@ -13299,6 +13296,15 @@ WDI_SetPowerStateCb
    {
       //put an error msg
       pCB = &gWDICb;
+   }
+
+   if(eWLAN_PAL_STATUS_SUCCESS == status )
+   {
+      pCB->dxeRingsEmpty = eWLAN_PAL_TRUE;
+   }
+   else
+   {
+      pCB->dxeRingsEmpty = eWLAN_PAL_FALSE;
    }
    pCB->dxePhyAddr = dxePhyAddr;
    wptStatus  = wpalEventSet(&pCB->setPowerStateEvent);
@@ -13335,13 +13341,16 @@ WDI_ProcessEnterImpsReq
    wpt_uint8*               pSendBuffer         = NULL;
    wpt_uint16               usDataOffset        = 0;
    wpt_uint16               usSendSize          = 0;
+   WDI_EnterImpsReqParamsType*  pwdiEnterImpsReqParams = NULL;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
    /*-------------------------------------------------------------------------
      Sanity check
    -------------------------------------------------------------------------*/
-   if (( NULL == pEventData ) ||
-       ( NULL == (wdiEnterImpsRspCb   = (WDI_EnterImpsRspCb)pEventData->pCBfnc)))
+   if ((NULL == pEventData ) ||
+       (NULL == (wdiEnterImpsRspCb = (WDI_EnterImpsRspCb)pEventData->pCBfnc)) ||
+       (NULL == (pwdiEnterImpsReqParams =
+                  (WDI_EnterImpsReqParamsType*)pEventData->pEventData)))
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "%s: Invalid parameters", __func__);
@@ -13399,6 +13408,16 @@ WDI_ProcessEnterImpsReq
       goto fail;
    }
 
+   if (pWDICtx->dxeRingsEmpty == eWLAN_PAL_FALSE)
+   {
+      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                "%s: DXE Rings not empty, cannot enter IMPS",__func__);
+
+      goto fail;
+   }
+
+   pWDICtx->wdiReqStatusCB     = pwdiEnterImpsReqParams->wdiReqStatusCB;
+   pWDICtx->pReqStatusUserData = pwdiEnterImpsReqParams->pUserData;
    /*-------------------------------------------------------------------------
      Send Get STA Request to HAL
    -------------------------------------------------------------------------*/
@@ -24418,6 +24437,10 @@ WDI_ExtractRequestCBFromEvent
   case  WDI_EXIT_BMPS_REQ:
     *ppfnReqCB   =  ((WDI_ExitBmpsReqParamsType*)pEvent->pEventData)->wdiReqStatusCB;
     *ppUserData  =  ((WDI_ExitBmpsReqParamsType*)pEvent->pEventData)->pUserData;
+     break;
+  case  WDI_ENTER_IMPS_REQ:
+    *ppfnReqCB   =  ((WDI_EnterImpsReqParamsType*)pEvent->pEventData)->wdiReqStatusCB;
+    *ppUserData  =  ((WDI_EnterImpsReqParamsType*)pEvent->pEventData)->pUserData;
      break;
   case  WDI_ENTER_UAPSD_REQ:
     *ppfnReqCB   =  ((WDI_EnterUapsdReqParamsType*)pEvent->pEventData)->wdiReqStatusCB;
