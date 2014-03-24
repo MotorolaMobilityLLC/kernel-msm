@@ -92,6 +92,7 @@ struct timed_vibrator_data {
 	int gp1_clk_flag;
 	int haptic_en_gpio;
 	int motor_pwm_gpio;
+	int motor_pwm_func;
 	int warmup_ms;
 	int driving_ms;
 	ktime_t last_time;     /* time stamp */
@@ -469,6 +470,13 @@ static int vibrator_parse_dt(struct device *dev,
 		return ret;
 	}
 	vib->motor_pwm_gpio = ret;
+
+	ret = of_property_read_u32(np, "motor-pwm-func",
+			&vib->motor_pwm_func);
+	if (ret < 0) {
+		pr_err("%s: motor-pwm-func failed\n", __func__);
+		return ret;
+	}
 
 	ret = of_property_read_u32(np, "motor-amp", &vib->gain);
 	if (ret < 0) {
@@ -868,8 +876,9 @@ static int msm_pwm_vibrator_resume(struct platform_device *pdev)
 
 	msm_pwm_vibrator_force_set(vib, 0, vib->pwm);
 
-	gpio_tlmm_config(GPIO_CFG(vib->motor_pwm_gpio, 6, GPIO_CFG_INPUT,
-		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
+	gpio_tlmm_config(GPIO_CFG(vib->motor_pwm_gpio, vib->motor_pwm_func,
+		GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+		GPIO_CFG_ENABLE);
 	gpio_tlmm_config(GPIO_CFG(vib->haptic_en_gpio, 0, GPIO_CFG_OUTPUT,
 		GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 
