@@ -221,8 +221,7 @@ static int idletimer_resume(struct notifier_block *notifier,
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		if (timer)
-			get_monotonic_boottime(&timer->last_suspend_time);
+		get_monotonic_boottime(&timer->last_suspend_time);
 		break;
 	case PM_POST_SUSPEND:
 		if (!timer || !timer->active)
@@ -406,7 +405,6 @@ static void idletimer_tg_destroy(const struct xt_tgdtor_param *par)
 		list_del(&info->timer->entry);
 		del_timer_sync(&info->timer->timer);
 		sysfs_remove_file(idletimer_tg_kobj, &info->timer->attr.attr);
-		unregister_pm_notifier(&info->timer->pm_nb);
 		kfree(info->timer->attr.attr.name);
 		kfree(info->timer);
 	} else {
