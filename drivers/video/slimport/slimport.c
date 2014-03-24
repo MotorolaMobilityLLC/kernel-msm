@@ -302,25 +302,9 @@ void sp_tx_hardware_powerdown(void)
 		status = the_chip->hdmi_sp_ops->set_upstream_hpd(
 				the_chip->hdmi_pdev, 0);
 		if (status)
-			pr_err("failed to turn off hpd");
+			pr_err("failed to turn off hpd\n");
 	}
 	pr_info("anx7808 power down\n");
-}
-
-
-static void sp_tx_power_down_and_init(void)
-{
-	sp_tx_vbus_powerdown();
-	sp_tx_power_down(SP_TX_PWR_REG);
-	sp_tx_power_down(SP_TX_PWR_TOTAL);
-	sp_tx_hardware_powerdown();
-	sp_tx_pd_mode = 1;
-	sp_tx_link_config_done = 0;
-	sp_tx_hw_lt_enable = 0;
-	sp_tx_hw_lt_done = 0;
-	sp_tx_rx_type = RX_NULL;
-	sp_tx_rx_type_backup = RX_NULL;
-	sp_tx_set_sys_state(STATE_CABLE_PLUG);
 }
 
 static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
@@ -337,7 +321,7 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 					status = anx7808->hdmi_sp_ops->set_upstream_hpd(
 							anx7808->hdmi_pdev, 1);
 					if (status)
-						pr_err("failed to turn on hpd");
+						pr_err("failed to turn on hpd\n");
 				}
 				sp_tx_pd_mode = 0;
 				sp_tx_hardware_poweron();

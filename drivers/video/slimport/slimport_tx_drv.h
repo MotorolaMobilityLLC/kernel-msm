@@ -131,6 +131,7 @@ void sp_tx_initialization(void);
 void sp_tx_show_infomation(void);
 void hdmi_rx_show_video_info(void);
 void sp_tx_power_down(enum SP_TX_POWER_BLOCK sp_tx_pd_block);
+void sp_tx_power_down_and_init(void);
 void sp_tx_power_on(enum SP_TX_POWER_BLOCK sp_tx_pd_block);
 void sp_tx_avi_setup(void);
 void sp_tx_clean_hdcp(void);

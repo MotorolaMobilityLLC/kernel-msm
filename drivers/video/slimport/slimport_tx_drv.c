@@ -273,6 +273,22 @@ void sp_tx_power_down(enum SP_TX_POWER_BLOCK sp_tx_pd_block)
 	pr_info("sp_tx_power_down");
 }
 
+void sp_tx_power_down_and_init(void)
+{
+	sp_tx_vbus_powerdown();
+	sp_tx_power_down(SP_TX_PWR_REG);
+	sp_tx_power_down(SP_TX_PWR_TOTAL);
+	sp_tx_hardware_powerdown();
+	sp_tx_clean_hdcp();
+	sp_tx_pd_mode = 1;
+	sp_tx_link_config_done = 0;
+	sp_tx_hw_lt_enable = 0;
+	sp_tx_hw_lt_done = 0;
+	sp_tx_rx_type = RX_NULL;
+	sp_tx_rx_type_backup = RX_NULL;
+	sp_tx_set_sys_state(STATE_CABLE_PLUG);
+}
+
 void sp_tx_power_on(enum SP_TX_POWER_BLOCK sp_tx_pd_block)
 {
 	unchar c;
@@ -2715,15 +2731,7 @@ static void sp_tx_auth_done_int_handler(void)
 				if ((sp_tx_system_state >
 					 STATE_CABLE_PLUG)
 					&& (!sp_tx_pd_mode)) {
-					sp_tx_clean_hdcp();
-					sp_tx_power_down(SP_TX_PWR_REG);
-					sp_tx_power_down(SP_TX_PWR_TOTAL);
-					sp_tx_hardware_powerdown();
-					sp_tx_set_sys_state(STATE_CABLE_PLUG);
-					sp_tx_pd_mode = 1;
-					sp_tx_link_config_done = 0;
-					sp_tx_hw_lt_done = 0;
-					sp_tx_hw_lt_enable = 0;
+					sp_tx_power_down_and_init();
 					return;
 				}
 			}
@@ -2734,15 +2742,7 @@ static void sp_tx_auth_done_int_handler(void)
 				 STATE_CABLE_PLUG)
 				&& (!sp_tx_pd_mode)) {
 				sp_tx_hdcp_auth_fail_counter1 = 0;
-				sp_tx_clean_hdcp();
-				sp_tx_power_down(SP_TX_PWR_REG);
-				sp_tx_power_down(SP_TX_PWR_TOTAL);
-				sp_tx_hardware_powerdown();
-				sp_tx_set_sys_state(STATE_CABLE_PLUG);
-				sp_tx_pd_mode = 1;
-				sp_tx_link_config_done = 0;
-				sp_tx_hw_lt_done = 0;
-				sp_tx_hw_lt_enable = 0;
+				sp_tx_power_down_and_init();
 				return;
 			}
 		} else {
@@ -2824,17 +2824,7 @@ static void sp_tx_link_change_int_handler(void)
 			pr_err("Lane clock recovery not done\n");
 		sp_tx_get_cable_type(0);
 		if (sp_tx_rx_type_backup !=  sp_tx_rx_type) {
-			sp_tx_vbus_powerdown();
-			sp_tx_power_down(SP_TX_PWR_REG);
-			sp_tx_power_down(SP_TX_PWR_TOTAL);
-			sp_tx_hardware_powerdown();
-			sp_tx_pd_mode = 1;
-			sp_tx_link_config_done = 0;
-			sp_tx_hw_lt_enable = 0;
-			sp_tx_hw_lt_done = 0;
-			sp_tx_rx_type = RX_NULL;
-			sp_tx_rx_type_backup = RX_NULL;
-			sp_tx_set_sys_state(STATE_CABLE_PLUG);
+			sp_tx_power_down_and_init();
 		} else {
 			if (sp_tx_get_downstream_connection
 				(sp_tx_rx_type)) {
@@ -2847,7 +2837,8 @@ static void sp_tx_link_change_int_handler(void)
 					pr_err("IRQ:_______re-LT request!");
 				}
 			} else {
-				sp_tx_set_sys_state(STATE_CABLE_PLUG);
+				sp_tx_power_down_and_init();
+				pr_err("Lost connection\n");
 			}
 		}
 	}
@@ -2870,18 +2861,7 @@ static void sp_tx_polling_err_int_handler(void)
 
 	if (sp_tx_pd_mode == 0) {
 		pr_err("Cwire polling is corrupted,power down ANX7808.\n");
-		sp_tx_clean_hdcp();
-		sp_tx_vbus_powerdown();
-		sp_tx_power_down(SP_TX_PWR_TOTAL);
-		sp_tx_power_down(SP_TX_PWR_REG);
-		sp_tx_hardware_powerdown();
-		sp_tx_set_sys_state(STATE_CABLE_PLUG);
-		sp_tx_pd_mode = 1;
-		sp_tx_link_config_done = 0;
-		sp_tx_hw_lt_enable = 0;
-		sp_tx_hw_lt_done = 0;
-		sp_tx_rx_type = RX_NULL;
-		sp_tx_rx_type_backup = RX_NULL;
+		sp_tx_power_down_and_init();
 	}
 }
 
@@ -2936,17 +2916,7 @@ static void sp_tx_irq_isr(void)
 					if ((sp_tx_system_state
 						> STATE_CABLE_PLUG)
 						&& (!sp_tx_pd_mode)) {
-						sp_tx_clean_hdcp();
-						sp_tx_power_down(SP_TX_PWR_REG);
-						sp_tx_power_down
-							(SP_TX_PWR_TOTAL);
-						sp_tx_hardware_powerdown();
-						sp_tx_set_sys_state
-							(STATE_CABLE_PLUG);
-						sp_tx_pd_mode = 1;
-						sp_tx_link_config_done = 0;
-						sp_tx_hw_lt_done = 0;
-						sp_tx_hw_lt_enable = 0;
+						sp_tx_power_down_and_init();
 					}
 				}
 			}
@@ -2982,17 +2952,7 @@ static void sp_tx_irq_isr(void)
 
 				sp_tx_get_cable_type(0);
 				if (sp_tx_rx_type_backup !=  sp_tx_rx_type) {
-					sp_tx_vbus_powerdown();
-					sp_tx_power_down(SP_TX_PWR_REG);
-					sp_tx_power_down(SP_TX_PWR_TOTAL);
-					sp_tx_hardware_powerdown();
-					sp_tx_pd_mode = 1;
-					sp_tx_link_config_done = 0;
-					sp_tx_hw_lt_enable = 0;
-					sp_tx_hw_lt_done = 0;
-					sp_tx_rx_type = RX_NULL;
-					sp_tx_rx_type_backup = RX_NULL;
-					sp_tx_set_sys_state(STATE_CABLE_PLUG);
+					sp_tx_power_down_and_init();
 				} else {
 					if (sp_tx_get_downstream_connection
 						(sp_tx_rx_type)) {
@@ -3005,8 +2965,8 @@ static void sp_tx_irq_isr(void)
 							pr_err("INT:re-LT request!\n");
 						}
 					} else {
-						sp_tx_set_sys_state
-							(STATE_CABLE_PLUG);
+						sp_tx_power_down_and_init();
+						pr_err("Lost Connection\n");
 					}
 				}
 			}
@@ -3015,15 +2975,7 @@ static void sp_tx_irq_isr(void)
 			if (!(c & 0x40)) {
 				if ((sp_tx_system_state > STATE_CABLE_PLUG)
 				    && (!sp_tx_pd_mode)) {
-					sp_tx_clean_hdcp();
-					sp_tx_power_down(SP_TX_PWR_REG);
-					sp_tx_power_down(SP_TX_PWR_TOTAL);
-					sp_tx_hardware_powerdown();
-					sp_tx_set_sys_state(STATE_CABLE_PLUG);
-					sp_tx_pd_mode = 1;
-					sp_tx_link_config_done = 0;
-					sp_tx_hw_lt_done = 0;
-					sp_tx_hw_lt_enable = 0;
+					sp_tx_power_down_and_init();
 					return;
 				}
 			}
@@ -3076,16 +3028,7 @@ static void sp_tx_irq_isr(void)
 		if (!(c & 0x01)) {
 			if ((sp_tx_system_state > STATE_CABLE_PLUG)
 			    && (!sp_tx_pd_mode)) {
-				sp_tx_vbus_powerdown();
-				sp_tx_power_down(SP_TX_PWR_TOTAL);
-				sp_tx_power_down(SP_TX_PWR_REG);
-				sp_tx_hardware_powerdown();
-				sp_tx_clean_hdcp();
-				sp_tx_pd_mode = 1;
-				sp_tx_link_config_done = 0;
-				sp_tx_hw_lt_enable = 0;
-				sp_tx_hw_lt_done = 0;
-				sp_tx_set_sys_state(STATE_CABLE_PLUG);
+				sp_tx_power_down_and_init();
 				return;
 			}
 		} else {
@@ -3115,18 +3058,7 @@ static void sp_tx_irq_isr(void)
 
 				sp_tx_get_cable_type(0);
 				if (sp_tx_rx_type_backup != sp_tx_rx_type) {
-					sp_tx_vbus_powerdown();
-					sp_tx_power_down(SP_TX_PWR_REG);
-					sp_tx_power_down(SP_TX_PWR_TOTAL);
-					sp_tx_hardware_powerdown();
-					sp_tx_pd_mode = 1;
-					sp_tx_link_config_done = 0;
-					sp_tx_hw_lt_enable = 0;
-					sp_tx_hw_lt_done = 0;
-					sp_tx_rx_type = RX_NULL;
-					sp_tx_rx_type_backup = RX_NULL;
-					sp_tx_set_sys_state
-						(STATE_CABLE_PLUG);
+					sp_tx_power_down_and_init();
 				} else {
 					if (sp_tx_get_downstream_connection
 						(sp_tx_rx_type)) {
@@ -3141,8 +3073,8 @@ static void sp_tx_irq_isr(void)
 							pr_err("IRQ:re-LT request.\n");
 						}
 					} else {
-						sp_tx_set_sys_state
-						(STATE_CABLE_PLUG);
+						sp_tx_power_down_and_init();
+						pr_err("Lost connection\n");
 					}
 				}
 			}
@@ -3216,18 +3148,7 @@ void sp_tx_hdcp_process(void)
 		if (!sp_tx_get_ds_video_status()) {
 			if (sp_tx_ds_vid_stb_cntr ==
 				SP_TX_DS_VID_STB_TH) {
-				sp_tx_vbus_powerdown();
-				sp_tx_power_down(SP_TX_PWR_REG);
-				sp_tx_power_down(SP_TX_PWR_TOTAL);
-				sp_tx_hardware_powerdown();
-				sp_tx_pd_mode = 1;
-				sp_tx_link_config_done = 0;
-				sp_tx_hw_lt_enable = 0;
-				sp_tx_hw_lt_done = 0;
-				sp_tx_rx_type = RX_NULL;
-				sp_tx_rx_type_backup = RX_NULL;
-				sp_tx_ds_vid_stb_cntr = 0;
-				sp_tx_set_sys_state(STATE_CABLE_PLUG);
+				sp_tx_power_down_and_init();
 			} else {
 				sp_tx_ds_vid_stb_cntr++;
 				msleep(5);
@@ -3268,18 +3189,7 @@ void sp_tx_hdcp_process(void)
 					if ((sp_tx_system_state >
 						 STATE_CABLE_PLUG)
 						&& (!sp_tx_pd_mode)) {
-						sp_tx_clean_hdcp();
-						sp_tx_power_down
-							(SP_TX_PWR_REG);
-						sp_tx_power_down
-							(SP_TX_PWR_TOTAL);
-						sp_tx_hardware_powerdown();
-						sp_tx_set_sys_state
-							(STATE_CABLE_PLUG);
-						sp_tx_pd_mode = 1;
-						sp_tx_link_config_done = 0;
-						sp_tx_hw_lt_done = 0;
-						sp_tx_hw_lt_enable = 0;
+						sp_tx_power_down_and_init();
 						return;
 					}
 				}
@@ -3301,18 +3211,7 @@ void sp_tx_hdcp_process(void)
 					if ((sp_tx_system_state >
 						 STATE_CABLE_PLUG)
 						&& (!sp_tx_pd_mode)) {
-						sp_tx_clean_hdcp();
-						sp_tx_power_down
-							(SP_TX_PWR_REG);
-						sp_tx_power_down
-							(SP_TX_PWR_TOTAL);
-						sp_tx_hardware_powerdown();
-						sp_tx_set_sys_state
-							(STATE_CABLE_PLUG);
-						sp_tx_pd_mode = 1;
-						sp_tx_link_config_done = 0;
-						sp_tx_hw_lt_done = 0;
-						sp_tx_hw_lt_enable = 0;
+						sp_tx_power_down_and_init();
 					}
 				}
 				return;
