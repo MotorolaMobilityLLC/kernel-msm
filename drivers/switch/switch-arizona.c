@@ -89,6 +89,11 @@ struct arizona_extcon_info {
 	bool micd_reva;
 	bool micd_clamp;
 
+	bool micd_manual_debounce;
+	unsigned int micd_res_old;
+	unsigned int micd_res[4];
+	int micd_current;
+
 	struct delayed_work hpdet_work;
 	struct delayed_work micd_detect_work;
 	struct delayed_work micd_timeout_work;
@@ -136,6 +141,10 @@ static const int arizona_micd_levels[] = {
 	105, 111, 116, 122, 127, 139, 150, 161, 173, 186, 196, 209, 220, 245,
 	270, 295, 321, 348, 375, 402, 430, 489, 550, 614, 681, 752, 903, 1071,
 	1257, 30000,
+};
+
+static const int arizona_micd_rates[] = {
+	0, 250, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 128000, 256000,
 };
 
 /* These values are copied from Android WiredAccessoryObserver */
@@ -1017,6 +1026,45 @@ static void arizona_micd_detect(struct work_struct *work)
 		return;
 	}
 
+	if (info->micd_manual_debounce) {
+		if (info->micd_current > 0) {
+			if (info->micd_res[info->micd_current - 1] != val)
+				info->micd_current = 0;
+		}
+
+		info->micd_res[info->micd_current++] = val;
+
+		dev_dbg(arizona->dev, "Manual debounce: %d, 0x%04x\n", info->micd_current, val);
+
+		if (info->micd_current == 4) {
+			info->micd_current = 0;
+
+			if (val == info->micd_res_old)
+				goto handled;
+			info->micd_res_old = val;
+		} else {
+			int delay = arizona_micd_rates[arizona->pdata.micd_rate];
+
+			if (delay >= 32000)
+				msleep(delay / 1000);
+			else if (delay >= 1000)
+				usleep_range(delay, delay);
+			else if (delay)
+				udelay(delay);
+
+			/* Must toggle MICD_ENA to ensure we get a new reading
+			 * even if nothing changes
+			 */
+			regmap_update_bits(arizona->regmap,
+					   ARIZONA_MIC_DETECT_1,
+					   ARIZONA_MICD_ENA, 0);
+			regmap_update_bits(arizona->regmap,
+					   ARIZONA_MIC_DETECT_1,
+					   ARIZONA_MICD_ENA, ARIZONA_MICD_ENA);
+			goto handled;
+		}
+	}
+
 	/* Due to jack detect this should never happen */
 	if (!(val & ARIZONA_MICD_STS)) {
 		dev_warn(arizona->dev, "Detected open circuit\n");
@@ -1169,6 +1217,8 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 	mutex_lock(&info->lock);
 
 	if (!info->detecting)
+		debounce = 0;
+	else if (info->micd_current > 0)
 		debounce = 0;
 
 	switch (arizona->type) {
@@ -1467,11 +1517,22 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 		}
 		break;
 	case WM8280:
-	case WM5110:
 		switch (arizona->rev) {
 		case 0 ... 2:
 			break;
 		default:
+			info->micd_clamp = true;
+			info->hpdet_ip = 2;
+			break;
+		}
+		break;
+	case WM5110:
+		switch (arizona->rev) {
+		case 0 ... 2:
+			info->micd_manual_debounce = true;
+			break;
+		default:
+			info->micd_manual_debounce = true;
 			info->micd_clamp = true;
 			info->hpdet_ip = 2;
 			break;
@@ -1548,17 +1609,27 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 				   arizona->pdata.micd_bias_start_time
 				   << ARIZONA_MICD_BIAS_STARTTIME_SHIFT);
 
-	if (arizona->pdata.micd_rate)
+	if (info->micd_manual_debounce) {
 		regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
-				   ARIZONA_MICD_RATE_MASK,
-				   arizona->pdata.micd_rate
-				   << ARIZONA_MICD_RATE_SHIFT);
+				   ARIZONA_MICD_RATE_MASK, 0);
 
-	if (arizona->pdata.micd_dbtime)
 		regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
-				   ARIZONA_MICD_DBTIME_MASK,
-				   arizona->pdata.micd_dbtime
-				   << ARIZONA_MICD_DBTIME_SHIFT);
+				   ARIZONA_MICD_DBTIME_MASK, 0);
+	} else {
+		if (arizona->pdata.micd_rate)
+			regmap_update_bits(arizona->regmap,
+					   ARIZONA_MIC_DETECT_1,
+					   ARIZONA_MICD_RATE_MASK,
+					   arizona->pdata.micd_rate
+					   << ARIZONA_MICD_RATE_SHIFT);
+
+		if (arizona->pdata.micd_dbtime)
+			regmap_update_bits(arizona->regmap,
+					   ARIZONA_MIC_DETECT_1,
+					   ARIZONA_MICD_DBTIME_MASK,
+					   arizona->pdata.micd_dbtime
+					   << ARIZONA_MICD_DBTIME_SHIFT);
+	}
 
 	BUILD_BUG_ON(ARRAY_SIZE(arizona_micd_levels) <
 		     ARIZONA_NUM_MICD_BUTTON_LEVELS);
