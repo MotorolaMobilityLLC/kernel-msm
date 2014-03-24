@@ -3970,7 +3970,7 @@ static int mxt_handle_pdata(struct mxt_data *data)
 	}
 
 	/* Set default parameters */
-	data->pdata->irqflags = IRQF_TRIGGER_FALLING;
+	data->pdata->irqflags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
 
 	if (data->client->dev.of_node) {
 		error = mxt_parse_dt(data);
