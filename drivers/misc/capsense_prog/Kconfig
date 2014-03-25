@@ -1,0 +1,17 @@
+#
+# Cypress CapSense(TM) devices
+#
+
+config CYPRESS_CAPSENSE_PROGRAMMING
+    tristate "Cypress CapSense Programming Driver"
+    depends on I2C
+    depends on OF
+    help
+      CapSense devices is the analog system contains the capacitive sensing
+      hardware. Several hardware algorithms are supported. This hardware
+      performs capacitive sensing and scanning without requiring external
+      components. It contains internal flash memory, which have to be programmed
+      with firmware. This option enables firmware programming driver and allows
+      automatically identify device and matching firmware. See file
+      Documentation/misc-devices/capsense_prog.txt for details.
+
