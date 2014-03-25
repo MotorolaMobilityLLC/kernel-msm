@@ -19,6 +19,8 @@
 / {
 	qcom,msm-id = <178 0x42 0x8000>,
 		  <178 0x44 0x8000>; /* MAXX */
+
+	/delete-node/ cycapsense_prog;
 };
 
 &pcie0 {
