@@ -395,6 +395,8 @@ struct qpnp_chg_chip {
 	int				ibat_offset_ma;
 	int				step_dwn_offset_ma;
 	unsigned int			step_dwn_thr_mv;
+	unsigned int			ext_set_ibat_ma;
+	unsigned int			ext_set_vddmax_mv;
 };
 
 static void
@@ -1227,18 +1229,28 @@ qpnp_chg_vbatdet_set(struct qpnp_chg_chip *chip, int vbatdet_mv)
 static void
 qpnp_chg_set_appropriate_vbatdet(struct qpnp_chg_chip *chip)
 {
+	unsigned int vbat_det = chip->max_voltage_mv -
+					chip->resume_delta_mv;
+
+	if (chip->ext_set_vddmax_mv)
+		vbat_det = min (vbat_det, chip->ext_set_vddmax_mv -
+					chip->resume_delta_mv);
+
 	if (chip->bat_is_cool)
-		qpnp_chg_vbatdet_set(chip, chip->cool_bat_mv
-			- chip->resume_delta_mv);
-	else if (chip->bat_is_warm)
-		qpnp_chg_vbatdet_set(chip, chip->warm_bat_mv
-			- chip->resume_delta_mv);
-	else if (chip->resuming_charging)
-		qpnp_chg_vbatdet_set(chip, chip->max_voltage_mv
-			+ chip->resume_delta_mv);
-	else
-		qpnp_chg_vbatdet_set(chip, chip->max_voltage_mv
-			- chip->resume_delta_mv);
+		vbat_det = min(vbat_det, chip->cool_bat_mv -
+					chip->resume_delta_mv);
+
+	if (chip->bat_is_warm)
+		vbat_det = min(vbat_det, chip->warm_bat_mv -
+					chip->resume_delta_mv);
+
+	if (chip->resuming_charging &&
+				!chip->bat_is_warm &&
+				!chip->bat_is_cool)
+		vbat_det = chip->max_voltage_mv + chip->resume_delta_mv;
+
+	pr_debug("voltage=%d\n", vbat_det);
+	qpnp_chg_vbatdet_set(chip, vbat_det);
 }
 
 static void
@@ -1250,7 +1262,7 @@ qpnp_arb_stop_work(struct work_struct *work)
 
 	if (!chip->chg_done)
 		qpnp_chg_charge_en(chip, !chip->charging_disabled);
-	qpnp_chg_force_run_on_batt(chip, chip->charging_disabled);
+	qpnp_chg_force_run_on_batt(chip, 0);
 }
 
 static void
@@ -1478,15 +1490,21 @@ qpnp_chg_vddmax_get(struct qpnp_chg_chip *chip)
 static void
 qpnp_chg_set_appropriate_vddmax(struct qpnp_chg_chip *chip)
 {
+	unsigned int vdd_max = chip->max_voltage_mv;
+
+	if (chip->ext_set_vddmax_mv)
+		vdd_max = min (vdd_max, chip->ext_set_vddmax_mv);
+
 	if (chip->bat_is_cool)
-		qpnp_chg_vddmax_and_trim_set(chip, chip->cool_bat_mv,
-				chip->delta_vddmax_mv);
-	else if (chip->bat_is_warm)
-		qpnp_chg_vddmax_and_trim_set(chip, chip->warm_bat_mv,
-				chip->delta_vddmax_mv);
-	else
-		qpnp_chg_vddmax_and_trim_set(chip, chip->max_voltage_mv,
-				chip->delta_vddmax_mv);
+		vdd_max = min(vdd_max, chip->cool_bat_mv);
+
+	if (chip->bat_is_warm)
+		vdd_max = min(vdd_max, chip->warm_bat_mv);
+
+	pr_debug("voltage=%d\n", vdd_max);
+
+	qpnp_chg_vddmax_and_trim_set(chip, vdd_max,
+					chip->delta_vddmax_mv);
 }
 
 #define BATFET_LPM_MASK		0xC0
@@ -2287,6 +2305,14 @@ get_prop_batt_health(struct qpnp_chg_chip *chip)
 	u8 batt_health;
 	int rc;
 
+	if (chip->btc_disabled) {
+		if (chip->bat_is_warm)
+			return POWER_SUPPLY_HEALTH_OVERHEAT;
+		if (chip->bat_is_cool)
+			return POWER_SUPPLY_HEALTH_COLD;
+		return POWER_SUPPLY_HEALTH_GOOD;
+	}
+
 	rc = qpnp_chg_read(chip, &batt_health,
 				chip->bat_if_base + CHGR_STATUS, 1);
 	if (rc) {
@@ -3069,6 +3095,9 @@ qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 {
 	unsigned int chg_current = chip->max_bat_chg_current -
 						chip->ibat_offset_ma;
+
+	if (chip->ext_set_ibat_ma)
+		chg_current = min (chg_current, chip->ext_set_ibat_ma);
 
 	if (chip->bat_is_cool)
 		chg_current = min(chg_current, chip->cool_bat_chg_ma);
@@ -4070,17 +4099,7 @@ qpnp_batt_power_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
 		chip->charging_disabled = !(val->intval);
-		if (chip->charging_disabled) {
-			/* disable charging */
-			qpnp_chg_charge_en(chip, !chip->charging_disabled);
-			qpnp_chg_force_run_on_batt(chip,
-						chip->charging_disabled);
-		} else {
-			/* enable charging */
-			qpnp_chg_force_run_on_batt(chip,
-					chip->charging_disabled);
-			qpnp_chg_charge_en(chip, !chip->charging_disabled);
-		}
+		qpnp_chg_charge_en(chip, !chip->charging_disabled);
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		qpnp_batt_system_temp_level_set(chip, val->intval);
@@ -4097,6 +4116,23 @@ qpnp_batt_power_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN:
 		qpnp_chg_vinmin_set(chip, val->intval / 1000);
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		chip->ext_set_ibat_ma = val->intval / 1000;
+		qpnp_chg_set_appropriate_battery_current(chip);
+		break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		chip->ext_set_vddmax_mv = val->intval / 1000;
+		qpnp_chg_set_appropriate_vddmax(chip);
+		qpnp_chg_set_appropriate_vbatdet(chip);
+		break;
+	case POWER_SUPPLY_PROP_HEALTH:
+		chip->bat_is_warm = false;
+		chip->bat_is_cool = false;
+		if (val->intval == POWER_SUPPLY_HEALTH_OVERHEAT)
+			chip->bat_is_warm = true;
+		else if (val->intval == POWER_SUPPLY_HEALTH_COLD)
+			chip->bat_is_cool = true;
 		break;
 	default:
 		return -EINVAL;
