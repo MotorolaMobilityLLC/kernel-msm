@@ -1,5 +1,4 @@
-/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
- * Copyright (c) 2014 Motorola Mobility LLC
+/* Copyright (c) 2014 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -15,27 +14,9 @@
 
 #include "apq8084-moto-reserve.dtsi"
 #include "apq8084.dtsi"
-#include "apq8084-lexington.dtsi"
+#include "apq8084-quark.dtsi"
 
 / {
-	qcom,msm-id = <178 0x41 0x81a0>;
-	/delete-node/ cycapsense_prog;
-};
-&soc {
-	sound {
-		qcom,ext_hs_detect = "fsa8500";
-	};
-};
-&i2c_8 {
-	/delete-node/ tpa6165xx@40;
-
-	fsa8500@23 {
-		compatible = "fairchild,fsa8500";
-		reg = <0x23>;
-		gpios = <&msmgpio 9 0x0>;
-		hs_det_vdd-supply = <&pma8084_lvs2>;
-		hs_det_micvdd-supply = <&pma8084_l18>;
-		fsa8500-init-regs = <0x0C 0xA1>,
-				    <0x0F 0xF9>;
-	};
+	qcom,msm-id = <178 0x42 0x8200>,
+		  <178 0x44 0x8200>;
 };
