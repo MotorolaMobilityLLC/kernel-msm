@@ -212,6 +212,15 @@ config BATTERY_MAX17042
 	  with MAX17042. This driver also supports max17047/50 chips which are
 	  improved version of max17042.
 
+config BATTERY_MAX17042_DEBUGFS
+	bool "Maxim MAX17042/17047/17050/8997/8966 Fuel Gauge debugfs support"
+	depends on BATTERY_MAX17042 && DEBUG_FS
+	help
+	  Say Y here to enable access to fuel gauge registers through debugfs.
+	  The registers are accessed through addr and data files.
+	  When this is turned on it will be easier to access the part
+	  to debug issues that might exist.
+
 config BATTERY_Z2
 	tristate "Z2 battery driver"
 	depends on I2C && MACH_ZIPIT2
