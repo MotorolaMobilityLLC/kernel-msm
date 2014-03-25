@@ -1284,8 +1284,7 @@ static char *WDI_getHALStatusMsgString(wpt_uint16 halStatusId)
  open both the data and the control transport which in their turn will open
  DXE/SMD or any other drivers that they need.
 
- @param pOSContext: pointer to the OS context provided by the UMAC
-                    will be passed on to PAL on Open
+ @param devHandle: pointer to the OS specific device handle
         ppWDIGlobalCtx: output pointer of Global Context
         pWdiDevCapability: output pointer of device capability
 
@@ -1294,7 +1293,7 @@ static char *WDI_getHALStatusMsgString(wpt_uint16 halStatusId)
 WDI_Status
 WDI_Init
 (
-  void*                      pOSContext,
+  void*                      devHandle,
   void**                     ppWDIGlobalCtx,
   WDI_DeviceCapabilityType*  pWdiDevCapability,
   unsigned int               driverType
@@ -1336,7 +1335,7 @@ WDI_Init
 
   /*Setup the control block */
   WDI_CleanCB(&gWDICb);
-  gWDICb.pOSContext = pOSContext;
+  gWDICb.pOSContext = devHandle ;
 
   /*Setup the STA Table*/
   wdiStatus = WDI_STATableInit(&gWDICb);
@@ -1351,7 +1350,7 @@ WDI_Init
   /*------------------------------------------------------------------------
     Open the PAL
    ------------------------------------------------------------------------*/
-  wptStatus =  wpalOpen(&gWDICb.pPALContext, pOSContext);
+  wptStatus =  wpalOpen(&gWDICb.pPALContext, devHandle);
   if ( eWLAN_PAL_STATUS_SUCCESS != wptStatus )
   {
     WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,

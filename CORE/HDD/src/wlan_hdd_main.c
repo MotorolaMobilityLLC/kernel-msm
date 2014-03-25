@@ -8290,7 +8290,7 @@ int hdd_wlan_startup(struct device *dev )
 
 #endif
 
-   status = vos_open( &pVosContext, 0);
+   status = vos_open( &pVosContext, pHddCtx->parent_dev);
    if ( !VOS_IS_STATUS_SUCCESS( status ))
    {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: vos_open failed", __func__);

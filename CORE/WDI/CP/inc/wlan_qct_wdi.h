@@ -7479,8 +7479,7 @@ typedef void (*WDI_SetBatchScanCb)(void *pData, WDI_SetBatchScanRspType *pRsp);
  open both the data and the control transport which in their turn will open
  DXE/SMD or any other drivers that they need. 
  
- @param pOSContext: pointer to the OS context provided by the UMAC
-                    will be passed on to PAL on Open
+ @param devHandle: pointer to the OS specific device handle
         ppWDIGlobalCtx: output pointer of Global Context
         pWdiDevCapability: output pointer of device capability
 
@@ -7489,7 +7488,7 @@ typedef void (*WDI_SetBatchScanCb)(void *pData, WDI_SetBatchScanRspType *pRsp);
 WDI_Status 
 WDI_Init
 ( 
-  void*                      pOSContext,
+  void*                      devHandle,
   void**                     ppWDIGlobalCtx,
   WDI_DeviceCapabilityType*  pWdiDevCapability,
   unsigned int               driverType

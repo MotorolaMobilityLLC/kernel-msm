@@ -223,7 +223,7 @@ VOS_STATUS WDA_ProcessLPHBConfReq(tWDA_CbContext *pWDA,
  * FUNCTION: WDA_open
  * Allocate the WDA context 
  */ 
-VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t pOSContext,
+VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t devHandle,
                                                 tMacOpenParameters *pMacParams )
 {
    tWDA_CbContext *wdaContext;
@@ -276,7 +276,7 @@ VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t pOSContext,
    }
    vos_trace_setLevel(VOS_MODULE_ID_WDA,VOS_TRACE_LEVEL_ERROR);
    wdaContext->driverMode = pMacParams->driverType;
-   if(WDI_STATUS_SUCCESS != WDI_Init(pOSContext, &wdaContext->pWdiContext, 
+   if(WDI_STATUS_SUCCESS != WDI_Init(devHandle, &wdaContext->pWdiContext,
                                      &wdiDevCapability, pMacParams->driverType))
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,

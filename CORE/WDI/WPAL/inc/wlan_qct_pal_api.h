@@ -49,6 +49,14 @@
 #include "vos_memory.h"
 #endif /* MEMORY_DEBUG */
 
+typedef struct sPalStruct
+{
+   /*?must check the data type*/
+   void* devHandle;
+} tPalContext;
+
+extern tPalContext gContext;
+
 /*********************************MACRO**********************/
 
 // macro to get maximum of two values.
@@ -105,12 +113,11 @@
        ppPalContext – pointer to a caller allocated pointer. It is opaque to caller.
                       Caller save the returned pointer for future use when calling
                       PAL APIs. If this is NULL, it means that PAL doesn't need it.
-       pOSContext - Pointer to a context that is OS specific. This is NULL is a 
-                     particular PAL doesn't use it for that OS.
+       devHandle - pointer to the OS specific device handle
     Return:
        eWLAN_PAL_STATUS_SUCCESS - success. Otherwise fail.
 ---------------------------------------------------------------------------*/
-wpt_status wpalOpen(void **ppPalContext, void *pOSContext);
+wpt_status wpalOpen(void **ppPalContext, void *devHandle);
 
 /*---------------------------------------------------------------------------
     wpalClose - Release PAL
