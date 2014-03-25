@@ -1454,6 +1454,41 @@ static struct msm_gpiomux_config tmp108_configs[] __initdata = {
 	}
 };
 
+static struct gpiomux_setting cycapsense_reset = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct msm_gpiomux_config cycapsence_issp_gpio_configs[] = {
+	/*
+	 * pull down are enabled by default on following pins, they should be
+	 * disabled according Cypress specification for ISSP programming
+	 */
+	{
+		.gpio = 74, /*SCLK*/
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_suspend_config[1],
+			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[1],
+		},
+	},
+	{
+		.gpio = 73, /*SDATA*/
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &gpio_suspend_config[0],
+			[GPIOMUX_SUSPENDED] = &gpio_suspend_config[0],
+		},
+	},
+	{
+		.gpio = 121, /*XRES*/
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cycapsense_reset,
+			[GPIOMUX_SUSPENDED] = &cycapsense_reset,
+		},
+	},
+};
+
 void __init apq8084_moto_init_gpiomux(void)
 {
 	int rc;
@@ -1531,6 +1566,8 @@ void __init apq8084_moto_init_gpiomux(void)
 	msm_gpiomux_install(c55_configs, ARRAY_SIZE(c55_configs));
 
 	msm_gpiomux_install(tmp108_configs, ARRAY_SIZE(tmp108_configs));
+	msm_gpiomux_install(cycapsence_issp_gpio_configs,
+			ARRAY_SIZE(cycapsence_issp_gpio_configs));
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	if (of_board_is_cdp())
