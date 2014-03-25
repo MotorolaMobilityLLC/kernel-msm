@@ -874,7 +874,7 @@ static unsigned int _adreno_iommu_setstate_v1(struct kgsl_device *device,
 					int num_iommu_units, uint32_t flags)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	phys_addr_t ttbr0_val;
+	uint64_t ttbr0_val;
 	unsigned int reg_pt_val;
 	unsigned int *cmds = cmds_orig;
 	int i;
@@ -938,9 +938,14 @@ static unsigned int _adreno_iommu_setstate_v1(struct kgsl_device *device,
 					KGSL_IOMMU_IMPLDEF_MICRO_MMU_CTRL_IDLE,
 					0xF);
 			}
-			/* set ttbr0 */
-			if (sizeof(phys_addr_t) > sizeof(unsigned long)) {
-				reg_pt_val = ttbr0_val & 0xFFFFFFFF;
+			/*
+			 * set ttbr0, only need to set the higer bits if the
+			 * address bits lie in the higher bits
+			 */
+			if (KGSL_IOMMU_CTX_TTBR0_ADDR_MASK &
+				0xFFFFFFFF00000000ULL) {
+				reg_pt_val = (unsigned int)ttbr0_val &
+						0xFFFFFFFF;
 				*cmds++ = cp_type0_packet(ttbr0, 1);
 				*cmds++ = reg_pt_val;
 				reg_pt_val = (unsigned int)
@@ -1005,7 +1010,7 @@ static unsigned int _adreno_iommu_setstate_v2(struct kgsl_device *device,
 					int num_iommu_units, uint32_t flags)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	phys_addr_t ttbr0_val;
+	uint64_t ttbr0_val;
 	unsigned int reg_pt_val;
 	unsigned int *cmds = cmds_orig;
 	int i;
@@ -1047,8 +1052,10 @@ static unsigned int _adreno_iommu_setstate_v2(struct kgsl_device *device,
 					1, 0xFFFFFFFF, 0xF);
 
 			/* set ttbr0 */
-			if (sizeof(phys_addr_t) > sizeof(unsigned int)) {
-				reg_pt_val = ttbr0_val & 0xFFFFFFFF;
+			if (KGSL_IOMMU_CTX_TTBR0_ADDR_MASK &
+				0xFFFFFFFF00000000ULL) {
+				reg_pt_val = (unsigned int)ttbr0_val &
+						0xFFFFFFFF;
 				*cmds++ = cp_type3_packet(CP_REG_WR_NO_CTXT, 2);
 				*cmds++ = ttbr0;
 				*cmds++ = reg_pt_val;
@@ -1357,12 +1364,12 @@ static int adreno_of_get_pwrlevels(struct device_node *parent,
 			&level->bus_freq))
 			goto done;
 
-		if (adreno_of_read_property(child, "qcom,io-fraction",
+		if (of_property_read_u32(child, "qcom,io-fraction",
 			&level->io_fraction))
 			level->io_fraction = 0;
 	}
 
-	if (adreno_of_read_property(parent, "qcom,initial-pwrlevel",
+	if (of_property_read_u32(parent, "qcom,initial-pwrlevel",
 		&pdata->init_level))
 		pdata->init_level = 1;
 
@@ -1494,12 +1501,11 @@ static int adreno_of_get_pdata(struct platform_device *pdev)
 		goto err;
 
 	/* get pm-qos-latency from target, set it to default if not found */
-	if (adreno_of_read_property(pdev->dev.of_node, "qcom,pm-qos-latency",
+	if (of_property_read_u32(pdev->dev.of_node, "qcom,pm-qos-latency",
 		&pdata->pm_qos_latency))
 		pdata->pm_qos_latency = 501;
 
-
-	if (adreno_of_read_property(pdev->dev.of_node, "qcom,idle-timeout",
+	if (of_property_read_u32(pdev->dev.of_node, "qcom,idle-timeout",
 		&pdata->idle_timeout))
 		pdata->idle_timeout = HZ/12;
 
