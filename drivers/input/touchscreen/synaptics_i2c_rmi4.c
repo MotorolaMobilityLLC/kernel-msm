@@ -73,6 +73,8 @@
 
 #define MAX_OFFSET_SIZE 200
 
+#define PALM_DEBOUNCE_MSEC 750
+
 enum device_status {
 	STATUS_NO_ERROR = 0x00,
 	STATUS_RESET_OCCURED = 0x01,
@@ -1144,6 +1146,8 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	unsigned char size_of_2d_data;
 	unsigned short data_addr;
 	bool palm_detected = false;
+	bool touch_detected = false;
+	struct timespec now;
 	int x;
 	int y;
 	int wx;
@@ -1157,6 +1161,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	data_addr = fhandler->full_addr.data_base;
 	extra_data = (struct synaptics_rmi4_f12_extra_data *)fhandler->extra;
 	size_of_2d_data = sizeof(struct synaptics_rmi4_f12_finger_data);
+	get_monotonic_boottime(&now);
 
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			data_addr + extra_data->data1_offset,
@@ -1167,25 +1172,59 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 	data = (struct synaptics_rmi4_f12_finger_data *)fhandler->data;
 
+#ifdef REPORT_2D_W
+	if (rmi4_data->board->palm_detect_threshold) {
+		for (finger = 0; finger < fingers_to_process; finger++) {
+			finger_data = data + finger;
+			finger_status = finger_data->object_type_and_status & MASK_2BIT;
+			if (!finger_status)
+				continue;
+			touch_detected = true;
+			wx = finger_data->wx;
+			wy = finger_data->wy;
+			if (max(wx, wy) > rmi4_data->board->palm_detect_threshold)
+				palm_detected = true;
+		}
+
+		/* Ignore touches until palm removed */
+		if ((rmi4_data->palm_detected && touch_detected) ||
+				timespec_compare(&now, &rmi4_data->palm_debounce) < 0)
+			return 1;
+
+		if (rmi4_data->palm_detected && !touch_detected) {
+			rmi4_data->palm_detected = false;
+			get_monotonic_boottime(&rmi4_data->palm_debounce);
+			timespec_add_ns(&rmi4_data->palm_debounce,
+					PALM_DEBOUNCE_MSEC * NSEC_PER_MSEC);
+			return 0;
+		}
+
+		if (palm_detected) {
+			for (finger = 0; finger < fingers_to_process; finger++) {
+				input_mt_slot(rmi4_data->input_dev, finger);
+				input_mt_report_slot_state(rmi4_data->input_dev,
+							   MT_TOOL_FINGER, 0);
+			}
+
+			input_report_key(rmi4_data->input_dev,
+					 rmi4_data->board->palm_detect_keycode,
+					 1);
+			input_sync(rmi4_data->input_dev);
+
+			input_report_key(rmi4_data->input_dev,
+					 rmi4_data->board->palm_detect_keycode,
+					 0);
+			input_sync(rmi4_data->input_dev);
+
+			rmi4_data->palm_detected = true;
+			return 1;
+		}
+	}
+#endif
+
 	for (finger = 0; finger < fingers_to_process; finger++) {
 		finger_data = data + finger;
 		finger_status = finger_data->object_type_and_status & MASK_2BIT;
-
-#ifdef REPORT_2D_W
-		if (finger_status && rmi4_data->board->palm_detect_threshold) {
-			wx = finger_data->wx;
-			wy = finger_data->wy;
-			if (max(wx, wy) > rmi4_data->board->palm_detect_threshold) {
-				palm_detected = true;
-#ifdef TYPE_B_PROTOCOL
-				input_mt_slot(rmi4_data->input_dev, finger);
-				input_mt_report_slot_state(rmi4_data->input_dev,
-							MT_TOOL_FINGER, 0);
-#endif
-				continue;
-			}
-		}
-#endif
 
 		/*
 		 * Each 2-bit finger status field represents the following:
@@ -1252,18 +1291,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		}
 	}
 
-	if (palm_detected != rmi4_data->palm_detected) {
-		rmi4_data->palm_detected = palm_detected;
-		if (palm_detected) {
-			input_report_key(rmi4_data->input_dev,
-					 rmi4_data->board->palm_detect_keycode,
-					 1);
-			input_report_key(rmi4_data->input_dev,
-					 rmi4_data->board->palm_detect_keycode,
-					 0);
-		}
-	}
-
 	input_report_key(rmi4_data->input_dev,
 			BTN_TOUCH, touch_count > 0);
 	input_report_key(rmi4_data->input_dev,
@@ -1275,7 +1302,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	input_mt_report_pointer_emulation(rmi4_data->input_dev, false);
 	input_sync(rmi4_data->input_dev);
 
-	return palm_detected ? 1 : touch_count;
+	return touch_count;
 }
 
 static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
