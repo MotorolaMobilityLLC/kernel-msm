@@ -66,4 +66,5 @@ obj-y				+= qcom/
 obj-$(CONFIG_HAPTIC_DRV2605)	+= drv2605.o
 obj-$(CONFIG_ALSA_TO_H2W) += alsa-to-h2w-headset.o
 obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
+obj-$(CONFIG_CYPRESS_CAPSENSE_PROGRAMMING)	+= capsense_prog/
 
