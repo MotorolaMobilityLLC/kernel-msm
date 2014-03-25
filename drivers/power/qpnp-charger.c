@@ -3578,7 +3578,8 @@ qpnp_eoc_work(struct work_struct *work)
 			vbat_low_count = 0;
 		}
 
-		if (buck_sts & VDD_LOOP_IRQ)
+		if ((buck_sts & VDD_LOOP_IRQ) &&
+				!chip->bat_is_cool && !chip->bat_is_warm)
 			qpnp_chg_adjust_vddmax(chip, vbat_mv);
 
 		if (!(buck_sts & VDD_LOOP_IRQ)) {
@@ -3587,7 +3588,8 @@ qpnp_eoc_work(struct work_struct *work)
 		} else if ((ibat_ma * -1) > chip->term_current) {
 			pr_debug("Not at EOC, battery current too high\n");
 			count = 0;
-		} else if (ibat_ma > 0) {
+		} else if ((ibat_ma > 0) &&
+				(qpnp_chg_vddmax_get(chip) >= vbat_mv)) {
 			pr_debug("Charging but system demand increased\n");
 			count = 0;
 		} else {
