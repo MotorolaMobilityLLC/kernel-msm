@@ -19,6 +19,8 @@
 
 / {
 	qcom,msm-id = <178 0x41 0x8100>;
+
+	/delete-node/ cycapsense_prog;
 };
 
 &soc {
