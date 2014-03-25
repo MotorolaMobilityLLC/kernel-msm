@@ -36,6 +36,8 @@
 #include <linux/regmap.h>
 #include <linux/of_gpio.h>
 #include <linux/types.h>
+#include <linux/fs.h>
+#include <linux/debugfs.h>
 
 /* Status register bits */
 #define STATUS_POR_BIT         (1 << 1)
@@ -80,6 +82,10 @@ struct max17042_chip {
 	struct work_struct work;
 	int    init_complete;
 	bool batt_undervoltage;
+#ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
+	struct dentry *debugfs_root;
+	u8 debugfs_addr;
+#endif
 };
 
 static enum power_supply_property max17042_battery_props[] = {
@@ -864,6 +870,67 @@ max17042_get_pdata(struct device *dev)
 }
 #endif
 
+#ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
+static int max17042_debugfs_read_addr(void *data, u64 *val)
+{
+	struct max17042_chip *chip = (struct max17042_chip *)data;
+	*val = chip->debugfs_addr;
+	return 0;
+}
+
+static int max17042_debugfs_write_addr(void *data, u64 val)
+{
+	struct max17042_chip *chip = (struct max17042_chip *)data;
+	chip->debugfs_addr = val;
+	return 0;
+}
+DEFINE_SIMPLE_ATTRIBUTE(addr_fops, max17042_debugfs_read_addr,
+			max17042_debugfs_write_addr, "0x%02llx\n");
+
+static int max17042_debugfs_read_data(void *data, u64 *val)
+{
+	struct max17042_chip *chip = (struct max17042_chip *)data;
+	int ret = max17042_read_reg(chip->client, chip->debugfs_addr);
+
+	if (ret < 0)
+		return ret;
+
+	*val = ret;
+	return 0;
+}
+
+static int max17042_debugfs_write_data(void *data, u64 val)
+{
+	struct max17042_chip *chip = (struct max17042_chip *)data;
+	return max17042_write_reg(chip->client, chip->debugfs_addr, val);
+}
+DEFINE_SIMPLE_ATTRIBUTE(data_fops, max17042_debugfs_read_data,
+			max17042_debugfs_write_data, "0x%02llx\n");
+
+static int max17042_debugfs_create(struct max17042_chip *chip)
+{
+	chip->debugfs_root = debugfs_create_dir(dev_name(&chip->client->dev),
+						NULL);
+	if (!chip->debugfs_root)
+		return -ENOMEM;
+
+	if (!debugfs_create_file("addr", S_IRUGO | S_IWUSR, chip->debugfs_root,
+				 chip, &addr_fops))
+		goto err_debugfs;
+
+	if (!debugfs_create_file("data", S_IRUGO | S_IWUSR, chip->debugfs_root,
+				 chip, &data_fops))
+		goto err_debugfs;
+
+	return 0;
+
+err_debugfs:
+	debugfs_remove_recursive(chip->debugfs_root);
+	chip->debugfs_root = NULL;
+	return -ENOMEM;
+}
+#endif
+
 static struct regmap_config max17042_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 16,
@@ -977,12 +1044,24 @@ static int max17042_probe(struct i2c_client *client,
 		chip->init_complete = 1;
 	}
 
+#ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
+	ret = max17042_debugfs_create(chip);
+	if (ret) {
+		dev_err(&client->dev, "cannot create debugfs\n");
+		return ret;
+	}
+#endif
+
 	return 0;
 }
 
 static int max17042_remove(struct i2c_client *client)
 {
 	struct max17042_chip *chip = i2c_get_clientdata(client);
+
+#ifdef CONFIG_BATTERY_MAX17042_DEBUGFS
+	debugfs_remove_recursive(chip->debugfs_root);
+#endif
 
 	if (client->irq)
 		free_irq(client->irq, chip);
