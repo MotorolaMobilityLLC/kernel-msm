@@ -215,6 +215,7 @@ struct log {
 #if defined(CONFIG_LOG_BUF_MAGIC)
 	u32 magic;		/* handle for ramdump analysis tools */
 #endif
+	u8 cpu;			/* which cpu that print the message*/
 };
 
 /*
@@ -410,7 +411,7 @@ static void log_oops_store(struct log *msg)
 static void log_store(int facility, int level,
 		      enum log_flags flags, u64 ts_nsec,
 		      const char *dict, u16 dict_len,
-		      const char *text, u16 text_len)
+		      const char *text, u16 text_len, u32 cpu)
 {
 	struct log *msg;
 	u32 size, pad_len;
@@ -466,6 +467,7 @@ static void log_store(int facility, int level,
 		msg->ts_nsec = local_clock();
 	memset(log_dict(msg) + dict_len, 0, pad_len);
 	msg->len = sizeof(struct log) + text_len + dict_len + pad_len;
+	msg->cpu = (u8)cpu;
 
 	/* insert message */
 	log_next_idx += msg->len;
@@ -1021,7 +1023,7 @@ static bool printk_time;
 #endif
 module_param_named(time, printk_time, bool, S_IRUGO | S_IWUSR);
 
-static size_t print_time(u64 ts, char *buf)
+static size_t print_time(u64 ts, char *buf, u8 cpu)
 {
 	unsigned long rem_nsec;
 
@@ -1031,10 +1033,11 @@ static size_t print_time(u64 ts, char *buf)
 	rem_nsec = do_div(ts, 1000000000);
 
 	if (!buf)
-		return snprintf(NULL, 0, "[%5lu.000000] ", (unsigned long)ts);
+		return snprintf(NULL, 0, "[%5lu.000000,%u] ",
+			(unsigned long)ts, cpu);
 
-	return sprintf(buf, "[%5lu.%06lu] ",
-		       (unsigned long)ts, rem_nsec / 1000);
+	return sprintf(buf, "[%5lu.%06lu,%u] ",
+		       (unsigned long)ts, rem_nsec / 1000, cpu);
 }
 
 static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
@@ -1056,7 +1059,8 @@ static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 		}
 	}
 
-	len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
+	len += print_time(msg->ts_nsec, buf ? buf + len : NULL,
+				msg->cpu);
 	return len;
 }
 
@@ -1693,15 +1697,20 @@ static struct cont {
 	u8 facility;			/* log level of first message */
 	enum log_flags flags;		/* prefix, newline flags */
 	bool flushed:1;			/* buffer sealed and committed */
+	u8 cpu;				/* which cpu is using the cont*/
 } cont;
 
 static void cont_flush(enum log_flags flags)
 {
+	u32 this_cpu;
+
 	if (cont.flushed)
 		return;
 	if (cont.len == 0)
 		return;
 
+	this_cpu = smp_processor_id();
+	cont.cpu = (u8)this_cpu;
 	if (cont.cons) {
 		/*
 		 * If a fragment of this line was directly flushed to the
@@ -1709,7 +1718,8 @@ static void cont_flush(enum log_flags flags)
 		 * line. LOG_NOCONS suppresses a duplicated output.
 		 */
 		log_store(cont.facility, cont.level, flags | LOG_NOCONS,
-			  cont.ts_nsec, NULL, 0, cont.buf, cont.len);
+			  cont.ts_nsec, NULL, 0, cont.buf, cont.len,
+			  this_cpu);
 		cont.flags = flags;
 		cont.flushed = true;
 	} else {
@@ -1718,7 +1728,7 @@ static void cont_flush(enum log_flags flags)
 		 * just submit it to the store and free the buffer.
 		 */
 		log_store(cont.facility, cont.level, flags, 0,
-			  NULL, 0, cont.buf, cont.len);
+			  NULL, 0, cont.buf, cont.len, this_cpu);
 		cont.len = 0;
 	}
 }
@@ -1759,7 +1769,7 @@ static size_t cont_print_text(char *text, size_t size)
 	size_t len;
 
 	if (cont.cons == 0 && (console_prev & LOG_NEWLINE)) {
-		textlen += print_time(cont.ts_nsec, text);
+		textlen += print_time(cont.ts_nsec, text, cont.cpu);
 		size -= textlen;
 	}
 
@@ -1831,7 +1841,7 @@ asmlinkage int vprintk_emit(int facility, int level,
 		printed_len += strlen(recursion_msg);
 		/* emit KERN_CRIT message */
 		log_store(0, 2, LOG_PREFIX|LOG_NEWLINE, 0,
-			  NULL, 0, recursion_msg, printed_len);
+			  NULL, 0, recursion_msg, printed_len, this_cpu);
 	}
 
 	/*
@@ -1887,7 +1897,7 @@ asmlinkage int vprintk_emit(int facility, int level,
 		/* buffer line if possible, otherwise store it right away */
 		if (!cont_add(facility, level, text, text_len))
 			log_store(facility, level, lflags | LOG_CONT, 0,
-				  dict, dictlen, text, text_len);
+				  dict, dictlen, text, text_len, this_cpu);
 	} else {
 		bool stored = false;
 
@@ -1905,7 +1915,7 @@ asmlinkage int vprintk_emit(int facility, int level,
 
 		if (!stored)
 			log_store(facility, level, lflags, 0,
-				  dict, dictlen, text, text_len);
+				  dict, dictlen, text, text_len, this_cpu);
 	}
 	printed_len += text_len;
 
