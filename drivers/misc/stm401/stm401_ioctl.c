@@ -44,7 +44,6 @@
 
 #include <linux/stm401.h>
 
-
 long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
@@ -279,7 +278,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case STM401_IOCTL_SET_ALGOS:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_ALGOS");
-		if (copy_from_user(&bytes, argp, sizeof(bytes))) {
+		if (copy_from_user(&bytes, argp, 2 * sizeof(unsigned char))) {
 			dev_err(&ps_stm401->client->dev,
 				"Copy set algos returned error\n");
 			err = -EFAULT;
@@ -307,7 +306,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		bytes[1] = stm401_readbuff[1];
 		dev_info(&ps_stm401->client->dev,
 			"Get algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
-		if (copy_to_user(argp, bytes, sizeof(bytes)))
+		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
 			err = -EFAULT;
 		break;
 	case STM401_IOCTL_GET_MAG_CAL:
@@ -496,7 +495,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	case STM401_IOCTL_SET_ALGO_REQ:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_SET_ALGO_REQ");
 		/* copy algo into bytes[2] */
-		if (copy_from_user(&bytes, argp, sizeof(bytes))) {
+		if (copy_from_user(&bytes, argp, 2 * sizeof(unsigned char))) {
 			dev_err(&ps_stm401->client->dev,
 				"Set algo req copy bytes returned error\n");
 			err = -EFAULT;
@@ -504,7 +503,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		addr = (bytes[1] << 8) | bytes[0];
 		/* copy len into byte */
-		if (copy_from_user(&byte, argp + sizeof(bytes), sizeof(byte))) {
+		if (copy_from_user(&byte, argp + 2 * sizeof(unsigned char),
+				sizeof(byte))) {
 			dev_err(&ps_stm401->client->dev,
 				"Set algo req copy byte returned error\n");
 			err = -EFAULT;
@@ -524,7 +524,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 		if (copy_from_user(&stm401_cmdbuff[1],
-			argp + sizeof(bytes) + sizeof(byte), byte)) {
+			argp + 2 * sizeof(unsigned char)
+			+ sizeof(byte), byte)) {
 			dev_err(&ps_stm401->client->dev,
 				"Set algo req copy req info returned error\n");
 			err = -EFAULT;
@@ -538,7 +539,7 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 	case STM401_IOCTL_GET_ALGO_EVT:
 		dev_dbg(&ps_stm401->client->dev, "STM401_IOCTL_GET_ALGO_EVT");
 		/* copy algo into bytes[2] */
-		if (copy_from_user(&bytes, argp, sizeof(bytes))) {
+		if (copy_from_user(&bytes, argp, 2 * sizeof(unsigned char))) {
 			dev_err(&ps_stm401->client->dev,
 				"Get algo evt copy bytes returned error\n");
 			err = -EFAULT;
@@ -565,8 +566,8 @@ long stm401_misc_ioctl(struct file *file, unsigned int cmd,
 				"Get algo evt failed\n");
 			break;
 		}
-		if (copy_to_user(argp + sizeof(bytes), stm401_readbuff,
-			stm401_algo_info[addr].evt_size))
+		if (copy_to_user(argp + 2 * sizeof(unsigned char),
+			stm401_readbuff, stm401_algo_info[addr].evt_size))
 			err = -EFAULT;
 		break;
 		case STM401_IOCTL_WRITE_REG:
