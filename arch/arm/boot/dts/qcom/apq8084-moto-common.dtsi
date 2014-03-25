@@ -281,8 +281,9 @@
 	pwmleds {
 		compatible = "pwm-leds";
 		buttons {
-			label = "buttons-backlight";
-			pwms = <&pma8084_lpg2 0 25000>;
+			label = "button-backlight";
+			pwm-names = "button-backlight";
+			pwms = <&pma8084_lpg2 0 25000>;	/* lpg2, ch 0 T=25us */
 			max-brightness = <255>;
 		};
 	};
@@ -448,7 +449,8 @@
 		qcom,mode = <1>; 		/* Digital output */
 		qcom,pull = <0>;		/* No pull */
 		qcom,vin-sel = <2>;		/* PMA8084 S4 = 1.8 V */
-		qcom,src-sel = <0>;
+		qcom,src-sel = <2>;		/* FUNC1 = LPG2 output */
+		qcom,output-type = <0>;		/* CMOS logic */
 	};
 
 	gpio@c500 { /* GPIO 6 */
@@ -908,6 +910,12 @@
 			qcom,pon_3 {
 				qcom,support-reset = <0>;
 			};
+		};
+	};
+
+	qcom,pma8084@1 {
+		pma8084_lpg2: pwm@b200 {
+			#pwm-cells = <2>;
 		};
 	};
 };
