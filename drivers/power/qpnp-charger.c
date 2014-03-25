@@ -3749,6 +3749,9 @@ qpnp_chg_configure_jeita(struct qpnp_chg_chip *chip,
 {
 	int rc = 0;
 
+	if (!chip->cool_bat_decidegc && !chip->warm_bat_decidegc)
+		return -ENODEV;
+
 	if ((temp_degc < MIN_COOL_TEMP) || (temp_degc > MAX_WARM_TEMP)) {
 		pr_err("Bad temperature request %d\n", temp_degc);
 		return -EINVAL;
@@ -4816,7 +4819,8 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 		chip->vbatdet_max_err_mv = VBATDET_MAX_ERR_MV;
 
 	/* Look up JEITA compliance parameters if cool and warm temp provided */
-	if (chip->cool_bat_decidegc || chip->warm_bat_decidegc) {
+	if (chip->cool_bat_decidegc || chip->warm_bat_decidegc
+			|| chip->step_dwn_offset_ma || chip->step_dwn_thr_mv) {
 		chip->adc_tm_dev = qpnp_get_adc_tm(chip->dev, "chg");
 		if (IS_ERR(chip->adc_tm_dev)) {
 			rc = PTR_ERR(chip->adc_tm_dev);
@@ -4831,6 +4835,17 @@ qpnp_charger_read_dt_props(struct qpnp_chg_chip *chip)
 		OF_PROP_READ(chip, cool_bat_mv, "cool-bat-mv", rc, 1);
 		if (rc)
 			return rc;
+	}
+
+	/*
+	 * Set JEITA parameters to normal value for disabling
+	 * JEITA logic if warm and cool temp is not exist.
+	 */
+	if (!chip->cool_bat_decidegc && !chip->warm_bat_decidegc) {
+		chip->warm_bat_chg_ma = chip->max_bat_chg_current;
+		chip->cool_bat_chg_ma = chip->max_bat_chg_current;
+		chip->warm_bat_mv = chip->max_voltage_mv;
+		chip->cool_bat_mv = chip->max_voltage_mv;
 	}
 
 	/* Get the use-external-rsense property */
@@ -5161,10 +5176,13 @@ qpnp_charger_probe(struct spmi_device *spmi)
 			pr_err("batt failed to register rc = %d\n", rc);
 			goto fail_chg_enable;
 		}
-		INIT_WORK(&chip->adc_measure_work,
-			qpnp_bat_if_adc_measure_work);
-		INIT_WORK(&chip->adc_disable_work,
-			qpnp_bat_if_adc_disable_work);
+
+		if (chip->cool_bat_decidegc || chip->warm_bat_decidegc) {
+			INIT_WORK(&chip->adc_measure_work,
+				qpnp_bat_if_adc_measure_work);
+			INIT_WORK(&chip->adc_disable_work,
+				qpnp_bat_if_adc_disable_work);
+		}
 	}
 
 	INIT_DELAYED_WORK(&chip->eoc_work, qpnp_eoc_work);
@@ -5311,8 +5329,10 @@ qpnp_charger_remove(struct spmi_device *spmi)
 	cancel_delayed_work_sync(&chip->usbin_health_check);
 	cancel_delayed_work_sync(&chip->arb_stop_work);
 	cancel_delayed_work_sync(&chip->eoc_work);
-	cancel_work_sync(&chip->adc_disable_work);
-	cancel_work_sync(&chip->adc_measure_work);
+	if (chip->cool_bat_decidegc || chip->warm_bat_decidegc) {
+		cancel_work_sync(&chip->adc_disable_work);
+		cancel_work_sync(&chip->adc_measure_work);
+	}
 	power_supply_unregister(&chip->batt_psy);
 	cancel_work_sync(&chip->batfet_lcl_work);
 	cancel_work_sync(&chip->insertion_ocv_work);
