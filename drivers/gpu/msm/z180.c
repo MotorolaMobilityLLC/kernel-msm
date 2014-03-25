@@ -843,13 +843,29 @@ static int z180_waittimestamp(struct kgsl_device *device,
 				unsigned int msecs)
 {
 	int status = -EINVAL;
+	long timeout = 0;
 
 	/* Don't wait forever, set a max (10 sec) value for now */
 	if (msecs == -1)
 		msecs = 10 * MSEC_PER_SEC;
 
 	mutex_unlock(&device->mutex);
-	status = z180_wait(device, context, timestamp, msecs);
+	timeout = wait_io_event_interruptible_timeout(
+			device->wait_queue,
+			kgsl_check_timestamp(device, context, timestamp),
+			msecs_to_jiffies(msecs));
+
+	if (timeout > 0)
+		status = 0;
+	else if (timeout == 0) {
+		status = -ETIMEDOUT;
+		mutex_lock(&device->mutex);
+		kgsl_pwrctrl_set_state(device, KGSL_STATE_HUNG);
+		kgsl_postmortem_dump(device, 0);
+		mutex_unlock(&device->mutex);
+	} else
+		status = timeout;
+
 	mutex_lock(&device->mutex);
 
 	return status;
