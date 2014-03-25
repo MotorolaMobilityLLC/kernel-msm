@@ -367,7 +367,6 @@ struct qpnp_chg_chip {
 	struct delayed_work		aicl_check_work;
 	struct work_struct		insertion_ocv_work;
 	struct work_struct		vbat_measure_work;
-	struct work_struct		vbat_disable_work;
 	struct qpnp_chg_regulator	otg_vreg;
 	struct qpnp_chg_regulator	boost_vreg;
 	struct qpnp_chg_regulator	batfet_vreg;
@@ -1505,11 +1504,6 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			qpnp_chg_iusbmax_set(chip, QPNP_CHG_I_MAX_MIN_100);
 			chip->prev_usb_max_ma = -EINVAL;
 			chip->aicl_settled = false;
-			if (chip->step_dwn_offset_ma &&
-					chip->step_dwn_thr_mv) {
-				cancel_work_sync(&chip->vbat_measure_work);
-				schedule_work(&chip->vbat_disable_work);
-			}
 		} else {
 			/* when OVP clamped usbin, and then decrease
 			 * the charger voltage to lower than the OVP
@@ -1539,15 +1533,13 @@ qpnp_chg_usb_usbin_valid_irq_handler(int irq, void *_chip)
 			schedule_delayed_work(&chip->eoc_work,
 				msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 			schedule_work(&chip->soc_check_work);
-			if (chip->step_dwn_offset_ma &&
-					chip->step_dwn_thr_mv) {
-				cancel_work_sync(&chip->vbat_disable_work);
-				schedule_work(&chip->vbat_measure_work);
-			}
 		}
 
 		power_supply_set_present(chip->usb_psy, chip->usb_present);
 		schedule_work(&chip->batfet_lcl_work);
+		if (chip->step_dwn_offset_ma &&
+				chip->step_dwn_thr_mv)
+			schedule_work(&chip->vbat_measure_work);
 	}
 
 	return IRQ_HANDLED;
@@ -2805,22 +2797,18 @@ qpnp_vbat_measure_work(struct work_struct *work)
 	struct qpnp_chg_chip *chip = container_of(work,
 				struct qpnp_chg_chip, vbat_measure_work);
 
-	qpnp_chg_set_appropriate_battery_current(chip);
-	chip->vbat_param.high_thr = chip->step_dwn_thr_mv * 1000;
-	chip->vbat_param.state_request = ADC_TM_HIGH_THR_ENABLE;
-	qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
+	if (qpnp_chg_is_usb_chg_plugged_in(chip) ||
+			qpnp_chg_is_dc_chg_plugged_in(chip)) {
+		qpnp_chg_set_appropriate_battery_current(chip);
+		chip->vbat_param.high_thr = chip->step_dwn_thr_mv * 1000;
+		chip->vbat_param.state_request = ADC_TM_HIGH_THR_ENABLE;
+		qpnp_adc_tm_channel_measure(chip->adc_tm_dev,
 						&chip->vbat_param);
-}
-
-static void
-qpnp_vbat_disable_work(struct work_struct *work)
-{
-	struct qpnp_chg_chip *chip = container_of(work,
-				struct qpnp_chg_chip, vbat_disable_work);
-
-	chip->ibat_offset_ma = 0;
-	qpnp_adc_tm_disable_chan_meas(chip->adc_tm_dev,
+	} else {
+		chip->ibat_offset_ma = 0;
+		qpnp_adc_tm_disable_chan_meas(chip->adc_tm_dev,
 						&chip->vbat_param);
+	}
 }
 
 static void
@@ -4910,8 +4898,6 @@ qpnp_charger_probe(struct spmi_device *spmi)
 
 		INIT_WORK(&chip->vbat_measure_work,
 					qpnp_vbat_measure_work);
-		INIT_WORK(&chip->vbat_disable_work,
-					qpnp_vbat_disable_work);
 	}
 
 	rc = qpnp_chg_bat_if_configure_btc(chip);
@@ -4974,10 +4960,8 @@ qpnp_charger_remove(struct spmi_device *spmi)
 							&chip->adc_param);
 	}
 
-	if (chip->step_dwn_offset_ma && chip->step_dwn_thr_mv) {
+	if (chip->step_dwn_offset_ma && chip->step_dwn_thr_mv)
 		cancel_work_sync(&chip->vbat_measure_work);
-		cancel_work_sync(&chip->vbat_disable_work);
-	}
 
 	cancel_delayed_work_sync(&chip->aicl_check_work);
 	power_supply_unregister(&chip->dc_psy);
