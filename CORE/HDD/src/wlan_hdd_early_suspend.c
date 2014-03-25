@@ -62,6 +62,7 @@
 #include <wlan_hdd_dev_pwr.h>
 #include <wlan_nlink_srv.h>
 #include <wlan_hdd_misc.h>
+#include "wlan_qct_wda.h"
 
 #include <linux/semaphore.h>
 #include <wlan_hdd_hostapd.h>
@@ -846,16 +847,19 @@ void hdd_conf_ns_offload(hdd_adapter_t *pAdapter, int fenable)
                        pHddCtx->configuredMcastBcastFilter, i);
 
                     if ((VOS_TRUE == pHddCtx->sus_res_mcastbcast_filter_valid)
-                       && ((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST ==
-                          pHddCtx->sus_res_mcastbcast_filter) ||
-                         (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
-                          pHddCtx->sus_res_mcastbcast_filter)))
+                        && ((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST ==
+                             pHddCtx->sus_res_mcastbcast_filter) ||
+                            (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
+                             pHddCtx->sus_res_mcastbcast_filter)) &&
+                        (!WDA_IS_MCAST_FLT_ENABLE_IN_FW ||
+                         (WDA_IS_MCAST_FLT_ENABLE_IN_FW &&
+                          !(pHddCtx->cfg_ini->fEnableMCAddrList))))
                     {
                         hddLog (VOS_TRACE_LEVEL_INFO,
-                        FL("Set offLoadRequest with"
-                           "SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE"));
+                                FL("Set offLoadRequest with "
+                                   "SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE"));
                         offLoadRequest.enableOrDisable =
-                         SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE;
+                            SIR_OFFLOAD_NS_AND_MCAST_FILTER_ENABLE;
                     }
 
                     vos_mem_copy(&offLoadRequest.params.hostIpv6Addr,
@@ -1192,6 +1196,11 @@ void hdd_mcbc_filter_modification(hdd_context_t* pHddCtx,
     }
 #endif
 
+    if ((pHddCtx->cfg_ini->fEnableMCAddrList) && WDA_IS_MCAST_FLT_ENABLE_IN_FW)
+    {
+        *pMcBcFilter &= ~(HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST);
+    }
+
     pHddCtx->configuredMcastBcastFilter = *pMcBcFilter;
 }
 
@@ -1269,6 +1278,17 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
          */
         wlan_hdd_set_mc_addr_list(pAdapter, TRUE);
 #endif
+
+        if( (pHddCtx->cfg_ini->fEnableMCAddrList) && WDA_IS_MCAST_FLT_ENABLE_IN_FW)
+        {
+
+            hddLog(VOS_TRACE_LEVEL_INFO, "offload: MCaddrlist: FW capability set ");
+            pHddCtx->configuredMcastBcastFilter &=
+                ~(HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST);
+        }
+
+        wlanSuspendParam->configuredMcstBcstFilterSetting =
+            pHddCtx->configuredMcastBcastFilter;
     }
 
     halStatus = sme_ConfigureSuspendInd(pHddCtx->hHal, wlanSuspendParam);

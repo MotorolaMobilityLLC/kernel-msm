@@ -421,31 +421,7 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     /* Ensure HB Status for the session has been reseted */
     psessionEntry->LimHBFailureStatus = eANI_BOOLEAN_FALSE;
-    /** Re Activate Timer if the system is Waiting for ReAssoc Response*/
-    if(((psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) || 
-        (psessionEntry->limSystemRole == eLIM_STA_ROLE) ||
-        (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE)) && 
-       (LIM_IS_CONNECTION_ACTIVE(psessionEntry) ||
-        (limIsReassocInProgress(pMac, psessionEntry))))
-    {
-        if(psessionEntry->LimRxedBeaconCntDuringHB < MAX_NO_BEACONS_PER_HEART_BEAT_INTERVAL)
-            pMac->lim.gLimHeartBeatBeaconStats[psessionEntry->LimRxedBeaconCntDuringHB]++;
-        else
-            pMac->lim.gLimHeartBeatBeaconStats[0]++;
 
-        /****** 
-         * Note: Use this code once you have converted all  
-         * limReactivateHeartBeatTimer() calls to 
-         * limReactivateTimer() calls.
-         * 
-         ******/
-        //limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER, psessionEntry);
-        limReactivateHeartBeatTimer(pMac, psessionEntry);
-
-        // Reset number of beacons received
-        limResetHBPktCount(psessionEntry);
-        return;
-    }
     if (((psessionEntry->limSystemRole == eLIM_STA_ROLE)||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))&&
          (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE))
     {

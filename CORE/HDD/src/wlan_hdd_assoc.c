@@ -63,7 +63,6 @@
 #include "wlan_hdd_tdls.h"
 #endif
 #include "sme_Api.h"
-#include "vos_trace.h"
 
 v_BOOL_t mibIsDot11DesiredBssTypeInfrastructure( hdd_adapter_t *pAdapter );
 
@@ -1164,7 +1163,6 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
     int ft_carrier_on = FALSE;
 #endif
     int status;
-    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
 
     if ( eCSR_ROAM_RESULT_ASSOCIATED == roamResult )
     {
@@ -1455,12 +1453,6 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
         /*Handle all failure conditions*/
         hdd_connSetConnectionState( pHddStaCtx, eConnectionState_NotConnected);
-        /*Connection failure trigger MTRACE */
-        vosTraceEnable(ENABLE_ALL_MODULE_MTRACE, ENABLE_CONNECTION_FAIL_DUMP_LOG);
-        vosTraceDumpAll(hHal, CODE_ARG1_FOR_DUMP_LOG,
-                        SESSION_ARG2_FOR_DUMP_LOG,
-                        NUM_CONNECTION_FAIL_DUMP_LOG_MSG,
-                        ENABLE_ALL_MODULE_MTRACE);
 
         if((pHddCtx->concurrency_mode <= 1) && (pHddCtx->no_of_sessions[WLAN_HDD_INFRA_STATION] <=1))
         {
@@ -1777,8 +1769,6 @@ static eHalStatus roamIbssConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo 
              __func__, pAdapter->dev->name);
       return eHAL_STATUS_FAILURE;
    }
-   /* send ibss join indication to nl80211 */
-   cfg80211_ibss_joined(pAdapter->dev, &pRoamInfo->bssid[0], GFP_KERNEL);
    cfg80211_put_bss(
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,9,0))
                     WLAN_HDD_GET_CTX(pAdapter)->wiphy,

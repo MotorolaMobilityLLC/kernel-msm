@@ -1694,7 +1694,12 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         {
             pMac->roam.configParam.scanAgeTimeCPS = pParam->scanAgeTimeCPS;   
         }
-        
+        if (pParam->initialScanSkipDFSCh)
+        {
+            pMac->roam.configParam.initialScanSkipDFSCh =
+                  pParam->initialScanSkipDFSCh;
+        }
+
         csrAssignRssiForCategory(pMac, CSR_BEST_RSSI_VALUE, pParam->bCatRssiOffset);
         pMac->roam.configParam.nRoamingTime = pParam->nRoamingTime;
         pMac->roam.configParam.fEnforce11dChannels = pParam->fEnforce11dChannels;
@@ -4320,7 +4325,6 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
                     acm_mask = sme_QosGetACMMask(pMac, &pScanResult->Result.BssDescriptor, 
                          pIesLocal);
-                    pCommand->u.roamCmd.roamProfile.uapsd_mask &= ~(acm_mask);
 #endif /* WLAN_MDM_CODE_REDUCTION_OPT*/
                 }
                 else
@@ -5250,6 +5254,12 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
             So moving this after saving the profile
             */
             //csrRoamStateChange( pMac, eCSR_ROAMING_STATE_JOINED );
+
+            /* Reset remainInPowerActiveTillDHCP as it might have been set
+             * by last failed secured connection.
+             * It should be set only for secured connection.
+             */
+            pMac->pmc.remainInPowerActiveTillDHCP = FALSE;
             if( CSR_IS_INFRASTRUCTURE( pProfile ) )
             {
                 pSession->connectState = eCSR_ASSOC_STATE_TYPE_INFRA_ASSOCIATED;
@@ -5334,6 +5344,11 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                     roamInfo.fAuthRequired = eANI_BOOLEAN_TRUE;
                     //Set the subestate to WaitForKey in case authentiation is needed
                     csrRoamSubstateChange( pMac, eCSR_ROAM_SUBSTATE_WAIT_FOR_KEY, sessionId );
+
+                    /* Set remainInPowerActiveTillDHCP to make sure we wait for
+                     * until keys are set before going into BMPS.
+                     */
+                     pMac->pmc.remainInPowerActiveTillDHCP = TRUE;
 
                     if(pProfile->bWPSAssociation)
                     {
@@ -12836,7 +12851,6 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
                     acm_mask = sme_QosGetACMMask(pMac, pBssDescription, pIes);
 #endif /* WLAN_MDM_CODE_REDUCTION_OPT*/
-                    uapsd_mask &= ~(acm_mask);
                 }
                 else
                 {

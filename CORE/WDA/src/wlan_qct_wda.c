@@ -11593,7 +11593,7 @@ VOS_STATUS WDA_TxComplete( v_PVOID_t pVosContext, vos_pkt_t *pData,
    if( NULL!=wdaContext->pTxCbFunc) 
    {
       /*check if packet is freed already*/
-      if(vos_atomic_set_U32(&wdaContext->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED) == (v_U32_t)pData)
+      if(vos_atomic_set((uintptr_t*)&wdaContext->VosPacketToFree, (uintptr_t)WDA_TX_PACKET_FREED) == (uintptr_t)pData)
       {
          wdaContext->pTxCbFunc(pMac, pData); 
       }
@@ -11764,7 +11764,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
           txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
        }
    }
-   vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)pFrmBuf);/*set VosPacket_freed to pFrmBuf*/
+   vos_atomic_set((uintptr_t*)&pWDA->VosPacketToFree, (uintptr_t)pFrmBuf);/*set VosPacket_freed to pFrmBuf*/
 
    /*Set frame tag to 0 
      We will use the WDA user data in order to tag a frame as expired*/
@@ -11779,7 +11779,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR, 
                        "Sending Mgmt Frame failed - status = %d", status);
       pCompFunc(VOS_GET_MAC_CTXT(pWDA->pVosContext), (vos_pkt_t *)pFrmBuf);
-      vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED);/*reset the VosPacket_freed*/
+      vos_atomic_set((uintptr_t*)&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED);/*reset the VosPacket_freed*/
       if( pAckTxComp )
       {
          pWDA->pAckTxCbFunc = NULL;
@@ -11816,8 +11816,8 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       /* check whether the packet was freed already,so need not free again when 
       * TL calls the WDA_Txcomplete routine
       */
-      vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED);
-      /*if(vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED) == (v_U32_t)pFrmBuf) 
+      vos_atomic_set((uintptr_t*)&pWDA->VosPacketToFree, (uintptr_t)WDA_TX_PACKET_FREED);
+      /*if(vos_atomic_set(uintptr_t *)&pWDA->VosPacketToFree, (uintptr_t)WDA_TX_PACKET_FREED) == (v_U32_t)pFrmBuf)
       {
          pCompFunc(VOS_GET_MAC_CTXT(pWDA->pVosContext), (vos_pkt_t *)pFrmBuf);
       } */

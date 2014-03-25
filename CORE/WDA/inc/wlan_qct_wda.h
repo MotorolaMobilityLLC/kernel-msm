@@ -226,6 +226,8 @@ typedef enum {
      (pwlan_hal_update_channel)->reg_info_1 |= ((val&0xff) << 24);     \
      } while(0)
 
+#define WDA_IS_MCAST_FLT_ENABLE_IN_FW (WDA_getFwWlanFeatCaps(WLAN_MCADDR_FLT))
+
 /*--------------------------------------------------------------------------
   Definitions for Data path APIs
  --------------------------------------------------------------------------*/

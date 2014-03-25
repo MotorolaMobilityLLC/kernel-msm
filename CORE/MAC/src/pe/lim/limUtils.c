@@ -7230,8 +7230,7 @@ void limHandleHeartBeatFailureTimeout(tpAniSirGlobal pMac)
 #endif
                 if (psessionEntry->limMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE)
                 {
-                    if ((!LIM_IS_CONNECTION_ACTIVE(psessionEntry))&&
-                                                  (psessionEntry->limSmeState != eLIM_SME_WT_DISASSOC_STATE))
+                    if (psessionEntry->limSmeState != eLIM_SME_WT_DISASSOC_STATE)
                     {
                         limLog(pMac, LOGE, FL("Probe_hb_failure: for session:%d " ),psessionEntry->peSessionId);
                         /* AP did not respond to Probe Request. Tear down link with it.*/

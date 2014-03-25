@@ -106,7 +106,7 @@ eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMg
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     tSmeCmd *tdlsSendMgmtCmd ;
     eHalStatus status = eHAL_STATUS_FAILURE ;
- 
+
     //If connected and in Infra. Only then allow this
     if( CSR_IS_SESSION_VALID( pMac, sessionId ) && 
         csrIsConnStateConnectedInfra( pMac, sessionId ) &&
@@ -125,6 +125,7 @@ eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMg
             tdlsSendMgmtCmdInfo->dialog = tdlsSendMgmt->dialog ;   
             tdlsSendMgmtCmdInfo->statusCode = tdlsSendMgmt->statusCode ;
             tdlsSendMgmtCmdInfo->responder = tdlsSendMgmt->responder;
+            tdlsSendMgmtCmdInfo->peerCapability = tdlsSendMgmt->peerCapability;
             vos_mem_copy(tdlsSendMgmtCmdInfo->peerMac,
                                    tdlsSendMgmt->peerMac, sizeof(tSirMacAddr)) ; 
 
@@ -524,6 +525,7 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tdlsSendMgmtReq->dialog =  tdlsSendMgmtCmdInfo->dialog ;
     tdlsSendMgmtReq->statusCode =  tdlsSendMgmtCmdInfo->statusCode ;
     tdlsSendMgmtReq->responder =  tdlsSendMgmtCmdInfo->responder;
+    tdlsSendMgmtReq->peerCapability = tdlsSendMgmtCmdInfo->peerCapability;
 
     vos_mem_copy(tdlsSendMgmtReq->bssid,
                   pSession->pConnectBssDesc->bssId, sizeof (tSirMacAddr));

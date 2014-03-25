@@ -1531,7 +1531,7 @@ limIbssCoalesce(
          * this function. so we will add additional 1 to compare against
          * pMac->lim.gLimIbssStaLimit
          */
-        if ((pMac->lim.gLimNumIbssPeers+1) >= pMac->lim.gLimIbssStaLimit)
+        if ((pMac->lim.gLimNumIbssPeers+1) > pMac->lim.gLimIbssStaLimit)
         {
             PELOGE(limLog(pMac, LOGE, FL("**** MAX STA LIMIT HAS REACHED ****"));)
             return eSIR_LIM_MAX_STA_REACHED_ERROR;
