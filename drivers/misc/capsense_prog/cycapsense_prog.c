@@ -140,7 +140,7 @@ static ssize_t cycapsense_fw_store(struct device *dev,
 	return count;
 }
 
-static int __devinit cycapsense_validate_gpio(struct device *dev,
+static int cycapsense_validate_gpio(struct device *dev,
 			int gpio, char *name, int dir_out, int out_val)
 {
 	int error;
@@ -165,7 +165,7 @@ f_end:
 }
 static DEVICE_ATTR(cycapsense_fw, 0664, NULL, cycapsense_fw_store);
 
-static int __devinit cycapsense_prog_probe(struct platform_device *pdev)
+static int cycapsense_prog_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
 	int error;
@@ -241,7 +241,7 @@ static int __devinit cycapsense_prog_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int __devexit cycapsense_prog_remove(struct platform_device *pdev)
+static int cycapsense_prog_remove(struct platform_device *pdev)
 {
 	return 0;
 }
@@ -259,7 +259,7 @@ static struct platform_driver cycapsense_prog_driver = {
 		.of_match_table = of_match_ptr(cycapsense_dt_match),
 	},
 	.probe = cycapsense_prog_probe,
-	.remove = __devexit_p(cycapsense_prog_remove),
+	.remove = cycapsense_prog_remove,
 };
 
 
