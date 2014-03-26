@@ -1,0 +1,68 @@
+Battery Temperature Monitor
+
+The battery temperature monitor can restrict charging
+behavior according to the temperature threshold.
+It use the qpnp-adc-tm driver for threshold notification
+and power supply framework interface to control charging
+behavior.
+
+Required properties:
+
+ - compatible : should be "battery_tm"
+ - qcom,batt-tm-adc-tm = phandle of qpnp-adc-tm
+ - qcom,charger = phandle of qpnp-charger
+ - tm,low-vreg-mv = reduced battery regulation voltage in mV
+ - tm,low-current-ma = reduced battery charging current in mA
+ - tm,warm-cfg = array of warm temp threshold, action and health
+
+		< (thr) (next_cool_thr) (next_warm_thr) action  health >
+
+		thr : current temp threshold in 0.1 Celsius degree
+		next_cool_thr : next cool threshold in 0.1 Celsius degree
+		next_warm_thr : next warm threshold in 0.1 Celsius degree
+		action :
+			CHG_ENABLE = 0
+			CHG_DECREASE = 1
+			CHG_STOP = 2
+			CHG_SHUTDOWN = 3
+		health :
+			POWER_SUPPLY_HEALTH_UNKNOWN = 0
+			POWER_SUPPLY_HEALTH_GOOD = 1
+			POWER_SUPPLY_HEALTH_OVERHEAT = 2
+			POWER_SUPPLY_HEALTH_COLD = 7
+
+ - tm,cool-cfg = array of cool temp threshold, action and health
+
+		< (thr) (next_cool_thr) (next_warm_thr) action  health >
+
+		thr : current temp threshold in 0.1 Celsius degree
+		next_cool_thr : next cool threshold in 0.1 Celsius degree
+		next_warm_thr : next warm threshold in 0.1 Celsius degree
+		action :
+			CHG_ENABLE = 0
+			CHG_DECREASE = 1
+			CHG_STOP = 2
+			CHG_SHUTDOWN = 3
+		health :
+			POWER_SUPPLY_HEALTH_UNKNOWN = 0
+			POWER_SUPPLY_HEALTH_GOOD = 1
+			POWER_SUPPLY_HEALTH_OVERHEAT = 2
+			POWER_SUPPLY_HEALTH_COLD = 7
+
+Example:
+	battery_tm {
+		compatible = "battery_tm";
+		status = "ok";
+		qcom,batt-tm-adc_tm = <&pm8226_adc_tm>;
+		qcom,charger = <&pm8226_chg>;
+		tm,low-vreg-mv = <4100>;
+		tm,low-current-ma = <200>;
+		tm,warm-cfg = <
+			 (-50) (-100) (450) 0 1
+			 (450)  (430) (550) 1 2
+			 (550)  (430) (600) 2 2
+			 (600)  (430) (790) 3 2>;
+		tm,cool-cfg = <
+			(-100) (-300) (-50) 2 7
+			 (430) (-100) (450) 0 1>;
+	};
