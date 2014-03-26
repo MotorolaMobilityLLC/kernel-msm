@@ -67,26 +67,18 @@ static tAniBool glimTriggerBackgroundScanDuringQuietBss_Status = eSIR_TRUE;
 
 /* 11A Channel list to decode RX BD channel information */
 static const tANI_U8 abChannel[]= {36,40,44,48,52,56,60,64,100,104,108,112,116,
-            120,124,128,132,136,140,149,153,157,161,165
-#ifdef FEATURE_WLAN_CH144
-                ,144
-#endif
-};
+            120,124,128,132,136,140,149,153,157,161,165,144};
 #define abChannelSize (sizeof(abChannel)/  \
         sizeof(abChannel[0]))
 
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 static const tANI_U8 aUnsortedChannelList[]= {52,56,60,64,100,104,108,112,116,
-            120,124,128,132,136,140,36,40,44,48,149,153,157,161,165
-#ifdef FEATURE_WLAN_CH144
-                ,144
-#endif
-};
+            120,124,128,132,136,140,36,40,44,48,149,153,157,161,165,144};
 #define aUnsortedChannelListSize (sizeof(aUnsortedChannelList)/  \
         sizeof(aUnsortedChannelList[0]))
 #endif
 
-//#define LIM_MAX_ACTIVE_SESSIONS 3  //defined temporarily for BT-AMP SUPPORT 
+//#define LIM_MAX_ACTIVE_SESSIONS 3  //defined temporarily for BT-AMP SUPPORT
 #define SUCCESS 1                   //defined temporarily for BT-AMP
 
 #define MAX_BA_WINDOW_SIZE_FOR_CISCO 25
