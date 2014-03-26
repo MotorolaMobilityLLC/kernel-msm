@@ -1414,7 +1414,7 @@ static void dwc3_chg_detect_work(struct work_struct *w)
 			dwc3_msm_write_readback(mdwc->base,
 					CHARGING_DET_CTRL_REG, 0x1F, 0x10);
 			if (mdwc->ext_chg_opened) {
-				init_completion(&mdwc->ext_chg_wait);
+				complete(&mdwc->ext_chg_wait);
 				mdwc->ext_chg_active = true;
 			}
 		}
