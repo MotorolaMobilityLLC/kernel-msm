@@ -662,7 +662,8 @@ limApplyConfiguration(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     limUpdateConfig(pMac,psessionEntry);
 
-    psessionEntry->shortSlotTimeSupported = limGetShortSlotFromPhyMode(pMac, psessionEntry, phyMode);
+    limGetShortSlotFromPhyMode(pMac, psessionEntry, phyMode,
+                               &psessionEntry->shortSlotTimeSupported);
 
     limSetCfgProtection(pMac, psessionEntry);    
 
