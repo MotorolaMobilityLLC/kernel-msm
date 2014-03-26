@@ -20,7 +20,8 @@
 #include <linux/device.h>
 
 #define IMX135_SENSOR_NAME "imx135"
-#define IMX135_SECONDARY_I2C_ADDRESS 0x34
+#define IMX135_PRIMARY_I2C_ADDRESS 0x34
+#define IMX135_SECONDARY_I2C_ADDRESS 0x20
 DEFINE_MSM_MUTEX(imx135_mut);
 
 static struct msm_sensor_ctrl_t imx135_s_ctrl;
@@ -181,6 +182,10 @@ static int32_t imx135_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	int32_t rc = 0;
 	uint16_t chipid = 0;
 
+	s_ctrl->sensordata->slave_info->sensor_slave_addr =
+		IMX135_PRIMARY_I2C_ADDRESS;
+	s_ctrl->sensor_i2c_client->cci_client->sid =
+		(IMX135_PRIMARY_I2C_ADDRESS >> 1);
 	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
 			s_ctrl->sensor_i2c_client,
 			s_ctrl->sensordata->slave_info->sensor_id_reg_addr,
