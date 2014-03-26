@@ -45,7 +45,7 @@ static int32_t cci_intf_xfer(struct v4l2_subdev *sd,
 
 	if (xfer->cci_bus > 1 || xfer->slave_addr > 0x7F ||
 			xfer->reg.width < 1 || xfer->reg.width > 2 ||
-			xfer->reg.addr > ((2^(8*xfer->reg.width))-1) ||
+			xfer->reg.addr > ((1<<(8*xfer->reg.width))-1) ||
 			xfer->data.count < 1 ||
 			xfer->data.count > MSM_CCI_INTF_MAX_XFER)
 		return -EINVAL;
