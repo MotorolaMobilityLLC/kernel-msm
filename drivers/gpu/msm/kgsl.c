@@ -60,7 +60,7 @@ static void kgsl_mem_entry_detach_process(struct kgsl_mem_entry *entry);
  * kgsl_hang_check() - Check for GPU hang
  * data: KGSL device structure
  *
- * This function is called every KGSL_TIMEOUT_PART time when
+ * This function is called every KGSL_TIMEOUT_HANG_DETECT time when
  * GPU is active to check for hang. If a hang is detected we
  * trigger fault tolerance.
  */
@@ -79,7 +79,7 @@ void kgsl_hang_check(struct work_struct *work)
 			adreno_dump_and_exec_ft(device);
 
 		mod_timer(&device->hang_timer,
-			(jiffies + msecs_to_jiffies(KGSL_TIMEOUT_PART)));
+			(jiffies + msecs_to_jiffies(KGSL_TIMEOUT_HANG_DETECT)));
 	}
 
 	mutex_unlock(&device->mutex);
@@ -92,7 +92,7 @@ void kgsl_hang_check(struct work_struct *work)
  * This function is called when hang timer expires, in this
  * function we check if GPU is in active state and queue the
  * work on device workqueue to check for the hang. We restart
- * the timer after KGSL_TIMEOUT_PART time.
+ * the timer after KGSL_TIMEOUT_HANG_DETECT time.
  */
 void hang_timer(unsigned long data)
 {
