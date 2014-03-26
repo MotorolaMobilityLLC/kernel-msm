@@ -502,6 +502,18 @@ tANI_U8 limGetShortSlotFromPhyMode(tpAniSirGlobal pMac, tpPESession psessionEntr
 void limCleanUpDisassocDeauthReq(tpAniSirGlobal pMac, tANI_U8 *staMac, tANI_BOOLEAN cleanRxPath);
 
 tANI_BOOLEAN limCheckDisassocDeauthAckPending(tpAniSirGlobal pMac, tANI_U8 *staMac);
+
+
+void limUtilsframeshtons(tpAniSirGlobal  pCtx,
+                            tANI_U8  *pOut,
+                            tANI_U16  pIn,
+                            tANI_U8  fMsb);
+
+void limUtilsframeshtonl(tpAniSirGlobal  pCtx,
+                            tANI_U8  *pOut,
+                            tANI_U32  pIn,
+                            tANI_U8  fMsb);
+
 void limUpdateOBSSScanParams(tpPESession psessionEntry ,
              tDot11fIEOBSSScanParameters *pOBSSScanParameters);
 

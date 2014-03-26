@@ -832,10 +832,23 @@ limProcessMlmAssocCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     if (((tLimMlmAssocCnf *) pMsgBuf)->resultCode != eSIR_SME_SUCCESS)
     {
         // Association failure
-        PELOG1(limLog(pMac, LOG1, FL("SessionId:%d Association failure"),
-               psessionEntry->peSessionId);)
-        psessionEntry->limSmeState = eLIM_SME_JOIN_FAILURE_STATE;
-        MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, pMac->lim.gLimSmeState));
+        PELOG1(limLog(pMac, LOG1,
+               FL("SessionId:%d Association failure resultCode: resultCode:%d"
+                   "limSmeState:%d"), psessionEntry->peSessionId,
+                   ((tLimMlmAssocCnf *) pMsgBuf)->resultCode,
+                    psessionEntry->limSmeState);)
+
+        /* If driver gets deauth when its waiting for ADD_STA_RSP then we need
+         * to do DEL_STA followed by DEL_BSS. So based on below reason-code here
+         * we decide whether to do only DEL_BSS or DEL_STA + DEL_BSS
+         */
+        if(((tLimMlmAssocCnf *) pMsgBuf)->resultCode
+                               != eSIR_SME_JOIN_DEAUTH_FROM_AP_DURING_ADD_STA)
+        {
+            psessionEntry->limSmeState = eLIM_SME_JOIN_FAILURE_STATE;
+        }
+        MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId,
+                        pMac->lim.gLimSmeState));
         /**
          * Need to send Join response with
          * Association failure to Host.
@@ -1882,7 +1895,19 @@ void limProcessStaMlmAddStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESess
     {
       PELOGE(limLog(pMac, LOGE,
            FL("Received Deauth frame in ADD_STA_RESP state"));)
-       pAddStaParams->status = eHAL_STATUS_FAILURE;
+
+      if (eHAL_STATUS_SUCCESS == pAddStaParams->status)
+      {
+          PELOGE(limLog(pMac, LOGE,
+              FL("ADD_STA success, send update result code with"
+                  "eSIR_SME_JOIN_DEAUTH_FROM_AP_DURING_ADD_STA staIdx: %d"
+                  "limMlmState: %d"), pAddStaParams->staIdx,
+                   psessionEntry->limMlmState);)
+          mlmAssocCnf.resultCode =
+              (tSirResultCodes) eSIR_SME_JOIN_DEAUTH_FROM_AP_DURING_ADD_STA;
+          psessionEntry->staId = pAddStaParams->staIdx;
+          goto end;
+      }
     }
 
     if ( eHAL_STATUS_SUCCESS == pAddStaParams->status )

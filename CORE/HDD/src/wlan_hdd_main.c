@@ -8740,10 +8740,9 @@ err_vos_nv_close:
 
 #ifdef CONFIG_ENABLE_LINUX_REG
    vos_nv_close();
-#endif
 
 err_clkvote:
-
+#endif
    vos_chipVoteOffXOBuffer(NULL, NULL, NULL);
 
 err_wdclose:
