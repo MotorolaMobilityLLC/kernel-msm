@@ -33,3 +33,8 @@
 &dsi_nt35590_qvga_cmd {
 	qcom,cont-splash-enabled;
 };
+
+&mdss_fb0 {
+	/* cont_splash memory*/
+	qcom,memblock-reserve = <0x04200000 0x64000>;
+};
