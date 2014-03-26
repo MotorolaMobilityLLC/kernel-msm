@@ -72,6 +72,10 @@
 				"CAM_AVDD",
 				"CAM_VDIG";
 	};
+
+	qcom,camera@6c {
+		status = "disabled";
+	};
 };
 
 &i2c_0 {
