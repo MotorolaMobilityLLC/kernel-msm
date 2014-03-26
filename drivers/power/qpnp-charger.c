@@ -2481,7 +2481,7 @@ get_prop_capacity(struct qpnp_chg_chip *chip)
 		}
 		if (soc == 0) {
 			if (!qpnp_chg_is_usb_chg_plugged_in(chip)
-				&& !qpnp_chg_is_usb_chg_plugged_in(chip))
+				&& !qpnp_chg_is_dc_chg_plugged_in(chip))
 				pr_warn_ratelimited("Battery 0, CHG absent\n");
 		}
 		return soc;
