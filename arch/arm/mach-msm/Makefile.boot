@@ -85,6 +85,7 @@ dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-abbagoochie-p2.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-abbagoochie-p3.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-victara-p0.dtb
 dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-valocia-p0.dtb
+dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974pro-ab-victara-p1b.dtb
 
 # APQ8084
    zreladdr-$(CONFIG_ARCH_APQ8084)	:= 0x00008000
