@@ -448,7 +448,7 @@ wpt_status wpalWriteRegister
 {
    /* if SSR is in progress, and WCNSS is not out of reset (re-init
     * not invoked), then do not access WCNSS registers */
-   if (NULL == gpEnv ||
+   if (NULL == gpEnv || wcnss_device_is_shutdown() ||
         (vos_is_logp_in_progress(VOS_MODULE_ID_WDI, NULL) &&
             !vos_is_reinit_in_progress(VOS_MODULE_ID_WDI, NULL))) {
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
@@ -499,7 +499,7 @@ wpt_status wpalReadRegister
 {
    /* if SSR is in progress, and WCNSS is not out of reset (re-init
     * not invoked), then do not access WCNSS registers */
-   if (NULL == gpEnv ||
+   if (NULL == gpEnv || wcnss_device_is_shutdown() ||
         (vos_is_logp_in_progress(VOS_MODULE_ID_WDI, NULL) &&
             !vos_is_reinit_in_progress(VOS_MODULE_ID_WDI, NULL))) {
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
@@ -553,7 +553,7 @@ wpt_status wpalWriteDeviceMemory
 {
    /* if SSR is in progress, and WCNSS is not out of reset (re-init
     * not invoked), then do not access WCNSS registers */
-   if (NULL == gpEnv ||
+   if (NULL == gpEnv || wcnss_device_is_shutdown() ||
         (vos_is_logp_in_progress(VOS_MODULE_ID_WDI, NULL) &&
             !vos_is_reinit_in_progress(VOS_MODULE_ID_WDI, NULL))) {
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
@@ -601,7 +601,7 @@ wpt_status wpalReadDeviceMemory
 {
    /* if SSR is in progress, and WCNSS is not out of reset (re-init
     * not invoked), then do not access WCNSS registers */
-   if (NULL == gpEnv ||
+   if (NULL == gpEnv || wcnss_device_is_shutdown() ||
         (vos_is_logp_in_progress(VOS_MODULE_ID_WDI, NULL) &&
             !vos_is_reinit_in_progress(VOS_MODULE_ID_WDI, NULL))) {
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
