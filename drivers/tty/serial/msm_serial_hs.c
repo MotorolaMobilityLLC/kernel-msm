@@ -434,17 +434,16 @@ static int msm_hs_clock_vote(struct msm_hs_port *msm_uport)
 
 static void msm_hs_clock_unvote(struct msm_hs_port *msm_uport)
 {
-	int rc = atomic_dec_return(&msm_uport->clk_count);
+	int rc = atomic_read(&msm_uport->clk_count);
 
-	if (rc < 0) {
-		msm_hs_bus_voting(msm_uport, BUS_RESET);
+	if (rc <= 0) {
 		WARN(rc, "msm_uport->clk_count < 0!");
 		dev_err(msm_uport->uport.dev,
-			"%s: Clocks count invalid  [%d]\n", __func__,
-			atomic_read(&msm_uport->clk_count));
+			"%s: Clocks count invalid  [%d]\n", __func__, rc);
 		return;
 	}
 
+	rc = atomic_dec_return(&msm_uport->clk_count);
 	if (0 == rc) {
 		/* Turn off the core clk and iface clk*/
 		clk_disable_unprepare(msm_uport->clk);
@@ -2698,6 +2697,8 @@ static int msm_hs_startup(struct uart_port *uport)
 	/* Initialize the tx */
 	tx->tx_ready_int_en = 0;
 	tx->dma_in_flight = 0;
+	msm_uport->tty_flush_receive = false;
+	MSM_HS_DBG("%s: Setting tty_flush_receive to false\n", __func__);
 
 	if (!is_blsp_uart(msm_uport)) {
 		tx->xfer.complete_func = msm_hs_dmov_tx_callback;
@@ -2720,7 +2721,7 @@ static int msm_hs_startup(struct uart_port *uport)
 	msm_uport->imr_reg |= UARTDM_ISR_CURRENT_CTS_BMSK;
 
 	/* TXLEV on empty TX fifo */
-	msm_hs_write(uport, UART_DM_TFWR, 0);
+	msm_hs_write(uport, UART_DM_TFWR, 4);
 	/*
 	 * Complete all device write related configuration before
 	 * queuing RX request. Hence mb() requires here.
@@ -3614,12 +3615,12 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	 */
 	mb();
 
+	msm_hs_clock_unvote(msm_uport);
 	if (msm_uport->clk_state != MSM_HS_CLK_OFF) {
 		/* to balance clk_state */
 		msm_hs_clock_unvote(msm_uport);
 		wake_unlock(&msm_uport->dma_wake_lock);
 	}
-	msm_hs_clock_unvote(msm_uport);
 
 	msm_uport->clk_state = MSM_HS_CLK_PORT_OFF;
 	dma_unmap_single(uport->dev, msm_uport->tx.dma_base,
