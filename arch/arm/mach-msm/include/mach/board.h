@@ -540,6 +540,8 @@ struct msm_i2c_platform_data {
 	int aux_clk;
 	int aux_dat;
 	int src_clk_rate;
+	int noise_rjct_sda;
+	int noise_rjct_scl;
 	int use_gsbi_shared_mode;
 	int keep_ahb_clk_on;
 	void (*msm_i2c_config_gpio)(int iface, int config_type);
