@@ -3113,6 +3113,7 @@ qpnp_chg_set_appropriate_battery_current(struct qpnp_chg_chip *chip)
 	qpnp_chg_ibatmax_set(chip, chg_current);
 }
 
+#define STEPUP_OFFSET_MV 200
 static void
 qpnp_chg_vbat_notification(enum qpnp_tm_state state, void *ctx)
 {
@@ -3126,7 +3127,7 @@ qpnp_chg_vbat_notification(enum qpnp_tm_state state, void *ctx)
 		chip->ibat_offset_ma = chip->step_dwn_offset_ma;
 		chip->vbat_param.state_request = ADC_TM_LOW_THR_ENABLE;
 		chip->vbat_param.low_thr =
-				(chip->step_dwn_thr_mv - 150) * 1000;
+			(chip->step_dwn_thr_mv - STEPUP_OFFSET_MV) * 1000;
 	} else {
 		chip->ibat_offset_ma = 0;
 		chip->vbat_param.state_request = ADC_TM_HIGH_THR_ENABLE;
