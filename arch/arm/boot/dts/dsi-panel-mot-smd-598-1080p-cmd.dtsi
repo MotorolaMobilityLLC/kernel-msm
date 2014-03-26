@@ -92,6 +92,11 @@
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 
+		qcom,mdss-dsi-hbm-on-command = [
+				15 01 00 00 00 00 02 53 e0];
+		qcom,mdss-dsi-hbm-off-command = [
+				15 01 00 00 00 00 02 53 20];
+
 		qcom,panel-en-reset-sequence = <1 11>;
 		qcom,panel-dis-reset-sequence = <0 1>;
 		qcom,platform-supply-entry1 {
