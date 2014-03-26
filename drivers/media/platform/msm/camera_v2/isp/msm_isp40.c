@@ -1141,7 +1141,7 @@ static long msm_vfe40_axi_halt(struct vfe_device *vfe_dev)
 	msm_camera_io_w_mb(halt_mask, vfe_dev->vfe_base + 0x2C);
 	init_completion(&vfe_dev->halt_complete);
 	msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x2C0);
-	return wait_for_completion_interruptible_timeout(
+	return wait_for_completion_timeout(
 		&vfe_dev->halt_complete, msecs_to_jiffies(500));
 }
 
