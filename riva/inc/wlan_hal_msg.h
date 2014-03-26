@@ -1,29 +1,29 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
- *
- * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
- *
- *
- * Permission to use, copy, modify, and/or distribute this software for
- * any purpose with or without fee is hereby granted, provided that the
- * above copyright notice and this permission notice appear in all
- * copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
- * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
- * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */
+* Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+*
+* Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+*
+*
+* Permission to use, copy, modify, and/or distribute this software for
+* any purpose with or without fee is hereby granted, provided that the
+* above copyright notice and this permission notice appear in all
+* copies.
+*
+* THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+* WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+* WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+* AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+* DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+* PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+* TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+* PERFORMANCE OF THIS SOFTWARE.
+*/
 
 /*
- * This file was originally distributed by Qualcomm Atheros, Inc.
- * under proprietary terms before Copyright ownership was assigned
- * to the Linux Foundation.
- */
+* This file was originally distributed by Qualcomm Atheros, Inc.
+* under proprietary terms before Copyright ownership was assigned
+* to the Linux Foundation.
+*/
 
 /*==========================================================================
  *
@@ -83,7 +83,7 @@ typedef tANI_U8 tHalIpv4Addr[4];
 #define HAL_MAC_ADDR_LEN        6
 #define HAL_IPV4_ADDR_LEN       4
 
-#define WALN_HAL_STA_INVALID_IDX 0xFF
+#define WLAN_HAL_STA_INVALID_IDX 0xFF
 #define WLAN_HAL_BSS_INVALID_IDX 0xFF
 
 //Default Beacon template size
@@ -117,10 +117,10 @@ typedef tANI_U8 tHalIpv4Addr[4];
 #define WLAN_HAL_VERSION_LENGTH  64
 
 #define WLAN_HAL_ROAM_SCAN_MAX_PROBE_SIZE     450
-/* 80 is actually NUM_RF_CHANNELS_V2, but beyond V2,
- * this number will be ignored by FW */
+/* 80 is actually NUM_RF_CHANNELS_V2, but beyond V2, this number will be ignored by FW */
 #define WLAN_HAL_ROAM_SCAN_MAX_CHANNELS       80
-#define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     56
+#define WLAN_HAL_ROAM_SACN_PMK_SIZE           32
+#define WLAN_HAL_ROAM_SCAN_RESERVED_BYTES     20
 
 /* Message types for messages exchanged between WDI and HAL */
 typedef enum 
@@ -440,7 +440,16 @@ typedef enum
    /* Multi-hop IP routing offload */
    WLAN_HAL_IP_FORWARD_TABLE_UPDATE_IND     = 232,
 
+   /* Channel avoidance for LTE Coex */
    WLAN_HAL_AVOID_FREQ_RANGE_IND            = 233,
+
+   /* Fast Roam Offload Synchup request protocol */
+   /* TODO_LFR3 : change this value accordingly before final check-in */
+   WLAN_HAL_ROAM_OFFLOAD_SYNCH_IND          = 234,
+   WLAN_HAL_ROAM_OFFLOAD_SYNCH_CNF          = 235,
+
+   WLAN_HAL_MOTION_START_EVENT_REQ          = 250,
+   WLAN_HAL_MOTION_STOP_EVENT_REQ           = 251,
 
    /* Channel Switch Request version 1 */
    WLAN_HAL_CH_SWITCH_V1_REQ                = 252,
@@ -448,7 +457,14 @@ typedef enum
 
    /* 2G4 HT40 OBSS scan */
    WLAN_HAL_START_HT40_OBSS_SCAN_IND        = 254,
-   WLAN_HAL_STOP_HT40_OBSS_SCAN_IND         = 255,
+   WLAN_HAL_STOP_HT40_OBSS_SCAN_IND         = 255,/* next free entry in tHalHostMsgType. */
+
+   /* WLAN NAN Messages */
+   WLAN_HAL_NAN_FIRST                       = 256,
+   WLAN_HAL_NAN_REQ                         = WLAN_HAL_NAN_FIRST,
+   WLAN_HAL_NAN_RSP                         = 257,
+   WLAN_HAL_NAN_EVT                         = 258,
+   WLAN_HAL_NAN_LAST                        = WLAN_HAL_NAN_EVT,
 
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
@@ -512,6 +528,7 @@ typedef enum
    eHAL_CHANNEL_SWITCH_SOURCE_JOIN_REQ,
    eHAL_CHANNEL_SWITCH_SOURCE_INNAV,
    eHAL_CHANNEL_SWITCH_SOURCE_WCA,
+   eHAL_CHANNEL_SWITCH_SOURCE_MLME,
    eHAL_CHANNEL_SWITCH_SOURCE_MAX = WLAN_HAL_MAX_ENUM_SIZE
 } eHalChanSwitchSource;
 
@@ -659,6 +676,9 @@ typedef enum eSriLinkState {
 #ifdef WLAN_FEATURE_P2P
     eSIR_LINK_LISTEN_STATE      = 14,
     eSIR_LINK_SEND_ACTION_STATE = 15,
+#endif
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+    eSIR_LINK_FT_PREASSOC_STATE = 16,
 #endif
     eSIR_LINK_MAX = WLAN_HAL_MAX_ENUM_SIZE
 } tSirLinkState;
@@ -2440,13 +2460,15 @@ typedef PACKED_PRE struct PACKED_POST
      * Since MTU timing and EDCA are sessionized, this struct needs to be
      * sessionized and bssid needs to be out of the VOWifi feature flag
      * V IMP: Keep bssId field at the end of this msg. It is used to
-     * mantain backward compatbility by way of ignoring if using new
-     * host/old FW or old host/new FW since it is at the end of this struct
+     * mantain backward compatbility
+     * by way of ignoring if using new host/old FW or old host/new FW since
+     * it is at the end of this struct
      */
     tSirMacAddr bssId;
 
     /* Source of Channel Switch */
     eHalChanSwitchSource channelSwitchSrc;
+
 } tSwitchChannelParams_V1, *tpSwitchChannelParams_V1;
 
 typedef PACKED_PRE struct PACKED_POST
@@ -2454,7 +2476,6 @@ typedef PACKED_PRE struct PACKED_POST
     tHalMsgHeader header;
     tSwitchChannelParams_V1 switchChannelParams_V1;
 } tSwitchChannelReqMsg_V1, *tpSwitchChannelReqMsg_V1;
-
 
 /*---------------------------------------------------------------------------
 WLAN_HAL_CH_SWITCH_V1_RSP
@@ -3686,6 +3707,10 @@ typedef PACKED_PRE struct PACKED_POST
    tANI_U8  bssIdx;
    tANI_U8  uReasonCode;
    tANI_U32  uStatus;
+#ifdef WLAN_FEATURE_ROAM_OFFLOAD
+   tANI_U8  staAddr[6];
+   tANI_U8  bssId[6];
+#endif
 } tIndicateDelSta, *tpIndicateDelSta;
 
 /*---------------------------------------------------------------------------
@@ -4634,6 +4659,9 @@ typedef PACKED_PRE struct PACKED_POST
     tANI_U32             uBssIdx             : 8;
     tANI_U32             isBTCoexCompromise  : 1;
     tANI_U32             bReserved           : 9;
+    tANI_S8              refRssiThreshold1;
+    tANI_S8              refRssiThreshold2;
+    tANI_S8              refRssiThreshold3;
 } tHalRSSINotification, *tpHalRSSINotification;
 
 typedef PACKED_PRE struct PACKED_POST
@@ -5054,6 +5082,15 @@ typedef PACKED_PRE struct PACKED_POST
 
 typedef PACKED_PRE struct PACKED_POST
 {
+    tHalMsgHeader header;
+    tAddStaSelfParams addStaSelfParams;
+}tAddStaSelfReq, *tpAddStaSelfReq;
+
+/* This V1 structure carries additionally the IFACE PERSONA
+   of the interface as compared to the legacy control
+   message */
+typedef PACKED_PRE struct PACKED_POST
+{
   tSirMacAddr selfMacAddr;
   tANI_U32    status;
   tHalIfacePersona iface_persona;
@@ -5062,11 +5099,8 @@ typedef PACKED_PRE struct PACKED_POST
 typedef PACKED_PRE struct PACKED_POST
 {
     tHalMsgHeader header;
-    PACKED_PRE union PACKED_POST {
-    tAddStaSelfParams addStaSelfParams;
     tAddStaSelfParams_V1 addStaSelfParams_V1;
-    }uAddStaSelfParams;
-}tAddStaSelfReq, *tpAddStaSelfReq;
+}tAddStaSelfReq_V1, *tpAddStaSelfReq_V1;
 
 /*---------------------------------------------------------------------------
 *WLAN_HAL_ADD_SELF_STA_RSP
@@ -5714,6 +5748,11 @@ typedef PACKED_PRE struct PACKED_POST {
    tANI_U16          HomeAwayTime;
    eAniBoolean       MAWCEnabled;
    tANI_S8           RxSensitivityThreshold;
+   tANI_U8           RoamOffloadEnabled;
+   tANI_U8           PMK[WLAN_HAL_ROAM_SACN_PMK_SIZE];
+   tANI_U8           Prefer5GHz;
+   tANI_U8           RoamRssiCatGap;
+   tANI_U8           Select5GHzMargin;
    tANI_U8           ReservedBytes[WLAN_HAL_ROAM_SCAN_RESERVED_BYTES];
    tRoamNetworkType  ConnectedNetwork;
    tMobilityDomainInfo MDID;
@@ -6215,7 +6254,9 @@ typedef enum {
     CH_SWITCH_V1           = 33,
     HT40_OBSS_SCAN         = 34,
     UPDATE_CHANNEL_LIST    = 35,
-
+    WLAN_MCADDR_FLT        = 36,
+    WLAN_CH144             = 37,
+    NAN                    = 38,
     MAX_FEATURE_SUPPORTED  = 128,
 } placeHolderInCapBitmap;
 
@@ -6893,11 +6934,11 @@ typedef enum {
 #define WLAN_HAL_CHAN_CHANGE_CAUSE_CSA 13  /* Indicate reason for channel switch */
 
 #define WLAN_HAL_SET_CHANNEL_FLAG(pwlan_hal_update_channel,flag) do { \
-        (pwlan_hal_update_channel)->channel_info |=  (1 << flag);      \
+        (pwlan_hal_update_channel)->info |=  (1 << flag);      \
      } while(0)
 
 #define WLAN_HAL_GET_CHANNEL_FLAG(pwlan_hal_update_channel,flag)   \
-        (((pwlan_hal_update_channel)->channel_info & (1 << flag)) >> flag)
+        (((pwlan_hal_update_channel)->info & (1 << flag)) >> flag)
 
 #define WLAN_HAL_SET_CHANNEL_MIN_POWER(pwlan_hal_update_channel,val) do { \
      (pwlan_hal_update_channel)->reg_info_1 &= 0xffffff00;           \
@@ -7020,6 +7061,129 @@ typedef PACKED_PRE struct PACKED_POST
 } tWlanIpForwardTableUpdateInd;
 
 /*---------------------------------------------------------------------------
+ * WLAN_HAL_ROAM_OFFLOAD_SYNCH_IND
+ *-------------------------------------------------------------------------*/
+typedef enum
+{
+    /* reassociation is done, but couldn't finish security handshake */
+    WLAN_HAL_ROAM_AUTH_STATUS_CONNECTED = 1,
+
+    /* roam has successfully completed by firmware */
+    WLAN_HAL_ROAM_AUTH_STATUS_AUTHENTICATED = 2,
+
+    /* UNKONW error */
+    WLAN_HAL_ROAM_AUTH_STATUS_UNKONWN = WLAN_HAL_MAX_ENUM_SIZE
+}tHalRoamOffloadRoamAuthStatus;
+
+typedef enum
+{
+    WLAN_HAL_ROAM_TYPE_WPA_PSK,
+    WLAN_HAL_ROAM_TYPE_WPA2_PSK,
+    WLAN_HAL_ROAM_TYPE_OKC,
+    WLAN_HAL_ROAM_TYPE_CCKM,
+    WLAN_HAL_ROAM_TYPE_FT,
+    WLAN_HAL_ROAM_TYPE_MAX = WLAN_HAL_MAX_ENUM_SIZE
+} tHalRoamOffloadType;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    /* Offset of beacon / probe resp in this structure. Offset from the starting of the message */
+    tANI_U16 beaconProbeRespOffset;
+
+    /* Length of beaon / probe resp. */
+    tANI_U16 beaconProbeRespLength;
+
+    /* Offset of reassoc resp in this structure. Offset from the starting of the message */
+    tANI_U16 reassocRespOffset;
+
+    /* Length of reassoc resp. */
+    tANI_U16 reassocRespLength;
+
+    /* 0 for probe response frame, 1 for beacon frame,  */
+    tANI_U8     isBeacon;
+
+    /* staIdx of old AP */
+    tANI_U8     oldStaIdx;
+
+    /* note : from bssIdx field to txMgmtPower are exactly mapped to
+       tConfigBssRspParams */
+    /* bssIdx of new roamed AP */
+    tANI_U8     bssIdx;
+
+    /* DPU descriptor index for PTK */
+    tANI_U8    dpuDescIndx;
+
+    /* PTK DPU signature */
+    tANI_U8    ucastDpuSignature;
+
+    /* DPU descriptor index for GTK*/
+    tANI_U8    bcastDpuDescIndx;
+
+    /* GTK DPU signature */
+    tANI_U8    bcastDpuSignature;
+
+    /*DPU descriptor for IGTK*/
+    tANI_U8    mgmtDpuDescIndx;
+
+    /* IGTK DPU signature */
+    tANI_U8    mgmtDpuSignature;
+
+    /* Station Index for BSS entry*/
+    tANI_U8    staIdx;
+
+    /* Self station index for this BSS */
+    tANI_U8    selfStaIdx;
+
+    /* Bcast station for buffering bcast frames in AP role */
+    tANI_U8    bcastStaIdx;
+
+    /* MAC address of roamed AP */
+    tSirMacAddr bssid;
+
+    /*HAL fills in the tx power used for mgmt frames in this field. */
+    tANI_S8     txMgmtPower;
+
+    /* success or failure */
+    tHalRoamOffloadRoamAuthStatus authStatus;
+
+    /* TODO : add more info as needed */
+
+    /* beaconProbeRespOffset points to starting of beacon/probe resp frame */
+    /* Beacon or probe resp from new AP.  This is in 802.11
+       frame format starting with MAC header. */
+    /* Up to beaconProbeRespLength */
+
+    /* reassocRespOffset points to starting of reassoc resp frame */
+    /* Reassoc resp from new AP.  This is in 802.11
+       frame format starting with MAC header. */
+    /* Up to reassocRespLength */
+
+} tHalRoamOffloadSynchIndParams, *tpHalRoamOffloadSynchIndParams;
+
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tHalRoamOffloadSynchIndParams params;
+} tHalRoamOffloadSynchInd, *tpHalRoamOffloadSynchInd;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_ROAM_OFFLOAD_SYNCH_CNF
+ *-------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    /* MAC address of new AP indicated by FW in RoamOffloadSynchInd */
+    tSirMacAddr bssid;
+} tHalRoamOffloadSynchCnfParams, *tpHalRoamOffloadSynchCnfParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+    tHalRoamOffloadSynchCnfParams params;
+} tHalRoamOffloadSynchCnfMsg, *tpHalRoamOffloadSynchCnfMsg;
+
+
+/*---------------------------------------------------------------------------
  WLAN_HAL_RATE_UPDATE_IND
  *-------------------------------------------------------------------------*/
 
@@ -7098,20 +7262,23 @@ typedef enum
 typedef PACKED_PRE struct PACKED_POST
 {
    tHT40OBssScanCmdType cmdType;
+
    tSirScanType scanType;
-   tANI_U16     OBSSScanPassiveDwellTime; // In TUs
-   tANI_U16     OBSSScanActiveDwellTime;  // In TUs
-   tANI_U16     BSSChannelWidthTriggerScanInterval; // In seconds
-   tANI_U16     OBSSScanPassiveTotalPerChannel; // In TUs
-   tANI_U16     OBSSScanActiveTotalPerChannel;  // In TUs
-   tANI_U16     BSSWidthChannelTransitionDelayFactor;
-   tANI_U16     OBSSScanActivityThreshold;
+   tANI_U16 OBSSScanPassiveDwellTime; // In TUs
+   tANI_U16 OBSSScanActiveDwellTime;  // In TUs
+   tANI_U16 BSSChannelWidthTriggerScanInterval; // In seconds
+   tANI_U16 OBSSScanPassiveTotalPerChannel; // In TUs
+   tANI_U16 OBSSScanActiveTotalPerChannel;  // In TUs
+   tANI_U16 BSSWidthChannelTransitionDelayFactor;
+   tANI_U16 OBSSScanActivityThreshold;
+
    tANI_U8      selfStaIdx;
    tANI_U8      bssIdx;
    tANI_U8      fortyMHZIntolerent;
    tANI_U8      channelCount;
    tANI_U8      channels[WLAN_HAL_ROAM_SCAN_MAX_CHANNELS];
    tANI_U8      currentOperatingClass;
+
    tANI_U16     ieFieldLen;
    tANI_U8      ieField[WLAN_HAL_PNO_MAX_PROBE_SIZE];
 }tHT40ObssScanIndType, *tpHT40ObssScanIndType;
@@ -7130,6 +7297,7 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader header;
    tANI_U8       bssIdx;
 }  tHalStopHT40OBSSScanIndMsg, *tpHalStopHT40OBSSScanIndMsg;
+
 #if defined(__ANI_COMPILER_PRAGMA_PACK_STACK)
 #pragma pack(pop)
 #elif defined(__ANI_COMPILER_PRAGMA_PACK)
