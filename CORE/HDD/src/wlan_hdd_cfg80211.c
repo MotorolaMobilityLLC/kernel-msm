@@ -5343,7 +5343,7 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
                 else
                 {
                     hddLog(VOS_TRACE_LEVEL_ERROR, "Scan Ie length is invalid:"
-                             "%d", request->ie_len);
+                             "%zu", request->ie_len);
                 }
 
             }
