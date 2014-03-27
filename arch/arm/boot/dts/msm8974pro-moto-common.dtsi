@@ -11,7 +11,6 @@
  * GNU General Public License for more details.
  */
 
-/include/ "msm8974pro-pm8941.dtsi"
 /include/ "msm8974-leds.dtsi"
 /include/ "msm8974-camera-sensor-moto.dtsi"
 /include/ "dsi-panel-mot-dummy-qhd-video.dtsi"
