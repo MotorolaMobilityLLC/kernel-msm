@@ -10,7 +10,6 @@
  * GNU General Public License for more details.
  */
 
-/include/ "msm8974pro-ab-moto-common.dtsi"
 /include/ "dsi-panel-mot-smd-1080p-cmd.dtsi"
 
 / {
