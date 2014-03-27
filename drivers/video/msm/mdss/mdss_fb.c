@@ -61,6 +61,10 @@
 #endif
 
 #define MAX_FBI_LIST 32
+
+extern int androidboot_is_recovery;
+extern int androidboot_mode_charger;
+
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
 
@@ -936,8 +940,9 @@ static int mdss_fb_alloc_fbmem_iommu(struct msm_fb_data_type *mfd, int dom)
 		return -ENODEV;
 	}
 
-	fbmem_pnode = of_parse_phandle(pdev->dev.of_node,
-		"linux,contiguous-region", 0);
+	if(androidboot_is_recovery || androidboot_mode_charger)
+		fbmem_pnode = of_parse_phandle(pdev->dev.of_node,
+			"linux,contiguous-region", 0);
 	if (!fbmem_pnode) {
 		pr_debug("fbmem is not reserved for %s\n", pdev->name);
 		mfd->fbi->screen_base = NULL;
