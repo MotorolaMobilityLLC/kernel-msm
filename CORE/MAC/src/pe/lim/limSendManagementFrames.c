@@ -64,6 +64,150 @@
 
 ////////////////////////////////////////////////////////////////////////
 
+tSirRetStatus limStripOffExtCapIE(tpAniSirGlobal pMac,
+                                  tANI_U8 *addIE,
+                                  tANI_U16 *addnIELen,
+                                  tANI_U8 *pExtractedExtCapIEBuf )
+{
+    tANI_U8* tempbuf = NULL;
+    tANI_U16 tempLen = 0;
+    int left = *addnIELen;
+    tANI_U8 *ptr = addIE;
+    tANI_U8 elem_id, elem_len;
+
+    if (NULL == addIE)
+    {
+        PELOGE(limLog(pMac, LOG1, FL("NULL addIE pointer"));)
+        return eSIR_IGNORE_IE ;
+    }
+
+    tempbuf = vos_mem_malloc(left);
+    if ( NULL == tempbuf )
+    {
+        PELOGE(limLog(pMac, LOGE,
+             FL("Unable to allocate memory to store addn IE"));)
+        return eSIR_MEM_ALLOC_FAILED;
+    }
+
+    while(left >= 2)
+    {
+        elem_id  = ptr[0];
+        elem_len = ptr[1];
+        left -= 2;
+        if (elem_len > left)
+        {
+            limLog( pMac, LOGE,
+               FL("Invalid IEs eid = %d elem_len=%d left=%d"),
+                                               elem_id,elem_len,left);
+            vos_mem_free(tempbuf);
+            return eSIR_FAILURE;
+        }
+        if ( !(DOT11F_EID_EXTCAP == elem_id) )
+        {
+            vos_mem_copy (tempbuf + tempLen, &ptr[0], elem_len + 2);
+            tempLen += (elem_len + 2);
+        }
+        else
+        { /*Est Cap present size is 8 + 2 byte at present*/
+            if ( NULL != pExtractedExtCapIEBuf )
+            {
+                vos_mem_set(pExtractedExtCapIEBuf,
+                    DOT11F_IE_EXTCAP_MAX_LEN + 2, 0);
+                if (elem_len <= DOT11F_IE_EXTCAP_MAX_LEN )
+                {
+                    vos_mem_copy (pExtractedExtCapIEBuf, &ptr[0],
+                        elem_len + 2);
+                }
+            }
+        }
+        left -= elem_len;
+        ptr += (elem_len + 2);
+    }
+    vos_mem_copy (addIE, tempbuf, tempLen);
+    *addnIELen = tempLen;
+    vos_mem_free(tempbuf);
+    return eSIR_SUCCESS;
+}
+
+void limUpdateExtCapIEtoStruct(tpAniSirGlobal pMac,
+                            tANI_U8 *pBuf,
+                            tDot11fIEExtCap *pDst)
+{
+    tANI_U8 pOut[DOT11F_IE_EXTCAP_MAX_LEN];
+
+    if ( NULL == pBuf )
+    {
+        limLog( pMac, LOGE,
+               FL("Invalid Buffer Address"));
+        return;
+    }
+    if(NULL == pDst)
+    {
+        PELOGE(limLog(pMac, LOGE,
+             FL("NULL pDst pointer"));)
+        return ;
+    }
+
+    if ( DOT11F_EID_EXTCAP != pBuf[0] ||
+         pBuf[1] > DOT11F_IE_EXTCAP_MAX_LEN )
+    {
+        limLog( pMac, LOGE,
+               FL("Invalid IEs eid = %d elem_len=%d "),
+                                               pBuf[0],pBuf[1]);
+        return;
+    }
+    vos_mem_set(( tANI_U8* )&pOut[0], DOT11F_IE_EXTCAP_MAX_LEN, 0);
+    /* conversion should follow 4, 2, 2 byte order */
+    limUtilsframeshtonl(pMac, &pOut[0],*((tANI_U32*)&pBuf[2]),0);
+    limUtilsframeshtons(pMac, &pOut[4],*((tANI_U16*)&pBuf[6]),0);
+    limUtilsframeshtons(pMac, &pOut[6],*((tANI_U16*)&pBuf[8]),0);
+
+    if ( DOT11F_PARSE_SUCCESS != dot11fUnpackIeExtCap( pMac,
+                &pOut[0], DOT11F_IE_EXTCAP_MAX_LEN, pDst) )
+    {
+        limLog( pMac, LOGE,
+               FL("dot11fUnpackIeExtCap Parse Error "));
+    }
+}
+
+tSirRetStatus limStripOffExtCapIEAndUpdateStruct(tpAniSirGlobal pMac,
+                                  tANI_U8* addIE,
+                                  tANI_U16 *addnIELen,
+                                  tDot11fIEExtCap * pDst )
+{
+    tANI_U8 pExtractedExtCapIEBuf[DOT11F_IE_EXTCAP_MAX_LEN + 2];
+    tSirRetStatus       nSirStatus;
+
+    vos_mem_set(( tANI_U8* )&pExtractedExtCapIEBuf[0],
+        DOT11F_IE_EXTCAP_MAX_LEN + 2, 0);
+    nSirStatus = limStripOffExtCapIE(pMac, addIE, addnIELen,
+                                         pExtractedExtCapIEBuf);
+    if ( eSIR_SUCCESS != nSirStatus )
+    {
+        limLog( pMac, LOG1, FL("Failed to strip off in"
+                        "limStripOffExtCapIE status = (%d)."),
+                        nSirStatus );
+        return nSirStatus;
+    }
+    /* update the extracted ExtCap to struct*/
+    limUpdateExtCapIEtoStruct(pMac, pExtractedExtCapIEBuf, pDst);
+    return nSirStatus;
+}
+
+void limMergeExtCapIEStruct(tDot11fIEExtCap *pDst,
+                            tDot11fIEExtCap *pSrc)
+{
+    tANI_U8 *tempDst = (tANI_U8 *)pDst;
+    tANI_U8 *tempSrc = (tANI_U8 *)pSrc;
+    tANI_U8 structlen = sizeof(tDot11fIEExtCap);
+
+    while(tempDst && tempSrc && structlen--)
+    {
+        *tempDst |= *tempSrc;
+        tempDst++;
+        tempSrc++;
+    }
+}
 
 /**
  *
@@ -525,7 +669,8 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     tANI_U8               noaStream[SIR_MAX_NOA_ATTR_LEN
                                            + SIR_P2P_IE_HEADER_LEN];
     tANI_U8               noaIe[SIR_MAX_NOA_ATTR_LEN + SIR_P2P_IE_HEADER_LEN];
-  
+    tDot11fIEExtCap      extractedExtCap;
+    tANI_BOOLEAN         extractedExtCapFlag = eANI_BOOLEAN_TRUE;
     if(pMac->gDriverType == eDRIVER_TYPE_MFG)         // We don't answer requests
     {
         return;                     // in this case.
@@ -792,6 +937,20 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
             vos_mem_free(pFrm);
             return;
         }
+
+       vos_mem_set(( tANI_U8* )&extractedExtCap,
+            sizeof( tDot11fIEExtCap ), 0);
+       nSirStatus = limStripOffExtCapIEAndUpdateStruct(pMac,
+                                  addIE,
+                                  &totalAddnIeLen,
+                                  &extractedExtCap );
+        if(eSIR_SUCCESS != nSirStatus )
+        {
+            extractedExtCapFlag = eANI_BOOLEAN_FALSE;
+            limLog(pMac, LOG1,
+                FL("Unable to Stripoff ExtCap IE from Probe Rsp"));
+        }
+
         nBytes = nBytes + totalAddnIeLen;
 
         if (probeReqP2pIe)
@@ -851,6 +1010,11 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
   
     sirCopyMacAddr(pMacHdr->bssId,psessionEntry->bssId);
 
+    /*merge ExtCap IE*/
+    if (extractedExtCapFlag)
+    {
+        limMergeExtCapIEStruct(&pFrm->ExtCap, &extractedExtCap);
+    }
     // That done, pack the Probe Response:
     nStatus = dot11fPackProbeResponse( pMac, pFrm, pFrame + sizeof(tSirMacMgmtHdr),
                                        nPayload, &nPayload );
@@ -1222,6 +1386,10 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
     tANI_U32             addnIELen=0;
     tANI_U8              addIE[WNI_CFG_ASSOC_RSP_ADDNIE_DATA_LEN];
     tpSirAssocReq        pAssocReq = NULL; 
+    tANI_U16             addStripoffIELen = 0;
+    tDot11fIEExtCap      extractedExtCap;
+    tANI_BOOLEAN         extractedExtCapFlag = eANI_BOOLEAN_FALSE;
+
 #ifdef WLAN_FEATURE_11W
     tANI_U32 retryInterval;
     tANI_U32 maxRetries;
@@ -1421,6 +1589,23 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
                 if (wlan_cfgGetStr(pMac, WNI_CFG_ASSOC_RSP_ADDNIE_DATA,
                             &addIE[0], &addnIELen) == eSIR_SUCCESS)
                 {
+
+                    vos_mem_set(( tANI_U8* )&extractedExtCap,
+                        sizeof( tDot11fIEExtCap ), 0);
+                    nSirStatus = limStripOffExtCapIEAndUpdateStruct(pMac,
+                                      &addIE[0],
+                                      &addStripoffIELen,
+                                      &extractedExtCap );
+                    if(eSIR_SUCCESS != nSirStatus)
+                    {
+                        limLog(pMac, LOG1,
+                            FL("Unable to Stripoff ExtCap IE from Assoc Rsp"));
+                    }
+                    else
+                    {
+                        addnIELen = addStripoffIELen;
+                        extractedExtCapFlag = eANI_BOOLEAN_TRUE;
+                    }
                     nBytes = nBytes + addnIELen;
                 }
             }
@@ -1461,6 +1646,11 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
 
     sirCopyMacAddr(pMacHdr->bssId,psessionEntry->bssId);
 
+    /* merge the ExtCap struct*/
+    if (extractedExtCapFlag)
+    {
+        limMergeExtCapIEStruct(&(frm.ExtCap), &extractedExtCap);
+    }
     nStatus = dot11fPackAssocResponse( pMac, &frm,
                                        pFrame + sizeof( tSirMacMgmtHdr ),
                                        nPayload, &nPayload );
@@ -2021,6 +2211,8 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 #endif
     tANI_U32            txFlag = 0;
     tpSirMacMgmtHdr     pMacHdr;
+    tDot11fIEExtCap     extractedExtCap;
+    tANI_BOOLEAN        extractedExtCapFlag = eANI_BOOLEAN_TRUE;
 
     if(NULL == psessionEntry)
     {
@@ -2046,6 +2238,17 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 
 
     vos_mem_set( ( tANI_U8* )pFrm, sizeof( tDot11fAssocRequest ), 0 );
+
+    vos_mem_set(( tANI_U8* )&extractedExtCap, sizeof( tDot11fIEExtCap ), 0);
+    nSirStatus = limStripOffExtCapIEAndUpdateStruct(pMac, pAddIE,
+                                  &nAddIELen,
+                                  &extractedExtCap );
+    if(eSIR_SUCCESS != nSirStatus )
+    {
+        extractedExtCapFlag = eANI_BOOLEAN_FALSE;
+        limLog(pMac, LOG1,
+             FL("Unable to Stripoff ExtCap IE from Assoc Req"));
+    }
 
     caps = pMlmAssocReq->capabilityInfo;
     if ( PROP_CAPABILITY_GET( 11EQOS, psessionEntry->limCurrentBssPropCap ) )
@@ -2293,7 +2496,11 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
         vos_mem_free(pFrm);
         return;
     }
-
+    /* merge the ExtCap struct*/
+    if (extractedExtCapFlag)
+    {
+        limMergeExtCapIEStruct(&pFrm->ExtCap, &extractedExtCap);
+    }
 
     // That done, pack the Assoc Request:
     nStatus = dot11fPackAssocRequest( pMac, pFrm, pFrame +

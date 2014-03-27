@@ -816,6 +816,7 @@ void wlan_hdd_tdls_exit(hdd_adapter_t *pAdapter)
     wlan_hdd_tdls_free_scan_request(&pHddCtx->tdls_scan_ctxt);
 
     vos_mem_free(pHddTdlsCtx);
+    pAdapter->sessionCtx.station.pHddTdlsCtx = NULL;
     pHddTdlsCtx = NULL;
 }
 
