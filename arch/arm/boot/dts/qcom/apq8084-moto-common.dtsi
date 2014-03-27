@@ -592,6 +592,12 @@
 	};
 
 	mpp@a100 { /* MPP 2 */
+		/* CC ALERT MAX17050 */
+		qcom,mode = <0>;          /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <1>;
+		qcom,vin-sel = <2>;		/* VPH_PWR */
+		qcom,src-sel = <0>;		/* Constant */
+
 	};
 
 	mpp@a200 { /* MPP 3 */
@@ -702,6 +708,15 @@
 		compatible = "maxim,max17050";
 		reg = <0x36>;
 		maxim,rsns-microohm = <10000>;
+
+		interrupt-parent = <&spmi_bus>;
+		interrupts = <0x0 0xa1 0x0>;	/* PMA8084 MPP 2 */
+		gpios = <&pma8084_mpps 2 0x1>;	/* GPIOF_DIR_IN */
+		gpio-names = "cc-alert";
+		maxim,regs-init-data = <
+			0x01 0xff97 /* VALRT, VMAX = 5.1 V and VMIN = 3.02 V */
+		>;
+		maxim,batt_undervoltage_zero_soc;
 	};
 
 	mmi_wls_chrg@6d {
