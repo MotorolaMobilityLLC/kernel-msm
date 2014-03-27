@@ -88,7 +88,7 @@ tSirRetStatus limSendHT40OBSSStopScanInd(tpAniSirGlobal pMac,
 #define EDCA_FILTER_MASK        0xF0
 #define QOS_FILTER_MASK         0xF0
 #define HT_BYTE0_FILTER_MASK    0x0
-#define HT_BYTE1_FILTER_MASK    0x07
+#define HT_BYTE1_FILTER_MASK    0xF8
 #define HT_BYTE2_FILTER_MASK    0xEB
 #define HT_BYTE5_FILTER_MASK    0xFD
 #define DS_PARAM_CHANNEL_MASK   0x0
