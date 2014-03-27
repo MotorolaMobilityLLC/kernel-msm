@@ -167,6 +167,7 @@ struct mdss_mdp_ctl {
 	u32 flush_bits;
 
 	bool is_video_mode;
+	bool no_solid_fill;
 	u32 play_cnt;
 	u32 vsync_cnt;
 	u32 underrun_cnt;
