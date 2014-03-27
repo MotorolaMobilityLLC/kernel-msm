@@ -46,6 +46,10 @@
 /* Wait timeout in millisecond */
 #define AKM8963_DRDY_TIMEOUT	100
 
+#define I2C_RETRY_DELAY    5
+
+#define I2C_RETRIES        5
+
 struct akm8963_data {
 	struct i2c_client	*i2c;
 	struct input_dev	*input;
@@ -107,8 +111,14 @@ static int akm8963_i2c_rxdata(
 	};
 	unsigned char addr = rxData[0];
 	int err;
+	int tries = 0;
 
-	err = i2c_transfer(i2c->adapter, msgs, 2);
+	do {
+		err = i2c_transfer(i2c->adapter, msgs, 2);
+		if (err < 0)
+			msleep_interruptible(I2C_RETRY_DELAY);
+	} while ((err < 0) && (++tries < I2C_RETRIES));
+
 	if (err < 0) {
 		dev_err(&i2c->dev, "%s: transfer failed.", __func__);
 		return -EIO;
@@ -133,8 +143,14 @@ static int akm8963_i2c_txdata(
 		},
 	};
 	int err;
+	int tries = 0;
 
-	err = i2c_transfer(i2c->adapter, msg, 1);
+	do {
+		err = i2c_transfer(i2c->adapter, msg, 1);
+		if (err < 0)
+			msleep_interruptible(I2C_RETRY_DELAY);
+	} while ((err < 0) && (++tries < I2C_RETRIES));
+
 	if (err < 0) {
 		dev_err(&i2c->dev, "%s: transfer failed.", __func__);
 		return -EIO;
@@ -1412,9 +1428,16 @@ int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	if (s_akm->vdd != NULL) {
 		err = regulator_enable(s_akm->vdd);
-		usleep_range(100,100);
+		usleep_range(400, 400);
 		if (err)
 			dev_info(&client->dev, "regulator enable fail\n");
+	}
+
+	/** Reset the device with 10us low pulse **/
+	if (s_akm->rstn != 0) {
+		gpio_set_value(s_akm->rstn, 0);
+		udelay(10);
+		gpio_set_value(s_akm->rstn, 1);
 	}
 
 	/** Wait for at least 100us before starting I2C talking **/
