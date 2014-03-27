@@ -906,7 +906,7 @@ static int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 			 * refresh from their internal memory if no data is sent
 			 * out on the dsi lanes.
 			 */
-			if (ctl && ctl->is_video_mode) {
+			if (ctl && ctl->is_video_mode && !ctl->no_solid_fill) {
 				rc = mdss_mdp_display_commit(ctl, NULL);
 				if (!IS_ERR_VALUE(rc)) {
 					mdss_mdp_display_wait4comp(ctl);
@@ -922,16 +922,18 @@ static int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 					rc = 0;
 				}
 			}
-
-			/* Add all the handed off pipes to the cleanup list */
-			__mdss_mdp_handoff_cleanup_pipes(mfd,
-				MDSS_MDP_PIPE_TYPE_RGB);
-			__mdss_mdp_handoff_cleanup_pipes(mfd,
-				MDSS_MDP_PIPE_TYPE_VIG);
-			__mdss_mdp_handoff_cleanup_pipes(mfd,
-				MDSS_MDP_PIPE_TYPE_DMA);
 		}
 		rc = mdss_mdp_ctl_splash_finish(ctl, mdp5_data->handoff);
+
+		/* Add all the handed off pipes to the cleanup list after
+		   TG OFF*/
+		__mdss_mdp_handoff_cleanup_pipes(mfd,
+						MDSS_MDP_PIPE_TYPE_RGB);
+		__mdss_mdp_handoff_cleanup_pipes(mfd,
+						MDSS_MDP_PIPE_TYPE_VIG);
+		__mdss_mdp_handoff_cleanup_pipes(mfd,
+						MDSS_MDP_PIPE_TYPE_DMA);
+
 		/*
 		 * Remove the vote for footswitch even if above function
 		 * returned error
