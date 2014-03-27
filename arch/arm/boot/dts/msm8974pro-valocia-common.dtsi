@@ -139,7 +139,7 @@
 		qcom,tfa9890-left-dai-name = "TFA9890 Playback Left";
 		qcom,tfa9890-right-dai-name = "TFA9890 Playback Right";
 		qcom,tfa9890-earpiece-gpio = <&pm8941_gpios 6 0x0>;
-		qcom,model = "msm8974-taiko-tfa9890_codec-snd-card";
+		qcom,model = "msm8974-taiko-tfa9890_stereo_codec-snd-card";
 		qcom,audio-routing =
 			"RX_BIAS", "MCLK",
 			"LDO_H", "MCLK",
