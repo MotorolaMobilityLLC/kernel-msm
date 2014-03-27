@@ -75,9 +75,16 @@ void diag_cntl_stm_notify(struct diag_smd_info *smd_info, int action)
 	if (!smd_info || smd_info->type != SMD_CNTL_TYPE)
 		return;
 
-	if (action == CLEAR_PERIPHERAL_STM_STATE)
+	if (action == CLEAR_PERIPHERAL_STM_STATE) {
 		driver->peripheral_supports_stm[smd_info->peripheral] =
 								DISABLE_STM;
+		/*
+		 * Turn off STM for now until such time as the
+		 * tools can support SSR
+		 */
+		driver->stm_state[smd_info->peripheral] = DISABLE_STM;
+		driver->stm_state_requested[smd_info->peripheral] = DISABLE_STM;
+	}
 }
 
 static void process_stm_feature(struct diag_smd_info *smd_info,
@@ -512,7 +519,9 @@ void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 	mutex_lock(&driver->diag_cntl_mutex);
 	if (smd_info->ch) {
 		while (retry_count < 3) {
+			mutex_lock(&smd_info->smd_ch_mutex);
 			wr_size = smd_write(smd_info->ch, buf, msg_size);
+			mutex_unlock(&smd_info->smd_ch_mutex);
 			if (wr_size == -ENOMEM) {
 				/*
 				 * The smd channel is full. Delay while
@@ -566,7 +575,9 @@ int diag_send_stm_state(struct diag_smd_info *smd_info,
 		stm_msg.version = 1;
 		stm_msg.control_data = stm_control_data;
 		while (retry_count < 3) {
+			mutex_lock(&smd_info->smd_ch_mutex);
 			wr_size = smd_write(smd_info->ch, &stm_msg, msg_size);
+			mutex_unlock(&smd_info->smd_ch_mutex);
 			if (wr_size == -ENOMEM) {
 				/*
 				 * The smd channel is full. Delay while
@@ -624,6 +635,7 @@ static int diag_smd_cntl_probe(struct platform_device *pdev)
 				diag_smd_notify);
 			driver->smd_cntl[index].ch_save =
 				driver->smd_cntl[index].ch;
+			diag_smd_buffer_init(&driver->smd_cntl[index]);
 		}
 		pr_debug("diag: In %s, open SMD CNTL port, Id = %d, r = %d\n",
 			__func__, pdev->id, r);
@@ -669,27 +681,29 @@ static struct platform_driver diag_smd_lite_cntl_driver = {
 	},
 };
 
-void diagfwd_cntl_init(void)
+int diagfwd_cntl_init(void)
 {
-	int success;
+	int ret;
 	int i;
 
 	reg_dirty = 0;
 	driver->polling_reg_flag = 0;
 	driver->log_on_demand_support = 1;
 	driver->diag_cntl_wq = create_singlethread_workqueue("diag_cntl_wq");
+	if (!driver->diag_cntl_wq)
+		goto err;
 
 	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
-		success = diag_smd_constructor(&driver->smd_cntl[i], i,
+		ret = diag_smd_constructor(&driver->smd_cntl[i], i,
 							SMD_CNTL_TYPE);
-		if (!success)
+		if (ret)
 			goto err;
 	}
 
 	platform_driver_register(&msm_smd_ch1_cntl_driver);
 	platform_driver_register(&diag_smd_lite_cntl_driver);
 
-	return;
+	return 0;
 err:
 	pr_err("diag: Could not initialize diag buffers");
 
@@ -698,6 +712,7 @@ err:
 
 	if (driver->diag_cntl_wq)
 		destroy_workqueue(driver->diag_cntl_wq);
+	return -ENOMEM;
 }
 
 void diagfwd_cntl_exit(void)
