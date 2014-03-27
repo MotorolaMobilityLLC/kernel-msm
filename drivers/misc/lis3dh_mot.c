@@ -913,6 +913,8 @@ static int lis3dh_probe(struct i2c_client *client,
 		err = regulator_enable(lis->vdd);
 		if (err)
 			dev_info(&client->dev, "regulator enable fail\n");
+		else
+			usleep_range(200, 400);
 	}
 
 
