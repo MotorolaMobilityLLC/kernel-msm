@@ -1,0 +1,236 @@
+/* Copyright (c) 2012, Samsung Electronics Corporation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	dsi_oled_320p_cmd: qcom,mdss_dsi_samsung_oled_320p_cmd {
+		qcom,mdss-dsi-panel-name = "SDC_AMS163AX01";
+		qcom,mdss-dsi-panel-controller = <&mdss_dsi0>;
+		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
+		qcom,mdss-dsi-panel-destination = "display_1";
+		qcom,rst-gpio = <&msmgpio 25 0>;
+		qcom,esd-det-gpio = <&msmgpio 62 0>;
+		qcom,te-gpio = <&msmgpio 24 0>;
+		qcom,disp_sel-gpio = <&msmgpio 46 0>;
+		qcom,mipi_sel-gpio = <&msmgpio 56 0>;
+		qcom,en_on-gpio = <&msmgpio 60 0>;
+		qcom,mdss-dsi-te-dcs-command = <1>;
+		qcom,mdss-dsi-te-v-sync-continue-lines = <0x3c>;
+		qcom,mdss-dsi-te-v-sync-rd-ptr-irq-line = <0x2c>;
+		qcom,mdss-dsi-te-pin-select = <1>;
+		qcom,mdss-dsi-te-check-enable;
+		qcom,mdss-dsi-te-using-te-pin;
+		qcom,mdss-dsi-panel-framerate = <60>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-panel-width = <320>;
+		qcom,mdss-dsi-panel-height = <320>;
+		qcom,mdss-dsi-h-front-porch = <4>;
+		qcom,mdss-dsi-h-back-porch = <5>;
+		qcom,mdss-dsi-h-pulse-width = <10>;
+		qcom,mdss-dsi-h-sync-skew = <0>;
+		qcom,mdss-dsi-v-back-porch = <1>;
+		qcom,mdss-dsi-v-front-porch = <1>;
+		qcom,mdss-dsi-v-pulse-width = <1>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = <0>;
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-h-sync-pulse = <1>;
+		qcom,mdss-dsi-traffic-mode = <2>;
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-panel-timings = [2E 0E 04 00 26 28 0A 10 06 03 04 00];
+		qcom,mdss-dsi-lane-map = <0>;
+		qcom,mdss-dsi-t-clk-post = <0x04>;
+		qcom,mdss-dsi-t-clk-pre = <0x1B>;
+		qcom,mdss-dsi-bl-min-level = <1>;
+		qcom,mdss-dsi-bl-max-level = <255>;
+		qcom,mdss-dsi-dma-trigger = <4>;
+		qcom,mdss-dsi-mdp-trigger = <0>;
+		qcom,mdss-force-clk-lane-hs = <1>;
+		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+/*		qcom,mdss-dsi-panel-clock-rate = <500000000>;*/
+		qcom,mdss-dsi-on-command = [
+					39 01 00 00 01 00 03 F0 5A 5A
+					39 01 00 00 00 00 03 F1 5A 5A
+					39 01 00 00 00 00 03 F2 1C 28
+					39 01 00 00 01 00 04 B5 00 01 00
+					39 01 00 00 01 00 05 2A 00 14 01 53
+					39 01 00 00 01 00 05 2B 00 00 01 3F
+					39 01 00 00 01 00 0E F8 08 08 08 17 00 2A 02 26 00 00 02 00 00
+					39 01 00 00 01 00 02 F7 02
+					05 01 00 00 14 00 02 11 00      /* Sleep out */
+					39 01 00 00 78 00 02 36 40
+					39 01 00 00 01 00 02 D2 8A
+					39 01 00 00 01 00 02 51 FF
+					39 01 00 00 05 00 02 53 20
+					39 01 00 00 01 00 02 55 00
+					39 01 00 00 01 00 03 B1 00 09
+					39 01 00 00 01 00 02 36 40
+					05 01 00 00 10 00 02 29 00	/* Display On */
+					39 01 00 00 01 00 03 F1 A5 A5
+					];
+		samsung,panel-gamma-cmds-list = [
+					29 01 00 00 01 00 1C
+						D4 00 00 00 30 36 36
+						3D 5F 61 22 28 2B 26
+						24 26 2D 2D 2D 33 33
+						33 00 C4 00 CE 00 DF
+					];
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command = [05 01 00 00 32 00 02 28 00
+					05 01 00 00 78 00 02 10 00];
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		samsung,panel-mtp-enable-cmds =[ 39 01 00 00 00 00 03 F1 5A 5A ];
+		samsung,panel-manufacture-id-read-cmds = [ 06 01 00 00 00 00 01 A1 03 00 ];
+		samsung,panel-mtp-id-read-cmds = [ 06 01 00 00 00 00 01 D4 1B 00 ];
+
+	   /*
+		* ************************************************************************************************************************
+		* candela to index mappings
+		* ************************************************************************************************************************
+		*/
+
+		samsung,panel-candella-mapping-table-300 = <
+		/*	<idx> <from>  <till> <candella> */
+			0	2	10	10
+			1	11	15	20
+			2	16	23	30
+			3	24	32	40
+			4	33	38	50
+			5	39	46	60
+			6	47	56	70
+			7	57	63	80
+			8	64	71	90
+			9	72	76	100
+			11	77	86	110
+			12	87	91	120
+			13	92	97	130
+			14	98	110	140
+			15	111	118	150
+			16	119	125	160
+			17	126	133	170
+			18	134	142	180
+			19	143	150	190
+			20	151	155	200
+			21	156	160	210
+			22	161	170	220
+			23	171	181	230
+			24	182	193	240
+			25	194	205	250
+			26	206	218	260
+			27	219	230	270
+			28	231	242	280
+			29	243	254	290
+			30	255	255	300
+			>;
+
+/*
+ * ************************************************************************************************************************
+ *   APLPM
+ * ************************************************************************************************************************
+ */
+		samsung,panel-alpm-on-seq = [
+				05 01 00 00 14 00 02 28 00			/* display off wait 20ms */
+
+				/* image write for APLM mode */
+
+				39 01 00 00 00 00 05 30 00 00 01 3F	/* user set partial area */
+
+				39 01 00 00 00 00 02 12 00			/* partial mode on */
+				39 01 00 00 14 00 02 39 00			/* idel mode on wait 20ms */
+
+				39 01 00 00 00 00 02 29 00		/* display on */
+			];
+
+		samsung,panel-alpm-off-seq = [
+				05 01 00 00 14 00 02 28 00			/* display off wait 20ms */
+
+				/* image write for normal mode */
+
+				39 01 00 00 00 00 02 38 00			/* idel Mode off */
+				39 01 00 00 00 00 02 13 00			/* normal mode on */
+
+				39 01 00 00 00 00 02 29 00		/* display on */
+			];
+	};
+};
+&soc {
+	mdss_dsi0: qcom,mdss_dsi@fd922800 {
+		compatible = "qcom,mdss-dsi-ctrl";
+		label = "MDSS DSI CTRL->0";
+		cell-index = <0>;
+		reg = <0xfd922800 0x600>;
+		qcom,mdss-fb-map = <&mdss_fb0>;
+		vdd-supply = <&pm8226_l15>;
+		vddio-supply = <&pm8226_l6>;
+		vddldo8-supply = <&pm8226_l8>;
+		vdda-supply = <&pm8226_l4>;
+		qcom,platform-bist-ctrl = [00 00 b1 ff 00 00];
+		qcom,platform-strength-ctrl = [ff 06];
+		qcom,platform-regulator-settings = [07 09 03 00 20 00 01];
+		qcom,platform-lane-config = [00 00 00 00 00 00 00 01 97
+			00 00 00 00 05 00 00 01 97
+			00 00 00 00 0a 00 00 01 97
+			00 00 00 00 0f 00 00 01 97
+			00 c0 00 00 00 00 00 01 bb];
+		qcom,platform-supply-entry1 {
+			qcom,supply-name = "vdd";
+			qcom,supply-min-voltage = <2800000>;
+			qcom,supply-max-voltage = <2800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,platform-supply-entry2 {
+			qcom,supply-name = "vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,platform-supply-entry3 {
+			qcom,supply-name = "vddldo8";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <0>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+		qcom,platform-supply-entry4 {
+			qcom,supply-name = "vdda";
+			qcom,supply-min-voltage = <1200000>;
+			qcom,supply-max-voltage = <1200000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-pre-on-sleep = <0>;
+			qcom,supply-post-on-sleep = <20>;
+			qcom,supply-pre-off-sleep = <0>;
+			qcom,supply-post-off-sleep = <0>;
+		};
+	};
+};
