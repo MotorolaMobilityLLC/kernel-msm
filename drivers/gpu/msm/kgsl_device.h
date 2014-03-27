@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2012,2014 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -471,10 +471,12 @@ kgsl_context_put(struct kgsl_context *context)
  * lightweight way to just increase the refcount on a known context rather then
  * walking through kgsl_context_get and searching the iterator
  */
-static inline void _kgsl_context_get(struct kgsl_context *context)
+static inline int _kgsl_context_get(struct kgsl_context *context)
 {
+	int ret = 0;
 	if (context)
-		kref_get(&context->refcount);
+		ret = kref_get_unless_zero(&context->refcount);
+	return ret;
 }
 
 /**
@@ -491,16 +493,19 @@ static inline void _kgsl_context_get(struct kgsl_context *context)
 static inline struct kgsl_context *kgsl_context_get(struct kgsl_device *device,
 		uint32_t id)
 {
+	int result = 0;
 	struct kgsl_context *context = NULL;
 
 	read_lock(&device->context_lock);
 
 	context = idr_find(&device->context_idr, id);
 
-	_kgsl_context_get(context);
+	result = _kgsl_context_get(context);
 
 	read_unlock(&device->context_lock);
 
+	if (!result)
+		return NULL;
 	return context;
 }
 
