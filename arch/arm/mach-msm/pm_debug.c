@@ -33,6 +33,12 @@ static int pmdbg_pmic_irq_index;
 static uint64_t pmdbg_suspend_time;
 static uint64_t pmdbg_resume_time;
 
+static int stuck_wakelock_timeout_in_sec = 600;
+
+module_param_named(
+	timeout, stuck_wakelock_timeout_in_sec, int, S_IRUGO | S_IWUSR | S_IWGRP
+);
+
 static void stuck_wakelock_timeout(unsigned long data);
 static void stuck_wakelock_wdset(void);
 static void stuck_wakelock_wdclr(void);
@@ -59,7 +65,8 @@ static void stuck_wakelock_timeout(unsigned long data)
  */
 static void stuck_wakelock_wdset()
 {
-	mod_timer(&stuck_wakelock_wd, jiffies + (HZ * 600));
+	mod_timer(&stuck_wakelock_wd,
+		jiffies + (HZ * stuck_wakelock_timeout_in_sec));
 }
 
 /**
