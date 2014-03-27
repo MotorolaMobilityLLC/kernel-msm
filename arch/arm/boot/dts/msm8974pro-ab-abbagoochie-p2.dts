@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014 Motorola Mobility LLC
+/* Copyright (c) 2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -32,10 +32,6 @@
 		compatible = "ti,c55-ctrl";
 		gpios = <&msmgpio 6 0>,         /* gpio_reset */
 			<&msmgpio 61 2>;        /* gpio_c55_int */
-	};
-
-	qcom,wcnss-wlan@fb000000 {
-		qcom,iris-vddpa-supply = <&pm8941_l19>;
 	};
 };
 
