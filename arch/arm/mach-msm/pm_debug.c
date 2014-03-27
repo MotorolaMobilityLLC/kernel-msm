@@ -65,8 +65,10 @@ static void stuck_wakelock_timeout(unsigned long data)
  */
 static void stuck_wakelock_wdset()
 {
-	mod_timer(&stuck_wakelock_wd,
+	int ret;
+	ret = mod_timer(&stuck_wakelock_wd,
 		jiffies + (HZ * stuck_wakelock_timeout_in_sec));
+	pr_debug("pmdbg: %s: mod_timer returns %d\n", __func__, ret);
 }
 
 /**
@@ -76,7 +78,9 @@ static void stuck_wakelock_wdset()
  */
 static void stuck_wakelock_wdclr(void)
 {
-	del_timer_sync(&stuck_wakelock_wd);
+	int ret;
+	ret = del_timer_sync(&stuck_wakelock_wd);
+	pr_debug("pmdbg: %s: del_timer_sync returns %d\n", __func__, ret);
 }
 
 static int pmdbg_display_notify(struct notifier_block *nb,
@@ -294,6 +298,22 @@ static struct platform_driver pmdbg_driver = {
 	},
 };
 
+static int pm_dbg_pm_callback(struct notifier_block *nb,
+			unsigned long action, void *ptr)
+{
+	switch (action) {
+	case PM_SUSPEND_PREPARE:
+		stuck_wakelock_wdclr();
+		break;
+	case PM_POST_SUSPEND:
+		stuck_wakelock_wdset();
+		break;
+	default:
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
 static int __init pmdbg_init(void)
 {
 	int err;
@@ -301,6 +321,8 @@ static int __init pmdbg_init(void)
 	pr_debug("pmdbg_device register %d\n", err);
 	err = platform_driver_register(&pmdbg_driver);
 	pr_debug("pmdbg_driver register %d\n", err);
+
+	pm_notifier(pm_dbg_pm_callback, 0);
 
 	return 0;
 }
