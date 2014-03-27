@@ -1,0 +1,20 @@
+config SEC_PROJECT
+	bool "Samsung project"
+	default n
+	help
+	  Support for Samsung project.
+
+config MACH_MSM8226_SPRAT
+	bool "MSM8226 SPRAT"
+    default n
+    help
+      MSM8226 MODEL SPRAT Specific changes for differentiating
+      it with the other models on the same MSM8x26 chipset.
+
+config BT_BCM4334
+	bool "Enable BCM4334 driver"
+	default n
+	help
+	Adds BCM4334 RFKILL driver for Broadcom BCM4334 chipset.
+	default is n.
+

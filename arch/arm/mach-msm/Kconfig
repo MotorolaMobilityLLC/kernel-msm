@@ -354,7 +354,7 @@ config MSM_REMOTE_SPINLOCK_LDREX
 	bool
 config MSM_REMOTE_SPINLOCK_SFPB
 	bool
-
+        
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"
 	default y
@@ -1431,4 +1431,7 @@ config KRAIT_REGULATOR
 	 line from the PMIC. This supply line is powered by multiple
 	 regulators running in ganged mode inside the PMIC. Enable
 	 this option to support such configurations.
+
+source "arch/arm/mach-msm/sprat/Kconfig"
+
 endif
