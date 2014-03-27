@@ -161,7 +161,7 @@ static v_BOOL_t hdd_p2p_is_action_type_rsp( const u8 *buf )
         return VOS_FALSE;
     }
 
-    actionFrmType = buf[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
+    actionFrmType = buf[WLAN_HDD_PUBLIC_ACTION_FRAME_SUB_TYPE_OFFSET];
     if ( actionFrmType != WLAN_HDD_INVITATION_REQ &&
         actionFrmType != WLAN_HDD_GO_NEG_REQ &&
         actionFrmType != WLAN_HDD_DEV_DIS_REQ &&

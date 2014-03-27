@@ -2816,6 +2816,12 @@ VOS_STATUS  wlan_hdd_enter_bmps(hdd_adapter_t *pAdapter, int mode)
 
    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "power mode=%d", mode);
    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   if (pHddCtx->isLogpInProgress) {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+      return VOS_STATUS_E_FAILURE;
+   }
+
    init_completion(&context.completion);
 
    context.pAdapter = pAdapter;
