@@ -11,10 +11,10 @@
  */
 
 /dts-v1/;
-/include/ "msm8974pro-ab-moto-common.dtsi"
-/include/ "msm8974pro-valocia-common.dtsi"
+/include/ "msm8974pro-ac-moto-common.dtsi"
+/include/ "msm8974pro-victara-common.dtsi"
 
 
 / {
-	qcom,msm-id = <217 0x4C 0x8000>;
+	qcom,msm-id = <194 0x4D 0x81B0>;
 };
