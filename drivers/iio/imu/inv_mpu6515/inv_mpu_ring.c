@@ -43,7 +43,7 @@ static int inv_push_marker_to_buffer(struct inv_mpu_state *st, u16 hdr)
 	u8 buf[IIO_BUFFER_BYTES];
 
 	memcpy(buf, &hdr, sizeof(hdr));
-	iio_push_to_buffers(indio_dev->buffer, buf);
+	iio_push_to_buffers(indio_dev, buf);
 
 	return 0;
 }
@@ -58,9 +58,9 @@ static int inv_push_8bytes_buffer(struct inv_mpu_state *st, u16 hdr,
 	memcpy(buf, &hdr, sizeof(hdr));
 	for (i = 0; i < 3; i++)
 		memcpy(&buf[2 + i * 2], &d[i], sizeof(d[i]));
-	iio_push_to_buffers(indio_dev->buffer, buf);
+	iio_push_to_buffers(indio_dev, buf);
 	memcpy(buf, &t, sizeof(t));
-	iio_push_to_buffers(indio_dev->buffer, buf);
+	iio_push_to_buffers(indio_dev, buf);
 
 	return 0;
 }
@@ -74,12 +74,12 @@ static int inv_push_16bytes_buffer(struct inv_mpu_state *st, u16 hdr, u64 t,
 
 	memcpy(buf, &hdr, sizeof(hdr));
 	memcpy(buf + 4, &q[0], sizeof(q[0]));
-	iio_push_to_buffers(indio_dev->buffer, buf);
+	iio_push_to_buffers(indio_dev, buf);
 	for (i = 0; i < 2; i++)
 		memcpy(buf + 4 * i, &q[i + 1], sizeof(q[i]));
-	iio_push_to_buffers(indio_dev->buffer, buf);
+	iio_push_to_buffers(indio_dev, buf);
 	memcpy(buf, &t, sizeof(t));
-	iio_push_to_buffers(indio_dev->buffer, buf);
+	iio_push_to_buffers(indio_dev, buf);
 
 	return 0;
 }
