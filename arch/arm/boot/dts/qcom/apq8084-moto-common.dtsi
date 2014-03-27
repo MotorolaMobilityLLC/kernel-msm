@@ -287,6 +287,10 @@
 			max-brightness = <255>;
 		};
 	};
+
+	qcom,wdt@f9017000 {
+		qcom,bark-time = <22000>;
+	};
 };
 
 &pma8084_lvs3 {
