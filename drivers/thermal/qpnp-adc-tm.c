@@ -195,6 +195,7 @@ struct qpnp_adc_tm_sensor {
 	uint32_t			high_thr;
 	uint32_t			btm_channel_num;
 	uint32_t			vadc_channel_num;
+	struct workqueue_struct		*req_wq;
 	struct work_struct		work;
 	bool				thermal_node;
 	uint32_t			scale_type;
@@ -208,6 +209,8 @@ struct qpnp_adc_tm_chip {
 	bool				adc_tm_initialized;
 	int				max_channels_available;
 	struct qpnp_vadc_chip		*vadc_dev;
+	struct workqueue_struct		*high_thr_wq;
+	struct workqueue_struct		*low_thr_wq;
 	struct work_struct		trigger_high_thr_work;
 	struct work_struct		trigger_low_thr_work;
 	struct qpnp_adc_tm_sensor	sensor[0];
@@ -283,6 +286,7 @@ static struct qpnp_adc_tm_reverse_scale_fn adc_tm_rscale_fn[] = {
 	[SCALE_RBATT_THERM] = {qpnp_adc_btm_scaler},
 	[SCALE_R_USB_ID] = {qpnp_adc_usb_scaler},
 	[SCALE_RPMIC_THERM] = {qpnp_adc_scale_millidegc_pmic_voltage_thr},
+	[SCALE_R_ABSOLUTE] = {qpnp_adc_absolute_rthr},
 };
 
 static int32_t qpnp_adc_tm_read_reg(struct qpnp_adc_tm_chip *chip,
@@ -505,16 +509,30 @@ static int32_t qpnp_adc_tm_timer_interval_select(
 		struct qpnp_adc_tm_chip *chip, uint32_t btm_chan,
 		struct qpnp_vadc_chan_properties *chan_prop)
 {
-	int rc;
-	u8 meas_interval_timer2 = 0;
+	int rc, chan_idx = 0, i = 0;
+	bool chan_found = false;
+	u8 meas_interval_timer2 = 0, timer_interval_store = 0;
 	uint32_t btm_chan_idx = 0;
 
-	/* Configure kernel clients to timer1 */
-	switch (chan_prop->timer_select) {
+	while (i < chip->max_channels_available) {
+		if (chip->sensor[i].btm_channel_num == btm_chan) {
+			chan_idx = i;
+			chan_found = true;
+			i++;
+		} else
+			i++;
+	}
+
+	if (!chan_found) {
+		pr_err("Channel not found\n");
+		return -EINVAL;
+	}
+
+	switch (chip->sensor[chan_idx].timer_select) {
 	case ADC_MEAS_TIMER_SELECT1:
 		rc = qpnp_adc_tm_write_reg(chip,
 				QPNP_ADC_TM_MEAS_INTERVAL_CTL,
-				chan_prop->meas_interval1);
+				chip->sensor[chan_idx].meas_interval);
 		if (rc < 0) {
 			pr_err("timer1 configure failed\n");
 			return rc;
@@ -529,9 +547,10 @@ static int32_t qpnp_adc_tm_timer_interval_select(
 			pr_err("timer2 configure read failed\n");
 			return rc;
 		}
-		meas_interval_timer2 |=
-			(chan_prop->meas_interval2 <<
-			QPNP_ADC_TM_MEAS_INTERVAL_CTL2_SHIFT);
+		timer_interval_store = chip->sensor[chan_idx].meas_interval;
+		timer_interval_store <<= QPNP_ADC_TM_MEAS_INTERVAL_CTL2_SHIFT;
+		timer_interval_store &= QPNP_ADC_TM_MEAS_INTERVAL_CTL2_MASK;
+		meas_interval_timer2 |= timer_interval_store;
 		rc = qpnp_adc_tm_write_reg(chip,
 			QPNP_ADC_TM_MEAS_INTERVAL_CTL2,
 			meas_interval_timer2);
@@ -548,8 +567,9 @@ static int32_t qpnp_adc_tm_timer_interval_select(
 			pr_err("timer3 read failed\n");
 			return rc;
 		}
-		chan_prop->meas_interval2 = ADC_MEAS3_INTERVAL_1S;
-		meas_interval_timer2 |= chan_prop->meas_interval2;
+		timer_interval_store = chip->sensor[chan_idx].meas_interval;
+		timer_interval_store &= QPNP_ADC_TM_MEAS_INTERVAL_CTL3_MASK;
+		meas_interval_timer2 |= timer_interval_store;
 		rc = qpnp_adc_tm_write_reg(chip,
 			QPNP_ADC_TM_MEAS_INTERVAL_CTL2,
 			meas_interval_timer2);
@@ -569,7 +589,18 @@ static int32_t qpnp_adc_tm_timer_interval_select(
 		pr_err("Invalid btm channel idx\n");
 		return rc;
 	}
-	adc_tm_data[btm_chan_idx].meas_interval_ctl = chan_prop->timer_select;
+	rc = qpnp_adc_tm_write_reg(chip,
+			adc_tm_data[btm_chan_idx].meas_interval_ctl,
+				chip->sensor[chan_idx].timer_select);
+	if (rc < 0) {
+		pr_err("TM channel timer configure failed\n");
+		return rc;
+	}
+
+	pr_debug("timer select:%d, timer_value_within_select:%d, channel:%x\n",
+			chip->sensor[chan_idx].timer_select,
+			chip->sensor[chan_idx].meas_interval,
+			btm_chan);
 
 	return rc;
 }
@@ -989,10 +1020,6 @@ static int qpnp_adc_tm_set_mode(struct thermal_zone_device *thermal,
 			chip->adc->adc_channels[channel].fast_avg_setup;
 		chip->adc->amux_prop->mode_sel =
 			ADC_OP_MEASUREMENT_INTERVAL << QPNP_OP_MODE_SHIFT;
-		chip->adc->amux_prop->chan_prop->timer_select =
-					ADC_MEAS_TIMER_SELECT1;
-		chip->adc->amux_prop->chan_prop->meas_interval1 =
-						ADC_MEAS1_INTERVAL_1S;
 		chip->adc->amux_prop->chan_prop->low_thr = adc_tm->low_thr;
 		chip->adc->amux_prop->chan_prop->high_thr = adc_tm->high_thr;
 		chip->adc->amux_prop->chan_prop->tm_channel_select =
@@ -1577,7 +1604,8 @@ fail:
 	mutex_unlock(&chip->adc->adc_lock);
 
 	if (adc_tm_high_enable || adc_tm_low_enable)
-		schedule_work(&chip->sensor[sensor_num].work);
+		queue_work(chip->sensor[sensor_num].req_wq,
+				&chip->sensor[sensor_num].work);
 
 	return rc;
 }
@@ -1606,7 +1634,7 @@ static irqreturn_t qpnp_adc_tm_high_thr_isr(int irq, void *data)
 
 	qpnp_adc_tm_disable(chip);
 
-	schedule_work(&chip->trigger_high_thr_work);
+	queue_work(chip->high_thr_wq, &chip->trigger_high_thr_work);
 
 	return IRQ_HANDLED;
 }
@@ -1635,7 +1663,7 @@ static irqreturn_t qpnp_adc_tm_low_thr_isr(int irq, void *data)
 
 	qpnp_adc_tm_disable(chip);
 
-	schedule_work(&chip->trigger_low_thr_work);
+	queue_work(chip->low_thr_wq, &chip->trigger_low_thr_work);
 
 	return IRQ_HANDLED;
 }
@@ -1726,8 +1754,6 @@ int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 			chip->adc->adc_channels[dt_index].fast_avg_setup;
 	chip->adc->amux_prop->mode_sel =
 		ADC_OP_MEASUREMENT_INTERVAL << QPNP_OP_MODE_SHIFT;
-	chip->adc->amux_prop->chan_prop->meas_interval1 =
-						ADC_MEAS1_INTERVAL_1S;
 	adc_tm_rscale_fn[scale_type].chan(chip->vadc_dev, param,
 			&chip->adc->amux_prop->chan_prop->low_thr,
 			&chip->adc->amux_prop->chan_prop->high_thr);
@@ -1735,8 +1761,6 @@ int32_t qpnp_adc_tm_channel_measure(struct qpnp_adc_tm_chip *chip,
 				chip->adc->amux_prop->chan_prop);
 	chip->adc->amux_prop->chan_prop->tm_channel_select =
 				chip->sensor[dt_index].btm_channel_num;
-	chip->adc->amux_prop->chan_prop->timer_select =
-					ADC_MEAS_TIMER_SELECT1;
 	chip->adc->amux_prop->chan_prop->state_request =
 					param->state_request;
 	rc = qpnp_adc_tm_configure(chip, chip->adc->amux_prop);
@@ -1941,7 +1965,7 @@ static int qpnp_adc_tm_probe(struct spmi_device *spmi)
 
 	for_each_child_of_node(node, child) {
 		char name[25];
-		int btm_channel_num;
+		int btm_channel_num, timer_select = 0;
 
 		rc = of_property_read_u32(child,
 				"qcom,btm-channel-number", &btm_channel_num);
@@ -1949,6 +1973,28 @@ static int qpnp_adc_tm_probe(struct spmi_device *spmi)
 			pr_err("Invalid btm channel number\n");
 			goto fail;
 		}
+		rc = of_property_read_u32(child,
+				"qcom,meas-interval-timer-idx", &timer_select);
+		if (rc) {
+			pr_debug("Default to timer2 with interval of 1 sec\n");
+			chip->sensor[sen_idx].timer_select =
+							ADC_MEAS_TIMER_SELECT2;
+			chip->sensor[sen_idx].meas_interval =
+							ADC_MEAS2_INTERVAL_1S;
+		} else {
+			if (timer_select >= ADC_MEAS_TIMER_NUM) {
+				pr_err("Invalid timer selection number\n");
+				goto fail;
+			}
+			chip->sensor[sen_idx].timer_select = timer_select;
+			if (timer_select == ADC_MEAS_TIMER_SELECT1)
+				chip->sensor[sen_idx].meas_interval =
+						ADC_MEAS1_INTERVAL_3P9MS;
+			if (timer_select == ADC_MEAS_TIMER_SELECT3)
+				chip->sensor[sen_idx].meas_interval =
+						ADC_MEAS3_INTERVAL_4S;
+		}
+
 		chip->sensor[sen_idx].btm_channel_num = btm_channel_num;
 		chip->sensor[sen_idx].vadc_channel_num =
 				chip->adc->adc_channels[sen_idx].channel_num;
@@ -1979,11 +2025,29 @@ static int qpnp_adc_tm_probe(struct spmi_device *spmi)
 			if (IS_ERR(chip->sensor[sen_idx].tz_dev))
 				pr_err("thermal device register failed.\n");
 		}
+		chip->sensor[sen_idx].req_wq = alloc_workqueue(
+				"qpnp_adc_notify_wq", WQ_HIGHPRI, 0);
+		if (!chip->sensor[sen_idx].req_wq) {
+			pr_err("Requesting priority wq failed\n");
+			goto fail;
+		}
 		INIT_WORK(&chip->sensor[sen_idx].work, notify_adc_tm_fn);
 		INIT_LIST_HEAD(&chip->sensor[sen_idx].thr_list);
 		sen_idx++;
 	}
 	chip->max_channels_available = count_adc_channel_list;
+	chip->high_thr_wq = alloc_workqueue("qpnp_adc_tm_high_thr_wq",
+							WQ_HIGHPRI, 0);
+	if (!chip->high_thr_wq) {
+		pr_err("Requesting high thr priority wq failed\n");
+		goto fail;
+	}
+	chip->low_thr_wq = alloc_workqueue("qpnp_adc_tm_low_thr_wq",
+							WQ_HIGHPRI, 0);
+	if (!chip->low_thr_wq) {
+		pr_err("Requesting low thr priority wq failed\n");
+		goto fail;
+	}
 	INIT_WORK(&chip->trigger_high_thr_work, qpnp_adc_tm_high_thr_work);
 	INIT_WORK(&chip->trigger_low_thr_work, qpnp_adc_tm_low_thr_work);
 
@@ -2037,10 +2101,17 @@ fail:
 	for_each_child_of_node(node, child) {
 		thermal_node = of_property_read_bool(child,
 					"qcom,thermal-node");
-		if (thermal_node)
+		if (thermal_node) {
 			thermal_zone_device_unregister(chip->sensor[i].tz_dev);
+			if (chip->sensor[i].req_wq)
+				destroy_workqueue(chip->sensor[sen_idx].req_wq);
+		}
 		i++;
 	}
+	if (chip->high_thr_wq)
+		destroy_workqueue(chip->high_thr_wq);
+	if (chip->low_thr_wq)
+		destroy_workqueue(chip->low_thr_wq);
 	dev_set_drvdata(&spmi->dev, NULL);
 	return rc;
 }
@@ -2055,11 +2126,18 @@ static int qpnp_adc_tm_remove(struct spmi_device *spmi)
 	for_each_child_of_node(node, child) {
 		thermal_node = of_property_read_bool(child,
 					"qcom,thermal-node");
-		if (thermal_node)
+		if (thermal_node) {
 			thermal_zone_device_unregister(chip->sensor[i].tz_dev);
+			if (chip->sensor[i].req_wq)
+				destroy_workqueue(chip->sensor[i].req_wq);
+		}
 		i++;
 	}
 
+	if (chip->high_thr_wq)
+		destroy_workqueue(chip->high_thr_wq);
+	if (chip->low_thr_wq)
+		destroy_workqueue(chip->low_thr_wq);
 	dev_set_drvdata(&spmi->dev, NULL);
 
 	return 0;
