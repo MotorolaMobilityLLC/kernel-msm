@@ -3590,6 +3590,18 @@ static int mxt_parse_tdat_image(struct mxt_data *data)
 	return 0;
 }
 
+static void mxt_request_irq(struct mxt_data *data, unsigned long flags)
+{
+	int error;
+
+	dev_dbg(&data->client->dev, "requesting IRQ, flags: %lu\n", flags);
+	error = request_threaded_irq(data->irq, NULL, mxt_interrupt,
+				     flags, data->client->name, data);
+	/* no need to stay alive, touch is not functional */
+	BUG_ON(error);
+	data->irq_enabled = true;
+}
+
 static ssize_t mxt_doreflash_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t count)
@@ -3646,6 +3658,12 @@ static ssize_t mxt_doreflash_store(struct device *dev,
 
 		mxt_irq_enable(data, true);
 	}
+
+	/* Level triggered IRQ causes WD reset due to soft IRQ lockup, */
+	/* thus change it to edge triggered for the durantion of flash */
+	mxt_irq_enable(data, false);
+	free_irq(data->irq, data);
+	mxt_request_irq(data, IRQF_TRIGGER_FALLING | IRQF_ONESHOT);
 
 	mxt_set_sensor_state(data, STATE_INIT);
 
@@ -3729,6 +3747,11 @@ initialize:
 
 	mutex_unlock(&data->crit_section_lock);
 	dev_dbg(dev, "critical section RELEASE\n");
+
+	/* Switch back to default triggered IRQ mode */
+	mxt_irq_enable(data, false);
+	free_irq(data->irq, data);
+	mxt_request_irq(data, data->pdata->irqflags);
 
 	memset(&data->fw, 0, sizeof(data->fw));
 	memset(&data->tsett, 0, sizeof(data->tsett));
@@ -4117,13 +4140,7 @@ static int mxt_probe(struct i2c_client *client,
 	if (error)
 		goto err_free_pdata;
 
-	error = request_threaded_irq(data->irq, NULL, mxt_interrupt,
-				     data->pdata->irqflags | IRQF_ONESHOT,
-				     client->name, data);
-	if (error)
-		goto err_free_gpio;
-
-	data->irq_enabled = true;
+	mxt_request_irq(data, data->pdata->irqflags);
 
 	error = mxt_power_init(data);
 	if (error)
