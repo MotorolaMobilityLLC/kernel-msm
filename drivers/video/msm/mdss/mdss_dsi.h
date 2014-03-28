@@ -21,6 +21,8 @@
 #include "mdss_panel.h"
 #include "mdss_dsi_cmd.h"
 
+
+
 #define MMSS_SERDES_BASE_PHY 0x04f01000 /* mmss (De)Serializer CFG */
 
 #define MIPI_OUTP(addr, data) writel_relaxed((data), (addr))
@@ -223,7 +225,14 @@ enum {
 #define DSI_EV_MDP_BUSY_RELEASE		0x80000000
 
 #define DSI_FLAG_CLOCK_MASTER		0x80000000
-
+struct dsi_cmd {
+	struct dsi_cmd_desc *cmd_desc;
+	char *read_size;
+	char *read_startoffset;
+	int num_of_cmds;
+	char *cmds_buff;
+	int cmds_len;
+};
 struct mdss_dsi_ctrl_pdata {
 	int ndx;	/* panel_num */
 	int (*on) (struct mdss_panel_data *pdata);
@@ -231,6 +240,9 @@ struct mdss_dsi_ctrl_pdata {
 	int (*partial_update_fnc) (struct mdss_panel_data *pdata);
 	int (*check_status) (struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
+	int (*event_handler) (int e);
+	void (*panel_reset) (struct mdss_panel_data *pdata, int enable);
+	int (*registered) (struct mdss_panel_data *data);
 	struct mdss_panel_data panel_data;
 	unsigned char *ctrl_base;
 	int reg_size;

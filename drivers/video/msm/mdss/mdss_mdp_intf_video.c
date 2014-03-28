@@ -710,6 +710,10 @@ int mdss_mdp_video_reconfigure_splash_done(struct mdss_mdp_ctl *ctl,
 	u32 data, flush;
 	struct mdss_mdp_video_ctx *ctx;
 
+#if defined(CONFIG_FB_MSM_MDSS_BOE_TFT_CMD_WVGA_PANEL)
+	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_FIRST_FRAME_UPDATE, NULL);
+#endif
+
 	off = 0;
 	ctx = (struct mdss_mdp_video_ctx *) ctl->priv_data;
 	if (!ctx) {

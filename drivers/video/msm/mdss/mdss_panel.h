@@ -134,17 +134,24 @@ enum mdss_intf_events {
 	MDSS_EVENT_PANEL_ON,
 	MDSS_EVENT_BLANK,
 	MDSS_EVENT_PANEL_OFF,
+#if defined(CONFIG_FB_MSM_MDSS_S6E8AA0A_HD_PANEL)
+	MTP_READ,
+#endif
 	MDSS_EVENT_CLOSE,
 	MDSS_EVENT_SUSPEND,
 	MDSS_EVENT_RESUME,
 	MDSS_EVENT_CHECK_PARAMS,
 	MDSS_EVENT_CONT_SPLASH_BEGIN,
 	MDSS_EVENT_CONT_SPLASH_FINISH,
+	MDSS_EVENT_FIRST_FRAME_UPDATE,
 	MDSS_EVENT_PANEL_UPDATE_FPS,
 	MDSS_EVENT_FB_REGISTERED,
+	MDSS_EVENT_FRAME_UPDATE,
 	MDSS_EVENT_PANEL_CLK_CTRL,
 	MDSS_EVENT_DSI_CMDLIST_KOFF,
+	MDSS_EVENT_MDNIE_DEFAULT_UPDATE,
 	MDSS_EVENT_ENABLE_PARTIAL_UPDATE,
+	MDSS_EVENT_BACKLIGHT_LATE_ON,
 };
 
 struct lcd_panel_info {
@@ -328,6 +335,19 @@ struct mdss_panel_info {
 	struct mipi_panel_info mipi;
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
+	u8 (*alpm_event) (u8 flag);
+};
+
+/* ALPM Flags */
+enum {
+	/* Status Flags */
+	MODE_OFF = 0,			/* Off ALPM or Normal Mode Status */
+	ALPM_MODE_ON,			/* ALPM Mode Status */
+	/* Event Flags */
+	CHECK_CURRENT_STATUS,	/* Check Current Mode */
+	CHECK_PREVIOUS_STATUS,	/* Check Previous Mode */
+	STORE_CURRENT_STATUS,	/* Store Current Mode to Previous Mode */
+	CLEAR_MODE_STATUS,		/* Clear Status Flag as 0 */
 };
 
 struct mdss_panel_data {

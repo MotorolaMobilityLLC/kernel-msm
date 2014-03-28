@@ -177,6 +177,7 @@ struct msm_fb_data_type {
 	int panel_reconfig;
 
 	u32 dst_format;
+	int resume_state;
 	int panel_power_on;
 	struct disp_info_type_suspend suspend;
 

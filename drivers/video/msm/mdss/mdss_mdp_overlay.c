@@ -1086,6 +1086,12 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 	}
 
 	mdss_fb_update_notify_update(mfd);
+
+/*
+#if defined(CONFIG_FB_MSM_MDSS_BOE_TFT_CMD_WVGA_PANEL)
+	mdss_mdp_ctl_intf_event(mdp5_data->ctl, MDSS_EVENT_FRAME_UPDATE, NULL);
+#endif */
+
 commit_fail:
 	mdss_mdp_overlay_cleanup(mfd);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
@@ -2611,9 +2617,12 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 	int rc;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_ctl *ctl = NULL;
+	struct mdss_panel_info *pinfo;
 
 	if (!mfd)
 		return -ENODEV;
+
+	pinfo = mfd->panel_info;
 
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
@@ -2631,7 +2640,9 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 
 	if (!mfd->panel_info->cont_splash_enabled &&
 		(mfd->panel_info->type != DTV_PANEL) &&
-		(mfd->panel_info->type != WRITEBACK_PANEL)) {
+		(mfd->panel_info->type != WRITEBACK_PANEL) &&
+		!(pinfo->alpm_event &&
+		pinfo->alpm_event(CHECK_PREVIOUS_STATUS))) {
 		rc = mdss_mdp_overlay_start(mfd);
 		if (!IS_ERR_VALUE(rc))
 			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
@@ -2654,9 +2665,12 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_mixer *mixer;
 	int need_cleanup;
+	struct mdss_panel_info *pinfo = NULL;
 
 	if (!mfd)
 		return -ENODEV;
+
+	pinfo = mfd->panel_info;
 
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
@@ -2686,8 +2700,14 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	mutex_unlock(&mfd->lock);
 
 	if (need_cleanup) {
-		pr_debug("cleaning up pipes on fb%d\n", mfd->index);
-		mdss_mdp_overlay_kickoff(mfd, NULL);
+		if (pinfo->alpm_event &&
+			pinfo->alpm_event(CHECK_CURRENT_STATUS)) {
+			pr_debug("[ALPM_DEBUG] %s, Skip cleanup pipes on fb%d\n",
+				 __func__, mfd->index);
+		} else {
+			pr_debug("cleaning up pipes on fb%d\n", mfd->index);
+			mdss_mdp_overlay_kickoff(mfd, NULL);
+		}
 	}
 
 	rc = mdss_mdp_ctl_stop(mdp5_data->ctl);
