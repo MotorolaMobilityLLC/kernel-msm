@@ -21,7 +21,7 @@
 #define LCD_DEBUG(X, ...) pr_info("[LCD]%s:"X, __func__, ## __VA_ARGS__);
 
 enum mipi_samsung_cmd_list {
-	PANEL_READY_TO_ON,
+	PANEL_DISPLAY_ON_SEQ,
 	PANEL_DISPLAY_ON,
 	PANEL_DISP_OFF,
 	PANEL_BRIGHT_CTRL,

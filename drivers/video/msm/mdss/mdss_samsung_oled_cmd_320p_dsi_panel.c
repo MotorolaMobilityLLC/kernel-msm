@@ -40,8 +40,9 @@ static int err_fg_working;
 /* #define CMD_DEBUG */
 #define ALPM_MODE
 
-static struct dsi_cmd display_on_cmds;
-static struct dsi_cmd display_off_cmds;
+static struct dsi_cmd display_on_seq;
+static struct dsi_cmd display_on_cmd;
+static struct dsi_cmd display_off_seq;
 static struct dsi_cmd manufacture_id_cmds;
 static struct dsi_cmd mtp_id_cmds;
 static struct dsi_cmd mtp_enable_cmds;
@@ -230,14 +231,17 @@ static int mipi_samsung_disp_send_cmd(
 		mutex_lock(&msd.lock);
 
 	switch (cmd) {
-	case PANEL_READY_TO_ON:
+	case PANEL_DISPLAY_ON_SEQ:
+		cmd_desc = display_on_seq.cmd_desc;
+		cmd_size = display_on_seq.num_of_cmds;
+		break;
 	case PANEL_DISPLAY_ON:
-		cmd_desc = display_on_cmds.cmd_desc;
-		cmd_size = display_on_cmds.num_of_cmds;
+		cmd_desc = display_on_cmd.cmd_desc;
+		cmd_size = display_on_cmd.num_of_cmds;
 		break;
 	case PANEL_DISP_OFF:
-		cmd_desc = display_off_cmds.cmd_desc;
-		cmd_size = display_off_cmds.num_of_cmds;
+		cmd_desc = display_off_seq.cmd_desc;
+		cmd_size = display_off_seq.num_of_cmds;
 		break;
 	case PANEL_MTP_ENABLE:
 		cmd_desc = mtp_enable_cmds.cmd_desc;
@@ -456,9 +460,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	/* Normaly the else is working for PANEL_DISP_ON_SEQ */
 	if (pinfo->alpm_event) {
 		if (!pinfo->alpm_event(CHECK_PREVIOUS_STATUS))
-			mipi_samsung_disp_send_cmd(PANEL_READY_TO_ON, true);
+			mipi_samsung_disp_send_cmd(PANEL_DISPLAY_ON_SEQ, true);
 	} else
-		mipi_samsung_disp_send_cmd(PANEL_READY_TO_ON, true);
+		mipi_samsung_disp_send_cmd(PANEL_DISPLAY_ON_SEQ, true);
 
 	msd.dstat.wait_disp_on = 1;
 	msd.dstat.on = 1;
@@ -799,7 +803,6 @@ error:
 static void mdss_panel_parse_te_params(struct device_node *np,
 				       struct mdss_panel_info *panel_info)
 {
-
 	u32 tmp;
 	int rc = 0;
 	/*
@@ -818,10 +821,10 @@ static void mdss_panel_parse_te_params(struct device_node *np,
 	panel_info->te.vsync_init_val = (!rc ? tmp : panel_info->yres);
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-sync-threshold-start", &tmp);
-	panel_info->te.sync_threshold_start = 4;// (!rc ? tmp : 4);
+	panel_info->te.sync_threshold_start = (!rc ? tmp : 4);
 	rc = of_property_read_u32
 		(np, "qcom,mdss-tear-check-sync-threshold-continue", &tmp);
-	panel_info->te.sync_threshold_continue = 4;// (!rc ? tmp : 4);
+	panel_info->te.sync_threshold_continue = (!rc ? tmp : 4);
 	rc = of_property_read_u32(np, "qcom,mdss-tear-check-start-pos", &tmp);
 	panel_info->te.start_pos = (!rc ? tmp : panel_info->yres);
 	rc = of_property_read_u32
@@ -829,7 +832,6 @@ static void mdss_panel_parse_te_params(struct device_node *np,
 	panel_info->te.rd_ptr_irq = (!rc ? tmp : panel_info->yres + 1);
 	rc = of_property_read_u32(np, "qcom,mdss-tear-check-frame-rate", &tmp);
 	panel_info->te.refx100 = (!rc ? tmp : 6000);
-	pr_info("[ALPM_DEBUG] %s: %d, %d\n", __func__, panel_info->te.sync_threshold_start, panel_info->te.sync_threshold_continue);
 }
 
 
@@ -1076,10 +1078,12 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_panel_parse_te_params(np, pinfo);
 
-	mdss_samsung_parse_panel_cmd(np, &display_on_cmds,
-			"qcom,mdss-dsi-on-command");
-	mdss_samsung_parse_panel_cmd(np, &display_off_cmds,
-			"qcom,mdss-dsi-off-command");
+	mdss_samsung_parse_panel_cmd(np, &display_on_seq,
+			"qcom,mdss-display-on-seq");
+	mdss_samsung_parse_panel_cmd(np, &display_on_cmd,
+			"qcom,mdss-display-on-cmd");
+	mdss_samsung_parse_panel_cmd(np, &display_off_seq,
+			"qcom,mdss-display-off-seq");
 	mdss_samsung_parse_panel_cmd(np, &manufacture_id_cmds,
 			"samsung,panel-manufacture-id-read-cmds");
 	mdss_samsung_parse_panel_cmd(np, &mtp_id_cmds,
@@ -1245,6 +1249,25 @@ static int is_panel_supported(const char *panel_name)
 	return -EINVAL;
 }
 
+static int samsung_dsi_panel_event_handler(int event)
+{
+	pr_debug("%s : %d", __func__, event);
+	switch (event) {
+	case MDSS_EVENT_FRAME_UPDATE:
+		if (msd.dstat.wait_disp_on) {
+			pr_info("DISPLAY_ON\n");
+			mipi_samsung_disp_send_cmd(PANEL_DISPLAY_ON, true);
+			msd.dstat.wait_disp_on = 0;
+		}
+		break;
+	default:
+		pr_err("%s : unknown event (%d)\n", __func__, event);
+		break;
+	}
+
+	return 0;
+}
+
 #if defined(ALPM_MODE)
 static ssize_t mipi_samsung_alpm_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -1378,8 +1401,8 @@ u8 alpm_event_func(u8 flag)
 		break;
 	}
 
-	pr_debug("[ALPM_DEBUG] current_status : %d, previous_status : %d,"
-			" ret : %d\n", current_status, previous_status, ret);
+	pr_debug("[ALPM_DEBUG] current_status : %d, previous_status : %d, ret : %d\n",
+				current_status, previous_status, ret);
 
 	return ret;
 }
@@ -1492,6 +1515,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
+	ctrl_pdata->event_handler = samsung_dsi_panel_event_handler;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->panel_reset = mdss_dsi_samsung_panel_reset;
 	ctrl_pdata->registered = mdss_dsi_panel_registered;

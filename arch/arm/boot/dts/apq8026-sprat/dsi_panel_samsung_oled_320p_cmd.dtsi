@@ -64,7 +64,7 @@
 		qcom,mdss-force-clk-lane-hs = <1>;
 		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 /*		qcom,mdss-dsi-panel-clock-rate = <500000000>;*/
-		qcom,mdss-dsi-on-command = [
+		qcom,mdss-display-on-seq = [
 					39 01 00 00 01 00 03 F0 5A 5A
 					39 01 00 00 00 00 03 F1 5A 5A
 					39 01 00 00 00 00 03 F2 1C 28
@@ -81,9 +81,9 @@
 					39 01 00 00 01 00 02 55 00
 					39 01 00 00 01 00 03 B1 00 09
 					39 01 00 00 01 00 02 36 40
-					05 01 00 00 10 00 02 29 00	/* Display On */
 					39 01 00 00 01 00 03 F1 A5 A5
 					];
+		qcom,mdss-display-on-cmd = [05 01 00 00 10 00 02 29 00];
 		samsung,panel-gamma-cmds-list = [
 					29 01 00 00 01 00 1C
 						D4 00 00 00 30 36 36
@@ -92,8 +92,10 @@
 						33 00 C4 00 CE 00 DF
 					];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
-		qcom,mdss-dsi-off-command = [05 01 00 00 32 00 02 28 00
-					05 01 00 00 78 00 02 10 00];
+		qcom,mdss-display-off-seq = [
+					05 01 00 00 32 00 02 28 00
+					05 01 00 00 78 00 02 10 00
+					];
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		samsung,panel-mtp-enable-cmds =[ 39 01 00 00 00 00 03 F1 5A 5A ];
 		samsung,panel-manufacture-id-read-cmds = [ 06 01 00 00 00 00 01 A1 03 00 ];

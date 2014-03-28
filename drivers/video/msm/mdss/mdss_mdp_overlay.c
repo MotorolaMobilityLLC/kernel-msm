@@ -1087,10 +1087,7 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 
 	mdss_fb_update_notify_update(mfd);
 
-/*
-#if defined(CONFIG_FB_MSM_MDSS_BOE_TFT_CMD_WVGA_PANEL)
 	mdss_mdp_ctl_intf_event(mdp5_data->ctl, MDSS_EVENT_FRAME_UPDATE, NULL);
-#endif */
 
 commit_fail:
 	mdss_mdp_overlay_cleanup(mfd);
