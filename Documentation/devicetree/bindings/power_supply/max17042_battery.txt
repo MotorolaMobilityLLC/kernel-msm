@@ -65,6 +65,10 @@ Required "maxim,temp-conv" properties :
  - result : Conversion table with temperature values (u16) in 1/10 C.  The
    result[0] corresponds to start temp, result[1] to (start + 1) temp, etc.
 
+Optional "maxim,configuration" node properties :
+ - tgain : TGAIN register value (u16) specific to the thermistor
+ - toff : TOFF register value (u16) specific to the thermistor
+
 Example:
 
 	battery-charger@36 {
@@ -83,6 +87,7 @@ Example:
 		maxim,enable_por_init;
 		maxim,batt_undervoltage_zero_soc;
 		maxim,configuration {
+			/* Required properties */
 			config		= /bits/ 16 <0x2250>;
 			full_soc_thresh	= /bits/ 16 <0x5F00>;
 			design_cap	= /bits/ 16 <320>;
@@ -108,6 +113,9 @@ Example:
 				0x0080 0x0080 0x0080 0x0080 0x0080 0x0080
 				0x0080 0x0080 0x0080 0x0080 0x0080 0x0080
 			>;
+			/* Optional properties */
+			tgain		= /bits/ 16 <0xE71C>;
+			toff		= /bits/ 16 <0x251A>;
 		}
 
 		maxim,temp-conv {
