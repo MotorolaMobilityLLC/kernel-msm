@@ -5960,12 +5960,7 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          /* A Mutex Lock is introduced while changing/initializing the mode to
           * protect the concurrent access for the Adapters by TDLS module.
           */
-         if (mutex_lock_interruptible(&pHddCtx->tdls_lock))
-         {
-             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                       "%s: unable to lock list", __func__);
-             return NULL;
-         }
+          mutex_lock(&pHddCtx->tdls_lock);
 #endif
 
          pAdapter->wdev.iftype = (session_type == WLAN_HDD_P2P_CLIENT) ?
@@ -6204,12 +6199,7 @@ VOS_STATUS hdd_close_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
       /* A Mutex Lock is introduced while changing/initializing the mode to
        * protect the concurrent access for the Adapters by TDLS module.
        */
-       if (mutex_lock_interruptible(&pHddCtx->tdls_lock))
-       {
-           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                     "%s: unable to lock list", __func__);
-           return VOS_STATUS_E_FAILURE;
-       }
+       mutex_lock(&pHddCtx->tdls_lock);
 #endif
 
       hdd_remove_adapter( pHddCtx, pAdapterNode );

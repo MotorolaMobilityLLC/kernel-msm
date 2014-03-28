@@ -171,6 +171,7 @@
 #define WLAN_HDD_WFA_P2P_OUI_TYPE 0x09
 #define WLAN_HDD_P2P_SOCIAL_CHANNELS 3
 #define WLAN_HDD_P2P_SINGLE_CHANNEL_SCAN 1
+#define WLAN_HDD_PUBLIC_ACTION_FRAME_SUB_TYPE_OFFSET 6
 
 #define WLAN_HDD_IS_SOCIAL_CHANNEL(center_freq) \
 (((center_freq) == 2412) || ((center_freq) == 2437) || ((center_freq) == 2462))
