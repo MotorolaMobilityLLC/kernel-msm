@@ -321,6 +321,7 @@ struct mdss_dsi_ctrl_pdata {
 
 	int horizontal_idle_cnt;
 	struct panel_horizontal_idle *line_idle;
+	bool check_status_disabled;
 };
 
 int dsi_panel_device_register(struct device_node *pan_node,
