@@ -31,6 +31,32 @@ static DEFINE_MUTEX(list_lock);
 
 /* Quickdraw Helper Functions */
 
+static inline int check_alignment(int value, int align)
+{
+	return value % align;
+}
+
+static int correct_alignment(int coord, int align)
+{
+	int ret = coord;
+
+	pr_debug("%s+ (coord: %d, align: %d)\n", __func__, ret, align);
+
+	if (align > 1) {
+		int temp_coord;
+		align = coord < 0 ? -align : align;
+		temp_coord = coord + (int)(align / 2);
+		ret = temp_coord - temp_coord % align;
+	}
+
+	if (ret != coord)
+		pr_warn("%s: coord[%d] corrected to: %d", __func__, coord, ret);
+
+	pr_debug("%s- (coord: %d, align: %d)\n", __func__, ret, align);
+
+	return ret;
+}
+
 /* This function creates a new file descriptor for use in the suspend
    context. This is necessary for permissions issues since the buffers
    were allocated in the app context. */
@@ -302,10 +328,20 @@ int msm_fb_quickdraw_init(void)
 
 int msm_fb_quickdraw_create_buffer(struct msmfb_quickdraw_buffer_data *data)
 {
+	struct mipi_mot_panel *mot_panel = mipi_mot_get_mot_panel();
 	struct msmfb_quickdraw_buffer *buffer;
 	int ret = 0;
 
 	pr_debug("%s+\n", __func__);
+
+	if (check_alignment(data->w, mot_panel->pinfo.col_align)) {
+		pr_err("%s: Buffer [id: %d] width [%d] not aligned [%d]\n",
+			__func__, data->buffer_id, data->w,
+			mot_panel->pinfo.col_align);
+		ret = -EINVAL;
+		goto EXIT;
+	}
+	data->x = correct_alignment(data->x, mot_panel->pinfo.col_align);
 
 	mutex_lock(&list_lock);
 
@@ -462,10 +498,14 @@ static int msm_fb_quickdraw_execute(void *data, int buffer_id, int x, int y)
 		ret = -EINVAL;
 		goto EXIT;
 	}
+
 	if (x < 0 || y < 0) {
 		x = buffer->data.x;
 		y = buffer->data.y;
 	}
+
+	x = correct_alignment(x, mfd->panel_info.col_align);
+
 	if (x < 0 || y < 0 ||
 	    (x + buffer->data.w) > saved_panel_xres ||
 	    (y + buffer->data.h) > saved_panel_yres) {
@@ -542,12 +582,22 @@ EXIT:
 
 static int msm_fb_quickdraw_erase(void *data, int x1, int y1, int x2, int y2)
 {
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)data;
 	struct msmfb_quickdraw_buffer *buffer = NULL;
 	int w = x2 - x1;
 	int h = y2 - y1;
 	int ret;
 
 	pr_debug("%s+\n", __func__);
+
+	if (check_alignment(w, mfd->panel_info.col_align)) {
+		pr_err("%s: Erase width[%d] not aligned [%d]\n", __func__, w,
+		       mfd->panel_info.col_align);
+		ret = -EINVAL;
+		goto EXIT;
+	}
+	x1 = correct_alignment(x1, mfd->panel_info.col_align);
+	x2 = correct_alignment(x2, mfd->panel_info.col_align);
 
 	if (x1 < 0 || y1 < 0 ||
 	    x2 > saved_panel_xres || y2 > saved_panel_yres) {
