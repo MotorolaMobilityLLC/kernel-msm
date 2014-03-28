@@ -745,10 +745,10 @@ static void apanic_mmc_logbuf_dump(struct kmsg_dumper *dumper)
 	ctx->buf_offset = app_threads_offset;
 	ctx->written = app_threads_offset;
 	start_apanic_threads = 1;
-/*
+
 	if (tracing_get_trace_buf_size() < (SZ_512K + 1))
 		ftrace_dump(1);
-*/
+
 	show_state_thread_filter(0, SHOW_APP_THREADS);
 	ctx->buf_offset = ALIGN(ctx->written, 512);
 	start_apanic_threads = 0;
