@@ -838,6 +838,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 				   NULL, NULL);
 
 	if (ctl->num == 0) {
+		mutex_lock(&ctl->offlock);
 		ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_BLANK, NULL);
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
 
@@ -845,6 +846,7 @@ int mdss_mdp_cmd_stop(struct mdss_mdp_ctl *ctl)
 		WARN(ret, "intf %d unblank error (%d)\n", ctl->intf_num, ret);
 
 		mdss_mdp_cmd_tearcheck_setup(ctl, false);
+		mutex_unlock(&ctl->offlock);
 	}
 
 	memset(ctx, 0, sizeof(*ctx));
